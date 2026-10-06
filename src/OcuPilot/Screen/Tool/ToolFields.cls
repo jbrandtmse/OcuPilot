@@ -728,7 +728,7 @@ XData Tools
 ]},
 "tasks.schedule.create": {"fieldList":"Task.CRUD","fields":[
   {"path":"Name","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
-  {"path":"RunAsUser","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"RunAsUser","shape":"literal","templateType":"string","itemType":"","class":"ordinary","compare":"caller"},
   {"path":"EmailOnCompletion[]","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
   {"path":"EmailOnError[]","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
   {"path":"EmailOnExpiration[]","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},

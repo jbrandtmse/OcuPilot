@@ -521,6 +521,8 @@ test('the harness build configuration has its own entry, document, tsconfig and 
 // rounded up to the next kB (both branches' additions together), under the 4000kB hard stop.
 // Story 19.18 raised it to 2992kB, the measured 2,991,592-byte initial total rounded up to the next kB
 // (the criteria hints' descriptor mirror and the singular count strings), under the 4000kB hard stop.
+// Story 23.4 raised it to 2993kB, the measured 2,992,692-byte initial total rounded up to the next kB
+// (the origin-scoped preference faults, the change event's tool and the task card's name), under the 4000kB hard stop.
 //
 // Mutations (Rule 19):
 // - loosen `maximumWarning` to a much larger, unmeasured figure (e.g. "3MB") -> the
@@ -533,7 +535,7 @@ test('DW-371: exactly one initial budget, maximumWarning under maximumError, and
   assert.equal(budgets.length, 1, 'expected exactly one budget entry');
   const [budget] = budgets;
   assert.equal(budget.type, 'initial');
-  assert.equal(budget.maximumWarning, '2992kB', 'DW-1166, Story 19.18: the measured 2,991,592 bytes rounded up to the next kB, under the 4000kB hard stop; a change to this figure must be a reviewed diff, not a silent edit');
+  assert.equal(budget.maximumWarning, '2993kB', 'Story 23.4: the measured 2,992,692 bytes rounded up to the next kB, under the 4000kB hard stop; a change to this figure must be a reviewed diff, not a silent edit');
   assert.equal(budget.maximumError, '4000kB');
 
   // Both budgets are written in the units `@angular/build` prints, where a kB is 1000 bytes and

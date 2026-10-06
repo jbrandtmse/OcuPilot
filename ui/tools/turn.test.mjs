@@ -1539,6 +1539,8 @@ test("the published action is the instance's own, and an unknown word reads as t
     const event = bus.events.find((candidate) => candidate.kind === 'changed');
     assert.ok(event, `a confirm answering ${JSON.stringify(answered)} publishes a change`);
     assert.equal(event.action, published, `answered ${JSON.stringify(answered)}`);
+    // Mutation (Rule 19): drop `tool` from the confirm's publish in `turn.ts` -> this goes red.
+    assert.equal(event.tool, 'webapp.list.update', 'the change names the proposal\'s tool');
   }
 });
 

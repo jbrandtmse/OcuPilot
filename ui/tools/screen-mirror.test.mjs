@@ -200,10 +200,12 @@ test('every read note\'s text is the string its key names, and the three SQL sta
       'OcuPilot.Screen.Descriptor.ExplorerSqlProcedureStatements',
       'OcuPilot.Screen.Descriptor.ExplorerSqlTableStatements',
       'OcuPilot.Screen.Descriptor.ExplorerSqlViewStatements',
+      // Story 23.4: the Services list states what an empty Allowed IP addresses list means.
+      'OcuPilot.Screen.Descriptor.ServiceList',
       // Story 19.10: SQL activity states whose statement text it shows.
       'OcuPilot.Screen.Descriptor.SqlActivityList',
     ],
-    'the three SQL statements reads, the ECP Connections tab and SQL activity declare a note'
+    'the three SQL statements reads, the ECP Connections tab, Services and SQL activity declare a note'
   );
   for (const screen of noted) {
     const { key, text } = screen.declaration.read.note;

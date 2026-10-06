@@ -187,4 +187,10 @@ ClassMethod Consequence(pPayload As %DynamicObject, pPrivileged As %Boolean = 0,
     Quit ..#CONSEQUENCE
 }
 
+/// <p>The task's own name from the fresh read, which the card titles the task by.</p>
+ClassMethod TargetName(pFresh, pId As %String, pArgs) As %String
+{
+    Quit ##class(OcuPilot.Area.Task.TaskRules).NameIn(pFresh)
+}
+
 }

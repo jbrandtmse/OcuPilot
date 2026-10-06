@@ -44,6 +44,7 @@ ClassMethod ProhibitedClass() As %String
 ClassMethod HandleCreate() As %Status
 {
     Set tSC = $$$OK
+    Set tHoldKey = ""
     Set tBody = ""
     Try {
         Set tGateSC = ..Gate(.tRefused)
@@ -55,6 +56,11 @@ ClassMethod HandleCreate() As %Status
         If $$$ISERR(tReadSC) || '$IsObject(tBody) || 'tBody.%IsA("%Library.DynamicObject") {
             Set tBody = ""
             Set tSC = ##class(OcuPilot.Api.Error).Render(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#REASONAGENTBADBODY, ##class(OcuPilot.Api.Error).#AGENTBADBODY)
+            Quit
+        }
+        Set tHoldSC = ##class(OcuPilot.Kernel.Proposal.Operation).HoldTool(..#CREATETOOL, ##class(OcuPilot.Kernel.Proposal.Operation).BodyIdOf(..#CREATETOOL, tBody), .tHeld, .tHoldKey)
+        If $$$ISERR(tHoldSC) || 'tHeld {
+            Set tSC = ##class(OcuPilot.Api.Error).RenderTargetBusy(tHoldSC)
             Quit
         }
         Set tPerformSC = ..Create(tBody, .tHttp, .tFault, .tViolations, .tKeyId, .tReadBack)
@@ -80,6 +86,7 @@ ClassMethod HandleCreate() As %Status
         Set tBody = ""
         Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ex)
     }
+    Do ##class(OcuPilot.Kernel.Proposal.Operation).Release(tHoldKey)
     Quit tSC
 }
 

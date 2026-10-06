@@ -13,7 +13,8 @@
 /// schema never advertises it, so the agent cannot send one. The screen's payload holds it empty, and
 /// nothing is compared.</p>
 /// <p>IRIS records <code>%System/%System/ConfigurationChange</code> for each task the import creates.
-/// It is not destructive.</p>
+/// It is destructive only when a task it creates runs as an account other than the caller's: the
+/// mint reads those accounts into <code>runAs</code> (<method>Consequence</method>).</p>
 Class OcuPilot.Screen.Tool.TaskImport Extends OcuPilot.Screen.Tool.Write
 {
 
@@ -21,7 +22,7 @@ Parameter TOOLNAME = "tasks.schedule.import";
 
 Parameter DESCRIPTORCLASS = "OcuPilot.Screen.Descriptor.TaskScheduleList";
 
-Parameter DESCRIPTION = "Propose importing every task in a task export file on the server, named by `root` and `path` as for export. Send the literal 'import' as the id. A task already on this instance, with the same task GUID, is skipped. The whole file is refused, and nothing imported, when any task in it cannot be created here.";
+Parameter DESCRIPTION = "Propose importing every task in a task export file on the server, named by `root` and `path` as for export. Send the literal 'import' as the id. A task already on this instance, with the same task GUID, is skipped. The whole file is refused, and nothing imported, when any task in it cannot be created here. The proposal names each task's class and the account it runs as, and is confirmed as a destructive change when any task runs as an account other than the caller's.";
 
 /// <p>The port that resolves the file, reads its tasks and calls the vendor (AD-52).</p>
 Parameter PORTCLASS = "OcuPilot.Port.TaskTransferPort";
@@ -45,11 +46,12 @@ Parameter DESTRUCTIVE As BOOLEAN = 0;
 Parameter CHANGEACTION = "created";
 
 /// <p>What <parameter>READTYPE</parameter> answers (DW-1475).</p>
-Parameter READANSWERS = "root,path,tasks";
+Parameter READANSWERS = "root,path,tasks,runAs";
 
-/// <p>The file and the tasks the user reviewed. They are the subject because the stored payload is
-/// narrowed to it, and <method>PortQuery</method> reads them from that payload.</p>
-Parameter FINGERPRINTSUBJECT = "root,path,tasks";
+/// <p>The file, the tasks the user reviewed and the accounts they run as. They are the subject because
+/// the stored payload is narrowed to it, and <method>PortQuery</method> reads them from that
+/// payload.</p>
+Parameter FINGERPRINTSUBJECT = "root,path,tasks,runAs";
 
 Parameter PRECONDITIONFIELD = "path";
 
@@ -76,11 +78,21 @@ ClassMethod IdParam() As %String
     Quit ##class(OcuPilot.Port.TaskTransferPort).#IDPARAM
 }
 
-/// <p><code>root</code>, <code>path</code> and <code>tasks</code>: the tool sends no body, and the
-/// three reach the port through <method>PortQuery</method>. Only the first two are advertised.</p>
+/// <p><code>root</code>, <code>path</code>, <code>tasks</code> and <code>runAs</code>: the tool sends
+/// no body, and the first three reach the port through <method>PortQuery</method>. Only the first two
+/// are advertised.</p>
 ClassMethod SettableFields() As %List
 {
-    Quit $ListBuild(##class(OcuPilot.Port.TaskTransferPort).#ROOTPARAM, ##class(OcuPilot.Port.TaskTransferPort).#PATHPARAM, ##class(OcuPilot.Port.TaskTransferPort).#TASKSPARAM)
+    Quit $ListBuild(##class(OcuPilot.Port.TaskTransferPort).#ROOTPARAM, ##class(OcuPilot.Port.TaskTransferPort).#PATHPARAM, ##class(OcuPilot.Port.TaskTransferPort).#TASKSPARAM, ##class(OcuPilot.Port.TaskTransferPort).#RUNASPARAM)
+}
+
+/// <p><code>TASK.RUNSASOTHER</code> when a task the import creates runs as another account
+/// (<method>OcuPilot.Kernel.Proposal.Prohibited.GrantsPrivilegeByEffect</method>), and none
+/// otherwise.</p>
+ClassMethod Consequence(pPayload As %DynamicObject, pPrivileged As %Boolean, pEffect As %String) As %String
+{
+    If pPrivileged Quit ##class(OcuPilot.Screen.Tool.TaskCreate).#CONSEQUENCERUNSASOTHER
+    Quit ""
 }
 
 /// <p>The class the agent's proposal is minted by: the kernel's own mint, after the file's tasks are
@@ -149,8 +161,8 @@ ClassMethod PortQuery(pPayload As %DynamicObject, ByRef pQuery)
     }
 }
 
-/// <p>No state row: the merge's <code>root</code>, <code>path</code> and <code>tasks</code> rows are the
-/// card's.</p>
+/// <p>No state row: the merge's <code>root</code>, <code>path</code>, <code>tasks</code> and
+/// <code>runAs</code> rows are the card's.</p>
 ClassMethod StateDiff(pFresh As %DynamicObject, Output pRows As %DynamicArray, Output pProblem As %String) As %Status
 {
     Set pRows = []

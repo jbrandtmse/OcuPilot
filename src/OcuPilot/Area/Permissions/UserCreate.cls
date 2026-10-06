@@ -55,6 +55,7 @@ ClassMethod ProhibitedClass() As %String
 ClassMethod HandleCreate() As %Status
 {
     Set tSC = $$$OK
+    Set tHoldKey = ""
     Try {
         Set tGateSC = ..Gate(.tRefused)
         If tRefused || $$$ISERR(tGateSC) {
@@ -69,6 +70,11 @@ ClassMethod HandleCreate() As %Status
 
         Set tName = ""
         If tBody.%GetTypeOf(..#IDARGUMENT) = "string" Set tName = tBody.%Get(..#IDARGUMENT)
+        Set tHoldSC = ##class(OcuPilot.Kernel.Proposal.Operation).HoldTool(..#TOOLCLASS, tName, .tHeld, .tHoldKey)
+        If $$$ISERR(tHoldSC) || 'tHeld {
+            Set tSC = ##class(OcuPilot.Api.Error).RenderTargetBusy(tHoldSC)
+            Quit
+        }
         Set tPerformSC = ..Perform(tName, tBody, .tCreated, .tHttp, .tFault, .tViolations, .tReadBack)
         Set tBody = ""
         If $Get(tViolations) > 0 {
@@ -91,6 +97,7 @@ ClassMethod HandleCreate() As %Status
     } Catch ex {
         Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ex)
     }
+    Do ##class(OcuPilot.Kernel.Proposal.Operation).Release(tHoldKey)
     Quit tSC
 }
 

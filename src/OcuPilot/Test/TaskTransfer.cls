@@ -77,10 +77,10 @@ Method TestTheImportToolIsAnActionWriteOverTheTransferPort()
 {
     Set tTool = ..#IMPORTTOOL
     Do $$$AssertEquals($Parameter(tTool, "TOOLNAME") _ "|" _ $ClassMethod(tTool, "PortClass") _ "|" _ $ClassMethod(tTool, "Endpoint") _ "|" _ $ClassMethod(tTool, "ReadType") _ "|" _ $ClassMethod(tTool, "WriteType") _ "|" _ $ClassMethod(tTool, "SendsBody"), "tasks.schedule.import|OcuPilot.Port.TaskTransferPort|TaskTransfer|SCHEDULE|IMPORT|0", "an action write over the transfer port")
-    Do $$$AssertEquals($ListToString($ClassMethod(tTool, "SettableFields")) _ "|" _ $ListToString($ClassMethod(tTool, "FingerprintSubject")), "root,path,tasks|root,path,tasks", "its arguments and its subject are the file and the reviewed tasks")
+    Do $$$AssertEquals($ListToString($ClassMethod(tTool, "SettableFields")) _ "|" _ $ListToString($ClassMethod(tTool, "FingerprintSubject")), "root,path,tasks,runAs|root,path,tasks,runAs", "its arguments and its subject are the file, the reviewed tasks and the accounts they run as")
     Do ..AssertCommon(tTool)
     Set tSchema = $ClassMethod(tTool, "InputSchema")
-    Do $$$AssertEquals(tSchema.%Get("properties").%GetTypeOf("tasks"), "unassigned", "tasks is never advertised")
+    Do $$$AssertEquals(tSchema.%Get("properties").%GetTypeOf("tasks") _ "|" _ tSchema.%Get("properties").%GetTypeOf("runAs"), "unassigned|unassigned", "tasks and runAs are never advertised")
     Set tSC = ##class(OcuPilot.Screen.Tool.Registry).ValidateArguments(tSchema, {"Id": "import", "root": "/r/", "path": "t.xml", "tasks": "A (%SYS)"}, .tProblem)
     Do $$$AssertStatusNotOK(tSC, "so an agent sending one is refused: " _ $Get(tProblem))
     Do $$$AssertEquals($ClassMethod(tTool, "ChangeAction"), "created", "it publishes created tasks")
@@ -88,7 +88,7 @@ Method TestTheImportToolIsAnActionWriteOverTheTransferPort()
 
 /// <p>What both tools share: the pairs, the classic page, the composed and mutating pair, the two
 /// required arguments, and a governance key in the baseline -- the export's enabled, the import's
-/// disabled until DW-1827's review of <code>TaskClass</code> and <code>RunAsUser</code> lands.</p>
+/// disabled.</p>
 Method AssertCommon(pTool As %String)
 {
     Set tPairs = $ClassMethod(pTool, "PrivilegePairs", , .tResolved)
@@ -101,7 +101,7 @@ Method AssertCommon(pTool As %String)
     Set tRequired = $ClassMethod(pTool, "InputSchema").%Get("required").%ToJSON()
     Do $$$AssertEquals(tRequired, "[""Id"",""root"",""path""]", pTool _ ": the id and the file are required")
     Set tEnabled = (pTool '= ..#IMPORTTOOL)
-    Do $$$AssertEquals(##class(OcuPilot.Kernel.Governance.Baseline).Seed($Parameter(pTool, "TOOLNAME"), .tListed) _ "|" _ tListed, tEnabled _ "|1", pTool _ ": its key is in the baseline, " _ $Select(tEnabled: "enabled", 1: "disabled (DW-1827)"))
+    Do $$$AssertEquals(##class(OcuPilot.Kernel.Governance.Baseline).Seed($Parameter(pTool, "TOOLNAME"), .tListed) _ "|" _ tListed, tEnabled _ "|1", pTool _ ": its key is in the baseline, " _ $Select(tEnabled: "enabled", 1: "disabled"))
 }
 
 /// <p>AD-29: a caller the port's gate finds without any one of <parameter>OcuPilot.Port.TaskTransferPort.PAIRS</parameter>
@@ -221,7 +221,7 @@ Method TestAFileNeverYieldsOneTaskTwice()
     Set tGuid = $System.Util.CreateGUID()
     Do $ClassMethod(..#PORT, "WriteFile", tDirectory _ "shared.xml", $ClassMethod(..#PORT, "ExportText", [($ClassMethod(..#PORT, "Entry", "First", , , , tGuid)), ($ClassMethod(..#PORT, "Entry", "Second", , , , tGuid))]))
     Set tSC = ..Call("PREVIEW", "import", "OcuP164/shared.xml", "", .tResult, .tHttp, .tFault)
-    Do $$$AssertEquals($Select($IsObject($Get(tResult)): tResult.%ToJSON(), 1: ..Text(tFault)), "{""tasks"":""OcuP164First (%SYS)"",""count"":2,""present"":1}", "a task GUID the file already gives is counted present")
+    Do $$$AssertEquals($Select($IsObject($Get(tResult)): tResult.%ToJSON(), 1: ..Text(tFault)), "{""tasks"":""" _ ..Line("First") _ """,""runAs"":""" _ $Username _ """,""count"":2,""present"":1}", "a task GUID the file already gives is counted present")
 }
 
 /// <p>AD-21: the reader resolves no external entity, so a file under an allowed root cannot pull
@@ -292,7 +292,8 @@ Method TestAnImportRefusesAFileThatIsNotATaskExport()
 }
 
 /// <p>AC6: a file of three tasks holding one that cannot be created -- its namespace unknown, its class
-/// absent, its account unknown, its name held -- is refused whole with that rule's code and
+/// absent, its account unknown, its name held, its name starting with a digit or 51 characters long
+/// -- is refused whole with that rule's code and
 /// <code>detail.task</code>, wherever the task sits, and no task is created.</p>
 /// <p>Mutation (Rule 19): <method>OcuPilot.Port.TaskTransferPort.Examine</method> checks only the first
 /// task it would create -- the bad-task-last legs go red and tasks are created.</p>
@@ -301,11 +302,13 @@ Method TestOneTaskThatCannotBeCreatedImportsNothing()
     Set tDirectory = $ClassMethod(..#PORT, "ProbeDirectory")
     Set tTaken = ##class(OcuPilot.Test.TaskProbe).VendorName()
     Do $$$AssertTrue(tTaken '= "", "a vendor task's name is read for the taken-name case")
-    Set tCases = $ListBuild($ListBuild("Ns", "OCUP164NONE", "%SYS.Task.PurgeTaskHistory", "", "TASK.NAMESPACE.UNKNOWN"), $ListBuild("Cls", "%SYS", "OcuP164.No.Such", "", "TASK.TASKCLASS.UNKNOWN"), $ListBuild("Run", "%SYS", "%SYS.Task.PurgeTaskHistory", "OcuP164NoSuchUser", "TASK.RUNASUSER.UNKNOWN"), $ListBuild("Taken", "%SYS", "%SYS.Task.PurgeTaskHistory", "", "TASK.NAME.TAKEN"))
+    Set tCases = $ListBuild($ListBuild("Ns", "OCUP164NONE", "%SYS.Task.PurgeTaskHistory", "", "TASK.NAMESPACE.UNKNOWN"), $ListBuild("Cls", "%SYS", "OcuP164.No.Such", "", "TASK.TASKCLASS.UNKNOWN"), $ListBuild("Run", "%SYS", "%SYS.Task.PurgeTaskHistory", "OcuP164NoSuchUser", "TASK.RUNASUSER.UNKNOWN"), $ListBuild("Taken", "%SYS", "%SYS.Task.PurgeTaskHistory", "", "TASK.NAME.TAKEN"), $ListBuild("Digit", "%SYS", "%SYS.Task.PurgeTaskHistory", "", "TASK.NAME.SHAPE"), $ListBuild("Long", "%SYS", "%SYS.Task.PurgeTaskHistory", "", "TASK.NAME.SHAPE"))
     For tI = 1:1:$ListLength(tCases) {
         Set tCase = $List(tCases, tI)
         Set tBad = $ClassMethod(..#PORT, "Entry", $List(tCase, 1), $List(tCase, 2), $List(tCase, 3), $List(tCase, 4))
         If $List(tCase, 1) = "Taken" Do tBad.%Set("Name", tTaken, "string")
+        If $List(tCase, 1) = "Digit" Do tBad.%Set("Name", "1OcuP164Digit", "string")
+        If $List(tCase, 1) = "Long" Do tBad.%Set("Name", "OcuP164" _ $Translate($Justify("", 44), " ", "x"), "string")
         For tFirst = 0, 1 {
             Set tTasks = [($ClassMethod(..#PORT, "Entry", "Good1")), ($ClassMethod(..#PORT, "Entry", "Good2"))]
             If tFirst {
@@ -339,11 +342,11 @@ Method TestAnImportCreatesTheAbsentTasksAndSkipsThePresent()
     Set tFile = $ClassMethod(..#PORT, "ExportText", [($ClassMethod(..#PORT, "Entry", "Here", "%SYS", "%SYS.Task.PurgeTaskHistory", "", tGuid)), ($ClassMethod(..#PORT, "Entry", "New1")), ($ClassMethod(..#PORT, "Entry", "New2"))])
     Do $$$AssertStatusOK($ClassMethod(..#PORT, "WriteFile", tDirectory _ "three.xml", tFile), "a file of three tasks is written")
     Set tSC = ..Call("PREVIEW", "import", "OcuP164/three.xml", "", .tResult, .tHttp, .tFault)
-    Do $$$AssertEquals($Select($IsObject($Get(tResult)): tResult.%ToJSON(), 1: ..Text(tFault)), "{""tasks"":""OcuP164New1 (%SYS); OcuP164New2 (%SYS)"",""count"":3,""present"":1}", "the preview names the two to create")
-    Set tSC = ..Call("IMPORT", "import", "OcuP164/three.xml", "OcuP164Other (%SYS)", .tResult, .tHttp, .tFault)
+    Do $$$AssertEquals($Select($IsObject($Get(tResult)): tResult.%ToJSON(), 1: ..Text(tFault)), "{""tasks"":""" _ ..Line("New1") _ "; " _ ..Line("New2") _ """,""runAs"":""" _ $Username _ """,""count"":3,""present"":1}", "the preview names the two to create")
+    Set tSC = ..Call("IMPORT", "import", "OcuP164/three.xml", ..Line("Other"), .tResult, .tHttp, .tFault)
     Do $$$AssertEquals(..Said(tHttp, tFault), "409 TASK.IMPORT.CHANGED ", "a reviewed summary the file does not yield is refused")
     Do $$$AssertEquals($ClassMethod(..#PORT, "Calls"), "", "with no vendor import")
-    Set tSC = ..Call("IMPORT", "import", "OcuP164/three.xml", "OcuP164New1 (%SYS); OcuP164New2 (%SYS)", .tResult, .tHttp, .tFault)
+    Set tSC = ..Call("IMPORT", "import", "OcuP164/three.xml", ..Line("New1") _ "; " _ ..Line("New2"), .tResult, .tHttp, .tFault)
     Do $$$AssertEquals($Select($IsObject($Get(tResult)): tResult.%ToJSON(), 1: ..Text(tFault)), "{""imported"":2,""skipped"":1}", "the import creates two and skips one")
     Do $$$AssertEquals($ClassMethod(..#PORT, "Probes", .tIds), 3, "three probe tasks stand")
     Do $$$AssertTrue($Data(tIds("OcuP164New1")) && $Data(tIds("OcuP164New2")), "the two the file added among them")
@@ -366,11 +369,67 @@ Method TestTheImportMintCarriesTheReviewedTasks()
     Kill tRow
     Set tIterator = tProposal.%Get("changed").%GetIterator()
     While tIterator.%GetNext(.tIndex, .tChange) { Set tRow(tChange.%Get("field")) = tChange.%Get("after") }
-    Do $$$AssertEquals($Get(tRow("root")) _ "|" _ $Get(tRow("path")) _ "|" _ $Get(tRow("tasks")), ..Root() _ "|OcuP164/one.xml|OcuP164Minted (%SYS)", "its card shows root, path and the tasks it will create")
+    Do $$$AssertEquals($Get(tRow("root")) _ "|" _ $Get(tRow("path")) _ "|" _ $Get(tRow("tasks")), ..Root() _ "|OcuP164/one.xml|" _ ..Line("Minted"), "its card shows root, path and the tasks it will create, each with its class and account")
     Do $$$AssertEquals($ClassMethod(..#PORT, "Probes"), 0, "and nothing is imported")
     Do $ClassMethod(..#PORT, "WriteFile", tDirectory _ "bad.xml", "<Tasks><Task>")
     Set tSC = ..Mint(..#IMPORTTOOL, "import", {"Id": "import", "root": (..Root()), "path": "OcuP164/bad.xml"}, .tProposal, .tHttp, .tFault)
     Do $$$AssertEquals(..Said(tHttp, tFault), "422 TASK.IMPORT.FILE ", "a file that is not a task export is refused with the port's own code")
+}
+
+/// <p>An import whose file holds a task that runs as another account is minted destructive with
+/// <code>TASK.RUNSASOTHER</code>, and its card's <code>tasks</code> row names each task's class and
+/// account; a file whose tasks all run as the caller is neither.</p>
+/// <p>Mutation (Rule 19): drop the import branch (the <code>runAs</code> list) from the task arm of
+/// <method>OcuPilot.Kernel.Proposal.Prohibited.GrantsPrivilegeByEffect</method> -- the destructive
+/// leg goes red.</p>
+Method TestAnImportRunningAsAnotherAccountIsMintedDestructive()
+{
+    Set tDirectory = $ClassMethod(..#PORT, "ProbeDirectory")
+    Set tOther = $Select($ZConvert($Username, "U") = "_SYSTEM": "Admin", 1: "_SYSTEM")
+    Do $ClassMethod(..#PORT, "WriteFile", tDirectory _ "other.xml", $ClassMethod(..#PORT, "ExportText", [($ClassMethod(..#PORT, "Entry", "Mine")), ($ClassMethod(..#PORT, "Entry", "Theirs", , , tOther))]))
+    Set tSC = ..Mint(..#IMPORTTOOL, "import", {"Id": "import", "root": (..Root()), "path": "OcuP164/other.xml"}, .tProposal, .tHttp, .tFault)
+    Do $$$AssertStatusOK(tSC, "the import mints: " _ ..Text(tFault))
+    If '$IsObject($Get(tProposal)) Quit
+    Do ##class(OcuPilot.Test.TaskCreate).Stored(tProposal.%Get("proposalId"), .tDestructive, .tConsequence)
+    Do $$$AssertEquals(tDestructive _ " " _ tConsequence, "1 TASK.RUNSASOTHER", "destructive, naming its consequence")
+    Kill tRow
+    Set tIterator = tProposal.%Get("changed").%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tChange) { Set tRow(tChange.%Get("field")) = tChange.%Get("after") }
+    Do $$$AssertEquals($Get(tRow("tasks")), ..Line("Mine") _ "; " _ ..Line("Theirs", tOther), "its tasks row names each task's class and account")
+    Do $ClassMethod(..#PORT, "WriteFile", tDirectory _ "mine.xml", $ClassMethod(..#PORT, "ExportText", [($ClassMethod(..#PORT, "Entry", "Mine"))]))
+    Set tSC = ..Mint(..#IMPORTTOOL, "import", {"Id": "import", "root": (..Root()), "path": "OcuP164/mine.xml"}, .tProposal, .tHttp, .tFault)
+    Do $$$AssertStatusOK(tSC, "a file of the caller's own tasks mints: " _ ..Text(tFault))
+    If '$IsObject($Get(tProposal)) Quit
+    Do ##class(OcuPilot.Test.TaskCreate).Stored(tProposal.%Get("proposalId"), .tDestructive, .tConsequence)
+    Do $$$AssertEquals(tDestructive _ "|" _ tConsequence, "0|", "a file of the caller's own tasks is neither destructive nor named")
+    Do $ClassMethod(..#PORT, "WriteFile", tDirectory _ "case.xml", $ClassMethod(..#PORT, "ExportText", [($ClassMethod(..#PORT, "Entry", "Mine", , , $ZConvert($Username, "U")))]))
+    Set tSC = ..Mint(..#IMPORTTOOL, "import", {"Id": "import", "root": (..Root()), "path": "OcuP164/case.xml"}, .tProposal, .tHttp, .tFault)
+    Do $$$AssertStatusOK(tSC, "a file naming the caller's account in another case mints: " _ ..Text(tFault))
+    If '$IsObject($Get(tProposal)) Quit
+    Do ##class(OcuPilot.Test.TaskCreate).Stored(tProposal.%Get("proposalId"), .tDestructive, .tConsequence)
+    Do $$$AssertEquals(tDestructive _ "|" _ tConsequence, "0|", "the account compare ignores case")
+}
+
+/// <p>A file rewritten between its preview and its import, keeping each task's name, is refused
+/// <code>TASK.IMPORT.CHANGED</code> when a task's account or its class changed, with no vendor import.</p>
+/// <p>Mutation (Rule 19): drop <code>TaskClass</code> or <code>RunAsUser</code> from
+/// <method>OcuPilot.Port.TaskTransferPort.Examine</method>'s summary -- the matching leg goes red.</p>
+Method TestASameNamedRewriteIsRefusedChanged()
+{
+    Set tDirectory = $ClassMethod(..#PORT, "ProbeDirectory")
+    Set tOther = $Select($ZConvert($Username, "U") = "_SYSTEM": "Admin", 1: "_SYSTEM")
+    Do $ClassMethod(..#PORT, "WriteFile", tDirectory _ "as.xml", $ClassMethod(..#PORT, "ExportText", [($ClassMethod(..#PORT, "Entry", "Rewritten"))]))
+    Set tSC = ..Call("PREVIEW", "import", "OcuP164/as.xml", "", .tResult, .tHttp, .tFault)
+    Do $$$AssertEquals(tHttp, 200, "the file previews: " _ ..Text(tFault))
+    If tHttp '= 200 Quit
+    Set tReviewed = tResult.%Get("tasks")
+    Do $ClassMethod(..#PORT, "WriteFile", tDirectory _ "as.xml", $ClassMethod(..#PORT, "ExportText", [($ClassMethod(..#PORT, "Entry", "Rewritten", , , tOther))]))
+    Set tSC = ..Call("IMPORT", "import", "OcuP164/as.xml", tReviewed, .tResult, .tHttp, .tFault)
+    Do $$$AssertEquals(..Said(tHttp, tFault), "409 TASK.IMPORT.CHANGED ", "a task now running as another account is refused")
+    Do $ClassMethod(..#PORT, "WriteFile", tDirectory _ "as.xml", $ClassMethod(..#PORT, "ExportText", [($ClassMethod(..#PORT, "Entry", "Rewritten", , "%SYS.Task.PurgeJournal"))]))
+    Set tSC = ..Call("IMPORT", "import", "OcuP164/as.xml", tReviewed, .tResult, .tHttp, .tFault)
+    Do $$$AssertEquals(..Said(tHttp, tFault), "409 TASK.IMPORT.CHANGED ", "a task now of another class is refused")
+    Do $$$AssertEquals($ClassMethod(..#PORT, "Calls"), "", "with no vendor import")
 }
 
 /// <p>The matrix's password row, AD-35: a task holding a password setting is read, minted and answered
@@ -406,6 +465,13 @@ Method TestBothScriptsAreTheVendorCalls()
     Set tImport = ##class(OcuPilot.Port.TaskTransferPort).Snippet("TaskTransfer", "IMPORT", .tQuery).%Get(0).%Get("text")
     Do $$$AssertTrue(tImport [ "##class(%SYS.Task).ImportTasks(""/r/a/t.xml"", ""-d"", 0)", "the import's script: " _ tImport)
     Do $$$AssertEquals(##class(OcuPilot.Port.TaskTransferPort).SnippetForm("TaskTransfer", "EXPORT") _ "|" _ ##class(OcuPilot.Port.TaskTransferPort).SnippetForm("TaskTransfer", "IMPORT"), "objectscript|objectscript", "both are ObjectScript")
+}
+
+/// <p>The summary entry the import reviews for probe task <var>pSuffix</var>: the name, its
+/// namespace, its class and the account it runs as (the caller when <var>pRunAs</var> is empty).</p>
+ClassMethod Line(pSuffix As %String, pRunAs As %String = "") As %String
+{
+    Quit "OcuP164" _ pSuffix _ " (%SYS) %SYS.Task.PurgeTaskHistory as " _ $Select(pRunAs = "": $Username, 1: pRunAs)
 }
 
 /// <p>The first allowed root.</p>

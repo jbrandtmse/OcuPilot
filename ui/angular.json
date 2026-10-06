@@ -51,7 +51,7 @@
               "budgets": [
                 {
                   "type": "initial",
-                  "maximumWarning": "2992kB",
+                  "maximumWarning": "2993kB",
                   "maximumError": "4000kB"
                 }
               ]

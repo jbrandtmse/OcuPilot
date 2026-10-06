@@ -4,7 +4,7 @@
 /// the new issuer, and a refused token write beside the saved description; an X.509 credential the
 /// caller cannot use is refused on its field with nothing stored; an emptied SSL/TLS configuration and
 /// a malformed rename are refused on both callers; a description deleted since is refused and not
-/// re-created; and the agent's edit, whose <code>Metadata</code> replaces the stored metadata whole,
+/// re-created; and the agent's edit, whose <code>Metadata</code> names only the members it changes,
 /// sends the complete set at its confirm.</p>
 /// <p><b>What it needs from the environment:</b> OcuPilot installed with the demo fixture, an account
 /// holding <code>%All</code>, and <parameter>ARMINGVARIABLE</parameter> reading <code>1</code>, because
@@ -248,33 +248,47 @@ Method TestTheRulesHoldAnEditAndAnAbsentDescriptionIsNotRecreated()
     Do $$$AssertEquals($ClassMethod(..#RECORD, "WriteCount") _ $ClassMethod(..#PROBE, "Holds", tGone), "00", "and nothing is sent or created")
 }
 
-/// <p>AC7's edit half: the agent's <code>Metadata</code> replaces the stored metadata whole, so its
-/// proposal shows one <code>Metadata</code> row, before and after, and its confirm sends the complete
-/// set -- the member it left out empty -- after which the instance holds exactly the metadata it
-/// proposed.</p>
+/// <p>The agent's edit names only the <code>Metadata</code> members it changes: its proposal shows one
+/// row per named member, and its confirm sends the complete set, after which the instance holds every
+/// member it held before but the one cleared, and the one changed.</p>
+/// <p>Mutation (Rule 19): <method>OcuPilot.Screen.Tool.OAuthServerDescriptionUpdate.MergeUpdate</method>
+/// passes the arguments through unmerged -- the mint is refused for the endpoints the edit left out,
+/// and this goes red.</p>
 Method TestTheAgentsEditSendsTheCompleteSet()
 {
     Set tIssuer = ..Seeded("Agent")
-    Set tMetadata = $ClassMethod(..#PROBE, "Metadata", tIssuer, {"userinfo_endpoint": (tIssuer _ "/me"), "scopes_supported": ["openid"]})
+    Set tBefore = $ClassMethod(..#PROBE, "Stored", tIssuer).%Get("Metadata")
+    Set tChanged = tIssuer _ "/me"
     Set tArgs = {}
     Do tArgs.%Set("IssuerEndpoint", tIssuer, "string")
-    Do tArgs.%Set("Metadata", tMetadata)
+    Do tArgs.%Set("Metadata", {"userinfo_endpoint": (tChanged), "scopes_supported": []})
     Set tSC = $ClassMethod(..#PROBE, "Mint", ..#TOOL, tIssuer, tArgs, .tProposal, .tHttp, .tFault)
     Do $$$AssertStatusOK(tSC, "the edit is minted: " _ $ClassMethod(..#PROBE, "Problem", $Get(tFault)))
     If '$IsObject($Get(tProposal)) Quit
-    Set tRows = ""
+    Kill tRows
     Set tIterator = tProposal.%Get("changed").%GetIterator()
-    While tIterator.%GetNext(.tIndex, .tRow) { Set tRows = tRows _ $ListBuild(tRow.%Get("field")) }
-    Do $$$AssertEquals($ListToString(tRows), "Metadata", "one Metadata row")
-    Set tRow = tProposal.%Get("changed").%Get(0)
-    Do $$$AssertEquals($Select($IsObject(tRow): tRow.%Get("after"), 1: ""), tMetadata.%ToJSON(), "whose after is the metadata proposed")
+    While tIterator.%GetNext(.tIndex, .tRow) { Set tRows(tRow.%Get("field")) = tRow.%Get("before") _ "|" _ tRow.%Get("after") }
+    Set tFields = ""
+    Set tField = ""
+    For {
+        Set tField = $Order(tRows(tField))
+        If tField = "" Quit
+        Set tFields = tFields _ $Select(tFields = "": "", 1: ",") _ tField
+    }
+    Do $$$AssertEquals(tFields, "Metadata.scopes_supported,Metadata.userinfo_endpoint", "one row per named member")
+    Do $$$AssertEquals($Get(tRows("Metadata.scopes_supported")), "openid, profile|", "the cleared list reads empty after")
+    Do $$$AssertEquals($Get(tRows("Metadata.userinfo_endpoint")), tIssuer _ "/userinfo|" _ tChanged, "and the changed endpoint its two values")
     Set tSC = $ClassMethod(..#CONFIRM, "Confirm", tProposal.%Get("proposalId"), "", $Username, .tResult, .tHttp, .tCode, .tDetail)
     Do $$$AssertStatusOK(tSC, "the edit is confirmed: " _ $Get(tCode))
     Set tSent = ##class(%DynamicObject).%FromJSON($ClassMethod(..#RECORD, "LastWriteBody"))
     Do $$$AssertEquals($ClassMethod(..#PROBE, "Keys", tSent), "IssuerEndpoint,Metadata,SSLConfiguration,ServerCredentials", "the confirm sends the four template fields")
     Do $ClassMethod(..#RULES, "Members", .tNames, .tKinds)
     Do $$$AssertEquals($ListLength($ListFromString($ClassMethod(..#PROBE, "Keys", tSent.%Get("Metadata")))), $ListLength(tNames), "and every derived member")
-    Do $$$AssertEquals($ClassMethod(..#PROBE, "Stored", tIssuer).%Get("Metadata").%ToJSON(), ##class(%DynamicObject).%FromJSON(tMetadata.%ToJSON()).%ToJSON(), "and the instance holds exactly the metadata proposed")
+    Set tStored = $ClassMethod(..#PROBE, "Stored", tIssuer).%Get("Metadata")
+    Do tBefore.%Remove("scopes_supported")
+    Do tBefore.%Set("userinfo_endpoint", tChanged, "string")
+    Do $$$AssertEquals($ClassMethod(..#PROBE, "Keys", tStored), $ClassMethod(..#PROBE, "Keys", tBefore), "the instance keeps every member it held but the cleared one")
+    Do $$$AssertEquals(tStored.%Get("userinfo_endpoint") _ "|" _ tStored.%Get("authorization_endpoint") _ "|" _ tStored.%Get("token_endpoint"), tChanged _ "|" _ tBefore.%Get("authorization_endpoint") _ "|" _ tBefore.%Get("token_endpoint"), "the changed member lands and both endpoints are kept")
 }
 
 }

@@ -13,7 +13,8 @@
 /// <p><b>A confirm and a screen row action hold the target around the three halves</b> (AD-34,
 /// AD-53): <method>Hold</method> before the fresh read, <method>Release</method> after the write
 /// and its read-back, so the two on one target are ordered here and never interleave between one's
-/// read and its write. A screen's own Save (AD-55) takes no hold.</p>
+/// read and its write. A screen's own Save (AD-55) holds it the same way, through
+/// <method>HoldTool</method>.</p>
 /// <p><b>Why the difference is principled rather than convenient</b> (AD-53). AD-6's proposal
 /// exists because a <i>model</i> asked for the write and a human must review a server-computed
 /// diff first; a person pressing a row action has expressed the intent directly, which is AD-49's
@@ -57,6 +58,41 @@ Parameter WRITETYPE = "PUT";
 ClassMethod Hold(pTargetRef As %String, Output pHeld As %Boolean, Output pKey As %String) As %Status
 {
     Quit ##class(OcuPilot.Kernel.State.Propose).GuardedTargetHold(pTargetRef, .pHeld, .pKey)
+}
+
+/// <p>The scoped target reference a write tool's mint names for the target <var>pIdValue</var> of
+/// the screen <var>pDescriptor</var>: the descriptor's primary entity type and scope with that id.
+/// The mint and <method>HoldTool</method> both read it here, so a hold and a proposal on one target
+/// take one lock.</p>
+ClassMethod TargetRefOf(pDescriptor As %String, pIdValue As %String, Output pTargetRef As %String) As %Status
+{
+    Quit ##class(OcuPilot.Kernel.EntityRef).Key($ClassMethod(pDescriptor, "PrimaryEntityType"), ##class(OcuPilot.Kernel.EntityRef).ScopeFor($ClassMethod(pDescriptor, "Scope")), pIdValue, .pTargetRef)
+}
+
+/// <p><method>Hold</method> on the target <var>pId</var> of the write tool <var>pToolClass</var>,
+/// the reference its mint computes (<method>TargetRefOf</method> over the tool's
+/// <parameter>OcuPilot.Screen.Tool.Write.DESCRIPTORCLASS</parameter>). A screen's Save holds its target
+/// through this, with the caller contract <method>Hold</method> states. An empty id, or one the
+/// reference builder refuses, takes no lock and answers <var>pHeld</var> 1.</p>
+ClassMethod HoldTool(pToolClass As %String, pId As %String, Output pHeld As %Boolean, Output pKey As %String) As %Status
+{
+    Set pHeld = 1
+    Set pKey = ""
+    ; An id the reference builder refuses names no target, so there is nothing to order and the
+    ; Save's own rules answer it.
+    If pId = "" Quit $$$OK
+    If $$$ISERR(..TargetRefOf($Parameter(pToolClass, "DESCRIPTORCLASS"), pId, .tTargetRef)) Quit $$$OK
+    Quit ..Hold(tTargetRef, .pHeld, .pKey)
+}
+
+/// <p>The id <var>pBody</var> names the target of the create tool <var>pToolClass</var> by: the
+/// string value of the tool's <code>IdArgument</code>, or <code>""</code> when the body sends none.</p>
+ClassMethod BodyIdOf(pToolClass As %String, pBody As %DynamicObject) As %String
+{
+    If '$IsObject(pBody) Quit ""
+    Set tArgument = $ClassMethod(pToolClass, "IdArgument")
+    If pBody.%GetTypeOf(tArgument) '= "string" Quit ""
+    Quit pBody.%Get(tArgument)
 }
 
 /// <p>Release the hold <method>Hold</method> answered <var>pKey</var> for. <code>""</code>

@@ -5,7 +5,8 @@
 /// <p>In order: file arguments the tool refuses are 400 <code>TOOL.ARGUMENTS</code>; the target id is
 /// replaced by <parameter>OcuPilot.Port.TaskTransferPort.IMPORTID</parameter> whatever was sent; the
 /// port's <code>PREVIEW</code> of the file is asked, and its refusal answered unchanged; and
-/// <code>tasks</code> is set to the preview's summary, the reviewed argument the write compares.</p>
+/// <code>tasks</code> and <code>runAs</code> are set to the preview's summary, the reviewed argument the
+/// write compares, and the accounts its tasks run as, which the mint's classifier reads.</p>
 Class OcuPilot.Screen.Tool.TaskImportMint Extends OcuPilot.Kernel.Proposal.Mint
 {
 
@@ -39,6 +40,7 @@ ClassMethod Mint(pDescriptor As %String, pToolName As %String, pUser As %String,
         Set tArgs = ##class(%DynamicAbstractObject).%FromJSON(pArgs.%ToJSON())
         Do tArgs.%Set(pIdArgument, tId, "string")
         Do tArgs.%Set($Parameter(tPort, "TASKSPARAM"), tPreview.%Get($Parameter(tPort, "TASKSPARAM")), "string")
+        Do tArgs.%Set($Parameter(tPort, "RUNASPARAM"), tPreview.%Get($Parameter(tPort, "RUNASPARAM")), "string")
         Set tSC = ##super(pDescriptor, pToolName, pUser, pConvKey, pTurnKey, tArgs, pLimitsClass, .pProposal, .pHttpStatus, .pFault, pEndpoint, pIdParam, tId, pIdArgument, pSettable, pToolClass)
     } Catch ex {
         Set pProposal = ""

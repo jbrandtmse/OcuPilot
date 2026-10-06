@@ -13,8 +13,8 @@
 /// may not collide with a derived path. An optional <code>compare</code> object maps a top-level
 /// row of the list to how the read-back compares a field the instance normalizes on save (AD-58):
 /// <code>unordered</code> (an array, as a multiset), <code>unslashed</code>, <code>words</code>,
-/// <code>letters</code>, <code>members</code> (an object, on the members sent) or
-/// <code>written</code> (never read back); a mode on a <code>secret</code> path is refused. The
+/// <code>letters</code>, <code>members</code> (an object, on the members sent), <code>caller</code> (a
+/// blank value stored as the writing account) or <code>written</code> (never read back); a mode on a <code>secret</code> path is refused. The
 /// declarations are measured: user <code>Roles</code>, role <code>GrantedRoles</code> and
 /// <code>Resources</code> read back sorted, a resource's <code>PublicPermission</code>
 /// <code>"WR"</code> reads back <code>"RW"</code>, the OAuth 2.0 <code>Metadata</code> objects merge
@@ -1098,7 +1098,7 @@ XData Entries
   },
   "tasks.schedule.create": {
     "fieldList": "Task.CRUD",
-    "compare": {"Settings": "written"},
+    "compare": {"Settings": "written", "RunAsUser": "caller"},
     "classification": {
       "Name": "ordinary",
       "RunAsUser": "ordinary",

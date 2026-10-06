@@ -169,10 +169,12 @@ Method TestTheEditsFormRulesRefuseOnBothCallers()
     }
 }
 
-/// <p>AC7's update half: the agent's edit carries <code>Metadata</code> whole, naming no registration
-/// member; confirmed, it lands the member it names and leaves the registered client's client ID and
-/// registration URI as the instance held them, because the port sends those as its own fresh read has
-/// them.</p>
+/// <p>AC7's update half: the agent's edit names one <code>Metadata</code> member and no registration
+/// member; confirmed, it lands that member, keeps a settable member it did not name, and leaves the
+/// registered client's client ID and registration URI as the instance held them, because the port
+/// sends those as its own fresh read has them.</p>
+/// <p>Mutation (Rule 19): <method>OcuPilot.Screen.Tool.OAuthClientUpdate.MergeUpdate</method> passes the
+/// arguments through unmerged -- the member the edit did not name is cleared and this goes red.</p>
 /// <p>Mutation (Rule 19): <method>OcuPilot.Port.OAuthClientPort</method>'s <code>PUT</code> sends a
 /// managed member the body lacks in its empty form -- the registration URI is sent as
 /// <code>""</code>, the instance clears it, and this goes red.</p>
@@ -181,7 +183,7 @@ Method TestTheAgentsEditKeepsTheRegistrationMembers()
     Set tName = $ClassMethod(..#PROBE, "Name", "Registered")
     Set tClientId = $Parameter(..#FIXTURE, "CLIENTID")
     Set tUri = $ClassMethod(..#FIXTURE, "Issuer") _ "/register/" _ tClientId
-    Set tSettings = {"ClientId": (tClientId), "Metadata": {"client_id": (tClientId), "client_name": "Before"}}
+    Set tSettings = {"ClientId": (tClientId), "Metadata": {"client_id": (tClientId), "client_name": "Before", "client_uri": "https://ocupilotprobe.invalid/kept"}}
     Do tSettings.%Get("Metadata").%Set("registration_client_uri", tUri, "string")
     Do $$$AssertStatusOK($ClassMethod(..#PROBE, "AddClient", tName, ..ServerId, "confidential", tSettings), "a registered configuration is created")
     Set tArgs = {"Metadata": {"client_name": "Agent"}}
@@ -195,6 +197,7 @@ Method TestTheAgentsEditKeepsTheRegistrationMembers()
     Do $$$AssertEquals(tSent.%Get("Metadata").%GetTypeOf("registration_client_uri"), "unassigned", "the tool's body names no registration member")
     Set tStored = $ClassMethod(..#PROBE, "Stored", tName)
     Do $$$AssertEquals(tStored.%Get("Metadata").%Get("client_name"), "Agent", "the member the agent named lands")
+    Do $$$AssertEquals(tStored.%Get("Metadata").%Get("client_uri"), "https://ocupilotprobe.invalid/kept", "and a settable member it did not name is kept")
     Do $$$AssertEquals(tStored.%Get("Metadata").%Get("registration_client_uri") _ "|" _ tStored.%Get("Metadata").%Get("client_id"), tUri _ "|" _ tClientId, "and the registration is as the instance held it")
 }
 

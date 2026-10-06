@@ -990,7 +990,7 @@ export class HomePage {
    */
   protected get refusal(): string {
     this.preferenceGeneration();
-    return this.preferences.fault();
+    return this.preferences.fault('home');
   }
 
   protected get instanceLine(): readonly LineSegment[] {
@@ -1051,13 +1051,13 @@ export class HomePage {
    */
   protected removeRemembered(block: RememberedBlock, row: RememberedRow): void {
     this.announceOnChange(block.kind, block.removedLabel, () =>
-      this.preferences.remove(block.kind, row.route)
+      this.preferences.remove(block.kind, row.route, 'home')
     );
   }
 
   /** Empty one block, and announce it on the same terms. */
   protected clearRemembered(block: RememberedBlock): void {
-    this.announceOnChange(block.kind, block.clearedLabel, () => this.preferences.clear(block.kind));
+    this.announceOnChange(block.kind, block.clearedLabel, () => this.preferences.clear(block.kind, 'home'));
   }
 
   /**
@@ -1078,7 +1078,7 @@ export class HomePage {
   private announceOnChange(kind: PreferenceKind, label: string, write: () => Promise<void>): void {
     const held = [...this.stored(kind)];
     this.announcementValue.set('');
-    this.preferences.clearFault();
+    this.preferences.clearFault('home');
     void write().then(() => {
       const now = this.stored(kind);
       if (held.every((route) => now.includes(route)) && held.length === now.length) return;

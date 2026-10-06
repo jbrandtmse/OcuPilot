@@ -73,8 +73,9 @@ import { stubAgentStatus } from './testing/agent-status';
 import { stubSuggestedView } from './testing/suggested-view';
 import { stubTurnStore } from './testing/turn';
 import { screenDeclaration } from './testing/screen-declaration';
-import { AccountPreferences, FIRST_SIGN_IN_RECORDED, SHELL_FIRST_SIGN_IN } from './core/account-preferences';
+import { AccountPreferences, FAVORITE_KIND, FIRST_SIGN_IN_RECORDED, SHELL_FIRST_SIGN_IN } from './core/account-preferences';
 import { type StubbedAccountPreferences, lastRemembered, stubAccountPreferences } from './testing/account-preferences';
+import { HomePage } from './areas/home/home.page';
 import { About } from './core/about';
 import { SystemInfo } from './core/system-info';
 import { HelpLinks } from './core/help';
@@ -1101,6 +1102,34 @@ describe('the shell frame', () => {
     // drains the stubbed request's microtasks -- the same wait `recents-recorder.spec.ts` uses.
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(accountPreferences.recents()).toEqual(['permissions/users']);
+  });
+
+  it("DW-1414: a refused Clear on Home is announced by one alert, not by Home's line and the locator bar's both", async () => {
+    // Mutation (Rule 19): make `AccountPreferences.fault()` ignore its origin -> this goes red,
+    // because the locator bar's alert then repeats the refusal Home already carries.
+    const reason = 'That is not a screen this instance serves, so it cannot be remembered.';
+    await accountPreferences.add(FAVORITE_KIND, 'permissions/users');
+    const router = TestBed.inject(Router);
+    router.resetConfig([{ path: '', component: HomePage }, { path: 'permissions/users', children: [] }]);
+    const refused = { kind: 'error', status: 422, code: 'PREFERENCES.ROUTE', reason, detail: null };
+    const wire = accountPreferences as unknown as { api: { requestJson: (path: string, init?: { method?: string }) => Promise<unknown> } };
+    const answered = wire.api.requestJson.bind(wire.api);
+    wire.api.requestJson = async (path, init) => ((init?.method ?? 'GET') === 'POST' ? refused : answered(path, init));
+    await router.navigateByUrl('/');
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const clear = fixture.nativeElement.querySelector('.ocu-home-block-clear') as HTMLButtonElement | null;
+    expect(clear).not.toBeNull();
+    clear?.click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const alerts = Array.from(fixture.nativeElement.querySelectorAll('[role="alert"]') as NodeListOf<HTMLElement>);
+    const reading = alerts.filter((alert) => alert.textContent?.trim() === reason);
+    expect(reading.length).toBe(1);
+    expect(reading[0].classList.contains('ocu-home-status')).toBe(true);
   });
 
   it('AD-8: leaving the signed-in state drops this principal\'s namespace list', async () => {

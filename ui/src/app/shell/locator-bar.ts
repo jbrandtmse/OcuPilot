@@ -467,7 +467,7 @@ export class LocatorBar {
    */
   protected get favoriteRefusal(): string {
     this.generation();
-    return this.preferences.fault();
+    return this.preferences.fault('favorite') || this.preferences.fault('background');
   }
 
   /**
@@ -505,10 +505,10 @@ export class LocatorBar {
     // Both regions cleared first, so a second toggle has a change to announce rather than
     // re-writing a sentence already standing, which a live region does not read out again.
     this.announcement.set('');
-    this.preferences.clearFault();
+    this.preferences.clearFault('favorite');
     const pending = pinned
-      ? this.preferences.remove(FAVORITE_KIND, route)
-      : this.preferences.add(FAVORITE_KIND, route);
+      ? this.preferences.remove(FAVORITE_KIND, route, 'favorite')
+      : this.preferences.add(FAVORITE_KIND, route, 'favorite');
     void pending.then(() => {
       if (this.preferences.isFavorite(route) === pinned) return;
       this.announcement.set(pinned ? STRINGS.favoritesRemoved : STRINGS.favoritesAdded);

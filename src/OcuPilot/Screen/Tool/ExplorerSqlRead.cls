@@ -19,7 +19,9 @@
 /// <code>[redacted]</code>; a secret under another name, an alias or an expression is not caught,
 /// because an arbitrary table carries no classification (AD-3). A function the query calls runs as
 /// the user and can change state, which the statement's type does not show (AD-21's named
-/// limit).</p>
+/// limit). A credential value after <code>IDENTIFY BY</code>, <code>IDENTIFIED BY</code> or
+/// <code>PASSWORD</code> in a text cell, such as a statement the instance recorded, reads
+/// <code>[redacted]</code> too.</p>
 Class OcuPilot.Screen.Tool.ExplorerSqlRead Extends OcuPilot.Screen.Tool.Base
 {
 
@@ -214,8 +216,7 @@ ClassMethod Projected(pNamespace As %String, pGuard As %DynamicObject, pAnswer A
                 Do tRedacted.%Push(tName)
             }
         }
-        Set tRows = pAnswer.%Get("rows")
-        If $ListLength(tMasked) > 0 Set tRows = ..MaskedRows(tRows, tMasked)
+        Set tRows = ..MaskedRows(pAnswer.%Get("rows"), tMasked)
         Do tResult.%Set("rows", tRows)
         Do tResult.%Set("redactedColumns", tRedacted)
     }
@@ -223,7 +224,9 @@ ClassMethod Projected(pNamespace As %String, pGuard As %DynamicObject, pAnswer A
 }
 
 /// <p><var>pRows</var> with each cell at a position listed in <var>pMasked</var> (zero-based column
-/// positions) replaced by <parameter>MASK</parameter>.</p>
+/// positions) replaced by <parameter>MASK</parameter>, and a credential value in any other text cell
+/// masked (<method>OcuPilot.Port.SqlPort.MaskCredentials</method>): a query over the instance's
+/// statement tables reads statement text.</p>
 ClassMethod MaskedRows(pRows As %DynamicArray, pMasked As %List) As %DynamicArray [ Private ]
 {
     Set tOut = []
@@ -236,8 +239,10 @@ ClassMethod MaskedRows(pRows As %DynamicArray, pMasked As %List) As %DynamicArra
         Set tNew = []
         Set tCellIterator = tRow.%GetIterator()
         While tCellIterator.%GetNext(.tCellIndex, .tCell, .tCellType) {
-            If $ListFind(pMasked, tCellIndex) {
+            If ($ListLength(pMasked) > 0) && $ListFind(pMasked, tCellIndex) {
                 Do tNew.%Push(..#MASK, "string")
+            } ElseIf tCellType = "string" {
+                Do tNew.%Push(##class(OcuPilot.Port.SqlPort).MaskCredentials(tCell), "string")
             } ElseIf (tCellType = "object") || (tCellType = "array") {
                 Do tNew.%Push(tCell)
             } Else {

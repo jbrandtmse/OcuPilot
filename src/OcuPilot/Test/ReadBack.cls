@@ -52,6 +52,10 @@ Method TestEachDeclaredMode()
     Do $$$AssertTrue($ClassMethod(tRB, "Compare", {"A": " openid   profile "}, {"A": "openid profile"}, "A", "words"), "words: whitespace is collapsed")
     Do $$$AssertTrue($ClassMethod(tRB, "Compare", {"A": "WR"}, {"A": "RW"}, "A", "letters"), "letters: WR reads back as RW")
     Do $$$AssertTrue('$ClassMethod(tRB, "Compare", {"A": "RWU"}, {"A": "RW"}, "A", "letters"), "letters: a lost letter differs")
+    Do $$$AssertTrue($ClassMethod(tRB, "Compare", {"A": ""}, {"A": ($Username)}, "A", "caller"), "caller: a blank sent value reads back as the current user")
+    Do $$$AssertTrue($ClassMethod(tRB, "Compare", {"A": ""}, {"A": ($ZConvert($Username, "L"))}, "A", "caller"), "caller: without regard to case")
+    Do $$$AssertTrue('$ClassMethod(tRB, "Compare", {"A": ""}, {"A": "someoneelse"}, "A", "caller"), "caller: another account still differs")
+    Do $$$AssertTrue('$ClassMethod(tRB, "Compare", {"A": "bob"}, {"A": ($Username)}, "A", "caller"), "caller: a named account is compared as sent")
     Do $$$AssertTrue($ClassMethod(tRB, "Compare", {"A": {"a": "1", "b": ""}}, {"A": {"a": "1", "c": "z"}}, "A", "members"), "members: only the members sent, empty equal to absent")
     Do $$$AssertTrue('$ClassMethod(tRB, "Compare", {"A": {"a": "1"}}, {"A": {"a": "2"}}, "A", "members"), "members: a sent member read back otherwise differs")
 }
@@ -165,18 +169,16 @@ Method TestADeclaredUnorderedListMatchesReordered()
     Do $$$AssertEquals(tCreate.verdict, "matches", "and so does the create's")
 }
 
-/// <p>A read-back that compared no field never reads <code>matches</code> (AD-58): a list-row
-/// create whose row carries none of the sent names but its row key, and a merge sending only names
-/// its field rows do not hold, are <code>unchecked</code>; a merge sending only secrets is
+/// <p>A read-back that compared no field never reads <code>matches</code> (AD-58): a create or a
+/// merge sending only names its field rows do not hold is <code>unchecked</code>; a merge sending only secrets is
 /// <code>written</code>.</p>
 /// <p>Mutation (Rule 19): drop the <code>tCount = 0</code> branch in
 /// <method>OcuPilot.Kernel.Proposal.ReadBack.Of</method> -> this goes red.</p>
 Method TestAReadBackThatComparedNothingNeverMatches()
 {
-    Set tRow = ..ReadBackOf("OcuPilot.Screen.Tool.TaskCreate", 200, [{"Name": "probe", "Id": 7}].%ToJSON(), {"Name": "probe", "DailyIncrement": 5})
-    Do $$$AssertEquals(tRow.verdict _ "/" _ tRow.reason, "unchecked/unreadable", "a list row answering only the row key compares nothing: " _ tRow.%ToJSON())
-    Set tSeen = ..ReadBackOf("OcuPilot.Screen.Tool.TaskCreate", 200, [{"Name": "probe", "Description": "d", "Id": 7}].%ToJSON(), {"Name": "probe", "Description": "d", "DailyIncrement": 5})
-    Do $$$AssertEquals(tSeen.verdict, "matches", "and a field the row does carry is compared: " _ tSeen.%ToJSON())
+    Do ##class(OcuPilot.Test.ReadBackPort).Arm(200, {"Name": "probe", "Id": 7}.%ToJSON())
+    Set tRow = $ClassMethod(..#RB, "Of", "OcuPilot.Screen.Tool.TaskCreate", "probe", {"NoSuchField": "x"}, "", "{}", ..#PORT, 7)
+    Do $$$AssertEquals(tRow.verdict _ "/" _ tRow.reason, "unchecked/unreadable", "a create re-read by its id whose sent names no field row holds compares nothing: " _ tRow.%ToJSON())
     Set tUnnamed = ..ReadBackOf("OcuPilot.Screen.Tool.WebAppUpdate", 200, {"Description": "d"}.%ToJSON(), {"NoSuchField": "x"})
     Do $$$AssertEquals(tUnnamed.verdict _ "/" _ tUnnamed.reason, "unchecked/unreadable", "a body of names no field row holds compares nothing: " _ tUnnamed.%ToJSON())
     Set tSecrets = ..ReadBackOf("OcuPilot.Screen.Tool.SslUpdate", 200, {"Description": "d"}.%ToJSON(), {"PrivateKeyPassword": "supplied-secret"}, {})
@@ -211,6 +213,36 @@ Method TestASavesSecretsStoredApartAreWritten()
     Do $$$AssertEquals(tAnswer.verdict _ " " _ tAnswer.written.%ToJSON(), "matches [""ClientSecret""]", "the stored secret is listed written once: " _ tAnswer.%ToJSON())
     Set tRunning = $ClassMethod(..#RB, "ForSave", "OcuPilot.Screen.Tool.WebAppUpdate", "probe", {"Description": "d"}, {"Description": "d"}, ..#PORT, "", 202, $ListBuild("ClientSecret"))
     Do $$$AssertEquals(tRunning.verdict _ " " _ tRunning.written.%ToJSON(), "unchecked []", "and not on a verdict that lists nothing")
+}
+
+/// <p>A create whose own read is a list row is re-read by its allocated id through its update tool's
+/// single-object read (AD-58): every sent key its field list names is compared, a key the list row
+/// would not carry included, and with no allocated id the verdict is <code>unchecked</code> and
+/// nothing is read.</p>
+/// <p>Mutation (Rule 19): remove <code>READBACKTOOL</code> from <code>TaskCreate</code> -> this goes
+/// red.</p>
+Method TestAListRowCreateReReadsByCreatedIdThroughItsUpdateRead()
+{
+    Set tRB = ..#RB
+    Set tTask = "OcuPilot.Screen.Tool.TaskCreate"
+    Set tSent = {"Name": "probe", "Description": "d", "Priority": "Low"}
+    Do ##class(OcuPilot.Test.ReadBackPort).Arm(200, {"Name": "probe", "Description": "d", "Priority": "High", "Id": 7}.%ToJSON())
+    Set tDiffers = $ClassMethod(tRB, "ForSave", tTask, "probe", tSent, "", ..#PORT, {"Id": 7}, 201)
+    Do $$$AssertEquals(tDiffers.verdict _ " " _ tDiffers.fields.%ToJSON(), "differs [""Priority""]", "a task's key the list row would not carry is compared: " _ tDiffers.%ToJSON())
+    Do $$$AssertEquals($Get(^||OcuPilotReadBackPort("types")) _ " " _ $Get(^||OcuPilotReadBackPort("types", 1)), "1 GET", "through one single-object read")
+    Do $$$AssertEquals($Get(^||OcuPilotReadBackPort("calls", 1)), "Task.CRUD id=7", "of the created id under the edit tool's own parameter")
+    Do ##class(OcuPilot.Test.ReadBackPort).Arm(200, {"Name": "probe", "Description": "d", "Priority": "Low", "Id": 7}.%ToJSON())
+    Set tMatches = $ClassMethod(tRB, "ForSave", tTask, "probe", tSent, "", ..#PORT, {"Id": 7}, 201)
+    Do $$$AssertEquals(tMatches.verdict, "matches", "and a task that holds what was sent matches: " _ tMatches.%ToJSON())
+    Set tOAuth = "OcuPilot.Screen.Tool.OAuthRegisteredClientCreate"
+    Do ##class(OcuPilot.Test.ReadBackPort).Arm(200, {"ClientId": "cid-1", "Name": "c", "Description": "other"}.%ToJSON())
+    Set tClient = $ClassMethod(tRB, "ForSave", tOAuth, "c", {"Name": "c", "Description": "x"}, "", ..#PORT, {"ClientId": "cid-1"}, 201)
+    Do $$$AssertEquals(tClient.verdict _ " " _ tClient.fields.%ToJSON(), "differs [""Description""]", "a registered client is re-read too: " _ tClient.%ToJSON())
+    Do $$$AssertEquals($Get(^||OcuPilotReadBackPort("calls", 1)), "Security.OAuth2.ServerClients clientId=cid-1", "by its ClientId")
+    Do ##class(OcuPilot.Test.ReadBackPort).Arm(200, {"Name": "probe", "Description": "d", "Priority": "Low", "Id": 7}.%ToJSON())
+    Set tNone = $ClassMethod(tRB, "ForSave", tTask, "probe", tSent, "", ..#PORT, {}, 201)
+    Do $$$AssertEquals(tNone.verdict, "unchecked", "with no created id the verdict is unchecked: " _ tNone.%ToJSON())
+    Do $$$AssertEquals(+$Get(^||OcuPilotReadBackPort("types")), 0, "and nothing was read")
 }
 
 Method TestTheKindIsDerivedFromTheToolsParameters()

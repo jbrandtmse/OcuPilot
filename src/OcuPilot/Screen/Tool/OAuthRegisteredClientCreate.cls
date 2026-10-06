@@ -34,6 +34,10 @@ Parameter READTYPE = "LIST";
 
 Parameter READROWKEY = "Name";
 
+/// <p>The read-back re-reads the created client by its allocated id through the edit tool's read
+/// (AD-58).</p>
+Parameter READBACKTOOL = "OcuPilot.Screen.Tool.OAuthRegisteredClientUpdate";
+
 /// <p>The vendor's create, which answers 201 with the new client id in its <code>Location</code>
 /// header.</p>
 Parameter WRITETYPE = "POST";
@@ -166,6 +170,16 @@ ClassMethod ComposeCreate(pArgs As %DynamicObject, pIdArgument As %String, pSett
 ClassMethod DerivedFields(pPayload As %DynamicObject)
 {
     Do $ClassMethod(..#RULES, "Expand", pPayload)
+}
+
+/// <p>The client id the instance allocated for the client this tool's confirmed write
+/// <var>pWritten</var> registered, which <class>OcuPilot.Port.OAuthRegisteredClientPort</class> sets
+/// on the create's answer, or <code>""</code>.</p>
+ClassMethod CreatedId(pWritten) As %String
+{
+    If '$IsObject(pWritten) || 'pWritten.%IsA("%Library.DynamicObject") Quit ""
+    If pWritten.%GetTypeOf("ClientId") '= "string" Quit ""
+    Quit pWritten.%Get("ClientId")
 }
 
 /// <p>The tab's own pairs together with <parameter>WRITERESOURCE</parameter>:<parameter>WRITEPERMISSION</parameter>,

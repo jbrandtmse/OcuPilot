@@ -48,6 +48,7 @@ ClassMethod ProhibitedClass() As %String
 ClassMethod HandleUpdate(pId As %String) As %Status
 {
     Set tSC = $$$OK
+    Set tHoldKey = ""
     Try {
         Set tGateSC = ..Gate(.tRefused)
         If tRefused || $$$ISERR(tGateSC) {
@@ -59,6 +60,11 @@ ClassMethod HandleUpdate(pId As %String) As %Status
             Quit
         }
         Set tName = ##class(OcuPilot.Kernel.EntityId).Decode(pId)
+        Set tHoldSC = ##class(OcuPilot.Kernel.Proposal.Operation).HoldTool(..#UPDATETOOL, tName, .tHeld, .tHoldKey)
+        If $$$ISERR(tHoldSC) || 'tHeld {
+            Set tSC = ##class(OcuPilot.Api.Error).RenderTargetBusy(tHoldSC)
+            Quit
+        }
         Set tPerformSC = ..Update(tName, tBody, .tHttp, .tFault, .tViolations, .tReadBack)
         If $$$ISERR(tPerformSC) && (+$Get(tHttp) = 404) && ($Get(tViolations) = 0) {
             Set tSC = ##class(OcuPilot.Api.Error).Render(404, ##class(OcuPilot.Api.Error).#NOTFOUND, ##class(OcuPilot.Api.Error).#REASONSERVICEABSENT, ##class(OcuPilot.Api.Error).#SERVICEABSENT)
@@ -68,6 +74,7 @@ ClassMethod HandleUpdate(pId As %String) As %Status
     } Catch ex {
         Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ex)
     }
+    Do ##class(OcuPilot.Kernel.Proposal.Operation).Release(tHoldKey)
     Quit tSC
 }
 

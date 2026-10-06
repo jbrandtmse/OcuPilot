@@ -20,6 +20,9 @@ export const REMOTE_DATABASE_DIRECTORIES_PATH = `${REMOTE_DATABASE_PATH}/directo
 /** The entity type and scope every change this form publishes carries (AD-13, AD-14). */
 export const REMOTE_DATABASE_ENTITY = 'database-configuration';
 
+/** The tool identifier whose list this form's changes belong to; it picks Remote databases over Local databases. */
+export const REMOTE_DATABASE_TOOL = 'osmgmt.remotedatabases';
+
 export const REMOTE_DATABASE_SCOPE = 'instance';
 
 /** The fields, named as the server names them. */
@@ -632,7 +635,7 @@ export class RemoteDatabaseForm {
     if (id === '') return;
     this.injector
       .get(ChangeBus)
-      .publish({ kind: 'changed', type: REMOTE_DATABASE_ENTITY, scope: REMOTE_DATABASE_SCOPE, id, action, readBack: this.readBackValue });
+      .publish({ kind: 'changed', type: REMOTE_DATABASE_ENTITY, scope: REMOTE_DATABASE_SCOPE, id, action, readBack: this.readBackValue, tool: REMOTE_DATABASE_TOOL });
   }
 
   private notify(): void {

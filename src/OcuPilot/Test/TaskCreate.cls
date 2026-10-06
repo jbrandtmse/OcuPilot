@@ -149,6 +149,7 @@ Method TestTheConfirmCreatesAndAnswersTheId()
     Set tSC = ..Mint(..OnDemand("OcuP97Agent"), .tProposal, .tHttp, .tFault)
     Do $$$AssertStatusOK(tSC, "the create is minted: " _ ..Problem(.tFault))
     If $$$ISERR(tSC) Quit
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).Field(tProposal.%Get("proposalId"), "TargetName"), "OcuP97Agent", "the stored row names the task as typed, for the card's title")
     Set tSC = $ClassMethod(..#CONFIRM, "Confirm", tProposal.%Get("proposalId"), "", $Username, .tResult, .tHttp, .tCode, .tDetail)
     Do $$$AssertEquals(tHttp, 200, "the confirm answers 200 (" _ $Get(tCode) _ ")")
     Set tId = ##class(OcuPilot.Test.TaskProbe).IdOf("OcuP97Agent")
@@ -157,6 +158,7 @@ Method TestTheConfirmCreatesAndAnswersTheId()
     If $IsObject($Get(tResult)) {
         Do $$$AssertEquals(tResult.%Get("createdId"), tId, "and the answer carries its id")
         Do $$$AssertEquals(tResult.%Get("action"), "created", "with the created action")
+        Do $$$AssertEquals(tResult.%Get("readBack").%Get("verdict"), "matches", "and a read-back by that id through the edit tool's read: " _ tResult.%Get("readBack").%ToJSON())
     }
     Set tStored = ##class(OcuPilot.Test.TaskProbe).Stored(tId)
     If $IsObject(tStored) Do $$$AssertEquals(tStored.%Get("TimePeriod") _ "|" _ tStored.%Get("Settings.Directory") _ "|" _ tStored.%Get("Expires"), "5|/tmp/|0", "stored On Demand, its setting kept, no expiry")

@@ -3683,7 +3683,8 @@ ClassMethod ResourceNames(pObject As %DynamicObject, Output pNames) [ Private ]
 /// letter (<method>AddsPublicLetter</method>) on a resource
 /// <method>ResourceGrantsAdministrativePrivilege</method> names -- <var>pId</var>, the target's id,
 /// is what names it. A task's <code>RunAsUser</code> naming an account other than the caller's,
-/// compared without regard to case, grants that account's privileges to the task. The authorization
+/// compared without regard to case, grants that account's privileges to the task; so does an
+/// import's <code>runAs</code>, the accounts of the tasks it creates, when any is another account. The authorization
 /// server configuration's <code>CustomizationRoles</code> grants privilege when it adds a privileged
 /// role (<method>AddsPrivilegedCustomizationRole</method>). Any other type grants nothing here.</p>
 ClassMethod GrantsPrivilegeByEffect(pType As %String, pPayload As %DynamicObject, pTarget As %DynamicObject, Output pGrants As %Boolean, pId As %String = "") As %Status
@@ -3721,6 +3722,20 @@ ClassMethod GrantsPrivilegeByEffect(pType As %String, pPayload As %DynamicObject
             ; A task that runs as another account runs with that account's privileges (Story 9.7).
             ; An edit that keeps the account the live target already runs as grants nothing new
             ; (Story 9.8); a create's target holds none.
+            ; An import lists the accounts of every task it creates in runAs, separated by the
+            ; port's RUNASSEPARATOR; any that is not the caller's makes it a grant.
+            If pPayload.%GetTypeOf("runAs") = "string" {
+                Set tSeparator = $Parameter("OcuPilot.Port.TaskTransferPort", "RUNASSEPARATOR")
+                Set tAccounts = $ListFromString(pPayload.%Get("runAs"), tSeparator)
+                For tI = 1:1:$ListLength(tAccounts) {
+                    Set tAccount = $List(tAccounts, tI)
+                    If (tAccount '= "") && ($ZConvert(tAccount, "U") '= $ZConvert($Username, "U")) {
+                        Set pGrants = 1
+                        Quit
+                    }
+                }
+                If pGrants Quit
+            }
             Set tRunAs = ""
             If pPayload.%GetTypeOf("RunAsUser") = "string" Set tRunAs = pPayload.%Get("RunAsUser")
             Set tHeld = ""

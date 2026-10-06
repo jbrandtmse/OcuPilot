@@ -5,7 +5,8 @@
 /// (<class>OcuPilot.Kernel.Proposal.Confirm</class>), a screen's row action
 /// (<class>OcuPilot.Api.ScreenAction</class>) and every screen Save route that writes an instance
 /// object. Each calls <method>Of</method> after its write, its ledger row and its marker, outside
-/// any transaction and holding no lock, and puts the answer beside the write's own. Nothing here
+/// any transaction and still inside the target hold its caller took, and puts the answer beside the
+/// write's own. Nothing here
 /// fails, delays or alters that answer: every fault reads <code>unchecked</code>.</p>
 /// <p><b>The answer is names and a verdict, never a value</b> (AD-35):
 /// <code>{verdict, fields, written, reason?}</code>. <code>fields</code> holds the top-level names
@@ -22,7 +23,7 @@
 /// <p><b>How a field the instance normalizes on save is compared</b> is the tool's reviewed
 /// Classification entry's <code>compare</code> declaration, emitted onto its field rows (AD-3):
 /// <code>unordered</code>, <code>unslashed</code>, <code>words</code>, <code>letters</code>,
-/// <code>members</code> or <code>written</code>. Every other field takes <method>Same</method>'s
+/// <code>members</code>, <code>caller</code> or <code>written</code>. Every other field takes <method>Same</method>'s
 /// default rules.</p>
 Class OcuPilot.Kernel.Proposal.ReadBack Extends %RegisteredObject
 {
@@ -56,7 +57,7 @@ Parameter REASONRUNNING = "running";
 Parameter REASONUNREADABLE = "unreadable";
 
 /// <p>The closed vocabulary of declared comparison modes.</p>
-Parameter MODES = "unordered,unslashed,words,letters,members,written";
+Parameter MODES = "unordered,unslashed,words,letters,members,caller,written";
 
 /// <p>The port a tool's re-read goes through when the caller names none and the tool declares the
 /// base's own default (AD-52).</p>
@@ -69,27 +70,51 @@ Parameter TOOLFIELDSCLASS = "OcuPilot.Screen.Tool.ToolFields";
 /// <var>pIdValue</var>, having sent <var>pSent</var> over the fresh read <var>pFresh</var>.</p>
 /// <p><b>Caller contract:</b> called once, after the write read OK and after the caller's ledger
 /// row and marker, never inside a transaction. <var>pIdValue</var> is the id the target answers
-/// under now -- a create's <code>createdId</code> where its tool answers one; a tool whose read is a
-/// list row is asked by the value <var>pSent</var> carries under its row key instead, and a sent
-/// name that row does not answer is not compared. <var>pPayloadJson</var> is the payload the tool's own port query is read from (the stored one for
-/// the agent's caller). <var>pPort</var> is the port the caller resolved; <code>""</code> resolves
-/// the tool's own declaration. A caller whose write answered 202 calls <method>Running</method>
-/// instead. The answer is always an object and this method never throws.</p>
-ClassMethod Of(pToolClass As %String, pIdValue As %String, pSent As %DynamicObject, pFresh As %DynamicObject, pPayloadJson As %String, pPort As %String = "") As %DynamicObject
+/// under now. <var>pCreatedId</var> is the id the instance allocated for a create
+/// (<method>OcuPilot.Screen.Tool.Write.CreatedId</method>), or <code>""</code>: a tool that declares
+/// <code>READBACKTOOL</code> is re-read by it through that tool's own single-object read, and is
+/// <code>unchecked</code> where none was allocated; a tool whose read is a list row and that
+/// declares no such tool is asked by the value <var>pSent</var> carries under its row key, and a
+/// sent name that row does not answer is not compared. <var>pPayloadJson</var> is the payload the
+/// tool's own port query is read from (the stored one for the agent's caller). <var>pPort</var> is
+/// the port the caller resolved; <code>""</code> resolves the tool's own declaration. A caller whose
+/// write answered 202 calls <method>Running</method> instead. The answer is always an object and
+/// this method never throws.</p>
+ClassMethod Of(pToolClass As %String, pIdValue As %String, pSent As %DynamicObject, pFresh As %DynamicObject, pPayloadJson As %String, pPort As %String = "", pCreatedId As %String = "") As %DynamicObject
 {
     Set tAnswer = ""
     Try {
         Set tKind = ..KindOf(pToolClass)
-        Set tPort = pPort
-        If tPort = "" Set tPort = ##class(OcuPilot.Kernel.Proposal.Operation).PortClassOf(pToolClass, ..#DEFAULTPORT)
-        Set tEndpoint = $ClassMethod(pToolClass, "Endpoint")
-        Set tIdParam = $ClassMethod(pToolClass, "IdParam")
-        ; A list-type read finds its row by the declared row key, so it is asked by the value the
-        ; write sent under that key, exactly as the mint's read resolves (AD-51).
-        Set tRowKey = ##class(OcuPilot.Kernel.Proposal.Operation).ReadRowKeyOf(pToolClass)
+        Set tReadClass = pToolClass
         Set tReadId = pIdValue
-        If (tRowKey '= "") && $IsObject(pSent) && (pSent.%GetTypeOf(tRowKey) = "string") && (pSent.%Get(tRowKey) '= "") Set tReadId = pSent.%Get(tRowKey)
-        Set tReadSC = ##class(OcuPilot.Kernel.Proposal.Operation).ReadAt(pToolClass, tPort, tEndpoint, tIdParam, tReadId, pPayloadJson, .tRead, .tReadHttp, .tReadFault)
+        Set tRowKey = ""
+        Set tReadTool = ""
+        Try {
+            Set tReadTool = $ClassMethod(pToolClass, "ReadBackTool")
+        } Catch {
+            Set tReadTool = ""
+        }
+        If tReadTool '= "" {
+            ; A create whose own read is a list row is re-read by its allocated id through the
+            ; update tool's single-object read (AD-58); with no allocated id there is nothing to ask.
+            If pCreatedId = "" {
+                Set tAnswer = ..Verdict(..#UNCHECKED, "", "", ..#REASONUNREADABLE)
+                Quit
+            }
+            Set tReadClass = tReadTool
+            Set tReadId = pCreatedId
+        } Else {
+            If pCreatedId '= "" Set tReadId = pCreatedId
+            ; A list-type read finds its row by the declared row key, so it is asked by the value
+            ; the write sent under that key, exactly as the mint's read resolves (AD-51).
+            Set tRowKey = ##class(OcuPilot.Kernel.Proposal.Operation).ReadRowKeyOf(pToolClass)
+            If (tRowKey '= "") && $IsObject(pSent) && (pSent.%GetTypeOf(tRowKey) = "string") && (pSent.%Get(tRowKey) '= "") Set tReadId = pSent.%Get(tRowKey)
+        }
+        Set tPort = pPort
+        If tPort = "" Set tPort = ##class(OcuPilot.Kernel.Proposal.Operation).PortClassOf(tReadClass, ..#DEFAULTPORT)
+        Set tEndpoint = $ClassMethod(tReadClass, "Endpoint")
+        Set tIdParam = $ClassMethod(tReadClass, "IdParam")
+        Set tReadSC = ##class(OcuPilot.Kernel.Proposal.Operation).ReadAt(tReadClass, tPort, tEndpoint, tIdParam, tReadId, pPayloadJson, .tRead, .tReadHttp, .tReadFault)
         Set tPresent = $$$ISOK(tReadSC) && $IsObject($Get(tRead))
         If $$$ISERR(tReadSC) && (+$Get(tReadHttp) '= 404) {
             Set tAnswer = ..Verdict(..#UNCHECKED, "", "", ..#REASONUNREADABLE)
@@ -165,7 +190,7 @@ ClassMethod ForSave(pToolClass As %String, pIdValue As %String, pSent As %Dynami
     }
     Set tPayloadJson = ""
     If $IsObject(pSent) Set tPayloadJson = pSent.%ToJSON()
-    Quit ..WithWritten(..Of(pToolClass, tId, pSent, pFresh, tPayloadJson, pPort), pStoredApart)
+    Quit ..WithWritten(..Of(pToolClass, tId, pSent, pFresh, tPayloadJson, pPort, $Get(tCreated)), pStoredApart)
 }
 
 /// <p><var>pAnswer</var> with each name of <var>pNames</var> added to its <code>written</code> list,
@@ -320,6 +345,8 @@ ClassMethod Compare(pSent As %DynamicObject, pRead As %DynamicObject, pName As %
 
 /// <p>Whether a sent value and a read value are equal under <var>pMode</var>. Each value is passed
 /// with its JSON type as <code>%GetTypeOf</code> answers it.</p>
+/// <p>Mode <code>caller</code> reads a blank sent value as equal to the current user's name; any
+/// other sent value takes the default rules.</p>
 /// <p>The default rules, in order: both sides empty (<code>""</code>, <code>[]</code>,
 /// <code>{}</code>, <code>null</code>, absent) are equal; where either side is a boolean,
 /// truthiness is compared; where both are valid numbers, their values are; otherwise their
@@ -347,6 +374,11 @@ ClassMethod Same(pA As %RawString, pAType As %String, pB As %RawString, pBType A
             }
             Quit tSame
         }
+    }
+    If pMode = "caller" {
+        ; A blank sent value is stored as the account that made the write, which is the account
+        ; reading it back, so a blank reads back as that name without regard to case.
+        If ..Empty(pA, pAType) && '$IsObject(pB) && (pBType '= "boolean") Quit ((pB = "") || ($ZConvert(pB, "U") = $ZConvert($Username, "U")))
     }
     If (pMode = "unslashed") || (pMode = "words") || (pMode = "letters") {
         If '$IsObject(pA) && '$IsObject(pB) && (pAType '= "boolean") && (pBType '= "boolean") {

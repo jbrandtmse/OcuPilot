@@ -1024,8 +1024,8 @@ export class Panel {
    */
   protected async onChooseAgent(id: string): Promise<void> {
     if (this.pickerLocked || this.preferences === null) return;
-    await this.preferences.setValue(SHELL_KIND, SHELL_AGENT_DEFINITION, id);
-    const landed = this.preferences.fault() === '' && this.preferences.shell().get(SHELL_AGENT_DEFINITION) === id;
+    await this.preferences.setValue(SHELL_KIND, SHELL_AGENT_DEFINITION, id, 'agent-pick');
+    const landed = this.preferences.fault('agent-pick') === '' && this.preferences.shell().get(SHELL_AGENT_DEFINITION) === id;
     if (landed && this.turn.entries().length > 0) this.onNewConversation();
     await Promise.all([this.agentContext.load(), this.agentStatus.load()]);
   }

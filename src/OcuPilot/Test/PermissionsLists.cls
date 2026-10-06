@@ -263,6 +263,9 @@ Method TestTheServicesListReadsOverTheWire()
     }
     Do $$$AssertEquals(tBad, "", "and both list fields are arrays on every row")
     Do $$$AssertTrue(..UnrestrictedCount(tAnswer.rows) > 0, "and an unrestricted service reads [] on the read: " _ ..UnrestrictedCount(tAnswer.rows))
+    Set tNote = "An empty Allowed IP addresses list (AllowedConnections) means any address may connect."
+    Set tDescription = ##class(OcuPilot.Screen.Tool.Read).Description("OcuPilot.Screen.Descriptor.ServiceList")
+    Do $$$AssertEquals($Extract(tDescription, *-$Length(tNote)+1, *), tNote, "the description the model receives ends with the empty-list note: " _ tDescription)
 }
 
 /// <p>How many of <var>pRows</var> carry <code>AllowedConnections</code> as an empty array.</p>

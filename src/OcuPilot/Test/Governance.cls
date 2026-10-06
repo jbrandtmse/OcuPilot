@@ -22,7 +22,7 @@ Parameter NAMESPACEDELETE = "osmgmt.namespaces.delete";
 /// <p>The database delete, which the baseline also disables (Story 18.3).</p>
 Parameter DATABASEDELETE = "osmgmt.localdatabases.delete";
 
-/// <p>The agent's task import, which the baseline also disables (DW-1827).</p>
+/// <p>The agent's task import, which the baseline also disables.</p>
 Parameter TASKIMPORT = "tasks.schedule.import";
 
 /// <p>The enable of interoperability, which the baseline also disables (Story 18.15).</p>

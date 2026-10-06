@@ -1818,6 +1818,16 @@ Parameter REASONPREFERENCESNAME = "That is not a piece of shell state this insta
 /// second copy of it.</p>
 Parameter CODEPATTERN = "^[A-Z][A-Z0-9]*(\.[A-Z][A-Z0-9]*)*$";
 
+/// <p>The answer to a write that could not take its target's hold (AD-34, AD-53): 409
+/// <parameter>WRITETARGETBUSY</parameter> with its published reason when <var>pHoldSC</var> is
+/// clean, which is the hold timing out, and the internal-error envelope when it is an error. A screen
+/// action and every screen Save answer a busy target through this one method.</p>
+ClassMethod RenderTargetBusy(pHoldSC As %Status = 1) As %Status
+{
+    If $$$ISERR(pHoldSC) Quit ..RenderInternal("An internal error occurred", ##class(%Exception.StatusException).CreateFromStatus(pHoldSC))
+    Quit ..Render(409, ..#CONFLICT, ..#REASONWRITETARGETBUSY, ..#WRITETARGETBUSY)
+}
+
 /// <p>The single entry point for every error response.</p>
 /// <p>Sets the HTTP status and writes exactly one JSON envelope
 /// <code>{error, reason, code}</code>, plus <var>pDetail</var> under the key

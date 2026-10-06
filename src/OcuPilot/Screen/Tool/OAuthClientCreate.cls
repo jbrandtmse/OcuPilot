@@ -114,7 +114,7 @@ ClassMethod Described(pSchema As %DynamicObject, pCreates As %Boolean) As %Dynam
     If pCreates {
         Set tText = "The client's registration metadata. Leave out a member to leave it empty; the instance sets its own signing-algorithm defaults."
     } Else {
-        Set tText = "The client's whole settable metadata. It replaces the stored metadata: a member left out is cleared, so send every member to keep. Omit it to leave the metadata as it is. The registration's own members are kept as the instance holds them."
+        Set tText = "The settable metadata members to change. Send only those: every member left out keeps its stored value, and an empty string or an empty list clears one. Omit it to leave the metadata as it is. The registration's own members are kept as the instance holds them."
     }
     Set tMetadata = ##class(OcuPilot.Area.Security.OAuthClientRules).MetadataSchema(tText)
     If $IsObject(tMetadata) Do tProperties.%Set(..#METADATAFIELD, tMetadata)

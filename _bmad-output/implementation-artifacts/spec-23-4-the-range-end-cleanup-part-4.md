@@ -2,9 +2,9 @@
 title: 'Story 23.4: The range-end cleanup, part 4'
 type: 'bugfix'
 created: '2026-10-06'
-status: 'in-progress'
-baseline_revision: '3168e2d6df11a79b79edbe0edc4ce34050bb472c'
-baseline_commit: '3168e2d6df11a79b79edbe0edc4ce34050bb472c'
+status: 'done'
+baseline_revision: '14f0aa8eb4dd1bc5de5bea31a06899284d7fd720'
+baseline_commit: '14f0aa8eb4dd1bc5de5bea31a06899284d7fd720'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -39,6 +39,48 @@ deferred:
     location: >-
       ui/browser/structural-walk.mjs
     severity: medium (unverified)
+  - summary: >-
+      Save-hold coverage checks handler source text; only the web-application Save is held at runtime, so a wrong key in another Save is not caught.
+    evidence: |-
+      SaveHoldCoverage asserts `.HoldTool(` and `.Release(` appear in each handler; ReadBackRoute holds one target. A table-driven live leg over a create, a singleton and a mapping route would pin each key against its mint.
+    location: >-
+      src/OcuPilot/Test/SaveHoldCoverage.cls
+    severity: medium
+  - summary: >-
+      DW-1710 added a `caller` compare mode to the closed read-back vocabulary (blank sent value matches the reading account) beyond the entry's wording.
+    evidence: |-
+      Needed so a task create's blank RunAsUser matches the account the instance stores. The alternative is a tool-level hook that normalizes the sent body. The lead decides whether AD-58's vocabulary amendment is acceptable.
+    location: >-
+      src/OcuPilot/Kernel/Proposal/ReadBack.cls
+    severity: medium
+  - summary: >-
+      DW-1465 name hooks on TaskRun, TaskDelete and TaskExport have no mint-level test; only TaskResume, TaskCreate and TaskUpdate are pinned.
+    evidence: |-
+      A hook answering "" on those three leaves the card titled by id with no test red. TaskRun and TaskResume read the name through a second GET on a real probe task.
+    location: >-
+      src/OcuPilot/Screen/Tool/TaskRun.cls
+    severity: low
+  - summary: >-
+      DW-2096's per-site masks (catalog, SQL activity, explorer read) are pinned only by the all-red MaskCredentials mutation recorded in the spec.
+    evidence: |-
+      Each site's removal is plausible to redden its own test (the class doc says so) but was not run as its own mutation line.
+    location: >-
+      src/OcuPilot/Test/SqlCredentialMask.cls
+    severity: low
+  - summary: >-
+      The locator bar's router handler calls `clearFault()` with no origin on every navigation, clearing Home's and the panel's slots (unverified).
+    evidence: |-
+      The spec says no argument clears all. Settle by refusing a Home write and navigating before it is announced.
+    location: >-
+      ui/src/app/shell/locator-bar.ts:409
+    severity: low (unverified)
+  - summary: >-
+      Smaller gaps: `field-lists.mjs` has no malformed `caller` case; OAuthClientUpdate asserts no card-row count; RenderTargetBusy's internal-error arm is untested.
+    evidence: |-
+      Verification-gap layer, low severity; each needs a new fixture for a path that cannot occur from the wire today.
+    location: >-
+      ui/tools/field-lists.mjs
+    severity: low
 ---
 
 <intent-contract>
@@ -451,7 +493,7 @@ deferred:
 
 ### Batch b: product correctness and safety
 
-- [ ] **DW-1827** (p2, fix-risk high): an import review sees task names only.
+- [x] **DW-1827** (p2, fix-risk high): an import review sees task names only.
   - **The defects:**
     - The task arm reads `RunAsUser`, which the narrowed payload never carries (`Mint.cls:283,323`).
     - The summary and compare carry only `Name (NS)` (`TaskTransferPort.cls:382,313`).
@@ -483,7 +525,7 @@ deferred:
   - The pin is `ServiceUpdate.TestAnAddressRoleIsJudgedByEffectInEitherSpelling` (`:228`); its mutation is recorded at `:224`.
   - Planned disposition: `resolved-by:23-3-the-range-end-cleanup-part-3`, citing f2168084.
 
-- [ ] **DW-1882** (p3, fix-risk med): no screen Save takes the per-target hold.
+- [x] **DW-1882** (p3, fix-risk med): no screen Save takes the per-target hold.
   - **Scope.** Measured at plan time from the UrlMap: 52 PUT/POST Save routes across 32 Area classes (inference until the coverage test lists them). There is no shared choke point, and the target of a create is in its body.
   - **Red:** new `ReadBackRoute.TestAWebApplicationSaveOnAHeldTargetIsRefusedBusy`, using the `:110-139` harness:
     - The test takes `Lock +^OcuPilotProposalTarget(<TargetHoldKey of web-application/instance/PROBEAPP>)`.
@@ -504,7 +546,7 @@ deferred:
     - Given another process holding a target, when a person saves that target, then the Save waits `CLAIMLOCKSECONDS`, answers 409 `WRITE.TARGETBUSY` and writes nothing.
     - Given the router's write routes, when the coverage test reads them, then every Save calls `HoldTool`, and every exemption is listed with its reason.
 
-- [ ] **DW-1641**: the agent's server-description and client-configuration updates send `Metadata` whole. `OAuthServerRules.Validate:205-221` then demands the endpoints of a partial edit.
+- [x] **DW-1641**: the agent's server-description and client-configuration updates send `Metadata` whole. `OAuthServerRules.Validate:205-221` then demands the endpoints of a partial edit.
   - **Red:**
     - Rewrite `OAuthServerUpdate.TestTheAgentsEditSendsTheCompleteSet` (`:255`), keeping its name for `SurfaceCoverage.cls:268`:
       - seed both endpoints and `scopes_supported`;
@@ -522,7 +564,7 @@ deferred:
   - **ADs:** AD-4, AD-55, AD-6.
   - **AC:** Given an agent edit naming two `Metadata` members, when it is confirmed, then only those members change, and the card shows one row each.
 
-- [ ] **DW-1013**: `permissions.services.read` answers `[]` for an unrestricted service, and nothing says what that means.
+- [x] **DW-1013**: `permissions.services.read` answers `[]` for an unrestricted service, and nothing says what that means.
   - **Red:** `PermissionsLists.TestTheServicesListReadsOverTheWire` (`:245`) asserts that the tool description the model receives ends with the note (pattern: `EcpSslConnectionWrite.cls:128-129`). Today it does not.
   - **Fix:**
     - ServiceList's `read` gains `"note": {"key": "serviceListNote", "text": "An empty Allowed IP addresses list (AllowedConnections) means any address may connect."}`. This is AD-36's note, read by both the screen and the tool (precedent: `SqlActivityList.cls:54`).
@@ -532,7 +574,7 @@ deferred:
   - **ADs:** AD-36, AD-24.
   - **AC:** Given the services read tool, when the model receives its description, then it says that an empty list means any address may connect. The Services screen shows the same sentence.
 
-- [ ] **DW-1864**: `Response.cls:17` writes `pData.%ToJSON()` as one string, so a large restore raises `<MAXSTRING>` and answers 500.
+- [x] **DW-1864**: `Response.cls:17` writes `pData.%ToJSON()` as one string, so a large restore raises `<MAXSTRING>` and answers 500.
   - **Red:** a new test class seeds a conversation (`Convo.LoadOrCreate`, then 10 calls to `Entry.GuardedAppend` of about 420 KB each, one non-ASCII character among them). It GETs `/conversation/:id` with `%Net.HttpRequest`, parses the response stream, and asserts:
     - 200;
     - `turns.%Size()=10`;
@@ -543,7 +585,7 @@ deferred:
   - **ADs:** AD-12, AD-39.
   - **AC:** Given a conversation whose JSON exceeds the local string limit, when it is restored, then it answers 200 with every turn in one envelope.
 
-- [ ] **DW-1939** (fix-risk high): `screenForEntityType` picks Local databases (position 11) for a remote database's change. While Local databases is open, a remote change raises no toast.
+- [x] **DW-1939** (fix-risk high): `screenForEntityType` picks Local databases (position 11) for a remote database's change. While Local databases is open, a remote change raises no toast.
   - **Option (b), an owner-aware lookup.** Option (a), a second entity type, would split AD-34's lock: the key hashes the type (`Propose.cls:386-398`).
   - **Red:**
     - `ui/tools/toasts.test.mjs`: an event `{type: 'database-configuration', id: 'REMX', tool: 'osmgmt.remotedatabases.create'}` routes to `os-management/remote-databases/…`, and on the Local databases URL it still raises one toast.
@@ -558,7 +600,7 @@ deferred:
   - **ADs:** AD-14, AD-13, AD-34.
   - **AC:** Given a remote database confirmed by the agent while Home or Local databases is open, when its toast shows, then it reads "Open in Remote databases" and opens that list on the row.
 
-- [ ] **DW-1449**: the banner's fact has no producer for a re-enable made outside OcuPilot.
+- [x] **DW-1449**: the banner's fact has no producer for a re-enable made outside OcuPilot.
   - **Red:** a new class `Test/MarkingRestraint`. A fixture extends `Api.Switches`, overrides `MarkingPortClass` to `Test.MarkingPort`, and exposes `RestraintBody`. The tests:
     - fact 0 with `Arm("1","1")`: the body answers `writesMarked` 1, and `Event.WritesMarked()` reads 1;
     - `Arm("0","1")`: stays 0;
@@ -575,7 +617,7 @@ deferred:
   - **ADs:** AD-15, AD-53, AD-8, AD-9.
   - **AC:** Given auditing re-enabled outside OcuPilot, when a caller who can read the auditing flag loads the panel, then the banner clears and stays cleared.
 
-- [ ] **DW-1414** (fix-risk high): one unscoped `fault()` slot.
+- [x] **DW-1414** (fix-risk high): one unscoped `fault()` slot.
   - A refusal shows twice on Home: `home.page.ts:427` and `locator-bar.ts:216`, both `role="alert"`.
   - A background success clears a gesture's refusal (`:517`).
   - `panel.ts:1028` reads the slot too.
@@ -593,7 +635,7 @@ deferred:
   - **ADs:** AD-19, AD-50.
   - **AC:** Given a background write refused while Home is open, when it is announced, then exactly one alert carries it, and Home's own line stays empty.
 
-- [ ] **DW-1637**: a 202-started write is finalized `ok` with an empty code (`Confirm.cls:494`).
+- [x] **DW-1637**: a 202-started write is finalized `ok` with an empty code (`Confirm.cls:494`).
   - **Red:** at `AuditStarted.cls:91`, assert `Status Code AuditMarked` equals `"ok PORT.STARTED " _ MARKEDYES`.
   - **Fix:**
     - New `Api/PortError.cls` holding `STARTED = "PORT.STARTED"`, its doc and `Codes()`, on the `LockError` pattern. Its reason is EXPERIENCE.md:516's "Still running on the instance. It finishes in the background."
@@ -602,7 +644,7 @@ deferred:
   - **ADs:** AD-26, AD-15, AD-41.
   - **AC:** Given a queued write still running at the bound, when it is confirmed, then its ledger row reads `ok · PORT.STARTED`. A finished write's code stays empty.
 
-- [ ] **DW-1710** (decided): a list-row create compares only the 8 keys its row carries.
+- [x] **DW-1710** (decided): a list-row create compares only the 8 keys its row carries.
   - **Red:** new `ReadBack.TestAListRowCreateReReadsByCreatedIdThroughItsUpdateRead`. `ReadBackPort` is armed with one object, and it records the query (extend it).
     - `ForSave("…TaskCreate", …, {"Id": 7}, 201)` gives `differs ["Priority"]`, a GET, and id 7.
     - An OAuth leg reads through `clientId`.
@@ -619,7 +661,7 @@ deferred:
   - **ADs:** AD-58, AD-54, AD-3.
   - **AC:** Given a confirmed task create, when it is read back, then it is re-read by its new id through `TaskUpdate`'s read, and every sent key in its field list is compared.
 
-- [ ] **DW-1465**: a task card is titled by its id (`proposal-view.ts:666`). Every task tool is affected, and a create shows a case-folded name.
+- [x] **DW-1465**: a task card is titled by its id (`proposal-view.ts:666`). Every task tool is affected, and a create shows a case-folded name.
   - **Red:**
     - `ui/tools/proposal-view.test.mjs`: `targetName: 'Nightly purge'` gives the title "Proposal · Task Nightly purge" (EXPERIENCE.md:442).
     - A `proposal-card.spec.ts` leg: the rendered title reads the same.
@@ -638,7 +680,7 @@ deferred:
   - **ADs:** AD-6, AD-13, Conventions › When `SCHEMAVERSION` moves.
   - **AC:** Given a proposal for any task write, when its card renders, then its title names the task. If the name could not be read, it falls back to the id.
 
-- [ ] **DW-2096** (fix-risk med; added 2026-10-06 by owner decision): a credential typed as a literal in statement text (`CREATE USER x IDENTIFIED BY 'pw'`, `ALTER USER … IDENTIFIED BY`, a `PASSWORD` clause) reaches the screen and the model unmasked.
+- [x] **DW-2096** (fix-risk med; added 2026-10-06 by owner decision): a credential typed as a literal in statement text (`CREATE USER x IDENTIFIED BY 'pw'`, `ALTER USER … IDENTIFIED BY`, a `PASSWORD` clause) reaches the screen and the model unmasked.
   - **Where it shows:** SQL activity's `Statement` (`Port/SqlActivityPort.cls:164-166`, read by `osmgmt.sqlactivity.read`); the SQL catalog's statement texts (`Port/AtelierPort.cls`: `CATALOGSTATEMENTSQUERY` `:208`, cached-query text `CATALOGCACHEDQUERIESCOLUMNS` `:249`), screen and read tool alike; and every string cell of `explorer.sqlquery.read`'s answer (`Port/SqlPort.cls` `Run` `:522`, `RunAnswer` `:813`), which can select `INFORMATION_SCHEMA`'s statement tables.
   - **Red, a new test class:** plant a statement the instance records without running it (prepare `CREATE USER <probe> IDENTIFIED BY '<literal>'`, as DW-1982 measured), then read it through the statements tab's declared read (screen and tool), `explorer.sqlquery.read` over `INFORMATION_SCHEMA.STATEMENTS`, and SQL activity through a test seam or a held statement. Assert the literal appears in no answer and that each answer still carries the statement with its value masked. Today the literal appears. Remove the planted statement-index row and any cached query, and read it back as gone.
   - **Fix:** one `SqlPort.MaskCredentials(pText)` that answers the text unchanged unless `$Locate(pText, ..#PASSWORDPATTERN)`; when it matches, it replaces the value after each `IDENTIFIED BY` and each `PASSWORD` (a quoted literal, a delimited identifier or a bare token) with `[redacted]`, the AD-60 word. Call it on SQL activity's `Statement`, on the catalog's statement and cached-query texts before the row is returned, and on every string cell of `explorer.sqlquery.read`'s answer. The data browser and a person's console run are not statement text and stay unmasked (the data browser's Save guards on the values it read).
@@ -717,6 +759,28 @@ Rejected:
   - `[maybe-false]` `[defer]` structural-walk retry theme persistence — see deferred list.
   - `[maybe-false]` `[defer]` turnprobe SweepSince without username — see deferred list.
   - `[low]` `[reject]` ci.test.mjs overlong comment line — cosmetic.
+
+### 2026-10-06 — Review pass (batch b)
+
+- verdicts: 17 findings — high 0, medium 3, low 13, false 0, maybe-false 1
+- findings:
+  - `[medium]` `[defer]` Save-hold coverage is source text and one runtime Save — see deferred list.
+  - `[low]` `[patch]` ReadBack compared-nothing leg could no longer fail — passes a created id; mutation recorded.
+  - `[low]` `[patch]` PortError.ReasonFor and Codes unexecuted — pinned in AuditStarted; mutation recorded.
+  - `[medium]` `[patch]` DW-1414 background announcement and DW-1939 publisher wiring unpinned — locator-bar, turn, handler and form-store legs added; mutations recorded.
+  - `[low]` `[defer]` DW-1465 hooks on TaskRun, TaskDelete, TaskExport unpinned (TaskUpdate pinned in this pass) — see deferred list.
+  - `[low]` `[defer]` DW-2096 per-site mutations not run singly — see deferred list.
+  - `[low]` `[patch]` DW-1827 case-insensitive account compare untested — leg added; mutation recorded.
+  - `[low]` `[defer]` smaller gaps (`caller` shape case, client card rows, RenderTargetBusy error arm) — see deferred list.
+  - `[low]` `[reject]` RestraintBody records on a GET — DW-1449's own fix.
+  - `[low]` `[reject]` MaskCredentials alters ordinary data cells matching the pattern — the entry's stated behavior.
+  - `[maybe-false]` `[defer]` locator bar's argumentless clearFault — see deferred list.
+  - `[medium]` `[defer]` new `caller` compare mode beyond the entry's wording (intent layer) — see deferred list for the lead's decision.
+  - `[low]` `[reject]` intent layer's surface notes on jsdom specs and a seam-based unit leg — each AC has a real-surface test (PermissionsLists, ConversationRestore, auditing-write).
+  - `[low]` `[reject]` `Of` now honors pCreatedId for tools without READBACKTOOL — only a create passes one, and `ForSave` is the sole caller.
+  - `[low]` `[reject]` Save holds in about 35 classes beyond the one red test — the entry names every Save `Handle*`.
+  - `[low]` `[reject]` `Api.Error.RenderTargetBusy` adds a method — the entry names it.
+  - `[low]` `[reject]` the `sqltext` column kind in AtelierPort — an internal token the entry's fix requires.
 
 ## Design Notes
 
@@ -995,6 +1059,26 @@ Every IRIS MCP call carries `server: "ocupilot-slot-a"` (the dev instance, never
   - `mutation:` the hook answers `""` → both DW-1465 tests go red.
   - `mutation:` `MaskCredentials` answers its input unchanged → the DW-2096 class and its unit test go red.
 
+**Batch b, executed (implement pass):**
+
+- DW-1827: `TaskTransfer` 17 of 17, `Prohibited` 13, `TaskTransferLive` 7, `TaskCreate` 7, `TaskUpdate` 7. The new methods were not run on the unfixed tree; each is shown red by its mutation. mutation: `runAs` list read as `runAsX` in the task arm -> (a) red; summary without `TaskClass`, and with the account fixed to `x` -> (b) red; `NameProblem` call removed -> (c) red. All reverted byte-identical.
+- DW-1882: new `SaveHoldCoverage` (121 asserts: 52 write routes by handler source, 14 exemptions each used) and `ReadBackRoute` 5 of 5, which holds the lock and sees 409 `WRITE.TARGETBUSY` after the wait. 81 other classes that reach a Save route, one at a time: all green (`DatabaseActionProbe` is a helper with no test methods). mutation: hold removed from `WebAppSave.HandleUpdate` -> busy test red; removed from `DocDbSave.HandleCreate` -> coverage red.
+- DW-1641: `OAuthServerUpdate` 7 of 7, `OAuthClientUpdate` 5 of 5, plus the server and client wire, discover, secrets, register, token and `SurfaceCoverage` classes green. mutation: server `MergeUpdate` over unmerged arguments -> `TestTheAgentsEditSendsTheCompleteSet` and the Save's complete-set test red; client `MergeUpdate` without the metadata merge -> the kept-member leg and the Save's test red.
+- `SaveHoldCoverage` is not armed and is absent from `ci-timings.json`; the lead's refresh covers it. `check-objectscript.py` clean on every changed class.
+- DW-1013: `PermissionsLists` 7 of 7. mutation: the `note` removed from `ServiceList` -> `TestTheServicesListReadsOverTheWire` red; reverted. `test:tools` 1859 of 1859 (the note is a Fixed strings literal in column 1 of EXPERIENCE.md:361, and `ServiceList` joins the read-note roster in `screen-mirror.test.mjs`).
+- DW-1864: new `ConversationRestore` 1 of 1; on the unfixed tree it reads red at "the restore answers 200". mutation: `Write pData.%ToJSON()` is the unfixed form, so that run is the mutation. `Envelope` 15, `TurnConversation` 10, `LogSecondaryWire` 5 green.
+- DW-1449: new `MarkingRestraint` 4 of 4, `SwitchesWire` 24, `AuditingUpdate` 11, `AuditEventEditor` 10, `AuditingScreen` 9. mutation: observe branch `If 0` -> `TestAReEnableMadeOutsideOcuPilotClearsTheFact` red and the new `auditing-write` leg red (4 of 4 green unmutated); both reverted. The leg disables through the agent card, as the spec's other legs do, and re-enables through `Security.System.Modify` in a session.
+- DW-1637: `AuditStarted` 3, `AuditMarker` 8, `NamespaceInterop`, `NamespaceCopy`, `DatabaseActions`, `DatabaseGrowExpand` and `JournalIntegrity` green; `self-protection.test.mjs` pins `PortError.REASONSTARTED` to `auditDatabaseStillRunning`. mutation: code `""` always -> `AuditStarted` red; code `PORT.STARTED` always -> `AuditMarker`'s finished-write `Code ""` assertion red; both reverted.
+- DW-2096: new `SqlCredentialMask` 4 of 4; `SqlActivityPort` 10, `AtelierPortCatalogTabs` 8, `AtelierPortCatalogTabsLive` 8, `SqlAgentRead` 7, `SqlPort` 11 green. The catalog leg feeds the live planted statement's text through `AtelierPortFixture`'s canned `Query` route, since a `CREATE USER` has no statement relation to list on a table's tab. mutation: `MaskCredentials` answers its input -> all four red; reverted. The planted `CREATE USER` index rows (USER, HSCUSTOM, %SYS) were removed and read back 0.
+- DW-1710: `ReadBack` 17, `TaskSave` 8, `TaskCreate` 7, `OAuthRegisteredClientCreate` 12, `OAuthRegisteredClientWire` 5, `OAuthRegisteredClientUpdate` 8, `TaskTransfer` 17, `TaskTransferLive` 7, `ToolWrite`, `ProposalConfirm`, `Envelope`, `GovernanceBaseline` green. Task 0 measured on `ocupilot-ci`: a task create read back by id differed in `RunAsUser` alone (sent blank, stored as the caller), so the closed vocabulary gained `caller` (`ReadBack.Same`, `field-lists.mjs`, `tasks.schedule.create`'s `compare`, `ToolFields` regenerated); the OAuth tab's row key is `ClientId`, so the change event's id (now `ClientId`) matches it. mutation: `READBACKTOOL` removed from `TaskCreate` -> `TestAListRowCreateReReadsByCreatedIdThroughItsUpdateRead` red (notFound, no GET); reverted.
+- DW-1465: `TaskResume` 15, `TaskCreate` 7, `TaskUpdate` 7, `TaskRun` 6 green; `proposal-view.test.mjs` 54, `field-lists.test.mjs` 20, `proposal-card.spec.ts` 58, `npm run build` green (screen-mirror included). mutation: `TaskResume.TargetName` and `TaskCreate.TargetName` answer `""` -> `TestTheMintRecordsTheTasksNameForTheCard` and `TestTheConfirmCreatesAndAnswersTheId` red; `cardTitleName` answers `view.name` -> the `proposal-view` leg and the `proposal-card.spec.ts` leg red. All reverted byte-identical.
+- DW-1939: `toasts.test.mjs` and `navigation.test.mjs` 57 of 57, `toast-host.spec.ts` 11, `screen-action-handler.spec.ts` 92, both remote-database form specs, `change-bus`, `turn`, `refresh` and `screen-actions` tools green. `ChangeEvent.tool` is set by the confirm (the proposal's tool), the screen action handler (`addressed.toolIdentifier`) and the remote form (`REMOTE_DATABASE_TOOL`); `ToastEntry.descriptor` carries the resolved screen to `toast-host.ts`. mutation: `screenForChange` ignores the tool -> both node legs and the `toast-host.spec.ts` leg red; reverted byte-identical.
+- DW-1414: `account-preferences` and `theme` tools 40 of 40, `app.spec.ts` 39 (new Home Clear leg: one alert), `home.page.spec.ts` 67, `locator-bar.spec.ts` 33, `panel.spec.ts` 185, `proposal-card.spec.ts` 58. The two existing specs needed no origin edits: they go through the stub. mutation: `fault()` ignores its origin -> the background-slot test and the `app.spec.ts` leg red (the success-keeps-refusal test stays green: it pins the settle side); reverted byte-identical.
+- Browser, on the rebuilt and redeployed bundle on `ocupilot-ci`: `auditing-write` 4 of 4, `service-editor` 5 of 5. `npm run build` green; it warns that the initial bundle exceeds its budget by 692 bytes (a warning, not an error).
+- DW-1869: `ServiceUpdate` 14 of 14 on `ocupilot-ci` (run 184); no code change. Disposition is the lead's.
+- Review patches: `ReadBack`'s compared-nothing leg now passes a created id; mutation: `If tCount = 0` -> `If 0` reddens it (and the two older legs). `AuditStarted` pins `PortError.ReasonFor` and `Codes`; mutation: `ReasonFor` answers `""` -> red. `TaskTransfer` gains a caller's-account-in-another-case leg (the session user reads `irisowner`, so the leg upper-cases it); mutation: drop both case folds in `Prohibited`'s task arm -> red. `TaskUpdate` pins `TargetName`; mutation: the hook answers `""` -> red. `ProposalWire`'s key roster gains `targetName` (the sweep's one red). `locator-bar.spec.ts` pins a refused background write announced once; mutation: drop `fault('background')` from `favoriteRefusal` -> red. Publisher pins: `turn.test.mjs` (confirm), `screen-action-handler.spec.ts` and `remote-database-form.store.spec.ts` assert the event's `tool`; mutation: drop `tool` from each publish -> each reddens its own test. All reverted byte-identical. The initial bundle measured 2,992,692 bytes, so `angular.json`'s `maximumWarning` and its pin move to 2993kB.
+- Full sweep: `ci-runner --container ocupilot-ci`, 485 classes (the checkout names 483), 3,929 tests, 1 failed (`ProposalWire`, fixed and re-run green: 16 of 16), 0 probe leftovers, 0 overlaps, no seeded state present. `npm run test:tools` 1865 of 1865; `check-objectscript.py` and `lint-docs.sh` clean.
+
 **Full sweep (once, before batch b's dev_complete):** `cd ui && node tools/ci-runner.mjs --container ocupilot-ci`, on the rebuilt throwaway, with no seeded state present. Expected: 0 failed, with totals taken from `%UnitTest_Result`. The full browser suite runs in CI's three browser legs (Rule 29).
 
 **Each batch (lead):** push the code commit alone, and wait for CI green on its exact head.
@@ -1004,6 +1088,10 @@ Every IRIS MCP call carries `server: "ocupilot-slot-a"` (the dev instance, never
 Status: done
 Blocking condition: none
 
-Batch a (17 entries, less DW-1938 and the ledger dedupe, which are the lead's) is implemented: throwaway directory, `data-check` and `down` fallback (DW-2034); five instance shards (DW-2102); protocol retry (DW-2026); wait, scope and cleanup fixes in the browser specs and test classes; governance set-aside in the runner. Review patched two findings (a config-wiring test, a doc-comment order) and deferred four to the spec's `deferred:` list. Follow-up review: false.
+Batch a: see its Review Findings; closed green (run 37452225543).
 
-Verified: `npm run test:tools` 1856 of 1856; `check-objectscript.py` 0 problems; `lint-docs.sh` clean; src loaded on `ocupilot-ci` with 0 errors; each fix shown red then green under its reproduction on `ocupilot-ci` (DW-2058 and DW-1983 did not reproduce a red). The full sweep and full browser suite did not run (Rule 29). Residual: CI proof on the five-way split, DW-2034's real-runtime step, DW-1938 and the dedupe are the lead's.
+Batch b implemented: DW-1827, DW-1882, DW-1641, DW-1013, DW-1864, DW-1939, DW-1449, DW-1414, DW-1637, DW-1710, DW-1465, DW-2096. DW-1869 needs no code (`ServiceUpdate` 14 of 14); its disposition and DW-1938's are the lead's. Review patched one medium (client wiring pins) and three lows, deferred the rest (list above), and rejected seven with reasons in the triage log. Follow-up review: false (no high patched).
+
+Files: server `src/OcuPilot/**` (Save holds in 34 Area classes, `Operation`, `Mint`, `Confirm`, `ReadBack`, `Propose`, the task and OAuth tools, `Response`, `Switches`, `SqlPort`, `PortError`), client `ui/src/app/**` (change bus, toasts, preferences faults, proposal card), their tests, six new test classes, EXPERIENCE.md:361, and `angular.json`'s budget (2993kB, measured).
+
+Verified: every class and tier in Batch b (loop) green; full sweep 485 classes, 3,929 tests, 0 failed after the one `ProposalWire` fix; `test:tools` 1865 of 1865; `auditing-write` 4 of 4 and `service-editor` 5 of 5 on the redeployed bundle; every mutation listed above red and reverted. The new `SaveHoldCoverage`, `ConversationRestore`, `MarkingRestraint` and `SqlCredentialMask` are absent from `ci-timings.json`; the lead's refresh adds them. The full browser suite runs in CI.

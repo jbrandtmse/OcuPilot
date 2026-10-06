@@ -53,7 +53,7 @@ Parameter DATABASEDELETEKEY = "osmgmt.localdatabases.delete";
 /// <p>Story 18.4's disk operation keys that declare a classic page, which the baseline disables too.</p>
 Parameter DISKKEYS = "osmgmt.databasedetails.mount,osmgmt.databasedetails.truncate,osmgmt.databasedetails.compact,osmgmt.databasedetails.defragment,osmgmt.databases.integrity,osmgmt.localdatabases.grow,osmgmt.localdatabases.expand";
 
-/// <p>The agent's task import key, which the baseline disables too (DW-1827).</p>
+/// <p>The agent's task import key, which the baseline disables too.</p>
 Parameter TASKIMPORTKEY = "tasks.schedule.import";
 
 /// <p>The agent's enable-interop key, which the baseline disables too (Story 18.15).</p>

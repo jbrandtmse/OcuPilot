@@ -120,6 +120,19 @@ Parameter SELECTMODE As INTEGER = 1;
 /// occurrence, which keeps the match linear in the text's length.</p>
 Parameter PASSWORDPATTERN = "(?is)\bIDENTIF(Y|IED)\b|^(?>.*?\b(?:CREATE|ALTER)\b)(?>.*?\bUSER\b).*\bPASSWORD\b";
 
+/// <p>The keyword and the value after it that <method>MaskCredentials</method> masks: <code>IDENTIFY BY</code>,
+/// <code>IDENTIFIED BY</code> or <code>PASSWORD</code>, then a single-quoted literal (a doubled quote
+/// inside it stays inside), a double-quoted identifier, or a bare token. A literal or identifier a cut
+/// left unterminated runs to the end of the text. A lone <code>?</code> is a bound value and is left.</p>
+Parameter CREDENTIALVALUEPATTERN = "(?is)\b(?:IDENTIF(?:Y|IED)\s+BY|PASSWORD)\b\s*('(?:[^']|'')*'?|""(?:[^""]|"""")*""?|[^\s,;()'""?][^\s,;()]*)";
+
+/// <p>The keyword and the white space after it, anchored at the start of a
+/// <parameter>CREDENTIALVALUEPATTERN</parameter> match.</p>
+Parameter CREDENTIALKEYWORDPATTERN = "(?is)^(?:IDENTIF(?:Y|IED)\s+BY|PASSWORD)\b\s*";
+
+/// <p>What a masked credential value reads.</p>
+Parameter CREDENTIALMASK = "[redacted]";
+
 /// <p>The system privilege the SQL reference names for a DDL statement type, as
 /// <code>type:privilege</code> pairs: a statement of a listed type runs only for a caller who holds
 /// it (<method>HoldsPrivilege</method>). An unlisted type is left to the instance's own check.
@@ -393,6 +406,25 @@ ClassMethod InputProblem(pText As %String, pValues As %DynamicArray = "", pMaxRo
         If '$Match(pMaxRows, "^[1-9][0-9]{0,3}$") || (+pMaxRows > ..#MAXROWS) Quit "maxRows"
     }
     Quit ""
+}
+
+/// <p><var>pText</var>, a statement's text as the instance holds or runs it, with the value after each
+/// <code>IDENTIFY BY</code>, <code>IDENTIFIED BY</code> and <code>PASSWORD</code> replaced by
+/// <parameter>CREDENTIALMASK</parameter> (<parameter>CREDENTIALVALUEPATTERN</parameter>). A text
+/// <parameter>PASSWORDPATTERN</parameter> does not match comes back unchanged. Pure.</p>
+ClassMethod MaskCredentials(pText As %String) As %String
+{
+    If '$Locate(pText, ..#PASSWORDPATTERN) Quit pText
+    Set tOut = ""
+    Set tPos = 1
+    While tPos <= $Length(pText) {
+        Set tStart = $Locate(pText, ..#CREDENTIALVALUEPATTERN, tPos, tEnd, tMatch)
+        If 'tStart Quit
+        Set tKeywordStart = $Locate(tMatch, ..#CREDENTIALKEYWORDPATTERN, 1, tKeywordEnd)
+        Set tOut = tOut _ $Extract(pText, tPos, tStart - 1) _ $Extract(tMatch, 1, tKeywordEnd - 1) _ ..#CREDENTIALMASK
+        Set tPos = tEnd
+    }
+    Quit tOut _ $Extract(pText, tPos, *)
 }
 
 /// <p>Whether <var>pText</var> sets a password, read as text before any prepare

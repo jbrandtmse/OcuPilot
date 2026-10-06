@@ -365,13 +365,16 @@ Method TestRecordingTheMarkingFactAlreadyHeldWritesNoRow()
     Do $$$AssertEquals(##class(OcuPilot.Kernel.Audit.Event).WritesMarked(), 0, "carrying the new observation")
 }
 
-/// <p><b>Story 5.6, AD-15.</b> The marking fact travels <code>GET /agent/restraint</code> in
-/// <b>both</b> directions. <method>TestTheRestraintReadAnswersTheCallersOwnVerdict</method> asserts
-/// the healthy arm, which is the one a clean instance answers; this one writes the recorded fact 0
-/// and reads the route back, because the panel renders only the <b>false</b> arm and a fact that
-/// could never arrive false would leave the banner unreachable with every gate green.</p>
+/// <p><b>Story 5.6, AD-15.</b> The marking fact travels in the restraint body in <b>both</b>
+/// directions. <method>TestTheRestraintReadAnswersTheCallersOwnVerdict</method> asserts the healthy
+/// arm over the route, which is the one a clean instance answers; this one writes the recorded fact
+/// 0, arms the observation to read auditing off, and reads the body back through
+/// <class>OcuPilot.Test.MarkingRestraintFixture</class>, because the panel renders only the
+/// <b>false</b> arm and a fact that could never arrive false would leave the banner unreachable with
+/// every gate green. The observation is armed because the route's own read would find this
+/// instance audited and clear the fact.</p>
 /// <p>Mutation (Rule 19): hard-code <code>1</code> in
-/// <method>OcuPilot.Api.Switches.HandleRestraint</method>'s <code>writesMarked</code> line -- this
+/// <method>OcuPilot.Api.Switches.RestraintBody</method>'s <code>writesMarked</code> line -- this
 /// goes red while <method>TestTheRestraintReadAnswersTheCallersOwnVerdict</method> stays green.</p>
 Method TestTheRestraintReadCarriesARecordedNotMarkingFact()
 {
@@ -380,10 +383,11 @@ Method TestTheRestraintReadCarriesARecordedNotMarkingFact()
     Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Switch).SetGuarded(.tValues), "the observed marking fact is recorded 0")
     Do $$$AssertEquals(##class(OcuPilot.Kernel.Audit.Event).WritesMarked(), 0, "and reads back 0 through the emitter's own accessor")
 
-    Set tSC = ..Call("GET", "/agent/restraint", "", .tStatus, .tBody, .tHeaders)
-    Do $$$AssertStatusOK(tSC, "the restraint read runs")
-    Do $$$AssertEquals(tStatus, 200, "and answers 200: " _ tBody)
-    Set tAnswer = ##class(%DynamicAbstractObject).%FromJSON(tBody)
+    Do ##class(OcuPilot.Test.MarkingPort).Arm("0", "1")
+    Set tSC = ##class(OcuPilot.Test.MarkingRestraintFixture).Body($Username, .tAnswer)
+    Do ##class(OcuPilot.Test.MarkingPort).Clear()
+    Do $$$AssertStatusOK(tSC, "the restraint body is built")
+    If '$IsObject(tAnswer) Quit
     Do $$$AssertEquals(tAnswer.%GetTypeOf("writesMarked"), "boolean", "the fact arrives as a JSON boolean")
     Do $$$AssertEquals(tAnswer.writesMarked, 0, "carrying the recorded 0, which is the only arm the panel renders")
     ; Marking is not a restraint (AD-30): nothing else about the verdict moves.

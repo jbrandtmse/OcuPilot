@@ -113,8 +113,8 @@ function mount(saveAnswer: unknown = { kind: 'ok', status: 201, body: { name: 'P
 
 /** The five fields a change event carries about the write, the bus's own bookkeeping aside. */
 function shape(event: ChangeEvent): Record<string, unknown> {
-  const { kind, type, scope, id, action } = event as unknown as Record<string, unknown>;
-  return { kind, type, scope, id, action };
+  const { kind, type, scope, id, action, tool } = event as unknown as Record<string, unknown>;
+  return { kind, type, scope, id, action, tool };
 }
 
 function writes(calls: readonly Call[]): Call[] {
@@ -217,7 +217,7 @@ describe('the remote database form store', () => {
     expect(JSON.parse(write?.body ?? '{}')).toEqual({ Name: 'PROBEREMOTE', Server: 'DATASRV', Directory: '/data/two/' });
     // Mutation (Rule 19): drop `this.publish(...)` from `save()` -> no event and this goes red.
     expect(events.map(shape)).toEqual([
-      { kind: 'changed', type: 'database-configuration', scope: 'instance', id: 'PROBEREMOTE', action: 'created' },
+      { kind: 'changed', type: 'database-configuration', scope: 'instance', id: 'PROBEREMOTE', action: 'created', tool: 'osmgmt.remotedatabases' },
     ]);
     expect(store.running()).toBeNull();
     expect(store.createdId()).toBe('PROBEREMOTE');
@@ -250,7 +250,7 @@ describe('the remote database form store', () => {
     expect(write?.method).toBe('PUT');
     expect(JSON.parse(write?.body ?? '{}')).toEqual({ Directory: '/data/two/' });
     expect(events.map(shape)).toEqual([
-      { kind: 'changed', type: 'database-configuration', scope: 'instance', id: 'PROBEREMOTE', action: 'updated' },
+      { kind: 'changed', type: 'database-configuration', scope: 'instance', id: 'PROBEREMOTE', action: 'updated', tool: 'osmgmt.remotedatabases' },
     ]);
   });
 

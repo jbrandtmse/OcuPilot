@@ -136,6 +136,21 @@ describe('the change toast region', () => {
     expect(dismiss.getAttribute('aria-label')).toBe(STRINGS.tableChangeToastDismiss);
   });
 
+  it('a remote database change offers Remote databases, not the Local databases list', () => {
+    bus.publish({
+      kind: 'changed',
+      type: 'database-configuration',
+      scope: 'instance',
+      id: 'REMX',
+      action: 'created',
+      proposalId: 'p-1',
+      tool: 'osmgmt.remotedatabases.create',
+    });
+    fixture.detectChanges();
+    const action = toasts()[0].querySelector('.ocu-toast-action') as HTMLButtonElement;
+    expect(action.textContent?.trim()).toBe('Open in Remote databases');
+  });
+
   it('each action has its own published sentence', () => {
     change('/csp/one', 'created');
     change('/csp/two', 'deleted');

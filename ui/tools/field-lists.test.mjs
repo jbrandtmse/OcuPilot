@@ -513,7 +513,7 @@ test('a compare declaration is emitted onto its rows, and every malformed one is
     'security.oauthserver.update': members,
     'security.oauthserverclients.create': members,
     'security.oauthserverclients.update': members,
-    'tasks.schedule.create': { Settings: 'written' },
+    'tasks.schedule.create': { Settings: 'written', RunAsUser: 'caller' },
     'tasks.schedule.update': { Settings: 'written' },
     // Story 16.14: the vendor stores the attributes to retrieve sorted, with duplicates dropped.
     'security.ldap.create': { LDAPAttributes: 'unordered' },

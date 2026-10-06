@@ -225,6 +225,11 @@ export interface TurnProposalUnchangedRow {
 export interface TurnProposal {
   readonly proposalId: string;
   readonly target: TurnProposalTarget;
+  /**
+   * The name the card titles the target by where its id is not a name (a task's numeric id), or
+   * `''` where the instance read none: the card then titles the target by its id.
+   */
+  readonly targetName?: string;
   readonly expiresAt: number;
   readonly tool: string;
   readonly changed: readonly TurnProposalDiffRow[];
@@ -645,6 +650,7 @@ function parseProposal(value: unknown): TurnProposal | null {
   return {
     proposalId,
     target,
+    targetName: textAt(row, 'targetName'),
     expiresAt: Number.isFinite(expiresAt) ? expiresAt : 0,
     tool: textAt(row, 'tool'),
     changed: parseProposalDiff(row['changed']),
@@ -1410,6 +1416,7 @@ export class TurnStore {
           action: confirmedAction(result.body),
           proposalId: id,
           readBack: outcome.readBack,
+          tool: this.everyProposal().find((proposal) => proposal.proposalId === id)?.tool ?? '',
         });
       }
       return outcome;

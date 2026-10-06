@@ -1292,8 +1292,9 @@ describe('the Namespaces list\u2019s Delete (Story 18.2)', () => {
     expect(calls[1].path).toBe(`/api/ocupilot/screens/${NAMESPACES.toolIdentifier}/action`);
     expect(calls[1].method).toBe('POST');
     expect(JSON.parse(calls[1].body)).toEqual({ action: 'delete', id: 'OCUPROBE182BD' });
-    expect(events.map(({ kind, type, scope, id, action }) => ({ kind, type, scope, id, action }))).toEqual([
-      { kind: 'changed', type: 'namespace', scope: 'instance', id: 'OCUPROBE182BD', action: 'deleted' },
+    // Mutation (Rule 19): drop `tool` from the handler's publish -> the tool member goes red.
+    expect(events.map(({ kind, type, scope, id, action, tool }) => ({ kind, type, scope, id, action, tool }))).toEqual([
+      { kind: 'changed', type: 'namespace', scope: 'instance', id: 'OCUPROBE182BD', action: 'deleted', tool: NAMESPACES.toolIdentifier },
     ]);
   });
 

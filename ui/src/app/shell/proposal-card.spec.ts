@@ -127,6 +127,15 @@ describe('the proposal card', () => {
     expect(title.textContent).not.toContain('<name>');
   });
 
+  it("titles a task by the name the instance read, and by its id where it read none (DW-1465)", () => {
+    const task: ProposalCardView = { ...EXAMPLE_PROPOSAL, entityType: 'Task', name: '42' };
+    const titleOf = (view: ProposalCardView): string | undefined =>
+      (mount(view).card.querySelector('.ocu-proposal-card-title') as HTMLElement).textContent?.trim();
+    expect(titleOf({ ...task, targetName: 'Nightly purge' })).toBe('Proposal \u00b7 Task Nightly purge');
+    expect(titleOf({ ...task, targetName: '' })).toBe('Proposal \u00b7 Task 42');
+    expect(titleOf(task)).toBe('Proposal \u00b7 Task 42');
+  });
+
   it('draws one diff row per changed field, with the direction words read and the arrow hidden', () => {
     const { card } = mount(EXAMPLE_PROPOSAL);
     const rows = Array.from(card.querySelectorAll('.ocu-diff-row')) as HTMLElement[];

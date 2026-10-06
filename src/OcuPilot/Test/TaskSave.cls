@@ -113,6 +113,7 @@ Method TestACreateAnswersItsIdAndReadsBackWhole()
     Set tId = tAnswer.%Get("id")
     Do $$$AssertEquals(tAnswer.%GetTypeOf("id") _ " " _ tAnswer.%Get("name"), "number OcuP97W", "with the new id and the name")
     Do $$$AssertEquals(##class(OcuPilot.Test.TaskProbe).IdOf("OcuP97W"), tId, "which is the stored task's")
+    Do $$$AssertEquals(tAnswer.%Get("readBack").%Get("verdict") _ " " _ tAnswer.%Get("readBack").%Get("fields").%ToJSON(), "matches []", "and the create's read-back by the new id holds every sent key: " _ tAnswer.%Get("readBack").%ToJSON())
     Set tStored = ##class(OcuPilot.Test.TaskProbe).Stored(tId)
     Do $$$AssertTrue($IsObject(tStored), "the task reads back")
     If $IsObject(tStored) {

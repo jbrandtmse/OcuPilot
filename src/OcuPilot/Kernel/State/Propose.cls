@@ -195,6 +195,15 @@ Parameter IMPACTMAXLENGTH As INTEGER = 4000;
 /// OcuPilot reads it.</p>
 Property Impact As %String(MAXLEN = 4000);
 
+/// <p>The name a card titles the target by where the target's id is not a name -- a task's numeric id
+/// -- as <method>OcuPilot.Screen.Tool.Write.TargetName</method> answered it at the mint; <code>""</code>
+/// where the tool names none or the name could not be read.</p>
+/// <p><b>Added with no <code>SCHEMAVERSION</code> move</b>, for the reason
+/// <property>AuditWarning</property> records: every pre-existing row reads <code>""</code>, which
+/// the wire serializes as <code>""</code>, and a reader falls back to the target's id, so no older
+/// row means anything different once a newer OcuPilot reads it.</p>
+Property TargetName As %String(MAXLEN = 256);
+
 Index ProposalKeyIdx On ProposalKey [ Unique ];
 
 Index ProposalTokenIdx On Token [ Unique ];
@@ -228,7 +237,8 @@ Index ProposalTargetIdx On (TargetRef As Exact, State);
 /// <code>arguments</code>, <code>payload</code>, <code>diff</code>, <code>unchangedCount</code>,
 /// <code>rationale</code>, <code>expectedImpact</code>, <code>reverse</code>,
 /// <code>auditWarning</code>, <code>consequence</code>, <code>definitionId</code>,
-/// <code>definitionVersion</code>, <code>requiredPairs</code> and <code>impact</code>, every one already
+/// <code>definitionVersion</code>, <code>requiredPairs</code>, <code>impact</code> and
+/// <code>targetName</code>, every one already
 /// built and already stripped of secret-declared keys by
 /// <method>OcuPilot.Kernel.Proposal.Mint.Mint</method>; nothing here strips anything.
 /// <var>pLimitsClass</var> is the class <code>PROPOSALEXPIRYSECONDS</code> is read from, so a test
@@ -271,6 +281,7 @@ ClassMethod GuardedMint(ByRef pValues, pLimitsClass As %String, Output pKey As %
         Set tRow.DefinitionId = ..Cut($Get(pValues("definitionId")), 64)
         Set tRow.DefinitionVersion = ..Cut($Get(pValues("definitionVersion")), 32)
         Set tRow.RequiredPairs = $Get(pValues("requiredPairs"))
+        Set tRow.TargetName = ..Cut($Get(pValues("targetName")), 256)
         ; A cut impact would be unreadable JSON, so one over the column's length is not stored.
         Set tRow.Impact = $Select($Length($Get(pValues("impact"))) > ..#IMPACTMAXLENGTH: "", 1: $Get(pValues("impact")))
         Set tRow.CreatedAt = ..Stamp(tStamp)
@@ -760,6 +771,7 @@ ClassMethod RowValues(pRow As OcuPilot.Kernel.State.Propose, Output pValues) As 
     Set pValues("requiredPairs") = ..Text(pRow.RequiredPairs)
     Set pValues("readBack") = ..Text(pRow.ReadBack)
     Set pValues("impact") = ..Text(pRow.Impact)
+    Set pValues("targetName") = ..Text(pRow.TargetName)
     Set tSC = ..GuardedStreamText(pRow, "Arguments", .tArguments)
     If $$$ISERR(tSC) Quit tSC
     Set pValues("arguments") = tArguments
@@ -784,7 +796,8 @@ ClassMethod RowValues(pRow As OcuPilot.Kernel.State.Propose, Output pValues) As 
 /// the row's owner, evaluated at this call, or <code>null</code> when no pairs were recorded.
 /// <code>readBack</code> is the confirmed write's recorded read-back (AD-58), or <code>null</code>
 /// until one is recorded. <code>impact</code> is the removal's impact recorded at the mint (AD-8), or
-/// <code>null</code> for a write with none.</p>
+/// <code>null</code> for a write with none. <code>targetName</code> is the name the card titles the
+/// target by, or <code>""</code>.</p>
 ClassMethod WireRow(ByRef pValues, Output pOut As %DynamicObject) As %Status [ Private ]
 {
     Set pOut = ""
@@ -797,6 +810,7 @@ ClassMethod WireRow(ByRef pValues, Output pOut As %DynamicObject) As %Status [ P
     Do tOut.%Set("target", tTarget)
     Do tOut.%Set("expiresAt", $Get(pValues("expiresAt")), "string")
     Do tOut.%Set("tool", $Get(pValues("toolName")), "string")
+    Do tOut.%Set("targetName", $Get(pValues("targetName")), "string")
     Do tOut.%Set("changed", ..ParsedArray($Get(pValues("diff"))))
     Do tOut.%Set("unchangedCount", +$Get(pValues("unchangedCount")), "number")
     Do tOut.%Set("unchanged", ##class(OcuPilot.Kernel.Proposal.Disclosure).Rows($Get(pValues("toolName")), $Get(pValues("payload")), $Get(pValues("diff"))))

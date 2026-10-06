@@ -352,6 +352,99 @@ ClassMethod MemberViolations(pMetadata As %DynamicObject, ByRef pViolations) As 
     Quit $$$OK
 }
 
+/// <p>The metadata <var>pFresh</var> holds, settable members only, with each member
+/// <var>pChanges</var> names applied: a member set to <code>""</code>, <code>[]</code> or
+/// <code>null</code> is removed, which <method>Expand</method> then sends empty; any other value
+/// replaces the stored one. A registration member the instance manages is not carried, because the
+/// port sends it as its own fresh read has it. The caller has held <var>pChanges</var> to
+/// <method>MemberViolations</method>.</p>
+ClassMethod MergedMetadata(pFresh As %DynamicObject, pChanges As %DynamicObject) As %DynamicObject
+{
+    Set tMerged = {}
+    If $IsObject(pFresh) && (pFresh.%GetTypeOf(..#FIELDMETADATA) = "object") {
+        Set tStored = pFresh.%Get(..#FIELDMETADATA).%GetIterator()
+        While tStored.%GetNext(.tMember, .tValue) {
+            If '..Settable(tMember) Continue
+            If $IsObject(tValue) {
+                Do tMerged.%Set(tMember, ##class(%DynamicAbstractObject).%FromJSON(tValue.%ToJSON()))
+            } Else {
+                Do tMerged.%Set(tMember, tValue, pFresh.%Get(..#FIELDMETADATA).%GetTypeOf(tMember))
+            }
+        }
+    }
+    Set tIterator = pChanges.%GetIterator()
+    While tIterator.%GetNext(.tMember, .tValue) {
+        Set tType = pChanges.%GetTypeOf(tMember)
+        If (tType = "null") || ((tType = "string") && (tValue = "")) || ((tType = "array") && (tValue.%Size() = 0)) {
+            Do tMerged.%Remove(tMember)
+        } ElseIf (tType = "array") || (tType = "object") {
+            Do tMerged.%Set(tMember, ##class(%DynamicAbstractObject).%FromJSON(tValue.%ToJSON()))
+        } Else {
+            Do tMerged.%Set(tMember, tValue, tType)
+        }
+    }
+    Quit tMerged
+}
+
+/// <p>The card's rows for a change from <var>pFresh</var> to <var>pPayload</var>: <var>pDiff</var>'s
+/// rows with <code>Metadata</code> drawn as one row per settable member it changes, a member the edit
+/// removed among them. Nothing is added or removed but the metadata row.</p>
+ClassMethod CardRows(pFresh As %DynamicObject, pPayload As %DynamicObject, pDiff As %DynamicArray) As %DynamicArray
+{
+    Set tRows = []
+    Set tIterator = pDiff.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tRow) {
+        If '$IsObject(tRow) Continue
+        If tRow.%Get("field") '= ..#FIELDMETADATA {
+            Do tRows.%Push(tRow)
+            Continue
+        }
+        Set tBefore = $Select($IsObject(pFresh) && (pFresh.%GetTypeOf(..#FIELDMETADATA) = "object"): pFresh.%Get(..#FIELDMETADATA), 1: {})
+        Set tAfter = $Select($IsObject(pPayload) && (pPayload.%GetTypeOf(..#FIELDMETADATA) = "object"): pPayload.%Get(..#FIELDMETADATA), 1: {})
+        Kill tNames
+        Set tCount = 0
+        Set tMembers = tAfter.%GetIterator()
+        While tMembers.%GetNext(.tMember, .tValue) {
+            Set tCount = tCount + 1
+            Set tNames(tCount) = tMember
+        }
+        Set tMembers = tBefore.%GetIterator()
+        While tMembers.%GetNext(.tMember, .tValue) {
+            If (tAfter.%GetTypeOf(tMember) '= "unassigned") || '..Settable(tMember) Continue
+            Set tCount = tCount + 1
+            Set tNames(tCount) = tMember
+        }
+        For tI = 1:1:tCount {
+            Set tMember = tNames(tI)
+            Set tOld = ..CardText(tBefore, tMember)
+            Set tNew = ..CardText(tAfter, tMember)
+            If tOld = tNew Continue
+            Set tMemberRow = {}
+            Do tMemberRow.%Set("field", ..#FIELDMETADATA _ "." _ tMember, "string")
+            Do tMemberRow.%Set("before", tOld, "string")
+            Do tMemberRow.%Set("after", tNew, "string")
+            Do tRows.%Push(tMemberRow)
+        }
+    }
+    Quit tRows
+}
+
+/// <p>Metadata member <var>pMember</var> of <var>pObject</var> as card text: a list as its entries,
+/// comma-separated, a flag as <code>true</code> or <code>false</code>, an absent member as
+/// <code>""</code>.</p>
+ClassMethod CardText(pObject As %DynamicObject, pMember As %String) As %String [ Private ]
+{
+    If '$IsObject(pObject) Quit ""
+    Set tType = pObject.%GetTypeOf(pMember)
+    If tType '= "array" Quit ##class(OcuPilot.Kernel.Proposal.Mint).Display(pObject.%Get(pMember), tType)
+    Set tText = ""
+    Set tEntries = pObject.%Get(pMember).%GetIterator()
+    While tEntries.%GetNext(.tIndex, .tEntry) {
+        Set tText = tText _ $Select(tText = "": "", 1: ", ") _ tEntry
+    }
+    Quit tText
+}
+
 /// <p>Make <var>pPayload</var> the body the vendor's <code>PUT</code> takes: its derived template
 /// fields and nothing else (AD-3), with <code>Metadata</code> carrying no secret member. For an edit
 /// (<var>pComplete</var> 1) it carries every settable member (AD-4), a member the payload leaves out

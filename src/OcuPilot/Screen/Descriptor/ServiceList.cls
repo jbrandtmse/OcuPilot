@@ -14,7 +14,8 @@
 /// <p><b>An empty <code>AllowedConnections</code> means unrestricted.</b> The vendor encodes the
 /// unrestricted case as <code>[]</code>, and the read and the tool carry that array as it comes;
 /// the column declares <code>emptyKey</code> so its empty cell reads "Unrestricted" rather than
-/// "(none)", which would read as no address allowed.</p>
+/// "(none)", which would read as no address allowed. The read's <code>note</code> says the same in a
+/// sentence, shown above the rows and ending the read tool's description (AD-36).</p>
 /// <p><b>The privilege set is <code>%Admin_Secure:USE</code> and <code>%DB_IRISSYS:READ</code></b>,
 /// the Users list's set and order. The first is the vendor's <code>ResourcesOR()</code> and the
 /// classic page's own resource; without the second the vendor endpoint fails inside
@@ -65,7 +66,8 @@ XData Declaration
     "fields": ["Name", "Enabled", "Public", "AuthenticationMethods", "AllowedConnections", "Description", "HttpOnlyCookies", "TwoFactorEnabled"],
     "filter": ["Name", "Description", "AuthenticationMethods", "AllowedConnections"],
     "sort": {"fields": ["Name", "Description"], "default": "Name", "direction": "asc"},
-    "paging": "cap"
+    "paging": "cap",
+    "note": {"key": "serviceListNote", "text": "An empty Allowed IP addresses list (AllowedConnections) means any address may connect."}
   },
   "table": {
     "columns": [

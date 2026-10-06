@@ -17790,7 +17790,11 @@ export const SCREENS: readonly ScreenDeclaration[] = [
         "default": "Name",
         "direction": "asc"
       },
-      "paging": "cap"
+      "paging": "cap",
+      "note": {
+        "key": "serviceListNote",
+        "text": "An empty Allowed IP addresses list (AllowedConnections) means any address may connect."
+      }
     },
     "table": {
       "columns": [

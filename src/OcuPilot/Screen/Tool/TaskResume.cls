@@ -211,4 +211,11 @@ ClassMethod ReadsSuspended(pRendered As %String) As %Boolean [ Private ]
     Quit (+pRendered > 0)
 }
 
+/// <p>The task's name, which the state-only <code>INFO</code> read does not answer: a second
+/// <code>GET</code> through this tool's own port, and <code>""</code> when it fails.</p>
+ClassMethod TargetName(pFresh, pId As %String, pArgs) As %String
+{
+    Quit ##class(OcuPilot.Area.Task.TaskRules).NameOfId(..PortClass(), pId)
+}
+
 }

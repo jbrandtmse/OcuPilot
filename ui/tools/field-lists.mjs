@@ -63,7 +63,7 @@ export const DEFAULT_CLASS = 'secret';
 export const ENTRY_KEYS = ['fieldList', 'classification', 'authored', 'compare', 'required', 'enum', 'description'];
 
 /** The closed vocabulary of read-back comparison modes an entry's `compare` may declare (AD-58). */
-export const COMPARE_MODES = ['unordered', 'unslashed', 'words', 'letters', 'members', 'written'];
+export const COMPARE_MODES = ['unordered', 'unslashed', 'words', 'letters', 'members', 'caller', 'written'];
 
 /** The modes that compare one text value, the only ones an element member may declare. */
 export const TEXT_MODES = ['unslashed', 'words', 'letters'];
@@ -358,7 +358,7 @@ export function classify(lists, entries) {
           }
           if (mode === 'unordered' && row.shape !== 'array') refuse(`compare path ${path} is a ${row.shape} and cannot be unordered`);
           if (mode === 'members' && row.shape !== 'object') refuse(`compare path ${path} is a ${row.shape} and cannot be members`);
-          if (TEXT_MODES.includes(mode) && row.shape !== 'literal') refuse(`compare path ${path} is a ${row.shape} and cannot be ${mode}`);
+          if ((TEXT_MODES.includes(mode) || mode === 'caller') && row.shape !== 'literal') refuse(`compare path ${path} is a ${row.shape} and cannot be ${mode}`);
         }
         if (problems.length === before) {
           for (const field of fields) {

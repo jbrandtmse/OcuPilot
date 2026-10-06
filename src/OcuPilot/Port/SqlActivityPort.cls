@@ -231,7 +231,8 @@ ClassMethod Rows(pMax As %Integer, Output pRows As %DynamicArray) As %Status [ P
 }
 
 /// <p>The text of the statement <var>pHash</var> running in <var>pNamespace</var>, shaped
-/// (<method>Shape</method>), in <var>pText</var>. <var>pAllowed</var> holds, per namespace, whether the
+/// (<method>Shape</method>) with a credential value masked
+/// (<method>OcuPilot.Port.SqlPort.MaskCredentials</method>), in <var>pText</var>. <var>pAllowed</var> holds, per namespace, whether the
 /// caller holds READ on its routines and globals databases, resolved once per read through
 /// <method>OcuPilot.Port.AtelierPort.DatabaseResources</method>; a namespace whose resources do not
 /// resolve, or whose pairs the caller lacks, answers <code>""</code> without calling the vendor. An
@@ -248,7 +249,7 @@ ClassMethod StatementText(pNamespace As %String, pHash As %String, ByRef pAllowe
         If $ListFind($ListFromString($System.Status.GetErrorCodes(tStatus)), ..#CODEWITHHELD) Quit $$$OK
         Quit tStatus
     }
-    Set pText = ..Shape(tText)
+    Set pText = ##class(OcuPilot.Port.SqlPort).MaskCredentials(..Shape(tText))
     Quit $$$OK
 }
 

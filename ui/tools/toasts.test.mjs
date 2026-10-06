@@ -171,6 +171,34 @@ test('a change raises its toast on the entity\'s details screen, and only the en
   );
 });
 
+// DW-1939: Local and Remote databases both show `database-configuration`, and the tool that made the
+// change names which list its toast opens. With no tool the type's first-listed screen answers.
+//
+// Mutation (Rule 19): drop the tool branch in `screenForChange` -> this test and the navigation leg go red.
+test('a remote database change opens Remote databases, even while Local databases is open', () => {
+  const remote = changed({
+    type: 'database-configuration',
+    scope: 'instance',
+    id: 'REMX',
+    proposalId: 'p-9',
+    tool: 'osmgmt.remotedatabases.create',
+  });
+  const local = wired({ url: '/os-management/local-databases?ns=HSCUSTOM' });
+  assert.equal(local.store.publish(remote), true, 'the Local databases list is not the change\'s target');
+  const [toast] = local.store.toasts();
+  assert.ok(toast.route.startsWith('os-management/remote-databases/'), `opens Remote databases: ${toast.route}`);
+  assert.equal(toast.descriptor, 'OcuPilot.Screen.Descriptor.RemoteDatabaseList');
+  const bus = new ChangeBus();
+  const seen = [];
+  bus.subscribe((event) => seen.push(event));
+  bus.publish({ kind: 'changed', type: 'database-configuration', scope: 'instance', id: 'REMX', action: 'created', tool: 'osmgmt.remotedatabases.create' });
+  assert.equal(seen[0].tool, 'osmgmt.remotedatabases.create', 'the bus carries the tool onto the event');
+  const own = wired({ url: '/os-management/remote-databases?ns=HSCUSTOM' });
+  assert.equal(own.store.publish(remote), false, 'the Remote databases list itself raises nothing');
+  const untooled = wired({ url: '/os-management/local-databases?ns=HSCUSTOM' });
+  assert.equal(untooled.store.publish({ ...remote, tool: undefined }), false, 'no tool: the lowest side-bar position, as before');
+});
+
 // DW-1597: a screen's own write carries no `proposalId`, and while the open screen shows that entity
 // -- the editor that just saved it -- it raises nothing. An agent write, and a screen write that lands
 // after the user has moved to another entity type's screen, still toast.

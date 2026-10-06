@@ -55,6 +55,7 @@ ClassMethod ProhibitedClass() As %String
 ClassMethod HandleCreate() As %Status
 {
     Set tSC = $$$OK
+    Set tHoldKey = ""
     Try {
         Set tGateSC = ..Gate(.tRefused)
         If tRefused || $$$ISERR(tGateSC) {
@@ -65,6 +66,11 @@ ClassMethod HandleCreate() As %Status
         Set tReadSC = ##class(OcuPilot.Kernel.Utils).ReadRequestBody(.tBody, .tStage)
         If $$$ISERR(tReadSC) || '$IsObject(tBody) || 'tBody.%IsA("%Library.DynamicObject") {
             Set tSC = ##class(OcuPilot.Api.Error).Render(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#REASONAGENTBADBODY, ##class(OcuPilot.Api.Error).#AGENTBADBODY)
+            Quit
+        }
+        Set tHoldSC = ##class(OcuPilot.Kernel.Proposal.Operation).HoldTool(..#CREATETOOL, ##class(OcuPilot.Kernel.Proposal.Operation).BodyIdOf(..#CREATETOOL, tBody), .tHeld, .tHoldKey)
+        If $$$ISERR(tHoldSC) || 'tHeld {
+            Set tSC = ##class(OcuPilot.Api.Error).RenderTargetBusy(tHoldSC)
             Quit
         }
         Set tPerformSC = ..Create(tBody, .tHttp, .tFault, .tViolations, .tId, .tReadBack)
@@ -88,6 +94,7 @@ ClassMethod HandleCreate() As %Status
     } Catch ex {
         Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ex)
     }
+    Do ##class(OcuPilot.Kernel.Proposal.Operation).Release(tHoldKey)
     Quit tSC
 }
 
@@ -173,6 +180,7 @@ ClassMethod Create(pArgs As %DynamicObject, Output pHttpStatus As %Integer, Outp
 ClassMethod HandleUpdate(pId As %String) As %Status
 {
     Set tSC = $$$OK
+    Set tHoldKey = ""
     Try {
         Set tGateSC = ..Gate(.tRefused, ..#UPDATETOOL)
         If tRefused || $$$ISERR(tGateSC) {
@@ -186,6 +194,11 @@ ClassMethod HandleUpdate(pId As %String) As %Status
             Quit
         }
         Set tId = ##class(OcuPilot.Kernel.EntityId).Decode(pId)
+        Set tHoldSC = ##class(OcuPilot.Kernel.Proposal.Operation).HoldTool(..#UPDATETOOL, tId, .tHeld, .tHoldKey)
+        If $$$ISERR(tHoldSC) || 'tHeld {
+            Set tSC = ##class(OcuPilot.Api.Error).RenderTargetBusy(tHoldSC)
+            Quit
+        }
         Set tPerformSC = ..Update(tId, tBody, .tHttp, .tFault, .tViolations, .tName, .tReadBack)
         If $Get(tViolations) > 0 {
             Set tSC = ..RenderViolations(.tViolations)
@@ -211,6 +224,7 @@ ClassMethod HandleUpdate(pId As %String) As %Status
     } Catch ex {
         Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ex)
     }
+    Do ##class(OcuPilot.Kernel.Proposal.Operation).Release(tHoldKey)
     Quit tSC
 }
 

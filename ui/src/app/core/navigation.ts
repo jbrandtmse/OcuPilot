@@ -548,12 +548,28 @@ export interface ChangeTarget {
  * (AD-36, Story 18.14): a mapping list's route id is the namespace it reads, not the mapping, so a
  * change to `[namespace, Name]` opens that namespace's list rather than reading for the joined id.
  */
-export function screenForChange(event: { readonly type: string; readonly id: string }): ChangeTarget | null {
-  const screen = screenForEntityType(event.type);
+export function screenForChange(event: {
+  readonly type: string;
+  readonly id: string;
+  readonly tool?: string;
+}): ChangeTarget | null {
+  const screen = ownerListFor(event.type, event.tool ?? '') ?? screenForEntityType(event.type);
   if (screen === null) return null;
   const route =
     hasIdRoute(screen) && event.id !== '' ? `${screen.route}/${encodeEntityId(routeIdFor(screen, event.id))}` : screen.route;
   return { screen, route };
+}
+
+/**
+ * The built list that owns write tool `tool` when it shows entity type `type`, or `null`. Two lists
+ * may show one type (Local and Remote databases both show `database-configuration`), and the tool
+ * that made the change names which one it belongs to.
+ */
+function ownerListFor(type: string, tool: string): ScreenDeclaration | null {
+  if (tool === '') return null;
+  const owner = screenForToolName(tool);
+  if (owner === null || !owner.built || owner.entityType !== type || !LIST_ARCHETYPES.has(owner.archetype)) return null;
+  return owner;
 }
 
 /** The route id that opens `screen` on entity `id`: the id itself, or its parent part (above). */

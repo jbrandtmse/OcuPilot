@@ -25,6 +25,7 @@ import {
   formatRemovalResidue,
   offersRepropose,
   statusLineFor,
+  cardTitleName,
 } from '../core/proposal-view';
 import { impactLine } from '../core/impact';
 import { type ReadBack, readBackLine } from '../core/read-back';
@@ -566,7 +567,7 @@ export class ProposalCard {
 
   protected get title(): string {
     const view = this.view();
-    return formatProposalTitle(STRINGS.proposalCardTitle, view.entityType, view.name);
+    return formatProposalTitle(STRINGS.proposalCardTitle, view.entityType, cardTitleName(view));
   }
 
   protected get changedRows(): readonly ProposalDiffRow[] {

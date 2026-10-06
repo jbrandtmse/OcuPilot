@@ -784,6 +784,8 @@ export const STRINGS = {
   serviceAllowedUnrestricted: 'Unrestricted',
   /** EXPERIENCE.md:361 */
   serviceListEmpty: 'No services on this instance.',
+  /** EXPERIENCE.md:361 */
+  serviceListNote: 'An empty Allowed IP addresses list (AllowedConnections) means any address may connect.',
   /** EXPERIENCE.md:362 */
   x509ListLabel: 'X.509',
   /** EXPERIENCE.md:362 */

@@ -537,8 +537,11 @@ ClassMethod Diff(pField As %String) As %String
 /// <p>AC2, AC5 (Story 7.4): the Auditing configuration screen's own actions, over
 /// <code>POST /screens/security.auditing/action</code> as the test account. The disable answers
 /// 200 with the change triple, turns auditing off and records the fact the panel banner reads,
-/// through <code>GET /agent/restraint</code>; the enable turns it back on and clears the fact. The
-/// screen caller mints nothing, writes no ledger row and emits no OcuPilot marker (AD-53).</p>
+/// through <code>GET /agent/restraint</code>; the enable turns it back on, after which the read
+/// answers marked. The screen caller mints nothing, writes no ledger row and emits no OcuPilot
+/// marker (AD-53). Only the disable direction is pinned here: the read re-observes the flags itself
+/// while the fact reads not-marked, so the clear after an enable does not depend on this action
+/// (<class>OcuPilot.Test.MarkingRestraint</class>).</p>
 Method TestTheScreenActionTurnsAuditingOffAndOnAndMovesTheBanner()
 {
     Do $$$AssertEquals(..AuditEnabled(), 1, "the instance starts audited, so the disable has something to change")

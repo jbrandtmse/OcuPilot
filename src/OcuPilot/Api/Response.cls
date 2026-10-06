@@ -8,13 +8,17 @@ Class OcuPilot.Api.Response Extends %RegisteredObject
 
 /// <p>Write a JSON success response with HTTP 200.</p>
 /// <p>If <var>pData</var> is an object (<class>%DynamicObject</class> or
-/// <class>%DynamicArray</class>), calls <method>%ToJSON</method>. Otherwise writes the
-/// raw string value.</p>
+/// <class>%DynamicArray</class>), serializes it into a stream and writes the stream out, so an
+/// answer longer than one ObjectScript string still goes out whole. Otherwise writes the raw
+/// string value.</p>
 ClassMethod JSON(pData) As %Status
 {
     Set %response.ContentType = "application/json"
     If $IsObject(pData) {
-        Write pData.%ToJSON()
+        Set tStream = ##class(%Stream.TmpCharacter).%New()
+        Do pData.%ToJSON(tStream)
+        Do tStream.Rewind()
+        Do tStream.OutputToDevice()
     } Else {
         Write pData
     }

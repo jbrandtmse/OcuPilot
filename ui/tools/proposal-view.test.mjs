@@ -100,7 +100,9 @@ const {
   phaseForState,
   statusLineFor,
   toCardView,
+  cardTitleName,
 } = await import(corePath('proposal-view.ts'));
+const { formatProposalTitle } = await import(join(uiRoot, 'src', 'app', 'shell', 'example-proposal.ts'));
 const { PROPOSAL_EXPIRED_STATE, PROPOSAL_LIVE_STATE, parseProposals, restoredProposals } =
   await import(corePath('turn.ts'));
 const { STRINGS } = await import(corePath('strings.ts'));
@@ -168,6 +170,28 @@ test('toCardView takes the noun from the screen and everything else from the pro
     { field: 'Enabled', before: 'false', after: 'true', removed: false },
     { field: 'Password', before: 'old', after: 'new', removed: false },
   ]);
+});
+
+// DW-1465. Mutation (Rule 19): have `cardTitleName` answer `view.name` -> the named leg goes red, and a
+// task card is titled by its numeric id.
+test('a task card is titled by the name the instance read, and by its id where it read none (DW-1465)', () => {
+  const task = (overrides) =>
+    toCardView(
+      parsedProposal({ target: { type: 'task', scope: 'instance', id: '42' }, ...overrides }),
+      'Task'
+    );
+  const named = task({ targetName: 'Nightly purge' });
+  assert.equal(named.name, '42', 'the id stays the id');
+  assert.equal(
+    formatProposalTitle(STRINGS.proposalCardTitle, named.entityType, cardTitleName(named)),
+    'Proposal \u00b7 Task Nightly purge'
+  );
+  for (const unread of [task({ targetName: '' }), task({})]) {
+    assert.equal(
+      formatProposalTitle(STRINGS.proposalCardTitle, unread.entityType, cardTitleName(unread)),
+      'Proposal \u00b7 Task 42'
+    );
+  }
 });
 
 test('a removal row travels off the wire, and a row with an after-state is not one (DW-1228)', () => {

@@ -70,6 +70,11 @@ export interface ProposalCardView {
   readonly targetType?: string;
   /** The target's own name, as the instance stores it ("/csp/myapp"). */
   readonly name: string;
+  /**
+   * The name the title reads where `name` is an id rather than a name (a task's numeric id), or
+   * `''`; `cardTitleName` answers the one the title shows.
+   */
+  readonly targetName?: string;
   /** The changed fields, first in the card and one `diff-row` each. */
   readonly changed: readonly ProposalDiffRow[];
   /** How many fields the payload also sends unchanged (AD-4), for the collapsed caption. */
@@ -664,6 +669,7 @@ export function toCardView(
     entityType: entityLabel,
     targetType: proposal.target.type,
     name: proposal.target.id,
+    targetName: proposal.targetName ?? '',
     changed: proposal.changed.map((row) => (secrets.has(row.field) ? maskedRow(row) : row)),
     unchangedCount: proposal.unchangedCount,
     unchanged: proposal.unchanged,
@@ -680,6 +686,12 @@ export function toCardView(
     impact: proposal.impact ?? null,
     refusalReason,
   };
+}
+
+/** The name the card's title shows: the instance's `targetName`, else the target's id. */
+export function cardTitleName(view: Pick<ProposalCardView, 'name' | 'targetName'>): string {
+  const named = view.targetName ?? '';
+  return named !== '' ? named : view.name;
 }
 
 /**

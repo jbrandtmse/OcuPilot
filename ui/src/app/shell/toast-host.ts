@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '
 import { Router } from '@angular/router';
 
 import { ChangeBus } from '../core/change-bus';
-import { screenForEntityType, withQuery } from '../core/navigation';
+import { screenForDescriptor, withQuery } from '../core/navigation';
 import { PanelState } from '../core/panel-layout';
 import { ScopeService } from '../core/scope';
 import { ShellState } from '../core/shell-state';
@@ -192,7 +192,7 @@ export class ToastHost {
    */
   protected open(toast: ToastEntry): void {
     if (toast.route === '') return;
-    const screen = screenForEntityType(toast.entityType);
+    const screen = screenForDescriptor(toast.descriptor);
     if (screen !== null) this.shell.showArea(screen.area);
     this.store.dismiss(toast.id);
     void this.router.navigateByUrl(withQuery(toast.route, this.router.url));
@@ -220,7 +220,7 @@ export class ToastHost {
 
   /** The target screen's own published title, or `''` while no built screen shows the type. */
   private screenTitle(toast: ToastEntry): string {
-    const screen = screenForEntityType(toast.entityType);
+    const screen = screenForDescriptor(toast.descriptor);
     return screen === null ? '' : stringFor(screen.labelKey);
   }
 }

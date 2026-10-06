@@ -31,6 +31,7 @@ Parameter RULES = "OcuPilot.Area.OsMgmt.RemoteDatabaseRules";
 ClassMethod HandleUpdate(pId As %String) As %Status
 {
     Set tSC = $$$OK
+    Set tHoldKey = ""
     Try {
         If '..Body(.tBody) {
             Set tSC = ##class(OcuPilot.Api.Error).Render(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#REASONAGENTBADBODY, ##class(OcuPilot.Api.Error).#AGENTBADBODY)
@@ -44,6 +45,11 @@ ClassMethod HandleUpdate(pId As %String) As %Status
             Set tSC = tGateSC
             Quit
         }
+        Set tHoldSC = ##class(OcuPilot.Kernel.Proposal.Operation).HoldTool(..#UPDATETOOL, tName, .tHeld, .tHoldKey)
+        If $$$ISERR(tHoldSC) || 'tHeld {
+            Set tSC = ##class(OcuPilot.Api.Error).RenderTargetBusy(tHoldSC)
+            Quit
+        }
         Set tPerformSC = ..Update(..#UPDATETOOL, tName, ##class(OcuPilot.Port.DatabasePort).Without(tBody, $ListBuild(..#IDARGUMENT)), .tHttp, .tFault, .tViolations, .tReadBack)
         If $$$ISERR(tPerformSC) && (+$Get(tViolations) = 0) && (+$Get(tHttp) = 404) {
             Set tSC = ##class(OcuPilot.Api.Error).Render(404, ##class(OcuPilot.Api.Error).#NOTFOUND, ##class(OcuPilot.Api.DatabaseError).#REASONNAMEABSENT, ##class(OcuPilot.Api.DatabaseError).#NAMEABSENT)
@@ -53,6 +59,7 @@ ClassMethod HandleUpdate(pId As %String) As %Status
     } Catch ex {
         Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ex)
     }
+    Do ##class(OcuPilot.Kernel.Proposal.Operation).Release(tHoldKey)
     Quit tSC
 }
 

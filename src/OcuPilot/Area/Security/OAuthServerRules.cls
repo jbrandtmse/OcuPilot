@@ -520,6 +520,97 @@ ClassMethod MemberText(pMetadata As %DynamicObject, pMember As %String) As %Stri
     Quit $ZStrip(pMetadata.%Get(pMember), "<>W")
 }
 
+/// <p>The metadata <var>pFresh</var> holds with each member <var>pChanges</var> names applied: a
+/// member set to <code>""</code>, <code>[]</code> or <code>null</code> is removed, which the
+/// expansion then sends empty; any other value replaces the stored one. The caller has held
+/// <var>pChanges</var> to <method>MemberViolations</method>, which refuses <code>null</code>.</p>
+ClassMethod MergedMetadata(pFresh As %DynamicObject, pChanges As %DynamicObject) As %DynamicObject
+{
+    Set tMerged = {}
+    If $IsObject(pFresh) && (pFresh.%GetTypeOf(..#FIELDMETADATA) = "object") Set tMerged = ##class(%DynamicAbstractObject).%FromJSON(pFresh.%Get(..#FIELDMETADATA).%ToJSON())
+    Set tIterator = pChanges.%GetIterator()
+    While tIterator.%GetNext(.tMember, .tValue) {
+        Set tType = pChanges.%GetTypeOf(tMember)
+        If (tType = "null") || ((tType = "string") && (tValue = "")) || ((tType = "array") && (tValue.%Size() = 0)) {
+            Do tMerged.%Remove(tMember)
+        } ElseIf (tType = "array") || (tType = "object") {
+            Do tMerged.%Set(tMember, ##class(%DynamicAbstractObject).%FromJSON(tValue.%ToJSON()))
+        } Else {
+            Do tMerged.%Set(tMember, tValue, tType)
+        }
+    }
+    Quit tMerged
+}
+
+/// <p>A copy of <var>pArgs</var> whose <code>Metadata</code>, when it is an object, is
+/// <method>MergedMetadata</method> over <var>pFresh</var>: the arguments as the description will hold
+/// them, for the rules that judge the whole metadata.</p>
+ClassMethod MergedArguments(pFresh As %DynamicObject, pArgs As %DynamicObject) As %DynamicObject
+{
+    Set tArgs = ##class(%DynamicAbstractObject).%FromJSON($Select($IsObject(pArgs): pArgs.%ToJSON(), 1: "{}"))
+    If tArgs.%GetTypeOf(..#FIELDMETADATA) = "object" Do tArgs.%Set(..#FIELDMETADATA, ..MergedMetadata(pFresh, tArgs.%Get(..#FIELDMETADATA)))
+    Quit tArgs
+}
+
+/// <p>The card's rows for a change from <var>pFresh</var> to <var>pPayload</var>: <var>pDiff</var>'s
+/// rows with <code>Metadata</code> drawn as one row per member it changes, a member the edit removed
+/// among them. Nothing is added or removed but the metadata row.</p>
+ClassMethod CardRows(pFresh As %DynamicObject, pPayload As %DynamicObject, pDiff As %DynamicArray) As %DynamicArray
+{
+    Set tRows = []
+    Set tIterator = pDiff.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tRow) {
+        If '$IsObject(tRow) Continue
+        If tRow.%Get("field") '= ..#FIELDMETADATA {
+            Do tRows.%Push(tRow)
+            Continue
+        }
+        Set tBefore = $Select($IsObject(pFresh) && (pFresh.%GetTypeOf(..#FIELDMETADATA) = "object"): pFresh.%Get(..#FIELDMETADATA), 1: {})
+        Set tAfter = $Select($IsObject(pPayload) && (pPayload.%GetTypeOf(..#FIELDMETADATA) = "object"): pPayload.%Get(..#FIELDMETADATA), 1: {})
+        Kill tNames
+        Set tCount = 0
+        Set tMembers = tAfter.%GetIterator()
+        While tMembers.%GetNext(.tMember, .tValue) {
+            Set tCount = tCount + 1
+            Set tNames(tCount) = tMember
+        }
+        Set tMembers = tBefore.%GetIterator()
+        While tMembers.%GetNext(.tMember, .tValue) {
+            If tAfter.%GetTypeOf(tMember) '= "unassigned" Continue
+            Set tCount = tCount + 1
+            Set tNames(tCount) = tMember
+        }
+        For tI = 1:1:tCount {
+            Set tMember = tNames(tI)
+            Set tOld = ..CardText(tBefore, tMember)
+            Set tNew = ..CardText(tAfter, tMember)
+            If tOld = tNew Continue
+            Set tMemberRow = {}
+            Do tMemberRow.%Set("field", ..#FIELDMETADATA _ "." _ tMember, "string")
+            Do tMemberRow.%Set("before", tOld, "string")
+            Do tMemberRow.%Set("after", tNew, "string")
+            Do tRows.%Push(tMemberRow)
+        }
+    }
+    Quit tRows
+}
+
+/// <p>Metadata member <var>pMember</var> of <var>pObject</var> as card text: a list as its entries,
+/// comma-separated, a flag as <code>true</code> or <code>false</code>, an absent member as
+/// <code>""</code>.</p>
+ClassMethod CardText(pObject As %DynamicObject, pMember As %String) As %String [ Private ]
+{
+    If '$IsObject(pObject) Quit ""
+    Set tType = pObject.%GetTypeOf(pMember)
+    If tType '= "array" Quit ##class(OcuPilot.Kernel.Proposal.Mint).Display(pObject.%Get(pMember), tType)
+    Set tText = ""
+    Set tEntries = pObject.%Get(pMember).%GetIterator()
+    While tEntries.%GetNext(.tIndex, .tEntry) {
+        Set tText = tText _ $Select(tText = "": "", 1: ", ") _ tEntry
+    }
+    Quit tText
+}
+
 /// <p>Append one <code>(field, code)</code> violation.</p>
 ClassMethod Add(Output pViolations, pField As %String, pCode As %String) [ Private ]
 {

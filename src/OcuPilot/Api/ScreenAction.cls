@@ -266,7 +266,7 @@ ClassMethod Run(pTool As %DynamicObject, pToolClass As %String, pActionId As %St
                 Quit
             }
             If 'tHeld {
-                Set tSC = ##class(OcuPilot.Api.Error).Render(409, ##class(OcuPilot.Api.Error).#CONFLICT, ##class(OcuPilot.Api.Error).#REASONWRITETARGETBUSY, ##class(OcuPilot.Api.Error).#WRITETARGETBUSY)
+                Set tSC = ##class(OcuPilot.Api.Error).RenderTargetBusy()
                 Quit
             }
         }

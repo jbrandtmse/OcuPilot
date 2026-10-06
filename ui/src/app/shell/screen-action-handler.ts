@@ -1280,6 +1280,7 @@ export class ScreenActionHandler {
       action: (answer?.action ?? '') as ChangeAction,
       // AD-58: the instance's verdict rides beside the mark; the client compares nothing.
       readBack: readBackOf(answer?.readBack),
+      tool: addressed.toolIdentifier,
     });
     return true;
   }

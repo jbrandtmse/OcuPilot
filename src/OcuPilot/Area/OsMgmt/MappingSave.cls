@@ -51,6 +51,7 @@ ClassMethod ProhibitedClass() As %String
 ClassMethod HandleCreate(pKind As %String) As %Status
 {
     Set tSC = $$$OK
+    Set tHoldKey = ""
     Try {
         If '$ClassMethod(..#RULES, "IsKind", pKind) {
             Set tSC = $ClassMethod(..#RULES, "NotAKind")
@@ -69,11 +70,17 @@ ClassMethod HandleCreate(pKind As %String) As %Status
         Set tName = ""
         If tBody.%GetTypeOf(..#NAMESPACEARGUMENT) = "string" Set tNamespace = tBody.%Get(..#NAMESPACEARGUMENT)
         If tBody.%GetTypeOf(..#IDARGUMENT) = "string" Set tName = tBody.%Get(..#IDARGUMENT)
+        Set tHoldSC = ##class(OcuPilot.Kernel.Proposal.Operation).HoldTool(##class(OcuPilot.Area.OsMgmt.MappingRules).ToolClass(pKind, "Create"), ##class(OcuPilot.Kernel.EntityId).JoinComposite($ListBuild(tNamespace, tName)), .tHeld, .tHoldKey)
+        If $$$ISERR(tHoldSC) || 'tHeld {
+            Set tSC = ##class(OcuPilot.Api.Error).RenderTargetBusy(tHoldSC)
+            Quit
+        }
         Set tPerformSC = ..Create(pKind, tNamespace, tName, tBody, .tHttp, .tFault, .tViolations, .tReadBack)
         Set tSC = ..Answer(tPerformSC, .tViolations, $Get(tHttp), $Get(tFault), 201, tNamespace, tName, $Get(tReadBack))
     } Catch ex {
         Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ex)
     }
+    Do ##class(OcuPilot.Kernel.Proposal.Operation).Release(tHoldKey)
     Quit tSC
 }
 
@@ -85,6 +92,7 @@ ClassMethod HandleCreate(pKind As %String) As %Status
 ClassMethod HandleUpdate(pKind As %String, pId As %String) As %Status
 {
     Set tSC = $$$OK
+    Set tHoldKey = ""
     Try {
         If '$ClassMethod(..#RULES, "IsKind", pKind) {
             Set tSC = $ClassMethod(..#RULES, "NotAKind")
@@ -106,6 +114,11 @@ ClassMethod HandleUpdate(pKind As %String, pId As %String) As %Status
             Set tSC = ..Absent()
             Quit
         }
+        Set tHoldSC = ##class(OcuPilot.Kernel.Proposal.Operation).HoldTool(##class(OcuPilot.Area.OsMgmt.MappingRules).ToolClass(pKind, "Update"), ##class(OcuPilot.Kernel.EntityId).JoinComposite($ListBuild(tNamespace, tName)), .tHeld, .tHoldKey)
+        If $$$ISERR(tHoldSC) || 'tHeld {
+            Set tSC = ##class(OcuPilot.Api.Error).RenderTargetBusy(tHoldSC)
+            Quit
+        }
         Set tPerformSC = ..Update(pKind, tNamespace, tName, tBody, .tHttp, .tFault, .tViolations, .tReadBack)
         If $$$ISERR(tPerformSC) && (+$Get(tHttp) = 404) {
             Set tSC = ..Absent()
@@ -115,6 +128,7 @@ ClassMethod HandleUpdate(pKind As %String, pId As %String) As %Status
     } Catch ex {
         Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ex)
     }
+    Do ##class(OcuPilot.Kernel.Proposal.Operation).Release(tHoldKey)
     Quit tSC
 }
 

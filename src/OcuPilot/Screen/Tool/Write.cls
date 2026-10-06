@@ -371,6 +371,16 @@ ClassMethod CreatedId(pWritten) As %String
     Quit ""
 }
 
+/// <p>The name a proposal's card titles the target by, or <code>""</code>, recorded at the mint
+/// (<property>OcuPilot.Kernel.State.Propose.TargetName</property>). <var>pFresh</var> is the fresh
+/// read, <var>pId</var> the target's id and <var>pArgs</var> the tool's arguments. <code>""</code> here, so
+/// the card titles the target by its id. It never refuses the mint: an answer that is not text reads
+/// as <code>""</code>.</p>
+ClassMethod TargetName(pFresh, pId As %String, pArgs) As %String
+{
+    Quit ""
+}
+
 /// <p>The row-action ids <parameter>SCREENACTIONS</parameter> names, as a <class>%List</class>.</p>
 ClassMethod ScreenActionIds() As %List
 {
@@ -932,6 +942,20 @@ ClassMethod ReadBackFields() As %List
         If (tName '= "") && '$ListFind(tNames, tName) Set tNames = tNames _ $ListBuild(tName)
     }
     Quit tNames
+}
+
+/// <p>The write tool whose read re-reads this create's target by the id the instance allocated, or
+/// <code>""</code> (AD-58). A create whose own read is a list row (<parameter>READROWKEY</parameter>)
+/// names its update tool here: the read-back then asks that tool's single-object read for the
+/// created id, so every sent key its field list names is compared rather than only the keys a list
+/// row carries. <code>""</code> here, so every other tool re-reads through its own read.</p>
+Parameter READBACKTOOL = "";
+
+/// <p><parameter>READBACKTOOL</parameter>, for the read-back, which resolves a tool by name and holds
+/// only its class.</p>
+ClassMethod ReadBackTool() As %String
+{
+    Quit ..#READBACKTOOL
 }
 
 /// <p>The <parameter>SECRETBODY</parameter> names whose explicitly supplied empty value is sent, as

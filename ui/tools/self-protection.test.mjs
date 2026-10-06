@@ -493,6 +493,17 @@ test('Story 16.12: the three owner refusals and the in-transaction refusal are e
   }
 });
 
+/** Story 23.4's port error class, which declares the ledger code of a write the port answered as started. */
+const PORT_ERROR = join(REPO_ROOT, 'src', 'OcuPilot', 'Api', 'PortError.cls');
+
+test('Story 23.4: the started write\'s sentence is one sentence on both surfaces, published in Fixed strings', () => {
+  // Mutation (Rule 19): change one word of REASONSTARTED in PortError.cls -> this goes red naming both.
+  const server = /Parameter REASONSTARTED = "([^"]+)";/.exec(readFileSync(PORT_ERROR, 'utf8'));
+  assert.notEqual(server, null, 'PortError.cls declares REASONSTARTED');
+  assert.equal(server[1], stringValue('auditDatabaseStillRunning'), 'REASONSTARTED and auditDatabaseStillRunning are one published sentence');
+  assert.ok(readFileSync(EXPERIENCE, 'utf8').includes(`"${server[1]}"`), "REASONSTARTED's sentence is published in EXPERIENCE.md's Fixed strings");
+});
+
 /** Story 18.15's enable tool, which declares the refusal of %SYS and %ALL. */
 const ENABLE_INTEROP_TOOL = join(REPO_ROOT, 'src', 'OcuPilot', 'Screen', 'Tool', 'NamespaceEnableInterop.cls');
 

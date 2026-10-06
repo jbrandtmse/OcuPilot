@@ -246,9 +246,9 @@ Parameter CATALOGPARTITIONSCOLUMNS = "Partition:PARTITION_ID,Buckets:BUCKETS:num
 
 Parameter CATALOGPARTITIONMAPPINGSCOLUMNS = "Rule:RULE,Buckets:BUCKETS:number,Rows:ROWS:number,EstimatedSize:ESTIMATED_SIZE:number,Location:LOCATION";
 
-Parameter CATALOGCACHEDQUERIESCOLUMNS = "CachedQuery:Routine,Query:Query,Created:CreateTime,Source:Source:flag,QueryType:QueryTypeExt,Features:STATEMENT_OPTIONS";
+Parameter CATALOGCACHEDQUERIESCOLUMNS = "CachedQuery:Routine,Query:Query:sqltext,Created:CreateTime,Source:Source:flag,QueryType:QueryTypeExt,Features:STATEMENT_OPTIONS";
 
-Parameter CATALOGSTATEMENTSCOLUMNS = "Statement:STATEMENT,PlanState:PLAN_STATE,NewPlan:FROZEN_DIFF:flag,Executions:EXECUTIONS:number,TotalTime:TOTAL_TIME:number,AverageTime:AVERAGE_TIME:number,StdDevTime:STDDEV_TIME:number,RowCount:ROW_COUNT:number,Commands:COMMANDS:number,FirstSeen:FIRST_SEEN,Location:LOCATION";
+Parameter CATALOGSTATEMENTSCOLUMNS = "Statement:STATEMENT:sqltext,PlanState:PLAN_STATE,NewPlan:FROZEN_DIFF:flag,Executions:EXECUTIONS:number,TotalTime:TOTAL_TIME:number,AverageTime:AVERAGE_TIME:number,StdDevTime:STDDEV_TIME:number,RowCount:ROW_COUNT:number,Commands:COMMANDS:number,FirstSeen:FIRST_SEEN,Location:LOCATION";
 
 Parameter CATALOGVIEWCOLUMNS = "Owner:OWNER,LastCompiled:LAST_COMPILED,ReadOnly:DEFINED_AS_READ_ONLY:flag,Updatable:UPDATABLE:flag,Class:CLASSNAME,CheckOption:CHECK_OPTION,ClassType:CLASSTYPE,Text:VIEW_QUERY";
 
@@ -1379,7 +1379,9 @@ ClassMethod CatalogRelation(pSchema As %String, pName As %String) As %String
 
 /// <p>One vendor row <var>pRow</var> as the row column map <var>pColumns</var> declares
 /// (<parameter>CATALOGSCHEMASCOLUMNS</parameter>). A value the vendor parsed as JSON, because its
-/// text began with a brace or a bracket, is its JSON text again.</p>
+/// text began with a brace or a bracket, is its JSON text again. A <code>sqltext</code> column is a
+/// statement's text, which has a credential value masked
+/// (<method>OcuPilot.Port.SqlPort.MaskCredentials</method>).</p>
 ClassMethod CatalogRow(pRow As %DynamicObject, pColumns As %String) As %DynamicObject
 {
     Set tOut = {}
@@ -1396,6 +1398,8 @@ ClassMethod CatalogRow(pRow As %DynamicObject, pColumns As %String) As %DynamicO
         If tKind = "flag" {
             Set tUpper = $ZConvert(tValue, "U")
             Do tOut.%Set(tField, (tUpper = "1") || (tUpper = "YES") || (tUpper = "TRUE"), "boolean")
+        } ElseIf tKind = "sqltext" {
+            Do tOut.%Set(tField, ##class(OcuPilot.Port.SqlPort).MaskCredentials(tValue), "string")
         } ElseIf tKind = "plain" {
             Do tOut.%Set(tField, ..PlainText($Translate(tValue, $Char(9, 10, 13), "   ")), "string")
         } ElseIf (tKind = "number") && (tValue '= "") && $IsValidNum(tValue) && (tValue = +tValue) {

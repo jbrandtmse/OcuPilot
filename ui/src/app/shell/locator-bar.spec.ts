@@ -10,7 +10,12 @@ import { ShellState } from '../core/shell-state';
 import { STRINGS } from '../core/strings';
 import { screenDeclaration } from '../testing/screen-declaration';
 import { LocatorBar } from './locator-bar';
-import { AccountPreferences } from '../core/account-preferences';
+import {
+  AccountPreferences,
+  SHELL_KIND,
+  SHELL_THEME,
+  THEME_DARK,
+} from '../core/account-preferences';
 import { stubAccountPreferences } from '../testing/account-preferences';
 import { HelpLinks } from '../core/help';
 import { stubHelpLinks, type StubbedHelpLinks } from '../testing/about';
@@ -629,6 +634,28 @@ describe('the locator bar', () => {
     expect(polite?.textContent?.trim()).toBe('');
     expect(preferences.favorites()).toEqual([]);
     expect(toggle()?.getAttribute('aria-pressed')).toBe('false');
+  });
+
+  it('a background write refused while a screen is open is announced once, by the locator bar', async () => {
+    // Mutation (Rule 19): drop `|| this.preferences.fault('background')` from `favoriteRefusal` ->
+    // this goes red, and a refused background write is announced nowhere.
+    TestBed.resetTestingModule();
+    preferences = stubAccountPreferences({
+      writeAnswer: 'refused',
+      refusalReason: 'The instance refused that preference.',
+    });
+    build();
+
+    await go('/permissions/users');
+    await preferences.setValue(SHELL_KIND, SHELL_THEME, THEME_DARK);
+    fixture.detectChanges();
+
+    const alerts: HTMLElement[] = Array.from(
+      fixture.nativeElement.querySelectorAll('[role="alert"]')
+    );
+    expect(alerts.map((alert) => alert.textContent?.trim())).toEqual([
+      'The instance refused that preference.',
+    ]);
   });
 
   it('Story 15.2: the toggle reads pressed on return to a screen pinned elsewhere', async () => {

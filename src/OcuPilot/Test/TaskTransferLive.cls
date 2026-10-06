@@ -30,7 +30,7 @@ Parameter EXPORTTOOL = "OcuPilot.Screen.Tool.TaskExport";
 
 Parameter IMPORTTOOL = "OcuPilot.Screen.Tool.TaskImport";
 
-/// <p>The agent's import key, which the baseline disables (DW-1827).</p>
+/// <p>The agent's import key, which the baseline disables.</p>
 Parameter IMPORTKEY = "tasks.schedule.import";
 
 /// <p>The principal holding the code read and exactly the tools' three pairs; the one lacking
@@ -218,7 +218,7 @@ Method TestTheAgentExportsAndImportsThroughConfirm()
     Do ##class(OcuPilot.Kernel.State.Ledger).GuardedDeleteForTurn(tTurn)
 }
 
-/// <p>Governance (AD-22, DW-1827): at the baseline the agent's import is refused
+/// <p>Governance (AD-22): at the baseline the agent's import is refused
 /// <code>GOVERNANCE.DISABLED</code> at its confirm and imports nothing, while the screen's Import of the
 /// same file proceeds, because the policy gates only the agent's tools.</p>
 /// <p>Mutation (Rule 19): list <code>tasks.schedule.import</code> true in

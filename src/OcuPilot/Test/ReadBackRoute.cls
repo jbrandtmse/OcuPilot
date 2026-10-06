@@ -138,6 +138,64 @@ Method TestARowActionOnAHeldTargetIsRefusedBusy()
     Do $$$AssertEquals(..EnabledOf(..#PROBEAPP), 0, "and disables the application")
 }
 
+/// <p>AD-34, AD-53, AD-55: the editor's Save on a target another write holds waits out
+/// <parameter>OcuPilot.Kernel.State.Propose.CLAIMLOCKSECONDS</parameter> and answers 409
+/// <code>WRITE.TARGETBUSY</code>, and the application's description is left as it was; once the hold
+/// is released, the same Save answers 200 and reads back <code>matches</code>. This process plays the
+/// other write, holding the lock under the key the Save's tool names
+/// (<method>OcuPilot.Kernel.State.Propose.TargetHoldKey</method>).</p>
+/// <p>Mutation (Rule 19): drop the hold from <method>OcuPilot.Area.WebApp.WebAppSave.HandleUpdate</method>
+/// -- the held Save answers 200 and writes, and this goes red.</p>
+Method TestAWebApplicationSaveOnAHeldTargetIsRefusedBusy()
+{
+    Do ##class(OcuPilot.Kernel.EntityRef).Key("web-application", "instance", ..#PROBEAPP, .tRef)
+    Set tLockKey = ##class(OcuPilot.Kernel.State.Propose).TargetHoldKey(tRef)
+    Do $$$AssertNotEquals(tLockKey, "", "the application names a lock")
+    Lock +^OcuPilotProposalTarget(tLockKey):5
+    Set tHeld = $Test
+    Do $$$AssertTrue(tHeld, "which this process holds, as another write's hold does")
+    If 'tHeld Quit
+    Set tStatus = 0
+    Set tBody = ""
+    Set tWaited = 0
+    Try {
+        Set tStarted = $ZHorolog
+        Set tSC = ##class(OcuPilot.Test.Http).MakeRequest("PUT", "/web-applications/" _ ##class(OcuPilot.Kernel.EntityId).Encode(..#PROBEAPP), .tStatus, .tBody, {"Description": (..#PROBEMARKER _ " held")}.%ToJSON(), "application/json")
+        Set tWaited = $ZHorolog - tStarted
+    } Catch {
+        Set tWaited = 0
+    }
+    Lock -^OcuPilotProposalTarget(tLockKey)
+    Set tAnswer = tStatus _ " " _ $Select($IsObject(tBody): tBody.%Get("code") _ " " _ tBody.%Get("reason"), 1: tBody)
+    Do $$$AssertEquals(tAnswer, "409 WRITE.TARGETBUSY " _ ##class(OcuPilot.Api.Error).#REASONWRITETARGETBUSY, "the held Save is refused busy, with the published reason")
+    Do $$$AssertTrue(tWaited >= ($Parameter("OcuPilot.Kernel.State.Propose", "CLAIMLOCKSECONDS") - 1), "after waiting for the hold (" _ $FNumber(tWaited, "", 1) _ " s)")
+    Do $$$AssertTrue(tWaited < 15, "and within the 10 s the wait allows, with 5 s for the round trip (" _ $FNumber(tWaited, "", 1) _ " s)")
+    Do $$$AssertEquals(..DescriptionOf(..#PROBEAPP), ..#PROBEMARKER, "and the description is unchanged")
+
+    Set tSC = ##class(OcuPilot.Test.Http).MakeRequest("PUT", "/web-applications/" _ ##class(OcuPilot.Kernel.EntityId).Encode(..#PROBEAPP), .tStatus, .tBody, {"Description": (..#PROBEMARKER _ " released")}.%ToJSON(), "application/json")
+    Do $$$AssertEquals(tStatus, 200, "released, the same Save answers 200: " _ $Select($IsObject($Get(tBody)): tBody.%ToJSON(), 1: ""))
+    Set tReadBack = ..ReadBackOf(.tBody)
+    Do $$$AssertEquals(tReadBack.%Get("verdict"), "matches", "and reads back as saved: " _ tReadBack.%ToJSON())
+    Do $$$AssertEquals(..DescriptionOf(..#PROBEAPP), ..#PROBEMARKER _ " released", "with the description changed")
+}
+
+/// <p>The description of web application <var>pName</var>, or <code>""</code> when it cannot be read.</p>
+ClassMethod DescriptionOf(pName As %String) As %String
+{
+    Set tValue = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = "%SYS"
+        If ##class(Security.Applications).Exists(pName, .tApp) Set tValue = tApp.Description
+        Set tApp = ""
+        Set $NAMESPACE = tOrigNS
+    } Catch {
+        Set $NAMESPACE = tOrigNS
+        Set tValue = ""
+    }
+    Quit tValue
+}
+
 /// <p>Whether web application <var>pName</var> is enabled on the instance: 1, 0, or <code>""</code>
 /// when it cannot be read.</p>
 ClassMethod EnabledOf(pName As %String) As %String

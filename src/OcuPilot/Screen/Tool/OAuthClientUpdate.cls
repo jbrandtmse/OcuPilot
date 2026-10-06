@@ -4,10 +4,11 @@
 /// proposal the user confirms. It writes nothing.</p>
 /// <p><b>A merge write</b>: the body is the fresh read with the changed fields applied, so a field the
 /// arguments omit keeps the instance's value (AD-4). <code>Metadata</code> is one object argument that
-/// replaces the settable members whole; just before the port is called the body is made the complete
-/// set (<method>DerivedFields</method>), so a member the new metadata leaves out is sent empty and
-/// cleared. The registration's own members are never an argument, and the port sends them as the
-/// instance holds them. The fingerprint covers every field the fresh read answers, which carries no
+/// changes only the settable members it names (<method>MergeUpdate</method>), a member sent as
+/// <code>""</code> or <code>[]</code> being cleared; just before the port is called the body is made
+/// the complete set (<method>DerivedFields</method>), so a member the merged metadata leaves out is
+/// sent empty and cleared. The registration's own members are never an argument, and the port sends
+/// them as the instance holds them. The fingerprint covers every field the fresh read answers, which carries no
 /// secret.</p>
 Class OcuPilot.Screen.Tool.OAuthClientUpdate Extends OcuPilot.Screen.Tool.Write
 {
@@ -16,7 +17,7 @@ Parameter TOOLNAME = "security.oauthclients.update";
 
 Parameter DESCRIPTORCLASS = "OcuPilot.Screen.Descriptor.OAuthClientTab";
 
-Parameter DESCRIPTION = "Propose a change to one OAuth 2.0 client configuration on this instance. It changes nothing by itself: it answers a proposal the user reviews and confirms. Name the configuration by its application name exactly as the client configurations list reports it, and send only the fields to change. Metadata, when sent, replaces the settable metadata whole. Secrets are never arguments.";
+Parameter DESCRIPTION = "Propose a change to one OAuth 2.0 client configuration on this instance. It changes nothing by itself: it answers a proposal the user reviews and confirms. Name the configuration by its application name exactly as the client configurations list reports it, and send only the fields to change. Metadata, when sent, changes only the members it names; send an empty string or an empty list to clear one. Secrets are never arguments.";
 
 Parameter READTYPE = "GET";
 
@@ -72,6 +73,22 @@ ClassMethod ArgumentProblem(pIdValue As %String, pArgs As %DynamicObject, Output
     If $$$ISERR(tSC) && (+$Get(tHttp) '= 404) Quit tSC
     If '$IsObject($Get(tFresh)) || 'tFresh.%IsA("%Library.DynamicObject") Set tFresh = ""
     Quit ##class(OcuPilot.Screen.Tool.OAuthClientCreate).RuleProblem(pIdValue, pArgs, "update", tFresh, .pProblem)
+}
+
+/// <p>The kernel's merge over the arguments with their <code>Metadata</code> applied member by member
+/// over the fresh read's settable members, so the diff, the payload and the digest are one computation
+/// for the mint, the confirm and the Save. The card draws the metadata as one row per member it
+/// changes.</p>
+ClassMethod MergeUpdate(pFresh As %DynamicObject, pArgs As %DynamicObject, pIdArgument As %String, pSettable As %List, Output pPayload As %DynamicObject, Output pDiff As %DynamicArray, Output pUnchanged As %Integer, Output pProblem As %String) As %Status
+{
+    Set tRules = "OcuPilot.Area.Security.OAuthClientRules"
+    Set tMetadata = $Parameter(tRules, "FIELDMETADATA")
+    Set tArgs = ##class(%DynamicAbstractObject).%FromJSON($Select($IsObject(pArgs): pArgs.%ToJSON(), 1: "{}"))
+    If tArgs.%GetTypeOf(tMetadata) = "object" Do tArgs.%Set(tMetadata, $ClassMethod(tRules, "MergedMetadata", pFresh, tArgs.%Get(tMetadata)))
+    Set tSC = ##class(OcuPilot.Kernel.Proposal.Mint).Merge(pFresh, tArgs, pIdArgument, pSettable, .pPayload, .pDiff, .pUnchanged, .pProblem)
+    If $$$ISERR(tSC) || (pProblem '= "") Quit tSC
+    Set pDiff = $ClassMethod(tRules, "CardRows", pFresh, pPayload, pDiff)
+    Quit $$$OK
 }
 
 /// <p>Make the body the complete set (<method>OcuPilot.Area.Security.OAuthClientRules.Expand</method>).</p>

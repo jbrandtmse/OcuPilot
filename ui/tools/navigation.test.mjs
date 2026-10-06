@@ -1304,6 +1304,17 @@ test('screenShowsEntity answers the type half and the scope half, and both have 
   );
 });
 
+// DW-1939: a change names its tool, and a built list of the same entity type that owns the tool wins.
+// Mutation (Rule 19): drop the tool branch in `screenForChange` -> the remote leg answers Local databases.
+test('screenForChange opens the list that owns the change\'s tool, and falls back to the type\'s first list', () => {
+  const remote = screenForChange({ type: 'database-configuration', id: 'REMX', tool: 'osmgmt.remotedatabases.create' });
+  assert.equal(remote?.route, `os-management/remote-databases/${encodeEntityId('REMX')}`);
+  const local = screenForChange({ type: 'database-configuration', id: 'REMX' });
+  assert.equal(local?.screen.route, 'os-management/local-databases', 'no tool: the lowest side-bar position');
+  const wrongType = screenForChange({ type: 'task', id: '12', tool: 'osmgmt.remotedatabases.create' });
+  assert.equal(wrongType?.screen.route, 'tasks/schedule', 'a tool whose screen shows another type is ignored');
+});
+
 // The toast's action. Mutation (Rule 19): build the route without `encodeEntityId` -> the
 // encoded-segment assertion goes red for the id carrying a slash, and the toast would open a URL
 // the route table does not hold.

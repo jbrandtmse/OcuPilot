@@ -491,7 +491,7 @@ ClassMethod Transition(pProposalId As %String, pUser As %String, ByRef pRow, pSu
         ; propagates: tSC is untouched on either arm.
         Set tMarkSC = $ClassMethod(..EventClass(), "RecordAgentWrite", pProposalId, $Get(pRow("toolName")), $Get(pRow("targetRef")), pUser, tWrittenAt, tFieldNames, .tEmitted)
         Set tMarked = $$$ISOK(tMarkSC)
-        Do $ClassMethod(..LedgerClass(), "FinalizeConfirmedWrite", tLedgerKey, "ok", "", $Get(pRow("targetRef")), tFieldNames, tPairs, $Select(tMarked: $Parameter("OcuPilot.Kernel.State.Ledger", "MARKEDYES"), 1: $Parameter("OcuPilot.Kernel.State.Ledger", "MARKEDNO")))
+        Do $ClassMethod(..LedgerClass(), "FinalizeConfirmedWrite", tLedgerKey, "ok", $Select(+$Get(tWriteHttp) = 202: ##class(OcuPilot.Api.PortError).#STARTED, 1: ""), $Get(pRow("targetRef")), tFieldNames, tPairs, $Select(tMarked: $Parameter("OcuPilot.Kernel.State.Ledger", "MARKEDYES"), 1: $Parameter("OcuPilot.Kernel.State.Ledger", "MARKEDNO")))
         ; The emission's own answer is the instance's answer to "are writes being marked", and it
         ; is the only one a least-privileged process can get. Recorded so the panel's banner is
         ; showing on the next read; a refresh that fails is logged and never propagated.
@@ -509,7 +509,7 @@ ClassMethod Transition(pProposalId As %String, pUser As %String, ByRef pRow, pSu
         If +$Get(tWriteHttp) = 202 {
             Set tReadBack = ##class(OcuPilot.Kernel.Proposal.ReadBack).Running()
         } Else {
-            Set tReadBack = ##class(OcuPilot.Kernel.Proposal.ReadBack).Of(tToolClass, $Select(tCreatedId '= "": tCreatedId, 1: tIdValue), tBody, $Get(tFresh), $Get(pRow("payload")), ..PortClassOf(tToolClass))
+            Set tReadBack = ##class(OcuPilot.Kernel.Proposal.ReadBack).Of(tToolClass, $Select(tCreatedId '= "": tCreatedId, 1: tIdValue), tBody, $Get(tFresh), $Get(pRow("payload")), ..PortClassOf(tToolClass), tCreatedId)
         }
         Do ..RecordReadBack(pProposalId, tReadBack)
 

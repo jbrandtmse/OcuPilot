@@ -52,7 +52,7 @@ Method TestEveryWriteToolYieldsAKey()
 }
 
 /// <p>The purge's line (Story 12.3's routed criterion), the namespace delete's (Story 18.2), the
-/// database delete's (Story 18.3), the task import's (DW-1827) and the eight disk operations'
+/// database delete's (Story 18.3), the task import's and the eight disk operations'
 /// (Story 18.4) are <code>false</code> and every other line is <code>true</code>, and a key the
 /// baseline does not list reads disabled.</p>
 /// <p>The expected list is the set of lines some story's criteria ship disabled. A story that adds
