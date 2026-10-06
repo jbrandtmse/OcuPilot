@@ -10015,6 +10015,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-23-4-the-range-end-cleanup-part-4.md | severity: med | fix-risk: low | footprint: in-story
 - evidence: SaveHoldCoverage asserts .HoldTool( and .Release( per handler; ReadBackRoute holds one target (batch b, 77a71c2f)
 - 2026-10-06T15:59:36Z status=open owner=23-4-the-range-end-cleanup-part-4 by=harvest note=batch b deferral; a table-driven live leg over a create, a singleton and a mapping route would pin each key
+- 2026-10-06T20:30:27Z status=resolved-by:23-4-the-range-end-cleanup-part-4 by=cr note=two wrong create keys fixed; SaveHoldCoverage held-key legs red on the old keys; 49 direct-id holds audited
 
 ### DW-2113: DW-1710 added a caller compare mode to AD-58's closed read-back vocabulary: a blank sent value matches the reading account
 - source: spec-23-4-the-range-end-cleanup-part-4.md | severity: med | fix-risk: low | footprint: in-story
@@ -10030,6 +10031,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-23-4-the-range-end-cleanup-part-4.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: src/OcuPilot/Test/SqlCredentialMask.cls; each site's removal was not run as its own mutation (batch b, 77a71c2f)
 - 2026-10-06T15:59:36Z status=open owner=23-4-the-range-end-cleanup-part-4 by=harvest note=batch b deferral
+- 2026-10-06T20:30:27Z status=resolved-by:23-4-the-range-end-cleanup-part-4 by=cr note=each site dropped alone reddens its own SqlCredentialMask test (runs 696-698)
 
 ### DW-2116: The locator bar's router handler calls clearFault() with no origin on every navigation, clearing Home's and the panel's fault slots (unverified)
 - source: spec-23-4-the-range-end-cleanup-part-4.md | severity: low | fix-risk: low | footprint: in-story
@@ -10040,3 +10042,34 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-23-4-the-range-end-cleanup-part-4.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: verification-gap layer; each needs a fixture for a path the wire cannot reach today (batch b, 77a71c2f)
 - 2026-10-06T15:59:36Z status=open owner=23-4-the-range-end-cleanup-part-4 by=harvest note=batch b deferral
+- 2026-10-06T20:30:27Z status=resolved-by:23-4-the-range-end-cleanup-part-4 by=cr note=caller shape refusal, client card-row and hold-fault pins added; each mutation red
+
+### DW-2118: Credential masking runs after the per-field cut: a masked short literal grows the text past the bound, and a cut inside a literal drops the ... marker
+- source: spec-23-4-the-range-end-cleanup-part-4.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: SqlActivityPort.StatementText masks Shape output; ExplorerSqlRead masks after SqlPort 1,000-character cell cut; [redacted] is 10 characters
+- 2026-10-06T20:30:19Z status=wontfix-accepted owner=23-4-the-range-end-cleanup-part-4 by=cr note=reopen_if=a bound test over a masked text fails, or a cut statement is reported shown without its ... marker
+
+### DW-2119: The restraint read can record marked from an observation a concurrent auditing disable has already made stale
+- source: spec-23-4-the-range-end-cleanup-part-4.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: Switches.RestraintBody observes then RecordMarking(1) outside any lock; a confirm recording not-marked between the two is overwritten
+- 2026-10-06T20:30:19Z status=wontfix-theoretical owner=23-4-the-range-end-cleanup-part-4 by=cr note=real if a banner is seen hidden while auditing reads off after a disable that raced a panel load
+
+### DW-2120: An agent edit of an absent server description with a partial Metadata is refused as missing endpoints rather than not found
+- source: spec-23-4-the-range-end-cleanup-part-4.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: OAuthServerDescriptionUpdate.ArgumentProblem merges over an empty fresh read on a 404, so RuleProblem demands both endpoints
+- 2026-10-06T20:30:19Z status=wontfix-accepted owner=23-4-the-range-end-cleanup-part-4 by=cr note=reopen_if=an agent turn is seen retrying a server description edit with endpoints after this refusal
+
+### DW-2121: A task update RunAsUser has no caller compare, so a blank account an update sends may read back differs (inference)
+- source: spec-23-4-the-range-end-cleanup-part-4.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: tasks.schedule.create declares RunAsUser caller from a measured create; an update sending a blank RunAsUser is unmeasured
+- 2026-10-06T20:30:19Z status=wontfix-accepted owner=23-4-the-range-end-cleanup-part-4 by=cr note=reopen_if=a confirmed task update sending RunAsUser blank reads back differs on RunAsUser
+
+### DW-2122: An OAuth client edit naming only stored metadata values counts Metadata changed and still lists it unchanged
+- source: spec-23-4-the-range-end-cleanup-part-4.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: OAuthClientRules.MergedMetadata keeps settable members only, so Mint.Merge sees it differ from the fresh read; CardRows then draws no row
+- 2026-10-06T20:30:19Z status=wontfix-accepted owner=23-4-the-range-end-cleanup-part-4 by=cr note=reopen_if=a client card shows an unchanged count one below its disclosure rows
+
+### DW-2123: CI flake: a GitHub runner held host port 52776 through all three of ci-throwaway.sh's bring-up attempts, so an instance shard failed before running any class
+- source: cycle-log-epic-23.md (Story 23.4 batch b CI) | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: run 37492247584 (head ae8afad7) instance shard 3/5: 0.0.0.0:52776 address already in use on attempts 1-3, exit 1 before the suite; DW-439's bounded retry (13.2) did not outlast it
+- 2026-10-06T20:34:11Z status=routed owner=range-end-cleanup by=lead note=recurrence of DW-439's shape past its bounded retry; a longer or backed-off wait, or a port probe, would cover it

@@ -12,6 +12,7 @@ import { screenDeclaration } from '../testing/screen-declaration';
 import { LocatorBar } from './locator-bar';
 import {
   AccountPreferences,
+  SHELL_AGENT_DEFINITION,
   SHELL_KIND,
   SHELL_THEME,
   THEME_DARK,
@@ -656,6 +657,26 @@ describe('the locator bar', () => {
     expect(alerts.map((alert) => alert.textContent?.trim())).toEqual([
       'The instance refused that preference.',
     ]);
+  });
+
+  it("an agent pick the instance refuses is announced once, by the locator bar", async () => {
+    // Mutation (Rule 19): drop `|| this.preferences.fault('agent-pick')` from `favoriteRefusal` ->
+    // this goes red, and the panel's refused pick is announced nowhere.
+    TestBed.resetTestingModule();
+    preferences = stubAccountPreferences({
+      writeAnswer: 'refused',
+      refusalReason: 'That agent definition is not enabled.',
+    });
+    build();
+
+    await go('/permissions/users');
+    await preferences.setValue(SHELL_KIND, SHELL_AGENT_DEFINITION, 'def-1', 'agent-pick');
+    fixture.detectChanges();
+
+    const alerts: HTMLElement[] = Array.from(
+      fixture.nativeElement.querySelectorAll('[role="alert"]')
+    );
+    expect(alerts.map((alert) => alert.textContent?.trim())).toEqual(['That agent definition is not enabled.']);
   });
 
   it('Story 15.2: the toggle reads pressed on return to a screen pinned elsewhere', async () => {

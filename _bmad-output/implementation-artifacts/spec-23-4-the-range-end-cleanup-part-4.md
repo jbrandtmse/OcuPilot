@@ -737,6 +737,43 @@ Rejected:
 - `low`: the governance and agent-sql specs reset a seeded policy's content — `resetGovernancePolicy` is unchanged by the spec.
 - `low`: Never-list and Auto Run Result bookkeeping — spec text outside `## Verification`.
 
+### Review Findings (batch b)
+
+Code review 2026-10-06, full tier, four layers. Every patch below was applied in the review pass and its test re-run on `ocupilot-ci`.
+
+- [x] [Review][Patch] `high` AD-34 as amended: two create Saves held a key other than their mint's. The audit event create held none (its body carries no `EventName`); the key file create held `path` without `root`. Live held-key legs added (DW-2112) [src/OcuPilot/Area/Security/AuditEventSave.cls:78, EncryptionKeyFileSave.cls:61]
+- [x] [Review][Patch] A refused agent-definition pick was announced nowhere: only the panel read the `agent-pick` slot, for `landed`. The locator bar now announces it [ui/src/app/shell/locator-bar.ts:472]
+- [x] [Review][Patch] DW-1414's AC scenario (a background refusal while Home is open) had no pinning test; `app.spec.ts` leg added [ui/src/app/app.spec.ts]
+- [x] [Review][Patch] `MaskCredentials` masked only the `=` of `PASSWORD = 'pw'` (reachability in IRIS SQL unverified) [src/OcuPilot/Port/SqlPort.cls:127]
+- [x] [Review][Patch] The `POST /explorer/sql/` prefix exempted five routes under one reason, and would exempt a later write route; each route is listed with its own [src/OcuPilot/Test/SaveHoldCoverage.cls:22]
+- [x] [Review][Patch] The disclosure listed `Metadata` unchanged beside its member rows, one row more than `unchangedCount`; a member row now names its property [src/OcuPilot/Kernel/Proposal/Disclosure.cls:62]
+- [x] [Review][Patch] The no-account summary branch had no executed test. Measured on `ocupilot-ci`: a task with no `RunAsUser` element imports as the importing user, and an empty element is refused before the vendor. A preview leg is added [src/OcuPilot/Test/TaskTransfer.cls]
+- [x] [Review][Patch] `ChangeEvent.tool` said "canonical name" where two publishers send the two-part identifier, and `REMOTE_DATABASE_TOOL` was unpinned [ui/src/app/core/change-bus.ts:81]
+- [x] [Review][Patch] `theme.ts` still said a refusal surfaces through `fault()` [ui/src/app/core/theme.ts:16]
+- [x] [Review][Patch] Rule 19: DW-1641's card-row clause, DW-2115's three sites and DW-2117's three gaps had no recorded mutation or no pin; pins added and each mutation run [## Verification]
+- [x] [Review][Defer] Masking runs after the per-field cut [src/OcuPilot/Port/SqlActivityPort.cls:252] — DW-2118, wontfix-accepted
+- [x] [Review][Defer] The restraint read can record a marking a concurrent disable made stale [src/OcuPilot/Api/Switches.cls:412] — DW-2119, wontfix-theoretical
+- [x] [Review][Defer] An absent server description with a partial `Metadata` is refused as missing endpoints [src/OcuPilot/Screen/Tool/OAuthServerDescriptionUpdate.cls:72] — DW-2120, wontfix-accepted
+- [x] [Review][Defer] A task update's blank `RunAsUser` has no `caller` compare (inference) [src/OcuPilot/Screen/Tool/Classification.cls:1101] — DW-2121, wontfix-accepted
+- [x] [Review][Defer] A client edit naming only stored metadata values counts `Metadata` changed [src/OcuPilot/Area/Security/OAuthClientRules.cls:361] — DW-2122, wontfix-accepted
+
+Rejected:
+
+- `false`: `PortError.Codes` and `ReasonFor` have no product caller. That matches the sibling `*Error` classes, and `PORT.STARTED` is a ledger code that `ReasonForToolCode` never resolves.
+- `false`: a scrubbed statement-index row leaves residue. A `^rINDEXSQL` walk after the class's runs finds no planted text.
+- `false`: removing the `TaskCreate` row-key legs unpins a live path. No list-row create or merge remains without `READBACKTOOL`.
+- `false`: the digit-first import case needs its own cleanup. `Probes()` also matches the probe description.
+- `false`: the `POST /account/` reason is untrue. AD-49 places self-service account writes outside the write path.
+- `low`: the import card's `TASK.RUNSASOTHER` sentence and its raw `runAs` row. Both are as the entry specifies.
+- `low`: masking every text cell of `explorer.sqlquery.read` leaves no trace. That is the entry's stated behavior.
+- `low`: the console run and SQL diagnostics stay unmasked against AD-35's "wherever". The entry excludes the console, and a diagnostics statement carrying a credential is unshown. The AD wording goes to the lead.
+- `low`: duplicated card-row code across the OAuth rules classes. The entry moved each Save's merge into its own rules class.
+- `low`: `READBACKTOOL` reads through the caller's port. Both pairs share one port today.
+- `low`: the restraint read observes on every load while not-marked. These are in-process reads at the panel's pace, and the converse direction is already named for filing.
+- `low`: the restraint read can clear a not-marked fact the confirm recorded. That is AD-53's third producer as amended.
+- `low`: a test comment names a ledger id. Test names here carry ids by convention.
+- `low`: the AD-36 and AD-34 Binds text, AD-14's `tool`, and the Auto Run Result counts (32 Save classes and 3 rules classes; five new test files) are spine or spec text, reported to the lead.
+
 ## Spec Change Log
 
 - 2026-10-06, lead spec gate: DW-1869 closes `resolved-by:23-3-the-range-end-cleanup-part-3` (f2168084; pin `ServiceUpdate.TestAnAddressRoleIsJudgedByEffectInEitherSpelling` seeds `%Manager` and judges by effect in both spellings), because a `wontfix-accepted` or `by-design` would misstate a fixed defect. The lead runs `ServiceUpdate` in batch b's verification. Every other planned disposition and fix shape is accepted as written.
@@ -1058,6 +1095,13 @@ Every IRIS MCP call carries `server: "ocupilot-slot-a"` (the dev instance, never
   - `mutation:` remove `READBACKTOOL` from `TaskCreate` → the new `ReadBack` test goes red.
   - `mutation:` the hook answers `""` → both DW-1465 tests go red.
   - `mutation:` `MaskCredentials` answers its input unchanged → the DW-2096 class and its unit test go red.
+  - `mutation:` (review) hold `BodyIdOf`, the unfixed form, in the audit event and key file creates → both `SaveHoldCoverage` held-key legs answer 422 and 400 at once and go red (run 688). Fixed, each waits 10 s and answers 409.
+  - `mutation:` (review) drop `fault('agent-pick')` from `favoriteRefusal` → the `locator-bar.spec.ts` agent-pick leg goes red. Have Home's `refusal` also read `fault('background')` → the `app.spec.ts` background leg goes red.
+  - `mutation:` (review) drop the `=` group from `CREDENTIALVALUEPATTERN` → `TestMaskCredentialsOverEachForm` goes red (run 695). Drop the mask from one site at a time (`CatalogRow`'s `sqltext` branch, `StatementText`, `MaskedRows`' text cells) → only that site's test goes red (runs 696 to 698).
+  - `mutation:` (review) key `Disclosure.Rows`' changed set by the whole field name → `OAuthServerUpdate.TestTheAgentsEditSendsTheCompleteSet` goes red (run 701). Drop `CardRows` from the server update's `MergeUpdate` → the same test goes red at "one row per named member" (run 702). Let `OAuthClientRules.CardRows` draw a registration member → `TestTheAgentsEditKeepsTheRegistrationMembers` goes red (run 715).
+  - `mutation:` (review) write a blank account as itself in `Examine`'s summary → `TestATaskNamingNoAccountPreviewsAsTheImportingUser` goes red (run 692).
+  - `mutation:` (review) drop `RenderTargetBusy`'s error arm → `Envelope.TestATargetHoldThatFailsRendersTheInternalEnvelope` goes red (run 716). Accept `caller` on a non-literal row in `field-lists.mjs` → its refusal case goes red. Misspell `REMOTE_DATABASE_TOOL` → the remote form store's pin goes red.
+  - Review pass, green after the patches and every revert: `SaveHoldCoverage`, `TaskTransfer`, `TaskTransferLive`, `SqlCredentialMask`, `OAuthServerUpdate`, `OAuthClientUpdate`, `OAuthRegisteredClientUpdate`, `ProposalWire`, `AuditEventEditor`, `EncryptionWriteGate`, `ServiceUpdate`, `TaskResume`, `TaskUpdate`, `EcpSettingsWrite`, `EcpSettingsGate`, `LanguageServerEditor`, `LanguageServerEditorWire`, `Envelope`; `test:tools` 1865, `test:components` 2541, `npm run build` 2,992,730 bytes initial.
 
 **Batch b, executed (implement pass):**
 
@@ -1092,6 +1136,6 @@ Batch a: see its Review Findings; closed green (run 37452225543).
 
 Batch b implemented: DW-1827, DW-1882, DW-1641, DW-1013, DW-1864, DW-1939, DW-1449, DW-1414, DW-1637, DW-1710, DW-1465, DW-2096. DW-1869 needs no code (`ServiceUpdate` 14 of 14); its disposition and DW-1938's are the lead's. Review patched one medium (client wiring pins) and three lows, deferred the rest (list above), and rejected seven with reasons in the triage log. Follow-up review: false (no high patched).
 
-Files: server `src/OcuPilot/**` (Save holds in 34 Area classes, `Operation`, `Mint`, `Confirm`, `ReadBack`, `Propose`, the task and OAuth tools, `Response`, `Switches`, `SqlPort`, `PortError`), client `ui/src/app/**` (change bus, toasts, preferences faults, proposal card), their tests, six new test classes, EXPERIENCE.md:361, and `angular.json`'s budget (2993kB, measured).
+Files: server `src/OcuPilot/**` (Save holds in 32 Area Save classes and 3 rules classes, `Operation`, `Mint`, `Confirm`, `ReadBack`, `Propose`, the task and OAuth tools, `Response`, `Switches`, `SqlPort`, `PortError`), client `ui/src/app/**` (change bus, toasts, preferences faults, proposal card), their tests, five new test classes, EXPERIENCE.md:361, and `angular.json`'s budget (2993kB, measured).
 
 Verified: every class and tier in Batch b (loop) green; full sweep 485 classes, 3,929 tests, 0 failed after the one `ProposalWire` fix; `test:tools` 1865 of 1865; `auditing-write` 4 of 4 and `service-editor` 5 of 5 on the redeployed bundle; every mutation listed above red and reverted. The new `SaveHoldCoverage`, `ConversationRestore`, `MarkingRestraint` and `SqlCredentialMask` are absent from `ci-timings.json`; the lead's refresh adds them. The full browser suite runs in CI.

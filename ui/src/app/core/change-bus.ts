@@ -73,9 +73,10 @@ export interface ChangeEvent {
    */
   readonly readBack?: ReadBack;
   /**
-   * The canonical name of the write tool that made the change, when the publisher knows it. It
-   * picks which of several lists of one entity type the change toast opens; absent where the
-   * publisher has no tool, which opens the type's first-listed screen.
+   * The write tool that made the change, when the publisher knows it: its canonical name, or its
+   * screen's two-part tool identifier, whose first two parts are all that is read. It picks which of
+   * several lists of one entity type the change toast opens; absent where the publisher has no tool,
+   * which opens the type's first-listed screen.
    */
   readonly tool?: string;
 }
@@ -92,7 +93,7 @@ export interface ChangeEventInput {
   readonly expiresAt?: number;
   /** The write's read-back, on `changed` only; refused on the two proposal kinds. */
   readonly readBack?: ReadBack | null;
-  /** The write tool's canonical name, on `changed` only; see `ChangeEvent.tool`. */
+  /** The write tool, on `changed` only; see `ChangeEvent.tool`. */
   readonly tool?: string;
 }
 

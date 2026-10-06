@@ -75,7 +75,7 @@ ClassMethod HandleCreate() As %Status
             Set tSC = ##class(OcuPilot.Api.Error).Render(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#REASONAGENTBADBODY, ##class(OcuPilot.Api.Error).#AGENTBADBODY)
             Quit
         }
-        Set tHoldSC = ##class(OcuPilot.Kernel.Proposal.Operation).HoldTool(..#CREATETOOL, ##class(OcuPilot.Kernel.Proposal.Operation).BodyIdOf(..#CREATETOOL, tBody), .tHeld, .tHoldKey)
+        Set tHoldSC = ##class(OcuPilot.Kernel.Proposal.Operation).HoldTool(..#CREATETOOL, ..CreateId(tBody), .tHeld, .tHoldKey)
         If $$$ISERR(tHoldSC) || 'tHeld {
             Set tSC = ##class(OcuPilot.Api.Error).RenderTargetBusy(tHoldSC)
             Quit
@@ -87,6 +87,15 @@ ClassMethod HandleCreate() As %Status
     }
     Do ##class(OcuPilot.Kernel.Proposal.Operation).Release(tHoldKey)
     Quit tSC
+}
+
+/// <p>The event a create body names, as the <code>Source/Type/Name</code> the create tool's
+/// <code>EventName</code> carries and its mint holds, or <code>""</code> when any part is not text.</p>
+ClassMethod CreateId(pBody As %DynamicObject) As %String
+{
+    If '$IsObject(pBody) Quit ""
+    If (pBody.%GetTypeOf("Source") '= "string") || (pBody.%GetTypeOf("Type") '= "string") || (pBody.%GetTypeOf("Name") '= "string") Quit ""
+    Quit pBody.%Get("Source") _ "/" _ pBody.%Get("Type") _ "/" _ pBody.%Get("Name")
 }
 
 /// <p>Answer <code>PUT /audit-events/:id</code>: change the Description of the event <var>pId</var>

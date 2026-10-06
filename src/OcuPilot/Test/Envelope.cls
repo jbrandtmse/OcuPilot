@@ -134,6 +134,20 @@ Method TestRenderInternalRoutesSubsystemMessageAndDetailThroughSeam()
     Do ##class(OcuPilot.Test.ErrorProbe).Clear()
 }
 
+/// <p>A target hold that fails with an error, rather than timing out, answers the internal envelope
+/// through <method>OcuPilot.Api.Error.RenderTargetBusy</method>, logging the hold's own status, and
+/// never reads as busy.</p>
+/// <p>Mutation (Rule 19): drop the error arm of <method>OcuPilot.Api.Error.RenderTargetBusy</method>
+/// -- the seam captures nothing and this goes red.</p>
+Method TestATargetHoldThatFailsRendersTheInternalEnvelope()
+{
+    Do ##class(OcuPilot.Test.ErrorProbe).Clear()
+    Do ##class(OcuPilot.Test.ErrorProbe).RenderTargetBusy($$$ERROR($$$GeneralError, "OcuProbeHoldFault"))
+    Do $$$AssertEquals(##class(OcuPilot.Test.ErrorProbe).Captured("message"), "Internal error", "a failed hold is logged as an internal error")
+    Do $$$AssertTrue(##class(OcuPilot.Test.ErrorProbe).Captured("data") [ "OcuProbeHoldFault", "with the hold's own status as its detail")
+    Do ##class(OcuPilot.Test.ErrorProbe).Clear()
+}
+
 /// <p>Every error path's key set is exactly <code>{error, reason, code}</code> when no
 /// detail is supplied.</p>
 Method TestKeySetWithoutDetail()

@@ -291,6 +291,21 @@ Method TestAnImportRefusesAFileThatIsNotATaskExport()
     Do $$$AssertEquals($ClassMethod(..#PORT, "Calls"), "", "and no vendor import is made")
 }
 
+/// <p>A task whose file names no account previews as run by the importing user, which is how the
+/// vendor's import stores it (measured on a throwaway): <code>as (importing user)</code> in the
+/// summary and no account in <code>runAs</code>, so it is not another account.</p>
+/// <p>Mutation (Rule 19): answer the blank account as itself in
+/// <method>OcuPilot.Port.TaskTransferPort.Examine</method>'s summary -- the preview reads
+/// <code>as </code> and this goes red.</p>
+Method TestATaskNamingNoAccountPreviewsAsTheImportingUser()
+{
+    Set tTask = $ClassMethod(..#PORT, "Entry", "Nobody")
+    Do tTask.%Remove("RunAsUser")
+    Do $$$AssertStatusOK($ClassMethod(..#PORT, "WriteFile", $ClassMethod(..#PORT, "ProbeDirectory") _ "nobody.xml", $ClassMethod(..#PORT, "ExportText", [(tTask)])), "a file whose task names no account is written")
+    Set tSC = ..Call("PREVIEW", "import", "OcuP164/nobody.xml", "", .tResult, .tHttp, .tFault)
+    Do $$$AssertEquals($Select($IsObject($Get(tResult)): tResult.%Get("tasks") _ "|" _ tResult.%Get("runAs"), 1: ..Text(tFault)), "OcuP164Nobody (%SYS) %SYS.Task.PurgeTaskHistory as (importing user)|", "the preview names the importing user and lists no other account")
+}
+
 /// <p>AC6: a file of three tasks holding one that cannot be created -- its namespace unknown, its class
 /// absent, its account unknown, its name held, its name starting with a digit or 51 characters long
 /// -- is refused whole with that rule's code and

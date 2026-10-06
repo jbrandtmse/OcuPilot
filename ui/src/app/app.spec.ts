@@ -73,7 +73,15 @@ import { stubAgentStatus } from './testing/agent-status';
 import { stubSuggestedView } from './testing/suggested-view';
 import { stubTurnStore } from './testing/turn';
 import { screenDeclaration } from './testing/screen-declaration';
-import { AccountPreferences, FAVORITE_KIND, FIRST_SIGN_IN_RECORDED, SHELL_FIRST_SIGN_IN } from './core/account-preferences';
+import {
+  AccountPreferences,
+  FAVORITE_KIND,
+  FIRST_SIGN_IN_RECORDED,
+  SHELL_FIRST_SIGN_IN,
+  SHELL_KIND,
+  SHELL_THEME,
+  THEME_DARK,
+} from './core/account-preferences';
 import { type StubbedAccountPreferences, lastRemembered, stubAccountPreferences } from './testing/account-preferences';
 import { HomePage } from './areas/home/home.page';
 import { About } from './core/about';
@@ -1130,6 +1138,34 @@ describe('the shell frame', () => {
     const reading = alerts.filter((alert) => alert.textContent?.trim() === reason);
     expect(reading.length).toBe(1);
     expect(reading[0].classList.contains('ocu-home-status')).toBe(true);
+  });
+
+  it("DW-1414: a background write refused while Home is open is announced by the locator bar alone", async () => {
+    // Mutation (Rule 19): have Home's `refusal` read `fault('home') || fault('background')` -> this goes
+    // red, because Home's line then repeats the refusal the locator bar carries.
+    const reason = 'That is not a piece of shell state this instance keeps.';
+    const router = TestBed.inject(Router);
+    router.resetConfig([{ path: '', component: HomePage }]);
+    const refused = { kind: 'error', status: 422, code: 'PREFERENCES.NAME', reason, detail: null };
+    const wire = accountPreferences as unknown as { api: { requestJson: (path: string, init?: { method?: string }) => Promise<unknown> } };
+    const answered = wire.api.requestJson.bind(wire.api);
+    wire.api.requestJson = async (path, init) => ((init?.method ?? 'GET') === 'POST' ? refused : answered(path, init));
+    await router.navigateByUrl('/');
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    await accountPreferences.setValue(SHELL_KIND, SHELL_THEME, THEME_DARK);
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const alerts = Array.from(fixture.nativeElement.querySelectorAll('[role="alert"]') as NodeListOf<HTMLElement>);
+    const reading = alerts.filter((alert) => alert.textContent?.trim() === reason);
+    expect(reading.length).toBe(1);
+    expect(reading[0].classList.contains('ocu-home-status')).toBe(false);
+    const home = fixture.nativeElement.querySelector('.ocu-home-status[role="alert"]') as HTMLElement | null;
+    expect(home).not.toBeNull();
+    expect(home?.textContent?.trim()).toBe('');
   });
 
   it('AD-8: leaving the signed-in state drops this principal\'s namespace list', async () => {

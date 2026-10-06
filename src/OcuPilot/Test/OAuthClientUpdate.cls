@@ -191,6 +191,11 @@ Method TestTheAgentsEditKeepsTheRegistrationMembers()
     Set tSC = $ClassMethod(..#HELPER, "Mint", ..#TOOL, tName, tArgs, .tProposal, .tHttp, .tFault)
     Do $$$AssertStatusOK(tSC, "the edit is minted: " _ $ClassMethod(..#HELPER, "Problem", $Get(tFault)))
     If '$IsObject($Get(tProposal)) Quit
+    ; Mutation (Rule 19): let OAuthClientRules.CardRows draw a registration member the merge leaves out -> red.
+    Set tCardRows = ""
+    Set tRowIterator = tProposal.%Get("changed").%GetIterator()
+    While tRowIterator.%GetNext(.tIndex, .tRow) { Set tCardRows = tCardRows _ $Select(tCardRows = "": "", 1: ",") _ tRow.%Get("field") _ "=" _ tRow.%Get("before") _ ">" _ tRow.%Get("after") }
+    Do $$$AssertEquals(tCardRows, "Metadata.client_name=Before>Agent", "the card shows one row, the member the agent named")
     Set tSC = $ClassMethod(..#CONFIRM, "Confirm", tProposal.%Get("proposalId"), "", $Username, .tResult, .tHttp, .tCode, .tDetail)
     Do $$$AssertStatusOK(tSC, "and confirmed: " _ $Get(tCode))
     Set tSent = ##class(%DynamicObject).%FromJSON($ClassMethod(..#RECORD, "LastWriteBody"))

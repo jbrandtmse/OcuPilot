@@ -458,7 +458,8 @@ export class LocatorBar {
   }
 
   /**
-   * The instance's own sentence for a refused preference write, `''` for none (DW-1326).
+   * The instance's own sentence for a refused preference write, `''` for none (DW-1326): this bar's
+   * own pin, then the agent picker's choice, then a write nobody is watching. Home announces its own.
    *
    * Assertive rather than polite, because it says the pin the user asked for did not happen
    * (EXPERIENCE.md "Status messages (WCAG 4.1.3)"); the text is the server's (AD-39) and this
@@ -467,7 +468,9 @@ export class LocatorBar {
    */
   protected get favoriteRefusal(): string {
     this.generation();
-    return this.preferences.fault('favorite') || this.preferences.fault('background');
+    return (
+      this.preferences.fault('favorite') || this.preferences.fault('agent-pick') || this.preferences.fault('background')
+    );
   }
 
   /**

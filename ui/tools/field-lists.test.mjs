@@ -470,6 +470,7 @@ test('a compare declaration is emitted onto its rows, and every malformed one is
     [{ Nothing: 'words' }, /compare path Nothing is not a top-level row/],
     [{ Description: 'unordered' }, /compare path Description is a literal and cannot be unordered/],
     [{ Resources: 'members' }, /compare path Resources is a array and cannot be members/],
+    [{ GrantedRoles: 'caller' }, /compare path GrantedRoles is a array and cannot be caller/],
   ];
   for (const [compare, pattern] of refusals) {
     const refused = generateFrom({ lists, entries: entry(compare) });

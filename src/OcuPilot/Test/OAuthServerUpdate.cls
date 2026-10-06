@@ -278,6 +278,12 @@ Method TestTheAgentsEditSendsTheCompleteSet()
     Do $$$AssertEquals(tFields, "Metadata.scopes_supported,Metadata.userinfo_endpoint", "one row per named member")
     Do $$$AssertEquals($Get(tRows("Metadata.scopes_supported")), "openid, profile|", "the cleared list reads empty after")
     Do $$$AssertEquals($Get(tRows("Metadata.userinfo_endpoint")), tIssuer _ "/userinfo|" _ tChanged, "and the changed endpoint its two values")
+    ; Mutation (Rule 19): key Disclosure.Rows' changed set by the whole field name -> Metadata is listed unchanged too.
+    Set tUnchanged = ##class(OcuPilot.Kernel.Proposal.Disclosure).Rows($Parameter(..#TOOL, "TOOLNAME"), {"IssuerEndpoint": (tIssuer), "Metadata": {}, "SSLConfiguration": ""}.%ToJSON(), tProposal.%Get("changed").%ToJSON())
+    Set tUnchangedNames = ""
+    Set tUnchangedRows = tUnchanged.%GetIterator()
+    While tUnchangedRows.%GetNext(.tIndex, .tRow) { Set tUnchangedNames = tUnchangedNames _ $Select(tUnchangedNames = "": "", 1: ",") _ tRow.%Get("field") }
+    Do $$$AssertEquals(tUnchangedNames, "IssuerEndpoint,SSLConfiguration", "the metadata its member rows name is not also listed unchanged")
     Set tSC = $ClassMethod(..#CONFIRM, "Confirm", tProposal.%Get("proposalId"), "", $Username, .tResult, .tHttp, .tCode, .tDetail)
     Do $$$AssertStatusOK(tSC, "the edit is confirmed: " _ $Get(tCode))
     Set tSent = ##class(%DynamicObject).%FromJSON($ClassMethod(..#RECORD, "LastWriteBody"))

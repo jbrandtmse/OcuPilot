@@ -121,14 +121,14 @@ Parameter SELECTMODE As INTEGER = 1;
 Parameter PASSWORDPATTERN = "(?is)\bIDENTIF(Y|IED)\b|^(?>.*?\b(?:CREATE|ALTER)\b)(?>.*?\bUSER\b).*\bPASSWORD\b";
 
 /// <p>The keyword and the value after it that <method>MaskCredentials</method> masks: <code>IDENTIFY BY</code>,
-/// <code>IDENTIFIED BY</code> or <code>PASSWORD</code>, then a single-quoted literal (a doubled quote
+/// <code>IDENTIFIED BY</code> or <code>PASSWORD</code>, an <code>=</code> after it if any, then a single-quoted literal (a doubled quote
 /// inside it stays inside), a double-quoted identifier, or a bare token. A literal or identifier a cut
 /// left unterminated runs to the end of the text. A lone <code>?</code> is a bound value and is left.</p>
-Parameter CREDENTIALVALUEPATTERN = "(?is)\b(?:IDENTIF(?:Y|IED)\s+BY|PASSWORD)\b\s*('(?:[^']|'')*'?|""(?:[^""]|"""")*""?|[^\s,;()'""?][^\s,;()]*)";
+Parameter CREDENTIALVALUEPATTERN = "(?is)\b(?:IDENTIF(?:Y|IED)\s+BY|PASSWORD)\b\s*(?:=\s*)?('(?:[^']|'')*'?|""(?:[^""]|"""")*""?|[^\s,;()'""?][^\s,;()]*)";
 
-/// <p>The keyword and the white space after it, anchored at the start of a
+/// <p>The keyword, an <code>=</code> after it if any, and the white space around them, anchored at the start of a
 /// <parameter>CREDENTIALVALUEPATTERN</parameter> match.</p>
-Parameter CREDENTIALKEYWORDPATTERN = "(?is)^(?:IDENTIF(?:Y|IED)\s+BY|PASSWORD)\b\s*";
+Parameter CREDENTIALKEYWORDPATTERN = "(?is)^(?:IDENTIF(?:Y|IED)\s+BY|PASSWORD)\b\s*(?:=\s*)?";
 
 /// <p>What a masked credential value reads.</p>
 Parameter CREDENTIALMASK = "[redacted]";
