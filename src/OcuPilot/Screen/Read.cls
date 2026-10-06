@@ -23,16 +23,19 @@
 /// <file>ui/src/app/core/screen-read.ts</file>'s <code>applyView</code>, because the screen sorts
 /// and filters on the client and a tool runs in-process on the server; both are pinned by the one
 /// corpus in <class>OcuPilot.Test.ReadViewCorpus</class>.</p>
-/// <p><b>A declared read names one of three source kinds</b> (AD-36), the third being
-/// <code>port: "timeline"</code>, a composition of an area's listed screens' own reads through
-/// <method>TimelineClass</method>. An instance endpoint is reached
-/// through a port: <code>port: "admin"</code> through <method>PortClass</method>,
-/// <code>port: "mgmnt"</code>, the management API, through <method>MgmntPortClass</method>, which is
-/// handed the route's scope as its namespace, and <code>port: "logsource"</code>, an instance log
-/// file's bounded tail, through <method>LogSourcePortClass</method>, whose endpoint is a source key
-/// from that port's own fixed enum (AD-21), <code>port: "path"</code>, the instance's allowed
-/// directories, through <method>PathPortClass</method>, and <code>port: "atelier"</code>, the
-/// source-code API, through <method>AtelierPortClass</method> (AD-61). <code>port: "state"</code> is
+/// <p><b>A declared read names one of three source kinds</b> (AD-36): an instance endpoint reached
+/// through a port, OcuPilot's own protected state, or <code>port: "timeline"</code>, a composition of
+/// an area's listed screens' own reads through <method>TimelineClass</method>. The ports are
+/// <code>admin</code> through <method>PortClass</method>; <code>mgmnt</code>, the management API,
+/// through <method>MgmntPortClass</method>, which is handed the route's scope as its namespace;
+/// <code>logsource</code>, an instance log file's bounded tail, through
+/// <method>LogSourcePortClass</method>, whose endpoint is a source key from that port's own fixed enum
+/// (AD-21); <code>path</code>, the instance's allowed directories, through
+/// <method>PathPortClass</method>; <code>background</code> through <method>BackgroundPortClass</method>;
+/// <code>atelier</code>, the source-code API, through <method>AtelierPortClass</method> (AD-61);
+/// <code>encryption</code> through <method>EncryptionPortClass</method>; <code>docdb</code> through
+/// <method>DocDbPortClass</method>; and <code>sqlactivity</code>, the instance's running SQL
+/// statements, through <method>SqlActivityPortClass</method>. <code>port: "state"</code> is
 /// OcuPilot's own protected state (AD-9), resolved against a kernel store's guarded list through
 /// <method>StateRows</method>. The second changes where the rows come from and nothing else: the
 /// same declared <code>fields</code>, the same secret strip, the same filter, sort and view rule,
@@ -113,6 +116,11 @@ Parameter HISTORYTYPE = "HISTORY";
 /// since only that endpoint's <code>TYPEINFO</code> answers <code>ShouldRunAsync()</code> true
 /// (probed against the instance).</p>
 Parameter VOLUMELISTTYPE = "VOLUMELIST";
+
+/// <p>A fifth list-shaped admin request type a source may declare (AD-36, Story 18.22):
+/// <code>Security.Encryption.Key</code>'s active data-element keys, issued the same way as
+/// <parameter>UPCOMINGTYPE</parameter>.</p>
+Parameter DATAELEMENTLISTTYPE = "DATAELEMENTLIST";
 
 /// <p>The request type a single-object read issues (AD-36): one named object of an admin endpoint,
 /// answered as the read's one row, and a 404 answered as none.</p>
@@ -257,6 +265,30 @@ ClassMethod EncryptionPortClass() As %String
     Quit "OcuPilot.Port.EncryptionPort"
 }
 
+/// <p>The <code>read.source.port</code> value naming the namespace's document databases, read through
+/// <method>DocDbPortClass</method> behind that port's own gate, which is handed the route's scope as
+/// its namespace (AD-29, AD-36, Story 19.17).</p>
+Parameter SOURCEDOCDB = "docdb";
+
+/// <p>The port every <b>docdb</b> read is issued through. Overridable so a fixture can reach another;
+/// production never overrides it.</p>
+ClassMethod DocDbPortClass() As %String
+{
+    Quit "OcuPilot.Port.DocDbPort"
+}
+
+/// <p>The <code>read.source.port</code> value naming the instance's running SQL statements, read
+/// through <method>SqlActivityPortClass</method> behind that port's own gate, with no namespace and no
+/// criteria (AD-29, AD-36, Story 19.10).</p>
+Parameter SOURCESQLACTIVITY = "sqlactivity";
+
+/// <p>The port every <b>sqlactivity</b> read is issued through. Overridable so a fixture can reach
+/// another; production never overrides it.</p>
+ClassMethod SqlActivityPortClass() As %String
+{
+    Quit "OcuPilot.Port.SqlActivityPort"
+}
+
 /// <p>The package a <code>state</code> source's <code>endpoint</code> names a class in, trailing
 /// dot included. A source declares the class's short name -- <code>Agent</code> -- and never a
 /// package-qualified one, so no descriptor can point the read at a class outside the kernel's own
@@ -355,7 +387,7 @@ ClassMethod Execute(pDescriptor As %String, pMaxRows As %String = "", Output pRe
         ; AD-36 as amended (Story 16.7): a bare admin type read as a list over one member.
         Set tRowsMember = $Select($IsObject(tSource) && (tSource.%GetTypeOf("rows") = "string"): tSource.%Get("rows"), 1: "")
         Set tBareRows = (tRowsMember '= "") && (tSource.%Get("port") = ..#SOURCEADMIN) && $Match(tSourceType, ..#BARETYPEPATTERN)
-        If '$IsObject(tSource) || '$ListFind($ListBuild(..#SOURCEADMIN, ..#SOURCESTATE, ..#SOURCEMGMNT, ..#SOURCELOGSOURCE, ..#SOURCEPATH, ..#SOURCETIMELINE, ..#SOURCEBACKGROUND, ..#SOURCEATELIER, ..#SOURCEENCRYPTION), tSource.%Get("port")) || ('tBareRows && (tSourceType '= ..#READTYPE) && (((tSourceType '= ..#OBJECTTYPE) && (tSourceType '= ..#UPCOMINGTYPE) && (tSourceType '= ..#HISTORYTYPE) && (tSourceType '= ..#VOLUMELISTTYPE)) || (tSource.%Get("port") '= ..#SOURCEADMIN))) {
+        If '$IsObject(tSource) || '$ListFind($ListBuild(..#SOURCEADMIN, ..#SOURCESTATE, ..#SOURCEMGMNT, ..#SOURCELOGSOURCE, ..#SOURCEPATH, ..#SOURCETIMELINE, ..#SOURCEBACKGROUND, ..#SOURCEATELIER, ..#SOURCEENCRYPTION, ..#SOURCEDOCDB, ..#SOURCESQLACTIVITY), tSource.%Get("port")) || ('tBareRows && (tSourceType '= ..#READTYPE) && (((tSourceType '= ..#OBJECTTYPE) && (tSourceType '= ..#UPCOMINGTYPE) && (tSourceType '= ..#HISTORYTYPE) && (tSourceType '= ..#VOLUMELISTTYPE) && (tSourceType '= ..#DATAELEMENTLISTTYPE)) || (tSource.%Get("port") '= ..#SOURCEADMIN))) {
             Set tSC = ..Internal(pDescriptor _ " declares no read this executor can issue", .pHttpStatus, .pFault)
             Quit
         }
@@ -470,6 +502,26 @@ ClassMethod Execute(pDescriptor As %String, pMaxRows As %String = "", Output pRe
                 Set tSC = tPortSC
                 Quit
             }
+        } ElseIf tSource.%Get("port") = ..#SOURCEDOCDB {
+            ; The namespace's document databases (Story 19.17): the route's own scope travels as the
+            ; port's namespace, and the port's gate, the service check included, runs before any row.
+            Set tQuery("maxRows") = tMax + 1
+            Set tQuery("namespace") = ##class(OcuPilot.Kernel.Scope).Current()
+            Set tPortSC = $ClassMethod(..DocDbPortClass(), "Invoke", tSource.%Get("endpoint"), ..#READTYPE, .tQuery, "", .tAnswer, .pHttpStatus, .pFault)
+            If $$$ISERR(tPortSC) {
+                Set tSC = tPortSC
+                Quit
+            }
+        } ElseIf tSource.%Get("port") = ..#SOURCESQLACTIVITY {
+            ; The instance's running SQL statements (Story 19.10): no namespace and no criteria, so the
+            ; cap is the whole ask; the port's gate runs before any statement is prepared.
+            Kill tQuery
+            Set tQuery("maxRows") = tMax + 1
+            Set tPortSC = $ClassMethod(..SqlActivityPortClass(), "Invoke", tSource.%Get("endpoint"), ..#READTYPE, .tQuery, "", .tAnswer, .pHttpStatus, .pFault)
+            If $$$ISERR(tPortSC) {
+                Set tSC = tPortSC
+                Quit
+            }
         } ElseIf (tSourceType = ..#OBJECTTYPE) && (tRowsMember = "") {
             ; AD-36: one named object read as the one row. An object that does not exist is a read
             ; with no rows rather than a fault, because a singleton the instance has not configured
@@ -541,7 +593,7 @@ ClassMethod Execute(pDescriptor As %String, pMaxRows As %String = "", Output pRe
             Set tSC = ..ForEachRows(pDescriptor, tSource, tMax, .tAnswer, .tTruncated, .pHttpStatus, .pFault)
             If $$$ISERR(tSC) Quit
         } Else {
-            ; An admin LIST, UPCOMING, HISTORY or VOLUMELIST, or a bare type read over one member
+            ; An admin LIST, UPCOMING, HISTORY, VOLUMELIST or DATAELEMENTLIST, or a bare type read over one member
             ; (source.rows): the declared type, the fixed query and then the criteria.
             Do ..SeedSourceQuery(tSource, .tQuery)
             Set tQuery("maxRows") = tMax + 1

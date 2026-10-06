@@ -726,3 +726,46 @@ test('DW-1150: one selector answers the restraint sentence for every footer key,
     assert.equal(readOnlyApplies({ ...UNRESTRAINED, footerKey }), true, `${footerKey} is a read-only state`);
   }
 });
+
+// --- Story 19.11: the enabled definitions the panel's picker offers ----------------------------
+//
+// Mutation (Rule 19): offer a disabled row, or drop the id check -> the first test goes red; stop
+// replacing the list on a re-read, or on `reset()` -> the second goes red.
+
+test('options() lists the enabled definitions as the picker offers them, in the list order', async () => {
+  const body = {
+    definitions: [
+      { id: '1', name: 'Operations', provider: 'anthropic', model: 'm-ops', enabled: true, default: true },
+      { id: '2', name: 'Spare', provider: 'openai', model: 'm-spare', enabled: false, default: false },
+      { id: '3', name: 'Developer', provider: 'openai', model: 'm-dev', enabled: true, default: false },
+      { id: 4, name: 'No string id', provider: 'p', model: 'm', enabled: true, default: false },
+    ],
+  };
+  const status = new AgentStatus({ api: stubApi([ok(body)]) });
+  assert.deepEqual(status.options(), [], 'nothing is offered before the first read');
+  await status.load();
+  assert.deepEqual(
+    status.options(),
+    [
+      { id: '1', name: 'Operations', provider: 'anthropic', model: 'm-ops', isDefault: true },
+      { id: '3', name: 'Developer', provider: 'openai', model: 'm-dev', isDefault: false },
+    ],
+    'the disabled row and the row with no string id are left out'
+  );
+});
+
+test('a re-read replaces the offered definitions, notifying only when they moved, and reset() forgets them', async () => {
+  const first = { definitions: [{ id: '1', name: 'A', provider: 'p', model: 'm', enabled: true, default: true }] };
+  const renamed = { definitions: [{ id: '1', name: 'A2', provider: 'p', model: 'm', enabled: true, default: true }] };
+  const status = new AgentStatus({ api: stubApi([ok(first), ok(first), ok(renamed)]) });
+  let heard = 0;
+  status.subscribe(() => (heard += 1));
+  await status.load();
+  await status.load();
+  assert.equal(heard, 1, 'an identical re-read is not heard');
+  await status.load();
+  assert.equal(heard, 2, 'a renamed definition is');
+  assert.equal(status.options()[0].name, 'A2');
+  status.reset();
+  assert.deepEqual(status.options(), [], 'sign-out forgets the list');
+});

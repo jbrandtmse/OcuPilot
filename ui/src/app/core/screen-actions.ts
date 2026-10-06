@@ -236,6 +236,12 @@ const DESCRIPTOR_ACTION_LABELS: Readonly<Record<string, Readonly<Record<string, 
     addadministrator: STRINGS.encryptionKeyFileAddAdminAction,
     removeadministrator: STRINGS.actionRemove,
   },
+  // Story 18.22: Database encryption's and Data element encryption's Activate key, which opens the
+  // page's dialog, and each row's Deactivate.
+  'OcuPilot.Screen.Descriptor.DatabaseEncryption': { activate: STRINGS.encryptionKeyActivateAction, deactivate: STRINGS.encryptionKeyDeactivateAction },
+  'OcuPilot.Screen.Descriptor.DataElementEncryption': { activate: STRINGS.encryptionKeyActivateAction, deactivate: STRINGS.encryptionKeyDeactivateAction },
+  // Story 19.17: Document databases' delete, which drops the database and titles its typed-name dialog.
+  'OcuPilot.Screen.Descriptor.ExplorerDocDbList': { delete: STRINGS.explorerDocDbDropLabel },
 };
 
 export class ScreenActions {

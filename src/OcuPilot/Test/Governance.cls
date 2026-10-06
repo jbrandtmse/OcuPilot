@@ -29,8 +29,9 @@ Parameter TASKIMPORT = "tasks.schedule.import";
 Parameter ENABLEINTEROP = "osmgmt.namespaces.enableinterop";
 
 /// <p>Story 19.2's two document deletes, Story 19.13's two document imports, Story 19.3's two
-/// saves, Story 19.6's SQL run and Story 19.8's data browser save, which the baseline disables.</p>
-Parameter EXPLORERDISABLED = "explorer.classes.delete,explorer.routines.delete,explorer.classes.import,explorer.routines.import,explorer.classes.save,explorer.routines.save,explorer.sqlquery.run,explorer.sqldata.save";
+/// saves, Story 19.6's SQL run, Story 19.8's data browser save and Story 19.17's document database
+/// drop, which the baseline disables.</p>
+Parameter EXPLORERDISABLED = "explorer.classes.delete,explorer.routines.delete,explorer.classes.import,explorer.routines.import,explorer.classes.save,explorer.routines.save,explorer.sqlquery.run,explorer.sqldata.save,explorer.docdb.delete";
 
 /// <p>The remote database delete, which the baseline also disables (Story 18.16).</p>
 Parameter REMOTEDATABASEDELETE = "osmgmt.remotedatabases.delete";
@@ -43,8 +44,9 @@ Parameter LICENSEDISABLED = "osmgmt.licensekey.activate,osmgmt.licenseservers.de
 /// <p>Story 18.21 adds the ECP SSL/TLS authorization delete, which the baseline disables too.</p>
 Parameter ECPDISABLED = "osmgmt.ecpdataservers.changestatus,osmgmt.ecpdataservers.delete,osmgmt.ecpsslconnections.delete";
 
-/// <p>Story 18.7's five key file writes, which the baseline disables.</p>
-Parameter ENCRYPTIONDISABLED = "security.encryptionkeyfile.create,security.encryptionkeyfile.addkey,security.encryptionkeyfile.removekey,security.encryptionkeyfileadmins.addadministrator,security.encryptionkeyfileadmins.removeadministrator";
+/// <p>Story 18.7's five key file writes, Story 18.22's four encryption key writes and Story 18.23's
+/// encryption startup settings' update, which the baseline disables.</p>
+Parameter ENCRYPTIONDISABLED = "security.encryptionkeyfile.create,security.encryptionkeyfile.addkey,security.encryptionkeyfile.removekey,security.encryptionkeyfileadmins.addadministrator,security.encryptionkeyfileadmins.removeadministrator,security.databaseencryption.activate,security.databaseencryption.deactivate,security.dataelementencryption.activate,security.dataelementencryption.deactivate,security.encryptionstartup.update";
 
 /// <p>Story 18.4's eight disk operations, which the baseline disables.</p>
 Parameter DISKOPERATIONS = "osmgmt.databasedetails.compact,osmgmt.databasedetails.defragment,osmgmt.databasedetails.dismount,osmgmt.databasedetails.mount,osmgmt.databasedetails.truncate,osmgmt.databases.integrity,osmgmt.localdatabases.expand,osmgmt.localdatabases.grow";
@@ -137,7 +139,7 @@ Method TestTheDefaultEnablesEveryWriteButTheBaselineDisabled()
         If ..Resolved(tKey) '= tExpected Set tWrong = tWrong _ $ListBuild(tKey _ "=" _ ..Resolved(tKey))
     }
     Do $$$AssertTrue(tCount > 0, "there are write keys to resolve (" _ tCount _ ")")
-    Do $$$AssertEquals($ListToString(tWrong, ", "), "", "each resolves enabled by the baseline, the purge, the namespace delete, the database delete, the task import, the eight disk operations, the enable of interoperability, the two document deletes, the two document imports, the license key's activation, the license server delete, the ECP data server status change and delete, and the five key file writes disabled")
+    Do $$$AssertEquals($ListToString(tWrong, ", "), "", "each resolves enabled by the baseline, the purge, the namespace delete, the database delete, the task import, the eight disk operations, the enable of interoperability, the two document deletes, the two document imports, the license key's activation, the license server delete, the ECP data server status change and delete, the five key file writes, the four encryption key writes and the encryption startup settings' update disabled")
     Do $$$AssertEquals(..Resolved(..#PURGE), "0|baseline", "the purge's source is the baseline")
 }
 

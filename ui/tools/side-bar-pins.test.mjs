@@ -36,6 +36,7 @@ const SIDE_BAR_SPECS = [
   'ecp-data-servers.browser-spec.mjs',
   'ecp-settings.browser-spec.mjs',
   'encryption-key-file.browser-spec.mjs',
+  'encryption-keys.browser-spec.mjs',
   'journal-settings.browser-spec.mjs',
   'journals.browser-spec.mjs',
   'license-key.browser-spec.mjs',
@@ -47,6 +48,7 @@ const SIDE_BAR_SPECS = [
   'remote-databases.browser-spec.mjs',
   'security.browser-spec.mjs',
   'ssl.browser-spec.mjs',
+  'system-explorer-docdb.browser-spec.mjs',
   'tasks.browser-spec.mjs',
   'web-sessions.browser-spec.mjs',
 ];

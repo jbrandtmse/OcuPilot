@@ -234,6 +234,7 @@ services:
       # classes: ProcessControl, ProhibitedRoute, ProposalFixture, ProposalSpelling, State, Token
       # classes: ToolSetFull
       # classes: ToolWire, TurnContext, TurnConversation, TurnLong, TurnProviderFault, TurnWire
+      # classes: AgentPickTurn, SqlAgentRead
       # classes: TurnStream
       # classes: WebAppWire
       # classes: UserCreateWire, RoleWire, ResourceWire, X509Wire, WalletWire, DeviceWire, DeviceWriteGate
@@ -327,6 +328,21 @@ services:
       # pairs, with and without the file-system pair and %Admin_Manage, and reads and writes probe key
       # files as them (Story 18.7).
       # classes: EncryptionWriteGate
+      # The encryption key gate class signs in as probe principals holding Security's pairs, with and
+      # without the file-system pair and Security's resource, and activates and deactivates keys as
+      # them through a seam port that sends neither (Story 18.22).
+      # classes: EncryptionKeyGate
+      # The encryption startup gate class signs in as probe principals holding Security's pairs, with
+      # and without the file-system pair, Security's resource and the system database's read, and saves
+      # the startup settings as them through a seam port that sends nothing (Story 18.23).
+      # classes: EncryptionStartupGate
+      # The document database gate class signs in as probe principals each missing one pair the DocDB
+      # port requires, and lists, creates and drops a probe database as them (Story 19.17).
+      # classes: DocDbGate
+      # The SQL activity gate class signs in as probe principals each missing one pair the SQL
+      # activity port requires, or holding READ on USER's database and %Development, and reads
+      # another account's running probe statement as them (Story 19.10).
+      # classes: SqlActivityGate, SqlActivityProbe
       OCUPILOT_ALLOW_PRINCIPALS: "1"
       # Writes an application error to a namespace's own ^ERRORS. Same reasoning again, and one
       # degree worse: an application error cannot be un-logged, so a runner pointed elsewhere
@@ -428,6 +444,10 @@ services:
       # classes: ServiceEdit, LdapEdit, LdapUpdate, ServiceLdapProbe
       # Since Story 16.14 the LDAP classes also create configurations through the editor's Save and the agent's create, set and clear their search password, delete them, and test authentication against 127.0.0.1:1.
       # classes: LdapCreate, LdapPassword, LdapTest
+      # Since Story 19.17 the document database classes enable %Service_DocDB, which a stock instance
+      # keeps disabled, and put it back as they found it after every test; they create and drop probe
+      # databases named OcuProbe1917* in USER and remove each by name.
+      # classes: DocDbProbe, DocDbPort, DocDbGate, DocDbWrite
       OCUPILOT_ALLOW_SERVICE_CONFIG: "1"
       # Arms the turnprobe provider row OcuPilot.Kernel.Provider.Catalog resolves only under it,
       # and with it the classes that spawn turn jobs or Test connection children against that row's
@@ -443,6 +463,7 @@ services:
       # classes: SanitizeAuditMask
       # classes: EgressLine
       # classes: DeveloperFloorTurn
+      # classes: AgentPickTurn, SqlAgentRead
       OCUPILOT_ALLOW_TEST_PROVIDER: "1"
       # Purges the instance's own audit database through the shipped screen route: every record
       # dated before today is removed, the agent's audit markers among them, and nothing puts one
@@ -536,6 +557,14 @@ services:
       # deactivate a key, change no encryption setting and touch no file outside that directory
       # (Story 18.7).
       # classes: EncryptionKeyFileRead, EncryptionKeyFileWrite, EncryptionWriteGate
+      # Story 18.22's classes create key files under <ManagerDirectory>ocuprobeact/ the same way, and
+      # activate and deactivate keys only through a seam port that sends neither; the one activation
+      # sent to the vendor carries a wrong password, which it refuses before activating anything.
+      # classes: EncryptionKeyGate, EncryptionKeyWrite
+      # Story 18.23's class creates key files under <ManagerDirectory>ocuprobestart/ the same way, sends
+      # every startup setting change only to a seam port that sends nothing, and sends the vendor one
+      # Settings PUT of the settings unchanged.
+      # classes: EncryptionStartupWrite
       OCUPILOT_ALLOW_ENCRYPTION_CONFIG: "1"
     volumes:
       - $DIR/data:/durable

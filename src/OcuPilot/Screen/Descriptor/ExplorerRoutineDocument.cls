@@ -55,7 +55,7 @@ XData Declaration
     "paging": "cap",
     "criteria": {
       "fields": [
-        {"param": "name", "labelKey": "tableColumnName", "kind": "text", "maxLength": 256},
+        {"param": "name", "labelKey": "tableColumnName", "kind": "text", "maxLength": 256, "hint": "One routine or include file, as Name.mac, .int, .inc, .bas, .mvi or .mvb, spelled as explorer.routines.read answers its Name."},
         {"param": "form", "labelKey": "explorerFormLabel", "kind": "choice", "maxLength": 3, "options": ["udl", "xml", "int"], "default": "udl"}
       ]
     }

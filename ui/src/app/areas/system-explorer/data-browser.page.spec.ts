@@ -712,7 +712,7 @@ describe('Data browser', () => {
     await click(mounted, el(mounted.host, 'add-row'));
     expect(texts(mounted.host, 'status-cell')).toEqual([STRINGS.explorerSqlDataNew, '', '']);
     expect(el(mounted.host, 'save').textContent?.trim()).toBe('Save changes (1)');
-    expect(el(mounted.host, 'status').textContent?.trim()).toContain('1 changes waiting to be saved.');
+    expect(el(mounted.host, 'status').textContent?.trim()).toContain('1 change waiting to be saved.');
     await click(mounted, cellAt(mounted, 1, 1));
     await click(mounted, el(mounted.host, 'duplicate-row'));
     expect(texts(mounted.host, 'status-cell')).toEqual([STRINGS.explorerSqlDataNew, STRINGS.explorerSqlDataNew, '', '']);
@@ -743,7 +743,7 @@ describe('Data browser', () => {
     await click(mounted, el(mounted.host, 'save'));
     const dialog = mounted.host.querySelector('app-warning-dialog') as HTMLElement;
     expect(dialog.textContent).toContain('Save changes to OcuProbe197.Plain?');
-    expect(dialog.textContent).toContain('1 rows change, 1 are added and 1 are deleted in OcuProbe197.Plain, and this cannot be undone from OcuPilot.');
+    expect(dialog.textContent).toContain('1 row changes, 1 is added and 1 is deleted in OcuProbe197.Plain, and this cannot be undone from OcuPilot.');
     await click(mounted, [...dialog.querySelectorAll('button')].find((button) => button.textContent?.trim() === STRINGS.actionCancel) as HTMLElement);
     expect(mounted.sends).toEqual([]);
     expect(mounted.host.querySelector('app-warning-dialog')).toBeNull();
@@ -794,6 +794,20 @@ describe('Data browser', () => {
     expect(el(mounted.host, 'status').textContent?.trim().startsWith('Saved 1 of 3 changes; 2 rolled back.')).toBe(true);
     expect(el(mounted.host, 'save').textContent?.trim()).toBe('Save changes (0)');
     expect(mounted.formDirty.dirty()).toBe(false);
+  });
+
+  // DW-2092. Mutation (Rule 19): the store builds the saved summary without `savedSummaryText` -> "1 of 1
+  // changes" and this goes red.
+  it('a save of exactly one change reads singular in the status line', async () => {
+    const mounted = await mount();
+    mounted.page = pageAnswer([['n1', '1', '1', 'note1']]);
+    await expandAndOpen(mounted);
+    await edit(mounted, 0, 1, 'one');
+    mounted.sendAnswer = { applied: true, output: { outcome: 'saved', results: [{ index: 0, outcome: 'saved', rowCount: 1 }], saved: 1, failed: 0 } };
+    mounted.page = pageAnswer([['one', '1', '1', 'note1']]);
+    await click(mounted, el(mounted.host, 'save'));
+    await proceed(mounted);
+    expect(el(mounted.host, 'status').textContent?.trim().startsWith('Saved 1 of 1 change; 0 rolled back.')).toBe(true);
   });
 
   // AC5, AC10. Mutation (Rule 19): `applyResults` removes a failed insert -> the typed row goes and this
@@ -1004,7 +1018,7 @@ describe('Data browser', () => {
     expect(dataPosts(mounted).at(-1)?.['table']).toBe('Over30');
     expect(el(mounted.host, 'heading').textContent?.trim()).toBe('OcuProbe197.Over30');
     expect(mounted.formDirty.dirty()).toBe(true);
-    await click(mounted, tabNamed(mounted, 'OcuProbe197.Plain, 1 changes waiting to be saved.'));
+    await click(mounted, tabNamed(mounted, 'OcuProbe197.Plain, 1 change waiting to be saved.'));
     expect(dataPosts(mounted)).toHaveLength(posts + 1);
     expect(el(mounted.host, 'save').textContent?.trim()).toBe('Save changes (1)');
     await click(mounted, el(mounted.host, 'close-tab'));
@@ -1033,7 +1047,7 @@ describe('Data browser', () => {
     expect(el(mounted.host, 'save').textContent?.trim()).toBe('Save changes (1)');
     await click(mounted, el(mounted.host, 'discard'));
     expect(el(mounted.host, 'save').textContent?.trim()).toBe('Save changes (0)');
-    expect(el(mounted.host, 'status').textContent?.trim()).toContain('1 changes discarded.');
+    expect(el(mounted.host, 'status').textContent?.trim()).toContain('1 change discarded.');
     expect(texts(mounted.host, 'cell')[0]).toBe('n1');
   });
 
@@ -1047,8 +1061,8 @@ describe('Data browser', () => {
     await click(mounted, all(mounted.host, 'tree-object')[1]);
     await edit(mounted, 0, 1, 'also lost');
     expect(all(mounted.host, 'tab').map((tab) => tab.getAttribute('aria-label'))).toEqual([
-      'OcuProbe197.Plain, 1 changes waiting to be saved.',
-      'OcuProbe197.Over30, 1 changes waiting to be saved.',
+      'OcuProbe197.Plain, 1 change waiting to be saved.',
+      'OcuProbe197.Over30, 1 change waiting to be saved.',
     ]);
     expect(mounted.formDirty.dirty()).toBe(true);
     mounted.routes.set(SCHEMAS_PATH, [readAnswer([{ Schema: 'OcuProbe197', Tables: true, Views: true, Procedures: false }])]);

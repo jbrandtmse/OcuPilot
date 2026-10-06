@@ -73,10 +73,22 @@ ClassMethod LogFault(pMessage As %String, pStatus As %Status, pCode As %String)
     Do ##class(OcuPilot.Kernel.Fault).LogRaw("turn", pMessage, pStatus, pCode)
 }
 
-/// <p>The kill switch and read-only verdict for <var>pUser</var>, read afresh.</p>
-ClassMethod Restraint(pUser As %String, Output pVerdict) As %Status
+/// <p>The kill switch and read-only verdict for <var>pUser</var> under the definition
+/// <var>pDefinitionId</var> the turn was started with, read afresh.</p>
+ClassMethod Restraint(pUser As %String, pDefinitionId As %String, Output pVerdict) As %Status
 {
-    Quit ##class(OcuPilot.Kernel.Restraint).Resolved(pUser, .pVerdict)
+    Quit ##class(OcuPilot.Kernel.Restraint).Verdict(pUser, pDefinitionId, .pVerdict)
+}
+
+/// <p>The definition turn <var>pKey</var> was started with, frozen on its row: <var>pDefinitionId</var>.
+/// A turn row that holds none reads as <var>pUser</var>'s definition in force
+/// (<method>OcuPilot.Kernel.State.Agent.ResolveFor</method>).</p>
+ClassMethod TurnDefinition(pKey As %String, pUser As %String, Output pDefinitionId As %String) As %Status
+{
+    Set tSC = ##class(OcuPilot.Kernel.State.Turn).GuardedDefinitionOf(pKey, .pDefinitionId)
+    If $$$ISERR(tSC) Quit tSC
+    If pDefinitionId '= "" Quit $$$OK
+    Quit ##class(OcuPilot.Kernel.State.Agent).ResolveFor(pUser, .pDefinitionId)
 }
 
 /// <p>Answer tool calls. <var>pToolUses</var> holds <code>tool_use</code> blocks of the reply --
@@ -148,7 +160,7 @@ ClassMethod Run(pKey As %String, pUser As %String, pDefinitionId As %String, pMe
         Kill tMessages
         Set tHistoryCount = 0
         If $IsObject(pConvo) {
-            Set tHistorySC = ##class(OcuPilot.Kernel.State.Convo).HistoryMessages(pConvo, +$Parameter(tLimits, "HISTORYMAXLENGTH"), .tHistory)
+            Set tHistorySC = ##class(OcuPilot.Kernel.State.Convo).HistoryMessages(pConvo, +$Parameter(tLimits, "HISTORYMAXLENGTH"), .tHistory, pDefinitionId)
             If $$$ISOK(tHistorySC) {
                 Set tHistoryIterator = tHistory.%GetIterator()
                 While tHistoryIterator.%GetNext(.tHistoryIndex, .tHistoryMsg) {
@@ -340,7 +352,8 @@ ClassMethod Boundary(pKey As %String, pUser As %String, pReadOnly As %Boolean, p
         Set pCode = ##class(OcuPilot.Api.Error).#TURNABANDONEDSIGNOUT
         Quit 1
     }
-    Set tSC = ..Restraint(pUser, .tVerdict)
+    Set tSC = ..TurnDefinition(pKey, pUser, .tDefinitionId)
+    If $$$ISOK(tSC) Set tSC = ..Restraint(pUser, tDefinitionId, .tVerdict)
     If $$$ISERR(tSC) {
         Do ..LogFault("a step boundary could not read the switches", tSC, pCode)
         Quit 1

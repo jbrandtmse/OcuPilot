@@ -520,6 +520,22 @@ ClassMethod GuardedSignals(pKey As %String, Output pStop As %Boolean, Output pAb
     Quit $$$OK
 }
 
+/// <p>The definition id turn <var>pKey</var> was reserved under (<property>DefinitionId</property>),
+/// frozen at its start (Story 19.11, AD-42), or <code>""</code> for an unknown key or a row that
+/// holds none.</p>
+ClassMethod GuardedDefinitionOf(pKey As %String, Output pDefinitionId As %String) As %Status
+{
+    Set pDefinitionId = ""
+    Set tSC = ..GuardedIdsWhere("SELECT ID FROM OcuPilot_Kernel_State.Turn WHERE %EXACT(TurnKey) = ?", pKey, .tIds)
+    If $$$ISERR(tSC) Quit tSC
+    If $Get(tIds(1)) = "" Quit $$$OK
+    Set tSC = ..GuardedOpenId(tIds(1), .tRow)
+    If $$$ISERR(tSC) Quit tSC
+    If $IsObject(tRow) Set pDefinitionId = ..Text(tRow.DefinitionId)
+    Set tRow = ""
+    Quit $$$OK
+}
+
 /// <p>Turn <var>pKey</var> when <var>pUser</var> owns it, both matched exactly. <var>pFound</var>
 /// is 0 for an unknown key and for another user's turn alike. <var>pValues</var> carries
 /// <code>state</code>, <code>code</code>, <code>user</code> and <code>route</code>, the screen route

@@ -59,7 +59,7 @@ XData Declaration
     "paging": "cap",
     "criteria": {
       "fields": [
-        {"param": "name", "labelKey": "tableColumnName", "kind": "text", "maxLength": 50}
+        {"param": "name", "labelKey": "tableColumnName", "kind": "text", "maxLength": 50, "hint": "One external language server, spelled as osmgmt.languageservers.read answers its Name."}
       ]
     }
   },

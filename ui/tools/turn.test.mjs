@@ -36,6 +36,7 @@ const {
   turnNavigationPath,
   proposalConfirmPath,
   proposalCancelPath,
+  outputLinesOf,
   NAV_REFUSED_UNSAVED_CODE,
   stepLabel,
   confirmedWriteStep,
@@ -2230,4 +2231,24 @@ test('a diff row and an unchanged row keep the emptyKey the instance sent, and a
   assert.equal('emptyKey' in proposal.changed[1], false, 'an empty key is not carried');
   assert.equal(proposal.unchanged[0].emptyKey, 'serviceAllowedUnrestricted', 'the unchanged row keeps its key');
   assert.equal('emptyKey' in proposal.unchanged[1], false, 'and a row with none carries none');
+});
+
+// Story 19.11: a confirmed SQL run answers an `outcome`, not `lines`; the card shows its status line and, for
+// an error, the instance's own message beneath it (AD-39's sixth exception). A compile's lines read as before.
+//
+// Mutation (Rule 19): drop the `outcome` branch from `outputLinesOf` -> the SQL legs go red and the card
+// shows nothing for the run.
+test('outputLinesOf reads a confirmed SQL run as its status line, and an error as its code and message', () => {
+  assert.deepEqual(outputLinesOf({ kind: 'dml', outcome: 'done', rowCount: 3 }), [STRINGS.explorerSqlRowsChanged.replace('<n>', '3')]);
+  assert.deepEqual(outputLinesOf({ kind: 'ddl', outcome: 'done', rowCount: 0 }), [STRINGS.explorerSqlDone]);
+  assert.deepEqual(outputLinesOf({ kind: 'dml', outcome: 'error', sqlcode: -30, message: 'Table not found' }), [
+    STRINGS.explorerSqlCode.replace('<code>', '-30'),
+    'Table not found',
+  ]);
+  assert.deepEqual(outputLinesOf({ kind: 'dml', outcome: 'stopped', seconds: 4 }), [
+    STRINGS.explorerSqlStoppedUndone.replace('<s>', '4'),
+  ]);
+  assert.deepEqual(outputLinesOf({ outcome: 'unheard-of' }), [], 'an outcome this client does not know shows nothing');
+  assert.deepEqual(outputLinesOf({ lines: ['Compiling class A', 7] }), ['Compiling class A'], 'a compile still answers its lines');
+  assert.deepEqual(outputLinesOf(null), []);
 });

@@ -55,7 +55,7 @@ XData Declaration
     "sort": {"fields": ["Order", "Path", "Verb"], "default": "Order", "direction": "asc"},
     "paging": "cap",
     "criteria": {
-      "fields": [{"param": "application", "labelKey": "tableColumnName", "kind": "text", "maxLength": 256}]
+      "fields": [{"param": "application", "labelKey": "tableColumnName", "kind": "text", "maxLength": 256, "hint": "One REST application, spelled as webapp.restapis.read answers its Name: a web application path starting with /, or a spec-based service's package name."}]
     }
   },
   "table": {

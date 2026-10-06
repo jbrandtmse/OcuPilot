@@ -163,7 +163,7 @@ test('AC1: a SELECT with a ? asks for its one value, and the value is bound and 
   try {
     await writeStatement(page, 'SELECT ? AS Echo');
     await page.click('button[data-ocu-sql="run"]');
-    await statusReads(page, STRINGS.explorerSqlTakesValues.replace('<n>', '1'));
+    await statusReads(page, STRINGS.explorerSqlTakesValuesOne);
     assert.equal((await page.$$('input[data-ocu-sql="value"]')).length, 1, 'one value field, for the one ?');
     await page.type('input[data-ocu-sql="value"]', ECHO);
     await page.click('button[data-ocu-sql="run"]');
@@ -249,7 +249,7 @@ test('AC11: a background COUNT leaves Run answering at once, its row arrives lat
 
     // Mutation (Rule 19): `SqlQueryState.readBackground` never adopts the polled answer, rebuilt and
     // redeployed to the throwaway -> the COUNT's row never reaches the section and this goes red.
-    await backgroundReads(page, STRINGS.tableRowCount.replace('<n>', '1'), 60000);
+    await backgroundReads(page, STRINGS.explorerSqlRowCountOne, 60000);
     assert.deepEqual(await page.$$eval('[data-ocu-sql="background-cell"]', (nodes) => nodes.map((node) => node.textContent.trim())), ['102400000'], 'the section shows the COUNT\'s row');
     assert.deepEqual(await structural(page, ROUTE), [], 'SQL query with a background run\'s rows adds no structural entry');
 

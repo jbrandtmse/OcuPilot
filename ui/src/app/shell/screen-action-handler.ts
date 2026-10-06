@@ -105,6 +105,8 @@ export const SCREEN_ACTION_DESCRIPTORS: readonly string[] = [
   // Story 18.21: the SSL/TLS authorizations tab, whose Authorize and Reject each warn first and whose
   // Delete types the SSL computer name.
   'OcuPilot.Screen.Descriptor.EcpSslConnectionTab',
+  // Story 19.17: Document databases, whose Drop types the database's name.
+  'OcuPilot.Screen.Descriptor.ExplorerDocDbList',
 ];
 
 /**
@@ -203,6 +205,16 @@ export const ENCRYPTION_ADD_KEY = 'addkey';
 export const ENCRYPTION_REMOVE_KEY = 'removekey';
 export const ENCRYPTION_ADD_ADMIN = 'addadministrator';
 export const ENCRYPTION_REMOVE_ADMIN = 'removeadministrator';
+
+/**
+ * Database encryption and Data element encryption (Story 18.22): one page draws each, which registers
+ * Activate key itself and starts each row's Deactivate here. A Deactivate types the key's `Id` and sends
+ * it as the action's one value, `KeyId`, beside the singleton target (`TYPED_VALUES`).
+ */
+export const DATABASE_ENCRYPTION_KEYS = 'OcuPilot.Screen.Descriptor.DatabaseEncryption';
+export const DATA_ELEMENT_ENCRYPTION_KEYS = 'OcuPilot.Screen.Descriptor.DataElementEncryption';
+export const ENCRYPTION_ACTIVATE = 'activate';
+export const ENCRYPTION_DEACTIVATE = 'deactivate';
 
 /**
  * Database details' descriptor (Story 18.4), whose five disk operations each warn before they are
@@ -376,7 +388,7 @@ const ACTION_ADDRESS: Readonly<Record<string, string>> = {
  * `DESTRUCTIVE` declaration. This is EXPERIENCE.md's `confirm-dialog` rule -- a delete carries the
  * typed-name field and a `button-destructive` -- applied to the verb that deletes.
  */
-const DESTRUCTIVE_ACTIONS: readonly string[] = ['delete', 'terminate', 'revoke-tokens', 'end', ENCRYPTION_REMOVE_ADMIN, ENCRYPTION_REMOVE_KEY];
+const DESTRUCTIVE_ACTIONS: readonly string[] = ['delete', 'terminate', 'revoke-tokens', 'end', ENCRYPTION_REMOVE_ADMIN, ENCRYPTION_REMOVE_KEY, ENCRYPTION_DEACTIVATE];
 
 /**
  * The destructive actions whose typed-name dialog states the removal's impact as its advisory,
@@ -442,6 +454,11 @@ const DESTRUCTIVE_CONSEQUENCES: Readonly<Record<string, Readonly<Record<string, 
   // Story 18.7: a key file administrator's Remove types its name, and a key's its identifier.
   [ENCRYPTION_KEY_FILE_ADMINS]: { [ENCRYPTION_REMOVE_ADMIN]: STRINGS.encryptionKeyFileRemoveAdminConsequence },
   [ENCRYPTION_KEY_FILE]: { [ENCRYPTION_REMOVE_KEY]: STRINGS.encryptionKeyFileRemoveKeyConsequence },
+  // Story 18.22: a key's Deactivate types its identifier and states what deactivating it costs.
+  [DATABASE_ENCRYPTION_KEYS]: { [ENCRYPTION_DEACTIVATE]: STRINGS.encryptionKeyDeactivateConsequence },
+  [DATA_ELEMENT_ENCRYPTION_KEYS]: { [ENCRYPTION_DEACTIVATE]: STRINGS.encryptionKeyDeactivateDataElementConsequence },
+  // Story 19.17: a document database's Drop types its name.
+  'OcuPilot.Screen.Descriptor.ExplorerDocDbList': { delete: STRINGS.explorerDocDbDropConsequence },
 };
 
 /**
@@ -493,6 +510,9 @@ const TYPED_NAME_ROWS: Readonly<
   // sent with the key file's composite id, which no one types.
   [ENCRYPTION_KEY_FILE_ADMINS]: { name: 'Name', field: '', equals: '', advisory: '' },
   [ENCRYPTION_KEY_FILE]: { name: 'Id', field: '', equals: '', advisory: '' },
+  // Story 18.22: an active key's row is its `Id`, and the write targets the singleton, which no one types.
+  [DATABASE_ENCRYPTION_KEYS]: { name: 'Id', field: '', equals: '', advisory: '' },
+  [DATA_ELEMENT_ENCRYPTION_KEYS]: { name: 'Id', field: '', equals: '', advisory: '' },
 };
 
 /**
@@ -503,6 +523,8 @@ const TYPED_NAME_ROWS: Readonly<
 const TYPED_VALUES: Readonly<Record<string, Readonly<Record<string, string>>>> = {
   [ENCRYPTION_KEY_FILE_ADMINS]: { [ENCRYPTION_REMOVE_ADMIN]: 'Admin' },
   [ENCRYPTION_KEY_FILE]: { [ENCRYPTION_REMOVE_KEY]: 'KeyId' },
+  [DATABASE_ENCRYPTION_KEYS]: { [ENCRYPTION_DEACTIVATE]: 'KeyId' },
+  [DATA_ELEMENT_ENCRYPTION_KEYS]: { [ENCRYPTION_DEACTIVATE]: 'KeyId' },
 };
 
 /**
@@ -607,6 +629,11 @@ const PUBLISHED_PROBLEMS: readonly string[] = [
   STRINGS.encryptionKeyFileAdminLast,
   STRINGS.encryptionKeyFileAdminAbsent,
   STRINGS.encryptionKeyFileKeyAbsent,
+  // Story 18.22: a key that is not active, a key file whose every key is, and the default key while
+  // another is active.
+  STRINGS.encryptionKeyInactive,
+  STRINGS.encryptionKeyAllActive,
+  STRINGS.encryptionKeyDefault,
 ];
 
 /** The sentence a refused action shows: a published state refusal, else the envelope's own reason. */

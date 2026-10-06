@@ -40,6 +40,7 @@ import { CHANGE_ACTIONS, type ChangeAction, type ChangeBus } from './change-bus.
 import { parseCitations, type Citation } from './citations.ts';
 import { impactOf, type Impact } from './impact.ts';
 import { readBackOf, type ReadBack } from './read-back.ts';
+import { sqlOutcomeLines } from './sql-answer.ts';
 import type { ScreenContextPayload } from './screen-context';
 import type { NavigationKind, TokenStorage } from './token-store';
 import { type DraftOutcome, requestDraft } from './draft.ts';
@@ -466,9 +467,14 @@ function boolAt(source: Record<string, unknown>, key: string): boolean {
   return source[key] === true;
 }
 
-/** The string `lines` of a confirm's `output` (Story 19.2), or `[]`. */
+/**
+ * The lines a confirm's `output` shows: the string `lines` of a compile or an import (Story 19.2), or
+ * for a confirmed SQL run, which answers an `outcome`, its status line and an error's message
+ * (Story 19.11, AD-39's sixth exception); `[]` for any other shape.
+ */
 export function outputLinesOf(output: unknown): readonly string[] {
   if (output === null || typeof output !== 'object') return [];
+  if (typeof (output as Record<string, unknown>)['outcome'] === 'string') return sqlOutcomeLines(output);
   const lines = (output as Record<string, unknown>)['lines'];
   return Array.isArray(lines) ? lines.filter((line): line is string => typeof line === 'string') : [];
 }

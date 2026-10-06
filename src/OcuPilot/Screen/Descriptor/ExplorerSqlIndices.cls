@@ -51,7 +51,7 @@ XData Declaration
     "paging": "cap",
     "criteria": {
       "fields": [
-        {"param": "table", "labelKey": "explorerSqlColumnTable", "kind": "text", "maxLength": 257}
+        {"param": "table", "labelKey": "explorerSqlColumnTable", "kind": "text", "maxLength": 257, "hint": "One table, as Schema.Table, spelled as explorer.sqltables.read answers its Table."}
       ]
     }
   },

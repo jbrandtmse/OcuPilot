@@ -195,7 +195,7 @@ test('AC12, AC10: a value staged in the first of two tabs survives a switch made
     await openTable(page, 'Pair');
     await statusReads(page, 'Rows 1\u20132 of 2');
     assert.deepEqual(await tabs(page), [
-      { name: `${SCHEMA}.Edit, 1 changes waiting to be saved.`, selected: false },
+      { name: `${SCHEMA}.Edit, 1 change waiting to be saved.`, selected: false },
       { name: `${SCHEMA}.Pair`, selected: true },
     ]);
     assert.equal(await page.$eval('[data-ocu-data="tabs"]', (node) => `${node.getAttribute('role')}|${node.getAttribute('aria-label')}`), `tablist|${STRINGS.explorerSqlDataOpenTables}`);
@@ -203,7 +203,7 @@ test('AC12, AC10: a value staged in the first of two tabs survives a switch made
 
     await page.focus('[data-ocu-data="tab"][aria-selected="true"]');
     await page.keyboard.press('ArrowLeft');
-    assert.equal((await focused(page)).name, `${SCHEMA}.Edit, 1 changes waiting to be saved.`, 'Left moves focus to the first tab');
+    assert.equal((await focused(page)).name, `${SCHEMA}.Edit, 1 change waiting to be saved.`, 'Left moves focus to the first tab');
     await page.keyboard.press('Enter');
     await page.waitForFunction((wanted) => (document.querySelector('[data-ocu-data="heading"]')?.textContent ?? '').trim() === wanted, { timeout: config.navigationTimeoutMs }, `${SCHEMA}.Edit`);
     assert.equal(await page.$eval('#ocu-data-cell-r0-c2', (node) => node.textContent.trim()), 'tabbed', 'the staged value came back with its tab');
@@ -218,7 +218,7 @@ test('AC12, AC10: a value staged in the first of two tabs survives a switch made
     await page.waitForSelector('app-warning-dialog [role="dialog"]', { visible: true, timeout: config.navigationTimeoutMs });
     await page.click('[role="dialog"] .ocu-dialog-actions .ocu-button-primary');
     await page.waitForFunction(() => document.querySelector('[role="dialog"]') === null, { timeout: config.navigationTimeoutMs });
-    await statusReads(page, 'Saved 1 of 1 changes; 0 rolled back.', true);
+    await statusReads(page, 'Saved 1 of 1 change; 0 rolled back.', true);
 
     await page.goto(`${config.origin}/ocupilot/${QUERY_ROUTE}?ns=USER`, { waitUntil: 'networkidle2' });
     await runQuery(page, `SELECT Name FROM ${SCHEMA}.Edit WHERE Code = 'a'`);
@@ -328,7 +328,7 @@ test('AC8: Delete on a tab holding a staged row asks Leave without saving?; Canc
     await statusReads(page, 'Rows 1\u20136 of 6');
     await typeInto(page, 2, 2, 'dropme');
     await openTable(page, 'Pair');
-    const staged = `${SCHEMA}.Edit, 1 changes waiting to be saved.`;
+    const staged = `${SCHEMA}.Edit, 1 change waiting to be saved.`;
     await page.focus(`[data-ocu-data="tab"][aria-label="${staged}"]`);
     await page.keyboard.press('Delete');
     await page.waitForSelector('[data-ocu-data="leave"]', { visible: true, timeout: config.navigationTimeoutMs });

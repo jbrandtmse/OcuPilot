@@ -277,7 +277,7 @@ test('AC14: a table SQL query creates and fills is changed in Data browser, and 
     await statusReads(page, 'Rows 1\u20131 of 1');
     await typeInto(page, 0, 2, 'after');
     await saveConfirmed(page);
-    await statusReads(page, 'Saved 1 of 1 changes; 0 rolled back.', true);
+    await statusReads(page, 'Saved 1 of 1 change; 0 rolled back.', true);
 
     await page.goto(`${config.origin}/ocupilot/${QUERY_ROUTE}?ns=USER`, { waitUntil: 'networkidle2' });
     await runQuery(page, `SELECT Label FROM ${MADE} WHERE K = 1`, false);

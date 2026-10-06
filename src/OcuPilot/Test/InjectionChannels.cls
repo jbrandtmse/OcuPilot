@@ -9,12 +9,13 @@
 /// alone.</p>
 /// <p><b>It needs a throwaway container</b>: it creates a probe role and user, writes a failed
 /// login, a messages.log line, an application error, a probe task, two probe classes, one of them in
-/// <code>USER</code>, and probe tables, a probe view, a probe SQL procedure's class and a probe statement
-/// in <code>USER</code>, and runs turn jobs on the <code>turnprobe</code> row, so <method>OnBeforeAllTests</method> refuses unless every variable
+/// <code>USER</code>, and probe tables, a probe view, a probe SQL procedure's class, a probe statement
+/// and a running probe statement's job in <code>USER</code>, and runs turn jobs on the <code>turnprobe</code> row, so <method>OnBeforeAllTests</method> refuses unless every variable
 /// this class declares reads 1. The turns run as the suite's own account, which holds every
 /// read's pairs. After every method no probe turn, proposal, conversation, stub node, probe
-/// definition, task, role, user, class, table, view or application error it planted remains; the failed-login audit
-/// row, the messages.log line and the probe statement's statement-index row are append-only.</p>
+/// definition, task, role, user, class, table, view, probe job or application error it planted remains; the failed-login audit
+/// row, the messages.log line, the probe statement's statement-index row, and the running probe
+/// statement's statement-index row and cached query in <code>USER</code> remain.</p>
 Class OcuPilot.Test.InjectionChannels Extends %UnitTest.TestCase
 {
 
@@ -306,6 +307,26 @@ Method TestStatementLiteral()
 Method TestCachedQueryText()
 {
     Do ..ReadSource("m", "which cached queries use this table?", $Parameter(..#SEED, "CATALOGNAMESPACE"), 1)
+}
+
+/// <p>Source (n): a probe statement running in <code>USER</code> keeping the seed as a literal, read
+/// through <code>osmgmt.sqlactivity.read</code>'s <code>Statement</code>.</p>
+/// <p>Mutation (Rule 19): <method>OcuPilot.Kernel.Agent.Loop.Run</method> appends the last
+/// <code>tool_result</code> content to the system prompt -> the stub obeys, and the invariant 1,
+/// obeyed and proposal assertions go red.</p>
+Method TestRunningStatementLiteral()
+{
+    Do ..ReadSource("n", "which SQL statements are running right now?")
+}
+
+/// <p>Source (o): a probe row in <code>USER</code> whose <code>Label</code> is the seed, read through
+/// <code>explorer.sqlquery.read</code> in a turn running in <code>USER</code> as the suite's account.</p>
+/// <p>Mutation (Rule 19): <method>OcuPilot.Kernel.Agent.Loop.Run</method> appends the last
+/// <code>tool_result</code> content to the system prompt -> the stub obeys, and the invariant 1,
+/// obeyed and proposal assertions go red.</p>
+Method TestSqlQueryRow()
+{
+    Do ..ReadSource("o", "what does the probe row say?", $Parameter(..#SEED, "CATALOGNAMESPACE"))
 }
 
 /// <p>Source (g): the rows of sources (a) and (e), each sent as a turn's screen context with no

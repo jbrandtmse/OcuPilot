@@ -56,7 +56,7 @@ XData Declaration
     "paging": "cap",
     "criteria": {
       "fields": [
-        {"param": "text", "labelKey": "explorerSearchTextLabel", "kind": "text", "maxLength": 256},
+        {"param": "text", "labelKey": "explorerSearchTextLabel", "kind": "text", "maxLength": 256, "hint": "The text to find, matched literally, so * and commas are searched for as themselves."},
         {"param": "scope", "labelKey": "explorerSearchScopeLabel", "kind": "choice", "maxLength": 8, "options": ["all", "classes", "routines"], "default": "all"},
         {"param": "case", "labelKey": "explorerSearchCaseLabel", "kind": "choice", "maxLength": 3, "options": ["yes", "no"], "default": "no"}
       ]

@@ -22,9 +22,9 @@
 /// the second row carrying <code>"1"</code> returned <code>ERROR #5808: Key not unique</code>).
 /// So <code>""</code> for every ordinary definition and <code>"1"</code> for the default makes
 /// "at most one" a storage-layer fact. "At least one" is
-/// <method>GuardedRebalanceDefault</method>'s, and "which one is in force" is
+/// <method>GuardedRebalanceDefault</method>'s, and "which one is the default" is
 /// <method>ResolveDefault</method>'s, which answers only while the marked definition is
-/// enabled.</p>
+/// enabled. The definition in force for a user is <method>ResolveFor</method>'s.</p>
 Class OcuPilot.Kernel.State.Agent Extends OcuPilot.Kernel.State.Base
 {
 
@@ -566,7 +566,7 @@ ClassMethod GuardedByName(pName As %String, Output pId As %String) As %Status
 /// is the implementation rather than a preference.</p>
 /// <p><b>A definition that is not enabled is refused</b> (DW-330), with
 /// <parameter>DEFAULTDISABLEDREASON</parameter> so a caller can tell this refusal from a read
-/// failure. The marker means "the definition in force": <method>ResolveDefault</method> already
+/// failure. The marker means "the default in force": <method>ResolveDefault</method> already
 /// answers <code>""</code> for a disabled one, and <method>GuardedRebalanceDefault</method>'s
 /// second case would move it away again on the next unrelated write, so an explicit set here
 /// would record a claim the instance does not honour and does not keep. The marker that method
@@ -620,7 +620,8 @@ ClassMethod SetDefaultGuarded(pId As %String) As %Status
     Quit tSC
 }
 
-/// <p>The definition in force: the marked one, and only while it is enabled.
+/// <p>The default in force: the marked one, and only while it is enabled. It is the definition in
+/// force for every user without an enabled pick (<method>ResolveFor</method>).
 /// <var>pId</var> is <code>""</code> when nothing is marked, or when the marked definition is
 /// disabled -- the configuration-empty state Story 3.6's first-login gate triggers on, never a
 /// failure.</p>
@@ -629,6 +630,46 @@ ClassMethod ResolveDefault(Output pId As %String) As %Status
     Set pId = ""
     Set tSC = ..GuardedIdsWhereNoParam("SELECT TOP 1 ID FROM OcuPilot_Kernel_State.Agent WHERE DefaultMark = '1' AND Enabled = 1 ORDER BY ID", .tIds)
     If $$$ISOK(tSC) Set pId = $Get(tIds(1), "")
+    Quit tSC
+}
+
+/// <p>Whether <var>pId</var> names an enabled definition. A value that is not a whole-number id
+/// names none.</p>
+ClassMethod GuardedIsEnabled(pId As %String, Output pEnabled As %Boolean) As %Status
+{
+    Set pEnabled = 0
+    If '$Match(pId, "^[1-9][0-9]{0,17}$") Quit $$$OK
+    Set tSC = ..GuardedIdsWhere("SELECT TOP 1 ID FROM OcuPilot_Kernel_State.Agent WHERE ID = ? AND Enabled = 1", +pId, .tIds)
+    If $$$ISOK(tSC) Set pEnabled = ($Get(tIds(1), "") '= "")
+    Quit tSC
+}
+
+/// <p>The definition in force for <var>pUserName</var>: the id their <code>shell</code> member
+/// <code>agentDefinition</code> names while that definition is enabled (Story 19.11, AD-42, AD-50),
+/// else <method>ResolveDefault</method>'s. <var>pId</var> is <code>""</code> when no definition is in
+/// force, the configuration-empty state. A pick never moves the default marker.</p>
+ClassMethod ResolveFor(pUserName As %String, Output pId As %String) As %Status
+{
+    Set pId = ""
+    Set tSC = $$$OK
+    Try {
+        If pUserName '= "" {
+            Set tSC = ##class(OcuPilot.Kernel.State.Pref).GuardedValue(pUserName, ##class(OcuPilot.Kernel.State.Pref).#KINDSHELL, ##class(OcuPilot.Kernel.State.Pref).#SHELLAGENTDEFINITION, .tPick)
+            If $$$ISERR(tSC) Quit
+            If tPick '= "" {
+                Set tSC = ..GuardedIsEnabled(tPick, .tEnabled)
+                If $$$ISERR(tSC) Quit
+                If tEnabled {
+                    Set pId = +tPick
+                    Quit
+                }
+            }
+        }
+        Set tSC = ..ResolveDefault(.pId)
+    } Catch ex {
+        Set pId = ""
+        Set tSC = ex.AsStatus()
+    }
     Quit tSC
 }
 

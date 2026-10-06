@@ -3158,7 +3158,7 @@ ClassMethod RetentionTaskIds(pClass As %String, Output pIds) As %Status [ Privat
 
 /// <p>Ensure instance-wide auditing is enabled (FR-66), reporting which of "already
 /// enabled" and "enabled now" happened as a distinct outcome (AC10). Never touches
-/// <code>AuditEncrypt</code> -- changing it deletes the audit database.</p>
+/// <code>AuditEncrypt</code>, which needs an active database encryption key and key activation at every start.</p>
 /// <p>The read and the write go through <method>AuditEnabledSetting</method> and
 /// <method>EnableInstanceAuditing</method> (rework iteration 6 review, DW-45) so
 /// <class>OcuPilot.Test.AuditOff</class> can report auditing as off and record the write

@@ -12,7 +12,7 @@
  * Nothing here re-derives it, and no consumer issues a second call for it.
  *
  * **The read is the ungated selection projection.** `GET /api/ocupilot/agent/definitions` is the
- * one agent route that gates on nothing beyond the router (`Api/Definitions.cls:125 HandleList`),
+ * one agent route that gates on nothing beyond the router (`Api/Definitions.cls` `HandleList`),
  * so a caller who is not an OcuPilot administrator -- exactly the audience the
  * configuration-empty state is written for -- can still answer the question. Every other agent
  * route would refuse them, and a refusal is not an answer.
@@ -265,6 +265,57 @@ export interface AgentStatusOptions {
   readonly connectivity?: ConnectivityService;
 }
 
+/**
+ * One enabled definition, as the panel's picker offers it (Story 19.11): the selection projection's
+ * own row, narrowed. The id is what a pick stores; the name, provider and model are text.
+ */
+export interface AgentOption {
+  readonly id: string;
+  readonly name: string;
+  readonly provider: string;
+  readonly model: string;
+  /** Whether the instance marks it the default, which the picker's menu names. */
+  readonly isDefault: boolean;
+}
+
+function optionOf(row: unknown): AgentOption | null {
+  if (row === null || typeof row !== 'object') return null;
+  const record = row as Record<string, unknown>;
+  if (record['enabled'] !== true) return null;
+  const id = record['id'];
+  if (typeof id !== 'string' || id === '') return null;
+  return {
+    id,
+    name: textAt(record, 'name'),
+    provider: textAt(record, 'provider'),
+    model: textAt(record, 'model'),
+    isDefault: record['default'] === true,
+  };
+}
+
+function optionsOf(body: unknown): readonly AgentOption[] {
+  const options: AgentOption[] = [];
+  for (const row of rowsOf(body)) {
+    const option = optionOf(row);
+    if (option !== null) options.push(option);
+  }
+  return options;
+}
+
+function sameOptions(a: readonly AgentOption[], b: readonly AgentOption[]): boolean {
+  return (
+    a.length === b.length &&
+    a.every(
+      (option, index) =>
+        option.id === b[index].id &&
+        option.name === b[index].name &&
+        option.provider === b[index].provider &&
+        option.model === b[index].model &&
+        option.isDefault === b[index].isDefault
+    )
+  );
+}
+
 function rowsOf(body: unknown): readonly unknown[] {
   if (body === null || typeof body !== 'object') return [];
   const rows = (body as Record<string, unknown>)['definitions'];
@@ -339,6 +390,8 @@ export class AgentStatus {
 
   private configuredValue = false;
 
+  private optionsValue: readonly AgentOption[] = [];
+
   private restraintValue: Restraint = UNRESTRAINED;
 
   private answeredValue = false;
@@ -391,6 +444,11 @@ export class AgentStatus {
   /** Whether the instance holds at least one definition with `enabled: true`. */
   configured(): boolean {
     return this.configuredValue;
+  }
+
+  /** The enabled definitions the picker offers, in the list's order (Story 19.11). */
+  options(): readonly AgentOption[] {
+    return this.optionsValue;
   }
 
   /** The verdict the instance last answered for this caller. */
@@ -459,14 +517,17 @@ export class AgentStatus {
       return;
     }
     const next = rowsOf(definitions.body).some(isEnabled);
+    const nextOptions = optionsOf(definitions.body);
     const nextRestraint = restraintOf(restraint.body);
     // Notified only when an answer moved, or when there was no answer before: a re-read that
     // confirms what is already on screen must not re-render the panel, the rail and the form.
     const moved =
       !this.answeredValue ||
       this.configuredValue !== next ||
+      !sameOptions(this.optionsValue, nextOptions) ||
       !sameRestraint(this.restraintValue, nextRestraint);
     this.configuredValue = next;
+    this.optionsValue = nextOptions;
     this.restraintValue = nextRestraint;
     this.answeredValue = true;
     if (moved) this.notify();
@@ -519,6 +580,7 @@ export class AgentStatus {
     this.generation += 1;
     this.request += 1;
     this.configuredValue = false;
+    this.optionsValue = [];
     this.restraintValue = UNRESTRAINED;
     this.answeredValue = false;
     this.notify();

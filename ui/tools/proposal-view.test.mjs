@@ -43,6 +43,10 @@ const {
   CONSEQUENCE_TASKEXPORTREPLACES,
   CONSEQUENCE_EXPLOREREXPORTREPLACES,
   CONSEQUENCE_EXPLORERIMPORTREPLACES,
+  CONSEQUENCE_SQLCHANGESROWS,
+  CONSEQUENCE_SQLCHANGESSCHEMA,
+  CONSEQUENCE_SQLRUNSPROCEDURE,
+  CONSEQUENCE_SQLUNDECLARED,
   CONSEQUENCE_PYTHONCUSTOM,
   CONSEQUENCE_TASKMANAGERSUSPEND,
   CONSEQUENCE_LOCKINTRANSACTION,
@@ -65,6 +69,17 @@ const {
   CONSEQUENCE_ECPSSLREJECT,
   CONSEQUENCE_ENCRYPTIONNEWKEY,
   CONSEQUENCE_ENCRYPTIONREMOVEKEY,
+  CONSEQUENCE_ENCRYPTIONKEYACTIVATE,
+  CONSEQUENCE_ENCRYPTIONKEYDEACTIVATE,
+  CONSEQUENCE_ENCRYPTIONKEYACTIVATEDATAELEMENT,
+  CONSEQUENCE_ENCRYPTIONKEYDEACTIVATEDATAELEMENT,
+  CONSEQUENCE_ENCRYPTIONSTARTUPNONE,
+  CONSEQUENCE_ENCRYPTIONSTARTUPINTERACTIVE,
+  CONSEQUENCE_ENCRYPTIONSTARTUPUNATTENDED,
+  CONSEQUENCE_ENCRYPTIONSTARTUPKMIP,
+  CONSEQUENCE_ENCRYPTIONSTARTUPRESTART,
+  CONSEQUENCE_ENCRYPTIONSTARTUPJOURNAL,
+  CONSEQUENCE_AUDITENCRYPTIONCHANGE,
   COUNTDOWN_PLACEHOLDER,
   COUNTDOWN_WARNING_MS,
   CONFIRMED_TIME_PLACEHOLDER,
@@ -80,6 +95,7 @@ const {
   formatUserName,
   isTerminalPhase,
   journalSentence,
+  sqlConsequenceSentence,
   offersRepropose,
   phaseForState,
   statusLineFor,
@@ -891,4 +907,88 @@ test('Story 18.7: a new encryption key and a key removal state their consequence
     assert.equal(/Parameter CONSEQUENCE = "([^"]+)";/.exec(tool(name))?.[1], CONSEQUENCE_ENCRYPTIONNEWKEY, `${name}.cls declares the new-key code the card reads`);
   }
   assert.equal(/Parameter CONSEQUENCE = "([^"]+)";/.exec(tool('EncryptionKeyFileRemoveKey'))?.[1], CONSEQUENCE_ENCRYPTIONREMOVEKEY, 'EncryptionKeyFileRemoveKey.cls declares the removal code');
+});
+
+// Story 18.22: an activation and a deactivation, of database keys and of data-element keys, state their
+// consequence on the card under the code their tools declare.
+//
+// Mutation (Rule 19): delete the `CONSEQUENCE_ENCRYPTIONKEYDEACTIVATE` line from `consequenceSentence` ->
+// the second assertion goes red on ''.
+test('Story 18.22: an activation and a deactivation state their consequence on the card', () => {
+  const cases = [
+    [CONSEQUENCE_ENCRYPTIONKEYACTIVATE, STRINGS.encryptionKeyActivateConsequence, 'DatabaseKeyActivate'],
+    [CONSEQUENCE_ENCRYPTIONKEYDEACTIVATE, STRINGS.encryptionKeyDeactivateConsequence, 'DatabaseKeyDeactivate'],
+    [CONSEQUENCE_ENCRYPTIONKEYACTIVATEDATAELEMENT, STRINGS.encryptionKeyActivateDataElementConsequence, 'DataElementKeyActivate'],
+    [CONSEQUENCE_ENCRYPTIONKEYDEACTIVATEDATAELEMENT, STRINGS.encryptionKeyDeactivateDataElementConsequence, 'DataElementKeyDeactivate'],
+  ];
+  const tool = (name) => readFileSync(join(uiRoot, '..', 'src', 'OcuPilot', 'Screen', 'Tool', `${name}.cls`), 'utf8');
+  for (const [code, sentence, name] of cases) {
+    assert.equal(consequenceSentence(code), sentence, `${code} reads its published sentence`);
+    assert.equal(/Parameter CONSEQUENCE = "([^"]+)";/.exec(tool(name))?.[1], code, `${name}.cls declares the code the card reads`);
+  }
+});
+
+// Story 19.11: an agent-proposed SQL statement's four consequence codes are the tool's own, read from its
+// class rather than restated, and each resolves to the console's confirmation sentence for the kind; the
+// DML sentence names the statement's tables from the proposal's `Tables` row.
+//
+// Mutation (Rule 19): drop the EXPLORER.SQL.RUNSPROCEDURE branch from `consequenceSentence`, or fill
+// `<tables>` from another row in `sqlConsequenceSentence` -> this goes red.
+test("the SQL run's consequence codes are the tool's own and resolve to the console's sentences", () => {
+  const tool = readFileSync(join(uiRoot, '..', 'src', 'OcuPilot', 'Screen', 'Tool', 'ExplorerSqlRun.cls'), 'utf8');
+  for (const [parameter, code] of [
+    ['CONSEQUENCEROWS', CONSEQUENCE_SQLCHANGESROWS],
+    ['CONSEQUENCESCHEMA', CONSEQUENCE_SQLCHANGESSCHEMA],
+    ['CONSEQUENCEPROCEDURE', CONSEQUENCE_SQLRUNSPROCEDURE],
+    ['CONSEQUENCEUNDECLARED', CONSEQUENCE_SQLUNDECLARED],
+  ]) {
+    assert.ok(tool.includes(`Parameter ${parameter} = "${code}";`), `ExplorerSqlRun.cls declares ${parameter} as ${code}`);
+  }
+  assert.equal(consequenceSentence(CONSEQUENCE_SQLCHANGESSCHEMA), STRINGS.explorerSqlConfirmDdl);
+  assert.equal(consequenceSentence(CONSEQUENCE_SQLRUNSPROCEDURE), STRINGS.explorerSqlConfirmCall);
+  assert.equal(consequenceSentence(CONSEQUENCE_SQLUNDECLARED), STRINGS.explorerSqlConfirmOther);
+  assert.equal(consequenceSentence(CONSEQUENCE_SQLCHANGESROWS), '', 'the DML sentence names tables, so the card states it through sqlConsequenceSentence');
+  const view = {
+    consequence: CONSEQUENCE_SQLCHANGESROWS,
+    changed: [
+      { field: 'Kind', before: '', after: 'dml' },
+      { field: 'Tables', before: '', after: 'OCUPROBE196.GRANTED, OCUPROBE196.OTHER' },
+    ],
+  };
+  assert.equal(
+    sqlConsequenceSentence(view),
+    STRINGS.explorerSqlConfirmDml.replace('<tables>', 'OCUPROBE196.GRANTED, OCUPROBE196.OTHER'),
+    'the DML sentence names the tables the instance recorded'
+  );
+  assert.equal(sqlConsequenceSentence({ ...view, consequence: CONSEQUENCE_SQLCHANGESSCHEMA }), '', 'and no other code reads through it');
+  assert.equal(
+    sqlConsequenceSentence({ consequence: CONSEQUENCE_SQLCHANGESROWS, changed: [{ field: 'Tables', before: '', after: '<tables>' }] }),
+    STRINGS.explorerSqlConfirmDml.replace('<tables>', () => '<tables>'),
+    'a table name holding a placeholder is shown as written'
+  );
+});
+
+// Story 18.23: an encryption startup settings write states the consequence of the start mode it
+// chooses, of an IRISSECURITY or IRISTEMP change, of a journal encryption change and of a change to the
+// audit log's encryption, under the codes its tool and the kernel declare.
+//
+// Mutation (Rule 19): delete the `CONSEQUENCE_AUDITENCRYPTIONCHANGE` line from `consequenceSentence` ->
+// the audit case goes red on ''.
+test('Story 18.23: an encryption startup settings write states its consequence on the card', () => {
+  const cases = [
+    [CONSEQUENCE_ENCRYPTIONSTARTUPNONE, STRINGS.encryptionStartupNoneConsequence],
+    [CONSEQUENCE_ENCRYPTIONSTARTUPINTERACTIVE, STRINGS.encryptionStartupInteractiveConsequence],
+    [CONSEQUENCE_ENCRYPTIONSTARTUPUNATTENDED, STRINGS.encryptionStartupUnattendedConsequence],
+    [CONSEQUENCE_ENCRYPTIONSTARTUPKMIP, STRINGS.encryptionStartupKmipConsequence],
+    [CONSEQUENCE_ENCRYPTIONSTARTUPRESTART, STRINGS.encryptionStartupRestart],
+    [CONSEQUENCE_ENCRYPTIONSTARTUPJOURNAL, STRINGS.encryptionStartupJournalConsequence],
+    [CONSEQUENCE_AUDITENCRYPTIONCHANGE, STRINGS.encryptionStartupAuditConsequence],
+  ];
+  for (const [code, sentence] of cases) assert.equal(consequenceSentence(code), sentence, `${code} reads its published sentence`);
+  const tool = readFileSync(join(uiRoot, '..', 'src', 'OcuPilot', 'Screen', 'Tool', 'EncryptionStartupUpdate.cls'), 'utf8');
+  assert.equal(/Parameter MODECONSEQUENCES = "([^"]+)";/.exec(tool)?.[1], [CONSEQUENCE_ENCRYPTIONSTARTUPNONE, CONSEQUENCE_ENCRYPTIONSTARTUPINTERACTIVE, CONSEQUENCE_ENCRYPTIONSTARTUPUNATTENDED, CONSEQUENCE_ENCRYPTIONSTARTUPKMIP].join(','), 'the tool declares the four mode codes the card reads');
+  assert.equal(/Parameter RESTARTCONSEQUENCE = "([^"]+)";/.exec(tool)?.[1], CONSEQUENCE_ENCRYPTIONSTARTUPRESTART, 'the tool declares the restart code');
+  assert.equal(/Parameter JOURNALCONSEQUENCE = "([^"]+)";/.exec(tool)?.[1], CONSEQUENCE_ENCRYPTIONSTARTUPJOURNAL, 'the tool declares the journal code');
+  const prohibited = readFileSync(join(uiRoot, '..', 'src', 'OcuPilot', 'Kernel', 'Proposal', 'Prohibited.cls'), 'utf8');
+  assert.equal(/Parameter EFFECTAUDITENCRYPTION = "([^"]+)";/.exec(prohibited)?.[1], CONSEQUENCE_AUDITENCRYPTIONCHANGE, 'the kernel declares the audit effect the card reads');
 });

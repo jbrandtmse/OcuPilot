@@ -58,7 +58,7 @@ XData Declaration
     "note": {"key": "explorerSqlStatementsNote", "text": "Statistics are as of the instance's last aggregation, so a recently run statement can read blank."},
     "criteria": {
       "fields": [
-        {"param": "table", "labelKey": "explorerSqlColumnTable", "kind": "text", "maxLength": 257}
+        {"param": "table", "labelKey": "explorerSqlColumnTable", "kind": "text", "maxLength": 257, "hint": "One table, as Schema.Table, spelled as explorer.sqltables.read answers its Table."}
       ]
     }
   },

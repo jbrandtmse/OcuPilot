@@ -17,11 +17,13 @@ import {
   pageRangeLine,
   rowRangeMax,
   rowsLine,
+  saveConsequenceText,
   shortcutFor,
   shortcutStep,
   type ShortcutAction,
   type ShortcutPlace,
   type SortState,
+  waitingText,
 } from '../../core/data-browser-model';
 import { NavigationService, screenForDescriptor } from '../../core/navigation';
 import { ScopeService, onScopeChange } from '../../core/scope';
@@ -452,7 +454,7 @@ export class DataBrowserPage {
     this.generation();
     return this.state.tabs().map((tab) => ({
       ...tab,
-      name: tab.staged > 0 ? `${tab.label}, ${fillPlaceholders(STRINGS.explorerSqlDataWaiting, { n: tab.staged })}` : tab.label,
+      name: tab.staged > 0 ? `${tab.label}, ${waitingText(tab.staged)}` : tab.label,
       dot: tab.staged > 0,
     }));
   }
@@ -605,7 +607,7 @@ export class DataBrowserPage {
   protected get saveConsequence(): string {
     this.generation();
     const counts = this.state.stagedCounts();
-    return fillPlaceholders(STRINGS.explorerSqlDataSaveConsequence, { u: counts.update, i: counts.insert, d: counts.delete, table: this.heading });
+    return saveConsequenceText(counts, this.heading);
   }
 
   /** Whether "Leave without saving?" waits on an answer. */

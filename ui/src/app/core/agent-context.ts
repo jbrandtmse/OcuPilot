@@ -23,7 +23,13 @@ import type { ConnectivityService } from './connectivity';
 /** Absolute from the origin root, through the one API service (AD-20). */
 export const AGENT_CONTEXT_PATH = '/api/ocupilot/agent/context';
 
-/** The seven facts `GET/PUT /agent/context` answers (`Api/Context.cls Body`). */
+/** The definition in force for the caller, as `GET/PUT /agent/context` names it (Story 19.11). */
+export interface AgentContextDefinition {
+  readonly id: string;
+  readonly name: string;
+}
+
+/** The eight facts `GET/PUT /agent/context` answers (`Api/Context.cls Body`). */
 export interface AgentContextInfo {
   /** The caller's effective choice: their own stored choice, or `shareDefault` when they have none. */
   readonly share: boolean;
@@ -33,11 +39,17 @@ export interface AgentContextInfo {
   readonly userChoice: boolean | null;
   /** The resolved row cap (`Switches.contextRowCap`), 1 to 1,000 (AD-24). */
   readonly contextRowCap: number;
-  /** The default definition's provider family, or `''` with no enabled default. */
+  /**
+   * The definition in force for the caller: their pick while it names an enabled definition, else the
+   * default (Story 19.11, AD-42). `null` with none enabled. The provider, host and `leavesInstance`
+   * below are this definition's.
+   */
+  readonly definition: AgentContextDefinition | null;
+  /** The definition in force's provider family, or `''` with none. */
   readonly provider: string;
-  /** The default definition's resolved endpoint host, or `''` with no enabled default. */
+  /** The definition in force's resolved endpoint host, or `''` with none. */
   readonly endpointHost: string;
-  /** Whether that endpoint leaves the instance, or `null` with no enabled default. */
+  /** Whether that endpoint leaves the instance, or `null` with none. */
   readonly leavesInstance: boolean | null;
 }
 
@@ -47,6 +59,7 @@ export const NO_CONTEXT_INFO: AgentContextInfo = {
   shareDefault: false,
   userChoice: null,
   contextRowCap: 200,
+  definition: null,
   provider: '',
   endpointHost: '',
   leavesInstance: null,
@@ -71,6 +84,13 @@ function numberAt(source: Record<string, unknown>, key: string, fallback: number
   return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
 }
 
+function definitionOf(value: unknown): AgentContextDefinition | null {
+  if (value === null || typeof value !== 'object') return null;
+  const row = value as Record<string, unknown>;
+  const id = textAt(row, 'id');
+  return id === '' ? null : { id, name: textAt(row, 'name') };
+}
+
 /** `body` narrowed key by key, or `null` when it is not the shape `Api.Context` answers. */
 function infoOf(body: unknown): AgentContextInfo | null {
   if (body === null || typeof body !== 'object') return null;
@@ -80,6 +100,7 @@ function infoOf(body: unknown): AgentContextInfo | null {
     shareDefault: boolAt(row, 'shareDefault'),
     userChoice: boolOrNullAt(row, 'userChoice'),
     contextRowCap: numberAt(row, 'contextRowCap', NO_CONTEXT_INFO.contextRowCap),
+    definition: definitionOf(row['definition']),
     provider: textAt(row, 'provider'),
     endpointHost: textAt(row, 'endpointHost'),
     leavesInstance: boolOrNullAt(row, 'leavesInstance'),
@@ -93,6 +114,8 @@ function sameInfo(a: AgentContextInfo, b: AgentContextInfo): boolean {
     a.shareDefault === b.shareDefault &&
     a.userChoice === b.userChoice &&
     a.contextRowCap === b.contextRowCap &&
+    a.definition?.id === b.definition?.id &&
+    a.definition?.name === b.definition?.name &&
     a.provider === b.provider &&
     a.endpointHost === b.endpointHost &&
     a.leavesInstance === b.leavesInstance
@@ -155,6 +178,11 @@ export class AgentContext {
 
   contextRowCap(): number {
     return this.info.contextRowCap;
+  }
+
+  /** The definition in force for the caller, or `null` with none enabled (Story 19.11). */
+  definition(): AgentContextDefinition | null {
+    return this.info.definition;
   }
 
   provider(): string {

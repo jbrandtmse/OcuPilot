@@ -67,6 +67,13 @@ export const THEME_LIGHT = 'light';
 export const THEME_DARK = 'dark';
 
 /**
+ * The `shell` member holding the agent definition the user picked in the panel's header, as a
+ * definition id (Story 19.11, AD-50). The instance validates it at the write and resolves it at every
+ * turn start; a pick that no longer names an enabled definition reads as the default.
+ */
+export const SHELL_AGENT_DEFINITION = 'agentDefinition';
+
+/**
  * The `shell` member recording that the first-login gate has opened the Definition form for this
  * user (FR-28). Written once, as `FIRST_SIGN_IN_RECORDED`, when the gate opens the form; a user
  * holding it is not moved there again.

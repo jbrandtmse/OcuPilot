@@ -115,7 +115,7 @@ ClassMethod PortClass() As %String
 
 /// <p>The real verdict, with the kill switch or read-only forced on, or the read failed, when a test
 /// asked for it.</p>
-ClassMethod Restraint(pUser As %String, Output pVerdict) As %Status
+ClassMethod Restraint(pUser As %String, pDefinitionId As %String, Output pVerdict) As %Status
 {
     If $Get(^||OcuPilotTurnLoopProbe("restraintError")) {
         Kill pVerdict
@@ -124,7 +124,7 @@ ClassMethod Restraint(pUser As %String, Output pVerdict) As %Status
         Set pVerdict("enforcedReadOnly") = 0
         Quit $$$ERROR($$$GeneralError, "the probe answered the switches as unreadable")
     }
-    Set tSC = ##super(pUser, .pVerdict)
+    Set tSC = ##super(pUser, pDefinitionId, .pVerdict)
     If $Get(^||OcuPilotTurnLoopProbe("readOnly")) Set pVerdict("enforcedReadOnly") = 1
     If $Get(^||OcuPilotTurnLoopProbe("killSwitch")) '= "" {
         Set pVerdict("killSwitch") = 1

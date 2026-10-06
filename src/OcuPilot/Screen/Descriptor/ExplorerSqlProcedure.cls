@@ -55,7 +55,7 @@ XData Declaration
     "paging": "cap",
     "criteria": {
       "fields": [
-        {"param": "procedure", "labelKey": "explorerSqlColumnProcedure", "kind": "text", "maxLength": 257}
+        {"param": "procedure", "labelKey": "explorerSqlColumnProcedure", "kind": "text", "maxLength": 257, "hint": "One procedure, as Schema.Procedure, spelled as explorer.sqlprocedures.read answers its Procedure."}
       ]
     }
   },

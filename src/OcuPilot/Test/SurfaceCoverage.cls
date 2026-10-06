@@ -176,6 +176,7 @@ XData Coverage
 <screen name="ExplorerSqlViewStatements" class="OcuPilot.Test.ExplorerDescriptor" method="TestTheViewAndProcedureTabsFormTheirGroups" corpus="the five SQL view and procedure tabs are asserted together in one loop"/>
 <screen name="ExplorerSqlProcedure" class="OcuPilot.Test.ExplorerDescriptor" method="TestTheViewAndProcedureTabsFormTheirGroups" corpus="the five SQL view and procedure tabs are asserted together in one loop"/>
 <screen name="ExplorerSqlProcedureStatements" class="OcuPilot.Test.ExplorerDescriptor" method="TestTheViewAndProcedureTabsFormTheirGroups" corpus="the five SQL view and procedure tabs are asserted together in one loop"/>
+<screen name="ExplorerDocDbList" class="OcuPilot.Test.DocDbDescriptor" method="TestTheDescriptorShape"/>
 <screen name="RemoteDatabaseList" class="OcuPilot.Test.RemoteDatabaseDescriptor" method="TestTheListIsOsManagementsTwelfthEntry"/>
 <screen name="RemoteDatabaseForm" class="OcuPilot.Test.RemoteDatabaseDescriptor" method="TestTheFormIsBuiltUnlistedWithTheListsPairs"/>
 <screen name="JournalList" class="OcuPilot.Test.JournalDescriptor" method="TestJournalsIsOsManagementsThirteenthEntry"/>
@@ -194,6 +195,10 @@ XData Coverage
 <screen name="EncryptionKeyFile" class="OcuPilot.Test.EncryptionDescriptor" method="TestTheThreeScreensAreDeclaredAsTheSpecPlacesThem" corpus="Story 18.7's three key file screens are asserted together in one loop"/>
 <screen name="EncryptionKeyFileAdminList" class="OcuPilot.Test.EncryptionDescriptor" method="TestTheThreeScreensAreDeclaredAsTheSpecPlacesThem" corpus="Story 18.7's three key file screens are asserted together in one loop"/>
 <screen name="EncryptionKeyFileForm" class="OcuPilot.Test.EncryptionDescriptor" method="TestTheThreeScreensAreDeclaredAsTheSpecPlacesThem" corpus="Story 18.7's three key file screens are asserted together in one loop"/>
+<screen name="DatabaseEncryption" class="OcuPilot.Test.EncryptionKeyDescriptor" method="TestTheTwoScreensAreDeclaredAsTheSpecPlacesThem" corpus="Story 18.22's two encryption key screens are asserted together in one loop"/>
+<screen name="DataElementEncryption" class="OcuPilot.Test.EncryptionKeyDescriptor" method="TestTheTwoScreensAreDeclaredAsTheSpecPlacesThem" corpus="Story 18.22's two encryption key screens are asserted together in one loop"/>
+<screen name="EncryptionStartup" class="OcuPilot.Test.EncryptionStartupDescriptor" method="TestTheScreenIsDeclaredAsTheSpecPlacesIt"/>
+<screen name="SqlActivityList" class="OcuPilot.Test.SqlActivityDescriptor" method="TestTheDescriptorShape"/>
 <tool name="permissions.users.create" class="OcuPilot.Test.UserCreate" method="TestTheSchemaCarriesNoSecretAndThePermittedSetIsTheSets"/>
 <tool name="permissions.roles.create" class="OcuPilot.Test.RoleCreate" method="TestTheSchemaCarriesNoEscalationOnlyAndThePermittedSetIsTheSets"/>
 <tool name="permissions.roles.delete" class="OcuPilot.Test.RoleDelete" method="TestTheDeleteIsAnActionWriteOverTheScreensOwnPairs"/>
@@ -317,18 +322,20 @@ XData Coverage
 <tool name="osmgmt.locks.remove" class="OcuPilot.Test.LockRemoveTools" method="TestEachToolIsAnActionWriteOverTheLockPort" corpus="the three lock removals are asserted together in one loop"/>
 <tool name="osmgmt.locks.removeprocess" class="OcuPilot.Test.LockRemoveTools" method="TestEachToolIsAnActionWriteOverTheLockPort" corpus="the three lock removals are asserted together in one loop"/>
 <tool name="osmgmt.locks.removeclient" class="OcuPilot.Test.LockRemoveTools" method="TestEachToolIsAnActionWriteOverTheLockPort" corpus="the three lock removals are asserted together in one loop"/>
-<tool name="explorer.classes.compile" class="OcuPilot.Test.ExplorerDescriptor" method="TestTheAreaHoldsTwentyFourReadsAndEightWrites" corpus="the eight System Explorer writes are asserted together in one loop"/>
-<tool name="explorer.classes.delete" class="OcuPilot.Test.ExplorerDescriptor" method="TestTheAreaHoldsTwentyFourReadsAndEightWrites" corpus="the eight System Explorer writes are asserted together in one loop"/>
-<tool name="explorer.classes.export" class="OcuPilot.Test.ExplorerDescriptor" method="TestTheAreaHoldsTwentyFourReadsAndEightWrites" corpus="the eight System Explorer writes are asserted together in one loop"/>
-<tool name="explorer.classes.import" class="OcuPilot.Test.ExplorerDescriptor" method="TestTheAreaHoldsTwentyFourReadsAndEightWrites" corpus="the eight System Explorer writes are asserted together in one loop"/>
-<tool name="explorer.routines.compile" class="OcuPilot.Test.ExplorerDescriptor" method="TestTheAreaHoldsTwentyFourReadsAndEightWrites" corpus="the eight System Explorer writes are asserted together in one loop"/>
-<tool name="explorer.routines.delete" class="OcuPilot.Test.ExplorerDescriptor" method="TestTheAreaHoldsTwentyFourReadsAndEightWrites" corpus="the eight System Explorer writes are asserted together in one loop"/>
-<tool name="explorer.routines.export" class="OcuPilot.Test.ExplorerDescriptor" method="TestTheAreaHoldsTwentyFourReadsAndEightWrites" corpus="the eight System Explorer writes are asserted together in one loop"/>
-<tool name="explorer.routines.import" class="OcuPilot.Test.ExplorerDescriptor" method="TestTheAreaHoldsTwentyFourReadsAndEightWrites" corpus="the eight System Explorer writes are asserted together in one loop"/>
+<tool name="explorer.classes.compile" class="OcuPilot.Test.ExplorerDescriptor" method="TestTheAreaHoldsTwentySixReadsAndElevenWrites" corpus="the area's eleven writes are asserted together in one loop"/>
+<tool name="explorer.classes.delete" class="OcuPilot.Test.ExplorerDescriptor" method="TestTheAreaHoldsTwentySixReadsAndElevenWrites" corpus="the area's eleven writes are asserted together in one loop"/>
+<tool name="explorer.classes.export" class="OcuPilot.Test.ExplorerDescriptor" method="TestTheAreaHoldsTwentySixReadsAndElevenWrites" corpus="the area's eleven writes are asserted together in one loop"/>
+<tool name="explorer.classes.import" class="OcuPilot.Test.ExplorerDescriptor" method="TestTheAreaHoldsTwentySixReadsAndElevenWrites" corpus="the area's eleven writes are asserted together in one loop"/>
+<tool name="explorer.routines.compile" class="OcuPilot.Test.ExplorerDescriptor" method="TestTheAreaHoldsTwentySixReadsAndElevenWrites" corpus="the area's eleven writes are asserted together in one loop"/>
+<tool name="explorer.routines.delete" class="OcuPilot.Test.ExplorerDescriptor" method="TestTheAreaHoldsTwentySixReadsAndElevenWrites" corpus="the area's eleven writes are asserted together in one loop"/>
+<tool name="explorer.routines.export" class="OcuPilot.Test.ExplorerDescriptor" method="TestTheAreaHoldsTwentySixReadsAndElevenWrites" corpus="the area's eleven writes are asserted together in one loop"/>
+<tool name="explorer.routines.import" class="OcuPilot.Test.ExplorerDescriptor" method="TestTheAreaHoldsTwentySixReadsAndElevenWrites" corpus="the area's eleven writes are asserted together in one loop"/>
 <tool name="explorer.classes.save" class="OcuPilot.Test.ExplorerDescriptor" method="TestTheTwoSavesAreUnadvertisedDestructiveWrites" corpus="the two System Explorer saves are asserted together in one loop"/>
 <tool name="explorer.routines.save" class="OcuPilot.Test.ExplorerDescriptor" method="TestTheTwoSavesAreUnadvertisedDestructiveWrites" corpus="the two System Explorer saves are asserted together in one loop"/>
 <tool name="explorer.sqlquery.run" class="OcuPilot.Test.SqlPort" method="TestTheToolDeclaresItsWritePath"/>
 <tool name="explorer.sqldata.save" class="OcuPilot.Test.SqlSave" method="TestTheToolDeclaresItsWritePath"/>
+<tool name="explorer.docdb.create" class="OcuPilot.Test.DocDbWrite" method="TestTheAgentsCreateConfirmsAndATakenNameIsRefused"/>
+<tool name="explorer.docdb.delete" class="OcuPilot.Test.DocDbWrite" method="TestTheAgentsDropIsGovernedThenConfirmed"/>
 <tool name="osmgmt.remotedatabases.create" class="OcuPilot.Test.RemoteDatabaseDescriptor" method="TestTheToolsDeclareTheirFieldsKindsAndPairs" corpus="the three remote database tools are asserted together in one loop"/>
 <tool name="osmgmt.remotedatabases.update" class="OcuPilot.Test.RemoteDatabaseDescriptor" method="TestTheToolsDeclareTheirFieldsKindsAndPairs" corpus="the three remote database tools are asserted together in one loop"/>
 <tool name="osmgmt.remotedatabases.delete" class="OcuPilot.Test.RemoteDatabaseDescriptor" method="TestTheToolsDeclareTheirFieldsKindsAndPairs" corpus="the three remote database tools are asserted together in one loop"/>
@@ -353,6 +360,11 @@ XData Coverage
 <tool name="security.encryptionkeyfile.removekey" class="OcuPilot.Test.EncryptionDescriptor" method="TestTheFiveToolsDeclareTheirPairsPagesAndSecrets" corpus="Story 18.7's five tools are asserted together in one loop"/>
 <tool name="security.encryptionkeyfileadmins.addadministrator" class="OcuPilot.Test.EncryptionDescriptor" method="TestTheFiveToolsDeclareTheirPairsPagesAndSecrets" corpus="Story 18.7's five tools are asserted together in one loop"/>
 <tool name="security.encryptionkeyfileadmins.removeadministrator" class="OcuPilot.Test.EncryptionDescriptor" method="TestTheFiveToolsDeclareTheirPairsPagesAndSecrets" corpus="Story 18.7's five tools are asserted together in one loop"/>
+<tool name="security.databaseencryption.activate" class="OcuPilot.Test.EncryptionKeyWrite" method="TestADatabaseKeyIsActivatedAndDeactivatedOnBothCallers" corpus="an activation and its deactivation are asserted together on both callers"/>
+<tool name="security.databaseencryption.deactivate" class="OcuPilot.Test.EncryptionKeyWrite" method="TestADatabaseKeyIsActivatedAndDeactivatedOnBothCallers" corpus="an activation and its deactivation are asserted together on both callers"/>
+<tool name="security.dataelementencryption.activate" class="OcuPilot.Test.EncryptionKeyWrite" method="TestDataElementKeysAreActivatedAndDeactivated" corpus="an activation and its deactivation are asserted together on both callers"/>
+<tool name="security.dataelementencryption.deactivate" class="OcuPilot.Test.EncryptionKeyWrite" method="TestDataElementKeysAreActivatedAndDeactivated" corpus="an activation and its deactivation are asserted together on both callers"/>
+<tool name="security.encryptionstartup.update" class="OcuPilot.Test.EncryptionStartupWrite" method="TestAStartModeChangeIsOnePutOnBothCallers"/>
 <member name="state-protection" class="OcuPilot.Test.State" method="TestDeniedUserCannotReachAnyStateClass"/>
 <member name="audit-round-trip-record" class="OcuPilot.Test.AuditRecord" method="TestACreateRecordsTheFieldsItCreatedAtTheirDefaults"/>
 <member name="audit-round-trip-verbs" class="OcuPilot.Test.AuditVerbs" method="TestADeleteIsRecordedWithWhatBecameOfItsCredentialEntry"/>

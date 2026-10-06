@@ -186,6 +186,8 @@ describe('an area opens when any screen it lists is allowed (AD-8, DW-1768)', ()
       // Story 18.21: ECP settings and ECP application servers, the eighteenth and nineteenth.
       manage,
       manage,
+      // Story 19.10: SQL activity, the twentieth, open on Operate and the system database's read.
+      open,
     ]);
   });
 });
@@ -220,6 +222,8 @@ const AUTHORIZATION_SERVER_MAP = {
         { route: 'security/auditing', allowed: false, failedPair: '%Admin_Secure:USE' },
         { route: 'security/allowed-directories', allowed: false, failedPair: '%Admin_FileSystemAccess:USE' },
         { route: 'security/encryption-key-file', allowed: false, failedPair: '%Admin_Secure:USE' },
+        { route: 'security/database-encryption', allowed: false, failedPair: '%Admin_Secure:USE' },
+        { route: 'security/data-element-encryption', allowed: false, failedPair: '%Admin_Secure:USE' },
       ],
     },
     { key: 'agent', allowed: true, screens: [] },
@@ -282,6 +286,8 @@ describe('a tab group opens its area and its entry through any of its tabs (AD-8
       { label: STRINGS.auditingConfigurationLink, gated: 'true', reason: requires('%Admin_Secure:USE') },
       { label: STRINGS.allowedDirectoriesLabel, gated: 'true', reason: requires('%Admin_FileSystemAccess:USE') },
       { label: STRINGS.encryptionKeyFileLabel, gated: 'true', reason: requires('%Admin_Secure:USE') },
+      { label: STRINGS.databaseEncryptionLabel, gated: 'true', reason: requires('%Admin_Secure:USE') },
+      { label: STRINGS.dataElementEncryptionLabel, gated: 'true', reason: requires('%Admin_Secure:USE') },
     ]);
 
     items[4].click();

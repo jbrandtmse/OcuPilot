@@ -37,13 +37,15 @@ import { JournalSettingsForm } from './areas/os-management/journal-settings.stor
 import { EcpSettingsForm } from './areas/os-management/ecp-settings.store';
 import { EncryptionKeyFileStore } from './areas/security/encryption-key-file.store';
 import { EncryptionKeyFileForm } from './areas/security/encryption-key-file-form.store';
+import { EncryptionKeysStore } from './areas/security/encryption-keys.store';
+import { EncryptionStartupForm } from './areas/security/encryption-startup.store';
 import { UserCreateForm } from './areas/permissions/user-create-form.store';
 import { AuditSearch } from './areas/logs/audit.store';
 import { LedgerSearch } from './areas/agent/ledger.store';
 import { ErrorLogDrill } from './areas/logs/error-log.store';
 import { AgentContext } from './core/agent-context';
 import { AgentStatus } from './core/agent-status';
-import { ApiService } from './core/api';
+import { ApiService, type JsonResult } from './core/api';
 import { LogHubStore } from './areas/logs/log-hub.store';
 import { LogViewerStore, XDBC_SOURCE } from './areas/logs/log-viewer.store';
 import { ChangeBus } from './core/change-bus';
@@ -572,7 +574,9 @@ describe('the shell frame', () => {
                       ? { kind: 'ok', status: 200, body: { rows: [{ 'AppServerSettings.MaxServers': 2, 'AppServerSettings.ClientReconnectInterval': 5 }], truncated: false } }
                       : path.startsWith('/api/ocupilot/ecp-settings/form')
                         ? { kind: 'ok', status: 200, body: { licensed: false, serverSsl: 'absent' } }
-                        : { kind: 'ok', status: 200, body: { rows: [] } },
+                        : path.startsWith('/api/ocupilot/screens/security.encryptionstartup/read')
+                          ? { kind: 'ok', status: 200, body: { rows: [{ DBEncStartMode: 'Unattended', DBEncStartKeyFile: '/probe/start.key' }], truncated: false } }
+                          : { kind: 'ok', status: 200, body: { rows: [] } },
           } as unknown as ApiService,
         },
       ],
@@ -1306,6 +1310,21 @@ describe('the shell frame', () => {
     encryptionKeyFileForm.open('APRINCIPAL');
     encryptionKeyFileForm.setValue('Description', 'a key THIS principal described');
     expect(encryptionKeyFileForm.value('Description')).not.toBe('');
+    // And Database encryption (Story 18.22): the active keys THIS principal read.
+    const encryptionKeysStore = TestBed.inject(EncryptionKeysStore);
+    await encryptionKeysStore.read(
+      { requestJson: async <T,>() => ({ kind: 'ok', status: 200, body: { rows: [{ Id: 'A1B2', KeyLen: 256, IsDefault: true }] } }) as unknown as JsonResult<T> },
+      'OcuPilot.Screen.Descriptor.DatabaseEncryption'
+    );
+    expect(encryptionKeysStore.rows('OcuPilot.Screen.Descriptor.DatabaseEncryption').length).toBe(1);
+    // And Encryption startup settings (Story 18.23): the settings THIS principal read and an administrator
+    // they typed for a new key file.
+    const encryptionStartupForm = TestBed.inject(EncryptionStartupForm);
+    await encryptionStartupForm.open();
+    encryptionStartupForm.setLocation('/probe/root/', 'keys/start.key');
+    encryptionStartupForm.setAdminName('a-name-this-principal-typed');
+    expect(encryptionStartupForm.storedKeyFile()).toBe('/probe/start.key');
+    expect(encryptionStartupForm.adminName()).not.toBe('');
 
     // The same answer for the SSL/TLS configuration form (Story 9.5): a private key password THIS
     // principal typed and has not saved, in a root-provided store (AD-35). The password takes input
@@ -1464,6 +1483,13 @@ describe('the shell frame', () => {
     // from `App.verifyWhenSignedIn` -> that line goes red, and the next principal sees the previous one's key file.
     expect(encryptionKeyFileStore.path()).toBe('');
     expect(encryptionKeyFileForm.value('Description')).toBe('');
+    // Mutation (Rule 19): delete `this.encryptionKeysStore.reset()` from `App.verifyWhenSignedIn` -> this goes
+    // red, and the next principal sees the previous one's active keys.
+    expect(encryptionKeysStore.rows('OcuPilot.Screen.Descriptor.DatabaseEncryption')).toEqual([]);
+    // Mutation (Rule 19): delete `this.encryptionStartupForm.reset()` from `App.verifyWhenSignedIn` -> this goes
+    // red, and the next principal sees the previous one's settings and typed administrator.
+    expect(encryptionStartupForm.storedKeyFile()).toBe('');
+    expect(encryptionStartupForm.adminName()).toBe('');
 
     // Mutation (Rule 19): delete `this.sslForm.reset()` from `App.verifyWhenSignedIn` -> this goes
     // red, and the next principal's SSL/TLS form holds the previous one's typed key password.

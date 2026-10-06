@@ -87,7 +87,10 @@ ClassMethod HandleUpdate() As %Status
 }
 
 /// <p>The status body for <var>pUser</var>: <code>{share, shareDefault, userChoice, contextRowCap,
-/// provider, endpointHost, leavesInstance}</code>.</p>
+/// definition, provider, endpointHost, leavesInstance}</code>. <code>definition</code> is
+/// <code>{id, name}</code> of the definition in force for the caller (their pick while it is
+/// enabled, else the default, Story 19.11), or <code>null</code> when none is; the provider, host
+/// and <code>leavesInstance</code> are that definition's.</p>
 ClassMethod Body(pUser As %String, Output pBody As %DynamicObject) As %Status [ Private ]
 {
     Set pBody = ""
@@ -106,9 +109,13 @@ ClassMethod Body(pUser As %String, Output pBody As %DynamicObject) As %Status [ 
         Set tProvider = ""
         Set tHost = ""
         Set tLeaves = ""
-        Set tSC = ##class(OcuPilot.Kernel.State.Agent).ResolveDefault(.tDefinitionId)
+        Set tSC = ##class(OcuPilot.Kernel.State.Agent).ResolveFor(pUser, .tDefinitionId)
         If $$$ISERR(tSC) Quit
+        Set tDefinitionName = ""
         If tDefinitionId '= "" {
+            Set tOpenSC = ##class(OcuPilot.Kernel.State.Agent).GuardedOpenId(tDefinitionId, .tDefinitionRow)
+            If $$$ISOK(tOpenSC) && $IsObject(tDefinitionRow) Set tDefinitionName = tDefinitionRow.Name
+            Set tDefinitionRow = ""
             If '##class(OcuPilot.Port.ProviderPort).ResolveEndpoint(tDefinitionId, .tProvider, .tHost, .tMarkedLocal, .tProxyHost, .tLeaves) {
                 Set tProvider = ""
                 Set tHost = ""
@@ -125,6 +132,14 @@ ClassMethod Body(pUser As %String, Output pBody As %DynamicObject) As %Status [ 
             Do pBody.%Set("userChoice", ''tUserChoice, "boolean")
         }
         Do pBody.%Set("contextRowCap", tRowCap, "number")
+        If tDefinitionId = "" {
+            Do pBody.%Set("definition", "", "null")
+        } Else {
+            Set tDefinition = {}
+            Do tDefinition.%Set("id", tDefinitionId, "string")
+            Do tDefinition.%Set("name", tDefinitionName, "string")
+            Do pBody.%Set("definition", tDefinition)
+        }
         Do pBody.%Set("provider", tProvider, "string")
         Do pBody.%Set("endpointHost", tHost, "string")
         If tLeaves = "" {

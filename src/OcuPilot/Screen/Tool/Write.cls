@@ -166,6 +166,15 @@ Parameter CREATES As BOOLEAN = 0;
 /// the field twice.</p>
 Parameter SCREENACTIONS = "";
 
+/// <p>Whether this tool's fresh read is composed from the values the write itself carries, which
+/// <method>PortQuery</method> turns into the port's query (AD-51, Story 19.11). <code>0</code> here:
+/// the read identifies the target alone. A tool that declares <code>1</code> has the mint pass its
+/// arguments, and a screen action its declared values, through <method>PortQuery</method>, as
+/// Confirm's re-read passes the stored payload, so all three callers read one state. A screen action
+/// asks its <method>ScreenActionDelta</method> twice: before the fresh read, with no fresh object,
+/// for the values the read is composed from, and again with the fresh read.</p>
+Parameter READSVALUES As BOOLEAN = 0;
+
 /// <p>The top-level names this tool's own <parameter>READTYPE</parameter> read answers,
 /// comma-separated, or <code>""</code> where the screen's declared read is the whole record of
 /// them.</p>
@@ -903,6 +912,27 @@ ClassMethod ConfirmProblem(pIdValue As %String, pArgs As %DynamicObject, Output 
 /// disclosure does the same for an unchanged row
 /// (<method>OcuPilot.Kernel.Proposal.Disclosure.Rows</method>).</p>
 Parameter EMPTYKEYS = "";
+
+/// <p>The top-level names this tool's read-back compares when its port has no derived field list, so
+/// <class>OcuPilot.Screen.Tool.ToolFields</class> holds no entry for it, comma-separated, or
+/// <code>""</code> (AD-58 as amended by Story 19.17). <code>""</code> here, so every tool with an entry,
+/// and every tool that declares none, compares as before.</p>
+/// <p>Each name is compared under the default rules
+/// (<method>OcuPilot.Kernel.Proposal.ReadBack.Same</method>); a create whose present re-read would
+/// otherwise compare nothing reads <code>matches</code> or <code>differs</code> rather than
+/// <code>unchecked</code>.</p>
+Parameter READBACKFIELDS = "";
+
+/// <p><parameter>READBACKFIELDS</parameter> as a <class>%List</class>.</p>
+ClassMethod ReadBackFields() As %List
+{
+    Set tNames = ""
+    For tI = 1:1:$Length(..#READBACKFIELDS, ",") {
+        Set tName = $ZStrip($Piece(..#READBACKFIELDS, ",", tI), "<>W")
+        If (tName '= "") && '$ListFind(tNames, tName) Set tNames = tNames _ $ListBuild(tName)
+    }
+    Quit tNames
+}
 
 /// <p>The <parameter>SECRETBODY</parameter> names whose explicitly supplied empty value is sent, as
 /// comma-separated names, so the vendor clears the stored secret (AD-56 (i) as amended by Story

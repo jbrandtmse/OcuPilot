@@ -8502,3 +8502,141 @@ app-ecp-data-server-form-page .ocu-field-checkbox input[aria-disabled='true'] {
 .ocu-source-reference:focus-visible {
   @include ocu-focus-ring;
 }
+
+// --- The panel header's agent picker (Story 19.11) -------------------------------------------------
+//
+// A text button after the title naming the definition in use, opening the command bar's menu shape
+// (`.ocu-command-bar-sort-menu`) of the enabled definitions. With one definition the name is plain
+// text. Never colour alone: the one in use is `aria-checked` and its weight is the third reading, as
+// the sort menu's is.
+.ocu-agent-picker {
+  display: inline-flex;
+  flex: 0 1 auto;
+  align-items: center;
+  min-width: 0;
+  max-width: 50%;
+}
+
+.ocu-agent-picker-name {
+  @include typo.ocu-type('body');
+
+  overflow: hidden;
+  color: var(--ocu-on-surface-variant);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ocu-agent-picker-button {
+  @include typo.ocu-type('body');
+
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ocu-space-1);
+  box-sizing: border-box;
+  min-width: 0;
+  max-width: 100%;
+  height: var(--ocu-icon-button-size);
+  padding: 0 var(--ocu-space-2);
+  border: none;
+  border-radius: var(--ocu-radius-md);
+  background: transparent;
+  color: var(--ocu-on-surface-variant);
+  cursor: pointer;
+}
+
+.ocu-agent-picker-button:hover {
+  background: var(--ocu-surface-container-high);
+}
+
+.ocu-agent-picker-button:focus-visible {
+  @include ocu-focus-ring;
+}
+
+.ocu-agent-picker-button[aria-disabled='true'] {
+  color: var(--ocu-restrained);
+  cursor: default;
+}
+
+.ocu-agent-picker-button[aria-disabled='true']:hover,
+.ocu-agent-picker-button[aria-disabled='true']:active {
+  background: transparent;
+}
+
+.ocu-agent-picker-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ocu-agent-picker-caret {
+  flex: 0 0 auto;
+  color: var(--ocu-secondary);
+}
+
+.ocu-agent-picker-menu {
+  position: absolute;
+  top: var(--ocu-panel-header-height);
+  left: var(--ocu-space-4);
+  z-index: 4;
+  min-width: min(220px, calc(100% - 2 * var(--ocu-space-4)));
+  max-width: calc(100% - 2 * var(--ocu-space-4));
+  margin-top: var(--ocu-space-1);
+  padding: 6px 0;
+  border: 1px solid var(--ocu-outline-variant);
+  border-radius: var(--ocu-radius-sm);
+  background: var(--ocu-surface-container-lowest);
+  box-shadow: var(--ocu-elevation-2);
+}
+
+.ocu-agent-picker-item {
+  @include typo.ocu-type('body');
+
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: var(--ocu-space-2);
+  box-sizing: border-box;
+  width: 100%;
+  padding: var(--ocu-space-1) 14px;
+  border: none;
+  background: transparent;
+  color: var(--ocu-on-surface);
+  text-align: left;
+  cursor: pointer;
+}
+
+.ocu-agent-picker-item:hover {
+  background: var(--ocu-surface-container-low);
+}
+
+.ocu-agent-picker-item:focus-visible {
+  @include ocu-focus-ring;
+
+  background: var(--ocu-secondary-container);
+  color: var(--ocu-on-secondary-container);
+}
+
+.ocu-agent-picker-item[aria-checked='true'] {
+  color: var(--ocu-secondary);
+  font-weight: 600;
+}
+
+.ocu-agent-picker-item[aria-checked='true']:focus-visible {
+  color: var(--ocu-on-secondary-container);
+}
+
+.ocu-agent-picker-item-name {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.ocu-agent-picker-item-default {
+  color: var(--ocu-on-surface-variant);
+}
+
+.ocu-agent-picker-item-detail {
+  flex: 1 0 100%;
+  color: var(--ocu-on-surface-variant);
+  font-weight: 400;
+  overflow-wrap: anywhere;
+}

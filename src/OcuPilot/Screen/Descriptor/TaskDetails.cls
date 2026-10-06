@@ -104,7 +104,7 @@ XData Declaration
     "paging": "cap",
     "criteria": {
       "fields": [
-        {"param": "taskId", "labelKey": "taskHistoryColumnTaskId", "kind": "text", "maxLength": 10, "vendorParam": "id"}
+        {"param": "taskId", "labelKey": "taskHistoryColumnTaskId", "kind": "text", "maxLength": 10, "vendorParam": "id", "hint": "One task's whole-number id, as tasks.schedule.read answers its Id."}
       ]
     }
   },

@@ -70,6 +70,8 @@ import { EcpDataServerFormPage } from '../areas/os-management/ecp-data-server-fo
 import { EcpSettingsPage } from '../areas/os-management/ecp-settings.page';
 import { EncryptionKeyFilePage } from '../areas/security/encryption-key-file.page';
 import { EncryptionKeyFileFormPage } from '../areas/security/encryption-key-file-form.page';
+import { EncryptionKeysPage } from '../areas/security/encryption-keys.page';
+import { EncryptionStartupPage } from '../areas/security/encryption-startup.page';
 import { WebAppCreateFormPage } from '../areas/web-applications/create-form.page';
 import { WebAppEditorPage } from '../areas/web-applications/web-app-editor.page';
 import { OpenApiViewerPage } from '../areas/web-applications/openapi-viewer.page';
@@ -82,6 +84,7 @@ import { CodeComparePage } from '../areas/system-explorer/code-compare.page';
 import { MacroLookupPage } from '../areas/system-explorer/macro-lookup.page';
 import { SqlQueryPage } from '../areas/system-explorer/sql-query.page';
 import { DataBrowserPage } from '../areas/system-explorer/data-browser.page';
+import { DocDbListPage } from '../areas/system-explorer/docdb-list.page';
 import { decodeEntityId } from '../core/entity-id';
 import { NavigationService, screenForUrl } from '../core/navigation';
 import type { ArchetypeKey, BuiltArchetypeKey } from '../core/screens.generated';
@@ -220,6 +223,11 @@ export const DESCRIPTOR_PAGES: Readonly<Record<string, Type<unknown>>> = {
   'OcuPilot.Screen.Descriptor.EncryptionKeyFile': EncryptionKeyFilePage,
   'OcuPilot.Screen.Descriptor.EncryptionKeyFileAdminList': EncryptionKeyFilePage,
   'OcuPilot.Screen.Descriptor.EncryptionKeyFileForm': EncryptionKeyFileFormPage,
+  // Story 18.22: Database encryption and Data element encryption, one page over each list of active keys.
+  'OcuPilot.Screen.Descriptor.DatabaseEncryption': EncryptionKeysPage,
+  'OcuPilot.Screen.Descriptor.DataElementEncryption': EncryptionKeysPage,
+  // Story 18.23: the encryption startup settings form, reached from Database encryption.
+  'OcuPilot.Screen.Descriptor.EncryptionStartup': EncryptionStartupPage,
   // Story 19.1: System Explorer's two lists, each a criteria form drawn from its declared criteria.
   'OcuPilot.Screen.Descriptor.ExplorerClassList': CodeListPage,
   'OcuPilot.Screen.Descriptor.ExplorerRoutineList': CodeListPage,
@@ -239,6 +247,8 @@ export const DESCRIPTOR_PAGES: Readonly<Record<string, Type<unknown>>> = {
   'OcuPilot.Screen.Descriptor.ExplorerSqlQuery': SqlQueryPage,
   // Story 19.7: Data browser, the schema tree beside one table's or view's paged grid.
   'OcuPilot.Screen.Descriptor.ExplorerSqlData': DataBrowserPage,
+  // Story 19.17: Document databases, the list with its create dialog and the disabled-service strip.
+  'OcuPilot.Screen.Descriptor.ExplorerDocDbList': DocDbListPage,
 };
 
 /**

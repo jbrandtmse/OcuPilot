@@ -221,6 +221,8 @@ test('a side bar lists only built screens, in side-bar order', () => {
       // Story 18.21: ECP settings and ECP application servers, the eighteenth and nineteenth.
       'os-management/ecp-settings',
       'os-management/ecp-application-servers',
+      // Story 19.10: SQL activity, the twentieth.
+      'os-management/sql-activity',
       'tasks/schedule/details',
       // Story 9.7: the unlisted New Task wizard, reached from the Task schedule's Create.
       'tasks/schedule/edit',
@@ -250,6 +252,8 @@ test('a side bar lists only built screens, in side-bar order', () => {
       'security/auditing/user-events',
       'security/encryption-key-file/administrators',
       'security/encryption-key-file/create',
+      // Story 18.23: the unlisted encryption startup settings form, reached from Database encryption.
+      'security/database-encryption/startup',
       // Story 16.14: the unlisted LDAP editor, reached from the LDAP / Kerberos list.
       'security/ldap/edit',
       'security/oauth/clients/edit',
@@ -275,6 +279,9 @@ test('a side bar lists only built screens, in side-bar order', () => {
       // Story 18.1: Allowed directories, the seventh Security and secrets entry.
       'security/allowed-directories',
       'security/encryption-key-file',
+      // Story 18.22: Database encryption and Data element encryption, the ninth and tenth entries.
+      'security/database-encryption',
+      'security/data-element-encryption',
       // Story 19.1: System Explorer's two unlisted viewers, then Classes and Routines.
       'system-explorer/classes/document',
       // Story 19.3: each unlisted editor sorts after its viewer, by descriptor class name.
@@ -312,6 +319,8 @@ test('a side bar lists only built screens, in side-bar order', () => {
       'system-explorer/sql-query',
       // Story 19.7: Data browser, after SQL query.
       'system-explorer/sql-data',
+      // Story 19.17: Document databases, after Data browser.
+      'system-explorer/docdb',
       'agent/definitions/edit',
       'agent/transcripts/details',
       'agent/definitions',
@@ -368,6 +377,8 @@ test('OS management lists Processes, Locks, System usage, Databases, Integrity l
       // Story 18.21: the eighteenth and nineteenth.
       'os-management/ecp-settings',
       'os-management/ecp-application-servers',
+      // Story 19.10: the twentieth.
+      'os-management/sql-activity',
     ]
   );
   // Story 18.18: Journal settings follows Journals, a listed form page of its own.
@@ -419,6 +430,12 @@ test('OS management lists Processes, Locks, System usage, Databases, Integrity l
   );
   assert.equal(tabGroupFor(screenForRoute('os-management/ecp-application-servers/ssl'))?.route, 'os-management/ecp-application-servers');
   assert.equal(isListedScreen(screenForRoute('os-management/ecp-application-servers/ssl')), false, 'the SSL/TLS tab takes no side-bar position');
+  // Story 19.10: SQL activity is the twentieth entry, a list whose Process ID cell opens Process
+  // details unless the row is remote.
+  const sqlActivity = screenForRoute('os-management/sql-activity');
+  assert.equal(stringFor(sqlActivity.labelKey), STRINGS.sqlActivityLabel);
+  assert.equal(sqlActivity.sideBarPosition, 20);
+  assert.deepEqual(sqlActivity.rowTarget, { route: 'os-management/processes/details', field: 'ProcessID', unless: 'Remote' });
 });
 
 // Story 3.5. `sideBarPosition` 0 is the sentinel for routable-but-unlisted: the route table reads
@@ -581,8 +598,8 @@ test('childListFor pairs the Wallet list with its Secrets list, parentListFor in
   assert.equal(isListedScreen(secrets), false, 'the Secrets list is never listed');
   assert.deepEqual(
     listedScreensForArea('security').map((screen) => screen.route),
-    ['security/ssl', 'security/x509', 'security/ldap', 'security/wallet', 'security/oauth', 'security/auditing', 'security/allowed-directories', 'security/encryption-key-file'],
-    'the Security side bar lists SSL/TLS, X.509, LDAP / Kerberos, Wallet, OAuth 2.0, Auditing configuration, Allowed directories and Encryption key files'
+    ['security/ssl', 'security/x509', 'security/ldap', 'security/wallet', 'security/oauth', 'security/auditing', 'security/allowed-directories', 'security/encryption-key-file', 'security/database-encryption', 'security/data-element-encryption'],
+    'the Security side bar lists SSL/TLS, X.509, LDAP / Kerberos, Wallet, OAuth 2.0, Auditing configuration, Allowed directories, Encryption key files, Database encryption and Data element encryption'
   );
 
   assert.equal(screenForUrl('/security/wallet/secrets/OcuPilotDemo?ns=HSCUSTOM')?.route, 'security/wallet/secrets', 'a secrets URL with a collection id resolves to the Secrets list');

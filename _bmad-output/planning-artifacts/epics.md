@@ -7516,7 +7516,7 @@ So that key management is not a reason to keep the classic portal open. [AMENDED
 
 As an operator,
 I want the database-encryption startup settings,
-So that key management is not a reason to keep the classic portal open. [AMENDED 2026-10-04, orchestrator merge gate: split from 18.7 for size, Rule 5; outlined as Part C of `spec-18-7-encryption.md` (commit 0a3dfe43); every value change is exercised through a test seam; changing `AuditEncrypt` deletes the audit database at once, so its treatment is the owner's product call, which the plan brings to the orchestrator with options and a recommendation]
+So that key management is not a reason to keep the classic portal open. [AMENDED 2026-10-04, orchestrator merge gate: split from 18.7 for size, Rule 5; outlined as Part C of `spec-18-7-encryption.md` (commit 0a3dfe43); every value change is exercised through a test seam; changing `AuditEncrypt` takes effect at the next start, when the instance encrypts or decrypts the audit database in place and keeps its records (measured at Task 0 on `ocupilot-b-ci`)] [AMENDED 2026-10-05, owner decision on `AuditEncrypt` (by=owner, relayed by the orchestrator): it is treated as `security.auditing.purge` is - the screen offers the change behind the strongest confirmation, whose consequence line states the measured effect and whose advisory says to keep the key file and its administrator available to every start, and the screen's own action is not governed [AMENDED 2026-10-05, merge gate under the owner's standing grant: the consequence and advisory follow Task 0's measurement, the treatment is unchanged]; the agent's tool is advertised behind a governance key that ships `false` and mints a destructive proposal with that consequence. Orchestrator ruling: the settings merge sends `AuditEncrypt` as the fresh read holds it unless the person or the proposal changed it, so a start-mode change never alters it, pinned by a test (the vendor requires the field in every `PUT` and passes it to `ConfigStart` whatever it holds)] [AMENDED 2026-10-05, merge gate under the owner's standing grant (Decision 8): a change that leaves Interactive key activation while the audit log, IRISSECURITY or IRISTEMP is encrypted is refused on both callers before the write, because a start that cannot activate the key does not finish (measured for each); DW-2065 closed by-design on measurement]
 
 **Acceptance Criteria:**
 
@@ -7532,7 +7532,7 @@ So that key management is not a reason to keep the classic portal open. [AMENDED
 - **When** it is entered
 - **Then** it is write-only and returned by no read, like every other secret.
 
-- DW-2065: Removing a key file's startup administrator is not refused, while unattended activation opens DBEncStartKeyFile as DBEncStartUsername; whether AD-10's key arm extends to it is a product call (ledger; decision-pending by cr 2026-10-05)
+- DW-2065: Removing a key file's startup administrator is refused, as removing a key a database depends on is refused, because unattended activation opens DBEncStartKeyFile as DBEncStartUsername (ledger; decided by the owner and routed 2026-10-05)
 
 ### Story 18.24: RSA and symmetric-key wallet secrets
 
@@ -7863,6 +7863,21 @@ So that the Explorer covers documents as well as code.
 - **Given** the DocDB browser
 - **When** it opens
 - **Then** databases list, create and drop, and the requirement that the DocDB service is enabled is reported rather than assumed.
+
+### Story 19.18: Epic 19 burn-down
+
+As the team closing Stage 3,
+I want the defects Epic 19 filed against its own surfaces closed before the epic merges,
+So that System Explorer's agent tools describe themselves truthfully and its screens read correctly.
+
+Chartered by the burn-down gate from the ledger (Rule 17, 2026-10-05): the entries the orchestrator kept in Epic 19's close, less DW-1977, which Story 19.14 had already delivered (closed at the gate). Every other `burndown` entry belongs to another epic or to Story 23.4, and the decision-pending vendor candidates go to the owner's sheet.
+
+**Acceptance Criteria:**
+
+- DW-1001: a derived read tool describes each text criterion as the port accepts it. `webapp.openapi.read`, `security.secrets.read`, `explorer.search.read`, `explorer.macro.read` and the SQL catalog's read tools take one exact name (or literal search text), yet every derived text criterion carries the audit criteria's "comma-separated list where * matches" description. The descriptor declares a criterion's description (Screen/Registry.cls criteria grammar, the client mirror and Screen/Tool/Read.cls), and a test reads each affected tool's emitted description. (ledger; routed by merge_gate 2026-10-03)
+- DW-1945: `ExplorerWrite`'s AC3 legs (compile and delete) go through `Dispatch.Answer`, as `ExplorerTransfer`'s do, so a schema, pairs or governance regression on those tools reddens them. (ledger; routed by cr 2026-10-02)
+- DW-2092: the data browser's save dialog and its tab and status sentences take singular and plural forms ("1 row changes", "1 change waiting to be saved"). (ledger; routed by merge_gate 2026-10-05)
+- DW-2093: `ExplorerDescriptor`'s area-count test method is named for the counts it asserts, with its `SurfaceCoverage` rows. (ledger; routed by spec_gate 2026-10-05)
 
 ---
 
@@ -8410,3 +8425,41 @@ So that every lane stops paying for the same flakes and slow runs, and secrets s
 - **When** they land
 - **Then** they land in batches grouped by area, each batch its own commit with CI green on its head, so a failing batch is reopened alone and never holds the others back.
 
+
+### Story 23.4: The range-end cleanup, part 4
+
+Chartered by the orchestrator on 2026-10-05 on the owner's approval of the burn-down scope (relayed by the Planner, 2026-10-05). It takes batches (a) and (b) of the drafted scope from the `range-end-cleanup` queue: 30 entries and the ledger's duplicated ids, plus DW-2102 (a fifth CI instance shard), which the orchestrator added to batch (a) on 2026-10-06. Slot A runs it after Stories 19.10 and 19.11 and Epic 19's close, before Epic 20. Batches (c) visible polish and (d) doc and test-gap hygiene wait for the owner's decision on a Story 23.5. The IRIS defect candidates stay on the owner's hold and are not part of it.
+
+As the team keeping OcuPilot's CI fast and trustworthy between releases,
+I want the test environment's known breakages and the product's open correctness and safety entries fixed, or declined with a reason,
+So that later stories stop paying for flakes and lost throwaways, and no known unsafe path stays open.
+
+**Acceptance Criteria:**
+
+- **Given** the entries re-owned to this story: batch (a) DW-2034, DW-2026, DW-2058, DW-1925, DW-1935, DW-1915, DW-1937, DW-1983, DW-1984, DW-1873, DW-1916, DW-1917, DW-1929, DW-1936, DW-1938, DW-2027, DW-1297, DW-1086 and DW-2102; batch (b) DW-1827, DW-1869, DW-1882, DW-1641, DW-1013, DW-1864, DW-1939, DW-1449, DW-1414, DW-1637, DW-1710 and DW-1465
+- **When** this story completes
+- **Then** each has a disposition written by the ledger tool: `resolved-by` this story with the commit, or `wontfix-accepted` or `by-design` with a reason and, where a condition would reopen it, that condition.
+
+- **Given** DW-2034 (macOS deletes files under `/tmp` untouched for three days, and the local throwaways keep their data there)
+- **When** it is fixed
+- **Then** the local throwaway root is outside `/tmp` while CI's Linux path is unchanged, `ci-throwaway.sh down` removes a throwaway whose `compose.yml` is gone, and a check fails when a mounted local database has no `IRIS.DAT`.
+
+- **Given** DW-2102 (the ObjectScript suite has outgrown four instance shards: the largest refreshed leg is 50.5 minutes and the timeout floor 80 minutes)
+- **When** it is fixed
+- **Then** CI runs the instance suite in five shard legs from refreshed timings, every class still runs in exactly one leg, `ui/tools/ci.test.mjs` holds the new shape, no `timeout-minutes` is lowered, and a green run's longest instance leg is reported. [AMENDED 2026-10-06, orchestrator: DW-2102 added to batch (a) under the owner's standing grant, as CI health]
+
+- **Given** the CI flakes and test-isolation entries in batch (a)
+- **When** each is fixed
+- **Then** the plan names how it was reproduced, and the fix is shown by the test passing under that condition. A test that assumed instance state creates and restores the state it relies on, or asserts only on what its own action produced.
+
+- **Given** the correctness and safety entries in batch (b)
+- **When** each is fixed
+- **Then** a test reddens on the defect before the fix and passes after it.
+
+- **Given** the ledger's duplicated ids (DW-1223, DW-1864, DW-1925 and DW-2027 each have two entries)
+- **When** they are deduplicated
+- **Then** each id has one entry carrying the union of both copies' trailers in time order, and `ledger.sh load` counts each id once.
+
+- **Given** the fixes
+- **When** they land
+- **Then** batch (a) and batch (b) each land with CI green on their own head and merge on their own, so a failing batch is reopened alone and never holds the other back.

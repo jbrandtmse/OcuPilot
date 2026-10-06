@@ -91,11 +91,16 @@ XData Keys [ MimeType = application/json ]
   "security.audituserevents.delete": true,
   "security.audituserevents.reset": true,
   "security.audituserevents.update": true,
+  "security.databaseencryption.activate": false,
+  "security.databaseencryption.deactivate": false,
+  "security.dataelementencryption.activate": false,
+  "security.dataelementencryption.deactivate": false,
   "security.encryptionkeyfile.addkey": false,
   "security.encryptionkeyfile.create": false,
   "security.encryptionkeyfile.removekey": false,
   "security.encryptionkeyfileadmins.addadministrator": false,
   "security.encryptionkeyfileadmins.removeadministrator": false,
+  "security.encryptionstartup.update": false,
   "security.ldap.create": true,
   "security.ldap.delete": true,
   "security.ldap.password": true,
@@ -175,7 +180,9 @@ XData Keys [ MimeType = application/json ]
   "explorer.routines.save": false,
   "explorer.sqlquery.run": false,
   "explorer.routines.import": false,
-  "explorer.sqldata.save": false
+  "explorer.sqldata.save": false,
+  "explorer.docdb.create": true,
+  "explorer.docdb.delete": false
 }
 }
 

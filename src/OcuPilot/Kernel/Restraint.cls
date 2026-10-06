@@ -82,7 +82,8 @@ Parameter FOOTERKEYFORYOU = "statusReadOnlyForYou";
 /// <code>code</code> and exactly one <code>footerKey</code> come back, so the panel cannot say two
 /// things at once.</p>
 /// <p><b>Caller contract:</b> <var>pDefinitionId</var> is the definition already resolved for this
-/// turn (<method>OcuPilot.Kernel.State.Agent.ResolveDefault</method>); <code>""</code> means no
+/// turn or caller (<method>OcuPilot.Kernel.State.Agent.ResolveFor</method>, or the turn's own
+/// <code>DefinitionId</code>, or a proposal's stamp); <code>""</code> means no
 /// definition is in force, which contributes no read-only source of its own. Check
 /// <code>$$$ISERR</code> on the returned status: a failed read blocks, and proceeding on it would
 /// be a write made while the switches were unreadable.</p>
@@ -199,13 +200,14 @@ ClassMethod DefinitionReadOnly(pDefinitionId As %String, Output pReadOnly As %Bo
     Quit tSC
 }
 
-/// <p>The verdict for <var>pUserName</var> under the definition in force, resolving that definition
-/// first (<method>OcuPilot.Kernel.State.Agent.ResolveDefault</method>).</p>
+/// <p>The verdict for <var>pUserName</var> under the definition in force for them, resolving that
+/// definition first (<method>OcuPilot.Kernel.State.Agent.ResolveFor</method>: their pick while it
+/// names an enabled definition, else the default).</p>
 /// <p>It resolves an argument and calls <method>Verdict</method>; it computes no part of the
 /// verdict itself.</p>
 ClassMethod Resolved(pUserName As %String, Output pVerdict) As %Status
 {
-    Set tSC = ##class(OcuPilot.Kernel.State.Agent).ResolveDefault(.tDefinitionId)
+    Set tSC = ##class(OcuPilot.Kernel.State.Agent).ResolveFor(pUserName, .tDefinitionId)
     If $$$ISERR(tSC) {
         Do ..Verdict(pUserName, "", .pVerdict)
         Set pVerdict("blocked") = 1

@@ -67,7 +67,7 @@ XData Declaration
     "sort": {"fields": ["Name", "Type"], "default": "Name", "direction": "asc"},
     "paging": "cap",
     "criteria": {
-      "fields": [{"param": "collection", "labelKey": "tableColumnName", "kind": "text", "maxLength": 64}]
+      "fields": [{"param": "collection", "labelKey": "tableColumnName", "kind": "text", "maxLength": 64, "hint": "One wallet collection, spelled as security.wallet.read answers its Name."}]
     }
   },
   "table": {

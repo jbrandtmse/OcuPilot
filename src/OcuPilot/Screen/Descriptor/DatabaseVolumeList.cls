@@ -90,7 +90,7 @@ XData Declaration
     "paging": "cap",
     "criteria": {
       "fields": [
-        {"param": "dir", "labelKey": "lockColumnDirectory", "kind": "text", "maxLength": 256}
+        {"param": "dir", "labelKey": "lockColumnDirectory", "kind": "text", "maxLength": 256, "hint": "One database directory, spelled as osmgmt.databases.read answers its Directory."}
       ]
     }
   },

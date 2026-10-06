@@ -4,7 +4,7 @@
 /// again and refusing a query, a value count that does not match and a refused kind; an SQL error
 /// answered as output with nothing changed; a transaction left open rolled back; OcuPilot's own tables
 /// refused; SQLCODE -99 for a principal's statement on a table it holds no SQL privilege on
-/// (DW-1964); the tool absent from every roster the agent sees, its key shipping disabled; and no
+/// (DW-1964); the tool advertised to the agent with its key shipping disabled; and no
 /// ledger row, agent marker or log line carrying the run.</p>
 /// <p><b>What it needs from the environment:</b> OcuPilot installed and serving over HTTP as
 /// <class>OcuPilot.Test.Http</class>'s account, and a <code>USER</code> namespace. It creates and
@@ -166,38 +166,42 @@ Method TestAnUngrantedTableIsRefusedOnTheWritePath()
     Do $$$AssertTrue('$ClassMethod(..#PROBE, "HoldsTable", tMade), "and nothing was created")
 }
 
-/// <p>AC7, AD-53: the run is in no roster the agent sees -- the provider tool list, the dispatch
-/// lookup, a proposal-path resolve, the screen context's <code>tools</code> -- while the registry still
-/// lists it, and a model's call of it is refused as an unknown tool with no proposal written.</p>
-/// <p>Mutation (Rule 19): <parameter>OcuPilot.Screen.Tool.ExplorerSqlRun.ADVERTISED</parameter> 1 -- this
+/// <p>AC8, AD-53: the run and the agent's query are in every roster the agent sees -- the provider tool
+/// list, the dispatch lookup, a proposal-path resolve and the screen context's <code>tools</code> --
+/// and a model's call of the run, its key still at its baseline <code>false</code>, is refused
+/// <code>GOVERNANCE.DISABLED</code> with no proposal written and nothing run.</p>
+/// <p>Mutation (Rule 19): <parameter>OcuPilot.Screen.Tool.ExplorerSqlRun.ADVERTISED</parameter> 0 -- this
 /// goes red.</p>
-Method TestTheRunIsAbsentFromEveryRosterTheAgentSees()
+Method TestTheRunAndTheReadAreAdvertisedToTheAgent()
 {
     Set tRegistry = "OcuPilot.Screen.Tool.Registry"
-    Do $$$AssertEquals($ClassMethod(..#TOOLCLASS, "Advertised"), 0, "declared unadvertised")
+    Set tReadName = "explorer.sqlquery.read"
+    Do $$$AssertEquals($ClassMethod(..#TOOLCLASS, "Advertised"), 1, "the run is declared advertised")
     Do $$$AssertStatusOK($ClassMethod(tRegistry, "ProviderTools", .tProvider), "the provider tool list builds")
     Set tWire = $ClassMethod(tRegistry, "WireName", ..#TOOLNAME)
+    Set tReadWire = $ClassMethod(tRegistry, "WireName", tReadName)
     Set tProviderNames = ""
     For tI = 1:1:+$Get(tProvider) Set tProviderNames = tProviderNames _ $ListBuild(tProvider(tI, "name"))
-    Do $$$AssertTrue('$ListFind(tProviderNames, tWire), "the provider tool list leaves it out")
-    Kill tByWire, tByName, tForRoute
+    Do $$$AssertTrue($ListFind(tProviderNames, tWire) > 0, "the provider tool list carries the run")
+    Do $$$AssertTrue($ListFind(tProviderNames, tReadWire) > 0, "and the query")
+    Kill tByWire, tByName, tReadByWire
     Do $ClassMethod(tRegistry, "ResolveWire", tWire, .tByWire)
-    Do $$$AssertTrue('$IsObject($Get(tByWire)), "the dispatch lookup does not find it")
+    Do $$$AssertTrue($IsObject($Get(tByWire)), "the dispatch lookup finds the run")
+    Do $ClassMethod(tRegistry, "ResolveWire", tReadWire, .tReadByWire)
+    Do $$$AssertTrue($IsObject($Get(tReadByWire)), "and the query")
     Do $ClassMethod(tRegistry, "Resolve", ..#TOOLNAME, .tByName)
-    Do $$$AssertTrue('$IsObject($Get(tByName)), "nor does a proposal-path resolve")
-    Do $ClassMethod(tRegistry, "Resolve", ..#TOOLNAME, .tForRoute, 1)
-    Do $$$AssertTrue($IsObject($Get(tForRoute)), "while the screen's route reaches it")
+    Do $$$AssertTrue($IsObject($Get(tByName)), "so does a proposal-path resolve")
     Kill tTools
     Do $$$AssertStatusOK(##class(OcuPilot.Screen.Context).ScreenTools(..#DESCRIPTOR, .tTools), "the screen's context tools build")
     Set tJson = $Select($IsObject($Get(tTools)): tTools.%ToJSON(), 1: "")
-    Do $$$AssertTrue((tJson '[ tWire) && (tJson '[ ..#TOOLNAME), "and carry no run: " _ tJson)
+    Do $$$AssertEquals($Select(tJson [ tReadWire: 1, 1: 0) _ $Select(tJson [ tWire: 1, 1: 0), "11", "and carry the query and the run: " _ tJson)
 
     Set tBefore = ##class(OcuPilot.Test.ExplorerSave).ProposalRows(..#TOOLNAME)
     Do $$$AssertTrue(tBefore >= 0, "the stored proposals are counted: " _ tBefore)
     Do ##class(OcuPilot.Kernel.Scope).Set("USER")
     Set tSC = ##class(OcuPilot.Test.ProposalFixture).SeedTurn($Username, "completed", .tTurn)
     Do $$$AssertStatusOK(tSC, "a completed probe turn is seeded")
-    Set tUse = {"type": "tool_use", "id": "toolu_sqlrun", "input": {"statement": "DELETE FROM OcuProbe196.Granted", "rationale": "probe", "expectedImpact": "probe"}}
+    Set tUse = {"type": "tool_use", "id": "toolu_sqlrun", "input": {"Target": "sql", "statement": "DELETE FROM OcuProbe196.Granted", "rationale": "probe", "expectedImpact": "probe"}}
     Do tUse.%Set("name", tWire, "string")
     Do ##class(OcuPilot.Kernel.Proposal.Caller).Set(tTurn)
     Set tSC = ##class(OcuPilot.Kernel.Agent.Dispatch).Answer(tTurn, $Username, "", [(tUse)], "OcuPilot.Kernel.Agent.Limits", .tResults, .tNames, 0, 0, .tDetails)
@@ -206,7 +210,7 @@ Method TestTheRunIsAbsentFromEveryRosterTheAgentSees()
     Do $$$AssertStatusOK(tSC, "the dispatch answers")
     Set tCode = ""
     If $IsObject($Get(tResults)) && (tResults.%Size() = 1) Set tCode = ##class(%DynamicObject).%FromJSON(tResults.%Get(0).%Get("content")).%Get("code")
-    Do $$$AssertEquals(tCode, ##class(OcuPilot.Api.Error).#TOOLUNKNOWN, "a model's run is refused as an unknown tool")
+    Do $$$AssertEquals(tCode, ##class(OcuPilot.Api.Error).#GOVERNANCEDISABLED, "a model's run is refused as disabled by policy")
     Do $$$AssertEquals(##class(OcuPilot.Test.ExplorerSave).ProposalRows(..#TOOLNAME), tBefore, "and no proposal is written")
     Do $$$AssertEquals($ClassMethod(..#PROBE, "Granted"), "40 820", "and nothing ran")
 }

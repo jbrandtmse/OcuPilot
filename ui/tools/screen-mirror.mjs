@@ -945,7 +945,13 @@ export const SOURCE_BACKGROUND = 'background';
 /** The source code API read through `OcuPilot.Port.AtelierPort` (AD-61, Story 19.1). */
 export const SOURCE_ATELIER = 'atelier';
 export const SOURCE_ENCRYPTION = 'encryption';
-export const READ_SOURCE_PORTS = [SOURCE_ADMIN, SOURCE_STATE, SOURCE_MGMNT, SOURCE_LOGSOURCE, SOURCE_PATH, SOURCE_TIMELINE, SOURCE_BACKGROUND, SOURCE_ATELIER, SOURCE_ENCRYPTION];
+
+/** The namespace's document databases read through `OcuPilot.Port.DocDbPort` (AD-29, Story 19.17). */
+export const SOURCE_DOCDB = 'docdb';
+
+/** The instance's running SQL statements read through `OcuPilot.Port.SqlActivityPort` (AD-29, Story 19.10). */
+export const SOURCE_SQLACTIVITY = 'sqlactivity';
+export const READ_SOURCE_PORTS = [SOURCE_ADMIN, SOURCE_STATE, SOURCE_MGMNT, SOURCE_LOGSOURCE, SOURCE_PATH, SOURCE_TIMELINE, SOURCE_BACKGROUND, SOURCE_ATELIER, SOURCE_ENCRYPTION, SOURCE_DOCDB, SOURCE_SQLACTIVITY];
 
 /** Where `OcuPilot.Port.PathPort` declares the source keys a `path` read may name. */
 export const PATH_PORT_SOURCE = join(REPO_ROOT, 'src', 'OcuPilot', 'Port', 'PathPort.cls');
@@ -1006,6 +1012,44 @@ export function backgroundEndpoint() {
 
 /** The one request type a `background` source declares. */
 export const BACKGROUND_READ_TYPE = 'LIST';
+
+/** Where `OcuPilot.Port.DocDbPort` declares the one endpoint a `docdb` read names. */
+export const DOCDB_PORT_SOURCE = join(REPO_ROOT, 'src', 'OcuPilot', 'Port', 'DocDbPort.cls');
+
+let docDbEndpointCache;
+
+/**
+ * The endpoint `OcuPilot.Port.DocDbPort`'s `ENDPOINT` parameter declares, read from its own class as
+ * the background port's is, or `null` when the parameter is missing.
+ */
+export function docDbEndpoint() {
+  if (docDbEndpointCache === undefined) {
+    docDbEndpointCache = parseBackgroundEndpoint(readFileSync(DOCDB_PORT_SOURCE, 'utf8'));
+  }
+  return docDbEndpointCache;
+}
+
+/** The one request type a `docdb` source declares. */
+export const DOCDB_READ_TYPE = 'LIST';
+
+/** Where `OcuPilot.Port.SqlActivityPort` declares the one endpoint a `sqlactivity` read names. */
+export const SQLACTIVITY_PORT_SOURCE = join(REPO_ROOT, 'src', 'OcuPilot', 'Port', 'SqlActivityPort.cls');
+
+let sqlActivityEndpointCache;
+
+/**
+ * The endpoint `OcuPilot.Port.SqlActivityPort`'s `ENDPOINT` parameter declares, read from its own class
+ * as the background port's is, or `null` when the parameter is missing.
+ */
+export function sqlActivityEndpoint() {
+  if (sqlActivityEndpointCache === undefined) {
+    sqlActivityEndpointCache = parseBackgroundEndpoint(readFileSync(SQLACTIVITY_PORT_SOURCE, 'utf8'));
+  }
+  return sqlActivityEndpointCache;
+}
+
+/** The one request type a `sqlactivity` source declares. */
+export const SQLACTIVITY_READ_TYPE = 'LIST';
 
 /** The package a `state` source's `endpoint` names a store inside, trailing dot included. */
 export const STATE_PACKAGE = 'OcuPilot.Kernel.State.';
@@ -1210,8 +1254,8 @@ export function readProblem(declaration) {
   if (!READ_SOURCE_PORTS.includes(source.port)) {
     return (
       `read.source.port '${shown(source.port)}' is not one of '${SOURCE_ADMIN}', '${SOURCE_STATE}', ` +
-      `'${SOURCE_MGMNT}', '${SOURCE_LOGSOURCE}', '${SOURCE_PATH}', '${SOURCE_TIMELINE}', '${SOURCE_BACKGROUND}', '${SOURCE_ATELIER}' or '${SOURCE_ENCRYPTION}', ` +
-      'the nine sources a declared read names (AD-36)'
+      `'${SOURCE_MGMNT}', '${SOURCE_LOGSOURCE}', '${SOURCE_PATH}', '${SOURCE_TIMELINE}', '${SOURCE_BACKGROUND}', '${SOURCE_ATELIER}', '${SOURCE_ENCRYPTION}', '${SOURCE_DOCDB}' or '${SOURCE_SQLACTIVITY}', ` +
+      'the eleven sources a declared read names (AD-36)'
     );
   }
   if (typeof source.endpoint !== 'string' || !ENDPOINT_RE.test(source.endpoint)) {
@@ -1231,7 +1275,7 @@ export function readProblem(declaration) {
     const activityFault = activityRowsProblem(declaration);
     if (activityFault !== null) return activityFault;
   } else if (typeof source.type !== 'string' || !READ_SOURCE_TYPES.includes(source.type)) {
-    return `read.source.type '${shown(source.type)}' is not 'LIST', 'GET', 'UPCOMING', 'HISTORY' or 'VOLUMELIST'`;
+    return `read.source.type '${shown(source.type)}' is not 'LIST', 'GET', 'UPCOMING', 'HISTORY', 'VOLUMELIST' or 'DATAELEMENTLIST'`;
   }
   // A path source lists the instance's allowed directories through `OcuPilot.Port.PathPort`, which
   // computes them whole on every call (AD-21): one of that port's source keys, a LIST, and nothing
@@ -1266,6 +1310,41 @@ export function readProblem(declaration) {
     const declared = PATH_REFUSED_SOURCE_KEYS.find((key) => source[key] !== undefined && source[key] !== null);
     if (declared !== undefined) {
       return `read.source.${declared} is declared on a background source, which answers the background tasks whole (AD-36)`;
+    }
+  }
+  // A docdb source lists the namespace's document databases through `OcuPilot.Port.DocDbPort`, which
+  // answers each one whole behind its own gate (AD-29, AD-36, Story 19.17): the port's own endpoint, a
+  // LIST, and nothing the port would have to issue per row, per parent, under a fixed query or in parts.
+  if (source.port === SOURCE_DOCDB) {
+    const endpoint = docDbEndpoint();
+    if (endpoint === null) return `${DOCDB_PORT_SOURCE} declares no 'Parameter ENDPOINT'`;
+    if (source.endpoint !== endpoint) {
+      return `read.source.endpoint '${source.endpoint}' is not the docdb port's endpoint ('${endpoint}') (AD-29)`;
+    }
+    if (source.type !== DOCDB_READ_TYPE) {
+      return `read.source.type '${source.type}' is declared on a docdb source, which lists the namespace's document databases (AD-36)`;
+    }
+    const declared = PATH_REFUSED_SOURCE_KEYS.find((key) => source[key] !== undefined && source[key] !== null);
+    if (declared !== undefined) {
+      return `read.source.${declared} is declared on a docdb source, which answers the document databases whole (AD-36)`;
+    }
+  }
+  // A sqlactivity source lists the instance's running SQL statements through
+  // `OcuPilot.Port.SqlActivityPort`, which answers each one whole behind its own gate (AD-29, AD-36,
+  // Story 19.10): the port's own endpoint, a LIST, and nothing the port would have to issue per row, per
+  // parent, under a fixed query or in parts.
+  if (source.port === SOURCE_SQLACTIVITY) {
+    const endpoint = sqlActivityEndpoint();
+    if (endpoint === null) return `${SQLACTIVITY_PORT_SOURCE} declares no 'Parameter ENDPOINT'`;
+    if (source.endpoint !== endpoint) {
+      return `read.source.endpoint '${source.endpoint}' is not the sqlactivity port's endpoint ('${endpoint}') (AD-29)`;
+    }
+    if (source.type !== SQLACTIVITY_READ_TYPE) {
+      return `read.source.type '${source.type}' is declared on a sqlactivity source, which lists the instance's running SQL statements (AD-36)`;
+    }
+    const declared = PATH_REFUSED_SOURCE_KEYS.find((key) => source[key] !== undefined && source[key] !== null);
+    if (declared !== undefined) {
+      return `read.source.${declared} is declared on a sqlactivity source, which answers the running statements whole (AD-36)`;
     }
   }
   // AD-36 as amended (Story 16.9): a timeline composes its area's listed screens' own reads, so its
@@ -1319,6 +1398,20 @@ export function readProblem(declaration) {
     }
     if (isObject(source.forEach)) {
       return 'read.source.forEach is declared on a HISTORY source, which lists no parents (AD-36)';
+    }
+  }
+  // A DATAELEMENTLIST source lists the instance's active data-element encryption keys (AD-36, Story
+  // 18.22): Security.Encryption.Key's own request type, under UPCOMING's rules -- a row is a key with no
+  // detail call to issue and no parent to list.
+  if (source.type === 'DATAELEMENTLIST') {
+    if (source.port !== SOURCE_ADMIN) {
+      return `read.source.type 'DATAELEMENTLIST' is declared on a '${source.port}' source, and a list-shaped request type other than LIST issues an admin endpoint (AD-36)`;
+    }
+    if (isObject(source.rowGet)) {
+      return 'read.source.rowGet is declared on a DATAELEMENTLIST source, whose rows are keys with no detail call to issue (AD-36)';
+    }
+    if (isObject(source.forEach)) {
+      return 'read.source.forEach is declared on a DATAELEMENTLIST source, which lists no parents (AD-36)';
     }
   }
   // A VOLUMELIST source lists an admin endpoint's volume files (AD-36, Story 6.11):
@@ -1979,10 +2072,11 @@ function criteriaMarkerProblem(criteria, params) {
  * The request types a `read.source` may issue (AD-36), byte for byte `OcuPilot.Screen.Registry`'s own
  * `READSOURCETYPES`: `LIST`, a list of rows; `GET`, one object read as the read's one row;
  * `UPCOMING`, an admin endpoint's list of scheduled occurrences, issued as a list is;
- * `HISTORY`, `Task.CRUD`'s task-run history, issued the same way (Story 6.6); and `VOLUMELIST`,
- * `Database.SysCRUD`'s volume-file list, issued the same way again (Story 6.11).
+ * `HISTORY`, `Task.CRUD`'s task-run history, issued the same way (Story 6.6); `VOLUMELIST`,
+ * `Database.SysCRUD`'s volume-file list, issued the same way again (Story 6.11); and `DATAELEMENTLIST`,
+ * `Security.Encryption.Key`'s active data-element keys, issued the same way (Story 18.22).
  */
-export const READ_SOURCE_TYPES = ['LIST', 'GET', 'UPCOMING', 'HISTORY', 'VOLUMELIST'];
+export const READ_SOURCE_TYPES = ['LIST', 'GET', 'UPCOMING', 'HISTORY', 'VOLUMELIST', 'DATAELEMENTLIST'];
 
 /** The longest value a `read.source.query` entry may fix, `OcuPilot.Screen.Registry`'s `SOURCEQUERYMAXLENGTH`. */
 export const SOURCE_QUERY_MAX_LENGTH = 50;

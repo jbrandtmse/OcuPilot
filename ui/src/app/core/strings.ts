@@ -2090,7 +2090,7 @@ export const STRINGS = {
   /** EXPERIENCE.md:492 */
   sslPromptOutbound: 'Is this configuration ready for outbound HTTPS?',
 
-  /** EXPERIENCE.md:642 */
+  /** EXPERIENCE.md:645 */
   taskCreate: 'Create task',
   /** EXPERIENCE.md:493 */
   taskFormLabel: 'New task',
@@ -5113,7 +5113,13 @@ export const STRINGS = {
   /** EXPERIENCE.md:597 */
   explorerSqlRowsCut: '<n> rows are shown; the answer holds more.',
   /** EXPERIENCE.md:597 */
+  explorerSqlRowsCutOne: '1 row is shown; the answer holds more.',
+  /** EXPERIENCE.md:597 */
+  explorerSqlRowCountOne: '1 row',
+  /** EXPERIENCE.md:597 */
   explorerSqlRowsChanged: '<n> rows changed',
+  /** EXPERIENCE.md:597 */
+  explorerSqlRowsChangedOne: '1 row changed',
   /** EXPERIENCE.md:597 */
   explorerSqlDone: 'Done',
   /** EXPERIENCE.md:597 */
@@ -5122,6 +5128,8 @@ export const STRINGS = {
   explorerSqlStoppedUndone: 'Stopped after <s> seconds; its changes were undone.',
   /** EXPERIENCE.md:597 */
   explorerSqlTakesValues: 'This statement takes <n> values.',
+  /** EXPERIENCE.md:597 */
+  explorerSqlTakesValuesOne: 'This statement takes 1 value.',
   /** EXPERIENCE.md:597 */
   explorerSqlNoPlan: 'This kind of statement has no plan.',
   /** EXPERIENCE.md:597 */
@@ -5327,17 +5335,35 @@ export const STRINGS = {
   /** EXPERIENCE.md:599 */
   explorerSqlDataSaveTitle: 'Save changes to <table>?',
   /** EXPERIENCE.md:599 */
-  explorerSqlDataSaveConsequence: '<u> rows change, <i> are added and <d> are deleted in <table>, and this cannot be undone from OcuPilot.',
+  explorerSqlDataSaveConsequence: '<updated>, <added> and <deleted> in <table>, and this cannot be undone from OcuPilot.',
+  /** EXPERIENCE.md:599 */
+  explorerSqlDataSaveUpdated: '<n> rows change',
+  /** EXPERIENCE.md:599 */
+  explorerSqlDataSaveUpdatedOne: '1 row changes',
+  /** EXPERIENCE.md:599 */
+  explorerSqlDataSaveAdded: '<n> are added',
+  /** EXPERIENCE.md:599 */
+  explorerSqlDataSaveAddedOne: '1 is added',
+  /** EXPERIENCE.md:599 */
+  explorerSqlDataSaveDeleted: '<n> are deleted',
+  /** EXPERIENCE.md:599 */
+  explorerSqlDataSaveDeletedOne: '1 is deleted',
   /** EXPERIENCE.md:599 */
   explorerSqlDataEditing: 'Editing <column>.',
   /** EXPERIENCE.md:599 */
   explorerSqlDataWaiting: '<n> changes waiting to be saved.',
   /** EXPERIENCE.md:599 */
+  explorerSqlDataWaitingOne: '1 change waiting to be saved.',
+  /** EXPERIENCE.md:599 */
   explorerSqlDataUndone: 'Change undone.',
   /** EXPERIENCE.md:599 */
   explorerSqlDataDiscarded: '<n> changes discarded.',
   /** EXPERIENCE.md:599 */
+  explorerSqlDataDiscardedOne: '1 change discarded.',
+  /** EXPERIENCE.md:599 */
   explorerSqlDataSavedSummary: 'Saved <a> of <n> changes; <b> rolled back.',
+  /** EXPERIENCE.md:599 */
+  explorerSqlDataSavedSummaryOne: 'Saved <a> of 1 change; <b> rolled back.',
   /** EXPERIENCE.md:599 */
   explorerSqlDataReadOnly: 'Rows here are read-only: a view, or a table without a key this account can see, is not changed here.',
   /** EXPERIENCE.md:599 */
@@ -5581,6 +5607,164 @@ export const STRINGS = {
   /** EXPERIENCE.md:490 */
   encryptionKeyFileRemoveKeyConsequence:
     'If this is the only key file containing this key, all data encrypted with this key will be permanently inaccessible. This cannot be undone.',
+  // Story 18.22: Database encryption and Data element encryption -- the screens, their entities,
+  // Activate key and Deactivate, the two Activate dialogs, the empty states and agent hints, the refusal
+  // and consequence sentences and the prompts. "Key ID", "Key length (bits)", "Default", "Administrator
+  // name", "Password", "Cancel" and the path picker's labels are reused.
+  /** EXPERIENCE.md:364 */
+  databaseEncryptionLabel: 'Database encryption',
+  /** EXPERIENCE.md:364 */
+  dataElementEncryptionLabel: 'Data element encryption',
+  /** EXPERIENCE.md:364 */
+  databaseEncryptionEntity: 'Database encryption keys',
+  /** EXPERIENCE.md:364 */
+  dataElementEncryptionEntity: 'Data element encryption keys',
+  /** EXPERIENCE.md:364 */
+  encryptionKeyActivateAction: 'Activate key',
+  /** EXPERIENCE.md:364 */
+  encryptionKeyDeactivateAction: 'Deactivate',
+  /** EXPERIENCE.md:364 */
+  databaseEncryptionActivateTitle: 'Activate database encryption keys',
+  /** EXPERIENCE.md:364 */
+  dataElementEncryptionActivateTitle: 'Activate data element encryption keys',
+  /** EXPERIENCE.md:364 */
+  databaseEncryptionEmpty: 'No database encryption key is active.',
+  /** EXPERIENCE.md:364 */
+  dataElementEncryptionEmpty: 'No data element encryption key is active.',
+  /** EXPERIENCE.md:364 */
+  databaseEncryptionEmptyAgent: 'explain how database encryption keys are activated',
+  /** EXPERIENCE.md:364 */
+  dataElementEncryptionEmptyAgent: 'explain what data element encryption keys are for',
+  /** EXPERIENCE.md:364 */
+  encryptionKeyInUse:
+    'A mounted encrypted database, or a journal file the instance still needs, uses this key, so it stays active.',
+  /** EXPERIENCE.md:364 */
+  encryptionKeyRole:
+    'This key is the default key for new encrypted databases or the key for encrypted journal files. Make another active key the default and the journal key first.',
+  /** EXPERIENCE.md:364 */
+  encryptionKeyInactive: 'This key is not active.',
+  /** EXPERIENCE.md:364 */
+  encryptionKeyAllActive: 'Every key in this key file is already active.',
+  /** EXPERIENCE.md:364 */
+  encryptionKeyDefault:
+    'This is the default key for new encrypted databases while another key is active. Make another active key the default first.',
+  /** EXPERIENCE.md:364 */
+  encryptionKeyActivateConsequence:
+    'The keys in this key file become active until they are deactivated or the instance restarts. If no database key was active, the first one also becomes the default key for new encrypted databases and the key for encrypted journal files, and key activation at startup is set to Interactive. Each later start then asks for a key file on the console and, when nobody answers, starts without the key and leaves encrypted databases unmounted, until the startup settings change it.',
+  /** EXPERIENCE.md:364 */
+  encryptionKeyActivateDataElementConsequence:
+    'The keys in this key file become available to applications that encrypt data elements, until they are deactivated or the instance restarts.',
+  /** EXPERIENCE.md:364 */
+  databaseEncryptionPrompt1: 'Which database encryption keys are active?',
+  /** EXPERIENCE.md:364 */
+  databaseEncryptionPrompt2: 'What happens when I activate a database encryption key?',
+  /** EXPERIENCE.md:364 */
+  databaseEncryptionPrompt3: 'What does deactivating a database encryption key change?',
+  /** EXPERIENCE.md:364 */
+  dataElementEncryptionPrompt1: 'Which data element encryption keys are active?',
+  /** EXPERIENCE.md:364 */
+  dataElementEncryptionPrompt2: 'What are data element encryption keys used for?',
+  /** EXPERIENCE.md:364 */
+  dataElementEncryptionPrompt3: 'What does deactivating a data element encryption key change?',
+  /** EXPERIENCE.md:364 */
+  encryptionStartupLabel: 'Encryption startup settings',
+  /** EXPERIENCE.md:364 */
+  encryptionStartupLink: 'Configure startup settings',
+  /** EXPERIENCE.md:364 */
+  encryptionStartupModeLegend: 'Key activation at startup',
+  /** EXPERIENCE.md:364 */
+  encryptionStartupModeInteractive: 'Interactive',
+  /** EXPERIENCE.md:364 */
+  encryptionStartupModeUnattended: 'Unattended',
+  /** EXPERIENCE.md:364 */
+  encryptionStartupModeKmip: 'KMIP',
+  /** EXPERIENCE.md:364 */
+  encryptionStartupNoneConsequence:
+    'Keys are not activated at startup. After each start, encrypted databases stay unmounted until someone activates their key on Database encryption. Choosing None discards the instance\'s stored unattended credential.',
+  /** EXPERIENCE.md:364 */
+  encryptionStartupInteractiveConsequence:
+    'Each start asks for a key file on the instance\'s console. When nobody answers, as in a container, the instance starts without the key and leaves encrypted databases unmounted. While the audit log, IRISSECURITY or IRISTEMP is encrypted, a start nobody answers does not finish, so Interactive is not offered.',
+  /** EXPERIENCE.md:364 */
+  encryptionStartupUnattendedConsequence:
+    'Not recommended. The instance stores a credential of its own for this key file and activates the keys at every start with no one present, so anyone who can start the instance and reach the key file can read encrypted data. That credential is an administrator the instance adds to the key file, which stays there after unattended activation is turned off.',
+  /** EXPERIENCE.md:364 */
+  encryptionStartupKmipConsequence:
+    'Each start activates the keys from this KMIP server with no one present.',
+  /** EXPERIENCE.md:364 */
+  encryptionStartupInteractiveNotOffered:
+    'While the audit log, IRISSECURITY or IRISTEMP is encrypted, a start nobody answers does not finish, so Interactive is not offered.',
+  /** EXPERIENCE.md:364 */
+  encryptionStartupKmipUnavailable: 'No KMIP server is configured on this instance.',
+  /** EXPERIENCE.md:364 */
+  encryptionStartupKmipServer: 'KMIP server',
+  /** EXPERIENCE.md:364 */
+  encryptionStartupStoredKeyFile: 'Startup key file',
+  /** EXPERIENCE.md:364 */
+  encryptionStartupNewKeyFile: 'Use another key file',
+  /** EXPERIENCE.md:364 */
+  encryptionStartupFlagsLegend: 'System encryption',
+  /** EXPERIENCE.md:364 */
+  encryptionStartupIrisSecurity: 'Encrypt IRISSECURITY',
+  /** EXPERIENCE.md:364 */
+  encryptionStartupIrisTemp: 'Encrypt IRISTEMP, IRISLOCALDATA and IRISMETRICS',
+  /** EXPERIENCE.md:364 */
+  encryptionStartupJournal: 'Encrypt journal files',
+  /** EXPERIENCE.md:364 */
+  encryptionStartupAudit: 'Encrypt the audit log',
+  /** EXPERIENCE.md:364 */
+  encryptionStartupRestart: 'Takes effect at the next restart.',
+  /** EXPERIENCE.md:364 */
+  encryptionStartupJournalConsequence:
+    'New journal files are encrypted from the next journal switch or restart. Switch the journal file on Journals to start now.',
+  /** EXPERIENCE.md:364 */
+  encryptionStartupDefaultKey: 'Default key',
+  /** EXPERIENCE.md:364 */
+  encryptionStartupJournalKey: 'Journal key',
+  /** EXPERIENCE.md:364 */
+  encryptionStartupDefaultKeyHint: 'New encrypted databases use this key.',
+  /** EXPERIENCE.md:364 */
+  encryptionStartupJournalKeyHint: 'New encrypted journal files use this key.',
+  /** EXPERIENCE.md:364 */
+  encryptionStartupAuditVerb: 'Change audit log encryption',
+  /** EXPERIENCE.md:364 */
+  encryptionStartupRefusedAction: 'change the encryption startup settings',
+  /** EXPERIENCE.md:364 */
+  encryptionStartupKmipServerRefusal: 'Choose a KMIP server this instance has configured.',
+  /** EXPERIENCE.md:364 */
+  encryptionStartupKeyFileRefusal: 'Unattended activation needs a key file.',
+  /** EXPERIENCE.md:364 */
+  encryptionStartupNeedsStart: 'Turn on key activation at startup before encrypting this.',
+  /** EXPERIENCE.md:364 */
+  encryptionStartupNoKey:
+    'Activate a database encryption key on Database encryption before encrypting this.',
+  /** EXPERIENCE.md:364 */
+  encryptionStartupKeyInactive: 'Choose a key that is active on Database encryption.',
+  /** EXPERIENCE.md:364 */
+  encryptionStartupRequired:
+    'Key activation at startup stays on while encrypted databases, journal files the instance still needs, the audit log or IRISSECURITY depend on it.',
+  /** EXPERIENCE.md:364 */
+  encryptionStartupVersion:
+    'This instance\'s admin API does not take the startup administrator in the request body, so change these settings on the classic Database Encryption page.',
+  /** EXPERIENCE.md:364 */
+  encryptionStartupInteractiveRefusal:
+    'The audit log, IRISSECURITY or IRISTEMP is encrypted, so every start must activate its key, and with Interactive a start nobody answers on the console does not finish. Keep Unattended, or turn their encryption off first.',
+  /** EXPERIENCE.md:364 */
+  encryptionStartupPrompt1: 'How does this instance activate its encryption keys at startup?',
+  /** EXPERIENCE.md:364 */
+  encryptionStartupPrompt2: 'What does unattended key activation store on this instance?',
+  /** EXPERIENCE.md:364 */
+  encryptionStartupPrompt3: 'What happens when the audit log is encrypted?',
+  /** EXPERIENCE.md:516 */
+  encryptionStartupAuditConsequence:
+    'Takes effect at the next start, when the instance encrypts or decrypts the audit database in place; every audit record, the agent\'s own markers included, is kept. While it is encrypted, a start that cannot activate its key does not finish.',
+  /** EXPERIENCE.md:516 */
+  encryptionStartupAuditAdvisory: 'Keep the key file and its administrator available to every start.',
+  /** EXPERIENCE.md:490 */
+  encryptionKeyDeactivateConsequence:
+    'An encrypted database that needs this key cannot be mounted until the key is activated again from a key file.',
+  /** EXPERIENCE.md:490 */
+  encryptionKeyDeactivateDataElementConsequence:
+    'Data encrypted with this key cannot be read or written until the key is activated again from a key file.',
   // Story 19.16: Data browser's tab strip, Close tab and its line, the tab cap, Go to row with its
   // field, Go, its range line and its no-row line, the export line, the Keyboard shortcuts dialog's
   // title, scope note and the labels and keys it lists. "Download CSV", "Add row", "Duplicate row",
@@ -5644,6 +5828,66 @@ export const STRINGS = {
   explorerClassReferenceNote: 'This is the instance\'s own class reference for <class>, shown with your browser\'s sign-in to the instance. Links inside it do not open here.',
   /** EXPERIENCE.md:601 */
   explorerClassReferenceRestored: 'That link does not open here; the class reference shows <class> again.',
+  /** EXPERIENCE.md:602 */
+  explorerDocDbListLabel: 'Document databases',
+  /** EXPERIENCE.md:602 */
+  explorerDocDbColumnDocumentType: 'Document type',
+  /** EXPERIENCE.md:602 */
+  explorerDocDbCreateTitle: 'Create document database',
+  /** EXPERIENCE.md:602 */
+  explorerDocDbDropLabel: 'Drop',
+  /** EXPERIENCE.md:602 */
+  explorerDocDbCreateHint: 'An unqualified name creates the class ISC.DM.<name>.',
+  /** EXPERIENCE.md:602 */
+  explorerDocDbListEmpty: 'No document databases in this namespace.',
+  /** EXPERIENCE.md:602 */
+  explorerDocDbListEmptyAgent: 'Ask the agent to create a document database here.',
+  /** EXPERIENCE.md:602 */
+  explorerDocDbListPrompt1: 'Which document databases does this namespace hold?',
+  /** EXPERIENCE.md:602 */
+  explorerDocDbListPrompt2: 'Create a document database named Orders.',
+  /** EXPERIENCE.md:602 */
+  explorerDocDbListPrompt3: 'Is the DocDB service enabled here?',
+  /** EXPERIENCE.md:602 */
+  explorerDocDbDropConsequence: 'Dropping a document database deletes its class and every document it holds. This cannot be undone.',
+  /** EXPERIENCE.md:602 */
+  explorerDocDbServiceDisabled: 'The DocDB service (%Service_DocDB) is disabled on this instance, so document databases cannot be listed, created or dropped. An administrator can enable it on the Services screen in Permissions.',
+  /** EXPERIENCE.md:602 */
+  explorerDocDbNameInvalid: 'A document database name is a class name: letters and digits in parts separated by dots, each part starting with a letter, and at most 213 characters without a package.',
+  /** EXPERIENCE.md:602 */
+  explorerDocDbNameMapped: 'This namespace keeps that package\'s classes in another database, where OcuPilot does not create or drop document databases.',
+  /** EXPERIENCE.md:602 */
+  explorerDocDbNameTaken: 'This namespace already holds a document database of that name, in any letter case.',
+  /** EXPERIENCE.md:602 */
+  explorerDocDbClassTaken: 'A class of that name already exists in this namespace, so the database was not created.',
+  /** EXPERIENCE.md:603 */
+  sqlActivityLabel: 'SQL activity',
+  /** EXPERIENCE.md:603 */
+  sqlActivityColumnRunType: 'Run type',
+  /** EXPERIENCE.md:603 */
+  sqlActivityColumnElapsed: 'Elapsed (s)',
+  /** EXPERIENCE.md:603 */
+  sqlActivityTextWithheld: 'Not shown',
+  /** EXPERIENCE.md:603 */
+  sqlActivityEmpty: 'No SQL statements are running on this instance.',
+  /** EXPERIENCE.md:603 */
+  sqlActivityNote: 'Statement text shows for your own statements, and for another user\'s when you hold %Development:USE and READ on its namespace\'s database.',
+  /** EXPERIENCE.md:603 */
+  sqlActivityPrompt1: 'Which SQL statements have been running the longest?',
+  /** EXPERIENCE.md:603 */
+  sqlActivityPrompt2: 'Who is running SQL right now, and in which namespace?',
+  /** EXPERIENCE.md:603 */
+  sqlActivityPrompt3: 'Is any statement running inside an open transaction?',
+  /** EXPERIENCE.md:604 */
+  agentPickerLabel: 'Agent definition: <name>',
+  /** EXPERIENCE.md:604 */
+  agentPickerOptionDetail: '<provider> \u00b7 <model>',
+  /** EXPERIENCE.md:604 */
+  explorerSqlChangesReason: 'This statement changes something, so it is proposed and runs only once a person confirms it.',
+  /** EXPERIENCE.md:604 */
+  explorerSqlAgentCodeReason: 'A statement that creates a function, method, procedure, query, trigger or aggregate, or a COMPUTECODE field, carries code, which a person writes and runs on SQL query.',
+  /** EXPERIENCE.md:604 */
+  explorerSqlNotPreparedReason: 'The instance did not prepare this statement, so it is not proposed; its SQLCODE says why.',
 } as const;
 
 /**

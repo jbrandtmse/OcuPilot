@@ -10,7 +10,7 @@
  * declarations disagree.
  */
 
-export type EntityTypeKey = 'web-application' | 'rest-service' | 'user' | 'role' | 'resource' | 'service' | 'ssl-configuration' | 'x509-credential' | 'ldap-configuration' | 'wallet-collection' | 'wallet-secret' | 'oauth2-client-configuration' | 'oauth2-server-definition' | 'oauth2-resource-server' | 'oauth2-server' | 'oauth2-server-client' | 'audit-event' | 'audit-user-event' | 'auditing-configuration' | 'task' | 'task-history-entry' | 'process' | 'lock' | 'database' | 'device' | 'audit-record' | 'application-error' | 'log-entry' | 'agent-definition' | 'agent-switch' | 'agent-policy' | 'allowed-directory' | 'namespace' | 'web-session' | 'background-task' | 'global-mapping' | 'routine-mapping' | 'package-mapping' | 'database-configuration' | 'language-server' | 'class' | 'routine' | 'journal-file' | 'journal-file-database' | 'journal-settings' | 'journal-record' | 'license-key' | 'license-server' | 'ecp-data-server' | 'ecp-settings' | 'ecp-ssl-connection' | 'encryption-key-file';
+export type EntityTypeKey = 'web-application' | 'rest-service' | 'user' | 'role' | 'resource' | 'service' | 'ssl-configuration' | 'x509-credential' | 'ldap-configuration' | 'wallet-collection' | 'wallet-secret' | 'oauth2-client-configuration' | 'oauth2-server-definition' | 'oauth2-resource-server' | 'oauth2-server' | 'oauth2-server-client' | 'audit-event' | 'audit-user-event' | 'auditing-configuration' | 'task' | 'task-history-entry' | 'process' | 'lock' | 'database' | 'device' | 'audit-record' | 'application-error' | 'log-entry' | 'agent-definition' | 'agent-switch' | 'agent-policy' | 'allowed-directory' | 'namespace' | 'web-session' | 'background-task' | 'global-mapping' | 'routine-mapping' | 'package-mapping' | 'database-configuration' | 'language-server' | 'class' | 'routine' | 'journal-file' | 'journal-file-database' | 'journal-settings' | 'journal-record' | 'license-key' | 'license-server' | 'ecp-data-server' | 'ecp-settings' | 'ecp-ssl-connection' | 'encryption-key-file' | 'database-encryption-keys' | 'data-element-encryption-keys' | 'encryption-startup' | 'docdb-database' | 'sql-statement';
 
 /**
  * The closed archetype vocabulary, mirrored from OcuPilot.Screen.Archetype. A screen's
@@ -162,7 +162,7 @@ export interface ReadSourcePart {
  * `timeline` source's fields and criterion are fixed.
  */
 export interface ReadSource {
-  readonly port: 'admin' | 'state' | 'mgmnt' | 'logsource' | 'path' | 'timeline' | 'background' | 'atelier' | 'encryption';
+  readonly port: 'admin' | 'state' | 'mgmnt' | 'logsource' | 'path' | 'timeline' | 'background' | 'atelier' | 'encryption' | 'docdb' | 'sqlactivity';
   readonly endpoint: string;
   /**
    * `LIST` reads rows; `GET` reads one object as the one row, and a 404 reads as none;
@@ -170,7 +170,7 @@ export interface ReadSource {
    * `VOLUMELIST` reads a database's own volume files as rows; a bare admin type is read with
    * `rows` (Story 16.7).
    */
-  readonly type: 'LIST' | 'GET' | 'UPCOMING' | 'HISTORY' | 'VOLUMELIST' | 'ACTIVITY' | 'LICENSEUSAGE';
+  readonly type: 'LIST' | 'GET' | 'UPCOMING' | 'HISTORY' | 'VOLUMELIST' | 'DATAELEMENTLIST' | 'ACTIVITY' | 'LICENSEUSAGE';
   /** The one member of a bare admin type's one-object answer this read lists (AD-36, Story 16.7). */
   readonly rows?: string | null;
   readonly rowGet?: ReadRowGet | null;
@@ -513,7 +513,12 @@ export const ENTITY_TYPES: readonly EntityTypeKey[] = [
   "ecp-data-server",
   "ecp-settings",
   "ecp-ssl-connection",
-  "encryption-key-file"
+  "encryption-key-file",
+  "database-encryption-keys",
+  "data-element-encryption-keys",
+  "encryption-startup",
+  "docdb-database",
+  "sql-statement"
 ];
 
 /**
@@ -557,7 +562,11 @@ export const ENTITY_ID_RULES: Readonly<Partial<Record<EntityTypeKey, string>>> =
   "license-key": "singleton",
   "license-server": "foldcase",
   "ecp-data-server": "foldcase",
-  "ecp-settings": "singleton"
+  "ecp-settings": "singleton",
+  "database-encryption-keys": "singleton",
+  "data-element-encryption-keys": "singleton",
+  "encryption-startup": "singleton",
+  "docdb-database": "foldcase"
 };
 
 /**
@@ -2830,6 +2839,123 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "entityLabelKey": ""
   },
   {
+    "descriptor": "OcuPilot.Screen.Descriptor.DataElementEncryption",
+    "route": "security/data-element-encryption",
+    "area": "security",
+    "labelKey": "dataElementEncryptionLabel",
+    "sideBarPosition": 10,
+    "archetype": "list",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Secure",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "data-element-encryption-keys",
+    "entityLabelKey": "dataElementEncryptionEntity",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "none",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "activate",
+      "selfProtection": ""
+    },
+    "rowActions": [
+      {
+        "id": "activate",
+        "selfProtection": ""
+      },
+      {
+        "id": "deactivate",
+        "selfProtection": ""
+      }
+    ],
+    "context": {
+      "fields": [
+        "Id"
+      ],
+      "secretFields": []
+    },
+    "secretArguments": [
+      "AdminPassword"
+    ],
+    "emptyStateKey": "dataElementEncryptionEmpty",
+    "commandAliases": [
+      "data element encryption"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "userPromptGroupAccess",
+        "textKey": "dataElementEncryptionPrompt1"
+      },
+      {
+        "groupKey": "userPromptGroupAccess",
+        "textKey": "dataElementEncryptionPrompt2"
+      },
+      {
+        "groupKey": "userPromptGroupAccess",
+        "textKey": "dataElementEncryptionPrompt3"
+      }
+    ],
+    "classicPage": "%CSP.UI.Portal.EncryptionManaged",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "admin",
+        "endpoint": "Security.Encryption.Key",
+        "type": "DATAELEMENTLIST"
+      },
+      "fields": [
+        "Id"
+      ],
+      "filter": [
+        "Id"
+      ],
+      "sort": {
+        "fields": [
+          "Id"
+        ],
+        "default": "Id",
+        "direction": "asc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Id",
+          "labelKey": "encryptionKeyFileColumnId",
+          "kind": "name"
+        }
+      ],
+      "emptyNextKey": "",
+      "emptyAgentKey": "dataElementEncryptionEmptyAgent"
+    },
+    "toolIdentifier": "security.dataelementencryption",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "fingerprintExcludes": []
+  },
+  {
     "descriptor": "OcuPilot.Screen.Descriptor.DatabaseDetails",
     "route": "os-management/databases/details",
     "area": "os-management",
@@ -3015,7 +3141,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
             "param": "dir",
             "labelKey": "lockColumnDirectory",
             "kind": "text",
-            "maxLength": 256
+            "maxLength": 256,
+            "hint": "One database directory, spelled as osmgmt.databases.read answers its Directory."
           }
         ]
       }
@@ -3110,6 +3237,140 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "secretArguments": [],
     "fingerprintExcludes": [],
     "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.DatabaseEncryption",
+    "route": "security/database-encryption",
+    "area": "security",
+    "labelKey": "databaseEncryptionLabel",
+    "sideBarPosition": 9,
+    "archetype": "list",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Secure",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "database-encryption-keys",
+    "entityLabelKey": "databaseEncryptionEntity",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "none",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "activate",
+      "selfProtection": ""
+    },
+    "rowActions": [
+      {
+        "id": "activate",
+        "selfProtection": ""
+      },
+      {
+        "id": "deactivate",
+        "selfProtection": ""
+      }
+    ],
+    "context": {
+      "fields": [
+        "Id",
+        "KeyLen",
+        "IsDefault"
+      ],
+      "secretFields": []
+    },
+    "secretArguments": [
+      "AdminPassword"
+    ],
+    "emptyStateKey": "databaseEncryptionEmpty",
+    "commandAliases": [
+      "database encryption",
+      "activate database key"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "userPromptGroupAccess",
+        "textKey": "databaseEncryptionPrompt1"
+      },
+      {
+        "groupKey": "userPromptGroupAccess",
+        "textKey": "databaseEncryptionPrompt2"
+      },
+      {
+        "groupKey": "userPromptGroupAccess",
+        "textKey": "databaseEncryptionPrompt3"
+      }
+    ],
+    "classicPage": "%CSP.UI.Portal.EncryptionDatabase",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "admin",
+        "endpoint": "Security.Encryption.Key",
+        "type": "LIST"
+      },
+      "fields": [
+        "Id",
+        "KeyLen",
+        "IsDefault"
+      ],
+      "filter": [
+        "Id"
+      ],
+      "sort": {
+        "fields": [
+          "Id",
+          "KeyLen",
+          "IsDefault"
+        ],
+        "default": "Id",
+        "direction": "asc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Id",
+          "labelKey": "encryptionKeyFileColumnId",
+          "kind": "name"
+        },
+        {
+          "field": "KeyLen",
+          "labelKey": "encryptionKeyFileColumnKeyLen",
+          "kind": "number"
+        },
+        {
+          "field": "IsDefault",
+          "labelKey": "tableColumnDefault",
+          "kind": "status"
+        }
+      ],
+      "emptyNextKey": "",
+      "emptyAgentKey": "databaseEncryptionEmptyAgent"
+    },
+    "toolIdentifier": "security.databaseencryption",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "fingerprintExcludes": []
   },
   {
     "descriptor": "OcuPilot.Screen.Descriptor.DatabaseFreeSpace",
@@ -3734,7 +3995,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
             "param": "dir",
             "labelKey": "lockColumnDirectory",
             "kind": "text",
-            "maxLength": 256
+            "maxLength": 256,
+            "hint": "One database directory, spelled as osmgmt.databases.read answers its Directory."
           }
         ]
       }
@@ -5034,6 +5296,121 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "entityLabelKey": ""
   },
   {
+    "descriptor": "OcuPilot.Screen.Descriptor.EncryptionStartup",
+    "route": "security/database-encryption/startup",
+    "area": "security",
+    "labelKey": "encryptionStartupLabel",
+    "sideBarPosition": 0,
+    "archetype": "form-page",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Secure",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "encryption-startup",
+    "entityLabelKey": "encryptionStartupLabel",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "single",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "DBEncStartMode",
+        "DBEncJournal",
+        "DBEncIRISSecurity",
+        "DBEncIRISTemp",
+        "AuditEncrypt",
+        "DBEncStartKMIPServer",
+        "DBEncStartKeyFile",
+        "DBEncDefaultKeyID",
+        "DBEncJournalKeyID"
+      ],
+      "secretFields": []
+    },
+    "secretArguments": [
+      "AdminPassword"
+    ],
+    "emptyStateKey": "",
+    "commandAliases": [
+      "encryption startup",
+      "startup settings"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "userPromptGroupAccess",
+        "textKey": "encryptionStartupPrompt1"
+      },
+      {
+        "groupKey": "userPromptGroupAccess",
+        "textKey": "encryptionStartupPrompt2"
+      },
+      {
+        "groupKey": "userPromptGroupAccess",
+        "textKey": "encryptionStartupPrompt3"
+      }
+    ],
+    "classicPage": "%CSP.UI.Portal.EncryptionDatabase",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "admin",
+        "endpoint": "Security.Encryption.Settings",
+        "type": "GET"
+      },
+      "fields": [
+        "DBEncStartMode",
+        "DBEncJournal",
+        "DBEncIRISSecurity",
+        "DBEncIRISTemp",
+        "AuditEncrypt",
+        "DBEncStartKMIPServer",
+        "DBEncStartKeyFile",
+        "DBEncDefaultKeyID",
+        "DBEncJournalKeyID"
+      ],
+      "filter": [
+        "DBEncStartMode"
+      ],
+      "sort": {
+        "fields": [
+          "DBEncStartMode"
+        ],
+        "default": "DBEncStartMode",
+        "direction": "asc"
+      },
+      "paging": "cap"
+    },
+    "toolIdentifier": "security.encryptionstartup",
+    "refreshDefault": 0,
+    "table": null,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "fingerprintExcludes": []
+  },
+  {
     "descriptor": "OcuPilot.Screen.Descriptor.ExplorerClassDocument",
     "route": "system-explorer/classes/document",
     "area": "system-explorer",
@@ -5131,7 +5508,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
             "param": "name",
             "labelKey": "tableColumnName",
             "kind": "text",
-            "maxLength": 256
+            "maxLength": 256,
+            "hint": "One class, as Package.Name.cls, spelled as explorer.classes.read answers its Name."
           },
           {
             "param": "form",
@@ -5546,6 +5924,160 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "entityLabelKey": ""
   },
   {
+    "descriptor": "OcuPilot.Screen.Descriptor.ExplorerDocDbList",
+    "route": "system-explorer/docdb",
+    "area": "system-explorer",
+    "labelKey": "explorerDocDbListLabel",
+    "sideBarPosition": 12,
+    "archetype": "list",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Development",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DocDB_Admin",
+        "permission": "USE"
+      },
+      {
+        "resource": "%Service_DocDB",
+        "permission": "USE"
+      }
+    ],
+    "ownPrivileges": [
+      {
+        "resource": "%DocDB_Admin",
+        "permission": "USE"
+      },
+      {
+        "resource": "%Service_DocDB",
+        "permission": "USE"
+      }
+    ],
+    "entityType": "docdb-database",
+    "secondaryEntityTypes": [],
+    "scope": "namespace",
+    "parentScope": "",
+    "id": {
+      "kind": "single",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "create",
+      "selfProtection": ""
+    },
+    "rowActions": [
+      {
+        "id": "delete",
+        "selfProtection": ""
+      }
+    ],
+    "context": {
+      "fields": [
+        "Name",
+        "Class",
+        "DocumentType",
+        "Resource"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "explorerDocDbListEmpty",
+    "commandAliases": [
+      "document databases",
+      "docdb",
+      "create document database"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "webAppPromptGroupCode",
+        "textKey": "explorerDocDbListPrompt1"
+      },
+      {
+        "groupKey": "webAppPromptGroupCode",
+        "textKey": "explorerDocDbListPrompt2"
+      },
+      {
+        "groupKey": "webAppPromptGroupCode",
+        "textKey": "explorerDocDbListPrompt3"
+      }
+    ],
+    "classicPage": "",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "docdb",
+        "endpoint": "Databases",
+        "type": "LIST"
+      },
+      "fields": [
+        "Name",
+        "Class",
+        "DocumentType",
+        "Resource"
+      ],
+      "filter": [
+        "Name",
+        "Class",
+        "DocumentType",
+        "Resource"
+      ],
+      "sort": {
+        "fields": [
+          "Name",
+          "Class",
+          "DocumentType",
+          "Resource"
+        ],
+        "default": "Name",
+        "direction": "asc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Name",
+          "labelKey": "tableColumnName",
+          "kind": "name"
+        },
+        {
+          "field": "Class",
+          "labelKey": "explorerClassDocumentLabel",
+          "kind": "identifier"
+        },
+        {
+          "field": "DocumentType",
+          "labelKey": "explorerDocDbColumnDocumentType",
+          "kind": "identifier"
+        },
+        {
+          "field": "Resource",
+          "labelKey": "webAppColumnResource",
+          "kind": "identifier"
+        }
+      ],
+      "emptyNextKey": "",
+      "emptyAgentKey": "explorerDocDbListEmptyAgent"
+    },
+    "toolIdentifier": "explorer.docdb",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
     "descriptor": "OcuPilot.Screen.Descriptor.ExplorerMacro",
     "route": "system-explorer/macros",
     "area": "system-explorer",
@@ -5641,13 +6173,15 @@ export const SCREENS: readonly ScreenDeclaration[] = [
             "param": "document",
             "labelKey": "explorerColumnDocument",
             "kind": "text",
-            "maxLength": 256
+            "maxLength": 256,
+            "hint": "The class or routine whose include files, imports and superclasses give the macro its context, spelled as explorer.classes.read or explorer.routines.read answers its Name."
           },
           {
             "param": "macro",
             "labelKey": "explorerColumnMacro",
             "kind": "text",
-            "maxLength": 128
+            "maxLength": 128,
+            "hint": "One macro's name, with or without its three leading dollar signs."
           }
         ]
       }
@@ -5786,7 +6320,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
             "param": "name",
             "labelKey": "tableColumnName",
             "kind": "text",
-            "maxLength": 256
+            "maxLength": 256,
+            "hint": "One routine or include file, as Name.mac, .int, .inc, .bas, .mvi or .mvb, spelled as explorer.routines.read answers its Name."
           },
           {
             "param": "form",
@@ -6227,7 +6762,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
             "param": "text",
             "labelKey": "explorerSearchTextLabel",
             "kind": "text",
-            "maxLength": 256
+            "maxLength": 256,
+            "hint": "The text to find, matched literally, so * and commas are searched for as themselves."
           },
           {
             "param": "scope",
@@ -6389,7 +6925,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
             "param": "table",
             "labelKey": "explorerSqlColumnTable",
             "kind": "text",
-            "maxLength": 257
+            "maxLength": 257,
+            "hint": "One table, as Schema.Table, spelled as explorer.sqltables.read answers its Table."
           }
         ]
       }
@@ -6535,7 +7072,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
             "param": "table",
             "labelKey": "explorerSqlColumnTable",
             "kind": "text",
-            "maxLength": 257
+            "maxLength": 257,
+            "hint": "One table, as Schema.Table, spelled as explorer.sqltables.read answers its Table."
           }
         ]
       }
@@ -6764,7 +7302,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
             "param": "table",
             "labelKey": "explorerSqlColumnTable",
             "kind": "text",
-            "maxLength": 257
+            "maxLength": 257,
+            "hint": "One table, as Schema.Table, spelled as explorer.sqltables.read answers its Table."
           }
         ]
       }
@@ -6943,7 +7482,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
             "param": "table",
             "labelKey": "explorerSqlColumnTable",
             "kind": "text",
-            "maxLength": 257
+            "maxLength": 257,
+            "hint": "One table, as Schema.Table, spelled as explorer.sqltables.read answers its Table."
           }
         ]
       }
@@ -7103,7 +7643,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
             "param": "table",
             "labelKey": "explorerSqlColumnTable",
             "kind": "text",
-            "maxLength": 257
+            "maxLength": 257,
+            "hint": "One table, as Schema.Table, spelled as explorer.sqltables.read answers its Table."
           }
         ]
       }
@@ -7248,7 +7789,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
             "param": "table",
             "labelKey": "explorerSqlColumnTable",
             "kind": "text",
-            "maxLength": 257
+            "maxLength": 257,
+            "hint": "One table, as Schema.Table, spelled as explorer.sqltables.read answers its Table."
           }
         ]
       }
@@ -7410,7 +7952,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
             "param": "procedure",
             "labelKey": "explorerSqlColumnProcedure",
             "kind": "text",
-            "maxLength": 257
+            "maxLength": 257,
+            "hint": "One procedure, as Schema.Procedure, spelled as explorer.sqlprocedures.read answers its Procedure."
           }
         ]
       }
@@ -7618,7 +8161,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
             "param": "procedure",
             "labelKey": "explorerSqlColumnProcedure",
             "kind": "text",
-            "maxLength": 257
+            "maxLength": 257,
+            "hint": "One procedure, as Schema.Procedure, spelled as explorer.sqlprocedures.read answers its Procedure."
           }
         ]
       }
@@ -7808,7 +8352,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
             "param": "schema",
             "labelKey": "explorerSqlColumnSchema",
             "kind": "text",
-            "maxLength": 128
+            "maxLength": 128,
+            "hint": "One schema, spelled as explorer.sqlschemas.read answers its Schema; omit it to list every schema's procedures."
           }
         ]
       }
@@ -8166,7 +8711,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
             "param": "table",
             "labelKey": "explorerSqlColumnTable",
             "kind": "text",
-            "maxLength": 257
+            "maxLength": 257,
+            "hint": "One table, as Schema.Table, spelled as explorer.sqltables.read answers its Table."
           }
         ]
       }
@@ -8349,7 +8895,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
             "param": "table",
             "labelKey": "explorerSqlColumnTable",
             "kind": "text",
-            "maxLength": 257
+            "maxLength": 257,
+            "hint": "One table, as Schema.Table, spelled as explorer.sqltables.read answers its Table."
           }
         ]
       }
@@ -8541,7 +9088,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
             "param": "schema",
             "labelKey": "explorerSqlColumnSchema",
             "kind": "text",
-            "maxLength": 128
+            "maxLength": 128,
+            "hint": "One schema, spelled as explorer.sqlschemas.read answers its Schema; omit it to list every schema's tables."
           }
         ]
       }
@@ -8681,7 +9229,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
             "param": "table",
             "labelKey": "explorerSqlColumnTable",
             "kind": "text",
-            "maxLength": 257
+            "maxLength": 257,
+            "hint": "One table, as Schema.Table, spelled as explorer.sqltables.read answers its Table."
           }
         ]
       }
@@ -8826,7 +9375,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
             "param": "view",
             "labelKey": "viewMenuLabel",
             "kind": "text",
-            "maxLength": 257
+            "maxLength": 257,
+            "hint": "One view, as Schema.View, spelled as explorer.sqlviews.read answers its View."
           }
         ]
       }
@@ -8993,7 +9543,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
             "param": "view",
             "labelKey": "viewMenuLabel",
             "kind": "text",
-            "maxLength": 257
+            "maxLength": 257,
+            "hint": "One view, as Schema.View, spelled as explorer.sqlviews.read answers its View."
           }
         ]
       }
@@ -9171,7 +9722,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
             "param": "view",
             "labelKey": "viewMenuLabel",
             "kind": "text",
-            "maxLength": 257
+            "maxLength": 257,
+            "hint": "One view, as Schema.View, spelled as explorer.sqlviews.read answers its View."
           }
         ]
       }
@@ -9363,7 +9915,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
             "param": "schema",
             "labelKey": "explorerSqlColumnSchema",
             "kind": "text",
-            "maxLength": 128
+            "maxLength": 128,
+            "hint": "One schema, spelled as explorer.sqlschemas.read answers its Schema; omit it to list every schema's views."
           }
         ]
       }
@@ -9595,7 +10148,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
             "param": "namespace",
             "labelKey": "headerNamespaceLabel",
             "kind": "text",
-            "maxLength": 64
+            "maxLength": 64,
+            "hint": "One namespace, spelled as osmgmt.namespaces.read answers its Name."
           }
         ]
       }
@@ -9807,7 +10361,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
             "param": "file",
             "labelKey": "tableColumnName",
             "kind": "text",
-            "maxLength": 1024
+            "maxLength": 1024,
+            "hint": "One journal file, spelled as osmgmt.journals.read answers its Name."
           }
         ]
       }
@@ -9962,7 +10517,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
             "param": "file",
             "labelKey": "tableColumnName",
             "kind": "text",
-            "maxLength": 1024
+            "maxLength": 1024,
+            "hint": "One journal file, spelled as osmgmt.journals.read answers its Name."
           }
         ]
       }
@@ -10685,7 +11241,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
             "param": "name",
             "labelKey": "tableColumnName",
             "kind": "text",
-            "maxLength": 50
+            "maxLength": 50,
+            "hint": "One external language server, spelled as osmgmt.languageservers.read answers its Name."
           }
         ]
       }
@@ -15292,7 +15849,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
             "param": "application",
             "labelKey": "tableColumnName",
             "kind": "text",
-            "maxLength": 256
+            "maxLength": 256,
+            "hint": "One REST application, spelled as webapp.restapis.read answers its Name: a web application path starting with /, or a spec-based service's package name."
           }
         ]
       }
@@ -15507,7 +16065,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
             "param": "namespace",
             "labelKey": "headerNamespaceLabel",
             "kind": "text",
-            "maxLength": 64
+            "maxLength": 64,
+            "hint": "One namespace, spelled as osmgmt.namespaces.read answers its Name."
           }
         ]
       }
@@ -15763,7 +16322,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
             "labelKey": "processColumnPid",
             "kind": "text",
             "maxLength": 10,
-            "vendorParam": "id"
+            "vendorParam": "id",
+            "hint": "One process id, a whole number, as osmgmt.processes.read answers its Pid."
           }
         ]
       }
@@ -17020,7 +17580,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
             "param": "namespace",
             "labelKey": "headerNamespaceLabel",
             "kind": "text",
-            "maxLength": 64
+            "maxLength": 64,
+            "hint": "One namespace, spelled as osmgmt.namespaces.read answers its Name."
           }
         ]
       }
@@ -17268,6 +17829,205 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "banner": null,
     "tab": null,
     "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.SqlActivityList",
+    "route": "os-management/sql-activity",
+    "area": "os-management",
+    "labelKey": "sqlActivityLabel",
+    "sideBarPosition": 20,
+    "archetype": "list",
+    "built": true,
+    "refreshes": true,
+    "refreshRates": [
+      5,
+      10,
+      30,
+      60
+    ],
+    "privileges": [
+      {
+        "resource": "%Admin_Operate",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "sql-statement",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "composite",
+      "parts": [
+        "Server",
+        "ProcessID",
+        "StatementHash"
+      ]
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "Server",
+        "ProcessID",
+        "UserName",
+        "Namespace",
+        "RunType",
+        "Elapsed",
+        "Started",
+        "StatementId",
+        "StatementHash",
+        "Statement",
+        "Routine",
+        "CachedQuery",
+        "Workers",
+        "TransactionLevel",
+        "Remote"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "sqlActivityEmpty",
+    "commandAliases": [
+      "sql activity",
+      "running queries",
+      "current statements"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "sqlActivityPrompt1"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "sqlActivityPrompt2"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "sqlActivityPrompt3"
+      }
+    ],
+    "classicPage": "%CSP.UI.Portal.SQL.CurrentStatements",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "sqlactivity",
+        "endpoint": "CurrentStatements",
+        "type": "LIST"
+      },
+      "fields": [
+        "Server",
+        "ProcessID",
+        "UserName",
+        "Namespace",
+        "RunType",
+        "Elapsed",
+        "Started",
+        "StatementId",
+        "StatementHash",
+        "Statement",
+        "Routine",
+        "CachedQuery",
+        "Workers",
+        "TransactionLevel",
+        "Remote"
+      ],
+      "filter": [
+        "ProcessID",
+        "UserName",
+        "Namespace",
+        "RunType",
+        "Statement",
+        "Routine"
+      ],
+      "sort": {
+        "fields": [
+          "ProcessID",
+          "UserName",
+          "Namespace",
+          "RunType",
+          "Elapsed",
+          "Started"
+        ],
+        "default": "Elapsed",
+        "direction": "desc"
+      },
+      "paging": "cap",
+      "note": {
+        "key": "sqlActivityNote",
+        "text": "Statement text shows for your own statements, and for another user's when you hold %Development:USE and READ on its namespace's database."
+      }
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "ProcessID",
+          "labelKey": "processColumnPid",
+          "kind": "name"
+        },
+        {
+          "field": "UserName",
+          "labelKey": "processColumnUser",
+          "kind": "text"
+        },
+        {
+          "field": "Namespace",
+          "labelKey": "headerNamespaceLabel",
+          "kind": "text"
+        },
+        {
+          "field": "RunType",
+          "labelKey": "sqlActivityColumnRunType",
+          "kind": "text"
+        },
+        {
+          "field": "Elapsed",
+          "labelKey": "sqlActivityColumnElapsed",
+          "kind": "number"
+        },
+        {
+          "field": "Statement",
+          "labelKey": "explorerSqlColumnStatement",
+          "kind": "identifier",
+          "emptyKey": "sqlActivityTextWithheld"
+        },
+        {
+          "field": "Routine",
+          "labelKey": "processColumnRoutine",
+          "kind": "identifier"
+        },
+        {
+          "field": "Started",
+          "labelKey": "taskHistoryColumnStarted",
+          "kind": "text"
+        }
+      ],
+      "emptyNextKey": "tableReadOnlyEmptyNext",
+      "emptyAgentKey": ""
+    },
+    "rowTarget": {
+      "route": "os-management/processes/details",
+      "field": "ProcessID",
+      "unless": "Remote"
+    },
+    "toolIdentifier": "osmgmt.sqlactivity",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
     "multiSelect": null,
     "secretArguments": [],
     "fingerprintExcludes": [],
@@ -17964,7 +18724,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
             "labelKey": "taskHistoryColumnTaskId",
             "kind": "text",
             "maxLength": 10,
-            "vendorParam": "id"
+            "vendorParam": "id",
+            "hint": "One task's whole-number id, as tasks.schedule.read answers its Id."
           }
         ]
       }
@@ -18249,7 +19010,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
             "labelKey": "taskHistorySearch",
             "kind": "text",
             "maxLength": 100,
-            "vendorParam": "filter"
+            "vendorParam": "filter",
+            "hint": "Text to find in any column of a run, ignoring case; * and commas are matched as themselves."
           },
           {
             "param": "userOnly",
@@ -18611,7 +19373,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
             "param": "taskId",
             "labelKey": "taskHistoryColumnTaskId",
             "kind": "text",
-            "maxLength": 10
+            "maxLength": 10,
+            "hint": "One task's whole-number id, as tasks.schedule.read answers its Id; omit it to read every task's runs."
           }
         ]
       }
@@ -19647,7 +20410,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
             "param": "collection",
             "labelKey": "tableColumnName",
             "kind": "text",
-            "maxLength": 64
+            "maxLength": 64,
+            "hint": "One wallet collection, spelled as security.wallet.read answers its Name."
           }
         ]
       }

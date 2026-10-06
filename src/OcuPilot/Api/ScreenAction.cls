@@ -271,7 +271,24 @@ ClassMethod Run(pTool As %DynamicObject, pToolClass As %String, pActionId As %St
             }
         }
 
-        Set tFreshSC = ##class(OcuPilot.Kernel.Proposal.Operation).Read(pToolClass, ..PortClass(), tEndpoint, tIdParam, pId, "", .tFresh, .tReadHttp, .tReadFault)
+        ; AD-51: a tool whose fresh read is composed from its own values (READSVALUES) is read with the
+        ; action's declared values as its payload, so the guard it answers is the statement's own.
+        Set tReadPayload = ""
+        If +$Parameter(pToolClass, "READSVALUES") {
+            Set tEarlyValues = $Select($IsObject(pValues): pValues, 1: {})
+            If tEarlyValues.%GetTypeOf($ClassMethod(pToolClass, "IdArgument")) = "unassigned" Do tEarlyValues.%Set($ClassMethod(pToolClass, "IdArgument"), pId, "string")
+            Set tEarlySC = $ClassMethod(pToolClass, "ScreenActionDelta", pActionId, tEarlyValues, "", .tEarlyDelta, .tEarlyProblem)
+            If $$$ISERR(tEarlySC) {
+                Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ##class(%Exception.StatusException).CreateFromStatus(tEarlySC))
+                Quit
+            }
+            If tEarlyProblem '= "" {
+                Set tSC = ..Refuse(tEarlyProblem)
+                Quit
+            }
+            Set tReadPayload = tEarlyDelta.%ToJSON()
+        }
+        Set tFreshSC = ##class(OcuPilot.Kernel.Proposal.Operation).Read(pToolClass, ..PortClass(), tEndpoint, tIdParam, pId, tReadPayload, .tFresh, .tReadHttp, .tReadFault)
         If $$$ISERR(tFreshSC) {
             Set tSC = ..Fault(tFreshSC, tReadHttp, .tReadFault)
             Quit

@@ -219,7 +219,7 @@ Method TestTheSelfProtectionRules()
     Do $$$AssertTrue($ListFind($ClassMethod(tProhibited, "Codes"), "PROHIBITED.OCUPILOTSQL"), "and is one of the set's codes")
 }
 
-/// <p>The confirmed run's tool declares the write path: the console port, unadvertised, a guard read
+/// <p>The confirmed run's tool declares the write path: the console port, advertised, a guard read
 /// and a run write sending no body, destructive, its three screen values, and a fingerprint over the
 /// guard and the values run.</p>
 Method TestTheToolDeclaresItsWritePath()
@@ -227,7 +227,7 @@ Method TestTheToolDeclaresItsWritePath()
     Set tTool = ..#TOOL
     Do $$$AssertEquals($Parameter(tTool, "TOOLNAME"), "explorer.sqlquery.run", "its name")
     Do $$$AssertEquals($ClassMethod(tTool, "PortClass"), ..#PORT, "its port")
-    Do $$$AssertEquals($ClassMethod(tTool, "Advertised") _ $ClassMethod(tTool, "SendsBody") _ $ClassMethod(tTool, "Destructive"), "001", "unadvertised, bodyless and destructive")
+    Do $$$AssertEquals($ClassMethod(tTool, "Advertised") _ $ClassMethod(tTool, "SendsBody") _ $ClassMethod(tTool, "Destructive"), "101", "advertised, bodyless and destructive")
     Do $$$AssertEquals($ClassMethod(tTool, "ReadType") _ " " _ $ClassMethod(tTool, "WriteType") _ " " _ $ClassMethod(tTool, "ChangeAction"), "GUARD RUN updated", "a guard read and a run write")
     Do $$$AssertEquals($ListToString($ClassMethod(tTool, "ScreenActionValueNames", "run")), "statement,parameters,maxRows", "its three screen values")
     Do $$$AssertEquals($ListToString($ClassMethod(tTool, "FingerprintSubject")), "Namespace,Kind,StatementType,Tables,statement,parameters,maxRows", "its fingerprint subject")

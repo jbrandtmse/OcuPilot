@@ -239,6 +239,36 @@ export function pageRangeLine(count: number | null): string {
   return fill(STRINGS.explorerSqlDataPageRange, { n: count === null ? '1' : groupDigits(count) });
 }
 
+/** `one` at exactly 1, `many` at 0 and at 2 or more: the one chooser every count sentence here shares. */
+function pickCount(count: number, one: string, many: string): string {
+  return count === 1 ? one : many;
+}
+
+/** The save dialog's sentence: the three counted phrases, each singular at 1, composed in `table`. */
+export function saveConsequenceText(counts: { readonly update: number; readonly insert: number; readonly delete: number }, table: string): string {
+  return fill(STRINGS.explorerSqlDataSaveConsequence, {
+    updated: fill(pickCount(counts.update, STRINGS.explorerSqlDataSaveUpdatedOne, STRINGS.explorerSqlDataSaveUpdated), { n: String(counts.update) }),
+    added: fill(pickCount(counts.insert, STRINGS.explorerSqlDataSaveAddedOne, STRINGS.explorerSqlDataSaveAdded), { n: String(counts.insert) }),
+    deleted: fill(pickCount(counts.delete, STRINGS.explorerSqlDataSaveDeletedOne, STRINGS.explorerSqlDataSaveDeleted), { n: String(counts.delete) }),
+    table,
+  });
+}
+
+/** The tab name's and status line's "<n> changes waiting to be saved.", singular at 1. */
+export function waitingText(count: number): string {
+  return fill(pickCount(count, STRINGS.explorerSqlDataWaitingOne, STRINGS.explorerSqlDataWaiting), { n: String(count) });
+}
+
+/** The announcement of a discard of `count` staged changes, singular at 1. */
+export function discardedText(count: number): string {
+  return fill(pickCount(count, STRINGS.explorerSqlDataDiscardedOne, STRINGS.explorerSqlDataDiscarded), { n: String(count) });
+}
+
+/** The status line after a save: `saved` of `total` changes applied, `failed` rolled back; singular when `total` is 1. */
+export function savedSummaryText(saved: number, total: number, failed: number): string {
+  return fill(pickCount(total, STRINGS.explorerSqlDataSavedSummaryOne, STRINGS.explorerSqlDataSavedSummary), { a: String(saved), n: String(total), b: String(failed) });
+}
+
 // --- Editing, staging and saving (Story 19.8) ------------------------------------------------------
 
 /**

@@ -15,6 +15,7 @@ import {
   consequenceSentence,
   remoteListSentence,
   journalSentence,
+  sqlConsequenceSentence,
   countdownPhase,
   countdownRemaining,
   formatCountdown,
@@ -282,6 +283,17 @@ export interface ProposalConfirmRequest {
       >
         <span class="ocu-banner-glyph" aria-hidden="true">{{ bannerGlyph }}</span>
         <span class="ocu-banner-message">{{ journalText }}</span>
+      </p>
+    }
+
+    @if (sqlVisible) {
+      <p
+        class="ocu-banner ocu-banner-warning ocu-proposal-card-warning"
+        role="status"
+        data-slot="consequence"
+      >
+        <span class="ocu-banner-glyph" aria-hidden="true">{{ bannerGlyph }}</span>
+        <span class="ocu-banner-message">{{ sqlText }}</span>
       </p>
     }
 
@@ -761,6 +773,18 @@ export class ProposalCard {
 
   protected get journalVisible(): boolean {
     return this.phase() !== null && this.journalText !== '';
+  }
+
+  /**
+   * An agent-proposed DML statement's sentence (Story 19.11): the SQL query console's own consequence,
+   * naming the tables the instance recorded for it. `''` for every other proposal.
+   */
+  protected get sqlText(): string {
+    return sqlConsequenceSentence(this.view());
+  }
+
+  protected get sqlVisible(): boolean {
+    return this.phase() !== null && this.sqlText !== '';
   }
 
   /**

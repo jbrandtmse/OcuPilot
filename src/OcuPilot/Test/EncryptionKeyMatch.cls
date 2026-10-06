@@ -19,6 +19,11 @@ Parameter KEYFORMATTED = "{6c2b0a1f-9e3d-4b7a-8c11-2f5e6d7a8b9c}";
 /// <p>Another key's id.</p>
 Parameter OTHERKEY = "0D9E8F7A6B5C4D3E2F1A0B9C8D7E6F5A";
 
+/// <p>A key id as this build spells it in every answer that names it -- the key file's key list, the
+/// active key list, a database's <code>EncryptionKeyID</code> and the journal's key -- upper-case hex
+/// digits and hyphens (measured at Story 18.22's Task 0, DW-2059).</p>
+Parameter KEYMEASURED = "4AA5F70E-C07C-11F1-BFE2-F298FD505142";
+
 /// <p>The same key in another case, or with braces, hyphens and spaces, is the same key, so a database
 /// encrypted with it needs it.</p>
 /// <p>Mutation (Rule 19): compare the ids as exact strings in <method>SameKeyId</method> -- every leg
@@ -30,6 +35,22 @@ Method TestTheSameKeyInAnotherFormIsRefused()
     Do $$$AssertTrue(##class(OcuPilot.Kernel.Proposal.Prohibited).SameKeyId("6c2b 0a1f 9e3d 4b7a 8c11 2f5e 6d7a 8b9c", ..#KEY), "spaces do not matter")
     Do $$$AssertTrue(##class(OcuPilot.Kernel.Proposal.Prohibited).RowNeedsKey({"Directory": "/x/", "Encrypted": true, "EncryptionKeyID": (..#KEYFORMATTED)}, ..#KEY), "a database whose key id is the formatted form of the key needs the key")
     Do $$$AssertTrue(##class(OcuPilot.Kernel.Proposal.Prohibited).RowNeedsKey({"Directory": "/x/", "Encrypted": true, "EncryptionKeyID": (..#KEY)}, ..#KEYFORMATTED), "and so does one whose key id is the bare form, when the key is named formatted")
+}
+
+/// <p>B6, DW-2059: a key spelled as this build answers it in a key file, the active key list, a database's
+/// row and the journal's key is the same key in every one of those places and in every other form, so a
+/// protected database encrypted with it needs it, and a database encrypted with another does not.</p>
+/// <p>Mutation (Rule 19): compare the ids as exact strings in <method>SameKeyId</method>, with the seam
+/// naming the key in its measured spelling -- the braced and lower-case legs here go red.</p>
+Method TestTheMeasuredSpellingIsOneKeyInEveryAnswer()
+{
+    Set tProhibited = "OcuPilot.Kernel.Proposal.Prohibited"
+    Do $$$AssertTrue($ClassMethod(tProhibited, "SameKeyId", ..#KEYMEASURED, ..#KEYMEASURED), "the key file's spelling and the instance's are one key")
+    Do $$$AssertTrue($ClassMethod(tProhibited, "SameKeyId", "{" _ $ZConvert(..#KEYMEASURED, "L") _ "}", ..#KEYMEASURED), "and so is its braced, lower-case form")
+    Do $$$AssertTrue($ClassMethod(tProhibited, "SameKeyId", $Translate(..#KEYMEASURED, "-"), ..#KEYMEASURED), "and its bare form")
+    Do $$$AssertTrue($ClassMethod(tProhibited, "RowNeedsKey", {"Directory": "/x/", "Encrypted": true, "EncryptionKeyID": (..#KEYMEASURED)}, ..#KEYMEASURED), "a database row naming the measured spelling needs the key")
+    Do $$$AssertEquals($ClassMethod(tProhibited, "RowNeedsKey", {"Directory": "/x/", "Encrypted": true, "EncryptionKeyID": (..#KEYMEASURED)}, ..#OTHERKEY), 0, "and does not need another key")
+    Do $$$AssertEquals($ClassMethod(tProhibited, "NormalizedKeyId", ..#KEYMEASURED), "4AA5F70EC07C11F1BFE2F298FD505142", "its normal form keeps every hex digit")
 }
 
 /// <p>An encrypted database whose key id cannot be read might need any key, so it needs this one.</p>

@@ -94,7 +94,7 @@ describe('Data browser tabs', () => {
     const tabs = all(mounted.host, 'tab');
     expect(tabs.map((tab) => tab.getAttribute('role'))).toEqual(['tab', 'tab']);
     expect(tabs.map((tab) => tab.getAttribute('aria-selected'))).toEqual(['false', 'true']);
-    expect(tabs.map((tab) => tab.getAttribute('aria-label'))).toEqual([`${EDIT}, 1 changes waiting to be saved.`, PAIR]);
+    expect(tabs.map((tab) => tab.getAttribute('aria-label'))).toEqual([`${EDIT}, 1 change waiting to be saved.`, PAIR]);
     expect(all(mounted.host, 'tab-dot')).toHaveLength(1);
     expect(tabFor(mounted.host, EDIT).querySelector('[data-ocu-data="tab-dot"]')?.getAttribute('aria-hidden')).toBe('true');
     expect(tabFor(mounted.host, EDIT).querySelector('[data-ocu-data="tab-close"]')?.getAttribute('aria-hidden')).toBe('true');
@@ -321,7 +321,7 @@ describe('Data browser tabs', () => {
 
     await click(mounted, el(mounted.host, 'close-tab'));
     await click(mounted, el(mounted.host, 'leave'));
-    expect(all(mounted.host, 'tab').map((tab) => tab.getAttribute('aria-label'))).toEqual([`${EDIT}, 1 changes waiting to be saved.`]);
+    expect(all(mounted.host, 'tab').map((tab) => tab.getAttribute('aria-label'))).toEqual([`${EDIT}, 1 change waiting to be saved.`]);
     await asksToLeave();
 
     await openFromTree(mounted, 'Pair');
@@ -341,7 +341,7 @@ describe('Data browser tabs', () => {
     expect(mounted.sends).toHaveLength(1);
     expect(mounted.sends[0].values?.['table']).toBe('Pair');
     expect(el(mounted.host, 'save').textContent?.trim()).toBe('Save changes (0)');
-    expect(tabFor(mounted.host, EDIT).getAttribute('aria-label')).toBe(`${EDIT}, 1 changes waiting to be saved.`);
+    expect(tabFor(mounted.host, EDIT).getAttribute('aria-label')).toBe(`${EDIT}, 1 change waiting to be saved.`);
     await asksToLeave();
   });
 
@@ -450,7 +450,7 @@ describe('Data browser shortcuts', () => {
     expect(save.defaultPrevented).toBe(true);
     expect(el(mounted.host, 'editor')).toBeNull();
     expect(texts(mounted.host, 'cell')[1]).toBe('typed');
-    expect(mounted.host.querySelector('app-warning-dialog')?.textContent).toContain('1 rows change, 0 are added and 0 are deleted');
+    expect(mounted.host.querySelector('app-warning-dialog')?.textContent).toContain('1 row changes, 0 are added and 0 are deleted');
     expect((mounted.host.querySelector('app-warning-dialog [role="dialog"]') as HTMLElement).contains(document.activeElement), 'focus is in the save dialog, not on the grid behind it').toBe(true);
     await click(mounted, [...(mounted.host.querySelector('app-warning-dialog') as HTMLElement).querySelectorAll('button')].find((button) => button.textContent?.trim() === STRINGS.actionCancel) as HTMLElement);
 

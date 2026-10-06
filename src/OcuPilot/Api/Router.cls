@@ -241,6 +241,9 @@ XData UrlMap [ XMLNamespace = "http://www.intersystems.com/urlmap" ]
   <Route Url="/ecp-settings" Method="PUT" Call="EcpSettingsUpdate"/>
   <Route Url="/explorer/sql/data" Method="POST" Call="ExplorerSqlData"/>
   <Route Url="/encryption-key-file" Method="POST" Call="EncryptionKeyFileCreate"/>
+  <Route Url="/encryption-startup/form" Method="GET" Call="EncryptionStartupFormRead"/>
+  <Route Url="/encryption-startup" Method="PUT" Call="EncryptionStartupUpdate"/>
+  <Route Url="/explorer/docdb" Method="POST" Call="ExplorerDocDbCreate"/>
 </Routes>
 }
 
@@ -1793,6 +1796,29 @@ ClassMethod ExplorerSqlData() As %Status
 ClassMethod EncryptionKeyFileCreate() As %Status
 {
     Quit ##class(OcuPilot.Area.Security.EncryptionKeyFileSave).HandleCreate()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /encryption-startup/form</code> (Story 18.23): the
+/// encryption startup settings' form read, delegating to
+/// <class>OcuPilot.Area.Security.EncryptionStartupSave</class>. It precedes
+/// <code>/encryption-startup</code>.</p>
+ClassMethod EncryptionStartupFormRead() As %Status
+{
+    Quit ##class(OcuPilot.Area.Security.EncryptionStartupSave).HandleForm()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>PUT /encryption-startup</code> (Story 18.23): the encryption
+/// startup settings' Save, resolved through the one tool the agent's confirm uses (AD-55).</p>
+ClassMethod EncryptionStartupUpdate() As %Status
+{
+    Quit ##class(OcuPilot.Area.Security.EncryptionStartupSave).HandleUpdate()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /explorer/docdb</code> (Story 19.17): Document
+/// databases' create, resolved through the one tool the agent's confirm uses (AD-55).</p>
+ClassMethod ExplorerDocDbCreate() As %Status
+{
+    Quit ##class(OcuPilot.Area.Explorer.DocDbSave).HandleCreate()
 }
 
 }

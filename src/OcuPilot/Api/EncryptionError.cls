@@ -1,6 +1,6 @@
-/// <p>The encryption key file screens' codes (AD-39, Story 18.7): every <code>ENCRYPTION.*</code> code
-/// Encryption key files and its form answer, and the one sentence each carries, with the four state
-/// refusals a key-file tool answers as <code>TOOL.ARGUMENTS</code>. They live beside
+/// <p>The encryption screens' codes (AD-39, Stories 18.7, 18.22 and 18.23): every <code>ENCRYPTION.*</code> code
+/// Encryption key files, its form, Database encryption, Data element encryption and the startup settings answer, and the one
+/// sentence each carries, with the state refusals their tools answer as <code>TOOL.ARGUMENTS</code>. They live beside
 /// <class>OcuPilot.Api.Error</class> rather than in it because that class holds the compiler's limit
 /// of 1,000 parameters (ERROR #5290); <method>OcuPilot.Api.Error.ReasonForToolCode</method> and
 /// <method>OcuPilot.Api.Error.ReasonForViolation</method> answer these codes through
@@ -70,17 +70,121 @@ Parameter REASONADMINABSENT = "This administrator is not in this key file.";
 
 Parameter REASONKEYABSENT = "This key is not in this key file.";
 
+/// <p>Refusal code: a mounted encrypted database, or a journal file the instance still needs, uses the
+/// key a deactivation names (409, Story 18.22).</p>
+Parameter KEYINUSE = "ENCRYPTION.KEY.INUSE";
+
+Parameter REASONKEYINUSE = "A mounted encrypted database, or a journal file the instance still needs, uses this key, so it stays active.";
+
+/// <p>Refusal code: the key a deactivation names is the default key or the journal key while another
+/// key is active (409, Story 18.22).</p>
+Parameter KEYROLE = "ENCRYPTION.KEY.ROLE";
+
+Parameter REASONKEYROLE = "This key is the default key for new encrypted databases or the key for encrypted journal files. Make another active key the default and the journal key first.";
+
+/// <p>Consequence codes of Story 18.22's four tools.</p>
+Parameter KEYACTIVATE = "ENCRYPTION.KEY.ACTIVATE";
+
+Parameter REASONKEYACTIVATE = "The keys in this key file become active until they are deactivated or the instance restarts. If no database key was active, the first one also becomes the default key for new encrypted databases and the key for encrypted journal files, and key activation at startup is set to Interactive. Each later start then asks for a key file on the console and, when nobody answers, starts without the key and leaves encrypted databases unmounted, until the startup settings change it.";
+
+Parameter KEYDEACTIVATE = "ENCRYPTION.KEY.DEACTIVATE";
+
+Parameter REASONKEYDEACTIVATE = "An encrypted database that needs this key cannot be mounted until the key is activated again from a key file.";
+
+Parameter KEYACTIVATEDATAELEMENT = "ENCRYPTION.KEY.ACTIVATEDATAELEMENT";
+
+Parameter REASONKEYACTIVATEDATAELEMENT = "The keys in this key file become available to applications that encrypt data elements, until they are deactivated or the instance restarts.";
+
+Parameter KEYDEACTIVATEDATAELEMENT = "ENCRYPTION.KEY.DEACTIVATEDATAELEMENT";
+
+Parameter REASONKEYDEACTIVATEDATAELEMENT = "Data encrypted with this key cannot be read or written until the key is activated again from a key file.";
+
+/// <p>Story 18.22's state refusals, answered as 400 <code>TOOL.ARGUMENTS</code> with
+/// <code>detail.problem</code>.</p>
+Parameter REASONKEYINACTIVE = "This key is not active.";
+
+Parameter REASONKEYSALLACTIVE = "Every key in this key file is already active.";
+
+Parameter REASONKEYDEFAULT = "This is the default key for new encrypted databases while another key is active. Make another active key the default first.";
+
+/// <p>Story 18.23's violation codes (422), each on its field: a KMIP start mode naming no configured
+/// KMIP server, on <code>DBEncStartKMIPServer</code>.</p>
+Parameter STARTUPKMIPSERVER = "ENCRYPTION.STARTUP.KMIPSERVER";
+
+Parameter REASONSTARTUPKMIPSERVER = "Choose a KMIP server this instance has configured.";
+
+/// <p>Unattended activation with no key file sent and none stored, on <code>path</code>.</p>
+Parameter STARTUPKEYFILE = "ENCRYPTION.STARTUP.KEYFILE";
+
+Parameter REASONSTARTUPKEYFILE = "Unattended activation needs a key file.";
+
+/// <p>An encryption flag turned on while the start mode is None, on the flag.</p>
+Parameter STARTUPNEEDSSTART = "ENCRYPTION.STARTUP.NEEDSSTART";
+
+Parameter REASONSTARTUPNEEDSSTART = "Turn on key activation at startup before encrypting this.";
+
+/// <p>An encryption flag turned on while no database encryption key is active, on the flag.</p>
+Parameter STARTUPNOKEY = "ENCRYPTION.STARTUP.NOKEY";
+
+Parameter REASONSTARTUPNOKEY = "Activate a database encryption key on Database encryption before encrypting this.";
+
+/// <p>A changed default or journal key id that names no active database key, on the id.</p>
+Parameter STARTUPKEYINACTIVE = "ENCRYPTION.STARTUP.KEYINACTIVE";
+
+Parameter REASONSTARTUPKEYINACTIVE = "Choose a key that is active on Database encryption.";
+
+/// <p>Refusal code: the vendor keeps key activation at startup on while something depends on it (409).</p>
+Parameter STARTUPREQUIRED = "ENCRYPTION.STARTUP.REQUIRED";
+
+Parameter REASONSTARTUPREQUIRED = "Key activation at startup stays on while encrypted databases, journal files the instance still needs, the audit log or IRISSECURITY depend on it.";
+
+/// <p>The reason of the startup settings write's version refusal, 501 <code>PORT.NOTIMPLEMENTED</code>:
+/// the endpoint's body template carries no administrator name and password.</p>
+Parameter REASONSETTINGSVERSION = "This instance's admin API does not take the startup administrator in the request body, so change these settings on the classic Database Encryption page.";
+
+/// <p>Story 18.23's consequence codes: the start mode a change chooses, an IRISSECURITY or IRISTEMP
+/// change, and a journal encryption change, each stated as the form states it.</p>
+Parameter STARTUPNONE = "ENCRYPTION.STARTUP.NONE";
+
+Parameter REASONSTARTUPNONE = "Keys are not activated at startup. After each start, encrypted databases stay unmounted until someone activates their key on Database encryption. Choosing None discards the instance's stored unattended credential.";
+
+Parameter STARTUPINTERACTIVE = "ENCRYPTION.STARTUP.INTERACTIVE";
+
+Parameter REASONSTARTUPINTERACTIVE = "Each start asks for a key file on the instance's console. When nobody answers, as in a container, the instance starts without the key and leaves encrypted databases unmounted. While the audit log, IRISSECURITY or IRISTEMP is encrypted, a start nobody answers does not finish, so Interactive is not offered.";
+
+Parameter STARTUPUNATTENDED = "ENCRYPTION.STARTUP.UNATTENDED";
+
+Parameter REASONSTARTUPUNATTENDED = "Not recommended. The instance stores a credential of its own for this key file and activates the keys at every start with no one present, so anyone who can start the instance and reach the key file can read encrypted data. That credential is an administrator the instance adds to the key file, which stays there after unattended activation is turned off.";
+
+Parameter STARTUPKMIP = "ENCRYPTION.STARTUP.KMIP";
+
+Parameter REASONSTARTUPKMIP = "Each start activates the keys from this KMIP server with no one present.";
+
+Parameter STARTUPRESTART = "ENCRYPTION.STARTUP.RESTART";
+
+Parameter REASONSTARTUPRESTART = "Takes effect at the next restart.";
+
+Parameter STARTUPJOURNAL = "ENCRYPTION.STARTUP.JOURNAL";
+
+Parameter REASONSTARTUPJOURNAL = "New journal files are encrypted from the next journal switch or restart. Switch the journal file on Journals to start now.";
+
+/// <p>The consequence of a change to the audit log's encryption (AD-10, owner decision 2026-10-05), which
+/// <method>OcuPilot.Kernel.Proposal.Prohibited.WeakensByEffect</method> names as its effect.</p>
+Parameter AUDITENCRYPTIONCHANGE = "AUDIT.ENCRYPTIONCHANGE";
+
+Parameter REASONAUDITENCRYPTIONCHANGE = "Takes effect at the next start, when the instance encrypts or decrypts the audit database in place; every audit record, the agent's own markers included, is kept. While it is encrypted, a start that cannot activate its key does not finish.";
+
 /// <p>Every <code>ENCRYPTION.*</code> code, as a <class>%List</class>.</p>
 ClassMethod Codes() As %List
 {
-    Quit $ListBuild(..#KEYFILEVALIDATION, ..#KEYFILEDIRECTORY, ..#KEYFILEKEYLEN, ..#KEYFILEADMINNAME, ..#KEYFILEPASSWORD, ..#KEYFILECREDENTIALS, ..#KEYFILEUNREADABLE, ..#KEYFILENEWKEY, ..#KEYFILEREMOVEKEY)
+    Quit $ListBuild(..#KEYFILEVALIDATION, ..#KEYFILEDIRECTORY, ..#KEYFILEKEYLEN, ..#KEYFILEADMINNAME, ..#KEYFILEPASSWORD, ..#KEYFILECREDENTIALS, ..#KEYFILEUNREADABLE, ..#KEYFILENEWKEY, ..#KEYFILEREMOVEKEY, ..#KEYINUSE, ..#KEYROLE, ..#KEYACTIVATE, ..#KEYDEACTIVATE, ..#KEYACTIVATEDATAELEMENT, ..#KEYDEACTIVATEDATAELEMENT, ..#STARTUPKMIPSERVER, ..#STARTUPKEYFILE, ..#STARTUPNEEDSSTART, ..#STARTUPNOKEY, ..#STARTUPKEYINACTIVE, ..#STARTUPREQUIRED, ..#STARTUPNONE, ..#STARTUPINTERACTIVE, ..#STARTUPUNATTENDED, ..#STARTUPKMIP, ..#STARTUPRESTART, ..#STARTUPJOURNAL)
 }
 
 /// <p>The field-level codes, as a <class>%List</class>, each with its first field in
 /// <method>FieldOf</method>.</p>
 ClassMethod ViolationCodes() As %List
 {
-    Quit $ListBuild(..#KEYFILEDIRECTORY, ..#KEYFILEKEYLEN, ..#KEYFILEADMINNAME, ..#KEYFILEPASSWORD, ..#KEYFILECREDENTIALS, ..#KEYFILEUNREADABLE)
+    Quit $ListBuild(..#KEYFILEDIRECTORY, ..#KEYFILEKEYLEN, ..#KEYFILEADMINNAME, ..#KEYFILEPASSWORD, ..#KEYFILECREDENTIALS, ..#KEYFILEUNREADABLE, ..#STARTUPKMIPSERVER, ..#STARTUPKEYFILE, ..#STARTUPNEEDSSTART, ..#STARTUPNOKEY, ..#STARTUPKEYINACTIVE)
 }
 
 /// <p>The first field a violation code refuses, or <code>""</code>.</p>
@@ -90,6 +194,10 @@ ClassMethod FieldOf(pCode As %String) As %String
     If pCode = ..#KEYFILEKEYLEN Quit "KeyLen"
     If pCode = ..#KEYFILEADMINNAME Quit "AdminName"
     If (pCode = ..#KEYFILEPASSWORD) || (pCode = ..#KEYFILECREDENTIALS) Quit "AdminPassword"
+    If pCode = ..#STARTUPKMIPSERVER Quit "DBEncStartKMIPServer"
+    If pCode = ..#STARTUPKEYFILE Quit "path"
+    If (pCode = ..#STARTUPNEEDSSTART) || (pCode = ..#STARTUPNOKEY) Quit "DBEncJournal"
+    If pCode = ..#STARTUPKEYINACTIVE Quit "DBEncDefaultKeyID"
     Quit ""
 }
 
@@ -106,6 +214,25 @@ ClassMethod ReasonFor(pCode As %String) As %String
     If pCode = ..#KEYFILEUNREADABLE Quit ..#REASONKEYFILEUNREADABLE
     If pCode = ..#KEYFILENEWKEY Quit ..#REASONKEYFILENEWKEY
     If pCode = ..#KEYFILEREMOVEKEY Quit ..#REASONKEYFILEREMOVEKEY
+    If pCode = ..#KEYINUSE Quit ..#REASONKEYINUSE
+    If pCode = ..#KEYROLE Quit ..#REASONKEYROLE
+    If pCode = ..#KEYACTIVATE Quit ..#REASONKEYACTIVATE
+    If pCode = ..#KEYDEACTIVATE Quit ..#REASONKEYDEACTIVATE
+    If pCode = ..#KEYACTIVATEDATAELEMENT Quit ..#REASONKEYACTIVATEDATAELEMENT
+    If pCode = ..#KEYDEACTIVATEDATAELEMENT Quit ..#REASONKEYDEACTIVATEDATAELEMENT
+    If pCode = ..#STARTUPKMIPSERVER Quit ..#REASONSTARTUPKMIPSERVER
+    If pCode = ..#STARTUPKEYFILE Quit ..#REASONSTARTUPKEYFILE
+    If pCode = ..#STARTUPNEEDSSTART Quit ..#REASONSTARTUPNEEDSSTART
+    If pCode = ..#STARTUPNOKEY Quit ..#REASONSTARTUPNOKEY
+    If pCode = ..#STARTUPKEYINACTIVE Quit ..#REASONSTARTUPKEYINACTIVE
+    If pCode = ..#STARTUPREQUIRED Quit ..#REASONSTARTUPREQUIRED
+    If pCode = ..#STARTUPNONE Quit ..#REASONSTARTUPNONE
+    If pCode = ..#STARTUPINTERACTIVE Quit ..#REASONSTARTUPINTERACTIVE
+    If pCode = ..#STARTUPUNATTENDED Quit ..#REASONSTARTUPUNATTENDED
+    If pCode = ..#STARTUPKMIP Quit ..#REASONSTARTUPKMIP
+    If pCode = ..#STARTUPRESTART Quit ..#REASONSTARTUPRESTART
+    If pCode = ..#STARTUPJOURNAL Quit ..#REASONSTARTUPJOURNAL
+    If pCode = ..#AUDITENCRYPTIONCHANGE Quit ..#REASONAUDITENCRYPTIONCHANGE
     Quit ""
 }
 

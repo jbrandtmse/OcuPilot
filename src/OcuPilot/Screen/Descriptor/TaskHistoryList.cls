@@ -76,7 +76,7 @@ XData Declaration
     "paging": "cap",
     "criteria": {
       "fields": [
-        {"param": "search", "labelKey": "taskHistorySearch", "kind": "text", "maxLength": 100, "vendorParam": "filter"},
+        {"param": "search", "labelKey": "taskHistorySearch", "kind": "text", "maxLength": 100, "vendorParam": "filter", "hint": "Text to find in any column of a run, ignoring case; * and commas are matched as themselves."},
         {"param": "userOnly", "labelKey": "taskHistoryUserOnly", "kind": "choice", "maxLength": 1, "options": ["1"]},
         {"param": "since", "labelKey": "taskHistorySince", "kind": "datetime", "maxLength": 50, "defaultHoursAgo": 168, "atOrAfterField": "LogDatetime"}
       ]

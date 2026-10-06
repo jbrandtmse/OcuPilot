@@ -141,6 +141,15 @@ Parameter TYPESDDL = "9,10,11,12,13,14,15,17,35,36,37,38,39,40,41,42,43,44,52,54
 
 Parameter TYPESCALL = "45";
 
+/// <p>The statement types that create code the instance later runs: CREATE FUNCTION (35), METHOD
+/// (36), PROCEDURE (37), QUERY (38), TRIGGER (43) and AGGREGATE (67) (Story 19.11). The agent is
+/// refused a statement of one of them (<method>CarriesCode</method>); a person's own run is not.</p>
+Parameter CODETYPES = "35,36,37,38,43,67";
+
+/// <p>The word a CREATE or ALTER TABLE statement names to carry ObjectScript in a computed
+/// field.</p>
+Parameter CODEWORD = "COMPUTECODE";
+
 Parameter TYPESOTHER = "16,25,27,99";
 
 Parameter TYPESSESSION = "5,6,20,21,22,23,24,26,46,47,48,51,53,59,78";
@@ -345,6 +354,16 @@ ClassMethod Mutating(pKind As %String) As %Boolean
 ClassMethod Bounded(pKind As %String) As %Boolean
 {
     Quit (pKind = ..#KINDQUERY) || (pKind = ..#KINDDML)
+}
+
+/// <p>Whether a statement of type <var>pType</var> and text <var>pText</var> carries code the
+/// instance would later run: its type is one of <parameter>CODETYPES</parameter>, or its text holds
+/// <parameter>CODEWORD</parameter> in any case (Story 19.11). Fail-closed: it also reads the word in a
+/// literal or a comment. Pure.</p>
+ClassMethod CarriesCode(pType As %String, pText As %String) As %Boolean
+{
+    If (pType '= "") && $Match(pType, "^[0-9]+$") && $ListFind($ListFromString(..#CODETYPES), +pType) Quit 1
+    Quit ($ZConvert(pText, "U") [ ..#CODEWORD)
 }
 
 /// <p>What is wrong with a request's statement <var>pText</var>, values <var>pValues</var> (a
@@ -1162,6 +1181,27 @@ ClassMethod Closed(pNamespace As %String, ByRef pStatement) [ Private ]
         Set $NAMESPACE = tOrigNS
         Set pStatement = ""
     }
+}
+
+/// <p>The refusal an agent tool answers for <var>pWhich</var>, with the code and sentence this port
+/// publishes (Story 19.11): <code>input</code> (400 <code>EXPLORER.SQL.INPUT</code>),
+/// <code>changes</code> (422 <code>EXPLORER.SQL.CHANGES</code>), <code>reads</code> (422
+/// <code>EXPLORER.SQL.READS</code>), <code>agentcode</code> (422 <code>EXPLORER.SQL.AGENTCODE</code>),
+/// <code>notprepared</code> (422 <code>EXPLORER.SQL.NOTPREPARED</code>) and <code>parameters</code>
+/// (422 <code>EXPLORER.SQL.PARAMETERS</code>), <var>pDetail</var> becoming the fault's
+/// <code>detail</code> when supplied. A tool names this method rather than the error class, which only
+/// a port may name.</p>
+ClassMethod RefuseFor(pWhich As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, pDetail As %DynamicObject = "") As %Status
+{
+    Set tError = "OcuPilot.Api.AtelierError"
+    If pWhich = "input" Quit ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, $Parameter(tError, "SQLINPUT"), $Parameter(tError, "REASONSQLINPUT"), .pHttpStatus, .pFault, pDetail)
+    Set tSlug = ##class(OcuPilot.Api.Error).#VALIDATIONFAILED
+    If pWhich = "changes" Quit ..Refuse(422, tSlug, $Parameter(tError, "SQLCHANGES"), $Parameter(tError, "REASONSQLCHANGES"), .pHttpStatus, .pFault, pDetail)
+    If pWhich = "reads" Quit ..Refuse(422, tSlug, $Parameter(tError, "SQLREADS"), $Parameter(tError, "REASONSQLREADS"), .pHttpStatus, .pFault, pDetail)
+    If pWhich = "agentcode" Quit ..Refuse(422, tSlug, $Parameter(tError, "SQLAGENTCODE"), $Parameter(tError, "REASONSQLAGENTCODE"), .pHttpStatus, .pFault, pDetail)
+    If pWhich = "notprepared" Quit ..Refuse(422, tSlug, $Parameter(tError, "SQLNOTPREPARED"), $Parameter(tError, "REASONSQLNOTPREPARED"), .pHttpStatus, .pFault, pDetail)
+    If pWhich = "parameters" Quit ..Refuse(422, tSlug, $Parameter(tError, "SQLPARAMETERS"), $Parameter(tError, "REASONSQLPARAMETERS"), .pHttpStatus, .pFault, pDetail)
+    Quit ..Fail("an agent tool asked for a refusal the port does not publish", $$$ERROR($$$GeneralError, pWhich), .pHttpStatus, .pFault)
 }
 
 /// <p>The privilege refusal naming <var>pFailedPair</var> (AD-8, AD-39).</p>

@@ -55,7 +55,7 @@ XData Declaration
     "paging": "cap",
     "criteria": {
       "fields": [
-        {"param": "view", "labelKey": "viewMenuLabel", "kind": "text", "maxLength": 257}
+        {"param": "view", "labelKey": "viewMenuLabel", "kind": "text", "maxLength": 257, "hint": "One view, as Schema.View, spelled as explorer.sqlviews.read answers its View."}
       ]
     }
   },

@@ -56,6 +56,10 @@ Class OcuPilot.Screen.Tool.Classification Extends %RegisteredObject
 /// the two write-image journal keys are shown and never sent (AD-4). The vendor stores a directory with
 /// its trailing separator whatever was sent, so both compare <code>unslashed</code> (measured at the
 /// story's Task 0).</p>
+/// <p><b><code>security.databaseencryption.activate</code></b> and
+/// <b><code>security.dataelementencryption.activate</code></b> (Story 18.22) send no merge body: each
+/// authors the key file administrator's password, <code>AdminPassword</code>, as its one secret, which the
+/// port carries beside the declared arguments (AD-56 (i)).</p>
 /// <p><b><code>osmgmt.licensekey.activate</code></b> (Story 18.6) classifies <code>License.Key</code>'s one
 /// row, the key's text, <code>secret</code>: its write sends that declared secret and nothing else
 /// (AD-56). <b><code>osmgmt.licenseservers.create</code></b> and <b><code>.update</code></b> classify
@@ -201,6 +205,37 @@ XData Entries
     "authored": {
       "OldAdminPassword": "secret",
       "NewAdminPassword": "secret"
+    }
+  },
+  "security.databaseencryption.activate": {
+    "fieldList": "Security.Encryption.File",
+    "classification": {},
+    "authored": {
+      "AdminPassword": "secret"
+    }
+  },
+  "security.dataelementencryption.activate": {
+    "fieldList": "Security.Encryption.File",
+    "classification": {},
+    "authored": {
+      "AdminPassword": "secret"
+    }
+  },
+  "security.encryptionstartup.update": {
+    "fieldList": "Security.Encryption.Settings",
+    "compare": {"AdminName": "written"},
+    "classification": {
+      "DBEncStartMode": "ordinary",
+      "DBEncJournal": "ordinary",
+      "DBEncIRISSecurity": "ordinary",
+      "DBEncIRISTemp": "ordinary",
+      "AuditEncrypt": "ordinary",
+      "DBEncStartKMIPServer": "ordinary",
+      "DBEncStartKeyFile": "ordinary",
+      "DBEncJournalKeyID": "ordinary",
+      "DBEncDefaultKeyID": "ordinary",
+      "AdminName": "ordinary",
+      "AdminPassword": "secret"
     }
   },
   "security.auditsystemevents.update": {

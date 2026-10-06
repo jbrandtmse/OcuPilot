@@ -286,6 +286,9 @@ const KERNEL_REFUSALS = [
   // Story 18.7: a key OcuPilot or the instance depends on, whose removal from a key file either caller
   // is answered with.
   ['OCUPILOTKEY', 'keyRefusalOcuPilot'],
+  // Story 18.23: Interactive key activation while the audit log, IRISSECURITY or IRISTEMP is encrypted,
+  // which the form shows on the start-mode field when either caller is answered with it.
+  ['STARTUPINTERACTIVE', 'encryptionStartupInteractiveRefusal'],
 ];
 
 test('DW-1598, AD-53: each kernel refusal is published verbatim in Fixed strings and is the sentence ReasonFor returns', () => {
@@ -533,6 +536,11 @@ const ATELIER_REFUSALS = [
   ['REASONSQLPARAMETERS', 'explorerSqlParametersReason'],
   // DW-2025: a query or DML statement the statement index does not record once prepared.
   ['REASONSQLUNRECORDED', 'explorerSqlUnrecordedReason'],
+  // Story 19.11: the agent's SQL tools' refusals of a change on the query tool, a statement that
+  // carries code on the run tool, and a statement the instance did not prepare.
+  ['REASONSQLCHANGES', 'explorerSqlChangesReason'],
+  ['REASONSQLAGENTCODE', 'explorerSqlAgentCodeReason'],
+  ['REASONSQLNOTPREPARED', 'explorerSqlNotPreparedReason'],
   // Story 19.15: the background run's query-only, busy, full, not-found and lost refusals.
   ['REASONSQLBACKGROUNDQUERYONLY', 'explorerSqlBackgroundQueryOnlyReason'],
   ['REASONSQLBACKGROUNDBUSY', 'explorerSqlBackgroundBusyReason'],
@@ -673,8 +681,9 @@ test('Story 18.21 (C5): ecp-ssl-pending and ecp-ssl-authorized answer the tools\
 /** Story 18.7's error class and the key file tools, which declare its published sentences. */
 const ENCRYPTION_ERROR = join(REPO_ROOT, 'src', 'OcuPilot', 'Api', 'EncryptionError.cls');
 const ENCRYPTION_TOOL = (name) => join(REPO_ROOT, 'src', 'OcuPilot', 'Screen', 'Tool', `EncryptionKeyFile${name}.cls`);
+const ENCRYPTION_KEY_TOOL = (name) => join(REPO_ROOT, 'src', 'OcuPilot', 'Screen', 'Tool', `${name}.cls`);
 
-/** Story 18.7's published sentences: `[file, parameter, strings.ts key]`. */
+/** Stories 18.7's and 18.22's published sentences: `[file, parameter, strings.ts key]`. */
 const ENCRYPTION_SENTENCES = [
   [ENCRYPTION_ERROR, 'REASONKEYFILEVALIDATION', 'encryptionKeyFileValidation'],
   [ENCRYPTION_ERROR, 'REASONKEYFILEDIRECTORY', 'encryptionKeyFileDirectory'],
@@ -693,11 +702,77 @@ const ENCRYPTION_SENTENCES = [
   [ENCRYPTION_TOOL('RemoveAdmin'), 'REASONADMINLAST', 'encryptionKeyFileAdminLast'],
   [ENCRYPTION_TOOL('RemoveAdmin'), 'REASONADMINABSENT', 'encryptionKeyFileAdminAbsent'],
   [ENCRYPTION_TOOL('RemoveKey'), 'REASONKEYABSENT', 'encryptionKeyFileKeyAbsent'],
+  // Story 18.22: the in-use, role and state refusals and the four consequences, with the tools' copies.
+  [ENCRYPTION_ERROR, 'REASONKEYINUSE', 'encryptionKeyInUse'],
+  [ENCRYPTION_ERROR, 'REASONKEYROLE', 'encryptionKeyRole'],
+  [ENCRYPTION_ERROR, 'REASONKEYINACTIVE', 'encryptionKeyInactive'],
+  [ENCRYPTION_ERROR, 'REASONKEYSALLACTIVE', 'encryptionKeyAllActive'],
+  [ENCRYPTION_ERROR, 'REASONKEYDEFAULT', 'encryptionKeyDefault'],
+  [ENCRYPTION_ERROR, 'REASONKEYACTIVATE', 'encryptionKeyActivateConsequence'],
+  [ENCRYPTION_ERROR, 'REASONKEYDEACTIVATE', 'encryptionKeyDeactivateConsequence'],
+  [ENCRYPTION_ERROR, 'REASONKEYACTIVATEDATAELEMENT', 'encryptionKeyActivateDataElementConsequence'],
+  [ENCRYPTION_ERROR, 'REASONKEYDEACTIVATEDATAELEMENT', 'encryptionKeyDeactivateDataElementConsequence'],
+  [ENCRYPTION_KEY_TOOL('EncryptionKeyWrite'), 'REASONKEYINACTIVE', 'encryptionKeyInactive'],
+  [ENCRYPTION_KEY_TOOL('DatabaseKeyDeactivate'), 'REASONKEYDEFAULT', 'encryptionKeyDefault'],
+  // Story 18.23: the startup rules', the vendor's and the version gate's sentences, and each option's.
+  [ENCRYPTION_ERROR, 'REASONSTARTUPKMIPSERVER', 'encryptionStartupKmipServerRefusal'],
+  [ENCRYPTION_ERROR, 'REASONSTARTUPKEYFILE', 'encryptionStartupKeyFileRefusal'],
+  [ENCRYPTION_ERROR, 'REASONSTARTUPNEEDSSTART', 'encryptionStartupNeedsStart'],
+  [ENCRYPTION_ERROR, 'REASONSTARTUPNOKEY', 'encryptionStartupNoKey'],
+  [ENCRYPTION_ERROR, 'REASONSTARTUPKEYINACTIVE', 'encryptionStartupKeyInactive'],
+  [ENCRYPTION_ERROR, 'REASONSTARTUPREQUIRED', 'encryptionStartupRequired'],
+  [ENCRYPTION_ERROR, 'REASONSETTINGSVERSION', 'encryptionStartupVersion'],
+  [ENCRYPTION_ERROR, 'REASONSTARTUPNONE', 'encryptionStartupNoneConsequence'],
+  [ENCRYPTION_ERROR, 'REASONSTARTUPINTERACTIVE', 'encryptionStartupInteractiveConsequence'],
+  [ENCRYPTION_ERROR, 'REASONSTARTUPUNATTENDED', 'encryptionStartupUnattendedConsequence'],
+  [ENCRYPTION_ERROR, 'REASONSTARTUPKMIP', 'encryptionStartupKmipConsequence'],
+  [ENCRYPTION_ERROR, 'REASONSTARTUPRESTART', 'encryptionStartupRestart'],
+  [ENCRYPTION_ERROR, 'REASONSTARTUPJOURNAL', 'encryptionStartupJournalConsequence'],
 ];
+
+test("Story 18.23: the audit log's encryption change is one consequence sentence on both surfaces, published in Fixed strings", () => {
+  // Mutation (Rule 19): change one word of REASONAUDITENCRYPTIONCHANGE in EncryptionError.cls -> this goes red.
+  const server = /Parameter REASONAUDITENCRYPTIONCHANGE = "([^"]+)";/.exec(readFileSync(ENCRYPTION_ERROR, 'utf8'));
+  assert.notEqual(server, null, 'EncryptionError.cls declares REASONAUDITENCRYPTIONCHANGE');
+  assert.equal(server[1], stringValue('encryptionStartupAuditConsequence'), 'the audit change and the form state one sentence');
+  assert.ok(readFileSync(EXPERIENCE, 'utf8').includes(`"${server[1]}"`), "the audit change's sentence is published in EXPERIENCE.md's Fixed strings");
+});
+
+test('Story 18.23: the form draws the Interactive refusal on the start-mode field by the code the kernel declares', () => {
+  // Mutation (Rule 19): change STARTUP_INTERACTIVE_CODE in encryption-startup.store.ts -> this goes red.
+  const kernel = /Parameter STARTUPINTERACTIVE = "([^"]+)";/.exec(readFileSync(PROHIBITED, 'utf8'));
+  assert.notEqual(kernel, null, 'Prohibited.cls declares STARTUPINTERACTIVE');
+  const store = /export const STARTUP_INTERACTIVE_CODE = '([^']+)';/.exec(readFileSync(join(REPO_ROOT, 'ui', 'src', 'app', 'areas', 'security', 'encryption-startup.store.ts'), 'utf8'));
+  assert.notEqual(store, null, 'encryption-startup.store.ts declares STARTUP_INTERACTIVE_CODE');
+  assert.equal(store[1], kernel[1], "the store matches the server's refusal by the kernel's own code");
+});
 
 test('Story 18.7: each key file refusal, state refusal and consequence is one sentence on both surfaces, published in Fixed strings', () => {
   // Mutation (Rule 19): change one word of REASONADMINLAST in EncryptionKeyFileRemoveAdmin.cls -> this goes red naming both.
   for (const [file, parameter, key] of ENCRYPTION_SENTENCES) {
+    const server = new RegExp(`Parameter ${parameter} = "([^"]+)";`).exec(readFileSync(file, 'utf8'));
+    assert.notEqual(server, null, `${file} declares ${parameter}`);
+    assert.equal(server[1], stringValue(key), `${parameter} and ${key} are one published sentence`);
+    assert.ok(readFileSync(EXPERIENCE, 'utf8').includes(`"${server[1]}"`), `${parameter}'s sentence is published in EXPERIENCE.md's Fixed strings`);
+    assert.ok(!server[1].toLowerCase().includes('agent'), `${parameter} names no caller: ${server[1]}`);
+  }
+});
+
+/** Story 19.17's error class, which declares the DocDB port's published refusals. */
+const DOCDB_ERROR = join(REPO_ROOT, 'src', 'OcuPilot', 'Api', 'DocDbError.cls');
+
+/** Story 19.17's published sentences: `[file, parameter, strings.ts key]`. */
+const DOCDB_SENTENCES = [
+  [DOCDB_ERROR, 'REASONSERVICEDISABLED', 'explorerDocDbServiceDisabled'],
+  [DOCDB_ERROR, 'REASONNAMEINVALID', 'explorerDocDbNameInvalid'],
+  [DOCDB_ERROR, 'REASONNAMEMAPPED', 'explorerDocDbNameMapped'],
+  [DOCDB_ERROR, 'REASONNAMETAKEN', 'explorerDocDbNameTaken'],
+  [DOCDB_ERROR, 'REASONCLASSTAKEN', 'explorerDocDbClassTaken'],
+];
+
+test('Story 19.17: each DocDB refusal is one sentence on both surfaces, published in Fixed strings', () => {
+  // Mutation (Rule 19): change one word of REASONSERVICEDISABLED in DocDbError.cls -> this goes red naming both.
+  for (const [file, parameter, key] of DOCDB_SENTENCES) {
     const server = new RegExp(`Parameter ${parameter} = "([^"]+)";`).exec(readFileSync(file, 'utf8'));
     assert.notEqual(server, null, `${file} declares ${parameter}`);
     assert.equal(server[1], stringValue(key), `${parameter} and ${key} are one published sentence`);

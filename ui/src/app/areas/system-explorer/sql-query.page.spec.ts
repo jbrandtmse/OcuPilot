@@ -229,7 +229,7 @@ describe('SQL query', () => {
     mounted.answer = { ok: { outcome: 'rows', kind: 'query', columns: ['Name'], rows: [['a']], truncated: true } };
     await type(mounted, 'SELECT Name FROM OcuProbe196.Granted');
     await run(mounted);
-    expect(status(mounted.host)).toBe(STRINGS.explorerSqlRowsCut.replace('<n>', '1'));
+    expect(status(mounted.host)).toBe(STRINGS.explorerSqlRowsCutOne);
   });
 
   it("draws the value fields the instance asks for, sends their values, and drops them when the statement changes", async () => {
@@ -424,7 +424,7 @@ describe('SQL query', () => {
 
     route(mounted, backgroundPath(RUN_ID), view('ended', { result: { outcome: 'rows', kind: 'query', columns: ['N'], rows: [['102400000']], truncated: true } }));
     await flush(mounted);
-    expect(backgroundStatus(mounted.host)).toBe(STRINGS.explorerSqlRowsCut.replace('<n>', '1'));
+    expect(backgroundStatus(mounted.host)).toBe(STRINGS.explorerSqlRowsCutOne);
     expect([...mounted.host.querySelectorAll('[data-ocu-sql="background-cell"]')].map((cell) => cell.textContent)).toEqual(['102400000']);
     expect(el(mounted.host, 'background-results').getAttribute('role')).toBe('table');
     expect([...mounted.host.querySelectorAll('[data-ocu-sql="cell"]')].map((cell) => cell.textContent)).toEqual(['now']);
@@ -513,7 +513,7 @@ describe('SQL query', () => {
     await type(mounted, 'SELECT Name FROM OcuProbe1915.Granted WHERE Num > ?');
     el<HTMLButtonElement>(mounted.host, 'background').click();
     await settle(mounted.fixture);
-    expect(status(mounted.host)).toBe(STRINGS.explorerSqlTakesValues.replace('<n>', '1'));
+    expect(status(mounted.host)).toBe(STRINGS.explorerSqlTakesValuesOne);
     expect(mounted.host.querySelectorAll('[data-ocu-sql="value"]').length).toBe(1);
     route(mounted, SQL_BACKGROUND_PATH, { status: 409, code: 'EXPLORER.SQL.BACKGROUND.BUSY', reason: STRINGS.explorerSqlBackgroundBusyReason, detail: { runId: RUN_ID } });
     route(mounted, backgroundPath(RUN_ID), view('running'));
@@ -566,7 +566,7 @@ describe('SQL query', () => {
     planted.push(again.nativeElement);
     await settle(again);
     expect(mounted.posts.map((post) => post.path)).toEqual([SQL_BACKGROUND_PATH, backgroundPath(RUN_ID)]);
-    expect(backgroundStatus(again.nativeElement)).toBe(STRINGS.tableRowCount.replace('<n>', '1'));
+    expect(backgroundStatus(again.nativeElement)).toBe(STRINGS.explorerSqlRowCountOne);
   });
 
   it('stops polling when the page goes, and follows a run still running again on its return', async () => {
@@ -586,6 +586,6 @@ describe('SQL query', () => {
     planted.push(again.nativeElement);
     await settle(again);
     expect(mounted.posts.length).toBe(sent + 1);
-    expect(backgroundStatus(again.nativeElement)).toBe(STRINGS.tableRowCount.replace('<n>', '1'));
+    expect(backgroundStatus(again.nativeElement)).toBe(STRINGS.explorerSqlRowCountOne);
   });
 });

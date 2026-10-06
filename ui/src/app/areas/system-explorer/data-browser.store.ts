@@ -37,6 +37,7 @@ import {
   MAX_TABS,
   PAGE_SIZES,
   StagedChanges,
+  discardedText,
   filterValue,
   goToRow,
   isCut,
@@ -47,6 +48,7 @@ import {
   previousOffset,
   rowKey,
   rowRangeMax,
+  savedSummaryText,
   sortLine,
   type DataKind,
   type NewRow,
@@ -54,6 +56,7 @@ import {
   type RowOutcome,
   type SaveResult,
   type SortState,
+  waitingText,
 } from '../../core/data-browser-model';
 import type { FormDirty } from '../../core/form-dirty';
 import { createScreenRead } from '../../core/screen-read';
@@ -564,7 +567,7 @@ export class DataTab {
     this.stagingGeneration += 1;
     this.savingValue = false;
     this.host.stagingChanged(deps);
-    this.announcementValue = count === 0 ? '' : fillPlaceholders(STRINGS.explorerSqlDataDiscarded, { n: count });
+    this.announcementValue = count === 0 ? '' : discardedText(count);
     this.host.notify();
   }
 
@@ -616,7 +619,7 @@ export class DataTab {
     const results = resultsOf(deps.sender.lastOutput());
     const { saved, failed } = this.staged.applyResults(results, key);
     this.host.stagingChanged(deps);
-    await this.read(deps, fillPlaceholders(STRINGS.explorerSqlDataSavedSummary, { a: saved, n: results.length, b: failed }));
+    await this.read(deps, savedSummaryText(saved, results.length, failed));
     return true;
   }
 
@@ -765,7 +768,7 @@ export class DataTab {
   private afterStaging(deps: DataBrowserDeps, accepted: boolean): void {
     const count = this.staged.count();
     this.host.stagingChanged(deps);
-    this.announcementValue = !accepted ? STRINGS.explorerSqlDataCap : count === 0 ? '' : fillPlaceholders(STRINGS.explorerSqlDataWaiting, { n: count });
+    this.announcementValue = !accepted ? STRINGS.explorerSqlDataCap : count === 0 ? '' : waitingText(count);
     this.host.notify();
   }
 

@@ -2,7 +2,13 @@ import { ChangeDetectionStrategy, Component } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { describe, expect, it } from 'vitest';
 
-import { MASKED_VALUE, type ProposalPhase, formatRemovalResidue } from '../core/proposal-view';
+import {
+  CONSEQUENCE_SQLCHANGESROWS,
+  CONSEQUENCE_SQLCHANGESSCHEMA,
+  MASKED_VALUE,
+  type ProposalPhase,
+  formatRemovalResidue,
+} from '../core/proposal-view';
 import { STRINGS } from '../core/strings';
 import { EXAMPLE_PROPOSAL, type ProposalCardView } from './example-proposal';
 import { ProposalCard } from './proposal-card';
@@ -1193,5 +1199,24 @@ describe('the proposal card', () => {
     expired.fixture.componentRef.instance.repropose.subscribe((id) => reproposed.push(id));
     (expired.card.querySelector('.ocu-proposal-card-repropose') as HTMLButtonElement).click();
     expect(reproposed).toEqual(['p1']);
+  });
+
+  it('Story 19.11: an agent SQL statement states its consequence, with the tables for DML, on a live card', () => {
+    // Mutation (Rule 19): drop the `sqlVisible` banner from the template -> this goes red.
+    const sql = (consequence: string) =>
+      liveView({
+        consequence,
+        changed: [
+          { field: 'Kind', before: '', after: 'dml' },
+          { field: 'Tables', before: '', after: 'OCUPROBE196.GRANTED' },
+        ],
+      });
+    const dml = mount(sql(CONSEQUENCE_SQLCHANGESROWS), { phase: 'live' });
+    const slot = dml.card.querySelector('[data-slot="consequence"]') as HTMLElement;
+    expect(slot.textContent).toContain(STRINGS.explorerSqlConfirmDml.replace('<tables>', 'OCUPROBE196.GRANTED'));
+    const ddl = mount(sql(CONSEQUENCE_SQLCHANGESSCHEMA), { phase: 'live' });
+    expect(ddl.card.querySelector('[data-slot="consequence"]')?.textContent).toContain(STRINGS.explorerSqlConfirmDdl);
+    const other = mount(liveView(), { phase: 'live' });
+    expect(other.card.querySelector('[data-slot="consequence"]')).toBeNull();
   });
 });
