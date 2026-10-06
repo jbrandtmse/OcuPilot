@@ -38,6 +38,13 @@ Class OcuPilot.Screen.Tool.Classification Extends %RegisteredObject
 /// tool authors <code>LDAPSearchPassword</code> as <code>secret</code>: its write sends that declared
 /// secret and nothing else, under the vendor's own <code>CHANGEPWD</code> key (AD-56), and the
 /// template never shows it. <code>LDAPCACertFile</code> is ordinary and no tool admits it (AD-21).</p>
+/// <p><b><code>security.secrets.creatersa</code></b>, <b>.createsymmetric</b>, <b>.replacersa</b> and
+/// <b>.replacesymmetric</b> (Story 18.24) classify their type's list: <code>Length</code>,
+/// <code>HasPrivateKey</code>, <code>HasCertificate</code> and <code>KeyId</code> are <code>ordinary</code>
+/// metadata, and every key material member -- <code>Certificate</code>, <code>PublicKey</code>,
+/// <code>PrivateKey</code>, <code>Password</code>, <code>Secret</code> and <code>Secret64</code> -- is
+/// <code>secret</code>, public halves included. The three <code>*File</code> members are
+/// <code>ordinary</code> and no tool admits them: key material is content, never a path (AD-21).</p>
 /// <p><b><code>osmgmt.languageservers.create</code></b> and <b><code>osmgmt.languageservers.update</code></b>
 /// (Story 16.25) classify the untyped <code>LanguageServer</code> list's literals
 /// <code>ordinary</code> and its member-less <code>Custom</code> <code>opaque</code>, compared by the
@@ -528,6 +535,58 @@ XData Entries
       "Secret": "secret",
       "Secret64": "secret",
       "Usage": "ordinary"
+    }
+  },
+  "security.secrets.creatersa": {
+    "fieldList": "Wallet.Secret:%Wallet.RSA",
+    "classification": {
+      "Certificate": "secret",
+      "CertificateFile": "ordinary",
+      "HasCertificate": "ordinary",
+      "HasPrivateKey": "ordinary",
+      "Length": "ordinary",
+      "Password": "secret",
+      "PrivateKey": "secret",
+      "PrivateKeyFile": "ordinary",
+      "PublicKey": "secret",
+      "PublicKeyFile": "ordinary",
+      "Secret": "secret",
+      "Secret64": "secret"
+    }
+  },
+  "security.secrets.createsymmetric": {
+    "fieldList": "Wallet.Secret:%Wallet.SymmetricKey",
+    "classification": {
+      "KeyId": "ordinary",
+      "Length": "ordinary",
+      "Secret": "secret",
+      "Secret64": "secret"
+    }
+  },
+  "security.secrets.replacersa": {
+    "fieldList": "Wallet.Secret:%Wallet.RSA",
+    "classification": {
+      "Certificate": "secret",
+      "CertificateFile": "ordinary",
+      "HasCertificate": "ordinary",
+      "HasPrivateKey": "ordinary",
+      "Length": "ordinary",
+      "Password": "secret",
+      "PrivateKey": "secret",
+      "PrivateKeyFile": "ordinary",
+      "PublicKey": "secret",
+      "PublicKeyFile": "ordinary",
+      "Secret": "secret",
+      "Secret64": "secret"
+    }
+  },
+  "security.secrets.replacesymmetric": {
+    "fieldList": "Wallet.Secret:%Wallet.SymmetricKey",
+    "classification": {
+      "KeyId": "ordinary",
+      "Length": "ordinary",
+      "Secret": "secret",
+      "Secret64": "secret"
     }
   },
   "osmgmt.devices.create": {

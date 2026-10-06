@@ -16,6 +16,9 @@
 /// the port.</p>
 /// <p><b>The value is a secret</b> (AD-35): it joins the body after the verdict and the rules, the
 /// body is cleared once the port has answered, and nothing here logs, echoes or returns it.</p>
+/// <p><b>A body whose <code>Type</code> is an RSA or symmetric key, and a present secret of either
+/// type, are <class>OcuPilot.Area.Security.WalletKeySave</class>'s</b> (Story 18.24): the handlers still
+/// take the pairs and the target's hold first, and hand it the seams below.</p>
 /// <p>Seams a subclass may override: <method>PortClass</method> and
 /// <method>ProhibitedClass</method>. Production overrides neither.</p>
 Class OcuPilot.Area.Security.WalletSave Extends %RegisteredObject
@@ -80,14 +83,19 @@ ClassMethod HandleCreate() As %Status
         }
         Set tName = ""
         If tBody.%GetTypeOf(..#IDARGUMENT) = "string" Set tName = tBody.%Get(..#IDARGUMENT)
-        Set tHoldSC = ##class(OcuPilot.Kernel.Proposal.Operation).HoldTool(..#CREATETOOL, tName, .tHeld, .tHoldKey)
+        Set tKeyTool = ##class(OcuPilot.Area.Security.WalletKeySave).CreateTool(##class(OcuPilot.Area.Security.WalletKeySave).TypeOf(tBody))
+        Set tHoldSC = ##class(OcuPilot.Kernel.Proposal.Operation).HoldTool($Select(tKeyTool '= "": tKeyTool, 1: ..#CREATETOOL), tName, .tHeld, .tHoldKey)
         If $$$ISERR(tHoldSC) || 'tHeld {
             Set tSC = ##class(OcuPilot.Api.Error).RenderTargetBusy(tHoldSC)
             Quit
         }
-        Set tPerformSC = ..Create(tName, tBody, .tHttp, .tFault, .tViolations, .tReadBack)
+        If tKeyTool '= "" {
+            Set tPerformSC = ##class(OcuPilot.Area.Security.WalletKeySave).Create(tName, tBody, ..PortClass(), ..ProhibitedClass(), .tHttp, .tFault, .tViolations, .tReadBack)
+        } Else {
+            Set tPerformSC = ..Create(tName, tBody, .tHttp, .tFault, .tViolations, .tReadBack)
+        }
         Set tBody = ""
-        Set tSC = ..Answer(tPerformSC, .tViolations, $Get(tHttp), $Get(tFault), 201, tName, $Get(tReadBack))
+        Set tSC = ..Answer(tPerformSC, .tViolations, $Get(tHttp), $Get(tFault), 201, tName, $Get(tReadBack), (tKeyTool '= ""))
     } Catch ex {
         Set tBody = ""
         Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ex)
@@ -122,13 +130,13 @@ ClassMethod HandleUpdate(pId As %String) As %Status
             Set tSC = ##class(OcuPilot.Api.Error).RenderTargetBusy(tHoldSC)
             Quit
         }
-        Set tPerformSC = ..Update(tName, tBody, .tHttp, .tFault, .tViolations, .tReadBack)
+        Set tPerformSC = ..Update(tName, tBody, .tHttp, .tFault, .tViolations, .tReadBack, .tKeyWrite)
         Set tBody = ""
         If $$$ISERR(tPerformSC) && (+$Get(tHttp) = 404) {
             Set tSC = ##class(OcuPilot.Api.Error).Render(404, ##class(OcuPilot.Api.Error).#NOTFOUND, ##class(OcuPilot.Api.Error).#REASONWALLETNAMEABSENT, ##class(OcuPilot.Api.Error).#WALLETNAMEABSENT)
             Quit
         }
-        Set tSC = ..Answer(tPerformSC, .tViolations, $Get(tHttp), $Get(tFault), 200, tName, $Get(tReadBack))
+        Set tSC = ..Answer(tPerformSC, .tViolations, $Get(tHttp), $Get(tFault), 200, tName, $Get(tReadBack), +$Get(tKeyWrite))
     } Catch ex {
         Set tBody = ""
         Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ex)
@@ -157,7 +165,7 @@ ClassMethod Create(pName As %String, pArgs As %DynamicObject, Output pHttpStatus
         If pViolations > 0 Quit
 
         Set tClass = ..#CREATETOOL
-        Set tSecrets = $ClassMethod(tClass, "SecretArguments")
+        Set tSecrets = $ClassMethod(tClass, "ChannelSecretNames", "", .tDeclared)
         ; AD-10, AD-55. The set the confirm asks, before the port and before the rules, over the
         ; caller's own fields less the declared secret, which the confirm merges only after its
         ; verdict too.
@@ -194,6 +202,9 @@ ClassMethod Create(pName As %String, pArgs As %DynamicObject, Output pHttpStatus
     Quit tSC
 }
 
+/// <p><var>pKeyWrite</var> is 1 when the secret is an RSA or symmetric key, which
+/// <class>OcuPilot.Area.Security.WalletKeySave</class> replaces with the outputs of
+/// <method>Create</method>'s contract.</p>
 /// <p>Change the key-value secret <var>pName</var> by the settings <var>pArgs</var> sends, merged
 /// over a fresh read, so a setting the caller did not send keeps the instance's value (AD-4), and
 /// with a new value only when <var>pArgs</var> carries a non-empty one.</p>
@@ -201,11 +212,12 @@ ClassMethod Create(pName As %String, pArgs As %DynamicObject, Output pHttpStatus
 /// error status with <var>pHttpStatus</var> 404, and nothing is sent; a key outside
 /// <parameter>EDITFIELDS</parameter> one with <var>pHttpStatus</var> 400; a secret of another type
 /// one with <var>pHttpStatus</var> 422.</p>
-ClassMethod Update(pName As %String, pArgs As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, Output pViolations, Output pReadBack As %DynamicObject) As %Status
+ClassMethod Update(pName As %String, pArgs As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, Output pViolations, Output pReadBack As %DynamicObject, Output pKeyWrite As %Boolean) As %Status
 {
     Set pHttpStatus = 0
     Set pFault = ""
     Set pReadBack = ""
+    Set pKeyWrite = 0
     Kill pViolations
     Set pViolations = 0
     Set tSC = $$$OK
@@ -223,6 +235,14 @@ ClassMethod Update(pName As %String, pArgs As %DynamicObject, Output pHttpStatus
         }
         Set pHttpStatus = 0
         Set pFault = ""
+
+        ; Story 18.24: a present RSA or symmetric key is replaced, not edited; the key Save judges the
+        ; body, which has no setting in common with a key-value secret's.
+        If ##class(OcuPilot.Area.Security.WalletKeySave).IsKeyType(tFresh.%Get(..#TYPEFIELD)) {
+            Set pKeyWrite = 1
+            Set tSC = ##class(OcuPilot.Area.Security.WalletKeySave).Replace(pName, pArgs, tFresh, ..PortClass(), ..ProhibitedClass(), .pHttpStatus, .pFault, .pViolations, .pReadBack)
+            Quit
+        }
 
         Set tAllowed = $ListFromString(..#EDITFIELDS)
         Set tIterator = pArgs.%GetIterator()
@@ -313,8 +333,9 @@ ClassMethod Send(pToolClass As %String, pName As %String, pPayload As %DynamicOb
 /// one 422 envelope, a refusal as its own envelope, and success as <code>{name}</code> at
 /// <var>pSuccess</var>, with <var>pReadBack</var> as <code>readBack</code> when there is one
 /// (AD-58).</p>
-ClassMethod Answer(pSC As %Status, ByRef pViolations, pHttp As %Integer, pFault As %DynamicObject, pSuccess As %Integer, pName As %String, pReadBack As %DynamicObject = "") As %Status [ Private ]
+ClassMethod Answer(pSC As %Status, ByRef pViolations, pHttp As %Integer, pFault As %DynamicObject, pSuccess As %Integer, pName As %String, pReadBack As %DynamicObject = "", pKeyWrite As %Boolean = 0) As %Status [ Private ]
 {
+    If ($Get(pViolations) > 0) && pKeyWrite Quit ##class(OcuPilot.Area.Security.WalletKeySave).RenderViolations(.pViolations)
     If $Get(pViolations) > 0 Quit ..RenderViolations(.pViolations)
     If $$$ISERR(pSC) {
         If '$IsObject(pFault) || (pFault.code = ##class(OcuPilot.Api.Error).#INTERNAL) {

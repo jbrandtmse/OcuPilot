@@ -651,6 +651,46 @@ XData Tools
   {"path":"Secret64","shape":"literal","templateType":"string","itemType":"","class":"secret"},
   {"path":"Usage","shape":"literal","templateType":"number","itemType":"","class":"ordinary"}
 ]},
+"security.secrets.creatersa": {"fieldList":"Wallet.Secret:%Wallet.RSA","fields":[
+  {"path":"Certificate","shape":"literal","templateType":"string","itemType":"","class":"secret"},
+  {"path":"CertificateFile","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"HasCertificate","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"},
+  {"path":"HasPrivateKey","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"},
+  {"path":"Length","shape":"literal","templateType":"number","itemType":"","class":"ordinary"},
+  {"path":"Password","shape":"literal","templateType":"string","itemType":"","class":"secret"},
+  {"path":"PrivateKey","shape":"literal","templateType":"string","itemType":"","class":"secret"},
+  {"path":"PrivateKeyFile","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"PublicKey","shape":"literal","templateType":"string","itemType":"","class":"secret"},
+  {"path":"PublicKeyFile","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"Secret","shape":"literal","templateType":"string","itemType":"","class":"secret"},
+  {"path":"Secret64","shape":"literal","templateType":"string","itemType":"","class":"secret"}
+]},
+"security.secrets.createsymmetric": {"fieldList":"Wallet.Secret:%Wallet.SymmetricKey","fields":[
+  {"path":"KeyId","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"Length","shape":"literal","templateType":"number","itemType":"","class":"ordinary"},
+  {"path":"Secret","shape":"literal","templateType":"string","itemType":"","class":"secret"},
+  {"path":"Secret64","shape":"literal","templateType":"string","itemType":"","class":"secret"}
+]},
+"security.secrets.replacersa": {"fieldList":"Wallet.Secret:%Wallet.RSA","fields":[
+  {"path":"Certificate","shape":"literal","templateType":"string","itemType":"","class":"secret"},
+  {"path":"CertificateFile","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"HasCertificate","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"},
+  {"path":"HasPrivateKey","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"},
+  {"path":"Length","shape":"literal","templateType":"number","itemType":"","class":"ordinary"},
+  {"path":"Password","shape":"literal","templateType":"string","itemType":"","class":"secret"},
+  {"path":"PrivateKey","shape":"literal","templateType":"string","itemType":"","class":"secret"},
+  {"path":"PrivateKeyFile","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"PublicKey","shape":"literal","templateType":"string","itemType":"","class":"secret"},
+  {"path":"PublicKeyFile","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"Secret","shape":"literal","templateType":"string","itemType":"","class":"secret"},
+  {"path":"Secret64","shape":"literal","templateType":"string","itemType":"","class":"secret"}
+]},
+"security.secrets.replacesymmetric": {"fieldList":"Wallet.Secret:%Wallet.SymmetricKey","fields":[
+  {"path":"KeyId","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"Length","shape":"literal","templateType":"number","itemType":"","class":"ordinary"},
+  {"path":"Secret","shape":"literal","templateType":"string","itemType":"","class":"secret"},
+  {"path":"Secret64","shape":"literal","templateType":"string","itemType":"","class":"secret"}
+]},
 "security.secrets.update": {"fieldList":"Wallet.Secret:%Wallet.KeyValue","fields":[
   {"path":"AllowedHosts","shape":"array","templateType":"array","itemType":"","class":"opaque"},
   {"path":"RequireTLS","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"},

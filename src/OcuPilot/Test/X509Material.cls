@@ -16,6 +16,10 @@
 /// openssl pkcs8 -topk8 -in other.pem -out other-enc.pem -v2 aes-256-cbc -passout pass:PASSWORD
 /// openssl req -x509 -newkey ec -pkeyopt ec_paramgen_curve:P-256 -nodes -keyout eckey.pem -out eccert.pem -days 36500 -subj "/CN=OcuPilot EC Test Certificate"
 /// openssl pkcs8 -topk8 -in eckey.pem -out eckey-enc.pem -v2 aes-256-cbc -passout pass:PASSWORD
+/// openssl pkey -in key.pem -pubout -out pub.pem
+/// openssl rsa -in key.pem -RSAPublicKey_out -out pub-rsa.pem
+/// openssl rsa -in key.pem -traditional -out key-pkcs1.pem
+/// openssl pkey -in other.pem -pubout -out other-pub.pem
 /// openssl req -new -key key.pem -out expired.csr -subj "/CN=OcuPilot Expired Certificate"
 /// openssl ca -config ca.cnf -selfsign -keyfile key.pem -in expired.csr -startdate 20200101000000Z -enddate 20210101000000Z -batch -notext -out expired.pem
 /// </pre>
@@ -32,7 +36,7 @@ Parameter OPENSSL = "/usr/bin/openssl";
 Parameter PREFIX = "ocupilot-x509-";
 
 /// <p>Each block's name and the file it is read from.</p>
-Parameter FILES = "Certificate:cert.pem,PrivateKey:key.pem,EncryptedKey:key-enc.pem,LegacyKey:key-legacy.pem,OtherKey:other.pem,OtherEncryptedKey:other-enc.pem,EcCertificate:eccert.pem,EcKey:eckey.pem,EcEncryptedKey:eckey-enc.pem,ExpiredCertificate:expired.pem";
+Parameter FILES = "Certificate:cert.pem,PrivateKey:key.pem,EncryptedKey:key-enc.pem,LegacyKey:key-legacy.pem,OtherKey:other.pem,OtherEncryptedKey:other-enc.pem,EcCertificate:eccert.pem,EcKey:eckey.pem,EcEncryptedKey:eckey-enc.pem,ExpiredCertificate:expired.pem,PublicKey:pub.pem,RsaPublicKey:pub-rsa.pem,Pkcs1Key:key-pkcs1.pem,OtherPublicKey:other-pub.pem";
 
 /// <p>Make the material in a new directory under the instance's temp directory, returned in
 /// <var>pDirectory</var>, and hold each block in this process for <method>Pem</method>. On failure
@@ -61,6 +65,14 @@ ClassMethod Generate(Output pDirectory As %String) As %Status
         Set tSC = ..Run(pDirectory, "req", "-x509", "-newkey", "ec", "-pkeyopt", "ec_paramgen_curve:P-256", "-nodes", "-keyout", pDirectory _ "eckey.pem", "-out", pDirectory _ "eccert.pem", "-days", 36500, "-subj", "/CN=OcuPilot EC Test Certificate")
         If $$$ISERR(tSC) Quit
         Set tSC = ..Run(pDirectory, "pkcs8", "-topk8", "-in", pDirectory _ "eckey.pem", "-out", pDirectory _ "eckey-enc.pem", "-v2", "aes-256-cbc", "-passout", tPass)
+        If $$$ISERR(tSC) Quit
+        Set tSC = ..Run(pDirectory, "pkey", "-in", pDirectory _ "key.pem", "-pubout", "-out", pDirectory _ "pub.pem")
+        If $$$ISERR(tSC) Quit
+        Set tSC = ..Run(pDirectory, "rsa", "-in", pDirectory _ "key.pem", "-RSAPublicKey_out", "-out", pDirectory _ "pub-rsa.pem")
+        If $$$ISERR(tSC) Quit
+        Set tSC = ..Run(pDirectory, "rsa", "-in", pDirectory _ "key.pem", "-traditional", "-out", pDirectory _ "key-pkcs1.pem")
+        If $$$ISERR(tSC) Quit
+        Set tSC = ..Run(pDirectory, "pkey", "-in", pDirectory _ "other.pem", "-pubout", "-out", pDirectory _ "other-pub.pem")
         If $$$ISERR(tSC) Quit
         Set tSC = ..Run(pDirectory, "req", "-new", "-key", pDirectory _ "key.pem", "-out", pDirectory _ "expired.csr", "-subj", "/CN=OcuPilot Expired Certificate")
         If $$$ISERR(tSC) Quit

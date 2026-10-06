@@ -1211,6 +1211,11 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
         ; behind this set would refuse the write. The create predicates are evaluated instead, over
         ; the fields the caller actually supplied.
         If ..CreatesOf($Get(tToolClass)) {
+            ; Story 18.24: a wallet key create is judged by the fields of its own key type.
+            If (tType = ..#TYPEWALLETSECRET) && (..KeyTypeOf($Get(tToolClass)) '= "") {
+                Set tSC = ..WalletKey(..KeyTypeOf($Get(tToolClass)), 1, ..ParsedObject(pPayload), .pProhibits, .pCode)
+                Quit
+            }
             If 'tServes && (tType = ..#TYPEWEBAPPLICATION) {
                 Set tSC = ..UnderOcuPilot(tId, .tServes)
                 If $$$ISERR(tSC) Quit
@@ -1246,6 +1251,11 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
             ; A DELETE sends no body and its card rows are the fingerprint subject, so it reaches
             ; the sweep with nothing changed, as X509() reasons.
             If ..WriteTypeOf($Get(tToolClass)) = "DELETE" Kill tChanged
+            ; Story 18.24: a wallet key replace is judged by the fields of its own key type.
+            If ..KeyTypeOf($Get(tToolClass)) '= "" {
+                Set tSC = ..WalletKeyChanged(..KeyTypeOf($Get(tToolClass)), .tChanged, .pProhibits, .pCode)
+                Quit
+            }
             Set tSC = ..ReviewedFewOnly(..#TYPEWALLETSECRET, .tChanged, .pProhibits, .pCode)
             Quit
         }
@@ -3351,6 +3361,77 @@ ClassMethod IsOcuPilotProcess(pTarget As %DynamicObject) As %Boolean
     Set tSC = ##class(OcuPilot.Kernel.State.Turn).GuardedIsTurnJob(tPid, .tTurnJob)
     If $$$ISERR(tSC) Quit 1
     Quit ''tTurnJob
+}
+
+/// <p>The fields a wallet key write of key type <var>pType</var> may carry (Story 18.24), as a
+/// <class>%List</class>: an RSA key's <code>Length</code>, <code>Certificate</code>,
+/// <code>PublicKey</code>, <code>PrivateKey</code> and <code>Password</code>; a symmetric key's
+/// <code>Length</code> and <code>Secret64</code> on a create (<var>pCreates</var> 1) and
+/// <code>Secret64</code> alone on a replace. The key-value lists of
+/// <method>PermittedChangeFields</method> and <method>PermittedCreateFields</method> are unchanged.</p>
+ClassMethod WalletKeyFields(pType As %String, pCreates As %Boolean) As %List
+{
+    If pType = "%Wallet.RSA" Quit $ListBuild("Length", "Certificate", "PublicKey", "PrivateKey", "Password")
+    If pType = "%Wallet.SymmetricKey" Quit $Select(pCreates: $ListBuild("Length", "Secret64"), 1: $ListBuild("Secret64"))
+    Quit ""
+}
+
+/// <p>The wallet key type <var>pToolClass</var> declares through its <code>SECRETTYPE</code>
+/// parameter, or <code>""</code> for any other tool and for a class that cannot be asked.</p>
+ClassMethod KeyTypeOf(pToolClass As %String) As %String [ Private ]
+{
+    Set tType = ""
+    Try {
+        If pToolClass '= "" Set tType = $Parameter(pToolClass, "SECRETTYPE")
+    } Catch {
+        Set tType = ""
+    }
+    If (tType = "%Wallet.RSA") || (tType = "%Wallet.SymmetricKey") Quit tType
+    Quit ""
+}
+
+/// <p>A wallet key create over <var>pPayload</var>: every member of the payload must be one
+/// <method>WalletKeyFields</method> lists for the type, or the write is refused
+/// <parameter>UNCOVEREDFIELD</parameter>.</p>
+ClassMethod WalletKey(pType As %String, pCreates As %Boolean, pPayload As %DynamicObject, Output pProhibits As %Boolean, Output pCode As %String) As %Status [ Private ]
+{
+    Set pProhibits = 0
+    Set pCode = ""
+    Set tSC = $$$OK
+    Try {
+        Set tPermitted = ..WalletKeyFields(pType, pCreates)
+        Set tIterator = pPayload.%GetIterator()
+        While tIterator.%GetNext(.tKey, .tValue) {
+            If '$ListFind(tPermitted, tKey) {
+                Do ..Refuse(..#UNCOVEREDFIELD, .pProhibits, .pCode)
+                Quit
+            }
+        }
+    } Catch ex {
+        Set pProhibits = 0
+        Set pCode = ""
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>A wallet key replace: every field <var>pChanged</var> names must be one
+/// <method>WalletKeyFields</method> lists for the type's replace.</p>
+ClassMethod WalletKeyChanged(pType As %String, ByRef pChanged, Output pProhibits As %Boolean, Output pCode As %String) As %Status [ Private ]
+{
+    Set pProhibits = 0
+    Set pCode = ""
+    Set tPermitted = ..WalletKeyFields(pType, 0)
+    Set tField = ""
+    For {
+        Set tField = $Order(pChanged(tField))
+        If tField = "" Quit
+        If '$ListFind(tPermitted, tField) {
+            Do ..Refuse(..#UNCOVEREDFIELD, .pProhibits, .pCode)
+            Quit
+        }
+    }
+    Quit $$$OK
 }
 
 /// <p>The reviewed-few sweep for entity type <var>pType</var>: every field <var>pChanged</var>

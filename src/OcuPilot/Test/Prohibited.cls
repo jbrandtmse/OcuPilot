@@ -412,6 +412,12 @@ Method TestNoWriteToolAdmitsAnAlwaysProhibitedField()
         ; advertises nothing outside the set's reviewed few, so a vendor property added to the
         ; endpoint's template reaches no schema until the set has a predicate for it.
         Set tPermitted = $Select(tCreates: ##class(OcuPilot.Kernel.Proposal.Prohibited).PermittedCreateFields(tType), 1: ##class(OcuPilot.Kernel.Proposal.Prohibited).PermittedChangeFields(tType))
+        ; Story 18.24: a wallet key tool is judged by its key type's fields, and the descriptor's declared
+        ; secrets include every type's key material, which the set reviews through those lists too.
+        Set tKeyType = $Parameter(tClass, "SECRETTYPE")
+        If tKeyType '= "" Set tPermitted = ##class(OcuPilot.Kernel.Proposal.Prohibited).WalletKeyFields(tKeyType, tCreates)
+        Set tReviewed = tPermitted
+        If tType = "wallet-secret" Set tReviewed = tReviewed _ ##class(OcuPilot.Kernel.Proposal.Prohibited).PermittedCreateFields(tType) _ ##class(OcuPilot.Kernel.Proposal.Prohibited).PermittedChangeFields(tType) _ ##class(OcuPilot.Kernel.Proposal.Prohibited).WalletKeyFields("%Wallet.RSA", 1) _ ##class(OcuPilot.Kernel.Proposal.Prohibited).WalletKeyFields("%Wallet.SymmetricKey", 1)
         ; An action-style write sends no body (AD-51), so it admits no field by construction and
         ; the floor under it is that emptiness. A body-sending write still has to admit something
         ; -- a merge tool that admitted nothing would pass the loops below having checked nothing.
@@ -464,6 +470,7 @@ Method TestNoWriteToolAdmitsAnAlwaysProhibitedField()
             ; asked of the body-sending tools of this kind over the type together.
             For tI = 1:1:$ListLength(tPermitted) {
                 Set tField = $List(tPermitted, tI)
+                If (tKeyType '= "") && $ListFind(tSecrets, tField) Continue
                 Do $$$AssertTrue($Data(tUnion(tCreates, tType, tField)) > 0, tEntry.%Get("name") _ " or a sibling write of its kind advertises '" _ tField _ "', which the prohibited set has reviewed for " _ tType)
             }
         }
@@ -479,7 +486,7 @@ Method TestNoWriteToolAdmitsAnAlwaysProhibitedField()
         ; reads the settable list a secret is not on.
         For tI = 1:1:$ListLength(tSecrets) {
             Set tField = $List(tSecrets, tI)
-            Do $$$AssertTrue($ListFind(tPermitted, tField) > 0, tEntry.%Get("name") _ " declares '" _ tField _ "' secret, and the prohibited set has reviewed it for " _ tType)
+            Do $$$AssertTrue($ListFind(tReviewed, tField) > 0, tEntry.%Get("name") _ " declares '" _ tField _ "' secret, and the prohibited set has reviewed it for " _ tType)
         }
         ; An action-style write sends no merge body, so a supplied secret reaches the vendor only
         ; where its SECRETBODY names it, and each such name is a declared secret (AD-51, AD-56 (i)).

@@ -155,7 +155,10 @@ ClassMethod NameViolation(pName As %String, Output pViolations)
 /// With a name it adds <code>secret: {Name, Collection, Type, Usage, RequireTLS, AllowedHosts,
 /// editable}</code>, read through the edit tool's own port, which never reads a value; a secret of
 /// another type carries its <code>Name</code>, <code>Collection</code> and <code>Type</code> alone,
-/// with <code>editable</code> false. With a collection it adds <code>collection</code> once that
+/// with <code>editable</code> false. An RSA or symmetric key (Story 18.24) is <code>editable</code> true and
+/// carries its metadata alone -- <code>Length</code>, then <code>HasPrivateKey</code> and
+/// <code>HasCertificate</code> or <code>KeyId</code> -- and the read also carries
+/// <code>keyLengths</code> and the key rules. With a collection it adds <code>collection</code> once that
 /// collection is found. An absent name is 404
 /// <parameter>OcuPilot.Api.Error.WALLETNAMEABSENT</parameter>, and an absent collection 404
 /// <parameter>OcuPilot.Api.Error.WALLETCOLLECTIONABSENT</parameter>.</p>
@@ -176,7 +179,17 @@ ClassMethod HandleForm() As %Status
         Do tLengths.%Set(..#FIELDNAME, ..#NAMEMAXLENGTH, "number")
         Do tLengths.%Set(..#FIELDSECRET, ..#SECRETMAXLENGTH, "number")
         Do tBody.%Set("maxLengths", tLengths)
-        Do tBody.%Set("rules", ..Rules())
+        Set tRulesRows = ..Rules()
+        Set tKeyRules = ##class(OcuPilot.Area.Security.WalletKeyRules).Rules()
+        Set tKeyIterator = tKeyRules.%GetIterator()
+        While tKeyIterator.%GetNext(.tKeyIndex, .tKeyRule) {
+            Do tRulesRows.%Push(tKeyRule)
+        }
+        Do tBody.%Set("rules", tRulesRows)
+        Set tKeyLengths = {}
+        Do tKeyLengths.%Set("rsa", ..LengthsOf(##class(OcuPilot.Area.Security.WalletKeyRules).#RSALENGTHS))
+        Do tKeyLengths.%Set("symmetric", ..LengthsOf(##class(OcuPilot.Area.Security.WalletKeyRules).#SYMMETRICLENGTHS))
+        Do tBody.%Set("keyLengths", tKeyLengths)
         Set tName = $Get(%request.Data("name", 1))
         Set tCollection = $Get(%request.Data("collection", 1))
         If tName '= "" {
@@ -189,11 +202,26 @@ ClassMethod HandleForm() As %Status
             Do tSecret.%Set(..#FIELDNAME, tName, "string")
             Do tSecret.%Set("Collection", $Piece(tName, ".", 1), "string")
             Do tSecret.%Set(..#FIELDTYPE, tFresh.%Get(..#FIELDTYPE), "string")
-            Set tEditable = (tFresh.%Get(..#FIELDTYPE) = ..#KEYVALUETYPE)
-            If tEditable {
+            Set tIsKey = ##class(OcuPilot.Area.Security.WalletKeySave).IsKeyType(tFresh.%Get(..#FIELDTYPE))
+            Set tEditable = (tFresh.%Get(..#FIELDTYPE) = ..#KEYVALUETYPE) || tIsKey
+            If tFresh.%Get(..#FIELDTYPE) = ..#KEYVALUETYPE {
                 Do tSecret.%Set(..#FIELDUSAGE, tFresh.%Get(..#FIELDUSAGE), "number")
                 Do tSecret.%Set(..#FIELDREQUIRETLS, ''tFresh.%Get(..#FIELDREQUIRETLS), "boolean")
                 Do tSecret.%Set(..#FIELDALLOWEDHOSTS, $Select(tFresh.%GetTypeOf(..#FIELDALLOWEDHOSTS) = "array": tFresh.%Get(..#FIELDALLOWEDHOSTS), 1: []))
+            }
+            ; Story 18.24: an RSA or symmetric key answers its metadata and no key material.
+            If tIsKey {
+                If tFresh.%GetTypeOf("Length") = "number" {
+                    Do tSecret.%Set("Length", tFresh.%Get("Length"), "number")
+                } Else {
+                    Do tSecret.%Set("Length", "", "null")
+                }
+                If tFresh.%Get(..#FIELDTYPE) = ##class(OcuPilot.Area.Security.WalletKeyRules).#RSATYPE {
+                    Do tSecret.%Set("HasPrivateKey", ''tFresh.%Get("HasPrivateKey"), "boolean")
+                    Do tSecret.%Set("HasCertificate", ''tFresh.%Get("HasCertificate"), "boolean")
+                } Else {
+                    Do tSecret.%Set("KeyId", tFresh.%Get("KeyId"), "string")
+                }
             }
             Do tSecret.%Set("editable", tEditable, "boolean")
             Do tBody.%Set("secret", tSecret)
@@ -354,6 +382,14 @@ ClassMethod Rules() As %DynamicArray
         Do tRows.%Push(tRow)
     }
     Quit tRows
+}
+
+/// <p>The lengths of the comma-separated list <var>pLengths</var>, as an array of numbers.</p>
+ClassMethod LengthsOf(pLengths As %String) As %DynamicArray [ Private ]
+{
+    Set tArray = []
+    For tI = 1:1:$Length(pLengths, ",") Do tArray.%Push(+$Piece(pLengths, ",", tI), "number")
+    Quit tArray
 }
 
 /// <p>The form field a <code>WALLET.&lt;FIELD&gt;.&lt;RULE&gt;</code> code refuses.</p>

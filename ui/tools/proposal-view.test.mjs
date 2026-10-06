@@ -67,6 +67,8 @@ const {
   CONSEQUENCE_ECPSETTINGSRESTART,
   CONSEQUENCE_ECPSSLAUTHORIZE,
   CONSEQUENCE_ECPSSLREJECT,
+  CONSEQUENCE_WALLETKEYREPLACERSA,
+  CONSEQUENCE_WALLETKEYREPLACESYMMETRIC,
   CONSEQUENCE_ENCRYPTIONNEWKEY,
   CONSEQUENCE_ENCRYPTIONREMOVEKEY,
   CONSEQUENCE_ENCRYPTIONKEYACTIVATE,
@@ -1015,4 +1017,27 @@ test('Story 18.23: an encryption startup settings write states its consequence o
   assert.equal(/Parameter JOURNALCONSEQUENCE = "([^"]+)";/.exec(tool)?.[1], CONSEQUENCE_ENCRYPTIONSTARTUPJOURNAL, 'the tool declares the journal code');
   const prohibited = readFileSync(join(uiRoot, '..', 'src', 'OcuPilot', 'Kernel', 'Proposal', 'Prohibited.cls'), 'utf8');
   assert.equal(/Parameter EFFECTAUDITENCRYPTION = "([^"]+)";/.exec(prohibited)?.[1], CONSEQUENCE_AUDITENCRYPTIONCHANGE, 'the kernel declares the audit effect the card reads');
+});
+
+// Story 18.24: the two wallet key replaces state their consequence on the card under the code their
+// tools declare, and every `WALLETKEY.*` sentence the instance writes is a published string, so the
+// instance's wording and the document's are one.
+//
+// Mutation (Rule 19): delete the `CONSEQUENCE_WALLETKEYREPLACERSA` line from `consequenceSentence` -> the
+// first assertion goes red on ''; change one word of a `REASON*` parameter in WalletKeyError.cls -> the
+// last loop goes red naming it.
+test('Story 18.24: the wallet key replaces state their consequence, and every key sentence is published', () => {
+  assert.equal(consequenceSentence(CONSEQUENCE_WALLETKEYREPLACERSA), STRINGS.walletKeyReplaceRsaConsequence);
+  assert.equal(consequenceSentence(CONSEQUENCE_WALLETKEYREPLACESYMMETRIC), STRINGS.walletKeyReplaceSymmetricConsequence);
+  const root = join(uiRoot, '..', 'src', 'OcuPilot');
+  const tool = (name) => readFileSync(join(root, 'Screen', 'Tool', `${name}.cls`), 'utf8');
+  assert.equal(/Parameter CONSEQUENCE = "([^"]+)";/.exec(tool('WalletKeyReplaceRsa'))?.[1], CONSEQUENCE_WALLETKEYREPLACERSA);
+  assert.equal(/Parameter CONSEQUENCE = "([^"]+)";/.exec(tool('WalletKeyReplaceSymmetric'))?.[1], CONSEQUENCE_WALLETKEYREPLACESYMMETRIC);
+  const error = readFileSync(join(root, 'Api', 'WalletKeyError.cls'), 'utf8');
+  const reasons = [...error.matchAll(/Parameter (REASON[A-Z0-9]+) = "([^"]*)";/g)];
+  assert.equal(reasons.length, 18, 'WalletKeyError.cls declares eighteen sentences');
+  const published = new Set(Object.values(STRINGS));
+  for (const [, name, sentence] of reasons) {
+    assert.ok(published.has(sentence), `${name} is a published string: ${sentence}`);
+  }
 });

@@ -1225,6 +1225,7 @@ ClassMethod ReasonForToolCode(pCode As %String) As %String
     If $Extract(pCode, 1, 8) = "LICENSE." Set tReason = ##class(OcuPilot.Api.LicenseError).ReasonFor(pCode)
     If $Extract(pCode, 1, 4) = "ECP." Set tReason = ##class(OcuPilot.Api.EcpError).ReasonFor(pCode)
     If $Extract(pCode, 1, 11) = "ENCRYPTION." Set tReason = ##class(OcuPilot.Api.EncryptionError).ReasonFor(pCode)
+    If $Extract(pCode, 1, 10) = "WALLETKEY." Set tReason = ##class(OcuPilot.Api.WalletKeyError).ReasonFor(pCode)
     If $Extract(pCode, 1, 6) = "DOCDB." Set tReason = ##class(OcuPilot.Api.DocDbError).ReasonFor(pCode)
     If tReason '= "" Quit tReason
     Quit ..#REASONTOOLUNAVAILABLE
@@ -1426,6 +1427,7 @@ ClassMethod ReasonForViolation(pCode As %String) As %String
     If $Extract(pCode, 1, 8) = "LICENSE." Quit ##class(OcuPilot.Api.LicenseError).ReasonFor(pCode)
     If $Extract(pCode, 1, 4) = "ECP." Quit ##class(OcuPilot.Api.EcpError).ReasonFor(pCode)
     If $Extract(pCode, 1, 11) = "ENCRYPTION." Quit ##class(OcuPilot.Api.EncryptionError).ReasonFor(pCode)
+    If $Extract(pCode, 1, 10) = "WALLETKEY." Quit ##class(OcuPilot.Api.WalletKeyError).ReasonFor(pCode)
     Quit ""
 }
 
@@ -2520,7 +2522,7 @@ Parameter REASONWALLETALLOWEDHOSTSSHAPE = "Each allowed host is a name or addres
 /// not change.</p>
 Parameter WALLETTYPEUNSUPPORTED = "WALLET.TYPE.UNSUPPORTED";
 
-Parameter REASONWALLETTYPEUNSUPPORTED = "Only key-value secrets are edited here.";
+Parameter REASONWALLETTYPEUNSUPPORTED = "This secret is not a key-value secret.";
 
 /// <p>Envelope code (AD-39): a device's create or edit broke one or more of the rules
 /// <class>OcuPilot.Area.OsMgmt.DeviceRules</class> applies before the port is touched, or the

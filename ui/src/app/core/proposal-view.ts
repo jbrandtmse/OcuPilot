@@ -317,6 +317,13 @@ export const CONSEQUENCE_ENCRYPTIONNEWKEY = 'ENCRYPTION.KEYFILE.NEWKEY';
 export const CONSEQUENCE_ENCRYPTIONREMOVEKEY = 'ENCRYPTION.KEYFILE.REMOVEKEY';
 
 /**
+ * Story 18.24: replacing an RSA key pair, and a symmetric key, each stated as the Secret form's
+ * typed-name dialog states it.
+ */
+export const CONSEQUENCE_WALLETKEYREPLACERSA = 'WALLETKEY.REPLACE.RSA';
+export const CONSEQUENCE_WALLETKEYREPLACESYMMETRIC = 'WALLETKEY.REPLACE.SYMMETRIC';
+
+/**
  * Story 18.22: activating a key file's keys and deactivating one key, for database keys and for
  * data-element keys, each stated as its screen states it.
  */
@@ -419,6 +426,9 @@ export function consequenceSentence(code: string | undefined): string {
   // Story 18.7: the new key's and the key removal's sentences, each published once.
   if (code === CONSEQUENCE_ENCRYPTIONNEWKEY) return STRINGS.encryptionKeyFileNewKeyConsequence;
   if (code === CONSEQUENCE_ENCRYPTIONREMOVEKEY) return STRINGS.encryptionKeyFileRemoveKeyLoss;
+  // Story 18.24: the two key replaces' sentences, each published once.
+  if (code === CONSEQUENCE_WALLETKEYREPLACERSA) return STRINGS.walletKeyReplaceRsaConsequence;
+  if (code === CONSEQUENCE_WALLETKEYREPLACESYMMETRIC) return STRINGS.walletKeyReplaceSymmetricConsequence;
   // Story 18.22: the two activations' and the two deactivations' sentences, each published once.
   if (code === CONSEQUENCE_ENCRYPTIONKEYACTIVATE) return STRINGS.encryptionKeyActivateConsequence;
   if (code === CONSEQUENCE_ENCRYPTIONKEYDEACTIVATE) return STRINGS.encryptionKeyDeactivateConsequence;

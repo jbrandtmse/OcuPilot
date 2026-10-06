@@ -110,16 +110,22 @@ Method TestTheNameIsComparedExactly()
     Do $$$AssertEquals(tHttp, 404, "and a name with no collection part is absent")
 }
 
-/// <p>A secret of another type reads as its <code>Type</code> alone: the class read is only for a
-/// key-value secret.</p>
-Method TestAnotherTypeAnswersItsTypeAlone()
+/// <p>A symmetric key reads as its metadata alone (Story 18.24): its <code>Type</code>, its
+/// <code>Length</code> and its <code>KeyId</code>, never its key.</p>
+Method TestASymmetricKeyAnswersItsMetadataAlone()
 {
     Set tName = ..Name("ReadSym")
     Do $$$AssertStatusOK($ClassMethod(..#PROBE, "AddSymmetricKey", tName), "a symmetric key is stored")
     Set tSC = ..Read(tName, .tResult, .tHttp, .tFault)
     Do $$$AssertStatusOK(tSC, "the completed read answers")
     If '$IsObject($Get(tResult)) Quit
-    Do $$$AssertEquals(tResult.%ToJSON(), "{""Type"":""%Wallet.SymmetricKey""}", "with its type and nothing else")
+    Do $$$AssertEquals(tResult.%GetTypeOf("Type") _ " " _ tResult.%Get("Type") _ " " _ tResult.%Get("Length") _ " " _ tResult.%GetTypeOf("KeyId"), "string %Wallet.SymmetricKey 16 string", "with its type, length and key id")
+    Set tSize = 0
+    Set tIterator = tResult.%GetIterator()
+    While tIterator.%GetNext(.tKey, .tValue) {
+        Set tSize = tSize + 1
+    }
+    Do $$$AssertEquals(tSize, 3, "and nothing else")
 }
 
 /// <p>AC6: the vendor's <code>PUT</code>, sent through the admin port's wrapper, stores

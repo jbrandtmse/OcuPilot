@@ -2,7 +2,8 @@
 title: 'Story 18.24: RSA and symmetric-key wallet secrets'
 type: 'feature'
 created: '2026-10-06'
-status: 'ready-for-dev'
+status: 'in-progress'
+baseline_revision: '95476bdc23c5a522cf014e22a504ea66121776c7'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -210,16 +211,17 @@ Labels and helpers: "Key-value", "RSA key", "Symmetric key", "Generate a new key
 - `(once, before dev_complete)`, each green with a non-zero count: the full ObjectScript sweep (`cd ui && node tools/ci-runner.mjs --container ocupilot-ci`, one class at a time); `cd ui && npm test && npm run build`; `bash scripts/smoke.sh --container ocupilot-ci --user _SYSTEM --password SYS`; then no `OcuPilotProbe1824` secret or collection, no probe principal, and monitor state 0 (`$SYSTEM.Monitor.Clear()` after a deliberate vendor refusal).
 - `(CI)` the full browser suite, in CI's three `browser-shard` jobs (Rule 29).
 
-**Planned pinning mutations (Rule 19)** (on `ocupilot-ci`; observe red, revert byte-identical, record a `mutation:` line here):
+**Pinning mutations (Rule 19)** (run on `ocupilot-ci` after a reload with the loader; each reverted byte-identical, checked by hash):
 
-- C1: `KeySettings` adds `GetPublic(name).PublicKey` to the answer -> `WalletKeyRead`'s no-material leg.
-- C2: `ArgumentProblem` stops requiring `Length` -> the agent-import leg; the absence fingerprint dropped -> the taken-since leg.
-- C3: the port sends `Length` beside `Secret64` on create -> the AES round-trip leg; the second `PUT` dropped -> the `Length` leg; `PemBlock` re-wrap skipped -> the line-breaks leg.
-- C4: `DESTRUCTIVE` 0 -> the destructive-mint leg; the type check skipped -> the mismatch leg (a `PUT` recorded); the typed-name branch skipped (rebuilt) -> the page spec.
-- C5: each rule dropped in turn (length, source, public, password, mismatch, expiry, base64) -> its refusal leg, a `PUT` recorded.
-- C6: the `*File` refusal dropped -> `WalletKeyRead`'s path leg.
-- C7: a create declaring an extra pair -> `WalletKeyWire`'s pairs leg.
-- C8: a replace key set `true`, and a create key set `false` -> `GovernanceBaseline` and `WalletKeyRead`; `ADVERTISED` 1 on `replacesymmetric` -> the advertised-roster leg.
+- C1: `KeySettings` adds `GetPublic(name).PublicKey` to the answer. mutation: red in `WalletKeyRead` (the exact key set and the no-material scan), 2 of 5.
+- C2: the `generate` mode stops requiring `Length`. mutation: red in `WalletKeyCreate` (`TestTheAgentImportsNothing`, the mint leg of `TestEveryRefusalSendsNothing`). The create's absence fingerprint accepted as a match in `Confirm.FingerprintMatches`. mutation: red in `TestANameTakenSinceTheMintRefusesTheConfirm` (the confirm is sent).
+- C3: `Length` sent beside `Secret64` on the create. mutation: red in `TestAnImportedSymmetricKeyIsStoredAsGiven` (the first body and the stored key's round trip). The second `PUT` dropped. mutation: red in the same test (the two-`PUT` count). `PemBlock`'s re-wrap skipped. mutation: red in `TestEveryImportFormOnTheScreen` (the line-breaks leg).
+- C4: `DESTRUCTIVE` 0. mutation: red in `WalletKeyReplace.TestTheReplaceIsMintedDestructive`. The type check skipped in `WalletKeyReplace.MergeUpdate`. mutation: red in `TestAMovedOrFlippedTargetRefusesTheConfirm...` (the flipped confirm is sent, the mint accepted). The typed-name branch skipped in the page. mutation: red in `wallet-secret-form.page.spec.ts` (the Save-asks-the-typed-name case, a `PUT` goes out first). `WalletSave.Update` stops dispatching to the key replace and `replacersa` enters the baseline `true`. mutation: red in 4 of 5 `WalletKeyReplace` tests.
+- C5: all seven rules dropped (length, source, public, password, mismatch, expiry, base64), applied together. mutation: red in `TestEveryRefusalSendsNothing`, one failing case per rule (the vendor-reaching cases, public, expiry, mismatch and both password, also record a `PUT`).
+- C6: the `*File` refusal dropped in `AdminPort` and `WalletPort`. mutation: red in `WalletKeyRead.TestAServerFileNameIsRefusedBeforeAnyVendorCall`.
+- C7: a create tool declaring `%Admin_Secure:USE`. mutation: red in `WalletKeyWire.TestEachToolRequiresTheFormsPairsAlone` for both create tools.
+- C8: `replacersa` `true` and `creatersa` `false`. mutation: red in `GovernanceBaseline` and in `WalletKeyRead.TestCodesSentencesBaselineAndRosters`. `ADVERTISED` 1 on `replacesymmetric`. mutation: red in the same test (the advertised roster and the agent's resolve).
+- AD-35 (log): the sent body logged by `AdminPort.Fail`. mutation: red in `WalletKeyRead.TestNoSurfaceCarriesKeyMaterial` (the message-log leg, which looks for each block's first base64 line because a log line cuts a long text short).
 
 ## Auto Run Result
 

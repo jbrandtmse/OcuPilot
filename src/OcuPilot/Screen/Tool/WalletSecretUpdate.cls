@@ -83,6 +83,20 @@ ClassMethod ComposedSecrets() As %List
     Quit $ListFromString(..#COMPOSEDSECRETS)
 }
 
+/// <p>The names a confirm may carry (AD-6): the declared secrets this tool composes, which is its value
+/// alone. The list also declares an RSA or symmetric key's material (Story 18.24), which this tool never
+/// sends, so none is open to its confirm.</p>
+ClassMethod ChannelSecretNames(pDescriptor As %String = "", Output pDeclared As %Boolean) As %List
+{
+    Set tDeclared = ..SecretArguments(pDescriptor, .pDeclared)
+    Set tOwn = ..ComposedSecrets()
+    Set tNames = ""
+    For tI = 1:1:$ListLength(tOwn) {
+        If $ListFind(tDeclared, $List(tOwn, tI)) Set tNames = tNames _ $ListBuild($List(tOwn, tI))
+    }
+    Quit tNames
+}
+
 /// <p><parameter>OPTIONALSECRETS</parameter>: a new value is never required on an edit.</p>
 ClassMethod OptionalSecrets() As %List
 {

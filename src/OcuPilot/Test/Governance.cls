@@ -46,6 +46,9 @@ Parameter ECPDISABLED = "osmgmt.ecpdataservers.changestatus,osmgmt.ecpdataserver
 
 /// <p>Story 18.7's five key file writes, Story 18.22's four encryption key writes and Story 18.23's
 /// encryption startup settings' update, which the baseline disables.</p>
+/// <p>Story 18.24's two wallet key replaces, which the baseline disables.</p>
+Parameter WALLETKEYDISABLED = "security.secrets.replacersa,security.secrets.replacesymmetric";
+
 Parameter ENCRYPTIONDISABLED = "security.encryptionkeyfile.create,security.encryptionkeyfile.addkey,security.encryptionkeyfile.removekey,security.encryptionkeyfileadmins.addadministrator,security.encryptionkeyfileadmins.removeadministrator,security.databaseencryption.activate,security.databaseencryption.deactivate,security.dataelementencryption.activate,security.dataelementencryption.deactivate,security.encryptionstartup.update";
 
 /// <p>Story 18.4's eight disk operations, which the baseline disables.</p>
@@ -136,10 +139,11 @@ Method TestTheDefaultEnablesEveryWriteButTheBaselineDisabled()
         If $ListFind($ListFromString(..#LICENSEDISABLED), tKey) Set tExpected = "0|baseline"
         If $ListFind($ListFromString(..#ECPDISABLED), tKey) Set tExpected = "0|baseline"
         If $ListFind($ListFromString(..#ENCRYPTIONDISABLED), tKey) Set tExpected = "0|baseline"
+        If $ListFind($ListFromString(..#WALLETKEYDISABLED), tKey) Set tExpected = "0|baseline"
         If ..Resolved(tKey) '= tExpected Set tWrong = tWrong _ $ListBuild(tKey _ "=" _ ..Resolved(tKey))
     }
     Do $$$AssertTrue(tCount > 0, "there are write keys to resolve (" _ tCount _ ")")
-    Do $$$AssertEquals($ListToString(tWrong, ", "), "", "each resolves enabled by the baseline, the purge, the namespace delete, the database delete, the task import, the eight disk operations, the enable of interoperability, the two document deletes, the two document imports, the license key's activation, the license server delete, the ECP data server status change and delete, the five key file writes, the four encryption key writes and the encryption startup settings' update disabled")
+    Do $$$AssertEquals($ListToString(tWrong, ", "), "", "each resolves enabled by the baseline, the purge, the namespace delete, the database delete, the task import, the eight disk operations, the enable of interoperability, the two document deletes, the two document imports, the license key's activation, the license server delete, the ECP data server status change and delete, the five key file writes, the four encryption key writes, the encryption startup settings' update and the two wallet key replaces disabled")
     Do $$$AssertEquals(..Resolved(..#PURGE), "0|baseline", "the purge's source is the baseline")
 }
 

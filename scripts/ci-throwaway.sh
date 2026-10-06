@@ -260,7 +260,7 @@ services:
       # classes: AgentPickTurn, SqlAgentRead
       # classes: TurnStream
       # classes: WebAppWire
-      # classes: UserCreateWire, RoleWire, ResourceWire, X509Wire, WalletWire, DeviceWire, DeviceWriteGate
+      # classes: UserCreateWire, RoleWire, ResourceWire, X509Wire, WalletWire, WalletKeyWire, DeviceWire, DeviceWriteGate
       # classes: UserSave, UserSignIn, WebAppSave, WebAppWeakening
       # classes: TurnWireFixture, UnexpireScope, UserUpdate, Version, Wire, WireOAuthRead, WireSecurityRead
       # classes: RoleSave, RoleUpdate, ReadBackRoute

@@ -8,6 +8,7 @@ import { entityRefKey } from '../../core/entity-ref';
 import { FormDirty } from '../../core/form-dirty';
 import { SCREENS } from '../../core/screens.generated';
 import {
+  NO_MATERIAL,
   NAME_TAKEN_CODE,
   WALLET_SECRET_FORM_PATH,
   WALLET_SECRET_NAME_PATH,
@@ -46,7 +47,21 @@ const SECRET = {
   editable: true,
 };
 
-const SYMMETRIC = { Name: 'Probe.Sym', Collection: 'Probe', Type: '%Wallet.SymmetricKey', editable: false };
+const OTHER = { Name: 'Probe.Other', Collection: 'Probe', Type: '%Wallet.Other', editable: false };
+
+const RSA = {
+  Name: 'Probe.Rsa',
+  Collection: 'Probe',
+  Type: '%Wallet.RSA',
+  Length: 2048,
+  HasPrivateKey: true,
+  HasCertificate: false,
+  editable: true,
+};
+
+const SYMMETRIC = { Name: 'Probe.Sym', Collection: 'Probe', Type: '%Wallet.SymmetricKey', Length: 16, KeyId: 'ED68F329', editable: true };
+
+const KEY_LENGTHS = { rsa: [2048, 3072, 4096], symmetric: [16, 24, 32] };
 
 const VALUE = 'placeholder value';
 
@@ -255,10 +270,10 @@ describe('the wallet secret form store', () => {
   });
 
   it('a secret of another type opens read-only and cannot save; an absent one cannot save either', async () => {
-    const other = mount(undefined, { kind: 'ok', status: 200, body: { ...RULES, secret: SYMMETRIC } });
+    const other = mount(undefined, { kind: 'ok', status: 200, body: { ...RULES, secret: OTHER } });
     await other.store.open('Probe.Sym');
     expect(other.store.readOnly()).toBe(true);
-    expect(other.store.secret().type).toBe('%Wallet.SymmetricKey');
+    expect(other.store.secret().type).toBe('%Wallet.Other');
     other.store.setUsageBit(1, false);
     other.store.setSecret(VALUE);
     expect(other.store.secretText()).toBe('');
@@ -305,5 +320,90 @@ describe('the wallet secret form store', () => {
   it('the hosts are typed comma-separated and sent as an array, each entry trimmed and empties dropped', () => {
     expect(splitHosts(' a ,, b,')).toEqual(['a', 'b']);
     expect(splitHosts('')).toEqual([]);
+  });
+
+  it('Story 18.24: a create of an RSA key by generation posts its name, type and chosen length, and no material', async () => {
+    const { store, calls, events } = mount();
+    await store.open('', 'Probe');
+    store.setChoice('rsa');
+    expect([store.keyKind(), store.source(), store.keyLength(), store.lengthOptions()]).toEqual(['rsa', 'generate', 2048, [2048, 3072, 4096]]);
+    store.setValue('Name', 'New');
+    store.setKeyLength(4096);
+    expect(await store.save()).toBe(true);
+    await settle();
+    const [write] = writes(calls);
+    expect(write?.method).toBe('POST');
+    // Mutation (Rule 19): send the key-value body for a key choice -> this goes red.
+    expect(JSON.parse(write!.body)).toEqual({ Name: 'Probe.New', Type: '%Wallet.RSA', Length: 4096 });
+    expect(events.map((event) => event.action)).toEqual(['created']);
+  });
+
+  it('Story 18.24: an import posts the material the page handed it once, and the store holds none afterwards', async () => {
+    const { store, calls } = mount();
+    await store.open('', 'Probe');
+    store.setChoice('rsa');
+    store.setSource('import');
+    store.setValue('Name', 'New');
+    const material = { ...NO_MATERIAL, certificate: 'CERT-TEXT', privateKey: 'KEY-TEXT', password: 'pw-text' };
+    expect(await store.save(material)).toBe(true);
+    const [write] = writes(calls);
+    expect(JSON.parse(write!.body)).toEqual({
+      Name: 'Probe.New',
+      Type: '%Wallet.RSA',
+      Certificate: 'CERT-TEXT',
+      PrivateKey: 'KEY-TEXT',
+      Password: 'pw-text',
+    });
+    expect(JSON.stringify(store.secret())).not.toContain('CERT-TEXT');
+
+    const symmetric = mount();
+    await symmetric.store.open('', 'Probe');
+    symmetric.store.setChoice('symmetric');
+    symmetric.store.setSource('import');
+    symmetric.store.setValue('Name', 'Sym');
+    expect(await symmetric.store.save({ ...NO_MATERIAL, secret64: ' QUJD ' })).toBe(true);
+    expect(JSON.parse(writes(symmetric.calls)[0]!.body)).toEqual({ Name: 'Probe.Sym', Type: '%Wallet.SymmetricKey', Secret64: 'QUJD' });
+  });
+
+  it('Story 18.24: an existing key shows its metadata and a replacement puts the length or the material alone', async () => {
+    const rsa = mount(undefined, { kind: 'ok', status: 200, body: { ...RULES, keyLengths: KEY_LENGTHS, secret: RSA } });
+    await rsa.store.open('Probe.Rsa');
+    expect([rsa.store.keyKind(), rsa.store.readOnly(), rsa.store.canSave(), rsa.store.secret().length, rsa.store.secret().hasPrivateKey]).toEqual([
+      'rsa',
+      false,
+      true,
+      2048,
+      true,
+    ]);
+    rsa.store.setKeyLength(3072);
+    expect(await rsa.store.save()).toBe(true);
+    const [put] = writes(rsa.calls);
+    expect(put?.method).toBe('PUT');
+    expect(put?.path).toBe(`${WALLET_SECRET_PATH}/${encodeEntityId('Probe.Rsa')}`);
+    expect(JSON.parse(put!.body)).toEqual({ Length: 3072 });
+
+    const symmetric = mount(undefined, { kind: 'ok', status: 200, body: { ...RULES, keyLengths: KEY_LENGTHS, secret: SYMMETRIC } });
+    await symmetric.store.open('Probe.Sym');
+    expect([symmetric.store.keyKind(), symmetric.store.source(), symmetric.store.secret().keyId]).toEqual(['symmetric', 'import', 'ED68F329']);
+    expect(await symmetric.store.save({ ...NO_MATERIAL, secret64: 'QUJD' })).toBe(true);
+    expect(JSON.parse(writes(symmetric.calls)[0]!.body)).toEqual({ Secret64: 'QUJD' });
+  });
+
+  it('Story 18.24: a refusal lands on the field the instance names, and keeps the material the page holds', async () => {
+    const refusal: JsonResult<unknown> = {
+      kind: 'error',
+      status: 422,
+      code: 'WALLETKEY.VALIDATION',
+      reason: 'The key was refused.',
+      detail: { violations: [{ field: 'PrivateKey', code: 'WALLETKEY.PRIVATEKEY.MISMATCH', reason: 'This private key does not belong to the certificate or public key, or is not an RSA key.' }] },
+    };
+    const { store, events } = mount(refusal);
+    await store.open('', 'Probe');
+    store.setChoice('rsa');
+    store.setSource('import');
+    store.setValue('Name', 'New');
+    expect(await store.save({ ...NO_MATERIAL, certificate: 'C', privateKey: 'K' })).toBe(false);
+    expect(store.violationFor('PrivateKey')).toContain('does not belong');
+    expect(events).toEqual([]);
   });
 });

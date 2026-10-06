@@ -633,6 +633,35 @@ ClassMethod NamesKeyFile(pEndpoint As %String, ByRef pQuery, pBody As %DynamicAb
     Quit tNamed
 }
 
+/// <p>The body members of a <code>Wallet.Secret</code> <code>PUT</code> the vendor reads as a server
+/// file name, comma-separated (AD-21, Story 18.24).</p>
+Parameter WALLETPATHFIELDS = "CertificateFile,PublicKeyFile,PrivateKeyFile";
+
+/// <p>The first member of <var>pBody</var> a <code>Wallet.Secret</code> <code>PUT</code> names that
+/// <parameter>WALLETPATHFIELDS</parameter> lists, compared as the vendor spells it, or <code>""</code>
+/// for any other call. Wallet key material reaches the vendor as content, never as a path: the vendor
+/// reads the named server file.</p>
+ClassMethod WalletPathField(pEndpoint As %String, pType As %String, pBody As %DynamicAbstractObject = "") As %String
+{
+    If (pEndpoint '= "Wallet.Secret") || (pType '= "PUT") Quit ""
+    If '$IsObject(pBody) || 'pBody.%IsA("%Library.DynamicObject") Quit ""
+    Set tFound = ""
+    Set tIterator = pBody.%GetIterator()
+    While tIterator.%GetNext(.tKey, .tValue) {
+        If $ListFind($ListFromString(..#WALLETPATHFIELDS), tKey) Set tFound = tKey Quit
+    }
+    Quit tFound
+}
+
+/// <p>The 400 <code>PORT.FIELD.UNEXPECTED</code> that refuses the wallet body member
+/// <var>pField</var>, which names a server file, on its own field; no vendor call is made.</p>
+ClassMethod RefuseWalletPath(pField As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set tDetail = {"violations": []}
+    Do tDetail.%Get("violations").%Push({"field": (pField), "code": (##class(OcuPilot.Api.Error).#PORTFIELDUNEXPECTED), "reason": (##class(OcuPilot.Api.Error).#REASONPORTFIELDUNEXPECTED)})
+    Quit ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTFIELDUNEXPECTED, ##class(OcuPilot.Api.Error).#REASONPORTFIELDUNEXPECTED, .pHttpStatus, .pFault, tDetail)
+}
+
 /// <p>The <parameter>MUTATINGTYPES</parameter> writes whose vendor answer does not say whether the
 /// sent values were stored, as comma-separated <code>&lt;endpoint&gt;/&lt;type&gt;</code> entries.
 /// After a 2xx for a listed pair, <method>Invoke</method> re-issues the endpoint's <code>GET</code>
@@ -1170,6 +1199,12 @@ ClassMethod InvokeLocated(pEndpoint As %String, pType As %String, ByRef pQuery, 
         ; AD-21's sixth case (Story 18.7): a key file reaches the vendor only as a path a port resolved.
         If '..#PATHRESOLVED && ..NamesKeyFile(pEndpoint, .pQuery, pBody) {
             Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PATHNAME, ##class(OcuPilot.Api.Error).#REASONPATHNAME, .pHttpStatus, .pFault)
+            Quit
+        }
+        ; AD-21's ninth case (Story 18.24): wallet key material is content, never a path.
+        Set tPathField = ..WalletPathField(pEndpoint, pType, pBody)
+        If tPathField '= "" {
+            Set tSC = ..RefuseWalletPath(tPathField, .pHttpStatus, .pFault)
             Quit
         }
         Set tVerifySC = ..VerifyInstance(.tVersion, .tDetail)
@@ -2079,7 +2114,8 @@ ClassMethod IsContentCompleted(pEndpoint As %String, pSuffix As %String) As %Boo
 
 /// <p>Whether <var>pText</var> is exactly one PEM block of kind <var>pKind</var> -- <code>cert</code>
 /// for a <code>CERTIFICATE</code> block, <code>key</code> for a <code>PRIVATE KEY</code>,
-/// <code>RSA PRIVATE KEY</code> or <code>ENCRYPTED PRIVATE KEY</code> block -- of at most
+/// <code>RSA PRIVATE KEY</code> or <code>ENCRYPTED PRIVATE KEY</code> block, <code>public</code> for a
+/// <code>PUBLIC KEY</code> or <code>RSA PUBLIC KEY</code> block -- of at most
 /// <parameter>PEMMAXLENGTH</parameter> characters. On success <var>pCanonical</var> is the block
 /// rewritten with line feeds only and its base64 body wrapped at 64 columns, which is the shape the
 /// vendor's key check reads; on refusal it is <code>""</code>.</p>
@@ -2095,7 +2131,7 @@ ClassMethod PemBlock(pText As %String, pKind As %String, Output pCanonical As %S
         Set tText = $ZStrip($Translate(pText, $Char(13), ""), "<>WC")
         If (tText = "") || ($Length(tText) > ..#PEMMAXLENGTH) Quit
         If ($Length(tText, "-----BEGIN ") '= 2) || ($Length(tText, "-----END ") '= 2) Quit
-        Set tLabels = $Select(pKind = "cert": $ListBuild("CERTIFICATE"), pKind = "key": $ListBuild("PRIVATE KEY", "RSA PRIVATE KEY", "ENCRYPTED PRIVATE KEY"), 1: "")
+        Set tLabels = $Select(pKind = "cert": $ListBuild("CERTIFICATE"), pKind = "key": $ListBuild("PRIVATE KEY", "RSA PRIVATE KEY", "ENCRYPTED PRIVATE KEY"), pKind = "public": $ListBuild("PUBLIC KEY", "RSA PUBLIC KEY"), 1: "")
         Set tBegin = ""
         Set tEnd = ""
         For tI = 1:1:$ListLength(tLabels) {

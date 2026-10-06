@@ -20270,7 +20270,12 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "context": {
       "fields": [],
       "secretFields": [
-        "Secret"
+        "Secret",
+        "Certificate",
+        "PublicKey",
+        "PrivateKey",
+        "Password",
+        "Secret64"
       ]
     },
     "secretArguments": [],
@@ -20360,7 +20365,12 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "secretFields": []
     },
     "secretArguments": [
-      "Secret"
+      "Secret",
+      "Certificate",
+      "PublicKey",
+      "PrivateKey",
+      "Password",
+      "Secret64"
     ],
     "emptyStateKey": "walletSecretListEmpty",
     "commandAliases": [],

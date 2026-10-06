@@ -212,6 +212,10 @@ XData Coverage
 <tool name="security.secrets.create" class="OcuPilot.Test.WalletSecretCreate" method="TestTheSchemaAdvertisesNoValue"/>
 <tool name="security.secrets.update" class="OcuPilot.Test.WalletSecretUpdate" method="TestTheEditIsAMergeWriteOverTheThreeSettings"/>
 <tool name="security.secrets.delete" class="OcuPilot.Test.WalletSecretDelete" method="TestTheDeleteIsAnActionWriteOverTheSecret"/>
+<tool name="security.secrets.creatersa" class="OcuPilot.Test.WalletKeyCreate" method="TestTheSchemasCarryNoMaterial" corpus="one schema test walks both create tools over their closed lengths and secret material"/>
+<tool name="security.secrets.createsymmetric" class="OcuPilot.Test.WalletKeyCreate" method="TestTheSchemasCarryNoMaterial" corpus="one schema test walks both create tools over their closed lengths and secret material"/>
+<tool name="security.secrets.replacersa" class="OcuPilot.Test.WalletKeyReplace" method="TestTheReplaceIsMintedDestructive" corpus="one mint test pins both replace tools, the symmetric one being the person's alone"/>
+<tool name="security.secrets.replacesymmetric" class="OcuPilot.Test.WalletKeyReplace" method="TestTheReplaceIsMintedDestructive" corpus="one mint test pins both replace tools, the symmetric one being the person's alone"/>
 <tool name="security.ssl.create" class="OcuPilot.Test.SslUpdate" method="TestTheToolsDeclareTheirFieldsAndShapes" corpus="the create, the change and the delete are asserted together"/>
 <tool name="security.ssl.update" class="OcuPilot.Test.SslUpdate" method="TestTheToolsDeclareTheirFieldsAndShapes" corpus="the create, the change and the delete are asserted together"/>
 <tool name="security.ssl.delete" class="OcuPilot.Test.SslUpdate" method="TestTheToolsDeclareTheirFieldsAndShapes" corpus="the create, the change and the delete are asserted together"/>

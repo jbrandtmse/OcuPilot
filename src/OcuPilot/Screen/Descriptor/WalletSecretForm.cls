@@ -15,7 +15,8 @@
 /// <p><b>No classic page exists</b> for the wallet, so <code>classicPage</code> is empty (AD-44). It
 /// declares no exemption and does not refresh (AD-43).</p>
 /// <p><b>The value is secret-typed in its context</b> (AD-24, AD-35), so a screen-context capture of
-/// this form never carries a value being typed.</p>
+/// this form never carries a value being typed. An RSA or symmetric key's material members are
+/// secret-typed the same way (Story 18.24).</p>
 Class OcuPilot.Screen.Descriptor.WalletSecretForm Extends OcuPilot.Screen.Descriptor.Base
 {
 
@@ -39,7 +40,7 @@ XData Declaration
   "id": {"kind": "single", "parts": []},
   "primaryAction": {"id": "", "selfProtection": ""},
   "rowActions": [],
-  "context": {"fields": [], "secretFields": ["Secret"]},
+  "context": {"fields": [], "secretFields": ["Secret", "Certificate", "PublicKey", "PrivateKey", "Password", "Secret64"]},
   "secretArguments": [],
   "fingerprintExcludes": [],
   "emptyStateKey": "",

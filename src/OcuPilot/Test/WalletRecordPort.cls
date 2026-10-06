@@ -9,13 +9,32 @@ Class OcuPilot.Test.WalletRecordPort Extends OcuPilot.Port.WalletPort
 
 ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody As %DynamicAbstractObject = "", Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status
 {
-    If ..IsMutating(pEndpoint, pType) {
-        Set tIndex = $Increment(^||OcuPilotWalletRecord)
-        Set ^||OcuPilotWalletRecord(tIndex, "type") = pType
-        Set ^||OcuPilotWalletRecord(tIndex, "name") = $Get(pQuery("name"))
-        Set ^||OcuPilotWalletRecord(tIndex, "body") = $Select($IsObject(pBody): pBody.%ToJSON(), 1: "")
-    }
+    ; A key write is recorded by <method>Send</method>, once per vendor call it makes.
+    If ..IsMutating(pEndpoint, pType) && (..KeyTypeOf(.pQuery, pBody) = "") Do ..Record(pType, .pQuery, pBody)
     Quit ##super(pEndpoint, pType, .pQuery, pBody, .pResult, .pHttpStatus, .pFault)
+}
+
+/// <p>Every vendor call a key write makes, recorded before it is sent.</p>
+ClassMethod Send(pEndpoint As %String, pType As %String, ByRef pQuery, pBody As %DynamicAbstractObject = "", Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status
+{
+    Do ..Record(pType, .pQuery, pBody)
+    Quit ##super(pEndpoint, pType, .pQuery, pBody, .pResult, .pHttpStatus, .pFault)
+}
+
+/// <p>Record one mutating call.</p>
+ClassMethod Record(pType As %String, ByRef pQuery, pBody As %DynamicAbstractObject = "") [ Private ]
+{
+    Set tIndex = $Increment(^||OcuPilotWalletRecord)
+    Set ^||OcuPilotWalletRecord(tIndex, "type") = pType
+    Set ^||OcuPilotWalletRecord(tIndex, "name") = $Get(pQuery("name"))
+    Set ^||OcuPilotWalletRecord(tIndex, "body") = $Select($IsObject(pBody): pBody.%ToJSON(), 1: "")
+}
+
+/// <p>The body recorded as call number <var>pIndex</var> since <method>Clear</method>, as JSON text, or
+/// <code>""</code>.</p>
+ClassMethod WriteBodyAt(pIndex As %Integer) As %String
+{
+    Quit $Get(^||OcuPilotWalletRecord(pIndex, "body"))
 }
 
 /// <p>Forget every recorded call.</p>

@@ -124,8 +124,8 @@ Method OnAfterOneTest() As %Status
 /// the edit each answer exactly one JSON envelope over a real HTTP request; a create naming nothing
 /// is refused on its own envelope code, and an edit or a form read of a name the instance does not
 /// hold is 404 with its own, as is a form read of a collection it does not hold; a form read of a
-/// symmetric key answers its name and type alone, not editable.</p>
-/// <p>Mutation (Rule 19): answer <code>editable</code> true whatever the type in
+/// symmetric key answers its name, type and metadata and no key, editable.</p>
+/// <p>Mutation (Rule 19): answer <code>editable</code> false for a key type in
 /// <method>OcuPilot.Area.Security.WalletRules.HandleForm</method> -> the symmetric-key leg goes red.</p>
 Method TestEachRouteAnswersOneJsonEnvelopeOverTheWire()
 {
@@ -139,14 +139,14 @@ Method TestEachRouteAnswersOneJsonEnvelopeOverTheWire()
         Do $$$AssertEquals((tBody [ "}{"), 0, tPath _ ": exactly one envelope")
     }
     Set tSC = ##class(OcuPilot.Test.Http).MakeRequest("GET", ..#FORMPATH, .tStatus, .tBody)
-    If $IsObject($Get(tBody)) Do $$$AssertEquals(tBody.%Get("rules").%Size(), $ListLength(##class(OcuPilot.Api.Error).WalletViolationCodes()), "the form read carries one rule per wallet code")
+    If $IsObject($Get(tBody)) Do $$$AssertEquals(tBody.%Get("rules").%Size(), $ListLength(##class(OcuPilot.Api.Error).WalletViolationCodes()) + $ListLength(##class(OcuPilot.Api.WalletKeyError).ViolationCodes()), "the form read carries one rule per wallet code and one per key code")
     Set tSC = ##class(OcuPilot.Test.Http).MakeRequest("GET", ..#NAMEPATH _ "?name=" _ ..Name("WireRoute"), .tStatus, .tBody)
     Do $$$AssertEquals($Select($IsObject($Get(tBody)): tBody.%Get("taken"), 1: ""), 0, "the look-up answers a free name as not taken")
     Set tSym = ..Name("WireSym")
     Do $$$AssertStatusOK($ClassMethod(..#PROBE, "AddSymmetricKey", tSym), "a symmetric key is stored")
     Set tSC = ##class(OcuPilot.Test.Http).MakeRequest("GET", ..#FORMPATH _ "?name=" _ tSym, .tStatus, .tBody)
     Set tSecret = $Select($IsObject($Get(tBody)): tBody.%Get("secret"), 1: "")
-    Do $$$AssertEquals($Select($IsObject(tSecret): tSecret.%ToJSON(), 1: ""), "{""Name"":""" _ tSym _ """,""Collection"":""" _ ..Collection() _ """,""Type"":""%Wallet.SymmetricKey"",""editable"":false}", "the form read of a symmetric key answers its name and type alone, not editable")
+    Do $$$AssertEquals($Select($IsObject(tSecret): tSecret.%ToJSON(), 1: ""), "{""Name"":""" _ tSym _ """,""Collection"":""" _ ..Collection() _ """,""Type"":""%Wallet.SymmetricKey"",""Length"":16,""KeyId"":""" _ ##class(OcuPilot.Test.WalletKeyProbe).Metadata(tSym).%Get("KeyId") _ """,""editable"":true}", "the form read of a symmetric key answers its metadata and no key, editable by replacement")
 
     Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("POST", tBase _ ..#CREATEPATH, tUser, tPassword, .tStatus, .tBody, .tHeaders, "{}", "application/json")
     Do $$$AssertEquals(tStatus, 422, "a create naming nothing is refused at 422")

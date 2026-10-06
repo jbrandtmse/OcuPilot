@@ -76,7 +76,7 @@ Method TestTheSchemaAdvertisesNoValue()
     Do $$$AssertEquals(..Sorted($ClassMethod(..#TOOL, "SettableFields")), ..Sorted($ClassMethod(..#SET, "PermittedCreateFields", "wallet-secret")), "the settable set is the prohibited set's reviewed create list")
     Do $$$AssertEquals($ClassMethod(..#TOOL, "ReadType") _ " " _ $ClassMethod(..#TOOL, "WriteType") _ " " _ $ClassMethod(..#TOOL, "PortClass"), "GET PUT OcuPilot.Port.WalletPort", "read and written through the wallet port")
     Do $$$AssertEquals($ClassMethod(..#TOOL, "Creates") _ " " _ $ClassMethod(..#TOOL, "ChangeAction"), "1 created", "guarded as a create and publishing created (AD-54)")
-    Do $$$AssertEquals($ListToString($ClassMethod(..#LIST, "SecretArguments")), "Secret", "the list declares the value secret")
+    Do $$$AssertEquals($ListToString($ClassMethod(..#LIST, "SecretArguments")), "Secret,Certificate,PublicKey,PrivateKey,Password,Secret64", "the list declares the value and the key material secret")
     Do $$$AssertEquals($ListToString($ClassMethod(..#TOOL, "ComposedSecrets")), "Secret", "and the create composes it")
     Set tPayload = {}
     Do $ClassMethod(..#TOOL, "DerivedFields", tPayload)
@@ -306,7 +306,7 @@ Method TestTheFormDescriptorIsBuiltUnlistedAndCarriesTheListsOwnPairs()
     Set tSC = $ClassMethod(tForm, "DeclarationJson", .tFormDeclaration)
     Do $$$AssertStatusOK(tSC, "the form's declaration reads")
     If $IsObject($Get(tFormDeclaration)) {
-        Do $$$AssertEquals(tFormDeclaration.%Get("context").%Get("secretFields").%ToJSON(), "[""Secret""]", "its context never carries a value being typed")
+        Do $$$AssertEquals(tFormDeclaration.%Get("context").%Get("secretFields").%ToJSON(), "[""Secret"",""Certificate"",""PublicKey"",""PrivateKey"",""Password"",""Secret64""]", "its context never carries a value or key material being typed")
         Do $$$AssertEquals(tFormDeclaration.%Get("classicPage"), "", "and it names no classic page")
     }
     Set tCodes = ##class(OcuPilot.Api.Error).WalletViolationCodes()

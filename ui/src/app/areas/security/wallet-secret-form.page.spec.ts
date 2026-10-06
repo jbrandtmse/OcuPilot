@@ -32,7 +32,21 @@ const SECRET = {
   editable: true,
 };
 
-const SYMMETRIC = { Name: 'Probe.Sym', Collection: 'Probe', Type: '%Wallet.SymmetricKey', editable: false };
+const OTHER = { Name: 'Probe.Other', Collection: 'Probe', Type: '%Wallet.Other', editable: false };
+
+const RSA = {
+  Name: 'Probe.Rsa',
+  Collection: 'Probe',
+  Type: '%Wallet.RSA',
+  Length: 2048,
+  HasPrivateKey: true,
+  HasCertificate: false,
+  editable: true,
+};
+
+const SYMMETRIC = { Name: 'Probe.Sym', Collection: 'Probe', Type: '%Wallet.SymmetricKey', Length: 16, KeyId: 'ED68F329', editable: true };
+
+const KEY_RULES = { ...RULES, keyLengths: { rsa: [2048, 3072, 4096], symmetric: [16, 24, 32] } };
 
 const planted: HTMLElement[] = [];
 
@@ -44,12 +58,18 @@ async function settle(fixture: ComponentFixture<unknown>): Promise<void> {
   }
 }
 
+const sent: { path: string; method: string; body: string }[] = [];
+
 async function mount(url = '/security/wallet/secrets/edit?collection=Probe', secret: object = SECRET) {
   TestBed.resetTestingModule();
+  sent.length = 0;
   const api = {
-    requestJson: async <T,>(path: string, init: { method?: string } = {}): Promise<JsonResult<T>> => {
-      if ((init.method ?? 'GET') !== 'GET') return { kind: 'ok', status: 201, body: { name: 'Probe.New' } } as JsonResult<T>;
-      const body = path.startsWith(`${WALLET_SECRET_FORM_PATH}?name=`) ? { ...RULES, secret } : { ...RULES, collection: 'Probe' };
+    requestJson: async <T,>(path: string, init: { method?: string; body?: string } = {}): Promise<JsonResult<T>> => {
+      if ((init.method ?? 'GET') !== 'GET') {
+        sent.push({ path, method: init.method ?? '', body: init.body ?? '' });
+        return { kind: 'ok', status: 201, body: { name: 'Probe.New' } } as JsonResult<T>;
+      }
+      const body = path.startsWith(`${WALLET_SECRET_FORM_PATH}?name=`) ? { ...KEY_RULES, secret } : { ...KEY_RULES, collection: 'Probe' };
       return { kind: 'ok', status: 200, body } as unknown as JsonResult<T>;
     },
   };
@@ -91,11 +111,12 @@ afterEach(() => {
 });
 
 describe('the wallet secret form', () => {
-  it('a create takes the collection, the name, the value, the four uses, the TLS flag and the allowed hosts, in that order', async () => {
+  it('a create takes the collection, the name, the type, the value, the four uses, the TLS flag and the allowed hosts, in that order', async () => {
     const { host } = await mount();
     expect(labels(host)).toEqual([
       STRINGS.walletFieldCollection,
       STRINGS.tableColumnName,
+      STRINGS.tableColumnType,
       STRINGS.errorLogColumnValue,
       STRINGS.walletFieldUsage,
       STRINGS.walletUsageHttp,
@@ -156,12 +177,11 @@ describe('the wallet secret form', () => {
     expect((host.querySelector('#ocu-wallet-AllowedHosts') as HTMLInputElement).value).toBe('h');
   });
 
-  it('the Another type row: a symmetric key opens read-only, names its type, says where it is managed, and cannot save', async () => {
-    const { host } = await mount('/security/wallet/secrets/edit/Probe.Sym', SYMMETRIC);
+  it('the Another type row: a secret of another type opens read-only, names its type, says it is not a key-value secret, and cannot save', async () => {
+    const { host } = await mount('/security/wallet/secrets/edit/Probe.Other', OTHER);
     expect(labels(host)).toEqual([STRINGS.tableColumnName, STRINGS.tableColumnType]);
-    expect((host.querySelector('#ocu-wallet-Type') as HTMLInputElement).value).toBe('%Wallet.SymmetricKey');
-    expect(host.textContent).toContain(STRINGS.walletTypeReadOnly);
-    expect(host.textContent).toContain(STRINGS.walletTypeElsewhere);
+    expect((host.querySelector('#ocu-wallet-Type') as HTMLInputElement).value).toBe('%Wallet.Other');
+    expect(host.textContent).toContain(STRINGS.walletTypeNotKeyValue);
     expect(host.querySelector('#ocu-wallet-Secret')).toBeNull();
     const save = host.querySelector('.ocu-form-bar-actions button.ocu-button-primary') as HTMLButtonElement;
     expect(save.getAttribute('aria-disabled')).toBe('true');
@@ -186,5 +206,82 @@ describe('the wallet secret form', () => {
     expect(await asked).toBe(false);
     expect(formDirty.dirty()).toBe(true);
     expect(host.querySelector('[role="dialog"]')).toBeNull();
+  });
+
+  it('Story 18.24: a create chooses the type, and an RSA import takes its PEM fields and masked secrets', async () => {
+    const { fixture, host } = await mount();
+    const choose = host.querySelector('#ocu-wallet-Type') as HTMLSelectElement;
+    expect([...choose.options].map((option) => option.textContent?.trim())).toEqual([
+      STRINGS.walletTypeKeyValue,
+      STRINGS.walletTypeRsa,
+      STRINGS.walletTypeSymmetric,
+    ]);
+    choose.value = 'rsa';
+    choose.dispatchEvent(new Event('change'));
+    await settle(fixture);
+    expect(host.querySelector('#ocu-wallet-Secret')).toBeNull();
+    expect((host.querySelector('#ocu-wallet-Length') as HTMLSelectElement).options.length).toBe(3);
+    expect(host.textContent).toContain(STRINGS.walletGenerateHelp);
+    expect(host.textContent).toContain(STRINGS.walletKeyWriteOnly);
+
+    (host.querySelector('#ocu-wallet-SourceImport') as HTMLInputElement).click();
+    await settle(fixture);
+    expect(labels(host)).toContain(STRINGS.x509FieldCertificate);
+    expect(labels(host)).toContain(STRINGS.walletFieldPublicKey);
+    expect((host.querySelector('#ocu-wallet-PrivateKey') as HTMLInputElement).getAttribute('type')).toBe('password');
+    expect((host.querySelector('#ocu-wallet-Password') as HTMLInputElement).getAttribute('type')).toBe('password');
+    expect(host.querySelectorAll('textarea').length).toBe(2);
+    expect(host.textContent).toContain(STRINGS.x509LoadFromFile);
+  });
+
+  it('Story 18.24: a created key sends its material once, and no key text is in the DOM after the save', async () => {
+    const { fixture, host, store } = await mount();
+    const choose = host.querySelector('#ocu-wallet-Type') as HTMLSelectElement;
+    choose.value = 'symmetric';
+    choose.dispatchEvent(new Event('change'));
+    await settle(fixture);
+    (host.querySelector('#ocu-wallet-SourceImport') as HTMLInputElement).click();
+    await settle(fixture);
+    type(fixture, host, 'ocu-wallet-Name', 'New');
+    type(fixture, host, 'ocu-wallet-Secret64', 'QUJDREVGR0hJSktMTU5PUA==');
+    expect(store.dirty()).toBe(true);
+    (host.querySelector('.ocu-form-bar-actions button.ocu-button-primary') as HTMLButtonElement).click();
+    await settle(fixture);
+    // Mutation (Rule 19): skip `clearMaterial()` after an accepted save -> the key stays in the input.
+    expect(sent.map((call) => call.method)).toEqual(['POST']);
+    expect(JSON.parse(sent[0]!.body)).toEqual({ Name: 'Probe.New', Type: '%Wallet.SymmetricKey', Secret64: 'QUJDREVGR0hJSktMTU5PUA==' });
+    expect(host.innerHTML).not.toContain('QUJDREVGR0hJSktMTU5PUA');
+    expect(host.textContent).not.toContain('QUJDREVGR0hJSktMTU5PUA');
+  });
+
+  it('Story 18.24: an RSA key opens as its metadata and a Replace the key section, and a Save asks the typed name first', async () => {
+    const { fixture, host } = await mount('/security/wallet/secrets/edit/Probe.Rsa', RSA);
+    expect((host.querySelector('#ocu-wallet-Type') as HTMLInputElement).value).toBe('%Wallet.RSA');
+    expect((host.querySelector('#ocu-wallet-Length') as HTMLSelectElement | HTMLInputElement) !== null).toBe(true);
+    expect((host.querySelector('#ocu-wallet-HasPrivateKey') as HTMLInputElement).value).toBe(STRINGS.tableStatusYes);
+    expect((host.querySelector('#ocu-wallet-HasCertificate') as HTMLInputElement).value).toBe(STRINGS.tableStatusNo);
+    expect(host.querySelector('legend')?.textContent?.trim()).toBe(STRINGS.walletReplaceKey);
+    (host.querySelector('.ocu-form-bar-actions button.ocu-button-primary') as HTMLButtonElement).click();
+    await settle(fixture);
+    // Mutation (Rule 19): send the PUT without opening the typed-name dialog -> red.
+    expect(sent).toEqual([]);
+    const dialog = host.querySelector('[role="dialog"]') as HTMLElement;
+    expect(dialog.textContent).toContain(STRINGS.walletKeyReplaceRsaConsequence);
+    const field = dialog.querySelector('input.ocu-typed-name-field') as HTMLInputElement;
+    field.value = 'Probe.Rsa';
+    field.dispatchEvent(new Event('input'));
+    await settle(fixture);
+    (dialog.querySelector('button.ocu-button-destructive') as HTMLButtonElement).click();
+    await settle(fixture);
+    expect(sent.map((call) => call.method)).toEqual(['PUT']);
+    expect(JSON.parse(sent[0]!.body)).toEqual({ Length: 2048 });
+  });
+
+  it('Story 18.24: a symmetric key shows its key id and offers only an import to replace it', async () => {
+    const { host } = await mount('/security/wallet/secrets/edit/Probe.Sym', SYMMETRIC);
+    expect((host.querySelector('#ocu-wallet-KeyId') as HTMLInputElement).value).toBe('ED68F329');
+    expect(host.querySelector('#ocu-wallet-SourceGenerate')).toBeNull();
+    expect(host.querySelector('#ocu-wallet-Secret64')).not.toBeNull();
+    expect(host.textContent).toContain(STRINGS.walletFieldKeyBase64);
   });
 });

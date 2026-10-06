@@ -18,12 +18,24 @@ import { savedLine } from '../../core/read-back';
 import { STRINGS } from '../../core/strings';
 import { STATE_CONFLICT_CODE, type Violation } from '../../core/violations';
 import { Dialog } from '../../shell/dialog';
+import { TypedNameDialog } from '../../shell/typed-name-dialog';
 import {
   ALLOWED_HOSTS_FIELD,
+  CERTIFICATE_FIELD,
+  type KeyChoice,
+  type KeyMaterial,
+  type KeySource,
+  LENGTH_FIELD,
   NAME_FIELD,
+  NO_MATERIAL,
+  PASSWORD_FIELD,
+  PRIVATE_KEY_FIELD,
+  PUBLIC_KEY_FIELD,
   REQUIRE_TLS_FIELD,
+  SECRET64_FIELD,
   SECRET_FIELD,
   type SecretView,
+  TYPE_FIELD,
   USAGE_FIELD,
   WalletSecretForm,
 } from './wallet-secret-form.store';
@@ -48,6 +60,26 @@ const USES: readonly { readonly bit: number; readonly label: string }[] = [
   { bit: 8, label: STRINGS.walletUsageCustom },
 ];
 
+/** The three things a create stores, in the order the Type choice lists them. */
+const CHOICES: readonly { readonly value: KeyChoice; readonly label: string }[] = [
+  { value: 'keyvalue', label: STRINGS.walletTypeKeyValue },
+  { value: 'rsa', label: STRINGS.walletTypeRsa },
+  { value: 'symmetric', label: STRINGS.walletTypeSymmetric },
+];
+
+/** What a key length reads as, by its value: bits for RSA, bytes with the AES name for symmetric. */
+const LENGTH_LABELS: Readonly<Record<string, string>> = {
+  'rsa:2048': STRINGS.walletKeyBits2048,
+  'rsa:3072': STRINGS.walletKeyBits3072,
+  'rsa:4096': STRINGS.walletKeyBits4096,
+  'symmetric:16': STRINGS.walletKeyBytes16,
+  'symmetric:24': STRINGS.walletKeyBytes24,
+  'symmetric:32': STRINGS.walletKeyBytes32,
+};
+
+/** The key fields that take a PEM file, each with the control id it fills. */
+const PEM_FIELDS: readonly string[] = [CERTIFICATE_FIELD, PUBLIC_KEY_FIELD, PRIVATE_KEY_FIELD];
+
 /** One field, resolved for drawing: its control id, its refusal and its described-by wiring. */
 interface FieldView {
   readonly id: string;
@@ -70,8 +102,15 @@ interface FieldView {
  * labelled show/hide toggle whose state is this page's alone. Once a value is stored the field is
  * captioned that a new value replaces it, and on an edit it is optional.
  *
- * **A secret of another type opens read-only**: its name, its type and two sentences saying this form
- * edits only key-value secrets and where the others are managed, with Save `aria-disabled`.
+ * **A secret of another type opens read-only**: its name, its type and one sentence saying it is not a
+ * key-value secret, with Save `aria-disabled`.
+ *
+ * **An RSA or symmetric key is created and replaced here** (Story 18.24). A create chooses the type, then
+ * generates the key from a length or imports it; an existing key shows its metadata, read-only, and a
+ * Replace the key section whose Save opens the typed-name dialog before anything is sent. **The key
+ * material is this page's alone** (AD-35, AD-56): masked inputs bound to signals that are emptied on an
+ * accepted Save, when a choice drops them and when the page is destroyed, handed to the store once for
+ * the request and never read back by any read.
  *
  * It composes no payload and authors no field sentence; the unsaved-changes guard is the `form-page`
  * route guard, answered here. Every control-flow condition is a paren-free member reference, for the
@@ -80,7 +119,7 @@ interface FieldView {
 @Component({
   selector: 'app-wallet-secret-form-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [Dialog],
+  imports: [Dialog, TypedNameDialog],
   template: `<section class="ocu-form-page">
     @if (hasSummary) {
       <div #summary class="ocu-banner ocu-form-summary" role="alert" tabindex="-1">
@@ -110,8 +149,7 @@ interface FieldView {
         <label class="ocu-field-label" [attr.for]="readId('Type')">{{ STRINGS.tableColumnType }}</label>
         <input class="ocu-field-input" type="text" readonly [id]="readId('Type')" [value]="secret.type" />
       </div>
-      <p class="ocu-field-caption">{{ STRINGS.walletTypeReadOnly }}</p>
-      <p class="ocu-field-caption">{{ STRINGS.walletTypeElsewhere }}</p>
+      <p class="ocu-field-caption">{{ STRINGS.walletTypeNotKeyValue }}</p>
     </div>
     } @else {
     <p class="ocu-form-legend">{{ STRINGS.formRequiredFieldsLegend }}</p>
@@ -145,6 +183,222 @@ interface FieldView {
         }
       </div>
 
+      @if (creating) {
+      <div class="ocu-field">
+        <label class="ocu-field-label" [attr.for]="typeField.id">{{ STRINGS.tableColumnType }}</label>
+        <div class="ocu-field-control">
+          <select
+            class="ocu-field-input"
+            [id]="typeField.id"
+            [attr.aria-invalid]="typeField.invalid"
+            [attr.aria-describedby]="typeField.describedBy"
+            (change)="onChoice($event)"
+          >
+            @for (option of choices; track option.value) {
+              <option [value]="option.value" [selected]="option.value === choiceValue">{{ option.label }}</option>
+            }
+          </select>
+        </div>
+        @if (typeField.invalid) {
+          <p class="ocu-form-error" [id]="typeField.id + '-reason'">{{ typeField.reason }}</p>
+        }
+      </div>
+      } @else {
+      @if (isKey) {
+      <div class="ocu-field">
+        <label class="ocu-field-label" [attr.for]="readId('Type')">{{ STRINGS.tableColumnType }}</label>
+        <input class="ocu-field-input" type="text" readonly [id]="readId('Type')" [value]="secret.type" />
+      </div>
+      <div class="ocu-field">
+        <label class="ocu-field-label" [attr.for]="readId('KeyLength')">{{ STRINGS.walletFieldKeyLength }}</label>
+        <input class="ocu-field-input" type="text" readonly [id]="readId('KeyLength')" [value]="lengthText" />
+      </div>
+      @if (isRsa) {
+      <div class="ocu-field">
+        <label class="ocu-field-label" [attr.for]="readId('HasPrivateKey')">{{ STRINGS.x509FieldHasPrivateKey }}</label>
+        <input class="ocu-field-input" type="text" readonly [id]="readId('HasPrivateKey')" [value]="yesNo(secret.hasPrivateKey)" />
+      </div>
+      <div class="ocu-field">
+        <label class="ocu-field-label" [attr.for]="readId('HasCertificate')">{{ STRINGS.walletFieldHasCertificate }}</label>
+        <input class="ocu-field-input" type="text" readonly [id]="readId('HasCertificate')" [value]="yesNo(secret.hasCertificate)" />
+      </div>
+      } @else {
+      <div class="ocu-field">
+        <label class="ocu-field-label" [attr.for]="readId('KeyId')">{{ STRINGS.encryptionKeyFileColumnId }}</label>
+        <input class="ocu-field-input" type="text" readonly [id]="readId('KeyId')" [value]="secret.keyId" />
+      </div>
+      }
+      }
+      }
+
+      @if (isKey) {
+      <fieldset class="ocu-field ocu-wallet-key" id="ocu-wallet-Source" tabindex="-1" [attr.aria-describedby]="lengthField.describedBy">
+        <legend class="ocu-field-label">{{ keyLegend }}</legend>
+        @if (showSourceChoice) {
+          <label class="ocu-field-checkbox">
+            <input type="radio" name="ocu-wallet-source" [id]="readId('SourceGenerate')" [checked]="sourceValue === 'generate'" (change)="onSource('generate')" />
+            <span>{{ STRINGS.walletSourceGenerate }}</span>
+          </label>
+          <label class="ocu-field-checkbox">
+            <input type="radio" name="ocu-wallet-source" [id]="readId('SourceImport')" [checked]="sourceValue === 'import'" (change)="onSource('import')" />
+            <span>{{ STRINGS.walletSourceImport }}</span>
+          </label>
+        }
+        @if (generating) {
+          <div class="ocu-field">
+            <label class="ocu-field-label" [attr.for]="lengthField.id">{{ STRINGS.walletFieldKeyLength }}</label>
+            <div class="ocu-field-control">
+              <select
+                class="ocu-field-input"
+                [id]="lengthField.id"
+                [attr.aria-invalid]="lengthField.invalid"
+                [attr.aria-describedby]="lengthField.describedBy"
+                (change)="onLength($event)"
+              >
+                @for (option of lengthOptions; track option) {
+                  <option [value]="option" [selected]="option === keyLength">{{ lengthLabel(option) }}</option>
+                }
+              </select>
+            </div>
+            <p class="ocu-field-caption" [id]="lengthField.id + '-help'">{{ STRINGS.walletGenerateHelp }}</p>
+          </div>
+        } @else {
+          @if (isRsa) {
+          <div class="ocu-field">
+            <label class="ocu-field-label" [attr.for]="certificateField.id">{{ STRINGS.x509FieldCertificate }}</label>
+            <div class="ocu-field-control">
+              <textarea
+                class="ocu-field-input ocu-field-textarea ocu-x509-pem"
+                rows="6"
+                spellcheck="false"
+                autocomplete="off"
+                [id]="certificateField.id"
+                [value]="material().certificate"
+                [attr.aria-invalid]="certificateField.invalid"
+                [attr.aria-describedby]="certificateField.describedBy"
+                (input)="onMaterial('certificate', CERTIFICATE_FIELD, $event)"
+              ></textarea>
+            </div>
+            <button type="button" class="ocu-button-text" [id]="certificateField.id + '-load'" (click)="pickFile(CERTIFICATE_FIELD)">{{ STRINGS.x509LoadFromFile }}</button>
+            @if (certificateField.invalid) {
+              <p class="ocu-form-error" [id]="certificateField.id + '-reason'">{{ certificateField.reason }}</p>
+            }
+          </div>
+          <div class="ocu-field">
+            <label class="ocu-field-label" [attr.for]="publicKeyField.id">{{ STRINGS.walletFieldPublicKey }}</label>
+            <div class="ocu-field-control">
+              <textarea
+                class="ocu-field-input ocu-field-textarea ocu-x509-pem"
+                rows="6"
+                spellcheck="false"
+                autocomplete="off"
+                [id]="publicKeyField.id"
+                [value]="material().publicKey"
+                [attr.aria-invalid]="publicKeyField.invalid"
+                [attr.aria-describedby]="publicKeyField.describedBy"
+                (input)="onMaterial('publicKey', PUBLIC_KEY_FIELD, $event)"
+              ></textarea>
+            </div>
+            <button type="button" class="ocu-button-text" [id]="publicKeyField.id + '-load'" (click)="pickFile(PUBLIC_KEY_FIELD)">{{ STRINGS.x509LoadFromFile }}</button>
+            @if (publicKeyField.invalid) {
+              <p class="ocu-form-error" [id]="publicKeyField.id + '-reason'">{{ publicKeyField.reason }}</p>
+            }
+          </div>
+          <div class="ocu-field">
+            <label class="ocu-field-label" [attr.for]="privateKeyField.id">{{ STRINGS.x509FieldPrivateKey }}</label>
+            <div class="ocu-field-control">
+              <input
+                class="ocu-field-input"
+                [id]="privateKeyField.id"
+                [type]="privateKeyRevealed() ? 'text' : 'password'"
+                autocomplete="new-password"
+                spellcheck="false"
+                [value]="material().privateKey"
+                [attr.aria-invalid]="privateKeyField.invalid"
+                [attr.aria-describedby]="privateKeyField.describedBy"
+                (input)="onMaterial('privateKey', PRIVATE_KEY_FIELD, $event)"
+              />
+              <button
+                type="button"
+                class="ocu-reveal-toggle"
+                [attr.aria-label]="revealLabelFor(privateKeyRevealed())"
+                [attr.aria-pressed]="privateKeyRevealed()"
+                (click)="privateKeyRevealed.set(!privateKeyRevealed())"
+              >
+                <span aria-hidden="true">{{ revealGlyphFor(privateKeyRevealed()) }}</span>
+              </button>
+            </div>
+            <button type="button" class="ocu-button-text" [id]="privateKeyField.id + '-load'" (click)="pickFile(PRIVATE_KEY_FIELD)">{{ STRINGS.x509LoadFromFile }}</button>
+            @if (privateKeyField.invalid) {
+              <p class="ocu-form-error" [id]="privateKeyField.id + '-reason'">{{ privateKeyField.reason }}</p>
+            }
+          </div>
+          <div class="ocu-field">
+            <label class="ocu-field-label" [attr.for]="passwordField.id">{{ STRINGS.x509FieldPrivateKeyPassword }}</label>
+            <div class="ocu-field-control">
+              <input
+                class="ocu-field-input"
+                [id]="passwordField.id"
+                [type]="passwordRevealed() ? 'text' : 'password'"
+                autocomplete="new-password"
+                [value]="material().password"
+                [attr.aria-invalid]="passwordField.invalid"
+                [attr.aria-describedby]="passwordField.describedBy"
+                (input)="onMaterial('password', PASSWORD_FIELD, $event)"
+              />
+              <button
+                type="button"
+                class="ocu-reveal-toggle"
+                [attr.aria-label]="revealLabelFor(passwordRevealed())"
+                [attr.aria-pressed]="passwordRevealed()"
+                (click)="passwordRevealed.set(!passwordRevealed())"
+              >
+                <span aria-hidden="true">{{ revealGlyphFor(passwordRevealed()) }}</span>
+              </button>
+            </div>
+            <p class="ocu-field-caption" [id]="passwordField.id + '-help'">{{ STRINGS.x509PasswordHelp }}</p>
+            @if (passwordField.invalid) {
+              <p class="ocu-form-error" [id]="passwordField.id + '-reason'">{{ passwordField.reason }}</p>
+            }
+          </div>
+          <input #pemFile class="ocu-x509-file" type="file" tabindex="-1" aria-hidden="true" (change)="onFile($event)" />
+          } @else {
+          <div class="ocu-field">
+            <label class="ocu-field-label" [attr.for]="secret64Field.id">{{ STRINGS.walletFieldKeyBase64 }}</label>
+            <div class="ocu-field-control">
+              <input
+                class="ocu-field-input"
+                [id]="secret64Field.id"
+                [type]="secret64Revealed() ? 'text' : 'password'"
+                autocomplete="new-password"
+                spellcheck="false"
+                [value]="material().secret64"
+                [attr.aria-invalid]="secret64Field.invalid"
+                [attr.aria-describedby]="secret64Field.describedBy"
+                (input)="onMaterial('secret64', SECRET64_FIELD, $event)"
+              />
+              <button
+                type="button"
+                class="ocu-reveal-toggle"
+                [attr.aria-label]="revealLabelFor(secret64Revealed())"
+                [attr.aria-pressed]="secret64Revealed()"
+                (click)="secret64Revealed.set(!secret64Revealed())"
+              >
+                <span aria-hidden="true">{{ revealGlyphFor(secret64Revealed()) }}</span>
+              </button>
+            </div>
+            @if (secret64Field.invalid) {
+              <p class="ocu-form-error" [id]="secret64Field.id + '-reason'">{{ secret64Field.reason }}</p>
+            }
+          </div>
+          }
+        }
+        @if (lengthField.invalid) {
+          <p class="ocu-form-error" [id]="lengthField.id + '-reason'">{{ lengthField.reason }}</p>
+        }
+        <p class="ocu-field-caption">{{ STRINGS.walletKeyWriteOnly }}</p>
+      </fieldset>
+      } @else {
       <div class="ocu-field">
         <label class="ocu-field-label" [class.ocu-field-label-required]="creating" [attr.for]="secretField.id">{{ STRINGS.errorLogColumnValue }}</label>
         <div class="ocu-field-control">
@@ -237,6 +491,7 @@ interface FieldView {
           <p class="ocu-form-error" [id]="hostsField.id + '-reason'">{{ hostsField.reason }}</p>
         }
       </div>
+      }
     </div>
     }
 
@@ -253,6 +508,16 @@ interface FieldView {
         </button>
       </div>
     </div>
+    }
+
+    @if (replaceOpen) {
+      <app-typed-name-dialog
+        [verb]="STRINGS.walletReplaceKey"
+        [target]="secret.name"
+        [consequence]="replaceConsequence"
+        (confirmed)="confirmReplace()"
+        (cancelled)="replacePending.set(false)"
+      />
     }
 
     @if (leavePending) {
@@ -278,6 +543,40 @@ export class WalletSecretFormPage {
   protected readonly STRINGS = STRINGS;
 
   protected readonly uses = USES;
+
+  protected readonly choices = CHOICES;
+
+  /** The key field names the template hands the page's intents. */
+  protected readonly CERTIFICATE_FIELD = CERTIFICATE_FIELD;
+
+  protected readonly PUBLIC_KEY_FIELD = PUBLIC_KEY_FIELD;
+
+  protected readonly PRIVATE_KEY_FIELD = PRIVATE_KEY_FIELD;
+
+  protected readonly PASSWORD_FIELD = PASSWORD_FIELD;
+
+  protected readonly SECRET64_FIELD = SECRET64_FIELD;
+
+  /**
+   * The key material the person entered. Page-local (AD-35, AD-56): the store never holds it, the
+   * screen context never carries it, and it is emptied on an accepted Save, when a choice drops it
+   * and when the page is destroyed.
+   */
+  protected readonly material = signal<KeyMaterial>(NO_MATERIAL);
+
+  protected readonly privateKeyRevealed = signal(false);
+
+  protected readonly passwordRevealed = signal(false);
+
+  protected readonly secret64Revealed = signal(false);
+
+  /** Whether the typed-name dialog that confirms a key replacement is open. */
+  protected readonly replacePending = signal(false);
+
+  private readonly pemFile = viewChild<ElementRef<HTMLInputElement>>('pemFile');
+
+  /** The PEM field the picker now open fills. */
+  private pendingPem = '';
 
   /** Bumped by both stores, so the template re-reads them under `OnPush`. */
   private readonly generation = signal(0);
@@ -305,6 +604,7 @@ export class WalletSecretFormPage {
     });
     afterNextRender(() => this.focusRefusal(), { injector: this.injector });
     inject(DestroyRef).onDestroy(() => {
+      this.clearMaterial();
       stopStore();
       stopDirty();
       stopIdChange.unsubscribe();
@@ -353,6 +653,87 @@ export class WalletSecretFormPage {
     const bound = this.store.maxLength(NAME_FIELD);
     if (bound <= 0 || !this.creating) return null;
     return Math.max(1, bound - this.store.collection().length - 1);
+  }
+
+  /** Whether the form is showing an RSA or a symmetric key. */
+  protected get isKey(): boolean {
+    this.generation();
+    return this.store.keyKind() !== '';
+  }
+
+  protected get isRsa(): boolean {
+    this.generation();
+    return this.store.keyKind() === 'rsa';
+  }
+
+  /** What a create chooses. */
+  protected get choiceValue(): KeyChoice {
+    this.generation();
+    return this.store.choice();
+  }
+
+  protected get sourceValue(): KeySource {
+    this.generation();
+    return this.store.source();
+  }
+
+  /** Whether the key is being generated, which takes a length, rather than imported. */
+  protected get generating(): boolean {
+    return this.isKey && this.sourceValue === 'generate';
+  }
+
+  /** A create offers both sources, and an RSA key's replacement does; a symmetric key's is an import. */
+  protected get showSourceChoice(): boolean {
+    return this.creating || this.isRsa;
+  }
+
+  /** The section's name: the chosen type on a create, Replace the key on an existing key. */
+  protected get keyLegend(): string {
+    if (!this.creating) return STRINGS.walletReplaceKey;
+    return this.isRsa ? STRINGS.walletTypeRsa : STRINGS.walletTypeSymmetric;
+  }
+
+  protected get lengthOptions(): readonly number[] {
+    this.generation();
+    return this.store.lengthOptions();
+  }
+
+  protected get keyLength(): number {
+    this.generation();
+    return this.store.keyLength();
+  }
+
+  /** The stored key's length as the form words it, or empty where the instance reports none. */
+  protected get lengthText(): string {
+    this.generation();
+    const held = this.store.secret().length;
+    return held === null ? '' : this.lengthLabel(held);
+  }
+
+  /** The sentence the typed-name dialog states for the key being replaced. */
+  protected get replaceConsequence(): string {
+    return this.isRsa ? STRINGS.walletKeyReplaceRsaConsequence : STRINGS.walletKeyReplaceSymmetricConsequence;
+  }
+
+  protected get replaceOpen(): boolean {
+    return this.replacePending();
+  }
+
+  protected lengthLabel(length: number): string {
+    const kind = this.store.keyKind();
+    return LENGTH_LABELS[`${kind}:${length}`] ?? String(length);
+  }
+
+  protected yesNo(held: boolean): string {
+    return held ? STRINGS.tableStatusYes : STRINGS.tableStatusNo;
+  }
+
+  protected revealLabelFor(shown: boolean): string {
+    return shown ? STRINGS.accountHidePassword : STRINGS.accountShowPassword;
+  }
+
+  protected revealGlyphFor(shown: boolean): string {
+    return shown ? '\u25CF' : '\u25CB';
   }
 
   protected get saveBlocked(): boolean {
@@ -474,6 +855,34 @@ export class WalletSecretFormPage {
     return this.fieldView(ALLOWED_HOSTS_FIELD);
   }
 
+  protected get typeField(): FieldView {
+    return this.fieldView(TYPE_FIELD);
+  }
+
+  protected get lengthField(): FieldView {
+    return this.fieldView(LENGTH_FIELD);
+  }
+
+  protected get certificateField(): FieldView {
+    return this.fieldView(CERTIFICATE_FIELD);
+  }
+
+  protected get publicKeyField(): FieldView {
+    return this.fieldView(PUBLIC_KEY_FIELD);
+  }
+
+  protected get privateKeyField(): FieldView {
+    return this.fieldView(PRIVATE_KEY_FIELD);
+  }
+
+  protected get passwordField(): FieldView {
+    return this.fieldView(PASSWORD_FIELD);
+  }
+
+  protected get secret64Field(): FieldView {
+    return this.fieldView(SECRET64_FIELD);
+  }
+
   // --- intents ---------------------------------------------------------------------------------
 
   protected onText(field: string, event: Event): void {
@@ -504,14 +913,86 @@ export class WalletSecretFormPage {
     void this.store.onBlur(field);
   }
 
+  /** What a create stores changed: the material typed for the last choice goes with it. */
+  protected onChoice(event: Event): void {
+    const target = event.target;
+    if (!(target instanceof HTMLSelectElement)) return;
+    this.clearMaterial();
+    this.store.setChoice(target.value === 'rsa' ? 'rsa' : target.value === 'symmetric' ? 'symmetric' : 'keyvalue');
+  }
+
+  protected onSource(source: KeySource): void {
+    this.clearMaterial();
+    this.store.setSource(source);
+  }
+
+  protected onLength(event: Event): void {
+    const target = event.target;
+    if (target instanceof HTMLSelectElement) this.store.setKeyLength(Number(target.value));
+  }
+
+  /** One key material field was typed in: the page keeps it, the store learns the form is dirty. */
+  protected onMaterial(member: keyof KeyMaterial, field: string, event: Event): void {
+    const target = event.target;
+    if (!(target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement)) return;
+    this.material.update((held) => ({ ...held, [member]: target.value }));
+    this.store.noteInput(field);
+  }
+
+  /** Open the browser's own file picker beside a PEM field. Nothing leaves the browser but the text. */
+  protected pickFile(field: string): void {
+    this.pendingPem = field;
+    this.pemFile()?.nativeElement.click();
+  }
+
+  /** Read the picked file as text into the field the picker was opened for, and clear the picker. */
+  protected onFile(event: Event): void {
+    const target = event.target;
+    if (!(target instanceof HTMLInputElement)) return;
+    const file = target.files?.[0];
+    target.value = '';
+    const field = this.pendingPem;
+    if (file === undefined || !PEM_FIELDS.includes(field)) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const text = typeof reader.result === 'string' ? reader.result : '';
+      const member = field === CERTIFICATE_FIELD ? 'certificate' : field === PUBLIC_KEY_FIELD ? 'publicKey' : 'privateKey';
+      this.material.update((held) => ({ ...held, [member]: text }));
+      this.store.noteInput(field);
+    };
+    reader.readAsText(file);
+  }
+
+  /** Empty every key material field and hide what was shown. */
+  protected clearMaterial(): void {
+    this.material.set(NO_MATERIAL);
+    this.privateKeyRevealed.set(false);
+    this.passwordRevealed.set(false);
+    this.secret64Revealed.set(false);
+  }
+
+  /** The typed name matched: replace the key, and drop the material once the instance accepted it. */
+  protected async confirmReplace(): Promise<void> {
+    this.replacePending.set(false);
+    const saved = await this.store.save(this.material());
+    if (saved) this.clearMaterial();
+    else this.afterRefusal();
+  }
+
   protected async onSave(): Promise<void> {
     if (!this.store.canSave()) return;
     const creating = this.store.mode() === 'create';
-    const saved = await this.store.save();
+    // A key's replacement is destructive: nothing is sent until its full name has been typed back.
+    if (!creating && this.store.keyKind() !== '') {
+      this.replacePending.set(true);
+      return;
+    }
+    const saved = await this.store.save(this.material());
     if (!saved) {
       this.afterRefusal();
       return;
     }
+    this.clearMaterial();
     // A create replaces the route with the new secret's URL, so the address bar names the entity
     // and Back goes to the list; the page is built again there over its edit.
     if (creating && this.store.createdId() !== '') {
@@ -521,7 +1002,8 @@ export class WalletSecretFormPage {
   }
 
   protected focusField(field: string): void {
-    document.getElementById(this.controlId(field))?.focus();
+    // A length refusal has no control while the key is imported, so it falls back to the section.
+    (document.getElementById(this.controlId(field)) ?? document.getElementById(this.controlId('Source')))?.focus();
   }
 
   protected cancel(): void {
@@ -580,7 +1062,8 @@ export class WalletSecretFormPage {
     const reason = this.store.violationFor(field);
     const invalid = reason !== '';
     const described: string[] = [];
-    if (field === SECRET_FIELD || field === ALLOWED_HOSTS_FIELD) described.push(`${id}-help`);
+    if (field === SECRET_FIELD || field === ALLOWED_HOSTS_FIELD || field === PASSWORD_FIELD) described.push(`${id}-help`);
+    if (field === LENGTH_FIELD && this.generating) described.push(`${id}-help`);
     if (field === SECRET_FIELD && this.store.stored()) described.push(`${id}-caption`);
     if (invalid) described.push(`${id}-reason`);
     return {

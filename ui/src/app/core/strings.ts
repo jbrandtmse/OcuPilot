@@ -1614,7 +1614,8 @@ export const STRINGS = {
   proposalSecretOptional: 'optional',
 
   // Story 8.6: the Secrets list's agent invitation, the wallet secret form's title, labels, uses and
-  // helpers, and what its read-only view says of a secret type it does not edit.
+  // helpers, and what its read-only view says of a secret type it does not edit. Story 18.24 adds the
+  // key types' labels and helpers, the instance's own key sentences and the two replace consequences.
   /** EXPERIENCE.md:413 */
   walletSecretListEmptyAgent: 'store a secret',
   /** EXPERIENCE.md:414 */
@@ -1627,12 +1628,50 @@ export const STRINGS = {
   walletUsageSql: 'SQL gateway',
   walletUsageSoap: 'SOAP',
   walletUsageCustom: 'Custom',
+  walletTypeKeyValue: 'Key-value',
+  walletTypeRsa: 'RSA key',
+  walletTypeSymmetric: 'Symmetric key',
+  walletSourceGenerate: 'Generate a new key',
+  walletSourceImport: 'Import a key',
+  walletFieldKeyLength: 'Key length',
+  walletKeyBits2048: '2048 bits',
+  walletKeyBits3072: '3072 bits',
+  walletKeyBits4096: '4096 bits',
+  walletKeyBytes16: '16 bytes (AES-128)',
+  walletKeyBytes24: '24 bytes (AES-192)',
+  walletKeyBytes32: '32 bytes (AES-256)',
+  walletFieldPublicKey: 'Public key',
+  walletFieldKeyBase64: 'Key (base64)',
+  walletFieldHasCertificate: 'Certificate present',
+  walletReplaceKey: 'Replace the key',
   /** EXPERIENCE.md:415 */
   walletValueHelp: 'Stored as typed. For HTTP, SOAP or SQL use, enter a JSON object with user and password members.',
   walletHostsHelp: 'Comma-separated. Applies only when TLS is required.',
+  walletGenerateHelp: 'The instance generates the key. No read returns it.',
+  walletKeyWriteOnly: 'Key material is write-only: no read returns it, here or to the agent.',
   /** EXPERIENCE.md:416 */
-  walletTypeReadOnly: 'Only key-value secrets are edited here.',
-  walletTypeElsewhere: 'Manage RSA and symmetric-key secrets through the %Wallet classes. The classic portal has no wallet page.',
+  walletKeyValidation: 'The key was refused.',
+  walletKeySourceRequired: 'Choose a length to generate a key, or enter a key to import.',
+  walletKeySourceBoth: 'Generate a key or import one, not both.',
+  walletKeyLengthRsa: 'An RSA key is 2048, 3072 or 4096 bits long.',
+  walletKeyLengthSymmetric: 'A symmetric key is 16, 24 or 32 bytes long.',
+  walletKeyPublicRequired: 'An imported RSA key needs its certificate or its public key.',
+  walletKeyCertificateShape: 'Paste one PEM certificate.',
+  walletKeyPublicKeyShape: 'Paste one PEM RSA public key.',
+  walletKeyPrivateKeyShape: 'Paste one PEM private key.',
+  walletKeyCertificateInvalid: 'This certificate is not valid now: it has expired or is not yet valid.',
+  walletKeyPrivateKeyMismatch:
+    'This private key does not belong to the certificate or public key, or is not an RSA key.',
+  walletKeyPasswordRequired: 'This private key is encrypted. Enter its password.',
+  walletKeyPasswordWrong: 'This password does not open the private key.',
+  walletKeyPasswordWithoutKey: 'A password is used only with an encrypted private key.',
+  walletKeySecret64Shape: 'Enter the key as base64 that decodes to 16, 24 or 32 bytes.',
+  walletKeyTypeMismatch: 'This secret holds another type of key, and a secret\'s type cannot change.',
+  walletKeyReplaceRsaConsequence:
+    'Replaces the whole key pair. The old private key is discarded, so data encrypted to the old public key can no longer be decrypted with this secret. An import without a private key leaves the secret with none.',
+  walletKeyReplaceSymmetricConsequence:
+    'Replaces the key. Data encrypted with the old key can no longer be decrypted with this secret.',
+  walletTypeNotKeyValue: 'This secret is not a key-value secret.',
 
   // Story 8.8: the Devices list's agent invitation, the device editor's title, the labels of the
   // fields the list does not carry, and its type and prompt choices.
