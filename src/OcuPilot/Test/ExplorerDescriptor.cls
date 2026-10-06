@@ -138,7 +138,7 @@ Method TestEveryScreenDeclaresThreePromptsInTheCodeGroup()
 /// viewers and editors declare none. The two unadvertised saves are
 /// <method>TestTheTwoSavesAreUnadvertisedDestructiveWrites</method>'s.</p>
 /// <p>Mutation (Rule 19): enable a delete key in the baseline -- the baseline leg goes red.</p>
-Method TestTheAreaHoldsTwentyFourReadsAndEightWrites()
+Method TestTheAreaHoldsTwentySixReadsAndElevenWrites()
 {
     Set tSC = ##class(OcuPilot.Screen.Tool.Registry).ListTools(.tTools)
     Do $$$AssertStatusOK(tSC, "the registry lists")

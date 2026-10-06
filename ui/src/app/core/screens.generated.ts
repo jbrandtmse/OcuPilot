@@ -3141,7 +3141,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
             "param": "dir",
             "labelKey": "lockColumnDirectory",
             "kind": "text",
-            "maxLength": 256
+            "maxLength": 256,
+            "hint": "One database directory, spelled as osmgmt.databases.read answers its Directory."
           }
         ]
       }
@@ -3994,7 +3995,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
             "param": "dir",
             "labelKey": "lockColumnDirectory",
             "kind": "text",
-            "maxLength": 256
+            "maxLength": 256,
+            "hint": "One database directory, spelled as osmgmt.databases.read answers its Directory."
           }
         ]
       }
@@ -5506,7 +5508,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
             "param": "name",
             "labelKey": "tableColumnName",
             "kind": "text",
-            "maxLength": 256
+            "maxLength": 256,
+            "hint": "One class, as Package.Name.cls, spelled as explorer.classes.read answers its Name."
           },
           {
             "param": "form",
@@ -6170,13 +6173,15 @@ export const SCREENS: readonly ScreenDeclaration[] = [
             "param": "document",
             "labelKey": "explorerColumnDocument",
             "kind": "text",
-            "maxLength": 256
+            "maxLength": 256,
+            "hint": "The class or routine whose include files, imports and superclasses give the macro its context, spelled as explorer.classes.read or explorer.routines.read answers its Name."
           },
           {
             "param": "macro",
             "labelKey": "explorerColumnMacro",
             "kind": "text",
-            "maxLength": 128
+            "maxLength": 128,
+            "hint": "One macro's name, with or without its three leading dollar signs."
           }
         ]
       }
@@ -6315,7 +6320,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
             "param": "name",
             "labelKey": "tableColumnName",
             "kind": "text",
-            "maxLength": 256
+            "maxLength": 256,
+            "hint": "One routine or include file, as Name.mac, .int, .inc, .bas, .mvi or .mvb, spelled as explorer.routines.read answers its Name."
           },
           {
             "param": "form",
@@ -6756,7 +6762,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
             "param": "text",
             "labelKey": "explorerSearchTextLabel",
             "kind": "text",
-            "maxLength": 256
+            "maxLength": 256,
+            "hint": "The text to find, matched literally, so * and commas are searched for as themselves."
           },
           {
             "param": "scope",
@@ -6918,7 +6925,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
             "param": "table",
             "labelKey": "explorerSqlColumnTable",
             "kind": "text",
-            "maxLength": 257
+            "maxLength": 257,
+            "hint": "One table, as Schema.Table, spelled as explorer.sqltables.read answers its Table."
           }
         ]
       }
@@ -7064,7 +7072,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
             "param": "table",
             "labelKey": "explorerSqlColumnTable",
             "kind": "text",
-            "maxLength": 257
+            "maxLength": 257,
+            "hint": "One table, as Schema.Table, spelled as explorer.sqltables.read answers its Table."
           }
         ]
       }
@@ -7293,7 +7302,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
             "param": "table",
             "labelKey": "explorerSqlColumnTable",
             "kind": "text",
-            "maxLength": 257
+            "maxLength": 257,
+            "hint": "One table, as Schema.Table, spelled as explorer.sqltables.read answers its Table."
           }
         ]
       }
@@ -7472,7 +7482,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
             "param": "table",
             "labelKey": "explorerSqlColumnTable",
             "kind": "text",
-            "maxLength": 257
+            "maxLength": 257,
+            "hint": "One table, as Schema.Table, spelled as explorer.sqltables.read answers its Table."
           }
         ]
       }
@@ -7632,7 +7643,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
             "param": "table",
             "labelKey": "explorerSqlColumnTable",
             "kind": "text",
-            "maxLength": 257
+            "maxLength": 257,
+            "hint": "One table, as Schema.Table, spelled as explorer.sqltables.read answers its Table."
           }
         ]
       }
@@ -7777,7 +7789,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
             "param": "table",
             "labelKey": "explorerSqlColumnTable",
             "kind": "text",
-            "maxLength": 257
+            "maxLength": 257,
+            "hint": "One table, as Schema.Table, spelled as explorer.sqltables.read answers its Table."
           }
         ]
       }
@@ -7939,7 +7952,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
             "param": "procedure",
             "labelKey": "explorerSqlColumnProcedure",
             "kind": "text",
-            "maxLength": 257
+            "maxLength": 257,
+            "hint": "One procedure, as Schema.Procedure, spelled as explorer.sqlprocedures.read answers its Procedure."
           }
         ]
       }
@@ -8147,7 +8161,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
             "param": "procedure",
             "labelKey": "explorerSqlColumnProcedure",
             "kind": "text",
-            "maxLength": 257
+            "maxLength": 257,
+            "hint": "One procedure, as Schema.Procedure, spelled as explorer.sqlprocedures.read answers its Procedure."
           }
         ]
       }
@@ -8337,7 +8352,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
             "param": "schema",
             "labelKey": "explorerSqlColumnSchema",
             "kind": "text",
-            "maxLength": 128
+            "maxLength": 128,
+            "hint": "One schema, spelled as explorer.sqlschemas.read answers its Schema; omit it to list every schema's procedures."
           }
         ]
       }
@@ -8695,7 +8711,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
             "param": "table",
             "labelKey": "explorerSqlColumnTable",
             "kind": "text",
-            "maxLength": 257
+            "maxLength": 257,
+            "hint": "One table, as Schema.Table, spelled as explorer.sqltables.read answers its Table."
           }
         ]
       }
@@ -8878,7 +8895,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
             "param": "table",
             "labelKey": "explorerSqlColumnTable",
             "kind": "text",
-            "maxLength": 257
+            "maxLength": 257,
+            "hint": "One table, as Schema.Table, spelled as explorer.sqltables.read answers its Table."
           }
         ]
       }
@@ -9070,7 +9088,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
             "param": "schema",
             "labelKey": "explorerSqlColumnSchema",
             "kind": "text",
-            "maxLength": 128
+            "maxLength": 128,
+            "hint": "One schema, spelled as explorer.sqlschemas.read answers its Schema; omit it to list every schema's tables."
           }
         ]
       }
@@ -9210,7 +9229,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
             "param": "table",
             "labelKey": "explorerSqlColumnTable",
             "kind": "text",
-            "maxLength": 257
+            "maxLength": 257,
+            "hint": "One table, as Schema.Table, spelled as explorer.sqltables.read answers its Table."
           }
         ]
       }
@@ -9355,7 +9375,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
             "param": "view",
             "labelKey": "viewMenuLabel",
             "kind": "text",
-            "maxLength": 257
+            "maxLength": 257,
+            "hint": "One view, as Schema.View, spelled as explorer.sqlviews.read answers its View."
           }
         ]
       }
@@ -9522,7 +9543,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
             "param": "view",
             "labelKey": "viewMenuLabel",
             "kind": "text",
-            "maxLength": 257
+            "maxLength": 257,
+            "hint": "One view, as Schema.View, spelled as explorer.sqlviews.read answers its View."
           }
         ]
       }
@@ -9700,7 +9722,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
             "param": "view",
             "labelKey": "viewMenuLabel",
             "kind": "text",
-            "maxLength": 257
+            "maxLength": 257,
+            "hint": "One view, as Schema.View, spelled as explorer.sqlviews.read answers its View."
           }
         ]
       }
@@ -9892,7 +9915,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
             "param": "schema",
             "labelKey": "explorerSqlColumnSchema",
             "kind": "text",
-            "maxLength": 128
+            "maxLength": 128,
+            "hint": "One schema, spelled as explorer.sqlschemas.read answers its Schema; omit it to list every schema's views."
           }
         ]
       }
@@ -10124,7 +10148,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
             "param": "namespace",
             "labelKey": "headerNamespaceLabel",
             "kind": "text",
-            "maxLength": 64
+            "maxLength": 64,
+            "hint": "One namespace, spelled as osmgmt.namespaces.read answers its Name."
           }
         ]
       }
@@ -10336,7 +10361,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
             "param": "file",
             "labelKey": "tableColumnName",
             "kind": "text",
-            "maxLength": 1024
+            "maxLength": 1024,
+            "hint": "One journal file, spelled as osmgmt.journals.read answers its Name."
           }
         ]
       }
@@ -10491,7 +10517,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
             "param": "file",
             "labelKey": "tableColumnName",
             "kind": "text",
-            "maxLength": 1024
+            "maxLength": 1024,
+            "hint": "One journal file, spelled as osmgmt.journals.read answers its Name."
           }
         ]
       }
@@ -11214,7 +11241,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
             "param": "name",
             "labelKey": "tableColumnName",
             "kind": "text",
-            "maxLength": 50
+            "maxLength": 50,
+            "hint": "One external language server, spelled as osmgmt.languageservers.read answers its Name."
           }
         ]
       }
@@ -15821,7 +15849,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
             "param": "application",
             "labelKey": "tableColumnName",
             "kind": "text",
-            "maxLength": 256
+            "maxLength": 256,
+            "hint": "One REST application, spelled as webapp.restapis.read answers its Name: a web application path starting with /, or a spec-based service's package name."
           }
         ]
       }
@@ -16036,7 +16065,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
             "param": "namespace",
             "labelKey": "headerNamespaceLabel",
             "kind": "text",
-            "maxLength": 64
+            "maxLength": 64,
+            "hint": "One namespace, spelled as osmgmt.namespaces.read answers its Name."
           }
         ]
       }
@@ -16292,7 +16322,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
             "labelKey": "processColumnPid",
             "kind": "text",
             "maxLength": 10,
-            "vendorParam": "id"
+            "vendorParam": "id",
+            "hint": "One process id, a whole number, as osmgmt.processes.read answers its Pid."
           }
         ]
       }
@@ -17549,7 +17580,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
             "param": "namespace",
             "labelKey": "headerNamespaceLabel",
             "kind": "text",
-            "maxLength": 64
+            "maxLength": 64,
+            "hint": "One namespace, spelled as osmgmt.namespaces.read answers its Name."
           }
         ]
       }
@@ -18692,7 +18724,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
             "labelKey": "taskHistoryColumnTaskId",
             "kind": "text",
             "maxLength": 10,
-            "vendorParam": "id"
+            "vendorParam": "id",
+            "hint": "One task's whole-number id, as tasks.schedule.read answers its Id."
           }
         ]
       }
@@ -18977,7 +19010,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
             "labelKey": "taskHistorySearch",
             "kind": "text",
             "maxLength": 100,
-            "vendorParam": "filter"
+            "vendorParam": "filter",
+            "hint": "Text to find in any column of a run, ignoring case; * and commas are matched as themselves."
           },
           {
             "param": "userOnly",
@@ -19339,7 +19373,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
             "param": "taskId",
             "labelKey": "taskHistoryColumnTaskId",
             "kind": "text",
-            "maxLength": 10
+            "maxLength": 10,
+            "hint": "One task's whole-number id, as tasks.schedule.read answers its Id; omit it to read every task's runs."
           }
         ]
       }
@@ -20375,7 +20410,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
             "param": "collection",
             "labelKey": "tableColumnName",
             "kind": "text",
-            "maxLength": 64
+            "maxLength": 64,
+            "hint": "One wallet collection, spelled as security.wallet.read answers its Name."
           }
         ]
       }

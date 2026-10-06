@@ -3,7 +3,7 @@
 /// with its flags and its console lines, a compile error written into the output, a delete of a set
 /// read back gone, a delete one of whose documents another process holds read back present, a
 /// persistent class's data kept by its delete, a missing document refused by name -- the agent's
-/// compile and delete through mint and confirm, an oversized or missing set refused at the mint, the
+/// compile and delete sent through the agent's dispatcher and confirmed, an oversized or missing set refused at the mint, the
 /// delete refused by governance at the baseline and confirmed once its key is enabled, refused once its
 /// document is edited after the mint, the console
 /// kept off the proposal the model reads, and OcuPilot's own documents refused on both callers.</p>
@@ -73,10 +73,10 @@ ClassMethod Act(pList As %String, pNamespace As %String, pAction As %String, pId
     Do ##class(OcuPilot.Test.Http).MakeRequest("POST", "/screens/explorer." _ pList _ "/action?ns=" _ pNamespace, .pStatus, .pBody, tRequest.%ToJSON())
 }
 
-/// <p>The agent's call of <var>pTool</var> for <var>pNames</var> with <var>pArgs</var>, scoped to
+/// <p>The mint of <var>pTool</var> for <var>pNames</var> with <var>pArgs</var>, scoped to
 /// <var>pNamespace</var>, inside a completed turn seeded for the running account: the tool's
-/// <code>View</code>, the one method the model reaches, whose answer <var>pProposal</var> is the
-/// tool result the model reads.</p>
+/// <code>View</code> called directly, which skips the dispatcher's schema, pairs and governance. The
+/// mint-side refusals use it; the agent legs use <method>DispatchFor</method>.</p>
 Method MintFor(pTool As %String, pNamespace As %String, pNames As %String, pArgs As %DynamicObject, Output pProposal As %DynamicObject, Output pHttp As %Integer, Output pFault) As %Status
 {
     Set pProposal = ""
@@ -88,6 +88,36 @@ Method MintFor(pTool As %String, pNamespace As %String, pNames As %String, pArgs
     Set tSC = $ClassMethod(pTool, "View", "", pArgs, 0, .pProposal, .pHttp, .pFault)
     Do ##class(OcuPilot.Kernel.Proposal.Caller).Clear()
     Quit tSC
+}
+
+/// <p>The agent's call of tool <var>pToolName</var> with <var>pInput</var> in <var>pNamespace</var>,
+/// sent as one <code>tool_use</code> block through the agent's dispatcher inside a completed turn
+/// seeded for the running account, as the turn's loop sends it: <var>pContent</var> is the tool result
+/// the model reads, <var>pIsError</var> whether it is an error, and <var>pProposal</var> that result
+/// parsed.</p>
+Method DispatchFor(pToolName As %String, pNamespace As %String, pInput As %DynamicObject, Output pContent As %String, Output pIsError As %Boolean, Output pProposal) As %Status
+{
+    Set pContent = ""
+    Set pIsError = 1
+    Set pProposal = ""
+    Do ##class(OcuPilot.Kernel.Scope).Set(pNamespace)
+    Set tSC = ##class(OcuPilot.Test.ProposalFixture).SeedTurn($Username, "completed", .tTurn)
+    If $$$ISERR(tSC) Quit tSC
+    Set tUse = {"type": "tool_use", "id": "toolu_write"}
+    Do tUse.%Set("name", ##class(OcuPilot.Screen.Tool.Registry).WireName(pToolName), "string")
+    Do tUse.%Set("input", pInput)
+    Do ##class(OcuPilot.Kernel.Proposal.Caller).Set(tTurn)
+    Set tSC = ##class(OcuPilot.Kernel.Agent.Dispatch).Answer(tTurn, $Username, "", [(tUse)], "OcuPilot.Kernel.Agent.Limits", .tResults, .tNames, 0, 0, .tDetails)
+    Do ##class(OcuPilot.Kernel.Proposal.Caller).Clear()
+    If $$$ISERR(tSC) Quit tSC
+    Set pContent = tResults.%Get(0).%Get("content")
+    Set pIsError = tResults.%Get(0).%Get("is_error")
+    Try {
+        Set pProposal = ##class(%DynamicObject).%FromJSON(pContent)
+    } Catch {
+        Set pProposal = ""
+    }
+    Quit $$$OK
 }
 
 /// <p>Confirm <var>pProposal</var> in process as the running account, scoped to
@@ -225,10 +255,11 @@ Method TestTheAgentCompilesThroughConfirm()
     For tName = "OcuProbe192.Alpha", "OcuProbe192.Beta" {
         Do $$$AssertStatusOK($ClassMethod(..#PROBE, "MakeClass", ..#PROBENAMESPACE, tName), tName _ " is saved")
     }
-    Set tArgs = {"KeepSource": true, "CompileDependents": false, "SkipUpToDate": true}
-    Set tSC = ..MintFor(..#COMPILETOOL, ..#PROBENAMESPACE, "OcuProbe192.Beta.cls,OcuProbe192.Alpha.cls", tArgs, .tProposal, .tHttp, .tFault)
-    Do $$$AssertStatusOK(tSC, "the compile is minted: " _ ..Json($Get(tFault)))
+    Set tArgs = {"Names": "OcuProbe192.Beta.cls,OcuProbe192.Alpha.cls", "KeepSource": true, "CompileDependents": false, "SkipUpToDate": true}
+    Set tSC = ..DispatchFor("explorer.classes.compile", ..#PROBENAMESPACE, tArgs, .tContent, .tIsError, .tProposal)
+    Do $$$AssertTrue($$$ISOK(tSC) && 'tIsError, "the dispatcher mints the agent's compile: " _ $Extract($Get(tContent), 1, 300))
     If '$IsObject($Get(tProposal)) Quit
+    Do $$$AssertTrue((tContent '[ "Compilation") && (tContent '[ "Compiling"), "the dispatched tool result holds no console line")
     Set tCard = tProposal.changed.%ToJSON()
     Do $$$AssertEquals(tProposal.target.id, "OcuProbe192.Alpha.cls,OcuProbe192.Beta.cls", "the target is the canonical set")
     Do $$$AssertTrue((tCard [ "OcuProbe192.Alpha.cls, OcuProbe192.Beta.cls") && (tCard [ """KeepSource""") && (tCard [ """CompileDependents""") && (tCard [ """SkipUpToDate"""), "the card names the documents and the flags: " _ tCard)
@@ -275,15 +306,15 @@ ClassMethod StoredText(pProposalId As %String, Output pLedgerRows As %Integer) A
     Quit tText
 }
 
-/// <p>AC2: at the baseline the agent's delete is refused by governance at the dispatch gate and at the
-/// confirm, with nothing deleted; once its key is enabled through its stored setting, the confirmed
-/// delete removes the set and reads back not found.</p>
+/// <p>AC2: at the baseline the agent's delete, sent through the dispatcher, is refused by governance,
+/// and a proposal minted directly is refused at the confirm, with nothing deleted; once its key is
+/// enabled through its stored setting, the dispatched delete is minted and confirmed, removes the set
+/// and reads back not found.</p>
 Method TestTheAgentsDeleteIsGovernedAndThenConfirmed()
 {
     Do $$$AssertStatusOK($ClassMethod(..#PROBE, "MakeClass", ..#PROBENAMESPACE, "OcuProbe192.Alpha"), "a probe class is saved")
-    Kill tDecision
-    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.Governance.Gate).Decide(..#DELETEKEY, ##class(OcuPilot.Kernel.Governance.Policy).#WRITEKIND, $Username, {"Names": "OcuProbe192.Alpha.cls"}, .tDecision), "the gate decides")
-    Do $$$AssertEquals(+$Get(tDecision("allowed")), 0, "the baseline disables the agent's delete")
+    Set tSC = ..DispatchFor("explorer.classes.delete", ..#PROBENAMESPACE, {"Names": "OcuProbe192.Alpha.cls"}, .tRefused, .tIsError, .tAnswer)
+    Do $$$AssertTrue($$$ISOK(tSC) && tIsError && $IsObject($Get(tAnswer)) && (tAnswer.%Get("code") = ##class(OcuPilot.Api.Error).#GOVERNANCEDISABLED), "at the baseline the dispatcher refuses the agent's delete call: " _ $Get(tRefused))
     Set tSC = ..MintFor(..#DELETETOOL, ..#PROBENAMESPACE, "OcuProbe192.Alpha.cls", {}, .tProposal, .tHttp, .tFault)
     Do $$$AssertStatusOK(tSC, "a proposal is minted")
     Set tSC = ..ConfirmIn(..#PROBENAMESPACE, tProposal, .tResult, .tConfirmHttp, .tCode)
@@ -293,8 +324,9 @@ Method TestTheAgentsDeleteIsGovernedAndThenConfirmed()
     Kill tSettings
     Set tSettings(..#DELETEKEY) = "enabled"
     Do $$$AssertStatusOK(##class(OcuPilot.Test.GovernanceFixture).Apply("", .tSettings), "the key is enabled through its stored setting")
-    Set tSC = ..MintFor(..#DELETETOOL, ..#PROBENAMESPACE, "OcuProbe192.Alpha.cls", {}, .tProposal, .tHttp, .tFault)
-    Do $$$AssertStatusOK(tSC, "the delete is minted")
+    Set tSC = ..DispatchFor("explorer.classes.delete", ..#PROBENAMESPACE, {"Names": "OcuProbe192.Alpha.cls"}, .tContent, .tIsError, .tProposal)
+    Do $$$AssertTrue($$$ISOK(tSC) && 'tIsError && $IsObject($Get(tProposal)), "the dispatcher mints the delete: " _ $Extract($Get(tContent), 1, 300))
+    If '$IsObject($Get(tProposal)) Quit
     Set tSC = ..ConfirmIn(..#PROBENAMESPACE, tProposal, .tResult, .tConfirmHttp, .tCode)
     Do $$$AssertStatusOK(tSC, "and confirmed: " _ $Get(tCode))
     If '$IsObject($Get(tResult)) Quit

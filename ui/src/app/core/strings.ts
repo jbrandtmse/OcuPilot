@@ -5113,7 +5113,13 @@ export const STRINGS = {
   /** EXPERIENCE.md:597 */
   explorerSqlRowsCut: '<n> rows are shown; the answer holds more.',
   /** EXPERIENCE.md:597 */
+  explorerSqlRowsCutOne: '1 row is shown; the answer holds more.',
+  /** EXPERIENCE.md:597 */
+  explorerSqlRowCountOne: '1 row',
+  /** EXPERIENCE.md:597 */
   explorerSqlRowsChanged: '<n> rows changed',
+  /** EXPERIENCE.md:597 */
+  explorerSqlRowsChangedOne: '1 row changed',
   /** EXPERIENCE.md:597 */
   explorerSqlDone: 'Done',
   /** EXPERIENCE.md:597 */
@@ -5122,6 +5128,8 @@ export const STRINGS = {
   explorerSqlStoppedUndone: 'Stopped after <s> seconds; its changes were undone.',
   /** EXPERIENCE.md:597 */
   explorerSqlTakesValues: 'This statement takes <n> values.',
+  /** EXPERIENCE.md:597 */
+  explorerSqlTakesValuesOne: 'This statement takes 1 value.',
   /** EXPERIENCE.md:597 */
   explorerSqlNoPlan: 'This kind of statement has no plan.',
   /** EXPERIENCE.md:597 */
@@ -5327,17 +5335,35 @@ export const STRINGS = {
   /** EXPERIENCE.md:599 */
   explorerSqlDataSaveTitle: 'Save changes to <table>?',
   /** EXPERIENCE.md:599 */
-  explorerSqlDataSaveConsequence: '<u> rows change, <i> are added and <d> are deleted in <table>, and this cannot be undone from OcuPilot.',
+  explorerSqlDataSaveConsequence: '<updated>, <added> and <deleted> in <table>, and this cannot be undone from OcuPilot.',
+  /** EXPERIENCE.md:599 */
+  explorerSqlDataSaveUpdated: '<n> rows change',
+  /** EXPERIENCE.md:599 */
+  explorerSqlDataSaveUpdatedOne: '1 row changes',
+  /** EXPERIENCE.md:599 */
+  explorerSqlDataSaveAdded: '<n> are added',
+  /** EXPERIENCE.md:599 */
+  explorerSqlDataSaveAddedOne: '1 is added',
+  /** EXPERIENCE.md:599 */
+  explorerSqlDataSaveDeleted: '<n> are deleted',
+  /** EXPERIENCE.md:599 */
+  explorerSqlDataSaveDeletedOne: '1 is deleted',
   /** EXPERIENCE.md:599 */
   explorerSqlDataEditing: 'Editing <column>.',
   /** EXPERIENCE.md:599 */
   explorerSqlDataWaiting: '<n> changes waiting to be saved.',
   /** EXPERIENCE.md:599 */
+  explorerSqlDataWaitingOne: '1 change waiting to be saved.',
+  /** EXPERIENCE.md:599 */
   explorerSqlDataUndone: 'Change undone.',
   /** EXPERIENCE.md:599 */
   explorerSqlDataDiscarded: '<n> changes discarded.',
   /** EXPERIENCE.md:599 */
+  explorerSqlDataDiscardedOne: '1 change discarded.',
+  /** EXPERIENCE.md:599 */
   explorerSqlDataSavedSummary: 'Saved <a> of <n> changes; <b> rolled back.',
+  /** EXPERIENCE.md:599 */
+  explorerSqlDataSavedSummaryOne: 'Saved <a> of 1 change; <b> rolled back.',
   /** EXPERIENCE.md:599 */
   explorerSqlDataReadOnly: 'Rows here are read-only: a view, or a table without a key this account can see, is not changed here.',
   /** EXPERIENCE.md:599 */

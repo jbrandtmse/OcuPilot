@@ -51,7 +51,7 @@ XData Declaration
     "criteria": {
       "fields": [
         {"param": "system", "labelKey": "explorerSystemLabel", "kind": "choice", "maxLength": 3, "options": ["yes", "no"], "default": "no"},
-        {"param": "schema", "labelKey": "explorerSqlColumnSchema", "kind": "text", "maxLength": 128}
+        {"param": "schema", "labelKey": "explorerSqlColumnSchema", "kind": "text", "maxLength": 128, "hint": "One schema, spelled as explorer.sqlschemas.read answers its Schema; omit it to list every schema's views."}
       ]
     }
   },

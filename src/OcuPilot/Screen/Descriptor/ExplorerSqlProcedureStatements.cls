@@ -58,7 +58,7 @@ XData Declaration
     "note": {"key": "explorerSqlStatementsNote", "text": "Statistics are as of the instance's last aggregation, so a recently run statement can read blank."},
     "criteria": {
       "fields": [
-        {"param": "procedure", "labelKey": "explorerSqlColumnProcedure", "kind": "text", "maxLength": 257}
+        {"param": "procedure", "labelKey": "explorerSqlColumnProcedure", "kind": "text", "maxLength": 257, "hint": "One procedure, as Schema.Procedure, spelled as explorer.sqlprocedures.read answers its Procedure."}
       ]
     }
   },

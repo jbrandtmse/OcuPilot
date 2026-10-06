@@ -55,7 +55,7 @@ XData Declaration
     "sort": {"fields": ["Name", "Database", "LockDatabase", "Collation"], "default": "Name", "direction": "asc"},
     "paging": "cap",
     "criteria": {
-      "fields": [{"param": "namespace", "labelKey": "headerNamespaceLabel", "kind": "text", "maxLength": 64}]
+      "fields": [{"param": "namespace", "labelKey": "headerNamespaceLabel", "kind": "text", "maxLength": 64, "hint": "One namespace, spelled as osmgmt.namespaces.read answers its Name."}]
     }
   },
   "table": {

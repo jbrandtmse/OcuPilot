@@ -17,6 +17,11 @@ function fill(template: string, values: Readonly<Record<string, string | number>
   return result;
 }
 
+/** `one` at exactly 1, `many` at 0 and at 2 or more. */
+function pick(count: number, one: string, many: string): string {
+  return count === 1 ? one : many;
+}
+
 function text(value: unknown): string {
   return typeof value === 'string' ? value : '';
 }
@@ -91,16 +96,21 @@ export function statusLineFor(answer: SqlAnswer | null): string {
   if (answer === null) return STRINGS.explorerSqlEmpty;
   switch (answer.outcome) {
     case 'rows':
-      return fill(answer.result.truncated ? STRINGS.explorerSqlRowsCut : STRINGS.tableRowCount, { n: answer.result.rows.length });
+      return fill(
+        answer.result.truncated
+          ? pick(answer.result.rows.length, STRINGS.explorerSqlRowsCutOne, STRINGS.explorerSqlRowsCut)
+          : pick(answer.result.rows.length, STRINGS.explorerSqlRowCountOne, STRINGS.tableRowCount),
+        { n: answer.result.rows.length },
+      );
     case 'done':
-      return answer.kind === 'dml' ? fill(STRINGS.explorerSqlRowsChanged, { n: answer.rowCount }) : STRINGS.explorerSqlDone;
+      return answer.kind === 'dml' ? fill(pick(answer.rowCount, STRINGS.explorerSqlRowsChangedOne, STRINGS.explorerSqlRowsChanged), { n: answer.rowCount }) : STRINGS.explorerSqlDone;
     case 'error':
       if (answer.sqlcode !== null) return fill(STRINGS.explorerSqlCode, { code: answer.sqlcode });
       return answer.rolledBack ? STRINGS.explorerSqlRolledBack : '';
     case 'stopped':
       return fill(answer.kind === 'dml' ? STRINGS.explorerSqlStoppedUndone : STRINGS.explorerSqlStopped, { s: answer.seconds });
     case 'parameters':
-      return fill(STRINGS.explorerSqlTakesValues, { n: answer.count });
+      return fill(pick(answer.count, STRINGS.explorerSqlTakesValuesOne, STRINGS.explorerSqlTakesValues), { n: answer.count });
     case 'noplan':
       return STRINGS.explorerSqlNoPlan;
     case 'plan':

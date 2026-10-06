@@ -41,7 +41,7 @@ Method TestTheListsAreParentScopedAndKeyedByNamespaceAndName()
         Do $$$AssertEquals($ClassMethod(tClass, "PrimaryEntityType") _ "|" _ $ListToString($ClassMethod(tClass, "SecondaryEntityTypes")) _ "|" _ $ClassMethod(tClass, "Scope") _ "|" _ $ClassMethod(tClass, "IdKind") _ "|" _ $ListToString($ClassMethod(tClass, "IdParts")), tKind _ "-mapping|namespace|instance|composite|namespace,Name", tKind _ ": its own type, listening for namespaces, keyed by namespace and name")
         Do $$$AssertEquals(tDeclaration.read.source.%ToJSON(), "{""port"":""admin"",""endpoint"":""Namespace." _ $ZConvert($Extract(tKind), "U") _ $Extract(tKind, 2, *) _ "Mappings"",""type"":""LIST""}", tKind _ ": read through the vendor's list")
         Do $$$AssertEquals($ListToString(..Strings(tDeclaration.read.fields)), $List(tCase, 2), tKind _ ": the read's fields, the namespace first")
-        Do $$$AssertEquals(tDeclaration.read.criteria.fields.%ToJSON(), "[{""param"":""namespace"",""labelKey"":""headerNamespaceLabel"",""kind"":""text"",""maxLength"":64}]", tKind _ ": one namespace criterion")
+        Do $$$AssertEquals(tDeclaration.read.criteria.fields.%ToJSON(), "[{""param"":""namespace"",""labelKey"":""headerNamespaceLabel"",""kind"":""text"",""maxLength"":64,""hint"":""One namespace, spelled as osmgmt.namespaces.read answers its Name.""}]", tKind _ ": one namespace criterion")
         Set tColumns = ""
         Set tIterator = tDeclaration.table.columns.%GetIterator()
         While tIterator.%GetNext(.tIndex, .tColumn) {

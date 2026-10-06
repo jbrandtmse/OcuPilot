@@ -2,7 +2,8 @@
 title: 'Story 19.18: Epic 19 burn-down'
 type: 'bugfix'
 created: '2026-10-05'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: '66f177f6cdaa187c18819afd5d6e004b4fd6e35d'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -194,6 +195,18 @@ Paths are under `src/OcuPilot/` or `ui/` unless given in full. Line numbers were
 
 ## Review Triage Log
 
+### 2026-10-05 — Review pass
+
+- verdicts: 7 findings — high 0, medium 1, low 4, false 2, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` saved-summary singular wiring at `data-browser.store.ts:622` pinned only by browser specs — added a jsdom case in `data-browser.page.spec.ts` and a mutation line, observed red.
+  - `[low]` `[reject]` `CriterionHints` floor `tRows > 40` is looser than the derived count — the two-sided roster and per-descriptor tests still redden on a lost entry; an exact count adds a number to maintain.
+  - `[low]` `[reject]` `TestAHintedCriterionIsDescribedByItsHint` has no compared-rows floor — the roster method reddens first when every hint is emptied.
+  - `[low]` `[reject]` `SurfaceCoverage` corpus text says eleven writes while eight rows name the method — the sentence describes the method, which asserts all eleven.
+  - `[false]` `[reject]` shared `tableRowCount` footer still reads "1 rows" — the spec's Never list excludes the shared table string by name.
+  - `[false]` `[reject]` hints not checked for one sentence or 300 characters — `CriteriaHintProblem` (Registry.cls) refuses a longer hint at declaration, and `screen-mirror.mjs --check` repeats it.
+  - `[low]` `[reject]` mutation lines name only some branches of `sql-answer.ts` — `sql-answer.test.mjs` asserts every branch at 0, 1 and 2.
+
 ## Design Notes
 
 **Recount (DW-1001).** Parsed with `screen-mirror.mjs` `readSources()`, not grepped:
@@ -277,18 +290,25 @@ Load source into `ocupilot-a2-ci` and never restart it:
 - The full browser suite (once, before dev_complete) is CI's three `browser-shard` jobs on fresh throwaways, not run locally (Rule 29).
 - `cd ui && node tools/ci-runner.mjs --container ocupilot-a2-ci`, the full ObjectScript sweep, one class at a time (once, before dev_complete): expected green apart from residue already in the ledger (19.11 recorded `WireSecurityRead`, DW-1554, and `Retention`, DW-1929).
 
-**Mutations (Rule 19)**, planned. Apply each on `ocupilot-a2-ci` with the class and its descendants recompiled, observe red, revert byte-identical (compare with `cmp`), and replace each line with the observed run:
+**Mutations (Rule 19)**, each applied on `ocupilot-a2-ci` (classes recompiled, bundle rebuilt and redeployed for the browser ones), observed red and reverted byte-identical (`cmp`):
 
-- mutation: DW-1001 roster: delete `ExplorerSqlTable`'s `hint`. Expected red: `CriterionHints`' roster method names `explorer.sqltable.read:table`.
-- mutation: DW-1001 emitted: `AddCriteria` ignores `hint` for a `text` criterion. Expected red: `CriterionHints`' description method.
-- mutation: DW-1001 parent: point `DatabaseDetails`'s hint at `osmgmt.namespaces.read`. Expected red: `CriterionHints`' parent method.
-- mutation: DW-1945 dispatch: set `ADVERTISED` 0 on `ExplorerClassCompile`. Expected red: the dispatcher refuses the call, so the compile leg goes red (`ExplorerDescriptor`'s roster goes red too).
-- mutation: DW-1945 governance: set `explorer.classes.delete` true in `Baseline.cls`. Expected red: the delete leg's dispatcher-refusal assertion.
-- mutation: DW-2092 data browser: the shared chooser always takes the plural template. Expected red: `data-browser-model.test.mjs`, then, after a rebuild and redeploy, `system-explorer-data-browser-tabs.browser-spec.mjs`.
-- mutation: DW-2092 console: `statusLineFor` drops the `explorerSqlRowsChangedOne` branch. Expected red: `sql-answer.test.mjs` and `agent-sql.browser-spec.mjs`.
-- mutation: DW-2093: rename the method and leave the rows. Expected red: `SurfaceCoverage`.
+- mutation: DW-1001 roster: deleted `ExplorerSqlTable`'s `hint`. Observed red: `CriterionHints.TestEveryTextCriterionHasAHintOrIsACommaList`, naming `explorer.sqltable.read:table` (run 2171).
+- mutation: DW-1001 emitted: `AddCriteria` ignores `hint` for a `text` criterion. Observed red: `TestAHintedCriterionIsDescribedByItsHint` (run 2172).
+- mutation: DW-1001 parent: `DatabaseDetails`'s hint pointed at `osmgmt.namespaces.read`. Observed red: `TestAParentScopedHintNamesTheParentsRead` (run 2173).
+- mutation: DW-1945 dispatch: `ADVERTISED` 0 on `ExplorerClassCompile`. Observed red: `ExplorerWrite.TestTheAgentCompilesThroughConfirm` and `TestOcuPilotsOwnCodeIsRefusedOnBothCallers` (run 2174), and `ExplorerDescriptor`'s roster (run 2175).
+- mutation: DW-1945 governance: `explorer.classes.delete` true in `Baseline.cls`. Observed red: `ExplorerWrite.TestTheAgentsDeleteIsGovernedAndThenConfirmed` and `TestTheBaselineShipsTheDeletesDisabled` (run 2176).
+- mutation: DW-2092 data browser: the shared chooser never takes the singular. Observed red: `data-browser-model.test.mjs`, then, after rebuild and redeploy, 2 of 4 tests of `system-explorer-data-browser-tabs.browser-spec.mjs`.
+- mutation: DW-2092 console: `statusLineFor` drops the `explorerSqlRowsChangedOne` branch. Observed red: `sql-answer.test.mjs` (1 failed) and, after rebuild and redeploy, `agent-sql.browser-spec.mjs` (1 failed).
+- mutation: DW-2092 saved summary: `data-browser.store.ts` builds the line without `savedSummaryText`. Observed red: `data-browser.page.spec.ts` 'a save of exactly one change reads singular in the status line' (1 failed of 37).
+- mutation: DW-2093: renamed the method and left the rows. Observed red: `SurfaceCoverage.TestEveryCoverageRowNamesATestTheSuiteExecutes` (run 2177).
 
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
+
+Summary: 36 hints (35 descriptors) and `Test/CriterionHints`; `ExplorerWrite` compile and delete legs through `Dispatch.Answer`; `ExplorerDescriptor` method renamed with its eight `SurfaceCoverage` rows; singular count sentences in the data browser and SQL console (13 literals, `data-browser-model.ts` and `sql-answer.ts` helpers, EXPERIENCE.md rows :597/:599); `angular.json` warning re-based 2987kB to 2992kB (measured 2,991,592 bytes); Fixed strings 2,718, bound 2,800 unchanged.
+
+Review: 7 findings, 1 patched (jsdom case for a one-change save, with its mutation line), 0 deferred, 6 rejected with reasons in the triage log. Follow-up review recommended: false (patched 0 high, 1 medium).
+
+Verified: `check-objectscript.py` and its harness; targeted classes green on `ocupilot-a2-ci` (runs 2157-2169, `CriterionHints` 3 tests); `npm test` (1841 tools, 2533 component tests, plus the new one); five browser specs one at a time; eight-plus-one mutations observed red. Full ObjectScript sweep once: 481 classes, 3,870 tests, 1 failed, only known residue (`WireSecurityRead` DW-1554 and the six unarmed encryption classes). Full browser suite left to CI (Rule 29). Outside the spec's file list: five browser specs, three component specs, `ui/tools/angular-json.test.mjs`.

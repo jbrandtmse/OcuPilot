@@ -55,8 +55,8 @@ XData Declaration
     "paging": "cap",
     "criteria": {
       "fields": [
-        {"param": "document", "labelKey": "explorerColumnDocument", "kind": "text", "maxLength": 256},
-        {"param": "macro", "labelKey": "explorerColumnMacro", "kind": "text", "maxLength": 128}
+        {"param": "document", "labelKey": "explorerColumnDocument", "kind": "text", "maxLength": 256, "hint": "The class or routine whose include files, imports and superclasses give the macro its context, spelled as explorer.classes.read or explorer.routines.read answers its Name."},
+        {"param": "macro", "labelKey": "explorerColumnMacro", "kind": "text", "maxLength": 128, "hint": "One macro's name, with or without its three leading dollar signs."}
       ]
     }
   },

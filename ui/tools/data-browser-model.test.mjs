@@ -470,3 +470,19 @@ test('each action appears in exactly one row, with a label and keys the string s
     assert.equal(STRINGS[row.keysKey], CHORDS[row.action].keys, `${row.action}'s keys name the chords its matcher binds`);
   }
 });
+
+// Mutation (Rule 19): the shared chooser always taking the plural template -> every singular leg goes red.
+test('the count sentences read singular at exactly 1 and plural at 0 and 2 (DW-2092)', () => {
+  assert.equal(model.waitingText(1), '1 change waiting to be saved.');
+  assert.equal(model.waitingText(0), '0 changes waiting to be saved.');
+  assert.equal(model.waitingText(2), '2 changes waiting to be saved.');
+  assert.equal(model.discardedText(1), '1 change discarded.');
+  assert.equal(model.discardedText(2), '2 changes discarded.');
+  assert.equal(model.savedSummaryText(1, 1, 0), 'Saved 1 of 1 change; 0 rolled back.');
+  assert.equal(model.savedSummaryText(0, 1, 1), 'Saved 0 of 1 change; 1 rolled back.');
+  assert.equal(model.savedSummaryText(2, 2, 0), 'Saved 2 of 2 changes; 0 rolled back.');
+  assert.equal(model.savedSummaryText(0, 0, 0), 'Saved 0 of 0 changes; 0 rolled back.');
+  assert.equal(model.saveConsequenceText({ update: 1, insert: 1, delete: 1 }, 'T'), '1 row changes, 1 is added and 1 is deleted in T, and this cannot be undone from OcuPilot.');
+  assert.equal(model.saveConsequenceText({ update: 2, insert: 0, delete: 0 }, 'T'), '2 rows change, 0 are added and 0 are deleted in T, and this cannot be undone from OcuPilot.');
+  assert.equal(model.saveConsequenceText({ update: 0, insert: 2, delete: 1 }, 'T'), '0 rows change, 2 are added and 1 is deleted in T, and this cannot be undone from OcuPilot.');
+});

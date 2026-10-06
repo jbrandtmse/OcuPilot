@@ -194,7 +194,7 @@ test('a proposed UPDATE shows the statement, its kind and table and the data-cha
     await page.waitForFunction(
       (line) => document.querySelector('app-proposal-card')?.textContent.includes(line),
       { timeout: config.navigationTimeoutMs },
-      STRINGS.explorerSqlRowsChanged.replace('<n>', '1')
+      STRINGS.explorerSqlRowsChangedOne
     );
     assert.equal(storedName(), 'after', 'the confirmed statement changed the row');
   } finally {

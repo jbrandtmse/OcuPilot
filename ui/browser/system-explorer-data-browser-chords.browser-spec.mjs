@@ -220,7 +220,7 @@ test('AC3: in an editor only Ctrl/Cmd+S acts -- it commits and opens Save -- and
     await chord(page, ['Control'], 'KeyS');
     await page.waitForSelector('app-warning-dialog [role="dialog"]', { visible: true, timeout: config.navigationTimeoutMs });
     assert.equal((await lastKey(page)).prevented, true, 'Ctrl/Cmd+S is kept from the browser');
-    assert.deepEqual(await tabNames(page), [`${SCHEMA}.Edit, 1 changes waiting to be saved.`], 'the value was committed first');
+    assert.deepEqual(await tabNames(page), [`${SCHEMA}.Edit, 1 change waiting to be saved.`], 'the value was committed first');
     await page.click('[role="dialog"] .ocu-dialog-actions .ocu-button-secondary');
     await page.waitForFunction(() => document.querySelector('[role="dialog"]') === null, { timeout: config.navigationTimeoutMs });
 
@@ -232,7 +232,7 @@ test('AC3: in an editor only Ctrl/Cmd+S acts -- it commits and opens Save -- and
     await new Promise((resolve) => setTimeout(resolve, 400));
     assert.equal(await page.$eval('[data-ocu-data="editor"]', (node) => node.getAttribute('aria-invalid')), 'true', 'a refused value keeps the editor open, marked invalid');
     assert.equal(await dialogOpen(page), false, 'a refused value opens no Save');
-    assert.deepEqual(await tabNames(page), [`${SCHEMA}.Edit, 1 changes waiting to be saved.`], 'a refused value stages nothing');
+    assert.deepEqual(await tabNames(page), [`${SCHEMA}.Edit, 1 change waiting to be saved.`], 'a refused value stages nothing');
   } finally {
     await context.close();
   }

@@ -322,14 +322,14 @@ XData Coverage
 <tool name="osmgmt.locks.remove" class="OcuPilot.Test.LockRemoveTools" method="TestEachToolIsAnActionWriteOverTheLockPort" corpus="the three lock removals are asserted together in one loop"/>
 <tool name="osmgmt.locks.removeprocess" class="OcuPilot.Test.LockRemoveTools" method="TestEachToolIsAnActionWriteOverTheLockPort" corpus="the three lock removals are asserted together in one loop"/>
 <tool name="osmgmt.locks.removeclient" class="OcuPilot.Test.LockRemoveTools" method="TestEachToolIsAnActionWriteOverTheLockPort" corpus="the three lock removals are asserted together in one loop"/>
-<tool name="explorer.classes.compile" class="OcuPilot.Test.ExplorerDescriptor" method="TestTheAreaHoldsTwentyFourReadsAndEightWrites" corpus="the eight System Explorer writes are asserted together in one loop"/>
-<tool name="explorer.classes.delete" class="OcuPilot.Test.ExplorerDescriptor" method="TestTheAreaHoldsTwentyFourReadsAndEightWrites" corpus="the eight System Explorer writes are asserted together in one loop"/>
-<tool name="explorer.classes.export" class="OcuPilot.Test.ExplorerDescriptor" method="TestTheAreaHoldsTwentyFourReadsAndEightWrites" corpus="the eight System Explorer writes are asserted together in one loop"/>
-<tool name="explorer.classes.import" class="OcuPilot.Test.ExplorerDescriptor" method="TestTheAreaHoldsTwentyFourReadsAndEightWrites" corpus="the eight System Explorer writes are asserted together in one loop"/>
-<tool name="explorer.routines.compile" class="OcuPilot.Test.ExplorerDescriptor" method="TestTheAreaHoldsTwentyFourReadsAndEightWrites" corpus="the eight System Explorer writes are asserted together in one loop"/>
-<tool name="explorer.routines.delete" class="OcuPilot.Test.ExplorerDescriptor" method="TestTheAreaHoldsTwentyFourReadsAndEightWrites" corpus="the eight System Explorer writes are asserted together in one loop"/>
-<tool name="explorer.routines.export" class="OcuPilot.Test.ExplorerDescriptor" method="TestTheAreaHoldsTwentyFourReadsAndEightWrites" corpus="the eight System Explorer writes are asserted together in one loop"/>
-<tool name="explorer.routines.import" class="OcuPilot.Test.ExplorerDescriptor" method="TestTheAreaHoldsTwentyFourReadsAndEightWrites" corpus="the eight System Explorer writes are asserted together in one loop"/>
+<tool name="explorer.classes.compile" class="OcuPilot.Test.ExplorerDescriptor" method="TestTheAreaHoldsTwentySixReadsAndElevenWrites" corpus="the area's eleven writes are asserted together in one loop"/>
+<tool name="explorer.classes.delete" class="OcuPilot.Test.ExplorerDescriptor" method="TestTheAreaHoldsTwentySixReadsAndElevenWrites" corpus="the area's eleven writes are asserted together in one loop"/>
+<tool name="explorer.classes.export" class="OcuPilot.Test.ExplorerDescriptor" method="TestTheAreaHoldsTwentySixReadsAndElevenWrites" corpus="the area's eleven writes are asserted together in one loop"/>
+<tool name="explorer.classes.import" class="OcuPilot.Test.ExplorerDescriptor" method="TestTheAreaHoldsTwentySixReadsAndElevenWrites" corpus="the area's eleven writes are asserted together in one loop"/>
+<tool name="explorer.routines.compile" class="OcuPilot.Test.ExplorerDescriptor" method="TestTheAreaHoldsTwentySixReadsAndElevenWrites" corpus="the area's eleven writes are asserted together in one loop"/>
+<tool name="explorer.routines.delete" class="OcuPilot.Test.ExplorerDescriptor" method="TestTheAreaHoldsTwentySixReadsAndElevenWrites" corpus="the area's eleven writes are asserted together in one loop"/>
+<tool name="explorer.routines.export" class="OcuPilot.Test.ExplorerDescriptor" method="TestTheAreaHoldsTwentySixReadsAndElevenWrites" corpus="the area's eleven writes are asserted together in one loop"/>
+<tool name="explorer.routines.import" class="OcuPilot.Test.ExplorerDescriptor" method="TestTheAreaHoldsTwentySixReadsAndElevenWrites" corpus="the area's eleven writes are asserted together in one loop"/>
 <tool name="explorer.classes.save" class="OcuPilot.Test.ExplorerDescriptor" method="TestTheTwoSavesAreUnadvertisedDestructiveWrites" corpus="the two System Explorer saves are asserted together in one loop"/>
 <tool name="explorer.routines.save" class="OcuPilot.Test.ExplorerDescriptor" method="TestTheTwoSavesAreUnadvertisedDestructiveWrites" corpus="the two System Explorer saves are asserted together in one loop"/>
 <tool name="explorer.sqlquery.run" class="OcuPilot.Test.SqlPort" method="TestTheToolDeclaresItsWritePath"/>

@@ -95,7 +95,7 @@ XData Declaration
     "paging": "cap",
     "criteria": {
       "fields": [
-        {"param": "pid", "labelKey": "processColumnPid", "kind": "text", "maxLength": 10, "vendorParam": "id"}
+        {"param": "pid", "labelKey": "processColumnPid", "kind": "text", "maxLength": 10, "vendorParam": "id", "hint": "One process id, a whole number, as osmgmt.processes.read answers its Pid."}
       ]
     }
   },

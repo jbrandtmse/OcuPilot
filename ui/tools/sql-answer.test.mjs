@@ -30,3 +30,20 @@ test('sqlOutcomeLines adds the instance message only under an error, and nothing
   assert.deepEqual(sqlOutcomeLines({ outcome: 'error', message: '' }), []);
   assert.deepEqual(sqlOutcomeLines(undefined), []);
 });
+
+// Mutation (Rule 19): `statusLineFor` dropping the `explorerSqlRowsChangedOne` branch -> the DML leg goes red.
+test('statusLineFor reads a count of 1 in the singular and 0 and 2 in the plural (DW-2092)', () => {
+  const rows = (count, truncated) => answerOf({ outcome: 'rows', columns: ['A'], rows: Array.from({ length: count }, () => ['1']), truncated });
+  assert.equal(statusLineFor(rows(1, false)), '1 row');
+  assert.equal(statusLineFor(rows(2, false)), '2 rows');
+  assert.equal(statusLineFor(rows(0, false)), '0 rows');
+  assert.equal(statusLineFor(rows(1, true)), '1 row is shown; the answer holds more.');
+  assert.equal(statusLineFor(rows(2, true)), '2 rows are shown; the answer holds more.');
+  const dml = (count) => statusLineFor(answerOf({ outcome: 'done', kind: 'dml', rowCount: count }));
+  assert.equal(dml(1), '1 row changed');
+  assert.equal(dml(2), '2 rows changed');
+  assert.equal(dml(0), '0 rows changed');
+  const takes = (count) => statusLineFor(answerOf({ outcome: 'parameters', count }));
+  assert.equal(takes(1), 'This statement takes 1 value.');
+  assert.equal(takes(2), 'This statement takes 2 values.');
+});

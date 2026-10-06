@@ -49,7 +49,7 @@ XData Declaration
     "paging": "cap",
     "criteria": {
       "fields": [
-        {"param": "file", "labelKey": "tableColumnName", "kind": "text", "maxLength": 1024}
+        {"param": "file", "labelKey": "tableColumnName", "kind": "text", "maxLength": 1024, "hint": "One journal file, spelled as osmgmt.journals.read answers its Name."}
       ]
     }
   },
