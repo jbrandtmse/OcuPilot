@@ -3918,6 +3918,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-26T04:49:16Z owner=range-end-cleanup by=burndown note=Epic 11 burn-down (Rule 27): per-criterion read-tool descriptions (Screen/Tool/Read.cls), not floor-blocking
 - 2026-09-30T06:34:03Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down plan 2026-09-29 (23.1 closed; its slice re-sorted): queued for the standing cleanup after the next release (Story 23.3 or later), priority p3 (repeat occurrence)
 - 2026-10-05T18:41:39Z status=routed owner=23-4-the-range-end-cleanup-part-4 by=merge_gate note=owner-approved burn-down scope 2026-10-05 (relayed by the Planner): Story 23.4 batch (b), product correctness and safety
+- 2026-10-06T21:25:02Z status=resolved-by:23-4-the-range-end-cleanup-part-4 by=adjudication note=77a71c2f+5a98c500; Services read note: an empty AllowedConnections list means any address may connect
 
 ### DW-1014: An empty AuthenticationMethods cell reads (none) on 7 of 15 stock services, which can read as no authentication where authentication does not apply
 - source: spec-6-2-the-roles-resources-and-services-lists.md | severity: low | fix-risk: low | footprint: in-story
@@ -5975,6 +5976,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-30T03:32:45Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down decision sheet 2026-09-29: into Story 23.2 (chartered after the 1.0.4 cut)
 - 2026-09-30T03:39:07Z status=routed owner=range-end-cleanup by=merge_gate note=owner's approval of the burn-down sheet caps 23.2 at 12: DW-48 joins 23.2 and this entry moves into Story 23.3 (next release)
 - 2026-10-05T18:41:39Z status=routed owner=23-4-the-range-end-cleanup-part-4 by=merge_gate note=owner-approved burn-down scope 2026-10-05 (relayed by the Planner): Story 23.4 batch (b), product correctness and safety
+- 2026-10-06T21:25:02Z status=resolved-by:23-4-the-range-end-cleanup-part-4 by=adjudication note=77a71c2f+5a98c500; fault slots per origin; a background refusal is announced once, by the locator bar
 
 ### DW-1415: A gesture made before the first preferences read settles is overwritten by it, leaving screen and instance disagreeing until the next reload
 - source: spec-15-5-ui-state-that-survives-a-sign-out.md | severity: low | fix-risk: med | footprint: in-story
@@ -6110,6 +6112,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-26T09:53:53Z status=routed owner=burndown by=spec_gate note=needs a privileged producer for a manual re-enable within AD-8/AD-9; the next agent marker clears it
 - 2026-09-30T03:32:46Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down decision sheet 2026-09-29: into Story 23.3 (after the following release)
 - 2026-10-05T18:41:39Z status=routed owner=23-4-the-range-end-cleanup-part-4 by=merge_gate note=owner-approved burn-down scope 2026-10-05 (relayed by the Planner): Story 23.4 batch (b), product correctness and safety
+- 2026-10-06T21:25:02Z status=resolved-by:23-4-the-range-end-cleanup-part-4 by=adjudication note=77a71c2f+5a98c500; the restraint read re-observes auditing and records marked; MarkingRestraint pins it
 
 ### DW-1450: A secretArguments entry may still name a derived field the write tool does not permit, and WithSecrets would set it into the body at write time
 - source: spec-5-10-security-and-secrets-disable-and-re-enable-auditing.md | severity: med | fix-risk: med | footprint: src/OcuPilot/Screen/Registry.cls:2065
@@ -6224,6 +6227,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-30T03:32:46Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down decision sheet 2026-09-29: into Story 23.3 (after the following release)
 - 2026-09-30T12:44:42Z occurrence=16-11-start-suspend-and-resume-the-task-manager
 - 2026-10-05T18:41:40Z status=routed owner=23-4-the-range-end-cleanup-part-4 by=merge_gate note=owner-approved burn-down scope 2026-10-05 (relayed by the Planner): Story 23.4 batch (b), product correctness and safety
+- 2026-10-06T21:25:02Z status=resolved-by:23-4-the-range-end-cleanup-part-4 by=adjudication note=77a71c2f+5a98c500; a task card is titled by the task's name (Propose.TargetName), else its id
 
 ### DW-1466: Eight descriptors declare refreshes true against AD-43's roster of seven; DatabaseFreeSpace is in the descriptor half of the rule and not in the EXPERIENCE.md half
 - source: spec-5-12-os-management-suspend-and-resume-a-process.md | severity: low | fix-risk: low | footprint: out-of-footprint
@@ -7236,6 +7240,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-26T00:03:34Z owner=range-end-cleanup by=burndown note=Epic 12 burn-down overflow (remainder 2, under cap, no repeat occurrence; no burn-down story chartered): a PORT.STARTED code on Confirm's 202-started ok path so a queued audit copy's ledger row says started, not ok
 - 2026-09-30T06:34:05Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down plan 2026-09-29 (23.1 closed; its slice re-sorted): queued for the standing cleanup after the next release (Story 23.3 or later), priority p4
 - 2026-10-05T18:41:39Z status=routed owner=23-4-the-range-end-cleanup-part-4 by=merge_gate note=owner-approved burn-down scope 2026-10-05 (relayed by the Planner): Story 23.4 batch (b), product correctness and safety
+- 2026-10-06T21:25:02Z status=resolved-by:23-4-the-range-end-cleanup-part-4 by=adjudication note=77a71c2f+5a98c500; a started write's ledger row carries PORT.STARTED (Api/PortError); AuditStarted pins it
 
 ### DW-1640: The vendor writes the OAuth registration access token in plain text into its own audit row (Modify OAuth2 Server Definition EventData); OcuPilot's Logs > Audit screen and logs.audit.read show EventData, so the token reaches the screen and the model provider
 - source: spec-12-4-the-oauth-2-0-client-server-description-editor.md | severity: high | fix-risk: med | footprint: out-of-footprint
@@ -7255,6 +7260,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-26T00:03:34Z owner=range-end-cleanup by=burndown note=Epic 12 burn-down overflow: Epic 9's Write.MergeUpdate is now on this branch, so the agent's server-description (and 12.5 client) Metadata can be merged over the fresh read; no Epic 12 story left to carry it
 - 2026-09-30T06:34:03Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down plan 2026-09-29 (23.1 closed; its slice re-sorted): queued for the standing cleanup after the next release (Story 23.3 or later), priority p3 (repeat occurrence)
 - 2026-10-05T18:41:39Z status=routed owner=23-4-the-range-end-cleanup-part-4 by=merge_gate note=owner-approved burn-down scope 2026-10-05 (relayed by the Planner): Story 23.4 batch (b), product correctness and safety
+- 2026-10-06T21:25:01Z status=resolved-by:23-4-the-range-end-cleanup-part-4 by=adjudication note=77a71c2f+5a98c500; agent OAuth Metadata edits merge per member over the fresh read; one card row each
 
 ### DW-1642: Discover against an unreachable issuer waits for the vendor's own connect timeout (~30 s) before the named refusal
 - source: spec-12-4-the-oauth-2-0-client-server-description-editor.md | severity: low | fix-risk: low | footprint: in-story
@@ -7680,6 +7686,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-27T16:36:14Z status=routed owner=range-end-cleanup by=merge_gate note=decided: a create re-reads by createdId through the update tool's read; AD-58 wording amended with the fix (orchestrator 2026-09-27)
 - 2026-09-30T06:34:06Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down plan 2026-09-29 (23.1 closed; its slice re-sorted): queued for the standing cleanup after the next release (Story 23.3 or later), priority p4
 - 2026-10-05T18:41:40Z status=routed owner=23-4-the-range-end-cleanup-part-4 by=merge_gate note=owner-approved burn-down scope 2026-10-05 (relayed by the Planner): Story 23.4 batch (b), product correctness and safety
+- 2026-10-06T21:25:02Z status=resolved-by:23-4-the-range-end-cleanup-part-4 by=adjudication note=77a71c2f+5a98c500; list-row creates re-read by created id via READBACKTOOL; AD-58 gains caller mode
 
 ### DW-1711: Most Save routes' read-back verdict is not asserted by a route-level test (LDAP, X.509, audit event, service, resource, four OAuth updates, task create Save)
 - source: spec-16-17-the-read-back-line.md | severity: low | fix-risk: low | footprint: in-story
@@ -8338,6 +8345,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-29T17:56:22Z status=routed owner=range-end-cleanup by=merge_gate note=agent import key tasks.schedule.import disabled by default in 1.0.3 (staging); follow-up: review TaskClass and RunAsUser on an import proposal, classify run-as-other at the strongest confirmation, apply the create rules, then re-enable
 - 2026-09-30T06:34:03Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down plan 2026-09-29 (23.1 closed; its slice re-sorted): queued for the standing cleanup after the next release (Story 23.3 or later), priority p2 (security)
 - 2026-10-05T18:41:38Z status=routed owner=23-4-the-range-end-cleanup-part-4 by=merge_gate note=owner-approved burn-down scope 2026-10-05 (relayed by the Planner): Story 23.4 batch (b), product correctness and safety
+- 2026-10-06T21:25:01Z status=resolved-by:23-4-the-range-end-cleanup-part-4 by=adjudication note=77a71c2f+5a98c500; import review names TaskClass and RunAsUser; RUNSASOTHER, CHANGED, NAME.SHAPE; key stays off
 
 ### DW-1828: A vendor ImportTasks failure after Examine passes answers 500 with the tasks before it kept and no change event (unverified)
 - source: spec-16-4-task-export-and-import.md | severity: med | fix-risk: med | footprint: in-story
@@ -8621,6 +8629,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-30T17:25:28Z occurrence=23-2-the-range-end-cleanup-part-2
 - 2026-10-01T02:07:01Z owner=range-end-cleanup by=burndown note=23.2 gate: real MED outside the cap of 12; queued for the standing cleanup after 1.0.5
 - 2026-10-05T18:41:39Z status=routed owner=23-4-the-range-end-cleanup-part-4 by=merge_gate note=owner-approved burn-down scope 2026-10-05 (relayed by the Planner): Story 23.4 batch (b), product correctness and safety
+- 2026-10-06T21:25:01Z status=resolved-by:23-3-the-range-end-cleanup-part-3 by=adjudication note=f2168084 judges an address role by effect in both spellings; ServiceUpdate 14/14 in 23.4
 
 ### DW-1873: web-sessions AC1's structural check can catch a rail tooltip revealed mid-capture (app-rail span.ocu-rail-tooltip 406px past its slot at 720px), a CI flake unrelated to the screen under test
 - source: cycle-log-epic-23.md (CI run 36746183320) | severity: med | fix-risk: low | footprint: out-of-footprint
@@ -8657,6 +8666,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-30T16:00:04Z status=routed owner=range-end-cleanup by=merge_gate note=decided (orchestrator 2026-09-30): not in 23.2 (owner cap of 12); queued for the standing cleanup after the next release, priority p4, user-visible but rare (about nine tool-heavy turns); likely fix: write the response with the object's own device writer (Do pData.%ToJSON()) instead of one string - verify on the one AD-12 writer
 - 2026-10-01T02:06:23Z status=routed owner=range-end-cleanup by=lead note=restores the orchestrator's 2026-09-30 merge-gate decision after a union merge duplicated this entry's block
 - 2026-10-05T18:41:39Z status=routed owner=23-4-the-range-end-cleanup-part-4 by=merge_gate note=owner-approved burn-down scope 2026-10-05 (relayed by the Planner): Story 23.4 batch (b), product correctness and safety
+- 2026-10-06T21:25:02Z status=resolved-by:23-4-the-range-end-cleanup-part-4 by=adjudication note=77a71c2f+5a98c500; Response.JSON streams the envelope; a 10-entry 4.2 MB conversation restores 200
 
 ### DW-1870: A Windows clone (Git for Windows, core.autocrlf=true) checks scripts/*.sh out with CRLF, so durable-init dies at once ('set: Illegal option -') and docker compose up --wait fails in 1 s
 - source: owner, 2026-09-30, relayed by the Planner (clean first-run test on a fresh droplet) | severity: high | fix-risk: low | footprint: .gitattributes, plus a roster test
@@ -8711,6 +8721,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-02T12:43:22Z occurrence=18-16-remote-databases
 - 2026-10-03T22:14:52Z occurrence=18-6-licensing-and-ecp
 - 2026-10-05T18:41:39Z status=routed owner=23-4-the-range-end-cleanup-part-4 by=merge_gate note=owner-approved burn-down scope 2026-10-05 (relayed by the Planner): Story 23.4 batch (b), product correctness and safety
+- 2026-10-06T21:25:01Z status=resolved-by:23-4-the-range-end-cleanup-part-4 by=adjudication note=77a71c2f+5a98c500; every Save holds its mint's target key (51 sites); held-key legs; 409 WRITE.TARGETBUSY
 ### DW-1879: Logs side bar: the gated 'Interoperability event log' entry renders its 'Requires %Ens_EventLog:USE' hint as a second column, squeezing the label onto two lines
 - source: Planner on the 1.0.4 candidate (demo a6e4b217), 2026-09-30 | severity: low | fix-risk: low | footprint: the side-bar gated-entry layout
 - evidence: UX-DR22 puts a gated entry's reason inline after the name; on the Logs area the hint takes its own column and wraps the label
@@ -9040,6 +9051,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-02T12:43:15Z status=escalated owner=burndown by=cr note=options: a remote entity type (splits AD-34's lock key on one Config.Databases name), or an owner-aware lookup (AD-14 wire); navigation.ts contended
 - 2026-10-02T13:54:39Z status=routed owner=range-end-cleanup by=merge_gate note=navigation.ts contended; plan weighs (a) a remote entity type (DW-1529 precedent; prove AD-34's lock key cannot diverge) or (b) an owner-aware lookup
 - 2026-10-05T18:41:39Z status=routed owner=23-4-the-range-end-cleanup-part-4 by=merge_gate note=owner-approved burn-down scope 2026-10-05 (relayed by the Planner): Story 23.4 batch (b), product correctness and safety
+- 2026-10-06T21:25:02Z status=resolved-by:23-4-the-range-end-cleanup-part-4 by=adjudication note=77a71c2f+5a98c500; a change event names its tool; a remote database's toast opens Remote databases
 
 ### DW-1940: ClassicPageGate.TestWithNoAssignmentEachToolsPairsAreItsDeclaredSet's message says thirty-five OWNPAIRS names; the roster holds thirty-eight since Story 18.16
 - source: spec-18-16-remote-databases.md | severity: low | fix-risk: low | footprint: in-epic
@@ -9923,6 +9935,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-05T18:40:24Z occurrence=19-11-the-agent-gains-guarded-sql-and-a-picker by=spec_gate note=the agent's SQL read (explorer.sqlquery.read) returns whatever the caller's SQL privileges read, INFORMATION_SCHEMA's statement tables included, so a statement's credential literal can reach the model; same pending decision
 - 2026-10-05T18:50:32Z status=decision-pending owner=burndown by=owner note=owner hold 2026-10-05 (relayed by the Planner): IRIS defect candidates stay on hold, no report to InterSystems for now
 - 2026-10-06T09:19:24Z status=routed owner=23-4-the-range-end-cleanup-part-4 by=owner note=owner decision 2026-10-06 (relayed by the Planner), option 1: the 10-05 hold covers reporting IRIS defect candidates only, and DW-2096 is OcuPilot's own display, so it leaves the hold; Story 23.4 batch (b) masks the value after IDENTIFIED BY or PASSWORD in displayed and agent-bound statement text, reusing SqlPort.PASSWORDPATTERN
+- 2026-10-06T21:25:03Z status=resolved-by:23-4-the-range-end-cleanup-part-4 by=adjudication note=77a71c2f+5a98c500; credential literals masked at SQL activity, catalog texts and the agent's read; per-site pins
 
 ### DW-2097: SQL activity's Routine and Workers columns are pinned only at their default values, and the child-statement RunType branch never runs in a test
 - source: spec-19-10-sql-activity.md | severity: low | fix-risk: med | footprint: in-story
@@ -10021,11 +10034,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-23-4-the-range-end-cleanup-part-4.md | severity: med | fix-risk: low | footprint: in-story
 - evidence: src/OcuPilot/Kernel/Proposal/ReadBack.cls; a task create sends RunAsUser blank and the instance stores the caller (batch b, 77a71c2f)
 - 2026-10-06T15:59:36Z status=open owner=23-4-the-range-end-cleanup-part-4 by=harvest note=batch b deferral; the lead decides AD-58's amendment, the alternative is a tool-level hook
+- 2026-10-06T21:25:03Z status=resolved-by:23-4-the-range-end-cleanup-part-4 by=adjudication note=5a98c500; caller mode kept, as the review recommended, and written into AD-58
 
 ### DW-2114: DW-1465's name hooks on TaskRun, TaskDelete and TaskExport have no mint-level test; only TaskResume, TaskCreate and TaskUpdate are pinned
 - source: spec-23-4-the-range-end-cleanup-part-4.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: a hook answering empty on those three leaves the card titled by id with no test red (batch b, 77a71c2f)
 - 2026-10-06T15:59:36Z status=open owner=23-4-the-range-end-cleanup-part-4 by=harvest note=batch b deferral
+- 2026-10-06T21:25:03Z status=wontfix-accepted by=adjudication note=reopen_if=a TaskRun, TaskDelete or TaskExport card shows the task id after a name read succeeds
 
 ### DW-2115: DW-2096's three mask sites (catalog, SQL activity, explorer read) are pinned only by the all-sites MaskCredentials mutation
 - source: spec-23-4-the-range-end-cleanup-part-4.md | severity: low | fix-risk: low | footprint: in-story
@@ -10037,6 +10052,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-23-4-the-range-end-cleanup-part-4.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: ui/src/app/shell/locator-bar.ts:409; settle by refusing a Home write and navigating before it is announced (batch b, 77a71c2f)
 - 2026-10-06T15:59:36Z status=open owner=23-4-the-range-end-cleanup-part-4 by=harvest note=batch b deferral
+- 2026-10-06T21:25:03Z status=wontfix-accepted by=adjudication note=reopen_if=a refusal that lands after a navigation is reported unannounced
 
 ### DW-2117: Small batch b test gaps: field-lists.mjs has no malformed caller case, OAuthClientUpdate asserts no card-row count, RenderTargetBusy's internal-error arm is untested
 - source: spec-23-4-the-range-end-cleanup-part-4.md | severity: low | fix-risk: low | footprint: in-story
