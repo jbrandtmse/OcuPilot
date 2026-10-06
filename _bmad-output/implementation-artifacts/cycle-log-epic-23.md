@@ -267,3 +267,12 @@
 2026-10-02T07:26:48Z	Epic 23	ledger_burndown_complete	partial=true(story_23.3_dispatch;epic_continues_with_standing_cleanup) open_before=12 resolved=13(DW-1901,1866,1865,1808,1822,1759,1839,434,1782,1881,1307,1906,1907) terminal=6(DW-1204,1904,1918,1919,1920,1928) chartered=0 chartered_size=0 overflow=0 reowned=0 to_decision_sheet=1(DW-1927) open_after=0 cap=8 story_max=12 filed_this_epic=11(DW-1904,1906,1907,1916,1917,1918,1919,1920,1927,1928,1929) closed_this_epic=19 drain_ratio=1.73 routed_out=DW-1916,1917,1929(range-end-cleanup)
 2026-10-02T07:26:56Z	Epic 23	epic_runner_complete	stories_completed=1(23.3) ready_for_merge=true code_head=0f55b740 ci=success(36975211472) feature_contained=7503c78f decisions_for_user=DW-1927
 2026-10-02T07:27:30Z	Story 23.3	decision_recorded	entry=DW-1927 by=merge_gate(orchestrator) decision=wontfix-accepted(reopen_if=retention_disabled_or_past_30_days_or_scrub_requested) decisions_for_user=none_remaining spec=auto_run_result_sweep_attribution_labelled_(inference)
+2026-10-06T07:12:03Z	Epic 23	lead_model_gate	model=claude-opus-5-5[1m] action=proceed dispatch=23.4_only slot=a
+2026-10-06T07:12:03Z	Epic 23	runtime_gate	bmad=6.12.0 uv=0.12.9 ci=gh
+2026-10-06T07:12:03Z	Epic 23	telemetry_gate	pending=0 action=none
+2026-10-06T07:12:03Z	Epic 23	integrate_forward	from=origin/feature/OCU-1_ocupilot-mvp@71ffec73 kind=fast_forward from_head=5767c771 conflicts=none before=story_23.4
+2026-10-06T07:12:03Z	Epic 23	slot_verified	slot=a mcp_profile=ocupilot-slot-a baseUrl=52774 docker_port=52774 throwaway=ocupilot-ci_absent(up_by_this_runner) bootstrap=node_modules_ok,irislib_ok
+2026-10-06T07:12:27Z	Epic 23	throwaway_up	container=ocupilot-ci dir=/tmp/ocupilot-ci project=ocupilot-ci web=52776 super=1975 by=this_runner health=healthy owner=epic-23-runner(23.4)
+2026-10-06T07:12:55Z	Epic 23	spine_resolved	path=_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md ads=61 status=final read=full_once(rule26)
+2026-10-06T07:12:55Z	Epic 23	ledger_load	total=1566 open=0 routed=100 escalated=0 decision_pending=10 terminal=1456 owner_unknown=0 burndown=18 range_end_cleanup=43 owner_23-4=34(31_unique;DW-1864,1925,2027_duplicated) before=story_23.4
+2026-10-06T07:15:57Z	Epic 23	epic_context_compiled	reason=planning_artifact_newer(23.4_charter,epics.md,spine,UX,PRD) model=opus agent=a585046395eb35830 size=8006B
