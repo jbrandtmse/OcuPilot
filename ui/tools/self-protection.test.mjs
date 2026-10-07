@@ -289,6 +289,11 @@ const KERNEL_REFUSALS = [
   // Story 18.23: Interactive key activation while the audit log, IRISSECURITY or IRISTEMP is encrypted,
   // which the form shows on the start-mode field when either caller is answered with it.
   ['STARTUPINTERACTIVE', 'encryptionStartupInteractiveRefusal'],
+  // Story 18.8: a change that leaves OcuPilot's own sign-in with no method, and turning O/S authentication
+  // off, which the authentication options form draws on the field before a click and answers either caller
+  // with.
+  ['OCUPILOTSIGNIN', 'authOptionsRefusalSignIn'],
+  ['OCUPILOTSTART', 'authOptionsRefusalStart'],
 ];
 
 test('DW-1598, AD-53: each kernel refusal is published verbatim in Fixed strings and is the sentence ReasonFor returns', () => {
@@ -691,6 +696,7 @@ test('Story 18.21 (C5): ecp-ssl-pending and ecp-ssl-authorized answer the tools\
 
 /** Story 18.7's error class and the key file tools, which declare its published sentences. */
 const ENCRYPTION_ERROR = join(REPO_ROOT, 'src', 'OcuPilot', 'Api', 'EncryptionError.cls');
+const WEBAUTH_ERROR = join(REPO_ROOT, 'src', 'OcuPilot', 'Api', 'WebAuthError.cls');
 const ENCRYPTION_TOOL = (name) => join(REPO_ROOT, 'src', 'OcuPilot', 'Screen', 'Tool', `EncryptionKeyFile${name}.cls`);
 const ENCRYPTION_KEY_TOOL = (name) => join(REPO_ROOT, 'src', 'OcuPilot', 'Screen', 'Tool', `${name}.cls`);
 
@@ -739,6 +745,8 @@ const ENCRYPTION_SENTENCES = [
   [ENCRYPTION_ERROR, 'REASONSTARTUPKMIP', 'encryptionStartupKmipConsequence'],
   [ENCRYPTION_ERROR, 'REASONSTARTUPRESTART', 'encryptionStartupRestart'],
   [ENCRYPTION_ERROR, 'REASONSTARTUPJOURNAL', 'encryptionStartupJournalConsequence'],
+  // Story 18.8: the sign-out consequence, which the form states before Save and the card renders.
+  [WEBAUTH_ERROR, 'REASONSIGNOUT', 'authOptionsSignOutConsequence'],
 ];
 
 test("Story 18.23: the audit log's encryption change is one consequence sentence on both surfaces, published in Fixed strings", () => {

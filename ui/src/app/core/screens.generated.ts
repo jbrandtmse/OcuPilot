@@ -10,7 +10,7 @@
  * declarations disagree.
  */
 
-export type EntityTypeKey = 'web-application' | 'rest-service' | 'user' | 'role' | 'resource' | 'service' | 'ssl-configuration' | 'x509-credential' | 'ldap-configuration' | 'wallet-collection' | 'wallet-secret' | 'oauth2-client-configuration' | 'oauth2-server-definition' | 'oauth2-resource-server' | 'oauth2-server' | 'oauth2-server-client' | 'audit-event' | 'audit-user-event' | 'auditing-configuration' | 'task' | 'task-history-entry' | 'process' | 'lock' | 'database' | 'device' | 'audit-record' | 'application-error' | 'log-entry' | 'agent-definition' | 'agent-switch' | 'agent-policy' | 'allowed-directory' | 'namespace' | 'web-session' | 'background-task' | 'global-mapping' | 'routine-mapping' | 'package-mapping' | 'database-configuration' | 'language-server' | 'class' | 'routine' | 'journal-file' | 'journal-file-database' | 'journal-settings' | 'journal-record' | 'license-key' | 'license-server' | 'ecp-data-server' | 'ecp-settings' | 'ecp-ssl-connection' | 'encryption-key-file' | 'database-encryption-keys' | 'data-element-encryption-keys' | 'encryption-startup' | 'docdb-database' | 'sql-statement';
+export type EntityTypeKey = 'web-application' | 'rest-service' | 'user' | 'role' | 'resource' | 'service' | 'ssl-configuration' | 'x509-credential' | 'ldap-configuration' | 'wallet-collection' | 'wallet-secret' | 'oauth2-client-configuration' | 'oauth2-server-definition' | 'oauth2-resource-server' | 'oauth2-server' | 'oauth2-server-client' | 'audit-event' | 'audit-user-event' | 'auditing-configuration' | 'task' | 'task-history-entry' | 'process' | 'lock' | 'database' | 'device' | 'audit-record' | 'application-error' | 'log-entry' | 'agent-definition' | 'agent-switch' | 'agent-policy' | 'allowed-directory' | 'namespace' | 'web-session' | 'background-task' | 'global-mapping' | 'routine-mapping' | 'package-mapping' | 'database-configuration' | 'language-server' | 'class' | 'routine' | 'journal-file' | 'journal-file-database' | 'journal-settings' | 'journal-record' | 'license-key' | 'license-server' | 'ecp-data-server' | 'ecp-settings' | 'ecp-ssl-connection' | 'encryption-key-file' | 'database-encryption-keys' | 'data-element-encryption-keys' | 'encryption-startup' | 'docdb-database' | 'sql-statement' | 'authentication-options';
 
 /**
  * The closed archetype vocabulary, mirrored from OcuPilot.Screen.Archetype. A screen's
@@ -518,7 +518,8 @@ export const ENTITY_TYPES: readonly EntityTypeKey[] = [
   "data-element-encryption-keys",
   "encryption-startup",
   "docdb-database",
-  "sql-statement"
+  "sql-statement",
+  "authentication-options"
 ];
 
 /**
@@ -566,7 +567,8 @@ export const ENTITY_ID_RULES: Readonly<Partial<Record<EntityTypeKey, string>>> =
   "database-encryption-keys": "singleton",
   "data-element-encryption-keys": "singleton",
   "encryption-startup": "singleton",
-  "docdb-database": "foldcase"
+  "docdb-database": "foldcase",
+  "authentication-options": "singleton"
 };
 
 /**
@@ -2268,6 +2270,145 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "rowTarget": null,
     "multiSelect": null,
     "secretArguments": [],
+    "fingerprintExcludes": []
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.AuthOptions",
+    "route": "security/authentication",
+    "area": "security",
+    "labelKey": "authOptionsLabel",
+    "sideBarPosition": 11,
+    "archetype": "form-page",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Secure",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "authentication-options",
+    "entityLabelKey": "authOptionsLabel",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "single",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "AutheUnauthenticated",
+        "AutheOS",
+        "AutheOSDelegated",
+        "AutheOSLDAP",
+        "AutheCache",
+        "AutheDelegated",
+        "AutheAlwaysTryDelegated",
+        "AutheKB",
+        "AutheLDAP",
+        "AutheLDAPCache",
+        "AutheOAuth2",
+        "AutheLoginToken",
+        "AutheTwoFactorSMS",
+        "AutheTwoFactorPW",
+        "LoginCookieTimeout",
+        "SMTPServer",
+        "SMTPUsername",
+        "TwoFactorFrom",
+        "TwoFactorTimeout",
+        "JWTIssuer",
+        "JWTSigAlg"
+      ],
+      "secretFields": []
+    },
+    "secretArguments": [
+      "SMTPPassword"
+    ],
+    "emptyStateKey": "",
+    "commandAliases": [
+      "authentication",
+      "authentication options"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "authOptionsPrompt1"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "authOptionsPrompt2"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "authOptionsPrompt3"
+      }
+    ],
+    "classicPage": "%CSP.UI.Portal.Authentication",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "admin",
+        "endpoint": "Security.WebAuth",
+        "type": "GET"
+      },
+      "fields": [
+        "AutheUnauthenticated",
+        "AutheOS",
+        "AutheOSDelegated",
+        "AutheOSLDAP",
+        "AutheCache",
+        "AutheDelegated",
+        "AutheAlwaysTryDelegated",
+        "AutheKB",
+        "AutheLDAP",
+        "AutheLDAPCache",
+        "AutheOAuth2",
+        "AutheLoginToken",
+        "AutheTwoFactorSMS",
+        "AutheTwoFactorPW",
+        "LoginCookieTimeout",
+        "SMTPServer",
+        "SMTPUsername",
+        "TwoFactorFrom",
+        "TwoFactorTimeout",
+        "JWTIssuer",
+        "JWTSigAlg"
+      ],
+      "filter": [
+        "JWTSigAlg"
+      ],
+      "sort": {
+        "fields": [
+          "JWTSigAlg"
+        ],
+        "default": "JWTSigAlg",
+        "direction": "asc"
+      },
+      "paging": "cap"
+    },
+    "toolIdentifier": "security.authoptions",
+    "refreshDefault": 0,
+    "table": null,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
     "fingerprintExcludes": []
   },
   {

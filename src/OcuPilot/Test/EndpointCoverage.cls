@@ -255,6 +255,8 @@ XData Probes
 <probe class="Api.Router" method="POST" url="/encryption-key-file" path="/api/ocupilot/encryption-key-file" disposition="envelope" refusal="1"/>
 <probe class="Api.Router" method="GET" url="/encryption-startup/form" path="/api/ocupilot/encryption-startup/form" disposition="envelope"/>
 <probe class="Api.Router" method="PUT" url="/encryption-startup" path="/api/ocupilot/encryption-startup" disposition="envelope" refusal="1"/>
+<probe class="Api.Router" method="GET" url="/authentication-options/form" path="/api/ocupilot/authentication-options/form" disposition="envelope"/>
+<probe class="Api.Router" method="PUT" url="/authentication-options" path="/api/ocupilot/authentication-options" disposition="envelope" refusal="1"/>
 <probe class="Api.Router" method="POST" url="/explorer/docdb" path="/api/ocupilot/explorer/docdb" disposition="envelope" refusal="1"/>
 <probe class="Api.Readiness" method="GET" url="/" path="/api/ocupilot/readiness/" disposition="envelope"/>
 <probe class="Api.StaticHandler" method="GET" url="/(.*)" path="/ocupilot/index.html" disposition="bytes"/>

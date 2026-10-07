@@ -345,6 +345,9 @@ export const CONSEQUENCE_ENCRYPTIONSTARTUPRESTART = 'ENCRYPTION.STARTUP.RESTART'
 export const CONSEQUENCE_ENCRYPTIONSTARTUPJOURNAL = 'ENCRYPTION.STARTUP.JOURNAL';
 export const CONSEQUENCE_AUDITENCRYPTIONCHANGE = 'AUDIT.ENCRYPTIONCHANGE';
 
+/** Story 18.8: a change to the JWT issuer or signature algorithm, which ends every token session. */
+export const CONSEQUENCE_WEBAUTHSIGNOUT = 'WEBAUTH.SIGNOUT';
+
 /** The field a switch file proposal's diff names the file the instance writes now in. */
 const JOURNAL_CURRENT_FIELD = 'CurrentFile';
 
@@ -442,6 +445,8 @@ export function consequenceSentence(code: string | undefined): string {
   if (code === CONSEQUENCE_ENCRYPTIONSTARTUPRESTART) return STRINGS.encryptionStartupRestart;
   if (code === CONSEQUENCE_ENCRYPTIONSTARTUPJOURNAL) return STRINGS.encryptionStartupJournalConsequence;
   if (code === CONSEQUENCE_AUDITENCRYPTIONCHANGE) return STRINGS.encryptionStartupAuditConsequence;
+  // Story 18.8: the sign-out sentence, published once.
+  if (code === CONSEQUENCE_WEBAUTHSIGNOUT) return STRINGS.authOptionsSignOutConsequence;
   return '';
 }
 

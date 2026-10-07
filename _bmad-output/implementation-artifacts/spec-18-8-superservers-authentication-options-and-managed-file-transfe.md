@@ -2,13 +2,16 @@
 title: 'Story 18.8: Superservers, authentication options and managed file transfer'
 type: 'feature'
 created: '2026-10-06'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: 'd4ebef518757cc0c725db5034ecad1bf7373ddc5'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-18-context.md'
 warnings: ['oversized']
-deferred: []
+deferred:
+  - 'The form read `HandleForm` (lock read failing renders internal error) and the store open (`form.kind !== ok` fault) have no test that arms a failing `Security.WebAuth` GET; the server arm refuses regardless, so only the drawn locks are unpinned.'
+  - 'The vendor audit event %System/%Security/SystemChange writes the SMTP password in clear in its New value line when CHANGESMTPPWD runs (measured at Task 0). AuditPort.VENDORSECRETS does not cover it and no AD-35 mask declaration was added; the next story touching vendor-audit masks declares it.'
 ---
 
 <intent-contract>
@@ -232,6 +235,20 @@ Analog: Story 18.21's ECP settings, a listed singleton form page. Adds 18.23's a
 
 ## Review Triage Log
 
+### 2026-10-07 — Review pass
+
+- verdicts: 9 findings — high 0, medium 3, low 5, false 0, maybe-false 1
+- findings:
+  - `[medium]` `[patch]` A2 moved-target and busy-target refusals have no mutation line — mutations run (HoldTool skipped, run 54 red); line recorded.
+  - `[medium]` `[patch]` Failed-mask-read leg could pass on real masks (AutheCache is a genuine cut) — legs now arm a spare method; `CutsOffSignIn` answers 0 mutation red (run 52).
+  - `[low]` `[patch]` A5 `Consequence` / `JWTSigAlg` leg and client A3-A5 legs have no mutation line — `AUTHETOKENFIELDS` (run 53), store lock and `tokenEffect` mutations red; lines recorded. Browser legs stay unmutated (rebuild and redeploy), named in the spec.
+  - `[low]` `[patch]` `AuthOptionsGate` has no mutation line — Gate-passes-all mutation red (run 57); line recorded.
+  - `[medium]` `[patch]` Assertions that cannot fail (browser tests 2 and 3 PUT counts, client A4 empty-write expects, schema-leg disjunction) — dead assertions and the unused `countWrites` removed; the schema leg now asserts only for non-`WEBAUTH` cases.
+  - `[medium]` `[defer]` SMTP password in the vendor audit event, unmasked by `VENDORSECRETS` — already in `deferred:`; vendor-side record, outside the contract's named surfaces.
+  - `[low]` `[defer]` Form-read failure paths untested (`HandleForm` lock-read failure, store `kind !== 'ok'`) — the server arm refuses regardless; added to `deferred:`.
+  - `[low]` `[reject]` Intent-alignment divergences 3 and 4 (single-field locks versus whole-payload arm; mask-relative versus field-named expectation) — descriptive only, both use the same bits and masks; no harm named.
+  - `[maybe-false]` `[reject]` Intent-alignment note 1/2 (tests reach the arm through the seam and fixtures, not the vendor) — real masks and effects were measured at Task 0 and the browser spec covers the client; a would-be low.
+
 ## Design Notes
 
 **Governing ADs (Part A):**
@@ -314,6 +331,18 @@ Analog: Story 18.21's ECP settings, a listed singleton form page. Adds 18.23's a
 
 **Vendor defect candidate** (owner hold; for the lead's list, not reported): the `WebAuth` `GET`→`PUT` round trip is not idempotent. `AutheKB` true adds `AutheK5KeyTab`, which the stock instance leaves off, and the classic Save does the same (measured at plan).
 
+### Measured at Task 0
+
+On `ocupilot-ci`, 2026-10-07; each probe restored S0 and re-read it.
+
+- **S0.** `AutheEnabled` 33556471, JWT issuer empty, `JWTSigAlg` ES256, `LoginCookieTimeout` 0, `TwoFactorTimeout` 180, SMTP fields empty. `/ocupilot` 64, `/api/ocupilot` 32, `/api/ocupilot/readiness` 64, `%Service_WebGateway` 32. The signing-key hashes are empty until the first mint.
+- **Vendor field rules** (500, nothing stored): Always try Delegated without Delegated (#1460), LDAP cache without LDAP (#1438), SMS with an empty server or an empty from address (#1417, each alone and both empty).
+- **Vendor accepts:** a negative `LoginCookieTimeout` and `TwoFactorTimeout`; `1.5` becomes `1`; a non-string `JWTIssuer`. The client rules therefore carry the range checks.
+- **`CHANGESMTPPWD`:** the value is stored and `GET` never returns it; `""` clears it; a missing key answers 400 #40301. (AD-56) The vendor audit row carries the password in clear (deferred above).
+- **Pairs (AD-8):** a principal holding exactly `%Admin_Secure:USE` and `%DB_IRISSYS:READ` reads, sends changing and unchanged `PUT`s, sends `CHANGESMTPPWD`, and reads the three web applications and `Security.Services`. No further pair.
+- **Unchanged `PUT`:** less `AutheKB`, it changes no S0 value and ends no token. With `AutheKB` true it sets all seven Kerberos bits.
+- **Halt checks** passed. One probe (`JWTIssuer` as the number 5) reached the vendor past the seam, was restored at once, left the key hashes unchanged and ended no token.
+
 ### Split (approved)
 
 The orchestrator's merge gate approved the split on 2026-10-07 (Rule 5): this spec is Part A. Superservers are Story 18.25, managed file transfer connections Story 18.26, and the read-only LDAP view with DW-1896 Story 18.27; their outlines are in this spec as committed at `e7a3bef1` (Design Notes › Recommended split), for their own plans.
@@ -360,10 +389,35 @@ The orchestrator's merge gate approved the split on 2026-10-07 (Rule 5): this sp
 - **A5:** `Consequence` answers "" for `JWTSigAlg` → `AuthOptionsProhibited`'s destructive-mint leg and `proposal-view.test.mjs`.
 - **A6:** `security.authoptions.update` dropped from the baseline → `GovernanceBaseline`. `authelogintoken` dropped from `Log.cls` → `credential-lists.test.mjs`.
 
+**Mutations run (Rule 19), each applied on `ocupilot-ci` after reload, observed red, reverted byte-identical and reloaded:**
+
+- mutation: the descriptor's read adds `SMTPPassword` -> `AuthOptionsDescriptor.TestTheScreenIsDeclaredAsTheSpecPlacesIt` red
+- mutation: `MergeRaw` keeps an unchanged `AutheKB` -> `AuthOptionsWrite.TestAnOrdinaryChangeIsOnePutLessAnUnchangedKerberosOnBothCallers` red
+- mutation: `Check` drops the SMS server rule -> `AuthOptionsWrite.TestEachRuleIsRefusedOnItsFieldBeforeAnyWrite` red
+- mutation: the Save keeps `SMTPPassword` in the merge body -> `AuthOptionsWrite.TestTheSmtpPasswordIsWrittenClearedAndReachesNoRecord` red
+- mutation: the `OCUPILOTSIGNIN` dispatch removed -> `AuthOptionsProhibited.TestTurningOffAnOnlyMethodIsRefusedOnBothCallers` and `TestAFailedMaskReadRefuses` red
+- mutation: the `OCUPILOTSTART` dispatch removed -> `AuthOptionsProhibited.TestTurningOffOsAuthenticationIsRefusedOnBothCallers` red
+- mutation: `SignInLocks` ignores the mask read -> `AuthOptionsRead.TestTheFormLocksTheMethodsOcuPilotSignsInThrough` red
+- mutation: the token-field effect removed -> `AuthOptionsProhibited.TestATokenSettingChangeIsPermittedAndNamesItsConsequence` red
+- mutation: `security.authoptions.update` dropped from the baseline -> `GovernanceBaseline.TestEveryRegisteredWriteKeyHasABaselineLine` red
+- mutation: `authelogintoken` dropped from `Log.cls` -> `AuthOptionsDescriptor.TestTheClassificationIsReviewed` red
+- mutation: `authelogintoken` dropped from `credential-pattern.mjs` -> `credential-lists.test.mjs` red (3 fail)
+- mutation: `CutsOffSignIn` answers 0 on a failed mask read -> `AuthOptionsProhibited.TestAFailedMaskReadRefuses` red (run 52; the failed-read legs now arm a spare method so only the failed read can refuse)
+- mutation: `AUTHETOKENFIELDS` drops `JWTSigAlg` -> `AuthOptionsDescriptor.TestAChangedTokenSettingIsTheSignOutEffect` red (run 53)
+- mutation: the Save skips `HoldTool` -> `AuthOptionsWrite.TestAMovedTargetAndABusyTargetAreRefused` red (run 54)
+- mutation: `AuthOptionsSave.Gate` passes every caller -> `AuthOptionsGate.TestWithoutSecuritysResourceEveryReadAndWriteIsRefused` and `TestWithoutTheSystemDatabaseReadTheSaveIsRefused` red (run 57)
+- mutation: the store's locked-flag guard removed -> `auth-options.store.spec.ts` A4 red
+- mutation: the store's `tokenEffect` answers `''` -> `auth-options.store.spec.ts` and `auth-options.page.spec.ts` A5 red (2 fail)
+- Not mutated: the browser spec's legs and `proposal-view.test.mjs`'s consequence row (client mutations need a rebuild and redeploy).
+
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
 
-- Planned at plan (Opus): Part A in full with ACs A0-A6; Parts B-D outlined, then trimmed at the spec gate after the merge gate approved the split.
-- Spec gate (lead, 2026-10-07): Decision 4 reversed to a refusal (`PROHIBITED.OCUPILOTSTART`) on a measured failed start; spine amendments written; DW-2139 filed under the owner's hold.
+- Summary: Part A built. The `security/authentication` screen over `Security.WebAuth`, tools `security.authoptions.update` and `security.authoptions.smtppassword`, the `OCUPILOTSIGNIN` and `OCUPILOTSTART` arms in `Prohibited.cls`, `WEBAUTH.SIGNOUT` for a changed `JWTIssuer` or `JWTSigAlg`, `Api/WebAuthError.cls`, the page, store, strings and regenerated screens, and the `authelogintoken` credential exception. Bundle `maximumWarning` re-based to 3191kB on a measured 3,038,769 bytes (hard stop 4000kB).
+- Review: 9 findings; patched 5 (medium 3, low 2 by verdict), deferred 2, rejected 2. Mutations recorded in `## Verification`; dead assertions removed; the failed-mask-read test strengthened.
+- Verification: story ObjectScript classes green on `ocupilot-ci` one at a time (`AuthOptionsProhibited`, `AuthOptionsWrite`, `AuthOptionsGate`, `AuthOptionsDescriptor` re-run after the review pass); `node --test tools/*.test.mjs` 1867 pass; the two component specs 24 pass; browser specs `auth-options` and `security` green before the review pass (the removed assertions were no-ops); `client-lint`, `check-objectscript`, `lint-docs` clean.
+- Full ObjectScript sweep (once, `ocupilot-ci`, 494 classes, 3976 tests): one failure, `EncryptionStartupDescriptor`'s code-count pin (28 to 30), fixed and re-run green.
+- Residual: Task 0 sent `{"JWTIssuer":5}` to the vendor past the seam and restored `""` at once (key hashes unchanged). `Monitor.State()` reads 2 on `ocupilot-ci`, from "Many alerts generated across the system" in `messages.log`; not traced to one cause.
+- Follow-up review recommended: false.

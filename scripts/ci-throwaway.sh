@@ -362,6 +362,9 @@ services:
       # The document database gate class signs in as probe principals each missing one pair the DocDB
       # port requires, and lists, creates and drops a probe database as them (Story 19.17).
       # classes: DocDbGate
+      # The authentication options gate class signs in as probe principals holding Security's pairs, and
+      # each without one, and saves the options as them through a seam port that sends nothing (Story 18.8).
+      # classes: AuthOptionsGate
       # The SQL activity gate class signs in as probe principals each missing one pair the SQL
       # activity port requires, or holding READ on USER's database and %Development, and reads
       # another account's running probe statement as them (Story 19.10).
@@ -471,6 +474,11 @@ services:
       # keeps disabled, and put it back as they found it after every test; they create and drop probe
       # databases named OcuProbe1917* in USER and remove each by name.
       # classes: DocDbProbe, DocDbPort, DocDbGate, DocDbWrite
+      # Since Story 18.8 the authentication options class saves and confirms the instance's authentication
+      # and web session options -- a login cookie timeout and an unchanged Kerberos flag sent for real, and the
+      # SMTP password set and cleared -- and restores every value it read first. Every sign-in, start or token
+      # change goes only to a seam port that records it and never sends it.
+      # classes: AuthOptionsWrite
       OCUPILOT_ALLOW_SERVICE_CONFIG: "1"
       # Arms the turnprobe provider row OcuPilot.Kernel.Provider.Catalog resolves only under it,
       # and with it the classes that spawn turn jobs or Test connection children against that row's

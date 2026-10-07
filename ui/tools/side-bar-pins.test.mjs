@@ -30,6 +30,7 @@ const browserDir = join(dirname(fileURLToPath(import.meta.url)), '..', 'browser'
 
 /** The specs that assert a side bar's listed entries, each through `sideBarLabels`. */
 const SIDE_BAR_SPECS = [
+  'auth-options.browser-spec.mjs',
   'background-tasks.browser-spec.mjs',
   'definitions.browser-spec.mjs',
   'ecp-application-servers.browser-spec.mjs',

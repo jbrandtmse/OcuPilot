@@ -282,6 +282,8 @@ test('a side bar lists only built screens, in side-bar order', () => {
       // Story 18.22: Database encryption and Data element encryption, the ninth and tenth entries.
       'security/database-encryption',
       'security/data-element-encryption',
+      // Story 18.8: Authentication options, the eleventh Security and secrets entry.
+      'security/authentication',
       // Story 19.1: System Explorer's two unlisted viewers, then Classes and Routines.
       'system-explorer/classes/document',
       // Story 19.3: each unlisted editor sorts after its viewer, by descriptor class name.
@@ -598,8 +600,8 @@ test('childListFor pairs the Wallet list with its Secrets list, parentListFor in
   assert.equal(isListedScreen(secrets), false, 'the Secrets list is never listed');
   assert.deepEqual(
     listedScreensForArea('security').map((screen) => screen.route),
-    ['security/ssl', 'security/x509', 'security/ldap', 'security/wallet', 'security/oauth', 'security/auditing', 'security/allowed-directories', 'security/encryption-key-file', 'security/database-encryption', 'security/data-element-encryption'],
-    'the Security side bar lists SSL/TLS, X.509, LDAP / Kerberos, Wallet, OAuth 2.0, Auditing configuration, Allowed directories, Encryption key files, Database encryption and Data element encryption'
+    ['security/ssl', 'security/x509', 'security/ldap', 'security/wallet', 'security/oauth', 'security/auditing', 'security/allowed-directories', 'security/encryption-key-file', 'security/database-encryption', 'security/data-element-encryption', 'security/authentication'],
+    'the Security side bar lists SSL/TLS, X.509, LDAP / Kerberos, Wallet, OAuth 2.0, Auditing configuration, Allowed directories, Encryption key files, Database encryption, Data element encryption and Authentication options'
   );
 
   assert.equal(screenForUrl('/security/wallet/secrets/OcuPilotDemo?ns=HSCUSTOM')?.route, 'security/wallet/secrets', 'a secrets URL with a collection id resolves to the Secrets list');

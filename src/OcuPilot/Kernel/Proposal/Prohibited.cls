@@ -247,7 +247,7 @@ Parameter WRITETOOLBASE = "OcuPilot.Screen.Tool.Write";
 /// <p>The entity types this release evaluates predicates for, comma-separated
 /// (<class>OcuPilot.Kernel.EntityType</class>'s spelling). A type outside this list is
 /// <parameter>UNCOVERED</parameter>.</p>
-Parameter COVEREDTYPES = "web-application,user,auditing-configuration,task,process,application-error,role,resource,x509-credential,wallet-secret,device,oauth2-client-configuration,oauth2-server-client,audit-event,audit-user-event,ssl-configuration,service,ldap-configuration,oauth2-server-definition,oauth2-resource-server,oauth2-server,namespace,web-session,background-task,global-mapping,routine-mapping,package-mapping,database-configuration,database,language-server,lock,class,routine,journal-file,journal-settings,license-key,license-server,ecp-data-server,ecp-settings,ecp-ssl-connection,encryption-key-file,database-encryption-keys,data-element-encryption-keys,encryption-startup,docdb-database";
+Parameter COVEREDTYPES = "web-application,user,auditing-configuration,task,process,application-error,role,resource,x509-credential,wallet-secret,device,oauth2-client-configuration,oauth2-server-client,audit-event,audit-user-event,ssl-configuration,service,ldap-configuration,oauth2-server-definition,oauth2-resource-server,oauth2-server,namespace,web-session,background-task,global-mapping,routine-mapping,package-mapping,database-configuration,database,language-server,lock,class,routine,journal-file,journal-settings,license-key,license-server,ecp-data-server,ecp-settings,ecp-ssl-connection,encryption-key-file,database-encryption-keys,data-element-encryption-keys,encryption-startup,docdb-database,authentication-options";
 
 /// <p>The covered types, each named once so the dispatch and the list cannot drift apart.</p>
 Parameter TYPEWEBAPPLICATION = "web-application";
@@ -502,6 +502,55 @@ Parameter STARTUPINTERACTIVEREASON = "The audit log, IRISSECURITY or IRISTEMP is
 Parameter STARTUPMODEFIELD = "DBEncStartMode";
 
 Parameter STARTUPREQUIREDFLAGS = "AuditEncrypt,DBEncIRISSecurity,DBEncIRISTemp";
+
+/// <p>The instance's authentication and web session options (Story 18.8), a singleton whose one merge
+/// write <method>AuthOptions</method> judges: a change that leaves one of OcuPilot's own web applications
+/// or the web gateway with no authentication method is refused <parameter>OCUPILOTSIGNIN</parameter>,
+/// turning O/S authentication off is refused <parameter>OCUPILOTSTART</parameter>, and every other change
+/// passes the reviewed-few sweep.</p>
+Parameter TYPEAUTHOPTIONS = "authentication-options";
+
+/// <p>The write would leave one of OcuPilot's own web applications, or <parameter>SERVINGSERVICENAME</parameter>,
+/// with no authentication method enabled for the instance (AD-10 as amended 2026-10-07, Story 18.8):
+/// every request to OcuPilot then fails to sign in (measured: password authentication off answered the
+/// sign-in 401, unauthenticated access off answered the shell and readiness 401). Judged over the
+/// payload's flags applied to the target's, against each application's and the service's own mask, read
+/// at the write; a read that fails refuses.</p>
+Parameter OCUPILOTSIGNIN = "PROHIBITED.OCUPILOTSIGNIN";
+
+/// <p>The one sentence <parameter>OCUPILOTSIGNIN</parameter> carries, caller-neutral, published in
+/// EXPERIENCE.md's Fixed strings and pinned equal to <code>authOptionsRefusalSignIn</code> by
+/// <file>ui/tools/self-protection.test.mjs</file>.</p>
+Parameter OCUPILOTSIGNINREASON = "One of OcuPilot's own web applications, or the web gateway that serves them, signs in only through this method. Turning it off for the whole instance would cut off every user, including you.";
+
+/// <p>The write turns O/S authentication off (AD-10 as amended 2026-10-07, Story 18.8): OcuPilot's own
+/// container start hook and health check sign in through <code>iris session</code>, so the instance then
+/// fails to start (measured). Refused on every instance, because the install origin cannot be read from
+/// inside IRIS.</p>
+Parameter OCUPILOTSTART = "PROHIBITED.OCUPILOTSTART";
+
+/// <p>The one sentence <parameter>OCUPILOTSTART</parameter> carries, published and pinned as
+/// <parameter>OCUPILOTSIGNINREASON</parameter> is, against <code>authOptionsRefusalStart</code>.</p>
+Parameter OCUPILOTSTARTREASON = "OcuPilot's own container signs in through the operating system at every start, so turning this off would leave the instance unable to start. If this instance does not run in OcuPilot's container, change it on the classic Authentication page.";
+
+/// <p>The effect <method>WeakensByEffect</method> answers for a change to <code>JWTIssuer</code> or
+/// <code>JWTSigAlg</code>: permitted, destructive, and named on the card (AD-10 as amended 2026-10-07).
+/// Every token session ends. It is also the proposal's consequence code.</p>
+Parameter EFFECTTOKENSIGNOUT = "WEBAUTH.SIGNOUT";
+
+/// <p>The two fields whose change ends every token session.</p>
+Parameter AUTHETOKENFIELDS = "JWTIssuer,JWTSigAlg";
+
+/// <p>The flag whose turning off <parameter>OCUPILOTSTART</parameter> refuses.</p>
+Parameter AUTHEOSFIELD = "AutheOS";
+
+/// <p>The write type of the SMTP password tool, which sets no flag.</p>
+Parameter AUTHEPASSWORDWRITETYPE = "CHANGESMTPPWD";
+
+/// <p>Each flag of <code>Security.WebAuth</code> and the bits of the instance's <code>AutheEnabled</code> it
+/// sets, as the vendor's own <code>PUT</code> maps them: <code>AutheKB</code> sets seven (the K5 cache,
+/// prompt, API and key-tab bits, the Kerberos, encryption and integrity bits).</p>
+Parameter AUTHEBITS = "AutheUnauthenticated:64,AutheOS:16,AutheOSDelegated:65536,AutheOSLDAP:131072,AutheCache:32,AutheDelegated:8192,AutheAlwaysTryDelegated:16777216,AutheKB:911,AutheLDAP:2048,AutheLDAPCache:4096,AutheOAuth2:67108864,AutheLoginToken:16384,AutheTwoFactorSMS:1048576,AutheTwoFactorPW:2097152";
 
 /// <p>The effect <method>WeakensByEffect</method> answers for a startup settings write that changes the
 /// audit log's encryption (AD-10 as amended 2026-10-05): permitted, destructive, and named on the card. It
@@ -794,7 +843,7 @@ Parameter READTYPE = "GET";
 /// <method>SqlStatement</method> adds last -- twenty-six in all.</p>
 ClassMethod Codes() As %List
 {
-    Quit $ListBuild(..#SERVINGPATH, ..#UNAUTHENTICATED, ..#AUTHORIZATION, ..#DISPATCH, ..#SYSTEMACCOUNT, ..#SERVICEACCOUNT, ..#CURRENTUSER, ..#LASTALLHOLDER, ..#PRIVILEGEGRANT, ..#OCUPILOTPROCESS, ..#SYSTEMPROCESS, ..#UNCOVEREDFIELD, ..#UNCOVERED, ..#OCUPILOTROLE, ..#OCUPILOTRESOURCE, ..#SERVICEACCOUNTSIGNIN, ..#OCUPILOTSSL, ..#SERVINGSERVICE, ..#OCUPILOTNAMESPACE, ..#OCUPILOTSESSION, ..#PRESERVEDSESSION, ..#OCUPILOTMAPPING, ..#OCUPILOTDATABASE, ..#OCUPILOTLOCK, ..#OCUPILOTCODE, ..#OCUPILOTSQL, ..#OCUPILOTKEY, ..#STARTUPINTERACTIVE)
+    Quit $ListBuild(..#SERVINGPATH, ..#UNAUTHENTICATED, ..#AUTHORIZATION, ..#DISPATCH, ..#SYSTEMACCOUNT, ..#SERVICEACCOUNT, ..#CURRENTUSER, ..#LASTALLHOLDER, ..#PRIVILEGEGRANT, ..#OCUPILOTPROCESS, ..#SYSTEMPROCESS, ..#UNCOVEREDFIELD, ..#UNCOVERED, ..#OCUPILOTROLE, ..#OCUPILOTRESOURCE, ..#SERVICEACCOUNTSIGNIN, ..#OCUPILOTSSL, ..#SERVINGSERVICE, ..#OCUPILOTNAMESPACE, ..#OCUPILOTSESSION, ..#PRESERVEDSESSION, ..#OCUPILOTMAPPING, ..#OCUPILOTDATABASE, ..#OCUPILOTLOCK, ..#OCUPILOTCODE, ..#OCUPILOTSQL, ..#OCUPILOTKEY, ..#STARTUPINTERACTIVE, ..#OCUPILOTSIGNIN, ..#OCUPILOTSTART)
 }
 
 /// <p>The written sentence a <code>PROHIBITED.*</code> code carries, or <code>""</code> for any
@@ -834,6 +883,8 @@ ClassMethod ReasonFor(pCode As %String) As %String
     If pCode = ..#OCUPILOTSQL Quit ..#OCUPILOTSQLREASON
     If pCode = ..#OCUPILOTKEY Quit ..#OCUPILOTKEYREASON
     If pCode = ..#STARTUPINTERACTIVE Quit ..#STARTUPINTERACTIVEREASON
+    If pCode = ..#OCUPILOTSIGNIN Quit ..#OCUPILOTSIGNINREASON
+    If pCode = ..#OCUPILOTSTART Quit ..#OCUPILOTSTARTREASON
     Quit ""
 }
 
@@ -952,6 +1003,7 @@ ClassMethod PermittedChangeFields(pType As %String) As %List
     If pType = ..#TYPEENCRYPTIONKEYFILE Quit ..EncryptionKeyFileFields("change")
     If (pType = ..#TYPEDATABASEKEYS) || (pType = ..#TYPEDATAELEMENTKEYS) Quit ..EncryptionKeyFields()
     If pType = ..#TYPEENCRYPTIONSTARTUP Quit ..EncryptionStartupFields()
+    If pType = ..#TYPEAUTHOPTIONS Quit ..AuthOptionsFields()
     Quit ""
 }
 
@@ -1150,7 +1202,7 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
             Do ..Refuse(..#UNCOVERED, .pProhibits, .pCode)
             Quit
         }
-        If (tType '= ..#TYPEWEBAPPLICATION) && (tType '= ..#TYPEUSER) && (tType '= ..#TYPEAUDITING) && (tType '= ..#TYPETASK) && (tType '= ..#TYPEPROCESS) && (tType '= ..#TYPEAPPLICATIONERROR) && (tType '= ..#TYPEROLE) && (tType '= ..#TYPERESOURCE) && (tType '= ..#TYPEX509) && (tType '= ..#TYPEWALLETSECRET) && (tType '= ..#TYPEDEVICE) && (tType '= ..#TYPEOAUTHCLIENT) && (tType '= ..#TYPEOAUTHSERVERCLIENT) && (tType '= ..#TYPEAUDITEVENT) && (tType '= ..#TYPEAUDITUSEREVENT) && (tType '= ..#TYPESSL) && (tType '= ..#TYPESERVICE) && (tType '= ..#TYPELDAP) && (tType '= ..#TYPEOAUTHSERVERDEF) && (tType '= ..#TYPEOAUTHRESOURCESERVER) && (tType '= ..#TYPEOAUTHAUTHSERVER) && (tType '= ..#TYPENAMESPACE) && (tType '= ..#TYPEWEBSESSION) && (tType '= ..#TYPEBACKGROUNDTASK) && (tType '= ..#TYPEDATABASECONFIG) && (tType '= ..#TYPEDATABASE) && '..IsMappingType(tType) && (tType '= ..#TYPELANGUAGESERVER) && (tType '= ..#TYPELOCK) && (tType '= ..#TYPECLASS) && (tType '= ..#TYPEROUTINE) && (tType '= ..#TYPEJOURNALFILE) && (tType '= ..#TYPEJOURNALSETTINGS) && (tType '= ..#TYPELICENSEKEY) && (tType '= ..#TYPELICENSESERVER) && (tType '= ..#TYPEECPDATASERVER) && (tType '= ..#TYPEECPSETTINGS) && (tType '= ..#TYPEECPSSLCONNECTION) && (tType '= ..#TYPEENCRYPTIONKEYFILE) && (tType '= ..#TYPEDATABASEKEYS) && (tType '= ..#TYPEDATAELEMENTKEYS) && (tType '= ..#TYPEENCRYPTIONSTARTUP) && (tType '= ..#TYPEDOCDBDATABASE) {
+        If (tType '= ..#TYPEWEBAPPLICATION) && (tType '= ..#TYPEUSER) && (tType '= ..#TYPEAUDITING) && (tType '= ..#TYPETASK) && (tType '= ..#TYPEPROCESS) && (tType '= ..#TYPEAPPLICATIONERROR) && (tType '= ..#TYPEROLE) && (tType '= ..#TYPERESOURCE) && (tType '= ..#TYPEX509) && (tType '= ..#TYPEWALLETSECRET) && (tType '= ..#TYPEDEVICE) && (tType '= ..#TYPEOAUTHCLIENT) && (tType '= ..#TYPEOAUTHSERVERCLIENT) && (tType '= ..#TYPEAUDITEVENT) && (tType '= ..#TYPEAUDITUSEREVENT) && (tType '= ..#TYPESSL) && (tType '= ..#TYPESERVICE) && (tType '= ..#TYPELDAP) && (tType '= ..#TYPEOAUTHSERVERDEF) && (tType '= ..#TYPEOAUTHRESOURCESERVER) && (tType '= ..#TYPEOAUTHAUTHSERVER) && (tType '= ..#TYPENAMESPACE) && (tType '= ..#TYPEWEBSESSION) && (tType '= ..#TYPEBACKGROUNDTASK) && (tType '= ..#TYPEDATABASECONFIG) && (tType '= ..#TYPEDATABASE) && '..IsMappingType(tType) && (tType '= ..#TYPELANGUAGESERVER) && (tType '= ..#TYPELOCK) && (tType '= ..#TYPECLASS) && (tType '= ..#TYPEROUTINE) && (tType '= ..#TYPEJOURNALFILE) && (tType '= ..#TYPEJOURNALSETTINGS) && (tType '= ..#TYPELICENSEKEY) && (tType '= ..#TYPELICENSESERVER) && (tType '= ..#TYPEECPDATASERVER) && (tType '= ..#TYPEECPSETTINGS) && (tType '= ..#TYPEECPSSLCONNECTION) && (tType '= ..#TYPEENCRYPTIONKEYFILE) && (tType '= ..#TYPEDATABASEKEYS) && (tType '= ..#TYPEDATAELEMENTKEYS) && (tType '= ..#TYPEENCRYPTIONSTARTUP) && (tType '= ..#TYPEAUTHOPTIONS) && (tType '= ..#TYPEDOCDBDATABASE) {
             ; A type COVEREDTYPES lists and no branch evaluates. Fail closed rather than write.
             Do ..Refuse(..#UNCOVERED, .pProhibits, .pCode)
             Quit
@@ -1381,6 +1433,11 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
         ; The encryption startup settings (Story 18.23): a start that cannot finish is not chosen.
         If tType = ..#TYPEENCRYPTIONSTARTUP {
             Set tSC = ..EncryptionStartup($Get(tToolClass), tPayloadObject, tTarget, .tChanged, .pProhibits, .pCode)
+            Quit
+        }
+        ; The authentication and web session options (Story 18.8): OcuPilot's own sign-in and start are not cut.
+        If tType = ..#TYPEAUTHOPTIONS {
+            Set tSC = ..AuthOptions($Get(tToolClass), tPayloadObject, tTarget, .tChanged, .pProhibits, .pCode)
             Quit
         }
         Set tSC = ..WebApplication(tPayloadObject, tTarget, tServes, .tChanged, .pProhibits, .pCode)
@@ -1644,6 +1701,10 @@ ClassMethod WeakensByEffect(pType As %String, pPayload As %DynamicObject, pTarge
         }
         If pType = ..#TYPEENCRYPTIONSTARTUP {
             If ..ChangesAuditEncryption(pPayload, pTarget) Set pEffect = ..#EFFECTAUDITENCRYPTION
+            Quit
+        }
+        If pType = ..#TYPEAUTHOPTIONS {
+            If ..ChangesTokenFields(pPayload, pTarget) Set pEffect = ..#EFFECTTOKENSIGNOUT
             Quit
         }
         If pType = ..#TYPESERVICE {
@@ -2651,6 +2712,191 @@ ClassMethod StartupSetting(pPayload As %DynamicObject, pTarget As %DynamicObject
     If '$IsObject(tFrom) Quit ""
     If tFrom.%GetTypeOf(pName) = "number" Quit $Select(+tFrom.%Get(pName): "true", 1: "false")
     Quit ..Rendered(tFrom, pName)
+}
+
+/// <p>The authentication options' reviewed few (Story 18.8): the fourteen method flags, the cookie, two-factor
+/// and SMTP settings and the two JWT settings. The SMTP password is never one: it travels only through
+/// its own tool (AD-56).</p>
+ClassMethod AuthOptionsFields() As %List [ Private ]
+{
+    Quit $ListBuild("AutheUnauthenticated", "AutheOS", "AutheOSDelegated", "AutheOSLDAP", "AutheCache", "AutheDelegated", "AutheAlwaysTryDelegated", "AutheKB", "AutheLDAP", "AutheLDAPCache", "AutheOAuth2", "AutheLoginToken", "AutheTwoFactorSMS", "AutheTwoFactorPW", "LoginCookieTimeout", "SMTPServer", "SMTPUsername", "TwoFactorFrom", "TwoFactorTimeout", "JWTIssuer", "JWTSigAlg")
+}
+
+/// <p>The authentication options write's verdict (AD-10 as amended 2026-10-07, Story 18.8). The SMTP password
+/// tool sets no flag and passes the reviewed-few sweep alone. Any other write is refused
+/// <parameter>OCUPILOTSIGNIN</parameter> when it turns a method off so that one of OcuPilot's own web
+/// applications or the serving service has none left (<method>CutsOffSignIn</method>), and
+/// <parameter>OCUPILOTSTART</parameter> when it turns <parameter>AUTHEOSFIELD</parameter> off, each judged
+/// over the payload's flags against the target's, from either caller. The application and service masks are
+/// read through <var>pToolClass</var>'s port as the caller, only for a write that turns a method off; a read
+/// that fails refuses.</p>
+ClassMethod AuthOptions(pToolClass As %String, pPayload As %DynamicObject, pTarget As %DynamicObject, ByRef pChanged, Output pProhibits As %Boolean, Output pCode As %String) As %Status [ Private ]
+{
+    Set pProhibits = 0
+    Set pCode = ""
+    Set tSC = $$$OK
+    Try {
+        If ..WriteTypeOf(pToolClass) '= ..#AUTHEPASSWORDWRITETYPE {
+            Set tOld = ..AuthFlags(pTarget, "")
+            Set tNew = ..AuthFlags(pTarget, pPayload)
+            If +$ZBoolean(tOld, tNew, 2) {
+                If ..CutsOffSignIn(..PortClassOf(pToolClass), tOld, tNew) {
+                    Do ..Refuse(..#OCUPILOTSIGNIN, .pProhibits, .pCode)
+                    Quit
+                }
+            }
+            If ..TurnsFlagOff(pPayload, pTarget, ..#AUTHEOSFIELD) {
+                Do ..Refuse(..#OCUPILOTSTART, .pProhibits, .pCode)
+                Quit
+            }
+        }
+        Set tSC = ..ReviewedFewOnly(..#TYPEAUTHOPTIONS, .pChanged, .pProhibits, .pCode)
+    } Catch ex {
+        Set pProhibits = 0
+        Set pCode = ""
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>The bits of the instance's <code>AutheEnabled</code> the flags <var>pTarget</var> reads as on set,
+/// each flag as <parameter>AUTHEBITS</parameter> maps it, with <var>pOverlay</var>'s flags in place of the
+/// target's wherever it carries one: the methods the write leaves.</p>
+ClassMethod AuthFlags(pTarget As %DynamicObject, pOverlay As %DynamicObject) As %Integer
+{
+    Set tMask = 0
+    For tI = 1:1:$Length(..#AUTHEBITS, ",") {
+        Set tEntry = $Piece(..#AUTHEBITS, ",", tI)
+        Set tName = $Piece(tEntry, ":", 1)
+        Set tFrom = $Select($IsObject(pOverlay) && (pOverlay.%GetTypeOf(tName) '= "unassigned"): pOverlay, 1: pTarget)
+        If '$IsObject(tFrom) Continue
+        If ..Rendered(tFrom, tName) = "true" Set tMask = $ZBoolean(tMask, +$Piece(tEntry, ":", 2), 7)
+    }
+    Quit tMask
+}
+
+/// <p>Whether the payload carries <var>pField</var> as off where <var>pTarget</var> reads it on.</p>
+ClassMethod TurnsFlagOff(pPayload As %DynamicObject, pTarget As %DynamicObject, pField As %String) As %Boolean [ Private ]
+{
+    If '$IsObject(pPayload) || (pPayload.%GetTypeOf(pField) = "unassigned") Quit 0
+    Quit (..Rendered(pPayload, pField) '= "true") && (..Rendered(pTarget, pField) = "true")
+}
+
+/// <p>Whether changing the flags from the bits <var>pOld</var> to <var>pNew</var> leaves one of the masks
+/// <method>SignInMasks</method> answers with no method it held before: <code>pMask AND pOld</code> not 0 and
+/// <code>pMask AND pNew</code> 0. Masks read through <var>pPort</var>; a read that fails answers 1.</p>
+ClassMethod CutsOffSignIn(pPort As %String, pOld As %Integer, pNew As %Integer) As %Boolean
+{
+    Set tSC = ..SignInMasks(pPort, .tMasks)
+    If $$$ISERR(tSC) Quit 1
+    Set tCuts = 0
+    For tI = 1:1:$ListLength(tMasks) {
+        Set tMask = $List(tMasks, tI)
+        If +$ZBoolean(tMask, pOld, 1) && '+$ZBoolean(tMask, pNew, 1) Set tCuts = 1
+    }
+    Quit tCuts
+}
+
+/// <p>The <code>AutheEnabled</code> mask of each of OcuPilot's own web applications
+/// (<class>OcuPilot.Install.Roster</class>, read through <code>WebApp.App</code> <code>GET</code>) and of
+/// <parameter>SERVINGSERVICENAME</parameter> (<code>Security.Service</code> <code>GET</code>), as a
+/// <class>%List</class> of numbers in <var>pMasks</var>, each read through <var>pPort</var> as the caller. A
+/// roster that cannot be read, a read that fails and a read that answers no number are an error status.</p>
+ClassMethod SignInMasks(pPort As %String, Output pMasks As %List) As %Status
+{
+    Set pMasks = ""
+    Set tSC = $$$OK
+    Try {
+        Set tKeys = ##class(OcuPilot.Install.Roster).Keys()
+        If tKeys = "" {
+            Set tSC = $$$ERROR($$$GeneralError, "the install roster's application keys could not be read, so which applications serve OcuPilot is unknown")
+            Quit
+        }
+        For tI = 1:1:$Length(tKeys, ",") {
+            Set tSC = ##class(OcuPilot.Install.Roster).Application($Piece(tKeys, ",", tI), .tApp)
+            If $$$ISERR(tSC) Quit
+            Set tSC = ..MaskOf(pPort, "WebApp.App", tApp.path, .tMask)
+            If $$$ISERR(tSC) Quit
+            Set pMasks = pMasks _ $ListBuild(tMask)
+        }
+        If $$$ISERR(tSC) Quit
+        Set tSC = ..MaskOf(pPort, "Security.Service", ..#SERVINGSERVICENAME, .tMask)
+        If $$$ISERR(tSC) Quit
+        Set pMasks = pMasks _ $ListBuild(tMask)
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    If $$$ISERR(tSC) Set pMasks = ""
+    Quit tSC
+}
+
+/// <p>The <code>AutheEnabled</code> of <var>pEndpoint</var>'s <code>GET</code> for <var>pName</var>.</p>
+ClassMethod MaskOf(pPort As %String, pEndpoint As %String, pName As %String, Output pMask As %Integer) As %Status [ Private ]
+{
+    Set pMask = 0
+    Kill tQuery
+    Set tQuery("name") = pName
+    Set tSC = $ClassMethod(pPort, "Invoke", pEndpoint, "GET", .tQuery, "", .tRead, .tHttp, .tFault)
+    If $$$ISERR(tSC) Quit tSC
+    If '$IsObject($Get(tRead)) || 'tRead.%IsA("%Library.DynamicObject") || (tRead.%GetTypeOf("AutheEnabled") '= "number") {
+        Quit $$$ERROR($$$GeneralError, "the authentication methods of an application OcuPilot is served through could not be read")
+    }
+    Set pMask = +tRead.%Get("AutheEnabled")
+    Quit $$$OK
+}
+
+/// <p>The flags whose turning off alone would be refused <parameter>OCUPILOTSIGNIN</parameter> on this
+/// instance now, in <var>pFields</var> as a <class>%DynamicArray</class> of names: each flag
+/// <var>pPort</var>'s <code>Security.WebAuth</code> <code>GET</code> reads on whose bits, removed from the
+/// others', leave a mask <method>SignInMasks</method> answers with none. An error status when a read fails.
+/// It is the form's <code>locked</code> list and answers the same question the arm asks.</p>
+ClassMethod SignInLocks(pPort As %String, Output pFields As %DynamicArray) As %Status
+{
+    Set pFields = []
+    Set tSC = $$$OK
+    Try {
+        Kill tQuery
+        Set tSC = $ClassMethod(pPort, "Invoke", "Security.WebAuth", "GET", .tQuery, "", .tRead, .tHttp, .tFault)
+        If $$$ISERR(tSC) Quit
+        If '$IsObject($Get(tRead)) || 'tRead.%IsA("%Library.DynamicObject") {
+            Set tSC = $$$ERROR($$$GeneralError, "the authentication options read answered no object")
+            Quit
+        }
+        Set tSC = ..SignInMasks(pPort, .tMasks)
+        If $$$ISERR(tSC) Quit
+        Set tOld = ..AuthFlags(tRead, "")
+        For tI = 1:1:$Length(..#AUTHEBITS, ",") {
+            Set tEntry = $Piece(..#AUTHEBITS, ",", tI)
+            Set tName = $Piece(tEntry, ":", 1)
+            If ..Rendered(tRead, tName) '= "true" Continue
+            Set tNew = $ZBoolean(tOld, +$Piece(tEntry, ":", 2), 2)
+            For tJ = 1:1:$ListLength(tMasks) {
+                Set tMask = $List(tMasks, tJ)
+                If +$ZBoolean(tMask, tOld, 1) && '+$ZBoolean(tMask, tNew, 1) {
+                    Do pFields.%Push(tName)
+                    Quit
+                }
+            }
+        }
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    If $$$ISERR(tSC) Set pFields = []
+    Quit tSC
+}
+
+/// <p>Whether <var>pPayload</var> carries a <code>JWTIssuer</code> or <code>JWTSigAlg</code> other than
+/// <var>pTarget</var>'s.</p>
+ClassMethod ChangesTokenFields(pPayload As %DynamicObject, pTarget As %DynamicObject) As %Boolean [ Private ]
+{
+    If '$IsObject(pPayload) Quit 0
+    Set tChanges = 0
+    For tI = 1:1:$Length(..#AUTHETOKENFIELDS, ",") {
+        Set tField = $Piece(..#AUTHETOKENFIELDS, ",", tI)
+        If pPayload.%GetTypeOf(tField) = "unassigned" Continue
+        If ..Rendered(pPayload, tField) '= ..Rendered(pTarget, tField) Set tChanges = 1
+    }
+    Quit tChanges
 }
 
 /// <p>A key file write's verdict (AD-10 as amended 2026-10-04, Story 18.7): a key removal whose key
