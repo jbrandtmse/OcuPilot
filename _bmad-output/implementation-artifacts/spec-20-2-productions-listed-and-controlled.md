@@ -2,8 +2,9 @@
 title: 'Story 20.2: Productions, listed and controlled'
 type: 'feature'
 created: '2026-10-07'
-status: 'ready-for-dev'
+status: 'in-progress'
 review_loop_iteration: 0
+baseline_revision: 'ffaaea6a07dc66fb523f8fec1d9ea9913842ac0d'
 followup_review_recommended: false
 context:
   - '{project-root}/_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md'
@@ -318,6 +319,10 @@ deferred: []
   - Correct EXPERIENCE.md `:64`, `:612` and `:653` in place, with no line inserted: eleven rail items by namespace (9 to 11 drawn), and one tile per applying area (seven to nine).
   - Move the quoted anchor in `home.page.ts:203,211,234,499` and `home.page.spec.ts:44,403` to the new wording.
 
+- [ ] [Halt] Fixed-strings bound (runner ruling at this story's re-dispatch, 2026-10-07, under the protocol Story 18.8's plan used): the merged table reads 2,789 literals and this story adds 39, taking it to 2,828, so the bound in `ui/tools/strings.test.mjs` moves from 2800 to 2900, with one comment line naming Story 20.2's thirty-nine literals and the 2,828 total, "under the same protocol (approved at its spec gate)". The bound line equals Epic 18's own move to 2900, so the two merge as one.
+- [ ] [Halt] Accepted from the first pass's proposals: each action's precondition refusal is answered by the port's `STATE` read as a 409 with its own code (not 400 `TOOL.ARGUMENTS`), the tools name `Namespace` in their fingerprint subject, and `INTEROP.NAMESPACE` joins their `PRECONDITIONCODES` (AD-51). The test helper is `Test/ProductionProbe.cls`, because `Test/InteropProbe` is Story 18.15's.
+- [ ] [Halt] Finish the story: the first pass built `InteropPort`, `InteropError`, the `interop` source kind, the `production` entity type, the prohibited-set entries and the count edits (uncommitted in the tree, inside this pass's diff); still to build are the four list descriptors, the six action tools, the baseline keys, the test classes, the client, the EXPERIENCE.md and DW-2148 edits, the browser spec, the mutation lines and the full ObjectScript sweep.
+
 **Acceptance Criteria:**
 
 - **AC0 (Task 0):** Given the vocabulary was never read, when this story is picked up, then Task 0's re-measurement on `ocupilot-b-ci` is recorded under Verification before any other task, under its decision rule.
@@ -328,6 +333,8 @@ deferred: []
 - **AC5 (category, from 20.1):** Given an interoperability namespace, when the shell renders, then the side bar, command box and locator offer the four screens; given `%SYS`, then none of them is offered.
 
 ## Spec Change Log
+
+- 2026-10-07, runner: implement pass 1 halted on the Fixed-strings bound (2,828 against 2,800). The runner moved the bound to 2900 under the 18.8 protocol and accepted the pass's three AD-51 proposals; Task 0 matched every cell and measured no vendor audit event for update or recover (the runner writes AD-15/AD-53's named gaps at ship). Status reset to `in-progress`; the partial implementation stays in the tree.
 
 - 2026-10-07, runner spec gate: AD-62 claimed and written, with this story's AD-13 (`production` id), AD-36 (source kind `interop`), AD-44 (`CLASSICPAGES`) and AD-8 pair particulars folded into AD-62's own Rule rather than amending those ADs (Epic 18 amends AD-13 concurrently); AD-8 gained the vendor-escalation sentence; `InteropPort` joined the paradigm's port list, AD-29's Binds and the capability map. AD-15/AD-53 named gaps for update and recover are written at ship if Task 0 measures no vendor event. The count-word bumps (`AdminPairCorpus.cls:58`, `screen-mirror.test.mjs:2720`) are add-only count edits and cleared; DW-2148's in-place EXPERIENCE.md and `home.page.ts` edits await the orchestrator's clearance, and the implement prompt says whether they run.
 
@@ -472,6 +479,16 @@ Also measured:
 
 ## Verification
 
+**Task 0 (implement pass, `ocupilot-b-ci`, USER, 2026-10-07; probe class `OcuPilot.Test.ProductionProbe`, because `Test/InteropProbe` is Story 18.15's):**
+
+- Task 0: all 25 vocabulary cells equal the Design Notes table, state by state, including the duration cells: start 0.01 to 0.02 s, also with a 25 s `OnInit` (0.01 s, so far below the 5 s rule); busy stop and restart `ErrProductionNotQuiescent` at 5.04 and 5.05 s, busy update `ErrJobNotStopped` at 5.01 s with the production still Running and still needing the update.
+- Task 0: `$USERNAME` and `$ROLES` read the same before and after every call, as `irisowner` (`%All`) and as four least-privileged principals.
+- Task 0: gate legs: without `%Ens_ProductionRun:USE` start, stop, restart and update answer #940; `%Ens_ConfigItemRun:USE` alone updates and is refused stop; `%DB_USER:R` plus the run resource starts and stops; recover raises `<PROTECT>` on `^Ens.Suspended` for a holder of `%DB_USER:R` with or without the run resource, and succeeds with `%DB_USER:RW`.
+- Task 0: audit, with auditing on: start, stop and restart record `%Ensemble/%Production/StartStop`; update and recover record no vendor event (two runs each), so the doc comments of the update and recover tools carry AD-15/AD-53's named gap, and the spine's gap lines are the runner's to add.
+- Task 0: no call wrote a line to a capture opened around it (`devlines=0` on every call), so no capture is opened in the port; `scripts/check-objectscript.py` refuses one outside the three admin-style ports.
+- Task 0: one finding outside the table: a stop from Running can leave the production reading Suspended instead of Stopped when its queues still hold messages (measured once, after a start that restored a suspended queue).
+- Task 0: the HTTP leg (one envelope per confirm) was not measured: no tool or route existed when this pass halted.
+
 **Setup (slot B):**
 
 - Load changed classes into `ocupilot-b-ci` only, never through the MCP loader, which reaches the dev instance.
@@ -513,10 +530,12 @@ Also measured:
 
 ## Auto Run Result
 
-Status: ready-for-dev
-Blocking condition: none
+Status: blocked
+Blocking condition: the Fixed strings table reads 2,789 literals today and this story adds 39, 2,828 against the 2,800 bound; the runner's ruling forbids raising the bound, so the pass stopped before any string, descriptor or tool was written.
 
-Summary: planned and HALTed after planning.
+Summary: Task 0 ran and agrees with the table, with no intent gap; the port, its error class, the `interop` source kind in both engines, the `production` entity type and its prohibited-set arm are built and compile; the rest waits for the string-bound decision.
+
+Planned and HALTed after planning.
 
 Measured on `ocupilot-b-ci` during planning (USER, a probe production, and seven probe principals, all removed afterwards):
 
