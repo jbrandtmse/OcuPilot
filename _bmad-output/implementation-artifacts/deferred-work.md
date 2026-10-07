@@ -10174,3 +10174,18 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Story 18.8 plan on ocupilot-ci 2026-10-07: unchanged PUT moved AutheEnabled 33556471 to 33556479; scratchpad epic-18-d8/p188/measure-out.txt
 - 2026-10-07T03:21:35Z status=decision-pending owner=burndown by=spec_gate note=human=decide whether to report it to InterSystems, with the held vendor-report list; owner hold 2026-10-05: not reported; Part A omits an unchanged AutheKB (proposed AD-4 exception)
 - 2026-10-07T03:44:07Z status=decision-pending owner=burndown by=owner note=owner hold 2026-10-05 (relayed by the Planner): IRIS defect candidates stay on hold, no report to InterSystems for now
+
+### DW-2142: OcuPilot's audit surfaces would show the SMTP password the vendor writes in clear into %System/%Security/SystemChange's New value line when CHANGESMTPPWD runs: AuditPort.VENDORSECRETS has no mask for it (AD-35)
+- source: spec-18-8-superservers-authentication-options-and-managed-file-transfe.md | severity: med | fix-risk: low | footprint: in-footprint
+- evidence: Story 18.8 Task 0 on ocupilot-ci 2026-10-07: CHANGESMTPPWD with a probe value wrote it in clear to the SystemChange row; AuditPort.VENDORSECRETS has no entry
+- 2026-10-07T07:03:16Z status=open owner=18-8-superservers-authentication-options-and-managed-file-transfe by=harvest note=in-story: the story introduced the tool that writes it; the review patches the mask or re-opens
+
+### DW-2143: Authentication options: the form read's failing Security.WebAuth GET (HandleForm's lock read rendering an internal error) and the store's non-ok open have no test arming the failure
+- source: spec-18-8-superservers-authentication-options-and-managed-file-transfe.md | severity: low | fix-risk: low | footprint: in-footprint
+- evidence: spec-18-8 deferred list; the server arm refuses regardless, so only the drawn locks are unpinned
+- 2026-10-07T07:03:16Z status=open owner=18-8-superservers-authentication-options-and-managed-file-transfe by=harvest note=in-story LOW: fix-pack or close with a probe at review
+
+### DW-2144: IRIS defect candidate: the vendor's %System/%Security/SystemChange audit event writes the SMTP password in clear in its New value line when the admin API's Security.WebAuth CHANGESMTPPWD runs
+- source: spec-18-8-superservers-authentication-options-and-managed-file-transfe.md | severity: low | fix-risk: high | footprint: out-of-footprint
+- evidence: Story 18.8 Task 0 on ocupilot-ci 2026-10-07: probe value visible in the audit row
+- 2026-10-07T07:03:17Z status=decision-pending owner=burndown by=harvest note=human=decide whether to report it to InterSystems, with the held vendor-report list; owner hold 2026-10-05: not reported
