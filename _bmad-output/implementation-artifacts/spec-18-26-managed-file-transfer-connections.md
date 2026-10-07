@@ -2,7 +2,7 @@
 title: 'Story 18.26: Managed file transfer connections'
 type: 'feature'
 created: '2026-10-07'
-status: 'done'
+status: 'in-progress'
 baseline_revision: '44cf672972ff2a3858ae9c7f3cedf43a5db43516'
 baseline_commit: '44cf672972ff2a3858ae9c7f3cedf43a5db43516'
 review_loop_iteration: 0
@@ -271,6 +271,8 @@ Analogs: **Story 18.25's Superservers** (`git diff --stat 0a8f21b4 a2d73616` lis
   - the Fixed strings stay within the bound.
 - **Integration.** The page consumes `GET /mft-connection/form`, `PUT /mft-connection/:id`, `POST /mft-connection` and both row actions. The agent consumes the read tool and the four write tools. Each runs on `ocupilot-ci` (C1-C5 and the browser spec).
 
+- [ ] [CI] instance shards 3/5 and 4/5 and browser shard 3/3 (run 37698209677 on 8b615c91): the MFT tests name `BFC_SSL`, which a fresh instance lacks (it is created only when Story 18.15's enable-interop test installs HealthShare Foundation; audit on `ocupilot-ci`: created 05:57 by the `OCUPROBE1815D` run), so `MftConnectionGate`, `MftConnectionWrite` (4 methods) and `mft-connections.browser-spec.mjs:155` fail on CI's fresh throwaways -- <https://github.com/jbrandtmse/OcuPilot/actions/runs/37698209677> -- the probe fixture creates its own Type 0 client configuration (exact probe name, created in `%SYS` and removed by `RemoveAll`), every MFT test class and the browser spec use it instead of `BFC_SSL`, S0 below drops `BFC_SSL`, and the fix is proven on a throwaway state where `BFC_SSL` is absent (rename or remove it there first, then restore it).
+
 ### Review Findings
 
 Code review 2026-10-07, layers blind-hunter, edge-case-hunter, verification-gap and acceptance-auditor (all full-opus). Each patch was applied in this pass; its mutation is in Verification.
@@ -313,6 +315,8 @@ Rejected:
 - Mutation lines missing for C0, C2's moved target, C3's client removal and C5 and C6 sub-rows (verification): Rule 19 asks one per AC and each has one; C0 is a measurement and the client removal is the vendor's.
 
 ## Spec Change Log
+
+- 2026-10-07, rework iteration 1 (trigger ci): CI's fresh throwaways lack `BFC_SSL`; the one open item is the `[CI]` task under Tasks & Acceptance.
 
 - 2026-10-07, spec gate (lead): Decisions 1-6 confirmed (create names an existing OAuth 2.0 client and never makes one; the delete keeps the vendor's client removal as its stated consequence, key `false`; authorization stays on the classic portal; revoke destructive, key `false`). Spine amendments 1-7 written (AD-8, AD-13, AD-4, AD-15 and AD-53 eighteenth, AD-44, AD-51, AD-52). DW-2007 gains `Security.MFT` `DELETE` #5809. Vendor candidates DW-2154, DW-2155, DW-2156 under the owner's hold. Fixed strings stay under 2900; a bundle re-base under DW-1166 is expected.
 
