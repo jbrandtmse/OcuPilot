@@ -2,12 +2,12 @@
 title: 'Story 18.8: Superservers, authentication options and managed file transfer'
 type: 'feature'
 created: '2026-10-06'
-status: 'blocked'
+status: 'ready-for-dev'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-18-context.md'
-warnings: ['oversized', 'multiple-goals']
+warnings: ['oversized']
 deferred: []
 ---
 
@@ -36,7 +36,7 @@ deferred: []
 
 **Never (Part A):**
 
-- No test, probe or browser spec really changes `JWTIssuer`, `JWTSigAlg` or `AutheOS`. Doing so ends every token session on the instance, or fails the container's health check (measured). Those confirms run through `SeamAuthOptionsUpdate`.
+- No test, probe or browser spec really changes `JWTIssuer` or `JWTSigAlg` (doing so ends every token session on the instance, measured); those confirms run through `SeamAuthOptionsUpdate`. No body sends `AutheOS` false past the arm's refusal (the container's next start then fails, measured).
 - No real change ever turns off `AutheCache` or `AutheUnauthenticated`. Both are refused before the write, and a test proves that no `PUT` was sent.
 - No AD-27 named case. No "Reset Key Store" (`%SYS.TokenAuth.ResetSystemJWKS` is `[Internal]` and has no admin route). No two-factor issuer field (it is not in the template).
 - Parts B, C and D are not built here. No bare `git stash`.
@@ -52,7 +52,7 @@ deferred: []
 | Field rules | `AutheAlwaysTryDelegated` without `AutheDelegated`; `AutheLDAPCache` without `AutheLDAP`/`AutheOSLDAP`; `AutheTwoFactorSMS` with an empty `SMTPServer` or `TwoFactorFrom`; `JWTSigAlg` outside RS256…ES512; a timeout that is not a whole number ≥ 0; `JWTIssuer` over 1024 | 422 with a `WEBAUTH.*` violation on the field. Nothing is sent. | The mint refuses identically |
 | Sign-in self-protection | The change turns off a method that is the only one an OcuPilot application (`/ocupilot` 64, `/api/ocupilot` 32, `/api/ocupilot/readiness` 64) or `%Service_WebGateway` relies on, after applying it to the fresh system flags | `PROHIBITED.OCUPILOTSIGNIN` on that field, from both callers. No `PUT`. The form read lists the field in `locked`. | A failed read of any of the four refuses |
 | Token sign-out | `JWTIssuer` or `JWTSigAlg` changed | Agent: the proposal is minted destructive, with consequence `WEBAUTH.SIGNOUT` on the card. Person: the caption shows at the field. The write proceeds. | None expected |
-| O/S login off | `AutheOS` true→false | As the row above, with `WEBAUTH.OSLOGIN` | None expected |
+| O/S login off | `AutheOS` true→false, either caller | Refused `PROHIBITED.OCUPILOTSTART` on the `AutheOS` field before any `PUT` (AD-10's start arm); the form draws the field `aria-disabled` naming the sentence | Zero `PUT` |
 | SMTP password | A value, or `""` if Task 0 measures that it clears | Read-back `written`. The value appears in no read, proposal, ledger, log or context. | `""` refused when it does not clear |
 | Moved target | A field changed between mint and confirm | The fingerprint re-read refuses (target-changed) | Terminal state on the card |
 | Busy target | Another Save holds the lock | 409 `WRITE.TARGETBUSY` after 10 s. Nothing written. | The proposal stays live |
@@ -142,7 +142,7 @@ Analog: Story 18.21's ECP settings, a listed singleton form page. Adds 18.23's a
   - Three prompts; `toolIdentifier` `security.authoptions`.
 - `Screen/Tool/AuthOptionsUpdate.cls` (new): merge, `PUT`, `PERMITTEDFIELDS` the 21 fields.
   - `MergeUpdate` drops `AutheKB` when it equals the fresh read (AD-4's named exception).
-  - `Consequence` answers `WEBAUTH.SIGNOUT` for a changed `JWTIssuer` or `JWTSigAlg`, and `WEBAUTH.OSLOGIN` for `AutheOS` true→false.
+  - `Consequence` answers `WEBAUTH.SIGNOUT` for a changed `JWTIssuer` or `JWTSigAlg`, and nothing else; `AutheOS` true→false is refused `PROHIBITED.OCUPILOTSTART` by the arm, beside `OCUPILOTSIGNIN`, from either caller, before any write.
   - The mint and confirm run `AuthOptionsRules.Check`.
 - `Screen/Tool/AuthOptionsSmtpPassword.cls` (new): `WRITETYPE "CHANGESMTPPWD"`, `SENDSBODY 0`, `SECRETBODY "SMTPPassword"`, `FINGERPRINTSUBJECT "SMTPUsername"`. `CLEARABLESECRETS` only if Task 0 step 3 measures that `""` clears. `StateDiff` gives one card row.
 - `Screen/Tool/Classification.cls`: entries for both tools: the 21 fields `ordinary`, `SMTPPassword` `secret`. Then regenerate `ToolFields.cls` with `bash scripts/field-lists.sh`.
@@ -174,7 +174,7 @@ Analog: Story 18.21's ECP settings, a listed singleton form page. Adds 18.23's a
   - A sticky Save and an unsaved-changes guard.
   - `locked` fields are `aria-disabled`, with the refusal sentence through `aria-describedby`.
   - `AutheAlwaysTryDelegated` is disabled unless `AutheDelegated` is on, and `AutheLDAPCache` unless `AutheLDAP` or `AutheOSLDAP` is on. A disabled field is sent false.
-  - The consequence caption shows at a changed `JWTIssuer`, `JWTSigAlg` or `AutheOS`.
+  - The consequence caption shows at a changed `JWTIssuer` or `JWTSigAlg`; `AutheOS` carries the start refusal's sentence, `aria-disabled`, while it is on.
   - The SMTP password is a masked, write-only field, empty after Save.
 - Wiring: `shell/screen-outlet.ts`, `app.ts`, `core/proposal-view.ts` (the two codes), `core/strings.ts`.
 - EXPERIENCE.md: one Fixed-strings row (the labels, two consequences, the refusal, three prompts, the side-bar label), each sentence published once. Fix every shifted `EXPERIENCE.md:n` comment.
@@ -194,7 +194,7 @@ Analog: Story 18.21's ECP settings, a listed singleton form page. Adds 18.23's a
 - `Test/AuthOptionsProhibited.cls`:
   - Password off and unauthenticated off are refused on both callers, with the stored value unchanged and no `PUT` recorded.
   - A seam read failure refuses.
-  - A JWT change and O/S off mint destructive with their consequence and confirm through `Test/SeamAuthOptionsUpdate.cls` (new; answers the `PUT` without a vendor call).
+  - O/S off is refused on both callers with zero `PUT`. A JWT change mints destructive with its consequence and confirms through `Test/SeamAuthOptionsUpdate.cls` (new; answers the `PUT` without a vendor call).
 - Rosters, plus the arming rosters in `scripts/ci-throwaway.sh`:
   - `Descriptor`, `SurfaceCoverage` (screen and three tools)
   - `EndpointCoverage` (two routes)
@@ -216,8 +216,8 @@ Analog: Story 18.21's ECP settings, a listed singleton form page. Adds 18.23's a
 - **A1.** Given the Authentication options screen and `security.authoptions.read`, when each reads, then both answer the same 21 fields from one read, and no answer, context or log carries `SMTPPassword`.
 - **A2.** Given an ordinary change, when it is saved on screen or confirmed from a proposal, then the instance holds it, the read-back reads `matches`, every other field and the raw `AutheEnabled` bits are unchanged, and a moved target or a held lock is refused as the matrix says.
 - **A3.** Given an SMTP password typed on the form or at confirm, when it is written, then the read-back reads `written`, and the value appears in no read, proposal, ledger row, log line or context.
-- **A4.** Given a change that turns off the only method one of OcuPilot's applications or `%Service_WebGateway` relies on, when either caller sends it, then it is refused `PROHIBITED.OCUPILOTSIGNIN` on that field before any `PUT`, and the form draws that field `aria-disabled` naming the same sentence.
-- **A5.** Given a `JWTIssuer`, `JWTSigAlg` or `AutheOS` change, when the agent proposes it, then the card is destructive and states its consequence, and the screen shows the same sentence at the field before Save.
+- **A4.** Given a change that turns off the only method one of OcuPilot's applications or `%Service_WebGateway` relies on, when either caller sends it, then it is refused `PROHIBITED.OCUPILOTSIGNIN` on that field before any `PUT`, and the form draws that field `aria-disabled` naming the same sentence. A change turning `AutheOS` off is refused `PROHIBITED.OCUPILOTSTART` on that field the same way, from either caller.
+- **A5.** Given a `JWTIssuer` or `JWTSigAlg` change, when the agent proposes it, then the card is destructive and states its consequence, and the screen shows the same sentence at the field before Save.
 - **A6.** Given the rosters, when the suites run, then:
   - Security lists Authentication options at 11 with three prompts;
   - both keys are in the baseline, enabled;
@@ -227,6 +227,8 @@ Analog: Story 18.21's ECP settings, a listed singleton form page. Adds 18.23's a
 - **Integration.** The page consumes `GET /authentication-options/form` and `PUT /authentication-options`, and the agent consumes the read tool and both write tools, each on `ocupilot-ci` (A1-A5, the browser spec).
 
 ## Spec Change Log
+
+- 2026-10-07, spec gate (lead), merge-gate rulings: split approved (Part A is this story; B-D outlines trimmed, kept at `e7a3bef1`). Decision 4 reversed on the lead's measurement: `AutheOS` off is refused `PROHIBITED.OCUPILOTSTART` (the container start fails and stays exited), always, because the install origin is not reliably detectable; `WEBAUTH.OSLOGIN` retired. Matrix, Tasks, A4, A5, the sentence table and the A4 mutation edited to match. Spine AD-10 (`OCUPILOTSIGNIN` and `OCUPILOTSTART`), AD-13, AD-4 and Conventions › Secrets written. DW-1896 re-owned to 18.27; the vendor candidate is DW-2139.
 
 ## Review Triage Log
 
@@ -259,7 +261,7 @@ Analog: Story 18.21's ECP settings, a listed singleton form page. Adds 18.23's a
 | `AutheOS` off | 200 | 200 / 200 | 200 | 200 / 200 | 200 |
 
 - **`JWTSigAlg` replaces the signing keys.** The JWKS hashes changed, and changing back made new keys again rather than restoring the old ones. The originals were restored from a copy held in `^IRIS.Temp` and then killed. A `PUT` that sends `JWTSigAlg` unchanged kept the keys.
-- **`AutheOS` off** answered `iris session` "Access Denied" and failed the container's health check once (`scripts/container-health.sh` and the start hook use `iris session`).
+- **`AutheOS` off** answered `iris session` "Access Denied" and failed the container's health check once (`scripts/container-health.sh` and the start hook use `iris session`). **Lead measurement, 2026-10-07 03:47Z:** `AutheOS` off by the admin API, then `docker restart ocupilot-ci`: the start hook's first `iris session` answered "Access Denied", the container was restarted three times and left exited (exit 1); the throwaway was rebuilt.
 - **A complete unchanged `PUT`** (the `GET` sent back) kept tokens and keys, but raised `AutheEnabled` from 33556471 to 33556479: `AutheKB` true sets `AutheK5KeyTab`, which the stock instance leaves off. The classic Save does the same (`Authentication.cls:311-314`). Restored.
 - **Every `Modify` wrote `%System/%Security/SystemChange`.** C6 left four `%System/%Login/LoginFailure` audit rows, which the append-only audit keeps.
 - **End state:** `WebAuth GET` equal to S0, raw `AutheEnabled` 33556471, JWKS hashes equal to S0, monitor 0, container healthy.
@@ -270,7 +272,7 @@ Analog: Story 18.21's ECP settings, a listed singleton form page. Adds 18.23's a
 1. **Placement: Security, listed at 11,** appended so that no listed position or roster pin moves (the classic page sits under System Security).
 2. **A new code in AD-10's serving-path family, `PROHIBITED.OCUPILOTSIGNIN`**, rather than reusing `SERVINGSERVICE`, whose sentence names "this service". The predicate is by effect over live masks, so an application an operator widened (for example password plus delegated) is refused only when all its methods go.
 3. **JWT changes are permitted, not refused.** Sign-in survives (measured); every earlier token session ends. The change is minted destructive with `WEBAUTH.SIGNOUT`, and the person sees the caption at the field, as with AD-10's `%Service_WebGateway` wording.
-4. **`AutheOS` off is permitted at the destructive treatment** with `WEBAUTH.OSLOGIN`. An IPM install is unaffected; OcuPilot's container's start and health check stop working (measured for health; the start is inference). The alternative is to refuse it, as AD-10's "start that cannot finish"; that is a product call for the lead.
+4. **`AutheOS` off is refused** (merge gate 2026-10-07, measured by the lead: OcuPilot's container start then fails and the container stays exited), `PROHIBITED.OCUPILOTSTART` under AD-10's start arm, always: the install origin is not reliably detectable from inside IRIS, and a wrong permit costs an instance that will not start. Was: permitted at the destructive treatment with `WEBAUTH.OSLOGIN`.
 5. **Both keys are enabled** (AD-22 as kept; `permissions.services.update` is the precedent for effect-based destructive minting).
 
 **Published sentences** (the server reason equals each one):
@@ -279,7 +281,7 @@ Analog: Story 18.21's ECP settings, a listed singleton form page. Adds 18.23's a
 | --- | --- |
 | `PROHIBITED.OCUPILOTSIGNIN` | "One of OcuPilot's own web applications, or the web gateway that serves them, signs in only through this method. Turning it off for the whole instance would cut off every user, including you." |
 | `WEBAUTH.SIGNOUT` | "Every session signed in with a token ends, every OcuPilot tab included, and each must sign in again. A new signature algorithm also replaces the instance's signing keys." |
-| `WEBAUTH.OSLOGIN` | "Terminal sessions that sign in through the operating system stop working, including the start and health checks of OcuPilot's own container." |
+| `PROHIBITED.OCUPILOTSTART` (`AutheOS`) | "OcuPilot's own container signs in through the operating system at every start, so turning this off would leave the instance unable to start. If this instance does not run in OcuPilot's container, change it on the classic Authentication page." |
 
 **Named limits:**
 
@@ -287,21 +289,21 @@ Analog: Story 18.21's ECP settings, a listed singleton form page. Adds 18.23's a
 2. The two-factor one-time-password issuer is not in the admin API.
 3. A user whose account requires two-factor authentication has no second-factor step on OcuPilot's form, and signs in to OcuPilot silently after the classic portal (inference).
 
-**Proposed spine amendments** (Rule 20; the runner writes 1-4 at the spec gate and 5-6 from Task 0):
+**Spine amendments** (Rule 20; 1-4 written at the spec gate on 2026-10-07; 5-6 written by the runner from Task 0):
 
-1. **AD-10, a new bullet in the serving-path family:** "**OcuPilot's own sign-in** (Story 18.8): a `Security.WebAuth` change that would leave one of OcuPilot's own web applications, or `%Service_WebGateway`, with no authentication method enabled for the instance (each read at the write; a failed read refuses) is refused `PROHIBITED.OCUPILOTSIGNIN`, from either caller (measured: password off refused OcuPilot's sign-in 401; unauthenticated off refused its shell and readiness 401). A change to `JWTIssuer` or `JWTSigAlg`, which ends every token session, and turning O/S authentication off, which stops `iris session` logins, are permitted at the strongest confirmation with their consequence [AMENDED <date>, Story 18.8 spec gate, Rule 20]."
+1. **AD-10, a new bullet in the serving-path family:** "**OcuPilot's own sign-in** (Story 18.8): a `Security.WebAuth` change that would leave one of OcuPilot's own web applications, or `%Service_WebGateway`, with no authentication method enabled for the instance (each read at the write; a failed read refuses) is refused `PROHIBITED.OCUPILOTSIGNIN`, from either caller (measured: password off refused OcuPilot's sign-in 401; unauthenticated off refused its shell and readiness 401). A change to `JWTIssuer` or `JWTSigAlg`, which ends every token session, is permitted at the strongest confirmation with its consequence; turning O/S authentication off is refused `PROHIBITED.OCUPILOTSTART` under the start arm (measured: OcuPilot's container start then fails) [AMENDED 2026-10-07, Story 18.8 spec gate, Rule 20]." (Written at the spec gate.)
 2. **AD-13:** "**`authentication-options` is a singleton** (Story 18.8)."
 3. **AD-4, after `Security.Encryption.Settings`:** "**`Security.WebAuth` keeps a key its body omits and omits an unchanged `AutheKB`** (Story 18.8): sending it true sets all seven Kerberos bits, so a re-sent value adds `AutheK5KeyTab`, which a stock instance leaves off (measured at Story 18.8's plan)."
-4. **Conventions › Secrets:** a second exception, `AutheLoginToken`, the system-wide "Allow creation of Login Cookies" flag, which Story 18.8's tools show and set. The phrase "The one exception" becomes "The exceptions", and `credential-lists.test.mjs`'s extraction follows.
+4. **Conventions › Secrets:** a second exception, `AutheLoginToken`, the system-wide "Allow creation of Login Cookies" flag, which Story 18.8's tools show and set. Written at the spec gate as an appended sentence, "A second exception: `AutheLoginToken`, ...", after the `ReturnRefreshToken` sentence, so the current extraction stays green; this story extends `credential-lists.test.mjs` to read both sentences and adds `authelogintoken` to `CREDENTIAL_EXCEPTIONS` (`ui/tools/credential-pattern.mjs`).
 5. **AD-8:** "Story 18.8's Authentication options declares Security's set; its tools declare <measured> [AMENDED <date>, Story 18.8 Task 0, Rule 20]."
 6. **AD-56 `CLEARABLESECRETS` and AD-15/AD-53:** only where Task 0 step 3 measures them.
 
 **Integration ACs.** The new modules (`AuthOptionsRules`, `AuthOptionsSave`, the arm with `SignInLocks`, and `WebAuthError`) are consumed in this story by the page, the agent and both tools (Tasks › Integration).
 
 - **Consumes:** 16.13 (the serving-path family and the field-caption idiom), 18.21 (the listed singleton form), 16.14 (secret-only tool, store after merge), 18.23 (effect wiring), 23.4 (HoldTool, `PORT.STARTED`), 16.17 (read-back), 14.1 (`Snippet`), 14.2 (baseline).
-- **Consumed-by:** Part B (the superserver arm reuses `SignInMasks`' serving-path reading, inference), 18.12 (the agent's grown tool set).
+- **Consumed-by:** Story 18.25 (the superserver arm reuses `SignInMasks`' serving-path reading, inference), 18.12 (the agent's grown tool set).
 
-**Ledger inbox (Rule 17):** Declined DW-1896: it is the LDAP editor's write, on Part D's surface (Recommended split); on approval the runner re-owns it to Part D's key.
+**Ledger inbox (Rule 17):** Declined DW-1896: it is the LDAP editor's write, on Part D's surface; re-owned to `18-27-the-operator-s-read-only-ldap-view` by the merge gate (2026-10-07).
 
 **Footprint (Rule 11).**
 
@@ -312,54 +314,9 @@ Analog: Story 18.21's ECP settings, a listed singleton form page. Adds 18.23's a
 
 **Vendor defect candidate** (owner hold; for the lead's list, not reported): the `WebAuth` `GET`→`PUT` round trip is not idempotent. `AutheKB` true adds `AutheK5KeyTab`, which the stock instance leaves off, and the classic Save does the same (measured at plan).
 
-### Recommended split
+### Split (approved)
 
-| Part | Story | Surfaces | Routes | Size (inference) | Order |
-| --- | --- | --- | --- | --- | --- |
-| A | 18.8 | Authentication options and sign-in self-protection | `GET`, `PUT /security/web-auth`; `POST /security/web-auth/smtp-password` | 1 screen, 3 tools, 1 arm | 1 |
-| B | 18.25 | Superservers | `GET /security/superservers`, `GET`/`PUT`/`DELETE /security/superserver` | 2 screens, 3 tools, 1 arm; about Story 18.20's size | 2 (shares A's serving-path reading) |
-| C | 18.26 | Managed file transfer connections | `GET /security/mft/connections`, `GET`/`PUT`/`DELETE /security/mft/connection`, `DELETE …/connection/token` | 2 screens, 4 tools; about Story 18.20's size | independent |
-| D | 18.27 | Read-only LDAP view, plus DW-1896 | `GET /security/ldap/configurations`, `GET …/configuration`; an AD-27 case | 2 read-only screens, 1 named case; small | independent |
-
-Story numbers follow Rule 17's `N.<M+1>` (M is 18.24); the orchestrator assigns them. D can fold into C if the lead prefers fewer stories.
-
-**Part B, Superservers (outline).**
-
-- **Screens** (Security's set):
-  - A list at 12 over `Security.Superserver` `LIST`: `Port`, `BindAddress`, `Enabled`, `SystemDefault`.
-  - An unlisted editor over `GET ?port=&bindAddress=`: `Description`, `Enabled`, the eleven `Enable*` service flags, `SSLConfig`, `SSLSupportLevel`, `SystemDefault`.
-  - Classic pages `%CSP.UI.Portal.Servers` and `.Server` (Hidden), both `%Admin_Secure`.
-- **Tools:**
-  - `security.superservers.create` (AD-54: the `PUT` upserts, 201 when absent).
-  - `.update` (merge; `RunPut` sets only the keys sent, read in source).
-  - `.delete` (key `false`).
-- **AD-13:** a composite id `(Port, BindAddress)`; Task 0 settles how `""` and `0.0.0.0` canonicalize.
-- **AD-10** already says "so is disabling the superserver". For the superserver the Web Gateway connects through, these are refused `PROHIBITED.SERVINGSERVICE`: delete, `Enabled` false, `EnableCSP` false, and `SSLSupportLevel` 2 while the gateway connects without TLS. The gateway's `[LOCAL]` entry reads `127.0.0.1:1972` on `ocupilot-ci`, the system-default superserver (read at plan); finding a supported read of that port is Task 0's job, otherwise the arm protects the system default (inference). Other changes to it are destructive with the serving consequence.
-- **Task 0 focus:** a probe superserver on an unused in-container port, created and deleted; whether a create listens at once; SSL refusals; pairs (whether `Security.Servers` needs `%DB_IRISSYS:WRITE`); audit events.
-- **ACs:** B0 Task 0; B1 list and editor read; B2 create, update and delete round-trip; B3 the serving superserver refused; B4 rosters.
-
-**Part C, Managed file transfer connections (outline).**
-
-- **Screens:**
-  - A list at 13 over `Security.MFT` `LIST`.
-  - An unlisted editor: `Service` (`%SYS.MFT.Connection.<Service>`: Box, Dropbox, Kiteworks), `URL`, `SSLConfiguration`, `Username`, `ApplicationName`.
-  - Classic pages `%CSP.UI.Portal.MFT.ConnectionList` (Hidden) and `.Connection`, both `%Admin_Secure`.
-- **Tools:** create (an upsert, AD-54), update (merge), delete (key `false`; the vendor's `DeleteId(name,0)` errors without the OAuth 2.0 client configuration), and revoke token (`REVOKE`, action-style).
-- **Product calls for its plan:**
-  - The classic create also creates the OAuth 2.0 client (`OAuth2.Client`, with client id and secret, `Connection.cls:63-64`, :257). The admin API names only `ApplicationName`. Either the create requires an existing client configuration (Story 12.5's screens), or an AD-27 case creates it as the classic page does.
-  - The authorization step (`AUTHCODE` plus the OAuth redirect to the Hidden `.MFT.Authorize`): carried, or named a classic-portal action.
-- **Task 0 focus:** the accepted `Service` values; a create with and without a client configuration; the delete's refusal; revoke with no token; audit events and pairs.
-- **ACs:** C0-C4, as B's.
-
-**Part D, the operator's read-only LDAP view and DW-1896 (outline).**
-
-- **Screens:**
-  - OS management (the classic pages live under System Operation, `/csp/sys/op/`, RESOURCE `%Admin_Operate`): a list over `Security.LDAP` `LIST` with its `GET` `rowGet`, and a read-only detail, declaring `%Admin_Operate:USE` and `%DB_IRISSYS:READ`, the latter as their own pair against OS management's set if needed (AD-8).
-  - No write tools. Classic pages `%CSP.UI.Portal.LDAPsRO` and `.LDAPRO`.
-- **DW-1896, an AD-27 named case:**
-  - The vendor's `PUT` ignores `LDAPAttributes []`, and `[""]` answers 500 (measured at DW-1889).
-  - The LDAP update completes an emptied `LDAPAttributes` through `Security.LDAPConfigs.Modify` in `%SYS` under `%Admin_Secure:USE`, then lifts `LDAP.ATTRIBUTES.LASTONE` (`Screen/Tool/LdapUpdate.cls`, `Area/Security/LdapSave.cls`, `Test/LdapEdit.cls:240-252`, `Test/LdapUpdate.cls:310`).
-- **ACs:** D0 Task 0; D1 an operator reads the list and detail and is refused every write; D2 the last attribute clears on both callers; D3 rosters.
+The orchestrator's merge gate approved the split on 2026-10-07 (Rule 5): this spec is Part A. Superservers are Story 18.25, managed file transfer connections Story 18.26, and the read-only LDAP view with DW-1896 Story 18.27; their outlines are in this spec as committed at `e7a3bef1` (Design Notes › Recommended split), for their own plans.
 
 ## Verification
 
@@ -399,19 +356,14 @@ Story numbers follow Rule 17's `N.<M+1>` (M is 18.24); the orchestrator assigns 
 - **A1:** the descriptor's read adds `SMTPPassword` → `AuthOptionsDescriptor`'s secret leg.
 - **A2:** `MergeUpdate` keeps an unchanged `AutheKB` → `AuthOptionsWrite`'s raw-bits leg. `Check` drops the SMS rule → its field-rule leg.
 - **A3:** the Save keeps `SMTPPassword` in the merge body → `AuthOptionsWrite`'s no-secret-in-body leg.
-- **A4:** the `OCUPILOTSIGNIN` dispatch removed → `AuthOptionsProhibited`'s two callers. `SignInMasks` answers success on a failed read → its seam leg. `SignInLocks` empty → `AuthOptionsRead`'s `locked` leg and the browser spec.
+- **A4:** the `OCUPILOTSIGNIN` dispatch removed → `AuthOptionsProhibited`'s two callers. The `OCUPILOTSTART` dispatch removed → its `AutheOS` leg, a `PUT` recorded. `SignInMasks` answers success on a failed read → its seam leg. `SignInLocks` empty → `AuthOptionsRead`'s `locked` leg and the browser spec.
 - **A5:** `Consequence` answers "" for `JWTSigAlg` → `AuthOptionsProhibited`'s destructive-mint leg and `proposal-view.test.mjs`.
 - **A6:** `security.authoptions.update` dropped from the baseline → `GovernanceBaseline`. `authelogintoken` dropped from `Log.cls` → `credential-lists.test.mjs`.
 
 ## Auto Run Result
 
-Status: blocked
-Blocking condition: split recommended: Story 18.8 spans four surface groups (authentication options, superservers, MFT connections, the read-only LDAP view with DW-1896) and one implement pass cannot hold them; Part A is planned in full and Parts B to D are outlined (Design Notes › Recommended split); the lead decides.
+Status: ready-for-dev
+Blocking condition: none
 
-- **Planned:** Part A in full: Boundaries, matrix, Code Map, a Task 0 with halt conditions, server, client and test execution, ACs A0-A6, and Verification in Rule 29's shape with planned mutations. Parts B, C and D are outlined with their surfaces, routes, size, order, Task 0 focus and open product calls. Part A was self-reviewed against the READY-FOR-DEVELOPMENT standard; on approval the runner trims the outlines and sets the spec `ready-for-dev`.
-- **For the lead:**
-  1. The split and its order: A (18.8), B (18.25), then C (18.26) and D (18.27), both independent. Re-own DW-1896 to D's key.
-  2. Decisions 2-5, especially the new `PROHIBITED.OCUPILOTSIGNIN` code, and whether O/S authentication off is permitted (recommended) or refused.
-  3. The epic context's "(inference: the read-only view is covered)" is wrong at origin. The view is `%CSP.UI.Portal.LDAPsRO`/`.LDAPRO` for `%Admin_Operate`, which no OcuPilot screen serves. Correct it at the next recompile.
-  4. One vendor defect candidate for the held list (Design Notes).
-- **Measured at plan** on `ocupilot-ci` (Design Notes › Measured at plan). Seven authentication changes and one unchanged `PUT`, each restored. JWKS restored from a copy, and the temp global killed. End state equals S0, with monitor 0 and the container healthy. Four `LoginFailure` and several `SystemChange` audit rows remain, as the audit log keeps them.
+- Planned at plan (Opus): Part A in full with ACs A0-A6; Parts B-D outlined, then trimmed at the spec gate after the merge gate approved the split.
+- Spec gate (lead, 2026-10-07): Decision 4 reversed to a refusal (`PROHIBITED.OCUPILOTSTART`) on a measured failed start; spine amendments written; DW-2139 filed under the owner's hold.
