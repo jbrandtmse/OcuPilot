@@ -199,6 +199,8 @@ XData Coverage
 <screen name="DataElementEncryption" class="OcuPilot.Test.EncryptionKeyDescriptor" method="TestTheTwoScreensAreDeclaredAsTheSpecPlacesThem" corpus="Story 18.22's two encryption key screens are asserted together in one loop"/>
 <screen name="EncryptionStartup" class="OcuPilot.Test.EncryptionStartupDescriptor" method="TestTheScreenIsDeclaredAsTheSpecPlacesIt"/>
 <screen name="AuthOptions" class="OcuPilot.Test.AuthOptionsDescriptor" method="TestTheScreenIsDeclaredAsTheSpecPlacesIt"/>
+<screen name="SuperserverList" class="OcuPilot.Test.SuperserverDescriptor" method="TestTheListIsDeclaredAsTheSpecPlacesIt"/>
+<screen name="SuperserverForm" class="OcuPilot.Test.SuperserverDescriptor" method="TestTheEditorIsAnUnlistedFormPage"/>
 <screen name="SqlActivityList" class="OcuPilot.Test.SqlActivityDescriptor" method="TestTheDescriptorShape"/>
 <screen name="InteropProductionList" class="OcuPilot.Test.InteropDescriptor" method="TestTheFourDeclarationsRegister" corpus="one declaration test pins all four Story 20.2 Interoperability screens in one loop"/>
 <screen name="InteropProcessList" class="OcuPilot.Test.InteropDescriptor" method="TestTheFourDeclarationsRegister" corpus="one declaration test pins all four Story 20.2 Interoperability screens in one loop"/>
@@ -381,6 +383,9 @@ XData Coverage
 <tool name="security.encryptionstartup.update" class="OcuPilot.Test.EncryptionStartupWrite" method="TestAStartModeChangeIsOnePutOnBothCallers"/>
 <tool name="security.authoptions.update" class="OcuPilot.Test.AuthOptionsWrite" method="TestAnOrdinaryChangeIsOnePutLessAnUnchangedKerberosOnBothCallers"/>
 <tool name="security.authoptions.smtppassword" class="OcuPilot.Test.AuthOptionsWrite" method="TestTheSmtpPasswordIsWrittenClearedAndReachesNoRecord"/>
+<tool name="security.superservers.create" class="OcuPilot.Test.SuperserverDescriptor" method="TestTheToolsDeclareTheirKindPortPairsAndFields" corpus="the three superserver tools are asserted together in one loop"/>
+<tool name="security.superservers.update" class="OcuPilot.Test.SuperserverDescriptor" method="TestTheToolsDeclareTheirKindPortPairsAndFields" corpus="the three superserver tools are asserted together in one loop"/>
+<tool name="security.superservers.delete" class="OcuPilot.Test.SuperserverDescriptor" method="TestTheToolsDeclareTheirKindPortPairsAndFields" corpus="the three superserver tools are asserted together in one loop"/>
 <member name="state-protection" class="OcuPilot.Test.State" method="TestDeniedUserCannotReachAnyStateClass"/>
 <member name="audit-round-trip-record" class="OcuPilot.Test.AuditRecord" method="TestACreateRecordsTheFieldsItCreatedAtTheirDefaults"/>
 <member name="audit-round-trip-verbs" class="OcuPilot.Test.AuditVerbs" method="TestADeleteIsRecordedWithWhatBecameOfItsCredentialEntry"/>

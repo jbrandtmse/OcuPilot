@@ -9510,6 +9510,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-04T14:42:18Z occurrence=18-21-ecp-settings-and-application-servers note=EcpSslConnectionWrite's DW-2006 leg and EcpDataServerWrite's SSL leg raise the monitor through the logged #1454 (harvested from 18.21's deferred list)
 - 2026-10-05T00:19:27Z occurrence=18-7-encryption note=18.7 logs #5022 on each no-key read, #1219/#1204 and #5001 credentials refusals; their async alert-throttle line can land in a no-log window
 - 2026-10-07T08:23:30Z occurrence=18-25-superservers note=add Security.Superserver PUT #5001 (port already in use; mapped to a field refusal, still logged severity 2) to the code-scoped unlogged list
+- 2026-10-07T16:07:59Z occurrence=18-26-managed-file-transfer-connections note=add Security.MFT DELETE 500 #5809 (connection deleted, OAuth 2.0 client already absent; MftPort re-reads and answers done, still logged severity 2)
 
 ### DW-2008: The agent's confirm of an ECP data server create at the limit carries ECP.SERVER.LIMIT's generic sentence, not EcpError.Limit's number
 - source: spec-18-20-ecp-data-servers.md (code review) | severity: low | fix-risk: med | footprint: out-of-footprint
@@ -10254,6 +10255,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-8-superservers-authentication-options-and-managed-file-transfe.md | severity: med | fix-risk: low | footprint: in-footprint
 - evidence: Story 18.8 rework 1 re-review: AuthOptionsProbe.Facts had the same field and reddened CI run 37596828031 instance shard 1/5; the five siblings not checked
 - 2026-10-07T09:30:06Z status=routed owner=burndown by=cr note=remove the monitor value from each Snapshot, or prove it cannot move mid-class; verify on ocupilot-ci by raising the monitor mid-run
+- 2026-10-07T18:44:36Z occurrence=18-25-superservers by=merge_repair note=restored: its 15:41:54Z occurrence line now sits under DW-2162, moved there by the union merge of feature 0f3db5bb into OCU-1-epic20
 
 ### DW-2157: A production stop from Running can leave it reading Suspended while the tool answers success and the card promised Stopped
 - source: spec-20-2-productions-listed-and-controlled.md | severity: med | fix-risk: low | footprint: in-story
@@ -10282,3 +10284,48 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-20-2-productions-listed-and-controlled.md | severity: med | fix-risk: low | footprint: in-story
 - evidence: Ens.Job.StopAll raises the plural <Ens>ErrJobsNotStopped (Job.cls:555) after MakeQuiescent and the app-data kill (Director.cls:250-260); InteropPort.Statused maps only the singular
 - 2026-10-07T18:07:16Z status=decision-pending owner=burndown by=cr note=product call: new INTEROP code + sentence for a partial stop (recommended), or keep 500 and amend the stop sentence
+- 2026-10-07T15:41:54Z occurrence=18-25-superservers
+- 2026-10-07T18:44:36Z status=decision-pending owner=burndown by=merge_repair note=restored: the 15:41:54Z occurrence=18-25-superservers line above is DW-2149's, moved here by a union merge; DW-2162 has no 18.25 occurrence
+
+### DW-2150: The serving-superserver arm's real ServingSuperserverPort() (the $PRINCIPAL read) is never driven to a non-empty answer by a test; SuperserverSet overrides it and the real-HTTP legs serve through the system default
+- source: spec-18-25-superservers.md | severity: med | fix-risk: low | footprint: in-footprint
+- evidence: Kernel/Proposal/Prohibited.cls ServingSuperserverPort; the |TCP|<port>| shape was measured at plan, only the pin is missing
+- 2026-10-07T14:57:07Z status=open owner=18-25-superservers by=harvest note=in-story MED: a leg whose real request reports the port; review patches or takes the MED iteration
+- 2026-10-07T15:41:54Z status=resolved-by:18-25-superservers by=cr note=TestAProcessServedOverTcpReadsItsPort: TCP-principal job reads 21829 and its locks; port forced "" -> red (run 1168)
+
+### DW-2151: SuperserverSave's answer consequence member is unpinned on the server side (the client side is pinned)
+- source: spec-18-25-superservers.md | severity: low | fix-risk: low | footprint: in-footprint
+- evidence: SuperserverProhibited reads only the stored proposal's consequence
+- 2026-10-07T14:57:07Z status=open owner=18-25-superservers by=harvest note=in-story LOW: fix-pack or close with a probe at review
+- 2026-10-07T15:41:54Z status=resolved-by:18-25-superservers by=cr note=Save effect via ProhibitedClass; SuperserverWrite serving-port leg asserts consequence; effect dropped -> red (run 1169)
+
+### DW-2152: SuperserverProhibited.TestAFailedTargetReadRefuses's agent-confirm leg asserts only a non-200, which an earlier read failure also gives (inference)
+- source: spec-18-25-superservers.md | severity: low | fix-risk: low | footprint: in-footprint
+- evidence: src/OcuPilot/Test/SuperserverProhibited.cls:152; settle with ArmFailAfter on the confirm and an exact outcome
+- 2026-10-07T14:57:07Z status=open owner=18-25-superservers by=harvest note=in-story LOW: fix-pack or close at review
+- 2026-10-07T15:41:54Z status=resolved-by:18-25-superservers by=cr note=arm runs first; leg now exact 500 INTERNAL; failed read -> not prohibited makes it 409 -> red (run 1168)
+
+### DW-2153: No test pins that sign-out resets the superserver form store, nor any of app.ts's other ~25 form-store resets
+- source: spec-18-25-superservers.md (cr verification-gap) | severity: low | fix-risk: low | footprint: in-epic
+- evidence: app.spec.ts pins shell, turn and Home store resets by mutation; deleting this.superserverForm.reset() (or any form store's) reddens nothing. Code currently resets.
+- 2026-10-07T15:42:01Z status=wontfix-accepted owner=18-25-superservers by=cr note=one roster test covers all; reopen_if=a form store reset() line is removed or a cross-principal form leak is reported
+
+### DW-2154: IRIS defect candidate: the admin API's Security.MFT DELETE of a connection whose OAuth 2.0 client is absent deletes the connection and then answers 500 #5809
+- source: spec-18-26-managed-file-transfer-connections.md | severity: low | fix-risk: high | footprint: out-of-footprint
+- evidence: Story 18.26 plan on ocupilot-ci 2026-10-07
+- 2026-10-07T16:07:59Z status=decision-pending owner=burndown by=spec_gate note=human=decide whether to report it to InterSystems, with the held vendor-report list; owner hold 2026-10-05: not reported
+
+### DW-2155: IRIS defect candidate: the admin API's Security.MFT PUT answers 500 <CLASS DOES NOT EXIST> for an unknown Service, stores Service Base, and relabels a stored connection's Service on an update
+- source: spec-18-26-managed-file-transfer-connections.md | severity: low | fix-risk: high | footprint: out-of-footprint
+- evidence: Story 18.26 plan on ocupilot-ci 2026-10-07
+- 2026-10-07T16:07:59Z status=decision-pending owner=burndown by=spec_gate note=human=decide whether to report it to InterSystems, with the held vendor-report list; owner hold 2026-10-05: not reported
+
+### DW-2156: IRIS defect candidate: %SYS.MFT.Connection.Base.DeleteId's doc comment inverts its keepOAuth2 argument
+- source: spec-18-26-managed-file-transfer-connections.md | severity: low | fix-risk: high | footprint: out-of-footprint
+- evidence: Story 18.26 plan: read in source
+- 2026-10-07T16:07:59Z status=decision-pending owner=burndown by=spec_gate note=human=decide whether to report it to InterSystems, with the held vendor-report list; owner hold 2026-10-05: not reported
+
+### DW-2160: CI flake: AuditVendorSecrets.AssertMasked reads the audit screen once, so the vendor's audit index refresh (DW-1915's root cause) can leave the probe row out of the wire read; 23.4 polled only OAuthResourceServerAuditMask
+- source: cycle-log-epic-18.md (Story 18.25 CI run 37646809169) | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: run 37646809169 head 44e8f5b3 instance shard 2/5: AssertMasked+7 and +9 red on the wire read while logs.audit.read passed moments later; the class ran 4/4 green on ocupilot-ci (run 1172) over the same source; OAuthAuthorizationServerSecret and OAuthRegisteredClientSecret read once the same way (inference)
+- 2026-10-07T17:30:11Z status=routed owner=burndown by=lead note=apply 23.4's READSECONDS poll (16313a0e) to AuditVendorSecrets.AssertMasked and to any sibling that reads a vendor row once

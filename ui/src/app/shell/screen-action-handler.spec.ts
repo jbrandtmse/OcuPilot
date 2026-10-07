@@ -1603,6 +1603,41 @@ describe('the mapping lists\u2019 Delete and the Namespaces list\u2019s Copy map
 });
 
 /**
+ * Story 18.25: the Superservers list's Delete types the port -- the row key is `[Port, BindAddress]`, whose
+ * separator no one can type, and the row's port is a number -- states its consequence, and sends the whole row
+ * key.
+ */
+describe('the Superservers list\u2019s Delete (Story 18.25)', () => {
+  const descriptor = 'OcuPilot.Screen.Descriptor.SuperserverList';
+  const target = '21825\u00010.0.0.0';
+
+  it('registers Delete, typing the port under the published consequence', () => {
+    // Mutation (Rule 19): drop the list's `TYPED_NAME_ROWS` entry -> the name assertion goes red, the dialog
+    // asking for the joined row key; drop its `DESTRUCTIVE_CONSEQUENCES` entry -> the registration goes red.
+    const { actions, handler, store, calls } = mount(undefined, descriptor);
+    expect(actions.has(descriptor, 'delete')).toBe(true);
+    handler.startFor(descriptor, 'delete', target, { Port: 21825, BindAddress: '0.0.0.0', Enabled: true, SystemDefault: false }, store);
+    expect(handler.pending()?.kind).toBe('typed-name');
+    expect(handler.pending()?.name).toBe('21825');
+    expect(handler.pending()?.target).toBe(target);
+    expect(handler.pending()?.consequence).toBe(STRINGS.superserverDeleteConsequence);
+    expect(handler.pending()?.advisory).toBe('');
+    expect(calls).toHaveLength(0);
+  });
+
+  it('sends a confirmed Delete with the whole row key', async () => {
+    const screen = SCREENS.find((entry) => entry.descriptor === descriptor)!;
+    const { handler, store, calls } = mount({ kind: 'ok', status: 200, body: { action: 'deleted', target: { type: 'superserver', scope: 'instance', id: target } } }, descriptor);
+    handler.startFor(descriptor, 'delete', target, { Port: 21825, BindAddress: '0.0.0.0' }, store);
+    handler.confirmPending();
+    await settle();
+    expect(calls).toHaveLength(1);
+    expect(calls[0].path).toBe(`/api/ocupilot/screens/${screen.toolIdentifier}/action`);
+    expect(JSON.parse(calls[0].body)).toEqual({ action: 'delete', id: target });
+  });
+});
+
+/**
  * Story 16.4: `sendFor` with a sink of its own keeps a refusal off the list's banner, and
  * `lastRefusal` answers what the instance refused with -- its sentence, its field-level violations and
  * its detail -- until the next send, which clears it.

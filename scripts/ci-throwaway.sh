@@ -365,6 +365,10 @@ services:
       # The authentication options gate class signs in as probe principals holding Security's pairs, and
       # each without one, and saves the options as them through a seam port that sends nothing (Story 18.8).
       # classes: AuthOptionsGate
+      # The superserver gate class signs in as probe principals holding Security's pairs, and each
+      # without one, and writes probe superservers as them through a seam port that sends nothing
+      # (Story 18.25).
+      # classes: SuperserverGate
       # The SQL activity gate class signs in as probe principals each missing one pair the SQL
       # activity port requires, or holding READ on USER's database and %Development, and reads
       # another account's running probe statement as them (Story 19.10).
@@ -485,6 +489,10 @@ services:
       # SMTP password set and cleared -- and restores every value it read first. Every sign-in, start or token
       # change goes only to a seam port that records it and never sends it.
       # classes: AuthOptionsWrite
+      # Since Story 18.25 the superserver class creates, changes and deletes probe superservers on 21825 to
+      # 21829 only, each removed by exact port, and sets the governance policy it restores. The system
+      # default superserver is never written: any other port goes only to a seam that refuses it.
+      # classes: SuperserverWrite
       OCUPILOT_ALLOW_SERVICE_CONFIG: "1"
       # Arms the turnprobe provider row OcuPilot.Kernel.Provider.Catalog resolves only under it,
       # and with it the classes that spawn turn jobs or Test connection children against that row's

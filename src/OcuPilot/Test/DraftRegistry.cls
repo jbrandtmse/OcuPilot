@@ -53,8 +53,8 @@ Parameter SPLITTARGETID = "OcuPilotDraftNamespace,OcuPilotDraftName";
 /// <code>&lt;type&gt;=&lt;id&gt;</code> entries separated by <code>;</code>: a <code>process</code>
 /// id is a pid set, which the broadcast's port refuses to compose from anything else (Story
 /// 16.6); a <code>lock</code> id is a <code>DeleteID</code>, whose third piece names its owner (Story
-/// 16.12).</p>
-Parameter TYPEDTARGETIDS = "process=812,907;lock=313131008,13,P905,";
+/// 16.12); a <code>superserver</code> id is a port whose bind address reads as every interface (Story 18.25).</p>
+Parameter TYPEDTARGETIDS = "process=812,907;lock=313131008,13,P905,;superserver=21825";
 /// <p>The fields a tool's declared port adds to its fresh read, which its stored payload therefore
 /// carries, as <code>tool=field</code> entries, comma-separated (Story 18.3's file edit: the database
 /// port answers the configuration's directory for a file read by name, and the script addresses

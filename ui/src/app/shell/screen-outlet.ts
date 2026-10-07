@@ -73,6 +73,7 @@ import { EncryptionKeyFileFormPage } from '../areas/security/encryption-key-file
 import { EncryptionKeysPage } from '../areas/security/encryption-keys.page';
 import { EncryptionStartupPage } from '../areas/security/encryption-startup.page';
 import { AuthOptionsPage } from '../areas/security/auth-options.page';
+import { SuperserverFormPage } from '../areas/security/superserver-form.page';
 import { WebAppCreateFormPage } from '../areas/web-applications/create-form.page';
 import { WebAppEditorPage } from '../areas/web-applications/web-app-editor.page';
 import { OpenApiViewerPage } from '../areas/web-applications/openapi-viewer.page';
@@ -231,6 +232,8 @@ export const DESCRIPTOR_PAGES: Readonly<Record<string, Type<unknown>>> = {
   'OcuPilot.Screen.Descriptor.EncryptionStartup': EncryptionStartupPage,
   // Story 18.8: Authentication options, a form over the screen's own declared read.
   'OcuPilot.Screen.Descriptor.AuthOptions': AuthOptionsPage,
+  // Story 18.25: the superserver editor; the list is the shared list page.
+  'OcuPilot.Screen.Descriptor.SuperserverForm': SuperserverFormPage,
   // Story 19.1: System Explorer's two lists, each a criteria form drawn from its declared criteria.
   'OcuPilot.Screen.Descriptor.ExplorerClassList': CodeListPage,
   'OcuPilot.Screen.Descriptor.ExplorerRoutineList': CodeListPage,

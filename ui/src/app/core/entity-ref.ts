@@ -107,6 +107,20 @@ const ID_RULES: Readonly<Record<string, (id: string) => string>> = {
     if (at < 0) return id.toLowerCase();
     return id.slice(0, at).toLowerCase() + id.slice(at);
   },
+  // A superserver is keyed by the composite `[Port, BindAddress]` (Story 18.25): the port in its plain
+  // decimal spelling (folded to lower case when it is no integer), an empty bind address as `0.0.0.0`,
+  // and the bind address in lower case. An id with no separator reads as `[id, '']` -- what
+  // `OcuPilot.Kernel.EntityRef.NormalizedId` answers for `portbind`.
+  portbind: (id) => {
+    const at = id.indexOf(COMPOSITE_SEPARATOR);
+    const portPart = at < 0 ? id : id.slice(0, at);
+    const bindPart = at < 0 ? '' : id.slice(at + 1);
+    return (
+      (plainInteger(portPart) ?? portPart.toLowerCase()) +
+      COMPOSITE_SEPARATOR +
+      (bindPart === '' ? '0.0.0.0' : bindPart.toLowerCase())
+    );
+  },
   // A database is addressed by its directory, kept exactly, or by a set of directories -- the
   // integrity check's target (Story 18.4): a value beginning `[` that is a JSON array of non-empty
   // strings keeps each member's first spelling, drops a later one naming the same directory

@@ -107,6 +107,7 @@ export const SCREEN_ACTION_DESCRIPTORS: readonly string[] = [
   'OcuPilot.Screen.Descriptor.EcpSslConnectionTab',
   // Story 19.17: Document databases, whose Drop types the database's name.
   'OcuPilot.Screen.Descriptor.ExplorerDocDbList',
+  'OcuPilot.Screen.Descriptor.SuperserverList',
   // Story 20.2: Productions, whose Start is sent at once and whose Stop, Restart, Update and Recover warn first.
   'OcuPilot.Screen.Descriptor.InteropProductionList',
 ];
@@ -234,6 +235,9 @@ export const EXPAND_VOLUME = 'expand';
 const GLOBAL_MAPPING_LIST = 'OcuPilot.Screen.Descriptor.GlobalMappingList';
 const ROUTINE_MAPPING_LIST = 'OcuPilot.Screen.Descriptor.RoutineMappingList';
 const PACKAGE_MAPPING_LIST = 'OcuPilot.Screen.Descriptor.PackageMappingList';
+
+/** The Superservers list (Story 18.25), keyed by `[Port, BindAddress]`, whose Delete types the port. */
+const SUPERSERVER_LIST = 'OcuPilot.Screen.Descriptor.SuperserverList';
 
 /** The role value actions, and the values each sends (AD-56 (ii)). */
 export const ADD_GRANTED_ROLE = 'add-granted-role';
@@ -442,6 +446,7 @@ const DESTRUCTIVE_CONSEQUENCES: Readonly<Record<string, Readonly<Record<string, 
   [GLOBAL_MAPPING_LIST]: { delete: STRINGS.globalMappingDeleteConsequence },
   [ROUTINE_MAPPING_LIST]: { delete: STRINGS.routineMappingDeleteConsequence },
   [PACKAGE_MAPPING_LIST]: { delete: STRINGS.packageMappingDeleteConsequence },
+  [SUPERSERVER_LIST]: { delete: STRINGS.superserverDeleteConsequence },
   [LOCAL_DATABASE_LIST]: { delete: STRINGS.localDatabaseDeleteConsequence },
   // Story 16.25: the language server's Delete types the server's name.
   'OcuPilot.Screen.Descriptor.LanguageServerList': { delete: STRINGS.languageServerDeleteConsequence },
@@ -508,6 +513,9 @@ const TYPED_NAME_ROWS: Readonly<
   [GLOBAL_MAPPING_LIST]: { name: 'Name', field: '', equals: '', advisory: '' },
   [ROUTINE_MAPPING_LIST]: { name: 'Name', field: '', equals: '', advisory: '' },
   [PACKAGE_MAPPING_LIST]: { name: 'Name', field: '', equals: '', advisory: '' },
+  // Story 18.25: a superserver is keyed by `[Port, BindAddress]`, whose separator no one can type, so its
+  // Delete types the port and sends the row key.
+  [SUPERSERVER_LIST]: { name: 'Port', field: '', equals: '', advisory: '' },
   // Story 18.7: a key file's rows are an administrator's `Name` and a key's `Id`, and the write is
   // sent with the key file's composite id, which no one types.
   [ENCRYPTION_KEY_FILE_ADMINS]: { name: 'Name', field: '', equals: '', advisory: '' },
@@ -1030,7 +1038,9 @@ export class ScreenActionHandler {
     // The row's own name and advisory, where the screen declares them; the row key otherwise.
     const read = TYPED_NAME_ROWS[descriptor];
     const row = read === undefined ? null : rowFields;
-    const name = row?.[read?.name ?? ''];
+    const rowName = row?.[read?.name ?? ''];
+    // A numeric field, a superserver's port, is typed as its digits (Story 18.25).
+    const name = typeof rowName === 'number' ? String(rowName) : rowName;
     this.open(
       'typed-name',
       descriptor,

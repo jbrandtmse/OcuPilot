@@ -294,6 +294,9 @@ const KERNEL_REFUSALS = [
   // with.
   ['OCUPILOTSIGNIN', 'authOptionsRefusalSignIn'],
   ['OCUPILOTSTART', 'authOptionsRefusalStart'],
+  // Story 18.25: the superserver the web gateway connects through, whose Enabled and web connections the
+  // editor draws locked, and whose Delete either caller is answered with this sentence.
+  ['SERVINGSUPERSERVER', 'superserverRefusalServing'],
 ];
 
 test('DW-1598, AD-53: each kernel refusal is published verbatim in Fixed strings and is the sentence ReasonFor returns', () => {
@@ -697,6 +700,7 @@ test('Story 18.21 (C5): ecp-ssl-pending and ecp-ssl-authorized answer the tools\
 /** Story 18.7's error class and the key file tools, which declare its published sentences. */
 const ENCRYPTION_ERROR = join(REPO_ROOT, 'src', 'OcuPilot', 'Api', 'EncryptionError.cls');
 const WEBAUTH_ERROR = join(REPO_ROOT, 'src', 'OcuPilot', 'Api', 'WebAuthError.cls');
+const SUPERSERVER_ERROR = join(REPO_ROOT, 'src', 'OcuPilot', 'Api', 'SuperserverError.cls');
 const ENCRYPTION_TOOL = (name) => join(REPO_ROOT, 'src', 'OcuPilot', 'Screen', 'Tool', `EncryptionKeyFile${name}.cls`);
 const ENCRYPTION_KEY_TOOL = (name) => join(REPO_ROOT, 'src', 'OcuPilot', 'Screen', 'Tool', `${name}.cls`);
 
@@ -747,6 +751,9 @@ const ENCRYPTION_SENTENCES = [
   [ENCRYPTION_ERROR, 'REASONSTARTUPJOURNAL', 'encryptionStartupJournalConsequence'],
   // Story 18.8: the sign-out consequence, which the form states before Save and the card renders.
   [WEBAUTH_ERROR, 'REASONSIGNOUT', 'authOptionsSignOutConsequence'],
+  // Story 18.25: the consequence of an SSL/TLS change to the superserver the web gateway connects through, which
+  // the form states before Save and the card renders.
+  [SUPERSERVER_ERROR, 'REASONSERVESOCUPILOT', 'superserverServesConsequence'],
 ];
 
 test("Story 18.23: the audit log's encryption change is one consequence sentence on both surfaces, published in Fixed strings", () => {

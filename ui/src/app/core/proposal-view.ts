@@ -348,6 +348,8 @@ export const CONSEQUENCE_AUDITENCRYPTIONCHANGE = 'AUDIT.ENCRYPTIONCHANGE';
 /** Story 18.8: a change to the JWT issuer or signature algorithm, which ends every token session. */
 export const CONSEQUENCE_WEBAUTHSIGNOUT = 'WEBAUTH.SIGNOUT';
 
+/** The consequence of an SSL/TLS change to the superserver the web gateway connects through (Story 18.25). */
+export const CONSEQUENCE_SUPERSERVERSERVES = 'SUPERSERVER.SERVESOCUPILOT';
 /** Story 20.2: the production actions that wait or recover (AD-62); each is one published sentence. */
 export const CONSEQUENCE_INTEROPSTOP = 'INTEROP.STOP';
 export const CONSEQUENCE_INTEROPRESTART = 'INTEROP.RESTART';
@@ -453,6 +455,8 @@ export function consequenceSentence(code: string | undefined): string {
   if (code === CONSEQUENCE_AUDITENCRYPTIONCHANGE) return STRINGS.encryptionStartupAuditConsequence;
   // Story 18.8: the sign-out sentence, published once.
   if (code === CONSEQUENCE_WEBAUTHSIGNOUT) return STRINGS.authOptionsSignOutConsequence;
+  // Story 18.25: the serving superserver's SSL/TLS sentence, published once.
+  if (code === CONSEQUENCE_SUPERSERVERSERVES) return STRINGS.superserverServesConsequence;
   // Story 20.2: the four production consequences, each published once.
   if (code === CONSEQUENCE_INTEROPSTOP) return STRINGS.interopStopConsequence;
   if (code === CONSEQUENCE_INTEROPRESTART) return STRINGS.interopRestartConsequence;

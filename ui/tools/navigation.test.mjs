@@ -271,6 +271,8 @@ test('a side bar lists only built screens, in side-bar order', () => {
       'security/oauth/server',
       // Story 9.5: the unlisted SSL/TLS configuration form, reached from the SSL/TLS list.
       'security/ssl/edit',
+      // Story 18.25: the unlisted superserver editor, reached from Superservers.
+      'security/superservers/edit',
       'security/wallet/secrets/edit',
       'security/wallet/secrets',
       'security/x509/edit',
@@ -288,6 +290,8 @@ test('a side bar lists only built screens, in side-bar order', () => {
       'security/data-element-encryption',
       // Story 18.8: Authentication options, the eleventh Security and secrets entry.
       'security/authentication',
+      // Story 18.25: Superservers, the twelfth Security and secrets entry.
+      'security/superservers',
       // Story 19.1: System Explorer's two unlisted viewers, then Classes and Routines.
       'system-explorer/classes/document',
       // Story 19.3: each unlisted editor sorts after its viewer, by descriptor class name.
@@ -609,8 +613,8 @@ test('childListFor pairs the Wallet list with its Secrets list, parentListFor in
   assert.equal(isListedScreen(secrets), false, 'the Secrets list is never listed');
   assert.deepEqual(
     listedScreensForArea('security').map((screen) => screen.route),
-    ['security/ssl', 'security/x509', 'security/ldap', 'security/wallet', 'security/oauth', 'security/auditing', 'security/allowed-directories', 'security/encryption-key-file', 'security/database-encryption', 'security/data-element-encryption', 'security/authentication'],
-    'the Security side bar lists SSL/TLS, X.509, LDAP / Kerberos, Wallet, OAuth 2.0, Auditing configuration, Allowed directories, Encryption key files, Database encryption, Data element encryption and Authentication options'
+    ['security/ssl', 'security/x509', 'security/ldap', 'security/wallet', 'security/oauth', 'security/auditing', 'security/allowed-directories', 'security/encryption-key-file', 'security/database-encryption', 'security/data-element-encryption', 'security/authentication', 'security/superservers'],
+    'the Security side bar lists SSL/TLS, X.509, LDAP / Kerberos, Wallet, OAuth 2.0, Auditing configuration, Allowed directories, Encryption key files, Database encryption, Data element encryption, Authentication options and Superservers'
   );
 
   assert.equal(screenForUrl('/security/wallet/secrets/OcuPilotDemo?ns=HSCUSTOM')?.route, 'security/wallet/secrets', 'a secrets URL with a collection id resolves to the Secrets list');

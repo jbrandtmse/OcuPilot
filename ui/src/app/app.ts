@@ -53,6 +53,8 @@ import { EncryptionKeyFileForm } from './areas/security/encryption-key-file-form
 import { EncryptionKeysStore } from './areas/security/encryption-keys.store';
 import { EncryptionStartupForm } from './areas/security/encryption-startup.store';
 import { AuthOptionsForm } from './areas/security/auth-options.store';
+import { SuperserverActions } from './areas/security/superserver-actions';
+import { SuperserverForm } from './areas/security/superserver-form.store';
 import { MappingActions } from './areas/os-management/mapping-actions';
 import { MappingForm } from './areas/os-management/mapping-form.store';
 import { OAuthActions } from './areas/security/oauth-actions';
@@ -367,6 +369,9 @@ export class App {
   private readonly encryptionStartupForm = inject(EncryptionStartupForm);
   // Authentication options' form store (Story 18.8).
   private readonly authOptionsForm = inject(AuthOptionsForm);
+  // Superservers' declared Create (`areas/security/superserver-actions.ts`), with the form's store (Story 18.25).
+  private readonly superserverActions = inject(SuperserverActions);
+  private readonly superserverForm = inject(SuperserverForm);
   // The three mapping lists' declared Create, the same way (`areas/os-management/mapping-actions.ts`).
   private readonly mappingActions = inject(MappingActions);
   private readonly mappingForm = inject(MappingForm);
@@ -704,6 +709,8 @@ export class App {
       this.encryptionStartupForm.reset();
       // The authentication options form holds options THIS principal was changing and has not saved.
       this.authOptionsForm.reset();
+      // The superserver form holds a superserver THIS principal was creating or editing and has not saved.
+      this.superserverForm.reset();
       // The mapping editor holds a mapping THIS principal was creating or editing and has not saved.
       this.mappingForm.reset();
       // The SSL/TLS form holds a private key password THIS principal typed and has not saved (AD-35).

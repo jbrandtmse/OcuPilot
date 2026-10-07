@@ -2,13 +2,36 @@
 title: 'Story 18.25: Superservers'
 type: 'feature'
 created: '2026-10-07'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: '0a8f21b49fa7ec8a24dec875e00231619178c13e'
+baseline_commit: '0a8f21b49fa7ec8a24dec875e00231619178c13e'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-18-context.md'
 warnings: ['oversized']
-deferred: []
+deferred:
+  - summary: >-
+      The shipped ServingSuperserverPort() (the $PRINCIPAL read) is never driven to a non-empty answer by a test.
+    evidence: |-
+      SuperserverSet overrides it; the real-HTTP legs hit 1972, serving through SystemDefault. The shape |TCP|<port>| is measured (Design Notes), so only the pin is missing: a leg whose real request reports the port.
+    location: >-
+      src/OcuPilot/Kernel/Proposal/Prohibited.cls ServingSuperserverPort
+    severity: medium
+  - summary: >-
+      The Save answer's consequence member is unpinned on the server side (the client side is pinned).
+    evidence: |-
+      SuperserverProhibited reads the stored proposal consequence only; no Save leg armed to answer asserts the answer's consequence.
+    location: >-
+      src/OcuPilot/Area/Security/SuperserverSave.cls Update/Answer
+    severity: low
+  - summary: >-
+      The agent confirm leg of TestAFailedTargetReadRefuses asserts only a non-200, which an earlier read failure also gives.
+    evidence: |-
+      Unverified (inference): the confirm may fail at its own changed-target read before the arm. Settle with ArmFailAfter on the confirm and an exact outcome assertion. The Save leg is exact.
+    location: >-
+      src/OcuPilot/Test/SuperserverProhibited.cls:152
+    severity: low (unverified)
 ---
 
 <intent-contract>
@@ -249,11 +272,72 @@ Analogs: **18.20's ECP data servers** (a list plus an unlisted form; create, upd
   - the Fixed strings stay within the bound.
 - **Integration.** The page consumes `GET /superserver/form`, `PUT /superserver/:id`, `POST /superserver` and the delete row action. The agent consumes the read tool and the three write tools. Each runs on `ocupilot-ci` (B1-B4 and the browser spec).
 
+### Review Findings
+
+Code review 2026-10-07, layers blind-hunter, edge-case-hunter, verification-gap and acceptance-auditor (all full-opus). Each patch was applied in this pass; its mutation is in Verification.
+
+- [x] [Review][Patch] (med, DW-2150) The real `ServingSuperserverPort()` was never driven non-empty: a job whose principal is a TCP connection accepted on 21829 now reads its port and its locks [src/OcuPilot/Test/SuperserverProhibited.cls, src/OcuPilot/Test/SuperserverProbe.cls]
+- [x] [Review][Patch] (med) A create's absence fingerprint at confirm was never reached (the leg minted after seeding): mint free, seed, confirm 409 [src/OcuPilot/Test/SuperserverWrite.cls]
+- [x] [Review][Patch] (med) `SslRules` refused lowering the level to 0 when the stored configuration was gone or a client one; a configuration is now read only at level 1 or 2 or when changed [src/OcuPilot/Area/Security/SuperserverRules.cls:SslRules]
+- [x] [Review][Patch] (med) No bind address rule: a malformed one reached the vendor (500, logged at severity 2) and a non-text one created a listener on every interface; now `SUPERSERVER.BINDADDRESS` (the vendor's own `Config.Host` test) and a shape refusal on both callers [src/OcuPilot/Area/Security/SuperserverRules.cls:IsBindAddress, SuperserverSave.cls:HandleCreate, Screen/Tool/SuperserverMint.cls, Api/SuperserverError.cls]
+- [x] [Review][Patch] (med) The Security slice called `Area.OsMgmt.LicenseRules.RenderRead` (the spine: a slice never depends on another slice); now its own `SuperserverRules.RenderRead` [src/OcuPilot/Area/Security/SuperserverRules.cls, SuperserverSave.cls]
+- [x] [Review][Patch] (low, DW-2151) The Save's consequence bypassed `ProhibitedClass()` and was unpinned; now through the seam and asserted [src/OcuPilot/Area/Security/SuperserverSave.cls:211, src/OcuPilot/Test/SuperserverWrite.cls]
+- [x] [Review][Patch] (low, DW-2152) The confirm leg of `TestAFailedTargetReadRefuses` passed for the confirm's own re-read too; now exact `500 INTERNAL` [src/OcuPilot/Test/SuperserverProhibited.cls:152]
+- [x] [Review][Patch] (low, Rule 19) The page spec's read-back assertion was implied by "Saved" [ui/src/app/areas/security/superserver-form.page.spec.ts]
+- [x] [Review][Patch] (low, Rule 19) Each after-test list compare passed when both reads answered `unreadable`; the before-read is now asserted [SuperserverProhibited.cls, SuperserverWrite.cls, SuperserverGate.cls]
+- [x] [Review][Patch] (low) The empty-state agent hint rendered "Or ask the agent: Ask the agent ..." [ui/src/app/core/strings.ts, EXPERIENCE.md:364]
+- [x] [Review][Patch] (low) The `#5001` "port in use" row was kept on a `GET` or `DELETE`, against the port's own contract [src/OcuPilot/Port/SuperserverPort.cls:Invoke]
+- [x] [Review][Patch] (low) `SUPERSERVER.PORT.INUSE` asserted another process listens for any failed listener start (a port below 1024 fails the same way); reworded to "may hold it" [src/OcuPilot/Api/SuperserverError.cls]
+- [x] [Review][Patch] (low) `SERVING_CODE` was exported and unused [ui/src/app/areas/security/superserver-form.store.ts]
+- [x] [Review][Patch] (low) `AuditingUpdate`'s count message did not name Story 18.25's code [src/OcuPilot/Test/AuditingUpdate.cls]
+- [x] [Review][Patch] (low) `ci-throwaway.sh` said the gate's seam sends 21825-21829; it sends nothing [scripts/ci-throwaway.sh]
+- [x] [Review][Patch] (low) The browser spec claimed a side-bar link click and listener checks it does not make [ui/browser/superservers.browser-spec.mjs]
+- [x] [Review][Patch] (low, Rule 19) The Integration AC had no `mutation:` line [Verification]
+- [x] [Review][Defer] No test pins any form store's sign-out reset, this one's included [ui/src/app/app.ts:713] — deferred: DW-2153 `wontfix-accepted` (pattern over ~25 stores, reopen_if in the entry).
+- [x] [Review][Defer] `SuperserverProhibited`'s deliberate severity-2 line can raise the monitor after its own clear (inference: the clear may run before the monitor reads the line) [src/OcuPilot/Test/SuperserverProhibited.cls:85] — deferred: occurrence on DW-2149 (owner burndown).
+
+Rejected:
+
+- Agent card lacks the consequence for a non-default serving superserver (blind, edge): by-design, Named limit 1 and AD-10 as amended.
+- Form offers level 2 on a serving superserver (blind): by-design, B4 locks `Enabled` and `EnableCSP`; level 2 is refused at Save with the sentence.
+- No row-level self-protection on 1972's Delete (blind): by-design, Decision 6.
+- Suggested prompt 3 is a write command (blind): not a defect; Story 19.17's prompt is the precedent.
+- A failed SSL/TLS list read shows "none" (blind): low, the read needs the screen's own pairs; the fix adds an error state.
+- Probe cleanup cannot remove a bound probe (blind, edge): theoretical, no test creates one.
+- Create rules not re-asked at confirm (blind, auditor): low, needs a configuration deleted inside the proposal window, and the vendor refuses level 1 or 2 anyway.
+- Server-type SSL/TLS is never observed (blind): false, `Security.Datatype.SSLType` maps 1 to `Server` (doc comment corrected).
+- `Monitor.Clear()` without an arming guard (blind, verification, auditor): low, test classes run on throwaways only; `WalletKeyRead` precedent.
+- Residual risks without entries (blind): monitor covered by DW-2149; the 42917 listener is not this story's.
+- Spec status, oversized additions and prose slips (blind): fixes edit the spec.
+- Bundle re-base at 1 kB headroom (blind): follows the Epic 18 context's rule and Story 18.8's precedent.
+- `Taken`'s doc names the tool's endpoint while the code spells it (blind): false, the values are the tool's.
+- Borrowed strings (blind): by-design, one key per value.
+- Gate leg without `%DB_IRISSYS:READ` on the confirm (blind): low, the confirm's gate is shared and covered by the other refusal leg.
+- Gate writes never reach the vendor as the principal (auditor): low, Story 18.8's gate precedent; the pairs are measured at plan (AD-8).
+- Shape refusals carry `PORT.FIELD.SHAPE` (auditor): false, the envelope is `SUPERSERVER.VALIDATION` and the shape code is shared.
+- Native `disabled` on rule-gated flags (auditor): low, the spec says disabled and Story 18.8 does the same; the fix adds behavior.
+- Taken port and held lock only through the screen (auditor): the port mapping and the lock are shared by both callers; the fingerprint leg is patched above.
+- A `#5001` with other violations loses them (edge): theoretical, the endpoint maps one code.
+- An outside writer between the absence read and the upsert (edge): theoretical, inside milliseconds and outside OcuPilot's lock.
+- An update body naming `Port` or `BindAddress` is dropped (edge): no user-reachable harm; the path id governs.
+
 ## Spec Change Log
 
 - 2026-10-07, spec gate (lead): Decisions 1-6 confirmed. The Fixed-strings bound moves to 2900 under the protocol (this story adds the protocol comment line in `ui/tools/strings.test.mjs`; Epic 20 may move it too, unioned at merge). Spine amendments 1-5 written (AD-10, AD-13, AD-4, AD-8, AD-44). DW-2007 gains `Security.Superserver` `PUT` #5001 as an occurrence. The two vendor candidates are DW-2146 and DW-2147, under the owner's hold.
 
 ## Review Triage Log
+
+### 2026-10-07 — Review pass
+
+- verdicts: 7 findings — high 0, medium 1, low 4, false 0, maybe-false 2
+- findings:
+  - `[medium]` `[defer]` ServingSuperserverPort real $PRINCIPAL read never driven non-empty by a test — shape measured at plan; pin needs a test-only route; deferred.
+  - `[low]` `[defer]` Save answer's `consequence` unpinned server side — client half patched; server leg deferred.
+  - `[maybe-false]` `[defer]` confirm leg of TestAFailedTargetReadRefuses asserts non-200 only — needs ArmFailAfter on the confirm to settle.
+  - `[low]` `[patch]` page spec B2 status assertion vacuous — fixed: element asserted non-null, then non-empty.
+  - `[low]` `[patch]` store `consequence` unpinned on the client — fixed: new store spec; mutation (textAt dropped) reddened it.
+  - `[low]` `[reject]` ACs without `mutation:` lines (B0, integration, B5 pins, B2 sub-claims) — B0 is a measurement; the others have executed mutations in the Planned list or are cosmetic rosters; adding lines is no code change.
+  - `[maybe-false]` `[reject]` ServerConfiguration success branch only via seam — spec labels it an inference and a server-type config cannot be created on the throwaway (#982/#726); nothing to run.
 
 ## Design Notes
 
@@ -353,6 +437,15 @@ The `SUPERSERVER.*` rule sentences live on the server alone (AD-39; the 18.8 pre
 - Contended files are edited add-only: the kernel, the registry, `Error.cls`, `Router.cls`, `Baseline.cls`, `Prohibited.cls`, `EntityRef.cls`, the test rosters, `ci.test.mjs`, `strings.ts`, `entity-ref.ts`, `screen-mirror.mjs`, EXPERIENCE.md and the spine.
 - `footprint_extensions`: `Port/SuperserverPort.cls`, `Port/AdminPort.cls` (`PROPERTYFAULTS`), `Api/SuperserverError.cls`, `scripts/ci-throwaway.sh`.
 
+**Measured at Task 0** (`ocupilot-ci`, S0 recorded before and re-read after):
+
+- A `$PRINCIPAL` read in a JOB gives `/dev/null` with an empty `LocalPort`, so the serving-port read treats an empty port as "none" and the pure leg drives it through `^||OcuPilotSuperserverServing`.
+- Creating a server-type SSL configuration is refused (#982 without certificate files, #726 for empty ciphers). The success path of the level and config rules is therefore exercised through `SuperserverRulesSeam`, which answers `OcuProbeServerTLS` as a server configuration. That a configuration is server-type is an inference (inference) from the refusal text, not an observed success.
+- The vendor `GET` answers `SSLSupportLevel` as a number and carries `SystemDefault`; a probe `PUT` creates with 201 and `DELETE` answers 200; a taken port answers #5001 (measured on 2188). End state S0.
+- The SNMP rule cannot be exercised on Linux except through the Windows seam (`^||OcuPilotSuperserverWindows`).
+- `AdminPort` gained a `PROPERTYFAULTS` row for #5001 and `MUTATINGTYPES`/`BODYLESSTYPES` entries for `Security.Superserver`.
+- The bundle budget `maximumWarning` moved to 3073kB (measured 3,072,046 bytes); the Fixed-strings bound moved to 2900 under the protocol.
+
 **Size (inference).** About Story 18.20's size plus 18.8's arm and one id rule. It fits one implement pass.
 
 **Vendor defect candidates** (owner hold; for the lead's list, not reported):
@@ -411,6 +504,27 @@ The `SUPERSERVER.*` rule sentences live on the server alone (AD-39; the 18.8 pre
   - The effect removed → its destructive-mint leg.
 - **B5:** `security.superservers.delete` set `true` in the baseline → `SuperserverDescriptor`'s baseline leg.
 
+Mutations run on `ocupilot-ci` (tree recompiled, reverted byte-identical):
+
+- mutation: list read drops `SystemDefault` -> `SuperserverRead` one-read leg red; `portbind` keeps `""` -> `SuperserverDescriptor` and `entity-ref.test.mjs` red.
+- mutation: `MergeUpdate` keeps `SystemDefault` -> `SuperserverWrite` body leg red; Save skips `HoldTool` -> its busy leg red; #5001 mapping removed -> its `PORT.INUSE` leg red.
+- mutation: `Problem` drops the system-only rule -> `SuperserverWrite` rules leg red.
+- mutation: `SERVINGSUPERSERVER` dispatch removed -> `SuperserverProhibited` refusal legs red; serving-port branch removed -> its pure leg red; `SuperserverLocks` emptied -> `SuperserverRead` lock leg red; the effect removed -> its destructive-mint leg red.
+- mutation: `textAt(body, 'consequence')` removed from the store -> `superserver-form.store.spec.ts` consequence leg red.
+- mutation: `security.superservers.delete` set `true` in the baseline -> `SuperserverDescriptor` baseline leg red.
+
+Code review (2026-10-07), applied together on `ocupilot-ci`, each to a different test method, reverted byte-identical (`git diff` md5 unchanged), runs 1170-1171 green after:
+
+- mutation: `ServingSuperserverPort` answers `""` -> `SuperserverProhibited.TestAProcessServedOverTcpReadsItsPort` red (run 1168).
+- mutation: a failed target read answers "not prohibited" in `Prohibited.Target` -> `TestAFailedTargetReadRefuses` Save leg and exact confirm leg red (run 1168).
+- mutation: a create's confirm re-read always matches (`Confirm.FingerprintMatches`) -> `SuperserverWrite` taken-since leg red (run 1169).
+- mutation: the Save's effect read dropped -> `SuperserverWrite` serving-port consequence leg red (run 1169).
+- mutation: `SslRules` checks a sent `SSLConfig` that did not change -> `SuperserverWrite` level-0 leg red (run 1169).
+- mutation: the bind address rule dropped from `SuperserverRules.Check` -> `SuperserverWrite` bind address legs red (run 1169).
+- mutation: `SuperserverPort.Invoke` keeps the mapped row on a non-`PUT` -> `SuperserverWrite` delete leg red (run 1169).
+- mutation (Integration): `POST /superserver` removed from `Api/Router.cls` -> `SuperserverWrite.TestTheWriteRoutesAnswerOverTheWire` red (run 1169).
+- mutation: the store's `readBackOf(body?.['readBack'])` replaced by `null` -> `superserver-form.page.spec.ts` B2 status leg red.
+
 ## Auto Run Result
 
 Status: ready-for-dev
@@ -420,3 +534,13 @@ Blocking condition: none
 - **Measured at plan** on `ocupilot-ci`: probes on ports 1985-1988 and 2188, restored to S0 with the monitor at 0. Also a read-only `$PRINCIPAL` read on slot A.
 - **Spec-gate items** are in Design Notes › For the lead: the Fixed strings bound (2787 of 2800 used), Decision 2's code, five spine amendments, DW-2007's scope and two vendor candidates.
 - The plan was self-reviewed against the READY-FOR-DEVELOPMENT standard.
+
+### Final (2026-10-07)
+
+Status: done
+Blocking condition: none
+
+- **Change:** Security list at position 12 and an unlisted editor form; tools `security.superservers.create`, `.update`, `.delete` (keys true, true, false); `SuperserverPort`, `SuperserverRules`, `Api/SuperserverError.cls`; the `SERVINGSUPERSERVER` arm in `Prohibited`; client store, page and actions; 36 strings; `EXPERIENCE.md` edited in place.
+- **Review:** patches 2 (both low), deferred 3, rejected 2 (reasons in the Review Triage Log). Follow-up review recommended: false.
+- **Verification:** full ObjectScript sweep on `ocupilot-ci` (499 classes, 4006 tests; four roster failures fixed and each re-run green), `npm test` and `npm run build` green, check-objectscript 0 problems, smoke 50/50, browser `superservers` and `security` 8/8, mutations red. After review: the two security form specs (17 tests) green.
+- **Residual risks:** bundle `maximumWarning` raised to 3073kB (above the 3040kB ruling, under 3800kB; re-base under DW-1166); the server-type SSL success path is covered only through a seam; the throwaway's monitor state rises again after the deliberate-failure legs and needs clearing; unidentified listener on 42917.
