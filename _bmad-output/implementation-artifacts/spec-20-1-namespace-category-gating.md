@@ -2,9 +2,9 @@
 title: 'Story 20.1: Namespace category gating'
 type: 'feature'
 created: '2026-10-06'
-status: 'in-progress'
-baseline_revision: '51b883aaf5173fea064a730dad1f075a43ba90aa'
-baseline_commit: '51b883aaf5173fea064a730dad1f075a43ba90aa'
+status: 'done'
+baseline_revision: '698c3c0eee9b609411d03f3752555b77e915f24d'
+baseline_commit: '698c3c0eee9b609411d03f3752555b77e915f24d'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -291,10 +291,10 @@ deferred: []
 
 - [x] [Halt] Re-base the initial bundle budget under DW-1166 (runner-authorized 2026-10-07; the spawn prompt's re-base clause, so `ui/angular.json` and `ui/tools/angular-json.test.mjs` are cleared for this edit): `maximumWarning` `3012kB` -> `3165kB`, 5% above the measured 3,013,646-byte initial total, in `ui/angular.json` and in the DW-371 test's pinned literal and its comment (one line `// Story 20.1 raised it to 3165kB, 5% above a measured 3,013,646 bytes (namespace category gating), under the 4000kB hard stop.`). `maximumError` stays `4000kB`. Epic 18's own re-base (3191kB) meets this at the merge; the second epic to merge takes the larger figure. Then finish what the halt left: the tools tier, the full ObjectScript sweep, the review layers and finalize.
 
-- [ ] [CI] browser shard 1/3 (run 37598485448, head 1dbbc20d): `ui/browser/home-performance.browser-spec.mjs:349` (AC3) asserts 7 Home tiles, but since this story HSCUSTOM draws 8 because Interoperability applies there. Expect the tile count the namespace's reported features give (`ui/browser/namespace-features.mjs`), read once the navigation map has answered, never a literal.
-- [ ] [CI] browser shard 1/3 (same run): `ui/browser/rail-icons.browser-spec.mjs` test (a) counted 9 rail items where 11 apply. It counts after `networkidle2`, which can return before the navigation map answers, and applicability fails closed (inference: the map had not answered). Wait for the map's answer before counting.
-- [ ] [CI] latent (same run, passed by timing): `ui/browser/system-explorer.browser-spec.mjs:125` asserts nine rail items in HSCUSTOM, which reads ten once the map answers. Apply the same fix, keeping its System Explorer position assertions.
-- [ ] [CI] sweep: every browser spec that counts or indexes rail items or Home tiles, or asserts which areas are drawn, waits for the map's answer and expects what the namespace reports. Give the specs one deterministic wait: a DOM signal the shell sets once the map for the current namespace has answered (for example a data attribute on `app-rail`), pinned by a component or tools test, and used by every such spec. Run each touched spec against a rebuilt and redeployed bundle on `ocupilot-b-ci`.
+- [x] [CI] browser shard 1/3 (run 37598485448, head 1dbbc20d): `ui/browser/home-performance.browser-spec.mjs:349` (AC3) asserts 7 Home tiles, but since this story HSCUSTOM draws 8 because Interoperability applies there. Expect the tile count the namespace's reported features give (`ui/browser/namespace-features.mjs`), read once the navigation map has answered, never a literal.
+- [x] [CI] browser shard 1/3 (same run): `ui/browser/rail-icons.browser-spec.mjs` test (a) counted 9 rail items where 11 apply. It counts after `networkidle2`, which can return before the navigation map answers, and applicability fails closed (inference: the map had not answered). Wait for the map's answer before counting.
+- [x] [CI] latent (same run, passed by timing): `ui/browser/system-explorer.browser-spec.mjs:125` asserts nine rail items in HSCUSTOM, which reads ten once the map answers. Apply the same fix, keeping its System Explorer position assertions.
+- [x] [CI] sweep: every browser spec that counts or indexes rail items or Home tiles, or asserts which areas are drawn, waits for the map's answer and expects what the namespace reports. Give the specs one deterministic wait: a DOM signal the shell sets once the map for the current namespace has answered (for example a data attribute on `app-rail`), pinned by a component or tools test, and used by every such spec. Run each touched spec against a rebuilt and redeployed bundle on `ocupilot-b-ci`.
 
 **Acceptance Criteria:**
 
@@ -368,6 +368,19 @@ Rejected:
   - `[false]` `[reject]` Intent-alignment: no publisher of the `namespace` change event in the client - Story 18.15 owns it; this story subscribes (spec Consumes).
   - `[false]` `[reject]` Intent-alignment: "logged once" is one Warn per failed check - the matrix says logged once per failed check, and no per-process dedupe is specified.
   - `[false]` `[reject]` Intent-alignment: category disappears on re-read until the map answers - the matrix requires neither drawn before the map answers.
+
+### 2026-10-07 - Review pass (CI rework 1)
+
+- verdicts: 8 findings - high 0, medium 0, low 6, false 2, maybe-false 0
+- findings:
+  - `[low]` `[reject]` The shared browser helpers `appliedAreas` and `tileAreasOf` have no tools-tier test - small filters the browser specs exercise end to end; a tools test is more than a direct fix for a cosmetic gap.
+  - `[low]` `[reject]` `namespace-categories` computes the applying set inline instead of through the helpers - duplication only, and that spec already waits on its own rail signal.
+  - `[low]` `[reject]` The real `NavigationService` namespace-switch path of `data-map-answered` is not pinned by the rail test - `navigation.test.mjs` pins `appliesAnswered()` itself; the rail test pins the binding.
+  - `[low]` `[reject]` The browser-spec waits carry no browser-tier mutation - a skipped wait fails by timing, not deterministically; the attribute binding has its component mutation line.
+  - `[low]` `[reject]` The `developer-floor` wait cannot fail on its own - it removes a timing dependency by design.
+  - `[low]` `[reject]` The selector in `waitForMapAnswered` and the attribute in `rail.ts` are not tied by a tools test - a rename fails the five browser specs that use it, in CI.
+  - `[false]` `[reject]` Intent-alignment: specs that only address a rail item by id or an early index still race - the swept specs (`shell` indexes item 1) address items drawn before the map answers.
+  - `[false]` `[reject]` Intent-alignment: `system-explorer` keeps a literal position - the spec keeps its System Explorer position assertion deliberately.
 
 ## Design Notes
 
@@ -487,21 +500,19 @@ Rejected:
 - mutation: code review, `Rail.resolved` without the tab-stop clamp -> red: the `rail.spec.ts` leg "keeps its one Tab stop when the namespace shortens the rail".
 - mutation: code review, `main.ts` without `bus,` in `new NavigationService({...})` -> red: the `navigation.test.mjs` leg "main.ts hands the change bus to the navigation service".
 - mutation: code review, `Reports`' unknown-feature branch without its `Log.Warn` -> red: `NamespaceFeatures.TestAnUnknownFeatureIsLoggedOnce` (1 of 5, run 528).
+- mutation: CI rework, `Rail`'s `data-map-answered` bound to a constant `true` -> red: the `rail.spec.ts` leg "sets data-map-answered on the nav only while the map has answered for the namespace" (1 of 2,557).
+- CI rework browser specs (bundle rebuilt and redeployed to `ocupilot-b-ci`, each spec file run alone with `node --test --test-concurrency=1`): `home-performance` 4 of 4, `rail-icons` 3 of 3, `system-explorer` 4 of 4, `developer-floor` 1 of 1, `namespace-categories` 4 of 4. Swept and left unchanged because they address rail items by label or id and count nothing: `shell`, `theme`, `panel`, `context-chip`, `gate`, `switches`, `rail`.
+- CI rework tiers: `npm run test:tools` 1,876 of 1,876; `npm run test:components` 2,557 of 2,557 (`app.spec.ts`'s stub gained `appliesAnswered()`).
 
 ## Auto Run Result
 
 Status: done
 Blocking condition: none
 
-Summary: namespace category gating. `NamespaceFeatures` (new) answers `interoperability` and `analytics` per namespace; `Screen.Area` declares the two areas with `appliesWhen`; `Navigation.Payload` and `shell.privileges.read` carry `applies` on every area; `NavigationService` fails closed on it and re-reads on a `namespace` bus event; rail, Home, command box, locator and side bar read the filtered seams; DW-1921 adds `%Ens_Portal:USE` to the event log's descriptor and port pairs. This pass applied the `[Halt]` budget re-base (`maximumWarning` 3012kB to 3165kB in `ui/angular.json` and its DW-371 pin).
+Rework 1 (CI run 37598485448): `app-rail`'s nav carries `data-map-answered`, true once `NavigationService.appliesAnswered()` holds for the current namespace; `ui/browser/namespace-features.mjs` gains `waitForMapAnswered`, `appliedAreas`, `tileAreasOf`; `home-performance`, `rail-icons`, `system-explorer` and `developer-floor` wait for it and derive counts from the namespace's reported features. `rail.spec.ts` pins the attribute (mutation line under Verification); `app.spec.ts` stub gained `appliesAnswered()`.
 
-Review: 11 findings, 3 patched (all low, mutation lines recorded under Verification), 0 deferred, 8 rejected with reasons in the triage log. Follow-up review recommended: false (patched high 0, medium 0).
+Review: 8 findings, 0 patched, 0 deferred, 8 rejected (6 low, 2 false; reasons in the triage log). Follow-up review recommended: false (patched high 0, medium 0).
 
-Verification (ocupilot-b-ci, 2026-10-07):
+Verification (ocupilot-b-ci, rebuilt and redeployed bundle, 3.01 MB): `home-performance` 4 of 4, `rail-icons` 3 of 3, `system-explorer` 4 of 4, `developer-floor` 1 of 1, `namespace-categories` 4 of 4; `npm run test:tools` 1,876 of 1,876; `npm run test:components` 2,557 of 2,557. The full browser suite is CI's (Rule 29).
 
-- Full ObjectScript sweep `node tools/ci-runner.mjs --container ocupilot-b-ci`: 490 classes, 3,959 tests, 0 failed, 0 probe leftovers, 0 overlaps, 0 foreign runs; run indices confirmed against `%UnitTest_Result`.
-- `npm run test:tools`: 1,874 of 1,874. `npm test`: tools tier green and component runner 2,554 of 2,554. `npm run build`: initial total 3.01 MB, under the 3165kB warning.
-- `scripts/smoke.sh --container ocupilot-b-ci`: 50 of 50. `check-objectscript.py` and `lint-docs.sh` clean.
-- Browser: the story's six specs ran green in pass 1; the full browser suite is CI's (Rule 29).
-
-Residual risk: Epic 18's own budget re-base (3191kB) meets 3165kB at the merge; the second epic to merge takes the larger figure.
+Residual risk: Epic 18's budget re-base (3191kB) meets 3165kB at the merge; a map read that fails leaves the attribute false, so a spec on such an instance times out on the wait.

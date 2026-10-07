@@ -48,3 +48,23 @@ export function namespacesWith(byName, wanted) {
 export function areaApplies(area, reported) {
   return area.appliesWhen === undefined || reported[area.appliesWhen] === true;
 }
+
+/**
+ * Wait until the shell's navigation map has answered for the namespace it is scoped to. The rail
+ * sets `data-map-answered="true"` on its nav element then, and a category that declares
+ * `appliesWhen` is not drawn before it (fail closed), so a count or an index taken earlier reads a
+ * roster that is still short. `networkidle2` does not wait for it.
+ */
+export async function waitForMapAnswered(page, timeoutMs) {
+  await page.waitForSelector('app-rail .ocu-rail[data-map-answered="true"]', { timeout: timeoutMs });
+}
+
+/** The areas of `areas` that apply in a namespace reporting `reported`, in rail order. */
+export function appliedAreas(areas, reported) {
+  return areas.filter((area) => areaApplies(area, reported)).sort((a, b) => a.railPosition - b.railPosition);
+}
+
+/** The areas Home draws a tile for: every applying area but Home itself and the pinned Agent co-pilot. */
+export function tileAreasOf(applied) {
+  return applied.filter((area) => !area.navigates && !area.pinBottom);
+}

@@ -93,7 +93,7 @@ export function railItemDomId(areaKey: string): string {
   selector: 'app-rail',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [AreaIcon],
-  template: `<nav class="ocu-rail" [attr.aria-label]="railLandmark">
+  template: `<nav class="ocu-rail" [attr.aria-label]="railLandmark" [attr.data-map-answered]="mapAnswered">
     @for (item of items; track item.key) {
       <span class="ocu-rail-slot" [class.ocu-rail-slot-bottom]="item.pinBottom">
         <button
@@ -218,6 +218,16 @@ export class Rail {
 
   protected get items(): readonly RailItem[] {
     return this.resolved();
+  }
+
+  /**
+   * Whether the navigation map has answered for the namespace the shell is scoped to. It is the
+   * nav element's `data-map-answered`, so a browser spec waits for it before it counts items:
+   * a category that declares `appliesWhen` is not drawn until this is true.
+   */
+  protected get mapAnswered(): boolean {
+    this.generation();
+    return this.navigation.appliesAnswered();
   }
 
   /**

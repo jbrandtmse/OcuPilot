@@ -22,11 +22,13 @@ import { browserConfig, launchOptions } from '../browser.config.mjs';
 import { loadStrings } from '../tools/strings.mjs';
 import { ROW_SELECTOR, clickRowCentre, waitForRows } from './list-spec.mjs';
 import { resetRememberedState } from './preferences-reset.mjs';
+import { appliedAreas, readNamespaceFeatures, tileAreasOf, waitForMapAnswered } from './namespace-features.mjs';
 import { leaveFirstLoginGate } from './shell-entry.mjs';
 import { INVARIANTS, VIEWPORTS, assertThrowaway, collapse, compare, componentMinimums, detectScreen, readBaseline } from './structural-walk.mjs';
 
 const uiRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 const { encodeEntityId } = await import(join(uiRoot, 'src', 'app', 'core', 'entity-id.ts'));
+const { AREAS } = await import(join(uiRoot, 'src', 'app', 'core', 'screens.generated.ts'));
 
 const config = browserConfig();
 const STRINGS = loadStrings();
@@ -118,23 +120,29 @@ async function view(page, key) {
 test('AC4: System Explorer is the eighth rail item with its own icon, Home draws its tile, and the command box finds both lists', async () => {
   const { context, page } = await at('/ocupilot/?ns=HSCUSTOM');
   try {
+    await waitForMapAnswered(page, config.navigationTimeoutMs);
     await page.waitForSelector('.ocu-area-tile', { timeout: config.navigationTimeoutMs });
+    // The areas HSCUSTOM reports applying (Story 20.1), read from the instance rather than counted.
+    const applied = appliedAreas(AREAS, readNamespaceFeatures(config.container).HSCUSTOM);
+    const explorerIndex = applied.findIndex((area) => area.key === 'system-explorer');
     const rail = await page.$$eval('.ocu-rail-item', (items) =>
       items.map((item) => ({ label: item.getAttribute('aria-label'), shapes: item.querySelectorAll('svg > *').length }))
     );
-    assert.equal(rail.length, 9, `nine rail items: ${JSON.stringify(rail)}`);
-    assert.equal(rail[7].label, STRINGS.navAreaSystemExplorer, 'the eighth is System Explorer, after Security and secrets');
-    assert.equal(rail[6].label, STRINGS.navAreaSecurity);
-    assert.equal(rail[7].shapes, 3, 'drawn with its own three-shape icon');
+    assert.equal(rail.length, applied.length, `a rail item per applying area: ${JSON.stringify(rail)}`);
+    assert.equal(explorerIndex, 7, 'System Explorer keeps the eighth position');
+    assert.equal(rail[explorerIndex].label, STRINGS.navAreaSystemExplorer, 'the eighth is System Explorer, after Security and secrets');
+    assert.equal(rail[explorerIndex - 1].label, STRINGS.navAreaSecurity);
+    assert.equal(rail[explorerIndex].shapes, 3, 'drawn with its own three-shape icon');
     const bottom = await page.$eval('.ocu-rail-slot-bottom .ocu-rail-item', (item) => item.getAttribute('aria-label'));
     assert.equal(bottom, STRINGS.navAreaAgent, 'Agent co-pilot stays pinned at the bottom');
 
     const tiles = await page.$$eval('.ocu-area-tile', (nodes) => nodes.map((node) => node.textContent.replace(/\s+/g, '')));
-    assert.equal(tiles.length, 7, `seven tiles: ${JSON.stringify(tiles)}`);
+    const tileIndex = tileAreasOf(applied).findIndex((area) => area.key === 'system-explorer');
+    assert.equal(tiles.length, tileAreasOf(applied).length, `a tile per applying area: ${JSON.stringify(tiles)}`);
     assert.equal(
-      tiles[6],
+      tiles[tileIndex],
       `${STRINGS.navAreaSystemExplorer}${[STRINGS.explorerClassListLabel, STRINGS.explorerRoutineListLabel, STRINGS.auditCriteriaSearch, STRINGS.explorerCompareLabel, STRINGS.explorerMacroLabel, STRINGS.explorerSqlSchemasLabel, STRINGS.explorerSqlTablesLabel, STRINGS.explorerSqlViewsLabel, STRINGS.explorerSqlProceduresLabel, STRINGS.explorerSqlQueryLabel, STRINGS.explorerSqlDataLabel, STRINGS.explorerDocDbListLabel].join('\u00b7')}`.replace(/\s+/g, ''),
-      'the seventh tile is System Explorer, captioned by its twelve listed screens (Stories 19.4, 19.5, 19.6, 19.7 and 19.17)'
+      'the System Explorer tile is captioned by its twelve listed screens (Stories 19.4, 19.5, 19.6, 19.7 and 19.17)'
     );
 
     // Words only an alias carries: neither list's label nor route holds them.

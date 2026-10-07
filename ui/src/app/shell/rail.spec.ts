@@ -109,6 +109,13 @@ class StubNavigation {
     return true;
   }
 
+  /** Whether the stubbed map has answered for the current namespace. */
+  answeredFlag = true;
+
+  appliesAnswered(): boolean {
+    return this.answeredFlag;
+  }
+
   /** Areas the rail no longer offers, because their category does not apply in this namespace. */
   readonly unoffered = new Set<string>();
 
@@ -269,6 +276,22 @@ describe('the activity rail', () => {
     expect(items()).toHaveLength(9);
     expect(items().filter((item) => item.tabIndex === 0)).toHaveLength(1);
     expect(items()[8].tabIndex).toBe(0);
+  });
+
+  it('sets data-map-answered on the nav only while the map has answered for the namespace', () => {
+    // Mutation (Rule 19): bind the attribute to a constant `true` -> the second assertion reddens.
+    const nav: HTMLElement = fixture.nativeElement.querySelector('nav');
+    expect(nav.getAttribute('data-map-answered')).toBe('true');
+
+    navigation.answeredFlag = false;
+    navigation.notify();
+    fixture.detectChanges();
+    expect(nav.getAttribute('data-map-answered')).toBe('false');
+
+    navigation.answeredFlag = true;
+    navigation.notify();
+    fixture.detectChanges();
+    expect(nav.getAttribute('data-map-answered')).toBe('true');
   });
 
   it('marks the active area aria-current="page" and nothing else', () => {

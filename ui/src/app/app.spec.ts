@@ -242,6 +242,11 @@ class StubNavigation {
     return true;
   }
 
+  /** Whether the map has answered for the namespace; the rail's `data-map-answered` reads it. */
+  appliesAnswered(): boolean {
+    return true;
+  }
+
   areas(): readonly AreaDeclaration[] {
     return AREAS;
   }

@@ -29,7 +29,7 @@ import puppeteer from 'puppeteer';
 
 import { LIVE_CONTAINER, READINESS_PATH, browserConfig, launchOptions } from '../browser.config.mjs';
 import { parseMarkers } from './iris-session.mjs';
-import { areaApplies, namespacesWith, readNamespaceFeatures } from './namespace-features.mjs';
+import { areaApplies, namespacesWith, readNamespaceFeatures, waitForMapAnswered } from './namespace-features.mjs';
 import { resetRememberedState } from './preferences-reset.mjs';
 import { leaveFirstLoginGate } from './shell-entry.mjs';
 
@@ -135,6 +135,7 @@ async function openHome(user, secret) {
   await page.click('.ocu-signin-card button[type="submit"]');
   await page.waitForSelector('app-rail .ocu-rail', { timeout: config.navigationTimeoutMs });
   await leaveFirstLoginGate(page, config.navigationTimeoutMs, HOME_URL);
+  await waitForMapAnswered(page, config.navigationTimeoutMs);
   await page.waitForSelector('.ocu-area-tile .ocu-area-tile-icon > svg', { timeout: config.navigationTimeoutMs });
   return { context, page, requests };
 }
