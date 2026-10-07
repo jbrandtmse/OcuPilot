@@ -277,6 +277,8 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
 
   **Story 18.26's MFT connections declare Security's set**, and its tools declare no pair beyond it (measured on `ocupilot-ci`, 2026-10-07; the delete also removed an OAuth 2.0 client and server description the principal could not list, as the classic page's does) [AMENDED 2026-10-07, Story 18.26 spec gate, Rule 20].
 
+  **An LDAP configuration's read requires `%Admin_Secure:USE`** and `%DB_IRISSYS:READ` (measured on `ocupilot-ci`, 2026-10-07). `Security.LDAP`'s `ResourcesOR()` admits `%Admin_Operate` for `LIST` and `GET`, but `Security.LDAPConfigs` refuses that caller (#822), and the classic System Operation pages fail for it. OcuPilot builds no operator LDAP view (Story 18.27) [AMENDED 2026-10-07, orchestrator decision on Story 18.27's plan, Rule 20]. Reopen it when a build's admin API serves LDAP `LIST` and `GET` to a caller holding `%Admin_Operate` without `%Admin_Secure`.
+
   **Story 19.6** [AMENDED 2026-10-03, Story 19.6 spec gate, Rule 20]: the SQL console's write declares no pair beyond its screen's; its SQL privileges, checked by the instance at prepare and, for a DDL statement whose type names a system privilege, by `%CHECKPRIV` at run, and the databases it writes are the instance's to refuse (measured).
 
   **Story 19.7** [AMENDED 2026-10-04, Story 19.7 spec gate, Rule 20]: the data browser declares no pair beyond its screen's; its SQL privileges are the instance's at prepare (measured). **Story 19.8** [AMENDED 2026-10-04, Story 19.8 spec gate, Rule 20]: the data browser's save declares no pair beyond its screen's; its SQL privileges are the instance's at prepare (measured).

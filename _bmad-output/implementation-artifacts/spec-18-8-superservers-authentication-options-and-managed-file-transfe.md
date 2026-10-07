@@ -361,7 +361,7 @@ Rejected:
 - **A complete unchanged `PUT`** (the `GET` sent back) kept tokens and keys, but raised `AutheEnabled` from 33556471 to 33556479: `AutheKB` true sets `AutheK5KeyTab`, which the stock instance leaves off. The classic Save does the same (`Authentication.cls:311-314`). Restored.
 - **Every `Modify` wrote `%System/%Security/SystemChange`.** C6 left four `%System/%Login/LoginFailure` audit rows, which the append-only audit keeps.
 - **End state:** `WebAuth GET` equal to S0, raw `AutheEnabled` 33556471, JWKS hashes equal to S0, monitor 0, container healthy.
-- **No OcuPilot screen serves the operator's read-only LDAP view.** `Security.LDAP` admits `%Admin_Operate` for `LIST` and `GET` only (read in source). The epic context's "(inference: the read-only view is covered)" is wrong.
+- **No OcuPilot screen serves the operator's read-only LDAP view, and none can on this build.** `Security.LDAP`'s gate admits `%Admin_Operate` for `LIST` and `GET`, but `Security.LDAPConfigs` refuses that caller (#822), and the classic read-only pages fail for it (measured on `ocupilot-ci`, 2026-10-07; AD-8).
 
 **Decisions** (applied in this plan; the lead confirms them with the split):
 

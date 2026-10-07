@@ -7593,7 +7593,7 @@ So that the classic portal's read-only LDAP pages are not a reason to keep it op
 - **When** they open the LDAP configurations list and a configuration's detail
 - **Then** each reads through the admin API, and every write is refused.
 
-- DW-1896: The LDAP editor cannot remove a configuration's last retrieved attribute through the admin API (its Security.LDAP PUT ignores LDAPAttributes []); an AD-27 named case writing it via Security.LDAPConfigs.Modify in %SYS would let it (ledger; routed by merge_gate 2026-10-06)
+**Closed unbuilt** [AMENDED 2026-10-07, orchestrator decision on the plan's intent gap, Rule 5]: on this build an LDAP configuration's read requires `%Admin_Secure:USE` and `%DB_IRISSYS:READ`. `Security.LDAP`'s gate admits `%Admin_Operate`, but `Security.LDAPConfigs` refuses that caller (#822), and the classic read-only pages fail for it (AD-8). Reopen when a build's admin API serves LDAP `LIST` and `GET` to a caller holding `%Admin_Operate` without `%Admin_Secure`. DW-1896 moved to the Epic 18 burn-down.
 
 ## Epic 19: Stage 3 - System Explorer over the Atelier API
 

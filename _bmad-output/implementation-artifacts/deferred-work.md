@@ -8863,6 +8863,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-01T11:08:27Z status=routed owner=range-end-cleanup by=harvest note=priority p4 (orchestrator 2026-10-01): AD-27 named case, Modify in %SYS, then lift the LASTONE refusal
 - 2026-10-05T18:41:40Z status=routed owner=18-8-superservers-authentication-options-and-managed-file-transfe by=merge_gate note=owner-approved burn-down scope 2026-10-05: feature-sized, re-routed from the cleanup queue to the story carrying the LDAP view
 - 2026-10-07T03:44:54Z owner=18-27-the-operator-s-read-only-ldap-view by=merge_gate note=18.8 split for size (orchestrator merge gate 2026-10-07, Rule 5): the LDAP editor's last-attribute write moves with the read-only LDAP view to Story 18.27
+- 2026-10-07T23:03:36Z status=routed owner=burndown by=spec_gate note=orchestrator: 18.27 closed unbuilt; 18.28 Task 0 measures Security.LDAPConfigs.Modify in %SYS on ocupilot-ci; build only under the caller's own %Admin_Secure, else wontfix-accepted
 
 ### DW-1901: CI's instance suite needs a fourth shard: each of the three instance legs now runs 38-46 min and wall time rises with every story
 - source: OCU-1-epic16 CI run 36862943319 (16.26 close) | severity: med | fix-risk: low | footprint: out-of-footprint
@@ -10315,3 +10316,18 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-26-managed-file-transfer-connections.md | severity: low | fix-risk: med | footprint: in-story
 - evidence: %SYS.MFT.Connection.Base IsAuthorized and RevokeToken key the token by (ApplicationName, ConnectionId); the update tool admits ApplicationName with no consequence line
 - 2026-10-07T22:38:19Z status=wontfix-accepted owner=18-26-managed-file-transfer-connections by=cr note=reopen_if=a token-holding connection's ApplicationName change is measured to leave its OAuth2.AccessToken row behind
+
+### DW-2167: AdminPort answers the vendor's 404 #822 Access Denied as PORT.NOTFOUND, so a refused read reads as an absent target (inference: no LDAP surface reaches it today, each gates %Admin_Secure:USE first)
+- source: spec-18-27-the-operator-s-read-only-ldap-view.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: 18.27 plan on ocupilot-ci: AdminPort.Invoke Security.LDAP GET in process as %Admin_Operate+%DB_IRISSYS:R answered 404 PORT.NOTFOUND over the vendor's #822
+- 2026-10-07T23:03:36Z status=routed owner=burndown by=spec_gate note=orchestrator 2026-10-07: routed to 18.28 at low severity; map #822 to an access refusal, not an absence
+
+### DW-2168: IRIS defect candidate: the admin API's Security.LDAP LIST and GET admit %Admin_Operate at the gate (ResourcesOR), then fail for that caller (LIST 500 <INVALID OREF> in %Api.Admin.Util.ClassQuery, GET 404 #822)
+- source: spec-18-27-the-operator-s-read-only-ldap-view.md | severity: med | fix-risk: high | footprint: out-of-footprint
+- evidence: ocupilot-ci 2026-10-07: %Operator probe LIST 500 INVALID OREF AppendStatementResult+5, GET 404 #822; _SYSTEM 200/200; Security.LDAPConfigs requires %Admin_Secure:USE (LDAPConfigs.cls:17)
+- 2026-10-07T23:03:36Z status=decision-pending owner=burndown by=spec_gate note=owner_hold: not reported to InterSystems
+
+### DW-2169: IRIS defect candidate: the classic read-only LDAP pages %CSP.UI.Portal.LDAPsRO and .LDAPRO throw <UNDEFINED> in %OnGetPageName for a %Operator holder, and %SYS.LDAP:List returns that caller no rows
+- source: spec-18-27-the-operator-s-read-only-ldap-view.md | severity: med | fix-risk: high | footprint: out-of-footprint
+- evidence: ocupilot-ci 2026-10-07: both pages <UNDEFINED>%OnGetPageName+2 *Properties(AutheEnabled) for %Operator, render for _SYSTEM; %SYS.LDAP:List no row for the operator, one for irisowner
+- 2026-10-07T23:03:36Z status=decision-pending owner=burndown by=spec_gate note=owner_hold: not reported to InterSystems

@@ -94,7 +94,7 @@ OcuPilot reaches System Administration and System Operation parity on the experi
   - `MftPort` answers the revoke's fresh read through a port-composed `STATE` (`GET` plus the list row's `IsAuthorized`) and refuses 409 `MFT.TOKEN.NONE`.
   - `MftPort` re-reads a `DELETE` the vendor answered with an error: an absent connection means the delete is done.
 - **Later stories.**
-  - 18.27: the classic read-only LDAP pages serve `%Admin_Operate` holders. OcuPilot's LDAP screens require `%Admin_Secure`. The new view reads through the admin API and refuses every write.
+  - 18.27: closed unbuilt. An LDAP configuration's read requires `%Admin_Secure:USE` and `%DB_IRISSYS:READ`: the admin API's gate admits `%Admin_Operate`, but `Security.LDAPConfigs` refuses that caller, and the classic read-only pages fail for it (AD-8).
   - 18.9: the criterion that refuses `%All` and `%Admin_*` grants predates AD-10's owner amendment, which permits them at the strongest confirmation. Reconcile at the spec gate, where the spine governs. Password validation wraps the instance's own validator.
   - 18.10: spec-based REST services go through `MgmntPort`.
   - 18.11: each read uses its own port and gate. Only `MonitorPort` calls `PrometheusMetrics`. Never call the vendor's alerts read, which advances a shared cursor. The live tail long-polls with a heartbeat, checks the file's identity and restarts on rotation.

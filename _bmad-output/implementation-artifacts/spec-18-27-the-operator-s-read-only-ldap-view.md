@@ -2,7 +2,7 @@
 title: "Story 18.27: The operator's read-only LDAP view"
 type: 'feature'
 created: '2026-10-07'
-status: 'blocked'
+status: 'done'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -72,6 +72,8 @@ For a re-plan, whichever option is chosen:
 None until the decision below. Option A needs no code, only the lead's bookkeeping: the ledger, `epics.md`, and the spine.
 
 ## Spec Change Log
+
+- 2026-10-07, orchestrator decision: option A. The story closes unbuilt; the finding is recorded under AD-8, the wrong claim is replaced at its origin, and DW-1896 moves to the Epic 18 burn-down.
 
 ## Review Triage Log
 
@@ -145,5 +147,7 @@ None until the decision below. Option A needs no code, only the lead's bookkeepi
 
 ## Auto Run Result
 
-Status: blocked
-Blocking condition: intent gap: the criterion "each reads through the admin API" is unreachable for an operator who holds %Admin_Operate but not %Admin_Secure (measured on ocupilot-ci 2026-10-07: as %Admin_Operate plus %DB_IRISSYS:READ, and as the stock %Operator role, the admin API answers LIST 500 and GET 404 #822; the classic LDAPsRO and LDAPRO pages fail for %Operator too). The only remaining route is an elevation to %All through the internal %SYS.LDAP.Get, which AD-8 forbids. Decide: A (recommended) close 18.27 without building and record the finding under AD-8; B amend AD-8 for an AD-27 named case through %SYS.LDAP.Get; C hold the story until IRIS fixes these reads. DW-1896 is declined and needs a new owner.
+Status: done
+Blocking condition: none
+
+- **Closed unbuilt** by the orchestrator's option A (2026-10-07). Nothing was implemented; the plan's measurements stand as the evidence (Design Notes).
