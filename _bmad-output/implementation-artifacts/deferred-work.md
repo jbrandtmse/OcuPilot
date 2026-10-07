@@ -10165,3 +10165,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-24-rsa-and-symmetric-key-wallet-secrets.md | severity: low | fix-risk: med | footprint: in-story
 - evidence: Confirm claims (AD-34) before Operation.ApplyAt; WalletPort.PutKey refuses after it, as every port refusal does. Refusing before the claim needs the channel closed (400 CLOSEDCHANNEL), not the spec's 422 code.
 - 2026-10-07T02:42:42Z status=by-design owner=18-24-rsa-and-symmetric-key-wallet-secrets by=cr note=the matrix names WALLETKEY.SOURCE.BOTH from the port; only a hand-built confirm carries material
+
+### DW-2139: IRIS defect candidate: the admin API's Security.WebAuth GET then PUT round trip is not idempotent: re-sending AutheKB true sets all seven Kerberos bits, adding AutheK5KeyTab, which a stock instance leaves off (the classic page's Save does the same)
+- source: spec-18-8-superservers-authentication-options-and-managed-file-transfe.md | severity: low | fix-risk: high | footprint: out-of-footprint
+- evidence: Story 18.8 plan on ocupilot-ci 2026-10-07: unchanged PUT moved AutheEnabled 33556471 to 33556479; scratchpad epic-18-d8/p188/measure-out.txt
+- 2026-10-07T03:21:35Z status=decision-pending owner=burndown by=spec_gate note=human=decide whether to report it to InterSystems, with the held vendor-report list; owner hold 2026-10-05: not reported; Part A omits an unchanged AutheKB (proposed AD-4 exception)
