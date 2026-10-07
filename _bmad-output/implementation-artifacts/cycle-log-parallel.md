@@ -1049,3 +1049,6 @@
 2026-10-07T04:27:24Z	Parallel	owner_decision	item=burn-down_batches by=owner(relayed_by_planner) choice=(c)_approved_as_Story_23.5;(d)_stays_in_backlog
 2026-10-07T04:27:24Z	orchestrator	story_chartered	story=23-5-the-range-end-cleanup-part-5 entries=17(batch_c_15+DW-2101,DW-2107_added_under_grant) tracker=generate(new_entries=23-5,valid) schedule=slot_A_after_epic_18_remainder
 2026-10-07T04:27:24Z	orchestrator	deps_hash_rerecorded	reason=story_chartered+prose(23.4_DW-1223_amendment) hash=a3df2375f1c357a6c4721fb7c9fc4c85d2afdea1cbb661f727e81bbabb670fe3
+2026-10-07T04:28:39Z	Epic 20	worktree_provisioned	worktree=.worktrees/epic-20 branch=OCU-1-epic20 from=c5c615c2 slot=b prompt=prompts/e20-prompt.md state=held(planner_refreshing_ocupilot-slot-b_on_owner_word)
+2026-10-07T04:31:15Z	Parallel	slot_b_refreshed	by=planner(owner_word) SOURCE=c5c615c2 bundle=main-NF43SWXU.js recreated=04:30:23Z(same_./data;OCUPILOT_LOAD_TESTS=1) tests=1040_compiled smoke=50/50 rollback=../OcuPilot-slot-b/gate/pre-refresh-7cb4bb7d hold=released
+2026-10-07T04:31:15Z	Epic 20	runner_dispatched	runner=a78161073f865ce39 slot=b model=opus implement=sonnet prompt=prompts/e20-prompt.md worktree=.worktrees/epic-20 from=c5c615c2
