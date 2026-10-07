@@ -7895,21 +7895,15 @@ The Interoperability category appears for namespaces that support it: production
 
 **What gates the stage.** The sign-in hand-off to `/ui/interop` is the gate for every embed and is the stage's real risk: the `postMessage` contract has **no origin check**, the safer pre-written-`sessionStorage` alternative is untested, and the origin may not be weakened to make either work. Namespace category gating must land before the category appears. The production-update action vocabulary was never read. The Analytics rider needs a DeepSee-enabled namespace for anything beyond its links.
 
-### Story 20.1: The sign-in hand-off and namespace category gating
+### Story 20.1: Namespace category gating
+
+[AMENDED 2026-10-07, orchestrator merge gate: split, Rule 5; hand-off design awaits the owner] The sign-in hand-off criteria moved verbatim to Story 20.13; this story keeps the category gating and DW-1921.
 
 As a developer-administrator,
-I want the vendor's editors to open already signed in, and the category to appear only where it applies,
-So that embedding is seamless and irrelevant menus do not appear.
+I want the Interoperability and Analytics categories to appear only where they apply,
+So that irrelevant menus do not appear.
 
 **Acceptance Criteria:**
-
-- **Given** an embedded vendor editor
-- **When** it loads
-- **Then** it signs in from the browser-level login **without a password crossing into the frame**, and the `postMessage` auth path carrying a password is **not used**.
-
-- **Given** the origin
-- **When** the hand-off is implemented
-- **Then** it is **not weakened** to make embedding work - the static origin stays hostile ground, and per-tab token storage with no cross-tab broadcast is unchanged.
 
 - **Given** a namespace that does not support interoperability or analytics
 - **When** the rail renders
@@ -8107,6 +8101,24 @@ So that recovery follows a rehearsed path.
 - **Given** any workflow
 - **When** it reaches a write
 - **Then** the prohibited set, both switches and the governance policy are all still evaluated at the write.
+
+### Story 20.13: The sign-in hand-off to the embedded vendor editors
+
+[AMENDED 2026-10-07, orchestrator merge gate: split, Rule 5; hand-off design awaits the owner] Split from Story 20.1, its criteria moved verbatim. Ordered before Story 20.7, whose embeds it gates with 20.8 and 20.10. It is planned only once the owner decides the design (DW-2141); the measurements and candidates are in Story 20.1's blocked spec at commit `9faa902f`.
+
+As a developer-administrator,
+I want the vendor's editors to open already signed in,
+So that embedding is seamless.
+
+**Acceptance Criteria:**
+
+- **Given** an embedded vendor editor
+- **When** it loads
+- **Then** it signs in from the browser-level login **without a password crossing into the frame**, and the `postMessage` auth path carrying a password is **not used**.
+
+- **Given** the origin
+- **When** the hand-off is implemented
+- **Then** it is **not weakened** to make embedding work - the static origin stays hostile ground, and per-tab token storage with no cross-tab broadcast is unchanged.
 
 ---
 

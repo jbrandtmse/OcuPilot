@@ -8932,6 +8932,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: irislib/EnsPortal/Application.cls:234-248 CheckPrivileges requires %Ens_Portal:USE; LogSourcePort.cls:239 EVENTLOGPAIRS declares %Ens_EventLog:USE alone, so an %Ens_EventLog holder without %Ens_Portal opens it here and is refused there
 - 2026-10-02T03:22:54Z status=routed owner=range-end-cleanup by=harvest note=Rule 27: non-blocking, out of Epic 19's footprint (Logs area); found by 19.12's classic-parity audit
 - 2026-10-05T18:41:40Z status=routed owner=20-1-the-sign-in-hand-off-and-namespace-category-gating by=merge_gate note=owner-approved burn-down scope 2026-10-05: feature-sized, re-routed from the cleanup queue to the interoperability gating story
+- 2026-10-07T05:17:37Z status=routed owner=20-1-namespace-category-gating by=spec_gate note=retitled: 20.1 split by orchestrator merge gate 2026-10-07; gating half keeps DW-1921
 
 ### DW-1922: System Explorer's Routines list shows routines its viewer answers PORT.NOTFOUND for (EnsJob.mac in HSCUSTOM, Ens*.mac in USER)
 - source: spec-19-12-a-development-holder-reaches-system-explorer-as-the-classic.md | severity: med | fix-risk: med | footprint: in-epic
@@ -10194,3 +10195,9 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-20-1-the-sign-in-hand-off-and-namespace-category-gating.md | severity: med | fix-risk: med | footprint: in-epic
 - evidence: Measured at 20.1 plan on slot B roles: no %EnsRole_* role holds an ADMINRESOURCES member (AD-8 floor); %EnsRole_Developer and _InteropEditorsAPI clear it via %Development; %DeepSee_Portal is public U, so admitting it would admit every user
 - 2026-10-07T05:13:18Z status=decision-pending owner=burndown by=spec_gate note=product call like DW-1903; decide before 20.2 ships the first Interoperability screen; to the orchestrator in 20.1's clarification
+- 2026-10-07T05:16:20Z status=decision-pending owner=burndown by=orchestrator note=security posture, queued for the owner's morning summary 2026-10-07
+
+### DW-2141: The embedded vendor editors' sign-in hand-off needs an AD-28/AD-47 named case: no in-place design keeps both ADs as written (Story 20.13, gates 20.7, 20.8, 20.10)
+- source: spec-20-1-the-sign-in-hand-off-and-namespace-category-gating.md | severity: high | fix-risk: med | footprint: in-epic
+- evidence: Measured at 20.1 plan on slot B (M1-M5, candidates A-F in that spec's Auto Run Result at 9faa902f): an unsandboxed same-origin frame signs in silently but can read ocupilot.token-pair; a noopener tab keeps both ADs but drops in-place and 20.7's messages; sandboxed frames never sign in
+- 2026-10-07T05:16:47Z status=decision-pending owner=burndown by=orchestrator note=security posture, queued for the owner's morning summary 2026-10-07; recommended A (same-origin frame, normal mode, AD-62 named case)

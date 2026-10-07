@@ -1,8 +1,8 @@
 ---
-title: 'Story 20.1: The sign-in hand-off and namespace category gating'
+title: 'Story 20.1: Namespace category gating'
 type: 'feature'
 created: '2026-10-06'
-status: 'blocked'
+status: 'draft'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -16,9 +16,9 @@ deferred: []
 
 ## Intent
 
-**Problem:** Stage 4 adds two rail categories, Interoperability and Analytics, that belong only in namespaces whose own features support them, and every later Epic 20 embed (20.7, 20.8, 20.10) depends on a way to sign the vendor's `/ui/interop` editors in. Today the rail has neither category and nothing reads a namespace's features. The Interoperability event log also admits a holder of `%Ens_EventLog:USE` whom the classic page refuses for lacking `%Ens_Portal:USE` (DW-1921).
+**Problem:** Stage 4 adds two rail categories, Interoperability and Analytics, that belong only in namespaces whose own features support them. Today the rail has neither category and nothing reads a namespace's features. The Interoperability event log also admits a holder of `%Ens_EventLog:USE` whom the classic page refuses for lacking `%Ens_Portal:USE` (DW-1921).
 
-**Approach:** *Gating half (planned below):* declare the two areas with a closed `appliesWhen` feature. On every navigation read, ask the vendor whether the route's namespace reports that feature, and carry the answer as `applies` on every area of the map. Draw no surface of a category that does not apply. *Hand-off half (blocked):* every embed design found needs an AD-28/AD-47 amendment or a change to the epic's "in place" scope; see `## Auto Run Result`.
+**Approach:** Declare the two areas with a closed `appliesWhen` feature. On every navigation read, ask the vendor whether the route's namespace reports that feature, and carry the answer as `applies` on every area of the map. Draw no surface of a category that does not apply. The sign-in hand-off is not this story's: the orchestrator's merge gate split it into Story 20.13 on 2026-10-07, and its design awaits the owner (DW-2141).
 
 ## Boundaries & Constraints
 
@@ -28,7 +28,8 @@ deferred: []
 - The map is never partial: every area carries `applies` and its verdict.
 - Fail closed: a category declaring `appliesWhen` is not drawn until the map read for the current namespace answers `applies: true`. A vendor check that throws, or a feature outside the vocabulary, answers `false`.
 - Feature reads pass the namespace as an argument. They switch no namespace and escalate nothing (AD-16, AD-9). `%SYS` and implied (`^`) namespaces never apply to analytics.
-- Edits to files Epic 18 is changing are add-only, except those named under Design Notes, which need the runner's clearance.
+- Edits to files Epic 18 is changing are add-only, except those named under Design Notes, which the orchestrator cleared at its merge gate on 2026-10-07; whichever epic merges second takes the union and regenerates `screens.generated.ts` with `ui/tools/screen-mirror.mjs`.
+- The API floor stays as it is (DW-2140 is with the owner). An Interoperability or Analytics surface declares its classic page's gate (for example `%Ens_Portal:USE`) as its own pair from the start, so a later floor change touches only pre-existing surfaces (orchestrator ruling 2026-10-07).
 
 **Never:**
 
@@ -205,6 +206,8 @@ deferred: []
 - **AC-DW1921:** given a holder of `%Ens_EventLog:USE` without `%Ens_Portal:USE`, when they open the Interoperability event log, then it is refused naming `%Ens_Portal:USE`, as the classic `EnsPortal.EventLog` page refuses them.
 
 ## Spec Change Log
+
+- 2026-10-07, runner: split by the orchestrator's merge gate (Q2). The hand-off criteria and their analysis moved to Story 20.13 (DW-2141; this spec at `9faa902f`); the contended edits named under Design Notes were cleared (Q3); the floor stays and new surfaces declare their classic gate as an own pair. Retitled to the new key `20-1-namespace-category-gating`; status reset to `draft` for a gating-only re-plan.
 
 ## Review Triage Log
 
