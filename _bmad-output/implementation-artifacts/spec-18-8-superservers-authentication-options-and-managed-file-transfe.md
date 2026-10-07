@@ -2,7 +2,7 @@
 title: 'Story 18.8: Superservers, authentication options and managed file transfer'
 type: 'feature'
 created: '2026-10-06'
-status: 'in-progress'
+status: 'done'
 baseline_revision: 'd4ebef518757cc0c725db5034ecad1bf7373ddc5'
 baseline_commit: 'd4ebef518757cc0c725db5034ecad1bf7373ddc5'
 review_loop_iteration: 0
@@ -279,8 +279,8 @@ Rejected:
 
 ### CI rework (iteration 1, run 37589900626 on 85fad15c)
 
-- [ ] [CI] browser shard 3/3: `ui/browser/auth-options.browser-spec.mjs`'s hook "the authentication facts are the ones the spec found" fails on a fresh instance. Its before-snapshot read `publicKeys`/`privateKeys` as the empty-string hash (no signing key has been minted yet), and the spec's own sign-in then minted the keys. Fix: establish the signing keys (one sign-in) before the before-snapshot, so the check still pins that no leg replaces them. Don't drop the key comparison.
-- [ ] [CI] instance shard 1/5: `Test/AuthOptionsProhibited.cls` `OnAfterOneTest` "the authentication facts read as before the test" failed in `TestATokenSettingChangeIsPermittedAndNamesItsConsequence`, from the same cause. Apply the same fix to the ObjectScript facts snapshot, and to every other class or spec that compares a facts snapshot (`AuthOptions*`), so none depends on another test having minted first.
+- [x] [CI] browser shard 3/3: `ui/browser/auth-options.browser-spec.mjs`'s hook "the authentication facts are the ones the spec found" fails on a fresh instance. Its before-snapshot read `publicKeys`/`privateKeys` as the empty-string hash (no signing key has been minted yet), and the spec's own sign-in then minted the keys. Fix: establish the signing keys (one sign-in) before the before-snapshot, so the check still pins that no leg replaces them. Don't drop the key comparison.
+- [x] [CI] instance shard 1/5: `Test/AuthOptionsProhibited.cls` `OnAfterOneTest` "the authentication facts read as before the test" failed in `TestATokenSettingChangeIsPermittedAndNamesItsConsequence`, from the same cause. Apply the same fix to the ObjectScript facts snapshot, and to every other class or spec that compares a facts snapshot (`AuthOptions*`), so none depends on another test having minted first.
 
 ## Spec Change Log
 
@@ -473,6 +473,8 @@ The orchestrator's merge gate approved the split on 2026-10-07 (Rule 5): this sp
 - mutation: the store ignores the form read's `locked`, rebuilt and redeployed -> `auth-options.browser-spec.mjs` test 2 red (3 of 4)
 - Not mutated: browser tests 1, 3 and 4.
 
+- Rework 1 mutation (Rule 19): emptied `PublicJWKS`/`PrivateJWKS` on `ocupilot-ci` (keys read 0:0), removed the spec's `ensureKeys()` call and ran `auth-options.browser-spec.mjs` -> red, "the authentication facts are the ones the spec found"; with it restored and keys emptied again -> 4 pass, keys minted (163:201). `AuthOptionsProhibited` with keys emptied and a sign-in landing mid-run (the old code) -> red (`TestAFailedMaskReadRefuses`); with `EnsureKeys` in `OnBeforeOneTest`, keys emptied -> 4 pass. `AuthOptionsGate` 3 and `AuthOptionsWrite` 5 green. Throwaway left with keys, `AutheEnabled` 33556471, issuer empty, ES256, monitor 0.
+
 ## Auto Run Result
 
 Status: done
@@ -483,4 +485,5 @@ Blocking condition: none
 - Verification: story ObjectScript classes green on `ocupilot-ci` one at a time (`AuthOptionsProhibited`, `AuthOptionsWrite`, `AuthOptionsGate`, `AuthOptionsDescriptor` re-run after the review pass); `node --test tools/*.test.mjs` 1867 pass; the two component specs 24 pass; browser specs `auth-options` and `security` green before the review pass (the removed assertions were no-ops); `client-lint`, `check-objectscript`, `lint-docs` clean.
 - Full ObjectScript sweep (once, `ocupilot-ci`, 494 classes, 3976 tests): one failure, `EncryptionStartupDescriptor`'s code-count pin (28 to 30), fixed and re-run green.
 - Residual: Task 0 sent `{"JWTIssuer":5}` to the vendor past the seam and restored `""` at once (key hashes unchanged). `Monitor.State()` reads 2 on `ocupilot-ci`, from "Many alerts generated across the system" in `messages.log`; not traced to one cause.
+- Rework 1 (CI): `AuthOptionsProbe.EnsureKeys` (one sign-in through `/api/ocupilot/login` when the instance holds no signing keys) now runs before the facts snapshot in `AuthOptionsGate`, `AuthOptionsProhibited`, `AuthOptionsWrite` and the browser spec; the key comparison is kept. Verified on `ocupilot-ci` with emptied keys, mutation line in `## Verification`.
 - Follow-up review recommended: false.

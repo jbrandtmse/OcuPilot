@@ -55,6 +55,7 @@ Method OnBeforeAllTests() As %Status
 /// snapshot.</p>
 Method OnBeforeOneTest() As %Status
 {
+    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "EnsureKeys"), "the instance holds its signing keys before the snapshot")
     Set ..PreparedFacts = $ClassMethod(..#PROBE, "Facts").%ToJSON()
     Do $ClassMethod(..#SEAM, "Clear")
     Set ^||OcuPilotDatabaseWritePort = ..#SEAM

@@ -68,6 +68,12 @@ function authFacts() {
   return JSON.parse(values.FACTS);
 }
 
+/** Mint the signing keys a fresh instance lacks, so the facts snapshot pins that no leg replaces them. */
+function ensureKeys() {
+  const { values, output } = iris([mark('KEYS', `$System.Status.IsOK(##class(${PROBE}).EnsureKeys())`)], ['KEYS']);
+  assert.equal(values.KEYS, '1', `the instance holds its signing keys:\n${output}`);
+}
+
 /** Write back what differs from `facts`. */
 function restore(facts) {
   const literal = JSON.stringify(facts).replace(/"/g, '""');
@@ -78,6 +84,7 @@ before(async () => {
   assert.notEqual(config.container, LIVE_CONTAINER, 'this spec sends a Save, so it never runs inside the live container');
   assert.ok(!/^ocupilot-slot-/.test(config.container), 'nor inside a development instance');
   await assertThrowaway(config);
+  ensureKeys();
   found = authFacts();
   browser = await puppeteer.launch(launchOptions(config));
 });

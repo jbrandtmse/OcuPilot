@@ -64,6 +64,7 @@ Method OnBeforeAllTests() As %Status
 
 Method OnBeforeOneTest() As %Status
 {
+    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "EnsureKeys"), "the instance holds its signing keys before the snapshot")
     Set ..PreparedFacts = $ClassMethod(..#PROBE, "Facts").%ToJSON()
     Kill tSettings
     Set tSettings("security.authoptions.update") = "enabled"

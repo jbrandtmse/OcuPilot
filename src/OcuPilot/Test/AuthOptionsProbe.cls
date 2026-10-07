@@ -55,6 +55,42 @@ ClassMethod Facts() As %DynamicObject
     Quit tOut
 }
 
+/// <p>Make sure the instance holds its JWT signing keys, signing in once through the shipped login route when
+/// it holds none. A fresh instance mints them on its first sign-in, so a snapshot of <method>Facts</method>
+/// taken before that sign-in differs from one taken after it; call this before the snapshot.</p>
+ClassMethod EnsureKeys() As %Status
+{
+    Set tSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        If ..Facts().%Get("privateKeys") '= ..EmptyHash() Quit
+        Set tPort = 52773
+        Set $NAMESPACE = "%SYS"
+        Set tSC = ##class(Config.Startup).Get(.tStartup)
+        If $$$ISOK(tSC) && ($Get(tStartup("WebServerPort")) '= "") Set tPort = tStartup("WebServerPort")
+        Set $NAMESPACE = tOrigNS
+        Set tRequest = ##class(%Net.HttpRequest).%New()
+        Set tRequest.Server = "127.0.0.1"
+        Set tRequest.Port = tPort
+        Set tRequest.ContentType = "application/json"
+        Do tRequest.SetHeader("X-Requested-With", "XMLHttpRequest")
+        Do tRequest.EntityBody.Write({"user": "_SYSTEM", "password": "SYS"}.%ToJSON())
+        Set tSC = tRequest.Post("/api/ocupilot/login")
+        If $$$ISOK(tSC) && (tRequest.HttpResponse.StatusCode '= 200) Set tSC = $$$ERROR($$$GeneralError, "the sign-in answered " _ tRequest.HttpResponse.StatusCode)
+        If $$$ISOK(tSC) && (..Facts().%Get("privateKeys") = ..EmptyHash()) Set tSC = $$$ERROR($$$GeneralError, "the sign-in minted no signing keys")
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>The <code>privateKeys</code> a <method>Facts</method> reading shows for an instance with no keys.</p>
+ClassMethod EmptyHash() As %String
+{
+    Quit $Extract($System.Encryption.Base64Encode($System.Encryption.SHAHash(256, "")), 1, 12)
+}
+
 /// <p>Write back every value of <var>pFacts</var> the instance now holds differently, and clear a stored SMTP
 /// password the facts held none of.</p>
 ClassMethod Restore(pFacts As %DynamicObject) As %Status
