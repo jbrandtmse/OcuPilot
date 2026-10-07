@@ -8,3 +8,4 @@
 2026-10-07T04:35:34Z	Epic 20	retro_review_skipped	reason=runner_assignment_skip(spawn_prompt_retro_review_skip),rule27_no_x0(epic20_gates_none_in_deps),in_range_owned=1(DW-1921_routed_to_20-1_by_merge_gate)
 2026-10-07T04:44:41Z	Epic 20	epic_context_compiled	reason=initial model=opus agent=a141aea188dbe320a lines=107 flagged=handoff_needs_spine_decision(inference),api_floor_admits_no_Ens_or_DeepSee(inference),no_stage4_port_AD(next=62),update_vocabulary_unread,deepsee_namespace,four_readonly_rows,schema_viewer_param_unproven
 2026-10-07T04:45:36Z	Story 20.1	stage_spawned	stage=plan spawn_at=2026-10-07T04:45:36Z model=opus agent_name=20-1-plan-1 cycle_iteration=1
+2026-10-07T04:45:54Z	Epic 20	throwaway_up_complete	container=ocupilot-b-ci dir=/Users/jbrandt/.ocupilot-throwaways/ocupilot-b-ci project=ocupilot-b-ci web=52777 super=1976 health=healthy owner=this_runner(ran_up) source=c5c615c2_tree
