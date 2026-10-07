@@ -1,12 +1,14 @@
 /// <p>Test-only helper for Story 18.8's authentication options suites: the instance's authentication state as
-/// one JSON object (<method>Facts</method>), restored exactly (<method>Restore</method>), and the probe
-/// principals the gate suite signs in as. It holds no assertions.</p>
+/// one JSON object (<method>Facts</method>), restored exactly (<method>Restore</method>), the signing keys
+/// made to exist before a snapshot (<method>EnsureKeys</method>), and the probe principals the gate suite signs
+/// in as. It holds no assertions.</p>
 /// <p>The facts read in <code>%SYS</code> by explicit save and restore: the raw system <code>AutheEnabled</code>,
 /// the cookie and two-factor settings, the SMTP server, user and from address, whether an SMTP password is
 /// stored (its length only), the JWT issuer and algorithm, a SHA-256 prefix of each key set (never the keys),
-/// the monitor state, and the <code>AutheEnabled</code> of OcuPilot's three applications and
-/// <code>%Service_WebGateway</code>. A restore writes only the values that differ, so an unchanged
-/// <code>JWTSigAlg</code> is never sent and the key sets are never replaced.</p>
+/// and the <code>AutheEnabled</code> of OcuPilot's three applications and <code>%Service_WebGateway</code>.
+/// The monitor state is not a fact: any process's severity-2 line raises it some seconds later. A restore
+/// writes only the values that differ, so an unchanged <code>JWTSigAlg</code> is never sent and the key sets
+/// are never replaced.</p>
 /// <p><b>Not a <class>%UnitTest.TestCase</class></b>: it holds no assertions and runs no tests.</p>
 Class OcuPilot.Test.AuthOptionsProbe Extends %RegisteredObject
 {
@@ -21,7 +23,7 @@ Parameter PRINCIPALS = "OcuProbe188H:OcuProbe188HR,OcuProbe188O:OcuProbe188OR,Oc
 
 /// <p>The authentication state, as <code>{raw, LoginCookieTimeout, TwoFactorTimeout, SMTPServer,
 /// SMTPUsername, TwoFactorFrom, smtpPasswordLength, JWTIssuer, JWTSigAlg, publicKeys, privateKeys,
-/// monitor, applications{path: mask}, service}</code>.</p>
+/// applications{path: mask}, service}</code>.</p>
 ClassMethod Facts() As %DynamicObject
 {
     Set tOut = {}
@@ -36,9 +38,8 @@ ClassMethod Facts() As %DynamicObject
             For tName = "LoginCookieTimeout", "TwoFactorTimeout" Do tOut.%Set(tName, +tProps(tName), "number")
             For tName = "SMTPServer", "SMTPUsername", "TwoFactorFrom", "JWTIssuer", "JWTSigAlg" Do tOut.%Set(tName, tProps(tName), "string")
             Do tOut.%Set("smtpPasswordLength", $Length(tProps("SMTPPassword")), "number")
-            Do tOut.%Set("publicKeys", $Extract($System.Encryption.Base64Encode($System.Encryption.SHAHash(256, tProps("PublicJWKS"))), 1, 12), "string")
-            Do tOut.%Set("privateKeys", $Extract($System.Encryption.Base64Encode($System.Encryption.SHAHash(256, tProps("PrivateJWKS"))), 1, 12), "string")
-            Do tOut.%Set("monitor", $SYSTEM.Monitor.State(), "number")
+            Do tOut.%Set("publicKeys", ..KeyHash(tProps("PublicJWKS")), "string")
+            Do tOut.%Set("privateKeys", ..KeyHash(tProps("PrivateJWKS")), "string")
             Set tApps = {}
             For tI = 1:1:$Length(..#APPLICATIONS, ",") {
                 Set tPath = $Piece(..#APPLICATIONS, ",", tI)
@@ -55,40 +56,42 @@ ClassMethod Facts() As %DynamicObject
     Quit tOut
 }
 
-/// <p>Make sure the instance holds its JWT signing keys, signing in once through the shipped login route when
-/// it holds none. A fresh instance mints them on its first sign-in, so a snapshot of <method>Facts</method>
-/// taken before that sign-in differs from one taken after it; call this before the snapshot.</p>
+/// <p>Make sure the instance holds its JWT signing keys, signing in once through the shipped login route, as
+/// <class>OcuPilot.Test.Http</class>'s test server, port and account, when it holds none. A fresh instance
+/// mints them on its first sign-in, so a snapshot of <method>Facts</method> taken before that sign-in differs
+/// from one taken after it; call this before the snapshot. A facts read that fails is an error.</p>
 ClassMethod EnsureKeys() As %Status
 {
     Set tSC = $$$OK
-    Set tOrigNS = $NAMESPACE
     Try {
-        If ..Facts().%Get("privateKeys") '= ..EmptyHash() Quit
-        Set tPort = 52773
-        Set $NAMESPACE = "%SYS"
-        Set tSC = ##class(Config.Startup).Get(.tStartup)
-        If $$$ISOK(tSC) && ($Get(tStartup("WebServerPort")) '= "") Set tPort = tStartup("WebServerPort")
-        Set $NAMESPACE = tOrigNS
+        Set tFacts = ..Facts()
+        If tFacts.%IsDefined("error") Set tSC = $$$ERROR($$$GeneralError, "the facts read failed: " _ tFacts.%Get("error")) Quit
+        If tFacts.%Get("privateKeys") '= ..KeyHash("") Quit
         Set tRequest = ##class(%Net.HttpRequest).%New()
-        Set tRequest.Server = "127.0.0.1"
-        Set tRequest.Port = tPort
+        Set tRequest.Server = ##class(OcuPilot.Test.Http).GetTestServer()
+        Set tRequest.Port = ##class(OcuPilot.Test.Http).GetTestPort()
         Set tRequest.ContentType = "application/json"
         Do tRequest.SetHeader("X-Requested-With", "XMLHttpRequest")
-        Do tRequest.EntityBody.Write({"user": "_SYSTEM", "password": "SYS"}.%ToJSON())
-        Set tSC = tRequest.Post("/api/ocupilot/login")
+        Set tBody = {}
+        Do tBody.%Set("user", ##class(OcuPilot.Test.Http).GetTestUsername(), "string")
+        Do tBody.%Set("password", ##class(OcuPilot.Test.Http).GetTestPassword(), "string")
+        Do tRequest.EntityBody.Write(tBody.%ToJSON())
+        Set tSC = tRequest.Post($Parameter("OcuPilot.Test.Http", "BASEPATH") _ "/login")
         If $$$ISOK(tSC) && (tRequest.HttpResponse.StatusCode '= 200) Set tSC = $$$ERROR($$$GeneralError, "the sign-in answered " _ tRequest.HttpResponse.StatusCode)
-        If $$$ISOK(tSC) && (..Facts().%Get("privateKeys") = ..EmptyHash()) Set tSC = $$$ERROR($$$GeneralError, "the sign-in minted no signing keys")
+        If $$$ISERR(tSC) Quit
+        Set tFacts = ..Facts()
+        If tFacts.%IsDefined("error") || (tFacts.%Get("privateKeys") = ..KeyHash("")) Set tSC = $$$ERROR($$$GeneralError, "the sign-in minted no signing keys")
     } Catch ex {
-        Set $NAMESPACE = tOrigNS
         Set tSC = ex.AsStatus()
     }
     Quit tSC
 }
 
-/// <p>The <code>privateKeys</code> a <method>Facts</method> reading shows for an instance with no keys.</p>
-ClassMethod EmptyHash() As %String
+/// <p>The prefix <method>Facts</method> shows for the key set <var>pKeys</var>: the first twelve characters of
+/// its SHA-256 in Base64, never the keys.</p>
+ClassMethod KeyHash(pKeys As %String) As %String
 {
-    Quit $Extract($System.Encryption.Base64Encode($System.Encryption.SHAHash(256, "")), 1, 12)
+    Quit $Extract($System.Encryption.Base64Encode($System.Encryption.SHAHash(256, pKeys)), 1, 12)
 }
 
 /// <p>Write back every value of <var>pFacts</var> the instance now holds differently, and clear a stored SMTP

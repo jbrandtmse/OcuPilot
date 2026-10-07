@@ -6,7 +6,9 @@
 /// <code>PROHIBITED.OCUPILOTSTART</code> for turning O/S authentication off, before any <code>PUT</code>; a
 /// read that fails refuses; a change to <code>JWTIssuer</code> or <code>JWTSigAlg</code> is permitted, minted
 /// destructive with <code>WEBAUTH.SIGNOUT</code>, and confirmed through the seam.</p>
-/// <p><b>Nothing is changed for real.</b> The seam records every settings <code>PUT</code> and its guard
+/// <p><b>Nothing is changed for real</b>, beyond the signing keys an instance with none gets from the one sign-in
+/// <method>OcuPilot.Test.AuthOptionsProbe.EnsureKeys</method> makes before the first snapshot, which needs
+/// OcuPilot serving. The seam records every settings <code>PUT</code> and its guard
 /// refuses one that would change a sign-in, start or token setting, so a mutation that lets a refusal through
 /// reddens a test instead of cutting off the throwaway's sign-in. Every test reads the facts it starts from
 /// and checks they read the same after.</p>

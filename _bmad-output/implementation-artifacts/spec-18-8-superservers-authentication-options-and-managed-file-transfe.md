@@ -280,11 +280,35 @@ Rejected:
 ### CI rework (iteration 1, run 37589900626 on 85fad15c)
 
 - [x] [CI] browser shard 3/3: `ui/browser/auth-options.browser-spec.mjs`'s hook "the authentication facts are the ones the spec found" fails on a fresh instance. Its before-snapshot read `publicKeys`/`privateKeys` as the empty-string hash (no signing key has been minted yet), and the spec's own sign-in then minted the keys. Fix: establish the signing keys (one sign-in) before the before-snapshot, so the check still pins that no leg replaces them. Don't drop the key comparison.
-- [x] [CI] instance shard 1/5: `Test/AuthOptionsProhibited.cls` `OnAfterOneTest` "the authentication facts read as before the test" failed in `TestATokenSettingChangeIsPermittedAndNamesItsConsequence`, from the same cause. Apply the same fix to the ObjectScript facts snapshot, and to every other class or spec that compares a facts snapshot (`AuthOptions*`), so none depends on another test having minted first.
+- [x] [CI] instance shard 1/5: `Test/AuthOptionsProhibited.cls` `OnAfterOneTest` "the authentication facts read as before the test" failed in `TestATokenSettingChangeIsPermittedAndNamesItsConsequence`, from a different cause: the facts compared `monitor`, which an earlier class's severity-2 lines moved mid-test (Review Findings (rework 1)). Apply the same fix to the ObjectScript facts snapshot, and to every other class or spec that compares a facts snapshot (`AuthOptions*`), so none depends on another test having minted first.
+
+### Review Findings (rework 1)
+
+Checklist: the browser shard item is fixed by `EnsureKeys` (CI's diff was the two key hashes). The instance shard item was not; the first patch below fixes it.
+
+- [x] [Review][Patch] High: the instance-shard red was the monitor state, not a key mint. In the failing method the body's own `privateKeys` comparison passed and only `OnAfterOneTest` failed. The facts carried `monitor`, and one severity-2 line from any process raises it 20 to 40 s later (observed on `ocupilot-ci`); CI's log shows an earlier class's severity-2 lines processed during the class, and the rework's own run 37596828031 reddened the same way, keys present, in `TestAFailedMaskReadRefuses`. `monitor` left the facts. [src/OcuPilot/Test/AuthOptionsProbe.cls:Facts]
+- [x] [Review][Patch] Low: `EnsureKeys` answered OK when the facts read failed. It now errors, before and after the sign-in. [src/OcuPilot/Test/AuthOptionsProbe.cls:EnsureKeys]
+- [x] [Review][Patch] Low: `EnsureKeys` hard-coded `127.0.0.1`, its own port read (accepting port 0) and `_SYSTEM`/`SYS`. It now takes `OcuPilot.Test.Http`'s server, port, account and base path; a bad account answers "the sign-in answered 401". [src/OcuPilot/Test/AuthOptionsProbe.cls:EnsureKeys]
+- [x] [Review][Patch] Low: the browser hook marked only `IsOK`, so a red hook named no cause. It now carries the status text. [ui/browser/auth-options.browser-spec.mjs:ensureKeys]
+- [x] [Review][Patch] Low: `EmptyHash` copied the hash expression in `Facts`; both now use `KeyHash`. [src/OcuPilot/Test/AuthOptionsProbe.cls:KeyHash]
+- [x] [Review][Patch] Low: the `AuthOptionsProhibited`, `AuthOptionsProbe` and browser spec headers did not say a keyless instance gets one sign-in. [src/OcuPilot/Test/AuthOptionsProhibited.cls:9]
+- [x] [Review][Patch] Low (Rule 19): the rework's `AuthOptionsProhibited` mutation forced a sign-in the class never makes, reddened another method, and its green half lacked the forced sign-in. The paired `monitor` mutation in `## Verification` replaces it.
+
+Rejected:
+
+- Low: `EnsureKeys` tests only `privateKeys`. The vendor mints both sets together (CI's diff), and the fix adds a branch.
+- Low: the browser hook ignores `OCUPILOT_BROWSER_USER` and `OCUPILOT_BROWSER_PASSWORD`. The sign-in inside the instance now honors `^OcuPilotTest`; overriding only the browser account is not a supported setup.
+- Low: a failed `EnsureKeys` does not stop the test. Its assertion already reddens the class with the cause; a later facts mismatch only adds noise.
+- Low: the sign-in is never logged out. It happens at most once per keyless instance, and no class counts `_SYSTEM` tokens (inference).
+- Low: an unarmed class can sign in on a keyless development instance. A first sign-in minting keys is the instance's own behavior, and nothing is replaced.
+- Low: the rework's key emptying moved `ocupilot-ci` off the S0 key prefixes. Round 1 already ruled those prefixes stale, and the fix edits this spec. This review restored the keys it found.
+- Low: the rework's mutation line had no run indexes, the Auto Run Result repeats it, and the static gates went unrecorded. Each fix edits this spec. This pass ran `check-objectscript`, `npm run build` with its checkers, `npm run test:tools` (1867 pass) and `lint-docs`.
+- False: the rework baseline is recorded three ways. `baseline_revision` is the story's baseline and `baseline_commit` the review's, by design; the cycle log is the lead's.
+- Low: the facts comparisons do not guard an `error` reading. That predates the rework and lies outside its range.
 
 ## Spec Change Log
 
-- 2026-10-07, rework 1 (lead, trigger `ci`): two `[CI]` items, one root cause (a facts snapshot taken before the instance's first key mint). Nothing else is reopened.
+- 2026-10-07, rework 1 (lead, trigger `ci`): two `[CI]` items: the browser hook's snapshot preceded the instance's first key mint, and the instance shard's facts compared the monitor state, which moved (found at the rework review). Nothing else is reopened.
 
 - 2026-10-07, spec gate (lead), merge-gate rulings: split approved (Part A is this story; B-D outlines trimmed, kept at `e7a3bef1`). Decision 4 reversed on the lead's measurement: `AutheOS` off is refused `PROHIBITED.OCUPILOTSTART` (the container start fails and stays exited), always, because the install origin is not reliably detectable; `WEBAUTH.OSLOGIN` retired. Matrix, Tasks, A4, A5, the sentence table and the A4 mutation edited to match. Spine AD-10 (`OCUPILOTSIGNIN` and `OCUPILOTSTART`), AD-13, AD-4 and Conventions › Secrets written. DW-1896 re-owned to 18.27; the vendor candidate is DW-2139.
 
@@ -473,7 +497,8 @@ The orchestrator's merge gate approved the split on 2026-10-07 (Rule 5): this sp
 - mutation: the store ignores the form read's `locked`, rebuilt and redeployed -> `auth-options.browser-spec.mjs` test 2 red (3 of 4)
 - Not mutated: browser tests 1, 3 and 4.
 
-- Rework 1 mutation (Rule 19): emptied `PublicJWKS`/`PrivateJWKS` on `ocupilot-ci` (keys read 0:0), removed the spec's `ensureKeys()` call and ran `auth-options.browser-spec.mjs` -> red, "the authentication facts are the ones the spec found"; with it restored and keys emptied again -> 4 pass, keys minted (163:201). `AuthOptionsProhibited` with keys emptied and a sign-in landing mid-run (the old code) -> red (`TestAFailedMaskReadRefuses`); with `EnsureKeys` in `OnBeforeOneTest`, keys emptied -> 4 pass. `AuthOptionsGate` 3 and `AuthOptionsWrite` 5 green. Throwaway left with keys, `AutheEnabled` 33556471, issuer empty, ES256, monitor 0.
+- Rework 1 mutation (Rule 19): emptied `PublicJWKS`/`PrivateJWKS` on `ocupilot-ci` (keys read 0:0), removed the spec's `ensureKeys()` call and ran `auth-options.browser-spec.mjs` -> red, "the authentication facts are the ones the spec found"; with it restored and keys emptied again -> 4 pass, keys minted (163:201). Throwaway left with keys, `AutheEnabled` 33556471, issuer empty, ES256, monitor 0.
+- mutation: `monitor` put back into `AuthOptionsProbe.Facts`, and another process raising the monitor state 0 to 1 eight seconds into the run -> `AuthOptionsProhibited.TestATokenSettingChangeIsPermittedAndNamesItsConsequence` red at `OnAfterOneTest` alone, CI's signature (run 569); reverted byte-identical, the same flip -> 4 pass (run 568, re-run 572). `AuthOptionsGate` 3 (run 570), `AuthOptionsWrite` 5 (run 571) and `auth-options.browser-spec.mjs` 4 green after the review patches.
 
 ## Auto Run Result
 

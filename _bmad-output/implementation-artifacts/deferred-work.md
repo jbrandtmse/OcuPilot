@@ -10224,3 +10224,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-25-superservers.md | severity: low | fix-risk: high | footprint: out-of-footprint
 - evidence: Story 18.25 plan on ocupilot-ci 2026-10-07
 - 2026-10-07T08:23:30Z status=decision-pending owner=burndown by=spec_gate note=human=decide whether to report it to InterSystems, with the held vendor-report list; owner hold 2026-10-05: not reported
+
+### DW-2149: Five test probes (EcpProbe, EncryptionProbe, JournalProbe, LicenseProbe, RemoteDatabaseProbe) include $SYSTEM.Monitor.State() in their before/after Snapshot; an earlier class's severity-2 log line raises it 20-40 s later, which would redden an unrelated class's after-check (inference)
+- source: spec-18-8-superservers-authentication-options-and-managed-file-transfe.md | severity: med | fix-risk: low | footprint: in-footprint
+- evidence: Story 18.8 rework 1 re-review: AuthOptionsProbe.Facts had the same field and reddened CI run 37596828031 instance shard 1/5; the five siblings not checked
+- 2026-10-07T09:30:06Z status=routed owner=burndown by=cr note=remove the monitor value from each Snapshot, or prove it cannot move mid-class; verify on ocupilot-ci by raising the monitor mid-run

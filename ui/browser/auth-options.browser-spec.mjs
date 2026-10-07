@@ -11,7 +11,8 @@
  *    page, and put back.
  *
  * **It changes one setting and puts it back.** It refuses the live and development containers and runs only
- * in a throwaway; `after` restores every authentication value the spec found.
+ * in a throwaway; `after` restores every authentication value the spec found. On an instance with no signing
+ * keys yet, `before` first signs in once so they exist.
  *
  * Run, from `ui/`: `npm run build && docker cp dist/ocupilot-ui/browser/. <throwaway>:/durable/iris/csp/ocupilot/`,
  * then `OCUPILOT_BROWSER_ORIGIN=... OCUPILOT_BROWSER_CONTAINER=... node --test --test-concurrency=1
@@ -70,8 +71,8 @@ function authFacts() {
 
 /** Mint the signing keys a fresh instance lacks, so the facts snapshot pins that no leg replaces them. */
 function ensureKeys() {
-  const { values, output } = iris([mark('KEYS', `$System.Status.IsOK(##class(${PROBE}).EnsureKeys())`)], ['KEYS']);
-  assert.equal(values.KEYS, '1', `the instance holds its signing keys:\n${output}`);
+  const { values, output } = iris([mark('KEYS', `$System.Status.GetErrorText(##class(${PROBE}).EnsureKeys())`)], ['KEYS']);
+  assert.equal(values.KEYS, '', `the instance holds its signing keys:\n${output}`);
 }
 
 /** Write back what differs from `facts`. */
