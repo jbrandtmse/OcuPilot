@@ -1081,3 +1081,7 @@
 2026-10-07T10:59:05Z	Story 18.8	ci_green_verified	run=37601201236 head=beffc29d conclusion=success jobs=16/16 by=orchestrator
 2026-10-07T10:59:05Z	Story 18.8	merge_enqueued	mode=fast_forward feature=76e0e91d->0a8f21b4 code_equal=beffc29d..tip(empty) upgrade_triggers=none ledger_dups=0
 2026-10-07T10:59:07Z	Story 18.8	merged	feature=0a8f21b4 mode=fast_forward pushed=verified_on_origin
+2026-10-07T16:08:55Z	Story 20.1	runner_boundary	head=a9882da9(forward_merge_of_feature_6f3b762a_onto_824cc0f7) ci=success run=37615234027(16/16) merge_at=505f200e(bookkeeping_only;branch_head_f813cb56_carries_20.2_and_is_NOT_merged) by=runner(a78161073f865ce39) protocol_violation=two_test_calls_one_message(runs_536,537_sequential;no_overlap)
+2026-10-07T16:08:55Z	Story 20.1	ci_green_verified	run=37615234027 head=a9882da9 conclusion=success jobs=16/16 by=orchestrator
+2026-10-07T16:08:55Z	Story 20.1	merge_enqueued	mode=fast_forward feature=6f3b762a->505f200e code_equal=a9882da9..505f200e(empty) upgrade_triggers=none ledger=no_dups,DW-2139/DW-2148_restored CLAUDE.md=63_ADs=spine_headings
+2026-10-07T16:09:07Z	Story 20.1	merged	feature=505f200e mode=fast_forward pushed=verified_on_origin ledger_check=a9882da9_shows_the_DW-2139_trailer_displaced_under_DW-2148(union_merge);restoring_trailers_at_505f200e_make_both_effective_states_correct
