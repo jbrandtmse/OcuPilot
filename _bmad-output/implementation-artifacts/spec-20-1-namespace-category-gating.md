@@ -2,7 +2,8 @@
 title: 'Story 20.1: Namespace category gating'
 type: 'feature'
 created: '2026-10-06'
-status: 'ready-for-dev'
+status: 'in-progress'
+baseline_revision: '9153a593de3492b37fc4feadf6a4b4fd45309977'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -287,6 +288,8 @@ deferred: []
   - opening Interoperability's side bar, then switching to `%SYS`: the rail item and the bar are gone, and switching back restores the rail item;
   - the `DeveloperFloorFixture` principal, created in `before` and removed in `after` on `ocupilot-b-ci` only. In the interop-only namespace it sees Interoperability drawn `aria-disabled`, naming `%Ens_Portal:USE`.
 
+- [ ] [Halt] Re-base the initial bundle budget under DW-1166 (runner-authorized 2026-10-07; the spawn prompt's re-base clause, so `ui/angular.json` and `ui/tools/angular-json.test.mjs` are cleared for this edit): `maximumWarning` `3012kB` -> `3165kB`, 5% above the measured 3,013,646-byte initial total, in `ui/angular.json` and in the DW-371 test's pinned literal and its comment (one line `// Story 20.1 raised it to 3165kB, 5% above a measured 3,013,646 bytes (namespace category gating), under the 4000kB hard stop.`). `maximumError` stays `4000kB`. Epic 18's own re-base (3191kB) meets this at the merge; the second epic to merge takes the larger figure. Then finish what the halt left: the tools tier, the full ObjectScript sweep, the review layers and finalize.
+
 **Acceptance Criteria:**
 
 - **AC1:** given a namespace that does not report interoperability or analytics, when the rail renders, then that category does not appear on the rail, Home tile, side bar, command box or locator, gated by the namespace's own reported features (`IsEnsembleNamespace`, `%IsDeepSeeEnabled`).
@@ -295,6 +298,7 @@ deferred: []
 
 ## Spec Change Log
 
+- 2026-10-07, runner: implement pass 1 halted `implementation verification failed` on the DW-371 bundle budget (3,013,646 B against 3012kB). The runner authorized the re-base above under DW-1166 and reset the spec to `in-progress`; the pass-1 implementation stays in the working tree and inside the next diff.
 - 2026-10-07, runner: split by the orchestrator's merge gate (Q2). The hand-off criteria and their analysis moved to Story 20.13 (DW-2141; this spec at `9faa902f`); the contended edits named under Design Notes were cleared (Q3); the floor stays and new surfaces declare their classic gate as an own pair. Retitled to the new key `20-1-namespace-category-gating`; status reset to `draft` for a gating-only re-plan.
 
 ## Review Triage Log
@@ -398,31 +402,19 @@ deferred: []
 - Matrix, interop enabled meanwhile: drop the bus subscription. Expected red: the bus leg in `navigation.test.mjs`.
 - AC3: make `EVENTLOGPAIRS` drop `%Ens_Portal:USE`. Expected red: `LogPairs`, `LogSourceDenial`'s new leg, and `LogHubWire`'s new leg.
 
+**Rule 19 results (ocupilot-b-ci, 2026-10-07; each reverted byte-identical).**
+
+- mutation: AC1 server, `NamespaceFeatures.Reports` answers 1 always -> red: `NamespaceFeatures` (3 of 4 methods) and all four `namespace-categories` browser tests (the rail never settles on the expected roster).
+- mutation: AC1 client fail-closed, `applies()` answers true before any answer -> red: three `navigation.test.mjs` legs and the browser pre-answer test.
+- mutation: AC1 side bar, `offered()` answers true -> red: the `side-bar.spec.ts` leg and the browser switch test.
+- mutation: AC2, `areas()` filters by `areaVerdict().allowed` -> red: four `navigation.test.mjs` legs and all four browser tests, the developer leg included.
+- mutation: AC2 agent, `Navigation.Payload` omits `applies` on the agent area -> red: `NamespaceFeatures` payload leg and `ToolShell`.
+- mutation: matrix bus row, drop the bus subscription -> red: the bus leg of `navigation.test.mjs`.
+- mutation: AC3, `EVENTLOGPAIRS` without `%Ens_Portal:USE` -> red: `LogPairs` and `LogSourceDenial`'s new leg; `LogHubWire`'s new leg stays green, because the hub gates on the descriptor's `privileges`, so it reddens only when `LogEventViewer`'s `privileges` drop the pair too (then red; the descriptor mutation alone is green on `LogHubWire` and `LogSourceDenial`).
+
 ## Auto Run Result
 
-Status: ready-for-dev
-Blocking condition: none
+Status: blocked
+Blocking condition: bundle budget needs a non-add-only edit to a file Epic 18 is changing. The initial bundle is 3,013,646 bytes against `maximumWarning` 3012kB, so DW-371 in `ui/tools/build-output.test.mjs` fails by 1,646 bytes (HEAD is 3,011,584). Clearing it means raising the literal in `ui/angular.json` and `ui/tools/angular-json.test.mjs`; Epic 18 edits the same lines (3012kB to 3191kB). Recommended: the runner or orchestrator raises the figure to 3191kB (the union value) or lets Epic 18's merge supply it; no other code change is needed.
 
-**This re-plan (cycle iteration 2):**
-
-- Removed every hand-off element (AC1/AC2 of the first plan, its candidates and its blocked condition) and the `multiple-goals` warning. 20.13 carries the hand-off.
-- Renumbered the ACs to AC1 (gating), AC2 (integration) and AC3 (DW-1921).
-- Changes against the first plan's design:
-  - The new EXPERIENCE.md sentence folds into the cleared `:66`, because an inserted line would shift `strings.ts`'s 2,667 line references.
-  - Surfaces read filtered seams rather than calling `applies()`, so only the locator spec's stub changes.
-  - The `namespace` change subscription moves into the navigation service, so the tools tier can test it.
-  - `Area.AppliesWhen` was dropped, because the roster carries the field.
-- Pins the first plan missed, now listed:
-  - `ExplorerDescriptor.cls:38`
-  - `rail-icons.browser-spec.mjs`
-  - `strings.test.mjs:446-460`
-  - `DESIGN.md:975`
-  - `LogSource.cls:867,877` and `LogSecondary` `HoldAll`
-  - the hub pin, moved to `LogHubWire`
-  - the `ScreenGate` fixture, replaced in the run list by `Gate`
-- Verified on `ocupilot-b-ci` (read only):
-  - each namespace's features;
-  - the public permissions of `%Ens_Portal`, `%Ens_EventLog` and `%DeepSee_Portal`;
-  - which roles hold the two Ens resources;
-  - the current Fixed strings count (2,754).
-- Epic 18's tree was re-checked: no further clearance is needed.
+Implementation is complete and uncommitted in the worktree. Server classes (18 run one at a time on ocupilot-b-ci), the component runner (2,554 tests), the tools tier (1,873 of 1,874; the one failure is DW-371), the six browser specs, `check-objectscript.py`, `lint-docs.sh` and smoke (50/50) are green. The full ObjectScript sweep, review layers and finalize have not run.
