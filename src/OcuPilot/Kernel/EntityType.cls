@@ -82,13 +82,16 @@
 /// <p><code>sql-statement</code> is one SQL statement running on the instance, keyed by the vendor's
 /// composite of its server, process and statement hash; it names no write target (AD-13, Story
 /// 19.10).</p>
+/// <p><code>production</code> is one interoperability production of a namespace, keyed by its production
+/// class name, kept exactly (AD-13, AD-62, Story 20.2). It is namespace-scoped: the route's namespace
+/// is the entity's scope.</p>
 Class OcuPilot.Kernel.EntityType Extends %RegisteredObject
 {
 
 /// <p>The vocabulary, comma-separated and in no significant order. Lower-case with hyphens,
 /// the same spelling shape route and area keys use, so a key is never confused with a class
 /// name.</p>
-Parameter TYPES = "web-application,rest-service,user,role,resource,service,ssl-configuration,x509-credential,ldap-configuration,wallet-collection,wallet-secret,oauth2-client-configuration,oauth2-server-definition,oauth2-resource-server,oauth2-server,oauth2-server-client,audit-event,audit-user-event,auditing-configuration,task,task-history-entry,process,lock,database,device,audit-record,application-error,log-entry,agent-definition,agent-switch,agent-policy,allowed-directory,namespace,web-session,background-task,global-mapping,routine-mapping,package-mapping,database-configuration,language-server,class,routine,journal-file,journal-file-database,journal-settings,journal-record,license-key,license-server,ecp-data-server,ecp-settings,ecp-ssl-connection,encryption-key-file,database-encryption-keys,data-element-encryption-keys,encryption-startup,docdb-database,sql-statement,authentication-options,superserver";
+Parameter TYPES = "web-application,rest-service,user,role,resource,service,ssl-configuration,x509-credential,ldap-configuration,wallet-collection,wallet-secret,oauth2-client-configuration,oauth2-server-definition,oauth2-resource-server,oauth2-server,oauth2-server-client,audit-event,audit-user-event,auditing-configuration,task,task-history-entry,process,lock,database,device,audit-record,application-error,log-entry,agent-definition,agent-switch,agent-policy,allowed-directory,namespace,web-session,background-task,global-mapping,routine-mapping,package-mapping,database-configuration,language-server,class,routine,journal-file,journal-file-database,journal-settings,journal-record,license-key,license-server,ecp-data-server,ecp-settings,ecp-ssl-connection,encryption-key-file,database-encryption-keys,data-element-encryption-keys,encryption-startup,docdb-database,sql-statement,authentication-options,superserver,production";
 
 /// <p>Whether <var>pType</var> is one of the declared values. An empty string is <b>not</b>
 /// known: a screen with no entity type declares the empty string and its descriptor is

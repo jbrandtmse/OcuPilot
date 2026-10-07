@@ -46,14 +46,14 @@ export function railItemDomId(areaKey: string): string {
 }
 
 /**
- * The activity rail: the nine areas in daily-use order, Agent co-pilot pinned to the bottom
+ * The activity rail: Home and the areas that apply in daily-use order, Agent co-pilot pinned to the bottom
  * (EXPERIENCE.md "**The rail, top to bottom (daily-use order):**", "`{spacing.rail-width}` icon"; DESIGN.md `:972-1003`).
  *
  * **One Tab stop, arrows within it.** Exactly one item is in the tab order at a time -- the
  * first until an arrow key or an activation moves it -- and Up/Down move between items, Home and
  * End jump to the ends.
  * Enter and Space activate, which a real `<button>` does natively. That is a roving tabindex,
- * not eight tab stops.
+ * not one tab stop per item.
  *
  * **A click opens an area's side bar without navigating.** Clicking the item whose list is
  * already showing collapses it. Home is the exception: it has no screen list, so its item

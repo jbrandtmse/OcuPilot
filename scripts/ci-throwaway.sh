@@ -373,6 +373,12 @@ services:
       # activity port requires, or holding READ on USER's database and %Development, and reads
       # another account's running probe statement as them (Story 19.10).
       # classes: SqlActivityGate, SqlActivityProbe
+      # The interoperability control class compiles and runs a probe production in USER and starts,
+      # stops, restarts, updates and recovers it; its descriptor class compiles the probe classes in USER;
+      # its gate class signs in as probe principals each
+      # missing one pair the interoperability port requires and reads and controls the probe as them
+      # (Story 20.2).
+      # classes: InteropControl, InteropDescriptor, InteropGate
       OCUPILOT_ALLOW_PRINCIPALS: "1"
       # Writes an application error to a namespace's own ^ERRORS. Same reasoning again, and one
       # degree worse: an application error cannot be un-logged, so a runner pointed elsewhere

@@ -6074,6 +6074,91 @@ export const STRINGS = {
   superserverServesConsequence: 'OcuPilot is served through this superserver. An SSL/TLS change can stop the web gateway connecting through it, which would cut off every user, including you.',
   /** EXPERIENCE.md:364 */
   superserverDeleteConsequence: 'Clients can no longer connect through this port, and the superserver stops listening at once.',
+  /** EXPERIENCE.md:604 */
+  interopProductionsLabel: 'Productions',
+  /** EXPERIENCE.md:604 */
+  interopProcessesLabel: 'Business processes',
+  /** EXPERIENCE.md:604 */
+  interopTransformsLabel: 'Data transformations',
+  /** EXPERIENCE.md:604 */
+  interopRulesLabel: 'Business rules',
+  /** EXPERIENCE.md:604 */
+  interopProductionColumnLastStarted: 'Last started',
+  /** EXPERIENCE.md:604 */
+  interopProductionColumnLastStopped: 'Last stopped',
+  /** EXPERIENCE.md:604 */
+  interopProductionsEmpty: 'No productions in this namespace.',
+  /** EXPERIENCE.md:604 */
+  interopProcessesEmpty: 'No business processes in this namespace.',
+  /** EXPERIENCE.md:604 */
+  interopTransformsEmpty: 'No data transformations in this namespace.',
+  /** EXPERIENCE.md:604 */
+  interopRulesEmpty: 'No business rules in this namespace.',
+  /** EXPERIENCE.md:604 */
+  interopProductionsEmptyAgent: 'Ask the agent why no production is listed here.',
+  /** EXPERIENCE.md:604 */
+  interopProductionsPrompt1: 'Is any production here troubled or stopped?',
+  /** EXPERIENCE.md:604 */
+  interopProductionsPrompt2: 'When did each production here last start and stop?',
+  /** EXPERIENCE.md:604 */
+  interopProductionsPrompt3: 'Which production is running, and does it need an update?',
+  /** EXPERIENCE.md:604 */
+  interopProcessesPrompt1: 'Which business processes does this namespace hold?',
+  /** EXPERIENCE.md:604 */
+  interopProcessesPrompt2: 'Which business processes changed most recently?',
+  /** EXPERIENCE.md:604 */
+  interopProcessesPrompt3: 'How many business processes does this namespace hold?',
+  /** EXPERIENCE.md:604 */
+  interopTransformsPrompt1: 'Which data transformations does this namespace hold?',
+  /** EXPERIENCE.md:604 */
+  interopTransformsPrompt2: 'Which data transformations changed most recently?',
+  /** EXPERIENCE.md:604 */
+  interopTransformsPrompt3: 'How many data transformations does this namespace hold?',
+  /** EXPERIENCE.md:604 */
+  interopRulesPrompt1: 'Which business rules does this namespace hold?',
+  /** EXPERIENCE.md:604 */
+  interopRulesPrompt2: 'Which business rules changed most recently?',
+  /** EXPERIENCE.md:604 */
+  interopRulesPrompt3: 'How many business rules does this namespace hold?',
+  /** EXPERIENCE.md:604 */
+  actionRestart: 'Restart',
+  /** EXPERIENCE.md:604 */
+  actionUpdate: 'Update',
+  /** EXPERIENCE.md:604 */
+  actionRecover: 'Recover',
+  /** EXPERIENCE.md:604 */
+  interopStopConsequence: 
+    'Stopping this production waits up to 15 seconds for its work in progress to finish. If it takes longer, nothing is stopped.',
+  /** EXPERIENCE.md:604 */
+  interopRestartConsequence: 
+    'Restarting this production stops it and starts it again. If its work in progress takes longer than 15 seconds to finish, nothing is stopped.',
+  /** EXPERIENCE.md:604 */
+  interopUpdateConsequence: 
+    'Updating this production restarts only the items whose settings changed, and starts or stops the items enabled or disabled since it started. If an item takes longer than 15 seconds to finish its work, the update is refused and the production keeps running.',
+  /** EXPERIENCE.md:604 */
+  interopRecoverConsequence: 
+    'Recover is the first response to a troubled production: it returns it to Suspended so it can be started again, marking messages it cannot keep queued as Discarded or Suspended and deleting none. Clean, which deletes queued messages, is a last resort OcuPilot does not offer.',
+  /** EXPERIENCE.md:604 */
+  interopRefusalNoProductions: 'This namespace does not run interoperability productions.',
+  /** EXPERIENCE.md:604 */
+  interopRefusalRunning: 'This production is already running.',
+  /** EXPERIENCE.md:604 */
+  interopRefusalOther: 
+    'Another production is running, suspended or troubled in this namespace, and a namespace runs one production at a time.',
+  /** EXPERIENCE.md:604 */
+  interopRefusalTroubled: 
+    'This production did not shut down cleanly. Recover it first; once it reads Suspended it can be started.',
+  /** EXPERIENCE.md:604 */
+  interopRefusalNotRunning: 'This production is not running.',
+  /** EXPERIENCE.md:604 */
+  interopRefusalUpToDate: 'This production is up to date, so there is nothing to update.',
+  /** EXPERIENCE.md:604 */
+  interopRefusalNotTroubled: 'Only a troubled production can be recovered.',
+  /** EXPERIENCE.md:604 */
+  interopRefusalBusy: 
+    'The production\'s work in progress did not finish within 15 seconds, so it was left as it was.',
+  /** EXPERIENCE.md:604 */
+  interopRefusalState: 'This production\'s state does not allow that action here.',
 } as const;
 
 /**

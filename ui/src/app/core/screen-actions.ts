@@ -138,6 +138,10 @@ const ACTION_LABELS: Readonly<Record<string, string>> = {
   // Story 16.10: an external language server's Start and Stop, on External language servers.
   start: STRINGS.actionStart,
   stop: STRINGS.actionStop,
+  // Story 20.2: a production's Restart, Update and Recover, on Productions.
+  restart: STRINGS.actionRestart,
+  update: STRINGS.actionUpdate,
+  recover: STRINGS.actionRecover,
 };
 
 /**

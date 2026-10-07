@@ -199,8 +199,8 @@ interface LineSegment {
 }
 
 /**
- * Home: the seven area tiles and the instance line beneath them (DESIGN.md `:896`, `:1102`;
- * EXPERIENCE.md "Seven tiles in daily-use order").
+ * Home: one tile per applying area (seven to nine) and the instance line beneath them (DESIGN.md `:896`, `:1102`;
+ * EXPERIENCE.md "One tile per applying area in daily-use order").
  *
  * **The tile roster is the area vocabulary, not a list typed here** (AD-5). Every area in the
  * rail gets a tile except the two that are not destinations of their own: Home is the surface
@@ -208,7 +208,7 @@ interface LineSegment {
  * declaration rather than named -- Home is the one area whose rail item `navigates`, Agent the
  * one pinned to the bottom -- so a new area takes a tile without this file changing.
  *
- * **A tile's caption is its area's built screen names** (EXPERIENCE.md "Seven tiles in daily-use order", "Entries in daily-use order."): the
+ * **A tile's caption is its area's built screen names** (EXPERIENCE.md "One tile per applying area in daily-use order", "Entries in daily-use order."): the
  * side-bar entries that area lists today, joined by a separator that is `aria-hidden` so a
  * screen reader reads names rather than punctuation. Only Home carries a descriptor at the end
  * of Epic 1, so every caption is empty here; that is the published contract rendering
@@ -228,10 +228,10 @@ interface LineSegment {
  * Activating one is refused here, because `aria-disabled` carries no behaviour of its own.
  *
  * **The grid is a list.** `display: grid` strips the implied semantics off a `<ul>`, so the
- * roles are explicit: without them a screen-reader user meets seven unrelated buttons with no
+ * roles are explicit: without them a screen-reader user meets up to nine unrelated buttons with no
  * sense of the set or its size. Roles carry no words, so this needs no published string.
  *
- * **Activation opens the area's side bar and its first screen** (EXPERIENCE.md "Seven tiles in daily-use order", as
+ * **Activation opens the area's side bar and its first screen** (EXPERIENCE.md "One tile per applying area in daily-use order", as
  * amended for **DW-161**: the first built screen *whose own screen verdict allows*). An area
  * whose screens are not built yet still opens its list -- there is nowhere to navigate to, and
  * the bar names the area and lists nothing. An area whose screens are all refused is a
@@ -496,7 +496,7 @@ export class HomePage {
   protected readonly STRINGS = STRINGS;
 
   /**
-   * The middle dot DESIGN.md `:896` and EXPERIENCE.md "Seven tiles in daily-use order" join with, produced in TypeScript
+   * The middle dot DESIGN.md `:896` and EXPERIENCE.md "One tile per applying area in daily-use order" join with, produced in TypeScript
    * so no non-ASCII byte enters a template (Rule 14). Its surrounding spaces are the flex row's
    * gap rather than characters, so the separator carries no text of its own to be announced --
    * and it is `aria-hidden` wherever it is rendered, which is EXPERIENCE.md "**Names, roles, glyphs.** Rail-items"'s own rule

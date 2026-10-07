@@ -108,6 +108,8 @@ export const SCREEN_ACTION_DESCRIPTORS: readonly string[] = [
   // Story 19.17: Document databases, whose Drop types the database's name.
   'OcuPilot.Screen.Descriptor.ExplorerDocDbList',
   'OcuPilot.Screen.Descriptor.SuperserverList',
+  // Story 20.2: Productions, whose Start is sent at once and whose Stop, Restart, Update and Recover warn first.
+  'OcuPilot.Screen.Descriptor.InteropProductionList',
 ];
 
 /**
@@ -567,6 +569,13 @@ const WARNING_CONSEQUENCES: Readonly<Record<string, Readonly<Record<string, stri
   // Story 18.21: an authorize lets an application server connect, and a reject refuses it; neither
   // removes anything, so each warns.
   [ECP_SSL_CONNECTION_TAB]: { authorize: STRINGS.ecpSslAuthorizeConsequence, reject: STRINGS.ecpSslRejectConsequence },
+  // Story 20.2: each production action but Start states the wait it makes, or what Recover does.
+  'OcuPilot.Screen.Descriptor.InteropProductionList': {
+    stop: STRINGS.interopStopConsequence,
+    restart: STRINGS.interopRestartConsequence,
+    update: STRINGS.interopUpdateConsequence,
+    recover: STRINGS.interopRecoverConsequence,
+  },
 };
 
 /**

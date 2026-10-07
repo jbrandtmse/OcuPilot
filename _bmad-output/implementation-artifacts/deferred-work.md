@@ -10216,6 +10216,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-07T10:40:19Z status=routed owner=20-2-productions-listed-and-controlled by=cr note=also rail.ts:49 "the nine areas" and :56 "eight tab stops" (CI rework re-review)
 - 2026-10-07T03:44:07Z status=decision-pending owner=burndown by=owner note=owner hold 2026-10-05 (relayed by the Planner): IRIS defect candidates stay on hold, no report to InterSystems for now
 - 2026-10-07T11:07:09Z status=routed owner=20-2-productions-listed-and-controlled by=merge_repair note=restored: the 03:44:07Z trailer above is DW-2139's, moved here by a union merge
+- 2026-10-07T18:07:16Z occurrence=20-2-productions-listed-and-controlled
+- 2026-10-07T18:13:30Z status=resolved-by:20-2-productions-listed-and-controlled owner=20-2-productions-listed-and-controlled by=adjudication note=EXPERIENCE.md rail and tile rows and rail.ts counts corrected in the story; home.page.ts:202,:231 and home.page.spec.ts:46,:118 seven-tiles comments corrected at adjudication (the spec asserts 9 tiles)
 
 ### DW-2142: OcuPilot's audit surfaces would show the SMTP password the vendor writes in clear into %System/%Security/SystemChange's New value line when CHANGESMTPPWD runs: AuditPort.VENDORSECRETS has no mask for it (AD-35)
 - source: spec-18-8-superservers-authentication-options-and-managed-file-transfe.md | severity: med | fix-risk: low | footprint: in-footprint
@@ -10253,7 +10255,40 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-8-superservers-authentication-options-and-managed-file-transfe.md | severity: med | fix-risk: low | footprint: in-footprint
 - evidence: Story 18.8 rework 1 re-review: AuthOptionsProbe.Facts had the same field and reddened CI run 37596828031 instance shard 1/5; the five siblings not checked
 - 2026-10-07T09:30:06Z status=routed owner=burndown by=cr note=remove the monitor value from each Snapshot, or prove it cannot move mid-class; verify on ocupilot-ci by raising the monitor mid-run
+- 2026-10-07T18:44:36Z occurrence=18-25-superservers by=merge_repair note=restored: its 15:41:54Z occurrence line now sits under DW-2162, moved there by the union merge of feature 0f3db5bb into OCU-1-epic20
+
+### DW-2157: A production stop from Running can leave it reading Suspended while the tool answers success and the card promised Stopped
+- source: spec-20-2-productions-listed-and-controlled.md | severity: med | fix-risk: low | footprint: in-story
+- evidence: Task 0 measured it once with queues still holding messages; no test asserts what the caller sees (InteropPort.cls)
+- 2026-10-07T16:08:56Z status=open owner=20-2-productions-listed-and-controlled by=harvest note=unverified; settle with a stop against a probe holding queued messages and a read of the answer
+- 2026-10-07T18:13:30Z status=decision-pending owner=burndown by=adjudication note=product call, same family as DW-2162: recommended route to 20.3 (extends InteropPort): a stop answers the state its post-write read finds, with a code and a Fixed-strings sentence when the production ends Suspended
+- 2026-10-07T18:58:44Z status=routed owner=20-3-production-items by=merge_gate note=orchestrator ruling 2026-10-07: a stop answers the state its post-write read finds, with a new INTEROP code and Fixed-strings sentence when the production ends Suspended
+
+### DW-2158: InteropControl's row-action test stops straight after a restart with no settle, which may flake
+- source: spec-20-2-productions-listed-and-controlled.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Inferred from Task 0's notes on a production stopped the moment it started; green in every local run (Test/InteropControl.cls)
+- 2026-10-07T16:08:56Z status=open owner=20-2-productions-listed-and-controlled by=harvest note=unverified; settle by repeated runs
+- 2026-10-07T18:13:30Z status=resolved-by:20-2-productions-listed-and-controlled owner=20-2-productions-listed-and-controlled by=adjudication note=code review added a settle after start and restart in InteropControl; runs 1121-1123 before, 1129 after, green
+
+### DW-2159: The interop productions browser spec checks %SYS absence only for the command box, not the side bar and locator
+- source: spec-20-2-productions-listed-and-controlled.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Test/Navigation.cls covers the side-bar payload for an interoperability namespace but not the %SYS absence (interop-productions.browser-spec.mjs)
+- 2026-10-07T16:08:56Z status=open owner=20-2-productions-listed-and-controlled by=harvest note=Story 20.1 left the command-box and locator legs to 20.2's browser spec
+- 2026-10-07T18:13:30Z status=resolved-by:20-2-productions-listed-and-controlled owner=20-2-productions-listed-and-controlled by=adjudication note=QA's %SYS side-bar, rail and locator leg, reworked by code review to wait for the navigation map; mutation ignoring the per-namespace answer reddens both %SYS legs
+
+### DW-2161: A cross-scope confirm of a namespace-scoped write resolves the tool's database pair and the prohibited set's target read in the confirming request's scope, not the proposal's namespace
+- source: spec-20-2-productions-listed-and-controlled.md | severity: med | fix-risk: med | footprint: out-of-footprint
+- evidence: InteropProductionAction.PrivilegePairs:127 (and ExplorerDocDbWrite) read Scope.Current(); Operation.Gate:412 recomputes pairs at confirm under Router.cls:1447's ?ns= scope; the port re-gates the payload namespace's database, so nothing escapes
+- 2026-10-07T18:07:16Z status=escalated owner=burndown by=cr note=decision sheet: payload-aware pair hook at the confirm gate (kernel), or accept the narrow false refusal
+- 2026-10-07T18:58:44Z status=wontfix-accepted owner=burndown by=merge_gate note=orchestrator ruling 2026-10-07: the port re-gates the payload namespace, so nothing escapes; the cost is a narrow false refusal. reopen_if=a person reports a refused cross-namespace confirm, or a later story needs a payload-aware pair hook
+
+### DW-2162: A stop or restart whose jobs outlast the cap after quiescing answers a logged 500 with the production half-stopped, while the stop card says nothing is stopped
+- source: spec-20-2-productions-listed-and-controlled.md | severity: med | fix-risk: low | footprint: in-story
+- evidence: Ens.Job.StopAll raises the plural <Ens>ErrJobsNotStopped (Job.cls:555) after MakeQuiescent and the app-data kill (Director.cls:250-260); InteropPort.Statused maps only the singular
+- 2026-10-07T18:07:16Z status=decision-pending owner=burndown by=cr note=product call: new INTEROP code + sentence for a partial stop (recommended), or keep 500 and amend the stop sentence
 - 2026-10-07T15:41:54Z occurrence=18-25-superservers
+- 2026-10-07T18:44:36Z status=decision-pending owner=burndown by=merge_repair note=restored: the 15:41:54Z occurrence=18-25-superservers line above is DW-2149's, moved here by a union merge; DW-2162 has no 18.25 occurrence
+- 2026-10-07T18:58:44Z status=routed owner=20-3-production-items by=merge_gate note=orchestrator ruling 2026-10-07: a stop or restart left half-stopped past the cap answers its own INTEROP code and Fixed-strings sentence, not a generic 500, and the card says so
 
 ### DW-2150: The serving-superserver arm's real ServingSuperserverPort() (the $PRINCIPAL read) is never driven to a non-empty answer by a test; SuperserverSet overrides it and the real-HTTP legs serve through the system default
 - source: spec-18-25-superservers.md | severity: med | fix-risk: low | footprint: in-footprint
@@ -10297,3 +10332,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: cycle-log-epic-18.md (Story 18.25 CI run 37646809169) | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: run 37646809169 head 44e8f5b3 instance shard 2/5: AssertMasked+7 and +9 red on the wire read while logs.audit.read passed moments later; the class ran 4/4 green on ocupilot-ci (run 1172) over the same source; OAuthAuthorizationServerSecret and OAuthRegisteredClientSecret read once the same way (inference)
 - 2026-10-07T17:30:11Z status=routed owner=burndown by=lead note=apply 23.4's READSECONDS poll (16313a0e) to AuditVendorSecrets.AssertMasked and to any sibling that reads a vendor row once
+
+### DW-2163: CI flake: agent-picker.browser-spec.mjs Leg 1's open-menu structural gate at 720px read the Users table and the panel toggle as overflowing (469px and 7px past the viewport) once, then passed on a re-run of the same head
+- source: cycle-log-epic-20.md (run 37670705022 attempt 1) | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: Failed in browser shard 1/3 of attempt 1 on 95eecef8; attempt 2 green; passed in 37649713980 and 37660214447 and 3/3 locally on ocupilot-b-ci (inference: measured mid-reflow after setViewport)
+- 2026-10-07T20:40:47Z status=routed owner=23-5-the-range-end-cleanup-part-5 by=lead note=settle the layout after setViewport(720) before openMenuViolations measures, as 20.1 did for the navigation map; same screen family as DW-2107

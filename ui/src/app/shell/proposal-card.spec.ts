@@ -869,6 +869,23 @@ describe('the proposal card', () => {
     expect(lines[0].textContent).toContain(STRINGS.webAppRepointedEffect);
   });
 
+  it('Story 20.2: a production stop, restart, update or recover states its own published sentence, not drawn destructive', () => {
+    // Mutation (Rule 19): drop the INTEROP.RECOVER code from `consequenceSentence` -> the recover leg goes red.
+    for (const [code, sentence] of [
+      ['INTEROP.STOP', STRINGS.interopStopConsequence],
+      ['INTEROP.RESTART', STRINGS.interopRestartConsequence],
+      ['INTEROP.UPDATE', STRINGS.interopUpdateConsequence],
+      ['INTEROP.RECOVER', STRINGS.interopRecoverConsequence],
+    ] as const) {
+      const { card } = mount(liveView({ consequence: code, destructive: false, maskedFields: [] }), { phase: 'live' });
+      expect(card.classList.contains('ocu-proposal-card-destructive')).toBe(false);
+      const lines = card.querySelectorAll('[data-slot="consequence"]');
+      expect(lines.length).toBe(1);
+      expect(lines[0].textContent).toContain(sentence);
+      TestBed.resetTestingModule();
+    }
+  });
+
   it('AD-10, Story 9.5: a change turning an SSL/TLS configuration\'s peer verification off is drawn destructive and states its effect', () => {
     // Mutation (Rule 19): drop the NOPEERCHECK code from `consequenceSentence` -> this goes red.
     const { card } = mount(liveView({ consequence: 'SSL.NOPEERCHECK', destructive: true, maskedFields: [] }), { phase: 'live' });

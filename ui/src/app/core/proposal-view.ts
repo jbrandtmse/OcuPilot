@@ -350,6 +350,11 @@ export const CONSEQUENCE_WEBAUTHSIGNOUT = 'WEBAUTH.SIGNOUT';
 
 /** The consequence of an SSL/TLS change to the superserver the web gateway connects through (Story 18.25). */
 export const CONSEQUENCE_SUPERSERVERSERVES = 'SUPERSERVER.SERVESOCUPILOT';
+/** Story 20.2: the production actions that wait or recover (AD-62); each is one published sentence. */
+export const CONSEQUENCE_INTEROPSTOP = 'INTEROP.STOP';
+export const CONSEQUENCE_INTEROPRESTART = 'INTEROP.RESTART';
+export const CONSEQUENCE_INTEROPUPDATE = 'INTEROP.UPDATE';
+export const CONSEQUENCE_INTEROPRECOVER = 'INTEROP.RECOVER';
 
 /** The field a switch file proposal's diff names the file the instance writes now in. */
 const JOURNAL_CURRENT_FIELD = 'CurrentFile';
@@ -452,6 +457,11 @@ export function consequenceSentence(code: string | undefined): string {
   if (code === CONSEQUENCE_WEBAUTHSIGNOUT) return STRINGS.authOptionsSignOutConsequence;
   // Story 18.25: the serving superserver's SSL/TLS sentence, published once.
   if (code === CONSEQUENCE_SUPERSERVERSERVES) return STRINGS.superserverServesConsequence;
+  // Story 20.2: the four production consequences, each published once.
+  if (code === CONSEQUENCE_INTEROPSTOP) return STRINGS.interopStopConsequence;
+  if (code === CONSEQUENCE_INTEROPRESTART) return STRINGS.interopRestartConsequence;
+  if (code === CONSEQUENCE_INTEROPUPDATE) return STRINGS.interopUpdateConsequence;
+  if (code === CONSEQUENCE_INTEROPRECOVER) return STRINGS.interopRecoverConsequence;
   return '';
 }
 

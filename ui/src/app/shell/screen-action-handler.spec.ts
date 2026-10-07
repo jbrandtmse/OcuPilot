@@ -2108,3 +2108,59 @@ describe('the ECP SSL/TLS authorizations tab\u2019s Authorize, Reject and Delete
     }
   });
 });
+
+/**
+ * Story 20.2: Productions' Start, sent at once, and its Stop, Restart, Update and Recover, each of which
+ * warns first with its own published sentence; a refused action shows the server's published sentence.
+ */
+describe('Productions\u2019 row actions (Story 20.2)', () => {
+  const PRODUCTIONS = 'OcuPilot.Screen.Descriptor.InteropProductionList';
+  const NAME = 'Probe.Production';
+  const ROW = { Name: NAME, Status: 'Running', LastStartTime: '', LastStopTime: '' };
+  const TARGET = { type: 'production', scope: 'USER', id: NAME };
+
+  it('sends Start at once, with no dialog, keyed by the production\u2019s name, and publishes the updated event', async () => {
+    const { actions, handler, store, calls, events } = mount({ kind: 'ok', status: 200, body: { action: 'updated', target: TARGET } }, PRODUCTIONS);
+    expect(actions.has(PRODUCTIONS, 'start')).toBe(true);
+    handler.startFor(PRODUCTIONS, 'start', NAME, ROW, store);
+    expect(handler.pending()).toBeNull();
+    await settle();
+    expect(calls.map((call) => JSON.parse(call.body))).toEqual([{ action: 'start', id: NAME }]);
+    expect(events.map((event) => `${event.action} ${event.type} ${event.id}`)).toEqual([`updated production ${NAME}`]);
+  });
+
+  it('opens the warning before Stop, Restart, Update and Recover with their own consequence, and sends once past Proceed', async () => {
+    // Mutation (Rule 19): remove the InteropProductionList entry from WARNING_CONSEQUENCES -> each
+    // action is sent at once and the warning assertions go red.
+    for (const [action, verb, consequence] of [
+      ['stop', STRINGS.actionStop, STRINGS.interopStopConsequence],
+      ['restart', STRINGS.actionRestart, STRINGS.interopRestartConsequence],
+      ['update', STRINGS.actionUpdate, STRINGS.interopUpdateConsequence],
+      ['recover', STRINGS.actionRecover, STRINGS.interopRecoverConsequence],
+    ] as const) {
+      const { handler, store, calls } = mount({ kind: 'ok', status: 200, body: { action: 'updated', target: TARGET } }, PRODUCTIONS);
+      handler.startFor(PRODUCTIONS, action, NAME, ROW, store);
+      const pending = handler.pending();
+      expect(pending?.kind).toBe('warning');
+      expect(pending?.verb).toBe(verb);
+      expect(pending?.consequence).toBe(consequence);
+      handler.cancelPending();
+      await settle();
+      expect(calls).toHaveLength(0);
+      handler.startFor(PRODUCTIONS, action, NAME, ROW, store);
+      handler.confirmPending();
+      await settle();
+      expect(calls.map((call) => JSON.parse(call.body))).toEqual([{ action, id: NAME }]);
+      TestBed.resetTestingModule();
+    }
+  });
+
+  it('shows a state refusal\u2019s published sentence from the envelope', async () => {
+    const refused = { kind: 'error', status: 409, code: 'INTEROP.PRODUCTION.NOTRUNNING', reason: STRINGS.interopRefusalNotRunning, detail: null } as unknown as JsonResult<unknown>;
+    const { handler, store, events } = mount(refused, PRODUCTIONS);
+    handler.startFor(PRODUCTIONS, 'start', NAME, { ...ROW, Status: 'Stopped' }, store);
+    await settle();
+    expect(store.refusal()).toBe(STRINGS.interopRefusalNotRunning);
+    expect(events).toEqual([]);
+  });
+});
