@@ -350,6 +350,11 @@ export const CONSEQUENCE_WEBAUTHSIGNOUT = 'WEBAUTH.SIGNOUT';
 
 /** The consequence of an SSL/TLS change to the superserver the web gateway connects through (Story 18.25). */
 export const CONSEQUENCE_SUPERSERVERSERVES = 'SUPERSERVER.SERVESOCUPILOT';
+/** Story 20.2: the production actions that wait or recover (AD-62); each is one published sentence. */
+export const CONSEQUENCE_INTEROPSTOP = 'INTEROP.STOP';
+export const CONSEQUENCE_INTEROPRESTART = 'INTEROP.RESTART';
+export const CONSEQUENCE_INTEROPUPDATE = 'INTEROP.UPDATE';
+export const CONSEQUENCE_INTEROPRECOVER = 'INTEROP.RECOVER';
 
 /** The consequences of a managed file transfer connection's delete and token revoke (Story 18.26). */
 export const CONSEQUENCE_MFTDELETE = 'MFT.DELETE';
@@ -459,6 +464,11 @@ export function consequenceSentence(code: string | undefined): string {
   // Story 18.26: the connection delete's and token revoke's sentences, each published once.
   if (code === CONSEQUENCE_MFTDELETE) return STRINGS.mftDeleteConsequence;
   if (code === CONSEQUENCE_MFTREVOKE) return STRINGS.mftRevokeConsequence;
+  // Story 20.2: the four production consequences, each published once.
+  if (code === CONSEQUENCE_INTEROPSTOP) return STRINGS.interopStopConsequence;
+  if (code === CONSEQUENCE_INTEROPRESTART) return STRINGS.interopRestartConsequence;
+  if (code === CONSEQUENCE_INTEROPUPDATE) return STRINGS.interopUpdateConsequence;
+  if (code === CONSEQUENCE_INTEROPRECOVER) return STRINGS.interopRecoverConsequence;
   return '';
 }
 

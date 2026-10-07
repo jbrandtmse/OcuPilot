@@ -2,15 +2,38 @@
 title: 'Story 20.2: Productions, listed and controlled'
 type: 'feature'
 created: '2026-10-07'
-status: 'in-progress'
+status: 'done'
 review_loop_iteration: 0
-baseline_revision: 'ffaaea6a07dc66fb523f8fec1d9ea9913842ac0d'
+baseline_revision: '505f200e83a1aa90d5455de38aba771e0d0cfe61'
+baseline_commit: '505f200e83a1aa90d5455de38aba771e0d0cfe61'
 followup_review_recommended: false
 context:
   - '{project-root}/_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md'
   - '{project-root}/_bmad-output/planning-artifacts/ux-designs/ux-OcuPilot-2026-09-08/EXPERIENCE.md'
 warnings: [oversized]
-deferred: []
+deferred:
+  - summary: >-
+      A stop from Running can leave the production reading Suspended while the tool answers success and the card promised Stopped.
+    evidence: |-
+      Task 0 measured it once (queues still holding messages). No test asserts what the caller sees; settle by a stop against a probe with queued messages and a read of the answer.
+    location: >-
+      src/OcuPilot/Port/InteropPort.cls
+    severity: medium (unverified)
+  - summary: >-
+      InteropControl.TestTheRowActionsMoveTheProbeThroughItsStates stops straight after a restart with no settle, which may flake.
+    evidence: |-
+      Inferred from Task 0's comments on a production stopped the moment it started; the test was green in every run here. Settle by repeated runs.
+    location: >-
+      src/OcuPilot/Test/InteropControl.cls
+    severity: low (unverified)
+  - summary: >-
+      The browser spec asserts no %SYS absence for the side bar and locator; only the command box has the leg.
+    evidence: |-
+      Test/Navigation.cls covers the side-bar payload for an interoperability namespace but not the %SYS absence.
+    location: >-
+      ui/browser/interop-productions.browser-spec.mjs
+    severity: low
+
 ---
 
 <intent-contract>
@@ -319,9 +342,20 @@ deferred: []
   - Correct EXPERIENCE.md `:64`, `:612` and `:653` in place, with no line inserted: eleven rail items by namespace (9 to 11 drawn), and one tile per applying area (seven to nine).
   - Move the quoted anchor in `home.page.ts:203,211,234,499` and `home.page.spec.ts:44,403` to the new wording.
 
-- [ ] [Halt] Fixed-strings bound (runner ruling at this story's re-dispatch, 2026-10-07, under the protocol Story 18.8's plan used): the merged table reads 2,789 literals and this story adds 39, taking it to 2,828, so the bound in `ui/tools/strings.test.mjs` moves from 2800 to 2900, with one comment line naming Story 20.2's thirty-nine literals and the 2,828 total, "under the same protocol (approved at its spec gate)". The bound line equals Epic 18's own move to 2900, so the two merge as one.
-- [ ] [Halt] Accepted from the first pass's proposals: each action's precondition refusal is answered by the port's `STATE` read as a 409 with its own code (not 400 `TOOL.ARGUMENTS`), the tools name `Namespace` in their fingerprint subject, and `INTEROP.NAMESPACE` joins their `PRECONDITIONCODES` (AD-51). The test helper is `Test/ProductionProbe.cls`, because `Test/InteropProbe` is Story 18.15's.
-- [ ] [Halt] Finish the story: the first pass built `InteropPort`, `InteropError`, the `interop` source kind, the `production` entity type, the prohibited-set entries and the count edits (uncommitted in the tree, inside this pass's diff); still to build are the four list descriptors, the six action tools, the baseline keys, the test classes, the client, the EXPERIENCE.md and DW-2148 edits, the browser spec, the mutation lines and the full ObjectScript sweep.
+- [x] [Halt] Fixed-strings bound (runner ruling at this story's re-dispatch, 2026-10-07, under the protocol Story 18.8's plan used): the merged table reads 2,789 literals and this story adds 39, taking it to 2,828, so the bound in `ui/tools/strings.test.mjs` moves from 2800 to 2900, with one comment line naming Story 20.2's thirty-nine literals and the 2,828 total, "under the same protocol (approved at its spec gate)". The bound line equals Epic 18's own move to 2900, so the two merge as one.
+- [x] [Halt] Accepted from the first pass's proposals: each action's precondition refusal is answered by the port's `STATE` read as a 409 with its own code (not 400 `TOOL.ARGUMENTS`), the tools name `Namespace` in their fingerprint subject, and `INTEROP.NAMESPACE` joins their `PRECONDITIONCODES` (AD-51). The test helper is `Test/ProductionProbe.cls`, because `Test/InteropProbe` is Story 18.15's.
+- [x] [Halt] Finish the story: the first pass built `InteropPort`, `InteropError`, the `interop` source kind, the `production` entity type, the prohibited-set entries and the count edits (uncommitted in the tree, inside this pass's diff); still to build are the four list descriptors, the six action tools, the baseline keys, the test classes, the client, the EXPERIENCE.md and DW-2148 edits, the browser spec, the mutation lines and the full ObjectScript sweep.
+- [x] [Halt] Second implement pass (fresh subagent) -- close the first full sweep's five failures and the unrecorded verification. The sweep on `ocupilot-b-ci` read 498 classes, 4010 tests, 5 failed. Each new interop tool (`interop.productions.start/stop/restart/update/recover`) is missing from a roster that pins tools by name; fix each by adding the rows (add-only, canonical names read from the instance), never by weakening an assertion:
+  - `Test/ClassicPageGate.cls` `OWNPAIRS` (the "fifty-four" count and name list) and `Test/MappingDescriptor.cls` `TestTheClassicPagesRosterIsTheDeclaringTools` (the declaring tools and their pages).
+  - `Test/ToolEmit.cls` `TestEveryLiveToolRequiresItsScreensPairs`: the five tools' required pairs do not equal the screen's pairs plus their own write permission as the test computes them.
+  - `Test/ToolRoundTrip.cls`: the five tools refuse `{}` with `TOOL.ARGUMENTS` ("argument 'Name' is missing"); add them to its refuse-`{}` roster.
+  - `Test/ToolWrite.cls` `TestEveryWriteToolsRequestTypeAgreesWithThePortsBodylessRoster`: "exactly fifteen shipped writes reach their target through another port" -- the five reach `InteropPort`; update the count and sentence.
+  - Rerun each of the five classes alone, then `InteropDescriptor`, `InteropControl`, `InteropGate`, `PortGate`, `DraftRegistry`, `Prohibited`, `Descriptor`, `ReadTool`, `SurfaceCoverage`, `GovernanceBaseline`, `Navigation`, one per call, each read from `%UnitTest_Result`. Do NOT rerun the full sweep.
+  - Record in `## Verification` a `mutation:` line for every pinning test in the Planned pinning mutations table (applied on the throwaway, tree recompiled, red observed, reverted byte-identical; client mutations need a rebuilt and redeployed bundle).
+  - Run `cd ui && npm run test:tools && npm run test:components`, `cd ui && npm run build` (bundle under 3165 kB), the story's browser spec files on a rebuilt and redeployed bundle (one file per call), `uv run scripts/check-objectscript.py` on changed .cls, and `bash scripts/lint-docs.sh`. Report whether the browser spec, the HTTP leg of Task 0 (one envelope per confirm) and the EXPERIENCE.md/DW-2148 edits are complete.
+
+- [x] [Halt] Review patches (test and comment edits only; no product code): (a) `Test/InteropControl.cls`: the restart leg must observe that restart did something (record the probe production's `LastStartTime` before and assert it advanced after, or an equivalent observable), plus a restart mutation line (replace the restart call with a no-op) in `## Verification`; (b) Rules: add a probe `Ens.Rule.Definition` subclass to `Test/ProductionProbe.cls` and assert in `Test/InteropDescriptor.cls` that Rules returns its `.cls` document name and Processes does not, plus a mutation line (Rules arm changed to the Processes family); (c) run and record the two missing AC2 client mutations: drop the `InteropProductionList` entry from `WARNING_CONSEQUENCES` and set `STOPSECONDS` to 20, each with the red test named, bundle rebuilt where needed; (d) `InteropDescriptor.TestTheToolShapes`: assert `$Parameter(tTool,"ADVERTISED") = 1` instead of `'= 0`; (e) the browser spec `after` hook's `PPGONE` probe built on an unset `^||x` cannot fail: make it observe the production's removal for real (or drop the always-true term and its claim); (f) correct the browser spec comment that claims a Status-drop mutation reddens the row cell, to what was actually mutated. Rerun each touched class alone and the browser spec on a rebuilt, redeployed bundle.
+
 
 **Acceptance Criteria:**
 
@@ -332,6 +366,46 @@ deferred: []
 - **AC4 (gates):** Given a principal lacking one declared pair, when it opens a screen, calls its tool or presses a row action, then it is refused naming that pair before any vendor call.
 - **AC5 (category, from 20.1):** Given an interoperability namespace, when the shell renders, then the side bar, command box and locator offer the four screens; given `%SYS`, then none of them is offered.
 
+### Review Findings
+
+Code review 2026-10-07 (first review; layers blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor): 1 decision-needed (resolved to defer), 10 patch (applied), 3 defer, 18 rejected.
+
+- [x] [Review][Patch] (high) AC5 legs read before the navigation map answered: CI 37649713980's USER red, and `%SYS` absence legs that passed vacuously [ui/browser/interop-productions.browser-spec.mjs:258] -- every AC5 read and AC1's side-bar read now wait for `waitForMapAnswered`; the `%SYS` leg asserts no Interoperability rail item, opens the bar only when closed, and requires the locator to name the screen.
+- [x] [Review][Patch] (med) AC1's Rules screen-and-tool equality compared two empty lists in `HSCUSTOM` [src/OcuPilot/Test/InteropDescriptor.cls:304] -- Rules runs in `USER` on the probe's rule, and every case requires port rows.
+- [x] [Review][Patch] (low) The row-action test changed a setting right after Start and stopped right after Restart with no settle (DW-2158) [src/OcuPilot/Test/InteropControl.cls:289] -- settles as `Prepare` and the browser spec do.
+- [x] [Review][Patch] (low) Two mutation comments claimed reds their code path cannot produce [src/OcuPilot/Test/InteropControl.cls:346, src/OcuPilot/Test/InteropGate.cls:153] -- deleted (run 1104 contradicts the second; `PreconditionCodes` is read only by a confirm's prohibited-set target read).
+- [x] [Review][Patch] (low) `InteropError`'s header named `self-protection.test.mjs` as its pin [src/OcuPilot/Api/InteropError.cls:5] -- names `interop.test.mjs`.
+- [x] [Review][Patch] (low) `HasCode` matched a vendor code by substring, so 940 matched 5940 [src/OcuPilot/Port/InteropPort.cls:600] -- whole-entry match.
+- [x] [Review][Patch] (low) `ProductionProbe.Remove` ran on with a foreign current production, claimed to purge bodies, and `STATEWORDS` was unused [src/OcuPilot/Test/ProductionProbe.cls:326] -- refuses first; doc and parameter corrected.
+- [x] [Review][Patch] (low) EXPERIENCE.md:64 said the 2026-09-08 wireframe draws eleven bands; it draws eight [EXPERIENCE.md:64] -- restored to the baseline line.
+- [x] [Review][Patch] (low) EXPERIENCE.md:604's Where cell called BUSY a state refusal [EXPERIENCE.md:604] -- names the wait.
+- [x] [Review][Patch] (low) The restart tool's doc said a failed start is reported by the read-back; that path answers the vendor's failure before any read, and AD-58 reads back only after OK [src/OcuPilot/Screen/Tool/InteropProductionRestart.cls:1] -- clause deleted.
+- [x] [Review][Defer] (med) A cross-scope confirm resolves the database pair and the prohibited target read in the confirming scope [src/OcuPilot/Screen/Tool/InteropProductionAction.cls:127] -- deferred: DW-2161 escalated (kernel confirm gate, shared with `ExplorerDocDbWrite`; the port still re-gates the payload's database).
+- [x] [Review][Defer] (med, decision resolved to defer) The plural `<Ens>ErrJobsNotStopped` is unmapped: a logged 500 with the production half-stopped, while the stop card says nothing is stopped [src/OcuPilot/Port/InteropPort.cls:621] -- deferred: DW-2162 decision-pending (a new public code and sentence).
+- [x] [Review][Defer] (low) DW-2148's edit left "seven" at `home.page.ts:202,:231` and `home.page.spec.ts:46,:118` -- deferred: occurrence on DW-2148; outside the cleared anchors.
+
+Rejected:
+
+- (theoretical) A post-write state read losing the runtime lock reports a done write as failed, and the update-pending probe can 503 a stop: only `Ens.Director`'s control calls hold `^Ens.Runtime`, each released before it returns.
+- (theoretical) The vendor's 30 s runtime and queue lock waits outlast the 15 s cap: they need a concurrent control operation.
+- (theoretical) The state changes between the refusal check and the vendor call.
+- (low) An over-long id raises `<SUBSCRIPT>` as a 500: needs a guard; ids are production names.
+- (theoretical) A read-only globals database answers `<PROTECT>` as 403: no production runs there.
+- (low) A separate routines database without READ answers an unnamed 403: needs a new pair; AD-62 names the globals-database limit.
+- (theoretical) Troubled with no production name reads every row Stopped.
+- (low) A non-current target in a NetworkStopped or shard-worker namespace reads Stopped: rare deployments, state not reproducible here.
+- (false) The BUSY test's update leg races its 12 s message: each leg waits the 2 s shortened cap.
+- (low) The command box is checked for Productions only: the four screens share one area predicate, and the side-bar leg checks all four.
+- (low) The 503 and refused-at-mint matrix rows have no direct test: needs a lock-holding harness.
+- (low) Three port reasons are not in EXPERIENCE.md: `DocDbPort`'s sibling reasons are unpublished too.
+- (rejected, spec or ledger edit) The frontmatter `deferred:`, the triage log, DW-2159's status and the Auto Run Result are stale: the lead's adjudication.
+- (maybe-false) The remaining unrecorded mutation comments: every AC has a recorded pinning mutation; none is shown false.
+- (low) `Test/Prohibited.cls:232`'s "forty-five" was stale at baseline; the line is add-only with Epic 18.
+- (low) The strings bound comment may conflict with Epic 18 at merge (inference): Rule 22 integrates forward.
+- (low) `MappingDescriptor`'s roster comment omits Story 20.2: a story list on a line Epic 18 appends to.
+- (theoretical) `ProductionProbe.Current` reads a lock timeout as no current production.
+- (low) The update and recover tools cite AD-15/AD-53 named gaps the spine does not yet carry: the runner's spine write at ship (Spec Change Log).
+
 ## Spec Change Log
 
 - 2026-10-07, runner: implement pass 1 halted on the Fixed-strings bound (2,828 against 2,800). The runner moved the bound to 2900 under the 18.8 protocol and accepted the pass's three AD-51 proposals; Task 0 matched every cell and measured no vendor audit event for update or recover (the runner writes AD-15/AD-53's named gaps at ship). Status reset to `in-progress`; the partial implementation stays in the tree.
@@ -339,6 +413,24 @@ deferred: []
 - 2026-10-07, runner spec gate: AD-62 claimed and written, with this story's AD-13 (`production` id), AD-36 (source kind `interop`), AD-44 (`CLASSICPAGES`) and AD-8 pair particulars folded into AD-62's own Rule rather than amending those ADs (Epic 18 amends AD-13 concurrently); AD-8 gained the vendor-escalation sentence; `InteropPort` joined the paradigm's port list, AD-29's Binds and the capability map. AD-15/AD-53 named gaps for update and recover are written at ship if Task 0 measures no vendor event. The count-word bumps (`AdminPairCorpus.cls:58`, `screen-mirror.test.mjs:2720`) are add-only count edits and cleared; DW-2148's in-place EXPERIENCE.md and `home.page.ts` edits await the orchestrator's clearance, and the implement prompt says whether they run.
 
 ## Review Triage Log
+
+### 2026-10-07 - Review pass
+
+- verdicts: 13 findings - high 0, medium 3, low 8, false 0, maybe-false 2
+- findings:
+  - `[medium]` `[patch]` Restart's effect unpinned (a no-op restart passes) - InteropControl now asserts `LastStartTime` advanced; mutation recorded.
+  - `[medium]` `[patch]` Rules list compared empty-to-empty - probe rule class added, test asserts Rules names it and Processes does not; mutation recorded.
+  - `[medium]` `[patch]` AC2 15 s wording and `WARNING_CONSEQUENCES` had no executed mutation - both mutations run and recorded.
+  - `[low]` `[defer]` AC5 side bar and locator %SYS legs not asserted in the browser - deferred, low.
+  - `[low]` `[patch]` `ADVERTISED '= 0` cannot fail - now `= 1`.
+  - `[low]` `[patch]` PPGONE probe built on an unset process-private global - now asserts `ProductionProbe.Gone()`.
+  - `[low]` `[patch]` Browser spec comment claimed an unrun mutation - corrected.
+  - `[maybe-false]` `[defer]` Stop may report success while the production reads Suspended - deferred, medium unverified.
+  - `[maybe-false]` `[defer]` Restart-then-stop timing may flake - deferred, low unverified.
+  - `[low]` `[reject]` ToolEmit interop leg is self-referential - InteropDescriptor holds the literal pairs; not worth more.
+  - `[low]` `[reject]` Intent audit: 647/68 counts not asserted, unreachable states covered only by the pure Refusal matrix, 15 s covered through a seam plus the sentence pin - descriptive, environment-dependent; no defect shown.
+  - `[low]` `[reject]` Intent audit: explicit namespace parameter better covered than scope-derived - the screen-vs-tool test goes through Read.Execute.
+  - `[low]` `[reject]` Armed tests need a throwaway - by design.
 
 ## Design Notes
 
@@ -487,7 +579,41 @@ Also measured:
 - Task 0: audit, with auditing on: start, stop and restart record `%Ensemble/%Production/StartStop`; update and recover record no vendor event (two runs each), so the doc comments of the update and recover tools carry AD-15/AD-53's named gap, and the spine's gap lines are the runner's to add.
 - Task 0: no call wrote a line to a capture opened around it (`devlines=0` on every call), so no capture is opened in the port; `scripts/check-objectscript.py` refuses one outside the three admin-style ports.
 - Task 0: one finding outside the table: a stop from Running can leave the production reading Suspended instead of Stopped when its queues still hold messages (measured once, after a start that restored a suspended queue).
-- Task 0: the HTTP leg (one envelope per confirm) was not measured: no tool or route existed when this pass halted.
+- Task 0: the HTTP leg, measured in the second implement pass on `ocupilot-b-ci`: a confirm over HTTP (`POST /proposal/:id/confirm`, as `_SYSTEM`) of each of start, stop, start, restart, update and recover answered 200 with one JSON object of 224 bytes that begins `{`, ends `}` and parses whole, so no vendor device output reaches the response.
+
+**Second implement pass (`ocupilot-b-ci`, one class per call, each read from the runner's landed run):**
+
+- Five sweep failures closed by add-only roster rows: `ClassicPageGate` 8 tests (the five names in `OWNPAIRS`, the sentence "fifty-nine", and `%Ens_Portal:U`, `%Ens_ProductionConfig:R`, `%Ens_ProductionRun:U` on the probe principals), `MappingDescriptor` 6 (the five in `CLASSICROSTER`), `ToolEmit` 11 (a branch for the interop actions: screen pairs, `%Ens_ProductionRun:USE`, WRITE on this namespace's globals database), `ToolRoundTrip` 2 (five `TOOL.ARGUMENTS` entries), `ToolWrite` 34 (other-port writes 15 to 20, five more through the interoperability port). All 0 failed.
+- Rerun, 0 failed each: `InteropDescriptor` 11, `InteropControl` 11, `InteropGate` 4, `PortGate` 4, `DraftRegistry` 9, `Prohibited` 13, `Descriptor` 60, `ReadTool` 28, `SurfaceCoverage` 4, `GovernanceBaseline` 3, `Navigation` 14.
+- Client: `npm run test:tools` 1881 pass; `npm run test:components` 197 files, 2589 tests pass; `npm run build` initial total 3.05 MB (under 3165 kB). Browser, rebuilt and redeployed bundle, one file per call: `interop-productions` 4, `namespace-categories` 4, `rail-icons` 3, `a11y-structural-invariants` 13, all pass.
+- `uv run scripts/check-objectscript.py` over the changed and new classes: 0 problems. `bash scripts/lint-docs.sh`: 0 issues.
+- mutation: Read.cls interop branch asks `Productions` for every endpoint -> `InteropDescriptor` `TestEachScreenAndItsReadToolReadTheSameRows` red (run 1098); reverted byte-identical.
+- mutation: `Status` dropped from the Productions descriptor's `read.fields` -> `InteropDescriptor` two tests red (run 1099), the registry refusing the filter; reverted byte-identical. The browser row was not mutated.
+- mutation: `StopProduction` call replaced by `StartProduction` -> `InteropControl` three tests red (run 1100); reverted byte-identical.
+- mutation: recover's `CONSEQUENCECODE` emptied -> `InteropControl` `TestTheAgentsRecoverConfirms` red (run 1101); client `proposal-view.ts` recover line returning `''` -> `proposal-card.spec.ts` red (1 failed); both reverted byte-identical.
+- mutation: stop dropped from the `NOTRUNNING` refusal in `Refusal` -> `InteropControl` two tests red (run 1102); reverted byte-identical.
+- mutation: `ErrProductionNotQuiescent` and `ErrJobNotStopped` mapped to `$$$OK` -> `InteropControl` `TestABusyProductionIsRefusedAndLeftRunning` red (run 1103); reverted byte-identical.
+- mutation: `%Ens_ProductionRun:USE` dropped from `PrivilegePairs` -> `InteropGate` `TestEachMissingPairIsRefusedByNameOnEachTool` red (run 1104); reverted byte-identical.
+- mutation: the globals-database pair check skipped in the port -> `InteropGate` two tests red (run 1105); `PortGate` stayed green (run 1106), because its Interop leg holds the endpoint pairs, so the endpoint-pair evaluation skipped instead -> `PortGate` `TestEveryPortEvaluatesItsDeclaredGate` red (run 1107); both reverted byte-identical.
+- mutation: `screensThatApply` returning every screen, bundle rebuilt and redeployed -> browser `AC5: the command box offers Productions in USER and not in %SYS` red; reverted, bundle rebuilt and redeployed again.
+- mutation: `RestartProduction` replaced by `$$$OK` in the port -> `InteropControl` `TestTheAgentsRestartConfirms` red on the `LastStartTime` leg (unchanged, run 1117), and `TestABusyProductionIsRefusedAndLeftRunning`; reverted byte-identical.
+- mutation: the Rules arm of `ListClasses` changed to the Processes family -> `InteropDescriptor` `TestTheRulesListNamesTheProbeRuleAndProcessesDoesNot` and `TestTheCodeListsReadThroughThePort` red (run 1118); reverted byte-identical.
+- mutation: the `InteropProductionList` entry removed from `WARNING_CONSEQUENCES` -> `screen-action-handler.spec.ts` "opens the warning before Stop, Restart, Update and Recover" red (1 failed of 95); reverted byte-identical. The spec reads the source, so no bundle was involved.
+- mutation: `STOPSECONDS` set to 20 -> `ui/tools/interop.test.mjs` "the wait ... is the port's STOPSECONDS" red ("interopStopConsequence states a wait of 20 seconds"); reverted byte-identical.
+- Review patches: `InteropDescriptor` now compiles `ProductionProbe`'s probe classes, so `ci-throwaway.sh` lists it among the `OCUPILOT_ALLOW_PRINCIPALS` classes; it passes 12 (run 1119) and `InteropControl` 11 (run 1120), both 0 failed; `ci.test.mjs` and `interop.test.mjs` pass (89); the browser spec passes 4 on a rebuilt, redeployed bundle, its `after` hook now asserting `ProductionProbe.Gone()`.
+- Every mutation was loaded as a whole-tree `LoadDir` compile; after the last revert the five touched files read identical checksums to their pre-mutation state. The probe production, its classes and the temporary HTTP-measurement class were removed from `ocupilot-b-ci`.
+
+**QA pass (`ocupilot-b-ci`):**
+
+- (QA) `ui/browser/interop-productions.browser-spec.mjs`: one added test, the %SYS side-bar and locator absence leg on the Productions route (DW-2159); the spec passes 5 on a rebuilt, redeployed bundle.
+- mutation: `NavigationService.applies` returning true for every area, bundle rebuilt and redeployed -> browser `AC5: in %SYS the side bar lists no Interoperability screen...` red, beside the command-box leg; reverted byte-identical (git checkout), bundle rebuilt and redeployed, 5 pass.
+
+**Review pass (`ocupilot-b-ci`, worktree `src` synced into the throwaway's mounted copy before each whole-tree `LoadDir`):**
+
+- (review) CI 37649713980's red reproduced: with every navigation read held 4 s (scratch harness), HEAD's spec reds `USER: Productions is offered: []`; the patched spec passes 5 under the same hold, and 5 in each of four plain runs on the rebuilt, redeployed bundle.
+- mutation: `NavigationService.applies` answering `appliesAnswered()` for a declared area (fail closed kept, the area's own answer ignored), bundle rebuilt and redeployed -> both AC5 `%SYS` legs red (`%SYS: Productions is not offered`, `%SYS: the rail draws no Interoperability item`); reverted byte-identical, rebuilt and redeployed.
+- mutation: `Read.cls`'s interop branch answering no rows for `Rules` -> `InteropDescriptor` green before the review patch (run 1126) and `TestEachScreenAndItsReadToolReadTheSameRows` red on `InteropRuleList` after it (run 1127); reverted byte-identical.
+- (review) Final tree, one class per call, 0 failed each: `InteropDescriptor` 12 (runs 1128, 1131), `InteropControl` 11 (1129; 1121-1123 before the settle patch), `InteropGate` 4 (1130); `npm run test:tools` 1881 pass; `check-objectscript.py` 0 problems.
 
 **Setup (slot B):**
 
@@ -530,22 +656,15 @@ Also measured:
 
 ## Auto Run Result
 
-Status: blocked
-Blocking condition: the Fixed strings table reads 2,789 literals today and this story adds 39, 2,828 against the 2,800 bound; the runner's ruling forbids raising the bound, so the pass stopped before any string, descriptor or tool was written.
+Status: done
+Blocking condition: none
 
-Summary: Task 0 ran and agrees with the table, with no intent gap; the port, its error class, the `interop` source kind in both engines, the `production` entity type and its prohibited-set arm are built and compile; the rest waits for the string-bound decision.
+Summary: Story 20.2 is built on top of the first pass. `InteropPort` (list, STATE and five writes behind its own gate), `InteropError`, the `interop` source kind in both engines, the `production` entity type, four list descriptors, six tool classes (an abstract base and five actions), baseline keys, test classes (`InteropDescriptor`, `InteropControl`, `InteropGate`, `InteropGateSeam`, helper `ProductionProbe`), roster rows, the client labels, dialogs and strings, the browser spec, the EXPERIENCE.md edits and the DW-2148 anchors. The Fixed-strings bound moved to 2900.
 
-Planned and HALTed after planning.
+Review: 13 findings: 3 medium and 3 low patched (tests and comments only; one low also armed InteropDescriptor), 3 deferred, 4 rejected. Follow-up review recommended: false.
 
-Measured on `ocupilot-b-ci` during planning (USER, a probe production, and seven probe principals, all removed afterwards):
+Verification:
 
-- the vocabulary table;
-- the vendor's privilege checks;
-- identity after each call;
-- the classic page spellings.
-
-The runner acts at the spec gate on:
-
-- claiming AD-62 and the spine items under Design Notes (AD-8's vendor-escalation sentence among them);
-- clearing or deferring the runner-gated DW-2148 task;
-- clearing the in-place word edit "eleven" to "twelve" sources.
+- Full ObjectScript sweep on `ocupilot-b-ci`, read from `%UnitTest_Result` by the runner: 498 classes, 4010 tests, 5 failed. All five were roster rows for the new tools (`ClassicPageGate`, `MappingDescriptor`, `ToolEmit`, `ToolRoundTrip`, `ToolWrite`); each was fixed and re-run green alone (8, 6, 11, 2 and 34 tests). The sweep was not repeated after those and the review patches; the touched story classes and rosters were re-run one per call, all 0 failed.
+- `npm run test:tools` 1881 passed, `test:components` 2589 passed, build 3.05 MB under 3165 kB, four story browser specs passed on a redeployed bundle, `check-objectscript.py` and `lint-docs.sh` clean. `npm test` as a whole and `smoke.sh` were not run.
+- Mutation lines are recorded under ## Verification.

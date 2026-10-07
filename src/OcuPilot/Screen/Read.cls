@@ -34,8 +34,10 @@
 /// <method>PathPortClass</method>; <code>background</code> through <method>BackgroundPortClass</method>;
 /// <code>atelier</code>, the source-code API, through <method>AtelierPortClass</method> (AD-61);
 /// <code>encryption</code> through <method>EncryptionPortClass</method>; <code>docdb</code> through
-/// <method>DocDbPortClass</method>; and <code>sqlactivity</code>, the instance's running SQL
-/// statements, through <method>SqlActivityPortClass</method>. <code>port: "state"</code> is
+/// <method>DocDbPortClass</method>; <code>sqlactivity</code>, the instance's running SQL
+/// statements, through <method>SqlActivityPortClass</method>; and <code>interop</code>, the namespace's
+/// productions and interoperability classes, through <method>InteropPortClass</method>
+/// (AD-62). <code>port: "state"</code> is
 /// OcuPilot's own protected state (AD-9), resolved against a kernel store's guarded list through
 /// <method>StateRows</method>. The second changes where the rows come from and nothing else: the
 /// same declared <code>fields</code>, the same secret strip, the same filter, sort and view rule,
@@ -289,6 +291,19 @@ ClassMethod SqlActivityPortClass() As %String
     Quit "OcuPilot.Port.SqlActivityPort"
 }
 
+/// <p>The <code>read.source.port</code> value naming the namespace's productions and its business
+/// process, data transformation and business rule classes, read through
+/// <method>InteropPortClass</method> behind that port's own gate, which is handed the route's scope as
+/// its namespace (AD-29, AD-36, AD-62, Story 20.2).</p>
+Parameter SOURCEINTEROP = "interop";
+
+/// <p>The port every <b>interop</b> read is issued through. Overridable so a fixture can reach
+/// another; production never overrides it.</p>
+ClassMethod InteropPortClass() As %String
+{
+    Quit "OcuPilot.Port.InteropPort"
+}
+
 /// <p>The package a <code>state</code> source's <code>endpoint</code> names a class in, trailing
 /// dot included. A source declares the class's short name -- <code>Agent</code> -- and never a
 /// package-qualified one, so no descriptor can point the read at a class outside the kernel's own
@@ -387,7 +402,7 @@ ClassMethod Execute(pDescriptor As %String, pMaxRows As %String = "", Output pRe
         ; AD-36 as amended (Story 16.7): a bare admin type read as a list over one member.
         Set tRowsMember = $Select($IsObject(tSource) && (tSource.%GetTypeOf("rows") = "string"): tSource.%Get("rows"), 1: "")
         Set tBareRows = (tRowsMember '= "") && (tSource.%Get("port") = ..#SOURCEADMIN) && $Match(tSourceType, ..#BARETYPEPATTERN)
-        If '$IsObject(tSource) || '$ListFind($ListBuild(..#SOURCEADMIN, ..#SOURCESTATE, ..#SOURCEMGMNT, ..#SOURCELOGSOURCE, ..#SOURCEPATH, ..#SOURCETIMELINE, ..#SOURCEBACKGROUND, ..#SOURCEATELIER, ..#SOURCEENCRYPTION, ..#SOURCEDOCDB, ..#SOURCESQLACTIVITY), tSource.%Get("port")) || ('tBareRows && (tSourceType '= ..#READTYPE) && (((tSourceType '= ..#OBJECTTYPE) && (tSourceType '= ..#UPCOMINGTYPE) && (tSourceType '= ..#HISTORYTYPE) && (tSourceType '= ..#VOLUMELISTTYPE) && (tSourceType '= ..#DATAELEMENTLISTTYPE)) || (tSource.%Get("port") '= ..#SOURCEADMIN))) {
+        If '$IsObject(tSource) || '$ListFind($ListBuild(..#SOURCEADMIN, ..#SOURCESTATE, ..#SOURCEMGMNT, ..#SOURCELOGSOURCE, ..#SOURCEPATH, ..#SOURCETIMELINE, ..#SOURCEBACKGROUND, ..#SOURCEATELIER, ..#SOURCEENCRYPTION, ..#SOURCEDOCDB, ..#SOURCESQLACTIVITY, ..#SOURCEINTEROP), tSource.%Get("port")) || ('tBareRows && (tSourceType '= ..#READTYPE) && (((tSourceType '= ..#OBJECTTYPE) && (tSourceType '= ..#UPCOMINGTYPE) && (tSourceType '= ..#HISTORYTYPE) && (tSourceType '= ..#VOLUMELISTTYPE) && (tSourceType '= ..#DATAELEMENTLISTTYPE)) || (tSource.%Get("port") '= ..#SOURCEADMIN))) {
             Set tSC = ..Internal(pDescriptor _ " declares no read this executor can issue", .pHttpStatus, .pFault)
             Quit
         }
@@ -508,6 +523,16 @@ ClassMethod Execute(pDescriptor As %String, pMaxRows As %String = "", Output pRe
             Set tQuery("maxRows") = tMax + 1
             Set tQuery("namespace") = ##class(OcuPilot.Kernel.Scope).Current()
             Set tPortSC = $ClassMethod(..DocDbPortClass(), "Invoke", tSource.%Get("endpoint"), ..#READTYPE, .tQuery, "", .tAnswer, .pHttpStatus, .pFault)
+            If $$$ISERR(tPortSC) {
+                Set tSC = tPortSC
+                Quit
+            }
+        } ElseIf tSource.%Get("port") = ..#SOURCEINTEROP {
+            ; The namespace's productions and interoperability classes (Story 20.2): the route's own
+            ; scope travels as the port's namespace, and the port's gate runs before any row.
+            Set tQuery("maxRows") = tMax + 1
+            Set tQuery("namespace") = ##class(OcuPilot.Kernel.Scope).Current()
+            Set tPortSC = $ClassMethod(..InteropPortClass(), "Invoke", tSource.%Get("endpoint"), ..#READTYPE, .tQuery, "", .tAnswer, .pHttpStatus, .pFault)
             If $$$ISERR(tPortSC) {
                 Set tSC = tPortSC
                 Quit

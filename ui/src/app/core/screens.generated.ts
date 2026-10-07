@@ -10,7 +10,7 @@
  * declarations disagree.
  */
 
-export type EntityTypeKey = 'web-application' | 'rest-service' | 'user' | 'role' | 'resource' | 'service' | 'ssl-configuration' | 'x509-credential' | 'ldap-configuration' | 'wallet-collection' | 'wallet-secret' | 'oauth2-client-configuration' | 'oauth2-server-definition' | 'oauth2-resource-server' | 'oauth2-server' | 'oauth2-server-client' | 'audit-event' | 'audit-user-event' | 'auditing-configuration' | 'task' | 'task-history-entry' | 'process' | 'lock' | 'database' | 'device' | 'audit-record' | 'application-error' | 'log-entry' | 'agent-definition' | 'agent-switch' | 'agent-policy' | 'allowed-directory' | 'namespace' | 'web-session' | 'background-task' | 'global-mapping' | 'routine-mapping' | 'package-mapping' | 'database-configuration' | 'language-server' | 'class' | 'routine' | 'journal-file' | 'journal-file-database' | 'journal-settings' | 'journal-record' | 'license-key' | 'license-server' | 'ecp-data-server' | 'ecp-settings' | 'ecp-ssl-connection' | 'encryption-key-file' | 'database-encryption-keys' | 'data-element-encryption-keys' | 'encryption-startup' | 'docdb-database' | 'sql-statement' | 'authentication-options' | 'superserver' | 'mft-connection';
+export type EntityTypeKey = 'web-application' | 'rest-service' | 'user' | 'role' | 'resource' | 'service' | 'ssl-configuration' | 'x509-credential' | 'ldap-configuration' | 'wallet-collection' | 'wallet-secret' | 'oauth2-client-configuration' | 'oauth2-server-definition' | 'oauth2-resource-server' | 'oauth2-server' | 'oauth2-server-client' | 'audit-event' | 'audit-user-event' | 'auditing-configuration' | 'task' | 'task-history-entry' | 'process' | 'lock' | 'database' | 'device' | 'audit-record' | 'application-error' | 'log-entry' | 'agent-definition' | 'agent-switch' | 'agent-policy' | 'allowed-directory' | 'namespace' | 'web-session' | 'background-task' | 'global-mapping' | 'routine-mapping' | 'package-mapping' | 'database-configuration' | 'language-server' | 'class' | 'routine' | 'journal-file' | 'journal-file-database' | 'journal-settings' | 'journal-record' | 'license-key' | 'license-server' | 'ecp-data-server' | 'ecp-settings' | 'ecp-ssl-connection' | 'encryption-key-file' | 'database-encryption-keys' | 'data-element-encryption-keys' | 'encryption-startup' | 'docdb-database' | 'sql-statement' | 'authentication-options' | 'superserver' | 'mft-connection' | 'production';
 
 /**
  * The closed archetype vocabulary, mirrored from OcuPilot.Screen.Archetype. A screen's
@@ -170,7 +170,7 @@ export interface ReadSourcePart {
  * `timeline` source's fields and criterion are fixed.
  */
 export interface ReadSource {
-  readonly port: 'admin' | 'state' | 'mgmnt' | 'logsource' | 'path' | 'timeline' | 'background' | 'atelier' | 'encryption' | 'docdb' | 'sqlactivity';
+  readonly port: 'admin' | 'state' | 'mgmnt' | 'logsource' | 'path' | 'timeline' | 'background' | 'atelier' | 'encryption' | 'docdb' | 'sqlactivity' | 'interop';
   readonly endpoint: string;
   /**
    * `LIST` reads rows; `GET` reads one object as the one row, and a 404 reads as none;
@@ -529,7 +529,8 @@ export const ENTITY_TYPES: readonly EntityTypeKey[] = [
   "sql-statement",
   "authentication-options",
   "superserver",
-  "mft-connection"
+  "mft-connection",
+  "production"
 ];
 
 /**
@@ -10439,6 +10440,532 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "toolIdentifier": "shell.home",
     "read": null,
     "table": null,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.InteropProcessList",
+    "route": "interoperability/processes",
+    "area": "interoperability",
+    "labelKey": "interopProcessesLabel",
+    "sideBarPosition": 2,
+    "archetype": "list",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Ens_Portal",
+        "permission": "USE"
+      },
+      {
+        "resource": "%Ens_Code",
+        "permission": "READ"
+      }
+    ],
+    "ownPrivileges": [
+      {
+        "resource": "%Ens_Code",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "class",
+    "secondaryEntityTypes": [],
+    "scope": "namespace",
+    "parentScope": "",
+    "id": {
+      "kind": "single",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "Name",
+        "Modified"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "interopProcessesEmpty",
+    "commandAliases": [
+      "business processes",
+      "processes"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "interopProcessesPrompt1"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "interopProcessesPrompt2"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "interopProcessesPrompt3"
+      }
+    ],
+    "classicPage": "EnsPortal.BusinessProcesses",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "interop",
+        "endpoint": "Processes",
+        "type": "LIST"
+      },
+      "fields": [
+        "Name",
+        "Modified"
+      ],
+      "filter": [
+        "Name"
+      ],
+      "sort": {
+        "fields": [
+          "Name",
+          "Modified"
+        ],
+        "default": "Name",
+        "direction": "asc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Name",
+          "labelKey": "tableColumnName",
+          "kind": "name"
+        },
+        {
+          "field": "Modified",
+          "labelKey": "explorerColumnModified",
+          "kind": "text"
+        }
+      ],
+      "emptyNextKey": "tableReadOnlyEmptyNext",
+      "emptyAgentKey": ""
+    },
+    "toolIdentifier": "interop.processes",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.InteropProductionList",
+    "route": "interoperability/productions",
+    "area": "interoperability",
+    "labelKey": "interopProductionsLabel",
+    "sideBarPosition": 1,
+    "archetype": "list",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Ens_Portal",
+        "permission": "USE"
+      },
+      {
+        "resource": "%Ens_ProductionConfig",
+        "permission": "READ"
+      }
+    ],
+    "ownPrivileges": [
+      {
+        "resource": "%Ens_ProductionConfig",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "production",
+    "secondaryEntityTypes": [],
+    "scope": "namespace",
+    "parentScope": "",
+    "id": {
+      "kind": "single",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [
+      {
+        "id": "start",
+        "selfProtection": ""
+      },
+      {
+        "id": "stop",
+        "selfProtection": ""
+      },
+      {
+        "id": "restart",
+        "selfProtection": ""
+      },
+      {
+        "id": "update",
+        "selfProtection": ""
+      },
+      {
+        "id": "recover",
+        "selfProtection": ""
+      }
+    ],
+    "context": {
+      "fields": [
+        "Name",
+        "Status",
+        "LastStartTime",
+        "LastStopTime"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "interopProductionsEmpty",
+    "commandAliases": [
+      "productions",
+      "production control",
+      "start production",
+      "stop production"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "interopProductionsPrompt1"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "interopProductionsPrompt2"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "interopProductionsPrompt3"
+      }
+    ],
+    "classicPage": "EnsPortal.Productions",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "interop",
+        "endpoint": "Productions",
+        "type": "LIST"
+      },
+      "fields": [
+        "Name",
+        "Status",
+        "LastStartTime",
+        "LastStopTime"
+      ],
+      "filter": [
+        "Name",
+        "Status"
+      ],
+      "sort": {
+        "fields": [
+          "Name",
+          "Status",
+          "LastStartTime",
+          "LastStopTime"
+        ],
+        "default": "Name",
+        "direction": "asc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Name",
+          "labelKey": "tableColumnName",
+          "kind": "name"
+        },
+        {
+          "field": "Status",
+          "labelKey": "taskHistoryColumnStatus",
+          "kind": "status"
+        },
+        {
+          "field": "LastStartTime",
+          "labelKey": "interopProductionColumnLastStarted",
+          "kind": "text"
+        },
+        {
+          "field": "LastStopTime",
+          "labelKey": "interopProductionColumnLastStopped",
+          "kind": "text"
+        }
+      ],
+      "emptyNextKey": "",
+      "emptyAgentKey": "interopProductionsEmptyAgent"
+    },
+    "toolIdentifier": "interop.productions",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.InteropRuleList",
+    "route": "interoperability/rules",
+    "area": "interoperability",
+    "labelKey": "interopRulesLabel",
+    "sideBarPosition": 4,
+    "archetype": "list",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Ens_Portal",
+        "permission": "USE"
+      },
+      {
+        "resource": "%Ens_Code",
+        "permission": "READ"
+      }
+    ],
+    "ownPrivileges": [
+      {
+        "resource": "%Ens_Code",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "class",
+    "secondaryEntityTypes": [],
+    "scope": "namespace",
+    "parentScope": "",
+    "id": {
+      "kind": "single",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "Name",
+        "Modified"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "interopRulesEmpty",
+    "commandAliases": [
+      "business rules",
+      "rules",
+      "routing rules"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "interopRulesPrompt1"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "interopRulesPrompt2"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "interopRulesPrompt3"
+      }
+    ],
+    "classicPage": "EnsPortal.Rules",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "interop",
+        "endpoint": "Rules",
+        "type": "LIST"
+      },
+      "fields": [
+        "Name",
+        "Modified"
+      ],
+      "filter": [
+        "Name"
+      ],
+      "sort": {
+        "fields": [
+          "Name",
+          "Modified"
+        ],
+        "default": "Name",
+        "direction": "asc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Name",
+          "labelKey": "tableColumnName",
+          "kind": "name"
+        },
+        {
+          "field": "Modified",
+          "labelKey": "explorerColumnModified",
+          "kind": "text"
+        }
+      ],
+      "emptyNextKey": "tableReadOnlyEmptyNext",
+      "emptyAgentKey": ""
+    },
+    "toolIdentifier": "interop.rules",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.InteropTransformList",
+    "route": "interoperability/transforms",
+    "area": "interoperability",
+    "labelKey": "interopTransformsLabel",
+    "sideBarPosition": 3,
+    "archetype": "list",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Ens_Portal",
+        "permission": "USE"
+      },
+      {
+        "resource": "%Ens_Code",
+        "permission": "READ"
+      }
+    ],
+    "ownPrivileges": [
+      {
+        "resource": "%Ens_Code",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "class",
+    "secondaryEntityTypes": [],
+    "scope": "namespace",
+    "parentScope": "",
+    "id": {
+      "kind": "single",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "Name",
+        "Modified"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "interopTransformsEmpty",
+    "commandAliases": [
+      "data transformations",
+      "transformations",
+      "dtl"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "interopTransformsPrompt1"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "interopTransformsPrompt2"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "interopTransformsPrompt3"
+      }
+    ],
+    "classicPage": "EnsPortal.DataTransformations",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "interop",
+        "endpoint": "Transforms",
+        "type": "LIST"
+      },
+      "fields": [
+        "Name",
+        "Modified"
+      ],
+      "filter": [
+        "Name"
+      ],
+      "sort": {
+        "fields": [
+          "Name",
+          "Modified"
+        ],
+        "default": "Name",
+        "direction": "asc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Name",
+          "labelKey": "tableColumnName",
+          "kind": "name"
+        },
+        {
+          "field": "Modified",
+          "labelKey": "explorerColumnModified",
+          "kind": "text"
+        }
+      ],
+      "emptyNextKey": "tableReadOnlyEmptyNext",
+      "emptyAgentKey": ""
+    },
+    "toolIdentifier": "interop.transforms",
+    "refreshDefault": 0,
     "banner": null,
     "tab": null,
     "rowTarget": null,

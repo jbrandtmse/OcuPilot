@@ -216,6 +216,17 @@ Method TestEveryLiveToolRequiresItsScreensPairs()
                 Set tWritePair = $ListBuild(tResource, "WRITE")
                 If '$ListFind(tExpected, tWritePair) Set tExpected = tExpected _ $ListBuild(tWritePair)
             }
+        } ElseIf $ClassMethod(tTool.class, "%Extends", "OcuPilot.Screen.Tool.InteropProductionAction") {
+            ; Story 20.2: the production actions declare %Ens_ProductionRun:USE and WRITE on the globals
+            ; database of the request's namespace, here this one's, after their screen's pairs, each
+            ; once (AD-8, AD-62).
+            Set tExpected = ##class(OcuPilot.Screen.Gate).RequiredPairs($Parameter(tTool.class, "DESCRIPTORCLASS"), .tExpectedResolved)
+            Do $$$AssertTrue($ListLength(tExpected) > 0, tTool.name _ ": its screen declares pairs")
+            Do $$$AssertTrue(##class(OcuPilot.Kernel.Shell.Namespaces).GlobalDatabase($Namespace, .tGlobalResource, .tReadOnly), tTool.name _ ": this namespace's globals database resolves")
+            Set tRunPair = $ListBuild($Parameter(tTool.class, "WRITERESOURCE"), $Parameter(tTool.class, "WRITEPERMISSION"))
+            Set tWritePair = $ListBuild(tGlobalResource, "WRITE")
+            If '$ListFind(tExpected, tRunPair) Set tExpected = tExpected _ $ListBuild(tRunPair)
+            If '$ListFind(tExpected, tWritePair) Set tExpected = tExpected _ $ListBuild(tWritePair)
         } ElseIf $ClassMethod(tTool.class, "%Extends", "OcuPilot.Screen.Tool.Write") {
             ; Story 5.1: a write tool is a class of its own, so its pairs are its descriptor's
             ; together with the pair the write itself names (AD-8). DW-1208: that pair is the one

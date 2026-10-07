@@ -56,7 +56,7 @@ XData Cases
     {"name": "parts", "check": "read", "source": {"port": "docdb", "endpoint": "Databases", "type": "LIST", "parts": [{"type": "LIST", "as": "x"}]}, "expected": "read.source.parts is declared on a docdb source, which answers the document databases whole (AD-36)"},
     {"name": "a list over one member", "check": "read", "source": {"port": "docdb", "endpoint": "Databases", "type": "LIST", "rows": "rows"}, "expected": "read.source.rows is declared on a 'docdb' source, and a list over one member reads an admin endpoint's one-object answer (AD-36)"},
     {"name": "server criteria", "check": "criteria", "source": {"port": "docdb", "endpoint": "Databases", "type": "LIST"}, "criteria": {"fields": [{"param": "pattern", "labelKey": "tableColumnName", "kind": "text", "maxLength": 64}]}, "expected": "read.criteria is declared on a 'docdb' source, and server criteria travel on the admin, mgmnt, atelier, timeline and encryption ports alone (AD-21)"},
-    {"name": "an unknown port", "check": "read", "source": {"port": "docdbx", "endpoint": "Databases", "type": "LIST"}, "expected": "read.source.port 'docdbx' is not one of 'admin', 'state', 'mgmnt', 'logsource', 'path', 'timeline', 'background', 'atelier', 'encryption', 'docdb' or 'sqlactivity', the eleven sources a declared read names (AD-36)"}
+    {"name": "an unknown port", "check": "read", "source": {"port": "docdbx", "endpoint": "Databases", "type": "LIST"}, "expected": "read.source.port 'docdbx' is not one of 'admin', 'state', 'mgmnt', 'logsource', 'path', 'timeline', 'background', 'atelier', 'encryption', 'docdb', 'sqlactivity' or 'interop', the twelve sources a declared read names (AD-36)"}
   ]
 }
 }

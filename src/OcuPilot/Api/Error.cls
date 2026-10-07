@@ -1230,6 +1230,7 @@ ClassMethod ReasonForToolCode(pCode As %String) As %String
     If $Extract(pCode, 1, 12) = "SUPERSERVER." Set tReason = ##class(OcuPilot.Api.SuperserverError).ReasonFor(pCode)
     If $Extract(pCode, 1, 4) = "MFT." Set tReason = ##class(OcuPilot.Api.MftConnectionError).ReasonFor(pCode)
     If $Extract(pCode, 1, 6) = "DOCDB." Set tReason = ##class(OcuPilot.Api.DocDbError).ReasonFor(pCode)
+    If $Extract(pCode, 1, 8) = "INTEROP." Set tReason = ##class(OcuPilot.Api.InteropError).ReasonFor(pCode)
     If tReason '= "" Quit tReason
     Quit ..#REASONTOOLUNAVAILABLE
 }
@@ -1434,6 +1435,7 @@ ClassMethod ReasonForViolation(pCode As %String) As %String
     If $Extract(pCode, 1, 8) = "WEBAUTH." Quit ##class(OcuPilot.Api.WebAuthError).ReasonFor(pCode)
     If $Extract(pCode, 1, 12) = "SUPERSERVER." Quit ##class(OcuPilot.Api.SuperserverError).ReasonFor(pCode)
     If $Extract(pCode, 1, 4) = "MFT." Quit ##class(OcuPilot.Api.MftConnectionError).ReasonFor(pCode)
+    If $Extract(pCode, 1, 8) = "INTEROP." Quit ##class(OcuPilot.Api.InteropError).ReasonFor(pCode)
     Quit ""
 }
 
