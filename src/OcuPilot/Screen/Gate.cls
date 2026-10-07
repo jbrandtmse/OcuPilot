@@ -29,8 +29,8 @@ Class OcuPilot.Screen.Gate Extends %RegisteredObject
 Parameter CLASSICPERMISSION = "USE";
 
 /// <p>The closed list of IRIS administrative resources, comma-separated. Holding <b>any one</b>
-/// of them, or <parameter>DEVELOPMENTRESOURCE</parameter>, at <parameter>ADMINPERMISSION</parameter>
-/// is the instance-level floor (<method>FloorResources</method>): what
+/// of them, <parameter>DEVELOPMENTRESOURCE</parameter> or <parameter>INTEROPRESOURCE</parameter>, at
+/// <parameter>ADMINPERMISSION</parameter> is the instance-level floor (<method>FloorResources</method>): what
 /// <method>OcuPilot.Api.Router.HoldsAdminResource</method> requires of a caller before any route
 /// runs, what <method>OcuPilot.Port.ProviderPort.Invoke</method> requires before an outbound
 /// provider request leaves, and what a turn's step boundary requires of its owner (AD-8, AD-29,
@@ -52,6 +52,13 @@ Parameter ADMINPERMISSION = "USE";
 /// pages declare it as their <code>RESOURCE</code> (AD-8). It never joins
 /// <parameter>ADMINRESOURCES</parameter>, whose members are <code>%Admin_*</code> alone.</p>
 Parameter DEVELOPMENTRESOURCE = "%Development";
+
+/// <p>The floor member that admits an Interoperability account: the classic Interoperability
+/// pages check <code>%Ens_Portal</code> (<code>EnsPortal.Application.CheckPrivileges</code>), and
+/// the stock <code>%EnsRole_Operator</code>, <code>_Monitor</code> and <code>_Administrator</code>
+/// hold it. It never joins <parameter>ADMINRESOURCES</parameter>. Clearing the floor opens no
+/// surface by itself: every screen, tool and route still declares its own pairs.</p>
+Parameter INTEROPRESOURCE = "%Ens_Portal";
 
 /// <p>The user names that are not an authenticated principal, comma-separated: IRIS's
 /// unauthenticated placeholder and its public one.</p>
@@ -296,15 +303,15 @@ ClassMethod EvaluateRequired(pPairs As %List, Output pFailedPair As %String) As 
     Quit ..EvaluatePairs(pPairs, .pFailedPair)
 }
 
-/// <p>The floor's members, comma-separated: <parameter>ADMINRESOURCES</parameter> followed by
-/// <parameter>DEVELOPMENTRESOURCE</parameter>. Holding any one at
+/// <p>The floor's members, comma-separated: <parameter>ADMINRESOURCES</parameter>, then
+/// <parameter>DEVELOPMENTRESOURCE</parameter>, then <parameter>INTEROPRESOURCE</parameter>. Holding any one at
 /// <parameter>ADMINPERMISSION</parameter> clears the floor.</p>
 /// <p>Read at <b>compile</b> time by <class>OcuPilot.Api.Router</class>, whose
 /// <parameter>OcuPilot.Api.Router.FLOORRESOURCES</parameter> the request gate and a turn's step
 /// boundary read, so neither holds a copy of the list.</p>
 ClassMethod FloorResources() As %String
 {
-    Quit ..#ADMINRESOURCES _ "," _ ..#DEVELOPMENTRESOURCE
+    Quit ..#ADMINRESOURCES _ "," _ ..#DEVELOPMENTRESOURCE _ "," _ ..#INTEROPRESOURCE
 }
 
 /// <p><method>FloorResources</method> spelled as the comma-separated

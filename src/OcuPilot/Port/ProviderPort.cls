@@ -58,7 +58,7 @@ Parameter DRAFTPAIRS = "OcuPilotAdmin:USE";
 
 /// <p>The pair set <method>Invoke</method> requires, comma-separated as
 /// <code>resource:permission</code>: the instance-level floor -- every <code>%Admin_*</code>
-/// resource and <code>%Development</code>, each at <code>USE</code> -- of which <b>any one</b>
+/// resource, <code>%Development</code> and <code>%Ens_Portal</code>, each at <code>USE</code> -- of which <b>any one</b>
 /// pair admits the call (AD-8, AD-29). A caller who could not reach any OcuPilot API route
 /// cannot make the instance call a provider on their behalf either. Each tool call the reply
 /// asks for is still gated by that tool's own pairs.</p>

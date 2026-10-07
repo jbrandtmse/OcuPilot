@@ -16,7 +16,7 @@
 /// read on the install namespace's code database. <parameter>SECUREUSER</parameter> adds
 /// <code>%Admin_Secure:U</code>; <parameter>SYSREADUSER</parameter> adds <code>%DB_IRISSYS:R</code>
 /// and <code>%Admin_Operate:U</code>, the second because the API's administrative gate refuses a
-/// caller holding neither an <code>%Admin_*</code> resource nor <code>%Development</code> before any screen gate runs;
+/// caller holding no <code>%Admin_*</code> resource, no <code>%Development</code> and no <code>%Ens_Portal</code> before any screen gate runs;
 /// <parameter>BOTHUSER</parameter> adds <code>%Admin_Secure:U</code> and <code>%DB_IRISSYS:R</code>;
 /// <parameter>TASKUSER</parameter> adds <code>%Admin_Task:U</code> alone,
 /// <parameter>TASKBOTHUSER</parameter> adds <code>%Admin_Task:U</code> and

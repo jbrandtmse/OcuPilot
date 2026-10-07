@@ -861,7 +861,7 @@ Method TestANamespaceThisPrincipalCannotEnterIsRefusedOverTheWire()
 /// <p>AC8 -- every name in <parameter>OcuPilot.Api.Router.FLOORRESOURCES</parameter> is a
 /// resource this instance actually defines. The gate quits on the first match, so only the
 /// one resource this suite grants is ever evaluated behind a real request: a typo in any of
-/// the other thirteen would lock out a caller whose only floor resource is that one, with
+/// the other fourteen would lock out a caller whose only floor resource is that one, with
 /// every suite green. The parameter's own doc claims the list was read from
 /// the instance; this is the check of that claim rather than a restatement of it.</p>
 /// <p>Deliberately not asserted the other way round -- that the instance defines no

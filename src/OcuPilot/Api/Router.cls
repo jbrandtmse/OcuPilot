@@ -44,7 +44,7 @@ Parameter HandleCorsRequest = 0;
 Parameter ADMINRESOURCES As %String = {##class(OcuPilot.Screen.Gate).#ADMINRESOURCES};
 
 /// <p>The floor's members <method>HoldsAdminResource</method> tests, comma-separated: every
-/// <parameter>ADMINRESOURCES</parameter> member and <code>%Development</code>. Holding <b>any
+/// <parameter>ADMINRESOURCES</parameter> member, <code>%Development</code> and <code>%Ens_Portal</code>. Holding <b>any
 /// one</b> of them at <code>USE</code> is what the FR-65 gate requires of a caller; holding none
 /// of them is a 403, whatever else the caller holds. A turn's step boundary reads the same list
 /// (<class>OcuPilot.Api.Turn</class>, AD-31).</p>
@@ -1319,8 +1319,8 @@ ClassMethod CanonicalNamespace(pNamespace As %String) As %String
 /// <method>OcuPilot.Kernel.State.Base.GuardedUserEnabled</method>, which owns the switch and
 /// the restore; nothing is switched in this method's own frame.</li>
 /// <li><b>Administrative privilege (FR-65).</b> The caller must hold at least one
-/// <code>%Admin_*</code> resource, or <code>%Development</code>, at <code>USE</code>
-/// (<method>HoldsAdminResource</method>, against the closed
+/// <code>%Admin_*</code> resource, <code>%Development</code> or <code>%Ens_Portal</code>, at
+/// <code>USE</code> (<method>HoldsAdminResource</method>, against the closed
 /// <parameter>FLOORRESOURCES</parameter> list); otherwise 403 with the machine code
 /// <code>AUTH.NOADMIN</code>. <b>A caller who lacks read on the install namespace's
 /// database never reaches this method at all</b>: the framework's own
@@ -1421,7 +1421,7 @@ ClassMethod OnPreDispatch(pUrl As %String, pMethod As %String, ByRef pContinue A
 
         If '..HoldsAdminResource() {
             Set pContinue = 0
-            Do ##class(OcuPilot.Api.Error).Render(403, ##class(OcuPilot.Api.Error).#FORBIDDEN, "This account holds neither an InterSystems IRIS administrative privilege nor %Development; OcuPilot requires USE on at least one %Admin_ resource or on %Development", ##class(OcuPilot.Api.Error).#AUTHNOADMIN)
+            Do ##class(OcuPilot.Api.Error).Render(403, ##class(OcuPilot.Api.Error).#FORBIDDEN, "This account holds no InterSystems IRIS administrative privilege, %Development or %Ens_Portal; OcuPilot requires USE on at least one %Admin_ resource, on %Development or on %Ens_Portal", ##class(OcuPilot.Api.Error).#AUTHNOADMIN)
             Quit
         }
 

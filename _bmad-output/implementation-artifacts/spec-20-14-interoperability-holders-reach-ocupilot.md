@@ -2,7 +2,8 @@
 title: 'Story 20.14: Interoperability holders reach OcuPilot'
 type: 'feature'
 created: '2026-10-07'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: 'e7840fbd7bb141c1161792f84e27d4bcb8dd17c1'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -147,6 +148,16 @@ Principals, each with READ on the install namespace's code database: **E** also 
 
 ## Review Triage Log
 
+### 2026-10-07 -- Review pass
+
+- verdicts: 4 findings -- high 0, medium 0, low 1, false 1, maybe-false 0 (plus 2 notes rejected)
+- findings:
+  - `[false]` `[reject]` Roster non-GET routes are never sent, so AC2 is unverified for them -- the I/O matrix says "Roster non-GET routes are not sent"; `POST /turn` and `POST /conversation` are sent by `InteropFloorTurn`.
+  - `[low]` `[patch]` AC5 has no `mutation:` line of its own -- applied: `InteropProcessList` pairs to `%Admin_Secure:USE` alone, browser spec red on rows, reverted byte-identical (`diff -r` with the throwaway source), line written.
+  - `[low]` `[reject]` the "holds no write tool" assertion has no mutation of its own -- no write tool exists in the roster's reach; the AC6 write-tool mutation pins the write half; a mutation would need a new write tool.
+  - `[false]` `[reject]` `ci-timings.json` needs rows for the new classes -- `npm run test:tools` passed; new files are placed by the shard tool's default share, not by a required row.
+  - Auditor note, not a finding: the AC6 reading counts any pair on a resource other than `%Ens_Portal` as "own"; recorded under "Reading of AC6" and passed to the orchestrator.
+
 ## Design Notes
 
 **Governing ADs:**
@@ -232,7 +243,29 @@ Principals, each with READ on the install namespace's code database: **E** also 
 | AC4 | `Router.FLOORRESOURCES` as a literal, and separately the former reason | `PortGate`; `DeveloperFloor`'s below-floor test |
 | AC6 | Drop one surface's own pairs: a screen (`LogEventViewer`), a write tool (an `interop.productions.*` tool's `%Ens_ProductionRun:USE`) and a route (`Gate()` out of `FormRules.HandleForm`), each in turn | the floor-only roster test, naming the surface; the route through `InteropFloorRoutes` |
 
+**Mutations run (Rule 19)**, each applied on `ocupilot-b-ci`, observed red, then reverted byte-identical (`diff -r` of the worktree and the throwaway source tree) and recompiled:
+
+- mutation: AC1 -- `LogEventViewer`'s `privileges` and `ownPrivileges` without `%Ens_EventLog:USE` -> `InteropFloor` sign-in, parity and tools red; `InteropFloorOwnPairs` red naming `screen:LogEventViewer` and `tool:logs.eventlog.read`. The event-log read also meets `LogSourcePort.EVENTLOGPAIRS`, so `TestTheEventLogOpensForTheOperatorAlone` reddens only with both dropped (observed: red).
+- mutation: AC2 -- `FloorResources()` without `%Ens_Portal`, `Router`, `ProviderPort` and `Turn` recompiled -> `InteropFloor` (6 of 7), `InteropFloorRoutes`, `InteropFloorTurn` and `interop-floor.browser-spec.mjs` ("the frame, not the no-privileges notice") red.
+- mutation: AC2 routes -- `Gate()` out of `FormRules.HandleForm` (line 108) -> `InteropFloorRoutes` red on `GET /web-applications/form` for both principals (answers 500 `INTERNAL`, not a named pair).
+- mutation: AC3 -- `Turn.cls:150` back to `Router.#ADMINRESOURCES` -> `InteropFloorTurn` red; separately `INVOKEPAIRS` as the `ADMINRESOURCES` members at `USE` alone -> `InteropFloorTurn` red.
+- mutation: AC4 -- `Router.FLOORRESOURCES` as a literal -> `PortGate.TestTheAdministrativeFloorHasOneHome` red; the former reason text in `OnPreDispatch` -> `DeveloperFloor.TestBelowTheFloorIsRefusedNamingEachMember` red.
+- mutation: AC6 screen -- `LogEventViewer` as in AC1 -> `InteropFloorOwnPairs` red naming it. Write tool -- `InteropProductionAction.PrivilegePairs` answering `%Ens_Portal:USE` alone (dropping `%Ens_ProductionRun:USE` alone leaves the screen's `%Ens_ProductionConfig:READ`, so it does not redden) -> red naming `interop.productions.start`, `.stop`, `.restart`, `.update` and `.recover`. Route -- `Gate()` out of `FormRules.HandleForm` -> `InteropFloorRoutes`. A stale entry -- `Home` given `%Admin_Operate:USE` -> red, "declares its own pair, so FLOORONLY must not list it".
+- mutation: reads -- `InteropProductionList` and `InteropPort.PRODUCTIONPAIRS` both reduced to `%Ens_Portal:USE` -> `TestTheInteroperabilityReadsFollowTheirOwnPairs` red (the descriptor alone reddens sign-in, parity and tools).
+- mutation: administrative screen -- `WebAppList` with no `privileges` -> `TestAnAdministrativeScreenIsRefusedNamingItsPair`, sign-in, parity and tools red.
+- mutation: other namespace -- `%DB_USER:R` added to the fixture's code role -> `TestAnotherNamespaceIsDeniedUnchanged` red.
+
+- mutation: AC5 -- `InteropProcessList`'s `privileges` and `ownPrivileges` as `%Admin_Secure:USE` alone (the Administrator lacks it) -> `interop-floor.browser-spec.mjs` red on the Business processes rows (`waitForRows` timeout); reverted, spec green.
+
+**Reading of AC6.** "A pair outside the floor members" is implemented as a pair on any resource other than `%Ens_Portal`: the `%Development` and `%Admin_Operate` pairs of the Explorer and Logs surfaces refuse the `%Ens_Portal` holder by name, so the System Explorer and Logs surfaces that declare `%Development` or `%Admin_Operate` alone would all be listed under the literal reading. `FLOORONLY` holds the ten that declare nothing else: five screens and five tools.
+
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
+
+- Change: `Screen.Gate` gains `INTEROPRESOURCE = "%Ens_Portal"` and `FloorResources()` ends with it; the router, `ProviderPort` and the turn derive it. `AUTH.NOADMIN`'s reason names all three kinds. Docs and test prose corrected in place, inside the cleared contended regions only.
+- Tests added: `InteropFloor`, `InteropFloorFixture`, `InteropFloorRoutes`, `InteropFloorTurn`, `InteropFloorOwnPairs` (the AC6 floor-only roster, ten entries) and `ui/browser/interop-floor.browser-spec.mjs`; `scripts/ci-throwaway.sh` arming lines (add-only).
+- Review: 1 patch (AC5 mutation line), 3 rejected, 0 deferred. Follow-up review recommended: false.
+- Verified: full ObjectScript sweep 507 classes, 4051 tests, 0 failed; smoke 50/50; `npm test` 2611 and `test:tools` 1883 passed; bundle 3.09 MB; both interop and developer-floor browser specs pass; every AC has a `mutation:` line.
+- Residual: AC6 is read as "a pair on a resource other than `%Ens_Portal`" (ten surfaces listed); the literal reading would also list Explorer and Logs surfaces that declare only `%Development` or `%Admin_Operate`. The orchestrator should confirm. The spine, PRD and epics.md ship-time lines are the runner's.
