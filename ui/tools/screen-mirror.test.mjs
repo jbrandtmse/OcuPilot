@@ -18,6 +18,7 @@ import {
   confirmChannelProblem,
   declaredNames,
   parseDeclaredNameKinds,
+  parseNamespaceFeatures,
   IMPLEMENTED_DECLARED_NAME_KINDS,
   criteriaProblem,
   entityTypesIn,
@@ -110,7 +111,7 @@ test('the checked-in mirror is exactly what the descriptor declarations produce'
 test('the mirror carries the kernel vocabulary, the areas and every descriptor', () => {
   const { entityTypes, areas, screens } = readSources();
   assert.ok(entityTypes.length >= 20, `expected the closed vocabulary, read ${entityTypes.length}`);
-  assert.equal(areas.length, 9);
+  assert.equal(areas.length, 11);
   assert.ok(screens.length >= 1, 'at least Home is declared');
   for (const screen of screens) {
     assert.ok(screen.className.startsWith('OcuPilot.Screen.Descriptor.'), screen.file);
@@ -301,6 +302,21 @@ test('DW-1403: the reference separator is read from the kernel and emitted, neve
     () => buildMirror({ ...readSources(), refSeparator: 0 }),
     /REFSEPARATOR must be a whole number above zero/,
     'and a separator no key could be built from fails the build'
+  );
+});
+
+test('AD-44: an area\'s appliesWhen is read against NamespaceFeatures.FEATURES, and a value outside it fails the build', () => {
+  // Mutation (Rule 19): drop the vocabulary check from `buildMirror` -> the throw below goes red.
+  const sources = readSources();
+  assert.deepEqual(sources.features, ['interoperability', 'analytics'], 'the vocabulary is read off the class');
+  assert.equal(parseNamespaceFeatures('Class X { }'), null, 'reported, never read as an empty vocabulary');
+  assert.equal(parseNamespaceFeatures('Parameter FEATURES = "";'), null);
+  assert.match(generate(), /export type NamespaceFeature = 'interoperability' \| 'analytics';/);
+  const areas = sources.areas.map((area) => (area.key === 'analytics' ? { ...area, appliesWhen: 'bogus' } : area));
+  assert.throws(
+    () => buildMirror({ ...sources, areas }),
+    /area "analytics" appliesWhen "bogus"/,
+    'the build names the area and the value'
   );
 });
 

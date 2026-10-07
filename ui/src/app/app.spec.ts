@@ -803,7 +803,7 @@ describe('the shell frame', () => {
     document.body.appendChild(fixture.nativeElement);
     planted.push(fixture.nativeElement);
     const shell = TestBed.inject(ShellState);
-    shell.activateArea('permissions', false);
+    shell.activateArea('logs', false);
     fixture.detectChanges();
     expect(overlays.top()).toBe('side-bar');
 

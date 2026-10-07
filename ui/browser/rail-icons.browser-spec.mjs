@@ -29,6 +29,7 @@ import puppeteer from 'puppeteer';
 
 import { LIVE_CONTAINER, READINESS_PATH, browserConfig, launchOptions } from '../browser.config.mjs';
 import { parseMarkers } from './iris-session.mjs';
+import { areaApplies, namespacesWith, readNamespaceFeatures } from './namespace-features.mjs';
 import { resetRememberedState } from './preferences-reset.mjs';
 import { leaveFirstLoginGate } from './shell-entry.mjs';
 
@@ -44,7 +45,8 @@ const { contrastRatio, parseTokens } = await import(join(uiRoot, 'tools', 'desig
 const config = browserConfig();
 const tokens = parseTokens(readFileSync(join(uiRoot, 'src', 'styles', '_tokens.scss'), 'utf8'));
 
-const HOME_URL = '/ocupilot/?ns=HSCUSTOM';
+/** Set in `before` to a namespace that reports every feature, so every area the mirror declares is drawn. */
+let HOME_URL = '/ocupilot/?ns=HSCUSTOM';
 const WIDE = { width: 1280, height: 900 };
 const TOLERANCE = 0.05;
 
@@ -60,8 +62,9 @@ const FIGURES = {
   tileGated: { light: 6.55, dark: 9.64 },
 };
 
-const railOrder = [...AREAS].sort((a, b) => a.railPosition - b.railPosition);
-const tileAreas = railOrder.filter((area) => !area.navigates && !area.pinBottom);
+/** The areas that apply in the namespace `HOME_URL` names, in rail order; set in `before`. */
+let railOrder = [...AREAS].sort((a, b) => a.railPosition - b.railPosition);
+let tileAreas = railOrder.filter((area) => !area.navigates && !area.pinBottom);
 
 const password = `OcuPilotIcons${randomBytes(12).toString('hex')}Aa9`;
 let principal = '';
@@ -95,6 +98,14 @@ before(async () => {
   );
   assert.equal(created.values.OK, '1', `the fixture created the principal: ${created.output}`);
   principal = created.values.USER;
+  // Interoperability and Analytics are drawn only where the namespace reports the feature (Story
+  // 20.1): open the shell in one that reports both, found on the instance, and expect the areas that apply there.
+  const reported = readNamespaceFeatures(config.container);
+  const [both] = namespacesWith(reported, { interoperability: true, analytics: true });
+  assert.ok(both !== undefined, `a namespace reports both features: ${JSON.stringify(reported)}`);
+  HOME_URL = `/ocupilot/?ns=${both}`;
+  railOrder = [...AREAS].filter((area) => areaApplies(area, reported[both])).sort((a, b) => a.railPosition - b.railPosition);
+  tileAreas = railOrder.filter((area) => !area.navigates && !area.pinBottom);
   browser = await puppeteer.launch(launchOptions(config));
 });
 

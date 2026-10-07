@@ -46,6 +46,7 @@ const LIVE_PAYLOAD = {
       railPosition: 1,
       navigates: true,
       pinBottom: false,
+      applies: true,
       allowed: true,
       screens: [{ route: '', labelKey: 'navAreaHome', sideBarPosition: 1, allowed: true }],
     },
@@ -55,6 +56,7 @@ const LIVE_PAYLOAD = {
       railPosition: 2,
       navigates: false,
       pinBottom: false,
+      applies: true,
       allowed: true,
       screens: [
         {
@@ -92,6 +94,7 @@ const LIVE_PAYLOAD = {
       railPosition: 3,
       navigates: false,
       pinBottom: false,
+      applies: true,
       allowed: false,
       failedPair: '%Admin_Manage:USE',
       // Story 6.11 took this roster from four screens to eight, and Story 6.12 took it from eight
@@ -431,6 +434,7 @@ const LIVE_PAYLOAD = {
       railPosition: 4,
       navigates: false,
       pinBottom: false,
+      applies: true,
       allowed: false,
       failedPair: '%Admin_Task:USE',
       screens: [
@@ -491,6 +495,7 @@ const LIVE_PAYLOAD = {
       railPosition: 5,
       navigates: false,
       pinBottom: false,
+      applies: true,
       allowed: false,
       failedPair: '%Admin_Secure:USE',
       screens: [
@@ -530,6 +535,7 @@ const LIVE_PAYLOAD = {
       railPosition: 6,
       navigates: false,
       pinBottom: false,
+      applies: true,
       allowed: false,
       failedPair: '%Admin_Secure:USE',
       screens: [
@@ -557,6 +563,7 @@ const LIVE_PAYLOAD = {
       railPosition: 7,
       navigates: false,
       pinBottom: false,
+      applies: true,
       allowed: false,
       failedPair: '%Admin_Secure:USE',
       screens: [
@@ -638,6 +645,7 @@ const LIVE_PAYLOAD = {
       railPosition: 8,
       navigates: false,
       pinBottom: false,
+      applies: true,
       allowed: false,
       failedPair: '%Development:USE',
       screens: [
@@ -671,7 +679,28 @@ const LIVE_PAYLOAD = {
         },
       ],
     },
-    { key: 'agent', labelKey: 'navAreaAgent', railPosition: 9, navigates: false, pinBottom: true, allowed: true, screens: [] },
+    {
+      key: 'interoperability',
+      labelKey: 'navAreaInteroperability',
+      railPosition: 9,
+      navigates: false,
+      pinBottom: false,
+      applies: true,
+      allowed: false,
+      failedPair: '%Ens_Portal:USE',
+      screens: [],
+    },
+    {
+      key: 'analytics',
+      labelKey: 'navAreaAnalytics',
+      railPosition: 10,
+      navigates: false,
+      pinBottom: false,
+      applies: false,
+      allowed: true,
+      screens: [],
+    },
+    { key: 'agent', labelKey: 'navAreaAgent', railPosition: 11, navigates: false, pinBottom: true, applies: true, allowed: true, screens: [] },
   ],
 };
 
@@ -693,6 +722,12 @@ test('DW-132: the real NavigationService reads a live-captured payload the way O
   // asserts against the real $System.Security.Check for this exact principal.
   assert.equal(service.areaVerdict('home').allowed, true, 'Home never gates');
   assert.equal(service.areaVerdict('agent').allowed, true, 'and neither does the agent rail item');
+  // Story 20.1: applicability rides beside the verdict. HSCUSTOM reports interoperability and not
+  // analytics; Interoperability is drawn and refused naming its pair, Analytics is allowed and not drawn.
+  assert.deepEqual(service.areaVerdict('interoperability'), { allowed: false, failedPair: '%Ens_Portal:USE' });
+  assert.equal(service.applies('interoperability'), true);
+  assert.equal(service.applies('analytics'), false);
+  assert.equal(service.areaVerdict('analytics').allowed, true);
   // AD-8 as amended for DW-1768: an area is allowed when any screen it lists is. The messages.log
   // viewer declares `%Admin_Operate:USE` alone, so Logs opens for this principal and names no pair.
   assert.deepEqual(service.areaVerdict('logs'), { allowed: true, failedPair: '' });

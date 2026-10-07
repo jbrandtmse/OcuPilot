@@ -59,12 +59,20 @@ export interface PrivilegePair {
   readonly permission: string;
 }
 
+/** The closed namespace-feature vocabulary, mirrored from OcuPilot.Kernel.Shell.NamespaceFeatures. */
+export type NamespaceFeature = 'interoperability' | 'analytics';
+
 export interface AreaDeclaration {
   readonly key: string;
   readonly railPosition: number;
   readonly labelKey: string;
   readonly navigates: boolean;
   readonly pinBottom: boolean;
+  /**
+   * The namespace feature the area applies to (AD-44). Declared only where there is one; the
+   * navigation map's `applies` answers it, and an area that does not apply is drawn nowhere.
+   */
+  readonly appliesWhen?: NamespaceFeature;
   /**
    * Empty for an area that never gates. Otherwise the area opens when any screen it lists, or any tab
    * of a tab group it lists, is allowed, and when none is it names the first of these the caller
@@ -576,7 +584,7 @@ export const ENTITY_ID_RULES: Readonly<Partial<Record<EntityTypeKey, string>>> =
  */
 export const ENTITY_SINGLETON_ID = "SYSTEM";
 
-/** The eight areas, in rail order. */
+/** The areas, in rail order. */
 export const AREAS: readonly AreaDeclaration[] = [
   {
     "key": "home",
@@ -710,8 +718,36 @@ export const AREAS: readonly AreaDeclaration[] = [
     ]
   },
   {
-    "key": "agent",
+    "key": "interoperability",
     "railPosition": 9,
+    "labelKey": "navAreaInteroperability",
+    "navigates": false,
+    "pinBottom": false,
+    "appliesWhen": "interoperability",
+    "privileges": [
+      {
+        "resource": "%Ens_Portal",
+        "permission": "USE"
+      }
+    ]
+  },
+  {
+    "key": "analytics",
+    "railPosition": 10,
+    "labelKey": "navAreaAnalytics",
+    "navigates": false,
+    "pinBottom": false,
+    "appliesWhen": "analytics",
+    "privileges": [
+      {
+        "resource": "%DeepSee_Portal",
+        "permission": "USE"
+      }
+    ]
+  },
+  {
+    "key": "agent",
+    "railPosition": 11,
     "labelKey": "navAreaAgent",
     "navigates": false,
     "pinBottom": true,
@@ -13461,11 +13497,19 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       {
         "resource": "%Ens_EventLog",
         "permission": "USE"
+      },
+      {
+        "resource": "%Ens_Portal",
+        "permission": "USE"
       }
     ],
     "ownPrivileges": [
       {
         "resource": "%Ens_EventLog",
+        "permission": "USE"
+      },
+      {
+        "resource": "%Ens_Portal",
         "permission": "USE"
       }
     ],

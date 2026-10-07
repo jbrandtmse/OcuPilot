@@ -114,16 +114,19 @@ const instance = new InstanceService({ api, connectivity });
 // second caller in the same namespace and answers nobody after a switch. Lazy for the reason
 // `api: () => api` above is -- `scope` is declared just below and the arrow is not called
 // until a map read is actually issued.
+// The bus is built first so the service can re-read the map when a `namespace` change event names
+// the current namespace (Story 20.1); every other subscriber is wired where it already was.
+const bus = new ChangeBus();
 const navigation = new NavigationService({
   api,
   connectivity,
   namespace: () => scope.namespace(),
+  bus,
 });
 // Story 1.14's one client bus (AD-14), built before every service that publishes onto it or reads
 // it: the namespace list first, which re-reads itself when a namespace is created or deleted so the
 // switch offers the new one and drops the deleted one without a reload (Story 18.2), then the turn
 // store, which publishes onto it (Story 5.1), and the refresh framework below.
-const bus = new ChangeBus();
 const scope: ScopeService = new ScopeService({ api, connectivity, bus });
 
 // AD-44's "switching re-fetches rather than re-routing", wired once: the scope's consumer in

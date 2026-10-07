@@ -189,11 +189,16 @@ export class SideBar {
     if (areaKey === '') return false;
     const area = areaByKey(areaKey);
     if (area !== null && area.navigates) return false;
+    // A category that does not apply in this namespace (AD-44) is drawn nowhere, its bar included.
+    if (!this.offered(areaKey)) return false;
     return this.shell.open() && this.panel.layout().sideBarShown;
   });
 
   constructor() {
-    const stopNavigation = this.navigation.subscribe(() => this.bump());
+    const stopNavigation = this.navigation.subscribe(() => {
+      this.retireUnofferedArea();
+      this.bump();
+    });
     const stopShell = this.shell.subscribe(() => this.bump());
     // A width that yields the bar removes it at the next render; focus inside leaves first.
     const stopPanel = this.panel.subscribe(() => {
@@ -313,6 +318,26 @@ export class SideBar {
     }
     this.shell.toggleOpen();
     if (this.shell.open() && this.panel.sideBarYielded()) this.panel.reopenSideBar();
+  }
+
+  /** Whether the rail still offers `areaKey`: the navigation service lists only the areas that apply. */
+  private offered(areaKey: string): boolean {
+    return this.navigation.areas().some((area) => area.key === areaKey);
+  }
+
+  /**
+   * The visible area stopped applying -- the namespace moved to one that does not report its
+   * feature. Its bar is gone with its rail item; an open bar closes without writing the preference
+   * (`collapse()`), and focus inside it goes to Home's rail item first, because the area's own is
+   * gone with it.
+   */
+  private retireUnofferedArea(): void {
+    const areaKey = this.shell.visibleArea();
+    if (areaKey === '' || this.offered(areaKey) || !this.shell.open()) return;
+    if (this.host.nativeElement.contains(document.activeElement)) {
+      document.getElementById(railItemDomId('home'))?.focus();
+    }
+    this.shell.collapse();
   }
 
   /** Nothing may be removed while it holds focus (EXPERIENCE.md "**Focus destinations.** No control"). */

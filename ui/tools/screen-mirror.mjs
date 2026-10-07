@@ -50,6 +50,7 @@ export const DESCRIPTOR_DIR = join(REPO_ROOT, 'src', 'OcuPilot', 'Screen', 'Desc
 export const ENTITY_TYPE_SOURCE = join(REPO_ROOT, 'src', 'OcuPilot', 'Kernel', 'EntityType.cls');
 export const ENTITY_REF_SOURCE = join(REPO_ROOT, 'src', 'OcuPilot', 'Kernel', 'EntityRef.cls');
 export const SCOPE_SOURCE = join(REPO_ROOT, 'src', 'OcuPilot', 'Kernel', 'Scope.cls');
+export const NAMESPACE_FEATURES_SOURCE = join(REPO_ROOT, 'src', 'OcuPilot', 'Kernel', 'Shell', 'NamespaceFeatures.cls');
 export const MIRROR_PATH = join(REPO_ROOT, 'ui', 'src', 'app', 'core', 'screens.generated.ts');
 export const TOOL_FIELDS_SOURCE = join(REPO_ROOT, 'src', 'OcuPilot', 'Screen', 'Tool', 'ToolFields.cls');
 export const SCREEN_REGISTRY_SOURCE = join(REPO_ROOT, 'src', 'OcuPilot', 'Screen', 'Registry.cls');
@@ -66,6 +67,7 @@ const IDRULENAMES_PARAM_RE = /^Parameter\s+IDRULENAMES\s*=\s*"([^"]*)"\s*;/m;
 const SINGLETONID_PARAM_RE = /^Parameter\s+RULESINGLETONID\s*=\s*"([^"]*)"\s*;/m;
 const DECLAREDNAMEKINDS_PARAM_RE = /^Parameter\s+DECLAREDNAMEKINDS\s*=\s*"([^"]*)"\s*;/m;
 const SELFPROTECTIONRULES_PARAM_RE = /^Parameter\s+SELFPROTECTIONRULES\s*=\s*"([^"]*)"\s*;/m;
+const FEATURES_PARAM_RE = /^Parameter\s+FEATURES\s*=\s*"([^"]*)"\s*;/m;
 const SCOPE_PARAM_RE = /^Parameter\s+(SCOPEINSTANCE|SCOPENAMESPACE)\s*=\s*"([^"]*)"\s*;/gm;
 
 /**
@@ -364,6 +366,19 @@ export function parseScopeWords(text) {
 }
 
 /**
+ * The closed namespace-feature vocabulary an area's `appliesWhen` may name -- `OcuPilot.Kernel.Shell.
+ * NamespaceFeatures`' own `FEATURES` parameter, read rather than duplicated. `null` when the
+ * parameter is missing or empty, so an absent vocabulary is reported rather than read as one that
+ * admits nothing.
+ */
+export function parseNamespaceFeatures(text) {
+  const match = FEATURES_PARAM_RE.exec(text);
+  if (match === null) return null;
+  const features = match[1].split(',').map((value) => value.trim()).filter((value) => value !== '');
+  return features.length === 0 ? null : features;
+}
+
+/**
  * The closed archetype vocabulary, from `OcuPilot.Screen.Archetype`'s own `XData Archetypes`
  * block: `[{key, linkOut}, ...]` in declaration order, or `null` when the block is missing,
  * unparseable, or not the shape it declares.
@@ -456,6 +471,11 @@ export function readSources({ descriptorDir = DESCRIPTOR_DIR, areaSource = AREA_
     throw new Error(`${SCOPE_SOURCE} declares no 'Parameter SCOPEINSTANCE'/'SCOPENAMESPACE' pair`);
   }
 
+  const features = parseNamespaceFeatures(readFileSync(NAMESPACE_FEATURES_SOURCE, 'utf8'));
+  if (features === null) {
+    throw new Error(`${NAMESPACE_FEATURES_SOURCE} declares no non-empty 'Parameter FEATURES'`);
+  }
+
   const archetypes = parseArchetypes(readFileSync(ARCHETYPE_SOURCE, 'utf8'));
   if (archetypes === null) {
     throw new Error(`${ARCHETYPE_SOURCE} carries no readable 'XData Archetypes' block`);
@@ -495,7 +515,7 @@ export function readSources({ descriptorDir = DESCRIPTOR_DIR, areaSource = AREA_
   if (toolFieldsBody === null) throw new Error(`${TOOL_FIELDS_SOURCE} carries no 'XData Tools' block`);
   const toolFields = parseXDataJson(toolFieldsBody, TOOL_FIELDS_SOURCE, 'Tools');
 
-  return { entityTypes, idRules, idRuleNames, refSeparator, singletonId, declaredNameKinds, selfProtectionRules, scopeWords, archetypes, areas, screens, toolFields };
+  return { entityTypes, idRules, idRuleNames, refSeparator, singletonId, declaredNameKinds, selfProtectionRules, scopeWords, features, archetypes, areas, screens, toolFields };
 }
 
 /**
@@ -3067,6 +3087,7 @@ export function buildMirror({
   declaredNameKinds = IMPLEMENTED_DECLARED_NAME_KINDS,
   selfProtectionRules = IMPLEMENTED_SELF_PROTECTION_RULES,
   scopeWords,
+  features = ['interoperability', 'analytics'],
   archetypes,
   areas,
   screens,
@@ -3094,6 +3115,13 @@ export function buildMirror({
   const archetypeKeys = (archetypes ?? []).map((archetype) => archetype.key);
   const knownArchetypes = new Set(archetypeKeys);
   for (const area of areas) {
+    if (area.appliesWhen !== undefined && area.appliesWhen !== '' && !features.includes(area.appliesWhen)) {
+      throw new Error(
+        `${AREA_SOURCE}: area "${area.key}" appliesWhen "${area.appliesWhen}", which is not in ` +
+          `OcuPilot.Kernel.Shell.NamespaceFeatures.FEATURES (${features.join(', ')}); the server ` +
+          `answers false for it and the area would never be drawn (AD-44)`
+      );
+    }
     const bad = malformedPair(area.privileges);
     if (bad !== null) {
       throw new Error(
@@ -3326,12 +3354,20 @@ export interface PrivilegePair {
   readonly permission: string;
 }
 
+/** The closed namespace-feature vocabulary, mirrored from OcuPilot.Kernel.Shell.NamespaceFeatures. */
+export type NamespaceFeature = ${features.map((value) => `'${value}'`).join(' | ')};
+
 export interface AreaDeclaration {
   readonly key: string;
   readonly railPosition: number;
   readonly labelKey: string;
   readonly navigates: boolean;
   readonly pinBottom: boolean;
+  /**
+   * The namespace feature the area applies to (AD-44). Declared only where there is one; the
+   * navigation map's \`applies\` answers it, and an area that does not apply is drawn nowhere.
+   */
+  readonly appliesWhen?: NamespaceFeature;
   /**
    * Empty for an area that never gates. Otherwise the area opens when any screen it lists, or any tab
    * of a tab group it lists, is allowed, and when none is it names the first of these the caller
@@ -3758,7 +3794,7 @@ export const ENTITY_ID_RULES: Readonly<Partial<Record<EntityTypeKey, string>>> =
  */
 export const ENTITY_SINGLETON_ID = ${JSON.stringify(singletonId)};
 
-/** The eight areas, in rail order. */
+/** The areas, in rail order. */
 export const AREAS: readonly AreaDeclaration[] = ${JSON.stringify(areas, null, 2)};
 
 /** Every declared screen, by descriptor class name. */

@@ -35,7 +35,7 @@ Method TestTheAreaIsTheEighthRailItem()
     If '$IsObject(tArea) Quit
     Do $$$AssertEquals(tArea.railPosition _ "|" _ tArea.labelKey _ "|" _ tArea.navigates _ "|" _ tArea.pinBottom, "8|navAreaSystemExplorer|0|0", "rail position 8, its own label, not navigating, not pinned")
     Do $$$AssertEquals(tArea.privileges.%ToJSON(), ..#PAIRS, "gated on %Development:USE alone")
-    Do $$$AssertEquals(##class(OcuPilot.Screen.Area).Find("agent").railPosition, 9, "Agent co-pilot moves to 9")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Area).Find("agent").railPosition, 11, "Agent co-pilot sits at 11")
     Set tSC = ##class(OcuPilot.Screen.Registry).ListedScreensForArea("system-explorer", .tListed)
     Do $$$AssertStatusOK(tSC, "the side bar reads")
     Do $$$AssertEquals($ListToString(tListed), "OcuPilot.Screen.Descriptor.ExplorerClassList,OcuPilot.Screen.Descriptor.ExplorerRoutineList,OcuPilot.Screen.Descriptor.ExplorerSearch,OcuPilot.Screen.Descriptor.ExplorerCompare,OcuPilot.Screen.Descriptor.ExplorerMacro,OcuPilot.Screen.Descriptor.ExplorerSqlSchemas,OcuPilot.Screen.Descriptor.ExplorerSqlTables,OcuPilot.Screen.Descriptor.ExplorerSqlViews,OcuPilot.Screen.Descriptor.ExplorerSqlProcedures,OcuPilot.Screen.Descriptor.ExplorerSqlQuery,OcuPilot.Screen.Descriptor.ExplorerSqlData,OcuPilot.Screen.Descriptor.ExplorerDocDbList", "its side bar lists Classes, Routines, Search, Compare, Macros, SQL schemas, SQL tables, SQL views, SQL procedures, SQL query, Data browser and Document databases")

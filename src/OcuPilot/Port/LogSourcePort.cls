@@ -234,9 +234,10 @@ Parameter SQLDIAGNOSTICSPAIRS = "%Admin_Operate:USE";
 Parameter EVENTLOGKEY = "eventlog";
 
 /// <p>The interoperability event log's pair set: the resource of its classic page
-/// (<code>EnsPortal.EventLog</code>). Each namespace adds its globals database's
+/// (<code>EnsPortal.EventLog</code>) and the one <code>EnsPortal.Application.CheckPrivileges</code>
+/// requires of every Interoperability page. Each namespace adds its globals database's
 /// <code>READ</code> (<parameter>DATABASEREADSOURCES</parameter>).</p>
-Parameter EVENTLOGPAIRS = "%Ens_EventLog:USE";
+Parameter EVENTLOGPAIRS = "%Ens_EventLog:USE,%Ens_Portal:USE";
 
 /// <p>The <parameter>SOURCES</parameter> key for the analytics log.</p>
 Parameter ANALYTICSKEY = "analytics";

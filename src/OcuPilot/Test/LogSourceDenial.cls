@@ -63,13 +63,20 @@ Parameter OPERATEUSER = "OcuPilotLogOperate";
 /// <p>See <parameter>OPERATEUSER</parameter>.</p>
 Parameter OPERATEROLE = "OcuPilotLogOperateRole";
 
-/// <p>The principal holding <code>%Ens_EventLog:U</code> and <code>%Admin_Secure:U</code> (which
-/// clears the API's own gate) and not <code>%Admin_Operate:U</code>: the interoperability event log's
-/// served principal (Story 16.8).</p>
+/// <p>The principal holding <code>%Ens_EventLog:U</code>, <code>%Ens_Portal:U</code> and
+/// <code>%Admin_Secure:U</code> (which clears the API's own gate) and not <code>%Admin_Operate:U</code>:
+/// the interoperability event log's served principal (Story 16.8).</p>
 Parameter EVENTUSER = "OcuPilotLogEvent";
 
 /// <p>See <parameter>EVENTUSER</parameter>.</p>
 Parameter EVENTROLE = "OcuPilotLogEventRole";
+
+/// <p>The principal holding <code>%Ens_EventLog:U</code> and <code>%Admin_Secure:U</code> without
+/// <code>%Ens_Portal:U</code>: the classic event log page refuses it, so the event log does.</p>
+Parameter PORTALLESSUSER = "OcuPilotLogNoPortal";
+
+/// <p>See <parameter>PORTALLESSUSER</parameter>.</p>
+Parameter PORTALLESSROLE = "OcuPilotLogNoPortalRole";
 
 /// <p>The principal holding <code>%Admin_Operate:U</code> and <code>%DB_IRISSYS:R</code> and not
 /// <code>%Admin_Secure:U</code>: the background task error log's served principal, since that log
@@ -145,7 +152,9 @@ Method OnBeforeAllTests() As %Status
         If $$$ISERR(tSC) Quit
         Set tSC = ..EnsurePrincipal(..#OPERATEROLE, ..#OPERATEUSER, tCodeRead _ ",%Admin_Operate:U", ..PreparedPassword)
         If $$$ISERR(tSC) Quit
-        Set tSC = ..EnsurePrincipal(..#EVENTROLE, ..#EVENTUSER, tCodeRead _ ",%Admin_Secure:U,%Ens_EventLog:U", ..PreparedPassword)
+        Set tSC = ..EnsurePrincipal(..#EVENTROLE, ..#EVENTUSER, tCodeRead _ ",%Admin_Secure:U,%Ens_EventLog:U,%Ens_Portal:U", ..PreparedPassword)
+        If $$$ISERR(tSC) Quit
+        Set tSC = ..EnsurePrincipal(..#PORTALLESSROLE, ..#PORTALLESSUSER, tCodeRead _ ",%Admin_Secure:U,%Ens_EventLog:U", ..PreparedPassword)
         If $$$ISERR(tSC) Quit
         Set tSC = ..EnsurePrincipal(..#TASKSROLE, ..#TASKSUSER, tCodeRead _ ",%Admin_Operate:U,%DB_IRISSYS:R", ..PreparedPassword)
         If $$$ISERR(tSC) Quit
@@ -154,7 +163,8 @@ Method OnBeforeAllTests() As %Status
         ; The allowed principal holds the one pair and NEITHER of the two the Logs area also
         ; declares. Reading both back is what makes the DW-278 measurement a measurement.
         Set tOperate = ($SYSTEM.Security.CheckUserPermission(..#OPERATEUSER, "%Admin_Operate", "USE") = 1) && ($SYSTEM.Security.CheckUserPermission(..#OPERATEUSER, "%Admin_Secure", "USE") '= 1) && ($SYSTEM.Security.CheckUserPermission(..#OPERATEUSER, "%DB_IRISSYS", "READ") '= 1)
-        Set tEvent = ($SYSTEM.Security.CheckUserPermission(..#EVENTUSER, "%Ens_EventLog", "USE") = 1) && ($SYSTEM.Security.CheckUserPermission(..#EVENTUSER, "%Admin_Operate", "USE") '= 1)
+        Set tEvent = ($SYSTEM.Security.CheckUserPermission(..#EVENTUSER, "%Ens_EventLog", "USE") = 1) && ($SYSTEM.Security.CheckUserPermission(..#EVENTUSER, "%Admin_Operate", "USE") '= 1) && ($SYSTEM.Security.CheckUserPermission(..#EVENTUSER, "%Ens_Portal", "USE") = 1)
+        Set tEvent = tEvent && ($SYSTEM.Security.CheckUserPermission(..#PORTALLESSUSER, "%Ens_EventLog", "USE") = 1) && ($SYSTEM.Security.CheckUserPermission(..#PORTALLESSUSER, "%Ens_Portal", "USE") '= 1) && ($SYSTEM.Security.CheckUserPermission(..#PORTALLESSUSER, "%Admin_Operate", "USE") '= 1)
         Set tSecure = tSecure && ($SYSTEM.Security.CheckUserPermission(..#SECUREUSER, "%Ens_EventLog", "USE") '= 1)
         Set tTasks = ($SYSTEM.Security.CheckUserPermission(..#TASKSUSER, "%Admin_Operate", "USE") = 1) && ($SYSTEM.Security.CheckUserPermission(..#TASKSUSER, "%DB_IRISSYS", "READ") = 1) && ($SYSTEM.Security.CheckUserPermission(..#TASKSUSER, "%Admin_Secure", "USE") '= 1)
         Set ..PreparedSetupOk = tSecure && tOperate && tEvent && tTasks
@@ -180,11 +190,11 @@ Method OnAfterAllTests() As %Status
         Set tSC = ##class(OcuPilot.Kernel.Utils).SwitchNamespace("%SYS", .tOrigNS)
         If $$$ISERR(tSC) Quit
         Set tLeft = ""
-        For tUser = ..#SECUREUSER, ..#OPERATEUSER, ..#EVENTUSER, ..#TASKSUSER {
+        For tUser = ..#SECUREUSER, ..#OPERATEUSER, ..#EVENTUSER, ..#PORTALLESSUSER, ..#TASKSUSER {
             If ##class(Security.Users).Exists(tUser, .tU, .tUS) Do ##class(Security.Users).Delete(tUser)
             If ##class(Security.Users).Exists(tUser, .tU2, .tUS2) Set tLeft = tLeft _ $Select(tLeft = "": "", 1: ", ") _ "user " _ tUser
         }
-        For tRole = ..#SECUREROLE, ..#OPERATEROLE, ..#EVENTROLE, ..#TASKSROLE {
+        For tRole = ..#SECUREROLE, ..#OPERATEROLE, ..#EVENTROLE, ..#PORTALLESSROLE, ..#TASKSROLE {
             If ##class(Security.Roles).Exists(tRole, .tR, .tRS) Do ##class(Security.Roles).Delete(tRole)
             If ##class(Security.Roles).Exists(tRole, .tR2, .tRS2) Set tLeft = tLeft _ $Select(tLeft = "": "", 1: ", ") _ "role " _ tRole
         }
@@ -427,6 +437,24 @@ Method TestEachSecondaryLogRouteMeetsItsPair()
             Set tSC = ..FetchPath(tServed, tPath, .tStatus2, .tBody2, .tHeaders2)
             Do $$$AssertEquals(tStatus2, 200, tPath _ ": served with " _ tPair _ $Select(tKey = "taskerrors": " and %DB_IRISSYS:READ", 1: "") _ " alone: " _ $Extract(tBody2, 1, 200))
         }
+    }
+}
+
+/// <p>The event log's pair set is its classic page's resource and the one
+/// <code>EnsPortal.Application.CheckPrivileges</code> requires of every Interoperability page: a
+/// holder of <code>%Ens_EventLog:U</code> without <code>%Ens_Portal:U</code> is refused on the route
+/// and on the read tool, naming <code>%Ens_Portal:USE</code>.</p>
+/// <p>Mutation (Rule 19): drop <code>%Ens_Portal:USE</code> from
+/// <parameter>OcuPilot.Port.LogSourcePort.EVENTLOGPAIRS</parameter> -&gt; both legs go red.</p>
+Method TestAHolderOfTheEventLogResourceWithoutThePortalIsRefused()
+{
+    Do $$$AssertTrue(..PreparedSetupOk, "setup confirmed the principal lacks %Ens_Portal:USE and holds %Ens_EventLog:USE")
+    For tPath = "/api/ocupilot/logs/eventlog", "/api/ocupilot/screens/logs.eventlog/read?maxRows=5" {
+        Set tSC = ..FetchPath(..#PORTALLESSUSER, tPath, .tStatus, .tBody, .tHeaders)
+        Do $$$AssertStatusOK(tSC, tPath _ ": the request completes")
+        Do $$$AssertEquals(tStatus, 403, tPath _ ": refused without %Ens_Portal:USE")
+        Set tFault = ##class(%DynamicObject).%FromJSON(tBody)
+        Do $$$AssertEquals($Select($IsObject(tFault.detail): tFault.detail.failedPair, 1: ""), "%Ens_Portal:USE", tPath _ ": naming it")
     }
 }
 

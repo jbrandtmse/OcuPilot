@@ -2,8 +2,8 @@
 title: 'Story 20.1: Namespace category gating'
 type: 'feature'
 created: '2026-10-06'
-status: 'in-progress'
-baseline_revision: '9153a593de3492b37fc4feadf6a4b4fd45309977'
+status: 'done'
+baseline_revision: '51b883aaf5173fea064a730dad1f075a43ba90aa'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -288,7 +288,7 @@ deferred: []
   - opening Interoperability's side bar, then switching to `%SYS`: the rail item and the bar are gone, and switching back restores the rail item;
   - the `DeveloperFloorFixture` principal, created in `before` and removed in `after` on `ocupilot-b-ci` only. In the interop-only namespace it sees Interoperability drawn `aria-disabled`, naming `%Ens_Portal:USE`.
 
-- [ ] [Halt] Re-base the initial bundle budget under DW-1166 (runner-authorized 2026-10-07; the spawn prompt's re-base clause, so `ui/angular.json` and `ui/tools/angular-json.test.mjs` are cleared for this edit): `maximumWarning` `3012kB` -> `3165kB`, 5% above the measured 3,013,646-byte initial total, in `ui/angular.json` and in the DW-371 test's pinned literal and its comment (one line `// Story 20.1 raised it to 3165kB, 5% above a measured 3,013,646 bytes (namespace category gating), under the 4000kB hard stop.`). `maximumError` stays `4000kB`. Epic 18's own re-base (3191kB) meets this at the merge; the second epic to merge takes the larger figure. Then finish what the halt left: the tools tier, the full ObjectScript sweep, the review layers and finalize.
+- [x] [Halt] Re-base the initial bundle budget under DW-1166 (runner-authorized 2026-10-07; the spawn prompt's re-base clause, so `ui/angular.json` and `ui/tools/angular-json.test.mjs` are cleared for this edit): `maximumWarning` `3012kB` -> `3165kB`, 5% above the measured 3,013,646-byte initial total, in `ui/angular.json` and in the DW-371 test's pinned literal and its comment (one line `// Story 20.1 raised it to 3165kB, 5% above a measured 3,013,646 bytes (namespace category gating), under the 4000kB hard stop.`). `maximumError` stays `4000kB`. Epic 18's own re-base (3191kB) meets this at the merge; the second epic to merge takes the larger figure. Then finish what the halt left: the tools tier, the full ObjectScript sweep, the review layers and finalize.
 
 **Acceptance Criteria:**
 
@@ -302,6 +302,22 @@ deferred: []
 - 2026-10-07, runner: split by the orchestrator's merge gate (Q2). The hand-off criteria and their analysis moved to Story 20.13 (DW-2141; this spec at `9faa902f`); the contended edits named under Design Notes were cleared (Q3); the floor stays and new surfaces declare their classic gate as an own pair. Retitled to the new key `20-1-namespace-category-gating`; status reset to `draft` for a gating-only re-plan.
 
 ## Review Triage Log
+
+### 2026-10-07 - Review pass
+
+- verdicts: 11 findings - high 0, medium 0, low 5, false 6, maybe-false 0
+- findings:
+  - `[low]` `[patch]` Home, command box and locator have no recorded mutation - locator and Home mutations run and recorded under Verification; the command box has no subject screen until 20.2, noted there.
+  - `[low]` `[reject]` `Registry.Validate` calling `AreaProblem` is not pinned - the build-time mirror check refuses the same mistake first; a guard test would need a seam on `Validate` for no user-reachable case.
+  - `[low]` `[patch]` `AreaProblem` and mirror vocabulary mutations described but unrecorded - both run, red observed, reverted, recorded.
+  - `[low]` `[patch]` The descriptor-only AC3 mutation named no catching test - run; `Descriptor` goes red (8 of 60), recorded.
+  - `[low]` `[reject]` Side-bar retirement path has one test and no focus assertion - the recorded `offered()` mutation reddens that test; a persistence or focus mutation is more than a direct fix for a cosmetic gap.
+  - `[false]` `[reject]` Header of `NamespaceFeatures` may be stale on analytics - the test ran green on `ocupilot-b-ci` (HSSYS and HSLIB report analytics, measured), so the assertion holds.
+  - `[false]` `[reject]` Stale Auto Run Result block - rewritten at finalize.
+  - `[false]` `[reject]` Intent-alignment: Home and command box change no file - they read the filtered seams by design (spec Client shape); covered through `areas()`.
+  - `[false]` `[reject]` Intent-alignment: no publisher of the `namespace` change event in the client - Story 18.15 owns it; this story subscribes (spec Consumes).
+  - `[false]` `[reject]` Intent-alignment: "logged once" is one Warn per failed check - the matrix says logged once per failed check, and no per-process dedupe is specified.
+  - `[false]` `[reject]` Intent-alignment: category disappears on re-read until the map answers - the matrix requires neither drawn before the map answers.
 
 ## Design Notes
 
@@ -411,10 +427,26 @@ deferred: []
 - mutation: AC2 agent, `Navigation.Payload` omits `applies` on the agent area -> red: `NamespaceFeatures` payload leg and `ToolShell`.
 - mutation: matrix bus row, drop the bus subscription -> red: the bus leg of `navigation.test.mjs`.
 - mutation: AC3, `EVENTLOGPAIRS` without `%Ens_Portal:USE` -> red: `LogPairs` and `LogSourceDenial`'s new leg; `LogHubWire`'s new leg stays green, because the hub gates on the descriptor's `privileges`, so it reddens only when `LogEventViewer`'s `privileges` drop the pair too (then red; the descriptor mutation alone is green on `LogHubWire` and `LogSourceDenial`).
+- mutation: AC1 locator, drop `&& offered` in `locator-bar.ts` -> red: the `locator-bar.spec.ts` "draws no area segment" leg (35 of 36 green otherwise).
+- mutation: AD-44 mirror, the `features.includes` test in `screen-mirror.mjs` made always pass -> red: the `screen-mirror.test.mjs` bad-`appliesWhen` leg.
+- mutation: AD-44 registry, `AreaProblem`'s vocabulary test made `0 &&` -> red: `NamespaceFeatures.TestAnAreaWithAnUnknownFeatureIsRefused` (1 of 4).
+- mutation: AC3 descriptor only, `LogEventViewer` `privileges` without `%Ens_Portal:USE` -> red: `Descriptor` (8 of 60, `TestTheSixSecondaryLogViewersDeclareTheirSourceAndPair` among them).
+- Command box and Home read the filtered seams unchanged; the `areas()` mutation above reddens the Home leg of the browser spec, and the command box lists screens only, of which neither new category has any yet (20.2 pins it).
 
 ## Auto Run Result
 
-Status: blocked
-Blocking condition: bundle budget needs a non-add-only edit to a file Epic 18 is changing. The initial bundle is 3,013,646 bytes against `maximumWarning` 3012kB, so DW-371 in `ui/tools/build-output.test.mjs` fails by 1,646 bytes (HEAD is 3,011,584). Clearing it means raising the literal in `ui/angular.json` and `ui/tools/angular-json.test.mjs`; Epic 18 edits the same lines (3012kB to 3191kB). Recommended: the runner or orchestrator raises the figure to 3191kB (the union value) or lets Epic 18's merge supply it; no other code change is needed.
+Status: done
+Blocking condition: none
 
-Implementation is complete and uncommitted in the worktree. Server classes (18 run one at a time on ocupilot-b-ci), the component runner (2,554 tests), the tools tier (1,873 of 1,874; the one failure is DW-371), the six browser specs, `check-objectscript.py`, `lint-docs.sh` and smoke (50/50) are green. The full ObjectScript sweep, review layers and finalize have not run.
+Summary: namespace category gating. `NamespaceFeatures` (new) answers `interoperability` and `analytics` per namespace; `Screen.Area` declares the two areas with `appliesWhen`; `Navigation.Payload` and `shell.privileges.read` carry `applies` on every area; `NavigationService` fails closed on it and re-reads on a `namespace` bus event; rail, Home, command box, locator and side bar read the filtered seams; DW-1921 adds `%Ens_Portal:USE` to the event log's descriptor and port pairs. This pass applied the `[Halt]` budget re-base (`maximumWarning` 3012kB to 3165kB in `ui/angular.json` and its DW-371 pin).
+
+Review: 11 findings, 3 patched (all low, mutation lines recorded under Verification), 0 deferred, 8 rejected with reasons in the triage log. Follow-up review recommended: false (patched high 0, medium 0).
+
+Verification (ocupilot-b-ci, 2026-10-07):
+
+- Full ObjectScript sweep `node tools/ci-runner.mjs --container ocupilot-b-ci`: 490 classes, 3,959 tests, 0 failed, 0 probe leftovers, 0 overlaps, 0 foreign runs; run indices confirmed against `%UnitTest_Result`.
+- `npm run test:tools`: 1,874 of 1,874. `npm test`: tools tier green and component runner 2,554 of 2,554. `npm run build`: initial total 3.01 MB, under the 3165kB warning.
+- `scripts/smoke.sh --container ocupilot-b-ci`: 50 of 50. `check-objectscript.py` and `lint-docs.sh` clean.
+- Browser: the story's six specs ran green in pass 1; the full browser suite is CI's (Rule 29).
+
+Residual risk: Epic 18's own budget re-base (3191kB) meets 3165kB at the merge; the second epic to merge takes the larger figure.

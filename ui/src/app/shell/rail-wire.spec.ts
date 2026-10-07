@@ -43,6 +43,7 @@ const LIVE_PAYLOAD = {
       railPosition: 1,
       navigates: true,
       pinBottom: false,
+      applies: true,
       allowed: true,
       screens: [{ route: '', labelKey: 'navAreaHome', sideBarPosition: 1, allowed: true }],
     },
@@ -52,6 +53,7 @@ const LIVE_PAYLOAD = {
       railPosition: 2,
       navigates: false,
       pinBottom: false,
+      applies: true,
       allowed: true,
       screens: [
         {
@@ -89,6 +91,7 @@ const LIVE_PAYLOAD = {
       railPosition: 3,
       navigates: false,
       pinBottom: false,
+      applies: true,
       allowed: false,
       failedPair: '%Admin_Manage:USE',
       // Story 6.11 took this roster from four screens to eight, and Story 6.12 took it from eight
@@ -436,6 +439,7 @@ const LIVE_PAYLOAD = {
       railPosition: 4,
       navigates: false,
       pinBottom: false,
+      applies: true,
       allowed: false,
       failedPair: '%Admin_Task:USE',
       screens: [
@@ -496,6 +500,7 @@ const LIVE_PAYLOAD = {
       railPosition: 5,
       navigates: false,
       pinBottom: false,
+      applies: true,
       allowed: false,
       failedPair: '%Admin_Secure:USE',
       screens: [
@@ -535,6 +540,7 @@ const LIVE_PAYLOAD = {
       railPosition: 6,
       navigates: false,
       pinBottom: false,
+      applies: true,
       allowed: false,
       failedPair: '%Admin_Secure:USE',
       screens: [
@@ -562,6 +568,7 @@ const LIVE_PAYLOAD = {
       railPosition: 7,
       navigates: false,
       pinBottom: false,
+      applies: true,
       allowed: false,
       failedPair: '%Admin_Secure:USE',
       screens: [
@@ -643,6 +650,7 @@ const LIVE_PAYLOAD = {
       railPosition: 8,
       navigates: false,
       pinBottom: false,
+      applies: true,
       allowed: false,
       failedPair: '%Development:USE',
       screens: [
@@ -676,7 +684,28 @@ const LIVE_PAYLOAD = {
         },
       ],
     },
-    { key: 'agent', labelKey: 'navAreaAgent', railPosition: 9, navigates: false, pinBottom: true, allowed: true, screens: [] },
+    {
+      key: 'interoperability',
+      labelKey: 'navAreaInteroperability',
+      railPosition: 9,
+      navigates: false,
+      pinBottom: false,
+      applies: true,
+      allowed: false,
+      failedPair: '%Ens_Portal:USE',
+      screens: [],
+    },
+    {
+      key: 'analytics',
+      labelKey: 'navAreaAnalytics',
+      railPosition: 10,
+      navigates: false,
+      pinBottom: false,
+      applies: false,
+      allowed: true,
+      screens: [],
+    },
+    { key: 'agent', labelKey: 'navAreaAgent', railPosition: 11, navigates: false, pinBottom: true, applies: true, allowed: true, screens: [] },
   ],
 };
 
@@ -721,12 +750,14 @@ describe('the rail, wired to the real NavigationService reading a live-captured 
     fixture.detectChanges();
   });
 
-  it('renders every area the live map answered for, none hidden', () => {
-    expect(items()).toHaveLength(9);
+  it('renders every area the live map answered for that applies in its namespace, none hidden', () => {
+    // The captured principal is in HSCUSTOM: Interoperability applies (drawn, refused), Analytics does not.
+    expect(items()).toHaveLength(10);
+    expect(items().map((item) => item.getAttribute('aria-label') ?? item.title)).not.toContain(STRINGS.navAreaAnalytics);
     for (const item of items()) expect(item.hidden).toBe(false);
   });
 
-  it('marks exactly the six areas the live principal was denied as aria-disabled, each naming its own pair', () => {
+  it('marks exactly the seven areas the live principal was denied as aria-disabled, each naming its own pair', () => {
     // The two that never gate, and Logs, which a screen it lists opens for this principal (AD-8 as
     // amended for DW-1768): the messages.log viewer declares `%Admin_Operate:USE` alone.
     for (const label of [STRINGS.navAreaHome, STRINGS.navAreaAgent, STRINGS.navAreaLogs]) {
@@ -743,6 +774,8 @@ describe('the rail, wired to the real NavigationService reading a live-captured 
       [STRINGS.navAreaSecurity, '%Admin_Secure:USE'],
       // Story 19.1: System Explorer's screens all declare `%Development:USE`.
       [STRINGS.navAreaSystemExplorer, '%Development:USE'],
+      // Story 20.1: applies in HSCUSTOM, so it is drawn, unavailable, naming its classic menu's pair.
+      [STRINGS.navAreaInteroperability, '%Ens_Portal:USE'],
     ];
     for (const [label, pair] of denied) {
       const item = byLabel(label);
