@@ -10332,3 +10332,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: cycle-log-epic-18.md (Story 18.25 CI run 37646809169) | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: run 37646809169 head 44e8f5b3 instance shard 2/5: AssertMasked+7 and +9 red on the wire read while logs.audit.read passed moments later; the class ran 4/4 green on ocupilot-ci (run 1172) over the same source; OAuthAuthorizationServerSecret and OAuthRegisteredClientSecret read once the same way (inference)
 - 2026-10-07T17:30:11Z status=routed owner=burndown by=lead note=apply 23.4's READSECONDS poll (16313a0e) to AuditVendorSecrets.AssertMasked and to any sibling that reads a vendor row once
+
+### DW-2163: CI flake: agent-picker.browser-spec.mjs Leg 1's open-menu structural gate at 720px read the Users table and the panel toggle as overflowing (469px and 7px past the viewport) once, then passed on a re-run of the same head
+- source: cycle-log-epic-20.md (run 37670705022 attempt 1) | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: Failed in browser shard 1/3 of attempt 1 on 95eecef8; attempt 2 green; passed in 37649713980 and 37660214447 and 3/3 locally on ocupilot-b-ci (inference: measured mid-reflow after setViewport)
+- 2026-10-07T20:40:47Z status=routed owner=23-5-the-range-end-cleanup-part-5 by=lead note=settle the layout after setViewport(720) before openMenuViolations measures, as 20.1 did for the navigation map; same screen family as DW-2107
