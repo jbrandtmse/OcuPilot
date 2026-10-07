@@ -25,9 +25,16 @@
  * for the length of one round trip. Entries become gated when the map says so. What waits for
  * the map is a screen's page: `ScreenOutlet` mounts none until `answered()`, so a screen the map
  * then refuses issues no read of its own.
+ *
+ * **A category that applies only in some namespaces is the opposite case.** The map's per-area
+ * `applies` (AD-44) says whether the route's namespace reports the feature the area declares in
+ * `appliesWhen`; an area that does not apply is drawn nowhere, and until the map has answered for
+ * the current namespace it does not apply. Applicability is not a privilege gate: an area that
+ * applies and that the caller cannot open stays drawn, unavailable.
  */
 
 import type { ApiService } from './api';
+import type { ChangeBus, ChangeEvent } from './change-bus';
 import type { ConnectivityService } from './connectivity';
 import { decodeEntityId, encodeEntityId, splitCompositeId } from './entity-id.ts';
 import { INSTANCE_SCOPE, scopeFor } from './entity-ref.ts';
@@ -54,6 +61,7 @@ interface ScreenVerdictWire {
 
 interface AreaVerdictWire {
   key?: unknown;
+  applies?: unknown;
   allowed?: unknown;
   failedPair?: unknown;
   screens?: unknown;
@@ -81,6 +89,35 @@ export interface NavigationOptions {
    * behaviour of a shell that is not namespace-scoped at all.
    */
   readonly namespace?: () => string;
+  /**
+   * The client change bus (AD-14). A `changed` event of type `namespace` for the namespace the shell
+   * is scoped to -- Story 18.15's Enable interoperability, which changes what that namespace
+   * reports -- re-reads the map, so a category appears without a reload.
+   */
+  readonly bus?: ChangeBus;
+}
+
+/** `ScopeService`'s `NAMESPACE_ENTITY`, spelled here because `scope.ts` imports this module. */
+const NAMESPACE_ENTITY_TYPE = 'namespace';
+
+/**
+ * The areas of `areas` that apply in the namespace the map was read for, in their order. An area
+ * that declares no `appliesWhen` always applies. Applicability is not a privilege gate (AD-8,
+ * AD-44): a category that applies and that the caller cannot open stays in the list.
+ */
+export function areasThatApply(
+  areas: readonly AreaDeclaration[],
+  applies: (areaKey: string) => boolean
+): readonly AreaDeclaration[] {
+  return areas.filter((area) => applies(area.key));
+}
+
+/** The screens of `screens` whose area applies, in their order. */
+export function screensThatApply(
+  screens: readonly ScreenDeclaration[],
+  applies: (areaKey: string) => boolean
+): readonly ScreenDeclaration[] {
+  return screens.filter((screen) => applies(screen.area));
 }
 
 /** The areas in rail order. Agent co-pilot is pinned to the bottom by `pinBottom`. */
@@ -779,9 +816,14 @@ export class NavigationService {
   private readonly api: ApiService;
   private readonly connectivity: ConnectivityService | null;
   private readonly namespace: () => string;
+  /** Whether a namespace source was configured. Without one, `''` is the only namespace there is. */
+  private readonly scoped: boolean;
 
   private areaVerdicts = new Map<string, Verdict>();
   private screenVerdicts = new Map<string, Verdict>();
+  private appliesByArea = new Map<string, boolean>();
+  /** The namespace the stored `applies` answers were read under; `null` before any answer. */
+  private appliesKey: string | null = null;
   private loadedOnce = false;
   private answeredOnce = false;
 
@@ -808,6 +850,35 @@ export class NavigationService {
     this.api = options.api;
     this.connectivity = options.connectivity ?? null;
     this.namespace = options.namespace ?? (() => '');
+    this.scoped = options.namespace !== undefined;
+    options.bus?.subscribe((event) => this.onChange(event));
+  }
+
+  /**
+   * Whether the area applies in the namespace the shell is scoped to. An area that declares no
+   * `appliesWhen` always does. One that does is **fail closed**, the opposite of the verdicts: it
+   * applies only when the stored answer was read under the current namespace and said `true`,
+   * because a category that does not apply has nothing behind it for a server gate to protect, so
+   * drawing it on an unanswered question would be wrong.
+   */
+  applies(areaKey: string): boolean {
+    const declared = areaByKey(areaKey)?.appliesWhen;
+    if (declared === undefined) return true;
+    return this.appliesAnswered() && this.appliesByArea.get(areaKey) === true;
+  }
+
+  /**
+   * Whether the stored `applies` answers were read under the namespace the shell is scoped to now.
+   * False before any answer, and while the re-read for a namespace the shell has moved to is in
+   * flight or has failed: a category is not drawn then, and the side bar waits for this answer
+   * before it closes one, so a switch between two namespaces that both report it keeps the bar.
+   * Also false for an answer read under `''` while a namespace source is configured: that is the
+   * cold sign-in read, sent before the namespace list arrives, so it answers for the instance's own
+   * namespace rather than the route's.
+   */
+  appliesAnswered(): boolean {
+    if (this.appliesKey === null || this.appliesKey !== this.namespace()) return false;
+    return this.appliesKey !== '' || !this.scoped;
   }
 
   /** Whether a map has been received at all. Nothing is gated until it has. */
@@ -828,35 +899,37 @@ export class NavigationService {
   /**
    * The areas the rail renders, and the screens an area's side bar lists.
    *
-   * They delegate to the mirror and add nothing -- they exist on the service so a component
-   * test can hand the rail and the side bar a roster the shipped mirror does not carry. At the
+   * They read the mirror and keep only what applies in the current namespace (`applies()`), and
+   * they exist on the service so a component test can hand the rail and the side bar a roster the
+   * shipped mirror does not carry. At the
    * end of Epic 1 that mirror holds one screen, Home, whose area has no side bar, so without
    * this seam the side bar's own listing rules would have nothing to render and nothing to
    * assert. Production never overrides them.
    */
   areas(): readonly AreaDeclaration[] {
-    return orderedAreas();
+    return areasThatApply(orderedAreas(), (key) => this.applies(key));
   }
 
   /**
    * The screens an area's side bar, command box, tile caption, locator segment and rail landing
    * offer: its **listed** ones (`listedScreensForArea`), which is what this seam has always meant
-   * and what its own comment above says. A screen declaring `sideBarPosition` 0 is routable and
-   * unlisted, so it is absent here and present in `builtScreens()`.
+   * and what its own comment above says, and none for an area that does not apply. A screen
+   * declaring `sideBarPosition` 0 is routable and unlisted, so it is absent here and present in
+   * `builtScreens()`.
    */
   screensForArea(areaKey: string): readonly ScreenDeclaration[] {
-    return listedScreensForArea(areaKey);
+    return this.applies(areaKey) ? listedScreensForArea(areaKey) : [];
   }
 
   /**
-   * Every built screen, and the screen a router URL resolves to. Seams for the same reason
-   * `areas()` is one: the command box lists every screen the user may open and the command
-   * bar reads the current screen's declared actions, and no screen in the shipped mirror
-   * declares an action, so neither rule would have a subject in a component test.
+   * Every built screen whose area applies, and the screen a router URL resolves to. Seams for
+   * the same reason `areas()` is one: the command box lists every screen the user may open and
+   * the command bar reads the current screen's declared actions, and no screen in the shipped
+   * mirror declares an action, so neither rule would have a subject in a component test.
    * Production never overrides them.
    */
   builtScreens(): readonly ScreenDeclaration[] {
-    return builtScreens();
+    return screensThatApply(builtScreens(), (key) => this.applies(key));
   }
 
   screenForUrl(url: string): ScreenDeclaration | null {
@@ -919,7 +992,11 @@ export class NavigationService {
    * an answer to a question nobody is asking any more (**DW-157**).
    */
   reload(): void {
+    const moved = this.appliesKey !== null && this.appliesKey !== this.namespace();
     void this.load();
+    // The stored `applies` answers belong to the namespace the shell has left, so a category stops
+    // being drawn now rather than when, or if, the re-read answers (fail closed, AD-44).
+    if (moved) this.notify();
   }
 
   /**
@@ -931,6 +1008,8 @@ export class NavigationService {
     this.generation += 1;
     this.areaVerdicts = new Map();
     this.screenVerdicts = new Map();
+    this.appliesByArea = new Map();
+    this.appliesKey = null;
     this.loadedOnce = false;
     this.answeredOnce = false;
     this.flight.reset();
@@ -944,9 +1023,10 @@ export class NavigationService {
    * is what makes "the re-run carries the new namespace" a property of the request rather than of
    * a service the request happens to consult.
    *
-   * An empty key is a service with no namespace source configured, not a namespace of `''`: it
-   * sends no scope of its own and `ApiService` attaches whatever the shell is scoped to, which is
-   * what this read did before it was keyed.
+   * An empty key is a service with no namespace source configured, or a shell whose namespace list
+   * has not arrived yet: it sends no scope of its own and `ApiService` attaches whatever the shell
+   * is scoped to, which is what this read did before it was keyed. In the second case its `applies`
+   * answers do not count (`appliesAnswered()`).
    */
   private async runLoad(key: string): Promise<void> {
     const generation = this.generation;
@@ -977,12 +1057,16 @@ export class NavigationService {
     const areas = Array.isArray(body.areas) ? body.areas : [];
 
     const nextAreas = new Map<string, Verdict>();
+    const nextApplies = new Map<string, boolean>();
     const nextScreens = new Map<string, Verdict>();
     for (const raw of areas) {
       if (typeof raw !== 'object' || raw === null) continue;
       const area = raw as AreaVerdictWire;
-      const key = asString(area.key);
-      if (key !== '') nextAreas.set(key, verdictFrom(area));
+      const areaKey = asString(area.key);
+      if (areaKey !== '') {
+        nextAreas.set(areaKey, verdictFrom(area));
+        nextApplies.set(areaKey, area.applies === true);
+      }
       const screens = Array.isArray(area.screens) ? area.screens : [];
       for (const rawScreen of screens) {
         if (typeof rawScreen !== 'object' || rawScreen === null) continue;
@@ -996,9 +1080,18 @@ export class NavigationService {
 
     this.areaVerdicts = nextAreas;
     this.screenVerdicts = nextScreens;
+    this.appliesByArea = nextApplies;
+    this.appliesKey = key;
     this.loadedOnce = true;
     this.answeredOnce = true;
     this.notify();
+  }
+
+  /** A namespace changed under the one the shell is scoped to: re-read what it reports (AD-14). */
+  private onChange(event: ChangeEvent): void {
+    if (event.kind !== 'changed' || event.type !== NAMESPACE_ENTITY_TYPE) return;
+    if (event.id.toLowerCase() !== this.namespace().toLowerCase()) return;
+    this.reload();
   }
 
   private notify(): void {

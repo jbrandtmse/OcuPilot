@@ -29,7 +29,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 09-09-2026 07:49
-last_updated: '10-07-2026 16:08'
+last_updated: '10-07-2026 17:45'
 project: OcuPilot
 project_key: NOKEY
 tracking_system: file-system
@@ -325,9 +325,9 @@ development_status:
   19-18-epic-19-burn-down: done
   epic-19-retrospective: optional
 
-  epic-20: backlog
-  20-1-the-sign-in-hand-off-and-namespace-category-gating: backlog
-  20-2-productions-listed-and-controlled: backlog
+  epic-20: in-progress
+  20-1-namespace-category-gating: done
+  20-2-productions-listed-and-controlled: in-progress
   20-3-production-items: backlog
   20-4-per-host-tabs-the-monitor-queues-and-jobs: backlog
   20-5-lookup-tables-and-business-partners: backlog
@@ -338,6 +338,11 @@ development_status:
   20-10-source-control-hooks: backlog
   20-11-the-analytics-rider: backlog
   20-12-the-agent-gains-guided-workflows-and-investigate: backlog
+  20-13-the-sign-in-hand-off-to-the-embedded-vendor-editors: backlog
+  20-14-interoperability-holders-reach-ocupilot: backlog
+  20-15-per-screen-permissions-seen-and-adjusted: backlog
+  20-16-the-agent-edits-rule-dtl-and-bpl-content-behind-the-embedded: backlog
+  20-17-the-agent-proposes-class-and-routine-source-edits-on-the-per: backlog
   epic-20-retrospective: optional
 
   epic-21: backlog

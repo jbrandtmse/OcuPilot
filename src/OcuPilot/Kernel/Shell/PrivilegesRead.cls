@@ -6,14 +6,14 @@ Class OcuPilot.Kernel.Shell.PrivilegesRead Extends OcuPilot.Kernel.Shell.ReadToo
 
 Parameter TOOLNAME = "shell.privileges.read";
 
-Parameter DESCRIPTION = "Read every area and screen of this portal, whether this account may reach each one, and the privilege pair that blocks each one it may not.";
+Parameter DESCRIPTION = "Read every area and screen of this portal, whether this account may reach each one, and the privilege pair that blocks each one it may not. An area whose applies is false does not exist in this namespace and is not shown, whatever this account holds.";
 
 ClassMethod Payload(Output pObject As %DynamicObject) As %Status
 {
     Quit ##class(OcuPilot.Kernel.Shell.Navigation).Payload(.pObject)
 }
 
-/// <p><code>{areas}</code>, each area carrying its screens, and each area and screen carrying
+/// <p><code>{areas}</code>, each area carrying its screens and <code>applies</code>, and each area and screen carrying
 /// <code>allowed</code> plus <code>failedPair</code> where it is refused.</p>
 ClassMethod ResultSchema(pDescriptor As %String = "") As %DynamicObject
 {
@@ -31,6 +31,7 @@ ClassMethod ResultSchema(pDescriptor As %String = "") As %DynamicObject
                         "railPosition": {"type": "integer"},
                         "navigates": {"type": "boolean"},
                         "pinBottom": {"type": "boolean"},
+                        "applies": {"type": "boolean"},
                         "allowed": {"type": "boolean"},
                         "failedPair": {"type": "string"},
                         "screens": {
@@ -49,7 +50,7 @@ ClassMethod ResultSchema(pDescriptor As %String = "") As %DynamicObject
                             }
                         }
                     },
-                    "required": ["key", "labelKey", "railPosition", "navigates", "pinBottom", "allowed", "screens"],
+                    "required": ["key", "labelKey", "railPosition", "navigates", "pinBottom", "applies", "allowed", "screens"],
                     "additionalProperties": false
                 }
             }

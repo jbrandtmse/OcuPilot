@@ -1,5 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
@@ -28,6 +29,8 @@ const corePath = (name) => join(uiRoot, 'src', 'app', 'core', name);
 const {
   NavigationService,
   NAVIGATION_PATH,
+  areasThatApply,
+  screensThatApply,
   UNGATED,
   orderedAreas,
   areaByKey,
@@ -70,6 +73,7 @@ const { AREAS, SCREENS } = await import(corePath('screens.generated.ts'));
 const { ApiService } = await import(corePath('api.ts'));
 const { STRINGS, stringFor } = await import(corePath('strings.ts'));
 const { encodeEntityId } = await import(corePath('entity-id.ts'));
+const { ChangeBus } = await import(corePath('change-bus.ts'));
 
 /** A map answer shaped the way `GET /api/ocupilot/navigation` shapes one. */
 function mapBody(areas) {
@@ -95,12 +99,12 @@ function ok(body) {
 
 // --- The registry over the mirror ---------------------------------------------------------
 
-test('the mirror carries the nine areas in rail order, with Agent co-pilot pinned bottom', () => {
+test('the mirror carries the eleven areas in rail order, with Agent co-pilot pinned bottom', () => {
   const areas = orderedAreas();
-  assert.equal(areas.length, 9);
+  assert.equal(areas.length, 11);
   assert.deepEqual(
     areas.map((area) => area.key),
-    ['home', 'logs', 'os-management', 'tasks', 'permissions', 'web-applications', 'security', 'system-explorer', 'agent']
+    ['home', 'logs', 'os-management', 'tasks', 'permissions', 'web-applications', 'security', 'system-explorer', 'interoperability', 'analytics', 'agent']
   );
   areas.forEach((area, index) => assert.equal(area.railPosition, index + 1));
   assert.equal(areas.filter((area) => area.pinBottom).length, 1);
@@ -1128,7 +1132,11 @@ test('reset forgets the map, so the next principal in this tab is asked about af
 
 test('the listing seams delegate to the mirror, so a component test can substitute a roster', () => {
   const service = new NavigationService({ api: stubApi([ok(mapBody([]))]) });
-  assert.deepEqual(service.areas(), orderedAreas());
+  assert.deepEqual(
+    service.areas(),
+    orderedAreas().filter((area) => area.appliesWhen === undefined),
+    'before an answer the categories that depend on a feature are not offered'
+  );
   assert.deepEqual(service.screensForArea('home'), builtScreensForArea('home'));
   assert.equal(areaByKey('security')?.labelKey, 'navAreaSecurity');
   assert.equal(areaByKey('no-such-area'), null);
@@ -1379,4 +1387,181 @@ test('screenForToolName resolves a write tool to its own screen', () => {
   assert.ok(webApp !== null && webApp.toolIdentifier === 'webapp.list', 'a built screen resolves the same way');
   assert.equal(screenForToolName('nosuch.screen.update'), null, 'a tool no screen owns resolves to nothing');
   assert.equal(screenForToolName('single'), null, 'and so does a name with no screen segment');
+});
+
+// --- Namespace categories (Story 20.1, AD-44) ---------------------------------------------
+
+// Mutations (Rule 19):
+// - make `applies()` treat a missing answer as true -> the pre-answer, missing and non-boolean rows
+//   go red.
+// - drop the bus subscription from the constructor -> the bus row goes red.
+
+/** A map answering every declared area, with `applies` per feature the namespace reports. */
+function featureMap(features, overrides = {}) {
+  return mapBody(
+    AREAS.map((area) => ({
+      key: area.key,
+      allowed: true,
+      screens: [],
+      applies: area.appliesWhen === undefined ? true : features.includes(area.appliesWhen),
+      ...overrides[area.key],
+    }))
+  );
+}
+
+const keysOf = (areas) => areas.map((area) => area.key);
+
+test('areasThatApply and screensThatApply keep what the predicate admits, in order', () => {
+  const kept = areasThatApply(AREAS, (key) => key !== 'logs');
+  assert.deepEqual(keysOf(kept), keysOf(AREAS).filter((key) => key !== 'logs'));
+  const interopScreen = { area: 'interoperability', route: 'interoperability/synthetic' };
+  const logsScreen = { area: 'logs', route: 'logs/alerts' };
+  assert.deepEqual(
+    screensThatApply([interopScreen, logsScreen], (key) => key !== 'interoperability'),
+    [logsScreen],
+    'a screen of an area that does not apply is dropped'
+  );
+});
+
+test('a category is not offered before the map answers, and areas without appliesWhen always are', () => {
+  const service = new NavigationService({ api: stubApi([ok(mapBody([]))]), namespace: () => 'HSCUSTOM' });
+  assert.equal(service.applies('interoperability'), false);
+  assert.equal(service.applies('analytics'), false);
+  assert.equal(service.applies('logs'), true);
+  assert.equal(service.applies('no-such-area'), true, 'an area that declares no feature always applies');
+  assert.equal(keysOf(service.areas()).includes('interoperability'), false);
+  assert.equal(keysOf(service.areas()).includes('logs'), true, 'the other areas are drawn ungated, as before');
+});
+
+test('the map answers applies, and each surface seam draws exactly what applies', async () => {
+  const api = stubApi([ok(featureMap(['interoperability']))]);
+  const service = new NavigationService({ api, namespace: () => 'HSCUSTOM' });
+  await service.load();
+  assert.equal(service.applies('interoperability'), true);
+  assert.equal(service.applies('analytics'), false);
+  assert.deepEqual(keysOf(service.areas()).filter((key) => key === 'interoperability' || key === 'analytics'), ['interoperability']);
+  assert.equal(service.areaVerdict('analytics').allowed, true, 'a verdict is not applicability');
+});
+
+test('an answer of false, a missing applies and a non-boolean applies all leave the category undrawn', async () => {
+  for (const applies of [false, undefined, 'true', 1, null]) {
+    const body = featureMap(['interoperability', 'analytics']);
+    for (const area of body.areas) {
+      if (area.key === 'interoperability') {
+        if (applies === undefined) delete area.applies;
+        else area.applies = applies;
+      }
+    }
+    const service = new NavigationService({ api: stubApi([ok(body)]), namespace: () => 'HSCUSTOM' });
+    await service.load();
+    assert.equal(service.applies('interoperability'), false, `applies ${String(applies)} is not true`);
+    assert.equal(service.applies('analytics'), true, 'the other category is judged on its own answer');
+  }
+});
+
+test('an answer read under another namespace is not carried to the one the shell has moved to', async () => {
+  let namespace = 'HSSYS';
+  const service = new NavigationService({ api: stubApi([ok(featureMap(['interoperability', 'analytics']))]), namespace: () => namespace });
+  await service.load();
+  assert.equal(service.applies('interoperability'), true);
+  namespace = '%SYS';
+  assert.equal(service.applies('interoperability'), false, 'fail closed until the map is read for the new namespace');
+  assert.equal(service.applies('analytics'), false);
+  assert.equal(keysOf(service.areas()).includes('analytics'), false);
+});
+
+test('a re-read for a namespace the shell has moved to stops drawing a category at once, before it answers', async () => {
+  // Mutation (Rule 19): drop the `notify()` from `reload()` -> the surfaces are not told and the
+  // count below stays 0.
+  let namespace = 'HSCUSTOM';
+  let answer = () => {};
+  const held = new Promise((resolve) => {
+    answer = resolve;
+  });
+  const service = new NavigationService({
+    api: stubApi([ok(featureMap(['interoperability'])), ok(featureMap(['interoperability'])), held]),
+    namespace: () => namespace,
+  });
+  await service.load();
+  let told = 0;
+  service.subscribe(() => {
+    told += 1;
+  });
+  assert.equal(service.appliesAnswered(), true);
+
+  service.reload();
+  assert.equal(told, 0, 'a re-read in the same namespace waits for its answer');
+  await service.load();
+  told = 0;
+
+  namespace = 'USER';
+  service.reload();
+  assert.equal(told, 1, 'a moved namespace tells the surfaces before the re-read answers');
+  assert.equal(service.appliesAnswered(), false, 'which has not answered for USER yet');
+  assert.equal(keysOf(service.areas()).includes('interoperability'), false, 'so the category is not drawn');
+
+  answer(ok(featureMap(['interoperability'])));
+  await service.load();
+  assert.equal(service.appliesAnswered(), true);
+  assert.equal(keysOf(service.areas()).includes('interoperability'), true, "and USER's own answer draws it again");
+});
+
+test('the cold sign-in read, sent before the namespace list arrives, draws no category and is not the answer', async () => {
+  // Mutation (Rule 19): drop the `appliesKey !== ''` clause from `appliesAnswered()` -> the first two
+  // assertions go red: the instance's own namespace's answer is drawn under the route's.
+  let namespace = '';
+  const api = stubApi([ok(featureMap(['interoperability'])), ok(featureMap([]))]);
+  const service = new NavigationService({ api, namespace: () => namespace });
+  await service.load();
+  assert.equal(service.appliesAnswered(), false, 'an answer read with no namespace is not the route namespace\'s');
+  assert.equal(keysOf(service.areas()).includes('interoperability'), false, 'so a category it reports is not drawn');
+
+  namespace = '%SYS';
+  service.reload();
+  await service.load();
+  assert.equal(service.appliesAnswered(), true, 'the read scoped to the resolved namespace is the answer');
+  assert.equal(keysOf(service.areas()).includes('interoperability'), false, 'and it draws what that namespace reports');
+});
+
+test('main.ts hands the change bus to the navigation service it builds', () => {
+  // The bus row below builds its own service, so it stays green with the hand-off deleted while the
+  // shipped shell never re-reads the map on a namespace change event.
+  // Mutation (Rule 19): drop `bus,` from main.ts's `new NavigationService({...})` -> this goes red.
+  const source = readFileSync(join(uiRoot, 'src', 'main.ts'), 'utf8');
+  const call = /new NavigationService\(\{([^}]*)\}\)/.exec(source);
+  assert.ok(call !== null, 'main.ts builds the navigation service');
+  assert.match(call[1], /^\s*bus\s*,?\s*$/m, 'and passes it the bus');
+  assert.ok(
+    source.indexOf('const bus = new ChangeBus()') < source.indexOf('new NavigationService('),
+    'which exists before the service does'
+  );
+});
+
+test('a failed read leaves the stored answer as it was, and reset() clears it', async () => {
+  const api = stubApi([ok(featureMap(['interoperability'])), { kind: 'error', status: 500, body: null }]);
+  const service = new NavigationService({ api, namespace: () => 'HSCUSTOM' });
+  await service.load();
+  assert.equal(service.applies('interoperability'), true);
+  await service.load();
+  assert.equal(service.applies('interoperability'), true, 'a failed re-read does not hide what was answered');
+  service.reset();
+  assert.equal(service.applies('interoperability'), false, 'reset forgets the answer');
+});
+
+test('a namespace change event for the current namespace re-reads the map, and one for another does not', async () => {
+  const bus = new ChangeBus();
+  const api = stubApi([ok(featureMap([])), ok(featureMap(['interoperability']))]);
+  const service = new NavigationService({ api, namespace: () => 'HSCUSTOM', bus });
+  await service.load();
+  assert.equal(api.calls.length, 1);
+  assert.equal(service.applies('interoperability'), false);
+
+  bus.publish({ kind: 'changed', type: 'namespace', scope: 'instance', id: 'USER', action: 'updated' });
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  assert.equal(api.calls.length, 1, 'another namespace is not a re-read');
+
+  bus.publish({ kind: 'changed', type: 'namespace', scope: 'instance', id: 'hscustom', action: 'updated' });
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  assert.equal(api.calls.length, 2, 'the current namespace is, whatever its case');
+  assert.equal(service.applies('interoperability'), true, 'and the category appears without a reload');
 });

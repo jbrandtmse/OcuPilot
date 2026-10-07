@@ -302,7 +302,10 @@ export class LocatorBar {
     const segments: LocatorSegment[] = [];
     // Suppressed when it would only repeat the screen's own name -- Home is both an area and
     // its own screen, and a locator that read "Home > Home" would be saying it twice.
-    if (areaLabel !== '' && areaLabel !== screenLabel) {
+    // Nor drawn for an area the rail no longer offers: a category that does not apply in this
+    // namespace (AD-44) is named nowhere.
+    const offered = this.navigation.areas().some((candidate) => candidate.key === screen.area);
+    if (areaLabel !== '' && areaLabel !== screenLabel && offered) {
       // The area's own verdict, the same one the rail refuses on (DW-143). Not the first built
       // screen's: the rail gates the area, and a locator that consulted a different verdict
       // from the rail item pointing at the same place would disagree with it on screen.

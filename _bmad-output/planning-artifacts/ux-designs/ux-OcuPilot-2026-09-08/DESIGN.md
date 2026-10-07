@@ -972,7 +972,7 @@ The frame that is on screen at every route: the activity rail and its items, the
 
 #### `rail`
 
-The 48px activity bar on `{colors.shell}` (both modes), flush with the header — no divider between them, no border on its right edge; the side bar or content simply begins. Nine `rail-item`s: Home · Logs · OS management · Tasks · Permissions · Web applications and REST API explorer · Security and secrets · System Explorer stacked from the top; Agent co-pilot pinned at the bottom with `{spacing.2}` beneath it. The icons are the nine drawn in `mockups/key-home.html` (Home's `area-tile`s carry the mockup's separate 24px drawings of the same seven areas): inline SVG, 1.5 stroke in `currentColor`, decorative. [AMENDED 2026-09-24, Story 15.7, UX-DR15: was "the interim set is one Material Symbols glyph per area"]
+The 48px activity bar on `{colors.shell}` (both modes), flush with the header — no divider between them, no border on its right edge; the side bar or content simply begins. Eleven `rail-item`s: Home · Logs · OS management · Tasks · Permissions · Web applications and REST API explorer · Security and secrets · System Explorer · Interoperability · Analytics stacked from the top, the last two only in a namespace that reports the feature; Agent co-pilot pinned at the bottom with `{spacing.2}` beneath it. The icons are the eleven drawn in `mockups/key-home.html` (Home's `area-tile`s carry the mockup's separate 24px drawings of the same nine areas): inline SVG, 1.5 stroke in `currentColor`, decorative. [AMENDED 2026-09-24, Story 15.7, UX-DR15: was "the interim set is one Material Symbols glyph per area"]
 
 #### `rail-item`
 
@@ -1100,7 +1100,7 @@ The "More in the classic portal" card that ends a reduced form: `{colors.surface
 
 #### `area-tile`
 
-Home's seven areas in an auto-fit grid (`{spacing.tile-min-width}` minimum, `{spacing.2}` gaps) that **wraps** as the column narrows — never a horizontal scroll: each tile `{colors.surface-container-lowest}`, 1px `{colors.outline-variant}`, `{rounded.md}`, 10px padding, min-height 72px, a 24px icon in `{colors.primary}` above the area name in `{typography.caption}` at 500 `{colors.on-surface}`, and beneath the name the area's screens joined by " · " in `{typography.caption}` `{colors.on-surface-variant}` (Processes · Locks · System usage · Databases · Devices), so the screens the contest task statement names in its parentheticals are visible on Home. Hover: border `{colors.secondary}`, background `{colors.surface-container-low}`. Focus: `focus-ring`. Privilege-gated: text and icon `{colors.restrained}`, no hover, the resource tooltip.
+Home's areas, one tile for each that applies in the namespace (seven to nine), in an auto-fit grid (`{spacing.tile-min-width}` minimum, `{spacing.2}` gaps) that **wraps** as the column narrows — never a horizontal scroll: each tile `{colors.surface-container-lowest}`, 1px `{colors.outline-variant}`, `{rounded.md}`, 10px padding, min-height 72px, a 24px icon in `{colors.primary}` above the area name in `{typography.caption}` at 500 `{colors.on-surface}`, and beneath the name the area's screens joined by " · " in `{typography.caption}` `{colors.on-surface-variant}` (Processes · Locks · System usage · Databases · Devices), so the screens the contest task statement names in its parentheticals are visible on Home. Hover: border `{colors.secondary}`, background `{colors.surface-container-low}`. Focus: `focus-ring`. Privilege-gated: text and icon `{colors.restrained}`, no hover, the resource tooltip.
 
 ### Panel
 

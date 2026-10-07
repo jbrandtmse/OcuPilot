@@ -1155,7 +1155,7 @@ Method TestTheAllowedDirectoriesListDeclaresThePathSource()
 /// <code>xdbc</code> -&gt; its source and pair assertions go red.</p>
 Method TestTheSixSecondaryLogViewersDeclareTheirSourceAndPair()
 {
-    Set tRows = $ListBuild("LogSystemMonitorViewer|systemmonitor|5|%CSP.UI.Portal.ViewLog|", "LogTaskErrorViewer|taskerrors|6|%CSP.UI.Portal.BackgroundTaskError|", "LogXdbcViewer|xdbc|7|%CSP.UI.Portal.xDBCErrorNamespaces|", "LogSqlDiagnosticsViewer|sqldiagnostics|8|%CSP.UI.Portal.SQL.Logs|", "LogEventViewer|eventlog|9|EnsPortal.EventLog|%Ens_EventLog:USE", "LogAnalyticsViewer|analytics|10|%DeepSee.UI.LogViewer|%DeepSee_Portal:USE")
+    Set tRows = $ListBuild("LogSystemMonitorViewer|systemmonitor|5|%CSP.UI.Portal.ViewLog|", "LogTaskErrorViewer|taskerrors|6|%CSP.UI.Portal.BackgroundTaskError|", "LogXdbcViewer|xdbc|7|%CSP.UI.Portal.xDBCErrorNamespaces|", "LogSqlDiagnosticsViewer|sqldiagnostics|8|%CSP.UI.Portal.SQL.Logs|", "LogEventViewer|eventlog|9|EnsPortal.EventLog|%Ens_EventLog:USE,%Ens_Portal:USE", "LogAnalyticsViewer|analytics|10|%DeepSee.UI.LogViewer|%DeepSee_Portal:USE")
     For tI = 1:1:$ListLength(tRows) {
         Set tRow = $List(tRows, tI)
         Set tClass = "OcuPilot.Screen.Descriptor." _ $Piece(tRow, "|", 1)
@@ -1868,7 +1868,7 @@ Method TestOnlyBuiltScreensReachASideBar()
     Do $$$AssertTrue('$ClassMethod("OcuPilot.Test.Screen.Unbuilt", "IsBuilt"), "and the excluded one is the unbuilt one")
 }
 
-/// <p>The area vocabulary is closed and ordered: nine entries in the rail order
+/// <p>The area vocabulary is closed and ordered: eleven entries in the rail order
 /// <file>EXPERIENCE.md</file> "**The rail, top to bottom (daily-use order):**" fixes, each at its declared rail
 /// position and carrying its
 /// own declared privilege pair set, Home the only one that navigates and Agent co-pilot the
@@ -1881,7 +1881,7 @@ Method TestTheAreaVocabularyIsClosedOrderedAndUngatedAtBothEnds()
 {
     Set tSC = ##class(OcuPilot.Screen.Area).List(.tAreas)
     Do $$$AssertStatusOK(tSC, "the area list reads")
-    Do $$$AssertEquals(tAreas.%Size(), 9, "nine rail entries")
+    Do $$$AssertEquals(tAreas.%Size(), 11, "eleven rail entries")
 
     ; key, pair set, navigates, pinBottom
     Set tExpected = ""
@@ -1893,8 +1893,10 @@ Method TestTheAreaVocabularyIsClosedOrderedAndUngatedAtBothEnds()
     Set tExpected = tExpected _ $ListBuild($ListBuild("web-applications", "%Admin_Secure:USE, %DB_IRISSYS:READ", 0, 0))
     Set tExpected = tExpected _ $ListBuild($ListBuild("security", "%Admin_Secure:USE, %DB_IRISSYS:READ", 0, 0))
     Set tExpected = tExpected _ $ListBuild($ListBuild("system-explorer", "%Development:USE", 0, 0))
+    Set tExpected = tExpected _ $ListBuild($ListBuild("interoperability", "%Ens_Portal:USE", 0, 0, "interoperability"))
+    Set tExpected = tExpected _ $ListBuild($ListBuild("analytics", "%DeepSee_Portal:USE", 0, 0, "analytics"))
     Set tExpected = tExpected _ $ListBuild($ListBuild("agent", "", 0, 1))
-    Do $$$AssertEquals($ListLength(tExpected), 9, "the expectation names all nine areas")
+    Do $$$AssertEquals($ListLength(tExpected), 11, "the expectation names all eleven areas")
 
     For tI = 1:1:$ListLength(tExpected) {
         Set tRow = $List(tExpected, tI)
@@ -1907,6 +1909,7 @@ Method TestTheAreaVocabularyIsClosedOrderedAndUngatedAtBothEnds()
         Do $$$AssertEquals(..PairText(tKey), tPairs, tKey _ tWhat)
         Do $$$AssertEquals(''tArea.navigates, $List(tRow, 3), tKey _ " declares whether its rail item navigates")
         Do $$$AssertEquals(''tArea.pinBottom, $List(tRow, 4), tKey _ " declares whether it is pinned to the bottom")
+        Do $$$AssertEquals(tArea.appliesWhen, $ListGet(tRow, 5), tKey _ " declares the namespace feature it applies to, empty when none")
     }
 
     Do $$$AssertTrue('##class(OcuPilot.Screen.Area).Exists("no-such-area"), "and the vocabulary is closed")

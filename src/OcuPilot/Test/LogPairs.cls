@@ -37,7 +37,7 @@ Parameter SOURCES = "OcuPilot.Screen.Descriptor.LogMessageViewer=MESSAGESPAIRS|O
 /// <code>=&lt;pair&gt;</code> where the source also requires a pair its classic page does not name:
 /// the background task error log's <code>%DB_IRISSYS:READ</code>, because its task list is read in
 /// <code>%SYS</code> (Story 16.5).</p>
-Parameter SECONDARYSOURCES = "OcuPilot.Screen.Descriptor.LogSystemMonitorViewer=SYSTEMMONITORPAIRS=%CSP.UI.Portal.ViewLog|OcuPilot.Screen.Descriptor.LogTaskErrorViewer=TASKERRORSPAIRS=%CSP.UI.Portal.BackgroundTaskError=%DB_IRISSYS:READ|OcuPilot.Screen.Descriptor.LogXdbcViewer=XDBCPAIRS=%CSP.UI.Portal.xDBCErrorNamespaces|OcuPilot.Screen.Descriptor.LogSqlDiagnosticsViewer=SQLDIAGNOSTICSPAIRS=%CSP.UI.Portal.SQL.Logs|OcuPilot.Screen.Descriptor.LogEventViewer=EVENTLOGPAIRS=EnsPortal.EventLog|OcuPilot.Screen.Descriptor.LogAnalyticsViewer=ANALYTICSPAIRS=%DeepSee.UI.LogViewer";
+Parameter SECONDARYSOURCES = "OcuPilot.Screen.Descriptor.LogSystemMonitorViewer=SYSTEMMONITORPAIRS=%CSP.UI.Portal.ViewLog|OcuPilot.Screen.Descriptor.LogTaskErrorViewer=TASKERRORSPAIRS=%CSP.UI.Portal.BackgroundTaskError=%DB_IRISSYS:READ|OcuPilot.Screen.Descriptor.LogXdbcViewer=XDBCPAIRS=%CSP.UI.Portal.xDBCErrorNamespaces|OcuPilot.Screen.Descriptor.LogSqlDiagnosticsViewer=SQLDIAGNOSTICSPAIRS=%CSP.UI.Portal.SQL.Logs|OcuPilot.Screen.Descriptor.LogEventViewer=EVENTLOGPAIRS=EnsPortal.EventLog=%Ens_Portal:USE|OcuPilot.Screen.Descriptor.LogAnalyticsViewer=ANALYTICSPAIRS=%DeepSee.UI.LogViewer";
 
 Method OnBeforeOneTest() As %Status
 {

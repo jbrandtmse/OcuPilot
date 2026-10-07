@@ -22,7 +22,7 @@ Parameter ARMINGVARIABLE = "OCUPILOT_ALLOW_PRINCIPALS";
 Parameter FIXTURE = "OcuPilot.Test.DeveloperFloorFixture";
 
 /// <p>The areas the navigation map opens to the developer principal.</p>
-Parameter AREAS = "home,logs,system-explorer,agent";
+Parameter AREAS = "home,logs,system-explorer,analytics,agent";
 
 /// <p>The package the screens below are declared in.</p>
 Parameter DESCRIPTORPACKAGE = "OcuPilot.Screen.Descriptor.";

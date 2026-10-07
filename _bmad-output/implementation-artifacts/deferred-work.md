@@ -8933,6 +8933,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: irislib/EnsPortal/Application.cls:234-248 CheckPrivileges requires %Ens_Portal:USE; LogSourcePort.cls:239 EVENTLOGPAIRS declares %Ens_EventLog:USE alone, so an %Ens_EventLog holder without %Ens_Portal opens it here and is refused there
 - 2026-10-02T03:22:54Z status=routed owner=range-end-cleanup by=harvest note=Rule 27: non-blocking, out of Epic 19's footprint (Logs area); found by 19.12's classic-parity audit
 - 2026-10-05T18:41:40Z status=routed owner=20-1-the-sign-in-hand-off-and-namespace-category-gating by=merge_gate note=owner-approved burn-down scope 2026-10-05: feature-sized, re-routed from the cleanup queue to the interoperability gating story
+- 2026-10-07T05:17:37Z status=routed owner=20-1-namespace-category-gating by=spec_gate note=retitled: 20.1 split by orchestrator merge gate 2026-10-07; gating half keeps DW-1921
+- 2026-10-07T09:05:45Z status=resolved-by:20-1-namespace-category-gating by=adjudication note=dfe9173f: LogEventViewer privileges+ownPrivileges and LogSourcePort EVENTLOGPAIRS add %Ens_Portal:USE; LogPairs/LogSourceDenial pin it, mutation recorded
 
 ### DW-1922: System Explorer's Routines list shows routines its viewer answers PORT.NOTFOUND for (EnsJob.mac in HSCUSTOM, Ens*.mac in USER)
 - source: spec-19-12-a-development-holder-reaches-system-explorer-as-the-classic.md | severity: med | fix-risk: med | footprint: in-epic
@@ -10192,7 +10194,28 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-8-superservers-authentication-options-and-managed-file-transfe.md | severity: low | fix-risk: high | footprint: out-of-footprint
 - evidence: Story 18.8 plan on ocupilot-ci 2026-10-07: unchanged PUT moved AutheEnabled 33556471 to 33556479; scratchpad epic-18-d8/p188/measure-out.txt
 - 2026-10-07T03:21:35Z status=decision-pending owner=burndown by=spec_gate note=human=decide whether to report it to InterSystems, with the held vendor-report list; owner hold 2026-10-05: not reported; Part A omits an unchanged AutheKB (proposed AD-4 exception)
+- 2026-10-07T11:07:09Z status=decision-pending owner=burndown by=owner note=owner hold 2026-10-05: IRIS defect candidates stay on hold (restored; a union merge moved the 03:44:07Z trailer under DW-2148)
+
+### DW-2140: The API administrative floor refuses interoperability-only accounts (%EnsRole_Operator, _Administrator, _Monitor) before any route runs, so Stage 4 screens cannot reach the classic Interoperability audience
+- source: spec-20-1-the-sign-in-hand-off-and-namespace-category-gating.md | severity: med | fix-risk: med | footprint: in-epic
+- evidence: Measured at 20.1 plan on slot B roles: no %EnsRole_* role holds an ADMINRESOURCES member (AD-8 floor); %EnsRole_Developer and _InteropEditorsAPI clear it via %Development; %DeepSee_Portal is public U, so admitting it would admit every user
+- 2026-10-07T05:13:18Z status=decision-pending owner=burndown by=spec_gate note=product call like DW-1903; decide before 20.2 ships the first Interoperability screen; to the orchestrator in 20.1's clarification
+- 2026-10-07T05:16:20Z status=decision-pending owner=burndown by=orchestrator note=security posture, queued for the owner's morning summary 2026-10-07
+- 2026-10-07T10:04:43Z status=routed owner=20-14-interoperability-holders-reach-ocupilot by=owner note="Admit anyone with the classic Interoperability pages and every screen would first get its own permission check."
+
+### DW-2141: The embedded vendor editors' sign-in hand-off needs an AD-28/AD-47 named case: no in-place design keeps both ADs as written (Story 20.13, gates 20.7, 20.8, 20.10)
+- source: spec-20-1-the-sign-in-hand-off-and-namespace-category-gating.md | severity: high | fix-risk: med | footprint: in-epic
+- evidence: Measured at 20.1 plan on slot B (M1-M5, candidates A-F in that spec's Auto Run Result at 9faa902f): an unsandboxed same-origin frame signs in silently but can read ocupilot.token-pair; a noopener tab keeps both ADs but drops in-place and 20.7's messages; sandboxed frames never sign in
+- 2026-10-07T05:16:47Z status=decision-pending owner=burndown by=orchestrator note=security posture, queued for the owner's morning summary 2026-10-07; recommended A (same-origin frame, normal mode, AD-62 named case)
+- 2026-10-07T10:04:43Z status=routed owner=20-13-the-sign-in-hand-off-to-the-embedded-vendor-editors by=owner note=owner decision 2026-10-07: option A, written by the orchestrator as AD-63 (feature 75014fdc)
+
+### DW-2148: EXPERIENCE.md's rail row (:612 nine rail-items) and area-tile row (:653 Seven tiles) understate a namespace that reports interoperability or analytics
+- source: spec-20-1-namespace-category-gating.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: Story 20.1 made the rail 9-11 items and Home 7-9 tiles by namespace; an in-place edit touches a file Epic 18 is changing, and home.page.ts quotes the tile row as an anchor
+- 2026-10-07T08:56:04Z status=routed owner=20-2-productions-listed-and-controlled by=cr note=correct both rows in place once Epic 18 has merged, with home.page.ts's quoted anchors
+- 2026-10-07T10:40:19Z status=routed owner=20-2-productions-listed-and-controlled by=cr note=also rail.ts:49 "the nine areas" and :56 "eight tab stops" (CI rework re-review)
 - 2026-10-07T03:44:07Z status=decision-pending owner=burndown by=owner note=owner hold 2026-10-05 (relayed by the Planner): IRIS defect candidates stay on hold, no report to InterSystems for now
+- 2026-10-07T11:07:09Z status=routed owner=20-2-productions-listed-and-controlled by=merge_repair note=restored: the 03:44:07Z trailer above is DW-2139's, moved here by a union merge
 
 ### DW-2142: OcuPilot's audit surfaces would show the SMTP password the vendor writes in clear into %System/%Security/SystemChange's New value line when CHANGESMTPPWD runs: AuditPort.VENDORSECRETS has no mask for it (AD-35)
 - source: spec-18-8-superservers-authentication-options-and-managed-file-transfe.md | severity: med | fix-risk: low | footprint: in-footprint

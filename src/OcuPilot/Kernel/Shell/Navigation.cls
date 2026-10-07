@@ -5,7 +5,12 @@
 /// <class>OcuPilot.Kernel.Shell.PrivilegesRead</class> as the <code>shell.privileges.read</code>
 /// tool, so both answer the one object <method>Payload</method> builds.</p>
 /// <p>The roster is <class>OcuPilot.Screen.Registry</class>'s and the verdict
-/// <class>OcuPilot.Screen.Gate</class>'s.</p>
+/// <class>OcuPilot.Screen.Gate</class>'s. Each area also carries <code>applies</code>, always
+/// present: whether the route's namespace (<method>OcuPilot.Kernel.Scope.Current</method>)
+/// reports the feature the area declares in <code>appliesWhen</code>
+/// (<class>OcuPilot.Kernel.Shell.NamespaceFeatures</class>), true for an area that declares none.
+/// It is not a privilege verdict: an area that applies and is refused stays on the map with its
+/// <code>failedPair</code>.</p>
 /// <p><b>Recomputed on every call</b> (AD-8). Nothing here is resolved at startup or cached
 /// between requests, which is the server half of "privileges change after load": a role revoked
 /// after the map was fetched is reflected the next time the client asks, and the client asks
@@ -33,6 +38,7 @@ ClassMethod Payload(Output pObject As %DynamicObject) As %Status
             Do tEntry.%Set("railPosition", +tArea.railPosition, "number")
             Do tEntry.%Set("navigates", ''tArea.navigates, "boolean")
             Do tEntry.%Set("pinBottom", ''tArea.pinBottom, "boolean")
+            Do tEntry.%Set("applies", ''##class(OcuPilot.Kernel.Shell.NamespaceFeatures).Applies(tArea.appliesWhen, ##class(OcuPilot.Kernel.Scope).Current()), "boolean")
             Do ..SetVerdict(tEntry, tArea.key)
 
             Set tScreens = []

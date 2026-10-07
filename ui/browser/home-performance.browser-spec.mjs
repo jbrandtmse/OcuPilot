@@ -36,17 +36,20 @@ import { fileURLToPath } from 'node:url';
 import puppeteer from 'puppeteer';
 
 import { LIVE_CONTAINER, READINESS_PATH, browserConfig, launchOptions } from '../browser.config.mjs';
+import { appliedAreas, readNamespaceFeatures, tileAreasOf, waitForMapAnswered } from './namespace-features.mjs';
 import { leaveFirstLoginGate } from './shell-entry.mjs';
 import { resetRememberedState } from './preferences-reset.mjs';
 import { INVARIANTS, VIEWPORTS, collapse, compare, componentMinimums, detectScreen, readBaseline } from './structural-walk.mjs';
 
 const uiRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 const { STRINGS } = await import(join(uiRoot, 'src', 'app', 'core', 'strings.ts'));
+const { AREAS } = await import(join(uiRoot, 'src', 'app', 'core', 'screens.generated.ts'));
 const { formatPerformance, PERFORMANCE_FIELDS } = await import(join(uiRoot, 'src', 'app', 'core', 'performance.ts'));
 const { formatAutoRefreshOn } = await import(join(uiRoot, 'src', 'app', 'core', 'refresh.ts'));
 
 const config = browserConfig();
-const HOME_URL = '/ocupilot/?ns=HSCUSTOM';
+const HOME_NAMESPACE = 'HSCUSTOM';
+const HOME_URL = `/ocupilot/?ns=${HOME_NAMESPACE}`;
 const PERFORMANCE_PATH = '/api/ocupilot/ui/performance';
 const PREFERENCES_PATH = '/api/ocupilot/account/preferences';
 const HOME_ROUTE_KEY = '/';
@@ -182,6 +185,7 @@ async function signIn(page, user, password) {
   await page.click('.ocu-signin-card button[type="submit"]');
   await page.waitForSelector('app-rail .ocu-rail', { timeout: config.navigationTimeoutMs });
   await leaveFirstLoginGate(page, config.navigationTimeoutMs, HOME_URL);
+  await waitForMapAnswered(page, config.navigationTimeoutMs);
   await page.waitForSelector('app-home-page .ocu-area-tile', { timeout: config.navigationTimeoutMs });
 }
 
@@ -346,7 +350,8 @@ test('AC3: a caller without %DB_IRISSYS:READ is answered 403 and sees no heading
     assert.equal(state.row, false, 'no row');
     assert.equal(state.items, 0, 'no value and no zero');
     assert.equal(state.heading, false, 'no heading');
-    assert.equal(state.tiles, 7, 'the tiles are all there');
+    const reported = readNamespaceFeatures(config.container)[HOME_NAMESPACE];
+    assert.equal(state.tiles, tileAreasOf(appliedAreas(AREAS, reported)).length, `a tile for every area ${HOME_NAMESPACE} reports: ${JSON.stringify(reported)}`);
     assert.ok(state.blocks >= 4, `and so are the blocks: ${JSON.stringify(state)}`);
   } finally {
     await context.close();

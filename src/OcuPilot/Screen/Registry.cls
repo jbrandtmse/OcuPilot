@@ -133,6 +133,25 @@ ClassMethod Descriptors(Output pList As %List) As %Status
     Quit tSC
 }
 
+/// <p>The first area in <var>pAreas</var> whose <code>appliesWhen</code> is outside
+/// <code>OcuPilot.Kernel.Shell.NamespaceFeatures.FEATURES</code>, named, or <code>""</code> when
+/// every area is sound. An absent or empty <code>appliesWhen</code> declares no dependency.</p>
+ClassMethod AreaProblem(pAreas As %DynamicArray) As %String
+{
+    Set tProblem = ""
+    If '$IsObject(pAreas) Quit tProblem
+    Set tFeatures = ","_##class(OcuPilot.Kernel.Shell.NamespaceFeatures).#FEATURES_","
+    Set tIterator = pAreas.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tArea) {
+        Set tWhen = tArea.appliesWhen
+        If (tWhen '= "") && (tFeatures '[ (","_tWhen_",")) {
+            Set tProblem = "area '" _ tArea.key _ "' appliesWhen '" _ tWhen _ "' is not in OcuPilot.Kernel.Shell.NamespaceFeatures.FEATURES"
+            Quit
+        }
+    }
+    Quit tProblem
+}
+
 /// <p>Refuse every descriptor the declaration contract does not admit. <var>pProblem</var>
 /// names the first offending class and what is wrong with it, and is <code>""</code> exactly
 /// when the roster is sound.</p>
@@ -141,6 +160,10 @@ ClassMethod Validate(Output pProblem As %String) As %Status
     Set tSC = $$$OK
     Set pProblem = ""
     Try {
+        Set tSC = ##class(OcuPilot.Screen.Area).List(.tDeclaredAreas)
+        If $$$ISERR(tSC) Quit
+        Set pProblem = ..AreaProblem(tDeclaredAreas)
+        If pProblem '= "" Quit
         Set tSC = ..Descriptors(.tList)
         If $$$ISERR(tSC) Quit
         Set tRoutes = ""
@@ -3644,6 +3667,7 @@ ClassMethod Roster(Output pRoster As %DynamicArray) As %Status
                 Do tEntry.%Set("labelKey", tArea.labelKey)
                 Do tEntry.%Set("navigates", ''tArea.navigates, "boolean")
                 Do tEntry.%Set("pinBottom", ''tArea.pinBottom, "boolean")
+                Do tEntry.%Set("appliesWhen", tArea.appliesWhen)
                 Set tScreens = []
                 Set tSubSC = ..ScreensForArea(tArea.key, 1, .tClasses)
                 If $$$ISERR(tSubSC) {

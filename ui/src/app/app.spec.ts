@@ -242,6 +242,11 @@ class StubNavigation {
     return true;
   }
 
+  /** Whether the map has answered for the namespace; the rail's `data-map-answered` reads it. */
+  appliesAnswered(): boolean {
+    return true;
+  }
+
   areas(): readonly AreaDeclaration[] {
     return AREAS;
   }
@@ -803,7 +808,7 @@ describe('the shell frame', () => {
     document.body.appendChild(fixture.nativeElement);
     planted.push(fixture.nativeElement);
     const shell = TestBed.inject(ShellState);
-    shell.activateArea('permissions', false);
+    shell.activateArea('logs', false);
     fixture.detectChanges();
     expect(overlays.top()).toBe('side-bar');
 

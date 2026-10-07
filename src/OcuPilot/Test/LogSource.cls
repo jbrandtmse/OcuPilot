@@ -864,7 +864,7 @@ Method TestAnEnumKeyWithNoFileIsRefused()
 Method TestTheSixSecondaryKeysDeclareTheirPairs()
 {
     Set tSources = ##class(OcuPilot.Port.LogSourcePort).Sources()
-    For tRow = "systemmonitor=%Admin_Operate:USE", "taskerrors=%Admin_Operate:USE,%DB_IRISSYS:READ", "xdbc=%Admin_Operate:USE", "sqldiagnostics=%Admin_Operate:USE", "eventlog=%Ens_EventLog:USE", "analytics=%DeepSee_Portal:USE" {
+    For tRow = "systemmonitor=%Admin_Operate:USE", "taskerrors=%Admin_Operate:USE,%DB_IRISSYS:READ", "xdbc=%Admin_Operate:USE", "sqldiagnostics=%Admin_Operate:USE", "eventlog=%Ens_EventLog:USE,%Ens_Portal:USE", "analytics=%DeepSee_Portal:USE" {
         Set tKey = $Piece(tRow, "=", 1)
         Do $$$AssertTrue($ListFind(tSources, tKey) > 0, tKey _ ": in the shipped enum")
         Set tPairs = ##class(OcuPilot.Port.LogSourcePort).PairsFor(tKey)
@@ -874,7 +874,7 @@ Method TestTheSixSecondaryKeysDeclareTheirPairs()
         Do $$$AssertEquals(tHttp, 200, tKey _ ": the production port answers it: " _ $Select($IsObject($Get(tFault)): tFault.%ToJSON(), 1: ""))
     }
     Do $$$AssertEquals(##class(OcuPilot.Kernel.Audit.Ledger).PairsToString(##class(OcuPilot.Port.LogSourcePort).PairsFor("sqldiagnostics", "HSCUSTOM"), .tCut), "%Admin_Operate:USE,%DB_HSCUSTOM:READ", "SQL diagnostics adds the namespace's database READ")
-    Do $$$AssertEquals(##class(OcuPilot.Kernel.Audit.Ledger).PairsToString(##class(OcuPilot.Port.LogSourcePort).PairsFor("eventlog", "HSCUSTOM"), .tCut), "%DB_HSCUSTOM:READ,%Ens_EventLog:USE", "and so does the event log")
+    Do $$$AssertEquals(##class(OcuPilot.Kernel.Audit.Ledger).PairsToString(##class(OcuPilot.Port.LogSourcePort).PairsFor("eventlog", "HSCUSTOM"), .tCut), "%DB_HSCUSTOM:READ,%Ens_EventLog:USE,%Ens_Portal:USE", "and so does the event log")
     Do $$$AssertEquals(##class(OcuPilot.Kernel.Audit.Ledger).PairsToString(##class(OcuPilot.Port.LogSourcePort).PairsFor("xdbc", "HSCUSTOM"), .tCut), "%Admin_Operate:USE", "while the xDBC log's does not depend on the namespace")
 }
 

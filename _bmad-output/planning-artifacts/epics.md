@@ -7938,21 +7938,15 @@ The Interoperability category appears for namespaces that support it: production
 
 **What gates the stage.** The sign-in hand-off to `/ui/interop` is the gate for every embed and is the stage's real risk: the `postMessage` contract has **no origin check**, the safer pre-written-`sessionStorage` alternative is untested, and the origin may not be weakened to make either work. Namespace category gating must land before the category appears. The production-update action vocabulary was never read. The Analytics rider needs a DeepSee-enabled namespace for anything beyond its links.
 
-### Story 20.1: The sign-in hand-off and namespace category gating
+### Story 20.1: Namespace category gating
+
+[AMENDED 2026-10-07, orchestrator merge gate: split, Rule 5; hand-off design awaits the owner] The sign-in hand-off criteria moved verbatim to Story 20.13; this story keeps the category gating and DW-1921.
 
 As a developer-administrator,
-I want the vendor's editors to open already signed in, and the category to appear only where it applies,
-So that embedding is seamless and irrelevant menus do not appear.
+I want the Interoperability and Analytics categories to appear only where they apply,
+So that irrelevant menus do not appear.
 
 **Acceptance Criteria:**
-
-- **Given** an embedded vendor editor
-- **When** it loads
-- **Then** it signs in from the browser-level login **without a password crossing into the frame**, and the `postMessage` auth path carrying a password is **not used**.
-
-- **Given** the origin
-- **When** the hand-off is implemented
-- **Then** it is **not weakened** to make embedding work - the static origin stays hostile ground, and per-tab token storage with no cross-tab broadcast is unchanged.
 
 - **Given** a namespace that does not support interoperability or analytics
 - **When** the rail renders
@@ -7978,6 +7972,7 @@ So that the largest deferred area becomes usable.
 - **Given** the update action vocabulary was never read from the vendor
 - **When** this story is picked up
 - **Then** the vocabulary is established against the instance first, and this is the story's first task rather than a discovery mid-build.
+- DW-2148: EXPERIENCE.md's rail row (:612 nine rail-items) and area-tile row (:653 Seven tiles) understate a namespace that reports interoperability or analytics (ledger; routed by cr 2026-10-07)
 
 ### Story 20.3: Production items
 
@@ -8040,6 +8035,8 @@ So that a change can be checked before it is deployed.
 - **Then** the output renders, and the test is a confirmed write because it executes code on the instance.
 
 ### Story 20.7: The three embedded vendor editors
+
+[AMENDED 2026-10-07, owner decision relayed by the Planner, Rule 5] Under AD-63 the editors run in normal mode, where the vendor sends its saved, compiled and invalid messages only in `?VSCODE=1` mode, so this story re-scopes its messages criterion at its own spec gate.
 
 As an interoperability developer,
 I want the rule, BPL and DTL editors in place,
@@ -8150,6 +8147,173 @@ So that recovery follows a rehearsed path.
 - **Given** any workflow
 - **When** it reaches a write
 - **Then** the prohibited set, both switches and the governance policy are all still evaluated at the write.
+
+### Story 20.13: The sign-in hand-off to the embedded vendor editors
+
+[AMENDED 2026-10-07, orchestrator merge gate: split, Rule 5] Split from Story 20.1, its criteria moved verbatim. Ordered before Story 20.7, whose embeds it gates with 20.8 and 20.10. Owner decision 2026-10-07: option A, AD-63 (DW-2141); the measurements and candidates are in Story 20.1's blocked spec at commit `9faa902f`.
+
+As a developer-administrator,
+I want the vendor's editors to open already signed in,
+So that embedding is seamless.
+
+**Acceptance Criteria:**
+
+- **Given** an embedded vendor editor
+- **When** it loads
+- **Then** it signs in from the browser-level login **without a password crossing into the frame**, and the `postMessage` auth path carrying a password is **not used**.
+
+- **Given** the origin
+- **When** the hand-off is implemented
+- **Then** it is **not weakened** to make embedding work - the static origin stays hostile ground, and per-tab token storage with no cross-tab broadcast is unchanged.
+- DW-2141: The embedded vendor editors' sign-in hand-off needs an AD-28/AD-47 named case: no in-place design keeps both ADs as written (ledger; routed by owner 2026-10-07: option A, AD-63)
+
+### Story 20.14: Interoperability holders reach OcuPilot
+
+[AMENDED 2026-10-07, owner decision relayed by the Planner, Rule 5] The owner's decision on DW-2140: "Admit anyone with the classic Interoperability pages and every screen would first get its own permission check." Ordered right after Story 20.2, whose screens already declare their own pairs.
+
+As an interoperability operator who uses the classic Interoperability pages,
+I want to reach OcuPilot with the same privileges,
+So that the classic portal's Interoperability audience is not refused at the door.
+
+**Acceptance Criteria:**
+
+- **Given** every screen, route and tool that relied on the API's administrative floor alone
+- **When** this story lands
+- **Then** each declares its own pair matching its classic page's check first (Story 19.12's pattern), so a caller past the widened floor opens nothing the classic portal would refuse them.
+
+- **Given** a caller holding `%Ens_Portal:USE` and no `%Admin_*` or `%Development:USE` resource
+- **When** they sign in and use OcuPilot
+- **Then** the API admits them, and they reach exactly the surfaces whose own pairs they hold, each other one refused by its named pair.
+- DW-2140: The API administrative floor refuses interoperability-only accounts (%EnsRole_Operator, _Administrator, _Monitor) before any route runs (ledger; routed by owner 2026-10-07)
+
+### Story 20.15: Per-screen permissions, seen and adjusted
+
+[AMENDED 2026-10-07, owner decision relayed by the Planner, Rule 5] The owner's requirement: "We need a way to see/adjust what permission is used per screen." Ordered after Story 20.14.
+
+[AMENDED 2026-10-07, owner decision relayed by the Planner] The owner's answers: "Developer and Admin accounts plus any account with %All can change a screen's permissions; Yes it can go below the classic pages requirements, the agent can propose such changes (which brings up another topc, the agent should be aware if the user holds a permission needed for a screen before making a proposal, and refuse to propose if they can't access the screen); The functionality starts switched on for those that can access the ability to change it; the change is audited with a custom audit if nothing else fts;"
+
+As an OcuPilot administrator,
+I want to see and adjust which permission (resource:permission pair) each screen uses,
+So that access to each screen can be fitted to the instance.
+
+**Acceptance Criteria:**
+
+- **Given** any screen
+- **When** its permissions are viewed
+- **Then** the pairs it requires are shown as the instance evaluates them, as a read.
+
+- **Given** a change to a screen's pair
+- **When** it is made
+- **Then** it is a confirmed write with an audit record, like every other write.
+
+- **Given** who may change a screen's pair
+- **When** a change is made
+- **Then** Developer accounts, Admin accounts and any `%All` holder may make it; the plan proposes the exact pairs (the Planner suggests `%Development:USE` and `%Admin_Secure:USE`) and returns a one-line confirm only where the owner's words are genuinely ambiguous.
+
+- **Given** a change that sets a screen's pair below its classic page's own requirement
+- **When** it is made
+- **Then** it is allowed.
+
+- **Given** the agent
+- **When** a user asks it to change a screen's pair
+- **Then** it may propose the change, as a confirmed proposal; and the change's governance key ships enabled for everyone who can reach the ability to change it.
+
+- **Given** a pair change
+- **When** it is written
+- **Then** it is audited by an existing vendor or OcuPilot audit event that fits, otherwise by a custom OcuPilot event registered at install (`Security.Events.Create`, guarded by `Exists`).
+
+- **Given** a screen whose effective pair the user does not hold, an adjustment made through this story included
+- **When** the agent would propose a change on that screen
+- **Then** it knows this before proposing and refuses to propose, saying the user cannot access that screen; the plan first reads what already exists (Story 11.8's privilege line, and how the agent treats the demo's operator account) and builds on it.
+
+
+### Story 20.16: The agent edits rule, DTL and BPL content behind the embedded editors
+
+[AMENDED 2026-10-07, owner decision relayed by the Planner, Rule 5] The owner's flow: "Warn the user that the editor must be saved if needed and then the agent reads current content and proposes the edit in the background and refreshes the page." Ordered right after Story 20.7, and built on Story 20.17's agent source edits. On the owner's decision this narrows Story 19.3's "a source save is a person's action" for these three content types, which the owner then reversed for classes and routines too (Story 20.17, AD-53). On "Agent starts switched on", its governance key ships enabled.
+
+As an interoperability developer,
+I want the agent to edit a rule, a DTL or a BPL I have open in its embedded editor,
+So that a change the agent proposes lands in the content the editor shows.
+
+**Acceptance Criteria:**
+
+- **Given** an embedded editor open on a rule, DTL or BPL
+- **When** the agent is asked to change it
+- **Then** the user is first warned to save the editor if needed, because under AD-63 OcuPilot cannot read the frame's unsaved state; the agent then reads the stored content and proposes the edit.
+
+- **Given** the proposal
+- **When** it is confirmed
+- **Then** it is a confirmed proposal with the diff and the agent marker, and it is refused when the stored content changed after the mint (a fingerprint or ETag, as Epic 19's source save).
+
+- **Given** a confirmed write
+- **When** it completes
+- **Then** the embedded editor reloads and shows the new content.
+
+- **Given** the governance key and the confirmation
+- **When** this story ships
+- **Then** the key is enabled and confirmation is the standard confirmed proposal; the plan raises a stronger (typed-name) confirmation for DTL or BPL code actions only if it finds a concrete reason.
+
+### Story 20.17: The agent proposes class and routine source edits, on the person's confirmation
+
+[AMENDED 2026-10-07, owner decision relayed by the Planner, Rule 5] The owner's words: "Agent starts switched on; and we want to loosen the rule and allow the agent to edit source code (including classes and routines) on user confirmation." This reverses Story 19.3's person-only save; the spine's AD-53 is amended (feature `a191c34b`), and Story 19.3's block carries the pointer note. Ordered right after Story 20.15, whose check that the agent refuses where the user cannot access the screen it uses.
+
+[AMENDED 2026-10-07, owner decision relayed by the Planner] The owner's words: "A note... Agent should be able to propose new classes and routines." This story therefore covers creating new classes and routines as well as editing existing ones (AD-53, feature `a9de13c9`). The create criteria below are the Planner's reading, for the plan to confirm; a genuine posture question goes back to the orchestrator.
+
+[AMENDED 2026-10-07, owner decision relayed by the Planner] The owner's words: "Long content inn the plan should be collapsable in the agent panel with "shore more/show less" staring collapsed if more than a few lines." It is built into this story because this story puts the first long source on a proposal card, so the collapse ships before the agent can propose source, and it applies panel-wide. The threshold, the summary wording and the layout are plan details; EXPERIENCE.md gets its Rule 20 amendment at this story's spec gate. If the story grows too big, its plan may recommend a split, the panel collapse as its own story ordered first.
+
+As a developer,
+I want the agent to propose a class or routine edit that I confirm,
+So that a change I ask for in conversation lands in the source.
+
+**Acceptance Criteria:**
+
+- **Given** `explorer.classes.save` and `explorer.routines.save`
+- **When** this story ships
+- **Then** both are advertised, agent-offered, confirmed writes, and their governance keys are enabled.
+
+- **Given** a proposed source edit
+- **When** its card is shown
+- **Then** it shows the whole change as a diff and the compile outcome, because confirmed code runs as the user.
+
+- **Given** a document that changed after the mint
+- **When** the proposal is confirmed
+- **Then** the confirm is refused (ETag or fingerprint).
+
+- **Given** a confirmed source edit
+- **When** it completes
+- **Then** its compile results are reported and the agent marker is written.
+
+- **Given** AD-10's refusal of OcuPilot's own packages, the read-only system databases (`%` and system classes), and `explorer.sqldata.save`
+- **When** this story ships
+- **Then** each is unchanged and pinned: OcuPilot's own code and the system classes stay refused, and `explorer.sqldata.save` stays person-only and unadvertised.
+
+- **Given** a request to create a new class or routine
+- **When** the agent proposes it
+- **Then** it is a confirmed proposal whose card shows the whole new document and its compile outcome.
+
+- **Given** a create proposal
+- **When** it is confirmed
+- **Then** it fingerprints the name's absence (AD-54) and is refused if a document of that name appeared after the mint, so it never silently overwrites.
+
+- **Given** a new name under OcuPilot's own packages, a system or `%` name, or a read-only system database
+- **When** a create is proposed
+- **Then** it is refused, AD-10's own-package refusal covering new names.
+
+- **Given** a create
+- **When** it is proposed
+- **Then** it targets the user's current namespace and requires write access to that namespace's code database, settled against the screen's effective pairs from Story 20.15; it uses this story's key, enabled, or a key of its own that also ships enabled.
+
+- **Given** any long block in the agent panel - an agent reply, a tool result, a proposal card's diff, a whole new document, compile output
+- **When** it renders
+- **Then** a block over about eight lines starts collapsed with a "Show more" / "Show less" control that is keyboard operable and announces its state to screen readers, a block the user expanded stays expanded across re-renders, and the strings are in EXPERIENCE.md's Fixed strings and `strings.ts`.
+
+- **Given** a collapsed proposal card
+- **When** it is shown
+- **Then** a summary line always names what changes, where and how big (for example "AcmeApp.Orders.cls: +42 / -3 lines"), plus the compile outcome where there is one, so nobody confirms blind; Confirm never requires expanding.
+
+- **Given** any further security-posture question its plan finds
+- **When** it is planned
+- **Then** the question is returned to the orchestrator for the owner, with options and a recommendation.
 
 ---
 

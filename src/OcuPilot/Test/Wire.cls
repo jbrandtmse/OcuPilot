@@ -377,11 +377,12 @@ Method TestTheNavigationMapGatesEveryAreaForARealPrincipal()
     Do $$$AssertEquals((tBody [ "}{"), 0, "exactly one envelope reaches the wire")
 
     Set tObj = ##class(%DynamicObject).%FromJSON(tBody)
-    Do $$$AssertEquals(tObj.areas.%Size(), 9, "every area is listed, denied ones included -- nothing is hidden")
+    Do $$$AssertEquals(tObj.areas.%Size(), 11, "every area is listed, denied ones included -- nothing is hidden")
 
-    Kill tVerdict, tFailed, tHasFailed
+    Kill tVerdict, tFailed, tHasFailed, tApplies
     Set tIterator = tObj.areas.%GetIterator()
     While tIterator.%GetNext(.tIndex, .tArea) {
+        Set tApplies(tArea.key) = tArea.%Get("applies")
         Set tVerdict(tArea.key) = ''tArea.allowed
         Set tFailed(tArea.key) = tArea.%Get("failedPair")
         ; %Get answers "" both for an absent key and for one set to "", so definedness is read
@@ -419,6 +420,15 @@ Method TestTheNavigationMapGatesEveryAreaForARealPrincipal()
     Do $$$AssertEquals($Get(tFailed("tasks")), "%Admin_Task:USE", "which wants a different resource again")
     Do $$$AssertEquals($Get(tVerdict("system-explorer")), 0, "and System Explorer, whose screens all need %Development")
     Do $$$AssertEquals($Get(tFailed("system-explorer")), "%Development:USE", "naming that pair")
+    ; Namespace categories (Story 20.1): HSCUSTOM reports interoperability and not analytics, and
+    ; applicability is not a privilege gate, so Interoperability is drawn and unavailable, naming
+    ; its pair, and Analytics is open on its public pair yet does not apply.
+    Do $$$AssertEquals($Get(tVerdict("interoperability")), 0, "Interoperability is denied this principal")
+    Do $$$AssertEquals($Get(tFailed("interoperability")), "%Ens_Portal:USE", "naming %Ens_Portal:USE")
+    Do $$$AssertEquals($Get(tApplies("interoperability")), 1, "while it applies in HSCUSTOM")
+    Do $$$AssertEquals($Get(tVerdict("analytics")), 1, "Analytics is allowed on its public pair")
+    Do $$$AssertEquals($Get(tApplies("analytics")), 0, "while it does not apply in HSCUSTOM")
+    Do $$$AssertEquals($Get(tApplies("logs")), 1, "an area that declares no feature applies")
     Do $$$AssertEquals($Get(tHasFailed("home")), 0, "an allowed entry omits the failed-pair key rather than sending it empty")
     Do $$$AssertEquals($Get(tHasFailed("permissions")), 1, "while a denied one carries it")
 }

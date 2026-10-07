@@ -443,7 +443,7 @@ test('no literal extracted from prose is also a Fixed strings literal', () => {
   assert.deepEqual(overlap, [], `already a Fixed strings literal: ${JSON.stringify(overlap)}`);
 });
 
-test("the table's area-names row lists the nine navArea keys' values, in rail order", () => {
+test("the table's area-names row lists the eleven navArea keys' values, in rail order", () => {
   const rows = fixedStringsRows.filter((row) => row.where.startsWith('area names'));
   assert.equal(rows.length, 1, 'the Fixed strings table carries one area-names row');
   assert.deepEqual(rows[0].literals, [
@@ -455,6 +455,8 @@ test("the table's area-names row lists the nine navArea keys' values, in rail or
     stringsValues.navAreaWebApplications,
     stringsValues.navAreaSecurity,
     stringsValues.navAreaSystemExplorer,
+    stringsValues.navAreaInteroperability,
+    stringsValues.navAreaAnalytics,
     stringsValues.navAreaAgent,
   ]);
 });

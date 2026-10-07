@@ -221,7 +221,7 @@ Method TestAnAreaOpensWhenAnyScreenItListsIsAllowed()
 
     ; Nothing held: the two areas that declare no pair never gate, and every other area is refused
     ; on the first pair of its declared set.
-    Set tExpected = "home=open logs=%Admin_Operate:USE os-management=%Admin_Operate:USE tasks=%Admin_Task:USE permissions=%Admin_Secure:USE web-applications=%Admin_Secure:USE security=%Admin_Secure:USE system-explorer=%Development:USE agent=open"
+    Set tExpected = "home=open logs=%Admin_Operate:USE os-management=%Admin_Operate:USE tasks=%Admin_Task:USE permissions=%Admin_Secure:USE web-applications=%Admin_Secure:USE security=%Admin_Secure:USE system-explorer=%Development:USE interoperability=%Ens_Portal:USE analytics=%DeepSee_Portal:USE agent=open"
     Do $$$AssertEquals(..AreaVerdicts(), tExpected, "a holder of nothing opens Home and Agent co-pilot alone, each other area naming its set's first pair")
 
     ; %Operator's six grants on a stock instance: %Admin_Operate:U, %DB_IRISLOCALDATA:R,
@@ -234,7 +234,7 @@ Method TestAnAreaOpensWhenAnyScreenItListsIsAllowed()
     Do $ClassMethod(tGate, "Hold", "%DB_IRISTEMP", "WRITE")
     Do $ClassMethod(tGate, "Hold", "%Service_DocDB", "USE")
     Do $ClassMethod(tGate, "Hold", "%Service_WebGateway", "USE")
-    Set tExpected = "home=open logs=open os-management=open tasks=open permissions=%Admin_Secure:USE web-applications=open security=%Admin_Secure:USE system-explorer=%Development:USE agent=open"
+    Set tExpected = "home=open logs=open os-management=open tasks=open permissions=%Admin_Secure:USE web-applications=open security=%Admin_Secure:USE system-explorer=%Development:USE interoperability=%Ens_Portal:USE analytics=%DeepSee_Portal:USE agent=open"
     Do $$$AssertEquals(..AreaVerdicts(), tExpected, "%Operator's grants open Logs, OS management, Tasks and Web applications, and not Permissions or Security")
     Do $$$AssertEquals(..ScreenVerdict(tDescriptor _ "LogMessageViewer"), "open", "messages.log opens for them")
     Do $$$AssertEquals(..ScreenVerdict(tDescriptor _ "AuditList"), "%Admin_Secure:USE", "while the audit database viewer keeps its own gate")
@@ -396,7 +396,7 @@ Method TestAnAreaListingNoScreenIsAnsweredByItsSet()
 ClassMethod AreaVerdicts() As %String
 {
     Set tOut = ""
-    For tArea = "home", "logs", "os-management", "tasks", "permissions", "web-applications", "security", "system-explorer", "agent" {
+    For tArea = "home", "logs", "os-management", "tasks", "permissions", "web-applications", "security", "system-explorer", "interoperability", "analytics", "agent" {
         Set tFailed = ""
         Set tAllowed = ##class(OcuPilot.Test.ScreenGate).Evaluate(tArea, .tFailed)
         Set tOut = tOut _ $Select(tOut = "": "", 1: " ") _ tArea _ "=" _ $Select(tAllowed: "open", 1: tFailed)
@@ -428,7 +428,7 @@ Method TestThePayloadCarriesEveryAreaWithAVerdict()
 {
     Set tSC = ##class(OcuPilot.Api.Navigation).Payload(.tObject)
     Do $$$AssertStatusOK(tSC, "the payload builds")
-    Do $$$AssertEquals(tObject.areas.%Size(), 9, "every area is emitted, never a partial list")
+    Do $$$AssertEquals(tObject.areas.%Size(), 11, "every area is emitted, never a partial list")
 
     Set tIterator = tObject.areas.%GetIterator()
     Set tPosition = 0

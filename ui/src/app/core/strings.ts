@@ -334,6 +334,10 @@ export const STRINGS = {
   /** EXPERIENCE.md:310 */
   navAreaSystemExplorer: 'System Explorer',
   /** EXPERIENCE.md:310 */
+  navAreaInteroperability: 'Interoperability',
+  /** EXPERIENCE.md:310 */
+  navAreaAnalytics: 'Analytics',
+  /** EXPERIENCE.md:310 */
   navAreaAgent: 'Agent co-pilot',
   /** EXPERIENCE.md:311 */
   navRailItemTooltip: '<Area> \u00b7 Ctrl+B toggles the side bar',
