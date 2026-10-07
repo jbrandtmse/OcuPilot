@@ -34,9 +34,9 @@ Give interoperability developers and operators their area inside OcuPilot, where
     - *Measured.* No `%EnsRole_*` role holds an `ADMINRESOURCES` member. So `%EnsRole_Operator`, `_Administrator` and `_Monitor` are refused, and `%EnsRole_Developer` enters through `%Development`. `%DeepSee_Portal` is public `U`, so it cannot be the floor.
     - *Meanwhile.* 20.2 to 20.6 proceed under the current floor. Every new Interoperability or Analytics surface declares its classic page's gate (for example `%Ens_Portal:USE`) as a screen-own pair from the start, so a later widening touches only pre-existing surfaces. No story widens the floor.
 - **Other gating unknowns.** Each must be settled before the stories it gates are built.
-  - **No AD names an interoperability or analytics port.** FR-80 allows exactly one port per backing system, and AD-29 requires each to carry a named gate. The spine's Capability map reads only "AD-5, staged". The next AD number is 62, and AD-36 would need a new source kind, as `docdb` and `sqlactivity` did (inference).
+  - **20.2 introduces the first Stage 4 port, and no AD names it yet.** FR-80 allows exactly one port per backing system, and AD-29 requires each to carry a named gate, so 20.2 needs one new AD. The next free id is AD-62; the runner claims it, never a stage. The Capability map's Stage 4 row reads "AD-5, AD-44 (`appliesWhen`), staged". AD-36 would need a new source kind, as `docdb` and `sqlactivity` did (inference).
   - **The production-update vocabulary has never been read**, nor what `/productions/production/state/{class}` means. Story 20.2 establishes both on the instance first. The v7 OpenAPI spec is readable only from `irissys/%Api/InteropEditors/v7/spec.cls`, because the live `/api/mgmnt/v2` route refuses it (#8753).
-  - **The Analytics rider needs a DeepSee-enabled namespace** for everything except its three links. Which slot namespace qualifies has not been read.
+  - **The Analytics rider needs a DeepSee-enabled namespace** for everything except its three links. Measured on `ocupilot-b-ci`: HSLIB and HSSYS report analytics; HSCUSTOM and USER report interoperability only; `%SYS` reports neither.
   - **Four rows ship read-only first**, because their actions need custom endpoints: queue actions (`Ens.Queue`), job actions (`Ens.Job`), business-partner save and remove (`Ens.Config.BusinessPartner`), and the message-contents renderer (`Ens.Util.MessageBodyMethods`, or the embed). Such a read is a stated partial, not a completed row.
   - **Also unproven.** The schema viewer's document parameter (20.8), VSCODE-mode messages (20.7, never exercised live), and the interop editor's `HOST=` and `NEW=1` (inferred from selector names).
 - **The contract every screen keeps (FR-80).** Acceptance is this contract plus each row's own backing route.
@@ -45,7 +45,7 @@ Give interoperability developers and operators their area inside OcuPilot, where
   - Every write is a server-minted proposal with an instance-computed diff, an explicit confirmation and an agent marker.
   - Every read is bounded and reports truncation, and every gate checks the caller's own privileges at call time.
 - **Scope.** 41 catalog rows: SH-23, SH-25, CP-37, CP-38, IO-02 to IO-29 and AN-02 to AN-10. They are backed by the interop-editors v7 API, the DeepSee API, and vendor bundles loaded in place from `/ui/interop/<app>/index.html`. The bundles are never copied, and they carry no license text.
-- **Category gating (20.1)** follows the namespace's own reported features and lands before either category appears. DW-1921 rides with it: the interoperability event log lacks `%Ens_Portal:USE`, which the classic `EnsPortal.EventLog` page requires.
+- **Category gating shipped in 20.1 (AD-44).** A rail area may declare `appliesWhen` from a closed vocabulary: `interoperability` or `analytics`. The server answers `applies` on every area of every navigation read, for the route's namespace. A non-applying area is drawn nowhere but stays on the wire with its verdict, and a vendor check that throws, or an unknown feature, answers false. Applicability is not a privilege gate: an area that applies and that the caller cannot open is drawn unavailable, naming its pair (AD-8). DW-1921 closed with it: the event log declares `%Ens_EventLog:USE` and `%Ens_Portal:USE` as its own pairs.
 - **Governance (AD-22).** Each new write key joins `Kernel/Governance/Baseline.cls` in the same change, and every new destructive key ships disabled.
 - **Budgets.** The bundle warns at 3012kB, with a hard error at 4000kB (`ui/angular.json`). Fixed strings are bounded at 2,800 literals (`ui/tools/strings.test.mjs:588`), and each move of the bound carries a comment.
 
@@ -55,9 +55,13 @@ Give interoperability developers and operators their area inside OcuPilot, where
 - **One class confines the vendor's classes.** As in AD-2, AD-27 and AD-61, a port names the vendor's `%Api.*` classes and reproduces their dispatch in process. It supplies stub CSP state, runs its gate first, and reads the outcome from both the status and `%response.Status`. A Stage 4 port would follow it (inference). A custom half enters only as a named AD-27 case.
 - **Privileges (AD-8, AD-29, AD-44).**
   - Establish a pair set two ways: read the backing class's own check, then run the read as a least-privileged principal on the throwaway.
-  - Classic `EnsPortal` pages require `%Ens_Portal:USE` (`EnsPortal.Application` `CheckPrivileges`) besides their own resource.
-  - A descriptor names the classic page it replaces, and its pairs union that page's custom resource. A tool lists any other pages it performs in `CLASSICPAGES`.
-  - `%DeepSee_Portal:USE` is public on a stock instance. A screen gated by it alone opens for every caller past the floor, so each declares its classic page's own resource, as DW-1853 did.
+  - The Interoperability area declares `%Ens_Portal:USE`, the classic menu's `CheckSecurity`. The classic `CheckPrivileges` also needs READ on the namespace's database, which depends on the namespace, so each 20.2+ screen and port resolves it at call time, as System Explorer does.
+  - The Analytics area declares `%DeepSee_Portal:USE`, which is public `U` on a stock instance, so the area opens for every caller past the floor. Each 20.11 screen declares its classic page's own resource as an own pair (DW-1853).
+  - A descriptor names the classic page it replaces, and its pairs union that page's custom resource. `AreaCoverageProblem` holds an area's set to its screens' pairs, less their own pairs. A tool lists any other pages it performs in `CLASSICPAGES`.
+- **What 20.2 to 20.12 consume from 20.1.**
+  - `Kernel/Shell/NamespaceFeatures`: `FEATURES` (the closed vocabulary), `Reports(feature, ns)` and `Applies(feature, ns)`, over `%Library.EnsembleMgr.IsEnsembleNamespace` and `%DeepSee.Utils.%IsDeepSeeEnabled`. They take the namespace as an argument, switch no namespace and escalate nothing (AD-9, AD-16). Analytics is never `%SYS` or an implied namespace.
+  - `Screen/Area.cls`: `interoperability` at rail position 9 and `analytics` at 10, with Agent co-pilot at 11. A new screen joins its area and inherits its applicability on route and on namespace switch.
+  - The client's `NavigationService` fails closed on applicability (until the current namespace's map answers true) and open on verdicts. Its `areas()`, `screensForArea()` and `builtScreens()` return only what applies, and it re-reads the map on a `namespace` change event (AD-14). No component computes applicability.
 - **Write kinds.** Each write tool declares its port (AD-52).
   - Merge (AD-4): item settings. Whether a v7 `PUT` keeps keys its body omits is unmeasured.
   - Action-style (AD-51): control actions, enable and disable. No body, and a declared fingerprint subject covering every field the precondition reads, such as production state.
@@ -86,27 +90,28 @@ Give interoperability developers and operators their area inside OcuPilot, where
   - `REST/MessageResend.cls`, the double-gate reference. `dryRun` defaults to true, and executing needs `confirm`. A larger match is refused rather than truncated, at 100 ids or 500 messages, within a 7-day window.
   - `Diagram/*`, for 20.9's sequence diagram.
 - **Existing code to reuse.**
-  - `%Library.EnsembleMgr.IsEnsembleNamespace` already decides interoperability per namespace (`Kernel/Shell/SystemInfo`, `LogSourcePort`).
   - Home reads production status through `Ens.Director.GetProductionStatus`.
   - The catalog backs SH-25 with Atelier's namespace features, but `AtelierPort`'s gate adds `%Development:USE` (inference: it would refuse operators).
 
 ## UX & Interaction Patterns
 
-- **Navigation.** A category appears only for a namespace that supports it, and the side bar lists only built screens. A namespace switch re-fetches rather than re-routes. Per-host tabs are one descriptor per tab, grouped by `tab` and parent-scoped (AD-5).
+- **Navigation.** The rail reads Home · Logs · OS management · Tasks · Permissions · Web applications and REST API explorer · Security and secrets · System Explorer · Interoperability · Analytics, with Agent co-pilot pinned at the bottom. Home shows one tile per applying area (seven to nine). The side bar lists only built screens, and a namespace switch re-fetches rather than re-routes; an open side bar whose area stops applying closes. Per-host tabs are one descriptor per tab, grouped by `tab` and parent-scoped (AD-5).
 - **Confirmations.** Destructive writes take the typed-name confirmation, a non-delete write states its warning first, and dialogs never stack. Proposal cards carry the recover-before-clean line, show a resend's dry run, and name the required privileges (AD-8).
-- **Strings and prompts.** Each new literal goes into EXPERIENCE.md's Fixed strings and `strings.ts`. Each built screen declares at least three suggested prompts. After editing EXPERIENCE.md or epics.md, run `cd ui && npm run test:tools`.
+- **Strings and prompts.** Each new literal goes into EXPERIENCE.md's Fixed strings and `strings.ts`; the two area names are already there. Each built screen declares at least three suggested prompts. After editing EXPERIENCE.md or epics.md, run `cd ui && npm run test:tools`.
 - **Investigate** starts from alerts and log entries, beside the unified log hub (16.9). It reuses Explain this entry's marker (AD-24) and cites rows through citation chips (AD-11).
 
 ## Cross-Story Dependencies
 
 - **Within this epic.**
+  - 20.1 built no screen in either category, so 20.2's browser spec pins the command box and locator legs. 20.2 also carries DW-2148: EXPERIENCE.md's rail row (:612, "nine rail-items") and area-tile row (:653, "Seven tiles") understate a namespace that reports either feature.
   - 20.13 runs before 20.7 and gates the embeds of 20.7, 20.8 and 20.10, and 20.9's contents viewer if it embeds. The runner stops before 20.7 unless the owner's hand-off answer has arrived.
   - 20.2's first task is the vocabulary.
   - 20.10 needs 20.7's editors.
-  - 20.12's recover-stuck-production and resend-failed-messages workflows need 20.2 and 20.9.
+  - 20.11's Analytics screens sit under the area's pair set and `AreaCoverageProblem`.
+  - 20.12's navigation into these categories reads `shell.privileges.read`'s `applies`, and its recover-stuck-production and resend-failed-messages workflows need 20.2 and 20.9.
 - **Prerequisites.** Epic 20 depends on Epics 11 and 12, both merged. Sprint planning passed with CONCERNS, naming the hand-off, the port, the vocabulary, the DeepSee namespace and the read-only rows.
 - **Parallel run.** By the owner's decision of 2026-10-06, Epic 20 runs whole on slot B while slot A runs the rest of Epic 18 (18.8, 18.25 to 18.27, 18.9 to 18.13, burn-down 18.28), then Story 23.5.
-  - 18.12 overlaps 20.12 (the tool registry), and 18.13 overlaps 20.1 (per-namespace state). Whichever merges second rebases.
-  - 20.1's contended edits are cleared: EXPERIENCE.md :66 and :310, `Test/Descriptor.cls`, `Test/Wire.cls`, `Test/WireAreaAnyScreen.cls`, `navigation.test.mjs`, `screen-mirror.test.mjs`, and `screens.generated.ts` regenerated whole. The second epic to merge takes the union.
-  - Keep other shared-file edits add-only (`Baseline.cls`, `strings.ts`, EXPERIENCE.md, `SurfaceCoverage`, `angular.json`), and regenerate `screens.generated.ts`.
+  - 18.12 overlaps 20.12 (the tool registry), and 18.13 overlaps 20.1's `navigation.ts` (per-namespace state). Whichever merges second rebases.
+  - 20.1's contended edits were cleared by the orchestrator: EXPERIENCE.md :66 and :310, `Test/Descriptor.cls`, `Test/Wire.cls`, `Test/WireAreaAnyScreen.cls`, `navigation.test.mjs`, `screen-mirror.test.mjs`, and `screens.generated.ts`. The second epic to merge takes the union and regenerates `screens.generated.ts` whole.
+  - Keep other shared-file edits add-only (`Baseline.cls`, `strings.ts`, EXPERIENCE.md, `SurfaceCoverage`, `angular.json`).
 - **Slot B.** Use profile `ocupilot-slot-b`, throwaway `ocupilot-b-ci` (52777/1976) and `OCUPILOT_BROWSER_CONTAINER=ocupilot-b-ci`. Run one test class per call, and never restart an `ocupilot-slot-*` container.
