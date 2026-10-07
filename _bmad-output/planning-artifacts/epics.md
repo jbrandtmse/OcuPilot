@@ -8149,6 +8149,8 @@ So that the classic portal's Interoperability audience is not refused at the doo
 
 [AMENDED 2026-10-07, owner decision relayed by the Planner, Rule 5] The owner's requirement: "We need a way to see/adjust what permission is used per screen." Ordered after Story 20.14.
 
+[AMENDED 2026-10-07, owner decision relayed by the Planner] The owner's answers: "Developer and Admin accounts plus any account with %All can change a screen's permissions; Yes it can go below the classic pages requirements, the agent can propose such changes (which brings up another topc, the agent should be aware if the user holds a permission needed for a screen before making a proposal, and refuse to propose if they can't access the screen); The functionality starts switched on for those that can access the ability to change it; the change is audited with a custom audit if nothing else fts;"
+
 As an OcuPilot administrator,
 I want to see and adjust which permission (resource:permission pair) each screen uses,
 So that access to each screen can be fitted to the instance.
@@ -8163,9 +8165,86 @@ So that access to each screen can be fitted to the instance.
 - **When** it is made
 - **Then** it is a confirmed write with an audit record, like every other write.
 
-- **Given** who may change a screen's pair, whether a change may go below the classic page's own pair, whether the agent may propose a change, its governance key's default, and what the audit records
-- **When** this story is planned
-- **Then** each is returned to the orchestrator as a security-posture choice, with options and a recommendation each, and is decided by the owner before the story is built.
+- **Given** who may change a screen's pair
+- **When** a change is made
+- **Then** Developer accounts, Admin accounts and any `%All` holder may make it; the plan proposes the exact pairs (the Planner suggests `%Development:USE` and `%Admin_Secure:USE`) and returns a one-line confirm only where the owner's words are genuinely ambiguous.
+
+- **Given** a change that sets a screen's pair below its classic page's own requirement
+- **When** it is made
+- **Then** it is allowed.
+
+- **Given** the agent
+- **When** a user asks it to change a screen's pair
+- **Then** it may propose the change, as a confirmed proposal; and the change's governance key ships enabled for everyone who can reach the ability to change it.
+
+- **Given** a pair change
+- **When** it is written
+- **Then** it is audited by an existing vendor or OcuPilot audit event that fits, otherwise by a custom OcuPilot event registered at install (`Security.Events.Create`, guarded by `Exists`).
+
+- **Given** a screen whose effective pair the user does not hold, an adjustment made through this story included
+- **When** the agent would propose a change on that screen
+- **Then** it knows this before proposing and refuses to propose, saying the user cannot access that screen; the plan first reads what already exists (Story 11.8's privilege line, and how the agent treats the demo's operator account) and builds on it.
+
+
+### Story 20.16: The agent edits rule, DTL and BPL content behind the embedded editors
+
+[AMENDED 2026-10-07, owner decision relayed by the Planner, Rule 5] The owner's flow: "Warn the user that the editor must be saved if needed and then the agent reads current content and proposes the edit in the background and refreshes the page." Ordered right after Story 20.7, and built on Story 20.17's agent source edits. On the owner's decision this narrows Story 19.3's "a source save is a person's action" for these three content types, which the owner then reversed for classes and routines too (Story 20.17, AD-53). On "Agent starts switched on", its governance key ships enabled.
+
+As an interoperability developer,
+I want the agent to edit a rule, a DTL or a BPL I have open in its embedded editor,
+So that a change the agent proposes lands in the content the editor shows.
+
+**Acceptance Criteria:**
+
+- **Given** an embedded editor open on a rule, DTL or BPL
+- **When** the agent is asked to change it
+- **Then** the user is first warned to save the editor if needed, because under AD-63 OcuPilot cannot read the frame's unsaved state; the agent then reads the stored content and proposes the edit.
+
+- **Given** the proposal
+- **When** it is confirmed
+- **Then** it is a confirmed proposal with the diff and the agent marker, and it is refused when the stored content changed after the mint (a fingerprint or ETag, as Epic 19's source save).
+
+- **Given** a confirmed write
+- **When** it completes
+- **Then** the embedded editor reloads and shows the new content.
+
+- **Given** the governance key and the confirmation
+- **When** this story ships
+- **Then** the key is enabled and confirmation is the standard confirmed proposal; the plan raises a stronger (typed-name) confirmation for DTL or BPL code actions only if it finds a concrete reason.
+
+### Story 20.17: The agent proposes class and routine source edits, on the person's confirmation
+
+[AMENDED 2026-10-07, owner decision relayed by the Planner, Rule 5] The owner's words: "Agent starts switched on; and we want to loosen the rule and allow the agent to edit source code (including classes and routines) on user confirmation." This reverses Story 19.3's person-only save; the spine's AD-53 is amended (feature `a191c34b`), and Story 19.3's block carries the pointer note. Ordered right after Story 20.15, whose check that the agent refuses where the user cannot access the screen it uses.
+
+As a developer,
+I want the agent to propose a class or routine edit that I confirm,
+So that a change I ask for in conversation lands in the source.
+
+**Acceptance Criteria:**
+
+- **Given** `explorer.classes.save` and `explorer.routines.save`
+- **When** this story ships
+- **Then** both are advertised, agent-offered, confirmed writes, and their governance keys are enabled.
+
+- **Given** a proposed source edit
+- **When** its card is shown
+- **Then** it shows the whole change as a diff and the compile outcome, because confirmed code runs as the user.
+
+- **Given** a document that changed after the mint
+- **When** the proposal is confirmed
+- **Then** the confirm is refused (ETag or fingerprint).
+
+- **Given** a confirmed source edit
+- **When** it completes
+- **Then** its compile results are reported and the agent marker is written.
+
+- **Given** AD-10's refusal of OcuPilot's own packages, the read-only system databases (`%` and system classes), and `explorer.sqldata.save`
+- **When** this story ships
+- **Then** each is unchanged and pinned: OcuPilot's own code and the system classes stay refused, and `explorer.sqldata.save` stays person-only and unadvertised.
+
+- **Given** any further security-posture question its plan finds
+- **When** it is planned
+- **Then** the question is returned to the orchestrator for the owner, with options and a recommendation.
 
 ---
 

@@ -3,7 +3,7 @@
 # edges the orchestrator's analysis added, per the owner's standing instruction (2026-09-16):
 # "If your analysis adds an edge, take the more conservative graph and note the difference in the
 # parallel log; if it would remove one of these, keep mine."
-epics_md_hash: "7fc57daeaacf8fee48bf4b8d347e908fbcee1684abd01ac02539b699a2e72f9c"
+epics_md_hash: "8fc7c3ab40e316009c7a56c3acc1390401a19e8d499ce9b196f8807041a10d69"
 analyzed_by: claude-opus-5
 analyzed_at: "2026-09-16T15:02:34Z"
 approved: true
@@ -278,7 +278,7 @@ epics:
     depends_on: [epic-11, epic-12]
     submodules: []
     in_run: all   # owner 2026-10-06 ("Let's open up Slot B and do development in parallel again." / "Start Epic 20"): the whole epic, in epics.md story order
-    story_order: ["20-1 (namespace category gating, gates the category itself; first)", "20-2", "20-14 (interoperability holders reach OcuPilot: own pairs first, then the floor admits %Ens_Portal:USE; owner decision on DW-2140 2026-10-07)", "20-15 (per-screen permissions seen and adjusted; owner requirement 2026-10-07; its plan returns the security-posture choices to the orchestrator)", "20-3", "20-4", "20-5", "20-6", "20-13 (the sign-in hand-off, split from 20.1 by the orchestrator merge gate 2026-10-07; gates every embed; owner decision 2026-10-07: option A, AD-63)", "20-7", "20-8", "20-9", "20-10", "20-11", "20-12"]
+    story_order: ["20-1 (namespace category gating, gates the category itself; first)", "20-2", "20-14 (interoperability holders reach OcuPilot: own pairs first, then the floor admits %Ens_Portal:USE; owner decision on DW-2140 2026-10-07)", "20-15 (per-screen permissions seen and adjusted; owner requirement 2026-10-07; owner answered its posture choices 2026-10-07)", "20-17 (the agent proposes class and routine source edits on confirmation; owner decision 2026-10-07; reverses 19.3 person-only save, AD-53 amended on feature a191c34b; uses 20.15 access check)", "20-3", "20-4", "20-5", "20-6", "20-13 (the sign-in hand-off, split from 20.1 by the orchestrator merge gate 2026-10-07; gates every embed; owner decision 2026-10-07: option A, AD-63)", "20-7", "20-16 (the agent edits rule, DTL and BPL content behind the embedded editors; owner decision 2026-10-07; key enabled)", "20-8", "20-9", "20-10", "20-11", "20-12"]
     slot: "B, reopened 2026-10-06 (owner), in parallel with Epic 18's remainder (18.8-18.13 and its close) on slot A"
     gate: "Stage 4 gate (epics.md Epic 20 preamble): the sign-in hand-off to /ui/interop gates every embed - the postMessage path carrying a password is not used and the origin is never weakened (AD-47); namespace category gating lands before the category appears; the vendor's Angular bundles load in place and are never copied; the production-update action vocabulary is read from the vendor before it is offered; every write a confirmed proposal; every new destructive key defaults to disabled (14.2 baseline rule)"
     paths_hint: ["src/OcuPilot/Port/**", "src/OcuPilot/Kernel/**", "src/OcuPilot/Api/**", "src/OcuPilot/Screen/**", "src/OcuPilot/Install/**", "src/OcuPilot/Test/**", "ui/src/app/areas/**", "ui/src/app/shell/**", "ui/src/app/core/**", "ui/tools/**", "ui/browser/**", "ui/src/styles/**"]
