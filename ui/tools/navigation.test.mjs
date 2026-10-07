@@ -1500,6 +1500,23 @@ test('a re-read for a namespace the shell has moved to stops drawing a category 
   assert.equal(keysOf(service.areas()).includes('interoperability'), true, "and USER's own answer draws it again");
 });
 
+test('the cold sign-in read, sent before the namespace list arrives, draws no category and is not the answer', async () => {
+  // Mutation (Rule 19): drop the `appliesKey !== ''` clause from `appliesAnswered()` -> the first two
+  // assertions go red: the instance's own namespace's answer is drawn under the route's.
+  let namespace = '';
+  const api = stubApi([ok(featureMap(['interoperability'])), ok(featureMap([]))]);
+  const service = new NavigationService({ api, namespace: () => namespace });
+  await service.load();
+  assert.equal(service.appliesAnswered(), false, 'an answer read with no namespace is not the route namespace\'s');
+  assert.equal(keysOf(service.areas()).includes('interoperability'), false, 'so a category it reports is not drawn');
+
+  namespace = '%SYS';
+  service.reload();
+  await service.load();
+  assert.equal(service.appliesAnswered(), true, 'the read scoped to the resolved namespace is the answer');
+  assert.equal(keysOf(service.areas()).includes('interoperability'), false, 'and it draws what that namespace reports');
+});
+
 test('main.ts hands the change bus to the navigation service it builds', () => {
   // The bus row below builds its own service, so it stays green with the hand-off deleted while the
   // shipped shell never re-reads the map on a namespace change event.

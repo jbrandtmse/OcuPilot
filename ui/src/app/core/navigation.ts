@@ -816,6 +816,8 @@ export class NavigationService {
   private readonly api: ApiService;
   private readonly connectivity: ConnectivityService | null;
   private readonly namespace: () => string;
+  /** Whether a namespace source was configured. Without one, `''` is the only namespace there is. */
+  private readonly scoped: boolean;
 
   private areaVerdicts = new Map<string, Verdict>();
   private screenVerdicts = new Map<string, Verdict>();
@@ -848,6 +850,7 @@ export class NavigationService {
     this.api = options.api;
     this.connectivity = options.connectivity ?? null;
     this.namespace = options.namespace ?? (() => '');
+    this.scoped = options.namespace !== undefined;
     options.bus?.subscribe((event) => this.onChange(event));
   }
 
@@ -869,9 +872,13 @@ export class NavigationService {
    * False before any answer, and while the re-read for a namespace the shell has moved to is in
    * flight or has failed: a category is not drawn then, and the side bar waits for this answer
    * before it closes one, so a switch between two namespaces that both report it keeps the bar.
+   * Also false for an answer read under `''` while a namespace source is configured: that is the
+   * cold sign-in read, sent before the namespace list arrives, so it answers for the instance's own
+   * namespace rather than the route's.
    */
   appliesAnswered(): boolean {
-    return this.appliesKey !== null && this.appliesKey === this.namespace();
+    if (this.appliesKey === null || this.appliesKey !== this.namespace()) return false;
+    return this.appliesKey !== '' || !this.scoped;
   }
 
   /** Whether a map has been received at all. Nothing is gated until it has. */
@@ -1016,9 +1023,10 @@ export class NavigationService {
    * is what makes "the re-run carries the new namespace" a property of the request rather than of
    * a service the request happens to consult.
    *
-   * An empty key is a service with no namespace source configured, not a namespace of `''`: it
-   * sends no scope of its own and `ApiService` attaches whatever the shell is scoped to, which is
-   * what this read did before it was keyed.
+   * An empty key is a service with no namespace source configured, or a shell whose namespace list
+   * has not arrived yet: it sends no scope of its own and `ApiService` attaches whatever the shell
+   * is scoped to, which is what this read did before it was keyed. In the second case its `applies`
+   * answers do not count (`appliesAnswered()`).
    */
   private async runLoad(key: string): Promise<void> {
     const generation = this.generation;

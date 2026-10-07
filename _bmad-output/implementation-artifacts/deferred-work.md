@@ -10209,3 +10209,4 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-20-1-namespace-category-gating.md | severity: low | fix-risk: low | footprint: in-epic
 - evidence: Story 20.1 made the rail 9-11 items and Home 7-9 tiles by namespace; an in-place edit touches a file Epic 18 is changing, and home.page.ts quotes the tile row as an anchor
 - 2026-10-07T08:56:04Z status=routed owner=20-2-productions-listed-and-controlled by=cr note=correct both rows in place once Epic 18 has merged, with home.page.ts's quoted anchors
+- 2026-10-07T10:40:19Z status=routed owner=20-2-productions-listed-and-controlled by=cr note=also rail.ts:49 "the nine areas" and :56 "eight tab stops" (CI rework re-review)

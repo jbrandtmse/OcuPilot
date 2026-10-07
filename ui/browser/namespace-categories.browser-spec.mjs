@@ -25,7 +25,7 @@ import puppeteer from 'puppeteer';
 
 import { LIVE_CONTAINER, READINESS_PATH, browserConfig, launchOptions } from '../browser.config.mjs';
 import { parseMarkers } from './iris-session.mjs';
-import { areaApplies, namespacesWith, readNamespaceFeatures } from './namespace-features.mjs';
+import { areaApplies, namespacesWith, readNamespaceFeatures, waitForMapAnswered } from './namespace-features.mjs';
 import { resetRememberedState } from './preferences-reset.mjs';
 import { leaveFirstLoginGate } from './shell-entry.mjs';
 
@@ -189,6 +189,8 @@ test('the rail and Home draw a category only in a namespace that reports its fea
       if (new URL(page.url()).searchParams.get('ns') !== namespace) await switchTo(page, namespace);
       const want = expectedFor(reported[namespace]);
       await railBecomes(page, want.rail);
+      // %SYS draws the same roster before its map answers (fail closed), so the roster alone proves nothing there.
+      await waitForMapAnswered(page, config.navigationTimeoutMs);
       const seen = await drawn(page);
       assert.deepEqual(seen.rail, want.rail, `${namespace}: the rail draws the areas that apply`);
       assert.deepEqual(seen.tiles, want.tiles, `${namespace}: Home draws one tile per area that applies`);
@@ -230,6 +232,7 @@ test('opening the Interoperability side bar and then switching to %SYS removes t
 
     await switchTo(page, noneNs);
     await railBecomes(page, expectedFor(reported[noneNs]).rail);
+    await waitForMapAnswered(page, config.navigationTimeoutMs);
     assert.equal(await page.$('#ocu-rail-item-interoperability'), null, 'the rail item is gone');
     await page.waitForFunction(() => document.querySelector('app-side-bar nav') === null, { timeout: config.navigationTimeoutMs });
 

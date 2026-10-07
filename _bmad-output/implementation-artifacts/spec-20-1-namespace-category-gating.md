@@ -344,6 +344,24 @@ Rejected:
 - `low` A feature added to `FEATURES` without a branch in `Reports`: the vendor-equality test lists the features by hand.
 - `low` The spec's stale 2993 kB and Tasks wording: the fix edits the spec under review.
 
+Code review 2026-10-07, CI rework 1 re-review (tier `full-opus`; diff `698c3c0e..5875eafb`). The four `[CI]` items hold. The sweep was re-checked by grep over `ui/browser/*.mjs`, and `namespace-categories` was the one spec missing.
+
+- [x] [Review][Patch] MED, fix-risk low, in-story: an answer read before the namespace list arrived counted as the route namespace's. At sign-in the rail drew the install namespace's categories with `data-map-answered="true"`. Shown on `ocupilot-b-ci`: at `?ns=%SYS`, with the list held 4 s, the rail drew 10 items including Interoperability [ui/src/app/core/navigation.ts:879]
+- [x] [Review][Patch] MED, fix-risk low, in-story: `namespace-categories` asserted its `%SYS` rosters before `%SYS` answered, because that roster equals the fail-closed one. Both legs now wait for the map's answer [ui/browser/namespace-categories.browser-spec.mjs:193]
+- [x] [Review][Patch] LOW: the attribute names no namespace, so after an in-shell switch it can read the previous namespace's `true` until the rail re-renders. The caller contract is now documented [ui/browser/namespace-features.mjs:62]
+
+Rejected (CI rework 1 re-review):
+
+- `low` The triage log's "five browser specs" (four used the wait), the Verification line "count nothing" (`shell` clicks item 1), the 7-of-20 sweep list, the Auto Run Result's dropped pass-1 record, the stale 2993 kB and loop list, and the oversized spec growing: each fix edits the spec under review. The other 13 specs address areas by label or id (grep in this review).
+- `low` `rail-icons` builds its roster inline rather than through the new helpers: duplication only, and both read `AREAS`.
+- `low` `rail.ts:49,56` still say "nine areas" and "eight tab stops": outside the rework range, so they were added to DW-2148 (20.2) beside EXPERIENCE.md's rows.
+- `false` No lint-docs result for this pass: run in this review, clean.
+- `false` `system-explorer`'s `tileIndex` can be -1: it is computed from `AREAS`, which declares `system-explorer`.
+- `false` The AC3 principal may read different features than the superuser's oracle: `home-performance` AC3 is green with the derived count, in this review.
+- `low` An undefined `HSCUSTOM` read, or a failed map read, fails with a TypeError or a timeout rather than a named assertion: both are loud, and the residual-risk line records the second.
+- `low` An `appliesWhen` the helper does not read makes the specs expect the area absent: the vocabulary is closed, and the helper reads both features.
+- `low` Use `aria-busy` rather than a test-only attribute: a design alternative, not a defect.
+
 ## Spec Change Log
 
 - 2026-10-07, runner: rework iteration 1, trigger `ci` (run 37598485448 red on browser shard 1/3, the first red after this story). The `[CI]` items above are the whole scope.
@@ -503,6 +521,11 @@ Rejected:
 - mutation: CI rework, `Rail`'s `data-map-answered` bound to a constant `true` -> red: the `rail.spec.ts` leg "sets data-map-answered on the nav only while the map has answered for the namespace" (1 of 2,557).
 - CI rework browser specs (bundle rebuilt and redeployed to `ocupilot-b-ci`, each spec file run alone with `node --test --test-concurrency=1`): `home-performance` 4 of 4, `rail-icons` 3 of 3, `system-explorer` 4 of 4, `developer-floor` 1 of 1, `namespace-categories` 4 of 4. Swept and left unchanged because they address rail items by label or id and count nothing: `shell`, `theme`, `panel`, `context-chip`, `gate`, `switches`, `rail`.
 - CI rework tiers: `npm run test:tools` 1,876 of 1,876; `npm run test:components` 2,557 of 2,557 (`app.spec.ts`'s stub gained `appliesAnswered()`).
+- mutation: CI rework re-review, `appliesAnswered()` without its `''` clause -> red: the `navigation.test.mjs` leg "the cold sign-in read, sent before the namespace list arrives, draws no category and is not the answer" (1 of 51).
+- CI rework re-review (bundle rebuilt and redeployed to `ocupilot-b-ci`, each spec file run alone):
+  - Browser specs: `namespace-categories` 4 of 4, `rail-icons` 3 of 3, `home-performance` 4 of 4, `system-explorer` 4 of 4, `developer-floor` 1 of 1, `rail` 2 of 2.
+  - Client tiers: `npm run test:tools` 1,877 of 1,877; `npm run test:components` 2,557 of 2,557.
+  - Probe at `?ns=%SYS`, with `/api/ocupilot/namespaces` held 4 s: before the patch, the rail drew Interoperability and `data-map-answered` read `true`. After it, the rail drew 9 items, and the attribute read `false` until `%SYS` answered.
 
 ## Auto Run Result
 

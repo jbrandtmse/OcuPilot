@@ -54,6 +54,10 @@ export function areaApplies(area, reported) {
  * sets `data-map-answered="true"` on its nav element then, and a category that declares
  * `appliesWhen` is not drawn before it (fail closed), so a count or an index taken earlier reads a
  * roster that is still short. `networkidle2` does not wait for it.
+ *
+ * The attribute names no namespace. After an in-shell switch, call this only once the rail has
+ * re-rendered for the new namespace (a roster wait, for example); before that render it can still
+ * read the previous namespace's `true`.
  */
 export async function waitForMapAnswered(page, timeoutMs) {
   await page.waitForSelector('app-rail .ocu-rail[data-map-answered="true"]', { timeout: timeoutMs });
