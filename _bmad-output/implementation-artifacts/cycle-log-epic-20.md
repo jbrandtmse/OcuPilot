@@ -16,3 +16,5 @@
 2026-10-07T05:19:34Z	Epic 20	spine_updated	ad=deferred(handoff_row:DW-2141,new_row:DW-2140) reason=clarification(orchestrator_split,owner_hold) by=runner story=20-1-namespace-category-gating lint=ok(pre-existing_low_{id}_only) memlog=appended ad_claim=none
 2026-10-07T05:19:34Z	Epic 20	ledger_owner_repaired	repaired=1(DW-1921->20-1-namespace-category-gating,retitled) halted=0 filed=DW-2141(decision-pending,handoff,owner_hold) appended=DW-2140(by=orchestrator)
 2026-10-07T05:19:34Z	Story 20.1	rework_opened	cycle_iteration=2 iteration=0 trigger=clarification(split) items=gating_half_replan scope_baseline=9faa902f spec=renamed_to_spec-20-1-namespace-category-gating.md status=draft
+2026-10-07T05:21:38Z	Epic 20	epic_context_compiled	reason=planning_artifact_newer(20.1_split,20.13,spine_deferred_DW-2140_DW-2141) model=opus agent=a04c318a0bb031350 lines=112
+2026-10-07T05:21:39Z	Story 20.1	stage_spawned	stage=plan spawn_at=2026-10-07T05:21:39Z model=opus agent_name=20-1-plan-2 cycle_iteration=2

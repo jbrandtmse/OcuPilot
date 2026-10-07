@@ -8,7 +8,7 @@ Give interoperability developers and operators their area inside OcuPilot, where
 
 ## Stories
 
-- Story 20.1: The sign-in hand-off and namespace category gating
+- Story 20.1: Namespace category gating
 - Story 20.2: Productions, listed and controlled
 - Story 20.3: Production items
 - Story 20.4: Per-host tabs, the monitor, queues and jobs
@@ -20,28 +20,32 @@ Give interoperability developers and operators their area inside OcuPilot, where
 - Story 20.10: Source-control hooks
 - Story 20.11: The Analytics rider
 - Story 20.12: The agent gains guided workflows and Investigate
+- Story 20.13: The sign-in hand-off to the embedded vendor editors
 
 ## Requirements & Constraints
 
-- **Gating unknowns. Each must be settled before the stories it gates are built.**
-  - **(1) The hand-off has no proven safe design.** Story 20.1 gates every embed.
-    - *Measured by the 2026-09-08 auth spike.* In normal mode an editor signs itself in with no password and no host action: the `CSPBrowserId` cookie (`path=/`, SameSite Strict) and an empty-body `POST /api/interop-editors/login`. It keeps its tokens in `sessionStorage` (`Rule_Editor-0-*`).
-    - *Why that is not yet safe.* The editor runs script on the instance's own origin, and an unsandboxed frame read the tab's `sessionStorage`, where OcuPilot's token pair lives (Story 19.9). AD-28 forbids a token within a frame's reach. AD-47's inert `sandbox=""` frame runs no script, so an Angular editor would not render in it (inference).
-    - *Why the alternatives fail.* Story 20.7 needs the `saved`, `compiled`, `bad*` and `compatible` messages, which the editors post only under `?VSCODE=1`. That mode skips the automatic login and waits for `postMessage({type:"auth", username, password})`, which 20.1 forbids and whose contract has no origin check. Writing the editor's storage keys before load is untested and also puts a token in reach (inference).
-    - AD-47 forbids weakening the origin for either, so 20.1 likely needs a spine decision first: an AD-28 or AD-47 amendment, or a new AD (inference).
-  - **(2) No AD names an interoperability or analytics port.** FR-80 allows exactly one port per backing system, and AD-29 requires each to carry a named gate. The spine names no Stage 4 port; its Capability map reads only "AD-5, staged". The next AD number is 62, and AD-36 would need a new source kind, as `docdb` and `sqlactivity` did (inference).
-  - **(3) The production-update vocabulary has never been read**, nor what `/productions/production/state/{class}` means. Story 20.2 establishes both on the instance first. The v7 OpenAPI spec is readable only from `irissys/%Api/InteropEditors/v7/spec.cls`, because the live `/api/mgmnt/v2` route refuses it (#8753).
-  - **(4) The Analytics rider needs a DeepSee-enabled namespace** for everything except its three links. Which slot namespace qualifies has not been read.
-  - **(5) Four rows ship read-only first**, because their actions need custom endpoints: queue actions (`Ens.Queue`), job actions (`Ens.Job`), business-partner save and remove (`Ens.Config.BusinessPartner`), and the message-contents renderer (`Ens.Util.MessageBodyMethods`, or the embed). Such a read is a stated partial, not a completed row.
-  - **(6) Also unproven.** The schema viewer's document parameter (20.8), VSCODE-mode messages (20.7, never exercised live), and the interop editor's `HOST=` and `NEW=1` (inferred from selector names).
-  - **(7) The API floor admits no interoperability or analytics resource.** The floor is `Screen/Gate.cls`'s `ADMINRESOURCES` plus `%Development`. A caller holding only `%Ens_*` or `%DeepSee_*` resources is refused before any route runs (inference: what each `%EnsRole_*` grants is unread). Widening the floor is an owner decision, as DW-1903 was.
+- **Two decisions are held for the owner.** Neither is decided or built by a story before the owner answers.
+  - **(1) The hand-off design (DW-2141).** Story 20.13 carries it and gates every embed.
+    - *Measured at 20.1's plan.* No in-place design keeps AD-28 and AD-47 as written. An unsandboxed same-origin frame signs in silently but can read the tab's token pair. A `noopener` tab keeps both ADs but leaves the shell. A sandboxed frame never signs in.
+    - *The silent sign-in.* In normal mode an editor uses the `CSPBrowserId` cookie (`path=/`, SameSite Strict) and an empty-body `POST /api/interop-editors/login`, then keeps its tokens in `sessionStorage` (`Rule_Editor-0-*`).
+    - *Why VSCODE mode does not help.* 20.7 needs the `saved`, `compiled`, `bad*` and `compatible` messages, which the editors post only under `?VSCODE=1`. That mode waits for `postMessage({type:"auth", username, password})`, which is forbidden and has no origin check.
+    - The measurements and candidates are in 20.1's blocked spec at commit `9faa902f`. 20.13 is planned only once the owner decides.
+  - **(2) The API floor (DW-2140).** The floor is `Screen/Gate.cls`'s `ADMINRESOURCES` plus `%Development`, and it refuses a caller before any route runs.
+    - *Measured.* No `%EnsRole_*` role holds an `ADMINRESOURCES` member. So `%EnsRole_Operator`, `_Administrator` and `_Monitor` are refused, and `%EnsRole_Developer` enters through `%Development`. `%DeepSee_Portal` is public `U`, so it cannot be the floor.
+    - *Meanwhile.* 20.2 to 20.6 proceed under the current floor. Every new Interoperability or Analytics surface declares its classic page's gate (for example `%Ens_Portal:USE`) as a screen-own pair from the start, so a later widening touches only pre-existing surfaces. No story widens the floor.
+- **Other gating unknowns.** Each must be settled before the stories it gates are built.
+  - **No AD names an interoperability or analytics port.** FR-80 allows exactly one port per backing system, and AD-29 requires each to carry a named gate. The spine's Capability map reads only "AD-5, staged". The next AD number is 62, and AD-36 would need a new source kind, as `docdb` and `sqlactivity` did (inference).
+  - **The production-update vocabulary has never been read**, nor what `/productions/production/state/{class}` means. Story 20.2 establishes both on the instance first. The v7 OpenAPI spec is readable only from `irissys/%Api/InteropEditors/v7/spec.cls`, because the live `/api/mgmnt/v2` route refuses it (#8753).
+  - **The Analytics rider needs a DeepSee-enabled namespace** for everything except its three links. Which slot namespace qualifies has not been read.
+  - **Four rows ship read-only first**, because their actions need custom endpoints: queue actions (`Ens.Queue`), job actions (`Ens.Job`), business-partner save and remove (`Ens.Config.BusinessPartner`), and the message-contents renderer (`Ens.Util.MessageBodyMethods`, or the embed). Such a read is a stated partial, not a completed row.
+  - **Also unproven.** The schema viewer's document parameter (20.8), VSCODE-mode messages (20.7, never exercised live), and the interop editor's `HOST=` and `NEW=1` (inferred from selector names).
 - **The contract every screen keeps (FR-80).** Acceptance is this contract plus each row's own backing route.
   - One descriptor per screen, and exactly one port to the outside.
   - The read tool comes from the descriptor, and write field lists are derived, never hand-typed.
   - Every write is a server-minted proposal with an instance-computed diff, an explicit confirmation and an agent marker.
   - Every read is bounded and reports truncation, and every gate checks the caller's own privileges at call time.
 - **Scope.** 41 catalog rows: SH-23, SH-25, CP-37, CP-38, IO-02 to IO-29 and AN-02 to AN-10. They are backed by the interop-editors v7 API, the DeepSee API, and vendor bundles loaded in place from `/ui/interop/<app>/index.html`. The bundles are never copied, and they carry no license text.
-- **Category gating** follows the namespace's own reported features and lands before either category appears. DW-1921 rides with 20.1: the interoperability event log lacks `%Ens_Portal:USE`.
+- **Category gating (20.1)** follows the namespace's own reported features and lands before either category appears. DW-1921 rides with it: the interoperability event log lacks `%Ens_Portal:USE`, which the classic `EnsPortal.EventLog` page requires.
 - **Governance (AD-22).** Each new write key joins `Kernel/Governance/Baseline.cls` in the same change, and every new destructive key ships disabled.
 - **Budgets.** The bundle warns at 3012kB, with a hard error at 4000kB (`ui/angular.json`). Fixed strings are bounded at 2,800 literals (`ui/tools/strings.test.mjs:588`), and each move of the bound carries a comment.
 
@@ -71,7 +75,7 @@ Give interoperability developers and operators their area inside OcuPilot, where
   - Message bodies have no schema and can hold patient data, so by precedent they stay screen-only (AD-48, AD-36's journal values; inference).
   - Lookup-table import and export carry content, never a server path (AD-21; inference).
   - MDX text is the caller's own query, but AD-21 has no MDX clause yet (inference).
-- **Embedding.**
+- **Embedding (pending DW-2141).**
   - The shell's `default-src 'self'` admits a same-origin frame (AD-47), and `/ui/interop` sends no frame-blocking headers.
   - The rule editor loads at exactly `/ui/interop/rule-editor/index.html?$NAMESPACE=<ns>&rule=<class>`.
   - The other addresses are BPL `BP=`, DTL `DTL=`, `/ui/interop/interop-editor` with `$PRODUCTION`, and `/ui/interop/schema-viewer`.
@@ -96,12 +100,13 @@ Give interoperability developers and operators their area inside OcuPilot, where
 ## Cross-Story Dependencies
 
 - **Within this epic.**
-  - 20.1 gates 20.7, 20.8 and 20.9's embedded parts.
-  - 20.2's first task is the vocabulary (unknown 3).
+  - 20.13 runs before 20.7 and gates the embeds of 20.7, 20.8 and 20.10, and 20.9's contents viewer if it embeds. The runner stops before 20.7 unless the owner's hand-off answer has arrived.
+  - 20.2's first task is the vocabulary.
   - 20.10 needs 20.7's editors.
   - 20.12's recover-stuck-production and resend-failed-messages workflows need 20.2 and 20.9.
-- **Prerequisites.** Epic 20 depends on Epics 11 and 12, both merged. Sprint planning passed with CONCERNS, naming unknowns 1 to 5.
+- **Prerequisites.** Epic 20 depends on Epics 11 and 12, both merged. Sprint planning passed with CONCERNS, naming the hand-off, the port, the vocabulary, the DeepSee namespace and the read-only rows.
 - **Parallel run.** By the owner's decision of 2026-10-06, Epic 20 runs whole on slot B while slot A runs the rest of Epic 18 (18.8, 18.25 to 18.27, 18.9 to 18.13, burn-down 18.28), then Story 23.5.
   - 18.12 overlaps 20.12 (the tool registry), and 18.13 overlaps 20.1 (per-namespace state). Whichever merges second rebases.
-  - Keep shared-file edits add-only (`Baseline.cls`, `strings.ts`, EXPERIENCE.md, `SurfaceCoverage`, `angular.json`), and regenerate `screens.generated.ts`.
+  - 20.1's contended edits are cleared: EXPERIENCE.md :66 and :310, `Test/Descriptor.cls`, `Test/Wire.cls`, `Test/WireAreaAnyScreen.cls`, `navigation.test.mjs`, `screen-mirror.test.mjs`, and `screens.generated.ts` regenerated whole. The second epic to merge takes the union.
+  - Keep other shared-file edits add-only (`Baseline.cls`, `strings.ts`, EXPERIENCE.md, `SurfaceCoverage`, `angular.json`), and regenerate `screens.generated.ts`.
 - **Slot B.** Use profile `ocupilot-slot-b`, throwaway `ocupilot-b-ci` (52777/1976) and `OCUPILOT_BROWSER_CONTAINER=ocupilot-b-ci`. Run one test class per call, and never restart an `ocupilot-slot-*` container.
