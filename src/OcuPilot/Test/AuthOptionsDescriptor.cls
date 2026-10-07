@@ -2,8 +2,9 @@
 /// kinds, pairs and declared secret, the entity type's singleton rule, the reviewed classification
 /// (<code>SMTPPassword</code> secret, <code>AutheLoginToken</code> not masked), the two baseline keys shipped
 /// enabled, <class>OcuPilot.Api.WebAuthError</class>'s codes and sentences, the two kernel refusals and their
-/// sentences, the merge's treatment of <code>AutheKB</code>, the sign-out consequence, and the sign-in
-/// predicate over the flags and masks a write leaves.</p>
+/// sentences, the merge's treatment of <code>AutheKB</code>, the sign-out consequence, the sign-in
+/// predicate over the flags and masks a write leaves, and the audit mask over the vendor's SMTP password
+/// row.</p>
 /// <p><b>Reads only.</b> Every leg is a pure question to a class or reads the instance's own settings; the
 /// mask legs run through <class>OcuPilot.Test.AuthOptionsSeamPort</class>, which sends nothing.</p>
 Class OcuPilot.Test.AuthOptionsDescriptor Extends %UnitTest.TestCase
@@ -186,8 +187,8 @@ Method TestTheMergeLeavesAnUnchangedKerberosOut()
     Do $$$AssertTrue(tProblem [ "'AutheAlwaysTryDelegated': " _ $Parameter(..#ERRORS, "REASONDELEGATED"), "a change the rules refuse is the problem, with its sentence: " _ tProblem)
 }
 
-/// <p>A5, AD-10: a changed <code>JWTIssuer</code> or <code>JWTSigAlg</code> is the sign-out effect, and the tool
-/// states it as its consequence; no other change, and none that leaves both as held, is.</p>
+/// <p>A5, AD-10: a changed <code>JWTIssuer</code> or <code>JWTSigAlg</code> is the sign-out effect; no other
+/// change, and none that leaves both as held, is.</p>
 /// <p>Mutation (Rule 19): answer <code>""</code> for <code>JWTSigAlg</code> in
 /// <method>OcuPilot.Kernel.Proposal.Prohibited.ChangesTokenFields</method> -- the algorithm leg goes red.</p>
 Method TestAChangedTokenSettingIsTheSignOutEffect()
@@ -200,12 +201,12 @@ Method TestAChangedTokenSettingIsTheSignOutEffect()
         Do $$$AssertStatusOK(tSC, $List(tCase, 1) _ " is judged")
         Do $$$AssertEquals(tEffect, $List(tCase, 2), $List(tCase, 1) _ " has effect '" _ $List(tCase, 2) _ "'")
     }
-    Do $$$AssertEquals($ClassMethod(..#TOOL, "Consequence", {"JWTIssuer": "x"}, 0, "WEBAUTH.SIGNOUT"), "WEBAUTH.SIGNOUT", "the tool states the effect it is told")
 }
 
 /// <p>A4: the flags a write leaves, as the vendor's bits (<code>AutheKB</code> seven of them), and the sign-in
 /// predicate over masks the seam answers: turning off the method an application holds alone is a cut, turning
-/// off one it holds with another is not, a method already off is not a cut, and a read that fails is.</p>
+/// off one it holds with another is not, a Login Cookie or two-factor bit beside it is no other method, a
+/// method already off is not a cut, and a read that fails is, for the arm and for the form's locks.</p>
 /// <p>Mutation (Rule 19): answer <code>0</code> from
 /// <method>OcuPilot.Kernel.Proposal.Prohibited.CutsOffSignIn</method> on a failed read -- the failed-read leg
 /// goes red.</p>
@@ -233,12 +234,41 @@ Method TestTheSignInPredicateJudgesTheMasks()
     Set tWithDelegated = $ZBoolean(tOld, 8192, 7)
     Do $$$AssertTrue('$ClassMethod(tP, "CutsOffSignIn", tSeam, tWithDelegated, $ZBoolean(tWithDelegated, 32, 2)), "an application widened to password and delegated is not cut by Password off while Delegated stays on")
     Do $$$AssertTrue($ClassMethod(tP, "CutsOffSignIn", tSeam, tWithDelegated, $ZBoolean($ZBoolean(tWithDelegated, 32, 2), 8192, 2)), "and is cut when both go")
+    Do $ClassMethod(tSeam, "ArmMask", "WebApp.App", "/api/ocupilot", 32 + 16384 + 2097152)
+    Do $ClassMethod(tSeam, "ArmMask", "Security.Service", "%Service_WebGateway", 32 + 16384 + 2097152)
+    Set tWithModifiers = $ZBoolean(tOld, 16384 + 2097152, 7)
+    Do $$$AssertTrue($ClassMethod(tP, "CutsOffSignIn", tSeam, tWithModifiers, $ZBoolean(tWithModifiers, 32, 2)), "Login Cookie and two-factor are no method of their own: Password off still cuts an application holding them beside it")
     Do $$$AssertTrue('$ClassMethod(tP, "CutsOffSignIn", tSeam, tNewNoPassword, tNewNoPassword), "a method already off is not turned off again")
     For tEndpoint = "WebApp.App", "Security.Service" {
         Do $ClassMethod(tSeam, "Clear")
         Do $ClassMethod(tSeam, "ArmFail", tEndpoint)
         Do $$$AssertTrue($ClassMethod(tP, "CutsOffSignIn", tSeam, tOld, tOld), "a failed " _ tEndpoint _ " read refuses")
     }
+    For tEndpoint = "Security.WebAuth", "WebApp.App" {
+        Do $ClassMethod(tSeam, "Clear")
+        Do $ClassMethod(tSeam, "ArmFail", tEndpoint)
+        Set tSC = $ClassMethod(tP, "SignInLocks", tSeam, .tFields)
+        Do $$$AssertTrue($$$ISERR(tSC) && (tFields.%Size() = 0), "the form's locks are an error naming no field when the " _ tEndpoint _ " read fails")
+    }
+}
+
+/// <p>AD-35: the vendor's "Modify System" row carries the SMTP password a <code>CHANGESMTPPWD</code> writes in
+/// clear on its <code>New value</code> line (measured on <code>ocupilot-ci</code>, 2026-10-07); the audit
+/// read's mask answers it masked and keeps the row's other lines, and the same text under another vendor
+/// event is unchanged.</p>
+/// <p>Mutation (Rule 19): empty <parameter>OcuPilot.Port.AuditPort.VENDORSYSTEMSECRETS</parameter> -- the
+/// masked leg goes red.</p>
+Method TestTheVendorSystemChangeRowReadsTheSmtpPasswordMasked()
+{
+    Set tCrlf = $Char(13, 10)
+    Set tData = "Modify System: SYSTEM" _ tCrlf _ tCrlf _ "SMTP Password modified:" _ tCrlf _ "  New value: ocupilotmaskprobe188*****" _ tCrlf _ "  Old value: *****" _ tCrlf _ tCrlf _ "Current values:" _ tCrlf _ "SMTP Server:                                   smtp.example.test" _ tCrlf _ "SMTP Password:                                 *****"
+    Set tRows = []
+    Do tRows.%Push(##class(OcuPilot.Test.AuditVendorSecrets).Row("%System", "%Security", "SystemChange", "Modify System SYSTEM", tData))
+    Do tRows.%Push(##class(OcuPilot.Test.AuditVendorSecrets).Row("%System", "%Security", "UserChange", "Modify System SYSTEM", tData))
+    Do ##class(OcuPilot.Port.AuditPort).MaskVendorSecrets(tRows)
+    Set tMasked = tRows.%Get(0).%Get("EventData")
+    Do $$$AssertTrue((tMasked '[ "ocupilotmaskprobe188") && (tMasked [ "  New value: *****") && (tMasked [ "smtp.example.test"), "the password reads masked and the row's other lines are kept: " _ tMasked)
+    Do $$$AssertEquals(tRows.%Get(1).%Get("EventData"), tData, "the same text under another vendor event is unchanged")
 }
 
 /// <p>The twenty-one settings as the vendor's <code>GET</code> reads them on a stock instance: Unauthenticated,

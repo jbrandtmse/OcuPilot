@@ -2,8 +2,8 @@
 /// A3; AD-4, AD-53, AD-55, AD-56): the form's Save (<class>OcuPilot.Test.AuthOptionsSaveFixture</class>) and
 /// the agent's mint and confirm (<class>OcuPilot.Test.DatabaseConfirm</class>) -- the ordinary change, the
 /// Kerberos flag, each rule, the SMTP password's write and clear, and the moved and busy target.</p>
-/// <p>The vendor's writes are real only for the two settings a test can restore exactly, the login cookie
-/// timeout and the SMTP password. Every sign-in, start or token change goes to the seam, which records it and
+/// <p>The vendor's writes are real only for the settings a test can restore exactly, the login cookie and
+/// two-factor timeouts and the SMTP password. Every sign-in, start or token change goes to the seam, which records it and
 /// never sends it: the seam's guard refuses one sent any other way, and <code>answer</code> mode records
 /// every settings <code>PUT</code> without the vendor.</p>
 /// <p><b>What it needs from the environment:</b> OcuPilot installed and serving, a stock authentication
@@ -27,8 +27,6 @@ Parameter SEAM = "OcuPilot.Test.AuthOptionsSeamPort";
 Parameter SAVE = "OcuPilot.Test.AuthOptionsSaveFixture";
 
 Parameter TOOL = "OcuPilot.Screen.Tool.AuthOptionsUpdate";
-
-Parameter SEAMTOOL = "OcuPilot.Test.SeamAuthOptionsUpdate";
 
 Parameter PASSWORDTOOL = "OcuPilot.Screen.Tool.AuthOptionsSmtpPassword";
 
@@ -152,7 +150,7 @@ Method TestAChangedKerberosFlagIsSent()
 /// <p>A2, AD-39: on both callers, each setting the rules refuse -- Always try Delegated without Delegated, LDAP
 /// cache without LDAP, two-factor SMS without a server or a from address, a timeout that is not a whole number
 /// from 0, an algorithm outside the six, an issuer over 1,024 characters and a setting of the wrong kind -- is
-/// refused on its field with its published sentence before any vendor call, and the instance keeps its
+/// refused on its field with its published sentence before any vendor write, and the instance keeps its
 /// values.</p>
 /// <p>Mutation (Rule 19): <method>OcuPilot.Area.Security.AuthOptionsRules.Check</method> drops the SMS rule --
 /// the two-factor leg is sent to the seam and this goes red.</p>
@@ -197,15 +195,17 @@ Method TestEachRuleIsRefusedOnItsFieldBeforeAnyWrite()
 }
 
 /// <p>A3, AD-35, AD-56: a password sent by the Save, and one typed at the agent's confirm, is written, and each
-/// read-back reads <code>written</code>; <code>""</code> clears it; the value appears in no answer, proposal,
-/// ledger row, seam record, script or line of <code>messages.log</code> and <code>alerts.log</code>. A Save of
-/// the password alone sends no settings <code>PUT</code>, and the password write's own body is recorded as
-/// present, never as its value.</p>
+/// read-back reads <code>written</code>; <code>""</code> clears it; a Save refused by a rule or by the
+/// prohibited set writes no password, and a password write that fails is answered <code>secretsRefused</code>,
+/// never <code>written</code>; the value appears in no answer, proposal, ledger row, seam record, script or
+/// line of <code>messages.log</code> and <code>alerts.log</code>. A Save of the password alone sends no
+/// settings <code>PUT</code>, and the password write's own body is recorded as present, never as its
+/// value.</p>
 /// <p>A control line written to <code>messages.log</code> after the writes must be found by the same scan, so a
 /// scan that reads nothing cannot pass for one that found no marker.</p>
 /// <p>Mutation (Rule 19): <method>OcuPilot.Area.Security.AuthOptionsSave.Update</method> keeps
-/// <code>SMTPPassword</code> in the merge body -- the unexpected key leg goes red and the marker reaches the
-/// seam.</p>
+/// <code>SMTPPassword</code> in the merge body -- the Save is refused for the unexpected key and this goes
+/// red.</p>
 Method TestTheSmtpPasswordIsWrittenClearedAndReachesNoRecord()
 {
     Set tMarker = "Ocu188" _ $Translate($System.Encryption.Base64Encode($System.Encryption.GenCryptRand(12)), "+/=", "xyz")
@@ -224,6 +224,19 @@ Method TestTheSmtpPasswordIsWrittenClearedAndReachesNoRecord()
     Do $$$AssertEquals(tStatus _ " " _ ..Verdict(##class(OcuPilot.Test.LicenseKey).Parsed(tAnswer)) _ " " _ $ClassMethod(..#PROBE, "Facts").%Get("smtpPasswordLength"), "200 written 0", "an empty password clears the stored one")
     Set tSC = $ClassMethod(..#SAVE, "Handle", {"SMTPPassword": 5}, .tAnswer, .tStatus)
     Do $$$AssertEquals(tStatus _ " " _ ##class(OcuPilot.Test.LicenseKey).Violation(tAnswer), "422 SMTPPassword:PORT.FIELD.SHAPE", "a password that is not text is refused on its field")
+    Do $ClassMethod(..#SEAM, "Clear")
+    Set tSC = $ClassMethod(..#SAVE, "Handle", {"LoginCookieTimeout": -1, "SMTPPassword": (tMarker)}, .tAnswer, .tStatus)
+    Set tAnswers = tAnswers _ tAnswer
+    Do $$$AssertEquals(tStatus _ " " _ ##class(OcuPilot.Test.LicenseKey).Violation(tAnswer) _ "|" _ $ClassMethod(..#SEAM, "Writes") _ "|" _ $ClassMethod(..#PROBE, "Facts").%Get("smtpPasswordLength"), "422 LoginCookieTimeout:WEBAUTH.COOKIETIMEOUT||0", "a Save refused on a setting writes no password")
+    Set tSC = $ClassMethod(..#SAVE, "Handle", ..FullBody({"AutheCache": false, "SMTPPassword": (tMarker)}), .tAnswer, .tStatus)
+    Set tAnswers = tAnswers _ tAnswer
+    Do $$$AssertEquals(tStatus _ "|" _ $ClassMethod(..#SEAM, "Writes") _ "|" _ $ClassMethod(..#PROBE, "Facts").%Get("smtpPasswordLength"), "403||0", "and neither does one the prohibited set refuses")
+    Do $ClassMethod(..#SEAM, "Clear")
+    Do $ClassMethod(..#SEAM, "ArmFail", ..#PASSWORDPUT)
+    Set tSC = $ClassMethod(..#SAVE, "Handle", {"SMTPPassword": (tMarker)}, .tAnswer, .tStatus)
+    Set tAnswers = tAnswers _ tAnswer
+    Set tParsed = ##class(OcuPilot.Test.LicenseKey).Parsed(tAnswer)
+    Do $$$AssertEquals(tStatus _ "|" _ (tParsed.%Get("secretsRefused") '= "") _ "|" _ ..Verdict(tParsed) _ "|" _ $ClassMethod(..#PROBE, "Facts").%Get("smtpPasswordLength"), "200|1|(none)|0", "a password write that fails is answered refused, never written: " _ $Extract(tAnswer, 1, 200))
     Do $ClassMethod(..#SEAM, "Clear")
     Set tSC = $ClassMethod(..#SAVE, "Handle", ..FullBody({"LoginCookieTimeout": 31, "SMTPPassword": (tMarker)}), .tAnswer, .tStatus)
     Set tAnswers = tAnswers _ tAnswer

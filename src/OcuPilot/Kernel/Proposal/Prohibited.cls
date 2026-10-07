@@ -552,6 +552,12 @@ Parameter AUTHEPASSWORDWRITETYPE = "CHANGESMTPPWD";
 /// prompt, API and key-tab bits, the Kerberos, encryption and integrity bits).</p>
 Parameter AUTHEBITS = "AutheUnauthenticated:64,AutheOS:16,AutheOSDelegated:65536,AutheOSLDAP:131072,AutheCache:32,AutheDelegated:8192,AutheAlwaysTryDelegated:16777216,AutheKB:911,AutheLDAP:2048,AutheLDAPCache:4096,AutheOAuth2:67108864,AutheLoginToken:16384,AutheTwoFactorSMS:1048576,AutheTwoFactorPW:2097152";
 
+/// <p>The bits an application's or a service's <code>AutheEnabled</code> may carry that are no sign-in method
+/// of their own, so a mask holding one beside its last method is still cut: Login Cookie (16384), LDAP cache
+/// (4096), the two two-factor bits (1048576, 2097152) and Always try Delegated (16777216). The vendor's
+/// <code>AutheTwoFactorRequired</code> names the methods two-factor needs beside it (<file>%sySecurity.inc</file>).</p>
+Parameter AUTHEMODIFIERS = 19943424;
+
 /// <p>The effect <method>WeakensByEffect</method> answers for a startup settings write that changes the
 /// audit log's encryption (AD-10 as amended 2026-10-05): permitted, destructive, and named on the card. It
 /// is also the proposal's consequence code.</p>
@@ -840,7 +846,8 @@ Parameter READTYPE = "GET";
 /// <method>Namespace</method> adds, the two <method>WebSession</method> adds, the one
 /// <method>Mapping</method> adds, the one <method>Database</method> adds, and the one
 /// <method>Lock</method> adds, and the one <method>Code</method> adds, and the one
-/// <method>SqlStatement</method> adds last -- twenty-six in all.</p>
+/// <method>SqlStatement</method> adds, the key arm's and the encryption start arm's, and the two
+/// <method>AuthOptions</method> adds last -- thirty in all.</p>
 ClassMethod Codes() As %List
 {
     Quit $ListBuild(..#SERVINGPATH, ..#UNAUTHENTICATED, ..#AUTHORIZATION, ..#DISPATCH, ..#SYSTEMACCOUNT, ..#SERVICEACCOUNT, ..#CURRENTUSER, ..#LASTALLHOLDER, ..#PRIVILEGEGRANT, ..#OCUPILOTPROCESS, ..#SYSTEMPROCESS, ..#UNCOVEREDFIELD, ..#UNCOVERED, ..#OCUPILOTROLE, ..#OCUPILOTRESOURCE, ..#SERVICEACCOUNTSIGNIN, ..#OCUPILOTSSL, ..#SERVINGSERVICE, ..#OCUPILOTNAMESPACE, ..#OCUPILOTSESSION, ..#PRESERVEDSESSION, ..#OCUPILOTMAPPING, ..#OCUPILOTDATABASE, ..#OCUPILOTLOCK, ..#OCUPILOTCODE, ..#OCUPILOTSQL, ..#OCUPILOTKEY, ..#STARTUPINTERACTIVE, ..#OCUPILOTSIGNIN, ..#OCUPILOTSTART)
@@ -2737,6 +2744,10 @@ ClassMethod AuthOptions(pToolClass As %String, pPayload As %DynamicObject, pTarg
     Set tSC = $$$OK
     Try {
         If ..WriteTypeOf(pToolClass) '= ..#AUTHEPASSWORDWRITETYPE {
+            If ..TurnsFlagOff(pPayload, pTarget, ..#AUTHEOSFIELD) {
+                Do ..Refuse(..#OCUPILOTSTART, .pProhibits, .pCode)
+                Quit
+            }
             Set tOld = ..AuthFlags(pTarget, "")
             Set tNew = ..AuthFlags(pTarget, pPayload)
             If +$ZBoolean(tOld, tNew, 2) {
@@ -2744,10 +2755,6 @@ ClassMethod AuthOptions(pToolClass As %String, pPayload As %DynamicObject, pTarg
                     Do ..Refuse(..#OCUPILOTSIGNIN, .pProhibits, .pCode)
                     Quit
                 }
-            }
-            If ..TurnsFlagOff(pPayload, pTarget, ..#AUTHEOSFIELD) {
-                Do ..Refuse(..#OCUPILOTSTART, .pProhibits, .pCode)
-                Quit
             }
         }
         Set tSC = ..ReviewedFewOnly(..#TYPEAUTHOPTIONS, .pChanged, .pProhibits, .pCode)
@@ -2784,14 +2791,15 @@ ClassMethod TurnsFlagOff(pPayload As %DynamicObject, pTarget As %DynamicObject, 
 
 /// <p>Whether changing the flags from the bits <var>pOld</var> to <var>pNew</var> leaves one of the masks
 /// <method>SignInMasks</method> answers with no method it held before: <code>pMask AND pOld</code> not 0 and
-/// <code>pMask AND pNew</code> 0. Masks read through <var>pPort</var>; a read that fails answers 1.</p>
+/// <code>pMask AND pNew</code> 0, each mask less <parameter>AUTHEMODIFIERS</parameter>. Masks read through
+/// <var>pPort</var>; a read that fails answers 1.</p>
 ClassMethod CutsOffSignIn(pPort As %String, pOld As %Integer, pNew As %Integer) As %Boolean
 {
     Set tSC = ..SignInMasks(pPort, .tMasks)
     If $$$ISERR(tSC) Quit 1
     Set tCuts = 0
     For tI = 1:1:$ListLength(tMasks) {
-        Set tMask = $List(tMasks, tI)
+        Set tMask = $ZBoolean(+$List(tMasks, tI), ..#AUTHEMODIFIERS, 2)
         If +$ZBoolean(tMask, pOld, 1) && '+$ZBoolean(tMask, pNew, 1) Set tCuts = 1
     }
     Quit tCuts
@@ -2871,7 +2879,7 @@ ClassMethod SignInLocks(pPort As %String, Output pFields As %DynamicArray) As %S
             If ..Rendered(tRead, tName) '= "true" Continue
             Set tNew = $ZBoolean(tOld, +$Piece(tEntry, ":", 2), 2)
             For tJ = 1:1:$ListLength(tMasks) {
-                Set tMask = $List(tMasks, tJ)
+                Set tMask = $ZBoolean(+$List(tMasks, tJ), ..#AUTHEMODIFIERS, 2)
                 If +$ZBoolean(tMask, tOld, 1) && '+$ZBoolean(tMask, tNew, 1) {
                     Do pFields.%Push(tName)
                     Quit

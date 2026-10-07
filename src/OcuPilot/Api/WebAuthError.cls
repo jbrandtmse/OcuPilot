@@ -60,8 +60,8 @@ Parameter REASONJWTISSUER = "The JWT issuer is at most 1,024 characters.";
 
 /// <p>Consequence code of a changed <code>JWTIssuer</code> or <code>JWTSigAlg</code>, which
 /// <class>OcuPilot.Kernel.Proposal.Mint</class> stores and the card renders. The sentence is published
-/// in EXPERIENCE.md's Fixed strings and pinned equal to <code>webAuthSignOutConsequence</code> by
-/// <file>ui/tools/proposal-view.test.mjs</file>.</p>
+/// in EXPERIENCE.md's Fixed strings and pinned equal to <code>authOptionsSignOutConsequence</code> by
+/// <file>ui/tools/self-protection.test.mjs</file>.</p>
 Parameter SIGNOUT = "WEBAUTH.SIGNOUT";
 
 Parameter REASONSIGNOUT = "Every session signed in with a token ends, every OcuPilot tab included, and each must sign in again. A new signature algorithm also replaces the instance's signing keys.";

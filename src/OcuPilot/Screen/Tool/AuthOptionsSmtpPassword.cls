@@ -1,5 +1,5 @@
 /// <p>The authentication options' SMTP password tool (AD-51, AD-56 (i), Story 18.8): propose setting or
-/// clearing the password OcuPilot's two-factor SMS text authentication signs in to the SMTP server with.
+/// clearing the password the instance's two-factor SMS text authentication signs in to the SMTP server with.
 /// It reads the options fresh through <class>OcuPilot.Port.AdminPort</class> and mints a proposal whose
 /// card asks for the password at confirm. It writes nothing.</p>
 /// <p><b>Its body is its declared secret and nothing else</b>: the vendor's <code>CHANGESMTPPWD</code>

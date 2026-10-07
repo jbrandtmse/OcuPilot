@@ -505,6 +505,12 @@ export class AuthOptionsPage {
     }
     const target = event.target;
     if (target instanceof HTMLInputElement) this.store.setFlag(view.field, target.checked);
+    // The SMTP password is drawn only while SMS is on, so turning SMS off drops a typed one and a clear request.
+    if (!this.store.smsShown() && (this.passwordValue() !== '' || this.clearValue())) {
+      this.passwordValue.set('');
+      this.clearValue.set(false);
+      this.store.setPasswordPending(false);
+    }
   }
 
   protected onText(field: string, event: Event): void {

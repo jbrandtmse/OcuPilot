@@ -230,6 +230,53 @@ Analog: Story 18.21's ECP settings, a listed singleton form page. Adds 18.23's a
   - the Fixed strings stay within 2800.
 - **Integration.** The page consumes `GET /authentication-options/form` and `PUT /authentication-options`, and the agent consumes the read tool and both write tools, each on `ocupilot-ci` (A1-A5, the browser spec).
 
+### Review Findings
+
+Code review, 2026-10-07 (full-opus, four layers): 15 patched (1 high, 3 medium, 11 low), 1 deferred, 15 rejected.
+
+- [x] [Review][Patch] High (AD-35, DW-2142): the SMTP password `CHANGESMTPPWD` writes reached Logs › Audit and `logs.audit.read` in clear. The vendor row shape was measured: under `SMTP Password modified:`, the `Modify System` row reads `New value: <password>*****`. `VENDORSYSTEMSECRETS` now declares it, and so does spine AD-35's fifth declaration. [src/OcuPilot/Port/AuditPort.cls:131]
+- [x] [Review][Patch] Medium (AD-10): the sign-in arm counted the Login Cookie, two-factor, LDAP cache and Always try Delegated bits as methods. Password off therefore passed for an application holding one of them beside it, and such a flag could be locked without being drawn as locked. Masks now drop `AUTHEMODIFIERS`. [src/OcuPilot/Kernel/Proposal/Prohibited.cls:CutsOffSignIn]
+- [x] [Review][Patch] Medium: nothing pinned that a Save refused by a rule or by the prohibited set writes no password. A 422 leg and a 403 leg now do. [src/OcuPilot/Test/AuthOptionsWrite.cls]
+- [x] [Review][Patch] Medium: no test reached `secretsRefused`. The seam gained a write-failure mode, with a leg that asserts the Save is refused and never written. [src/OcuPilot/Test/AuthOptionsSeamPort.cls:55]
+- [x] [Review][Patch] Low: turning O/S off under a failed mask read was answered with the sign-in sentence. The start arm is now judged first. [src/OcuPilot/Kernel/Proposal/Prohibited.cls:AuthOptions]
+- [x] [Review][Patch] Low: the Save took its consequence from a third read, through the tool's own port, and a failed read stated sign-out. It now uses the fresh read the merge took. [src/OcuPilot/Area/Security/AuthOptionsSave.cls:173]
+- [x] [Review][Patch] Low: after a refused Save, `passwordPending` stayed set although the page had dropped the password. [ui/src/app/areas/security/auth-options.store.ts:save]
+- [x] [Review][Patch] Low: a typed SMTP password stayed pending after SMS was turned off and its field hidden. [ui/src/app/areas/security/auth-options.page.ts:onFlagClick]
+- [x] [Review][Patch] Low: a 403 sign-in refusal showed as a banner instead of on the methods the Save turned off (Always: "as a field violation"). [ui/src/app/areas/security/auth-options.store.ts:save]
+- [x] [Review][Patch] Low: the change event did not name its tool (Always, AD-14). [ui/src/app/areas/security/auth-options.store.ts:publish]
+- [x] [Review][Patch] Low (DW-2143): the failing form read was untested. Added `SignInLocks` failed-read legs and a store form-fault leg.
+- [x] [Review][Patch] Low: assertions that cannot fail are removed: the store and page A4 tails, a store `toBe(true)`, and a tautological `Consequence` leg.
+- [x] [Review][Patch] Low (DW-1166): `maximumWarning` is now 3040kB, the measured 3,039,243 bytes, instead of 5% above them. [ui/angular.json:54]
+- [x] [Review][Patch] Low: corrected these wrong doc claims:
+  - the `WebAuthError` pin key and file;
+  - the `Codes()` count (thirty);
+  - "no vendor call" (in three places);
+  - the owner named on the SMTP password tool;
+  - `AuthOptionsWrite`'s list of real writes and its A3 mutation;
+  - the browser spec's header and one title.
+  
+  Also removed the unused `SEAMTOOL` parameter.
+- [x] [Review][Patch] Low (Rule 19): Integration's page side and A5's card consequence had no mutation run. Both ran; see Verification.
+- [x] [Review][Defer] Low: with SMS off, a stored SMTP password cannot be cleared from OcuPilot, while the classic Save clears it whenever SMS is off. [ui/src/app/areas/security/auth-options.page.ts] Deferred as DW-2145, wontfix-accepted, `reopen_if` an operator reports a stored SMTP password they could not clear.
+
+Rejected:
+
+- False: the rule sentences are not published. The `WEBAUTH.*` sentences live on the server alone (AD-39), with no client copy to drift; both self-protection refusals are published and pinned.
+- Low: a stored negative timeout refuses every Save. It needs a value set outside OcuPilot, and the fix adds a branch to the rules.
+- Low: a failed mask read faults the whole form. It needs one of OcuPilot's applications to be gone, and failing closed is the arm's own rule.
+- Low: the SMTP text fields have no length rule (vendor `MAXLEN` 50, inference). A value that long is rare, and the fix needs new codes.
+- Low: a timeout of ten or more digits is refused as not a whole number. It is still refused before any vendor write.
+- Low: two test comments name mutations that were never run. Each of those assertions compares the mutated value itself, and each AC has its own recorded mutation.
+- Low: `Monitor.State()` is in the probe facts. That is the probes' shared idiom, and the SMTP restore assumes a stock instance, as the class says.
+- Low: `SeamAuthOptionsUpdate` is unused. It is a harmless test helper, and the spec names it.
+- By design: O/S authentication ticked on cannot be unticked before Save. The spec draws it `aria-disabled` "while it is on".
+- Low: the browser spec does not check the O/S lock. The page spec pins it.
+- Low: the form route answers `{locked, sigAlgs}` without the settings row. The page reads the declared read itself, so AD-36 holds, and the fix would edit this spec.
+- Low: stale spec text (`Codes()` 29, "two effects", the JWKS prefixes). The fix would edit this spec.
+- Process: Task 0 sent `{"JWTIssuer":5}` past the seam. It was contained and restored. No committed test or browser spec sends the vendor `AutheOS`, `AutheCache` or `AutheUnauthenticated` off, or a JWT change.
+- Process: `smoke.sh` is not recorded, and the monitor state read 2 at dev_complete. The smoke is the lead's next gate; the monitor now reads 0.
+- Process: the footprint record. It should also list `Port/AdminPort.cls`, `Test/PortFixture.cls` and `Port/AuditPort.cls`, and `ui/tools/screen-mirror.test.mjs`, which Epic 20 also edits and where one line changed. That record is the lead's.
+
 ## Spec Change Log
 
 - 2026-10-07, spec gate (lead), merge-gate rulings: split approved (Part A is this story; B-D outlines trimmed, kept at `e7a3bef1`). Decision 4 reversed on the lead's measurement: `AutheOS` off is refused `PROHIBITED.OCUPILOTSTART` (the container start fails and stays exited), always, because the install origin is not reliably detectable; `WEBAUTH.OSLOGIN` retired. Matrix, Tasks, A4, A5, the sentence table and the A4 mutation edited to match. Spine AD-10 (`OCUPILOTSIGNIN` and `OCUPILOTSTART`), AD-13, AD-4 and Conventions › Secrets written. DW-1896 re-owned to 18.27; the vendor candidate is DW-2139.
@@ -409,7 +456,15 @@ The orchestrator's merge gate approved the split on 2026-10-07 (Rule 5): this sp
 - mutation: `AuthOptionsSave.Gate` passes every caller -> `AuthOptionsGate.TestWithoutSecuritysResourceEveryReadAndWriteIsRefused` and `TestWithoutTheSystemDatabaseReadTheSaveIsRefused` red (run 57)
 - mutation: the store's locked-flag guard removed -> `auth-options.store.spec.ts` A4 red
 - mutation: the store's `tokenEffect` answers `''` -> `auth-options.store.spec.ts` and `auth-options.page.spec.ts` A5 red (2 fail)
-- Not mutated: the browser spec's legs and `proposal-view.test.mjs`'s consequence row (client mutations need a rebuild and redeploy).
+- mutation: `AuditPort.VENDORSYSTEMSECRETS` emptied -> `AuthOptionsDescriptor.TestTheVendorSystemChangeRowReadsTheSmtpPasswordMasked` red (run 559)
+- mutation: `CutsOffSignIn` counts the modifier bits as methods -> `AuthOptionsDescriptor.TestTheSignInPredicateJudgesTheMasks` red (run 559)
+- mutation: `SignInLocks` answers OK on a failed read -> the same test's form-lock legs red (run 559)
+- mutation: the Save writes the password whatever the merge answered -> `AuthOptionsWrite.TestTheSmtpPasswordIsWrittenClearedAndReachesNoRecord`'s 422 and 403 legs red (run 560)
+- mutation: `StorePassword` ignores a failed write -> the same test's refused-write leg red (run 560)
+- mutation: in the store, `passwordPending` kept after a refused Save, the sign-in mapping dropped, a failed form read not a fault, and no tool on the event; in the page, a typed password kept when SMS goes off -> the five matching `auth-options.store.spec.ts` and `.page.spec.ts` tests red (5 of 28)
+- mutation: `consequenceSentence` answers `''` for `WEBAUTH.SIGNOUT` -> `proposal-view.test.mjs` "Story 18.8: ... states its consequence on the card" red (55 of 56)
+- mutation: the store ignores the form read's `locked`, rebuilt and redeployed -> `auth-options.browser-spec.mjs` test 2 red (3 of 4)
+- Not mutated: browser tests 1, 3 and 4.
 
 ## Auto Run Result
 

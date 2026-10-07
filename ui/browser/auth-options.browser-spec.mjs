@@ -6,8 +6,7 @@
  * 1. **The way in**: Security and secrets lists the screen, and its link opens the form with its four groups.
  * 2. **The sign-in protection**: Password and Unauthenticated are `aria-disabled` and described by a
  *    sentence, and a click turns neither off.
- * 3. **The JWT caption**: typing a new issuer shows the sign-out sentence before anything is saved, and
- *    sends no write.
+ * 3. **The JWT caption**: typing a new issuer shows the sign-out sentence before anything is saved.
  * 4. **A Save round-trips**: a changed login cookie timeout is stored on the instance, read back by a fresh
  *    page, and put back.
  *
@@ -145,7 +144,7 @@ test('Password and Unauthenticated are aria-disabled with a sentence, and a clic
 });
 
 // Mutation (Rule 19): drop the token-effect caption from the template -> the wait times out and this goes red.
-test('a changed JWT issuer shows the sign-out sentence before Save and is shown', async () => {
+test('a changed JWT issuer shows the sign-out sentence before Save', async () => {
   const { context, page } = await signedInAt(browser, config, SCREEN_URL);
   try {
     await page.waitForSelector(`#${ISSUER_ID}`, { timeout: config.navigationTimeoutMs });

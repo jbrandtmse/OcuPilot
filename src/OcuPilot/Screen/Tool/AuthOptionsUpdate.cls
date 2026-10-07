@@ -8,7 +8,7 @@
 /// it true sets all seven Kerberos bits, which adds one a stock instance leaves off. The SMTP password is
 /// never one of them: it travels only through
 /// <class>OcuPilot.Screen.Tool.AuthOptionsSmtpPassword</class>.</p>
-/// <p><b>Every rule is decided before the port is touched</b>
+/// <p><b>Every rule is decided before the write</b>
 /// (<class>OcuPilot.Area.Security.AuthOptionsRules</class>), on both callers, over the payload the merge
 /// would send. A change that leaves OcuPilot's own sign-in without a method, or turns O/S authentication
 /// off, is refused by the prohibited set. A changed <code>JWTIssuer</code> or <code>JWTSigAlg</code> is

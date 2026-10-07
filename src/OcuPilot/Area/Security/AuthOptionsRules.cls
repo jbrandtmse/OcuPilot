@@ -2,7 +2,7 @@
 /// <class>OcuPilot.Screen.Tool.AuthOptionsUpdate</class>'s mint, confirm and merge and
 /// <class>OcuPilot.Area.Security.AuthOptionsSave</class>'s Save apply before any vendor call
 /// (<method>Check</method>, <method>Problem</method>), and the form's read (<method>HandleForm</method>).</p>
-/// <p><b>The rules are the instance's own, decided here so a refusal costs no vendor call</b>: the vendor
+/// <p><b>The rules are the instance's own, decided here so a refusal costs no vendor write</b>: the vendor
 /// refuses Always try Delegated without Delegated, LDAP cache without LDAP, and two-factor SMS without an
 /// SMTP server and a from address (500 #1460, #1438 and #1417, measured at Task 0), and it stores a
 /// negative or fractional timeout. Every sentence is

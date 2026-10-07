@@ -169,7 +169,9 @@ ClassMethod Update(pArgs As %DynamicObject, Output pHttpStatus As %Integer, Outp
 
         Set tSC = ..Prohibited(tClass, tPayload, tDiff, .pHttpStatus, .pFault)
         If $$$ISERR(tSC) Quit
-        Set tConsequence = $ClassMethod(tClass, "Consequence", tPayload, 0, "")
+        ; The consequence over the fresh read this merge took, so no second read can state a wrong one.
+        Set tEffectSC = ##class(OcuPilot.Kernel.Proposal.Prohibited).WeakensByEffect(##class(OcuPilot.Kernel.Proposal.Prohibited).#TYPEAUTHOPTIONS, tPayload, tFresh, .tConsequence)
+        If $$$ISERR(tEffectSC) Set tConsequence = ##class(OcuPilot.Kernel.Proposal.Prohibited).#EFFECTTOKENSIGNOUT
         Kill tQuery
         Set tQuery($ClassMethod(tClass, "IdParam")) = ..TargetId()
         Do $ClassMethod(tClass, "PortQuery", tPayload, .tQuery)

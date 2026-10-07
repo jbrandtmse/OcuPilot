@@ -63,6 +63,12 @@ export const PASSWORD_FIELD = 'SMTPPassword';
 /** The consequence a Save's answer carries when it changed a token setting. */
 export const SIGN_OUT_CONSEQUENCE = 'WEBAUTH.SIGNOUT';
 
+/** The refusal of a Save that would leave OcuPilot's own sign-in with no method (AD-10). */
+export const SIGN_IN_CODE = 'PROHIBITED.OCUPILOTSIGNIN';
+
+/** The write tool both callers resolve the Save through, which the change event names (AD-14). */
+export const AUTH_OPTIONS_UPDATE_TOOL = 'security.authoptions.update';
+
 function textOf(value: unknown): string {
   if (typeof value === 'string') return value;
   if (typeof value === 'number') return String(value);
@@ -388,7 +394,15 @@ export class AuthOptionsForm {
     this.savingValue = false;
     if (result.kind !== 'ok') {
       this.violationList = violationsOf(result);
+      if (this.violationList.length === 0 && result.kind === 'error' && result.code === SIGN_IN_CODE) {
+        // AD-10: the sign-in refusal is shown on each method this Save turned off.
+        const reason = result.reason ?? '';
+        this.violationList = FLAG_FIELDS.filter((field) => body[field] === false).map((field) => ({ field, code: SIGN_IN_CODE, reason }));
+      }
       this.envelopeReason = this.violationList.length === 0 && result.kind === 'error' ? (result.reason ?? '') : '';
+      // The page drops a password it handed over whatever the answer (AD-35), so none is pending now.
+      if (password !== null) this.passwordPending = false;
+      this.formDirty.setDirty(this.dirty());
       this.rememberRefusal(result);
       this.notify();
       return false;
@@ -496,6 +510,7 @@ export class AuthOptionsForm {
       id: ENTITY_SINGLETON_ID,
       action: 'updated',
       readBack: this.readBackValue,
+      tool: AUTH_OPTIONS_UPDATE_TOOL,
     });
   }
 

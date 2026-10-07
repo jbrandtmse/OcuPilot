@@ -154,7 +154,7 @@ describe('AuthOptionsPage', () => {
   });
 
   it('A4: Unauthenticated, Password and O/S authentication are aria-disabled with their sentences, focusable, and a click turns none off', async () => {
-    const { fixture, host, calls } = await mount();
+    const { fixture, host } = await mount();
     const expected: Record<string, string> = { AutheUnauthenticated: LOCK_SENTENCE, AutheCache: LOCK_SENTENCE, AutheOS: STRINGS.authOptionsRefusalStart };
     for (const [field, sentence] of Object.entries(expected)) {
       const control = input(host, field);
@@ -166,8 +166,17 @@ describe('AuthOptionsPage', () => {
       expect(control.checked).toBe(true);
     }
     expect(input(host, 'AutheKB').getAttribute('aria-disabled')).toBeNull();
+  });
+
+  it('turning two-factor SMS off drops a typed SMTP password with its field, so the Save sends none', async () => {
+    const { fixture, host, calls } = await mount();
+    await click(fixture, input(host, 'AutheTwoFactorSMS'));
+    await type(fixture, host, 'SMTPPassword', 'typed-then-hidden');
+    await click(fixture, input(host, 'AutheTwoFactorSMS'));
+    expect(host.querySelector('[data-field="SMTPPassword"]')).toBeNull();
     save(host);
     await settle(fixture);
+    expect(puts(calls)).toEqual([]);
   });
 
   it('Always try Delegated and LDAP cache are disabled until the flag they need is on, and a click on a disabled one changes nothing', async () => {

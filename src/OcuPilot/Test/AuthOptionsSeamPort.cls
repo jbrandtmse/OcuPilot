@@ -10,8 +10,8 @@
 /// <p>Armed <code>answer</code>, every <code>Security.WebAuth</code> <code>PUT</code> is answered 200 with its
 /// own body and every <code>CHANGESMTPPWD</code> with an empty one, and neither is sent; the instance keeps its value. <method>ArmMask</method> answers one application's
 /// or service's read with a mask of the test's choosing, and <method>ArmFail</method> fails the read of one
-/// endpoint (<code>WebApp.App</code>, <code>Security.Service</code> or <code>Security.WebAuth</code>) with a
-/// 500 that is not the vendor's, without the vendor.</p>
+/// endpoint (<code>WebApp.App</code>, <code>Security.Service</code> or <code>Security.WebAuth</code>), or one
+/// write by its <code>endpoint/type</code> pair, with a 500 that is not the vendor's, without the vendor.</p>
 /// <p><b>Not a <class>%UnitTest.TestCase</class></b>: it holds no assertions and runs no tests.</p>
 Class OcuPilot.Test.AuthOptionsSeamPort Extends OcuPilot.Port.AdminPort
 {
@@ -50,6 +50,12 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
             Do pResult.%Set("AutheEnabled", +^||OcuPilotAuthSeam("mask", pEndpoint, tName), "number")
             Quit $$$OK
         }
+    }
+    ; A write a test armed to fail, by its endpoint/type pair.
+    If (pType '= "GET") && $Get(^||OcuPilotAuthSeam("fail", tPair)) {
+        Set pHttpStatus = 500
+        Set pFault = ##class(OcuPilot.Kernel.Fault).Build(##class(OcuPilot.Api.Error).#SERVERERROR, ##class(OcuPilot.Api.Error).#INTERNAL, ##class(OcuPilot.Kernel.Fault).#DEFAULTREASON)
+        Quit $$$ERROR($$$GeneralError, "the seam failed this write")
     }
     If (pEndpoint = ..#ENDPOINT) && (pType = "CHANGESMTPPWD") && ($Get(^||OcuPilotAuthSeam("mode")) = "answer") {
         Set pHttpStatus = 200
@@ -103,7 +109,8 @@ ClassMethod ArmMask(pEndpoint As %String, pName As %String, pMask As %Integer)
     Set ^||OcuPilotAuthSeam("mask", pEndpoint, $ZConvert(pName, "L")) = pMask
 }
 
-/// <p>Fail every <code>GET</code> of <var>pEndpoint</var>.</p>
+/// <p>Fail every <code>GET</code> of <var>pEndpoint</var>, or, given an <code>endpoint/type</code> pair, that
+/// write, without the vendor.</p>
 ClassMethod ArmFail(pEndpoint As %String)
 {
     Set ^||OcuPilotAuthSeam("fail", pEndpoint) = 1

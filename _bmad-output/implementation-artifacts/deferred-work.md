@@ -10179,13 +10179,20 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-8-superservers-authentication-options-and-managed-file-transfe.md | severity: med | fix-risk: low | footprint: in-footprint
 - evidence: Story 18.8 Task 0 on ocupilot-ci 2026-10-07: CHANGESMTPPWD with a probe value wrote it in clear to the SystemChange row; AuditPort.VENDORSECRETS has no entry
 - 2026-10-07T07:03:16Z status=open owner=18-8-superservers-authentication-options-and-managed-file-transfe by=harvest note=in-story: the story introduced the tool that writes it; the review patches the mask or re-opens
+- 2026-10-07T07:45:20Z status=resolved-by:18-8-superservers-authentication-options-and-managed-file-transfe by=cr note=AuditPort.VENDORSYSTEMSECRETS masks SMTP Password on Modify System rows (measured row shape); AuthOptionsDescriptor leg, mutation run 559
 
 ### DW-2143: Authentication options: the form read's failing Security.WebAuth GET (HandleForm's lock read rendering an internal error) and the store's non-ok open have no test arming the failure
 - source: spec-18-8-superservers-authentication-options-and-managed-file-transfe.md | severity: low | fix-risk: low | footprint: in-footprint
 - evidence: spec-18-8 deferred list; the server arm refuses regardless, so only the drawn locks are unpinned
 - 2026-10-07T07:03:16Z status=open owner=18-8-superservers-authentication-options-and-managed-file-transfe by=harvest note=in-story LOW: fix-pack or close with a probe at review
+- 2026-10-07T07:45:20Z status=resolved-by:18-8-superservers-authentication-options-and-managed-file-transfe by=cr note=SignInLocks failed-read legs (AuthOptionsDescriptor, mutation run 559) and a store form-fault leg (mutation red)
 
 ### DW-2144: IRIS defect candidate: the vendor's %System/%Security/SystemChange audit event writes the SMTP password in clear in its New value line when the admin API's Security.WebAuth CHANGESMTPPWD runs
 - source: spec-18-8-superservers-authentication-options-and-managed-file-transfe.md | severity: low | fix-risk: high | footprint: out-of-footprint
 - evidence: Story 18.8 Task 0 on ocupilot-ci 2026-10-07: probe value visible in the audit row
 - 2026-10-07T07:03:17Z status=decision-pending owner=burndown by=harvest note=human=decide whether to report it to InterSystems, with the held vendor-report list; owner hold 2026-10-05: not reported
+
+### DW-2145: Authentication options: with two-factor SMS off the form hides the SMTP password, so a stored one cannot be cleared from OcuPilot; the classic Save clears it whenever SMS is off
+- source: spec-18-8-superservers-authentication-options-and-managed-file-transfe.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: %CSP.UI.Portal.Authentication Save sets SMTPPassword to empty when AutheTwoFactorSMS is off (irissys :365); OcuPilot's form draws the password and its clear only while SMS is on, and the agent's card requires a value
+- 2026-10-07T07:45:20Z status=wontfix-accepted owner=18-8-superservers-authentication-options-and-managed-file-transfe by=cr note=reopen_if=an operator reports a stored SMTP password they could not clear from OcuPilot with SMS off
