@@ -8851,6 +8851,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Measured on ocupilot-ci: PUT LDAPAttributes [] keeps the stored list, [""] answers 500; the classic page's own save clears the list; 3822a50b refuses the edit (LDAP.ATTRIBUTES.LASTONE) meanwhile
 - 2026-10-01T11:08:27Z status=routed owner=range-end-cleanup by=harvest note=priority p4 (orchestrator 2026-10-01): AD-27 named case, Modify in %SYS, then lift the LASTONE refusal
 - 2026-10-05T18:41:40Z status=routed owner=18-8-superservers-authentication-options-and-managed-file-transfe by=merge_gate note=owner-approved burn-down scope 2026-10-05: feature-sized, re-routed from the cleanup queue to the story carrying the LDAP view
+- 2026-10-07T03:44:54Z owner=18-27-the-operator-s-read-only-ldap-view by=merge_gate note=18.8 split for size (orchestrator merge gate 2026-10-07, Rule 5): the LDAP editor's last-attribute write moves with the read-only LDAP view to Story 18.27
 
 ### DW-1901: CI's instance suite needs a fourth shard: each of the three instance legs now runs 38-46 min and wall time rises with every story
 - source: OCU-1-epic16 CI run 36862943319 (16.26 close) | severity: med | fix-risk: low | footprint: out-of-footprint
@@ -10172,3 +10173,4 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-8-superservers-authentication-options-and-managed-file-transfe.md | severity: low | fix-risk: high | footprint: out-of-footprint
 - evidence: Story 18.8 plan on ocupilot-ci 2026-10-07: unchanged PUT moved AutheEnabled 33556471 to 33556479; scratchpad epic-18-d8/p188/measure-out.txt
 - 2026-10-07T03:21:35Z status=decision-pending owner=burndown by=spec_gate note=human=decide whether to report it to InterSystems, with the held vendor-report list; owner hold 2026-10-05: not reported; Part A omits an unchanged AutheKB (proposed AD-4 exception)
+- 2026-10-07T03:44:07Z status=decision-pending owner=burndown by=owner note=owner hold 2026-10-05 (relayed by the Planner): IRIS defect candidates stay on hold, no report to InterSystems for now
