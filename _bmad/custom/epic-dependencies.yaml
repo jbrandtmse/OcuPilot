@@ -3,7 +3,7 @@
 # edges the orchestrator's analysis added, per the owner's standing instruction (2026-09-16):
 # "If your analysis adds an edge, take the more conservative graph and note the difference in the
 # parallel log; if it would remove one of these, keep mine."
-epics_md_hash: "08a391db4cd3e7b87d4a7a66608b1934b269061f4b48c2c38271006f1171fae9"
+epics_md_hash: "ff7f1af63456273818e6d9866476aa0e68c0e622247b5f94eb1e6fe43999152a"
 analyzed_by: claude-opus-5
 analyzed_at: "2026-09-16T15:02:34Z"
 approved: true
@@ -27,6 +27,7 @@ owner_graph:  # as approved, never reduced
   epic-16: [epic-6, epic-11, epic-12]   # owner 2026-09-26: same
   epic-18: [epic-11, epic-12]   # owner 2026-09-26 (c242eac4): the whole epic joins the voting-week run on slot B after Epic 14; 18.1 on slot A ahead of 16.4 unless slot B reaches Epic 18 first
   epic-19: [epic-11, epic-12]   # owner 2026-09-29: the whole epic joins the run on slot A after Epic 16, in parallel with Epic 18 on slot B
+  epic-20: [epic-11, epic-12]   # owner 2026-10-06: slot B reopens and the whole epic runs on it now, in parallel with Epic 18's remainder on slot A (replaces the 2026-10-05 order "only then Epic 20")
 
 added_edges:
   hard:
@@ -273,3 +274,17 @@ epics:
       guarded SQL) and 18.12 (the agent grows with the stage) both touch the agent's tool registry - the second to merge
       rebases on the first. The iris-table-editor harvest (19.7, 19.8) takes its builders and formatters, ports three grid
       algorithms, and never carries its plaintext-password session pattern.
+  epic-20:
+    depends_on: [epic-11, epic-12]
+    submodules: []
+    in_run: all   # owner 2026-10-06 ("Let's open up Slot B and do development in parallel again." / "Start Epic 20"): the whole epic, in epics.md story order
+    story_order: ["20-1 (the sign-in hand-off and namespace category gating gate every embed and the category itself; first)", "20-2", "20-3", "20-4", "20-5", "20-6", "20-7", "20-8", "20-9", "20-10", "20-11", "20-12"]
+    slot: "B, reopened 2026-10-06 (owner), in parallel with Epic 18's remainder (18.8-18.13 and its close) on slot A"
+    gate: "Stage 4 gate (epics.md Epic 20 preamble): the sign-in hand-off to /ui/interop gates every embed - the postMessage path carrying a password is not used and the origin is never weakened (AD-47); namespace category gating lands before the category appears; the vendor's Angular bundles load in place and are never copied; the production-update action vocabulary is read from the vendor before it is offered; every write a confirmed proposal; every new destructive key defaults to disabled (14.2 baseline rule)"
+    paths_hint: ["src/OcuPilot/Port/**", "src/OcuPilot/Kernel/**", "src/OcuPilot/Api/**", "src/OcuPilot/Screen/**", "src/OcuPilot/Install/**", "src/OcuPilot/Test/**", "ui/src/app/areas/**", "ui/src/app/shell/**", "ui/src/app/core/**", "ui/tools/**", "ui/browser/**", "ui/src/styles/**"]
+    note: >-
+      Overlaps Epic 18's paths as Epics 18 and 19 did; parallel through the usual staging merges. 18.12 (the agent grows
+      with the stage) and 20.12 (the agent gains guided workflows and Investigate) both touch the agent's tool registry, and
+      18.13 (multi-namespace install) and 20.1 (namespace category gating) both read per-namespace state - in each pair the
+      second to merge rebases on the first. The orchestrator's analysis may add edges (owner's 2026-09-16 rule: the more
+      conservative graph wins).
