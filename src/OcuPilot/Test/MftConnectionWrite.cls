@@ -130,18 +130,18 @@ Method TestACreateSendsTheFiveFieldsOnBothCallersAndMakesNoClient()
 /// <p>C2: a change on both callers sends the fresh read's five fields with the change applied, <code>Service</code>
 /// as read, and nothing else moves; a change that changes nothing sends nothing; a body naming <code>Service</code>
 /// is 400 before anything is read; a stored value the rules would refuse is never refused when the change leaves it
-/// as it is.</p>
+/// as it is, an SSL/TLS configuration that no longer exists among them.</p>
 /// <p>Mutation (Rule 19): let the update tool admit <code>Service</code> -- the Service leg sends the
 /// <code>PUT</code> and goes red.</p>
 Method TestAChangeSendsTheFreshFiveFieldsOnBothCallers()
 {
-    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "Seed", "OcuMftProbeA", {"Username": "before@ocumftprobe.invalid", "URL": "not a url"}), "a probe connection, whose stored URL no rule would accept")
+    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "Seed", "OcuMftProbeA", {"Username": "before@ocumftprobe.invalid", "URL": "not a url", "SSLConfiguration": "OcuNoSuchTLS"}), "a probe connection, whose stored URL and SSL/TLS configuration no rule would accept")
     Set tSC = $ClassMethod(..#SAVE, "Handle", "OcuMftProbeA", {"Username": "form@ocumftprobe.invalid"}, .tAnswer, .tStatus)
-    Do $$$AssertEquals(tStatus, 200, "the form's change answers 200 although the stored URL is not one: " _ $Extract(tAnswer, 1, 200))
+    Do $$$AssertEquals(tStatus, 200, "the form's change answers 200 although the stored URL and SSL/TLS configuration are not acceptable: " _ $Extract(tAnswer, 1, 200))
     Do $$$AssertEquals($ClassMethod(..#SEAM, "Writes"), "PUT:OcuMftProbeA", "sending one PUT")
     Set tSent = ##class(OcuPilot.Test.LicenseKey).Parsed($ClassMethod(..#SEAM, "BodyOf", "Security.MFT/PUT"))
     Do $$$AssertEquals(##class(OcuPilot.Test.EncryptionStartupDescriptor).Keys(tSent), "ApplicationName,SSLConfiguration,Service,URL,Username", "carrying the five fields")
-    Do $$$AssertEquals(tSent.%Get("Service") _ "|" _ tSent.%Get("URL") _ "|" _ tSent.%Get("Username"), "Box|not a url|form@ocumftprobe.invalid", "Service and URL as read, the Username as changed")
+    Do $$$AssertEquals(tSent.%Get("Service") _ "|" _ tSent.%Get("URL") _ "|" _ tSent.%Get("SSLConfiguration") _ "|" _ tSent.%Get("Username"), "Box|not a url|OcuNoSuchTLS|form@ocumftprobe.invalid", "Service, URL and SSL/TLS configuration as read, the Username as changed")
     Do $$$AssertEquals(..Verdict(##class(OcuPilot.Test.LicenseKey).Parsed(tAnswer)), "matches", "the read-back matches")
     Do $ClassMethod(..#SEAM, "Clear")
     Set tSC = $ClassMethod(..#SAVE, "Handle", "OcuMftProbeA", {"Username": "form@ocumftprobe.invalid"}, .tAnswer, .tStatus)
@@ -328,6 +328,23 @@ Method TestEveryRulesRowIsRefusedBeforeAnyPutOnBothCallers()
     }
 }
 
+/// <p>A look-up the rules cannot make is an error, never a pass: a create whose SSL/TLS configuration read or
+/// name read fails other than with 404 is refused 500 <code>INTERNAL</code> with no write.</p>
+/// <p>Mutation (Rule 19): let <method>OcuPilot.Area.Security.MftConnectionRules.ClientConfiguration</method> pass a
+/// failed read -- the SSL/TLS leg answers 422 and goes red.</p>
+Method TestALookUpThatCannotBeMadeRefusesTheSave()
+{
+    For tPair = "Security.SSLConfig/GET", "Security.MFT/GET" {
+        Set tBody = $ClassMethod(..#PROBE, "Body", "OcuMftProbeL")
+        Do tBody.%Set("Name", "OcuMftProbeL")
+        Do $ClassMethod(..#SEAM, "Clear")
+        Do $ClassMethod(..#SEAM, "ArmFail", tPair)
+        Set tSC = $ClassMethod(..#SAVE, "Handle", "", tBody, .tAnswer, .tStatus)
+        Do $$$AssertEquals(tStatus _ " " _ ##class(OcuPilot.Test.LicenseKey).Parsed(tAnswer).%Get("code") _ " " _ $ClassMethod(..#SEAM, "Writes"), "500 INTERNAL ", tPair _ " failing refuses the create with no write: " _ $Extract(tAnswer, 1, 200))
+    }
+    Do $ClassMethod(..#SEAM, "Clear")
+}
+
 /// <p>C2: a name taken since is refused by the absence fingerprint and by the Save's own look-up, a target moved
 /// since the mint refuses the confirm as changed, and a target another write holds answers 409
 /// <code>WRITE.TARGETBUSY</code> after the wait, with no write.</p>
@@ -376,13 +393,32 @@ Method TestATakenNameAMovedTargetAndABusyTargetAreRefused()
     Set tAnswer = tStatus _ " " _ $Select($IsObject(tBusy): tBusy.%Get("code") _ " " _ tBusy.%Get("reason"), 1: tBusy)
     Do $$$AssertEquals(tAnswer, "409 WRITE.TARGETBUSY " _ ##class(OcuPilot.Api.Error).#REASONWRITETARGETBUSY, "the held Save is refused busy, with the published reason")
     Do $$$AssertEquals($ClassMethod(..#PROBE, "Stored", "OcuMftProbeA").%Get("Username"), "probe@ocumftprobe.invalid", "and nothing was written")
+
+    Do ##class(OcuPilot.Kernel.EntityRef).Key("mft-connection", "instance", "OcuMftProbeC", .tFreeRef)
+    Set tFreeKey = ##class(OcuPilot.Kernel.State.Propose).TargetHoldKey(tFreeRef)
+    Lock +^OcuPilotProposalTarget(tFreeKey):5
+    Set tHeld = $Test
+    Do $$$AssertTrue(tHeld, "a free name's lock, held as another create's hold is")
+    If 'tHeld Quit
+    Set tCreate = $ClassMethod(..#PROBE, "Body", "OcuMftProbeC")
+    Do tCreate.%Set("Name", "OcuMftProbeC")
+    Set tStatus = 0
+    Set tBusy = ""
+    Try {
+        Set tSC = ##class(OcuPilot.Test.Http).MakeRequest("POST", "/mft-connection", .tStatus, .tBusy, tCreate.%ToJSON(), "application/json")
+    } Catch {
+    }
+    Lock -^OcuPilotProposalTarget(tFreeKey)
+    Do $$$AssertEquals(tStatus _ " " _ $Select($IsObject(tBusy): tBusy.%Get("code"), 1: tBusy), "409 WRITE.TARGETBUSY", "a create of a held name is refused busy")
+    Do $$$AssertEquals($IsObject($ClassMethod(..#PROBE, "Stored", "OcuMftProbeC")), 0, "and nothing was created")
 }
 
 /// <p>C4: a revoke of a connection that holds no token is refused <code>MFT.TOKEN.NONE</code> by the fresh read on
 /// both callers, with no <code>REVOKE</code> sent; with the seam reading the connection as authorized, the agent's
 /// revoke is minted destructive and confirmed, and the list's Revoke token is answered, each sending one
-/// <code>REVOKE</code> through the admin port; a token gone between the mint and the confirm closes the proposal
-/// as a changed target.</p>
+/// <code>REVOKE</code> through the admin port and reading back as nothing sent, although the connection then reads
+/// not authorized (AD-58); a token gone between the mint and the confirm closes the proposal as a changed
+/// target.</p>
 /// <p>Mutation (Rule 19): stop <method>OcuPilot.Port.MftPort.State</method> refusing "Not Authorized" -- the
 /// refusal legs send the <code>REVOKE</code> and go red.</p>
 Method TestARevokeIsRefusedWithoutATokenAndSentWithOne()
@@ -402,10 +438,14 @@ Method TestARevokeIsRefusedWithoutATokenAndSentWithOne()
     Do $$$AssertEquals(##class(OcuPilot.Test.SuperserverProhibited).Stored(tProposal, "destructive") _ " " _ ##class(OcuPilot.Test.SuperserverProhibited).Stored(tProposal, "consequence"), "1 MFT.REVOKE", "destructive, stating its consequence")
     Do $$$AssertEquals($ClassMethod(..#AGENT, "Confirm", tProposal, .tResult), "200 ", "and confirmed")
     Do $$$AssertEquals($ClassMethod(..#SEAM, "Writes"), "REVOKE:OcuMftProbeA", "sending one REVOKE")
+    Do $$$AssertEquals(..Verdict($Get(tResult)), "nothingSent", "read back as nothing sent, the connection now not authorized")
+    Do $ClassMethod(..#SEAM, "ArmAuthorized", "OcuMftProbeA")
     Do $ClassMethod(..#SEAM, "ClearCalls")
     Set tSC = $ClassMethod(..#ACTION, "Act", ..#SCREEN, {"action": "revoke-token", "id": "OcuMftProbeA"}, .tAnswer, .tStatus)
     Do $$$AssertEquals(tStatus _ " " _ $ClassMethod(..#SEAM, "Writes"), "200 REVOKE:OcuMftProbeA", "the list's Revoke token sends one REVOKE: " _ $Extract(tAnswer, 1, 200))
+    Do $$$AssertEquals(..Verdict(##class(OcuPilot.Test.LicenseKey).Parsed(tAnswer)), "nothingSent", "and reads back as nothing sent")
 
+    Do $ClassMethod(..#SEAM, "ArmAuthorized", "OcuMftProbeA")
     Set tSC = $ClassMethod(..#PROBE, "Mint", ..#REVOKETOOL, "OcuMftProbeA", {"Name": "OcuMftProbeA"}, .tProposal, .tHttp, .tProblem)
     Do $$$AssertStatusOK(tSC, "a revoke is minted again")
     Kill ^||OcuPilotMftSeam("authorized")
@@ -416,24 +456,25 @@ Method TestARevokeIsRefusedWithoutATokenAndSentWithOne()
 
 /// <p>The write routes answer over the wire as JSON: <code>POST /mft-connection</code> creates a probe connection
 /// with 201 and <code>PUT /mft-connection/:id</code> changes it with 200, each answering the id and the read-back,
-/// and a body key outside the settings is 400 <code>PORT.FIELD.UNEXPECTED</code>. The write reaches the real
-/// port, for a probe name alone.</p>
+/// and a body key outside the settings is 400 <code>PORT.FIELD.UNEXPECTED</code>. The name holds a space and a dot,
+/// which the path segment carries encoded (AD-13). The write reaches the real port, for a probe name alone.</p>
 /// <p>Mutation (Rule 19): remove <code>POST /mft-connection</code> from <file>Api/Router.cls</file> -- the create
 /// leg goes red.</p>
 Method TestTheWriteRoutesAnswerOverTheWire()
 {
-    Set tBody = $ClassMethod(..#PROBE, "Body", "OcuMftProbeW")
-    Do tBody.%Set("Name", "OcuMftProbeW")
+    Set tName = "OcuMftProbe W.1"
+    Set tBody = $ClassMethod(..#PROBE, "Body", tName)
+    Do tBody.%Set("Name", tName)
     Set tSC = ##class(OcuPilot.Test.Http).MakeRequest("POST", "/mft-connection", .tStatus, .tAnswer, tBody.%ToJSON(), "application/json")
     Do $$$AssertEquals(tStatus, 201, "POST /mft-connection answers 201")
-    Do $$$AssertEquals($Select($IsObject(tAnswer): tAnswer.%Get("id") _ " " _ ..Verdict(tAnswer), 1: ""), "OcuMftProbeW matches", "with the id and the read-back")
-    Do $$$AssertEquals($ClassMethod(..#PROBE, "Stored", "OcuMftProbeW").%Get("Username"), "probe@ocumftprobe.invalid", "and the instance holds it")
-    Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("PUT", $Parameter("OcuPilot.Test.Http", "BASEPATH") _ "/mft-connection/" _ ##class(OcuPilot.Kernel.EntityId).Encode("OcuMftProbeW"), ##class(OcuPilot.Test.Http).GetTestUsername(), ##class(OcuPilot.Test.Http).GetTestPassword(), .tChangeStatus, .tChangeRaw, .tHeaders, {"Username": "wire@ocumftprobe.invalid"}.%ToJSON(), "application/json")
+    Do $$$AssertEquals($Select($IsObject(tAnswer): tAnswer.%Get("id") _ " " _ ..Verdict(tAnswer), 1: ""), tName _ " matches", "with the id and the read-back")
+    Do $$$AssertEquals($ClassMethod(..#PROBE, "Stored", tName).%Get("Username"), "probe@ocumftprobe.invalid", "and the instance holds it")
+    Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("PUT", $Parameter("OcuPilot.Test.Http", "BASEPATH") _ "/mft-connection/" _ ##class(OcuPilot.Kernel.EntityId).Encode(tName), ##class(OcuPilot.Test.Http).GetTestUsername(), ##class(OcuPilot.Test.Http).GetTestPassword(), .tChangeStatus, .tChangeRaw, .tHeaders, {"Username": "wire@ocumftprobe.invalid"}.%ToJSON(), "application/json")
     Do $$$AssertEquals(tChangeStatus, 200, "PUT /mft-connection/:id answers 200: " _ $Extract(tChangeRaw, 1, 200))
     Do $$$AssertTrue($ZConvert($Get(tHeaders("CONTENT-TYPE")), "L") [ "application/json", "as JSON")
     Do $$$AssertEquals(..Verdict(##class(OcuPilot.Test.LicenseKey).Parsed(tChangeRaw)), "matches", "with its read-back")
-    Do $$$AssertEquals($ClassMethod(..#PROBE, "Stored", "OcuMftProbeW").%Get("Username"), "wire@ocumftprobe.invalid", "and the instance holds the change")
-    Set tSC = ##class(OcuPilot.Test.Http).MakeRequest("PUT", "/mft-connection/" _ ##class(OcuPilot.Kernel.EntityId).Encode("OcuMftProbeW"), .tUnexpectedStatus, .tUnexpected, {"Service": "Dropbox"}.%ToJSON(), "application/json")
+    Do $$$AssertEquals($ClassMethod(..#PROBE, "Stored", tName).%Get("Username"), "wire@ocumftprobe.invalid", "and the instance holds the change")
+    Set tSC = ##class(OcuPilot.Test.Http).MakeRequest("PUT", "/mft-connection/" _ ##class(OcuPilot.Kernel.EntityId).Encode(tName), .tUnexpectedStatus, .tUnexpected, {"Service": "Dropbox"}.%ToJSON(), "application/json")
     Do $$$AssertEquals(tUnexpectedStatus _ " " _ $Select($IsObject(tUnexpected): tUnexpected.%Get("code"), 1: ""), "400 PORT.FIELD.UNEXPECTED", "a body naming Service is refused before anything is read")
     Set tSC = ##class(OcuPilot.Test.Http).MakeRequest("PUT", "/mft-connection/" _ ##class(OcuPilot.Kernel.EntityId).Encode("OcuMftProbeZ"), .tAbsentStatus, .tAbsent, {"Username": "x@ocumftprobe.invalid"}.%ToJSON(), "application/json")
     Do $$$AssertEquals(tAbsentStatus _ " " _ $Select($IsObject(tAbsent): tAbsent.%Get("code"), 1: ""), "404 PORT.NOTFOUND", "a connection the instance does not hold is 404")

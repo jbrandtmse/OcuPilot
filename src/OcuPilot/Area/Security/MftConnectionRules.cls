@@ -148,8 +148,8 @@ ClassMethod Taken(pPortClass As %String, pName As %String, Output pTaken As %Boo
 {
     Set pTaken = 0
     Kill tQuery
-    Set tQuery("connection") = pName
-    Set tSC = $ClassMethod(pPortClass, "Invoke", "Security.MFT", "GET", .tQuery, "", .tRead, .tHttp, .tFault)
+    Set tQuery($ClassMethod(..#UPDATETOOL, "IdParam")) = pName
+    Set tSC = $ClassMethod(pPortClass, "Invoke", $ClassMethod(..#UPDATETOOL, "Endpoint"), $ClassMethod(..#UPDATETOOL, "ReadType"), .tQuery, "", .tRead, .tHttp, .tFault)
     If $$$ISERR(tSC) {
         If +$Get(tHttp) = 404 Quit $$$OK
         Quit tSC

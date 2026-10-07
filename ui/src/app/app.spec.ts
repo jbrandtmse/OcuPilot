@@ -39,6 +39,8 @@ import { EncryptionKeyFileStore } from './areas/security/encryption-key-file.sto
 import { EncryptionKeyFileForm } from './areas/security/encryption-key-file-form.store';
 import { EncryptionKeysStore } from './areas/security/encryption-keys.store';
 import { EncryptionStartupForm } from './areas/security/encryption-startup.store';
+import { SuperserverForm } from './areas/security/superserver-form.store';
+import { MftConnectionForm } from './areas/security/mft-connection-form.store';
 import { UserCreateForm } from './areas/permissions/user-create-form.store';
 import { AuditSearch } from './areas/logs/audit.store';
 import { LedgerSearch } from './areas/agent/ledger.store';
@@ -1354,6 +1356,14 @@ describe('the shell frame', () => {
     const remoteDatabaseForm = TestBed.inject(RemoteDatabaseForm);
     remoteDatabaseForm.setValue('Name', 'AREMOTEDATABASETHISPRINCIPALTYPED');
     expect(remoteDatabaseForm.value('Name')).not.toBe('');
+    // And the superserver form (Story 18.25) and the MFT connection form (Story 18.26): a name THIS
+    // principal typed for a new one.
+    const superserverForm = TestBed.inject(SuperserverForm);
+    superserverForm.setValue('BindAddress', '10.9.8.7');
+    expect(superserverForm.value('BindAddress')).not.toBe('');
+    const mftConnectionForm = TestBed.inject(MftConnectionForm);
+    mftConnectionForm.setValue('Name', 'AMFTCONNECTIONTHISPRINCIPALTYPED');
+    expect(mftConnectionForm.value('Name')).not.toBe('');
     // And the license server and ECP data server forms (Stories 18.6 and 18.20): a name THIS principal
     // typed for a new server. A create takes input before its form read is made.
     const licenseServerForm = TestBed.inject(LicenseServerForm);
@@ -1536,6 +1546,11 @@ describe('the shell frame', () => {
     // Mutation (Rule 19): delete `this.remoteDatabaseForm.reset()` from `App.verifyWhenSignedIn` -> this
     // goes red, and the next principal's remote database form holds the previous one's typed name.
     expect(remoteDatabaseForm.value('Name')).toBe('');
+    // Mutation (Rule 19): delete `this.superserverForm.reset()` or `this.mftConnectionForm.reset()` from
+    // `App.verifyWhenSignedIn` -> that line goes red, and the next principal's form holds the previous
+    // one's typed name.
+    expect(superserverForm.value('BindAddress')).toBe('');
+    expect(mftConnectionForm.value('Name')).toBe('');
     // Mutation (Rule 19): delete `this.licenseServerForm.reset()` or `this.ecpDataServerForm.reset()`
     // from `App.verifyWhenSignedIn` -> that line goes red, and the next principal's form holds the
     // previous one's typed name.

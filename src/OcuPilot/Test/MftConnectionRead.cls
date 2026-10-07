@@ -95,7 +95,7 @@ Method TestTheFormReadAnswersTheFiveFields()
     Do $$$AssertEquals(##class(OcuPilot.Test.EncryptionStartupDescriptor).Keys(tForm), "row", "the form answers one member")
     Set tRow = tForm.%Get("row")
     Do $$$AssertEquals(##class(OcuPilot.Test.EncryptionStartupDescriptor).Keys(tRow), "ApplicationName,Name,SSLConfiguration,Service,URL,Username", "the row carries the name and the five fields")
-    Do $$$AssertEquals(tRow.%Get("Name") _ "|" _ tRow.%Get("Service") _ "|" _ tRow.%Get("SSLConfiguration") _ "|" _ tRow.%Get("Username") _ "|" _ tRow.%Get("ApplicationName"), "OcuMftProbeA|Box|BFC_SSL|form@ocumftprobe.invalid|OcuMftProbeAApp", "as the instance stores them")
+    Do $$$AssertEquals(tRow.%Get("Name") _ "|" _ tRow.%Get("Service") _ "|" _ tRow.%Get("URL") _ "|" _ tRow.%Get("SSLConfiguration") _ "|" _ tRow.%Get("Username") _ "|" _ tRow.%Get("ApplicationName"), "OcuMftProbeA|Box|https://api.box.ocumftprobe.invalid/|BFC_SSL|form@ocumftprobe.invalid|OcuMftProbeAApp", "as the instance stores them")
     Do ##class(OcuPilot.Test.Http).AbsoluteRequest("GET", tBase _ "/mft-connection/form?id=ocumftprobea", tUser, tPassword, .tStatus, .tRaw, .tHeaders)
     Do $$$AssertEquals(tStatus, 404, "the same name in another capitalization is 404: " _ $Extract(tRaw, 1, 200))
     Do ##class(OcuPilot.Test.Http).AbsoluteRequest("GET", tBase _ "/mft-connection/form?id=OcuMftProbeZ", tUser, tPassword, .tStatus, .tRaw, .tHeaders)
@@ -108,7 +108,8 @@ Method TestTheFormReadAnswersTheFiveFields()
 /// <p>AD-51, C4: the port's composed <code>STATE</code> read answers the connection's five fields with
 /// <code>IsAuthorized</code> from its list row, refuses a connection that is not authorized 409
 /// <code>MFT.TOKEN.NONE</code>, answers 404 for a name no row holds or holds in another capitalization, and
-/// answers the connection as authorized when the seam reads its row so.</p>
+/// answers the connection as authorized when the seam reads its row so; of two connections whose names differ only
+/// in case, each reads its own row.</p>
 /// <p>Mutation (Rule 19): stop <method>OcuPilot.Port.MftPort.State</method> refusing "Not Authorized" -- the refusal
 /// leg goes red.</p>
 Method TestTheStateReadComposesTheConnectionAndItsAuthorization()
@@ -133,6 +134,16 @@ Method TestTheStateReadComposesTheConnectionAndItsAuthorization()
         Set tQuery("connection") = tName
         Set tSC = $ClassMethod(tSeam, "Invoke", "Security.MFT", "STATE", .tQuery, "", .tResult, .tHttp, .tFault)
         Do $$$AssertEquals(tHttp _ " " _ $Select($IsObject($Get(tFault)): tFault.%Get("code"), 1: ""), "404 PORT.NOTFOUND", tName _ " names no connection")
+    }
+    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "Seed", "OcuMftProbea"), "a second connection whose name differs from the first only in case")
+    For tArmed = "OcuMftProbeA", "OcuMftProbea" {
+        Kill ^||OcuPilotMftSeam("authorized")
+        Do $ClassMethod(tSeam, "ArmAuthorized", tArmed)
+        Set tOther = $Select(tArmed = "OcuMftProbeA": "OcuMftProbea", 1: "OcuMftProbeA")
+        Kill tQuery
+        Set tQuery("connection") = tOther
+        Set tSC = $ClassMethod(tSeam, "Invoke", "Security.MFT", "STATE", .tQuery, "", .tResult, .tHttp, .tFault)
+        Do $$$AssertEquals(tHttp _ " " _ $Select($IsObject($Get(tFault)): tFault.%Get("code"), 1: ""), "409 MFT.TOKEN.NONE", "with only " _ tArmed _ " authorized, " _ tOther _ " reads its own row")
     }
 }
 

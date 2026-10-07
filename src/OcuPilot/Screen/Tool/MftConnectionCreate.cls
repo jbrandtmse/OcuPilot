@@ -102,7 +102,7 @@ ClassMethod Described(pSchema As %DynamicObject, pCreates As %Boolean) As %Dynam
     Set tDescriptions("URL") = "The service's URL: an absolute http or https URL that ends in /, at most 1024 characters."
     Set tDescriptions("SSLConfiguration") = "The name of an SSL/TLS client configuration that exists on this instance."
     Set tDescriptions("Username") = "The email address of the account on the file service, 1 to 160 characters."
-    Set tDescriptions("ApplicationName") = "The name of an OAuth 2.0 client configuration, 1 to 64 characters. It is set up on the OAuth 2.0 screen's Client configurations tab, or with security.oauthclients.create; this tool does not create it. Deleting the connection deletes that client configuration."
+    Set tDescriptions("ApplicationName") = "The name of an OAuth 2.0 client configuration, 1 to 64 characters. It is set up on the OAuth 2.0 screen's Client configurations tab, or with security.oauthclients.create; this tool does not create it. Deleting the connection deletes that client configuration unless another connection names it."
     Set tField = ""
     For {
         Set tField = $Order(tDescriptions(tField))

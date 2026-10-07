@@ -10254,6 +10254,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Story 18.8 rework 1 re-review: AuthOptionsProbe.Facts had the same field and reddened CI run 37596828031 instance shard 1/5; the five siblings not checked
 - 2026-10-07T09:30:06Z status=routed owner=burndown by=cr note=remove the monitor value from each Snapshot, or prove it cannot move mid-class; verify on ocupilot-ci by raising the monitor mid-run
 - 2026-10-07T15:41:54Z occurrence=18-25-superservers
+- 2026-10-07T22:38:19Z occurrence=18-26-managed-file-transfer-connections
 
 ### DW-2150: The serving-superserver arm's real ServingSuperserverPort() (the $PRINCIPAL read) is never driven to a non-empty answer by a test; SuperserverSet overrides it and the real-HTTP legs serve through the system default
 - source: spec-18-25-superservers.md | severity: med | fix-risk: low | footprint: in-footprint
@@ -10302,8 +10303,15 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-26-managed-file-transfer-connections.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: deleting the reset() line in ui/src/app/app.ts:716 fails no test; the store spec never calls reset() and app.spec.ts does not reference the store
 - 2026-10-07T22:03:57Z status=open owner=18-26-managed-file-transfer-connections by=harvest note=QA adds the reset leg for both stores
+- 2026-10-07T22:38:19Z status=resolved-by:18-26-managed-file-transfer-connections by=cr note=QA app.spec.ts sign-out leg resets the MFT and superserver form stores; each reset() deleted -> red
 
 ### DW-2165: The MFT delete card lists four removal rows, not five: Service is outside the reviewed few AD-10's prohibited sweep admits
 - source: spec-18-26-managed-file-transfer-connections.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: AD-10's reviewed-few sweep refuses a diff row whose field the type's change fields omit (PROHIBITED.UNCOVEREDFIELD), so MftConnectionDelete.REMOVALROWS leaves Service out; the card still states the client removal through MFT.DELETE
 - 2026-10-07T22:03:57Z status=open owner=18-26-managed-file-transfer-connections by=harvest note=code review decides fix or by-design
+- 2026-10-07T22:38:19Z status=by-design by=cr note=AD-10: delete rows follow the type's change fields, which omit create-only Service (Decision 6); MFT.DELETE states removal
+
+### DW-2166: Changing an MFT connection's ApplicationName ends its authorization with no warning, and the token stays keyed to the old client (inference)
+- source: spec-18-26-managed-file-transfer-connections.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: %SYS.MFT.Connection.Base IsAuthorized and RevokeToken key the token by (ApplicationName, ConnectionId); the update tool admits ApplicationName with no consequence line
+- 2026-10-07T22:38:19Z status=wontfix-accepted owner=18-26-managed-file-transfer-connections by=cr note=reopen_if=a token-holding connection's ApplicationName change is measured to leave its OAuth2.AccessToken row behind

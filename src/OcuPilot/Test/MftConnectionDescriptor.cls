@@ -141,6 +141,29 @@ Method TestTheEntityTypeKeepsItsIdExactly()
     Do $$$AssertEquals(##class(OcuPilot.Kernel.EntityType).Count(), 60, "sixty entity types")
 }
 
+/// <p>The delete's card lists the four settings the prohibited set reviews, each removed, the client
+/// configuration's name among them and not <code>Service</code> (AD-10); the revoke's lists the token leaving its
+/// authorized state; a read that answers no precondition field is refused with a problem and no row.</p>
+/// <p>Mutation (Rule 19): drop <code>ApplicationName</code> from the delete's <code>REMOVALROWS</code> -- the
+/// delete leg goes red.</p>
+Method TestTheCardsListWhatTheActionsRemove()
+{
+    Set tFresh = {"Service": "Box", "URL": "https://h.invalid/", "SSLConfiguration": "BFC_SSL", "Username": "u@h.invalid", "ApplicationName": "OcuMftProbeAApp", "IsAuthorized": "Authorized"}
+    Do $$$AssertStatusOK($ClassMethod(..#DELETE, "StateDiff", tFresh, .tRows, .tProblem), "the delete's card is built")
+    Set tSeen = ""
+    Set tIterator = tRows.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tRow) {
+        Set tSeen = tSeen _ $Select(tSeen = "": "", 1: ",") _ tRow.%Get("field") _ "=" _ tRow.%Get("before") _ ":" _ tRow.%Get("removed")
+    }
+    Do $$$AssertEquals(tSeen, "URL=https://h.invalid/:1,SSLConfiguration=BFC_SSL:1,Username=u@h.invalid:1,ApplicationName=OcuMftProbeAApp:1", "four removed rows, the client configuration's name among them")
+    Do $$$AssertStatusOK($ClassMethod(..#REVOKE, "StateDiff", tFresh, .tRows, .tProblem), "the revoke's card is built")
+    Do $$$AssertEquals(tRows.%Size() _ " " _ tRows.%Get(0).%Get("field") _ " " _ tRows.%Get(0).%Get("before") _ " " _ tRows.%Get(0).%Get("removed"), "1 AccessToken Authorized 1", "one row, the token leaving its authorized state")
+    For tTool = ..#DELETE, ..#REVOKE {
+        Do $$$AssertStatusOK($ClassMethod(tTool, "StateDiff", {"Service": "Box"}, .tRows, .tProblem), tTool _ " answers a read without its precondition field")
+        Do $$$AssertTrue((tProblem '= "") && (tRows.%Size() = 0), tTool _ " refuses it with a problem and no row")
+    }
+}
+
 /// <p>AD-22: the create and update keys are in the baseline and enabled, the delete's and the revoke's are listed
 /// and disabled.</p>
 /// <p>Mutation (Rule 19): set <code>security.mftconnections.delete</code> to true in the baseline -- this goes

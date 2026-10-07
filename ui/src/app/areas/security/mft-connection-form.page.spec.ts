@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { ApiService, type ApiRequestInit, type JsonResult } from '../../core/api';
 import { ChangeBus } from '../../core/change-bus';
 import { FormDirty } from '../../core/form-dirty';
-import { NavigationService } from '../../core/navigation';
+import { NavigationService, formatDeniedAction } from '../../core/navigation';
 import { OverlayStack } from '../../core/overlay-stack';
 import { SCREENS } from '../../core/screens.generated';
 import { STRINGS } from '../../core/strings';
@@ -48,6 +48,7 @@ interface MountOptions {
   readonly url?: string;
   readonly row?: Record<string, unknown>;
   readonly save?: JsonResult<unknown>;
+  readonly sslRows?: readonly Record<string, unknown>[];
 }
 
 async function mount(options: MountOptions = {}) {
@@ -59,7 +60,7 @@ async function mount(options: MountOptions = {}) {
       const method = init.method ?? 'GET';
       calls.push({ path, method, body: init.body ?? '' });
       if (path.includes('/read?')) {
-        const rows = [{ Name: 'ServerTLS', Description: '', Enabled: true, Type: 'Server' }, { Name: 'ClientTLS', Description: '', Enabled: true, Type: 'Client' }, { Name: 'OtherTLS', Description: '', Enabled: true, Type: 'Client' }];
+        const rows = options.sslRows ?? [{ Name: 'ServerTLS', Description: '', Enabled: true, Type: 'Server' }, { Name: 'ClientTLS', Description: '', Enabled: true, Type: 'Client' }, { Name: 'OtherTLS', Description: '', Enabled: true, Type: 'Client' }];
         return { kind: 'ok', status: 200, body: { rows, truncated: false, banner: '' } } as unknown as JsonResult<T>;
       }
       if (path.startsWith(MFT_CONNECTION_FORM_PATH)) return { kind: 'ok', status: 200, body: { row: options.row ?? EMPTY_ROW } } as unknown as JsonResult<T>;
@@ -105,7 +106,7 @@ afterEach(() => {
 });
 
 describe('MftConnectionFormPage', () => {
-  it('B1: a create\u2019s name and service take input, the fields carry the classic labels and the hints name the classic page', async () => {
+  it('B1: a create\u2019s name and service take input, the fields carry their labels and the hints name the classic page', async () => {
     const { host } = await mount();
     const labels = [...host.querySelectorAll('[data-group="connection"] .ocu-field > .ocu-field-label')].map((label) => label.textContent?.trim());
     expect(labels).toEqual([STRINGS.tableColumnName, STRINGS.mftConnectionService, STRINGS.mftConnectionUrl, STRINGS.sslFormLabel, STRINGS.userFieldEmail, STRINGS.mftConnectionApplicationName]);
@@ -116,12 +117,28 @@ describe('MftConnectionFormPage', () => {
     expect(host.querySelector('[data-slot="authorize-hint"] a')).toBeNull();
   });
 
-  it('B1: the SSL/TLS picker offers none and the client configurations the SSL/TLS list reads, and the service the three file services', async () => {
+  it('B1: the SSL/TLS picker offers an empty choice and the client configurations the SSL/TLS list reads, and the service the three file services', async () => {
     const { host } = await mount();
     const options = [...(control(host, 'SSLConfiguration') as HTMLSelectElement).options].map((option) => option.textContent?.trim());
-    expect(options).toEqual([STRINGS.sslVerifyPeerNone, 'ClientTLS', 'OtherTLS']);
+    expect(options).toEqual(['', 'ClientTLS', 'OtherTLS']);
+    expect(host.querySelector('[data-slot="no-client-configuration"]')).toBeNull();
     const services = [...(control(host, 'Service') as HTMLSelectElement).options].map((option) => option.value);
     expect(services).toEqual(['Box', 'Dropbox', 'Kiteworks']);
+  });
+
+  it('B1: with no client SSL/TLS configuration on the instance, the picker says so', async () => {
+    const { host } = await mount({ sslRows: [{ Name: 'ServerTLS', Description: '', Enabled: true, Type: 'Server' }] });
+    expect(host.querySelector('[data-slot="no-client-configuration"]')?.textContent?.trim()).toBe(STRINGS.mftConnectionSslNoClient);
+  });
+
+  it('B2: a Save refused for a missing pair names the pair and this form\u2019s action', async () => {
+    const pair = '%Admin_Secure:USE';
+    const denied = { kind: 'error', status: 403, code: 'AUTH.NOPRIVILEGE', reason: 'Forbidden', detail: { failedPair: pair } } as unknown as JsonResult<unknown>;
+    const { fixture, host } = await mount({ save: denied });
+    await type(fixture, host, 'Name', 'OcuMftProbeB');
+    save(host);
+    await settle(fixture);
+    expect(host.querySelector('[data-mft-connection="reason"]')?.textContent?.trim()).toBe(formatDeniedAction(STRINGS.privilegeDeniedAction, pair, STRINGS.mftConnectionRefusedAction));
   });
 
   it('B1: an edit holds the row and the name and service are read-only', async () => {

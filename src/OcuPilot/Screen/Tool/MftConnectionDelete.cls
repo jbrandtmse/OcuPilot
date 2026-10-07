@@ -1,6 +1,7 @@
 /// <p>The managed file transfer connections' delete tool (AD-6, AD-8, AD-51, Story 18.26): propose removing one
 /// connection from this instance. It reads the connection fresh through the vendor's own <code>Security.MFT</code>
-/// <code>GET</code> and mints a proposal whose card lists the settings it removes. It writes nothing.</p>
+/// <code>GET</code> and mints a proposal whose card lists the settings it removes, less <code>Service</code>
+/// (<parameter>REMOVALROWS</parameter>), and states the client configuration's removal. It writes nothing.</p>
 /// <p><b>It is action-style</b> (AD-51): the vendor's <code>DELETE</code> reads no body, so the tool admits no
 /// settable field. <b>The vendor's delete also deletes the connection's OAuth 2.0 client configuration</b>,
 /// unless another connection names it, and that client's server description when no other client uses it

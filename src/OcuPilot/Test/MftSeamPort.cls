@@ -7,7 +7,8 @@
 /// <parameter>GUARDCODE</parameter> and never sent.</p>
 /// <p>Armed <method>ArmAuthorized</method>, the <code>LIST</code> row of a named connection reads "Authorized", so
 /// a revoke of a connection that holds no real token reaches the vendor's <code>REVOKE</code>, which changes
-/// nothing for it (measured at Story 18.26's plan). No call reaches a file service. <method>ArmFail</method> fails
+/// nothing for it (measured at Story 18.26's plan); a <code>REVOKE</code> the vendor answers disarms the row, as a
+/// real revoke leaves the connection not authorized. No call reaches a file service. <method>ArmFail</method> fails
 /// every call of one <code>endpoint/type</code> pair with a 500 that is not the vendor's, and
 /// <method>ArmFailAfter</method> every call of it after the first few.</p>
 /// <p><b>Not a <class>%UnitTest.TestCase</class></b>: it holds no assertions and runs no tests.</p>
@@ -53,6 +54,8 @@ ClassMethod Call(pEndpoint As %String, pType As %String, ByRef pQuery, pBody As 
         }
     }
     Set tSC = ##super(pEndpoint, pType, .pQuery, pBody, .pResult, .pHttpStatus, .pFault)
+    ; A revoke the vendor answered removes the token, so the connection's row reads "Not Authorized" after it.
+    If $$$ISOK(tSC) && (pEndpoint = ..#ENDPOINT) && (pType = "REVOKE") Kill ^||OcuPilotMftSeam("authorized", $Get(pQuery("connection")))
     If $$$ISOK(tSC) && (pEndpoint = ..#ENDPOINT) && (pType = "LIST") && $IsObject($Get(pResult)) && pResult.%IsA("%Library.DynamicArray") {
         Set tIterator = pResult.%GetIterator()
         While tIterator.%GetNext(.tRowIndex, .tRow) {

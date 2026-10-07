@@ -9,7 +9,8 @@
 Class OcuPilot.Test.MftActionFixture Extends OcuPilot.Api.ScreenAction
 {
 
-/// <p>The shipped resolution, with the superserver delete's tool replaced by its seam subclass.</p>
+/// <p>The shipped resolution, with the connection delete's and token revoke's tools replaced by their seam
+/// subclasses.</p>
 ClassMethod ToolFor(pDescriptor As %String, pActionId As %String, Output pTool As %DynamicObject, Output pToolClass As %String) As %Status [ Private ]
 {
     Set tSC = ##super(pDescriptor, pActionId, .pTool, .pToolClass)

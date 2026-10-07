@@ -149,7 +149,9 @@ ClassMethod Clients() As %List
 }
 
 /// <p>Delete every probe connection by exact name, then every probe client configuration by exact name, then
-/// every description on <parameter>HOST</parameter> by id.</p>
+/// every description on <parameter>HOST</parameter> by id, then clear the system monitor: the vendor answers
+/// the delete of a connection whose client is absent 500, which the admin port logs at severity 2, raising the
+/// instance's alert state, and only a clear resets it.</p>
 ClassMethod RemoveAll() As %Status
 {
     Set tSC = $$$OK
@@ -171,6 +173,7 @@ ClassMethod RemoveAll() As %Status
         Set $NAMESPACE = tOrigNS
         Set tSC = $$$ADDSC(tSC, ex.AsStatus())
     }
+    Do $SYSTEM.Monitor.Clear()
     Quit tSC
 }
 

@@ -405,13 +405,14 @@ export class MftConnectionFormPage {
     return this.store.value(APPLICATION_FIELD);
   }
 
-  /** The picker's options: none, every client configuration, and the one held when it is neither. */
+  /** The picker's options: an empty choice (the field is required, so it offers no "None"), every client
+   * configuration, and the one held when it is neither. */
   protected get sslOptions(): readonly { readonly value: string; readonly label: string }[] {
     this.generation();
     const names = [...this.store.configs()];
     const held = this.store.value(SSL_FIELD);
     if (held !== '' && !names.includes(held)) names.push(held);
-    return [{ value: '', label: STRINGS.sslVerifyPeerNone }, ...names.map((name) => ({ value: name, label: name }))];
+    return [{ value: '', label: '' }, ...names.map((name) => ({ value: name, label: name }))];
   }
 
   protected get nameView(): InputView {
