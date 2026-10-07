@@ -36,6 +36,9 @@ Parameter EXPLORERDISABLED = "explorer.classes.delete,explorer.routines.delete,e
 /// <p>The remote database delete, which the baseline also disables (Story 18.16).</p>
 Parameter REMOTEDATABASEDELETE = "osmgmt.remotedatabases.delete";
 
+/// <p>The superserver delete, which the baseline also disables (Story 18.25).</p>
+Parameter SUPERSERVERDELETE = "security.superservers.delete";
+
 /// <p>The license key's activation and the license server delete, which the baseline also disables
 /// (Story 18.6).</p>
 Parameter LICENSEDISABLED = "osmgmt.licensekey.activate,osmgmt.licenseservers.delete";
@@ -136,6 +139,7 @@ Method TestTheDefaultEnablesEveryWriteButTheBaselineDisabled()
         Set tCount = tCount + 1
         Set tExpected = $Select((tKey = ..#PURGE) || (tKey = ..#NAMESPACEDELETE) || (tKey = ..#DATABASEDELETE) || (tKey = ..#TASKIMPORT) || (tKey = ..#ENABLEINTEROP) || $ListFind($ListFromString(..#DISKOPERATIONS), tKey) || $ListFind($ListFromString(..#EXPLORERDISABLED), tKey): "0|baseline", 1: "1|baseline")
         If tKey = ..#REMOTEDATABASEDELETE Set tExpected = "0|baseline"
+        If tKey = ..#SUPERSERVERDELETE Set tExpected = "0|baseline"
         If $ListFind($ListFromString(..#LICENSEDISABLED), tKey) Set tExpected = "0|baseline"
         If $ListFind($ListFromString(..#ECPDISABLED), tKey) Set tExpected = "0|baseline"
         If $ListFind($ListFromString(..#ENCRYPTIONDISABLED), tKey) Set tExpected = "0|baseline"

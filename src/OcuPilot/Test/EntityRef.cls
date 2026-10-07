@@ -303,6 +303,18 @@ Method TestTheIdRuleTableIsDeclaredAndIsWhatNormalizationApplies()
     Do $$$AssertStatusOK(##class(OcuPilot.Kernel.EntityRef).Key("class", "USER", "A.cls,B.cls", .tDocCanonical), "and so does the canonical one")
     Do $$$AssertEquals(tDocKey, tDocCanonical, "and the two are one key")
 
+    ; Story 18.25's rule: a superserver is addressed by [Port, BindAddress]; the port reads in its plain
+    ; decimal spelling, an empty bind address reads 0.0.0.0, and the bind address folds to lower case. A
+    ; value with no separator reads as [value, empty]. The same corpus runs through the client twin
+    ; (ui/tools/entity-ref.test.mjs).
+    Do $$$AssertTrue($ListFind(tRuled, "superserver") > 0, "the superserver pair is the one Story 18.25 added")
+    For tCase = $ListBuild("01985" _ tSeparator _ "0.0.0.0", "1985" _ tSeparator _ "0.0.0.0"), $ListBuild("1985" _ tSeparator, "1985" _ tSeparator _ "0.0.0.0"), $ListBuild("1985", "1985" _ tSeparator _ "0.0.0.0"), $ListBuild("+1985" _ tSeparator _ "LOCALHOST", "1985" _ tSeparator _ "localhost"), $ListBuild(" 1985 " _ tSeparator _ "127.0.0.1", "1985" _ tSeparator _ "127.0.0.1"), $ListBuild("ABC" _ tSeparator _ "0.0.0.0", "abc" _ tSeparator _ "0.0.0.0") {
+        Do $$$AssertEquals(##class(OcuPilot.Kernel.EntityRef).NormalizedId("superserver", $List(tCase, 1)), $List(tCase, 2), "'" _ $List(tCase, 1) _ "' reads as '" _ $List(tCase, 2) _ "'")
+    }
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.EntityRef).Key("superserver", "instance", "01985" _ tSeparator, .tBindKey), "a spelled superserver id builds a key")
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.EntityRef).Key("superserver", "instance", "1985" _ tSeparator _ "0.0.0.0", .tBindCanonical), "and so does the canonical one")
+    Do $$$AssertEquals(tBindKey, tBindCanonical, "and the two are one key")
+
     ; A key built from a non-canonical spelling is the key built from the canonical one, which is
     ; the necessary condition behind AD-34's per-target lock.
     Do $$$AssertStatusOK(##class(OcuPilot.Kernel.EntityRef).Key("web-application", "instance", "/API/OcuPilot/", .tFromForm), "a non-canonical spelling builds a key")

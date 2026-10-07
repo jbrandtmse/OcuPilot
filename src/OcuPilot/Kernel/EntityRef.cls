@@ -56,12 +56,12 @@ Parameter TYPEWEBAPPLICATION = "web-application";
 /// <parameter>OcuPilot.Kernel.EntityType.TYPES</parameter>, or a rule the generator cannot
 /// implement, fails <code>npm run build</code> rather than reaching the client as a silent
 /// no-op. A later write-tool story adds one pair here, never a branch in two languages.</p>
-Parameter IDRULES = "web-application:foldcase-striptrailingslash,user:foldcase,auditing-configuration:singleton,task:integer,process:integerset,application-error:foldcase,role:foldcase,resource:foldcase,audit-event:foldcase,audit-user-event:foldcase,service:foldcase,ldap-configuration:foldcase,oauth2-server:singleton,namespace:foldcase,global-mapping:foldcase-firstpart,routine-mapping:foldcase-firstpart,package-mapping:foldcase-firstpart,database-configuration:foldcase,database:directoryset,class:documentset,routine:documentset,journal-settings:singleton,license-key:singleton,license-server:foldcase,ecp-data-server:foldcase,ecp-settings:singleton,database-encryption-keys:singleton,data-element-encryption-keys:singleton,encryption-startup:singleton,docdb-database:foldcase,authentication-options:singleton";
+Parameter IDRULES = "web-application:foldcase-striptrailingslash,user:foldcase,auditing-configuration:singleton,task:integer,process:integerset,application-error:foldcase,role:foldcase,resource:foldcase,audit-event:foldcase,audit-user-event:foldcase,service:foldcase,ldap-configuration:foldcase,oauth2-server:singleton,namespace:foldcase,global-mapping:foldcase-firstpart,routine-mapping:foldcase-firstpart,package-mapping:foldcase-firstpart,database-configuration:foldcase,database:directoryset,class:documentset,routine:documentset,journal-settings:singleton,license-key:singleton,license-server:foldcase,ecp-data-server:foldcase,ecp-settings:singleton,database-encryption-keys:singleton,data-element-encryption-keys:singleton,encryption-startup:singleton,docdb-database:foldcase,authentication-options:singleton,superserver:portbind";
 
 /// <p>The closed rule vocabulary <parameter>IDRULES</parameter> selects from. A rule named there
 /// and absent here is a declaration error, pinned by
 /// <class>OcuPilot.Test.EntityRef</class>.</p>
-Parameter IDRULENAMES = "foldcase-striptrailingslash,foldcase,singleton,integer,foldcase-firstpart,integerset,directoryset,documentset";
+Parameter IDRULENAMES = "foldcase-striptrailingslash,foldcase,singleton,integer,foldcase-firstpart,integerset,directoryset,documentset,portbind";
 
 /// <p>The web-application rule: fold to lower case, then strip every trailing slash.</p>
 Parameter RULEFOLDCASESTRIPTRAILINGSLASH = "foldcase-striptrailingslash";
@@ -134,6 +134,16 @@ Parameter RULEDIRECTORYSET = "directoryset";
 /// a value holding no comma, a single document or the literal <code>import</code>, is kept exactly.
 /// <file>ui/src/app/core/entity-ref.ts</file> mirrors it.</p>
 Parameter RULEDOCUMENTSET = "documentset";
+
+/// <p>The superserver rule (Story 18.25): a superserver's composite id is <code>[Port, BindAddress]</code>.
+/// The port is spelled as <parameter>RULEINTEGER</parameter> spells it, and the bind address is
+/// <parameter>RULEPORTBINDANY</parameter> when empty and folded to lower case otherwise (measured: empty and
+/// <code>0.0.0.0</code> reach one record, and <code>LOCALHOST</code> reached <code>localhost</code>). A value
+/// with no separator reads as <code>[value, ""]</code>.</p>
+Parameter RULEPORTBIND = "portbind";
+
+/// <p>The bind address an empty one stands for: every interface.</p>
+Parameter RULEPORTBINDANY = "0.0.0.0";
 
 /// <p>The one id a <parameter>RULESINGLETON</parameter> type's reference carries.
 /// <code>SYSTEM</code> is <class>Security.System</class>'s own row id, which
@@ -286,6 +296,12 @@ ClassMethod NormalizedId(pType As %String, pId As %String) As %String
     If tRule = ..#RULEINTEGERSET Quit ..PlainIntegerSet(pId)
     If tRule = ..#RULEDIRECTORYSET Quit ##class(OcuPilot.Port.DatabasePort).CanonicalSet(pId)
     If tRule = ..#RULEDOCUMENTSET Quit ..DocumentSet(pId)
+    If tRule = ..#RULEPORTBIND {
+        Set tSeparator = $Char(##class(OcuPilot.Kernel.EntityId).#COMPOSITESEPARATOR)
+        Set tBind = $ZConvert($Piece(pId, tSeparator, 2, *), "L")
+        If tBind = "" Set tBind = ..#RULEPORTBINDANY
+        Quit ..PlainInteger($Piece(pId, tSeparator, 1)) _ tSeparator _ tBind
+    }
     If tRule = ..#RULEFOLDCASE Quit $ZConvert(pId, "L")
     If tRule = ..#RULEFOLDCASEFIRSTPART {
         Set tSeparator = $Char(##class(OcuPilot.Kernel.EntityId).#COMPOSITESEPARATOR)

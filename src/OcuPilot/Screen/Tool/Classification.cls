@@ -44,6 +44,10 @@ Class OcuPilot.Screen.Tool.Classification Extends %RegisteredObject
 /// matches, held an exception by Conventions &#8250; Secrets. The password tool authors
 /// <code>SMTPPassword</code> as <code>secret</code>: its write sends that declared secret and nothing else,
 /// under the vendor's own <code>CHANGESMTPPWD</code> key (AD-56), and the template never shows it.</p>
+/// <p><b><code>security.superservers.create</code></b> and <b><code>security.superservers.update</code></b>
+/// (Story 18.25) classify <code>Security.Superserver</code>'s sixteen rows <code>ordinary</code>.
+/// <code>SystemDefault</code> is ordinary and neither tool admits it: it is shown and never set (AD-4), and each
+/// tool's positive list decides that.</p>
 /// <p><b><code>security.secrets.creatersa</code></b>, <b>.createsymmetric</b>, <b>.replacersa</b> and
 /// <b>.replacesymmetric</b> (Story 18.24) classify their type's list: <code>Length</code>,
 /// <code>HasPrivateKey</code>, <code>HasCertificate</code> and <code>KeyId</code> are <code>ordinary</code>
@@ -576,6 +580,48 @@ XData Entries
       "VerifyDepth": "ordinary",
       "VerifyPeer": "ordinary",
       "PrivateKeyPassword": "secret"
+    }
+  },
+  "security.superservers.create": {
+    "fieldList": "Security.Superserver",
+    "classification": {
+      "Description": "ordinary",
+      "EnableCacheDirect": "ordinary",
+      "EnableClients": "ordinary",
+      "EnableCSP": "ordinary",
+      "EnableDataCheck": "ordinary",
+      "EnableECP": "ordinary",
+      "EnableMirror": "ordinary",
+      "EnableNodeJS": "ordinary",
+      "EnableShadows": "ordinary",
+      "EnableSharding": "ordinary",
+      "EnableSNMP": "ordinary",
+      "EnableWebLink": "ordinary",
+      "Enabled": "ordinary",
+      "SSLConfig": "ordinary",
+      "SSLSupportLevel": "ordinary",
+      "SystemDefault": "ordinary"
+    }
+  },
+  "security.superservers.update": {
+    "fieldList": "Security.Superserver",
+    "classification": {
+      "Description": "ordinary",
+      "EnableCacheDirect": "ordinary",
+      "EnableClients": "ordinary",
+      "EnableCSP": "ordinary",
+      "EnableDataCheck": "ordinary",
+      "EnableECP": "ordinary",
+      "EnableMirror": "ordinary",
+      "EnableNodeJS": "ordinary",
+      "EnableShadows": "ordinary",
+      "EnableSharding": "ordinary",
+      "EnableSNMP": "ordinary",
+      "EnableWebLink": "ordinary",
+      "Enabled": "ordinary",
+      "SSLConfig": "ordinary",
+      "SSLSupportLevel": "ordinary",
+      "SystemDefault": "ordinary"
     }
   },
   "security.secrets.create": {

@@ -82,6 +82,7 @@ const {
   CONSEQUENCE_ENCRYPTIONSTARTUPRESTART,
   CONSEQUENCE_ENCRYPTIONSTARTUPJOURNAL,
   CONSEQUENCE_WEBAUTHSIGNOUT,
+  CONSEQUENCE_SUPERSERVERSERVES,
   CONSEQUENCE_AUDITENCRYPTIONCHANGE,
   COUNTDOWN_PLACEHOLDER,
   COUNTDOWN_WARNING_MS,
@@ -1054,4 +1055,17 @@ test('Story 18.8: an authentication options write that changes a token setting s
   assert.equal(/Parameter SIGNOUT = "([^"]+)";/.exec(errors)?.[1], CONSEQUENCE_WEBAUTHSIGNOUT, 'the error class declares the code the card reads');
   const prohibited = readFileSync(join(uiRoot, '..', 'src', 'OcuPilot', 'Kernel', 'Proposal', 'Prohibited.cls'), 'utf8');
   assert.equal(/Parameter EFFECTTOKENSIGNOUT = "([^"]+)";/.exec(prohibited)?.[1], CONSEQUENCE_WEBAUTHSIGNOUT, 'the kernel declares the effect the card reads');
+});
+
+// Story 18.25: an SSL/TLS change to the superserver the web gateway connects through states its consequence,
+// under the code its error class and the kernel declare.
+//
+// Mutation (Rule 19): delete the `CONSEQUENCE_SUPERSERVERSERVES` line from `consequenceSentence` -> this goes
+// red on ''.
+test('Story 18.25: a serving superserver\'s SSL/TLS change states its consequence on the card', () => {
+  assert.equal(consequenceSentence(CONSEQUENCE_SUPERSERVERSERVES), STRINGS.superserverServesConsequence, 'the consequence reads its published sentence');
+  const errors = readFileSync(join(uiRoot, '..', 'src', 'OcuPilot', 'Api', 'SuperserverError.cls'), 'utf8');
+  assert.equal(/Parameter SERVESOCUPILOT = "([^"]+)";/.exec(errors)?.[1], CONSEQUENCE_SUPERSERVERSERVES, 'the error class declares the code the card reads');
+  const prohibited = readFileSync(join(uiRoot, '..', 'src', 'OcuPilot', 'Kernel', 'Proposal', 'Prohibited.cls'), 'utf8');
+  assert.equal(/Parameter EFFECTSERVINGSUPERSERVER = "([^"]+)";/.exec(prohibited)?.[1], CONSEQUENCE_SUPERSERVERSERVES, 'the kernel declares the effect the card reads');
 });

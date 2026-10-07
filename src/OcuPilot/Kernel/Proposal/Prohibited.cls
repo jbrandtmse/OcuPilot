@@ -247,7 +247,7 @@ Parameter WRITETOOLBASE = "OcuPilot.Screen.Tool.Write";
 /// <p>The entity types this release evaluates predicates for, comma-separated
 /// (<class>OcuPilot.Kernel.EntityType</class>'s spelling). A type outside this list is
 /// <parameter>UNCOVERED</parameter>.</p>
-Parameter COVEREDTYPES = "web-application,user,auditing-configuration,task,process,application-error,role,resource,x509-credential,wallet-secret,device,oauth2-client-configuration,oauth2-server-client,audit-event,audit-user-event,ssl-configuration,service,ldap-configuration,oauth2-server-definition,oauth2-resource-server,oauth2-server,namespace,web-session,background-task,global-mapping,routine-mapping,package-mapping,database-configuration,database,language-server,lock,class,routine,journal-file,journal-settings,license-key,license-server,ecp-data-server,ecp-settings,ecp-ssl-connection,encryption-key-file,database-encryption-keys,data-element-encryption-keys,encryption-startup,docdb-database,authentication-options";
+Parameter COVEREDTYPES = "web-application,user,auditing-configuration,task,process,application-error,role,resource,x509-credential,wallet-secret,device,oauth2-client-configuration,oauth2-server-client,audit-event,audit-user-event,ssl-configuration,service,ldap-configuration,oauth2-server-definition,oauth2-resource-server,oauth2-server,namespace,web-session,background-task,global-mapping,routine-mapping,package-mapping,database-configuration,database,language-server,lock,class,routine,journal-file,journal-settings,license-key,license-server,ecp-data-server,ecp-settings,ecp-ssl-connection,encryption-key-file,database-encryption-keys,data-element-encryption-keys,encryption-startup,docdb-database,authentication-options,superserver";
 
 /// <p>The covered types, each named once so the dispatch and the list cannot drift apart.</p>
 Parameter TYPEWEBAPPLICATION = "web-application";
@@ -558,6 +558,44 @@ Parameter AUTHEBITS = "AutheUnauthenticated:64,AutheOS:16,AutheOSDelegated:65536
 /// <code>AutheTwoFactorRequired</code> names the methods two-factor needs beside it (<file>%sySecurity.inc</file>).</p>
 Parameter AUTHEMODIFIERS = 19943424;
 
+/// <p>One superserver the instance listens on (Story 18.25), keyed by the composite of its port and bind
+/// address. <method>Superserver</method> judges its writes: on the superserver the web gateway connects
+/// through, a delete, <code>Enabled</code> or <code>EnableCSP</code> turned off, and the SSL/TLS support level
+/// raised to 2 are refused <parameter>SERVINGSUPERSERVER</parameter>; every other change passes the
+/// reviewed-few sweep.</p>
+Parameter TYPESUPERSERVER = "superserver";
+
+/// <p>The write would cut off the superserver the web gateway connects through (AD-10 as amended 2026-10-07,
+/// Story 18.25): it deletes it, turns off <code>Enabled</code> or <code>EnableCSP</code>, or requires SSL/TLS of
+/// it. A superserver is serving when its fresh read's <code>SystemDefault</code> is true, which the instance's own
+/// gateway configuration names, or when its port is the one the serving request arrived through
+/// (<method>ServingSuperserverPort</method>). A target read that fails refuses.</p>
+Parameter SERVINGSUPERSERVER = "PROHIBITED.SERVINGSUPERSERVER";
+
+/// <p>The one sentence <parameter>SERVINGSUPERSERVER</parameter> carries, caller-neutral, published in
+/// EXPERIENCE.md's Fixed strings and pinned equal to <code>superserverRefusalServing</code> by
+/// <file>ui/tools/self-protection.test.mjs</file>.</p>
+Parameter SERVINGSUPERSERVERREASON = "The web gateway reaches this instance through this superserver, and OcuPilot is served through it. Deleting it, disabling it, turning off its web connections or requiring SSL/TLS would cut off every user, including you.";
+
+/// <p>The effect <method>WeakensByEffect</method> answers for any other change to the SSL/TLS support level or
+/// configuration of a serving superserver: permitted, destructive, and named on the card. It is also the
+/// proposal's consequence code.</p>
+Parameter EFFECTSERVINGSUPERSERVER = "SUPERSERVER.SERVESOCUPILOT";
+
+/// <p>The superserver members the arm reads.</p>
+Parameter SUPERSERVERDEFAULTFIELD = "SystemDefault";
+
+Parameter SUPERSERVERENABLEDFIELD = "Enabled";
+
+Parameter SUPERSERVERCSPFIELD = "EnableCSP";
+
+Parameter SUPERSERVERLEVELFIELD = "SSLSupportLevel";
+
+Parameter SUPERSERVERCONFIGFIELD = "SSLConfig";
+
+/// <p>The SSL/TLS support level that requires it.</p>
+Parameter SUPERSERVERREQUIRED = 2;
+
 /// <p>The effect <method>WeakensByEffect</method> answers for a startup settings write that changes the
 /// audit log's encryption (AD-10 as amended 2026-10-05): permitted, destructive, and named on the card. It
 /// is also the proposal's consequence code.</p>
@@ -847,10 +885,10 @@ Parameter READTYPE = "GET";
 /// <method>Mapping</method> adds, the one <method>Database</method> adds, and the one
 /// <method>Lock</method> adds, and the one <method>Code</method> adds, and the one
 /// <method>SqlStatement</method> adds, the key arm's and the encryption start arm's, and the two
-/// <method>AuthOptions</method> adds last -- thirty in all.</p>
+/// <method>AuthOptions</method> adds, and the one <method>Superserver</method> adds last -- thirty-one in all.</p>
 ClassMethod Codes() As %List
 {
-    Quit $ListBuild(..#SERVINGPATH, ..#UNAUTHENTICATED, ..#AUTHORIZATION, ..#DISPATCH, ..#SYSTEMACCOUNT, ..#SERVICEACCOUNT, ..#CURRENTUSER, ..#LASTALLHOLDER, ..#PRIVILEGEGRANT, ..#OCUPILOTPROCESS, ..#SYSTEMPROCESS, ..#UNCOVEREDFIELD, ..#UNCOVERED, ..#OCUPILOTROLE, ..#OCUPILOTRESOURCE, ..#SERVICEACCOUNTSIGNIN, ..#OCUPILOTSSL, ..#SERVINGSERVICE, ..#OCUPILOTNAMESPACE, ..#OCUPILOTSESSION, ..#PRESERVEDSESSION, ..#OCUPILOTMAPPING, ..#OCUPILOTDATABASE, ..#OCUPILOTLOCK, ..#OCUPILOTCODE, ..#OCUPILOTSQL, ..#OCUPILOTKEY, ..#STARTUPINTERACTIVE, ..#OCUPILOTSIGNIN, ..#OCUPILOTSTART)
+    Quit $ListBuild(..#SERVINGPATH, ..#UNAUTHENTICATED, ..#AUTHORIZATION, ..#DISPATCH, ..#SYSTEMACCOUNT, ..#SERVICEACCOUNT, ..#CURRENTUSER, ..#LASTALLHOLDER, ..#PRIVILEGEGRANT, ..#OCUPILOTPROCESS, ..#SYSTEMPROCESS, ..#UNCOVEREDFIELD, ..#UNCOVERED, ..#OCUPILOTROLE, ..#OCUPILOTRESOURCE, ..#SERVICEACCOUNTSIGNIN, ..#OCUPILOTSSL, ..#SERVINGSERVICE, ..#OCUPILOTNAMESPACE, ..#OCUPILOTSESSION, ..#PRESERVEDSESSION, ..#OCUPILOTMAPPING, ..#OCUPILOTDATABASE, ..#OCUPILOTLOCK, ..#OCUPILOTCODE, ..#OCUPILOTSQL, ..#OCUPILOTKEY, ..#STARTUPINTERACTIVE, ..#OCUPILOTSIGNIN, ..#OCUPILOTSTART, ..#SERVINGSUPERSERVER)
 }
 
 /// <p>The written sentence a <code>PROHIBITED.*</code> code carries, or <code>""</code> for any
@@ -892,6 +930,7 @@ ClassMethod ReasonFor(pCode As %String) As %String
     If pCode = ..#STARTUPINTERACTIVE Quit ..#STARTUPINTERACTIVEREASON
     If pCode = ..#OCUPILOTSIGNIN Quit ..#OCUPILOTSIGNINREASON
     If pCode = ..#OCUPILOTSTART Quit ..#OCUPILOTSTARTREASON
+    If pCode = ..#SERVINGSUPERSERVER Quit ..#SERVINGSUPERSERVERREASON
     Quit ""
 }
 
@@ -1011,6 +1050,7 @@ ClassMethod PermittedChangeFields(pType As %String) As %List
     If (pType = ..#TYPEDATABASEKEYS) || (pType = ..#TYPEDATAELEMENTKEYS) Quit ..EncryptionKeyFields()
     If pType = ..#TYPEENCRYPTIONSTARTUP Quit ..EncryptionStartupFields()
     If pType = ..#TYPEAUTHOPTIONS Quit ..AuthOptionsFields()
+    If pType = ..#TYPESUPERSERVER Quit ..SuperserverFields()
     Quit ""
 }
 
@@ -1127,6 +1167,7 @@ ClassMethod PermittedCreateFields(pType As %String) As %List
     If pType = ..#TYPELICENSESERVER Quit ..LicenseServerFields()
     If pType = ..#TYPEECPDATASERVER Quit ..EcpDataServerFields()
     If pType = ..#TYPEENCRYPTIONKEYFILE Quit ..EncryptionKeyFileFields("create")
+    If pType = ..#TYPESUPERSERVER Quit ..SuperserverFields()
     ; Story 19.17: a document database create sets its name, which the docdb arm judges by the class it creates.
     If pType = ..#TYPEDOCDBDATABASE Quit $ListBuild("Name")
     Quit ""
@@ -1209,7 +1250,7 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
             Do ..Refuse(..#UNCOVERED, .pProhibits, .pCode)
             Quit
         }
-        If (tType '= ..#TYPEWEBAPPLICATION) && (tType '= ..#TYPEUSER) && (tType '= ..#TYPEAUDITING) && (tType '= ..#TYPETASK) && (tType '= ..#TYPEPROCESS) && (tType '= ..#TYPEAPPLICATIONERROR) && (tType '= ..#TYPEROLE) && (tType '= ..#TYPERESOURCE) && (tType '= ..#TYPEX509) && (tType '= ..#TYPEWALLETSECRET) && (tType '= ..#TYPEDEVICE) && (tType '= ..#TYPEOAUTHCLIENT) && (tType '= ..#TYPEOAUTHSERVERCLIENT) && (tType '= ..#TYPEAUDITEVENT) && (tType '= ..#TYPEAUDITUSEREVENT) && (tType '= ..#TYPESSL) && (tType '= ..#TYPESERVICE) && (tType '= ..#TYPELDAP) && (tType '= ..#TYPEOAUTHSERVERDEF) && (tType '= ..#TYPEOAUTHRESOURCESERVER) && (tType '= ..#TYPEOAUTHAUTHSERVER) && (tType '= ..#TYPENAMESPACE) && (tType '= ..#TYPEWEBSESSION) && (tType '= ..#TYPEBACKGROUNDTASK) && (tType '= ..#TYPEDATABASECONFIG) && (tType '= ..#TYPEDATABASE) && '..IsMappingType(tType) && (tType '= ..#TYPELANGUAGESERVER) && (tType '= ..#TYPELOCK) && (tType '= ..#TYPECLASS) && (tType '= ..#TYPEROUTINE) && (tType '= ..#TYPEJOURNALFILE) && (tType '= ..#TYPEJOURNALSETTINGS) && (tType '= ..#TYPELICENSEKEY) && (tType '= ..#TYPELICENSESERVER) && (tType '= ..#TYPEECPDATASERVER) && (tType '= ..#TYPEECPSETTINGS) && (tType '= ..#TYPEECPSSLCONNECTION) && (tType '= ..#TYPEENCRYPTIONKEYFILE) && (tType '= ..#TYPEDATABASEKEYS) && (tType '= ..#TYPEDATAELEMENTKEYS) && (tType '= ..#TYPEENCRYPTIONSTARTUP) && (tType '= ..#TYPEAUTHOPTIONS) && (tType '= ..#TYPEDOCDBDATABASE) {
+        If (tType '= ..#TYPEWEBAPPLICATION) && (tType '= ..#TYPEUSER) && (tType '= ..#TYPEAUDITING) && (tType '= ..#TYPETASK) && (tType '= ..#TYPEPROCESS) && (tType '= ..#TYPEAPPLICATIONERROR) && (tType '= ..#TYPEROLE) && (tType '= ..#TYPERESOURCE) && (tType '= ..#TYPEX509) && (tType '= ..#TYPEWALLETSECRET) && (tType '= ..#TYPEDEVICE) && (tType '= ..#TYPEOAUTHCLIENT) && (tType '= ..#TYPEOAUTHSERVERCLIENT) && (tType '= ..#TYPEAUDITEVENT) && (tType '= ..#TYPEAUDITUSEREVENT) && (tType '= ..#TYPESSL) && (tType '= ..#TYPESERVICE) && (tType '= ..#TYPELDAP) && (tType '= ..#TYPEOAUTHSERVERDEF) && (tType '= ..#TYPEOAUTHRESOURCESERVER) && (tType '= ..#TYPEOAUTHAUTHSERVER) && (tType '= ..#TYPENAMESPACE) && (tType '= ..#TYPEWEBSESSION) && (tType '= ..#TYPEBACKGROUNDTASK) && (tType '= ..#TYPEDATABASECONFIG) && (tType '= ..#TYPEDATABASE) && '..IsMappingType(tType) && (tType '= ..#TYPELANGUAGESERVER) && (tType '= ..#TYPELOCK) && (tType '= ..#TYPECLASS) && (tType '= ..#TYPEROUTINE) && (tType '= ..#TYPEJOURNALFILE) && (tType '= ..#TYPEJOURNALSETTINGS) && (tType '= ..#TYPELICENSEKEY) && (tType '= ..#TYPELICENSESERVER) && (tType '= ..#TYPEECPDATASERVER) && (tType '= ..#TYPEECPSETTINGS) && (tType '= ..#TYPEECPSSLCONNECTION) && (tType '= ..#TYPEENCRYPTIONKEYFILE) && (tType '= ..#TYPEDATABASEKEYS) && (tType '= ..#TYPEDATAELEMENTKEYS) && (tType '= ..#TYPEENCRYPTIONSTARTUP) && (tType '= ..#TYPEAUTHOPTIONS) && (tType '= ..#TYPESUPERSERVER) && (tType '= ..#TYPEDOCDBDATABASE) {
             ; A type COVEREDTYPES lists and no branch evaluates. Fail closed rather than write.
             Do ..Refuse(..#UNCOVERED, .pProhibits, .pCode)
             Quit
@@ -1219,6 +1260,9 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
         ; stubs %session while it runs (AD-2).
         Set tOwnSession = ""
         If tType = ..#TYPEWEBSESSION Set tOwnSession = ..ServingSessionId()
+        ; Likewise the port the serving request arrived through, read before any port call.
+        Set tServingPort = ""
+        If tType = ..#TYPESUPERSERVER Set tServingPort = ..ServingSuperserverPort()
 
         Set tServes = 0
         If tType = ..#TYPEWEBAPPLICATION {
@@ -1445,6 +1489,11 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
         ; The authentication and web session options (Story 18.8): OcuPilot's own sign-in and start are not cut.
         If tType = ..#TYPEAUTHOPTIONS {
             Set tSC = ..AuthOptions($Get(tToolClass), tPayloadObject, tTarget, .tChanged, .pProhibits, .pCode)
+            Quit
+        }
+        ; A superserver (Story 18.25): the one the web gateway connects through is not cut off.
+        If tType = ..#TYPESUPERSERVER {
+            Set tSC = ..Superserver(tId, $Get(tToolClass), tPayloadObject, tTarget, tServingPort, .tChanged, .pProhibits, .pCode)
             Quit
         }
         Set tSC = ..WebApplication(tPayloadObject, tTarget, tServes, .tChanged, .pProhibits, .pCode)
@@ -1712,6 +1761,10 @@ ClassMethod WeakensByEffect(pType As %String, pPayload As %DynamicObject, pTarge
         }
         If pType = ..#TYPEAUTHOPTIONS {
             If ..ChangesTokenFields(pPayload, pTarget) Set pEffect = ..#EFFECTTOKENSIGNOUT
+            Quit
+        }
+        If pType = ..#TYPESUPERSERVER {
+            If ..ChangesSuperserverSsl(pPayload, pTarget) && ..IsServingSuperserver(pId, pTarget, ..ServingSuperserverPort()) Set pEffect = ..#EFFECTSERVINGSUPERSERVER
             Quit
         }
         If pType = ..#TYPESERVICE {
@@ -2719,6 +2772,115 @@ ClassMethod StartupSetting(pPayload As %DynamicObject, pTarget As %DynamicObject
     If '$IsObject(tFrom) Quit ""
     If tFrom.%GetTypeOf(pName) = "number" Quit $Select(+tFrom.%Get(pName): "true", 1: "false")
     Quit ..Rendered(tFrom, pName)
+}
+
+/// <p>The superservers' reviewed few (Story 18.25): the fifteen settings the classic editor sets. Its
+/// <code>SystemDefault</code> is shown and never set, so it is no member.</p>
+ClassMethod SuperserverFields() As %List [ Private ]
+{
+    Quit $ListBuild("Description", "EnableCacheDirect", "EnableClients", "EnableCSP", "EnableDataCheck", "EnableECP", "EnableMirror", "EnableNodeJS", "EnableShadows", "EnableSharding", "EnableSNMP", "EnableWebLink", "Enabled", "SSLConfig", "SSLSupportLevel")
+}
+
+/// <p>The local port of the device this process was started on when it is a TCP connection,
+/// <code>|TCP|&lt;port&gt;|&lt;pid&gt;</code>, which for a request served through the web gateway is the port of
+/// the superserver it connected through (measured: <code>|TCP|1972|10543</code>); <code>""</code> for any other
+/// device, which is every background job, so a turn's mint has none. Read before any port call
+/// (<method>ServingSessionId</method> is the precedent).</p>
+ClassMethod ServingSuperserverPort() As %String
+{
+    Set tPort = ""
+    Try {
+        Set tPort = ..ServingPortOf($Principal)
+    } Catch {
+        Set tPort = ""
+    }
+    Quit tPort
+}
+
+/// <p>The port <var>pPrincipal</var> names when it reads <code>|TCP|&lt;digits&gt;|...</code>, else
+/// <code>""</code>.</p>
+ClassMethod ServingPortOf(pPrincipal As %String) As %String
+{
+    If $Piece(pPrincipal, "|", 1, 2) '= "|TCP" Quit ""
+    Set tPort = $Piece(pPrincipal, "|", 3)
+    If '$Match(tPort, "[0-9]{1,5}") Quit ""
+    Quit +tPort
+}
+
+/// <p>Whether the superserver <var>pId</var>, a composite <code>[Port, BindAddress]</code>, is one the web
+/// gateway connects through: its fresh read <var>pTarget</var> says <code>SystemDefault</code> true, or its
+/// port is <var>pServingPort</var>, whatever its bind address. A target that is not an object, a create's
+/// absent one, is never serving.</p>
+ClassMethod IsServingSuperserver(pId As %String, pTarget As %DynamicObject, pServingPort As %String) As %Boolean
+{
+    If '$IsObject(pTarget) Quit 0
+    If ..Rendered(pTarget, ..#SUPERSERVERDEFAULTFIELD) = "true" Quit 1
+    If pServingPort = "" Quit 0
+    Set tPort = $ZStrip($Piece(pId, $Char(##class(OcuPilot.Kernel.EntityId).#COMPOSITESEPARATOR), 1), "<>W")
+    If '$Match(tPort, "[0-9]{1,5}") Quit 0
+    Quit (+tPort = +pServingPort)
+}
+
+/// <p>The fields of <var>pTarget</var> whose change is refused <parameter>SERVINGSUPERSERVER</parameter>, in
+/// <var>pFields</var> as a <class>%DynamicArray</class>: <code>Enabled</code> and <code>EnableCSP</code> when the
+/// superserver is serving (<method>IsServingSuperserver</method>, over this request's port), none otherwise. It
+/// is the form's <code>locked</code> list and answers what the arm asks.</p>
+ClassMethod SuperserverLocks(pId As %String, pTarget As %DynamicObject, Output pFields As %DynamicArray)
+{
+    Set pFields = []
+    If '..IsServingSuperserver(pId, pTarget, ..ServingSuperserverPort()) Quit
+    Do pFields.%Push(..#SUPERSERVERENABLEDFIELD)
+    Do pFields.%Push(..#SUPERSERVERCSPFIELD)
+}
+
+/// <p>A superserver write's verdict (AD-10 as amended 2026-10-07, Story 18.25), from either caller. On a serving
+/// superserver (<method>IsServingSuperserver</method> over <var>pTarget</var> and <var>pServingPort</var>) a
+/// delete, <code>Enabled</code> or <code>EnableCSP</code> turned off, and the support level raised to
+/// <parameter>SUPERSERVERREQUIRED</parameter> are refused <parameter>SERVINGSUPERSERVER</parameter>; every write
+/// then passes the reviewed-few sweep. A create has no target and is judged by the sweep alone.</p>
+ClassMethod Superserver(pId As %String, pToolClass As %String, pPayload As %DynamicObject, pTarget As %DynamicObject, pServingPort As %String, ByRef pChanged, Output pProhibits As %Boolean, Output pCode As %String) As %Status [ Private ]
+{
+    Set pProhibits = 0
+    Set pCode = ""
+    Set tSC = $$$OK
+    Try {
+        If ..IsServingSuperserver(pId, pTarget, pServingPort) {
+            If ..WriteTypeOf(pToolClass) = "DELETE" {
+                Do ..Refuse(..#SERVINGSUPERSERVER, .pProhibits, .pCode)
+                Quit
+            }
+            If ..TurnsFlagOff(pPayload, pTarget, ..#SUPERSERVERENABLEDFIELD) || ..TurnsFlagOff(pPayload, pTarget, ..#SUPERSERVERCSPFIELD) || ..RaisesToRequired(pPayload, pTarget) {
+                Do ..Refuse(..#SERVINGSUPERSERVER, .pProhibits, .pCode)
+                Quit
+            }
+        }
+        Set tSC = ..ReviewedFewOnly(..#TYPESUPERSERVER, .pChanged, .pProhibits, .pCode)
+    } Catch ex {
+        Set pProhibits = 0
+        Set pCode = ""
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>Whether the payload carries a support level of <parameter>SUPERSERVERREQUIRED</parameter> where
+/// <var>pTarget</var> holds another.</p>
+ClassMethod RaisesToRequired(pPayload As %DynamicObject, pTarget As %DynamicObject) As %Boolean [ Private ]
+{
+    If '$IsObject(pPayload) || (pPayload.%GetTypeOf(..#SUPERSERVERLEVELFIELD) = "unassigned") Quit 0
+    Quit (..Rendered(pPayload, ..#SUPERSERVERLEVELFIELD) = ..#SUPERSERVERREQUIRED) && (..Rendered(pTarget, ..#SUPERSERVERLEVELFIELD) '= ..#SUPERSERVERREQUIRED)
+}
+
+/// <p>Whether the payload carries an SSL/TLS support level or configuration other than <var>pTarget</var>'s.</p>
+ClassMethod ChangesSuperserverSsl(pPayload As %DynamicObject, pTarget As %DynamicObject) As %Boolean [ Private ]
+{
+    If '$IsObject(pPayload) Quit 0
+    Set tChanges = 0
+    For tField = ..#SUPERSERVERLEVELFIELD, ..#SUPERSERVERCONFIGFIELD {
+        If pPayload.%GetTypeOf(tField) = "unassigned" Continue
+        If ..Rendered(pPayload, tField) '= ..Rendered(pTarget, tField) Set tChanges = 1
+    }
+    Quit tChanges
 }
 
 /// <p>The authentication options' reviewed few (Story 18.8): the fourteen method flags, the cookie, two-factor

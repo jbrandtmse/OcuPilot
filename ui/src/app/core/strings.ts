@@ -5998,6 +5998,78 @@ export const STRINGS = {
   authOptionsPrompt2: 'Which authentication methods does OcuPilot\'s own sign-in rely on?',
   /** EXPERIENCE.md:364 */
   authOptionsPrompt3: 'What happens to signed-in users when the JWT signature algorithm changes?',
+  /** EXPERIENCE.md:364 */
+  superserverListLabel: 'Superservers',
+  /** EXPERIENCE.md:364 */
+  aboutSuperserver: 'Superserver',
+  /** EXPERIENCE.md:364 */
+  superserverSystemDefault: 'System default',
+  /** EXPERIENCE.md:364 */
+  superserverSystemDefaultHint: 'Shown here and never changed here. The classic Memory and Startup page sets the system default superserver.',
+  /** EXPERIENCE.md:364 */
+  superserverListEmpty: 'No superserver is defined on this instance.',
+  /** EXPERIENCE.md:364 */
+  superserverListEmptyAgent: 'Ask the agent to create a superserver on a free port.',
+  /** EXPERIENCE.md:364 */
+  superserverListPrompt1: 'What does each superserver on this instance listen for?',
+  /** EXPERIENCE.md:364 */
+  superserverListPrompt2: 'Which superserver does the web gateway connect through?',
+  /** EXPERIENCE.md:364 */
+  superserverListPrompt3: 'Create a superserver on port 21825 that allows web connections.',
+  /** EXPERIENCE.md:364 */
+  superserverFormPrompt1: 'What do the connection settings of this superserver control?',
+  /** EXPERIENCE.md:364 */
+  superserverFormPrompt2: 'Which SSL/TLS configuration can this superserver use?',
+  /** EXPERIENCE.md:364 */
+  superserverFormPrompt3: 'What happens when I change SSL/TLS on the superserver the web gateway uses?',
+  /** EXPERIENCE.md:364 */
+  superserverGroupClients: 'Client connections',
+  /** EXPERIENCE.md:364 */
+  superserverGroupSystem: 'System connections',
+  /** EXPERIENCE.md:364 */
+  superserverGroupOther: 'Other connections',
+  /** EXPERIENCE.md:364 */
+  superserverEnableClients: 'Allow Clients',
+  /** EXPERIENCE.md:364 */
+  superserverEnableCsp: 'Allow CSP and REST',
+  /** EXPERIENCE.md:364 */
+  superserverEnableDataCheck: 'Allow DataCheck',
+  /** EXPERIENCE.md:364 */
+  superserverEnableCacheDirect: 'Allow Cache Direct (legacy)',
+  /** EXPERIENCE.md:364 */
+  superserverEnableShadows: 'Allow Shadows (legacy)',
+  /** EXPERIENCE.md:364 */
+  superserverEnableEcp: 'Allow ECP',
+  /** EXPERIENCE.md:364 */
+  superserverEnableMirror: 'Allow Mirroring',
+  /** EXPERIENCE.md:364 */
+  superserverEnableSharding: 'Allow Sharding',
+  /** EXPERIENCE.md:364 */
+  superserverEnableSnmp: 'Allow SNMP',
+  /** EXPERIENCE.md:364 */
+  superserverEnableWebLink: 'Allow WebLink (legacy)',
+  /** EXPERIENCE.md:364 */
+  superserverEnableNodeJs: 'Allow Node.js (legacy)',
+  /** EXPERIENCE.md:364 */
+  superserverSslLevel: 'SSL/TLS support level',
+  /** EXPERIENCE.md:364 */
+  superserverSystemOnlyHint: 'Only the system default superserver takes ECP, mirroring and sharding connections.',
+  /** EXPERIENCE.md:364 */
+  superserverSnmpHint: 'SNMP is available on Windows only.',
+  /** EXPERIENCE.md:364 */
+  superserverPortHint: 'A whole number from 100 to 65535. It cannot change once the superserver exists.',
+  /** EXPERIENCE.md:364 */
+  superserverBindHint: 'Leave empty to listen on every interface. It cannot change once the superserver exists.',
+  /** EXPERIENCE.md:364 */
+  superserverSslNoServer: 'This instance has no server SSL/TLS configuration to choose.',
+  /** EXPERIENCE.md:364 */
+  superserverRefusedAction: 'change the superserver',
+  /** EXPERIENCE.md:364 */
+  superserverRefusalServing: 'The web gateway reaches this instance through this superserver, and OcuPilot is served through it. Deleting it, disabling it, turning off its web connections or requiring SSL/TLS would cut off every user, including you.',
+  /** EXPERIENCE.md:364 */
+  superserverServesConsequence: 'OcuPilot is served through this superserver. An SSL/TLS change can stop the web gateway connecting through it, which would cut off every user, including you.',
+  /** EXPERIENCE.md:364 */
+  superserverDeleteConsequence: 'Clients can no longer connect through this port, and the superserver stops listening at once.',
 } as const;
 
 /**

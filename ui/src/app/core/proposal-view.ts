@@ -348,6 +348,9 @@ export const CONSEQUENCE_AUDITENCRYPTIONCHANGE = 'AUDIT.ENCRYPTIONCHANGE';
 /** Story 18.8: a change to the JWT issuer or signature algorithm, which ends every token session. */
 export const CONSEQUENCE_WEBAUTHSIGNOUT = 'WEBAUTH.SIGNOUT';
 
+/** The consequence of an SSL/TLS change to the superserver the web gateway connects through (Story 18.25). */
+export const CONSEQUENCE_SUPERSERVERSERVES = 'SUPERSERVER.SERVESOCUPILOT';
+
 /** The field a switch file proposal's diff names the file the instance writes now in. */
 const JOURNAL_CURRENT_FIELD = 'CurrentFile';
 
@@ -447,6 +450,8 @@ export function consequenceSentence(code: string | undefined): string {
   if (code === CONSEQUENCE_AUDITENCRYPTIONCHANGE) return STRINGS.encryptionStartupAuditConsequence;
   // Story 18.8: the sign-out sentence, published once.
   if (code === CONSEQUENCE_WEBAUTHSIGNOUT) return STRINGS.authOptionsSignOutConsequence;
+  // Story 18.25: the serving superserver's SSL/TLS sentence, published once.
+  if (code === CONSEQUENCE_SUPERSERVERSERVES) return STRINGS.superserverServesConsequence;
   return '';
 }
 

@@ -398,3 +398,31 @@ test('AD-13: the documentset rule keeps one document exactly and folds a set to 
   assert.equal(normalizeEntityId('routine', 'B.mac,A.inc'), 'A.inc,B.mac', 'a routine set sorts the same way');
   assert.equal(entityRefKey('class', 'USER', 'B.cls,A.cls'), entityRefKey('class', 'USER', 'A.cls,B.cls'), 'so two spellings of one set build one key');
 });
+
+// Story 18.25, AD-13: a superserver is keyed by the composite `[Port, BindAddress]`. The port reads in its
+// plain decimal spelling, an empty bind address reads `0.0.0.0` and the bind address folds to lower case,
+// which is what `OcuPilot.Kernel.EntityRef.NormalizedId` answers for `portbind`: the same corpus
+// `OcuPilot.Test.EntityRef` runs.
+//
+// Mutation (Rule 19): implement `portbind` as `(id) => id` in `entity-ref.ts` -> the spelling legs go red;
+// as `(id) => id.toLowerCase()` -> the empty-bind and plain-port legs go red.
+test('AD-13: the portbind rule spells a superserver id one way', () => {
+  assert.equal(ENTITY_ID_RULES.superserver, 'portbind', 'the mirrored table declares the rule');
+  const canonical = (port, bind) => joinCompositeId([port, bind]);
+  const cases = [
+    [joinCompositeId(['01985', '0.0.0.0']), canonical('1985', '0.0.0.0')],
+    [joinCompositeId(['1985', '']), canonical('1985', '0.0.0.0')],
+    ['1985', canonical('1985', '0.0.0.0')],
+    [joinCompositeId(['+1985', 'LOCALHOST']), canonical('1985', 'localhost')],
+    [joinCompositeId([' 1985 ', '127.0.0.1']), canonical('1985', '127.0.0.1')],
+    [joinCompositeId(['ABC', '0.0.0.0']), canonical('abc', '0.0.0.0')],
+  ];
+  for (const [spelled, expected] of cases) {
+    assert.equal(normalizeEntityId('superserver', spelled), expected, `'${spelled}' reads as '${expected}'`);
+  }
+  assert.equal(
+    entityRefKey('superserver', INSTANCE_SCOPE, joinCompositeId(['01985', ''])),
+    entityRefKey('superserver', INSTANCE_SCOPE, joinCompositeId(['1985', '0.0.0.0'])),
+    'so two spellings of one superserver build one key'
+  );
+});

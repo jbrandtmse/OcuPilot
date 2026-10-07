@@ -245,6 +245,9 @@ XData UrlMap [ XMLNamespace = "http://www.intersystems.com/urlmap" ]
   <Route Url="/encryption-startup" Method="PUT" Call="EncryptionStartupUpdate"/>
   <Route Url="/authentication-options/form" Method="GET" Call="AuthOptionsFormRead"/>
   <Route Url="/authentication-options" Method="PUT" Call="AuthOptionsUpdate"/>
+  <Route Url="/superserver/form" Method="GET" Call="SuperserverFormRead"/>
+  <Route Url="/superserver/:id" Method="PUT" Call="SuperserverUpdate"/>
+  <Route Url="/superserver" Method="POST" Call="SuperserverCreate"/>
   <Route Url="/explorer/docdb" Method="POST" Call="ExplorerDocDbCreate"/>
 </Routes>
 }
@@ -1836,6 +1839,28 @@ ClassMethod AuthOptionsFormRead() As %Status
 ClassMethod AuthOptionsUpdate() As %Status
 {
     Quit ##class(OcuPilot.Area.Security.AuthOptionsSave).HandleUpdate()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /superserver/form</code> (Story 18.25): the superserver
+/// editor's form read, delegating to <class>OcuPilot.Area.Security.SuperserverRules</class>. It precedes
+/// <code>/superserver/:id</code>.</p>
+ClassMethod SuperserverFormRead() As %Status
+{
+    Quit ##class(OcuPilot.Area.Security.SuperserverRules).HandleForm()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>PUT /superserver/:id</code>: the form's edit, resolved through
+/// the one tool the agent's confirm uses (AD-55).</p>
+ClassMethod SuperserverUpdate(pId As %String) As %Status
+{
+    Quit ##class(OcuPilot.Area.Security.SuperserverSave).HandleUpdate(pId)
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /superserver</code>: the form's create, resolved through
+/// the one tool the agent's confirm uses (AD-55).</p>
+ClassMethod SuperserverCreate() As %Status
+{
+    Quit ##class(OcuPilot.Area.Security.SuperserverSave).HandleCreate()
 }
 
 }
