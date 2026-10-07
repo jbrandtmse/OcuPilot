@@ -43,6 +43,7 @@ const SIDE_BAR_SPECS = [
   'license-key.browser-spec.mjs',
   'license-servers.browser-spec.mjs',
   'license-usage.browser-spec.mjs',
+  'mft-connections.browser-spec.mjs',
   'oauth.browser-spec.mjs',
   'permissions-effective.browser-spec.mjs',
   'permissions.browser-spec.mjs',

@@ -248,6 +248,9 @@ XData UrlMap [ XMLNamespace = "http://www.intersystems.com/urlmap" ]
   <Route Url="/superserver/form" Method="GET" Call="SuperserverFormRead"/>
   <Route Url="/superserver/:id" Method="PUT" Call="SuperserverUpdate"/>
   <Route Url="/superserver" Method="POST" Call="SuperserverCreate"/>
+  <Route Url="/mft-connection/form" Method="GET" Call="MftConnectionFormRead"/>
+  <Route Url="/mft-connection/:id" Method="PUT" Call="MftConnectionUpdate"/>
+  <Route Url="/mft-connection" Method="POST" Call="MftConnectionCreate"/>
   <Route Url="/explorer/docdb" Method="POST" Call="ExplorerDocDbCreate"/>
 </Routes>
 }
@@ -1861,6 +1864,28 @@ ClassMethod SuperserverUpdate(pId As %String) As %Status
 ClassMethod SuperserverCreate() As %Status
 {
     Quit ##class(OcuPilot.Area.Security.SuperserverSave).HandleCreate()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /mft-connection/form</code> (Story 18.26): the connection
+/// editor's form read, delegating to <class>OcuPilot.Area.Security.MftConnectionRules</class>. It precedes
+/// <code>/mft-connection/:id</code>.</p>
+ClassMethod MftConnectionFormRead() As %Status
+{
+    Quit ##class(OcuPilot.Area.Security.MftConnectionRules).HandleForm()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>PUT /mft-connection/:id</code>: the form's edit, resolved through
+/// the one tool the agent's confirm uses (AD-55).</p>
+ClassMethod MftConnectionUpdate(pId As %String) As %Status
+{
+    Quit ##class(OcuPilot.Area.Security.MftConnectionSave).HandleUpdate(pId)
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /mft-connection</code>: the form's create, resolved through
+/// the one tool the agent's confirm uses (AD-55).</p>
+ClassMethod MftConnectionCreate() As %Status
+{
+    Quit ##class(OcuPilot.Area.Security.MftConnectionSave).HandleCreate()
 }
 
 }

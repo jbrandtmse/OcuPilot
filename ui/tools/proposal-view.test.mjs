@@ -83,6 +83,8 @@ const {
   CONSEQUENCE_ENCRYPTIONSTARTUPJOURNAL,
   CONSEQUENCE_WEBAUTHSIGNOUT,
   CONSEQUENCE_SUPERSERVERSERVES,
+  CONSEQUENCE_MFTDELETE,
+  CONSEQUENCE_MFTREVOKE,
   CONSEQUENCE_AUDITENCRYPTIONCHANGE,
   COUNTDOWN_PLACEHOLDER,
   COUNTDOWN_WARNING_MS,
@@ -1068,4 +1070,22 @@ test('Story 18.25: a serving superserver\'s SSL/TLS change states its consequenc
   assert.equal(/Parameter SERVESOCUPILOT = "([^"]+)";/.exec(errors)?.[1], CONSEQUENCE_SUPERSERVERSERVES, 'the error class declares the code the card reads');
   const prohibited = readFileSync(join(uiRoot, '..', 'src', 'OcuPilot', 'Kernel', 'Proposal', 'Prohibited.cls'), 'utf8');
   assert.equal(/Parameter EFFECTSERVINGSUPERSERVER = "([^"]+)";/.exec(prohibited)?.[1], CONSEQUENCE_SUPERSERVERSERVES, 'the kernel declares the effect the card reads');
+});
+
+// Story 18.26: a managed file transfer connection's delete and token revoke state their consequence on the
+// card under the code their tool declares.
+//
+// Mutation (Rule 19): delete the `CONSEQUENCE_MFTDELETE` line from `consequenceSentence` -> the first assertion
+// goes red on ''; shorten `mftDeleteConsequence` to its first sentence -> the client-configuration assertion goes red.
+test('Story 18.26: a connection delete and a token revoke state their consequence on the card', () => {
+  assert.equal(consequenceSentence(CONSEQUENCE_MFTDELETE), STRINGS.mftDeleteConsequence);
+  assert.equal(consequenceSentence(CONSEQUENCE_MFTREVOKE), STRINGS.mftRevokeConsequence);
+  // The sentences carry what the delete and the revoke do, not only that a sentence exists.
+  assert.match(STRINGS.mftDeleteConsequence, /OAuth 2\.0 client configuration is deleted with it/, 'the delete says the client configuration goes with it');
+  assert.match(STRINGS.mftDeleteConsequence, /server description/, 'and the client\u2019s server description');
+  assert.match(STRINGS.mftRevokeConsequence, /access token is removed and the file service is asked to revoke it/, 'the revoke says the token is removed and the service asked');
+  assert.match(STRINGS.mftRevokeConsequence, /authorized again on the classic Managed File Transfer Connections page/, 'and where it is authorized again');
+  const tool = (name) => readFileSync(join(uiRoot, '..', 'src', 'OcuPilot', 'Screen', 'Tool', `${name}.cls`), 'utf8');
+  assert.equal(/Parameter CONSEQUENCECODE = "([^"]+)";/.exec(tool('MftConnectionDelete'))?.[1], CONSEQUENCE_MFTDELETE, 'MftConnectionDelete.cls declares the delete code the card reads');
+  assert.equal(/Parameter CONSEQUENCECODE = "([^"]+)";/.exec(tool('MftConnectionRevoke'))?.[1], CONSEQUENCE_MFTREVOKE, 'MftConnectionRevoke.cls declares the revoke code the card reads');
 });

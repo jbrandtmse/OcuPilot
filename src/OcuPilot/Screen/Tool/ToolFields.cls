@@ -456,6 +456,20 @@ XData Tools
   {"path":"LDAPServerTimeout","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
   {"path":"LDAPUniqueDNIdentifier","shape":"literal","templateType":"string","itemType":"","class":"ordinary"}
 ]},
+"security.mftconnections.create": {"fieldList":"Security.MFT","fields":[
+  {"path":"Service","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"URL","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"SSLConfiguration","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"Username","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"ApplicationName","shape":"literal","templateType":"string","itemType":"","class":"ordinary"}
+]},
+"security.mftconnections.update": {"fieldList":"Security.MFT","fields":[
+  {"path":"Service","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"URL","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"SSLConfiguration","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"Username","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"ApplicationName","shape":"literal","templateType":"string","itemType":"","class":"ordinary"}
+]},
 "security.oauthclients.create": {"fieldList":"Security.OAuth2.Client.ClientConfiguration","fields":[
   {"path":"ServerDefinition","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
   {"path":"Enabled","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},

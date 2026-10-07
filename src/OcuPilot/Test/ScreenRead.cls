@@ -215,7 +215,9 @@ Method TestEveryDeclaredReadFieldIsAKeyOfTheLiveRow()
         ; Story 18.22: no instance here holds an active key and no test activates one; the vendor's
         ; RunList answers exactly Database encryption's three fields (read in its source, measured at
         ; the story's Task 0).
-        If $ListFind($ListBuild("OcuPilot.Screen.Descriptor.OAuthServerDescriptionTab", "OcuPilot.Screen.Descriptor.OAuthClientTab", "OcuPilot.Screen.Descriptor.OAuthResourceServerTab", "OcuPilot.Screen.Descriptor.OAuthServerTab", "OcuPilot.Screen.Descriptor.OAuthServerClientTab", "OcuPilot.Screen.Descriptor.WebSessionList", "OcuPilot.Screen.Descriptor.RemoteDatabaseList", "OcuPilot.Screen.Descriptor.JournalRecordList", "OcuPilot.Screen.Descriptor.EcpDataServerList", "OcuPilot.Screen.Descriptor.EcpAppServerTab", "OcuPilot.Screen.Descriptor.EcpSslConnectionTab", "OcuPilot.Screen.Descriptor.DatabaseEncryption"), tClass) Continue
+        ; Story 18.26: a fresh instance holds no MFT connection; MftConnectionRead holds the list's
+        ; fields to a seeded probe connection.
+        If $ListFind($ListBuild("OcuPilot.Screen.Descriptor.OAuthServerDescriptionTab", "OcuPilot.Screen.Descriptor.OAuthClientTab", "OcuPilot.Screen.Descriptor.OAuthResourceServerTab", "OcuPilot.Screen.Descriptor.OAuthServerTab", "OcuPilot.Screen.Descriptor.OAuthServerClientTab", "OcuPilot.Screen.Descriptor.WebSessionList", "OcuPilot.Screen.Descriptor.RemoteDatabaseList", "OcuPilot.Screen.Descriptor.JournalRecordList", "OcuPilot.Screen.Descriptor.EcpDataServerList", "OcuPilot.Screen.Descriptor.EcpAppServerTab", "OcuPilot.Screen.Descriptor.EcpSslConnectionTab", "OcuPilot.Screen.Descriptor.DatabaseEncryption", "OcuPilot.Screen.Descriptor.MftConnectionList"), tClass) Continue
         Set tChecked = tChecked + 1
         If tRowsMember '= "" Set tRowsChecked = tRowsChecked _ $ListBuild($Piece(tClass, ".", *))
         Kill tQuery

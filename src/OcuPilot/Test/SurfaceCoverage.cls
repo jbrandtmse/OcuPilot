@@ -201,6 +201,8 @@ XData Coverage
 <screen name="AuthOptions" class="OcuPilot.Test.AuthOptionsDescriptor" method="TestTheScreenIsDeclaredAsTheSpecPlacesIt"/>
 <screen name="SuperserverList" class="OcuPilot.Test.SuperserverDescriptor" method="TestTheListIsDeclaredAsTheSpecPlacesIt"/>
 <screen name="SuperserverForm" class="OcuPilot.Test.SuperserverDescriptor" method="TestTheEditorIsAnUnlistedFormPage"/>
+<screen name="MftConnectionList" class="OcuPilot.Test.MftConnectionDescriptor" method="TestTheListIsDeclaredAsTheSpecPlacesIt"/>
+<screen name="MftConnectionForm" class="OcuPilot.Test.MftConnectionDescriptor" method="TestTheEditorIsAnUnlistedFormPage"/>
 <screen name="SqlActivityList" class="OcuPilot.Test.SqlActivityDescriptor" method="TestTheDescriptorShape"/>
 <tool name="permissions.users.create" class="OcuPilot.Test.UserCreate" method="TestTheSchemaCarriesNoSecretAndThePermittedSetIsTheSets"/>
 <tool name="permissions.roles.create" class="OcuPilot.Test.RoleCreate" method="TestTheSchemaCarriesNoEscalationOnlyAndThePermittedSetIsTheSets"/>
@@ -377,6 +379,10 @@ XData Coverage
 <tool name="security.superservers.create" class="OcuPilot.Test.SuperserverDescriptor" method="TestTheToolsDeclareTheirKindPortPairsAndFields" corpus="the three superserver tools are asserted together in one loop"/>
 <tool name="security.superservers.update" class="OcuPilot.Test.SuperserverDescriptor" method="TestTheToolsDeclareTheirKindPortPairsAndFields" corpus="the three superserver tools are asserted together in one loop"/>
 <tool name="security.superservers.delete" class="OcuPilot.Test.SuperserverDescriptor" method="TestTheToolsDeclareTheirKindPortPairsAndFields" corpus="the three superserver tools are asserted together in one loop"/>
+<tool name="security.mftconnections.create" class="OcuPilot.Test.MftConnectionDescriptor" method="TestTheToolsDeclareTheirKindPortPairsAndFields" corpus="the four connection tools are asserted together in one loop"/>
+<tool name="security.mftconnections.update" class="OcuPilot.Test.MftConnectionDescriptor" method="TestTheToolsDeclareTheirKindPortPairsAndFields" corpus="the four connection tools are asserted together in one loop"/>
+<tool name="security.mftconnections.delete" class="OcuPilot.Test.MftConnectionDescriptor" method="TestTheToolsDeclareTheirKindPortPairsAndFields" corpus="the four connection tools are asserted together in one loop"/>
+<tool name="security.mftconnections.revoketoken" class="OcuPilot.Test.MftConnectionDescriptor" method="TestTheToolsDeclareTheirKindPortPairsAndFields" corpus="the four connection tools are asserted together in one loop"/>
 <member name="state-protection" class="OcuPilot.Test.State" method="TestDeniedUserCannotReachAnyStateClass"/>
 <member name="audit-round-trip-record" class="OcuPilot.Test.AuditRecord" method="TestACreateRecordsTheFieldsItCreatedAtTheirDefaults"/>
 <member name="audit-round-trip-verbs" class="OcuPilot.Test.AuditVerbs" method="TestADeleteIsRecordedWithWhatBecameOfItsCredentialEntry"/>
