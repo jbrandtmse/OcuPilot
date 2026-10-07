@@ -2,7 +2,7 @@
 title: 'Story 18.26: Managed file transfer connections'
 type: 'feature'
 created: '2026-10-07'
-status: 'in-progress'
+status: 'done'
 baseline_revision: '44cf672972ff2a3858ae9c7f3cedf43a5db43516'
 baseline_commit: '44cf672972ff2a3858ae9c7f3cedf43a5db43516'
 review_loop_iteration: 0
@@ -271,7 +271,7 @@ Analogs: **Story 18.25's Superservers** (`git diff --stat 0a8f21b4 a2d73616` lis
   - the Fixed strings stay within the bound.
 - **Integration.** The page consumes `GET /mft-connection/form`, `PUT /mft-connection/:id`, `POST /mft-connection` and both row actions. The agent consumes the read tool and the four write tools. Each runs on `ocupilot-ci` (C1-C5 and the browser spec).
 
-- [ ] [CI] instance shards 3/5 and 4/5 and browser shard 3/3 (run 37698209677 on 8b615c91): the MFT tests name `BFC_SSL`, which a fresh instance lacks (it is created only when Story 18.15's enable-interop test installs HealthShare Foundation; audit on `ocupilot-ci`: created 05:57 by the `OCUPROBE1815D` run), so `MftConnectionGate`, `MftConnectionWrite` (4 methods) and `mft-connections.browser-spec.mjs:155` fail on CI's fresh throwaways -- <https://github.com/jbrandtmse/OcuPilot/actions/runs/37698209677> -- the probe fixture creates its own Type 0 client configuration (exact probe name, created in `%SYS` and removed by `RemoveAll`), every MFT test class and the browser spec use it instead of `BFC_SSL`, S0 below drops `BFC_SSL`, and the fix is proven on a throwaway state where `BFC_SSL` is absent (rename or remove it there first, then restore it).
+- [x] [CI] instance shards 3/5 and 4/5 and browser shard 3/3 (run 37698209677 on 8b615c91): the MFT tests name `BFC_SSL`, which a fresh instance lacks (it is created only when Story 18.15's enable-interop test installs HealthShare Foundation; audit on `ocupilot-ci`: created 05:57 by the `OCUPROBE1815D` run), so `MftConnectionGate`, `MftConnectionWrite` (4 methods) and `mft-connections.browser-spec.mjs:155` fail on CI's fresh throwaways -- <https://github.com/jbrandtmse/OcuPilot/actions/runs/37698209677> -- the probe fixture creates its own Type 0 client configuration (exact probe name, created in `%SYS` and removed by `RemoveAll`), every MFT test class and the browser spec use it instead of `BFC_SSL`, S0 below drops `BFC_SSL`, and the fix is proven on a throwaway state where `BFC_SSL` is absent (rename or remove it there first, then restore it). Closed in rework 1: `MftProbe.EnsureSsl` creates the Type 0 configuration `OcuMftProbeClientTLS`, `Body` and the browser spec's setup call it, `RemoveAll` deletes it; proven on `ocupilot-ci` with `BFC_SSL` deleted: `MftConnectionGate` 3, `MftConnectionWrite` 9, `MftConnectionRead` 4, `MftConnectionDescriptor` 8 tests green one class at a time and the `mft-connections` browser spec 2 of 2 green on a rebuilt bundle; `BFC_SSL` then recreated with identical properties, probe configuration gone, monitor 0.
 
 ### Review Findings
 
@@ -483,7 +483,7 @@ Rejected:
 **S0 for `ocupilot-ci`:**
 
 - No MFT connection, no `OAuth2.Client`, `OAuth2.ServerDefinition` or `OAuth2.AccessToken` row.
-- The SSL/TLS configurations `BFC_SSL`, `ISC.FHIRExplorer.SSL.Config`, `ISC.FeatureTracker.SSL.Config`, `OcuPilotDemoTLS` and `OcuPilotProvider`, each `Type` 0.
+- The SSL/TLS configurations `ISC.FHIRExplorer.SSL.Config`, `ISC.FeatureTracker.SSL.Config`, `OcuPilotDemoTLS` and `OcuPilotProvider`, each `Type` 0.
 - No `OcuMftProbe*` or `OcuProbe1826*` object or principal. Monitor 0.
 
 **Commands:**
@@ -512,6 +512,7 @@ Rejected:
 
 Mutations run on `ocupilot-ci` (tree recompiled, reverted byte-identical):
 
+- mutation: `MftProbe.EnsureSsl` creates nothing -> `MftConnectionWrite` create, look-up, taken-name and wire legs red (4 of 9, run 1775); reverted
 - mutation: list read drops `IsAuthorized` -> `MftConnectionRead` key-set leg red (run 1214), and `MftConnectionDescriptor`'s list-fields leg red (run 1215).
 - mutation: update `PERMITTEDFIELDS` admits `Service` -> `MftConnectionDescriptor` update-fields legs red (run 1215); Save skips `HoldTool` -> `MftConnectionWrite` busy leg red (run 1216).
 - mutation: `MftPort.Delete` re-read removed -> `MftConnectionWrite` absent-client delete legs red (run 1216); `MFT.DELETE` unmapped in `proposal-view.ts` -> `proposal-view.test.mjs` red.
@@ -537,6 +538,8 @@ Mutations run on `ocupilot-ci` (tree recompiled, reverted byte-identical):
 
 Status: done
 Blocking condition: none
+
+- **Rework 1 (CI):** the probe fixture owns its client SSL/TLS configuration (`OcuMftProbeClientTLS`); the `[CI]` item is ticked with its proof. Also bumped the entity-type count 60 to 61 in `MftConnectionDescriptor` and `SuperserverDescriptor` (the merged Epic 20 type). `test:tools` 1884 green, build green.
 
 - **Summary:** Security list at position 13 and an unlisted editor form for managed file transfer connections; tools `security.mftconnections.create`, `.update`, `.delete` and `.revoketoken` (keys true, true, false, false) on `MftPort`, with `MftConnectionRules`, `MftConnectionSave`, `MftConnectionMint`, `Api/MftConnectionError.cls`; client store, page and actions; 23 Fixed strings (2848 of 2900); `EXPERIENCE.md` rows 168 and 364 edited in place. Beyond the spec: code `MFT.TAKEN`, and the mint for an empty name.
 - **Review (verification-gap, intent-alignment):** 9 findings; patches applied 5 (delete-still-present leg, form body values, consequence substance, nine `mutation:` lines, update-path SSL check pinned), deferred 1 (sign-out reset, low), rejected 3 with reasons in the Review Triage Log. Follow-up review recommended: false.

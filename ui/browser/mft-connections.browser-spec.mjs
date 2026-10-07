@@ -38,6 +38,7 @@ const { STRINGS } = await import(join(uiRoot, 'src', 'app', 'core', 'strings.ts'
 const config = browserConfig();
 const PROBE = 'OcuPilot.Test.MftProbe';
 const NAME = 'OcuMftProbeB';
+const SSL_CONFIG = 'OcuMftProbeClientTLS';
 const LIST_URL = '/ocupilot/security/mft-connections?ns=HSCUSTOM';
 const FORM_ROUTE = 'security/mft-connections/edit';
 const SAVE_PATH = '/api/ocupilot/mft-connection';
@@ -67,6 +68,11 @@ function iris(lines, names = []) {
 /** Delete every probe connection, and the client configurations and descriptions they name, by exact name. */
 function removeProbes() {
   iris([`Do ##class(${PROBE}).RemoveAll()`]);
+}
+
+/** Create the client SSL/TLS configuration the form offers, which a fresh instance lacks. */
+function ensureSsl() {
+  iris([`Do ##class(${PROBE}).EnsureSsl()`]);
 }
 
 /** One member of the probe connection as the instance holds it, or `'absent'` when it holds none. */
@@ -124,6 +130,7 @@ test('C6: Security lists Managed file transfer thirteenth and its entry opens th
 // `MFT.DELETE` to no sentence in proposal-view.ts -> the consequence assertion goes red.
 test('C2, C3, C4: create a probe connection, change its email address, refuse its token revoke and delete it with the typed name', async () => {
   removeProbes();
+  ensureSsl();
   const { context, page } = await signedInAt(browser, config, LIST_URL);
   const saves = [];
   const actions = [];
@@ -152,8 +159,8 @@ test('C2, C3, C4: create a probe connection, change its email address, refuse it
     assert.equal(await page.$eval('#ocu-mft-connection-Name', (input) => input.readOnly), false, 'a create takes the name');
     await page.type('#ocu-mft-connection-Name', NAME);
     await page.type('#ocu-mft-connection-URL', 'https://api.box.ocumftprobe.invalid/');
-    await page.waitForSelector('#ocu-mft-connection-SSLConfiguration option[value="BFC_SSL"]', { timeout: config.navigationTimeoutMs });
-    await page.select('#ocu-mft-connection-SSLConfiguration', 'BFC_SSL');
+    await page.waitForSelector(`#ocu-mft-connection-SSLConfiguration option[value="${SSL_CONFIG}"]`, { timeout: config.navigationTimeoutMs });
+    await page.select('#ocu-mft-connection-SSLConfiguration', SSL_CONFIG);
     await page.type('#ocu-mft-connection-Username', 'browser@ocumftprobe.invalid');
     await page.type('#ocu-mft-connection-ApplicationName', `${NAME}App`);
     await page.click('.ocu-form-bar-actions button.ocu-button-primary');
@@ -166,7 +173,7 @@ test('C2, C3, C4: create a probe connection, change its email address, refuse it
         Name: NAME,
         Service: 'Box',
         URL: 'https://api.box.ocumftprobe.invalid/',
-        SSLConfiguration: 'BFC_SSL',
+        SSLConfiguration: SSL_CONFIG,
         Username: 'browser@ocumftprobe.invalid',
         ApplicationName: `${NAME}App`,
       },

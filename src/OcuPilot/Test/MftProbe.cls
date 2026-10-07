@@ -17,8 +17,9 @@ Parameter PREFIX = "OcuMftProbe";
 /// <p>The host every probe description's issuer names.</p>
 Parameter HOST = "ocumftprobe.invalid";
 
-/// <p>A client SSL/TLS configuration of a stock throwaway.</p>
-Parameter SSLCONFIG = "BFC_SSL";
+/// <p>The client (Type 0) SSL/TLS configuration every probe connection names. <method>EnsureSsl</method> creates it
+/// and <method>RemoveAll</method> removes it, so no test depends on a configuration a stock instance may lack.</p>
+Parameter SSLCONFIG = "OcuMftProbeClientTLS";
 
 Parameter ENDPOINT = "Security.MFT";
 
@@ -32,6 +33,7 @@ ClassMethod Name(pSuffix As %String) As %String
 /// <var>pName</var> followed by <code>App</code>, with each member of <var>pOverrides</var> applied.</p>
 ClassMethod Body(pName As %String, pOverrides As %DynamicObject = "") As %DynamicObject
 {
+    Do ..EnsureSsl()
     Set tBody = {"Service": "Box", "URL": "https://api.box.ocumftprobe.invalid/", "SSLConfiguration": (..#SSLCONFIG), "Username": "probe@ocumftprobe.invalid", "ApplicationName": (pName _ "App")}
     If $IsObject(pOverrides) {
         Set tIterator = pOverrides.%GetIterator()
@@ -40,6 +42,27 @@ ClassMethod Body(pName As %String, pOverrides As %DynamicObject = "") As %Dynami
         }
     }
     Quit tBody
+}
+
+/// <p>Create the client SSL/TLS configuration <parameter>SSLCONFIG</parameter> in <code>%SYS</code> when the
+/// instance holds none of that name; a second call changes nothing.</p>
+ClassMethod EnsureSsl() As %Status
+{
+    Set tSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = "%SYS"
+        If '##class(Security.SSLConfigs).Exists(..#SSLCONFIG) {
+            Set tProps("Description") = "OcuPilot MFT probe client configuration"
+            Set tProps("Type") = 0
+            Set tSC = ##class(Security.SSLConfigs).Create(..#SSLCONFIG, .tProps)
+        }
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
 }
 
 /// <p><var>pId</var> as one query-string value or route-target segment, percent-encoded once: the route target
@@ -149,7 +172,7 @@ ClassMethod Clients() As %List
 }
 
 /// <p>Delete every probe connection by exact name, then every probe client configuration by exact name, then
-/// every description on <parameter>HOST</parameter> by id, then clear the system monitor: the vendor answers
+/// every description on <parameter>HOST</parameter> by id, then the client SSL/TLS configuration, then clear the system monitor: the vendor answers
 /// the delete of a connection whose client is absent 500, which the admin port logs at severity 2, raising the
 /// instance's alert state, and only a clear resets it.</p>
 ClassMethod RemoveAll() As %Status
@@ -168,6 +191,7 @@ ClassMethod RemoveAll() As %Status
         Set $NAMESPACE = "%SYS"
         For tI = 1:1:$ListLength(tClients) Set tSC = $$$ADDSC(tSC, ##class(OAuth2.Client).DeleteId($List(tClients, tI)))
         For tI = 1:1:$ListLength(tIds) Set tSC = $$$ADDSC(tSC, ##class(OAuth2.ServerDefinition).DeleteId($List(tIds, tI)))
+        If ##class(Security.SSLConfigs).Exists(..#SSLCONFIG) Set tSC = $$$ADDSC(tSC, ##class(Security.SSLConfigs).Delete(..#SSLCONFIG))
         Set $NAMESPACE = tOrigNS
     } Catch ex {
         Set $NAMESPACE = tOrigNS

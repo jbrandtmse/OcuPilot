@@ -138,7 +138,7 @@ Method TestTheEntityTypeKeepsItsIdExactly()
     Do $$$AssertStatusOK(##class(OcuPilot.Kernel.EntityRef).Key("mft-connection", "instance", "ocumftprobea", .tLower), "and so does its lower-case spelling")
     Do $$$AssertNotEquals(tUpper, tLower, "the two are two targets")
     Do $$$AssertTrue($ListFind($ClassMethod(..#PROHIBITED, "CoveredTypes"), "mft-connection") > 0, "the prohibited set covers it")
-    Do $$$AssertEquals(##class(OcuPilot.Kernel.EntityType).Count(), 60, "sixty entity types")
+    Do $$$AssertEquals(##class(OcuPilot.Kernel.EntityType).Count(), 61, "sixty-one entity types")
 }
 
 /// <p>The delete's card lists the four settings the prohibited set reviews, each removed, the client
@@ -148,14 +148,14 @@ Method TestTheEntityTypeKeepsItsIdExactly()
 /// delete leg goes red.</p>
 Method TestTheCardsListWhatTheActionsRemove()
 {
-    Set tFresh = {"Service": "Box", "URL": "https://h.invalid/", "SSLConfiguration": "BFC_SSL", "Username": "u@h.invalid", "ApplicationName": "OcuMftProbeAApp", "IsAuthorized": "Authorized"}
+    Set tFresh = {"Service": "Box", "URL": "https://h.invalid/", "SSLConfiguration": "OcuMftProbeClientTLS", "Username": "u@h.invalid", "ApplicationName": "OcuMftProbeAApp", "IsAuthorized": "Authorized"}
     Do $$$AssertStatusOK($ClassMethod(..#DELETE, "StateDiff", tFresh, .tRows, .tProblem), "the delete's card is built")
     Set tSeen = ""
     Set tIterator = tRows.%GetIterator()
     While tIterator.%GetNext(.tIndex, .tRow) {
         Set tSeen = tSeen _ $Select(tSeen = "": "", 1: ",") _ tRow.%Get("field") _ "=" _ tRow.%Get("before") _ ":" _ tRow.%Get("removed")
     }
-    Do $$$AssertEquals(tSeen, "URL=https://h.invalid/:1,SSLConfiguration=BFC_SSL:1,Username=u@h.invalid:1,ApplicationName=OcuMftProbeAApp:1", "four removed rows, the client configuration's name among them")
+    Do $$$AssertEquals(tSeen, "URL=https://h.invalid/:1,SSLConfiguration=OcuMftProbeClientTLS:1,Username=u@h.invalid:1,ApplicationName=OcuMftProbeAApp:1", "four removed rows, the client configuration's name among them")
     Do $$$AssertStatusOK($ClassMethod(..#REVOKE, "StateDiff", tFresh, .tRows, .tProblem), "the revoke's card is built")
     Do $$$AssertEquals(tRows.%Size() _ " " _ tRows.%Get(0).%Get("field") _ " " _ tRows.%Get(0).%Get("before") _ " " _ tRows.%Get(0).%Get("removed"), "1 AccessToken Authorized 1", "one row, the token leaving its authorized state")
     For tTool = ..#DELETE, ..#REVOKE {
