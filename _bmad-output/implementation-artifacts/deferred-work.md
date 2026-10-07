@@ -10105,6 +10105,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-24-rsa-and-symmetric-key-wallet-secrets.md | severity: med | fix-risk: med | footprint: in-story
 - evidence: Read in vendor source: %Wallet.AsymmetricKey.NormalizeProperties builds a new Secret holding only CreateKeyPair's pair when no material is sent, so HasCertificate becomes 0 (inference, unmeasured); the sentence names the private key only.
 - 2026-10-07T02:41:59Z status=decision-pending owner=burndown by=cr note=product call: name a stored certificate's loss in WALLETKEY.REPLACE.RSA (EXPERIENCE.md :416 amendment)
+- 2026-10-07T03:42:40Z status=routed owner=burndown by=merge_gate note=orchestrator 2026-10-07 under the owner's standing grant (recommended disposition): Epic 18's close burn-down names a stored certificate's loss in WALLETKEY.REPLACE.RSA and the card (EXPERIENCE.md :416)
 
 ### DW-2127: An imported symmetric key's two-PUT create is not atomic: a failed length PUT leaves the key stored with no Length, and an outside writer between the port's read and its PUT turns a create into a modify
 - source: spec-18-24-rsa-and-symmetric-key-wallet-secrets.md | severity: med | fix-risk: med | footprint: in-story
@@ -10160,6 +10161,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-24-rsa-and-symmetric-key-wallet-secrets.md | severity: low | fix-risk: high | footprint: out-of-footprint
 - evidence: Story 18.24 code review on ocupilot-ci 2026-10-07: RSASize answered 72 for a run-time EC certificate; with WalletKeyRules' RSA check removed the PUT stored it (WalletKeyCreate case 9 red, Holds 1).
 - 2026-10-07T02:42:00Z status=decision-pending owner=burndown by=cr note=human=decide whether to report it to InterSystems with the held vendor-report list; WalletKeyRules refuses it
+- 2026-10-07T03:42:40Z status=decision-pending owner=burndown by=owner note=owner hold 2026-10-05 (relayed by the Planner): IRIS defect candidates stay on hold, no report to InterSystems for now
 
 ### DW-2138: A key tool's confirm carrying key material is refused WALLETKEY.SOURCE.BOTH by the port after the claim, so the proposal is spent rather than left live
 - source: spec-18-24-rsa-and-symmetric-key-wallet-secrets.md | severity: low | fix-risk: med | footprint: in-story
