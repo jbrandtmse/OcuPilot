@@ -7993,6 +7993,8 @@ So that a change can be checked before it is deployed.
 
 ### Story 20.7: The three embedded vendor editors
 
+[AMENDED 2026-10-07, owner decision relayed by the Planner, Rule 5] Under AD-63 the editors run in normal mode, where the vendor sends its saved, compiled and invalid messages only in `?VSCODE=1` mode, so this story re-scopes its messages criterion at its own spec gate.
+
 As an interoperability developer,
 I want the rule, BPL and DTL editors in place,
 So that the editors InterSystems already built are reused rather than rebuilt.
@@ -8105,7 +8107,7 @@ So that recovery follows a rehearsed path.
 
 ### Story 20.13: The sign-in hand-off to the embedded vendor editors
 
-[AMENDED 2026-10-07, orchestrator merge gate: split, Rule 5; hand-off design awaits the owner] Split from Story 20.1, its criteria moved verbatim. Ordered before Story 20.7, whose embeds it gates with 20.8 and 20.10. It is planned only once the owner decides the design (DW-2141); the measurements and candidates are in Story 20.1's blocked spec at commit `9faa902f`.
+[AMENDED 2026-10-07, orchestrator merge gate: split, Rule 5] Split from Story 20.1, its criteria moved verbatim. Ordered before Story 20.7, whose embeds it gates with 20.8 and 20.10. Owner decision 2026-10-07: option A, AD-63 (DW-2141); the measurements and candidates are in Story 20.1's blocked spec at commit `9faa902f`.
 
 As a developer-administrator,
 I want the vendor's editors to open already signed in,
@@ -8120,6 +8122,48 @@ So that embedding is seamless.
 - **Given** the origin
 - **When** the hand-off is implemented
 - **Then** it is **not weakened** to make embedding work - the static origin stays hostile ground, and per-tab token storage with no cross-tab broadcast is unchanged.
+- DW-2141: The embedded vendor editors' sign-in hand-off needs an AD-28/AD-47 named case: no in-place design keeps both ADs as written (ledger; routed by owner 2026-10-07: option A, AD-63)
+
+### Story 20.14: Interoperability holders reach OcuPilot
+
+[AMENDED 2026-10-07, owner decision relayed by the Planner, Rule 5] The owner's decision on DW-2140: "Admit anyone with the classic Interoperability pages and every screen would first get its own permission check." Ordered right after Story 20.2, whose screens already declare their own pairs.
+
+As an interoperability operator who uses the classic Interoperability pages,
+I want to reach OcuPilot with the same privileges,
+So that the classic portal's Interoperability audience is not refused at the door.
+
+**Acceptance Criteria:**
+
+- **Given** every screen, route and tool that relied on the API's administrative floor alone
+- **When** this story lands
+- **Then** each declares its own pair matching its classic page's check first (Story 19.12's pattern), so a caller past the widened floor opens nothing the classic portal would refuse them.
+
+- **Given** a caller holding `%Ens_Portal:USE` and no `%Admin_*` or `%Development:USE` resource
+- **When** they sign in and use OcuPilot
+- **Then** the API admits them, and they reach exactly the surfaces whose own pairs they hold, each other one refused by its named pair.
+- DW-2140: The API administrative floor refuses interoperability-only accounts (%EnsRole_Operator, _Administrator, _Monitor) before any route runs (ledger; routed by owner 2026-10-07)
+
+### Story 20.15: Per-screen permissions, seen and adjusted
+
+[AMENDED 2026-10-07, owner decision relayed by the Planner, Rule 5] The owner's requirement: "We need a way to see/adjust what permission is used per screen." Ordered after Story 20.14.
+
+As an OcuPilot administrator,
+I want to see and adjust which permission (resource:permission pair) each screen uses,
+So that access to each screen can be fitted to the instance.
+
+**Acceptance Criteria:**
+
+- **Given** any screen
+- **When** its permissions are viewed
+- **Then** the pairs it requires are shown as the instance evaluates them, as a read.
+
+- **Given** a change to a screen's pair
+- **When** it is made
+- **Then** it is a confirmed write with an audit record, like every other write.
+
+- **Given** who may change a screen's pair, whether a change may go below the classic page's own pair, whether the agent may propose a change, its governance key's default, and what the audit records
+- **When** this story is planned
+- **Then** each is returned to the orchestrator as a security-posture choice, with options and a recommendation each, and is decided by the owner before the story is built.
 
 ---
 

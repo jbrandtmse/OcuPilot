@@ -10197,11 +10197,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Measured at 20.1 plan on slot B roles: no %EnsRole_* role holds an ADMINRESOURCES member (AD-8 floor); %EnsRole_Developer and _InteropEditorsAPI clear it via %Development; %DeepSee_Portal is public U, so admitting it would admit every user
 - 2026-10-07T05:13:18Z status=decision-pending owner=burndown by=spec_gate note=product call like DW-1903; decide before 20.2 ships the first Interoperability screen; to the orchestrator in 20.1's clarification
 - 2026-10-07T05:16:20Z status=decision-pending owner=burndown by=orchestrator note=security posture, queued for the owner's morning summary 2026-10-07
+- 2026-10-07T10:04:43Z status=routed owner=20-14-interoperability-holders-reach-ocupilot by=owner note="Admit anyone with the classic Interoperability pages and every screen would first get its own permission check."
 
 ### DW-2141: The embedded vendor editors' sign-in hand-off needs an AD-28/AD-47 named case: no in-place design keeps both ADs as written (Story 20.13, gates 20.7, 20.8, 20.10)
 - source: spec-20-1-the-sign-in-hand-off-and-namespace-category-gating.md | severity: high | fix-risk: med | footprint: in-epic
 - evidence: Measured at 20.1 plan on slot B (M1-M5, candidates A-F in that spec's Auto Run Result at 9faa902f): an unsandboxed same-origin frame signs in silently but can read ocupilot.token-pair; a noopener tab keeps both ADs but drops in-place and 20.7's messages; sandboxed frames never sign in
 - 2026-10-07T05:16:47Z status=decision-pending owner=burndown by=orchestrator note=security posture, queued for the owner's morning summary 2026-10-07; recommended A (same-origin frame, normal mode, AD-62 named case)
+- 2026-10-07T10:04:43Z status=routed owner=20-13-the-sign-in-hand-off-to-the-embedded-vendor-editors by=owner note=owner decision 2026-10-07: option A, written by the orchestrator as AD-63 (feature 75014fdc)
 
 ### DW-2148: EXPERIENCE.md's rail row (:612 nine rail-items) and area-tile row (:653 Seven tiles) understate a namespace that reports interoperability or analytics
 - source: spec-20-1-namespace-category-gating.md | severity: low | fix-risk: low | footprint: in-epic
