@@ -10229,3 +10229,18 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-8-superservers-authentication-options-and-managed-file-transfe.md | severity: med | fix-risk: low | footprint: in-footprint
 - evidence: Story 18.8 rework 1 re-review: AuthOptionsProbe.Facts had the same field and reddened CI run 37596828031 instance shard 1/5; the five siblings not checked
 - 2026-10-07T09:30:06Z status=routed owner=burndown by=cr note=remove the monitor value from each Snapshot, or prove it cannot move mid-class; verify on ocupilot-ci by raising the monitor mid-run
+
+### DW-2150: The serving-superserver arm's real ServingSuperserverPort() (the $PRINCIPAL read) is never driven to a non-empty answer by a test; SuperserverSet overrides it and the real-HTTP legs serve through the system default
+- source: spec-18-25-superservers.md | severity: med | fix-risk: low | footprint: in-footprint
+- evidence: Kernel/Proposal/Prohibited.cls ServingSuperserverPort; the |TCP|<port>| shape was measured at plan, only the pin is missing
+- 2026-10-07T14:57:07Z status=open owner=18-25-superservers by=harvest note=in-story MED: a leg whose real request reports the port; review patches or takes the MED iteration
+
+### DW-2151: SuperserverSave's answer consequence member is unpinned on the server side (the client side is pinned)
+- source: spec-18-25-superservers.md | severity: low | fix-risk: low | footprint: in-footprint
+- evidence: SuperserverProhibited reads only the stored proposal's consequence
+- 2026-10-07T14:57:07Z status=open owner=18-25-superservers by=harvest note=in-story LOW: fix-pack or close with a probe at review
+
+### DW-2152: SuperserverProhibited.TestAFailedTargetReadRefuses's agent-confirm leg asserts only a non-200, which an earlier read failure also gives (inference)
+- source: spec-18-25-superservers.md | severity: low | fix-risk: low | footprint: in-footprint
+- evidence: src/OcuPilot/Test/SuperserverProhibited.cls:152; settle with ArmFailAfter on the confirm and an exact outcome
+- 2026-10-07T14:57:07Z status=open owner=18-25-superservers by=harvest note=in-story LOW: fix-pack or close at review
