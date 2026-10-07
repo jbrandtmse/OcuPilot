@@ -8216,6 +8216,10 @@ So that a change the agent proposes lands in the content the editor shows.
 
 [AMENDED 2026-10-07, owner decision relayed by the Planner, Rule 5] The owner's words: "Agent starts switched on; and we want to loosen the rule and allow the agent to edit source code (including classes and routines) on user confirmation." This reverses Story 19.3's person-only save; the spine's AD-53 is amended (feature `a191c34b`), and Story 19.3's block carries the pointer note. Ordered right after Story 20.15, whose check that the agent refuses where the user cannot access the screen it uses.
 
+[AMENDED 2026-10-07, owner decision relayed by the Planner] The owner's words: "A note... Agent should be able to propose new classes and routines." This story therefore covers creating new classes and routines as well as editing existing ones (AD-53, feature `a9de13c9`). The create criteria below are the Planner's reading, for the plan to confirm; a genuine posture question goes back to the orchestrator.
+
+[AMENDED 2026-10-07, owner decision relayed by the Planner] The owner's words: "Long content inn the plan should be collapsable in the agent panel with "shore more/show less" staring collapsed if more than a few lines." It is built into this story because this story puts the first long source on a proposal card, so the collapse ships before the agent can propose source, and it applies panel-wide. The threshold, the summary wording and the layout are plan details; EXPERIENCE.md gets its Rule 20 amendment at this story's spec gate. If the story grows too big, its plan may recommend a split, the panel collapse as its own story ordered first.
+
 As a developer,
 I want the agent to propose a class or routine edit that I confirm,
 So that a change I ask for in conversation lands in the source.
@@ -8241,6 +8245,30 @@ So that a change I ask for in conversation lands in the source.
 - **Given** AD-10's refusal of OcuPilot's own packages, the read-only system databases (`%` and system classes), and `explorer.sqldata.save`
 - **When** this story ships
 - **Then** each is unchanged and pinned: OcuPilot's own code and the system classes stay refused, and `explorer.sqldata.save` stays person-only and unadvertised.
+
+- **Given** a request to create a new class or routine
+- **When** the agent proposes it
+- **Then** it is a confirmed proposal whose card shows the whole new document and its compile outcome.
+
+- **Given** a create proposal
+- **When** it is confirmed
+- **Then** it fingerprints the name's absence (AD-54) and is refused if a document of that name appeared after the mint, so it never silently overwrites.
+
+- **Given** a new name under OcuPilot's own packages, a system or `%` name, or a read-only system database
+- **When** a create is proposed
+- **Then** it is refused, AD-10's own-package refusal covering new names.
+
+- **Given** a create
+- **When** it is proposed
+- **Then** it targets the user's current namespace and requires write access to that namespace's code database, settled against the screen's effective pairs from Story 20.15; it uses this story's key, enabled, or a key of its own that also ships enabled.
+
+- **Given** any long block in the agent panel - an agent reply, a tool result, a proposal card's diff, a whole new document, compile output
+- **When** it renders
+- **Then** a block over about eight lines starts collapsed with a "Show more" / "Show less" control that is keyboard operable and announces its state to screen readers, a block the user expanded stays expanded across re-renders, and the strings are in EXPERIENCE.md's Fixed strings and `strings.ts`.
+
+- **Given** a collapsed proposal card
+- **When** it is shown
+- **Then** a summary line always names what changes, where and how big (for example "AcmeApp.Orders.cls: +42 / -3 lines"), plus the compile outcome where there is one, so nobody confirms blind; Confirm never requires expanding.
 
 - **Given** any further security-posture question its plan finds
 - **When** it is planned
