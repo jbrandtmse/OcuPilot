@@ -1085,3 +1085,4 @@
 2026-10-07T16:08:55Z	Story 20.1	ci_green_verified	run=37615234027 head=a9882da9 conclusion=success jobs=16/16 by=orchestrator
 2026-10-07T16:08:55Z	Story 20.1	merge_enqueued	mode=fast_forward feature=6f3b762a->505f200e code_equal=a9882da9..505f200e(empty) upgrade_triggers=none ledger=no_dups,DW-2139/DW-2148_restored CLAUDE.md=63_ADs=spine_headings
 2026-10-07T16:09:07Z	Story 20.1	merged	feature=505f200e mode=fast_forward pushed=verified_on_origin ledger_check=a9882da9_shows_the_DW-2139_trailer_displaced_under_DW-2148(union_merge);restoring_trailers_at_505f200e_make_both_effective_states_correct
+2026-10-07T16:17:43Z	Parallel	hold	by=owner reason=quota_99pct_account_switch stopped=epic_18_runner,epic_20_runner,20.2_code_review_stage epic_18_head=82608941 epic_20_head=23372a95 resume=SendMessage_or_respawn(see_dispatch.yaml_hold_2026_10_07_quota)
