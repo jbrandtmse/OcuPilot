@@ -2,7 +2,7 @@
 title: 'Story 18.8: Superservers, authentication options and managed file transfer'
 type: 'feature'
 created: '2026-10-06'
-status: 'done'
+status: 'in-progress'
 baseline_revision: 'd4ebef518757cc0c725db5034ecad1bf7373ddc5'
 baseline_commit: 'd4ebef518757cc0c725db5034ecad1bf7373ddc5'
 review_loop_iteration: 0
@@ -277,7 +277,14 @@ Rejected:
 - Process: `smoke.sh` is not recorded, and the monitor state read 2 at dev_complete. The smoke is the lead's next gate; the monitor now reads 0.
 - Process: the footprint record. It should also list `Port/AdminPort.cls`, `Test/PortFixture.cls` and `Port/AuditPort.cls`, and `ui/tools/screen-mirror.test.mjs`, which Epic 20 also edits and where one line changed. That record is the lead's.
 
+### CI rework (iteration 1, run 37589900626 on 85fad15c)
+
+- [ ] [CI] browser shard 3/3: `ui/browser/auth-options.browser-spec.mjs`'s hook "the authentication facts are the ones the spec found" fails on a fresh instance. Its before-snapshot read `publicKeys`/`privateKeys` as the empty-string hash (no signing key has been minted yet), and the spec's own sign-in then minted the keys. Fix: establish the signing keys (one sign-in) before the before-snapshot, so the check still pins that no leg replaces them. Don't drop the key comparison.
+- [ ] [CI] instance shard 1/5: `Test/AuthOptionsProhibited.cls` `OnAfterOneTest` "the authentication facts read as before the test" failed in `TestATokenSettingChangeIsPermittedAndNamesItsConsequence`, from the same cause. Apply the same fix to the ObjectScript facts snapshot, and to every other class or spec that compares a facts snapshot (`AuthOptions*`), so none depends on another test having minted first.
+
 ## Spec Change Log
+
+- 2026-10-07, rework 1 (lead, trigger `ci`): two `[CI]` items, one root cause (a facts snapshot taken before the instance's first key mint). Nothing else is reopened.
 
 - 2026-10-07, spec gate (lead), merge-gate rulings: split approved (Part A is this story; B-D outlines trimmed, kept at `e7a3bef1`). Decision 4 reversed on the lead's measurement: `AutheOS` off is refused `PROHIBITED.OCUPILOTSTART` (the container start fails and stays exited), always, because the install origin is not reliably detectable; `WEBAUTH.OSLOGIN` retired. Matrix, Tasks, A4, A5, the sentence table and the A4 mutation edited to match. Spine AD-10 (`OCUPILOTSIGNIN` and `OCUPILOTSTART`), AD-13, AD-4 and Conventions › Secrets written. DW-1896 re-owned to 18.27; the vendor candidate is DW-2139.
 
