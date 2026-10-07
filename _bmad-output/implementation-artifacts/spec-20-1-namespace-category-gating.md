@@ -2,7 +2,7 @@
 title: 'Story 20.1: Namespace category gating'
 type: 'feature'
 created: '2026-10-06'
-status: 'done'
+status: 'in-progress'
 baseline_revision: '51b883aaf5173fea064a730dad1f075a43ba90aa'
 baseline_commit: '51b883aaf5173fea064a730dad1f075a43ba90aa'
 review_loop_iteration: 0
@@ -291,6 +291,11 @@ deferred: []
 
 - [x] [Halt] Re-base the initial bundle budget under DW-1166 (runner-authorized 2026-10-07; the spawn prompt's re-base clause, so `ui/angular.json` and `ui/tools/angular-json.test.mjs` are cleared for this edit): `maximumWarning` `3012kB` -> `3165kB`, 5% above the measured 3,013,646-byte initial total, in `ui/angular.json` and in the DW-371 test's pinned literal and its comment (one line `// Story 20.1 raised it to 3165kB, 5% above a measured 3,013,646 bytes (namespace category gating), under the 4000kB hard stop.`). `maximumError` stays `4000kB`. Epic 18's own re-base (3191kB) meets this at the merge; the second epic to merge takes the larger figure. Then finish what the halt left: the tools tier, the full ObjectScript sweep, the review layers and finalize.
 
+- [ ] [CI] browser shard 1/3 (run 37598485448, head 1dbbc20d): `ui/browser/home-performance.browser-spec.mjs:349` (AC3) asserts 7 Home tiles, but since this story HSCUSTOM draws 8 because Interoperability applies there. Expect the tile count the namespace's reported features give (`ui/browser/namespace-features.mjs`), read once the navigation map has answered, never a literal.
+- [ ] [CI] browser shard 1/3 (same run): `ui/browser/rail-icons.browser-spec.mjs` test (a) counted 9 rail items where 11 apply. It counts after `networkidle2`, which can return before the navigation map answers, and applicability fails closed (inference: the map had not answered). Wait for the map's answer before counting.
+- [ ] [CI] latent (same run, passed by timing): `ui/browser/system-explorer.browser-spec.mjs:125` asserts nine rail items in HSCUSTOM, which reads ten once the map answers. Apply the same fix, keeping its System Explorer position assertions.
+- [ ] [CI] sweep: every browser spec that counts or indexes rail items or Home tiles, or asserts which areas are drawn, waits for the map's answer and expects what the namespace reports. Give the specs one deterministic wait: a DOM signal the shell sets once the map for the current namespace has answered (for example a data attribute on `app-rail`), pinned by a component or tools test, and used by every such spec. Run each touched spec against a rebuilt and redeployed bundle on `ocupilot-b-ci`.
+
 **Acceptance Criteria:**
 
 - **AC1:** given a namespace that does not report interoperability or analytics, when the rail renders, then that category does not appear on the rail, Home tile, side bar, command box or locator, gated by the namespace's own reported features (`IsEnsembleNamespace`, `%IsDeepSeeEnabled`).
@@ -340,6 +345,8 @@ Rejected:
 - `low` The spec's stale 2993 kB and Tasks wording: the fix edits the spec under review.
 
 ## Spec Change Log
+
+- 2026-10-07, runner: rework iteration 1, trigger `ci` (run 37598485448 red on browser shard 1/3, the first red after this story). The `[CI]` items above are the whole scope.
 
 - 2026-10-07, runner: implement pass 1 halted `implementation verification failed` on the DW-371 bundle budget (3,013,646 B against 3012kB). The runner authorized the re-base above under DW-1166 and reset the spec to `in-progress`; the pass-1 implementation stays in the working tree and inside the next diff.
 - 2026-10-07, runner: split by the orchestrator's merge gate (Q2). The hand-off criteria and their analysis moved to Story 20.13 (DW-2141; this spec at `9faa902f`); the contended edits named under Design Notes were cleared (Q3); the floor stays and new surfaces declare their classic gate as an own pair. Retitled to the new key `20-1-namespace-category-gating`; status reset to `draft` for a gating-only re-plan.

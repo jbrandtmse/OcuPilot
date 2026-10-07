@@ -47,3 +47,5 @@
 2026-10-07T10:05:34Z	Epic 20	ledger_routed_planned	story=20-14-interoperability-holders-reach-ocupilot entries=1(DW-2140,by=owner) excess=0 by=merge_gate; story=20-13-the-sign-in-hand-off-to-the-embedded-vendor-editors entries=1(DW-2141,by=owner) excess=0
 2026-10-07T10:05:34Z	Epic 20	deps_hash_rerecorded	reason=rule5_amendment(20.14_20.15_chartered,20.13_20.7_amended) hash=493f40ce
 2026-10-07T10:05:34Z	Epic 20	spine_updated	ad=deferred(DW-2141_decided_A_AD-63,DW-2140_decided_story_20.14) reason=decision_sheet(owner_via_planner) by=runner story=none lint=ok(pre-existing_low_{id}_only) memlog=appended ads=63
+2026-10-07T10:06:28Z	Story 20.1	rework_opened	cycle_iteration=3 iteration=1 trigger=ci items=CI-home-performance-tiles,CI-rail-icons-race,CI-system-explorer-latent,CI-sweep-map-answered-signal scope_baseline=pending(next_HEAD)
+2026-10-07T10:06:29Z	Story 20.1	stage_spawned	stage=implement spawn_at=2026-10-07T10:06:29Z model=sonnet agent_name=20-1-implement-3 cycle_iteration=3
