@@ -366,8 +366,8 @@ services:
       # each without one, and saves the options as them through a seam port that sends nothing (Story 18.8).
       # classes: AuthOptionsGate
       # The superserver gate class signs in as probe principals holding Security's pairs, and each
-      # without one, and writes probe superservers as them through a seam port that sends only 21825 to
-      # 21829 (Story 18.25).
+      # without one, and writes probe superservers as them through a seam port that sends nothing
+      # (Story 18.25).
       # classes: SuperserverGate
       # The SQL activity gate class signs in as probe principals each missing one pair the SQL
       # activity port requires, or holding READ on USER's database and %Development, and reads

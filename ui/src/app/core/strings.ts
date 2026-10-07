@@ -6009,7 +6009,7 @@ export const STRINGS = {
   /** EXPERIENCE.md:364 */
   superserverListEmpty: 'No superserver is defined on this instance.',
   /** EXPERIENCE.md:364 */
-  superserverListEmptyAgent: 'Ask the agent to create a superserver on a free port.',
+  superserverListEmptyAgent: 'create a superserver on a free port',
   /** EXPERIENCE.md:364 */
   superserverListPrompt1: 'What does each superserver on this instance listen for?',
   /** EXPERIENCE.md:364 */

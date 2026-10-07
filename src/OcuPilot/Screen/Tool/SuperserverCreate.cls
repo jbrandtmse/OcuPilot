@@ -118,12 +118,12 @@ ClassMethod Described(pSchema As %DynamicObject, pCreates As %Boolean) As %Dynam
 }
 
 /// <p>The rules over the agent's arguments, create mode, each broken one as its field and published sentence
-/// (AD-55). <var>pIdValue</var> is the composite id; the name look-up is skipped, the mint's absence read having
-/// answered it.</p>
+/// (AD-55). <var>pIdValue</var> is the composite id, whose port and bind address the rules judge; the name
+/// look-up is skipped, the mint's absence read having answered it.</p>
 ClassMethod ArgumentProblem(pIdValue As %String, pArgs As %DynamicObject, Output pProblem As %String) As %Status
 {
     Set tParts = ##class(OcuPilot.Kernel.EntityId).SplitComposite(pIdValue)
-    Quit $ClassMethod(..#RULES, "Problem", $ListGet(tParts, 1), pArgs, "", "create", ..PortClass(), .pProblem, 1)
+    Quit $ClassMethod(..#RULES, "Problem", $ListGet(tParts, 1), pArgs, "", "create", ..PortClass(), .pProblem, 1, $ListGet(tParts, 2))
 }
 
 /// <p>What the caller must hold: Superservers' own pairs, then <parameter>WRITERESOURCE</parameter>:<parameter>WRITEPERMISSION</parameter>

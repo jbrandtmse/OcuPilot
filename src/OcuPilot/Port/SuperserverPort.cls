@@ -48,7 +48,8 @@ ClassMethod Call(pEndpoint As %String, pType As %String, ByRef pQuery, pBody As 
 /// For a <code>GET</code>, <code>PUT</code> or <code>DELETE</code> on <parameter>ENDPOINT</parameter> whose
 /// query carries no <code>bindAddress</code>, <code>port</code> is the composite id; a malformed one is 404
 /// <code>PORT.NOTFOUND</code> with no vendor call. A <code>PUT</code> the vendor refuses for a taken port is
-/// 409 <parameter>OcuPilot.Api.SuperserverError.INUSE</parameter> on <code>Port</code>.</p>
+/// 409 <parameter>OcuPilot.Api.SuperserverError.INUSE</parameter> on <code>Port</code>; a <code>GET</code> or
+/// <code>DELETE</code> refused with the same code keeps the vendor's fault without the mapped row.</p>
 ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody As %DynamicAbstractObject = "", Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status
 {
     Set pResult = ""
@@ -61,7 +62,9 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
         Quit ..Fail(pEndpoint, 404, $$$OK, .pHttpStatus, .pFault)
     }
     If pType = "PUT" Quit ..Put(.tQuery, pBody, .pResult, .pHttpStatus, .pFault)
-    Quit ..Call(pEndpoint, pType, .tQuery, pBody, .pResult, .pHttpStatus, .pFault)
+    Set tSC = ..Call(pEndpoint, pType, .tQuery, pBody, .pResult, .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) && ..Taken(pFault) Do pFault.%Remove("detail")
+    Quit tSC
 }
 
 /// <p>A superserver's <code>PUT</code>, whose refusal for a taken port is answered 409 when the write would

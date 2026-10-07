@@ -19,6 +19,12 @@ Parameter PORT = "SUPERSERVER.PORT";
 
 Parameter REASONPORT = "The port is a whole number from 100 to 65535.";
 
+/// <p>Violation code: a bind address that is not empty, an IP address or a host name of at most 255
+/// characters, on <code>BindAddress</code>.</p>
+Parameter BINDADDRESS = "SUPERSERVER.BINDADDRESS";
+
+Parameter REASONBINDADDRESS = "The bind address is empty, an IP address, or a host name of at most 255 characters.";
+
 /// <p>Violation code: a superserver already exists on that port and address, on <code>Port</code>.</p>
 Parameter TAKEN = "SUPERSERVER.TAKEN";
 
@@ -51,11 +57,11 @@ Parameter SNMP = "SUPERSERVER.SNMP.PLATFORM";
 
 Parameter REASONSNMP = "SNMP is available on Windows only.";
 
-/// <p>Refusal code (409), on <code>Port</code>: a write that would start a listener on a port another process
-/// holds. Nothing is stored.</p>
+/// <p>Refusal code (409), on <code>Port</code>: a write that would start a listener the vendor could not start,
+/// which a port another process holds causes (measured). Nothing is stored.</p>
 Parameter INUSE = "SUPERSERVER.PORT.INUSE";
 
-Parameter REASONINUSE = "Another process on this server is already listening on that port.";
+Parameter REASONINUSE = "The superserver could not start listening on that port; another process on this server may hold it.";
 
 /// <p>Consequence code of an SSL/TLS change to a superserver OcuPilot is served through, which
 /// <class>OcuPilot.Kernel.Proposal.Mint</class> stores and the card renders. The sentence is published in
@@ -76,13 +82,13 @@ Parameter DESCRIPTIONMAX = 256;
 /// <p>Every <code>SUPERSERVER.*</code> code, as a <class>%List</class>.</p>
 ClassMethod Codes() As %List
 {
-    Quit $ListBuild(..#VALIDATION, ..#PORT, ..#TAKEN, ..#DESCRIPTION, ..#SSLLEVEL, ..#SSLCONFIG, ..#SYSTEMONLY, ..#SNMP, ..#INUSE, ..#SERVESOCUPILOT)
+    Quit $ListBuild(..#VALIDATION, ..#PORT, ..#TAKEN, ..#DESCRIPTION, ..#SSLLEVEL, ..#SSLCONFIG, ..#SYSTEMONLY, ..#SNMP, ..#INUSE, ..#SERVESOCUPILOT, ..#BINDADDRESS)
 }
 
 /// <p>The field-level codes, as a <class>%List</class>, each with its field in <method>FieldOf</method>.</p>
 ClassMethod ViolationCodes() As %List
 {
-    Quit $ListBuild(..#PORT, ..#TAKEN, ..#DESCRIPTION, ..#SSLLEVEL, ..#SSLCONFIG, ..#SYSTEMONLY, ..#SNMP, ..#INUSE)
+    Quit $ListBuild(..#PORT, ..#TAKEN, ..#DESCRIPTION, ..#SSLLEVEL, ..#SSLCONFIG, ..#SYSTEMONLY, ..#SNMP, ..#INUSE, ..#BINDADDRESS)
 }
 
 /// <p>The form field a violation code refuses, or <code>""</code>. <parameter>SYSTEMONLY</parameter> names
@@ -94,6 +100,7 @@ ClassMethod FieldOf(pCode As %String) As %String
     If pCode = ..#SSLLEVEL Quit "SSLSupportLevel"
     If pCode = ..#SSLCONFIG Quit "SSLConfig"
     If pCode = ..#SNMP Quit "EnableSNMP"
+    If pCode = ..#BINDADDRESS Quit "BindAddress"
     Quit ""
 }
 
@@ -111,6 +118,7 @@ ClassMethod ReasonFor(pCode As %String) As %String
     If pCode = ..#SNMP Quit ..#REASONSNMP
     If pCode = ..#INUSE Quit ..#REASONINUSE
     If pCode = ..#SERVESOCUPILOT Quit ..#REASONSERVESOCUPILOT
+    If pCode = ..#BINDADDRESS Quit ..#REASONBINDADDRESS
     Quit ""
 }
 

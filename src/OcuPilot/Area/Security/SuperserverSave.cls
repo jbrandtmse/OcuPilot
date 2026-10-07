@@ -65,14 +65,21 @@ ClassMethod HandleCreate() As %Status
         Set tPort = ""
         If (tBody.%GetTypeOf(..#PORTMEMBER) = "string") || (tBody.%GetTypeOf(..#PORTMEMBER) = "number") Set tPort = tBody.%Get(..#PORTMEMBER) _ ""
         Set tBind = ""
-        If tBody.%GetTypeOf(..#BINDMEMBER) = "string" Set tBind = tBody.%Get(..#BINDMEMBER)
+        Set tBindType = tBody.%GetTypeOf(..#BINDMEMBER)
+        If tBindType = "string" Set tBind = tBody.%Get(..#BINDMEMBER)
+        If (tBindType '= "string") && (tBindType '= "unassigned") {
+            Kill tShape
+            Do ..Add(.tShape, ..#BINDMEMBER, ##class(OcuPilot.Api.Error).#PORTFIELDSHAPE)
+            Set tSC = $ClassMethod(..#RULES, "RenderViolations", .tShape)
+            Quit
+        }
         Set tId = ##class(OcuPilot.Kernel.EntityId).JoinComposite($ListBuild(tPort, tBind))
         Set tHoldSC = ##class(OcuPilot.Kernel.Proposal.Operation).HoldTool(..#CREATETOOL, tId, .tHeld, .tHoldKey)
         If $$$ISERR(tHoldSC) || 'tHeld {
             Set tSC = ##class(OcuPilot.Api.Error).RenderTargetBusy(tHoldSC)
             Quit
         }
-        Set tPerformSC = ..Create(tPort, tId, ..CallerFields(tBody), .tHttp, .tFault, .tViolations, .tReadBack)
+        Set tPerformSC = ..Create(tPort, tId, ..CallerFields(tBody), .tHttp, .tFault, .tViolations, .tReadBack, tBind)
         Set tSC = ..Answer(tPerformSC, .tViolations, $Get(tHttp), $Get(tFault), 201, tId, $Get(tReadBack))
     } Catch ex {
         Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ex)
@@ -107,7 +114,7 @@ ClassMethod HandleUpdate(pId As %String) As %Status
         }
         Set tPerformSC = ..Update(tId, ..CallerFields(tBody), .tHttp, .tFault, .tViolations, .tReadBack, .tConsequence)
         If $$$ISERR(tPerformSC) && (+$Get(tViolations) = 0) && (+$Get(tHttp) = 404) {
-            Set tSC = ##class(OcuPilot.Area.OsMgmt.LicenseRules).RenderRead(tPerformSC, 404, "")
+            Set tSC = $ClassMethod(..#RULES, "RenderRead", tPerformSC, 404, "")
             Quit
         }
         Set tSC = ..Answer(tPerformSC, .tViolations, $Get(tHttp), $Get(tFault), 200, tId, $Get(tReadBack), $Get(tConsequence))
@@ -118,13 +125,13 @@ ClassMethod HandleUpdate(pId As %String) As %Status
     Quit tSC
 }
 
-/// <p>Create the superserver at <var>pId</var>, whose port is <var>pPort</var>, from the settings
-/// <var>pArgs</var> supplies, composed as the create tool composes them.</p>
+/// <p>Create the superserver at <var>pId</var>, whose port is <var>pPort</var> and bind address
+/// <var>pBind</var>, from the settings <var>pArgs</var> supplies, composed as the create tool composes them.</p>
 /// <p><b>Caller contract:</b> <var>pViolations</var> is the violation array (<code>pViolations(n) =
 /// $ListBuild(field, code)</code>, count in <code>pViolations</code>); a non-zero count means nothing was
 /// written. Otherwise an error status carries <var>pHttpStatus</var> and <var>pFault</var>. On success
 /// <var>pReadBack</var> is the write's read-back (AD-58).</p>
-ClassMethod Create(pPort As %String, pId As %String, pArgs As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, Output pViolations, Output pReadBack As %DynamicObject) As %Status
+ClassMethod Create(pPort As %String, pId As %String, pArgs As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, Output pViolations, Output pReadBack As %DynamicObject, pBind As %String = "") As %Status
 {
     Set pHttpStatus = 0
     Set pFault = ""
@@ -136,7 +143,7 @@ ClassMethod Create(pPort As %String, pId As %String, pArgs As %DynamicObject, Ou
         Set tClass = ..#CREATETOOL
         Set tSC = ..Unexpected(tClass, pArgs, .pHttpStatus, .pFault)
         If $$$ISERR(tSC) Quit
-        Set tSC = $ClassMethod(..#RULES, "Check", pPort, pArgs, "", "create", ..PortClass(), .pViolations, 1)
+        Set tSC = $ClassMethod(..#RULES, "Check", pPort, pArgs, "", "create", ..PortClass(), .pViolations, 1, pBind)
         If $$$ISERR(tSC) Quit
         If pViolations = 0 {
             Set tSC = $ClassMethod(..#RULES, "Taken", ..PortClass(), pId, .tTaken)
@@ -208,7 +215,7 @@ ClassMethod Update(pId As %String, pArgs As %DynamicObject, Output pHttpStatus A
         If $$$ISERR(tSC) || (pViolations > 0) Quit
         Set tSC = ..Prohibited(tClass, pId, tPayload, tDiff, .pHttpStatus, .pFault)
         If $$$ISERR(tSC) Quit
-        Set tEffectSC = ##class(OcuPilot.Kernel.Proposal.Prohibited).WeakensByEffect(##class(OcuPilot.Kernel.Proposal.Prohibited).#TYPESUPERSERVER, tPayload, tFresh, .pConsequence, pId)
+        Set tEffectSC = $ClassMethod(..ProhibitedClass(), "WeakensByEffect", ##class(OcuPilot.Kernel.Proposal.Prohibited).#TYPESUPERSERVER, tPayload, tFresh, .pConsequence, pId)
         If $$$ISERR(tEffectSC) Set pConsequence = ##class(OcuPilot.Kernel.Proposal.Prohibited).#EFFECTSERVINGSUPERSERVER
         Do $ClassMethod(tClass, "DerivedFields", tPayload)
         Set tSC = ..Send(tClass, pId, tPayload, .pHttpStatus, .pFault, .tWritten)

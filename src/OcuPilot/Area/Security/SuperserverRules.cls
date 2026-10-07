@@ -1,3 +1,5 @@
+Include %syINET
+
 /// <p>The superservers' rules (AD-39, AD-55, Story 18.25): the one rule set
 /// <class>OcuPilot.Screen.Tool.SuperserverCreate</class> and <class>OcuPilot.Screen.Tool.SuperserverUpdate</class>
 /// apply at the mint and the confirm and <class>OcuPilot.Area.Security.SuperserverSave</class> applies at the
@@ -24,8 +26,8 @@ Parameter BOOLEANS = "Enabled,EnableCacheDirect,EnableClients,EnableCSP,EnableDa
 Parameter SYSTEMONLYFLAGS = "EnableECP,EnableMirror,EnableSharding";
 
 /// <p>The SSL/TLS configuration endpoint and the member of its read that says the configuration is a server
-/// configuration, 1 (inference), as against a client one, 0 (the demo configuration reads 0 and lists as a
-/// client).</p>
+/// configuration, 1, as against a client one, 0 (the vendor's <code>Security.Datatype.SSLType</code>, whose
+/// display is <code>Server</code> and <code>Client</code>; the demo configuration reads 0).</p>
 Parameter SSLENDPOINT = "Security.SSLConfig";
 
 Parameter SSLTYPEFIELD = "Type";
@@ -46,15 +48,17 @@ ClassMethod Windows() As %Boolean
 /// code)</code> with the count in <code>pViolations</code>.</p>
 /// <p>The shape rules always apply to the fields <var>pBody</var> carries: a flag that is not a JSON boolean,
 /// a description that is not text or is over 256 characters, an SSL/TLS configuration that is not text, a
-/// support level other than 0, 1 or 2, and SNMP turned on off Windows. <var>pPortValue</var>, a create's port,
-/// must be a whole number from 100 to 65535 when <var>pMode</var> is <code>create</code>.</p>
+/// support level other than 0, 1 or 2, and SNMP turned on off Windows. When <var>pMode</var> is
+/// <code>create</code>, <var>pPortValue</var> must be a whole number from 100 to 65535 and <var>pBindValue</var>
+/// an address the instance accepts (<method>IsBindAddress</method>).</p>
 /// <p>With <var>pFull</var> 1 the rules that read the superserver apply too: ECP, mirroring or sharding turned
 /// on where <var>pFresh</var> is not the system default, and an SSL/TLS change -- a level or a configuration
-/// differing from <var>pFresh</var>'s -- whose level is 1 or 2 with no configuration, or whose configuration
-/// <var>pPortClass</var>'s <code>Security.SSLConfig</code> <code>GET</code> does not find or does not read as a
-/// server configuration. A look-up that cannot be made is an error status, never a pass.
+/// differing from <var>pFresh</var>'s -- whose level is 1 or 2 with no configuration, or whose configuration,
+/// at level 1 or 2 or when it is the one changed, <var>pPortClass</var>'s <code>Security.SSLConfig</code>
+/// <code>GET</code> does not find or does not read as a server configuration; so level 0 keeps a stored
+/// configuration unread. A look-up that cannot be made is an error status, never a pass.
 /// <var>pFresh</var> is <code>""</code> for a create.</p>
-ClassMethod Check(pPortValue As %String, pBody As %DynamicObject, pFresh As %DynamicObject, pMode As %String, pPortClass As %String, Output pViolations, pFull As %Boolean = 1) As %Status
+ClassMethod Check(pPortValue As %String, pBody As %DynamicObject, pFresh As %DynamicObject, pMode As %String, pPortClass As %String, Output pViolations, pFull As %Boolean = 1, pBindValue As %String = "") As %Status
 {
     Kill pViolations
     Set pViolations = 0
@@ -63,6 +67,7 @@ ClassMethod Check(pPortValue As %String, pBody As %DynamicObject, pFresh As %Dyn
         If '$IsObject(pBody) Set pBody = {}
         If pMode = "create" {
             If '..IsPort(pPortValue) Do ..Add(.pViolations, "Port", ##class(OcuPilot.Api.SuperserverError).#PORT)
+            If '..IsBindAddress(pBindValue) Do ..Add(.pViolations, "BindAddress", ##class(OcuPilot.Api.SuperserverError).#BINDADDRESS)
         }
         Set tFlags = $ListFromString(..#BOOLEANS)
         For tI = 1:1:$ListLength(tFlags) {
@@ -101,11 +106,12 @@ ClassMethod SslRules(pBody As %DynamicObject, pFresh As %DynamicObject, pPortCla
     Set tBodyConfig = $Select(pBody.%GetTypeOf("SSLConfig") = "string": pBody.%Get("SSLConfig"), 1: "")
     Set tLevelSent = (pBody.%GetTypeOf("SSLSupportLevel") '= "unassigned")
     Set tConfigSent = (pBody.%GetTypeOf("SSLConfig") = "string")
-    Set tChanged = (tLevelSent && (tBodyLevel '= ..Level(tFresh))) || (tConfigSent && (tBodyConfig '= ..Text(tFresh, "SSLConfig")))
+    Set tConfigChanged = tConfigSent && (tBodyConfig '= ..Text(tFresh, "SSLConfig"))
+    Set tChanged = (tLevelSent && (tBodyLevel '= ..Level(tFresh))) || tConfigChanged
     If 'tChanged Quit $$$OK
     Set tLevel = $Select(tLevelSent: tBodyLevel, 1: ..Level(tFresh))
     Set tConfig = $Select(tConfigSent: tBodyConfig, 1: ..Text(tFresh, "SSLConfig"))
-    If ((tLevel = 1) || (tLevel = 2)) || ((tConfig '= "") && tConfigSent) {
+    If ((tLevel = 1) || (tLevel = 2)) || ((tConfig '= "") && tConfigChanged) {
         If tConfig = "" {
             If (tLevel = 1) || (tLevel = 2) Do ..Add(.pViolations, "SSLConfig", ##class(OcuPilot.Api.SuperserverError).#SSLCONFIG)
             Quit $$$OK
@@ -156,10 +162,10 @@ ClassMethod Taken(pPortClass As %String, pId As %String, Output pTaken As %Boole
 /// <p><method>Check</method> as one problem sentence naming each field and its published sentence, or
 /// <code>""</code>, in <var>pProblem</var>: what the tools' <code>ArgumentProblem</code> and
 /// <code>MergeUpdate</code> answer.</p>
-ClassMethod Problem(pPortValue As %String, pBody As %DynamicObject, pFresh As %DynamicObject, pMode As %String, pPortClass As %String, Output pProblem As %String, pFull As %Boolean = 1) As %Status
+ClassMethod Problem(pPortValue As %String, pBody As %DynamicObject, pFresh As %DynamicObject, pMode As %String, pPortClass As %String, Output pProblem As %String, pFull As %Boolean = 1, pBindValue As %String = "") As %Status
 {
     Set pProblem = ""
-    Set tSC = ..Check(pPortValue, pBody, pFresh, pMode, pPortClass, .tViolations, pFull)
+    Set tSC = ..Check(pPortValue, pBody, pFresh, pMode, pPortClass, .tViolations, pFull, pBindValue)
     If $$$ISERR(tSC) Quit tSC
     For tI = 1:1:$Get(tViolations) {
         Set tReason = ##class(OcuPilot.Api.Error).ReasonForViolation($List(tViolations(tI), 2))
@@ -182,6 +188,31 @@ ClassMethod IsPort(pPortValue As %String) As %Boolean
 {
     If '$Match(pPortValue, "[0-9]{1,5}") Quit 0
     Quit (+pPortValue >= ##class(OcuPilot.Api.SuperserverError).#PORTMIN) && (+pPortValue <= ##class(OcuPilot.Api.SuperserverError).#PORTMAX)
+}
+
+/// <p>Whether <var>pBind</var> is an address the instance stores for a superserver to bind to, decided as its
+/// own <code>Config.Host</code> datatype decides it (read in <file>irissys/Config/Host.cls</file>): empty, an IP
+/// address, or a host name of at most 255 characters that is not digits and dots alone. The vendor refuses any
+/// other with a logged 500 (AD-2).</p>
+ClassMethod IsBindAddress(pBind As %String) As %Boolean
+{
+    If pBind = "" Quit 1
+    If $$$ISIP(pBind) Quit 1
+    Quit (pBind?1AN.(1AN,1"-",1"_").(1"."1.(1AN,1"-",1"_")).AN) && ($Length(pBind) < 256) && ($Translate(pBind, ".", "")'?.N)
+}
+
+/// <p>Render a failed read of a superserver: 404 <code>PORT.NOTFOUND</code>, the fault the port answered, or an
+/// internal error when it answered none.</p>
+ClassMethod RenderRead(pSC As %Status, pHttpStatus As %Integer, pFault As %DynamicObject) As %Status
+{
+    If +$Get(pHttpStatus) = 404 {
+        Set tMapSC = ##class(OcuPilot.Kernel.Fault).Outcome(404, $$$OK, .tAbsent, .tVendorText)
+        Quit ##class(OcuPilot.Api.Error).Render(404, tAbsent.error, tAbsent.reason, tAbsent.code)
+    }
+    If '$IsObject($Get(pFault)) || (pFault.code = ##class(OcuPilot.Api.Error).#INTERNAL) {
+        Quit ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ##class(%Exception.StatusException).CreateFromStatus(pSC))
+    }
+    Quit ##class(OcuPilot.Api.Error).Render($Select(+$Get(pHttpStatus): +pHttpStatus, 1: 500), pFault.error, pFault.reason, pFault.code, pFault.%Get("detail"))
 }
 
 /// <p>Answer <code>GET /superserver/form[?id=&lt;id&gt;]</code>: <code>{row, serving, locked, windows}</code>.
@@ -213,11 +244,11 @@ ClassMethod HandleForm() As %Status
             Set tQuery($ClassMethod(..#UPDATETOOL, "IdParam")) = tId
             Set tReadSC = $ClassMethod(tPort, "Invoke", $ClassMethod(..#UPDATETOOL, "Endpoint"), $ClassMethod(..#UPDATETOOL, "ReadType"), .tQuery, "", .tFresh, .tHttp, .tFault)
             If $$$ISERR(tReadSC) {
-                Set tSC = ##class(OcuPilot.Area.OsMgmt.LicenseRules).RenderRead(tReadSC, $Get(tHttp), $Get(tFault))
+                Set tSC = ..RenderRead(tReadSC, $Get(tHttp), $Get(tFault))
                 Quit
             }
             If '$IsObject($Get(tFresh)) || 'tFresh.%IsA("%Library.DynamicObject") {
-                Set tSC = ##class(OcuPilot.Area.OsMgmt.LicenseRules).RenderRead($$$ERROR($$$GeneralError, ##class(OcuPilot.Api.Error).#PORTNOTFOUND), 404, "")
+                Set tSC = ..RenderRead($$$ERROR($$$GeneralError, ##class(OcuPilot.Api.Error).#PORTNOTFOUND), 404, "")
                 Quit
             }
             Set tRow = ##class(%DynamicAbstractObject).%FromJSON(tFresh.%ToJSON())

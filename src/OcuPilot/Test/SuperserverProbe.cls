@@ -1,7 +1,7 @@
 /// <p>Test-only helper for Story 18.25's suites: the probe superservers, the instance's superserver list as
 /// one JSON text (<method>Facts</method>), the agent's mint through the tool's own mint class
-/// (<method>Mint</method>) and a job whose serving port is read (<method>JobServingPort</method>). It holds no
-/// assertions.</p>
+/// (<method>Mint</method>), a job whose serving port is read (<method>JobServingPort</method>) and a job whose
+/// principal device is a TCP connection (<method>TcpServingPort</method>). It holds no assertions.</p>
 /// <p><b>Only 21825 to 21829 is ever written.</b> <method>Seed</method> and <method>RemoveAll</method> refuse any
 /// other port, 1972 the system default's and the gateway's among them, so no helper here can cut the throwaway
 /// off. They write through the real admin port, never the seam.</p>
@@ -119,6 +119,73 @@ ClassMethod JobServingPort() As %String
 ClassMethod StoreServingPort()
 {
     Set ^OcuPilotSuperserverProbe = ##class(OcuPilot.Kernel.Proposal.Prohibited).ServingSuperserverPort()
+}
+
+/// <p>What a process whose principal device is a TCP connection accepted on <var>pPort</var> reads, as a request
+/// served through a superserver does: its serving port and the locks of a superserver on that port that is not
+/// the system default, as <code>port|locks</code>. A listener is opened on <var>pPort</var> for the call alone,
+/// a job connects to it, and the accepted connection is the principal device of the job that reads. It writes no
+/// configuration.</p>
+ClassMethod TcpServingPort(pPort As %Integer) As %String
+{
+    Kill ^OcuPilotSuperserverProbe
+    Set tAnswer = "no answer"
+    Set tIO = $IO
+    Set tDevice = "|TCP|" _ pPort
+    Set tOpen = 0
+    Try {
+        Open tDevice:(:pPort:"PSTA"):5
+        If '$Test {
+            Set tAnswer = "no listener on " _ pPort
+            Quit
+        }
+        Set tOpen = 1
+        Job ##class(OcuPilot.Test.SuperserverProbe).Connect(pPort)::5
+        Use tDevice
+        Read tLine:10
+        Set tAccepted = $Test
+        Use tIO
+        If 'tAccepted {
+            Set tAnswer = "no connection"
+            Quit
+        }
+        Job ##class(OcuPilot.Test.SuperserverProbe).StoreServingLocks(pPort):(:5:tDevice:tDevice):5
+        If '$Test {
+            Set tAnswer = "no job"
+            Quit
+        }
+        For tI = 1:1:100 {
+            If $Data(^OcuPilotSuperserverProbe) Quit
+            Hang 0.1
+        }
+        Set tAnswer = $Get(^OcuPilotSuperserverProbe, "no answer")
+    } Catch ex {
+        Set tAnswer = "fault " _ ex.DisplayString()
+    }
+    Use tIO
+    If tOpen Close tDevice
+    Kill ^OcuPilotSuperserverProbe
+    Quit tAnswer
+}
+
+/// <p>The client side of <method>TcpServingPort</method>: connect to <var>pPort</var> on this host and hold the
+/// connection a few seconds.</p>
+ClassMethod Connect(pPort As %Integer)
+{
+    Set tDevice = "|TCP|" _ pPort
+    Open tDevice:("127.0.0.1":pPort:"PST"):5
+    If '$Test Quit
+    Hang 3
+    Close tDevice
+}
+
+/// <p>The job's body for <method>TcpServingPort</method>: store this process's serving port and the locks the
+/// kernel answers for a superserver on <var>pPort</var> that is not the system default.</p>
+ClassMethod StoreServingLocks(pPort As %Integer)
+{
+    Set tPort = ##class(OcuPilot.Kernel.Proposal.Prohibited).ServingSuperserverPort()
+    Do ##class(OcuPilot.Kernel.Proposal.Prohibited).SuperserverLocks(..Id(pPort), {"SystemDefault": false}, .tLocks)
+    Set ^OcuPilotSuperserverProbe = tPort _ "|" _ tLocks.%ToJSON()
 }
 
 }

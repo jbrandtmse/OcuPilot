@@ -33,9 +33,6 @@ export const SSL_MAX_ROWS = 500;
 /** The `Type` the SSL/TLS list reads for a server configuration. */
 export const SSL_SERVER_TYPE = 'Server';
 
-/** The machine code the kernel refuses a change to the serving superserver with (AD-39). */
-export const SERVING_CODE = 'PROHIBITED.SERVINGSUPERSERVER';
-
 /** The id parts and the settings, named as the server names them. */
 export const PORT_FIELD = 'Port';
 export const BIND_FIELD = 'BindAddress';

@@ -4,13 +4,13 @@
  *
  * What it pins, each on rendered DOM, on the request the page sent, or on the instance itself:
  *
- * 1. **The way in** (B1, B5): Security and secrets lists Superservers twelfth, its link opens the list, and the
- *    system default superserver is listed on 1972.
+ * 1. **The way in** (B1, B5): Security and secrets lists Superservers twelfth, and the list shows the system
+ *    default superserver on 1972.
  * 2. **The serving lock** (B4): 1972's editor draws Enabled and the web connections `aria-disabled`, described by
  *    the published sentence, and a click turns neither off. No spec presses Save or Delete on 1972.
  * 3. **Create, edit and delete** (B2): from the list's Create, a probe superserver on 21825 is created on the
- *    form, the address bar then names it and the instance listens on it; a changed description is sent alone and
- *    stored; and the typed-port dialog deletes it and the listener goes.
+ *    form, the address bar then names it and the instance holds it; a changed description is sent alone and
+ *    stored; and the typed-port dialog deletes it.
  *
  * **It refuses the live and development containers.** It touches only the port 21825 and never 1972: `before`
  * and `after` remove the probe by exact port with `OcuPilot.Test.SuperserverProbe.RemoveAll`, which refuses any
@@ -110,7 +110,7 @@ after(async () => {
 
 // Mutation (Rule 19): drop the entry from the Security area's declared list, regenerate, rebuild and
 // redeploy -> the label assertion goes red.
-test('B1, B5: Security lists Superservers twelfth, its link opens the list and 1972 is listed', async () => {
+test('B1, B5: Security lists Superservers twelfth and the list shows 1972', async () => {
   const { context, page } = await signedInAt(browser, config, LIST_URL);
   try {
     if ((await page.$('app-side-bar nav.ocu-side-bar')) === null) {

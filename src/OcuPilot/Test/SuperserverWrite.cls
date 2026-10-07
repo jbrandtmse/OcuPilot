@@ -80,6 +80,7 @@ Method OnAfterOneTest() As %Status
     Merge tRows = ..PreparedPolicy
     Do $$$AssertStatusOK(##class(OcuPilot.Test.GovernanceFixture).Restore(.tRows), "the governance policy is restored")
     Do $$$AssertStatusOK($ClassMethod(..#PROBE, "RemoveAll"), "every probe superserver is removed by exact port")
+    Do $$$AssertNotEquals(..PreparedFacts, "unreadable", "the superserver list was read before the test")
     Do $$$AssertEquals($ClassMethod(..#PROBE, "Facts"), ..PreparedFacts, "the superserver list reads as before the test")
     Do ##class(OcuPilot.Test.ProposalFixture).RemoveSeeded(.tSeeded)
     Quit $$$OK
@@ -180,7 +181,7 @@ Method TestADeleteRemovesTheSuperserverOnBothCallers()
 /// the field and the published sentence.</p>
 /// <p>Mutation (Rule 19): drop the <code>SYSTEMONLY</code> rule from
 /// <method>OcuPilot.Area.Security.SuperserverRules.Check</method> -- its three legs send the <code>PUT</code> and
-/// go red.</p>
+/// go red; drop the bind address rule -- the bind address legs go red.</p>
 Method TestEveryRulesRowIsRefusedBeforeAnyPutOnBothCallers()
 {
     Set tTooLong = $Translate($Justify("", 257), " ", "x")
@@ -219,14 +220,34 @@ Method TestEveryRulesRowIsRefusedBeforeAnyPutOnBothCallers()
         Do $$$AssertTrue(tProblem [ ("'" _ $List(tCase, 3) _ "': " _ ##class(OcuPilot.Api.Error).ReasonForViolation($List(tCase, 4))), $List(tCase, 1) _ ": naming the field and the published sentence: " _ tProblem)
         Do $$$AssertEquals($ClassMethod(..#SEAM, "Writes"), "", $List(tCase, 1) _ ": and no PUT")
     }
+    Set tBindReason = ##class(OcuPilot.Api.Error).ReasonForViolation($Parameter(tErrors, "BINDADDRESS"))
+    For tBind = "local host", "localhost:21825", "host!name", "a" _ $Char(2) _ "b" {
+        Do $ClassMethod(..#SEAM, "Clear")
+        Set tSC = $ClassMethod(..#SAVE, "Handle", "", {"Port": "21825", "BindAddress": (tBind)}, .tAnswer, .tStatus)
+        Do $$$AssertEquals(tStatus _ " " _ ..ViolationOf(tAnswer, "BindAddress") _ " " _ $ClassMethod(..#SEAM, "Calls"), "422 " _ $Parameter(tErrors, "BINDADDRESS") _ " ", "bind address " _ $ZConvert(tBind, "O", "JSON") _ ": the Save is refused on BindAddress before any call: " _ $Extract(tAnswer, 1, 200))
+        Set tSC = $ClassMethod(..#PROBE, "Mint", ..#CREATETOOL, {"Port": "21825", "BindAddress": (tBind)}, .tProposal, .tHttp, .tProblem)
+        Do $$$AssertTrue(tProblem [ ("'BindAddress': " _ tBindReason), "bind address " _ $ZConvert(tBind, "O", "JSON") _ ": the agent's mint is refused naming it: " _ tProblem)
+    }
+    Set tSC = $ClassMethod(..#SAVE, "Handle", "", {"Port": "21825", "BindAddress": 127}, .tAnswer, .tStatus)
+    Do $$$AssertEquals(tStatus _ " " _ ..ViolationOf(tAnswer, "BindAddress"), "422 " _ tShape, "a bind address that is not text is refused on its field: " _ $Extract(tAnswer, 1, 200))
+    Set tSC = $ClassMethod(..#PROBE, "Mint", ..#CREATETOOL, {"Port": "21825", "BindAddress": 127}, .tProposal, .tHttp, .tProblem)
+    Do $$$AssertTrue($$$ISERR(tSC) && (tProblem [ "'BindAddress'"), "and the agent's mint of it is refused: " _ tProblem)
+    For tBind = "", "0.0.0.0", "127.0.0.1", "LOCALHOST", "probe-host.example.com", "::1" {
+        Do $$$AssertTrue(##class(OcuPilot.Area.Security.SuperserverRules).IsBindAddress(tBind), "'" _ tBind _ "' is an address the instance takes")
+    }
+    For tBind = "1.2.3.4.5", $Translate($Justify("", 256), " ", "h") {
+        Do $$$AssertTrue('##class(OcuPilot.Area.Security.SuperserverRules).IsBindAddress(tBind), "'" _ $Extract(tBind, 1, 20) _ "' is not")
+    }
     Do $$$AssertEquals($ClassMethod(..#PROBE, "Remaining"), 0, "no probe superserver was created")
 }
 
 /// <p>B3: the rules that read the superserver refuse a change on a probe -- ECP, level 1 with no configuration
 /// and a configuration naming no server one -- on both callers before any <code>PUT</code>; a level of 1 with a
 /// configuration the seam answers as a server configuration is sent.</p>
+/// <p>Lowering the level to 0 never reads a configuration it does not change.</p>
 /// <p>Mutation (Rule 19): skip the SSL rules in <method>OcuPilot.Area.Security.SuperserverRules.SslRules</method>
-/// -- the refusal legs send the <code>PUT</code> and go red.</p>
+/// -- the refusal legs send the <code>PUT</code> and go red; check a sent configuration that did not change -- the
+/// level 0 leg goes red.</p>
 Method TestTheRulesThatReadTheSuperserverRefuseAChange()
 {
     Do $$$AssertStatusOK($ClassMethod(..#PROBE, "Seed", 21825), "a probe superserver")
@@ -256,13 +277,16 @@ Method TestTheRulesThatReadTheSuperserverRefuseAChange()
     Set tSent = ##class(OcuPilot.Test.LicenseKey).Parsed($ClassMethod(..#SEAM, "BodyOf", ..#PUT))
     Do $$$AssertEquals(tSent.%Get("SSLSupportLevel") _ " " _ tSent.%Get("SSLConfig"), "1 OcuProbeServerTLS", "carrying both")
     Do $$$AssertEquals($IsObject($ClassMethod(..#PROBE, "Stored", 21825)) && ($ClassMethod(..#PROBE, "Stored", 21825).%Get("SSLSupportLevel") = 0), 1, "and the instance, which the seam did not write, is unchanged")
+    Set tSC = ##class(OcuPilot.Test.SuperserverRulesSeam).Check("", {"SSLSupportLevel": 0, "SSLConfig": "OcuNoSuchTLS"}, {"SSLSupportLevel": 1, "SSLConfig": "OcuNoSuchTLS", "SystemDefault": false}, "update", ..#SEAM, .tViolations, 1)
+    Do $$$AssertEquals($System.Status.IsOK(tSC) _ " " _ tViolations, "1 0", "lowering the level to 0 keeps a stored configuration the instance no longer holds unread")
 }
 
 /// <p>B2: a name taken since is refused by the absence fingerprint and by the Save's own look-up, a target moved
 /// since the mint refuses the confirm as changed, and a target another write holds answers 409
 /// <code>WRITE.TARGETBUSY</code> after the wait, with no write.</p>
 /// <p>Mutation (Rule 19): drop the <code>HoldTool</code> from
-/// <method>OcuPilot.Area.Security.SuperserverSave.HandleUpdate</method> -- the busy leg writes and goes red.</p>
+/// <method>OcuPilot.Area.Security.SuperserverSave.HandleUpdate</method> -- the busy leg writes and goes red; let
+/// a create's confirm re-read match whatever it finds -- the taken-since leg writes and goes red.</p>
 Method TestATakenNameAMovedTargetAndABusyTargetAreRefused()
 {
     Do $$$AssertStatusOK($ClassMethod(..#PROBE, "Seed", 21825, {"Description": "first", "EnableCSP": true}), "a probe superserver")
@@ -271,6 +295,12 @@ Method TestATakenNameAMovedTargetAndABusyTargetAreRefused()
     Do $$$AssertEquals(tStatus _ " " _ ..ViolationOf(tAnswer, "Port") _ " " _ $ClassMethod(..#SEAM, "Writes"), "422 " _ $Parameter("OcuPilot.Api.SuperserverError", "TAKEN") _ " ", "a create of a taken port and address is refused on Port with no write: " _ $Extract(tAnswer, 1, 200))
     Set tSC = $ClassMethod(..#PROBE, "Mint", ..#CREATETOOL, {"Port": "21825", "BindAddress": ""}, .tProposal, .tHttp, .tProblem)
     Do $$$AssertStatusNotOK(tSC, "the agent's create of it is refused at the mint: " _ tProblem)
+    Set tSC = $ClassMethod(..#PROBE, "Mint", ..#CREATETOOL, {"Port": "21827", "BindAddress": ""}, .tProposal, .tHttp, .tProblem)
+    Do $$$AssertStatusOK(tSC, "a create of a free port is minted (" _ tProblem _ ")")
+    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "Seed", 21827), "and the port and address are taken since")
+    Do $ClassMethod(..#SEAM, "Clear")
+    Do $$$AssertEquals($ClassMethod(..#AGENT, "Confirm", tProposal, .tResult), "409 " _ ##class(OcuPilot.Kernel.Proposal.Write).#TARGETCHANGED, "its confirm is refused by the absence fingerprint")
+    Do $$$AssertEquals($ClassMethod(..#SEAM, "Writes"), "", "with no write")
 
     Set tSC = $ClassMethod(..#PROBE, "Mint", ..#UPDATETOOL, {"Port": "21825", "Description": "second"}, .tProposal, .tHttp, .tProblem)
     Do $$$AssertStatusOK(tSC, "a change is minted (" _ tProblem _ ")")
@@ -304,7 +334,8 @@ Method TestATakenNameAMovedTargetAndABusyTargetAreRefused()
 /// with nothing stored; any other write the vendor refuses with the same code stays the vendor's fault. The
 /// vendor's measured <code>#5001</code> answer is the seam's, so no port is actually taken.</p>
 /// <p>Mutation (Rule 19): answer 1 for any write once the stored row reads in
-/// <method>OcuPilot.Port.SuperserverPort.StartsListener</method> -- the other-fault leg goes red.</p>
+/// <method>OcuPilot.Port.SuperserverPort.StartsListener</method> -- the other-fault leg goes red; keep the
+/// mapped row on a call that is not a <code>PUT</code> -- the delete leg goes red.</p>
 Method TestATakenPortIsRefusedOnItsFieldWhenTheWriteStartsAListener()
 {
     Do $ClassMethod(..#SEAM, "Arm", "inuse")
@@ -327,15 +358,18 @@ Method TestATakenPortIsRefusedOnItsFieldWhenTheWriteStartsAListener()
     Set tBodyOther = {"Description": "other"}
     Set tSC = $ClassMethod(..#SEAM, "Invoke", "Security.Superserver", "PUT", .tQuery, tBodyOther, .tResult, .tHttp, .tFault)
     Do $$$AssertEquals(tHttp _ " " _ ..FaultHasViolations($Get(tFault)), "500 0", "any other write the vendor refuses for the same code is its 500, without the mapped row")
+    Set tSC = $ClassMethod(..#SEAM, "Invoke", "Security.Superserver", "DELETE", .tQuery, "", .tResult, .tHttp, .tFault)
+    Do $$$AssertEquals(tHttp _ " " _ ..FaultHasViolations($Get(tFault)), "500 0", "and so is a delete the vendor refuses with that code")
     Do $$$AssertEquals($ClassMethod(..#PROBE, "Stored", 21826).%Get("Enabled"), 0, "and the disabled probe is as it was")
 }
 
 /// <p>B4: the form read answers a probe as not serving, with nothing locked; with the serving request's port
 /// naming it, it is serving, <code>Enabled</code> and <code>EnableCSP</code> are locked and the prohibited set
 /// refuses turning either off, deleting it and requiring SSL/TLS of it, from the Save and the confirm, with no
-/// write; any other change to it is permitted.</p>
+/// write; any other change to it is permitted, and an SSL/TLS change answers its consequence.</p>
 /// <p>Mutation (Rule 19): answer 0 for a port that matches the serving port in
-/// <method>OcuPilot.Kernel.Proposal.Prohibited.IsServingSuperserver</method> -- the serving legs go red.</p>
+/// <method>OcuPilot.Kernel.Proposal.Prohibited.IsServingSuperserver</method> -- the serving legs go red; drop the
+/// Save's effect read -- the consequence leg goes red.</p>
 Method TestAProbeOnTheServingPortIsRefusedTheSameFourChanges()
 {
     Do $$$AssertStatusOK($ClassMethod(..#PROBE, "Seed", 21826, {"EnableCSP": true}), "a probe superserver")
@@ -360,6 +394,11 @@ Method TestAProbeOnTheServingPortIsRefusedTheSameFourChanges()
     Do $$$AssertEquals($ClassMethod(..#PROBE, "Stored", 21826).%Get("Enabled") _ $ClassMethod(..#PROBE, "Stored", 21826).%Get("EnableCSP"), "11", "and the probe is as it was")
     Set tSC = $ClassMethod(..#SAVE, "Handle", tId, {"Description": "still permitted"}, .tAnswer, .tStatus)
     Do $$$AssertEquals(tStatus _ " " _ $ClassMethod(..#SEAM, "Writes"), "200 PUT:21826", "any other change to it is permitted: " _ $Extract(tAnswer, 1, 200))
+    Do $$$AssertEquals(##class(OcuPilot.Test.LicenseKey).Parsed(tAnswer).%GetTypeOf("consequence"), "unassigned", "and answers no consequence")
+    Do $ClassMethod(..#SEAM, "Clear")
+    Do $ClassMethod(..#SEAM, "Arm", "answer")
+    Set tSC = $ClassMethod(..#SAVE, "Handle", tId, {"SSLSupportLevel": 1, "SSLConfig": "OcuProbeServerTLS"}, .tAnswer, .tStatus)
+    Do $$$AssertEquals(tStatus _ " " _ ##class(OcuPilot.Test.LicenseKey).Parsed(tAnswer).%Get("consequence"), "200 " _ $Parameter("OcuPilot.Kernel.Proposal.Prohibited", "EFFECTSERVINGSUPERSERVER"), "an SSL/TLS change to it is permitted and answers its consequence: " _ $Extract(tAnswer, 1, 200))
 }
 
 /// <p>The two write routes answer over the wire as JSON: <code>POST /superserver</code> creates a probe

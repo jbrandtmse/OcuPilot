@@ -10229,18 +10229,27 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-8-superservers-authentication-options-and-managed-file-transfe.md | severity: med | fix-risk: low | footprint: in-footprint
 - evidence: Story 18.8 rework 1 re-review: AuthOptionsProbe.Facts had the same field and reddened CI run 37596828031 instance shard 1/5; the five siblings not checked
 - 2026-10-07T09:30:06Z status=routed owner=burndown by=cr note=remove the monitor value from each Snapshot, or prove it cannot move mid-class; verify on ocupilot-ci by raising the monitor mid-run
+- 2026-10-07T15:41:54Z occurrence=18-25-superservers
 
 ### DW-2150: The serving-superserver arm's real ServingSuperserverPort() (the $PRINCIPAL read) is never driven to a non-empty answer by a test; SuperserverSet overrides it and the real-HTTP legs serve through the system default
 - source: spec-18-25-superservers.md | severity: med | fix-risk: low | footprint: in-footprint
 - evidence: Kernel/Proposal/Prohibited.cls ServingSuperserverPort; the |TCP|<port>| shape was measured at plan, only the pin is missing
 - 2026-10-07T14:57:07Z status=open owner=18-25-superservers by=harvest note=in-story MED: a leg whose real request reports the port; review patches or takes the MED iteration
+- 2026-10-07T15:41:54Z status=resolved-by:18-25-superservers by=cr note=TestAProcessServedOverTcpReadsItsPort: TCP-principal job reads 21829 and its locks; port forced "" -> red (run 1168)
 
 ### DW-2151: SuperserverSave's answer consequence member is unpinned on the server side (the client side is pinned)
 - source: spec-18-25-superservers.md | severity: low | fix-risk: low | footprint: in-footprint
 - evidence: SuperserverProhibited reads only the stored proposal's consequence
 - 2026-10-07T14:57:07Z status=open owner=18-25-superservers by=harvest note=in-story LOW: fix-pack or close with a probe at review
+- 2026-10-07T15:41:54Z status=resolved-by:18-25-superservers by=cr note=Save effect via ProhibitedClass; SuperserverWrite serving-port leg asserts consequence; effect dropped -> red (run 1169)
 
 ### DW-2152: SuperserverProhibited.TestAFailedTargetReadRefuses's agent-confirm leg asserts only a non-200, which an earlier read failure also gives (inference)
 - source: spec-18-25-superservers.md | severity: low | fix-risk: low | footprint: in-footprint
 - evidence: src/OcuPilot/Test/SuperserverProhibited.cls:152; settle with ArmFailAfter on the confirm and an exact outcome
 - 2026-10-07T14:57:07Z status=open owner=18-25-superservers by=harvest note=in-story LOW: fix-pack or close at review
+- 2026-10-07T15:41:54Z status=resolved-by:18-25-superservers by=cr note=arm runs first; leg now exact 500 INTERNAL; failed read -> not prohibited makes it 409 -> red (run 1168)
+
+### DW-2153: No test pins that sign-out resets the superserver form store, nor any of app.ts's other ~25 form-store resets
+- source: spec-18-25-superservers.md (cr verification-gap) | severity: low | fix-risk: low | footprint: in-epic
+- evidence: app.spec.ts pins shell, turn and Home store resets by mutation; deleting this.superserverForm.reset() (or any form store's) reddens nothing. Code currently resets.
+- 2026-10-07T15:42:01Z status=wontfix-accepted owner=18-25-superservers by=cr note=one roster test covers all; reopen_if=a form store reset() line is removed or a cross-principal form leak is reported

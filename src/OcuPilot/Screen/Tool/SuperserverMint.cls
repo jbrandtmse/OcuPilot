@@ -5,8 +5,9 @@
 /// superservers list's rows carry, so both callers hand <class>OcuPilot.Port.SuperserverPort</class> one target
 /// grammar. An omitted bind address is the empty one, which the instance reads as every interface. Everything
 /// else is the superclass's, unchanged.</p>
-/// <p>Refused before anything is read, with 400 <code>TOOL.ARGUMENTS</code>: an empty port, and a part carrying
-/// <code>$Char(1)</code>, the composite separator, which would let one argument stand for two parts.</p>
+/// <p>Refused before anything is read, with 400 <code>TOOL.ARGUMENTS</code>: an empty port, a bind address that
+/// is not text, and a part carrying <code>$Char(1)</code>, the composite separator, which would let one argument
+/// stand for two parts.</p>
 Class OcuPilot.Screen.Tool.SuperserverMint Extends OcuPilot.Kernel.Proposal.Mint
 {
 
@@ -29,6 +30,10 @@ ClassMethod Mint(pDescriptor As %String, pToolName As %String, pUser As %String,
         If $IsObject(pArgs) && (pArgs.%GetTypeOf(..#BINDARGUMENT) = "string") Set tBind = pArgs.%Get(..#BINDARGUMENT)
         If pIdValue = "" {
             Set tSC = ..Refuse("'" _ pIdArgument _ "' names the superserver's port and cannot be empty", .pHttpStatus, .pFault)
+            Quit
+        }
+        If $IsObject(pArgs) && (pArgs.%GetTypeOf(..#BINDARGUMENT) '= "unassigned") && (pArgs.%GetTypeOf(..#BINDARGUMENT) '= "string") {
+            Set tSC = ..Refuse("'" _ ..#BINDARGUMENT _ "' is the address the superserver binds to, as text", .pHttpStatus, .pFault)
             Quit
         }
         If (pIdValue [ tSeparator) || (tBind [ tSeparator) {

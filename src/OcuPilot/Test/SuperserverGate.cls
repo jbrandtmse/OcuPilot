@@ -90,6 +90,7 @@ Method OnAfterOneTest() As %Status
     Do $$$AssertStatusOK($ClassMethod(..#PROBE, "RemoveAll"), "every probe principal is removed")
     Do $$$AssertEquals($ClassMethod(..#PROBE, "Remaining"), 0, "and none is left")
     Do $$$AssertStatusOK($ClassMethod(..#SUPERSERVERS, "RemoveAll"), "every probe superserver is removed")
+    Do $$$AssertNotEquals(..PreparedFacts, "unreadable", "the superserver list was read before the test")
     Do $$$AssertEquals($ClassMethod(..#SUPERSERVERS, "Facts"), ..PreparedFacts, "the superserver list reads as before the test")
     Do ##class(OcuPilot.Test.ProposalFixture).RemoveSeeded(.tSeeded)
     Quit $$$OK

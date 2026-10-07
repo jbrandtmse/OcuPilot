@@ -6,11 +6,11 @@
 /// (<class>OcuPilot.Test.SuperserverActionFixture</class>) and the agent's confirm
 /// (<class>OcuPilot.Test.DatabaseConfirm</class>) -- and a target read that fails refuses. An SSL/TLS change that
 /// is not refused is minted destructive with <code>SUPERSERVER.SERVESOCUPILOT</code>. The serving port is read
-/// from a principal device, and a job has none.</p>
+/// from a principal device: a job has none, and a process served over TCP reads its port.</p>
 /// <p><b>Nothing is written for real</b>: every leg runs through <class>OcuPilot.Test.SuperserverSeamPort</class>,
 /// which forwards a write for ports 21825 to 21829 only, and only 1972 is targeted, so the guard marks any
 /// write a mutation lets through instead of sending it. Every test checks the superserver list reads as it
-/// found it. It needs a stock instance.</p>
+/// found it. It needs a stock instance on which nothing listens on 21829.</p>
 Class OcuPilot.Test.SuperserverProhibited Extends %UnitTest.TestCase
 {
 
@@ -72,6 +72,7 @@ Method OnAfterOneTest() As %Status
     Do ##class(OcuPilot.Test.ProposalFixture).ArmProhibited("")
     Merge tRows = ..PreparedPolicy
     Do $$$AssertStatusOK(##class(OcuPilot.Test.GovernanceFixture).Restore(.tRows), "the governance policy is restored")
+    Do $$$AssertNotEquals(..PreparedFacts, "unreadable", "the superserver list was read before the test")
     Do $$$AssertEquals($ClassMethod(..#PROBE, "Facts"), ..PreparedFacts, "the superserver list reads as before the test")
     Do ##class(OcuPilot.Test.ProposalFixture).RemoveSeeded(.tSeeded)
     Quit $$$OK
@@ -133,8 +134,8 @@ Method TestTheSystemDefaultRefusesTheChangesToTheAgent()
 /// <p>B4: a target read that fails refuses, on both callers: the Save answers an internal error and the confirm
 /// is not applied, each with no write.</p>
 /// <p>Mutation (Rule 19): answer "not prohibited" when the target read fails in
-/// <method>OcuPilot.Kernel.Proposal.Prohibited.Target</method> -- the Save reaches the seam's write and this goes
-/// red.</p>
+/// <method>OcuPilot.Kernel.Proposal.Prohibited.Target</method> -- the Save reaches the seam's write and the confirm
+/// answers its own re-read's 409, and both legs go red.</p>
 Method TestAFailedTargetReadRefuses()
 {
     Set tId = $ClassMethod(..#PROBE, "Id", 1972)
@@ -149,7 +150,7 @@ Method TestAFailedTargetReadRefuses()
     Do $ClassMethod(..#SEAM, "ClearCalls")
     Do $ClassMethod(..#SEAM, "ArmFail", "Security.Superserver/GET")
     Set tOutcome = $ClassMethod(..#AGENT, "Confirm", tProposal, .tResult)
-    Do $$$AssertTrue($Extract(tOutcome, 1, 3) '= "200", "the confirm is not applied (" _ tOutcome _ ")")
+    Do $$$AssertEquals(tOutcome, "500 INTERNAL", "the confirm is refused by the set's failed read, before its own re-read")
     Do $$$AssertEquals($ClassMethod(..#SEAM, "Writes"), "", "with no write")
 }
 
@@ -198,6 +199,17 @@ Method TestTheServingPortComesFromThePrincipalDevice()
     Do $$$AssertEquals($ClassMethod(..#PROBE, "JobServingPort"), "|", "a job's serving port is empty")
     Do $ClassMethod(tP, "SuperserverLocks", "21825" _ tSep _ "0.0.0.0", {"SystemDefault": true}, .tLocks)
     Do $$$AssertEquals(tLocks.%ToJSON(), "[""Enabled"",""EnableCSP""]", "a serving superserver locks Enabled and EnableCSP")
+}
+
+/// <p>B4, AD-10: the shipped serving-port read, in a process whose principal device is a TCP connection accepted
+/// on a port, as a request served through a superserver is, answers that port, and a superserver on it that is
+/// not the system default locks <code>Enabled</code> and <code>EnableCSP</code>. Nothing is configured: the
+/// listener is the test's own, on a probe port.</p>
+/// <p>Mutation (Rule 19): make <method>OcuPilot.Kernel.Proposal.Prohibited.ServingSuperserverPort</method> answer
+/// <code>""</code> -- this goes red.</p>
+Method TestAProcessServedOverTcpReadsItsPort()
+{
+    Do $$$AssertEquals($ClassMethod(..#PROBE, "TcpServingPort", 21829), "21829|[""Enabled"",""EnableCSP""]", "the port the connection was accepted on, and its locks")
 }
 
 /// <p>The stored value <var>pName</var> of the proposal <var>pProposal</var>.</p>

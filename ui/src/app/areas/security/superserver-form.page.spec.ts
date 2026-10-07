@@ -208,6 +208,8 @@ describe('SuperserverFormPage', () => {
     expect((JSON.parse(post?.body ?? '{}') as Record<string, unknown>)['Port']).toBe('21825');
     const status = second.host.querySelector('.ocu-form-bar-status [role="status"]');
     expect(status).not.toBeNull();
-    expect(status?.textContent?.trim()).not.toBe('');
+    // Mutation (Rule 19): drop `readBackOf(body?.['readBack'])` from the store's accepted Save -> the status
+    // reads "Saved" alone and this goes red.
+    expect(status?.textContent?.trim()).toContain(STRINGS.readBackMatches);
   });
 });

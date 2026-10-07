@@ -152,7 +152,7 @@ Method TestTheCodesAnswerTheirSentences()
 {
     Set tClass = ..#ERRORS
     Set tCodes = $ClassMethod(tClass, "Codes")
-    Do $$$AssertEquals($ListLength(tCodes), 10, "ten codes")
+    Do $$$AssertEquals($ListLength(tCodes), 11, "eleven codes")
     For tI = 1:1:$ListLength(tCodes) {
         Set tCode = $List(tCodes, tI)
         Set tReason = $ClassMethod(tClass, "ReasonFor", tCode)
@@ -161,7 +161,7 @@ Method TestTheCodesAnswerTheirSentences()
         Do $$$AssertEquals(##class(OcuPilot.Api.Error).ReasonForToolCode(tCode), tReason, tCode _ " answers it through the tool dispatch")
     }
     Set tViolations = $ClassMethod(tClass, "ViolationCodes")
-    Do $$$AssertEquals($ListLength(tViolations), 8, "eight of them are field codes")
+    Do $$$AssertEquals($ListLength(tViolations), 9, "nine of them are field codes")
     For tI = 1:1:$ListLength(tViolations) {
         If $List(tViolations, tI) = $Parameter(tClass, "SYSTEMONLY") Continue
         Do $$$AssertNotEquals($ClassMethod(tClass, "FieldOf", $List(tViolations, tI)), "", $List(tViolations, tI) _ " names its field")

@@ -7,8 +7,8 @@
 /// 1972 among them, is answered 409 <parameter>GUARDCODE</parameter>, marked in
 /// <code>^||OcuPilotSuperserverSeam("guard")</code> and never sent, because a real one could cut off the
 /// throwaway's own gateway connection.</p>
-/// <p>Armed <code>inuse</code>, a <code>PUT</code> to a probe port is answered with the vendor's measured
-/// <code>#5001</code> fault, through the admin port's own fault mapping, and is not sent. Armed
+/// <p>Armed <code>inuse</code>, a <code>PUT</code> or <code>DELETE</code> to a probe port is answered with the
+/// vendor's measured <code>#5001</code> fault, through the admin port's own fault mapping, and is not sent. Armed
 /// <code>answer</code>, a probe-port write is answered 200 and not sent. <method>ArmFail</method> fails every
 /// call of one <code>endpoint/type</code> pair with a 500 that is not the vendor's, and <method>ArmFailAfter</method>
 /// every call of it after the first few.</p>
@@ -51,7 +51,7 @@ ClassMethod Call(pEndpoint As %String, pType As %String, ByRef pQuery, pBody As 
             Quit $$$ERROR($$$GeneralError, ..#GUARDCODE)
         }
         Set tMode = $Get(^||OcuPilotSuperserverSeam("mode"))
-        If (tMode = "inuse") && (pType = "PUT") {
+        If tMode = "inuse" {
             Quit ..TakenFault(pEndpoint, $Get(pQuery("port")), .pHttpStatus, .pFault)
         }
         If tMode = "answer" {
