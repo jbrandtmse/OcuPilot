@@ -10252,3 +10252,18 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-8-superservers-authentication-options-and-managed-file-transfe.md | severity: med | fix-risk: low | footprint: in-footprint
 - evidence: Story 18.8 rework 1 re-review: AuthOptionsProbe.Facts had the same field and reddened CI run 37596828031 instance shard 1/5; the five siblings not checked
 - 2026-10-07T09:30:06Z status=routed owner=burndown by=cr note=remove the monitor value from each Snapshot, or prove it cannot move mid-class; verify on ocupilot-ci by raising the monitor mid-run
+
+### DW-2157: A production stop from Running can leave it reading Suspended while the tool answers success and the card promised Stopped
+- source: spec-20-2-productions-listed-and-controlled.md | severity: med | fix-risk: low | footprint: in-story
+- evidence: Task 0 measured it once with queues still holding messages; no test asserts what the caller sees (InteropPort.cls)
+- 2026-10-07T16:08:56Z status=open owner=20-2-productions-listed-and-controlled by=harvest note=unverified; settle with a stop against a probe holding queued messages and a read of the answer
+
+### DW-2158: InteropControl's row-action test stops straight after a restart with no settle, which may flake
+- source: spec-20-2-productions-listed-and-controlled.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Inferred from Task 0's notes on a production stopped the moment it started; green in every local run (Test/InteropControl.cls)
+- 2026-10-07T16:08:56Z status=open owner=20-2-productions-listed-and-controlled by=harvest note=unverified; settle by repeated runs
+
+### DW-2159: The interop productions browser spec checks %SYS absence only for the command box, not the side bar and locator
+- source: spec-20-2-productions-listed-and-controlled.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Test/Navigation.cls covers the side-bar payload for an interoperability namespace but not the %SYS absence (interop-productions.browser-spec.mjs)
+- 2026-10-07T16:08:56Z status=open owner=20-2-productions-listed-and-controlled by=harvest note=Story 20.1 left the command-box and locator legs to 20.2's browser spec
