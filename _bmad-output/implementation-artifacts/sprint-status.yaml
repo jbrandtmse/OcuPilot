@@ -29,7 +29,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 09-09-2026 07:49
-last_updated: '10-07-2026 08:46'
+last_updated: '10-07-2026 08:53'
 project: OcuPilot
 project_key: NOKEY
 tracking_system: file-system
@@ -282,7 +282,7 @@ development_status:
   18-5-journals: done
   18-6-licensing-and-ecp: done
   18-7-encryption: done
-  18-8-superservers-authentication-options-and-managed-file-transfe: in-progress
+  18-8-superservers-authentication-options-and-managed-file-transfe: review
   18-9-sql-privileges-and-the-permission-extras: backlog
   18-10-web-application-extras-and-spec-based-rest-services: backlog
   18-11-monitoring-extras-and-the-live-log-tail: backlog
