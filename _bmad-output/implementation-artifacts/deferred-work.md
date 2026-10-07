@@ -10189,3 +10189,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-8-superservers-authentication-options-and-managed-file-transfe.md | severity: low | fix-risk: high | footprint: out-of-footprint
 - evidence: Story 18.8 plan on ocupilot-ci 2026-10-07: unchanged PUT moved AutheEnabled 33556471 to 33556479; scratchpad epic-18-d8/p188/measure-out.txt
 - 2026-10-07T03:21:35Z status=decision-pending owner=burndown by=spec_gate note=human=decide whether to report it to InterSystems, with the held vendor-report list; owner hold 2026-10-05: not reported; Part A omits an unchanged AutheKB (proposed AD-4 exception)
+
+### DW-2140: The API administrative floor refuses interoperability-only accounts (%EnsRole_Operator, _Administrator, _Monitor) before any route runs, so Stage 4 screens cannot reach the classic Interoperability audience
+- source: spec-20-1-the-sign-in-hand-off-and-namespace-category-gating.md | severity: med | fix-risk: med | footprint: in-epic
+- evidence: Measured at 20.1 plan on slot B roles: no %EnsRole_* role holds an ADMINRESOURCES member (AD-8 floor); %EnsRole_Developer and _InteropEditorsAPI clear it via %Development; %DeepSee_Portal is public U, so admitting it would admit every user
+- 2026-10-07T05:13:18Z status=decision-pending owner=burndown by=spec_gate note=product call like DW-1903; decide before 20.2 ships the first Interoperability screen; to the orchestrator in 20.1's clarification
