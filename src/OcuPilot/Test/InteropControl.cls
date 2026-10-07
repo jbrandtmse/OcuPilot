@@ -286,12 +286,20 @@ Method TestTheRowActionsMoveTheProbeThroughItsStates()
     Do $$$AssertEquals(tText, "200 ", "Start answers 200: " _ $Select($IsObject(tAnswer): tAnswer.%ToJSON(), 1: tAnswer))
     Do $$$AssertEquals($Select($IsObject(tAnswer): tAnswer.action _ "|" _ tAnswer.target.type _ "|" _ tAnswer.target.id, 1: ""), "updated|production|" _ ..#PRODUCTION, "publishing the updated event for the production")
     Do $$$AssertEquals(..Listed(..#PRODUCTION), "Running", "the list then reads Running")
+    ; The start settles before a setting changes, as Prepare's does.
+    Hang 3
     Do $$$AssertStatusOK($ClassMethod(..#PROBE, "SetHang", 1), "a setting changes while it runs")
+    For tTry = 1:1:10 {
+        If $Piece(..State(), "|", 2) Quit
+        Hang 0.5
+    }
     Do $$$AssertEquals(..State(), "Running|1", "which reads as an update pending")
     Do $$$AssertEquals(..Act("update", ..#PRODUCTION, .tAnswer), "200 ", "Update answers 200")
     Do $$$AssertEquals(..State(), "Running|0", "and nothing is pending")
     Do $$$AssertEquals(..Act("restart", ..#PRODUCTION, .tAnswer), "200 ", "Restart answers 200")
     Do $$$AssertEquals(..Listed(..#PRODUCTION), "Running", "and the list reads Running again")
+    ; A production stopped the moment after it started can stop Suspended, so the restart settles first.
+    Hang 4
     Do $$$AssertEquals(..Act("stop", ..#PRODUCTION, .tAnswer), "200 ", "Stop answers 200")
     Do $$$AssertEquals(..Listed(..#PRODUCTION), "Stopped", "and the list reads Stopped")
     Do $$$AssertStatusOK(..StartIt(), "a start through the port")
@@ -345,8 +353,6 @@ Method TestARefusedActionAnswersItsCodeAndLeavesTheProbeAsItWas()
 /// <p>AC3, AD-51: a stop minted while the probe runs is refused at the mint when the probe is stopped,
 /// with its own code and nothing stored; and a stop minted while it ran, then made unfit out of band, is
 /// refused at its confirm as a moved target and stops nothing.</p>
-/// <p>Mutation (Rule 19): empty <method>OcuPilot.Screen.Tool.InteropProductionAction.PreconditionCodes</method>
-/// -- the confirm's re-read is no longer read as a moved target and this goes red.</p>
 Method TestAStopIsRefusedAtTheMintAndAtAMovedConfirm()
 {
     Set tTool = "OcuPilot.Screen.Tool.InteropProductionStop"

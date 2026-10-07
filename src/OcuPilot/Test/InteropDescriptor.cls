@@ -294,14 +294,15 @@ Method TestTheRulesListNamesTheProbeRuleAndProcessesDoesNot()
 
 /// <p>AC1, AD-36: each screen's declared read, issued as <class>OcuPilot.Screen.Read</class> issues it, and
 /// its read tool answer the same rows, which are the rows the port answers for the screen's endpoint in
-/// the route's namespace: the code lists in <code>HSCUSTOM</code>, whose processes and transformations are
-/// not empty, and Productions in <code>USER</code>. A cap of two answers at most two rows and reports the
-/// cut when the list is longer.</p>
+/// the route's namespace, and none is empty: processes and transformations in <code>HSCUSTOM</code>, and
+/// Productions and Business rules in <code>USER</code>, where <parameter>PROBE</parameter> compiled its
+/// productions and its rule. A cap of two answers at most two rows and reports the cut when the list is
+/// longer.</p>
 /// <p>Mutation (Rule 19): make the <code>interop</code> branch of <method>OcuPilot.Screen.Read.Execute</method>
 /// ask the port for <code>Productions</code> whatever the source names -- the code list legs go red.</p>
 Method TestEachScreenAndItsReadToolReadTheSameRows()
 {
-    For tCase = $ListBuild("InteropProductionList", "Productions", "USER", "interop.productions.read"), $ListBuild("InteropProcessList", "Processes", "HSCUSTOM", "interop.processes.read"), $ListBuild("InteropTransformList", "Transforms", "HSCUSTOM", "interop.transforms.read"), $ListBuild("InteropRuleList", "Rules", "HSCUSTOM", "interop.rules.read") {
+    For tCase = $ListBuild("InteropProductionList", "Productions", "USER", "interop.productions.read"), $ListBuild("InteropProcessList", "Processes", "HSCUSTOM", "interop.processes.read"), $ListBuild("InteropTransformList", "Transforms", "HSCUSTOM", "interop.transforms.read"), $ListBuild("InteropRuleList", "Rules", "USER", "interop.rules.read") {
         Set tDescriptor = "OcuPilot.Screen.Descriptor." _ $List(tCase, 1)
         Set tNamespace = $List(tCase, 3)
         Do ##class(OcuPilot.Kernel.Scope).Set(tNamespace)
@@ -319,7 +320,7 @@ Method TestEachScreenAndItsReadToolReadTheSameRows()
         Do $$$AssertEquals(+$Get(tToolHttp), 200, $List(tCase, 4) _ " answers")
         If '$IsObject($Get(tAnswer)) || '$IsObject($Get(tResult)) || '$IsObject($Get(tPortRows)) Continue
         Do $$$AssertEquals(tAnswer.rows.%Size() _ "|" _ tResult.rows.%Size(), tPortRows.%Size() _ "|" _ tPortRows.%Size(), $List(tCase, 1) _ ": the screen's read and its tool answer the port's rows")
-        Do $$$AssertTrue(($List(tCase, 2) = "Productions") || ($List(tCase, 2) = "Rules") || (tAnswer.rows.%Size() > 0), $List(tCase, 1) _ ": HSCUSTOM's processes and transformations are not empty")
+        Do $$$AssertTrue(tPortRows.%Size() > 0, $List(tCase, 1) _ ": the port lists at least one row in " _ tNamespace)
         If tAnswer.rows.%Size() > 0 {
             Set tFirst = tAnswer.rows.%Get(0).Name
             Set tNames = ""

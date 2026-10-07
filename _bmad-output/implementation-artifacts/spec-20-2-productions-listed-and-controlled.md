@@ -366,6 +366,46 @@ deferred:
 - **AC4 (gates):** Given a principal lacking one declared pair, when it opens a screen, calls its tool or presses a row action, then it is refused naming that pair before any vendor call.
 - **AC5 (category, from 20.1):** Given an interoperability namespace, when the shell renders, then the side bar, command box and locator offer the four screens; given `%SYS`, then none of them is offered.
 
+### Review Findings
+
+Code review 2026-10-07 (first review; layers blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor): 1 decision-needed (resolved to defer), 10 patch (applied), 3 defer, 18 rejected.
+
+- [x] [Review][Patch] (high) AC5 legs read before the navigation map answered: CI 37649713980's USER red, and `%SYS` absence legs that passed vacuously [ui/browser/interop-productions.browser-spec.mjs:258] -- every AC5 read and AC1's side-bar read now wait for `waitForMapAnswered`; the `%SYS` leg asserts no Interoperability rail item, opens the bar only when closed, and requires the locator to name the screen.
+- [x] [Review][Patch] (med) AC1's Rules screen-and-tool equality compared two empty lists in `HSCUSTOM` [src/OcuPilot/Test/InteropDescriptor.cls:304] -- Rules runs in `USER` on the probe's rule, and every case requires port rows.
+- [x] [Review][Patch] (low) The row-action test changed a setting right after Start and stopped right after Restart with no settle (DW-2158) [src/OcuPilot/Test/InteropControl.cls:289] -- settles as `Prepare` and the browser spec do.
+- [x] [Review][Patch] (low) Two mutation comments claimed reds their code path cannot produce [src/OcuPilot/Test/InteropControl.cls:346, src/OcuPilot/Test/InteropGate.cls:153] -- deleted (run 1104 contradicts the second; `PreconditionCodes` is read only by a confirm's prohibited-set target read).
+- [x] [Review][Patch] (low) `InteropError`'s header named `self-protection.test.mjs` as its pin [src/OcuPilot/Api/InteropError.cls:5] -- names `interop.test.mjs`.
+- [x] [Review][Patch] (low) `HasCode` matched a vendor code by substring, so 940 matched 5940 [src/OcuPilot/Port/InteropPort.cls:600] -- whole-entry match.
+- [x] [Review][Patch] (low) `ProductionProbe.Remove` ran on with a foreign current production, claimed to purge bodies, and `STATEWORDS` was unused [src/OcuPilot/Test/ProductionProbe.cls:326] -- refuses first; doc and parameter corrected.
+- [x] [Review][Patch] (low) EXPERIENCE.md:64 said the 2026-09-08 wireframe draws eleven bands; it draws eight [EXPERIENCE.md:64] -- restored to the baseline line.
+- [x] [Review][Patch] (low) EXPERIENCE.md:604's Where cell called BUSY a state refusal [EXPERIENCE.md:604] -- names the wait.
+- [x] [Review][Patch] (low) The restart tool's doc said a failed start is reported by the read-back; that path answers the vendor's failure before any read, and AD-58 reads back only after OK [src/OcuPilot/Screen/Tool/InteropProductionRestart.cls:1] -- clause deleted.
+- [x] [Review][Defer] (med) A cross-scope confirm resolves the database pair and the prohibited target read in the confirming scope [src/OcuPilot/Screen/Tool/InteropProductionAction.cls:127] -- deferred: DW-2161 escalated (kernel confirm gate, shared with `ExplorerDocDbWrite`; the port still re-gates the payload's database).
+- [x] [Review][Defer] (med, decision resolved to defer) The plural `<Ens>ErrJobsNotStopped` is unmapped: a logged 500 with the production half-stopped, while the stop card says nothing is stopped [src/OcuPilot/Port/InteropPort.cls:621] -- deferred: DW-2162 decision-pending (a new public code and sentence).
+- [x] [Review][Defer] (low) DW-2148's edit left "seven" at `home.page.ts:202,:231` and `home.page.spec.ts:46,:118` -- deferred: occurrence on DW-2148; outside the cleared anchors.
+
+Rejected:
+
+- (theoretical) A post-write state read losing the runtime lock reports a done write as failed, and the update-pending probe can 503 a stop: only `Ens.Director`'s control calls hold `^Ens.Runtime`, each released before it returns.
+- (theoretical) The vendor's 30 s runtime and queue lock waits outlast the 15 s cap: they need a concurrent control operation.
+- (theoretical) The state changes between the refusal check and the vendor call.
+- (low) An over-long id raises `<SUBSCRIPT>` as a 500: needs a guard; ids are production names.
+- (theoretical) A read-only globals database answers `<PROTECT>` as 403: no production runs there.
+- (low) A separate routines database without READ answers an unnamed 403: needs a new pair; AD-62 names the globals-database limit.
+- (theoretical) Troubled with no production name reads every row Stopped.
+- (low) A non-current target in a NetworkStopped or shard-worker namespace reads Stopped: rare deployments, state not reproducible here.
+- (false) The BUSY test's update leg races its 12 s message: each leg waits the 2 s shortened cap.
+- (low) The command box is checked for Productions only: the four screens share one area predicate, and the side-bar leg checks all four.
+- (low) The 503 and refused-at-mint matrix rows have no direct test: needs a lock-holding harness.
+- (low) Three port reasons are not in EXPERIENCE.md: `DocDbPort`'s sibling reasons are unpublished too.
+- (rejected, spec or ledger edit) The frontmatter `deferred:`, the triage log, DW-2159's status and the Auto Run Result are stale: the lead's adjudication.
+- (maybe-false) The remaining unrecorded mutation comments: every AC has a recorded pinning mutation; none is shown false.
+- (low) `Test/Prohibited.cls:232`'s "forty-five" was stale at baseline; the line is add-only with Epic 18.
+- (low) The strings bound comment may conflict with Epic 18 at merge (inference): Rule 22 integrates forward.
+- (low) `MappingDescriptor`'s roster comment omits Story 20.2: a story list on a line Epic 18 appends to.
+- (theoretical) `ProductionProbe.Current` reads a lock timeout as no current production.
+- (low) The update and recover tools cite AD-15/AD-53 named gaps the spine does not yet carry: the runner's spine write at ship (Spec Change Log).
+
 ## Spec Change Log
 
 - 2026-10-07, runner: implement pass 1 halted on the Fixed-strings bound (2,828 against 2,800). The runner moved the bound to 2900 under the 18.8 protocol and accepted the pass's three AD-51 proposals; Task 0 matched every cell and measured no vendor audit event for update or recover (the runner writes AD-15/AD-53's named gaps at ship). Status reset to `in-progress`; the partial implementation stays in the tree.
@@ -562,6 +602,18 @@ Also measured:
 - mutation: `STOPSECONDS` set to 20 -> `ui/tools/interop.test.mjs` "the wait ... is the port's STOPSECONDS" red ("interopStopConsequence states a wait of 20 seconds"); reverted byte-identical.
 - Review patches: `InteropDescriptor` now compiles `ProductionProbe`'s probe classes, so `ci-throwaway.sh` lists it among the `OCUPILOT_ALLOW_PRINCIPALS` classes; it passes 12 (run 1119) and `InteropControl` 11 (run 1120), both 0 failed; `ci.test.mjs` and `interop.test.mjs` pass (89); the browser spec passes 4 on a rebuilt, redeployed bundle, its `after` hook now asserting `ProductionProbe.Gone()`.
 - Every mutation was loaded as a whole-tree `LoadDir` compile; after the last revert the five touched files read identical checksums to their pre-mutation state. The probe production, its classes and the temporary HTTP-measurement class were removed from `ocupilot-b-ci`.
+
+**QA pass (`ocupilot-b-ci`):**
+
+- (QA) `ui/browser/interop-productions.browser-spec.mjs`: one added test, the %SYS side-bar and locator absence leg on the Productions route (DW-2159); the spec passes 5 on a rebuilt, redeployed bundle.
+- mutation: `NavigationService.applies` returning true for every area, bundle rebuilt and redeployed -> browser `AC5: in %SYS the side bar lists no Interoperability screen...` red, beside the command-box leg; reverted byte-identical (git checkout), bundle rebuilt and redeployed, 5 pass.
+
+**Review pass (`ocupilot-b-ci`, worktree `src` synced into the throwaway's mounted copy before each whole-tree `LoadDir`):**
+
+- (review) CI 37649713980's red reproduced: with every navigation read held 4 s (scratch harness), HEAD's spec reds `USER: Productions is offered: []`; the patched spec passes 5 under the same hold, and 5 in each of four plain runs on the rebuilt, redeployed bundle.
+- mutation: `NavigationService.applies` answering `appliesAnswered()` for a declared area (fail closed kept, the area's own answer ignored), bundle rebuilt and redeployed -> both AC5 `%SYS` legs red (`%SYS: Productions is not offered`, `%SYS: the rail draws no Interoperability item`); reverted byte-identical, rebuilt and redeployed.
+- mutation: `Read.cls`'s interop branch answering no rows for `Rules` -> `InteropDescriptor` green before the review patch (run 1126) and `TestEachScreenAndItsReadToolReadTheSameRows` red on `InteropRuleList` after it (run 1127); reverted byte-identical.
+- (review) Final tree, one class per call, 0 failed each: `InteropDescriptor` 12 (runs 1128, 1131), `InteropControl` 11 (1129; 1121-1123 before the settle patch), `InteropGate` 4 (1130); `npm run test:tools` 1881 pass; `check-objectscript.py` 0 problems.
 
 **Setup (slot B):**
 

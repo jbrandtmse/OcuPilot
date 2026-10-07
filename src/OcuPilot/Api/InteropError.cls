@@ -2,7 +2,7 @@
 /// <code>INTEROP.*</code> code <class>OcuPilot.Port.InteropPort</class> answers with, the four
 /// consequence codes the production tools' proposals carry, and the sentence each carries. Each sentence
 /// is published once in EXPERIENCE.md's Fixed strings and pinned equal to its
-/// <file>ui/src/app/core/strings.ts</file> key by <file>ui/tools/self-protection.test.mjs</file>. They
+/// <file>ui/src/app/core/strings.ts</file> key by <file>ui/tools/interop.test.mjs</file>. They
 /// live beside <class>OcuPilot.Api.Error</class> rather than in it because that class holds the
 /// compiler's limit of 1,000 parameters (ERROR #5290).</p>
 /// <p>Every refusal is rendered on the <parameter>OcuPilot.Api.Error.CONFLICT</parameter> slug with 409:

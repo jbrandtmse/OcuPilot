@@ -6,8 +6,9 @@
  * screens in order and Productions shows the probe, Stopped; Start sends one request with no dialog and
  * the row then reads Running with the Changed tag; Stop opens the warning dialog stating the published
  * wait, whose Proceed sends one request, after which the row reads Stopped; a second Stop is refused
- * with the published sentence; the command box offers Productions in `USER` and not in `%SYS`, and the
- * locator names Interoperability on the route; Business processes in `HSCUSTOM` lists rows whose names
+ * with the published sentence; the command box offers Productions in `USER` and not in `%SYS`, the
+ * locator names Interoperability on the route, and in `%SYS` neither the side bar nor the locator names
+ * the area, each read once the map has answered; Business processes in `HSCUSTOM` lists rows whose names
  * are document names; and each screen passes the structural and contrast checks at 1280 light, 720 light
  * and 1280 dark, with no entry beyond the baseline (DW-1337).
  *
@@ -27,6 +28,7 @@ import puppeteer from 'puppeteer';
 import { LIVE_CONTAINER, browserConfig, launchOptions } from '../browser.config.mjs';
 import { loadStrings } from '../tools/strings.mjs';
 import { FILTER_SELECTOR, ROW_SELECTOR, clickRowCentre, waitForRows } from './list-spec.mjs';
+import { waitForMapAnswered } from './namespace-features.mjs';
 import { signedInAt } from './panel-spec.mjs';
 import { sideBarLabels } from './side-bar-spec.mjs';
 import { INVARIANTS, VIEWPORTS, assertThrowaway, collapse, compare, componentMinimums, detectScreen, readBaseline } from './structural-walk.mjs';
@@ -175,6 +177,9 @@ test('AC1: the side bar lists the four screens in order, and Productions shows t
   const { context, page } = await signedInAt(browser, config, LIST_URL, VIEWPORTS.wide);
   try {
     await waitForRows(page, config.navigationTimeoutMs);
+    // The rows can arrive before the map answers for USER, and the side bar and the locator draw
+    // Interoperability only after that answer (fail closed).
+    await waitForMapAnswered(page, config.navigationTimeoutMs);
     if ((await page.$('app-side-bar nav.ocu-side-bar')) === null) {
       await page.keyboard.down('Control');
       await page.keyboard.press('b');
@@ -250,12 +255,14 @@ test('AC2, AC3: Start reads Running changed with no dialog; Stop warns, then rea
   }
 });
 
-// AC5. Mutation (Rule 19): make `NavigationService.screensThatApply` return every screen, rebuild and
-// redeploy -> the %SYS leg offers Productions and goes red.
+// AC5. Each leg types only once the map has answered for its namespace: before that answer
+// Interoperability is offered nowhere (fail closed), so USER would offer nothing and %SYS's absence
+// would prove nothing.
 test('AC5: the command box offers Productions in USER and not in %SYS', async () => {
   for (const [namespace, offered] of [['USER', true], ['%SYS', false]]) {
     const { context, page } = await signedInAt(browser, config, `/ocupilot/?ns=${encodeURIComponent(namespace)}`, VIEWPORTS.wide);
     try {
+      await waitForMapAnswered(page, config.navigationTimeoutMs);
       await page.waitForSelector('#ocu-command-box-field', { timeout: config.navigationTimeoutMs });
       await page.click('#ocu-command-box-field');
       await page.type('#ocu-command-box-field', STRINGS.interopProductionsLabel);
@@ -266,6 +273,31 @@ test('AC5: the command box offers Productions in USER and not in %SYS', async ()
     } finally {
       await context.close();
     }
+  }
+});
+
+// AC5. Read only once the map has answered for %SYS, as the command-box leg is; the locator is drawn on
+// the route either way, so it must name the screen and not the area.
+test('AC5: in %SYS the side bar lists no Interoperability screen and the locator does not name the area', async () => {
+  const { context, page } = await signedInAt(browser, config, `/ocupilot/${ROUTE}?ns=%25SYS`, VIEWPORTS.wide);
+  try {
+    await waitForMapAnswered(page, config.navigationTimeoutMs);
+    assert.equal(await page.$('#ocu-rail-item-interoperability'), null, '%SYS: the rail draws no Interoperability item');
+    if ((await page.$('app-side-bar nav.ocu-side-bar')) === null) {
+      await page.keyboard.down('Control');
+      await page.keyboard.press('b');
+      await page.keyboard.up('Control');
+    }
+    await frames(page);
+    const bar = await page.$$eval('.ocu-side-bar-item .ocu-side-bar-label', (items) => items.map((item) => item.textContent.trim()));
+    for (const label of sideBarLabels('interoperability')) {
+      assert.ok(!bar.includes(label), `%SYS: the side bar does not list ${label}: ${JSON.stringify(bar)}`);
+    }
+    const locator = await page.$eval('.ocu-locator-bar', (nav) => nav.textContent);
+    assert.ok(locator.includes(STRINGS.interopProductionsLabel), `%SYS: the locator is drawn for the route: ${locator}`);
+    assert.ok(!locator.includes(STRINGS.navAreaInteroperability), `%SYS: the locator does not name the area: ${locator}`);
+  } finally {
+    await context.close();
   }
 });
 

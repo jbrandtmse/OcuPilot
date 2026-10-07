@@ -596,7 +596,8 @@ ClassMethod Perform(pNamespace As %String, pType As %String, pId As %String, Out
     Quit $$$OK
 }
 
-/// <p>Whether status <var>pStatus</var> carries vendor status code <var>pCode</var>.</p>
+/// <p>Whether status <var>pStatus</var> carries vendor status code <var>pCode</var>, as one whole entry of
+/// its comma-separated code list.</p>
 ClassMethod HasCode(pStatus As %Status, pCode As %String) As %Boolean [ Private ]
 {
     Set tCodes = ""
@@ -605,7 +606,7 @@ ClassMethod HasCode(pStatus As %Status, pCode As %String) As %Boolean [ Private 
     } Catch {
         Set tCodes = ""
     }
-    Quit (tCodes [ pCode)
+    Quit ($ListFind($ListFromString(tCodes, ","), pCode) > 0)
 }
 
 /// <p>A vendor status <var>pStatus</var> in this port's own words: a production that did not quiesce in

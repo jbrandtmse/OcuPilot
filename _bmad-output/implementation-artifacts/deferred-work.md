@@ -10215,6 +10215,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-07T10:40:19Z status=routed owner=20-2-productions-listed-and-controlled by=cr note=also rail.ts:49 "the nine areas" and :56 "eight tab stops" (CI rework re-review)
 - 2026-10-07T03:44:07Z status=decision-pending owner=burndown by=owner note=owner hold 2026-10-05 (relayed by the Planner): IRIS defect candidates stay on hold, no report to InterSystems for now
 - 2026-10-07T11:07:09Z status=routed owner=20-2-productions-listed-and-controlled by=merge_repair note=restored: the 03:44:07Z trailer above is DW-2139's, moved here by a union merge
+- 2026-10-07T18:07:16Z occurrence=20-2-productions-listed-and-controlled
+- 2026-10-07T18:13:30Z status=resolved-by:20-2-productions-listed-and-controlled owner=20-2-productions-listed-and-controlled by=adjudication note=EXPERIENCE.md rail and tile rows and rail.ts counts corrected in the story; home.page.ts:202,:231 and home.page.spec.ts:46,:118 seven-tiles comments corrected at adjudication (the spec asserts 9 tiles)
 
 ### DW-2142: OcuPilot's audit surfaces would show the SMTP password the vendor writes in clear into %System/%Security/SystemChange's New value line when CHANGESMTPPWD runs: AuditPort.VENDORSECRETS has no mask for it (AD-35)
 - source: spec-18-8-superservers-authentication-options-and-managed-file-transfe.md | severity: med | fix-risk: low | footprint: in-footprint
@@ -10257,13 +10259,26 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-20-2-productions-listed-and-controlled.md | severity: med | fix-risk: low | footprint: in-story
 - evidence: Task 0 measured it once with queues still holding messages; no test asserts what the caller sees (InteropPort.cls)
 - 2026-10-07T16:08:56Z status=open owner=20-2-productions-listed-and-controlled by=harvest note=unverified; settle with a stop against a probe holding queued messages and a read of the answer
+- 2026-10-07T18:13:30Z status=decision-pending owner=burndown by=adjudication note=product call, same family as DW-2162: recommended route to 20.3 (extends InteropPort): a stop answers the state its post-write read finds, with a code and a Fixed-strings sentence when the production ends Suspended
 
 ### DW-2158: InteropControl's row-action test stops straight after a restart with no settle, which may flake
 - source: spec-20-2-productions-listed-and-controlled.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: Inferred from Task 0's notes on a production stopped the moment it started; green in every local run (Test/InteropControl.cls)
 - 2026-10-07T16:08:56Z status=open owner=20-2-productions-listed-and-controlled by=harvest note=unverified; settle by repeated runs
+- 2026-10-07T18:13:30Z status=resolved-by:20-2-productions-listed-and-controlled owner=20-2-productions-listed-and-controlled by=adjudication note=code review added a settle after start and restart in InteropControl; runs 1121-1123 before, 1129 after, green
 
 ### DW-2159: The interop productions browser spec checks %SYS absence only for the command box, not the side bar and locator
 - source: spec-20-2-productions-listed-and-controlled.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: Test/Navigation.cls covers the side-bar payload for an interoperability namespace but not the %SYS absence (interop-productions.browser-spec.mjs)
 - 2026-10-07T16:08:56Z status=open owner=20-2-productions-listed-and-controlled by=harvest note=Story 20.1 left the command-box and locator legs to 20.2's browser spec
+- 2026-10-07T18:13:30Z status=resolved-by:20-2-productions-listed-and-controlled owner=20-2-productions-listed-and-controlled by=adjudication note=QA's %SYS side-bar, rail and locator leg, reworked by code review to wait for the navigation map; mutation ignoring the per-namespace answer reddens both %SYS legs
+
+### DW-2161: A cross-scope confirm of a namespace-scoped write resolves the tool's database pair and the prohibited set's target read in the confirming request's scope, not the proposal's namespace
+- source: spec-20-2-productions-listed-and-controlled.md | severity: med | fix-risk: med | footprint: out-of-footprint
+- evidence: InteropProductionAction.PrivilegePairs:127 (and ExplorerDocDbWrite) read Scope.Current(); Operation.Gate:412 recomputes pairs at confirm under Router.cls:1447's ?ns= scope; the port re-gates the payload namespace's database, so nothing escapes
+- 2026-10-07T18:07:16Z status=escalated owner=burndown by=cr note=decision sheet: payload-aware pair hook at the confirm gate (kernel), or accept the narrow false refusal
+
+### DW-2162: A stop or restart whose jobs outlast the cap after quiescing answers a logged 500 with the production half-stopped, while the stop card says nothing is stopped
+- source: spec-20-2-productions-listed-and-controlled.md | severity: med | fix-risk: low | footprint: in-story
+- evidence: Ens.Job.StopAll raises the plural <Ens>ErrJobsNotStopped (Job.cls:555) after MakeQuiescent and the app-data kill (Director.cls:250-260); InteropPort.Statused maps only the singular
+- 2026-10-07T18:07:16Z status=decision-pending owner=burndown by=cr note=product call: new INTEROP code + sentence for a partial stop (recommended), or keep 500 and amend the stop sentence

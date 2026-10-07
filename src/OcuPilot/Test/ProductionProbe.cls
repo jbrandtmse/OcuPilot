@@ -38,10 +38,6 @@ Parameter RULECLASS = "OcuPilotProbe.Interop.Rule";
 /// <p>The prefix of every configuration name the probe owns.</p>
 Parameter CONFIGPREFIX = "OcuPilotProbe";
 
-/// <p>The state words <code>Ens.Director.GetProductionStatus</code> answers, as
-/// <class>OcuPilot.Port.InteropPort</class> names them.</p>
-Parameter STATEWORDS = "Unknown,Running,Stopped,Suspended,Troubled";
-
 /// <p>The class text of one probe class, <var>pName</var> without its package.</p>
 ClassMethod ClassText(pName As %String) As %String [ Private ]
 {
@@ -320,11 +316,13 @@ ClassMethod Gone() As %Boolean
 
 /// <p>Leave <code>USER</code> holding no probe state: settle the current production, delete the probe
 /// classes, their configuration rows, their activity and last-production records, and the message
-/// headers, bodies and event-log rows whose configuration names begin with
-/// <parameter>CONFIGPREFIX</parameter>. A production that cannot be settled is removed all the same, and
-/// the failure is the status returned.</p>
+/// headers and event-log rows whose configuration names begin with <parameter>CONFIGPREFIX</parameter>.
+/// It refuses, touching nothing, when <code>USER</code>'s current production is not one of its own. One
+/// of its own that cannot be settled is removed all the same, and the failure is the status returned.</p>
 ClassMethod Remove() As %Status
 {
+    Set tSC = ..CheckOwn()
+    If $$$ISERR(tSC) Quit tSC
     Set tSC = ..Settle()
     Set tOrigNS = $NAMESPACE
     Try {

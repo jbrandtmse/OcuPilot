@@ -199,7 +199,7 @@ interface LineSegment {
 }
 
 /**
- * Home: the seven area tiles and the instance line beneath them (DESIGN.md `:896`, `:1102`;
+ * Home: one tile per applying area (seven to nine) and the instance line beneath them (DESIGN.md `:896`, `:1102`;
  * EXPERIENCE.md "One tile per applying area in daily-use order").
  *
  * **The tile roster is the area vocabulary, not a list typed here** (AD-5). Every area in the
@@ -228,7 +228,7 @@ interface LineSegment {
  * Activating one is refused here, because `aria-disabled` carries no behaviour of its own.
  *
  * **The grid is a list.** `display: grid` strips the implied semantics off a `<ul>`, so the
- * roles are explicit: without them a screen-reader user meets seven unrelated buttons with no
+ * roles are explicit: without them a screen-reader user meets up to nine unrelated buttons with no
  * sense of the set or its size. Roles carry no words, so this needs no published string.
  *
  * **Activation opens the area's side bar and its first screen** (EXPERIENCE.md "One tile per applying area in daily-use order", as

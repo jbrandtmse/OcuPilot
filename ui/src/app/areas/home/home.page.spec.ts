@@ -43,7 +43,7 @@ import {
 /**
  * Home's rendered contract (DESIGN.md `:896`, `:1102`; EXPERIENCE.md "One tile per applying area in daily-use order").
  *
- * The area roster is the **shipped** mirror through the real `orderedAreas()`, because the seven
+ * The area roster is the **shipped** mirror through the real `orderedAreas()`, because the nine
  * tiles and the two absences are exactly what the declaration says and a stubbed roster would
  * assert the stub. The verdicts are stubbed, because a denial needs a principal the suite must
  * not mint, and the screen roster is stubbed for the reason `NavigationService` carries that
@@ -115,7 +115,7 @@ function screen(route: string, labelKey: string, area: string, position: number)
 const PROCESSES = screen('os-management/processes', 'navAreaOsManagement', 'os-management', 1);
 const LOCKS = screen('os-management/locks', 'navAreaTasks', 'os-management', 2);
 
-/** The shipped mirror: the seven tiles and the two absences are the declaration's, not a stub's. */
+/** The shipped mirror: the nine tiles and the two absences are the declaration's, not a stub's. */
 const REAL_AREAS = orderedAreas();
 
 class StubNavigation {

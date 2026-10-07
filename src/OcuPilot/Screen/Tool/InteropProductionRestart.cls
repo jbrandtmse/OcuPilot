@@ -1,4 +1,4 @@
-/// <p>Interoperability's production restart (AD-6, AD-51, AD-53, AD-62): Restart a running production, waiting at most the port's cap for work in progress. A restart whose start fails leaves the production stopped, which the read-back reports.</p>
+/// <p>Interoperability's production restart (AD-6, AD-51, AD-53, AD-62): Restart a running production, waiting at most the port's cap for work in progress. A restart whose start fails leaves the production stopped.</p>
 /// <p>Two callers reach it: the Productions row action Restart through <class>OcuPilot.Api.ScreenAction</class>
 /// and the agent's proposal and confirmation. Its state, fingerprint and refusals are
 /// <class>OcuPilot.Screen.Tool.InteropProductionAction</class>'s.</p>

@@ -150,9 +150,6 @@ Method TestARefusedWriteStartsNothingAndTheExactPairsStartAndStop()
 /// <p>AC4: on the screen routes each principal is refused naming the pair its read needs, before the
 /// namespace's list is read: the Productions list and the Business processes list, and the Start row
 /// action, which names the run or database pair the tool adds.</p>
-/// <p>Mutation (Rule 19): drop <code>%Ens_ProductionRun:USE</code> from
-/// <method>OcuPilot.Screen.Tool.InteropProductionAction.PrivilegePairs</method> -- the missing-run
-/// principal's Start reaches the port and this goes red.</p>
 Method TestEachMissingPairIsRefusedByNameOnTheScreenRoutes()
 {
     Set tBase = $Parameter("OcuPilot.Test.Http", "BASEPATH")
