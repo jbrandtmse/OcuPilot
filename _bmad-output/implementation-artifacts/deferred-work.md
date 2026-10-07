@@ -3111,6 +3111,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-25T18:57:35Z status=routed owner=burndown by=spec_gate note=declined by 11.1 plan: panel layout/rail behavior, not on the explain path; residual unchanged
 - 2026-09-26T04:49:15Z owner=range-end-cleanup by=burndown note=Epic 11 burn-down (Rule 27): panel layout/rail behavior, not floor-blocking, no remaining Epic 11 story
 - 2026-09-30T06:34:04Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down plan 2026-09-29 (23.1 closed; its slice re-sorted): queued for the standing cleanup after the next release (Story 23.3 or later), priority p4
+- 2026-10-07T04:26:43Z status=routed owner=23-5-the-range-end-cleanup-part-5 by=merge_gate note=owner-approved burn-down batch (c), visible polish, 2026-10-06 (relayed by the Planner): Story 23.5
 
 ### DW-459: The first-login gate leaves the fresh-sign-in flag unspent after a failed read and retries on every later navigation or agent-status change with no bound, so a user mid-task can be redirected to the Definition form long after sign-in
 - source: spec-4-3-the-docked-panel-present-on-every-route.md | severity: med | fix-risk: low | footprint: in-story
@@ -3126,6 +3127,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-25T18:57:35Z status=routed owner=burndown by=spec_gate note=declined by 11.1 plan: panel layout/rail behavior, not on the explain path; residual unchanged
 - 2026-09-26T04:49:15Z owner=range-end-cleanup by=burndown note=Epic 11 burn-down (Rule 27): panel layout/rail behavior, not floor-blocking, no remaining Epic 11 story
 - 2026-09-30T06:34:04Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down plan 2026-09-29 (23.1 closed; its slice re-sorted): queued for the standing cleanup after the next release (Story 23.3 or later), priority p4
+- 2026-10-07T04:26:43Z status=routed owner=23-5-the-range-end-cleanup-part-5 by=merge_gate note=owner-approved burn-down batch (c), visible polish, 2026-10-06 (relayed by the Planner): Story 23.5
 
 ### DW-1029: Switches.MergeBody treats a JSON object or array sent for any switch field, contextRowCap included, as absent and keeps the stored value instead of refusing
 - source: spec-4-4-screen-context-reaches-the-turn-capped-and-secret-free.md | severity: low | fix-risk: low | footprint: in-story
@@ -3644,6 +3646,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-19T03:19:55Z status=routed owner=15-4-home-s-system-information-panel by=x0 note=DESIGN.md Home geometry against the built arrival; 15.4 revisits Home's panels
 - 2026-09-19T18:35:54Z status=routed owner=range-end-cleanup by=burndown note=Rule 27 non-blocking: a DESIGN.md geometry row the ordinary Home arrival cannot reach
 - 2026-09-30T06:34:04Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down plan 2026-09-29 (23.1 closed; its slice re-sorted): queued for the standing cleanup after the next release (Story 23.3 or later), priority p4
+- 2026-10-07T04:26:42Z status=routed owner=23-5-the-range-end-cleanup-part-5 by=merge_gate note=owner-approved burn-down batch (c), visible polish, 2026-10-06 (relayed by the Planner): Story 23.5
 
 ### DW-1149: ERROR_LOG_DATES_PATH duplicates error-log.store.ts's prefix with nothing pinning the two equal, so a path change fails silently as no line
 - source: spec-4-10-homes-suggested-view-and-the-starter-prompts.md | severity: low | fix-risk: low | footprint: in-epic
@@ -5456,12 +5459,14 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: app.ts resets lastRoute on sign-out but leaves the router subscription armed, and screenForUrl reads the static generated mirror rather than the reset navigation map. A NavigationEnd after sign-out therefore still resolves a built screen and POSTs /account/preferences, which ApiService meets with its lapsed-pair refresh path. Every other per-principal read in the client is gated on the signed-in state.
 - 2026-09-20T10:52:09Z status=open owner=range-end-cleanup by=cr note=Outcome is a refused write nobody sees, not a wrong render; the fix is a session check in record().
 - 2026-09-30T06:34:03Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down plan 2026-09-29 (23.1 closed; its slice re-sorted): queued for the standing cleanup after the next release (Story 23.3 or later), priority p4
+- 2026-10-07T04:26:43Z status=routed owner=23-5-the-range-end-cleanup-part-5 by=merge_gate note=owner-approved burn-down batch (c), visible polish, 2026-10-06 (relayed by the Planner): Story 23.5
 
 ### DW-1342: The locator favorite toggle has no in-flight guard, so two activations inside one round trip both send add and the screen ends pinned
 - source: spec-15-2-favorites-recent-items-and-menu-search.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: toggleFavorite reads isFavorite() synchronously at click time and the store only moves when the instance answers, so a user who presses the star twice to undo sends two adds rather than an add and a remove. The instance's add is idempotent, so the outcome is pinned -- the opposite of what the second press meant. Same shape on Home's per-row remove, where the double send is harmless.
 - 2026-09-20T10:52:16Z status=open owner=range-end-cleanup by=cr note=Distinct from DW-1327: that entry is the server-side race the two requests can trip, this is the client offering the gesture at all. Fix is a pending-route guard in the component.
 - 2026-09-30T06:34:04Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down plan 2026-09-29 (23.1 closed; its slice re-sorted): queued for the standing cleanup after the next release (Story 23.3 or later), priority p4
+- 2026-10-07T04:26:43Z status=routed owner=23-5-the-range-end-cleanup-part-5 by=merge_gate note=owner-approved burn-down batch (c), visible polish, 2026-10-06 (relayed by the Planner): Story 23.5
 ### DW-1286: OcuPilot.Test.AgentConnection's verification-write test no longer reaches the branch it names, so Api/Definitions.cls:853 is undriven
 - source: spec-13-2-the-test-suite-grows-in-ci-against-a-stock-image.md | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: It deletes the row then calls ConnectionOutcome, so since DW-362 added the version capture at Api/Definitions.cls:802 it lands on the GuardedVersion-unreadable refusal at :809, not the GuardedSetVerification refusal at :853. Both render 500/INTERNAL and the test asserts only status and code, so it passes either way, and its recorded mutation would not redden it
@@ -5836,6 +5841,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-20T17:09:25Z status=open owner=15-3-about-help-shortcuts-and-the-links-panel by=harvest note=implement-stage deferral
 - 2026-09-20T17:49:09Z status=routed owner=range-end-cleanup by=adjudication note=residual: HelpLinks.load adds a route to asked before awaiting and never removes it on failure, so one transient refusal hides that screen's Help control until reload. Non-blocking for the 2026-09-27 floor and for every downstream story: Help is a convenience link to vendor documentation, the instance is unaffected, and a reload clears it. Closing it gives helpHrefFor a third outcome, which changes a contract this story just published
 - 2026-09-30T06:34:05Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down plan 2026-09-29 (23.1 closed; its slice re-sorted): queued for the standing cleanup after the next release (Story 23.3 or later), priority p4
+- 2026-10-07T04:26:43Z status=routed owner=23-5-the-range-end-cleanup-part-5 by=merge_gate note=owner-approved burn-down batch (c), visible polish, 2026-10-06 (relayed by the Planner): Story 23.5
 
 ### DW-1369: stale-bundle-notice.ts has no component spec and app.spec.ts's band-order row was not extended to it
 - source: spec-15-3-about-help-shortcuts-and-the-links-panel.md | severity: med | fix-risk: low | footprint: in-story
@@ -5855,6 +5861,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-20T17:09:25Z status=open owner=15-3-about-help-shortcuts-and-the-links-panel by=harvest note=implement-stage deferral
 - 2026-09-20T17:49:09Z status=routed owner=range-end-cleanup by=adjudication note=residual: app.ts renders app-stale-bundle-notice outside the signed-in branch, so the strip can stand above the blocking instance notice that EXPERIENCE.md says replaces the product surface rather than sharing it. Non-blocking: both surfaces are correct in isolation and the overlap needs an install or upgrade to be in flight while a stale bundle is held. Belongs with the other shell-chrome polish rather than re-opening a done story for a z-order
 - 2026-09-30T06:34:04Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down plan 2026-09-29 (23.1 closed; its slice re-sorted): queued for the standing cleanup after the next release (Story 23.3 or later), priority p4
+- 2026-10-07T04:26:43Z status=routed owner=23-5-the-range-end-cleanup-part-5 by=merge_gate note=owner-approved burn-down batch (c), visible polish, 2026-10-06 (relayed by the Planner): Story 23.5
 
 ### DW-1372: The reload prompt's role=status region is inserted when it becomes true rather than kept mounted and populated, which is commonly not announced
 - source: spec-15-3-about-help-shortcuts-and-the-links-panel.md | severity: low | fix-risk: low | footprint: in-story
@@ -5862,6 +5869,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-20T17:09:25Z status=open owner=15-3-about-help-shortcuts-and-the-links-panel by=harvest note=implement-stage deferral; touches a published EXPERIENCE.md contract
 - 2026-09-20T17:49:09Z status=routed owner=range-end-cleanup by=adjudication note=residual: the prompt's role=status region is inserted when it becomes true rather than kept mounted and populated, which is commonly not announced, while EXPERIENCE.md now publishes it among the polite status messages. Non-blocking for the floor; the spine's own Deferred row puts accessibility mechanics with EXPERIENCE.md as component-level and not an architecture concern, so this names no AD invariant. The visual prompt and its Reload are pinned in two tiers
 - 2026-09-30T06:34:04Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down plan 2026-09-29 (23.1 closed; its slice re-sorted): queued for the standing cleanup after the next release (Story 23.3 or later), priority p4
+- 2026-10-07T04:26:43Z status=routed owner=23-5-the-range-end-cleanup-part-5 by=merge_gate note=owner-approved burn-down batch (c), visible polish, 2026-10-06 (relayed by the Planner): Story 23.5
 
 ### DW-1373: Nothing in the suite executes the real audit-log call for the new uiabout subsystem
 - source: spec-15-3-about-help-shortcuts-and-the-links-panel.md | severity: low | fix-risk: low | footprint: in-story
@@ -5933,6 +5941,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-20T21:07:38Z status=routed owner=range-end-cleanup by=harvest note=non-blocking at the shipped type scale and contradicts a published DESIGN.md contract rather than an AD; a one-line min-height change belongs with the other shell-chrome polish
 - 2026-09-20T21:41:36Z occurrence=15-4-home-s-system-information-panel
 - 2026-09-30T06:34:03Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down plan 2026-09-29 (23.1 closed; its slice re-sorted): queued for the standing cleanup after the next release (Story 23.3 or later), priority p3 (repeat occurrence)
+- 2026-10-07T04:26:42Z status=routed owner=23-5-the-range-end-cleanup-part-5 by=merge_gate note=owner-approved burn-down batch (c), visible polish, 2026-10-06 (relayed by the Planner): Story 23.5
 
 ### DW-1400: The shell-chrome read seam is in its third verbatim copy -- Members/Payload/Field/ReadSource/LogSourceFailure/LOGSUBSYSTEM -- with no extracted base, so a change to the per-field degrade contract has to be made in three places
 - source: spec-15-4-home-s-system-information-panel.md | severity: med | fix-risk: med | footprint: out-of-footprint
@@ -5948,6 +5957,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-20T21:40:34Z status=routed owner=range-end-cleanup by=cr note=about-dialog is the house precedent this story followed; fixing one surface alone would split the pattern
 - 2026-09-26T09:53:52Z status=routed owner=burndown by=spec_gate note=About and Home system-information errors need role=alert, Retry, messages.log and a kind-aware failed()
 - 2026-09-30T03:32:46Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down decision sheet 2026-09-29: into Story 23.3 (after the following release)
+- 2026-10-07T04:26:42Z status=routed owner=23-5-the-range-end-cleanup-part-5 by=merge_gate note=owner-approved burn-down batch (c), visible polish, 2026-10-06 (relayed by the Planner): Story 23.5
 
 ### DW-1410: A view or refresh row whose route no longer names a built screen is never read and no surface clears it; only clear on the kind removes it
 - source: spec-15-5-ui-state-that-survives-a-sign-out.md | severity: low | fix-risk: low | footprint: in-story
@@ -6025,6 +6035,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-21T19:49:53Z status=routed owner=burndown by=merge_gate note=DECIDED YES: a classified opaque value gets a rendering of its own rather than the secret mask. Same direction as DW-1428, and it is the honest half of what DW-1429 turned out to be. Charter it in the burn-down: give opaque a count or a placeholder in DESIGN.md's card recipes and render it from Disclosure.Mask's caller.
 - 2026-09-22T15:30:14Z status=routed owner=range-end-cleanup by=burndown note=Rule 27: real but neither floor- nor downstream-blocking, so not chartered
 - 2026-09-30T06:34:04Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down plan 2026-09-29 (23.1 closed; its slice re-sorted): queued for the standing cleanup after the next release (Story 23.3 or later), priority p4
+- 2026-10-07T04:26:43Z status=routed owner=23-5-the-range-end-cleanup-part-5 by=merge_gate note=owner-approved burn-down batch (c), visible polish, 2026-10-06 (relayed by the Planner): Story 23.5
 
 ### DW-1437: AD-10's user-account set is enumerated by verb and by role name, so two equivalent-effect lockouts are permitted: stripping %All from the last holder, and a service account nobody can sign in as counting as another holder
 - source: spec-5-9-permissions-the-area-s-first-confirmed-user-write.md | severity: med | fix-risk: med | footprint: in-story
@@ -9158,6 +9169,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: Planner observation on the 1.0.7 demo (517e6af4) | severity: low | fix-risk: low | footprint: out-of-footprint
 - evidence: seen on the demo's empty Remote databases list; not yet checked whether other empty screens' suggestion chips show the action id the same way
 - 2026-10-02T19:02:37Z status=routed owner=range-end-cleanup by=merge_gate note=check every empty-state suggestion chip, not only this screen
+- 2026-10-07T04:26:42Z status=routed owner=23-5-the-range-end-cleanup-part-5 by=merge_gate note=owner-approved burn-down batch (c), visible polish, 2026-10-06 (relayed by the Planner): Story 23.5
 ### DW-1948: A document deleted after the save's PresentSet and before its PutDoc is created again by the vendor (201) (inference)
 - source: spec-19-3-the-source-editor-with-etag-conflict-detection.md | severity: low | fix-risk: med | footprint: in-epic
 - evidence: %Api.Atelier.v1.PutDoc saves when ExistsDoc is 0 whatever If-None-Match holds; the AD-34 hold orders only OcuPilot's own writers, so an outside delete inside the window is not seen
@@ -9295,6 +9307,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: ui/src/styles/_components.scss .ocu-data-table-cell nowrap + ellipsis and .ocu-data-table-tooltip max-width 480px, no max-height; data-table.ts placeTooltip clamps top to the window. Measured lengths (spec Design Notes): view text up to 5,856, SqlProc descriptions up to 41,734 characters
 - 2026-10-03T14:19:33Z status=escalated owner=burndown by=cr note=shared shell table; design call (wrapping info row, expandable cell or scrollable tooltip) for the decision sheet
 - 2026-10-03T14:36:23Z status=routed owner=range-end-cleanup by=merge_gate note=design item for the shared data-table cell; driving cases: a view's text (up to 5,856 characters measured), a procedure's description, trigger code
+- 2026-10-07T04:26:42Z status=routed owner=23-5-the-range-end-cleanup-part-5 by=merge_gate note=owner-approved burn-down batch (c), visible polish, 2026-10-06 (relayed by the Planner): Story 23.5
 
 ### DW-1977: The SQL statements tabs' statistics are the last aggregated ones: a statement run since the instance last aggregated reads blank Executions, times and First seen, and nothing but a StatementIndex-style aggregation call fills them, so 'which statements run most often' can answer blank or stale with no sign on screen
 - source: spec-19-14-the-sql-catalog-s-remaining-detail-tabs.md | severity: med | fix-risk: low | footprint: in-story
@@ -9308,6 +9321,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-19-14-the-sql-catalog-s-remaining-detail-tabs.md | severity: low | fix-risk: med | footprint: cross-epic
 - evidence: lead probe on ocupilot-a2-ci, Ens.MessageHeader in HSCUSTOM: hidden tabs at 1024 [Partition mappings..SQL statements], 1280 [Constraints, Cached queries, SQL statements], 1366 and 1440 [4-5], 1600 [3], 1920 none; the browser spec opens tabs by focus and Enter
 - 2026-10-03T14:36:23Z status=routed owner=range-end-cleanup by=merge_gate note=UX: the shared tab strip (detail-page.ts) with nine tabs; a wrap, overflow menu or visible scroll affordance is a design call
+- 2026-10-07T04:26:42Z status=routed owner=23-5-the-range-end-cleanup-part-5 by=merge_gate note=owner-approved burn-down batch (c), visible polish, 2026-10-06 (relayed by the Planner): Story 23.5
 
 ### DW-1982: IRIS defect candidate: merely preparing CREATE USER ... IDENTIFY BY '<password>' stores the password in plain text in the namespace's SQL statement index (INFORMATION_SCHEMA.STATEMENTS)
 - source: spec-19-6-the-query-console-and-its-dml-and-ddl-guard.md | severity: high | fix-risk: high | footprint: out-of-footprint
@@ -9369,6 +9383,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: Planner observation on the 1.0.8 demo (9c8c1336) | severity: low | fix-risk: low | footprint: out-of-footprint
 - evidence: seen on two surfaces; not yet checked whether every row-count string in strings.ts lacks a singular
 - 2026-10-03T19:38:12Z status=routed owner=range-end-cleanup by=merge_gate note=check every row-count string, not only these two
+- 2026-10-07T04:26:42Z status=routed owner=23-5-the-range-end-cleanup-part-5 by=merge_gate note=owner-approved burn-down batch (c), visible polish, 2026-10-06 (relayed by the Planner): Story 23.5
 
 ### DW-1989: License servers' screen Delete dialog never states the multi-server-key consequence the agent's proposal card carries
 - source: spec-18-6-licensing-and-ecp.md | severity: low | fix-risk: med | footprint: in-story
@@ -9947,6 +9962,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-19-18-epic-19-burn-down.md | severity: low | fix-risk: low | footprint: out-of-footprint
 - evidence: Story 19.18's plan found the same plural-only count pattern as DW-2092 in shared shell surfaces and the code list's export status, outside the burn-down's scope
 - 2026-10-06T00:20:51Z status=routed owner=range-end-cleanup by=burndown note=same root cause as DW-2092; apply 19.18's count-phrase pattern to the shared row count and the export status in the next range-end cleanup
+- 2026-10-07T04:26:42Z status=routed owner=23-5-the-range-end-cleanup-part-5 by=merge_gate note=owner-approved burn-down batch (c), visible polish, 2026-10-06 (relayed by the Planner): Story 23.5
 
 ### DW-2102: The ObjectScript suite has outgrown four instance shards: refreshed timings estimate the largest leg at 50.5 min, green run 37352698013's legs took 48-59 min, and run 37389702149's shard 1/4 was cancelled at its 61-minute limit with every class green
 - source: Epic 19 lead, CI run 37389702149 | severity: med | fix-risk: low | footprint: out-of-footprint
@@ -10019,6 +10035,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: Planner demo check 2026-10-06 (release/1.0.11 876e6dc8 on the demo) | severity: low | fix-risk: low | footprint: out-of-footprint
 - evidence: seen on the demo account at the default panel width, 1440 px window; Story 19.11's picker
 - 2026-10-06T10:41:23Z status=routed owner=range-end-cleanup by=merge_gate note=visible polish, a candidate for the drafted batch (c) or a later polish pass; not part of 23.4
+- 2026-10-07T04:26:44Z status=routed owner=23-5-the-range-end-cleanup-part-5 by=merge_gate note=owner-approved burn-down batch (c), visible polish, 2026-10-06 (relayed by the Planner): Story 23.5
 
 ### DW-2111: Five error-log browser navigations timed out at 30 s in one CI run and did not reproduce on a re-run of the identical head, so the instance wedges intermittently during that spec
 - source: cycle-log-parallel.md (Epic 10 merge gate) | severity: med | fix-risk: low | footprint: out-of-footprint

@@ -8477,3 +8477,29 @@ So that later stories stop paying for flakes and lost throwaways, and no known u
 - **Given** the fixes
 - **When** they land
 - **Then** batch (a) and batch (b) each land with CI green on their own head and merge on their own, so a failing batch is reopened alone and never holds the other back.
+
+### Story 23.5: The range-end cleanup, part 5
+
+Chartered by the orchestrator on 2026-10-07 on the owner's approval of batch (c), visible polish, of the drafted burn-down scope (relayed by the Planner, 2026-10-06). It takes batch (c)'s 15 entries from the `range-end-cleanup` queue, plus two visible-polish entries filed since, which the orchestrator added under the owner's standing grant: DW-2101 (more count copy without singular forms, beside DW-1985) and DW-2107 (the agent picker's label cut short in the panel header). Batch (d), doc and test-gap hygiene, stays in the backlog, to be fixed when its areas are next worked on. The orchestrator schedules it after Epic 18's remainder on slot A.
+
+As a person using OcuPilot every day,
+I want the known visual and copy defects fixed, or declined with a reason,
+So that the screens read cleanly at every common width and say what they mean.
+
+**Acceptance Criteria:**
+
+- **Given** the entries re-owned to this story: DW-1985, DW-2101, DW-1951, DW-1978, DW-1976, DW-1401, DW-1392, DW-1148, DW-458, DW-460, DW-1371, DW-1372, DW-1368, DW-1436, DW-1341, DW-1342 and DW-2107
+- **When** this story completes
+- **Then** each has a disposition written by the ledger tool: `resolved-by` this story with the commit, or `wontfix-accepted` or `by-design` with a reason and, where a condition would reopen it, that condition.
+
+- **Given** a layout or copy entry
+- **When** it is fixed
+- **Then** a test reddens on the defect before the fix: a component spec for copy and state, or a browser spec for anything about geometry, run against a rebuilt and redeployed bundle in both themes.
+
+- **Given** the count copy entries (DW-1985, DW-2101)
+- **When** they are fixed
+- **Then** every count the client renders reads in the singular for one, through one shared rule rather than per-screen fixes.
+
+- **Given** the fixes
+- **When** they land
+- **Then** they land in batches grouped by area, each with CI green on its own head, so a failing batch is reopened alone.
