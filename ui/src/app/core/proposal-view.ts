@@ -348,6 +348,12 @@ export const CONSEQUENCE_AUDITENCRYPTIONCHANGE = 'AUDIT.ENCRYPTIONCHANGE';
 /** Story 18.8: a change to the JWT issuer or signature algorithm, which ends every token session. */
 export const CONSEQUENCE_WEBAUTHSIGNOUT = 'WEBAUTH.SIGNOUT';
 
+/** Story 20.2: the production actions that wait or recover (AD-62); each is one published sentence. */
+export const CONSEQUENCE_INTEROPSTOP = 'INTEROP.STOP';
+export const CONSEQUENCE_INTEROPRESTART = 'INTEROP.RESTART';
+export const CONSEQUENCE_INTEROPUPDATE = 'INTEROP.UPDATE';
+export const CONSEQUENCE_INTEROPRECOVER = 'INTEROP.RECOVER';
+
 /** The field a switch file proposal's diff names the file the instance writes now in. */
 const JOURNAL_CURRENT_FIELD = 'CurrentFile';
 
@@ -447,6 +453,11 @@ export function consequenceSentence(code: string | undefined): string {
   if (code === CONSEQUENCE_AUDITENCRYPTIONCHANGE) return STRINGS.encryptionStartupAuditConsequence;
   // Story 18.8: the sign-out sentence, published once.
   if (code === CONSEQUENCE_WEBAUTHSIGNOUT) return STRINGS.authOptionsSignOutConsequence;
+  // Story 20.2: the four production consequences, each published once.
+  if (code === CONSEQUENCE_INTEROPSTOP) return STRINGS.interopStopConsequence;
+  if (code === CONSEQUENCE_INTEROPRESTART) return STRINGS.interopRestartConsequence;
+  if (code === CONSEQUENCE_INTEROPUPDATE) return STRINGS.interopUpdateConsequence;
+  if (code === CONSEQUENCE_INTEROPRECOVER) return STRINGS.interopRecoverConsequence;
   return '';
 }
 

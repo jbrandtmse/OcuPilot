@@ -1228,6 +1228,7 @@ ClassMethod ReasonForToolCode(pCode As %String) As %String
     If $Extract(pCode, 1, 10) = "WALLETKEY." Set tReason = ##class(OcuPilot.Api.WalletKeyError).ReasonFor(pCode)
     If $Extract(pCode, 1, 8) = "WEBAUTH." Set tReason = ##class(OcuPilot.Api.WebAuthError).ReasonFor(pCode)
     If $Extract(pCode, 1, 6) = "DOCDB." Set tReason = ##class(OcuPilot.Api.DocDbError).ReasonFor(pCode)
+    If $Extract(pCode, 1, 8) = "INTEROP." Set tReason = ##class(OcuPilot.Api.InteropError).ReasonFor(pCode)
     If tReason '= "" Quit tReason
     Quit ..#REASONTOOLUNAVAILABLE
 }
@@ -1430,6 +1431,7 @@ ClassMethod ReasonForViolation(pCode As %String) As %String
     If $Extract(pCode, 1, 11) = "ENCRYPTION." Quit ##class(OcuPilot.Api.EncryptionError).ReasonFor(pCode)
     If $Extract(pCode, 1, 10) = "WALLETKEY." Quit ##class(OcuPilot.Api.WalletKeyError).ReasonFor(pCode)
     If $Extract(pCode, 1, 8) = "WEBAUTH." Quit ##class(OcuPilot.Api.WebAuthError).ReasonFor(pCode)
+    If $Extract(pCode, 1, 8) = "INTEROP." Quit ##class(OcuPilot.Api.InteropError).ReasonFor(pCode)
     Quit ""
 }
 

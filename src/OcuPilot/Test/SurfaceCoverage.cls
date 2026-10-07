@@ -200,6 +200,10 @@ XData Coverage
 <screen name="EncryptionStartup" class="OcuPilot.Test.EncryptionStartupDescriptor" method="TestTheScreenIsDeclaredAsTheSpecPlacesIt"/>
 <screen name="AuthOptions" class="OcuPilot.Test.AuthOptionsDescriptor" method="TestTheScreenIsDeclaredAsTheSpecPlacesIt"/>
 <screen name="SqlActivityList" class="OcuPilot.Test.SqlActivityDescriptor" method="TestTheDescriptorShape"/>
+<screen name="InteropProductionList" class="OcuPilot.Test.InteropDescriptor" method="TestTheFourDeclarationsRegister" corpus="one declaration test pins all four Story 20.2 Interoperability screens in one loop"/>
+<screen name="InteropProcessList" class="OcuPilot.Test.InteropDescriptor" method="TestTheFourDeclarationsRegister" corpus="one declaration test pins all four Story 20.2 Interoperability screens in one loop"/>
+<screen name="InteropTransformList" class="OcuPilot.Test.InteropDescriptor" method="TestTheFourDeclarationsRegister" corpus="one declaration test pins all four Story 20.2 Interoperability screens in one loop"/>
+<screen name="InteropRuleList" class="OcuPilot.Test.InteropDescriptor" method="TestTheFourDeclarationsRegister" corpus="one declaration test pins all four Story 20.2 Interoperability screens in one loop"/>
 <tool name="permissions.users.create" class="OcuPilot.Test.UserCreate" method="TestTheSchemaCarriesNoSecretAndThePermittedSetIsTheSets"/>
 <tool name="permissions.roles.create" class="OcuPilot.Test.RoleCreate" method="TestTheSchemaCarriesNoEscalationOnlyAndThePermittedSetIsTheSets"/>
 <tool name="permissions.roles.delete" class="OcuPilot.Test.RoleDelete" method="TestTheDeleteIsAnActionWriteOverTheScreensOwnPairs"/>
@@ -341,6 +345,11 @@ XData Coverage
 <tool name="explorer.sqldata.save" class="OcuPilot.Test.SqlSave" method="TestTheToolDeclaresItsWritePath"/>
 <tool name="explorer.docdb.create" class="OcuPilot.Test.DocDbWrite" method="TestTheAgentsCreateConfirmsAndATakenNameIsRefused"/>
 <tool name="explorer.docdb.delete" class="OcuPilot.Test.DocDbWrite" method="TestTheAgentsDropIsGovernedThenConfirmed"/>
+<tool name="interop.productions.start" class="OcuPilot.Test.InteropControl" method="TestTheAgentsStartConfirms"/>
+<tool name="interop.productions.stop" class="OcuPilot.Test.InteropControl" method="TestTheAgentsStopConfirms"/>
+<tool name="interop.productions.restart" class="OcuPilot.Test.InteropControl" method="TestTheAgentsRestartConfirms"/>
+<tool name="interop.productions.update" class="OcuPilot.Test.InteropControl" method="TestTheAgentsUpdateConfirms"/>
+<tool name="interop.productions.recover" class="OcuPilot.Test.InteropControl" method="TestTheAgentsRecoverConfirms"/>
 <tool name="osmgmt.remotedatabases.create" class="OcuPilot.Test.RemoteDatabaseDescriptor" method="TestTheToolsDeclareTheirFieldsKindsAndPairs" corpus="the three remote database tools are asserted together in one loop"/>
 <tool name="osmgmt.remotedatabases.update" class="OcuPilot.Test.RemoteDatabaseDescriptor" method="TestTheToolsDeclareTheirFieldsKindsAndPairs" corpus="the three remote database tools are asserted together in one loop"/>
 <tool name="osmgmt.remotedatabases.delete" class="OcuPilot.Test.RemoteDatabaseDescriptor" method="TestTheToolsDeclareTheirFieldsKindsAndPairs" corpus="the three remote database tools are asserted together in one loop"/>

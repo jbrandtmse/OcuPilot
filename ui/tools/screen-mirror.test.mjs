@@ -2364,7 +2364,8 @@ test('ownPrivilegesProblem returns every sentence OwnPrivilegeCases declares, an
   // beside OS management's set, and Story 18.21's ECP settings owns %Admin_Secure the same way.
   // Story 18.7's three key file screens own %Admin_FileSystemAccess beside Security's two pairs.
   // Story 19.17's Document databases owns %DocDB_Admin and %Service_DocDB beside System Explorer's
-  // %Development.
+  // %Development. Story 20.2's four Interoperability lists own their classic page's resource beside the
+  // area's %Ens_Portal.
   assert.deepEqual(
     owners.sort(),
     [
@@ -2375,6 +2376,10 @@ test('ownPrivilegesProblem returns every sentence OwnPrivilegeCases declares, an
       'OcuPilot.Screen.Descriptor.EncryptionKeyFileAdminList',
       'OcuPilot.Screen.Descriptor.EncryptionKeyFileForm',
       'OcuPilot.Screen.Descriptor.ExplorerDocDbList',
+      'OcuPilot.Screen.Descriptor.InteropProcessList',
+      'OcuPilot.Screen.Descriptor.InteropProductionList',
+      'OcuPilot.Screen.Descriptor.InteropRuleList',
+      'OcuPilot.Screen.Descriptor.InteropTransformList',
       'OcuPilot.Screen.Descriptor.JournalSettings',
       'OcuPilot.Screen.Descriptor.LanguageServerActivity',
       'OcuPilot.Screen.Descriptor.LanguageServerForm',
@@ -2720,7 +2725,7 @@ test('timelineMemberProblem refuses a timeline member that declares a timeline i
 // Mutation (Rule 19): drop SOURCE_BACKGROUND from READ_SOURCE_PORTS -> the roster pin goes red and
 // the list's read is refused.
 test('Story 16.5: the Background tasks list reads through the background port, the seventh read source', () => {
-  assert.deepEqual(READ_SOURCE_PORTS, ['admin', 'state', 'mgmnt', 'logsource', 'path', 'timeline', 'background', 'atelier', 'encryption', 'docdb', 'sqlactivity']);
+  assert.deepEqual(READ_SOURCE_PORTS, ['admin', 'state', 'mgmnt', 'logsource', 'path', 'timeline', 'background', 'atelier', 'encryption', 'docdb', 'sqlactivity', 'interop']);
   const { screens } = readSources();
   const background = screens.find((candidate) => candidate.className === 'OcuPilot.Screen.Descriptor.BackgroundTaskList');
   assert.ok(background !== undefined, 'the Background tasks list is declared');
@@ -2854,4 +2859,39 @@ test('Story 19.10: SQL activity reads through the sqlactivity port, the eleventh
   assert.equal(readProblem(screen.declaration), null, 'its read passes');
   assert.equal(screen.declaration.ownPrivileges, undefined, 'it declares no own pair');
   assert.deepEqual(screen.declaration.refreshRates, [5, 10, 30, 60]);
+});
+
+// Story 20.2: the four Interoperability lists read through the interop port, the twelfth read source,
+// which both engines admit as one LIST of the port's four endpoints with no criteria, per-row call,
+// parent list, query or parts. Every case in `OcuPilot.Test.InteropDescriptor`'s corpus gets its exact
+// sentence, or none, here as the instance's registry gives it there.
+// Mutation (Rule 19): drop the interop arm from `readProblem` -> the endpoint, type and key cases go red.
+test('Story 20.2: the Interoperability lists read through the interop port, the twelfth read source, and the corpus agrees', () => {
+  assert.ok(READ_SOURCE_PORTS.includes('interop'), 'the interop port is a read source');
+  const corpus = testCorpus(['Test', 'InteropDescriptor.cls'], 'Cases');
+  let refusals = 0;
+  for (const testCase of corpus.cases) {
+    const declaration = structuredClone(corpus.declaration);
+    declaration.read.source = structuredClone(testCase.source);
+    if (testCase.criteria !== undefined) declaration.read.criteria = structuredClone(testCase.criteria);
+    const problem = testCase.check === 'criteria' ? criteriaProblem(declaration) : readProblem(declaration);
+    assert.equal(problem, testCase.expected, testCase.name);
+    if (testCase.expected !== null) refusals += 1;
+  }
+  assert.ok(refusals >= 8, `the corpus refuses its shapes (${refusals})`);
+  const { screens } = readSources();
+  const expected = [
+    ['InteropProductionList', 'Productions'],
+    ['InteropProcessList', 'Processes'],
+    ['InteropTransformList', 'Transforms'],
+    ['InteropRuleList', 'Rules'],
+  ];
+  for (const [name, endpoint] of expected) {
+    const screen = screens.find((candidate) => candidate.className === `OcuPilot.Screen.Descriptor.${name}`);
+    assert.ok(screen !== undefined, `${name} is declared`);
+    assert.deepEqual(screen.declaration.read.source, { port: 'interop', endpoint, type: 'LIST' });
+    assert.equal(readProblem(screen.declaration), null, `${name}'s read passes`);
+    assert.equal(screen.declaration.area, 'interoperability', `${name} lives in the interoperability area`);
+    assert.equal(screen.declaration.ownPrivileges.length, 1, `${name} declares its classic page's resource as its own pair`);
+  }
 });

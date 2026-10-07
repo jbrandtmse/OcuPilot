@@ -41,7 +41,7 @@ import {
 } from '../../testing/performance';
 
 /**
- * Home's rendered contract (DESIGN.md `:896`, `:1102`; EXPERIENCE.md "Seven tiles in daily-use order").
+ * Home's rendered contract (DESIGN.md `:896`, `:1102`; EXPERIENCE.md "One tile per applying area in daily-use order").
  *
  * The area roster is the **shipped** mirror through the real `orderedAreas()`, because the seven
  * tiles and the two absences are exactly what the declaration says and a stubbed roster would
@@ -400,7 +400,7 @@ describe('Home', () => {
       STRINGS.navAreaAnalytics,
     ]);
     // Home is the surface the tiles sit on and Agent co-pilot is reached from the rail, so
-    // neither gets one (EXPERIENCE.md "Seven tiles in daily-use order") -- and neither name appears anywhere on the page.
+    // neither gets one (EXPERIENCE.md "One tile per applying area in daily-use order") -- and neither name appears anywhere on the page.
     expect(tileNames()).not.toContain(STRINGS.navAreaHome);
     expect(tileNames()).not.toContain(STRINGS.navAreaAgent);
 

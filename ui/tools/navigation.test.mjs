@@ -327,6 +327,11 @@ test('a side bar lists only built screens, in side-bar order', () => {
       'system-explorer/sql-data',
       // Story 19.17: Document databases, after Data browser.
       'system-explorer/docdb',
+      // Story 20.2: Interoperability's four lists, in the classic List menu's order.
+      'interoperability/productions',
+      'interoperability/processes',
+      'interoperability/transforms',
+      'interoperability/rules',
       'agent/definitions/edit',
       'agent/transcripts/details',
       'agent/definitions',
