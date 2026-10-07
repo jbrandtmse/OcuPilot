@@ -10269,3 +10269,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-26-managed-file-transfer-connections.md | severity: low | fix-risk: high | footprint: out-of-footprint
 - evidence: Story 18.26 plan: read in source
 - 2026-10-07T16:07:59Z status=decision-pending owner=burndown by=spec_gate note=human=decide whether to report it to InterSystems, with the held vendor-report list; owner hold 2026-10-05: not reported
+
+### DW-2160: CI flake: AuditVendorSecrets.AssertMasked reads the audit screen once, so the vendor's audit index refresh (DW-1915's root cause) can leave the probe row out of the wire read; 23.4 polled only OAuthResourceServerAuditMask
+- source: cycle-log-epic-18.md (Story 18.25 CI run 37646809169) | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: run 37646809169 head 44e8f5b3 instance shard 2/5: AssertMasked+7 and +9 red on the wire read while logs.audit.read passed moments later; the class ran 4/4 green on ocupilot-ci (run 1172) over the same source; OAuthAuthorizationServerSecret and OAuthRegisteredClientSecret read once the same way (inference)
+- 2026-10-07T17:30:11Z status=routed owner=burndown by=lead note=apply 23.4's READSECONDS poll (16313a0e) to AuditVendorSecrets.AssertMasked and to any sibling that reads a vendor row once
