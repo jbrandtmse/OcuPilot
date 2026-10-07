@@ -31,7 +31,7 @@ Parameter RSA = "%Wallet.RSA";
 
 Parameter SYMMETRIC = "%Wallet.SymmetricKey";
 
-Parameter PARTS = "Meta,PubOnly,CertOnly,Sym,Leak,LeakSym,Leaked,Path";
+Parameter PARTS = "Meta,PubOnly,CertOnly,Sym,Leak,LeakSym,Leaked,Path,Fence,FenceSym,FenceNew";
 
 Property MaterialDirectory As %String;
 
@@ -227,6 +227,8 @@ Method TestAServerFileNameIsRefusedBeforeAnyVendorCall()
 /// <p>AD-59: the scripts. A symmetric import into a new name is two steps and into a present one is one,
 /// each carrying placeholders for the key and the length; an RSA replace by length is its generating
 /// body whatever secret members the card names; none carries a key.</p>
+/// <p>Mutation (Rule 19): the RSA branch of <method>OcuPilot.Port.WalletPort.Snippet</method> passes the
+/// body it was given in place of the generating body -> the last leg goes red.</p>
 Method TestTheScriptsCarryNoKeyMaterial()
 {
     Set tKey = $System.Encryption.Base64Encode($System.Encryption.GenCryptRand(16))
@@ -243,11 +245,48 @@ Method TestTheScriptsCarryNoKeyMaterial()
     Set tQuery("name") = ..Name("Sym")
     Set tQuery("Length") = 3072
     Set tQuery("Type") = ..#RSA
-    Set tSteps = $ClassMethod(..#PORT, "Snippet", "Wallet.Secret", "PUT", .tQuery, {"Certificate": "<Certificate>", "Password": "<Password>"}, {"creates": false, "origin": "http://h", "user": "u"})
+    Set tSteps = $ClassMethod(..#PORT, "Snippet", "Wallet.Secret", "PUT", .tQuery, {"Certificate": (tKey), "Password": "<Password>"}, {"creates": false, "origin": "http://h", "user": "u"})
     Do $$$AssertEquals(tSteps.%Size(), 1, "an RSA replace by length is one step")
     Set tText = tSteps.%ToJSON()
     Do $$$AssertTrue((tText [ "3072") && (tText '[ "<Certificate>") && (tText '[ "Length=3072"), "its body is the generating body, with no key member and the length in the body")
-    Do $$$AssertEquals(tText [ tKey, 0, "and no script carries a key")
+    Do $$$AssertEquals(tText [ tKey, 0, "and the replace script carries none of the key the body held")
+}
+
+/// <p>AD-10, AD-54: the prohibited set judges a key write by its own type's fields: a create naming a
+/// field outside the type's list, and a replace changing one, are refused <code>UNCOVEREDFIELD</code>;
+/// each type's own fields pass.</p>
+/// <p>Mutation (Rule 19): <method>OcuPilot.Kernel.Proposal.Prohibited.WalletKey</method> and
+/// <method>WalletKeyChanged</method> answer <code>pProhibits</code> 0 whatever the fields -> the refused
+/// legs go red.</p>
+Method TestTheFieldFenceJudgesAKeyWriteByItsOwnType()
+{
+    Set tCode = $Parameter("OcuPilot.Kernel.Proposal.Prohibited", "UNCOVEREDFIELD")
+    Set tFixture = "OcuPilot.Test.ProhibitedFixture"
+    Set tNew = $ClassMethod(tFixture, "Reference", ..Name("FenceNew"), "wallet-secret")
+    Set tCreates(1) = $ListBuild("security.secrets.creatersa", "{""Length"": 2048}", 0)
+    Set tCreates(2) = $ListBuild("security.secrets.creatersa", "{""Length"": 2048, ""Secret64"": ""x""}", 1)
+    Set tCreates(3) = $ListBuild("security.secrets.createsymmetric", "{""Length"": 16}", 0)
+    Set tCreates(4) = $ListBuild("security.secrets.createsymmetric", "{""Length"": 16, ""Certificate"": ""x""}", 1)
+    Set tCreates(5) = $ListBuild("security.secrets.createsymmetric", "{""Length"": 16, ""Usage"": 1}", 1)
+    For tI = 1:1:5 {
+        Set tSC = $ClassMethod("OcuPilot.Kernel.Proposal.Prohibited", "Prohibits", $List(tCreates(tI), 1), tNew, $List(tCreates(tI), 2), "[]", .tProhibits, .tAnswer)
+        Do $$$AssertStatusOK(tSC, "create case " _ tI _ " is judged")
+        Do $$$AssertEquals(tProhibits _ " " _ tAnswer, $Select($List(tCreates(tI), 3): "1 " _ tCode, 1: "0 "), "create case " _ tI _ " is " _ $Select($List(tCreates(tI), 3): "refused", 1: "permitted"))
+    }
+    Set tRsa = ..Name("Fence")
+    Set tSym = ..Name("FenceSym")
+    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "AddRsa", tRsa, 2048), "an RSA key is stored")
+    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "AddSymmetricKey", tSym), "a symmetric key is stored")
+    Set tReplaces(1) = $ListBuild("security.secrets.replacersa", tRsa, "Length", "{""Length"": 3072}", 0)
+    Set tReplaces(2) = $ListBuild("security.secrets.replacersa", tRsa, "Length,Secret64", "{""Length"": 3072, ""Secret64"": ""x""}", 1)
+    Set tReplaces(3) = $ListBuild("security.secrets.replacesymmetric", tSym, "Secret64", "{""Secret64"": ""x""}", 0)
+    Set tReplaces(4) = $ListBuild("security.secrets.replacesymmetric", tSym, "Usage,Secret64", "{""Usage"": 1, ""Secret64"": ""x""}", 1)
+    For tI = 1:1:4 {
+        Set tRef = $ClassMethod(tFixture, "Reference", $List(tReplaces(tI), 2), "wallet-secret")
+        Set tSC = $ClassMethod("OcuPilot.Kernel.Proposal.Prohibited", "Prohibits", $List(tReplaces(tI), 1), tRef, $List(tReplaces(tI), 4), $ClassMethod(tFixture, "Diff", $List(tReplaces(tI), 3)), .tProhibits, .tAnswer)
+        Do $$$AssertStatusOK(tSC, "replace case " _ tI _ " is judged")
+        Do $$$AssertEquals(tProhibits _ " " _ tAnswer, $Select($List(tReplaces(tI), 5): "1 " _ tCode, 1: "0 "), "replace case " _ tI _ " is " _ $Select($List(tReplaces(tI), 5): "refused", 1: "permitted"))
+    }
 }
 
 /// <p>C8: every <code>WALLETKEY.*</code> code carries its sentence through both resolvers; the baseline

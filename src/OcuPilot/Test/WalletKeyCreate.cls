@@ -199,7 +199,6 @@ Method TestEveryRefusalSendsNothing()
     Do tCases.%Push({"t": (..#RSA), "args": {"Certificate": (tPem.Certificate), "PrivateKey": "not a key"}, "code": "WALLETKEY.PRIVATEKEY.SHAPE"})
     Do tCases.%Push({"t": (..#RSA), "args": {"Certificate": (tPem.ExpiredCertificate)}, "code": "WALLETKEY.CERTIFICATE.INVALID"})
     Do tCases.%Push({"t": (..#RSA), "args": {"Certificate": (tPem.Certificate), "PrivateKey": (tPem.OtherKey)}, "code": "WALLETKEY.PRIVATEKEY.MISMATCH"})
-    Do tCases.%Push({"t": (..#RSA), "args": {"Certificate": (tPem.EcCertificate)}, "code": "WALLETKEY.CERTIFICATE.INVALID", "optional": 1})
     Do tCases.%Push({"t": (..#RSA), "args": {"Certificate": (tPem.Certificate), "PrivateKey": (tPem.EncryptedKey)}, "code": "WALLETKEY.PASSWORD.REQUIRED"})
     Do tCases.%Push({"t": (..#RSA), "args": {"Certificate": (tPem.Certificate), "PrivateKey": (tPem.EncryptedKey), "Password": "not the password"}, "code": "WALLETKEY.PASSWORD.WRONG"})
     Do tCases.%Push({"t": (..#RSA), "args": {"Certificate": (tPem.Certificate), "Password": (tPass)}, "code": "WALLETKEY.PASSWORD.WITHOUTKEY"})
@@ -208,7 +207,6 @@ Method TestEveryRefusalSendsNothing()
     Do tCases.%Push({"t": (..#SYMMETRIC), "args": {"Length": 16, "Secret64": ($System.Encryption.Base64Encode($System.Encryption.GenCryptRand(16)))}, "code": "WALLETKEY.SOURCE.BOTH"})
     Set tIterator = tCases.%GetIterator()
     While tIterator.%GetNext(.tI, .tCase) {
-        If tCase.%Get("optional") Continue
         Set tArgs = {"Type": (tCase.%Get("t"))}
         Set tOver = tCase.%Get("args")
         Set tFields = tOver.%GetIterator()

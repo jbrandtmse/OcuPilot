@@ -247,7 +247,7 @@ describe('the wallet secret form', () => {
     expect(store.dirty()).toBe(true);
     (host.querySelector('.ocu-form-bar-actions button.ocu-button-primary') as HTMLButtonElement).click();
     await settle(fixture);
-    // Mutation (Rule 19): skip `clearMaterial()` after an accepted save -> the key stays in the input.
+    // The create's view is replaced after the save, so the input's emptying is pinned by the replace test below.
     expect(sent.map((call) => call.method)).toEqual(['POST']);
     expect(JSON.parse(sent[0]!.body)).toEqual({ Name: 'Probe.New', Type: '%Wallet.SymmetricKey', Secret64: 'QUJDREVGR0hJSktMTU5PUA==' });
     expect(host.innerHTML).not.toContain('QUJDREVGR0hJSktMTU5PUA');
@@ -275,6 +275,26 @@ describe('the wallet secret form', () => {
     await settle(fixture);
     expect(sent.map((call) => call.method)).toEqual(['PUT']);
     expect(JSON.parse(sent[0]!.body)).toEqual({ Length: 2048 });
+  });
+
+  it('Story 18.24: a replacement key is in no input once the instance accepted it', async () => {
+    const { fixture, host } = await mount('/security/wallet/secrets/edit/Probe.Sym', SYMMETRIC);
+    type(fixture, host, 'ocu-wallet-Secret64', 'QUJDREVGR0hJSktMTU5PUA==');
+    (host.querySelector('.ocu-form-bar-actions button.ocu-button-primary') as HTMLButtonElement).click();
+    await settle(fixture);
+    const dialog = host.querySelector('[role="dialog"]') as HTMLElement;
+    const field = dialog.querySelector('input.ocu-typed-name-field') as HTMLInputElement;
+    field.value = 'Probe.Sym';
+    field.dispatchEvent(new Event('input'));
+    await settle(fixture);
+    (dialog.querySelector('button.ocu-button-destructive') as HTMLButtonElement).click();
+    await settle(fixture);
+    expect(sent.map((call) => call.method)).toEqual(['PUT']);
+    // Mutation (Rule 19): skip `clearMaterial()` in confirmReplace -> the key stays in the input's value
+    // property, which innerHTML and textContent never show, so the input itself is read.
+    const keyInput = host.querySelector('#ocu-wallet-Secret64') as HTMLInputElement | null;
+    expect(keyInput).not.toBeNull();
+    expect(keyInput!.value).toBe('');
   });
 
   it('Story 18.24: a symmetric key shows its key id and offers only an import to replace it', async () => {

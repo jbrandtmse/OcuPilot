@@ -168,14 +168,17 @@ Method TestACallerWithoutTheWalletResourceIsRefusedOnEachKeyRoute()
 /// <method>OcuPilot.Screen.Tool.WalletKeyCreate.PrivilegePairs</method> -> its leg goes red.</p>
 Method TestEachToolRequiresTheFormsPairsAlone()
 {
-    Set tForm = $ListToString($ClassMethod(..#FORM, "PrivilegePairs"), ";")
+    Set tFormPairs = $ClassMethod(..#FORM, "PrivilegePairs")
+    Set tForm = ""
+    For tJ = 1:1:$ListLength(tFormPairs) Set tForm = tForm _ $ListBuild($List($List(tFormPairs, tJ), 1) _ ":" _ $List($List(tFormPairs, tJ), 2))
+    Set tForm = $ListToString(tForm, ",")
     For tI = 1:1:$Length(..#TOOLS, ",") {
         Set tTool = $Piece(..#TOOLS, ",", tI)
         Set tPairs = $ClassMethod(tTool, "PrivilegePairs", "", .tResolved)
         Do $$$AssertTrue(tResolved, tTool _ ": its pairs resolve")
         Set tNames = ""
         For tJ = 1:1:$ListLength(tPairs) Set tNames = tNames _ $ListBuild($List($List(tPairs, tJ), 1) _ ":" _ $List($List(tPairs, tJ), 2))
-        Do $$$AssertEquals($ListToString(tNames, ","), "%Admin_Wallet:USE,%DB_IRISSYS:READ", tTool _ ": %Admin_Wallet:USE and %DB_IRISSYS:READ, as the form")
+        Do $$$AssertEquals($ListToString(tNames, ","), tForm, tTool _ ": the form's own pairs, which are %Admin_Wallet:USE and %DB_IRISSYS:READ")
     }
 }
 

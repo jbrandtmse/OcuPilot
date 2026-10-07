@@ -2,7 +2,7 @@
 title: 'Story 18.24: RSA and symmetric-key wallet secrets'
 type: 'feature'
 created: '2026-10-06'
-status: 'in-progress'
+status: 'done'
 baseline_revision: '95476bdc23c5a522cf014e22a504ea66121776c7'
 review_loop_iteration: 0
 followup_review_recommended: false
@@ -132,6 +132,29 @@ deferred: []
 
 ## Review Triage Log
 
+### 2026-10-06 - Review pass
+
+- verdicts: 18 findings - high 0, medium 3, low 12, false 3, maybe-false 0
+- findings:
+  - `medium` `patch` the `Prohibited` wallet-key arm has no refusal test - added `WalletKeyRead.TestTheFieldFenceJudgesAKeyWriteByItsOwnType` (create and replace, permitted and refused); both arms mutated red.
+  - `low` `patch` no mutation names the moved-metadata fingerprint - mutation run and recorded under C4; the symmetric `KeyId` leg shares the digest mechanism and is not separately mutated.
+  - `low` `patch` the script test's last assertion could not fail - the RSA replace body now carries a test-time key and the mutation reddens it.
+  - `medium` `patch` the page spec's DOM check cannot see an input's value property - new replace-flow test reads the input value; mutation red.
+  - `low` `reject` the store spec's "holds none" check - the store never receives the material except as a call argument, and the page spec now pins the emptying; a test-only tightening buys nothing.
+  - `low` `patch` a dead `optional` refusal case - removed.
+  - `low` `patch` `tForm` computed and unused - the assertion now compares to the form's own pairs.
+  - `low` `reject` `Leak` over an empty secrets object - `All()` is a fixed roster.
+  - `medium` `patch` C1 client half has no mutation line - same root as the DOM finding; line added.
+  - `low` `reject` C2 read-back not mutated - the wire test asserts the `matches` verdict on a real create; the comparison is Story 16.17's.
+  - `low` `reject` C5 rules not mutated one at a time - each refusal case names its own code and fails alone.
+  - `low` `patch` C7 denial test has no mutation line - mutation run and recorded.
+  - `low` `reject` C8's budget and `proposal-view.test.mjs` read source text - the pinned artifact is the text itself, as in the sibling tests.
+  - `low` `reject` the old `WALLETTYPEUNSUPPORTED` refusal path lost its coverage - the key-value tool's refusal is pinned by `WALLET.TYPE.UNSUPPORTED` sentence and `WalletKeyRead` roster legs; the changed screen answer is the intended one.
+  - `false` `reject` the screen's replace passes an empty diff to `Prohibits` - the screen's body is port-built from fixed members, never from a caller-chosen field.
+  - `false` `reject` note (a): `replacesymmetric` stores `destructive=0` - an unadvertised tool cannot be minted (`Registry.Resolve` refuses), so no proposal exists; the tool declares `DESTRUCTIVE` 1 and the page asks the typed name.
+  - `false` `reject` note (b): a confirm carrying material is spent before its 422 - the matrix row requires 422 `WALLETKEY.SOURCE.BOTH` with zero `PUT`, and every other port refusal follows the claim (`Confirm.cls` header).
+  - `low` `reject` intent audit: no divergence reported; the one unconfirmed claim (`replacesymmetric` unadvertised) is pinned by `WalletKeyRead` roster legs.
+
 ## Design Notes
 
 **Governing ADs:** AD-2, AD-27, AD-52 (`WalletPort` extends `AdminPort`; AD-27's third case widens); AD-3 (field lists already derived per `Type`; reviewed classification); AD-4, AD-54 (upsert `PUT`; creates fingerprint absence); AD-51, AD-56 (replace is action-style with a port-built body carrying declared secrets); AD-6, AD-34, AD-40, AD-53, AD-55 (two callers, the hold, the closed confirm channel; one unadvertised tool); AD-8, AD-29 (the wallet screens' pairs, measured); AD-10 (no arm: OcuPilot keeps no RSA or symmetric secret, and the vendor refuses a type change); AD-13, AD-14 (`wallet-secret`, unchanged); AD-15, AD-53 (vendor event on every write, so no named case); AD-21 (no path for key material); AD-22 (create keys `true`, replace keys `false`); AD-24, AD-35, AD-36, AD-48 (no material on any surface); AD-26 (synchronous, nothing queues); AD-39; AD-58; AD-59.
@@ -205,7 +228,7 @@ Labels and helpers: "Key-value", "RSA key", "Symmetric key", "Generate a new key
 
 **Commands:**
 
-- `(loop)` `cd ui && node tools/ci-runner.mjs --container ocupilot-ci --class OcuPilot.Test.<C>`, one at a time, 0 failures checked against `%UnitTest_Result`: `WalletKeyCreate`, `WalletKeyReplace`, `WalletKeyRead`, `WalletKeyWire`, then `WalletSecretCreate`, `WalletSecretUpdate`, `WalletSecretDelete`, `WalletPortRead`, `WalletWire`, `X509Wire`, and the rosters `SurfaceCoverage`, `ReadTool`, `ToolRoundTrip`, `ToolWrite`, `ToolEmit`, `Governance`, `GovernanceBaseline`, `Descriptor`, `Prohibited`, `DraftRegistry`, `DerivedFields`, `FieldDerive`, `Inventory`.
+- `(loop)` `cd ui && node tools/ci-runner.mjs --container ocupilot-ci --class OcuPilot.Test.<C>`, one at a time, 0 failures checked against `%UnitTest_Result`: `WalletKeyCreate`, `WalletKeyReplace`, `WalletKeyRead`, `WalletKeyWire`, then `WalletSecretCreate`, `WalletSecretUpdate`, `WalletSecretDelete`, `WalletPortRead`, `WalletWire`, `X509Wire`, and the rosters `SurfaceCoverage`, `ReadTool`, `ToolRoundTrip`, `ToolWrite`, `ToolEmit`, `Governance`, `GovernanceBaseline`, `Descriptor`, `Prohibited`, `DraftRegistry`, `DerivedFields`, `Inventory`. `FieldDerive` has no test methods: run `cd ui && node tools/field-lists.mjs --check` for it.
 - `(loop)` `cd ui && node --test --test-concurrency=1 browser/wallet-secret.browser-spec.mjs browser/security.browser-spec.mjs`; pass.
 - `(loop)` `cd ui && npm run test:tools && npm run test:components`, `uv run scripts/check-objectscript.py <changed .cls>`, `bash scripts/lint-docs.sh`; clean, EXPERIENCE.md 1039 lines.
 - `(once, before dev_complete)`, each green with a non-zero count: the full ObjectScript sweep (`cd ui && node tools/ci-runner.mjs --container ocupilot-ci`, one class at a time); `cd ui && npm test && npm run build`; `bash scripts/smoke.sh --container ocupilot-ci --user _SYSTEM --password SYS`; then no `OcuPilotProbe1824` secret or collection, no probe principal, and monitor state 0 (`$SYSTEM.Monitor.Clear()` after a deliberate vendor refusal).
@@ -217,13 +240,28 @@ Labels and helpers: "Key-value", "RSA key", "Symmetric key", "Generate a new key
 - C2: the `generate` mode stops requiring `Length`. mutation: red in `WalletKeyCreate` (`TestTheAgentImportsNothing`, the mint leg of `TestEveryRefusalSendsNothing`). The create's absence fingerprint accepted as a match in `Confirm.FingerprintMatches`. mutation: red in `TestANameTakenSinceTheMintRefusesTheConfirm` (the confirm is sent).
 - C3: `Length` sent beside `Secret64` on the create. mutation: red in `TestAnImportedSymmetricKeyIsStoredAsGiven` (the first body and the stored key's round trip). The second `PUT` dropped. mutation: red in the same test (the two-`PUT` count). `PemBlock`'s re-wrap skipped. mutation: red in `TestEveryImportFormOnTheScreen` (the line-breaks leg).
 - C4: `DESTRUCTIVE` 0. mutation: red in `WalletKeyReplace.TestTheReplaceIsMintedDestructive`. The type check skipped in `WalletKeyReplace.MergeUpdate`. mutation: red in `TestAMovedOrFlippedTargetRefusesTheConfirm...` (the flipped confirm is sent, the mint accepted). The typed-name branch skipped in the page. mutation: red in `wallet-secret-form.page.spec.ts` (the Save-asks-the-typed-name case, a `PUT` goes out first). `WalletSave.Update` stops dispatching to the key replace and `replacersa` enters the baseline `true`. mutation: red in 4 of 5 `WalletKeyReplace` tests.
-- C5: all seven rules dropped (length, source, public, password, mismatch, expiry, base64), applied together. mutation: red in `TestEveryRefusalSendsNothing`, one failing case per rule (the vendor-reaching cases, public, expiry, mismatch and both password, also record a `PUT`).
-- C6: the `*File` refusal dropped in `AdminPort` and `WalletPort`. mutation: red in `WalletKeyRead.TestAServerFileNameIsRefusedBeforeAnyVendorCall`.
+- C5: all seven rules dropped (length, source, public, password, mismatch, expiry, base64), applied together. mutation: red in `TestEveryRefusalSendsNothing`, one failing case per rule (the vendor-reaching cases, public, expiry, mismatch and both password, also record a `PUT`), and in `TestTheAgentImportsNothing`.
+- C6: `AdminPort.WalletPathField` answers `""` (the one check `AdminPort.Invoke` and `WalletPort.PutKey` both ask). mutation: red in `WalletKeyRead.TestAServerFileNameIsRefusedBeforeAnyVendorCall`.
 - C7: a create tool declaring `%Admin_Secure:USE`. mutation: red in `WalletKeyWire.TestEachToolRequiresTheFormsPairsAlone` for both create tools.
-- C8: `replacersa` `true` and `creatersa` `false`. mutation: red in `GovernanceBaseline` and in `WalletKeyRead.TestCodesSentencesBaselineAndRosters`. `ADVERTISED` 1 on `replacesymmetric`. mutation: red in the same test (the advertised roster and the agent's resolve).
+- C8: `replacersa` `true` and `creatersa` `false`. mutation: red in `GovernanceBaseline` and in `WalletKeyRead` (`TestCodesSentencesBaselineAndRosters`, and `TestNoSurfaceCarriesKeyMaterial` whose confirm is then refused). `ADVERTISED` 1 on `replacesymmetric`. mutation: red in the same test (the advertised roster and the agent's resolve).
+- C4 (moved metadata): `WalletKeyReplaceRsa.FINGERPRINTSUBJECT` reduced to `Type,Length,NewLength`. mutation: red in `WalletKeyReplace.TestAMovedOrFlippedTargetRefusesTheConfirmAndAnotherTypeRefusesTheSave` (the moved confirm is sent).
+- C4 (client): `confirmReplace` skips `clearMaterial()`. mutation: red in `wallet-secret-form.page.spec.ts` ("a replacement key is in no input once the instance accepted it", which reads the input's value property).
+- C7 (denial): `%Admin_Wallet:USE` dropped from `WalletSecretForm`'s `privileges`. mutation: red in `WalletKeyWire.TestACallerWithoutTheWalletResourceIsRefusedOnEachKeyRoute` and `TestEachToolRequiresTheFormsPairsAlone`.
+- AD-10, AD-54 (field fence): `Prohibited.WalletKey` (the first `If` of its loop) answers 0, and separately `WalletKeyChanged`. mutation: red in `WalletKeyRead.TestTheFieldFenceJudgesAKeyWriteByItsOwnType` (create cases 2, 4, 5 for the first; replace cases 2, 4 for the second).
+- AD-59 (script): the RSA branch of `WalletPort.Snippet` passes the given body in place of the generating body. mutation: red in `WalletKeyRead.TestTheScriptsCarryNoKeyMaterial` (the last leg).
 - AD-35 (log): the sent body logged by `AdminPort.Fail`. mutation: red in `WalletKeyRead.TestNoSurfaceCarriesKeyMaterial` (the message-log leg, which looks for each block's first base64 line because a log line cuts a long text short).
 
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
+
+**Summary:** RSA and symmetric-key wallet secrets: the Secret form's type choice with generate and import, the metadata-only reads, four `WalletPort` tools (creates `true`, replaces `false`, `replacesymmetric` unadvertised), the typed-name replace, the `*File` refusal, `WALLETKEY.*` codes. The orphaned handoff's tree (ff16667b) was audited against Tasks, the matrix and C1 to C8 and found complete.
+
+**Changed this pass:** `Test/WalletKeyRead.cls` (field-fence test, script leg made falsifiable), `Test/WalletKeyCreate.cls` (dead case removed), `Test/WalletKeyWire.cls` (pairs compared to the form's), `Test/ToolDispatch.cls` (roster names the two replace keys, found by the full sweep), `wallet-secret-form.page.spec.ts` (replacement key read from the input's value), and the spec's Verification mutation lines (every AC and the new legs, each demonstrated red and reverted by hash). `warnings` stays `oversized`.
+
+**Review:** 18 findings (medium 3, low 12, false 3): 9 patched, 9 rejected with reasons in the Triage Log; none deferred. The handoff's notes (a) and (b) were judged not real. Follow-up review recommended: false (3 medium patched, all test-only).
+
+**Verification on `ocupilot-ci`:** full ObjectScript sweep 489 classes, 3953 tests; `ToolDispatch` failed in it (roster, fixed, 18 of 18 green after) and `AuditPurge` failed once near the UTC date change and was green on rerun; smoke 50 of 50; `npm test` (1866 tools, 2550 components) and `npm run build` green, bundle 3.01 MB under the re-based 3012 kB warning; `check-objectscript` and `lint-docs` clean; EXPERIENCE.md 1039 lines; monitor state cleared to 0, no `OcuPilotProbe1824` collection. Browser specs ran green in the handoff (12 of 12) against the final client source.
+
+**Residual risks:** `OcuPilotProbeProhibitedRouteRole` remains on the throwaway (another class's fixture, not this story's); a public-key-only RSA import reads `Length` empty (named limit).
