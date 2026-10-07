@@ -9507,6 +9507,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-04T07:59:42Z status=routed owner=burndown by=merge_gate note=decided 2026-10-04: amend AD-2 to leave the mapped #1454 (SSL field refusal) unlogged, scoped by code, as 18.6's 400; built at Epic 18's close burn-down
 - 2026-10-04T14:42:18Z occurrence=18-21-ecp-settings-and-application-servers note=EcpSslConnectionWrite's DW-2006 leg and EcpDataServerWrite's SSL leg raise the monitor through the logged #1454 (harvested from 18.21's deferred list)
 - 2026-10-05T00:19:27Z occurrence=18-7-encryption note=18.7 logs #5022 on each no-key read, #1219/#1204 and #5001 credentials refusals; their async alert-throttle line can land in a no-log window
+- 2026-10-07T08:23:30Z occurrence=18-25-superservers note=add Security.Superserver PUT #5001 (port already in use; mapped to a field refusal, still logged severity 2) to the code-scoped unlogged list
 
 ### DW-2008: The agent's confirm of an ECP data server create at the limit carries ECP.SERVER.LIMIT's generic sentence, not EcpError.Limit's number
 - source: spec-18-20-ecp-data-servers.md (code review) | severity: low | fix-risk: med | footprint: out-of-footprint
@@ -10213,3 +10214,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-8-superservers-authentication-options-and-managed-file-transfe.md | severity: low | fix-risk: med | footprint: in-story
 - evidence: %CSP.UI.Portal.Authentication Save sets SMTPPassword to empty when AutheTwoFactorSMS is off (irissys :365); OcuPilot's form draws the password and its clear only while SMS is on, and the agent's card requires a value
 - 2026-10-07T07:45:20Z status=wontfix-accepted owner=18-8-superservers-authentication-options-and-managed-file-transfe by=cr note=reopen_if=an operator reports a stored SMTP password they could not clear from OcuPilot with SMS off
+
+### DW-2146: IRIS defect candidate: every admin API Security.Superserver validation refusal (SSL, ECP/Mirror/Sharding off the default, SNMP on Linux, bad values, a port in use) answers HTTP 500 with an empty body
+- source: spec-18-25-superservers.md | severity: low | fix-risk: high | footprint: out-of-footprint
+- evidence: Story 18.25 plan on ocupilot-ci 2026-10-07: probe superservers on ports 1985-1988 and 2188
+- 2026-10-07T08:23:30Z status=decision-pending owner=burndown by=spec_gate note=human=decide whether to report it to InterSystems, with the held vendor-report list; owner hold 2026-10-05: not reported
+
+### DW-2147: IRIS defect candidate: the admin API's Security.Superserver PUT stores an SSLConfig naming no SSL/TLS configuration while SSLSupportLevel is 0
+- source: spec-18-25-superservers.md | severity: low | fix-risk: high | footprint: out-of-footprint
+- evidence: Story 18.25 plan on ocupilot-ci 2026-10-07
+- 2026-10-07T08:23:30Z status=decision-pending owner=burndown by=spec_gate note=human=decide whether to report it to InterSystems, with the held vendor-report list; owner hold 2026-10-05: not reported
