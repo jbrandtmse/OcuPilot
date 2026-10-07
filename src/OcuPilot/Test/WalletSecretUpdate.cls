@@ -77,9 +77,13 @@ Method TestTheEditIsAMergeWriteOverTheThreeSettings()
 }
 
 /// <p>AC1 on the card: an edit's proposal carries a masked value row, both sides empty and marked
-/// optional, beside the one setting it changes.</p>
+/// optional, beside the one setting it changes; its confirm channel admits the value alone, not the key
+/// material the list also declares (AD-6).</p>
+/// <p>Mutation (Rule 19): delete <method>OcuPilot.Screen.Tool.WalletSecretUpdate.ChannelSecretNames</method>
+/// -> the channel leg goes red.</p>
 Method TestTheCardOffersAnOptionalValue()
 {
+    Do $$$AssertEquals($ListToString($ClassMethod(..#TOOL, "ChannelSecretNames")), "Secret", "the confirm channel admits the value alone")
     Set tSC = ..Mint(..Name("EditKv"), {"Usage": 2}, .tProposal, .tHttp, .tFault)
     Do $$$AssertStatusOK(tSC, "the edit is minted")
     If $$$ISERR(tSC) Quit

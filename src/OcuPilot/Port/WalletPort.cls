@@ -15,10 +15,11 @@
 /// <code>{Type, Length, KeyId}</code>, taken property by property off the opened secret. No key
 /// material, a public half included, is read.</p>
 /// <p><b>A <code>PUT</code> of one of those two types is this port's own call</b>
-/// (<method>PutKey</method>): it refuses what the vendor would answer with a logged 500, builds the
-/// body from a length or from content, and sequences an imported symmetric key's create in two
-/// <code>PUT</code>s, because the vendor stores no length for an imported key and stores a random key
-/// when <code>Length</code> rides with <code>Secret64</code> (measured).</p>
+/// (<method>PutKey</method>): it refuses a body with both a length and key material or with neither, a
+/// length outside its type's set and a symmetric key of the wrong size, builds the body from a length or
+/// from content, and sequences an imported symmetric key's create in two <code>PUT</code>s, because on a
+/// create the vendor stores no length for an imported key and stores a random key when
+/// <code>Length</code> rides with <code>Secret64</code> (measured).</p>
 /// <p><b>The vendor's gate still decides.</b> The <code>LIST</code> runs first, through the admin
 /// port, so the endpoint's <code>%Admin_Wallet</code> check refuses a caller before the class is
 /// asked anything; the class's own permission check then applies on the open.</p>
@@ -40,12 +41,13 @@ Parameter KEYVALUETYPE = "%Wallet.KeyValue";
 /// <p>The vendor class the settings are read through.</p>
 Parameter SECRETCLASS = "%Wallet.Secret";
 
-/// <p>The two key types (Story 18.24) and the body members that carry key material as content.</p>
+/// <p>The two key types (Story 18.24) and every body member that carries key material: each declared
+/// secret of the key tools, any one of which present beside a length is refused.</p>
 Parameter RSATYPE = "%Wallet.RSA";
 
 Parameter SYMMETRICTYPE = "%Wallet.SymmetricKey";
 
-Parameter MATERIALFIELDS = "Certificate,PublicKey,PrivateKey,Secret64";
+Parameter MATERIALFIELDS = "Certificate,PublicKey,PrivateKey,Password,Secret,Secret64";
 
 /// <p>The closed sets of lengths: RSA in bits, symmetric in bytes.</p>
 Parameter RSALENGTHS = "2048,3072,4096";
@@ -291,10 +293,11 @@ ClassMethod PutKey(pKeyType As %String, ByRef pQuery, pBody As %DynamicAbstractO
         If (tSend.%GetTypeOf("Length") = "unassigned") && ($Get(pQuery("Length")) '= "") Do tSend.%Set("Length", +pQuery("Length"), "number")
 
         Set tHasLength = (tSend.%GetTypeOf("Length") '= "unassigned")
+        ; A member present in any JSON type counts, an empty one included: the vendor stores a defined
+        ; Secret as the key, whatever its length.
         Set tHasMaterial = 0
         For tI = 1:1:$Length(..#MATERIALFIELDS, ",") {
-            Set tField = $Piece(..#MATERIALFIELDS, ",", tI)
-            If (tSend.%GetTypeOf(tField) = "string") && (tSend.%Get(tField) '= "") Set tHasMaterial = 1
+            If tSend.%GetTypeOf($Piece(..#MATERIALFIELDS, ",", tI)) '= "unassigned" Set tHasMaterial = 1
         }
         Set tWalletKeyError = "OcuPilot.Api.WalletKeyError"
         If tHasLength && tHasMaterial Quit:..KeyRefusal($Parameter(tWalletKeyError, "SOURCEBOTH"), .tSC, .pHttpStatus, .pFault)

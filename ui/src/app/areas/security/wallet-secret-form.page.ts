@@ -600,6 +600,9 @@ export class WalletSecretFormPage {
       const key = this.routeKey();
       if (key === followed) return;
       followed = key;
+      // Leaving one secret for another: its key material and its pending replacement go with it.
+      this.clearMaterial();
+      this.replacePending.set(false);
       void this.store.open(this.routeId(), this.routeCollection());
     });
     afterNextRender(() => this.focusRefusal(), { injector: this.injector });

@@ -108,8 +108,9 @@ ClassMethod HandleCreate() As %Status
 /// segment, decoded once here (AD-13) -- from the body's settings and optional new value, and
 /// answer <code>{name, readBack}</code> with 200 (AD-58). Any other key is 400
 /// <parameter>OcuPilot.Api.Error.PORTFIELDUNEXPECTED</parameter>; a secret the instance does not
-/// hold is 404 <parameter>OcuPilot.Api.Error.WALLETNAMEABSENT</parameter>; one that is not a
-/// key-value secret is 422 <parameter>OcuPilot.Api.Error.WALLETTYPEUNSUPPORTED</parameter>.</p>
+/// hold is 404 <parameter>OcuPilot.Api.Error.WALLETNAMEABSENT</parameter>; an RSA or symmetric key is
+/// replaced through <class>OcuPilot.Area.Security.WalletKeySave</class>, and a secret of any other type is
+/// 422 <parameter>OcuPilot.Api.Error.WALLETTYPEUNSUPPORTED</parameter>.</p>
 ClassMethod HandleUpdate(pId As %String) As %Status
 {
     Set tSC = $$$OK
@@ -210,8 +211,8 @@ ClassMethod Create(pName As %String, pArgs As %DynamicObject, Output pHttpStatus
 /// with a new value only when <var>pArgs</var> carries a non-empty one.</p>
 /// <p><b>Caller contract:</b> as <method>Create</method>'s. A secret the instance does not hold is an
 /// error status with <var>pHttpStatus</var> 404, and nothing is sent; a key outside
-/// <parameter>EDITFIELDS</parameter> one with <var>pHttpStatus</var> 400; a secret of another type
-/// one with <var>pHttpStatus</var> 422.</p>
+/// <parameter>EDITFIELDS</parameter> one with <var>pHttpStatus</var> 400; a secret neither key-value nor
+/// an RSA or symmetric key one with <var>pHttpStatus</var> 422.</p>
 ClassMethod Update(pName As %String, pArgs As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, Output pViolations, Output pReadBack As %DynamicObject, Output pKeyWrite As %Boolean) As %Status
 {
     Set pHttpStatus = 0
@@ -335,7 +336,13 @@ ClassMethod Send(pToolClass As %String, pName As %String, pPayload As %DynamicOb
 /// (AD-58).</p>
 ClassMethod Answer(pSC As %Status, ByRef pViolations, pHttp As %Integer, pFault As %DynamicObject, pSuccess As %Integer, pName As %String, pReadBack As %DynamicObject = "", pKeyWrite As %Boolean = 0) As %Status [ Private ]
 {
-    If ($Get(pViolations) > 0) && pKeyWrite Quit ##class(OcuPilot.Area.Security.WalletKeySave).RenderViolations(.pViolations)
+    ; A key write's envelope is the key's only when a key rule refused it; a refused name keeps the
+    ; secret's own envelope (AD-39).
+    If ($Get(pViolations) > 0) && pKeyWrite {
+        For tI = 1:1:pViolations {
+            If $Extract($List(pViolations(tI), 2), 1, 9) = "WALLETKEY" Return ##class(OcuPilot.Area.Security.WalletKeySave).RenderViolations(.pViolations)
+        }
+    }
     If $Get(pViolations) > 0 Quit ..RenderViolations(.pViolations)
     If $$$ISERR(pSC) {
         If '$IsObject(pFault) || (pFault.code = ##class(OcuPilot.Api.Error).#INTERNAL) {

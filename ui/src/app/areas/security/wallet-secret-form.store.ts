@@ -184,8 +184,8 @@ export function splitHosts(text: string): string[] {
  *
  * **An edit sends only the settings changed since its fresh read** (AD-4), and a value only when one
  * was entered: the server merges the rest over its own fresh read. Until that read has landed the
- * edit takes no input and cannot save, an edit that changed nothing writes nothing, and a secret that
- * is not a key-value secret is shown read-only and never saved.
+ * edit takes no input and cannot save, a key-value edit that changed nothing writes nothing, and a
+ * secret of a type this form does not manage is shown read-only and never saved.
  *
  * **An RSA or symmetric key is created and replaced here** (Story 18.24): a create chooses the type and
  * whether to generate the key from a length or import it; an existing key shows its metadata and a
@@ -697,8 +697,10 @@ export class WalletSecretForm {
   }
 
   /**
-   * A key's body: a create's name and type, then either the length to generate or the material to
-   * import, each member only when it was entered. The material is read here and held nowhere.
+   * A key's body: a create's name and type, or a replacement's type as the form read it (so a secret
+   * whose type changed since is refused `WALLETKEY.TYPE.MISMATCH`), then either the length to generate
+   * or the material to import, each member only when it was entered. The material is read here and
+   * held nowhere.
    */
   private keyBody(material: KeyMaterial): Record<string, unknown> {
     const kind = this.keyKind();
@@ -706,6 +708,8 @@ export class WalletSecretForm {
     if (this.modeValue === 'create') {
       body[NAME_FIELD] = this.fullName();
       body[TYPE_FIELD] = kind === 'rsa' ? RSA_TYPE : SYMMETRIC_TYPE;
+    } else {
+      body[TYPE_FIELD] = this.secretView.type;
     }
     if (this.source() === 'generate') {
       body[LENGTH_FIELD] = this.lengthValue;

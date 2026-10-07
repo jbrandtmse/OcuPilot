@@ -9,7 +9,7 @@
 /// <p><b>Both are called from <class>OcuPilot.Area.Security.WalletSave</class>'s handlers</b>, which have
 /// taken the caller's pairs and the target's hold (AD-8, AD-34) and hand over the seams
 /// <code>PortClass</code> and <code>ProhibitedClass</code> they were called with. Each runs, in order: the
-/// body's allowed members, the name's own rules (a create), the type check (a replace), AD-10's prohibited
+/// type check (a replace), the body's allowed members, the name's own rules (a create), AD-10's prohibited
 /// set over the caller's non-secret fields, the key rules
 /// (<class>OcuPilot.Area.Security.WalletKeyRules</class>), the body, and only then the port. A person's
 /// replace is confirmed by the typed name on the page, not by a proposal, and is not governed (AD-53).</p>

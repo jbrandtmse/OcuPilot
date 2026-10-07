@@ -108,7 +108,8 @@ Method OnAfterOneTest() As %Status
 
 /// <p>C7: a principal holding only the form's pairs creates an RSA key by generation, imports an RSA
 /// certificate and a symmetric key, reads each key's metadata through the form read, and replaces each,
-/// every route answering its status and the instance holding the result.</p>
+/// every route answering its status and the instance holding the result; a refused name and a refused key
+/// each answer 422 on their own envelope.</p>
 /// <p>Mutation (Rule 19): add <code>%Admin_Secure:USE</code> to
 /// <class>OcuPilot.Screen.Descriptor.WalletSecretForm</class>'s privileges -> the principal is refused
 /// and this goes red.</p>
@@ -119,6 +120,10 @@ Method TestTheDeclaredPairsAloneCreateImportReplaceAndRead()
     Set tSC = ..As(..#WALLETUSER, "POST", ..#CREATEPATH, {"Name": (tRsa), "Type": (..#RSA), "Length": 2048}, .tStatus, .tBody)
     Do $$$AssertEquals(tStatus, 201, "the principal's generated RSA create answers 201: " _ $Select($IsObject($Get(tBody)): tBody.%Get("code"), 1: ""))
     Do $$$AssertEquals($Select($IsObject($Get(tBody)) && $IsObject(tBody.%Get("readBack")): tBody.%Get("readBack").%Get("verdict"), 1: ""), "matches", "with a matching read-back")
+    Set tSC = ..As(..#WALLETUSER, "POST", ..#CREATEPATH, {"Name": (tRsa), "Type": (..#RSA), "Length": 2048}, .tStatus, .tBody)
+    Do $$$AssertEquals(tStatus _ " " _ ..Refusal(tBody), "422 WALLET.VALIDATION WALLET.NAME.TAKEN", "a taken name is refused on the secret's own envelope")
+    Set tSC = ..As(..#WALLETUSER, "POST", ..#CREATEPATH, {"Name": (..Name("WireDeny")), "Type": (..#RSA), "Length": 1024}, .tStatus, .tBody)
+    Do $$$AssertEquals(tStatus _ " " _ ..Refusal(tBody), "422 WALLETKEY.VALIDATION WALLETKEY.LENGTH.RSA", "and a refused key on the key's envelope")
 
     Set tImp = ..Name("WireImp")
     Set tSC = ..As(..#WALLETUSER, "POST", ..#CREATEPATH, {"Name": (tImp), "Type": (..#SYMMETRIC), "Secret64": ($System.Encryption.Base64Encode($System.Encryption.GenCryptRand(32)))}, .tStatus, .tBody)
@@ -136,6 +141,7 @@ Method TestTheDeclaredPairsAloneCreateImportReplaceAndRead()
 
     Set tSC = ..As(..#WALLETUSER, "PUT", ..EditPath(tRsa), {"Length": 3072}, .tStatus, .tBody)
     Do $$$AssertEquals(tStatus, 200, "its RSA replace answers 200: " _ $Select($IsObject($Get(tBody)): tBody.%Get("code"), 1: ""))
+    Do $$$AssertEquals($Select($IsObject($Get(tBody)) && $IsObject(tBody.%Get("readBack")): tBody.%Get("readBack").%Get("verdict"), 1: ""), "matches", "with a matching read-back (AD-58)")
     Do $$$AssertEquals($ClassMethod(..#PROBE, "Metadata", tRsa).%Get("Length"), 3072, "and the instance holds the new pair")
     Set tBefore = $ClassMethod(..#PROBE, "Metadata", tImp)
     Set tSC = ..As(..#WALLETUSER, "PUT", ..EditPath(tImp), {"Secret64": ($System.Encryption.Base64Encode($System.Encryption.GenCryptRand(16)))}, .tStatus, .tBody)
@@ -197,6 +203,14 @@ Method As(pUser As %String, pMethod As %String, pPath As %String, pBody, Output 
 ClassMethod Name(pPart As %String) As %String
 {
     Quit $ClassMethod(..#PROBE, "Name", pPart)
+}
+
+/// <p>A refusal's envelope code and its first violation's code, space-separated.</p>
+ClassMethod Refusal(pAnswer) As %String
+{
+    If '$IsObject(pAnswer) Quit ""
+    Set tViolations = $Select($IsObject(pAnswer.%Get("detail")): pAnswer.%Get("detail").%Get("violations"), 1: "")
+    Quit pAnswer.%Get("code") _ " " _ $Select($IsObject(tViolations) && $IsObject(tViolations.%Get(0)): tViolations.%Get(0).%Get("code"), 1: "")
 }
 
 /// <p><parameter>EDITPATH</parameter> for <var>pName</var>, its segment encoded by the one shared

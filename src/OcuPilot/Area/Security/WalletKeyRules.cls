@@ -3,9 +3,9 @@
 /// read serves (<method>Rules</method>).</p>
 /// <p><b>Every sentence is <method>OcuPilot.Api.WalletKeyError.ReasonFor</method>'s.</b> No sentence
 /// quotes key material, a password or any part of a caller's input, and the checks hold the text in
-/// locals cleared before they return (AD-35). The checks pre-empt every refusal the vendor answers with
-/// a logged 500: the length sets, one source, PEM shape, certificate validity, the private key's
-/// pairing and password, and a symmetric key's decoded length. The pairing test is
+/// locals cleared before they return (AD-35). The checks pre-empt the refusals the vendor was measured
+/// answering with a logged 500: the length sets, one source, PEM shape, an RSA certificate's validity,
+/// the private key's pairing and password, and a symmetric key's decoded length. The pairing test is
 /// <method>OcuPilot.Area.Security.X509Rules.KeyMatches</method>, which is the vendor's own.</p>
 Class OcuPilot.Area.Security.WalletKeyRules Extends %RegisteredObject
 {
@@ -72,12 +72,14 @@ ClassMethod Validate(pType As %String, pMode As %String, pArgs As %DynamicObject
         Set tHasLength = ((tLengthType '= "unassigned") && (tLengthType '= "null") && '((tLengthType = "string") && (pArgs.%Get(..#FIELDLENGTH) = "")))
         Set tMaterial = $Select(tIsRsa: $ListBuild(..#FIELDCERTIFICATE, ..#FIELDPUBLICKEY, ..#FIELDPRIVATEKEY), 1: $ListBuild(..#FIELDSECRET64))
         Set tHasMaterial = 0
+        Set tWrongType = 0
         For tI = 1:1:$ListLength(tMaterial) {
             Set tField = $List(tMaterial, tI)
             If (pArgs.%GetTypeOf(tField) = "string") && ($ZStrip(pArgs.%Get(tField), "<>WC") '= "") Set tHasMaterial = 1
             If (pArgs.%GetTypeOf(tField) '= "unassigned") && (pArgs.%GetTypeOf(tField) '= "null") && (pArgs.%GetTypeOf(tField) '= "string") {
                 Do ..Add(.pViolations, tField, ..ShapeCode(pType, tField))
                 Set tHasMaterial = 1
+                Set tWrongType = 1
             }
         }
         If pMode = ..#MODEGENERATE {
@@ -98,7 +100,8 @@ ClassMethod Validate(pType As %String, pMode As %String, pArgs As %DynamicObject
                 Do tCanonical.%Set(..#FIELDLENGTH, +tLength, "number")
             }
         }
-        If (pMode = ..#MODEGENERATE) || 'tHasMaterial {
+        ; A member of the wrong JSON type is refused once, on its own field, and read no further.
+        If (pMode = ..#MODEGENERATE) || 'tHasMaterial || tWrongType {
             If pViolations = 0 Set pCanonical = tCanonical
             Quit
         }
@@ -149,6 +152,10 @@ ClassMethod Validate(pType As %String, pMode As %String, pArgs As %DynamicObject
                     Set tNow = $ZDateTime($ZTimeStamp, 3)
                     If (tNow ] tNotAfter) || '(tNow ] tNotBefore) {
                         Do ..Add(.pViolations, ..#FIELDCERTIFICATE, ##class(OcuPilot.Api.WalletKeyError).#CERTIFICATEINVALID)
+                    } ElseIf $System.Encryption.RSAEncrypt("OcuPilot", tCanonicalCert) = "" {
+                        ; Not an RSA certificate (an EC one, measured): the vendor would store it as an
+                        ; RSA key with a meaningless length, so it is refused as a public key's would be.
+                        Do ..Add(.pViolations, ..#FIELDCERTIFICATE, ##class(OcuPilot.Api.WalletKeyError).#CERTIFICATESHAPE)
                     } Else {
                         Set tCertOK = 1
                     }

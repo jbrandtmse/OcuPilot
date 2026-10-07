@@ -127,6 +127,26 @@ deferred: []
 - **C8:** Given the story lands, when the rosters run, then the baseline reads the two create keys `true` and the two replace keys `false`, `security.secrets.replacesymmetric` is in no advertised list, every roster names the four tools, EXPERIENCE.md reads 1039 lines and the strings bound holds.
 - [ ] DW-1555: creating and editing RSA and symmetric-key wallet secrets -- C1 to C8.
 
+### Review Findings
+
+Code review 2026-10-07 (full-opus, four layers): 69 rows, 22 entries (med 5, low 17): 9 patched, 13 ledgered (DW-2126 to DW-2138); 22 rejected.
+
+- [x] [Review][Patch] (med) A confirm of `creatersa`, `createsymmetric` or `replacersa` carrying `Secret` or `Password` beside the length reached the vendor, which stores a defined `Secret` as a symmetric key (C3, the agent-import row) [src/OcuPilot/Port/WalletPort.cls:48]
+- [x] [Review][Patch] (med) An RSA import of an EC certificate alone passed every rule and was stored as `%Wallet.RSA` with `Length` 576 (measured); now refused `WALLETKEY.CERTIFICATE.SHAPE` [src/OcuPilot/Area/Security/WalletKeyRules.cls:150]
+- [x] [Review][Patch] (med) Key material typed for one secret stayed bound when the page moved to another secret's route ("emptied on leave") [ui/src/app/areas/security/wallet-secret-form.page.ts:603]
+- [x] [Review][Patch] (low) A screen replacement sent no `Type`, so a type changed since the read answered `PORT.FIELD.UNEXPECTED`, not `WALLETKEY.TYPE.MISMATCH` [ui/src/app/areas/security/wallet-secret-form.store.ts:703]
+- [x] [Review][Patch] (low) A key create refused on its name alone answered "The key was refused."; the key refusal envelope had no HTTP test [src/OcuPilot/Area/Security/WalletSave.cls:337]
+- [x] [Review][Patch] (low) A key member of the wrong JSON type was refused twice [src/OcuPilot/Area/Security/WalletKeyRules.cls:78]
+- [x] [Review][Patch] (low) Doc comments that misstated the code: `WalletPort`, `WalletKeyRules`, `WalletSave.HandleUpdate` and `Update`, `WalletKeySave`'s order, `WalletKeyRead`'s C8 header, the store's header [src/OcuPilot/Port/WalletPort.cls:17]
+- [x] [Review][Patch] (low) No test for `WalletSecretUpdate.ChannelSecretNames`, Load from file, the clearing on a source or type change, or a replace's read-back [src/OcuPilot/Test/WalletSecretUpdate.cls:84]
+- [x] [Review][Patch] (low) Assertions that could not fail (`WalletKeyRead`'s trailing recorded-call count, `WalletKeyCreate`'s sentence-has-no-password check) and a store spec title claiming more than it asserts [src/OcuPilot/Test/WalletKeyRead.cls:224]
+- [x] [Review][Defer] DW-2126 decision-pending: regenerating an RSA key over a stored certificate drops it unsaid (vendor source, inference) [src/OcuPilot/Api/WalletKeyError.cls:98] — deferred: product call on `WALLETKEY.REPLACE.RSA`'s sentence
+- [x] [Review][Defer] DW-2127 wontfix-theoretical (the imported symmetric create's two `PUT`s), DW-2128, DW-2129, DW-2131, DW-2132, DW-2136 wontfix-accepted, DW-2130, DW-2133, DW-2134, DW-2135, DW-2138 by-design, DW-2137 vendor defect candidate [src/OcuPilot/Port/WalletPort.cls:357] — deferred: each with its reason in the ledger
+
+Orchestrator items: (1) `replacesymmetric`'s `destructive=0` is unreachable: `Dispatch` resolves through `ResolveWire` and `Confirm.ChannelProblem` through `Resolve`, both skipping unadvertised tools, so no production path mints or confirms one; C4's treatment holds on `replacersa` (stored `destructive` 1, consequence) and on both screen replaces (typed name, ungoverned). (2) The spent proposal on a material confirm is AD-34's claim-then-write, as every port refusal is; refusing before the claim would need the closed channel's 400, not the matrix's `WALLETKEY.SOURCE.BOTH` (DW-2138, by-design).
+
+Rejected: `false` -- no fresh browser evidence (CI run 37559711103 runs the browser shards on 8867b01b); `RSAEncrypt` throwing on a malformed public key (measured: answers ""); `'[ "<Certificate>"` unable to fail (a forwarded body renders the placeholder); the script dropping query keys (replace tests green); the create spec's text check and the store's held-none check (each catches rendered key text). `low` -- the spec's counts and status (spec edits); C5's single mutation (one per AC, header reworded); extra coverage of rule branches, replace mode, the mint loop and C5's log (C5 pinned); browser-spec leg order; EXPERIENCE.md omitting reused strings; C1's list clause (the list answers `Name`, `Type`, no material); the name refusal stopping the key rules; a FileReader racing a clear, a failed metadata re-read, a password beside a length on the screen's generate path (unlikely, fixes add branches); the duplicated `ChannelSecretNames` overrides.
+
 ## Spec Change Log
 
 - 2026-10-06, spec gate (lead): Decision 5 changed. `security.secrets.creatersa` and `.createsymmetric` ship `true`, the two replace keys `false` (AD-22 as restated; the preamble's disabled set is destructive actions). Intent, Tasks, C8, the C8 mutation and Design Notes edited to match. The six proposed amendments are written into the spine (AD-8, AD-21, AD-27, AD-51, AD-52, AD-53). The two vendor findings measured at plan are ledgered as IRIS defect candidates under the owner's hold. Verification names the runner's loader.
@@ -251,6 +271,13 @@ Labels and helpers: "Key-value", "RSA key", "Symmetric key", "Generate a new key
 - AD-10, AD-54 (field fence): `Prohibited.WalletKey` (the first `If` of its loop) answers 0, and separately `WalletKeyChanged`. mutation: red in `WalletKeyRead.TestTheFieldFenceJudgesAKeyWriteByItsOwnType` (create cases 2, 4, 5 for the first; replace cases 2, 4 for the second).
 - AD-59 (script): the RSA branch of `WalletPort.Snippet` passes the given body in place of the generating body. mutation: red in `WalletKeyRead.TestTheScriptsCarryNoKeyMaterial` (the last leg).
 - AD-35 (log): the sent body logged by `AdminPort.Fail`. mutation: red in `WalletKeyRead.TestNoSurfaceCarriesKeyMaterial` (the message-log leg, which looks for each block's first base64 line because a log line cuts a long text short).
+
+- (QA) 2026-10-06: C1 to C8 each map to an existing pinning test and a recorded mutation above; no test file added, no suite re-run.
+- (CR) C3, C5 (agent import, every channel member): `WalletPort.MATERIALFIELDS` without `Password` and `Secret`. mutation: red in `WalletKeyCreate.TestTheAgentImportsNothing` (the RSA `Secret` and `Password` confirms reach the vendor).
+- (CR) C5 (RSA certificate): the RSA certificate check removed from `WalletKeyRules.Validate`. mutation: red in `TestEveryRefusalSendsNothing` (case 9, the EC certificate, stored).
+- (CR) C1 client (emptied on leave): `clearMaterial()` dropped from the page's id-change handler. mutation: red in the page spec's "a key typed for one secret is in no input once the page moves to another".
+- (CR) C3 (Load from file) and a source change: `onFile`'s certificate and public key members swapped, and separately `onSource` without `clearMaterial()`. mutation: red in the page spec's source, type and Load from file test.
+- (CR) AD-6 (the key-value edit's channel): `WalletSecretUpdate.ChannelSecretNames` deleted. mutation: red in `WalletSecretUpdate.TestTheCardOffersAnOptionalValue`.
 
 ## Auto Run Result
 

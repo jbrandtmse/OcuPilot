@@ -216,12 +216,13 @@ Method TestAServerFileNameIsRefusedBeforeAnyVendorCall()
                 Do $ClassMethod(..#RECORD, "Clear")
                 Set tSC = $ClassMethod(tPort, "Invoke", "Wallet.Secret", "PUT", .tQuery, tBody, .tResult, .tHttp, .tFault)
                 Do $$$AssertEquals(tHttp _ " " _ $Select($IsObject($Get(tFault)): tFault.%Get("code") _ " " _ tFault.%Get("detail").%Get("violations").%Get(0).%Get("field"), 1: ""), "400 " _ ##class(OcuPilot.Api.Error).#PORTFIELDUNEXPECTED _ " " _ tField, tPort _ " " _ tType _ " " _ tField _ ": refused 400 on its field")
+                ; The recording port counts a key write's vendor calls (a key-value write is counted on entry).
+                If tType '= "%Wallet.KeyValue" Do $$$AssertEquals($ClassMethod(..#RECORD, "WriteCount"), 0, tPort _ " " _ tType _ " " _ tField _ ": with no vendor call recorded")
             }
         }
     }
     Do $$$AssertEquals($ClassMethod(..#PROBE, "Holds", tName), 0, "no secret was stored")
     Do $$$AssertEquals($ClassMethod(..#PROBE, "LogSize"), tLogBefore, "and no line reached the message log")
-    Do $$$AssertEquals($ClassMethod(..#RECORD, "WriteCount"), 0, "and the recording port saw no vendor call")
 }
 
 /// <p>AD-59: the scripts. A symmetric import into a new name is two steps and into a present one is one,
@@ -290,12 +291,12 @@ Method TestTheFieldFenceJudgesAKeyWriteByItsOwnType()
 }
 
 /// <p>C8: every <code>WALLETKEY.*</code> code carries its sentence through both resolvers; the baseline
-/// reads the two create keys <code>true</code> and the two replace keys <code>false</code>; the two
-/// advertised roster entries are the three tools the agent can mint, and
+/// reads the two create keys <code>true</code> and the two replace keys <code>false</code>; the advertised
+/// rosters carry the three tools the agent can mint, and
 /// <code>security.secrets.replacesymmetric</code> is in no advertised list and does not resolve for the
 /// agent.</p>
 /// <p>Mutation (Rule 19): a replace key set <code>true</code> or a create key <code>false</code> in
-/// <class>OcuPilot.Kernel.Governance.Baseline</code> -> this goes red; <code>ADVERTISED</code> 1 on
+/// <class>OcuPilot.Kernel.Governance.Baseline</class> -> this goes red; <code>ADVERTISED</code> 1 on
 /// <class>OcuPilot.Screen.Tool.WalletKeyReplaceSymmetric</class> -> the roster leg goes red.</p>
 Method TestCodesSentencesBaselineAndRosters()
 {

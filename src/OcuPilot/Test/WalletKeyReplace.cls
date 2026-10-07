@@ -117,6 +117,7 @@ Method TestTheScreenReplacesWithNoProposalAndNoGovernance()
     Do $$$AssertStatusOK(tSC, "the screen replaces the pair")
     Do $$$AssertEquals($ClassMethod(..#RECORD, "WriteCount") _ " " _ $ClassMethod(..#RECORD, "LastWriteBody"), "1 {""Length"":3072,""Type"":""%Wallet.RSA""}", "with one PUT of the length")
     Do $$$AssertEquals(+$Get(tKey), 1, "as a key write")
+    Do $$$AssertEquals($Select($IsObject($Get(tReadBack)): tReadBack.%Get("verdict"), 1: ""), "matches", "whose read-back matches (AD-58)")
     Set tMeta = $ClassMethod(..#PROBE, "Metadata", tName)
     Do $$$AssertEquals($Select($IsObject(tMeta): tMeta.%Get("Length") _ " " _ tMeta.%Get("HasPrivateKey"), 1: ""), "3072 1", "the instance holds a 3072-bit pair")
 
@@ -182,6 +183,11 @@ Method TestTheAgentsConfirmIsGovernedAndReplacesThePair()
     Set tSC = $ClassMethod(..#PROBE, "Confirm", tImporting.%Get("proposalId"), {"Certificate": ($ClassMethod(..#MATERIAL, "Pem", "Certificate"))}, .tHttp, .tCode, .tResult)
     Do $$$AssertEquals(tHttp _ " " _ $Get(tCode), "422 WALLETKEY.SOURCE.BOTH", "a confirm carrying key material beside the length is refused")
     Do $$$AssertEquals($ClassMethod(..#RECORD, "WriteCount"), 0, "with no PUT")
+    Set tSC = $ClassMethod(..#PROBE, "Mint", ..#RSATOOL, tName, {"Length": 3072}, .tImporting, .tHttp, .tFault)
+    Do $$$AssertStatusOK(tSC, "a third replace is minted")
+    If $$$ISERR(tSC) Quit
+    Set tSC = $ClassMethod(..#PROBE, "Confirm", tImporting.%Get("proposalId"), {"Password": "x"}, .tHttp, .tCode, .tResult)
+    Do $$$AssertEquals(tHttp _ " " _ $Get(tCode) _ " " _ $ClassMethod(..#RECORD, "WriteCount"), "422 WALLETKEY.SOURCE.BOTH 0", "a confirm carrying a password beside the length is refused with no PUT")
     Do $$$AssertEquals($ClassMethod(..#PROBE, "Metadata", tName).%Get("Length"), 4096, "and the pair is as it was")
 }
 

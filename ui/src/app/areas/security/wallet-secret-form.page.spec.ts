@@ -274,7 +274,8 @@ describe('the wallet secret form', () => {
     (dialog.querySelector('button.ocu-button-destructive') as HTMLButtonElement).click();
     await settle(fixture);
     expect(sent.map((call) => call.method)).toEqual(['PUT']);
-    expect(JSON.parse(sent[0]!.body)).toEqual({ Length: 2048 });
+    // The replacement names the type the form read, so a type changed since is refused on Type.
+    expect(JSON.parse(sent[0]!.body)).toEqual({ Type: '%Wallet.RSA', Length: 2048 });
   });
 
   it('Story 18.24: a replacement key is in no input once the instance accepted it', async () => {
@@ -303,5 +304,49 @@ describe('the wallet secret form', () => {
     expect(host.querySelector('#ocu-wallet-SourceGenerate')).toBeNull();
     expect(host.querySelector('#ocu-wallet-Secret64')).not.toBeNull();
     expect(host.textContent).toContain(STRINGS.walletFieldKeyBase64);
+  });
+
+  it('Story 18.24: a key typed for one secret is in no input once the page moves to another', async () => {
+    const { fixture, host } = await mount('/security/wallet/secrets/edit/Probe.Sym', SYMMETRIC);
+    type(fixture, host, 'ocu-wallet-Secret64', 'QUJDREVGR0hJSktMTU5PUA==');
+    await TestBed.inject(Router).navigateByUrl('/security/wallet/secrets/edit/Probe.Sym2');
+    await settle(fixture);
+    // Mutation (Rule 19): drop `clearMaterial()` from the id-change handler -> the key follows the page.
+    expect((host.querySelector('#ocu-wallet-Secret64') as HTMLInputElement).value).toBe('');
+  });
+
+  it('Story 18.24: a change of source or of type empties the key material, and Load from file fills the field it was opened for', async () => {
+    const { fixture, host } = await mount();
+    const choose = async (value: string) => {
+      const select = host.querySelector('#ocu-wallet-Type') as HTMLSelectElement;
+      select.value = value;
+      select.dispatchEvent(new Event('change'));
+      await settle(fixture);
+    };
+    const click = async (id: string) => {
+      (host.querySelector(`#${id}`) as HTMLElement).click();
+      await settle(fixture);
+    };
+    await choose('symmetric');
+    await click('ocu-wallet-SourceImport');
+    type(fixture, host, 'ocu-wallet-Secret64', 'QUJDREVGR0hJSktMTU5PUA==');
+    await click('ocu-wallet-SourceGenerate');
+    await click('ocu-wallet-SourceImport');
+    expect((host.querySelector('#ocu-wallet-Secret64') as HTMLInputElement).value).toBe('');
+    type(fixture, host, 'ocu-wallet-Secret64', 'QUJDREVGR0hJSktMTU5PUA==');
+    await choose('rsa');
+    await choose('symmetric');
+    await click('ocu-wallet-SourceImport');
+    expect((host.querySelector('#ocu-wallet-Secret64') as HTMLInputElement).value).toBe('');
+
+    await choose('rsa');
+    await click('ocu-wallet-SourceImport');
+    await click('ocu-wallet-PublicKey-load');
+    const picker = host.querySelector('input[type="file"]') as HTMLInputElement;
+    Object.defineProperty(picker, 'files', { value: [new File(['PROBE PUBLIC KEY'], 'pub.pem', { type: 'text/plain' })], configurable: true });
+    picker.dispatchEvent(new Event('change'));
+    await settle(fixture);
+    expect((host.querySelector('#ocu-wallet-PublicKey') as HTMLTextAreaElement).value).toBe('PROBE PUBLIC KEY');
+    expect((host.querySelector('#ocu-wallet-Certificate') as HTMLTextAreaElement).value).toBe('');
   });
 });

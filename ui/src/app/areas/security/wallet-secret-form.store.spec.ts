@@ -380,16 +380,16 @@ describe('the wallet secret form store', () => {
     const [put] = writes(rsa.calls);
     expect(put?.method).toBe('PUT');
     expect(put?.path).toBe(`${WALLET_SECRET_PATH}/${encodeEntityId('Probe.Rsa')}`);
-    expect(JSON.parse(put!.body)).toEqual({ Length: 3072 });
+    expect(JSON.parse(put!.body)).toEqual({ Type: '%Wallet.RSA', Length: 3072 });
 
     const symmetric = mount(undefined, { kind: 'ok', status: 200, body: { ...RULES, keyLengths: KEY_LENGTHS, secret: SYMMETRIC } });
     await symmetric.store.open('Probe.Sym');
     expect([symmetric.store.keyKind(), symmetric.store.source(), symmetric.store.secret().keyId]).toEqual(['symmetric', 'import', 'ED68F329']);
     expect(await symmetric.store.save({ ...NO_MATERIAL, secret64: 'QUJD' })).toBe(true);
-    expect(JSON.parse(writes(symmetric.calls)[0]!.body)).toEqual({ Secret64: 'QUJD' });
+    expect(JSON.parse(writes(symmetric.calls)[0]!.body)).toEqual({ Type: '%Wallet.SymmetricKey', Secret64: 'QUJD' });
   });
 
-  it('Story 18.24: a refusal lands on the field the instance names, and keeps the material the page holds', async () => {
+  it('Story 18.24: a refusal lands on the field the instance names, and publishes no change', async () => {
     const refusal: JsonResult<unknown> = {
       kind: 'error',
       status: 422,

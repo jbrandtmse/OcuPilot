@@ -6608,6 +6608,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-26T09:53:54Z status=routed owner=burndown by=spec_gate note=feature: RSA and symmetric-key wallet secret create/edit; no 14/16 story owns wallet secrets
 - 2026-09-30T03:32:47Z status=routed owner=18-7-encryption by=merge_gate note=owner-approved burn-down decision sheet 2026-09-29: RSA and symmetric-key wallet secrets belong with the key-material design
 - 2026-10-04T16:47:29Z status=routed owner=18-24-rsa-and-symmetric-key-wallet-secrets by=merge_gate note=re-owned at the Story 18.7 split (orchestrator merge gate 2026-10-04): Part D of spec-18-7-encryption.md (commit 0a3dfe43) is its own story
+- 2026-10-07T02:45:14Z status=resolved-by:18-24-rsa-and-symmetric-key-wallet-secrets by=adjudication note=8867b01b+review patches: four WalletKey tools (create RSA/symmetric enabled, replace RSA/symmetric disabled), the Secret form's type choice, generate and import, replace through the typed name; pinned by WalletKeyCreate, WalletKeyReplace, WalletKeyRead, WalletKeyWire and wallet-secret.browser-spec.mjs
 
 ### DW-1556: Deleting a wallet secret (FR-46): the agent delete tool and the Secrets-list row action; FR-46's delete has no other owning story
 - source: spec-8-6-the-wallet-secret-form.md | severity: med | fix-risk: med | footprint: out-of-footprint
@@ -10099,3 +10100,68 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-24-rsa-and-symmetric-key-wallet-secrets.md | severity: low | fix-risk: high | footprint: out-of-footprint
 - evidence: Story 18.24 plan on ocupilot-ci 2026-10-06: CertificateFile naming a server file 201 and the vendor read it; irislib/%Wallet/AsymmetricKey.cls NormalizeProperties GetFile
 - 2026-10-06T21:56:59Z status=decision-pending owner=burndown by=spec_gate note=human=decide whether to report it to InterSystems, with the held vendor-report list; owner hold 2026-10-05: not reported; OcuPilot's AdminPort refuses the three fields (AD-21)
+
+### DW-2126: An RSA key regenerated over a secret holding a certificate drops the certificate, and WALLETKEY.REPLACE.RSA and the card do not say so
+- source: spec-18-24-rsa-and-symmetric-key-wallet-secrets.md | severity: med | fix-risk: med | footprint: in-story
+- evidence: Read in vendor source: %Wallet.AsymmetricKey.NormalizeProperties builds a new Secret holding only CreateKeyPair's pair when no material is sent, so HasCertificate becomes 0 (inference, unmeasured); the sentence names the private key only.
+- 2026-10-07T02:41:59Z status=decision-pending owner=burndown by=cr note=product call: name a stored certificate's loss in WALLETKEY.REPLACE.RSA (EXPERIENCE.md :416 amendment)
+
+### DW-2127: An imported symmetric key's two-PUT create is not atomic: a failed length PUT leaves the key stored with no Length, and an outside writer between the port's read and its PUT turns a create into a modify
+- source: spec-18-24-rsa-and-symmetric-key-wallet-secrets.md | severity: med | fix-risk: med | footprint: in-story
+- evidence: WalletPort.PutSymmetricImport reads the name, then sends {Type,Secret64} and {Type,Length}; PutKey's generate branch relies on the caller's absence check; OcuPilot's hold does not stop a non-OcuPilot writer.
+- 2026-10-07T02:41:59Z status=wontfix-theoretical owner=18-24-rsa-and-symmetric-key-wallet-secrets by=cr note=real if the vendor refuses {Type,Length} on a key just created, or a non-OcuPilot writer lands inside the hold
+
+### DW-2128: An RSA import naming both a certificate and a public key never compares the two, so a mismatched pair reaches the vendor
+- source: spec-18-24-rsa-and-symmetric-key-wallet-secrets.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: WalletKeyRules.Validate pairs only the private key with the certificate (or the public key when no certificate); the vendor's handling of a certificate beside another key's public key is unmeasured.
+- 2026-10-07T02:42:00Z status=wontfix-accepted owner=18-24-rsa-and-symmetric-key-wallet-secrets by=cr note=reopen_if=a certificate plus another key's public key stores, or logs a vendor 500, on ocupilot-ci
+
+### DW-2129: On an existing key's form Save opens the typed-name dialog with nothing entered: an RSA key regenerates at its stored length, a symmetric key is refused SOURCE.REQUIRED only after the name is typed
+- source: spec-18-24-rsa-and-symmetric-key-wallet-secrets.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: canSave() is true on a fresh key edit, onSave opens the dialog for every key edit, and the RSA source defaults to generate at the stored length (the page spec's Save sends Length 2048).
+- 2026-10-07T02:42:00Z status=wontfix-accepted owner=18-24-rsa-and-symmetric-key-wallet-secrets by=cr note=reopen_if=the per-story smoke or a user replaces a key by pressing Save on an untouched key form
+
+### DW-2130: A legacy encrypted RSA key pasted into the single-line private key field loses its header lines and is refused its shape, while Load from file keeps them
+- source: spec-18-24-rsa-and-symmetric-key-wallet-secrets.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: The spec's named limit (4), AdminPort.PemBlock's rule as on the X.509 form.
+- 2026-10-07T02:42:00Z status=by-design owner=18-24-rsa-and-symmetric-key-wallet-secrets by=cr note=spec named limit 4; reopens only through a spec amendment
+
+### DW-2131: The RSA and symmetric length sets and the key field lists are written out in six places with no test holding them equal
+- source: spec-18-24-rsa-and-symmetric-key-wallet-secrets.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: WalletKeyRules and WalletPort RSALENGTHS, each create tool's LENGTHS, WalletKeyReplaceRsa's enum, Prohibited.WalletKeyFields, the client's DEFAULT_LENGTHS; the kernel and the port may not import the slice's rules.
+- 2026-10-07T02:42:00Z status=wontfix-accepted owner=18-24-rsa-and-symmetric-key-wallet-secrets by=cr note=reopen_if=a later story changes a length or key field in one of the six copies
+
+### DW-2132: WalletKeyRead's server-file test asserts the instance-wide messages.log did not grow across 27 calls, which any unrelated log line would fail
+- source: spec-18-24-rsa-and-symmetric-key-wallet-secrets.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: TestAServerFileNameIsRefusedBeforeAnyVendorCall compares LogSize before and after; every CI shard runs one class at a time on its own throwaway.
+- 2026-10-07T02:42:00Z status=wontfix-accepted owner=18-24-rsa-and-symmetric-key-wallet-secrets by=cr note=reopen_if=WalletKeyRead fails its log-size leg in CI on a line the wallet port did not write
+
+### DW-2133: The key suites call $SYSTEM.Monitor.Clear(), resetting the whole instance's alert state after their deliberate vendor refusals
+- source: spec-18-24-rsa-and-symmetric-key-wallet-secrets.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: The spec's Verification requires monitor state 0 after a deliberate vendor refusal; the suites run on throwaways only.
+- 2026-10-07T02:42:00Z status=by-design owner=18-24-rsa-and-symmetric-key-wallet-secrets by=cr note=spec Verification requires the clear after deliberate refusals
+
+### DW-2134: WALLET.TYPE.UNSUPPORTED's reworded sentence names no next step for the agent (replacersa, or the Secret form for a symmetric key)
+- source: spec-18-24-rsa-and-symmetric-key-wallet-secrets.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: The sentence is fixed by the spec's Sentences table and EXPERIENCE.md :416.
+- 2026-10-07T02:42:00Z status=by-design owner=18-24-rsa-and-symmetric-key-wallet-secrets by=cr note=sentence fixed by the spec; reopens only through a spec amendment
+
+### DW-2135: An RSA or symmetric replace cannot detect another same-length replacement between its mint and its confirm
+- source: spec-18-24-rsa-and-symmetric-key-wallet-secrets.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: AD-27 as amended for Story 18.24: the fingerprint covers metadata only, never a value, public halves included.
+- 2026-10-07T02:42:00Z status=by-design owner=18-24-rsa-and-symmetric-key-wallet-secrets by=cr note=AD-27's stated fingerprint limit
+
+### DW-2136: EXPERIENCE.md :415 places 'Key material is write-only' beside every key material field; the page shows it once at the end of the key section, in every mode
+- source: spec-18-24-rsa-and-symmetric-key-wallet-secrets.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: wallet-secret-form.page.ts renders STRINGS.walletKeyWriteOnly once inside the key fieldset; the row's 'beside every key material field' does not say one caption per field.
+- 2026-10-07T02:42:00Z status=wontfix-accepted owner=18-24-rsa-and-symmetric-key-wallet-secrets by=cr note=reopen_if=a UX review or the browser spec asks for the caption beside each material field
+
+### DW-2137: IRIS defect candidate: the admin API's Wallet.Secret PUT stores an EC certificate as a %Wallet.RSA secret (RSASize reads 72, so Length 576)
+- source: spec-18-24-rsa-and-symmetric-key-wallet-secrets.md | severity: low | fix-risk: high | footprint: out-of-footprint
+- evidence: Story 18.24 code review on ocupilot-ci 2026-10-07: RSASize answered 72 for a run-time EC certificate; with WalletKeyRules' RSA check removed the PUT stored it (WalletKeyCreate case 9 red, Holds 1).
+- 2026-10-07T02:42:00Z status=decision-pending owner=burndown by=cr note=human=decide whether to report it to InterSystems with the held vendor-report list; WalletKeyRules refuses it
+
+### DW-2138: A key tool's confirm carrying key material is refused WALLETKEY.SOURCE.BOTH by the port after the claim, so the proposal is spent rather than left live
+- source: spec-18-24-rsa-and-symmetric-key-wallet-secrets.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: Confirm claims (AD-34) before Operation.ApplyAt; WalletPort.PutKey refuses after it, as every port refusal does. Refusing before the claim needs the channel closed (400 CLOSEDCHANNEL), not the spec's 422 code.
+- 2026-10-07T02:42:42Z status=by-design owner=18-24-rsa-and-symmetric-key-wallet-secrets by=cr note=the matrix names WALLETKEY.SOURCE.BOTH from the port; only a hand-built confirm carries material

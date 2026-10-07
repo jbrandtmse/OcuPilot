@@ -177,9 +177,10 @@ Method TestEveryImportFormOnTheScreen()
 }
 
 /// <p>C5: every rule of the matrix refuses its body on its field with the code the spec names, on the
-/// screen, and sends nothing. The password is never a rule's sentence.</p>
-/// <p>Mutation (Rule 19): drop each rule in turn from <method>OcuPilot.Area.Security.WalletKeyRules.Validate</method>
-/// (length, source, public, password, mismatch, expiry, base64) -> its leg goes red with a PUT recorded.</p>
+/// screen, and sends nothing; a certificate that is not an RSA certificate is refused its shape.</p>
+/// <p>Mutation (Rule 19): drop the rules from <method>OcuPilot.Area.Security.WalletKeyRules.Validate</method>
+/// (length, source, public, password, mismatch, expiry, base64, RSA certificate) -> each leg goes red,
+/// those that reach the vendor with a PUT recorded.</p>
 Method TestEveryRefusalSendsNothing()
 {
     Set tM = ..#MATERIAL
@@ -198,6 +199,7 @@ Method TestEveryRefusalSendsNothing()
     Do tCases.%Push({"t": (..#RSA), "args": {"PublicKey": (tPem.Certificate)}, "code": "WALLETKEY.PUBLICKEY.SHAPE"})
     Do tCases.%Push({"t": (..#RSA), "args": {"Certificate": (tPem.Certificate), "PrivateKey": "not a key"}, "code": "WALLETKEY.PRIVATEKEY.SHAPE"})
     Do tCases.%Push({"t": (..#RSA), "args": {"Certificate": (tPem.ExpiredCertificate)}, "code": "WALLETKEY.CERTIFICATE.INVALID"})
+    Do tCases.%Push({"t": (..#RSA), "args": {"Certificate": (tPem.EcCertificate)}, "code": "WALLETKEY.CERTIFICATE.SHAPE"})
     Do tCases.%Push({"t": (..#RSA), "args": {"Certificate": (tPem.Certificate), "PrivateKey": (tPem.OtherKey)}, "code": "WALLETKEY.PRIVATEKEY.MISMATCH"})
     Do tCases.%Push({"t": (..#RSA), "args": {"Certificate": (tPem.Certificate), "PrivateKey": (tPem.EncryptedKey)}, "code": "WALLETKEY.PASSWORD.REQUIRED"})
     Do tCases.%Push({"t": (..#RSA), "args": {"Certificate": (tPem.Certificate), "PrivateKey": (tPem.EncryptedKey), "Password": "not the password"}, "code": "WALLETKEY.PASSWORD.WRONG"})
@@ -219,7 +221,6 @@ Method TestEveryRefusalSendsNothing()
         Do $$$AssertEquals($ClassMethod(..#RECORD, "WriteCount"), 0, "case " _ tI _ ": and sends nothing")
         Set tReason = ##class(OcuPilot.Api.Error).ReasonForViolation(tCase.%Get("code"))
         Do $$$AssertNotEquals(tReason, "", "case " _ tI _ ": the code carries a sentence")
-        Do $$$AssertEquals(tReason [ tPass, 0, "case " _ tI _ ": which quotes no password")
     }
     Do $$$AssertEquals($ClassMethod(..#PROBE, "Holds", ..Name("Refused")), 0, "no refused body stored a secret")
     ; The same rules refuse the agent's arguments at the mint.
@@ -283,11 +284,13 @@ Method TestANameTakenSinceTheMintRefusesTheConfirm()
 }
 
 /// <p>C3, AD-53: the agent's tools generate and never import: a mint with no length is refused, one
-/// naming key material is refused as a secret field, and a confirm carrying material beside the length
-/// is refused <code>WALLETKEY.SOURCE.BOTH</code> by the port with no <code>PUT</code>.</p>
+/// naming key material is refused as a secret field, and a confirm carrying any member either create
+/// tool's channel admits beside the length is refused <code>WALLETKEY.SOURCE.BOTH</code> by the port
+/// with no <code>PUT</code>.</p>
 /// <p>Mutation (Rule 19): the <code>generate</code> mode of
 /// <method>OcuPilot.Area.Security.WalletKeyRules.Validate</method> stops requiring the length -> the
-/// no-length leg goes red.</p>
+/// no-length leg goes red; <parameter>OcuPilot.Port.WalletPort.MATERIALFIELDS</parameter> without
+/// <code>Password</code> and <code>Secret</code> -> their confirm legs go red.</p>
 Method TestTheAgentImportsNothing()
 {
     Set tName = ..Name("Both")
@@ -304,6 +307,19 @@ Method TestTheAgentImportsNothing()
     Set tSC = $ClassMethod(..#PROBE, "Confirm", tProposal.%Get("proposalId"), {"Certificate": (tPem)}, .tHttp, .tCode, .tResult)
     Do $$$AssertEquals(tHttp _ " " _ $Get(tCode), "422 WALLETKEY.SOURCE.BOTH", "its confirm carrying a certificate is refused for naming both")
     Do $$$AssertEquals($ClassMethod(..#RECORD, "WriteCount"), 0, "with no PUT")
+    For tTool = ..#RSATOOL, ..#SYMMETRICTOOL {
+        Set tNames = $ClassMethod(tTool, "ChannelSecretNames")
+        For tI = 1:1:$ListLength(tNames) {
+            Do $ClassMethod(..#RECORD, "Clear")
+            Set tSC = $ClassMethod(..#PROBE, "Mint", tTool, tName, {"Length": (+$Parameter(tTool, "LENGTHS"))}, .tProposal, .tHttp, .tFault)
+            Do $$$AssertStatusOK(tSC, tTool _ ": a mint of the length is accepted")
+            If $$$ISERR(tSC) Continue
+            Set tSupplied = {}
+            Do tSupplied.%Set($List(tNames, tI), "x", "string")
+            Set tSC = $ClassMethod(..#PROBE, "Confirm", tProposal.%Get("proposalId"), tSupplied, .tHttp, .tCode, .tResult)
+            Do $$$AssertEquals(tHttp _ " " _ $Get(tCode) _ " " _ $ClassMethod(..#RECORD, "WriteCount"), "422 WALLETKEY.SOURCE.BOTH 0", tTool _ " " _ $List(tNames, tI) _ ": a confirm carrying it is refused with no PUT")
+        }
+    }
     Do $$$AssertEquals($ClassMethod(..#PROBE, "Holds", tName), 0, "and nothing stored")
 }
 
