@@ -123,6 +123,10 @@ Principals, each with READ on the install namespace's code database: **E** also 
   - The interoperability-read, event-log and administrative-screen rows.
 - `src/OcuPilot/Test/InteropFloorRoutes.cls` (new): the route-sweep row, as E and as Op, against each principal's route roster. Note that `DeveloperFloorRoutes` never sends `explorer/sql` POSTs to a non-developer; here each of them must answer 403, naming `%Development:USE`.
 - `src/OcuPilot/Test/InteropFloorTurn.cls` (new, from `DeveloperFloorTurn`): the Turn row, with tag `interopfloor-probe`.
+- **The floor-only roster (orchestrator condition, 2026-10-07; AC6).** A test, in `InteropFloor` or its own class, enumerates every screen descriptor, read tool and write tool. Each must declare a pair outside the floor members (`Screen.Gate.FloorResources()`), or be listed in a closed `FLOORONLY` roster with its reason: `owner-scoped` or `no classic resource`.
+  - An unlisted floor-only surface fails, naming it. So does a roster entry that no longer exists or now declares a pair.
+  - Routes are pinned by the E sweep: a route E opens outside its roster fails.
+  - The floor change does not ship without this test.
 - `scripts/ci-throwaway.sh`, add-only:
   - `# classes: InteropFloor, InteropFloorFixture, InteropFloorRoutes, InteropFloorTurn` under `OCUPILOT_ALLOW_PRINCIPALS`, with its sentence;
   - `InteropFloorTurn` under `OCUPILOT_ALLOW_TEST_PROVIDER`.
@@ -135,8 +139,11 @@ Principals, each with READ on the install namespace's code database: **E** also 
 - **AC3 (Integration).** Given a `%Ens_Portal` holder with no `%Admin_*` and no `%Development`, when its turn calls a tool it holds and then one it lacks, then the first answers and the second is refused by name. The turn neither abandons nor is refused at the provider port.
 - **AC4.** Given the floor's one home, when the router, the provider port and the turn compile, then each carries `%Ens_Portal` from `Screen.Gate`, and Below's reason names all three kinds.
 - **AC5 (browser).** Given Adm in a real browser, when it signs in, then it works in Interoperability without the no-privileges notice, and Permissions names its failed pair.
+- **AC6 (orchestrator condition: every surface has its own permission check).** Given every screen, read tool, write tool and route, when the suite runs, then each either declares a pair outside the floor or is listed in the floor-only roster with its reason. A surface with neither reddens, naming it.
 
 ## Spec Change Log
+
+- 2026-10-07, runner spec gate: the orchestrator cleared the six contended edits, on the condition that the audit's "no surface needs a new pair" becomes a pinned test (AC6, the floor-only roster task, and its mutation row). The AD-8 amendment and the PRD FR-3 and FR-65 lines are written.
 
 ## Review Triage Log
 
@@ -223,6 +230,7 @@ Principals, each with READ on the install namespace's code database: **E** also 
 | AC2, routes | Delete `Gate()` from `Area/WebApp/FormRules.HandleForm` | `InteropFloorRoutes` on `GET /web-applications/form` |
 | AC3 | `Turn.cls:150` back to `Router.#ADMINRESOURCES`, and separately `INVOKEPAIRS` back to the admin members alone | `InteropFloorTurn` |
 | AC4 | `Router.FLOORRESOURCES` as a literal, and separately the former reason | `PortGate`; `DeveloperFloor`'s below-floor test |
+| AC6 | Drop one surface's own pairs: a screen (`LogEventViewer`), a write tool (an `interop.productions.*` tool's `%Ens_ProductionRun:USE`) and a route (`Gate()` out of `FormRules.HandleForm`), each in turn | the floor-only roster test, naming the surface; the route through `InteropFloorRoutes` |
 
 ## Auto Run Result
 

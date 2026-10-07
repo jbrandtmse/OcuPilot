@@ -10262,6 +10262,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Task 0 measured it once with queues still holding messages; no test asserts what the caller sees (InteropPort.cls)
 - 2026-10-07T16:08:56Z status=open owner=20-2-productions-listed-and-controlled by=harvest note=unverified; settle with a stop against a probe holding queued messages and a read of the answer
 - 2026-10-07T18:13:30Z status=decision-pending owner=burndown by=adjudication note=product call, same family as DW-2162: recommended route to 20.3 (extends InteropPort): a stop answers the state its post-write read finds, with a code and a Fixed-strings sentence when the production ends Suspended
+- 2026-10-07T18:58:44Z status=routed owner=20-3-production-items by=merge_gate note=orchestrator ruling 2026-10-07: a stop answers the state its post-write read finds, with a new INTEROP code and Fixed-strings sentence when the production ends Suspended
 
 ### DW-2158: InteropControl's row-action test stops straight after a restart with no settle, which may flake
 - source: spec-20-2-productions-listed-and-controlled.md | severity: low | fix-risk: low | footprint: in-story
@@ -10279,6 +10280,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-20-2-productions-listed-and-controlled.md | severity: med | fix-risk: med | footprint: out-of-footprint
 - evidence: InteropProductionAction.PrivilegePairs:127 (and ExplorerDocDbWrite) read Scope.Current(); Operation.Gate:412 recomputes pairs at confirm under Router.cls:1447's ?ns= scope; the port re-gates the payload namespace's database, so nothing escapes
 - 2026-10-07T18:07:16Z status=escalated owner=burndown by=cr note=decision sheet: payload-aware pair hook at the confirm gate (kernel), or accept the narrow false refusal
+- 2026-10-07T18:58:44Z status=wontfix-accepted owner=burndown by=merge_gate note=orchestrator ruling 2026-10-07: the port re-gates the payload namespace, so nothing escapes; the cost is a narrow false refusal. reopen_if=a person reports a refused cross-namespace confirm, or a later story needs a payload-aware pair hook
 
 ### DW-2162: A stop or restart whose jobs outlast the cap after quiescing answers a logged 500 with the production half-stopped, while the stop card says nothing is stopped
 - source: spec-20-2-productions-listed-and-controlled.md | severity: med | fix-risk: low | footprint: in-story
@@ -10286,6 +10288,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-07T18:07:16Z status=decision-pending owner=burndown by=cr note=product call: new INTEROP code + sentence for a partial stop (recommended), or keep 500 and amend the stop sentence
 - 2026-10-07T15:41:54Z occurrence=18-25-superservers
 - 2026-10-07T18:44:36Z status=decision-pending owner=burndown by=merge_repair note=restored: the 15:41:54Z occurrence=18-25-superservers line above is DW-2149's, moved here by a union merge; DW-2162 has no 18.25 occurrence
+- 2026-10-07T18:58:44Z status=routed owner=20-3-production-items by=merge_gate note=orchestrator ruling 2026-10-07: a stop or restart left half-stopped past the cap answers its own INTEROP code and Fixed-strings sentence, not a generic 500, and the card says so
 
 ### DW-2150: The serving-superserver arm's real ServingSuperserverPort() (the $PRINCIPAL read) is never driven to a non-empty answer by a test; SuperserverSet overrides it and the real-HTTP legs serve through the system default
 - source: spec-18-25-superservers.md | severity: med | fix-risk: low | footprint: in-footprint

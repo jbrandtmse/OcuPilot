@@ -7985,6 +7985,8 @@ So that a production is editable rather than only observable.
 - **Given** enable, disable, add, remove and settings edit
 - **When** each runs
 - **Then** it round-trips through the interoperability port as a confirmed write.
+- DW-2157: A production stop from Running can leave it reading Suspended while the tool answers success and the card promised Stopped (ledger; routed by merge_gate 2026-10-07)
+- DW-2162: A stop or restart whose jobs outlast the cap after quiescing answers a logged 500 with the production half-stopped, while the stop card says nothing is stopped (ledger; routed by merge_gate 2026-10-07)
 
 ### Story 20.4: Per-host tabs, the monitor, queues and jobs
 
