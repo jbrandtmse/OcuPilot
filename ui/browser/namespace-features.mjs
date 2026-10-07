@@ -16,8 +16,8 @@ export function readNamespaceFeatures(container) {
   const lines = [
     'Set tRS=##class(%ResultSet).%New("Config.Namespaces:List") Do tRS.Execute() Set tNames=""',
     'While tRS.Next() { Set tNames=tNames_$ListBuild(tRS.Get("Namespace")) }',
-    'Set $NAMESPACE="HSCUSTOM" Set tOut=""',
-    `For i=1:1:$ListLength(tNames) { Set n=$List(tNames,i) Set tOut=tOut_n_"="_##class(%Library.EnsembleMgr).IsEnsembleNamespace(n)_##class(%DeepSee.Utils).%IsDeepSeeEnabled(n)_";" }`,
+    'Set $NAMESPACE=$Select(##class(%SYS.Namespace).Exists("HSCUSTOM"):"HSCUSTOM",1:"USER") Set tOut=""',
+    `For i=1:1:$ListLength(tNames) { Set n=$List(tNames,i) Set tOut=tOut_n_"="_''##class(%Library.EnsembleMgr).IsEnsembleNamespace(n)_''##class(%DeepSee.Utils).%IsDeepSeeEnabled(n)_";" }`,
     'Write "OCU"_"-FEATURES-START:"_tOut_":OCU"_"-FEATURES-END",!',
     'Halt',
   ];

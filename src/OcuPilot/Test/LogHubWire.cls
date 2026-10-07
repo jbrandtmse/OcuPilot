@@ -60,7 +60,7 @@ Method %OnNew(initvalue As %String = "") As %Status
 Method OnBeforeAllTests() As %Status
 {
     If $System.Util.GetEnviron(..#ARMINGVARIABLE) '= 1 {
-        Quit $$$ERROR($$$GeneralError, "OcuPilot.Test.LogHubWire writes an interoperability event and creates an IRIS user on this instance and runs on a throwaway container only. " _ ..#ARMINGVARIABLE _ " does not read 1 here, so nothing was written. Bring one up with scripts/ci-throwaway.sh, which sets it.")
+        Quit $$$ERROR($$$GeneralError, "OcuPilot.Test.LogHubWire writes an interoperability event and creates IRIS users and a role on this instance and runs on a throwaway container only. " _ ..#ARMINGVARIABLE _ " does not read 1 here, so nothing was written. Bring one up with scripts/ci-throwaway.sh, which sets it.")
     }
     If $System.Util.GetEnviron(..#SEEDVARIABLE) '= 1 {
         Quit $$$ERROR($$$GeneralError, "OcuPilot.Test.LogHubWire writes an interoperability event on this instance and runs on a throwaway container only. " _ ..#SEEDVARIABLE _ " does not read 1 here, so nothing was written. Bring one up with scripts/ci-throwaway.sh, which sets it.")

@@ -1,8 +1,10 @@
 /// <p>The interoperability event log: the newest <code>Ens_Util.Log</code> rows of every
 /// interoperability-enabled namespace the user can read, merged, each led by its namespace. The
-/// pair is its classic page's; the port adds each namespace's globals database <code>READ</code>.
-/// The pair is declared its own, beyond the Logs area's set, so a caller without it loses this
-/// screen alone (AD-8). (Story 16.8, AD-21, AD-36)</p>
+/// pairs are its classic page's: <code>%Ens_EventLog:USE</code>, and the <code>%Ens_Portal:USE</code>
+/// <code>EnsPortal.Application.CheckPrivileges</code> requires of every Interoperability page; the
+/// port adds each namespace's globals database <code>READ</code>. Both are declared its own, beyond
+/// the Logs area's set, so a caller without either loses this screen alone (AD-8). (Story 16.8,
+/// AD-21, AD-36)</p>
 /// <p>Rows travel on <method>OcuPilot.Port.LogSourcePort.Recent</method> under this screen's own
 /// route, and the declared read the tool derives from travels on
 /// <method>OcuPilot.Port.LogSourcePort.Rows</method>, which projects the same entries to

@@ -327,9 +327,11 @@ export class SideBar {
 
   /**
    * The visible area stopped applying -- the namespace moved to one that does not report its
-   * feature. Its bar is gone with its rail item; an open bar closes without writing the preference
-   * (`collapse()`), and focus inside it goes to Home's rail item first, because the area's own is
-   * gone with it.
+   * feature. Its bar is gone with its rail item, and focus inside it goes to Home's rail item
+   * first, because the area's own is gone with it. Once the map has answered for this namespace
+   * (`appliesAnswered()`), an open bar closes without writing the preference (`collapse()`);
+   * before that answer it is only not shown (`showing`), so it returns when the answer says the
+   * area applies here too.
    */
   private retireUnofferedArea(): void {
     const areaKey = this.shell.visibleArea();
@@ -337,7 +339,7 @@ export class SideBar {
     if (this.host.nativeElement.contains(document.activeElement)) {
       document.getElementById(railItemDomId('home'))?.focus();
     }
-    this.shell.collapse();
+    if (this.navigation.appliesAnswered()) this.shell.collapse();
   }
 
   /** Nothing may be removed while it holds focus (EXPERIENCE.md "**Focus destinations.** No control"). */

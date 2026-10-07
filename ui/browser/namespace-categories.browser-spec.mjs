@@ -4,8 +4,8 @@
  * that applies but that the caller cannot open stays drawn, unavailable, naming its pair (AD-8).
  *
  * Each namespace's features are read from the instance (`namespace-features.mjs`), never assumed by
- * name: `%SYS` reports neither, an interoperability-only namespace one, and a namespace reporting
- * both the other. The pre-answer state holds `/api/ocupilot/navigation` through request
+ * name: `%SYS` reports neither feature, one namespace reports interoperability alone, and another
+ * reports both. The pre-answer state holds `/api/ocupilot/navigation` through request
  * interception. The least-privileged principal comes from `OcuPilot.Test.DeveloperFloorFixture`
  * (`%Developer`, which lacks `%Ens_Portal`) and is removed afterwards, so the spec refuses the live
  * container. It never reads `.ocu-side-bar-label`.
@@ -96,7 +96,7 @@ after(async () => {
 
 const homeUrl = (namespace) => `/ocupilot/?ns=${encodeURIComponent(namespace)}`;
 
-/** A fresh context signed in as `user` and standing on `url`, with `hold` consulted for every navigation read. */
+/** A fresh context signed in as `user` and standing on `url`; `holdNavigation` holds every map read until `release()`. */
 async function signIn(user, secret, url, { holdNavigation = false } = {}) {
   await resetRememberedState();
   const context = await browser.createBrowserContext();
@@ -206,9 +206,9 @@ test('before the map answers, neither category is drawn while the other areas ar
   const { context, page, held, release } = await signIn(config.username, config.password, homeUrl(interopNs), { holdNavigation: true });
   try {
     await page.waitForFunction(() => document.querySelector('#ocu-rail-item-logs') !== null, { timeout: config.navigationTimeoutMs });
-    const before = await drawn(page);
-    assert.ok(before.rail.includes('logs'), 'Logs is drawn, ungated, as before the map answers');
-    for (const key of CATEGORIES) assert.equal(before.rail.includes(key), false, `${key} is not drawn while the map read is held`);
+    const unanswered = await drawn(page);
+    assert.ok(unanswered.rail.includes('logs'), 'Logs is drawn, ungated, as before the map answers');
+    for (const key of CATEGORIES) assert.equal(unanswered.rail.includes(key), false, `${key} is not drawn while the map read is held`);
     assert.ok(held.length > 0, 'the navigation read is the one being held');
 
     await release();

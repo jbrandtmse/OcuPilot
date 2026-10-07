@@ -109,8 +109,11 @@ class StubNavigation {
     return true;
   }
 
+  /** Areas the rail no longer offers, because their category does not apply in this namespace. */
+  readonly unoffered = new Set<string>();
+
   areas(): readonly AreaDeclaration[] {
-    return AREAS;
+    return AREAS.filter((area) => !this.unoffered.has(area.key));
   }
 
   screensForArea(): readonly ScreenDeclaration[] {
@@ -251,6 +254,21 @@ describe('the activity rail', () => {
     items()[0].dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp', bubbles: true }));
     fixture.detectChanges();
     expect(document.activeElement).toBe(items()[10]);
+  });
+
+  it('Story 20.1: keeps its one Tab stop when the namespace shortens the rail under it', () => {
+    // Mutation (Rule 19): drop the clamp from `Rail.resolved` -> no item is tabindex 0 here.
+    items()[0].dispatchEvent(new KeyboardEvent('keydown', { key: 'End', bubbles: true }));
+    fixture.detectChanges();
+    expect(items()[10].tabIndex).toBe(0);
+
+    navigation.unoffered.add('interoperability');
+    navigation.unoffered.add('analytics');
+    navigation.notify();
+    fixture.detectChanges();
+    expect(items()).toHaveLength(9);
+    expect(items().filter((item) => item.tabIndex === 0)).toHaveLength(1);
+    expect(items()[8].tabIndex).toBe(0);
   });
 
   it('marks the active area aria-current="page" and nothing else', () => {

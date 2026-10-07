@@ -6,7 +6,7 @@ Class OcuPilot.Kernel.Shell.PrivilegesRead Extends OcuPilot.Kernel.Shell.ReadToo
 
 Parameter TOOLNAME = "shell.privileges.read";
 
-Parameter DESCRIPTION = "Read every area and screen of this portal, whether this account may reach each one, and the privilege pair that blocks each one it may not.";
+Parameter DESCRIPTION = "Read every area and screen of this portal, whether this account may reach each one, and the privilege pair that blocks each one it may not. An area whose applies is false does not exist in this namespace and is not shown, whatever this account holds.";
 
 ClassMethod Payload(Output pObject As %DynamicObject) As %Status
 {

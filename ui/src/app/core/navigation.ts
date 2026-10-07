@@ -861,7 +861,17 @@ export class NavigationService {
   applies(areaKey: string): boolean {
     const declared = areaByKey(areaKey)?.appliesWhen;
     if (declared === undefined) return true;
-    return this.appliesKey === this.namespace() && this.appliesByArea.get(areaKey) === true;
+    return this.appliesAnswered() && this.appliesByArea.get(areaKey) === true;
+  }
+
+  /**
+   * Whether the stored `applies` answers were read under the namespace the shell is scoped to now.
+   * False before any answer, and while the re-read for a namespace the shell has moved to is in
+   * flight or has failed: a category is not drawn then, and the side bar waits for this answer
+   * before it closes one, so a switch between two namespaces that both report it keeps the bar.
+   */
+  appliesAnswered(): boolean {
+    return this.appliesKey !== null && this.appliesKey === this.namespace();
   }
 
   /** Whether a map has been received at all. Nothing is gated until it has. */
@@ -882,8 +892,9 @@ export class NavigationService {
   /**
    * The areas the rail renders, and the screens an area's side bar lists.
    *
-   * They delegate to the mirror and add nothing -- they exist on the service so a component
-   * test can hand the rail and the side bar a roster the shipped mirror does not carry. At the
+   * They read the mirror and keep only what applies in the current namespace (`applies()`), and
+   * they exist on the service so a component test can hand the rail and the side bar a roster the
+   * shipped mirror does not carry. At the
    * end of Epic 1 that mirror holds one screen, Home, whose area has no side bar, so without
    * this seam the side bar's own listing rules would have nothing to render and nothing to
    * assert. Production never overrides them.
@@ -895,18 +906,19 @@ export class NavigationService {
   /**
    * The screens an area's side bar, command box, tile caption, locator segment and rail landing
    * offer: its **listed** ones (`listedScreensForArea`), which is what this seam has always meant
-   * and what its own comment above says. A screen declaring `sideBarPosition` 0 is routable and
-   * unlisted, so it is absent here and present in `builtScreens()`.
+   * and what its own comment above says, and none for an area that does not apply. A screen
+   * declaring `sideBarPosition` 0 is routable and unlisted, so it is absent here and present in
+   * `builtScreens()`.
    */
   screensForArea(areaKey: string): readonly ScreenDeclaration[] {
     return this.applies(areaKey) ? listedScreensForArea(areaKey) : [];
   }
 
   /**
-   * Every built screen, and the screen a router URL resolves to. Seams for the same reason
-   * `areas()` is one: the command box lists every screen the user may open and the command
-   * bar reads the current screen's declared actions, and no screen in the shipped mirror
-   * declares an action, so neither rule would have a subject in a component test.
+   * Every built screen whose area applies, and the screen a router URL resolves to. Seams for
+   * the same reason `areas()` is one: the command box lists every screen the user may open and
+   * the command bar reads the current screen's declared actions, and no screen in the shipped
+   * mirror declares an action, so neither rule would have a subject in a component test.
    * Production never overrides them.
    */
   builtScreens(): readonly ScreenDeclaration[] {
@@ -973,7 +985,11 @@ export class NavigationService {
    * an answer to a question nobody is asking any more (**DW-157**).
    */
   reload(): void {
+    const moved = this.appliesKey !== null && this.appliesKey !== this.namespace();
     void this.load();
+    // The stored `applies` answers belong to the namespace the shell has left, so a category stops
+    // being drawn now rather than when, or if, the re-read answers (fail closed, AD-44).
+    if (moved) this.notify();
   }
 
   /**
@@ -1038,10 +1054,10 @@ export class NavigationService {
     for (const raw of areas) {
       if (typeof raw !== 'object' || raw === null) continue;
       const area = raw as AreaVerdictWire;
-      const key = asString(area.key);
-      if (key !== '') {
-        nextAreas.set(key, verdictFrom(area));
-        nextApplies.set(key, area.applies === true);
+      const areaKey = asString(area.key);
+      if (areaKey !== '') {
+        nextAreas.set(areaKey, verdictFrom(area));
+        nextApplies.set(areaKey, area.applies === true);
       }
       const screens = Array.isArray(area.screens) ? area.screens : [];
       for (const rawScreen of screens) {

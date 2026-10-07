@@ -1,8 +1,9 @@
 /// <p>Pins <class>OcuPilot.Kernel.Shell.NamespaceFeatures</class> against the vendor checks it
 /// wraps, <method>OcuPilot.Screen.Registry.AreaProblem</method>, and the <code>applies</code> field
 /// <method>OcuPilot.Kernel.Shell.Navigation.Payload</method> carries (Story 20.1, AD-44).</p>
-/// <p>It reads only and arms nothing. The payload legs assume the instance's namespaces report what
-/// a stock throwaway reports: HSCUSTOM interoperability only, and <code>%SYS</code> neither.</p>
+/// <p>It changes no configuration and arms nothing; each unknown-feature leg writes one WARN line to
+/// the console log. The payload legs assume the instance's namespaces report what a stock throwaway
+/// reports: HSCUSTOM interoperability only, and <code>%SYS</code> neither.</p>
 Class OcuPilot.Test.NamespaceFeatures Extends %UnitTest.TestCase
 {
 
@@ -25,6 +26,7 @@ ClassMethod Namespaces() As %String
             Set tNames = tNames _ $Select(tNames = "": "", 1: ",") _ tRS.Get("Namespace")
         }
     } Catch {
+        Set $NAMESPACE = tOrig
     }
     Set $NAMESPACE = tOrig
     Quit tNames
@@ -70,6 +72,41 @@ Method TestTheEdgesFailClosed()
     Do $$$AssertEquals($ClassMethod(tClass, "Reports", "bogus", "HSCUSTOM"), 0, "a feature outside the vocabulary answers 0")
     Do $$$AssertEquals($ClassMethod(tClass, "Applies", "", "%SYS"), 1, "an empty feature applies everywhere")
     Do $$$AssertEquals($ClassMethod(tClass, "Applies", "bogus", "HSCUSTOM"), 0, "and an unknown one applies nowhere")
+}
+
+/// <p>A feature outside the vocabulary applies nowhere and writes exactly one WARN line to the
+/// console log, under the shell subsystem, naming the feature.</p>
+/// <p>Mutation (Rule 19): drop the <code>Log.Warn</code> from <code>Reports</code>' unknown-feature
+/// branch -&gt; the line count goes red.</p>
+Method TestAnUnknownFeatureIsLoggedOnce()
+{
+    Set tPath = ##class(%File).NormalizeFilename(##class(OcuPilot.Port.LogSourcePort).FileFor("messages"), ##class(OcuPilot.Port.LogSourcePort).ManagerDirectory())
+    Set tFrom = ##class(%File).GetFileSize(tPath)
+    Do $$$AssertTrue(tFrom > 0, "the console log is readable before the call: " _ tPath)
+    Set tFeature = "probe" _ $Job _ $Translate($ZHorolog, ".")
+    Do $$$AssertEquals(##class(OcuPilot.Kernel.Shell.NamespaceFeatures).Applies(tFeature, "HSCUSTOM"), 0, "an unknown feature applies nowhere")
+    Set tText = ""
+    Try {
+        Set tStream = ##class(%Stream.FileCharacter).%New()
+        If tStream.LinkToFile(tPath) && tStream.MoveTo(tFrom + 1) Set tText = tStream.Read(1000000)
+    } Catch ex {
+        Set tText = ""
+    }
+    Set tCount = 0
+    Set tLine = ""
+    For tI = 1:1:$Length(tText, $Char(10)) {
+        If $Piece(tText, $Char(10), tI) [ tFeature {
+            Set tCount = tCount + 1
+            Set tLine = $Piece(tText, $Char(10), tI)
+        }
+    }
+    Do $$$AssertEquals(tCount, 1, "exactly one appended console line names the feature")
+    If tLine = "" Quit
+    Set tEntry = ##class(%DynamicObject).%FromJSON($Piece(tLine, "[OcuPilot] ", 2, *))
+    Do $$$AssertEquals(tEntry.level, "warn", "at WARN")
+    Do $$$AssertEquals(tEntry.subsystem, "shell", "under the shell subsystem")
+    Do $$$AssertEquals(tEntry.msg, "namespace feature outside the vocabulary", "saying why")
+    Do $$$AssertEquals(tEntry.data.feature, tFeature, "and naming the feature")
 }
 
 /// <p><method>OcuPilot.Screen.Registry.AreaProblem</method> refuses an <code>appliesWhen</code>

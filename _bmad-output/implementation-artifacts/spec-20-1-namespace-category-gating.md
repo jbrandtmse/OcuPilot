@@ -297,6 +297,48 @@ deferred: []
 - **AC2 (integration):** given the map read with `?ns=X` on `ocupilot-b-ci`, when the rail renders, then it reads each area's `applies` and draws exactly the categories X reports, while every other area keeps its privilege verdict; and `shell.privileges.read` answers the same `applies`.
 - **AC3 (DW-1921):** given a holder of `%Ens_EventLog:USE` without `%Ens_Portal:USE`, when they open the Interoperability event log, then it is refused naming `%Ens_Portal:USE`, as the classic `EnsPortal.EventLog` page refuses them.
 
+### Review Findings
+
+Code review 2026-10-07 (tier `full-opus`; layers blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor). Severity, fix-risk, footprint per Rule 15.
+
+- [x] [Review][Patch] MED, fix-risk med (one notify plus a side-bar guard), in-story: a namespace switch kept the previous namespace's categories drawn until the re-read answered, and while it failed, against the matrix row "a switch in flight"; notifying earlier would have closed an open category's bar on every switch between two namespaces that both report it [ui/src/app/core/navigation.ts:975, ui/src/app/shell/side-bar.ts:334]
+- [x] [Review][Patch] MED, fix-risk low, in-story: the rail's roving tab stop is a raw index, so a namespace with a shorter rail can leave no item in the Tab order [ui/src/app/shell/rail.ts:144]
+- [x] [Review][Patch] MED, fix-risk low, in-story: the "Vendor check fails" row had no pinning test; the unknown-feature legs stay green with the warn branch deleted. The throw half is `wontfix-theoretical`: both vendor methods catch their own errors (read in `irislib/`); real only if a vendor check propagates one [src/OcuPilot/Kernel/Shell/NamespaceFeatures.cls:38]
+- [x] [Review][Patch] MED, fix-risk low, in-story: `main.ts` handing the bus to `NavigationService` is unpinned, so the "Interop enabled meanwhile" row holds only in a hand-built service [ui/src/main.ts:124]
+- [x] [Review][Patch] LOW: `screensForArea('analytics')` deep-equals `[]` whatever the filter does, because no screen declares that area [ui/tools/navigation.test.mjs:1437]
+- [x] [Review][Patch] LOW: doc comments the diff made false: the seams "add nothing", "Every built screen", the bus comment's place in `main.ts`, the event log's single pair, `LogHubWire`'s "creates an IRIS user" [ui/src/app/core/navigation.ts:885]
+- [x] [Review][Patch] LOW: DESIGN.md still says "Home's seven areas" [_bmad-output/planning-artifacts/ux-designs/ux-OcuPilot-2026-09-08/DESIGN.md:1103]
+- [x] [Review][Patch] LOW: `shell.privileges.read`'s description does not say what `applies` means [src/OcuPilot/Kernel/Shell/PrivilegesRead.cls:9]
+- [x] [Review][Patch] LOW: `Test.NamespaceFeatures`' header says it reads only, while its unknown-feature legs write WARN lines [src/OcuPilot/Test/NamespaceFeatures.cls:4]
+- [x] [Review][Patch] LOW: `Test.NamespaceFeatures.Namespaces()`' Catch does not restore the namespace first (AD-16) [src/OcuPilot/Test/NamespaceFeatures.cls:27]
+- [x] [Review][Patch] LOW: `runLoad`'s loop `key` shadows the namespace key stored right after the loop [ui/src/app/core/navigation.ts:1046]
+- [x] [Review][Patch] LOW: the captured payload's provenance note does not record the hand-added `applies` and category entries [ui/tools/navigation-wire.test.mjs:13]
+- [x] [Review][Patch] LOW: browser nits: the helper hard-codes HSCUSTOM and concatenates the vendor returns uncoerced; the spec shadows `before`, names a `hold` option and garbles its header [ui/browser/namespace-features.mjs:19]
+- [x] [Review][Defer] LOW: EXPERIENCE.md's rail row ("nine rail-items") and area-tile row ("Seven tiles") now understate a namespace that reports either feature [_bmad-output/planning-artifacts/ux-designs/ux-OcuPilot-2026-09-08/EXPERIENCE.md:612] — deferred: an in-place edit to a file Epic 18 is changing, and the tile row is quoted as an anchor in `home.page.ts`; routed to 20.2 (ledger)
+
+Rejected:
+
+- `by-design` The bundle budget's 5% headroom: the `[Halt]` task fixes 3165kB under DW-1166.
+- `by-design` The service's `screensForArea`/`builtScreens` filters have no subject until a screen declares a category; Design Notes (Client shape) assign their pins to 20.2.
+- `false` A category hidden for lack of a privilege: measured on `ocupilot-b-ci`, a `%Developer` principal and an administrator without `%All` both read `applies` 1 for both features in HSLIB; a namespace a caller cannot read is refused `NS.DENIED` first.
+- `false` Interoperability looser than the classic menu's `GetPortalApp`: measured, every namespace reporting either feature has its portal application; AC1 and AD-44 name the two checks.
+- `false` The implied-namespace leg and the `%SYS` guard cannot fail: the vendor answers 0 for real implied paths too (measured), so the leg pins the observable; `%sys` reddens without the upper-casing.
+- `false` AC3's side-bar entry unpinned: the descriptor-only mutation reddens `Descriptor`, and `LogHubWire` pins the hub.
+- `false` The helper's "same answers" claim: the rail legs compare what `applies` draws against the vendor's answers.
+- `false` The DW-1921 ledger entry still routed: the lead's `ledger_adjudicated` gate closes it.
+- `false` AD-8's `%Developer` list omits the Analytics area: the list names screens, and the area holds none.
+- `low` Ctrl+B on a bar whose area no longer applies writes the preference with nothing drawn: Home's bar behaves the same today, and a fix adds a branch.
+- `low` Home's rail item takes focus without moving the rail's index: the same as `yieldFocusToRail`; a fix adds a focus handler.
+- `low` The mockup's HSCUSTOM frames draw Analytics, with captions naming Logs screens: illustrative, and replacement captions are a design call.
+- `low` The mirror's default `features` list, its trim and an empty `appliesWhen`: test callers only, and the server's `Validate` or `tsc` refuses a divergence loudly.
+- `low` The browser specs read the vendor rather than `/api/ocupilot/navigation` as the Tasks say: an oracle independent of the code under test; the fix is a spec edit.
+- `low` `rail-icons` has no fallback without a both-features namespace: CI's throwaways are IRIS for Health.
+- `low` The English "Requires" literal and the unasserted Home tile in the `%Developer` leg: a copy change fails loudly, and the rail pins the shared verdict.
+- `low` `LogSourcePort` and `SystemInfo` call `IsEnsembleNamespace` directly: canonical names, existing callers.
+- `low` A web application's DeepSee change does not re-read the map: rare, and Analytics holds no screen yet.
+- `low` A feature added to `FEATURES` without a branch in `Reports`: the vendor-equality test lists the features by hand.
+- `low` The spec's stale 2993 kB and Tasks wording: the fix edits the spec under review.
+
 ## Spec Change Log
 
 - 2026-10-07, runner: implement pass 1 halted `implementation verification failed` on the DW-371 bundle budget (3,013,646 B against 3012kB). The runner authorized the re-base above under DW-1166 and reset the spec to `in-progress`; the pass-1 implementation stays in the working tree and inside the next diff.
@@ -433,6 +475,11 @@ deferred: []
 - mutation: AD-44 registry, `AreaProblem`'s vocabulary test made `0 &&` -> red: `NamespaceFeatures.TestAnAreaWithAnUnknownFeatureIsRefused` (1 of 4).
 - mutation: AC3 descriptor only, `LogEventViewer` `privileges` without `%Ens_Portal:USE` -> red: `Descriptor` (8 of 60, `TestTheSixSecondaryLogViewersDeclareTheirSourceAndPair` among them).
 - Command box and Home read the filtered seams unchanged; the `areas()` mutation above reddens the Home leg of the browser spec, and the command box lists screens only, of which neither new category has any yet (20.2 pins it).
+- mutation: code review, `reload()` without its moved-namespace `notify()` -> red: the `navigation.test.mjs` leg "a re-read for a namespace the shell has moved to stops drawing a category at once".
+- mutation: code review, `retireUnofferedArea` collapsing without `appliesAnswered()` -> red: the `side-bar.spec.ts` leg "hides, without closing, while the map has not answered".
+- mutation: code review, `Rail.resolved` without the tab-stop clamp -> red: the `rail.spec.ts` leg "keeps its one Tab stop when the namespace shortens the rail".
+- mutation: code review, `main.ts` without `bus,` in `new NavigationService({...})` -> red: the `navigation.test.mjs` leg "main.ts hands the change bus to the navigation service".
+- mutation: code review, `Reports`' unknown-feature branch without its `Log.Warn` -> red: `NamespaceFeatures.TestAnUnknownFeatureIsLoggedOnce` (1 of 5, run 528).
 
 ## Auto Run Result
 

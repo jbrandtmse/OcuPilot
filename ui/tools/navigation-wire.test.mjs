@@ -30,7 +30,9 @@ import { dirname, join } from 'node:path';
 // principal opens the messages.log viewer. Story 6.11 added the four Databases screens to the os-management roster,
 // each with its own failedPair for this principal; the identical roster is carried a second time by
 // ui/src/app/shell/rail-wire.spec.ts, and neither copy reddens when only the other is updated, so
-// both move together.
+// both move together. Story 20.1 added `applies` to every area and the Interoperability and
+// Analytics entries by hand in both copies, from what OcuPilot.Test.Wire asserts for this principal
+// in HSCUSTOM.
 //
 // Mutation (Rule 19): rename `allowed` to `permitted` in LIVE_PAYLOAD, standing in for a server
 // rename `Api.Navigation.SetVerdict` would make -> verdictFrom's `entry.allowed === true` no

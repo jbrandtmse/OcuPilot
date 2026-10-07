@@ -7929,6 +7929,7 @@ So that the largest deferred area becomes usable.
 - **Given** the update action vocabulary was never read from the vendor
 - **When** this story is picked up
 - **Then** the vocabulary is established against the instance first, and this is the story's first task rather than a discovery mid-build.
+- DW-2148: EXPERIENCE.md's rail row (:612 nine rail-items) and area-tile row (:653 Seven tiles) understate a namespace that reports interoperability or analytics (ledger; routed by cr 2026-10-07)
 
 ### Story 20.3: Production items
 

@@ -143,10 +143,12 @@ export class Rail {
 
   private readonly resolved = computed<readonly RailItem[]>(() => {
     this.generation();
-    const focused = this.focusedIndex();
+    const areas = this.navigation.areas();
+    // The roster moves with the namespace (AD-44), so the one tab stop is kept inside it.
+    const focused = Math.min(this.focusedIndex(), Math.max(0, areas.length - 1));
     const active = this.shell.activeArea();
     const attention = this.attentionReason();
-    return this.navigation.areas().map((area, index) => {
+    return areas.map((area, index) => {
       const label = stringFor(area.labelKey);
       const verdict = this.navigation.areaVerdict(area.key);
       const isActive = area.key === active;
@@ -261,7 +263,7 @@ export class Rail {
   protected onKeydown(event: KeyboardEvent): void {
     const count = this.resolved().length;
     if (count === 0) return;
-    const current = this.focusedIndex();
+    const current = Math.min(this.focusedIndex(), count - 1);
     let next = current;
     if (event.key === 'ArrowDown') next = (current + 1) % count;
     else if (event.key === 'ArrowUp') next = (current - 1 + count) % count;

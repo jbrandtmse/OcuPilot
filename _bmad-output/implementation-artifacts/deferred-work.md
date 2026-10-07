@@ -8933,6 +8933,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-02T03:22:54Z status=routed owner=range-end-cleanup by=harvest note=Rule 27: non-blocking, out of Epic 19's footprint (Logs area); found by 19.12's classic-parity audit
 - 2026-10-05T18:41:40Z status=routed owner=20-1-the-sign-in-hand-off-and-namespace-category-gating by=merge_gate note=owner-approved burn-down scope 2026-10-05: feature-sized, re-routed from the cleanup queue to the interoperability gating story
 - 2026-10-07T05:17:37Z status=routed owner=20-1-namespace-category-gating by=spec_gate note=retitled: 20.1 split by orchestrator merge gate 2026-10-07; gating half keeps DW-1921
+- 2026-10-07T09:05:45Z status=resolved-by:20-1-namespace-category-gating by=adjudication note=dfe9173f: LogEventViewer privileges+ownPrivileges and LogSourcePort EVENTLOGPAIRS add %Ens_Portal:USE; LogPairs/LogSourceDenial pin it, mutation recorded
 
 ### DW-1922: System Explorer's Routines list shows routines its viewer answers PORT.NOTFOUND for (EnsJob.mac in HSCUSTOM, Ens*.mac in USER)
 - source: spec-19-12-a-development-holder-reaches-system-explorer-as-the-classic.md | severity: med | fix-risk: med | footprint: in-epic
@@ -10201,3 +10202,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-20-1-the-sign-in-hand-off-and-namespace-category-gating.md | severity: high | fix-risk: med | footprint: in-epic
 - evidence: Measured at 20.1 plan on slot B (M1-M5, candidates A-F in that spec's Auto Run Result at 9faa902f): an unsandboxed same-origin frame signs in silently but can read ocupilot.token-pair; a noopener tab keeps both ADs but drops in-place and 20.7's messages; sandboxed frames never sign in
 - 2026-10-07T05:16:47Z status=decision-pending owner=burndown by=orchestrator note=security posture, queued for the owner's morning summary 2026-10-07; recommended A (same-origin frame, normal mode, AD-62 named case)
+
+### DW-2148: EXPERIENCE.md's rail row (:612 nine rail-items) and area-tile row (:653 Seven tiles) understate a namespace that reports interoperability or analytics
+- source: spec-20-1-namespace-category-gating.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: Story 20.1 made the rail 9-11 items and Home 7-9 tiles by namespace; an in-place edit touches a file Epic 18 is changing, and home.page.ts quotes the tile row as an anchor
+- 2026-10-07T08:56:04Z status=routed owner=20-2-productions-listed-and-controlled by=cr note=correct both rows in place once Epic 18 has merged, with home.page.ts's quoted anchors

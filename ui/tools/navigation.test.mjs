@@ -1,5 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
@@ -1434,7 +1435,6 @@ test('the map answers applies, and each surface seam draws exactly what applies'
   assert.equal(service.applies('analytics'), false);
   assert.deepEqual(keysOf(service.areas()).filter((key) => key === 'interoperability' || key === 'analytics'), ['interoperability']);
   assert.equal(service.areaVerdict('analytics').allowed, true, 'a verdict is not applicability');
-  assert.deepEqual(service.screensForArea('analytics'), []);
 });
 
 test('an answer of false, a missing applies and a non-boolean applies all leave the category undrawn', async () => {
@@ -1462,6 +1462,56 @@ test('an answer read under another namespace is not carried to the one the shell
   assert.equal(service.applies('interoperability'), false, 'fail closed until the map is read for the new namespace');
   assert.equal(service.applies('analytics'), false);
   assert.equal(keysOf(service.areas()).includes('analytics'), false);
+});
+
+test('a re-read for a namespace the shell has moved to stops drawing a category at once, before it answers', async () => {
+  // Mutation (Rule 19): drop the `notify()` from `reload()` -> the surfaces are not told and the
+  // count below stays 0.
+  let namespace = 'HSCUSTOM';
+  let answer = () => {};
+  const held = new Promise((resolve) => {
+    answer = resolve;
+  });
+  const service = new NavigationService({
+    api: stubApi([ok(featureMap(['interoperability'])), ok(featureMap(['interoperability'])), held]),
+    namespace: () => namespace,
+  });
+  await service.load();
+  let told = 0;
+  service.subscribe(() => {
+    told += 1;
+  });
+  assert.equal(service.appliesAnswered(), true);
+
+  service.reload();
+  assert.equal(told, 0, 'a re-read in the same namespace waits for its answer');
+  await service.load();
+  told = 0;
+
+  namespace = 'USER';
+  service.reload();
+  assert.equal(told, 1, 'a moved namespace tells the surfaces before the re-read answers');
+  assert.equal(service.appliesAnswered(), false, 'which has not answered for USER yet');
+  assert.equal(keysOf(service.areas()).includes('interoperability'), false, 'so the category is not drawn');
+
+  answer(ok(featureMap(['interoperability'])));
+  await service.load();
+  assert.equal(service.appliesAnswered(), true);
+  assert.equal(keysOf(service.areas()).includes('interoperability'), true, "and USER's own answer draws it again");
+});
+
+test('main.ts hands the change bus to the navigation service it builds', () => {
+  // The bus row below builds its own service, so it stays green with the hand-off deleted while the
+  // shipped shell never re-reads the map on a namespace change event.
+  // Mutation (Rule 19): drop `bus,` from main.ts's `new NavigationService({...})` -> this goes red.
+  const source = readFileSync(join(uiRoot, 'src', 'main.ts'), 'utf8');
+  const call = /new NavigationService\(\{([^}]*)\}\)/.exec(source);
+  assert.ok(call !== null, 'main.ts builds the navigation service');
+  assert.match(call[1], /^\s*bus\s*,?\s*$/m, 'and passes it the bus');
+  assert.ok(
+    source.indexOf('const bus = new ChangeBus()') < source.indexOf('new NavigationService('),
+    'which exists before the service does'
+  );
 });
 
 test('a failed read leaves the stored answer as it was, and reset() clears it', async () => {
