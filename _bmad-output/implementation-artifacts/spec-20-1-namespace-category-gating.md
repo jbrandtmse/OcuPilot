@@ -2,13 +2,13 @@
 title: 'Story 20.1: Namespace category gating'
 type: 'feature'
 created: '2026-10-06'
-status: 'draft'
+status: 'ready-for-dev'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
   - '{project-root}/_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md'
   - '{project-root}/_bmad-output/planning-artifacts/ux-designs/ux-OcuPilot-2026-09-08/EXPERIENCE.md'
-warnings: [multiple-goals, oversized]
+warnings: [oversized]
 deferred: []
 ---
 
@@ -63,147 +63,235 @@ deferred: []
 
 ### Server
 
-- `src/OcuPilot/Screen/Area.cls:72-84`: XData `Areas`, nine entries; doc comment says "nine" (`:1`, `:69`). Template is Story 19.1's commit `cbf70b07`, which added System Explorer.
+- `src/OcuPilot/Screen/Area.cls:72-84`: XData `Areas`, nine entries. The doc comment says "nine" (`:1`, `:69`), and `:36-38` names the event log's own pair. Template: Story 19.1's commit `cbf70b07`, which added System Explorer.
 - `src/OcuPilot/Screen/Gate.cls`:
-  - `:45` `ADMINRESOURCES`, and `:305` `FloorResources()`, which this story does not change.
-  - `:119-140` `EvaluateArea`: an area with no listed screen is answered by its declared set alone (`:132-135`).
-- `src/OcuPilot/Screen/Registry.cls:3619-3650` `Roster`: copies each area's fields. Nothing validates the area list today.
+  - `:45` `ADMINRESOURCES` and `:305` `FloorResources()`. This story does not change them.
+  - `:119-155` `EvaluateArea`: an area that lists no screen is answered by its declared set alone (`:132-135`).
+- `src/OcuPilot/Screen/Registry.cls`:
+  - `:139` `Validate`: checks descriptors only. Nothing validates the area list today.
+  - `:3619-3660` `Roster`: copies each area's fields.
 - `src/OcuPilot/Kernel/Shell/Navigation.cls:20-58` `Payload`: reads no scope today. The "never a partial list" contract is at `:13-15`.
-- `src/OcuPilot/Kernel/Scope.cls:36` `Current()`. The router stashes the canonical `?ns=` before any route (`Api/Router.cls:1423-1445`).
-- `src/OcuPilot/Kernel/Shell/PrivilegesRead.cls:19-58`: `shell.privileges.read`. Its schema sets `additionalProperties: false` per area (`:48-53`).
-- `src/OcuPilot/Kernel/Shell/SystemInfo.cls:237-240`: precedent for a shell read calling `%Library.EnsembleMgr.IsEnsembleNamespace` directly.
+- `src/OcuPilot/Kernel/Scope.cls:36` `Current()`. Two callers set the scope before any read:
+  - the router stashes the canonical `?ns=` (`Api/Router.cls:1424-1445`);
+  - the turn job sets its own scope (`Kernel/Agent/Job.cls:94`).
+- `src/OcuPilot/Kernel/Shell/PrivilegesRead.cls:18-60`: `shell.privileges.read`'s schema. Each area sets `additionalProperties: false` (`:52-53`).
+- Precedents for calling `IsEnsembleNamespace` directly:
+  - `src/OcuPilot/Kernel/Shell/SystemInfo.cls:237-240`, a shell read;
+  - `Port/LogSourcePort.cls:1434`.
+- `src/OcuPilot/Kernel/Audit/Log.cls:22` `Warn(subsystem, message, data)`. Error severity would raise the instance's alert state (AD-2), so a failed feature check logs at Warn.
 
 ### Vendor (read only)
 
-- `irislib/%Library/EnsembleMgr.cls:79-90` `IsEnsembleNamespace`: answers 0 for `%SYS`, and 0 on any error.
+- `irislib/%Library/EnsembleMgr.cls:79-90` `IsEnsembleNamespace(pNamespace)`: answers 0 for the raw string `%SYS`, and 0 on any error, an unreadable `^oddCOM` included.
 - `irislib/%DeepSee/Utils.cls:11052-11079` `%IsDeepSeeEnabled(pNamespace)`:
-  - Reads the namespace default app's Analytics flag.
-  - Its `%SYS` guard tests the raw argument, so `"%sys"` and an omitted argument answer 1 (measured).
-- `irissys/%CSP/Portal/Home.cls`: the classic menus.
-  - `:948-965` Analytics: not `%SYS`/`DOCBOOK`/`^^`, plus `%IsDeepSeeEnabled`.
-  - `:970-995` Interoperability: `%Ens_Portal`, `IsEnsembleNamespace`, `CheckPrivileges`.
-- `irissys/%Api/Atelier/v1.cls:2485-2488`: the per-namespace `features` reports `ENSEMBLE` from `IsEnsembleNamespace` and nothing for analytics.
+  - It reads the Analytics flag of the namespace's default application.
+  - Its `%SYS` guard tests the raw argument, so `"%sys"`, and an omitted argument in `%SYS`, answer 1 (measured).
+- The classic menus in `irissys/%CSP/Portal/Home.cls`:
+  - `:948-965` Analytics: not `%SYS`, `DOCBOOK` or `^^`, plus `%IsDeepSeeEnabled`. It is enabled when any branch of `%DeepSee.UI.Application.GetDeepSeeArray` opens. The User Portal branch checks `%DeepSee_Portal` or `%DeepSee_PortalEdit` at USE.
+  - `:970-995` Interoperability: `CheckSecurity("%Ens_Portal")`, `IsEnsembleNamespace`, then `EnsPortal.Application.CheckPrivileges`.
 
 ### Client
 
 - `ui/src/app/core/navigation.ts`:
-  - `:87-90` and `:837`: the rail is drawn from the generated `AREAS` mirror.
-  - `:939-1000` `runLoad`: reads verdicts only.
-  - `:874-875`: a missing verdict falls back to `UNGATED`.
+  - `:87-110`: the module-level registry functions read the generated mirror.
+  - `:829-860`: the seams `areas()`, `screensForArea()` and `builtScreens()`. Production never overrides them, and component specs stub them.
+  - `:874-880`: a missing verdict falls back to `UNGATED`.
   - `:23-27`: nothing is gated before the map answers.
-- `ui/src/main.ts:141-143`: `onScopeChange` calls `navigation.reload()`. The `ChangeBus` is built at `:126`.
-- Every surface that draws an area:
-  - `ui/src/app/shell/rail.ts:149`
-  - `side-bar.ts:68-79`, `:153-185`
-  - `ui/src/app/areas/home/home.page.ts:554-571`, the tiles
-  - `command-box.ts:464`
-  - `locator-bar.ts:298-320`
-- `ui/tools/screen-mirror.mjs:47`, `:464-469`: reads `Area.cls` and sorts by `railPosition`. `:3761` is a stale "eight areas" comment.
+  - `:930-939` `reset()`.
+  - `:951-1000` `runLoad`: reads verdicts only. A failed read fails open (DW-135).
+- `ui/src/app/app.routes.ts:56`: the route table is built from the module function `builtScreens()`, not the service seam, so filtering the seam leaves routing alone.
+- Surfaces:
+  - `rail.ts:149` and `home.page.ts:554-571` read `areas()`.
+  - `side-bar.ts:153-185` reads `screensForArea()` and draws its eyebrow from the visible area. `showing` is at `:186-194`.
+  - `command-box.ts:464` reads `builtScreens()`, screens only, never areas.
+  - `locator-bar.ts:298-320` uses the module function `areaByKey` for its area segment.
+- `ui/src/app/core/shell-state.ts:258` `collapse()`: closes the bar without writing the preference (DW-144).
+- `ui/src/main.ts`:
+  - `:117-121` builds the navigation service before the bus (`:126`).
+  - `:141-145`: `onScopeChange` calls `navigation.reload()`.
+- `ui/src/app/core/scope.ts`:
+  - `:40` `NAMESPACE_ENTITY`.
+  - `:339-344`: the model for a bus subscriber.
+- `ui/tools/screen-mirror.mjs`:
+  - `:465-469` copies `Area.cls`'s areas verbatim.
+  - `:3329-3341`: the `AreaDeclaration` interface.
+  - `:3761` is a stale "eight areas" comment.
+  - `:454-457` (`parseScopeWords`): the model for reading a parameter off a `.cls`.
 - `ui/src/app/core/screens.generated.ts:580`: `AREAS` (regenerated).
-- `ui/src/app/core/strings.ts:321-337`: the `navArea*` keys.
-- `ui/src/app/shell/rail-icons.ts:32-117`, pinned by `ui/tools/rail-icons.test.mjs:83-138` to:
-  - `_bmad-output/planning-artifacts/ux-designs/ux-OcuPilot-2026-09-08/mockups/key-home.html`
-  - DESIGN.md's rail paragraph
+- `ui/src/app/core/strings.ts:321-337`: the `navArea*` keys. Each carries `/** EXPERIENCE.md:310 */`, which `strings.test.mjs:822-866` resolves by line, so EXPERIENCE.md gets no inserted line.
+- `ui/src/app/shell/rail-icons.ts:32-117` is pinned by `ui/tools/rail-icons.test.mjs` to two sources:
+  - both frames of `_bmad-output/planning-artifacts/ux-designs/ux-OcuPilot-2026-09-08/mockups/key-home.html`;
+  - DESIGN.md's `rail` paragraph (`DESIGN.md:975`, which says "Nine `rail-item`s" and "the same seven areas").
 
 ### EXPERIENCE.md
 
-- `:66` the rail line.
-- `:214` "Gated controls are never hidden".
-- `:310` area-names row, pinned by `ui/tools/strings.test.mjs:446-460`.
+- `:66` the rail line. It also calls Agent co-pilot "the eighth area", which is stale.
+- `:214` "Gated controls are never hidden". Unchanged.
+- `:310` the area-names row, pinned by `ui/tools/strings.test.mjs:446-460`.
 
 ### DW-1921
 
-- `src/OcuPilot/Screen/Descriptor/LogEventViewer.cls:25-26` `privileges`/`ownPrivileges`.
-- `src/OcuPilot/Port/LogSourcePort.cls:239` `EVENTLOGPAIRS`. `PairsFor` (`:480-498`) appends the namespace database READ.
+- `src/OcuPilot/Screen/Descriptor/LogEventViewer.cls:25-26`: `privileges` and `ownPrivileges`.
+- `src/OcuPilot/Port/LogSourcePort.cls`:
+  - `:239` `EVENTLOGPAIRS`, a comma-separated spec (`ParsePairs:544`).
+  - `PairsFor` (`:480-498`) appends the namespace database READ.
 - `irislib/EnsPortal/Application.cls:234-247` `CheckPrivileges`: `%Ens_Portal:USE` plus READ on the namespace's database resource.
-- `src/OcuPilot/Test/LogPairs.cls:40,95-118`: a row's 4th `=` field declares an extra pair.
+- Pins:
+  - `Test/LogPairs.cls`: the row at `:40`. Its 4th `=` field declares an extra pair (`:95-118`).
+  - `Test/Descriptor.cls:1156`.
+  - `Test/LogSource.cls:867,877`.
+  - `Test/LogSecondary.cls`: `:25` names the first failed pair and stays unchanged; `HoldAll` is at `:76-84`.
+  - `Test/LogSourceDenial.cls:69-72,85,148,157`.
+  - `Test/LogHubWire.cls:208-222`: its `%Manager` principal lacks both pairs and stays `%Ens_EventLog:USE`.
 
 ### Area roster pins
 
-- `Test/Descriptor.cls:1878-1906`
-- `Test/Navigation.cls:224,237,431,437`
-- `Test/Wire.cls:380-420`
-- `Test/WireAreaAnyScreen.cls:269-317`
-- `Test/DeveloperFloor.cls:25`
-- `ui/tools/navigation.test.mjs:98-110`
-- `screen-mirror.test.mjs:113`
-- `navigation-wire.test.mjs:46-674` (captured payload)
-- `rail.spec.ts:82-95,187,267`
-- `rail-wire.spec.ts:725`
-- `home.page.spec.ts:390,415,1475`
+- Server tests:
+  - `Test/Descriptor.cls:1878-1906`
+  - `Test/ExplorerDescriptor.cls:36-38`, where Agent co-pilot is at 9
+  - `Test/Navigation.cls:224,237,431,437`
+  - `Test/Wire.cls:380-420`
+  - `Test/WireAreaAnyScreen.cls:269-317`
+  - `Test/DeveloperFloor.cls:25`
+- Client tools tests:
+  - `ui/tools/navigation.test.mjs:98-110`
+  - `ui/tools/screen-mirror.test.mjs:113`
+  - `ui/tools/strings.test.mjs:446-460`
+  - `ui/tools/navigation-wire.test.mjs:46-674`, the captured payload, which `rail-wire.spec.ts:725` carries a second time
+- Component specs:
+  - `rail.spec.ts:82-95,187,267`
+  - `home.page.spec.ts:390,415,1475`
+  - `app.spec.ts:114-117`, `side-bar.spec.ts:44` and `locator-bar.spec.ts:42` (their stubs)
+- Browser specs: `ui/browser/rail-icons.browser-spec.mjs:63-64,198-219,376-378` iterate every `AREAS` entry.
 
-### Event-log pair pins
+### Reuse
 
-- `Test/LogPairs.cls:40`
-- `Test/Descriptor.cls:1156`
-- `Test/LogSource.cls:867,877`
-- `Test/LogSecondary.cls:25,80`
-- `Test/LogSourceDenial.cls:85,148,157`
+- `Test/DeveloperFloorFixture` `EnsurePrincipal`/`RemovePrincipals`, called the way `ui/browser/developer-floor.browser-spec.mjs:44-80` calls it. `%Developer` lacks `%Ens_Portal` (measured).
+- `Test/ScreenGate.cls:89` holds only the pairs a test names; it models no public permission.
+
+### Measured on `ocupilot-b-ci`, 2026-10-06
+
+- Features by namespace (interoperability / analytics):
+
+  | Namespace | Interoperability | Analytics |
+  |---|---|---|
+  | `%SYS` | 0 | 0 |
+  | `HSCUSTOM` | 1 | 0 |
+  | `HSLIB` | 1 | 1 |
+  | `HSSYS` | 1 | 1 |
+  | `HSSYSLOCALTEMP` | 0 | 0 |
+  | `USER` | 1 | 0 |
+
+- Public permissions: `%Ens_Portal` and `%Ens_EventLog` have none; `%DeepSee_Portal` is public `U`.
+- Roles:
+  - `%Developer`, `%Operator` and `%Manager` hold neither Ens resource.
+  - `%EnsRole_Operator` holds both.
 
 ## Tasks & Acceptance
 
 **Execution:**
 
 - `src/OcuPilot/Kernel/Shell/NamespaceFeatures.cls` (new, no storage):
-  - `Reports(pFeature, pNamespace) As %Boolean` uses the closed vocabulary `FEATURES = "interoperability,analytics"`:
-    - interoperability: `##class(%Library.EnsembleMgr).IsEnsembleNamespace(pNamespace)`.
-    - analytics: 0 for empty, any case of `%SYS`, or a `^` prefix; otherwise `##class(%DeepSee.Utils).%IsDeepSeeEnabled($ZConvert(pNamespace,"U"))`.
-    - Anything else, or a throw: 0.
-  - `Applies(pAreaKey, pNamespace)`: 1 when the area declares no `appliesWhen`, otherwise `Reports`.
+  - `Parameter FEATURES = "interoperability,analytics";` is the closed vocabulary. The registry and the mirror both read it.
+  - `Reports(pFeature, pNamespace) As %Boolean`, with the namespace upper-cased first:
+    - It answers 0 for an empty namespace or one beginning with `^`.
+    - interoperability: `##class(%Library.EnsembleMgr).IsEnsembleNamespace(ns)`.
+    - analytics: 0 for `%SYS`, otherwise `##class(%DeepSee.Utils).%IsDeepSeeEnabled(ns)`.
+    - A feature outside `FEATURES`, or a throw, answers 0 and writes one `Log.Warn` line for that check.
+  - `Applies(pFeature, pNamespace)`: 1 when `pFeature` is empty, otherwise `Reports`.
 - `src/OcuPilot/Screen/Area.cls`:
-  - Add `interoperability` (railPosition 9, `navAreaInteroperability`, `appliesWhen: "interoperability"`, privileges `[%Ens_Portal:USE]`, the classic menu's gate).
-  - Add `analytics` (10, `navAreaAnalytics`, `appliesWhen: "analytics"`, `[%DeepSee_Portal:USE]`).
+  - Add `interoperability`: railPosition 9, `navAreaInteroperability`, `appliesWhen: "interoperability"`, privileges `[%Ens_Portal:USE]`.
+  - Add `analytics`: railPosition 10, `navAreaAnalytics`, `appliesWhen: "analytics"`, privileges `[%DeepSee_Portal:USE]`.
   - Move `agent` to 11.
-  - Add an `AppliesWhen(pKey)` accessor and fix the counts in the doc comment.
-- `src/OcuPilot/Screen/Registry.cls`: `Roster` carries `appliesWhen`. Add a validation that refuses an `appliesWhen` outside `NamespaceFeatures.FEATURES`, run wherever the registry validates descriptors.
-- `src/OcuPilot/Kernel/Shell/Navigation.cls`: each area entry gains `"applies"` (boolean, always present) from `NamespaceFeatures.Applies(key, Scope.Current())`, computed on every call.
-- `src/OcuPilot/Kernel/Shell/PrivilegesRead.cls`: add `applies` as a required boolean in the area schema.
+  - Fix the doc comment: the counts, a paragraph on what each new set names (Design Notes), and `:36-38` for DW-1921.
+- `src/OcuPilot/Screen/Registry.cls`:
+  - `Roster` carries `appliesWhen`, `""` when undeclared.
+  - Add `AreaProblem(pAreas)`, which names an area whose `appliesWhen` is outside `NamespaceFeatures.FEATURES`.
+  - `Validate` calls it first, on `Area.List`.
+- `src/OcuPilot/Kernel/Shell/Navigation.cls`: each area entry gains `"applies"`. It is a boolean, always present, equal to `NamespaceFeatures.Applies(appliesWhen, Scope.Current())`, and computed on every call. Update the doc comment.
+- `src/OcuPilot/Kernel/Shell/PrivilegesRead.cls`: add `applies` (boolean) to the area properties and to `required`.
 - `ui/tools/screen-mirror.mjs`:
-  - Emit `appliesWhen` into `AREAS`, and refuse the build on a value outside the same vocabulary.
-  - Fix the stale comment.
-  - Regenerate `screens.generated.ts`.
+  - Read `FEATURES` off `NamespaceFeatures.cls`.
+  - Emit `export type NamespaceFeature = ...`, and add `readonly appliesWhen?: NamespaceFeature` to `AreaDeclaration`. The key is emitted only where it is declared, so the stubs' fixtures stay valid.
+  - Throw naming the area for a value outside the vocabulary.
+  - Fix the stale comment, then regenerate `screens.generated.ts` whole.
 - `ui/src/app/core/navigation.ts`:
-  - Keep `applies` per area from the map, keyed to the namespace the map was read in.
-  - Add one predicate, `applies(areaKey)`: true for areas with no `appliesWhen`; for the others, false until that namespace's map answers true.
-  - `areas()` returns only areas that apply, and `screensForArea` returns `[]` for one that does not. No surface computes applicability itself.
-- `ui/src/app/shell/rail.ts`, `side-bar.ts` (close when its area stops applying), `ui/src/app/areas/home/home.page.ts`, `command-box.ts`, `locator-bar.ts`: read only that predicate and draw nothing of a non-applying area.
-- `ui/src/main.ts`: re-read the map when the bus carries a `namespace` change for the current namespace. Read the event shape from `Screen/Tool/NamespaceEnableInterop.cls`.
+  - Export the pure `areasThatApply(areas, applies)` and `screensThatApply(screens, applies)`.
+  - `NavigationService` keeps `applies` per area and the namespace key its map was read under.
+  - `applies(areaKey)` is true for an area with no `appliesWhen`. Otherwise it is true only when the stored key equals `namespace()` and that area's wire `applies === true`.
+  - `areas()`, `screensForArea()` and `builtScreens()` return only what applies.
+  - `reset()` clears the stored answer.
+  - A failed read leaves the stored answer as it was.
+  - New option `bus?: ChangeBus`: on a `changed` event of type `namespace` whose id equals `namespace()` (case-insensitively), call `reload()`.
+- `ui/src/main.ts`: build the `ChangeBus` before the navigation service and pass it in.
+- `ui/src/app/shell/side-bar.ts`: when the visible area is no longer in `navigation.areas()`, it is not shown. If it was open, it closes through `shell.collapse()`. Focus inside it moves to Home's rail item first.
+- `ui/src/app/shell/locator-bar.ts`: draw no area segment for an area missing from `navigation.areas()`.
+- No change expected to `rail.ts`, `home.page.ts` or `command-box.ts`: they read the filtered seams. No surface calls `applies()`.
 - Strings and icons:
-  - `ui/src/app/core/strings.ts`: add two keys, "Interoperability" and "Analytics". The 2,800 literal bound holds.
-  - `ui/src/app/shell/rail-icons.ts`, `mockups/key-home.html` and DESIGN.md's rail paragraph: a rail icon and a tile icon each, pinned as `rail-icons.test.mjs` requires.
-- `EXPERIENCE.md`:
-  - `:66` adds the two categories before the divider and says they appear only in namespaces that report the feature.
+  - `ui/src/app/core/strings.ts` (add-only): `navAreaInteroperability: 'Interoperability'` and `navAreaAnalytics: 'Analytics'`, each `/** EXPERIENCE.md:310 */`. Fixed strings go from 2,754 to 2,756, under the 2,800 bound.
+  - `ui/src/app/shell/rail-icons.ts` and both frames of `mockups/key-home.html`: a 20px rail icon and a 24px tile icon for each new area, in the module's stroke style.
+  - `DESIGN.md:975`, edited in place: eleven rail items, the nine tile areas, and that the two appear only in a namespace that reports the feature.
+- `EXPERIENCE.md`, edited in place with no line inserted, because `strings.ts`'s line references would shift:
+  - `:66` lists Interoperability · Analytics before the divider and drops the stale ordinal. It also says: "Interoperability and Analytics appear only in a namespace that reports the feature (`IsEnsembleNamespace`, `%IsDeepSeeEnabled`); a category that does not apply is not drawn at all, which is applicability, not a privilege gate."
   - `:310` adds the two names in rail order.
-  - Add a new line after `:214`: "A category that does not apply to the namespace (Interoperability, Analytics) is not drawn at all; that is applicability, not a privilege gate."
-- **DW-1921** (`LogEventViewer.cls`, `LogSourcePort.cls:239`, `Test/LogPairs.cls`, `Test/LogSourceDenial.cls`, `Test/Descriptor.cls:1156`):
-  - Add `%Ens_Portal:USE` after `%Ens_EventLog:USE` to `privileges`, `ownPrivileges` and `EVENTLOGPAIRS`.
-  - The LogPairs row declares `=%Ens_Portal:USE`.
-  - LogSourceDenial grants the event-log principal both pairs, and adds a leg where the principal holds `%Ens_EventLog:U` alone and is refused naming `%Ens_Portal:USE`.
-- `src/OcuPilot/Test/NamespaceFeatures.cls` (new; reads only):
-  - For every namespace the instance lists, `Reports` equals the vendor's own answer.
+- **DW-1921:**
+  - Add `%Ens_Portal:USE` after `%Ens_EventLog:USE`:
+    - in `LogEventViewer.cls` `privileges` and `ownPrivileges`;
+    - in `LogSourcePort.cls:239` `EVENTLOGPAIRS`, which becomes `%Ens_EventLog:USE,%Ens_Portal:USE`.
+  - Pins:
+    - `Test/LogPairs.cls`: the row gains `=%Ens_Portal:USE`.
+    - `Test/Descriptor.cls:1156`: the event log row.
+    - `Test/LogSource.cls:867,877`: the pair strings, in `PairsToString` order.
+    - `Test/LogSecondary.cls` `HoldAll`: also holds `%Ens_Portal:USE`.
+  - `Test/LogSourceDenial.cls`:
+    - The event-log principal holds both pairs.
+    - A new leg uses a principal holding `%Ens_EventLog:U`, the code read and `%Admin_Secure:U`, without `%Ens_Portal:U`. Its route and read tool are each refused 403 naming `%Ens_Portal:USE`.
+  - `Test/LogHubWire.cls`: a new leg with a `%Manager`, `%DB_HSCUSTOM:R` and `%Ens_EventLog:U` principal. The hub answers the event log `0|%Ens_Portal:USE`.
+- `src/OcuPilot/Test/NamespaceFeatures.cls` (new; reads only, arms nothing):
+  - For every namespace `Config.Namespaces:List` returns, `Reports` equals the vendor's own answer for that namespace upper-cased.
   - `%SYS` applies to neither feature.
-  - `%sys`, `^` and unknown features answer 0.
-  - At least one namespace applies for each feature, and at least one does not (non-vacuous).
-  - `Navigation.Payload` with the scope set to `%SYS` and to `HSCUSTOM` carries `applies` per area.
-- Area roster pins listed in the Code Map: update them for 11 areas and the `applies` field.
-  - `Test/Wire.cls` keeps "nothing is hidden by privilege" and adds the `applies` check.
-  - `Test/DeveloperFloor.cls` re-derives its `AREAS` from the real answer.
-  - Update the captured navigation payloads.
-- `ui/browser/namespace-categories.browser-spec.mjs` (new; reads only):
-  - The rail, Home tiles and command box in `%SYS`, in `HSCUSTOM`, and in a namespace that reports both. Which namespace is which is read from the instance, never hard-coded.
-  - The switch back and forth.
-  - The pre-answer state, with neither drawn.
-  - A principal without `%Ens_Portal:USE` sees Interoperability drawn unavailable. The principal is created and removed on `ocupilot-b-ci`.
+  - `%sys`, a `^` namespace and an unknown feature each answer 0.
+  - At least one namespace reports each feature, and at least one does not.
+  - `AreaProblem` refuses a synthetic `appliesWhen: "bogus"`, naming the area.
+  - `Navigation.Payload` with `Scope.Set("%SYS")` answers `applies` false for both new areas and true for every other area. With `Scope.Set("HSCUSTOM")`, it answers the measured values.
+  - Clear the scope afterwards.
+  - The agent's half is pinned by `ToolShell:39`, which validates `shell.privileges.read`'s result against its closed schema.
+- Area roster pins listed in the Code Map, updated for 11 areas and the `applies` field:
+  - `Test/Descriptor.cls`'s area vocabulary test also asserts each area's `appliesWhen`: empty for the nine, and its own feature for each new area.
+  - `Test/Wire.cls` keeps "nothing is hidden by privilege". For its `%Admin_Operate`-only principal in HSCUSTOM, it adds interoperability `allowed false`, `failedPair %Ens_Portal:USE`, `applies true`, and analytics `allowed true`, `applies false`.
+  - `Test/DeveloperFloor.cls` `AREAS` becomes `home,logs,system-explorer,analytics,agent`, because `%DeepSee_Portal` is public `U`.
+  - `Test/Navigation.cls`: with nothing held, the new areas name `%Ens_Portal:USE` and `%DeepSee_Portal:USE`.
+  - `Test/ExplorerDescriptor.cls:38`: Agent co-pilot is at 11.
+  - The captured payload (`navigation-wire.test.mjs`, `rail-wire.spec.ts`), moved together.
+- Client tests:
+  - `ui/tools/navigation.test.mjs`. The `applies` legs:
+    - before an answer;
+    - an answer of true, of false, and with `applies` missing or non-boolean;
+    - a namespace moved after the read;
+    - a failed read;
+    - `reset()`;
+    - the two pure filters over a synthetic interoperability screen;
+    - a bus `namespace` event for the current namespace re-reads the map, and one for another namespace does not.
+  - `ui/tools/screen-mirror.test.mjs`: 11 areas, plus a synthetic area source with a bad `appliesWhen` that throws.
+  - `ui/tools/strings.test.mjs:446-460`: the eleven keys.
+  - `rail-icons.test.mjs`: passes once the mockup and module carry the two icons.
+  - `side-bar.spec.ts`: the bar closes, unpersisted, when `areas()` drops the visible area.
+  - `locator-bar.spec.ts`: the stub gains `areas()`, and no area segment is drawn for an area it omits.
+  - `rail.spec.ts` and `home.page.spec.ts`: update their rosters and counts. `app.spec.ts` changes only if it reddens, because its three-area fixture stays valid with an optional `appliesWhen`.
+- `ui/browser/rail-icons.browser-spec.mjs`:
+  - It opens the shell in a namespace that reports both features. It finds that namespace by reading `/api/ocupilot/navigation?ns=` for each namespace `/api/ocupilot/namespaces` lists.
+  - Its rail and tile rosters are the `AREAS` that apply there.
+- `ui/browser/namespace-categories.browser-spec.mjs` (new). It never reads `.ocu-side-bar-label`, so `side-bar-pins.test.mjs` is untouched. Each namespace's role is read from the instance as above. It covers:
+  - the rail and Home tiles in `%SYS`, in an interop-only namespace, and in one that reports both;
+  - the pre-answer state, with `/api/ocupilot/navigation` held through request interception: neither category is drawn while Logs is;
+  - opening Interoperability's side bar, then switching to `%SYS`: the rail item and the bar are gone, and switching back restores the rail item;
+  - the `DeveloperFloorFixture` principal, created in `before` and removed in `after` on `ocupilot-b-ci` only. In the interop-only namespace it sees Interoperability drawn `aria-disabled`, naming `%Ens_Portal:USE`.
 
 **Acceptance Criteria:**
 
-- **AC1 (hand-off):** given an embedded vendor editor, when it loads, then it signs in from the browser-level login without a password crossing into the frame, and the `postMessage` auth path is not used. **Blocked**: not planned until the decision in `## Auto Run Result`.
-- **AC2 (origin):** given the origin, when the hand-off is implemented, then it is not weakened, and per-tab token storage with no cross-tab broadcast is unchanged. **Blocked** with AC1. The gating half changes neither.
-- **AC3:** given a namespace that does not report interoperability or analytics, when the rail renders, then that category does not appear on the rail, Home tile, side bar, command box or locator, gated by the namespace's own reported features (`IsEnsembleNamespace`, `%IsDeepSeeEnabled`).
-- **AC3-I (integration):**
-  - Given the map read with `?ns=X` on `ocupilot-b-ci`, the rail reads each area's `applies` and draws exactly the categories X reports, while every other area keeps its privilege verdict.
-  - `shell.privileges.read` answers the same `applies`.
-- **AC-DW1921:** given a holder of `%Ens_EventLog:USE` without `%Ens_Portal:USE`, when they open the Interoperability event log, then it is refused naming `%Ens_Portal:USE`, as the classic `EnsPortal.EventLog` page refuses them.
+- **AC1:** given a namespace that does not report interoperability or analytics, when the rail renders, then that category does not appear on the rail, Home tile, side bar, command box or locator, gated by the namespace's own reported features (`IsEnsembleNamespace`, `%IsDeepSeeEnabled`).
+- **AC2 (integration):** given the map read with `?ns=X` on `ocupilot-b-ci`, when the rail renders, then it reads each area's `applies` and draws exactly the categories X reports, while every other area keeps its privilege verdict; and `shell.privileges.read` answers the same `applies`.
+- **AC3 (DW-1921):** given a holder of `%Ens_EventLog:USE` without `%Ens_Portal:USE`, when they open the Interoperability event log, then it is refused naming `%Ens_Portal:USE`, as the classic `EnsPortal.EventLog` page refuses them.
 
 ## Spec Change Log
 
@@ -215,146 +303,126 @@ deferred: []
 
 **Governing ADs:**
 
-- AD-5: the area declaration as the one source.
-- AD-8: area verdicts, the administrative floor, own pairs, and the DW-1903 precedent for widening.
-- AD-9 and AD-16: no escalation or namespace switch in the feature reads.
-- AD-14: re-read on a change event.
+- AD-5: the area declaration is the one source, and the mirror is generated.
+- AD-8: area verdicts, own pairs, never hidden for privilege, and the floor left unchanged.
+- AD-9 and AD-16: no escalation and no namespace switch in the feature reads.
+- AD-14: the map is re-read on a `namespace` change event.
 - AD-19: navigation state stays in the framework-free service.
-- AD-28 and AD-47: unchanged here; they block the hand-off.
-- AD-29 and AD-36: the event log's port gate.
+- AD-29: the event log's port gate.
+- AD-36: the hub names the pair of a member it leaves out.
+- AD-39: vendor text is logged, never sent.
 - AD-44: the namespace is data scope, and a screen's pairs union what its classic page enforces.
-- Conventions › Screens that take no side-bar position: every surface reads listed screens.
+- Conventions › Screens that take no side-bar position.
 
-**Spine decision for the runner (Rule 20), proposed text.** Amend AD-44: "A rail area may declare the namespace feature it applies to (`appliesWhen`, closed vocabulary):
+**Spine decisions for the runner (Rule 20), proposed text:**
 
-- `interoperability` is `%Library.EnsembleMgr.IsEnsembleNamespace`.
-- `analytics` is `%DeepSee.Utils.%IsDeepSeeEnabled`, never `%SYS` or an implied namespace.
+1. Amend AD-44: "A rail area may declare the namespace feature it applies to (`appliesWhen`, from the closed vocabulary `Kernel/Shell/NamespaceFeatures.FEATURES`):
+   - `interoperability` is `%Library.EnsembleMgr.IsEnsembleNamespace`.
+   - `analytics` is `%DeepSee.Utils.%IsDeepSeeEnabled`, never `%SYS` or an implied namespace.
 
-It is read in the caller's process for the route's namespace on every navigation read. A non-applying area is drawn nowhere and is still on the wire. This is applicability, not a privilege gate: AD-8's 'never hidden' is unchanged."
+   Each is read in the caller's process for the route's namespace on every navigation read, and answered on the map as `applies`. A non-applying area is drawn nowhere and stays on the wire with its verdict. This is applicability, not a privilege gate, and AD-8's 'never hidden' is unchanged."
+2. In AD-8's own-pair paragraph, "Story 16.8's interoperability event log declares `%Ens_EventLog:USE`" becomes "declares `%Ens_EventLog:USE` and `%Ens_Portal:USE` (`EnsPortal.Application.CheckPrivileges`, DW-1921)".
+3. The Capability map's Stage 4 row adds AD-44.
 
-**FR-80.** The gating half adds no screen and no port. The feature reads are shell chrome, the same shape as `SystemInfo.ProductionEnabled`, not a backing-system read. No AD-62 port is introduced. Stage 4's first port is 20.2's to name.
+**Each new area's declared pair set (the floor ruling):**
 
-**The floor: what this story owns and what it does not.**
+- **Interoperability: `%Ens_Portal:USE`.** The classic Interoperability menu checks it with `CheckSecurity("%Ens_Portal")`. Its other check, READ on the namespace's database (`CheckPrivileges`), depends on the namespace, so each 20.2+ screen and port resolves it at call time, as System Explorer's area does.
+- **Analytics: `%DeepSee_Portal:USE`.** The classic User Portal branch checks it, and that check enables the classic Analytics menu. It is public `U` on a stock instance (measured), so the area opens for every caller past the floor, as the classic menu does. Each 20.11 screen declares its classic page's own resource as its own pair (DW-1853).
+- The floor is unchanged (DW-2140), and neither set touches `ADMINRESOURCES`.
 
-- Measured on the slot B roles: no `%EnsRole_*` role holds an `ADMINRESOURCES` member.
-  - `%EnsRole_Operator`, `_Administrator` and `_Monitor` are refused before any route runs.
-  - `%EnsRole_Developer` and `_InteropEditorsAPI` clear the floor through `%Development`.
-- No `%DeepSee_*` role exists, and `%DeepSee_Portal` is public `U`. Admitting it to the floor would admit every user.
-- 20.1 changes nothing here. Admitting interoperability-only operators (for instance through `%Ens_Portal:USE`) is an owner decision, as DW-1903 was.
-- Recommended: the runner raises it as `decision-pending` before 20.2 ships the first Interoperability screen.
+**Client shape:**
 
-**Integration ACs and Consumed-by/Consumes.**
+- One predicate in `NavigationService`. Every surface reads the filtered seams it already reads, so no component computes applicability. The only component stub that needs a new method is `locator-bar.spec.ts`'s, which gains `areas()`.
+- Verdicts fail open (DW-135), because the server gates every read. Applicability fails closed: a category that does not apply has nothing behind it for a server gate to protect, so drawing it on an unanswered question would be wrong.
+- The command box lists screens, and the locator names the area of the routed screen. 20.1 builds no screen in either category, so neither leg has a subject yet. The shared filters are pinned by the tools tier now, and 20.2's browser spec pins those two surfaces (Consumed-by).
 
-- In-story consumers: the rail, Home, side bar, command box and locator read `applies` (AC3-I).
+**Integration ACs, Consumed-by and Consumes:**
+
+- In-story consumers: the rail, Home, side bar, command box and locator read the map's `applies` (AC2).
 - Consumed-by:
-  - 20.2: the first Interoperability screens, which inherit the area's applicability on route and namespace switch.
+  - 20.2: the first Interoperability screens inherit the area's applicability on route and on namespace switch.
   - 20.11: the Analytics screens and their pair set under `AreaCoverageProblem`.
-  - 20.12: the agent's navigation into these categories.
+  - 20.12: the agent's navigation into these categories reads `shell.privileges.read`'s `applies`.
 - Consumes:
-  - Story 18.15's enable-interop change event.
+  - Story 18.15's enable-interop change event (`type namespace`, `action updated`).
   - Story 16.8's event log descriptor and port (DW-1921).
-- Rule 17: DW-1921 is addressed by the DW-1921 task and AC.
+  - Story 19.12's `DeveloperFloorFixture`.
+- Rule 17: DW-1921 is addressed by the DW-1921 task and AC3.
 
-**Contended edits needing the runner's clearance (Rule 11, not add-only).** These are files Epic 18 is changing:
+**FR-80.** This story adds no screen and no port. The feature reads are shell chrome, shaped like `SystemInfo.ProductionEnabled`.
 
-- EXPERIENCE.md `:66` and `:310`. The `:214` line is add-only.
-- `Test/Descriptor.cls`: the area vocabulary test and `:1156`.
-- `Test/Wire.cls`.
-- `Test/WireAreaAnyScreen.cls`.
-- `ui/tools/navigation.test.mjs` and `screen-mirror.test.mjs`.
-- `ui/src/app/shell/area-verdict.spec.ts`, only if it reddens.
-- `screens.generated.ts` (regenerated whole).
+**Contended files (Rule 11), re-checked against `.worktrees/epic-18` on 2026-10-06:**
 
-The add-only edits are `strings.ts` and `WireSecurityRead.cls`, the latter expected unchanged because `%Ens_EventLog:USE` stays first (inference). Whichever epic merges second rebases these.
-
-**The hand-off half** is not planned. Its candidates, measurements and recommendation are in `## Auto Run Result`.
+- Cleared by the orchestrator on 2026-10-07: EXPERIENCE.md `:66` and `:310`; `Test/Descriptor.cls`; `Test/Wire.cls`; `Test/WireAreaAnyScreen.cls`; `ui/tools/navigation.test.mjs`; `screen-mirror.test.mjs`; `area-verdict.spec.ts`, only if it reddens; and `screens.generated.ts`, regenerated whole.
+- Epic 18 also has these files changing in its tree:
+  - `strings.ts`: this story adds to it only.
+  - `ReadTool.cls`, `ToolRoundTrip.cls` and `WireSecurityRead.cls`: run, never edited. `WireSecurityRead` is expected unchanged because `%Ens_EventLog:USE` stays first (inference). If any of the three reddens, stop and ask the runner.
+- No other file on Epic 18's list is touched.
+- Story 18.13 (per-namespace state) overlaps `navigation.ts`. The second epic to merge rebases.
+- Editing EXPERIENCE.md, DESIGN.md and `key-home.html` makes `epic-20-context.md` stale, so the runner re-runs the pre-warm before 20.2's plan.
 
 ## Verification
 
 **Setup (slot B):**
 
-- Load the changed classes into `ocupilot-b-ci` with no restart, never through the MCP loader (its profile reaches the dev instance).
-- Every principal-creating or configuration-changing step runs on `ocupilot-b-ci` only. Arm per call with `docker exec -e OCUPILOT_ALLOW_PRINCIPALS=1` where a class's header asks for it.
-- Stateful ObjectScript test classes run one class per call, the next only once the previous has landed in `%UnitTest_Result`, and never a re-submit on a client timeout.
-- Before any browser run: `cd ui && npm run build && docker cp dist/ocupilot-ui/browser/. ocupilot-b-ci:/durable/iris/csp/ocupilot/`, with `OCUPILOT_BROWSER_ORIGIN=http://localhost:52777` and `OCUPILOT_BROWSER_CONTAINER=ocupilot-b-ci` exported.
+- Load the changed classes into `ocupilot-b-ci` without a restart, and never through the MCP loader: its profile reaches the dev instance.
+- Every principal-creating step runs on `ocupilot-b-ci` only. Where a class's header asks for it, arm the call with `docker exec -e OCUPILOT_ALLOW_PRINCIPALS=1`; `LogHubWire` also asks for its seed variable.
+- Run stateful ObjectScript test classes one class per call. Send the next only once the previous run has landed in `%UnitTest_Result`, and never re-submit after a client timeout.
+- Before any browser run:
+  - `cd ui && npm run build && docker cp dist/ocupilot-ui/browser/. ocupilot-b-ci:/durable/iris/csp/ocupilot/`
+  - export `OCUPILOT_BROWSER_ORIGIN=http://localhost:52777` and `OCUPILOT_BROWSER_CONTAINER=ocupilot-b-ci`
 
 **Commands:**
 
-- `(loop)` `cd ui && node tools/ci-runner.mjs --container ocupilot-b-ci --class OcuPilot.Test.<C>`, one per call. Expected: 0 failures, totals checked in `%UnitTest_Result`. Classes:
-  - `NamespaceFeatures`, `Navigation`, `Descriptor`, `Wire`, `WireAreaAnyScreen`, `DeveloperFloor`
-  - `ReadTool`, `ToolRoundTrip`, `ScreenGate`
+- `(loop)` `cd ui && node tools/ci-runner.mjs --container ocupilot-b-ci --class OcuPilot.Test.<C>`, one class per call. Expected: 0 failures, with the totals checked in `%UnitTest_Result`. Classes:
+  - `NamespaceFeatures`, `Navigation`, `Descriptor`, `ExplorerDescriptor`, `Wire`, `WireAreaAnyScreen`, `DeveloperFloor`, `Gate`
+  - `ToolShell`, `ReadTool`, `ToolRoundTrip`
   - `LogPairs`, `LogSource`, `LogSecondary`, `LogSourceDenial`, `LogHub`, `LogHubWire`, `WireSecurityRead`
-- `(loop)` `cd ui && node --test --test-concurrency=1 browser/namespace-categories.browser-spec.mjs browser/rail.browser-spec.mjs browser/rail-icons.browser-spec.mjs browser/log-hub.browser-spec.mjs browser/a11y-structural-invariants.browser-spec.mjs`. Expected: pass; the DW-1337 structural gate holds in both themes.
+- `(loop)` `cd ui && node --test --test-concurrency=1 browser/namespace-categories.browser-spec.mjs browser/rail-icons.browser-spec.mjs browser/rail.browser-spec.mjs browser/log-hub.browser-spec.mjs browser/developer-floor.browser-spec.mjs browser/a11y-structural-invariants.browser-spec.mjs`. Expected: pass, with the DW-1337 structural gate holding in both themes.
 - `(loop)` Expected clean:
   - `cd ui && npm run test:tools && npm run test:components`
   - `uv run scripts/check-objectscript.py <changed .cls>`
   - `bash scripts/lint-docs.sh`
 - `(once, before dev_complete)` The full ObjectScript sweep, `cd ui && node tools/ci-runner.mjs --container ocupilot-b-ci`, one class at a time. Then:
-  - `cd ui && npm test && npm run build`: bundle under `maximumWarning` 2993 kB; stop and ask above 3800 kB.
+  - `cd ui && npm test && npm run build`: the bundle stays under `maximumWarning` 2993 kB; stop and ask above 3800 kB.
   - `bash scripts/smoke.sh --container ocupilot-b-ci --user _SYSTEM --password SYS`
 - `(CI)` The full browser suite runs only in CI's browser shards (Rule 29).
 
-**Planned pinning mutations (Rule 19).** Apply on the throwaway, observe red, then revert byte-identical.
+**Planned pinning mutations (Rule 19).** Apply each on the throwaway, observe red, then revert byte-identical.
 
-- G1: `NamespaceFeatures.Reports` answers 1 always. Expected red: `NamespaceFeatures`' `%SYS` leg, and the browser spec's `%SYS` rail.
-- G2: `navigation.ts` treats a missing `applies` as true. Expected red: the browser spec's pre-answer leg.
-- G3: the rail filters by privilege instead of `applies`. Expected red: the browser spec's `%Ens_Portal`-lacking leg.
-- G4: `EVENTLOGPAIRS` drops `%Ens_Portal:USE`. Expected red: `LogPairs` and `LogSourceDenial`'s new leg.
+- AC1, server: make `NamespaceFeatures.Reports` answer 1 always. Expected red: `NamespaceFeatures`' `%SYS` legs, and the browser spec's `%SYS` rail.
+- AC1, client fail-closed: make `applies()` treat a missing answer as true. Expected red: the pre-answer legs in `navigation.test.mjs` and the browser spec.
+- AC1, side bar: make `side-bar.ts` ignore membership in `areas()`. Expected red: `side-bar.spec.ts`, and the browser spec's switch leg.
+- AC2: make `areas()` filter by `areaVerdict().allowed` instead of `applies()`. Expected red: the browser spec's developer leg.
+- AC2, agent: make `Navigation.Payload` omit `applies` on one area. Expected red: `NamespaceFeatures`' payload leg, and `ToolShell`, through the closed schema.
+- Matrix, interop enabled meanwhile: drop the bus subscription. Expected red: the bus leg in `navigation.test.mjs`.
+- AC3: make `EVENTLOGPAIRS` drop `%Ens_Portal:USE`. Expected red: `LogPairs`, `LogSourceDenial`'s new leg, and `LogHubWire`'s new leg.
 
 ## Auto Run Result
 
-Status: blocked
-Blocking condition: intent gap
+Status: ready-for-dev
+Blocking condition: none
 
-**Gating half:** fully planned above and independent of the hand-off. It is ready to build once the runner clears the contended edits.
+**This re-plan (cycle iteration 2):**
 
-**Hand-off half:** every design that embeds the editors in place needs an AD-28 and AD-47 amendment. The one design that keeps both ADs as written drops the epic's "in place" scope and the editor messages Story 20.7 needs. Rule 5 puts that change with the owner.
-
-**Measured** on `ocupilot-slot-b` (52775), Chrome 155, in an isolated browser context. Browser sessions only, and the session was signed out afterwards.
-
-- **M1, in-place frame.** OcuPilot's shell stored its pair at `ocupilot.token-pair`.
-  - An unsandboxed `<iframe>` of `/ui/interop/rule-editor/index.html?$NAMESPACE=USER` signed itself in: `POST /api/interop-editors/login` answered 200 and the toolbar rendered for `_SYSTEM`.
-  - The editor wrote `Rule_Editor-0-*` keys into the tab's own sessionStorage.
-  - Script in the frame read `ocupilot.token-pair` and the shell's document.
-- **M2, new tab without opener.** `window.open(url, '_blank', 'noopener')`, and `<a target="_blank">` (implicitly noopener), each opened a tab whose sessionStorage held only the editor's keys. `window.opener` was null, and the rule and DTL editors both signed in silently.
-- **M3, new tab with opener.** `window.open` without `noopener` gave the new tab a copy of the storage that included `ocupilot.token-pair`.
-- **M4, opaque-origin frame.** `<iframe sandbox="allow-scripts">` loaded the document but made no sign-in request within 8 s.
-- **M5, sign-out.** After OcuPilot's sign-out, the empty-body editors login answered 401.
-
-**Read** in `irisui/ui/interop/*/main.*.js`:
-
-- Normal mode calls `doLogin()` with no credentials.
-- `?VSCODE=1` changes three things:
-  - It skips that sign-in.
-  - It sets `localStorage.vscodeMode`.
-  - It installs `window.onmessage`, which accepts `{type:"auth", username, password}` from any sender.
-- The `saved`, `compiled`, `changed`, `bad*` and `userAction` messages go to `window.parent` with target origin `"*"`, and only while `vscodeMode` is set.
-- The auth service restores itself from the `<App>-0-refreshToken` key before any login.
-
-**Candidates:**
-
-| | Design | What it needs | Risk |
-|---|---|---|---|
-| A | In-place same-origin frame, normal mode. The editor signs itself in from `CSPBrowserId`. | An AD-28 named case for "never within an embedded frame's reach", and an AD-47 named case for "a vendor page OcuPilot embeds is inert". Together they settle the spine's Deferred row. | The frame reads OcuPilot's pair and scripts the shell (M1). It gains nothing it cannot already get: it mints its own pair for the same user, any JWT application accepts any token from the instance (spike §4), and sign-out ends both (M5). The residual risk is an injection inside the vendor editor reaching the shell's DOM. 20.7's messages are not available in normal mode. |
-| B | Separate top-level tab, noopener, normal mode. | No AD change (M2). A Rule 5 scope change: the preamble's "embedded in place", 20.7 AC1 ("loads in place") and AC2 (messages), and 20.10's exchanged hooks, because there is no parent and so no messages. A guard so that every open is noopener (M3). | Low security risk. The cost is UX: the editor leaves OcuPilot's shell and panel. |
-| C | Frame plus `VSCODE=1`, with OcuPilot pre-writing `<App>-0-*` tokens it minted from the cookie. | Everything A needs, plus AD-28's "never posted into an embedded frame". Untested. | Gains 20.7's messages, but OcuPilot hands the frame a token. The frame's `auth` listener has no sender check, though the shell's `frame-ancestors 'none'` narrows who can reach it (inference). |
-| D | `VSCODE=1` with a password posted in. | Forbidden by AC1 and AD-28. | Rejected. |
-| E | `sandbox=""` (AD-47's frame), or `allow-scripts` without same-origin. | — | Not viable: the editor neither runs nor signs in (M4). |
-| F | Credentialless iframe. | — | Not viable (inference, unmeasured): it sends no cookie, so the silent sign-in fails, and it keeps same-origin access to the shell. |
-
-**Recommendation: A.** The runner writes a named case (AD-62, or amendments to AD-28 and AD-47) that pins:
-
-- the frame source to `/ui/interop/<editor>/index.html` on the instance's own origin;
-- normal mode only;
-- OcuPilot posts nothing into the frame, writes none of its storage keys and reads none of its messages;
-- sign-out still ends the editors' sign-in source;
-- a stated consequence: the frame can read the tab's storage and the shell's DOM, which adds nothing to what the browser-level login already gives same-origin code.
-
-20.7 then decides its own message channel. Use B instead if the owner prefers no AD change and accepts losing "in place".
-
-**Split.** Yes, the story can be split:
-
-- 20.1 keeps the gating half and DW-1921, retitled.
-- The hand-off moves to its own story, or to a Task 0 of 20.7, once the decision lands. Under A it becomes a shell frame component plus a browser spec proving silent sign-in. Under B it becomes a noopener link helper.
-
-Splitting is the runner's decision.
+- Removed every hand-off element (AC1/AC2 of the first plan, its candidates and its blocked condition) and the `multiple-goals` warning. 20.13 carries the hand-off.
+- Renumbered the ACs to AC1 (gating), AC2 (integration) and AC3 (DW-1921).
+- Changes against the first plan's design:
+  - The new EXPERIENCE.md sentence folds into the cleared `:66`, because an inserted line would shift `strings.ts`'s 2,667 line references.
+  - Surfaces read filtered seams rather than calling `applies()`, so only the locator spec's stub changes.
+  - The `namespace` change subscription moves into the navigation service, so the tools tier can test it.
+  - `Area.AppliesWhen` was dropped, because the roster carries the field.
+- Pins the first plan missed, now listed:
+  - `ExplorerDescriptor.cls:38`
+  - `rail-icons.browser-spec.mjs`
+  - `strings.test.mjs:446-460`
+  - `DESIGN.md:975`
+  - `LogSource.cls:867,877` and `LogSecondary` `HoldAll`
+  - the hub pin, moved to `LogHubWire`
+  - the `ScreenGate` fixture, replaced in the run list by `Gate`
+- Verified on `ocupilot-b-ci` (read only):
+  - each namespace's features;
+  - the public permissions of `%Ens_Portal`, `%Ens_EventLog` and `%DeepSee_Portal`;
+  - which roles hold the two Ens resources;
+  - the current Fixed strings count (2,754).
+- Epic 18's tree was re-checked: no further clearance is needed.
