@@ -9508,6 +9508,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-04T14:42:18Z occurrence=18-21-ecp-settings-and-application-servers note=EcpSslConnectionWrite's DW-2006 leg and EcpDataServerWrite's SSL leg raise the monitor through the logged #1454 (harvested from 18.21's deferred list)
 - 2026-10-05T00:19:27Z occurrence=18-7-encryption note=18.7 logs #5022 on each no-key read, #1219/#1204 and #5001 credentials refusals; their async alert-throttle line can land in a no-log window
 - 2026-10-07T08:23:30Z occurrence=18-25-superservers note=add Security.Superserver PUT #5001 (port already in use; mapped to a field refusal, still logged severity 2) to the code-scoped unlogged list
+- 2026-10-07T16:07:59Z occurrence=18-26-managed-file-transfer-connections note=add Security.MFT DELETE 500 #5809 (connection deleted, OAuth 2.0 client already absent; MftPort re-reads and answers done, still logged severity 2)
 
 ### DW-2008: The agent's confirm of an ECP data server create at the limit carries ECP.SERVER.LIMIT's generic sentence, not EcpError.Limit's number
 - source: spec-18-20-ecp-data-servers.md (code review) | severity: low | fix-risk: med | footprint: out-of-footprint
@@ -10253,3 +10254,18 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-25-superservers.md (cr verification-gap) | severity: low | fix-risk: low | footprint: in-epic
 - evidence: app.spec.ts pins shell, turn and Home store resets by mutation; deleting this.superserverForm.reset() (or any form store's) reddens nothing. Code currently resets.
 - 2026-10-07T15:42:01Z status=wontfix-accepted owner=18-25-superservers by=cr note=one roster test covers all; reopen_if=a form store reset() line is removed or a cross-principal form leak is reported
+
+### DW-2154: IRIS defect candidate: the admin API's Security.MFT DELETE of a connection whose OAuth 2.0 client is absent deletes the connection and then answers 500 #5809
+- source: spec-18-26-managed-file-transfer-connections.md | severity: low | fix-risk: high | footprint: out-of-footprint
+- evidence: Story 18.26 plan on ocupilot-ci 2026-10-07
+- 2026-10-07T16:07:59Z status=decision-pending owner=burndown by=spec_gate note=human=decide whether to report it to InterSystems, with the held vendor-report list; owner hold 2026-10-05: not reported
+
+### DW-2155: IRIS defect candidate: the admin API's Security.MFT PUT answers 500 <CLASS DOES NOT EXIST> for an unknown Service, stores Service Base, and relabels a stored connection's Service on an update
+- source: spec-18-26-managed-file-transfer-connections.md | severity: low | fix-risk: high | footprint: out-of-footprint
+- evidence: Story 18.26 plan on ocupilot-ci 2026-10-07
+- 2026-10-07T16:07:59Z status=decision-pending owner=burndown by=spec_gate note=human=decide whether to report it to InterSystems, with the held vendor-report list; owner hold 2026-10-05: not reported
+
+### DW-2156: IRIS defect candidate: %SYS.MFT.Connection.Base.DeleteId's doc comment inverts its keepOAuth2 argument
+- source: spec-18-26-managed-file-transfer-connections.md | severity: low | fix-risk: high | footprint: out-of-footprint
+- evidence: Story 18.26 plan: read in source
+- 2026-10-07T16:07:59Z status=decision-pending owner=burndown by=spec_gate note=human=decide whether to report it to InterSystems, with the held vendor-report list; owner hold 2026-10-05: not reported
