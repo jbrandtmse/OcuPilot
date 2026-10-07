@@ -1097,6 +1097,20 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
   7. **Pairs beyond the screens' sets (AD-8).** The five production tools declare `%Ens_ProductionRun:USE` and WRITE on the namespace's globals database, resolved at the call, each refused by name before any port call (measured: start, stop and restart answer #940 without the run resource; recover raises `<PROTECT>` on `^Ens.Suspended` without WRITE). Named limits: the classic rules, transformations and processes pages take an OR list of resources a pair set cannot express, so those lists declare `%Ens_Code:READ`, held by every shipped role that reaches them, and refuse a holder of only `%Ens_Rules`, `%Ens_RoutingRules`, `%Ens_BusinessRules`, `%Ens_DTL` or `%Ens_BPL`; and a holder of only `%Ens_ConfigItemRun` is refused Update, which the vendor admits. These are narrower audiences, as AD-8 accepts for Stories 18.15, 18.16 and 19.17.
   8. **Declared reads, ids and classic pages.** A declared read may name the interoperability port (source kind `interop`, AD-36): `LIST` on its four endpoints, with no criteria, detail call or parts. A `production` id is the production class name, kept exactly (AD-13). The five tools' `CLASSICPAGES` (AD-44) are `EnsPortal.ProductionConfig`, `EnsPortal.Dialog.UpdateProduction` and `EnsPortal.StartStopFrame`. Home's production line, category gating and the interoperability event log keep their existing reads.
 
+### AD-63 -- The vendor's interoperability editors load in a same-origin frame, in normal mode, and OcuPilot never reaches into it
+
+- **Binds:** Stage 4 (Epic 20): Story 20.13 and every embed of a `/ui/interop` editor (Stories 20.7, 20.8 and 20.10); AD-28, AD-47, NFR-3
+- **Prevents:** a password or a token pair crossing into a vendor frame; the origin weakened, or the editors' message-driven sign-in used, to make embedding work; an embed growing a channel this rule never named
+- **Rule:** [ADDED 2026-10-07, owner decision (Story 20.1 question 1, option A), relayed by the Planner; written by the orchestrator, Rule 20] A named case of AD-28's "never within an embedded frame's reach" and AD-47's "a vendor page OcuPilot embeds is inert". The vendor's Angular editors load in place in an `<iframe>` under these limits:
+  1. **Fixed source.** The frame's source is `/ui/interop/<editor>/index.html` on the instance's own origin, with only the editor's own query parameters, whose values come from a read OcuPilot answered. Never another origin, and never a path built from a person's text.
+  2. **Normal mode only.** Never `?VSCODE=1`, whose `window.onmessage` accepts `{type:"auth", username, password}` from any sender with no origin check (read in the vendor bundle, Story 20.1 plan, 2026-10-07). Never tokens pre-written into the editor's storage.
+  3. **OcuPilot reaches nothing in the frame.** It posts nothing into the frame, reads nothing from it, and touches none of its storage or messages. The editor signs itself in from the browser-level login, with no password and no message (measured on `ocupilot-slot-b`, Story 20.1 plan, M1).
+  4. **Sign-out ends the editors' sign-in** (measured, M5), through the sign-out path AD-28 describes.
+  5. **The frame is not sandboxed,** because a sandboxed frame never signs in (measured, M4). That is the difference from AD-47's class-reference case.
+
+  **Named consequence.** The frame runs on the shell's origin, so the editor's script can read the tab's `ocupilot.token-pair` and script the shell. That gives it nothing beyond what any same-origin code already gets from the browser-level login, which is AD-47's own premise: the origin is a trust boundary OcuPilot shares with every application IRIS serves. The editors' saved and compiled notices reach a host only in `?VSCODE=1` mode, so OcuPilot does not have them; Story 20.7 re-scopes that criterion at its spec gate.
+
+
 ## Consistency Conventions
 
 | Concern | Convention |
