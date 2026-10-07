@@ -1,5 +1,5 @@
 /// <p>Story 20.14's route sweep (AD-8, AD-44): every route the shipped <code>UrlMap</code> declares,
-/// sent as a real <code>%Ens_Portal</code> holder and as a real Operator, is refused 403
+/// sent as each of <parameter>KINDS</parameter>, is refused 403
 /// <code>AUTH.NOPRIVILEGE</code> naming a pair unless <method>Roster</method> names it, and every
 /// <code>GET</code> the roster names answers neither 403 nor a server error. The roster's other routes
 /// are writes the principal makes on its own account, conversation or turn, and are not sent. The
@@ -8,7 +8,7 @@
 /// <p>Placeholders are <class>OcuPilot.Test.DeveloperFloorRoutes</class>'s
 /// (<method>OcuPilot.Test.DeveloperFloorRoutes.ConcretePath</method>).</p>
 /// <p>It needs <parameter>ARMINGVARIABLE</parameter> armed: <class>OcuPilot.Test.InteropFloorFixture</class>
-/// creates the two principals in <method>OnBeforeAllTests</method> and removes them in
+/// creates the four principals in <method>OnBeforeAllTests</method> and removes them in
 /// <method>OnAfterAllTests</method>.</p>
 Class OcuPilot.Test.InteropFloorRoutes Extends %UnitTest.TestCase
 {
@@ -18,6 +18,10 @@ Class OcuPilot.Test.InteropFloorRoutes Extends %UnitTest.TestCase
 Parameter ARMINGVARIABLE = "OCUPILOT_ALLOW_PRINCIPALS";
 
 Parameter FIXTURE = "OcuPilot.Test.InteropFloorFixture";
+
+/// <p>The principals swept: the <code>%Ens_Portal</code> holder, then the stock Monitor, Operator
+/// and Administrator roles.</p>
+Parameter KINDS = "portal,monitor,operator,administrator";
 
 /// <p>The pair every <code>explorer/sql</code> route names for these principals.</p>
 Parameter EXPLORERPAIR = "%Development:USE";
@@ -44,7 +48,8 @@ Method OnBeforeAllTests() As %Status
     }
     Set ..PreparedPassword = $ClassMethod(..#FIXTURE, "NewPassword")
     Set tOk = 1
-    For tKind = "portal", "operator" {
+    For tK = 1:1:$Length(..#KINDS, ",") {
+        Set tKind = $Piece(..#KINDS, ",", tK)
         Set tSC = $ClassMethod(..#FIXTURE, "EnsurePrincipal", ..PreparedPassword, tKind, .tUser)
         If $$$ISOK(tSC) Set tSC = $ClassMethod(..#FIXTURE, "Composed", tUser, .tComposed)
         If $$$ISERR(tSC) Quit
@@ -64,16 +69,17 @@ Method OnAfterAllTests() As %Status
     Quit $$$OK
 }
 
-/// <p>The routes principal kind <var>pKind</var> (<code>portal</code> or <code>operator</code>) passes,
+/// <p>The routes principal kind <var>pKind</var> (one of <parameter>KINDS</parameter>) passes,
 /// as <code>$ListBuild(method, url)</code> spelled as the map declares them: the caller-own agent
 /// reads and choices, its turns, proposals, conversations and transcripts, the shell reads, its own
-/// account, Home's reads and the analytics log, and for the Operator the interoperability event log.
+/// account, Home's reads and the analytics log, and for the Operator and the Administrator the
+/// interoperability event log.
 /// Each is owner-scoped, or its classic page carries no <code>RESOURCE</code>, the public
 /// <code>%DeepSee_Portal</code> or a resource the principal holds.</p>
 ClassMethod Roster(pKind As %String) As %List
 {
     Set tGets = "/agent/definitions,/agent/restraint,/agent/context,/agent/ledger,/turn/:id/progress,/conversation/:id,/transcripts/:id,/instance,/namespaces,/navigation,/account/preferences,/ui/about,/ui/help,/ui/system,/ui/findings,/ui/guardrails,/logs/analytics"
-    If pKind = "operator" Set tGets = tGets _ ",/logs/eventlog"
+    If $ListFind($ListBuild("operator", "administrator"), pKind) Set tGets = tGets _ ",/logs/eventlog"
     Set tOthers = "PUT /agent/restraint,PUT /agent/context,POST /turn,POST /turn/:id/stop,POST /turn/:id/navigation,POST /turn/abandon,POST /proposal/:id/confirm,POST /proposal/:id/cancel,POST /proposal/:id/draft,POST /conversation,POST /account/password,POST /account/preferences"
     Set tRoster = ""
     For tI = 1:1:$Length(tGets, ",") Set tRoster = tRoster _ $ListBuild($ListBuild("GET", $Piece(tGets, ",", tI)))
@@ -81,7 +87,7 @@ ClassMethod Roster(pKind As %String) As %List
     Quit tRoster
 }
 
-/// <p><b>The sweep (AC2).</b> For each of the <code>%Ens_Portal</code> holder and the Operator, every
+/// <p><b>The sweep (AC1, AC2).</b> For each of <parameter>KINDS</parameter>, every
 /// declared route outside <method>Roster</method> refuses 403 <code>AUTH.NOPRIVILEGE</code> naming its
 /// failed pair, every <code>explorer/sql</code> route naming <parameter>EXPLORERPAIR</parameter>, and
 /// every roster <code>GET</code> answers with neither 403 nor a server error. A roster entry the map
@@ -101,7 +107,8 @@ Method TestEveryRouteOutsideTheRosterRefusesTheInteroperabilityHolders()
     Kill tDeclared
     For tI = 1:1:tRoutes Set tDeclared(tRoutes(tI, "method"), tRoutes(tI, "url")) = ""
 
-    For tKind = "portal", "operator" {
+    For tK = 1:1:$Length(..#KINDS, ",") {
+        Set tKind = $Piece(..#KINDS, ",", tK)
         Set tUser = $ClassMethod(..#FIXTURE, "UserOf", tKind)
         Set tRoster = ..Roster(tKind)
         For tR = 1:1:$ListLength(tRoster) {

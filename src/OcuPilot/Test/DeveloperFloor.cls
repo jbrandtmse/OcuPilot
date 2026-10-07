@@ -3,7 +3,7 @@
 /// screens, reads System Explorer in the install namespace and in <code>USER</code>, is refused an
 /// administrative screen naming its pair, opens Logs on the analytics log alone, and reads Home's
 /// system information with the dashboard members empty and nothing logged. A principal below the
-/// floor is refused naming both halves of it, and an administrator without <code>%All</code> is
+/// floor is refused naming each member of it, and an administrator without <code>%All</code> is
 /// still answered the dashboard. Two derived legs hold the rosters: every screen the
 /// map opens to the principal is a declared one whose classic page's compiled <code>RESOURCE</code>
 /// admits it, and the tools whose required pairs it holds are exactly the declared thirty-six,

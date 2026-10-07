@@ -311,7 +311,7 @@ services:
       # floor, an administrator without %All, and a %Development holder that runs a turn.
       # classes: DeveloperFloor, DeveloperFloorFixture, DeveloperFloorRoutes, DeveloperFloorTurn
       # The Interoperability floor classes sign in as purpose-built principals holding %Ens_Portal alone
-      # or a stock %EnsRole_Monitor, _Operator or _Administrator, and one of them runs a turn.
+      # or a stock %EnsRole_Monitor, _Operator or _Administrator, and a %Ens_Portal holder runs a turn.
       # classes: InteropFloor, InteropFloorFixture, InteropFloorRoutes, InteropFloorTurn
       # The System Explorer write gate class signs in as principals holding READ, READ and WRITE,
       # and the %Developer role on a namespace's code database, and compiles and deletes probes.

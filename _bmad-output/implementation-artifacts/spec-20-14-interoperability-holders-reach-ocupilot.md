@@ -143,6 +143,42 @@ Principals, each with READ on the install namespace's code database: **E** also 
 - **AC5 (browser).** Given Adm in a real browser, when it signs in, then it works in Interoperability without the no-privileges notice, and Permissions names its failed pair.
 - **AC6 (orchestrator condition: every surface has its own permission check).** Given every screen, read tool, write tool and route, when the suite runs, then each either declares a pair outside the floor or is listed in the floor-only roster with its reason. A surface with neither reddens, naming it.
 
+### Review Findings
+
+Code review 2026-10-07, four layers: 0 decision-needed, 10 patches applied, 2 deferred, 15 rejected.
+
+- [x] [Review][Patch] The route sweep covered E and Op only, while AC1 and the Rosters table name Mon and Adm (MED, fix-risk low) [src/OcuPilot/Test/InteropFloorRoutes.cls:22]
+- [x] [Review][Patch] `INTEROPRESOURCE`'s doc said clearing the floor opens no surface (LOW) [src/OcuPilot/Screen/Gate.cls:59]
+- [x] [Review][Patch] `DEVELOPMENTRESOURCE`'s doc still called it the one non-administrative member (LOW) [src/OcuPilot/Screen/Gate.cls:50]
+- [x] [Review][Patch] Router's `ADMINRESOURCES` doc called it the floor's "half" (LOW) [src/OcuPilot/Api/Router.cls:39]
+- [x] [Review][Patch] `InteropFloorOwnPairs`' header said every pair on another resource refuses E; the public `%DeepSee_Portal` does not (LOW) [src/OcuPilot/Test/InteropFloorOwnPairs.cls:4]
+- [x] [Review][Patch] `FLOORONLY` gave AgentGuardrails `owner-scoped`; it shows instance-wide declarations, so `no classic resource` (LOW) [src/OcuPilot/Test/InteropFloorOwnPairs.cls:29]
+- [x] [Review][Patch] `DeveloperFloor`'s header still said "both halves" (LOW) [src/OcuPilot/Test/DeveloperFloor.cls:6]
+- [x] [Review][Patch] `InteropFloor`'s tools doc gave an untrue reason for "no write tool" (LOW) [src/OcuPilot/Test/InteropFloor.cls:327]
+- [x] [Review][Patch] `InteropFloorTurn` read its grants back through `CheckUserPermission`, not `Effective` (Always: Real principals) (LOW) [src/OcuPilot/Test/InteropFloorTurn.cls:68]
+- [x] [Review][Patch] `ci-throwaway.sh` said one of the four principals runs the turn (LOW) [scripts/ci-throwaway.sh:314]
+- [x] [Review][Defer] `Wire.cls` :234 and :326 still state the two-member floor [src/OcuPilot/Test/Wire.cls:234] — deferred: DW-2170, contended lines outside the cleared region
+- [x] [Review][Defer] EXPERIENCE.md :182 and :214 name only `%Admin_*` and `%Development` as screen gates [EXPERIENCE.md:214] — deferred: DW-2171, pre-existing since 20.2
+
+**AC6 verdict.** The pin meets the condition for every surface kind: `Screen.Registry.Descriptors` enumerates every descriptor, `ListTools` every tool (unadvertised and governance-disabled writes included), and the route sweep every `UrlMap` route as all four principals. `InteropFloor`'s exact rosters catch what the own-pair test cannot, a surface whose only pair is public. The reading is right: the floor is a disjunction, so a pair on one member is that surface's classic `RESOURCE` and refuses every other member's holder by name. The literal reading would list Explorer and Logs surfaces under reasons untrue for them.
+
+Rejected:
+
+- `FLOORONLYRESOURCE` is a literal: false; a test literal is a pin, as `PortGate`'s floor literal is.
+- The AC6 reading itself: not a defect (verdict above).
+- Below-floor read-backs (`DeveloperFloor` :113, `ConfigGate` :147) skip `%Ens_Portal`: low; the `AUTH.NOADMIN` assertion reddens instead, and the fix adds guards.
+- The `AUTH.NOADMIN` reason lists the floor by hand: spec-bound (Tasks, AC4).
+- `InteropFloorTurn` does not check the held read's rows: false; AC3 asks for no error, and HSCUSTOM may hold no production.
+- A failed `OnBeforeAllTests` leaves principals: low; throwaway only, replaced by the next `EnsurePrincipal`, as in `DeveloperFloor`.
+- `InteropFloor` calls `DeveloperFloorFixture.CodeResource` directly: low, cosmetic.
+- Duplicated helpers and rosters: low; drift fails loudly.
+- `%Ens_Portal` at READ or WRITE judged floor-only, and a letter-spelled classic permission: theoretical; each is a false red, never a false green.
+- The triage log's reason on unsent non-GET routes: its fix edits the spec.
+- Routes carry one class-level reason, and roster non-GETs are not sent: spec-bound (I/O matrix, Tasks).
+- Router edits sit at baseline :1322-1323 and :1424, not the cited :1318-1321 and :1421: no harm; they are the cleared elements, and Epic 18's Router hunks are at :251 and :1869.
+- The ship-time AD-8 list omits `InteropFloorOwnPairs`: a spine edit, passed to the runner.
+- `navigation.ts` overlaps 18.13: doc comments only; the second to merge rebases.
+
 ## Spec Change Log
 
 - 2026-10-07, runner spec gate: the orchestrator cleared the six contended edits, on the condition that the audit's "no surface needs a new pair" becomes a pinned test (AC6, the floor-only roster task, and its mutation row). The AD-8 amendment and the PRD FR-3 and FR-65 lines are written.
@@ -257,6 +293,7 @@ Principals, each with READ on the install namespace's code database: **E** also 
 - mutation: other namespace -- `%DB_USER:R` added to the fixture's code role -> `TestAnotherNamespaceIsDeniedUnchanged` red.
 
 - mutation: AC5 -- `InteropProcessList`'s `privileges` and `ownPrivileges` as `%Admin_Secure:USE` alone (the Administrator lacks it) -> `interop-floor.browser-spec.mjs` red on the Business processes rows (`waitForRows` timeout); reverted, spec green.
+- mutation: AC1 routes, four principals (code review) -- `Gate()` out of `FormRules` (:108 and :188) in the throwaway's copy -> `InteropFloorRoutes` run 1685 red on `GET /web-applications/form` and `/name` for each of portal, monitor, operator and administrator; reverted (`diff -rq` identical), run 1687 green (E and Mon refused 146 and opened 17, Op and Adm 145 and 18).
 
 **Reading of AC6.** "A pair outside the floor members" is implemented as a pair on any resource other than `%Ens_Portal`: the `%Development` and `%Admin_Operate` pairs of the Explorer and Logs surfaces refuse the `%Ens_Portal` holder by name, so the System Explorer and Logs surfaces that declare `%Development` or `%Admin_Operate` alone would all be listed under the literal reading. `FLOORONLY` holds the ten that declare nothing else: five screens and five tools.
 

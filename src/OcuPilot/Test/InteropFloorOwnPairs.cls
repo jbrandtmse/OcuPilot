@@ -1,12 +1,15 @@
 /// <p>Story 20.14's floor-only roster (AD-8): the floor admits an account holding
 /// <code>%Ens_Portal:USE</code> and nothing else, so a surface that declares no pair beyond
 /// <code>%Ens_Portal:USE</code> is protected by the floor alone and opens to that account. Every
-/// screen descriptor, read tool and write tool either declares a pair on some other resource, which
-/// refuses the account by name, or is listed in <parameter>FLOORONLY</parameter> with its reason. An
+/// screen descriptor, read tool and write tool either declares a pair on some other resource, its
+/// own check, or is listed in <parameter>FLOORONLY</parameter> with its reason. An
 /// unlisted floor-only surface fails naming it, and so does a roster entry that no longer exists or
 /// now declares a pair. Routes are pinned by <class>OcuPilot.Test.InteropFloorRoutes</class>'s sweep.</p>
-/// <p>A pair on <code>%Development</code> or an <code>%Admin_*</code> resource counts as declared: the
-/// floor admits its holder, and the account this story widens it for holds neither.</p>
+/// <p>A pair on <code>%Development</code> or an <code>%Admin_*</code> resource counts as declared: it
+/// is the surface's classic <code>RESOURCE</code>, and it refuses the account by name. So does a pair
+/// on a public resource, such as the analytics log's <code>%DeepSee_Portal:USE</code>, which opens to
+/// the account as its classic page does; <class>OcuPilot.Test.InteropFloor</class>'s exact rosters
+/// hold what the account opens.</p>
 /// <p>It creates nothing and needs no arming.</p>
 Class OcuPilot.Test.InteropFloorOwnPairs Extends %UnitTest.TestCase
 {
@@ -23,7 +26,7 @@ Parameter NOCLASSIC = "no classic resource";
 /// <p>The closed roster of surfaces that declare no pair beyond the floor, as
 /// <code>kind:name=reason</code>, comma-separated, with <code>kind</code> one of
 /// <code>screen</code> (a descriptor's short name), <code>tool</code> (a tool name).</p>
-Parameter FLOORONLY = "screen:AgentGuardrails=owner-scoped,screen:AgentLedger=owner-scoped,screen:AgentTranscript=owner-scoped,screen:AgentTranscripts=owner-scoped,screen:Home=no classic resource,tool:agent.transcripts.read=owner-scoped,tool:shell.instance.read=no classic resource,tool:shell.namespaces.read=no classic resource,tool:shell.privileges.read=no classic resource,tool:shell.screen.open=no classic resource";
+Parameter FLOORONLY = "screen:AgentGuardrails=no classic resource,screen:AgentLedger=owner-scoped,screen:AgentTranscript=owner-scoped,screen:AgentTranscripts=owner-scoped,screen:Home=no classic resource,tool:agent.transcripts.read=owner-scoped,tool:shell.instance.read=no classic resource,tool:shell.namespaces.read=no classic resource,tool:shell.privileges.read=no classic resource,tool:shell.screen.open=no classic resource";
 
 /// <p>The package the screens are declared in.</p>
 Parameter DESCRIPTORPACKAGE = "OcuPilot.Screen.Descriptor.";

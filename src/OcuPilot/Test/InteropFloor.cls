@@ -324,8 +324,7 @@ Method TestEveryOpenScreenMatchesItsClassicPage()
 }
 
 /// <p><b>Tools.</b> Of every tool the registry lists, the ones whose required pairs each principal
-/// holds are exactly its <method>Tools</method> roster, and none of them is a write tool: a write
-/// also needs WRITE on a database no stock role grants.</p>
+/// holds are exactly its <method>Tools</method> roster, and none of them is a write tool.</p>
 /// <p>Mutation: give <class>OcuPilot.Screen.Descriptor.WebAppList</class> an empty pair set ->
 /// <code>webapp.list.read</code> joins every principal's held set and this goes red.</p>
 Method TestTheToolsEachPrincipalHoldsAreItsRoster()

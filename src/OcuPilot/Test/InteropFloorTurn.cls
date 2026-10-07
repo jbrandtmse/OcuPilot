@@ -49,7 +49,8 @@ Method %OnNew(initvalue As %String = "") As %Status
 }
 
 /// <p>Refuse unless both variables arm the instance, create the principal and the default
-/// <code>turnprobe</code> definition, and read back that the principal holds
+/// <code>turnprobe</code> definition, and read back through
+/// <method>OcuPilot.Test.InteropFloorFixture.Composed</method> that the principal holds
 /// <code>%Ens_Portal:USE</code>, not <code>%Development:USE</code> and none of <parameter>OcuPilot.Screen.Gate.ADMINRESOURCES</parameter>.</p>
 Method OnBeforeAllTests() As %Status
 {
@@ -64,12 +65,10 @@ Method OnBeforeAllTests() As %Status
     Set tSC = $ClassMethod(..#FIXTURE, "EnsureDefinition", ..#TAG, .tId)
     If $$$ISERR(tSC) Quit tSC
     Set ..PreparedDefinitionId = tId
-    Set tAdmin = 0
-    Set tList = ##class(OcuPilot.Screen.Gate).#ADMINRESOURCES
-    For tI = 1:1:$Length(tList, ",") {
-        If $SYSTEM.Security.CheckUserPermission(tUser, $Piece(tList, ",", tI), "USE") = 1 Set tAdmin = 1
-    }
-    Set ..PreparedSetupOk = ($SYSTEM.Security.CheckUserPermission(tUser, "%Ens_Portal", "USE") = 1) && ($SYSTEM.Security.CheckUserPermission(tUser, "%Development", "USE") '= 1) && 'tAdmin
+    Set tSC = ##class(OcuPilot.Test.InteropFloorFixture).Composed(tUser, .tComposed)
+    If $$$ISERR(tSC) Quit tSC
+    Set tAdmin = ##class(OcuPilot.Test.InteropFloorFixture).HoldsAdministrative(tComposed)
+    Set ..PreparedSetupOk = ##class(OcuPilot.Test.InteropFloorFixture).Holds(tComposed, "%Ens_Portal", "USE") && '##class(OcuPilot.Test.InteropFloorFixture).Holds(tComposed, "%Development", "USE") && 'tAdmin
     If '..PreparedSetupOk Quit $$$ERROR($$$GeneralError, "Setup could not read back that " _ tUser _ " holds %Ens_Portal:USE, no %Development:USE and no administrative resource (administrative " _ tAdmin _ ")")
     Quit $$$OK
 }

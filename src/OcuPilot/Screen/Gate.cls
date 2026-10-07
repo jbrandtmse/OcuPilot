@@ -47,7 +47,7 @@ Parameter ADMINRESOURCES = "%Admin_ExternalLanguageServerEdit,%Admin_FileSystemA
 /// <p>The permission each <parameter>ADMINRESOURCES</parameter> member is required at.</p>
 Parameter ADMINPERMISSION = "USE";
 
-/// <p>The one floor member that is not an administrative resource: the classic portal admits a
+/// <p>The floor member that admits a developer account: the classic portal admits a
 /// <code>%Developer</code> account to System Explorer, whose Classes, Routines, Globals and SQL
 /// pages declare it as their <code>RESOURCE</code> (AD-8). It never joins
 /// <parameter>ADMINRESOURCES</parameter>, whose members are <code>%Admin_*</code> alone.</p>
@@ -56,8 +56,9 @@ Parameter DEVELOPMENTRESOURCE = "%Development";
 /// <p>The floor member that admits an Interoperability account: the classic Interoperability
 /// pages check <code>%Ens_Portal</code> (<code>EnsPortal.Application.CheckPrivileges</code>), and
 /// the stock <code>%EnsRole_Operator</code>, <code>_Monitor</code> and <code>_Administrator</code>
-/// hold it. It never joins <parameter>ADMINRESOURCES</parameter>. Clearing the floor opens no
-/// surface by itself: every screen, tool and route still declares its own pairs.</p>
+/// hold it. It never joins <parameter>ADMINRESOURCES</parameter>. Clearing the floor opens only
+/// the surfaces whose own pairs the caller holds and those that declare none, which are
+/// owner-scoped or have no classic resource (<class>OcuPilot.Test.InteropFloorOwnPairs</class>).</p>
 Parameter INTEROPRESOURCE = "%Ens_Portal";
 
 /// <p>The user names that are not an authenticated principal, comma-separated: IRIS's

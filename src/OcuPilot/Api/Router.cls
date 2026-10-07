@@ -36,7 +36,7 @@ Parameter CONTENTTYPE = "application/json";
 Parameter HandleCorsRequest = 0;
 
 /// <p>The closed list of IRIS administrative resources, comma-separated: the
-/// <code>%Admin_*</code> half of <parameter>FLOORRESOURCES</parameter>.</p>
+/// <code>%Admin_*</code> members of <parameter>FLOORRESOURCES</parameter>.</p>
 /// <p><b>Derived, not held.</b> The list's one home is
 /// <parameter>OcuPilot.Screen.Gate.ADMINRESOURCES</parameter>; this parameter is that value at
 /// compile time, so no second copy exists to drift. <class>OcuPilot.Test.PortGate</class>
