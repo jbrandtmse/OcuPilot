@@ -1091,3 +1091,5 @@
 2026-10-07T18:29:05Z	Story 18.25	ci_green_verified	run=37660214447 head=c1a8b608 conclusion=success jobs=16/16 by=orchestrator
 2026-10-07T18:29:05Z	Story 18.25	merge_enqueued	mode=fast_forward feature=3c48908c->44cf6729 code_equal=c1a8b608..tip(empty) upgrade_triggers=none ledger=DW-2139_03:44:07Z_trailer_still_physically_under_DW-2148(known;effective_states_correct_via_11:07:09Z_repairs)
 2026-10-07T18:29:07Z	Story 18.25	merged	feature=44cf6729 mode=fast_forward pushed=verified_on_origin
+2026-10-07T18:58:06Z	Story 20.2	decision	items=DW-2157,DW-2162->20.3(stop_answers_post-write_state);DW-2161=wontfix-accepted(port_re-gates;reopen_if_refused_cross-namespace_confirm_reported_or_payload-aware_hook_needed) by=merge_gate
+2026-10-07T18:58:06Z	Story 20.14	decision	item=contended_edits by=merge_gate choice=cleared(Router.cls,Error.cls,PortGate.cls,Wire.cls,WireSecurityRead.cls,EXPERIENCE.md;disjoint_from_epic_18_18.26_hunks) condition=owner_words_every_screen_first_gets_its_own_permission_check->a_test_fails_if_any_surface_relies_on_the_floor_alone(Rule_19_mutation)_before_the_floor_change_merges
