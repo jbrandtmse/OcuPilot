@@ -10297,3 +10297,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: cycle-log-epic-18.md (Story 18.25 CI run 37646809169) | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: run 37646809169 head 44e8f5b3 instance shard 2/5: AssertMasked+7 and +9 red on the wire read while logs.audit.read passed moments later; the class ran 4/4 green on ocupilot-ci (run 1172) over the same source; OAuthAuthorizationServerSecret and OAuthRegisteredClientSecret read once the same way (inference)
 - 2026-10-07T17:30:11Z status=routed owner=burndown by=lead note=apply 23.4's READSECONDS poll (16313a0e) to AuditVendorSecrets.AssertMasked and to any sibling that reads a vendor row once
+
+### DW-2164: The sign-out reset of the MFT connection form store (app.ts calls mftConnectionForm.reset()) has no test; 18.25's superserver form store has the same gap
+- source: spec-18-26-managed-file-transfer-connections.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: deleting the reset() line in ui/src/app/app.ts:716 fails no test; the store spec never calls reset() and app.spec.ts does not reference the store
+- 2026-10-07T22:03:57Z status=open owner=18-26-managed-file-transfer-connections by=harvest note=QA adds the reset leg for both stores
+
+### DW-2165: The MFT delete card lists four removal rows, not five: Service is outside the reviewed few AD-10's prohibited sweep admits
+- source: spec-18-26-managed-file-transfer-connections.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: AD-10's reviewed-few sweep refuses a diff row whose field the type's change fields omit (PROHIBITED.UNCOVEREDFIELD), so MftConnectionDelete.REMOVALROWS leaves Service out; the card still states the client removal through MFT.DELETE
+- 2026-10-07T22:03:57Z status=open owner=18-26-managed-file-transfer-connections by=harvest note=code review decides fix or by-design
