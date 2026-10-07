@@ -38,6 +38,12 @@ Class OcuPilot.Screen.Tool.Classification Extends %RegisteredObject
 /// tool authors <code>LDAPSearchPassword</code> as <code>secret</code>: its write sends that declared
 /// secret and nothing else, under the vendor's own <code>CHANGEPWD</code> key (AD-56), and the
 /// template never shows it. <code>LDAPCACertFile</code> is ordinary and no tool admits it (AD-21).</p>
+/// <p><b><code>security.authoptions.update</code></b> and <b><code>security.authoptions.smtppassword</code></b>
+/// (Story 18.8) classify <code>Security.WebAuth</code>'s twenty-one rows <code>ordinary</code>:
+/// <code>AutheLoginToken</code> is a boolean flag the credential pattern's <code>token</code> suffix
+/// matches, held an exception by Conventions &#8250; Secrets. The password tool authors
+/// <code>SMTPPassword</code> as <code>secret</code>: its write sends that declared secret and nothing else,
+/// under the vendor's own <code>CHANGESMTPPWD</code> key (AD-56), and the template never shows it.</p>
 /// <p><b><code>security.secrets.creatersa</code></b>, <b>.createsymmetric</b>, <b>.replacersa</b> and
 /// <b>.replacesymmetric</b> (Story 18.24) classify their type's list: <code>Length</code>,
 /// <code>HasPrivateKey</code>, <code>HasCertificate</code> and <code>KeyId</code> are <code>ordinary</code>
@@ -243,6 +249,61 @@ XData Entries
       "DBEncDefaultKeyID": "ordinary",
       "AdminName": "ordinary",
       "AdminPassword": "secret"
+    }
+  },
+  "security.authoptions.update": {
+    "fieldList": "Security.WebAuth",
+    "classification": {
+      "AutheUnauthenticated": "ordinary",
+      "AutheOS": "ordinary",
+      "AutheOSDelegated": "ordinary",
+      "AutheOSLDAP": "ordinary",
+      "AutheCache": "ordinary",
+      "AutheDelegated": "ordinary",
+      "AutheAlwaysTryDelegated": "ordinary",
+      "AutheKB": "ordinary",
+      "AutheLDAP": "ordinary",
+      "AutheLDAPCache": "ordinary",
+      "AutheOAuth2": "ordinary",
+      "AutheLoginToken": "ordinary",
+      "AutheTwoFactorSMS": "ordinary",
+      "AutheTwoFactorPW": "ordinary",
+      "LoginCookieTimeout": "ordinary",
+      "SMTPServer": "ordinary",
+      "SMTPUsername": "ordinary",
+      "TwoFactorFrom": "ordinary",
+      "TwoFactorTimeout": "ordinary",
+      "JWTIssuer": "ordinary",
+      "JWTSigAlg": "ordinary"
+    }
+  },
+  "security.authoptions.smtppassword": {
+    "fieldList": "Security.WebAuth",
+    "classification": {
+      "AutheUnauthenticated": "ordinary",
+      "AutheOS": "ordinary",
+      "AutheOSDelegated": "ordinary",
+      "AutheOSLDAP": "ordinary",
+      "AutheCache": "ordinary",
+      "AutheDelegated": "ordinary",
+      "AutheAlwaysTryDelegated": "ordinary",
+      "AutheKB": "ordinary",
+      "AutheLDAP": "ordinary",
+      "AutheLDAPCache": "ordinary",
+      "AutheOAuth2": "ordinary",
+      "AutheLoginToken": "ordinary",
+      "AutheTwoFactorSMS": "ordinary",
+      "AutheTwoFactorPW": "ordinary",
+      "LoginCookieTimeout": "ordinary",
+      "SMTPServer": "ordinary",
+      "SMTPUsername": "ordinary",
+      "TwoFactorFrom": "ordinary",
+      "TwoFactorTimeout": "ordinary",
+      "JWTIssuer": "ordinary",
+      "JWTSigAlg": "ordinary"
+    },
+    "authored": {
+      "SMTPPassword": "secret"
     }
   },
   "security.auditsystemevents.update": {

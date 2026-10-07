@@ -243,6 +243,8 @@ XData UrlMap [ XMLNamespace = "http://www.intersystems.com/urlmap" ]
   <Route Url="/encryption-key-file" Method="POST" Call="EncryptionKeyFileCreate"/>
   <Route Url="/encryption-startup/form" Method="GET" Call="EncryptionStartupFormRead"/>
   <Route Url="/encryption-startup" Method="PUT" Call="EncryptionStartupUpdate"/>
+  <Route Url="/authentication-options/form" Method="GET" Call="AuthOptionsFormRead"/>
+  <Route Url="/authentication-options" Method="PUT" Call="AuthOptionsUpdate"/>
   <Route Url="/explorer/docdb" Method="POST" Call="ExplorerDocDbCreate"/>
 </Routes>
 }
@@ -1819,6 +1821,21 @@ ClassMethod EncryptionStartupUpdate() As %Status
 ClassMethod ExplorerDocDbCreate() As %Status
 {
     Quit ##class(OcuPilot.Area.Explorer.DocDbSave).HandleCreate()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /authentication-options/form</code> (Story 18.8): the
+/// authentication options' form read, delegating to <class>OcuPilot.Area.Security.AuthOptionsRules</class>.
+/// It precedes <code>/authentication-options</code>.</p>
+ClassMethod AuthOptionsFormRead() As %Status
+{
+    Quit ##class(OcuPilot.Area.Security.AuthOptionsRules).HandleForm()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>PUT /authentication-options</code> (Story 18.8): the
+/// authentication options' Save, resolved through the one tool the agent's confirm uses (AD-55).</p>
+ClassMethod AuthOptionsUpdate() As %Status
+{
+    Quit ##class(OcuPilot.Area.Security.AuthOptionsSave).HandleUpdate()
 }
 
 }

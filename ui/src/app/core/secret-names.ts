@@ -26,7 +26,7 @@ export const CREDENTIAL_SUFFIXES: readonly string[] = [
 export const CREDENTIAL_EXACT_NAMES: readonly string[] = ['key', 'credentialname'];
 
 /** The names the pattern matches that are not credentials, lower-cased. */
-export const CREDENTIAL_EXCEPTIONS: readonly string[] = ['returnrefreshtoken'];
+export const CREDENTIAL_EXCEPTIONS: readonly string[] = ['returnrefreshtoken', 'authelogintoken'];
 
 /**
  * Whether `name` matches the credential pattern, case-insensitively: it ends in one of the

@@ -198,6 +198,7 @@ XData Coverage
 <screen name="DatabaseEncryption" class="OcuPilot.Test.EncryptionKeyDescriptor" method="TestTheTwoScreensAreDeclaredAsTheSpecPlacesThem" corpus="Story 18.22's two encryption key screens are asserted together in one loop"/>
 <screen name="DataElementEncryption" class="OcuPilot.Test.EncryptionKeyDescriptor" method="TestTheTwoScreensAreDeclaredAsTheSpecPlacesThem" corpus="Story 18.22's two encryption key screens are asserted together in one loop"/>
 <screen name="EncryptionStartup" class="OcuPilot.Test.EncryptionStartupDescriptor" method="TestTheScreenIsDeclaredAsTheSpecPlacesIt"/>
+<screen name="AuthOptions" class="OcuPilot.Test.AuthOptionsDescriptor" method="TestTheScreenIsDeclaredAsTheSpecPlacesIt"/>
 <screen name="SqlActivityList" class="OcuPilot.Test.SqlActivityDescriptor" method="TestTheDescriptorShape"/>
 <tool name="permissions.users.create" class="OcuPilot.Test.UserCreate" method="TestTheSchemaCarriesNoSecretAndThePermittedSetIsTheSets"/>
 <tool name="permissions.roles.create" class="OcuPilot.Test.RoleCreate" method="TestTheSchemaCarriesNoEscalationOnlyAndThePermittedSetIsTheSets"/>
@@ -369,6 +370,8 @@ XData Coverage
 <tool name="security.dataelementencryption.activate" class="OcuPilot.Test.EncryptionKeyWrite" method="TestDataElementKeysAreActivatedAndDeactivated" corpus="an activation and its deactivation are asserted together on both callers"/>
 <tool name="security.dataelementencryption.deactivate" class="OcuPilot.Test.EncryptionKeyWrite" method="TestDataElementKeysAreActivatedAndDeactivated" corpus="an activation and its deactivation are asserted together on both callers"/>
 <tool name="security.encryptionstartup.update" class="OcuPilot.Test.EncryptionStartupWrite" method="TestAStartModeChangeIsOnePutOnBothCallers"/>
+<tool name="security.authoptions.update" class="OcuPilot.Test.AuthOptionsWrite" method="TestAnOrdinaryChangeIsOnePutLessAnUnchangedKerberosOnBothCallers"/>
+<tool name="security.authoptions.smtppassword" class="OcuPilot.Test.AuthOptionsWrite" method="TestTheSmtpPasswordIsWrittenClearedAndReachesNoRecord"/>
 <member name="state-protection" class="OcuPilot.Test.State" method="TestDeniedUserCannotReachAnyStateClass"/>
 <member name="audit-round-trip-record" class="OcuPilot.Test.AuditRecord" method="TestACreateRecordsTheFieldsItCreatedAtTheirDefaults"/>
 <member name="audit-round-trip-verbs" class="OcuPilot.Test.AuditVerbs" method="TestADeleteIsRecordedWithWhatBecameOfItsCredentialEntry"/>

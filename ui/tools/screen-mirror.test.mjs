@@ -56,6 +56,7 @@ import {
 } from './screen-mirror.mjs';
 import { loadStrings } from './strings.mjs';
 import { CREDENTIAL_RE } from './field-lists.mjs';
+import { isCredentialName } from './credential-pattern.mjs';
 
 const toolsDir = dirname(fileURLToPath(import.meta.url));
 
@@ -270,6 +271,8 @@ test('AD-13: the id-rule table is read from the kernel and is what the mirror em
     ['encryption-startup', 'singleton'],
     // Story 19.17: a document database's name resolves without case.
     ['docdb-database', 'foldcase'],
+    // Story 18.8: the instance's authentication options are one object.
+    ['authentication-options', 'singleton'],
   ]);
   assert.deepEqual(parseIdRuleNames(text), ['foldcase-striptrailingslash', 'foldcase', 'singleton', 'integer', 'foldcase-firstpart', 'integerset', 'directoryset', 'documentset']);
   // `null`, never `[]`, when the parameter is missing: an absent table and a table that declares
@@ -1538,7 +1541,7 @@ test('AD-35: no production descriptor names a read, filter, sort, column or cont
       ...(context?.fields ?? []).map((field) => ['context.fields', field]),
     ];
     for (const [where, field] of named) {
-      if (typeof field === 'string' && CREDENTIAL_RE.test(field)) offenders.push(`${screen.file} ${where}: ${field}`);
+      if (typeof field === 'string' && isCredentialName(field)) offenders.push(`${screen.file} ${where}: ${field}`);
     }
   }
   assert.ok(checked > 0, `at least one shipped descriptor declares a read: ${checked}`);

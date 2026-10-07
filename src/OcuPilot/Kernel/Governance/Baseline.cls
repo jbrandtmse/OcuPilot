@@ -91,6 +91,8 @@ XData Keys [ MimeType = application/json ]
   "security.audituserevents.delete": true,
   "security.audituserevents.reset": true,
   "security.audituserevents.update": true,
+  "security.authoptions.smtppassword": true,
+  "security.authoptions.update": true,
   "security.databaseencryption.activate": false,
   "security.databaseencryption.deactivate": false,
   "security.dataelementencryption.activate": false,

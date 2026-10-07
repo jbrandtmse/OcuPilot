@@ -5933,6 +5933,75 @@ export const STRINGS = {
   explorerSqlAgentCodeReason: 'A statement that creates a function, method, procedure, query, trigger or aggregate, or a COMPUTECODE field, carries code, which a person writes and runs on SQL query.',
   /** EXPERIENCE.md:604 */
   explorerSqlNotPreparedReason: 'The instance did not prepare this statement, so it is not proposed; its SQLCODE says why.',
+  /** EXPERIENCE.md:364 */
+  authOptionsLabel: 'Authentication options',
+  /** EXPERIENCE.md:364 */
+  authOptionsLoginCookiesLegend: 'Login cookies',
+  /** EXPERIENCE.md:364 */
+  authOptionsUnauthenticated: 'Allow Unauthenticated access',
+  /** EXPERIENCE.md:364 */
+  authOptionsOs: 'Allow O/S authentication',
+  /** EXPERIENCE.md:364 */
+  authOptionsOsDelegated: 'Allow O/S authentication with Delegated authorization',
+  /** EXPERIENCE.md:364 */
+  authOptionsOsLdap: 'Allow O/S authentication with LDAP authorization',
+  /** EXPERIENCE.md:364 */
+  authOptionsPassword: 'Allow Password authentication',
+  /** EXPERIENCE.md:364 */
+  authOptionsDelegated: 'Allow Delegated authentication',
+  /** EXPERIENCE.md:364 */
+  authOptionsAlwaysTryDelegated: 'Always try Delegated authentication',
+  /** EXPERIENCE.md:364 */
+  authOptionsKerberos: 'Allow Kerberos authentication',
+  /** EXPERIENCE.md:364 */
+  authOptionsLdap: 'Allow LDAP authentication',
+  /** EXPERIENCE.md:364 */
+  authOptionsLdapCache: 'Allow LDAP cache credentials authentication',
+  /** EXPERIENCE.md:364 */
+  authOptionsOAuth2: 'Allow OAuth2 authentication',
+  /** EXPERIENCE.md:364 */
+  authOptionsLoginToken: 'Allow creation of Login Cookies',
+  /** EXPERIENCE.md:364 */
+  authOptionsCookieTimeout: 'Login Cookie expire time (seconds)',
+  /** EXPERIENCE.md:364 */
+  authOptionsTwoFactorPw: 'Allow Two-factor Time-based One-time Password authentication',
+  /** EXPERIENCE.md:364 */
+  authOptionsTwoFactorSms: 'Allow Two-factor SMS text authentication',
+  /** EXPERIENCE.md:364 */
+  authOptionsTwoFactorTimeout: 'Two-factor timeout (seconds)',
+  /** EXPERIENCE.md:364 */
+  authOptionsSmtpServer: 'DNS name of SMTP server',
+  /** EXPERIENCE.md:364 */
+  authOptionsTwoFactorFrom: 'From (address)',
+  /** EXPERIENCE.md:364 */
+  authOptionsSmtpUsername: 'SMTP username',
+  /** EXPERIENCE.md:364 */
+  authOptionsSmtpPassword: 'SMTP password',
+  /** EXPERIENCE.md:364 */
+  authOptionsSmtpPasswordHint: 'Leave empty to keep the stored password.',
+  /** EXPERIENCE.md:364 */
+  authOptionsSmtpPasswordClear: 'Clear the stored SMTP password',
+  /** EXPERIENCE.md:364 */
+  authOptionsJwtIssuer: 'JWT issuer',
+  /** EXPERIENCE.md:364 */
+  authOptionsJwtSigAlg: 'JWT signature algorithm',
+  /** EXPERIENCE.md:364 */
+  authOptionsRefusedAction: 'change the authentication options',
+  /** EXPERIENCE.md:364 */
+  authOptionsRefusalSignIn: 
+    'One of OcuPilot\'s own web applications, or the web gateway that serves them, signs in only through this method. Turning it off for the whole instance would cut off every user, including you.',
+  /** EXPERIENCE.md:364 */
+  authOptionsRefusalStart: 
+    'OcuPilot\'s own container signs in through the operating system at every start, so turning this off would leave the instance unable to start. If this instance does not run in OcuPilot\'s container, change it on the classic Authentication page.',
+  /** EXPERIENCE.md:364 */
+  authOptionsSignOutConsequence: 
+    'Every session signed in with a token ends, every OcuPilot tab included, and each must sign in again. A new signature algorithm also replaces the instance\'s signing keys.',
+  /** EXPERIENCE.md:364 */
+  authOptionsPrompt1: 'What do the authentication options on this instance control?',
+  /** EXPERIENCE.md:364 */
+  authOptionsPrompt2: 'Which authentication methods does OcuPilot\'s own sign-in rely on?',
+  /** EXPERIENCE.md:364 */
+  authOptionsPrompt3: 'What happens to signed-in users when the JWT signature algorithm changes?',
 } as const;
 
 /**

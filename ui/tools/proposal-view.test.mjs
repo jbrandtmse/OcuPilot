@@ -81,6 +81,7 @@ const {
   CONSEQUENCE_ENCRYPTIONSTARTUPKMIP,
   CONSEQUENCE_ENCRYPTIONSTARTUPRESTART,
   CONSEQUENCE_ENCRYPTIONSTARTUPJOURNAL,
+  CONSEQUENCE_WEBAUTHSIGNOUT,
   CONSEQUENCE_AUDITENCRYPTIONCHANGE,
   COUNTDOWN_PLACEHOLDER,
   COUNTDOWN_WARNING_MS,
@@ -1040,4 +1041,17 @@ test('Story 18.24: the wallet key replaces state their consequence, and every ke
   for (const [, name, sentence] of reasons) {
     assert.ok(published.has(sentence), `${name} is a published string: ${sentence}`);
   }
+});
+
+// Story 18.8: a change to the JWT issuer or signature algorithm states the sign-out consequence, under the
+// code its tool and the kernel declare.
+//
+// Mutation (Rule 19): delete the `CONSEQUENCE_WEBAUTHSIGNOUT` line from `consequenceSentence` -> this goes
+// red on ''.
+test('Story 18.8: an authentication options write that changes a token setting states its consequence on the card', () => {
+  assert.equal(consequenceSentence(CONSEQUENCE_WEBAUTHSIGNOUT), STRINGS.authOptionsSignOutConsequence, 'the sign-out reads its published sentence');
+  const errors = readFileSync(join(uiRoot, '..', 'src', 'OcuPilot', 'Api', 'WebAuthError.cls'), 'utf8');
+  assert.equal(/Parameter SIGNOUT = "([^"]+)";/.exec(errors)?.[1], CONSEQUENCE_WEBAUTHSIGNOUT, 'the error class declares the code the card reads');
+  const prohibited = readFileSync(join(uiRoot, '..', 'src', 'OcuPilot', 'Kernel', 'Proposal', 'Prohibited.cls'), 'utf8');
+  assert.equal(/Parameter EFFECTTOKENSIGNOUT = "([^"]+)";/.exec(prohibited)?.[1], CONSEQUENCE_WEBAUTHSIGNOUT, 'the kernel declares the effect the card reads');
 });

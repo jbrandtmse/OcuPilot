@@ -52,6 +52,7 @@ import { EncryptionKeyFileStore } from './areas/security/encryption-key-file.sto
 import { EncryptionKeyFileForm } from './areas/security/encryption-key-file-form.store';
 import { EncryptionKeysStore } from './areas/security/encryption-keys.store';
 import { EncryptionStartupForm } from './areas/security/encryption-startup.store';
+import { AuthOptionsForm } from './areas/security/auth-options.store';
 import { MappingActions } from './areas/os-management/mapping-actions';
 import { MappingForm } from './areas/os-management/mapping-form.store';
 import { OAuthActions } from './areas/security/oauth-actions';
@@ -364,6 +365,8 @@ export class App {
   private readonly encryptionKeysStore = inject(EncryptionKeysStore);
   // Encryption startup settings' form store (Story 18.23).
   private readonly encryptionStartupForm = inject(EncryptionStartupForm);
+  // Authentication options' form store (Story 18.8).
+  private readonly authOptionsForm = inject(AuthOptionsForm);
   // The three mapping lists' declared Create, the same way (`areas/os-management/mapping-actions.ts`).
   private readonly mappingActions = inject(MappingActions);
   private readonly mappingForm = inject(MappingForm);
@@ -699,6 +702,8 @@ export class App {
       this.encryptionKeysStore.reset();
       // The encryption startup form holds settings THIS principal was changing and has not saved.
       this.encryptionStartupForm.reset();
+      // The authentication options form holds options THIS principal was changing and has not saved.
+      this.authOptionsForm.reset();
       // The mapping editor holds a mapping THIS principal was creating or editing and has not saved.
       this.mappingForm.reset();
       // The SSL/TLS form holds a private key password THIS principal typed and has not saved (AD-35).

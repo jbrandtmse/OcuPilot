@@ -8862,6 +8862,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Measured on ocupilot-ci: PUT LDAPAttributes [] keeps the stored list, [""] answers 500; the classic page's own save clears the list; 3822a50b refuses the edit (LDAP.ATTRIBUTES.LASTONE) meanwhile
 - 2026-10-01T11:08:27Z status=routed owner=range-end-cleanup by=harvest note=priority p4 (orchestrator 2026-10-01): AD-27 named case, Modify in %SYS, then lift the LASTONE refusal
 - 2026-10-05T18:41:40Z status=routed owner=18-8-superservers-authentication-options-and-managed-file-transfe by=merge_gate note=owner-approved burn-down scope 2026-10-05: feature-sized, re-routed from the cleanup queue to the story carrying the LDAP view
+- 2026-10-07T03:44:54Z owner=18-27-the-operator-s-read-only-ldap-view by=merge_gate note=18.8 split for size (orchestrator merge gate 2026-10-07, Rule 5): the LDAP editor's last-attribute write moves with the read-only LDAP view to Story 18.27
 
 ### DW-1901: CI's instance suite needs a fourth shard: each of the three instance legs now runs 38-46 min and wall time rises with every story
 - source: OCU-1-epic16 CI run 36862943319 (16.26 close) | severity: med | fix-risk: low | footprint: out-of-footprint
@@ -9508,6 +9509,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-04T07:59:42Z status=routed owner=burndown by=merge_gate note=decided 2026-10-04: amend AD-2 to leave the mapped #1454 (SSL field refusal) unlogged, scoped by code, as 18.6's 400; built at Epic 18's close burn-down
 - 2026-10-04T14:42:18Z occurrence=18-21-ecp-settings-and-application-servers note=EcpSslConnectionWrite's DW-2006 leg and EcpDataServerWrite's SSL leg raise the monitor through the logged #1454 (harvested from 18.21's deferred list)
 - 2026-10-05T00:19:27Z occurrence=18-7-encryption note=18.7 logs #5022 on each no-key read, #1219/#1204 and #5001 credentials refusals; their async alert-throttle line can land in a no-log window
+- 2026-10-07T08:23:30Z occurrence=18-25-superservers note=add Security.Superserver PUT #5001 (port already in use; mapped to a field refusal, still logged severity 2) to the code-scoped unlogged list
 
 ### DW-2008: The agent's confirm of an ECP data server create at the limit carries ECP.SERVER.LIMIT's generic sentence, not EcpError.Limit's number
 - source: spec-18-20-ecp-data-servers.md (code review) | severity: low | fix-risk: med | footprint: out-of-footprint
@@ -10191,6 +10193,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-8-superservers-authentication-options-and-managed-file-transfe.md | severity: low | fix-risk: high | footprint: out-of-footprint
 - evidence: Story 18.8 plan on ocupilot-ci 2026-10-07: unchanged PUT moved AutheEnabled 33556471 to 33556479; scratchpad epic-18-d8/p188/measure-out.txt
 - 2026-10-07T03:21:35Z status=decision-pending owner=burndown by=spec_gate note=human=decide whether to report it to InterSystems, with the held vendor-report list; owner hold 2026-10-05: not reported; Part A omits an unchanged AutheKB (proposed AD-4 exception)
+- 2026-10-07T11:07:09Z status=decision-pending owner=burndown by=owner note=owner hold 2026-10-05: IRIS defect candidates stay on hold (restored; a union merge moved the 03:44:07Z trailer under DW-2148)
 
 ### DW-2140: The API administrative floor refuses interoperability-only accounts (%EnsRole_Operator, _Administrator, _Monitor) before any route runs, so Stage 4 screens cannot reach the classic Interoperability audience
 - source: spec-20-1-the-sign-in-hand-off-and-namespace-category-gating.md | severity: med | fix-risk: med | footprint: in-epic
@@ -10210,3 +10213,42 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Story 20.1 made the rail 9-11 items and Home 7-9 tiles by namespace; an in-place edit touches a file Epic 18 is changing, and home.page.ts quotes the tile row as an anchor
 - 2026-10-07T08:56:04Z status=routed owner=20-2-productions-listed-and-controlled by=cr note=correct both rows in place once Epic 18 has merged, with home.page.ts's quoted anchors
 - 2026-10-07T10:40:19Z status=routed owner=20-2-productions-listed-and-controlled by=cr note=also rail.ts:49 "the nine areas" and :56 "eight tab stops" (CI rework re-review)
+- 2026-10-07T03:44:07Z status=decision-pending owner=burndown by=owner note=owner hold 2026-10-05 (relayed by the Planner): IRIS defect candidates stay on hold, no report to InterSystems for now
+- 2026-10-07T11:07:09Z status=routed owner=20-2-productions-listed-and-controlled by=merge_repair note=restored: the 03:44:07Z trailer above is DW-2139's, moved here by a union merge
+
+### DW-2142: OcuPilot's audit surfaces would show the SMTP password the vendor writes in clear into %System/%Security/SystemChange's New value line when CHANGESMTPPWD runs: AuditPort.VENDORSECRETS has no mask for it (AD-35)
+- source: spec-18-8-superservers-authentication-options-and-managed-file-transfe.md | severity: med | fix-risk: low | footprint: in-footprint
+- evidence: Story 18.8 Task 0 on ocupilot-ci 2026-10-07: CHANGESMTPPWD with a probe value wrote it in clear to the SystemChange row; AuditPort.VENDORSECRETS has no entry
+- 2026-10-07T07:03:16Z status=open owner=18-8-superservers-authentication-options-and-managed-file-transfe by=harvest note=in-story: the story introduced the tool that writes it; the review patches the mask or re-opens
+- 2026-10-07T07:45:20Z status=resolved-by:18-8-superservers-authentication-options-and-managed-file-transfe by=cr note=AuditPort.VENDORSYSTEMSECRETS masks SMTP Password on Modify System rows (measured row shape); AuthOptionsDescriptor leg, mutation run 559
+
+### DW-2143: Authentication options: the form read's failing Security.WebAuth GET (HandleForm's lock read rendering an internal error) and the store's non-ok open have no test arming the failure
+- source: spec-18-8-superservers-authentication-options-and-managed-file-transfe.md | severity: low | fix-risk: low | footprint: in-footprint
+- evidence: spec-18-8 deferred list; the server arm refuses regardless, so only the drawn locks are unpinned
+- 2026-10-07T07:03:16Z status=open owner=18-8-superservers-authentication-options-and-managed-file-transfe by=harvest note=in-story LOW: fix-pack or close with a probe at review
+- 2026-10-07T07:45:20Z status=resolved-by:18-8-superservers-authentication-options-and-managed-file-transfe by=cr note=SignInLocks failed-read legs (AuthOptionsDescriptor, mutation run 559) and a store form-fault leg (mutation red)
+
+### DW-2144: IRIS defect candidate: the vendor's %System/%Security/SystemChange audit event writes the SMTP password in clear in its New value line when the admin API's Security.WebAuth CHANGESMTPPWD runs
+- source: spec-18-8-superservers-authentication-options-and-managed-file-transfe.md | severity: low | fix-risk: high | footprint: out-of-footprint
+- evidence: Story 18.8 Task 0 on ocupilot-ci 2026-10-07: probe value visible in the audit row
+- 2026-10-07T07:03:17Z status=decision-pending owner=burndown by=harvest note=human=decide whether to report it to InterSystems, with the held vendor-report list; owner hold 2026-10-05: not reported
+
+### DW-2145: Authentication options: with two-factor SMS off the form hides the SMTP password, so a stored one cannot be cleared from OcuPilot; the classic Save clears it whenever SMS is off
+- source: spec-18-8-superservers-authentication-options-and-managed-file-transfe.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: %CSP.UI.Portal.Authentication Save sets SMTPPassword to empty when AutheTwoFactorSMS is off (irissys :365); OcuPilot's form draws the password and its clear only while SMS is on, and the agent's card requires a value
+- 2026-10-07T07:45:20Z status=wontfix-accepted owner=18-8-superservers-authentication-options-and-managed-file-transfe by=cr note=reopen_if=an operator reports a stored SMTP password they could not clear from OcuPilot with SMS off
+
+### DW-2146: IRIS defect candidate: every admin API Security.Superserver validation refusal (SSL, ECP/Mirror/Sharding off the default, SNMP on Linux, bad values, a port in use) answers HTTP 500 with an empty body
+- source: spec-18-25-superservers.md | severity: low | fix-risk: high | footprint: out-of-footprint
+- evidence: Story 18.25 plan on ocupilot-ci 2026-10-07: probe superservers on ports 1985-1988 and 2188
+- 2026-10-07T08:23:30Z status=decision-pending owner=burndown by=spec_gate note=human=decide whether to report it to InterSystems, with the held vendor-report list; owner hold 2026-10-05: not reported
+
+### DW-2147: IRIS defect candidate: the admin API's Security.Superserver PUT stores an SSLConfig naming no SSL/TLS configuration while SSLSupportLevel is 0
+- source: spec-18-25-superservers.md | severity: low | fix-risk: high | footprint: out-of-footprint
+- evidence: Story 18.25 plan on ocupilot-ci 2026-10-07
+- 2026-10-07T08:23:30Z status=decision-pending owner=burndown by=spec_gate note=human=decide whether to report it to InterSystems, with the held vendor-report list; owner hold 2026-10-05: not reported
+
+### DW-2149: Five test probes (EcpProbe, EncryptionProbe, JournalProbe, LicenseProbe, RemoteDatabaseProbe) include $SYSTEM.Monitor.State() in their before/after Snapshot; an earlier class's severity-2 log line raises it 20-40 s later, which would redden an unrelated class's after-check (inference)
+- source: spec-18-8-superservers-authentication-options-and-managed-file-transfe.md | severity: med | fix-risk: low | footprint: in-footprint
+- evidence: Story 18.8 rework 1 re-review: AuthOptionsProbe.Facts had the same field and reddened CI run 37596828031 instance shard 1/5; the five siblings not checked
+- 2026-10-07T09:30:06Z status=routed owner=burndown by=cr note=remove the monitor value from each Snapshot, or prove it cannot move mid-class; verify on ocupilot-ci by raising the monitor mid-run

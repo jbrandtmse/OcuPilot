@@ -7231,18 +7231,17 @@ So that key management is not a reason to keep the classic portal open. [AMENDED
 
 As an operator,
 I want the remaining security configuration pages,
-So that the Security area reaches parity.
+So that the Security area reaches parity. [AMENDED 2026-10-07, orchestrator merge gate: split for size, Rule 5 -- 18.8 keeps the authentication and web-session options and the sign-in protection; superservers moved to Story 18.25, MFT connections to Story 18.26, and the read-only LDAP view with DW-1896 to Story 18.27]
 
 **Acceptance Criteria:**
 
-- **Given** superservers, the authentication and web-session options, MFT connections, and the read-only LDAP view
+- **Given** the authentication and web-session options [AMENDED 2026-10-07, orchestrator merge gate: split for size, Rule 5]
 - **When** each runs
 - **Then** it round-trips through the admin API.
 
 - **Given** the authentication options touch the **JWT issuer OcuPilot itself depends on**
 - **When** a change is proposed
 - **Then** the card states that consequence, and a change that would break OcuPilot's own sign-in is refused on the instance under the same rule that protects the application and the service behind it.
-- DW-1896: The LDAP editor cannot remove a configuration's last retrieved attribute through the admin API (its Security.LDAP PUT ignores LDAPAttributes []); an AD-27 named case writing it via Security.LDAPConfigs.Modify in %SYS would let it (ledger; routed by merge_gate 2026-10-06)
 
 ### Story 18.9: SQL privileges and the permission extras
 
@@ -7553,6 +7552,48 @@ So that key management is not a reason to keep the classic portal open. [AMENDED
 - **Then** it is write-only and returned by no read, like every other secret.
 
 - DW-1555: Creating and editing RSA and symmetric-key wallet secrets (the key-material design); Story 8.6 ships key-value secrets and shows the other types read-only (ledger; routed by merge_gate 2026-09-29)
+
+### Story 18.25: Superservers
+
+As an operator,
+I want to list, create, edit and delete superservers,
+So that the Security area reaches parity for them. [AMENDED 2026-10-07, orchestrator merge gate: split for size, Rule 5: split from 18.8; outlined as Part B of `spec-18-8-superservers-authentication-options-and-managed-file-transfe.md`; after Story 18.8, whose serving-path reading it reuses]
+
+**Acceptance Criteria:**
+
+- **Given** the superservers
+- **When** each is listed, created, edited or deleted
+- **Then** it round-trips through the admin API.
+
+- **Given** the superserver the Web Gateway connects through
+- **When** a change would disable it, delete it or stop it serving the gateway
+- **Then** the change is refused on the instance under the same rule that protects the application and the service behind it.
+
+### Story 18.26: Managed file transfer connections
+
+As an operator,
+I want to list, create, edit and delete managed file transfer connections and revoke their tokens,
+So that the Security area reaches parity for them. [AMENDED 2026-10-07, orchestrator merge gate: split for size, Rule 5: split from 18.8; outlined as Part C of `spec-18-8-superservers-authentication-options-and-managed-file-transfe.md`; independent]
+
+**Acceptance Criteria:**
+
+- **Given** the managed file transfer connections
+- **When** each is listed, created, edited, deleted or has its token revoked
+- **Then** it round-trips through the admin API, and the OAuth 2.0 client configuration a connection names is handled as the story's plan decides.
+
+### Story 18.27: The operator's read-only LDAP view
+
+As an operator holding the operations resource,
+I want to read the LDAP configurations without the security resource,
+So that the classic portal's read-only LDAP pages are not a reason to keep it open. [AMENDED 2026-10-07, orchestrator merge gate: split for size, Rule 5: split from 18.8; outlined as Part D of `spec-18-8-superservers-authentication-options-and-managed-file-transfe.md`; independent]
+
+**Acceptance Criteria:**
+
+- **Given** an operator who holds `%Admin_Operate` but not `%Admin_Secure`
+- **When** they open the LDAP configurations list and a configuration's detail
+- **Then** each reads through the admin API, and every write is refused.
+
+- DW-1896: The LDAP editor cannot remove a configuration's last retrieved attribute through the admin API (its Security.LDAP PUT ignores LDAPAttributes []); an AD-27 named case writing it via Security.LDAPConfigs.Modify in %SYS would let it (ledger; routed by merge_gate 2026-10-06)
 
 ## Epic 19: Stage 3 - System Explorer over the Atelier API
 

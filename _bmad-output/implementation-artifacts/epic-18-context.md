@@ -4,7 +4,7 @@
 
 ## Goal
 
-This epic brings OcuPilot to System Administration and System Operation parity on the experimental `/api/admin` v2 service: namespaces and mappings, databases and their disk operations, journals, licensing and ECP, encryption, superservers and authentication options, MFT, SQL privileges, the web-application and monitoring extras, and installing into a chosen namespace. Each screen arrives with a read tool and confirmed single-write tools built from one descriptor, so the agent keeps pace with the portal. Stage 2 adds about twenty screens on top of an experimental API, so the stories rely on measured payloads, containment and self-protection. Still to do: the Security, Permissions, web-application and monitoring extras (18.8 to 18.11), the agent's growth (18.12), multi-namespace install (18.13) and the burn-down at the epic's close.
+This epic brings OcuPilot to System Administration and System Operation parity on the experimental `/api/admin` v2 service: namespaces and mappings, databases and their disk operations, journals, licensing and ECP, encryption, superservers and authentication options, MFT, SQL privileges, the web-application and monitoring extras, and installing into a chosen namespace. Each screen arrives with a read tool and confirmed single-write tools built from one descriptor, so the agent keeps pace with the portal. Stage 2 adds about twenty screens on top of an experimental API, so the stories rely on measured payloads, containment and self-protection. Still to do: superservers (18.25), MFT connections (18.26), the operator's read-only LDAP view (18.27), the Permissions, web-application and monitoring extras (18.9 to 18.11), the agent's growth (18.12), multi-namespace install (18.13) and the burn-down (18.28).
 
 ## Stories
 
@@ -15,7 +15,7 @@ This epic brings OcuPilot to System Administration and System Operation parity o
 - Story 18.5: Journals
 - Story 18.6: Licensing and ECP
 - Story 18.7: Encryption
-- Story 18.8: Superservers, authentication options and managed file transfer
+- Story 18.8: Authentication and web-session options (split 2026-10-07; superservers, MFT and the read-only LDAP view moved out)
 - Story 18.9: SQL privileges and the permission extras
 - Story 18.10: Web application extras and spec-based REST services
 - Story 18.11: Monitoring extras and the live log tail
@@ -32,6 +32,10 @@ This epic brings OcuPilot to System Administration and System Operation parity o
 - Story 18.22: Database and data-element encryption keys
 - Story 18.23: Encryption startup settings
 - Story 18.24: RSA and symmetric-key wallet secrets
+- Story 18.25: Superservers
+- Story 18.26: Managed file transfer connections
+- Story 18.27: The operator's read-only LDAP view
+- Story 18.28: The burn-down at the epic's close
 
 ## Requirements & Constraints
 
@@ -40,15 +44,15 @@ This epic brings OcuPilot to System Administration and System Operation parity o
 - **Observe before building.** A Task 0 on the slot's throwaway measures each route's payload, effects, required pairs (in combination) and audit events before any form or tool is built. It restores exactly the state it found, and it halts on any contradiction. Take privileges from the instance, not from the specification. A probe prefix must neither match another suite's prefix nor be matched by one. Build on the pinned 2026.2 image.
 - **Every instance here runs a Community license, CI included.** No test activates a license or encryption key, opens an ECP connection, or leaves anything that only a restart clears; success paths like these run through a test seam.
 - **Secrets and key material are write-only.** No read returns them, and they are never logged, kept in a proposal or put in a queued body. The vendor generates encryption keys, and the agent never holds key material.
-- **Environment.** The epic resumed on slot A: the dev instance is `ocupilot` and the throwaway is `ocupilot-ci` (52776/1975). Local throwaway data now lives under `~/.ocupilot-throwaways` rather than `/tmp`. Run one test class per call, never two in flight.
-- **Budgets.** `angular.json`'s `maximumWarning` is 3012kB, re-based by 18.24 to its measured 3,011,503-byte initial total. When a story crosses the limit, it re-bases the value and the literal in `angular-json.test.mjs` to the measured total (DW-1166). `maximumError` is 4000kB; stop and ask above 3800kB. The bound in `strings.test.mjs` is 2800; 2705 were used before 18.24 added its wallet key strings, so recount the headroom before a large addition.
+- **Environment.** Epic 18 runs on slot A: the dev instance is `ocupilot` and the throwaway is `ocupilot-ci` (52776/1975). Local throwaway data lives under `~/.ocupilot-throwaways`. Run one test class per call, never two in flight.
+- **Budgets.** `angular.json`'s `maximumWarning` is 3040kB, re-based by 18.8 to its measured 3,039,243-byte initial total. When a story crosses the limit, it re-bases the value and the literal in `angular-json.test.mjs` to the measured total (DW-1166). `maximumError` is 4000kB; stop and ask above 3800kB. The bound in `strings.test.mjs` is 2800; recount the headroom before a large addition.
 - **Specification mismatches to design for.** 18.9: SQL-privilege rows name `Object` and `Action`, so a revoke is built from those; a role owner's `AdminOption` is the string `"0"` or `"1"`, so compare the value. 18.11: `BusyProcesses` always has ten rows; drop the empty ones.
 - **Routed ledger items** (each is addressed, or declined with a reason):
-  - 18.8: DW-1896, the LDAP editor's last retrieved attribute, which needs an AD-27 named case through `Security.LDAPConfigs.Modify` in `%SYS`.
+  - 18.27: DW-1896, the LDAP editor's last retrieved attribute, which needs an AD-27 named case through `Security.LDAPConfigs.Modify` in `%SYS`.
   - 18.9: DW-236, DW-1662.
   - 18.12: DW-1756.
   - 18.13: DW-219, DW-423 (install-stamp retention), DW-1333 (the IPM archive carries no version floor).
-  - Burn-down at the epic's close, decided:
+  - 18.28, the burn-down, decided:
     - DW-1966: refuse an existing database's directory as a journal directory (AD-21).
     - DW-1979: Newest first draws the newest records first.
     - DW-1981: the journal record browser's inputs get a `maxlength`.
@@ -58,7 +62,7 @@ This epic brings OcuPilot to System Administration and System Operation parity o
     - DW-2087: a first database key activation gets the destructive treatment, its consequence naming the `DBEncStartMode` change, and its key default follows 18.6's license activation. The only reset is 18.23's `Settings` `PUT`.
     - DW-2100: measure first, then decide whether AD-10's `STARTUPINTERACTIVE` arm widens.
     - DW-2126 (product call): `WALLETKEY.REPLACE.RSA` and the card should name the loss of a stored certificate when an RSA key is regenerated (an EXPERIENCE.md amendment).
-    - DW-2124, DW-2125, DW-2137: whether to report these vendor defects to InterSystems. They are held with the vendor-report list (owner hold 2026-10-05: not reported), and OcuPilot already works around each one.
+    - DW-2124, DW-2125, DW-2137, DW-2139: whether to report these vendor defects to InterSystems. They are held with the vendor-report list (owner hold 2026-10-05: not reported), and OcuPilot already works around each one.
   - Any screen-adding story extends the one literal per area in `ui/tools/navigation.test.mjs` and takes its labels from `ui/browser/side-bar-spec.mjs` (DW-1774).
 
 ## Technical Decisions
@@ -78,8 +82,11 @@ This epic brings OcuPilot to System Administration and System Operation parity o
 - **Text and self-protection.** OcuPilot answers in its own sentences, and vendor text is logged, never sent (AD-39). New error codes go in an area error class, because `Api/Error.cls` is near the compiler's parameter limit and gains only dispatch lines. AD-10's predicates live once in the kernel, are evaluated inside the confirm's atomic transition, and are each pinned by a test. A grant outside OcuPilot's own applications, roles and resources is permitted at the strongest confirmation.
 - **Encryption, for the burn-down.** `Port/EncryptionPort` builds every `Security.Encryption.*` body and resolves key files through `PathPort`; its rules are in `Area/Security/EncryptionRules.cls`. 18.23's `Settings` merge sends `AuditEncrypt` exactly as the fresh read holds it unless that value was changed. Interactive key activation is refused while the audit log, IRISSECURITY or IRISTEMP is encrypted (`PROHIBITED.STARTUPINTERACTIVE`).
 - **Wallet keys (18.24, done).** Four tools on `WalletPort`: RSA and symmetric create (enabled) and replace (governance key `false`). The symmetric replace is unadvertised (AD-53). `AdminPort` refuses `CertificateFile`, `PublicKeyFile` and `PrivateKeyFile` on any `Wallet.Secret` `PUT` (AD-21). Reads and fingerprints carry key metadata only, never a value, public halves included (AD-27).
+- **Authentication options (18.8, done).** `authentication-options` is a singleton (AD-13), and its two tools need only Security's set (AD-8). The `Security.WebAuth` merge omits an unchanged `AutheKB`, because re-sending it sets all seven Kerberos bits (AD-4). AD-10 refuses a change that leaves one of OcuPilot's own web applications or `%Service_WebGateway` with no authentication method (`PROHIBITED.OCUPILOTSIGNIN`) and refuses turning O/S authentication off (`PROHIBITED.OCUPILOTSTART`, because the container's start hook signs in through `iris session`). A `JWTIssuer` or `JWTSigAlg` change is permitted at the strongest confirmation. `CHANGESMTPPWD` clears on `""` under `CLEARABLESECRETS` (AD-56), the audit read masks the SMTP password the vendor writes into its "Modify System" row (AD-35), and `AutheLoginToken` is a named exception to the secret-name matcher.
 - **Later stories.**
-  - 18.8: AD-10 refuses disabling `%Service_WebGateway` or the superserver (`PROHIBITED.SERVINGSERVICE`). Changing their addresses or authentication methods mints a destructive proposal. A change that would break OcuPilot's own JWT sign-in is refused on the instance. The LDAP list and editor shipped in Story 16.14 (inference: the read-only view is covered).
+  - 18.25: reuses 18.8's serving-path reading. AD-10 refuses disabling or deleting the superserver the Web Gateway connects through, or stopping it serving the gateway (`PROHIBITED.SERVINGSERVICE`). Changing its address or authentication methods mints a destructive proposal.
+  - 18.26: the OAuth 2.0 client configuration a connection names is handled as the story's plan decides.
+  - 18.27: the classic `%CSP.UI.Portal.LDAPsRO` and `.LDAPRO` pages serve `%Admin_Operate` holders. No OcuPilot screen does: Story 16.14's LDAP screens require `%Admin_Secure`. The view reads through the admin API and refuses every write.
   - 18.9: the criterion refusing `%All` and `%Admin_*` grants predates AD-10's owner amendment, which permits them at the strongest confirmation; reconcile this at the spec gate, where the spine governs. Password validation wraps the instance's own validator.
   - 18.10: spec-based REST services go through `MgmntPort`.
   - 18.11: each read goes through its own port and gate, and only `MonitorPort` calls `PrometheusMetrics`. Never call the vendor's alerts read, which advances a shared cursor. The live tail long-polls with a heartbeat, checks the file's identity and restarts on rotation.
@@ -96,6 +103,7 @@ This epic brings OcuPilot to System Administration and System Operation parity o
 
 ## Cross-Story Dependencies
 
-- **Order.** Done: 18.1 to 18.7 and 18.14 to 18.24. Next come 18.8 to 18.13, then the burn-down at the epic's close.
-- 18.12 takes in 18.24's wallet key tools. The burn-down's DW-2086 and DW-2087 amend 18.22's activations, and DW-2087's reset runs through 18.23's tool. 18.8 and 18.9 use the side-bar helper. As each screen story adds its tools, the agent's roster grows, which makes 18.12's context budgeting more pressing.
+- **Order.** Done: 18.1 to 18.8 and 18.14 to 18.24. Next come 18.25, 18.26 and 18.27, then 18.9 to 18.13, then the burn-down as 18.28.
+- 18.25 builds on 18.8's serving-path reading; 18.26 and 18.27 are independent. 18.12 takes in 18.24's wallet key tools. The burn-down's DW-2086 and DW-2087 amend 18.22's activations, and DW-2087's reset runs through 18.23's tool. As each screen story adds its tools, the agent's roster grows, which makes 18.12's context budgeting more pressing.
+- **Epic 20 runs in parallel on slot B** (`OCU-1-epic20`). It overlaps 18.12 at 20.12 (the agent's tool registry) and 18.13 at 20.1 (per-namespace state).
 - Epic 19 and Story 23.4 have closed and merged forward. Shared files take add-only edits, with one-line lists and roster counts unioned at merges: the kernel and registry, `Error.cls`, `Router.cls`, `Baseline.cls`, `Prohibited.cls`, the test rosters, `ci.test.mjs`, `strings.ts`, `navigation.ts`, EXPERIENCE.md and the spine.
