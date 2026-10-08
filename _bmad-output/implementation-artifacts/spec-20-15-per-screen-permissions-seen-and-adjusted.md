@@ -2,7 +2,7 @@
 title: 'Story 20.15: Per-screen permissions, seen and adjusted'
 type: 'feature'
 created: '2026-10-07'
-status: 'done'
+status: 'in-progress'
 baseline_revision: '4fd4e10084bd61fc02244dba42557afb1942e4be'
 baseline_commit: 'd782877aec9da7280d74e7e8316abb0a51705850'
 review_loop_iteration: 0
@@ -322,6 +322,8 @@ Every other edit is add-only. Each new entry sits beside the agent entries or at
   - Update AC2 and the matrix rows to the either-of in place.
   - DW-2179 and DW-2180 (open, owned here): settle them in this pass if each is a small, in-scope change, or leave them to the code review.
 
+- [ ] [Orchestrator] Pin the either-of to its five surfaces (the orchestrator's condition for 20.15's boundary, 2026-10-08). A roster test, in `ScreenAccessDescriptor` or its own class, enumerates every registered screen descriptor's pairs (`PrivilegePairs`, and `RequiredPairs` with no adjustment) and every registered tool's required pairs. A pair whose resource carries `Screen.Gate`'s `ALTERNATIVESEPARATOR` may appear only on Screen permissions (`agent.screenpermissions`), its read tool and its three write tools. Any other surface declaring one fails, naming it, and so does a listed surface that no longer carries it. Mutation (Rule 19): make one other descriptor's `PrivilegePairs` (for example Locks') answer `Screen.Gate.AdjusterPairs()`; the test goes red naming it. Revert byte-identical, and write the `mutation:` line.
+
 **Acceptance Criteria:**
 
 - **AC1 (view).**
@@ -407,6 +409,8 @@ Code review, 2026-10-08 (both implement passes, baseline d782877a): 1 high, 8 me
 - **The agent-tool legs run in process.** Each link is pinned, and the real-principal turn is DW-2181 (Story 20.18).
 
 ## Spec Change Log
+
+- 2026-10-08, runner: re-opened for the orchestrator's boundary condition, a roster test confining the either-of pair to its five surfaces (rework iteration 2). The pass covers only the `[Orchestrator]` item.
 
 - 2026-10-08, runner: re-opened for the owner's either-of decision (AD-64 item 4, AD-8 note; orchestrator placement: in 20.15 before its review). The pass covers only the `[Owner]` item.
 
