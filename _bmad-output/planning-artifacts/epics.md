@@ -8308,55 +8308,17 @@ So that a change the agent proposes lands in the content the editor shows.
 - **When** this story ships
 - **Then** the key is enabled and confirmation is the standard confirmed proposal; the plan raises a stronger (typed-name) confirmation for DTL or BPL code actions only if it finds a concrete reason.
 
-### Story 20.17: The agent proposes class and routine source edits, on the person's confirmation
+### Story 20.17: Long blocks in the agent panel start collapsed
 
-[AMENDED 2026-10-07, owner decision relayed by the Planner, Rule 5] The owner's words: "Agent starts switched on; and we want to loosen the rule and allow the agent to edit source code (including classes and routines) on user confirmation." This reverses Story 19.3's person-only save; the spine's AD-53 is amended (feature `a191c34b`), and Story 19.3's block carries the pointer note. Ordered right after Story 20.15, whose check that the agent refuses where the user cannot access the screen it uses.
-
-[AMENDED 2026-10-07, owner decision relayed by the Planner] The owner's words: "A note... Agent should be able to propose new classes and routines." This story therefore covers creating new classes and routines as well as editing existing ones (AD-53, feature `a9de13c9`). The create criteria below are the Planner's reading, for the plan to confirm; a genuine posture question goes back to the orchestrator.
+[AMENDED 2026-10-08, orchestrator merge gate: three-way split of the original Story 20.17, Rule 5] The original story's criteria now sit in 20.17 (the panel collapse, ordered first), 20.19 (the agent's edits of existing classes and routines) and 20.20 (the agent's creates). Order: 20.17, 20.19, 20.20, then 20.3-20.6.
 
 [AMENDED 2026-10-07, owner decision relayed by the Planner] The owner's words: "Long content inn the plan should be collapsable in the agent panel with "shore more/show less" staring collapsed if more than a few lines." It is built into this story because this story puts the first long source on a proposal card, so the collapse ships before the agent can propose source, and it applies panel-wide. The threshold, the summary wording and the layout are plan details; EXPERIENCE.md gets its Rule 20 amendment at this story's spec gate. If the story grows too big, its plan may recommend a split, the panel collapse as its own story ordered first.
 
-As a developer,
-I want the agent to propose a class or routine edit that I confirm,
-So that a change I ask for in conversation lands in the source.
+As a developer working with the agent,
+I want long replies, tool results and proposal content to start collapsed,
+So that the panel stays readable and nothing I must review is hidden behind an expansion.
 
 **Acceptance Criteria:**
-
-- **Given** `explorer.classes.save` and `explorer.routines.save`
-- **When** this story ships
-- **Then** both are advertised, agent-offered, confirmed writes, and their governance keys are enabled.
-
-- **Given** a proposed source edit
-- **When** its card is shown
-- **Then** it shows the whole change as a diff and the compile outcome, because confirmed code runs as the user.
-
-- **Given** a document that changed after the mint
-- **When** the proposal is confirmed
-- **Then** the confirm is refused (ETag or fingerprint).
-
-- **Given** a confirmed source edit
-- **When** it completes
-- **Then** its compile results are reported and the agent marker is written.
-
-- **Given** AD-10's refusal of OcuPilot's own packages, the read-only system databases (`%` and system classes), and `explorer.sqldata.save`
-- **When** this story ships
-- **Then** each is unchanged and pinned: OcuPilot's own code and the system classes stay refused, and `explorer.sqldata.save` stays person-only and unadvertised.
-
-- **Given** a request to create a new class or routine
-- **When** the agent proposes it
-- **Then** it is a confirmed proposal whose card shows the whole new document and its compile outcome.
-
-- **Given** a create proposal
-- **When** it is confirmed
-- **Then** it fingerprints the name's absence (AD-54) and is refused if a document of that name appeared after the mint, so it never silently overwrites.
-
-- **Given** a new name under OcuPilot's own packages, a system or `%` name, or a read-only system database
-- **When** a create is proposed
-- **Then** it is refused, AD-10's own-package refusal covering new names.
-
-- **Given** a create
-- **When** it is proposed
-- **Then** it targets the user's current namespace and requires write access to that namespace's code database, settled against the screen's effective pairs from Story 20.15; it uses this story's key, enabled, or a key of its own that also ships enabled.
 
 - **Given** any long block in the agent panel - an agent reply, a tool result, a proposal card's diff, a whole new document, compile output
 - **When** it renders
@@ -8365,10 +8327,6 @@ So that a change I ask for in conversation lands in the source.
 - **Given** a collapsed proposal card
 - **When** it is shown
 - **Then** a summary line always names what changes, where and how big (for example "AcmeApp.Orders.cls: +42 / -3 lines"), plus the compile outcome where there is one, so nobody confirms blind; Confirm never requires expanding.
-
-- **Given** any further security-posture question its plan finds
-- **When** it is planned
-- **Then** the question is returned to the orchestrator for the owner, with options and a recommendation.
 
 ### Story 20.18: The agent proposes permission changes and refuses on a screen the user cannot open
 
@@ -8396,6 +8354,86 @@ So that a change I ask for in conversation lands as a confirmed proposal, and th
 - **When** it asks the agent to change that screen
 - **Then** the turn is refused at that screen, no proposal row is created, and the turn completes.
 - DW-2181: The agent propose-and-confirm path of the three Screen permissions tools is declared but never run end to end (ledger; routed by harvest 2026-10-08)
+
+### Story 20.19: The agent edits existing classes and routines, on the person's confirmation
+
+[AMENDED 2026-10-08, orchestrator merge gate: three-way split of the original Story 20.17, Rule 5] The original story's criteria now sit in 20.17 (the panel collapse, ordered first), 20.19 (the agent's edits of existing classes and routines) and 20.20 (the agent's creates). Order: 20.17, 20.19, 20.20, then 20.3-20.6.
+
+[AMENDED 2026-10-07, owner decision relayed by the Planner, Rule 5] The owner's words: "Agent starts switched on; and we want to loosen the rule and allow the agent to edit source code (including classes and routines) on user confirmation." This reverses Story 19.3's person-only save; the spine's AD-53 is amended (feature `a191c34b`), and Story 19.3's block carries the pointer note. Ordered right after Story 20.15, whose check that the agent refuses where the user cannot access the screen it uses.
+
+[AMENDED 2026-10-08, orchestrator rulings on Story 20.17's plan, by=merge_gate] Q2: the model reads a document's source through a read tool capped at about 60,000 characters, passed through AD-60's sanitizer and reporting truncation, planned as its own task (the owner may reverse it before this story's implement). Q3: every `%` name is refused to the agent, for saves and creates; a person's Save is unchanged. Q4: the compile outcome shows after Confirm; before it the card says the compile runs on Confirm, and a confirmed card says plainly when the document saved but failed to compile and that the saved text is what is now on the instance.
+
+As a developer,
+I want the agent to propose a class or routine edit that I confirm,
+So that a change I ask for in conversation lands in the source.
+
+**Acceptance Criteria:**
+
+- **Given** `explorer.classes.save` and `explorer.routines.save`
+- **When** this story ships
+- **Then** both are advertised, agent-offered, confirmed writes, and their governance keys are enabled.
+
+- **Given** a document the agent is asked to change
+- **When** it prepares the proposal
+- **Then** it reads the document's source through a read tool capped at about 60,000 characters, passed through AD-60's sanitizer and reporting truncation (Q2).
+
+- **Given** a proposed source edit
+- **When** its card is shown
+- **Then** it shows the whole change as a diff and the compile outcome, because confirmed code runs as the user.
+
+- **Given** a document that changed after the mint
+- **When** the proposal is confirmed
+- **Then** the confirm is refused (ETag or fingerprint).
+
+- **Given** a confirmed source edit
+- **When** it completes
+- **Then** its compile results are reported and the agent marker is written.
+
+- **Given** AD-10's refusal of OcuPilot's own packages, the read-only system databases (`%` and system classes), and `explorer.sqldata.save`
+- **When** this story ships
+- **Then** each is unchanged and pinned: OcuPilot's own code and the system classes stay refused, and `explorer.sqldata.save` stays person-only and unadvertised.
+
+- **Given** a proposed edit of a document under OcuPilot's own packages or a `%` name
+- **When** the agent would mint it
+- **Then** it is refused at the mint as well as at Confirm (AD-10, Q3).
+
+- **Given** any further security-posture question its plan finds
+- **When** it is planned
+- **Then** the question is returned to the orchestrator for the owner, with options and a recommendation.
+
+### Story 20.20: The agent creates new classes and routines, on the person's confirmation
+
+[AMENDED 2026-10-08, orchestrator merge gate: three-way split of the original Story 20.17, Rule 5] The original story's criteria now sit in 20.17 (the panel collapse, ordered first), 20.19 (the agent's edits of existing classes and routines) and 20.20 (the agent's creates). Order: 20.17, 20.19, 20.20, then 20.3-20.6.
+
+[AMENDED 2026-10-07, owner decision relayed by the Planner] The owner's words: "A note... Agent should be able to propose new classes and routines." This story therefore covers creating new classes and routines as well as editing existing ones (AD-53, feature `a9de13c9`). The create criteria below are the Planner's reading, for the plan to confirm; a genuine posture question goes back to the orchestrator.
+
+[AMENDED 2026-10-08, orchestrator rulings on Story 20.17's plan, by=merge_gate] Q2: the model reads a document's source through a read tool capped at about 60,000 characters, passed through AD-60's sanitizer and reporting truncation, planned as its own task (the owner may reverse it before this story's implement). Q3: every `%` name is refused to the agent, for saves and creates; a person's Save is unchanged. Q4: the compile outcome shows after Confirm; before it the card says the compile runs on Confirm, and a confirmed card says plainly when the document saved but failed to compile and that the saved text is what is now on the instance.
+
+As a developer,
+I want the agent to propose a new class or routine that I confirm,
+So that a document I ask for in conversation is created on the instance.
+
+**Acceptance Criteria:**
+
+- **Given** a request to create a new class or routine
+- **When** the agent proposes it
+- **Then** it is a confirmed proposal whose card shows the whole new document and its compile outcome.
+
+- **Given** a create proposal
+- **When** it is confirmed
+- **Then** it fingerprints the name's absence (AD-54) and is refused if a document of that name appeared after the mint, so it never silently overwrites.
+
+- **Given** a new name under OcuPilot's own packages, a system or `%` name, or a read-only system database
+- **When** a create is proposed
+- **Then** it is refused, AD-10's own-package refusal covering new names.
+
+- **Given** a create
+- **When** it is proposed
+- **Then** it targets the user's current namespace and requires write access to that namespace's code database, settled against the screen's effective pairs from Story 20.15; it uses this story's key, enabled, or a key of its own that also ships enabled.
+
+- **Given** any further security-posture question its plan finds
+- **When** it is planned
+- **Then** the question is returned to the orchestrator for the owner, with options and a recommendation.
 
 ---
 

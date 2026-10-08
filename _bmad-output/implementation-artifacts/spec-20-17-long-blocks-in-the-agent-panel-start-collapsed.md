@@ -1,5 +1,5 @@
 ---
-title: 'Story 20.17 (first half of a recommended split): Long blocks in the agent panel start collapsed'
+title: 'Story 20.17: Long blocks in the agent panel start collapsed'
 type: 'feature'
 created: '2026-10-08'
 status: 'ready-for-dev'
@@ -152,6 +152,8 @@ Client (`ui/`). The anchors were read by the plan's investigator; confirm each a
 
 **Execution** (in dependency order):
 
+- EXPERIENCE.md :604 (the last Fixed-strings row): append the six literals to its strings cell and the Story 20.17 clause to its usage cell, exactly as Design Notes › Spine and UX amendments give them, in the same commit as `strings.ts`'s keys (cleared by the orchestrator on union terms).
+
 - `ui/src/app/core/long-blocks.ts` (new, framework-free):
   - `LONG_BLOCK_LINES = 8`, `LONG_BLOCK_WIDTH = 80`, `estimateLines(text)`, `isLong(lines)` (`> 8`), and `blockId(key)`, which is `ocu-long-block-` plus the key with every character outside `[A-Za-z0-9_-]` turned into `_`.
   - `class LongBlocks`: `isOpen(key)`, `setOpen(key, open)`, `subscribe(listener): () => void`, `endSession()`. An empty key is never stored.
@@ -205,6 +207,10 @@ Client (`ui/`). The anchors were read by the plan's investigator; confirm each a
 - **AC7 (Integration, Rule 1).** Given `Panel`, `ProposalCard` and `ToolCallCard` consuming `LongBlock` and `LongBlocks`, when a scripted long reply and a long card render in a real browser on `ocupilot-b-ci`, then they behave as AC1 to AC4 state.
 
 ## Spec Change Log
+
+- 2026-10-08, runner spec gate: EXPERIENCE.md :604's strings and usage cells (the text under Design Notes › Spine and UX amendments) are written by the implement stage in the same commit as `strings.ts`'s six keys, because the Fixed-strings tests fail while the table lists literals the string source lacks. Every other EXPERIENCE.md and DESIGN.md amendment is written.
+
+- 2026-10-08, runner spec gate: the orchestrator ruled A on Q1 to Q4 (by=merge_gate). The three-way split is chartered: this story is retitled "Long blocks in the agent panel start collapsed" (the spec file renamed to the new key), Story B is 20.19 and Story C is 20.20, ordered 20.17, 20.19, 20.20. The EXPERIENCE.md, DESIGN.md and AD-53 amendments are written, and the clearances granted on union terms.
 
 ## Review Triage Log
 
