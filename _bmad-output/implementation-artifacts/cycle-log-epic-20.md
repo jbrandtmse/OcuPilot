@@ -224,3 +224,5 @@
 2026-10-08T19:42:52Z	Story 20.19	spec_reset	status=blocked->draft intent_contract=narrowed_to_part_A(source_read) names=explorer.class.read,explorer.routine.read(spine_convention;orchestrator_naming_check) change_log=1_line reason=re-dispatch_protocol(Q3_split)
 2026-10-08T19:46:41Z	Epic 20	epic_context_compiled	reason=planning_artifact_newer(20.19_split,20.21_chartered) model=opus lines=74
 2026-10-08T19:46:41Z	Epic 20	spine_updated	ad=AD-53(names_20.21_for_the_Saves) reason=rule5(20.19_split) by=runner story=20-19 lint=ok(pre-existing_low_{id}) also=epics.md_20.16_note(20.17->20.21_x2) open=epics.md:7712(Story_19.3_pointer_says_20.17;other_epic_block->asked_orchestrator)
+2026-10-08T19:46:48Z	Epic 20	deps_hash_rerecorded	reason=prose(20.16_note_story_number) hash=2ba1c8b3
+2026-10-08T19:46:48Z	Story 20.19	stage_spawned	stage=plan spawn_at=2026-10-08T19:46:48Z model=opus agent_name=20-19-plan-2 cycle_iteration=2 dispatch=spec_path(draft,re-dispatch_protocol) ci_prior=pending_37828795765
