@@ -108,7 +108,7 @@ Method TestTheClassicResourceStaysAndAnUnreadableStoreRefuses()
 }
 
 /// <p>A row stored for a screen that cannot be adjusted is ignored by the one reader, and Screen
-/// permissions' own screen and tools require the declared <code>%Development:USE</code> whatever the store
+/// permissions' own screen and tools require the either-of <code>%Development:USE</code> or <code>%Admin_Secure:USE</code> whatever the store
 /// holds (AD-64 rule 3).</p>
 /// <p>Mutation (Rule 19): drop the <code>Adjustable</code> test from
 /// <method>OcuPilot.Screen.Gate.BaseSet</method> -- the stray-row legs go red; route a Screen permissions
@@ -124,11 +124,30 @@ Method TestAStrayRowForANonAdjustableScreenIsIgnored()
     Set tHomePairs = ##class(OcuPilot.Screen.Gate).RequiredPairs(tHome, .tHomeResolved)
     Do $$$AssertEquals(tHomeResolved _ "|" _ $ListLength(tHomePairs), "1|0", "Home still requires nothing")
     Set tOwnPairs = ..Spelled(##class(OcuPilot.Screen.Gate).RequiredPairs(tOwn, .tOwnResolved))
-    Do $$$AssertEquals(tOwnResolved _ "|" _ tOwnPairs, "1|%Development:USE", "Screen permissions still requires its declared pair")
+    Do $$$AssertEquals(tOwnResolved _ "|" _ tOwnPairs, "1|%Development|%Admin_Secure:USE", "Screen permissions still requires its either-of pair")
     For tTool = "OcuPilot.Screen.Tool.ScreenAccessAddPair", "OcuPilot.Screen.Tool.ScreenAccessRemovePair", "OcuPilot.Screen.Tool.ScreenAccessReset" {
-        Do $$$AssertEquals(..Spelled($ClassMethod(tTool, "PrivilegePairs")), "%Development:USE", tTool _ ": requires the declared pair")
+        Do $$$AssertEquals(..Spelled($ClassMethod(tTool, "PrivilegePairs")), "%Development|%Admin_Secure:USE", tTool _ ": requires the either-of pair")
     }
     Do $$$AssertEquals(##class(OcuPilot.Screen.Gate).Adjustable(tHome) _ "|" _ ##class(OcuPilot.Screen.Gate).Adjustable(tOwn) _ "|" _ ##class(OcuPilot.Screen.Gate).Adjustable(..#LOCKDESCRIPTOR), "0|0|1", "only Locks of the three can be adjusted")
+}
+
+/// <p>The dispatcher's pair check accepts either arm of the either-of pair and, when neither is held, names
+/// both. The seam holds every pair except the ones a test denies.</p>
+/// <p>Mutation (Rule 19): revert <method>OcuPilot.Kernel.Agent.Dispatch.MissingPair</method> to test the pair's
+/// resource without splitting its alternatives -- this goes red.</p>
+Method TestDispatchAcceptsEitherArmOfTheEitherOfPair()
+{
+    Set tPairs = $ClassMethod("OcuPilot.Screen.Tool.ScreenAccessAddPair", "PrivilegePairs")
+    Do ##class(OcuPilot.Test.ToolDispatchProbe).Reset()
+    Do $$$AssertEquals(##class(OcuPilot.Test.ToolDispatchProbe).Missing("u", tPairs), "", "both arms held")
+    Do ##class(OcuPilot.Test.ToolDispatchProbe).DenyPair("%Development", "USE")
+    Do $$$AssertEquals(##class(OcuPilot.Test.ToolDispatchProbe).Missing("u", tPairs), "", "only %Admin_Secure held")
+    Do ##class(OcuPilot.Test.ToolDispatchProbe).Reset()
+    Do ##class(OcuPilot.Test.ToolDispatchProbe).DenyPair("%Admin_Secure", "USE")
+    Do $$$AssertEquals(##class(OcuPilot.Test.ToolDispatchProbe).Missing("u", tPairs), "", "only %Development held")
+    Do ##class(OcuPilot.Test.ToolDispatchProbe).DenyPair("%Development", "USE")
+    Do $$$AssertEquals(##class(OcuPilot.Test.ToolDispatchProbe).Missing("u", tPairs), "%Development:USE or %Admin_Secure:USE", "neither held names both")
+    Do ##class(OcuPilot.Test.ToolDispatchProbe).Reset()
 }
 
 /// <p>A write tool's base follows its screen's adjustment while its own extra pairs stay on top: Remove

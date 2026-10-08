@@ -1,6 +1,6 @@
 /// <p>Story 20.15's Screen permissions over HTTP, as two real principals (AD-8, AD-15, AD-44, AD-53, AD-64):
-/// Dev, who holds <code>%Development:USE</code>, and Op, who does not
-/// (<class>OcuPilot.Test.ScreenAccessFixture</class>). It pins the View, Not an adjuster, Raise, Reset,
+/// Dev, who holds <code>%Development:USE</code>, Sec, who holds <code>%Admin_Secure:USE</code> and not
+/// <code>%Development:USE</code>, and Op, who holds neither (<class>OcuPilot.Test.ScreenAccessFixture</class>). It pins the View, Not an adjuster, Raise, Reset,
 /// Lower, Lower past the vendor, Audit and Classic union rows of the spec's matrix: the list answers every
 /// built screen with the caller's own verdict; a caller without the pair is refused naming it on the read
 /// and each action; an adjustment is followed by the navigation map, the screen's read and the write
@@ -28,6 +28,9 @@ Parameter WEBAPPS = "webapp.list";
 
 /// <p>The resource a Raise adds, which Op does not hold.</p>
 Parameter RAISED = "%Admin_Secure:USE";
+
+/// <p>What a refusal of an account holding neither adjuster pair names: both.</p>
+Parameter EITHER = "%Development:USE or %Admin_Secure:USE";
 
 /// <p>The resource the Classic union leg assigns to Locks' classic page.</p>
 Parameter CLASSICRESOURCE = "OcuPilotProbeClassic";
@@ -219,25 +222,58 @@ Method TestTheViewListsEveryBuiltScreenWithTheCallersVerdict()
     }
 }
 
-/// <p><b>Not an adjuster (AC2)</b> -- Op, who lacks <code>%Development:USE</code>, is refused the read and each
-/// of the three actions naming it, nothing is stored, and the map lists the screen unavailable naming the
-/// same pair. The stock <code>%Developer</code>, <code>%Manager</code> and <code>%All</code> roles hold it.</p>
-/// <p>Mutation (Rule 19): set the descriptor's <code>privileges</code> to <code>[]</code> -- every leg goes
-/// red.</p>
+/// <p><b>Not an adjuster (AC2)</b> -- Op, who holds neither <code>%Development:USE</code> nor
+/// <code>%Admin_Secure:USE</code>, is refused the read and each of the three actions naming both, nothing is
+/// stored, and the map lists the screen unavailable naming the same two. The stock <code>%Developer</code>,
+/// <code>%Manager</code> and <code>%All</code> roles hold the first.</p>
+/// <p>Mutation (Rule 19): make <method>OcuPilot.Screen.Gate.AdjusterPairs</method> answer an empty set -- every
+/// leg goes red.</p>
 Method TestAnAccountWithoutDevelopmentUseIsRefusedNamingIt()
 {
     Do $$$AssertTrue(..PreparedSetupOk, "setup read back the principals' grants")
     Set tOp = $ClassMethod(..#FIXTURE, "Op")
     Set tSC = ..As(tOp, "GET", "/screens/" _ ..#SCREEN _ "/read", .tStatus, .tRefused)
-    Do $$$AssertEquals(tStatus _ "|" _ ..Refusal(tRefused), "403|AUTH.NOPRIVILEGE|%Development:USE", "the read is refused naming the pair")
+    Do $$$AssertEquals(tStatus _ "|" _ ..Refusal(tRefused), "403|AUTH.NOPRIVILEGE|" _ ..#EITHER, "the read is refused naming both pairs")
     For tCase = $ListBuild("add-pair", ..#RAISED), $ListBuild("remove-pair", "%Admin_Operate:USE"), $ListBuild("reset", "") {
         Set tSC = ..Act(tOp, $List(tCase, 1), ..#LOCKS, $List(tCase, 2), .tStatus, .tRefused)
-        Do $$$AssertEquals(tStatus _ "|" _ ..Refusal(tRefused), "403|AUTH.NOPRIVILEGE|%Development:USE", $List(tCase, 1) _ ": refused naming the pair")
+        Do $$$AssertEquals(tStatus _ "|" _ ..Refusal(tRefused), "403|AUTH.NOPRIVILEGE|" _ ..#EITHER, $List(tCase, 1) _ ": refused naming both pairs")
     }
     Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Access).GuardedAll(.tStored), "the store reads")
     Do $$$AssertEquals($Data(tStored), 0, "and nothing was stored")
     Do $$$AssertStatusOK(..Verdict(tOp, ..#SCREEN, .tAllowed, .tFailed), "the map reads")
-    Do $$$AssertEquals(tAllowed _ "|" _ tFailed, "0|%Development:USE", "the side bar lists the screen unavailable, naming it")
+    Do $$$AssertEquals(tAllowed _ "|" _ tFailed, "0|" _ ..#EITHER, "the side bar lists the screen unavailable, naming both")
+}
+
+/// <p><b>The security-only adjuster (AC2)</b> -- Sec, who holds <code>%Admin_Secure:USE</code> and READ on the
+/// code database and not <code>%Development:USE</code>, sees the screen in the map, reads its list, and changes
+/// a pair on Locks, which Op then sees refused; Sec's reset restores it. Dev's legs elsewhere in this class
+/// cover the other arm.</p>
+/// <p>Mutation (Rule 19), one per arm of <method>OcuPilot.Screen.Gate.AdjusterPairs</method>: drop
+/// <code>%Admin_Secure</code> from <parameter>OcuPilot.Screen.Gate.ADJUSTERRESOURCES</parameter> -- this method
+/// goes red; drop <code>%Development</code> -- the Dev legs of this class go red. Revert <method>OcuPilot.Screen.Access.Spelled</method> to <code>resource:permission</code> concatenation -- the row leg goes red; revert <method>OcuPilot.Kernel.Proposal.Operation.MissingPair</method> to test the resource unsplit -- the confirm leg goes red.</p>
+Method TestASecurityAdministratorWithoutDevelopmentMayAdjust()
+{
+    Do $$$AssertTrue(..PreparedSetupOk, "setup read back the principals' grants")
+    Set tSec = $ClassMethod(..#FIXTURE, "Sec")
+    Set tOp = $ClassMethod(..#FIXTURE, "Op")
+    Do $$$AssertStatusOK(..Verdict(tSec, ..#SCREEN, .tAllowed, .tFailed), "the map reads as Sec")
+    Do $$$AssertEquals(tAllowed _ "|" _ tFailed, "1|", "Sec opens Screen permissions")
+    Set tSC = ..As(tSec, "GET", "/screens/" _ ..#SCREEN _ "/read", .tStatus, .tRead)
+    Do $$$AssertEquals(tStatus, 200, "Sec reads the list")
+    Set tSC = ..Act(tSec, "add-pair", ..#LOCKS, ..#RAISED, .tStatus, .tAnswer)
+    Do $$$AssertEquals(tStatus, 200, "Sec adds a pair to Locks")
+    Do $$$AssertStatusOK(..Verdict(tOp, ..#LOCKS, .tAllowed, .tFailed), "the map reads as Op")
+    Do $$$AssertEquals(tAllowed _ "|" _ tFailed, "0|" _ ..#RAISED, "Op's Locks follows Sec's change")
+    Set tSC = ..Act(tSec, "reset", ..#LOCKS, "", .tStatus, .tAnswer)
+    Do $$$AssertEquals(tStatus, 200, "Sec resets Locks")
+    Do $$$AssertStatusOK(..Verdict(tOp, ..#LOCKS, .tAllowed, .tFailed), "the map reads again")
+    Do $$$AssertEquals(tAllowed, 1, "and Op opens Locks again")
+    Set tSecRow = ..Row(tSec, ..#SCREEN, .tCount)
+    Do $$$AssertTrue($IsObject(tSecRow), "Sec has a row for the screen")
+    If '$IsObject(tSecRow) Quit
+    Do $$$AssertEquals(tSecRow.Effective _ "|" _ ''tSecRow.Holds _ "|" _ tSecRow.FailedPair, ..#EITHER _ "|1|", "the row spells the either-of pair and Sec holds it")
+    Set tPairs = ##class(OcuPilot.Screen.Tool.ScreenAccessAddPair).PrivilegePairs()
+    Do $$$AssertEquals(##class(OcuPilot.Kernel.Proposal.Operation).MissingPair(tSec, tPairs, "") _ "|" _ ##class(OcuPilot.Kernel.Proposal.Operation).MissingPair(tOp, tPairs, ""), "|" _ ..#EITHER, "the confirm gate admits Sec and refuses Op naming both")
 }
 
 /// <p><b>Raise and Reset (AC3)</b> -- after Dev adds <code>%Admin_Secure:USE</code> to Locks, Op's map, the

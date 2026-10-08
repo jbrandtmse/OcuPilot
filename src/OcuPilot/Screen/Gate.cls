@@ -29,6 +29,15 @@ Class OcuPilot.Screen.Gate Extends %RegisteredObject
 /// <p>The permission a classic page's custom resource is required at.</p>
 Parameter CLASSICPERMISSION = "USE";
 
+/// <p>The separator of an either-of pair's resources (AD-64): a pair whose resource is
+/// <code>a|b</code> is held when the caller holds the permission on <b>any one</b> of them. Only
+/// <method>AdjusterPairs</method> builds one; every other pair is a single resource.</p>
+Parameter ALTERNATIVESEPARATOR = "|";
+
+/// <p>The resources whose holder may view and adjust screen permissions (AD-64 item 4): either one,
+/// at <parameter>CLASSICPERMISSION</parameter>.</p>
+Parameter ADJUSTERRESOURCES = "%Development,%Admin_Secure";
+
 /// <p>The closed list of IRIS administrative resources, comma-separated. Holding <b>any one</b>
 /// of them, <parameter>DEVELOPMENTRESOURCE</parameter> or <parameter>INTEROPRESOURCE</parameter>, at
 /// <parameter>ADMINPERMISSION</parameter> is the instance-level floor (<method>FloorResources</method>): what
@@ -399,9 +408,9 @@ ClassMethod EvaluatePairs(pPairs As %List, Output pFailedPair As %String) As %Bo
             Set tPair = $List(pPairs, tI)
             Set tResource = $List(tPair, 1)
             Set tPermission = $List(tPair, 2)
-            If '..HoldsPrivilege(tResource, tPermission) {
+            If '..HoldsAny(tResource, tPermission) {
                 Set tAllowed = 0
-                Set pFailedPair = tResource _ ":" _ tPermission
+                Set pFailedPair = ..SpellPair(tResource, tPermission)
                 Quit
             }
         }
@@ -410,6 +419,58 @@ ClassMethod EvaluatePairs(pPairs As %List, Output pFailedPair As %String) As %Bo
         Set pFailedPair = ""
     }
     Quit tAllowed
+}
+
+/// <p>The one either-of pair set (AD-64 item 4): <code>%Development</code> or <code>%Admin_Secure</code>
+/// at <parameter>CLASSICPERMISSION</parameter>, as a single pair whose resource joins them with
+/// <parameter>ALTERNATIVESEPARATOR</parameter>. Screen permissions, its read and its three write tools
+/// require it, and nothing else does.</p>
+ClassMethod AdjusterPairs() As %List
+{
+    Quit $ListBuild($ListBuild($Translate(..#ADJUSTERRESOURCES, ",", ..#ALTERNATIVESEPARATOR), ..#CLASSICPERMISSION))
+}
+
+/// <p><method>AdjusterPairs</method> spelled as <code>resource|resource:permission</code>, the form
+/// <method>ParsePairSpec</method> reads back. Read at <b>compile</b> time by
+/// <class>OcuPilot.Port.ScreenAccessPort</class>.</p>
+ClassMethod AdjusterSpec() As %String
+{
+    Set tPair = $List(..AdjusterPairs(), 1)
+    Quit $List(tPair, 1) _ ":" _ $List(tPair, 2)
+}
+
+/// <p>The resources a pair's resource <var>pResource</var> offers: one, or the members of an either-of pair.</p>
+ClassMethod Alternatives(pResource As %String) As %List
+{
+    Quit $ListFromString(pResource, ..#ALTERNATIVESEPARATOR)
+}
+
+/// <p>The pair spelled for a refusal or a list: <code>resource:permission</code>, or every alternative
+/// spelled so and joined with <code> or </code>, so a refusal names each pair that would have admitted
+/// the caller.</p>
+ClassMethod SpellPair(pResource As %String, pPermission As %String) As %String
+{
+    Set tText = ""
+    Set tAlts = ..Alternatives(pResource)
+    For tI = 1:1:$ListLength(tAlts) {
+        Set tText = tText _ $Select(tText = "": "", 1: " or ") _ $List(tAlts, tI) _ ":" _ pPermission
+    }
+    Quit tText
+}
+
+/// <p>Whether the calling process holds <var>pPermission</var> on <var>pResource</var>, or, for an either-of
+/// pair, on any one of its resources (<method>HoldsPrivilege</method> answers each).</p>
+ClassMethod HoldsAny(pResource As %String, pPermission As %String) As %Boolean
+{
+    Set tHolds = 0
+    Set tAlts = ..Alternatives(pResource)
+    For tI = 1:1:$ListLength(tAlts) {
+        If ..HoldsPrivilege($List(tAlts, tI), pPermission) {
+            Set tHolds = 1
+            Quit
+        }
+    }
+    Quit tHolds
 }
 
 /// <p>Whether the calling process holds every pair in <var>pPairs</var>, where an <b>empty

@@ -6,11 +6,21 @@
 /// <code>add-pair</code> and <code>remove-pair</code> change one pair of the selected screen's set, and
 /// <code>reset</code> returns it to its declared set. Its page draws the first two inside one Change
 /// permissions dialog.</p>
-/// <p><b>Its own gate is fixed</b>: it declares <code>%Development:USE</code>, and no adjustment reaches
-/// it, because the Agent co-pilot area declares no pair (<method>OcuPilot.Screen.Gate.Adjustable</method>).
+/// <p><b>Its own gate is fixed</b>: it requires <code>%Development:USE</code> or <code>%Admin_Secure:USE</code>,
+/// either one (<method>OcuPilot.Screen.Gate.AdjusterPairs</method>, <method>PrivilegePairs</method>), and no
+/// adjustment reaches it, because the Agent co-pilot area declares no pair
+/// (<method>OcuPilot.Screen.Gate.Adjustable</method>).
 /// It has no classic equivalent, so <code>classicPage</code> is <code>""</code>.</p>
 Class OcuPilot.Screen.Descriptor.AgentScreenPermissions Extends OcuPilot.Screen.Descriptor.Base
 {
+
+/// <p>The either-of set (AD-64 item 4), not the declaration's single <code>%Development:USE</code>, so every
+/// gate that reads this screen's declared set, and its write tools' through
+/// <class>OcuPilot.Screen.Tool.ScreenAccessAction</class>, admits either pair.</p>
+ClassMethod PrivilegePairs() As %List
+{
+    Quit ##class(OcuPilot.Screen.Gate).AdjusterPairs()
+}
 
 XData Declaration
 {

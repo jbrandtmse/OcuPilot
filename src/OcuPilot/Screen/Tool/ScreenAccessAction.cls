@@ -6,9 +6,10 @@
 /// screen action (<method>PortQuery</method>): a change the rules refuse is refused by the port with its
 /// <code>ACCESS.*</code> code before anything is stored, and the read answers the set the change would leave
 /// in <code>Result</code>, which <method>StateDiff</method> shows against <code>Pairs</code>.</p>
-/// <p><b>Its gate is the descriptor's declared pair, never an adjusted one</b> (<method>PrivilegePairs</method>):
-/// the screen that adjusts permissions cannot be adjusted away from the accounts that hold
-/// <code>%Development:USE</code>. The tools are not advertised until Story 20.18 (AD-53); every dispatch and
+/// <p><b>Its gate is the descriptor's fixed set, never an adjusted one</b> (<method>PrivilegePairs</method>):
+/// <code>%Development:USE</code> or <code>%Admin_Secure:USE</code>, either one
+/// (<method>OcuPilot.Screen.Gate.AdjusterPairs</method>), so the screen that adjusts permissions cannot be
+/// adjusted away from the accounts that hold either. The tools are not advertised until Story 20.18 (AD-53); every dispatch and
 /// confirm gate still reads <method>OcuPilot.Screen.Gate.RequiredPairs</method> for the screen a proposal
 /// names.</p>
 Class OcuPilot.Screen.Tool.ScreenAccessAction Extends OcuPilot.Screen.Tool.Write [ Abstract ]
@@ -66,7 +67,7 @@ ClassMethod PreconditionCodes() As %List
     Quit ##class(OcuPilot.Port.ScreenAccessPort).PreconditionCodes()
 }
 
-/// <p>The descriptor's declared pairs, then the custom resource of each <parameter>CLASSICPAGES</parameter>
+/// <p>The descriptor's fixed either-of set, then the custom resource of each <parameter>CLASSICPAGES</parameter>
 /// page (AD-8, AD-44). It never reads <method>OcuPilot.Screen.Gate.RequiredPairs</method>: this screen's
 /// requirement is fixed.</p>
 ClassMethod PrivilegePairs(pDescriptor As %String = "", Output pResolved As %Boolean) As %List

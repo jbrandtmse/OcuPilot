@@ -127,10 +127,21 @@ Method OnAfterAllTests() As %Status
     Quit $$$OK
 }
 
-/// <p>Whether <var>pComposed</var> holds <var>pPermission</var> on <var>pResource</var>.</p>
+/// <p>Whether <var>pComposed</var> holds <var>pPermission</var> on <var>pResource</var>, or, for an either-of
+/// pair (<method>OcuPilot.Screen.Gate.Alternatives</method>), on any one of its resources.</p>
+/// <p>Mutation: make an either-of pair require all of its resources -> a held Screen permissions tool leaves
+/// the held set and the tools test goes red.</p>
 ClassMethod Held(pComposed As %DynamicObject, pResource As %String, pPermission As %String) As %Boolean
 {
-    Quit ''$ClassMethod(..#FIXTURE, "Holds", pComposed, pResource, pPermission)
+    Set tHeld = 0
+    Set tAlts = ##class(OcuPilot.Screen.Gate).Alternatives(pResource)
+    For tI = 1:1:$ListLength(tAlts) {
+        If $ClassMethod(..#FIXTURE, "Holds", pComposed, $List(tAlts, tI), pPermission) {
+            Set tHeld = 1
+            Quit
+        }
+    }
+    Quit tHeld
 }
 
 /// <p>One request as <var>pUser</var>; <var>pObject</var> is the parsed body, or <code>""</code>.</p>

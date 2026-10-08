@@ -83,10 +83,11 @@ Method TestTheAccessSourceRefusals()
 }
 
 /// <p>The descriptor declares what the spec names: the Agent co-pilot area at position 7, a list of
-/// the <code>screen-permission</code> entity at instance scope, the one pair <code>%Development:USE</code>
-/// and no classic page, the access source on <code>Screens</code>, the three row actions, three prompts in
+/// the <code>screen-permission</code> entity at instance scope, the declared pair <code>%Development:USE</code>, which the descriptor widens to
+/// either-of with <code>%Admin_Secure:USE</code>, and no classic page, the access source on <code>Screens</code>, the three row actions, three prompts in
 /// the access group and the five columns, and passes the registry.</p>
-/// <p>Mutation (Rule 19): set its <code>privileges</code> to <code>[]</code> -- the pair leg goes red.</p>
+/// <p>Mutation (Rule 19): set its <code>privileges</code> to <code>[]</code> -- the pair leg goes red; make <method>OcuPilot.Screen.Descriptor.AgentScreenPermissions.PrivilegePairs</method> answer the
+/// declaration -- the either-of leg goes red.</p>
 Method TestTheDescriptorDeclaresScreenPermissions()
 {
     Set tClass = ..#DESCRIPTOR
@@ -95,8 +96,10 @@ Method TestTheDescriptorDeclaresScreenPermissions()
     If '$IsObject($Get(tDeclaration)) Quit
     Do $$$AssertEquals(tDeclaration.route _ "|" _ tDeclaration.area _ "|" _ tDeclaration.sideBarPosition _ "|" _ tDeclaration.archetype _ "|" _ tDeclaration.scope, "agent/screenpermissions|agent|7|list|instance", "its place")
     Do $$$AssertEquals(tDeclaration.entityType _ "|" _ tDeclaration.toolIdentifier _ "|" _ tDeclaration.classicPage, "screen-permission|agent.screenpermissions|", "its entity type, tool identifier and no classic page")
-    Do $$$AssertEquals(tDeclaration.privileges.%ToJSON(), "[{""resource"":""%Development"",""permission"":""USE""}]", "its one declared pair")
+    Do $$$AssertEquals(tDeclaration.privileges.%ToJSON(), "[{""resource"":""%Development"",""permission"":""USE""}]", "its declared pair")
     Do $$$AssertEquals($ListLength($ClassMethod(tClass, "OwnPrivilegePairs")), 0, "which is not an own pair beyond an area set")
+    Set tEither = $ClassMethod(tClass, "PrivilegePairs")
+    Do $$$AssertEquals($ListLength(tEither) _ "|" _ $List($List(tEither, 1), 1) _ "|" _ $List($List(tEither, 1), 2), "1|%Development|%Admin_Secure|USE", "but it requires the either-of pair: %Development:USE or %Admin_Secure:USE")
     Do $$$AssertEquals(tDeclaration.read.source.port _ "|" _ tDeclaration.read.source.endpoint _ "|" _ tDeclaration.read.source.type, "access|Screens|LIST", "read through the access source")
     Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ReadProblem(tDeclaration), "", "its read passes the registry")
     Do $$$AssertEquals($ListToString($ClassMethod(tClass, "RowActionIds")), "add-pair,remove-pair,reset", "its three row actions")
@@ -113,7 +116,7 @@ Method TestTheDescriptorDeclaresScreenPermissions()
 }
 
 /// <p>Each write declares its kind, port, request type, screen action, bodyless action style, fingerprint
-/// subject and enabled key, and requires the descriptor's declared pairs alone (AD-51, AD-52, AD-64).</p>
+/// subject and enabled key, and requires the descriptor's either-of pair alone (AD-51, AD-52, AD-64).</p>
 /// <p>Mutation (Rule 19): route one tool's <code>PrivilegePairs</code> through
 /// <method>OcuPilot.Screen.Gate.RequiredPairs</method> -- <class>OcuPilot.Test.ScreenAccessGate</class>'s
 /// stray-row leg goes red; change a fingerprint subject here and the subject leg goes red.</p>

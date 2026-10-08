@@ -2,9 +2,9 @@
 /// only product class that writes <class>OcuPilot.Kernel.State.Access</class>, reached by the Screen
 /// permissions row actions and the agent's three tools alike. It reads a screen's base set through
 /// <method>OcuPilot.Screen.Gate.BasePairs</method> and names neither the registry nor any descriptor.</p>
-/// <p><b>Its gate is fixed</b>: <parameter>PAIRS</parameter>, <code>%Development:USE</code>, which the stock
-/// <code>%Developer</code>, <code>%Manager</code> and <code>%All</code> roles hold. A caller short of it is
-/// refused naming it, before the store is touched.</p>
+/// <p><b>Its gate is fixed</b>: <parameter>PAIRS</parameter>, <code>%Development:USE</code> or
+/// <code>%Admin_Secure:USE</code>, either one (<method>OcuPilot.Screen.Gate.AdjusterPairs</method>). A caller
+/// holding neither is refused naming both, before the store is touched.</p>
 /// <p>One endpoint, <parameter>ENDPOINT</parameter>, addressed by the screen's <code>toolIdentifier</code> under
 /// <parameter>SCREENKEY</parameter>, and three types:</p>
 /// <ul>
@@ -26,14 +26,14 @@
 /// defines (<method>ResourceDefined</method>). Every refusal is a written reason (AD-39).</p>
 /// <p>Seams a test subclass overrides: <method>GateClass</method>, <method>ResourceDefined</method> and
 /// <method>LogFault</method>. Production overrides none.</p>
-Class OcuPilot.Port.ScreenAccessPort Extends %RegisteredObject
+Class OcuPilot.Port.ScreenAccessPort Extends %RegisteredObject [ DependsOn = OcuPilot.Screen.Gate ]
 {
 
 /// <p>The class the pair sets are evaluated through.</p>
 Parameter GATECLASS = "OcuPilot.Screen.Gate";
 
 /// <p>The port's own gate, <code>resource:permission</code> (AD-29).</p>
-Parameter PAIRS = "%Development:USE";
+Parameter PAIRS = {##class(OcuPilot.Screen.Gate).AdjusterSpec()};
 
 /// <p>The one endpoint.</p>
 Parameter ENDPOINT = "Screen";

@@ -97,7 +97,7 @@ ClassMethod Spelled(pPairs As %List) As %String [ Private ]
     Set tText = ""
     For tI = 1:1:$ListLength(pPairs) {
         Set tPair = $List(pPairs, tI)
-        Set tText = tText _ $Select(tText = "": "", 1: ..#SEPARATOR) _ $List(tPair, 1) _ ":" _ $List(tPair, 2)
+        Set tText = tText _ $Select(tText = "": "", 1: ..#SEPARATOR) _ ##class(OcuPilot.Screen.Gate).SpellPair($List(tPair, 1), $List(tPair, 2))
     }
     Quit tText
 }
