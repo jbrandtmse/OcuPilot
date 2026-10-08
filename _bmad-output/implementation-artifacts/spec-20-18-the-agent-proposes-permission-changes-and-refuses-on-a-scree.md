@@ -1,0 +1,332 @@
+---
+title: 'Story 20.18: The agent proposes permission changes and refuses on a screen the user cannot open'
+type: 'feature'
+created: '2026-10-08'
+status: 'ready-for-dev'
+review_loop_iteration: 0
+followup_review_recommended: false
+context:
+  - '{project-root}/_bmad-output/implementation-artifacts/epic-20-context.md'
+warnings: ['oversized']
+deferred: []
+---
+
+<intent-contract>
+
+## Intent
+
+**Problem:** Story 20.15 shipped Screen permissions' three write tools unadvertised, so the agent cannot propose a change. When a write tool's screen is closed to the user, dispatch's refusal names only a pair, the built-in prompt has no line for it, and screen context does not say whether the user can use the screen or its tools.
+
+**Approach:**
+
+- Advertise the three tools, and mint a lowering destructive through AD-10's effect classifier.
+- Dispatch names the tool's screen when the user cannot open it. The tool step and its card carry that name, and the prompt says what to do.
+- Screen context gains the screen's own verdict and marks the tools the user cannot use.
+- An integration turn run as a real principal proves the refusal.
+
+## Boundaries & Constraints
+
+**Always:**
+
+- **Lowering, decided at the mint, on the instance.**
+  - A proposal is a lowering when the port's composed fresh read's `Result` lacks a pair its `Pairs` holds. Pairs are compared without regard to case, as `ScreenAccessPort.Apply` compares them.
+  - So a remove-pair is always a lowering and an add-pair never is. A reset is a lowering when the adjusted set held a pair the declared set lacks.
+  - `Prohibited.WeakensByEffect` answers effect `SCREENACCESS.LOWERED`. The mint then marks the proposal destructive and names that effect as its consequence.
+  - The card is the standard destructive agent card: the bar and the destructive Confirm, with no typed-name field. Its consequence sentence reuses `screenPermissionsLowerConsequence`.
+- **The screen comes from the tool's descriptor**: the registry entry's `descriptor`, else the tool class's `DESCRIPTORCLASS`. A new tool-registry method resolves it, because `Kernel/Agent` names no `OcuPilot.Screen.*` class but the registry (lint rule 19).
+- **When the screen is named.**
+  - It is named when dispatch's `RequiredPairs` leg refuses and dispatch's own `MissingPair` finds a pair of that screen's `Gate.RequiredPairs` missing. `MissingPair` reads the user's current grants (AD-31).
+  - The refusal's detail is then `{failedPair: <the screen's first missing pair>, screen: <its toolIdentifier>}`.
+  - Otherwise the detail is `{failedPair}`, as today.
+  - The argument-pair leg and the client-call (navigation) path are unchanged. Who dispatch admits is unchanged.
+- **The screen read route's refusal carries the same `screen`** (`Api/ScreenRead.cls`), so a tool's 403 and a screen's 403 stay identical (AD-8).
+- **The step and its card.**
+  - The step stores `FailedScreen`, and progress carries `failedScreen`.
+  - The tool-call card renders "failed — You need <pair> to open <screen title>.", composed from two existing Fixed strings (`toolCallStatusFailed`, `privilegeDeniedScreen`).
+  - An identifier the mirror does not know renders the pair alone, as today.
+- **Screen context's two new members.**
+  - Both are computed in the caller's request process by `Api/Turn.BoundedContext`, before the total bound, on both branches.
+  - `verdict` is `{allowed, failedPair?}`, built by `Navigation.SetVerdict` for the screen's descriptor.
+  - `unavailable` maps each wire name in `tools` whose `Registry.RequiredPairs` the caller lacks (`Gate.EvaluatePairs`) to its first failed pair. An unresolved set maps to `""` (fail closed). With nothing to mark it is `{}`.
+  - `tools` is unchanged. A request carrying either member is refused `TURN.CONTEXT.INVALID`.
+- **The prompt** stays one ASCII build-time constant (AD-11 rule 1).
+- **Tests.** A test that adjusts a screen resets it in its `OnAfter*` method. Principals and adjustments live on `ocupilot-b-ci` only, and are removed afterwards.
+
+**Never:**
+
+- No new error code, audit event, route, governance key or `Baseline.cls` edit. The three keys already ship `true`.
+- No change to any declared pair, to `tools`' string elements, or to who any gate admits.
+- No typed-name field on an agent card.
+- No new `strings.ts` literal and no `screens.generated.ts` regeneration: no descriptor changes.
+- No edit to `Api/ScreenAction.cls`, `Api/Error.cls`, `Test/SurfaceCoverage.cls` or `Test/ReadTool.cls` (Epic 18 overlap). The screen action route's and the confirm's refusals keep `{failedPair}`.
+
+## I/O & Edge-Case Matrix
+
+- **P** is `TurnWireFixture`'s `USERA`, holding `Resources(1)` plus a second role with `%DB_IRISSYS:RW`.
+- **Raised Locks** is the adjustment of `osmgmt.locks` to `%Admin_Operate:USE,%DB_IRISSYS:READ,%Admin_Secure:USE`.
+- **In process** means running as the test user, with `ToolDispatchProbe.DenyPair` where a row names it.
+
+| Scenario | Input / State | Expected Output / Behavior | Error Handling |
+|---|---|---|---|
+| Raise | Agent `agent_screenpermissions_addpair` `{Screen: osmgmt.locks, Pair: %Admin_Secure:USE}` | Proposal with one `Pairs` row, before and after. `destructive` false, no consequence. `privilege.requires` reads `%Development:USE or %Admin_Secure:USE` | none |
+| Lower | `removepair` `%DB_IRISSYS:READ` on declared Locks | `destructive` true, consequence `SCREENACCESS.LOWERED` | none |
+| Reset | `reset` on Raised Locks; `reset` on Locks lowered to `%Admin_Operate:USE` | destructive true; destructive false | 409 `ACCESS.NOTADJUSTED` at the mint when nothing is adjusted |
+| Confirm | Each proposal above, confirmed | Store changed. `readBack`: `nothingSent` for add and remove; for reset the adjustment reads gone. One `OcuPilot/Security/SecurityChange` row, one agent marker carrying the proposal id, and a `screen-permission` change event | none |
+| Screen closed | P, Raised Locks: a turn calls `osmgmt_locks_remove` | Tool result `{"code":"AUTH.NOPRIVILEGE","detail":{"failedPair":"%Admin_Secure:USE","screen":"osmgmt.locks"}}`; the step's `failedScreen` is `osmgmt.locks`; no proposal row; the turn completes | refused before any mint |
+| Screen open | In process, `%DB_IRISSYS:WRITE` denied: `osmgmt_locks_remove` | `{"failedPair":"%DB_IRISSYS:WRITE"}`, with no `screen` | refused |
+| Demo operator | In process, `%Admin_Secure:USE` denied: `webapp_list_update` | detail names `webapp.list` and `%Admin_Secure:USE` | refused |
+| Context | P on route `os-management/locks`, before and after the raise | Before: `verdict {allowed:true}`, `unavailable {}`. After: `{allowed:false, failedPair:"%Admin_Secure:USE"}`, and every Locks tool in `tools` maps to `%Admin_Secure:USE` | none |
+| Forged member | A turn request whose context carries `verdict` or `unavailable` | 422 `TURN.CONTEXT.INVALID` | nothing reserved |
+| Card | Step `{failedPair: %Admin_Secure:USE, failedScreen: webapp.list}`; an unknown id | "failed — You need %Admin_Secure:USE to open Web applications."; "failed — %Admin_Secure:USE" | none |
+
+</intent-contract>
+
+## Code Map
+
+Server (`src/OcuPilot/`):
+
+- `Screen/Tool/ScreenAccessAction.cls`: `ADVERTISED` :23. `StateDiff` :92-113 already builds the `Pairs` row. `READANSWERS` includes `Result`.
+- `Screen/Tool/ScreenAccessReset.cls`: `PortQuery` :35-39 is the payload branch (DW-2181); `ReadBackGone` :42-46.
+- `Port/ScreenAccessPort.cls`:
+  - `Row()` :374-383 answers `{Screen, Pairs, Adjusted, Pair, Result}`; for a reset, `Result` is the declared set (:317).
+  - `Apply` :161-204 compares pairs.
+  - `Audit` :387-399 records `SecurityChange` for both callers.
+- `Kernel/Proposal/Mint.cls`:
+  - :326 `GrantsPrivilegeByEffect` and :335-342 `WeakensByEffect` receive the full composed fresh read, `Result` included.
+  - :343-344: `consequence`, and `destructive` = tool OR privileged OR effect.
+  - `RecordedPairs` :470-506 resolves only advertised tools, so advertising fixes the "requires" line.
+- `Kernel/Proposal/Prohibited.cls`: `WeakensByEffect` :1789, whose last arm is :1830; `TYPESCREENPERMISSION` :570; the effect parameters near `EFFECTSYSTEMGLOBAL` :763.
+- `Kernel/Agent/Dispatch.cls`:
+  - `Answer` :131-157 builds the tool result and `pDetails`.
+  - `AnswerOne` :179; the `RequiredPairs` leg is :260-271 and the argument leg :282-296.
+  - `MissingPair` :700-719 (Private; uses `HoldsPair`/`CheckUserPermission`, which `ToolDispatchProbe` seams).
+  - `DeniedContent`.
+- `Kernel/Denial.cls`: `Detail`, `Content`, `Envelope`, each taking only `pFailedPair` today.
+- `Screen/Tool/Registry.cls`: `ListTools` :106, `ResolveWire` :221, `IsAdvertised` :239, `RequiredPairs` :423. Every `PrivilegePairs` override calls `Gate.RequiredPairs` or `##super`, except `Base` (`""`), `Navigate` (`""`) and `ScreenAccessAction` (the either-of) (read in source).
+- `Screen/Context.cls`: `ScreenTools` :176 and `BoundTo` :246-254, the descriptor idiom to reuse.
+- `Api/Turn.cls`: `BoundedContext` :530-570 (members :540-541) and `ContextViolation` :469-475.
+- `Kernel/Shell/Navigation.cls`: `SetVerdict` :70.
+- `Screen/Gate.cls`: `Evaluate` :103, `RequiredPairs` :237, `EvaluatePairs` :403.
+- `Api/ScreenRead.cls`: :58-62 refuses through `Denial.Envelope(tFailedPair)` with `tDescriptor` in hand.
+- `Kernel/State/Step.cls`: `FailedPair` :62, `GuardedAppend` :76, `GuardedFinishTool` :166 and the view :228. Adding a property moves no `SCHEMAVERSION` (:38 precedent).
+- `Kernel/Agent/Loop.cls`: :622 passes the step details to `GuardedFinishTool`.
+- `Kernel/Agent/Prompt.cls`: `BUILTIN` :19, and its sentence-count doc :8-18.
+
+Client:
+
+- `ui/src/app/core/turn.ts` :540-550 (the step parse).
+- `ui/src/app/shell/tool-call-card.ts` `statusText` :108-117.
+- `ui/src/app/core/navigation.ts`: `formatDeniedScreen` :685; `screenForToolName` :531 is the `SCREENS` lookup idiom.
+- `ui/src/app/core/strings.ts`: `stringFor` :6286, `screenPermissionsLowerConsequence` :6249.
+- `ui/src/app/core/proposal-view.ts`: the `CONSEQUENCE_*` constants :146-207 and `consequenceSentence` :387.
+
+Test templates:
+
+| Need | Template |
+|---|---|
+| Agent mint and confirm in process | `Test/SqlAgentWrite.cls` `Dispatch()` :109-127, `ConfirmIn()` :148-152, :258-296 |
+| `SecurityChange` rows | `Test/ScreenAccessWire.cls` :371-409 |
+| Real-principal turn | `Test/DeveloperFloorTurn.cls` (`TurnProvider.Script`, `AwaitEnd`); `Propose.GuardedCountForTurn` (`Kernel/State/Propose.cls` :719) |
+| Context over the wire | `Test/TurnGrounding.cls` :144 |
+| Destructive card in a browser | `ui/browser/auditing-write.browser-spec.mjs` :196-236 |
+| "Requires" line in a browser | `ui/browser/proposal-privilege.browser-spec.mjs` :231-262 |
+| Turnprobe helpers | `ui/browser/turnprobe-spec.mjs` |
+
+Tests whose pins move:
+
+- `Test/ScreenAccessDescriptor.cls`: :134 (`Advertised` 0), and :147-177, whose absence assertions flip.
+- `Test/ScreenGrounding.cls`: `Statement` :20-33; :47-62; `TestTheMembersCountWithinTheTotalBound` :233; `TestBothMembersRideBothBranches` :193; `TestARequestSupplyingADerivedMemberIsRefused` :135.
+- `Test/ToolWire.cls` :196: `permissions.users.read` is refused on a closed screen, so the detail gains `screen`.
+- `Test/DenialParity.cls` :231-248.
+
+These adjust themselves; re-run them only: `ToolEmit`, `ToolSetFull`, `Guardrails`, `TurnTools`, `GeminiEmptyEnum`, `DeveloperFloorTurn`, `InteropFloorTurn`, `TurnGrounding`, `TurnContext`, `ContextBound`, `ToolDispatch`.
+
+## Tasks & Acceptance
+
+**Execution** (in dependency order):
+
+- `src/OcuPilot/Kernel/Denial.cls`: `Detail`, `Content` and `Envelope` take an optional `pScreen` and add `screen` after `failedPair` when it is non-empty.
+- `src/OcuPilot/Screen/Tool/Registry.cls`: add `ScreenRequirement(pTool, Output pScreen, Output pResolved) As %List`.
+  - It resolves the descriptor through the entry's `descriptor`, else its class's `DESCRIPTORCLASS`. It answers `Gate.RequiredPairs(descriptor)` and puts the descriptor's `ToolIdentifier()` in `pScreen`.
+  - It answers `""` and `pScreen` `""` for a tool with no screen.
+  - It is add-only.
+- `src/OcuPilot/Kernel/Agent/Dispatch.cls`: in the `RequiredPairs` leg's refusal, call `ScreenRequirement` through `RegistryClass()`.
+  - When it resolves and `MissingPair` over its pairs is non-empty, answer `DeniedContent(<that pair>, <screen>)` and set `pFailedPair` and a new output `pFailedScreen`.
+  - Thread `failedScreen` into `pDetails`, and correct the docs.
+- `src/OcuPilot/Kernel/State/Step.cls`: add `Property FailedScreen As %String(MAXLEN = 128)`, a trailing optional `pFailedScreen` on `GuardedAppend` and `GuardedFinishTool`, and `failedScreen` in the view.
+- `src/OcuPilot/Kernel/Agent/Loop.cls` :622: pass `tDetail.failedScreen`.
+- `src/OcuPilot/Api/ScreenRead.cls` :62: `Denial.Envelope(tFailedPair, $ClassMethod(tDescriptor, "ToolIdentifier"))`.
+- `src/OcuPilot/Kernel/Proposal/Prohibited.cls`:
+  - Add `Parameter EFFECTSCREENLOWERED = "SCREENACCESS.LOWERED"` beside `EFFECTSYSTEMGLOBAL`.
+  - Add a first arm in `WeakensByEffect`: for `TYPESCREENPERMISSION`, set the effect when `pTarget.Result` lacks a member of `pTarget.Pairs`, compared upper-cased.
+  - Add one doc line. All add-only.
+- `src/OcuPilot/Screen/Tool/ScreenAccessAction.cls`: `ADVERTISED` 1, and correct the header and doc lines that say "until Story 20.18".
+- `src/OcuPilot/Screen/Context.cls`: add `Unavailable(pTools As %DynamicArray, Output pUnavailable As %DynamicObject) As %Status`. For each wire name it runs `ResolveWire`, then `RequiredPairs`, then `Gate.EvaluatePairs` in the calling process.
+- `src/OcuPilot/Api/Turn.cls`:
+  - `BoundedContext`: after `readOnly`, set `verdict` (`Navigation.SetVerdict` on a new object) and `unavailable`.
+  - `ContextViolation` :475: refuse `verdict` and `unavailable` as it refuses the other two.
+  - Correct the docs ("two members" becomes four).
+- `src/OcuPilot/Kernel/Agent/Prompt.cls` :19:
+  - Statement 1 ends "..., whether you are read-only (readOnly), whether the user can open that screen and, if not, the permission they lack (verdict), and which of its tools the user cannot use, with the permission each lacks (unavailable)."
+  - Append: "When a tool answers AUTH.NOPRIVILEGE, it names the permission the user lacks (failedPair) and, when the user cannot open that tool's screen, the screen (screen): say that the user cannot access that screen and which permission they would need, propose nothing on it, and do not call it again. Do not call a tool that unavailable names; say which permission it needs instead."
+  - Update the doc's sentence count.
+- **Client:**
+  - `ui/src/app/core/turn.ts`: add an optional `failedScreen` to the step, parsed with `textAt`.
+  - `ui/src/app/shell/tool-call-card.ts`: when `failedScreen` names a `SCREENS` entry, use `formatDeniedScreen(STRINGS.privilegeDeniedScreen, failedPair, stringFor(labelKey))` as the reason.
+  - `ui/src/app/core/proposal-view.ts`: add `CONSEQUENCE_SCREENACCESSLOWERED` mapping to `STRINGS.screenPermissionsLowerConsequence`.
+- **Docs:**
+  - EXPERIENCE.md :631, the tool-call-card row: insert `· "failed — You need <resource> to open <screen>." when the tool's screen is one the user cannot open (Story 20.18)` after "failed — <reason>". Then run `cd ui && npm run test:tools`.
+  - README.md :58-59: "the agent says that account cannot open the Web applications screen, names the privilege it would need, and proposes nothing."
+- `scripts/ci-throwaway.sh`: add a new `# classes: ScreenAccessTurn` line after :318 (PRINCIPALS) and after :521 (TEST_PROVIDER).
+- **Tests (new),** each at most about 500 lines, none with a `Test*` property:
+  - `Test/ScreenAccessAgent.cls`, in process (DW-2181): the Raise, Lower, Reset and Confirm rows through `Dispatch.Answer` and `Confirm.Confirm`. It asserts the stored diff, `destructive`, `consequence` and `requiredPairs`, the read-back, the `SecurityChange` row and the agent marker. `OnAfterOneTest` resets adjustments and drops the seeded proposals.
+  - `Test/ScreenRefusal.cls`, in process:
+    - the Screen open and Demo operator rows through `ToolDispatchProbe`;
+    - the roster: every registered write tool resolves a screen through `ScreenRequirement`, and its `RequiredPairs` contains each of that screen's pairs.
+  - `Test/ScreenAccessTurn.cls`, over the wire as P: the Screen closed and Context rows. Arm it like `DeveloperFloorTurn` (both variables, and the `OnBeforeAllTests` refusal).
+  - `ui/browser/screen-permissions-agent.browser-spec.mjs`, signed in as the configured user:
+    - a remove-pair card is destructive with no `.ocu-typed-name-field`, shows the `Pairs` row, the "requires" line and the consequence sentence, and Confirm writes the store;
+    - an add-pair card is not destructive.
+    - It resets `osmgmt.locks` first and in `after`, and never asserts the store empty.
+- **Tests (edited):** as listed in the Code Map. Add `ui/tools/proposal-view.test.mjs` (the new code) and `ui/src/app/shell/tool-call-card.spec.ts` (the Card row).
+
+**Acceptance Criteria:**
+
+- **AC1 (advertised, the treatment).**
+  - **Given** the three tools,
+  - **when** the provider list, the dispatch lookup and Screen permissions' context `tools` are built,
+  - **then** each appears.
+  - An agent remove-pair, and a reset that drops a pair, mint `destructive` with consequence `SCREENACCESS.LOWERED`, and an add-pair mints neither. In a browser the lowering card shows the destructive bar and Confirm, no typed-name field, the `Pairs` row and the "requires" line.
+- **AC2 (DW-2181, propose and confirm end to end).**
+  - **Given** an agent proposal from each tool,
+  - **when** it is confirmed,
+  - **then** the store holds the new set (none after a reset), the read-back reads as the matrix says, and the audit database holds one `SecurityChange` row with the pairs before and after plus the agent marker.
+- **AC3 (dispatch names the screen).**
+  - **Given** a tool whose screen's effective pairs, an adjustment included, the caller lacks,
+  - **when** it is dispatched,
+  - **then** it is refused before any mint with `detail.screen` and that screen's failed pair. A tool whose screen is open is refused with `{failedPair}` alone. The screen read route's refusal names the same screen.
+- **AC4 (every tool).**
+  - **Given** every registered write tool,
+  - **when** the roster test runs,
+  - **then** each resolves a screen and requires all of its pairs.
+- **AC5 (prompt).**
+  - **Given** the built-in prompt,
+  - **when** it is read,
+  - **then** it carries the extended Statement 1 and the AUTH.NOPRIVILEGE sentence verbatim.
+- **AC6 (card).**
+  - **Given** a refused step naming a screen,
+  - **when** its card renders,
+  - **then** it reads "failed — You need <pair> to open <screen title>.".
+- **AC7 (screen context).**
+  - **Given** a turn carrying a screen context,
+  - **when** it is built,
+  - **then** it carries `verdict` and `unavailable` as the Context row says, and a request supplying either is refused.
+- **AC8 (Integration: a real turn).**
+  - **Given** P and Raised Locks,
+  - **when** a turn asks the agent to remove a lock,
+  - **then** the remove is refused naming `osmgmt.locks` and `%Admin_Secure:USE`, no proposal row exists for the turn, and the turn completes.
+
+## Spec Change Log
+
+## Review Triage Log
+
+## Design Notes
+
+**Governing ADs.**
+
+- AD-64: rule 4's agent lowering and the advertising.
+- AD-10: the privilege-grant precedent, and `WeakensByEffect` as the effect home.
+- AD-8: the refusal by the failed pair, the "requires" line, the either-of, and tool/screen 403 identity.
+- AD-11 rule 1: the members are instance-derived and untrusted content; the prompt is a constant.
+- AD-22: the keys stay enabled.
+- AD-24: context members.
+- AD-31: dispatch's live grant check.
+- AD-40 and AD-53: advertising.
+- AD-6, AD-15, AD-34, AD-51 and AD-58: the end-to-end write.
+
+**Decision 1: lowering.** "Lowering" is any change after which the stored set no longer contains a pair it held. It is computed on the instance at the mint, from the port's own `Pairs` and `Result`, and never from the request or the client. This is the effective-set reading (option C). It subsumes option A, every remove-pair, and is the only reading that classifies a reset correctly: resetting a raise lets more accounts in, while resetting a lowering does not. The classic resource and a tool's extra pairs never move (AD-64 rule 2), so the base set decides. The home is `WeakensByEffect`, beside AD-10's other "permitted at the strongest confirmation" effects, so the card's consequence line comes free and the static `DESTRUCTIVE` stays 0, as `ScreenAccessDescriptor` :132 pins.
+
+**Decision 2: the tool's descriptor, not the route.**
+
+- The descriptor reaches every write tool: all 187 resolve a `DESCRIPTORCLASS` (source count), and AC4's roster makes that a checked claim.
+- It names the screen the tool acts on. The route names only the screen the user is viewing, which differs when the agent acts elsewhere, and is absent when sharing is off.
+- The four tools with no screen (`shell.screen.open` and three shell reads) keep `{failedPair}`.
+
+**Proposed AD amendments (one line each, for the runner at the spec gate).**
+
+- **AD-8:** "A privilege refusal also names the screen (`detail.screen`, its `toolIdentifier`) when the caller cannot open it, the failed pair then being that screen's; a tool's and the screen read route's refusals carry it alike (Story 20.18)."
+- **AD-10, the 20.15 bullet:** "An agent proposal that lowers a screen's requirement is minted destructive with effect `SCREENACCESS.LOWERED` (Story 20.18, AD-64)."
+- **AD-24:** "Story 20.18 adds `verdict`, the screen's own `{allowed, failedPair?}` as navigation answers it, and `unavailable`, each wire name in `tools` whose declared pairs the caller lacks mapped to its first failed pair; both are derived in the caller's process, refused in a request, and counted within the total bound. Argument pairs are left to dispatch."
+- **AD-53:** replace "Screen permissions' three tools (Story 20.15) stay unadvertised until Story 20.18 advertises them (AD-64)" with "Story 20.18 advertised Screen permissions' three tools (AD-64)".
+- **AD-64 rule 4:** replace "The tools stay unadvertised until Story 20.18 (AD-53)" with "Story 20.18 advertises them (AD-53); a proposal whose resulting set lacks a pair of the stored set (every remove-pair, and a reset of an adjustment holding a pair the declared set lacks) is a lowering."
+- **Deferred, the Story 20.15 row:** the agent half is done in Story 20.18.
+
+**Questions for the orchestrator.** The plan builds each recommended option; neither halts.
+
+| # | Question | Options | Recommended (planned) |
+|---|---|---|---|
+| Q1 | README step 5's `operator` account exists only on the hosted demo; nothing in this repository creates it (inference: it is configured on the droplet). | **A** Pin the mechanism with an in-process principal lacking `%Admin_Secure:USE` on `webapp.list.update` (the Demo operator row), and reword README step 5. **B** Also add the account to the opt-in demo fixture (AD-25) so the smoke script pins it. | A |
+| Q2 | Should the screen action route's 403 and the confirm's refusal also name the screen? | **A** No: the person is already on that screen, and the card's privilege line names the pair; `Api/ScreenAction.cls` is in Epic 18's diff. **B** Yes, in this story. | A |
+
+**Integration ACs (Rules 1 and 2).**
+
+- **Consumes:** Story 20.15's `Kernel/State/Access`, `Screen.Gate.RequiredPairs`, `Port/ScreenAccessPort` and the three tools. AC8 exercises them against a real instance.
+- **Consumed-by:**
+  - Story 20.17: its saves and creates are refused naming the screen, and it relies on dispatch's refusal.
+  - Story 20.12: guided workflows can read `verdict` before proposing (inference).
+
+**Rule 11 (checked 2026-10-08 against `epic-18` `origin/feature...HEAD` and its status).**
+
+| File | Edit | Status |
+|---|---|---|
+| `Kernel/Agent/Prompt.cls` :19 | Statement 1 extended; one sentence appended | CONTENDED non-add-only: 18.12's known prompt overlap; not yet in Epic 18's diff |
+| EXPERIENCE.md :631 | one form inserted in the tool-call-card cell | CONTENDED non-add-only |
+| `Kernel/Proposal/Prohibited.cls` | a parameter, a first arm in `WeakensByEffect`, a doc line | add-only; Epic 18's hunks are at :652, :893, :939, :1289, :2406 |
+| `scripts/ci-throwaway.sh` | two new `# classes:` lines | add-only |
+
+**Ledger.** DW-2181 is addressed by AC2 (`Test/ScreenAccessAgent.cls`).
+
+## Verification
+
+**Setup (slot B):**
+
+- Before each load, sync: `rsync -a --delete /Users/jbrandt/git/OcuPilot/.worktrees/epic-20/src/ /Users/jbrandt/.ocupilot-throwaways/ocupilot-b-ci/src/`.
+- Load in `docker exec -i ocupilot-b-ci iris session iris -U HSCUSTOM` with `$System.OBJ.LoadDir("/opt/ocupilot/src/OcuPilot","ck-d",.tErrors,1)`, checking both the status and `tErrors`.
+- Run one class or spec file per call, and never re-submit after a client-side timeout.
+- Before a browser run:
+  - run `cd ui && npm run build && docker cp dist/ocupilot-ui/browser/. ocupilot-b-ci:/durable/iris/csp/ocupilot/`;
+  - set `OCUPILOT_BROWSER_ORIGIN=http://localhost:52777` and `OCUPILOT_BROWSER_CONTAINER=ocupilot-b-ci`.
+
+**Commands:**
+
+- `(loop)` `uv run scripts/check-objectscript.py <changed .cls>`: expected clean.
+- `(loop)` `cd ui && node tools/ci-runner.mjs --container ocupilot-b-ci --class OcuPilot.Test.<C>`, one class per call. Expected: 0 failed, read from `%UnitTest_Result`. The classes:
+  - the new ones: `ScreenAccessAgent`, `ScreenRefusal`, `ScreenAccessTurn`;
+  - the edited ones: `ScreenAccessDescriptor`, `ScreenGrounding`, `ToolWire`, `DenialParity`;
+  - the re-run list in the Code Map, plus `ScreenAccessGate`, `ScreenAccessWire`, `Governance`, `State`.
+- `(loop)` `cd ui && node --test --test-concurrency=1 browser/screen-permissions-agent.browser-spec.mjs browser/screen-permissions.browser-spec.mjs`: expected pass.
+- `(loop)` `cd ui && npm run test:tools && npm run test:components`, then `bash scripts/lint-docs.sh`: expected clean.
+- `(once, before dev_complete)` the full ObjectScript sweep, one class at a time; then `cd ui && npm test && npm run build`, with the bundle under 3165 kB; then `bash scripts/smoke.sh --container ocupilot-b-ci --user _SYSTEM --password SYS`.
+- `(CI)` The full browser suite runs in CI's shards only (Rule 29).
+
+**Planned pinning mutations (Rule 19).** Apply each on the throwaway, observe red, revert to a byte-identical tree, and record a `mutation:` line here.
+
+| AC | Mutation | Expected red |
+|---|---|---|
+| AC1 | `ADVERTISED` 0; separately, the `WeakensByEffect` screen arm removed | `ScreenAccessDescriptor` rosters; `ScreenAccessAgent` Lower and the browser spec's destructive leg |
+| AC2 | `ScreenAccessReset.PortQuery` ignores the payload | `ScreenAccessAgent` reset confirm leg (inference: the read-back or the re-read reddens) |
+| AC3 | `ScreenRequirement` answers `""` | `ScreenRefusal` Demo operator; `ToolWire` :196 |
+| AC4 | one write tool's `DESCRIPTORCLASS` emptied | `ScreenRefusal` roster |
+| AC5 | the AUTH.NOPRIVILEGE sentence removed | `ScreenGrounding` statement pin |
+| AC6 | `statusText` ignores `failedScreen` | `tool-call-card.spec.ts` |
+| AC7 | `Unavailable` answers `{}` | `ScreenAccessTurn` Context leg |
+| AC8 | `Gate.RequiredPairs` ignores the store | `ScreenAccessTurn` Screen closed leg |
+
+## Auto Run Result
+
+Status: ready-for-dev
+Blocking condition: none
+
+- Planned from the epic context (recompiled after 20.15), 20.15's spec, the spine in full, and four source investigations. Nothing is implemented.
+- The two requested decisions are recorded in Design Notes: lowering is decided on the effective set at the mint, and the screen is named through the tool's descriptor.
+- Q1 and Q2 are planned on their recommended options.
