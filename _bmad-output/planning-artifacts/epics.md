@@ -7243,34 +7243,40 @@ So that the Security area reaches parity. [AMENDED 2026-10-07, orchestrator merg
 - **When** a change is proposed
 - **Then** the card states that consequence, and a change that would break OcuPilot's own sign-in is refused on the instance under the same rule that protects the application and the service behind it.
 
-### Story 18.9: SQL privileges and the permission extras
+### Story 18.9: SQL object privileges
 
 As an operator,
-I want schema, table, view, procedure, column and admin SQL grants,
-So that the Permissions area reaches parity.
+I want a user's or role's SQL privileges on tables, views, procedures, schemas, ML configurations and foreign servers,
+So that the Permissions area reaches parity for SQL objects. [AMENDED 2026-10-07, orchestrator decision on the plan's split, Rule 5: split for size -- column and admin privileges moved to Story 18.28, and role members' admin option, user Copy from and password validation with DW-1662 to Story 18.29; the grant criterion is aligned with AD-10 as amended 2026-09-23]
 
 **Acceptance Criteria:**
 
-- **Given** SQL privileges across the three route families - schema and object, column, and admin
-- **When** they are listed, granted and revoked
-- **Then** each round-trips through the admin API.
+- **Given** a user or a role and a namespace
+- **When** its SQL object privileges are listed, granted and revoked from its editor and by a confirmed agent proposal
+- **Then** each round-trips through the admin API's standard SQL privilege routes and is read back.
 
-- **Given** role owners, user copy-from and password validation
-- **When** each runs
-- **Then** it round-trips, password validation being a custom wrapper over the instance's own validator.
+- **Given** a privilege another account granted
+- **When** it is revoked
+- **Then** the revoke names that grantor, and a row held through a role, a schema or ownership is shown and offers no revoke on this grantee.
+
+- **Given** a grant the instance's grantor rule refuses, or a vendor answer that changed nothing
+- **When** either caller sends it
+- **Then** it is answered as refused by name, never as applied.
+
+- **Given** an object, action or grantee carrying a wildcard or a list, or an unknown namespace
+- **When** either caller sends it
+- **Then** it is refused before any vendor call.
 
 - **Given** any grant
 - **When** it is proposed by the agent
-- **Then** the Release 1 prohibition on privilege escalation still applies - a grant that would confer `%All` or an `%Admin_*` role remains refused.
+- **Then** AD-10's prohibited set applies (application roles on OcuPilot's own web applications, OcuPilot's own roles and resources, SQL privileges on OcuPilot's own schemas), and a grant conferring `%All` or an `%Admin_*` role, as a copied user's roles can, is confirmed at the destructive treatment, naming the privilege. [AMENDED 2026-10-07, orchestrator decision, Rule 5: replaces "remains refused", which AD-10's 2026-09-23 owner amendment superseded]
 
 **Admin API behavior to design for.** [AMENDED 2026-09-28, owner: warnings from the DC article
 [20 places where the SysAdmin API specification and IRIS disagree](https://community.intersystems.com/post/20-places-where-sysadmin-api-specification-and-iris-disagree);
 "checked" means seen on slot A that day, "reported" means the article's word only]
 
 - `GET /v2/security/sql-privileges` names a row's object and action `Object` and `Action`, not the schema's `Name` and `Privilege` (checked); a revoke is built from those.
-- A role owner's `AdminOption` arrives as the string `"0"` or `"1"`, not a boolean (reported). `"0"` is truthy in TypeScript, so compare the value.
-- DW-236: A widened SQL grant on OcuPilot_Kernel_State - another role or _PUBLIC holding it - is neither detected nor refused (ledger; routed by merge_gate 2026-10-06)
-- DW-1662: A principal holding only the authorization server tab's two pairs cannot create a configuration: a create admits only readable roles, and the editor pre-checks the default roles it then refuses (ledger; routed by merge_gate 2026-10-06)
+- DW-236: A widened SQL grant on OcuPilot_Kernel_State - another role or _PUBLIC holding it - is neither detected nor refused (ledger; routed by merge_gate 2026-10-06) Its refusal half is this story's; the detection half is DW-2172, Story 18.13's.
 
 ### Story 18.10: Web application extras and spec-based REST services
 
@@ -7360,6 +7366,7 @@ So that it is not confined to the one the installer picks.
 - DW-219: Uninstall's contract on an instance OcuPilot does not wholly own has three half-state paths (ledger; routed by merge_gate 2026-09-13)
 - DW-423: OcuPilot.Kernel.State.Stamp records one row per install run with no retention policy, and the live instance already holds 3306 of them (ledger; routed by merge_gate 2026-10-06)
 - DW-1333: IPM's exporter drops <SystemRequirements>, so the distributable archive carries no IRIS or IPM version floor (ledger; routed by merge_gate 2026-10-06)
+- DW-2172: DW-236's detection half - a SQL grant on OcuPilot's own schemas widened outside OcuPilot (another role or _PUBLIC holding it) is detected beside install's schema-grant read-back (ledger; routed by the orchestrator 2026-10-07)
 
 ### Story 18.14: Namespace mappings and copy-mappings
 
@@ -7594,6 +7601,51 @@ So that the classic portal's read-only LDAP pages are not a reason to keep it op
 - **Then** each reads through the admin API, and every write is refused.
 
 **Closed unbuilt** [AMENDED 2026-10-07, orchestrator decision on the plan's intent gap, Rule 5]: on this build an LDAP configuration's read requires `%Admin_Secure:USE` and `%DB_IRISSYS:READ`. `Security.LDAP`'s gate admits `%Admin_Operate`, but `Security.LDAPConfigs` refuses that caller (#822), and the classic read-only pages fail for it (AD-8). Reopen when a build's admin API serves LDAP `LIST` and `GET` to a caller holding `%Admin_Operate` without `%Admin_Secure`. DW-1896 moved to the Epic 18 burn-down.
+
+### Story 18.28: SQL column and admin privileges
+
+As an operator,
+I want a user's or role's SQL column privileges and SQL admin privileges,
+So that the Permissions area reaches parity for SQL. [AMENDED 2026-10-07, orchestrator decision on Story 18.9's plan: split from 18.9 for size, Rule 5; after Story 18.9, whose list, tools and refusals it extends]
+
+**Acceptance Criteria:**
+
+- **Given** a user or a role, a namespace and a table
+- **When** its column privileges are listed, granted and revoked by either caller
+- **Then** each round-trips through the admin API's column privilege routes, and a grant the instance answers without storing reads as refused.
+
+- **Given** a user or a role and a namespace
+- **When** its SQL admin privileges are listed, granted (with or without the admin option) and revoked by either caller
+- **Then** each round-trips through the admin API's admin privilege routes; a privilege outside the vendor's list is refused before any call, and the instance's grantor refusal is a named refusal.
+
+- **Given** a column grant naming a wildcard, a list, or one of OcuPilot's own schemas
+- **When** either caller sends it
+- **Then** Story 18.9's input refusals and AD-10's schema arm hold.
+
+### Story 18.29: Role members' admin option, user Copy from and password validation
+
+As an operator,
+I want to see which role members hold the admin option, create a user from an existing one, and check a password against the instance's rules before I save it,
+So that the Permissions area reaches parity with the classic user and role pages. [AMENDED 2026-10-07, orchestrator decision on Story 18.9's plan: split from 18.9 for size, Rule 5; after Story 18.28]
+
+**Acceptance Criteria:**
+
+- **Given** a role
+- **When** its Members tab is read
+- **Then** each member shows whether it holds the admin option, compared by value, and an escalation holder reads as one.
+
+- **Given** an existing user
+- **When** a new user is created from it by either caller
+- **Then** the new account holds what the classic page's copy gives it, through an AD-27 named case for `Security.Users.Copy` if Task 0 measures on the throwaway that it runs under the caller's own `%Admin_Secure` with no added privilege; otherwise it copies roles and fields through the admin API and says it is narrower than the classic page. A copy conferring `%All` or an `%Admin_*` role is confirmed at the destructive treatment, naming the privilege.
+
+- **Given** a candidate password on the create form and the set-password dialog
+- **When** it is checked
+- **Then** the instance's own validator answers, and no reason carries the password.
+
+**Admin API behavior to design for** (moved from Story 18.9):
+
+- A role owner's `AdminOption` arrives as the string `"0"` or `"1"`, not a boolean (reported). `"0"` is truthy in TypeScript, so compare the value.
+- DW-1662: A principal holding only the authorization server tab's two pairs cannot create a configuration: a create admits only readable roles, and the editor pre-checks the default roles it then refuses (ledger; routed by merge_gate 2026-10-06)
 
 ## Epic 19: Stage 3 - System Explorer over the Atelier API
 

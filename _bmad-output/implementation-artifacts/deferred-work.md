@@ -1581,6 +1581,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-1-18-epic-1-burn-down.md | severity: med | fix-risk: med | footprint: out-of-footprint
 - evidence: The widened half of DW-96. The owner's design scoped 1.18 to the unreadable state, read-back of the escalation role's grant and a derived schema name; a grant widened to _PUBLIC or another role silently exposes OcuPilot's protected state and no gate sees it (Installer.cls EnsureSqlPrivileges)
 - 2026-09-13T23:43:36Z status=routed owner=18-9-sql-privileges-and-the-permission-extras by=harvest note=18-9 owns SQL privileges; detection needs an enumeration of every grantee on the schema, not a single CheckPrivilege
+- 2026-10-08T00:50:58Z owner=18-9-sql-object-privileges by=spec_gate note=orchestrator split 2026-10-07: the refusal half (new AD-10 arm on OcuPilot's own schemas); the detection half is DW-2172 (18.13)
 
 ### DW-237: The client keeps INSTALL.FAILED and INSTALL.UPGRADEREQUIRED in the install backoff forever, though neither clears by waiting
 - source: spec-1-18-epic-1-burn-down.md | severity: med | fix-risk: low | footprint: in-story
@@ -7460,6 +7461,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-26T01:23:58Z status=routed owner=range-end-cleanup by=merge_gate note=decided at the Epic 12 merge (orchestrator, recommended disposition): a create accepts the default roles it pre-ticks (the vendor answers 201, reviewer-confirmed); fix in the range-end cleanup
 - 2026-09-30T06:34:05Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down plan 2026-09-29 (23.1 closed; its slice re-sorted): queued for the standing cleanup after the next release (Story 23.3 or later), priority p4
 - 2026-10-05T18:41:41Z status=routed owner=18-9-sql-privileges-and-the-permission-extras by=merge_gate note=owner-approved burn-down scope 2026-10-05: feature-sized, re-routed from the cleanup queue to the permission-extras story
+- 2026-10-08T00:50:58Z owner=18-29-role-members-admin-option-user-copy-from-and-password-valida by=spec_gate note=orchestrator split 2026-10-07: Story 18.9 split; DW-1662 rides with role members, Copy from and password validation
 
 ### DW-1663: The authorization server's privileged customization-role effect is name-only, so adding %Manager, %Operator or %SecurityAdministrator (which carry %Admin_* resources) is not minted destructive
 - source: spec-12-7-the-oauth-2-0-authorization-server-editor.md | severity: med | fix-risk: high | footprint: in-story
@@ -10370,3 +10372,24 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: cycle-log-epic-20.md (run 37670705022 attempt 1) | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: Failed in browser shard 1/3 of attempt 1 on 95eecef8; attempt 2 green; passed in 37649713980 and 37660214447 and 3/3 locally on ocupilot-b-ci (inference: measured mid-reflow after setViewport)
 - 2026-10-07T20:40:47Z status=routed owner=23-5-the-range-end-cleanup-part-5 by=lead note=settle the layout after setViewport(720) before openMenuViolations measures, as 20.1 did for the navigation map; same screen family as DW-2107
+
+### DW-2172: DW-236's detection half: a SQL grant on OcuPilot's own schemas widened outside OcuPilot (another role or _PUBLIC holding it) is not detected; enumerating every grantee on the schema belongs beside install's schema-grant read-back
+- source: spec-18-9-sql-privileges-and-the-permission-extras.md (split) | severity: med | fix-risk: med | footprint: in-epic
+- evidence: 18.9 plan on ocupilot-ci: detection needs every grantee on the schema enumerated; refusal half stays with 18.9's new AD-10 arm (orchestrator ruling 2026-10-07)
+- 2026-10-08T00:50:05Z status=routed owner=18-13-multi-namespace-install by=spec_gate note=orchestrator: detection half to 18.13, beside install's schema-grant read-back (AD-38)
+
+### DW-2173: IRIS defect candidate: the admin API's Security.SQLPrivilege.Column grant the SQL layer refuses answers 200 and stores nothing
+- source: spec-18-9-sql-privileges-and-the-permission-extras.md (split) | severity: med | fix-risk: high | footprint: out-of-footprint
+- evidence: ocupilot-ci 2026-10-07: a grantor without the privilege sent a column grant; 200, no row stored
+- 2026-10-08T00:50:58Z status=decision-pending owner=burndown by=spec_gate note=owner_hold: not reported to InterSystems
+
+### DW-2174: IRIS defect candidate: the admin API's Security.SQLPrivilege.Standard revoke by a caller who is not the grantor (no asGrantor) answers 200 and revokes nothing
+- source: spec-18-9-sql-privileges-and-the-permission-extras.md (split) | severity: med | fix-risk: high | footprint: out-of-footprint
+- evidence: ocupilot-ci 2026-10-07: non-grantor revoke 200, the privilege still listed
+- 2026-10-08T00:50:58Z status=decision-pending owner=burndown by=spec_gate note=owner_hold: not reported to InterSystems
+
+### DW-2175: IRIS defect candidate: the admin API's a Security.SQLPrivilege.Standard grant naming an unknown namespace answers 500 <NAMESPACE>
+- source: spec-18-9-sql-privileges-and-the-permission-extras.md (split) | severity: med | fix-risk: high | footprint: out-of-footprint
+- evidence: ocupilot-ci 2026-10-07: grant with namespace OcuProbe189Missing answered 500 <NAMESPACE>
+- 2026-10-08T00:50:58Z status=decision-pending owner=burndown by=spec_gate note=owner_hold: not reported to InterSystems
+- 2026-10-08T00:51:20Z status=decision-pending owner=burndown by=spec_gate note=evidence corrected: the plan names no probe namespace (spec Design Notes: an unknown namespace answers 500 <NAMESPACE>); OcuProbe189Missing was not measured
