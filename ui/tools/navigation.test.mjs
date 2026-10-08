@@ -349,8 +349,9 @@ test('a side bar lists only built screens, in side-bar order', () => {
       'agent/governance',
       'agent/ledger',
       'agent/transcripts',
+      'agent/screenpermissions',
     ],
-    'the built screens are Home, at the application root, then the alerts.log viewer, the application error log and the audit database, the unlisted Database details, Free-space view, Check integrity flow, Volume files, device editor, the global mapping form and list, the unlisted Journal file databases, Journal file details and Journal records, the unlisted language server Activity log and editor, the three unlisted License usage tabs, the license server form, the local database form, the namespace editor, the package mapping form and list, process details, the remote database form, the routine mapping form and list, processes, Locks, System usage, Databases, Integrity log, Devices, Namespaces, License usage, Dashboard, External language servers, Local databases, Remote databases, Journals, License key, License servers, the unlisted task details, New Task wizard and per-task history, task schedule, on-demand tasks, upcoming tasks, task history, Background tasks, the unlisted user form and service form, users, roles, resources, services, OpenAPI document viewer, the unlisted web-application form, web applications, REST API explorer, Web sessions, the unlisted LDAP configuration form, the four unlisted OAuth 2.0 tabs with the unlisted client configuration, resource server, server client description, server description and authorization server editors among them, the unlisted SSL/TLS configuration form, the unlisted wallet secret form, Secrets, the unlisted X.509 credential form, SSL/TLS, X.509, LDAP / Kerberos, Wallet and OAuth 2.0 screens, Auditing configuration and Allowed directories, System Explorer\'s two unlisted viewers, Classes and Routines, its SQL query and Data browser, and the Agent co-pilot area\'s Definition form, unlisted transcript page, Definitions list, Switches, Guardrails, Governance policy, Agent audit ledger and Transcripts list, in area rail order'
+    'the built screens are Home, at the application root, then the alerts.log viewer, the application error log and the audit database, the unlisted Database details, Free-space view, Check integrity flow, Volume files, device editor, the global mapping form and list, the unlisted Journal file databases, Journal file details and Journal records, the unlisted language server Activity log and editor, the three unlisted License usage tabs, the license server form, the local database form, the namespace editor, the package mapping form and list, process details, the remote database form, the routine mapping form and list, processes, Locks, System usage, Databases, Integrity log, Devices, Namespaces, License usage, Dashboard, External language servers, Local databases, Remote databases, Journals, License key, License servers, the unlisted task details, New Task wizard and per-task history, task schedule, on-demand tasks, upcoming tasks, task history, Background tasks, the unlisted user form and service form, users, roles, resources, services, OpenAPI document viewer, the unlisted web-application form, web applications, REST API explorer, Web sessions, the unlisted LDAP configuration form, the four unlisted OAuth 2.0 tabs with the unlisted client configuration, resource server, server client description, server description and authorization server editors among them, the unlisted SSL/TLS configuration form, the unlisted wallet secret form, Secrets, the unlisted X.509 credential form, SSL/TLS, X.509, LDAP / Kerberos, Wallet and OAuth 2.0 screens, Auditing configuration and Allowed directories, System Explorer\'s two unlisted viewers, Classes and Routines, its SQL query and Data browser, and the Agent co-pilot area\'s Definition form, unlisted transcript page, Definitions list, Switches, Guardrails, Governance policy, Agent audit ledger, Transcripts list and Screen permissions list, in area rail order'
   );
 });
 
@@ -465,17 +466,17 @@ test('OS management lists Processes, Locks, System usage, Databases, Integrity l
 // the listed-roster assertion below goes red at two entries where one is expected, and the
 // `builtScreens()` roster leg above stays green -- which is what proves the filter is on listing
 // and not on routing.
-test('an unlisted screen is routable and never advertised: the agent area lists six screens and builds eight', () => {
+test('an unlisted screen is routable and never advertised: the agent area lists seven screens and builds nine', () => {
   const built = builtScreensForArea('agent');
   assert.deepEqual(
     built.map((screen) => screen.route),
-    ['agent/definitions/edit', 'agent/transcripts/details', 'agent/definitions', 'agent/switches', 'agent/guardrails', 'agent/governance', 'agent/ledger', 'agent/transcripts'],
-    'all eight agent screens are built, the form and the transcript page first because they take position 0'
+    ['agent/definitions/edit', 'agent/transcripts/details', 'agent/definitions', 'agent/switches', 'agent/guardrails', 'agent/governance', 'agent/ledger', 'agent/transcripts', 'agent/screenpermissions'],
+    'all nine agent screens are built, the form and the transcript page first because they take position 0'
   );
   assert.deepEqual(
     listedScreensForArea('agent').map((screen) => screen.route),
-    ['agent/definitions', 'agent/switches', 'agent/guardrails', 'agent/governance', 'agent/ledger', 'agent/transcripts'],
-    'the side bar lists Definitions, Switches, Guardrails, Governance policy, Agent audit ledger then Transcripts -- the form and the transcript page take no position'
+    ['agent/definitions', 'agent/switches', 'agent/guardrails', 'agent/governance', 'agent/ledger', 'agent/transcripts', 'agent/screenpermissions'],
+    'the side bar lists Definitions, Switches, Guardrails, Governance policy, Agent audit ledger, Transcripts then Screen permissions -- the form and the transcript page take no position'
   );
   assert.equal(
     isListedScreen(built.find((screen) => screen.route === 'agent/definitions/edit')),
@@ -1574,4 +1575,25 @@ test('a namespace change event for the current namespace re-reads the map, and o
   await new Promise((resolve) => setTimeout(resolve, 0));
   assert.equal(api.calls.length, 2, 'the current namespace is, whatever its case');
   assert.equal(service.applies('interoperability'), true, 'and the category appears without a reload');
+});
+
+test('Story 20.15: a screen-permission change event of any action re-reads the map, whichever screen it names', async () => {
+  // Mutation (Rule 19): make onChange ignore 'screen-permission' -> the first two legs go red.
+  const bus = new ChangeBus();
+  const api = stubApi([ok(featureMap([])), ok(featureMap([])), ok(featureMap([])), ok(featureMap([]))]);
+  const service = new NavigationService({ api, namespace: () => 'HSCUSTOM', bus });
+  await service.load();
+  assert.equal(api.calls.length, 1);
+
+  bus.publish({ kind: 'changed', type: 'screen-permission', scope: 'instance', id: 'explorer.classes', action: 'updated' });
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  assert.equal(api.calls.length, 2, 'an adjustment re-reads the verdicts');
+
+  bus.publish({ kind: 'changed', type: 'screen-permission', scope: 'instance', id: 'osmgmt.locks', action: 'deleted' });
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  assert.equal(api.calls.length, 3, 'and so does a reset');
+
+  bus.publish({ kind: 'changed', type: 'role', scope: 'instance', id: 'ProbeRole', action: 'updated' });
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  assert.equal(api.calls.length, 3, 'an unrelated entity is not a re-read');
 });

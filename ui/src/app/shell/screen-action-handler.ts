@@ -112,6 +112,8 @@ export const SCREEN_ACTION_DESCRIPTORS: readonly string[] = [
   'OcuPilot.Screen.Descriptor.MftConnectionList',
   // Story 20.2: Productions, whose Start is sent at once and whose Stop, Restart, Update and Recover warn first.
   'OcuPilot.Screen.Descriptor.InteropProductionList',
+  // Story 20.15: Screen permissions, whose Reset warns first and whose Add and Remove its own page's dialog sends.
+  'OcuPilot.Screen.Descriptor.AgentScreenPermissions',
 ];
 
 /**
@@ -191,6 +193,16 @@ export const REMOTE_DATABASE_LIST = 'OcuPilot.Screen.Descriptor.RemoteDatabaseLi
  */
 export const ECP_DATA_SERVER_LIST = 'OcuPilot.Screen.Descriptor.EcpDataServerList';
 export const ECP_CHANGE_STATUS = 'changestatus';
+
+/**
+ * Screen permissions (Story 20.15, AD-64): its page opens the Change permissions dialog for Add, and
+ * the dialog sends `add-pair` and `remove-pair` through this handler, each with the one pair as the
+ * value `Pair`. Its Reset is a row action the handler draws, after a warning.
+ */
+export const SCREEN_PERMISSIONS = 'OcuPilot.Screen.Descriptor.AgentScreenPermissions';
+export const SCREEN_PERMISSIONS_ADD = 'add-pair';
+export const SCREEN_PERMISSIONS_REMOVE = 'remove-pair';
+export const SCREEN_PERMISSIONS_RESET = 'reset';
 
 /**
  * ECP application servers' SSL/TLS authorizations tab (Story 18.21), whose Authorize and Reject each
@@ -351,6 +363,8 @@ const UNDRAWN_ACTIONS: Readonly<Record<string, readonly string[]>> = {
   [JOURNAL_LIST]: [JOURNAL_SWITCH_FILE, JOURNAL_SWITCH_DIRECTORY],
   // ECP data servers' page registers Change status itself, whose dialog sends the status (Story 18.20).
   [ECP_DATA_SERVER_LIST]: [ECP_CHANGE_STATUS],
+  // Screen permissions' page registers Change permissions itself, whose dialog sends Add and Remove (Story 20.15).
+  [SCREEN_PERMISSIONS]: [SCREEN_PERMISSIONS_ADD, SCREEN_PERMISSIONS_REMOVE],
 };
 
 /**
@@ -576,6 +590,8 @@ const WARNING_CONSEQUENCES: Readonly<Record<string, Readonly<Record<string, stri
   // Story 18.21: an authorize lets an application server connect, and a reject refuses it; neither
   // removes anything, so each warns.
   [ECP_SSL_CONNECTION_TAB]: { authorize: STRINGS.ecpSslAuthorizeConsequence, reject: STRINGS.ecpSslRejectConsequence },
+  // Story 20.15: a reset puts a screen back to the permissions its descriptor declares.
+  [SCREEN_PERMISSIONS]: { [SCREEN_PERMISSIONS_RESET]: STRINGS.screenPermissionsResetConsequence },
   // Story 20.2: each production action but Start states the wait it makes, or what Recover does.
   'OcuPilot.Screen.Descriptor.InteropProductionList': {
     stop: STRINGS.interopStopConsequence,

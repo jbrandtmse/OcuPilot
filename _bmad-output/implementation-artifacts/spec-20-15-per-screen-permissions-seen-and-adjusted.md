@@ -2,13 +2,29 @@
 title: 'Story 20.15: Per-screen permissions, seen and adjusted'
 type: 'feature'
 created: '2026-10-07'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: 'd782877aec9da7280d74e7e8316abb0a51705850'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-20-context.md'
 warnings: ['oversized']
-deferred: []
+deferred:
+  - 'A Pairs read-back for add-pair and remove-pair: the action kind reads nothingSent, because the composed GET refuses the repeated change after the write (READBACKFIELDS Pairs is declared and unused). A plain re-read would let AD-58 compare the stored set.'
+  - summary: >-
+      The port's stale-write mapping to 409 STATE.CONFLICT is pinned only at the store (ScreenAccessGate), not through ScreenAccessPort.
+    evidence: |-
+      No added test interleaves two writers through the port; every port test uses one writer.
+    location: >- # optional
+      src/OcuPilot/Port/ScreenAccessPort.cls (Stored)
+    severity: medium
+  - summary: >-
+      The agent propose-and-confirm path of the three unadvertised tools is declared but never run end to end.
+    evidence: |-
+      ScreenAccessWire drives the row-action route; ScreenAccessDescriptor asserts declarations only. Story 20.18 advertises the tools and should add the run (StateDiff, Reset.PortQuery payload branch, ReadBackGone).
+    location: >- # optional
+      src/OcuPilot/Tool/ScreenAccessAddPair.cls, ScreenAccessRemovePair.cls, ScreenAccessReset.cls
+    severity: medium
 ---
 
 <intent-contract>
@@ -337,6 +353,20 @@ Every other edit is add-only. Each new entry sits beside the agent entries or at
 
 ## Review Triage Log
 
+### 2026-10-08 — Review pass
+
+- verdicts: 8 findings — high 0, medium 3, low 4, false 1, maybe-false 0
+- findings:
+
+  - `[medium]` `[patch]` Port `Snippet`/`SnippetForm` untested — added `ScreenAccessDescriptor.TestTheScriptRendersTheWritesAndNotTheRead`; `Literal` no longer doubling a quote reddened it, reverted byte-identical.
+  - `[medium]` `[defer]` Stale-write 409 unpinned at the port — deferred; the store-level version check is pinned.
+  - `[medium]` `[defer]` Agent propose-and-confirm path unrun — deferred to Story 20.18, which advertises the tools.
+  - `[low]` `[reject]` PAIRPRESENT/PAIRABSENT have no separate mutation line — same check shape as the ninth-pair leg; AC6's line covers the family.
+  - `[low]` `[reject]` `Gate.Adjustable` cache invalidation unasserted — the cache is keyed on the compiled Area class hash and bypassed when the hash is empty; no reachable failure.
+  - `[low]` `[reject]` `Invoke` GET with both addpair and removepair takes the add branch — no tool or route builds that query.
+  - `[false]` `[reject]` Intent-alignment layer: no divergence; reading A implemented, deliberate deviations (unique index, nothingSent read-back) are recorded.
+  - `[low]` `[reject]` `WireSecurityRead` task-history "nothing is cut at 1,000" red — the throwaway holds 1224 history rows; not this story's code, and CI starts fresh.
+
 ## Design Notes
 
 **Governing ADs:**
@@ -490,7 +520,27 @@ Every other edit is add-only. Each new entry sits beside the agent entries or at
 | AC7 | `navigation.ts` `onChange` ignores `screen-permission` | the browser spec, whose side bar stays stale |
 | AC8 | A key set to `false`; separately, `ADVERTISED 1` | `GovernanceBaseline`; `ScreenAccessDescriptor` |
 
+**Mutations run (Rule 19)**, each applied to the throwaway's source, reloaded, observed red and reverted by a reload of the unmutated tree:
+
+- mutation: AC1 - `Screen.Access` takes `Effective` from the declared set: `ScreenAccessWire` View and Classic union red.
+- mutation: AC2 - descriptor `privileges` set to `[]`: `ScreenAccessWire` Not an adjuster red. `Gate.Adjustable` answering 1: `ScreenAccessGate` stray-row descriptor legs red and the tool legs green; with a tool's `PrivilegePairs` also routed through `RequiredPairs`, the three tool legs red.
+- mutation: AC3 - `Gate.BaseSet` ignores the stored row: `ScreenAccessWire` Raise (map, read route) and `ScreenAccessGate` red.
+- mutation: AC4 - `ScreenAccessPort.Apply` refuses removing a held pair: `ScreenAccessWire` Lower and audit legs red.
+- mutation: AC5 - the port's `Event.Record` call replaced: `ScreenAccessWire` Audit red (both rows read 0).
+- mutation: AC6 - the empty check, then `ResourceDefined`, then `Gate.Adjustable` in turn: the matching `ScreenAccessRefusals` method red each time.
+- mutation: AC7 - `NavigationService.onChange` ignores `screen-permission`, bundle rebuilt and redeployed: `screen-permissions.browser-spec.mjs` times out waiting for Classes to read unavailable; reverted, rebuilt, green.
+- mutation: AC8 - `agent.screenpermissions.reset` set to `false` in `Baseline`, then `ScreenAccessAction.ADVERTISED` 1: `ScreenAccessDescriptor` red both times.
+- mutation: script form - `ScreenAccessPort.Literal` stops doubling a quote: `ScreenAccessDescriptor.TestTheScriptRendersTheWritesAndNotTheRead` red.
+- mutation: rosters - `AgentScreenPermissions` removed from `DeveloperFloor.SCREENS`, then `agent.screenpermissions.read` from `TOOLS`: `DeveloperFloor` red each time. `InteropFloorOwnPairs` needs no row: the screen and tools declare `%Development:USE`.
+
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
+
+- Change: `Kernel/State/Access` (a unique index on `Screen`, since `Base` owns the IdKey; the hot path is the index's `Exists` plus `PairsGetStored`, in `Base.GuardedStoredValue`'s one frame), `Screen.Gate` (`Adjustable`, `AdjustedPairs`, `BaseSet`, `BasePairs`; `RequiredPairs` the one reader; `Adjustable` keeps the static area answer per process, hash-checked), `Port/ScreenAccessPort` (composed `GET`, `PUT`, `DELETE`; `COMPOSEDTYPES Screen/PUT`), three tools over an abstract `ScreenAccessAction`, `Screen/Access`, source kind `access` (Registry, Read, mirror), the descriptor, `Api/AccessError`, `screen-permission` (EntityType, `PROHIBITED.OCUPILOTSCREEN` arm, Baseline keys), and the client page, dialog, handler, label, outlet and `onChange` entries. New literals extend EXPERIENCE.md row 604 rather than adding rows, because strings.ts cites that table by line.
+- Tests added: `ScreenAccessDescriptor`, `ScreenAccessGate` (+ `ScreenAccessGateSeam`), `ScreenAccessWire`, `ScreenAccessRefusals`, `ScreenAccessFixture`, `ScreenAccessPortGateSeam`, `ui/tools/access.test.mjs`, two component specs, `screen-permissions.browser-spec.mjs`. Rosters and counts moved in `Descriptor`, `ReadTool`, `SurfaceCoverage`, `Prohibited` (32 codes; also `AuditingUpdate`, `AuthOptionsDescriptor`, `EncryptionStartupDescriptor`, `SuperserverDescriptor`), `DeveloperFloor`, `PortGate`, `ToolEmit`, `ToolRoundTrip`, `ToolWrite`, `Wire`, `RefusalCopy`, `AdminPairCorpus` and three descriptor corpora, `navigation`, `screen-mirror`, `self-protection` and `strings` (bound 2900 to 3000); `ci-throwaway.sh` arming line.
+- Task 0 (ocupilot-b-ci): after Processes loses `%Admin_Manage:USE`, Op's map opens it and its read answers 403 `PORT.ACCESSDENIED` naming `%Admin_Manage:USE` (AdminPort's gate). After Web applications gains `%Admin_Operate:USE` and loses `%Admin_Secure:USE` and `%DB_IRISSYS:READ`, Op's map opens it and its read answers 403 `PORT.ACCESSDENIED` with no pair named (the vendor's check). `Navigation.Payload`, 5 runs, no adjustment: store never read 58-60 ms; store read 69-75 ms in the same session (the planned 46 ms was a quieter machine).
+- Verified: full sweep 515 classes, 4096 tests; the 9 failures were roster counts, fixed and re-run green, except `WireSecurityRead.TestTaskHistoryPairSetsAreEnforcedForARealPrincipal` ("nothing is cut at 1,000"), a task-history row count on a long-lived instance in a screen this story does not touch. `test:tools` 1888, components 2647, `a11y-structural-invariants` 13, `screen-permissions` browser spec, smoke 50/50, bundle 3.12 MB; every AC has a `mutation:` line.
+- Residual: the full browser suite is CI's. The spine's AD-64 and its one-line amendments were already present and were not edited.
+- Review: 1 patch applied (script-form test), 2 deferred (port stale-write mapping, agent confirm path), 5 rejected with reasons in the triage log. Follow-up review not recommended. Targeted rerun green after the patch: `ScreenAccessDescriptor`.

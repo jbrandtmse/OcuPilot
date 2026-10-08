@@ -10,7 +10,7 @@
  * declarations disagree.
  */
 
-export type EntityTypeKey = 'web-application' | 'rest-service' | 'user' | 'role' | 'resource' | 'service' | 'ssl-configuration' | 'x509-credential' | 'ldap-configuration' | 'wallet-collection' | 'wallet-secret' | 'oauth2-client-configuration' | 'oauth2-server-definition' | 'oauth2-resource-server' | 'oauth2-server' | 'oauth2-server-client' | 'audit-event' | 'audit-user-event' | 'auditing-configuration' | 'task' | 'task-history-entry' | 'process' | 'lock' | 'database' | 'device' | 'audit-record' | 'application-error' | 'log-entry' | 'agent-definition' | 'agent-switch' | 'agent-policy' | 'allowed-directory' | 'namespace' | 'web-session' | 'background-task' | 'global-mapping' | 'routine-mapping' | 'package-mapping' | 'database-configuration' | 'language-server' | 'class' | 'routine' | 'journal-file' | 'journal-file-database' | 'journal-settings' | 'journal-record' | 'license-key' | 'license-server' | 'ecp-data-server' | 'ecp-settings' | 'ecp-ssl-connection' | 'encryption-key-file' | 'database-encryption-keys' | 'data-element-encryption-keys' | 'encryption-startup' | 'docdb-database' | 'sql-statement' | 'authentication-options' | 'superserver' | 'mft-connection' | 'production';
+export type EntityTypeKey = 'web-application' | 'rest-service' | 'user' | 'role' | 'resource' | 'service' | 'ssl-configuration' | 'x509-credential' | 'ldap-configuration' | 'wallet-collection' | 'wallet-secret' | 'oauth2-client-configuration' | 'oauth2-server-definition' | 'oauth2-resource-server' | 'oauth2-server' | 'oauth2-server-client' | 'audit-event' | 'audit-user-event' | 'auditing-configuration' | 'task' | 'task-history-entry' | 'process' | 'lock' | 'database' | 'device' | 'audit-record' | 'application-error' | 'log-entry' | 'agent-definition' | 'agent-switch' | 'agent-policy' | 'allowed-directory' | 'screen-permission' | 'namespace' | 'web-session' | 'background-task' | 'global-mapping' | 'routine-mapping' | 'package-mapping' | 'database-configuration' | 'language-server' | 'class' | 'routine' | 'journal-file' | 'journal-file-database' | 'journal-settings' | 'journal-record' | 'license-key' | 'license-server' | 'ecp-data-server' | 'ecp-settings' | 'ecp-ssl-connection' | 'encryption-key-file' | 'database-encryption-keys' | 'data-element-encryption-keys' | 'encryption-startup' | 'docdb-database' | 'sql-statement' | 'authentication-options' | 'superserver' | 'mft-connection' | 'production';
 
 /**
  * The closed archetype vocabulary, mirrored from OcuPilot.Screen.Archetype. A screen's
@@ -170,7 +170,7 @@ export interface ReadSourcePart {
  * `timeline` source's fields and criterion are fixed.
  */
 export interface ReadSource {
-  readonly port: 'admin' | 'state' | 'mgmnt' | 'logsource' | 'path' | 'timeline' | 'background' | 'atelier' | 'encryption' | 'docdb' | 'sqlactivity' | 'interop';
+  readonly port: 'admin' | 'state' | 'mgmnt' | 'logsource' | 'path' | 'timeline' | 'background' | 'atelier' | 'encryption' | 'docdb' | 'sqlactivity' | 'interop' | 'access';
   readonly endpoint: string;
   /**
    * `LIST` reads rows; `GET` reads one object as the one row, and a 404 reads as none;
@@ -502,6 +502,7 @@ export const ENTITY_TYPES: readonly EntityTypeKey[] = [
   "agent-switch",
   "agent-policy",
   "allowed-directory",
+  "screen-permission",
   "namespace",
   "web-session",
   "background-task",
@@ -1185,6 +1186,166 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "refreshDefault": 0,
     "read": null,
     "table": null,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.AgentScreenPermissions",
+    "route": "agent/screenpermissions",
+    "area": "agent",
+    "labelKey": "agentScreenPermissionsLabel",
+    "sideBarPosition": 7,
+    "archetype": "list",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Development",
+        "permission": "USE"
+      }
+    ],
+    "entityType": "screen-permission",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "composite",
+      "parts": [
+        "Screen"
+      ]
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [
+      {
+        "id": "add-pair",
+        "selfProtection": ""
+      },
+      {
+        "id": "remove-pair",
+        "selfProtection": ""
+      },
+      {
+        "id": "reset",
+        "selfProtection": ""
+      }
+    ],
+    "context": {
+      "fields": [
+        "Screen",
+        "Area",
+        "Declared",
+        "Adjustment",
+        "Effective",
+        "Holds",
+        "FailedPair",
+        "Adjustable"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "screenPermissionsEmpty",
+    "commandAliases": [
+      "screen permissions",
+      "permissions per screen",
+      "who can open"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "userPromptGroupAccess",
+        "textKey": "screenPermissionsPrompt1"
+      },
+      {
+        "groupKey": "userPromptGroupAccess",
+        "textKey": "screenPermissionsPrompt2"
+      },
+      {
+        "groupKey": "userPromptGroupAccess",
+        "textKey": "screenPermissionsPrompt3"
+      }
+    ],
+    "classicPage": "",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "access",
+        "endpoint": "Screens",
+        "type": "LIST"
+      },
+      "fields": [
+        "Screen",
+        "Area",
+        "Declared",
+        "Adjustment",
+        "ClassicResource",
+        "Effective",
+        "Holds",
+        "FailedPair",
+        "Adjustable"
+      ],
+      "filter": [
+        "Screen",
+        "Area"
+      ],
+      "sort": {
+        "fields": [
+          "Area",
+          "Screen"
+        ],
+        "default": "Area",
+        "direction": "asc"
+      },
+      "paging": "cap",
+      "note": {
+        "key": "screenPermissionsNote",
+        "text": "Changing a screen's permissions changes who OcuPilot lets open it; the instance still checks every read and write."
+      }
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Screen",
+          "labelKey": "agentLedgerColumnScreen",
+          "kind": "name"
+        },
+        {
+          "field": "Area",
+          "labelKey": "screenPermissionsColumnArea",
+          "kind": "text"
+        },
+        {
+          "field": "Effective",
+          "labelKey": "screenPermissionsColumnEffective",
+          "kind": "text"
+        },
+        {
+          "field": "Adjustment",
+          "labelKey": "screenPermissionsColumnAdjustment",
+          "kind": "text"
+        },
+        {
+          "field": "Holds",
+          "labelKey": "screenPermissionsColumnHolds",
+          "kind": "status"
+        }
+      ],
+      "emptyNextKey": "",
+      "emptyAgentKey": "screenPermissionsEmptyAgent"
+    },
+    "toolIdentifier": "agent.screenpermissions",
+    "refreshDefault": 0,
     "banner": null,
     "tab": null,
     "rowTarget": null,

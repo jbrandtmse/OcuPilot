@@ -304,6 +304,23 @@ ClassMethod InteropPortClass() As %String
     Quit "OcuPilot.Port.InteropPort"
 }
 
+/// <p>The <code>read.source.port</code> value naming the screens' required permissions, composed by
+/// <method>AccessClass</method> from the registry, the adjustment store and the caller's own privileges
+/// (AD-36, AD-64, Story 20.15). Its <code>endpoint</code> is <code>Screens</code>.</p>
+Parameter SOURCEACCESS = "access";
+
+/// <p>The one endpoint and request type an <code>access</code> source declares.</p>
+Parameter ACCESSENDPOINT = "Screens";
+
+Parameter ACCESSTYPE = "LIST";
+
+/// <p>The class every <b>access</b> read is composed through. Overridable so a fixture can reach another;
+/// production never overrides it.</p>
+ClassMethod AccessClass() As %String
+{
+    Quit "OcuPilot.Screen.Access"
+}
+
 /// <p>The package a <code>state</code> source's <code>endpoint</code> names a class in, trailing
 /// dot included. A source declares the class's short name -- <code>Agent</code> -- and never a
 /// package-qualified one, so no descriptor can point the read at a class outside the kernel's own
@@ -402,7 +419,7 @@ ClassMethod Execute(pDescriptor As %String, pMaxRows As %String = "", Output pRe
         ; AD-36 as amended (Story 16.7): a bare admin type read as a list over one member.
         Set tRowsMember = $Select($IsObject(tSource) && (tSource.%GetTypeOf("rows") = "string"): tSource.%Get("rows"), 1: "")
         Set tBareRows = (tRowsMember '= "") && (tSource.%Get("port") = ..#SOURCEADMIN) && $Match(tSourceType, ..#BARETYPEPATTERN)
-        If '$IsObject(tSource) || '$ListFind($ListBuild(..#SOURCEADMIN, ..#SOURCESTATE, ..#SOURCEMGMNT, ..#SOURCELOGSOURCE, ..#SOURCEPATH, ..#SOURCETIMELINE, ..#SOURCEBACKGROUND, ..#SOURCEATELIER, ..#SOURCEENCRYPTION, ..#SOURCEDOCDB, ..#SOURCESQLACTIVITY, ..#SOURCEINTEROP), tSource.%Get("port")) || ('tBareRows && (tSourceType '= ..#READTYPE) && (((tSourceType '= ..#OBJECTTYPE) && (tSourceType '= ..#UPCOMINGTYPE) && (tSourceType '= ..#HISTORYTYPE) && (tSourceType '= ..#VOLUMELISTTYPE) && (tSourceType '= ..#DATAELEMENTLISTTYPE)) || (tSource.%Get("port") '= ..#SOURCEADMIN))) {
+        If '$IsObject(tSource) || '$ListFind($ListBuild(..#SOURCEADMIN, ..#SOURCESTATE, ..#SOURCEMGMNT, ..#SOURCELOGSOURCE, ..#SOURCEPATH, ..#SOURCETIMELINE, ..#SOURCEBACKGROUND, ..#SOURCEATELIER, ..#SOURCEENCRYPTION, ..#SOURCEDOCDB, ..#SOURCESQLACTIVITY, ..#SOURCEINTEROP, ..#SOURCEACCESS), tSource.%Get("port")) || ('tBareRows && (tSourceType '= ..#READTYPE) && (((tSourceType '= ..#OBJECTTYPE) && (tSourceType '= ..#UPCOMINGTYPE) && (tSourceType '= ..#HISTORYTYPE) && (tSourceType '= ..#VOLUMELISTTYPE) && (tSourceType '= ..#DATAELEMENTLISTTYPE)) || (tSource.%Get("port") '= ..#SOURCEADMIN))) {
             Set tSC = ..Internal(pDescriptor _ " declares no read this executor can issue", .pHttpStatus, .pFault)
             Quit
         }
@@ -537,6 +554,17 @@ ClassMethod Execute(pDescriptor As %String, pMaxRows As %String = "", Output pRe
                 Set tSC = tPortSC
                 Quit
             }
+        } ElseIf tSource.%Get("port") = ..#SOURCEACCESS {
+            ; The screens' required permissions (Story 20.15): composed in this process, so the caller's
+            ; own verdict is what each row carries. No namespace and no criteria, so the cap is the
+            ; whole ask.
+            Set tAccessCut = 0
+            Set tAccessSC = $ClassMethod(..AccessClass(), "Rows", .tAnswer, tMax + 1, .tAccessCut)
+            If $$$ISERR(tAccessSC) {
+                Set tSC = ..Internal(pDescriptor _ "'s permissions could not be composed", .pHttpStatus, .pFault)
+                Quit
+            }
+            If tAccessCut Set tTruncated = 1
         } ElseIf tSource.%Get("port") = ..#SOURCESQLACTIVITY {
             ; The instance's running SQL statements (Story 19.10): no namespace and no criteria, so the
             ; cap is the whole ask; the port's gate runs before any statement is prepared.

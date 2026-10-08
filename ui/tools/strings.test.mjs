@@ -589,9 +589,12 @@ test("EXPERIENCE.md's Fixed strings table itself holds roughly 200 distinct lite
   // Superservers screens publish thirty-six literals and Story 20.2's productions thirty-nine, merged
   // beside them; the bound moves to 2900 under the same
   // protocol (approved at its spec gate).
+  // Story 20.15's thirty literals (Screen permissions and its refusals), merged beside Story 18.26's
+  // MFT connections, take the table past 2900; the bound moves to 3000 under the same protocol
+  // (approved).
   assert.ok(
-    expectedLiterals.length >= 150 && expectedLiterals.length <= 2900,
-    `expected between 150 and 2900 distinct literals, extracted ${expectedLiterals.length} -- the extractor's row range or quote-matching may have drifted from the table`
+    expectedLiterals.length >= 150 && expectedLiterals.length <= 3000,
+    `expected between 150 and 3000 distinct literals, extracted ${expectedLiterals.length} -- the extractor's row range or quote-matching may have drifted from the table`
   );
 });
 

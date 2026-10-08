@@ -6205,6 +6205,71 @@ export const STRINGS = {
     'The production\'s work in progress did not finish within 15 seconds, so it was left as it was.',
   /** EXPERIENCE.md:604 */
   interopRefusalState: 'This production\'s state does not allow that action here.',
+  /** EXPERIENCE.md:604 */
+  agentScreenPermissionsLabel: 'Screen permissions',
+  /** EXPERIENCE.md:604 */
+  screenPermissionsColumnArea: 'Area',
+  /** EXPERIENCE.md:604 */
+  screenPermissionsColumnEffective: 'Required permissions',
+  /** EXPERIENCE.md:604 */
+  screenPermissionsColumnAdjustment: 'Adjusted to',
+  /** EXPERIENCE.md:604 */
+  screenPermissionsColumnHolds: 'You hold these',
+  /** EXPERIENCE.md:604 */
+  screenPermissionsEmpty: 'No screens are listed.',
+  /** EXPERIENCE.md:604 */
+  screenPermissionsEmptyAgent: 'Ask the agent which screens this instance offers.',
+  /** EXPERIENCE.md:604 */
+  screenPermissionsNote: 
+    'Changing a screen\'s permissions changes who OcuPilot lets open it; the instance still checks every read and write.',
+  /** EXPERIENCE.md:604 */
+  screenPermissionsPrompt1: 'Which permissions does the Web applications screen require?',
+  /** EXPERIENCE.md:604 */
+  screenPermissionsPrompt2: 'Which screens can\'t I open, and which permission is missing?',
+  /** EXPERIENCE.md:604 */
+  screenPermissionsPrompt3: 'Which screens have adjusted permissions?',
+  /** EXPERIENCE.md:604 */
+  screenPermissionsChangeAction: 'Change permissions',
+  /** EXPERIENCE.md:604 */
+  screenPermissionsResetAction: 'Reset permissions',
+  /** EXPERIENCE.md:604 */
+  screenPermissionsResetConsequence: 'This screen will require its declared permissions again.',
+  /** EXPERIENCE.md:604 */
+  screenPermissionsDialogTitle: 'Change the permissions of <screen>',
+  /** EXPERIENCE.md:604 */
+  screenPermissionsClassicLine: 
+    'The classic portal also requires <pair> here, and only the classic portal changes it.',
+  /** EXPERIENCE.md:604 */
+  screenPermissionsFixed: 'This screen\'s permissions are fixed.',
+  /** EXPERIENCE.md:604 */
+  screenPermissionsAddLegend: 'Add a permission',
+  /** EXPERIENCE.md:604 */
+  screenPermissionsAddButton: 'Add',
+  /** EXPERIENCE.md:604 */
+  screenPermissionsLowerConsequence: 
+    'More accounts may open this screen. The instance still checks what they do there.',
+  /** EXPERIENCE.md:604 */
+  screenPermissionsRemovePair: 'Remove <pair>',
+  /** EXPERIENCE.md:604 */
+  accessRefusalScreenUnknown: 'No screen has that identifier.',
+  /** EXPERIENCE.md:604 */
+  accessRefusalNotAdjusted: 
+    'This screen already requires its declared permissions, so there is nothing to reset.',
+  /** EXPERIENCE.md:604 */
+  accessRefusalPairsEmpty: 'A screen keeps at least one required permission.',
+  /** EXPERIENCE.md:604 */
+  accessRefusalResourceUnknown: 'This instance defines no resource of that name.',
+  /** EXPERIENCE.md:604 */
+  accessRefusalPairMalformed: 
+    'Name a resource and a permission, written resource:permission, where the permission is READ, WRITE or USE.',
+  /** EXPERIENCE.md:604 */
+  accessRefusalPairAbsent: 'This screen\'s required permissions do not include that pair.',
+  /** EXPERIENCE.md:604 */
+  accessRefusalPairPresent: 'This screen\'s required permissions already include that pair.',
+  /** EXPERIENCE.md:604 */
+  accessRefusalPairsTooMany: 'A screen requires at most 8 permissions.',
+  /** EXPERIENCE.md:604 */
+  screenPermissionsRefusalOcuPilot: 'This is OcuPilot\'s own screen. Its permissions cannot be changed.',
 } as const;
 
 /**

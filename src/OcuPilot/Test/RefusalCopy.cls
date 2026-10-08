@@ -106,7 +106,7 @@ Method TestTheCredentialTypeRefusalIsItsParameter()
 Method TestEachKernelRefusalIsItsParameterAndNamesNoCaller()
 {
     Set tClass = "OcuPilot.Kernel.Proposal.Prohibited"
-    For tCode = "UNCOVEREDFIELD", "OCUPILOTROLE", "OCUPILOTRESOURCE", "OCUPILOTSSL", "OCUPILOTNAMESPACE", "OCUPILOTSESSION", "PRESERVEDSESSION", "OCUPILOTMAPPING", "OCUPILOTDATABASE", "OCUPILOTLOCK", "OCUPILOTCODE", "OCUPILOTSQL" {
+    For tCode = "UNCOVEREDFIELD", "OCUPILOTROLE", "OCUPILOTRESOURCE", "OCUPILOTSSL", "OCUPILOTNAMESPACE", "OCUPILOTSESSION", "PRESERVEDSESSION", "OCUPILOTMAPPING", "OCUPILOTDATABASE", "OCUPILOTLOCK", "OCUPILOTCODE", "OCUPILOTSQL", "OCUPILOTSCREEN" {
         Set tServer = ##class(OcuPilot.Kernel.Proposal.Prohibited).ReasonFor($Parameter(tClass, tCode))
         Do $$$AssertNotEquals(tServer, "", tCode _ ": the kernel answers a written sentence")
         Do $$$AssertEquals(tServer, $Parameter(tClass, tCode _ "REASON"), tCode _ ": which is its parameter, not a literal in the lookup")

@@ -473,7 +473,7 @@ Method TestTheAgentAreaNeverGatesWhileItsScreensGateOnOcuPilotsOwnResource()
     Do $$$AssertEquals(''tAgent.allowed, 1, "the rail item never gates, whatever the caller holds")
     Do $$$AssertEquals(''tAgent.%IsDefined("failedPair"), 0, "so it carries no failed pair")
 
-    Do $$$AssertEquals(tAgent.screens.%Size(), 8, "and lists all eight built screens, the form and the transcript page included: " _ tAgent.screens.%ToJSON())
+    Do $$$AssertEquals(tAgent.screens.%Size(), 9, "and lists all nine built screens, the form and the transcript page included: " _ tAgent.screens.%ToJSON())
     Kill tPosition, tAllowed, tFailed
     Set tScreenIterator = tAgent.screens.%GetIterator()
     While tScreenIterator.%GetNext(.tScreenIndex, .tScreen) {
@@ -496,6 +496,8 @@ Method TestTheAgentAreaNeverGatesWhileItsScreensGateOnOcuPilotsOwnResource()
     Do $$$AssertEquals($Get(tPosition("agent/governance")), 4, "Governance policy takes the fourth position (Story 14.2)")
     Do $$$AssertEquals($Get(tAllowed("agent/governance")), 0, "Governance policy is denied to a principal holding nothing of OcuPilot's")
     Do $$$AssertEquals($Get(tFailed("agent/governance")), "OcuPilotAdmin:USE", "and gates on OcuPilot's own administrative pair")
+    Do $$$AssertEquals($Get(tPosition("agent/screenpermissions")), 7, "Screen permissions takes the seventh (Story 20.15)")
+    Do $$$AssertEquals($Get(tAllowed("agent/screenpermissions")) _ "|" _ $Get(tFailed("agent/screenpermissions")), "0|%Development:USE", "and is denied to a principal holding nothing of OcuPilot's, naming the pair the Developer role grants")
     Do $$$AssertEquals($Get(tPosition("agent/ledger")), 5, "the Agent audit ledger takes the fifth (Story 16.16)")
     Do $$$AssertEquals($Get(tAllowed("agent/ledger")), 1, "and is open to a principal holding nothing of OcuPilot's, whose own rows it lists")
     Do $$$AssertEquals($Get(tPosition("agent/transcripts")), 6, "Transcripts takes the sixth")

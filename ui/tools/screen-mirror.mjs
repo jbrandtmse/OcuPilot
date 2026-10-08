@@ -973,7 +973,12 @@ export const SOURCE_DOCDB = 'docdb';
 export const SOURCE_SQLACTIVITY = 'sqlactivity';
 /** The namespace's productions and interoperability classes read through `OcuPilot.Port.InteropPort` (AD-62, Story 20.2). */
 export const SOURCE_INTEROP = 'interop';
-export const READ_SOURCE_PORTS = [SOURCE_ADMIN, SOURCE_STATE, SOURCE_MGMNT, SOURCE_LOGSOURCE, SOURCE_PATH, SOURCE_TIMELINE, SOURCE_BACKGROUND, SOURCE_ATELIER, SOURCE_ENCRYPTION, SOURCE_DOCDB, SOURCE_SQLACTIVITY, SOURCE_INTEROP];
+/** The screens' required permissions composed by `OcuPilot.Screen.Access` (AD-64, AD-36, Story 20.15). */
+export const SOURCE_ACCESS = 'access';
+/** The one endpoint and request type an `access` source declares (`OcuPilot.Screen.Read`). */
+export const ACCESS_ENDPOINT = 'Screens';
+export const ACCESS_READ_TYPE = 'LIST';
+export const READ_SOURCE_PORTS = [SOURCE_ADMIN, SOURCE_STATE, SOURCE_MGMNT, SOURCE_LOGSOURCE, SOURCE_PATH, SOURCE_TIMELINE, SOURCE_BACKGROUND, SOURCE_ATELIER, SOURCE_ENCRYPTION, SOURCE_DOCDB, SOURCE_SQLACTIVITY, SOURCE_INTEROP, SOURCE_ACCESS];
 
 /** Where `OcuPilot.Port.PathPort` declares the source keys a `path` read may name. */
 export const PATH_PORT_SOURCE = join(REPO_ROOT, 'src', 'OcuPilot', 'Port', 'PathPort.cls');
@@ -1300,8 +1305,8 @@ export function readProblem(declaration) {
   if (!READ_SOURCE_PORTS.includes(source.port)) {
     return (
       `read.source.port '${shown(source.port)}' is not one of '${SOURCE_ADMIN}', '${SOURCE_STATE}', ` +
-      `'${SOURCE_MGMNT}', '${SOURCE_LOGSOURCE}', '${SOURCE_PATH}', '${SOURCE_TIMELINE}', '${SOURCE_BACKGROUND}', '${SOURCE_ATELIER}', '${SOURCE_ENCRYPTION}', '${SOURCE_DOCDB}', '${SOURCE_SQLACTIVITY}' or '${SOURCE_INTEROP}', ` +
-      'the twelve sources a declared read names (AD-36)'
+      `'${SOURCE_MGMNT}', '${SOURCE_LOGSOURCE}', '${SOURCE_PATH}', '${SOURCE_TIMELINE}', '${SOURCE_BACKGROUND}', '${SOURCE_ATELIER}', '${SOURCE_ENCRYPTION}', '${SOURCE_DOCDB}', '${SOURCE_SQLACTIVITY}', '${SOURCE_INTEROP}' or '${SOURCE_ACCESS}', ` +
+      'the thirteen sources a declared read names (AD-36)'
     );
   }
   if (typeof source.endpoint !== 'string' || !ENDPOINT_RE.test(source.endpoint)) {
@@ -1409,6 +1414,24 @@ export function readProblem(declaration) {
     const declared = PATH_REFUSED_SOURCE_KEYS.find((key) => source[key] !== undefined && source[key] !== null);
     if (declared !== undefined) {
       return `read.source.${declared} is declared on an interop source, which answers its list whole (AD-36)`;
+    }
+  }
+  // An access source lists the screens' required permissions, composed by `OcuPilot.Screen.Access` in
+  // the caller's process (AD-64, AD-36, Story 20.15): its one endpoint, a LIST, and nothing a composition
+  // would have to issue per row, per parent, under a fixed query, in parts or by criteria.
+  if (source.port === SOURCE_ACCESS) {
+    if (source.endpoint !== ACCESS_ENDPOINT) {
+      return `read.source.endpoint '${source.endpoint}' is not the access source's endpoint ('${ACCESS_ENDPOINT}') (AD-64)`;
+    }
+    if (source.type !== ACCESS_READ_TYPE) {
+      return `read.source.type '${source.type}' is declared on an access source, which lists the screens' required permissions (AD-36)`;
+    }
+    const declared = PATH_REFUSED_SOURCE_KEYS.find((key) => source[key] !== undefined && source[key] !== null);
+    if (declared !== undefined) {
+      return `read.source.${declared} is declared on an access source, which answers its list whole (AD-36)`;
+    }
+    if (read.criteria !== undefined) {
+      return 'read.criteria is declared on an access source, which takes no criteria (AD-36)';
     }
   }
   // AD-36 as amended (Story 16.9): a timeline composes its area's listed screens' own reads, so its
