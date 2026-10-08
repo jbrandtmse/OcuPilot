@@ -31,8 +31,8 @@ Parameter DESCRIPTORPACKAGE = "OcuPilot.Screen.Descriptor.";
 /// two editors (Story 19.3), its Search, Compare and Macros (Story 19.4) and its eighteen SQL catalog
 /// screens (Stories 19.5 and 19.14), SQL query (Story 19.6), Data browser (Story 19.7), Document
 /// databases (Story 19.17), whose DocDB pairs <code>%Developer</code> grants, the analytics log
-/// (Story 19.12's audit) and Screen permissions with its three writes (Story 20.15), whose one pair is
-/// <code>%Development:USE</code>.</p>
+/// (Story 19.12's audit) and Screen permissions with its three writes (Story 20.15), which admit
+/// <code>%Development:USE</code> or <code>%Admin_Secure:USE</code>.</p>
 Parameter SCREENS = "AgentGuardrails,AgentLedger,AgentScreenPermissions,AgentTranscript,AgentTranscripts,ExplorerClassDocument,ExplorerClassEditor,ExplorerClassList,ExplorerCompare,ExplorerDocDbList,ExplorerMacro,ExplorerRoutineDocument,ExplorerRoutineEditor,ExplorerRoutineList,ExplorerSearch,ExplorerSqlCachedQueries,ExplorerSqlConstraints,ExplorerSqlData,ExplorerSqlFields,ExplorerSqlIndices,ExplorerSqlPartitionMappings,ExplorerSqlPartitions,ExplorerSqlProcedure,ExplorerSqlProcedureStatements,ExplorerSqlProcedures,ExplorerSqlQuery,ExplorerSqlSchemas,ExplorerSqlTable,ExplorerSqlTableStatements,ExplorerSqlTables,ExplorerSqlTriggers,ExplorerSqlView,ExplorerSqlViewFields,ExplorerSqlViewStatements,ExplorerSqlViews,Home,LogAnalyticsViewer";
 
 /// <p>The tools whose required pairs it holds.</p>

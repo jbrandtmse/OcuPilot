@@ -102,10 +102,12 @@ ClassMethod GuardedPut(pScreen As %String, pPairs As %String, pExpectedVersion A
 /// refusal.</p>
 ClassMethod GuardedRemove(pScreen As %String, pExpectedVersion As %Integer) As %Status
 {
-    Set tSC = ..GuardedGet(pScreen, .tPairs, .tVersion, .tFound)
+    ; One statement checks the version and deletes, so a save that lands between them cannot be removed.
+    Set tParams = [(pScreen), (+pExpectedVersion)]
+    Set tSC = ..GuardedExecuteRows("DELETE FROM OcuPilot_Kernel_State.ScreenAccess WHERE %EXACT(Screen) = ? AND COALESCE(RowVersion, 0) = ?", .tParams, .tCount)
     If $$$ISERR(tSC) Quit tSC
-    If 'tFound || (tVersion '= +pExpectedVersion) Quit $$$ERROR($$$GeneralError, ..#STALESAVEREASON)
-    Quit ..GuardedExecuteOneParam("DELETE FROM OcuPilot_Kernel_State.ScreenAccess WHERE %EXACT(Screen) = ?", pScreen)
+    If tCount = 0 Quit $$$ERROR($$$GeneralError, ..#STALESAVEREASON)
+    Quit $$$OK
 }
 
 /// <p>Remove every row, so each screen requires its declared set again. Absent is never an error.</p>

@@ -1,4 +1,4 @@
-/// <p>Story 20.15's Screen permissions over HTTP, as two real principals (AD-8, AD-15, AD-44, AD-53, AD-64):
+/// <p>Story 20.15's Screen permissions over HTTP, as three real principals (AD-8, AD-15, AD-44, AD-53, AD-64):
 /// Dev, who holds <code>%Development:USE</code>, Sec, who holds <code>%Admin_Secure:USE</code> and not
 /// <code>%Development:USE</code>, and Op, who holds neither (<class>OcuPilot.Test.ScreenAccessFixture</class>). It pins the View, Not an adjuster, Raise, Reset,
 /// Lower, Lower past the vendor, Audit and Classic union rows of the spec's matrix: the list answers every
@@ -228,7 +228,7 @@ Method TestTheViewListsEveryBuiltScreenWithTheCallersVerdict()
 /// <code>%Manager</code> and <code>%All</code> roles hold the first.</p>
 /// <p>Mutation (Rule 19): make <method>OcuPilot.Screen.Gate.AdjusterPairs</method> answer an empty set -- every
 /// leg goes red.</p>
-Method TestAnAccountWithoutDevelopmentUseIsRefusedNamingIt()
+Method TestAnAccountHoldingNeitherAdjusterPairIsRefusedNamingBoth()
 {
     Do $$$AssertTrue(..PreparedSetupOk, "setup read back the principals' grants")
     Set tOp = $ClassMethod(..#FIXTURE, "Op")
@@ -278,7 +278,8 @@ Method TestASecurityAdministratorWithoutDevelopmentMayAdjust()
 
 /// <p><b>Raise and Reset (AC3)</b> -- after Dev adds <code>%Admin_Secure:USE</code> to Locks, Op's map, the
 /// screen's read route and its Remove locks action each refuse naming it, and the read tool requires it; a
-/// reset restores every one, and a second reset is 409 <code>ACCESS.NOTADJUSTED</code>.</p>
+/// reset, which reads back as gone, restores every one to its answer before the change, and a second reset
+/// is 409 <code>ACCESS.NOTADJUSTED</code>.</p>
 /// <p>Mutation (Rule 19): make <method>OcuPilot.Screen.Gate.RequiredPairs</method> ignore the store -- every
 /// Raise leg goes red.</p>
 Method TestARaiseIsFollowedByEveryGateAndAResetUndoesIt()
@@ -288,6 +289,11 @@ Method TestARaiseIsFollowedByEveryGateAndAResetUndoesIt()
     Set tOp = $ClassMethod(..#FIXTURE, "Op")
     Do $$$AssertStatusOK(..Verdict(tOp, ..#LOCKS, .tAllowed, .tFailed), "the map reads")
     Do $$$AssertEquals(tAllowed, 1, "Op opens Locks before the change")
+    Set tRemoveBody = {"action": "remove", "id": "OcuPilotProbeNoSuchLock", "values": {"RemoveInTransaction": "false"}}
+    Set tSC = ..As(tOp, "GET", "/screens/" _ ..#LOCKS _ "/read", .tReadBefore, .tRead)
+    Set tSC = ..As(tOp, "POST", "/screens/" _ ..#LOCKS _ "/action", .tStatus, .tRemove, tRemoveBody.%ToJSON())
+    Set tRemoveBefore = tStatus _ "|" _ ..Refusal(tRemove)
+    Do $$$AssertNotEquals(tRemoveBefore, "403|AUTH.NOPRIVILEGE|" _ ..#RAISED, "before the change Remove locks is not refused naming the pair a raise adds")
     Set tSC = ..Act(tDev, "add-pair", ..#LOCKS, ..#RAISED, .tStatus, .tAnswer)
     Do $$$AssertEquals(tStatus, 200, "Dev raises Locks")
     Do $$$AssertEquals(tAnswer.action _ "|" _ tAnswer.target.type _ "|" _ tAnswer.target.id, "updated|screen-permission|" _ ..#LOCKS, "as an update of that screen-permission")
@@ -295,19 +301,30 @@ Method TestARaiseIsFollowedByEveryGateAndAResetUndoesIt()
     Do $$$AssertEquals(tAllowed _ "|" _ tFailed, "0|" _ ..#RAISED, "the map lists Locks unavailable naming the raised pair")
     Set tSC = ..As(tOp, "GET", "/screens/" _ ..#LOCKS _ "/read", .tStatus, .tRead)
     Do $$$AssertEquals(tStatus _ "|" _ ..Refusal(tRead), "403|AUTH.NOPRIVILEGE|" _ ..#RAISED, "Locks' read route refuses naming it")
-    Set tRemoveBody = {"action": "remove", "id": "OcuPilotProbeNoSuchLock", "values": {"RemoveInTransaction": "false"}}
     Set tSC = ..As(tOp, "POST", "/screens/" _ ..#LOCKS _ "/action", .tStatus, .tRemove, tRemoveBody.%ToJSON())
     Do $$$AssertEquals(tStatus _ "|" _ ..Refusal(tRemove), "403|AUTH.NOPRIVILEGE|" _ ..#RAISED, "and so does Remove locks")
     Kill tReadTool
     Do ##class(OcuPilot.Screen.Tool.Registry).Resolve(..#LOCKS _ ".read", .tReadTool, 1)
+    Do $$$AssertTrue($IsObject($Get(tReadTool)), "the osmgmt.locks.read tool resolves")
     If $IsObject($Get(tReadTool)) {
         Set tPairs = ##class(OcuPilot.Screen.Tool.Registry).RequiredPairs(tReadTool, .tResolved)
         Do $$$AssertTrue(tResolved && $ListFind(tPairs, $ListBuild("%Admin_Secure", "USE")), "osmgmt.locks.read requires the raised pair")
     }
     Set tSC = ..Act(tDev, "reset", ..#LOCKS, "", .tStatus, .tReset)
     Do $$$AssertEquals(tStatus _ "|" _ tReset.action, "200|deleted", "Dev resets Locks")
+    Do $$$AssertEquals($Select($IsObject(tReset.%Get("readBack")): tReset.readBack.%Get("verdict"), 1: ""), "notFound", "and the reset reads back as gone (AD-58)")
     Do $$$AssertStatusOK(..Verdict(tOp, ..#LOCKS, .tAllowed, .tFailed), "the map reads once more")
     Do $$$AssertEquals(tAllowed, 1, "Op opens Locks again")
+    Set tSC = ..As(tOp, "GET", "/screens/" _ ..#LOCKS _ "/read", .tStatus, .tRead)
+    Do $$$AssertEquals(tStatus, tReadBefore, "Locks' read route answers Op as it did before the change")
+    Set tSC = ..As(tOp, "POST", "/screens/" _ ..#LOCKS _ "/action", .tStatus, .tRemove, tRemoveBody.%ToJSON())
+    Do $$$AssertEquals(tStatus _ "|" _ ..Refusal(tRemove), tRemoveBefore, "and so does Remove locks")
+    Kill tReadTool
+    Do ##class(OcuPilot.Screen.Tool.Registry).Resolve(..#LOCKS _ ".read", .tReadTool, 1)
+    If $IsObject($Get(tReadTool)) {
+        Set tPairs = ##class(OcuPilot.Screen.Tool.Registry).RequiredPairs(tReadTool, .tResolved)
+        Do $$$AssertTrue(tResolved && '$ListFind(tPairs, $ListBuild("%Admin_Secure", "USE")), "osmgmt.locks.read no longer requires the raised pair")
+    }
     Set tSC = ..Act(tDev, "reset", ..#LOCKS, "", .tStatus, .tAgain)
     Do $$$AssertEquals(tStatus _ "|" _ ..Refusal(tAgain), "409|ACCESS.NOTADJUSTED|", "a second reset is refused as nothing to reset")
 }
@@ -349,7 +366,8 @@ Method TestLoweringOpensTheScreenAndThePortsOwnCheckStillRefuses()
 /// <p><b>Audit (AC5)</b> -- each accepted write is one <code>SecurityChange</code> row naming the screen and
 /// the pairs before and after: an add and a remove are <code>updated</code>, a reset is <code>reset</code>.</p>
 /// <p>Mutation (Rule 19): remove the <code>Event.Record</code> call from
-/// <method>OcuPilot.Port.ScreenAccessPort.Audit</method> -- every leg goes red.</p>
+/// <method>OcuPilot.Port.ScreenAccessPort.Audit</method> -- every leg goes red; swap the reset's sets before
+/// and after in <method>OcuPilot.Port.ScreenAccessPort.Invoke</method> -- the reset leg does.</p>
 Method TestEachAcceptedWriteIsOneSecurityChangeRow()
 {
     Do $$$AssertTrue(..PreparedSetupOk, "setup read back the principals' grants")
@@ -366,12 +384,28 @@ Method TestEachAcceptedWriteIsOneSecurityChangeRow()
         Do $$$AssertEquals(tRow.actor _ "|" _ tRow.target.type _ "|" _ tRow.target.scope _ "|" _ tRow.target.id, tDev _ "|screen-permission|instance|" _ ..#LOCKS, "naming the actor and the screen-permission")
         Do $$$AssertEquals(tRow.changes.pairs.old _ "|" _ tRow.changes.pairs.new, tDeclared _ "|" _ tDeclared _ "," _ ..#RAISED, "and the pairs before and after")
     }
-    Set tSC = ..Act(tDev, "remove-pair", ..#LOCKS, ..#RAISED, .tStatus, .tAnswer)
+    Set tProcesses = ##class(OcuPilot.Screen.Registry).DescriptorForTool(..#PROCESSES)
+    Set tProcDeclared = $ListFromString($Replace(..Spelled($ClassMethod(tProcesses, "PrivilegePairs")), ", ", ","))
+    Set tProcAfter = ""
+    For tI = 1:1:$ListLength(tProcDeclared) {
+        If $List(tProcDeclared, tI) '= "%Admin_Manage:USE" Set tProcAfter = tProcAfter _ $ListBuild($List(tProcDeclared, tI))
+    }
+    Set tSC = ..Act(tDev, "remove-pair", ..#PROCESSES, "%Admin_Manage:USE", .tStatus, .tAnswer)
     Do $$$AssertEquals(tStatus, 200, "a remove is accepted")
+    Set tData = ##class(OcuPilot.Test.AuditRecord).RowFor(tSince, 1, ..#PROCESSES, "updated", .tRows)
+    Do $$$AssertEquals(tRows, 1, "exactly one security-change row records the remove: " _ tRows)
+    If tRows = 1 {
+        Set tRow = ##class(%DynamicAbstractObject).%FromJSON(tData)
+        Do $$$AssertEquals(tRow.changes.pairs.old _ "|" _ tRow.changes.pairs.new, $ListToString(tProcDeclared) _ "|" _ $ListToString(tProcAfter), "naming the pairs before and after the remove")
+    }
     Set tSC = ..Act(tDev, "reset", ..#LOCKS, "", .tStatus, .tAnswer)
     Do $$$AssertEquals(tStatus, 200, "and a reset")
     Set tReset = ##class(OcuPilot.Test.AuditRecord).RowFor(tSince, 1, ..#LOCKS, "reset", .tResetRows)
     Do $$$AssertEquals(tResetRows, 1, "the reset is one row of its own: " _ tResetRows)
+    If tResetRows = 1 {
+        Set tRow = ##class(%DynamicAbstractObject).%FromJSON(tReset)
+        Do $$$AssertEquals(tRow.changes.pairs.old _ "|" _ tRow.changes.pairs.new, tDeclared _ "," _ ..#RAISED _ "|" _ tDeclared, "naming the adjusted set it cleared and the declared set again")
+    }
 }
 
 /// <p><b>Classic union (AD-44)</b> -- a custom resource assigned to Locks' classic page stays in force on an

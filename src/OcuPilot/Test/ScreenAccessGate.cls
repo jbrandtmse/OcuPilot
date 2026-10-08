@@ -3,9 +3,11 @@
 /// <method>OcuPilot.Screen.Gate.RequiredPairs</method> following an adjustment, keeping the classic
 /// page's custom resource, ignoring a row for a screen that cannot be adjusted and refusing when the
 /// store cannot be read; a write tool's own pairs staying on top of an adjusted base; a port's constants
-/// staying put; and Screen permissions' own tools requiring the declared set whatever the store holds.</p>
-/// <p>It writes rows to the instance's store and removes every one it wrote in
-/// <method>OnAfterOneTest</method>; the real-principal legs are
+/// staying put; Screen permissions' own tools requiring the declared set whatever the store holds; the
+/// either-of split confined to that one pair; and the port's own refusals of an own screen and of a set
+/// that moved under a write.</p>
+/// <p>It needs an instance whose store holds no adjustment: it writes rows and empties the store in
+/// <method>OnAfterOneTest</method>. The real-principal legs are
 /// <class>OcuPilot.Test.ScreenAccessWire</class>'s.</p>
 Class OcuPilot.Test.ScreenAccessGate Extends %UnitTest.TestCase
 {
@@ -24,6 +26,9 @@ Parameter LOCKDESCRIPTOR = "OcuPilot.Screen.Descriptor.LockList";
 Method OnAfterOneTest() As %Status
 {
     Kill ^||OcuPilotAccessSeam
+    Kill ^||OcuPilotAccessRace
+    Do ##class(OcuPilot.Test.ScreenGate).Reset()
+    Do ##class(OcuPilot.Test.ToolDispatchProbe).Reset()
     Quit $ClassMethod(..#STORE, "DeleteAllGuarded")
 }
 
@@ -91,8 +96,8 @@ Method TestRequiredPairsFollowsAnAdjustment()
 /// <p>The classic page's custom resource is unioned on an adjusted set, as it is on a declared one
 /// (AD-44), and a store that cannot be read leaves the screen unresolved, which
 /// <method>OcuPilot.Screen.Gate.Evaluate</method> refuses without naming a pair.</p>
-/// <p>Mutation (Rule 19): make <method>OcuPilot.Screen.Gate.AdjustedPairs</method> answer resolved on a
-/// failed read -- the second leg goes red; drop the classic union from
+/// <p>Mutation (Rule 19): make <method>OcuPilot.Screen.Gate.AdjustedPairs</method> answer resolved when a
+/// stored row does not parse -- the third leg goes red; drop the classic union from
 /// <method>OcuPilot.Screen.Gate.RequiredPairs</method> -- the first does.</p>
 Method TestTheClassicResourceStaysAndAnUnreadableStoreRefuses()
 {
@@ -105,6 +110,11 @@ Method TestTheClassicResourceStaysAndAnUnreadableStoreRefuses()
     Set tPairs = $ClassMethod(..#SEAM, "RequiredPairs", ..#LOCKDESCRIPTOR, .tResolved)
     Do $$$AssertEquals(tResolved _ "|" _ $ListLength(tPairs), "0|0", "an unreadable store leaves the requirement unresolved")
     Do $$$AssertEquals($ClassMethod(..#SEAM, "Evaluate", ..#LOCKDESCRIPTOR, .tFailed) _ "|" _ tFailed, "0|", "so the screen is refused, naming no pair")
+    Kill ^||OcuPilotAccessSeam("mode")
+    Do $$$AssertStatusOK($ClassMethod(..#STORE, "GuardedPut", ..#LOCKS, "nocolon", 1, "probe"), "a row that will not parse is stored")
+    Set tPairs = ##class(OcuPilot.Screen.Gate).RequiredPairs(..#LOCKDESCRIPTOR, .tResolved)
+    Do $$$AssertEquals(tResolved _ "|" _ $ListLength(tPairs), "0|0", "the real gate leaves a row that will not parse unresolved")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Gate).Evaluate(..#LOCKDESCRIPTOR, .tFailed) _ "|" _ tFailed, "0|", "and refuses the screen, naming no pair")
 }
 
 /// <p>A row stored for a screen that cannot be adjusted is ignored by the one reader, and Screen
@@ -147,6 +157,97 @@ Method TestDispatchAcceptsEitherArmOfTheEitherOfPair()
     Do $$$AssertEquals(##class(OcuPilot.Test.ToolDispatchProbe).Missing("u", tPairs), "", "only %Development held")
     Do ##class(OcuPilot.Test.ToolDispatchProbe).DenyPair("%Development", "USE")
     Do $$$AssertEquals(##class(OcuPilot.Test.ToolDispatchProbe).Missing("u", tPairs), "%Development:USE or %Admin_Secure:USE", "neither held names both")
+    Do ##class(OcuPilot.Test.ToolDispatchProbe).Reset()
+}
+
+/// <p>Only <method>OcuPilot.Screen.Gate.AdjusterPairs</method>' pair is an either-of (AD-64 item 4, AD-8): any
+/// other resource carrying the separator is one resource, and a pair naming no resource is never held.</p>
+/// <p>Mutation (Rule 19): make <method>OcuPilot.Screen.Gate.Alternatives</method> split every resource on the
+/// separator -- the composite and empty-resource legs go red.</p>
+Method TestOnlyTheAdjusterPairIsAnEitherOf()
+{
+    Set tGate = "OcuPilot.Screen.Gate"
+    Set tAdjuster = $List($List(##class(OcuPilot.Screen.Gate).AdjusterPairs(), 1), 1)
+    Do $$$AssertEquals($ListLength($ClassMethod(tGate, "Alternatives", tAdjuster)), 2, "the adjuster pair offers its two resources")
+    Do $$$AssertEquals($ListToString($ClassMethod(tGate, "Alternatives", "%Admin_Operate|%Admin_Manage")), "%Admin_Operate|%Admin_Manage", "any other resource carrying the separator is one resource")
+    Do $$$AssertEquals($ClassMethod(tGate, "SpellPair", "%Admin_Operate|%Admin_Manage", "USE"), "%Admin_Operate|%Admin_Manage:USE", "and is spelled as one pair")
+    Do ##class(OcuPilot.Test.ToolDispatchProbe).Reset()
+    Do ##class(OcuPilot.Test.ToolDispatchProbe).DenyPair("%Admin_Operate|%Admin_Manage", "USE")
+    Do $$$AssertEquals(##class(OcuPilot.Test.ToolDispatchProbe).Missing("u", $ListBuild($ListBuild("%Admin_Operate|%Admin_Manage", "USE"))), "%Admin_Operate|%Admin_Manage:USE", "the dispatcher does not admit it on either half")
+    Do ##class(OcuPilot.Test.ToolDispatchProbe).DenyPair("", "USE")
+    Do $$$AssertEquals(##class(OcuPilot.Test.ToolDispatchProbe).Missing("u", $ListBuild($ListBuild("", "USE"))), ":USE", "a pair naming no resource is never held")
+    Do ##class(OcuPilot.Test.ToolDispatchProbe).Reset()
+}
+
+/// <p>The port's own checks, below the prohibited set (AD-10, AD-34, AD-51): a write to a screen that cannot be
+/// adjusted is refused <code>PROHIBITED.OCUPILOTSCREEN</code> with nothing stored, a composed read naming an
+/// empty pair is refused <code>ACCESS.PAIR.MALFORMED</code>, and a stored set that moves
+/// under a change, whether it is created or updated meanwhile, is refused 409 <code>STATE.CONFLICT</code> and
+/// the other writer's set stands.</p>
+/// <p>Mutation (Rule 19): drop the <code>'tAdjustable</code> refusal from
+/// <method>OcuPilot.Port.ScreenAccessPort.Invoke</method> -- the own-screen legs go red; test the change keys'
+/// values rather than their presence there -- the empty-pair leg does; make
+/// <method>OcuPilot.Port.ScreenAccessPort.Stored</method> answer every failed write 500 -- the conflict legs
+/// do.</p>
+Method TestThePortRefusesAnOwnScreenAndASetThatMoved()
+{
+    For tType = "PUT", "DELETE" {
+        Kill tQuery
+        Set tQuery("Screen") = "shell.home"
+        If tType = "PUT" Set tQuery("addpair") = "%Admin_Secure:USE"
+        Set tSC = ##class(OcuPilot.Port.ScreenAccessPort).Invoke("Screen", tType, .tQuery, "", .tResult, .tHttp, .tFault)
+        Do $$$AssertEquals(tHttp _ "|" _ $Select($IsObject($Get(tFault)): tFault.code, 1: ""), "403|PROHIBITED.OCUPILOTSCREEN", tType _ ": the port refuses OcuPilot's own screen itself")
+    }
+    Do $$$AssertStatusOK($ClassMethod(..#STORE, "GuardedAll", .tAll), "the store reads")
+    Do $$$AssertEquals($Data(tAll), 0, "and nothing was stored")
+    Kill tQuery
+    Set tQuery("Screen") = ..#LOCKS
+    Set tQuery("addpair") = ""
+    Set tSC = ##class(OcuPilot.Port.ScreenAccessPort).Invoke("Screen", "GET", .tQuery, "", .tResult, .tHttp, .tFault)
+    Do $$$AssertEquals(tHttp _ "|" _ $Select($IsObject($Get(tFault)): tFault.code, 1: ""), "422|ACCESS.PAIR.MALFORMED", "a composed read naming an empty pair is refused, not answered as no change")
+
+    Do ##class(OcuPilot.Test.ScreenGate).Reset()
+    Do ##class(OcuPilot.Test.ScreenGate).Hold("%Development", "USE")
+    For tCase = $ListBuild("created meanwhile", "", "%Admin_Task:USE"), $ListBuild("updated meanwhile", "%Admin_Secure:USE", "%Admin_Secure:USE,%Admin_Task:USE") {
+        Set tName = $List(tCase, 1)
+        Do $$$AssertStatusOK($ClassMethod(..#STORE, "DeleteAllGuarded"), tName _ ": the store is emptied")
+        If $List(tCase, 2) '= "" Do $$$AssertStatusOK($ClassMethod(..#STORE, "GuardedPut", ..#LOCKS, $List(tCase, 2), 0, "probe"), tName _ ": Locks is adjusted first")
+        Kill ^||OcuPilotAccessRace
+        Set ^||OcuPilotAccessRace("screen") = ..#LOCKS
+        Set ^||OcuPilotAccessRace("pair") = "%Admin_Task:USE"
+        Kill tQuery
+        Set tQuery("Screen") = ..#LOCKS
+        Set tQuery("addpair") = "%Admin_Manage:USE"
+        Set tSC = ##class(OcuPilot.Test.ScreenAccessPortGateSeam).Invoke("Screen", "PUT", .tQuery, "", .tResult, .tHttp, .tFault)
+        Do $$$AssertEquals(+$Get(^||OcuPilotAccessRace("stored")), 1, tName _ ": the other writer's change was stored during the write")
+        Do $$$AssertEquals(tHttp _ "|" _ $Select($IsObject($Get(tFault)): tFault.code, 1: ""), "409|STATE.CONFLICT", tName _ ": the moved set is a conflict")
+        Do $$$AssertStatusOK($ClassMethod(..#STORE, "GuardedGet", ..#LOCKS, .tStored, .tVersion, .tFound), tName _ ": Locks reads")
+        Do $$$AssertEquals(tStored, $List(tCase, 3), tName _ ": and the other writer's set stands")
+    }
+    Kill ^||OcuPilotAccessRace
+    Do ##class(OcuPilot.Test.ScreenGate).Reset()
+}
+
+/// <p>The proposal card's privilege line carries the either-of pair as the adjuster spec a mint records:
+/// <code>requires</code> spells both arms, and <code>missing</code> is empty while either arm is held and names
+/// both when neither is.</p>
+/// <p>Mutation (Rule 19): make <method>OcuPilot.Kernel.Proposal.Disclosure.Privilege</method> spell
+/// <code>resource:permission</code> without <method>OcuPilot.Screen.Gate.SpellPair</method> -- the first leg goes red.</p>
+Method TestTheProposalCardNamesBothArmsOfTheEitherOfPair()
+{
+    Set tSpec = ##class(OcuPilot.Screen.Gate).AdjusterSpec()
+    Set tBoth = "%Development:USE or %Admin_Secure:USE"
+    Set tProbe = "OcuPilot.Test.ToolDispatchProbe"
+    Do ##class(OcuPilot.Test.ToolDispatchProbe).Reset()
+    Set tCard = ##class(OcuPilot.Kernel.Proposal.Disclosure).Privilege(tSpec, "u", tProbe)
+    Do $$$AssertTrue($IsObject(tCard), "the adjuster spec parses to a privilege line")
+    If '$IsObject(tCard) Quit
+    Do $$$AssertEquals(tCard.%Get("requires").%Size() _ "|" _ tCard.%Get("requires").%Get(0), "1|" _ tBoth, "requires spells both arms as one entry")
+    Do $$$AssertEquals(tCard.%Get("missing"), "", "both held")
+    Do ##class(OcuPilot.Test.ToolDispatchProbe).DenyPair("%Development", "USE")
+    Do $$$AssertEquals(##class(OcuPilot.Kernel.Proposal.Disclosure).Privilege(tSpec, "u", tProbe).%Get("missing"), "", "only %Admin_Secure held")
+    Do ##class(OcuPilot.Test.ToolDispatchProbe).DenyPair("%Admin_Secure", "USE")
+    Do $$$AssertEquals(##class(OcuPilot.Kernel.Proposal.Disclosure).Privilege(tSpec, "u", tProbe).%Get("missing"), tBoth, "neither held names both")
     Do ##class(OcuPilot.Test.ToolDispatchProbe).Reset()
 }
 

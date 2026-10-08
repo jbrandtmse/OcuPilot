@@ -9,9 +9,8 @@
 /// <p><b>Its gate is the descriptor's fixed set, never an adjusted one</b> (<method>PrivilegePairs</method>):
 /// <code>%Development:USE</code> or <code>%Admin_Secure:USE</code>, either one
 /// (<method>OcuPilot.Screen.Gate.AdjusterPairs</method>), so the screen that adjusts permissions cannot be
-/// adjusted away from the accounts that hold either. The tools are not advertised until Story 20.18 (AD-53); every dispatch and
-/// confirm gate still reads <method>OcuPilot.Screen.Gate.RequiredPairs</method> for the screen a proposal
-/// names.</p>
+/// adjusted away from the accounts that hold either. The tools are not advertised until Story 20.18 (AD-53);
+/// dispatch and confirm read this fixed set through <method>PrivilegePairs</method>.</p>
 Class OcuPilot.Screen.Tool.ScreenAccessAction Extends OcuPilot.Screen.Tool.Write [ Abstract ]
 {
 

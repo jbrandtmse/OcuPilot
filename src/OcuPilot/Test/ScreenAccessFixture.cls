@@ -28,7 +28,7 @@ ClassMethod Armed() As %Boolean
     Quit ($System.Util.GetEnviron(..#ARMINGVARIABLE) = 1)
 }
 
-/// <p>Create Dev and Op with <var>pPassword</var> and read their grants back. An error status names
+/// <p>Create Dev, Op and Sec with <var>pPassword</var> and read their grants back. An error status names
 /// what could not be established; nothing is created unless <method>Armed</method>.</p>
 ClassMethod Prepare(pPassword As %String) As %Status
 {
@@ -42,7 +42,7 @@ ClassMethod Prepare(pPassword As %String) As %Status
     If $$$ISOK(tSC) Set tSC = $ClassMethod(..#FLOOR, "Composed", ..Sec(), .tSecGrants)
     If $$$ISERR(tSC) Quit tSC
     Set tDevOk = $ClassMethod(..#FLOOR, "Holds", tDevGrants, "%Development", "USE") && '$ClassMethod(..#FLOOR, "Holds", tDevGrants, "%Admin_Operate", "USE")
-    Set tOpOk = $ClassMethod(..#FLOOR, "Holds", tOpGrants, "%Admin_Operate", "USE") && $ClassMethod(..#FLOOR, "Holds", tOpGrants, "%DB_IRISSYS", "READ") && '$ClassMethod(..#FLOOR, "Holds", tOpGrants, "%Development", "USE")
+    Set tOpOk = $ClassMethod(..#FLOOR, "Holds", tOpGrants, "%Admin_Operate", "USE") && $ClassMethod(..#FLOOR, "Holds", tOpGrants, "%DB_IRISSYS", "READ") && '$ClassMethod(..#FLOOR, "Holds", tOpGrants, "%Development", "USE") && '$ClassMethod(..#FLOOR, "Holds", tOpGrants, "%Admin_Secure", "USE")
     Set tSecOk = $ClassMethod(..#FLOOR, "Holds", tSecGrants, "%Admin_Secure", "USE") && '$ClassMethod(..#FLOOR, "Holds", tSecGrants, "%Development", "USE") && $ClassMethod(..#FLOOR, "Holds", tSecGrants, $ClassMethod(..#FLOOR, "CodeResource"), "READ")
     If 'tDevOk || 'tOpOk || 'tSecOk Quit $$$ERROR($$$GeneralError, "the principals' grants did not read back: Dev " _ tDevOk _ ", Op " _ tOpOk _ ", Sec " _ tSecOk)
     Quit $$$OK

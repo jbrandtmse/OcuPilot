@@ -7,7 +7,7 @@ Class OcuPilot.Screen.Tool.ScreenAccessAddPair Extends OcuPilot.Screen.Tool.Scre
 
 Parameter TOOLNAME = "agent.screenpermissions.addpair";
 
-Parameter DESCRIPTION = "Propose adding one required permission to a screen: a resource and READ, WRITE or USE, written resource:permission. It changes nothing by itself: it answers a proposal the user reviews and confirms. Name the screen as the Screen permissions list reports it. A screen's set holds at most 8 pairs, each on a resource this instance defines. Lowering the permissions a screen requires lets more accounts open it; the instance still checks what they do there.";
+Parameter DESCRIPTION = "Propose adding one required permission to a screen: a resource and READ, WRITE or USE, written resource:permission. It changes nothing by itself: it answers a proposal the user reviews and confirms. Name the screen as the Screen permissions list reports it. A screen's set holds at most 8 pairs, each on a resource this instance defines. Only accounts that also hold the added pair can then open the screen.";
 
 Parameter CHANGEACTION = "updated";
 

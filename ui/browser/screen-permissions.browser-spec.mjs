@@ -5,7 +5,7 @@
  * unavailable, naming that pair, in the same page and without a reload. Reset restores it. The list and the
  * dialog pass the structural walk at wide light, narrow light and wide dark.
  *
- * Dev and Op are created inside the container through `OcuPilot.Test.ScreenAccessFixture`, with a password
+ * Dev, Op and Sec are created inside the container through `OcuPilot.Test.ScreenAccessFixture`, with a password
  * generated per run, and removed afterwards, with every adjustment this spec made.
  *
  * It refuses the live and development containers.

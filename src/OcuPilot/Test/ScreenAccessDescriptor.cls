@@ -118,8 +118,9 @@ Method TestTheDescriptorDeclaresScreenPermissions()
 /// <p>Each write declares its kind, port, request type, screen action, bodyless action style, fingerprint
 /// subject and enabled key, and requires the descriptor's either-of pair alone (AD-51, AD-52, AD-64).</p>
 /// <p>Mutation (Rule 19): route one tool's <code>PrivilegePairs</code> through
-/// <method>OcuPilot.Screen.Gate.RequiredPairs</method> -- <class>OcuPilot.Test.ScreenAccessGate</class>'s
-/// stray-row leg goes red; change a fingerprint subject here and the subject leg goes red.</p>
+/// <method>OcuPilot.Screen.Gate.RequiredPairs</method> while <method>OcuPilot.Screen.Gate.Adjustable</method>
+/// answers 1 -- <class>OcuPilot.Test.ScreenAccessGate</class>'s stray-row tool legs go red; change a
+/// fingerprint subject here and the subject leg goes red.</p>
 Method TestTheToolsDeclareTheirKindsPortsAndPairs()
 {
     Set tDeclared = $ClassMethod(..#DESCRIPTOR, "PrivilegePairs")
@@ -158,6 +159,7 @@ Method TestTheWritesAreAbsentFromEveryRosterTheAgentSees()
     Kill tContextTools
     Do $$$AssertStatusOK(##class(OcuPilot.Screen.Context).ScreenTools(..#DESCRIPTOR, .tContextTools), "the screen context's tools build")
     Set tJson = $Select($IsObject($Get(tContextTools)): tContextTools.%ToJSON(), 1: "")
+    Do $$$AssertTrue((tJson [ $ClassMethod(tRegistry, "WireName", "agent.screenpermissions.read")) || (tJson [ "agent.screenpermissions.read"), "the screen context's tools list the read tool: " _ tJson)
     For tI = 1:1:$Length(..#TOOLS, ";") {
         Set tTool = $Piece($Piece(..#TOOLS, ";", tI), "|", 2)
         Set tWire = $ClassMethod(tRegistry, "WireName", tTool)

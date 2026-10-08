@@ -31,7 +31,8 @@ Parameter CLASSICPERMISSION = "USE";
 
 /// <p>The separator of an either-of pair's resources (AD-64): a pair whose resource is
 /// <code>a|b</code> is held when the caller holds the permission on <b>any one</b> of them. Only
-/// <method>AdjusterPairs</method> builds one; every other pair is a single resource.</p>
+/// <method>AdjusterPairs</method> builds one, and <method>Alternatives</method> splits that one alone; every
+/// other pair is a single resource.</p>
 Parameter ALTERNATIVESEPARATOR = "|";
 
 /// <p>The resources whose holder may view and adjust screen permissions (AD-64 item 4): either one,
@@ -439,10 +440,14 @@ ClassMethod AdjusterSpec() As %String
     Quit $List(tPair, 1) _ ":" _ $List(tPair, 2)
 }
 
-/// <p>The resources a pair's resource <var>pResource</var> offers: one, or the members of an either-of pair.</p>
+/// <p>The resources a pair's resource <var>pResource</var> offers: the members of
+/// <method>AdjusterPairs</method>' one either-of pair, and the resource itself for every other pair, so no
+/// other pair -- an empty one, or one whose name carries <parameter>ALTERNATIVESEPARATOR</parameter> -- is
+/// ever read as an either-of (AD-64 item 4, AD-8).</p>
 ClassMethod Alternatives(pResource As %String) As %List
 {
-    Quit $ListFromString(pResource, ..#ALTERNATIVESEPARATOR)
+    If pResource = $List($List(..AdjusterPairs(), 1), 1) Quit $ListFromString(pResource, ..#ALTERNATIVESEPARATOR)
+    Quit $ListBuild(pResource)
 }
 
 /// <p>The pair spelled for a refusal or a list: <code>resource:permission</code>, or every alternative

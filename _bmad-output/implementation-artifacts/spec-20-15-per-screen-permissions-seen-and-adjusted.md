@@ -4,6 +4,7 @@ type: 'feature'
 created: '2026-10-07'
 status: 'done'
 baseline_revision: '4fd4e10084bd61fc02244dba42557afb1942e4be'
+baseline_commit: 'd782877aec9da7280d74e7e8316abb0a51705850'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -356,6 +357,55 @@ Every other edit is add-only. Each new entry sits beside the agent entries or at
   - **when** it is read,
   - **then** all three keys are `true`, and all three tools stay unadvertised until Story 20.18.
 
+### Review Findings
+
+Code review, 2026-10-08 (both implement passes, baseline d782877a): 1 high, 8 medium and 14 low after triage. All patched, or closed in the ledger; nothing is left open.
+
+- [x] [Review][Patch] (high) AD-10 named `PROHIBITED.OCUPILOTSCREEN` for an adjustment that would leave no pair, while the spec, AC6 and the code refuse 422 `ACCESS.PAIRS.EMPTY`. AD-10 is corrected at its origin (Rule 20, memlog) [ARCHITECTURE-SPINE.md:329]
+- [x] [Review][Patch] (medium) The either-of split was not confined. `Gate.Alternatives` split any resource carrying `|`, and a pair naming no resource read as held in `Dispatch`/`Operation.MissingPair`, which was fail-open. It now splits only `AdjusterPairs`' pair [src/OcuPilot/Screen/Gate.cls:447]
+- [x] [Review][Patch] (medium) DW-2180: the port's 409 `STATE.CONFLICT` was not pinned. A race seam now drives it for both a created row and an updated one [src/OcuPilot/Test/ScreenAccessGate.cls:192]
+- [x] [Review][Patch] (medium) The real `AdjustedPairs` unparsed-row branch was unpinned: the seam bypassed it. It now has a real-gate leg [src/OcuPilot/Test/ScreenAccessGate.cls:102]
+- [x] [Review][Patch] (medium) The port's own refusal of a screen that cannot be adjusted was unpinned below the prohibited set [src/OcuPilot/Test/ScreenAccessGate.cls:192]
+- [x] [Review][Patch] (medium) AC3's tool leg could be skipped silently, and after a reset only the map was re-checked. It now asserts that the tool resolves, and that the read route, Remove locks and the tool answer as before [src/OcuPilot/Test/ScreenAccessWire.cls:285]
+- [x] [Review][Patch] (medium) The reset's read-back (`ReadBackGone`) runs on the person route but was unasserted [src/OcuPilot/Test/ScreenAccessWire.cls:285]
+- [x] [Review][Patch] (medium) AC5: the remove's audit row and the reset's pairs before and after were unasserted [src/OcuPilot/Test/ScreenAccessWire.cls:371]
+- [x] [Review][Patch] (medium) AC8: the screen-context leg had no positive control [src/OcuPilot/Test/ScreenAccessDescriptor.cls:147]
+- [x] [Review][Patch] (low) The port read the set and the version in two reads, so an out-of-hold caller's write could be lost. It now reads both once [src/OcuPilot/Port/ScreenAccessPort.cls:287]
+- [x] [Review][Patch] (low) `GuardedRemove` checked the version, then deleted by screen. It is now one versioned `DELETE` with a row count [src/OcuPilot/Kernel/State/Access.cls:103]
+- [x] [Review][Patch] (low) A composed read naming an empty pair answered "no change". It is now 422 `ACCESS.PAIR.MALFORMED` [src/OcuPilot/Port/ScreenAccessPort.cls:300]
+- [x] [Review][Patch] (low) The add tool's description called an add a lowering [src/OcuPilot/Screen/Tool/ScreenAccessAddPair.cls:10]
+- [x] [Review][Patch] (low) Doc comments and names left stale by the either-of pass were corrected:
+  - the `ScreenAccessAction` header;
+  - the `DeveloperFloor` doc;
+  - the Wire header and its method name;
+  - the fixture's `Prepare` doc;
+  - the `ci-throwaway.sh` comment;
+  - the browser spec's header;
+  - the `ScreenAccessGate` header;
+  - `Screen/Access`'s "read once";
+  - the `ScreenAccessDescriptor` mutation note.
+- [x] [Review][Patch] (low) The fixture now confirms that Op lacks `%Admin_Secure:USE` [src/OcuPilot/Test/ScreenAccessFixture.cls:44]
+- [x] [Review][Patch] (low) Task 0's record, dropped by the either-of rework, is restored under Verification.
+- [x] [Review][Closed] DW-2179: `by-design`. Add and remove are action-style, so their read-back is `nothingSent` (AD-58). The AD-58 amendment is corrected to say so.
+- [x] [Review][Closed] Ten LOWs were closed with terminal ledger entries, DW-2191 to DW-2200 (`wontfix-accepted`, `wontfix-theoretical` or `by-design`). Each carries its `reopen_if`.
+
+**Rejected:**
+
+- **AD-64's "one either-of check".** The API floor is not a pair set, so AD-8's every-pair rule is unaffected.
+- **The ledger shows `a|b:USE`.** That is the stored form, which must parse back; it appears only in the raw Result JSON.
+- **Duplicated either-of loops.** Each evaluates a different subject, and all of them now split through `Gate.Alternatives`.
+- **`Canonical` keeps the resource's case.** The check is case-insensitive, and a fix needs a `%SYS` lookup.
+- **A GET with both change keys.** No tool or route builds that query.
+- **The context omits `ClassicResource`.** The read tool answers it on every row (AD-36).
+- **The Lower matrix row.** The fix edits the spec, and AC4 holds.
+- **`ResetAll` has no `Armed` guard.** Only armed classes call it.
+- **Adjustment and Effective come from different reads.** That is spec-bound, and the doc is corrected.
+- **The dialog's Remove has no browser test.** Rule 3 is met by AC7, and the component specs cover the dialog.
+- **The wording of EXPERIENCE.md's row note.** Cosmetic.
+- **The `DeveloperFloor` "ThirtyFive" name and the garbled `Test/Prohibited` :232 message.** Both predate this story.
+- **AC6's per-code mutations.** Rule 19 asks for one mutation per AC.
+- **The agent-tool legs run in process.** Each link is pinned, and the real-principal turn is DW-2181 (Story 20.18).
+
 ## Spec Change Log
 
 - 2026-10-08, runner: re-opened for the owner's either-of decision (AD-64 item 4, AD-8 note; orchestrator placement: in 20.15 before its review). The pass covers only the `[Owner]` item.
@@ -558,6 +608,35 @@ Every other edit is add-only. Each new entry sits beside the agent entries or at
 - mutation: script form - `ScreenAccessPort.Literal` stops doubling a quote: `ScreenAccessDescriptor.TestTheScriptRendersTheWritesAndNotTheRead` red.
 - mutation: rosters - `AgentScreenPermissions` removed from `DeveloperFloor.SCREENS`, then `agent.screenpermissions.read` from `TOOLS`: `DeveloperFloor` red each time. `InteropFloorOwnPairs` needs no row: the screen and tools declare `%Development:USE`.
 - mutation: either-of, review patch - `Dispatch.MissingPair` stops splitting alternatives: `ScreenAccessGate.TestDispatchAcceptsEitherArmOfTheEitherOfPair` red; `Operation.MissingPair` stops splitting: `ScreenAccessWire` Sec, Raise and Audit legs red; `Access.Spelled` reverts to `resource:permission`: `ScreenAccessWire` Sec row leg red. Each reverted to a byte-identical tree.
+
+**QA pass (QA):**
+
+- (QA) Test added: `src/OcuPilot/Test/ScreenAccessGate.cls` `TestTheProposalCardNamesBothArmsOfTheEitherOfPair` (no new class; `ScreenAccessGate` creates no principal, so it needs no `OCUPILOT_ALLOW_PRINCIPALS` roster entry).
+- (QA) mutation: `Disclosure.Privilege` spells `resource:permission` without `Gate.SpellPair` -> `ScreenAccessGate.TestTheProposalCardNamesBothArmsOfTheEitherOfPair` red ("requires spells both arms"); reverted byte-identical, reloaded, class green.
+- (QA) Other either-of consumers: navigation `failedPair` pinned by `Wire`; dispatch and `Operation.MissingPair` pinned; `Effective.Gate` never receives the pair; the client treats `failedPair` as an opaque string.
+
+**Code review (2026-10-08):**
+
+- Task 0 (from implement pass 1, 1b9e6114, on `ocupilot-b-ci`):
+  - **Processes.** After Processes loses `%Admin_Manage:USE`, Op's map opens it. Its read answers 403 `PORT.ACCESSDENIED` naming `%Admin_Manage:USE`.
+  - **Web applications.** After Web applications gains `%Admin_Operate:USE` and loses `%Admin_Secure:USE` and `%DB_IRISSYS:READ`, Op's map opens it. Its read answers 403 `PORT.ACCESSDENIED` with no pair named.
+  - **Timing.** `Navigation.Payload`, 5 runs with no adjustment: 58-60 ms when the store is never read, 69-75 ms when it is read (DW-2200).
+- mutation: review. `Gate.Alternatives` splits every resource on `|` -> `ScreenAccessGate.TestOnlyTheAdjusterPairIsAnEitherOf` red (the composite and empty-resource legs).
+- mutation: review. `Gate.AdjustedPairs` answers resolved for a row that will not parse -> `ScreenAccessGate.TestTheClassicResourceStaysAndAnUnreadableStoreRefuses` red (the real-gate legs).
+- mutation: review, port.
+  - The `'tAdjustable` refusal dropped -> `ScreenAccessGate.TestThePortRefusesAnOwnScreenAndASetThatMoved` own-screen legs red.
+  - `Stored` answers every failed write 500 -> its conflict legs red (DW-2180).
+  - The change keys tested by value rather than presence -> its empty-pair leg red.
+- mutation: review, Wire. `ScreenAccessReset.ReadBackGone` inverted -> `ScreenAccessWire.TestARaiseIsFollowedByEveryGateAndAResetUndoesIt` read-back leg red. The reset's audit sets swapped -> `TestEachAcceptedWriteIsOneSecurityChangeRow` reset leg red.
+- mutation: review. `Screen.Context.ScreenTools` answers `[]` -> `ScreenAccessDescriptor.TestTheWritesAreAbsentFromEveryRosterTheAgentSees` positive control red.
+- Each mutation was applied to the throwaway's source copy and the whole tree reloaded. Each was reverted by rsync from the worktree (`diff -rq` identical) and reloaded.
+- After the review patches, on `ocupilot-b-ci`, one class at a time, every class reads 0 failed:
+  - `ScreenAccessGate`, 9 methods, run 2311;
+  - `ScreenAccessDescriptor`, 6 methods, run 2307;
+  - `ScreenAccessRefusals`, 4 methods, run 2312;
+  - `ScreenAccessWire`, 7 methods, run 2313;
+  - `PortGate`, 4 methods, run 2303.
+- Also clean: `check-objectscript`; `node --test tools/ci.test.mjs` and `credential-lists.test.mjs`; `lint-docs`; `lint_spine`, whose one low finding is the pre-existing `{id}` route token at line 190.
 
 ## Auto Run Result
 

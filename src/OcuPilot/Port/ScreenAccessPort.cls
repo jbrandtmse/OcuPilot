@@ -282,15 +282,28 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
         }
         Set tAdjusted = (tFound && tAdjustable)
         Set tCurrent = ..Texts(tBase)
+        ; An adjustable screen's current set comes from the read that gave the version, so a write that
+        ; lands after that read is refused stale rather than overwritten.
+        If tAdjusted {
+            Set tCurrent = ..Texts($ClassMethod(..GateClass(), "ParsePairSpec", tStored))
+            If tCurrent = "" {
+                Set tSC = ..Fail("the screen's adjustment could not be read", $$$ERROR($$$GeneralError, "unparsed"), .pHttpStatus, .pFault)
+                Quit
+            }
+        } ElseIf tAdjustable {
+            Set tCurrent = ..Texts($ClassMethod(tDescriptor, "PrivilegePairs"))
+        }
         Set tAdd = $Get(pQuery(..#ADDKEY))
         Set tRemove = $Get(pQuery(..#REMOVEKEY))
         Set tReset = ''$Get(pQuery(..#RESETKEY))
+        ; A change key that is present names a change even when its pair is empty, which Apply refuses.
+        Set tChange = ($Data(pQuery(..#ADDKEY)) # 2) || ($Data(pQuery(..#REMOVEKEY)) # 2)
 
         If pType = ..#TYPEGET {
             Set tNew = tCurrent
             Set tPair = $Select(tAdd '= "": tAdd, 1: tRemove)
             If tAdjustable {
-                If (tAdd '= "") || (tRemove '= "") {
+                If tChange {
                     Do ..Apply(tCurrent, tAdd, tRemove, .tNew, .tViolation)
                     If tViolation '= "" {
                         Set tSC = ..Violate(tViolation, .pHttpStatus, .pFault)

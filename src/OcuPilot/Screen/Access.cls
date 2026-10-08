@@ -8,7 +8,8 @@
 /// read has an empty <code>Effective</code>, <code>Holds</code> false and no failed pair.</p>
 /// <p>Every pair is spelled <code>resource:permission</code> and a set is comma-and-space separated.
 /// <code>Adjustment</code> is <code>""</code> for a screen with no stored row, or one that cannot be adjusted.
-/// The store is read once for the whole list (<method>OcuPilot.Kernel.State.Access.GuardedAll</method>).</p>
+/// Every row's <code>Adjustment</code> comes from one read of the whole store
+/// (<method>OcuPilot.Kernel.State.Access.GuardedAll</method>); its <code>Effective</code> is the gate's own read.</p>
 Class OcuPilot.Screen.Access Extends %RegisteredObject
 {
 
