@@ -383,6 +383,10 @@ services:
       # schema's objects in USER, set up privileges as the running account, and the gate class writes them as
       # principals holding Security's pairs and each without one (Story 18.9).
       # classes: SqlPrivilegeGate, SqlPrivilegeRead, SqlPrivilegeWrite
+      # The SQL column and admin privilege classes create and remove the same probe user, role and schema
+      # and a probe principal, and grant and revoke column and admin privileges for them as the running
+      # account and as that principal (Story 18.28).
+      # classes: SqlAdminPrivilegeWrite, SqlColumnPrivilegeWrite
       # The SQL activity gate class signs in as probe principals each missing one pair the SQL
       # activity port requires, or holding READ on USER's database and %Development, and reads
       # another account's running probe statement as them (Story 19.10).

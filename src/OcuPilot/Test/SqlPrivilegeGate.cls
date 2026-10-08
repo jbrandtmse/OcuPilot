@@ -1,4 +1,4 @@
-/// <p>Pins Story 18.9's pairs with least-privileged principals (AD-8, AD-29, measured at plan): a principal holding
+/// <p>Pins Stories 18.9's and 18.28's pairs with least-privileged principals (AD-8, AD-29, measured at plan): a principal holding
 /// exactly Security's two pairs plus READ on <code>USER</code>'s database reads the privileges over the wire, and
 /// lists, grants and revokes in <code>USER</code> -- on the screen's row actions in process and, over the wire, the
 /// revoke of a row another account granted -- and confirms the agent's grant; the instance's grantor rule refuses
@@ -28,6 +28,10 @@ Parameter SQLPROBE = "OcuPilot.Test.SqlPrivilegeProbe";
 Parameter SCREEN = "permissions.sqlprivileges";
 
 Parameter USERS = "permissions.users";
+
+Parameter COLUMNSCREEN = "permissions.sqlcolumnprivileges";
+
+Parameter ADMINSCREEN = "permissions.sqladminprivileges";
 
 /// <p>The principals' resources beyond the install namespace's code read, by the order of the probe's principal
 /// list: the holder holds Security's two pairs and READ on <code>USER</code>'s database; the second the same without
@@ -181,6 +185,72 @@ Method TestWithoutSecuritysResourceEveryCallIsRefused()
     Set tLeg = ..Leg(tRun, 6)
     Do $$$AssertEquals($Select($IsObject(tLeg): tLeg.%Get("http") _ " " _ tLeg.%Get("failedPair"), 1: ""), "403 %Admin_Secure:USE", "the screen is unavailable, naming the pair")
     Do $$$AssertEquals($ClassMethod(tProbe, "Rows", tGrantee), "", "and nothing was granted")
+}
+
+/// <p>The column and admin families ride the same pairs (Story 18.28): the holder reads both screens over the wire
+/// and, in process, grants and revokes a column privilege and an admin privilege through the Users list's row
+/// actions -- each reaching the seam as one write, a column revoke naming the holder as the grantor and an admin
+/// revoke naming none -- and confirms the agent's column grant; without READ on <code>USER</code>'s database the
+/// reads and the actions are refused naming it, in process with zero port calls; without Security's resource they
+/// are refused naming that.</p>
+/// <p>Mutation (Rule 19): make <method>OcuPilot.Screen.Tool.SqlPrivilegeWrite.ArgumentPairs</method> answer none --
+/// the no-READ legs reach the port and go red.</p>
+Method TestTheColumnAndAdminCallsRideTheSamePairs()
+{
+    Set tProbe = ..#SQLPROBE
+    Set tHolder = ..User(1)
+    Set tGrantee = $Parameter(tProbe, "USER")
+    Set tTable = $Parameter(tProbe, "TABLE")
+    Set tReadPath = "&namespace=USER&maxRows=100"
+    Do $$$AssertStatusOK($ClassMethod(tProbe, "Grant", tHolder, "TABLE", tTable, "SELECT", 1), "the holder holds SELECT on the probe table with the grant option")
+    Do $$$AssertStatusOK($ClassMethod(tProbe, "GrantAdmin", tHolder, "%CREATE_TABLE", 1), "and %CREATE_TABLE with the admin option")
+    Do $$$AssertEquals(..WireRead("/screens/" _ ..#COLUMNSCREEN _ "/read?grantee=" _ tGrantee _ tReadPath _ "&object=" _ tTable, tHolder), "200 ", "the column read answers the holder")
+    Do $$$AssertEquals(..WireRead("/screens/" _ ..#ADMINSCREEN _ "/read?grantee=" _ tGrantee _ tReadPath, tHolder), "200 ", "and so does the admin read")
+    Do $$$AssertEquals(..WireRead("/screens/" _ ..#COLUMNSCREEN _ "/read?grantee=" _ tGrantee _ tReadPath _ "&object=" _ tTable, ..User(2)), "403 %DB_USER:READ", "the column read is refused without the database's pair, naming it")
+    Do $$$AssertEquals(..WireRead("/screens/" _ ..#ADMINSCREEN _ "/read?grantee=" _ tGrantee _ tReadPath, ..User(2)), "403 %DB_USER:READ", "and so is the admin read")
+    Do $$$AssertEquals(..WireRead("/screens/" _ ..#COLUMNSCREEN _ "/read?grantee=" _ tGrantee _ tReadPath _ "&object=" _ tTable, ..User(3)), "403 %Admin_Secure:USE", "without Security's resource, the column read is refused naming it")
+    Do $$$AssertEquals(..WireRead("/screens/" _ ..#ADMINSCREEN _ "/read?grantee=" _ tGrantee _ tReadPath, ..User(3)), "403 %Admin_Secure:USE", "and so is the admin read")
+
+    Set tSC = $ClassMethod(tProbe, "Mint", "OcuPilot.Screen.Tool.UserSqlGrant", tGrantee, $ClassMethod(tProbe, "ColumnArgs", tGrantee, "ID"), .tProposal, .tHttp, .tProblem, tHolder)
+    Do $$$AssertStatusOK(tSC, "the agent's column grant is minted for the holder (" _ tProblem _ ")")
+    Set tPlan = ..ColumnPlan(tGrantee)
+    Do tPlan.%Push({"kind": "confirm", "proposalId": ($Select($IsObject($Get(tProposal)): tProposal.%Get("proposalId"), 1: ""))})
+    Set tRun = ..RunAs(tHolder, tPlan)
+    Do $$$AssertEquals(..Ran(tRun), tHolder _ " 1", "the child process ran as " _ tHolder)
+    For tCase = $ListBuild(1, "the column grant", "GRANT:" _ tGrantee _ ":"), $ListBuild(2, "the column revoke", "REVOKE:" _ tGrantee _ ":" _ tHolder), $ListBuild(3, "the admin grant", "GRANT:" _ tGrantee _ ":"), $ListBuild(4, "the admin revoke", "REVOKE:" _ tGrantee _ ":"), $ListBuild(5, "the agent's confirm", "GRANT:" _ tGrantee _ ":") {
+        Set tLeg = ..Leg(tRun, $List(tCase, 1))
+        Do $$$AssertEquals($Select($IsObject(tLeg): tLeg.%Get("http"), 1: ""), 200, $List(tCase, 2) _ " answers 200 (" _ ..LegText(tRun, $List(tCase, 1)) _ ")")
+        Do $$$AssertEquals($ZConvert(tLeg.%Get("writes"), "U"), $ZConvert($List(tCase, 3), "U"), $List(tCase, 2) _ " reached the seam as one write")
+    }
+    Do $$$AssertEquals($ClassMethod(tProbe, "ColumnDirect", tGrantee, tTable, "ID", "SELECT"), 1, "the confirmed column grant stands")
+    Do $$$AssertEquals($ClassMethod(tProbe, "AdminDirect", tGrantee, "%CREATE_TABLE"), 0, "and the admin privilege, granted then revoked, does not")
+
+    Set tRun = ..RunAs(..User(2), ..ColumnPlan(tGrantee))
+    Do $$$AssertEquals(..Ran(tRun), ..User(2) _ " 1", "the child process ran as " _ ..User(2))
+    For tI = 1:1:4 {
+        Do $$$AssertEquals(..LegText(tRun, tI), "403 AUTH.NOPRIVILEGE %DB_USER:READ calls=0 writes=", "leg " _ tI _ " is refused naming the database's read before any port call")
+    }
+    Set tRun = ..RunAs(..User(3), ..ColumnPlan(tGrantee))
+    For tI = 1:1:4 {
+        Do $$$AssertEquals(..LegText(tRun, tI), "403 AUTH.NOPRIVILEGE %Admin_Secure:USE calls=0 writes=", "leg " _ tI _ " is refused naming Security's resource before any port call")
+    }
+}
+
+/// <p>The plan of four steps on the Users list: a column grant and revoke of the probe table's <code>ID</code> and an
+/// admin grant and revoke of <code>%CREATE_TABLE</code>, for <var>pGrantee</var>.</p>
+ClassMethod ColumnPlan(pGrantee As %String) As %DynamicArray
+{
+    Set tTable = $Parameter(..#SQLPROBE, "TABLE")
+    Set tColumn = {"Namespace": "USER", "Type": "TABLE", "Object": (tTable), "Action": "SELECT", "Column": "ID"}
+    Set tColumnGrant = {"Namespace": "USER", "Type": "TABLE", "Object": (tTable), "Action": "SELECT", "Column": "ID", "WithGrant": "false"}
+    Set tAdmin = {"Namespace": "USER", "Type": "ADMIN", "Action": "%CREATE_TABLE"}
+    Set tAdminGrant = {"Namespace": "USER", "Type": "ADMIN", "Action": "%CREATE_TABLE", "WithGrant": "false"}
+    Set tPlan = []
+    Do tPlan.%Push({"kind": "action", "screen": (..#USERS), "body": {"action": "grant-sql", "id": (pGrantee), "values": (tColumnGrant)}})
+    Do tPlan.%Push({"kind": "action", "screen": (..#USERS), "body": {"action": "revoke-sql", "id": (pGrantee), "values": (tColumn)}})
+    Do tPlan.%Push({"kind": "action", "screen": (..#USERS), "body": {"action": "grant-sql", "id": (pGrantee), "values": (tAdminGrant)}})
+    Do tPlan.%Push({"kind": "action", "screen": (..#USERS), "body": {"action": "revoke-sql", "id": (pGrantee), "values": (tAdmin)}})
+    Quit tPlan
 }
 
 /// <p>The plan of the five steps that must be refused: the grant and revoke on the Users list, the same on the

@@ -2,7 +2,8 @@
 title: 'Story 18.28: SQL column and admin privileges'
 type: 'feature'
 created: '2026-10-08'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: '3fcc942ca730de8ec2c4a7c55f00f2c3905ababf'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -141,6 +142,17 @@ The Rules:
 
 ## Review Triage Log
 
+### 2026-10-08 — Review pass
+
+- verdicts: 6 findings — high 0, medium 1, low 3, false 2, maybe-false 0
+- findings:
+  - `[medium]` `patch` Newly optional `Object` on non-ADMIN types has no route or mint test — added a `Violations` case, a route grant and revoke leg and a mint leg (`SqlPrivilegeDescriptor`, `SqlPrivilegeWrite`); mutation recorded (run 159).
+  - `[low]` `reject` Rule 19 lines missing for `ScreenAction.Values`, the `privilege` guard key, the column `ObjectValid` refusal and `viaHint` — each sits under an AC with a recorded mutation (one per AC); the route change is now covered by the optional-Object mutation.
+  - `[low]` `reject` Revoke card's grantor reads `$Username` while the grant used the wire account — the card is minted in this process and names its own user; both are `_SYSTEM` on every instance the suite runs on, and the assertion passed on a fresh run.
+  - `[low]` `reject` `ScreenActionDelta` empty-string guards may be unreachable from the route — a defensive branch with no named harm; removing it is no direct correction worth a change.
+  - `[false]` `reject` Intent-alignment: no divergence from the extension reading (R1); wire and tab tested separately by design (Integration AC names both surfaces).
+  - `[false]` `reject` Intent-alignment: tab and read tool "answer one set" unasserted — `SqlPrivilegeRead.TestTheColumnAndAdminReadsAnswerOneSetForScreenAndTool` pins it (mutation run 122).
+
 ## Design Notes
 
 **Governing ADs:** AD-2, AD-5, AD-8, AD-10, AD-13, AD-22, AD-27, AD-29, AD-36, AD-39, AD-44, AD-51, AD-52, AD-53, AD-55, AD-56, AD-58 and AD-59. AD-15 and AD-53 need no named case: the vendor audits every column and admin grant and revoke (measured).
@@ -194,15 +206,49 @@ The Rules:
 - `(once, before dev_complete)` the full ObjectScript sweep, one class at a time; `cd ui && npm test && npm run build`; `bash scripts/smoke.sh --container ocupilot-ci --user _SYSTEM --password SYS`; S0.
 - `(CI)` the full browser suite (Rule 29).
 
-**Planned mutations (Rule 19)**, each recorded as `mutation: <change> -> <test> red (run n)`:
+**Mutations (Rule 19)**, each applied on `ocupilot-ci` (the mutated class and its descendants reloaded), observed red, reverted byte-identical (`git status` and `git diff --stat` unchanged). Run numbers are `%UnitTest_Result` run indexes.
 
-- C1: `Facts` sends the object as given (lower-case leg); the grantee check is skipped (unknown-grantee leg).
-- C2: the `.Admin` -99 entry is dropped (grantor leg); the Rules ignore a privilege's case (Rules leg).
-- C3: the guard's list check drops `column` (`SqlPrivilegeRead`'s guard leg); `SqlPrivilege` skips `IsOcuPilotCode` (own-schema column leg).
-- C4: the dialog drops an admin privilege (`sql-privilege-lists.test.mjs`).
-- Integration: `Column` leaves `UserSqlGrant.SCREENVALUES` (wire leg); the bundle loses Columns (browser spec).
+- C1:
+  - mutation: `ObjectValid` accepts an empty object on every type -> `SqlPrivilegeWrite.TestTheRoutesAnswerAndKeepTheirBodiesClosed` red (run 159).
+  - mutation: `SqlPrivilegePort.ColumnTally` sends the object as given -> `SqlColumnPrivilegeWrite.TestTheObjectIsSpelledAndTypedByTheInstance` red (run 104).
+  - mutation: the grantee check skipped in `Facts` -> `SqlColumnPrivilegeWrite.TestAnAbsentColumnOrGranteeIsRefusedAndNothingIsStored` red (run 105) and `SqlAdminPrivilegeWrite.TestTheRulesAndOcuPilotsOwnRolesAreRefusedOnBothCallers` red (run 106).
+  - mutation: `SqlPrivilegeWrite.PortQuery` drops `Column` -> `SqlColumnPrivilegeWrite`, six methods red (run 115).
+  - mutation: the column branch of `WriteQuery` drops `asGrantor` -> `TestARevokeNamesAnotherGrantor` red (run 116).
+  - mutation: `ColumnTally` counts a role's row as direct -> `TestAColumnHeldThroughARoleIsNoDirectRow` red (run 117) and `SqlPrivilegeRead.TestTheColumnAndAdminStateReadsComposeTheDirectRows` red (run 118).
+  - mutation: the column descriptor's read drops `GrantedVia` -> `SqlPrivilegeRead.TestTheColumnAndAdminReadsAnswerOneSetForScreenAndTool` red (run 122).
+- C2:
+  - mutation: the `.Admin` -99 entry dropped from `SQLCODEFAULTS` -> `SqlAdminPrivilegeWrite.TestTheGrantorRuleIsRefusedOnBothVerbs` red (run 107) and `SqlPrivilegeDescriptor.TestTheAdminPortAdmitsTheWritesAndMapsTheCodes` red (run 108).
+  - mutation: the Rules compare an admin privilege upper-cased -> `SqlPrivilegeDescriptor.TestTheRulesRefuseEachField` red (run 109) and `SqlAdminPrivilegeWrite.TestTheRulesAndOcuPilotsOwnRolesAreRefusedOnBothCallers` red (run 110).
+  - mutation: `WriteQuery` sends an admin write to the standard endpoint -> `SqlAdminPrivilegeWrite`, three methods red (run 119).
+  - mutation: `AdminTally` counts a role's row as direct -> `TestAnAdminPrivilegeThroughARoleAndAnAllHolderAreNoDirectRows` red (run 120).
+- C3:
+  - mutation: the guard's list check drops `column` -> `SqlPrivilegeRead.TestTheGuardRefusesTheColumnAndAdminCallsBeforeTheVendorIsReached` red (run 111).
+  - mutation: `Prohibited.SqlPrivilege` skips `IsOcuPilotCode` -> `SqlColumnPrivilegeWrite.TestTheColumnRulesAndOcuPilotsOwnAreRefusedOnBothCallers` red (run 112).
+- C4:
+  - mutation: the dialog drops `%DEFER` from `SQL_ADMIN_PRIVILEGES` -> `sql-privilege-lists.test.mjs` red (the type-action-map and the admin-privileges tests).
+  - mutation: the column read's fixed `includeSystem` set to 0 -> `SqlPrivilegeDescriptor.TestTheColumnAndAdminScreensAreDeclared` red (run 124).
+- Integration:
+  - mutation: `Column` leaves `UserSqlGrant.SCREENVALUES` -> `SqlColumnPrivilegeWrite` red (run 113) and `SqlPrivilegeDescriptor.TestTheToolsDeclareTheirKindPortPairsAndArguments` red (run 114).
+  - mutation: the tab's Columns button removed from the bundle -> the browser spec's column test red; the dialog keeps its Object field for `ADMIN` -> the admin test red.
+- Gate and probe:
+  - mutation: `ArgumentPairs` answers none -> `SqlPrivilegeGate.TestTheColumnAndAdminCallsRideTheSamePairs` red (run 125).
+  - mutation: `RevokeColumns` does nothing -> `SqlPrivilegeRead.TestTheProbeCleanupTakesColumnAndAdminPrivileges` red (run 126); the same with `RevokeAdmin` (run 132) and with the admin-set sweep selecting nothing (run 131).
+- Client:
+  - mutation: the store keeps the admin rows, or the column target, on a namespace change -> `sql-privileges-tab.store.spec.ts` red; the admin or the column read loses its generation guard -> the same spec red.
+  - mutation: `onRevokeAdmin` sends the privilege as `Object`, Columns drawn on every row, or the column revoke omitting `Column` -> `sql-privileges-tab.spec.ts` red.
+  - mutation: the dialog keeps its Object field for `ADMIN`, or keeps the type's actions once a column is named -> `sql-privilege-dialog.spec.ts` red.
 
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
+
+**Summary.** The four 18.9 tools, the port, the guard and the tab now carry SQL column privileges (an optional `Column` on `TABLE`/`VIEW`) and SQL admin privileges (`Type` `ADMIN`); two unlisted reads (`SqlColumnPrivilegeList`, `SqlAdminPrivilegeList`) feed the new tab sections and read tools; `SqlPrivilegeList` carries `HasColumnPriv`. New code `SQLPRIV.COLUMN`; `.Admin` #516 with -99 is 403 `SQLPRIV.GRANTOR`.
+
+**Beyond the spec.** `Screen/Tool/Write.cls` gains `SCREENOPTIONAL` / `ScreenActionOptionalNames` and `Api/ScreenAction.Values` honours them, so a screen action may omit `Object` (ADMIN) and `Column`; the privilege rides in `Action` for ADMIN. `footprint_extensions`: `AdminPort.cls`, `Screen/Tool/Write.cls`, `Api/ScreenAction.cls`, `SqlPrivilegePort.DELEGATEDTYPES` (the roster pins ToolWrite reads).
+
+**Review.** One pass: 1 medium patched (no test for an absent `Object` on a non-ADMIN type; legs added, mutation run 159), 3 low rejected, 2 false; nothing deferred. Follow-up review recommended: false.
+
+**Verification.** Full ObjectScript sweep on `ocupilot-ci`: 521 classes. 512 green in the sweep; `ToolWrite` failed on a real roster gap (fixed with `DELEGATEDTYPES`, 34 tests green); eight classes (`LedgerWire`, `LicenseServerWrite`, `LicenseWriteGate`, `MappingCodeGlobals`, `MappingWriteGate`, `MftConnectionWrite`, `OAuthAuthorizationServerClients`, `OAuthAuthorizationServerWire`) failed mid-sweep and passed on rerun alone (runs 683-690); cause not traced, none touches this story's files. `test:tools` 1893 and `test:components` 2683 pass; build 2.96 MB (warning 3165 kB, no re-base); smoke 50/50; check-objectscript and lint-docs clean; S0 holds.
+
+**Residual risk.** The eight mid-sweep reds are unexplained order or state effects; the runner's fresh-instance check (Rule 30) covers them.

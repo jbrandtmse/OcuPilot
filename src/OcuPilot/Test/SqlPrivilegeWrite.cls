@@ -1,4 +1,5 @@
-/// <p>Pins Story 18.9's writes on both callers of each tool (C1 to C5): the Users and Roles lists' row actions
+/// <p>Pins Story 18.9's writes on both callers of each tool (C1 to C5; the column and admin families are
+/// <class>OcuPilot.Test.SqlColumnPrivilegeWrite</class>'s and <class>OcuPilot.Test.SqlAdminPrivilegeWrite</class>'s): the Users and Roles lists' row actions
 /// <code>grant-sql</code> and <code>revoke-sql</code> over the wire, and the agent's mint and confirm
 /// (<class>OcuPilot.Test.DatabaseConfirm</class>), for a probe user and a probe role -- a grant stored and read back
 /// as a <code>Direct</code> row, a grant option raised, a revoke that names every grantor of the direct rows it
@@ -292,9 +293,9 @@ Method TestTheRulesAreRefusedOnBothCallersBeforeAnythingIsSent()
     Set tSchema = $ClassMethod(..#USERGRANT, "InputSchema")
     Set tArgs = ..Args(tUser, "SELECT", 0)
     Do tArgs.%Set("Type", "COLUMN")
-    Do $$$AssertStatusNotOK(##class(OcuPilot.Screen.Tool.Registry).ValidateArguments(tSchema, tArgs, .tProblem), "a type outside the six is refused by the tool's own schema before a mint")
+    Do $$$AssertStatusNotOK(##class(OcuPilot.Screen.Tool.Registry).ValidateArguments(tSchema, tArgs, .tProblem), "a type outside the seven is refused by the tool's own schema before a mint")
     Do tArgs.%Set("Type", "TABLE")
-    Do tArgs.%Set("Column", "ID")
+    Do tArgs.%Set("Grantor", "SYS")
     Do $$$AssertStatusNotOK(##class(OcuPilot.Screen.Tool.Registry).ValidateArguments(tSchema, tArgs, .tProblem), "and so is an argument it does not declare")
 }
 
@@ -363,6 +364,16 @@ Method TestTheRoutesAnswerAndKeepTheirBodiesClosed()
     Set tBody = ..Body("revoke-sql", tUser)
     Do tBody.values.%Set("WithGrant", "true")
     Do $$$AssertEquals(..Wire("permissions.users", tBody, .tAnswer), "400 TOOL.ARGUMENTS", "a revoke takes no grant option")
+    Set tBody = ..Body("grant-sql", tUser)
+    Do tBody.values.%Remove("Object")
+    Do $$$AssertEquals(..Wire("permissions.users", tBody, .tAnswer), "422 SQLPRIV.VALIDATION", "a table grant with no object is refused on the object, though the route admits an absent object for ADMIN")
+    Set tBody = ..Body("revoke-sql", tUser)
+    Do tBody.values.%Remove("Object")
+    Do $$$AssertEquals(..Wire("permissions.users", tBody, .tAnswer), "422 SQLPRIV.VALIDATION", "and so is a table revoke")
+    Set tArgs = ..Args(tUser, "SELECT", 0)
+    Do tArgs.%Remove("Object")
+    Set tSC = $ClassMethod(tProbe, "Mint", ..#USERGRANT, tUser, tArgs, .tProposal, .tHttp, .tProblem)
+    Do $$$AssertEquals(tHttp _ " " _ tProblem, "422 SQLPRIV.VALIDATION", "the agent's mint refuses a table grant with no object")
     Set tBody = ..Body("grant-sql", tUser)
     Do tBody.values.%Set("Namespace", 5, "number")
     Do $$$AssertEquals(..Wire("permissions.users", tBody, .tAnswer), "400 TOOL.ARGUMENTS", "a value that is not a string is refused")

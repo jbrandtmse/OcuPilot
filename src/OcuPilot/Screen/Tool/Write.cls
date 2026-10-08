@@ -225,6 +225,12 @@ Parameter SECRETBODY = "";
 /// them into this tool's own settable arguments over the fresh read.</p>
 Parameter SCREENVALUES = "";
 
+/// <p>The names among <parameter>SCREENVALUES</parameter> a screen action may leave out, in the same
+/// <code>&lt;action&gt;=&lt;name&gt;[:&lt;name&gt;...]</code> grammar, or <code>""</code>: none, so every
+/// declared value is required. A name listed here is still a declaration -- the route admits it only as a
+/// non-empty string -- but a request without it is not refused for lacking it (Story 18.28).</p>
+Parameter SCREENOPTIONAL = "";
+
 /// <p>This tool's own class, which <method>View</method> hands the mint so
 /// <method>ReadType</method>, <method>SendsBody</method> and <method>StateDiff</method> are read
 /// from the concrete tool rather than from this base (AD-51).</p>
@@ -669,6 +675,24 @@ ClassMethod ScreenActionValueNames(pActionId As %String) As %List
     If pActionId = "" Quit tNames
     For tI = 1:1:$Length(..#SCREENVALUES, ",") {
         Set tEntry = $ZStrip($Piece(..#SCREENVALUES, ",", tI), "<>W")
+        If $Piece(tEntry, "=", 1) '= pActionId Continue
+        Set tSpec = $Piece(tEntry, "=", 2, *)
+        For tJ = 1:1:$Length(tSpec, ":") {
+            Set tName = $ZStrip($Piece(tSpec, ":", tJ), "<>W")
+            If (tName '= "") && '$ListFind(tNames, tName) Set tNames = tNames _ $ListBuild(tName)
+        }
+    }
+    Quit tNames
+}
+
+/// <p>The value names <parameter>SCREENOPTIONAL</parameter> lists for screen action <var>pActionId</var>, as a
+/// <class>%List</class>; <code>""</code> when every declared value is required.</p>
+ClassMethod ScreenActionOptionalNames(pActionId As %String) As %List
+{
+    Set tNames = ""
+    If pActionId = "" Quit tNames
+    For tI = 1:1:$Length(..#SCREENOPTIONAL, ",") {
+        Set tEntry = $ZStrip($Piece(..#SCREENOPTIONAL, ",", tI), "<>W")
         If $Piece(tEntry, "=", 1) '= pActionId Continue
         Set tSpec = $Piece(tEntry, "=", 2, *)
         For tJ = 1:1:$Length(tSpec, ":") {
