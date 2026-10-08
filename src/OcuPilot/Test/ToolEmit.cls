@@ -315,6 +315,10 @@ Method TestEveryLiveToolRequiresItsScreensPairs()
             ; privileges and the namespace's database pairs are the port's to check at its prepare.
             Set tExpected = ##class(OcuPilot.Screen.Gate).RequiredPairs($Parameter(tTool.class, "DESCRIPTORCLASS"), .tExpectedResolved)
             Do $$$AssertTrue($ListLength(tExpected) > 0, tTool.name _ ": its screen declares pairs")
+        } ElseIf $ClassMethod(tTool.class, "%Extends", "OcuPilot.Screen.Tool.ExplorerSourceRead") {
+            ; Story 20.19: a source read of a viewer, gated as the viewer is.
+            Set tExpected = ##class(OcuPilot.Screen.Gate).RequiredPairs($Parameter(tTool.class, "DESCRIPTORCLASS"), .tExpectedResolved)
+            Do $$$AssertTrue($ListLength(tExpected) > 0, tTool.name _ ": its viewer declares pairs")
         } ElseIf tTool.class = "OcuPilot.Kernel.Shell.PermissionCheck" {
             ; Story 16.3: a read with a class of its own, gated as the Users list is; its arguments
             ; add no pair, and a role check asks the Roles list's set inside the operation.

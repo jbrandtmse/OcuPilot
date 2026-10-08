@@ -2,7 +2,9 @@
 title: "Story 20.19: The agent reads class and routine source"
 type: 'feature'
 created: '2026-10-08'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: 'f69ec5ccf275183a2c7da1b1476bd7986dba0240'
+baseline_commit: 'f69ec5ccf275183a2c7da1b1476bd7986dba0240'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -190,7 +192,19 @@ No edit to `Baseline.cls`, EXPERIENCE.md, `strings.ts` or any client file.
 | AC6 | `Loop.Run` appends the last `tool_result` content to the system prompt | `InjectionChannels.TestClassSourceText` |
 | AC7 | `ExplorerClassSave` `ADVERTISED` 1 | `ExplorerSave`'s roster leg |
 
+mutation: AC1 `ExplorerClassSource` `ADVERTISED` 0 red in ExplorerSource's advertised, context-tools and provider legs (and its denied-pair leg, the tool no longer resolving); ExplorerDescriptor not run under it.
+mutation: AC2 `Cut` measuring raw `$Length` red in ExplorerSource's long-class leg (62,709 escaped) and its cut-counting leg.
+mutation: AC2 `Cut`'s first-line branch disabled red in ExplorerSource's wide-first-line leg.
+mutation: AC3 `ExplorerRoutineSource.Endpoint` answering the class endpoint red in ExplorerSource's routine and object-only legs.
+mutation: AC3 `View` ignoring `available` red in ExplorerSource's object-only leg.
+mutation: AC4 `PrivilegePairs` answering `""` red in ExplorerSource's denied-pair and pairs-equality legs.
+mutation: AC5 `Loop.cls` :638 skipping `Sanitize.Results` red in ExplorerSourceTurn's wrapper, `[redacted]` and key-absent assertions.
+mutation: AC6 `Loop.Run` appending the last `tool_result` blocks to the system prompt red in InjectionChannels.TestClassSourceText (invariant 1 on call 2, the stub obeyed); 15 sibling sources red too.
+mutation: AC7 `ExplorerClassSave` `ADVERTISED` 1 red in ExplorerSave.TestTheSaveIsAbsentFromEveryRosterTheAgentSees.
+
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
+
+The implement stage's handoff ran detached after its stage returned (harness default, Rule 18 item 5); the runner reconciled its finished work into one commit. Its own report: full ObjectScript sweep on `ocupilot-b-ci` 526 classes, 4,169 tests, 0 failed; `check-objectscript.py` 0 problems; `test:tools` 1900/1900; smoke 50/50; nine mutations red and restored. Build-auto's own review layers did not run; QA and code review follow.
