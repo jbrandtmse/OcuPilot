@@ -504,8 +504,10 @@ ClassMethod Body(pToolClass As %String, pFresh As %DynamicObject, pArgs As %Dyna
 /// <p>What is wrong with <var>pBody</var>'s <code>values</code> for action <var>pActionId</var> of
 /// <var>pToolClass</var>, or <code>""</code>, with the declared values split into
 /// <var>pValues</var> and the declared secrets into <var>pSecrets</var> (AD-56 (ii)).</p>
-/// <p>Absent is sound only for an action that declares no value. Otherwise it is an object of
-/// strings whose keys are exactly the names the action declares, each non-empty. A name the
+/// <p>Absent is sound only for an action that declares no required value. Otherwise it is an object
+/// of non-empty strings whose keys are names the action declares, every required one among them; a
+/// name the tool lists in <parameter>OcuPilot.Screen.Tool.Write.SCREENOPTIONAL</parameter> may be left
+/// out. A name the
 /// descriptor declares secret and <var>pToolClass</var> itself sends as a secret
 /// (<method>OcuPilot.Screen.Tool.Registry.ChannelSecretNames</method>, AD-6) goes to
 /// <var>pSecrets</var> and nowhere else; one it declares secret that the tool does not send is

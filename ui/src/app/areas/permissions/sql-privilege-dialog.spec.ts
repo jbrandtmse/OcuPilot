@@ -110,14 +110,13 @@ describe('the SQL privilege dialog', () => {
     [...host.querySelectorAll<HTMLButtonElement>('button')].find((button) => button.textContent?.trim() === STRINGS.actionCancel)!.click();
     expect(closed()).toBe(1);
   });
-  it('offers the 32 admin privileges for ADMIN, hides the object and the column, and submits with no object', () => {
+  it('offers the admin privileges for ADMIN, hides the object and the column, and submits with no object', () => {
     // Mutation (Rule 19): keep the object field for ADMIN -> the object assertion goes red.
     const { fixture, host, submitted } = mount();
     pickType(fixture, host, 'ADMIN');
     expect(host.querySelector('#ocu-sqlpriv-object')).toBeNull();
     expect(host.querySelector('#ocu-sqlpriv-column')).toBeNull();
     expect(actions(host)).toEqual([...SQL_ADMIN_PRIVILEGES]);
-    expect(actions(host)).toHaveLength(32);
     expect(host.querySelector<HTMLSelectElement>('#ocu-sqlpriv-action')!.value).toBe('%CREATE_FUNCTION');
     expect(host.querySelector('label[for="ocu-sqlpriv-action"]')?.textContent?.trim()).toBe(STRINGS.sqlPrivilegeColumnPrivilege);
     expect(submitButton(host).getAttribute('aria-disabled')).toBeNull();

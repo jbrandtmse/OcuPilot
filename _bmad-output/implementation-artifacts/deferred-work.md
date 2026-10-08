@@ -10547,6 +10547,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: owner request 2026-10-08 via the Planner; cycle-log-parallel.md | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: 20.1 (Home tiles 7 vs 8, rail 9 vs 11) and 18.9 (users and roles editor tab lists) went red on literals; the entity-type count is written out in Test/Descriptor, MftConnectionDescriptor and SuperserverDescriptor; find the rest by grepping ui/browser, ui/tools and src/OcuPilot/Test for literal counts
 - 2026-10-08T08:48:06Z status=routed owner=23-5-the-range-end-cleanup-part-5 by=orchestrator note=Rule 30's derive-not-literal clause applied to the existing suite; roster pins (SurfaceCoverage, EndpointCoverage, FLOORONLY) stay literal by design
+- 2026-10-08T16:01:56Z occurrence=18-28-sql-column-and-admin-privileges
 
 ### DW-2204: IRIS defect candidate: the admin API's Security.SQLPrivilege.Column LIST and REVOKE match the object's case exactly while GRANT accepts any case, so a revoke in another case answers 200 and removes nothing
 - source: spec-18-28-sql-column-and-admin-privileges.md | severity: low | fix-risk: high | footprint: out-of-footprint
@@ -10568,3 +10569,30 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-20-15-per-screen-permissions-seen-and-adjusted.md (code review, rework 2) | severity: low | fix-risk: med | footprint: in-story
 - evidence: ScreenAccessPort.PAIRS (AdjusterSpec) is a sixth, AD-64-sanctioned carrier; a port copying it would pass PortGate and the roster. Navigate.ArgumentPairs carries the pair per call for the screenpermissions route, so ArgumentPairs cannot be read without exemptions. No stray exists today.
 - 2026-10-08T09:11:59Z status=wontfix-accepted owner=20-15-per-screen-permissions-seen-and-adjusted by=cr note=reopen_if=AdjusterPairs()/AdjusterSpec() called in src/OcuPilot code outside Gate, AgentScreenPermissions, ScreenAccessPort
+
+### DW-2215: IRIS defect candidate: the admin API's Security.SQLPrivilege.Admin GRANT of %DEFER, a name its own GetPrivNum maps (32), answers 500 with #514 Invalid privilege '%DEFER' at action GrantAdminPrivilege property AdminPriv, and an %All holder's admin LIST omits it
+- source: spec-18-28-sql-column-and-admin-privileges.md | severity: low | fix-risk: high | footprint: out-of-footprint
+- evidence: ocupilot-ci 2026-10-08 (18.28 code review): port and vendor GRANT of %DEFER answered 500 #514 for a probe user; the other 31 names grant, list Direct and revoke (run 698); _SYSTEM's admin LIST answers 31 rows
+- 2026-10-08T16:01:56Z status=decision-pending owner=burndown by=cr note=owner_hold: not reported to InterSystems; OcuPilot's Rules refuse %DEFER before any call
+
+### DW-2216: SCREENOPTIONAL (Screen/Tool/Write.cls, honoured by Api/ScreenAction.Values) lets a screen action omit a declared value; the spine has no sentence for it beside AD-56 (ii)
+- source: spec-18-28-sql-column-and-admin-privileges.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Story 18.28 implement added it beyond the spec (Auto Run Result); AD-56 (ii) still reads that a screen action accepts only declared values, which holds, but names no optional value; Rule 20 makes it the lead's spine write
+- 2026-10-08T16:01:56Z status=open owner=18-28-sql-column-and-admin-privileges by=cr note=lead: add one AD-56 (ii) sentence (Rule 20), then resolved-by:18-28
+- 2026-10-08T16:04:40Z status=resolved-by:18-28-sql-column-and-admin-privileges by=adjudication note=AD-56 (ii) gains the SCREENOPTIONAL sentence (Rule 20, spine 2026-10-08)
+
+### DW-2217: Spec 18.28 and epic-18-context.md say ADMIN takes the 32 names GetPrivNum lists and an %All holder lists 32 SuperUser rows; the instance takes and lists 31 (%DEFER refused #514)
+- source: spec-18-28-sql-column-and-admin-privileges.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: ocupilot-ci 2026-10-08 (18.28 code review): _SYSTEM's admin LIST in USER answers 31 SuperUser rows; GRANT %DEFER answers 500 #514; code now takes 31
+- 2026-10-08T16:01:56Z status=open owner=18-28-sql-column-and-admin-privileges by=cr note=lead: Rule 5 apply-and-report amendment (spec Rules, matrix, C2, Design Notes; context .Admin line), then resolved-by
+- 2026-10-08T16:04:40Z status=resolved-by:18-28-sql-column-and-admin-privileges by=adjudication note=Rule 5: spec 18.28 (Boundaries, matrix, C2, Code Map, Design Notes), epic-18-context.md and the split record now say 31
+
+### DW-2218: An SQL admin privilege's dialog checkbox and card say 'with the grant option' where the instance calls it the admin option
+- source: spec-18-28-sql-column-and-admin-privileges.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: SqlPrivilegeWrite.StateDiff words an admin grant '..., with the grant option'; the dialog's WithGrant label is shared with object privileges; C2 and the vendor say admin option
+- 2026-10-08T16:01:56Z status=wontfix-accepted owner=18-28-sql-column-and-admin-privileges by=cr note=reopen_if=Story 18.29 ships an 'admin option' Fixed string (reuse it for the ADMIN dialog label and card)
+
+### DW-2219: A table held only through its columns lists on the SQL privileges tab with blank Action, Granted by and Granted via cells and no hint
+- source: spec-18-28-sql-column-and-admin-privileges.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: the Standard list answers such a table as {Action: '', GrantedVia: '', HasColumnPriv: true}; viaHint('') is '' and EXPERIENCE.md has no column-only hint
+- 2026-10-08T16:01:56Z status=wontfix-accepted owner=18-28-sql-column-and-admin-privileges by=cr note=reopen_if=a story adds a 'held through its columns' Fixed string to the Permissions row, or a user reports the blank row

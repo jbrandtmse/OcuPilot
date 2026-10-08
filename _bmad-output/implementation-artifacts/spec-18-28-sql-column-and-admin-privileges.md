@@ -66,13 +66,13 @@ deferred: []
 | Column grant | `TABLE`, `ocusqlprivprobe.t1`, `ID`, `SELECT`, opt. `WithGrant` | A `Direct` row by the caller; a view sent as `TABLE` lands on the view | Unknown grantee: 404 `.NOGRANTEE`. Nothing stored: 409 `.NOTAPPLIED` |
 | Column revoke | Another account's `Direct` row | One `REVOKE` per grantor; row gone | No `Direct` row: 409 `.NOTHELD` |
 | Admin grant / revoke | `ADMIN`, `%CREATE_TABLE`, opt. `WithGrant` | Row added (option set or upgraded) or removed | -99: 403 `.GRANTOR` |
-| Rules | `ADMIN` with object or column; column on another type, not one name, or `DELETE`/`%ALTER`; privilege outside the 32 (case included) | 422 on the field (new `SQLPRIV.COLUMN`) | The mint refuses the same |
+| Rules | `ADMIN` with object or column; column on another type, not one name, or `DELETE`/`%ALTER`; privilege outside the 31 (case included) | 422 on the field (new `SQLPRIV.COLUMN`) | The mint refuses the same |
 | Lists | `*` or `,` in `column` or `privilege` | 400 `.LIST` | Before the vendor |
 | OcuPilot's own | Column grant on `OcuPilot_Kernel_State.Turn`; grant to `OcuPilotAdmin` or `%DB_OCUPILOT` | `PROHIBITED.OCUPILOTSQLPRIVILEGE`; `.OCUPILOTROLE` | 18.9's arm |
 
 The Rules:
 
-- `ADMIN` takes the 32 names `GetPrivNum` lists, spelled exactly. Its `Object` and `Column` are empty.
+- `ADMIN` takes the 31 names the instance grants (`GetPrivNum`'s 32 less `%DEFER`, which it refuses #514), spelled exactly. Its `Object` and `Column` are empty.
 - A column matches `NAMEPATTERN`.
 - Column actions, on a table or a view: `SELECT`, `INSERT`, `UPDATE`, `REFERENCES`.
 
@@ -84,7 +84,7 @@ The Rules:
 - `Port/AdminPort.cls`: `MUTATINGTYPES` :466, `BODYLESSTYPES` :482, `SQLCODEFAULTS` :2858, `SqlPrivilegeGuard` :2923, `SqlCodeFault` :2949. `AdminRoutes.cls` :194-199 already has the routes.
 - `Screen/Tool/SqlPrivilegeWrite.cls`: `InputSchema` :86, `PortQuery` :158, `ScreenActionDelta` :172, `StateDiff` :200, which already draws a grantor-less revoke as one row.
 - `Kernel/Proposal/Prohibited.cls` `SqlPrivilege` :2432 is unchanged: `IsOcuPilotCode("")` is 0, and the grantee arm judges every call.
-- Vendor (`[Hidden]`, copied to the plan scratch `epic-18-d9/p1828/`): `.Column` calls `SaveObjPriv`, which drops its SQLCODE; `.Admin`'s `GetPrivNum` lists the 32 names; admin rows are `Security.SQLAdminPrivilegeSet`, keyed by namespace and lower-case grantee.
+- Vendor (`[Hidden]`, copied to the plan scratch `epic-18-d9/p1828/`): `.Column` calls `SaveObjPriv`, which drops its SQLCODE; `.Admin`'s `GetPrivNum` lists 32 names, of which the instance grants 31; admin rows are `Security.SQLAdminPrivilegeSet`, keyed by namespace and lower-case grantee.
 - Client: the tab's `onRevoke` and `onSubmit`, the store's `distinctRows`, `viaHint` and `load`, the dialog's lists :8-30.
 - Tests: `Test/SqlPrivilegeProbe.cls` (`RevokeAll` :74, `RemoveAll` :126, `Remaining` :157; `T1 (ID INT)`, `V1`, `GiveAll`) and `SqlPrivilegeSeamPort`.
 
@@ -106,7 +106,7 @@ The Rules:
   - An "Admin privileges" section, and a "Column privileges on `<object>`" section.
   - Columns on a `TABLE` or `VIEW` row with `HasColumnPriv`, in place of Revoke on a column-only row.
   - Revoke sends `Type`, `Object`, `Column` and `Action`, or `ADMIN` and the privilege. `viaHint` reads `Role - <r>`.
-- `sql-privilege-dialog.ts`: `ADMIN` hides Object and lists the 32. An optional Column for `TABLE` and `VIEW` switches to the column actions. The lists are exported.
+- `sql-privilege-dialog.ts`: `ADMIN` hides Object and lists the 31. An optional Column for `TABLE` and `VIEW` switches to the column actions. The lists are exported.
 - `strings.ts` (add-only) and EXPERIENCE.md's Permissions Fixed strings row, in place. Regenerate `screens.generated.ts`, and re-base `angular.json` if its budget is crossed (DW-1166).
 
 **Tests:**
@@ -132,10 +132,56 @@ The Rules:
 **Acceptance Criteria:**
 
 - **C1.** Given a probe user and role in USER and a table, when their column privileges are listed, granted (in any case, with or without the grant option) and revoked from the tab and by a confirmed proposal, then each round-trips through `Security.SQLPrivilege.Column`, and the tab and the read tool answer one set. A grant stored as nothing reads as refused (`.NOTAPPLIED`), and an unknown grantee is refused before the call (`.NOGRANTEE`).
-- **C2.** Given a probe user and role in USER, when their admin privileges are listed, granted (with and without the admin option) and revoked by either caller, then each round-trips through `Security.SQLPrivilege.Admin`. A privilege outside the 32 is refused before any call, and -99 is 403 `SQLPRIV.GRANTOR`.
+- **C2.** Given a probe user and role in USER, when their admin privileges are listed, granted (with and without the admin option) and revoked by either caller, then each round-trips through `Security.SQLPrivilege.Admin`. A privilege outside the 31 is refused before any call, and -99 is 403 `SQLPRIV.GRANTOR`.
 - **C3.** Given a column grant naming a wildcard, a list, or a table in an OcuPilot schema, when either caller sends it, then 18.9's input refusals and AD-10's schema arm refuse it before any vendor call.
 - **C4.** Given the rosters, when the suites run, then the descriptors, tools, codes and the dialog's lists are pinned on both sides (DW-2190).
 - **Integration.** Given `ocupilot-ci`, when the tab and the agent act, then the tab goes through `GET /screens/:screen/read` and `POST /screens/:screen/action` (`grant-sql` and `revoke-sql` with `Column`), and the agent through the four tools and the two new read tools.
+
+### Review Findings
+
+Code review, 2026-10-08: four layers, 48 rows; 20 entries after grouping (14 patched, 6 deferred) and 21 rows rejected.
+
+- [x] [Review][Patch] (high, AD-59) A column copy-out script sent the object and type as the query spelled them, so its lower-case revoke removes nothing and a view sent as `TABLE` stores an unlisted row; it now ends with a comment saying to name them as the instance lists them [src/OcuPilot/Port/SqlPrivilegePort.cls:634]
+- [x] [Review][Patch] (med) The Rules and the dialog took `%DEFER`, which the instance's admin privilege store refuses (#514, 500 and a severity-2 log on every grant), and no test sent the names to the instance; dropped from both lists, refused 422 before any call, and every listed name is now granted and revoked live [src/OcuPilot/Port/SqlPrivilegePort.cls:101]
+- [x] [Review][Patch] (med) The agent's admin revoke card was never asserted [src/OcuPilot/Test/SqlAdminPrivilegeWrite.cls:138]
+- [x] [Review][Patch] (med) An assertion read back the `Body` helper's own constant `TABLE` [src/OcuPilot/Test/SqlColumnPrivilegeWrite.cls:170]
+- [x] [Review][Patch] (med, Rule 30) Browser tests 3 and 4 relied on test 1's revoke, and the browser and dialog specs asserted a literal 32; each test now revokes the probe principals' privileges first, the Revoke check is scoped to the table's row, and the offered list equals the dialog's export [ui/browser/permissions-sql-privileges.browser-spec.mjs:199]
+- [x] [Review][Patch] (low) Contract text left from Story 18.9: `ScreenAction.Values`' doc, the port's header (one `LIST`, `cascade` 0 on every revoke, the query keys) and `ToolRoundTrip`'s `REFUSEEMPTY` note [src/OcuPilot/Api/ScreenAction.cls:507]
+- [x] [Review][Patch] (low) The column descriptor named role rows `Role - <name>`; they read `Role:<name>` [src/OcuPilot/Screen/Descriptor/SqlColumnPrivilegeList.cls:15]
+- [x] [Review][Patch] (low) The revoke tools told the agent a revoke goes once per direct grantor; an admin revoke goes once [src/OcuPilot/Screen/Tool/UserSqlRevoke.cls:12]
+- [x] [Review][Patch] (low) The vendor-defect control leg did not say what its red would mean [src/OcuPilot/Test/SqlColumnPrivilegeWrite.cls:204]
+- [x] [Review][Patch] (low) The kernel-refusal test lost its whole-object payload; it now asks with and without a column [src/OcuPilot/Test/SqlPrivilegeDescriptor.cls:380]
+- [x] [Review][Patch] (low) The tab spec's namespace test named an admin-row drop it did not assert [ui/src/app/areas/permissions/sql-privileges-tab.spec.ts:318]
+- [x] [Review][Patch] (low) The DW-2190 parity test held three types' actions as literals; the port declares `PROCEDUREACTIONS` and `USEACTIONS` and the test reads them [ui/tools/sql-privilege-lists.test.mjs:62]
+- [x] [Review][Patch] (low) A stray space before a semicolon in the Permissions Fixed-strings row [EXPERIENCE.md:468]
+- [x] [Review][Patch] (low, Rule 19) `SCREENOPTIONAL`'s handling in `ScreenAction.Values` had no mutation line; written under Verification
+- [x] [Review][Defer] (med, Rule 30) Literal screen lists and counts in contended rosters (`Wire.cls`, `WireSecurityRead.cls`, `navigation.test.mjs`, `screen-mirror.test.mjs`, `ReadTool.cls`'s 47) [src/OcuPilot/Test/ReadTool.cls:368] — deferred: list inserts the spec instructs in Epic 20's shared files; occurrence on DW-2202 (routed 23-5)
+- [x] [Review][Defer] Vendor candidate: `.Admin` `GRANT` of `%DEFER`, which `GetPrivNum` maps, answers 500 #514 — deferred: DW-2215, owner hold
+- [x] [Review][Defer] (low) `SCREENOPTIONAL` has no spine sentence beside AD-56 (ii) — deferred: DW-2216, the lead's Rule 20 write
+- [x] [Review][Defer] (low) The spec and the epic context say 32 admin privileges and 32 `SuperUser` rows; the instance takes and lists 31 — deferred: DW-2217, the lead's Rule 5 amendment
+- [x] [Review][Defer] (low) The admin option is worded "grant option" on the dialog and card — deferred: DW-2218 wontfix-accepted, reopen_if 18.29 ships an "admin option" string
+- [x] [Review][Defer] (low) A table held only through columns lists with blank cells and no hint — deferred: DW-2219 wontfix-accepted
+
+Rejected:
+
+- `false` A probe principal's admin set outlives cleanup: `Security.SQLAdminPrivilegeSet` held 0 rows after the sweep and after runs 693-701.
+- `false` An unknown grantee's column or admin revoke or read answers 500: measured 200 `[]` on each `LIST` and 409 `SQLPRIV.NOTHELD` on `REVOKESTATE`.
+- `low` A column revoke may cascade to dependents: the column call passes the 0 that `RevokePrivilege` takes as cascade (inference), so a dependent most likely leaves it `NOTAPPLIED`; a grantee passing on `WITH GRANT` would settle it.
+- `low` A non-column action names `Column`'s sentence: spec-bound (Tasks fixes the field and the sentence).
+- `low` `REASONLIST`, `REASONOBJECT` and `REASONACTION` read awkwardly for admin and column calls: the guard's two are unreachable from either tool caller, and `ACTION`'s holds.
+- `false` The column section has no close control: it shows the chosen object's column privileges, and the spec asks for none.
+- `low` Several Columns buttons for one object (inference) and three identical refusal banners: cosmetic.
+- `false` `press()` hides a sticky-bar defect: the form page's `scroll-padding-bottom` keeps a reached control above the in-flow bar; the in-page click works around Puppeteer's in-viewport check.
+- `low` Another case reads no column rows; column refusals answer `NOTAPPLIED`: Decisions 5 and 2.
+- `false` `ColumnTally` nears `MAXROWS`: 100,000 against 7,543 measured.
+- `low` The card says "table" for a view sent as `TABLE`: the fix moves `Facts`' fingerprinted `Type`.
+- `false` The guard calls the subclass's `ObjectValid` and a literal endpoint: no harm, both inside the AD-27 port family.
+- `low` The eight mid-sweep reds and the 2.96 MB figure: both fixes edit this spec; each class passed alone, and this review's build measured 3.16 MB with no budget warning.
+- `false` `explorerSqlColumnNumber` reuse: one key per value is the convention.
+- `false` The `object` hint does not name the tool id: it says to spell the object as the SQL privileges read lists it.
+- `low` The agent's mint answers an unknown grantee 400 rather than `NOGRANTEE`: the refusal precedes any call; the code is `Mint.cls`'s uniform absent-target refusal.
+- `low` `SCREENOPTIONAL` names are not checked against `SCREENVALUES`: a misspelt name leaves the value required, which the tool's route tests catch.
+- `low` The probe's `RevokeColumns` and `RevokeAdmin` drop their statuses: their effect is pinned by `Remaining()` with recorded mutations (runs 126, 131, 132).
 
 ## Spec Change Log
 
@@ -163,7 +209,7 @@ The Rules:
 - **Column.** A `withGrant` re-grant upgrades the row, and a view's columns take the four actions. `LIST` and `REVOKE` match the object's case (another case lists nothing and revokes nothing, 200); `GRANT`, the column, grantee and grantor match any case. A one-part object makes `LIST` answer 500 `<INVALID OREF>`. A non-grantor's revoke without `asGrantor` removes nothing.
 - **Column refusals are all 200.** An absent table or column, or a grantor without the privilege, stores nothing. `DELETE`, `%ALTER`, an unknown grantee, or a view sent as `TABLE` stores a row the list never shows.
 - **The Standard list** shows a table held only through columns as `{Action: "", GrantedVia: "", HasColumnPriv: true}`. A super-user's own list names every table and view with its type (7,543 rows in USER, 0.15 s).
-- **Admin.** Rows are per namespace, and `Role - <r>` names a role holder; a `withGrant` re-grant upgrades. A lower-case privilege answers 400 #5001, and an unknown grantee 500 #515. Without the admin option, grant and revoke both answer 500 #516 `[..., -99]`; an admin-option holder revokes another's grant. An `%All` holder lists 32 `SuperUser` rows.
+- **Admin.** Rows are per namespace, and `Role - <r>` names a role holder; a `withGrant` re-grant upgrades. A lower-case privilege answers 400 #5001, and an unknown grantee 500 #515. Without the admin option, grant and revoke both answer 500 #516 `[..., -99]`; an admin-option holder revokes another's grant. An `%All` holder lists 31 `SuperUser` rows.
 - **Other.** `Security.User` and `.Role` `GET` answer an absent name 404 to that principal. The vendor audits even a write that stored nothing. The `OcuSqlColProbe*` probes were removed, leaving S0, so no Task 0 is needed.
 
 **Decisions:**
@@ -222,20 +268,25 @@ The Rules:
   - mutation: the Rules compare an admin privilege upper-cased -> `SqlPrivilegeDescriptor.TestTheRulesRefuseEachField` red (run 109) and `SqlAdminPrivilegeWrite.TestTheRulesAndOcuPilotsOwnRolesAreRefusedOnBothCallers` red (run 110).
   - mutation: `WriteQuery` sends an admin write to the standard endpoint -> `SqlAdminPrivilegeWrite`, three methods red (run 119).
   - mutation: `AdminTally` counts a role's row as direct -> `TestAnAdminPrivilegeThroughARoleAndAnAllHolderAreNoDirectRows` red (run 120).
+  - mutation: `ADMINPRIVILEGES` carries `%DEFER` (the list before code review) -> `SqlAdminPrivilegeWrite.TestEveryAdminPrivilegeTheRulesTakeIsGrantedAndRevoked` red (run 697).
+  - mutation: `SqlPrivilegeWrite.StateDiff` drops the grantor-less revoke row -> `SqlAdminPrivilegeWrite.TestAnAdminGrantAndRevokeRoundTripOnBothCallers` red at the revoke card (run 694).
 - C3:
   - mutation: the guard's list check drops `column` -> `SqlPrivilegeRead.TestTheGuardRefusesTheColumnAndAdminCallsBeforeTheVendorIsReached` red (run 111).
   - mutation: `Prohibited.SqlPrivilege` skips `IsOcuPilotCode` -> `SqlColumnPrivilegeWrite.TestTheColumnRulesAndOcuPilotsOwnAreRefusedOnBothCallers` red (run 112).
 - C4:
-  - mutation: the dialog drops `%DEFER` from `SQL_ADMIN_PRIVILEGES` -> `sql-privilege-lists.test.mjs` red (the type-action-map and the admin-privileges tests).
+  - mutation: the dialog drops `%NOJOURN` from `SQL_ADMIN_PRIVILEGES` -> `sql-privilege-lists.test.mjs` red (the type-action-map and the admin-privileges tests).
   - mutation: the column read's fixed `includeSystem` set to 0 -> `SqlPrivilegeDescriptor.TestTheColumnAndAdminScreensAreDeclared` red (run 124).
 - Integration:
   - mutation: `Column` leaves `UserSqlGrant.SCREENVALUES` -> `SqlColumnPrivilegeWrite` red (run 113) and `SqlPrivilegeDescriptor.TestTheToolsDeclareTheirKindPortPairsAndArguments` red (run 114).
   - mutation: the tab's Columns button removed from the bundle -> the browser spec's column test red; the dialog keeps its Object field for `ADMIN` -> the admin test red.
+  - mutation: `ScreenAction.Values` ignores `SCREENOPTIONAL` -> `SqlAdminPrivilegeWrite`, four methods red on the route legs (run 693).
+  - mutation: `SqlPrivilegePort.Snippet` without the column family's spelling comment (the port before code review) -> `SqlPrivilegeDescriptor.TestTheScriptsMirrorTheBranches` red (run 695).
 - Gate and probe:
   - mutation: `ArgumentPairs` answers none -> `SqlPrivilegeGate.TestTheColumnAndAdminCallsRideTheSamePairs` red (run 125).
   - mutation: `RevokeColumns` does nothing -> `SqlPrivilegeRead.TestTheProbeCleanupTakesColumnAndAdminPrivileges` red (run 126); the same with `RevokeAdmin` (run 132) and with the admin-set sweep selecting nothing (run 131).
 - Client:
   - mutation: the store keeps the admin rows, or the column target, on a namespace change -> `sql-privileges-tab.store.spec.ts` red; the admin or the column read loses its generation guard -> the same spec red.
+  - mutation: the store's `drop` keeps the admin rows -> `sql-privileges-tab.spec.ts`'s namespace test red.
   - mutation: `onRevokeAdmin` sends the privilege as `Object`, Columns drawn on every row, or the column revoke omitting `Column` -> `sql-privileges-tab.spec.ts` red.
   - mutation: the dialog keeps its Object field for `ADMIN`, or keeps the type's actions once a column is named -> `sql-privilege-dialog.spec.ts` red.
 

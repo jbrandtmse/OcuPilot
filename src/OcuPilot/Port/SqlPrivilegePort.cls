@@ -10,9 +10,9 @@
 /// for a view sent as a table. A grant in the column and admin families first confirms the grantee exists, because
 /// the vendor stores a row for an unknown name.</p>
 /// <p><b>Two composed reads.</b> <parameter>GRANTSTATE</parameter> and <parameter>REVOKESTATE</parameter> answer
-/// <code>{Namespace, Type, Object, Action, [WithGrant], Held, GrantOption, GrantedBy, Rows}</code> from one
-/// <code>LIST</code> (<code>includeSystem</code> 1, <parameter>MAXROWS</parameter> rows, a full answer a fault).
-/// Outside a schema, <code>Rows</code> counts the grantee's <code>Direct</code> rows for the object and action
+/// <code>{Namespace, Type, Object, Action, Column, [WithGrant], Held, GrantOption, GrantedBy, Rows}</code> from
+/// the family's lists (<parameter>MAXROWS</parameter> rows each, a full answer a fault). In the standard family,
+/// outside a schema, <code>Rows</code> counts the grantee's <code>Direct</code> rows for the object and action
 /// (a table and a view alike) and <code>GrantedBy</code> names their distinct grantors, sorted and comma-joined;
 /// for a schema they are the <code>Schema Privilege</code> rows of the schema's objects for the action. They refuse,
 /// before any vendor call and in this order: the Rules (422 <code>SQLPRIV.VALIDATION</code>, each violation
@@ -22,11 +22,12 @@
 /// <p><b>A write is judged by a re-read.</b> The vendor answers a grant or revoke that moved nothing with 200.
 /// <parameter>GRANT</parameter> reads the state, sends one vendor <code>GRANT</code> and reads again;
 /// <parameter>REVOKE</parameter> sends one vendor <code>REVOKE</code> per grantor the read names, each with
-/// <code>asGrantor</code> and <code>cascade</code> 0, and reads again. A state the write did not move is 409
-/// <code>SQLPRIV.NOTAPPLIED</code>.</p>
+/// <code>asGrantor</code> (and <code>cascade</code> 0 in the standard family), or one naming no grantor in the admin
+/// family, and reads again. A state the write did not move is 409 <code>SQLPRIV.NOTAPPLIED</code>.</p>
 /// <p><b>Caller contract:</b> every vendor call goes through <method>Call</method>, so a test port overrides that
 /// one method. The query keys are the vendor's own: <code>grantee</code>, <code>namespace</code>,
-/// <code>type</code>, <code>object</code>, <code>action</code> and, on a grant, <code>withGrant</code>.</p>
+/// <code>type</code>, <code>object</code>, <code>action</code>, <code>column</code> and, on a grant,
+/// <code>withGrant</code>; the admin family sends the action as <code>privilege</code>.</p>
 Class OcuPilot.Port.SqlPrivilegePort Extends OcuPilot.Port.AdminPort
 {
 
@@ -95,14 +96,20 @@ Parameter TYPES = "TABLE,VIEW,SCHEMA,STORED PROCEDURE,ML CONFIGURATION,FOREIGN S
 /// <p>The actions a column privilege takes, on a table or a view alike.</p>
 Parameter COLUMNACTIONS = "SELECT,INSERT,UPDATE,REFERENCES";
 
-/// <p>The 32 admin privileges the vendor's <code>GetPrivNum</code> lists, spelled exactly.</p>
-Parameter ADMINPRIVILEGES = "%CREATE_FUNCTION,%DROP_FUNCTION,%CREATE_METHOD,%DROP_METHOD,%CREATE_PROCEDURE,%DROP_PROCEDURE,%CREATE_QUERY,%DROP_QUERY,%CREATE_TABLE,%ALTER_TABLE,%DROP_TABLE,%CREATE_VIEW,%ALTER_VIEW,%DROP_VIEW,%CREATE_TRIGGER,%DROP_TRIGGER,%NOCHECK,%NOTRIGGER,%NOINDEX,%NOLOCK,%BUILD_INDEX,%CREATE_ML_CONFIGURATION,%ALTER_ML_CONFIGURATION,%DROP_ML_CONFIGURATION,%MANAGE_MODEL,%USE_MODEL,%DROP_UNOWNED,%NOJOURN,%CANCEL_QUERY,%MANAGE_FOREIGN_SERVER,%USE_EMBEDDING,%DEFER";
+/// <p>The admin privileges the instance takes, spelled exactly: the names the vendor's <code>GetPrivNum</code> lists
+/// but <code>%DEFER</code>, which the instance's admin privilege store refuses (#514).</p>
+Parameter ADMINPRIVILEGES = "%CREATE_FUNCTION,%DROP_FUNCTION,%CREATE_METHOD,%DROP_METHOD,%CREATE_PROCEDURE,%DROP_PROCEDURE,%CREATE_QUERY,%DROP_QUERY,%CREATE_TABLE,%ALTER_TABLE,%DROP_TABLE,%CREATE_VIEW,%ALTER_VIEW,%DROP_VIEW,%CREATE_TRIGGER,%DROP_TRIGGER,%NOCHECK,%NOTRIGGER,%NOINDEX,%NOLOCK,%BUILD_INDEX,%CREATE_ML_CONFIGURATION,%ALTER_ML_CONFIGURATION,%DROP_ML_CONFIGURATION,%MANAGE_MODEL,%USE_MODEL,%DROP_UNOWNED,%NOJOURN,%CANCEL_QUERY,%MANAGE_FOREIGN_SERVER,%USE_EMBEDDING";
 
 Parameter TABLEACTIONS = "%ALTER,SELECT,INSERT,UPDATE,DELETE,REFERENCES";
 
 Parameter VIEWACTIONS = "%ALTER,SELECT,INSERT,UPDATE,DELETE";
 
 Parameter SCHEMAACTIONS = "%ALTER,SELECT,INSERT,UPDATE,DELETE,REFERENCES,EXECUTE";
+
+/// <p>The action a stored procedure takes, and the one an ML configuration and a foreign server take.</p>
+Parameter PROCEDUREACTIONS = "EXECUTE";
+
+Parameter USEACTIONS = "USE";
 
 /// <p>The shape of one part of an object name.</p>
 Parameter NAMEPATTERN = "^[%A-Za-z][A-Za-z0-9_@#$]{0,127}$";
@@ -135,8 +142,8 @@ ClassMethod ActionsFor(pType As %String) As %List
     If pType = "TABLE" Quit $ListFromString(..#TABLEACTIONS)
     If pType = "VIEW" Quit $ListFromString(..#VIEWACTIONS)
     If pType = "SCHEMA" Quit $ListFromString(..#SCHEMAACTIONS)
-    If pType = "STORED PROCEDURE" Quit $ListBuild("EXECUTE")
-    If (pType = "ML CONFIGURATION") || (pType = "FOREIGN SERVER") Quit $ListBuild("USE")
+    If pType = "STORED PROCEDURE" Quit $ListFromString(..#PROCEDUREACTIONS)
+    If (pType = "ML CONFIGURATION") || (pType = "FOREIGN SERVER") Quit $ListFromString(..#USEACTIONS)
     If pType = ..#ADMINTYPE Quit $ListFromString(..#ADMINPRIVILEGES)
     Quit ""
 }
@@ -622,7 +629,8 @@ ClassMethod SnippetForm(pEndpoint As %String, pType As %String) As %String
 /// grantor as the placeholder <code>&lt;grantor&gt;</code> (and <code>cascade</code> 0 in the standard family),
 /// followed by a <code>comment</code> step that says the call is sent once for each direct grantor the instance
 /// lists; an admin revoke is the one call, naming no grantor. The reads, the Rules, the grantee check and the second
-/// read are guards a script cannot carry, and a column script names the object as the query spells it.</p>
+/// read are guards a script cannot carry. A column script names the object and type as the query spells them and
+/// ends with a comment saying to name them as the instance lists them, as the port's own write does.</p>
 ClassMethod Snippet(pEndpoint As %String, pType As %String, ByRef pQuery, pBody As %DynamicAbstractObject = "", pContext As %DynamicObject = "") As %DynamicArray
 {
     If (pEndpoint '= ..#ENDPOINT) || ((pType '= ..#GRANT) && (pType '= ..#REVOKE)) Quit ##super(pEndpoint, pType, .pQuery, pBody, pContext)
@@ -633,8 +641,10 @@ ClassMethod Snippet(pEndpoint As %String, pType As %String, ByRef pQuery, pBody 
     Do ..WriteQuery(.tQuery, tSend, tRevoke, ($Get(tQuery(..#WITHGRANTKEY)) = 1), "<grantor>", .tEndpoint, .tOut)
     Set tStep = ..RestStep(tEndpoint, pType, .tOut, "", pContext)
     If '$IsObject(tStep) Quit []
-    If 'tRevoke || ($Get(tQuery(..#TYPEKEY)) = ..#ADMINTYPE) Quit [(tStep)]
-    Quit [(tStep), (..Step("comment", "Send the call once for each user that granted the privilege directly, naming that user as asGrantor."))]
+    Set tSteps = [(tStep)]
+    If tRevoke && ($Get(tQuery(..#TYPEKEY)) '= ..#ADMINTYPE) Do tSteps.%Push(..Step("comment", "Send the call once for each user that granted the privilege directly, naming that user as asGrantor."))
+    If $Get(tQuery(..#COLUMNKEY)) '= "" Do tSteps.%Push(..Step("comment", "Name the object, and give its type, exactly as the instance's SQL privileges list shows them: in another letter case, or with a view's type given as TABLE, the column call changes nothing that list shows."))
+    Quit tSteps
 }
 
 }

@@ -12,7 +12,7 @@
 /// (<method>OcuPilot.Port.AdminPort.SqlPrivilegeGuard</method>) refuses an object that is not two name parts. The
 /// read sends the fixed <code>includeSystem</code> 1, because it reads one object.</p>
 /// <p><b>Five fields</b>: <code>Column</code>, <code>Action</code>, <code>GrantedBy</code>,
-/// <code>GrantOption</code> and <code>GrantedVia</code>, which is <code>Direct</code> or <code>Role - &lt;name&gt;</code>.
+/// <code>GrantOption</code> and <code>GrantedVia</code>, which is <code>Direct</code> or <code>Role:&lt;name&gt;</code>.
 /// Its id is <code>composite</code> over the four that tell rows apart. Only a <code>Direct</code> row offers a
 /// revoke on the tab.</p>
 /// <p><b>The privilege set is Permissions' own</b>, as <class>OcuPilot.Screen.Descriptor.SqlPrivilegeList</class>

@@ -226,9 +226,10 @@ Method TestTheRulesRefuseEachField()
     Set tCases($Increment(tCases)) = $ListBuild("DELETE on a column", "USER|g|TABLE|S.T|DELETE||||ID", "SQLPRIV.COLUMN")
     Set tCases($Increment(tCases)) = $ListBuild("%ALTER on a column", "USER|g|TABLE|S.T|%ALTER||||ID", "SQLPRIV.COLUMN")
     Set tCases($Increment(tCases)) = $ListBuild("an admin privilege", "USER|g|ADMIN||%CREATE_TABLE||", "")
-    Set tCases($Increment(tCases)) = $ListBuild("the last of the 32 admin privileges", "USER|g|ADMIN||%DEFER||", "")
+    Set tCases($Increment(tCases)) = $ListBuild("the last of the admin privileges", "USER|g|ADMIN||%USE_EMBEDDING||", "")
+    Set tCases($Increment(tCases)) = $ListBuild("%DEFER, which the instance's admin privilege store refuses", "USER|g|ADMIN||%DEFER||", "SQLPRIV.ACTION")
     Set tCases($Increment(tCases)) = $ListBuild("an admin privilege in lower case", "USER|g|ADMIN||%create_table||", "SQLPRIV.ACTION")
-    Set tCases($Increment(tCases)) = $ListBuild("an admin privilege outside the 32", "USER|g|ADMIN||%CREATE_DATABASE||", "SQLPRIV.ACTION")
+    Set tCases($Increment(tCases)) = $ListBuild("an admin privilege outside the list", "USER|g|ADMIN||%CREATE_DATABASE||", "SQLPRIV.ACTION")
     Set tCases($Increment(tCases)) = $ListBuild("a table action on ADMIN", "USER|g|ADMIN||SELECT||", "SQLPRIV.ACTION")
     Set tCases($Increment(tCases)) = $ListBuild("ADMIN with an object", "USER|g|ADMIN|S.T|%CREATE_TABLE||", "SQLPRIV.OBJECT")
     Set tCases($Increment(tCases)) = $ListBuild("ADMIN with a column", "USER|g|ADMIN||%CREATE_TABLE||||ID", "SQLPRIV.COLUMN")
@@ -277,7 +278,10 @@ Method TestTheAdminPortAdmitsTheWritesAndMapsTheCodes()
 }
 
 /// <p>AD-59: a grant's script is the vendor call with <code>withGrant</code> only when asked; a revoke's is the
-/// call naming a placeholder grantor and a comment saying it is sent for each direct grantor.</p>
+/// call naming a placeholder grantor and a comment saying it is sent for each direct grantor; a column script ends
+/// with a comment saying to name the object and its type as the instance lists them, which the port does itself.</p>
+/// <p>Mutation (Rule 19): drop the column family's spelling comment from
+/// <method>OcuPilot.Port.SqlPrivilegePort.Snippet</method> -- the column legs go red.</p>
 Method TestTheScriptsMirrorTheBranches()
 {
     Kill tQuery
@@ -298,11 +302,13 @@ Method TestTheScriptsMirrorTheBranches()
     Do $$$AssertTrue((tSteps.%Get(0).%Get("text") [ "asGrantor=<grantor>") && (tSteps.%Get(0).%Get("text") [ "cascade=0"), "naming a placeholder grantor and no cascade")
     Set tQuery("column") = "ID"
     Set tSteps = $ClassMethod(..#PORT, "Snippet", "Security.SQLPrivilege.Standard", "REVOKE", .tQuery, "", {"origin": "http://h", "user": "u"})
-    Do $$$AssertEquals(tSteps.%Size() _ " " _ tSteps.%Get(0).%Get("kind") _ " " _ tSteps.%Get(1).%Get("kind"), "2 rest comment", "a column revoke is a rest step and a comment")
+    Do $$$AssertEquals(tSteps.%Size() _ " " _ tSteps.%Get(0).%Get("kind") _ " " _ tSteps.%Get(1).%Get("kind") _ " " _ $Select(tSteps.%Size() > 2: tSteps.%Get(2).%Get("kind"), 1: ""), "3 rest comment comment", "a column revoke is a rest step, the grantor's comment and the spelling's")
     Set tText = tSteps.%Get(0).%Get("text")
     Do $$$AssertTrue((tText [ "/security/sql-column-privilege/revoke") && (tText [ "asGrantor=<grantor>") && (tText [ "column=ID") && (tText '[ "cascade"), "to the column route, naming a placeholder grantor and the column")
+    Do $$$AssertTrue($Select(tSteps.%Size() > 2: tSteps.%Get(2).%Get("text"), 1: "") [ "exactly as the instance", "whose last comment says to name the object and its type as the instance lists them")
     Set tSteps = $ClassMethod(..#PORT, "Snippet", "Security.SQLPrivilege.Standard", "GRANT", .tQuery, "", {"origin": "http://h", "user": "u"})
-    Do $$$AssertTrue((tSteps.%Size() = 1) && (tSteps.%Get(0).%Get("text") [ "/security/sql-column-privilege/grant") && (tSteps.%Get(0).%Get("text") [ "withGrant=1"), "a column grant is one call to the column route, with the grant option asked")
+    Do $$$AssertTrue((tSteps.%Size() = 2) && (tSteps.%Get(0).%Get("text") [ "/security/sql-column-privilege/grant") && (tSteps.%Get(0).%Get("text") [ "withGrant=1"), "a column grant is one call to the column route, with the grant option asked")
+    Do $$$AssertTrue($Select(tSteps.%Size() > 1: (tSteps.%Get(1).%Get("kind") = "comment") && (tSteps.%Get(1).%Get("text") [ "exactly as the instance"), 1: 0), "and the spelling comment")
     Kill tQuery
     Set tQuery("grantee") = "g"
     Set tQuery("namespace") = "USER"
@@ -355,7 +361,7 @@ Method TestTheCodesAnswerTheirSentences()
 
 /// <p>AD-10: the kernel declares the arm's code once, with its published sentence, among thirty-three codes, and
 /// refuses a grant or revoke on one of OcuPilot's own schemas or for one of its own roles from the stored
-/// payload alone.</p>
+/// payload alone, for a whole object and for one of its columns.</p>
 /// <p>Mutation (Rule 19): make <method>OcuPilot.Kernel.Proposal.Prohibited.SqlPrivilege</method> skip
 /// <method>IsOcuPilotCode</method> -- the object legs go red.</p>
 Method TestTheKernelRefusesOcuPilotsOwn()
@@ -371,10 +377,13 @@ Method TestTheKernelRefusesOcuPilotsOwn()
         Set tType = $Select(tTool [ "User": "user", 1: "role")
         For tCase = $ListBuild("OcuSqlPrivProbeU", "OcuSqlPrivProbe.T1", "", 0), $ListBuild("OcuSqlPrivProbeU", "OcuPilot_Kernel_State.Turn", tCode, 1), $ListBuild("OcuSqlPrivProbeU", "ocupilot_kernel_state.turn", tCode, 1), $ListBuild("OcuSqlPrivProbeU", "OcuPilot_Kernel_State", tCode, 1), $ListBuild("OcuPilotAdmin", "OcuSqlPrivProbe.T1", "PROHIBITED.OCUPILOTROLE", 1), $ListBuild("%DB_OCUPILOT", "OcuSqlPrivProbe.T1", "PROHIBITED.OCUPILOTROLE", 1) {
             Set tSC = ##class(OcuPilot.Kernel.EntityRef).Key(tType, "instance", $List(tCase, 1), .tRef)
-            Set tPayload = {"Namespace": "USER", "Type": "TABLE", "Object": ($List(tCase, 2)), "Action": "SELECT", "Column": "Turn"}
-            Set tSC = $ClassMethod(tProhibited, "Prohibits", $Parameter(tTool, "TOOLNAME"), tRef, tPayload.%ToJSON(), "[]", .tProhibits, .tAnswer)
-            Do $$$AssertStatusOK(tSC, $Parameter(tTool, "TOOLNAME") _ " is asked about " _ $List(tCase, 1) _ " and " _ $List(tCase, 2))
-            Do $$$AssertEquals(tProhibits _ " " _ tAnswer, $List(tCase, 4) _ " " _ $List(tCase, 3), $Parameter(tTool, "TOOLNAME") _ " for " _ $List(tCase, 1) _ " on " _ $List(tCase, 2))
+            For tColumn = "", "Turn" {
+                Set tPayload = {"Namespace": "USER", "Type": "TABLE", "Object": ($List(tCase, 2)), "Action": "SELECT"}
+                If tColumn '= "" Do tPayload.%Set("Column", tColumn)
+                Set tSC = $ClassMethod(tProhibited, "Prohibits", $Parameter(tTool, "TOOLNAME"), tRef, tPayload.%ToJSON(), "[]", .tProhibits, .tAnswer)
+                Do $$$AssertStatusOK(tSC, $Parameter(tTool, "TOOLNAME") _ " is asked about " _ $List(tCase, 1) _ " and " _ $List(tCase, 2) _ " column '" _ tColumn _ "'")
+                Do $$$AssertEquals(tProhibits _ " " _ tAnswer, $List(tCase, 4) _ " " _ $List(tCase, 3), $Parameter(tTool, "TOOLNAME") _ " for " _ $List(tCase, 1) _ " on " _ $List(tCase, 2) _ " column '" _ tColumn _ "'")
+            }
         }
     }
 }

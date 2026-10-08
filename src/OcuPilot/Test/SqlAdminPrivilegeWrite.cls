@@ -105,9 +105,11 @@ Method OnAfterAllTests() As %Status
 
 /// <p>C2: for a probe user and a probe role, on the screen's row action over the wire and on the agent's proposal,
 /// an admin grant is stored and read back as a <code>Direct</code> row, a grant of what is held is refused, a
-/// re-grant with the admin option upgrades it, and a revoke removes it; the card names the privilege.</p>
+/// re-grant with the admin option upgrades it, and a revoke removes it; each card names the privilege.</p>
 /// <p>Mutation (Rule 19): make <method>OcuPilot.Port.SqlPrivilegePort.WriteQuery</method> send an admin write to
-/// the standard endpoint -- every leg goes red.</p>
+/// the standard endpoint -- every leg goes red; drop the grantor-less row from
+/// <method>OcuPilot.Screen.Tool.SqlPrivilegeWrite.StateDiff</method> -- the revoke card leg goes red; make
+/// <method>OcuPilot.Api.ScreenAction.Values</method> require every declared value -- the route legs go red.</p>
 Method TestAnAdminGrantAndRevokeRoundTripOnBothCallers()
 {
     Set tProbe = ..#PROBE
@@ -133,6 +135,7 @@ Method TestAnAdminGrantAndRevokeRoundTripOnBothCallers()
         Do $$$AssertEquals($ClassMethod(tProbe, "AdminDirect", tGrantee, tPrivilege), 2, "the admin privilege is held directly with the admin option")
         Set tSC = $ClassMethod(tProbe, "Mint", $List(tCase, 4), tGrantee, ..AdminArgs(tGrantee, 0), .tProposal, .tHttp, .tProblem)
         Do $$$AssertStatusOK(tSC, "the agent's revoke is minted (" _ tProblem _ ")")
+        Do $$$AssertEquals($Select('$IsObject($Get(tProposal)): "", tProposal.%Get("changed").%Size() = 0: "0 ", 1: tProposal.%Get("changed").%Size() _ " " _ tProposal.%Get("changed").%Get(0).%Get("field") _ "|" _ tProposal.%Get("changed").%Get(0).%Get("before") _ "|" _ tProposal.%Get("changed").%Get(0).%Get("after")), "1 Privilege|" _ tPrivilege _ " admin privilege in USER|Revoked", "whose card names the privilege, with no grantor")
         Do $$$AssertEquals($ClassMethod(..#AGENT, "Confirm", tProposal, .tResult), "200 ", "and confirmed")
         Do $$$AssertEquals($ClassMethod(tProbe, "AdminDirect", tGrantee, tPrivilege), 0, "the row is gone")
     }
@@ -159,6 +162,32 @@ Method TestAnAdminPrivilegeThroughARoleAndAnAllHolderAreNoDirectRows()
     Do $ClassMethod(tProbe, "GiveAll", 0)
 }
 
+/// <p>C2: every admin privilege the Rules take (<method>OcuPilot.Port.SqlPrivilegePort.ActionsFor</method>
+/// <code>ADMIN</code>) is one the instance takes: the port grants each to the probe user, the admin list reads it
+/// back as a <code>Direct</code> row, and the port revokes it.</p>
+/// <p>Mutation (Rule 19): misspell one name in <parameter>OcuPilot.Port.SqlPrivilegePort.ADMINPRIVILEGES</parameter>
+/// -- that name's legs go red.</p>
+Method TestEveryAdminPrivilegeTheRulesTakeIsGrantedAndRevoked()
+{
+    Set tProbe = ..#PROBE
+    Set tUser = $Parameter(tProbe, "USER")
+    Set tNames = $ClassMethod(..#PORT, "ActionsFor", "ADMIN")
+    Do $$$AssertTrue($ListLength(tNames) > 0, "the Rules take admin privileges")
+    For tI = 1:1:$ListLength(tNames) {
+        Set tName = $List(tNames, tI)
+        For tType = "GRANT", "REVOKE" {
+            Kill tQuery, tResult, tHttp, tFault
+            Set tQuery("namespace") = "USER"
+            Set tQuery("grantee") = tUser
+            Set tQuery("type") = "ADMIN"
+            Set tQuery("action") = tName
+            Set tSC = $ClassMethod(..#PORT, "Invoke", "Security.SQLPrivilege.Standard", tType, .tQuery, "", .tResult, .tHttp, .tFault)
+            Do $$$AssertEquals(tHttp _ " " _ $Select($IsObject($Get(tFault)): tFault.%Get("code"), 1: ""), "200 ", "the port's " _ tType _ " of " _ tName _ " is applied")
+            Do $$$AssertEquals($ClassMethod(tProbe, "AdminDirect", tUser, tName), $Select(tType = "GRANT": 1, 1: 0), "and the admin list reads " _ tName _ " " _ $Select(tType = "GRANT": "held directly", 1: "gone"))
+        }
+    }
+}
+
 /// <p>C2: the instance's grantor rule -- an admin grant or revoke by a principal who does not hold the privilege
 /// with the admin option, which the vendor answers 500 with status 516 and SQLCODE -99 -- is 403
 /// <code>SQLPRIV.GRANTOR</code> on both verbs, and stores or removes nothing.</p>
@@ -183,7 +212,7 @@ Method TestTheGrantorRuleIsRefusedOnBothVerbs()
 }
 
 /// <p>C2: an admin grant to a grantee the instance does not hold is refused before anything is sent -- naming it
-/// on the screen's route, and as an absent target (400) by the agent's mint; every Rules case -- a privilege outside the 32, in lower case, an object, a column -- is
+/// on the screen's route, and as an absent target (400) by the agent's mint; every Rules case -- a privilege outside the list (<code>%DEFER</code> among them), in lower case, an object, a column -- is
 /// refused 422 on the field it is about; OcuPilot's own roles are refused with an admin privilege under the role
 /// arm from both callers.</p>
 /// <p>Mutation (Rule 19): make the Rules ignore a privilege's case in
@@ -197,7 +226,7 @@ Method TestTheRulesAndOcuPilotsOwnRolesAreRefusedOnBothCallers()
     Set tSC = $ClassMethod(tProbe, "Mint", ..#USERGRANT, tNobody, ..AdminArgs(tNobody, 0), .tProposal, .tHttp, .tProblem)
     Do $$$AssertEquals(tHttp, 400, "and the agent's mint reads the port's 404 as an absent target: " _ tProblem)
     Do $$$AssertEquals($ClassMethod(tProbe, "RemainingAdminSets"), 0, "and no admin privilege set is stored for the name")
-    For tCase = $ListBuild("Action", "%create_table", "Action", "SQLPRIV.ACTION"), $ListBuild("Action", "%CREATE_DATABASE", "Action", "SQLPRIV.ACTION"), $ListBuild("Action", "SELECT", "Action", "SQLPRIV.ACTION"), $ListBuild("Object", $Parameter(tProbe, "TABLE"), "Object", "SQLPRIV.OBJECT"), $ListBuild("Column", "ID", "Column", "SQLPRIV.COLUMN") {
+    For tCase = $ListBuild("Action", "%create_table", "Action", "SQLPRIV.ACTION"), $ListBuild("Action", "%CREATE_DATABASE", "Action", "SQLPRIV.ACTION"), $ListBuild("Action", "%DEFER", "Action", "SQLPRIV.ACTION"), $ListBuild("Action", "SELECT", "Action", "SQLPRIV.ACTION"), $ListBuild("Object", $Parameter(tProbe, "TABLE"), "Object", "SQLPRIV.OBJECT"), $ListBuild("Column", "ID", "Column", "SQLPRIV.COLUMN") {
         Set tBody = ..Body("grant-sql", tUser)
         Do tBody.values.%Set($List(tCase, 1), $List(tCase, 2))
         Do $$$AssertEquals(..Wire(..#USERS, tBody, .tAnswer), "422 SQLPRIV.VALIDATION", "the route refuses " _ $List(tCase, 1) _ " " _ $List(tCase, 2) _ " on an admin privilege")

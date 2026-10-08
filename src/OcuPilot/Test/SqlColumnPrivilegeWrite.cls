@@ -167,9 +167,9 @@ Method TestTheObjectIsSpelledAndTypedByTheInstance()
     Do $$$AssertEquals($ClassMethod(tProbe, "ColumnDirect", tUser, tTable, "ID", "SELECT"), 0, "and removes it")
 
     Set tView = $Parameter(tProbe, "VIEW")
+    ; Body sends every object as a TABLE, so this grant names the view as one.
     Set tBody = ..Body("grant-sql", tUser, "SELECT", "false", tView, "ID")
-    Do $$$AssertEquals(tBody.values.%Get("Type"), "TABLE", "a view is sent as a TABLE")
-    Do $$$AssertEquals(..Wire(..#USERS, tBody, .tAnswer), "200 ", "and the grant is made: " _ ..Text(tAnswer))
+    Do $$$AssertEquals(..Wire(..#USERS, tBody, .tAnswer), "200 ", "a grant naming the view as a TABLE is made: " _ ..Text(tAnswer))
     Do $$$AssertEquals($ClassMethod(tProbe, "ColumnDirect", tUser, tView, "ID", "SELECT") _ $ClassMethod(tProbe, "ColumnDirect", tUser, tTable, "ID", "SELECT"), "10", "on the view, and not on the table the view selects from")
     Do $$$AssertEquals(..Wire(..#USERS, ..Body("revoke-sql", tUser, "SELECT", "false", tView, "ID"), .tAnswer), "200 ", "and the revoke, sent as a table too, removes it: " _ ..Text(tAnswer))
     Do $$$AssertEquals($ClassMethod(tProbe, "ColumnRows", tUser, tView), "", "the view's column rows are gone")
@@ -201,6 +201,8 @@ Method TestARevokeNamesAnotherGrantor()
 /// <p>C1: a column the table does not hold, and a table the namespace does not hold, are refused as not applied
 /// and store nothing; a column grant to a grantee the instance does not hold is refused before the vendor stores a
 /// row for it (the instance does store one, which the control leg shows).</p>
+/// <p>The control leg holds only while the vendor stores that row. If it goes red because the instance stops
+/// storing it, delete the control and keep the port's grantee check.</p>
 /// <p>Mutation (Rule 19): skip the grantee check in <method>OcuPilot.Port.SqlPrivilegePort.Facts</method> -- the
 /// unknown-grantee legs go red.</p>
 Method TestAnAbsentColumnOrGranteeIsRefusedAndNothingIsStored()

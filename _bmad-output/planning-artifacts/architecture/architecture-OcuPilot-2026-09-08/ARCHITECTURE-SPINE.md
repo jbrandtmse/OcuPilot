@@ -1091,6 +1091,8 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
 
   **(ii) A screen action accepts only declared values.** AD-53's route admits a value only under a name the action's tool declares for that action; any other key is refused, not ignored, as AD-6 refuses an undeclared key at confirm. A list-valued field is changed by a **server-side delta over a fresh read** -- add this role, remove that one -- never replaced by a list the client computed, so a concurrent change to another member is never erased (AD-4's concern, reached through a smaller door).
 
+  **A declared value may be optional** [AMENDED 2026-10-08, Story 18.28 code review, DW-2216, Rule 20]: a tool's `SCREENOPTIONAL` names the declared values a screen action may omit (`SqlPrivilegeWrite`'s `Object` and `Column`, since an admin privilege names neither); every other declared value stays required, and an undeclared key is still refused.
+
   **This adds no second way for the screen to supply a secret.** A secret travels under the descriptor's existing `secretArguments` declaration -- the one AD-6's confirm channel already closes over, and the one AD-55 routes a screen Save's secrets through (Epic 8, Story 8.2 widens it to accept a top-level secret field of the screen's tools). A screen action's secret is that declaration read by one more caller, never a parallel list.
 
 ### AD-57 -- The try-it console is a browser request under the tab's own token, never OcuPilot's write path

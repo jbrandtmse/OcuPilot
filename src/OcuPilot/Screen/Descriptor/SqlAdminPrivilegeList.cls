@@ -1,5 +1,5 @@
 /// <p>SQL admin privileges: one user's or role's SQL administrative privileges (<code>%CREATE_TABLE</code> and the
-/// other 31 the instance names) in one namespace, read through the vendor's own
+/// other 30 the instance takes) in one namespace, read through the vendor's own
 /// <code>Security.SQLPrivilege.Admin</code> <code>LIST</code> (AD-2, AD-36) and rendered by the
 /// <code>list (server criteria)</code> archetype's page from the declared <code>table</code> (AD-5). The user
 /// editor's and the role editor's SQL privileges tabs (their Admin privileges section) and

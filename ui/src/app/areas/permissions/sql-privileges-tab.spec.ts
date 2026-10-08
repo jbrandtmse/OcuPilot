@@ -309,11 +309,13 @@ describe('the SQL privileges tab', () => {
     host.querySelector<HTMLButtonElement>('button[data-action="show-columns"]')!.click();
     await settle(fixture);
     expect(host.querySelector('[data-ocu-sqlpriv="columns"]')).not.toBeNull();
+    expect(host.querySelector('[data-ocu-sqlpriv="admin-row"]')).not.toBeNull();
     const select = host.querySelector<HTMLSelectElement>('#ocu-sqlpriv-namespace')!;
     select.value = 'HSCUSTOM';
     select.dispatchEvent(new Event('change'));
     fixture.detectChanges();
     expect(host.querySelector('[data-ocu-sqlpriv="columns"]')).toBeNull();
+    expect(host.querySelector('[data-ocu-sqlpriv="admin-row"]')).toBeNull();
     await settle(fixture);
     expect(host.querySelector('[data-ocu-sqlpriv="columns"]')).toBeNull();
   });

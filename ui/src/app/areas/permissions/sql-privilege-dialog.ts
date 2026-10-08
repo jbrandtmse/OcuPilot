@@ -30,7 +30,7 @@ export const SQL_SCHEMA_ACTIONS: readonly string[] = ['%ALTER', 'SELECT', 'INSER
 /** The actions a privilege on one column of a table or view takes. */
 export const SQL_COLUMN_ACTIONS: readonly string[] = ['SELECT', 'INSERT', 'UPDATE', 'REFERENCES'];
 
-/** The 32 SQL admin privileges, spelled as the instance spells them. */
+/** The SQL admin privileges the instance takes, spelled as it spells them. */
 export const SQL_ADMIN_PRIVILEGES: readonly string[] = [
   '%CREATE_FUNCTION',
   '%DROP_FUNCTION',
@@ -63,7 +63,6 @@ export const SQL_ADMIN_PRIVILEGES: readonly string[] = [
   '%CANCEL_QUERY',
   '%MANAGE_FOREIGN_SERVER',
   '%USE_EMBEDDING',
-  '%DEFER',
 ];
 
 /** The actions each type takes. */
