@@ -3,11 +3,12 @@
 /// <code>%DB_IRISSYS:READ</code> and <code>WRITE</code>, and not <code>%Admin_Secure:USE</code> -- against the armed
 /// <code>turnprobe</code> row, once <code>osmgmt.locks</code> is raised to require <code>%Admin_Secure:USE</code>.
 /// The turn's tool call to Locks' remove is refused naming the screen and the pair, no proposal row exists for the
-/// turn and it completes; and the turn's <code>screen_context</code> carries the screen's verdict and marks each of
-/// its tools unavailable, before and after the raise.</p>
-/// <p>It needs both <parameter>ARMINGVARIABLE</parameter> and <parameter>PROVIDERVARIABLE</parameter> armed. After
-/// each method no probe job, turn, slot or stub node remains and no screen is adjusted; the principal, its roles and
-/// the probe definition are removed in <method>OnAfterAllTests</method>.</p>
+/// turn and it completes; and the turn's <code>screen_context</code> carries the screen's verdict, open with no tool
+/// unavailable before the raise, and closed with each of its tools unavailable after it.</p>
+/// <p>It needs both <parameter>ARMINGVARIABLE</parameter> and <parameter>PROVIDERVARIABLE</parameter> armed. Each
+/// method starts with the switches reset and no sharing row, so screen context is sent. After each method no probe
+/// job, turn, slot or stub node remains, the switches are reset and no screen is adjusted; the principal, its roles
+/// and the probe definition are removed in <method>OnAfterAllTests</method>.</p>
 Class OcuPilot.Test.ScreenAccessTurn Extends %UnitTest.TestCase
 {
 
@@ -86,12 +87,15 @@ Method OnBeforeOneTest() As %Status
 {
     Do ##class(OcuPilot.Kernel.State.Access).DeleteAllGuarded()
     Do $ClassMethod(..#FIXTURE, "Sweep", $ListBuild(..#TAG))
+    Do ##class(OcuPilot.Test.SwitchFixture).Reset(.tHolds)
+    Do ##class(OcuPilot.Kernel.State.Sharing).DeleteAllGuarded()
     Quit $ClassMethod(..#FIXTURE, "SetTag", ..PreparedDefinitionId, ..#TAG)
 }
 
 Method OnAfterOneTest() As %Status
 {
     Do $$$AssertEquals($ClassMethod(..#FIXTURE, "Sweep", $ListBuild(..#TAG)), "", "no probe job, turn, slot or stub node survives the method")
+    Do $$$AssertStatusOK(##class(OcuPilot.Test.SwitchFixture).Reset(.tHolds), "the switches are reset")
     Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Access).DeleteAllGuarded(), "no screen stays adjusted")
     Quit $$$OK
 }
@@ -127,8 +131,11 @@ Method RecordedContext() As %DynamicObject
     Set tState = ..RunTurn("what are the locks", tContext, .tView, .tTurnId)
     Do $$$AssertEquals(tState, "completed", "the turn completes")
     Set tMessages = ##class(%DynamicAbstractObject).%FromJSON(##class(OcuPilot.Test.TurnProvider).Recorded(..#TAG, 1, "messages"))
+    Do $$$AssertEquals(tMessages.%Size(), 3, "the turn opens with the synthetic screen_context pair")
     If tMessages.%Size() '= 3 Quit ""
-    Set tBody = $ClassMethod(..#FIXTURE, "Unwrapped", tMessages.%Get(2).content.%Get(0).content, .tWrapped)
+    Set tResultBlock = tMessages.%Get(2).content.%Get(0)
+    Do $$$AssertEquals(tResultBlock.type _ "|" _ tResultBlock."tool_use_id", "tool_result|ocupilot_screen_context", "the synthetic tool_result")
+    Set tBody = $ClassMethod(..#FIXTURE, "Unwrapped", tResultBlock.content, .tWrapped)
     Do $$$AssertTrue(tWrapped, "the context arrives framed as data")
     Quit ##class(%DynamicAbstractObject).%FromJSON(tBody)
 }
@@ -174,6 +181,7 @@ Method TestTheContextCarriesTheVerdictAndMarksTheToolsUnavailable()
 {
     Do $$$AssertTrue(..PreparedSetupOk, "setup read back the principal's grants")
     Set tBefore = ..RecordedContext()
+    Do $$$AssertTrue($IsObject(tBefore), "the context before the raise arrived")
     If $IsObject(tBefore) {
         Do $$$AssertEquals(tBefore.screen, ..#SCREEN, "the Locks context")
         Do $$$AssertEquals(tBefore.verdict.%ToJSON() _ "|" _ tBefore.unavailable.%ToJSON(), "{""allowed"":true}|{}", "before the raise the screen is open and every tool usable")
@@ -182,6 +190,7 @@ Method TestTheContextCarriesTheVerdictAndMarksTheToolsUnavailable()
     Do $ClassMethod(..#FIXTURE, "SetTag", ..PreparedDefinitionId, ..#TAG)
     Do $$$AssertStatusOK(..Raise(), "Locks is raised")
     Set tAfter = ..RecordedContext()
+    Do $$$AssertTrue($IsObject(tAfter), "the context after the raise arrived")
     If '$IsObject(tAfter) Quit
     Do $$$AssertEquals(tAfter.verdict.%ToJSON(), "{""allowed"":false,""failedPair"":""" _ ..#RAISED _ """}", "after the raise the screen is closed, naming the pair")
     Set tAll = 1

@@ -100,8 +100,8 @@ ClassMethod TurnDefinition(pKey As %String, pUser As %String, Output pDefinition
 /// <p><var>pRowCap</var> and <var>pMaxLength</var> are optional overrides
 /// (<method>OcuPilot.Kernel.Agent.Dispatch.Answer</method>'s own), passed through unchanged.</p>
 /// <p><var>pDetails</var> is <method>OcuPilot.Kernel.Agent.Dispatch.Answer</method>'s own parallel
-/// detail array (Story 4.5) -- one <code>{target, arguments, result, reason, failedPair}</code>
-/// per call, passed through unchanged. <var>pRoute</var> is the turn's screen-context route (Story
+/// detail array (Story 4.5) -- one <code>{target, arguments, argumentsTruncated, result, reason, failedPair,
+/// failedScreen}</code> per call, passed through unchanged. <var>pRoute</var> is the turn's screen-context route (Story
 /// 4.9), passed through the same way.</p>
 ClassMethod DispatchTools(pKey As %String, pUser As %String, pDefinitionId As %String, pToolUses As %DynamicArray, pLimitsClass As %String, Output pResults As %DynamicArray, Output pNames As %DynamicArray, pRowCap As %Integer = 0, pMaxLength As %Integer = 0, Output pDetails As %DynamicArray, pRoute As %String = "") As %Status
 {

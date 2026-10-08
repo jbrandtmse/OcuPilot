@@ -206,13 +206,13 @@ function extractToolCallCardStatuses(markdown) {
   assert.equal(quoted[0], 'running', 'the first status must be "running"');
   assert.equal(quoted[4].startsWith('failed'), true, 'the fifth status must be the failed template');
   // The sixth composes the failed template with the permission-denied screen sentence (Story 20.18),
-  // so it publishes no literal of its own.
+  // so it publishes no literal of its own; the test below holds it to that composition.
   assert.equal(quoted[5].startsWith('failed') && quoted[5].includes('to open <screen>'), true, 'the sixth status must be the failed template naming the screen');
   // The third is the marked status the confirmed-write card reads (Story 5.6). Its sibling, the
   // fourth, is `REQUIRED_ALONGSIDE_TABLE`'s first entry and stays there: that array is the
   // three it was, and this one is re-derived from the document like every other prose literal.
   assert.equal(quoted[2], `${quoted[1]} \u00b7 audit marked`, 'the third status is the marked one');
-  return [quoted[1], quoted[2], quoted[4]];
+  return [quoted[1], quoted[2], quoted[4], quoted[5]];
 }
 
 /**
@@ -271,7 +271,7 @@ const [expectedServerFaultSentence, ...expectedServerFaultActions] =
   extractServerFaultBanner(experienceMdRaw);
 const expectedTranscriptName = extractTranscriptName(experienceMdRaw);
 const expectedMacComposerCaption = extractMacComposerCaption(fixedStringsRows);
-const [expectedToolCallDone, expectedToolCallMarked, expectedToolCallFailed] =
+const [expectedToolCallDone, expectedToolCallMarked, expectedToolCallFailed, expectedToolCallFailedScreen] =
   extractToolCallCardStatuses(experienceMdRaw);
 const expectedComposerLockedReason = extractComposerLockedReason(experienceMdRaw);
 const expectedNewConversationLockedReason = extractNewConversationLockedReason(experienceMdRaw);
@@ -362,6 +362,12 @@ test("Story 4.5's tool-call status words and the two locked-control reasons are 
   assert.equal(stringsValues.toolCallStatusDone, expectedToolCallDone);
   assert.equal(stringsValues.toolCallStatusFailed, expectedToolCallFailed);
   assert.ok(stringsValues.toolCallStatusFailed.includes('<reason>'));
+  // Story 20.18: the screen-naming failed status is what the card composes from the two Fixed strings. The row
+  // spells the pair's slot `<pair>`, so the Fixed string's own sentence stays cited once in EXPERIENCE.md.
+  assert.equal(
+    expectedToolCallFailedScreen,
+    stringsValues.toolCallStatusFailed.split('<reason>').join(stringsValues.privilegeDeniedScreen.split('<resource>').join('<pair>'))
+  );
   assert.equal(stringsValues.agentComposerLockedReason, expectedComposerLockedReason[0]);
   assert.equal(stringsValues.agentNewConversationLockedReason, expectedNewConversationLockedReason[0]);
 });

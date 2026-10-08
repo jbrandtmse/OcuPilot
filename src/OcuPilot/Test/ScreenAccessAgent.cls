@@ -70,6 +70,8 @@ Method OnAfterOneTest() As %Status
 Method Dispatch(pTool As %String, pPair As %String, Output pContent, Output pIsError As %Boolean, Output pTurn As %String) As %Status
 {
     Set pContent = ""
+    Set pIsError = 1
+    Set pTurn = ""
     Do ##class(OcuPilot.Kernel.Scope).Set($Namespace)
     Set tSC = ##class(OcuPilot.Test.ProposalFixture).SeedTurn($Username, "completed", .pTurn)
     If $$$ISERR(tSC) Quit tSC
@@ -138,18 +140,6 @@ ClassMethod PairsRow(pContent As %DynamicObject) As %String
     Quit $Select($IsObject($Get(tRow)): tRow.before _ " -> " _ tRow.after, 1: "")
 }
 
-/// <p>The effective set <parameter>SCREEN</parameter> requires now, comma-separated.</p>
-ClassMethod Effective() As %String
-{
-    Set tPairs = ##class(OcuPilot.Screen.Gate).RequiredPairs(##class(OcuPilot.Screen.Registry).DescriptorForTool(..#SCREEN), .tResolved)
-    Set tText = ""
-    For tI = 1:1:$ListLength(tPairs) {
-        Set tPair = $List(tPairs, tI)
-        Set tText = tText _ $Select(tText = "": "", 1: ",") _ ##class(OcuPilot.Screen.Gate).SpellPair($List(tPair, 1), $List(tPair, 2))
-    }
-    Quit tText
-}
-
 /// <p>Raise: an add-pair mints one <code>Pairs</code> row, is not destructive and names no consequence, and its
 /// card requires the either-of the Screen permissions screen declares. The confirm stores the new set, reads
 /// back <code>nothingSent</code>, and leaves one <code>SecurityChange</code> row and one agent marker.</p>
@@ -173,6 +163,7 @@ Method TestARaiseIsMintedPlainAndConfirmed()
     Do $$$AssertEquals(..Stored(), ..#RAISEDSET, "the store holds the raised set")
     Do $$$AssertEquals(tResult.readBack.verdict, "nothingSent", "the read-back says nothing was sent")
     Do $$$AssertEquals(tResult.%Get("auditMarked"), 1, "marked (AD-15)")
+    Do $$$AssertEquals(tResult.%Get("action"), "updated", "and answers AD-14's action, from which the client publishes the screen-permission change event")
     Do ..AssertAudit(tSince, tContent.proposalId, ..#ADDTOOL, "updated", "%Admin_Operate:USE,%DB_IRISSYS:READ", ..#RAISEDSET)
 }
 
@@ -205,10 +196,11 @@ Method TestALowerIsMintedDestructiveAndConfirmed()
 /// payload -- the confirm legs go red.</p>
 Method TestAResetIsClassifiedByWhatItDropsAndConfirmed()
 {
+    Set tProposalsBefore = ##class(OcuPilot.Test.ExplorerSave).ProposalRows(..#RESETTOOL)
     Set tSC = ..Dispatch(..#RESETTOOL, "", .tContent, .tIsError, .tTurn)
     Set tText = $Select($IsObject(tContent): tContent.%ToJSON(), 1: tContent)
     Do $$$AssertTrue(tIsError && (tText [ "ACCESS.NOTADJUSTED"), "a reset of an unadjusted screen is refused at the mint: " _ tText)
-    Do $$$AssertEquals(##class(OcuPilot.Test.ExplorerSave).ProposalRows(..#RESETTOOL), 0, "and no proposal exists")
+    Do $$$AssertEquals(##class(OcuPilot.Test.ExplorerSave).ProposalRows(..#RESETTOOL), tProposalsBefore, "and no proposal is added")
 
     Do $$$AssertStatusOK(..Adjust(..#RAISEDSET), "Locks is raised")
     Set tSC = ..Dispatch(..#RESETTOOL, "", .tContent, .tIsError, .tTurn)
@@ -228,9 +220,21 @@ Method TestAResetIsClassifiedByWhatItDropsAndConfirmed()
     Do $$$AssertEquals(tIsError, 0, "a reset of the lowering mints: " _ $Select($IsObject(tContent): tContent.%ToJSON(), 1: tContent))
     If '$IsObject(tContent) || tIsError Quit
     Do $$$AssertEquals(..Treatment(tContent), "0|", "it restores a pair, so it is not destructive")
+    Set tSince = ##class(OcuPilot.Test.AuditEvent).Now()
     Set tSC = ..ConfirmIn(tContent, .tResult, .tHttp, .tCode)
     Do $$$AssertStatusOK(tSC, "the confirm answers: " _ $Get(tCode))
     Do $$$AssertEquals(..Stored(), "", "and the adjustment is gone")
+    If '$IsObject($Get(tResult)) Quit
+    Do $$$AssertEquals(tResult.readBack.verdict, "notFound", "and the read-back reads it gone: " _ tResult.readBack.%ToJSON())
+    Do ..AssertAudit(tSince, tContent.proposalId, ..#RESETTOOL, "reset", ..#LOWEREDSET, "%Admin_Operate:USE,%DB_IRISSYS:READ")
+
+    ; Pairs are compared without regard to case: an adjustment spelling a declared pair in another case drops
+    ; nothing the declared set lacks.
+    Do $$$AssertStatusOK(..Adjust("%Admin_Operate:USE,%db_irissys:READ"), "Locks holds the declared set in another case")
+    Set tSC = ..Dispatch(..#RESETTOOL, "", .tContent, .tIsError, .tTurn)
+    Do $$$AssertEquals(tIsError, 0, "a reset of it mints: " _ $Select($IsObject(tContent): tContent.%ToJSON(), 1: tContent))
+    If '$IsObject(tContent) || tIsError Quit
+    Do $$$AssertEquals(..Treatment(tContent), "0|", "case alone is not a lowering")
 }
 
 /// <p>Assert one <code>SecurityChange</code> row for the screen with verb <var>pVerb</var> naming <var>pOld</var>

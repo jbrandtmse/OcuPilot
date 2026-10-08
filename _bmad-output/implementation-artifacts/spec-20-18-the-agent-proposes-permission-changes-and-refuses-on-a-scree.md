@@ -4,6 +4,7 @@ type: 'feature'
 created: '2026-10-08'
 status: 'done'
 baseline_revision: '1785544e38f0fa442e829698667efa5c0b43005d'
+baseline_commit: '1785544e38f0fa442e829698667efa5c0b43005d'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -226,6 +227,48 @@ These adjust themselves; re-run them only: `ToolEmit`, `ToolSetFull`, `Guardrail
   - **when** a turn asks the agent to remove a lock,
   - **then** the remove is refused naming `osmgmt.locks` and `%Admin_Secure:USE`, no proposal row exists for the turn, and the turn completes.
 
+### Review Findings
+
+Code review, 2026-10-08 (baseline 1785544e, implement aac4080b): 0 high, 4 medium and 17 low after triage. 14 are patched and verified on `ocupilot-b-ci`, 7 lows are closed in the ledger, 1 unverified medium is escalated, and 9 are rejected.
+
+- [x] [Review][Patch] (medium) `Context.Unavailable` rebuilt the whole tool registry for every tool. `ListTools` measured 494 ms and `Unavailable` on Locks 1,951 ms, so a 12-tool screen would add about 6 s before the turn's 202 (NFR-1). It now reads the list `ScreenTools` already built, and `BoundedContext` on Locks measured 508 ms [src/OcuPilot/Screen/Context.cls:262]
+- [x] [Review][Patch] (medium) Rules 3 and 30: `refused-tool.browser-spec.mjs` still expected "failed — %Admin_Secure:USE" for a refusal that now names `webapp.restapis`, which would have reddened CI. It now expects the screen sentence, which also gives AC6 a real-browser leg [ui/browser/refused-tool.browser-spec.mjs:181]
+- [x] [Review][Patch] (medium) Rules 19 and 30: ScreenAccessTurn's Context test passed with no assertion when no `screen_context` arrived, and relied on switches and sharing it did not set. It now asserts the context pair arrived and resets both [src/OcuPilot/Test/ScreenAccessTurn.cls:134]
+- [x] [Review][Patch] (medium) Rule 30: ScreenAccessAgent asserted that no reset proposal existed anywhere on the instance. It now asserts that none was added [src/OcuPilot/Test/ScreenAccessAgent.cls:199]
+- [x] [Review][Patch] (low) `TestBothMembersRideBothBranches` asserts `verdict` and `unavailable` on the identity-only branch [src/OcuPilot/Test/ScreenGrounding.cls:231]
+- [x] [Review][Patch] (low) `Unavailable`'s fail-closed answer is pinned: an unknown name, and every name when the list cannot be built, maps to `""` [src/OcuPilot/Test/ScreenGrounding.cls:138]
+- [x] [Review][Patch] (low) Case folding in `LowersScreenPermission` is pinned: a reset of the declared set spelled in another case is not a lowering [src/OcuPilot/Test/ScreenAccessAgent.cls:237]
+- [x] [Review][Patch] (low) The lowering reset's confirm asserts its read-back and audit rows, and the raise asserts AD-14's `action` [src/OcuPilot/Test/ScreenAccessAgent.cls:223]
+- [x] [Review][Patch] (low) ScreenAccessAgent's `Dispatch` sets its outputs before an early error, and the unused `Effective()` is removed [src/OcuPilot/Test/ScreenAccessAgent.cls:70]
+- [x] [Review][Patch] (low) `strings.test.mjs` holds the sixth tool-call status to the composition the card renders [ui/tools/strings.test.mjs:368]
+- [x] [Review][Patch] (low) `proposal-view.test.mjs` reads `EFFECTSCREENLOWERED` from `Prohibited.cls` rather than restating it [ui/tools/proposal-view.test.mjs:314]
+- [x] [Review][Patch] (low) Stale docs are corrected: `LowersScreenPermission` and `WeakensByEffect`, `Loop.DispatchTools`' detail shape, ScreenAccessTurn's header, ScreenRefusal's roster mutation note, and the `ci-throwaway.sh` comment for ScreenAccessTurn.
+- [x] [Review][Patch] (low) AD-8 said "a write tool's screen", but read tools name it too (ToolWire, DenialParity). AD-24 said "declared pairs" where `unavailable` uses the required pairs, an adjustment included. Both are corrected at origin (memlog; lint_spine reports nothing new) [ARCHITECTURE-SPINE.md:226]
+- [x] [Review][Patch] (low) Rule 19: AC1's add-pair mutation was named but never run. It has now been run and is recorded under Verification.
+- [x] [Review][Closed] Seven lows are closed with terminal ledger entries DW-2207 to DW-2213:
+  - `by-design`: the prompt sentence read on an open screen (AC5's text); form Save and Rules routes (Q2); the navigation refusal (Boundaries); and the process-role basis of `verdict` and `unavailable`;
+  - `wontfix-accepted`: AC8's no-proposal sub-assertion, and `unavailable`'s per-tool leg;
+  - `wontfix-theoretical`: unarmed adjustment resets.
+- [x] [Review][Defer] Web turns stopped offering the three tools after a mutation reload, as QA observed. Deferred: maybe-false, because two reload cycles in this review did not reproduce it. Escalated as DW-2214.
+
+Orchestrator questions:
+
+- **Lowering.** It is decided at the mint, from the port's composed read. The confirm does not re-classify, and it does not need to: the fingerprint covers `Pair,Pairs,Adjusted` (`Pairs,Adjusted` for a reset), so a confirm against a changed store is refused as stale.
+- **Screen named.** Naming the screen discloses nothing new. The mirror lists every screen id, the navigation map shows a closed screen with its failed pair, and an unadvertised tool never resolves.
+- **Prompt.** The addition is one sentence, appended once, and the prompt stays one ASCII constant. That is honest to the ruling.
+
+Rejected:
+
+- `false`: EXPERIENCE.md :631's `<pair>` is deliberate, because `citations.test.mjs` needs the Fixed sentence to occur once. The new pin renames the slot.
+- `false`: the AC4 roster need not cover read tools, because a read tool's pairs are its screen's by construction.
+- `low`: `PairsRow`'s fallback to the last row still fails its assertion.
+- `low`: `ADVERTISED = 1` restating the default, and the second `SCREENS.find`, cause no named harm.
+- `low`: browser cleanup outside `finally` is the sibling specs' shape, and a timeout fails the test anyway.
+- `low`: the duplicate Review Triage Log heading would need a spec edit.
+- `low`: DW-2181 is closed by the lead's adjudication gate.
+- `low`: AD-24's "two members" is followed by the 20.18 sentence naming both new members.
+- `low`: separate mutation lines for the halves of AC3 and AC7 are not needed, because Rule 19 asks for one per AC.
+
 ## Spec Change Log
 
 - 2026-10-08, runner spec gate: the orchestrator ruled Q1 A without the README edit (the `operator` account belongs to the demo deployment) and Q2 A, and cleared EXPERIENCE.md :631 and `Kernel/Agent/Prompt.cls` :19 on union terms; keep the prompt addition to one sentence. Rule 30 applies: the shared surfaces and the standing criterion are under `## Verification`. DW-2202 (existing literal counts) is 23.5's, not this story's.
@@ -336,6 +379,8 @@ mutation: AC5 prompt sentence changed red in ScreenGrounding.
 mutation: AC6 statusText ignoring failedScreen red in tool-call-card.spec.ts; parseStep dropping failedScreen red in ui/tools/turn.test.mjs.
 mutation: AC7 Unavailable answering {} red in ScreenAccessTurn Context leg.
 mutation: AC8 Gate.RequiredPairs ignoring the store red in ScreenAccessTurn Screen closed leg.
+mutation: AC1 add-pair (code review): LowersScreenPermission answering 1 red in the browser spec's add-pair leg ("the card is not destructive", actual true) and in ScreenAccessAgent's raise, lowering-reset and case legs; reverted byte-identical, all green again.
+mutation: AC6 in a browser (code review): ScreenRequirement answering "" red in refused-tool.browser-spec.mjs (actual "failed — %Admin_Secure:USE"); reverted byte-identical, green again.
 
 ## Review Triage Log
 

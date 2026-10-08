@@ -2,7 +2,7 @@
 /// kind of screen names (<method>OcuPilot.Screen.Context.ScreenTools</method>), the refusal of a
 /// request that supplies a derived member (<method>OcuPilot.Api.Turn.ContextViolation</method>),
 /// Home's empty route, the error read tool's input schema, the four members <method>OcuPilot.Api.Turn.BoundedContext</method> adds on both payload
-/// branches and inside the total bound, and the explain-entry marker it carries, drops when invalid
+/// branches and inside the total bound, the unavailable map's fail-closed answer, and the explain-entry marker it carries, drops when invalid
 /// and keeps within the bounds (AD-11, AD-24).</p>
 /// <p>Spawns nothing, writes no state and creates no principal, so it needs no arming variable. It
 /// reads the compiled tool and screen registries, so it runs on an instance where OcuPilot is
@@ -132,6 +132,17 @@ Method TestAToolListFailureReturnsItsError()
     Do $$$AssertEquals(tTools.%ToJSON(), "[]", "with no tool named")
 }
 
+/// <p>A wire name that does not resolve, or any name when the tool list cannot be built, is marked
+/// unavailable with no pair (<method>OcuPilot.Screen.Context.Unavailable</method>), so a failure refuses
+/// rather than admits; a resolved tool the caller can use is not marked.</p>
+Method TestAToolThatCannotBeResolvedIsMarkedUnavailable()
+{
+    Do $$$AssertStatusOK(##class(OcuPilot.Screen.Context).Unavailable(["osmgmt_processes_read", "ocupilot_no_such_tool"], .tUnavailable), "the map builds")
+    Do $$$AssertEquals(tUnavailable.%ToJSON(), "{""ocupilot_no_such_tool"":""""}", "an unknown name is marked with no pair, and a usable tool is not")
+    Do $$$AssertStatusOK(##class(OcuPilot.Test.ScreenToolsFault).Unavailable(["osmgmt_processes_read"], .tFaulted), "a list that cannot be built still answers")
+    Do $$$AssertEquals(tFaulted.%ToJSON(), "{""osmgmt_processes_read"":""""}", "and marks every tool unavailable")
+}
+
 /// <p>A request that supplies <code>tools</code>, <code>readOnly</code>, <code>verdict</code> or <code>unavailable</code>, of any type, is refused
 /// <code>TURN.CONTEXT.INVALID</code>; the same context without them is accepted.</p>
 Method TestARequestSupplyingADerivedMemberIsRefused()
@@ -217,6 +228,7 @@ Method TestBothMembersRideBothBranches()
     Do $$$AssertEquals(tSecretPayload.rowsSent, 0, "reports rowsSent 0")
     Do $$$AssertEquals(tSecretPayload.tools.%ToJSON(), "[]", "carries its empty tool list")
     Do $$$AssertEquals(tSecretPayload.%GetTypeOf("readOnly") _ "|" _ tSecretPayload.readOnly, "boolean|1", "and readOnly")
+    Do $$$AssertEquals(tSecretPayload.%GetTypeOf("verdict") _ "|" _ tSecretPayload.%GetTypeOf("unavailable"), "object|object", "and the screen's verdict and an unavailable map")
 
     Set tForm = {"route": "os-management/devices/edit"}
     Do tForm.%Set("namespace", tNamespace, "string")

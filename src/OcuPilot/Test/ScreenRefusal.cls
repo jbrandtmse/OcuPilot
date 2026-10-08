@@ -86,7 +86,8 @@ Method TestAnAdjustmentIsFollowedByTheRefusal()
 
 /// <p><b>Roster</b> -- every registered write tool resolves a screen through <method>ScreenRequirement</method>,
 /// and its <method>OcuPilot.Screen.Tool.Registry.RequiredPairs</method> holds each of that screen's pairs.</p>
-/// <p>Mutation (Rule 19): empty one write tool's <code>DESCRIPTORCLASS</code> -- this goes red.</p>
+/// <p>Mutation (Rule 19): drop one of Locks' pairs from <method>OcuPilot.Screen.Tool.LockRemove.PrivilegePairs</method>
+/// -- this goes red.</p>
 Method TestEveryWriteToolResolvesItsScreenAndRequiresAllItsPairs()
 {
     Do $$$AssertStatusOK($ClassMethod(..#REGISTRY, "ListTools", .tTools), "the registry lists")

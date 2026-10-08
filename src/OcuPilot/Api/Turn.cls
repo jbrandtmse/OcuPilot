@@ -540,14 +540,14 @@ ClassMethod BoundedContext(pContext As %DynamicObject, pReadOnly As %Boolean, pR
         Set tSC = ##class(OcuPilot.Screen.Context).Build(pContext, .tBuilt, .tPayload, .tFieldMaxLengths, .tDroppedFields)
         If $$$ISERR(tSC) || 'tBuilt Quit
         Set tDescriptor = $ClassMethod(##class(OcuPilot.Screen.Context).RegistryClass(), "DescriptorForRoute", pContext.%Get("route"))
-        Set tSC = ##class(OcuPilot.Screen.Context).ScreenTools(tDescriptor, .tTools)
+        Set tSC = ##class(OcuPilot.Screen.Context).ScreenTools(tDescriptor, .tTools, .tToolList)
         If $$$ISERR(tSC) Quit
         Do tPayload.%Set("tools", tTools)
         Do tPayload.%Set("readOnly", ''pReadOnly, "boolean")
         Set tVerdict = {}
         Do ##class(OcuPilot.Kernel.Shell.Navigation).SetVerdict(tVerdict, tDescriptor)
         Do tPayload.%Set("verdict", tVerdict)
-        Set tSC = ##class(OcuPilot.Screen.Context).Unavailable(tTools, .tUnavailable)
+        Set tSC = ##class(OcuPilot.Screen.Context).Unavailable(tTools, .tUnavailable, tToolList)
         If $$$ISERR(tSC) Quit
         Do tPayload.%Set("unavailable", tUnavailable)
         Set tTotalMax = +$Parameter(pLimits, "TOOLRESULTMAXLENGTH")

@@ -1766,7 +1766,7 @@ ClassMethod WebApplication(pPayload As %DynamicObject, pTarget As %DynamicObject
 }
 
 /// <p>Whether the screen-permission read <var>pTarget</var> (<code>{Pairs, Result}</code>) leaves a set
-/// that lacks a pair <code>Pairs</code> holds, compared upper-cased. A read that carries neither answers 0.</p>
+/// that lacks a pair <code>Pairs</code> holds, compared upper-cased. A read missing either answers 0.</p>
 ClassMethod LowersScreenPermission(pTarget As %DynamicObject) As %Boolean
 {
     If '$IsObject(pTarget) Quit 0
@@ -1815,6 +1815,8 @@ ClassMethod LowersScreenPermission(pTarget As %DynamicObject) As %Boolean
 /// The mint asks it for a create of this type too, and no request field can suppress it.</p>
 /// <p>A global mapping whose global part begins with <code>:</code> (an empty low end, read as
 /// <code>%</code>) or <code>*</code> reaches the <code>%</code> globals too, and answers the same effect.</p>
+/// <p>For a screen permission, <parameter>EFFECTSCREENLOWERED</parameter> when <method>LowersScreenPermission</method>
+/// answers true over <var>pTarget</var>.</p>
 ClassMethod WeakensByEffect(pType As %String, pPayload As %DynamicObject, pTarget As %DynamicObject, Output pEffect As %String, pId As %String = "", pRemoves As %Boolean = 0) As %Status
 {
     Set pEffect = ""

@@ -310,7 +310,10 @@ test("the system-global mapping's and the mapping copy's consequence codes resol
 //
 // Mutation (Rule 19): drop the SCREENACCESS.LOWERED branch from `consequenceSentence` -> this goes red.
 test("the screen-permission lowering's consequence code resolves to its published sentence", () => {
-  assert.equal(CONSEQUENCE_SCREENACCESSLOWERED, 'SCREENACCESS.LOWERED');
+  const prohibited = readFileSync(join(uiRoot, '..', 'src', 'OcuPilot', 'Kernel', 'Proposal', 'Prohibited.cls'), 'utf8');
+  const declared = /^Parameter EFFECTSCREENLOWERED = "([^"]+)";/m.exec(prohibited);
+  assert.ok(declared, 'Prohibited.cls declares the lowering effect');
+  assert.equal(CONSEQUENCE_SCREENACCESSLOWERED, declared[1]);
   assert.equal(consequenceSentence(CONSEQUENCE_SCREENACCESSLOWERED), STRINGS.screenPermissionsLowerConsequence);
 });
 
