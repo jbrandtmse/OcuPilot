@@ -10409,3 +10409,28 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-9-sql-object-privileges.md | severity: low | fix-risk: high | footprint: out-of-footprint
 - evidence: ocupilot-ci 2026-10-07 (18.9 plan): schema USE listed a foreign server with action l
 - 2026-10-08T01:55:15Z status=decision-pending owner=burndown by=spec_gate note=owner_hold: not reported to InterSystems
+
+### DW-2183: The four SQL privilege tools carry no Classification or ToolFields entry; their arguments are authored in SqlPrivilegeWrite.InputSchema, where the spec asked for the five arguments classified ordinary
+- source: spec-18-9-sql-object-privileges.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: SENDSBODY 0, so Write.FieldRows derives no row and the Standard endpoint publishes no body template to classify (implement self-review)
+- 2026-10-08T07:03:02Z status=open owner=18-9-sql-object-privileges by=harvest note=code review: fix or close by-design
+
+### DW-2184: IRIS defect candidate: the admin API's Security.SQLPrivilege.Standard grant on an absent FOREIGN SERVER answers 500 #5002 <SUBSCRIPT> in %SYSTEM.SQL.Security.GrantPrivilege, not an SQLCODE, so SqlPrivilegePort answers INTERNAL
+- source: spec-18-9-sql-object-privileges.md | severity: low | fix-risk: high | footprint: out-of-footprint
+- evidence: ocupilot-ci 2026-10-08: GRANT type FOREIGN SERVER object NoSrv -> ERROR #5002 <SUBSCRIPT>GrantPrivilege+64^%SYSTEM.SQL.Security.1 ^rINDEXSQL(SERVER,NOSRV); other types answered #5540
+- 2026-10-08T07:03:02Z status=decision-pending owner=burndown by=harvest note=owner_hold: not reported to InterSystems
+
+### DW-2185: ML CONFIGURATION and FOREIGN SERVER SQL privileges are pinned by their Rules and the vendor's refusals only, never granted against a live object
+- source: spec-18-9-sql-object-privileges.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: a Community instance cannot create a foreign server or an ML configuration without an external provider, so no test grants or revokes one
+- 2026-10-08T07:03:02Z status=open owner=18-9-sql-object-privileges by=harvest note=code review: wontfix-accepted with a reopen probe, or a test
+
+### DW-2186: Sub-claims of 18.9's C2-C4 (the -112 grantor mapping, the guard's namespace check, the role-row Direct count, the gate pair sets) have tests but no recorded reddening mutation
+- source: spec-18-9-sql-object-privileges.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: verification-gap layer: the eight recorded mutation lines cover each criterion's main path only
+- 2026-10-08T07:03:03Z status=open owner=18-9-sql-object-privileges by=harvest note=code review closes in-pass (Rule 19)
+
+### DW-2187: WireSecurityRead.TestTaskHistoryPairSetsAreEnforcedForARealPrincipal reads a truncated task history on a long-lived ocupilot-ci (nothing is cut at 1,000), failing at the sweep end and on a solo rerun
+- source: spec-18-9-sql-object-privileges.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: 18.9 changes three roster lines in that class and no task-history code (inference: environmental; CI's fresh throwaways settle it)
+- 2026-10-08T07:03:03Z status=open owner=18-9-sql-object-privileges by=harvest note=resolve against CI run 37741029438
