@@ -176,7 +176,6 @@ These adjust themselves; re-run them only: `ToolEmit`, `ToolSetFull`, `Guardrail
   - `ui/src/app/core/proposal-view.ts`: add `CONSEQUENCE_SCREENACCESSLOWERED` mapping to `STRINGS.screenPermissionsLowerConsequence`.
 - **Docs:**
   - EXPERIENCE.md :631, the tool-call-card row: insert `· "failed — You need <resource> to open <screen>." when the tool's screen is one the user cannot open (Story 20.18)` after "failed — <reason>". Then run `cd ui && npm run test:tools`.
-  - README.md :58-59: "the agent says that account cannot open the Web applications screen, names the privilege it would need, and proposes nothing."
 - `scripts/ci-throwaway.sh`: add a new `# classes: ScreenAccessTurn` line after :318 (PRINCIPALS) and after :521 (TEST_PROVIDER).
 - **Tests (new),** each at most about 500 lines, none with a `Test*` property:
   - `Test/ScreenAccessAgent.cls`, in process (DW-2181): the Raise, Lower, Reset and Confirm rows through `Dispatch.Answer` and `Confirm.Confirm`. It asserts the stored diff, `destructive`, `consequence` and `requiredPairs`, the read-back, the `SecurityChange` row and the agent marker. `OnAfterOneTest` resets adjustments and drops the seeded proposals.
@@ -228,6 +227,8 @@ These adjust themselves; re-run them only: `ToolEmit`, `ToolSetFull`, `Guardrail
 
 ## Spec Change Log
 
+- 2026-10-08, runner spec gate: the orchestrator ruled Q1 A without the README edit (the `operator` account belongs to the demo deployment) and Q2 A, and cleared EXPERIENCE.md :631 and `Kernel/Agent/Prompt.cls` :19 on union terms; keep the prompt addition to one sentence. Rule 30 applies: the shared surfaces and the standing criterion are under `## Verification`. DW-2202 (existing literal counts) is 23.5's, not this story's.
+
 ## Review Triage Log
 
 ## Design Notes
@@ -265,7 +266,7 @@ These adjust themselves; re-run them only: `ToolEmit`, `ToolSetFull`, `Guardrail
 
 | # | Question | Options | Recommended (planned) |
 |---|---|---|---|
-| Q1 | README step 5's `operator` account exists only on the hosted demo; nothing in this repository creates it (inference: it is configured on the droplet). | **A** Pin the mechanism with an in-process principal lacking `%Admin_Secure:USE` on `webapp.list.update` (the Demo operator row), and reword README step 5. **B** Also add the account to the opt-in demo fixture (AD-25) so the smoke script pins it. | A |
+| Q1 | README step 5's `operator` account belongs to the hosted demo deployment, not to this repository. | **A** Pin the mechanism with an in-process principal lacking `%Admin_Secure:USE` on `webapp.list.update` (the Demo operator row); README.md stays as it is (ruled A without the README edit, orchestrator 2026-10-08). **B** Also add the account to the opt-in demo fixture (AD-25) so the smoke script pins it. | A |
 | Q2 | Should the screen action route's 403 and the confirm's refusal also name the screen? | **A** No: the person is already on that screen, and the card's privilege line names the pair; `Api/ScreenAction.cls` is in Epic 18's diff. **B** Yes, in this story. | A |
 
 **Integration ACs (Rules 1 and 2).**
@@ -287,6 +288,10 @@ These adjust themselves; re-run them only: `ToolEmit`, `ToolSetFull`, `Guardrail
 **Ledger.** DW-2181 is addressed by AC2 (`Test/ScreenAccessAgent.cls`).
 
 ## Verification
+
+**Shared surfaces (Rule 30):** screen context's members (`verdict`, `unavailable`); a privilege refusal's `detail` (`screen`) on the tools and the screen read route; the advertised tool set (three more tools); the built-in prompt's text; the proposal effect vocabulary (`SCREENACCESS.LOWERED`); EXPERIENCE.md's tool-call-card row.
+
+**Standing criterion (Rule 30):** existing tests that assert a surface this story changes are updated in this story, and every test the story adds or changes passes on a freshly built instance and in either order.
 
 **Setup (slot B):**
 
