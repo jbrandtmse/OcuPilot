@@ -13,7 +13,8 @@
 /// reaches a file service.</p>
 /// <p><b>What it needs from the environment:</b> OcuPilot installed and serving, a stock instance with no
 /// connection, and <parameter>ARMINGVARIABLE</parameter> reading <code>1</code>, because the class creates and
-/// deletes probe connections, client configurations and descriptions and sets the governance policy. Every probe
+/// deletes probe connections, client configurations, descriptions and the probe's client SSL/TLS configuration
+/// and sets the governance policy. Every probe
 /// object is removed by exact name before all, after each and after all, and after each test the connection list
 /// reads as that test found it.</p>
 Class OcuPilot.Test.MftConnectionWrite Extends %UnitTest.TestCase
@@ -83,6 +84,7 @@ Method OnAfterOneTest() As %Status
     Do $$$AssertStatusOK(##class(OcuPilot.Test.GovernanceFixture).Restore(.tRows), "the governance policy is restored")
     Do $$$AssertStatusOK($ClassMethod(..#PROBE, "RemoveAll"), "every probe object is removed by exact name")
     Do $$$AssertEquals($ClassMethod(..#PROBE, "Remaining"), 0, "and none is left")
+    Do $$$AssertEquals($ClassMethod(..#PROBE, "HoldsSsl"), 0, "nor the probe's client SSL/TLS configuration")
     Do $$$AssertNotEquals(..PreparedFacts, "unreadable", "the connection list was read before the test")
     Do $$$AssertEquals($ClassMethod(..#PROBE, "Facts"), ..PreparedFacts, "the connection list reads as before the test")
     Do ##class(OcuPilot.Test.ProposalFixture).RemoveSeeded(.tSeeded)

@@ -41,6 +41,7 @@ Method OnAfterOneTest() As %Status
 {
     Do $ClassMethod(..#SEAM, "Clear")
     Do $$$AssertStatusOK($ClassMethod(..#PROBE, "RemoveAll"), "every probe object is removed by exact name")
+    Do $$$AssertEquals($ClassMethod(..#PROBE, "HoldsSsl"), 0, "the probe's client SSL/TLS configuration among them")
     Do $$$AssertNotEquals(..PreparedFacts, "unreadable", "the connection list was read before the test")
     Do $$$AssertEquals($ClassMethod(..#PROBE, "Facts"), ..PreparedFacts, "the connection list reads as before the test")
     Quit $$$OK

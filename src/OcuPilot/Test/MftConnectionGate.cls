@@ -10,8 +10,8 @@
 /// probe name and records it.</p>
 /// <p><b>What it needs from the environment:</b> OcuPilot installed and serving, and
 /// <parameter>ARMINGVARIABLE</parameter> reading <code>1</code>, because the class creates and deletes probe users
-/// and roles (<class>OcuPilot.Test.AuthOptionsProbe</class>'s principals), connections, client configurations and
-/// descriptions and sets the governance policy. Every probe object is removed, and after each test the connection
+/// and roles (<class>OcuPilot.Test.AuthOptionsProbe</class>'s principals), connections, client configurations,
+/// descriptions and the probe's client SSL/TLS configuration and sets the governance policy. Every probe object is removed, and after each test the connection
 /// list reads as that test found it.</p>
 Class OcuPilot.Test.MftConnectionGate Extends %UnitTest.TestCase
 {
@@ -96,6 +96,7 @@ Method OnAfterOneTest() As %Status
     Do $$$AssertStatusOK($ClassMethod(..#PROBE, "RemoveAll"), "every probe principal is removed")
     Do $$$AssertEquals($ClassMethod(..#PROBE, "Remaining"), 0, "and none is left")
     Do $$$AssertStatusOK($ClassMethod(..#CONNECTIONS, "RemoveAll"), "every probe connection, client configuration and description is removed")
+    Do $$$AssertEquals($ClassMethod(..#CONNECTIONS, "HoldsSsl"), 0, "and the probe's client SSL/TLS configuration")
     Do $$$AssertNotEquals(..PreparedFacts, "unreadable", "the connection list was read before the test")
     Do $$$AssertEquals($ClassMethod(..#CONNECTIONS, "Facts"), ..PreparedFacts, "the connection list reads as before the test")
     Do ##class(OcuPilot.Test.ProposalFixture).RemoveSeeded(.tSeeded)

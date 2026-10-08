@@ -10,9 +10,9 @@
  *    form and the instance holds it; a changed email address is sent alone and stored; Revoke token on it is
  *    refused because it holds no token; and the typed-name dialog states the delete's consequence and deletes it.
  *
- * **It refuses the live and development containers.** It touches only connections named `OcuMftProbe...`:
- * `before` and `after` remove them by exact name with `OcuPilot.Test.MftProbe.RemoveAll`, which refuses any other
- * name.
+ * **It refuses the live and development containers.** It touches only probe objects named `OcuMftProbe...` (the
+ * connections, what they name, and the client SSL/TLS configuration `OcuMftProbeClientTLS` the form offers):
+ * `before` and `after` remove them by exact name with `OcuPilot.Test.MftProbe.RemoveAll`.
  *
  * Run, from `ui/`: `npm run build && docker cp dist/ocupilot-ui/browser/. <throwaway>:/durable/iris/csp/ocupilot/`,
  * then `OCUPILOT_BROWSER_ORIGIN=... OCUPILOT_BROWSER_CONTAINER=... node --test --test-concurrency=1
@@ -65,14 +65,15 @@ function iris(lines, names = []) {
   return { values, output };
 }
 
-/** Delete every probe connection, and the client configurations and descriptions they name, by exact name. */
+/** Delete every probe connection, the client configurations and descriptions they name, and the probe's client SSL/TLS configuration, by exact name. */
 function removeProbes() {
   iris([`Do ##class(${PROBE}).RemoveAll()`]);
 }
 
 /** Create the client SSL/TLS configuration the form offers, which a fresh instance lacks. */
 function ensureSsl() {
-  iris([`Do ##class(${PROBE}).EnsureSsl()`]);
+  const { values, output } = iris([mark('SSL', `$System.Status.IsOK(##class(${PROBE}).EnsureSsl())`)], ['SSL']);
+  assert.equal(values.SSL, '1', `the client SSL/TLS configuration is made:\n${output}`);
 }
 
 /** One member of the probe connection as the instance holds it, or `'absent'` when it holds none. */
@@ -98,6 +99,8 @@ after(async () => {
     if (config.container !== LIVE_CONTAINER) {
       removeProbes();
       assert.equal(stored('Service'), 'absent', 'the probe connection is gone');
+      const { values, output } = iris([mark('SSL', `##class(${PROBE}).HoldsSsl()`)], ['SSL']);
+      assert.equal(values.SSL, '0', `and so is the probe's client SSL/TLS configuration:\n${output}`);
     }
   }
 });

@@ -314,6 +314,23 @@ Rejected:
 - `Snippet` renders no `STATE` step (auditor): by-design, the composed read is the mint's guard and a draft exists only for a proposal that passed it; Story 12.2's `TokenPort` precedent.
 - Mutation lines missing for C0, C2's moved target, C3's client removal and C5 and C6 sub-rows (verification): Rule 19 asks one per AC and each has one; C0 is a measurement and the client removal is the vendor's.
 
+Re-review 2026-10-07 (rework 1, diff `8e488b4d..HEAD`), the same four layers (full-opus). Each patch was applied in this pass; its mutation is in Verification.
+
+- [x] [Review][Patch] (med) `RemoveAll`'s delete of the probe SSL/TLS configuration had no pinning assertion, because `Remaining` counts only connections, clients and descriptions. `MftProbe.HoldsSsl` now reads 0 after `RemoveAll` in the Write, Gate and Read teardowns and in the browser spec's `after` [src/OcuPilot/Test/MftProbe.cls:HoldsSsl, src/OcuPilot/Test/MftConnectionWrite.cls, src/OcuPilot/Test/MftConnectionGate.cls, src/OcuPilot/Test/MftConnectionRead.cls, ui/browser/mft-connections.browser-spec.mjs]
+- [x] [Review][Patch] (low) `Body` and the browser spec's `ensureSsl()` discarded `EnsureSsl`'s status; `Body` throws it and the spec asserts it [src/OcuPilot/Test/MftProbe.cls:Body, ui/browser/mft-connections.browser-spec.mjs:ensureSsl]
+- [x] [Review][Patch] (low) The `[CI]` item's mutation was observed on `MftConnectionWrite` alone; the same mutation is now observed on `MftConnectionGate` and the browser spec (Verification)
+- [x] [Review][Patch] (low) Doc text omitted the SSL/TLS configuration: `MftProbe`'s header and `Body`, the Write and Gate environment headers, and the browser spec's header and `removeProbes` [same files]
+- [x] [Review][Patch] (low) `SuperserverDescriptor` was not re-run after its count edit: 7 of 7 green (run 1783)
+
+Rejected (re-review):
+
+- The fixture adopts or deletes any configuration named `OcuMftProbeClientTLS`, with no `PREFIX` check and no type check (blind, edge, auditor): theoretical; the name is inside the reserved prefix, and adopting a leftover is the idempotence the item asks for.
+- S0 omits `BFC_SSL` while `ocupilot-ci` holds it; stale spec text (the triage-log reason "a stock instance covers it", Boundaries, Tasks `Count()` 60, the Auto Run Result's merge risk, "identical properties") (blind, auditor): fixes edit the spec. `BFC_SSL` was present (Type 0) when this review began and is left so; no MFT class or the browser spec names it.
+- The `[CI]` item is ticked before CI ran on the fix (blind, verification, auditor): run 37705171196 is the lead's gate (Rule 28).
+- The entity-type count is asserted in two story descriptor tests besides `Descriptor.cls` (verification): spec-bound, Tasks › Tests pins the type with `Count()`.
+- `OcuMftProbeClientTLS` is a literal in `MftConnectionRead` and the browser spec (blind): low, a renamed parameter fails both loudly.
+- `scripts/ci-throwaway.sh`'s MFT arming comment omits the configuration (blind): low, and the file is contended with Epic 20 (Rule 11).
+
 ## Spec Change Log
 
 - 2026-10-07, rework iteration 1 (trigger ci): CI's fresh throwaways lack `BFC_SSL`; the one open item is the `[CI]` task under Tasks & Acceptance.
@@ -533,6 +550,7 @@ Mutations run on `ocupilot-ci` (tree recompiled, reverted byte-identical):
 - mutation (cr): `ReadBack.Of`'s precondition after-state disabled -> `MftConnectionWrite` revoke read-back legs red on both callers; `Check`'s unchanged-SSL/TLS clause dropped -> the change leg red; `HandleCreate` takes no hold -> the held-create leg red; `ClientConfiguration` passes a failed read -> the look-up leg red (422); `HandleUpdate` skips `EntityId.Decode` -> the wire `PUT` red (404) (run 1749). `Taken` passing a failed read alone stays green: the prohibited set's own target read refuses the same failure, so nothing is written either way.
 - mutation (cr): `HandleForm` writes `URL` from `Username` -> `MftConnectionRead` form-read leg red; `MftPort.Row` compares names case-insensitively -> the case-variant leg red (run 1750). `REMOVALROWS` drops `ApplicationName` -> `MftConnectionDescriptor` card leg red (run 1751).
 - mutation (cr): the denial names `superserverRefusedAction`, the no-client caption removed, the empty choice labeled "None" -> each `mft-connection-form.page.spec.ts` leg red. Every mutation reverted byte-identical; clean runs 1752-1755.
+- mutation (cr, rework 1): `EnsureSsl` creates nothing -> `MftConnectionGate` holder create leg red (run 1777) and the browser spec's C2 red on the SSL/TLS option wait; `RemoveAll` skips the SSL/TLS delete -> `MftConnectionWrite`'s teardown "nor the probe's client SSL/TLS configuration" red in 9 of 9 (run 1778) and the browser spec's `after` red. Reverted byte-identical; clean runs 1779-1783 (Write 9, Gate 3, Read 4, `MftConnectionDescriptor` 8, `SuperserverDescriptor` 7) and the browser spec 2 of 2.
 
 ## Auto Run Result
 

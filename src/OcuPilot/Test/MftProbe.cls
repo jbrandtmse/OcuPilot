@@ -1,5 +1,6 @@
 /// <p>Test-only helper for Story 18.26's suites: the probe managed file transfer connections, the probe OAuth 2.0
-/// client configurations and server descriptions they name, the instance's connection list as one JSON text
+/// client configurations and server descriptions they name, the client SSL/TLS configuration they use
+/// (<parameter>SSLCONFIG</parameter>, made in <code>%SYS</code>), the instance's connection list as one JSON text
 /// (<method>Facts</method>), and the agent's mint through a tool's own class (<method>Mint</method>). It holds no
 /// assertions.</p>
 /// <p><b>Only <parameter>PREFIX</parameter> is ever touched.</b> A connection and a client configuration are
@@ -30,10 +31,11 @@ ClassMethod Name(pSuffix As %String) As %String
 }
 
 /// <p>A body for the connection <var>pName</var>: the five fields, the client configuration named
-/// <var>pName</var> followed by <code>App</code>, with each member of <var>pOverrides</var> applied.</p>
+/// <var>pName</var> followed by <code>App</code>, with each member of <var>pOverrides</var> applied. It first
+/// makes the SSL/TLS configuration the body names (<method>EnsureSsl</method>) and throws when that fails.</p>
 ClassMethod Body(pName As %String, pOverrides As %DynamicObject = "") As %DynamicObject
 {
-    Do ..EnsureSsl()
+    $$$ThrowOnError(..EnsureSsl())
     Set tBody = {"Service": "Box", "URL": "https://api.box.ocumftprobe.invalid/", "SSLConfiguration": (..#SSLCONFIG), "Username": "probe@ocumftprobe.invalid", "ApplicationName": (pName _ "App")}
     If $IsObject(pOverrides) {
         Set tIterator = pOverrides.%GetIterator()
@@ -63,6 +65,22 @@ ClassMethod EnsureSsl() As %Status
         Set tSC = ex.AsStatus()
     }
     Quit tSC
+}
+
+/// <p>Whether the instance holds <parameter>SSLCONFIG</parameter>: <code>1</code> or <code>0</code>, and
+/// <code>-1</code> when it cannot be read.</p>
+ClassMethod HoldsSsl() As %Integer
+{
+    Set tHolds = -1
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = "%SYS"
+        Set tHolds = ''##class(Security.SSLConfigs).Exists(..#SSLCONFIG)
+        Set $NAMESPACE = tOrigNS
+    } Catch {
+        Set $NAMESPACE = tOrigNS
+    }
+    Quit tHolds
 }
 
 /// <p><var>pId</var> as one query-string value or route-target segment, percent-encoded once: the route target
