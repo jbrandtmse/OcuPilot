@@ -200,6 +200,56 @@ Method TestTheScriptRendersTheWritesAndNotTheRead()
     Do $$$AssertEquals(tSteps.%Size(), 0, "a read renders no step")
 }
 
+/// <p>The either-of pair (a resource carrying <parameter>OcuPilot.Screen.Gate.ALTERNATIVESEPARATOR</parameter>)
+/// is declared by exactly five surfaces: the Screen permissions descriptor, its read tool and its three
+/// write tools. Every registered descriptor's <code>PrivilegePairs</code> and unadjusted
+/// <code>RequiredPairs</code>, and every registered tool's pairs, are read; a surface outside the five that
+/// declares one fails, naming it, and so does one of the five that does not.</p>
+/// <p>Mutation (Rule 19): make another descriptor's <code>PrivilegePairs</code> (Locks') answer
+/// <method>OcuPilot.Screen.Gate.AdjusterPairs</method> -- this goes red naming it.</p>
+Method TestTheEitherOfPairIsDeclaredByItsFiveSurfacesOnly()
+{
+    Set tSeparator = ##class(OcuPilot.Screen.Gate).#ALTERNATIVESEPARATOR
+    Set tFive = $ListBuild(..#DESCRIPTOR, "agent.screenpermissions.read")
+    For tI = 1:1:$Length(..#TOOLS, ";") Set tFive = tFive _ $ListBuild($Piece($Piece(..#TOOLS, ";", tI), "|", 2))
+    Kill tCarrying
+    Do $$$AssertStatusOK(##class(OcuPilot.Screen.Registry).Descriptors(.tDescriptors), "the descriptors list")
+    Do $$$AssertTrue($ListLength(tDescriptors) > 1, "more than one descriptor is registered: " _ $ListLength(tDescriptors))
+    For tI = 1:1:$ListLength(tDescriptors) {
+        Set tClass = $List(tDescriptors, tI)
+        Set tPairs = $ClassMethod(tClass, "PrivilegePairs")
+        Set tRequired = $ClassMethod("OcuPilot.Screen.Gate", "RequiredPairs", tClass, .tResolved)
+        If ..CarriesAlternative(tPairs, tSeparator) || ..CarriesAlternative(tRequired, tSeparator) Set tCarrying(tClass) = ""
+    }
+    Do $$$AssertStatusOK(##class(OcuPilot.Screen.Tool.Registry).ListTools(.tTools), "the tools list")
+    Do $$$AssertTrue(tTools.%Size() > 1, "more than one tool is registered: " _ tTools.%Size())
+    Set tIterator = tTools.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tEntry) {
+        Set tPairs = $ClassMethod(tEntry.%Get("class"), "PrivilegePairs", tEntry.%Get("descriptor"))
+        If ..CarriesAlternative(tPairs, tSeparator) Set tCarrying(tEntry.%Get("name")) = ""
+    }
+    For tI = 1:1:$ListLength(tFive) {
+        Set tSurface = $List(tFive, tI)
+        Do $$$AssertTrue($Data(tCarrying(tSurface)), tSurface _ ": still declares the either-of pair")
+        Kill tCarrying(tSurface)
+    }
+    Set tStray = $Order(tCarrying(""))
+    While tStray '= "" {
+        Do $$$AssertTrue(0, tStray _ ": declares the either-of pair, which only Screen permissions and its four tools may")
+        Set tStray = $Order(tCarrying(tStray))
+    }
+}
+
+/// <p>Whether any pair of <var>pPairs</var> has a resource carrying <var>pSeparator</var>.</p>
+ClassMethod CarriesAlternative(pPairs As %List, pSeparator As %String) As %Boolean [ Private ]
+{
+    Set tFound = 0
+    For tI = 1:1:$ListLength(pPairs) {
+        If $List($List(pPairs, tI), 1) [ pSeparator Set tFound = 1
+    }
+    Quit tFound
+}
+
 /// <p>The port's rules call the <code>[Internal]</code> <code>$System.Security.ResourceExists</code>, so
 /// its signature is pinned: a class method taking one resource name and answering a boolean. The
 /// instance answers 1 for a defined resource, in any case, and 0 for an undefined name.</p>

@@ -2,8 +2,8 @@
 title: 'Story 20.15: Per-screen permissions, seen and adjusted'
 type: 'feature'
 created: '2026-10-07'
-status: 'in-progress'
-baseline_revision: '4fd4e10084bd61fc02244dba42557afb1942e4be'
+status: 'done'
+baseline_revision: '91f55b08bae35de91bd1d6258c980a14fc8e47fe'
 baseline_commit: 'd782877aec9da7280d74e7e8316abb0a51705850'
 review_loop_iteration: 0
 followup_review_recommended: false
@@ -322,7 +322,7 @@ Every other edit is add-only. Each new entry sits beside the agent entries or at
   - Update AC2 and the matrix rows to the either-of in place.
   - DW-2179 and DW-2180 (open, owned here): settle them in this pass if each is a small, in-scope change, or leave them to the code review.
 
-- [ ] [Orchestrator] Pin the either-of to its five surfaces (the orchestrator's condition for 20.15's boundary, 2026-10-08). A roster test, in `ScreenAccessDescriptor` or its own class, enumerates every registered screen descriptor's pairs (`PrivilegePairs`, and `RequiredPairs` with no adjustment) and every registered tool's required pairs. A pair whose resource carries `Screen.Gate`'s `ALTERNATIVESEPARATOR` may appear only on Screen permissions (`agent.screenpermissions`), its read tool and its three write tools. Any other surface declaring one fails, naming it, and so does a listed surface that no longer carries it. Mutation (Rule 19): make one other descriptor's `PrivilegePairs` (for example Locks') answer `Screen.Gate.AdjusterPairs()`; the test goes red naming it. Revert byte-identical, and write the `mutation:` line.
+- [x] [Orchestrator] Pin the either-of to its five surfaces (the orchestrator's condition for 20.15's boundary, 2026-10-08). A roster test, in `ScreenAccessDescriptor` or its own class, enumerates every registered screen descriptor's pairs (`PrivilegePairs`, and `RequiredPairs` with no adjustment) and every registered tool's required pairs. A pair whose resource carries `Screen.Gate`'s `ALTERNATIVESEPARATOR` may appear only on Screen permissions (`agent.screenpermissions`), its read tool and its three write tools. Any other surface declaring one fails, naming it, and so does a listed surface that no longer carries it. Mutation (Rule 19): make one other descriptor's `PrivilegePairs` (for example Locks') answer `Screen.Gate.AdjusterPairs()`; the test goes red naming it. Revert byte-identical, and write the `mutation:` line.
 
 **Acceptance Criteria:**
 
@@ -443,6 +443,14 @@ Code review, 2026-10-08 (both implement passes, baseline d782877a): 1 high, 8 me
   - `[low]` `[reject]` `PortGate` admit loop has no own mutation line - the arm mutations on `ADJUSTERRESOURCES` recompile the port's `PAIRS`, and the refusal leg beside it fails if the gate is absent.
   - `[low]` `[reject]` Shared evaluators split any `|` resource - by design: the encoding is the either-of, only `AdjusterPairs` builds one, and descriptor declarations are unchanged.
   - `[low]` `[reject]` Rail and command box have no separate Sec test - they read the same navigation verdict the Sec map leg asserts.
+
+### 2026-10-08 — Review pass (rework 2, either-of roster)
+
+- verdicts: 3 findings - high 0, medium 0, low 2, false 1, maybe-false 0
+- findings:
+  - `[low]` `[reject]` Tool coverage reads `PrivilegePairs` only, not `ArgumentPairs` - `ArgumentPairs` is per-call and argument-dependent; the intent names a tool's required pairs, and the either-of pair is built only by `AdjusterPairs`.
+  - `[low]` `[reject]` Descriptor class names and tool names share one key space - the two never collide (dotted class names against `area.screen.verb` tool names); the five-roster is built from the same two forms.
+  - `[false]` `[reject]` Verification-gap layer: no gaps; the test asserts non-empty registries, both directions, and the `mutation:` line is recorded.
 
 ## Design Notes
 
@@ -613,6 +621,8 @@ Code review, 2026-10-08 (both implement passes, baseline d782877a): 1 high, 8 me
 - mutation: rosters - `AgentScreenPermissions` removed from `DeveloperFloor.SCREENS`, then `agent.screenpermissions.read` from `TOOLS`: `DeveloperFloor` red each time. `InteropFloorOwnPairs` needs no row: the screen and tools declare `%Development:USE`.
 - mutation: either-of, review patch - `Dispatch.MissingPair` stops splitting alternatives: `ScreenAccessGate.TestDispatchAcceptsEitherArmOfTheEitherOfPair` red; `Operation.MissingPair` stops splitting: `ScreenAccessWire` Sec, Raise and Audit legs red; `Access.Spelled` reverts to `resource:permission`: `ScreenAccessWire` Sec row leg red. Each reverted to a byte-identical tree.
 
+- mutation: either-of roster - `LockList.PrivilegePairs` answers `Gate.AdjusterPairs()` -> `ScreenAccessDescriptor.TestTheEitherOfPairIsDeclaredByItsFiveSurfacesOnly` red, naming `OcuPilot.Screen.Descriptor.LockList` and its four `osmgmt.locks.*` tools. Reverted by rsync from the worktree (`diff -rq` identical) and reloaded; the class reads green.
+
 **QA pass (QA):**
 
 - (QA) Test added: `src/OcuPilot/Test/ScreenAccessGate.cls` `TestTheProposalCardNamesBothArmsOfTheEitherOfPair` (no new class; `ScreenAccessGate` creates no principal, so it needs no `OCUPILOT_ALLOW_PRINCIPALS` roster entry).
@@ -651,3 +661,7 @@ Blocking condition: none
 - Tests: Sec principal in `ScreenAccessFixture`; Sec wire test; dispatch and confirm legs; `PortGate`, `DeveloperFloor.Held`, `ScreenAccessGate`, `ScreenAccessDescriptor`, `Wire` updated. Arm mutations and the three review-patch mutations are recorded under Verification.
 - Verified on `ocupilot-b-ci`, one class at a time: `ScreenAccessGate`, `ScreenAccessDescriptor`, `ScreenAccessWire`, `ScreenAccessRefusals`, `InteropFloorOwnPairs`, `DeveloperFloor`, `DeveloperFloorRoutes`, `SurfaceCoverage`, `ClassicPageGate`, `PortGate`, `ProposalPrivilege`, `Wire` green; after the review patches `ScreenAccessGate` and `ScreenAccessWire` re-run green; `check-objectscript` clean. Browser and client tiers not run: no client change.
 - Review: 2 medium patches applied, 5 low rejected with reasons in the triage log. DW-2179 and DW-2180 left open. Follow-up review not recommended (follow-up pass, no high patched).
+
+- This pass (rework 2, orchestrator condition): `ScreenAccessDescriptor.TestTheEitherOfPairIsDeclaredByItsFiveSurfacesOnly` (with private helper `CarriesAlternative`) confines the either-of pair to Screen permissions, its read tool and its three write tools, in both directions. No product code changed. Mutation recorded under Verification (Locks' `PrivilegePairs` answering `Gate.AdjusterPairs()` goes red naming Locks and its four tools).
+- Verified on `ocupilot-b-ci`: `ScreenAccessDescriptor`, `ScreenAccessGate`, `InteropFloorOwnPairs` read 0 failed; `check-objectscript` and `lint-docs` clean.
+- Review: 0 patches, 2 low rejected, 1 false (triage log). Follow-up review not recommended (follow-up pass, no high patched).
