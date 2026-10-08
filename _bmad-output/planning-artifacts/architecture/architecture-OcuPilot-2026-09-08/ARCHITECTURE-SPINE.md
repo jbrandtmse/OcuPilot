@@ -105,6 +105,8 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
 
   No slice constructs an endpoint object or works around the port. The async branch is AD-26's.
 
+  **The port refuses a `Security.SQLPrivilege.*` call before invoking the endpoint, the read included,** when its namespace is undefined, its grantee absent, its caller without READ on the namespace's databases, or its object, action or grantee carries `*` or `,` (Story 18.9; measured: the vendor expands lists and wildcards and answers an unknown namespace 500 `<NAMESPACE>`) [AMENDED 2026-10-07, Story 18.9 spec gate, Rule 20].
+
 ### AD-3 — Write payload field lists are derived; the semantic half is authored once per tool
 
 - **Binds:** every write tool in 5.5–5.10; the ~40 rows the PRD lists as built against an unverified contract
@@ -279,6 +281,8 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
 
   **An LDAP configuration's read requires `%Admin_Secure:USE`** and `%DB_IRISSYS:READ` (measured on `ocupilot-ci`, 2026-10-07). `Security.LDAP`'s `ResourcesOR()` admits `%Admin_Operate` for `LIST` and `GET`, but `Security.LDAPConfigs` refuses that caller (#822), and the classic System Operation pages fail for it. OcuPilot builds no operator LDAP view (Story 18.27) [AMENDED 2026-10-07, orchestrator decision on Story 18.27's plan, Rule 20]. Reopen it when a build's admin API serves LDAP `LIST` and `GET` to a caller holding `%Admin_Operate` without `%Admin_Secure`.
 
+  **Story 18.9's SQL object privileges declare Security's set and READ on the target namespace's routines and globals databases**, resolved at the call and refused by name before any port call; they need no WRITE and no `%DB_IRISSYS:READ` (measured on `ocupilot-ci`, 2026-10-07: without READ the vendor's namespace switch fails `<PROTECT>`). The instance's grantor rule then decides: a grantor without the privilege is refused (SQLCODE -112) [AMENDED 2026-10-07, Story 18.9 spec gate, Rule 20].
+
   **Story 19.6** [AMENDED 2026-10-03, Story 19.6 spec gate, Rule 20]: the SQL console's write declares no pair beyond its screen's; its SQL privileges, checked by the instance at prepare and, for a DDL statement whose type names a system privilege, by `%CHECKPRIV` at run, and the databases it writes are the instance's to refuse (measured).
 
   **Story 19.7** [AMENDED 2026-10-04, Story 19.7 spec gate, Rule 20]: the data browser declares no pair beyond its screen's; its SQL privileges are the instance's at prepare (measured). **Story 19.8** [AMENDED 2026-10-04, Story 19.8 spec gate, Rule 20]: the data browser's save declares no pair beyond its screen's; its SQL privileges are the instance's at prepare (measured).
@@ -333,6 +337,8 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
   **The set has exactly one home.** It is declared once, in the kernel, as predicates evaluated against the resolved target at the moment of the write — never duplicated into a screen, a descriptor or a policy file, and never expressed as a match on request fields, which a caller can vary. Because a predicate reads live state (who the last `%All` holder is, which application serves OcuPilot), it is evaluated inside the same atomic transition as the write (AD-34), so the answer cannot change between the check and the effect.
 
   **OcuPilot's own tables and code, through SQL** [AMENDED 2026-10-03, Story 19.6 spec gate, Rule 20]: a console statement whose text names `ocupilot`, whose recorded tables (a view's base tables included) lie in an `OcuPilot` schema, or that records none while the instance's default schema is an `OcuPilot` one, is refused `PROHIBITED.OCUPILOTSQL` on every path, reads included. A data browser read of a table in an `OcuPilot` schema is refused before any statement, and of a view over one before any row (Story 19.7) [AMENDED 2026-10-04, Story 19.7 spec gate, Rule 20]. A data browser save is judged by the same rules: its table's delimited name before any statement, then its resolved table, or a view's base tables, before any write (Story 19.8) [AMENDED 2026-10-04, Story 19.8 spec gate, Rule 20]. Named gap: a procedure's or function's own code. Named limit [AMENDED 2026-10-03, Story 19.6 rework, Rule 20]: a view's base tables are found only for a caller who can read them in `INFORMATION_SCHEMA.VIEW_TABLE_USAGE`, so a principal granted INSERT, UPDATE or DELETE on a view over OcuPilot's tables and nothing on the base tables is not refused by this arm; the instance then runs the change on the view grant alone, as SQL defines (measured on a probe view: the base table gained the row; DW-1987).
+
+  **SQL privileges on OcuPilot's own schemas** [AMENDED 2026-10-07, Story 18.9 spec gate, Rule 20]: a grant or revoke of a SQL privilege on one of OcuPilot's own schemas is refused from either caller (`PROHIBITED.OCUPILOTSQLPRIVILEGE`, DW-236's refusal half), because a grant widens AD-9's protected tables and a revoke of install's schema grant leaves OcuPilot `unreadable` (AD-38). A SQL grant to OcuPilot's own roles or `%DB_OCUPILOT` is refused under `OCUPILOTROLE`.
 
 ### AD-11 — Untrusted content never becomes instruction
 
@@ -812,6 +818,8 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
 
   **Story 16.13's `CLASSICPAGES`** [AMENDED 2026-09-30, Story 16.13 spec gate, Rule 20]: the service update declares the classic Edit Service dialog `%CSP.UI.Portal.Dialog.Service`, whose Save it performs beyond the Services list's own page.
 
+  **Story 18.9's `CLASSICPAGES`** [AMENDED 2026-10-07, Story 18.9 spec gate, Rule 20]: the SQL privilege tools declare the editor's page (`%CSP.UI.Portal.User` or `.Role`), and the grants add `%CSP.UI.Portal.Dialog.SchemaPriv` and `%CSP.UI.Portal.Dialog.MLConfigurationPriv`.
+
   **Story 16.14's `CLASSICPAGES`** [AMENDED 2026-10-01, Story 16.14 spec gate, Rule 20]: the LDAP update, create and password tools declare the classic editor `%CSP.UI.Portal.LDAP`, and the test route unions `%CSP.UI.Portal.LDAPTest`'s resource; the delete, performed on the list's own page, declares none.
 
   **Story 18.15's `CLASSICPAGES`** [AMENDED 2026-10-01, Story 18.15 spec gate, Rule 20]: the enable-interop tool declares the classic New Namespace page `%CSP.UI.Portal.Namespace`, whose interoperability step it performs.
@@ -989,6 +997,8 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
   `WalletPort` (Story 18.24) sequences an imported symmetric key's create: `PUT {Type, Secret64}` then `PUT {Type, Length}`, because the vendor stores no length for an imported key and stores a random key when `Length` rides with `Secret64` (measured on `ocupilot-ci`, 2026-10-06) [AMENDED 2026-10-06, Story 18.24 spec gate, Rule 20].
 
   `MftPort` (Story 18.26) re-reads a `Security.MFT` `DELETE` the vendor answered with an error: an absent connection is the delete done (measured: the vendor deletes it, then answers 500 #5809 when its OAuth 2.0 client is already absent) [AMENDED 2026-10-07, Story 18.26 spec gate, Rule 20].
+
+  `SqlPrivilegePort` (Story 18.9) reads the privilege's state before a grant or revoke, sends a revoke once per direct grantor naming it (`asGrantor`, as the classic Revoke does), and re-reads after the vendor answers: a write that changed nothing, which the vendor can answer 200, is answered 409 `SQLPRIV.NOTAPPLIED`, never as applied [AMENDED 2026-10-07, Story 18.9 spec gate, Rule 20].
 
   `EcpPort` (Story 18.20) sequences a status change: the license check, the `LIST` row, then `SERVERACTION` [AMENDED 2026-10-03, Story 18.20 spec gate, Rule 20]. A data server create past `ECP.Settings`' `AppServerSettings.MaxServers` (read from the instance) answers 409 `ECP.SERVER.LIMIT`: when the caller holds `%Admin_Secure:USE`, which that read needs, `EcpPort` refuses before any vendor write; otherwise the create reaches the vendor and its 500 #456 maps to the same refusal, so whoever the classic page lets create can create here. At the limit only, a caller without `%Admin_Secure:USE` leaves the vendor's misleading "Create section ECPServer" audit event and two severity-2 log lines (the vendor's and the port's own, AD-2), and nothing is stored (measured at Story 18.20's Task 0 and implement) [AMENDED 2026-10-03, Story 18.20 implement and the orchestrator's merge gate, Rule 20].
 

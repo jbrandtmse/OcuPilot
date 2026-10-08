@@ -9514,6 +9514,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-05T00:19:27Z occurrence=18-7-encryption note=18.7 logs #5022 on each no-key read, #1219/#1204 and #5001 credentials refusals; their async alert-throttle line can land in a no-log window
 - 2026-10-07T08:23:30Z occurrence=18-25-superservers note=add Security.Superserver PUT #5001 (port already in use; mapped to a field refusal, still logged severity 2) to the code-scoped unlogged list
 - 2026-10-07T16:07:59Z occurrence=18-26-managed-file-transfer-connections note=add Security.MFT DELETE 500 #5809 (connection deleted, OAuth 2.0 client already absent; MftPort re-reads and answers done, still logged severity 2)
+- 2026-10-08T01:55:15Z occurrence=18-9-sql-object-privileges note=add Security.SQLPrivilege.Standard 500 #5540 (SQLCODE -30, -118, -187, -428, -473) and #5035 (-112, -99), logged severity 2 until the unlogged grammar takes them
 
 ### DW-2008: The agent's confirm of an ECP data server create at the limit carries ECP.SERVER.LIMIT's generic sentence, not EcpError.Limit's number
 - source: spec-18-20-ecp-data-servers.md (code review) | severity: low | fix-risk: med | footprint: out-of-footprint
@@ -10393,3 +10394,18 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: ocupilot-ci 2026-10-07: grant with namespace OcuProbe189Missing answered 500 <NAMESPACE>
 - 2026-10-08T00:50:58Z status=decision-pending owner=burndown by=spec_gate note=owner_hold: not reported to InterSystems
 - 2026-10-08T00:51:20Z status=decision-pending owner=burndown by=spec_gate note=evidence corrected: the plan names no probe namespace (spec Design Notes: an unknown namespace answers 500 <NAMESPACE>); OcuProbe189Missing was not measured
+
+### DW-2176: IRIS defect candidate: the admin API's Security.SQLPrivilege.Standard HEAD answers 404 for a schema grant the caller holds
+- source: spec-18-9-sql-object-privileges.md | severity: low | fix-risk: high | footprint: out-of-footprint
+- evidence: ocupilot-ci 2026-10-07 (18.9 plan): HEAD on a held schema grant answered 404; LIST shows the grant's Schema Privilege rows
+- 2026-10-08T01:55:15Z status=decision-pending owner=burndown by=spec_gate note=owner_hold: not reported to InterSystems
+
+### DW-2177: IRIS defect candidate: the admin API's Security.SQLPrivilege.Standard LIST lists a schema privilege held both directly and through a role twice
+- source: spec-18-9-sql-object-privileges.md | severity: low | fix-risk: high | footprint: out-of-footprint
+- evidence: ocupilot-ci 2026-10-07 (18.9 plan): a schema privilege held directly and through a role listed twice
+- 2026-10-08T01:55:15Z status=decision-pending owner=burndown by=spec_gate note=owner_hold: not reported to InterSystems
+
+### DW-2178: IRIS defect candidate: the admin API's Security.SQLPrivilege.Standard LIST reports a schema USE grant's action as l
+- source: spec-18-9-sql-object-privileges.md | severity: low | fix-risk: high | footprint: out-of-footprint
+- evidence: ocupilot-ci 2026-10-07 (18.9 plan): schema USE listed a foreign server with action l
+- 2026-10-08T01:55:15Z status=decision-pending owner=burndown by=spec_gate note=owner_hold: not reported to InterSystems
