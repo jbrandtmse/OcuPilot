@@ -8263,6 +8263,7 @@ So that access to each screen can be fitted to the instance.
 - **Given** who may change a screen's pair
 - **When** a change is made
 - **Then** Developer accounts, Admin accounts and any `%All` holder may make it; the plan proposes the exact pairs (the Planner suggests `%Development:USE` and `%Admin_Secure:USE`) and returns a one-line confirm only where the owner's words are genuinely ambiguous.
+- [AMENDED 2026-10-08, owner decision relayed by the Planner, Rule 5] The owner answered "Yes" to "Should a security administrator who holds %Admin_Secure but not %Development be able to change which permission each screen requires?": Screen permissions, its read and its three write tools admit `%Development:USE` or `%Admin_Secure:USE`, either one (AD-64, AD-8's one either-of check); a caller holding neither is refused naming both.
 
 - **Given** a change that sets a screen's pair below its classic page's own requirement
 - **When** it is made

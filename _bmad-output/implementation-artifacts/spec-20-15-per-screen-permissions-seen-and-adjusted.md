@@ -2,7 +2,7 @@
 title: 'Story 20.15: Per-screen permissions, seen and adjusted'
 type: 'feature'
 created: '2026-10-07'
-status: 'done'
+status: 'in-progress'
 baseline_revision: 'd782877aec9da7280d74e7e8316abb0a51705850'
 review_loop_iteration: 0
 followup_review_recommended: false
@@ -312,6 +312,14 @@ Every other edit is add-only. Each new entry sits beside the agent entries or at
 - **Tests (edited):** as listed in the Code Map. `ui/tools/navigation.test.mjs` also covers the re-read on `screen-permission`.
 - `ui/browser/screen-permissions.browser-spec.mjs` (new): AC7. Its `after` removes Dev and resets the adjustment.
 
+- [ ] [Owner] The owner decided on 2026-10-08 that a security administrator holding `%Admin_Secure:USE` but not `%Development:USE` may also adjust screen permissions (AD-64 item 4 and AD-8's one either-of note, both amended). Build it narrowly.
+  - **Scope.** An either-of declared only for the Screen permissions screen, its read and its three write tools, through `Port/ScreenAccessPort`. Do not generalize descriptors to any-of.
+  - **Gates.** The navigation verdict (rail, side bar, command box), the read route and tool, the screen action route, dispatch and the confirm gate each accept either pair. A caller holding neither is refused, and the refusal names both pairs.
+  - **Rosters.** `InteropFloorOwnPairs`, `DeveloperFloor` and the coverage rosters still pass. Where a roster cannot express an either-of, add a named entry with its reason; never weaken the roster.
+  - **Tests.** A principal holding only `%Admin_Secure:USE`, and READ on the install namespace's code database, with no `%Development`, sees the screen and changes a pair. A principal holding neither is refused, naming both. A mutation drops each arm in turn: drop `%Development` and the Developer principal reddens; drop `%Admin_Secure` and the security-only principal reddens.
+  - Update AC2 and the matrix rows to the either-of in place.
+  - DW-2179 and DW-2180 (open, owned here): settle them in this pass if each is a small, in-scope change, or leave them to the code review.
+
 **Acceptance Criteria:**
 
 - **AC1 (view).**
@@ -348,6 +356,8 @@ Every other edit is add-only. Each new entry sits beside the agent entries or at
   - **then** all three keys are `true`, and all three tools stay unadvertised until Story 20.18.
 
 ## Spec Change Log
+
+- 2026-10-08, runner: re-opened for the owner's either-of decision (AD-64 item 4, AD-8 note; orchestrator placement: in 20.15 before its review). The pass covers only the `[Owner]` item.
 
 - 2026-10-07, runner spec gate: the orchestrator ruled A on Q1 to Q6 (by=merge_gate), approved the split (Story 20.18 chartered, ordered 20.15, 20.18, 20.17) and cleared the six contended edits on union terms. This story's three tools ship unadvertised, and every dispatch and confirm gate reads `Screen.Gate.RequiredPairs`, so the agent never proposes against an adjusted pair unchecked. AD-64 is claimed and written with its one-line amendments; CLAUDE.md's AD count reads 64.
 
