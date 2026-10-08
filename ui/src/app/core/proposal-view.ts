@@ -356,6 +356,10 @@ export const CONSEQUENCE_INTEROPRESTART = 'INTEROP.RESTART';
 export const CONSEQUENCE_INTEROPUPDATE = 'INTEROP.UPDATE';
 export const CONSEQUENCE_INTEROPRECOVER = 'INTEROP.RECOVER';
 
+/** The consequences of a managed file transfer connection's delete and token revoke (Story 18.26). */
+export const CONSEQUENCE_MFTDELETE = 'MFT.DELETE';
+export const CONSEQUENCE_MFTREVOKE = 'MFT.REVOKE';
+
 /** The field a switch file proposal's diff names the file the instance writes now in. */
 const JOURNAL_CURRENT_FIELD = 'CurrentFile';
 
@@ -457,6 +461,9 @@ export function consequenceSentence(code: string | undefined): string {
   if (code === CONSEQUENCE_WEBAUTHSIGNOUT) return STRINGS.authOptionsSignOutConsequence;
   // Story 18.25: the serving superserver's SSL/TLS sentence, published once.
   if (code === CONSEQUENCE_SUPERSERVERSERVES) return STRINGS.superserverServesConsequence;
+  // Story 18.26: the connection delete's and token revoke's sentences, each published once.
+  if (code === CONSEQUENCE_MFTDELETE) return STRINGS.mftDeleteConsequence;
+  if (code === CONSEQUENCE_MFTREVOKE) return STRINGS.mftRevokeConsequence;
   // Story 20.2: the four production consequences, each published once.
   if (code === CONSEQUENCE_INTEROPSTOP) return STRINGS.interopStopConsequence;
   if (code === CONSEQUENCE_INTEROPRESTART) return STRINGS.interopRestartConsequence;

@@ -1638,6 +1638,39 @@ describe('the Superservers list\u2019s Delete (Story 18.25)', () => {
 });
 
 /**
+ * Story 18.26: the Managed file transfer list's Delete and Revoke token each type the connection's name -- the
+ * row key itself -- under their published consequence, and send the name with no other argument.
+ */
+describe('the Managed file transfer list\u2019s Delete and Revoke token (Story 18.26)', () => {
+  const descriptor = 'OcuPilot.Screen.Descriptor.MftConnectionList';
+  const target = 'OcuMftProbeA';
+
+  it('registers both, each typing the connection\u2019s name under its published consequence', () => {
+    // Mutation (Rule 19): remove `revoke-token` from `DESTRUCTIVE_ACTIONS` -> the revoke sends at once, the
+    // pending dialog is absent and this goes red; drop the list's `DESTRUCTIVE_CONSEQUENCES` entry -> the
+    // registration goes red.
+    const { actions, handler, store, calls } = mount(undefined, descriptor);
+    expect([actions.has(descriptor, 'delete'), actions.has(descriptor, 'revoke-token')]).toEqual([true, true]);
+    handler.startFor(descriptor, 'delete', target, { Name: target, Service: 'Box', IsAuthorized: 'Not Authorized' }, store);
+    expect([handler.pending()?.kind, handler.pending()?.name, handler.pending()?.consequence]).toEqual(['typed-name', target, STRINGS.mftDeleteConsequence]);
+    handler.startFor(descriptor, 'revoke-token', target, { Name: target, Service: 'Box', IsAuthorized: 'Authorized' }, store);
+    expect([handler.pending()?.kind, handler.pending()?.name, handler.pending()?.consequence]).toEqual(['typed-name', target, STRINGS.mftRevokeConsequence]);
+    expect(calls).toHaveLength(0);
+  });
+
+  it('sends a confirmed Revoke token with the name and no argument', async () => {
+    const screen = SCREENS.find((entry) => entry.descriptor === descriptor)!;
+    const { handler, store, calls } = mount({ kind: 'ok', status: 200, body: { action: 'revoke-token', target: { type: 'mft-connection', scope: 'instance', id: target } } }, descriptor);
+    handler.startFor(descriptor, 'revoke-token', target, { Name: target }, store);
+    handler.confirmPending();
+    await settle();
+    expect(calls).toHaveLength(1);
+    expect(calls[0].path).toBe(`/api/ocupilot/screens/${screen.toolIdentifier}/action`);
+    expect(JSON.parse(calls[0].body)).toEqual({ action: 'revoke-token', id: target });
+  });
+});
+
+/**
  * Story 16.4: `sendFor` with a sink of its own keeps a refusal off the list's banner, and
  * `lastRefusal` answers what the instance refused with -- its sentence, its field-level violations and
  * its detail -- until the next send, which clears it.

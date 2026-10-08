@@ -6074,6 +6074,52 @@ export const STRINGS = {
   superserverServesConsequence: 'OcuPilot is served through this superserver. An SSL/TLS change can stop the web gateway connecting through it, which would cut off every user, including you.',
   /** EXPERIENCE.md:364 */
   superserverDeleteConsequence: 'Clients can no longer connect through this port, and the superserver stops listening at once.',
+  /** EXPERIENCE.md:364 */
+  mftConnectionListLabel: 'Managed file transfer',
+  /** EXPERIENCE.md:364 */
+  aboutMftConnection: 'Managed file transfer connection',
+  /** EXPERIENCE.md:364 */
+  mftConnectionService: 'File service',
+  /** EXPERIENCE.md:364 */
+  mftConnectionAuthorization: 'Authorization',
+  /** EXPERIENCE.md:364 */
+  mftConnectionListEmpty: 'No managed file transfer connection is defined on this instance.',
+  /** EXPERIENCE.md:364 */
+  mftConnectionListEmptyAgent: 'create a managed file transfer connection',
+  /** EXPERIENCE.md:364 */
+  mftConnectionListPrompt1: 'Which managed file transfer connections does this instance define, and are they authorized?',
+  /** EXPERIENCE.md:364 */
+  mftConnectionListPrompt2: 'Which OAuth 2.0 client configuration does each connection use?',
+  /** EXPERIENCE.md:364 */
+  mftConnectionListPrompt3: 'Create a managed file transfer connection to Box.',
+  /** EXPERIENCE.md:364 */
+  mftConnectionFormPrompt1: 'What does each field of this connection mean?',
+  /** EXPERIENCE.md:364 */
+  mftConnectionFormPrompt2: 'Which OAuth 2.0 client configuration can this connection use?',
+  /** EXPERIENCE.md:364 */
+  mftConnectionFormPrompt3: 'How do I authorize this connection after saving it?',
+  /** EXPERIENCE.md:364 */
+  mftConnectionUrl: 'URL',
+  /** EXPERIENCE.md:364 */
+  mftConnectionUrlHint: 'The address of the file service. It ends in /.',
+  /** EXPERIENCE.md:364 */
+  mftConnectionApplicationName: 'OAuth 2.0 client configuration',
+  /** EXPERIENCE.md:364 */
+  mftConnectionApplicationHint: 'The name of a client configuration on the OAuth 2.0 screen\'s Client configurations tab. This connection names it and never creates it.',
+  /** EXPERIENCE.md:364 */
+  mftConnectionAuthorizeHint: 'Authorizing a connection is done on the classic Managed File Transfer Connections page.',
+  /** EXPERIENCE.md:364 */
+  mftConnectionCreateOnlyHint: 'It cannot change once the connection exists.',
+  /** EXPERIENCE.md:364 */
+  mftConnectionSslNoClient: 'This instance has no client SSL/TLS configuration to choose.',
+  /** EXPERIENCE.md:364 */
+  mftConnectionRefusedAction: 'change the connection',
+  /** EXPERIENCE.md:364 */
+  mftConnectionRevokeAction: 'Revoke token',
+  /** EXPERIENCE.md:364 */
+  mftDeleteConsequence: 'The connection is removed. Its OAuth 2.0 client configuration is deleted with it unless another connection names it, and so is that client\'s server description when no other client uses it.',
+  /** EXPERIENCE.md:364 */
+  mftRevokeConsequence: 'The connection\'s access token is removed and the file service is asked to revoke it. The connection cannot transfer files until it is authorized again on the classic Managed File Transfer Connections page.',
   /** EXPERIENCE.md:604 */
   interopProductionsLabel: 'Productions',
   /** EXPERIENCE.md:604 */

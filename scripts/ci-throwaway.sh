@@ -372,6 +372,10 @@ services:
       # without one, and writes probe superservers as them through a seam port that sends nothing
       # (Story 18.25).
       # classes: SuperserverGate
+      # The managed file transfer connection classes create and delete probe connections named OcuMftProbe,
+      # the OAuth 2.0 client configurations and descriptions they name, and probe principals, and the gate
+      # class writes them as principals holding Security's pairs and each without one (Story 18.26).
+      # classes: MftConnectionGate, MftConnectionRead, MftConnectionWrite
       # The SQL activity gate class signs in as probe principals each missing one pair the SQL
       # activity port requires, or holding READ on USER's database and %Development, and reads
       # another account's running probe statement as them (Story 19.10).

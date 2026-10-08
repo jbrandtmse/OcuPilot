@@ -2,13 +2,29 @@
 title: 'Story 18.26: Managed file transfer connections'
 type: 'feature'
 created: '2026-10-07'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: '44cf672972ff2a3858ae9c7f3cedf43a5db43516'
+baseline_commit: '8e488b4d6c06010fbfdb6e0ba6d5ed6fe72a006a'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-18-context.md'
 warnings: ['oversized']
-deferred: []
+deferred:
+  - summary: >-
+      The sign-out reset of the MFT connection form store (app.ts calls mftConnectionForm.reset()) has no test.
+    evidence: |-
+      Deleting the reset() line in ui/src/app/app.ts fails no test; the store spec never calls reset() and app.spec.ts does not reference the store. Story 18.25's superserver form store has the same gap, so both close together.
+    location: >-
+      ui/src/app/app.ts:716
+    severity: low
+  - summary: >-
+      The delete card lists four removal rows, not five: Service is outside the reviewed few the prohibited set sweeps.
+    evidence: |-
+      AD-10's reviewed-few sweep refuses a diff row whose field the type's change fields omit (PROHIBITED.UNCOVEREDFIELD, seen at the first delete leg), so MftConnectionDelete.REMOVALROWS leaves Service out; the card still states the client removal through MFT.DELETE.
+    location: >-
+      src/OcuPilot/Screen/Tool/MftConnectionDelete.cls REMOVALROWS
+    severity: low
 ---
 
 <intent-contract>
@@ -255,11 +271,87 @@ Analogs: **Story 18.25's Superservers** (`git diff --stat 0a8f21b4 a2d73616` lis
   - the Fixed strings stay within the bound.
 - **Integration.** The page consumes `GET /mft-connection/form`, `PUT /mft-connection/:id`, `POST /mft-connection` and both row actions. The agent consumes the read tool and the four write tools. Each runs on `ocupilot-ci` (C1-C5 and the browser spec).
 
+- [x] [CI] instance shards 3/5 and 4/5 and browser shard 3/3 (run 37698209677 on 8b615c91): the MFT tests name `BFC_SSL`, which a fresh instance lacks (it is created only when Story 18.15's enable-interop test installs HealthShare Foundation; audit on `ocupilot-ci`: created 05:57 by the `OCUPROBE1815D` run), so `MftConnectionGate`, `MftConnectionWrite` (4 methods) and `mft-connections.browser-spec.mjs:155` fail on CI's fresh throwaways -- <https://github.com/jbrandtmse/OcuPilot/actions/runs/37698209677> -- the probe fixture creates its own Type 0 client configuration (exact probe name, created in `%SYS` and removed by `RemoveAll`), every MFT test class and the browser spec use it instead of `BFC_SSL`, S0 below drops `BFC_SSL`, and the fix is proven on a throwaway state where `BFC_SSL` is absent (rename or remove it there first, then restore it). Closed in rework 1: `MftProbe.EnsureSsl` creates the Type 0 configuration `OcuMftProbeClientTLS`, `Body` and the browser spec's setup call it, `RemoveAll` deletes it; proven on `ocupilot-ci` with `BFC_SSL` deleted: `MftConnectionGate` 3, `MftConnectionWrite` 9, `MftConnectionRead` 4, `MftConnectionDescriptor` 8 tests green one class at a time and the `mft-connections` browser spec 2 of 2 green on a rebuilt bundle; `BFC_SSL` then recreated with identical properties, probe configuration gone, monitor 0.
+
+### Review Findings
+
+Code review 2026-10-07, layers blind-hunter, edge-case-hunter, verification-gap and acceptance-auditor (all full-opus). Each patch was applied in this pass; its mutation is in Verification.
+
+- [x] [Review][Patch] (med) A real token revoke read back `unchecked`: its re-read through `STATE` refuses the after-state `MFT.TOKEN.NONE`. An action write's re-read refused with one of its `PRECONDITIONCODES` now reads `nothingSent` [src/OcuPilot/Kernel/Proposal/ReadBack.cls:AfterPrecondition, src/OcuPilot/Test/MftSeamPort.cls, src/OcuPilot/Test/MftConnectionWrite.cls]
+- [x] [Review][Patch] (med) The write suite never cleared the monitor its absent-client deletes raise (Tasks › Tests); `MftProbe.RemoveAll` now clears it after every teardown [src/OcuPilot/Test/MftProbe.cls:RemoveAll]
+- [x] [Review][Patch] (med) An update's unchanged stored SSL/TLS configuration was unpinned; the change leg now seeds one that does not exist [src/OcuPilot/Test/MftConnectionWrite.cls:TestAChangeSendsTheFreshFiveFieldsOnBothCallers]
+- [x] [Review][Patch] (low) The create Save's hold had no behavioural leg: a create of a held name answers 409 `WRITE.TARGETBUSY` and creates nothing [src/OcuPilot/Test/MftConnectionWrite.cls:TestATakenNameAMovedTargetAndABusyTargetAreRefused]
+- [x] [Review][Patch] (low) A failed SSL/TLS or name look-up was unpinned; a create now answers 500 `INTERNAL` with no write [src/OcuPilot/Test/MftConnectionWrite.cls:TestALookUpThatCannotBeMadeRefusesTheSave]
+- [x] [Review][Patch] (low) No route leg used a name its encoding changes; the wire leg's name holds a space and a dot [src/OcuPilot/Test/MftConnectionWrite.cls:TestTheWriteRoutesAnswerOverTheWire]
+- [x] [Review][Patch] (low) `STATE`'s exact-name row match was never reached; two connections differing only in case each read their own row [src/OcuPilot/Test/MftConnectionRead.cls]
+- [x] [Review][Patch] (low) The form-read leg compared every stored value but `URL` [src/OcuPilot/Test/MftConnectionRead.cls:TestTheFormReadAnswersTheFiveFields]
+- [x] [Review][Patch] (low) The delete and revoke cards' rows were unpinned [src/OcuPilot/Test/MftConnectionDescriptor.cls:TestTheCardsListWhatTheActionsRemove]
+- [x] [Review][Patch] (low) The form's denial sentence and no-client line were never rendered in a test [ui/src/app/areas/security/mft-connection-form.page.spec.ts]
+- [x] [Review][Patch] (low) The SSL/TLS picker offered "None" for a required field; its empty choice is blank [ui/src/app/areas/security/mft-connection-form.page.ts:sslOptions]
+- [x] [Review][Patch] (low) The agent's `ApplicationName` description and `MUTATINGTYPES`' doc said a delete always removes the client configuration; both add "unless another connection names it" [src/OcuPilot/Screen/Tool/MftConnectionCreate.cls:105, src/OcuPilot/Port/AdminPort.cls]
+- [x] [Review][Patch] (low) `Taken` spelled the endpoint, read type and query key its doc says it takes from the update tool [src/OcuPilot/Area/Security/MftConnectionRules.cls:Taken]
+- [x] [Review][Patch] (low) Inexact doc text: `MftActionFixture.ToolFor` named the superserver delete, `MftConnectionDelete`'s class doc said the card lists the settings it removes, and a page spec title claimed the classic labels [src/OcuPilot/Test/MftActionFixture.cls, src/OcuPilot/Screen/Tool/MftConnectionDelete.cls, ui/src/app/areas/security/mft-connection-form.page.spec.ts]
+- [x] [Review][Defer] Changing `ApplicationName` ends a connection's authorization with no warning (inference) [src/OcuPilot/Screen/Tool/MftConnectionUpdate.cls] — deferred: DW-2166 `wontfix-accepted` (reopen_if in the entry).
+- [x] [Review][Defer] The monitor can rise after the teardown's clear (inference) [src/OcuPilot/Test/MftProbe.cls:RemoveAll] — deferred: occurrence on DW-2149 (owner burndown).
+- Ledger inbox: DW-2164 `resolved-by` (QA's `app.spec.ts` legs); DW-2165 `by-design` (AD-10: the delete's rows follow the type's change fields, which omit create-only `Service`; `MFT.DELETE` states the client removal).
+
+Rejected:
+
+- A delete whose client removal fails is answered done once the connection is gone (blind, edge): by-design, Decision 3 and AD-52 as amended; the vendor's 500 is logged at severity 2.
+- Revoke token offered on a row that reads Not Authorized (blind): by-design, the matrix's no-token row and Decision 5.
+- An unchanged non-string field refused on shape (blind): false; measured on `ocupilot-ci`, the vendor's `GET` answers every field as a string, empty ones included.
+- A revoke does not call the file service (edge): false; `Box`, `Dropbox` and `Kiteworks` each override `RevokeToken` to call it.
+- `ApplicationName` neither checked nor picked (blind): by-design, Decision 1.
+- A failed SSL/TLS list read shows "no client configuration" (edge): low, the read needs the screen's own pairs; Story 18.25 precedent.
+- An outside writer between the absence or fresh read and the upsert (edge): theoretical, inside milliseconds and outside OcuPilot's lock.
+- Create rules not re-asked at confirm (edge): low, needs a configuration deleted inside the proposal window; Story 18.25 precedent.
+- A 403 on the SSL/TLS look-up renders as internal (edge): theoretical, the look-up needs the pairs the tools already require.
+- An edit body naming `Name` is dropped (edge): no harm; the path id governs.
+- The gate's principal without `%DB_IRISSYS:READ` drives only the writes (blind): low, the gate is shared and the other principal covers it.
+- A URL default per service, the rules run twice on a refused edit, `BFC_SSL` unnamed in test headers, a borrowed password prefix (blind): low; an enhancement, negligible cost, "a stock instance" covers it, a password names nothing.
+- `MFT.TAKEN` and the mint beyond the code list, `Check` not `Validate`, the spec's status and stale `deferred:` entry (auditor, blind): fixes edit the spec; the additions are in the Auto Run Result.
+- Shape refusals carry `PORT.FIELD.SHAPE` (auditor): false, the envelope is `MFT.VALIDATION`; Story 18.25 precedent.
+- `Snippet` renders no `STATE` step (auditor): by-design, the composed read is the mint's guard and a draft exists only for a proposal that passed it; Story 12.2's `TokenPort` precedent.
+- Mutation lines missing for C0, C2's moved target, C3's client removal and C5 and C6 sub-rows (verification): Rule 19 asks one per AC and each has one; C0 is a measurement and the client removal is the vendor's.
+
+Re-review 2026-10-07 (rework 1, diff `8e488b4d..HEAD`), the same four layers (full-opus). Each patch was applied in this pass; its mutation is in Verification.
+
+- [x] [Review][Patch] (med) `RemoveAll`'s delete of the probe SSL/TLS configuration had no pinning assertion, because `Remaining` counts only connections, clients and descriptions. `MftProbe.HoldsSsl` now reads 0 after `RemoveAll` in the Write, Gate and Read teardowns and in the browser spec's `after` [src/OcuPilot/Test/MftProbe.cls:HoldsSsl, src/OcuPilot/Test/MftConnectionWrite.cls, src/OcuPilot/Test/MftConnectionGate.cls, src/OcuPilot/Test/MftConnectionRead.cls, ui/browser/mft-connections.browser-spec.mjs]
+- [x] [Review][Patch] (low) `Body` and the browser spec's `ensureSsl()` discarded `EnsureSsl`'s status; `Body` throws it and the spec asserts it [src/OcuPilot/Test/MftProbe.cls:Body, ui/browser/mft-connections.browser-spec.mjs:ensureSsl]
+- [x] [Review][Patch] (low) The `[CI]` item's mutation was observed on `MftConnectionWrite` alone; the same mutation is now observed on `MftConnectionGate` and the browser spec (Verification)
+- [x] [Review][Patch] (low) Doc text omitted the SSL/TLS configuration: `MftProbe`'s header and `Body`, the Write and Gate environment headers, and the browser spec's header and `removeProbes` [same files]
+- [x] [Review][Patch] (low) `SuperserverDescriptor` was not re-run after its count edit: 7 of 7 green (run 1783)
+
+Rejected (re-review):
+
+- The fixture adopts or deletes any configuration named `OcuMftProbeClientTLS`, with no `PREFIX` check and no type check (blind, edge, auditor): theoretical; the name is inside the reserved prefix, and adopting a leftover is the idempotence the item asks for.
+- S0 omits `BFC_SSL` while `ocupilot-ci` holds it; stale spec text (the triage-log reason "a stock instance covers it", Boundaries, Tasks `Count()` 60, the Auto Run Result's merge risk, "identical properties") (blind, auditor): fixes edit the spec. `BFC_SSL` was present (Type 0) when this review began and is left so; no MFT class or the browser spec names it.
+- The `[CI]` item is ticked before CI ran on the fix (blind, verification, auditor): run 37705171196 is the lead's gate (Rule 28).
+- The entity-type count is asserted in two story descriptor tests besides `Descriptor.cls` (verification): spec-bound, Tasks › Tests pins the type with `Count()`.
+- `OcuMftProbeClientTLS` is a literal in `MftConnectionRead` and the browser spec (blind): low, a renamed parameter fails both loudly.
+- `scripts/ci-throwaway.sh`'s MFT arming comment omits the configuration (blind): low, and the file is contended with Epic 20 (Rule 11).
+
 ## Spec Change Log
+
+- 2026-10-07, rework iteration 1 (trigger ci): CI's fresh throwaways lack `BFC_SSL`; the one open item is the `[CI]` task under Tasks & Acceptance.
 
 - 2026-10-07, spec gate (lead): Decisions 1-6 confirmed (create names an existing OAuth 2.0 client and never makes one; the delete keeps the vendor's client removal as its stated consequence, key `false`; authorization stays on the classic portal; revoke destructive, key `false`). Spine amendments 1-7 written (AD-8, AD-13, AD-4, AD-15 and AD-53 eighteenth, AD-44, AD-51, AD-52). DW-2007 gains `Security.MFT` `DELETE` #5809. Vendor candidates DW-2154, DW-2155, DW-2156 under the owner's hold. Fixed strings stay under 2900; a bundle re-base under DW-1166 is expected.
 
 ## Review Triage Log
+
+### 2026-10-07 - Review pass
+
+- verdicts: 9 findings - high 0, medium 3, low 4, false 1, maybe-false 1
+- findings:
+  - `[medium]` `[patch]` Delete leg with the DELETE failing while the connection remains is untested (MftConnectionWrite) - added the ArmFail DELETE leg; mutation (answer deleted after any error) went red.
+  - `[medium]` `[patch]` Form page spec types only Name and the browser spec checks only body keys - page spec now compares the whole POST and one-key PUT bodies, browser spec deepEquals values; swapped-binding mutation red.
+  - `[medium]` `[patch]` Delete consequence asserted against itself - proposal-view.test.mjs asserts the sentence names the client configuration and server description; shortened-sentence mutation red.
+  - `[low]` `[defer]` Sign-out reset of the form store unpinned - same gap as Story 18.25; in `deferred:`.
+  - `[low]` `[patch]` Missing `mutation:` lines for C1, C2, C4, C5, C6 - nine lines recorded after observed red and byte-identical reverts (Rule 19).
+  - `[low]` `[reject]` Agent-update mint refusals checked only as not-OK - the create loop and now the update loop assert field and sentence; nothing further worth a guard.
+  - `[low]` `[reject]` ArmFailAfter helper unused - test helper only, no harm.
+  - `[false]` `[reject]` Tests run through seam subclasses, not production classes - the descriptor test pins PortClass and the seam overrides only Call; the production composition is the one under test.
+  - `[maybe-false]` `[patch]` Update path may skip the SSL client-type look-up (pFull=0) - checked: MergeUpdate runs the full check on the merged payload; a leg and a mutation (pFull 0) now pin it.
 
 ## Design Notes
 
@@ -390,7 +482,12 @@ Analogs: **Story 18.25's Superservers** (`git diff --stat 0a8f21b4 a2d73616` lis
 
 **For the lead (spec gate):** Decisions 1-6, spine amendments 1-7, DW-2007's scope (add `Security.MFT` `DELETE` #5809), and the three vendor candidates.
 
-**Measured at Task 0:** (filled by the implement stage)
+**Measured at Task 0** (`ocupilot-ci`, 2026-10-07):
+
+- **S0 recorded:** the connection `LIST` answers `[]`; `OAuth2.Client`, `OAuth2.ServerDefinition` and `OAuth2.AccessToken` hold no row; the five SSL/TLS configurations read `Type` 0; no `OcuMftProbe*` or `OcuProbe1826*` object or principal; monitor 0.
+- **Delete over an absent client**, through `AdminPort.Invoke` in process: a `PUT` of `OcuMftProbeT0` naming the absent client `OcuMftProbeT0NoClient` answered 201. The `DELETE` then answered `pHttpStatus` 500 with fault code `PORT.NOTFOUND` (the admin port's mapping of #5809), and the `GET` answered 404, so the connection was gone.
+- **The severity-2 line** read `Security.MFT failed with HTTP 500` with `ERROR #5809: Object to Load not found, class 'OAuth2.Client', ID 'OcuMftProbeT0NoClient'`. The monitor read 0 before and after, and 0 after a clear.
+- No contradiction with Measured at plan. S0 was re-read: `LIST` `[]`, no client, description or token, monitor 0.
 
 ## Verification
 
@@ -403,7 +500,7 @@ Analogs: **Story 18.25's Superservers** (`git diff --stat 0a8f21b4 a2d73616` lis
 **S0 for `ocupilot-ci`:**
 
 - No MFT connection, no `OAuth2.Client`, `OAuth2.ServerDefinition` or `OAuth2.AccessToken` row.
-- The SSL/TLS configurations `BFC_SSL`, `ISC.FHIRExplorer.SSL.Config`, `ISC.FeatureTracker.SSL.Config`, `OcuPilotDemoTLS` and `OcuPilotProvider`, each `Type` 0.
+- The SSL/TLS configurations `ISC.FHIRExplorer.SSL.Config`, `ISC.FeatureTracker.SSL.Config`, `OcuPilotDemoTLS` and `OcuPilotProvider`, each `Type` 0.
 - No `OcuMftProbe*` or `OcuProbe1826*` object or principal. Monitor 0.
 
 **Commands:**
@@ -430,12 +527,40 @@ Analogs: **Story 18.25's Superservers** (`git diff --stat 0a8f21b4 a2d73616` lis
 - **C6:** `security.mftconnections.delete` set `true` -> the baseline leg.
 - **Integration:** `POST /mft-connection` removed from `Api/Router.cls` -> the wire leg.
 
+Mutations run on `ocupilot-ci` (tree recompiled, reverted byte-identical):
+
+- mutation: `MftProbe.EnsureSsl` creates nothing -> `MftConnectionWrite` create, look-up, taken-name and wire legs red (4 of 9, run 1775); reverted
+- mutation: list read drops `IsAuthorized` -> `MftConnectionRead` key-set leg red (run 1214), and `MftConnectionDescriptor`'s list-fields leg red (run 1215).
+- mutation: update `PERMITTEDFIELDS` admits `Service` -> `MftConnectionDescriptor` update-fields legs red (run 1215); Save skips `HoldTool` -> `MftConnectionWrite` busy leg red (run 1216).
+- mutation: `MftPort.Delete` re-read removed -> `MftConnectionWrite` absent-client delete legs red (run 1216); `MFT.DELETE` unmapped in `proposal-view.ts` -> `proposal-view.test.mjs` red.
+- mutation: `State` stops refusing "Not Authorized" -> `MftConnectionRead` state leg red (run 1214) and `MftConnectionWrite` revoke legs red (run 1216).
+- mutation: `Valid` drops the `Service` rule -> `MftConnectionWrite` rules legs red, `INTERNAL` replacing `MFT.SERVICE` (run 1216).
+- mutation: `security.mftconnections.delete` set `true` in the baseline -> `MftConnectionDescriptor` baseline leg red (run 1215).
+- mutation: `POST /mft-connection` removed from `Api/Router.cls` -> `MftConnectionWrite` wire leg red (run 1216).
+- mutation: `revoke-token` removed from `DESTRUCTIVE_ACTIONS` -> `screen-action-handler.spec.ts` red; `security/mft-connections` dropped from the navigation literal -> `navigation.test.mjs` red.
+- mutation: `MftPort.Delete` answers "deleted" after any error (re-read judgement dropped) -> `MftConnectionWrite` delete-fails-while-stored leg red (run 1223).
+- mutation: form read skips `Username` in `MftConnectionRules.HandleForm` -> `MftConnectionRead` form-read leg red (run 1224).
+- mutation: create's `pReadBack` left unset in `MftConnectionSave.Create` -> `MftConnectionWrite` create and wire legs red (run 1225); taken-name check never adds `MFT.TAKEN` -> the taken-name leg red (run 1226).
+- mutation: revoke tool `WRITETYPE` `REVOKE` -> `GET` -> `MftConnectionWrite` revoke legs ("sending one REVOKE") red (run 1227).
+- mutation: `IsUrl` accepts any bounded text -> `MftConnectionWrite` rules leg red; the equality skip dropped from `Check` (an unchanged stored value judged) -> the change leg red (run 1229); `ClientConfiguration` accepts any type -> the rules leg's "ssl a server configuration" case red (run 1231; the case is driven through `MftSeamPort.ArmSslType`); `MftConnectionUpdate.MergeUpdate` judges with `pFull` 0 (SSL look-up skipped on an update) -> the rules leg's update cases red (run 1233).
+- mutation: list `sideBarPosition` 13 -> 12 -> `MftConnectionDescriptor` position leg red (run 1234); revoke tool `WRITERESOURCE` -> `%Admin_Manage` -> `MftConnectionGate` holder leg red (run 1235).
+- mutation: URL and ApplicationName control bindings swapped in `mft-connection-form.page.ts` -> `mft-connection-form.page.spec.ts` create and edit legs red; first sentence of `mftDeleteConsequence` dropped in `strings.ts` -> `proposal-view.test.mjs` red.
+- (QA) `ui/src/app/app.spec.ts` sign-out test gains the superserver and MFT connection form legs (DW-2164).
+- mutation (QA): `this.superserverForm.reset()` deleted from `App.verifyWhenSignedIn` -> `app.spec.ts` sign-out test red (BindAddress stays typed); `this.mftConnectionForm.reset()` deleted -> the same test red (Name stays typed). Both reverted byte-identical.
+- mutation (cr): `ReadBack.Of`'s precondition after-state disabled -> `MftConnectionWrite` revoke read-back legs red on both callers; `Check`'s unchanged-SSL/TLS clause dropped -> the change leg red; `HandleCreate` takes no hold -> the held-create leg red; `ClientConfiguration` passes a failed read -> the look-up leg red (422); `HandleUpdate` skips `EntityId.Decode` -> the wire `PUT` red (404) (run 1749). `Taken` passing a failed read alone stays green: the prohibited set's own target read refuses the same failure, so nothing is written either way.
+- mutation (cr): `HandleForm` writes `URL` from `Username` -> `MftConnectionRead` form-read leg red; `MftPort.Row` compares names case-insensitively -> the case-variant leg red (run 1750). `REMOVALROWS` drops `ApplicationName` -> `MftConnectionDescriptor` card leg red (run 1751).
+- mutation (cr): the denial names `superserverRefusedAction`, the no-client caption removed, the empty choice labeled "None" -> each `mft-connection-form.page.spec.ts` leg red. Every mutation reverted byte-identical; clean runs 1752-1755.
+- mutation (cr, rework 1): `EnsureSsl` creates nothing -> `MftConnectionGate` holder create leg red (run 1777) and the browser spec's C2 red on the SSL/TLS option wait; `RemoveAll` skips the SSL/TLS delete -> `MftConnectionWrite`'s teardown "nor the probe's client SSL/TLS configuration" red in 9 of 9 (run 1778) and the browser spec's `after` red. Reverted byte-identical; clean runs 1779-1783 (Write 9, Gate 3, Read 4, `MftConnectionDescriptor` 8, `SuperserverDescriptor` 7) and the browser spec 2 of 2.
+
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
 
-- **Planned:** the whole story as one implement pass.
-- **Measured at plan** on `ocupilot-ci` through the admin API: probe connections `OcuProbe1826A`-`F`, two probe OAuth 2.0 clients and descriptions, and one probe principal and role. Each was removed, and S0 was re-read with the monitor at 0.
-- **Spec-gate items** are in Design Notes › For the lead.
-- The plan was self-reviewed against the READY-FOR-DEVELOPMENT standard.
+- **Rework 1 (CI):** the probe fixture owns its client SSL/TLS configuration (`OcuMftProbeClientTLS`); the `[CI]` item is ticked with its proof. Also bumped the entity-type count 60 to 61 in `MftConnectionDescriptor` and `SuperserverDescriptor` (the merged Epic 20 type). `test:tools` 1884 green, build green.
+
+- **Summary:** Security list at position 13 and an unlisted editor form for managed file transfer connections; tools `security.mftconnections.create`, `.update`, `.delete` and `.revoketoken` (keys true, true, false, false) on `MftPort`, with `MftConnectionRules`, `MftConnectionSave`, `MftConnectionMint`, `Api/MftConnectionError.cls`; client store, page and actions; 23 Fixed strings (2848 of 2900); `EXPERIENCE.md` rows 168 and 364 edited in place. Beyond the spec: code `MFT.TAKEN`, and the mint for an empty name.
+- **Review (verification-gap, intent-alignment):** 9 findings; patches applied 5 (delete-still-present leg, form body values, consequence substance, nine `mutation:` lines, update-path SSL check pinned), deferred 1 (sign-out reset, low), rejected 3 with reasons in the Review Triage Log. Follow-up review recommended: false.
+- **Full-sweep fixes (roster rows, add-only):** `MappingDescriptor.CLASSICROSTER` (two MFT tools), `ScreenRead` live-row exemption for `MftConnectionList` (a fresh instance holds no connection; `MftConnectionRead` seeds one), `PortFixture.MUTATINGTYPES` (`Security.MFT` PUT, DELETE, REVOKE).
+- **Verification:** full ObjectScript sweep on `ocupilot-ci`: 504 classes, 4036 tests, 3 failed on the first pass (the three roster classes above); each re-ran green after the fix (6, 30, 34 tests, 0 failed). Story browser specs `mft-connections` and `security`, `npm run test:tools`, component tier and `npm run build` green; initial bundle 3,099,030 bytes (warning 3165kB). Smoke 49 of 49 (1 skipped). `check-objectscript` and `lint-docs` clean. Throwaway reads S0.
+- **Residual risks:** Epic 20 merge conflicts expected on single-line roster edits (`EntityType`, `Baseline`, `Prohibited`, `Error`, `ci-throwaway.sh`, `Descriptor`, `SurfaceCoverage`, `ReadTool`, `ClassicPageGate`, `PortGate`); union them, entity count 59 to 60. A token-holding connection cannot exist on the throwaway, so the revoke success path runs through `MftSeamPort`; the server-type SSL rule runs through `MftSeamPort.ArmSslType`.

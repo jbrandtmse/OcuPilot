@@ -1581,6 +1581,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-1-18-epic-1-burn-down.md | severity: med | fix-risk: med | footprint: out-of-footprint
 - evidence: The widened half of DW-96. The owner's design scoped 1.18 to the unreadable state, read-back of the escalation role's grant and a derived schema name; a grant widened to _PUBLIC or another role silently exposes OcuPilot's protected state and no gate sees it (Installer.cls EnsureSqlPrivileges)
 - 2026-09-13T23:43:36Z status=routed owner=18-9-sql-privileges-and-the-permission-extras by=harvest note=18-9 owns SQL privileges; detection needs an enumeration of every grantee on the schema, not a single CheckPrivilege
+- 2026-10-08T00:50:58Z owner=18-9-sql-object-privileges by=spec_gate note=orchestrator split 2026-10-07: the refusal half (new AD-10 arm on OcuPilot's own schemas); the detection half is DW-2172 (18.13)
 
 ### DW-237: The client keeps INSTALL.FAILED and INSTALL.UPGRADEREQUIRED in the install backoff forever, though neither clears by waiting
 - source: spec-1-18-epic-1-burn-down.md | severity: med | fix-risk: low | footprint: in-story
@@ -7460,6 +7461,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-26T01:23:58Z status=routed owner=range-end-cleanup by=merge_gate note=decided at the Epic 12 merge (orchestrator, recommended disposition): a create accepts the default roles it pre-ticks (the vendor answers 201, reviewer-confirmed); fix in the range-end cleanup
 - 2026-09-30T06:34:05Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down plan 2026-09-29 (23.1 closed; its slice re-sorted): queued for the standing cleanup after the next release (Story 23.3 or later), priority p4
 - 2026-10-05T18:41:41Z status=routed owner=18-9-sql-privileges-and-the-permission-extras by=merge_gate note=owner-approved burn-down scope 2026-10-05: feature-sized, re-routed from the cleanup queue to the permission-extras story
+- 2026-10-08T00:50:58Z owner=18-29-role-members-admin-option-user-copy-from-and-password-valida by=spec_gate note=orchestrator split 2026-10-07: Story 18.9 split; DW-1662 rides with role members, Copy from and password validation
 
 ### DW-1663: The authorization server's privileged customization-role effect is name-only, so adding %Manager, %Operator or %SecurityAdministrator (which carry %Admin_* resources) is not minted destructive
 - source: spec-12-7-the-oauth-2-0-authorization-server-editor.md | severity: med | fix-risk: high | footprint: in-story
@@ -8863,6 +8865,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-01T11:08:27Z status=routed owner=range-end-cleanup by=harvest note=priority p4 (orchestrator 2026-10-01): AD-27 named case, Modify in %SYS, then lift the LASTONE refusal
 - 2026-10-05T18:41:40Z status=routed owner=18-8-superservers-authentication-options-and-managed-file-transfe by=merge_gate note=owner-approved burn-down scope 2026-10-05: feature-sized, re-routed from the cleanup queue to the story carrying the LDAP view
 - 2026-10-07T03:44:54Z owner=18-27-the-operator-s-read-only-ldap-view by=merge_gate note=18.8 split for size (orchestrator merge gate 2026-10-07, Rule 5): the LDAP editor's last-attribute write moves with the read-only LDAP view to Story 18.27
+- 2026-10-07T23:03:36Z status=routed owner=burndown by=spec_gate note=orchestrator: 18.27 closed unbuilt; 18.28 Task 0 measures Security.LDAPConfigs.Modify in %SYS on ocupilot-ci; build only under the caller's own %Admin_Secure, else wontfix-accepted
 
 ### DW-1901: CI's instance suite needs a fourth shard: each of the three instance legs now runs 38-46 min and wall time rises with every story
 - source: OCU-1-epic16 CI run 36862943319 (16.26 close) | severity: med | fix-risk: low | footprint: out-of-footprint
@@ -10288,6 +10291,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Ens.Job.StopAll raises the plural <Ens>ErrJobsNotStopped (Job.cls:555) after MakeQuiescent and the app-data kill (Director.cls:250-260); InteropPort.Statused maps only the singular
 - 2026-10-07T18:07:16Z status=decision-pending owner=burndown by=cr note=product call: new INTEROP code + sentence for a partial stop (recommended), or keep 500 and amend the stop sentence
 - 2026-10-07T15:41:54Z occurrence=18-25-superservers
+- 2026-10-07T22:38:19Z occurrence=18-26-managed-file-transfer-connections
 - 2026-10-07T18:44:36Z status=decision-pending owner=burndown by=merge_repair note=restored: the 15:41:54Z occurrence=18-25-superservers line above is DW-2149's, moved here by a union merge; DW-2162 has no 18.25 occurrence
 - 2026-10-07T18:58:44Z status=routed owner=20-3-production-items by=merge_gate note=orchestrator ruling 2026-10-07: a stop or restart left half-stopped past the cap answers its own INTEROP code and Fixed-strings sentence, not a generic 500, and the card says so
 
@@ -10334,6 +10338,37 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: run 37646809169 head 44e8f5b3 instance shard 2/5: AssertMasked+7 and +9 red on the wire read while logs.audit.read passed moments later; the class ran 4/4 green on ocupilot-ci (run 1172) over the same source; OAuthAuthorizationServerSecret and OAuthRegisteredClientSecret read once the same way (inference)
 - 2026-10-07T17:30:11Z status=routed owner=burndown by=lead note=apply 23.4's READSECONDS poll (16313a0e) to AuditVendorSecrets.AssertMasked and to any sibling that reads a vendor row once
 
+### DW-2164: The sign-out reset of the MFT connection form store (app.ts calls mftConnectionForm.reset()) has no test; 18.25's superserver form store has the same gap
+- source: spec-18-26-managed-file-transfer-connections.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: deleting the reset() line in ui/src/app/app.ts:716 fails no test; the store spec never calls reset() and app.spec.ts does not reference the store
+- 2026-10-07T22:03:57Z status=open owner=18-26-managed-file-transfer-connections by=harvest note=QA adds the reset leg for both stores
+- 2026-10-07T22:38:19Z status=resolved-by:18-26-managed-file-transfer-connections by=cr note=QA app.spec.ts sign-out leg resets the MFT and superserver form stores; each reset() deleted -> red
+
+### DW-2165: The MFT delete card lists four removal rows, not five: Service is outside the reviewed few AD-10's prohibited sweep admits
+- source: spec-18-26-managed-file-transfer-connections.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: AD-10's reviewed-few sweep refuses a diff row whose field the type's change fields omit (PROHIBITED.UNCOVEREDFIELD), so MftConnectionDelete.REMOVALROWS leaves Service out; the card still states the client removal through MFT.DELETE
+- 2026-10-07T22:03:57Z status=open owner=18-26-managed-file-transfer-connections by=harvest note=code review decides fix or by-design
+- 2026-10-07T22:38:19Z status=by-design by=cr note=AD-10: delete rows follow the type's change fields, which omit create-only Service (Decision 6); MFT.DELETE states removal
+
+### DW-2166: Changing an MFT connection's ApplicationName ends its authorization with no warning, and the token stays keyed to the old client (inference)
+- source: spec-18-26-managed-file-transfer-connections.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: %SYS.MFT.Connection.Base IsAuthorized and RevokeToken key the token by (ApplicationName, ConnectionId); the update tool admits ApplicationName with no consequence line
+- 2026-10-07T22:38:19Z status=wontfix-accepted owner=18-26-managed-file-transfer-connections by=cr note=reopen_if=a token-holding connection's ApplicationName change is measured to leave its OAuth2.AccessToken row behind
+
+### DW-2167: AdminPort answers the vendor's 404 #822 Access Denied as PORT.NOTFOUND, so a refused read reads as an absent target (inference: no LDAP surface reaches it today, each gates %Admin_Secure:USE first)
+- source: spec-18-27-the-operator-s-read-only-ldap-view.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: 18.27 plan on ocupilot-ci: AdminPort.Invoke Security.LDAP GET in process as %Admin_Operate+%DB_IRISSYS:R answered 404 PORT.NOTFOUND over the vendor's #822
+- 2026-10-07T23:03:36Z status=routed owner=burndown by=spec_gate note=orchestrator 2026-10-07: routed to 18.28 at low severity; map #822 to an access refusal, not an absence
+
+### DW-2168: IRIS defect candidate: the admin API's Security.LDAP LIST and GET admit %Admin_Operate at the gate (ResourcesOR), then fail for that caller (LIST 500 <INVALID OREF> in %Api.Admin.Util.ClassQuery, GET 404 #822)
+- source: spec-18-27-the-operator-s-read-only-ldap-view.md | severity: med | fix-risk: high | footprint: out-of-footprint
+- evidence: ocupilot-ci 2026-10-07: %Operator probe LIST 500 INVALID OREF AppendStatementResult+5, GET 404 #822; _SYSTEM 200/200; Security.LDAPConfigs requires %Admin_Secure:USE (LDAPConfigs.cls:17)
+- 2026-10-07T23:03:36Z status=decision-pending owner=burndown by=spec_gate note=owner_hold: not reported to InterSystems
+
+### DW-2169: IRIS defect candidate: the classic read-only LDAP pages %CSP.UI.Portal.LDAPsRO and .LDAPRO throw <UNDEFINED> in %OnGetPageName for a %Operator holder, and %SYS.LDAP:List returns that caller no rows
+- source: spec-18-27-the-operator-s-read-only-ldap-view.md | severity: med | fix-risk: high | footprint: out-of-footprint
+- evidence: ocupilot-ci 2026-10-07: both pages <UNDEFINED>%OnGetPageName+2 *Properties(AutheEnabled) for %Operator, render for _SYSTEM; %SYS.LDAP:List no row for the operator, one for irisowner
+- 2026-10-07T23:03:36Z status=decision-pending owner=burndown by=spec_gate note=owner_hold: not reported to InterSystems
 ### DW-2163: CI flake: agent-picker.browser-spec.mjs Leg 1's open-menu structural gate at 720px read the Users table and the panel toggle as overflowing (469px and 7px past the viewport) once, then passed on a re-run of the same head
 - source: cycle-log-epic-20.md (run 37670705022 attempt 1) | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: Failed in browser shard 1/3 of attempt 1 on 95eecef8; attempt 2 green; passed in 37649713980 and 37660214447 and 3/3 locally on ocupilot-b-ci (inference: measured mid-reflow after setViewport)
@@ -10348,3 +10383,23 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-20-14-interoperability-holders-reach-ocupilot.md | severity: low | fix-risk: low | footprint: in-epic
 - evidence: EXPERIENCE.md:182 and :214 name only %Admin_* and %Development as screen gates; Stories 16.8 and 20.2 shipped screens gated on %Ens_EventLog, %Ens_ProductionConfig and %Ens_Code. Pre-existing; contended file, lines outside 20.14's cleared set.
 - 2026-10-07T23:49:03Z status=wontfix-accepted owner=20-14-interoperability-holders-reach-ocupilot by=cr note=pre-existing since 20.2; reopen_if=20.15's Privilege Gating amendment leaves EXPERIENCE.md:214 naming only %Admin_* and %Development
+### DW-2172: DW-236's detection half: a SQL grant on OcuPilot's own schemas widened outside OcuPilot (another role or _PUBLIC holding it) is not detected; enumerating every grantee on the schema belongs beside install's schema-grant read-back
+- source: spec-18-9-sql-privileges-and-the-permission-extras.md (split) | severity: med | fix-risk: med | footprint: in-epic
+- evidence: 18.9 plan on ocupilot-ci: detection needs every grantee on the schema enumerated; refusal half stays with 18.9's new AD-10 arm (orchestrator ruling 2026-10-07)
+- 2026-10-08T00:50:05Z status=routed owner=18-13-multi-namespace-install by=spec_gate note=orchestrator: detection half to 18.13, beside install's schema-grant read-back (AD-38)
+
+### DW-2173: IRIS defect candidate: the admin API's Security.SQLPrivilege.Column grant the SQL layer refuses answers 200 and stores nothing
+- source: spec-18-9-sql-privileges-and-the-permission-extras.md (split) | severity: med | fix-risk: high | footprint: out-of-footprint
+- evidence: ocupilot-ci 2026-10-07: a grantor without the privilege sent a column grant; 200, no row stored
+- 2026-10-08T00:50:58Z status=decision-pending owner=burndown by=spec_gate note=owner_hold: not reported to InterSystems
+
+### DW-2174: IRIS defect candidate: the admin API's Security.SQLPrivilege.Standard revoke by a caller who is not the grantor (no asGrantor) answers 200 and revokes nothing
+- source: spec-18-9-sql-privileges-and-the-permission-extras.md (split) | severity: med | fix-risk: high | footprint: out-of-footprint
+- evidence: ocupilot-ci 2026-10-07: non-grantor revoke 200, the privilege still listed
+- 2026-10-08T00:50:58Z status=decision-pending owner=burndown by=spec_gate note=owner_hold: not reported to InterSystems
+
+### DW-2175: IRIS defect candidate: the admin API's a Security.SQLPrivilege.Standard grant naming an unknown namespace answers 500 <NAMESPACE>
+- source: spec-18-9-sql-privileges-and-the-permission-extras.md (split) | severity: med | fix-risk: high | footprint: out-of-footprint
+- evidence: ocupilot-ci 2026-10-07: grant with namespace OcuProbe189Missing answered 500 <NAMESPACE>
+- 2026-10-08T00:50:58Z status=decision-pending owner=burndown by=spec_gate note=owner_hold: not reported to InterSystems
+- 2026-10-08T00:51:20Z status=decision-pending owner=burndown by=spec_gate note=evidence corrected: the plan names no probe namespace (spec Design Notes: an unknown namespace answers 500 <NAMESPACE>); OcuProbe189Missing was not measured

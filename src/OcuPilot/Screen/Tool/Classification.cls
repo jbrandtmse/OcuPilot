@@ -48,6 +48,10 @@ Class OcuPilot.Screen.Tool.Classification Extends %RegisteredObject
 /// (Story 18.25) classify <code>Security.Superserver</code>'s sixteen rows <code>ordinary</code>.
 /// <code>SystemDefault</code> is ordinary and neither tool admits it: it is shown and never set (AD-4), and each
 /// tool's positive list decides that.</p>
+/// <p><b><code>security.mftconnections.create</code></b> and <b><code>security.mftconnections.update</code></b>
+/// (Story 18.26) classify <code>Security.MFT</code>'s five rows <code>ordinary</code>: a connection holds no
+/// secret, its authorization being a token the classic page obtains and no read returns. The update tool's
+/// positive list leaves out <code>Service</code>, which only a create sets.</p>
 /// <p><b><code>security.secrets.creatersa</code></b>, <b>.createsymmetric</b>, <b>.replacersa</b> and
 /// <b>.replacesymmetric</b> (Story 18.24) classify their type's list: <code>Length</code>,
 /// <code>HasPrivateKey</code>, <code>HasCertificate</code> and <code>KeyId</code> are <code>ordinary</code>
@@ -622,6 +626,26 @@ XData Entries
       "SSLConfig": "ordinary",
       "SSLSupportLevel": "ordinary",
       "SystemDefault": "ordinary"
+    }
+  },
+  "security.mftconnections.create": {
+    "fieldList": "Security.MFT",
+    "classification": {
+      "Service": "ordinary",
+      "URL": "ordinary",
+      "SSLConfiguration": "ordinary",
+      "Username": "ordinary",
+      "ApplicationName": "ordinary"
+    }
+  },
+  "security.mftconnections.update": {
+    "fieldList": "Security.MFT",
+    "classification": {
+      "Service": "ordinary",
+      "URL": "ordinary",
+      "SSLConfiguration": "ordinary",
+      "Username": "ordinary",
+      "ApplicationName": "ordinary"
     }
   },
   "security.secrets.create": {

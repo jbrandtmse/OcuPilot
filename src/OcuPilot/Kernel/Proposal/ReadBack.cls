@@ -116,6 +116,10 @@ ClassMethod Of(pToolClass As %String, pIdValue As %String, pSent As %DynamicObje
         Set tIdParam = $ClassMethod(tReadClass, "IdParam")
         Set tReadSC = ##class(OcuPilot.Kernel.Proposal.Operation).ReadAt(tReadClass, tPort, tEndpoint, tIdParam, tReadId, pPayloadJson, .tRead, .tReadHttp, .tReadFault)
         Set tPresent = $$$ISOK(tReadSC) && $IsObject($Get(tRead))
+        If $$$ISERR(tReadSC) && (tKind = "action") && ..AfterPrecondition(tReadClass, $Get(tReadFault)) {
+            Set tAnswer = ..Verdict(..#NOTHINGSENT)
+            Quit
+        }
         If $$$ISERR(tReadSC) && (+$Get(tReadHttp) '= 404) {
             Set tAnswer = ..Verdict(..#UNCHECKED, "", "", ..#REASONUNREADABLE)
             Quit
@@ -242,6 +246,24 @@ ClassMethod KindOf(pToolClass As %String) As %String
     }
     If tSecrets '= "" Quit "secret"
     Quit "action"
+}
+
+/// <p>Whether <var>pFault</var>, the refusal of an action-style write's re-read, carries a code
+/// <var>pToolClass</var>'s <code>PreconditionCodes</code> names (AD-51): the action ran, so its
+/// precondition no longer holds (a token revoke leaves no token), and the re-read answers the
+/// after-state rather than an unreadable target. A class that cannot be asked names none.</p>
+ClassMethod AfterPrecondition(pToolClass As %String, pFault) As %Boolean [ Private ]
+{
+    If '$IsObject(pFault) || 'pFault.%IsA("%Library.DynamicObject") Quit 0
+    Set tCode = pFault.%Get("code")
+    If (tCode = "") || $IsObject(tCode) Quit 0
+    Set tCodes = ""
+    Try {
+        If pToolClass '= "" Set tCodes = $ClassMethod(pToolClass, "PreconditionCodes")
+    } Catch {
+        Set tCodes = ""
+    }
+    Quit ($ListFind(tCodes, tCode) > 0)
 }
 
 /// <p>Whether <var>pToolClass</var>'s tool says its deleted target is gone although the re-read

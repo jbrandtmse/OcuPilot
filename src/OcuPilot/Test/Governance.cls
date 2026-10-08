@@ -39,6 +39,10 @@ Parameter REMOTEDATABASEDELETE = "osmgmt.remotedatabases.delete";
 /// <p>The superserver delete, which the baseline also disables (Story 18.25).</p>
 Parameter SUPERSERVERDELETE = "security.superservers.delete";
 
+/// <p>The managed file transfer connection delete and token revoke, which the baseline also disables
+/// (Story 18.26).</p>
+Parameter MFTDISABLED = "security.mftconnections.delete,security.mftconnections.revoketoken";
+
 /// <p>The license key's activation and the license server delete, which the baseline also disables
 /// (Story 18.6).</p>
 Parameter LICENSEDISABLED = "osmgmt.licensekey.activate,osmgmt.licenseservers.delete";
@@ -140,6 +144,7 @@ Method TestTheDefaultEnablesEveryWriteButTheBaselineDisabled()
         Set tExpected = $Select((tKey = ..#PURGE) || (tKey = ..#NAMESPACEDELETE) || (tKey = ..#DATABASEDELETE) || (tKey = ..#TASKIMPORT) || (tKey = ..#ENABLEINTEROP) || $ListFind($ListFromString(..#DISKOPERATIONS), tKey) || $ListFind($ListFromString(..#EXPLORERDISABLED), tKey): "0|baseline", 1: "1|baseline")
         If tKey = ..#REMOTEDATABASEDELETE Set tExpected = "0|baseline"
         If tKey = ..#SUPERSERVERDELETE Set tExpected = "0|baseline"
+        If $ListFind($ListFromString(..#MFTDISABLED), tKey) Set tExpected = "0|baseline"
         If $ListFind($ListFromString(..#LICENSEDISABLED), tKey) Set tExpected = "0|baseline"
         If $ListFind($ListFromString(..#ECPDISABLED), tKey) Set tExpected = "0|baseline"
         If $ListFind($ListFromString(..#ENCRYPTIONDISABLED), tKey) Set tExpected = "0|baseline"

@@ -260,6 +260,9 @@ XData Probes
 <probe class="Api.Router" method="GET" url="/superserver/form" path="/api/ocupilot/superserver/form" disposition="envelope"/>
 <probe class="Api.Router" method="PUT" url="/superserver/:id" path="/api/ocupilot/superserver/ocupilot-coverage-probe" disposition="envelope" refusal="1"/>
 <probe class="Api.Router" method="POST" url="/superserver" path="/api/ocupilot/superserver" disposition="envelope" refusal="1"/>
+<probe class="Api.Router" method="GET" url="/mft-connection/form" path="/api/ocupilot/mft-connection/form" disposition="envelope"/>
+<probe class="Api.Router" method="PUT" url="/mft-connection/:id" path="/api/ocupilot/mft-connection/ocupilot-coverage-probe" disposition="envelope" refusal="1"/>
+<probe class="Api.Router" method="POST" url="/mft-connection" path="/api/ocupilot/mft-connection" disposition="envelope" refusal="1"/>
 <probe class="Api.Router" method="POST" url="/explorer/docdb" path="/api/ocupilot/explorer/docdb" disposition="envelope" refusal="1"/>
 <probe class="Api.Readiness" method="GET" url="/" path="/api/ocupilot/readiness/" disposition="envelope"/>
 <probe class="Api.StaticHandler" method="GET" url="/(.*)" path="/ocupilot/index.html" disposition="bytes"/>

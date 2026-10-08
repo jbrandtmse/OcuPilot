@@ -108,6 +108,8 @@ export const SCREEN_ACTION_DESCRIPTORS: readonly string[] = [
   // Story 19.17: Document databases, whose Drop types the database's name.
   'OcuPilot.Screen.Descriptor.ExplorerDocDbList',
   'OcuPilot.Screen.Descriptor.SuperserverList',
+  // Story 18.26: managed file transfer connections, whose Delete and Revoke token each type the connection's name.
+  'OcuPilot.Screen.Descriptor.MftConnectionList',
   // Story 20.2: Productions, whose Start is sent at once and whose Stop, Restart, Update and Recover warn first.
   'OcuPilot.Screen.Descriptor.InteropProductionList',
 ];
@@ -238,6 +240,9 @@ const PACKAGE_MAPPING_LIST = 'OcuPilot.Screen.Descriptor.PackageMappingList';
 
 /** The Superservers list (Story 18.25), keyed by `[Port, BindAddress]`, whose Delete types the port. */
 const SUPERSERVER_LIST = 'OcuPilot.Screen.Descriptor.SuperserverList';
+
+/** The managed file transfer connections list (Story 18.26), whose Delete and Revoke token type the connection's name. */
+const MFT_CONNECTION_LIST = 'OcuPilot.Screen.Descriptor.MftConnectionList';
 
 /** The role value actions, and the values each sends (AD-56 (ii)). */
 export const ADD_GRANTED_ROLE = 'add-granted-role';
@@ -394,7 +399,7 @@ const ACTION_ADDRESS: Readonly<Record<string, string>> = {
  * `DESTRUCTIVE` declaration. This is EXPERIENCE.md's `confirm-dialog` rule -- a delete carries the
  * typed-name field and a `button-destructive` -- applied to the verb that deletes.
  */
-const DESTRUCTIVE_ACTIONS: readonly string[] = ['delete', 'terminate', 'revoke-tokens', 'end', ENCRYPTION_REMOVE_ADMIN, ENCRYPTION_REMOVE_KEY, ENCRYPTION_DEACTIVATE];
+const DESTRUCTIVE_ACTIONS: readonly string[] = ['delete', 'terminate', 'revoke-tokens', 'revoke-token', 'end', ENCRYPTION_REMOVE_ADMIN, ENCRYPTION_REMOVE_KEY, ENCRYPTION_DEACTIVATE];
 
 /**
  * The destructive actions whose typed-name dialog states the removal's impact as its advisory,
@@ -447,6 +452,8 @@ const DESTRUCTIVE_CONSEQUENCES: Readonly<Record<string, Readonly<Record<string, 
   [ROUTINE_MAPPING_LIST]: { delete: STRINGS.routineMappingDeleteConsequence },
   [PACKAGE_MAPPING_LIST]: { delete: STRINGS.packageMappingDeleteConsequence },
   [SUPERSERVER_LIST]: { delete: STRINGS.superserverDeleteConsequence },
+  // Story 18.26: a connection's Delete and Revoke token each type its name.
+  [MFT_CONNECTION_LIST]: { delete: STRINGS.mftDeleteConsequence, 'revoke-token': STRINGS.mftRevokeConsequence },
   [LOCAL_DATABASE_LIST]: { delete: STRINGS.localDatabaseDeleteConsequence },
   // Story 16.25: the language server's Delete types the server's name.
   'OcuPilot.Screen.Descriptor.LanguageServerList': { delete: STRINGS.languageServerDeleteConsequence },

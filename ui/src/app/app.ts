@@ -55,6 +55,8 @@ import { EncryptionStartupForm } from './areas/security/encryption-startup.store
 import { AuthOptionsForm } from './areas/security/auth-options.store';
 import { SuperserverActions } from './areas/security/superserver-actions';
 import { SuperserverForm } from './areas/security/superserver-form.store';
+import { MftConnectionActions } from './areas/security/mft-connection-actions';
+import { MftConnectionForm } from './areas/security/mft-connection-form.store';
 import { MappingActions } from './areas/os-management/mapping-actions';
 import { MappingForm } from './areas/os-management/mapping-form.store';
 import { OAuthActions } from './areas/security/oauth-actions';
@@ -372,6 +374,9 @@ export class App {
   // Superservers' declared Create (`areas/security/superserver-actions.ts`), with the form's store (Story 18.25).
   private readonly superserverActions = inject(SuperserverActions);
   private readonly superserverForm = inject(SuperserverForm);
+  // Managed file transfer's declared Create (`areas/security/mft-connection-actions.ts`), with the form's store (Story 18.26).
+  private readonly mftConnectionActions = inject(MftConnectionActions);
+  private readonly mftConnectionForm = inject(MftConnectionForm);
   // The three mapping lists' declared Create, the same way (`areas/os-management/mapping-actions.ts`).
   private readonly mappingActions = inject(MappingActions);
   private readonly mappingForm = inject(MappingForm);
@@ -711,6 +716,8 @@ export class App {
       this.authOptionsForm.reset();
       // The superserver form holds a superserver THIS principal was creating or editing and has not saved.
       this.superserverForm.reset();
+      // The connection form holds a managed file transfer connection THIS principal was creating or editing and has not saved.
+      this.mftConnectionForm.reset();
       // The mapping editor holds a mapping THIS principal was creating or editing and has not saved.
       this.mappingForm.reset();
       // The SSL/TLS form holds a private key password THIS principal typed and has not saved (AD-35).
