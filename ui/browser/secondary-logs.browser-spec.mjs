@@ -1,9 +1,15 @@
 /**
  * The six secondary log viewers in a real browser, against the throwaway instance (Story 16.8):
- * each viewer's seeded entry (AC1), the fresh-stock empty states read before anything is seeded
- * (AC4), search with its count, the two match controls and Raw (AC1, AC5), Explain on the event
- * log's entry and a typed turn's screen context (AC3), Load newer (AC1), and the DW-1337 walk of
- * the six seeded screens and Home at wide light, narrow light and wide dark (AC7).
+ * each viewer's seeded entry (AC1), each viewer agreeing with its source's read before anything is
+ * seeded, the System Monitor log's own lines and "No entries." for a read that answers none (AC4),
+ * search with its count, the two match controls and Raw (AC1, AC5), Explain on the event log's
+ * entry and a typed turn's screen context within AD-24's bounds (AC3), Load newer (AC1), and the
+ * DW-1337 walk of the six seeded screens and Home at wide light, narrow light and wide dark (AC7).
+ * AC3 and AC4 hold whatever another spec left in the stores.
+ *
+ * mutation: AC4 -- `LogPage.HandleRecent` answering no entries -> the agreement leg red on the
+ * sources whose read answers rows; `emptyTitle` answering "No matches." -> the "No entries." leg red.
+ * AC3 -- `Turn.BoundedContext` applying a row cap of 1 -> AC3 red on "not the entry alone".
  *
  * Seeds one entry into each store through `secondary-log-spec.mjs` and removes it in `after`, so it
  * runs only in a throwaway, and arms the turnprobe provider for the Explain legs.
@@ -130,6 +136,29 @@ function screenContextPayload(messages) {
   return resultBlock ? resultPayload(resultBlock) : null;
 }
 
+/** The context row cap the instance applies now (AD-24), read rather than assumed. */
+async function contextRowCap() {
+  const answer = await fetch(`${config.origin}${CONTEXT_PATH}`, { headers: { Authorization: authHeader(config) } });
+  assert.ok(answer.ok, `GET /agent/context (HTTP ${answer.status})`);
+  const cap = (await answer.json()).contextRowCap;
+  assert.ok(Number.isInteger(cap) && cap > 0, `the context row cap is readable: ${cap}`);
+  return cap;
+}
+
+/**
+ * AD-24's bound on a screen_context payload for `onScreen` rows: every entry on screen offered,
+ * more than the entry alone sent, and the row cap's worth sent unless the total-size bound cut
+ * whole rows from the end, which the payload reports as `truncated`.
+ */
+function assertScreenRowsSent(payload, onScreen, cap, leg) {
+  const most = Math.min(onScreen, cap);
+  assert.equal(payload.rowsAvailable, onScreen, `${leg}: every entry on screen was offered`);
+  assert.ok(payload.rowsSent >= 2, `${leg}: the rows on screen were sent, not the entry alone (${payload.rowsSent} sent, cap ${cap})`);
+  if (payload.rowsSent !== most) {
+    assert.ok(payload.rowsSent < most && payload.truncated === true, `${leg}: ${payload.rowsSent} of ${most} sent, so the total-size bound cut the rest`);
+  }
+}
+
 async function waitForReply(page, text) {
   await page.waitForFunction(
     (expected) => [...document.querySelectorAll('.ocu-panel-message-agent-text')].some((node) => node.textContent === expected),
@@ -138,7 +167,7 @@ async function waitForReply(page, text) {
   );
 }
 
-test('AC4: before anything is seeded, the System Monitor log shows its own lines and the other five show "No entries."', async () => {
+test('AC4: before anything is seeded, each viewer agrees with its own read: "No entries." exactly when the read answers no rows', async () => {
   assert.equal(seeded, false, 'this leg reads the stores as the instance left them');
   for (const { key } of SECONDARY_SOURCES) {
     const { context, page } = await signedInAt(browser, config, urlFor(key));
@@ -149,14 +178,42 @@ test('AC4: before anything is seeded, the System Monitor log shows its own lines
         ROW_SELECTOR
       );
       assert.equal(await page.$('[data-ocu-log="refusal"]'), null, `${key}: no refusal and no fault`);
-      if (key === 'systemmonitor') {
-        assert.ok((await page.$$(ROW_SELECTOR)).length > 0, 'the System Monitor log shows its own lines');
-      } else {
+      const answer = await fetch(`${config.origin}/api/ocupilot/screens/logs.${key}/read?maxRows=1&ns=HSCUSTOM`, { headers: { Authorization: authHeader(config) } });
+      assert.ok(answer.ok, `${key}: the source's own read (HTTP ${answer.status})`);
+      const answered = (await answer.json()).rows;
+      assert.ok(Array.isArray(answered), `${key}: the source's read answers a rows array`);
+      if (key === 'systemmonitor') assert.ok(answered.length > 0, 'the System Monitor log holds its own lines, as a freshly installed instance writes them');
+      if (answered.length === 0) {
         assert.equal(await page.$eval('[data-ocu-log="empty"]', (node) => node.textContent.trim()), STRINGS.logViewerEmpty, `${key}: "No entries."`);
+      } else {
+        assert.equal(await page.$('[data-ocu-log="empty"]'), null, `${key}: its read answers rows, so the viewer lists them, not "No entries."`);
       }
     } finally {
       await context.close();
     }
+  }
+});
+
+test('AC4: a viewer whose read answers no entries shows "No entries.", whatever the store held before', async () => {
+  ensureSeeded();
+  const tailPath = '/api/ocupilot/logs/xdbc';
+  const { context, page } = await signedInAt(browser, config, urlFor('xdbc'));
+  try {
+    await seededRow(page);
+    await page.setRequestInterception(true);
+    page.on('request', (request) => {
+      if (new URL(request.url()).pathname !== tailPath) {
+        void request.continue();
+        return;
+      }
+      void request.respond({ status: 200, contentType: 'application/json', body: JSON.stringify({ source: 'xdbc', entries: [], truncated: false }) });
+    });
+    await page.click('[data-ocu-log="load-newer"]');
+    await page.waitForSelector('[data-ocu-log="empty"]', { timeout: config.navigationTimeoutMs });
+    assert.equal(await page.$eval('[data-ocu-log="empty"]', (node) => node.textContent.trim()), STRINGS.logViewerEmpty, '"No entries."');
+    assert.equal((await page.$$(ROW_SELECTOR)).length, 0, 'no rows listed');
+  } finally {
+    await context.close();
   }
 });
 
@@ -236,7 +293,8 @@ test('AC3: Explain on the event log entry marks that entry among the rows on scr
     const explained = screenContextPayload(recordedMessages(explainTag));
     assert.ok(explained, 'a screen_context pair was recorded');
     assert.equal(explained.route, 'logs/eventlog');
-    assert.equal(explained.rowsSent, row.total, 'every entry on screen was sent, not the entry alone');
+    const cap = await contextRowCap();
+    assertScreenRowsSent(explained, row.total, cap, 'Explain');
     assert.equal(Number('selected' in explained) + Number('focus' in explained), 1, `exactly one marker: ${Object.keys(explained).join(',')}`);
     const entry = 'selected' in explained ? explained.rows[explained.selected] : explained.focus;
     assert.deepEqual(Object.keys(entry).sort(), ['severity', 'text', 'time'], 'as its declared fields');
@@ -253,7 +311,7 @@ test('AC3: Explain on the event log entry marks that entry among the rows on scr
     const typed = screenContextPayload(recordedMessages(typedTag));
     assert.ok(typed, 'the typed turn carried a screen_context pair');
     assert.equal(typed.route, 'logs/eventlog');
-    assert.equal(typed.rowsSent, row.total, 'every entry on screen was sent');
+    assertScreenRowsSent(typed, row.total, cap, 'typed turn');
     assert.ok(typed.rows.some((entry) => String(entry.text).includes(SECONDARY_MARKER)), 'the seeded entry among them');
   } finally {
     await context.close();

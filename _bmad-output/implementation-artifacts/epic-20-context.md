@@ -8,7 +8,7 @@ Give interoperability developers and operators their area inside OcuPilot, where
 
 ## Stories
 
-Run order: 20.1, 20.2, 20.14, 20.15, 20.17, 20.3 to 20.6, 20.13, 20.7, 20.16, 20.8 to 20.12. Stories 20.1 and 20.2 are done.
+Run order: 20.1, 20.2, 20.14, 20.15, 20.17, 20.3 to 20.6, 20.13, 20.7, 20.16, 20.8 to 20.12. Stories 20.1, 20.2 and 20.14 are done.
 
 - Story 20.1: Namespace category gating (done)
 - Story 20.2: Productions, listed and controlled (done)
@@ -23,7 +23,7 @@ Run order: 20.1, 20.2, 20.14, 20.15, 20.17, 20.3 to 20.6, 20.13, 20.7, 20.16, 20
 - Story 20.11: The Analytics rider
 - Story 20.12: The agent gains guided workflows and Investigate
 - Story 20.13: The sign-in hand-off to the embedded vendor editors
-- Story 20.14: Interoperability holders reach OcuPilot
+- Story 20.14: Interoperability holders reach OcuPilot (done)
 - Story 20.15: Per-screen permissions, seen and adjusted
 - Story 20.16: The agent edits rule, DTL and BPL content behind the embedded editors
 - Story 20.17: The agent proposes class and routine source edits, on the person's confirmation
@@ -38,7 +38,7 @@ Run order: 20.1, 20.2, 20.14, 20.15, 20.17, 20.3 to 20.6, 20.13, 20.7, 20.16, 20
 - **Scope.** The epic covers 41 catalog rows: SH-23, SH-25, CP-37, CP-38, IO-02 to IO-29 and AN-02 to AN-10, plus the owner's Stories 20.14 to 20.17. Vendor bundles load in place from `/ui/interop/<app>/index.html`. They are never copied, and they carry no license text.
 - **The owner's decisions of 2026-10-07.** Both former holds are closed.
   - **DW-2141 is decided as AD-63, option A.** The editors load in a same-origin frame in normal mode; see Technical Decisions.
-  - **DW-2140 is decided as Story 20.14.** First, every screen, route and tool that relied on the API floor alone declares its own pair matching its classic page's check, as Story 19.12 did. Then the floor widens to admit `%Ens_Portal:USE` holders. Such a caller, holding no `%Admin_*` and no `%Development:USE`, reaches exactly the surfaces whose own pairs they hold, and each other surface is refused by its named pair. Today the floor (`Screen/Gate.cls`, `ADMINRESOURCES` plus `%Development`) refuses `%EnsRole_Operator`, `_Administrator` and `_Monitor`. `AtelierPort`'s gate adds `%Development:USE`, so SH-25's Atelier-backed features would refuse operators (inference).
+  - **DW-2140 is decided as Story 20.14, now shipped (AD-8 amended).** The API floor admits `%Ens_Portal:USE` holders, and the PRD's admission requirements (FR-3, FR-65) name `%Ens_Portal` too. Such a caller, holding no `%Admin_*` and no `%Development:USE`, reaches exactly the surfaces whose own pairs they hold, and each other surface is refused by its named pair. `AtelierPort`'s gate adds `%Development:USE`, so SH-25's Atelier-backed features would refuse operators (inference).
   - **Story 20.15: per-screen permissions.**
     - A screen's required pairs are shown as the instance evaluates them.
     - Developer accounts, Admin accounts and any `%All` holder may change them, even below the classic page's own requirement. The plan proposes the exact pairs; the Planner suggests `%Development:USE` and `%Admin_Secure:USE`.
@@ -51,7 +51,7 @@ Run order: 20.1, 20.2, 20.14, 20.15, 20.17, 20.3 to 20.6, 20.13, 20.7, 20.16, 20
   - The Analytics rider needs a DeepSee-enabled namespace for everything except its three links. Measured on `ocupilot-b-ci`: HSLIB and HSSYS report analytics, HSCUSTOM and USER report interoperability only, and `%SYS` reports neither.
   - The schema viewer's document parameter (20.8), and the interop editor's `HOST=` and `NEW=1` parameters, which are inferred only from selector names.
 - **Four rows ship read-only first**, because their actions need custom endpoints: queue actions (`Ens.Queue`), job actions (`Ens.Job`), business-partner save and remove (`Ens.Config.BusinessPartner`), and the message-contents renderer. Such a read is a stated partial, not a completed row.
-- **Budgets.** The bundle warns at 3165kB and errors at 4000kB (`ui/angular.json`); 20.2 built at 3.05 MB. The Fixed-strings bound is 2900 literals (`ui/tools/strings.test.mjs:592`), and the table holds 2,828 after 20.2. Each move of the bound carries a comment.
+- **Budgets.** The bundle warns at 3165kB and errors at 4000kB (`ui/angular.json`), and stands at 3.09 MB. The Fixed-strings bound is 2900 literals (`ui/tools/strings.test.mjs:593`), and the table holds 2,864. Each move of the bound carries a comment.
 
 ## Technical Decisions
 
@@ -59,7 +59,7 @@ Run order: 20.1, 20.2, 20.14, 20.15, 20.17, 20.3 to 20.6, 20.13, 20.7, 20.16, 20
 - **AD-62 `Port/InteropPort` is the only way to interoperability.** Every Interoperability screen, read tool and write tool goes through it.
   - **What it calls.** It calls `Ens.Director`, `Ens.Config.Production:ProductionStatus` and `%Dictionary.ClassDefinition:SubclassOf`, as the signed-in user. It never calls `%Api.InteropEditors.*`, whose state route lacks update and restart, answers an unknown state with success, and is `[Hidden]`. It never calls `CleanProduction`, and never makes an HTTP call.
   - **Gate first (AD-29).** The port checks the endpoint's pairs, then READ on the namespace's globals database, or WRITE for a write, and names the failed pair. The vendor's reads check nothing, so this gate is the whole gate for a read.
-  - **Namespace (AD-16, AD-44).** The namespace must report interoperability (`INTEROP.NAMESPACE` otherwise). The port switches by explicit save and restore, and calls no `OcuPilot.*` class while switched.
+  - **Namespace (AD-16, AD-44).** The namespace must report interoperability (`INTEROP.NAMESPACE` otherwise). The port switches by explicit save and restore, and calls no `OcuPilot.*` class while switched. DW-2161 is accepted as wontfix: a confirm from a different namespace than the mint resolves the tool's database pair in the confirming request's scope, and the port re-gates the correct namespace.
   - **Escalation (AD-8).** The vendor escalates; OcuPilot never does. `%SYS.Ensemble` checks the caller's run resource, then runs start, stop, restart and update as `_Ensemble`. Recover runs as the caller.
   - **Writes are action-style (AD-51)** over a port-composed `STATE` read. Each refuses by name, before any vendor call, every state the vendor would answer as a silent success. Each finishes in its own request (AD-7): the production's own timeout is capped at 15 s, a busy production is refused (`INTEROP.PRODUCTION.BUSY`) and left as it was, and no job is spawned.
   - **Pairs beyond the screens' sets.** The production tools declare `%Ens_ProductionRun:USE` and WRITE on the globals database. The rules, transformations and processes lists declare `%Ens_Code:READ`, standing in for the classic page's OR list. That is a named narrower audience, as is Update for a holder of only `%Ens_ConfigItemRun`.
@@ -70,7 +70,12 @@ Run order: 20.1, 20.2, 20.14, 20.15, 20.17, 20.3 to 20.6, 20.13, 20.7, 20.16, 20
   - Four list screens, `interop.productions`, `interop.processes`, `interop.transforms` and `interop.rules`, all rendered by the generic `ListPage`.
   - Five tools, `interop.productions.start`, `.stop`, `.restart`, `.update` and `.recover`, over the abstract `Screen/Tool/InteropProductionAction`. All five are non-destructive and enabled.
   - Tests: `InteropDescriptor`, `InteropControl`, `InteropGate` and `InteropGateSeam`. Probe productions come from `Test/ProductionProbe`, because `Test/InteropProbe` belongs to Story 18.15.
-  - Browser specs call `waitForMapAnswered(page, timeoutMs)` from `ui/browser/namespace-features.mjs` before asserting anything that depends on the navigation map. This fixed a CI race.
+- **What 20.14 shipped, and the rule it sets for every later story.**
+  - `Screen.Gate.FloorResources()` ends with `%Ens_Portal`.
+  - A surface's own pair is any pair on a resource other than `%Ens_Portal`, which is its classic page's check. A surface with none is listed, with its reason, in `Test.InteropFloorOwnPairs`' `FLOORONLY` roster.
+  - `Test.InteropFloor`, `InteropFloorRoutes` and `InteropFloorTurn` pin four principals' rosters: E (`%Ens_Portal` only), `%EnsRole_Monitor`, `_Operator` and `_Administrator`.
+  - Every new Interoperability or Analytics screen, tool or route either declares its own pair or joins the `FLOORONLY` roster with its reason. A new surface whose pairs a stock `%EnsRole_*` grants joins those principals' rosters in its own story.
+- **Browser specs.** Anything read before the navigation map answers waits for `waitForMapAnswered(page, timeoutMs)` from `ui/browser/namespace-features.mjs`. A structural gate measured right after `setViewport` can flake (DW-2163, routed outside this epic).
 - **Audit gaps (AD-15, AD-53).** Production update and recover record no vendor event; start, stop and restart record `%Ensemble/%Production/StartStop`. These are AD-15's nineteenth named case and AD-53's named gap twenty. Measure every new write with auditing on, and name a gap where the vendor is silent.
 - **AD-63: the vendor editors in a same-origin frame (Story 20.13, and every embed in 20.7, 20.8 and 20.10).**
   - **Fixed source.** The frame loads `/ui/interop/<editor>/index.html` on the instance's own origin, with only the editor's own query parameters. Their values come from a read OcuPilot answered, never from a person's text. Example: `rule-editor/index.html?$NAMESPACE=<ns>&rule=<class>`.
@@ -131,14 +136,15 @@ Run order: 20.1, 20.2, 20.14, 20.15, 20.17, 20.3 to 20.6, 20.13, 20.7, 20.16, 20
 ## Cross-Story Dependencies
 
 - **Within the epic.**
-  - **20.14** runs right after 20.2, whose screens already declare their own pairs. **20.15** follows 20.14. **20.17** follows 20.15 and uses its rule that the agent refuses to propose on a screen the user cannot access.
+  - **20.15** runs next. **20.17** follows 20.15 and uses its rule that the agent refuses to propose on a screen the user cannot access.
   - **20.3 to 20.6, 20.9 and 20.12** extend `InteropPort` and the `production` entity. 20.12's recover-stuck-production workflow uses `interop.productions.recover` and `.start`. 20.9 resends what recover marked.
+  - **20.3 owns DW-2157 and DW-2162.** A stop answers the state its post-write read finds, with new `INTEROP.*` codes and Fixed-strings sentences for a production that ends Suspended, or half-stopped past the 15 s cap.
   - **20.13** runs before 20.7 and gates the embeds in 20.7, 20.8 and 20.10, and 20.9's contents viewer if it embeds.
   - **20.16** follows 20.7 and builds on 20.17. **20.10** needs 20.7's editors.
   - **20.11** sits under the Analytics area's pair set and `AreaCoverageProblem`.
-- **Open from 20.2.** A stop from Running once left a production reading Suspended while the tool answered success (deferred, unverified).
 - **Prerequisites.** Epics 11 and 12 are merged. Epic 19 is done, and 20.17 builds on its Story 19.3 saves (`Screen/Tool/ExplorerClassSave`, `ExplorerRoutineSave`). Sprint planning passed with CONCERNS.
-- **Parallel run.** Epic 20 runs whole on slot B. Slot A runs the rest of Epic 18 (18.25 to 18.27, 18.9 to 18.13, burn-down 18.28), then Story 23.5.
+- **Parallel run.** Epic 20 runs whole on slot B. Slot A runs the rest of Epic 18 (18.26, 18.9 to 18.13, burn-down 18.28), then Story 23.5. 18.25 superservers is merged into this branch, and 18.27 closed unbuilt.
+  - After 18.25 the branch holds 60 entity types and 299 production tools, and the client mirror holds 152 descriptors.
   - 18.12 overlaps 20.12 in the tool registry, and 18.13 overlaps `navigation.ts`. Whichever merges second rebases.
   - Keep shared-file edits add-only: `Baseline.cls`, `strings.ts`, EXPERIENCE.md, `SurfaceCoverage`, `Prohibited.cls`, the `Api/Error.cls` prefix lines, and the count bumps in `EntityType.cls`, `Test/Descriptor.cls` and `Test/ReadTool.cls`. The second epic to merge regenerates `screens.generated.ts` whole.
 - **Slot B.**

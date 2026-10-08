@@ -271,7 +271,7 @@ Method TestEveryPortEvaluatesItsDeclaredGate()
 
 /// <p><b>AC6</b> -- the floor has one home. The router's list and the provider port's declared
 /// pair set are both derived from <method>OcuPilot.Screen.Gate.FloorResources</method>, which is
-/// the administrative list plus <code>%Development</code>, so a caller the router would refuse
+/// the administrative list plus <code>%Development</code> and <code>%Ens_Portal</code>, so a caller the router would refuse
 /// cannot make the instance call a provider.</p>
 /// <p>Mutation: edit either derived parameter into a literal that differs -> this goes red. It is
 /// also what catches a compile-time derivation left stale.</p>
@@ -281,7 +281,7 @@ Method TestTheAdministrativeFloorHasOneHome()
     Do $$$AssertNotEquals(tHome, "", "the gate declares the administrative resource list")
     Do $$$AssertEquals(##class(OcuPilot.Api.Router).#ADMINRESOURCES, tHome, "the router's administrative list is the gate's, not a copy")
     Set tFloor = ##class(OcuPilot.Screen.Gate).FloorResources()
-    Do $$$AssertEquals(tFloor, tHome _ ",%Development", "the floor is the administrative list plus %Development")
+    Do $$$AssertEquals(tFloor, tHome _ ",%Development,%Ens_Portal", "the floor is the administrative list plus %Development and %Ens_Portal")
     Do $$$AssertEquals(##class(OcuPilot.Api.Router).#FLOORRESOURCES, tFloor, "the router's floor is the gate's, not a copy")
     Do $$$AssertEquals($Parameter("OcuPilot.Port.ProviderPort", "INVOKEPAIRS"), ##class(OcuPilot.Screen.Gate).FloorPairSpec(), "and the provider port's gate is that floor at USE")
 

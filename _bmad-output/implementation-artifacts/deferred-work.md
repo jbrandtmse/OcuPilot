@@ -10208,6 +10208,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-07T05:13:18Z status=decision-pending owner=burndown by=spec_gate note=product call like DW-1903; decide before 20.2 ships the first Interoperability screen; to the orchestrator in 20.1's clarification
 - 2026-10-07T05:16:20Z status=decision-pending owner=burndown by=orchestrator note=security posture, queued for the owner's morning summary 2026-10-07
 - 2026-10-07T10:04:43Z status=routed owner=20-14-interoperability-holders-reach-ocupilot by=owner note="Admit anyone with the classic Interoperability pages and every screen would first get its own permission check."
+- 2026-10-07T23:50:50Z status=resolved-by:20-14-interoperability-holders-reach-ocupilot owner=20-14-interoperability-holders-reach-ocupilot by=adjudication note=7e48e7ea: Screen.Gate.FloorResources() ends with %Ens_Portal (router, ProviderPort, turn derive it); InteropFloor, InteropFloorRoutes, InteropFloorTurn and InteropFloorOwnPairs pin the four principals' rosters and the floor-only roster
 
 ### DW-2141: The embedded vendor editors' sign-in hand-off needs an AD-28/AD-47 named case: no in-place design keeps both ADs as written (Story 20.13, gates 20.7, 20.8, 20.10)
 - source: spec-20-1-the-sign-in-hand-off-and-namespace-category-gating.md | severity: high | fix-risk: med | footprint: in-epic
@@ -10376,6 +10377,15 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Failed in browser shard 1/3 of attempt 1 on 95eecef8; attempt 2 green; passed in 37649713980 and 37660214447 and 3/3 locally on ocupilot-b-ci (inference: measured mid-reflow after setViewport)
 - 2026-10-07T20:40:47Z status=routed owner=23-5-the-range-end-cleanup-part-5 by=lead note=settle the layout after setViewport(720) before openMenuViolations measures, as 20.1 did for the navigation map; same screen family as DW-2107
 
+### DW-2170: Wire.cls doc comments at :234 and :326 still describe the API floor as %Admin_* or %Development, so a %Ens_Portal holder reads as an AUTH.NOADMIN caller
+- source: spec-20-14-interoperability-holders-reach-ocupilot.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Wire.cls:234 and :326 say a caller holding no %Admin_* and not %Development gets AUTH.NOADMIN; since 20.14 a %Ens_Portal:USE holder clears the floor. Only :864 was cleared for edit (contended with Epic 18, whose one Wire.cls hunk is :615).
+- 2026-10-07T23:49:03Z status=wontfix-accepted owner=20-14-interoperability-holders-reach-ocupilot by=cr note=contended lines outside the cleared region; reopen_if=Wire.cls:234 or :326 still names a two-member floor once Epic 18 merges or the lines are cleared
+
+### DW-2171: EXPERIENCE.md Screen anatomy item 4 (:182) and Privilege Gating (:214) say screens gate on %Admin_* or %Development only, but the Interoperability screens gate on their own %Ens_* pairs
+- source: spec-20-14-interoperability-holders-reach-ocupilot.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: EXPERIENCE.md:182 and :214 name only %Admin_* and %Development as screen gates; Stories 16.8 and 20.2 shipped screens gated on %Ens_EventLog, %Ens_ProductionConfig and %Ens_Code. Pre-existing; contended file, lines outside 20.14's cleared set.
+- 2026-10-07T23:49:03Z status=wontfix-accepted owner=20-14-interoperability-holders-reach-ocupilot by=cr note=pre-existing since 20.2; reopen_if=20.15's Privilege Gating amendment leaves EXPERIENCE.md:214 naming only %Admin_* and %Development
 ### DW-2172: DW-236's detection half: a SQL grant on OcuPilot's own schemas widened outside OcuPilot (another role or _PUBLIC holding it) is not detected; enumerating every grantee on the schema belongs beside install's schema-grant read-back
 - source: spec-18-9-sql-privileges-and-the-permission-extras.md (split) | severity: med | fix-risk: med | footprint: in-epic
 - evidence: 18.9 plan on ocupilot-ci: detection needs every grantee on the schema enumerated; refusal half stays with 18.9's new AD-10 arm (orchestrator ruling 2026-10-07)
@@ -10460,3 +10470,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-9-sql-object-privileges.md (rework 1) | severity: low | fix-risk: high | footprint: out-of-footprint
 - evidence: ocupilot-ci 2026-10-08: GrantPrivilege(EXECUTE, OcuSqlPrivProbe.T1, TABLE, probe user) returned OK; the orphan row USER||1,OcuSqlPrivProbe.T1||e||OcuSqlPrivProbeU||irisowner outlived both
 - 2026-10-08T08:36:27Z status=decision-pending owner=burndown by=harvest note=owner_hold: not reported to InterSystems; OcuPilot's Rules refuse EXECUTE on a table before any vendor call
+### DW-2202: Literal shared-surface counts and lists asserted outside their roster's own test break each story that adds a member: derive them from the registry, descriptor or mirror (Rule 30)
+- source: owner request 2026-10-08 via the Planner; cycle-log-parallel.md | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: 20.1 (Home tiles 7 vs 8, rail 9 vs 11) and 18.9 (users and roles editor tab lists) went red on literals; the entity-type count is written out in Test/Descriptor, MftConnectionDescriptor and SuperserverDescriptor; find the rest by grepping ui/browser, ui/tools and src/OcuPilot/Test for literal counts
+- 2026-10-08T08:48:06Z status=routed owner=23-5-the-range-end-cleanup-part-5 by=orchestrator note=Rule 30's derive-not-literal clause applied to the existing suite; roster pins (SurfaceCoverage, EndpointCoverage, FLOORONLY) stay literal by design

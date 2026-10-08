@@ -244,7 +244,7 @@ Method Fetch(pUser As %String, pQuery As %String, Output pStatus As %Integer, Ou
 /// <p><b>Why it has to be a real principal.</b> <code>%All</code> passes every resource check, so
 /// the suite's own account could never observe this; and <code>%Admin_Secure:USE</code> is what
 /// makes the refusal the <i>port's</i> rather than the router's, which would answer
-/// <code>AUTH.NOADMIN</code> to a principal holding neither an administrative resource nor <code>%Development</code>.</p>
+/// <code>AUTH.NOADMIN</code> to a principal holding no administrative resource, no <code>%Development</code> and no <code>%Ens_Portal</code>.</p>
 /// <p>Mutation: make <method>OcuPilot.Port.LogSourcePort.Gate</method> answer 1 unconditionally
 /// -&gt; the page is served and the status, code and failed-pair assertions go red.</p>
 Method TestAPrincipalWithoutAdminOperateIsRefused()

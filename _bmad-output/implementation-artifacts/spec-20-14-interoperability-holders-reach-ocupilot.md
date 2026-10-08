@@ -2,7 +2,9 @@
 title: 'Story 20.14: Interoperability holders reach OcuPilot'
 type: 'feature'
 created: '2026-10-07'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: 'e7840fbd7bb141c1161792f84e27d4bcb8dd17c1'
+baseline_commit: '7c1a670c1112f73804de3d6306562b91b6028121'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -132,6 +134,12 @@ Principals, each with READ on the install namespace's code database: **E** also 
   - `InteropFloorTurn` under `OCUPILOT_ALLOW_TEST_PROVIDER`.
 - `ui/browser/interop-floor.browser-spec.mjs` (new): Adm signs in. It sees no no-privileges notice, `interoperability/processes?ns=HSCUSTOM` renders rows, and Permissions stays listed but unavailable, naming `%Admin_Secure:USE` (`privilegeRequiresResource`). It removes the principal in `after`.
 
+- [x] [CI] Run 37704740185 on 85d5d96c, browser shard 2/3, failed `ui/browser/secondary-logs.browser-spec.mjs` AC4 (:141-160): it could not find `[data-ocu-log="empty"]`. `interop-productions.browser-spec.mjs` (20.2) ran earlier in the same shard, and its production start and stop wrote interoperability event-log rows. This story's new spec file had moved the shard composition. The fix: the spec holds whatever another spec left (spine Conventions › Tests).
+  - AC4 compares each viewer with what that source's own read answers at that moment: rows on screen when the read answers rows, "No entries." when it answers none. It keeps the empty state pinned wherever the spec itself can guarantee emptiness.
+  - AC3's check that every entry on screen was sent (:239) holds when the store holds more rows than the context cap (measured on `ocupilot-b-ci`: 1000 on screen, 200 sent).
+  - Proof: on `ocupilot-b-ci`, run `interop-productions` and then `secondary-logs` in one `node --test` call. It is red before the fix and green after, and the `mutation:` lines are updated.
+  - Never make `interop-productions` delete the vendor's log rows, and never pin a spec to a shard.
+
 **Acceptance Criteria:**
 
 - **AC1 (first criterion).** Given every descriptor, tool and route, when they are evaluated as E, Mon, Op and Adm past the widened floor, then each principal opens exactly its roster. Every open screen that replaces a classic page declares a pair from that page's `RESOURCE` that the principal holds. So nothing opens that the classic portal would refuse.
@@ -141,11 +149,78 @@ Principals, each with READ on the install namespace's code database: **E** also 
 - **AC5 (browser).** Given Adm in a real browser, when it signs in, then it works in Interoperability without the no-privileges notice, and Permissions names its failed pair.
 - **AC6 (orchestrator condition: every surface has its own permission check).** Given every screen, read tool, write tool and route, when the suite runs, then each either declares a pair outside the floor or is listed in the floor-only roster with its reason. A surface with neither reddens, naming it.
 
+### Review Findings
+
+Code review 2026-10-07, four layers: 0 decision-needed, 10 patches applied, 2 deferred, 15 rejected.
+
+- [x] [Review][Patch] The route sweep covered E and Op only, while AC1 and the Rosters table name Mon and Adm (MED, fix-risk low) [src/OcuPilot/Test/InteropFloorRoutes.cls:22]
+- [x] [Review][Patch] `INTEROPRESOURCE`'s doc said clearing the floor opens no surface (LOW) [src/OcuPilot/Screen/Gate.cls:59]
+- [x] [Review][Patch] `DEVELOPMENTRESOURCE`'s doc still called it the one non-administrative member (LOW) [src/OcuPilot/Screen/Gate.cls:50]
+- [x] [Review][Patch] Router's `ADMINRESOURCES` doc called it the floor's "half" (LOW) [src/OcuPilot/Api/Router.cls:39]
+- [x] [Review][Patch] `InteropFloorOwnPairs`' header said every pair on another resource refuses E; the public `%DeepSee_Portal` does not (LOW) [src/OcuPilot/Test/InteropFloorOwnPairs.cls:4]
+- [x] [Review][Patch] `FLOORONLY` gave AgentGuardrails `owner-scoped`; it shows instance-wide declarations, so `no classic resource` (LOW) [src/OcuPilot/Test/InteropFloorOwnPairs.cls:29]
+- [x] [Review][Patch] `DeveloperFloor`'s header still said "both halves" (LOW) [src/OcuPilot/Test/DeveloperFloor.cls:6]
+- [x] [Review][Patch] `InteropFloor`'s tools doc gave an untrue reason for "no write tool" (LOW) [src/OcuPilot/Test/InteropFloor.cls:327]
+- [x] [Review][Patch] `InteropFloorTurn` read its grants back through `CheckUserPermission`, not `Effective` (Always: Real principals) (LOW) [src/OcuPilot/Test/InteropFloorTurn.cls:68]
+- [x] [Review][Patch] `ci-throwaway.sh` said one of the four principals runs the turn (LOW) [scripts/ci-throwaway.sh:314]
+- [x] [Review][Defer] `Wire.cls` :234 and :326 still state the two-member floor [src/OcuPilot/Test/Wire.cls:234] — deferred: DW-2170, contended lines outside the cleared region
+- [x] [Review][Defer] EXPERIENCE.md :182 and :214 name only `%Admin_*` and `%Development` as screen gates [EXPERIENCE.md:214] — deferred: DW-2171, pre-existing since 20.2
+
+**AC6 verdict.** The pin meets the condition for every surface kind: `Screen.Registry.Descriptors` enumerates every descriptor, `ListTools` every tool (unadvertised and governance-disabled writes included), and the route sweep every `UrlMap` route as all four principals. `InteropFloor`'s exact rosters catch what the own-pair test cannot, a surface whose only pair is public. The reading is right: the floor is a disjunction, so a pair on one member is that surface's classic `RESOURCE` and refuses every other member's holder by name. The literal reading would list Explorer and Logs surfaces under reasons untrue for them.
+
+Rejected:
+
+- `FLOORONLYRESOURCE` is a literal: false; a test literal is a pin, as `PortGate`'s floor literal is.
+- The AC6 reading itself: not a defect (verdict above).
+- Below-floor read-backs (`DeveloperFloor` :113, `ConfigGate` :147) skip `%Ens_Portal`: low; the `AUTH.NOADMIN` assertion reddens instead, and the fix adds guards.
+- The `AUTH.NOADMIN` reason lists the floor by hand: spec-bound (Tasks, AC4).
+- `InteropFloorTurn` does not check the held read's rows: false; AC3 asks for no error, and HSCUSTOM may hold no production.
+- A failed `OnBeforeAllTests` leaves principals: low; throwaway only, replaced by the next `EnsurePrincipal`, as in `DeveloperFloor`.
+- `InteropFloor` calls `DeveloperFloorFixture.CodeResource` directly: low, cosmetic.
+- Duplicated helpers and rosters: low; drift fails loudly.
+- `%Ens_Portal` at READ or WRITE judged floor-only, and a letter-spelled classic permission: theoretical; each is a false red, never a false green.
+- The triage log's reason on unsent non-GET routes: its fix edits the spec.
+- Routes carry one class-level reason, and roster non-GETs are not sent: spec-bound (I/O matrix, Tasks).
+- Router edits sit at baseline :1322-1323 and :1424, not the cited :1318-1321 and :1421: no harm; they are the cleared elements, and Epic 18's Router hunks are at :251 and :1869.
+- The ship-time AD-8 list omits `InteropFloorOwnPairs`: a spine edit, passed to the runner.
+- `navigation.ts` overlaps 18.13: doc comments only; the second to merge rebases.
+
+Rework re-review 2026-10-08 (scope `7c1a670c..HEAD`, four layers): 0 decision-needed, 8 patches applied, 0 deferred, 5 rejected. The `[CI]` item is fixed: both legs hold whatever another spec left, each pinned by an observed product mutation. Verified on `ocupilot-b-ci`: `interop-productions` then `secondary-logs`, 12/12; `npm run test:tools` 1883/1883.
+
+- [x] [Review][Patch] AC3's `rowsSent === min(on screen, cap)` is not AD-24's bound: the total-size cut lowers it on long rows, and a cap below 2 admits the entry alone (MED, fix-risk low) [ui/browser/secondary-logs.browser-spec.mjs:153]
+- [x] [Review][Patch] AC4 asserted "No entries." only where a store happened to be empty; a new leg serves xdbc's read empty and expects it (MED, fix-risk low) [ui/browser/secondary-logs.browser-spec.mjs:197]
+- [x] [Review][Patch] The System Monitor log's own lines, a fresh-install property, were no longer checked (LOW) [ui/browser/secondary-logs.browser-spec.mjs:185]
+- [x] [Review][Patch] The header's `mutation:` lines named unobserved product mutations, one unable to redden alone, and `## Verification` had none (LOW) [ui/browser/secondary-logs.browser-spec.mjs:10]
+- [x] [Review][Patch] The cap read checked no HTTP status (LOW) [ui/browser/secondary-logs.browser-spec.mjs:140]
+- [x] [Review][Patch] The shape check's message said the read "answered rows" (LOW) [ui/browser/secondary-logs.browser-spec.mjs:184]
+- [x] [Review][Patch] `shown > 0` could not fail once the empty-state assertion passed; removed (LOW) [ui/browser/secondary-logs.browser-spec.mjs:189]
+- [x] [Review][Patch] The header's broken wrap, and a hoisted `let cap` (LOW) [ui/browser/secondary-logs.browser-spec.mjs:2]
+
+Rejected (re-review):
+
+- AC4 reads the store after the viewer renders: low; a store must gain its first row inside that window, and the fix adds a second read and branches.
+- AC4 compares a different route than the viewer reads: false; both reach `LogSourcePort.Recent`.
+- `baseline_revision` and `baseline_commit` differ: lead bookkeeping, and its fix edits the frontmatter.
+- The rework's Auto Run Result omits the skipped review layers: its fix edits the spec; the cycle log records the deviation.
+- The recorded context may carry `truncated: false` for a store cut at 1,000 rows (inference): outside the rework range and not high; DW-1608 holds it with its `reopen_if`.
+
 ## Spec Change Log
+
+- 2026-10-07, runner: rework iteration 1, trigger CI (run 37704740185). It covers only the `[CI]` item.
 
 - 2026-10-07, runner spec gate: the orchestrator cleared the six contended edits, on the condition that the audit's "no surface needs a new pair" becomes a pinned test (AC6, the floor-only roster task, and its mutation row). The AD-8 amendment and the PRD FR-3 and FR-65 lines are written.
 
 ## Review Triage Log
+
+### 2026-10-07 -- Review pass
+
+- verdicts: 4 findings -- high 0, medium 0, low 1, false 1, maybe-false 0 (plus 2 notes rejected)
+- findings:
+  - `[false]` `[reject]` Roster non-GET routes are never sent, so AC2 is unverified for them -- the I/O matrix says "Roster non-GET routes are not sent"; `POST /turn` and `POST /conversation` are sent by `InteropFloorTurn`.
+  - `[low]` `[patch]` AC5 has no `mutation:` line of its own -- applied: `InteropProcessList` pairs to `%Admin_Secure:USE` alone, browser spec red on rows, reverted byte-identical (`diff -r` with the throwaway source), line written.
+  - `[low]` `[reject]` the "holds no write tool" assertion has no mutation of its own -- no write tool exists in the roster's reach; the AC6 write-tool mutation pins the write half; a mutation would need a new write tool.
+  - `[false]` `[reject]` `ci-timings.json` needs rows for the new classes -- `npm run test:tools` passed; new files are placed by the shard tool's default share, not by a required row.
+  - Auditor note, not a finding: the AC6 reading counts any pair on a resource other than `%Ens_Portal` as "own"; recorded under "Reading of AC6" and passed to the orchestrator.
 
 ## Design Notes
 
@@ -232,7 +307,35 @@ Principals, each with READ on the install namespace's code database: **E** also 
 | AC4 | `Router.FLOORRESOURCES` as a literal, and separately the former reason | `PortGate`; `DeveloperFloor`'s below-floor test |
 | AC6 | Drop one surface's own pairs: a screen (`LogEventViewer`), a write tool (an `interop.productions.*` tool's `%Ens_ProductionRun:USE`) and a route (`Gate()` out of `FormRules.HandleForm`), each in turn | the floor-only roster test, naming the surface; the route through `InteropFloorRoutes` |
 
+**Mutations run (Rule 19)**, each applied on `ocupilot-b-ci`, observed red, then reverted byte-identical (`diff -r` of the worktree and the throwaway source tree) and recompiled:
+
+- mutation: AC1 -- `LogEventViewer`'s `privileges` and `ownPrivileges` without `%Ens_EventLog:USE` -> `InteropFloor` sign-in, parity and tools red; `InteropFloorOwnPairs` red naming `screen:LogEventViewer` and `tool:logs.eventlog.read`. The event-log read also meets `LogSourcePort.EVENTLOGPAIRS`, so `TestTheEventLogOpensForTheOperatorAlone` reddens only with both dropped (observed: red).
+- mutation: AC2 -- `FloorResources()` without `%Ens_Portal`, `Router`, `ProviderPort` and `Turn` recompiled -> `InteropFloor` (6 of 7), `InteropFloorRoutes`, `InteropFloorTurn` and `interop-floor.browser-spec.mjs` ("the frame, not the no-privileges notice") red.
+- mutation: AC2 routes -- `Gate()` out of `FormRules.HandleForm` (line 108) -> `InteropFloorRoutes` red on `GET /web-applications/form` for both principals (answers 500 `INTERNAL`, not a named pair).
+- mutation: AC3 -- `Turn.cls:150` back to `Router.#ADMINRESOURCES` -> `InteropFloorTurn` red; separately `INVOKEPAIRS` as the `ADMINRESOURCES` members at `USE` alone -> `InteropFloorTurn` red.
+- mutation: AC4 -- `Router.FLOORRESOURCES` as a literal -> `PortGate.TestTheAdministrativeFloorHasOneHome` red; the former reason text in `OnPreDispatch` -> `DeveloperFloor.TestBelowTheFloorIsRefusedNamingEachMember` red.
+- mutation: AC6 screen -- `LogEventViewer` as in AC1 -> `InteropFloorOwnPairs` red naming it. Write tool -- `InteropProductionAction.PrivilegePairs` answering `%Ens_Portal:USE` alone (dropping `%Ens_ProductionRun:USE` alone leaves the screen's `%Ens_ProductionConfig:READ`, so it does not redden) -> red naming `interop.productions.start`, `.stop`, `.restart`, `.update` and `.recover`. Route -- `Gate()` out of `FormRules.HandleForm` -> `InteropFloorRoutes`. A stale entry -- `Home` given `%Admin_Operate:USE` -> red, "declares its own pair, so FLOORONLY must not list it".
+- mutation: reads -- `InteropProductionList` and `InteropPort.PRODUCTIONPAIRS` both reduced to `%Ens_Portal:USE` -> `TestTheInteroperabilityReadsFollowTheirOwnPairs` red (the descriptor alone reddens sign-in, parity and tools).
+- mutation: administrative screen -- `WebAppList` with no `privileges` -> `TestAnAdministrativeScreenIsRefusedNamingItsPair`, sign-in, parity and tools red.
+- mutation: other namespace -- `%DB_USER:R` added to the fixture's code role -> `TestAnotherNamespaceIsDeniedUnchanged` red.
+
+- mutation: AC5 -- `InteropProcessList`'s `privileges` and `ownPrivileges` as `%Admin_Secure:USE` alone (the Administrator lacks it) -> `interop-floor.browser-spec.mjs` red on the Business processes rows (`waitForRows` timeout); reverted, spec green.
+- mutation: AC1 routes, four principals (code review) -- `Gate()` out of `FormRules` (:108 and :188) in the throwaway's copy -> `InteropFloorRoutes` run 1685 red on `GET /web-applications/form` and `/name` for each of portal, monitor, operator and administrator; reverted (`diff -rq` identical), run 1687 green (E and Mon refused 146 and opened 17, Op and Adm 145 and 18).
+- mutation: `[CI]` AC4 agreement (re-review) -- `LogPage.HandleRecent` answering `entries` [] in the throwaway's copy -> the `secondary-logs` agreement leg red, "systemmonitor: its read answers rows, so the viewer lists them"; reverted (`diff -rq` identical) and reloaded.
+- mutation: `[CI]` AC4 "No entries." (re-review) -- `LogViewerPage.emptyTitle` answering `logViewerNoMatches`, bundle rebuilt and redeployed -> both AC4 legs red ("No matches." on `taskerrors`, and on the intercepted `xdbc`); reverted, clean `main-RVOZW6RO.js` redeployed with an unchanged md5.
+- mutation: `[CI]` AC3 (re-review) -- `Turn.BoundedContext`'s first `Bound.Apply` at a row cap of 1 -> AC3 red, "Explain: the rows on screen were sent, not the entry alone (1 sent, cap 200)"; reverted and reloaded.
+
+**Reading of AC6.** "A pair outside the floor members" is implemented as a pair on any resource other than `%Ens_Portal`: the `%Development` and `%Admin_Operate` pairs of the Explorer and Logs surfaces refuse the `%Ens_Portal` holder by name, so the System Explorer and Logs surfaces that declare `%Development` or `%Admin_Operate` alone would all be listed under the literal reading. `FLOORONLY` holds the ten that declare nothing else: five screens and five tools.
+
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
+
+- Change: `Screen.Gate` gains `INTEROPRESOURCE = "%Ens_Portal"` and `FloorResources()` ends with it; the router, `ProviderPort` and the turn derive it. `AUTH.NOADMIN`'s reason names all three kinds. Docs and test prose corrected in place, inside the cleared contended regions only.
+- Tests added: `InteropFloor`, `InteropFloorFixture`, `InteropFloorRoutes`, `InteropFloorTurn`, `InteropFloorOwnPairs` (the AC6 floor-only roster, ten entries) and `ui/browser/interop-floor.browser-spec.mjs`; `scripts/ci-throwaway.sh` arming lines (add-only).
+- Review: 1 patch (AC5 mutation line), 3 rejected, 0 deferred. Follow-up review recommended: false.
+- Verified: full ObjectScript sweep 507 classes, 4051 tests, 0 failed; smoke 50/50; `npm test` 2611 and `test:tools` 1883 passed; bundle 3.09 MB; both interop and developer-floor browser specs pass; every AC has a `mutation:` line.
+- Residual: AC6 is read as "a pair on a resource other than `%Ens_Portal`" (ten surfaces listed); the literal reading would also list Explorer and Logs surfaces that declare only `%Development` or `%Admin_Operate`. The orchestrator should confirm. The spine, PRD and epics.md ship-time lines are the runner's.
+
+Rework iteration 1 (CI): `ui/browser/secondary-logs.browser-spec.mjs` AC4 now compares each viewer's empty state with the source's own read, and AC3 bounds `rowsSent` by `min(rows on screen, contextRowCap)` read from `GET /agent/context`. Verified on `ocupilot-b-ci` (1000 event-log rows): `interop-productions` then `secondary-logs` 11/11 pass; the old AC3 equality and an inverted AC4 branch each redden their leg; `mutation:` lines in the spec header. Follow-up review recommended: false.

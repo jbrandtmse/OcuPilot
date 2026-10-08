@@ -3,7 +3,7 @@
 /// screens, reads System Explorer in the install namespace and in <code>USER</code>, is refused an
 /// administrative screen naming its pair, opens Logs on the analytics log alone, and reads Home's
 /// system information with the dashboard members empty and nothing logged. A principal below the
-/// floor is refused naming both halves of it, and an administrator without <code>%All</code> is
+/// floor is refused naming each member of it, and an administrator without <code>%All</code> is
 /// still answered the dashboard. Two derived legs hold the rosters: every screen the
 /// map opens to the principal is a declared one whose classic page's compiled <code>RESOURCE</code>
 /// admits it, and the tools whose required pairs it holds are exactly the declared thirty-six,
@@ -340,18 +340,18 @@ Method TestLogsOpensOnTheAnalyticsLogAlone()
 }
 
 /// <p><b>Below the floor</b>: a principal holding only the code database's READ is refused 403
-/// <code>AUTH.NOADMIN</code>, and the reason names both halves of the floor. Every route is swept by
+/// <code>AUTH.NOADMIN</code>, and the reason names each member of the floor. Every route is swept by
 /// <class>OcuPilot.Test.ConfigGate</class>.</p>
-/// <p>Mutation: restore the router's former reason -> the <code>%Development</code> assertion goes
-/// red.</p>
-Method TestBelowTheFloorIsRefusedNamingBothHalves()
+/// <p>Mutation: restore the router's former reason -> the <code>%Development</code> and
+/// <code>%Ens_Portal</code> assertions go red.</p>
+Method TestBelowTheFloorIsRefusedNamingEachMember()
 {
     Do $$$AssertTrue(..PreparedSetupOk, "setup read back the principals' grants")
     Do ..Request("GET", "/instance", $Parameter(..#FIXTURE, "NEITHERUSER"), .tStatus, .tObject, .tText)
     Do $$$AssertEquals(tStatus, 403, "the identity call is refused: " _ $Extract(tText, 1, 200))
     Set tReason = $Select($IsObject(tObject): tObject.%Get("reason"), 1: "")
     Do $$$AssertEquals($Select($IsObject(tObject): tObject.%Get("code"), 1: ""), "AUTH.NOADMIN", "on the no-administrative-privilege code")
-    Do $$$AssertTrue((tReason [ "%Admin_") && (tReason [ "%Development"), "naming both halves of the floor: " _ tReason)
+    Do $$$AssertTrue((tReason [ "%Admin_") && (tReason [ "%Development") && (tReason [ "%Ens_Portal"), "naming each member of the floor: " _ tReason)
 }
 
 /// <p><b>Home's system information</b> answers the developer principal 200 with the five dashboard
