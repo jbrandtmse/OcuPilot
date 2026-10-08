@@ -8310,7 +8310,7 @@ So that a change the agent proposes lands in the content the editor shows.
 
 ### Story 20.17: Long blocks in the agent panel start collapsed
 
-[AMENDED 2026-10-08, orchestrator merge gate: three-way split of the original Story 20.17, Rule 5] The original story's criteria now sit in 20.17 (the panel collapse, ordered first), 20.19 (the agent's edits of existing classes and routines) and 20.20 (the agent's creates). Order: 20.17, 20.19, 20.20, then 20.3-20.6.
+[AMENDED 2026-10-08, orchestrator merge gate: three-way split of the original Story 20.17, Rule 5] The original story's criteria now sit in 20.17 (the panel collapse, ordered first), 20.19 (the agent's edits of existing classes and routines) and 20.20 (the agent's creates). Order: 20.17, 20.19, 20.21, 20.20, then 20.3-20.6 (20.21 split from 20.19 on 2026-10-08).
 
 [AMENDED 2026-10-07, owner decision relayed by the Planner] The owner's words: "Long content inn the plan should be collapsable in the agent panel with "shore more/show less" staring collapsed if more than a few lines." It is built into this story because this story puts the first long source on a proposal card, so the collapse ships before the agent can propose source, and it applies panel-wide. The threshold, the summary wording and the layout are plan details; EXPERIENCE.md gets its Rule 20 amendment at this story's spec gate. If the story grows too big, its plan may recommend a split, the panel collapse as its own story ordered first.
 
@@ -8355,47 +8355,29 @@ So that a change I ask for in conversation lands as a confirmed proposal, and th
 - **Then** the turn is refused at that screen, no proposal row is created, and the turn completes.
 - DW-2181: The agent propose-and-confirm path of the three Screen permissions tools is declared but never run end to end (ledger; routed by harvest 2026-10-08)
 
-### Story 20.19: The agent edits existing classes and routines, on the person's confirmation
+### Story 20.19: The agent reads class and routine source
 
-[AMENDED 2026-10-08, orchestrator merge gate: three-way split of the original Story 20.17, Rule 5] The original story's criteria now sit in 20.17 (the panel collapse, ordered first), 20.19 (the agent's edits of existing classes and routines) and 20.20 (the agent's creates). Order: 20.17, 20.19, 20.20, then 20.3-20.6.
+[AMENDED 2026-10-08, orchestrator ruling on Story 20.19's plan (Q3 split), by=merge_gate, Rule 5] This story is the source read only. The saves - the advertised Saves, the diff card, the version check, the compile report and the refusals at the mint and at Confirm - moved to Story 20.21, ordered after this story and before 20.20. The owner kept Q2 on 2026-10-08: "Yes it should send the code." There is no on/off switch for the source read.
+
+[AMENDED 2026-10-08, orchestrator merge gate: three-way split of the original Story 20.17, Rule 5] The original story's criteria now sit in 20.17 (the panel collapse, ordered first), 20.19 (the agent's edits of existing classes and routines) and 20.20 (the agent's creates). Order: 20.17, 20.19, 20.21, 20.20, then 20.3-20.6 (20.21 split from 20.19 on 2026-10-08).
 
 [AMENDED 2026-10-07, owner decision relayed by the Planner, Rule 5] The owner's words: "Agent starts switched on; and we want to loosen the rule and allow the agent to edit source code (including classes and routines) on user confirmation." This reverses Story 19.3's person-only save; the spine's AD-53 is amended (feature `a191c34b`), and Story 19.3's block carries the pointer note. Ordered right after Story 20.15, whose check that the agent refuses where the user cannot access the screen it uses.
 
 [AMENDED 2026-10-08, orchestrator rulings on Story 20.17's plan, by=merge_gate] Q2: the model reads a document's source through a read tool capped at about 60,000 characters, passed through AD-60's sanitizer and reporting truncation, planned as its own task (the owner may reverse it before this story's implement). Q3: every `%` name is refused to the agent, for saves and creates; a person's Save is unchanged. Q4: the compile outcome shows after Confirm; before it the card says the compile runs on Confirm, and a confirmed card says plainly when the document saved but failed to compile and that the saved text is what is now on the instance.
 
 As a developer,
-I want the agent to propose a class or routine edit that I confirm,
-So that a change I ask for in conversation lands in the source.
+I want the agent to read a class's or routine's source when I ask about it,
+So that its answers and its later edits start from the text that is on the instance.
 
 **Acceptance Criteria:**
 
-- **Given** `explorer.classes.save` and `explorer.routines.save`
+- **Given** a class or routine the agent is asked about
+- **When** it reads the document
+- **Then** it reads the source through a read tool capped at about 60,000 characters, cut at whole lines, passed through AD-60's sanitizer, and reporting truncation (Q2); the text goes to the configured model provider, as the owner ruled.
+
+- **Given** the two new read tools
 - **When** this story ships
-- **Then** both are advertised, agent-offered, confirmed writes, and their governance keys are enabled.
-
-- **Given** a document the agent is asked to change
-- **When** it prepares the proposal
-- **Then** it reads the document's source through a read tool capped at about 60,000 characters, passed through AD-60's sanitizer and reporting truncation (Q2).
-
-- **Given** a proposed source edit
-- **When** its card is shown
-- **Then** it shows the whole change as a diff and the compile outcome, because confirmed code runs as the user.
-
-- **Given** a document that changed after the mint
-- **When** the proposal is confirmed
-- **Then** the confirm is refused (ETag or fingerprint).
-
-- **Given** a confirmed source edit
-- **When** it completes
-- **Then** its compile results are reported and the agent marker is written.
-
-- **Given** AD-10's refusal of OcuPilot's own packages, the read-only system databases (`%` and system classes), and `explorer.sqldata.save`
-- **When** this story ships
-- **Then** each is unchanged and pinned: OcuPilot's own code and the system classes stay refused, and `explorer.sqldata.save` stays person-only and unadvertised.
-
-- **Given** a proposed edit of a document under OcuPilot's own packages or a `%` name
-- **When** the agent would mint it
-- **Then** it is refused at the mint as well as at Confirm (AD-10, Q3).
+- **Then** their names follow the spine's tool-naming convention for the classes and routines screens, or the spec says why they do not, and every existing save, delete and import key is unchanged.
 
 - **Given** any further security-posture question its plan finds
 - **When** it is planned
@@ -8403,7 +8385,7 @@ So that a change I ask for in conversation lands in the source.
 
 ### Story 20.20: The agent creates new classes and routines, on the person's confirmation
 
-[AMENDED 2026-10-08, orchestrator merge gate: three-way split of the original Story 20.17, Rule 5] The original story's criteria now sit in 20.17 (the panel collapse, ordered first), 20.19 (the agent's edits of existing classes and routines) and 20.20 (the agent's creates). Order: 20.17, 20.19, 20.20, then 20.3-20.6.
+[AMENDED 2026-10-08, orchestrator merge gate: three-way split of the original Story 20.17, Rule 5] The original story's criteria now sit in 20.17 (the panel collapse, ordered first), 20.19 (the agent's edits of existing classes and routines) and 20.20 (the agent's creates). Order: 20.17, 20.19, 20.21, 20.20, then 20.3-20.6 (20.21 split from 20.19 on 2026-10-08).
 
 [AMENDED 2026-10-07, owner decision relayed by the Planner] The owner's words: "A note... Agent should be able to propose new classes and routines." This story therefore covers creating new classes and routines as well as editing existing ones (AD-53, feature `a9de13c9`). The create criteria below are the Planner's reading, for the plan to confirm; a genuine posture question goes back to the orchestrator.
 
@@ -8430,6 +8412,50 @@ So that a document I ask for in conversation is created on the instance.
 - **Given** a create
 - **When** it is proposed
 - **Then** it targets the user's current namespace and requires write access to that namespace's code database, settled against the screen's effective pairs from Story 20.15; it uses this story's key, enabled, or a key of its own that also ships enabled.
+
+- **Given** any further security-posture question its plan finds
+- **When** it is planned
+- **Then** the question is returned to the orchestrator for the owner, with options and a recommendation.
+
+### Story 20.21: The agent saves edits to existing classes and routines
+
+[AMENDED 2026-10-08, orchestrator ruling on Story 20.19's plan (Q3 split), by=merge_gate, Rule 5] Chartered from Story 20.19's saves (its plan's Part B). Order: 20.17, 20.19, 20.21, 20.20, then 20.3-20.6. Story 20.19's source read is in place before this story starts.
+
+[AMENDED 2026-10-07, owner decision relayed by the Planner, Rule 5, carried from Story 20.19] The owner's words: "Agent starts switched on; and we want to loosen the rule and allow the agent to edit source code (including classes and routines) on user confirmation." This reverses Story 19.3's person-only save; the spine's AD-53 is amended (feature `a191c34b`).
+
+[AMENDED 2026-10-08, orchestrator rulings on Story 20.17's plan, by=merge_gate, carried from Story 20.19] Q3: every `%` name is refused to the agent; a person's Save is unchanged. Q4: the compile outcome shows after Confirm; before it the card says the compile runs on Confirm, and a confirmed card says plainly when the document saved but failed to compile and that the saved text is what is now on the instance.
+
+[AMENDED 2026-10-08, orchestrator ruling on Story 20.19's plan (Q1), by=merge_gate] The owner's 2026-10-07 decision keeps system and `%` classes refused to the agent (AD-53). Because `%SYS`'s non-`%` system code sits in IRISSYS, mounted read-write, the agent saves only a document stored in its namespace's own routines database, and never in `%SYS`, checked at the mint and again at Confirm, before anything is written. Packages mapped from another database stay a person's Save, and the agent's refusal says so plainly: where the document lives, and that the person can save it from the editor. A person's Save is unchanged.
+
+As a developer,
+I want the agent to propose a class or routine edit that I confirm,
+So that a change I ask for in conversation lands in the source.
+
+**Acceptance Criteria:**
+
+- **Given** `explorer.classes.save` and `explorer.routines.save`
+- **When** this story ships
+- **Then** both are advertised, agent-offered, confirmed writes, and their governance keys are enabled.
+
+- **Given** a proposed source edit
+- **When** its card is shown
+- **Then** it shows the whole change as a diff and says the compile runs on Confirm, because confirmed code runs as the user.
+
+- **Given** a document that changed after the mint
+- **When** the proposal is confirmed
+- **Then** the confirm is refused (ETag or fingerprint).
+
+- **Given** a confirmed source edit
+- **When** it completes
+- **Then** its compile results are reported, a saved-but-not-compiled document is said plainly, and the agent marker is written.
+
+- **Given** AD-10's refusal of OcuPilot's own packages, the read-only system databases (`%` and system classes), and `explorer.sqldata.save`
+- **When** this story ships
+- **Then** each is unchanged and pinned: OcuPilot's own code and the system classes stay refused, and `explorer.sqldata.save` stays person-only and unadvertised.
+
+- **Given** a proposed edit of a document under OcuPilot's own packages, a `%` name, a document in `%SYS`, or a document not stored in its namespace's own routines database
+- **When** the agent would mint it, or the person confirms it
+- **Then** it is refused at the mint and again at Confirm, before anything is written (AD-10, AD-53, Q1, Q3), and a mapped document's refusal names where it lives and that the person can save it from the editor.
 
 - **Given** any further security-posture question its plan finds
 - **When** it is planned

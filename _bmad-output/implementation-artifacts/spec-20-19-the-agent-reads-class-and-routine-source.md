@@ -1,8 +1,8 @@
 ---
-title: "Story 20.19: The agent edits existing classes and routines, on the person's confirmation"
+title: "Story 20.19: The agent reads class and routine source"
 type: 'feature'
 created: '2026-10-08'
-status: 'blocked'
+status: 'draft'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -15,22 +15,15 @@ deferred: []
 
 ## Intent
 
-**Problem:** The agent can neither read a class's or routine's source nor propose a change to it. System Explorer's two Saves are person-only and unadvertised (AD-53), and a document's text never reaches a tool (AD-36). The owner reversed both: "we want to loosen the rule and allow the agent to edit source code (including classes and routines) on user confirmation", and, for the source read, "Yes it should send the code."
+**Problem:** The agent cannot read a class's or routine's source: a document's text never reaches a tool (AD-36). The owner reversed that for the source read on 2026-10-08: "Yes it should send the code." (Q2, kept). The agent's saves are Story 20.21 and its creates Story 20.20; this story ships only the read.
 
-**Approach:**
-
-- **Part A, the source read** (its own task, Q2 as ruled): one read tool per kind answers one document's text. The text is cut at whole lines so it serializes to at most 60,000 characters, the cut is reported, and the result reaches the model through AD-60's sanitizer like every tool result.
-- **Part B, the save:**
-  - Both Saves are advertised. The agent sends exact replacements; the mint applies them to the text it reads on the instance and refuses what the agent may not change.
-  - The mint stores the new text, the version it read and one changed-lines hunk.
-  - The card shows the hunk as a line diff and says the compile runs on Confirm. Once confirmed, it says plainly when the save did not compile.
-  - Confirm writes through the person's Save path, unchanged.
+**Approach:** one read tool per kind answers one document's text. The text is cut at whole lines so it serializes to at most 60,000 characters, the cut is reported, and the result reaches the model through AD-60's sanitizer like every tool result. There is no on/off switch for the read (owner, 2026-10-08).
 
 ## Boundaries & Constraints
 
 **Always:**
 
-- **Names.** The source reads are `explorer.class.source` and `explorer.routine.source`, kind `read`, bound to the viewers `ExplorerClassDocument` and `ExplorerRoutineDocument` (`explorer.class`, `explorer.routine`). The saves keep `explorer.classes.save` and `explorer.routines.save`.
+- **Names.** The spine's convention is `<area>.<screen>.<verb>`, with `read` for the one read tool per screen. The reads bind to the viewer screens `explorer.class` and `explorer.routine` (descriptors `ExplorerClassDocument`, `ExplorerRoutineDocument`), which carry no read tool today, so they are `explorer.class.read` and `explorer.routine.read`. If the plan finds a reason they cannot be, it names the reason under Design Notes (orchestrator, 2026-10-08).
 - **The source read.**
   - Input `{name}`: one document, as the viewer's `name` criterion takes it (maxLength 256).
   - Gate: the viewer's pairs (`Gate.Evaluate`), then the port's own gate.
@@ -40,62 +33,22 @@ deferred: []
     - A first line longer than that alone is cut to fit.
     - `lines` is the document's line count.
   - A document whose text the instance does not keep (`available` false) answers 404 `PORT.NOTFOUND`.
-- **The save's input** (closed schema): `Names`, exactly one document; `Edits`, 1 to 20 objects `{Old, New}`, each `Old` a non-empty string and `New` a string; and `rationale`, `expectedImpact` and `reverse`. The text, the version and the compile choice are never arguments.
-- **The mint** (`ExplorerSaveMint`), in this order. Each refusal stores nothing and calls no write.
-  1. `SetProblem` gives 400 `TOOL.ARGUMENTS`.
-  2. A name `Prohibited.IsOcuPilotCode` matches gives 403 `PROHIBITED.OCUPILOTCODE`, with `Prohibited.ReasonFor`'s sentence. That is AD-10, now at the mint as well.
-  3. `ExplorerSave.AgentProblem(namespace, name)`, the namespace being `Kernel.Scope.Current()`, gives 400 `TOOL.ARGUMENTS`. It refuses every `%` name (Q3). **[Q1, recommended A]** It also refuses the namespace `%SYS`, and a document whose destination (`%SYS.Namespace.GetPackageDest`, or `GetRoutineDest` for a routine) is not the namespace's own routines database (`GetRoutineDest(ns)`), as `DocDbPort.IsMapped` compares them. A failed lookup refuses.
-  4. Read the document, then apply each edit in order. Its `Old` must occur exactly once in the current text; refuse naming the edit and its count otherwise.
-  5. Refuse a result equal to the read text; one longer than `AtelierPort.MAXIMPORTCHARACTERS`; and one whose `AtelierPort.Header(AtelierPort.Lines(text))` is not the document's name.
-  6. Build the hunk (below), and refuse when its row serializes longer than `CHANGEMAXLENGTH` (30,000).
-  7. Call `##super` with the arguments rewritten to `{Names, content, version, Compile: true, Namespace, Hunk, rationale, expectedImpact, reverse}`, where `Names` is the normalized id, `version` the document read's `modified`, and `Namespace` step 3's namespace.
-- **The text.** It is the read's `content` lines joined by LF, which round-trips exactly through `SaveSet` (`Lines` plus its trailing-LF rule). The new text's lines are its `$Piece`s on LF.
-- **The hunk.**
-  - Let `p` be the count of leading equal lines and `s` the count of trailing equal lines, with `p + s` at most the shorter count.
-  - With context `C` = 3, the first shown line is `f = max(1, p+1-C)`.
-  - `before` is old lines `f` to `min(nB, nB-s+C)`, and `after` is new lines `f` to `min(nA, nA-s+C)`, each line followed by LF, so `""` means no lines.
-  - The row is `{field: "Text", kind: "lines", line: f, before, after}`.
-- **The diff.** `ExplorerSave.MergeUpdate` takes `Mint.Merge`'s payload and replaces the diff with the one row built from `pArgs.Hunk`, or `[]` without one. The confirm's fingerprint re-merge and a person's Save (which calls `Mint.Merge` itself) therefore compute the same payload as today.
-- **At Confirm.**
-  - `Prohibited` (OcuPilot code), the fingerprint (`Modified`), then `ExplorerSave.ConfirmProblem`, which asks `AgentProblem(pArgs.Namespace, id)` again.
-  - The write is `SAVE` with `Compile` 1 (`cuk`) and `If-None-Match` = `version`.
-  - `output` is `{lines, errors}`.
-- **The card.**
-  - `ExplorerSave.Consequence` answers `CONSEQUENCE` = `EXPLORER.SAVE.COMPILES`, shown as `explorerSaveCompilesOnConfirm` by the consequence banner.
-  - A `kind: "lines"` row renders as `app-text-diff` (line numbers from `line`, the compare screen's `.ocu-line-diff` marks, long unchanged runs collapsed) inside the existing diff long block.
-  - The summary line's first part reads `proposalSummaryLines` for such a card.
-  - A confirmed card with that consequence and `outputErrors === true` shows `explorerSaveNotCompiled` under the status line, outside every long block.
-- `DESTRUCTIVE` stays 1: the destructive bar and Confirm, with no typed name. Both baseline keys become `true` (AD-22, the AC).
-- New CSS uses tokens only, legible in both themes (DW-1337).
 
 **Never:**
 
-- No change to a person's Save: `ScreenAction`, `SCREENVALUES`, `ScreenActionDelta`, `PortQuery`, the editor and its strings.
-- No `Prohibited.cls`, `Api/Error.cls`, route, descriptor, `screens.generated.ts` or `Prompt.cls` edit. No new error code, and no governance key for the reads.
-- `explorer.sqldata.save` stays unadvertised and `false`.
-- No compile before Confirm (Q4). Compile lines never reach the model, the ledger or a log (AD-39).
-- No `READSVALUES` on the saves, and no edit of `Mint.cls`, `Confirm.cls` or `Dispatch.cls`.
+- No agent save, create or advertised Save: `explorer.classes.save` and `explorer.routines.save` stay person-only and unadvertised until Story 20.21, and `explorer.sqldata.save` is unchanged.
+- No change to a person's Save or the editors.
+- No governance key for the reads, and no on/off switch.
 
 ## I/O & Edge-Case Matrix
 
-Setup: in process as the suite account in `USER`, on probe documents made by `ExplorerSaveProbe` / `ExplorerProbe` (`OcuProbe193`), removed afterwards.
+Setup: in process as the suite account in `USER`, on probe documents made by `ExplorerSaveProbe` / `ExplorerProbe` (`OcuProbe193`), removed afterwards. The plan adds the routine row and any row its open security-posture check needs.
 
 | Scenario | Input / State | Expected | Error |
 |---|---|---|---|
-| Read | `explorer.class.source {name: OcuProbe193.Alpha.cls}` | `text` equals `ExplorerSaveProbe.Source`; `truncated` false; `linesSent` = `lines` | none |
+| Read | `explorer.class.read {name: OcuProbe193.Alpha.cls}` | `text` equals `ExplorerSaveProbe.Source`; `truncated` false; `linesSent` = `lines` | none |
 | Read cut | A probe class whose text escapes to more than 60,000 characters, quotes and backslashes included | `truncated` true; `text` is whole lines; serialized `text` at most 60,000; `linesSent` < `lines` | none |
 | Read refused | `name` `Bad`; an absent class; a screen pair denied | 400 `PORT.VALIDATION`; 404 `PORT.NOTFOUND`; 403 `AUTH.NOPRIVILEGE` | no read |
-| Edit | `explorer_classes_save {Names, Edits:[{Old: one line, New}]}` | Proposal: one row `{field: Text, kind: lines, line, before, after}` with 3 context lines each side; `destructive` true; consequence `EXPLORER.SAVE.COMPILES`; `requiredPairs` holds the routines database's WRITE; the model's `changed` is that row, not the whole text | none |
-| Routine | the same on a probe `.mac` through `explorer.routines.save` | as Edit | none |
-| Confirm | the Edit proposal | `ExplorerSaveProbe.Source` is the new text; `output.errors` false; one agent marker carrying the proposal id; the read-back answered | none |
-| Saved, not compiled | an edit that breaks the class | saved; `Source` is the new text; `output.errors` true | none |
-| Changed after the mint | `ExplorerSaveProbe.Rewrite` between the mint and Confirm | 409 `TARGETCHANGED`; `Source` is the rewrite | nothing written |
-| Bad edit | `Old` absent; `Old` twice; edits that change nothing; an edit that renames the header | 400 `TOOL.ARGUMENTS`, naming the edit and its count or the rule | no row |
-| Too wide | edits at the first and last of 2,000 lines | 400 `TOOL.ARGUMENTS` (the change exceeds one card) | no row |
-| Own code | `OcuPilotProbe193.Alpha.cls` (need not exist) | 403 `PROHIBITED.OCUPILOTCODE` | no read, no row |
-| `%` name | `%Library.String.cls` | 400 `TOOL.ARGUMENTS` | no read, no row |
-| [Q1] System code | `Security.Users.cls` in `%SYS`; `Ens.Director.cls` in `HSCUSTOM` (ENSLIB) | 400 `TOOL.ARGUMENTS` | no read, no row |
-| Confirm rule | `ExplorerClassSave.ConfirmProblem("%Foo.cls", {...})` | a problem | refused at Confirm |
 
 </intent-contract>
 
@@ -258,6 +211,8 @@ Test templates:
   - **then** the provider request carries the sanitized source, and the panel's card saves and reports as AC3 and AC5 state.
 
 ## Spec Change Log
+
+- 2026-10-08, runner, orchestrator rulings on the first plan (by=merge_gate, feature 2bc6d842): Q3 split. This spec keeps Part A, the source read; Part B (the saves) is Story 20.21, which reads the first plan at `git show eda69374:_bmad-output/implementation-artifacts/spec-20-19-the-agent-edits-existing-classes-and-routines-on-the-person.md`. Q1 A and Q2 A are 20.21's. The read tools are named by the spine's convention. Status reset to draft for a re-plan.
 
 ## Review Triage Log
 
