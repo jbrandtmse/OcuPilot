@@ -3,8 +3,8 @@
  *
  * What it pins, each on rendered DOM, on the real URL or on the instance itself:
  *
- * 1. **A row's name opens the editor** at `permissions/roles/edit/<id>`, on General, Members and
- *    Assigned to.
+ * 1. **A row's name opens the editor** at `permissions/roles/edit/<id>`, on General, Members, Assigned
+ *    to and SQL privileges.
  * 2. **A two-field Save reaches the instance and leaves the grants as they were**, and the Roles list
  *    shows the new description without a page load.
  * 3. **A grant added and edited in the dialog** shows the current and the resulting grant, and each
@@ -238,7 +238,7 @@ async function save(page) {
   await page.click('.ocu-form-bar .ocu-button-primary');
 }
 
-test('a row\u2019s name opens the editor on General, Members and Assigned to', async () => {
+test('a row\u2019s name opens the editor on General, Members, Assigned to and SQL privileges', async () => {
   // Mutation (Rule 19): put RoleForm back in `CREATE_ONLY_FORMS` and redeploy -> the name cell opens
   // no editor and the URL wait goes red.
   const { context, page } = await signedInAt(LIST_URL);
@@ -255,7 +255,7 @@ test('a row\u2019s name opens the editor on General, Members and Assigned to', a
     );
     await editorReady(page);
     const tabs = await tabState(page);
-    assert.deepEqual(tabs.map((tab) => tab.label), [STRINGS.processDetailsGroupGeneral, STRINGS.roleEditorTabMembers, STRINGS.roleEditorTabAssignedTo]);
+    assert.deepEqual(tabs.map((tab) => tab.label), [STRINGS.processDetailsGroupGeneral, STRINGS.roleEditorTabMembers, STRINGS.roleEditorTabAssignedTo, STRINGS.sqlPrivilegesLabel]);
     assert.equal(tabs[0].selected, true, 'General is open first');
     assert.equal(await page.$eval('#ocu-role-edit-Description', (node) => node.value), MARKER, 'with the role as the instance holds it');
   } finally {

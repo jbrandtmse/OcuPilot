@@ -18378,6 +18378,14 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       {
         "id": "remove-resource-grant",
         "selfProtection": ""
+      },
+      {
+        "id": "grant-sql",
+        "selfProtection": ""
+      },
+      {
+        "id": "revoke-sql",
+        "selfProtection": ""
       }
     ],
     "context": {
@@ -19113,6 +19121,183 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "refreshDefault": 0,
     "banner": null,
     "tab": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.SqlPrivilegeList",
+    "route": "permissions/sql-privileges",
+    "area": "permissions",
+    "labelKey": "sqlPrivilegesLabel",
+    "sideBarPosition": 0,
+    "archetype": "list (server criteria)",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Secure",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "composite",
+      "parts": [
+        "Type",
+        "Object",
+        "Action",
+        "GrantedVia",
+        "GrantedBy"
+      ]
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "Type",
+        "Object",
+        "Action",
+        "GrantedBy",
+        "GrantOption",
+        "GrantedVia"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "sqlPrivilegesEmpty",
+    "commandAliases": [
+      "sql privileges",
+      "table privileges"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "userPromptGroupAccess",
+        "textKey": "sqlPrivilegesPrompt1"
+      },
+      {
+        "groupKey": "userPromptGroupAccess",
+        "textKey": "sqlPrivilegesPrompt2"
+      },
+      {
+        "groupKey": "userPromptGroupAccess",
+        "textKey": "sqlPrivilegesPrompt3"
+      }
+    ],
+    "classicPage": "%CSP.UI.Portal.User",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "admin",
+        "endpoint": "Security.SQLPrivilege.Standard",
+        "type": "LIST",
+        "query": {
+          "includeSystem": "0"
+        }
+      },
+      "fields": [
+        "Type",
+        "Object",
+        "Action",
+        "GrantedBy",
+        "GrantOption",
+        "GrantedVia"
+      ],
+      "filter": [
+        "Type",
+        "Object",
+        "Action",
+        "GrantedBy",
+        "GrantedVia"
+      ],
+      "sort": {
+        "fields": [
+          "Object",
+          "Type",
+          "Action",
+          "GrantedBy",
+          "GrantedVia"
+        ],
+        "default": "Object",
+        "direction": "asc"
+      },
+      "paging": "cap",
+      "criteria": {
+        "fields": [
+          {
+            "param": "grantee",
+            "labelKey": "sqlPrivilegeCriterionGrantee",
+            "kind": "text",
+            "maxLength": 160,
+            "hint": "One user or role, exactly as the Users or Roles list reports it. A list or a wildcard is refused."
+          },
+          {
+            "param": "namespace",
+            "labelKey": "headerNamespaceLabel",
+            "kind": "text",
+            "maxLength": 64,
+            "hint": "One namespace this instance defines, exactly as its namespace list reports it."
+          }
+        ]
+      }
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Object",
+          "labelKey": "sqlPrivilegeColumnObject",
+          "kind": "name"
+        },
+        {
+          "field": "Type",
+          "labelKey": "tableColumnType",
+          "kind": "text"
+        },
+        {
+          "field": "Action",
+          "labelKey": "sqlPrivilegeColumnAction",
+          "kind": "text"
+        },
+        {
+          "field": "GrantedBy",
+          "labelKey": "sqlPrivilegeColumnGrantedBy",
+          "kind": "text"
+        },
+        {
+          "field": "GrantOption",
+          "labelKey": "sqlPrivilegeColumnGrantOption",
+          "kind": "text"
+        },
+        {
+          "field": "GrantedVia",
+          "labelKey": "sqlPrivilegeColumnGrantedVia",
+          "kind": "text"
+        }
+      ],
+      "emptyNextKey": "tableReadOnlyEmptyNext",
+      "emptyAgentKey": ""
+    },
+    "toolIdentifier": "permissions.sqlprivileges",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
     "multiSelect": null,
     "secretArguments": [],
     "fingerprintExcludes": [],
@@ -21258,6 +21443,14 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       },
       {
         "id": "revoke-tokens",
+        "selfProtection": ""
+      },
+      {
+        "id": "grant-sql",
+        "selfProtection": ""
+      },
+      {
+        "id": "revoke-sql",
         "selfProtection": ""
       }
     ],

@@ -19,6 +19,7 @@ import {
   ENABLE_INTEROP,
   DATABASE_DETAILS,
   EXPAND_VOLUME,
+  GRANT_SQL,
   LOCAL_DATABASE_LIST,
   LOCK_LIST,
   LOCK_REMOVE,
@@ -32,6 +33,7 @@ import {
   REMOVE_ROLE,
   REQUIRE_PASSWORD_CHANGE,
   RESOURCE_LIST,
+  REVOKE_SQL,
   ROLE_LIST,
   SCREEN_ACTION_DESCRIPTORS,
   SET_PASSWORD,
@@ -361,14 +363,15 @@ const UPDATED: JsonResult<unknown> = {
 };
 
 describe('the Users list row actions (Story 7.2)', () => {
-  it('registers every declared action but the undrawn change-on-login flag', () => {
+  it('registers every declared action but the undrawn change-on-login flag and the SQL privileges tab\'s two', () => {
     // Mutation (Rule 19): drop the Users list from `SCREEN_ACTION_DESCRIPTORS` -> nothing registers
     // and this goes red on every id, so no surface draws a Users row action (AC1).
     const { actions } = mountUsers([]);
-    const drawn = USERS.rowActions.map((action) => action.id).filter((id) => id !== REQUIRE_PASSWORD_CHANGE);
+    const undrawn = [REQUIRE_PASSWORD_CHANGE, GRANT_SQL, REVOKE_SQL];
+    const drawn = USERS.rowActions.map((action) => action.id).filter((id) => !undrawn.includes(id));
     expect(drawn).toEqual(['enable', 'disable', SET_PASSWORD, ADD_ROLE, REMOVE_ROLE, 'delete', 'revoke-tokens']);
     for (const id of drawn) expect(actions.has(USERS.descriptor, id)).toBe(true);
-    expect(actions.has(USERS.descriptor, REQUIRE_PASSWORD_CHANGE)).toBe(false);
+    for (const id of undrawn) expect(actions.has(USERS.descriptor, id)).toBe(false);
   });
 
   it('opens delete with its own consequence and a protected account with its published refusal', async () => {

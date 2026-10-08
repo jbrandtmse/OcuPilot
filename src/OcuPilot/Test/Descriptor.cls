@@ -175,6 +175,7 @@ XData ReadShapes
 <screen name="AuthOptions" filter="JWTSigAlg" sort="JWTSigAlg" kinds=""/>
 <screen name="SuperserverList" filter="Port,BindAddress" sort="Port,BindAddress,Enabled,SystemDefault" kinds="Port:name,BindAddress:identifier,Enabled:status,SystemDefault:status"/>
 <screen name="MftConnectionList" filter="Name,Service" sort="Name,Service,IsAuthorized" kinds="Name:name,Service:text,IsAuthorized:text"/>
+<screen name="SqlPrivilegeList" filter="Type,Object,Action,GrantedBy,GrantedVia" sort="Object,Type,Action,GrantedBy,GrantedVia" kinds="Object:name,Type:text,Action:text,GrantedBy:text,GrantOption:text,GrantedVia:text"/>
 <screen name="ExplorerDocDbList" filter="Name,Class,DocumentType,Resource" sort="Name,Class,DocumentType,Resource" kinds="Name:name,Class:identifier,DocumentType:identifier,Resource:identifier"/>
 <screen name="SqlActivityList" filter="ProcessID,UserName,Namespace,RunType,Statement,Routine" sort="ProcessID,UserName,Namespace,RunType,Elapsed,Started" kinds="ProcessID:name,UserName:text,Namespace:text,RunType:text,Elapsed:number,Statement:identifier,Routine:identifier,Started:text"/>
 <screen name="InteropProductionList" filter="Name,Status" sort="Name,Status,LastStartTime,LastStopTime" kinds="Name:name,Status:status,LastStartTime:text,LastStopTime:text"/>

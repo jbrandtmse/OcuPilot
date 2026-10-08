@@ -6205,6 +6205,52 @@ export const STRINGS = {
     'The production\'s work in progress did not finish within 15 seconds, so it was left as it was.',
   /** EXPERIENCE.md:604 */
   interopRefusalState: 'This production\'s state does not allow that action here.',
+  /** EXPERIENCE.md:468 */
+  sqlPrivilegesLabel: 'SQL privileges',
+  /** EXPERIENCE.md:468 */
+  sqlPrivilegeColumnObject: 'Object',
+  /** EXPERIENCE.md:468 */
+  sqlPrivilegeColumnAction: 'Action',
+  /** EXPERIENCE.md:468 */
+  sqlPrivilegeColumnGrantedBy: 'Granted by',
+  /** EXPERIENCE.md:468 */
+  sqlPrivilegeColumnGrantOption: 'Grant option',
+  /** EXPERIENCE.md:468 */
+  sqlPrivilegeColumnGrantedVia: 'Granted via',
+  /** EXPERIENCE.md:468 */
+  sqlPrivilegeCriterionGrantee: 'User or role',
+  /** EXPERIENCE.md:468 */
+  sqlPrivilegesEmpty: 'No SQL privileges in this namespace.',
+  /** EXPERIENCE.md:468 */
+  sqlPrivilegesPrompt1: 'Which SQL privileges does this account hold in this namespace?',
+  /** EXPERIENCE.md:468 */
+  sqlPrivilegesPrompt2: 'Which of its SQL privileges come through a role?',
+  /** EXPERIENCE.md:468 */
+  sqlPrivilegesPrompt3: 'Can this account grant its SQL privileges on to others?',
+  /** EXPERIENCE.md:468 */
+  sqlPrivilegeGrant: 'Grant',
+  /** EXPERIENCE.md:468 */
+  sqlPrivilegeRevoke: 'Revoke',
+  /** EXPERIENCE.md:468 */
+  sqlPrivilegeGrantOrRevoke: 'Grant or revoke\u2026',
+  /** EXPERIENCE.md:468 */
+  sqlPrivilegeViaRole: 'Held through the role <role>.',
+  /** EXPERIENCE.md:468 */
+  sqlPrivilegeViaSchema: 'Held through its schema.',
+  /** EXPERIENCE.md:468 */
+  sqlPrivilegeViaOwner: 'Held as the owner of the object.',
+  /** EXPERIENCE.md:468 */
+  sqlPrivilegeDialogTitle: 'Grant or revoke an SQL privilege',
+  /** EXPERIENCE.md:468 */
+  sqlPrivilegeWithGrant: 'With grant option',
+  /** EXPERIENCE.md:468 */
+  sqlPrivilegeObjectHint: 'schema.name for a table, view, stored procedure or foreign server; one name for a schema or ML configuration.',
+  /** EXPERIENCE.md:468 */
+  sqlPrivilegeGrantAction: 'Grant SQL privilege',
+  /** EXPERIENCE.md:468 */
+  sqlPrivilegeRevokeAction: 'Revoke SQL privilege',
+  /** EXPERIENCE.md:468 */
+  sqlPrivilegeRefusalOcuPilot: 'OcuPilot\'s own SQL tables keep the privileges its installer grants, so a grant or revoke on them is not offered.',
   /** EXPERIENCE.md:604 */
   agentScreenPermissionsLabel: 'Screen permissions',
   /** EXPERIENCE.md:604 */

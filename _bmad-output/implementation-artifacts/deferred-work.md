@@ -1582,6 +1582,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: The widened half of DW-96. The owner's design scoped 1.18 to the unreadable state, read-back of the escalation role's grant and a derived schema name; a grant widened to _PUBLIC or another role silently exposes OcuPilot's protected state and no gate sees it (Installer.cls EnsureSqlPrivileges)
 - 2026-09-13T23:43:36Z status=routed owner=18-9-sql-privileges-and-the-permission-extras by=harvest note=18-9 owns SQL privileges; detection needs an enumeration of every grantee on the schema, not a single CheckPrivilege
 - 2026-10-08T00:50:58Z owner=18-9-sql-object-privileges by=spec_gate note=orchestrator split 2026-10-07: the refusal half (new AD-10 arm on OcuPilot's own schemas); the detection half is DW-2172 (18.13)
+- 2026-10-08T09:01:15Z status=resolved-by:18-9-sql-object-privileges by=adjudication note=refusal half: PROHIBITED.OCUPILOTSQLPRIVILEGE refuses a grant or revoke on OcuPilot's own schemas from both callers; SqlPrivilegeWrite own-schema leg red under the mutation (runs 1837, 2366); detection half is DW-2172 (18.13)
 
 ### DW-237: The client keeps INSTALL.FAILED and INSTALL.UPGRADEREQUIRED in the install backoff forever, though neither clears by waiting
 - source: spec-1-18-epic-1-burn-down.md | severity: med | fix-risk: low | footprint: in-story
@@ -9514,6 +9515,9 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-05T00:19:27Z occurrence=18-7-encryption note=18.7 logs #5022 on each no-key read, #1219/#1204 and #5001 credentials refusals; their async alert-throttle line can land in a no-log window
 - 2026-10-07T08:23:30Z occurrence=18-25-superservers note=add Security.Superserver PUT #5001 (port already in use; mapped to a field refusal, still logged severity 2) to the code-scoped unlogged list
 - 2026-10-07T16:07:59Z occurrence=18-26-managed-file-transfer-connections note=add Security.MFT DELETE 500 #5809 (connection deleted, OAuth 2.0 client already absent; MftPort re-reads and answers done, still logged severity 2)
+- 2026-10-08T01:55:15Z occurrence=18-9-sql-object-privileges note=add Security.SQLPrivilege.Standard 500 #5540 (SQLCODE -30, -118, -187, -428, -473) and #5035 (-112, -99), logged severity 2 until the unlogged grammar takes them
+- 2026-10-08T07:44:01Z occurrence=18-9-sql-object-privileges note=code review maps #5035 -126 to SQLPRIV.DEPENDENT, logged at severity 2 like the rest
+- 2026-10-08T09:50:05Z occurrence=18-28-sql-column-and-admin-privileges note=add Security.SQLPrivilege.Admin 500 #516 (SQLCODE -99), logged severity 2
 
 ### DW-2008: The agent's confirm of an ECP data server create at the limit carries ECP.SERVER.LIMIT's generic sentence, not EcpError.Limit's number
 - source: spec-18-20-ecp-data-servers.md (code review) | severity: low | fix-risk: med | footprint: out-of-footprint
@@ -10392,6 +10396,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-9-sql-privileges-and-the-permission-extras.md (split) | severity: med | fix-risk: high | footprint: out-of-footprint
 - evidence: ocupilot-ci 2026-10-07: a grantor without the privilege sent a column grant; 200, no row stored
 - 2026-10-08T00:50:58Z status=decision-pending owner=burndown by=spec_gate note=owner_hold: not reported to InterSystems
+- 2026-10-08T09:50:06Z occurrence=18-28-sql-column-and-admin-privileges note=refined at 18.28's plan: an unknown column or a grantor without the privilege stores nothing, but DELETE, %ALTER, an unknown grantee, or a view sent as TABLE answers 200 and stores a row the column LIST never shows
 
 ### DW-2174: IRIS defect candidate: the admin API's Security.SQLPrivilege.Standard revoke by a caller who is not the grantor (no asGrantor) answers 200 and revokes nothing
 - source: spec-18-9-sql-privileges-and-the-permission-extras.md (split) | severity: med | fix-risk: high | footprint: out-of-footprint
@@ -10404,6 +10409,69 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-08T00:50:58Z status=decision-pending owner=burndown by=spec_gate note=owner_hold: not reported to InterSystems
 - 2026-10-08T00:51:20Z status=decision-pending owner=burndown by=spec_gate note=evidence corrected: the plan names no probe namespace (spec Design Notes: an unknown namespace answers 500 <NAMESPACE>); OcuProbe189Missing was not measured
 
+### DW-2176: IRIS defect candidate: the admin API's Security.SQLPrivilege.Standard HEAD answers 404 for a schema grant the caller holds
+- source: spec-18-9-sql-object-privileges.md | severity: low | fix-risk: high | footprint: out-of-footprint
+- evidence: ocupilot-ci 2026-10-07 (18.9 plan): HEAD on a held schema grant answered 404; LIST shows the grant's Schema Privilege rows
+- 2026-10-08T01:55:15Z status=decision-pending owner=burndown by=spec_gate note=owner_hold: not reported to InterSystems
+
+### DW-2177: IRIS defect candidate: the admin API's Security.SQLPrivilege.Standard LIST lists a schema privilege held both directly and through a role twice
+- source: spec-18-9-sql-object-privileges.md | severity: low | fix-risk: high | footprint: out-of-footprint
+- evidence: ocupilot-ci 2026-10-07 (18.9 plan): a schema privilege held directly and through a role listed twice
+- 2026-10-08T01:55:15Z status=decision-pending owner=burndown by=spec_gate note=owner_hold: not reported to InterSystems
+
+### DW-2178: IRIS defect candidate: the admin API's Security.SQLPrivilege.Standard LIST reports a schema USE grant's action as l
+- source: spec-18-9-sql-object-privileges.md | severity: low | fix-risk: high | footprint: out-of-footprint
+- evidence: ocupilot-ci 2026-10-07 (18.9 plan): schema USE listed a foreign server with action l
+- 2026-10-08T01:55:15Z status=decision-pending owner=burndown by=spec_gate note=owner_hold: not reported to InterSystems
+
+### DW-2183: The four SQL privilege tools carry no Classification or ToolFields entry; their arguments are authored in SqlPrivilegeWrite.InputSchema, where the spec asked for the five arguments classified ordinary
+- source: spec-18-9-sql-object-privileges.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: SENDSBODY 0, so Write.FieldRows derives no row and the Standard endpoint publishes no body template to classify (implement self-review)
+- 2026-10-08T07:03:02Z status=open owner=18-9-sql-object-privileges by=harvest note=code review: fix or close by-design
+- 2026-10-08T07:44:01Z status=by-design owner=18-9-sql-object-privileges by=cr note=bodyless (SENDSBODY 0): no derived field list to classify; arguments authored in InputSchema
+
+### DW-2184: IRIS defect candidate: the admin API's Security.SQLPrivilege.Standard grant on an absent FOREIGN SERVER answers 500 #5002 <SUBSCRIPT> in %SYSTEM.SQL.Security.GrantPrivilege, not an SQLCODE, so SqlPrivilegePort answers INTERNAL
+- source: spec-18-9-sql-object-privileges.md | severity: low | fix-risk: high | footprint: out-of-footprint
+- evidence: ocupilot-ci 2026-10-08: GRANT type FOREIGN SERVER object NoSrv -> ERROR #5002 <SUBSCRIPT>GrantPrivilege+64^%SYSTEM.SQL.Security.1 ^rINDEXSQL(SERVER,NOSRV); other types answered #5540
+- 2026-10-08T07:03:02Z status=decision-pending owner=burndown by=harvest note=owner_hold: not reported to InterSystems
+
+### DW-2185: ML CONFIGURATION and FOREIGN SERVER SQL privileges are pinned by their Rules and the vendor's refusals only, never granted against a live object
+- source: spec-18-9-sql-object-privileges.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: a Community instance cannot create a foreign server or an ML configuration without an external provider, so no test grants or revokes one
+- 2026-10-08T07:03:02Z status=open owner=18-9-sql-object-privileges by=harvest note=code review: wontfix-accepted with a reopen probe, or a test
+- 2026-10-08T07:44:01Z status=wontfix-accepted owner=18-9-sql-object-privileges by=cr note=vendor source confirms schema.name; reopen_if=CI can create a foreign server or ML configuration
+
+### DW-2186: Sub-claims of 18.9's C2-C4 (the -112 grantor mapping, the guard's namespace check, the role-row Direct count, the gate pair sets) have tests but no recorded reddening mutation
+- source: spec-18-9-sql-object-privileges.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: verification-gap layer: the eight recorded mutation lines cover each criterion's main path only
+- 2026-10-08T07:03:03Z status=open owner=18-9-sql-object-privileges by=harvest note=code review closes in-pass (Rule 19)
+- 2026-10-08T07:44:01Z status=resolved-by:18-9-sql-object-privileges by=cr note=reddened: -112 2374, Direct 2375, ArgumentPairs 2376, Violations 2377, PrivilegePairs 2380
+
+### DW-2187: WireSecurityRead.TestTaskHistoryPairSetsAreEnforcedForARealPrincipal reads a truncated task history on a long-lived ocupilot-ci (nothing is cut at 1,000), failing at the sweep end and on a solo rerun
+- source: spec-18-9-sql-object-privileges.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: 18.9 changes three roster lines in that class and no task-history code (inference: environmental; CI's fresh throwaways settle it)
+- 2026-10-08T07:03:03Z status=open owner=18-9-sql-object-privileges by=harvest note=resolve against CI run 37741029438
+- 2026-10-08T08:13:15Z status=wontfix-accepted by=adjudication note=CI run 37741029438 on 0a7a868d ran WireSecurityRead green on a fresh throwaway; the red needs a long-lived instance's task history. reopen_if=it fails in CI or on a throwaway under a day old
+
+### DW-2188: The SQL privileges tab draws a refused read as the generic 'Request refused', so the namespace-database READ pair the port names never reaches the person
+- source: spec-18-9-sql-object-privileges.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: sql-privileges-tab.ts:38 renders connectivityRequestRefused; createScreenRead's Fault carries the code only (core/fault.ts:49), as the database volumes tab does; Effective privileges names the pair (user-editor.store.ts:651)
+- 2026-10-08T07:43:47Z status=wontfix-accepted owner=18-9-sql-object-privileges by=cr note=reopen_if=core/fault.ts Fault gains reason or detail, or a person reports not knowing which pair the tab lacks
+
+### DW-2189: The SQL privileges tab's Revoke buttons carry no aria-label naming the row's action and object, unlike the role editor's row buttons
+- source: spec-18-9-sql-object-privileges.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: sql-privileges-tab.ts:83 draws 'Revoke' alone; role-editor.page.ts:232-235 binds row.editLabel and row.removeLabel; a fix needs a Fixed-strings template row in EXPERIENCE.md
+- 2026-10-08T07:43:47Z status=wontfix-accepted owner=18-9-sql-object-privileges by=cr note=reopen_if=an accessibility pass over the user or role editor lists the unlabelled Revoke buttons
+
+### DW-2190: The SQL privilege dialog's type, action and object-length lists repeat SqlPrivilegePort's TYPES, action lists and NAMEPATTERN with no test holding them equal
+- source: spec-18-9-sql-object-privileges.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: sql-privilege-dialog.ts:8-30 against SqlPrivilegePort.cls:71-80; no ui/tools or ObjectScript test compares them, and 18.28 extends the port's lists
+- 2026-10-08T07:43:47Z status=wontfix-accepted owner=18-9-sql-object-privileges by=cr note=reopen_if=the dialog offers a type or action that SqlPrivilegePort.Violations refuses, or omits one it admits
+
+### DW-2201: IRIS defect candidate: $SYSTEM.SQL.Security.GrantPrivilege of EXECUTE on a TABLE answers OK and stores a privilege row (action e) the admin API's Standard LIST never shows and that survives the grantee's deletion and the table's drop
+- source: spec-18-9-sql-object-privileges.md (rework 1) | severity: low | fix-risk: high | footprint: out-of-footprint
+- evidence: ocupilot-ci 2026-10-08: GrantPrivilege(EXECUTE, OcuSqlPrivProbe.T1, TABLE, probe user) returned OK; the orphan row USER||1,OcuSqlPrivProbe.T1||e||OcuSqlPrivProbeU||irisowner outlived both
+- 2026-10-08T08:36:27Z status=decision-pending owner=burndown by=harvest note=owner_hold: not reported to InterSystems; OcuPilot's Rules refuse EXECUTE on a table before any vendor call
 ### DW-2179: Screen permissions' add-pair and remove-pair read back nothingSent: the composed GET refuses the repeated change after the write, so AD-58 never compares the stored set (READBACKFIELDS Pairs is declared and unused)
 - source: spec-20-15-per-screen-permissions-seen-and-adjusted.md | severity: med | fix-risk: low | footprint: in-story
 - evidence: deferred by the 20.15 implement stage; a plain re-read of the stored set would let AD-58 compare it
@@ -10480,6 +10548,22 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: 20.1 (Home tiles 7 vs 8, rail 9 vs 11) and 18.9 (users and roles editor tab lists) went red on literals; the entity-type count is written out in Test/Descriptor, MftConnectionDescriptor and SuperserverDescriptor; find the rest by grepping ui/browser, ui/tools and src/OcuPilot/Test for literal counts
 - 2026-10-08T08:48:06Z status=routed owner=23-5-the-range-end-cleanup-part-5 by=orchestrator note=Rule 30's derive-not-literal clause applied to the existing suite; roster pins (SurfaceCoverage, EndpointCoverage, FLOORONLY) stay literal by design
 
+### DW-2204: IRIS defect candidate: the admin API's Security.SQLPrivilege.Column LIST and REVOKE match the object's case exactly while GRANT accepts any case, so a revoke in another case answers 200 and removes nothing
+- source: spec-18-28-sql-column-and-admin-privileges.md | severity: low | fix-risk: high | footprint: out-of-footprint
+- evidence: ocupilot-ci 2026-10-08 (18.28 plan): a lower-case object listed nothing and revoked nothing (200); the grant in that case stored the row
+- 2026-10-08T09:50:06Z status=decision-pending owner=burndown by=spec_gate note=owner_hold: not reported to InterSystems
+
+### DW-2205: IRIS defect candidate: the admin API's Security.SQLPrivilege.Column LIST given a one-part object answers 500 <INVALID OREF>
+- source: spec-18-28-sql-column-and-admin-privileges.md | severity: low | fix-risk: high | footprint: out-of-footprint
+- evidence: ocupilot-ci 2026-10-08 (18.28 plan): column LIST with object T1 answered 500 <INVALID OREF>
+- 2026-10-08T09:50:06Z status=decision-pending owner=burndown by=spec_gate note=owner_hold: not reported to InterSystems
+- 2026-10-08T09:50:11Z status=decision-pending owner=burndown by=spec_gate note=evidence corrected: the plan recorded a one-part object, not the name T1
+
+### DW-2206: IRIS defect candidate: the admin API's Security.SQLPrivilege.Admin LIST names a role holder 'Role - <role>' where the standard and column lists write 'Role:<role>'
+- source: spec-18-28-sql-column-and-admin-privileges.md | severity: low | fix-risk: high | footprint: out-of-footprint
+- evidence: ocupilot-ci 2026-10-08 (18.28 plan): admin LIST GrantedVia read Role - OcuSqlColProbeGR
+- 2026-10-08T09:50:06Z status=decision-pending owner=burndown by=spec_gate note=owner_hold: not reported to InterSystems
+- 2026-10-08T09:50:11Z status=decision-pending owner=burndown by=spec_gate note=evidence corrected: the plan recorded the Role - <r> shape, not which probe role it was read for
 ### DW-2203: The either-of roster reads descriptor and tool declarations only: a port's pair parameters and a tool's per-call ArgumentPairs are unread
 - source: spec-20-15-per-screen-permissions-seen-and-adjusted.md (code review, rework 2) | severity: low | fix-risk: med | footprint: in-story
 - evidence: ScreenAccessPort.PAIRS (AdjusterSpec) is a sixth, AD-64-sanctioned carrier; a port copying it would pass PortGate and the roster. Navigate.ArgumentPairs carries the pair per call for the screenpermissions route, so ArgumentPairs cannot be read without exemptions. No stray exists today.

@@ -246,7 +246,23 @@ ClassMethod Run(pTool As %DynamicObject, pToolClass As %String, pActionId As %St
         ; arguments, so a tool whose pairs depend on it (ArgumentPairs) resolves them identically
         ; on both callers. Merge skips the id argument, so the body is unchanged by it.
         Do tArgs.%Set($ClassMethod(pToolClass, "IdArgument"), pId, "string")
-        Set tPairSC = ##class(OcuPilot.Kernel.Proposal.Operation).Gate(pTool, pTargetRef, "", "", tArgs.%ToJSON(), ..CallerUsername(), "", "", .tPairs, .tRefused, .tGateHttp, .tGateCode, .tGateDetail)
+        ; AD-8: a tool whose pairs depend on the values it takes (ArgumentPairs, READSVALUES) is gated on them
+        ; too, so the denial names the pair before the fresh read reaches the port. A value set the tool
+        ; refuses is refused below, after this gate, as for every other tool.
+        Set tGateArgs = tArgs
+        If +$Parameter(pToolClass, "READSVALUES") && $IsObject(pValues) {
+            Set tGateValues = ##class(%DynamicObject).%FromJSON(pValues.%ToJSON())
+            If tGateValues.%GetTypeOf($ClassMethod(pToolClass, "IdArgument")) = "unassigned" Do tGateValues.%Set($ClassMethod(pToolClass, "IdArgument"), pId, "string")
+            Set tGateDeltaSC = $ClassMethod(pToolClass, "ScreenActionDelta", pActionId, tGateValues, "", .tGateDelta, .tGateProblem)
+            If $$$ISOK(tGateDeltaSC) && ($Get(tGateProblem) = "") && $IsObject($Get(tGateDelta)) {
+                Set tGateArgs = ##class(%DynamicObject).%FromJSON(tArgs.%ToJSON())
+                Set tGateIterator = tGateDelta.%GetIterator()
+                While tGateIterator.%GetNext(.tGateKey, .tGateValue) {
+                    If tGateArgs.%GetTypeOf(tGateKey) = "unassigned" Do tGateArgs.%Set(tGateKey, tGateValue)
+                }
+            }
+        }
+        Set tPairSC = ##class(OcuPilot.Kernel.Proposal.Operation).Gate(pTool, pTargetRef, "", "", tGateArgs.%ToJSON(), ..CallerUsername(), "", "", .tPairs, .tRefused, .tGateHttp, .tGateCode, .tGateDetail)
         If $$$ISERR(tPairSC) {
             Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ##class(%Exception.StatusException).CreateFromStatus(tPairSC))
             Quit
