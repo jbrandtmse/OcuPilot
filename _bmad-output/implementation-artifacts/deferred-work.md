@@ -1582,6 +1582,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: The widened half of DW-96. The owner's design scoped 1.18 to the unreadable state, read-back of the escalation role's grant and a derived schema name; a grant widened to _PUBLIC or another role silently exposes OcuPilot's protected state and no gate sees it (Installer.cls EnsureSqlPrivileges)
 - 2026-09-13T23:43:36Z status=routed owner=18-9-sql-privileges-and-the-permission-extras by=harvest note=18-9 owns SQL privileges; detection needs an enumeration of every grantee on the schema, not a single CheckPrivilege
 - 2026-10-08T00:50:58Z owner=18-9-sql-object-privileges by=spec_gate note=orchestrator split 2026-10-07: the refusal half (new AD-10 arm on OcuPilot's own schemas); the detection half is DW-2172 (18.13)
+- 2026-10-08T09:01:15Z status=resolved-by:18-9-sql-object-privileges by=adjudication note=refusal half: PROHIBITED.OCUPILOTSQLPRIVILEGE refuses a grant or revoke on OcuPilot's own schemas from both callers; SqlPrivilegeWrite own-schema leg red under the mutation (runs 1837, 2366); detection half is DW-2172 (18.13)
 
 ### DW-237: The client keeps INSTALL.FAILED and INSTALL.UPGRADEREQUIRED in the install backoff forever, though neither clears by waiting
 - source: spec-1-18-epic-1-burn-down.md | severity: med | fix-risk: low | footprint: in-story

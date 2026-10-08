@@ -4,12 +4,13 @@
 /// <code>Owner Privilege</code> rows; <class>OcuPilot.Port.AdminPort</class>'s guard refuses an undefined
 /// namespace, a missing grantee and a list or wildcard, the read included; and
 /// <class>OcuPilot.Port.SqlPrivilegePort</class> composes the state a grant or revoke reads, counting a table and a
-/// view alike, a schema's rows, the distinct grantors, and the grantee that holds <code>%All</code>.</p>
+/// view alike, a schema's rows, the distinct grantors, and the grantee that holds <code>%All</code>; and the probe's
+/// cleanup leaves no privilege row of a probe grantee.</p>
 /// <p><b>What it needs from the environment:</b> OcuPilot installed and serving and
 /// <parameter>ARMINGVARIABLE</parameter> reading <code>1</code>, because the class creates and removes a probe user
 /// and role and a probe schema's objects in <code>USER</code> (<class>OcuPilot.Test.SqlPrivilegeProbe</class>). Every
-/// probe object is removed by exact name before all, after each and after all, and the probe schema's rows read as
-/// before each test.</p>
+/// probe object and privilege row is removed before all, after each and after all, and the probe schema's rows read
+/// as before each test.</p>
 Class OcuPilot.Test.SqlPrivilegeRead Extends %UnitTest.TestCase
 {
 
@@ -228,17 +229,23 @@ Method ScreenRows(pGrantee As %String) As %DynamicArray
     Quit $Select($IsObject($Get(tRead)): tRead.%Get("rows"), 1: [])
 }
 
-/// <p>The probe's cleanup leaves no privilege row for a probe grantee: the vendor stores a table grant of
-/// <code>EXECUTE</code> that no list shows, and keeps it after its grantee and table are gone.</p>
+/// <p>The probe's cleanup leaves no privilege row for a probe grantee: its revoke takes the rows the admin API
+/// lists, <code>%ALTER</code> included, and its sweep the <code>EXECUTE</code> row on a table that the list does not
+/// show and the vendor keeps after its grantee and table are gone. The <code>EXECUTE</code> leg relies on the vendor
+/// storing that grant: if a later build refuses it or stores nothing, drop that grant and expect 2, then 0.</p>
 /// <p>Mutation (Rule 19): make the privilege-row sweep in
-/// <method>OcuPilot.Test.SqlPrivilegeProbe.RemoveAll</method> select nothing -- this leg goes red.</p>
+/// <method>OcuPilot.Test.SqlPrivilegeProbe.RemoveAll</method> select nothing, or send <code>%ALTER</code> unchanged in
+/// <method>OcuPilot.Test.SqlPrivilegeProbe.RevokeAll</method> -- this leg goes red.</p>
 Method TestTheProbeCleanupLeavesNoPrivilegeRow()
 {
     Set tProbe = ..#PROBE
     Set tUser = $Parameter(tProbe, "USER")
     Do $$$AssertStatusOK($ClassMethod(tProbe, "Grant", tUser, "TABLE", $Parameter(tProbe, "TABLE"), "SELECT"), "a direct table grant")
+    Do $$$AssertStatusOK($ClassMethod(tProbe, "Grant", tUser, "TABLE", $Parameter(tProbe, "TABLE"), "ALTER"), "one the list spells %ALTER")
     Do $$$AssertStatusOK($ClassMethod(tProbe, "Grant", tUser, "TABLE", $Parameter(tProbe, "TABLE"), "EXECUTE"), "and the unlisted EXECUTE grant on a table")
-    Do $$$AssertEquals($ClassMethod(tProbe, "RemainingPrivileges"), 2, "the instance holds both rows")
+    Do $$$AssertEquals($ClassMethod(tProbe, "RemainingPrivileges"), 3, "the instance holds the three rows")
+    Do $$$AssertStatusOK($ClassMethod(tProbe, "RevokeAll", $Parameter(tProbe, "NAMESPACE")), "the revoke runs")
+    Do $$$AssertEquals($ClassMethod(tProbe, "RemainingPrivileges"), 1, "and takes the two listed rows, leaving the unlisted one")
     Do $$$AssertStatusOK($ClassMethod(tProbe, "RemoveAll"), "the cleanup runs")
     Do $$$AssertEquals($ClassMethod(tProbe, "RemainingPrivileges"), 0, "and no privilege row of a probe grantee is left")
 }

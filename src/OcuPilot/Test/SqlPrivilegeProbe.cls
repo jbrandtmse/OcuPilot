@@ -4,9 +4,10 @@
 /// sets up as the running account, the instance's own list of a grantee's privileges, and the agent's mint through
 /// a tool's own class. It holds no assertions.</p>
 /// <p><b>Only <parameter>PREFIX</parameter> is ever touched.</b> Every principal and object is named from it and
-/// removed by exact name. <method>RemoveAll</method> revokes every privilege a probe principal holds, in each
-/// namespace the suites use, then drops the objects and principals, cleans the namespace's statement index and
-/// clears the system monitor, which the vendor's severity-2 refusals raise.</p>
+/// removed by exact name; a privilege row is removed when its grantee carries the prefix. <method>RemoveAll</method>
+/// revokes the privileges the instance lists for the probe user and role in each namespace the suites use, drops
+/// the objects and principals, deletes any privilege row of a probe grantee that is left, cleans the namespace's
+/// statement index and clears the system monitor, which the vendor's severity-2 refusals raise.</p>
 /// <p><b>Not a <class>%UnitTest.TestCase</class></b>: it holds no assertions and runs no tests.</p>
 Class OcuPilot.Test.SqlPrivilegeProbe Extends %RegisteredObject
 {
@@ -67,8 +68,9 @@ ClassMethod Namespaces() As %List
 }
 
 /// <p>Revoke, as the running account and one grantor at a time, every <code>Direct</code> privilege the probe user
-/// and role hold in <var>pNamespace</var>, read from the instance's own list. A privilege on an object the
-/// namespace no longer holds cannot be revoked, so this runs before the objects are dropped.</p>
+/// and role hold in <var>pNamespace</var>, read from the instance's own list, which spells <code>ALTER</code> as
+/// <code>%ALTER</code>; the vendor call takes <code>ALTER</code>. A privilege on an object the namespace no longer
+/// holds cannot be revoked, so this runs before the objects are dropped.</p>
 ClassMethod RevokeAll(pNamespace As %String) As %Status
 {
     Set tSC = $$$OK
@@ -86,7 +88,8 @@ ClassMethod RevokeAll(pNamespace As %String) As %Status
             Set tOrigNS = $NAMESPACE
             Try {
                 Set $NAMESPACE = pNamespace
-                Set tRevoke = $SYSTEM.SQL.Security.RevokePrivilege(tRow.%Get("Action"), tRow.%Get("Object"), tRow.%Get("Type"), tGrantee, 0, 0, tRow.%Get("GrantedBy"))
+                Set tAction = $Select(tRow.%Get("Action") = "%ALTER": "ALTER", 1: tRow.%Get("Action"))
+                Set tRevoke = $SYSTEM.SQL.Security.RevokePrivilege(tAction, tRow.%Get("Object"), tRow.%Get("Type"), tGrantee, 0, 0, tRow.%Get("GrantedBy"))
                 Set $NAMESPACE = tOrigNS
             } Catch {
                 Set $NAMESPACE = tOrigNS
@@ -96,15 +99,16 @@ ClassMethod RevokeAll(pNamespace As %String) As %Status
     Quit tSC
 }
 
-/// <p>How many privilege rows the instance still holds for a probe principal, in any namespace. The vendor keeps a
-/// row after its grantee and object are gone.</p>
+/// <p>How many privilege rows the instance still holds for a probe principal or on the probe schema's objects,
+/// whoever the grantee, in any namespace. An <code>EXECUTE</code> row on a table, which the admin API's list does
+/// not show, outlives its grantee and its table.</p>
 ClassMethod RemainingPrivileges() As %Integer
 {
     Set tCount = 0
     Set tOrigNS = $NAMESPACE
     Try {
         Set $NAMESPACE = "%SYS"
-        Set tResult = ##class(%SQL.Statement).%ExecDirect(, "SELECT COUNT(*) FROM Security.SQLPrivileges WHERE Grantee %STARTSWITH ?", ..#PREFIX)
+        Set tResult = ##class(%SQL.Statement).%ExecDirect(, "SELECT COUNT(*) FROM Security.SQLPrivileges WHERE Grantee %STARTSWITH ? OR SQLObject [ ?", ..#PREFIX, "," _ ..#SCHEMA _ ".")
         If tResult.%Next() Set tCount = tResult.%GetData(1)
         Set $NAMESPACE = tOrigNS
     } Catch {
@@ -116,7 +120,9 @@ ClassMethod RemainingPrivileges() As %Integer
 
 /// <p>Revoke every privilege the probe principals hold, drop the schema's objects, delete the probe principals,
 /// remove any privilege row of a probe grantee that is left, clean the namespace's statement index and clear the
-/// system monitor.</p>
+/// system monitor. The leftover rows are deleted from <class>Security.SQLPrivileges</class> directly, which the
+/// vendor documents as not meant for object access: its revoke refuses a row whose object is gone, and its list
+/// does not show an <code>EXECUTE</code> row on a table.</p>
 ClassMethod RemoveAll() As %Status
 {
     Set tSC = $$$OK

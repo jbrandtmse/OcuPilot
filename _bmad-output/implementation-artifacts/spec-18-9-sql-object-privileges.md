@@ -47,9 +47,9 @@ deferred:
       src/OcuPilot/Test/WireSecurityRead.cls AssertSameRowsAsTestAccount
     severity: low (unverified)
   - summary: >-
-      A GRANT of EXECUTE on a TABLE answers 200 and stores a privilege row (code `e`) that the Standard LIST never shows and that survives the grantee's and the table's removal. IRIS defect candidate, decision pending, owner's hold, not reported upstream.
+      A GRANT of EXECUTE on a TABLE returns an OK status and stores a privilege row (code `e`) that the Standard LIST never shows and that survives the grantee's and the table's removal. IRIS defect candidate, decision pending, owner's hold, not reported upstream.
     evidence: |-
-      ocupilot-ci, 2026-10-08, `$SYSTEM.SQL.Security.GrantPrivilege("EXECUTE", "OcuSqlPrivProbe.T1", "TABLE", "OcuSqlPrivProbeU")` returned OK; `Rows` listed only the SELECT grant; after RemoveAll `Security.SQLPrivileges` still held `USER||1,OcuSqlPrivProbe.T1||e||OcuSqlPrivProbeU||irisowner`. No suite grants it; the orphan row came from an earlier probe (caller unidentified), and 14 class runs left none.
+      ocupilot-ci, 2026-10-08, `$SYSTEM.SQL.Security.GrantPrivilege("EXECUTE", "OcuSqlPrivProbe.T1", "TABLE", "OcuSqlPrivProbeU")` returned OK; `Rows` listed only the SELECT grant; after RemoveAll `Security.SQLPrivileges` still held `USER||1,OcuSqlPrivProbe.T1||e||OcuSqlPrivProbeU||irisowner`. The cleanup test now grants it on purpose; the orphan row came from Task 0's raw `GRANT` through `AdminPort.Invoke` (inference), since no product path can send it.
     location: >-
       src/OcuPilot/Test/SqlPrivilegeProbe.cls RemoveAll
     severity: low
@@ -211,6 +211,24 @@ Rejected:
 - low: the revoke script names a placeholder grantor.
 - spec edits: the Auto Run Result tally, and the fifth deferral's severity label.
 
+Code review 2026-10-08, rework 1 (four layers, full-opus, scope `6bda2c49..HEAD`): 43 rows, 11 entries (high 0, med 0, low 11), 7 patched, 4 rejected. Both open items hold. `[CI]`: only the users and roles editor specs assert an exact tab list (`unreadable.browser-spec.mjs` lists none). `[Smoke]`: no probe privilege row survives a class run, and the sweep deletes only rows whose grantee carries the probe prefix. The unpinned revoke pass was a finding and is now pinned.
+
+- [x] [Review][Patch] (low) `RevokeAll` sent the list's `%ALTER` to `RevokePrivilege`, which takes `ALTER` (-60, swallowed; probed on `ocupilot-ci`), and no test depended on it; the sweep runs before the count, so a failed revoke never showed. Translated, and the cleanup test asserts the revoke leaves only the unlisted row [src/OcuPilot/Test/SqlPrivilegeProbe.cls:91]
+- [x] [Review][Patch] (low) `SqlPrivilegeGate`'s grant to `OcuProbe188H` on the probe table was outside every count; `RemainingPrivileges` also counts rows on the probe schema's objects, whoever the grantee (probed: 1 with such a row, 0 after cleanup) [src/OcuPilot/Test/SqlPrivilegeProbe.cls:105]
+- [x] [Review][Patch] (low) The probe's and `SqlPrivilegeRead`'s doc comments said "removed by exact name" and "revokes every privilege", generalized the one orphan row, and did not say why the sweep deletes from `Security.SQLPrivileges` directly [src/OcuPilot/Test/SqlPrivilegeProbe.cls:7]
+- [x] [Review][Patch] (low) The cleanup test relies on the vendor storing `EXECUTE` on a table and did not say what to do if a later build stops [src/OcuPilot/Test/SqlPrivilegeRead.cls:239]
+- [x] [Review][Patch] (low) The two editor specs' titles and headers named three tabs [ui/browser/users-editor.browser-spec.mjs:192]
+- [x] [Review][Patch] (low) The latest `SqlPrivilegeRead` run on `ocupilot-ci` was the red mutation run 2400; runs 2401 and 2403 are green [src/OcuPilot/Test/SqlPrivilegeRead.cls:239]
+- [x] [Review][Patch] (low) "Every teardown asserts none remains" had no recorded red; run 2400's is now under Verification [src/OcuPilot/Test/SqlPrivilegeRead.cls:48]
+
+Rejected (rework 1):
+
+- low: a failed count or sweep query reads as zero. It needs `Security.SQLPrivileges` unreadable to an `%All` process, and the fix is a guard.
+- low: the `[CI]` mutation changes the expectation, not the product. These are tab-list pins, not an AC's pinning test, and the comparison fails both ways (CI run 37741029438 and the rework's run).
+- false: the sweep's prefix match ignores case. IRIS user and role names are case-insensitive, so a case variant is the same principal.
+- low, spec text for the lead: the `[Smoke]` source. No product path stores `EXECUTE` on a table (the Rules and `SqlPrivilegePort.Violations` refuse it; `SqlPrivilegeDescriptor` pins it). Task 0's raw `GRANT` through `AdminPort.Invoke` is the only such grant recorded before the rework (inference), so Task 0's "stored nothing" and the deferral's "caller unidentified" and "No suite grants it" are stale. Also stale: the rework triage's `[false]` label and its revoke rationale, and the deferral's "answers 200" (a `%Status`, not HTTP).
+- out of scope, not high: the editors' visual gates never open the SQL privileges tab.
+
 ## Spec Change Log
 
 - 2026-10-08, rework iteration 1 (trigger ci, smoke): the two editor specs' tab lists, and the probe cleanup's orphan privilege rows; the open items are the `[CI]` and `[Smoke]` tasks under Tasks & Acceptance.
@@ -260,7 +278,7 @@ Rejected:
 
 - A `GRANT` naming an absent table answered 500; the vendor status is #5540 with parameters `-30`, `Table or view not found`; the fault `INTERNAL`; one severity-2 line (`adminport`, "failed with HTTP 500").
 - The same `GRANT` as `OcuProbe188H` (`%Admin_Secure:U`, `%DB_IRISSYS:R`, `%DB_USER:R`, no SQL privilege) answered 500; the status is #5035 with parameters `GrantObjPriv Error`, `-112`, `SQL Error Code`; one severity-2 line.
-- The other refusals, all 500 at #5540 with the SQLCODE first: `-118` an unknown grantee, `-473` an absent schema, `-428` an absent procedure, `-187` an absent ML configuration, `-30` an absent view or a one-part table name, `-60` an unknown action. An absent foreign server answers #5002 `<SUBSCRIPT>` (deferred above), and an unknown namespace #5002 `<NAMESPACE>`. A grant of `EXECUTE` on a table answered 200 and stored nothing.
+- The other refusals, all 500 at #5540 with the SQLCODE first: `-118` an unknown grantee, `-473` an absent schema, `-428` an absent procedure, `-187` an absent ML configuration, `-30` an absent view or a one-part table name, `-60` an unknown action. An absent foreign server answers #5002 `<SUBSCRIPT>` (deferred above), and an unknown namespace #5002 `<NAMESPACE>`. A grant of `EXECUTE` on a table answered 200 and stored a row the list never shows (DW-2201).
 - The monitor read 2 after these; `$SYSTEM.Monitor.Clear()` returned it to 0, and the end state is S0. No contradiction with Measured at plan.
 
 **Found while building:**
@@ -335,6 +353,9 @@ Observed on `ocupilot-ci`, each applied one at a time, the tree recompiled, then
 - each reverted byte-identical (`cmp`); after loading the patched tree, `SqlPrivilegeDescriptor` 10/10, `SqlPrivilegeRead` 4/4, `SqlPrivilegeGate` 3/3 and `SqlPrivilegeWrite` 8/8 passed (runs 2382-2385, `%UnitTest_Result`); the two client specs passed 15/15 (CR)
 - mutation: `SqlPrivilegeProbe.RemoveAll`'s privilege-row sweep selects nothing (`While 0 &&`) -> `SqlPrivilegeRead` TestTheProbeCleanupLeavesNoPrivilegeRow red (run 2400, `ocupilot-ci`); reverted byte-identical (`cmp`), throwaway reloaded and at zero probe rows (rework 1)
 - mutation: the two editor specs' expected tab lists lose `SQL privileges` -> `users-editor` and `roles-editor` browser specs red against the redeployed bundle (rework 1)
+- mutation: `SqlPrivilegeProbe.RevokeAll` sends `%ALTER` unchanged -> `SqlPrivilegeRead` TestTheProbeCleanupLeavesNoPrivilegeRow red at "and takes the two listed rows" (run 2402); reverted byte-identical (`cmp`), reloaded, green (run 2403) (CR rework 1)
+- the sweep mutation of run 2400 also reddened `SqlPrivilegeRead` `OnAfterOneTest` "and none is left" in three tests (`%UnitTest_Result`): the teardown count is load-bearing (CR rework 1)
+- after the review patches: `SqlPrivilegeRead` 5/5 (run 2403), `SqlPrivilegeGate` 3/3 (2404), `SqlPrivilegeWrite` 8/8 (2405); `users-editor` 8/8, `roles-editor` 8/8, `permissions-sql-privileges` 2/2 on a rebuilt, redeployed bundle; `ocupilot-ci` at S0 (CR rework 1)
 
 ## Auto Run Result
 
