@@ -8394,6 +8394,7 @@ So that a change I ask for in conversation lands as a confirmed proposal, and th
 - **Given** a turn run as a principal lacking an adjusted screen's pair
 - **When** it asks the agent to change that screen
 - **Then** the turn is refused at that screen, no proposal row is created, and the turn completes.
+- DW-2181: The agent propose-and-confirm path of the three Screen permissions tools is declared but never run end to end (ledger; routed by harvest 2026-10-08)
 
 ---
 

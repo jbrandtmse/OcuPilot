@@ -10403,3 +10403,23 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: ocupilot-ci 2026-10-07: grant with namespace OcuProbe189Missing answered 500 <NAMESPACE>
 - 2026-10-08T00:50:58Z status=decision-pending owner=burndown by=spec_gate note=owner_hold: not reported to InterSystems
 - 2026-10-08T00:51:20Z status=decision-pending owner=burndown by=spec_gate note=evidence corrected: the plan names no probe namespace (spec Design Notes: an unknown namespace answers 500 <NAMESPACE>); OcuProbe189Missing was not measured
+
+### DW-2179: Screen permissions' add-pair and remove-pair read back nothingSent: the composed GET refuses the repeated change after the write, so AD-58 never compares the stored set (READBACKFIELDS Pairs is declared and unused)
+- source: spec-20-15-per-screen-permissions-seen-and-adjusted.md | severity: med | fix-risk: low | footprint: in-story
+- evidence: deferred by the 20.15 implement stage; a plain re-read of the stored set would let AD-58 compare it
+- 2026-10-08T07:00:29Z status=open owner=20-15-per-screen-permissions-seen-and-adjusted by=harvest note=in-story: settle in 20.15's either-of pass or its review
+
+### DW-2180: ScreenAccessPort's stale-write mapping to 409 STATE.CONFLICT is pinned only at the store, not through the port
+- source: spec-20-15-per-screen-permissions-seen-and-adjusted.md | severity: med | fix-risk: low | footprint: in-story
+- evidence: no test interleaves two writers through ScreenAccessPort; ScreenAccessGate pins the store
+- 2026-10-08T07:00:29Z status=open owner=20-15-per-screen-permissions-seen-and-adjusted by=harvest note=in-story: settle in 20.15's either-of pass or its review
+
+### DW-2181: The agent propose-and-confirm path of the three Screen permissions tools is declared but never run end to end
+- source: spec-20-15-per-screen-permissions-seen-and-adjusted.md | severity: med | fix-risk: low | footprint: in-epic
+- evidence: ScreenAccessWire drives the row-action route; ScreenAccessDescriptor asserts declarations only (StateDiff, Reset PortQuery payload branch, ReadBackGone)
+- 2026-10-08T07:00:29Z status=routed owner=20-18-the-agent-proposes-permission-changes-and-refuses-on-a-scree by=harvest note=Story 20.18 advertises the tools and adds the run
+
+### DW-2182: WireSecurityRead.TestTaskHistoryPairSetsAreEnforcedForARealPrincipal asserts nothing is cut at 1,000 rows, so it reddens on an instance holding more task-history rows (1,224 on ocupilot-b-ci)
+- source: cycle-log-epic-20.md (20.15 full sweep) | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: red in 20.15's sweep on the long-lived throwaway; CI's fresh instance holds few rows (spine Conventions > Tests: no dependence on instance age)
+- 2026-10-08T07:00:29Z status=routed owner=23-5-the-range-end-cleanup-part-5 by=harvest note=assert the pair-set refusal and a row, not the absence of truncation
