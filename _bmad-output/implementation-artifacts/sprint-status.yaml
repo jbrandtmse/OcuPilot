@@ -347,7 +347,7 @@ development_status:
   20-16-the-agent-edits-rule-dtl-and-bpl-content-behind-the-embedded: backlog
   20-17-long-blocks-in-the-agent-panel-start-collapsed: done
   20-18-the-agent-proposes-permission-changes-and-refuses-on-a-scree: done
-  20-19-the-agent-reads-class-and-routine-source: ready-for-dev
+  20-19-the-agent-reads-class-and-routine-source: in-progress
   20-20-the-agent-creates-new-classes-and-routines-on-the-person-s-c: backlog
   20-21-the-agent-saves-edits-to-existing-classes-and-routines: backlog
   epic-20-retrospective: optional
