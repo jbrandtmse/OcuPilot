@@ -10609,3 +10609,4 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-20-18-the-agent-proposes-permission-changes-and-refuses-on-a-scree.md | severity: med | fix-risk: med | footprint: out-of-footprint
 - evidence: QA observed it on ocupilot-b-ci after an ADVERTISED mutation and revert (inference: pooled web process state); code review's two load/revert cycles did not reproduce it
 - 2026-10-08T14:25:24Z status=escalated owner=burndown by=cr note=unverified; settle by ADVERTISED 0->1 reload on a throwaway, then a web turn listing tools before any restart
+- 2026-10-08T15:48:14Z status=routed owner=burndown by=merge_gate note=orchestrator ruling 2026-10-08: kept open for Epic 20's burn-down; in a dev loop it is the known mutation-leaves-process-state pattern, but an IPM in-place upgrade recompiles without a restart, so the next release's upgrade check verifies new tools reach web-started turns after an in-place upgrade with no restart
