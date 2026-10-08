@@ -10475,3 +10475,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-20-15-per-screen-permissions-seen-and-adjusted.md | severity: low | fix-risk: med | footprint: in-story
 - evidence: Task 0 in implement pass 1 (1b9e6114), restored under the spec's Verification; AD-64 quotes 0.016 ms a read and the plan's 46 ms map
 - 2026-10-08T08:07:34Z status=wontfix-accepted owner=20-15-per-screen-permissions-seen-and-adjusted by=cr note=reopen_if=Navigation.Payload with no adjustment exceeds 100 ms over 5 runs on ocupilot-b-ci
+### DW-2202: Literal shared-surface counts and lists asserted outside their roster's own test break each story that adds a member: derive them from the registry, descriptor or mirror (Rule 30)
+- source: owner request 2026-10-08 via the Planner; cycle-log-parallel.md | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: 20.1 (Home tiles 7 vs 8, rail 9 vs 11) and 18.9 (users and roles editor tab lists) went red on literals; the entity-type count is written out in Test/Descriptor, MftConnectionDescriptor and SuperserverDescriptor; find the rest by grepping ui/browser, ui/tools and src/OcuPilot/Test for literal counts
+- 2026-10-08T08:48:06Z status=routed owner=23-5-the-range-end-cleanup-part-5 by=orchestrator note=Rule 30's derive-not-literal clause applied to the existing suite; roster pins (SurfaceCoverage, EndpointCoverage, FLOORONLY) stay literal by design
