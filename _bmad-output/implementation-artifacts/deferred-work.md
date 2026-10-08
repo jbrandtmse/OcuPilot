@@ -10596,3 +10596,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-28-sql-column-and-admin-privileges.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: the Standard list answers such a table as {Action: '', GrantedVia: '', HasColumnPriv: true}; viaHint('') is '' and EXPERIENCE.md has no column-only hint
 - 2026-10-08T16:01:56Z status=wontfix-accepted owner=18-28-sql-column-and-admin-privileges by=cr note=reopen_if=a story adds a 'held through its columns' Fixed string to the Permissions row, or a user reports the blank row
+
+### DW-2222: IRIS defect candidate: Security.Users.Copy copies the source's SQL privileges and records only the vendor's Create User audit event, nothing for the copied privileges
+- source: spec-18-29-role-members-admin-option-user-copy-from-and-password-valida.md | severity: low | fix-risk: high | footprint: out-of-footprint
+- evidence: ocupilot-ci 2026-10-08 (18.29 Task 0): a copy carried standard, column and admin SQL privileges; the audit held one Create User row and no privilege row
+- 2026-10-08T16:51:59Z status=decision-pending owner=burndown by=spec_gate note=owner_hold: not reported to InterSystems
+
+### DW-2223: IRIS defect candidate: Security.Role OWNERLIST answers AdminOption as the string 0 or 1 for members but a boolean false on a User (escalation) row
+- source: spec-18-29-role-members-admin-option-user-copy-from-and-password-valida.md | severity: low | fix-risk: high | footprint: out-of-footprint
+- evidence: ocupilot-ci 2026-10-08 (18.29 plan): member rows AdminOption "0"/"1"; escalation holder row false
+- 2026-10-08T16:51:59Z status=decision-pending owner=burndown by=spec_gate note=owner_hold: not reported to InterSystems
