@@ -10454,3 +10454,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-9-sql-object-privileges.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: sql-privilege-dialog.ts:8-30 against SqlPrivilegePort.cls:71-80; no ui/tools or ObjectScript test compares them, and 18.28 extends the port's lists
 - 2026-10-08T07:43:47Z status=wontfix-accepted owner=18-9-sql-object-privileges by=cr note=reopen_if=the dialog offers a type or action that SqlPrivilegePort.Violations refuses, or omits one it admits
+
+### DW-2201: IRIS defect candidate: $SYSTEM.SQL.Security.GrantPrivilege of EXECUTE on a TABLE answers OK and stores a privilege row (action e) the admin API's Standard LIST never shows and that survives the grantee's deletion and the table's drop
+- source: spec-18-9-sql-object-privileges.md (rework 1) | severity: low | fix-risk: high | footprint: out-of-footprint
+- evidence: ocupilot-ci 2026-10-08: GrantPrivilege(EXECUTE, OcuSqlPrivProbe.T1, TABLE, probe user) returned OK; the orphan row USER||1,OcuSqlPrivProbe.T1||e||OcuSqlPrivProbeU||irisowner outlived both
+- 2026-10-08T08:36:27Z status=decision-pending owner=burndown by=harvest note=owner_hold: not reported to InterSystems; OcuPilot's Rules refuse EXECUTE on a table before any vendor call
