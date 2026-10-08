@@ -1,8 +1,9 @@
 /// <p>Pins Story 20.15's declarations (AD-5, AD-36, AD-51, AD-52, AD-53, AD-64): the <code>access</code>
 /// source kind's refusals, which <file>ui/tools/screen-mirror.test.mjs</file> runs off this class's
 /// <code>Cases</code> block as well; the Screen permissions descriptor; its three write tools' kind, port,
-/// pairs, fingerprint subject and governance keys; their absence from every roster the agent sees; the
-/// <code>screen-permission</code> entity type; and the signature of the internal
+/// pairs, fingerprint subject and governance keys; their absence from every roster the agent sees; that no
+/// other descriptor or tool declares the either-of pair; the <code>screen-permission</code> entity type; and
+/// the signature of the internal
 /// <code>$System.Security.ResourceExists</code> the port's rules call.</p>
 /// <p>It needs a compiled instance, makes no request and writes nothing.</p>
 Class OcuPilot.Test.ScreenAccessDescriptor Extends %UnitTest.TestCase
@@ -201,12 +202,15 @@ Method TestTheScriptRendersTheWritesAndNotTheRead()
 }
 
 /// <p>The either-of pair (a resource carrying <parameter>OcuPilot.Screen.Gate.ALTERNATIVESEPARATOR</parameter>)
-/// is declared by exactly five surfaces: the Screen permissions descriptor, its read tool and its three
-/// write tools. Every registered descriptor's <code>PrivilegePairs</code> and unadjusted
-/// <code>RequiredPairs</code>, and every registered tool's pairs, are read; a surface outside the five that
-/// declares one fails, naming it, and so does one of the five that does not.</p>
+/// is declared by five descriptors and tools alone: the Screen permissions descriptor, its read tool and its
+/// three write tools. It reads every registered descriptor's <code>PrivilegePairs</code> and its
+/// <code>RequiredPairs</code> as the gate reads it, and every registered tool's pairs as
+/// <method>OcuPilot.Screen.Tool.Registry.RequiredPairs</method> reads them, extra and <code>CLASSICPAGES</code>
+/// pairs included. A surface outside the five that declares one fails, naming it, and so does one of the five
+/// that does not. A port's pair parameters and a tool's per-call <code>ArgumentPairs</code> are not read.</p>
 /// <p>Mutation (Rule 19): make another descriptor's <code>PrivilegePairs</code> (Locks') answer
-/// <method>OcuPilot.Screen.Gate.AdjusterPairs</method> -- this goes red naming it.</p>
+/// <method>OcuPilot.Screen.Gate.AdjusterPairs</method> -- this goes red naming it; make Screen permissions'
+/// answer its declaration -- this goes red naming each of the five.</p>
 Method TestTheEitherOfPairIsDeclaredByItsFiveSurfacesOnly()
 {
     Set tSeparator = ##class(OcuPilot.Screen.Gate).#ALTERNATIVESEPARATOR
@@ -225,7 +229,7 @@ Method TestTheEitherOfPairIsDeclaredByItsFiveSurfacesOnly()
     Do $$$AssertTrue(tTools.%Size() > 1, "more than one tool is registered: " _ tTools.%Size())
     Set tIterator = tTools.%GetIterator()
     While tIterator.%GetNext(.tIndex, .tEntry) {
-        Set tPairs = $ClassMethod(tEntry.%Get("class"), "PrivilegePairs", tEntry.%Get("descriptor"))
+        Set tPairs = ##class(OcuPilot.Screen.Tool.Registry).RequiredPairs(tEntry, .tToolResolved)
         If ..CarriesAlternative(tPairs, tSeparator) Set tCarrying(tEntry.%Get("name")) = ""
     }
     For tI = 1:1:$ListLength(tFive) {

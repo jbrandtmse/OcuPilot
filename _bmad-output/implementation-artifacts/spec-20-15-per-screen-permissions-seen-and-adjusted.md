@@ -408,6 +408,26 @@ Code review, 2026-10-08 (both implement passes, baseline d782877a): 1 high, 8 me
 - **AC6's per-code mutations.** Rule 19 asks for one mutation per AC.
 - **The agent-tool legs run in process.** Each link is pinned, and the real-principal turn is DW-2181 (Story 20.18).
 
+Code review, 2026-10-08 (rework 2, `ca530302`, baseline 91f55b08): 0 high, 0 medium, 4 low patched or closed in-pass, 1 low closed in the ledger. The orchestrator's condition is met.
+
+- [x] [Review][Patch] (low) The roster's doc comment claimed "exactly five surfaces", "unadjusted `RequiredPairs`" and "every registered tool's pairs"; it now says what it reads [src/OcuPilot/Test/ScreenAccessDescriptor.cls:204]
+- [x] [Review][Patch] (low) The class header did not name the roster [src/OcuPilot/Test/ScreenAccessDescriptor.cls:1]
+- [x] [Review][Patch] (low) Tool pairs are read through `Tool.Registry.RequiredPairs`, the gate's own reader, so a throwing `PrivilegePairs` cannot abort the scan [src/OcuPilot/Test/ScreenAccessDescriptor.cls:232]
+- [x] [Review][Patch] (low) Rule 19: the "a listed surface loses it" direction had no `mutation:` line; it is now recorded under Verification.
+- [x] [Review][Closed] DW-2203 `wontfix-accepted`: port pair parameters and per-call `ArgumentPairs` are not read. `ScreenAccessPort.PAIRS` is AD-64's sanctioned carrier, and `Navigate.ArgumentPairs` carries the pair per call by design.
+
+**Rejected (rework 2):**
+
+- **Areas are not scanned.** False: `Descriptor.TestTheAreaVocabularyIsClosedOrderedAndUngatedAtBothEnds` pins every area's set by content.
+- **`pResolved` is ignored.** False: every gate refuses an unresolved surface, so an unreadable stray admits on neither arm.
+- **A registry failure errors the method.** False: `AssertStatusOK` fails first, naming the list.
+- **The `> 1` floors are weak.** Low: `SurfaceCoverage` and `Descriptor` pin registry completeness.
+- **The five are checked for the separator, not the exact pair.** False: `TestTheDescriptorDeclaresScreenPermissions` and `TestTheToolsDeclareTheirKindsPortsAndPairs` pin the exact pair.
+- **The descriptor leg uses OR.** False: the descriptor is not adjustable and has no classic page, and `ScreenAccessGate`'s stray-row legs pin that.
+- **The read tool's name is a literal.** False: a wrong name reddens in both directions.
+- **The `[false]` triage entry and the "0 failed" line.** Both fixes would edit spec history.
+- **`Gate.AdjusterPairs`' "nothing else does".** Outside the rework range, and not high.
+
 ## Spec Change Log
 
 - 2026-10-08, runner: re-opened for the orchestrator's boundary condition, a roster test confining the either-of pair to its five surfaces (rework iteration 2). The pass covers only the `[Orchestrator]` item.
@@ -622,6 +642,7 @@ Code review, 2026-10-08 (both implement passes, baseline d782877a): 1 high, 8 me
 - mutation: either-of, review patch - `Dispatch.MissingPair` stops splitting alternatives: `ScreenAccessGate.TestDispatchAcceptsEitherArmOfTheEitherOfPair` red; `Operation.MissingPair` stops splitting: `ScreenAccessWire` Sec, Raise and Audit legs red; `Access.Spelled` reverts to `resource:permission`: `ScreenAccessWire` Sec row leg red. Each reverted to a byte-identical tree.
 
 - mutation: either-of roster - `LockList.PrivilegePairs` answers `Gate.AdjusterPairs()` -> `ScreenAccessDescriptor.TestTheEitherOfPairIsDeclaredByItsFiveSurfacesOnly` red, naming `OcuPilot.Screen.Descriptor.LockList` and its four `osmgmt.locks.*` tools. Reverted by rsync from the worktree (`diff -rq` identical) and reloaded; the class reads green.
+- mutation: either-of roster, both directions (code review, on the patched test) - on the throwaway copy only, `AgentScreenPermissions.PrivilegePairs` answers `##super()` and `LockList.PrivilegePairs` answers `Gate.AdjusterPairs()` -> run 2321 red. Each of the five is named "still declares", and `LockList` and its four `osmgmt.locks.*` tools are named as strays. Reverted by rsync (`diff -rq` identical) and reloaded; run 2322 is 7/7 green (`%UnitTest_Result`).
 
 **QA pass (QA):**
 

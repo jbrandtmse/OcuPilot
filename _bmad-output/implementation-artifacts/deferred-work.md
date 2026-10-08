@@ -10479,3 +10479,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: owner request 2026-10-08 via the Planner; cycle-log-parallel.md | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: 20.1 (Home tiles 7 vs 8, rail 9 vs 11) and 18.9 (users and roles editor tab lists) went red on literals; the entity-type count is written out in Test/Descriptor, MftConnectionDescriptor and SuperserverDescriptor; find the rest by grepping ui/browser, ui/tools and src/OcuPilot/Test for literal counts
 - 2026-10-08T08:48:06Z status=routed owner=23-5-the-range-end-cleanup-part-5 by=orchestrator note=Rule 30's derive-not-literal clause applied to the existing suite; roster pins (SurfaceCoverage, EndpointCoverage, FLOORONLY) stay literal by design
+
+### DW-2203: The either-of roster reads descriptor and tool declarations only: a port's pair parameters and a tool's per-call ArgumentPairs are unread
+- source: spec-20-15-per-screen-permissions-seen-and-adjusted.md (code review, rework 2) | severity: low | fix-risk: med | footprint: in-story
+- evidence: ScreenAccessPort.PAIRS (AdjusterSpec) is a sixth, AD-64-sanctioned carrier; a port copying it would pass PortGate and the roster. Navigate.ArgumentPairs carries the pair per call for the screenpermissions route, so ArgumentPairs cannot be read without exemptions. No stray exists today.
+- 2026-10-08T09:11:59Z status=wontfix-accepted owner=20-15-per-screen-permissions-seen-and-adjusted by=cr note=reopen_if=AdjusterPairs()/AdjusterSpec() called in src/OcuPilot code outside Gate, AgentScreenPermissions, ScreenAccessPort
