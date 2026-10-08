@@ -9,9 +9,9 @@ stack_risk: uncommon      # ObjectScript / IRIS for Health. Arms the end-of-epic
 review_tier: full-opus    # every bmad-code-review layer stays on the parent (Opus) tier
 
 overrides:
-  implement: sonnet       # bmad-build-auto's implement stage, de-escalated 2026-10-05 on cost (owner; see
-                          # history). `plan` and code review stay on opus via the stage map; `qa` stays
-                          # on sonnet.
+  implement: haiku        # bmad-build-auto's implement stage, moved to Haiku 5.5 on 2026-10-08 as an owner
+                          # trial (see history). `plan` and code review stay on opus via the stage map; `qa`
+                          # stays on sonnet.
 
 checkpoint:               # pre-answered end-of-epic checkpoint offers (owner instruction 2026-09-16; Rule 23).
   recommend_escalate: decline   # live again while implement is on sonnet: an escalation recommendation never pauses. The lead logs the
@@ -68,4 +68,15 @@ history:
       Owner decision on cost, relayed by the Planner session on 2026-10-05 once contest judging was
       essentially done: implement returns to Sonnet (Sonnet 5.5) to conserve tokens. Not taken on
       defect telemetry. QA stays on sonnet and code review on opus, unchanged.
+    approved_by: user
+  - date: 2026-10-08
+    action: move-implement-to-haiku
+    evidence: >-
+      Owner decision after the harness upgrade, as a trial: "I want to switch the implement model to
+      Haiku and see how it does now that it's upgraded to version 5.5. The rest of the steps should
+      remain the same." The alias `haiku` resolved to claude-haiku-5-5 when probed on 2026-10-08.
+      Plan and code review stay on opus, QA on sonnet; review_tier stays full-opus, so no review
+      layer runs below the implementing tier. Telemetry to watch against the Sonnet stories just
+      before it (18.9, 18.28, 20.15, 20.18): code-review high+med per story, implement re-spawns,
+      first-run CI reds, and Rule 30 fresh-check reds.
     approved_by: user
