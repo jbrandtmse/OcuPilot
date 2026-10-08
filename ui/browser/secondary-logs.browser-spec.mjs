@@ -1,9 +1,12 @@
 /**
  * The six secondary log viewers in a real browser, against the throwaway instance (Story 16.8):
- * each viewer's seeded entry (AC1), the fresh-stock empty states read before anything is seeded
+ * each viewer's seeded entry (AC1), each viewer's empty state agreeing with its own read before anything is seeded
  * (AC4), search with its count, the two match controls and Raw (AC1, AC5), Explain on the event
  * log's entry and a typed turn's screen context (AC3), Load newer (AC1), and the DW-1337 walk of
  * the six seeded screens and Home at wide light, narrow light and wide dark (AC7).
+ *
+ * mutation: AC4 -- render "No entries." for a viewer whose read answered rows, or drop it for one whose read answered none, and AC4 reddens;
+ * AC3 -- send more rows than the context cap, or fewer than min(on screen, cap), and AC3 reddens.
  *
  * Seeds one entry into each store through `secondary-log-spec.mjs` and removes it in `after`, so it
  * runs only in a throwaway, and arms the turnprobe provider for the Explain legs.
@@ -138,7 +141,7 @@ async function waitForReply(page, text) {
   );
 }
 
-test('AC4: before anything is seeded, the System Monitor log shows its own lines and the other five show "No entries."', async () => {
+test('AC4: before anything is seeded, each viewer agrees with its own read: "No entries." exactly when the read answers no rows', async () => {
   assert.equal(seeded, false, 'this leg reads the stores as the instance left them');
   for (const { key } of SECONDARY_SOURCES) {
     const { context, page } = await signedInAt(browser, config, urlFor(key));
@@ -149,10 +152,16 @@ test('AC4: before anything is seeded, the System Monitor log shows its own lines
         ROW_SELECTOR
       );
       assert.equal(await page.$('[data-ocu-log="refusal"]'), null, `${key}: no refusal and no fault`);
-      if (key === 'systemmonitor') {
-        assert.ok((await page.$$(ROW_SELECTOR)).length > 0, 'the System Monitor log shows its own lines');
-      } else {
+      const answer = await fetch(`${config.origin}/api/ocupilot/screens/logs.${key}/read?maxRows=1&ns=HSCUSTOM`, { headers: { Authorization: authHeader(config) } });
+      assert.ok(answer.ok, `${key}: the source's own read (HTTP ${answer.status})`);
+      const answered = (await answer.json()).rows;
+      assert.ok(Array.isArray(answered), `${key}: the viewer's own read answered rows`);
+      const shown = (await page.$$(ROW_SELECTOR)).length;
+      if (answered.length === 0) {
         assert.equal(await page.$eval('[data-ocu-log="empty"]', (node) => node.textContent.trim()), STRINGS.logViewerEmpty, `${key}: "No entries."`);
+      } else {
+        assert.equal(await page.$('[data-ocu-log="empty"]'), null, `${key}: rows were read, so no empty state`);
+        assert.ok(shown > 0, `${key}: the rows its read answered are listed`);
       }
     } finally {
       await context.close();
@@ -219,6 +228,7 @@ test('AC3: Explain on the event log entry marks that entry among the rows on scr
   scriptReply(probe, explainTag, 0, `##class(OcuPilot.Test.TurnProvider).TextReply("that event explained")`);
   const { context, page } = await signedInAt(browser, config, urlFor('eventlog'));
   let typedTag = '';
+  let cap = 0;
   try {
     const row = await seededRow(page);
     assert.ok(row.total >= 2, `the event log holds more than the one entry Explain marks: ${row.total}`);
@@ -236,7 +246,9 @@ test('AC3: Explain on the event log entry marks that entry among the rows on scr
     const explained = screenContextPayload(recordedMessages(explainTag));
     assert.ok(explained, 'a screen_context pair was recorded');
     assert.equal(explained.route, 'logs/eventlog');
-    assert.equal(explained.rowsSent, row.total, 'every entry on screen was sent, not the entry alone');
+    cap = (await (await fetch(`${config.origin}${CONTEXT_PATH}`, { headers: { Authorization: authHeader(config) } })).json()).contextRowCap;
+    assert.ok(Number.isInteger(cap) && cap > 0, `the context row cap is readable: ${cap}`);
+    assert.equal(explained.rowsSent, Math.min(row.total, cap), 'every entry on screen was sent up to the context cap, not the entry alone');
     assert.equal(Number('selected' in explained) + Number('focus' in explained), 1, `exactly one marker: ${Object.keys(explained).join(',')}`);
     const entry = 'selected' in explained ? explained.rows[explained.selected] : explained.focus;
     assert.deepEqual(Object.keys(entry).sort(), ['severity', 'text', 'time'], 'as its declared fields');
@@ -253,7 +265,7 @@ test('AC3: Explain on the event log entry marks that entry among the rows on scr
     const typed = screenContextPayload(recordedMessages(typedTag));
     assert.ok(typed, 'the typed turn carried a screen_context pair');
     assert.equal(typed.route, 'logs/eventlog');
-    assert.equal(typed.rowsSent, row.total, 'every entry on screen was sent');
+    assert.equal(typed.rowsSent, Math.min(row.total, cap), 'every entry on screen was sent up to the context cap');
     assert.ok(typed.rows.some((entry) => String(entry.text).includes(SECONDARY_MARKER)), 'the seeded entry among them');
   } finally {
     await context.close();

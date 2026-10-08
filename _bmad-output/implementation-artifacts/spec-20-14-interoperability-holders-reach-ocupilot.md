@@ -2,7 +2,7 @@
 title: 'Story 20.14: Interoperability holders reach OcuPilot'
 type: 'feature'
 created: '2026-10-07'
-status: 'in-progress'
+status: 'done'
 baseline_revision: 'e7840fbd7bb141c1161792f84e27d4bcb8dd17c1'
 baseline_commit: 'e7840fbd7bb141c1161792f84e27d4bcb8dd17c1'
 review_loop_iteration: 0
@@ -134,7 +134,7 @@ Principals, each with READ on the install namespace's code database: **E** also 
   - `InteropFloorTurn` under `OCUPILOT_ALLOW_TEST_PROVIDER`.
 - `ui/browser/interop-floor.browser-spec.mjs` (new): Adm signs in. It sees no no-privileges notice, `interoperability/processes?ns=HSCUSTOM` renders rows, and Permissions stays listed but unavailable, naming `%Admin_Secure:USE` (`privilegeRequiresResource`). It removes the principal in `after`.
 
-- [ ] [CI] Run 37704740185 on 85d5d96c, browser shard 2/3, failed `ui/browser/secondary-logs.browser-spec.mjs` AC4 (:141-160): it could not find `[data-ocu-log="empty"]`. `interop-productions.browser-spec.mjs` (20.2) ran earlier in the same shard, and its production start and stop wrote interoperability event-log rows. This story's new spec file had moved the shard composition. The fix: the spec holds whatever another spec left (spine Conventions › Tests).
+- [x] [CI] Run 37704740185 on 85d5d96c, browser shard 2/3, failed `ui/browser/secondary-logs.browser-spec.mjs` AC4 (:141-160): it could not find `[data-ocu-log="empty"]`. `interop-productions.browser-spec.mjs` (20.2) ran earlier in the same shard, and its production start and stop wrote interoperability event-log rows. This story's new spec file had moved the shard composition. The fix: the spec holds whatever another spec left (spine Conventions › Tests).
   - AC4 compares each viewer with what that source's own read answers at that moment: rows on screen when the read answers rows, "No entries." when it answers none. It keeps the empty state pinned wherever the spec itself can guarantee emptiness.
   - AC3's check that every entry on screen was sent (:239) holds when the store holds more rows than the context cap (measured on `ocupilot-b-ci`: 1000 on screen, 200 sent).
   - Proof: on `ocupilot-b-ci`, run `interop-productions` and then `secondary-logs` in one `node --test` call. It is red before the fix and green after, and the `mutation:` lines are updated.
@@ -315,3 +315,5 @@ Blocking condition: none
 - Review: 1 patch (AC5 mutation line), 3 rejected, 0 deferred. Follow-up review recommended: false.
 - Verified: full ObjectScript sweep 507 classes, 4051 tests, 0 failed; smoke 50/50; `npm test` 2611 and `test:tools` 1883 passed; bundle 3.09 MB; both interop and developer-floor browser specs pass; every AC has a `mutation:` line.
 - Residual: AC6 is read as "a pair on a resource other than `%Ens_Portal`" (ten surfaces listed); the literal reading would also list Explorer and Logs surfaces that declare only `%Development` or `%Admin_Operate`. The orchestrator should confirm. The spine, PRD and epics.md ship-time lines are the runner's.
+
+Rework iteration 1 (CI): `ui/browser/secondary-logs.browser-spec.mjs` AC4 now compares each viewer's empty state with the source's own read, and AC3 bounds `rowsSent` by `min(rows on screen, contextRowCap)` read from `GET /agent/context`. Verified on `ocupilot-b-ci` (1000 event-log rows): `interop-productions` then `secondary-logs` 11/11 pass; the old AC3 equality and an inverted AC4 branch each redden their leg; `mutation:` lines in the spec header. Follow-up review recommended: false.
