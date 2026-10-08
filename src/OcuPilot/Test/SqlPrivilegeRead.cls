@@ -228,4 +228,19 @@ Method ScreenRows(pGrantee As %String) As %DynamicArray
     Quit $Select($IsObject($Get(tRead)): tRead.%Get("rows"), 1: [])
 }
 
+/// <p>The probe's cleanup leaves no privilege row for a probe grantee: the vendor stores a table grant of
+/// <code>EXECUTE</code> that no list shows, and keeps it after its grantee and table are gone.</p>
+/// <p>Mutation (Rule 19): make the privilege-row sweep in
+/// <method>OcuPilot.Test.SqlPrivilegeProbe.RemoveAll</method> select nothing -- this leg goes red.</p>
+Method TestTheProbeCleanupLeavesNoPrivilegeRow()
+{
+    Set tProbe = ..#PROBE
+    Set tUser = $Parameter(tProbe, "USER")
+    Do $$$AssertStatusOK($ClassMethod(tProbe, "Grant", tUser, "TABLE", $Parameter(tProbe, "TABLE"), "SELECT"), "a direct table grant")
+    Do $$$AssertStatusOK($ClassMethod(tProbe, "Grant", tUser, "TABLE", $Parameter(tProbe, "TABLE"), "EXECUTE"), "and the unlisted EXECUTE grant on a table")
+    Do $$$AssertEquals($ClassMethod(tProbe, "RemainingPrivileges"), 2, "the instance holds both rows")
+    Do $$$AssertStatusOK($ClassMethod(tProbe, "RemoveAll"), "the cleanup runs")
+    Do $$$AssertEquals($ClassMethod(tProbe, "RemainingPrivileges"), 0, "and no privilege row of a probe grantee is left")
+}
+
 }

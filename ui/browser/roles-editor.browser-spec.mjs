@@ -255,7 +255,7 @@ test('a row\u2019s name opens the editor on General, Members and Assigned to', a
     );
     await editorReady(page);
     const tabs = await tabState(page);
-    assert.deepEqual(tabs.map((tab) => tab.label), [STRINGS.processDetailsGroupGeneral, STRINGS.roleEditorTabMembers, STRINGS.roleEditorTabAssignedTo]);
+    assert.deepEqual(tabs.map((tab) => tab.label), [STRINGS.processDetailsGroupGeneral, STRINGS.roleEditorTabMembers, STRINGS.roleEditorTabAssignedTo, STRINGS.sqlPrivilegesLabel]);
     assert.equal(tabs[0].selected, true, 'General is open first');
     assert.equal(await page.$eval('#ocu-role-edit-Description', (node) => node.value), MARKER, 'with the role as the instance holds it');
   } finally {

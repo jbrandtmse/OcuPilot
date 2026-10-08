@@ -213,8 +213,8 @@ test('a row\u2019s name opens the editor on the General, Roles and Effective pri
     );
     await editorReady(page);
     const tabs = await tabState(page);
-    // Story 16.3 added the read-only Effective privileges tab third.
-    assert.deepEqual(tabs.map((tab) => tab.label), [STRINGS.processDetailsGroupGeneral, STRINGS.userColumnRoles, STRINGS.userEffectiveTab]);
+    // Story 16.3 added the read-only Effective privileges tab third; Story 18.9 added SQL privileges last.
+    assert.deepEqual(tabs.map((tab) => tab.label), [STRINGS.processDetailsGroupGeneral, STRINGS.userColumnRoles, STRINGS.userEffectiveTab, STRINGS.sqlPrivilegesLabel]);
     assert.equal(tabs[0].selected, true, 'General is open first');
   } finally {
     await context.close();

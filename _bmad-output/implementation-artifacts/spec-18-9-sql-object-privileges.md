@@ -2,8 +2,8 @@
 title: 'Story 18.9: SQL object privileges'
 type: 'feature'
 created: '2026-10-07'
-status: 'in-progress'
-baseline_revision: '13e387c9bcda5526e8506141ac40702d6301dfa0'
+status: 'done'
+baseline_revision: '6bda2c494e5977e23b427b3509b6ac409b062400'
 baseline_commit: '13e387c9bcda5526e8506141ac40702d6301dfa0'
 review_loop_iteration: 0
 followup_review_recommended: false
@@ -46,6 +46,13 @@ deferred:
     location: >-
       src/OcuPilot/Test/WireSecurityRead.cls AssertSameRowsAsTestAccount
     severity: low (unverified)
+  - summary: >-
+      A GRANT of EXECUTE on a TABLE answers 200 and stores a privilege row (code `e`) that the Standard LIST never shows and that survives the grantee's and the table's removal. IRIS defect candidate, decision pending, owner's hold, not reported upstream.
+    evidence: |-
+      ocupilot-ci, 2026-10-08, `$SYSTEM.SQL.Security.GrantPrivilege("EXECUTE", "OcuSqlPrivProbe.T1", "TABLE", "OcuSqlPrivProbeU")` returned OK; `Rows` listed only the SELECT grant; after RemoveAll `Security.SQLPrivileges` still held `USER||1,OcuSqlPrivProbe.T1||e||OcuSqlPrivProbeU||irisowner`. No suite grants it; the orphan row came from an earlier probe (caller unidentified), and 14 class runs left none.
+    location: >-
+      src/OcuPilot/Test/SqlPrivilegeProbe.cls RemoveAll
+    severity: low
 ---
 
 <intent-contract>
@@ -156,8 +163,8 @@ The Rules row refuses:
 - **C6.** Given the rosters, when the suites run, then the descriptor, tools, keys, code and sentence are pinned on both sides.
 - **Integration.** Given `ocupilot-ci`, when the tabs and the agent act, then the tabs go through `GET /screens/:screen/read` and `POST /screens/:screen/action` (`grant-sql`, `revoke-sql`) and the agent through the five tools (C1-C5, the browser spec).
 
-- [ ] [CI] browser shards 1/3 and 3/3 (run 37741029438 on 0a7a868d): `roles-editor.browser-spec.mjs` ("a row's name opens the editor on General, Members and Assigned to") and `users-editor.browser-spec.mjs` ("... General, Roles and Effective privileges tabs") assert each editor's exact tab list, which now ends with `SQL privileges` -- <https://github.com/jbrandtmse/OcuPilot/actions/runs/37741029438> -- update both expectations (and any other spec that lists an editor's tabs, e.g. `unreadable.browser-spec.mjs`), and run each touched spec against a rebuilt and redeployed bundle.
-- [ ] [Smoke] `SqlPrivilegeProbe.RemoveAll` leaves `Security.SQLPrivileges` rows for its probe grantees: deleting the user and dropping the table does not remove them, and `ocupilot-ci` holds `USER||1,OcuSqlPrivProbe.T1||e||OcuSqlPrivProbeU||irisowner` (EXECUTE on the probe table, grantee deleted) -- `RemoveAll` revokes every row whose grantee is a probe principal, in every namespace the tests use, before deleting the principals; every SQL privilege teardown asserts none remains; remove the existing row; and find which call stored EXECUTE on a table (the Rules refuse it before the vendor) -- a vendor quirk goes in `deferred:` under the owner's hold.
+- [x] [CI] browser shards 1/3 and 3/3 (run 37741029438 on 0a7a868d): `roles-editor.browser-spec.mjs` ("a row's name opens the editor on General, Members and Assigned to") and `users-editor.browser-spec.mjs` ("... General, Roles and Effective privileges tabs") assert each editor's exact tab list, which now ends with `SQL privileges` -- <https://github.com/jbrandtmse/OcuPilot/actions/runs/37741029438> -- update both expectations (and any other spec that lists an editor's tabs, e.g. `unreadable.browser-spec.mjs`), and run each touched spec against a rebuilt and redeployed bundle.
+- [x] [Smoke] `SqlPrivilegeProbe.RemoveAll` leaves `Security.SQLPrivileges` rows for its probe grantees: deleting the user and dropping the table does not remove them, and `ocupilot-ci` holds `USER||1,OcuSqlPrivProbe.T1||e||OcuSqlPrivProbeU||irisowner` (EXECUTE on the probe table, grantee deleted) -- `RemoveAll` revokes every row whose grantee is a probe principal, in every namespace the tests use, before deleting the principals; every SQL privilege teardown asserts none remains; remove the existing row; and find which call stored EXECUTE on a table (the Rules refuse it before the vendor) -- a vendor quirk goes in `deferred:` under the owner's hold.
 
 ### Review Findings
 
@@ -227,6 +234,15 @@ Rejected:
   - `[maybe-false]` `[defer]` Intent-alignment: write-path assertions run through SqlPrivilegeSeamPort subclasses - the seam inherits the shipped tools unchanged and the wire legs run the shipped classes; settled by the wire legs in SqlPrivilegeWrite
   - `[maybe-false]` `[defer]` Intent-alignment: ScreenAction.Run edited beyond the spec's named files - the early gate is needed for AD-8 (a caller lacking READ reached the port); the full sweep (511 classes) covers the other READSVALUES tools
 - sweep: 511 classes, 4090 tests, 7 failures before this pass's patches; six were pins on the code count, roster and pair expectations the new code legitimately changed (updated: code count 31 to 32 in four classes, MappingDescriptor classic roster, ToolEmit pair expectation) and one (WireSecurityRead) is environmental, deferred above.
+
+### 2026-10-08 -- Review pass (rework 1)
+
+- verdicts: 4 findings -- high 0, medium 0, low 3, false 1, maybe-false 0
+- findings:
+  - `[low]` `reject` `RevokeAll` has no test that depends on it (the `%DeleteId` sweep removes the rows anyway) -- test-only helper; the sweep is the load-bearing half and carries the recorded mutation; a revoke-only leg is added complexity for no user-reachable harm.
+  - `[low]` `reject` `RevokeAll` swallows errors and always returns OK -- same helper; a failed revoke shows in the final privilege count that every teardown asserts.
+  - `[false]` `reject` revoke reads the product's LIST, not `Security.SQLPrivileges`, so it cannot see the table EXECUTE row -- the sweep reads `Security.SQLPrivileges` in `%SYS` and clears it; `TestTheProbeCleanupLeavesNoPrivilegeRow` proves it.
+  - `[low]` `reject` assertions only in one new test -- `Remaining()` now counts privilege rows and SqlPrivilegeRead, Write and Gate teardowns assert it is 0.
 
 ## Design Notes
 
@@ -317,6 +333,8 @@ Observed on `ocupilot-ci`, each applied one at a time, the tree recompiled, then
 - mutation: `-126` out of `AdminPort.SQLCODEFAULTS` -> `SqlPrivilegeDescriptor` TestTheAdminPortAdmitsTheWritesAndMapsTheCodes red (run 2381) (CR)
 - mutation: `setNamespace` keeps the rows -> `sql-privileges-tab.store.spec.ts` namespace-change leg red; `onSubmit` keeps the dialog open on a refusal naming no field -> `sql-privileges-tab.spec.ts` banner leg red (CR)
 - each reverted byte-identical (`cmp`); after loading the patched tree, `SqlPrivilegeDescriptor` 10/10, `SqlPrivilegeRead` 4/4, `SqlPrivilegeGate` 3/3 and `SqlPrivilegeWrite` 8/8 passed (runs 2382-2385, `%UnitTest_Result`); the two client specs passed 15/15 (CR)
+- mutation: `SqlPrivilegeProbe.RemoveAll`'s privilege-row sweep selects nothing (`While 0 &&`) -> `SqlPrivilegeRead` TestTheProbeCleanupLeavesNoPrivilegeRow red (run 2400, `ocupilot-ci`); reverted byte-identical (`cmp`), throwaway reloaded and at zero probe rows (rework 1)
+- mutation: the two editor specs' expected tab lists lose `SQL privileges` -> `users-editor` and `roles-editor` browser specs red against the redeployed bundle (rework 1)
 
 ## Auto Run Result
 
@@ -330,3 +348,9 @@ Blocking condition: none
 **Verification.** Full ObjectScript sweep on `ocupilot-ci`: 511 classes, 4090 tests; 7 failed before patches. Six were pins the new code legitimately moved (code count 32, classic roster, ToolEmit pairs) and are updated and green; `WireSecurityRead` TestTaskHistoryPairSetsAreEnforcedForARealPrincipal still reads a truncated task history on the 27-hour-old throwaway (environmental, deferred). Story classes, `ProhibitedRoute`, `TokenRevoke` green after patches (runs 2368-2373). Client: store spec 6 pass, tools 1884 pass, components 2649 pass, three browser specs pass (subagent pass). Smoke 50/50. Bundle initial 3.13 MB (under the 3165 kB warning). Throwaway at S0 (no probes, monitor cleared to 0).
 
 **Residual risk.** `Api/ScreenAction.cls` edit touches every `READSVALUES` tool; the sweep covers them.
+
+### Rework 1 (2026-10-08, triggers ci, smoke)
+
+**Change.** The users and roles editor browser specs expect `SQL privileges` as the last tab; `SqlPrivilegeProbe.RemoveAll` revokes the probe principals' direct privileges in `USER` and the install namespace, then sweeps any `Security.SQLPrivileges` row of a probe grantee; `Remaining` counts those rows; new `SqlPrivilegeRead.TestTheProbeCleanupLeavesNoPrivilegeRow`. The orphan row on `ocupilot-ci` is removed; the EXECUTE-on-table vendor quirk is in `deferred:` (decision pending).
+
+**Verification.** `users-editor` 8/8, `roles-editor` 8/8, `permissions-sql-privileges` 2/2 on a rebuilt bundle; each SQL privilege class run twice, green, zero probe rows after each; tools 1884, build, lint-docs, check-objectscript green. Review: 4 findings, 3 low and 1 false rejected, 0 patched. Follow-up review recommended: false.

@@ -4,8 +4,9 @@
 /// sets up as the running account, the instance's own list of a grantee's privileges, and the agent's mint through
 /// a tool's own class. It holds no assertions.</p>
 /// <p><b>Only <parameter>PREFIX</parameter> is ever touched.</b> Every principal and object is named from it and
-/// removed by exact name. <method>RemoveAll</method> drops the objects and principals, cleans the namespace's
-/// statement index and clears the system monitor, which the vendor's severity-2 refusals raise.</p>
+/// removed by exact name. <method>RemoveAll</method> revokes every privilege a probe principal holds, in each
+/// namespace the suites use, then drops the objects and principals, cleans the namespace's statement index and
+/// clears the system monitor, which the vendor's severity-2 refusals raise.</p>
 /// <p><b>Not a <class>%UnitTest.TestCase</class></b>: it holds no assertions and runs no tests.</p>
 Class OcuPilot.Test.SqlPrivilegeProbe Extends %RegisteredObject
 {
@@ -58,13 +59,73 @@ ClassMethod Seed() As %Status
     Quit tSC
 }
 
-/// <p>Drop the schema's objects, delete the probe principals, clean the namespace's statement index and clear the
+/// <p>The namespaces whose SQL privileges the suites set for a probe principal: <parameter>NAMESPACE</parameter>
+/// and the install namespace, where a test grants on OcuPilot's own table.</p>
+ClassMethod Namespaces() As %List
+{
+    Quit $ListBuild(..#NAMESPACE, ##class(OcuPilot.Install.Installer).ResolveNamespace())
+}
+
+/// <p>Revoke, as the running account and one grantor at a time, every <code>Direct</code> privilege the probe user
+/// and role hold in <var>pNamespace</var>, read from the instance's own list. A privilege on an object the
+/// namespace no longer holds cannot be revoked, so this runs before the objects are dropped.</p>
+ClassMethod RevokeAll(pNamespace As %String) As %Status
+{
+    Set tSC = $$$OK
+    For tGrantee = ..#USER, ..#ROLE {
+        Kill tQuery, tRows
+        Set tQuery("namespace") = pNamespace
+        Set tQuery("grantee") = tGrantee
+        Set tQuery("includeSystem") = 1
+        Set tQuery("maxRows") = 100000
+        Set tListSC = ##class(OcuPilot.Port.AdminPort).Invoke(..#ENDPOINT, "LIST", .tQuery, "", .tRows, .tHttp, .tFault)
+        If $$$ISERR(tListSC) || '$IsObject($Get(tRows)) Continue
+        Set tIterator = tRows.%GetIterator()
+        While tIterator.%GetNext(.tIndex, .tRow) {
+            If tRow.%Get("GrantedVia") '= "Direct" Continue
+            Set tOrigNS = $NAMESPACE
+            Try {
+                Set $NAMESPACE = pNamespace
+                Set tRevoke = $SYSTEM.SQL.Security.RevokePrivilege(tRow.%Get("Action"), tRow.%Get("Object"), tRow.%Get("Type"), tGrantee, 0, 0, tRow.%Get("GrantedBy"))
+                Set $NAMESPACE = tOrigNS
+            } Catch {
+                Set $NAMESPACE = tOrigNS
+            }
+        }
+    }
+    Quit tSC
+}
+
+/// <p>How many privilege rows the instance still holds for a probe principal, in any namespace. The vendor keeps a
+/// row after its grantee and object are gone.</p>
+ClassMethod RemainingPrivileges() As %Integer
+{
+    Set tCount = 0
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = "%SYS"
+        Set tResult = ##class(%SQL.Statement).%ExecDirect(, "SELECT COUNT(*) FROM Security.SQLPrivileges WHERE Grantee %STARTSWITH ?", ..#PREFIX)
+        If tResult.%Next() Set tCount = tResult.%GetData(1)
+        Set $NAMESPACE = tOrigNS
+    } Catch {
+        Set $NAMESPACE = tOrigNS
+        Set tCount = -1
+    }
+    Quit tCount
+}
+
+/// <p>Revoke every privilege the probe principals hold, drop the schema's objects, delete the probe principals,
+/// remove any privilege row of a probe grantee that is left, clean the namespace's statement index and clear the
 /// system monitor.</p>
 ClassMethod RemoveAll() As %Status
 {
     Set tSC = $$$OK
     Set tOrigNS = $NAMESPACE
     Try {
+        Set tList = ..Namespaces()
+        For tI = 1:1:$ListLength(tList) {
+            Set tSC = $$$ADDSC(tSC, ..RevokeAll($List(tList, tI)))
+        }
         Set $NAMESPACE = ..#NAMESPACE
         For tSql = "DROP VIEW " _ ..#VIEW, "DROP PROCEDURE " _ ..#PROCEDURE, "DROP TABLE " _ ..#TABLE, "DROP TABLE " _ ..#TABLE2 {
             Set tResult = ##class(%SQL.Statement).%ExecDirect(, tSql)
@@ -73,6 +134,10 @@ ClassMethod RemoveAll() As %Status
         Set $NAMESPACE = "%SYS"
         If ##class(Security.Users).Exists(..#USER) Set tSC = $$$ADDSC(tSC, ##class(Security.Users).Delete(..#USER))
         If ##class(Security.Roles).Exists(..#ROLE) Set tSC = $$$ADDSC(tSC, ##class(Security.Roles).Delete(..#ROLE))
+        Set tRows = ##class(%SQL.Statement).%ExecDirect(, "SELECT ID FROM Security.SQLPrivileges WHERE Grantee %STARTSWITH ?", ..#PREFIX)
+        While tRows.%Next() {
+            Set tSC = $$$ADDSC(tSC, ##class(Security.SQLPrivileges).%DeleteId(tRows.%GetData(1)))
+        }
         Set $NAMESPACE = tOrigNS
     } Catch ex {
         Set $NAMESPACE = tOrigNS
@@ -82,10 +147,11 @@ ClassMethod RemoveAll() As %Status
     Quit tSC
 }
 
-/// <p>How many probe principals and schema objects the instance still holds.</p>
+/// <p>How many probe principals, schema objects and privilege rows the instance still holds.</p>
 ClassMethod Remaining() As %Integer
 {
-    Set tCount = 0
+    Set tCount = ..RemainingPrivileges()
+    If tCount < 0 Quit -1
     Set tOrigNS = $NAMESPACE
     Try {
         Set $NAMESPACE = "%SYS"
