@@ -927,3 +927,5 @@ TAB-separated: `<UTC>\t<Story <id> | Epic <N>>\t<stage>\t<metadata>`
 2026-10-08T00:20:16Z	Story 18.26	ledger_adjudicated	owned=0(slice_empty) rework_born=none
 2026-10-08T00:20:16Z	Story 18.26	smoke_complete	method=browser+cli result=pass iterations=2 defects_caught=0 target=ocupilot-ci load=LOAD-OK,STARTPATH-OK specs=mft-connections_2/2 smoke=50/50 note=CI_caught_the_BFC_SSL_dependency_local_runs_could_not(throwaway_state)
 2026-10-08T00:21:37Z	Story 18.26	committed	sha=fe93fbc6 code=94809d0c(merge_892289a6)+371c3979+fe93fbc6 ci=pending run=37707315129 head_confirmed_by=headSha superseded=37705171196(371c3979),37704058463(94809d0c) cycle_iteration=2
+2026-10-08T00:29:30Z	Epic 18	epic_context_compiled	reason=planning_artifact_newer(feature_892289a6;18.27_closure) model=opus agent_name=epic-18-context-recompile-d9-2 bytes=15099
+2026-10-08T00:29:30Z	Story 18.9	stage_spawned	stage=plan spawn_at=2026-10-08T00:29:30Z model=opus agent_name=18-9-sql-privileges-plan-1 cycle_iteration=1 inbox=DW-236,DW-1662 prompt=scratchpad/epic-18-d9/plan-189-prompt.md
