@@ -8,7 +8,7 @@ Give interoperability developers and operators their area inside OcuPilot, where
 
 ## Stories
 
-Run order: 20.1, 20.2, 20.14, 20.15, 20.18, 20.17, 20.3 to 20.6, 20.13, 20.7, 20.16, 20.8 to 20.12. Stories 20.1, 20.2, 20.14 and 20.15 are done.
+Run order: 20.1, 20.2, 20.14, 20.15, 20.18, 20.17, 20.3 to 20.6, 20.13, 20.7, 20.16, 20.8 to 20.12. Stories 20.1, 20.2, 20.14, 20.15 and 20.18 are done; 20.17 is next.
 
 - Story 20.1: Namespace category gating (done)
 - Story 20.2: Productions, listed and controlled (done)
@@ -27,7 +27,7 @@ Run order: 20.1, 20.2, 20.14, 20.15, 20.18, 20.17, 20.3 to 20.6, 20.13, 20.7, 20
 - Story 20.15: Per-screen permissions, seen and adjusted (done)
 - Story 20.16: The agent edits rule, DTL and BPL content behind the embedded editors
 - Story 20.17: The agent proposes class and routine source edits, on the person's confirmation
-- Story 20.18: The agent proposes permission changes and refuses on a screen the user cannot open
+- Story 20.18: The agent proposes permission changes and refuses on a screen the user cannot open (done)
 
 ## Requirements & Constraints
 
@@ -41,14 +41,6 @@ Run order: 20.1, 20.2, 20.14, 20.15, 20.18, 20.17, 20.3 to 20.6, 20.13, 20.7, 20
   - **DW-2141 is decided as AD-63, option A.** The editors load in a same-origin frame in normal mode; see Technical Decisions.
   - **DW-2140 is decided as Story 20.14, shipped (AD-8 amended).** The API floor admits `%Ens_Portal:USE` holders. Such a caller, holding no `%Admin_*` and no `%Development:USE`, reaches exactly the surfaces whose own pairs they hold. `AtelierPort`'s gate adds `%Development:USE`, so SH-25's Atelier-backed features would refuse operators (inference).
   - **"Agent starts switched on."** The governance keys of 20.15, 20.16 and 20.17 ship enabled. Every other new destructive key still ships disabled (AD-22), and each new write key joins `Kernel/Governance/Baseline.cls` in the same change.
-- **Story 20.18 must build** (the agent half of 20.15, split at its merge gate):
-  - Advertise `agent.screenpermissions.addpair`, `.removepair` and `.reset`. The card shows the pairs before and after and the "requires" line. Confirming writes the agent marker and `SecurityChange`.
-  - Mint the agent's lowering as a delete is: the destructive treatment, with no typed name (AD-10's privilege-grant precedent).
-  - When the user lacks a write tool's screen's effective pairs, an adjustment included, dispatch refuses before any mint, naming the screen and the failed pair. The prompt says the user cannot access that screen and proposes nothing. The demo operator's refusal names the screen too.
-  - Screen context carries the current screen's own verdict, derived on the instance, and marks which of its tools the user cannot use.
-  - An integration turn, run as a principal lacking an adjusted screen's pair, is refused at that screen, creates no proposal row, and completes.
-  - DW-2181: run the tools' agent propose-and-confirm path end to end (the state diff, `Reset`'s port-query payload branch, the gone read-back). It was declared and never run.
-  - Starting point, read at 20.15's plan: dispatch already refuses a missing pair with `AUTH.NOPRIVILEGE` and `detail.failedPair` before any mint, and follows an adjustment. Screen context's `tools` is unfiltered, the prompt has no `AUTH.NOPRIVILEGE` line, and the card's "requires" line is a mint snapshot while the confirm re-gates live.
 - **Still unproven, so settle each before building on it.**
   - The Analytics rider needs a DeepSee-enabled namespace for everything except its three links. Measured on `ocupilot-b-ci`: HSLIB and HSSYS report analytics, HSCUSTOM and USER report interoperability only, and `%SYS` reports neither.
   - The schema viewer's document parameter (20.8), and the interop editor's `HOST=` and `NEW=1` parameters, which are inferred only from selector names.
@@ -75,15 +67,25 @@ Run order: 20.1, 20.2, 20.14, 20.15, 20.18, 20.17, 20.3 to 20.6, 20.13, 20.7, 20
 - **What 20.15 shipped (AD-64).**
   - **Store and one reader.** `Kernel/State/Access` holds one instance-wide row per adjusted screen, keyed by `toolIdentifier`, replacing its declared `privileges`. `Screen.Gate.RequiredPairs` is its one reader, on every call, never cached; a failed read refuses. Every screen, area, read, tool, dispatch, confirm and route gate follows an adjustment. A write tool's own extra pairs and `CLASSICPAGES` resources are added on top, unchanged.
   - **The classic custom resource stays.** `RequiredPairs` unions the classic page's custom resource (AD-44), which only the classic portal clears. OcuPilot never writes `%SYS.Portal.Resources`.
-  - **Screen permissions** (`agent.screenpermissions`, source kind `access`, entity type `screen-permission`) lists every built screen's declared pairs, adjustment, classic resource and effective pairs. Its write tools `.addpair` and `.removepair` apply one `Pair` as a server-side delta over the fresh read, and `.reset` clears the row, all through `Port/ScreenAccessPort`. The tools are unadvertised until 20.18, and their keys ship enabled.
+  - **Screen permissions** (`agent.screenpermissions`, source kind `access`, entity type `screen-permission`) lists every built screen's declared pairs, adjustment, classic resource and effective pairs. Its write tools `.addpair` and `.removepair` apply one `Pair` as a server-side delta over the fresh read, and `.reset` clears the row, all through `Port/ScreenAccessPort`. Their keys ship enabled.
   - **The either-of.** Screen permissions, its read and its three tools admit `%Development:USE` OR `%Admin_Secure:USE` (owner, 2026-10-08), AD-8's one either-of exception. It is one pair whose resource is `%Development|%Admin_Secure` (`Gate.AdjusterPairs`); `Gate.Alternatives` splits only that pair. A refusal names both. Never generalize descriptors to any-of.
   - **Never adjustable.** Ports' and the vendor's checks, an area's set, and the Home and Agent co-pilot groups (`Screen.Gate.Adjustable`), refused `PROHIBITED.OCUPILOTSCREEN`. A set holds 1 to 8 pairs on defined resources at READ, WRITE or USE; an emptying set is refused 422 `ACCESS.PAIRS.EMPTY`.
   - **Audit.** Each adjustment records `OcuPilot/Security/SecurityChange` with the pairs before and after, plus the agent's marker for an agent write.
   - **Client.** No client code derives availability from the mirror's `privileges`. The shell re-reads the navigation map on a `screen-permission` change event.
-- **Tests and browser specs.**
-  - A test that adjusts a screen resets it in its `OnAfter*` method.
-  - Anything read before the navigation map answers waits for `waitForMapAnswered(page, timeoutMs)` from `ui/browser/namespace-features.mjs`. A structural gate measured right after `setViewport` can flake (DW-2163, outside this epic).
-  - A browser spec holds whatever another spec left on the instance: never assert a store empty that another spec can write (20.14's secondary-logs lesson). A long-lived throwaway accumulates rows (DW-2182).
+- **What 20.18 shipped (AD-64 rule 4, AD-8, AD-10, AD-24, AD-53).**
+  - **Advertised.** `agent.screenpermissions.addpair`, `.removepair` and `.reset` are agent-offered.
+  - **Lowering.** At the mint, on the instance, a proposal whose composed fresh read's `Result` lacks a pair its `Pairs` holds is a lowering. `Prohibited.WeakensByEffect` answers effect `SCREENACCESS.LOWERED`, so the proposal is destructive and names that consequence. A remove-pair always lowers and an add-pair never does. A reset lowers when the adjusted set held a pair the declared set lacks.
+  - **The screen is named.** The screen comes from the tool's descriptor, resolved by `Registry.ScreenRequirement`: the registry entry's `descriptor`, else the tool class's `DESCRIPTORCLASS`. When dispatch refuses on a missing pair of that screen's effective pairs, `AUTH.NOPRIVILEGE`'s detail is `{failedPair, screen}`, and the screen read route's 403 carries the same `screen`. The screen action route and the confirm keep `{failedPair}`.
+  - **The card.** The step stores `FailedScreen`. The tool-call card shows "You need <resource> to open <screen>.", composed from existing strings, or the pair alone for a screen the mirror does not know.
+  - **Screen context.** It gains `verdict` (`{allowed, failedPair?}`) and `unavailable`, which maps each unusable tool to its first failed pair, or `""` when the set is unresolved (fail closed). Both are derived in the caller's request process (`Api/Turn.BoundedContext`), and a request supplying either is refused `TURN.CONTEXT.INVALID`. `tools` is unchanged.
+  - **The prompt.** The built-in prompt has one sentence for that refusal: tell the user they cannot open the screen, and propose nothing.
+- **Tests and browser specs (Rule 30).**
+  - **The spec names its shared surfaces.** Every spec's Verification lists the shared surfaces the story changes, or `none`. It carries the standing criterion: tests asserting a changed surface are updated in this story, and every added or changed test passes on a fresh instance in either order.
+  - **The shared-surface sweep.** It greps `ui/browser`, `ui/tools`, the `ui/src` specs and `src/OcuPilot/Test` for the old shape. It names cross-story browser specs explicitly: 20.18's implement sweep missed `refused-tool.browser-spec.mjs`, which asserted the old refusal shape, and review caught it.
+  - **Counts.** A count or list outside a roster's own pin is derived from the registry, descriptor or mirror. A roster's own pin stays literal.
+  - **Self-contained tests.** A test creates what it asserts on and removes it, and never relies on a row, configuration, log line or empty store it did not make. A test that adjusts a screen resets it in its `OnAfter*` method. A long-lived throwaway accumulates rows (DW-2182).
+  - **Answered signals.** A browser spec waits for the screen's answered signal, such as `waitForMapAnswered(page, timeoutMs)` from `ui/browser/namespace-features.mjs`, before it counts, clicks or types. A structural gate measured right after `setViewport` can flake (DW-2163, outside this epic).
+  - **The fresh check before the push.** The runner rebuilds its own throwaway fresh, loads `src` and redeploys the bundle. It runs the story's classes and the sweep's classes one at a time. It runs the browser specs together, then one file at a time in reverse order, then the smoke. A red there re-opens the story.
 - **Audit gaps (AD-15, AD-53).** Production update and recover record no vendor event; start, stop and restart record `%Ensemble/%Production/StartStop`. These are AD-15's nineteenth named case and AD-53's named gap twenty. Measure every new write with auditing on, and name a gap where the vendor is silent.
 - **AD-63: the vendor editors in a same-origin frame (Story 20.13, and every embed in 20.7, 20.8 and 20.10).**
   - **Fixed source.** The frame loads `/ui/interop/<editor>/index.html` on the instance's own origin, with only the editor's own query parameters. Their values come from a read OcuPilot answered, never from a person's text. Example: `rule-editor/index.html?$NAMESPACE=<ns>&rule=<class>`.
@@ -125,22 +127,21 @@ Run order: 20.1, 20.2, 20.14, 20.15, 20.18, 20.17, 20.3 to 20.6, 20.13, 20.7, 20
   - A namespace switch re-fetches rather than re-routes.
   - Per-host tabs are one descriptor per tab, grouped by `tab` and parent-scoped (AD-5).
 - **Confirmations.**
-  - A destructive write takes the typed-name confirmation, except the agent's screen-permission lowering (20.18), which gets the destructive treatment with no typed name. A person's lowering states its consequence at the dialog.
+  - A person's destructive write takes the typed-name confirmation. An agent's destructive card, such as 20.18's lowering, shows the destructive bar and Confirm and never a typed-name field. A person's lowering states its consequence at the dialog.
   - The five production writes are non-destructive and show warning dialogs whose text is also the card's consequence line.
   - Recover's card says recover comes before clean. A resend's card shows its dry run.
   - Cards name the required privileges (AD-8), and dialogs never stack.
 - **Long blocks in the agent panel (20.17, panel-wide).**
   - A block over about eight lines starts collapsed behind "Show more" / "Show less". The control is keyboard-operable and announces its state, and an expanded block stays expanded across re-renders.
   - A collapsed card always shows a summary line, such as "AcmeApp.Orders.cls: +42 / -3 lines", plus the compile outcome, and Confirm never requires expanding.
-  - EXPERIENCE.md is amended at 20.17's spec gate. The plan may split the collapse into its own story, ordered first.
+  - EXPERIENCE.md is amended at 20.17's spec gate.
 - **Strings and prompts.** Each new literal goes into EXPERIENCE.md's Fixed strings and `strings.ts`, and each built screen declares at least three suggested prompts. After editing EXPERIENCE.md or epics.md, run `cd ui && npm run test:tools`.
 - **Investigate** starts from alerts and log entries, beside the unified log hub (16.9). It reuses Explain this entry's marker (AD-24) and cites rows with citation chips (AD-11).
 
 ## Cross-Story Dependencies
 
 - **Within the epic.**
-  - **20.18** runs next and builds on 20.15's store, gate and tools.
-  - **20.17** follows 20.18 and depends on its refusal at dispatch. Its create is settled against the screen's effective pairs from 20.15.
+  - **20.17** runs next. It builds on 20.18's refusal: the agent refuses to propose on a screen whose effective pairs the user lacks. It also builds on AD-53's reversal, AD-54's absence fingerprint for creates, and AD-10's own-code refusal. Its create is settled against the screen's effective pairs from 20.15. Its plan may recommend splitting the panel-wide "Show more" / "Show less" collapse into its own story, ordered first.
   - **20.3 to 20.6, 20.9 and 20.12** extend `InteropPort` and the `production` entity. 20.12's recover-stuck-production workflow uses `interop.productions.recover` and `.start`. 20.9 resends what recover marked.
   - **20.3 owns DW-2157 and DW-2162.** A stop answers the state its post-write read finds, with new `INTEROP.*` codes and Fixed-strings sentences for a production that ends Suspended, or half-stopped past the 15 s cap.
   - **20.13** runs before 20.7 and gates the embeds in 20.7, 20.8 and 20.10, and 20.9's contents viewer if it embeds.
