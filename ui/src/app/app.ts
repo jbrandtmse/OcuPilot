@@ -81,6 +81,7 @@ import { FormDirty } from './core/form-dirty';
 import { InstanceService, isInstanceReady } from './core/instance';
 import { NavigationService, editorScreenFor, routeFromUrl, screenForRoute, withQuery } from './core/navigation';
 import { OverlayStack } from './core/overlay-stack';
+import { LongBlocks } from './core/long-blocks';
 import { PanelState } from './core/panel-layout';
 import { TurnStore } from './core/turn';
 import { RefreshService } from './core/refresh';
@@ -398,6 +399,8 @@ export class App {
   private readonly recentsRecorder = inject(RecentsRecorder);
   private readonly overlays = inject(OverlayStack);
   private readonly panel = inject(PanelState);
+  /** The panel's opened long blocks (Story 20.17); optional, so a spec that is not about it provides none. */
+  private readonly longBlocks = inject(LongBlocks, { optional: true });
   private readonly turn = inject(TurnStore);
   private readonly host: ElementRef<HTMLElement> = inject(ElementRef);
 
@@ -734,6 +737,7 @@ export class App {
       // the width is one account's row on the instance, not the browser's), and so is the side
       // bar's open state, which is the same row family.
       this.panel.endSession();
+      this.longBlocks?.endSession();
       this.shell.endSession();
       // The theme is the same row family (Story 15.6): back to light before the next principal's
       // read, rather than rendering the departed principal's choice until it settles.

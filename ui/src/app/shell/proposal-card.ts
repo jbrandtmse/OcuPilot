@@ -28,6 +28,7 @@ import {
   cardTitleName,
 } from '../core/proposal-view';
 import { impactLine } from '../core/impact';
+import { estimateLines, isLong } from '../core/long-blocks';
 import { type ReadBack, readBackLine } from '../core/read-back';
 import { STRINGS, stringFor } from '../core/strings';
 import {
@@ -38,6 +39,7 @@ import {
   formatUnchangedCaption,
 } from './example-proposal';
 import { CodeBlock } from './code-block';
+import { LongBlock } from './long-block';
 
 /**
  * The entity type whose delete carries the residue sentence (AD-48, DW-1480).
@@ -110,7 +112,7 @@ export interface ProposalConfirmRequest {
 @Component({
   selector: 'app-proposal-card',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CodeBlock],
+  imports: [CodeBlock, LongBlock],
   template: `<article
     class="ocu-proposal-card"
     [class.ocu-proposal-card-destructive]="destructive"
@@ -134,7 +136,17 @@ export interface ProposalConfirmRequest {
       }
     </div>
 
+    @if (summaryVisible) {
+      <p class="ocu-proposal-card-summary">
+        <span class="ocu-proposal-card-summary-fields">{{ summaryFields }}</span>
+        @if (summaryOutcomeVisible) {
+          <span class="ocu-proposal-card-summary-outcome">{{ summaryOutcome }}</span>
+        }
+      </p>
+    }
+
     <div class="ocu-proposal-card-diff">
+      <app-long-block [key]="diffKey" [lines]="diffLines">
       @for (row of changedRows; track $index) {
         @if (row.removed === true) {
           <p class="ocu-diff-row ocu-diff-row-removed">
@@ -165,6 +177,7 @@ export interface ProposalConfirmRequest {
           </p>
         }
       }
+      </app-long-block>
       @if (residueVisible) {
         <p class="ocu-proposal-card-residue">{{ residueCaption }}</p>
       }
@@ -211,18 +224,24 @@ export interface ProposalConfirmRequest {
 
     <div class="ocu-proposal-card-agent">
       <span class="ocu-proposal-card-agent-heading">{{ STRINGS.proposalRationaleHeading }}</span>
-      <span class="ocu-proposal-card-agent-text">{{ rationale }}</span>
+      <app-long-block [key]="rationaleKey" [lines]="rationaleLines">
+        <span class="ocu-proposal-card-agent-text">{{ rationale }}</span>
+      </app-long-block>
     </div>
     <div class="ocu-proposal-card-agent">
       <span class="ocu-proposal-card-agent-heading">{{ STRINGS.proposalExpectedImpactHeading }}</span>
-      <span class="ocu-proposal-card-agent-text">{{ expectedImpact }}</span>
+      <app-long-block [key]="impactKey" [lines]="impactLines">
+        <span class="ocu-proposal-card-agent-text">{{ expectedImpact }}</span>
+      </app-long-block>
     </div>
 
     @if (hasReverse) {
-      <p class="ocu-proposal-card-reverse">
-        <span class="ocu-proposal-card-reverse-label">{{ STRINGS.proposalReverseLabel }}</span>
-        <span>{{ reverse }}</span>
-      </p>
+      <app-long-block [key]="reverseKey" [lines]="reverseLines">
+        <p class="ocu-proposal-card-reverse">
+          <span class="ocu-proposal-card-reverse-label">{{ STRINGS.proposalReverseLabel }}</span>
+          <span>{{ reverse }}</span>
+        </p>
+      </app-long-block>
     }
 
     @if (secretsVisible) {
@@ -338,7 +357,9 @@ export interface ProposalConfirmRequest {
               <p class="ocu-proposal-card-read-back" data-slot="read-back">{{ readBackText }}</p>
             }
             @if (outputVisible) {
-              <app-code-block class="ocu-proposal-card-output" data-slot="output" [steps]="outputSteps" />
+              <app-long-block [key]="outputKey" [lines]="outputLines">
+                <app-code-block class="ocu-proposal-card-output" data-slot="output" [steps]="outputSteps" />
+              </app-long-block>
             }
           }
         }
@@ -452,6 +473,18 @@ export class ProposalCard {
    * Story 19.2): a compile's. Rendered as text in a code block under the confirmed status line.
    */
   readonly output = input<readonly string[]>([]);
+
+  /**
+   * Whether the confirmed compile reported errors, off the confirm's own `output.errors`, or
+   * `null` where the answer carried none (Story 20.17). It feeds the summary line's second part.
+   */
+  readonly outputErrors = input<boolean | null>(null);
+
+  /**
+   * The key prefix of this card's long blocks (`p:<proposal id>`), or `''` for the example card:
+   * its blocks then keep their open state in the component only (Story 20.17).
+   */
+  readonly blockKey = input<string>('');
 
   /**
    * Confirm was pressed: the proposal's id and the values typed into its masked fields (AD-6,
@@ -629,6 +662,87 @@ export class ProposalCard {
       STRINGS.proposalUnchangedFieldsDisclosure,
       this.view().unchangedCount
     );
+  }
+
+  protected get diffKey(): string {
+    return this.keyFor('diff');
+  }
+
+  protected get rationaleKey(): string {
+    return this.keyFor('rationale');
+  }
+
+  protected get impactKey(): string {
+    return this.keyFor('impact');
+  }
+
+  protected get reverseKey(): string {
+    return this.keyFor('reverse');
+  }
+
+  protected get outputKey(): string {
+    return this.keyFor('output');
+  }
+
+  private keyFor(part: string): string {
+    const prefix = this.blockKey();
+    return prefix === '' ? '' : `${prefix}:${part}`;
+  }
+
+  /** The changed rows' estimate: each row's `field before after`, summed. */
+  protected get diffLines(): number {
+    return this.changedRows.reduce(
+      (total, row) => total + estimateLines(`${row.field} ${row.before} ${row.after}`),
+      0
+    );
+  }
+
+  protected get rationaleLines(): number {
+    return estimateLines(this.rationale);
+  }
+
+  protected get impactLines(): number {
+    return estimateLines(this.expectedImpact);
+  }
+
+  protected get reverseLines(): number {
+    return estimateLines(this.reverse);
+  }
+
+  protected get outputLines(): number {
+    return estimateLines(this.output().join('\n'));
+  }
+
+  /** Whether any block this card wraps is long, which is when the summary line shows. */
+  protected get summaryVisible(): boolean {
+    return (
+      isLong(this.diffLines) ||
+      isLong(this.rationaleLines) ||
+      isLong(this.impactLines) ||
+      (this.hasReverse && isLong(this.reverseLines)) ||
+      (this.outputVisible && isLong(this.outputLines))
+    );
+  }
+
+  /** The name and how many fields change: `cardTitleName` alone when none do. */
+  protected get summaryFields(): string {
+    const view = this.view();
+    const name = cardTitleName(view);
+    const count = this.changedRows.length;
+    if (count === 0) return name;
+    const template = count === 1 ? STRINGS.proposalSummaryField : STRINGS.proposalSummaryFields;
+    return template.split('<name>').join(name).split('<n>').join(String(count));
+  }
+
+  /** Whether a confirmed card's output reported whether the compile had errors. */
+  protected get summaryOutcomeVisible(): boolean {
+    return this.confirmed && this.outputErrors() !== null;
+  }
+
+  protected get summaryOutcome(): string {
+    return this.outputErrors() === true
+      ? STRINGS.proposalSummaryCompileErrors
+      : STRINGS.proposalSummaryCompiled;
   }
 
   protected get rationale(): string {

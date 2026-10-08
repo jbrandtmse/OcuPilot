@@ -100,7 +100,12 @@ async function waitForMessages(page, count) {
   await page.waitForFunction((n) => document.querySelectorAll('.ocu-panel-message-user').length >= n, { timeout: config.navigationTimeoutMs }, count);
 }
 
-/** Wait until `count` replies have rendered and the turn has ended (Send reads Send again). */
+/**
+ * Wait until `count` replies have rendered and the turn has ended (Send reads Send again), then
+ * open every collapsed reply (Story 20.17), so each leg still overflows the transcript. The click
+ * is programmatic: it neither scrolls the transcript nor moves focus, which is what the legs that
+ * watch the scroll position need.
+ */
 async function waitForReplies(page, count) {
   await page.waitForFunction(
     (n, sendLabel) =>
@@ -110,6 +115,12 @@ async function waitForReplies(page, count) {
     count,
     STRINGS.actionSend
   );
+  await page.evaluate(() => {
+    for (const toggle of document.querySelectorAll('.ocu-long-block-toggle[aria-expanded="false"]')) toggle.click();
+  });
+  await page.waitForFunction(() => document.querySelectorAll('.ocu-long-block-toggle[aria-expanded="false"]').length === 0, {
+    timeout: config.navigationTimeoutMs,
+  });
 }
 
 /** How far the transcript is from its newest entry, in CSS px. */

@@ -154,3 +154,46 @@ describe('the tool-call card status word', () => {
     expect(statusWord()).not.toContain('failed');
   });
 });
+
+describe('the tool-call card long blocks (Story 20.17)', () => {
+  const longText = Array(10).fill('a line of output').join('\n');
+
+  const render = (step: TurnStep, turnKey?: string): ComponentFixture<ToolCallCard> => {
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({ imports: [ToolCallCard] });
+    const fixture = TestBed.createComponent(ToolCallCard);
+    fixture.componentRef.setInput('step', step);
+    if (turnKey !== undefined) fixture.componentRef.setInput('turnKey', turnKey);
+    fixture.detectChanges();
+    return fixture;
+  };
+
+  // mutation: drop the wrapper around the result `pre` -> the first leg goes red.
+  it('wraps a long result and long arguments, each with its own control, outside the element', () => {
+    const fixture = render({ ...BASE, status: 'running', arguments: longText, text: longText }, 'c1:t0');
+    const body = fixture.nativeElement.querySelector('.ocu-tool-call-body') as HTMLElement;
+    const blocks = Array.from(body.querySelectorAll('.ocu-long-block')) as HTMLElement[];
+
+    expect(blocks).toHaveLength(2);
+    expect(blocks.every((block) => block.classList.contains('ocu-long-block-collapsed'))).toBe(true);
+    const result = body.querySelector('pre.ocu-tool-call-result') as HTMLElement;
+    expect(result.children).toHaveLength(0);
+    expect(result.textContent).toBe(longText);
+    expect(result.closest('.ocu-long-block-region')?.id).toBe('ocu-long-block-c1_t0_s1_result');
+    expect(body.querySelector('.ocu-tool-call-arguments')?.closest('.ocu-long-block-region')?.id).toBe(
+      'ocu-long-block-c1_t0_s1_arguments'
+    );
+    expect(body.querySelectorAll('.ocu-long-block-toggle')).toHaveLength(2);
+  });
+
+  it('a short result carries no control, and a card given no turn key keeps its state locally', () => {
+    const short = render({ ...BASE, status: 'running', text: 'ok' }, 'c1:t0');
+    expect(short.nativeElement.querySelector('.ocu-long-block-toggle')).toBeNull();
+
+    const local = render({ ...BASE, status: 'running', text: longText });
+    const toggle = local.nativeElement.querySelector('.ocu-long-block-toggle') as HTMLButtonElement;
+    toggle.click();
+    local.detectChanges();
+    expect(toggle.getAttribute('aria-expanded')).toBe('true');
+  });
+});

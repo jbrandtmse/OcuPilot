@@ -40,6 +40,7 @@ import {
   screenForUrl,
   withQuery,
 } from '../core/navigation';
+import { estimateLines } from '../core/long-blocks';
 import { PanelState } from '../core/panel-layout';
 import {
   type ProposalCardView,
@@ -82,6 +83,7 @@ import { turnLimitBanner } from '../core/turn-limit';
 import { isApplePlatform } from './command-box';
 import { CitationNavigator } from './citation-navigator';
 import { CodeBlock } from './code-block';
+import { LongBlock } from './long-block';
 import { AgentPicker } from './agent-picker';
 import { ContextChip } from './context-chip';
 import { EXAMPLE_PROPOSAL } from './example-proposal';
@@ -190,11 +192,20 @@ interface PanelProposalView {
   readonly readBack: ReadBack | null;
   /** The confirmed write's console lines, for the card's code block (Story 19.2). */
   readonly output: readonly string[];
+  /** Whether the confirmed compile reported errors (Story 20.17), or `null`. */
+  readonly outputErrors: boolean | null;
+  /** The key prefix of the card's long blocks (`p:<proposal id>`). */
+  readonly blockKey: string;
 }
 
 /** One turn's rendered view, precomputed once per read so the template does no substitution. */
 interface PanelTurnView {
+  /** The key prefix of this turn's long blocks (`<conversation id>:t<index>`). */
+  readonly key: string;
   readonly message: string;
+  /** The estimated line counts of the message and the finished reply (Story 20.17). */
+  readonly messageLines: number;
+  readonly replyLines: number;
   readonly steps: readonly TurnStep[];
   readonly proposals: readonly PanelProposalView[];
   readonly reply: string | null;
@@ -253,7 +264,7 @@ interface PanelTurnView {
 @Component({
   selector: 'app-panel',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ProposalCard, PanelResizeHandle, ToolCallCard, ContextChip, Reply, CodeBlock, ReadOnlyToggle, AgentPicker],
+  imports: [ProposalCard, PanelResizeHandle, ToolCallCard, ContextChip, Reply, CodeBlock, ReadOnlyToggle, AgentPicker, LongBlock],
   template: `<aside class="ocu-panel" [class.ocu-panel-full-screen]="fullScreen" [attr.aria-label]="panelName">
     @if (docked) {
       <app-panel-resize-handle />
@@ -479,7 +490,7 @@ interface PanelTurnView {
           }
           @for (turn of turns; track $index) {
             <div class="ocu-panel-turn">
-              <p class="ocu-panel-message-user">{{ turn.message }}</p>
+              <app-long-block class="ocu-panel-message-user" [key]="turn.key + ':message'" [lines]="turn.messageLines">{{ turn.message }}</app-long-block>
               @if (turn.egress) {
                 <p class="ocu-panel-egress-line" [class.ocu-panel-egress-line-leaves]="turn.egress.leaves">{{ turn.egress.text }}</p>
               }
@@ -492,7 +503,7 @@ interface PanelTurnView {
                     </div>
                   }
                 } @else {
-                  <app-tool-call-card [step]="step" />
+                  <app-tool-call-card [step]="step" [turnKey]="turn.key" />
                 }
               }
               @for (proposal of turn.proposals; track proposal.proposalId) {
@@ -504,6 +515,8 @@ interface PanelTurnView {
                   [confirmedAt]="proposal.confirmedAt"
                   [readBack]="proposal.readBack"
                   [output]="proposal.output"
+                  [outputErrors]="proposal.outputErrors"
+                  [blockKey]="proposal.blockKey"
                   (confirm)="onCardConfirm($event)"
                   (cancel)="onCardCancel($event)"
                   (repropose)="onCardRepropose($event)"
@@ -512,7 +525,9 @@ interface PanelTurnView {
                   @if (drafts[proposal.proposalId]; as draft) {
                     <div card-footer class="ocu-proposal-card-draft">
                       <p class="ocu-proposal-card-draft-caption">{{ STRINGS.proposalDraftCaption }}</p>
-                      <app-code-block [steps]="draft.steps" />
+                      <app-long-block [key]="draftKey(proposal.proposalId)" [lines]="draftLines(draft)">
+                        <app-code-block [steps]="draft.steps" />
+                      </app-long-block>
                     </div>
                   }
                 </app-proposal-card>
@@ -520,12 +535,14 @@ interface PanelTurnView {
               @if (turn.reply !== null) {
                 <div class="ocu-panel-message-agent">
                   <span class="ocu-panel-message-avatar" aria-hidden="true"></span>
-                  <app-reply
-                    class="ocu-panel-message-agent-text"
-                    [text]="turn.reply"
-                    [citations]="turn.citations"
-                    (cite)="onCite($event)"
-                  />
+                  <app-long-block [key]="turn.key + ':reply'" [lines]="turn.replyLines">
+                    <app-reply
+                      class="ocu-panel-message-agent-text"
+                      [text]="turn.reply"
+                      [citations]="turn.citations"
+                      (cite)="onCite($event)"
+                    />
+                  </app-long-block>
                 </div>
                 @for (line of turn.absent; track $index) {
                   <p class="ocu-citation-absent" role="status">{{ line }}</p>
@@ -1033,7 +1050,8 @@ export class Panel {
   /** The transcript's turns, oldest first, with the live one last while a turn runs (Story 4.5). */
   protected get turns(): readonly PanelTurnView[] {
     this.generation();
-    return this.turn.entries().map((entry) => {
+    const conversation = this.turn.conversationId() ?? '';
+    return this.turn.entries().map((entry, index) => {
       const errorBanner = turnErrorBanner(
         entry,
         STRINGS.agentTurnStoppedBanner,
@@ -1044,8 +1062,26 @@ export class Panel {
         (step) => step.kind === 'tool' || step.kind === 'announce' || step.status === 'stopped'
       );
       const citations = errorBanner === null ? entry.citations : [];
+      const reply =
+        errorBanner === null
+          ? this.replyWithAuditOfferSentence(
+              this.replyWithMarkerSentence(
+                this.replyWithStillRunningSentence(
+                  this.replyWithChangeSentence(
+                    this.replyWithConfirmSentence(entry.reply, proposals),
+                    entry.proposals
+                  ),
+                  entry.proposals
+                ),
+                entry.proposals
+              ),
+              entry.proposals
+            )
+          : null;
       return {
+        key: `${conversation}:t${index}`,
         message: entry.message,
+        messageLines: estimateLines(entry.message),
         egress: egressLine(entry.egress),
         streamed: errorBanner === null ? streamedText(entry) : null,
         citations,
@@ -1071,22 +1107,8 @@ export class Panel {
         // the sentence itself and the sentence is published twice. Containment makes the five
         // idempotent whatever order they compose in, which is the property the nesting below
         // otherwise has to be read to establish.
-        reply:
-          errorBanner === null
-            ? this.replyWithAuditOfferSentence(
-                this.replyWithMarkerSentence(
-                  this.replyWithStillRunningSentence(
-                    this.replyWithChangeSentence(
-                      this.replyWithConfirmSentence(entry.reply, proposals),
-                      entry.proposals
-                    ),
-                    entry.proposals
-                  ),
-                  entry.proposals
-                ),
-                entry.proposals
-              )
-            : null,
+        reply,
+        replyLines: reply === null ? 0 : estimateLines(reply),
         errorBanner,
       };
     });
@@ -1122,6 +1144,8 @@ export class Panel {
       confirmedAt: clockOf(proposal.confirmedAt),
       readBack: proposal.readBack ?? null,
       output: proposal.output ?? [],
+      outputErrors: proposal.outputErrors ?? null,
+      blockKey: `p:${proposal.proposalId}`,
     };
   }
 
@@ -1409,6 +1433,16 @@ export class Panel {
     if (proposalId === '') return;
     this.setCardPhase(proposalId, 'canceled-by-you');
     await this.turn.cancelProposal(proposalId);
+  }
+
+  /** The long-block key of a card's projected script (Story 20.17). */
+  protected draftKey(proposalId: string): string {
+    return `p:${proposalId}:draft`;
+  }
+
+  /** The estimated line count of a script: each step's text, summed. */
+  protected draftLines(draft: ProposalDraft): number {
+    return draft.steps.reduce((total, step) => total + estimateLines(step.text), 0);
   }
 
   /** The scripts taken so far, by proposal id, for the card each one is projected into. */

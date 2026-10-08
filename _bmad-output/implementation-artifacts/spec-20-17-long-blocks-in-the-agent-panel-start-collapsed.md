@@ -2,13 +2,21 @@
 title: 'Story 20.17: Long blocks in the agent panel start collapsed'
 type: 'feature'
 created: '2026-10-08'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: 'f9a3955c585a106a7f18f952fb70c8cef07935c3'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-20-context.md'
 warnings: ['oversized', 'multiple-goals']
-deferred: []
+deferred:
+  - summary: >-
+      A long user message and a long draft script have no collapsing assertion.
+    evidence: |-
+      panel.spec.ts uses a one-line user message; setting messageLines to 0 would not redden anything.
+    location: >-
+      ui/src/app/shell/panel.ts
+    severity: low
 ---
 
 <intent-contract>
@@ -214,6 +222,18 @@ Client (`ui/`). The anchors were read by the plan's investigator; confirm each a
 
 ## Review Triage Log
 
+### 2026-10-08 — Review pass
+
+- verdicts: 7 findings — high 0, medium 2, low 3, false 0, maybe-false 0 (2 defer-low)
+- findings:
+  - `[medium]` `[patch]` panel hands `turnKey`/`blockKey`/draft key down with no panel-level test — added region-id assertions in `panel.spec.ts` (reply, card output); red on removing `[blockKey]`.
+  - `[medium]` `[patch]` `App.endSession` clearing the store had no test host — `app.spec.ts` sign-out leg provides `LongBlocks`; red on deleting the call.
+  - `[low]` `[patch]` streamed-block null assertions could pass vacuously — added `not.toBeNull` on the streamed node first.
+  - `[low]` `[patch]` panel re-render leg's mutation comment was false (local state also survives) — comment replaced; store-backed persistence is pinned in `long-block.spec.ts`.
+  - `[low]` `[patch]` AC7 had no `mutation:` line — clamp mutation rebuilt, redeployed, browser spec red; recorded in Verification.
+  - `[low]` `[defer]` long user message and long draft script have no collapsing assertion — see `deferred:`.
+  - `[low]` `[reject]` stream-reply id normalisation weakens the DOM comparison; null-conversation keys; 80-char estimate — by design in the intent (estimate, not geometry), no defect shown.
+
 ## Design Notes
 
 **Governing ADs.**
@@ -399,9 +419,28 @@ The plan proposes no spine amendment for this half (Rule 6). The UX amendments a
 | AC6 | one `strings.ts` value differs from the Fixed row | `strings.test.mjs` |
 | AC7 | the panel stops wrapping the finished reply | `panel-collapse` clamp leg |
 
+**Mutations run (Rule 19), each reverted byte-identical:**
+
+- mutation: AC1 `isLong` answers false -> `long-blocks.test.mjs` boundary leg and `long-block.spec.ts` (6 of 7) red.
+- mutation: AC2 `(focusin)` removed -> `long-block.spec.ts` "focus moving into a collapsed region opens it" red.
+- mutation: AC3 component keeps local state, ignoring `LongBlocks` -> `long-block.spec.ts` re-creation and `endSession` legs red.
+- mutation: AC4 summary never rendered -> `proposal-card.spec.ts` (5 legs) red. Confirm inside the region is pinned by the containment leg of the same file.
+- mutation: AC5 `outputErrorsOf` answers null -> `panel.spec.ts` "Story 20.17 AC5" red.
+- mutation: AC6 `longBlockShowLess` differs from its Fixed row -> `strings.test.mjs` 3 red.
+- mutation: AC7 `.ocu-long-block-collapsed > .ocu-long-block-region` `max-height: 8lh` -> `none`, rebuilt and redeployed to `ocupilot-b-ci` -> `panel-collapse.browser-spec.mjs` AC1 red (clipped false); reverted, 4/4 green.
+- mutation: wiring `App` `longBlocks?.endSession()` removed -> `app.spec.ts` sign-out leg red; panel `[blockKey]` removed -> `panel.spec.ts` AC5 red (region id `p_p1_output`).
+
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
 
-Planned the first half of a recommended three-way split: the panel-wide long-block collapse and the proposal card's summary line, client only. Stories B (agent edits of existing classes and routines) and C (agent creates) are named with their criteria and the measurements on `ocupilot-b-ci` under Design Notes. Q1-Q4 go to the orchestrator; each recommended option is the one assumed.
+Added the panel-wide long-block collapse (`LongBlocks` store, `app-long-block`), the wrapped blocks in panel, tool-call card and proposal card, the card summary line with compile outcome, six strings and the EXPERIENCE.md :604 row. Client only.
+
+Files: `ui/src/app/core/long-blocks.ts`, `shell/long-block.ts` (new); `panel.ts`, `proposal-card.ts`, `tool-call-card.ts`, `turn.ts`, `app.ts`, `main.ts`, `strings.ts`, `_components.scss` (wiring); specs `long-block.spec.ts`, `panel.spec.ts`, `proposal-card.spec.ts`, `tool-call-card.spec.ts`, `app.spec.ts`, `tools/long-blocks.test.mjs`, `browser/panel-collapse.browser-spec.mjs`; Rule 30 edits to `stream-reply` and `transcript-follow` browser specs; EXPERIENCE.md.
+
+Review: 5 patches (2 medium, 3 low), 1 deferred, 1 rejected group. Follow-up review recommended: false.
+
+Verification: `npm test` 1895 tools + 2690 component tests green; `npm run build` clean (3,149 kB, under 3165); `panel-collapse` 4/4 and the Rule 30 browser specs green on `ocupilot-b-ci`; mutations recorded in Verification.
+
+Residual risk: the implementer first ran three browser specs against `ocupilot-ci` (slot A's throwaway) with unset origin variables; the probe definition there was armed and disarmed and was absent afterwards.

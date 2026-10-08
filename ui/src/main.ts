@@ -22,6 +22,7 @@ import { transportFault } from './app/core/fault';
 import { InstanceService } from './app/core/instance';
 import { NavigationService } from './app/core/navigation';
 import { OverlayStack } from './app/core/overlay-stack';
+import { LongBlocks } from './app/core/long-blocks';
 import { PanelState } from './app/core/panel-layout';
 import { RefreshService } from './app/core/refresh';
 import { ScopeService, onScopeChange } from './app/core/scope';
@@ -165,6 +166,10 @@ const theme = new ThemeState({ account: accountPreferences, root: document.docum
 // the viewport width; the side bar, the rail and the panel read the layout it resolves.
 const panel = new PanelState({ account: accountPreferences, shell });
 
+// The agent panel's opened long blocks (Story 20.17, AD-19): which blocks a person expanded, for
+// the conversation's life; `App` clears it on sign-out.
+const longBlocks = new LongBlocks();
+
 // The turn store (Story 4.5): send, poll, stop, restore and New conversation, over the same API
 // service and the same per-tab `sessionStorage` the token pair uses (a second, independent read
 // of it for the conversation id's own key). `restore()` is fired here, not awaited -- the same
@@ -273,6 +278,7 @@ bootstrapApplication(App, {
     { provide: ShellState, useValue: shell },
     { provide: ThemeState, useValue: theme },
     { provide: PanelState, useValue: panel },
+    { provide: LongBlocks, useValue: longBlocks },
     { provide: TurnStore, useValue: turn },
     { provide: OverlayStack, useValue: overlays },
     { provide: ChangeBus, useValue: bus },

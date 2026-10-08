@@ -3511,6 +3511,39 @@ describe('Story 5.3: confirming, cancelling and re-proposing a card', () => {
     expect(block?.querySelector('b')).toBeNull();
   });
 
+  // Story 20.17 AC5. Mutation (Rule 19): make `outputErrorsOf` answer null -> the outcome span goes red.
+  it('Story 20.17 AC5: a confirmed long compile output adds its outcome to the card summary', async () => {
+    const lines = Array.from({ length: 10 }, (_, index) => `Compiling line ${index}`);
+    const { host, fixture } = await mountDecidable({
+      [proposalConfirmPath('p1')]: [
+        {
+          kind: 'ok',
+          status: 200,
+          body: {
+            proposalId: 'p1',
+            state: 'confirmed',
+            closedReason: '',
+            confirmedAt: '2026-10-08T10:31:04Z',
+            auditMarked: true,
+            output: { lines, errors: true },
+          },
+        },
+      ],
+    });
+    expect(host.querySelector('.ocu-proposal-card-summary')).toBeNull();
+    (host.querySelector('.ocu-proposal-card-confirm') as HTMLButtonElement).click();
+    await turnSettle();
+    fixture.detectChanges();
+
+    const summary = host.querySelector('.ocu-proposal-card-summary') as HTMLElement;
+    expect(summary.querySelector('.ocu-proposal-card-summary-outcome')?.textContent?.trim()).toBe(
+      STRINGS.proposalSummaryCompileErrors
+    );
+    expect(host.querySelector('.ocu-proposal-card [data-slot="output"]')?.closest('.ocu-long-block')?.classList.contains('ocu-long-block-collapsed')).toBe(true);
+    // The card's keys derive from the proposal id the panel hands down (`p:<id>:output`).
+    expect(host.querySelector('.ocu-proposal-card [data-slot="output"]')?.closest('.ocu-long-block-region')?.id).toBe('ocu-long-block-p_p1_output');
+  });
+
   it('AC: the audit-entry offer is appended once, even to a reply that already ends with it', async () => {
     // Idempotent like the other three appenders. **Driven against a MODEL-AUTHORED reply that
     // already carries the sentence**, which is the only shape the guard can be observed in:
@@ -4034,6 +4067,55 @@ async function nextPoll(scheduled: { run: () => void }[], fixture: ComponentFixt
   await turnSettle();
   fixture.detectChanges();
 }
+
+describe('Story 20.17: long blocks in the transcript', () => {
+  const longReply = Array.from({ length: 12 }, (_, index) => `line ${index}`).join('\n\n');
+
+  // Mutation (Rule 19): stop wrapping the finished reply in `app-long-block` -> the collapsed leg goes red.
+  it('a finished long reply starts collapsed inside the agent message, and the streamed block never collapses', async () => {
+    const done = modelProgress('completed', 'ok', longReply, longReply);
+    const { host, fixture, scheduled } = await mountAnswered([modelProgress('running', 'running', longReply), done]);
+    await nextPoll(scheduled, fixture);
+
+    expect(host.querySelector('.ocu-panel-message-streamed')).not.toBeNull();
+    expect(host.querySelector('.ocu-panel-message-streamed .ocu-long-block')).toBeNull();
+    expect(host.querySelector('.ocu-panel-message-streamed button')).toBeNull();
+
+    await nextPoll(scheduled, fixture);
+    const reply = host.querySelector('.ocu-panel-message-agent:not(.ocu-panel-message-streamed) .ocu-long-block') as HTMLElement;
+    expect(reply.classList.contains('ocu-long-block-collapsed')).toBe(true);
+    expect(reply.querySelector('app-reply.ocu-panel-message-agent-text')).not.toBeNull();
+    expect(host.querySelectorAll('app-reply')).toHaveLength(1);
+    expect(reply.querySelector('.ocu-long-block-toggle')?.textContent?.trim()).toBe(STRINGS.longBlockShowMore);
+    // The region id derives from the turn's key (`<conversation>:t<index>:reply`), so a panel that
+    // stops handing the key down gives an empty-key id.
+    expect(reply.querySelector('.ocu-long-block-region')?.id).toBe('ocu-long-block-convo-1_t0_reply');
+  });
+
+  // The open state survives a poll; the store-backed half of that is pinned in `long-block.spec.ts`.
+  it('an opened reply stays open through a re-render, and a short reply carries no control', async () => {
+    const done = modelProgress('completed', 'ok', longReply, longReply);
+    const { host, fixture, scheduled } = await mountAnswered([done]);
+    await nextPoll(scheduled, fixture);
+
+    (host.querySelector('.ocu-panel-message-agent .ocu-long-block-toggle') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(host.querySelector('.ocu-panel-message-agent .ocu-long-block-toggle')?.getAttribute('aria-expanded')).toBe('true');
+
+    await nextPoll(scheduled, fixture);
+    fixture.detectChanges();
+    expect(host.querySelector('.ocu-panel-message-agent .ocu-long-block-toggle')?.getAttribute('aria-expanded')).toBe('true');
+    expect(host.querySelector('.ocu-panel-message-agent .ocu-long-block')?.classList.contains('ocu-long-block-collapsed')).toBe(false);
+  });
+
+  it('the user message wraps in the long block and keeps its class', async () => {
+    const { host } = await mountAnswered([]);
+    const message = host.querySelectorAll('app-long-block.ocu-panel-message-user');
+    expect(message).toHaveLength(1);
+    expect(message[0].textContent?.trim()).toBe('list namespaces');
+    expect(message[0].querySelector('.ocu-long-block-toggle')).toBeNull();
+  });
+});
 
 describe('Story 11.7: the streamed reply', () => {
   it('a running model step renders one inert streamed block beside the avatar, and no final reply', async () => {

@@ -283,6 +283,11 @@ export interface TurnProposal {
    */
   readonly output?: readonly string[];
   /**
+   * Whether the confirmed compile reported errors, off the confirm's own `output.errors`
+   * (Story 20.17), or `null` when the answer carried no boolean. Held in memory only.
+   */
+  readonly outputErrors?: boolean | null;
+  /**
    * The impact of the removal this proposal carries (AD-8), as the instance read it at the mint, or
    * `null` for a write with none. Optional so a literal built before it existed still compiles.
    */
@@ -441,6 +446,8 @@ export interface ProposalOutcome {
    * existed still compiles.
    */
   readonly output?: readonly string[];
+  /** Whether the confirmed compile reported errors (Story 20.17); `null` where the answer carried none. */
+  readonly outputErrors?: boolean | null;
 }
 
 /**
@@ -484,6 +491,16 @@ export function outputLinesOf(output: unknown): readonly string[] {
   if (typeof (output as Record<string, unknown>)['outcome'] === 'string') return sqlOutcomeLines(output);
   const lines = (output as Record<string, unknown>)['lines'];
   return Array.isArray(lines) ? lines.filter((line): line is string => typeof line === 'string') : [];
+}
+
+/**
+ * Whether a confirm's `output` reports compile errors: its `errors` flag when `lines` is an array
+ * and `errors` is a boolean (Story 20.17), `null` for any other shape.
+ */
+export function outputErrorsOf(output: unknown): boolean | null {
+  if (output === null || typeof output !== 'object') return null;
+  const record = output as Record<string, unknown>;
+  return Array.isArray(record['lines']) && typeof record['errors'] === 'boolean' ? record['errors'] : null;
 }
 
 /**
@@ -1398,6 +1415,7 @@ export class TurnStore {
         continues: boolAt(result.body, 'continues'),
         readBack: readBackOf(result.body?.['readBack']),
         output: outputLinesOf(result.body?.['output']),
+        outputErrors: outputErrorsOf(result.body?.['output']),
       };
       const target = this.targetOf(id);
       this.recordProposalState(id, outcome);
@@ -1475,6 +1493,7 @@ export class TurnStore {
                   confirmedAt: outcome.confirmedAt,
                   ...(outcome.readBack === null ? {} : { readBack: outcome.readBack }),
                   ...((outcome.output ?? []).length === 0 ? {} : { output: outcome.output }),
+                  ...((outcome.outputErrors ?? null) === null ? {} : { outputErrors: outcome.outputErrors }),
                 }
               : proposal
           )
