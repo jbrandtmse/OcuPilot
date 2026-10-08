@@ -8317,6 +8317,32 @@ So that a change I ask for in conversation lands in the source.
 - **When** it is planned
 - **Then** the question is returned to the orchestrator for the owner, with options and a recommendation.
 
+### Story 20.18: The agent proposes permission changes and refuses on a screen the user cannot open
+
+[AMENDED 2026-10-07, orchestrator merge gate: split of Story 20.15, Rule 5] The agent half of Story 20.15 moved here. 20.15 ships the view, the store, the gate and a person's changes, with its three tools unadvertised and every dispatch and confirm gate reading `Screen.Gate.RequiredPairs`, so no window exists in which the agent proposes against an adjusted pair unchecked. Ordered after Story 20.15 and before Story 20.17, which relies on the refusal. The owner's words are 20.15's: "the agent can propose such changes (which brings up another topc, the agent should be aware if the user holds a permission needed for a screen before making a proposal, and refuse to propose if they can't access the screen)".
+
+As an OcuPilot administrator,
+I want the agent to propose screen permission changes, and to refuse to propose on a screen I cannot open,
+So that a change I ask for in conversation lands as a confirmed proposal, and the agent never offers what I cannot reach.
+
+**Acceptance Criteria:**
+
+- **Given** the three screen permission tools
+- **When** this story ships
+- **Then** they are advertised, the agent proposes a change as a confirmed proposal whose card shows the pairs before and after and the "requires" line, a lowering is confirmed as a delete is (the destructive treatment, with no typed name, AD-10's privilege-grant precedent), and confirming writes the agent marker and the `SecurityChange` audit record.
+
+- **Given** a write tool whose screen's effective pairs the user does not hold, an adjustment included
+- **When** the agent would propose with it
+- **Then** dispatch refuses before any mint, naming the screen and the failed pair, and the agent says the user cannot access that screen and proposes nothing; the demo operator's refusal names the screen too.
+
+- **Given** a turn
+- **When** its screen context is built
+- **Then** it carries the current screen's own verdict, derived on the instance, and marks which of its tools the user cannot use.
+
+- **Given** a turn run as a principal lacking an adjusted screen's pair
+- **When** it asks the agent to change that screen
+- **Then** the turn is refused at that screen, no proposal row is created, and the turn completes.
+
 ---
 
 ## Epic 21: Stage 5 - custom-REST parity from the MCP suite's handlers

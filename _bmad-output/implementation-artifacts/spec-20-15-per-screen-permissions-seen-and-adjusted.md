@@ -333,6 +333,8 @@ Every other edit is add-only. Each new entry sits beside the agent entries or at
 
 ## Spec Change Log
 
+- 2026-10-07, runner spec gate: the orchestrator ruled A on Q1 to Q6 (by=merge_gate), approved the split (Story 20.18 chartered, ordered 20.15, 20.18, 20.17) and cleared the six contended edits on union terms. This story's three tools ship unadvertised, and every dispatch and confirm gate reads `Screen.Gate.RequiredPairs`, so the agent never proposes against an adjusted pair unchecked. AD-64 is claimed and written with its one-line amendments; CLAUDE.md's AD count reads 64.
+
 ## Review Triage Log
 
 ## Design Notes
