@@ -10631,3 +10631,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-20-17-long-blocks-in-the-agent-panel-start-collapsed.md (code review) | severity: low | fix-risk: low | footprint: in-story
 - evidence: _components.scss .ocu-transcript-context-payload now carries the cap .ocu-tool-call-result gave up; transcript.page.spec.ts and transcripts.browser-spec.mjs read text only
 - 2026-10-08T17:23:49Z status=wontfix-accepted owner=20-17-long-blocks-in-the-agent-panel-start-collapsed by=cr note=reopen_if=the Transcripts context payload renders taller than 12 lines on ocupilot-b-ci
+
+### DW-2227: CI flake: proposal-confirm.browser-spec.mjs AC10 read the Confirm button still present at the moment the status line had taken focus (one evaluate after waitForSelector on the status line)
+- source: cycle-log-epic-20.md (run 37803753942 attempt 1) | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: Red in browser shard 2/3 on 20bf830a; the spec passed in 20.18's run 37793652932 and 3/3 locally on ocupilot-b-ci with 20bf830a's own bundle and source (inference: timing between focus landing and the buttons' removal)
+- 2026-10-08T17:28:59Z status=routed owner=23-5-the-range-end-cleanup-part-5 by=lead note=wait for the outgoing buttons to be gone (waitForFunction) before reading focus, rather than reading both in one evaluate
