@@ -165,7 +165,12 @@ const DESCRIPTOR_ACTION_LABELS: Readonly<Record<string, Readonly<Record<string, 
     'add-role': STRINGS.userActionAddRole,
     'remove-role': STRINGS.userActionRemoveRole,
     'revoke-tokens': STRINGS.userActionRevokeTokens,
+    // Story 18.9: the SQL privileges tab's two actions.
+    'grant-sql': STRINGS.sqlPrivilegeGrantAction,
+    'revoke-sql': STRINGS.sqlPrivilegeRevokeAction,
   },
+  // Story 18.9: the Roles list's two SQL privilege actions.
+  'OcuPilot.Screen.Descriptor.RoleList': { 'grant-sql': STRINGS.sqlPrivilegeGrantAction, 'revoke-sql': STRINGS.sqlPrivilegeRevokeAction },
   // Story 7.4: the Auditing configuration form's two actions, and the warning dialog's title;
   // Story 12.3: its audit database copy and purge.
   'OcuPilot.Screen.Descriptor.AuditingConfig': {

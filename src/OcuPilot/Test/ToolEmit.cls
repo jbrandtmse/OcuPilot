@@ -275,6 +275,9 @@ Method TestEveryLiveToolRequiresItsScreensPairs()
             ; Story 19.8: so does the data browser's save, each statement's SQL privileges being checked
             ; at its prepare (AD-8).
             If tTool.name = "explorer.sqldata.save" Set tExpected = ##class(OcuPilot.Screen.Gate).RequiredPairs($Parameter(tTool.class, "DESCRIPTORCLASS"), .tExpectedResolved)
+            ; Story 18.9: the SQL privilege grants and revokes declare their screen's set and no write pair of
+            ; their own, the namespace's database pairs being added by argument (AD-8).
+            If $ClassMethod(tTool.class, "%Extends", "OcuPilot.Screen.Tool.SqlPrivilegeWrite") Set tExpected = ##class(OcuPilot.Screen.Gate).RequiredPairs($Parameter(tTool.class, "DESCRIPTORCLASS"), .tExpectedResolved)
             ; Story 18.3: the database create declares the resource pair and the path pair after the
             ; write's own, and the two edits add pairs by argument (AD-8 as amended 2026-09-29).
             If tTool.name = "osmgmt.localdatabases.create" Set tExpected = tExpected _ $ListBuild($ListBuild("%Admin_Secure", "USE"), $ListBuild("%Admin_FileSystemAccess", "USE"))

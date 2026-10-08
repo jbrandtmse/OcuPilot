@@ -373,6 +373,10 @@ services:
       # the OAuth 2.0 client configurations and descriptions they name, and probe principals, and the gate
       # class writes them as principals holding Security's pairs and each without one (Story 18.26).
       # classes: MftConnectionGate, MftConnectionRead, MftConnectionWrite
+      # The SQL object privilege classes create and remove a probe user and role named OcuSqlPrivProbe and a probe
+      # schema's objects in USER, set up privileges as the running account, and the gate class writes them as
+      # principals holding Security's pairs and each without one (Story 18.9).
+      # classes: SqlPrivilegeGate, SqlPrivilegeRead, SqlPrivilegeWrite
       # The SQL activity gate class signs in as probe principals each missing one pair the SQL
       # activity port requires, or holding READ on USER's database and %Development, and reads
       # another account's running probe statement as them (Story 19.10).

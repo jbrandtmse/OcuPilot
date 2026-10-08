@@ -451,7 +451,7 @@ Method TestNoWriteToolAdmitsAnAlwaysProhibitedField()
             ; from its file and its import from its file, its reviewed summary and its compile choice;
             ; Story 19.3's save from its text, its version and its compile choice; Story 19.6's SQL
             ; run from its statement, its values and its Max rows.
-            If tComposed Do $$$AssertEquals($ListLength(tSettable), $Case(tEntry.%Get("name"), "security.oauthserverdescriptions.updatejwks": 0, "security.oauthresourceservers.addmapping": 2, "security.oauthresourceservers.removemapping": 2, "security.oauthserver.rotatekeys": 0, "security.oauthserverclients.updatejwks": 0, "tasks.schedule.export": 2, "tasks.schedule.import": 4, "explorer.classes.compile": 3, "explorer.routines.compile": 3, "explorer.classes.delete": 0, "explorer.routines.delete": 0, "explorer.classes.export": 2, "explorer.routines.export": 2, "explorer.classes.import": 6, "explorer.routines.import": 6, "explorer.classes.save": 3, "explorer.routines.save": 3, "explorer.sqlquery.run": 3, "explorer.sqldata.save": 4, : 1), tEntry.%Get("name") _ " sends no body and its port composes one from its arguments")
+            If tComposed Do $$$AssertEquals($ListLength(tSettable), $Case(tEntry.%Get("name"), "security.oauthserverdescriptions.updatejwks": 0, "security.oauthresourceservers.addmapping": 2, "security.oauthresourceservers.removemapping": 2, "security.oauthserver.rotatekeys": 0, "security.oauthserverclients.updatejwks": 0, "tasks.schedule.export": 2, "tasks.schedule.import": 4, "explorer.classes.compile": 3, "explorer.routines.compile": 3, "explorer.classes.delete": 0, "explorer.routines.delete": 0, "explorer.classes.export": 2, "explorer.routines.export": 2, "explorer.classes.import": 6, "explorer.routines.import": 6, "explorer.classes.save": 3, "explorer.routines.save": 3, "explorer.sqlquery.run": 3, "explorer.sqldata.save": 4, "permissions.users.grantsql": 5, "permissions.roles.grantsql": 5, "permissions.users.revokesql": 4, "permissions.roles.revokesql": 4, : 1), tEntry.%Get("name") _ " sends no body and its port composes one from its arguments")
             For tI = 1:1:$ListLength(tPermitted) {
                 ; A type whose identifying field is also a reviewed field (an OAuth 2.0 server
                 ; description can be renamed) names its target by that field; naming is not setting.
@@ -727,7 +727,7 @@ Method TestTheSetHasOneHomeAndOneSentencePerCode()
     Do $$$AssertEquals(##class(OcuPilot.Kernel.Proposal.Prohibited).RegistryClass(), "OcuPilot.Screen.Tool.Registry", "and resolves the tool through the shipped registry")
 
     Set tCodes = ##class(OcuPilot.Kernel.Proposal.Prohibited).Codes()
-    Do $$$AssertEquals($ListLength(tCodes), 31, "the set declares thirty-one codes -- the sign-in and start codes since Story 18.8, the serving superserver code since Story 18.25")
+    Do $$$AssertEquals($ListLength(tCodes), 32, "the set declares thirty-two codes -- the sign-in and start codes since Story 18.8, the serving superserver code since Story 18.25, the SQL privilege code since Story 18.9")
     For tI = 1:1:$ListLength(tCodes) {
         Set tCode = $List(tCodes, tI)
         Do $$$AssertTrue(##class(OcuPilot.Api.Error).IsValidCode(tCode), tCode _ " matches the machine-code pattern")

@@ -240,6 +240,8 @@ test('a side bar lists only built screens, in side-bar order', () => {
       'permissions/roles/edit',
       // Story 9.9: the unlisted reduced service form, reached from the Services list's name cell.
       'permissions/services/edit',
+      // Story 18.9: the unlisted SQL privileges read, shared by the user and role editors' tabs.
+      'permissions/sql-privileges',
       'permissions/users/edit',
       'permissions/users',
       'permissions/roles',

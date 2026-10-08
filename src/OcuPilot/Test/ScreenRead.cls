@@ -217,7 +217,9 @@ Method TestEveryDeclaredReadFieldIsAKeyOfTheLiveRow()
         ; the story's Task 0).
         ; Story 18.26: a fresh instance holds no MFT connection; MftConnectionRead holds the list's
         ; fields to a seeded probe connection.
-        If $ListFind($ListBuild("OcuPilot.Screen.Descriptor.OAuthServerDescriptionTab", "OcuPilot.Screen.Descriptor.OAuthClientTab", "OcuPilot.Screen.Descriptor.OAuthResourceServerTab", "OcuPilot.Screen.Descriptor.OAuthServerTab", "OcuPilot.Screen.Descriptor.OAuthServerClientTab", "OcuPilot.Screen.Descriptor.WebSessionList", "OcuPilot.Screen.Descriptor.RemoteDatabaseList", "OcuPilot.Screen.Descriptor.JournalRecordList", "OcuPilot.Screen.Descriptor.EcpDataServerList", "OcuPilot.Screen.Descriptor.EcpAppServerTab", "OcuPilot.Screen.Descriptor.EcpSslConnectionTab", "OcuPilot.Screen.Descriptor.DatabaseEncryption", "OcuPilot.Screen.Descriptor.MftConnectionList"), tClass) Continue
+        ; Story 18.9: the SQL privileges read needs a grantee and a namespace the vendor reads in;
+        ; SqlPrivilegeRead holds the list's fields to a probe user's rows.
+        If $ListFind($ListBuild("OcuPilot.Screen.Descriptor.OAuthServerDescriptionTab", "OcuPilot.Screen.Descriptor.OAuthClientTab", "OcuPilot.Screen.Descriptor.OAuthResourceServerTab", "OcuPilot.Screen.Descriptor.OAuthServerTab", "OcuPilot.Screen.Descriptor.OAuthServerClientTab", "OcuPilot.Screen.Descriptor.WebSessionList", "OcuPilot.Screen.Descriptor.RemoteDatabaseList", "OcuPilot.Screen.Descriptor.JournalRecordList", "OcuPilot.Screen.Descriptor.EcpDataServerList", "OcuPilot.Screen.Descriptor.EcpAppServerTab", "OcuPilot.Screen.Descriptor.EcpSslConnectionTab", "OcuPilot.Screen.Descriptor.DatabaseEncryption", "OcuPilot.Screen.Descriptor.MftConnectionList", "OcuPilot.Screen.Descriptor.SqlPrivilegeList"), tClass) Continue
         Set tChecked = tChecked + 1
         If tRowsMember '= "" Set tRowsChecked = tRowsChecked _ $ListBuild($Piece(tClass, ".", *))
         Kill tQuery

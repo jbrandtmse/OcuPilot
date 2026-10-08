@@ -2,13 +2,49 @@
 title: 'Story 18.9: SQL object privileges'
 type: 'feature'
 created: '2026-10-07'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: '13e387c9bcda5526e8506141ac40702d6301dfa0'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-18-context.md'
 warnings: ['oversized']
-deferred: []
+deferred:
+  - summary: >-
+      The four tools get no Classification or ToolFields entry: their arguments are authored in SqlPrivilegeWrite.InputSchema.
+    evidence: |-
+      The spec asked for the five arguments classified ordinary and ToolFields regenerated. The tools send no body (SENDSBODY 0), so Write.FieldRows derives no row and the Standard endpoint publishes no body template to classify; a Classification entry would name a field list that does not exist (field-lists.mjs --check stays green without one, as for the MFT revoke and the production actions).
+    location: >-
+      src/OcuPilot/Screen/Tool/Classification.cls
+    severity: low
+  - summary: >-
+      A grant on an absent FOREIGN SERVER answers 500 #5002 (<SUBSCRIPT>), not an SQLCODE, so the port answers INTERNAL where it answers SQLPRIV.NOOBJECT for every other type. IRIS defect candidate, decision pending, not reported upstream.
+    evidence: |-
+      ocupilot-ci, 2026-10-08, Standard GRANT type FOREIGN SERVER object NoSrv: ERROR #5002 <SUBSCRIPT>GrantPrivilege+64^%SYSTEM.SQL.Security.1 ^rINDEXSQL("SERVER","NOSRV",""). Table, view, procedure, ML configuration and schema all answered #5540 with -30, -428, -187 and -473.
+    location: >-
+      src/OcuPilot/Port/AdminPort.cls SQLCODEFAULTS
+    severity: low
+  - summary: >-
+      ML CONFIGURATION and FOREIGN SERVER privileges are pinned by their Rules and the vendor's refusals only, never granted against a live object.
+    evidence: |-
+      A Community instance cannot create a foreign server or an ML configuration without an external provider, so no test grants or revokes one. The Rules take a foreign server as schema.name (the spec's "the rest") and an ML configuration as one name; the first is unconfirmed against the instance.
+    location: >-
+      src/OcuPilot/Port/SqlPrivilegePort.cls ObjectValid
+    severity: low
+  - summary: >-
+      Sub-claims of C2-C4 (the -112 grantor mapping, Violations' namespace check, the role-row Direct count, the gate pair sets) carry doc-comment mutations that no recorded run has reddened.
+    evidence: |-
+      The verification-gap layer found the eight recorded mutation lines cover each criterion's main path only. Each named sub-claim has a test asserting it (SqlPrivilegeGate 403 SQLPRIV.GRANTOR, SqlPrivilegeRead guard legs, sql-privileges-tab.spec.ts Revoke legs); a recorded red run would settle it.
+    location: >-
+      src/OcuPilot/Test/SqlPrivilegeGate.cls
+    severity: low
+  - summary: >-
+      WireSecurityRead TestTaskHistoryPairSetsAreEnforcedForARealPrincipal reads a truncated task history on the 27-hour-old ocupilot-ci after a 511-class sweep.
+    evidence: |-
+      Failed once at the sweep end and again on a solo rerun with "nothing is cut at 1,000"; the story changes only three roster lines in that class and no task-history code. A fresh throwaway (CI) has no such history; recreating ocupilot-ci is the owner's call and would settle it.
+    location: >-
+      src/OcuPilot/Test/WireSecurityRead.cls AssertSameRowsAsTestAccount
+    severity: low (unverified)
 ---
 
 <intent-contract>
@@ -125,6 +161,22 @@ The Rules row refuses:
 
 ## Review Triage Log
 
+### 2026-10-07 - Review pass
+
+- verdicts: 10 findings - high 0, medium 1, low 6, false 1, maybe-false 2
+- findings:
+  - `[medium]` `[patch]` The SQL privilege arm in Prohibits keyed on WriteType also caught permissions.users.revokesql's neighbour, the token revoke, for an account named like an OcuPilot role - verified at Prohibited.cls (UserTokenRevoke WRITETYPE REVOKE); patched: the arm is keyed on the tool's PORTCLASS (IsSqlPrivilegeTool), TokenRevoke gains TestTheSqlPrivilegeArmDoesNotJudgeATokenRevoke, mutation red (run 2367)
+  - `[low]` `[patch]` The early READSVALUES gate in ScreenAction.Run had no mutation line - mutation `If 0 && $IsObject(pValues)` -> SqlPrivilegeGate TestWithoutTheNamespaceDatabaseReadEveryCallIsRefused red (run 2365)
+  - `[low]` `[patch]` The store's superseded-read guard was not pinned - overlap spec added to sql-privileges-tab.store.spec.ts; removing the generation check reddens it
+  - `[low]` `[patch]` The OCUPILOTROLE branch of SqlPrivilege had no mutation - `If 0 ||` on the own-role test -> SqlPrivilegeWrite TestOcuPilotsOwnSchemaAndRolesAreRefusedOnBothCallers red (run 2366)
+  - `[low]` `[defer]` Doc-comment-only mutations for the GRANTOR mapping, Violations, role-row Direct count and gate pair sets - each has an asserting test; a recorded red run would settle it
+  - `[low]` `[reject]` TestTheRoutesAnswerAndKeepTheirBodiesClosed asserts Rows(tUser) = "" which holds whatever the role grant did - the preceding 200 assertion carries the weight; a guard here adds nothing a developer would meet
+  - `[low]` `[reject]` TestTheScriptsMirrorTheBranches first withGrant check is weak - the next assertion pins withGrant=1, so the member must exist
+  - `[false]` `[reject]` sql-privileges-tab.spec.ts refusal test calls setRefusal directly - the dialog path test covers the handler-to-alert route, and the sink is the component's own contract
+  - `[maybe-false]` `[defer]` Intent-alignment: write-path assertions run through SqlPrivilegeSeamPort subclasses - the seam inherits the shipped tools unchanged and the wire legs run the shipped classes; settled by the wire legs in SqlPrivilegeWrite
+  - `[maybe-false]` `[defer]` Intent-alignment: ScreenAction.Run edited beyond the spec's named files - the early gate is needed for AD-8 (a caller lacking READ reached the port); the full sweep (511 classes) covers the other READSVALUES tools
+- sweep: 511 classes, 4090 tests, 7 failures before this pass's patches; six were pins on the code count, roster and pair expectations the new code legitimately changed (updated: code count 31 to 32 in four classes, MappingDescriptor classic roster, ToolEmit pair expectation) and one (WireSecurityRead) is environmental, deferred above.
+
 ## Design Notes
 
 **Governing ADs:** AD-2, AD-3, AD-5, AD-8, AD-10, AD-13, AD-14, AD-22, AD-27, AD-29, AD-34, AD-36, AD-39, AD-44, AD-51, AD-52, AD-58, AD-59; AD-15/AD-53 need no named case (the vendor audits grants and revokes, `UserChange`/`RoleChange`).
@@ -136,6 +188,20 @@ The Rules row refuses:
 - An `%All` holder lists only `SuperUser` rows (126 in USER); a direct grant to one was stored, not listed, so it cannot be read back (hence `.SUPERUSER`).
 - A principal with `%Admin_Secure:U`, `%DB_USER:R` and no SQL privilege: a revoke without `asGrantor` answered 200 and left the row; with `asGrantor=_SYSTEM` it removed `_SYSTEM`'s table and schema grants; its grant answered 500 #5035 `[..,"-112",..]`. Validation faults are 500 #5540 `[SQLCODE, message]`.
 - No namespace here has distinct routines and globals databases. End state S0, after `$SYSTEM.SQL.Statement.Clean()` in USER.
+
+**Task 0 record** (`ocupilot-ci`, 2026-10-08, S0 first: no `OcuSqlPrivProbe*` or `OcuProbe189*` object or principal, monitor 0; through `AdminPort.Invoke`, the vendor status read by a capturing subclass):
+
+- A `GRANT` naming an absent table answered 500; the vendor status is #5540 with parameters `-30`, `Table or view not found`; the fault `INTERNAL`; one severity-2 line (`adminport`, "failed with HTTP 500").
+- The same `GRANT` as `OcuProbe188H` (`%Admin_Secure:U`, `%DB_IRISSYS:R`, `%DB_USER:R`, no SQL privilege) answered 500; the status is #5035 with parameters `GrantObjPriv Error`, `-112`, `SQL Error Code`; one severity-2 line.
+- The other refusals, all 500 at #5540 with the SQLCODE first: `-118` an unknown grantee, `-473` an absent schema, `-428` an absent procedure, `-187` an absent ML configuration, `-30` an absent view or a one-part table name, `-60` an unknown action. An absent foreign server answers #5002 `<SUBSCRIPT>` (deferred above), and an unknown namespace #5002 `<NAMESPACE>`. A grant of `EXECUTE` on a table answered 200 and stored nothing.
+- The monitor read 2 after these; `$SYSTEM.Monitor.Clear()` returned it to 0, and the end state is S0. No contradiction with Measured at plan.
+
+**Found while building:**
+
+- A privilege has one grantor: a second account's grant of the same privilege on the same object replaces the row's `GrantedBy`, so the per-grantor revoke loop is exercised against a seam that lists several (`SqlPrivilegeSeamPort.ArmRows`), and against the real instance for a row another account granted.
+- The screen route read the fresh state before it checked the tool's argument pairs, so a caller without READ on the namespace's database reached the port first. `Api/ScreenAction.cls` `Run` now gates a `READSVALUES` tool on the values it takes, using the early delta, before the fresh read; a value set the tool refuses is still refused after the gate, as before.
+- User ids are lower-cased (AD-13), so the grantee the port sends is the lower-case name; the instance matches it in any case.
+- The tools declare `COMPOSEDTYPES` on the port for the four pairs, which `Test.Prohibited` reads to admit the arguments a composed write carries.
 
 **Decisions** (spec gate):
 
@@ -175,7 +241,30 @@ The Rules row refuses:
 
 **Planned mutations (Rule 19)**, each recorded as `mutation: <change> -> <test> red (run n)`: C1 the read drops `GrantedVia`; C2 no `asGrantor`; C3 no re-read (seam leg); C4 no namespace check in the guard; C5 `SqlPrivilege` skips `IsOcuPilotCode`; C6 a key `false`; Integration `revoke-sql` out of `SCREENVALUES` (wire leg), and Revoke on a non-`Direct` row (`sql-privileges-tab.spec.ts`).
 
+Observed on `ocupilot-ci`, each applied one at a time, the tree recompiled, then reverted byte-identical (`cmp`):
+
+- mutation: the read drops `GrantedVia` from the descriptor's fields -> `SqlPrivilegeRead` four-kinds and same-rows legs red (run 1839)
+- mutation: the port's revoke sends no `asGrantor` -> `SqlPrivilegeWrite` `TestARevokeNamesEveryGrantor` red: the wire revoke of a row another account granted answers `SQLPRIV.NOTAPPLIED` (run 1834)
+- mutation: `Grant` judges `tApplied` 1 with no second read -> `SqlPrivilegeWrite` `TestAWriteThatMovedNothingIsRefusedAsNotApplied` red (run 1835)
+- mutation: the guard's namespace check is `If 0` -> `SqlPrivilegeRead` guard leg (404 `SQLPRIV.NAMESPACE`) and no-namespace read leg red (run 1836)
+- mutation: `Prohibited.SqlPrivilege` skips `IsOcuPilotCode` -> `SqlPrivilegeWrite` own-schema leg red on the route and the confirm (run 1837)
+- mutation: `permissions.users.revokesql` `false` in the baseline -> `SqlPrivilegeDescriptor` baseline leg red (run 1838)
+- mutation: `revoke-sql` out of `UserSqlRevoke.SCREENVALUES` -> `SqlPrivilegeWrite` round-trip legs red, the wire answering 400 `TOOL.ARGUMENTS` (run 1840)
+- mutation: `ScreenAction.Run`'s early gate `If 0 &&` -> `SqlPrivilegeGate` TestWithoutTheNamespaceDatabaseReadEveryCallIsRefused red (run 2365)
+- mutation: `SqlPrivilege` own-role test `If 0 ||` -> `SqlPrivilegeWrite` TestOcuPilotsOwnSchemaAndRolesAreRefusedOnBothCallers red (run 2366)
+- mutation: `IsSqlPrivilegeTool` keyed on the write type -> `TokenRevoke` TestTheSqlPrivilegeArmDoesNotJudgeATokenRevoke red (run 2367)
+- mutation: store drops the `generation` check -> `sql-privileges-tab.store.spec.ts` overlap leg red
+- mutation: Revoke drawn on a non-`Direct` row, and `onRevoke` sending `grant-sql` -> `sql-privileges-tab.spec.ts` red; the Direct-row Revoke removed (bundle rebuilt and redeployed) -> `permissions-sql-privileges.browser-spec.mjs` red, then green again on the reverted bundle
+
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
+
+**Change.** SQL privileges for users and roles: an unlisted `SqlPrivilegeList` read, a "SQL privileges" tab and dialog on both editors, four grant and revoke tools on a new `SqlPrivilegePort` (state read, one action, re-read, `NOTAPPLIED`), the `AdminPort` guard, and the AD-10 arm (`OCUPILOTSQLPRIVILEGE`, `OCUPILOTROLE` for SQL grantees). `ScreenAction.Run` gains an early pair gate for `READSVALUES` tools.
+
+**Review.** 10 findings: 1 medium patched (the arm was keyed on the write type and caught the token revoke; now keyed on the port class), 3 low patched (mutation lines, an overlap spec), 2 deferred, 3 rejected. Follow-up review recommended: false.
+
+**Verification.** Full ObjectScript sweep on `ocupilot-ci`: 511 classes, 4090 tests; 7 failed before patches. Six were pins the new code legitimately moved (code count 32, classic roster, ToolEmit pairs) and are updated and green; `WireSecurityRead` TestTaskHistoryPairSetsAreEnforcedForARealPrincipal still reads a truncated task history on the 27-hour-old throwaway (environmental, deferred). Story classes, `ProhibitedRoute`, `TokenRevoke` green after patches (runs 2368-2373). Client: store spec 6 pass, tools 1884 pass, components 2649 pass, three browser specs pass (subagent pass). Smoke 50/50. Bundle initial 3.13 MB (under the 3165 kB warning). Throwaway at S0 (no probes, monitor cleared to 0).
+
+**Residual risk.** `Api/ScreenAction.cls` edit touches every `READSVALUES` tool; the sweep covers them.

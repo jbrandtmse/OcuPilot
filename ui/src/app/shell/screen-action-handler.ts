@@ -316,6 +316,13 @@ export const REMOVE_ROLE = 'remove-role';
 const ROLE_VALUE = 'Role';
 
 /**
+ * The two SQL privilege actions of the Users and Roles lists (Story 18.9). Only the editors' SQL
+ * privileges tab sends them, with the values it has chosen (`startFor` with `values`), so no menu draws them.
+ */
+export const GRANT_SQL = 'grant-sql';
+export const REVOKE_SQL = 'revoke-sql';
+
+/**
  * The form read whose `roles` an add offers, each marked `privileged` by the server's own
  * classifier (AD-10): the Add role dialog states the grant's consequence from it (DW-1523).
  */
@@ -331,13 +338,14 @@ const VALUE_ACTIONS: Readonly<Record<string, Readonly<Record<string, 'set-passwo
 
 /** The declared actions no surface draws, keyed by descriptor (DW-389). */
 const UNDRAWN_ACTIONS: Readonly<Record<string, readonly string[]>> = {
-  [USER_LIST]: [REQUIRE_PASSWORD_CHANGE],
+  // The SQL privileges tab of the user editor and the role editor sends the two SQL privilege actions (Story 18.9).
+  [USER_LIST]: [REQUIRE_PASSWORD_CHANGE, GRANT_SQL, REVOKE_SQL],
   // The web application editor draws these beside each roles tab's pickers, which supply the values.
   [WEB_APP_LIST]: [ADD_APPLICATION_ROLE, REMOVE_APPLICATION_ROLE, ADD_MATCHING_ROLE, REMOVE_MATCHING_ROLE],
   [PROCESS_LIST]: [TERMINATE_WITH_ERROR],
   [PROCESS_DETAILS]: [TERMINATE_WITH_ERROR],
   // The role editor draws these beside its grants, members and assigned roles, which supply the values.
-  [ROLE_LIST]: [ADD_GRANTED_ROLE, REMOVE_GRANTED_ROLE, SET_RESOURCE_GRANT, REMOVE_RESOURCE_GRANT],
+  [ROLE_LIST]: [ADD_GRANTED_ROLE, REMOVE_GRANTED_ROLE, SET_RESOURCE_GRANT, REMOVE_RESOURCE_GRANT, GRANT_SQL, REVOKE_SQL],
   // The Namespaces list's page registers Copy mappings itself, after this handler, so its dialog opens.
   [NAMESPACE_LIST]: [COPY_MAPPINGS, ENABLE_INTEROP],
   // The database editor draws Add a volume beside its volume files, for the database it shows.

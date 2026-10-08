@@ -22,6 +22,9 @@
 /// Delete, drawn refused for a predefined role (<code>system-role</code>), and the four value actions
 /// the role editor sends -- add and remove a granted role, set and remove a resource grant -- which
 /// no menu draws. It does not refresh (AD-43).</p>
+/// <p>Its last two row actions are <code>grant-sql</code> and <code>revoke-sql</code> (Story 18.9), carried out by
+/// <class>OcuPilot.Screen.Tool.RoleSqlGrant</class> and <class>OcuPilot.Screen.Tool.RoleSqlRevoke</class>, which the
+/// role editor's SQL privileges tab sends; no menu draws either.</p>
 Class OcuPilot.Screen.Descriptor.RoleList Extends OcuPilot.Screen.Descriptor.Base
 {
 
@@ -48,7 +51,9 @@ XData Declaration
     {"id": "add-granted-role", "selfProtection": ""},
     {"id": "remove-granted-role", "selfProtection": ""},
     {"id": "set-resource-grant", "selfProtection": ""},
-    {"id": "remove-resource-grant", "selfProtection": ""}
+    {"id": "remove-resource-grant", "selfProtection": ""},
+    {"id": "grant-sql", "selfProtection": ""},
+    {"id": "revoke-sql", "selfProtection": ""}
   ],
   "context": {"fields": ["Name", "Description", "CreatedBy", "EscalationOnly"], "secretFields": []},
   "emptyStateKey": "roleListEmpty",

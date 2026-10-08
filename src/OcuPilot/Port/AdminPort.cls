@@ -458,7 +458,12 @@ Parameter TYPESUFFIXES = "GET,LIST,INFO,CERTINFO,UPCOMING,HISTORY,VOLUMELIST,OWN
 /// deletes the connection's OAuth 2.0 client configuration with it unless another connection names it;
 /// <code>REVOKE</code> reads no body and takes
 /// the connection as its <code>connection</code> query. All three need <code>%Admin_Secure</code>.</p>
-Parameter MUTATINGTYPES = "WebApp.App/PUT,Security.User/PUT,Security.Audit.Enabled/PUT,Task.CRUD/RESUME,Process/SUSPEND,Process/RESUME,Security.User/POST,Security.Role/PUT,Security.Role/DELETE,Security.Resource/PUT,Security.Resource/DELETE,Security.X509Credential/POST,Security.X509Credential/PUT,Security.X509Credential/DELETE,Wallet.Secret/PUT,Device.Standard/PUT,Device.Standard/DELETE,WebApp.App/DELETE,Security.OAuth2.Client.ClientConfiguration/DELETE,Security.OAuth2.ServerClients/DELETE,Security.User/DELETE,Security.User/CHANGEPWD,Task.CRUD/RUN,Task.CRUD/SUSPEND,Task.CRUD/DELETE,Process/TERMINATE,Security.Audit.Event/PUT,Security.Audit.Event/DELETE,Security.Audit.Event/CLEARCOUNT,Security.SSLConfig/PUT,Security.SSLConfig/DELETE,Wallet.Secret/DELETE,Task.CRUD/POST,Task.CRUD/PUT,Security.Service/PUT,Security.LDAP/PUT,Security.OAuth2.Server/REVOKE,Security.Audit.Record/COPY,Security.Audit.Record/PURGE,Security.OAuth2.Client.ServerDefinition/POST,Security.OAuth2.Client.ServerDefinition/PUT,Security.OAuth2.Client.ServerDefinition/DELETE,Security.OAuth2.Client.ServerDefinition/TOKEN,Security.OAuth2.Client.ServerDefinition/REFRESHJWKS,Security.OAuth2.Client.ClientConfiguration/PUT,Security.OAuth2.Client.ClientConfiguration/CHANGESECRET,Security.OAuth2.Client.ClientConfiguration/ROTATEKEYS,Security.OAuth2.Client.ClientConfiguration/REGISTERCLIENT,Security.OAuth2.ResourceServer/PUT,Security.OAuth2.ResourceServer/CHANGESECRET,Security.OAuth2.ResourceServer/DELETE,Security.OAuth2.ResourceServer/ADDMAPPING,Security.OAuth2.ResourceServer/REMOVEMAPPING,Security.OAuth2.ResourceServerMapping/PUT,Security.OAuth2.ResourceServerMapping/DELETE,Security.OAuth2.Server/PUT,Security.OAuth2.Server/DELETE,Security.OAuth2.Server/CHANGEPWD,Security.OAuth2.Server/ROTATEKEYS,Security.OAuth2.ServerClients/POST,Security.OAuth2.ServerClients/PUT,Security.OAuth2.ServerClients/SECRET,Security.OAuth2.ServerClients/REFRESHJWKS,Namespace.Namespace/PUT,Namespace.Namespace/DELETE,WebSession/DELETE,AsyncResult/CANCEL,AsyncResult/PAUSE,AsyncResult/RESUME,BackgroundTask/CANCEL,BackgroundTask/PAUSE,BackgroundTask/RESUME,Namespace.GlobalMappings/PUT,Namespace.GlobalMappings/DELETE,Namespace.RoutineMappings/PUT,Namespace.RoutineMappings/DELETE,Namespace.PackageMappings/PUT,Namespace.PackageMappings/DELETE,Namespace.Namespace/MAPPINGS,Process/BROADCAST,Database.SysCRUD/POST,Database.SysCRUD/PUT,Database.SysCRUD/DELETE,Database.ConfigCRUD/PUT,Database.ConfigCRUD/DELETE,Database.Actions/MOUNT,Database.Actions/DISMOUNT,Database.Actions/TRUNCATE,Database.Actions/COMPACT,Database.Actions/DEFRAGMENT,Database.Actions/EXPANDVOL,Database.Actions/MODIFYSIZE,Database.Actions/INTEGRITYCHECK,TaskTransfer/EXPORT,TaskTransfer/IMPORT,LanguageServer/START,LanguageServer/STOP,LanguageServer/PUT,LanguageServer/DELETE,Task.Manager/SUSPEND,Task.Manager/RESUME,Task.Manager/RUN,Lock/REMOVE,Lock/REMOVEOWNER,Lock/DELETE,Security.LDAP/CHANGEPWD,Security.LDAP/DELETE,Namespace.Namespace/INTEROP,Journal.Settings/SWITCHFILE,Journal.Settings/SWITCHDIR,Journal.File/INTEGRITYCHECK,Journal.Settings/PUT,License.Key/PUT,License.Server/PUT,License.Server/DELETE,ECP.DataServer/PUT,ECP.DataServer/DELETE,ECP.DataServer/SERVERACTION,ECP.Settings/PUT,ECP.AppServerSSLConnection/AUTHORIZE,ECP.AppServerSSLConnection/REJECT,ECP.AppServerSSLConnection/DELETE,Security.Encryption.File/POST,Security.Encryption.File/ACTIVATE,Security.Encryption.Key/DEACTIVATE,Security.Encryption.AdminInFile/POST,Security.Encryption.AdminInFile/DELETE,Security.Encryption.KeyInFile/POST,Security.Encryption.KeyInFile/DELETE,Security.Encryption.Settings/PUT,Security.WebAuth/PUT,Security.WebAuth/CHANGESMTPPWD,Security.Superserver/PUT,Security.Superserver/DELETE,Security.MFT/PUT,Security.MFT/DELETE,Security.MFT/REVOKE";
+/// <p>The two <code>Security.SQLPrivilege.Standard</code> pairs are Story 18.9's, issued through
+/// <class>OcuPilot.Port.SqlPrivilegePort</class>. Both read no body: <code>GRANT</code> takes
+/// <code>namespace</code>, <code>grantee</code>, <code>object</code>, <code>action</code>, <code>type</code>
+/// and an optional <code>withGrant</code>, and <code>REVOKE</code> the same with <code>cascade</code> and
+/// <code>asGrantor</code>. Both need <code>%Admin_Secure</code>.</p>
+Parameter MUTATINGTYPES = "WebApp.App/PUT,Security.User/PUT,Security.Audit.Enabled/PUT,Task.CRUD/RESUME,Process/SUSPEND,Process/RESUME,Security.User/POST,Security.Role/PUT,Security.Role/DELETE,Security.Resource/PUT,Security.Resource/DELETE,Security.X509Credential/POST,Security.X509Credential/PUT,Security.X509Credential/DELETE,Wallet.Secret/PUT,Device.Standard/PUT,Device.Standard/DELETE,WebApp.App/DELETE,Security.OAuth2.Client.ClientConfiguration/DELETE,Security.OAuth2.ServerClients/DELETE,Security.User/DELETE,Security.User/CHANGEPWD,Task.CRUD/RUN,Task.CRUD/SUSPEND,Task.CRUD/DELETE,Process/TERMINATE,Security.Audit.Event/PUT,Security.Audit.Event/DELETE,Security.Audit.Event/CLEARCOUNT,Security.SSLConfig/PUT,Security.SSLConfig/DELETE,Wallet.Secret/DELETE,Task.CRUD/POST,Task.CRUD/PUT,Security.Service/PUT,Security.LDAP/PUT,Security.OAuth2.Server/REVOKE,Security.Audit.Record/COPY,Security.Audit.Record/PURGE,Security.OAuth2.Client.ServerDefinition/POST,Security.OAuth2.Client.ServerDefinition/PUT,Security.OAuth2.Client.ServerDefinition/DELETE,Security.OAuth2.Client.ServerDefinition/TOKEN,Security.OAuth2.Client.ServerDefinition/REFRESHJWKS,Security.OAuth2.Client.ClientConfiguration/PUT,Security.OAuth2.Client.ClientConfiguration/CHANGESECRET,Security.OAuth2.Client.ClientConfiguration/ROTATEKEYS,Security.OAuth2.Client.ClientConfiguration/REGISTERCLIENT,Security.OAuth2.ResourceServer/PUT,Security.OAuth2.ResourceServer/CHANGESECRET,Security.OAuth2.ResourceServer/DELETE,Security.OAuth2.ResourceServer/ADDMAPPING,Security.OAuth2.ResourceServer/REMOVEMAPPING,Security.OAuth2.ResourceServerMapping/PUT,Security.OAuth2.ResourceServerMapping/DELETE,Security.OAuth2.Server/PUT,Security.OAuth2.Server/DELETE,Security.OAuth2.Server/CHANGEPWD,Security.OAuth2.Server/ROTATEKEYS,Security.OAuth2.ServerClients/POST,Security.OAuth2.ServerClients/PUT,Security.OAuth2.ServerClients/SECRET,Security.OAuth2.ServerClients/REFRESHJWKS,Namespace.Namespace/PUT,Namespace.Namespace/DELETE,WebSession/DELETE,AsyncResult/CANCEL,AsyncResult/PAUSE,AsyncResult/RESUME,BackgroundTask/CANCEL,BackgroundTask/PAUSE,BackgroundTask/RESUME,Namespace.GlobalMappings/PUT,Namespace.GlobalMappings/DELETE,Namespace.RoutineMappings/PUT,Namespace.RoutineMappings/DELETE,Namespace.PackageMappings/PUT,Namespace.PackageMappings/DELETE,Namespace.Namespace/MAPPINGS,Process/BROADCAST,Database.SysCRUD/POST,Database.SysCRUD/PUT,Database.SysCRUD/DELETE,Database.ConfigCRUD/PUT,Database.ConfigCRUD/DELETE,Database.Actions/MOUNT,Database.Actions/DISMOUNT,Database.Actions/TRUNCATE,Database.Actions/COMPACT,Database.Actions/DEFRAGMENT,Database.Actions/EXPANDVOL,Database.Actions/MODIFYSIZE,Database.Actions/INTEGRITYCHECK,TaskTransfer/EXPORT,TaskTransfer/IMPORT,LanguageServer/START,LanguageServer/STOP,LanguageServer/PUT,LanguageServer/DELETE,Task.Manager/SUSPEND,Task.Manager/RESUME,Task.Manager/RUN,Lock/REMOVE,Lock/REMOVEOWNER,Lock/DELETE,Security.LDAP/CHANGEPWD,Security.LDAP/DELETE,Namespace.Namespace/INTEROP,Journal.Settings/SWITCHFILE,Journal.Settings/SWITCHDIR,Journal.File/INTEGRITYCHECK,Journal.Settings/PUT,License.Key/PUT,License.Server/PUT,License.Server/DELETE,ECP.DataServer/PUT,ECP.DataServer/DELETE,ECP.DataServer/SERVERACTION,ECP.Settings/PUT,ECP.AppServerSSLConnection/AUTHORIZE,ECP.AppServerSSLConnection/REJECT,ECP.AppServerSSLConnection/DELETE,Security.Encryption.File/POST,Security.Encryption.File/ACTIVATE,Security.Encryption.Key/DEACTIVATE,Security.Encryption.AdminInFile/POST,Security.Encryption.AdminInFile/DELETE,Security.Encryption.KeyInFile/POST,Security.Encryption.KeyInFile/DELETE,Security.Encryption.Settings/PUT,Security.WebAuth/PUT,Security.WebAuth/CHANGESMTPPWD,Security.Superserver/PUT,Security.Superserver/DELETE,Security.MFT/PUT,Security.MFT/DELETE,Security.MFT/REVOKE,Security.SQLPrivilege.Standard/GRANT,Security.SQLPrivilege.Standard/REVOKE";
 
 /// <p>The <parameter>MUTATINGTYPES</parameter> entries the vendor declares need no request body,
 /// so <method>Invoke</method>'s object-body refusal does not apply to them (AD-51). Comma-separated
@@ -474,7 +479,7 @@ Parameter MUTATINGTYPES = "WebApp.App/PUT,Security.User/PUT,Security.Audit.Enabl
 /// about the endpoint that declares it: a suffix-only exemption would carry one endpoint's
 /// <code>NeedsRequestBody()</code> answer onto another endpoint's type of the same name, which is
 /// the silent success this refusal exists to prevent.</p>
-Parameter BODYLESSTYPES = "Task.CRUD/RESUME,Process/SUSPEND,Process/RESUME,Security.Role/DELETE,Security.Resource/DELETE,Security.X509Credential/DELETE,Device.Standard/DELETE,WebApp.App/DELETE,Security.OAuth2.Client.ClientConfiguration/DELETE,Security.OAuth2.ServerClients/DELETE,Security.User/DELETE,Task.CRUD/DELETE,Process/TERMINATE,Security.Audit.Event/DELETE,Security.SSLConfig/DELETE,Wallet.Secret/DELETE,Security.OAuth2.Server/REVOKE,Security.OAuth2.Client.ServerDefinition/DELETE,Security.OAuth2.Client.ClientConfiguration/ROTATEKEYS,Security.OAuth2.Client.ClientConfiguration/REGISTERCLIENT,Security.OAuth2.ResourceServer/DELETE,Security.OAuth2.ResourceServer/ADDMAPPING,Security.OAuth2.ResourceServer/REMOVEMAPPING,Security.OAuth2.ResourceServerMapping/DELETE,Security.OAuth2.Server/DELETE,Security.OAuth2.Server/ROTATEKEYS,Security.OAuth2.ServerClients/REFRESHJWKS,Namespace.Namespace/DELETE,WebSession/DELETE,AsyncResult/CANCEL,AsyncResult/PAUSE,AsyncResult/RESUME,BackgroundTask/CANCEL,BackgroundTask/PAUSE,BackgroundTask/RESUME,Namespace.GlobalMappings/DELETE,Namespace.RoutineMappings/DELETE,Namespace.PackageMappings/DELETE,Database.SysCRUD/DELETE,Database.ConfigCRUD/DELETE,Database.Actions/DISMOUNT,Database.Actions/DEFRAGMENT,LanguageServer/START,LanguageServer/STOP,LanguageServer/DELETE,Task.Manager/SUSPEND,Task.Manager/RESUME,Task.Manager/RUN,Lock/DELETE,Security.LDAP/DELETE,Namespace.Namespace/INTEROP,Journal.Settings/SWITCHFILE,Journal.Settings/SWITCHDIR,License.Server/DELETE,ECP.DataServer/DELETE,ECP.AppServerSSLConnection/AUTHORIZE,ECP.AppServerSSLConnection/REJECT,ECP.AppServerSSLConnection/DELETE,Security.Encryption.AdminInFile/DELETE,Security.Encryption.KeyInFile/DELETE,Security.Superserver/DELETE,Security.MFT/DELETE,Security.MFT/REVOKE";
+Parameter BODYLESSTYPES = "Task.CRUD/RESUME,Process/SUSPEND,Process/RESUME,Security.Role/DELETE,Security.Resource/DELETE,Security.X509Credential/DELETE,Device.Standard/DELETE,WebApp.App/DELETE,Security.OAuth2.Client.ClientConfiguration/DELETE,Security.OAuth2.ServerClients/DELETE,Security.User/DELETE,Task.CRUD/DELETE,Process/TERMINATE,Security.Audit.Event/DELETE,Security.SSLConfig/DELETE,Wallet.Secret/DELETE,Security.OAuth2.Server/REVOKE,Security.OAuth2.Client.ServerDefinition/DELETE,Security.OAuth2.Client.ClientConfiguration/ROTATEKEYS,Security.OAuth2.Client.ClientConfiguration/REGISTERCLIENT,Security.OAuth2.ResourceServer/DELETE,Security.OAuth2.ResourceServer/ADDMAPPING,Security.OAuth2.ResourceServer/REMOVEMAPPING,Security.OAuth2.ResourceServerMapping/DELETE,Security.OAuth2.Server/DELETE,Security.OAuth2.Server/ROTATEKEYS,Security.OAuth2.ServerClients/REFRESHJWKS,Namespace.Namespace/DELETE,WebSession/DELETE,AsyncResult/CANCEL,AsyncResult/PAUSE,AsyncResult/RESUME,BackgroundTask/CANCEL,BackgroundTask/PAUSE,BackgroundTask/RESUME,Namespace.GlobalMappings/DELETE,Namespace.RoutineMappings/DELETE,Namespace.PackageMappings/DELETE,Database.SysCRUD/DELETE,Database.ConfigCRUD/DELETE,Database.Actions/DISMOUNT,Database.Actions/DEFRAGMENT,LanguageServer/START,LanguageServer/STOP,LanguageServer/DELETE,Task.Manager/SUSPEND,Task.Manager/RESUME,Task.Manager/RUN,Lock/DELETE,Security.LDAP/DELETE,Namespace.Namespace/INTEROP,Journal.Settings/SWITCHFILE,Journal.Settings/SWITCHDIR,License.Server/DELETE,ECP.DataServer/DELETE,ECP.AppServerSSLConnection/AUTHORIZE,ECP.AppServerSSLConnection/REJECT,ECP.AppServerSSLConnection/DELETE,Security.Encryption.AdminInFile/DELETE,Security.Encryption.KeyInFile/DELETE,Security.Superserver/DELETE,Security.MFT/DELETE,Security.MFT/REVOKE,Security.SQLPrivilege.Standard/GRANT,Security.SQLPrivilege.Standard/REVOKE";
 
 /// <p>The <parameter>MUTATINGTYPES</parameter> deletes whose vendor answer does not say whether the
 /// object went, as comma-separated <code>&lt;endpoint&gt;/&lt;type&gt;</code> entries. After a 2xx
@@ -1257,6 +1262,14 @@ ClassMethod InvokeLocated(pEndpoint As %String, pType As %String, ByRef pQuery, 
             If $$$ISERR(tSC) Quit
         }
 
+        ; AD-2 (Story 18.9): a SQL privilege call -- the list included -- is refused for an undefined
+        ; namespace, a missing grantee, a missing READ pair on the namespace's databases, or a list or
+        ; wildcard, before the vendor is reached. The guard works on the copy.
+        If ..IsSqlPrivilegeEndpoint(pEndpoint) {
+            Set tSC = ..SqlPrivilegeGuard(.tQuery, .pHttpStatus, .pFault)
+            If $$$ISERR(tSC) Quit
+        }
+
         ; CONSTANTBODIES: a vendor type whose body is a fixed wire fact takes it here, so no caller
         ; above the port composes it. A caller body for such a pair is a caller bug, refused before
         ; the vendor is reached rather than merged or replaced.
@@ -1377,6 +1390,16 @@ ClassMethod InvokeLocated(pEndpoint As %String, pType As %String, ByRef pQuery, 
             Set tSC = ..Refuse(500, ##class(OcuPilot.Api.Error).#SERVERERROR, tTypeFault, $Parameter("OcuPilot.Api.Error", "REASON" _ $Translate(tTypeFault, ".")), .pHttpStatus, .pFault)
             Do ..LogFault(pEndpoint _ " " _ pType _ " failed with HTTP 500", ..LoggedStatus(tSeqSC, pBody), pFault.code)
             Quit
+        }
+        ; SQLCODEFAULTS (Story 18.9): a SQL privilege refusal the vendor answers 500 with its SQLCODE
+        ; is the product's own refusal; the vendor's text is logged, never sent.
+        If $$$ISERR(tSeqSC) && (tHttp = 500) {
+            Set tCodeHttp = ..SqlCodeFault(pEndpoint, tSeqSC, .tCodeFault)
+            If tCodeHttp {
+                Set tSC = ..Refuse(tCodeHttp, $Select(tCodeHttp = 403: ##class(OcuPilot.Api.Error).#FORBIDDEN, 1: ##class(OcuPilot.Api.Error).#NOTFOUND), tCodeFault, ##class(OcuPilot.Api.SqlPrivilegeError).ReasonFor(tCodeFault), .pHttpStatus, .pFault)
+                Do ..LogFault(pEndpoint _ " " _ pType _ " failed with HTTP 500", ..LoggedStatus(tSeqSC, pBody), pFault.code)
+                Quit
+            }
         }
         ; AD-2: a read the vendor answers 404 has its answer, an absence, and is not logged.
         Set tSC = ..Fail(pEndpoint, tHttp, tSeqSC, .pHttpStatus, .pFault, ..WrapperKey(pEndpoint, pType), pBody, '..IsMutating(pEndpoint, pType), pType)
@@ -2820,6 +2843,136 @@ ClassMethod JournalRecordRules(pEndpoint As %String, pType As %String, ByRef pQu
     Set tFactor = ..PairValue(..#HALVEDROWTYPES, tPair)
     If (tFactor > 1) && $Match($Get(pQuery("maxRows")), "^[0-9]{1,9}$") Set pQuery("maxRows") = pQuery("maxRows") * tFactor
     Quit $$$OK
+}
+
+/// <p>The endpoints whose every call -- the list included -- <method>SqlPrivilegeGuard</method> judges before the
+/// vendor is reached (AD-2, Story 18.9), comma-separated.</p>
+Parameter SQLPRIVILEGETYPES = "Security.SQLPrivilege.Standard";
+
+/// <p>The vendor refusals a SQL privilege call answers 500 with an SQLCODE, as comma-separated
+/// <code>&lt;endpoint&gt;|&lt;SQLCODE&gt;=&lt;http&gt;/&lt;code&gt;</code> entries (Story 18.9). The SQLCODE is the
+/// first parameter of status 5540 and the second of status 5035. Measured on <code>ocupilot-ci</code>, 2026-10-08:
+/// -30 (a table or view), -428 (a procedure), -187 (an ML configuration) and -473 (a schema) are absent objects,
+/// -118 is an unknown user or role, and -112 (and -99 for the admin family) is the grantor rule.</p>
+Parameter SQLCODEFAULTS = "Security.SQLPrivilege.Standard|-112=403/SQLPRIV.GRANTOR,Security.SQLPrivilege.Standard|-99=403/SQLPRIV.GRANTOR,Security.SQLPrivilege.Standard|-30=404/SQLPRIV.NOOBJECT,Security.SQLPrivilege.Standard|-187=404/SQLPRIV.NOOBJECT,Security.SQLPrivilege.Standard|-428=404/SQLPRIV.NOOBJECT,Security.SQLPrivilege.Standard|-473=404/SQLPRIV.NOOBJECT,Security.SQLPrivilege.Standard|-118=404/SQLPRIV.NOGRANTEE";
+
+/// <p>The vendor status code that carries the SQLCODE as its first parameter, and the one that carries it as its
+/// second.</p>
+Parameter SQLCODESTATUSFIRST = 5540;
+
+Parameter SQLCODESTATUSSECOND = 5035;
+
+/// <p>Whether <var>pEndpoint</var> is one of <parameter>SQLPRIVILEGETYPES</parameter>.</p>
+ClassMethod IsSqlPrivilegeEndpoint(pEndpoint As %String) As %Boolean
+{
+    Quit ''$ListFind($ListFromString(..#SQLPRIVILEGETYPES), pEndpoint)
+}
+
+/// <p>Whether the instance defines the namespace <var>pNamespace</var>: a plain name, not an implied one, that
+/// the instance lists. Overridable so a fixture can name others; production never overrides it.</p>
+ClassMethod NamespaceDefined(pNamespace As %String) As %Boolean
+{
+    If '$Match(pNamespace, "^%?[A-Za-z][A-Za-z0-9_-]*$") Quit 0
+    Quit ''##class(%SYS.Namespace).Exists($ZConvert(pNamespace, "U"))
+}
+
+/// <p>The resources guarding <var>pNamespace</var>'s routines and globals databases, in <var>pResources</var> as a
+/// <class>%List</class> without repeats; <var>pResolved</var> 0 when either reports none. Overridable so a fixture
+/// can name others; production never overrides it.</p>
+ClassMethod NamespaceResources(pNamespace As %String, Output pResources As %List, Output pResolved As %Boolean)
+{
+    Set pResources = ""
+    Set pResolved = 0
+    Try {
+        Kill tInfo
+        Do ##class(OcuPilot.Kernel.Shell.Namespaces).NamespaceInfo($ZConvert(pNamespace, "U"), .tInfo, 1)
+        Set tRoutine = $Get(tInfo("RoutineDB", "Resource"))
+        Set tGlobal = $Get(tInfo("GlobalDB", "Resource"))
+        If (tRoutine = "") || (tGlobal = "") Quit
+        Set pResources = $ListBuild(tRoutine)
+        If tGlobal '= tRoutine Set pResources = pResources _ $ListBuild(tGlobal)
+        Set pResolved = 1
+    } Catch {
+        Set pResources = ""
+        Set pResolved = 0
+    }
+}
+
+/// <p>The first pair <var>pNamespace</var>'s databases name that the caller does not hold at <code>READ</code>,
+/// as <code>resource:READ</code>; <code>""</code> when the caller holds them all. A namespace whose databases
+/// report no resource names <code>?</code>, so it is refused rather than admitted.</p>
+ClassMethod NamespaceReadRefused(pNamespace As %String) As %String
+{
+    Do ..NamespaceResources(pNamespace, .tResources, .tResolved)
+    If 'tResolved Quit "?"
+    For tI = 1:1:$ListLength(tResources) {
+        Set tPair = $List(tResources, tI) _ ":READ"
+        If '..HoldsPair(tPair) Quit
+        Set tPair = ""
+    }
+    Quit $Get(tPair)
+}
+
+/// <p>The refusals <parameter>SQLPRIVILEGETYPES</parameter> admit nothing past (AD-2, Story 18.9), on the query
+/// copy <var>pQuery</var>, in order and before any vendor call: a missing or undefined <code>namespace</code> is
+/// 404 <code>SQLPRIV.NAMESPACE</code>; a missing <code>grantee</code> is 400 <code>SQLPRIV.GRANTEE</code>; a
+/// namespace whose routines or globals database the caller cannot read is 403 naming the pair as
+/// <code>detail.failedPair</code>; a <code>*</code> or a comma in <code>grantee</code>, <code>object</code> or
+/// <code>action</code> is 400 <code>SQLPRIV.LIST</code>, because the vendor expands lists and wildcards. None
+/// echoes the value.</p>
+ClassMethod SqlPrivilegeGuard(ByRef pQuery, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pHttpStatus = 0
+    Set pFault = ""
+    Set tNamespace = $Get(pQuery("namespace"))
+    If '..NamespaceDefined(tNamespace) Quit ..Refuse(404, ##class(OcuPilot.Api.Error).#NOTFOUND, ##class(OcuPilot.Api.SqlPrivilegeError).#NAMESPACE, ##class(OcuPilot.Api.SqlPrivilegeError).#REASONNAMESPACE, .pHttpStatus, .pFault)
+    If $Get(pQuery("grantee")) = "" Quit ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.SqlPrivilegeError).#GRANTEE, ##class(OcuPilot.Api.SqlPrivilegeError).#REASONGRANTEE, .pHttpStatus, .pFault)
+    Set tFailedPair = ..NamespaceReadRefused(tNamespace)
+    If tFailedPair '= "" {
+        Do ##class(OcuPilot.Kernel.Fault).Outcome(403, $$$OK, .tMapped, .tVendorText)
+        Set tDetail = {}
+        Do tDetail.%Set("failedPair", tFailedPair, "string")
+        Quit ..Refuse(403, tMapped.error, tMapped.code, tMapped.reason, .pHttpStatus, .pFault, tDetail)
+    }
+    Set tList = 0
+    For tKey = "grantee", "object", "action" {
+        Set tValue = $Get(pQuery(tKey))
+        If (tValue [ "*") || (tValue [ ",") Set tList = 1
+    }
+    If tList Quit ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.SqlPrivilegeError).#LIST, ##class(OcuPilot.Api.SqlPrivilegeError).#REASONLIST, .pHttpStatus, .pFault)
+    Quit $$$OK
+}
+
+/// <p>The HTTP status <parameter>SQLCODEFAULTS</parameter> gives the SQLCODE the vendor status
+/// <var>pVendorSC</var> carries for <var>pEndpoint</var>, with its code in <var>pCode</var>; <code>0</code> for a
+/// status outside the table.</p>
+ClassMethod SqlCodeFault(pEndpoint As %String, pVendorSC As %Status, Output pCode As %String) As %Integer
+{
+    Set pCode = ""
+    Set tHttp = 0
+    Try {
+        If $$$ISOK(pVendorSC) || '..IsSqlPrivilegeEndpoint(pEndpoint) Quit
+        Do $System.Status.DecomposeStatus(pVendorSC, .tErrors, "-d")
+        For tI = 1:1:+$Get(tErrors) {
+            Set tStatusCode = $Get(tErrors(tI, "code"))
+            Set tSqlCode = ""
+            If tStatusCode = ..#SQLCODESTATUSFIRST Set tSqlCode = $Get(tErrors(tI, "param", 1))
+            If tStatusCode = ..#SQLCODESTATUSSECOND Set tSqlCode = $Get(tErrors(tI, "param", 2))
+            If tSqlCode = "" Continue
+            For tJ = 1:1:$Length(..#SQLCODEFAULTS, ",") {
+                Set tEntry = $Piece(..#SQLCODEFAULTS, ",", tJ)
+                If $Piece(tEntry, "=", 1) '= (pEndpoint _ "|" _ tSqlCode) Continue
+                Set tHttp = +$Piece($Piece(tEntry, "=", 2), "/", 1)
+                Set pCode = $Piece($Piece(tEntry, "=", 2), "/", 2)
+                Quit
+            }
+            If tHttp Quit
+        }
+    } Catch {
+        Set tHttp = 0
+        Set pCode = ""
+    }
+    Quit tHttp
 }
 
 /// <p>The HTTP method the request stub carries for <var>pEndpoint</var>'s request type

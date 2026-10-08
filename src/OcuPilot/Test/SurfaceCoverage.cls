@@ -203,6 +203,7 @@ XData Coverage
 <screen name="SuperserverForm" class="OcuPilot.Test.SuperserverDescriptor" method="TestTheEditorIsAnUnlistedFormPage"/>
 <screen name="MftConnectionList" class="OcuPilot.Test.MftConnectionDescriptor" method="TestTheListIsDeclaredAsTheSpecPlacesIt"/>
 <screen name="MftConnectionForm" class="OcuPilot.Test.MftConnectionDescriptor" method="TestTheEditorIsAnUnlistedFormPage"/>
+<screen name="SqlPrivilegeList" class="OcuPilot.Test.SqlPrivilegeDescriptor" method="TestTheScreenIsDeclaredAsTheSpecPlacesIt"/>
 <screen name="SqlActivityList" class="OcuPilot.Test.SqlActivityDescriptor" method="TestTheDescriptorShape"/>
 <screen name="InteropProductionList" class="OcuPilot.Test.InteropDescriptor" method="TestTheFourDeclarationsRegister" corpus="one declaration test pins all four Story 20.2 Interoperability screens in one loop"/>
 <screen name="InteropProcessList" class="OcuPilot.Test.InteropDescriptor" method="TestTheFourDeclarationsRegister" corpus="one declaration test pins all four Story 20.2 Interoperability screens in one loop"/>
@@ -392,6 +393,10 @@ XData Coverage
 <tool name="security.mftconnections.update" class="OcuPilot.Test.MftConnectionDescriptor" method="TestTheToolsDeclareTheirKindPortPairsAndFields" corpus="the four connection tools are asserted together in one loop"/>
 <tool name="security.mftconnections.delete" class="OcuPilot.Test.MftConnectionDescriptor" method="TestTheToolsDeclareTheirKindPortPairsAndFields" corpus="the four connection tools are asserted together in one loop"/>
 <tool name="security.mftconnections.revoketoken" class="OcuPilot.Test.MftConnectionDescriptor" method="TestTheToolsDeclareTheirKindPortPairsAndFields" corpus="the four connection tools are asserted together in one loop"/>
+<tool name="permissions.users.grantsql" class="OcuPilot.Test.SqlPrivilegeDescriptor" method="TestTheToolsDeclareTheirKindPortPairsAndArguments" corpus="the four SQL privilege tools are asserted together in one loop"/>
+<tool name="permissions.users.revokesql" class="OcuPilot.Test.SqlPrivilegeDescriptor" method="TestTheToolsDeclareTheirKindPortPairsAndArguments" corpus="the four SQL privilege tools are asserted together in one loop"/>
+<tool name="permissions.roles.grantsql" class="OcuPilot.Test.SqlPrivilegeDescriptor" method="TestTheToolsDeclareTheirKindPortPairsAndArguments" corpus="the four SQL privilege tools are asserted together in one loop"/>
+<tool name="permissions.roles.revokesql" class="OcuPilot.Test.SqlPrivilegeDescriptor" method="TestTheToolsDeclareTheirKindPortPairsAndArguments" corpus="the four SQL privilege tools are asserted together in one loop"/>
 <member name="state-protection" class="OcuPilot.Test.State" method="TestDeniedUserCannotReachAnyStateClass"/>
 <member name="audit-round-trip-record" class="OcuPilot.Test.AuditRecord" method="TestACreateRecordsTheFieldsItCreatedAtTheirDefaults"/>
 <member name="audit-round-trip-verbs" class="OcuPilot.Test.AuditVerbs" method="TestADeleteIsRecordedWithWhatBecameOfItsCredentialEntry"/>
