@@ -29,7 +29,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 09-09-2026 07:49
-last_updated: '10-08-2026 18:41'
+last_updated: '10-08-2026 21:07'
 project: OcuPilot
 project_key: NOKEY
 tracking_system: file-system
@@ -303,8 +303,7 @@ development_status:
   18-26-managed-file-transfer-connections: done
   18-27-the-operator-s-read-only-ldap-view: done
   18-28-sql-column-and-admin-privileges: done
-  18-29-role-members-admin-option-user-copy-from-and-password-valida: 
-    in-progress
+  18-29-role-members-admin-option-user-copy-from-and-password-valida: review
   epic-18-retrospective: optional
 
   epic-19: done
@@ -345,9 +344,11 @@ development_status:
   20-14-interoperability-holders-reach-ocupilot: done
   20-15-per-screen-permissions-seen-and-adjusted: done
   20-16-the-agent-edits-rule-dtl-and-bpl-content-behind-the-embedded: backlog
-  20-17-the-agent-proposes-class-and-routine-source-edits-on-the-per: backlog
-  20-18-the-agent-proposes-permission-changes-and-refuses-on-a-scree: 
-    ready-for-dev
+  20-17-long-blocks-in-the-agent-panel-start-collapsed: done
+  20-18-the-agent-proposes-permission-changes-and-refuses-on-a-scree: done
+  20-19-the-agent-reads-class-and-routine-source: backlog
+  20-20-the-agent-creates-new-classes-and-routines-on-the-person-s-c: backlog
+  20-21-the-agent-saves-edits-to-existing-classes-and-routines: backlog
   epic-20-retrospective: optional
 
   epic-21: backlog

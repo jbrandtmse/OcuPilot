@@ -464,15 +464,16 @@ ClassMethod ConversationViolation(pBody As %DynamicObject) As %String
 /// values and never the payload's top-level strings, so each is refused above
 /// <var>pLimitsClass</var>'s <code>FIELDMAXLENGTH</code>; with them bounded, a rowless payload
 /// always fits the total budget. <code>rowsAvailable</code> is a whole number.</p>
-/// <p><code>tools</code> and <code>readOnly</code> are refused whatever their type: the instance
-/// derives both (<method>BoundedContext</method>), and a request never supplies either.</p>
+/// <p><code>tools</code>, <code>readOnly</code>, <code>verdict</code> and <code>unavailable</code> are
+/// refused whatever their type: the instance derives all four (<method>BoundedContext</method>), and a
+/// request never supplies any.</p>
 ClassMethod ContextViolation(pBody As %DynamicObject, pLimitsClass As %String) As %String
 {
     If 'pBody.%IsDefined(..#CONTEXTFIELD) Quit ""
     Set tCode = ##class(OcuPilot.Api.Error).#TURNCONTEXTINVALID
     Set tContext = pBody.%Get(..#CONTEXTFIELD)
     If '$IsObject(tContext) || 'tContext.%IsA("%Library.DynamicObject") Quit tCode
-    If (tContext.%GetTypeOf("tools") '= "unassigned") || (tContext.%GetTypeOf("readOnly") '= "unassigned") Quit tCode
+    If (tContext.%GetTypeOf("tools") '= "unassigned") || (tContext.%GetTypeOf("readOnly") '= "unassigned") || (tContext.%GetTypeOf("verdict") '= "unassigned") || (tContext.%GetTypeOf("unavailable") '= "unassigned") Quit tCode
     If tContext.%GetTypeOf("route") '= "string" Quit tCode
     If tContext.%GetTypeOf("namespace") '= "string" Quit tCode
     If tContext.%Get("namespace") '= ##class(OcuPilot.Kernel.Scope).Current() Quit tCode
@@ -512,11 +513,15 @@ ClassMethod ContextViolation(pBody As %DynamicObject, pLimitsClass As %String) A
 /// <p>The bounded <code>screen_context</code> payload for <var>pContext</var>, as JSON text in
 /// <var>pJson</var> (AD-24), or <code>""</code> when its route names no screen or the payload
 /// cannot fit <var>pLimits</var>'s <code>TOOLRESULTMAXLENGTH</code>.</p>
-/// <p>It projects the context (<method>OcuPilot.Screen.Context.Build</method>), then adds the two
+/// <p>It projects the context (<method>OcuPilot.Screen.Context.Build</method>), then adds the four
 /// members the instance derives: <code>tools</code>, the screen's tool wire names
-/// (<method>OcuPilot.Screen.Context.ScreenTools</method>), and <code>readOnly</code>,
-/// <var>pReadOnly</var> as a boolean. Both are added before any bound applies, so they count within
-/// it. A payload with no rows (a screen declaring <code>context.secretFields</code>) reports
+/// (<method>OcuPilot.Screen.Context.ScreenTools</method>), <code>readOnly</code>,
+/// <var>pReadOnly</var> as a boolean, <code>verdict</code>, the screen's own
+/// <code>{allowed, failedPair?}</code> for the calling user
+/// (<method>OcuPilot.Kernel.Shell.Navigation.SetVerdict</method>), and <code>unavailable</code>, each
+/// tool in <code>tools</code> the user cannot use mapped to the first pair it lacks
+/// (<method>OcuPilot.Screen.Context.Unavailable</method>). All are added in the caller's process
+/// before any bound applies, so they count within it. A payload with no rows (a screen declaring <code>context.secretFields</code>) reports
 /// <code>rowsSent</code> 0 and is measured whole; one with rows reports each non-scalar value
 /// <method>OcuPilot.Screen.Context.Build</method> dropped in <code>truncatedFields</code> and is
 /// cut by <method>OcuPilot.Kernel.Agent.Bound.Apply</method> under <var>pRowCap</var>.</p>
@@ -535,10 +540,16 @@ ClassMethod BoundedContext(pContext As %DynamicObject, pReadOnly As %Boolean, pR
         Set tSC = ##class(OcuPilot.Screen.Context).Build(pContext, .tBuilt, .tPayload, .tFieldMaxLengths, .tDroppedFields)
         If $$$ISERR(tSC) || 'tBuilt Quit
         Set tDescriptor = $ClassMethod(##class(OcuPilot.Screen.Context).RegistryClass(), "DescriptorForRoute", pContext.%Get("route"))
-        Set tSC = ##class(OcuPilot.Screen.Context).ScreenTools(tDescriptor, .tTools)
+        Set tSC = ##class(OcuPilot.Screen.Context).ScreenTools(tDescriptor, .tTools, .tToolList)
         If $$$ISERR(tSC) Quit
         Do tPayload.%Set("tools", tTools)
         Do tPayload.%Set("readOnly", ''pReadOnly, "boolean")
+        Set tVerdict = {}
+        Do ##class(OcuPilot.Kernel.Shell.Navigation).SetVerdict(tVerdict, tDescriptor)
+        Do tPayload.%Set("verdict", tVerdict)
+        Set tSC = ##class(OcuPilot.Screen.Context).Unavailable(tTools, .tUnavailable, tToolList)
+        If $$$ISERR(tSC) Quit
+        Do tPayload.%Set("unavailable", tUnavailable)
         Set tTotalMax = +$Parameter(pLimits, "TOOLRESULTMAXLENGTH")
         If 'tPayload.%IsDefined("rows") {
             Do tPayload.%Set("rowsSent", 0, "number")

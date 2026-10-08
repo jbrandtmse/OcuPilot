@@ -4363,16 +4363,15 @@ app-data-table {
   overflow-wrap: break-word;
 }
 
-// The result (or the error sentence), on the code surface, capped at twelve lines and scrolling
-// inside itself rather than growing the card (DESIGN.md `tool-call-card`).
+// The result (or the error sentence), on the code surface; a long one collapses under the
+// long-block control (DESIGN.md `tool-call-card`).
 .ocu-tool-call-result {
   @include typo.ocu-type('code');
 
   box-sizing: border-box;
-  max-height: calc(12lh + 2 * 8px);
   margin: 0;
   padding: 8px 10px;
-  overflow-y: auto;
+  overflow-x: auto;
   border-radius: var(--ocu-radius-sm);
   background: var(--ocu-code-surface);
   color: var(--ocu-on-code-surface);
@@ -4380,8 +4379,72 @@ app-data-table {
   overflow-wrap: break-word;
 }
 
+// The Agent area's context payload keeps the twelve-line inner scroll the panel's result gave up.
+.ocu-transcript-context-payload {
+  max-height: calc(12lh + 2 * 8px);
+  overflow-y: auto;
+}
+
 .ocu-tool-call-result:focus-visible {
   @include ocu-focus-ring;
+}
+
+// A long block in the agent panel (Story 20.17): collapsed, the region is clipped to eight lines
+// and its whole text stays in the page. No fade and no animation.
+.ocu-long-block-host {
+  display: block;
+  min-width: 0;
+}
+
+.ocu-long-block-collapsed > .ocu-long-block-region {
+  max-height: 8lh;
+  overflow: hidden;
+}
+
+.ocu-long-block-toggle {
+  @include typo.ocu-type('body');
+
+  min-width: 24px;
+  min-height: 24px;
+  margin-block-start: var(--ocu-space-1);
+  padding: 0 var(--ocu-space-2);
+  border: 1px solid transparent;
+  border-radius: var(--ocu-radius-sm);
+  background: transparent;
+  color: var(--ocu-secondary);
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.ocu-long-block-toggle:hover {
+  background: color-mix(in srgb, var(--ocu-secondary) 8%, transparent);
+}
+
+// Inside the user's bubble the secondary role falls under 4.5:1 on primary-container in light
+// mode, so the control takes the bubble's own text role there.
+.ocu-panel-message-user .ocu-long-block-toggle {
+  color: var(--ocu-on-primary-container);
+}
+
+.ocu-panel-message-user .ocu-long-block-toggle:hover {
+  background: color-mix(in srgb, var(--ocu-on-primary-container) 8%, transparent);
+}
+
+.ocu-long-block-toggle:focus-visible {
+  @include ocu-focus-ring;
+}
+
+// The summary line under a proposal card's header (Story 20.17).
+.ocu-proposal-card-summary {
+  @include typo.ocu-type('caption');
+
+  margin: 0;
+  color: var(--ocu-on-surface-variant);
+}
+
+.ocu-proposal-card-summary-outcome {
+  margin-inline-start: var(--ocu-space-2);
 }
 
 .ocu-tool-call-rows {
@@ -4440,6 +4503,12 @@ app-data-table {
 }
 
 .ocu-proposal-card-diff {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ocu-space-1);
+}
+
+.ocu-proposal-card-diff .ocu-long-block-region {
   display: flex;
   flex-direction: column;
   gap: var(--ocu-space-1);
@@ -7683,11 +7752,10 @@ app-log-hub-page {
   gap: var(--ocu-space-2);
 }
 
-// A confirmed compile's console lines on the proposal card, held to the page pane's height and
-// scrolled from the keyboard inside their focusable block.
+// A confirmed compile's console lines on the proposal card; a long output collapses under the
+// long-block control.
 .ocu-proposal-card-output .ocu-code-block-pre {
-  max-height: 30vh;
-  overflow-y: auto;
+  overflow-x: auto;
 }
 
 .ocu-explorer-compile-flag {

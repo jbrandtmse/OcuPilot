@@ -1,7 +1,7 @@
 /// <p>Pins Story 20.15's declarations (AD-5, AD-36, AD-51, AD-52, AD-53, AD-64): the <code>access</code>
 /// source kind's refusals, which <file>ui/tools/screen-mirror.test.mjs</file> runs off this class's
 /// <code>Cases</code> block as well; the Screen permissions descriptor; its three write tools' kind, port,
-/// pairs, fingerprint subject and governance keys; their absence from every roster the agent sees; that no
+/// pairs, fingerprint subject and governance keys; their presence in every roster the agent sees; that no
 /// other descriptor or tool declares the either-of pair; the <code>screen-permission</code> entity type; and
 /// the signature of the internal
 /// <code>$System.Security.ResourceExists</code> the port's rules call.</p>
@@ -132,7 +132,7 @@ Method TestTheToolsDeclareTheirKindsPortsAndPairs()
         Do $$$AssertEquals($Parameter(tClass, "TOOLNAME") _ "|" _ $Parameter(tClass, "KIND") _ "|" _ $Parameter(tClass, "PORTCLASS"), tName _ "|write|" _ ..#PORT, tName _ ": a write through the screen access port")
         Do $$$AssertEquals($ClassMethod(tClass, "WriteType") _ "|" _ $Parameter(tClass, "SCREENACTIONS") _ "|" _ $ClassMethod(tClass, "SendsBody") _ "|" _ $ClassMethod(tClass, "Destructive"), $Piece(tRow, "|", 3) _ "|" _ $Piece(tRow, "|", 4) _ "|0|0", tName _ ": its request type, its screen action, bodyless and not destructive")
         Do $$$AssertEquals($ListToString($ClassMethod(tClass, "FingerprintSubject")), $Piece(tRow, "|", 5), tName _ ": its fingerprint subject")
-        Do $$$AssertEquals($ClassMethod(tClass, "Advertised"), 0, tName _ ": declared unadvertised until Story 20.18")
+        Do $$$AssertEquals($ClassMethod(tClass, "Advertised"), 1, tName _ ": advertised to the agent (AD-64)")
         Do $$$AssertEquals($ClassMethod(tClass, "PrivilegePairs"), tDeclared, tName _ ": requires the descriptor's declared pairs")
         Do $$$AssertEquals($ClassMethod(tClass, "Endpoint") _ "|" _ $ClassMethod(tClass, "IdArgument") _ "|" _ $ClassMethod(tClass, "IdParam"), "Screen|Screen|Screen", tName _ ": addressed by the screen's identifier")
         Do $$$AssertTrue($ListFind($ClassMethod(tClass, "PreconditionCodes"), ##class(OcuPilot.Api.AccessError).#NOTADJUSTED) > 0, tName _ ": names the port's state refusals")
@@ -140,12 +140,12 @@ Method TestTheToolsDeclareTheirKindsPortsAndPairs()
     }
 }
 
-/// <p>AC8, AD-53: the three writes are in no roster the agent sees -- the provider tool list, the dispatch
-/// lookup, a proposal-path resolve or the screen context's <code>tools</code> -- while the registry lists
-/// each, so the screen route resolves it, and the read tool stays advertised.</p>
-/// <p>Mutation (Rule 19): <parameter>OcuPilot.Screen.Tool.ScreenAccessAction.ADVERTISED</parameter> 1 --
+/// <p>AC1, AD-53, AD-64: the three writes are in every roster the agent sees -- the provider tool list, the
+/// dispatch lookup, a proposal-path resolve and the screen context's <code>tools</code> -- and the registry
+/// lists each, so the screen route resolves it.</p>
+/// <p>Mutation (Rule 19): <parameter>OcuPilot.Screen.Tool.ScreenAccessAction.ADVERTISED</parameter> 0 --
 /// this goes red.</p>
-Method TestTheWritesAreAbsentFromEveryRosterTheAgentSees()
+Method TestTheWritesAreInEveryRosterTheAgentSees()
 {
     Set tRegistry = "OcuPilot.Screen.Tool.Registry"
     Do $$$AssertStatusOK($ClassMethod(tRegistry, "ProviderTools", .tProvider), "the provider tool list builds")
@@ -159,20 +159,26 @@ Method TestTheWritesAreAbsentFromEveryRosterTheAgentSees()
     }
     Kill tContextTools
     Do $$$AssertStatusOK(##class(OcuPilot.Screen.Context).ScreenTools(..#DESCRIPTOR, .tContextTools), "the screen context's tools build")
-    Set tJson = $Select($IsObject($Get(tContextTools)): tContextTools.%ToJSON(), 1: "")
-    Do $$$AssertTrue((tJson [ $ClassMethod(tRegistry, "WireName", "agent.screenpermissions.read")) || (tJson [ "agent.screenpermissions.read"), "the screen context's tools list the read tool: " _ tJson)
+    Set tContextWires = ""
+    If $IsObject($Get(tContextTools)) {
+        Set tIterator = tContextTools.%GetIterator()
+        While tIterator.%GetNext(.tIndex, .tWireName) {
+            Set tContextWires = tContextWires _ $ListBuild(tWireName)
+        }
+    }
+    Do $$$AssertTrue($ListFind(tContextWires, $ClassMethod(tRegistry, "WireName", "agent.screenpermissions.read")), "the screen context's tools list the read tool: " _ $ListToString(tContextWires))
     For tI = 1:1:$Length(..#TOOLS, ";") {
         Set tTool = $Piece($Piece(..#TOOLS, ";", tI), "|", 2)
         Set tWire = $ClassMethod(tRegistry, "WireName", tTool)
-        Do $$$AssertTrue('$ListFind(tProviderNames, tWire), tTool _ ": the provider tool list leaves it out")
+        Do $$$AssertTrue($ListFind(tProviderNames, tWire), tTool _ ": the provider tool list carries it")
         Kill tByWire, tByName, tForRoute
         Do $ClassMethod(tRegistry, "ResolveWire", tWire, .tByWire)
-        Do $$$AssertTrue('$IsObject($Get(tByWire)), tTool _ ": the dispatch lookup does not find it")
+        Do $$$AssertTrue($IsObject($Get(tByWire)), tTool _ ": the dispatch lookup finds it")
         Do $ClassMethod(tRegistry, "Resolve", tTool, .tByName)
-        Do $$$AssertTrue('$IsObject($Get(tByName)), tTool _ ": nor does a proposal-path resolve")
+        Do $$$AssertTrue($IsObject($Get(tByName)), tTool _ ": and a proposal-path resolve")
         Do $ClassMethod(tRegistry, "Resolve", tTool, .tForRoute, 1)
-        Do $$$AssertTrue($IsObject($Get(tForRoute)) && $ListFind(tListed, tTool), tTool _ ": while the registry lists it and the screen route resolves it")
-        Do $$$AssertTrue((tJson '[ tWire) && (tJson '[ tTool), tTool _ ": and the screen context's tools leave it out")
+        Do $$$AssertTrue($IsObject($Get(tForRoute)) && $ListFind(tListed, tTool), tTool _ ": and the registry lists it and the screen route resolves it")
+        Do $$$AssertTrue($ListFind(tContextWires, tWire), tTool _ ": and the screen context's tools carry it")
     }
     Do $$$AssertTrue($ListFind(tProviderNames, $ClassMethod(tRegistry, "WireName", "agent.screenpermissions.read")), "the read tool is advertised")
 }

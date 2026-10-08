@@ -193,10 +193,11 @@ Method TestARoleRemovedMidTurnIsRefusedFromCurrentGrants()
     Set tResult = tMessages.%Get(2).content.%Get(0)
     Set tBody = ##class(OcuPilot.Test.TurnWireFixture).Unwrapped(tResult.content, .tWrapped)
     Do $$$AssertTrue(tWrapped, "the refusal arrives framed as data: " _ tResult.content)
-    Do $$$AssertEquals(tResult."is_error" _ "|" _ tBody, "1|{""code"":""AUTH.NOPRIVILEGE"",""detail"":{""failedPair"":""%Admin_Secure:USE""}}", "the users read is refused naming the pair")
+    Do $$$AssertEquals(tResult."is_error" _ "|" _ tBody, "1|{""code"":""AUTH.NOPRIVILEGE"",""detail"":{""failedPair"":""%Admin_Secure:USE"",""screen"":""permissions.users""}}", "the users read is refused naming the pair and its screen")
     Do $$$AssertEquals(..Steps(tView), "model:provider:ok:;tool:permissions.users.read:error:AUTH.NOPRIVILEGE;model:provider:ok:;", "recorded as an error tool step, not retried")
     Set tFailedStep = tView.steps.%Get(1)
     Do $$$AssertEquals(tFailedStep.failedPair, "%Admin_Secure:USE", "the step itself carries the failed pair, not only the tool_result content")
+    Do $$$AssertEquals(tFailedStep.failedScreen, "permissions.users", "and the screen it names")
     Do $$$AssertNotEquals(tFailedStep.reason, "", "and a published reason for the card's failed status")
 }
 

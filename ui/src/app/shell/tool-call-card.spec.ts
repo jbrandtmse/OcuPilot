@@ -1,6 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { beforeEach, describe, expect, it } from 'vitest';
 
+import { LongBlocks } from '../core/long-blocks';
 import { STRINGS } from '../core/strings';
 import type { TurnStep } from '../core/turn';
 import { ToolCallCard } from './tool-call-card';
@@ -30,6 +31,7 @@ const BASE: TurnStep = {
   result: null,
   reason: '',
   failedPair: '',
+  failedScreen: '',
   auditMarked: null,
 };
 
@@ -60,6 +62,33 @@ describe('the tool-call card status word', () => {
 
     expect(statusWord()).toBe(STRINGS.toolCallStatusFailed.split('<reason>').join('%Admin_Secure:USE'));
     expect(statusWord()).toContain('%Admin_Secure:USE');
+  });
+
+  // Story 20.18, AC6. Mutation (Rule 19): make `statusText` ignore `failedScreen` -> the first case goes red.
+  it('a refusal that names a screen reads the screen-denied sentence', () => {
+    render({
+      ...BASE,
+      status: 'error',
+      code: 'AUTH.NOPRIVILEGE',
+      reason: 'This account does not hold the privilege this request requires.',
+      failedPair: '%Admin_Secure:USE',
+      failedScreen: 'webapp.list',
+    });
+
+    expect(statusWord()).toBe('failed \u2014 You need %Admin_Secure:USE to open Web applications.');
+  });
+
+  it('a screen the mirror does not know renders the pair alone', () => {
+    render({
+      ...BASE,
+      status: 'error',
+      code: 'AUTH.NOPRIVILEGE',
+      reason: 'This account does not hold the privilege this request requires.',
+      failedPair: '%Admin_Secure:USE',
+      failedScreen: 'no.such.screen',
+    });
+
+    expect(statusWord()).toBe('failed \u2014 %Admin_Secure:USE');
   });
 
   it('a failure that names no pair keeps its reason', () => {
@@ -124,5 +153,71 @@ describe('the tool-call card status word', () => {
     expect(word.classList.contains('ocu-tool-call-status-warning')).toBe(true);
     // The write succeeded. Nothing here says it failed (AD-15).
     expect(statusWord()).not.toContain('failed');
+  });
+});
+
+describe('the tool-call card long blocks (Story 20.17)', () => {
+  const longText = Array(10).fill('a line of output').join('\n');
+
+  const render = (step: TurnStep, turnKey?: string): ComponentFixture<ToolCallCard> => {
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({ imports: [ToolCallCard] });
+    const fixture = TestBed.createComponent(ToolCallCard);
+    fixture.componentRef.setInput('step', step);
+    if (turnKey !== undefined) fixture.componentRef.setInput('turnKey', turnKey);
+    fixture.detectChanges();
+    return fixture;
+  };
+
+  // mutation: drop the wrapper around the result `pre` -> the first leg goes red.
+  it('wraps a long result and long arguments, each with its own control, outside the element', () => {
+    const fixture = render({ ...BASE, status: 'running', arguments: longText, text: longText }, 'c1:t0');
+    const body = fixture.nativeElement.querySelector('.ocu-tool-call-body') as HTMLElement;
+    const blocks = Array.from(body.querySelectorAll('.ocu-long-block')) as HTMLElement[];
+
+    expect(blocks).toHaveLength(2);
+    expect(blocks.every((block) => block.classList.contains('ocu-long-block-collapsed'))).toBe(true);
+    const result = body.querySelector('pre.ocu-tool-call-result') as HTMLElement;
+    expect(result.children).toHaveLength(0);
+    expect(result.textContent).toBe(longText);
+    expect(result.closest('.ocu-long-block-region')?.id).toBe('ocu-long-block-c1_t0_s1_result');
+    expect(body.querySelector('.ocu-tool-call-arguments')?.closest('.ocu-long-block-region')?.id).toBe(
+      'ocu-long-block-c1_t0_s1_arguments'
+    );
+    expect(body.querySelectorAll('.ocu-long-block-toggle')).toHaveLength(2);
+  });
+
+  // Mutation (Rule 19): make `LongBlock` keep a keyed block's state locally -> the re-shown result reads closed.
+  it('a result opened, hidden by collapsing the card and shown again is still open, because the store holds it', () => {
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({ imports: [ToolCallCard], providers: [{ provide: LongBlocks, useValue: new LongBlocks() }] });
+    const fixture = TestBed.createComponent(ToolCallCard);
+    fixture.componentRef.setInput('step', { ...BASE, status: 'ok', text: longText });
+    fixture.componentRef.setInput('turnKey', 'c1:t0');
+    fixture.detectChanges();
+    const card = fixture.nativeElement as HTMLElement;
+    const disclosure = (): void => {
+      (card.querySelector('.ocu-tool-call-toggle') as HTMLButtonElement).click();
+      fixture.detectChanges();
+    };
+
+    disclosure();
+    (card.querySelector('.ocu-long-block-toggle') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    disclosure();
+    expect(card.querySelector('.ocu-long-block-toggle')).toBeNull();
+    disclosure();
+    expect(card.querySelector('.ocu-long-block-toggle')?.getAttribute('aria-expanded')).toBe('true');
+  });
+
+  it('a short result carries no control, and a card given no turn key keeps its state locally', () => {
+    const short = render({ ...BASE, status: 'running', text: 'ok' }, 'c1:t0');
+    expect(short.nativeElement.querySelector('.ocu-long-block-toggle')).toBeNull();
+
+    const local = render({ ...BASE, status: 'running', text: longText });
+    const toggle = local.nativeElement.querySelector('.ocu-long-block-toggle') as HTMLButtonElement;
+    toggle.click();
+    local.detectChanges();
+    expect(toggle.getAttribute('aria-expanded')).toBe('true');
   });
 });

@@ -459,6 +459,39 @@ ClassMethod ArgumentPairs(pTool As %DynamicObject, pArgs As %DynamicObject, Outp
     Quit tPairs
 }
 
+/// <p>The screen <var>pTool</var> acts on: its list entry's <code>descriptor</code>, else its class's
+/// <code>DESCRIPTORCLASS</code>. Answers that screen's effective pairs
+/// (<method>OcuPilot.Screen.Gate.RequiredPairs</method>, an adjustment included) and puts its
+/// <code>toolIdentifier</code> in <var>pScreen</var>. <var>pResolved</var> is 1 only when the pairs were
+/// read; a tool with no screen answers <code>""</code>, <var>pScreen</var> <code>""</code> and
+/// <var>pResolved</var> 0.</p>
+ClassMethod ScreenRequirement(pTool As %DynamicObject, Output pScreen As %String, Output pResolved As %Boolean) As %List
+{
+    Set pScreen = ""
+    Set pResolved = 0
+    Set tPairs = ""
+    Try {
+        Set tDescriptor = pTool.%Get("descriptor")
+        If tDescriptor = "" {
+            Set tClass = pTool.%Get("class")
+            If tClass '= "" Set tDescriptor = $Parameter(tClass, "DESCRIPTORCLASS")
+        }
+        If tDescriptor = "" Quit
+        Set tPairs = ##class(OcuPilot.Screen.Gate).RequiredPairs(tDescriptor, .tRead)
+        If 'tRead || '$ListValid(tPairs) {
+            Set tPairs = ""
+            Quit
+        }
+        Set pScreen = $ClassMethod(tDescriptor, "ToolIdentifier")
+        Set pResolved = 1
+    } Catch {
+        Set tPairs = ""
+        Set pScreen = ""
+        Set pResolved = 0
+    }
+    Quit tPairs
+}
+
 /// <p>The top-level argument names <var>pTool</var> declares secret, as its class answers them for
 /// its descriptor (AD-3). <var>pDeclared</var> is 0 when the tool declares nothing or the answer
 /// could not be read, and <method>ProviderTools</method> refuses such a tool rather than reading

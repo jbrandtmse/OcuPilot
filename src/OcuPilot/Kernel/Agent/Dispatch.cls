@@ -120,14 +120,15 @@ ClassMethod Advertise(Output pTools) As %Status
 /// caller resolving <code>Switch.ContextRowCap</code> or a shrinking per-reply budget can hand it
 /// down without every existing caller having to change.</p>
 /// <p><var>pDetails</var> comes back parallel to <var>pResults</var>/<var>pNames</var>, one
-/// <code>{target, arguments, argumentsTruncated, result, reason, failedPair}</code> per call
+/// <code>{target, arguments, argumentsTruncated, result, reason, failedPair, failedScreen}</code> per call
 /// (Story 4.5, DW-451): <code>target</code> and <code>arguments</code> describe the call itself
 /// and are present whether it succeeded or failed; <code>argumentsTruncated</code> is
 /// <method>RedactedArguments</method>'s own cap answer, threaded through so the caller storing
 /// <code>arguments</code> never has to re-cap it to learn whether it was cut; <code>result</code>
 /// is <code>{rowsReturned, rowsSent, truncated}</code> when the call succeeded with a rows-shaped
 /// result, else <code>""</code>; <code>reason</code> and <code>failedPair</code> are set only on
-/// failure, the latter only when the failure carries <code>detail.failedPair</code>.</p>
+/// failure, <code>failedPair</code> only when the failure carries <code>detail.failedPair</code> and
+/// <code>failedScreen</code> only when it also carries <code>detail.screen</code>.</p>
 ClassMethod Answer(pKey As %String, pUser As %String, pDefinitionId As %String, pToolUses As %DynamicArray, pLimitsClass As %String, Output pResults As %DynamicArray, Output pNames As %DynamicArray, pRowCap As %Integer = 0, pMaxLength As %Integer = 0, Output pDetails As %DynamicArray, pRoute As %String = "") As %Status
 {
     Set tSC = $$$OK
@@ -139,7 +140,7 @@ ClassMethod Answer(pKey As %String, pUser As %String, pDefinitionId As %String, 
         Set tMaxLength = $Select(+pMaxLength > 0: +pMaxLength, 1: +$Parameter(pLimitsClass, "TOOLRESULTMAXLENGTH"))
         Set tIterator = pToolUses.%GetIterator()
         While tIterator.%GetNext(.tIndex, .tBlock) {
-            Set tIsError = ..AnswerOne(pKey, pUser, pDefinitionId, tBlock, tRows, tMaxLength, pLimitsClass, .tName, .tContent, .tTarget, .tArguments, .tResultInfo, .tReason, .tFailedPair, .tArgumentsTruncated, pRoute)
+            Set tIsError = ..AnswerOne(pKey, pUser, pDefinitionId, tBlock, tRows, tMaxLength, pLimitsClass, .tName, .tContent, .tTarget, .tArguments, .tResultInfo, .tReason, .tFailedPair, .tArgumentsTruncated, pRoute, .tFailedScreen)
             Set tResult = {}
             Do tResult.%Set("type", "tool_result", "string")
             Do tResult.%Set("tool_use_id", $Select($IsObject(tBlock) && (tBlock.%Get("id") '= ""): tBlock.%Get("id"), 1: "unknown"), "string")
@@ -154,6 +155,7 @@ ClassMethod Answer(pKey As %String, pUser As %String, pDefinitionId As %String, 
             Do tDetail.%Set("result", tResultInfo, "string")
             Do tDetail.%Set("reason", tReason, "string")
             Do tDetail.%Set("failedPair", tFailedPair, "string")
+            Do tDetail.%Set("failedScreen", tFailedScreen, "string")
             Do pDetails.%Push(tDetail)
         }
     } Catch ex {
@@ -175,8 +177,9 @@ ClassMethod Answer(pKey As %String, pUser As %String, pDefinitionId As %String, 
 /// <var>pResultInfo</var> is JSON <code>{rowsReturned, rowsSent, truncated}</code> on a rows-shaped
 /// success, else <code>""</code>. <var>pReason</var> is the failing code's published sentence
 /// (<method>OcuPilot.Api.Error.ReasonForToolCode</method>), set on every failure branch;
-/// <var>pFailedPair</var> is set only by the two privilege-pair refusals.</p>
-ClassMethod AnswerOne(pKey As %String, pUser As %String, pDefinitionId As %String, pBlock As %DynamicObject, pRows As %Integer, pMaxLength As %Integer, pLimitsClass As %String, Output pName As %String, Output pContent As %String, Output pTarget As %String, Output pArguments As %String, Output pResultInfo As %String, Output pReason As %String, Output pFailedPair As %String, Output pArgumentsTruncated As %Boolean, pRoute As %String = "") As %Boolean [ Private ]
+/// <var>pFailedPair</var> is set only by the two privilege-pair refusals, and <var>pFailedScreen</var>
+/// only by the tool-requirement refusal when the caller cannot open the tool's screen.</p>
+ClassMethod AnswerOne(pKey As %String, pUser As %String, pDefinitionId As %String, pBlock As %DynamicObject, pRows As %Integer, pMaxLength As %Integer, pLimitsClass As %String, Output pName As %String, Output pContent As %String, Output pTarget As %String, Output pArguments As %String, Output pResultInfo As %String, Output pReason As %String, Output pFailedPair As %String, Output pArgumentsTruncated As %Boolean, pRoute As %String = "", Output pFailedScreen As %String) As %Boolean [ Private ]
 {
     Set tUnavailable = ##class(OcuPilot.Api.Error).#TOOLUNAVAILABLE
     Set pName = ""
@@ -187,6 +190,7 @@ ClassMethod AnswerOne(pKey As %String, pUser As %String, pDefinitionId As %Strin
     Set pResultInfo = ""
     Set pReason = ##class(OcuPilot.Api.Error).ReasonForToolCode(tUnavailable)
     Set pFailedPair = ""
+    Set pFailedScreen = ""
     Set tIsError = 1
     Try {
         Set tWire = ""
@@ -264,7 +268,14 @@ ClassMethod AnswerOne(pKey As %String, pUser As %String, pDefinitionId As %Strin
         }
         Set tFailedPair = ..MissingPair(pUser, tPairs)
         If tFailedPair '= "" {
-            Set pContent = ..DeniedContent(tFailedPair)
+            ; The screen is named only when the caller lacks a pair of the screen itself (AD-8).
+            Set tScreenPairs = $ClassMethod(tRegistry, "ScreenRequirement", tTool, .tScreen, .tScreenResolved)
+            Set tScreenPair = $Select(tScreenResolved: ..MissingPair(pUser, tScreenPairs), 1: "")
+            If tScreenPair '= "" {
+                Set tFailedPair = tScreenPair
+                Set pFailedScreen = tScreen
+            }
+            Set pContent = ..DeniedContent(tFailedPair, pFailedScreen)
             Set pReason = ##class(OcuPilot.Api.Error).ReasonForToolCode(##class(OcuPilot.Api.Error).#AUTHNOPRIVILEGE)
             Set pFailedPair = tFailedPair
             Quit
@@ -719,13 +730,14 @@ ClassMethod MissingPair(pUser As %String, pPairs As %List) As %String [ Private 
 }
 
 /// <p>The content of a pair refusal: <code>AUTH.NOPRIVILEGE</code> naming
-/// <var>pFailedPair</var> as <code>detail.failedPair</code> (AD-8).</p>
+/// <var>pFailedPair</var> as <code>detail.failedPair</code> and, when given, <var>pScreen</var> as
+/// <code>detail.screen</code> (AD-8).</p>
 /// <p>The tool half of the one privilege refusal (AD-39). The code and the detail are
 /// <class>OcuPilot.Kernel.Denial</class>'s, which is also what
 /// <class>OcuPilot.Api.ScreenRead</class>'s 403 renders, so the two cannot diverge.</p>
-ClassMethod DeniedContent(pFailedPair As %String) As %String [ Private ]
+ClassMethod DeniedContent(pFailedPair As %String, pScreen As %String = "") As %String [ Private ]
 {
-    Quit ##class(OcuPilot.Kernel.Denial).Content(pFailedPair)
+    Quit ##class(OcuPilot.Kernel.Denial).Content(pFailedPair, pScreen)
 }
 
 /// <p>The content of an error <code>tool_result</code>: <code>{code}</code>, plus

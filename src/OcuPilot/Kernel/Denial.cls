@@ -40,15 +40,17 @@ ClassMethod Reason() As %String
     Quit ##class(OcuPilot.Api.Error).#REASONAUTHNOPRIVILEGE
 }
 
-/// <p>The refusal's structured detail: <code>{failedPair}</code> for a named pair, and
-/// <code>""</code> when no pair can be named.</p>
+/// <p>The refusal's structured detail: <code>{failedPair}</code> for a named pair, with
+/// <code>screen</code> after it when <var>pScreen</var> names the screen the caller cannot open,
+/// and <code>""</code> when no pair can be named.</p>
 /// <p>The key is omitted, never sent empty: a refusal with a blank pair reads as "refused for
 /// nothing stated", which is a different thing from a requirement that named no pair at all.</p>
-ClassMethod Detail(pFailedPair As %String = "") As %DynamicObject
+ClassMethod Detail(pFailedPair As %String = "", pScreen As %String = "") As %DynamicObject
 {
     If pFailedPair = "" Quit ""
     Set tDetail = {}
     Do tDetail.%Set("failedPair", pFailedPair, "string")
+    If pScreen '= "" Do tDetail.%Set("screen", pScreen, "string")
     Quit tDetail
 }
 
@@ -56,19 +58,19 @@ ClassMethod Detail(pFailedPair As %String = "") As %DynamicObject
 /// handler. Returns the status <method>OcuPilot.Api.Error.Render</method> answered.</p>
 /// <p><b>Caller contract:</b> a handler calls this instead of rendering a 403 of its own, and
 /// writes nothing else on that path.</p>
-ClassMethod Envelope(pFailedPair As %String = "") As %Status
+ClassMethod Envelope(pFailedPair As %String = "", pScreen As %String = "") As %Status
 {
-    Quit ##class(OcuPilot.Api.Error).Render(..#STATUS, ..Slug(), ..Reason(), ..Code(), ..Detail(pFailedPair))
+    Quit ##class(OcuPilot.Api.Error).Render(..#STATUS, ..Slug(), ..Reason(), ..Code(), ..Detail(pFailedPair, pScreen))
 }
 
 /// <p>The refusal as the content of an error <code>tool_result</code> (AD-39): the machine half,
 /// for the dispatcher. <code>{code}</code>, plus <code>detail.failedPair</code> when a pair is
-/// named.</p>
-ClassMethod Content(pFailedPair As %String = "") As %String
+/// named and <code>detail.screen</code> when a screen is.</p>
+ClassMethod Content(pFailedPair As %String = "", pScreen As %String = "") As %String
 {
     Set tContent = {}
     Do tContent.%Set("code", ..Code(), "string")
-    Set tDetail = ..Detail(pFailedPair)
+    Set tDetail = ..Detail(pFailedPair, pScreen)
     If $IsObject(tDetail) Do tContent.%Set("detail", tDetail)
     Quit tContent.%ToJSON()
 }
