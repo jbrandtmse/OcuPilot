@@ -50,9 +50,11 @@ import {
   MEMBER_TYPE_USER,
   type Member,
   ROLE_FIELD_TABS,
+  SQL_PRIVILEGES_TAB,
   RoleEditor,
 } from './role-editor.store';
 import { RoleGrantDialog, type GrantResult, grantLine } from './role-grant-dialog';
+import { SqlPrivilegesTab } from './sql-privileges-tab';
 
 /** The list the editor is reached from, which Cancel and a delete return to. */
 export const ROLE_LIST_ROUTE = 'permissions/roles';
@@ -132,7 +134,7 @@ function memberTypeWord(type: string): string {
 @Component({
   selector: 'app-role-editor-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [Dialog, FormTabs, FormTabBody, RoleGrantDialog, ScreenActionDialogs],
+  imports: [Dialog, FormTabs, FormTabBody, RoleGrantDialog, ScreenActionDialogs, SqlPrivilegesTab],
   template: `<section class="ocu-form-page">
     @if (hasSummary) {
       <div #summary class="ocu-banner ocu-form-summary" role="alert" tabindex="-1">
@@ -347,6 +349,11 @@ function memberTypeWord(type: string): string {
           </button>
         </div>
       </ng-template>
+      <ng-template ocuFormTab="sql-privileges">
+        @if (sqlTabSelected) {
+          <app-sql-privileges-tab [grantee]="roleName" [descriptor]="roleList" entity="role" />
+        }
+      </ng-template>
     </app-form-tabs>
 
     <!-- The dialogs' hosts sit before the bar, so the bar stays the page's last flex item and
@@ -405,6 +412,10 @@ export class RoleEditorPage {
   protected readonly STRINGS = STRINGS;
 
   protected readonly roleList = ROLE_LIST;
+
+  protected get sqlTabSelected(): boolean {
+    return this.selectedTab() === SQL_PRIVILEGES_TAB;
+  }
 
   protected readonly nameId = 'ocu-role-edit-Name';
 
@@ -524,6 +535,7 @@ export class RoleEditorPage {
       { key: GENERAL_TAB, label: STRINGS.processDetailsGroupGeneral, count: counts[GENERAL_TAB] ?? 0 },
       { key: MEMBERS_TAB, label: STRINGS.roleEditorTabMembers, count: counts[MEMBERS_TAB] ?? 0 },
       { key: ASSIGNED_TO_TAB, label: STRINGS.roleEditorTabAssignedTo, count: counts[ASSIGNED_TO_TAB] ?? 0 },
+      { key: SQL_PRIVILEGES_TAB, label: STRINGS.sqlPrivilegesLabel, count: 0 },
     ];
   }
 

@@ -92,7 +92,7 @@ None until the lead decides on the split (Design Notes › Decision needed). Eac
   - A revoke by a caller who is not the grantor answers 200 and revokes nothing. With `asGrantor=<the row's GrantedBy>` it revokes.
 - **Column family.**
   - A row is `{Column, Action, GrantedBy, GrantOption, GrantedVia}`, per grantee, namespace and object `schema.table`.
-  - A grant of an unknown column, of `DELETE`, or by a grantor without the privilege answered 200 and stored nothing.
+  - A grant of an unknown column, or by a grantor without the privilege, answered 200 and stored nothing; a grant of `DELETE` answered 200 and stored a row the column list never shows (measured at Story 18.28's plan).
   - An `UPDATE` grant on column B, while the table-level `UPDATE` was held, stored nothing (inference: covered).
 - **Admin family.**
   - A row is `{Privilege, GrantOption, GrantedVia}`, kept per namespace: USER and HSCUSTOM differed.

@@ -1340,6 +1340,7 @@ test('criteriaProblem returns every sentence OcuPilot.Test.CriteriaCorpus declar
   // Story 19.14's nine further tabs, whose one criterion is the table, view or procedure the route id names.
   // Story 18.19's Journal records, whose six criteria are the classic record browser's search.
   // Story 18.7's two key file lists, whose two criteria are the key file's root and path.
+  // Story 18.9's SQL privileges, whose two criteria are the grantee and the namespace.
   const withCriteria = emittedScreens.filter((screen) => (screen.read?.criteria ?? null) !== null);
   assert.deepEqual(
     withCriteria.map((screen) => screen.descriptor),
@@ -1383,6 +1384,7 @@ test('criteriaProblem returns every sentence OcuPilot.Test.CriteriaCorpus declar
       'OcuPilot.Screen.Descriptor.PackageMappingList',
       'OcuPilot.Screen.Descriptor.ProcessDetails',
       'OcuPilot.Screen.Descriptor.RoutineMappingList',
+      'OcuPilot.Screen.Descriptor.SqlPrivilegeList',
       'OcuPilot.Screen.Descriptor.TaskDetails',
       'OcuPilot.Screen.Descriptor.TaskHistoryList',
       'OcuPilot.Screen.Descriptor.TaskRunList',

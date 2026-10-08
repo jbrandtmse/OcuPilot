@@ -26,6 +26,9 @@ export const MEMBERS_TAB = 'members';
 
 export const ASSIGNED_TO_TAB = 'assigned-to';
 
+/** The SQL privileges tab, last: it draws the role's SQL object privileges, read when it is selected. */
+export const SQL_PRIVILEGES_TAB = 'sql-privileges';
+
 /** The two settings a Save carries, as the server names them (AD-55). */
 export const DESCRIPTION_FIELD = 'Description';
 

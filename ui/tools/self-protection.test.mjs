@@ -297,6 +297,9 @@ const KERNEL_REFUSALS = [
   // Story 18.25: the superserver the web gateway connects through, whose Enabled and web connections the
   // editor draws locked, and whose Delete either caller is answered with this sentence.
   ['SERVINGSUPERSERVER', 'superserverRefusalServing'],
+  // Story 18.9: a SQL privilege grant or revoke on one of OcuPilot's own schemas, which the SQL privileges
+  // tab states in place when either caller is answered with it.
+  ['OCUPILOTSQLPRIVILEGE', 'sqlPrivilegeRefusalOcuPilot'],
   // Story 20.15: one of OcuPilot's own screens, whose permissions either caller is refused changing.
   ['OCUPILOTSCREEN', 'screenPermissionsRefusalOcuPilot'],
 ];

@@ -598,6 +598,8 @@ test("EXPERIENCE.md's Fixed strings table itself holds roughly 200 distinct lite
   // Superservers screens publish thirty-six literals and Story 20.2's productions thirty-nine, merged
   // beside them; the bound moves to 2900 under the same
   // protocol (approved at its spec gate).
+  // Story 18.9's twenty-three literals, merged beside them, take the table to 2910; the bound moves to
+  // 3000 under the same protocol (approved at its spec gate).
   // Story 20.15's thirty literals (Screen permissions and its refusals), merged beside Story 18.26's
   // MFT connections, take the table past 2900; the bound moves to 3000 under the same protocol
   // (approved).

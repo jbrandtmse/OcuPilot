@@ -144,10 +144,18 @@ afterEach(() => {
 });
 
 describe('the role editor (Story 9.3)', () => {
+  it('draws the SQL privileges tab only once it is selected', async () => {
+    const { fixture, host } = await mount();
+    expect(host.querySelector('[data-ocu-sqlpriv="tab"]')).toBeNull();
+    tabs(host)[3].click();
+    await settle(fixture);
+    expect(host.querySelector('[data-ocu-sqlpriv="tab"]')).not.toBeNull();
+  });
+
   it('AC1: opens a role on General, Members and Assigned to, each read from the instance', async () => {
     // Mutation (Rule 19): drop the Members tab from the page's `tabs` -> the tab-label assertion goes red.
     const { fixture, host } = await mount();
-    expect(tabLabels(host)).toEqual([STRINGS.processDetailsGroupGeneral, STRINGS.roleEditorTabMembers, STRINGS.roleEditorTabAssignedTo]);
+    expect(tabLabels(host)).toEqual([STRINGS.processDetailsGroupGeneral, STRINGS.roleEditorTabMembers, STRINGS.roleEditorTabAssignedTo, STRINGS.sqlPrivilegesLabel]);
     expect((host.querySelector('#ocu-role-edit-Name') as HTMLInputElement).value).toBe('Probe');
     expect((host.querySelector('#ocu-role-edit-Description') as HTMLInputElement).value).toBe('probe');
     expect((host.querySelector('#ocu-role-edit-EscalationOnly') as HTMLInputElement).checked).toBe(false);

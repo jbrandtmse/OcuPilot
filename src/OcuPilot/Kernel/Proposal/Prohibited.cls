@@ -667,6 +667,16 @@ Parameter OCUPILOTSQL = "PROHIBITED.OCUPILOTSQL";
 /// <file>ui/tools/self-protection.test.mjs</file>.</p>
 Parameter OCUPILOTSQLREASON = "This statement reads or changes OcuPilot's own tables or code, which OcuPilot does not offer.";
 
+/// <p>A SQL privilege grant or revoke on an object of one of OcuPilot's own schemas, in any namespace, by either
+/// caller (AD-10 as amended 2026-10-07, Story 18.9, DW-236): a grant widens the tables AD-9 protects, and a revoke
+/// of the installer's schema grant leaves OcuPilot <code>unreadable</code> (AD-38). A grant or revoke for one of
+/// OcuPilot's own roles, or for <code>%DB_OCUPILOT</code>, is refused under <parameter>OCUPILOTROLE</parameter>.</p>
+Parameter OCUPILOTSQLPRIVILEGE = "PROHIBITED.OCUPILOTSQLPRIVILEGE";
+
+/// <p>The one sentence <parameter>OCUPILOTSQLPRIVILEGE</parameter> carries, caller-neutral, published in
+/// EXPERIENCE.md's Fixed strings and pinned by <file>ui/tools/self-protection.test.mjs</file>.</p>
+Parameter OCUPILOTSQLPRIVILEGEREASON = "OcuPilot's own SQL tables keep the privileges its installer grants, so a grant or revoke on them is not offered.";
+
 /// <p>The write would remove from a key file a key that encrypts OcuPilot's own database, the install
 /// namespace's globals or routines database, one of <parameter>SYSTEMDATABASES</parameter>, or the
 /// journal, read at the write; a read that fails refuses (AD-10 as amended 2026-10-04, Story 18.7).</p>
@@ -913,10 +923,10 @@ Parameter READTYPE = "GET";
 /// <method>Mapping</method> adds, the one <method>Database</method> adds, and the one
 /// <method>Lock</method> adds, and the one <method>Code</method> adds, and the one
 /// <method>SqlStatement</method> adds, the key arm's and the encryption start arm's, and the two
-/// <method>AuthOptions</method> adds, and the one <method>Superserver</method> adds, and the one <method>ScreenPermission</method> adds last -- thirty-two in all.</p>
+/// <method>AuthOptions</method> adds, and the one <method>Superserver</method> adds, and the SQL privilege arm's, and the one <method>ScreenPermission</method> adds last -- thirty-two in all.</p>
 ClassMethod Codes() As %List
 {
-    Quit $ListBuild(..#SERVINGPATH, ..#UNAUTHENTICATED, ..#AUTHORIZATION, ..#DISPATCH, ..#SYSTEMACCOUNT, ..#SERVICEACCOUNT, ..#CURRENTUSER, ..#LASTALLHOLDER, ..#PRIVILEGEGRANT, ..#OCUPILOTPROCESS, ..#SYSTEMPROCESS, ..#UNCOVEREDFIELD, ..#UNCOVERED, ..#OCUPILOTROLE, ..#OCUPILOTRESOURCE, ..#SERVICEACCOUNTSIGNIN, ..#OCUPILOTSSL, ..#SERVINGSERVICE, ..#OCUPILOTNAMESPACE, ..#OCUPILOTSESSION, ..#PRESERVEDSESSION, ..#OCUPILOTMAPPING, ..#OCUPILOTDATABASE, ..#OCUPILOTLOCK, ..#OCUPILOTCODE, ..#OCUPILOTSQL, ..#OCUPILOTKEY, ..#STARTUPINTERACTIVE, ..#OCUPILOTSIGNIN, ..#OCUPILOTSTART, ..#SERVINGSUPERSERVER, ..#OCUPILOTSCREEN)
+    Quit $ListBuild(..#SERVINGPATH, ..#UNAUTHENTICATED, ..#AUTHORIZATION, ..#DISPATCH, ..#SYSTEMACCOUNT, ..#SERVICEACCOUNT, ..#CURRENTUSER, ..#LASTALLHOLDER, ..#PRIVILEGEGRANT, ..#OCUPILOTPROCESS, ..#SYSTEMPROCESS, ..#UNCOVEREDFIELD, ..#UNCOVERED, ..#OCUPILOTROLE, ..#OCUPILOTRESOURCE, ..#SERVICEACCOUNTSIGNIN, ..#OCUPILOTSSL, ..#SERVINGSERVICE, ..#OCUPILOTNAMESPACE, ..#OCUPILOTSESSION, ..#PRESERVEDSESSION, ..#OCUPILOTMAPPING, ..#OCUPILOTDATABASE, ..#OCUPILOTLOCK, ..#OCUPILOTCODE, ..#OCUPILOTSQL, ..#OCUPILOTKEY, ..#STARTUPINTERACTIVE, ..#OCUPILOTSIGNIN, ..#OCUPILOTSTART, ..#SERVINGSUPERSERVER, ..#OCUPILOTSQLPRIVILEGE, ..#OCUPILOTSCREEN)
 }
 
 /// <p>The written sentence a <code>PROHIBITED.*</code> code carries, or <code>""</code> for any
@@ -959,6 +969,7 @@ ClassMethod ReasonFor(pCode As %String) As %String
     If pCode = ..#OCUPILOTSIGNIN Quit ..#OCUPILOTSIGNINREASON
     If pCode = ..#OCUPILOTSTART Quit ..#OCUPILOTSTARTREASON
     If pCode = ..#SERVINGSUPERSERVER Quit ..#SERVINGSUPERSERVERREASON
+    If pCode = ..#OCUPILOTSQLPRIVILEGE Quit ..#OCUPILOTSQLPRIVILEGEREASON
     If pCode = ..#OCUPILOTSCREEN Quit ..#OCUPILOTSCREENREASON
     Quit ""
 }
@@ -1316,6 +1327,13 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
         ; recipient for both callers. Asked before the target read: a broadcast's target is a pid
         ; set, which the process predicates do not read.
         If (tType = ..#TYPEPROCESS) && (..WriteTypeOf(..ToolClassNamed(pToolName)) = ..#BROADCASTWRITETYPE) Quit
+
+        ; Story 18.9: a SQL privilege grant or revoke for a user or a role is judged by its grantee and
+        ; its stored object alone, so the arm reads no target.
+        If ((tType = ..#TYPEUSER) || (tType = ..#TYPEROLE)) && ..IsSqlPrivilegeTool(..ToolClassNamed(pToolName)) {
+            Set tSC = ..SqlPrivilege(tId, pPayload, .pProhibits, .pCode)
+            Quit
+        }
 
         ; Story 19.2: a document set is judged by its own names, so the arm reads no target. Story
         ; 19.13: an export only reads and is not judged, and an import is judged by the documents its
@@ -2474,6 +2492,49 @@ ClassMethod ImportedNames(pPayload As %String) As %String [ Private ]
         If tName '= "" Set tNames = tNames _ $Select(tNames = "": "", 1: ",") _ tName
     }
     Quit tNames
+}
+
+/// <p>A SQL privilege grant or revoke (Story 18.9, AD-10): refused with <parameter>OCUPILOTROLE</parameter> when the
+/// grantee <var>pId</var> is one of OcuPilot's own roles (<method>OcuPilotRoles</method>) or
+/// <code>%DB_OCUPILOT</code>, then with <parameter>OCUPILOTSQLPRIVILEGE</parameter> when the stored payload's
+/// <code>Object</code> is one of OcuPilot's own (<method>IsOcuPilotCode</method>), in any namespace. The roster
+/// that cannot be read is an error status, never a permission.</p>
+ClassMethod SqlPrivilege(pId As %String, pPayload As %String, Output pProhibits As %Boolean, Output pCode As %String) As %Status [ Private ]
+{
+    Set pProhibits = 0
+    Set pCode = ""
+    Set tSC = $$$OK
+    Try {
+        Set tSC = ..OcuPilotRoles(.tOwn)
+        If $$$ISERR(tSC) Quit
+        Set tGrantee = ..NormalizedRole(pId)
+        If $ListFind(tOwn, tGrantee) || (tGrantee = ..NormalizedRole(##class(OcuPilot.Kernel.State.Base).#DBRESOURCE)) {
+            Do ..Refuse(..#OCUPILOTROLE, .pProhibits, .pCode)
+            Quit
+        }
+        Set tPayload = ..ParsedObject(pPayload)
+        Set tObject = $Select($IsObject(tPayload) && (tPayload.%GetTypeOf("Object") = "string"): tPayload.%Get("Object"), 1: "")
+        If ..IsOcuPilotCode(tObject) Do ..Refuse(..#OCUPILOTSQLPRIVILEGE, .pProhibits, .pCode)
+    } Catch ex {
+        Set pProhibits = 0
+        Set pCode = ""
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>Whether <var>pToolClass</var> is one of the SQL privilege grant or revoke tools: its port is
+/// <class>OcuPilot.Port.SqlPrivilegePort</class>. Another tool that shares a write type with them
+/// (a token revoke) is not.</p>
+ClassMethod IsSqlPrivilegeTool(pToolClass As %String) As %Boolean [ Private ]
+{
+    Set tIs = 0
+    Try {
+        If pToolClass '= "" Set tIs = ($Parameter(pToolClass, "PORTCLASS") = "OcuPilot.Port.SqlPrivilegePort")
+    } Catch {
+        Set tIs = 0
+    }
+    Quit tIs
 }
 
 /// <p>Whether document <var>pName</var> is one of OcuPilot's own: its name begins, ignoring case,
