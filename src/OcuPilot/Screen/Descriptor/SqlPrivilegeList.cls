@@ -15,11 +15,13 @@
 /// (<method>OcuPilot.Port.AdminPort.SqlPrivilegeGuard</method>). The read sends the fixed
 /// <code>includeSystem</code> 0, the classic page's default; the grant and revoke tools still reach system
 /// schemas.</p>
-/// <p><b>Six fields</b>, the vendor's row without its column-privilege flag (Story 18.28): <code>Type</code>,
-/// <code>Object</code>, <code>Action</code>, <code>GrantedBy</code>, <code>GrantOption</code> and
+/// <p><b>Seven fields</b>, the vendor's row: <code>Type</code>,
+/// <code>Object</code>, <code>Action</code>, <code>GrantedBy</code>, <code>GrantOption</code>,
 /// <code>GrantedVia</code>, which is <code>Direct</code>, <code>Role:&lt;name&gt;</code>,
-/// <code>Schema Privilege</code> or <code>Owner Privilege</code>. A privilege held directly and through a role
-/// lists twice. Its id is <code>composite</code> over the five that tell such rows apart. Only a
+/// <code>Schema Privilege</code> or <code>Owner Privilege</code>, and <code>HasColumnPriv</code>, which marks a
+/// table or view the grantee holds privileges on through columns (Story 18.28; the tab offers the column read for
+/// it, <class>OcuPilot.Screen.Descriptor.SqlColumnPrivilegeList</class>). A privilege held directly and through a
+/// role lists twice. Its id is <code>composite</code> over the five that tell such rows apart. Only a
 /// <code>Direct</code> row offers a revoke on the tab.</p>
 /// <p><b>The privilege set is Permissions' own</b>, <code>%Admin_Secure:USE</code> and
 /// <code>%DB_IRISSYS:READ</code>, declared the way the Users list declares it; the port adds the READ pair on the
@@ -46,7 +48,7 @@ XData Declaration
   "id": {"kind": "composite", "parts": ["Type", "Object", "Action", "GrantedVia", "GrantedBy"]},
   "primaryAction": {"id": "", "selfProtection": ""},
   "rowActions": [],
-  "context": {"fields": ["Type", "Object", "Action", "GrantedBy", "GrantOption", "GrantedVia"], "secretFields": []},
+  "context": {"fields": ["Type", "Object", "Action", "GrantedBy", "GrantOption", "GrantedVia", "HasColumnPriv"], "secretFields": []},
   "emptyStateKey": "sqlPrivilegesEmpty",
   "commandAliases": ["sql privileges", "table privileges"],
   "suggestedPrompts": [
@@ -58,7 +60,7 @@ XData Declaration
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {
     "source": {"port": "admin", "endpoint": "Security.SQLPrivilege.Standard", "type": "LIST", "query": {"includeSystem": "0"}},
-    "fields": ["Type", "Object", "Action", "GrantedBy", "GrantOption", "GrantedVia"],
+    "fields": ["Type", "Object", "Action", "GrantedBy", "GrantOption", "GrantedVia", "HasColumnPriv"],
     "filter": ["Type", "Object", "Action", "GrantedBy", "GrantedVia"],
     "sort": {"fields": ["Object", "Type", "Action", "GrantedBy", "GrantedVia"], "default": "Object", "direction": "asc"},
     "paging": "cap",

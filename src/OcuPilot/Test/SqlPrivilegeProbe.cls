@@ -1,4 +1,4 @@
-/// <p>Test-only helper for Story 18.9's suites: the probe user and role (<parameter>USER</parameter>,
+/// <p>Test-only helper for Stories 18.9's and 18.28's suites: the probe user and role (<parameter>USER</parameter>,
 /// <parameter>ROLE</parameter>, made in <code>%SYS</code>), the probe schema's two tables, a view and a stored
 /// procedure (<parameter>SCHEMA</parameter>, made in <parameter>NAMESPACE</parameter>), the privileges a test
 /// sets up as the running account, the instance's own list of a grantee's privileges, and the agent's mint through
@@ -6,8 +6,9 @@
 /// <p><b>Only <parameter>PREFIX</parameter> is ever touched.</b> Every principal and object is named from it and
 /// removed by exact name; a privilege row is removed when its grantee carries the prefix. <method>RemoveAll</method>
 /// revokes the privileges the instance lists for the probe user and role in each namespace the suites use, drops
-/// the objects and principals, deletes any privilege row of a probe grantee that is left, cleans the namespace's
-/// statement index and clears the system monitor, which the vendor's severity-2 refusals raise.</p>
+/// the objects and principals, deletes any privilege row of a probe grantee that is left (the admin privilege sets
+/// included), cleans the namespace's statement index and clears the system monitor, which the vendor's severity-2
+/// refusals raise.</p>
 /// <p><b>Not a <class>%UnitTest.TestCase</class></b>: it holds no assertions and runs no tests.</p>
 Class OcuPilot.Test.SqlPrivilegeProbe Extends %RegisteredObject
 {
@@ -33,6 +34,10 @@ Parameter VIEW = "OcuSqlPrivProbe.V1";
 Parameter PROCEDURE = "OcuSqlPrivProbe.P1";
 
 Parameter ENDPOINT = "Security.SQLPrivilege.Standard";
+
+Parameter COLUMNENDPOINT = "Security.SQLPrivilege.Column";
+
+Parameter ADMINENDPOINT = "Security.SQLPrivilege.Admin";
 
 Parameter PASSWORD = "OcuProbe189Pw!Aa9x";
 
@@ -95,8 +100,76 @@ ClassMethod RevokeAll(pNamespace As %String) As %Status
                 Set $NAMESPACE = tOrigNS
             }
         }
+        Set tSC = $$$ADDSC(tSC, ..RevokeColumns(pNamespace, tGrantee, tRows))
+        Set tSC = $$$ADDSC(tSC, ..RevokeAdmin(pNamespace, tGrantee))
     }
     Quit tSC
+}
+
+/// <p>Revoke, as the running account and one grantor at a time, every <code>Direct</code> column privilege
+/// <var>pGrantee</var> holds in <var>pNamespace</var>: for each table or view the standard list
+/// <var>pRows</var> flags with <code>HasColumnPriv</code>, the rows of the column list, revoked as the vendor's
+/// own column call does.</p>
+ClassMethod RevokeColumns(pNamespace As %String, pGrantee As %String, pRows As %DynamicArray) As %Status
+{
+    Set tSC = $$$OK
+    If '$IsObject($Get(pRows)) Quit tSC
+    Set tIterator = pRows.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tRow) {
+        If 'tRow.%Get("HasColumnPriv") Continue
+        Kill tQuery, tColumns
+        Set tQuery("namespace") = pNamespace
+        Set tQuery("grantee") = pGrantee
+        Set tQuery("object") = tRow.%Get("Object")
+        Set tQuery("includeSystem") = 1
+        Set tQuery("maxRows") = 100000
+        Set tListSC = ##class(OcuPilot.Port.AdminPort).Invoke(..#COLUMNENDPOINT, "LIST", .tQuery, "", .tColumns, .tHttp, .tFault)
+        If $$$ISERR(tListSC) || '$IsObject($Get(tColumns)) Continue
+        Set tColIterator = tColumns.%GetIterator()
+        While tColIterator.%GetNext(.tColIndex, .tColRow) {
+            If tColRow.%Get("GrantedVia") '= "Direct" Continue
+            Set tOrigNS = $NAMESPACE
+            Try {
+                Set $NAMESPACE = pNamespace
+                Set tFields = $ListBuild(tColRow.%Get("Column"))
+                Set tType = $Select(tRow.%Get("Type") = "VIEW": 3, 1: 1)
+                Set tColSC = ##class(%SQL.Manager.API).SaveObjPriv($ZConvert($Extract(tColRow.%Get("Action")), "L"), tType, tRow.%Get("Object"), pGrantee, 0, 1, .tSqlCode, .tMsg, tColRow.%Get("GrantedBy"), .tFields)
+                Set $NAMESPACE = tOrigNS
+            } Catch {
+                Set $NAMESPACE = tOrigNS
+            }
+        }
+    }
+    Quit tSC
+}
+
+/// <p>Revoke every <code>Direct</code> admin privilege <var>pGrantee</var> holds in <var>pNamespace</var>, read
+/// from the admin list, as the vendor's own admin call does.</p>
+ClassMethod RevokeAdmin(pNamespace As %String, pGrantee As %String) As %Status
+{
+    Kill tQuery, tRows
+    Set tQuery("namespace") = pNamespace
+    Set tQuery("grantee") = pGrantee
+    Set tQuery("maxRows") = 100000
+    Set tListSC = ##class(OcuPilot.Port.AdminPort).Invoke(..#ADMINENDPOINT, "LIST", .tQuery, "", .tRows, .tHttp, .tFault)
+    If $$$ISERR(tListSC) || '$IsObject($Get(tRows)) Quit $$$OK
+    Set tIterator = tRows.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tRow) {
+        If tRow.%Get("GrantedVia") '= "Direct" Continue
+        Set tOrigNS = $NAMESPACE
+        Try {
+            Kill tProperties
+            Set tProperties("AdminPriv") = tRow.%Get("Privilege")
+            Set tProperties("Grantee") = pGrantee
+            Set tProperties("Namespace") = pNamespace
+            Set $NAMESPACE = "%SYS"
+            Set tRevoke = $SYSTEM.SQL.Security.RevokeAdminOne(.tProperties)
+            Set $NAMESPACE = tOrigNS
+        } Catch {
+            Set $NAMESPACE = tOrigNS
+        }
+    }
+    Quit $$$OK
 }
 
 /// <p>How many privilege rows the instance still holds for a probe principal or on the probe schema's objects,
@@ -144,6 +217,10 @@ ClassMethod RemoveAll() As %Status
         While tRows.%Next() {
             Set tSC = $$$ADDSC(tSC, ##class(Security.SQLPrivileges).%DeleteId(tRows.%GetData(1)))
         }
+        Set tSets = ##class(%SQL.Statement).%ExecDirect(, "SELECT %ID FROM Security.SQLAdminPrivilegeSet WHERE $PIECE(%ID, '||', 2) %STARTSWITH ?", $ZConvert(..#PREFIX, "L"))
+        While tSets.%Next() {
+            Set tSC = $$$ADDSC(tSC, ##class(Security.SQLAdminPrivilegeSet).%DeleteId(tSets.%GetData(1)))
+        }
         Set $NAMESPACE = tOrigNS
     } Catch ex {
         Set $NAMESPACE = tOrigNS
@@ -153,7 +230,26 @@ ClassMethod RemoveAll() As %Status
     Quit tSC
 }
 
-/// <p>How many probe principals, schema objects and privilege rows the instance still holds.</p>
+/// <p>How many admin privilege sets (<class>Security.SQLAdminPrivilegeSet</class>, keyed by namespace and
+/// lower-case grantee) the instance holds for a probe grantee, in any namespace.</p>
+ClassMethod RemainingAdminSets() As %Integer
+{
+    Set tCount = 0
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = "%SYS"
+        Set tSets = ##class(%SQL.Statement).%ExecDirect(, "SELECT COUNT(*) FROM Security.SQLAdminPrivilegeSet WHERE $PIECE(%ID, '||', 2) %STARTSWITH ?", $ZConvert(..#PREFIX, "L"))
+        If tSets.%Next() Set tCount = tSets.%GetData(1)
+        Set $NAMESPACE = tOrigNS
+    } Catch {
+        Set $NAMESPACE = tOrigNS
+        Set tCount = -1
+    }
+    Quit tCount
+}
+
+/// <p>How many probe principals, schema objects, privilege rows and admin privilege sets the instance still
+/// holds.</p>
 ClassMethod Remaining() As %Integer
 {
     Set tCount = ..RemainingPrivileges()
@@ -163,6 +259,8 @@ ClassMethod Remaining() As %Integer
         Set $NAMESPACE = "%SYS"
         If ##class(Security.Users).Exists(..#USER) Set tCount = tCount + 1
         If ##class(Security.Roles).Exists(..#ROLE) Set tCount = tCount + 1
+        Set tSets = ##class(%SQL.Statement).%ExecDirect(, "SELECT COUNT(*) FROM Security.SQLAdminPrivilegeSet WHERE $PIECE(%ID, '||', 2) %STARTSWITH ?", $ZConvert(..#PREFIX, "L"))
+        If tSets.%Next() Set tCount = tCount + tSets.%GetData(1)
         Set $NAMESPACE = ..#NAMESPACE
         Set tResult = ##class(%SQL.Statement).%ExecDirect(, "SELECT COUNT(*) FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA %STARTSWITH ?", ..#PREFIX)
         If tResult.%Next() Set tCount = tCount + tResult.%GetData(1)
@@ -290,6 +388,157 @@ ClassMethod Direct(pGrantee As %String, pObject As %String, pAction As %String) 
         If ($ZConvert($Piece(tRow, "|", 2), "U") = $ZConvert(pObject, "U")) && ($Piece(tRow, "|", 3) = pAction) && ($Piece(tRow, "|", 6) = "Direct") Set tHeld = 1 + ($Piece(tRow, "|", 5) = 1)
     }
     Quit tHeld
+}
+
+/// <p>Whether <var>pGrantee</var> holds a <code>Direct</code> column row for <var>pAction</var> on
+/// <var>pColumn</var> of <var>pObject</var> (spelled as the instance spells it) in <parameter>NAMESPACE</parameter>:
+/// <code>0</code>, <code>1</code>, or <code>2</code> when it holds it with the grant option. The column is
+/// compared ignoring case.</p>
+ClassMethod ColumnDirect(pGrantee As %String, pObject As %String, pColumn As %String, pAction As %String) As %Integer
+{
+    Kill tQuery, tRows
+    Set tQuery("namespace") = ..#NAMESPACE
+    Set tQuery("grantee") = pGrantee
+    Set tQuery("object") = pObject
+    Set tQuery("includeSystem") = 1
+    Set tQuery("maxRows") = 100000
+    Set tSC = ##class(OcuPilot.Port.AdminPort).Invoke(..#COLUMNENDPOINT, "LIST", .tQuery, "", .tRows, .tHttp, .tFault)
+    If $$$ISERR(tSC) || '$IsObject($Get(tRows)) Quit -1
+    Set tHeld = 0
+    Set tIterator = tRows.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tRow) {
+        If (tRow.%Get("GrantedVia") = "Direct") && ($ZConvert(tRow.%Get("Column"), "U") = $ZConvert(pColumn, "U")) && (tRow.%Get("Action") = pAction) Set tHeld = 1 + (tRow.%Get("GrantOption") = 1)
+    }
+    Quit tHeld
+}
+
+/// <p>The column rows of <var>pGrantee</var> on <var>pObject</var> as lines
+/// <code>Column|Action|GrantedBy|GrantOption|GrantedVia</code>, sorted and <code>;</code>-joined, from the
+/// instance's own column list.</p>
+ClassMethod ColumnRows(pGrantee As %String, pObject As %String) As %String
+{
+    Kill tQuery, tRows
+    Set tQuery("namespace") = ..#NAMESPACE
+    Set tQuery("grantee") = pGrantee
+    Set tQuery("object") = pObject
+    Set tQuery("includeSystem") = 1
+    Set tQuery("maxRows") = 100000
+    Set tSC = ##class(OcuPilot.Port.AdminPort).Invoke(..#COLUMNENDPOINT, "LIST", .tQuery, "", .tRows, .tHttp, .tFault)
+    If $$$ISERR(tSC) || '$IsObject($Get(tRows)) Quit "unreadable"
+    Kill tLines
+    Set tIterator = tRows.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tRow) {
+        Set tLines(tRow.%Get("Column") _ "|" _ tRow.%Get("Action") _ "|" _ tRow.%Get("GrantedBy") _ "|" _ tRow.%Get("GrantOption") _ "|" _ tRow.%Get("GrantedVia")) = ""
+    }
+    Set tText = ""
+    Set tLine = ""
+    For {
+        Set tLine = $Order(tLines(tLine))
+        If tLine = "" Quit
+        Set tText = tText _ $Select(tText = "": "", 1: ";") _ tLine
+    }
+    Quit tText
+}
+
+/// <p>Whether <var>pGrantee</var> holds the admin privilege <var>pPrivilege</var> directly in
+/// <parameter>NAMESPACE</parameter>: <code>0</code>, <code>1</code>, or <code>2</code> when it holds it with the
+/// admin option.</p>
+ClassMethod AdminDirect(pGrantee As %String, pPrivilege As %String) As %Integer
+{
+    Kill tQuery, tRows
+    Set tQuery("namespace") = ..#NAMESPACE
+    Set tQuery("grantee") = pGrantee
+    Set tQuery("maxRows") = 100000
+    Set tSC = ##class(OcuPilot.Port.AdminPort).Invoke(..#ADMINENDPOINT, "LIST", .tQuery, "", .tRows, .tHttp, .tFault)
+    If $$$ISERR(tSC) || '$IsObject($Get(tRows)) Quit -1
+    Set tHeld = 0
+    Set tIterator = tRows.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tRow) {
+        If (tRow.%Get("GrantedVia") = "Direct") && (tRow.%Get("Privilege") = pPrivilege) Set tHeld = 1 + (tRow.%Get("GrantOption") = 1)
+    }
+    Quit tHeld
+}
+
+/// <p>Give <var>pGrantee</var> the admin privilege <var>pPrivilege</var> in <parameter>NAMESPACE</parameter>, as
+/// the running account, with the admin option when <var>pWithGrant</var>.</p>
+ClassMethod GrantAdmin(pGrantee As %String, pPrivilege As %String, pWithGrant As %Boolean = 0) As %Status
+{
+    Set tSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Kill tProperties
+        Set tProperties("AdminPriv") = pPrivilege
+        Set tProperties("Grantee") = pGrantee
+        Set tProperties("Namespace") = ..#NAMESPACE
+        Set tProperties("WithGrant") = pWithGrant
+        Set $NAMESPACE = "%SYS"
+        Set tSC = $SYSTEM.SQL.Security.GrantAdminOne(.tProperties)
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>Grant, as the running account, <var>pAction</var> on <var>pColumn</var> of <var>pObject</var> (a table, or a
+/// view when <var>pView</var>) to <var>pGrantee</var> in <parameter>NAMESPACE</parameter>, with the grant option
+/// when <var>pWithGrant</var>, through the same call the vendor's column endpoint makes. A column privilege on a
+/// table the grantee already holds the whole of is stored as nothing.</p>
+ClassMethod GrantColumn(pGrantee As %String, pObject As %String, pColumn As %String, pAction As %String, pWithGrant As %Boolean = 0, pView As %Boolean = 0) As %Status
+{
+    Set tOrigNS = $NAMESPACE
+    Set tSC = $$$OK
+    Try {
+        Set $NAMESPACE = ..#NAMESPACE
+        Set tFields = $ListBuild(pColumn)
+        Set tSC = ##class(%SQL.Manager.API).SaveObjPriv($ZConvert($Extract(pAction), "L"), $Select(pView: 3, 1: 1), pObject, pGrantee, pWithGrant, 0, .tSqlCode, .tMsg, , .tFields)
+        If $$$ISOK(tSC) && ($Get(tSqlCode) < 0) Set tSC = $$$ERROR($$$GeneralError, "the column grant was refused: SQLCODE " _ tSqlCode _ " " _ $Get(tMsg))
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>Store an admin privilege set for <var>pGrantee</var> (a name that holds no account) in
+/// <parameter>NAMESPACE</parameter>, directly, so that a test can show <method>RemoveAll</method> sweeps a set
+/// whose principal is already gone. The name must begin <parameter>PREFIX</parameter>.</p>
+ClassMethod SeedAdminSet(pGrantee As %String) As %Status
+{
+    If $ZConvert($Extract(pGrantee, 1, $Length(..#PREFIX)), "U") '= $ZConvert(..#PREFIX, "U") Quit $$$ERROR($$$GeneralError, "only a probe name is stored")
+    Set tOrigNS = $NAMESPACE
+    Set tSC = $$$OK
+    Try {
+        Set $NAMESPACE = "%SYS"
+        Set tSet = ##class(Security.SQLAdminPrivilegeSet).%New()
+        Set tSet.Namespace = ..#NAMESPACE
+        Set tSet.Grantee = $ZConvert(pGrantee, "L")
+        Set tSet.CreateTable = 1
+        Set tSC = tSet.%Save()
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>The mint arguments of a column privilege on the probe table (or <var>pObject</var>): as
+/// <method>Args</method>, with <var>pColumn</var>.</p>
+ClassMethod ColumnArgs(pGrantee As %String, pColumn As %String = "ID", pAction As %String = "SELECT", pObject As %String = {..#TABLE}, pType As %String = "TABLE") As %DynamicObject
+{
+    Set tArgs = ..Args(pGrantee, pObject, pAction, pType)
+    Do tArgs.%Set("Column", pColumn, "string")
+    Quit tArgs
+}
+
+/// <p>The mint arguments of an admin privilege in <parameter>NAMESPACE</parameter>: the privilege is the action
+/// and there is no object.</p>
+ClassMethod AdminArgs(pGrantee As %String, pPrivilege As %String = "%CREATE_TABLE") As %DynamicObject
+{
+    Quit {"Name": (pGrantee), "Namespace": (..#NAMESPACE), "Type": "ADMIN", "Action": (pPrivilege)}
 }
 
 /// <p>The rows of <var>pGrantee</var> in <var>pNamespace</var> on objects whose names begin

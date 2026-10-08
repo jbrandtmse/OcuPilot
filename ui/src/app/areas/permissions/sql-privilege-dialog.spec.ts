@@ -4,7 +4,14 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { OverlayStack } from '../../core/overlay-stack';
 import { STRINGS } from '../../core/strings';
 import type { Violation } from '../../core/violations';
-import { SQL_PRIVILEGE_ACTIONS, SQL_PRIVILEGE_TYPES, SqlPrivilegeDialog, type SqlPrivilegeRequest } from './sql-privilege-dialog';
+import {
+  SQL_ADMIN_PRIVILEGES,
+  SQL_COLUMN_ACTIONS,
+  SQL_PRIVILEGE_ACTIONS,
+  SQL_PRIVILEGE_TYPES,
+  SqlPrivilegeDialog,
+  type SqlPrivilegeRequest,
+} from './sql-privilege-dialog';
 
 /** The SQL privilege dialog: the Action list follows the Type, WithGrant is a grant's alone, a refusal's reasons sit beside their field. */
 
@@ -46,7 +53,7 @@ function submitButton(host: HTMLElement): HTMLButtonElement {
 afterEach(() => TestBed.resetTestingModule());
 
 describe('the SQL privilege dialog', () => {
-  it('offers the six types and the actions of the chosen type, resetting an action the new type does not take', () => {
+  it('offers the seven types and the actions of the chosen type, resetting an action the new type does not take', () => {
     const { fixture, host } = mount();
     expect([...host.querySelectorAll<HTMLOptionElement>('#ocu-sqlpriv-type option')].map((option) => option.value)).toEqual([...SQL_PRIVILEGE_TYPES]);
     expect(actions(host)).toEqual([...SQL_PRIVILEGE_ACTIONS['TABLE']]);
@@ -70,7 +77,7 @@ describe('the SQL privilege dialog', () => {
     host.querySelector<HTMLInputElement>('#ocu-sqlpriv-withgrant')!.click();
     fixture.detectChanges();
     submitButton(host).click();
-    expect(submitted).toEqual([{ mode: 'grant', type: 'TABLE', object: 'S.T1', action: 'SELECT', withGrant: true }]);
+    expect(submitted).toEqual([{ mode: 'grant', type: 'TABLE', object: 'S.T1', column: '', action: 'SELECT', withGrant: true }]);
     expect(submitButton(host).textContent?.trim()).toBe(STRINGS.sqlPrivilegeGrantAction);
   });
 
@@ -82,7 +89,7 @@ describe('the SQL privilege dialog', () => {
     expect(host.querySelector('#ocu-sqlpriv-withgrant')).toBeNull();
     typeObject(fixture, host, 'S.T1');
     submitButton(host).click();
-    expect(submitted).toEqual([{ mode: 'revoke', type: 'TABLE', object: 'S.T1', action: 'SELECT', withGrant: false }]);
+    expect(submitted).toEqual([{ mode: 'revoke', type: 'TABLE', object: 'S.T1', column: '', action: 'SELECT', withGrant: false }]);
     expect(submitButton(host).textContent?.trim()).toBe(STRINGS.sqlPrivilegeRevokeAction);
   });
 
@@ -102,5 +109,54 @@ describe('the SQL privilege dialog', () => {
     const { host, closed } = mount();
     [...host.querySelectorAll<HTMLButtonElement>('button')].find((button) => button.textContent?.trim() === STRINGS.actionCancel)!.click();
     expect(closed()).toBe(1);
+  });
+  it('offers the admin privileges for ADMIN, hides the object and the column, and submits with no object', () => {
+    // Mutation (Rule 19): keep the object field for ADMIN -> the object assertion goes red.
+    const { fixture, host, submitted } = mount();
+    pickType(fixture, host, 'ADMIN');
+    expect(host.querySelector('#ocu-sqlpriv-object')).toBeNull();
+    expect(host.querySelector('#ocu-sqlpriv-column')).toBeNull();
+    expect(actions(host)).toEqual([...SQL_ADMIN_PRIVILEGES]);
+    expect(host.querySelector<HTMLSelectElement>('#ocu-sqlpriv-action')!.value).toBe('%CREATE_FUNCTION');
+    expect(host.querySelector('label[for="ocu-sqlpriv-action"]')?.textContent?.trim()).toBe(STRINGS.sqlPrivilegeColumnPrivilege);
+    expect(submitButton(host).getAttribute('aria-disabled')).toBeNull();
+    const select = host.querySelector<HTMLSelectElement>('#ocu-sqlpriv-action')!;
+    select.value = '%CREATE_TABLE';
+    select.dispatchEvent(new Event('change'));
+    fixture.detectChanges();
+    submitButton(host).click();
+    expect(submitted).toEqual([{ mode: 'grant', type: 'ADMIN', object: '', column: '', action: '%CREATE_TABLE', withGrant: false }]);
+  });
+
+  it('offers an optional Column for a table or a view, and the column actions once one is named', () => {
+    // Mutation (Rule 19): keep the type's actions once a column is named -> the column-actions assertion goes red.
+    const { fixture, host, submitted } = mount();
+    expect(host.querySelector('#ocu-sqlpriv-column')).not.toBeNull();
+    pickType(fixture, host, 'VIEW');
+    expect(host.querySelector('#ocu-sqlpriv-column')).not.toBeNull();
+    pickType(fixture, host, 'SCHEMA');
+    expect(host.querySelector('#ocu-sqlpriv-column')).toBeNull();
+    pickType(fixture, host, 'TABLE');
+    host.querySelector<HTMLSelectElement>('#ocu-sqlpriv-action')!.value = 'DELETE';
+    host.querySelector<HTMLSelectElement>('#ocu-sqlpriv-action')!.dispatchEvent(new Event('change'));
+    typeObject(fixture, host, 'S.T1');
+    const column = host.querySelector<HTMLInputElement>('#ocu-sqlpriv-column')!;
+    column.value = 'ID';
+    column.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    expect(actions(host)).toEqual([...SQL_COLUMN_ACTIONS]);
+    expect(host.querySelector<HTMLSelectElement>('#ocu-sqlpriv-action')!.value).toBe('SELECT');
+    submitButton(host).click();
+    expect(submitted).toEqual([{ mode: 'grant', type: 'TABLE', object: 'S.T1', column: 'ID', action: 'SELECT', withGrant: false }]);
+    column.value = '';
+    column.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    expect(actions(host)).toEqual([...SQL_PRIVILEGE_ACTIONS['TABLE']!]);
+  });
+
+  it('draws a violation on the Column beside the field', () => {
+    const { host } = mount([{ field: 'Column', code: 'SQLPRIV.COLUMN', reason: 'Column refused.' }]);
+    expect(host.querySelector('#ocu-sqlpriv-column-reason')?.textContent?.trim()).toBe('Column refused.');
+    expect(host.querySelector('#ocu-sqlpriv-column')?.getAttribute('aria-invalid')).toBe('true');
   });
 });

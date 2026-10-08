@@ -8,6 +8,13 @@
  *    the probe table through "Grant or revoke...", lists the `Direct` row, and the row's Revoke removes it.
  * 2. **A privilege held through a schema is not revoked here**: the probe role holds SELECT on the probe schema, its
  *    table rows read `Schema Privilege`, and they carry the hint and no Revoke button.
+ * 3. **A column privilege (Story 18.28)**: the dialog's optional Column grants SELECT on one column of the probe
+ *    table; the table then lists as held only through columns, with Columns in place of Revoke; Columns opens the
+ *    column privileges of that table, whose `Direct` row's Revoke removes it.
+ * 4. **An admin privilege (Story 18.28)**: choosing the type ADMIN hides the object and offers the dialog's admin privileges;
+ *    the grant lists in the Admin privileges section as `Direct`, and its Revoke removes it.
+ *
+ * Tests 3 and 4 first revoke what the probe principals hold in USER, so neither depends on an earlier test's revoke.
  *
  * **It refuses the live and development containers.** It touches only the principals, schema and objects named
  * `OcuSqlPrivProbe...`: `before` and `after` remove them by exact name with `OcuPilot.Test.SqlPrivilegeProbe.RemoveAll`.
@@ -20,6 +27,7 @@
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import puppeteer from 'puppeteer';
@@ -30,6 +38,12 @@ import { VIEWPORTS, assertThrowaway } from './structural-walk.mjs';
 
 const uiRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 const { STRINGS } = await import(join(uiRoot, 'src', 'app', 'core', 'strings.ts'));
+/** The dialog's exported admin privileges, read from its source (the bundle under test is built from it). */
+const ADMIN_PRIVILEGES = [
+  ...(/export const SQL_ADMIN_PRIVILEGES: readonly string\[\] = \[([^\]]*)\];/.exec(
+    readFileSync(join(uiRoot, 'src', 'app', 'areas', 'permissions', 'sql-privilege-dialog.ts'), 'utf8')
+  )?.[1] ?? '').matchAll(/'([^']*)'/g),
+].map((entry) => entry[1]);
 
 const config = browserConfig();
 const PROBE = 'OcuPilot.Test.SqlPrivilegeProbe';
@@ -64,6 +78,11 @@ function removeProbes() {
   iris([`Do ##class(${PROBE}).RemoveAll()`]);
 }
 
+/** Revoke every privilege the probe principals hold in `NAMESPACE`, so a test starts from none. */
+function revokeProbes() {
+  iris([`Do ##class(${PROBE}).RevokeAll("${NAMESPACE}")`]);
+}
+
 /** Make the probe principals and objects. */
 function seed() {
   const { values, output } = iris([mark('SEED', `$System.Status.IsOK(##class(${PROBE}).Seed())`)], ['SEED']);
@@ -84,6 +103,21 @@ async function openTab(kind, name) {
   await page.waitForSelector('#ocu-sqlpriv-namespace', { visible: true, timeout: config.navigationTimeoutMs });
   await page.select('#ocu-sqlpriv-namespace', NAMESPACE);
   return { context, page };
+}
+
+/** Click the element `selector` matches in the page itself: the editor's sticky bar covers the tab's last rows. */
+function press(page, selector) {
+  return page.$eval(selector, (node) => node.click());
+}
+
+/** Wait until the tab has answered both its object read and its admin read. */
+async function answered(page) {
+  await page.waitForFunction(
+    () =>
+      document.querySelector('[data-ocu-sqlpriv="rows"], [data-ocu-sqlpriv="empty"]') !== null &&
+      document.querySelector('[data-ocu-sqlpriv="admin-rows"], [data-ocu-sqlpriv="admin-empty"]') !== null,
+    { timeout: config.navigationTimeoutMs }
+  );
 }
 
 /** The tab's rows as their cell texts. */
@@ -155,6 +189,71 @@ test('the schema privileges of a role carry the hint and no Revoke button', asyn
       assert.equal(row.revoke, false, 'a schema-held privilege has no Revoke');
       assert.equal(row.hint, STRINGS.sqlPrivilegeViaSchema);
     }
+  } finally {
+    await context.close();
+  }
+});
+
+// Mutation (Rule 19): drop the Columns button from the row, rebuild and redeploy -> the Columns wait goes red.
+test('a column privilege is granted from the dialog, listed through Columns as Direct, and its Revoke removes it', async () => {
+  revokeProbes();
+  const { context, page } = await openTab('users', USER);
+  try {
+    await answered(page);
+    await page.click('#ocu-sqlpriv-open');
+    await page.waitForSelector('#ocu-sqlpriv-column', { visible: true, timeout: config.navigationTimeoutMs });
+    await page.type('#ocu-sqlpriv-object', TABLE);
+    await page.type('#ocu-sqlpriv-column', 'ID');
+    await page.click('#ocu-sqlpriv-submit');
+    await page.waitForSelector('button[data-action="show-columns"]', { visible: true, timeout: config.navigationTimeoutMs });
+    const held = await rows(page);
+    const mine = held.filter((cells) => cells[0] === TABLE);
+    assert.equal(mine.length, 1, `the table lists once, held only through its columns: ${JSON.stringify(held)}`);
+    assert.equal(mine[0][2], '', 'it holds no privilege of its own');
+    assert.equal(await page.$('[role="dialog"]'), null, 'the dialog closed');
+    const revokeOnTable = await page.$$eval(ROW, (trs, table) => trs.filter((tr) => tr.querySelector('td')?.textContent.trim() === table).some((tr) => tr.querySelector('button[data-action="revoke-sql"]') !== null), TABLE);
+    assert.equal(revokeOnTable, false, 'and the row offers Columns, not Revoke');
+
+    await press(page, 'button[data-action="show-columns"]');
+    await page.waitForSelector('[data-ocu-sqlpriv="column-row"]', { visible: true, timeout: config.navigationTimeoutMs });
+    const heading = await page.$eval('#ocu-sqlpriv-columns-heading', (node) => node.textContent.trim());
+    assert.equal(heading, STRINGS.sqlColumnPrivilegesHeading.replace('<object>', TABLE));
+    const columnRows = await page.$$eval('[data-ocu-sqlpriv="column-row"]', (trs) => trs.map((tr) => Array.from(tr.querySelectorAll('td')).map((td) => td.textContent.trim())));
+    assert.equal(columnRows.length, 1, `the one column privilege lists: ${JSON.stringify(columnRows)}`);
+    assert.deepEqual([columnRows[0][0], columnRows[0][1], columnRows[0][4]], ['ID', 'SELECT', 'Direct']);
+
+    await press(page, 'button[data-action="revoke-sql-column"]');
+    await page.waitForSelector('[data-ocu-sqlpriv="columns-empty"]', { visible: true, timeout: config.navigationTimeoutMs });
+    await page.waitForFunction(() => document.querySelector('button[data-action="show-columns"]') === null, { timeout: config.navigationTimeoutMs });
+  } finally {
+    await context.close();
+  }
+});
+
+// Mutation (Rule 19): keep the Object field for the type ADMIN, rebuild and redeploy -> the object wait goes red.
+test('an admin privilege is granted from the dialog with no object, listed as Direct, and its Revoke removes it', async () => {
+  revokeProbes();
+  const { context, page } = await openTab('users', USER);
+  try {
+    await answered(page);
+    await page.click('#ocu-sqlpriv-open');
+    await page.waitForSelector('#ocu-sqlpriv-type', { visible: true, timeout: config.navigationTimeoutMs });
+    await page.select('#ocu-sqlpriv-type', 'ADMIN');
+    await page.waitForFunction(() => document.querySelector('#ocu-sqlpriv-object') === null, { timeout: config.navigationTimeoutMs });
+    const offered = await page.$$eval('#ocu-sqlpriv-action option', (options) => options.map((option) => option.value));
+    assert.ok(ADMIN_PRIVILEGES.length > 0, 'the dialog source exports its admin privileges');
+    assert.deepEqual(offered, ADMIN_PRIVILEGES, 'the dialog\'s admin privileges are offered');
+    await page.select('#ocu-sqlpriv-action', '%CREATE_TABLE');
+    await page.click('#ocu-sqlpriv-submit');
+    await page.waitForSelector('[data-ocu-sqlpriv="admin-row"]', { visible: true, timeout: config.navigationTimeoutMs });
+    const admin = await page.$$eval('[data-ocu-sqlpriv="admin-row"]', (trs) => trs.map((tr) => Array.from(tr.querySelectorAll('td')).map((td) => td.textContent.trim())));
+    const mine = admin.filter((cells) => cells[0] === '%CREATE_TABLE');
+    assert.equal(mine.length, 1, `the granted privilege lists once among ${JSON.stringify(admin)}`);
+    assert.equal(mine[0][2], 'Direct');
+    assert.equal(await page.$('[role="dialog"]'), null, 'the dialog closed');
+
+    await press(page, 'button[data-action="revoke-sql-admin"]');
+    await page.waitForSelector('[data-ocu-sqlpriv="admin-empty"]', { visible: true, timeout: config.navigationTimeoutMs });
   } finally {
     await context.close();
   }

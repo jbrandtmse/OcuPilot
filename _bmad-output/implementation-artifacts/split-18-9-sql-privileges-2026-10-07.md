@@ -51,7 +51,7 @@ For the parts' plans:
 - **Vendor endpoints** (Hidden; read with `GetTextAsString`):
   - `%Api.Admin.Endpoints.Security.SQLPrivilege.Standard`: types `TABLE`, `VIEW`, `CUBES`, `SCHEMA`, `ML CONFIGURATION`, `FOREIGN SERVER`, `STORED PROCEDURE`; calls `$SYSTEM.SQL.Security.GrantPrivilege(WithGrant)` and `RevokePrivilege(..., wGrant, cascade, asGrantor)`.
   - `.Column`: types `TABLE` and `VIEW`; calls `%SQL.Manager.API.SaveObjPriv`.
-  - `.Admin`: a closed list of 32 privileges (`GetPrivNum`); calls `GrantAdminOne` and `RevokeAdminOne`.
+  - `.Admin`: a closed list of 31 privileges (`GetPrivNum` maps 32, but the instance refuses `%DEFER`, #514); calls `GrantAdminOne` and `RevokeAdminOne`.
   - `Security.Role` `OWNERLIST`. `Security.User` has no copy type.
   - `GrantPrivilege` (`irislib/%SYSTEM/SQL/Security.cls:130-245`) accepts comma lists, `*` and trailing-`*` wildcards.
 - **Routes already in the tree:** `Port/AdminRoutes.cls:194-202`, `Test/AdminInventory.cls:98-100` (no templates; all mutating).

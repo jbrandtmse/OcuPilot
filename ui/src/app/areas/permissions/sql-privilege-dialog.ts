@@ -4,7 +4,7 @@ import { STRINGS } from '../../core/strings';
 import type { Violation } from '../../core/violations';
 import { Dialog } from '../../shell/dialog';
 
-/** The six object types a SQL privilege can be granted on, in the instance's own words. */
+/** The seven kinds of privilege that can be granted, in the instance's own words; `ADMIN` is an SQL admin privilege. */
 export const SQL_PRIVILEGE_TYPES: readonly string[] = [
   'TABLE',
   'VIEW',
@@ -12,19 +12,74 @@ export const SQL_PRIVILEGE_TYPES: readonly string[] = [
   'STORED PROCEDURE',
   'ML CONFIGURATION',
   'FOREIGN SERVER',
+  'ADMIN',
 ];
 
-const TABLE_ACTIONS: readonly string[] = ['%ALTER', 'SELECT', 'INSERT', 'UPDATE', 'DELETE', 'REFERENCES'];
+/** The kind that is an SQL admin privilege: it takes no object. */
+export const SQL_ADMIN_TYPE = 'ADMIN';
+
+/** The actions a table takes. */
+export const SQL_TABLE_ACTIONS: readonly string[] = ['%ALTER', 'SELECT', 'INSERT', 'UPDATE', 'DELETE', 'REFERENCES'];
+
+/** The actions a view takes. */
+export const SQL_VIEW_ACTIONS: readonly string[] = ['%ALTER', 'SELECT', 'INSERT', 'UPDATE', 'DELETE'];
+
+/** The actions a schema takes. */
+export const SQL_SCHEMA_ACTIONS: readonly string[] = ['%ALTER', 'SELECT', 'INSERT', 'UPDATE', 'DELETE', 'REFERENCES', 'EXECUTE'];
+
+/** The actions a privilege on one column of a table or view takes. */
+export const SQL_COLUMN_ACTIONS: readonly string[] = ['SELECT', 'INSERT', 'UPDATE', 'REFERENCES'];
+
+/** The SQL admin privileges the instance takes, spelled as it spells them. */
+export const SQL_ADMIN_PRIVILEGES: readonly string[] = [
+  '%CREATE_FUNCTION',
+  '%DROP_FUNCTION',
+  '%CREATE_METHOD',
+  '%DROP_METHOD',
+  '%CREATE_PROCEDURE',
+  '%DROP_PROCEDURE',
+  '%CREATE_QUERY',
+  '%DROP_QUERY',
+  '%CREATE_TABLE',
+  '%ALTER_TABLE',
+  '%DROP_TABLE',
+  '%CREATE_VIEW',
+  '%ALTER_VIEW',
+  '%DROP_VIEW',
+  '%CREATE_TRIGGER',
+  '%DROP_TRIGGER',
+  '%NOCHECK',
+  '%NOTRIGGER',
+  '%NOINDEX',
+  '%NOLOCK',
+  '%BUILD_INDEX',
+  '%CREATE_ML_CONFIGURATION',
+  '%ALTER_ML_CONFIGURATION',
+  '%DROP_ML_CONFIGURATION',
+  '%MANAGE_MODEL',
+  '%USE_MODEL',
+  '%DROP_UNOWNED',
+  '%NOJOURN',
+  '%CANCEL_QUERY',
+  '%MANAGE_FOREIGN_SERVER',
+  '%USE_EMBEDDING',
+];
 
 /** The actions each type takes. */
 export const SQL_PRIVILEGE_ACTIONS: Readonly<Record<string, readonly string[]>> = {
-  TABLE: TABLE_ACTIONS,
-  VIEW: TABLE_ACTIONS.filter((action) => action !== 'REFERENCES'),
-  SCHEMA: [...TABLE_ACTIONS, 'EXECUTE'],
+  TABLE: SQL_TABLE_ACTIONS,
+  VIEW: SQL_VIEW_ACTIONS,
+  SCHEMA: SQL_SCHEMA_ACTIONS,
   'STORED PROCEDURE': ['EXECUTE'],
   'ML CONFIGURATION': ['USE'],
   'FOREIGN SERVER': ['USE'],
+  ADMIN: SQL_ADMIN_PRIVILEGES,
 };
+
+/** Whether `type` is one a column privilege can be on. */
+export function takesColumns(type: string): boolean {
+  return type === 'TABLE' || type === 'VIEW';
+}
 
 /** The longest object text the field takes: two 128-character parts and the dot between them. */
 export const SQL_OBJECT_MAX_LENGTH = 257;
@@ -33,18 +88,24 @@ export const SQL_OBJECT_MAX_LENGTH = 257;
 export interface SqlPrivilegeRequest {
   readonly mode: 'grant' | 'revoke';
   readonly type: string;
+  /** Empty for an admin privilege, which has no object. */
   readonly object: string;
+  /** Empty for a privilege on the whole object. */
+  readonly column: string;
+  /** The action, or for `ADMIN` the privilege. */
   readonly action: string;
   /** Only a grant carries it. */
   readonly withGrant: boolean;
 }
 
 /** The fields a refusal's violations are drawn beside. */
-const FIELDS = ['Namespace', 'Type', 'Object', 'Action', 'WithGrant'] as const;
+const FIELDS = ['Namespace', 'Type', 'Object', 'Column', 'Action', 'WithGrant'] as const;
 
 /**
- * The SQL privilege dialog: grant or revoke one privilege on one object for the account or role
- * the tab shows. The Action list follows the Type. Beyond a non-empty object it validates nothing;
+ * The SQL privilege dialog: grant or revoke one privilege on one object, one column of a table or
+ * view, or an SQL admin privilege (no object), for the account or role the tab shows. The Action
+ * list follows the Type, and the column actions once a column is named. Beyond a non-empty object
+ * (bar an admin privilege) it validates nothing;
  * the instance's rules are authoritative and a refusal's violations are drawn beside the field
  * they name through `violations`.
  */
@@ -77,6 +138,7 @@ const FIELDS = ['Namespace', 'Type', 'Object', 'Action', 'WithGrant'] as const;
         }
       </div>
     </div>
+    @if (takesObject) {
     <div class="ocu-field">
       <label class="ocu-field-label" for="ocu-sqlpriv-object">{{ STRINGS.sqlPrivilegeColumnObject }}</label>
       <div class="ocu-field-control">
@@ -98,8 +160,32 @@ const FIELDS = ['Namespace', 'Type', 'Object', 'Action', 'WithGrant'] as const;
         }
       </div>
     </div>
+    }
+    @if (takesColumn) {
     <div class="ocu-field">
-      <label class="ocu-field-label" for="ocu-sqlpriv-action">{{ STRINGS.sqlPrivilegeColumnAction }}</label>
+      <label class="ocu-field-label" for="ocu-sqlpriv-column">{{ STRINGS.explorerSqlColumnNumber }}</label>
+      <div class="ocu-field-control">
+        <input
+          id="ocu-sqlpriv-column"
+          class="ocu-field-input"
+          type="text"
+          autocomplete="off"
+          spellcheck="false"
+          maxlength="128"
+          [attr.aria-invalid]="invalid('Column')"
+          [attr.aria-describedby]="describedBy('Column')"
+          [value]="column()"
+          (input)="onColumn($event)"
+        />
+        <p class="ocu-field-caption" id="ocu-sqlpriv-column-hint">{{ STRINGS.sqlPrivilegeColumnHint }}</p>
+        @if (columnReason; as why) {
+          <p class="ocu-field-caption" id="ocu-sqlpriv-column-reason" role="alert">{{ why }}</p>
+        }
+      </div>
+    </div>
+    }
+    <div class="ocu-field">
+      <label class="ocu-field-label" for="ocu-sqlpriv-action">{{ actionLabel }}</label>
       <div class="ocu-field-control">
         <select id="ocu-sqlpriv-action" class="ocu-field-input" [attr.aria-invalid]="invalid('Action')" [attr.aria-describedby]="describedBy('Action')" (change)="onAction($event)">
           @for (option of actionOptions; track option) {
@@ -161,13 +247,31 @@ export class SqlPrivilegeDialog {
 
   protected readonly object = signal('');
 
+  protected readonly column = signal('');
+
   protected readonly action = signal('SELECT');
 
   protected readonly withGrant = signal(false);
 
-  protected readonly actions = computed(() => SQL_PRIVILEGE_ACTIONS[this.type()] ?? []);
+  /** A column privilege takes its own four actions on a table or a view alike. */
+  protected readonly actions = computed(() =>
+    takesColumns(this.type()) && this.column().trim() !== '' ? SQL_COLUMN_ACTIONS : (SQL_PRIVILEGE_ACTIONS[this.type()] ?? [])
+  );
 
-  protected readonly blocked = computed(() => this.object().trim() === '');
+  protected readonly blocked = computed(() => this.type() !== SQL_ADMIN_TYPE && this.object().trim() === '');
+
+  protected get takesObject(): boolean {
+    return this.type() !== SQL_ADMIN_TYPE;
+  }
+
+  protected get takesColumn(): boolean {
+    return takesColumns(this.type());
+  }
+
+  /** An admin privilege is chosen where the other types choose an action. */
+  protected get actionLabel(): string {
+    return this.type() === SQL_ADMIN_TYPE ? STRINGS.sqlPrivilegeColumnPrivilege : STRINGS.sqlPrivilegeColumnAction;
+  }
 
   protected get isGrant(): boolean {
     return this.mode() === 'grant';
@@ -187,6 +291,10 @@ export class SqlPrivilegeDialog {
 
   protected get objectReason(): string {
     return this.reason('Object');
+  }
+
+  protected get columnReason(): string {
+    return this.reason('Column');
   }
 
   protected get actionReason(): string {
@@ -218,7 +326,7 @@ export class SqlPrivilegeDialog {
 
   protected describedBy(field: string): string | null {
     const id = `ocu-sqlpriv-${field.toLowerCase()}`;
-    const ids = [field === 'Object' ? `${id}-hint` : '', this.reason(field) === '' ? '' : `${id}-reason`].filter((entry) => entry !== '');
+    const ids = [field === 'Object' || field === 'Column' ? `${id}-hint` : '', this.reason(field) === '' ? '' : `${id}-reason`].filter((entry) => entry !== '');
     return ids.length === 0 ? null : ids.join(' ');
   }
 
@@ -226,7 +334,20 @@ export class SqlPrivilegeDialog {
     const target = event.target;
     if (!(target instanceof HTMLSelectElement)) return;
     this.type.set(target.value);
-    const admitted = SQL_PRIVILEGE_ACTIONS[target.value] ?? [];
+    if (!takesColumns(target.value)) this.column.set('');
+    this.keepActionAdmitted();
+  }
+
+  protected onColumn(event: Event): void {
+    const target = event.target;
+    if (!(target instanceof HTMLInputElement)) return;
+    this.column.set(target.value);
+    this.keepActionAdmitted();
+  }
+
+  /** The chosen action stays if the current type (and column) takes it, else the first the list offers. */
+  private keepActionAdmitted(): void {
+    const admitted = this.actions();
     if (!admitted.includes(this.action())) this.action.set(admitted[0] ?? '');
   }
 
@@ -250,7 +371,8 @@ export class SqlPrivilegeDialog {
     this.submitted.emit({
       mode: this.mode(),
       type: this.type(),
-      object: this.object().trim(),
+      object: this.type() === SQL_ADMIN_TYPE ? '' : this.object().trim(),
+      column: takesColumns(this.type()) ? this.column().trim() : '',
       action: this.action(),
       withGrant: this.mode() === 'grant' && this.withGrant(),
     });

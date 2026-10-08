@@ -6263,6 +6263,34 @@ export const STRINGS = {
   sqlPrivilegeRevokeAction: 'Revoke SQL privilege',
   /** EXPERIENCE.md:468 */
   sqlPrivilegeRefusalOcuPilot: 'OcuPilot\'s own SQL tables keep the privileges its installer grants, so a grant or revoke on them is not offered.',
+  /** EXPERIENCE.md:468 */
+  sqlColumnPrivilegesLabel: 'SQL column privileges',
+  /** EXPERIENCE.md:468 */
+  sqlAdminPrivilegesLabel: 'SQL admin privileges',
+  /** EXPERIENCE.md:468 */
+  sqlColumnPrivilegesEmpty: 'No column privileges on this object in this namespace.',
+  /** EXPERIENCE.md:468 */
+  sqlAdminPrivilegesEmpty: 'No SQL admin privileges in this namespace.',
+  /** EXPERIENCE.md:468 */
+  sqlColumnPrivilegesPrompt1: 'Which column privileges does this account hold on this table or view?',
+  /** EXPERIENCE.md:468 */
+  sqlColumnPrivilegesPrompt2: 'Which of its column privileges come through a role?',
+  /** EXPERIENCE.md:468 */
+  sqlColumnPrivilegesPrompt3: 'Can this account grant its column privileges on to others?',
+  /** EXPERIENCE.md:468 */
+  sqlAdminPrivilegesPrompt1: 'Which SQL admin privileges does this account hold in this namespace?',
+  /** EXPERIENCE.md:468 */
+  sqlAdminPrivilegesPrompt2: 'Which of its SQL admin privileges come through a role?',
+  /** EXPERIENCE.md:468 */
+  sqlAdminPrivilegesPrompt3: 'Can this account grant its SQL admin privileges on to others?',
+  /** EXPERIENCE.md:468 */
+  sqlPrivilegeColumnPrivilege: 'Privilege',
+  /** EXPERIENCE.md:468 */
+  sqlAdminPrivilegesHeading: 'Admin privileges',
+  /** EXPERIENCE.md:468 */
+  sqlColumnPrivilegesHeading: 'Column privileges on <object>',
+  /** EXPERIENCE.md:468 */
+  sqlPrivilegeColumnHint: 'One column of the table or view; leave it empty for the whole object.',
   /** EXPERIENCE.md:604 */
   agentScreenPermissionsLabel: 'Screen permissions',
   /** EXPERIENCE.md:604 */

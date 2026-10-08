@@ -208,6 +208,8 @@ XData Coverage
 <screen name="MftConnectionList" class="OcuPilot.Test.MftConnectionDescriptor" method="TestTheListIsDeclaredAsTheSpecPlacesIt"/>
 <screen name="MftConnectionForm" class="OcuPilot.Test.MftConnectionDescriptor" method="TestTheEditorIsAnUnlistedFormPage"/>
 <screen name="SqlPrivilegeList" class="OcuPilot.Test.SqlPrivilegeDescriptor" method="TestTheScreenIsDeclaredAsTheSpecPlacesIt"/>
+<screen name="SqlColumnPrivilegeList" class="OcuPilot.Test.SqlPrivilegeDescriptor" method="TestTheColumnAndAdminScreensAreDeclared" corpus="one declaration test pins both Story 18.28 sub-resource screens in one loop"/>
+<screen name="SqlAdminPrivilegeList" class="OcuPilot.Test.SqlPrivilegeDescriptor" method="TestTheColumnAndAdminScreensAreDeclared" corpus="one declaration test pins both Story 18.28 sub-resource screens in one loop"/>
 <screen name="SqlActivityList" class="OcuPilot.Test.SqlActivityDescriptor" method="TestTheDescriptorShape"/>
 <screen name="InteropProductionList" class="OcuPilot.Test.InteropDescriptor" method="TestTheFourDeclarationsRegister" corpus="one declaration test pins all four Story 20.2 Interoperability screens in one loop"/>
 <screen name="InteropProcessList" class="OcuPilot.Test.InteropDescriptor" method="TestTheFourDeclarationsRegister" corpus="one declaration test pins all four Story 20.2 Interoperability screens in one loop"/>

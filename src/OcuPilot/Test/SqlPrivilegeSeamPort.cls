@@ -1,10 +1,10 @@
-/// <p>Test-only <class>OcuPilot.Port.SqlPrivilegePort</class> subclass: Story 18.9's seam. Every vendor call made
+/// <p>Test-only <class>OcuPilot.Port.SqlPrivilegePort</class> subclass: Stories 18.9's and 18.28's seam. Every vendor call made
 /// through <method>Call</method> is recorded, in order, in <code>^||OcuPilotSqlPrivSeam("calls")</code> as
 /// <code>endpoint/type</code>, with its grantee and, on a revoke, its grantor, and then sent to the vendor unless a
 /// rule below answers it. A <code>LIST</code>'s <code>includeSystem</code> is kept as the last one asked.</p>
-/// <p><b>The guard</b>: a <code>GRANT</code> or <code>REVOKE</code> is sent only for a grantee and an object whose
-/// names begin <code>OcuSqlPrivProbe</code>. Any other is answered 409 <parameter>GUARDCODE</parameter> and never
-/// sent.</p>
+/// <p><b>The guard</b>: a <code>GRANT</code> or <code>REVOKE</code> of any of the three families is sent only for a
+/// grantee, and an object (an admin privilege has none), whose names begin <code>OcuSqlPrivProbe</code>. Any other
+/// is answered 409 <parameter>GUARDCODE</parameter> and never sent.</p>
 /// <p>Armed <method>ArmRows</method>, a <code>LIST</code> answers those rows for the grantee whatever the
 /// instance holds, and a <code>REVOKE</code> removes the armed rows its <code>asGrantor</code> granted, without
 /// being sent: the way a privilege held directly from several grantors is read, which the instance stores once
@@ -28,9 +28,9 @@ ClassMethod Call(pEndpoint As %String, pType As %String, ByRef pQuery, pBody As 
     Set pFault = ""
     Set tIndex = $Increment(^||OcuPilotSqlPrivSeam("calls"))
     Set ^||OcuPilotSqlPrivSeam("calls", tIndex) = pEndpoint _ "/" _ pType
-    If (pEndpoint = ..#ENDPOINT) && ((pType = ..#GRANT) || (pType = ..#REVOKE)) {
+    If ((pEndpoint = ..#ENDPOINT) || (pEndpoint = ..#COLUMNENDPOINT) || (pEndpoint = ..#ADMINENDPOINT)) && ((pType = ..#GRANT) || (pType = ..#REVOKE)) {
         Set ^||OcuPilotSqlPrivSeam("writes", $Increment(^||OcuPilotSqlPrivSeam("writes"))) = pType _ ":" _ $Get(pQuery("grantee")) _ ":" _ $Get(pQuery("asGrantor"))
-        If ($ZConvert($Extract($Get(pQuery("grantee")), 1, $Length(..#PROBEPREFIX)), "U") '= $ZConvert(..#PROBEPREFIX, "U")) || ($ZConvert($Extract($Get(pQuery("object")), 1, $Length(..#PROBEPREFIX)), "U") '= $ZConvert(..#PROBEPREFIX, "U")) {
+        If ($ZConvert($Extract($Get(pQuery("grantee")), 1, $Length(..#PROBEPREFIX)), "U") '= $ZConvert(..#PROBEPREFIX, "U")) || ((pEndpoint '= ..#ADMINENDPOINT) && ($ZConvert($Extract($Get(pQuery("object")), 1, $Length(..#PROBEPREFIX)), "U") '= $ZConvert(..#PROBEPREFIX, "U"))) {
             Set ^||OcuPilotSqlPrivSeam("guard") = 1
             Set pHttpStatus = 409
             Set pFault = ##class(OcuPilot.Kernel.Fault).Build(##class(OcuPilot.Api.Error).#CONFLICT, ..#GUARDCODE, "The test seam sends no write outside OcuSqlPrivProbe.")

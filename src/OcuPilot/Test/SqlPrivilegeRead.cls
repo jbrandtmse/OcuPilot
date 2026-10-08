@@ -1,4 +1,5 @@
-/// <p>Pins Story 18.9's reads: the SQL privileges screen's declared read and <code>permissions.sqlprivileges.read</code>
+/// <p>Pins Stories 18.9's and 18.28's reads: the SQL privileges screen's declared read and
+/// <code>permissions.sqlprivileges.read</code> -- and the column and admin privilege screens' and their read tools --
 /// answer one set of rows from one read, over the wire as in process; the instance lists a probe user's privileges
 /// as <code>Direct</code>, <code>Role:&lt;name&gt;</code>, <code>Schema Privilege</code> and
 /// <code>Owner Privilege</code> rows; <class>OcuPilot.Port.AdminPort</class>'s guard refuses an undefined
@@ -20,6 +21,14 @@ Parameter ARMINGVARIABLE = "OCUPILOT_ALLOW_PRINCIPALS";
 Parameter SCREEN = "permissions.sqlprivileges";
 
 Parameter DESCRIPTOR = "OcuPilot.Screen.Descriptor.SqlPrivilegeList";
+
+Parameter COLUMNSCREEN = "permissions.sqlcolumnprivileges";
+
+Parameter COLUMNDESCRIPTOR = "OcuPilot.Screen.Descriptor.SqlColumnPrivilegeList";
+
+Parameter ADMINSCREEN = "permissions.sqladminprivileges";
+
+Parameter ADMINDESCRIPTOR = "OcuPilot.Screen.Descriptor.SqlAdminPrivilegeList";
 
 Parameter PROBE = "OcuPilot.Test.SqlPrivilegeProbe";
 
@@ -181,6 +190,124 @@ Method TestTheStateReadComposesTheDirectRows()
     Do $$$AssertEquals(tHttp _ " " _ tCode, "422 SQLPRIV.VALIDATION", "an action the type does not take is refused 422 before any list")
 }
 
+/// <p>C1, C2: the column and admin screens' declared reads and their read tools answer the same rows for a probe
+/// user -- a direct row with the grant option and a row held through a role in each -- in process and, for the
+/// screen, over the wire; the standard read flags a table held only through columns.</p>
+/// <p>Mutation (Rule 19): drop <code>GrantedVia</code> from the column descriptor's read fields -- the kind legs go
+/// red.</p>
+Method TestTheColumnAndAdminReadsAnswerOneSetForScreenAndTool()
+{
+    Set tProbe = ..#PROBE
+    Set tUser = $Parameter(tProbe, "USER")
+    Set tRole = $Parameter(tProbe, "ROLE")
+    Set tTable = $Parameter(tProbe, "TABLE")
+    Do $$$AssertStatusOK($ClassMethod(tProbe, "GrantColumn", tUser, tTable, "ID", "SELECT", 1), "a direct column grant with the grant option")
+    Do $$$AssertStatusOK($ClassMethod(tProbe, "GrantColumn", tRole, tTable, "ID", "UPDATE"), "a column grant to the role")
+    Do $$$AssertStatusOK($ClassMethod(tProbe, "GrantAdmin", tUser, "%CREATE_TABLE", 1), "a direct admin grant with the admin option")
+    Do $$$AssertStatusOK($ClassMethod(tProbe, "GrantAdmin", tRole, "%DROP_TABLE"), "an admin grant to the role")
+    Do $$$AssertStatusOK($ClassMethod(tProbe, "GiveRole"), "the role given to the user")
+    For tCase = $ListBuild(..#COLUMNSCREEN, ..#COLUMNDESCRIPTOR, "&object=" _ tTable, tTable), $ListBuild(..#ADMINSCREEN, ..#ADMINDESCRIPTOR, "", "") {
+        Set tScreen = $List(tCase, 1)
+        Set tRows = ..ScreenRowsOf($List(tCase, 2), tUser, $List(tCase, 4))
+        Set tLines = ""
+        For tI = 1:1:tRows.%Size() Set tLines = tLines _ ";" _ tRows.%Get(tI - 1).%ToJSON()
+        Set tUpper = $ZConvert(tLines, "U")
+        Do $$$AssertTrue(tRows.%Size() >= 2, tScreen _ " lists the direct row and the role's (" _ tRows.%Size() _ ")")
+        Set tVia = $Char(34) _ "GRANTEDVIA" _ $Char(34) _ ":" _ $Char(34)
+        Do $$$AssertTrue(tUpper [ (tVia _ "DIRECT" _ $Char(34)), tScreen _ " lists a direct row: " _ tLines)
+        Do $$$AssertTrue(tUpper [ (tVia _ "ROLE" _ $Select(tScreen [ "column": ":", 1: " - ") _ $ZConvert(tRole, "U")), tScreen _ " lists the row held through the role: " _ tLines)
+        Do $$$AssertEquals(tRows.%Get(0).%GetTypeOf("GrantOption"), "boolean", tScreen _ "'s grant option is a boolean")
+        Set tSC = ##class(OcuPilot.Screen.Tool.Registry).Resolve(tScreen _ ".read", .tTool)
+        Do $$$AssertStatusOK(tSC, tScreen _ ".read resolves")
+        Kill tArgs
+        Set tArgs = {"grantee": (tUser), "namespace": "USER", "maxRows": 1000}
+        If $List(tCase, 4) '= "" Do tArgs.%Set("object", $List(tCase, 4))
+        Set tSC = ##class(OcuPilot.Screen.Tool.Registry).InvokeTool(tTool, tArgs, 1000, .tResult, .tHttp, .tFault)
+        Do $$$AssertStatusOK(tSC, "and answers (" _ $Select($IsObject($Get(tFault)): tFault.%ToJSON(), 1: "") _ ")")
+        Do $$$AssertEquals($Select($IsObject($Get(tResult)): ..Canonical(tResult.%Get("rows")), 1: ""), ..Canonical(tRows), "the tool's rows are the screen's")
+        Set tBase = $Parameter("OcuPilot.Test.Http", "BASEPATH")
+        Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("GET", tBase _ "/screens/" _ tScreen _ "/read?grantee=" _ tUser _ "&namespace=USER&maxRows=1000" _ $List(tCase, 3), ##class(OcuPilot.Test.Http).GetTestUsername(), ##class(OcuPilot.Test.Http).GetTestPassword(), .tStatus, .tRaw, .tHeaders)
+        Do $$$AssertEquals(tStatus, 200, "over the wire the route answers: " _ $Extract(tRaw, 1, 200))
+        Do $$$AssertEquals(..Canonical(##class(%DynamicObject).%FromJSON(tRaw).%Get("rows")), ..Canonical(tRows), "the same rows")
+    }
+    Set tStandard = ..ScreenRows(tUser)
+    Set tFlagged = 0
+    For tI = 1:1:tStandard.%Size() {
+        Set tRow = tStandard.%Get(tI - 1)
+        If (tRow.%Get("Object") = tTable) && (tRow.%Get("HasColumnPriv") = 1) Set tFlagged = 1
+    }
+    Do $$$AssertEquals(tFlagged, 1, "the standard read flags the table held through columns")
+    Do $$$AssertEquals(tStandard.%Get(0).%GetTypeOf("HasColumnPriv"), "boolean", "the flag is a boolean")
+}
+
+/// <p>C3, AD-2: the guard refuses, before the vendor is reached and with the product's own code, a <code>*</code>
+/// or a comma in a column or a privilege (400 <code>SQLPRIV.LIST</code>) on the list, grant and revoke of the
+/// column and admin families, and a column call whose object is not two name parts (400
+/// <code>SQLPRIV.OBJECT</code>); a well-formed call is not refused, and nothing was stored along the way.</p>
+/// <p>Mutation (Rule 19): drop <code>"column"</code> from the list check in
+/// <method>OcuPilot.Port.AdminPort.SqlPrivilegeGuard</method> -- the column legs go red.</p>
+Method TestTheGuardRefusesTheColumnAndAdminCallsBeforeTheVendorIsReached()
+{
+    Set tSeam = "OcuPilot.Port.AdminPort"
+    Set tGrantee = $Parameter(..#PROBE, "USER")
+    Set tTable = $Parameter(..#PROBE, "TABLE")
+    Set tBase = "namespace=USER|grantee=" _ tGrantee _ "|"
+    Set tColumnBase = tBase _ "type=TABLE|object=" _ tTable _ "|action=SELECT|"
+    For tCase = $ListBuild("Security.SQLPrivilege.Column", "GRANT", tColumnBase _ "column=*", "400 SQLPRIV.LIST"), $ListBuild("Security.SQLPrivilege.Column", "GRANT", tColumnBase _ "column=ID,NAME", "400 SQLPRIV.LIST"), $ListBuild("Security.SQLPrivilege.Column", "REVOKE", tColumnBase _ "column=*", "400 SQLPRIV.LIST"), $ListBuild("Security.SQLPrivilege.Column", "GRANT", tBase _ "type=TABLE|object=" _ tTable _ "|action=SELECT,INSERT|column=ID", "400 SQLPRIV.LIST"), $ListBuild("Security.SQLPrivilege.Column", "LIST", tBase _ "object=" _ $Parameter(..#PROBE, "SCHEMA") _ ".*", "400 SQLPRIV.LIST"), $ListBuild("Security.SQLPrivilege.Column", "LIST", tBase _ "object=T1", "400 SQLPRIV.OBJECT"), $ListBuild("Security.SQLPrivilege.Column", "LIST", tBase _ "object=", "400 SQLPRIV.OBJECT"), $ListBuild("Security.SQLPrivilege.Column", "LIST", tBase _ "object=A.B.C", "400 SQLPRIV.OBJECT"), $ListBuild("Security.SQLPrivilege.Column", "GRANT", tBase _ "type=TABLE|object=T1|action=SELECT|column=ID", "400 SQLPRIV.OBJECT"), $ListBuild("Security.SQLPrivilege.Admin", "GRANT", tBase _ "privilege=%CREATE_TABLE,%DROP_TABLE", "400 SQLPRIV.LIST"), $ListBuild("Security.SQLPrivilege.Admin", "REVOKE", tBase _ "privilege=*", "400 SQLPRIV.LIST"), $ListBuild("Security.SQLPrivilege.Admin", "GRANT", "namespace=NoSuchNs|grantee=" _ tGrantee _ "|privilege=%CREATE_TABLE", "404 SQLPRIV.NAMESPACE"), $ListBuild("Security.SQLPrivilege.Admin", "LIST", "namespace=USER", "400 SQLPRIV.GRANTEE"), $ListBuild("Security.SQLPrivilege.Column", "LIST", tBase _ "object=" _ tTable, "200 "), $ListBuild("Security.SQLPrivilege.Admin", "LIST", "namespace=USER|grantee=" _ tGrantee, "200 ") {
+        Kill tQuery
+        For tI = 1:1:$Length($List(tCase, 3), "|") {
+            Set tPair = $Piece($List(tCase, 3), "|", tI)
+            Set tQuery($Piece(tPair, "=", 1)) = $Piece(tPair, "=", 2, *)
+        }
+        Set tSC = $ClassMethod(tSeam, "Invoke", $List(tCase, 1), $List(tCase, 2), .tQuery, "", .tResult, .tHttp, .tFault)
+        Do $$$AssertEquals(tHttp _ " " _ $Select($IsObject($Get(tFault)): tFault.%Get("code"), 1: ""), $List(tCase, 4), $List(tCase, 1) _ " " _ $List(tCase, 2) _ " " _ $List(tCase, 3) _ " is answered " _ $List(tCase, 4))
+    }
+    Do $$$AssertEquals($ClassMethod(..#PROBE, "ColumnRows", tGrantee, tTable) _ "|" _ $ClassMethod(..#PROBE, "AdminDirect", tGrantee, "%CREATE_TABLE"), "|0", "nothing was granted along the way")
+}
+
+/// <p>AD-51: the composed state of the column and admin families counts the grantee's direct rows -- the column
+/// compared ignoring case, a view and a table spelled by the instance, a role's row no direct one -- answers the
+/// column back, and refuses an unknown grantee on a grant and a grantee holding <code>%All</code>.</p>
+/// <p>Mutation (Rule 19): count a role's row as a direct one in
+/// <method>OcuPilot.Port.SqlPrivilegePort.ColumnTally</method> -- the role leg goes red.</p>
+Method TestTheColumnAndAdminStateReadsComposeTheDirectRows()
+{
+    Set tProbe = ..#PROBE
+    Set tUser = $Parameter(tProbe, "USER")
+    Set tRole = $Parameter(tProbe, "ROLE")
+    Set tTable = $Parameter(tProbe, "TABLE")
+    Set tBase = "namespace=USER|grantee=" _ tUser _ "|type=TABLE|object=" _ tTable _ "|action=SELECT|column=ID"
+    Set tSC = ..State("GRANTSTATE", tBase, .tHttp, .tAnswer, .tCode)
+    Do $$$AssertEquals(tHttp _ " " _ tAnswer.%Get("Held") _ tAnswer.%Get("GrantOption") _ tAnswer.%Get("Rows") _ "|" _ tAnswer.%Get("GrantedBy") _ "|" _ tAnswer.%Get("Column"), "200 000||ID", "a column privilege not held reads Held false, no rows, no grantor, and echoes the column")
+    Set tSC = ..State("REVOKESTATE", tBase, .tHttp, .tAnswer, .tCode)
+    Do $$$AssertEquals(tHttp _ " " _ tCode, "409 SQLPRIV.NOTHELD", "a revoke of what is not held is refused")
+    Do $$$AssertStatusOK($ClassMethod(tProbe, "GrantColumn", tUser, tTable, "ID", "SELECT"), "a direct column grant")
+    Do $$$AssertStatusOK($ClassMethod(tProbe, "GrantColumn", tRole, tTable, "ID", "UPDATE", 1), "and a role's")
+    Do $$$AssertStatusOK($ClassMethod(tProbe, "GiveRole"), "given to the user")
+    Set tSC = ..State("GRANTSTATE", "namespace=USER|grantee=" _ tUser _ "|type=TABLE|object=" _ $ZConvert(tTable, "L") _ "|action=SELECT|column=id", .tHttp, .tAnswer, .tCode)
+    Do $$$AssertEquals(tHttp _ " " _ tCode, "409 SQLPRIV.HELD", "a grant of what is held is refused, whatever case the object and column are spelled in")
+    Set tSC = ..State("GRANTSTATE", tBase _ "|withGrant=1", .tHttp, .tAnswer, .tCode)
+    Do $$$AssertEquals(tHttp _ " " _ tAnswer.%Get("Held") _ tAnswer.%Get("GrantOption") _ "|" _ tAnswer.%Get("WithGrant"), "200 10|1", "but one asking the grant option too is read, as an upgrade")
+    Set tSC = ..State("REVOKESTATE", "namespace=USER|grantee=" _ tUser _ "|type=VIEW|object=" _ $ZConvert(tTable, "L") _ "|action=SELECT|column=Id", .tHttp, .tAnswer, .tCode)
+    Do $$$AssertEquals(tHttp _ " " _ tAnswer.%Get("Held") _ tAnswer.%Get("Rows") _ "|" _ tAnswer.%Get("GrantedBy"), "200 11|" _ $Username, "a table sent as a view, in lower case, is read as the instance's table; the grantor is named")
+    Set tSC = ..State("REVOKESTATE", "namespace=USER|grantee=" _ tUser _ "|type=TABLE|object=" _ tTable _ "|action=UPDATE|column=ID", .tHttp, .tAnswer, .tCode)
+    Do $$$AssertEquals(tHttp _ " " _ tCode, "409 SQLPRIV.NOTHELD", "a column held only through a role is no direct row")
+    Set tSC = ..State("GRANTSTATE", "namespace=USER|grantee=" _ $Parameter(tProbe, "PREFIX") _ "NoSuchGrantee|type=TABLE|object=" _ tTable _ "|action=SELECT|column=ID", .tHttp, .tAnswer, .tCode)
+    Do $$$AssertEquals(tHttp _ " " _ tCode, "404 SQLPRIV.NOGRANTEE", "an unknown grantee is refused on a grant")
+    Do $$$AssertStatusOK($ClassMethod(tProbe, "GrantAdmin", tUser, "%CREATE_TABLE"), "a direct admin grant")
+    Set tAdmin = "namespace=USER|grantee=" _ tUser _ "|type=ADMIN|action=%CREATE_TABLE"
+    Set tSC = ..State("REVOKESTATE", tAdmin, .tHttp, .tAnswer, .tCode)
+    Do $$$AssertEquals(tHttp _ " " _ tAnswer.%Get("Held") _ tAnswer.%Get("GrantOption") _ tAnswer.%Get("Rows") _ "|" _ tAnswer.%Get("GrantedBy") _ "|" _ tAnswer.%Get("Object") _ "|" _ tAnswer.%Get("Type"), "200 101|||ADMIN", "an admin privilege reads one direct row, with no grantor and no object")
+    Set tSC = ..State("GRANTSTATE", tAdmin, .tHttp, .tAnswer, .tCode)
+    Do $$$AssertEquals(tHttp _ " " _ tCode, "409 SQLPRIV.HELD", "and a grant of it is held")
+    Do $$$AssertStatusOK($ClassMethod(tProbe, "GiveAll", 1), "the user is given %All")
+    Set tSC = ..State("GRANTSTATE", tAdmin _ "|withGrant=1", .tHttp, .tAnswer, .tCode)
+    Do $$$AssertEquals(tHttp _ " " _ tCode, "409 SQLPRIV.SUPERUSER", "a grantee holding %All is refused for an admin grant")
+    Set tSC = ..State("REVOKESTATE", tBase, .tHttp, .tAnswer, .tCode)
+    Do $$$AssertEquals(tHttp _ " " _ tCode, "409 SQLPRIV.SUPERUSER", "and for a column revoke")
+    Do $ClassMethod(tProbe, "GiveAll", 0)
+}
+
 /// <p>The composed read <var>pType</var> over the query <var>pLine</var> (<code>key=value</code> pairs joined by
 /// <code>|</code>) through the real privilege port: the status in <var>pHttp</var>, the answer in
 /// <var>pAnswer</var> and the fault's code in <var>pCode</var>.</p>
@@ -221,10 +348,18 @@ ClassMethod Canonical(pRows As %DynamicArray) As %String
 /// <p>The screen's declared read of <var>pGrantee</var>'s privileges in <code>USER</code>, as its rows.</p>
 Method ScreenRows(pGrantee As %String) As %DynamicArray
 {
+    Quit ..ScreenRowsOf(..#DESCRIPTOR, pGrantee)
+}
+
+/// <p>The declared read of the descriptor <var>pDescriptor</var> for <var>pGrantee</var> in <code>USER</code> (and
+/// the object <var>pObject</var> where it takes one), as its rows.</p>
+Method ScreenRowsOf(pDescriptor As %String, pGrantee As %String, pObject As %String = "") As %DynamicArray
+{
     Kill tCriteria
     Set tCriteria("grantee") = pGrantee
     Set tCriteria("namespace") = "USER"
-    Set tSC = ##class(OcuPilot.Screen.Read).Execute(..#DESCRIPTOR, 1000, .tRead, .tHttp, .tFault, .tCriteria)
+    If pObject '= "" Set tCriteria("object") = pObject
+    Set tSC = ##class(OcuPilot.Screen.Read).Execute(pDescriptor, 1000, .tRead, .tHttp, .tFault, .tCriteria)
     Do $$$AssertStatusOK(tSC, "the screen's read answers (" _ $Select($IsObject($Get(tFault)): tFault.%ToJSON(), 1: "") _ ")")
     Quit $Select($IsObject($Get(tRead)): tRead.%Get("rows"), 1: [])
 }
@@ -248,6 +383,32 @@ Method TestTheProbeCleanupLeavesNoPrivilegeRow()
     Do $$$AssertEquals($ClassMethod(tProbe, "RemainingPrivileges"), 1, "and takes the two listed rows, leaving the unlisted one")
     Do $$$AssertStatusOK($ClassMethod(tProbe, "RemoveAll"), "the cleanup runs")
     Do $$$AssertEquals($ClassMethod(tProbe, "RemainingPrivileges"), 0, "and no privilege row of a probe grantee is left")
+}
+
+/// <p>The probe's cleanup also revokes a probe grantee's column and admin privileges and removes its admin
+/// privilege set: <method>OcuPilot.Test.SqlPrivilegeProbe.RevokeAll</method> takes the direct rows of both,
+/// <method>OcuPilot.Test.SqlPrivilegeProbe.RemoveAll</method> the sets, and
+/// <method>OcuPilot.Test.SqlPrivilegeProbe.Remaining</method> counts them.</p>
+/// <p>Mutation (Rule 19): make <method>OcuPilot.Test.SqlPrivilegeProbe.RevokeAdmin</method> and
+/// <method>OcuPilot.Test.SqlPrivilegeProbe.RevokeColumns</method> do nothing -- the revoke legs go red; make the
+/// admin-set sweep in <method>OcuPilot.Test.SqlPrivilegeProbe.RemoveAll</method> select nothing -- the last leg goes
+/// red.</p>
+Method TestTheProbeCleanupTakesColumnAndAdminPrivileges()
+{
+    Set tProbe = ..#PROBE
+    Set tUser = $Parameter(tProbe, "USER")
+    Set tTable = $Parameter(tProbe, "TABLE")
+    Do $$$AssertStatusOK($ClassMethod(tProbe, "GrantColumn", tUser, tTable, "ID", "SELECT"), "a column grant")
+    Do $$$AssertStatusOK($ClassMethod(tProbe, "GrantAdmin", tUser, "%CREATE_TABLE", 1), "and an admin grant")
+    Do $$$AssertEquals($ClassMethod(tProbe, "ColumnDirect", tUser, tTable, "ID", "SELECT") _ $ClassMethod(tProbe, "AdminDirect", tUser, "%CREATE_TABLE"), "12", "the instance holds both")
+    Do $$$AssertEquals($ClassMethod(tProbe, "RemainingAdminSets"), 1, "and one admin privilege set")
+    Do $$$AssertStatusOK($ClassMethod(tProbe, "RevokeAll", $Parameter(tProbe, "NAMESPACE")), "the revoke runs")
+    Do $$$AssertEquals($ClassMethod(tProbe, "ColumnDirect", tUser, tTable, "ID", "SELECT") _ $ClassMethod(tProbe, "AdminDirect", tUser, "%CREATE_TABLE"), "00", "and takes both")
+    Set tSets = $ClassMethod(tProbe, "RemainingAdminSets")
+    Do $$$AssertStatusOK($ClassMethod(tProbe, "SeedAdminSet", $Parameter(tProbe, "PREFIX") _ "Ghost"), "an admin privilege set is stored for a name that holds no account")
+    Do $$$AssertEquals($ClassMethod(tProbe, "RemainingAdminSets"), tSets + 1, "the instance holds it and the probe counts it")
+    Do $$$AssertStatusOK($ClassMethod(tProbe, "RemoveAll"), "the cleanup runs")
+    Do $$$AssertEquals($ClassMethod(tProbe, "RemainingAdminSets"), 0, "and no admin privilege set of a probe grantee is left")
 }
 
 }

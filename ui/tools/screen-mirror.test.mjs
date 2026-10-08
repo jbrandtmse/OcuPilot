@@ -1384,6 +1384,8 @@ test('criteriaProblem returns every sentence OcuPilot.Test.CriteriaCorpus declar
       'OcuPilot.Screen.Descriptor.PackageMappingList',
       'OcuPilot.Screen.Descriptor.ProcessDetails',
       'OcuPilot.Screen.Descriptor.RoutineMappingList',
+      'OcuPilot.Screen.Descriptor.SqlAdminPrivilegeList',
+      'OcuPilot.Screen.Descriptor.SqlColumnPrivilegeList',
       'OcuPilot.Screen.Descriptor.SqlPrivilegeList',
       'OcuPilot.Screen.Descriptor.TaskDetails',
       'OcuPilot.Screen.Descriptor.TaskHistoryList',

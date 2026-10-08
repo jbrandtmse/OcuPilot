@@ -1,4 +1,4 @@
-/// <p>The SQL object privileges' codes (AD-39, Story 18.9): every <code>SQLPRIV.*</code> code the Permissions
+/// <p>The SQL object privileges' codes (AD-39, Stories 18.9 and 18.28): every <code>SQLPRIV.*</code> code the Permissions
 /// editors' SQL privileges tab, <code>permissions.sqlprivileges.read</code> and the four grant and revoke tools
 /// answer, and the one sentence each carries. They live beside <class>OcuPilot.Api.Error</class> rather than in
 /// it because that class holds the compiler's limit of 1,000 parameters (ERROR #5290);
@@ -28,12 +28,12 @@ Parameter REASONGRANTEE = "The user or role is 1 to 160 characters, with no * an
 /// <p>Violation code, on <code>Type</code>.</p>
 Parameter TYPE = "SQLPRIV.TYPE";
 
-Parameter REASONTYPE = "The type is TABLE, VIEW, SCHEMA, STORED PROCEDURE, ML CONFIGURATION or FOREIGN SERVER.";
+Parameter REASONTYPE = "The type is TABLE, VIEW, SCHEMA, STORED PROCEDURE, ML CONFIGURATION, FOREIGN SERVER or ADMIN.";
 
 /// <p>Violation code, on <code>Object</code>.</p>
 Parameter OBJECT = "SQLPRIV.OBJECT";
 
-Parameter REASONOBJECT = "The object is one name for a schema or configuration, or schema.name for the rest, each part of letters, digits and _ @ # $.";
+Parameter REASONOBJECT = "The object is one name for a schema or configuration, or schema.name for the rest, each part of letters, digits and _ @ # $, and none for ADMIN.";
 
 /// <p>Violation code, on <code>Action</code>.</p>
 Parameter ACTION = "SQLPRIV.ACTION";
@@ -45,7 +45,12 @@ Parameter WITHGRANT = "SQLPRIV.WITHGRANT";
 
 Parameter REASONWITHGRANT = "With grant option is true or false.";
 
-/// <p>Fault (400): a list or a wildcard, a <code>*</code> or a comma, in the grantee, object or action.</p>
+/// <p>Violation code, on <code>Column</code>.</p>
+Parameter COLUMN = "SQLPRIV.COLUMN";
+
+Parameter REASONCOLUMN = "The column is one name of letters, digits and _ @ # $, on a table or view only.";
+
+/// <p>Fault (400): a list or a wildcard, a <code>*</code> or a comma, in the grantee, object, column, action or privilege.</p>
 Parameter LIST = "SQLPRIV.LIST";
 
 Parameter REASONLIST = "A list or a wildcard is not accepted here: name one user or role, one object and one action.";
@@ -101,13 +106,13 @@ Parameter GRANTEEMAX = 160;
 /// <p>Every <code>SQLPRIV.*</code> code, as a <class>%List</class>.</p>
 ClassMethod Codes() As %List
 {
-    Quit $ListBuild(..#VALIDATION, ..#NAMESPACE, ..#GRANTEE, ..#TYPE, ..#OBJECT, ..#ACTION, ..#WITHGRANT, ..#LIST, ..#HELD, ..#NOTHELD, ..#SUPERUSER, ..#NOTAPPLIED, ..#GRANTOR, ..#NOOBJECT, ..#NOGRANTEE, ..#DEPENDENT)
+    Quit $ListBuild(..#VALIDATION, ..#NAMESPACE, ..#GRANTEE, ..#TYPE, ..#OBJECT, ..#ACTION, ..#WITHGRANT, ..#LIST, ..#HELD, ..#NOTHELD, ..#SUPERUSER, ..#NOTAPPLIED, ..#GRANTOR, ..#NOOBJECT, ..#NOGRANTEE, ..#DEPENDENT, ..#COLUMN)
 }
 
 /// <p>The field-level codes, as a <class>%List</class>, each with its field in <method>FieldOf</method>.</p>
 ClassMethod ViolationCodes() As %List
 {
-    Quit $ListBuild(..#NAMESPACE, ..#GRANTEE, ..#TYPE, ..#OBJECT, ..#ACTION, ..#WITHGRANT)
+    Quit $ListBuild(..#NAMESPACE, ..#GRANTEE, ..#TYPE, ..#OBJECT, ..#ACTION, ..#WITHGRANT, ..#COLUMN)
 }
 
 /// <p>The argument a violation code refuses, or <code>""</code>.</p>
@@ -119,6 +124,7 @@ ClassMethod FieldOf(pCode As %String) As %String
     If pCode = ..#OBJECT Quit "Object"
     If pCode = ..#ACTION Quit "Action"
     If pCode = ..#WITHGRANT Quit "WithGrant"
+    If pCode = ..#COLUMN Quit "Column"
     Quit ""
 }
 
@@ -133,6 +139,7 @@ ClassMethod ReasonFor(pCode As %String) As %String
     If pCode = ..#OBJECT Quit ..#REASONOBJECT
     If pCode = ..#ACTION Quit ..#REASONACTION
     If pCode = ..#WITHGRANT Quit ..#REASONWITHGRANT
+    If pCode = ..#COLUMN Quit ..#REASONCOLUMN
     If pCode = ..#LIST Quit ..#REASONLIST
     If pCode = ..#HELD Quit ..#REASONHELD
     If pCode = ..#NOTHELD Quit ..#REASONNOTHELD
