@@ -57,9 +57,9 @@ ClassMethod Handle(pScreen As %String) As %Status
         Set tFailedPair = ""
         If '$ClassMethod(..GateClass(), "Evaluate", tDescriptor, .tFailedPair) {
             ; The screen half of the one privilege refusal (AD-39): the code, the sentence and
-            ; detail.failedPair are OcuPilot.Kernel.Denial's, so this envelope and the tool
+            ; detail.failedPair and detail.screen are OcuPilot.Kernel.Denial's, so this envelope and the tool
             ; result a dispatcher builds for the same missing pair cannot diverge.
-            Set tSC = ##class(OcuPilot.Kernel.Denial).Envelope(tFailedPair)
+            Set tSC = ##class(OcuPilot.Kernel.Denial).Envelope(tFailedPair, $ClassMethod(tDescriptor, "ToolIdentifier"))
             Quit
         }
 

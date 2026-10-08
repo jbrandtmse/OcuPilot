@@ -179,6 +179,18 @@ export const STRINGS = {
   proposalDraftCaption: 'Nothing was changed. Fill in each value in angle brackets before you run this.',
   /** EXPERIENCE.md:276 */
   proposalUnchangedFieldsDisclosure: 'N unchanged fields',
+  /** EXPERIENCE.md:604 */
+  longBlockShowMore: 'Show more',
+  /** EXPERIENCE.md:604 */
+  longBlockShowLess: 'Show less',
+  /** EXPERIENCE.md:604 */
+  proposalSummaryFields: '<name>: <n> changed fields',
+  /** EXPERIENCE.md:604 */
+  proposalSummaryField: '<name>: 1 changed field',
+  /** EXPERIENCE.md:604 */
+  proposalSummaryCompiled: 'Compiled without errors.',
+  /** EXPERIENCE.md:604 */
+  proposalSummaryCompileErrors: 'Compiled with errors.',
   /** EXPERIENCE.md:277 */
   proposalExampleCardTitle: 'Example \u2014 this is what a proposal looks like',
   /** EXPERIENCE.md:278 */

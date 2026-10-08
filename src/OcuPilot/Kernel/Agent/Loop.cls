@@ -100,8 +100,8 @@ ClassMethod TurnDefinition(pKey As %String, pUser As %String, Output pDefinition
 /// <p><var>pRowCap</var> and <var>pMaxLength</var> are optional overrides
 /// (<method>OcuPilot.Kernel.Agent.Dispatch.Answer</method>'s own), passed through unchanged.</p>
 /// <p><var>pDetails</var> is <method>OcuPilot.Kernel.Agent.Dispatch.Answer</method>'s own parallel
-/// detail array (Story 4.5) -- one <code>{target, arguments, result, reason, failedPair}</code>
-/// per call, passed through unchanged. <var>pRoute</var> is the turn's screen-context route (Story
+/// detail array (Story 4.5) -- one <code>{target, arguments, argumentsTruncated, result, reason, failedPair,
+/// failedScreen}</code> per call, passed through unchanged. <var>pRoute</var> is the turn's screen-context route (Story
 /// 4.9), passed through the same way.</p>
 ClassMethod DispatchTools(pKey As %String, pUser As %String, pDefinitionId As %String, pToolUses As %DynamicArray, pLimitsClass As %String, Output pResults As %DynamicArray, Output pNames As %DynamicArray, pRowCap As %Integer = 0, pMaxLength As %Integer = 0, Output pDetails As %DynamicArray, pRoute As %String = "") As %Status
 {
@@ -619,7 +619,7 @@ ClassMethod AnswerTools(pKey As %String, pUser As %String, pDefinitionId As %Str
             ; so the panel's card shows the instance data. The step's copy is cut to
             ; TOOLSTEPTEXTMAXLENGTH characters ending in U+2026 (GuardedFinishTool); the model's copy
             ; is not cut by it. The dispatcher-failed finish above records none: there was no result.
-            Set tSC = ##class(OcuPilot.Kernel.State.Step).GuardedFinishTool(pKey, tSeq, tName, $Select(tIsError: "error", 1: "ok"), tCode, pLimitsClass, tDetail.target, tDetail.arguments, tDetail.result, tDetail.reason, tDetail.failedPair, tDetail.argumentsTruncated, $Select($IsObject(tResult): tResult.%Get("content"), 1: ""))
+            Set tSC = ##class(OcuPilot.Kernel.State.Step).GuardedFinishTool(pKey, tSeq, tName, $Select(tIsError: "error", 1: "ok"), tCode, pLimitsClass, tDetail.target, tDetail.arguments, tDetail.result, tDetail.reason, tDetail.failedPair, tDetail.argumentsTruncated, $Select($IsObject(tResult): tResult.%Get("content"), 1: ""), tDetail.failedScreen)
             If $$$ISERR(tSC) Quit
             If 'tIsError && $IsObject(tResult) && $IsObject(pCandidates) && ..CitesRows(tRunningResolved) {
                 Do ##class(OcuPilot.Kernel.Agent.Citations).Candidates(tRunningResolved.%Get("descriptor"), tResult.%Get("content"), pCandidates)

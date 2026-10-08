@@ -9,8 +9,8 @@
 /// <p><b>Its gate is the descriptor's fixed set, never an adjusted one</b> (<method>PrivilegePairs</method>):
 /// <code>%Development:USE</code> or <code>%Admin_Secure:USE</code>, either one
 /// (<method>OcuPilot.Screen.Gate.AdjusterPairs</method>), so the screen that adjusts permissions cannot be
-/// adjusted away from the accounts that hold either. The tools are not advertised until Story 20.18 (AD-53);
-/// dispatch and confirm read this fixed set through <method>PrivilegePairs</method>.</p>
+/// adjusted away from the accounts that hold either. The tools are advertised (AD-53, AD-64); dispatch and
+/// confirm read this fixed set through <method>PrivilegePairs</method>.</p>
 Class OcuPilot.Screen.Tool.ScreenAccessAction Extends OcuPilot.Screen.Tool.Write [ Abstract ]
 {
 
@@ -19,8 +19,8 @@ Parameter DESCRIPTORCLASS = "OcuPilot.Screen.Descriptor.AgentScreenPermissions";
 /// <p>The port that reads and stores a screen's permission set (AD-52).</p>
 Parameter PORTCLASS = "OcuPilot.Port.ScreenAccessPort";
 
-/// <p>Declared and enabled, and not offered to the model until Story 20.18 (AD-53).</p>
-Parameter ADVERTISED As BOOLEAN = 0;
+/// <p>Declared, enabled and offered to the model (AD-53, AD-64).</p>
+Parameter ADVERTISED As BOOLEAN = 1;
 
 Parameter READTYPE = "GET";
 

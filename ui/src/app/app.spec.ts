@@ -65,6 +65,7 @@ import type { AreaDeclaration, ScreenDeclaration } from './core/screens.generate
 import { SCREENS } from './core/screens.generated';
 import { Session, type SessionState } from './core/session';
 import { PanelState } from './core/panel-layout';
+import { LongBlocks } from './core/long-blocks';
 import { TurnStore } from './core/turn';
 import { ShellState } from './core/shell-state';
 import { ThemeState } from './core/theme';
@@ -431,6 +432,7 @@ describe('the shell frame', () => {
   let overlays: OverlayStack;
   let panelState: PanelState;
   let shellState: ShellState;
+  let longBlocks: LongBlocks;
   let turn: TurnStore;
   let turnStorage: Map<string, string>;
   const planted: HTMLElement[] = [];
@@ -491,6 +493,7 @@ describe('the shell frame', () => {
     overlays = new OverlayStack();
     const shellPreferences = stubAccountPreferences();
     shellState = new ShellState({ account: shellPreferences });
+    longBlocks = new LongBlocks();
     panelState = new PanelState({ account: shellPreferences, shell: shellState });
     // A reload-adopted id, so the sign-out test below can observe `App` dropping it -- the same
     // shape the real `readNavigationKind`/`readSessionStorage` pair produces in `main.ts`.
@@ -529,6 +532,7 @@ describe('the shell frame', () => {
         { provide: AgentContext, useValue: agentContext },
         { provide: SuggestedView, useValue: suggested },
         { provide: ShellState, useValue: shellState },
+        { provide: LongBlocks, useValue: longBlocks },
         { provide: ThemeState, useValue: new ThemeState({ account: shellPreferences, root: document.createElement('div') }) },
         { provide: PanelState, useValue: panelState },
         { provide: TurnStore, useValue: turn },
@@ -845,6 +849,8 @@ describe('the shell frame', () => {
     // observable rather than a no-op.
     shellState.toggleOpen();
     expect(shellState.open()).toBe(false);
+    longBlocks.setOpen('convo-1:t0:reply', true);
+    expect(longBlocks.isOpen('convo-1:t0:reply')).toBe(true);
     expect(turn.conversationId()).toBe('convo-1');
 
     // The context chip's sharing choice is this principal's own (Story 4.11); loaded here so the
@@ -899,6 +905,9 @@ describe('the shell frame', () => {
     // collapsed side bar, indefinitely if their own read never settles (AD-8). The width's half of
     // this reset was pinned above; the side bar's was pinned only on `ShellState` itself.
     expect(shellState.open()).toBe(true);
+    // Mutation (Rule 19): delete `this.longBlocks?.endSession()` from the same branch -> this goes red,
+    // and the next principal would see the departed principal's opened blocks.
+    expect(longBlocks.isOpen('convo-1:t0:reply')).toBe(false);
     // Mutation (Rule 19): delete `this.turn.endSession()` from the same branch -> this goes red,
     // and the next principal to sign in on this tab would adopt a departed principal's
     // conversation (AD-8).

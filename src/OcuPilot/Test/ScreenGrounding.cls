@@ -1,8 +1,8 @@
-/// <p>Stories 11.9, 11.10, 11.1 and 11.2 in process: the built-in prompt's eight screen statements, the tools each
+/// <p>Stories 11.9, 11.10, 11.1, 11.2 and 20.18 in process: the built-in prompt's nine screen statements, the tools each
 /// kind of screen names (<method>OcuPilot.Screen.Context.ScreenTools</method>), the refusal of a
 /// request that supplies a derived member (<method>OcuPilot.Api.Turn.ContextViolation</method>),
-/// Home's empty route, the error read tool's input schema, the two members <method>OcuPilot.Api.Turn.BoundedContext</method> adds on both payload
-/// branches and inside the total bound, and the explain-entry marker it carries, drops when invalid
+/// Home's empty route, the error read tool's input schema, the four members <method>OcuPilot.Api.Turn.BoundedContext</method> adds on both payload
+/// branches and inside the total bound, the unavailable map's fail-closed answer, and the explain-entry marker it carries, drops when invalid
 /// and keeps within the bounds (AD-11, AD-24).</p>
 /// <p>Spawns nothing, writes no state and creates no principal, so it needs no arming variable. It
 /// reads the compiled tool and screen registries, so it runs on an instance where OcuPilot is
@@ -16,11 +16,11 @@ Parameter LIMITS = "OcuPilot.Kernel.Agent.Limits";
 /// behind its five row actions, in name order.</p>
 Parameter PROCESSTOOLS = "[""osmgmt_processes_read"",""osmgmt_processes_broadcast"",""osmgmt_processes_resume"",""osmgmt_processes_suspend"",""osmgmt_processes_terminate"",""osmgmt_processes_terminatewitherror""]";
 
-/// <p>The prompt's statement at <var>pIndex</var> (1 to 8), verbatim.</p>
+/// <p>The prompt's statement at <var>pIndex</var> (1 to 9), verbatim.</p>
 ClassMethod Statement(pIndex As %Integer) As %String
 {
     Quit $Case(pIndex,
-        1: "A turn may open with a screen_context result describing the screen the user is viewing: its route, namespace and selected row (entity), the rows as shown with how many were available (rows, rowsSent, rowsAvailable, truncated), the tools that act on that screen (tools), and whether you are read-only (readOnly).",
+        1: "A turn may open with a screen_context result describing the screen the user is viewing: its route, namespace and selected row (entity), the rows as shown with how many were available (rows, rowsSent, rowsAvailable, truncated), the tools that act on that screen (tools), whether you are read-only (readOnly), whether the user can open that screen and, if not, the permission they lack (verdict), and which of its tools the user cannot use, with the permission each lacks (unavailable).",
         2: "When that context holds what was asked, answer from it without calling a tool; call a read tool when it does not, or when its rows were cut.",
         3: "A change confirmed through one of the screen's tools refreshes that screen and marks the changed row.",
         4: "When you are read-only, say so, and describe the change you would make instead of proposing it.",
@@ -28,6 +28,7 @@ ClassMethod Statement(pIndex As %Integer) As %String
         6: "When the user asks about something a screen shows, or asks to change it, and the screen_context does not show them on that screen, open that screen with the navigation tool first, before you answer or propose the change, so they see what you are discussing and the change when it lands; when they are already on it, do not navigate.",
         7: "When the user asks you to explain this screen, say what the screen is for, what data it shows and what actions its tools offer, name the read tool in tools that its data comes from, or say that it has none, and propose no change.",
         8: "When the user asks you to explain the selected entry, screen_context marks the entry they chose: selected is its index in rows, the first row being 0, or focus holds it when rows does not; that marker, not entity, names the entry, and the other rows are the rest of the screen, context for that entry. Explain that one entry: what it records, what likely caused it and what to check next, and propose no change.",
+        9: "When a tool answers AUTH.NOPRIVILEGE, it names the permission the user lacks (failedPair) and, when the user cannot open that tool's screen, the screen (screen): say that the user cannot access that screen and which permission they would need, propose nothing on it, and do not call it again; do not call a tool that unavailable names, and say which permission it needs instead.",
         : "")
 }
 
@@ -42,13 +43,13 @@ Method ToolsFor(pRoute As %String) As %String
     Quit tTools.%ToJSON()
 }
 
-/// <p>The prompt is the class parameter, whole, and carries each of the eight screen statements
+/// <p>The prompt is the class parameter, whole, and carries each of the nine screen statements
 /// verbatim, one assertion each.</p>
 Method TestThePromptCarriesTheScreenStatements()
 {
     Set tPrompt = ##class(OcuPilot.Kernel.Agent.Prompt).Builtin()
     Do $$$AssertEquals(tPrompt, $Parameter("OcuPilot.Kernel.Agent.Prompt", "BUILTIN"), "Builtin() is the build-time constant, whole")
-    Do $$$AssertTrue(tPrompt [ ..Statement(1), "the screen_context statement names its route, entity, rows, tools and readOnly")
+    Do $$$AssertTrue(tPrompt [ ..Statement(1), "the screen_context statement names its route, entity, rows, tools, readOnly, verdict and unavailable")
     Do $$$AssertTrue(tPrompt [ ..Statement(2), "the answer-from-context statement")
     Do $$$AssertTrue(tPrompt [ ..Statement(3), "the refresh-and-mark statement")
     Do $$$AssertTrue(tPrompt [ ..Statement(4), "the read-only statement")
@@ -56,6 +57,7 @@ Method TestThePromptCarriesTheScreenStatements()
     Do $$$AssertTrue(tPrompt [ ..Statement(6), "the open-the-screen-first statement")
     Do $$$AssertTrue(tPrompt [ ..Statement(7), "the explain statement")
     Do $$$AssertTrue(tPrompt [ ..Statement(8), "the explain-entry statement, which says what the marker means")
+    Do $$$AssertTrue(tPrompt [ ..Statement(9), "the AUTH.NOPRIVILEGE statement, which names failedPair and screen")
     Set tOutside = 0
     For tI = 1:1:$Length(tPrompt) If ($Ascii(tPrompt, tI) < 32) || ($Ascii(tPrompt, tI) > 126) Set tOutside = tOutside + 1
     Do $$$AssertEquals(tOutside, 0, "the prompt is printable ASCII throughout")
@@ -130,7 +132,18 @@ Method TestAToolListFailureReturnsItsError()
     Do $$$AssertEquals(tTools.%ToJSON(), "[]", "with no tool named")
 }
 
-/// <p>A request that supplies <code>tools</code> or <code>readOnly</code>, of any type, is refused
+/// <p>A wire name that does not resolve, or any name when the tool list cannot be built, is marked
+/// unavailable with no pair (<method>OcuPilot.Screen.Context.Unavailable</method>), so a failure refuses
+/// rather than admits; a resolved tool the caller can use is not marked.</p>
+Method TestAToolThatCannotBeResolvedIsMarkedUnavailable()
+{
+    Do $$$AssertStatusOK(##class(OcuPilot.Screen.Context).Unavailable(["osmgmt_processes_read", "ocupilot_no_such_tool"], .tUnavailable), "the map builds")
+    Do $$$AssertEquals(tUnavailable.%ToJSON(), "{""ocupilot_no_such_tool"":""""}", "an unknown name is marked with no pair, and a usable tool is not")
+    Do $$$AssertStatusOK(##class(OcuPilot.Test.ScreenToolsFault).Unavailable(["osmgmt_processes_read"], .tFaulted), "a list that cannot be built still answers")
+    Do $$$AssertEquals(tFaulted.%ToJSON(), "{""osmgmt_processes_read"":""""}", "and marks every tool unavailable")
+}
+
+/// <p>A request that supplies <code>tools</code>, <code>readOnly</code>, <code>verdict</code> or <code>unavailable</code>, of any type, is refused
 /// <code>TURN.CONTEXT.INVALID</code>; the same context without them is accepted.</p>
 Method TestARequestSupplyingADerivedMemberIsRefused()
 {
@@ -138,7 +151,7 @@ Method TestARequestSupplyingADerivedMemberIsRefused()
     Set tSound = {"context": {"route": "os-management/processes", "view": {"rows": [{"Pid": "1"}]}}}
     Do tSound.context.%Set("namespace", ##class(OcuPilot.Kernel.Scope).Current(), "string")
     Do $$$AssertEquals(##class(OcuPilot.Api.Turn).ContextViolation(tSound, ..#LIMITS), "", "a context carrying neither member is accepted")
-    For tMember = "tools", "readOnly" {
+    For tMember = "tools", "readOnly", "verdict", "unavailable" {
         For tType = "array", "string", "boolean", "null", "number", "object" {
             Set tBody = ##class(%DynamicAbstractObject).%FromJSON(tSound.%ToJSON())
             If tType = "array" Do tBody.context.%Set(tMember, [])
@@ -172,6 +185,7 @@ Method TestHomesEmptyRouteIsAccepted()
     Set tPayload = ##class(%DynamicObject).%FromJSON(tJson)
     Do $$$AssertEquals(tPayload.screen _ "|" _ tPayload.route, "shell.home|", "Home's identity")
     Do $$$AssertEquals(tPayload.tools.%ToJSON(), "[]", "naming no tool")
+    Do $$$AssertEquals(tPayload.verdict.%ToJSON() _ "|" _ tPayload.unavailable.%ToJSON(), "{""allowed"":true}|{}", "Home is allowed and marks no tool unavailable")
     Do $$$AssertEquals(tPayload.rowsSent, 0, "sending no row")
     Do $$$AssertEquals(tPayload.%GetTypeOf("readOnly"), "boolean", "and carrying readOnly as a boolean")
     Set tForeign = {"context": {"route": "", "namespace": "OCUPILOTNOSUCHNAMESPACE"}}
@@ -188,7 +202,7 @@ Method TestHomesEmptyRouteIsAccepted()
     Do $$$AssertTrue(tRowedJson [ """globalReferencesPerSecond"":4711", "while a declared field's value reaches it")
 }
 
-/// <p>Both members ride the rows branch and the identity-only branch, with <code>readOnly</code> a
+/// <p>The members ride the rows branch and the identity-only branch, with <code>readOnly</code> a
 /// JSON boolean following the argument; a form page carries them over no rows.</p>
 Method TestBothMembersRideBothBranches()
 {
@@ -199,6 +213,7 @@ Method TestBothMembersRideBothBranches()
     Set tPayload = ##class(%DynamicObject).%FromJSON(tJson)
     Do $$$AssertEquals(tPayload.tools.%ToJSON(), ..#PROCESSTOOLS, "the rows branch carries the screen's tools")
     Do $$$AssertEquals(tPayload.%GetTypeOf("readOnly") _ "|" _ tPayload.readOnly, "boolean|0", "and readOnly false, as a boolean")
+    Do $$$AssertEquals(tPayload.%GetTypeOf("verdict") _ "|" _ tPayload.verdict.allowed _ "|" _ tPayload.%GetTypeOf("unavailable"), "object|1|object", "and the screen's verdict and an unavailable map")
     Do $$$AssertEquals(tPayload.rowsSent, 1, "beside its one row")
     Do $$$AssertEquals(tPayload.rows.%Get(0).%IsDefined("Secret"), 0, "narrowed to the declared fields")
 
@@ -213,6 +228,7 @@ Method TestBothMembersRideBothBranches()
     Do $$$AssertEquals(tSecretPayload.rowsSent, 0, "reports rowsSent 0")
     Do $$$AssertEquals(tSecretPayload.tools.%ToJSON(), "[]", "carries its empty tool list")
     Do $$$AssertEquals(tSecretPayload.%GetTypeOf("readOnly") _ "|" _ tSecretPayload.readOnly, "boolean|1", "and readOnly")
+    Do $$$AssertEquals(tSecretPayload.%GetTypeOf("verdict") _ "|" _ tSecretPayload.%GetTypeOf("unavailable"), "object|object", "and the screen's verdict and an unavailable map")
 
     Set tForm = {"route": "os-management/devices/edit"}
     Do tForm.%Set("namespace", tNamespace, "string")
@@ -239,7 +255,7 @@ Method TestTheMembersCountWithinTheTotalBound()
         Do tContext.view.rows.%Push({"Pid": (tI _ ""), "Routine": (tRoutine)})
     }
     Set tRowLength = $Length({"Pid": "1000", "Routine": (tRoutine)}.%ToJSON()) + 1
-    Set tMembersLength = $Length(",""tools"":" _ ..#PROCESSTOOLS _ ",""readOnly"":false")
+    Set tMembersLength = $Length(",""tools"":" _ ..#PROCESSTOOLS _ ",""readOnly"":false,""verdict"":{""allowed"":true},""unavailable"":{}")
     Do $$$AssertTrue(tRowLength < tMembersLength, "each row (" _ tRowLength _ ") is shorter than the members (" _ tMembersLength _ ")")
 
     Do $$$AssertStatusOK(##class(OcuPilot.Api.Turn).BoundedContext(tContext, 0, 1000, ..#LIMITS, .tJson), "the payload builds")
@@ -248,6 +264,7 @@ Method TestTheMembersCountWithinTheTotalBound()
     Set tPayload = ##class(%DynamicObject).%FromJSON(tJson)
     Do $$$AssertEquals(tPayload.tools.%ToJSON(), ..#PROCESSTOOLS, "the tools are kept")
     Do $$$AssertEquals(tPayload.%GetTypeOf("readOnly"), "boolean", "and so is readOnly")
+    Do $$$AssertEquals(tPayload.%GetTypeOf("verdict") _ "|" _ tPayload.%GetTypeOf("unavailable"), "object|object", "and so are verdict and unavailable")
     Do $$$AssertTrue((tPayload.rowsSent > 0) && (tPayload.rowsSent < 1000), "whole rows were cut: " _ tPayload.rowsSent)
     Do $$$AssertEquals(tPayload.rows.%Size(), tPayload.rowsSent, "rowsSent counts the rows kept")
     Do $$$AssertEquals(tPayload.truncated, 1, "and the payload is marked truncated")

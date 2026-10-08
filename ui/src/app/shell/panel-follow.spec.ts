@@ -73,6 +73,22 @@ describe('the transcript follow rule', () => {
     expect(follow.following).toBe(true);
   });
 
+  it('a long block opened while following grows the transcript without scrolling it, and the next arrival still scrolls (Story 20.17)', () => {
+    // Mutation (Rule 19): make `rebase` call `settle` -> the position moves and this goes red.
+    const follow = new TranscriptFollow();
+    const b = box();
+    follow.settle(b);
+    b.scrollHeight = 1300;
+    follow.rebase(b);
+    expect(b.scrollTop).toBe(800);
+    expect(follow.following).toBe(true);
+    expect(follow.settle(b)).toBe(false);
+
+    b.scrollHeight = 1500;
+    expect(follow.settle(b)).toBe(true);
+    expect(b.scrollTop).toBe(1300);
+  });
+
   it('the jump follows again from a scrolled-up transcript and scrolls to the newest entry', () => {
     const follow = new TranscriptFollow();
     const b = box();

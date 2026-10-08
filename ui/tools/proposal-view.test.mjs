@@ -52,6 +52,7 @@ const {
   CONSEQUENCE_LOCKINTRANSACTION,
   CONSEQUENCE_NAMESPACEINTEROP,
   CONSEQUENCE_SYSTEMGLOBAL,
+  CONSEQUENCE_SCREENACCESSLOWERED,
   CONSEQUENCE_RUNSASOTHER,
   CONSEQUENCE_SERVESOCUPILOT,
   CONSEQUENCE_SERVICEUNAUTHENTICATED,
@@ -302,6 +303,18 @@ test("the system-global mapping's and the mapping copy's consequence codes resol
   assert.equal(CONSEQUENCE_COPYMAPPINGS, 'NAMESPACE.COPYMAPPINGS');
   assert.equal(consequenceSentence(CONSEQUENCE_SYSTEMGLOBAL), STRINGS.mappingSystemGlobalConsequence);
   assert.equal(consequenceSentence(CONSEQUENCE_COPYMAPPINGS), STRINGS.namespaceCopyMappingsConsequence);
+});
+
+// Story 20.18, AD-64: an agent change to a screen's permissions that drops a pair is destructive with the
+// lowering dialog's sentence, published once.
+//
+// Mutation (Rule 19): drop the SCREENACCESS.LOWERED branch from `consequenceSentence` -> this goes red.
+test("the screen-permission lowering's consequence code resolves to its published sentence", () => {
+  const prohibited = readFileSync(join(uiRoot, '..', 'src', 'OcuPilot', 'Kernel', 'Proposal', 'Prohibited.cls'), 'utf8');
+  const declared = /^Parameter EFFECTSCREENLOWERED = "([^"]+)";/m.exec(prohibited);
+  assert.ok(declared, 'Prohibited.cls declares the lowering effect');
+  assert.equal(CONSEQUENCE_SCREENACCESSLOWERED, declared[1]);
+  assert.equal(consequenceSentence(CONSEQUENCE_SCREENACCESSLOWERED), STRINGS.screenPermissionsLowerConsequence);
 });
 
 // Story 18.15: an enable of interoperability is destructive with its own consequence, the typed-name

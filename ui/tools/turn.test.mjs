@@ -869,6 +869,7 @@ test('Failed tool: a failed step carries its reason and failedPair through resto
                 code: 'AUTH.NOPRIVILEGE',
                 reason: 'no privilege',
                 failedPair: '%Admin_Secure:USE',
+                failedScreen: 'webapp.list',
               }),
             ],
             stepsDropped: 0,
@@ -881,6 +882,7 @@ test('Failed tool: a failed step carries its reason and failedPair through resto
   await turn.restore();
   const entry = turn.entries()[0];
   assert.equal(entry.steps[0].failedPair, '%Admin_Secure:USE');
+  assert.equal(entry.steps[0].failedScreen, 'webapp.list');
   assert.equal(entry.steps[0].reason, 'no privilege');
 });
 

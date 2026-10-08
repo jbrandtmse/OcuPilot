@@ -10488,6 +10488,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-20-15-per-screen-permissions-seen-and-adjusted.md | severity: med | fix-risk: low | footprint: in-epic
 - evidence: ScreenAccessWire drives the row-action route; ScreenAccessDescriptor asserts declarations only (StateDiff, Reset PortQuery payload branch, ReadBackGone)
 - 2026-10-08T07:00:29Z status=routed owner=20-18-the-agent-proposes-permission-changes-and-refuses-on-a-scree by=harvest note=Story 20.18 advertises the tools and adds the run
+- 2026-10-08T14:28:07Z status=resolved-by:20-18-the-agent-proposes-permission-changes-and-refuses-on-a-scree owner=20-18-the-agent-proposes-permission-changes-and-refuses-on-a-scree by=adjudication note=aac4080b+review: ScreenAccessAgent drives the Raise, Lower, Reset and Confirm rows through Dispatch.Answer and Confirm.Confirm (stored diff, destructive, consequence, read-back, SecurityChange, agent marker); AC1 add-pair mutation red
 
 ### DW-2182: WireSecurityRead.TestTaskHistoryPairSetsAreEnforcedForARealPrincipal asserts nothing is cut at 1,000 rows, so it reddens on an instance holding more task-history rows (1,224 on ocupilot-b-ci)
 - source: cycle-log-epic-20.md (20.15 full sweep) | severity: med | fix-risk: low | footprint: out-of-footprint
@@ -10570,6 +10571,72 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: ScreenAccessPort.PAIRS (AdjusterSpec) is a sixth, AD-64-sanctioned carrier; a port copying it would pass PortGate and the roster. Navigate.ArgumentPairs carries the pair per call for the screenpermissions route, so ArgumentPairs cannot be read without exemptions. No stray exists today.
 - 2026-10-08T09:11:59Z status=wontfix-accepted owner=20-15-per-screen-permissions-seen-and-adjusted by=cr note=reopen_if=AdjusterPairs()/AdjusterSpec() called in src/OcuPilot code outside Gate, AgentScreenPermissions, ScreenAccessPort
 
+### DW-2207: The AUTH.NOPRIVILEGE prompt sentence tells the model to say the user cannot access the screen even on a refusal that names no screen
+- source: spec-20-18-the-agent-proposes-permission-changes-and-refuses-on-a-scree.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Prompt.cls BUILTIN's last sentence applies 'say that the user cannot access that screen' to every AUTH.NOPRIVILEGE; a {failedPair}-only refusal (screen open) reads the same; text is AC5's, joined with a semicolon per the one-sentence ruling
+- 2026-10-08T14:25:23Z status=by-design owner=20-18-the-agent-proposes-permission-changes-and-refuses-on-a-scree by=cr note=reopen via spec amendment if a live turn tells a user on an open screen they cannot access it
+
+### DW-2208: Screen form Save and Rules routes refuse a closed screen with {failedPair} only, while the same screen's tool refusal also names it
+- source: spec-20-18-the-agent-proposes-permission-changes-and-refuses-on-a-scree.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: e.g. Area/Security/X509Rules.cls and SuperserverSave.cls render Denial.Envelope(tFailedPair); AD-8 (20.18) names only the screen read route as carrying screen; Q2 ruled the screen action route and confirm out
+- 2026-10-08T14:25:23Z status=by-design owner=20-18-the-agent-proposes-permission-changes-and-refuses-on-a-scree by=cr note=Q2 A: the person is already on that screen; reopen if DenialParity extends to a form save route
+
+### DW-2209: A navigation (shell.screen.open) refused for a closed screen carries no failedScreen, so its card reads the pair alone
+- source: spec-20-18-the-agent-proposes-permission-changes-and-refuses-on-a-scree.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Loop.cls client-call refusal finishes the step without failedScreen; the spec's Boundaries keep the argument-pair leg and the client-call path unchanged
+- 2026-10-08T14:25:24Z status=by-design owner=20-18-the-agent-proposes-permission-changes-and-refuses-on-a-scree by=cr note=spec-bound (Boundaries: client-call path unchanged); reopen via a later story's spec
+
+### DW-2210: ScreenAccessTurn's 'no proposal row exists for the turn' cannot fail: the scripted remove carries empty input, which dispatch refuses TOOL.ARGUMENTS anyway
+- source: spec-20-18-the-agent-proposes-permission-changes-and-refuses-on-a-scree.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: ScreenAccessTurn.cls scripts osmgmt_locks_remove with input {}; ToolRoundTrip REFUSEEMPTY records osmgmt.locks.remove:TOOL.ARGUMENTS; AC8 is pinned by the step's code/pair/screen assertion
+- 2026-10-08T14:25:24Z status=wontfix-accepted owner=20-18-the-agent-proposes-permission-changes-and-refuses-on-a-scree by=cr note=reopen_if=a mutation admitting dispatch's screen leg leaves this test green with a removable lock listed
+
+### DW-2211: Context.Unavailable's per-tool requirement (a tool-only pair missing while the screen is open) has no test
+- source: spec-20-18-the-agent-proposes-permission-changes-and-refuses-on-a-scree.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: ScreenAccessTurn's principal holds %DB_IRISSYS:RW, so no leg has a usable screen with an unusable tool; evaluating the screen's pairs instead of each tool's stays green
+- 2026-10-08T14:25:24Z status=wontfix-accepted owner=20-18-the-agent-proposes-permission-changes-and-refuses-on-a-scree by=cr note=reopen_if=a principal lacking only a tool's own pair sees that tool absent from unavailable
+
+### DW-2212: verdict and unavailable are evaluated on the request process's roles, while dispatch checks the user's own grants
+- source: spec-20-18-the-agent-proposes-permission-changes-and-refuses-on-a-scree.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: Context.Unavailable uses Gate.EvaluatePairs and Navigation.SetVerdict ($System.Security.Check); Dispatch.MissingPair uses CheckUserPermission; they differ only if the process holds roles the user lacks
+- 2026-10-08T14:25:24Z status=by-design owner=20-18-the-agent-proposes-permission-changes-and-refuses-on-a-scree by=cr note=spec prescribes EvaluatePairs/SetVerdict (navigation's basis); real only if an OcuPilot app grants roles, which AD-10 refuses
+
+### DW-2213: ScreenAccessAgent and ScreenRefusal delete every screen adjustment before and after each test with no arming variable
+- source: spec-20-18-the-agent-proposes-permission-changes-and-refuses-on-a-scree.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: OnBeforeOneTest/OnAfterOneTest call Kernel.State.Access.DeleteAllGuarded unarmed, as 20.15's ScreenAccessGate does
+- 2026-10-08T14:25:24Z status=wontfix-theoretical owner=20-18-the-agent-proposes-permission-changes-and-refuses-on-a-scree by=cr note=real only on an instance with operator adjustments that compiles OcuPilot.Test; AD-17 removes them on a product start
+
+### DW-2214: After a mutation load and revert, web-started turns stopped offering the three screenpermissions tools until the throwaway restarted (unverified cause)
+- source: spec-20-18-the-agent-proposes-permission-changes-and-refuses-on-a-scree.md | severity: med | fix-risk: med | footprint: out-of-footprint
+- evidence: QA observed it on ocupilot-b-ci after an ADVERTISED mutation and revert (inference: pooled web process state); code review's two load/revert cycles did not reproduce it
+- 2026-10-08T14:25:24Z status=escalated owner=burndown by=cr note=unverified; settle by ADVERTISED 0->1 reload on a throwaway, then a web turn listing tools before any restart
+- 2026-10-08T15:48:14Z status=routed owner=burndown by=merge_gate note=orchestrator ruling 2026-10-08: kept open for Epic 20's burn-down; in a dev loop it is the known mutation-leaves-process-state pattern, but an IPM in-place upgrade recompiles without a restart, so the next release's upgrade check verifies new tools reach web-started turns after an in-place upgrade with no restart
+
+### DW-2220: A long user message and a long draft script in the agent panel have no collapsing assertion
+- source: spec-20-17-long-blocks-in-the-agent-panel-start-collapsed.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: panel.spec.ts uses a one-line user message; setting messageLines to 0 reddens nothing
+- 2026-10-08T16:35:17Z status=open owner=20-17-long-blocks-in-the-agent-panel-start-collapsed by=harvest note=in-story LOW: QA or the code review pins it (two-way door)
+- 2026-10-08T17:25:27Z status=resolved-by:20-17-long-blocks-in-the-agent-panel-start-collapsed owner=20-17-long-blocks-in-the-agent-panel-start-collapsed by=adjudication note=QA's two panel.spec.ts tests (ten-line user message, ten-line taken script) each start collapsed, aria-expanded false, aria-controls on the region, whole text in the page; mutations messageLines->0 and draftLines->0 red
+
+### DW-2224: The Agent area's Transcripts screen now collapses a tool-call card's long arguments and result under Show more
+- source: spec-20-17-long-blocks-in-the-agent-panel-start-collapsed.md (code review) | severity: med | fix-risk: low | footprint: in-story
+- evidence: transcript.page.ts:76 renders app-tool-call-card with no turnKey and ToolCallCard always wraps; the spec's Never says no collapse in the screens, while EXPERIENCE.md:631 amends the shared tool-call-card row and the spec keys a card given no turnKey
+- 2026-10-08T17:23:48Z status=by-design owner=20-17-long-blocks-in-the-agent-panel-start-collapsed by=cr note=shared card row EXPERIENCE.md:631 collapses; reopen via spec amendment if Transcripts must keep its 12-line scroll
+
+### DW-2225: A proposal card confirmed while its turn still polls may lose its output, read-back and compile outcome at the next poll
+- source: spec-20-17-long-blocks-in-the-agent-panel-start-collapsed.md (code review) | severity: med | fix-risk: med | footprint: out-of-footprint
+- evidence: TurnStore's live poll replaces liveEntry.proposals with parseProposals(body), which reads no output or readBack; recordProposalState sets them only at confirm (inference, pre-existing since 16.17 and 19.2)
+- 2026-10-08T17:23:49Z status=escalated owner=burndown by=cr note=unverified; settle by confirming a compile card before its turn ends on a throwaway and reading the card after the next poll
+
+### DW-2226: The Transcripts screen's context payload keeps its twelve-line cap through a rule no test reads
+- source: spec-20-17-long-blocks-in-the-agent-panel-start-collapsed.md (code review) | severity: low | fix-risk: low | footprint: in-story
+- evidence: _components.scss .ocu-transcript-context-payload now carries the cap .ocu-tool-call-result gave up; transcript.page.spec.ts and transcripts.browser-spec.mjs read text only
+- 2026-10-08T17:23:49Z status=wontfix-accepted owner=20-17-long-blocks-in-the-agent-panel-start-collapsed by=cr note=reopen_if=the Transcripts context payload renders taller than 12 lines on ocupilot-b-ci
+
+### DW-2227: CI flake: proposal-confirm.browser-spec.mjs AC10 read the Confirm button still present at the moment the status line had taken focus (one evaluate after waitForSelector on the status line)
+- source: cycle-log-epic-20.md (run 37803753942 attempt 1) | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: Red in browser shard 2/3 on 20bf830a; the spec passed in 20.18's run 37793652932 and 3/3 locally on ocupilot-b-ci with 20bf830a's own bundle and source (inference: timing between focus landing and the buttons' removal)
+- 2026-10-08T17:28:59Z status=routed owner=23-5-the-range-end-cleanup-part-5 by=lead note=wait for the outgoing buttons to be gone (waitForFunction) before reading focus, rather than reading both in one evaluate
 ### DW-2215: IRIS defect candidate: the admin API's Security.SQLPrivilege.Admin GRANT of %DEFER, a name its own GetPrivNum maps (32), answers 500 with #514 Invalid privilege '%DEFER' at action GrantAdminPrivilege property AdminPriv, and an %All holder's admin LIST omits it
 - source: spec-18-28-sql-column-and-admin-privileges.md | severity: low | fix-risk: high | footprint: out-of-footprint
 - evidence: ocupilot-ci 2026-10-08 (18.28 code review): port and vendor GRANT of %DEFER answered 500 #514 for a probe user; the other 31 names grant, list Direct and revoke (run 698); _SYSTEM's admin LIST answers 31 rows

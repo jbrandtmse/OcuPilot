@@ -4,14 +4,12 @@
 
 ## Goal
 
-Give interoperability developers and operators their area inside OcuPilot, where the vendor's new UI covers it only partly. The Interoperability category appears only in namespaces that support it. It covers productions, items, per-host tabs, queues and jobs, lookup tables, tests, messages, and the vendor's rule, BPL and DTL editors and schema viewers embedded in place. An Analytics rider adds cube listing, the model browser, the MDX tool and the cube manager. The owner's 2026-10-07 decisions widen the epic. Interoperability-only accounts are admitted once every screen has its own permission check. A screen's permission is visible and adjustable, and the agent proposes such changes but refuses on a screen the user cannot open. The agent may propose class, routine, rule, DTL and BPL source edits and creates, each on the person's confirmation. The agent also gains guided workflows and Investigate runs. Every feature keeps the post-Release-1 contract: one descriptor per screen, one port per backing system, and every write a confirmed proposal made as the signed-in user. Embedding never weakens the origin, and no password ever crosses into a frame.
+Bring the classic portal's Interoperability work into OcuPilot for namespaces that support it: productions and their items, per-host tabs, queues and jobs, lookup tables and business partners, host and transformation testing, message search, resend and trace, schema viewers, and the vendor's rule, BPL and DTL editors embedded in place. Analytics rides along with cubes, the model browser, the MDX tool and the cube manager. The agent grows with the stage: guided multistep workflows and Investigate, screen-permission proposals, rule, DTL and BPL edits, and, on the owner's reversal of the person-only code save, reading class and routine source, saving confirmed edits to it and creating new documents. Owner-added stories make each screen's required permission visible and adjustable and keep long agent-panel content readable.
 
 ## Stories
 
-Run order: 20.1, 20.2, 20.14, 20.15, 20.18, 20.17, 20.3 to 20.6, 20.13, 20.7, 20.16, 20.8 to 20.12. Stories 20.1, 20.2, 20.14 and 20.15 are done.
-
-- Story 20.1: Namespace category gating (done)
-- Story 20.2: Productions, listed and controlled (done)
+- Story 20.1: Namespace category gating
+- Story 20.2: Productions, listed and controlled
 - Story 20.3: Production items
 - Story 20.4: Per-host tabs, the monitor, queues and jobs
 - Story 20.5: Lookup tables and business partners
@@ -23,137 +21,54 @@ Run order: 20.1, 20.2, 20.14, 20.15, 20.18, 20.17, 20.3 to 20.6, 20.13, 20.7, 20
 - Story 20.11: The Analytics rider
 - Story 20.12: The agent gains guided workflows and Investigate
 - Story 20.13: The sign-in hand-off to the embedded vendor editors
-- Story 20.14: Interoperability holders reach OcuPilot (done)
-- Story 20.15: Per-screen permissions, seen and adjusted (done)
+- Story 20.14: Interoperability holders reach OcuPilot
+- Story 20.15: Per-screen permissions, seen and adjusted
 - Story 20.16: The agent edits rule, DTL and BPL content behind the embedded editors
-- Story 20.17: The agent proposes class and routine source edits, on the person's confirmation
+- Story 20.17: Long blocks in the agent panel start collapsed
 - Story 20.18: The agent proposes permission changes and refuses on a screen the user cannot open
+- Story 20.19: The agent reads class and routine source
+- Story 20.20: The agent creates new classes and routines, on the person's confirmation
+- Story 20.21: The agent saves edits to existing classes and routines
 
 ## Requirements & Constraints
 
-- **The contract every screen keeps (FR-80).** Acceptance is this contract plus each row's own backing route.
-  - One descriptor per screen, and exactly one port to the outside.
-  - The read tool comes from the descriptor, and write field lists are derived, never hand-typed.
-  - Every write is a server-minted proposal with an instance-computed diff, an explicit confirmation and an agent marker.
-  - Every read is bounded and reports truncation, and every gate checks the caller's own privileges at call time.
-- **Scope.** The epic covers 41 catalog rows: SH-23, SH-25, CP-37, CP-38, IO-02 to IO-29 and AN-02 to AN-10, plus the owner's Stories 20.14 to 20.18. Vendor bundles load in place from `/ui/interop/<app>/index.html`. They are never copied, and they carry no license text.
-- **The owner's decisions of 2026-10-07.**
-  - **DW-2141 is decided as AD-63, option A.** The editors load in a same-origin frame in normal mode; see Technical Decisions.
-  - **DW-2140 is decided as Story 20.14, shipped (AD-8 amended).** The API floor admits `%Ens_Portal:USE` holders. Such a caller, holding no `%Admin_*` and no `%Development:USE`, reaches exactly the surfaces whose own pairs they hold. `AtelierPort`'s gate adds `%Development:USE`, so SH-25's Atelier-backed features would refuse operators (inference).
-  - **"Agent starts switched on."** The governance keys of 20.15, 20.16 and 20.17 ship enabled. Every other new destructive key still ships disabled (AD-22), and each new write key joins `Kernel/Governance/Baseline.cls` in the same change.
-- **Story 20.18 must build** (the agent half of 20.15, split at its merge gate):
-  - Advertise `agent.screenpermissions.addpair`, `.removepair` and `.reset`. The card shows the pairs before and after and the "requires" line. Confirming writes the agent marker and `SecurityChange`.
-  - Mint the agent's lowering as a delete is: the destructive treatment, with no typed name (AD-10's privilege-grant precedent).
-  - When the user lacks a write tool's screen's effective pairs, an adjustment included, dispatch refuses before any mint, naming the screen and the failed pair. The prompt says the user cannot access that screen and proposes nothing. The demo operator's refusal names the screen too.
-  - Screen context carries the current screen's own verdict, derived on the instance, and marks which of its tools the user cannot use.
-  - An integration turn, run as a principal lacking an adjusted screen's pair, is refused at that screen, creates no proposal row, and completes.
-  - DW-2181: run the tools' agent propose-and-confirm path end to end (the state diff, `Reset`'s port-query payload branch, the gone read-back). It was declared and never run.
-  - Starting point, read at 20.15's plan: dispatch already refuses a missing pair with `AUTH.NOPRIVILEGE` and `detail.failedPair` before any mint, and follows an adjustment. Screen context's `tools` is unfiltered, the prompt has no `AUTH.NOPRIVILEGE` line, and the card's "requires" line is a mint snapshot while the confirm re-gates live.
-- **Still unproven, so settle each before building on it.**
-  - The Analytics rider needs a DeepSee-enabled namespace for everything except its three links. Measured on `ocupilot-b-ci`: HSLIB and HSSYS report analytics, HSCUSTOM and USER report interoperability only, and `%SYS` reports neither.
-  - The schema viewer's document parameter (20.8), and the interop editor's `HOST=` and `NEW=1` parameters, which are inferred only from selector names.
-- **Four rows ship read-only first**, because their actions need custom endpoints: queue actions (`Ens.Queue`), job actions (`Ens.Job`), business-partner save and remove (`Ens.Config.BusinessPartner`), and the message-contents renderer. Such a read is a stated partial, not a completed row.
-- **Budgets.** The bundle warns at 3165 kB and errors at 4000 kB (`ui/angular.json`), and stands at about 3.12 MB. The Fixed-strings bound is 3000 literals (`ui/tools/strings.test.mjs`). Each move of the bound carries a comment.
+- **One build contract.** Each screen has one descriptor and reaches the instance through one declared port; acceptance is that contract plus each row's own backing route. Every agent write is a server-minted proposal with an instance-computed diff, an explicit Confirm and an agent marker. A new destructive governance key ships disabled. The owner set these keys enabled: the screen-permission tools, rule, DTL and BPL edits, and class and routine saves and creates.
+- **Vendor bundles are never copied or redistributed;** they load in place from the instance.
+- **Read-only first, as a stated partial:** queue and job actions (abort, abort all, suspend, stop), business-partner save and remove, and the message-contents renderer each need custom endpoints.
+- **Writes with extra rules.** Message resend and edit-and-resend take a dry run, then a confirm, with a bounded cap per action. A transformation test is a confirmed write because it executes code. A cube build, synchronize or repair is the one analytics write; Architect, Analyzer and the User Portal are linked, not rebuilt; anything beyond links needs a DeepSee-enabled namespace.
+- **Guided workflows** are a sequence of individually confirmed proposals, never a batch approval; the prohibited set, both agent switches and governance are evaluated at every write. Investigate, from an alert or a log entry, returns a recap and ranked hypotheses citing the rows it used. Harvested prompts take OcuPilot's names: no `iris_` prefix, no sibling package names.
+- **Agent source read (20.19).** A read tool returns a class's or routine's source capped at about 60,000 characters, cut at whole lines, through the tool-result sanitizer, reporting truncation. The text goes to the configured model provider (owner: "Yes it should send the code"); there is no on/off switch for it. The two new read tools follow the `<area>.<screen>.<verb>` naming convention, which allows one `read` per screen, or the spec says why not. Every existing save, delete and import key is unchanged.
+- **Agent saves (20.21).** `explorer.classes.save` and `explorer.routines.save` become advertised, agent-offered confirmed writes with enabled keys. The card shows the whole diff and says the compile runs on Confirm. Confirm is refused if the document changed after the mint. After Confirm the compile results are reported, a saved-but-not-compiled document is said plainly, and the marker is written.
+- **Refused to the agent, at the mint and again at Confirm, before anything is written:** documents under OcuPilot's own packages (new names too), every `%` name, system classes and the read-only system databases, any document in `%SYS`, and any document not stored in its namespace's own routines database. A mapped document's refusal names where it lives and says the person can save it from the editor. `explorer.sqldata.save` stays person-only and unadvertised. A person's own Save is unchanged.
+- **Agent creates (20.20).** The card shows the whole new document and its compile outcome. The fingerprint is the name's absence, so a create never overwrites. A create targets the user's current namespace and needs write access to its code database, settled against the screen's effective pairs; its key ships enabled.
+- **Rule, DTL and BPL edits (20.16).** Warn the user to save the editor first, because OcuPilot cannot read the frame's unsaved state; then read the stored content and propose the edit with diff and marker, refused if the stored content changed after the mint; reload the editor after the write. Raise a typed-name confirmation only for a concrete reason.
+- **Posture questions go up.** Any further security-posture question a plan finds returns to the orchestrator with options and a recommendation.
 
 ## Technical Decisions
 
-- **Everything is in process (AD-1, AD-36).** A screen and its tool share one declared read through a port. No browser or tool calls `/api/interop-editors` or `/api/deepsee`. Only AD-57's try-it console uses a JWT application's reach, and it is not the write path.
-- **AD-62 `Port/InteropPort` is the only way to interoperability.** Every Interoperability screen, read tool and write tool goes through it.
-  - **What it calls.** It calls `Ens.Director`, `Ens.Config.Production:ProductionStatus` and `%Dictionary.ClassDefinition:SubclassOf`, as the signed-in user. It never calls `%Api.InteropEditors.*`, whose state route lacks update and restart, answers an unknown state with success, and is `[Hidden]`. It never calls `CleanProduction`, and never makes an HTTP call.
-  - **Gate first (AD-29).** The port checks the endpoint's pairs, then READ on the namespace's globals database, or WRITE for a write, and names the failed pair. The vendor's reads check nothing, so this gate is the whole gate for a read.
-  - **Namespace (AD-16, AD-44).** The namespace must report interoperability (`INTEROP.NAMESPACE` otherwise). The port switches by explicit save and restore, and calls no `OcuPilot.*` class while switched. DW-2161 is accepted as wontfix: a confirm from a different namespace than the mint resolves the tool's database pair in the confirming request's scope, and the port re-gates the correct namespace.
-  - **Escalation (AD-8).** The vendor escalates; OcuPilot never does. `%SYS.Ensemble` checks the caller's run resource, then runs start, stop, restart and update as `_Ensemble`. Recover runs as the caller.
-  - **Writes are action-style (AD-51)** over a port-composed `STATE` read. Each refuses by name, before any vendor call, every state the vendor would answer as a silent success. Each finishes in its own request (AD-7): the production's own timeout is capped at 15 s, a busy production is refused (`INTEROP.PRODUCTION.BUSY`) and left as it was, and no job is spawned.
-  - **Pairs beyond the screens' sets.** The production tools declare `%Ens_ProductionRun:USE` and WRITE on the globals database. The rules, transformations and processes lists declare `%Ens_Code:READ`, standing in for the classic page's OR list. That is a named narrower audience, as is Update for a holder of only `%Ens_ConfigItemRun`.
-  - **Source kind `interop`.** Today it offers `LIST` on four endpoints, with no criteria, detail call or parts. A `production` id is the class name, kept exactly (AD-13). Anything beyond this vocabulary amends AD-62 and AD-36 at the story's spec gate.
-- **What 20.2 shipped.** `Port/InteropPort`, with new interop codes in `Api/InteropError.cls`; the `production` entity type; four `ListPage` screens (`interop.productions`, `.processes`, `.transforms`, `.rules`); five non-destructive, enabled tools (`interop.productions.start`, `.stop`, `.restart`, `.update`, `.recover`) over `Screen/Tool/InteropProductionAction`. Probe productions come from `Test/ProductionProbe`, because `Test/InteropProbe` belongs to Story 18.15.
-- **What 20.14 shipped, and the rule it sets for every later story.**
-  - `Screen.Gate.FloorResources()` ends with `%Ens_Portal`.
-  - A surface's own pair is any pair on a resource other than `%Ens_Portal`. A surface with none is listed, with its reason, in `Test.InteropFloorOwnPairs`' `FLOORONLY` roster.
-  - `Test.InteropFloor`, `InteropFloorRoutes` and `InteropFloorTurn` pin four principals' rosters: E (`%Ens_Portal` only), `%EnsRole_Monitor`, `_Operator` and `_Administrator`.
-  - Every new Interoperability or Analytics screen, tool or route either declares its own pair or joins `FLOORONLY` with its reason. A new surface whose pairs a stock `%EnsRole_*` grants joins those principals' rosters in its own story.
-- **What 20.15 shipped (AD-64).**
-  - **Store and one reader.** `Kernel/State/Access` holds one instance-wide row per adjusted screen, keyed by `toolIdentifier`, replacing its declared `privileges`. `Screen.Gate.RequiredPairs` is its one reader, on every call, never cached; a failed read refuses. Every screen, area, read, tool, dispatch, confirm and route gate follows an adjustment. A write tool's own extra pairs and `CLASSICPAGES` resources are added on top, unchanged.
-  - **The classic custom resource stays.** `RequiredPairs` unions the classic page's custom resource (AD-44), which only the classic portal clears. OcuPilot never writes `%SYS.Portal.Resources`.
-  - **Screen permissions** (`agent.screenpermissions`, source kind `access`, entity type `screen-permission`) lists every built screen's declared pairs, adjustment, classic resource and effective pairs. Its write tools `.addpair` and `.removepair` apply one `Pair` as a server-side delta over the fresh read, and `.reset` clears the row, all through `Port/ScreenAccessPort`. The tools are unadvertised until 20.18, and their keys ship enabled.
-  - **The either-of.** Screen permissions, its read and its three tools admit `%Development:USE` OR `%Admin_Secure:USE` (owner, 2026-10-08), AD-8's one either-of exception. It is one pair whose resource is `%Development|%Admin_Secure` (`Gate.AdjusterPairs`); `Gate.Alternatives` splits only that pair. A refusal names both. Never generalize descriptors to any-of.
-  - **Never adjustable.** Ports' and the vendor's checks, an area's set, and the Home and Agent co-pilot groups (`Screen.Gate.Adjustable`), refused `PROHIBITED.OCUPILOTSCREEN`. A set holds 1 to 8 pairs on defined resources at READ, WRITE or USE; an emptying set is refused 422 `ACCESS.PAIRS.EMPTY`.
-  - **Audit.** Each adjustment records `OcuPilot/Security/SecurityChange` with the pairs before and after, plus the agent's marker for an agent write.
-  - **Client.** No client code derives availability from the mirror's `privileges`. The shell re-reads the navigation map on a `screen-permission` change event.
-- **Tests and browser specs.**
-  - A test that adjusts a screen resets it in its `OnAfter*` method.
-  - Anything read before the navigation map answers waits for `waitForMapAnswered(page, timeoutMs)` from `ui/browser/namespace-features.mjs`. A structural gate measured right after `setViewport` can flake (DW-2163, outside this epic).
-  - A browser spec holds whatever another spec left on the instance: never assert a store empty that another spec can write (20.14's secondary-logs lesson). A long-lived throwaway accumulates rows (DW-2182).
-- **Audit gaps (AD-15, AD-53).** Production update and recover record no vendor event; start, stop and restart record `%Ensemble/%Production/StartStop`. These are AD-15's nineteenth named case and AD-53's named gap twenty. Measure every new write with auditing on, and name a gap where the vendor is silent.
-- **AD-63: the vendor editors in a same-origin frame (Story 20.13, and every embed in 20.7, 20.8 and 20.10).**
-  - **Fixed source.** The frame loads `/ui/interop/<editor>/index.html` on the instance's own origin, with only the editor's own query parameters. Their values come from a read OcuPilot answered, never from a person's text. Example: `rule-editor/index.html?$NAMESPACE=<ns>&rule=<class>`.
-  - **Normal mode only.** Never use `?VSCODE=1`, whose message listener accepts a username and password from any sender. Never pre-write tokens into the editor's storage.
-  - **OcuPilot reaches nothing in the frame.** It posts nothing, reads nothing, and touches no storage or messages there. The editor signs itself in from the browser-level login.
-  - **Sign-out and sandboxing.** Sign-out ends the editors' sign-in. The frame is not sandboxed, because a sandboxed frame never signs in.
-  - **Accepted consequence.** The editor's script can read the tab's `ocupilot.token-pair`, no more than any same-origin code gets. Saved and compiled notices exist only in VSCODE mode, so 20.7 re-scopes its messages criterion, and a reload after an agent write (20.16) has to come from the host side (inference).
-- **AD-53 reversed (Story 20.17).**
-  - `explorer.classes.save` and `explorer.routines.save` become advertised, agent-offered confirmed writes, with their keys enabled. They stay unadvertised until 20.17 ships.
-  - The card shows the whole diff and the compile outcome, and a confirm is refused if the document changed after the mint (ETag or fingerprint).
-  - A create shows the whole new document, fingerprints the name's absence (AD-54), and targets the current namespace, which needs write access to its code database, settled against the screen's effective pairs.
-  - Unchanged: AD-10 refuses OcuPilot's own packages (new names included), system and `%` names, and the read-only system databases. `explorer.sqldata.save` stays person-only and unadvertised.
-  - 20.16 applies the same pattern to rule, DTL and BPL content: warn the person to save the editor first, then read the stored content, propose with the diff and the marker, refuse a stale confirm, and reload the editor.
-- **Privileges (AD-8, AD-29, AD-44).**
-  - Establish a pair set two ways: read the backing class's own check, then run the read as a least-privileged principal on the throwaway.
-  - The Interoperability area declares `%Ens_Portal:USE`. Analytics declares `%DeepSee_Portal:USE`, which is public `U`, so each 20.11 screen declares its classic page's resource as its own pair.
-  - A descriptor names the classic page it replaces, and its pairs union that page's resource. `AreaCoverageProblem` holds an area's set to its screens' pairs. A tool lists the other pages it performs in `CLASSICPAGES`.
-- **From 20.1.** `Kernel/Shell/NamespaceFeatures` provides `Reports` and `Applies(feature, ns)`; neither switches namespace or escalates. In `Screen/Area.cls`, `interoperability` sits at rail position 9 and `analytics` at 10; a new screen joins its area and inherits its `appliesWhen`. The client's `NavigationService` fails closed on applicability and re-reads on a namespace change; no component computes applicability.
-- **Write kinds (AD-52: each declares its port).**
-  - Action-style (AD-51): control actions, enable and disable.
-  - Create (AD-54): an added item, a new lookup table, a new class.
-  - Merge (AD-4): item settings, though whether the vendor's save keeps keys its body omits is unmeasured.
-  - Every write reads its target back (AD-58), and a port that defines `Invoke` needs a `Snippet` for each branch (AD-59).
-  - A screen action and the agent's write are one operation (AD-53, AD-55).
-  - Any write that cannot finish within the request has no spine path yet (inference).
-- **Identity and content.**
-  - New entity types join the kernel's closed enum (AD-14) with a canonical-spelling rule (AD-13). A production item is a composite id in one path segment, scoped to the route's namespace (AD-44).
-  - Event text, message content and production, item and class names are untrusted (AD-11) and pass the sanitizer (AD-60).
-  - Message bodies can hold patient data, so they stay screen-only (inference).
-  - Lookup-table import and export carry content, never a server path (AD-21).
-- **Workflows and Investigate.** The turn job never mutates (AD-7), so Investigate is read-only. Confirming a proposal cancels its siblings (AD-34), and a proposal dies with its turn (AD-40). So a workflow mints each write only after the previous one is confirmed, never as a batch approval (inference). The prohibited set, both switches and the governance policy are still evaluated at each write.
-- **Harvest.** Take handler bodies only from the MCP suite, and rename every `ExecuteMCPv2` name: `REST/Interop.cls` and `REST/Analytics.cls`; `REST/MessageResend.cls` (`dryRun` defaults to true, executing needs `confirm`, a match over 100 ids or 500 messages within a 7-day window is refused); `Diagram/*` for 20.9's sequence diagram.
+- **Interoperability port.** The only class that starts, stops, restarts, updates or recovers a production, and the only declared-read source for interoperability configuration (source kind `interop`). It calls `Ens.Director`, `Ens.Config.Production:ProductionStatus` and `%Dictionary.ClassDefinition:SubclassOf` in the caller's process, never `%Api.InteropEditors.*`. Gate first: the endpoint's pairs, READ on the namespace's globals database (WRITE for a write), and `%Ens_ProductionRun:USE` for a production write; the vendor's reads check nothing, so this gate is the whole gate. The namespace must report interoperability; switch by explicit save and restore and call no OcuPilot class while switched. Writes are action-style over a port-composed STATE read, refuse a would-be silent no-op by name, finish in their own request (stop, restart and update capped at 15 s, else `INTEROP.PRODUCTION.BUSY`), and add no spawn site. Recover, never Clean. A `production` id is the class name, kept exactly. Code lists declare `%Ens_Code:READ`.
+- **Category gating and the floor.** A rail area declares `appliesWhen` (`interoperability` = `%Library.EnsembleMgr.IsEnsembleNamespace`, `analytics` = `%DeepSee.Utils.%IsDeepSeeEnabled`), read per navigation for the route's namespace; applicability, not privilege. The API floor admits `%Ens_Portal:USE` beside `%Admin_*` and `%Development`. Every new surface declares its own pair matching its classic page's check, and the `InteropFloor*` rosters pin it. `%DeepSee_Portal` is public USE and can never be the floor.
+- **Embedded editors.** A same-origin `<iframe>` at `/ui/interop/<editor>/index.html` carrying only the editor's own query parameters, with values from a read OcuPilot answered. Normal mode only: never `?VSCODE=1`, never tokens pre-written into the editor's storage. OcuPilot posts nothing into the frame, reads nothing from it, and touches none of its storage or messages. The frame is not sandboxed (a sandboxed frame never signs in). Sign-out ends the editors' sign-in. Saved, compiled and invalid notices are unavailable in normal mode.
+- **Screen permissions.** `Screen.Gate.RequiredPairs` is the one reader of a screen's requirement, uncached, always unioning the classic page's custom resource; every gate reaches a screen's pairs through it. Screen context carries the screen's `verdict` and the `unavailable` tools, and a privilege refusal names the screen. The client never derives availability from the generated mirror.
+- **Code reads and writes go through the Atelier port.** Its gate is `%Development:USE` plus READ on the namespace's routines and globals databases and every mapped code database except IRISSYS; a write also needs WRITE on the target namespace's routines-database resource. A save seeds If-None-Match with the version it read and never sends `ignoreConflict`. 409 is `EXPLORER.DOCUMENT.CONFLICT`, 423 `EXPLORER.DOCUMENT.LOCKED`, and a refused save under a 2xx `EXPLORER.SAVE.REFUSED`. Compile console lines reach the screen and the proposal card only, never the model, the ledger or a log. Documents named `OcuPilot*` are refused `PROHIBITED.OCUPILOTCODE` from either caller.
+- **Creates** are a first-class write kind: the fresh read must find the target absent, and Confirm re-reads and refuses if the name was taken since the mint.
+- **Write-path patterns, reused unchanged.** A screen action and the agent's write are one operation through one tool; the screen caller mints no proposal, emits no marker and is not gated by the agent's switches. Every write reads its target back. A write tool declares pairs beyond its screen's set only where measured on the instance.
+- **Text bound for the model.** Every tool result passes one sanitizer when the turn's history is built. Reads are bounded at 65,536 characters in total and 1,000 per field. The spine still says a document's whole text is a screen-only payload that never reaches a tool, so 20.19's spec gate amends that rule; the ~60,000-character read also exceeds the per-field bound and needs a named exception (inference).
+- **Spine text that predates the 2026-10-08 split.** The architecture's same-operation decision still says Story 20.19 makes both Saves agent-offered and that they stay unadvertised until 20.19 ships; the saves are now 20.21's, and its spec gate rewrites that line. Story 19.3's pointer note in the epics file still names 20.17.
+- **Measure, don't assume.** Settle a pair set from the classic page's own check and a least-privileged principal on a throwaway; amend the spine at the spec gate rather than working around it.
 
 ## UX & Interaction Patterns
 
-- **Navigation.**
-  - The rail draws eleven items where both categories apply and nine where neither does, with Agent co-pilot pinned to the bottom. Home shows one tile per applying area, seven to nine.
-  - Interoperability's side bar reads Productions · Business processes · Data transformations · Business rules, and lists only built screens.
-  - A namespace switch re-fetches rather than re-routes.
-  - Per-host tabs are one descriptor per tab, grouped by `tab` and parent-scoped (AD-5).
-- **Confirmations.**
-  - A destructive write takes the typed-name confirmation, except the agent's screen-permission lowering (20.18), which gets the destructive treatment with no typed name. A person's lowering states its consequence at the dialog.
-  - The five production writes are non-destructive and show warning dialogs whose text is also the card's consequence line.
-  - Recover's card says recover comes before clean. A resend's card shows its dry run.
-  - Cards name the required privileges (AD-8), and dialogs never stack.
-- **Long blocks in the agent panel (20.17, panel-wide).**
-  - A block over about eight lines starts collapsed behind "Show more" / "Show less". The control is keyboard-operable and announces its state, and an expanded block stays expanded across re-renders.
-  - A collapsed card always shows a summary line, such as "AcmeApp.Orders.cls: +42 / -3 lines", plus the compile outcome, and Confirm never requires expanding.
-  - EXPERIENCE.md is amended at 20.17's spec gate. The plan may split the collapse into its own story, ordered first.
-- **Strings and prompts.** Each new literal goes into EXPERIENCE.md's Fixed strings and `strings.ts`, and each built screen declares at least three suggested prompts. After editing EXPERIENCE.md or epics.md, run `cd ui && npm run test:tools`.
-- **Investigate** starts from alerts and log entries, beside the unified log hub (16.9). It reuses Explain this entry's marker (AD-24) and cites rows with citation chips (AD-11).
+- **Rail.** Interoperability and Analytics follow System Explorer and are drawn only where the namespace reports the feature. The Interoperability side bar starts Productions, Business processes, Data transformations, Business rules; Screen permissions sits under Agent co-pilot.
+- **Gated controls are never hidden:** focusable, `aria-disabled`, naming the failed pair.
+- **Long blocks.** A transcript block over eight lines (each further 80 characters of a line counts as another) starts collapsed behind a native Show more / Show less button with `aria-expanded` and `aria-controls`; a streaming reply never collapses. A proposal card holding a long block shows a summary line naming what changes and how big, plus the compile outcome once one has run; Confirm never requires expanding.
+- **Proposal cards** follow the standard lifecycle. Production cards carry recover-before-clean guidance. An agent's destructive card uses the destructive Confirm with no typed name.
+- **Embeds and viewers.** The production configuration diagram renders in place, its sibling editors opening in new tabs. The HL7, X12 and ASTM schema browsers are read-only, their document-selection parameter established against the instance. A session trace renders visually, with a generated sequence diagram as the alternative.
 
 ## Cross-Story Dependencies
 
-- **Within the epic.**
-  - **20.18** runs next and builds on 20.15's store, gate and tools.
-  - **20.17** follows 20.18 and depends on its refusal at dispatch. Its create is settled against the screen's effective pairs from 20.15.
-  - **20.3 to 20.6, 20.9 and 20.12** extend `InteropPort` and the `production` entity. 20.12's recover-stuck-production workflow uses `interop.productions.recover` and `.start`. 20.9 resends what recover marked.
-  - **20.3 owns DW-2157 and DW-2162.** A stop answers the state its post-write read finds, with new `INTEROP.*` codes and Fixed-strings sentences for a production that ends Suspended, or half-stopped past the 15 s cap.
-  - **20.13** runs before 20.7 and gates the embeds in 20.7, 20.8 and 20.10, and 20.9's contents viewer if it embeds.
-  - **20.16** follows 20.7 and builds on 20.17. **20.10** needs 20.7's editors.
-  - **20.11** sits under the Analytics area's pair set and `AreaCoverageProblem`.
-- **Prerequisites.** Epics 11 and 12 are merged. Epic 19 is done, and 20.17 builds on its Story 19.3 saves (`Screen/Tool/ExplorerClassSave`, `ExplorerRoutineSave`). Sprint planning passed with CONCERNS.
-- **Parallel run.** Epic 20 runs whole on slot B. Slot A runs the rest of Epic 18 (18.9 to 18.13, burn-down 18.28), then Story 23.5. 18.25 and 18.26 are merged into this branch, and 18.27 closed unbuilt.
-  - The branch holds 62 entity types, written out in `Test/Descriptor`, `Test/MftConnectionDescriptor` and `Test/SuperserverDescriptor`; a new type bumps all three.
-  - 18.12 overlaps 20.12 in the tool registry, and 18.13 overlaps `navigation.ts`. Whichever merges second rebases.
-  - Keep shared-file edits add-only: `Baseline.cls`, `strings.ts`, EXPERIENCE.md, `SurfaceCoverage`, `Prohibited.cls`, the `Api/Error.cls` prefix lines, and the count bumps in `EntityType.cls`, the three descriptor tests above and `Test/ReadTool.cls`. The second epic to merge regenerates `screens.generated.ts` whole.
-- **Slot B.**
-  - Use profile `ocupilot-slot-b`, and throwaway `ocupilot-b-ci` on 52777/1976.
-  - Before loading, sync the worktree's `src` into `/Users/jbrandt/.ocupilot-throwaways/ocupilot-b-ci/src`, then load through `docker exec ocupilot-b-ci`. Never use the MCP loader for this, because it reaches the dev instance.
-  - Run one test class per call (`node tools/ci-runner.mjs --container ocupilot-b-ci --class ...`).
-  - Before any browser run, rebuild the bundle and `docker cp` it in, with `OCUPILOT_BROWSER_ORIGIN=http://localhost:52777` and `OCUPILOT_BROWSER_CONTAINER=ocupilot-b-ci`.
-  - Never restart an `ocupilot-slot-*` container.
+- **Done:** 20.1, 20.2, 20.14, 20.15, 20.17, 20.18. **Order:** 20.19, then 20.21, then 20.20, then 20.3 to 20.6.
+- **Agent code work.** 20.21 starts with 20.19's source read in place. 20.19, 20.21 and 20.20 rely on 20.18's refusal to propose on a screen the user cannot open, 20.17's collapse and summary line, 20.15's effective pairs, and Epic 19's Atelier port and person Saves.
+- **Embeds.** 20.13 gates 20.7, 20.8 and 20.10. 20.16 follows 20.7 and builds on the agent's source read and saves (20.19, 20.21; its epics note still names the pre-split 20.17).
+- **Interoperability screens.** 20.3 to 20.6 and 20.9 build on the interoperability port and 20.2's production screens.
+- **Into Epic 21.** Epic 21 reuses 20.12's diagnose-slow-query workflow.
