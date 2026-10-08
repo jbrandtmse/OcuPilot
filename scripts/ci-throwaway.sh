@@ -316,6 +316,7 @@ services:
       # The Screen permissions classes sign in as Dev (a %Developer), Sec (%Admin_Secure without
       # %Development) and Op (an operator holding neither) and adjust screens' required pairs (Story 20.15).
       # classes: ScreenAccessFixture, ScreenAccessWire, ScreenAccessRefusals
+      # classes: ScreenAccessTurn
       # The System Explorer write gate class signs in as principals holding READ, READ and WRITE,
       # and the %Developer role on a namespace's code database, and compiles and deletes probes.
       # classes: AtelierPortWriteDenial
@@ -519,6 +520,7 @@ services:
       # classes: EgressLine
       # classes: DeveloperFloorTurn
       # classes: InteropFloorTurn
+      # classes: ScreenAccessTurn
       # classes: AgentPickTurn, SqlAgentRead
       OCUPILOT_ALLOW_TEST_PROVIDER: "1"
       # Purges the instance's own audit database through the shipped screen route: every record

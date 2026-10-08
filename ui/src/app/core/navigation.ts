@@ -535,6 +535,11 @@ export function screenForToolName(tool: string): ScreenDeclaration | null {
   return SCREENS.find((screen) => screen.toolIdentifier === identifier) ?? null;
 }
 
+/** The screen whose `toolIdentifier` is exactly `identifier`, or `null` when the mirror does not know it. */
+export function screenForToolIdentifier(identifier: string): ScreenDeclaration | null {
+  return SCREENS.find((screen) => screen.toolIdentifier === identifier) ?? null;
+}
+
 /**
  * The two halves of a reference a caller tests a screen against: the entity type and the resolved
  * scope (AD-13). Structural, so a `ChangeEvent` and a toast entry both satisfy it without either

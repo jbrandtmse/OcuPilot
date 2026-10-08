@@ -137,6 +137,8 @@ export interface TurnStep {
   readonly result: TurnStepResult | null;
   readonly reason: string;
   readonly failedPair: string;
+  /** The `toolIdentifier` of the screen a privilege refusal names (`detail.screen`), when it names one. */
+  readonly failedScreen?: string;
   /**
    * A confirmed write's own marker outcome (AD-15), or `null` for every step the instance sent.
    *
@@ -544,6 +546,7 @@ export function parseStep(value: unknown): TurnStep | null {
     result: parseStepResult(row['result']),
     reason: textAt(row, 'reason'),
     failedPair: textAt(row, 'failedPair'),
+    failedScreen: textAt(row, 'failedScreen'),
     // The progress payload carries no marker outcome: a marker belongs to a confirmed write, which
     // is a foreground request and not a step of the turn.
     auditMarked: null,

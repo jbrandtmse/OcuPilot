@@ -241,6 +241,37 @@ ClassMethod ScreenTools(pDescriptor As %String, Output pTools As %DynamicArray) 
     Quit tSC
 }
 
+/// <p>The tools in <var>pTools</var> (wire names, as <method>ScreenTools</method> answers them) the
+/// calling process's user cannot use, as <var>pUnavailable</var>: an object mapping each such wire name
+/// to the first pair of the tool's declared requirement
+/// (<method>OcuPilot.Screen.Tool.Registry.RequiredPairs</method>) the user lacks. A tool whose
+/// requirement cannot be read, or that no longer resolves, maps to <code>""</code>, so a failure
+/// refuses rather than admits. A user who can use every tool gets <code>{}</code>. Argument pairs are
+/// left to dispatch.</p>
+ClassMethod Unavailable(pTools As %DynamicArray, Output pUnavailable As %DynamicObject) As %Status
+{
+    Set tSC = $$$OK
+    Set pUnavailable = {}
+    Try {
+        Set tRegistry = ..ToolRegistryClass()
+        Set tIterator = pTools.%GetIterator()
+        While tIterator.%GetNext(.tIndex, .tWire) {
+            Set tFailedPair = ""
+            Set tUsable = 0
+            Set tResolveSC = $ClassMethod(tRegistry, "ResolveWire", tWire, .tTool)
+            If $$$ISOK(tResolveSC) && $IsObject(tTool) {
+                Set tPairs = $ClassMethod(tRegistry, "RequiredPairs", tTool, .tResolved)
+                If tResolved Set tUsable = ##class(OcuPilot.Screen.Gate).EvaluatePairs(tPairs, .tFailedPair)
+            }
+            If 'tUsable Do pUnavailable.%Set(tWire, tFailedPair, "string")
+        }
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    If $$$ISERR(tSC) Set pUnavailable = {}
+    Quit tSC
+}
+
 /// <p>Whether the tool list entry <var>pEntry</var> is bound to <var>pDescriptor</var>: its own
 /// <code>descriptor</code>, or its class's <code>DESCRIPTORCLASS</code>, is that descriptor.</p>
 ClassMethod BoundTo(pEntry As %DynamicObject, pDescriptor As %String) As %Boolean [ Private ]

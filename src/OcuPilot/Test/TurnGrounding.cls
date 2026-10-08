@@ -185,16 +185,18 @@ Method TestReadOnlyForYouReadsTrue()
     Do $$$AssertEquals(tPayload.readOnly, 1, "readOnly is true under read-only for you")
 }
 
-/// <p>A request carrying <code>tools</code> or <code>readOnly</code> is refused 422
+/// <p>A request carrying <code>tools</code>, <code>readOnly</code>, <code>verdict</code> or <code>unavailable</code> is refused 422
 /// <code>TURN.CONTEXT.INVALID</code> on <code>context</code>, and no turn is reserved.</p>
 Method TestARequestSupplyingAMemberIsRefusedAndNothingIsReserved()
 {
     Set tConvId = $ClassMethod(..#FIXTURE, "StartConversation", $Parameter(..#FIXTURE, "USERA"), ..PreparedPassword, .tConvStatus, .tConvText)
     Do $$$AssertTrue(tConvId '= "", "a conversation is started, so only the member stands between the body and a reservation: " _ tConvText)
-    For tMember = "tools", "readOnly" {
+    For tMember = "tools", "readOnly", "verdict", "unavailable" {
         Set tContext = ..ProcessContext()
         If tMember = "tools" Do tContext.%Set("tools", ["osmgmt_processes_read"])
         If tMember = "readOnly" Do tContext.%Set("readOnly", 0, "boolean")
+        If tMember = "verdict" Do tContext.%Set("verdict", {"allowed": true})
+        If tMember = "unavailable" Do tContext.%Set("unavailable", {})
         Do ..Call("POST", "/turn", $ClassMethod(..#FIXTURE, "StartBody", "hi", tConvId, tContext), .tStatus, .tText)
         Do $$$AssertEquals(tStatus, 422, "a context carrying " _ tMember _ " is refused: " _ tText)
         If tStatus '= 422 Continue

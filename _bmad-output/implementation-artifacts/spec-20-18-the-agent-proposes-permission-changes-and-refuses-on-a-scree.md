@@ -2,7 +2,8 @@
 title: 'Story 20.18: The agent proposes permission changes and refuses on a screen the user cannot open'
 type: 'feature'
 created: '2026-10-08'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: '1785544e38f0fa442e829698667efa5c0b43005d'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -327,11 +328,35 @@ These adjust themselves; re-run them only: `ToolEmit`, `ToolSetFull`, `Guardrail
 | AC7 | `Unavailable` answers `{}` | `ScreenAccessTurn` Context leg |
 | AC8 | `Gate.RequiredPairs` ignores the store | `ScreenAccessTurn` Screen closed leg |
 
+mutation: AC1 ADVERTISED=0 red in ScreenAccessDescriptor and ScreenAccessAgent; WeakensByEffect arm removed red in ScreenAccessAgent and the browser spec destructive leg.
+mutation: AC2 reset PortQuery ignoring its payload red in the ScreenAccessAgent reset read-back leg.
+mutation: AC3 ScreenRequirement unresolved red in ScreenRefusal, ToolWire, DenialParity.
+mutation: AC4 a write tool's pair dropped from LockRemove.PrivilegePairs red in the ScreenRefusal roster (emptying DESCRIPTORCLASS is caught earlier by the registry guard).
+mutation: AC5 prompt sentence changed red in ScreenGrounding.
+mutation: AC6 statusText ignoring failedScreen red in tool-call-card.spec.ts; parseStep dropping failedScreen red in ui/tools/turn.test.mjs.
+mutation: AC7 Unavailable answering {} red in ScreenAccessTurn Context leg.
+mutation: AC8 Gate.RequiredPairs ignoring the store red in ScreenAccessTurn Screen closed leg.
+
+## Review Triage Log
+
+### 2026-10-08 - Review pass
+
+- verdicts: 9 findings - high 0, medium 2, low 4, false 0, maybe-false 0 (3 descriptive audit notes)
+- findings:
+  - `[medium]` `patch` parseStep's failedScreen untested - added the key to the Failed tool restore test in ui/tools/turn.test.mjs; dropping the read reddens it.
+  - `[medium]` `patch` no mutation lines recorded - recorded above from the implementer's observed runs.
+  - `[low]` `reject` RecordedContext silent skip on a wrong message shape - the turn-completes assertion and the Screen closed leg fail first.
+  - `[low]` `reject` ci-timings.json lacks the new classes - ui/tools/ci.test.mjs passed in npm test.
+  - `[low]` `reject` LowersScreenPermission case folding has no varying-case assertion - the AC1 mutations redden the arm itself; fix adds a test with no named harm.
+  - `[low]` `reject` before-leg of the Context test depends on the principal's grants - setup assertions name them.
+  - audit: reading A+D implemented as specified; unavailable vs verdict are two computations by the spec's design; no model-behavior test by design (stub provider).
+
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
 
-- Planned from the epic context (recompiled after 20.15), 20.15's spec, the spine in full, and four source investigations. Nothing is implemented.
-- The two requested decisions are recorded in Design Notes: lowering is decided on the effective set at the mint, and the screen is named through the tool's descriptor.
-- Q1 and Q2 are planned on their recommended options.
+Advertised the three Screen permissions write tools; a lowering mints destructive via SCREENACCESS.LOWERED; dispatch and the screen read route name the screen on a closed-screen refusal; step, card, screen context (verdict, unavailable) and the prompt carry it; new tests ScreenAccessAgent, ScreenRefusal, ScreenAccessTurn and a browser spec.
+Review: 2 patched (medium), 4 rejected low, 0 deferred. followup_review_recommended false.
+Verification: full ObjectScript sweep 4112 tests, 3 reds re-run alone (TurnWire fixed, Retention green alone, WireSecurityRead task-history 1,520 rows is DW-2182 leftover on the throwaway); npm test green, bundle 3.12 MB, smoke 50/50, check-objectscript clean, lint-docs clean, turn.test.mjs 83/83.
+Residual risk: the prompt addition joins the spec's two sentences with a semicolon per the one-sentence ruling.

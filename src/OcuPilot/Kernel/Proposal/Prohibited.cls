@@ -762,6 +762,11 @@ Parameter NESTEDCODEGLOBALS = "oddDEP,rINDEXEXT,rINDEXSQL";
 /// or <code>*</code> reaches the <code>%</code> globals too, and answers this effect as well.</p>
 Parameter EFFECTSYSTEMGLOBAL = "MAPPING.SYSTEMGLOBAL";
 
+/// <p>The effect <method>WeakensByEffect</method> answers for a screen-permission change whose resulting
+/// set lacks a pair the stored set holds, compared without regard to case (AD-64). It is also the
+/// proposal's consequence code.</p>
+Parameter EFFECTSCREENLOWERED = "SCREENACCESS.LOWERED";
+
 /// <p>The request type a copy of mappings is issued with, which the namespace predicate branches on
 /// (<method>Namespace</method>).</p>
 Parameter COPYMAPPINGSTYPE = "MAPPINGS";
@@ -1760,6 +1765,30 @@ ClassMethod WebApplication(pPayload As %DynamicObject, pTarget As %DynamicObject
     Quit tSC
 }
 
+/// <p>Whether the screen-permission read <var>pTarget</var> (<code>{Pairs, Result}</code>) leaves a set
+/// that lacks a pair <code>Pairs</code> holds, compared upper-cased. A read that carries neither answers 0.</p>
+ClassMethod LowersScreenPermission(pTarget As %DynamicObject) As %Boolean
+{
+    If '$IsObject(pTarget) Quit 0
+    Set tPairs = pTarget.%Get("Pairs")
+    Set tResult = pTarget.%Get("Result")
+    If '$IsObject(tPairs) || '$IsObject(tResult) Quit 0
+    Set tKept = ""
+    Set tIterator = tResult.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tPair) {
+        Set tKept = tKept _ $ListBuild($ZConvert(tPair, "U"))
+    }
+    Set tLowers = 0
+    Set tIterator = tPairs.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tPair) {
+        If '$ListFind(tKept, $ZConvert(tPair, "U")) {
+            Set tLowers = 1
+            Quit
+        }
+    }
+    Quit tLowers
+}
+
 /// <p>Whether a write of entity type <var>pType</var> carrying payload <var>pPayload</var> weakens
 /// or repoints the target <var>pTarget</var> holds now, in <var>pEffect</var>: for a web
 /// application, the first of <parameter>EFFECTUNAUTHENTICATED</parameter> (it adds the
@@ -1791,6 +1820,10 @@ ClassMethod WeakensByEffect(pType As %String, pPayload As %DynamicObject, pTarge
     Set pEffect = ""
     Set tSC = $$$OK
     Try {
+        If pType = ..#TYPESCREENPERMISSION {
+            If ..LowersScreenPermission(pTarget) Set pEffect = ..#EFFECTSCREENLOWERED
+            Quit
+        }
         If pType = ..#TYPEGLOBALMAPPING {
             If 'pRemoves && ..IsSystemGlobalMapping(pId) Set pEffect = ..#EFFECTSYSTEMGLOBAL
             Quit

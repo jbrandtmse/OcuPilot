@@ -200,6 +200,9 @@ export const CONSEQUENCE_PURGEMARKERS = 'AUDIT.PURGEMARKERS';
 /** Story 18.14: a global mapping whose name begins with `%`, which shadows a system global (AD-10). */
 export const CONSEQUENCE_SYSTEMGLOBAL = 'MAPPING.SYSTEMGLOBAL';
 
+/** Story 20.18: an agent change to a screen's permissions that drops a pair the screen required (AD-64). */
+export const CONSEQUENCE_SCREENACCESSLOWERED = 'SCREENACCESS.LOWERED';
+
 /** Story 18.14: a copy of mappings, which replaces the destination's same-named mappings. */
 export const CONSEQUENCE_COPYMAPPINGS = 'NAMESPACE.COPYMAPPINGS';
 
@@ -406,6 +409,7 @@ export function consequenceSentence(code: string | undefined): string {
   if (code === CONSEQUENCE_SERVERCLIENTSECRETCHANGE) return STRINGS.oauthRegisteredClientSecretEffect;
   if (code === CONSEQUENCE_PURGEMARKERS) return STRINGS.auditPurgeMarkersEffect;
   if (code === CONSEQUENCE_SYSTEMGLOBAL) return STRINGS.mappingSystemGlobalConsequence;
+  if (code === CONSEQUENCE_SCREENACCESSLOWERED) return STRINGS.screenPermissionsLowerConsequence;
   // The copy dialog's own consequence sentence, published once.
   if (code === CONSEQUENCE_COPYMAPPINGS) return STRINGS.namespaceCopyMappingsConsequence;
   // The export dialog's own replace line, published once.

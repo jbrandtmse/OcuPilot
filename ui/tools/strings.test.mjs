@@ -190,8 +190,8 @@ function extractMacComposerCaption(rows) {
 /**
  * The tool-call-card's "done" and "failed — <reason>" status words, from its Component
  * Patterns row's own status list: `"running" (spinner) · "done" · "done · audit marked" ·
- * "done · audit not marked" (...) · "failed — <reason>" · "blocked by read-only mode" ·
- * "Stopped by you at <step>"`. Read positionally off every quoted span on that row rather than
+ * "done · audit not marked" (...) · "failed — <reason>" · "failed — You need <pair> to open
+ * <screen>." · "blocked by read-only mode" · "Stopped by you at <step>"`. Read positionally off every quoted span on that row rather than
  * typed here, so a reworded status list is what goes red, not a copy of it.
  */
 function extractToolCallCardStatuses(markdown) {
@@ -200,11 +200,14 @@ function extractToolCallCardStatuses(markdown) {
   const quoted = [...row.matchAll(/"([^"]*)"/g)].map((m) => m[1]);
   assert.equal(
     quoted.length,
-    7,
-    `expected 7 quoted statuses on the tool-call-card row, found ${quoted.length}: ${JSON.stringify(quoted)}`
+    8,
+    `expected 8 quoted statuses on the tool-call-card row, found ${quoted.length}: ${JSON.stringify(quoted)}`
   );
   assert.equal(quoted[0], 'running', 'the first status must be "running"');
   assert.equal(quoted[4].startsWith('failed'), true, 'the fifth status must be the failed template');
+  // The sixth composes the failed template with the permission-denied screen sentence (Story 20.18),
+  // so it publishes no literal of its own.
+  assert.equal(quoted[5].startsWith('failed') && quoted[5].includes('to open <screen>'), true, 'the sixth status must be the failed template naming the screen');
   // The third is the marked status the confirmed-write card reads (Story 5.6). Its sibling, the
   // fourth, is `REQUIRED_ALONGSIDE_TABLE`'s first entry and stays there: that array is the
   // three it was, and this one is re-derived from the document like every other prose literal.

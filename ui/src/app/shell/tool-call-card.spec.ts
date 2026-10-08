@@ -30,6 +30,7 @@ const BASE: TurnStep = {
   result: null,
   reason: '',
   failedPair: '',
+  failedScreen: '',
   auditMarked: null,
 };
 
@@ -60,6 +61,33 @@ describe('the tool-call card status word', () => {
 
     expect(statusWord()).toBe(STRINGS.toolCallStatusFailed.split('<reason>').join('%Admin_Secure:USE'));
     expect(statusWord()).toContain('%Admin_Secure:USE');
+  });
+
+  // Story 20.18, AC6. Mutation (Rule 19): make `statusText` ignore `failedScreen` -> the first case goes red.
+  it('a refusal that names a screen reads the screen-denied sentence', () => {
+    render({
+      ...BASE,
+      status: 'error',
+      code: 'AUTH.NOPRIVILEGE',
+      reason: 'This account does not hold the privilege this request requires.',
+      failedPair: '%Admin_Secure:USE',
+      failedScreen: 'webapp.list',
+    });
+
+    expect(statusWord()).toBe('failed \u2014 You need %Admin_Secure:USE to open Web applications.');
+  });
+
+  it('a screen the mirror does not know renders the pair alone', () => {
+    render({
+      ...BASE,
+      status: 'error',
+      code: 'AUTH.NOPRIVILEGE',
+      reason: 'This account does not hold the privilege this request requires.',
+      failedPair: '%Admin_Secure:USE',
+      failedScreen: 'no.such.screen',
+    });
+
+    expect(statusWord()).toBe('failed \u2014 %Admin_Secure:USE');
   });
 
   it('a failure that names no pair keeps its reason', () => {

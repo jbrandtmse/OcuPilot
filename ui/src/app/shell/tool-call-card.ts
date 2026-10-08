@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, input, signal } from '@angular/core';
 
-import { STRINGS } from '../core/strings';
+import { formatDeniedScreen, screenForToolIdentifier } from '../core/navigation';
+import { STRINGS, stringFor } from '../core/strings';
 import { type TurnStep, stepLabel } from '../core/turn';
 
 /**
@@ -112,7 +113,12 @@ export class ToolCallCard {
       // AD-8: a privilege refusal names the pair that failed. The generic reason says a
       // privilege is missing; the pair says which one, which is what the user has to be
       // granted. Every other failure keeps the reason it already carried.
-      const detail = step.failedPair !== '' ? step.failedPair : step.reason;
+      let detail = step.failedPair !== '' ? step.failedPair : step.reason;
+      // A refusal that also names the screen the user cannot open says so (Story 20.18).
+      const screen = step.failedScreen ? screenForToolIdentifier(step.failedScreen) : null;
+      if (screen !== null && step.failedPair !== '') {
+        detail = formatDeniedScreen(STRINGS.privilegeDeniedScreen, step.failedPair, stringFor(screen.labelKey));
+      }
       return STRINGS.toolCallStatusFailed.split('<reason>').join(detail);
     }
     // A confirmed write's card says what became of its marker; every other card, whose step
