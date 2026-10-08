@@ -23,12 +23,14 @@ function mount(answers: Record<string, unknown>[], members: Record<string, unkno
   TestBed.resetTestingModule();
   const queue = [...answers];
   const puts: string[] = [];
+  const gets: string[] = [];
   const api = {
-    requestJson: async <T,>(_path?: string, init: { method?: string; body?: string } = {}): Promise<JsonResult<T>> => {
+    requestJson: async <T,>(path?: string, init: { method?: string; body?: string } = {}): Promise<JsonResult<T>> => {
       if (init.method === 'PUT') {
         puts.push(init.body ?? '');
         return { kind: 'ok', status: 200, body: {} } as JsonResult<T>;
       }
+      gets.push(path ?? '');
       const body = {
         requiredFields: [],
         maxLengths: { Description: 256 },
@@ -56,21 +58,27 @@ function mount(answers: Record<string, unknown>[], members: Record<string, unkno
       { provide: ChangeBus, useValue: bus },
     ],
   });
-  return { store: TestBed.inject(RoleEditor), formDirty, puts, events };
+  return { store: TestBed.inject(RoleEditor), formDirty, puts, events, gets };
 }
 
 afterEach(() => TestBed.resetTestingModule());
 
 describe('the role editor store (Story 9.3)', () => {
   it('reads the role, its grants, granted roles and members, and marks it privileged by the server', async () => {
-    const { store } = mount([role()], [{ Name: 'Dana', Type: 'User' }, { Name: 'Outer', Type: 'Role' }]);
+    const { store, gets } = mount([role()], [
+      { Name: 'Dana', Type: 'User', AdminOption: true },
+      { Name: 'Outer', Type: 'Role', AdminOption: '0' },
+    ]);
     await store.open('Probe');
+    // The read goes to the role form's GET with the role's name (Story 18.29): a change to the store's path reddens this leg.
+    expect(gets).toContain('/api/ocupilot/roles/form?name=Probe');
     expect(store.description()).toBe('probe');
     expect(store.grants()).toEqual([{ name: '%DB_USER', permissions: 'RW' }]);
     expect(store.grantedRoles()).toEqual(['%Developer']);
+    // AdminOption is compared by value: a boolean true, and the vendor's string "0" as false (Story 18.29).
     expect(store.members()).toEqual([
-      { name: 'Dana', type: 'User' },
-      { name: 'Outer', type: 'Role' },
+      { name: 'Dana', type: 'User', adminOption: true },
+      { name: 'Outer', type: 'Role', adminOption: false },
     ]);
     expect(store.privileged()).toBe(true);
   });

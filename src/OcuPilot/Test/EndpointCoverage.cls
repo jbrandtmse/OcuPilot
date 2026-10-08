@@ -156,6 +156,8 @@ XData Probes
 <probe class="Api.Router" method="GET" url="/users/effective" path="/api/ocupilot/users/effective" disposition="envelope" expect="code=TOOL.ARGUMENTS"/>
 <probe class="Api.Router" method="PUT" url="/users/:id" path="/api/ocupilot/users/ocupilot-coverage-probe" disposition="envelope" refusal="1"/>
 <probe class="Api.Router" method="POST" url="/users" path="/api/ocupilot/users" disposition="envelope" refusal="1"/>
+<probe class="Api.Router" method="POST" url="/users/copy" path="/api/ocupilot/users/copy" disposition="envelope" refusal="1"/>
+<probe class="Api.Router" method="POST" url="/users/password-check" path="/api/ocupilot/users/password-check" disposition="envelope" refusal="1"/>
 <probe class="Api.Router" method="GET" url="/roles/form" path="/api/ocupilot/roles/form" disposition="envelope"/>
 <probe class="Api.Router" method="GET" url="/roles/name" path="/api/ocupilot/roles/name" disposition="envelope"/>
 <probe class="Api.Router" method="PUT" url="/roles/:id" path="/api/ocupilot/roles/ocupilot-coverage-probe" disposition="envelope" refusal="1"/>

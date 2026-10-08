@@ -82,6 +82,7 @@ XData Keys [ MimeType = application/json ]
   "permissions.roles.revokesql": true,
   "permissions.roles.update": true,
   "permissions.services.update": true,
+  "permissions.users.copy": true,
   "permissions.users.create": true,
   "permissions.users.delete": true,
   "permissions.users.grantsql": true,

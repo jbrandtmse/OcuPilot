@@ -16,6 +16,11 @@
  *    change event itself is pinned in `user-create-form.store.spec.ts`, for the reason
  *    `web-applications-create.browser-spec.mjs` gives.
  * 5. **The Users list offers Create** (AC1), and it opens this form.
+ * 6. **Copy from** (Story 18.29): choosing a source whose escalation role grants `%All` states the
+ *    privilege-grant consequence and no other role list, and a Save posts to `/users/copy` and
+ *    creates the copy with the source's escalation role.
+ * 7. **The password's check on blur** (Story 18.29): a password the policy refuses shows its reason
+ *    under the field when the field loses focus.
  *
  * **It refuses the live container.** Every account it creates is named below and removed by that
  * exact name through the vendor's own `Security.Users.Delete` inside the throwaway, before and after.
@@ -43,7 +48,13 @@ const LIST_URL = '/ocupilot/permissions/users?ns=HSCUSTOM';
 const FORM_URL = '/ocupilot/permissions/users/edit?ns=HSCUSTOM';
 
 /** Every account this spec creates, removed by exact name in `before` and `after`. */
-const NAMES = ['OcuPilotProbeUserCreate', 'OcuPilotProbeUserNoEcho'];
+const NAMES = ['OcuPilotProbeUserCreate', 'OcuPilotProbeUserNoEcho', 'OcuPilotProbeCopySource', 'OcuPilotProbeCopied', 'OcuPilotProbeCopyPlain'];
+
+/** The copy source: a local account whose escalation role grants %All, so its copy is privileged. */
+const COPY_SOURCE = NAMES[2];
+
+/** The copy the form creates from `COPY_SOURCE`. */
+const COPY_TARGET = NAMES[3];
 
 /** A password the instance's default pattern (`3.255ANP`) accepts. Never asserted on screen. */
 const PROBE_PASSWORD = 'ProbePass2026';
@@ -112,6 +123,16 @@ function storedUser(name) {
   };
 }
 
+/** The escalation roles the instance stores for `name`, or `''` when it has none or the account is absent. */
+function storedEscalation(name) {
+  const output = irisSys([
+    `Set tOK = ##class(Security.Users).Get("${name}", .tProps)`,
+    'Write "OCU-ESC-START:",$Get(tProps("EscalationRoles")),":OCU-ESC-END",!',
+  ]);
+  const match = /OCU-ESC-START:(.*?):OCU-ESC-END/.exec(output);
+  return match === null ? '' : match[1];
+}
+
 /** A fresh context signed in through the shell's own form, landed at `url`. */
 async function signedInAt(url) {
   const { user, password } = credentials();
@@ -171,7 +192,7 @@ async function waitForSaved(page) {
 
 // AC1. Mutation (Rule 19): swap the Password and Full name blocks in the page template -> this
 // goes red naming the order.
-test('AC1: the form captures name, full name, password, expiry, startup namespace, startup routine and roles, in that order', async () => {
+test('AC1: the form captures name, copy from, full name, password, expiry, startup namespace, startup routine and roles, in that order', async () => {
   const { context, page } = await signedInAt(FORM_URL);
   try {
     await page.waitForSelector('#ocu-user-Name', { visible: true, timeout: config.navigationTimeoutMs });
@@ -184,6 +205,7 @@ test('AC1: the form captures name, full name, password, expiry, startup namespac
     );
     assert.deepEqual(labels, [
       STRINGS.tableColumnName,
+      STRINGS.userCopyFrom,
       STRINGS.userColumnFullName,
       STRINGS.fieldPassword,
       STRINGS.userFormExpiry,
@@ -314,6 +336,88 @@ test('AC4: a valid Save creates the account with the sent fields, replaces the r
       rows.some((text) => text.includes(NAMES[0])),
       `the account the form created is in the Users list: ${JSON.stringify(rows.slice(0, 8))}`
     );
+  } finally {
+    await context.close();
+  }
+});
+
+// AC6, AD-10, Story 18.29. Mutation (Rule 19): make the store post the copy to `/users` ->
+// the Save leg goes red on the request path; drop the copy's escalation role from the composed
+// payload -> the stored-escalation leg goes red.
+test('AC6: choosing a privileged copy source states the consequence, and Save posts to /users/copy and creates the copy', async () => {
+  irisSys([
+    `Do ##class(Security.Users).Create("${COPY_SOURCE}","%Developer","${PROBE_PASSWORD}","OcuPilot copy source")`,
+    `Set tProps("EscalationRoles")="%All" Do ##class(Security.Users).Modify("${COPY_SOURCE}",.tProps)`,
+  ]);
+  const { context, page } = await signedInAt(FORM_URL);
+  try {
+    await page.waitForSelector('#ocu-user-CopyFrom', { visible: true, timeout: config.navigationTimeoutMs });
+    // The source is offered once the Users list has loaded, so the option is waited for before it is chosen.
+    await page.waitForFunction((value) => document.querySelector(`#ocu-user-CopyFrom option[value="${value}"]`) !== null, { timeout: config.navigationTimeoutMs }, COPY_SOURCE);
+    await page.select('#ocu-user-CopyFrom', COPY_SOURCE);
+    await page.waitForFunction(
+      (sentence) => document.body.innerText.includes(sentence),
+      { timeout: config.navigationTimeoutMs },
+      STRINGS.userCopyPrivilegedEffect
+    );
+    assert.equal((await roleBoxes(page)).length, 0, 'no role checkbox is drawn while copying: the source\'s roles are read only');
+
+    await fill(page, 'ocu-user-Name', COPY_TARGET);
+    await fill(page, 'ocu-user-Password', PROBE_PASSWORD);
+    const requests = [];
+    page.on('request', (request) => {
+      if (request.url().includes('/users')) requests.push(`${request.method()} ${new URL(request.url()).pathname}`);
+    });
+    await (await saveButton(page)).click();
+    await waitForSaved(page);
+    assert.ok(
+      requests.includes('POST /api/ocupilot/users/copy'),
+      `the Save posts to the copy route: ${JSON.stringify(requests)}`
+    );
+    assert.ok(storedUser(COPY_TARGET) !== null, 'the instance holds the copy');
+    assert.ok(storedEscalation(COPY_TARGET).includes('%All'), `and the copy holds the source's escalation role: ${storedEscalation(COPY_TARGET)}`);
+  } finally {
+    await context.close();
+  }
+});
+
+// AC6, the other side of the consequence. Mutation (Rule 19): mark every copy source privileged in the
+// store -> this leg goes red on the consequence it states for a plain source.
+test('AC6: a copy source that holds no privileged role states no consequence', async () => {
+  irisSys([`Do ##class(Security.Users).Create("OcuPilotProbeCopyPlain","%Developer","${PROBE_PASSWORD}","OcuPilot plain source")`]);
+  const { context, page } = await signedInAt(FORM_URL);
+  try {
+    await page.waitForSelector('#ocu-user-CopyFrom', { visible: true, timeout: config.navigationTimeoutMs });
+    await page.waitForFunction((value) => document.querySelector(`#ocu-user-CopyFrom option[value="${value}"]`) !== null, { timeout: config.navigationTimeoutMs }, 'OcuPilotProbeCopyPlain');
+    await page.select('#ocu-user-CopyFrom', 'OcuPilotProbeCopyPlain');
+    await page.waitForFunction((name) => document.querySelector('#ocu-user-CopyFrom')?.value === name, { timeout: config.navigationTimeoutMs }, 'OcuPilotProbeCopyPlain');
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    const text = await page.evaluate(() => document.body.innerText);
+    assert.ok(!text.includes(STRINGS.userCopyPrivilegedEffect), 'no consequence is stated for a source without a privileged role');
+  } finally {
+    await context.close();
+  }
+});
+
+// AC7, Story 18.29. Mutation (Rule 19): drop the `onBlur('Password')` call from the page -> the
+// reason leg goes red, because nothing checks the password before the Save.
+test('AC7: a password the policy refuses shows its reason under the field when the field loses focus', async () => {
+  const { context, page } = await signedInAt(FORM_URL);
+  try {
+    await fill(page, 'ocu-user-Password', 'a');
+    await page.evaluate(() => document.getElementById('ocu-user-Name')?.focus());
+    await page.keyboard.press('Tab');
+    const sentence = 'The password does not meet this instance\'s password policy.';
+    await page.waitForFunction(
+      (text) => document.body.innerText.includes(text),
+      { timeout: config.navigationTimeoutMs },
+      sentence
+    );
+    const described = await page.$eval('#ocu-user-Password', (node) => {
+      const id = node.getAttribute('aria-describedby') ?? '';
+      return id.split(' ').map((part) => document.getElementById(part)?.textContent ?? '').join(' ');
+    });
+    assert.ok(described.includes(sentence), `the reason is the field's description: ${described}`);
   } finally {
     await context.close();
   }

@@ -500,7 +500,7 @@ ClassMethod Role(pName As %String, Output pRole As %DynamicObject, Output pHttpS
 
 /// <p>The holders of role <var>pName</var>, read with <parameter>OWNERTYPE</parameter> through
 /// <parameter>UPDATETOOL</parameter>'s own port (AD-52): <var>pMembers</var>
-/// <code>[{Name, Type}]</code> in the vendor's order, and <var>pHolders</var> the number of
+/// <code>[{Name, Type, AdminOption}]</code> in the vendor's order, and <var>pHolders</var> the number of
 /// distinct names whose type is one of <parameter>HOLDERTYPES</parameter>. An absent role is an
 /// error status with <var>pHttpStatus</var> 404.</p>
 ClassMethod Members(pName As %String, Output pMembers As %DynamicArray, Output pHolders As %Integer, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status
@@ -523,6 +523,9 @@ ClassMethod Members(pName As %String, Output pMembers As %DynamicArray, Output p
         Set tEntry = {}
         Do tEntry.%Set("Name", tMember, "string")
         Do tEntry.%Set("Type", tRow.%Get("Type"), "string")
+        ; The vendor's AdminOption is the string "1" for a member granted WITH ADMIN OPTION and "0"
+        ; (or a boolean false, for an escalation row) otherwise.
+        Do tEntry.%Set("AdminOption", (tRow.%Get("AdminOption") = "1"), "boolean")
         Do pMembers.%Push(tEntry)
         If '$ListFind(tAccountTypes, tRow.%Get("Type")) Continue
         Set tKey = ##class(OcuPilot.Kernel.EntityRef).NormalizedId("user", tMember)

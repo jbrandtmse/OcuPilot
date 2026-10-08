@@ -216,6 +216,7 @@ XData Coverage
 <screen name="InteropTransformList" class="OcuPilot.Test.InteropDescriptor" method="TestTheFourDeclarationsRegister" corpus="one declaration test pins all four Story 20.2 Interoperability screens in one loop"/>
 <screen name="InteropRuleList" class="OcuPilot.Test.InteropDescriptor" method="TestTheFourDeclarationsRegister" corpus="one declaration test pins all four Story 20.2 Interoperability screens in one loop"/>
 <tool name="permissions.users.create" class="OcuPilot.Test.UserCreate" method="TestTheSchemaCarriesNoSecretAndThePermittedSetIsTheSets"/>
+<tool name="permissions.users.copy" class="OcuPilot.Test.UserCopy" method="TestTheCopyRouteAnswersOneJsonEnvelope"/>
 <tool name="permissions.roles.create" class="OcuPilot.Test.RoleCreate" method="TestTheSchemaCarriesNoEscalationOnlyAndThePermittedSetIsTheSets"/>
 <tool name="permissions.roles.delete" class="OcuPilot.Test.RoleDelete" method="TestTheDeleteIsAnActionWriteOverTheScreensOwnPairs"/>
 <tool name="permissions.roles.update" class="OcuPilot.Test.RoleUpdate" method="TestTheToolAdmitsTheReviewedFourAndDeclaresItsActions"/>

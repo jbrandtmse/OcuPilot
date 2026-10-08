@@ -95,6 +95,8 @@ interface MemberView {
   readonly key: string;
   readonly name: string;
   readonly type: string;
+  /** Whether the member holds the role WITH ADMIN OPTION, which the row says. */
+  readonly adminOption: boolean;
   /** Whether the row carries Remove: an account or role member, never an escalation holder. */
   readonly removable: boolean;
   readonly removeLabel: string;
@@ -256,6 +258,9 @@ function memberTypeWord(type: string): string {
               <li class="ocu-form-role">
                 <span class="ocu-form-role-name">{{ member.name }}</span>
                 <span class="ocu-role-member-type">{{ member.type }}</span>
+                @if (member.adminOption) {
+                  <span class="ocu-role-member-admin">{{ STRINGS.roleMemberAdminOption }}</span>
+                }
                 @if (member.removable) {
                   <button type="button" class="ocu-button-text" [attr.aria-label]="member.removeLabel" (click)="onRemoveMember(member.key)">
                     {{ STRINGS.actionRemove }}
@@ -628,6 +633,7 @@ export class RoleEditorPage {
       key: memberKey(member),
       name: member.name,
       type: memberTypeWord(member.type),
+      adminOption: member.adminOption,
       removable: member.type === MEMBER_TYPE_USER || member.type === MEMBER_TYPE_ROLE,
       removeLabel: `${STRINGS.actionRemove} ${member.name}`,
     }));

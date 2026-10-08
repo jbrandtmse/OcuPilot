@@ -102,6 +102,8 @@ XData UrlMap [ XMLNamespace = "http://www.intersystems.com/urlmap" ]
   <Route Url="/users/name" Method="GET" Call="UserNameCheck"/>
   <Route Url="/users/effective" Method="GET" Call="UserEffective"/>
   <Route Url="/users/:id" Method="PUT" Call="UserUpdate"/>
+  <Route Url="/users/copy" Method="POST" Call="UserCopy"/>
+  <Route Url="/users/password-check" Method="POST" Call="UserPasswordCheck"/>
   <Route Url="/users" Method="POST" Call="UserCreate"/>
   <Route Url="/roles/form" Method="GET" Call="RoleFormRules"/>
   <Route Url="/roles/name" Method="GET" Call="RoleNameCheck"/>
@@ -489,6 +491,20 @@ ClassMethod UserUpdate(pId As %String) As %Status
 ClassMethod UserCreate() As %Status
 {
     Quit ##class(OcuPilot.Area.Permissions.UserCreate).HandleCreate()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /users/copy</code> (Story 18.29): the create's flow over the
+/// copy tool, in <class>OcuPilot.Area.Permissions.UserCopy</class>.</p>
+ClassMethod UserCopy() As %Status
+{
+    Quit ##class(OcuPilot.Area.Permissions.UserCopy).HandleCreate()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /users/password-check</code> (Story 18.29): the password's
+/// verdict, in <class>OcuPilot.Area.Permissions.UserCreateRules</class>.</p>
+ClassMethod UserPasswordCheck() As %Status
+{
+    Quit ##class(OcuPilot.Area.Permissions.UserCreateRules).HandlePasswordCheck()
 }
 
 /// <p>Thin <code>Call=</code> target for <code>GET /roles/form</code> (Story 8.3): delegates to

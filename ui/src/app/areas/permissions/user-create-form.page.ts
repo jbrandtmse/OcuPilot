@@ -18,7 +18,7 @@ import { savedLine } from '../../core/read-back';
 import { STRINGS } from '../../core/strings';
 import { STATE_CONFLICT_CODE, type Violation } from '../../core/violations';
 import { Dialog } from '../../shell/dialog';
-import { PASSWORD_FIELD, ROLES_FIELD, type RoleOption, UserCreateForm } from './user-create-form.store';
+import { COPY_FROM_FIELD, PASSWORD_FIELD, ROLES_FIELD, type RoleOption, UserCreateForm } from './user-create-form.store';
 import { UserEditor } from './user-editor.store';
 
 /** The list this form is reached from, which Cancel and the leave confirmation return to. */
@@ -106,6 +106,18 @@ interface FieldView {
       </div>
 
       <div class="ocu-field">
+        <label class="ocu-field-label" [attr.for]="copyFromField.id">{{ STRINGS.userCopyFrom }}</label>
+        <div class="ocu-field-control">
+          <select class="ocu-field-input" [id]="copyFromField.id" (change)="onCopyFrom($event)">
+            <option value="" [selected]="copyFromValue === ''"></option>
+            @for (user of userOptions; track user) {
+              <option [value]="user" [selected]="user === copyFromValue">{{ user }}</option>
+            }
+          </select>
+        </div>
+      </div>
+
+      <div class="ocu-field">
         <label class="ocu-field-label" [attr.for]="fullNameField.id">{{ STRINGS.userColumnFullName }}</label>
         <div class="ocu-field-control">
           <input
@@ -158,6 +170,7 @@ interface FieldView {
         }
       </div>
 
+      @if (!copying) {
       <div class="ocu-field">
         <label class="ocu-field-label" [attr.for]="expiryField.id">{{ STRINGS.userFormExpiry }}</label>
         <div class="ocu-field-control">
@@ -238,6 +251,21 @@ interface FieldView {
           <p class="ocu-form-error" [id]="rolesField.id + '-reason'">{{ rolesField.reason }}</p>
         }
       </fieldset>
+      } @else {
+        <fieldset class="ocu-field ocu-form-authe">
+          <legend class="ocu-field-label">{{ STRINGS.userColumnRoles }}</legend>
+          @for (role of copiedRoles; track role) {
+            <span class="ocu-form-role-name">{{ role }}</span>
+          }
+          <legend class="ocu-field-label">{{ STRINGS.userCopyEscalationRoles }}</legend>
+          @for (role of copiedEscalationRoles; track role) {
+            <span class="ocu-form-role-name">{{ role }}</span>
+          }
+          @if (copiedPrivileged) {
+            <p class="ocu-field-caption" [id]="copyEffectId">{{ STRINGS.userCopyPrivilegedEffect }}</p>
+          }
+        </fieldset>
+      }
     </div>
 
     <div class="ocu-form-bar">
@@ -455,7 +483,50 @@ export class UserCreateFormPage {
     return this.fieldView(ROLES_FIELD);
   }
 
+  protected get copying(): boolean {
+    this.generation();
+    return this.store.copyFrom() !== '';
+  }
+
+  protected get copyFromValue(): string {
+    this.generation();
+    return this.store.copyFrom();
+  }
+
+  protected get userOptions(): readonly string[] {
+    this.generation();
+    return this.store.users();
+  }
+
+  protected get copiedRoles(): readonly string[] {
+    this.generation();
+    return this.store.source()?.roles ?? [];
+  }
+
+  protected get copiedEscalationRoles(): readonly string[] {
+    this.generation();
+    return this.store.source()?.escalationRoles ?? [];
+  }
+
+  protected get copiedPrivileged(): boolean {
+    this.generation();
+    return this.store.source()?.privileged === true;
+  }
+
+  protected get copyEffectId(): string {
+    return `${this.controlId(COPY_FROM_FIELD)}-effect`;
+  }
+
+  protected get copyFromField(): FieldView {
+    return this.fieldView(COPY_FROM_FIELD);
+  }
+
   // --- intents ---------------------------------------------------------------------------------
+
+  protected onCopyFrom(event: Event): void {
+    const target = event.target;
+    if (target instanceof HTMLSelectElement) void this.store.setCopyFrom(target.value);
+  }
 
   protected onText(field: string, event: Event): void {
     const target = event.target;

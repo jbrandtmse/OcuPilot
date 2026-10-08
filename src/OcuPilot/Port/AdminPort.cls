@@ -1301,6 +1301,16 @@ ClassMethod InvokeLocated(pEndpoint As %String, pType As %String, ByRef pQuery, 
             Quit
         }
 
+        ; AD-35 (Story 18.29): an administrator's password is checked against the instance's policy
+        ; before the vendor is called. The refusal is unlogged and carries no password.
+        If ..IsPasswordType(pEndpoint, pType) && $IsObject(pBody) && (pBody.%GetTypeOf("Password") = "string") {
+            ; The account a POST creates is named in the body; a CHANGEPWD names it in the query.
+            Set tPasswordUser = $Get(pQuery("name"))
+            If (pType = "POST") && (pBody.%GetTypeOf("Name") = "string") Set tPasswordUser = pBody.%Get("Name")
+            Set tSC = ..PasswordGuard(tPasswordUser, pBody.%Get("Password"), .pHttpStatus, .pFault)
+            If $$$ISERR(tSC) Quit
+        }
+
         ; RENAMEDTYPES: the vendor's own spelling of a body key, applied to a copy so the caller's
         ; body -- and whatever it records from it -- keeps the product's name. It runs before the
         ; wrapper, because it renames keys of the flat body.
@@ -3868,6 +3878,31 @@ ClassMethod Scalar(pObject, pKey As %String) As %String
     Set tType = pObject.%GetTypeOf(pKey)
     If (tType = "unassigned") || (tType = "object") || (tType = "array") || (tType = "null") Quit ""
     Quit pObject.%Get(pKey)
+}
+
+/// <p>Whether <var>pEndpoint</var>/<var>pType</var> sets an account's password: <code>Security.User</code>
+/// <code>POST</code> and <code>CHANGEPWD</code>, the two whose body carries <code>Password</code>.</p>
+ClassMethod IsPasswordType(pEndpoint As %String, pType As %String) As %Boolean
+{
+    Quit (pEndpoint = "Security.User") && $ListFind($ListBuild("POST", "CHANGEPWD"), pType)
+}
+
+/// <p>Refuse a password the instance's policy refuses (AD-35): 422 <code>USER.PASSWORD.POLICY</code> with
+/// the violation on <code>Password</code>, before any vendor call and unlogged. <var>pUser</var> is the
+/// account the password is for. The password appears in no reason, status or log line.</p>
+ClassMethod PasswordGuard(pUser As %String, pPassword As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set tReason = ""
+    If ##class(OcuPilot.Kernel.PasswordPolicy).Verdict(pPassword, pUser, .tReason) Quit $$$OK
+    Set tViolation = {}
+    Do tViolation.%Set("field", "Password", "string")
+    Do tViolation.%Set("code", ##class(OcuPilot.Api.Error).#USERPASSWORDPOLICY, "string")
+    Do tViolation.%Set("reason", tReason, "string")
+    Set tViolations = []
+    Do tViolations.%Push(tViolation)
+    Set tDetail = {}
+    Do tDetail.%Set("violations", tViolations)
+    Quit ..Refuse(422, ##class(OcuPilot.Api.Error).#VALIDATIONFAILED, ##class(OcuPilot.Api.Error).#USERPASSWORDPOLICY, tReason, .pHttpStatus, .pFault, tDetail)
 }
 
 }

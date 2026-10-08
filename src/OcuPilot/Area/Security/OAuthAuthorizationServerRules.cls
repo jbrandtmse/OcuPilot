@@ -387,7 +387,9 @@ ClassMethod CustomizationViolations(pArgs As %DynamicObject, pFresh As %DynamicO
         Do ..Add(.pViolations, ..#FIELDROLES, $Select((tType = "array") || (tType = "unassigned") || (tType = "null"): ##class(OcuPilot.Api.Error).#OAUTHCUSTOMIZATIONROLESREQUIRED, 1: ##class(OcuPilot.Api.Error).#PORTFIELDSHAPE))
         Quit $$$OK
     }
-    Set tStored = ..StoredRoles(pFresh)
+    ; DW-1662: a create's default roles are the ones the editor pre-ticks, which the instance stores; the
+    ; create reads them as stored rather than through the roles list the caller may not be able to read.
+    Set tStored = $Select(pCreates: ..StoredRoles(..Defaults()), 1: ..StoredRoles(pFresh))
     Set tReadable = ""
     Set tAbsent = 0
     Set tIterator = pArgs.%Get(..#FIELDROLES).%GetIterator()

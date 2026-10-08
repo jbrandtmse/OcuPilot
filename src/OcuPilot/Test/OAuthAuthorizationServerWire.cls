@@ -276,18 +276,29 @@ Method TestACallerWhoCannotReadTheRolesKeepsOnlyStoredRoles()
     Do $$$AssertEquals(tStored.%Get("Description") _ " " _ tStored.%Get("CustomizationRoles"), "restated %DB_IRISSYS", "and nothing is sent")
 }
 
-/// <p>Story 12.7's residual risk: a principal holding only the tab's two pairs, with no role-list
-/// read, cannot create a configuration with customization roles at all. The create route always
-/// evaluates the field (a required field, and a create has no stored value to fall back on), and no
-/// role it names can pass when the roles list is unreadable to it.</p>
+/// <p>Story 18.29 (DW-1662): a principal holding only the tab's two pairs creates a configuration with the
+/// default customization role the editor pre-ticks, and the instance stores it. A create's default roles are
+/// read as stored, so the role list the principal cannot read is not consulted for them.</p>
 /// <p>Mutation (Rule 19): <method>OcuPilot.Area.Security.OAuthAuthorizationServerRules.CustomizationViolations</method>
-/// reads a create's "stored" roles from <method>OcuPilot.Area.Security.OAuthAuthorizationServerRules.Defaults</method>
-/// instead of treating a create as having none -- the default role then passes unverified and this
-/// goes red.</p>
-Method TestALeastPrivilegedPrincipalCannotCreateWithCustomizationRoles()
+/// reads a create's stored roles from nothing instead of <method>Defaults</method> -- the pre-ticked role then
+/// answers 422 and this goes red.</p>
+Method TestALeastPrivilegedPrincipalCreatesWithTheDefaultRoles()
 {
     Set tUser = ..#LEASTUSER
     Set tBody = $ClassMethod(..#PROBE, "Body").%ToJSON()
+    Set tSC = ..Request("POST", ..#SAVEPATH, tBody, tUser, .tStatus, .tRaw, .tHeaders)
+    Do $$$AssertEquals(tStatus, 201, "the create with the pre-ticked default role answers 201: " _ $Extract(tRaw, 1, 300))
+    Do $$$AssertEquals($ClassMethod(..#PROBE, "Holds"), 1, "and the configuration is stored")
+}
+
+/// <p>Story 18.29: a principal holding only the tab's two pairs still cannot create a configuration with a role
+/// that is not a default and that it cannot read, which is refused on the field.</p>
+/// <p>Mutation (Rule 19): drop the readability test from <method>OcuPilot.Area.Security.OAuthAuthorizationServerRules.CustomizationViolations</method>
+/// -- this answers 201 and goes red.</p>
+Method TestALeastPrivilegedPrincipalCannotCreateWithANonDefaultRole()
+{
+    Set tUser = ..#LEASTUSER
+    Set tBody = $ClassMethod(..#PROBE, "Body", {"CustomizationRoles": ["%Developer"]}).%ToJSON()
     Set tSC = ..Request("POST", ..#SAVEPATH, tBody, tUser, .tStatus, .tRaw, .tHeaders)
     Do $$$AssertEquals(tStatus _ " " _ ..ViolationCode(tRaw, "CustomizationRoles"), "422 OAUTH.CUSTOMIZATIONROLES.ABSENT", "the create is refused on the role it cannot verify: " _ $Extract(tRaw, 1, 300))
     Do $$$AssertEquals($ClassMethod(..#PROBE, "Holds"), 0, "and nothing is created")

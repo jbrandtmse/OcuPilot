@@ -1999,6 +1999,14 @@ export const STRINGS = {
   /** EXPERIENCE.md:478 */
   roleMembersEmpty: 'No account or role holds this role.',
   /** EXPERIENCE.md:478 */
+  roleMemberAdminOption: 'Admin option',
+  /** EXPERIENCE.md:478 */
+  userCopyFrom: 'Copy from',
+  /** EXPERIENCE.md:478 */
+  userCopyEscalationRoles: 'Escalation roles',
+  /** EXPERIENCE.md:478 */
+  userCopyPrivilegedEffect: 'This copy grants %All or an administrative privilege through the source account\'s roles. Whoever holds the new account can administer this instance.',
+  /** EXPERIENCE.md:478 */
   roleAssignedToEmpty: 'This role carries no other role.',
   /** EXPERIENCE.md:479 */
   roleDeleteConsequence: 'Deleting this role takes it from every account and role that holds it. This cannot be undone.',

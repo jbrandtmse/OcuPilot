@@ -7,8 +7,11 @@ import { entityRefKey } from '../../core/entity-ref';
 import { FormDirty } from '../../core/form-dirty';
 import {
   NAME_TAKEN_CODE,
+  USERS_COPY_PATH,
   USERS_FORM_PATH,
+  USERS_LIST_READ_PATH,
   USERS_NAME_PATH,
+  USERS_PASSWORD_CHECK_PATH,
   USERS_PATH,
   USER_ENTITY,
   USER_SCOPE,
@@ -48,9 +51,16 @@ async function settle(): Promise<void> {
   for (let pass = 0; pass < 4; pass += 1) await new Promise((resolve) => setTimeout(resolve, 2));
 }
 
+/** The source a copy reads through `GET /users/form?name=`: a privileged role and a full name. */
+const SOURCE_FORM = {
+  ...RULES,
+  user: { Name: 'Src', FullName: 'Source Person', Roles: ['%All'], EscalationRoles: [] },
+};
+
 function mount(
   createAnswer: JsonResult<unknown> = { kind: 'ok', status: 201, body: { name: 'probeuser', user: {} } },
-  nameAnswer: JsonResult<unknown> = { kind: 'ok', status: 200, body: { name: 'probeuser', available: true, reason: '' } }
+  nameAnswer: JsonResult<unknown> = { kind: 'ok', status: 200, body: { name: 'probeuser', available: true, reason: '' } },
+  checkAnswer: JsonResult<unknown> = { kind: 'ok', status: 200, body: { valid: true, reason: '' } }
 ) {
   TestBed.resetTestingModule();
   const calls: { path: string; method: string; body: string }[] = [];
@@ -60,6 +70,13 @@ function mount(
       if (path === USERS_FORM_PATH) {
         return { kind: 'ok', status: 200, body: RULES } as unknown as JsonResult<T>;
       }
+      if (path.startsWith(`${USERS_FORM_PATH}?name=`)) {
+        return { kind: 'ok', status: 200, body: SOURCE_FORM } as unknown as JsonResult<T>;
+      }
+      if (path === USERS_LIST_READ_PATH) {
+        return { kind: 'ok', status: 200, body: { rows: [{ Name: 'Src' }, { Name: 'Other' }] } } as unknown as JsonResult<T>;
+      }
+      if (path === USERS_PASSWORD_CHECK_PATH) return checkAnswer as JsonResult<T>;
       if (path.startsWith(USERS_NAME_PATH)) return nameAnswer as JsonResult<T>;
       return createAnswer as JsonResult<T>;
     },
@@ -259,5 +276,35 @@ describe('the create-a-user form store', () => {
     expect(store.violationFor('Password')).toBe('Enter a password.');
     store.setPassword('x');
     expect(store.violationFor('Password')).toBe('');
+  });
+
+  it('Story 18.29: a copy reads its source, pre-fills the full name and posts the four fields to the copy route', async () => {
+    const { store, calls } = mount();
+    await store.open();
+    await store.setCopyFrom('Src');
+    await settle();
+    expect(store.copyFrom()).toBe('Src');
+    expect(store.users()).toEqual(['Src', 'Other']);
+    expect(store.source()?.privileged).toBe(true);
+    expect(store.value('FullName')).toBe('Source Person');
+    store.setValue('Name', 'probeuser');
+    store.setPassword('Ocu-Probe-1829xyz!');
+    await store.save();
+    const post = calls.filter((call) => call.method === 'POST').at(-1);
+    expect(post!.path).toBe(USERS_COPY_PATH);
+    expect(Object.keys(JSON.parse(post!.body) as Record<string, unknown>).sort()).toEqual(['CopyFrom', 'FullName', 'Name', 'Password']);
+  });
+
+  it('Story 18.29: blurring a password shows the instance policy reason on the field, and a valid answer clears it', async () => {
+    const { store, calls } = mount(undefined, undefined, { kind: 'ok', status: 200, body: { valid: false, reason: 'Too short for this instance.' } });
+    await store.open();
+    store.setValue('Name', 'probeuser');
+    store.setPassword('a');
+    await store.onBlur('Password');
+    await settle();
+    expect(store.violationFor('Password')).toBe('Too short for this instance.');
+    const check = calls.filter((call) => call.path === USERS_PASSWORD_CHECK_PATH).at(-1);
+    expect(check?.method).toBe('POST');
+    expect(JSON.parse(check!.body)).toEqual({ name: 'probeuser', password: 'a' });
   });
 });

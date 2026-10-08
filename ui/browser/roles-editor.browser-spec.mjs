@@ -14,7 +14,9 @@
  * 6. **A changed editor asks before it is left.**
  * 7. **The Roles list's Delete** states how many accounts hold the role, deletes it once the name is
  *    typed, and the list re-reads; a predefined role's Delete is drawn refused.
- * 8. **The visual gate** (DW-1337): every control is named, none is narrower than its minimum,
+ * 8. **A member granted WITH ADMIN OPTION shows the admin-option tag on its row** (Story 18.29), and a plain
+ *    member does not.
+ * 9. **The visual gate** (DW-1337): every control is named, none is narrower than its minimum,
  *    nothing overflows, and the form bar is flush at the bottom of the content area.
  *
  * **It creates and deletes roles and accounts**, so it refuses the live container. Every principal it
@@ -46,6 +48,11 @@ const PROBE = 'OcuPilotProbeRoleEditor';
 const OUTER = 'OcuPilotProbeRoleEditorOuter';
 const DOOMED = 'OcuPilotProbeRoleEditorDelete';
 const HOLDERS = ['OcuPilotProbeRoleEditorA', 'OcuPilotProbeRoleEditorB'];
+
+/** The admin-option leg's role, its member granted WITH ADMIN OPTION, and a plain member of it. */
+const ADMIN_ROLE = 'OcuPilotProbeRoleEditorAdmin';
+const ADMIN_HOLDER = 'OcuPilotProbeRoleEditorAdminA';
+const ADMIN_PLAIN = 'OcuPilotProbeRoleEditorAdminB';
 const MARKER = 'OcuPilot roles-editor browser spec probe (throwaway)';
 const PASSWORD = 'OcuPilotRoleEditor9Aa';
 const EDIT_URL = `/ocupilot/permissions/roles/edit/${PROBE}?ns=HSCUSTOM`;
@@ -72,10 +79,10 @@ function irisSys(lines, names = []) {
 
 /** Remove every probe principal by its exact name, and only where it carries this spec's marker. */
 function removeLines() {
-  const users = HOLDERS.map(
+  const users = [...HOLDERS, ADMIN_HOLDER, ADMIN_PLAIN].map(
     (name) => `If ##class(Security.Users).Exists("${name}") { Kill tP Do ##class(Security.Users).Get("${name}",.tP) If $Get(tP("Comment"))="${MARKER}" Do ##class(Security.Users).Delete("${name}") }`
   );
-  const roles = [OUTER, DOOMED, PROBE].map(
+  const roles = [OUTER, DOOMED, PROBE, ADMIN_ROLE].map(
     (name) => `If ##class(Security.Roles).Exists("${name}") { Kill tP Do ##class(Security.Roles).Get("${name}",.tP) If $Get(tP("Description"))="${MARKER}"!($Extract($Get(tP("Description")),1,${MARKER.length})="${MARKER}") Do ##class(Security.Roles).Delete("${name}") }`
   );
   return [...users, ...roles];
@@ -321,6 +328,55 @@ test('AC2: a grant added and edited in the dialog shows the current and resultin
     await page.waitForFunction(() => document.querySelector('[role="dialog"]') === null, { timeout: config.navigationTimeoutMs });
     await expectTexts(page, '.ocu-role-grant-line', [readOnly, `%Development: ${STRINGS.permissionUse}`].sort(), 'the edited grant is listed');
     assert.equal(sorted(roleField(PROBE, 'Resources')), '%DB_USER:R,%Development:U', 'and the instance holds Read alone');
+  } finally {
+    await context.close();
+  }
+});
+
+/**
+ * The admin-option leg's principals: the role, a member granted it `WITH ADMIN OPTION` through the vendor's SQL, and
+ * a plain member. Each is removed by `removeLines` before and after.
+ */
+function createAdminMembers() {
+  return irisSys(
+    [
+      ...removeLines(),
+      `Set tSC=##class(Security.Roles).Create("${ADMIN_ROLE}","${MARKER}","","")`,
+      `If $System.Status.IsOK(tSC) Set tSC=##class(Security.Users).Create("${ADMIN_PLAIN}","${ADMIN_ROLE}","${PASSWORD}","Probe","","","",0,1,"${MARKER}")`,
+      `If $System.Status.IsOK(tSC) Set tSC=##class(Security.Users).Create("${ADMIN_HOLDER}","","${PASSWORD}","Probe","","","",0,1,"${MARKER}")`,
+      `Set tStatement=##class(%SQL.Statement).%New() Set tSQL=tStatement.%Prepare("GRANT ${ADMIN_ROLE} TO ${ADMIN_HOLDER} WITH ADMIN OPTION")`,
+      `Set tRS=tStatement.%Execute()`,
+      mark('ADMIN', '$System.Status.IsOK(tSC)&&$System.Status.IsOK(tSQL)&&(tRS.%SQLCODE>=0)'),
+    ],
+    ['ADMIN']
+  );
+}
+
+// AC8, Story 18.29. Mutation (Rule 19): hard-code AdminOption to 0 in RoleCreateRules.Members -> the
+// tagged leg goes red, because no row carries the tag.
+test('AC8: a member granted WITH ADMIN OPTION shows the admin-option tag on its row, and a plain member does not', async () => {
+  const { values, output } = createAdminMembers();
+  assert.equal(values.ADMIN, '1', `the admin-option members were created:\n${output}`);
+  const { context, page } = await signedInAt(`/ocupilot/permissions/roles/edit/${ADMIN_ROLE}?ns=HSCUSTOM`);
+  try {
+    await editorReady(page, ADMIN_ROLE);
+    await openTab(page, STRINGS.roleEditorTabMembers);
+    await page.waitForFunction(
+      (name) => Array.from(document.querySelectorAll('.ocu-form-role')).some((item) => item.querySelector('.ocu-form-role-name')?.textContent.trim() === name),
+      { timeout: config.navigationTimeoutMs },
+      ADMIN_PLAIN
+    );
+    const rows = await page.$$eval('.ocu-form-role', (items) =>
+      items.map((item) => ({
+        name: item.querySelector('.ocu-form-role-name')?.textContent.trim() ?? '',
+        tagged: item.querySelector('.ocu-role-member-admin')?.textContent.trim() ?? null,
+      }))
+    );
+    const holder = rows.find((row) => row.name === ADMIN_HOLDER);
+    const plain = rows.find((row) => row.name === ADMIN_PLAIN);
+    assert.ok(holder && plain, `both members are listed: ${JSON.stringify(rows)}`);
+    assert.equal(holder.tagged, STRINGS.roleMemberAdminOption, 'the member granted WITH ADMIN OPTION carries the tag');
+    assert.equal(plain.tagged, null, 'and the plain member carries none');
   } finally {
     await context.close();
   }

@@ -10,8 +10,18 @@ import {
   viewChild,
 } from '@angular/core';
 
+import { ApiService } from '../core/api';
 import { STRINGS } from '../core/strings';
 import { Dialog } from './dialog';
+
+/** The password check (Story 18.29): the instance's policy verdict for an account's password. */
+const PASSWORD_CHECK_PATH = '/api/ocupilot/users/password-check';
+
+function textOf(source: unknown, key: string): string {
+  if (source === null || typeof source !== 'object') return '';
+  const value = (source as Record<string, unknown>)[key];
+  return typeof value === 'string' ? value : '';
+}
 
 /** How many set-password dialogs have been constructed, which makes each one's field ids its own. */
 let dialogCount = 0;
@@ -45,7 +55,10 @@ let dialogCount = 0;
             [type]="inputType"
             autocomplete="new-password"
             spellcheck="false"
+            [attr.aria-invalid]="reasonShown ? 'true' : null"
+            [attr.aria-describedby]="reasonShown ? reasonId : null"
             (input)="onInput()"
+            (blur)="onBlur()"
             (keydown.enter)="onEnter($event)"
           />
           <button
@@ -58,6 +71,9 @@ let dialogCount = 0;
             <span aria-hidden="true">{{ revealGlyph }}</span>
           </button>
         </div>
+        @if (reasonShown) {
+          <p class="ocu-form-error" [id]="reasonId">{{ reasonText() }}</p>
+        }
       </div>
       <div class="ocu-field">
         <label class="ocu-criteria-marker">
@@ -93,6 +109,19 @@ export class SetPasswordDialog {
   protected readonly STRINGS = STRINGS;
 
   protected readonly fieldId = `ocu-set-password-${++dialogCount}`;
+
+  /** The sentence the instance's policy gave for the password on the field, or `''`. */
+  protected readonly reasonText = signal('');
+
+  protected readonly reasonId = `${this.fieldId}-reason`;
+
+  protected get reasonShown(): boolean {
+    return this.reasonText() !== '';
+  }
+
+  private readonly api = inject(ApiService);
+
+  private checkSeq = 0;
 
   private readonly passwordInput = viewChild.required<ElementRef<HTMLInputElement>>('passwordInput');
 
@@ -141,6 +170,33 @@ export class SetPasswordDialog {
     this.filled.set(this.passwordInput().nativeElement.value !== '');
   }
 
+  /**
+   * On the field's blur: ask the instance's policy and show its reason beside the field. The
+   * password is read from the field and sent once; an answer for a value since changed is dropped.
+   */
+  protected onBlur(): void {
+    const password = this.passwordInput().nativeElement.value;
+    if (password === '') {
+      this.checkSeq += 1;
+      this.reasonText.set('');
+      return;
+    }
+    const seq = ++this.checkSeq;
+    void this.api
+      .requestJson<unknown>(PASSWORD_CHECK_PATH, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: this.target(), password }),
+      })
+      .then((result) => {
+        if (seq !== this.checkSeq || this.finished) return;
+        if (this.passwordInput().nativeElement.value !== password) return;
+        if (result.kind !== 'ok') return;
+        const valid = (result.body as Record<string, unknown> | null)?.['valid'] === true;
+        this.reasonText.set(valid ? '' : textOf(result.body, 'reason'));
+      });
+  }
+
   protected onEnter(event: Event): void {
     event.preventDefault();
     this.submit();
@@ -172,5 +228,7 @@ export class SetPasswordDialog {
       // Already torn down: there is no element left to hold a value.
     }
     this.filled.set(false);
+    this.checkSeq += 1;
+    this.reasonText.set('');
   }
 }
