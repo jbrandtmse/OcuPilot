@@ -2,7 +2,7 @@
 title: 'Story 20.14: Interoperability holders reach OcuPilot'
 type: 'feature'
 created: '2026-10-07'
-status: 'done'
+status: 'in-progress'
 baseline_revision: 'e7840fbd7bb141c1161792f84e27d4bcb8dd17c1'
 baseline_commit: 'e7840fbd7bb141c1161792f84e27d4bcb8dd17c1'
 review_loop_iteration: 0
@@ -134,6 +134,12 @@ Principals, each with READ on the install namespace's code database: **E** also 
   - `InteropFloorTurn` under `OCUPILOT_ALLOW_TEST_PROVIDER`.
 - `ui/browser/interop-floor.browser-spec.mjs` (new): Adm signs in. It sees no no-privileges notice, `interoperability/processes?ns=HSCUSTOM` renders rows, and Permissions stays listed but unavailable, naming `%Admin_Secure:USE` (`privilegeRequiresResource`). It removes the principal in `after`.
 
+- [ ] [CI] Run 37704740185 on 85d5d96c, browser shard 2/3, failed `ui/browser/secondary-logs.browser-spec.mjs` AC4 (:141-160): it could not find `[data-ocu-log="empty"]`. `interop-productions.browser-spec.mjs` (20.2) ran earlier in the same shard, and its production start and stop wrote interoperability event-log rows. This story's new spec file had moved the shard composition. The fix: the spec holds whatever another spec left (spine Conventions › Tests).
+  - AC4 compares each viewer with what that source's own read answers at that moment: rows on screen when the read answers rows, "No entries." when it answers none. It keeps the empty state pinned wherever the spec itself can guarantee emptiness.
+  - AC3's check that every entry on screen was sent (:239) holds when the store holds more rows than the context cap (measured on `ocupilot-b-ci`: 1000 on screen, 200 sent).
+  - Proof: on `ocupilot-b-ci`, run `interop-productions` and then `secondary-logs` in one `node --test` call. It is red before the fix and green after, and the `mutation:` lines are updated.
+  - Never make `interop-productions` delete the vendor's log rows, and never pin a spec to a shard.
+
 **Acceptance Criteria:**
 
 - **AC1 (first criterion).** Given every descriptor, tool and route, when they are evaluated as E, Mon, Op and Adm past the widened floor, then each principal opens exactly its roster. Every open screen that replaces a classic page declares a pair from that page's `RESOURCE` that the principal holds. So nothing opens that the classic portal would refuse.
@@ -180,6 +186,8 @@ Rejected:
 - `navigation.ts` overlaps 18.13: doc comments only; the second to merge rebases.
 
 ## Spec Change Log
+
+- 2026-10-07, runner: rework iteration 1, trigger CI (run 37704740185). It covers only the `[CI]` item.
 
 - 2026-10-07, runner spec gate: the orchestrator cleared the six contended edits, on the condition that the audit's "no surface needs a new pair" becomes a pinned test (AC6, the floor-only roster task, and its mutation row). The AD-8 amendment and the PRD FR-3 and FR-65 lines are written.
 
