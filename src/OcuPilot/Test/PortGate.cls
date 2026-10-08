@@ -26,7 +26,7 @@ Parameter PORTPACKAGE = "OcuPilot.Port.";
 /// check declares <parameter>VENDORGATE</parameter> instead.</p>
 /// <p><b>A class in the package and not on this roster fails.</b> That is the point: the roster is
 /// what a new port has to be added to, and adding it is what forces a gate to be named.</p>
-Parameter ROSTER = "OcuPilot.Port.AdminPort=<vendor>|OcuPilot.Port.LogSourcePort=MESSAGESPAIRS;ALERTSPAIRS;ERRORSINSTANCEPAIRS|OcuPilot.Port.MgmntPort=PAIRS|OcuPilot.Port.MonitorPort=PAIRS|OcuPilot.Port.ProviderPort=INVOKEPAIRS;DRAFTPAIRS|OcuPilot.Port.WalletPort=<vendor>|OcuPilot.Port.TaskPort=<vendor>|OcuPilot.Port.ProcessPort=<vendor>|OcuPilot.Port.TokenPort=<vendor>|OcuPilot.Port.AuditPort=<vendor>|OcuPilot.Port.OAuthServerPort=<vendor>|OcuPilot.Port.OAuthClientPort=<vendor>|OcuPilot.Port.OAuthResourceServerPort=<vendor>|OcuPilot.Port.OAuthAuthorizationServerPort=<vendor>|OcuPilot.Port.OAuthRegisteredClientPort=<vendor>|OcuPilot.Port.AdminRoutes=<table>|OcuPilot.Port.PathPort=PAIRS|OcuPilot.Port.BackgroundTaskPort=PAIRS|OcuPilot.Port.NamespacePort=<vendor>|OcuPilot.Port.DatabasePort=<vendor>|OcuPilot.Port.TaskTransferPort=PAIRS|OcuPilot.Port.LanguageServerPort=<vendor>|OcuPilot.Port.LockPort=<vendor>|OcuPilot.Port.AtelierPort=PAIRS|OcuPilot.Port.AtelierRequest=<stub>|OcuPilot.Port.RemoteDatabasePort=<vendor>|OcuPilot.Port.JournalPort=<vendor>|OcuPilot.Port.LicensePort=<vendor>|OcuPilot.Port.SqlPort=OcuPilot.Port.AtelierPort.PAIRS|OcuPilot.Port.EcpPort=<vendor>|OcuPilot.Port.EncryptionPort=OcuPilot.Port.PathPort.PAIRS|OcuPilot.Port.DocDbPort=PAIRS|OcuPilot.Port.SqlActivityPort=PAIRS|OcuPilot.Port.SuperserverPort=<vendor>|OcuPilot.Port.MftPort=<vendor>|OcuPilot.Port.SqlPrivilegePort=<vendor>|OcuPilot.Port.InteropPort=PRODUCTIONPAIRS;CODEPAIRS;WRITEPAIRS";
+Parameter ROSTER = "OcuPilot.Port.AdminPort=<vendor>|OcuPilot.Port.LogSourcePort=MESSAGESPAIRS;ALERTSPAIRS;ERRORSINSTANCEPAIRS|OcuPilot.Port.MgmntPort=PAIRS|OcuPilot.Port.MonitorPort=PAIRS|OcuPilot.Port.ProviderPort=INVOKEPAIRS;DRAFTPAIRS|OcuPilot.Port.WalletPort=<vendor>|OcuPilot.Port.TaskPort=<vendor>|OcuPilot.Port.ProcessPort=<vendor>|OcuPilot.Port.TokenPort=<vendor>|OcuPilot.Port.AuditPort=<vendor>|OcuPilot.Port.OAuthServerPort=<vendor>|OcuPilot.Port.OAuthClientPort=<vendor>|OcuPilot.Port.OAuthResourceServerPort=<vendor>|OcuPilot.Port.OAuthAuthorizationServerPort=<vendor>|OcuPilot.Port.OAuthRegisteredClientPort=<vendor>|OcuPilot.Port.AdminRoutes=<table>|OcuPilot.Port.PathPort=PAIRS|OcuPilot.Port.BackgroundTaskPort=PAIRS|OcuPilot.Port.NamespacePort=<vendor>|OcuPilot.Port.DatabasePort=<vendor>|OcuPilot.Port.TaskTransferPort=PAIRS|OcuPilot.Port.LanguageServerPort=<vendor>|OcuPilot.Port.LockPort=<vendor>|OcuPilot.Port.AtelierPort=PAIRS|OcuPilot.Port.AtelierRequest=<stub>|OcuPilot.Port.RemoteDatabasePort=<vendor>|OcuPilot.Port.JournalPort=<vendor>|OcuPilot.Port.LicensePort=<vendor>|OcuPilot.Port.SqlPort=OcuPilot.Port.AtelierPort.PAIRS|OcuPilot.Port.EcpPort=<vendor>|OcuPilot.Port.EncryptionPort=OcuPilot.Port.PathPort.PAIRS|OcuPilot.Port.DocDbPort=PAIRS|OcuPilot.Port.SqlActivityPort=PAIRS|OcuPilot.Port.SuperserverPort=<vendor>|OcuPilot.Port.MftPort=<vendor>|OcuPilot.Port.SqlPrivilegePort=<vendor>|OcuPilot.Port.ScreenAccessPort=PAIRS|OcuPilot.Port.InteropPort=PRODUCTIONPAIRS;CODEPAIRS;WRITEPAIRS";
 
 /// <p>The roster value for a port whose gate is the vendor's own <code>ResourcesOR()</code> check,
 /// which AD-29 fixes as a lower bound with the remedy at the screen descriptor's declared pair
@@ -163,7 +163,7 @@ Method TestAMalformedPairSpecFailsClosed()
 /// <code>GateAnyOfForUser</code> call, or <method>OcuPilot.Port.MgmntPort.Invoke</method>'s,
 /// <method>OcuPilot.Port.MonitorPort.Performance</method>'s,
 /// <method>OcuPilot.Port.AtelierPort.Invoke</method>'s, <method>OcuPilot.Port.DocDbPort.Invoke</method>'s
-/// or <method>OcuPilot.Port.SqlActivityPort.Invoke</method>'s or <method>OcuPilot.Port.InteropPort.Invoke</method>'s <code>EvaluateRequired</code> call -> this
+/// or <method>OcuPilot.Port.SqlActivityPort.Invoke</method>'s or <method>OcuPilot.Port.InteropPort.Invoke</method>'s or <method>OcuPilot.Port.ScreenAccessPort.Invoke</method>'s <code>EvaluateRequired</code> call -> this
 /// goes red.</p>
 Method TestEveryPortEvaluatesItsDeclaredGate()
 {
@@ -267,6 +267,25 @@ Method TestEveryPortEvaluatesItsDeclaredGate()
     Set tDetail11 = $Select($IsObject(tFault11) && $IsObject(tFault11.%Get("detail")): tFault11.detail.%Get("failedPair"), 1: "")
     Do $$$AssertEquals(tHttp11 _ "|" _ $Select($IsObject(tFault11): tFault11.%Get("code"), 1: "") _ "|" _ tDetail11, ##class(OcuPilot.Kernel.Denial).#STATUS _ "|" _ tDenialCode _ "|%Ens_ProductionConfig:READ", "with AUTH.NOPRIVILEGE naming %Ens_ProductionConfig:READ")
     Do ##class(OcuPilot.Test.ScreenGate).Reset()
+
+    ; ScreenAccessPort (Story 20.15): its gate is either-of -- a caller holding neither %Development:USE nor
+    ; %Admin_Secure:USE is refused naming both, and one holding either is admitted past the gate.
+    Do ##class(OcuPilot.Test.ScreenGate).Hold("%Admin_Operate", "USE")
+    Kill tQuery
+    Set tQuery("Screen") = "osmgmt.locks"
+    Set tSC = ##class(OcuPilot.Test.ScreenAccessPortGateSeam).Invoke("Screen", "GET", .tQuery, "", .tRows12, .tHttp12, .tFault12)
+    Do $$$AssertStatusNotOK(tSC, "ScreenAccessPort.Invoke refuses a caller holding neither %Development:USE nor %Admin_Secure:USE")
+    Set tDetail12 = $Select($IsObject(tFault12) && $IsObject(tFault12.%Get("detail")): tFault12.detail.%Get("failedPair"), 1: "")
+    Do $$$AssertEquals(tHttp12 _ "|" _ $Select($IsObject(tFault12): tFault12.%Get("code"), 1: "") _ "|" _ tDetail12, ##class(OcuPilot.Kernel.Denial).#STATUS _ "|" _ tDenialCode _ "|%Development:USE or %Admin_Secure:USE", "with AUTH.NOPRIVILEGE naming both")
+    Do ##class(OcuPilot.Test.ScreenGate).Reset()
+    For tHeld = "%Development", "%Admin_Secure" {
+        Do ##class(OcuPilot.Test.ScreenGate).Hold(tHeld, "USE")
+        Kill tQuery
+        Set tQuery("Screen") = "osmgmt.locks"
+        Set tSC = ##class(OcuPilot.Test.ScreenAccessPortGateSeam).Invoke("Screen", "GET", .tQuery, "", .tRows13, .tHttp13, .tFault13)
+        Do $$$AssertStatusOK(tSC, "ScreenAccessPort.Invoke admits a caller holding " _ tHeld _ ":USE alone")
+        Do ##class(OcuPilot.Test.ScreenGate).Reset()
+    }
 }
 
 /// <p><b>AC6</b> -- the floor has one home. The router's list and the provider port's declared

@@ -232,6 +232,13 @@ const DESCRIPTOR_ACTION_LABELS: Readonly<Record<string, Readonly<Record<string, 
   'OcuPilot.Screen.Descriptor.LicenseKey': { activate: STRINGS.licenseKeyActivateAction },
   // Story 18.20: ECP data servers' Change status, which opens its dialog.
   'OcuPilot.Screen.Descriptor.EcpDataServerList': { changestatus: STRINGS.ecpDataServerChangeStatus },
+  // Story 20.15: Screen permissions' Change permissions, which opens its dialog, and its Reset. The
+  // declared Remove is sent by that dialog and drawn nowhere.
+  'OcuPilot.Screen.Descriptor.AgentScreenPermissions': {
+    'add-pair': STRINGS.screenPermissionsChangeAction,
+    'remove-pair': STRINGS.actionRemove,
+    reset: STRINGS.screenPermissionsResetAction,
+  },
   // Story 18.21: the SSL/TLS authorizations tab's Authorize and Reject, each titling its warning dialog.
   'OcuPilot.Screen.Descriptor.EcpSslConnectionTab': { authorize: STRINGS.ecpSslAuthorize, reject: STRINGS.ecpSslReject },
   // Story 18.7: Encryption key files' Create key file, Add key and Remove, and its administrators'

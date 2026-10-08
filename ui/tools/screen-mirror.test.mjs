@@ -197,6 +197,8 @@ test('every read note\'s text is the string its key names, and the three SQL sta
   assert.deepEqual(
     noted.map((screen) => screen.className).sort(),
     [
+      // Story 20.15: Screen permissions states that a change moves who OcuPilot lets open a screen.
+      'OcuPilot.Screen.Descriptor.AgentScreenPermissions',
       // Story 18.21: ECP application servers' Connections tab states when its statuses were read.
       'OcuPilot.Screen.Descriptor.EcpAppServerTab',
       'OcuPilot.Screen.Descriptor.ExplorerSqlProcedureStatements',
@@ -2729,7 +2731,7 @@ test('timelineMemberProblem refuses a timeline member that declares a timeline i
 // Mutation (Rule 19): drop SOURCE_BACKGROUND from READ_SOURCE_PORTS -> the roster pin goes red and
 // the list's read is refused.
 test('Story 16.5: the Background tasks list reads through the background port, the seventh read source', () => {
-  assert.deepEqual(READ_SOURCE_PORTS, ['admin', 'state', 'mgmnt', 'logsource', 'path', 'timeline', 'background', 'atelier', 'encryption', 'docdb', 'sqlactivity', 'interop']);
+  assert.deepEqual(READ_SOURCE_PORTS, ['admin', 'state', 'mgmnt', 'logsource', 'path', 'timeline', 'background', 'atelier', 'encryption', 'docdb', 'sqlactivity', 'interop', 'access']);
   const { screens } = readSources();
   const background = screens.find((candidate) => candidate.className === 'OcuPilot.Screen.Descriptor.BackgroundTaskList');
   assert.ok(background !== undefined, 'the Background tasks list is declared');
@@ -2898,4 +2900,31 @@ test('Story 20.2: the Interoperability lists read through the interop port, the 
     assert.equal(screen.declaration.area, 'interoperability', `${name} lives in the interoperability area`);
     assert.equal(screen.declaration.ownPrivileges.length, 1, `${name} declares its classic page's resource as its own pair`);
   }
+});
+
+// Story 20.15: Screen permissions reads through the access source, the thirteenth, which both engines
+// admit as one LIST of `Screens` with no criteria, per-row call, parent list, query, parts or rows. Every
+// case in `OcuPilot.Test.ScreenAccessDescriptor`'s corpus gets its exact sentence, or none, here as the
+// instance's registry gives it there.
+// Mutation (Rule 19): drop the access arm from `readProblem` -> the endpoint, type, key and criteria cases
+// go red.
+test('Story 20.15: Screen permissions reads through the access source, the thirteenth read source, and the corpus agrees', () => {
+  assert.ok(READ_SOURCE_PORTS.includes('access'), 'the access source is a read source');
+  const corpus = testCorpus(['Test', 'ScreenAccessDescriptor.cls'], 'Cases');
+  let refusals = 0;
+  for (const testCase of corpus.cases) {
+    const declaration = structuredClone(corpus.declaration);
+    declaration.read.source = structuredClone(testCase.source);
+    if (testCase.criteria !== undefined) declaration.read.criteria = structuredClone(testCase.criteria);
+    assert.equal(readProblem(declaration), testCase.expected, testCase.name);
+    if (testCase.expected !== null) refusals += 1;
+  }
+  assert.ok(refusals >= 7, `the corpus refuses its shapes (${refusals})`);
+  const { screens } = readSources();
+  const screen = screens.find((candidate) => candidate.className === 'OcuPilot.Screen.Descriptor.AgentScreenPermissions');
+  assert.ok(screen !== undefined, 'Screen permissions is declared');
+  assert.deepEqual(screen.declaration.read.source, { port: 'access', endpoint: 'Screens', type: 'LIST' });
+  assert.equal(readProblem(screen.declaration), null, "its read passes");
+  assert.deepEqual(screen.declaration.privileges, [{ resource: '%Development', permission: 'USE' }]);
+  assert.equal(screen.declaration.classicPage, '', 'and it replaces no classic page');
 });

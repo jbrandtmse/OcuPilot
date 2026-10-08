@@ -56,6 +56,10 @@ XData Coverage
 <coverage>
 <screen name="AgentDefinitionForm" class="OcuPilot.Test.AgentDefinitionForm" method="TestTheFormDeclaresNoReadOrTableAndOneIdAndNoClassicPage"/>
 <screen name="AgentDefinitionList" class="OcuPilot.Test.ReadTool" method="TestTheRegistryListsDescriptorReadsAndInheritedKinds" corpus="named inside the production read-tool roster, which asserts every descriptor-derived read in one loop"/>
+<screen name="AgentScreenPermissions" class="OcuPilot.Test.ScreenAccessDescriptor" method="TestTheDescriptorDeclaresScreenPermissions"/>
+<tool name="agent.screenpermissions.addpair" class="OcuPilot.Test.ScreenAccessDescriptor" method="TestTheToolsDeclareTheirKindsPortsAndPairs" corpus="the three Screen permissions writes are asserted together in one loop"/>
+<tool name="agent.screenpermissions.removepair" class="OcuPilot.Test.ScreenAccessDescriptor" method="TestTheToolsDeclareTheirKindsPortsAndPairs" corpus="the three Screen permissions writes are asserted together in one loop"/>
+<tool name="agent.screenpermissions.reset" class="OcuPilot.Test.ScreenAccessDescriptor" method="TestTheToolsDeclareTheirKindsPortsAndPairs" corpus="the three Screen permissions writes are asserted together in one loop"/>
 <screen name="AgentGuardrails" class="OcuPilot.Test.Guardrails" method="TestTheDescriptorIsAListedUngatedAgentScreenWithNoRead"/>
 <screen name="AgentSwitches" class="OcuPilot.Test.Wire" method="TestTheAgentAreaNeverGatesWhileItsScreensGateOnOcuPilotsOwnResource"/>
 <screen name="AgentTranscript" class="OcuPilot.Test.TranscriptStore" method="TestTheListAndTheTranscriptPageAreDeclared" corpus="one declaration test pins both screens Story 14.4 adds, the list and the transcript page beneath it"/>

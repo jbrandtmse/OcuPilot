@@ -229,7 +229,7 @@ Method TestAnUncoveredEntityTypeIsRefusedWholesale()
     Do $$$AssertStatusOK(tSC, "an unparseable reference is answered, not raised")
     Do $$$AssertEquals(tProhibits, 1, "and refused")
     Do $$$AssertEquals(tCode, $Parameter(..#SHIPPEDSET, "UNCOVERED"), "as uncovered")
-    Do $$$AssertEquals($ListToString(##class(OcuPilot.Kernel.Proposal.Prohibited).CoveredTypes()), "web-application,user,auditing-configuration,task,process,application-error,role,resource,x509-credential,wallet-secret,device,oauth2-client-configuration,oauth2-server-client,audit-event,audit-user-event,ssl-configuration,service,ldap-configuration,oauth2-server-definition,oauth2-resource-server,oauth2-server,namespace,web-session,background-task,global-mapping,routine-mapping,package-mapping,database-configuration,database,language-server,lock,class,routine,journal-file,journal-settings,license-key,license-server,ecp-data-server,ecp-settings,ecp-ssl-connection,encryption-key-file,database-encryption-keys,data-element-encryption-keys,encryption-startup,docdb-database,authentication-options,superserver,mft-connection,production", "the set covers exactly forty-six entity types -- the service and the LDAP configuration since Story 9.9the set covers exactly forty-four entity types -- the service and the LDAP configuration since Story 9.9, the SSL/TLS configuration since Story 9.5, the two audit event types since Story 7.11, the create and import types since Epic 8, the server description since Story 12.4, the resource server since Story 12.6, the namespace since Story 18.2, the web session since Story 16.2, the background task since Story 16.5, the three mapping types since Story 18.14, the database configuration since Story 18.3, the language server since Story 16.10, the database since Story 18.4, the lock since Story 16.12, and the class and the routine since Story 19.2, the journal file since Story 18.5, the journal settings since Story 18.18, and the license key and the license server since Story 18.6, and the ECP data server since Story 18.20, and the ECP settings and the ECP SSL/TLS computer name since Story 18.21, and the encryption key file since Story 18.7, and the active database and data-element encryption keys since Story 18.22, and the encryption startup settings since Story 18.23, and the document database since Story 19.17, and the authentication options since Story 18.8, and the superservers since Story 18.25, and the production since Story 20.2")
+    Do $$$AssertEquals($ListToString(##class(OcuPilot.Kernel.Proposal.Prohibited).CoveredTypes()), "screen-permission,web-application,user,auditing-configuration,task,process,application-error,role,resource,x509-credential,wallet-secret,device,oauth2-client-configuration,oauth2-server-client,audit-event,audit-user-event,ssl-configuration,service,ldap-configuration,oauth2-server-definition,oauth2-resource-server,oauth2-server,namespace,web-session,background-task,global-mapping,routine-mapping,package-mapping,database-configuration,database,language-server,lock,class,routine,journal-file,journal-settings,license-key,license-server,ecp-data-server,ecp-settings,ecp-ssl-connection,encryption-key-file,database-encryption-keys,data-element-encryption-keys,encryption-startup,docdb-database,authentication-options,superserver,mft-connection,production", "the set covers exactly forty-six entity types -- the service and the LDAP configuration since Story 9.9the set covers exactly forty-four entity types -- the service and the LDAP configuration since Story 9.9, the SSL/TLS configuration since Story 9.5, the two audit event types since Story 7.11, the create and import types since Epic 8, the server description since Story 12.4, the resource server since Story 12.6, the namespace since Story 18.2, the web session since Story 16.2, the background task since Story 16.5, the three mapping types since Story 18.14, the database configuration since Story 18.3, the language server since Story 16.10, the database since Story 18.4, the lock since Story 16.12, and the class and the routine since Story 19.2, the journal file since Story 18.5, the journal settings since Story 18.18, and the license key and the license server since Story 18.6, and the ECP data server since Story 18.20, and the ECP settings and the ECP SSL/TLS computer name since Story 18.21, and the encryption key file since Story 18.7, and the active database and data-element encryption keys since Story 18.22, and the encryption startup settings since Story 18.23, and the document database since Story 19.17, and the authentication options since Story 18.8, and the superservers since Story 18.25, and the production since Story 20.2, and the screen permission since Story 20.15")
 
     ; The refusal reaches a caller as a 403 with the set's own code, not as an error.
     Set tKey = ..Seed(..Payload(), "Description", "probe-id", "rest-service")
@@ -715,6 +715,24 @@ Method TestARoleChangeTouchesItsReviewedFourAndNothingElse()
     Do $$$AssertEquals(##class(OcuPilot.Kernel.Proposal.Prohibited).ReasonFor(tCode), ##class(OcuPilot.Kernel.Proposal.Prohibited).#UNCOVEREDFIELDREASON, "with the caller-neutral sentence")
 }
 
+/// <p>Story 20.15, AD-10, AD-64: a screen-permission change is judged by the screen's identifier alone. A
+/// screen in an area that declares no pair (Home, Switches, Screen permissions itself) is refused
+/// <code>PROHIBITED.OCUPILOTSCREEN</code> whichever tool and payload name it; an adjustable screen is not,
+/// and neither is an identifier no screen carries, which the port refuses by its own code.</p>
+/// <p>Mutation (Rule 19): drop the <code>screen-permission</code> branch of
+/// <method>OcuPilot.Kernel.Proposal.Prohibited.Prohibits</method> -- the type is refused uncovered or
+/// the own-screen legs are not reached, and this goes red.</p>
+Method TestAScreenPermissionOnOneOfOcuPilotsOwnScreensIsRefused()
+{
+    Set tCode = ##class(OcuPilot.Kernel.Proposal.Prohibited).#OCUPILOTSCREEN
+    For tCase = $ListBuild("shell.home", 1), $ListBuild("agent.switches", 1), $ListBuild("agent.screenpermissions", 1), $ListBuild("osmgmt.locks", 0), $ListBuild("no.such.screen", 0) {
+        Do ##class(OcuPilot.Kernel.EntityRef).Key("screen-permission", "instance", $List(tCase, 1), .tRef)
+        Set tSC = ##class(OcuPilot.Kernel.Proposal.Prohibited).Prohibits("agent.screenpermissions.addpair", tRef, "{}", "[]", .tProhibits, .tOut)
+        Do $$$AssertStatusOK(tSC, $List(tCase, 1) _ ": the question is answered")
+        Do $$$AssertEquals(''tProhibits _ "|" _ tOut, $List(tCase, 2) _ "|" _ $Select($List(tCase, 2): tCode, 1: ""), $List(tCase, 1) _ ": refused exactly when it is one of OcuPilot's own")
+    }
+}
+
 /// <p>AC2 and AC6: the set is the only class that spells a <code>PROHIBITED.</code> code or writes
 /// one of its sentences, every code is well formed, and the resolver the confirm handler asks
 /// first answers each of them.</p>
@@ -727,7 +745,7 @@ Method TestTheSetHasOneHomeAndOneSentencePerCode()
     Do $$$AssertEquals(##class(OcuPilot.Kernel.Proposal.Prohibited).RegistryClass(), "OcuPilot.Screen.Tool.Registry", "and resolves the tool through the shipped registry")
 
     Set tCodes = ##class(OcuPilot.Kernel.Proposal.Prohibited).Codes()
-    Do $$$AssertEquals($ListLength(tCodes), 32, "the set declares thirty-two codes -- the sign-in and start codes since Story 18.8, the serving superserver code since Story 18.25, the SQL privilege code since Story 18.9")
+    Do $$$AssertEquals($ListLength(tCodes), 33, "the set declares thirty-three codes -- the sign-in and start codes since Story 18.8, the serving superserver code since Story 18.25, the SQL privilege code since Story 18.9, the own-screen code since Story 20.15")
     For tI = 1:1:$ListLength(tCodes) {
         Set tCode = $List(tCodes, tI)
         Do $$$AssertTrue(##class(OcuPilot.Api.Error).IsValidCode(tCode), tCode _ " matches the machine-code pattern")

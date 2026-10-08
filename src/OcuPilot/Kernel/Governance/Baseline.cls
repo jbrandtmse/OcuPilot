@@ -17,6 +17,9 @@ Parameter KEYSXDATA = "Keys";
 XData Keys [ MimeType = application/json ]
 {
 {
+  "agent.screenpermissions.addpair": true,
+  "agent.screenpermissions.removepair": true,
+  "agent.screenpermissions.reset": true,
   "logs.applicationerrors.delete": true,
   "osmgmt.databasedetails.compact": false,
   "osmgmt.databasedetails.defragment": false,

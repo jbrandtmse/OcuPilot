@@ -524,6 +524,19 @@ ClassMethod RequiredPairsOf(pTool As %DynamicObject, pArgumentsJson As %String, 
     Quit tSC
 }
 
+/// <p>The resources a pair's resource offers: one, or the members of an either-of pair
+/// (<method>OcuPilot.Screen.Gate.Alternatives</method>), for the evaluators that ask about a user's grants.</p>
+ClassMethod Alternatives(pResource As %String) As %List
+{
+    Quit ##class(OcuPilot.Screen.Gate).Alternatives(pResource)
+}
+
+/// <p>A pair spelled for a refusal (<method>OcuPilot.Screen.Gate.SpellPair</method>).</p>
+ClassMethod SpellPair(pResource As %String, pPermission As %String) As %String
+{
+    Quit ##class(OcuPilot.Screen.Gate).SpellPair(pResource, pPermission)
+}
+
 /// <p>The first pair of <var>pPairs</var> that <var>pUser</var> does not hold, as
 /// <code>resource:permission</code>, or <code>""</code> (AD-8). <var>pHolderClass</var>'s own
 /// <code>HoldsPair</code> answers each one, so a caller's seam decides.</p>
@@ -532,8 +545,16 @@ ClassMethod MissingPair(pUser As %String, pPairs As %List, pHolderClass As %Stri
     Set tFailed = ""
     For tI = 1:1:$ListLength(pPairs) {
         Set tPair = $List(pPairs, tI)
-        If '..Holds(pUser, $List(tPair, 1), $List(tPair, 2), pHolderClass) {
-            Set tFailed = $List(tPair, 1) _ ":" _ $List(tPair, 2)
+        Set tHeld = 0
+        Set tAlts = ##class(OcuPilot.Screen.Gate).Alternatives($List(tPair, 1))
+        For tJ = 1:1:$ListLength(tAlts) {
+            If ..Holds(pUser, $List(tAlts, tJ), $List(tPair, 2), pHolderClass) {
+                Set tHeld = 1
+                Quit
+            }
+        }
+        If 'tHeld {
+            Set tFailed = ##class(OcuPilot.Screen.Gate).SpellPair($List(tPair, 1), $List(tPair, 2))
             Quit
         }
     }

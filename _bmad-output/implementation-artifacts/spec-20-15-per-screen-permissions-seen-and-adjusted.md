@@ -2,13 +2,30 @@
 title: 'Story 20.15: Per-screen permissions, seen and adjusted'
 type: 'feature'
 created: '2026-10-07'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: '91f55b08bae35de91bd1d6258c980a14fc8e47fe'
+baseline_commit: '91f55b08bae35de91bd1d6258c980a14fc8e47fe'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-20-context.md'
 warnings: ['oversized']
-deferred: []
+deferred:
+  - 'A Pairs read-back for add-pair and remove-pair: the action kind reads nothingSent, because the composed GET refuses the repeated change after the write (READBACKFIELDS Pairs is declared and unused). A plain re-read would let AD-58 compare the stored set.'
+  - summary: >-
+      The port's stale-write mapping to 409 STATE.CONFLICT is pinned only at the store (ScreenAccessGate), not through ScreenAccessPort.
+    evidence: |-
+      No added test interleaves two writers through the port; every port test uses one writer.
+    location: >- # optional
+      src/OcuPilot/Port/ScreenAccessPort.cls (Stored)
+    severity: medium
+  - summary: >-
+      The agent propose-and-confirm path of the three unadvertised tools is declared but never run end to end.
+    evidence: |-
+      ScreenAccessWire drives the row-action route; ScreenAccessDescriptor asserts declarations only. Story 20.18 advertises the tools and should add the run (StateDiff, Reset.PortQuery payload branch, ReadBackGone).
+    location: >- # optional
+      src/OcuPilot/Tool/ScreenAccessAddPair.cls, ScreenAccessRemovePair.cls, ScreenAccessReset.cls
+    severity: medium
 ---
 
 <intent-contract>
@@ -47,7 +64,7 @@ This is the first half of a recommended split (Design Notes › Split). The agen
   - any screen in an area that declares no pair (Home, Agent co-pilot).
 
   `Screen.Gate.Adjustable` is the one home of that last predicate. `RequiredPairs` ignores a stored row for such a screen, and the prohibited set refuses writing one.
-- **Screen permissions' own gate is fixed.** It declares `%Development:USE`. Its three write tools read that declared pair from the descriptor. Its read tool gets it through `RequiredPairs`, which ignores any row for a screen that cannot be adjusted.
+- **Screen permissions' own gate is fixed, and either-of.** It admits a caller holding `%Development:USE` or `%Admin_Secure:USE` (`Screen.Gate.AdjusterPairs`, one pair whose resource is `%Development|%Admin_Secure`). Its descriptor overrides `PrivilegePairs` to answer it, so the screen, its read, its three write tools and `ScreenAccessPort` all admit either, and no other surface does. Its read tool gets it through `RequiredPairs`, which ignores any row for a screen that cannot be adjusted.
 - **One operation, two callers (AD-53, AD-55).** Each change goes through its write tool for both callers:
   - the fresh read, through the tool's port;
   - AD-34's per-target hold, through `Operation` (DW-1882);
@@ -80,7 +97,8 @@ Screens are named by their `toolIdentifier`. An action is `POST /screens/agent.s
 | Scenario | Input / State | Expected Output / Behavior | Error Handling |
 |----------|--------------|---------------------------|----------------|
 | View | Dev: `GET /screens/agent.screenpermissions/read`, and `agent.screenpermissions.read` | 200. One row per built screen, with `Screen`, `Area`, `Declared`, `Adjustment`, `ClassicResource`, `Effective` (= `RequiredPairs`), `Holds`, `FailedPair` and `Adjustable`. The tool answers the same rows | none |
-| Not an adjuster | Op: the read, and each of the three actions | 403 `AUTH.NOPRIVILEGE` naming `%Development:USE`. The side bar lists the screen unavailable, naming it | nothing stored |
+| Not an adjuster | Op, holding neither `%Development:USE` nor `%Admin_Secure:USE`: the read, and each of the three actions | 403 `AUTH.NOPRIVILEGE` naming `%Development:USE or %Admin_Secure:USE`. The side bar lists the screen unavailable, naming both | nothing stored |
+| Security-only adjuster | Sec, holding `%Admin_Secure:USE` and READ on the code database, not `%Development:USE`: the map, the read, and `add-pair` then `reset` on `osmgmt.locks` | 200 each. Sec's map opens the screen, and Op's Locks follows Sec's change | none |
 | Raise | Dev: `add-pair` `osmgmt.locks` `%Admin_Secure:USE` | 200. In Op's `/navigation`, Locks reads `allowed:false` with `failedPair` `%Admin_Secure:USE`. Op's Locks read, `osmgmt.locks.read` and the Remove locks action each refuse, naming it | 403 `AUTH.NOPRIVILEGE` |
 | Reset | Dev: `reset` `osmgmt.locks`, then a second `reset` | The first answers 200, and Op opens Locks again. The second answers 409 `ACCESS.NOTADJUSTED` | nothing stored |
 | Lower | Dev: `remove-pair` `osmgmt.processes` `%Admin_Manage:USE` | 200. Op's `/navigation` shows Processes allowed. Op's read is not refused naming `%Admin_Manage:USE`; Task 0 records its answer | none |
@@ -296,6 +314,16 @@ Every other edit is add-only. Each new entry sits beside the agent entries or at
 - **Tests (edited):** as listed in the Code Map. `ui/tools/navigation.test.mjs` also covers the re-read on `screen-permission`.
 - `ui/browser/screen-permissions.browser-spec.mjs` (new): AC7. Its `after` removes Dev and resets the adjustment.
 
+- [x] [Owner] The owner decided on 2026-10-08 that a security administrator holding `%Admin_Secure:USE` but not `%Development:USE` may also adjust screen permissions (AD-64 item 4 and AD-8's one either-of note, both amended). Build it narrowly.
+  - **Scope.** An either-of declared only for the Screen permissions screen, its read and its three write tools, through `Port/ScreenAccessPort`. Do not generalize descriptors to any-of.
+  - **Gates.** The navigation verdict (rail, side bar, command box), the read route and tool, the screen action route, dispatch and the confirm gate each accept either pair. A caller holding neither is refused, and the refusal names both pairs.
+  - **Rosters.** `InteropFloorOwnPairs`, `DeveloperFloor` and the coverage rosters still pass. Where a roster cannot express an either-of, add a named entry with its reason; never weaken the roster.
+  - **Tests.** A principal holding only `%Admin_Secure:USE`, and READ on the install namespace's code database, with no `%Development`, sees the screen and changes a pair. A principal holding neither is refused, naming both. A mutation drops each arm in turn: drop `%Development` and the Developer principal reddens; drop `%Admin_Secure` and the security-only principal reddens.
+  - Update AC2 and the matrix rows to the either-of in place.
+  - DW-2179 and DW-2180 (open, owned here): settle them in this pass if each is a small, in-scope change, or leave them to the code review.
+
+- [x] [Orchestrator] Pin the either-of to its five surfaces (the orchestrator's condition for 20.15's boundary, 2026-10-08). A roster test, in `ScreenAccessDescriptor` or its own class, enumerates every registered screen descriptor's pairs (`PrivilegePairs`, and `RequiredPairs` with no adjustment) and every registered tool's required pairs. A pair whose resource carries `Screen.Gate`'s `ALTERNATIVESEPARATOR` may appear only on Screen permissions (`agent.screenpermissions`), its read tool and its three write tools. Any other surface declaring one fails, naming it, and so does a listed surface that no longer carries it. Mutation (Rule 19): make one other descriptor's `PrivilegePairs` (for example Locks') answer `Screen.Gate.AdjusterPairs()`; the test goes red naming it. Revert byte-identical, and write the `mutation:` line.
+
 **Acceptance Criteria:**
 
 - **AC1 (view).**
@@ -303,9 +331,9 @@ Every other edit is add-only. Each new entry sits beside the agent entries or at
   - **when** Screen permissions' read route is opened or `agent.screenpermissions.read` is called,
   - **then** every built screen is one row. Its `Effective` is what `Screen.Gate.RequiredPairs` evaluates for that screen, the classic custom resource included. `Holds` and `FailedPair` are the caller's own verdict.
 - **AC2 (who may).**
-  - **Given** an account without `%Development:USE` (Op),
+  - **Given** an account holding neither `%Development:USE` nor `%Admin_Secure:USE` (Op),
   - **when** it opens the screen, calls the read tool or sends any of the three actions,
-  - **then** each is refused naming `%Development:USE`. The stock `%Developer`, `%Manager` and `%All` roles all hold that pair (measured).
+  - **then** each is refused naming `%Development:USE or %Admin_Secure:USE`. An account holding either one (Dev, or the security-only Sec) may view and change. The stock `%Developer`, `%Manager` and `%All` roles all hold the first pair (measured).
 - **AC3 (Integration: every gate follows a change).**
   - **Given** Dev's Raise and then Reset on Locks,
   - **when** Op reads `/navigation`, Locks' read route and `osmgmt.locks.read`, and sends Remove locks,
@@ -331,11 +359,118 @@ Every other edit is add-only. Each new entry sits beside the agent entries or at
   - **when** it is read,
   - **then** all three keys are `true`, and all three tools stay unadvertised until Story 20.18.
 
+### Review Findings
+
+Code review, 2026-10-08 (both implement passes, baseline d782877a): 1 high, 8 medium and 14 low after triage. All patched, or closed in the ledger; nothing is left open.
+
+- [x] [Review][Patch] (high) AD-10 named `PROHIBITED.OCUPILOTSCREEN` for an adjustment that would leave no pair, while the spec, AC6 and the code refuse 422 `ACCESS.PAIRS.EMPTY`. AD-10 is corrected at its origin (Rule 20, memlog) [ARCHITECTURE-SPINE.md:329]
+- [x] [Review][Patch] (medium) The either-of split was not confined. `Gate.Alternatives` split any resource carrying `|`, and a pair naming no resource read as held in `Dispatch`/`Operation.MissingPair`, which was fail-open. It now splits only `AdjusterPairs`' pair [src/OcuPilot/Screen/Gate.cls:447]
+- [x] [Review][Patch] (medium) DW-2180: the port's 409 `STATE.CONFLICT` was not pinned. A race seam now drives it for both a created row and an updated one [src/OcuPilot/Test/ScreenAccessGate.cls:192]
+- [x] [Review][Patch] (medium) The real `AdjustedPairs` unparsed-row branch was unpinned: the seam bypassed it. It now has a real-gate leg [src/OcuPilot/Test/ScreenAccessGate.cls:102]
+- [x] [Review][Patch] (medium) The port's own refusal of a screen that cannot be adjusted was unpinned below the prohibited set [src/OcuPilot/Test/ScreenAccessGate.cls:192]
+- [x] [Review][Patch] (medium) AC3's tool leg could be skipped silently, and after a reset only the map was re-checked. It now asserts that the tool resolves, and that the read route, Remove locks and the tool answer as before [src/OcuPilot/Test/ScreenAccessWire.cls:285]
+- [x] [Review][Patch] (medium) The reset's read-back (`ReadBackGone`) runs on the person route but was unasserted [src/OcuPilot/Test/ScreenAccessWire.cls:285]
+- [x] [Review][Patch] (medium) AC5: the remove's audit row and the reset's pairs before and after were unasserted [src/OcuPilot/Test/ScreenAccessWire.cls:371]
+- [x] [Review][Patch] (medium) AC8: the screen-context leg had no positive control [src/OcuPilot/Test/ScreenAccessDescriptor.cls:147]
+- [x] [Review][Patch] (low) The port read the set and the version in two reads, so an out-of-hold caller's write could be lost. It now reads both once [src/OcuPilot/Port/ScreenAccessPort.cls:287]
+- [x] [Review][Patch] (low) `GuardedRemove` checked the version, then deleted by screen. It is now one versioned `DELETE` with a row count [src/OcuPilot/Kernel/State/Access.cls:103]
+- [x] [Review][Patch] (low) A composed read naming an empty pair answered "no change". It is now 422 `ACCESS.PAIR.MALFORMED` [src/OcuPilot/Port/ScreenAccessPort.cls:300]
+- [x] [Review][Patch] (low) The add tool's description called an add a lowering [src/OcuPilot/Screen/Tool/ScreenAccessAddPair.cls:10]
+- [x] [Review][Patch] (low) Doc comments and names left stale by the either-of pass were corrected:
+  - the `ScreenAccessAction` header;
+  - the `DeveloperFloor` doc;
+  - the Wire header and its method name;
+  - the fixture's `Prepare` doc;
+  - the `ci-throwaway.sh` comment;
+  - the browser spec's header;
+  - the `ScreenAccessGate` header;
+  - `Screen/Access`'s "read once";
+  - the `ScreenAccessDescriptor` mutation note.
+- [x] [Review][Patch] (low) The fixture now confirms that Op lacks `%Admin_Secure:USE` [src/OcuPilot/Test/ScreenAccessFixture.cls:44]
+- [x] [Review][Patch] (low) Task 0's record, dropped by the either-of rework, is restored under Verification.
+- [x] [Review][Closed] DW-2179: `by-design`. Add and remove are action-style, so their read-back is `nothingSent` (AD-58). The AD-58 amendment is corrected to say so.
+- [x] [Review][Closed] Ten LOWs were closed with terminal ledger entries, DW-2191 to DW-2200 (`wontfix-accepted`, `wontfix-theoretical` or `by-design`). Each carries its `reopen_if`.
+
+**Rejected:**
+
+- **AD-64's "one either-of check".** The API floor is not a pair set, so AD-8's every-pair rule is unaffected.
+- **The ledger shows `a|b:USE`.** That is the stored form, which must parse back; it appears only in the raw Result JSON.
+- **Duplicated either-of loops.** Each evaluates a different subject, and all of them now split through `Gate.Alternatives`.
+- **`Canonical` keeps the resource's case.** The check is case-insensitive, and a fix needs a `%SYS` lookup.
+- **A GET with both change keys.** No tool or route builds that query.
+- **The context omits `ClassicResource`.** The read tool answers it on every row (AD-36).
+- **The Lower matrix row.** The fix edits the spec, and AC4 holds.
+- **`ResetAll` has no `Armed` guard.** Only armed classes call it.
+- **Adjustment and Effective come from different reads.** That is spec-bound, and the doc is corrected.
+- **The dialog's Remove has no browser test.** Rule 3 is met by AC7, and the component specs cover the dialog.
+- **The wording of EXPERIENCE.md's row note.** Cosmetic.
+- **The `DeveloperFloor` "ThirtyFive" name and the garbled `Test/Prohibited` :232 message.** Both predate this story.
+- **AC6's per-code mutations.** Rule 19 asks for one mutation per AC.
+- **The agent-tool legs run in process.** Each link is pinned, and the real-principal turn is DW-2181 (Story 20.18).
+
+Code review, 2026-10-08 (rework 2, `ca530302`, baseline 91f55b08): 0 high, 0 medium, 4 low patched or closed in-pass, 1 low closed in the ledger. The orchestrator's condition is met.
+
+- [x] [Review][Patch] (low) The roster's doc comment claimed "exactly five surfaces", "unadjusted `RequiredPairs`" and "every registered tool's pairs"; it now says what it reads [src/OcuPilot/Test/ScreenAccessDescriptor.cls:204]
+- [x] [Review][Patch] (low) The class header did not name the roster [src/OcuPilot/Test/ScreenAccessDescriptor.cls:1]
+- [x] [Review][Patch] (low) Tool pairs are read through `Tool.Registry.RequiredPairs`, the gate's own reader, so a throwing `PrivilegePairs` cannot abort the scan [src/OcuPilot/Test/ScreenAccessDescriptor.cls:232]
+- [x] [Review][Patch] (low) Rule 19: the "a listed surface loses it" direction had no `mutation:` line; it is now recorded under Verification.
+- [x] [Review][Closed] DW-2203 `wontfix-accepted`: port pair parameters and per-call `ArgumentPairs` are not read. `ScreenAccessPort.PAIRS` is AD-64's sanctioned carrier, and `Navigate.ArgumentPairs` carries the pair per call by design.
+
+**Rejected (rework 2):**
+
+- **Areas are not scanned.** False: `Descriptor.TestTheAreaVocabularyIsClosedOrderedAndUngatedAtBothEnds` pins every area's set by content.
+- **`pResolved` is ignored.** False: every gate refuses an unresolved surface, so an unreadable stray admits on neither arm.
+- **A registry failure errors the method.** False: `AssertStatusOK` fails first, naming the list.
+- **The `> 1` floors are weak.** Low: `SurfaceCoverage` and `Descriptor` pin registry completeness.
+- **The five are checked for the separator, not the exact pair.** False: `TestTheDescriptorDeclaresScreenPermissions` and `TestTheToolsDeclareTheirKindsPortsAndPairs` pin the exact pair.
+- **The descriptor leg uses OR.** False: the descriptor is not adjustable and has no classic page, and `ScreenAccessGate`'s stray-row legs pin that.
+- **The read tool's name is a literal.** False: a wrong name reddens in both directions.
+- **The `[false]` triage entry and the "0 failed" line.** Both fixes would edit spec history.
+- **`Gate.AdjusterPairs`' "nothing else does".** Outside the rework range, and not high.
+
 ## Spec Change Log
+
+- 2026-10-08, runner: re-opened for the orchestrator's boundary condition, a roster test confining the either-of pair to its five surfaces (rework iteration 2). The pass covers only the `[Orchestrator]` item.
+
+- 2026-10-08, runner: re-opened for the owner's either-of decision (AD-64 item 4, AD-8 note; orchestrator placement: in 20.15 before its review). The pass covers only the `[Owner]` item.
 
 - 2026-10-07, runner spec gate: the orchestrator ruled A on Q1 to Q6 (by=merge_gate), approved the split (Story 20.18 chartered, ordered 20.15, 20.18, 20.17) and cleared the six contended edits on union terms. This story's three tools ship unadvertised, and every dispatch and confirm gate reads `Screen.Gate.RequiredPairs`, so the agent never proposes against an adjusted pair unchecked. AD-64 is claimed and written with its one-line amendments; CLAUDE.md's AD count reads 64.
 
 ## Review Triage Log
+
+### 2026-10-08 — Review pass
+
+- verdicts: 8 findings — high 0, medium 3, low 4, false 1, maybe-false 0
+- findings:
+
+  - `[medium]` `[patch]` Port `Snippet`/`SnippetForm` untested — added `ScreenAccessDescriptor.TestTheScriptRendersTheWritesAndNotTheRead`; `Literal` no longer doubling a quote reddened it, reverted byte-identical.
+  - `[medium]` `[defer]` Stale-write 409 unpinned at the port — deferred; the store-level version check is pinned.
+  - `[medium]` `[defer]` Agent propose-and-confirm path unrun — deferred to Story 20.18, which advertises the tools.
+  - `[low]` `[reject]` PAIRPRESENT/PAIRABSENT have no separate mutation line — same check shape as the ninth-pair leg; AC6's line covers the family.
+  - `[low]` `[reject]` `Gate.Adjustable` cache invalidation unasserted — the cache is keyed on the compiled Area class hash and bypassed when the hash is empty; no reachable failure.
+  - `[low]` `[reject]` `Invoke` GET with both addpair and removepair takes the add branch — no tool or route builds that query.
+  - `[false]` `[reject]` Intent-alignment layer: no divergence; reading A implemented, deliberate deviations (unique index, nothingSent read-back) are recorded.
+  - `[low]` `[reject]` `WireSecurityRead` task-history "nothing is cut at 1,000" red — the throwaway holds 1224 history rows; not this story's code, and CI starts fresh.
+
+### 2026-10-08 — Review pass (rework 1, either-of)
+
+- verdicts: 7 findings - high 0, medium 2, low 5, false 0, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` Dispatch and confirm gates had no test with the either-of pair - added `ScreenAccessGate.TestDispatchAcceptsEitherArmOfTheEitherOfPair` (via a `Missing` exposure on `ToolDispatchProbe`) and a confirm-gate leg in the Sec wire test; both mutations red.
+  - `[medium]` `[patch]` `Access.Spelled` output for the screen's own row unasserted - added a Sec row leg; mutation red.
+  - `[low]` `[reject]` `ProviderPort.GateAnyOfForUser` and `AdminPort.HoldsPair` do not split alternatives - only this screen's gates carry the encoding, so none can receive it.
+  - `[low]` `[reject]` `Mint` and `Ledger.PairsToString` store the `a|b:USE` form - consistent with `ParsePairSpec` and `MissingPair`; no consumer reads it back as text.
+  - `[low]` `[reject]` `PortGate` admit loop has no own mutation line - the arm mutations on `ADJUSTERRESOURCES` recompile the port's `PAIRS`, and the refusal leg beside it fails if the gate is absent.
+  - `[low]` `[reject]` Shared evaluators split any `|` resource - by design: the encoding is the either-of, only `AdjusterPairs` builds one, and descriptor declarations are unchanged.
+  - `[low]` `[reject]` Rail and command box have no separate Sec test - they read the same navigation verdict the Sec map leg asserts.
+
+### 2026-10-08 — Review pass (rework 2, either-of roster)
+
+- verdicts: 3 findings - high 0, medium 0, low 2, false 1, maybe-false 0
+- findings:
+  - `[low]` `[reject]` Tool coverage reads `PrivilegePairs` only, not `ArgumentPairs` - `ArgumentPairs` is per-call and argument-dependent; the intent names a tool's required pairs, and the either-of pair is built only by `AdjusterPairs`.
+  - `[low]` `[reject]` Descriptor class names and tool names share one key space - the two never collide (dotted class names against `area.screen.verb` tool names); the five-roster is built from the same two forms.
+  - `[false]` `[reject]` Verification-gap layer: no gaps; the test asserts non-empty registries, both directions, and the `mutation:` line is recorded.
 
 ## Design Notes
 
@@ -490,7 +625,64 @@ Every other edit is add-only. Each new entry sits beside the agent entries or at
 | AC7 | `navigation.ts` `onChange` ignores `screen-permission` | the browser spec, whose side bar stays stale |
 | AC8 | A key set to `false`; separately, `ADVERTISED 1` | `GovernanceBaseline`; `ScreenAccessDescriptor` |
 
+**Mutations run (Rule 19)**, each applied to the throwaway's source, reloaded, observed red and reverted by a reload of the unmutated tree:
+
+- mutation: AC1 - `Screen.Access` takes `Effective` from the declared set: `ScreenAccessWire` View and Classic union red.
+- mutation: AC2 either-of, arm one - `Gate.ADJUSTERRESOURCES` reduced to `%Admin_Secure` (recompiled with `ScreenAccessPort`): the Dev legs of `ScreenAccessWire` red (Raise, Audit, Lower, Classic union, View) and the Not an adjuster leg red on its naming; the Sec leg green. Reverted from the worktree (tree diff identical).
+- mutation: AC2 either-of, arm two - `Gate.ADJUSTERRESOURCES` reduced to `%Development`: `ScreenAccessWire.TestASecurityAdministratorWithoutDevelopmentMayAdjust` and the naming leg red, the Dev legs green. Reverted the same way.
+- mutation: AC2 - `AgentScreenPermissions.PrivilegePairs` answering the declaration (`##super()`): `ScreenAccessDescriptor.TestTheDescriptorDeclaresScreenPermissions` red. `Gate.Adjustable` answering 1: `ScreenAccessGate` stray-row descriptor legs red and the tool legs green; with a tool's `PrivilegePairs` also routed through `RequiredPairs`, the three tool legs red.
+- mutation: AC3 - `Gate.BaseSet` ignores the stored row: `ScreenAccessWire` Raise (map, read route) and `ScreenAccessGate` red.
+- mutation: AC4 - `ScreenAccessPort.Apply` refuses removing a held pair: `ScreenAccessWire` Lower and audit legs red.
+- mutation: AC5 - the port's `Event.Record` call replaced: `ScreenAccessWire` Audit red (both rows read 0).
+- mutation: AC6 - the empty check, then `ResourceDefined`, then `Gate.Adjustable` in turn: the matching `ScreenAccessRefusals` method red each time.
+- mutation: AC7 - `NavigationService.onChange` ignores `screen-permission`, bundle rebuilt and redeployed: `screen-permissions.browser-spec.mjs` times out waiting for Classes to read unavailable; reverted, rebuilt, green.
+- mutation: AC8 - `agent.screenpermissions.reset` set to `false` in `Baseline`, then `ScreenAccessAction.ADVERTISED` 1: `ScreenAccessDescriptor` red both times.
+- mutation: script form - `ScreenAccessPort.Literal` stops doubling a quote: `ScreenAccessDescriptor.TestTheScriptRendersTheWritesAndNotTheRead` red.
+- mutation: rosters - `AgentScreenPermissions` removed from `DeveloperFloor.SCREENS`, then `agent.screenpermissions.read` from `TOOLS`: `DeveloperFloor` red each time. `InteropFloorOwnPairs` needs no row: the screen and tools declare `%Development:USE`.
+- mutation: either-of, review patch - `Dispatch.MissingPair` stops splitting alternatives: `ScreenAccessGate.TestDispatchAcceptsEitherArmOfTheEitherOfPair` red; `Operation.MissingPair` stops splitting: `ScreenAccessWire` Sec, Raise and Audit legs red; `Access.Spelled` reverts to `resource:permission`: `ScreenAccessWire` Sec row leg red. Each reverted to a byte-identical tree.
+
+- mutation: either-of roster - `LockList.PrivilegePairs` answers `Gate.AdjusterPairs()` -> `ScreenAccessDescriptor.TestTheEitherOfPairIsDeclaredByItsFiveSurfacesOnly` red, naming `OcuPilot.Screen.Descriptor.LockList` and its four `osmgmt.locks.*` tools. Reverted by rsync from the worktree (`diff -rq` identical) and reloaded; the class reads green.
+- mutation: either-of roster, both directions (code review, on the patched test) - on the throwaway copy only, `AgentScreenPermissions.PrivilegePairs` answers `##super()` and `LockList.PrivilegePairs` answers `Gate.AdjusterPairs()` -> run 2321 red. Each of the five is named "still declares", and `LockList` and its four `osmgmt.locks.*` tools are named as strays. Reverted by rsync (`diff -rq` identical) and reloaded; run 2322 is 7/7 green (`%UnitTest_Result`).
+
+**QA pass (QA):**
+
+- (QA) Test added: `src/OcuPilot/Test/ScreenAccessGate.cls` `TestTheProposalCardNamesBothArmsOfTheEitherOfPair` (no new class; `ScreenAccessGate` creates no principal, so it needs no `OCUPILOT_ALLOW_PRINCIPALS` roster entry).
+- (QA) mutation: `Disclosure.Privilege` spells `resource:permission` without `Gate.SpellPair` -> `ScreenAccessGate.TestTheProposalCardNamesBothArmsOfTheEitherOfPair` red ("requires spells both arms"); reverted byte-identical, reloaded, class green.
+- (QA) Other either-of consumers: navigation `failedPair` pinned by `Wire`; dispatch and `Operation.MissingPair` pinned; `Effective.Gate` never receives the pair; the client treats `failedPair` as an opaque string.
+
+**Code review (2026-10-08):**
+
+- Task 0 (from implement pass 1, 1b9e6114, on `ocupilot-b-ci`):
+  - **Processes.** After Processes loses `%Admin_Manage:USE`, Op's map opens it. Its read answers 403 `PORT.ACCESSDENIED` naming `%Admin_Manage:USE`.
+  - **Web applications.** After Web applications gains `%Admin_Operate:USE` and loses `%Admin_Secure:USE` and `%DB_IRISSYS:READ`, Op's map opens it. Its read answers 403 `PORT.ACCESSDENIED` with no pair named.
+  - **Timing.** `Navigation.Payload`, 5 runs with no adjustment: 58-60 ms when the store is never read, 69-75 ms when it is read (DW-2200).
+- mutation: review. `Gate.Alternatives` splits every resource on `|` -> `ScreenAccessGate.TestOnlyTheAdjusterPairIsAnEitherOf` red (the composite and empty-resource legs).
+- mutation: review. `Gate.AdjustedPairs` answers resolved for a row that will not parse -> `ScreenAccessGate.TestTheClassicResourceStaysAndAnUnreadableStoreRefuses` red (the real-gate legs).
+- mutation: review, port.
+  - The `'tAdjustable` refusal dropped -> `ScreenAccessGate.TestThePortRefusesAnOwnScreenAndASetThatMoved` own-screen legs red.
+  - `Stored` answers every failed write 500 -> its conflict legs red (DW-2180).
+  - The change keys tested by value rather than presence -> its empty-pair leg red.
+- mutation: review, Wire. `ScreenAccessReset.ReadBackGone` inverted -> `ScreenAccessWire.TestARaiseIsFollowedByEveryGateAndAResetUndoesIt` read-back leg red. The reset's audit sets swapped -> `TestEachAcceptedWriteIsOneSecurityChangeRow` reset leg red.
+- mutation: review. `Screen.Context.ScreenTools` answers `[]` -> `ScreenAccessDescriptor.TestTheWritesAreAbsentFromEveryRosterTheAgentSees` positive control red.
+- Each mutation was applied to the throwaway's source copy and the whole tree reloaded. Each was reverted by rsync from the worktree (`diff -rq` identical) and reloaded.
+- After the review patches, on `ocupilot-b-ci`, one class at a time, every class reads 0 failed:
+  - `ScreenAccessGate`, 9 methods, run 2311;
+  - `ScreenAccessDescriptor`, 6 methods, run 2307;
+  - `ScreenAccessRefusals`, 4 methods, run 2312;
+  - `ScreenAccessWire`, 7 methods, run 2313;
+  - `PortGate`, 4 methods, run 2303.
+- Also clean: `check-objectscript`; `node --test tools/ci.test.mjs` and `credential-lists.test.mjs`; `lint-docs`; `lint_spine`, whose one low finding is the pre-existing `{id}` route token at line 190.
+
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
+
+- This pass (owner either-of, rework 1): Screen permissions, its read and its three write tools accept `%Development:USE` or `%Admin_Secure:USE`, as one pair whose resource is `%Development|%Admin_Secure` (`Gate.AdjusterPairs`, `HoldsAny`, `SpellPair`; `AgentScreenPermissions.PrivilegePairs`; `ScreenAccessPort.PAIRS`; `Operation.MissingPair` and `Dispatch.MissingPair`; `Disclosure`, `Access` spell it). A caller holding neither is refused naming both. Descriptor declarations are unchanged.
+- Tests: Sec principal in `ScreenAccessFixture`; Sec wire test; dispatch and confirm legs; `PortGate`, `DeveloperFloor.Held`, `ScreenAccessGate`, `ScreenAccessDescriptor`, `Wire` updated. Arm mutations and the three review-patch mutations are recorded under Verification.
+- Verified on `ocupilot-b-ci`, one class at a time: `ScreenAccessGate`, `ScreenAccessDescriptor`, `ScreenAccessWire`, `ScreenAccessRefusals`, `InteropFloorOwnPairs`, `DeveloperFloor`, `DeveloperFloorRoutes`, `SurfaceCoverage`, `ClassicPageGate`, `PortGate`, `ProposalPrivilege`, `Wire` green; after the review patches `ScreenAccessGate` and `ScreenAccessWire` re-run green; `check-objectscript` clean. Browser and client tiers not run: no client change.
+- Review: 2 medium patches applied, 5 low rejected with reasons in the triage log. DW-2179 and DW-2180 left open. Follow-up review not recommended (follow-up pass, no high patched).
+
+- This pass (rework 2, orchestrator condition): `ScreenAccessDescriptor.TestTheEitherOfPairIsDeclaredByItsFiveSurfacesOnly` (with private helper `CarriesAlternative`) confines the either-of pair to Screen permissions, its read tool and its three write tools, in both directions. No product code changed. Mutation recorded under Verification (Locks' `PrivilegePairs` answering `Gate.AdjusterPairs()` goes red naming Locks and its four tools).
+- Verified on `ocupilot-b-ci`: `ScreenAccessDescriptor`, `ScreenAccessGate`, `InteropFloorOwnPairs` read 0 failed; `check-objectscript` and `lint-docs` clean.
+- Review: 0 patches, 2 low rejected, 1 false (triage log). Follow-up review not recommended (follow-up pass, no high patched).

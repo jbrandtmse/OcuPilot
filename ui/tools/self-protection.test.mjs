@@ -300,6 +300,8 @@ const KERNEL_REFUSALS = [
   // Story 18.9: a SQL privilege grant or revoke on one of OcuPilot's own schemas, which the SQL privileges
   // tab states in place when either caller is answered with it.
   ['OCUPILOTSQLPRIVILEGE', 'sqlPrivilegeRefusalOcuPilot'],
+  // Story 20.15: one of OcuPilot's own screens, whose permissions either caller is refused changing.
+  ['OCUPILOTSCREEN', 'screenPermissionsRefusalOcuPilot'],
 ];
 
 test('DW-1598, AD-53: each kernel refusal is published verbatim in Fixed strings and is the sentence ReasonFor returns', () => {

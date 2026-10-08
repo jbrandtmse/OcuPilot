@@ -100,6 +100,9 @@ export interface NavigationOptions {
 /** `ScopeService`'s `NAMESPACE_ENTITY`, spelled here because `scope.ts` imports this module. */
 const NAMESPACE_ENTITY_TYPE = 'namespace';
 
+/** A screen's adjusted permissions (AD-64, Story 20.15): a change to any of them moves the map's verdicts. */
+const SCREEN_PERMISSION_ENTITY_TYPE = 'screen-permission';
+
 /**
  * The areas of `areas` that apply in the namespace the map was read for, in their order. An area
  * that declares no `appliesWhen` always applies. Applicability is not a privilege gate (AD-8,
@@ -1087,9 +1090,18 @@ export class NavigationService {
     this.notify();
   }
 
-  /** A namespace changed under the one the shell is scoped to: re-read what it reports (AD-14). */
+  /**
+   * A namespace changed under the one the shell is scoped to, or a screen's permissions were adjusted
+   * or reset: re-read what the instance reports (AD-14, AD-64). The verdicts are the instance's, so the
+   * client re-reads them rather than deriving them from the change.
+   */
   private onChange(event: ChangeEvent): void {
-    if (event.kind !== 'changed' || event.type !== NAMESPACE_ENTITY_TYPE) return;
+    if (event.kind !== 'changed') return;
+    if (event.type === SCREEN_PERMISSION_ENTITY_TYPE) {
+      this.reload();
+      return;
+    }
+    if (event.type !== NAMESPACE_ENTITY_TYPE) return;
     if (event.id.toLowerCase() !== this.namespace().toLowerCase()) return;
     this.reload();
   }

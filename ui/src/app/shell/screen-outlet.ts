@@ -66,6 +66,7 @@ import { JournalRecordsPage } from '../areas/os-management/journal-records.page'
 import { LicenseKeyPage } from '../areas/os-management/license-key.page';
 import { LicenseServerFormPage } from '../areas/os-management/license-server-form.page';
 import { EcpDataServerListPage } from '../areas/os-management/ecp-data-server-list.page';
+import { ScreenPermissionsPage } from '../areas/agent/screen-permissions.page';
 import { EcpDataServerFormPage } from '../areas/os-management/ecp-data-server-form.page';
 import { EcpSettingsPage } from '../areas/os-management/ecp-settings.page';
 import { EncryptionKeyFilePage } from '../areas/security/encryption-key-file.page';
@@ -217,6 +218,8 @@ export const DESCRIPTOR_PAGES: Readonly<Record<string, Type<unknown>>> = {
   // Story 18.20: ECP data servers with its status line and Change status dialog, and the data server
   // form, create and edit alike.
   'OcuPilot.Screen.Descriptor.EcpDataServerList': EcpDataServerListPage,
+  // Story 20.15: Screen permissions, whose Change permissions dialog opens over the shared list page.
+  'OcuPilot.Screen.Descriptor.AgentScreenPermissions': ScreenPermissionsPage,
   'OcuPilot.Screen.Descriptor.EcpDataServerForm': EcpDataServerFormPage,
   // Story 18.21: ECP settings, a form over the screen's own declared read; ECP application servers'
   // two tabs take the detail page's strip.

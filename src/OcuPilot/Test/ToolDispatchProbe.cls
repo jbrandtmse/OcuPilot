@@ -123,6 +123,12 @@ ClassMethod HoldsPair(pUser As %String, pResource As %String, pPermission As %St
     Quit '$Get(^||OcuPilotToolDispatchProbe("deny", pResource _ ":" _ pPermission))
 }
 
+/// <p>The dispatcher's private <method>MissingPair</method>, exposed for a test.</p>
+ClassMethod Missing(pUser As %String, pPairs As %List) As %String
+{
+    Quit ..MissingPair(pUser, pPairs)
+}
+
 ClassMethod LogFault(pMessage As %String, pStatus As %Status, pCode As %String)
 {
     Set ^||OcuPilotToolDispatchProbe("log", $Increment(^||OcuPilotToolDispatchProbe("log"))) = pMessage _ " | " _ pCode

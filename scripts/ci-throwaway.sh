@@ -313,6 +313,9 @@ services:
       # The Interoperability floor classes sign in as purpose-built principals holding %Ens_Portal alone
       # or a stock %EnsRole_Monitor, _Operator or _Administrator, and a %Ens_Portal holder runs a turn.
       # classes: InteropFloor, InteropFloorFixture, InteropFloorRoutes, InteropFloorTurn
+      # The Screen permissions classes sign in as Dev (a %Developer), Sec (%Admin_Secure without
+      # %Development) and Op (an operator holding neither) and adjust screens' required pairs (Story 20.15).
+      # classes: ScreenAccessFixture, ScreenAccessWire, ScreenAccessRefusals
       # The System Explorer write gate class signs in as principals holding READ, READ and WRITE,
       # and the %Developer role on a namespace's code database, and compiles and deletes probes.
       # classes: AtelierPortWriteDenial

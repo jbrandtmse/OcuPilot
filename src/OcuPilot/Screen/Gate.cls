@@ -8,8 +8,9 @@
 /// missing.</p>
 /// <p><b>The classic page's custom resource is unioned on</b> (AD-44). An operator who has
 /// assigned a resource to the classic page a screen replaces has an expectation OcuPilot
-/// honours, so a descriptor's declared set plus that resource at <code>USE</code> is what the
-/// screen requires. <code>USE</code> is the permission the portal itself checks
+/// honours, so a descriptor's base set plus that resource at <code>USE</code> is what the
+/// screen requires. The base set is the descriptor's declared set, or the set an operator adjusted the
+/// screen to (AD-64, <method>RequiredPairs</method>). <code>USE</code> is the permission the portal itself checks
 /// (<file>irissys/%ZEN/Controller.cls</file>, read directly: it gates the page's own
 /// <code>RESOURCE</code> first and then <code>$System.Security.Check(tCustom, "USE")</code>),
 /// and the store is keyed by the <b>normalized class name</b>, not by a URL --
@@ -27,6 +28,16 @@ Class OcuPilot.Screen.Gate Extends %RegisteredObject
 
 /// <p>The permission a classic page's custom resource is required at.</p>
 Parameter CLASSICPERMISSION = "USE";
+
+/// <p>The separator of an either-of pair's resources (AD-64): a pair whose resource is
+/// <code>a|b</code> is held when the caller holds the permission on <b>any one</b> of them. Only
+/// <method>AdjusterPairs</method> builds one, and <method>Alternatives</method> splits that one alone; every
+/// other pair is a single resource.</p>
+Parameter ALTERNATIVESEPARATOR = "|";
+
+/// <p>The resources whose holder may view and adjust screen permissions (AD-64 item 4): either one,
+/// at <parameter>CLASSICPERMISSION</parameter>.</p>
+Parameter ADJUSTERRESOURCES = "%Development,%Admin_Secure";
 
 /// <p>The closed list of IRIS administrative resources, comma-separated. Holding <b>any one</b>
 /// of them, <parameter>DEVELOPMENTRESOURCE</parameter> or <parameter>INTEROPRESOURCE</parameter>, at
@@ -210,15 +221,19 @@ ClassMethod ListedScreens(pAreaKey As %String, Output pList As %List) As %Status
     Quit ##class(OcuPilot.Screen.Registry).ListedScreensForArea(pAreaKey, .pList)
 }
 
-/// <p>What descriptor class <var>pDescriptor</var> requires: its declared pair set unioned with
-/// the custom resource assigned to the classic page it replaces, at
-/// <parameter>CLASSICPERMISSION</parameter>. An unassigned page reads <code>""</code> and adds
-/// nothing.</p>
+/// <p>What descriptor class <var>pDescriptor</var> requires: its base set (<method>BaseSet</method>) --
+/// the pairs an operator adjusted it to when its screen is adjustable and has a stored row
+/// (AD-64), else its declared set -- unioned with the custom resource assigned to the classic page it
+/// replaces, at <parameter>CLASSICPERMISSION</parameter>. An unassigned page reads <code>""</code> and
+/// adds nothing.</p>
+/// <p><b>This is the one reader of a screen's adjustment</b> (AD-64). It reads the store on every call
+/// in the calling process and caches nothing, so every screen, area, read, tool, dispatch and confirm
+/// gate follows a change at once. A store that cannot be read refuses the screen.</p>
 /// <p><var>pResolved</var> is 1 only when the requirement was actually read. An empty list means
 /// "requires nothing", which every caller holds, so a caller cannot tell that apart from a
-/// failure unless the failure says so: a target that is not a descriptor, or one whose
-/// declaration will not parse, answers an empty list with <var>pResolved</var> 0 and must be
-/// refused rather than admitted.</p>
+/// failure unless the failure says so: a target that is not a descriptor, one whose
+/// declaration will not parse, or one whose adjustment cannot be read answers an empty list with
+/// <var>pResolved</var> 0 and must be refused rather than admitted.</p>
 ClassMethod RequiredPairs(pDescriptor As %String, Output pResolved As %Boolean) As %List
 {
     Set tPairs = ""
@@ -226,10 +241,129 @@ ClassMethod RequiredPairs(pDescriptor As %String, Output pResolved As %Boolean) 
     Try {
         Set tDeclSC = $ClassMethod(pDescriptor, "DeclarationJson", .tDeclaration)
         If $$$ISERR(tDeclSC) Quit
-        Set tPairs = $ClassMethod(pDescriptor, "PrivilegePairs")
+        Set tPairs = ..BaseSet(pDescriptor, .tAdjusted, .tBaseResolved)
+        If 'tBaseResolved {
+            Set tPairs = ""
+            Quit
+        }
         Set tCustom = ..ClassicResource($ClassMethod(pDescriptor, "ClassicPage"))
         If tCustom '= "" Set tPairs = tPairs _ $ListBuild($ListBuild(tCustom, ..#CLASSICPERMISSION))
         Set pResolved = 1
+    } Catch {
+        Set tPairs = ""
+        Set pResolved = 0
+    }
+    Quit tPairs
+}
+
+/// <p>Whether the screen <var>pDescriptor</var> may have its required pairs adjusted (AD-64): its area
+/// declares a pair set. A screen of an area that declares none (Home, Agent co-pilot) never gates
+/// by the area and is never adjustable, so the kill switch, the definitions, governance and Screen
+/// permissions itself stay out of reach of an adjustment. <b>This is that predicate's one home.</b></p>
+ClassMethod Adjustable(pDescriptor As %String) As %Boolean
+{
+    Set tAdjustable = 0
+    Try {
+        Set tKey = $ClassMethod(pDescriptor, "AreaKey")
+        ; The area vocabulary is static XData that costs a JSON parse per read, and this runs once per
+        ; requirement the navigation map evaluates. The answer is kept per process, valid for the
+        ; compiled Area class it was read from and dropped when that class is recompiled; it is not the
+        ; adjustment, which is read on every call.
+        Set tHash = $$$comClassKeyGet("OcuPilot.Screen.Area", $$$cCLASShash)
+        If (tHash '= "") && ($Get(%OcuPilotGateAreas("hash")) = tHash) && $Data(%OcuPilotGateAreas(tKey)) {
+            Set tAdjustable = %OcuPilotGateAreas(tKey)
+            Quit
+        }
+        Set tAdjustable = ($ListLength(##class(OcuPilot.Screen.Area).PrivilegePairs(tKey)) > 0)
+        If tHash '= "" {
+            If $Get(%OcuPilotGateAreas("hash")) '= tHash Kill %OcuPilotGateAreas
+            Set %OcuPilotGateAreas("hash") = tHash
+            Set %OcuPilotGateAreas(tKey) = tAdjustable
+        }
+    } Catch {
+        Set tAdjustable = 0
+    }
+    Quit tAdjustable
+}
+
+/// <p>The stored adjustment of descriptor <var>pDescriptor</var>, as a pair list, in <var>pFound</var>
+/// whether the store holds a row for its <code>toolIdentifier</code>, and in <var>pResolved</var> 1 only
+/// when the store was read and a stored row parsed. A row that will not parse is not an empty set: it
+/// is unresolved.</p>
+/// <p><b>Overridable</b> so a test can drive the seam in process; production never overrides it.</p>
+ClassMethod AdjustedPairs(pDescriptor As %String, Output pFound As %Boolean, Output pResolved As %Boolean) As %List
+{
+    Set tPairs = ""
+    Set pFound = 0
+    Set pResolved = 0
+    Try {
+        Set tScreen = $ClassMethod(pDescriptor, "ToolIdentifier")
+        If tScreen = "" {
+            Set pResolved = 1
+            Quit
+        }
+        Set tSC = ##class(OcuPilot.Kernel.State.Access).GuardedPairsFor(tScreen, .tText, .pFound)
+        If $$$ISERR(tSC) {
+            Set pFound = 0
+            Quit
+        }
+        If pFound {
+            Set tPairs = ..ParsePairSpec(tText)
+            If tPairs = "" Quit
+        }
+        Set pResolved = 1
+    } Catch {
+        Set tPairs = ""
+        Set pFound = 0
+        Set pResolved = 0
+    }
+    Quit tPairs
+}
+
+/// <p>The pairs descriptor <var>pDescriptor</var> requires before the classic page's custom resource is
+/// added: the adjusted set when the screen is adjustable (<method>Adjustable</method>) and has a stored
+/// row, else the declared set. <var>pAdjusted</var> is 1 when the adjusted set answered, and
+/// <var>pResolved</var> 0 when the adjustment could not be read.</p>
+ClassMethod BaseSet(pDescriptor As %String, Output pAdjusted As %Boolean, Output pResolved As %Boolean) As %List
+{
+    Set pAdjusted = 0
+    Set pResolved = 0
+    Set tPairs = ""
+    Try {
+        If ..Adjustable(pDescriptor) {
+            Set tStored = ..AdjustedPairs(pDescriptor, .tFound, .tReadable)
+            If 'tReadable Quit
+            If tFound {
+                Set pAdjusted = 1
+                Set pResolved = 1
+                Set tPairs = tStored
+                Quit
+            }
+        }
+        Set tPairs = $ClassMethod(pDescriptor, "PrivilegePairs")
+        Set pResolved = 1
+    } Catch {
+        Set tPairs = ""
+        Set pAdjusted = 0
+        Set pResolved = 0
+    }
+    Quit tPairs
+}
+
+/// <p>The base set (<method>BaseSet</method>) of the built screen whose <code>toolIdentifier</code> is
+/// <var>pScreen</var>, with no classic union, and its descriptor class in <var>pDescriptor</var>.
+/// <var>pResolved</var> is 0 for an identifier no built screen carries and for an adjustment that cannot
+/// be read; <var>pDescriptor</var> tells the two apart (<code>""</code> for the first).</p>
+ClassMethod BasePairs(pScreen As %String, Output pDescriptor As %String, Output pResolved As %Boolean) As %List
+{
+    Set pDescriptor = ""
+    Set pResolved = 0
+    Set tPairs = ""
+    Try {
+        Set tDescriptor = ##class(OcuPilot.Screen.Registry).DescriptorForTool(pScreen)
+        If (tDescriptor = "") || '$ClassMethod(tDescriptor, "IsBuilt") Quit
+        Set pDescriptor = tDescriptor
+        Set tPairs = ..BaseSet(tDescriptor, .tAdjusted, .pResolved)
     } Catch {
         Set tPairs = ""
         Set pResolved = 0
@@ -275,9 +409,9 @@ ClassMethod EvaluatePairs(pPairs As %List, Output pFailedPair As %String) As %Bo
             Set tPair = $List(pPairs, tI)
             Set tResource = $List(tPair, 1)
             Set tPermission = $List(tPair, 2)
-            If '..HoldsPrivilege(tResource, tPermission) {
+            If '..HoldsAny(tResource, tPermission) {
                 Set tAllowed = 0
-                Set pFailedPair = tResource _ ":" _ tPermission
+                Set pFailedPair = ..SpellPair(tResource, tPermission)
                 Quit
             }
         }
@@ -286,6 +420,62 @@ ClassMethod EvaluatePairs(pPairs As %List, Output pFailedPair As %String) As %Bo
         Set pFailedPair = ""
     }
     Quit tAllowed
+}
+
+/// <p>The one either-of pair set (AD-64 item 4): <code>%Development</code> or <code>%Admin_Secure</code>
+/// at <parameter>CLASSICPERMISSION</parameter>, as a single pair whose resource joins them with
+/// <parameter>ALTERNATIVESEPARATOR</parameter>. Screen permissions, its read and its three write tools
+/// require it, and nothing else does.</p>
+ClassMethod AdjusterPairs() As %List
+{
+    Quit $ListBuild($ListBuild($Translate(..#ADJUSTERRESOURCES, ",", ..#ALTERNATIVESEPARATOR), ..#CLASSICPERMISSION))
+}
+
+/// <p><method>AdjusterPairs</method> spelled as <code>resource|resource:permission</code>, the form
+/// <method>ParsePairSpec</method> reads back. Read at <b>compile</b> time by
+/// <class>OcuPilot.Port.ScreenAccessPort</class>.</p>
+ClassMethod AdjusterSpec() As %String
+{
+    Set tPair = $List(..AdjusterPairs(), 1)
+    Quit $List(tPair, 1) _ ":" _ $List(tPair, 2)
+}
+
+/// <p>The resources a pair's resource <var>pResource</var> offers: the members of
+/// <method>AdjusterPairs</method>' one either-of pair, and the resource itself for every other pair, so no
+/// other pair -- an empty one, or one whose name carries <parameter>ALTERNATIVESEPARATOR</parameter> -- is
+/// ever read as an either-of (AD-64 item 4, AD-8).</p>
+ClassMethod Alternatives(pResource As %String) As %List
+{
+    If pResource = $List($List(..AdjusterPairs(), 1), 1) Quit $ListFromString(pResource, ..#ALTERNATIVESEPARATOR)
+    Quit $ListBuild(pResource)
+}
+
+/// <p>The pair spelled for a refusal or a list: <code>resource:permission</code>, or every alternative
+/// spelled so and joined with <code> or </code>, so a refusal names each pair that would have admitted
+/// the caller.</p>
+ClassMethod SpellPair(pResource As %String, pPermission As %String) As %String
+{
+    Set tText = ""
+    Set tAlts = ..Alternatives(pResource)
+    For tI = 1:1:$ListLength(tAlts) {
+        Set tText = tText _ $Select(tText = "": "", 1: " or ") _ $List(tAlts, tI) _ ":" _ pPermission
+    }
+    Quit tText
+}
+
+/// <p>Whether the calling process holds <var>pPermission</var> on <var>pResource</var>, or, for an either-of
+/// pair, on any one of its resources (<method>HoldsPrivilege</method> answers each).</p>
+ClassMethod HoldsAny(pResource As %String, pPermission As %String) As %Boolean
+{
+    Set tHolds = 0
+    Set tAlts = ..Alternatives(pResource)
+    For tI = 1:1:$ListLength(tAlts) {
+        If ..HoldsPrivilege($List(tAlts, tI), pPermission) {
+            Set tHolds = 1
+            Quit
+        }
+    }
+    Quit tHolds
 }
 
 /// <p>Whether the calling process holds every pair in <var>pPairs</var>, where an <b>empty

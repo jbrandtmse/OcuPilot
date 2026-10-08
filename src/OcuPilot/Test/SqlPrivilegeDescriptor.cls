@@ -260,7 +260,7 @@ Method TestTheCodesAnswerTheirSentences()
     }
 }
 
-/// <p>AD-10: the kernel declares the arm's code once, with its published sentence, among thirty-two codes, and
+/// <p>AD-10: the kernel declares the arm's code once, with its published sentence, among thirty-three codes, and
 /// refuses a grant or revoke on one of OcuPilot's own schemas or for one of its own roles from the stored
 /// payload alone.</p>
 /// <p>Mutation (Rule 19): make <method>OcuPilot.Kernel.Proposal.Prohibited.SqlPrivilege</method> skip
@@ -272,7 +272,7 @@ Method TestTheKernelRefusesOcuPilotsOwn()
     Do $$$AssertEquals(tCode, "PROHIBITED.OCUPILOTSQLPRIVILEGE", "the code")
     Do $$$AssertEquals($ClassMethod(tProhibited, "ReasonFor", tCode), $Parameter(tProhibited, "OCUPILOTSQLPRIVILEGEREASON"), "its one sentence")
     Do $$$AssertTrue($ClassMethod(tProhibited, "ReasonFor", tCode) [ "SQL tables keep the privileges its installer grants", "which says what the installer keeps")
-    Do $$$AssertEquals($ListLength($ClassMethod(tProhibited, "Codes")), 32, "among thirty-two codes")
+    Do $$$AssertEquals($ListLength($ClassMethod(tProhibited, "Codes")), 33, "among thirty-three codes")
     Do $$$AssertTrue($ListFind($ClassMethod(tProhibited, "Codes"), tCode) > 0, "which lists it")
     For tTool = ..#USERGRANT, ..#USERREVOKE, ..#ROLEGRANT, ..#ROLEREVOKE {
         Set tType = $Select(tTool [ "User": "user", 1: "role")

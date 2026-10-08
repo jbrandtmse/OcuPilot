@@ -10472,6 +10472,77 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-9-sql-object-privileges.md (rework 1) | severity: low | fix-risk: high | footprint: out-of-footprint
 - evidence: ocupilot-ci 2026-10-08: GrantPrivilege(EXECUTE, OcuSqlPrivProbe.T1, TABLE, probe user) returned OK; the orphan row USER||1,OcuSqlPrivProbe.T1||e||OcuSqlPrivProbeU||irisowner outlived both
 - 2026-10-08T08:36:27Z status=decision-pending owner=burndown by=harvest note=owner_hold: not reported to InterSystems; OcuPilot's Rules refuse EXECUTE on a table before any vendor call
+### DW-2179: Screen permissions' add-pair and remove-pair read back nothingSent: the composed GET refuses the repeated change after the write, so AD-58 never compares the stored set (READBACKFIELDS Pairs is declared and unused)
+- source: spec-20-15-per-screen-permissions-seen-and-adjusted.md | severity: med | fix-risk: low | footprint: in-story
+- evidence: deferred by the 20.15 implement stage; a plain re-read of the stored set would let AD-58 compare it
+- 2026-10-08T07:00:29Z status=open owner=20-15-per-screen-permissions-seen-and-adjusted by=harvest note=in-story: settle in 20.15's either-of pass or its review
+- 2026-10-08T08:07:34Z status=by-design owner=20-15-per-screen-permissions-seen-and-adjusted by=cr note=AD-58 action-style rule: add/remove read back nothingSent; AD-58 amended 2026-10-08 to say so; reset's notFound pinned
+
+### DW-2180: ScreenAccessPort's stale-write mapping to 409 STATE.CONFLICT is pinned only at the store, not through the port
+- source: spec-20-15-per-screen-permissions-seen-and-adjusted.md | severity: med | fix-risk: low | footprint: in-story
+- evidence: no test interleaves two writers through ScreenAccessPort; ScreenAccessGate pins the store
+- 2026-10-08T07:00:29Z status=open owner=20-15-per-screen-permissions-seen-and-adjusted by=harvest note=in-story: settle in 20.15's either-of pass or its review
+- 2026-10-08T08:07:34Z status=resolved-by:20-15-per-screen-permissions-seen-and-adjusted owner=20-15-per-screen-permissions-seen-and-adjusted by=cr note=ScreenAccessGate.TestThePortRefusesAnOwnScreenAndASetThatMoved drives 409 STATE.CONFLICT via the port
+
+### DW-2181: The agent propose-and-confirm path of the three Screen permissions tools is declared but never run end to end
+- source: spec-20-15-per-screen-permissions-seen-and-adjusted.md | severity: med | fix-risk: low | footprint: in-epic
+- evidence: ScreenAccessWire drives the row-action route; ScreenAccessDescriptor asserts declarations only (StateDiff, Reset PortQuery payload branch, ReadBackGone)
+- 2026-10-08T07:00:29Z status=routed owner=20-18-the-agent-proposes-permission-changes-and-refuses-on-a-scree by=harvest note=Story 20.18 advertises the tools and adds the run
+
+### DW-2182: WireSecurityRead.TestTaskHistoryPairSetsAreEnforcedForARealPrincipal asserts nothing is cut at 1,000 rows, so it reddens on an instance holding more task-history rows (1,224 on ocupilot-b-ci)
+- source: cycle-log-epic-20.md (20.15 full sweep) | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: red in 20.15's sweep on the long-lived throwaway; CI's fresh instance holds few rows (spine Conventions > Tests: no dependence on instance age)
+- 2026-10-08T07:00:29Z status=routed owner=23-5-the-range-end-cleanup-part-5 by=harvest note=assert the pair-set refusal and a row, not the absence of truncation
+
+### DW-2191: Screen permissions offers row actions the instance always refuses: Reset on Home, Agent co-pilot and unadjusted screens, and the dialog's Remove on a last pair
+- source: spec-20-15-per-screen-permissions-seen-and-adjusted.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: AgentScreenPermissions' rowActions declare no selfProtection and SELFPROTECTIONRULES has no own-screen rule, so Reset is drawn enabled and refused after its warning
+- 2026-10-08T08:07:18Z status=wontfix-accepted owner=20-15-per-screen-permissions-seen-and-adjusted by=cr note=reopen_if=an operator reports Reset or Remove offered then refused, or 20.18 adds an own-screen selfProtection rule
+
+### DW-2192: An add followed by its remove leaves an adjustment equal to the declared set, so the screen reads Adjusted and offers Reset for an identical set
+- source: spec-20-15-per-screen-permissions-seen-and-adjusted.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: ScreenAccessPort.Invoke's PUT stores the new set without comparing it with the declared set
+- 2026-10-08T08:07:18Z status=wontfix-accepted owner=20-15-per-screen-permissions-seen-and-adjusted by=cr note=reopen_if=an operator reports a row whose Adjustment equals Declared as confusing
+
+### DW-2193: An adjustment replaces the declared set, so a pair a later release declares is not applied, and a row for an identifier no built screen carries is neither listed nor reset
+- source: spec-20-15-per-screen-permissions-seen-and-adjusted.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: AD-64 rule 1: the row holds the set that replaces the declared privileges; Access.Rows lists built screens and the port answers 404 for others
+- 2026-10-08T08:07:18Z status=by-design owner=20-15-per-screen-permissions-seen-and-adjusted by=cr note=AD-64 rule 1 replace semantics and AD-5 stable tool identity; Declared and Adjustment show side by side
+
+### DW-2194: Reset cannot clear a stored row that will not parse: the port answers 500 for every type, while RequiredPairs refuses the screen to everyone
+- source: spec-20-15-per-screen-permissions-seen-and-adjusted.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: ScreenAccessPort.Invoke fails an unresolved or unparsed adjusted row before reading the request type; only the port writes rows, each validated by Apply
+- 2026-10-08T08:07:26Z status=wontfix-theoretical owner=20-15-per-screen-permissions-seen-and-adjusted by=cr note=real if a row is ever written outside ScreenAccessPort, e.g. a SQL edit of OcuPilot's protected store
+
+### DW-2195: Lowering an admin-source screen below %DB_IRISSYS:READ lets a caller holding the endpoint's resource without it reach AdminPort, whose %SYS switch then refuses unnamed (inference)
+- source: spec-20-15-per-screen-permissions-seen-and-adjusted.md | severity: low | fix-risk: med | footprint: out-of-footprint
+- evidence: Registry.cls:1561-1578 requires %DB_IRISSYS:READ on admin and path reads because the port otherwise answers 500; Task 0 measured only Op, who holds it
+- 2026-10-08T08:07:26Z status=wontfix-accepted owner=20-15-per-screen-permissions-seen-and-adjusted by=cr note=reopen_if=a %Admin_Operate-only principal reads a screen lowered past %DB_IRISSYS:READ and gets 500 (measured)
+
+### DW-2196: The Change permissions dialog stays registered open when its row leaves the list's data without a cancelled event, so Change permissions will not reopen
+- source: spec-20-15-per-screen-permissions-seen-and-adjusted.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: screen-permissions.page.ts: openTarget answers null and unmounts the dialog, but openId is cleared only by onClose
+- 2026-10-08T08:07:26Z status=wontfix-accepted owner=20-15-per-screen-permissions-seen-and-adjusted by=cr note=reopen_if=a browser probe clearing the list's data with the dialog open finds Change permissions will not reopen
+
+### DW-2197: InteropFloor.Held tests a pair's resource unsplit, so the Screen permissions tools' either-of pair is judged right only by coincidence
+- source: spec-20-15-per-screen-permissions-seen-and-adjusted.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: InteropFloor.cls:134-137 passes the composite resource to Holds; DeveloperFloor.Held loops Screen.Gate.Alternatives
+- 2026-10-08T08:07:26Z status=wontfix-theoretical owner=20-15-per-screen-permissions-seen-and-adjusted by=cr note=real if an InteropFloor principal is granted %Development or %Admin_Secure
+
+### DW-2198: Story 20.15 edits two contended single lines outside the cleared set: Prohibited.Codes() (:911, :914) and EXPERIENCE.md's last Fixed-strings row (:604)
+- source: spec-20-15-per-screen-permissions-seen-and-adjusted.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: git diff d782877a: Codes() is one ListBuild line and row 604 one table row that Epic 18 also extends, so no placement on the line avoids a conflict
+- 2026-10-08T08:07:34Z status=wontfix-accepted owner=20-15-per-screen-permissions-seen-and-adjusted by=cr note=reopen_if=the Epic 20 or Epic 18 merge conflicts on Prohibited.Codes() or EXPERIENCE.md:604
+
+### DW-2199: Screen permissions names screens and areas by identifier (osmgmt.locks, os-management), not by their labels
+- source: spec-20-15-per-screen-permissions-seen-and-adjusted.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: Screen.Access.RowFor answers the toolIdentifier and AreaKey, as the spec's View row and table columns name them
+- 2026-10-08T08:07:34Z status=by-design owner=20-15-per-screen-permissions-seen-and-adjusted by=cr note=spec View row and Task table columns; a label column is a product change
+
+### DW-2200: Navigation.Payload costs 11 to 15 ms more with the adjustment store read (58-60 ms without, 69-75 ms with, Task 0)
+- source: spec-20-15-per-screen-permissions-seen-and-adjusted.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: Task 0 in implement pass 1 (1b9e6114), restored under the spec's Verification; AD-64 quotes 0.016 ms a read and the plan's 46 ms map
+- 2026-10-08T08:07:34Z status=wontfix-accepted owner=20-15-per-screen-permissions-seen-and-adjusted by=cr note=reopen_if=Navigation.Payload with no adjustment exceeds 100 ms over 5 runs on ocupilot-b-ci
 ### DW-2202: Literal shared-surface counts and lists asserted outside their roster's own test break each story that adds a member: derive them from the registry, descriptor or mirror (Rule 30)
 - source: owner request 2026-10-08 via the Planner; cycle-log-parallel.md | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: 20.1 (Home tiles 7 vs 8, rail 9 vs 11) and 18.9 (users and roles editor tab lists) went red on literals; the entity-type count is written out in Test/Descriptor, MftConnectionDescriptor and SuperserverDescriptor; find the rest by grepping ui/browser, ui/tools and src/OcuPilot/Test for literal counts
@@ -10493,3 +10564,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: ocupilot-ci 2026-10-08 (18.28 plan): admin LIST GrantedVia read Role - OcuSqlColProbeGR
 - 2026-10-08T09:50:06Z status=decision-pending owner=burndown by=spec_gate note=owner_hold: not reported to InterSystems
 - 2026-10-08T09:50:11Z status=decision-pending owner=burndown by=spec_gate note=evidence corrected: the plan recorded the Role - <r> shape, not which probe role it was read for
+### DW-2203: The either-of roster reads descriptor and tool declarations only: a port's pair parameters and a tool's per-call ArgumentPairs are unread
+- source: spec-20-15-per-screen-permissions-seen-and-adjusted.md (code review, rework 2) | severity: low | fix-risk: med | footprint: in-story
+- evidence: ScreenAccessPort.PAIRS (AdjusterSpec) is a sixth, AD-64-sanctioned carrier; a port copying it would pass PortGate and the roster. Navigate.ArgumentPairs carries the pair per call for the screenpermissions route, so ArgumentPairs cannot be read without exemptions. No stray exists today.
+- 2026-10-08T09:11:59Z status=wontfix-accepted owner=20-15-per-screen-permissions-seen-and-adjusted by=cr note=reopen_if=AdjusterPairs()/AdjusterSpec() called in src/OcuPilot code outside Gate, AgentScreenPermissions, ScreenAccessPort

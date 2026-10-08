@@ -702,8 +702,16 @@ ClassMethod MissingPair(pUser As %String, pPairs As %List) As %String [ Private 
     Set tFailedPair = ""
     For tI = 1:1:$ListLength(pPairs) {
         Set tPair = $List(pPairs, tI)
-        If '..HoldsPair(pUser, $List(tPair, 1), $List(tPair, 2)) {
-            Set tFailedPair = $List(tPair, 1) _ ":" _ $List(tPair, 2)
+        Set tHeld = 0
+        Set tAlts = ##class(OcuPilot.Kernel.Proposal.Operation).Alternatives($List(tPair, 1))
+        For tJ = 1:1:$ListLength(tAlts) {
+            If ..HoldsPair(pUser, $List(tAlts, tJ), $List(tPair, 2)) {
+                Set tHeld = 1
+                Quit
+            }
+        }
+        If 'tHeld {
+            Set tFailedPair = ##class(OcuPilot.Kernel.Proposal.Operation).SpellPair($List(tPair, 1), $List(tPair, 2))
             Quit
         }
     }

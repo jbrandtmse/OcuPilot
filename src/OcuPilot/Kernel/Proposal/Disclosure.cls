@@ -103,7 +103,7 @@ ClassMethod Privilege(pRequired As %String, pUser As %String, pHolderClass As %S
         Set tRequires = []
         For tI = 1:1:$ListLength(tPairs) {
             Set tPair = $List(tPairs, tI)
-            Do tRequires.%Push($List(tPair, 1) _ ":" _ $List(tPair, 2), "string")
+            Do tRequires.%Push(##class(OcuPilot.Screen.Gate).SpellPair($List(tPair, 1), $List(tPair, 2)), "string")
         }
         Set tPrivilege = {}
         Do tPrivilege.%Set("requires", tRequires)
