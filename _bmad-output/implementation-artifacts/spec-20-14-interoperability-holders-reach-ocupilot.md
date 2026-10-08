@@ -185,6 +185,25 @@ Rejected:
 - The ship-time AD-8 list omits `InteropFloorOwnPairs`: a spine edit, passed to the runner.
 - `navigation.ts` overlaps 18.13: doc comments only; the second to merge rebases.
 
+Rework re-review 2026-10-08 (scope `7c1a670c..HEAD`, four layers): 0 decision-needed, 8 patches applied, 0 deferred, 5 rejected. The `[CI]` item is fixed: both legs hold whatever another spec left, each pinned by an observed product mutation. Verified on `ocupilot-b-ci`: `interop-productions` then `secondary-logs`, 12/12; `npm run test:tools` 1883/1883.
+
+- [x] [Review][Patch] AC3's `rowsSent === min(on screen, cap)` is not AD-24's bound: the total-size cut lowers it on long rows, and a cap below 2 admits the entry alone (MED, fix-risk low) [ui/browser/secondary-logs.browser-spec.mjs:153]
+- [x] [Review][Patch] AC4 asserted "No entries." only where a store happened to be empty; a new leg serves xdbc's read empty and expects it (MED, fix-risk low) [ui/browser/secondary-logs.browser-spec.mjs:197]
+- [x] [Review][Patch] The System Monitor log's own lines, a fresh-install property, were no longer checked (LOW) [ui/browser/secondary-logs.browser-spec.mjs:185]
+- [x] [Review][Patch] The header's `mutation:` lines named unobserved product mutations, one unable to redden alone, and `## Verification` had none (LOW) [ui/browser/secondary-logs.browser-spec.mjs:10]
+- [x] [Review][Patch] The cap read checked no HTTP status (LOW) [ui/browser/secondary-logs.browser-spec.mjs:140]
+- [x] [Review][Patch] The shape check's message said the read "answered rows" (LOW) [ui/browser/secondary-logs.browser-spec.mjs:184]
+- [x] [Review][Patch] `shown > 0` could not fail once the empty-state assertion passed; removed (LOW) [ui/browser/secondary-logs.browser-spec.mjs:189]
+- [x] [Review][Patch] The header's broken wrap, and a hoisted `let cap` (LOW) [ui/browser/secondary-logs.browser-spec.mjs:2]
+
+Rejected (re-review):
+
+- AC4 reads the store after the viewer renders: low; a store must gain its first row inside that window, and the fix adds a second read and branches.
+- AC4 compares a different route than the viewer reads: false; both reach `LogSourcePort.Recent`.
+- `baseline_revision` and `baseline_commit` differ: lead bookkeeping, and its fix edits the frontmatter.
+- The rework's Auto Run Result omits the skipped review layers: its fix edits the spec; the cycle log records the deviation.
+- The recorded context may carry `truncated: false` for a store cut at 1,000 rows (inference): outside the rework range and not high; DW-1608 holds it with its `reopen_if`.
+
 ## Spec Change Log
 
 - 2026-10-07, runner: rework iteration 1, trigger CI (run 37704740185). It covers only the `[CI]` item.
@@ -302,6 +321,9 @@ Rejected:
 
 - mutation: AC5 -- `InteropProcessList`'s `privileges` and `ownPrivileges` as `%Admin_Secure:USE` alone (the Administrator lacks it) -> `interop-floor.browser-spec.mjs` red on the Business processes rows (`waitForRows` timeout); reverted, spec green.
 - mutation: AC1 routes, four principals (code review) -- `Gate()` out of `FormRules` (:108 and :188) in the throwaway's copy -> `InteropFloorRoutes` run 1685 red on `GET /web-applications/form` and `/name` for each of portal, monitor, operator and administrator; reverted (`diff -rq` identical), run 1687 green (E and Mon refused 146 and opened 17, Op and Adm 145 and 18).
+- mutation: `[CI]` AC4 agreement (re-review) -- `LogPage.HandleRecent` answering `entries` [] in the throwaway's copy -> the `secondary-logs` agreement leg red, "systemmonitor: its read answers rows, so the viewer lists them"; reverted (`diff -rq` identical) and reloaded.
+- mutation: `[CI]` AC4 "No entries." (re-review) -- `LogViewerPage.emptyTitle` answering `logViewerNoMatches`, bundle rebuilt and redeployed -> both AC4 legs red ("No matches." on `taskerrors`, and on the intercepted `xdbc`); reverted, clean `main-RVOZW6RO.js` redeployed with an unchanged md5.
+- mutation: `[CI]` AC3 (re-review) -- `Turn.BoundedContext`'s first `Bound.Apply` at a row cap of 1 -> AC3 red, "Explain: the rows on screen were sent, not the entry alone (1 sent, cap 200)"; reverted and reloaded.
 
 **Reading of AC6.** "A pair outside the floor members" is implemented as a pair on any resource other than `%Ens_Portal`: the `%Development` and `%Admin_Operate` pairs of the Explorer and Logs surfaces refuse the `%Ens_Portal` holder by name, so the System Explorer and Logs surfaces that declare `%Development` or `%Admin_Operate` alone would all be listed under the literal reading. `FLOORONLY` holds the ten that declare nothing else: five screens and five tools.
 
