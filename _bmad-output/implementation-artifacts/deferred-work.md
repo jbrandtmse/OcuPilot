@@ -10403,3 +10403,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: ocupilot-ci 2026-10-07: grant with namespace OcuProbe189Missing answered 500 <NAMESPACE>
 - 2026-10-08T00:50:58Z status=decision-pending owner=burndown by=spec_gate note=owner_hold: not reported to InterSystems
 - 2026-10-08T00:51:20Z status=decision-pending owner=burndown by=spec_gate note=evidence corrected: the plan names no probe namespace (spec Design Notes: an unknown namespace answers 500 <NAMESPACE>); OcuProbe189Missing was not measured
+
+### DW-2202: Literal shared-surface counts and lists asserted outside their roster's own test break each story that adds a member: derive them from the registry, descriptor or mirror (Rule 30)
+- source: owner request 2026-10-08 via the Planner; cycle-log-parallel.md | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: 20.1 (Home tiles 7 vs 8, rail 9 vs 11) and 18.9 (users and roles editor tab lists) went red on literals; the entity-type count is written out in Test/Descriptor, MftConnectionDescriptor and SuperserverDescriptor; find the rest by grepping ui/browser, ui/tools and src/OcuPilot/Test for literal counts
+- 2026-10-08T08:48:06Z status=routed owner=23-5-the-range-end-cleanup-part-5 by=orchestrator note=Rule 30's derive-not-literal clause applied to the existing suite; roster pins (SurfaceCoverage, EndpointCoverage, FLOORONLY) stay literal by design
