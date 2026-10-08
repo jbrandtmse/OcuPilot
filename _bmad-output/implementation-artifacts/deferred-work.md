@@ -10606,3 +10606,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-29-role-members-admin-option-user-copy-from-and-password-valida.md | severity: low | fix-risk: high | footprint: out-of-footprint
 - evidence: ocupilot-ci 2026-10-08 (18.29 plan): member rows AdminOption "0"/"1"; escalation holder row false
 - 2026-10-08T16:51:59Z status=decision-pending owner=burndown by=spec_gate note=owner_hold: not reported to InterSystems
+### DW-2221: browserConfig falls back to slot A's throwaway (ocupilot-ci) when OCUPILOT_BROWSER_ORIGIN and OCUPILOT_BROWSER_CONTAINER are both unset, so a slot B stage that omits them silently drives slot A's instance; refuse unless both are set
+- source: Epic 20 runner report 2026-10-08 (20.17 implement handoff); cycle-log-parallel.md | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: A 20.17 handoff subagent ran panel-collapse, stream-reply and agent-sql with both unset between 15:48Z and ~16:35Z 10-08; they arm and disarm a probe agent definition on ocupilot-ci; ui/tools/browser-config.test.mjs pins the one-unset refusals but allows both unset
+- 2026-10-08T16:35:45Z status=routed owner=23-5-the-range-end-cleanup-part-5 by=orchestrator note=CI sets both per shard, so a both-unset refusal costs CI nothing; update browser-config.test.mjs and the README/DEVELOPMENT browser-run lines that rely on the default
