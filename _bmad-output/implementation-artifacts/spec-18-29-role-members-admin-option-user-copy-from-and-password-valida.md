@@ -2,7 +2,7 @@
 title: "Story 18.29: Role members' admin option, user Copy from and password validation"
 type: 'feature'
 created: '2026-10-08'
-status: 'done'
+status: 'in-progress'
 baseline_revision: '33287e8bc06efb6258cdd7a82da9645b12444440'
 review_loop_iteration: 0
 followup_review_recommended: false
@@ -170,6 +170,18 @@ deferred:
 - [x] [Patch] P12 (medium) `Test/PasswordPolicy.cls` `ReadValidationRoutine`: a read that fails is recorded, and `RestoreValidationRoutine` does not write `""` over the instance's validation routine. This is a harness guard, not an acceptance criterion, so it has no mutation line.
 - [x] [Patch] P13 (low) Naming and dead code: `TestTheConfirmOfACopyAsAPrincipalWithoutAdminSecureIsRefusedByThePort` is renamed to match its header (the confirm's pair gate answers); `OcuPilot.Api.UserCopyError.Codes()` is deleted after a grep showed no caller.
 
+**Sweep items (pass 3, lead, 2026-10-08).** The runner's full ObjectScript sweep ran on a fresh `ocupilot-ci` over the tree merged with feature `19f2011d`: 526 classes, 4,188 tests, 8 failed, every failure from this story's new surfaces.
+
+- [ ] [Sweep] `ClassicPageGate.TestWithNoAssignmentEachToolsPairsAreItsDeclaredSet` (run 62). `permissions.users.copy` declares a replaced classic page but is absent from `OWNPAIRS` (68 declaring tools, 67 declared). Add its entry, in the form its `permissions.users.*` neighbours use, and make the count sentence "sixty-eight".
+- [ ] [Sweep] `MappingDescriptor.TestTheClassicPagesRosterIsTheDeclaringTools` (run 243). The classic-pages roster lacks the copy tool and its page. Add the row.
+- [ ] [Sweep] `PortGate.TestEveryPortDeclaresANamedGate` (run 310). `OcuPilot.Port.UserCopyPort` must declare and evaluate a named pair set (AD-29), as the other ports do, and join `PortGate`'s roster.
+- [ ] [Sweep] `ProhibitedRoute.TestTheUserWriteVerbsAreRosteredAndALiveSystemDisableOrDeleteIsRefused` (run 320). The users write-verb roster, now "seven", must name `permissions.users.copy` and count eight, with the copy asserted the way the roster's other verbs are.
+- [ ] [Sweep] `ReadTool.TestTheRegistryListsDescriptorReadsAndInheritedKinds` (run 346). Feature's 315 already includes Epic 20's 20.18 tools; the copy tool makes 316. Take the number and the names from the registry, and update both assertions' counts and sentences.
+- [ ] [Sweep] `SaveHoldCoverage.TestEveryWriteRouteTakesTheHoldOrIsExempt` (run 371). `POST /users/password-check` neither takes the target hold nor is listed exempt. It writes nothing, so add it to the exemption list with that reason, as other non-writing POSTs are listed; if it does write, it takes the hold.
+- [ ] [Sweep] `ToolWrite.TestEveryWriteToolsRequestTypeAgreesWithThePortsBodylessRoster` (run 464). `permissions.users.copy` writes `Security.User/COPY`, which the port declares a mutating pair, while the roster the test reads (the registry's pairs plus `AHEADTYPES`) does not admit it. Reconcile it as the test's message says.
+- [ ] [Sweep] `UserSave.TestTheSaveAndTheFormReadAnswerOneEnvelopeOverTheWire` (run 496): "without its escalation roles". This proves pass 2's deferred item about `UserCreateRules.Account`. The user form's read must answer without escalation roles again, for every caller, as before this story; only the copy path keeps the source's escalation roles. Pin it, with a mutation line.
+- [ ] [Deferred] Settle pass 2's other two `deferred:` items: the client's privileged flag for an escalation-role source (`user-create-form.store.ts`), and whether the DW-1662 default-role leg posts `%Manager`. Fix each one that is real, with a pinning test and its mutation line, or record under Design Notes, with evidence, why it is not. Then remove all three settled items from the frontmatter `deferred:` list.
+
 **Acceptance Criteria:**
 
 - **C1.** Given a probe role whose members include one granted `WITH ADMIN OPTION` and an escalation holder, when its Members tab is read, then each member shows whether it holds the admin option, compared by value, and the escalation holder reads as one, without it.
@@ -181,6 +193,7 @@ deferred:
 
 ## Spec Change Log
 
+- 2026-10-08, lead: re-opened `in-progress` for pass 3 after the runner's full sweep (8 reds, all from this story's surfaces), with the sweep items and the three deferred items under Tasks & Acceptance. Pass 2's interim-return root cause was the harness (Rule 18 item 5), not the model.
 - 2026-10-08, lead: pass 1 (implement on Haiku) returned with its full sweep in flight; the sweep died with it after 16 classes. The spec was re-opened `in-progress` with the three rework items under Tasks & Acceptance; pass 1's uncommitted diff is kept for pass 2's finalize commit. The full ObjectScript sweep moves to the runner, which runs it before `dev_complete`. The Setup loader path now names the carry folder.
 - 2026-10-08, spec gate (lead): Task 0 settles option A (the orchestrator's ruling). Decisions confirmed: a copy always takes a new password; escalation roles count toward the destructive treatment. Spine amendments written (AD-27, AD-8, AD-10, AD-2, AD-39, AD-44, AD-52, AD-15 named gap). Vendor candidates DW-2222, DW-2223 under the owner's hold.
 
