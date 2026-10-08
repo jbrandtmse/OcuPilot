@@ -107,6 +107,8 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
 
   **The port refuses a `Security.SQLPrivilege.*` call before invoking the endpoint, the read included,** when its namespace is undefined, its grantee absent, its caller without READ on the namespace's databases, or its object, action or grantee carries `*` or `,` (Story 18.9; measured: the vendor expands lists and wildcards and answers an unknown namespace 500 `<NAMESPACE>`) [AMENDED 2026-10-07, Story 18.9 spec gate, Rule 20].
 
+  **The guard covers the column and admin endpoints too** [AMENDED 2026-10-08, Story 18.28 spec gate, Rule 20], and refuses a column object that is not `schema.table` before the vendor call (measured: a one-part object makes the column `LIST` answer 500 `<INVALID OREF>`).
+
 ### AD-3 — Write payload field lists are derived; the semantic half is authored once per tool
 
 - **Binds:** every write tool in 5.5–5.10; the ~40 rows the PRD lists as built against an unverified contract
@@ -284,6 +286,8 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
   **An LDAP configuration's read requires `%Admin_Secure:USE`** and `%DB_IRISSYS:READ` (measured on `ocupilot-ci`, 2026-10-07). `Security.LDAP`'s `ResourcesOR()` admits `%Admin_Operate` for `LIST` and `GET`, but `Security.LDAPConfigs` refuses that caller (#822), and the classic System Operation pages fail for it. OcuPilot builds no operator LDAP view (Story 18.27) [AMENDED 2026-10-07, orchestrator decision on Story 18.27's plan, Rule 20]. Reopen it when a build's admin API serves LDAP `LIST` and `GET` to a caller holding `%Admin_Operate` without `%Admin_Secure`.
 
   **Story 18.9's SQL object privileges declare Security's set and READ on the target namespace's routines and globals databases**, resolved at the call and refused by name before any port call; they need no WRITE and no `%DB_IRISSYS:READ` (measured on `ocupilot-ci`, 2026-10-07: without READ the vendor's namespace switch fails `<PROTECT>`). The instance's grantor rule then decides: a grantor without the privilege is refused (SQLCODE -112) [AMENDED 2026-10-07, Story 18.9 spec gate, Rule 20].
+
+  **Story 18.28's column and admin privileges ride 18.9's four tools and declare no pair beyond them** (measured on `ocupilot-ci`, 2026-10-08). The instance's grantor rule also governs an admin revoke: without the admin option, an admin grant or revoke answers #516 (SQLCODE -99) [AMENDED 2026-10-08, Story 18.28 spec gate, Rule 20].
 
   **Story 19.6** [AMENDED 2026-10-03, Story 19.6 spec gate, Rule 20]: the SQL console's write declares no pair beyond its screen's; its SQL privileges, checked by the instance at prepare and, for a DDL statement whose type names a system privilege, by `%CHECKPRIV` at run, and the databases it writes are the instance's to refuse (measured).
 
@@ -722,6 +726,8 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
 
   **A declared read may name the screen access store** (source kind `access`, Story 20.15) [AMENDED 2026-10-07, Story 20.15 spec gate, Rule 20]: `LIST` on `Screens`, answering every built screen's declared pairs, adjustment, classic resource and effective pairs from OcuPilot's protected state and the registry, with no criteria, detail call or parts (AD-64).
 
+  **Story 18.28's two unlisted reads** [AMENDED 2026-10-08, Story 18.28 spec gate, Rule 20]: `SqlColumnPrivilegeList` and `SqlAdminPrivilegeList` declare the column and admin `LIST`s, shared by the SQL privileges tab and their read tools (AD-36). Named limit: the column read finds no rows for an object spelled in another case.
+
 ### AD-37 — OcuPilot's own state has a declared lifecycle against the objects it references
 
 - **Binds:** AD-9, FR-21, 7.2; transcripts, the ledger, proposals, agent definitions
@@ -828,6 +834,8 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
   **Story 16.13's `CLASSICPAGES`** [AMENDED 2026-09-30, Story 16.13 spec gate, Rule 20]: the service update declares the classic Edit Service dialog `%CSP.UI.Portal.Dialog.Service`, whose Save it performs beyond the Services list's own page.
 
   **Story 18.9's `CLASSICPAGES`** [AMENDED 2026-10-07, Story 18.9 spec gate, Rule 20]: the SQL privilege tools declare the editor's page (`%CSP.UI.Portal.User` or `.Role`), and the grants add `%CSP.UI.Portal.Dialog.SchemaPriv` and `%CSP.UI.Portal.Dialog.MLConfigurationPriv`.
+
+  **Story 18.28's `CLASSICPAGES`** [AMENDED 2026-10-08, Story 18.28 spec gate, Rule 20]: the four SQL privilege tools add `%CSP.UI.Portal.Dialog.ColumnPriv`.
 
   **Story 16.14's `CLASSICPAGES`** [AMENDED 2026-10-01, Story 16.14 spec gate, Rule 20]: the LDAP update, create and password tools declare the classic editor `%CSP.UI.Portal.LDAP`, and the test route unions `%CSP.UI.Portal.LDAPTest`'s resource; the delete, performed on the list's own page, declares none.
 
@@ -1009,6 +1017,8 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
   `MftPort` (Story 18.26) re-reads a `Security.MFT` `DELETE` the vendor answered with an error: an absent connection is the delete done (measured: the vendor deletes it, then answers 500 #5809 when its OAuth 2.0 client is already absent) [AMENDED 2026-10-07, Story 18.26 spec gate, Rule 20].
 
   `SqlPrivilegePort` (Story 18.9) reads the privilege's state before a grant or revoke, sends a revoke once per direct grantor naming it (`asGrantor`, as the classic Revoke does), and re-reads after the vendor answers: a write that changed nothing, which the vendor can answer 200, is answered 409 `SQLPRIV.NOTAPPLIED`, never as applied [AMENDED 2026-10-07, Story 18.9 spec gate, Rule 20].
+
+  `SqlPrivilegePort` (Story 18.28) takes a column or admin write's object spelling and table-or-view type from the instance's own privilege lists (the grantee's, then the caller's), because the column `LIST` and `REVOKE` match the object's case while `GRANT` does not; it confirms a grant's grantee exists, because a column grant to an unknown name stores a row the list never shows; it revokes a column privilege once per grantor and an admin privilege once; and it judges every write by its re-read [AMENDED 2026-10-08, Story 18.28 spec gate, Rule 20].
 
   `EcpPort` (Story 18.20) sequences a status change: the license check, the `LIST` row, then `SERVERACTION` [AMENDED 2026-10-03, Story 18.20 spec gate, Rule 20]. A data server create past `ECP.Settings`' `AppServerSettings.MaxServers` (read from the instance) answers 409 `ECP.SERVER.LIMIT`: when the caller holds `%Admin_Secure:USE`, which that read needs, `EcpPort` refuses before any vendor write; otherwise the create reaches the vendor and its 500 #456 maps to the same refusal, so whoever the classic page lets create can create here. At the limit only, a caller without `%Admin_Secure:USE` leaves the vendor's misleading "Create section ECPServer" audit event and two severity-2 log lines (the vendor's and the port's own, AD-2), and nothing is stored (measured at Story 18.20's Task 0 and implement) [AMENDED 2026-10-03, Story 18.20 implement and the orchestrator's merge gate, Rule 20].
 

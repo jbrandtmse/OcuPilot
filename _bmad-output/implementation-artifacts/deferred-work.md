@@ -9517,6 +9517,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-07T16:07:59Z occurrence=18-26-managed-file-transfer-connections note=add Security.MFT DELETE 500 #5809 (connection deleted, OAuth 2.0 client already absent; MftPort re-reads and answers done, still logged severity 2)
 - 2026-10-08T01:55:15Z occurrence=18-9-sql-object-privileges note=add Security.SQLPrivilege.Standard 500 #5540 (SQLCODE -30, -118, -187, -428, -473) and #5035 (-112, -99), logged severity 2 until the unlogged grammar takes them
 - 2026-10-08T07:44:01Z occurrence=18-9-sql-object-privileges note=code review maps #5035 -126 to SQLPRIV.DEPENDENT, logged at severity 2 like the rest
+- 2026-10-08T09:50:05Z occurrence=18-28-sql-column-and-admin-privileges note=add Security.SQLPrivilege.Admin 500 #516 (SQLCODE -99), logged severity 2
 
 ### DW-2008: The agent's confirm of an ECP data server create at the limit carries ECP.SERVER.LIMIT's generic sentence, not EcpError.Limit's number
 - source: spec-18-20-ecp-data-servers.md (code review) | severity: low | fix-risk: med | footprint: out-of-footprint
@@ -10395,6 +10396,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-9-sql-privileges-and-the-permission-extras.md (split) | severity: med | fix-risk: high | footprint: out-of-footprint
 - evidence: ocupilot-ci 2026-10-07: a grantor without the privilege sent a column grant; 200, no row stored
 - 2026-10-08T00:50:58Z status=decision-pending owner=burndown by=spec_gate note=owner_hold: not reported to InterSystems
+- 2026-10-08T09:50:06Z occurrence=18-28-sql-column-and-admin-privileges note=refined at 18.28's plan: an unknown column or a grantor without the privilege stores nothing, but DELETE, %ALTER, an unknown grantee, or a view sent as TABLE answers 200 and stores a row the column LIST never shows
 
 ### DW-2174: IRIS defect candidate: the admin API's Security.SQLPrivilege.Standard revoke by a caller who is not the grantor (no asGrantor) answers 200 and revokes nothing
 - source: spec-18-9-sql-privileges-and-the-permission-extras.md (split) | severity: med | fix-risk: high | footprint: out-of-footprint
@@ -10474,3 +10476,20 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: owner request 2026-10-08 via the Planner; cycle-log-parallel.md | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: 20.1 (Home tiles 7 vs 8, rail 9 vs 11) and 18.9 (users and roles editor tab lists) went red on literals; the entity-type count is written out in Test/Descriptor, MftConnectionDescriptor and SuperserverDescriptor; find the rest by grepping ui/browser, ui/tools and src/OcuPilot/Test for literal counts
 - 2026-10-08T08:48:06Z status=routed owner=23-5-the-range-end-cleanup-part-5 by=orchestrator note=Rule 30's derive-not-literal clause applied to the existing suite; roster pins (SurfaceCoverage, EndpointCoverage, FLOORONLY) stay literal by design
+
+### DW-2204: IRIS defect candidate: the admin API's Security.SQLPrivilege.Column LIST and REVOKE match the object's case exactly while GRANT accepts any case, so a revoke in another case answers 200 and removes nothing
+- source: spec-18-28-sql-column-and-admin-privileges.md | severity: low | fix-risk: high | footprint: out-of-footprint
+- evidence: ocupilot-ci 2026-10-08 (18.28 plan): a lower-case object listed nothing and revoked nothing (200); the grant in that case stored the row
+- 2026-10-08T09:50:06Z status=decision-pending owner=burndown by=spec_gate note=owner_hold: not reported to InterSystems
+
+### DW-2205: IRIS defect candidate: the admin API's Security.SQLPrivilege.Column LIST given a one-part object answers 500 <INVALID OREF>
+- source: spec-18-28-sql-column-and-admin-privileges.md | severity: low | fix-risk: high | footprint: out-of-footprint
+- evidence: ocupilot-ci 2026-10-08 (18.28 plan): column LIST with object T1 answered 500 <INVALID OREF>
+- 2026-10-08T09:50:06Z status=decision-pending owner=burndown by=spec_gate note=owner_hold: not reported to InterSystems
+- 2026-10-08T09:50:11Z status=decision-pending owner=burndown by=spec_gate note=evidence corrected: the plan recorded a one-part object, not the name T1
+
+### DW-2206: IRIS defect candidate: the admin API's Security.SQLPrivilege.Admin LIST names a role holder 'Role - <role>' where the standard and column lists write 'Role:<role>'
+- source: spec-18-28-sql-column-and-admin-privileges.md | severity: low | fix-risk: high | footprint: out-of-footprint
+- evidence: ocupilot-ci 2026-10-08 (18.28 plan): admin LIST GrantedVia read Role - OcuSqlColProbeGR
+- 2026-10-08T09:50:06Z status=decision-pending owner=burndown by=spec_gate note=owner_hold: not reported to InterSystems
+- 2026-10-08T09:50:11Z status=decision-pending owner=burndown by=spec_gate note=evidence corrected: the plan recorded the Role - <r> shape, not which probe role it was read for
