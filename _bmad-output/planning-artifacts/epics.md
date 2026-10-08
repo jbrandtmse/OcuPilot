@@ -7709,7 +7709,7 @@ So that a small correction does not need a separate IDE.
 - **When** this ships
 - **Then** it is new capability rather than parity.
 
-[AMENDED 2026-10-07, owner decision relayed by the Planner: the agent may now propose class and routine source edits on the person's confirmation, reversing this story's person-only save; Story 20.17 builds it, and this story's own Save stays as shipped.]
+[AMENDED 2026-10-07, owner decision relayed by the Planner: the agent may now propose class and routine source edits on the person's confirmation, reversing this story's person-only save; Story 20.21 builds it [AMENDED 2026-10-08, orchestrator, Rule 5], and this story's own Save stays as shipped.]
 
 ### Story 19.4: Search, compare and macro lookup
 
