@@ -8284,7 +8284,7 @@ So that access to each screen can be fitted to the instance.
 
 ### Story 20.16: The agent edits rule, DTL and BPL content behind the embedded editors
 
-[AMENDED 2026-10-07, owner decision relayed by the Planner, Rule 5] The owner's flow: "Warn the user that the editor must be saved if needed and then the agent reads current content and proposes the edit in the background and refreshes the page." Ordered right after Story 20.7, and built on Story 20.17's agent source edits. On the owner's decision this narrows Story 19.3's "a source save is a person's action" for these three content types, which the owner then reversed for classes and routines too (Story 20.17, AD-53). On "Agent starts switched on", its governance key ships enabled.
+[AMENDED 2026-10-07, owner decision relayed by the Planner, Rule 5] The owner's flow: "Warn the user that the editor must be saved if needed and then the agent reads current content and proposes the edit in the background and refreshes the page." Ordered right after Story 20.7, and built on Story 20.21's agent source edits. On the owner's decision this narrows Story 19.3's "a source save is a person's action" for these three content types, which the owner then reversed for classes and routines too (Story 20.21, AD-53). On "Agent starts switched on", its governance key ships enabled.
 
 As an interoperability developer,
 I want the agent to edit a rule, a DTL or a BPL I have open in its embedded editor,
