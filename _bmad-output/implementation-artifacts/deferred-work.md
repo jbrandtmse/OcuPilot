@@ -10610,3 +10610,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: QA observed it on ocupilot-b-ci after an ADVERTISED mutation and revert (inference: pooled web process state); code review's two load/revert cycles did not reproduce it
 - 2026-10-08T14:25:24Z status=escalated owner=burndown by=cr note=unverified; settle by ADVERTISED 0->1 reload on a throwaway, then a web turn listing tools before any restart
 - 2026-10-08T15:48:14Z status=routed owner=burndown by=merge_gate note=orchestrator ruling 2026-10-08: kept open for Epic 20's burn-down; in a dev loop it is the known mutation-leaves-process-state pattern, but an IPM in-place upgrade recompiles without a restart, so the next release's upgrade check verifies new tools reach web-started turns after an in-place upgrade with no restart
+
+### DW-2220: A long user message and a long draft script in the agent panel have no collapsing assertion
+- source: spec-20-17-long-blocks-in-the-agent-panel-start-collapsed.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: panel.spec.ts uses a one-line user message; setting messageLines to 0 reddens nothing
+- 2026-10-08T16:35:17Z status=open owner=20-17-long-blocks-in-the-agent-panel-start-collapsed by=harvest note=in-story LOW: QA or the code review pins it (two-way door)
