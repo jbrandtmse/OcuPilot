@@ -1,7 +1,7 @@
 /// <p>Test-only <class>OcuPilot.Port.SqlPrivilegePort</class> subclass: Story 18.9's seam. Every vendor call made
 /// through <method>Call</method> is recorded, in order, in <code>^||OcuPilotSqlPrivSeam("calls")</code> as
 /// <code>endpoint/type</code>, with its grantee and, on a revoke, its grantor, and then sent to the vendor unless a
-/// rule below answers it.</p>
+/// rule below answers it. A <code>LIST</code>'s <code>includeSystem</code> is kept as the last one asked.</p>
 /// <p><b>The guard</b>: a <code>GRANT</code> or <code>REVOKE</code> is sent only for a grantee and an object whose
 /// names begin <code>OcuSqlPrivProbe</code>. Any other is answered 409 <parameter>GUARDCODE</parameter> and never
 /// sent.</p>
@@ -53,6 +53,7 @@ ClassMethod Call(pEndpoint As %String, pType As %String, ByRef pQuery, pBody As 
             Quit $$$OK
         }
     }
+    If (pEndpoint = ..#ENDPOINT) && (pType = ..#LISTTYPE) Set ^||OcuPilotSqlPrivSeam("includeSystem") = $Get(pQuery("includeSystem"))
     If $Data(^||OcuPilotSqlPrivSeam("rows")) && (pEndpoint = ..#ENDPOINT) && (pType = ..#LISTTYPE) {
         Set pResult = ##class(%DynamicAbstractObject).%FromJSON(^||OcuPilotSqlPrivSeam("rows"))
         Set pHttpStatus = 200

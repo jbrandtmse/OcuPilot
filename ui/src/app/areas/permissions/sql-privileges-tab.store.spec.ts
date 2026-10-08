@@ -54,6 +54,26 @@ describe('the SQL privileges store', () => {
     expect(paths[0]).toContain('namespace=HSCUSTOM');
   });
 
+  it('drops the previous namespace rows as soon as the namespace changes, before the new read lands', async () => {
+    // Mutation (Rule 19): keep the rows in setNamespace -> the first assertion goes red.
+    let release: (value: JsonResult<unknown>) => void = () => undefined;
+    let held = false;
+    const api = {
+      requestJson: <T,>(_path: string, _init?: ApiRequestInit): Promise<JsonResult<T>> =>
+        held ? new Promise<JsonResult<T>>((resolve) => (release = resolve as (value: JsonResult<unknown>) => void)) : Promise.resolve(ok([row()]) as JsonResult<T>),
+    };
+    const store = new SqlPrivilegesStore(api, () => 'Dana');
+    store.namespace.set('USER');
+    await store.activate();
+    expect(store.rows()).toHaveLength(1);
+    held = true;
+    const pending = store.setNamespace('HSCUSTOM');
+    expect(store.rows()).toEqual([]);
+    release(ok([row({ Object: 'S.OTHER' })]));
+    await pending;
+    expect(store.rows().map((entry) => entry.Object)).toEqual(['S.OTHER']);
+  });
+
   it('reads a refused answer as refused with no rows, and reset drops everything', async () => {
     let refuse = false;
     const { store } = setup(() => (refuse ? { kind: 'error', status: 403, code: 'AUTH.NOPRIVILEGE', reason: 'no', detail: null } : ok([row()])));

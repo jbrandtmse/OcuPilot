@@ -9515,6 +9515,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-07T08:23:30Z occurrence=18-25-superservers note=add Security.Superserver PUT #5001 (port already in use; mapped to a field refusal, still logged severity 2) to the code-scoped unlogged list
 - 2026-10-07T16:07:59Z occurrence=18-26-managed-file-transfer-connections note=add Security.MFT DELETE 500 #5809 (connection deleted, OAuth 2.0 client already absent; MftPort re-reads and answers done, still logged severity 2)
 - 2026-10-08T01:55:15Z occurrence=18-9-sql-object-privileges note=add Security.SQLPrivilege.Standard 500 #5540 (SQLCODE -30, -118, -187, -428, -473) and #5035 (-112, -99), logged severity 2 until the unlogged grammar takes them
+- 2026-10-08T07:44:01Z occurrence=18-9-sql-object-privileges note=code review maps #5035 -126 to SQLPRIV.DEPENDENT, logged at severity 2 like the rest
 
 ### DW-2008: The agent's confirm of an ECP data server create at the limit carries ECP.SERVER.LIMIT's generic sentence, not EcpError.Limit's number
 - source: spec-18-20-ecp-data-servers.md (code review) | severity: low | fix-risk: med | footprint: out-of-footprint
@@ -10414,6 +10415,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-9-sql-object-privileges.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: SENDSBODY 0, so Write.FieldRows derives no row and the Standard endpoint publishes no body template to classify (implement self-review)
 - 2026-10-08T07:03:02Z status=open owner=18-9-sql-object-privileges by=harvest note=code review: fix or close by-design
+- 2026-10-08T07:44:01Z status=by-design owner=18-9-sql-object-privileges by=cr note=bodyless (SENDSBODY 0): no derived field list to classify; arguments authored in InputSchema
 
 ### DW-2184: IRIS defect candidate: the admin API's Security.SQLPrivilege.Standard grant on an absent FOREIGN SERVER answers 500 #5002 <SUBSCRIPT> in %SYSTEM.SQL.Security.GrantPrivilege, not an SQLCODE, so SqlPrivilegePort answers INTERNAL
 - source: spec-18-9-sql-object-privileges.md | severity: low | fix-risk: high | footprint: out-of-footprint
@@ -10424,13 +10426,31 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-9-sql-object-privileges.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: a Community instance cannot create a foreign server or an ML configuration without an external provider, so no test grants or revokes one
 - 2026-10-08T07:03:02Z status=open owner=18-9-sql-object-privileges by=harvest note=code review: wontfix-accepted with a reopen probe, or a test
+- 2026-10-08T07:44:01Z status=wontfix-accepted owner=18-9-sql-object-privileges by=cr note=vendor source confirms schema.name; reopen_if=CI can create a foreign server or ML configuration
 
 ### DW-2186: Sub-claims of 18.9's C2-C4 (the -112 grantor mapping, the guard's namespace check, the role-row Direct count, the gate pair sets) have tests but no recorded reddening mutation
 - source: spec-18-9-sql-object-privileges.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: verification-gap layer: the eight recorded mutation lines cover each criterion's main path only
 - 2026-10-08T07:03:03Z status=open owner=18-9-sql-object-privileges by=harvest note=code review closes in-pass (Rule 19)
+- 2026-10-08T07:44:01Z status=resolved-by:18-9-sql-object-privileges by=cr note=reddened: -112 2374, Direct 2375, ArgumentPairs 2376, Violations 2377, PrivilegePairs 2380
 
 ### DW-2187: WireSecurityRead.TestTaskHistoryPairSetsAreEnforcedForARealPrincipal reads a truncated task history on a long-lived ocupilot-ci (nothing is cut at 1,000), failing at the sweep end and on a solo rerun
 - source: spec-18-9-sql-object-privileges.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: 18.9 changes three roster lines in that class and no task-history code (inference: environmental; CI's fresh throwaways settle it)
 - 2026-10-08T07:03:03Z status=open owner=18-9-sql-object-privileges by=harvest note=resolve against CI run 37741029438
+- 2026-10-08T08:13:15Z status=wontfix-accepted by=adjudication note=CI run 37741029438 on 0a7a868d ran WireSecurityRead green on a fresh throwaway; the red needs a long-lived instance's task history. reopen_if=it fails in CI or on a throwaway under a day old
+
+### DW-2188: The SQL privileges tab draws a refused read as the generic 'Request refused', so the namespace-database READ pair the port names never reaches the person
+- source: spec-18-9-sql-object-privileges.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: sql-privileges-tab.ts:38 renders connectivityRequestRefused; createScreenRead's Fault carries the code only (core/fault.ts:49), as the database volumes tab does; Effective privileges names the pair (user-editor.store.ts:651)
+- 2026-10-08T07:43:47Z status=wontfix-accepted owner=18-9-sql-object-privileges by=cr note=reopen_if=core/fault.ts Fault gains reason or detail, or a person reports not knowing which pair the tab lacks
+
+### DW-2189: The SQL privileges tab's Revoke buttons carry no aria-label naming the row's action and object, unlike the role editor's row buttons
+- source: spec-18-9-sql-object-privileges.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: sql-privileges-tab.ts:83 draws 'Revoke' alone; role-editor.page.ts:232-235 binds row.editLabel and row.removeLabel; a fix needs a Fixed-strings template row in EXPERIENCE.md
+- 2026-10-08T07:43:47Z status=wontfix-accepted owner=18-9-sql-object-privileges by=cr note=reopen_if=an accessibility pass over the user or role editor lists the unlabelled Revoke buttons
+
+### DW-2190: The SQL privilege dialog's type, action and object-length lists repeat SqlPrivilegePort's TYPES, action lists and NAMEPATTERN with no test holding them equal
+- source: spec-18-9-sql-object-privileges.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: sql-privilege-dialog.ts:8-30 against SqlPrivilegePort.cls:71-80; no ui/tools or ObjectScript test compares them, and 18.28 extends the port's lists
+- 2026-10-08T07:43:47Z status=wontfix-accepted owner=18-9-sql-object-privileges by=cr note=reopen_if=the dialog offers a type or action that SqlPrivilegePort.Violations refuses, or omits one it admits

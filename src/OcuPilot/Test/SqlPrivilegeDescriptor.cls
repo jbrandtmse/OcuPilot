@@ -192,7 +192,7 @@ Method TestTheAdminPortAdmitsTheWritesAndMapsTheCodes()
         Do $$$AssertTrue($ListFind($ListFromString($Parameter(tPort, "BODYLESSTYPES")), tPair) > 0, tPair _ " reads no body")
     }
     Do $$$AssertEquals($ClassMethod(tPort, "IsSqlPrivilegeEndpoint", "Security.SQLPrivilege.Standard") _ $ClassMethod(tPort, "IsSqlPrivilegeEndpoint", "Security.User"), "10", "only the standard family is guarded here")
-    For tCase = $ListBuild(5540, 1, -112, 403, "SQLPRIV.GRANTOR"), $ListBuild(5035, 2, -112, 403, "SQLPRIV.GRANTOR"), $ListBuild(5035, 2, -99, 403, "SQLPRIV.GRANTOR"), $ListBuild(5540, 1, -30, 404, "SQLPRIV.NOOBJECT"), $ListBuild(5540, 1, -187, 404, "SQLPRIV.NOOBJECT"), $ListBuild(5540, 1, -428, 404, "SQLPRIV.NOOBJECT"), $ListBuild(5540, 1, -473, 404, "SQLPRIV.NOOBJECT"), $ListBuild(5540, 1, -118, 404, "SQLPRIV.NOGRANTEE"), $ListBuild(5540, 1, -60, 0, ""), $ListBuild(5002, 1, -30, 0, "") {
+    For tCase = $ListBuild(5540, 1, -112, 403, "SQLPRIV.GRANTOR"), $ListBuild(5035, 2, -112, 403, "SQLPRIV.GRANTOR"), $ListBuild(5035, 2, -99, 403, "SQLPRIV.GRANTOR"), $ListBuild(5540, 1, -30, 404, "SQLPRIV.NOOBJECT"), $ListBuild(5540, 1, -187, 404, "SQLPRIV.NOOBJECT"), $ListBuild(5540, 1, -428, 404, "SQLPRIV.NOOBJECT"), $ListBuild(5540, 1, -473, 404, "SQLPRIV.NOOBJECT"), $ListBuild(5540, 1, -118, 404, "SQLPRIV.NOGRANTEE"), $ListBuild(5035, 2, -126, 409, "SQLPRIV.DEPENDENT"), $ListBuild(5540, 1, -60, 0, ""), $ListBuild(5002, 1, -30, 0, "") {
         If $List(tCase, 2) = 1 Set tStatus = $$$ERROR(+$List(tCase, 1), $List(tCase, 3), "Message")
         If $List(tCase, 2) = 2 Set tStatus = $$$ERROR(+$List(tCase, 1), "GrantObjPriv Error", $List(tCase, 3), "SQL Error Code")
         Set tHttp = $ClassMethod(tPort, "SqlCodeFault", "Security.SQLPrivilege.Standard", tStatus, .tCode)
@@ -234,15 +234,15 @@ Method TestTheBaselineKeysShipEnabled()
 }
 
 /// <p>AD-39: every <code>SQLPRIV.*</code> code answers its one sentence through the class and through
-/// <class>OcuPilot.Api.Error</class>'s two dispatches; each field-level code names its field; the nine refusal
-/// codes the matrix names exist.</p>
+/// <class>OcuPilot.Api.Error</class>'s two dispatches; each field-level code names its field; the refusal codes
+/// the matrix names, and the revoke's dependent-grant refusal, exist.</p>
 /// <p>Mutation (Rule 19): empty <parameter>OcuPilot.Api.SqlPrivilegeError.REASONNOTAPPLIED</parameter> -- its
 /// sentence leg goes red.</p>
 Method TestTheCodesAnswerTheirSentences()
 {
     Set tClass = ..#ERRORS
     Set tCodes = $ClassMethod(tClass, "Codes")
-    Do $$$AssertEquals($ListLength(tCodes), 15, "fifteen codes")
+    Do $$$AssertEquals($ListLength(tCodes), 16, "sixteen codes")
     For tI = 1:1:$ListLength(tCodes) {
         Set tCode = $List(tCodes, tI)
         Set tReason = $ClassMethod(tClass, "ReasonFor", tCode)
@@ -255,7 +255,7 @@ Method TestTheCodesAnswerTheirSentences()
     For tI = 1:1:$ListLength(tViolations) {
         Do $$$AssertNotEquals($ClassMethod(tClass, "FieldOf", $List(tViolations, tI)), "", $List(tViolations, tI) _ " names its field")
     }
-    For tName = "HELD", "NOTHELD", "SUPERUSER", "NOTAPPLIED", "GRANTOR", "NOOBJECT", "NOGRANTEE", "LIST" {
+    For tName = "HELD", "NOTHELD", "SUPERUSER", "NOTAPPLIED", "GRANTOR", "NOOBJECT", "NOGRANTEE", "DEPENDENT", "LIST" {
         Do $$$AssertTrue($ListFind(tCodes, $Parameter(tClass, tName)) > 0, "SQLPRIV." _ tName _ " is declared")
     }
 }

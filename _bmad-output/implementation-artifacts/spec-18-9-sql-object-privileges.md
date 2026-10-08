@@ -2,7 +2,7 @@
 title: 'Story 18.9: SQL object privileges'
 type: 'feature'
 created: '2026-10-07'
-status: 'done'
+status: 'in-progress'
 baseline_revision: '13e387c9bcda5526e8506141ac40702d6301dfa0'
 baseline_commit: '13e387c9bcda5526e8506141ac40702d6301dfa0'
 review_loop_iteration: 0
@@ -156,7 +156,57 @@ The Rules row refuses:
 - **C6.** Given the rosters, when the suites run, then the descriptor, tools, keys, code and sentence are pinned on both sides.
 - **Integration.** Given `ocupilot-ci`, when the tabs and the agent act, then the tabs go through `GET /screens/:screen/read` and `POST /screens/:screen/action` (`grant-sql`, `revoke-sql`) and the agent through the five tools (C1-C5, the browser spec).
 
+- [ ] [CI] browser shards 1/3 and 3/3 (run 37741029438 on 0a7a868d): `roles-editor.browser-spec.mjs` ("a row's name opens the editor on General, Members and Assigned to") and `users-editor.browser-spec.mjs` ("... General, Roles and Effective privileges tabs") assert each editor's exact tab list, which now ends with `SQL privileges` -- <https://github.com/jbrandtmse/OcuPilot/actions/runs/37741029438> -- update both expectations (and any other spec that lists an editor's tabs, e.g. `unreadable.browser-spec.mjs`), and run each touched spec against a rebuilt and redeployed bundle.
+- [ ] [Smoke] `SqlPrivilegeProbe.RemoveAll` leaves `Security.SQLPrivileges` rows for its probe grantees: deleting the user and dropping the table does not remove them, and `ocupilot-ci` holds `USER||1,OcuSqlPrivProbe.T1||e||OcuSqlPrivProbeU||irisowner` (EXECUTE on the probe table, grantee deleted) -- `RemoveAll` revokes every row whose grantee is a probe principal, in every namespace the tests use, before deleting the principals; every SQL privilege teardown asserts none remains; remove the existing row; and find which call stored EXECUTE on a table (the Rules refuse it before the vendor) -- a vendor quirk goes in `deferred:` under the owner's hold.
+
+### Review Findings
+
+Code review 2026-10-08 (four layers, full-opus): 49 rows: 13 kept entries (high 0, med 3, low 10), of which 10 patched and 3 deferred; 28 rows rejected (25 entries). No AD violation. Rule 3 holds: the browser spec and the wire legs. The `ScreenAction.Run` early gate changes nothing for the other `READSVALUES` tools, because only `SqlPrivilegeWrite` derives pairs from its values.
+
+- [x] [Review][Patch] (med) The `Object` schema called a foreign server one name. The Rules and the vendor take `schema.name` [src/OcuPilot/Screen/Tool/SqlPrivilegeWrite.cls:100]
+- [x] [Review][Patch] (med) A revoke of a privilege the grantee granted on answered 500 `INTERNAL` (#5035 -126, measured on `ocupilot-ci`). It now answers 409 `SQLPRIV.DEPENDENT` [src/OcuPilot/Port/AdminPort.cls:2858]
+- [x] [Review][Patch] (med) A namespace change left the old namespace's rows and their Revoke drawn until the new read landed. The rows are now dropped at once [ui/src/app/areas/permissions/sql-privileges-tab.store.ts:105]
+- [x] [Review][Patch] (low) The schema test's mutation note could not redden; it is replaced with one that does [src/OcuPilot/Test/SqlPrivilegeWrite.cls:188]
+- [x] [Review][Patch] (low) DW-2186: the `Violations` namespace check and `PrivilegePairs` had no recorded red, and the `PrivilegePairs` note sat on the wrong method [src/OcuPilot/Test/SqlPrivilegeGate.cls:164]
+- [x] [Review][Patch] (low) Nothing pinned `includeSystem` 1 on the state read; the seam now records it [src/OcuPilot/Test/SqlPrivilegeSeamPort.cls:56]
+- [x] [Review][Patch] (low) No test covered a dialog refusal that names no field (close onto the banner) [ui/src/app/areas/permissions/sql-privileges-tab.spec.ts:165]
+- [x] [Review][Patch] (low) The `DESTRUCTIVE` doc comment said "nothing is lost" [src/OcuPilot/Screen/Tool/SqlPrivilegeWrite.cls:34]
+- [x] [Review][Patch] (low) Two `AdminPort` doc comments described an override hook that nothing uses [src/OcuPilot/Port/AdminPort.cls:2874]
+- [x] [Review][Patch] (low) Test hygiene: a hard-coded `_SYSTEM` grantor, and `GiveAll` statuses that were never checked [src/OcuPilot/Test/SqlPrivilegeWrite.cls:103]
+- [x] [Review][Defer] (low) A refused tab read shows "Request refused" and never names the missing pair [ui/src/app/areas/permissions/sql-privileges-tab.ts:38] — deferred: DW-2188 wontfix-accepted
+- [x] [Review][Defer] (low) Revoke buttons carry no aria-label naming their row [ui/src/app/areas/permissions/sql-privileges-tab.ts:83] — deferred: DW-2189 wontfix-accepted
+- [x] [Review][Defer] (low) The dialog's type, action and length lists repeat the port's with no parity test [ui/src/app/areas/permissions/sql-privilege-dialog.ts:8] — deferred: DW-2190 wontfix-accepted
+
+Rejected:
+
+- false: an OcuPilot role name on a user grantee. IRIS refuses such a user (#942, probed).
+- false: -99 is unmeasured. The matrix maps it, and Epic 18's context records it.
+- false: the tab draws with an empty grantee. The editor draws its tabs only once loaded, and an id change resets them.
+- by-design: schema `NOTAPPLIED` for an action no object takes (Decision 3).
+- by-design: SQLCODE refusals log at severity 2 (Decision 5, DW-2007; occurrence appended).
+- by-design: the read's `includeSystem` 0 (Boundaries).
+- by-design: the revokes' `CLASSICPAGES` (AD-44 amendment).
+- by-design: a type outside the six answers `TOOL.ARGUMENTS` (the closed enum).
+- by-design: preconditions answer before AD-10 (AD-53's order; nothing is sent either way).
+- theoretical: a revoke loop that fails partway (one grantor per privilege).
+- theoretical: `IsSqlPrivilegeTool`'s exact `PORTCLASS` match. It becomes real only if a port subclass ships; `Prohibited.cls` is contended.
+- theoretical: `<MAXSTRING>` in the early gate's value copy.
+- not reachable through the shipped code: DW-2184's one-part foreign server, which the Rules refuse. It stays on the owner's hold.
+- low: a truncation note on the tab.
+- low: the "Action" legend.
+- low: OcuPilot's own rows offer Revoke (the refusal reaches the banner).
+- low: the gate's delta computed twice.
+- low: lower-cased types in card text.
+- low: the tab is unsorted.
+- low: the browser seed is unasserted.
+- low: Revoke drawn on a direct CUBES row.
+- low: the split-database branch has no test.
+- low: the revoke script names a placeholder grantor.
+- spec edits: the Auto Run Result tally, and the fifth deferral's severity label.
+
 ## Spec Change Log
+
+- 2026-10-08, rework iteration 1 (trigger ci, smoke): the two editor specs' tab lists, and the probe cleanup's orphan privilege rows; the open items are the `[CI]` and `[Smoke]` tasks under Tasks & Acceptance.
 
 - 2026-10-07, spec gate (lead): Decisions 1-5 confirmed. Spine amendments written (AD-8, AD-10, AD-52, AD-2, AD-44). DW-2007 gains this endpoint's #5540 and #5035 codes. Vendor candidates DW-2176, DW-2177, DW-2178 under the owner's hold. The Fixed-strings bound may rise to 3000 (`strings.test.mjs` is not contended).
 
@@ -256,6 +306,17 @@ Observed on `ocupilot-ci`, each applied one at a time, the tree recompiled, then
 - mutation: `IsSqlPrivilegeTool` keyed on the write type -> `TokenRevoke` TestTheSqlPrivilegeArmDoesNotJudgeATokenRevoke red (run 2367)
 - mutation: store drops the `generation` check -> `sql-privileges-tab.store.spec.ts` overlap leg red
 - mutation: Revoke drawn on a non-`Direct` row, and `onRevoke` sending `grant-sql` -> `sql-privileges-tab.spec.ts` red; the Direct-row Revoke removed (bundle rebuilt and redeployed) -> `permissions-sql-privileges.browser-spec.mjs` red, then green again on the reverted bundle
+- mutation: `-112` removed from `AdminPort.SQLCODEFAULTS` -> `SqlPrivilegeDescriptor` TestTheAdminPortAdmitsTheWritesAndMapsTheCodes red (run 2374) (QA)
+- mutation: the role-row count drops its `Direct` filter (`tVia '= tViaWanted` line removed in `SqlPrivilegePort`) -> `SqlPrivilegeRead` TestTheStateReadComposesTheDirectRows red (run 2375) (QA)
+- mutation: `SqlPrivilegeWrite.ArgumentPairs` returns no pairs -> `SqlPrivilegeGate` TestWithoutTheNamespaceDatabaseReadEveryCallIsRefused red (run 2376) (QA)
+- the guard's namespace check is covered by the recorded run 1836 (`SqlPrivilegeRead` guard leg); each mutation above reverted with `git checkout`, tree clean, `ocupilot-ci` reloaded (QA)
+- mutation: `SqlPrivilegePort.Violations` namespace check `If 0 &&` -> `SqlPrivilegeWrite` TestTheRulesAreRefusedOnBothCallersBeforeAnythingIsSent red, the route answering the guard's 404 (run 2377) (CR)
+- mutation: `Facts` counts a schema's `Direct` rows -> `SqlPrivilegeWrite` TestASchemaGrantIsJudgedByItsRows red, the wire grant `NOTAPPLIED` (run 2378) (CR)
+- mutation: `Facts` lists with `includeSystem` 0 -> `SqlPrivilegeWrite` TestAWriteThatMovedNothingIsRefusedAsNotApplied red (run 2379) (CR)
+- mutation: `SqlPrivilegeWrite.PrivilegePairs` answers none -> `SqlPrivilegeGate` TestWithoutSecuritysResourceEveryCallIsRefused red (run 2380) (CR)
+- mutation: `-126` out of `AdminPort.SQLCODEFAULTS` -> `SqlPrivilegeDescriptor` TestTheAdminPortAdmitsTheWritesAndMapsTheCodes red (run 2381) (CR)
+- mutation: `setNamespace` keeps the rows -> `sql-privileges-tab.store.spec.ts` namespace-change leg red; `onSubmit` keeps the dialog open on a refusal naming no field -> `sql-privileges-tab.spec.ts` banner leg red (CR)
+- each reverted byte-identical (`cmp`); after loading the patched tree, `SqlPrivilegeDescriptor` 10/10, `SqlPrivilegeRead` 4/4, `SqlPrivilegeGate` 3/3 and `SqlPrivilegeWrite` 8/8 passed (runs 2382-2385, `%UnitTest_Result`); the two client specs passed 15/15 (CR)
 
 ## Auto Run Result
 

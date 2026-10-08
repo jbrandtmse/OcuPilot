@@ -95,10 +95,14 @@ export class SqlPrivilegesStore {
     return this.load();
   }
 
-  /** Choose the namespace to list and re-read it. */
+  /**
+   * Choose the namespace to list and re-read it. The previous namespace's rows are dropped at once,
+   * so no Revoke stays drawn for a row while the tab names another namespace.
+   */
   setNamespace(namespace: string): Promise<void> {
     if (namespace === this.namespace()) return Promise.resolve();
     this.namespace.set(namespace);
+    this.rows.set([]);
     return this.load();
   }
 

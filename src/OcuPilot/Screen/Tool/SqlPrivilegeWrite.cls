@@ -31,7 +31,8 @@ Parameter SENDSBODY As BOOLEAN = 0;
 /// screen action and at the confirm.</p>
 Parameter READSVALUES As BOOLEAN = 1;
 
-/// <p>Not destructive: a privilege revoked is granted again by the opposite proposal, and nothing is lost.</p>
+/// <p>Not destructive: a revoked privilege can be granted again by the opposite proposal, which names the caller as
+/// its grantor and carries the grant option only when asked.</p>
 Parameter DESTRUCTIVE As BOOLEAN = 0;
 
 /// <p>The label every card row carries.</p>
@@ -96,7 +97,7 @@ ClassMethod InputSchema(pDescriptor As %String = "") As %DynamicObject
     For tI = 1:1:$ListLength(tTypeList) Do tTypes.%Push($List(tTypeList, tI))
     Do tProperties.%Set(..#TYPEARGUMENT, {"type": "string", "enum": (tTypes), "description": "What kind of object the privilege is on."})
     Do tRequired.%Push(..#TYPEARGUMENT)
-    Do tProperties.%Set(..#OBJECTARGUMENT, {"type": "string", "description": "The object: schema.name for a table, view or stored procedure, and one name for a schema, ML configuration or foreign server. One name only; a list or a wildcard is refused."})
+    Do tProperties.%Set(..#OBJECTARGUMENT, {"type": "string", "description": "The object: schema.name for a table, view, stored procedure or foreign server, and one name for a schema or ML configuration. One name only; a list or a wildcard is refused."})
     Do tRequired.%Push(..#OBJECTARGUMENT)
     Do tProperties.%Set(..#ACTIONARGUMENT, {"type": "string", "description": "One action: %ALTER, SELECT, INSERT, UPDATE, DELETE or REFERENCES on a table (a view takes no REFERENCES), those and EXECUTE on a schema, EXECUTE on a stored procedure, USE on an ML configuration or foreign server. One action only."})
     Do tRequired.%Push(..#ACTIONARGUMENT)

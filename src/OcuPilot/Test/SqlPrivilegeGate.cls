@@ -102,8 +102,6 @@ Method OnAfterAllTests() As %Status
 /// actions, each reaching the seam as one write, and confirms the agent's grant; over the wire it revokes a row
 /// another account granted, which removes it; and a grant by a principal who does not hold the privilege with the
 /// grant option is refused 403 <code>SQLPRIV.GRANTOR</code> with nothing stored.</p>
-/// <p>Mutation (Rule 19): make <method>OcuPilot.Screen.Tool.SqlPrivilegeWrite.PrivilegePairs</method> answer none --
-/// the without-Security legs reach the port and go red.</p>
 Method TestTheDeclaredPairsReadGrantAndRevoke()
 {
     Set tProbe = ..#SQLPROBE
@@ -163,6 +161,8 @@ Method TestWithoutTheNamespaceDatabaseReadEveryCallIsRefused()
 
 /// <p>Without <code>%Admin_Secure:USE</code>, the read over the wire and every action and the confirm in process are
 /// refused naming it, in process with zero port calls, and the screen is unavailable.</p>
+/// <p>Mutation (Rule 19): make <method>OcuPilot.Screen.Tool.SqlPrivilegeWrite.PrivilegePairs</method> answer none --
+/// the legs reach the port and go red.</p>
 Method TestWithoutSecuritysResourceEveryCallIsRefused()
 {
     Set tProbe = ..#SQLPROBE

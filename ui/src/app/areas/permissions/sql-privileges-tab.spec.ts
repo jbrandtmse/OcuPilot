@@ -162,6 +162,22 @@ describe('the SQL privileges tab', () => {
     expect(host.querySelector('[role="dialog"]')).toBeNull();
   });
 
+  it('a refusal naming no field closes the dialog onto the banner, which shows its reason', async () => {
+    // Mutation (Rule 19): keep the dialog open in onSubmit's last branch -> the dialog assertion goes red.
+    const reason = STRINGS.sqlPrivilegeRefusalOcuPilot;
+    const refusal: ActionRefusal = { reason, code: 'PROHIBITED.OCUPILOTSQLPRIVILEGE', violations: [], detail: null };
+    const { fixture, host } = await mount([], { sendResult: false, refusal });
+    host.querySelector<HTMLButtonElement>('#ocu-sqlpriv-open')!.click();
+    fixture.detectChanges();
+    const input = host.querySelector<HTMLInputElement>('#ocu-sqlpriv-object')!;
+    input.value = 'OcuPilot_Kernel_State.Turn';
+    input.dispatchEvent(new Event('input'));
+    host.querySelector<HTMLButtonElement>('#ocu-sqlpriv-submit')!.click();
+    await settle(fixture);
+    expect(host.querySelector('[role="dialog"]')).toBeNull();
+    expect(host.querySelector('[data-ocu-sqlpriv="refusal"]')?.textContent?.trim()).toBe(reason);
+  });
+
   it('a refusal naming a field keeps the dialog open with the reason beside the field', async () => {
     const refusal: ActionRefusal = {
       reason: 'Refused.',

@@ -1396,7 +1396,7 @@ ClassMethod InvokeLocated(pEndpoint As %String, pType As %String, ByRef pQuery, 
         If $$$ISERR(tSeqSC) && (tHttp = 500) {
             Set tCodeHttp = ..SqlCodeFault(pEndpoint, tSeqSC, .tCodeFault)
             If tCodeHttp {
-                Set tSC = ..Refuse(tCodeHttp, $Select(tCodeHttp = 403: ##class(OcuPilot.Api.Error).#FORBIDDEN, 1: ##class(OcuPilot.Api.Error).#NOTFOUND), tCodeFault, ##class(OcuPilot.Api.SqlPrivilegeError).ReasonFor(tCodeFault), .pHttpStatus, .pFault)
+                Set tSC = ..Refuse(tCodeHttp, $Select(tCodeHttp = 403: ##class(OcuPilot.Api.Error).#FORBIDDEN, tCodeHttp = 409: ##class(OcuPilot.Api.Error).#CONFLICT, 1: ##class(OcuPilot.Api.Error).#NOTFOUND), tCodeFault, ##class(OcuPilot.Api.SqlPrivilegeError).ReasonFor(tCodeFault), .pHttpStatus, .pFault)
                 Do ..LogFault(pEndpoint _ " " _ pType _ " failed with HTTP 500", ..LoggedStatus(tSeqSC, pBody), pFault.code)
                 Quit
             }
@@ -2853,8 +2853,9 @@ Parameter SQLPRIVILEGETYPES = "Security.SQLPrivilege.Standard";
 /// <code>&lt;endpoint&gt;|&lt;SQLCODE&gt;=&lt;http&gt;/&lt;code&gt;</code> entries (Story 18.9). The SQLCODE is the
 /// first parameter of status 5540 and the second of status 5035. Measured on <code>ocupilot-ci</code>, 2026-10-08:
 /// -30 (a table or view), -428 (a procedure), -187 (an ML configuration) and -473 (a schema) are absent objects,
-/// -118 is an unknown user or role, and -112 (and -99 for the admin family) is the grantor rule.</p>
-Parameter SQLCODEFAULTS = "Security.SQLPrivilege.Standard|-112=403/SQLPRIV.GRANTOR,Security.SQLPrivilege.Standard|-99=403/SQLPRIV.GRANTOR,Security.SQLPrivilege.Standard|-30=404/SQLPRIV.NOOBJECT,Security.SQLPrivilege.Standard|-187=404/SQLPRIV.NOOBJECT,Security.SQLPrivilege.Standard|-428=404/SQLPRIV.NOOBJECT,Security.SQLPrivilege.Standard|-473=404/SQLPRIV.NOOBJECT,Security.SQLPrivilege.Standard|-118=404/SQLPRIV.NOGRANTEE";
+/// -118 is an unknown user or role, -112 (and -99 for the admin family) is the grantor rule, and -126 is a revoke
+/// sent with <code>cascade</code> 0 of a privilege the grantee has granted on to others.</p>
+Parameter SQLCODEFAULTS = "Security.SQLPrivilege.Standard|-112=403/SQLPRIV.GRANTOR,Security.SQLPrivilege.Standard|-99=403/SQLPRIV.GRANTOR,Security.SQLPrivilege.Standard|-30=404/SQLPRIV.NOOBJECT,Security.SQLPrivilege.Standard|-187=404/SQLPRIV.NOOBJECT,Security.SQLPrivilege.Standard|-428=404/SQLPRIV.NOOBJECT,Security.SQLPrivilege.Standard|-473=404/SQLPRIV.NOOBJECT,Security.SQLPrivilege.Standard|-118=404/SQLPRIV.NOGRANTEE,Security.SQLPrivilege.Standard|-126=409/SQLPRIV.DEPENDENT";
 
 /// <p>The vendor status code that carries the SQLCODE as its first parameter, and the one that carries it as its
 /// second.</p>
@@ -2869,7 +2870,7 @@ ClassMethod IsSqlPrivilegeEndpoint(pEndpoint As %String) As %Boolean
 }
 
 /// <p>Whether the instance defines the namespace <var>pNamespace</var>: a plain name, not an implied one, that
-/// the instance lists. Overridable so a fixture can name others; production never overrides it.</p>
+/// the instance lists.</p>
 ClassMethod NamespaceDefined(pNamespace As %String) As %Boolean
 {
     If '$Match(pNamespace, "^%?[A-Za-z][A-Za-z0-9_-]*$") Quit 0
@@ -2877,8 +2878,7 @@ ClassMethod NamespaceDefined(pNamespace As %String) As %Boolean
 }
 
 /// <p>The resources guarding <var>pNamespace</var>'s routines and globals databases, in <var>pResources</var> as a
-/// <class>%List</class> without repeats; <var>pResolved</var> 0 when either reports none. Overridable so a fixture
-/// can name others; production never overrides it.</p>
+/// <class>%List</class> without repeats; <var>pResolved</var> 0 when either reports none.</p>
 ClassMethod NamespaceResources(pNamespace As %String, Output pResources As %List, Output pResolved As %Boolean)
 {
     Set pResources = ""

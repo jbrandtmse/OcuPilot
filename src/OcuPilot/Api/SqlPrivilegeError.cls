@@ -89,13 +89,19 @@ Parameter NOGRANTEE = "SQLPRIV.NOGRANTEE";
 
 Parameter REASONNOGRANTEE = "This instance holds no such user or role.";
 
+/// <p>Refusal (409): the instance refused a revoke because the grantee has granted the privilege on to others.
+/// Nothing changed.</p>
+Parameter DEPENDENT = "SQLPRIV.DEPENDENT";
+
+Parameter REASONDEPENDENT = "The grantee has granted this privilege on to others, so it can be revoked only once those grants are revoked.";
+
 /// <p>The longest grantee the instance stores.</p>
 Parameter GRANTEEMAX = 160;
 
 /// <p>Every <code>SQLPRIV.*</code> code, as a <class>%List</class>.</p>
 ClassMethod Codes() As %List
 {
-    Quit $ListBuild(..#VALIDATION, ..#NAMESPACE, ..#GRANTEE, ..#TYPE, ..#OBJECT, ..#ACTION, ..#WITHGRANT, ..#LIST, ..#HELD, ..#NOTHELD, ..#SUPERUSER, ..#NOTAPPLIED, ..#GRANTOR, ..#NOOBJECT, ..#NOGRANTEE)
+    Quit $ListBuild(..#VALIDATION, ..#NAMESPACE, ..#GRANTEE, ..#TYPE, ..#OBJECT, ..#ACTION, ..#WITHGRANT, ..#LIST, ..#HELD, ..#NOTHELD, ..#SUPERUSER, ..#NOTAPPLIED, ..#GRANTOR, ..#NOOBJECT, ..#NOGRANTEE, ..#DEPENDENT)
 }
 
 /// <p>The field-level codes, as a <class>%List</class>, each with its field in <method>FieldOf</method>.</p>
@@ -135,6 +141,7 @@ ClassMethod ReasonFor(pCode As %String) As %String
     If pCode = ..#GRANTOR Quit ..#REASONGRANTOR
     If pCode = ..#NOOBJECT Quit ..#REASONNOOBJECT
     If pCode = ..#NOGRANTEE Quit ..#REASONNOGRANTEE
+    If pCode = ..#DEPENDENT Quit ..#REASONDEPENDENT
     Quit ""
 }
 

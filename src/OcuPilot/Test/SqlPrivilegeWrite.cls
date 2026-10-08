@@ -100,7 +100,7 @@ Method TestAGrantAndARevokeRoundTripOnBothCallers()
         Do $$$AssertEquals(..Wire(tScreen, ..Body("grant-sql", tGrantee), .tAnswer), "200 ", tScreen _ "'s grant-sql answers 200: " _ ..Text(tAnswer))
         Do $$$AssertEquals(tAnswer.%Get("action") _ " " _ tAnswer.%Get("target").%Get("type") _ " " _ tAnswer.%Get("readBack").%Get("verdict"), "updated " _ $Select(tScreen [ "users": "user", 1: "role") _ " nothingSent", "an updated change event for the grantee, nothing sent as a body")
         Do $$$AssertEquals($ClassMethod(tProbe, "Direct", tGrantee, tObject, "SELECT"), 1, "the privilege is held directly")
-        Do $$$AssertTrue($ClassMethod(tProbe, "Rows", tGrantee) [ "|_SYSTEM|0|Direct", "granted by the caller: " _ $ClassMethod(tProbe, "Rows", tGrantee))
+        Do $$$AssertTrue($ClassMethod(tProbe, "Rows", tGrantee) [ ("|" _ ##class(OcuPilot.Test.Http).GetTestUsername() _ "|0|Direct"), "granted by the caller: " _ $ClassMethod(tProbe, "Rows", tGrantee))
         Do $$$AssertEquals(..Wire(tScreen, ..Body("revoke-sql", tGrantee), .tAnswer), "200 ", tScreen _ "'s revoke-sql answers 200: " _ ..Text(tAnswer))
         Do $$$AssertEquals($ClassMethod(tProbe, "Direct", tGrantee, tObject, "SELECT"), 0, "and the row is gone")
 
@@ -185,7 +185,8 @@ Method TestThePreconditionsAreRefusedBeforeAnythingIsSent()
 
 /// <p>A schema grant is judged by the schema's rows for the action: it lists as one row for each object that
 /// takes the action, a revoke removes them, and a vendor answer that moved nothing is refused as not applied.</p>
-/// <p>Mutation (Rule 19): judge a schema grant by <code>Held</code> alone -- the seam leg goes red.</p>
+/// <p>Mutation (Rule 19): make <method>OcuPilot.Port.SqlPrivilegePort.Facts</method> count a schema's
+/// <code>Direct</code> rows instead of its <code>Schema Privilege</code> rows -- the wire grant leg goes red.</p>
 Method TestASchemaGrantIsJudgedByItsRows()
 {
     Set tProbe = ..#PROBE
@@ -234,6 +235,7 @@ Method TestAWriteThatMovedNothingIsRefusedAsNotApplied()
     Set tSC = $ClassMethod(tSeam, "Invoke", ..#ENDPOINT, "GRANT", .tQuery, "", .tResult, .tHttp, .tFault)
     Do $$$AssertEquals(tHttp _ " " _ tFault.%Get("code"), "409 SQLPRIV.NOTAPPLIED", "a grant the vendor answers 200 and does not make is not applied")
     Do $$$AssertEquals($ClassMethod(tSeam, "Writes"), "GRANT:" _ tUser _ ":", "after exactly one vendor call")
+    Do $$$AssertEquals($Get(^||OcuPilotSqlPrivSeam("includeSystem")), 1, "the state is read with system objects included, so a grant on a system schema's object reads back")
     Do $$$AssertEquals($ClassMethod(tProbe, "Direct", tUser, tObject, "SELECT"), 0, "and nothing was granted")
     Kill ^||OcuPilotSqlPrivSeam("noop")
     Set tSC = $ClassMethod(tSeam, "Invoke", ..#ENDPOINT, "GRANT", .tQuery, "", .tResult, .tHttp, .tFault)
