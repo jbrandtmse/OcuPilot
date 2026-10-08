@@ -29,7 +29,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 09-09-2026 07:49
-last_updated: '10-08-2026 15:48'
+last_updated: '10-08-2026 17:24'
 project: OcuPilot
 project_key: NOKEY
 tracking_system: file-system
@@ -344,7 +344,7 @@ development_status:
   20-14-interoperability-holders-reach-ocupilot: done
   20-15-per-screen-permissions-seen-and-adjusted: done
   20-16-the-agent-edits-rule-dtl-and-bpl-content-behind-the-embedded: backlog
-  20-17-long-blocks-in-the-agent-panel-start-collapsed: in-progress
+  20-17-long-blocks-in-the-agent-panel-start-collapsed: done
   20-18-the-agent-proposes-permission-changes-and-refuses-on-a-scree: done
   20-19-the-agent-edits-existing-classes-and-routines-on-the-person: backlog
   20-20-the-agent-creates-new-classes-and-routines-on-the-person-s-c: backlog

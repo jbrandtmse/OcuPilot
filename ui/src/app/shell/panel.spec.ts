@@ -3511,25 +3511,27 @@ describe('Story 5.3: confirming, cancelling and re-proposing a card', () => {
     expect(block?.querySelector('b')).toBeNull();
   });
 
+  /** A confirm answer carrying `output` as the instance writes it: ten console lines and `errors`. */
+  const confirmedWithOutput = (errors: boolean) => ({
+    [proposalConfirmPath('p1')]: [
+      {
+        kind: 'ok',
+        status: 200,
+        body: {
+          proposalId: 'p1',
+          state: 'confirmed',
+          closedReason: '',
+          confirmedAt: '2026-10-08T10:31:04Z',
+          auditMarked: true,
+          output: { lines: Array.from({ length: 10 }, (_, index) => `Compiling line ${index}`), errors },
+        },
+      },
+    ],
+  });
+
   // Story 20.17 AC5. Mutation (Rule 19): make `outputErrorsOf` answer null -> the outcome span goes red.
   it('Story 20.17 AC5: a confirmed long compile output adds its outcome to the card summary', async () => {
-    const lines = Array.from({ length: 10 }, (_, index) => `Compiling line ${index}`);
-    const { host, fixture } = await mountDecidable({
-      [proposalConfirmPath('p1')]: [
-        {
-          kind: 'ok',
-          status: 200,
-          body: {
-            proposalId: 'p1',
-            state: 'confirmed',
-            closedReason: '',
-            confirmedAt: '2026-10-08T10:31:04Z',
-            auditMarked: true,
-            output: { lines, errors: true },
-          },
-        },
-      ],
-    });
+    const { host, fixture } = await mountDecidable(confirmedWithOutput(true), [wireProposal({ tool: 'explorer.classes.compile' })]);
     expect(host.querySelector('.ocu-proposal-card-summary')).toBeNull();
     (host.querySelector('.ocu-proposal-card-confirm') as HTMLButtonElement).click();
     await turnSettle();
@@ -3542,6 +3544,27 @@ describe('Story 5.3: confirming, cancelling and re-proposing a card', () => {
     expect(host.querySelector('.ocu-proposal-card [data-slot="output"]')?.closest('.ocu-long-block')?.classList.contains('ocu-long-block-collapsed')).toBe(true);
     // The card's keys derive from the proposal id the panel hands down (`p:<id>:output`).
     expect(host.querySelector('.ocu-proposal-card [data-slot="output"]')?.closest('.ocu-long-block-region')?.id).toBe('ocu-long-block-p_p1_output');
+  });
+
+  // Mutation (Rule 19): make `outputErrorsOf` answer `record['errors'] === true ? true : null` -> red.
+  it('Story 20.17 AC5: a compile that reported no errors reads "Compiled without errors." in the summary', async () => {
+    const { host, fixture } = await mountDecidable(confirmedWithOutput(false), [wireProposal({ tool: 'explorer.routines.compile' })]);
+    (host.querySelector('.ocu-proposal-card-confirm') as HTMLButtonElement).click();
+    await turnSettle();
+    fixture.detectChanges();
+
+    expect(host.querySelector('.ocu-proposal-card-summary-outcome')?.textContent?.trim()).toBe(STRINGS.proposalSummaryCompiled);
+  });
+
+  // Mutation (Rule 19): hand the card `proposal.outputErrors` whatever the tool -> red.
+  it('Story 20.17 AC5: a journal integrity check, which compiles nothing, adds no compile outcome to its summary', async () => {
+    const { host, fixture } = await mountDecidable(confirmedWithOutput(true), [wireProposal({ tool: 'osmgmt.journals.integrity' })]);
+    (host.querySelector('.ocu-proposal-card-confirm') as HTMLButtonElement).click();
+    await turnSettle();
+    fixture.detectChanges();
+
+    expect(host.querySelector('.ocu-proposal-card-summary')).not.toBeNull();
+    expect(host.querySelector('.ocu-proposal-card-summary-outcome')).toBeNull();
   });
 
   it('AC: the audit-entry offer is appended once, even to a reply that already ends with it', async () => {
@@ -3832,7 +3855,7 @@ async function userScroll(transcript: HTMLElement, fixture: ComponentFixture<Pan
 const jumpControl = (host: HTMLElement) => host.querySelector('.ocu-panel-jump') as HTMLButtonElement | null;
 
 /** A panel whose first turn has been sent and answered, standing at the newest entry of a 1000 px transcript. */
-async function mountAnswered(progress: unknown[] = []) {
+async function mountAnswered(progress: unknown[] = [], message = 'list namespaces') {
   const { schedule, scheduled } = fakeTurnSchedule();
   const api = fakeTurnApi({
     [CONVERSATION_PATH]: [{ kind: 'ok', status: 201, body: { conversationId: 'convo-1' } }],
@@ -3843,7 +3866,7 @@ async function mountAnswered(progress: unknown[] = []) {
   const mounted = await mount({ rows: [{ enabled: true }], turn });
   const geometry = { scrollHeight: 1000, clientHeight: 200, scrollTop: 800 };
   const transcript = fakeTranscriptGeometry(mounted.host, geometry);
-  await typeDraft(mounted.host, mounted.fixture, 'list namespaces');
+  await typeDraft(mounted.host, mounted.fixture, message);
   (mounted.host.querySelector('.ocu-panel-send') as HTMLButtonElement).click();
   await turnSettle();
   mounted.fixture.detectChanges();
@@ -4106,6 +4129,36 @@ describe('Story 20.17: long blocks in the transcript', () => {
     fixture.detectChanges();
     expect(host.querySelector('.ocu-panel-message-agent .ocu-long-block-toggle')?.getAttribute('aria-expanded')).toBe('true');
     expect(host.querySelector('.ocu-panel-message-agent .ocu-long-block')?.classList.contains('ocu-long-block-collapsed')).toBe(false);
+  });
+
+  // Mutation (Rule 19) (QA): set `messageLines` to 0 in the panel's turn view -> this goes red.
+  it('a long user message starts collapsed with the control, and its full text stays in the page (QA)', async () => {
+    const message = Array.from({ length: 10 }, (_, index) => `question ${index}`).join('\n');
+    const { host } = await mountAnswered([], message);
+    const block = host.querySelector('app-long-block.ocu-panel-message-user .ocu-long-block') as HTMLElement;
+    expect(block.classList.contains('ocu-long-block-collapsed')).toBe(true);
+    const toggle = block.querySelector('.ocu-long-block-toggle') as HTMLButtonElement;
+    expect(toggle.getAttribute('aria-expanded')).toBe('false');
+    expect(toggle.getAttribute('aria-controls')).toBe(block.querySelector('.ocu-long-block-region')?.id);
+    expect(block.querySelector('.ocu-long-block-region')?.textContent).toContain('question 9');
+    // The key the panel hands down is `<conversation>:t<index>:message`.
+    expect(block.querySelector('.ocu-long-block-region')?.id).toBe('ocu-long-block-convo-1_t0_message');
+  });
+
+  // Mutation (Rule 19): drop `[turnKey]="turn.key"` from the panel's tool-call card -> the region id goes red.
+  it("a tool-call card's long result is keyed by the turn the panel hands down", async () => {
+    const text = Array.from({ length: 10 }, (_, index) => `row ${index}`).join('\n');
+    const done = {
+      kind: 'ok',
+      status: 200,
+      body: { turnId: 'turn-1', state: 'completed', steps: [turnStep({ seq: 3, text })], stepsDropped: 0, reply: 'done', error: null },
+    };
+    const { host, fixture, scheduled } = await mountAnswered([done]);
+    await nextPoll(scheduled, fixture);
+    (host.querySelector('.ocu-tool-call-toggle') as HTMLButtonElement).click();
+    fixture.detectChanges();
+
+    expect(host.querySelector('.ocu-tool-call-result')?.closest('.ocu-long-block-region')?.id).toBe('ocu-long-block-convo-1_t0_s3_result');
   });
 
   it('the user message wraps in the long block and keeps its class', async () => {
@@ -5060,6 +5113,37 @@ describe('Story 14.1: taking the script instead', () => {
     expect(document.activeElement).toBe(status);
     // No card is live, so Send is a primary again.
     expect((host.querySelector('.ocu-panel-send') as HTMLElement).classList.contains('ocu-button-primary')).toBe(true);
+  });
+
+  // Mutation (Rule 19) (QA): make `Panel.draftLines` return 0 -> this goes red.
+  it('a long taken script starts collapsed with the control, inside the draft slot (QA)', async () => {
+    const script = Array.from({ length: 10 }, (_, index) => `curl -X PUT 'step${index}'`).join('\n');
+    const { host, fixture } = await mountDrafting({
+      [proposalDraftPath('p1')]: [
+        {
+          kind: 'ok',
+          status: 200,
+          body: {
+            proposalId: 'p1',
+            state: 'canceled',
+            closedReason: 'draft',
+            confirmedAt: '',
+            draft: { steps: [{ kind: 'rest', text: script }], placeholders: [] },
+          },
+        },
+      ],
+    });
+    (host.querySelector('.ocu-proposal-card-draft-action') as HTMLButtonElement).click();
+    await turnSettle();
+    fixture.detectChanges();
+    const block = host.querySelector('.ocu-proposal-card-draft .ocu-long-block') as HTMLElement;
+    expect(block.classList.contains('ocu-long-block-collapsed')).toBe(true);
+    expect(block.querySelector('.ocu-long-block-toggle')?.getAttribute('aria-expanded')).toBe('false');
+    expect(block.querySelector('pre.ocu-code-block-pre')?.textContent).toBe(script);
+    // Mutation (Rule 19): make `draftKey` answer '' -> this goes red.
+    expect(block.querySelector('.ocu-long-block-region')?.id).toBe('ocu-long-block-p_p1_draft');
+    // Mutation (Rule 19): drop the card's `[draftLines]` binding -> the card shows no summary and this goes red.
+    expect(host.querySelector('.ocu-proposal-card-summary')).not.toBeNull();
   });
 
   it("a refusal that left the row live shows the instance's reason in the refusal slot, and keeps the buttons", async () => {

@@ -10615,3 +10615,19 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-20-17-long-blocks-in-the-agent-panel-start-collapsed.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: panel.spec.ts uses a one-line user message; setting messageLines to 0 reddens nothing
 - 2026-10-08T16:35:17Z status=open owner=20-17-long-blocks-in-the-agent-panel-start-collapsed by=harvest note=in-story LOW: QA or the code review pins it (two-way door)
+- 2026-10-08T17:25:27Z status=resolved-by:20-17-long-blocks-in-the-agent-panel-start-collapsed owner=20-17-long-blocks-in-the-agent-panel-start-collapsed by=adjudication note=QA's two panel.spec.ts tests (ten-line user message, ten-line taken script) each start collapsed, aria-expanded false, aria-controls on the region, whole text in the page; mutations messageLines->0 and draftLines->0 red
+
+### DW-2224: The Agent area's Transcripts screen now collapses a tool-call card's long arguments and result under Show more
+- source: spec-20-17-long-blocks-in-the-agent-panel-start-collapsed.md (code review) | severity: med | fix-risk: low | footprint: in-story
+- evidence: transcript.page.ts:76 renders app-tool-call-card with no turnKey and ToolCallCard always wraps; the spec's Never says no collapse in the screens, while EXPERIENCE.md:631 amends the shared tool-call-card row and the spec keys a card given no turnKey
+- 2026-10-08T17:23:48Z status=by-design owner=20-17-long-blocks-in-the-agent-panel-start-collapsed by=cr note=shared card row EXPERIENCE.md:631 collapses; reopen via spec amendment if Transcripts must keep its 12-line scroll
+
+### DW-2225: A proposal card confirmed while its turn still polls may lose its output, read-back and compile outcome at the next poll
+- source: spec-20-17-long-blocks-in-the-agent-panel-start-collapsed.md (code review) | severity: med | fix-risk: med | footprint: out-of-footprint
+- evidence: TurnStore's live poll replaces liveEntry.proposals with parseProposals(body), which reads no output or readBack; recordProposalState sets them only at confirm (inference, pre-existing since 16.17 and 19.2)
+- 2026-10-08T17:23:49Z status=escalated owner=burndown by=cr note=unverified; settle by confirming a compile card before its turn ends on a throwaway and reading the card after the next poll
+
+### DW-2226: The Transcripts screen's context payload keeps its twelve-line cap through a rule no test reads
+- source: spec-20-17-long-blocks-in-the-agent-panel-start-collapsed.md (code review) | severity: low | fix-risk: low | footprint: in-story
+- evidence: _components.scss .ocu-transcript-context-payload now carries the cap .ocu-tool-call-result gave up; transcript.page.spec.ts and transcripts.browser-spec.mjs read text only
+- 2026-10-08T17:23:49Z status=wontfix-accepted owner=20-17-long-blocks-in-the-agent-panel-start-collapsed by=cr note=reopen_if=the Transcripts context payload renders taller than 12 lines on ocupilot-b-ci

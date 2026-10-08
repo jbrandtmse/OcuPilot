@@ -40,7 +40,7 @@ import {
   screenForUrl,
   withQuery,
 } from '../core/navigation';
-import { estimateLines } from '../core/long-blocks';
+import { LongBlocks, estimateLines } from '../core/long-blocks';
 import { PanelState } from '../core/panel-layout';
 import {
   type ProposalCardView,
@@ -517,6 +517,7 @@ interface PanelTurnView {
                   [output]="proposal.output"
                   [outputErrors]="proposal.outputErrors"
                   [blockKey]="proposal.blockKey"
+                  [draftLines]="draftLinesOf(proposal.proposalId)"
                   (confirm)="onCardConfirm($event)"
                   (cancel)="onCardCancel($event)"
                   (repropose)="onCardRepropose($event)"
@@ -646,6 +647,11 @@ export class Panel {
   private readonly explainEntry = inject(ExplainEntry, { optional: true });
   /** A Findings panel's Fix it request (Story 16.21). Optional, so a spec that needs none provides none. */
   private readonly fixFinding = inject(FixFinding, { optional: true });
+  /** The opened long blocks (Story 20.17). Optional, so a spec that needs none provides none. */
+  private readonly longBlocks = inject(LongBlocks, { optional: true });
+
+  /** Whether a long block opened or closed since the last render, which that render must not follow. */
+  private blockToggled = false;
 
   private readonly composerEl = viewChild<ElementRef<HTMLTextAreaElement>>('composer');
 
@@ -796,12 +802,18 @@ export class Panel {
       }),
       this.explainEntry?.subscribe(() => this.onExplainEntry()) ?? (() => {}),
       this.fixFinding?.subscribe(() => this.onFixFinding()) ?? (() => {}),
+      this.longBlocks?.subscribe(() => (this.blockToggled = true)) ?? (() => {}),
     ];
     this.syncSuggested();
-    // Every render that grows the transcript while it follows scrolls it to the newest entry.
+    // Every render that grows the transcript while it follows scrolls it to the newest entry, except
+    // one a long block's toggle caused, which neither scrolls the transcript nor moves focus.
     afterEveryRender(() => {
       const box = this.transcriptBox();
-      if (box !== null) this.follow.settle(box);
+      const toggled = this.blockToggled;
+      this.blockToggled = false;
+      if (box === null) return;
+      if (toggled) this.follow.rebase(box);
+      else this.follow.settle(box);
     });
     // A wheel turned up stops the panel's own smooth scroll, which a browser can otherwise carry on
     // over it to the newest entry. Passive, so the wheel's own scroll never waits on it.
@@ -1144,7 +1156,9 @@ export class Panel {
       confirmedAt: clockOf(proposal.confirmedAt),
       readBack: proposal.readBack ?? null,
       output: proposal.output ?? [],
-      outputErrors: proposal.outputErrors ?? null,
+      // Only a System Explorer document write's answer is a compile (EXPERIENCE.md proposal-card
+      // summary line): a journal integrity check also answers `{lines, errors}` and compiles nothing.
+      outputErrors: proposal.tool.startsWith('explorer.') ? (proposal.outputErrors ?? null) : null,
       blockKey: `p:${proposal.proposalId}`,
     };
   }
@@ -1443,6 +1457,12 @@ export class Panel {
   /** The estimated line count of a script: each step's text, summed. */
   protected draftLines(draft: ProposalDraft): number {
     return draft.steps.reduce((total, step) => total + estimateLines(step.text), 0);
+  }
+
+  /** The estimated line count of the script taken for a card, or `0` while it has none. */
+  protected draftLinesOf(proposalId: string): number {
+    const draft = this.drafts[proposalId];
+    return draft === undefined ? 0 : this.draftLines(draft);
   }
 
   /** The scripts taken so far, by proposal id, for the card each one is projected into. */

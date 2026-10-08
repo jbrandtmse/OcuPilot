@@ -1,9 +1,10 @@
 /**
  * Long blocks in the agent panel start collapsed, in real layout (Story 20.17): a long finished
  * reply is clipped to eight lines with a Show more control, a short one carries none, the control
- * opens by keyboard and stays open through a later turn, focus moving into the clipped part opens
- * it, and a long proposal card shows its summary line with Confirm in view while every region is
- * closed. jsdom computes no layout, so the clip is observable only here.
+ * opens by keyboard without scrolling the transcript and stays open through a later turn, focus
+ * moving into the clipped part opens it with the focused element in view, and a long proposal card
+ * shows its summary line with Confirm in view while every region is closed. jsdom computes no
+ * layout, so the clip and the scroll position are observable only here.
  *
  * Every turn is answered by the `turnprobe` provider (`OcuPilot.Test.TurnProvider`), scripted per
  * test through `docker exec`, so no live model is called. The card test creates one web
@@ -130,8 +131,8 @@ function nextReply(bodyExpr) {
 }
 
 /** Signed in on Home with the composer usable. */
-async function openPanel() {
-  const opened = await signedInAt(browser, config, HOME_URL);
+async function openPanel(viewport = config.viewport) {
+  const opened = await signedInAt(browser, config, HOME_URL, viewport);
   await opened.page.waitForFunction(() => !document.querySelector('#ocu-panel-composer').hasAttribute('aria-disabled'), {
     timeout: config.navigationTimeoutMs,
   });
@@ -155,6 +156,18 @@ async function waitForReplies(page, count) {
   );
 }
 
+/** Wait until the transcript's `scrollTop` holds still across two reads, and answer it. */
+async function settledTop(page) {
+  let last = -1;
+  for (let i = 0; i < 40; i += 1) {
+    const top = await page.evaluate(() => document.querySelector('.ocu-panel-transcript').scrollTop);
+    if (top === last) return top;
+    last = top;
+    await new Promise((resolve) => setTimeout(resolve, 150));
+  }
+  return last;
+}
+
 /** What each reply's long block reads: its control, state and whether its region is clipped. */
 function replyBlocks(page) {
   return page.evaluate(() =>
@@ -170,7 +183,7 @@ function replyBlocks(page) {
         regionId: region?.id ?? '',
         clipped: region !== null && region.scrollHeight > region.clientHeight + 1,
         collapsedClass: block?.classList.contains('ocu-long-block-collapsed') ?? false,
-        textLength: reply.textContent.length,
+        text: reply.textContent,
       };
     })
   );
@@ -197,7 +210,7 @@ test('AC1: a 20-line reply is clipped with its whole text in the page, and an 8-
     assert.equal(long.collapsedClass, true);
     assert.equal(long.clipped, true, `the region is clipped to eight lines: ${JSON.stringify(long)}`);
     assert.equal(long.controls, long.regionId, 'aria-controls names the region');
-    assert.ok(long.textLength > 20 * 'Long line 1'.length, `the whole text stays in the page: ${JSON.stringify(long)}`);
+    assert.ok(long.text.includes('Long line 1') && long.text.includes('Long line 20'), `the whole text stays in the page: ${JSON.stringify(long)}`);
     assert.equal(short.hasToggle, false, `the 8-line reply carries no control: ${JSON.stringify(short)}`);
     assert.equal(short.collapsedClass, false);
   } finally {
@@ -207,8 +220,8 @@ test('AC1: a 20-line reply is clipped with its whole text in the page, and an 8-
 });
 
 test('AC2/AC3: Enter on the control opens the reply, and it stays open through a second turn', async () => {
-  // Mutation (Rule 19): make the component ignore `LongBlocks` and keep local state, rebuild and
-  // redeploy -> the second-turn leg goes red (the reply is re-created by the second turn's render).
+  // The first reply's block is not re-created by the second turn (turns track by index); the
+  // store-backed half of AC3 is pinned in `tool-call-card.spec.ts`, where the card re-creates it.
   await requireFreeSlot(config);
   const tags = [];
   const { context, page } = await openPanel();
@@ -226,8 +239,8 @@ test('AC2/AC3: Enter on the control opens the reply, and it stays open through a
     let [first] = await replyBlocks(page);
     assert.equal(first.label, STRINGS.longBlockShowLess);
     assert.equal(first.clipped, false, `the opened reply is whole: ${JSON.stringify(first)}`);
-    const focusedId = await page.evaluate(() => document.activeElement?.className ?? '');
-    assert.ok(focusedId.includes('ocu-long-block-toggle'), 'toggling leaves focus on the control');
+    const focusedClass = await page.evaluate(() => document.activeElement?.className ?? '');
+    assert.ok(focusedClass.includes('ocu-long-block-toggle'), 'toggling leaves focus on the control');
 
     tags.push(nextReply(linesReply('Second', 20)));
     await send(page, 'second');
@@ -249,12 +262,14 @@ test('AC2/AC3: Enter on the control opens the reply, and it stays open through a
   }
 });
 
-test('AC2: moving focus back into a collapsed reply onto its link on the 12th line opens it', async () => {
+test('AC2: moving focus back into a collapsed reply onto its link on the 12th line opens it, with the link in view', async () => {
   // Mutation (Rule 19): remove the `(focusin)` handler from shell/long-block.ts, rebuild and
-  // redeploy -> the link takes focus inside a clipped region and the reply stays closed.
+  // redeploy -> the link takes focus inside a clipped region and the reply stays closed; drop the
+  // handler's `scrollIntoView` -> the opened lines push the link below the transcript's view.
+  // A short viewport, so the transcript overflows and stands scrolled to its newest entry.
   await requireFreeSlot(config);
   const tags = [];
-  const { context, page } = await openPanel();
+  const { context, page } = await openPanel({ width: config.viewport.width, height: 520 });
   try {
     tags.push(nextReply(linesReply('Linked', 12, '[the docs](https://example.com/docs)')));
     await send(page, 'a linked answer');
@@ -271,6 +286,56 @@ test('AC2: moving focus back into a collapsed reply onto its link on the 12th li
       () => document.querySelector('.ocu-panel-message-agent .ocu-long-block-toggle')?.getAttribute('aria-expanded') === 'true',
       { timeout: config.navigationTimeoutMs }
     );
+    // Focus is never hidden: once the block has opened, the focused link lies inside the transcript's view.
+    await page.waitForFunction(
+      () => {
+        const link = document.activeElement;
+        const log = document.querySelector('.ocu-panel-transcript').getBoundingClientRect();
+        const rect = link.getBoundingClientRect();
+        return link.tagName === 'A' && rect.top >= log.top - 1 && rect.bottom <= log.bottom + 1;
+      },
+      { timeout: 5000 }
+    ).catch(async () => {
+      const where = await page.evaluate(() => JSON.stringify([document.activeElement.getBoundingClientRect(), document.querySelector('.ocu-panel-transcript').getBoundingClientRect()]));
+      assert.fail(`the focused link is outside the transcript's view after the block opened: ${where}`);
+    });
+  } finally {
+    await context.close();
+    for (const tag of tags) forgetTag(probe, tag);
+  }
+});
+
+test('AC2: opening the newest reply while the transcript follows leaves the position where it was', async () => {
+  // Mutation (Rule 19): make the panel's render hook call `settle` after a toggle too, rebuild and
+  // redeploy -> the transcript scrolls to the opened reply's end and this goes red.
+  await requireFreeSlot(config);
+  const tags = [];
+  const { context, page } = await openPanel();
+  try {
+    tags.push(nextReply(linesReply('Tall', 60)));
+    await send(page, 'a tall answer');
+    await waitForReplies(page, 1);
+    const before = await settledTop(page);
+    const following = await page.evaluate(() => {
+      const el = document.querySelector('.ocu-panel-transcript');
+      return el.scrollHeight - el.scrollTop - el.clientHeight <= 4;
+    });
+    assert.equal(following, true, 'the transcript stands at its newest entry once the reply has arrived');
+
+    await page.focus('.ocu-panel-message-agent .ocu-long-block-toggle');
+    await page.keyboard.press('Enter');
+    await page.waitForFunction(
+      () => document.querySelector('.ocu-panel-message-agent .ocu-long-block-toggle')?.getAttribute('aria-expanded') === 'true',
+      { timeout: config.navigationTimeoutMs }
+    );
+    const grown = await page.evaluate(() => {
+      const el = document.querySelector('.ocu-panel-transcript');
+      return el.scrollHeight - el.clientHeight;
+    });
+    assert.ok(grown > before + 100, `opening grew the transcript well past its view: newest ${grown}, position ${before}`);
+    assert.equal(await settledTop(page), before, 'opening the block left the transcript where it was');
+    const focusedClass = await page.evaluate(() => document.activeElement?.className ?? '');
+    assert.ok(focusedClass.includes('ocu-long-block-toggle'), 'and focus on the control');
   } finally {
     await context.close();
     for (const tag of tags) forgetTag(probe, tag);
@@ -278,8 +343,8 @@ test('AC2: moving focus back into a collapsed reply onto its link on the 12th li
 });
 
 test('AC4/AC7: a create card with at least nine changed rows shows its summary, Confirm in view and enabled with every region closed, and Confirm confirms', async () => {
-  // Mutation (Rule 19): move Confirm inside the diff region, or stop rendering the summary in
-  // shell/proposal-card.ts, rebuild and redeploy -> the containment or the summary leg goes red.
+  // Confirm's containment and the summary's forms are pinned by mutation in `proposal-card.spec.ts`;
+  // this leg holds them in real layout, with the summary set in the card's own type.
   assert.equal(targetExists(), '0', 'the target is absent before the create');
   await requireFreeSlot(config);
   const input = {
@@ -332,6 +397,8 @@ test('AC4/AC7: a create card with at least nine changed rows shows its summary, 
       const diff = root.querySelector('.ocu-proposal-card-diff .ocu-long-block');
       return {
         summary: root.querySelector('.ocu-proposal-card-summary-fields')?.textContent?.trim() ?? '',
+        summaryFont: getComputedStyle(root.querySelector('.ocu-proposal-card-summary')).fontFamily,
+        rowFont: getComputedStyle(root.querySelector('.ocu-diff-row')).fontFamily,
         rows: root.querySelectorAll('.ocu-proposal-card-diff .ocu-long-block-region > .ocu-diff-row').length,
         collapsed: diff?.classList.contains('ocu-long-block-collapsed') ?? false,
         confirmInRegion: confirm.closest('.ocu-long-block-region') !== null,
@@ -346,6 +413,7 @@ test('AC4/AC7: a create card with at least nine changed rows shows its summary, 
       true,
       `the summary names the count: ${JSON.stringify(card)}`
     );
+    assert.equal(card.summaryFont, card.rowFont, `the summary is set in the card's own type: ${JSON.stringify(card)}`);
     assert.equal(card.collapsed, true, 'the rows region is closed');
     assert.equal(card.confirmInRegion, false, 'Confirm is outside every region');
     assert.notEqual(card.confirmDisabled, 'true', 'and enabled');

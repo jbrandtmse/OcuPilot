@@ -4,6 +4,7 @@ type: 'feature'
 created: '2026-10-08'
 status: 'done'
 baseline_revision: 'f9a3955c585a106a7f18f952fb70c8cef07935c3'
+baseline_commit: 'f9a3955c585a106a7f18f952fb70c8cef07935c3'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -213,6 +214,56 @@ Client (`ui/`). The anchors were read by the plan's investigator; confirm each a
 - **AC5 (compile outcome).** Given a confirmed card that holds a long block and whose output carries `errors`, when it renders, then the summary adds "Compiled with errors." or "Compiled without errors.".
 - **AC6 (strings).** Given the six literals, when `npm run test:tools` runs, then each is in EXPERIENCE.md's Fixed strings and held equal in `strings.ts`.
 - **AC7 (Integration, Rule 1).** Given `Panel`, `ProposalCard` and `ToolCallCard` consuming `LongBlock` and `LongBlocks`, when a scripted long reply and a long card render in a real browser on `ocupilot-b-ci`, then they behave as AC1 to AC4 state.
+
+### Review Findings
+
+Code review 2026-10-08 (full, four layers): 0 high, 14 medium and 7 low kept after triage. 18 were patched in this pass and 3 are ledgered below. No AD mismatch was found (AD-19, AD-11 rule 4, AD-33, AD-39, AD-47, AD-58).
+
+- [x] [Review][Patch] (med) Show more on the newest reply scrolled a following transcript to the reply's end. The panel now rebases the follow rule after a `LongBlocks` change instead of settling. [ui/src/app/shell/panel.ts:815, panel-follow.ts `rebase`]
+- [x] [Review][Patch] (med) A block opened by focus could leave the focused element below the transcript's view. It is now scrolled into view after the render. [ui/src/app/shell/long-block.ts:104]
+- [x] [Review][Patch] (med) A confirmed journal integrity check read "Compiled with errors." The outcome now reaches the card only for an `explorer.` write. [ui/src/app/shell/panel.ts:1161]
+- [x] [Review][Patch] (med) Empty-keyed blocks (the Transcripts screen's cards, the example card) all shared the id `ocu-long-block-`, so `aria-controls` named the wrong region. Each now has its own id. [ui/src/app/shell/long-block.ts:92]
+- [x] [Review][Patch] (med) In light mode, Show more inside the user's bubble was 4.49:1 against the 4.5:1 floor. It now takes `on-primary-container` there (12.19:1 light, 7.21:1 dark). [ui/src/styles/_components.scss:4426]
+- [x] [Review][Patch] (med) The summary line had no type role and rendered in the browser's default serif ("Times", measured). It now uses `caption`. [ui/src/styles/_components.scss:4439]
+- [x] [Review][Patch] (med) AC3's store-backed persistence had no consumer test, and the browser comment's re-creation claim was false. Added a re-shown tool-call result leg and corrected the comment. [ui/src/app/shell/tool-call-card.spec.ts:191]
+- [x] [Review][Patch] (med) The panel's `:message`, `[turnKey]` and draft-key hand-offs were unpinned. Added three region-id assertions. [ui/src/app/shell/panel.spec.ts:4145, 4149, 5144]
+- [x] [Review][Patch] (med) The rationale, impact and reverse wraps were never asserted to collapse. [ui/src/app/shell/proposal-card.spec.ts:1334]
+- [x] [Review][Patch] (med) AC5's `errors:false` path was untested end to end, and one mutation comment was false. Added a panel leg and corrected the comment. [ui/src/app/shell/panel.spec.ts:3550]
+- [x] [Review][Patch] (med) Containment checked 6 of the never-inside elements. The secrets, consequence, impact, privilege, runs-as and status lines are now checked too. [ui/src/app/shell/proposal-card.spec.ts:1334]
+- [x] [Review][Patch] (med) The "stores nothing for an empty key" assertion could not fail. It now counts store notifications. [ui/src/app/shell/long-block.spec.ts:129]
+- [x] [Review][Patch] (low) A long projected script alone showed no summary line (EXPERIENCE.md:632). Added the card input `draftLines`. [ui/src/app/shell/proposal-card.ts:730]
+- [x] [Review][Patch] (low) A target name containing `<n>` had the count substituted into it. The substitution order is fixed. [ui/src/app/shell/proposal-card.ts:741]
+- [x] [Review][Patch] (low) Browser assertions were weak: the text-length check, the focused-link visibility and a misnamed variable. [ui/browser/panel-collapse.browser-spec.mjs:213, 265]
+- [x] [Review][Patch] (low) `LongBlock.STRINGS` was unused, and the toggle inherited the bubble's `pre-wrap`. [ui/src/app/shell/long-block.ts]
+- [x] [Review][Patch] (low) Planned mutations were never observed: AC2 `aria-expanded` dropped, and AC4 Confirm inside a region. Both are now run and recorded in Verification.
+- [x] [Review][Patch] (low) `transcript-follow`'s helper relied on the toggle scrolling. It now restores the newest entry only when the arrival had reached it. [ui/browser/transcript-follow.browser-spec.mjs:120]
+- [x] [Review][Defer] (med) The Transcripts screen's cards collapse, while Never says no collapse in the screens. [ui/src/app/areas/agent/transcript.page.ts:76] Deferred as DW-2224 `by-design`: EXPERIENCE.md:631 amends the shared tool-call-card row, and the spec keys a card given no `turnKey`.
+- [x] [Review][Defer] (med, unverified) A card confirmed while its turn still polls may lose its output, read-back and outcome at the next poll. [ui/src/app/core/turn.ts:1728] Deferred as DW-2225 `escalated`: pre-existing since 16.17 and 19.2.
+- [x] [Review][Defer] (low) The Transcripts context payload's moved cap has no test. [ui/src/styles/_components.scss] Deferred as DW-2226 `wontfix-accepted`.
+
+**Rejected:**
+
+- Spec-bound (`by-design`):
+  - the estimate overcounts where newlines collapse or a code line does not wrap (the estimate rule and its 721-character I/O row);
+  - find-in-page scrolls an `overflow: hidden` region;
+  - a mouse focus inside the visible lines opens the block;
+  - a finished streamed reply collapses;
+  - every control is named Show more or Show less;
+  - a delete card counts its removed rows;
+  - the `[ADDED …, Story 20.17]` tag form the spec gave.
+- False:
+  - "the user bubble lost its spacing": the 13px UA margin was never designed, and DESIGN.md sets `{spacing.2}` between messages;
+  - "the new-conversation reset is unpinned": the reply's region id carries the conversation id, so a key without it reddens `panel.spec.ts`.
+- Maybe-false, low:
+  - the clamp cuts through a line (settle with a screenshot on `ocupilot-b-ci`);
+  - the toggle's label change is announced in the polite log (settle with a screen-reader pass).
+- Low, not worth the change:
+  - the summary's two spans run together for a screen reader, the same pattern as the reverse line;
+  - the outcome has no live region, because the status line takes focus;
+  - estimates are recomputed per change detection, negligible at today's sizes;
+  - indentation inside the diff block;
+  - the store is not cleared on New conversation (theoretical: keys never meet).
+- Bookkeeping: the frontmatter `deferred:` item is DW-2220. QA's two legs pin it (now also the draft key and summary), and it closes at the lead's adjudication.
 
 ## Spec Change Log
 
@@ -429,6 +480,38 @@ The plan proposes no spine amendment for this half (Rule 6). The UX amendments a
 - mutation: AC6 `longBlockShowLess` differs from its Fixed row -> `strings.test.mjs` 3 red.
 - mutation: AC7 `.ocu-long-block-collapsed > .ocu-long-block-region` `max-height: 8lh` -> `none`, rebuilt and redeployed to `ocupilot-b-ci` -> `panel-collapse.browser-spec.mjs` AC1 red (clipped false); reverted, 4/4 green.
 - mutation: wiring `App` `longBlocks?.endSession()` removed -> `app.spec.ts` sign-out leg red; panel `[blockKey]` removed -> `panel.spec.ts` AC5 red (region id `p_p1_output`).
+
+**QA pass:**
+
+- (QA) `ui/src/app/shell/panel.spec.ts`: two tests close DW-2220, a ten-line user message and a ten-line taken script each start collapsed with `aria-expanded="false"`, `aria-controls` on the region and the whole text in the page.
+- mutation: `messageLines: estimateLines(entry.message)` → `0` in `panel.ts` → "a long user message starts collapsed" red (QA); reverted byte-identical.
+- mutation: `Panel.draftLines` returns `0` → "a long taken script starts collapsed" red (QA); reverted byte-identical.
+
+**Code review pass (each mutation reverted byte-identical):**
+
+- mutation: AC2 `[attr.aria-expanded]` dropped from `long-block.ts` → `long-block.spec.ts` 6 of 8 red.
+- mutation: AC4 Confirm wrapped in an `app-long-block` → `proposal-card.spec.ts` "Confirm, Cancel, … sit outside every region" red.
+- mutation: AC4 secrets block moved inside the rationale region → `proposal-card.spec.ts` "the secret fields, the consequence…" red.
+- mutation: AC1 rationale unwrapped → the same leg red.
+- mutation: AC3 `LongBlock` keeps a keyed block's state locally → `tool-call-card.spec.ts` "…shown again is still open" red.
+- mutation: AC3 panel's `[turnKey]` dropped → `panel.spec.ts` "keyed by the turn" red.
+- mutation: AC3 panel's `draftKey` answers `''` → the QA draft leg red.
+- mutation: AC5 outcome handed over for every tool → `panel.spec.ts` "journal integrity check" red.
+- mutation: AC5 `outputErrorsOf` maps `false` to `null` → `panel.spec.ts` "Compiled without errors." red.
+- mutation: AC2 empty-key region id derived from the key → `long-block.spec.ts` "never share a region id" red.
+- mutation: AC4 `summaryVisible` ignores `draftLines` → `proposal-card.spec.ts` "a long projected script" red; the panel's `[draftLines]` binding dropped → the QA draft leg red.
+- mutation: `TranscriptFollow.rebase` calls `settle` → `panel-follow.spec.ts` toggle leg red.
+- mutation (browser, rebuilt and redeployed): the panel settles after a toggle → `panel-collapse` "leaves the position where it was" red.
+- mutation (browser): the focus handler's `scrollIntoView` removed → `panel-collapse` "…with the link in view" red. The link was at y 411 against the transcript's bottom at 378.
+- mutation (browser): the summary's `caption` type removed → `panel-collapse` AC4/AC7 red (summary font "Times").
+
+**Code review runs (2026-10-08, slot B, bundle rebuilt and deployed to `ocupilot-b-ci`):**
+
+- browser: `panel-collapse` 5/5, `stream-reply` 7/7, `transcript-follow` 4/4, `a11y-structural-invariants` 13/13 (both themes);
+- `npm test`: tools 1895/1895, components 2702/2702;
+- `npm run build`: initial 3,150.6 kB, under 3,165 kB;
+- `bash scripts/lint-docs.sh`: clean;
+- `git diff --name-only f9a3955c`: no `src/OcuPilot` path.
 
 ## Auto Run Result
 

@@ -1,6 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { beforeEach, describe, expect, it } from 'vitest';
 
+import { LongBlocks } from '../core/long-blocks';
 import { STRINGS } from '../core/strings';
 import type { TurnStep } from '../core/turn';
 import { ToolCallCard } from './tool-call-card';
@@ -184,6 +185,29 @@ describe('the tool-call card long blocks (Story 20.17)', () => {
       'ocu-long-block-c1_t0_s1_arguments'
     );
     expect(body.querySelectorAll('.ocu-long-block-toggle')).toHaveLength(2);
+  });
+
+  // Mutation (Rule 19): make `LongBlock` keep a keyed block's state locally -> the re-shown result reads closed.
+  it('a result opened, hidden by collapsing the card and shown again is still open, because the store holds it', () => {
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({ imports: [ToolCallCard], providers: [{ provide: LongBlocks, useValue: new LongBlocks() }] });
+    const fixture = TestBed.createComponent(ToolCallCard);
+    fixture.componentRef.setInput('step', { ...BASE, status: 'ok', text: longText });
+    fixture.componentRef.setInput('turnKey', 'c1:t0');
+    fixture.detectChanges();
+    const card = fixture.nativeElement as HTMLElement;
+    const disclosure = (): void => {
+      (card.querySelector('.ocu-tool-call-toggle') as HTMLButtonElement).click();
+      fixture.detectChanges();
+    };
+
+    disclosure();
+    (card.querySelector('.ocu-long-block-toggle') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    disclosure();
+    expect(card.querySelector('.ocu-long-block-toggle')).toBeNull();
+    disclosure();
+    expect(card.querySelector('.ocu-long-block-toggle')?.getAttribute('aria-expanded')).toBe('true');
   });
 
   it('a short result carries no control, and a card given no turn key keeps its state locally', () => {

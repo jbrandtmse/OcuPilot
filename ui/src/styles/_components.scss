@@ -4413,11 +4413,22 @@ app-data-table {
   background: transparent;
   color: var(--ocu-secondary);
   font-weight: 600;
+  white-space: nowrap;
   cursor: pointer;
 }
 
 .ocu-long-block-toggle:hover {
   background: color-mix(in srgb, var(--ocu-secondary) 8%, transparent);
+}
+
+// Inside the user's bubble the secondary role falls under 4.5:1 on primary-container in light
+// mode, so the control takes the bubble's own text role there.
+.ocu-panel-message-user .ocu-long-block-toggle {
+  color: var(--ocu-on-primary-container);
+}
+
+.ocu-panel-message-user .ocu-long-block-toggle:hover {
+  background: color-mix(in srgb, var(--ocu-on-primary-container) 8%, transparent);
 }
 
 .ocu-long-block-toggle:focus-visible {
@@ -4426,6 +4437,8 @@ app-data-table {
 
 // The summary line under a proposal card's header (Story 20.17).
 .ocu-proposal-card-summary {
+  @include typo.ocu-type('caption');
+
   margin: 0;
   color: var(--ocu-on-surface-variant);
 }

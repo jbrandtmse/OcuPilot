@@ -487,6 +487,12 @@ export class ProposalCard {
   readonly blockKey = input<string>('');
 
   /**
+   * The estimated line count of the script the panel projects into the footer (Story 20.17), or
+   * `0` for none: a long one is a long block of this card's, so the summary line shows for it.
+   */
+  readonly draftLines = input<number>(0);
+
+  /**
    * Confirm was pressed: the proposal's id and the values typed into its masked fields (AD-6,
    * AD-35).
    *
@@ -720,7 +726,8 @@ export class ProposalCard {
       isLong(this.rationaleLines) ||
       isLong(this.impactLines) ||
       (this.hasReverse && isLong(this.reverseLines)) ||
-      (this.outputVisible && isLong(this.outputLines))
+      (this.outputVisible && isLong(this.outputLines)) ||
+      isLong(this.draftLines())
     );
   }
 
@@ -731,7 +738,7 @@ export class ProposalCard {
     const count = this.changedRows.length;
     if (count === 0) return name;
     const template = count === 1 ? STRINGS.proposalSummaryField : STRINGS.proposalSummaryFields;
-    return template.split('<name>').join(name).split('<n>').join(String(count));
+    return template.split('<n>').join(String(count)).split('<name>').join(name);
   }
 
   /** Whether a confirmed card's output reported whether the compile had errors. */

@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, inject, input, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, Injector, afterNextRender, inject, input, signal } from '@angular/core';
 
 import { LongBlocks, blockId, isLong } from '../core/long-blocks';
 import { STRINGS } from '../core/strings';
@@ -9,11 +9,13 @@ import { STRINGS } from '../core/strings';
  * The projected content is always whole in the DOM. A block whose `lines` estimate is above eight
  * is clamped to eight lines by CSS and carries a native Show more / Show less button; a shorter
  * block renders neither the button nor the clamp class. Focus moving into a collapsed region
- * opens it, so focus is never hidden.
+ * opens it and, once the opened block has rendered, brings the focused element into view, so
+ * focus is never hidden. The control itself scrolls nothing.
  *
  * What a person opened is kept in the injected `LongBlocks` by `key`, so it survives a re-render
- * and a later turn. An empty `key` is kept in this component only. The region id derives from the
- * key, never from a counter, so a streamed turn and a plain one render the same DOM.
+ * and a later turn. An empty `key` is kept in this component only. A keyed region's id derives from
+ * the key, never from a counter, so a streamed turn and a plain one render the same DOM; an
+ * empty-keyed region takes an id of its own, so two such blocks on one page never share one.
  *
  * Every control-flow condition is a paren-free member reference (`client-lint.mjs`).
  */
@@ -22,7 +24,7 @@ import { STRINGS } from '../core/strings';
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { class: 'ocu-long-block-host' },
   template: `<div class="ocu-long-block" [class.ocu-long-block-collapsed]="collapsed">
-    <div class="ocu-long-block-region" [attr.id]="regionId" (focusin)="onFocusIn()">
+    <div class="ocu-long-block-region" [attr.id]="regionId" (focusin)="onFocusIn($event)">
       <ng-content />
     </div>
     @if (long) {
@@ -45,9 +47,14 @@ export class LongBlock {
   /** The block's estimated line count (`estimateLines`). */
   readonly lines = input<number>(0);
 
-  protected readonly STRINGS = STRINGS;
+  /** How many empty-keyed blocks have been created, which numbers each one's region id. */
+  private static localBlocks = 0;
+
+  private readonly localId = `ocu-long-block-local-${(LongBlock.localBlocks += 1)}`;
 
   private readonly store = inject(LongBlocks, { optional: true }) ?? new LongBlocks();
+
+  private readonly injector = inject(Injector);
 
   /** The store's answer for this key, and the local state an empty key keeps. */
   private readonly storeVersion = signal(0);
@@ -81,15 +88,20 @@ export class LongBlock {
   }
 
   protected get regionId(): string {
-    return blockId(this.key());
+    const key = this.key();
+    return key === '' ? this.localId : blockId(key);
   }
 
   protected toggle(): void {
     this.setOpen(!this.open);
   }
 
-  protected onFocusIn(): void {
-    if (this.collapsed) this.setOpen(true);
+  protected onFocusIn(event: FocusEvent): void {
+    if (!this.collapsed) return;
+    this.setOpen(true);
+    const target = event.target;
+    if (!(target instanceof HTMLElement) || typeof target.scrollIntoView !== 'function') return;
+    afterNextRender(() => target.scrollIntoView({ block: 'nearest' }), { injector: this.injector });
   }
 
   private setOpen(open: boolean): void {

@@ -102,9 +102,10 @@ async function waitForMessages(page, count) {
 
 /**
  * Wait until `count` replies have rendered and the turn has ended (Send reads Send again), then
- * open every collapsed reply (Story 20.17), so each leg still overflows the transcript. The click
- * is programmatic: it neither scrolls the transcript nor moves focus, which is what the legs that
- * watch the scroll position need.
+ * open every collapsed reply (Story 20.17), so each leg still overflows the transcript. Opening a
+ * block never scrolls the transcript, so a transcript that stood at its newest entry once the
+ * arrival settled is returned there with an instant scroll, and one that did not is left where it
+ * is: each leg then observes the position the arrival itself produced.
  */
 async function waitForReplies(page, count) {
   await page.waitForFunction(
@@ -115,12 +116,20 @@ async function waitForReplies(page, count) {
     count,
     STRINGS.actionSend
   );
+  await settledTop(page);
+  const wasAtNewest = (await distance(page)) <= TOLERANCE_PX;
   await page.evaluate(() => {
     for (const toggle of document.querySelectorAll('.ocu-long-block-toggle[aria-expanded="false"]')) toggle.click();
   });
   await page.waitForFunction(() => document.querySelectorAll('.ocu-long-block-toggle[aria-expanded="false"]').length === 0, {
     timeout: config.navigationTimeoutMs,
   });
+  if (wasAtNewest) {
+    await page.evaluate(() => {
+      const el = document.querySelector('.ocu-panel-transcript');
+      el.scrollTo({ top: el.scrollHeight, behavior: 'instant' });
+    });
+  }
 }
 
 /** How far the transcript is from its newest entry, in CSS px. */

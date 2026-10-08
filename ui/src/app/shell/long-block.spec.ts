@@ -114,14 +114,31 @@ describe('the long-block wrapper', () => {
     expect(button(fixture)?.getAttribute('aria-expanded')).toBe('false');
   });
 
+  // Mutation (Rule 19): route an empty key's toggle to `store.setOpen` with the store's own
+  // empty-key guard removed -> the listener count goes red.
   it('an empty key keeps its state in the component and stores nothing', () => {
     const store = new LongBlocks();
+    let heard = 0;
+    store.subscribe(() => (heard += 1));
     const fixture = mount('', 12, store);
 
     button(fixture)?.click();
     fixture.detectChanges();
 
     expect(button(fixture)?.getAttribute('aria-expanded')).toBe('true');
-    expect(store.isOpen('')).toBe(false);
+    expect(heard).toBe(0);
+  });
+
+  // Mutation (Rule 19): derive an empty key's region id from the key (`blockId('')`) -> red.
+  it('two empty-keyed blocks on one page never share a region id, and each control names its own', () => {
+    const first = mount('', 12);
+    const second = TestBed.createComponent(LongBlock);
+    second.componentRef.setInput('lines', 12);
+    second.detectChanges();
+
+    expect(region(first).id).not.toBe('');
+    expect(region(first).id).not.toBe(region(second).id);
+    expect(button(first)?.getAttribute('aria-controls')).toBe(region(first).id);
+    expect(button(second)?.getAttribute('aria-controls')).toBe(region(second).id);
   });
 });

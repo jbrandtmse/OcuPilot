@@ -1330,7 +1330,71 @@ describe('the proposal card with a long block (Story 20.17)', () => {
     expect(card.querySelector('.ocu-long-block-collapsed')).not.toBeNull();
   });
 
-  // mutation: make `outputErrorsOf` answer null in the panel, or drop `summaryOutcomeVisible` -> red.
+  // Mutation (Rule 19): move the secrets block inside the diff `app-long-block` -> the secrets leg goes red.
+  it('the secret fields, the consequence, the impact and privilege lines sit outside every region, and long agent text collapses in its own', () => {
+    const { card } = mountKeyed(
+      liveView({
+        changed: rows(12),
+        rationale: Array(9).fill('why').join('\n'),
+        expectedImpact: Array(9).fill('what').join('\n'),
+        reverse: Array(9).fill('how').join('\n'),
+        maskedFields: ['Password'],
+        consequence: 'WEBAPP.UNAUTHENTICATED',
+        destructive: true,
+        privilege: { text: 'Runs with %Admin_Secure:USE.', missing: false },
+        impact: { kind: 'resource-delete', refused: { code: 'PROHIBITED.PROBE', reason: 'The removal is refused.' }, parts: [] },
+      }),
+      'live'
+    );
+
+    for (const selector of [
+      '.ocu-proposal-card-secrets',
+      '[data-slot="consequence"]',
+      '[data-slot="impact"]',
+      '[data-slot="privilege"]',
+      '.ocu-proposal-card-runs-as',
+    ]) {
+      const nodes = Array.from(card.querySelectorAll(selector));
+      expect(nodes.length, selector).toBeGreaterThan(0);
+      for (const node of nodes) expect(node.closest('.ocu-long-block-region'), selector).toBeNull();
+    }
+    // Mutation (Rule 19): drop the wrapper around the rationale -> the first entry goes red.
+    const collapsed = (node: Element): boolean => node.closest('.ocu-long-block')?.classList.contains('ocu-long-block-collapsed') ?? false;
+    expect(Array.from(card.querySelectorAll('.ocu-proposal-card-agent-text')).map(collapsed)).toEqual([true, true]);
+    expect(collapsed(card.querySelector('.ocu-proposal-card-reverse') as HTMLElement)).toBe(true);
+  });
+
+  it('an opened diff stays open when the card is confirmed', () => {
+    const { fixture, card } = mountKeyed(liveView({ changed: rows(12) }), 'live');
+    (card.querySelector('.ocu-proposal-card-diff .ocu-long-block-toggle') as HTMLButtonElement).click();
+    fixture.detectChanges();
+
+    fixture.componentRef.setInput('phase', 'confirmed');
+    fixture.detectChanges();
+    expect(card.querySelector('.ocu-proposal-card-diff .ocu-long-block-toggle')?.getAttribute('aria-expanded')).toBe('true');
+  });
+
+  // Mutation (Rule 19): drop `isLong(this.draftLines())` from `summaryVisible` -> red.
+  it('a long projected script alone shows the summary line', () => {
+    const { fixture, card } = mountKeyed(liveView({ name: 'Orders', changed: rows(1) }), 'live');
+    expect(summary(card)).toBeNull();
+
+    fixture.componentRef.setInput('draftLines', 9);
+    fixture.detectChanges();
+    expect(summary(card)?.textContent?.trim()).toBe(STRINGS.proposalSummaryField.split('<name>').join('Orders'));
+  });
+
+  it('a target name carrying the count placeholder is shown as written', () => {
+    const { card } = mountKeyed(liveView({ name: 'Tag<n>', changed: rows(9) }), 'live');
+
+    expect(summary(card)?.querySelector('.ocu-proposal-card-summary-fields')?.textContent?.trim()).toBe(
+      STRINGS.proposalSummaryFields.split('<n>').join('9').split('<name>').join('Tag<n>')
+    );
+  });
+
+  // The proposal-card spec sets `outputErrors` directly; the panel's own reading of the confirm
+  // answer is pinned in `panel.spec.ts` (Story 20.17 AC5).
+  // Mutation (Rule 19): drop `summaryOutcomeVisible` from the summary -> red.
   it('a confirmed card with a long output adds the compile outcome to its summary', () => {
     const lines = Array.from({ length: 10 }, (_, index) => `line ${index}`);
     const { fixture, card } = mountKeyed(liveView({ name: 'Orders', changed: rows(2) }), 'confirmed');
@@ -1343,6 +1407,9 @@ describe('the proposal card with a long block (Story 20.17)', () => {
     );
     const output = card.querySelector('[data-slot="output"]') as HTMLElement;
     expect(output.closest('.ocu-long-block')?.classList.contains('ocu-long-block-collapsed')).toBe(true);
+    const status = card.querySelector('.ocu-proposal-card-status') as HTMLElement;
+    expect(status).not.toBeNull();
+    expect(status.closest('.ocu-long-block-region')).toBeNull();
 
     fixture.componentRef.setInput('outputErrors', false);
     fixture.detectChanges();
