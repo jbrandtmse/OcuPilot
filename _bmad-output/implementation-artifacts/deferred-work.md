@@ -10568,3 +10568,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-20-15-per-screen-permissions-seen-and-adjusted.md (code review, rework 2) | severity: low | fix-risk: med | footprint: in-story
 - evidence: ScreenAccessPort.PAIRS (AdjusterSpec) is a sixth, AD-64-sanctioned carrier; a port copying it would pass PortGate and the roster. Navigate.ArgumentPairs carries the pair per call for the screenpermissions route, so ArgumentPairs cannot be read without exemptions. No stray exists today.
 - 2026-10-08T09:11:59Z status=wontfix-accepted owner=20-15-per-screen-permissions-seen-and-adjusted by=cr note=reopen_if=AdjusterPairs()/AdjusterSpec() called in src/OcuPilot code outside Gate, AgentScreenPermissions, ScreenAccessPort
+
+### DW-2221: browserConfig falls back to slot A's throwaway (ocupilot-ci) when OCUPILOT_BROWSER_ORIGIN and OCUPILOT_BROWSER_CONTAINER are both unset, so a slot B stage that omits them silently drives slot A's instance; refuse unless both are set
+- source: Epic 20 runner report 2026-10-08 (20.17 implement handoff); cycle-log-parallel.md | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: A 20.17 handoff subagent ran panel-collapse, stream-reply and agent-sql with both unset between 15:48Z and ~16:35Z 10-08; they arm and disarm a probe agent definition on ocupilot-ci; ui/tools/browser-config.test.mjs pins the one-unset refusals but allows both unset
+- 2026-10-08T16:35:45Z status=routed owner=23-5-the-range-end-cleanup-part-5 by=orchestrator note=CI sets both per shard, so a both-unset refusal costs CI nothing; update browser-config.test.mjs and the README/DEVELOPMENT browser-run lines that rely on the default
