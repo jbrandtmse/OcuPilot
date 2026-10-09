@@ -10740,3 +10740,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: cycle-log-epic-20.md (run 37865082072 attempt 1) | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: Red in instance shard 2/5 on ac551bcf (20.19, no background-task code); the class passed 8/8 on ocupilot-b-ci at 20.19's tree; adminport logged #40320 Async task cannot be canceled
 - 2026-10-09T01:39:27Z status=routed owner=23-5-the-range-end-cleanup-part-5 by=lead note=wait for the compact to be pausable (or re-seed) before Pause and Cancel; CI flake, Rule 27
+
+### DW-2239: The web-application tools can reach OcuPilot's own privileged routine applications (OcuPilotState, OcuPilotIdentity): no AD-10 arm refuses a delete or a MatchRoles :%All update, and the vendor's privileged-routine endpoint also writes any application type
+- source: spec-18-10-web-application-extras-and-spec-based-rest-services.md | severity: high | fix-risk: low | footprint: out-of-footprint
+- evidence: measured at 18.10 plan on ocupilot-ci: Prohibited.Prohibits answered 0 for webapp.list.delete on OcuPilotState and for webapp.list.update MatchRoles=:%All; Prohibited.cls:5181
+- 2026-10-09T03:28:57Z status=routed owner=burndown by=harvest note=pending the orchestrator's 18.10 split: the privileged routine applications story would own it with the AD-10 arm and a target-type check
