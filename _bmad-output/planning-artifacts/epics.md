@@ -8070,15 +8070,17 @@ So that the largest deferred area becomes usable.
 
 ### Story 20.3: Production items
 
+[AMENDED 2026-10-09, orchestrator rulings on Story 20.3's plan (split; Q2 A; Q3 cleared), by=merge_gate, Rule 5] Item settings (set, reset, the setting entity type, and how secret- and path-valued settings are handled) move to Story 20.22, ordered right after this story. An item write changes the stored configuration and the production class only; a running production then reads update pending and 20.2's confirmed Update applies it; a remove is refused while the item is enabled.
+
 As an interoperability developer,
 I want to add, remove, enable, disable and configure the hosts in a production,
 So that a production is editable rather than only observable.
 
 **Acceptance Criteria:**
 
-- **Given** enable, disable, add, remove and settings edit
+- **Given** enable, disable, add and remove
 - **When** each runs
-- **Then** it round-trips through the interoperability port as a confirmed write.
+- **Then** it round-trips through the interoperability port as a confirmed write, and saves the production class as well as its stored configuration.
 - DW-2157: A production stop from Running can leave it reading Suspended while the tool answers success and the card promised Stopped (ledger; routed by merge_gate 2026-10-07)
 - DW-2162: A stop or restart whose jobs outlast the cap after quiescing answers a logged 500 with the production half-stopped, while the stop card says nothing is stopped (ledger; routed by merge_gate 2026-10-07)
 
@@ -8508,6 +8510,38 @@ So that a change I ask for in conversation lands in the source.
 - **Then** the question is returned to the orchestrator for the owner, with options and a recommendation.
 
 - DW-2228: the model's copy of a source read passes AD-60, so an `Old` it copies can differ from the stored text; the mint matches each `Old` exactly against the instance text and refuses otherwise, and says so to the model (ledger; routed by cr 2026-10-09)
+
+### Story 20.22: Production item settings
+
+[AMENDED 2026-10-09, orchestrator ruling on Story 20.3's plan (split), by=merge_gate, Rule 5] Chartered from Story 20.3's item settings; consumes 20.3 and is ordered right after it. Its first plan is Story 20.3's first plan (`git show 6def26fa:_bmad-output/implementation-artifacts/spec-20-3-production-items.md`).
+
+[AMENDED 2026-10-09, owner decision relayed by the orchestrator, by=merge_gate] The owner's words: "A: hide secrets, allow paths (Recommended)". A setting whose name matches the spine's Secrets pattern is never returned (to the screen, a tool, the context or the ledger) and never set through OcuPilot. Every other setting is shown, reaches the model through AD-60, and is settable by both callers, validated by its class. A host's own server-path setting is allowed as its validated value, a new AD-21 named case written at this story's spec gate quoting the owner. Named limit, in AD-36: a secret stored under a name that does not match the pattern is not caught.
+
+As an interoperability developer,
+I want to see and edit the settings of a production's hosts,
+So that a host's configuration is changed where it is listed rather than in the classic page.
+
+**Acceptance Criteria:**
+
+- **Given** a production item
+- **When** its settings are listed
+- **Then** they read through the interoperability port, with their source (production, system default or class default), and a secret-named setting's value and default are never returned.
+
+- **Given** set and reset of an item's setting
+- **When** each runs
+- **Then** it round-trips through the port as a confirmed write, validated by the host or adapter class, and saves the production class; a running production then reads update pending.
+
+- **Given** a secret-named setting, or a value the host class refuses
+- **When** a set or reset is proposed
+- **Then** it is refused by code before any vendor call, from both callers.
+
+- **Given** a host's own server-path setting
+- **When** it is set
+- **Then** it is accepted as the host's validated value under AD-21's new named case, and the diff row names it.
+
+- **Given** any further security-posture question its plan finds
+- **When** it is planned
+- **Then** the question is returned to the orchestrator for the owner, with options and a recommendation.
 
 ---
 

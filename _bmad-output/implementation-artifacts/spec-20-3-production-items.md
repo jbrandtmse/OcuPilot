@@ -2,7 +2,7 @@
 title: 'Story 20.3: Production items'
 type: 'feature'
 created: '2026-10-09'
-status: 'blocked'
+status: 'draft'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -16,9 +16,9 @@ deferred: []
 
 ## Intent
 
-**Problem:** A production's hosts can be seen and changed only in the classic configuration page: OcuPilot cannot list a production's items, enable or disable one, add or remove one, or edit an item's settings. Two of Story 20.2's stop outcomes also answer wrongly (DW-2157, DW-2162).
+**Problem:** A production's hosts can be seen and changed only in the classic configuration page: OcuPilot cannot list a production's items, enable or disable one, or add or remove one (an item's settings are Story 20.22). Two of Story 20.2's stop outcomes also answer wrongly (DW-2157, DW-2162).
 
-**Approach:** Extend `Port/InteropPort` (AD-62) with `Items` and `Settings` endpoints. Two child lists open from the Productions row, Production items and Item settings, each read through the port. Six confirmed writes reach the stored production configuration through the documented `Ens.Director` and `Ens.Config.Production`/`Item` calls, and save it to the production class every time. None of them touches a running production's jobs; 20.2's Update applies a pending change (Design Notes, Q2).
+**Approach:** Extend `Port/InteropPort` (AD-62) with an `Items` endpoint. A child list, Production items, opens from the Productions row and reads through the port. Four confirmed writes (enable, disable, add, remove) reach the stored production configuration through the documented `Ens.Director` and `Ens.Config.Production`/`Item` calls, and save it to the production class every time. None of them touches a running production's jobs; 20.2's Update applies a pending change (Design Notes, Q2).
 
 ## Boundaries & Constraints
 
@@ -28,9 +28,8 @@ deferred: []
 - An item write saves the configuration and then the production class (`SaveToClass`). `EnableConfigItem` alone leaves the class stale, and a recompile reverts it (measured).
 - Every refusal is by code, decided before any vendor call: a taken, duplicated or illegal name, a class that is not a business host, a value the host class refuses, a no-op, and a namespace under source control.
 - One descriptor per screen, one port, read tools derived (FR-80). Both callers share one operation (AD-53, AD-55). The add Save takes the per-target hold (DW-1882).
-- `interop.items.remove` is destructive: typed-name dialog, governance key `false` (AD-22). The other five keys are `true`.
-- Item names, comments, class names and setting values are untrusted content (AD-11, AD-60).
-- A setting whose name matches the Conventions › Secrets pattern never leaves the instance, and is never set through OcuPilot (Q1, recommended option).
+- `interop.items.remove` is destructive: typed-name dialog, governance key `false` (AD-22). The other three keys are `true`.
+- Item names, comments and class names are untrusted content (AD-11, AD-60).
 - Edits to contended files follow Design Notes › Contended files.
 
 **Never:**
@@ -39,6 +38,7 @@ deferred: []
 - Never call `%Api.InteropEditors.*`, `EnsPortal.Template.prodConfigSCPage` (Hidden, Internal) or `CleanProduction`.
 - Never read item ids as the vendor's integer ids: a recompile renumbers them (measured).
 - No class change of an existing item, no copy, no item tabs or monitor (20.4), no System Default Settings edit, no production create or delete.
+- No item-settings list, set or reset: Story 20.22 consumes this story for those (orchestrator split, 2026-10-09).
 - No new spawn site, no frame and no copied vendor bundle.
 
 ## I/O & Edge-Case Matrix
@@ -51,10 +51,7 @@ deferred: []
 | Add | Free legal name, business host class | The item is stored (disabled unless `Enabled` is true), and the class XData carries it | 409 `.TAKEN`, 422 `.NAME`/`.CLASS` (field violations) |
 | Remove | A disabled item | Deleted from the configuration and the class | 409 `.ENABLEDREMOVE` while enabled |
 | Duplicate name | Two items share the name | Every write on that name is refused | 409 `INTEROP.ITEM.AMBIGUOUS` |
-| Set setting | Host or Adapter setting, or Core `PoolSize`/`Comment`/`Category`/`LogTraceEvents` | Stored, after the host or adapter class's own `<Name>IsValid` passes | 422 `INTEROP.SETTING.VALUE`; 409 `.SAME`, `.UNKNOWN` |
-| Reset setting | The production holds its own value | Removed, so the system or class default applies | 409 `INTEROP.SETTING.NODEFAULT` |
-| Secret-named setting | The name matches the credential pattern | `Value`/`Default` read masked on the screen and in the tool | 409 `INTEROP.SETTING.SECRET` on set and reset |
-| Source control | `%CSP.Portal.SourceControl.Util.IsEnabled(ns)` | Every item and setting write is refused | 409 `INTEROP.ITEM.SOURCECONTROL` |
+| Source control | `%CSP.Portal.SourceControl.Util.IsEnabled(ns)` | Every item write is refused | 409 `INTEROP.ITEM.SOURCECONTROL` |
 | Gates | Missing `%Ens_ProductionConfig:READ`/`:WRITE`, or WRITE on the namespace's globals or routines database | Refused by name before any vendor call | 403 naming the pair |
 | Stop ends Suspended (DW-2157) | Stop from Running with messages still queued | The vendor answers OK in 5.5 s and the production reads Suspended (measured) | 409 `INTEROP.PRODUCTION.SUSPENDED`, applied and marked |
 | Partial stop (DW-2162) | A job outlasts the cap after quiescing | The vendor's `<Ens>ErrJobsNotStopped`; the production reads Running with no jobs (measured) | 409 `INTEROP.PRODUCTION.PARTSTOPPED`, unlogged |
@@ -257,6 +254,8 @@ deferred: []
 - **AC6 (DW-2157, DW-2162):** Given a stop that ends Suspended, or jobs that outlast the cap, when stop or restart runs, then it answers its own code and sentence. The row shows the state the production was left in, and the stop and restart consequences name a partial stop.
 
 ## Spec Change Log
+
+- 2026-10-09, runner, orchestrator rulings (by=merge_gate, feature 67e70c72): split approved, so item settings (the Item settings list, set, reset, the setting entity type, secret-named settings) move to Story 20.22, which reads the first plan at `git show 6def26fa:_bmad-output/implementation-artifacts/spec-20-3-production-items.md`; Q2 A (configuration and class only; 20.2's Update applies; remove refused while enabled); Q3 cleared on union terms. Status reset to draft for a re-plan.
 
 ## Review Triage Log
 

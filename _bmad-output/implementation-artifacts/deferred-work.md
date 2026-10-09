@@ -10792,6 +10792,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: cycle-log-epic-20.md (20.20 runner-side sweep shard 3/30, run 108) | severity: low | fix-risk: low | footprint: out-of-footprint
 - evidence: Red once in the local sweep on ocupilot-b-ci ('with the same count and last entry'), green alone at once (run 116); its doc says only this class writes the store during the run, which a background writer breaks
 - 2026-10-09T11:21:16Z status=routed owner=23-5-the-range-end-cleanup-part-5 by=lead note=compare the tool's last entry against a route read taken after it, or seed a marker and compare by marker; CI flake class, Rule 27
+- 2026-10-09T16:18:28Z by=lead note=the red came during the owner-reported host contention window (oMLX model load, 2026-10-09) and passed on immediate re-run; Rule 27 flake priority in 23.5; close there if it has not recurred
 
 ### DW-2253: System Explorer's compile, delete and import Confirm still gate WRITE on the request's namespace while the write targets the proposal's (DW-2242's root cause, outside 20.20's scope)
 - source: spec-20-20-the-agent-creates-new-classes-and-routines-on-the-person-s-c.md | severity: med | fix-risk: med | footprint: out-of-footprint
