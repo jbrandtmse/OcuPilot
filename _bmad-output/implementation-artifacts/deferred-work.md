@@ -10813,3 +10813,48 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: run 37944323086 browser shard 3/3: ui/browser/proposal-privilege.browser-spec.mjs:270 (b) Waiting failed 5000ms at :291; the same code green locally 3/3 on ocupilot-ci; 18.10 touches only the two routine-application names in Mint/Prohibited
 - 2026-10-09T15:20:57Z status=routed owner=23-5-the-range-end-cleanup-part-5 by=harvest note=size the window from the card's own poll interval plus one re-read, or wait on the card's answered signal
 - 2026-10-09T16:33:26Z status=wontfix-accepted by=adjudication note=host_contention(owner_report_via_orchestrator_2026-10-09:a_large_local_model_under_oMLX_slowed_the_containers);re-run_attempt_2_green;reopen_if=proposal-privilege_(b)_reds_again_on_an_uncontended_host
+
+### DW-2256: ExplorerSaveMint.Mint answers REASONNOTFOUND for a document the instance keeps no source for
+- source: spec-23-6-the-haiku-story-cleanup.md | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: ExplorerSaveMint.cls:70-74 at a3455ddb answers REASONNOTFOUND when the read's available is false; Story 23.6 adds AtelierPort.REASONNOSOURCE for that case
+- 2026-10-09T17:02:33Z status=routed owner=range-end-cleanup by=spec_gate note=23.6 plan filing candidate 1; not absorbed (dispatch)
+
+### DW-2257: ExplorerSaveMint measures a line's escaped length inline, duplicating ExplorerSourceRead.Escaped
+- source: spec-23-6-the-haiku-story-cleanup.md | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: ExplorerSaveMint.cls:91 at a3455ddb; Story 23.6 makes ExplorerSourceRead.Escaped public
+- 2026-10-09T17:02:33Z status=routed owner=range-end-cleanup by=spec_gate note=23.6 plan filing candidate 2; not absorbed (dispatch)
+
+### DW-2258: ExplorerSaveTurn discards RemoveKeyed()'s status three times
+- source: spec-23-6-the-haiku-story-cleanup.md | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: Test/ExplorerSaveTurn.cls:199,218,237 at a3455ddb; the same shape Story 23.6 fixes in ExplorerSourceTurn (20.19-4)
+- 2026-10-09T17:02:33Z status=routed owner=range-end-cleanup by=spec_gate note=23.6 plan filing candidate 3; not absorbed (dispatch)
+
+### DW-2259: ci-runner testClassesOnDisk misses a test class that reaches TestCase through a project base class
+- source: spec-23-6-the-haiku-story-cleanup.md | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: ui/tools/ci-runner.mjs:369 reads the direct Extends only, so ProviderStream and ProviderStreamFamilies (Extends StreamCase) are off the local floor; CI legs split the instance's list, so they still run
+- 2026-10-09T17:02:33Z status=routed owner=range-end-cleanup by=spec_gate note=23.6 plan filing candidate 4; its comment says widen the matcher once such a base exists
+
+### DW-2260: USERS_PATH is declared twice in the client
+- source: spec-23-6-the-haiku-story-cleanup.md | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: ui/src/app/areas/permissions/user-create-form.store.ts:10 and user-editor.store.ts:15 at a3455ddb
+- 2026-10-09T17:02:33Z status=routed owner=range-end-cleanup by=spec_gate note=23.6 plan filing candidate 5; not absorbed (dispatch)
+
+### DW-2261: Explorer source tests repeat LIMIT = 60000 instead of reading SOURCEMAXLENGTH
+- source: spec-23-6-the-haiku-story-cleanup.md | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: Test/ExplorerSource*.cls LIMIT parameter equals ExplorerSourceRead SOURCEMAXLENGTH at a3455ddb
+- 2026-10-09T17:02:33Z status=routed owner=range-end-cleanup by=spec_gate note=23.6 plan filing candidate 6; not absorbed (dispatch)
+
+### DW-2262: PRIVROUTINE.TYPE lives in PctAccessError rather than a privileged-routine home
+- source: spec-23-6-the-haiku-story-cleanup.md | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: Api/PctAccessError.cls:51-55 at 357985c0 (Planner review of 18.10, item 4); a move leaves the code string unchanged
+- 2026-10-09T17:02:33Z status=routed owner=18-31-privileged-routine-applications by=spec_gate note=23.6 addendum 18.10-4a left for 18.31, which builds the privileged routine application screens (coordinator: may wait for 18.31)
+
+### DW-2263: The create script's class check reads the undocumented ^rINDEXCLASS, measured on 2026.2 only
+- source: spec-23-6-the-haiku-story-cleanup.md | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: AtelierPort.FreeCheck (:3396 at 39ed66f1) renders a $Data(^rINDEXCLASS(..)) check; Planner review of 20.20
+- 2026-10-09T17:02:33Z status=wontfix-accepted owner=23-6-the-haiku-story-cleanup by=spec_gate note=reopen_if=an IRIS image newer than 2026.2 (2027.1) is adopted: re-measure ^rINDEXCLASS before the pin moves
+
+### DW-2264: A save line of about 300,000 or more control characters might overflow while AtelierPort.Literal escapes it (inference)
+- source: spec-23-6-the-haiku-story-cleanup.md | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: Planner review of 20.20 at 39ed66f1 (inference, unmeasured): Literal expands each control character
+- 2026-10-09T17:02:33Z status=wontfix-accepted owner=23-6-the-haiku-story-cleanup by=spec_gate note=reopen_if=a save or create carrying a line of 300,000 or more control characters fails to render or PUT with <MAXSTRING>
