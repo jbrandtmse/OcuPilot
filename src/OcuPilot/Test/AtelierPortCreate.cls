@@ -1,8 +1,8 @@
 /// <p>Story 20.20's port-level create (AD-54, AD-59, DW-2241): the <code>NEWDOC</code> read answers which held
 /// documents take a name, <code>CREATE</code> writes and compiles one new document and refuses a taken name
-/// before any vendor call, and <code>Snippet</code> renders a create's and a save's stored text as script,
-/// bounded. Probes are made in <code>USER</code> by <class>OcuPilot.Test.ExplorerCreateProbe</class> and removed
-/// after each test.</p>
+/// before the PUT, and <code>Snippet</code> renders a create's and a save's stored text as script, bounded,
+/// one self-contained line per step. Probes are made in <code>USER</code> by
+/// <class>OcuPilot.Test.ExplorerCreateProbe</class> and removed after each test.</p>
 /// <p><b>What it needs from the environment:</b> OcuPilot installed in <code>HSCUSTOM</code> with the
 /// <code>USER</code> namespace's routines database readable and writable by the suite account, and
 /// <class>OcuPilot.Test.ExplorerCreateProbe</class>'s documents not already held.</p>
@@ -41,16 +41,24 @@ ClassMethod Call(pEndpoint As %String, pType As %String, pName As %String, pCont
 }
 
 /// <p>The read a name takes: a held class in another case, and a routine that takes a routine of its base
-/// name in exact case, are answered with the held name; a free name, an include file beside a routine of
-/// its name, and a routine name differing only in case are answered 404 <code>PORT.NOTFOUND</code>.</p>
+/// name in exact case, are answered with the held name; a held include file takes its own name; a free name,
+/// an include file beside a routine of its name, a routine beside an include file of its name, and a routine
+/// name differing only in case are answered 404 <code>PORT.NOTFOUND</code>.</p>
+/// <p>Mutation (Rule 19): <method>OcuPilot.Port.AtelierPort.Takes</method> lets a held include file take a
+/// routine of its base name -- the routine-beside-an-include leg goes red.</p>
 Method TestNewDocAnswersWhichHeldDocumentsTakeAName()
 {
     Do $$$AssertStatusOK($ClassMethod(..#PROBE, "MakeClass", ..#PROBENAMESPACE, "OcuProbe2020.Port"), "a probe class is held")
     Do $$$AssertStatusOK($ClassMethod(..#PROBE, "MakeRoutine", ..#PROBENAMESPACE, "OcuProbe2020Int.int"), "a probe intermediate routine is held")
+    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "MakeRoutine", ..#PROBENAMESPACE, "OcuProbe2020Inc.inc"), "a probe include file is held")
     Set tSC = ..Call("Classes", "NEWDOC", "OcuProbe2020.Port.cls", "", "", .tResult, .tHttp, .tFault)
     Do $$$AssertTrue($$$ISOK(tSC) && (tHttp = 200) && (tResult.Present = "OcuProbe2020.Port.cls"), "the held class takes its own name: " _ tHttp)
     Set tSC = ..Call("Classes", "NEWDOC", "OcuProbe2020.PORT.cls", "", "", .tResult, .tHttp, .tFault)
-    Do $$$AssertTrue($$$ISOK(tSC) && (tHttp = 200), "and a class of the same name in any case")
+    Do $$$AssertTrue($$$ISOK(tSC) && (tHttp = 200) && (tResult.Present = "OcuProbe2020.Port.cls"), "and a class of the same name in any case, named as it is held: " _ tHttp _ " " _ $Select($IsObject($Get(tResult)): tResult.Present, 1: ""))
+    Set tSC = ..Call("Routines", "NEWDOC", "OcuProbe2020Inc.inc", "", "", .tResult, .tHttp, .tFault)
+    Do $$$AssertTrue($$$ISOK(tSC) && (tHttp = 200) && (tResult.Present = "OcuProbe2020Inc.inc"), "a held include file takes its own name: " _ tHttp)
+    Set tSC = ..Call("Routines", "NEWDOC", "OcuProbe2020Inc.mac", "", "", .tResult, .tHttp, .tFault)
+    Do $$$AssertTrue($$$ISERR(tSC) && (tHttp = 404), "a routine beside a held include file of its name is free: " _ tHttp)
     Set tSC = ..Call("Classes", "NEWDOC", "OcuProbe2020.Free.cls", "", "", .tResult, .tHttp, .tFault)
     Do $$$AssertTrue($$$ISERR(tSC) && (tHttp = 404) && (tFault.code = "PORT.NOTFOUND"), "a free class name is answered 404 PORT.NOTFOUND: " _ tHttp)
     Set tSC = ..Call("Routines", "NEWDOC", "OcuProbe2020Int.mac", "", "", .tResult, .tHttp, .tFault)
@@ -115,10 +123,17 @@ Method TestTheCreateAndTheSaveRenderTheirStoredText()
     Set tQuery("content") = $ClassMethod(..#PROBE, "NewClassText", "OcuProbe2020.Snip")
     Set tQuery("Compile") = 1
     Set tText = $ClassMethod(tPort, "Snippet", "Classes", "CREATE", .tQuery).%Get(0).text
-    Do $$$AssertTrue(tText [ "##class(%RoutineMgr).Exists(""OcuProbe2020.Snip.cls"")", "a class create is under the existence guard")
-    Do $$$AssertTrue((tText [ "SetTextFromArray") && (tText [ "already exists; nothing was created."), "and sets the stored lines, else saying nothing was created")
+    Do $$$AssertTrue(tText [ "tFree = '$Data(^rINDEXCLASS(""OCUPROBE2020.SNIP""))", "a class create checks the name in any letter case")
+    Do $$$AssertTrue((tText [ " If tFree Set tSC = ##class(%Compiler.UDL.TextServices).SetTextFromArray(") && (tText [ "is taken: this namespace holds it or another document of its name, so nothing was created."), "and sets the stored lines only while it is free, else saying nothing was created")
     Do $$$AssertTrue((tText [ "Quit 1") && '(tText [ "<content>"), "the stored text is rendered, not the placeholder")
-    Do $$$AssertTrue(tText [ "CompileList(""OcuProbe2020.Snip.cls"", ""cuk"")", "and compiles it, the create's compile being on")
+    Do $$$AssertTrue(tText [ " If tFree,$System.Status.IsOK(tSC) Set tSC = $System.OBJ.CompileList(""OcuProbe2020.Snip.cls"", ""cuk"")", "and compiles it once it is written, the create's compile being on")
+    Set tQuery("names") = "OcuProbe2020Snip.mac"
+    Set tQuery("content") = "ROUTINE OcuProbe2020Snip" _ $Char(10) _ " Quit"
+    Set tText = $ClassMethod(tPort, "Snippet", "Routines", "CREATE", .tQuery).%Get(0).text
+    For tTaker = "OcuProbe2020Snip.mac", "OcuProbe2020Snip.int", "OcuProbe2020Snip.bas", "OcuProbe2020Snip.mvi", "OcuProbe2020Snip.mvb" {
+        Do $$$AssertTrue(tText [ ("##class(%RoutineMgr).Exists(""" _ tTaker _ """)"), "a routine create checks " _ tTaker _ ", which takes its name")
+    }
+    Do $$$AssertTrue(tText '[ "OcuProbe2020Snip.inc", "and not the include file of its base name")
     Kill tQuery
     Set tQuery("namespace") = ..#PROBENAMESPACE
     Set tQuery("names") = "OcuProbe2020Snip.inc"
@@ -136,6 +151,64 @@ Method TestTheCreateAndTheSaveRenderTheirStoredText()
     Set tQuery("Compile") = 1
     Do $$$AssertEquals($ClassMethod(tPort, "Snippet", "Classes", "CREATE", .tQuery).%Size(), 0, "a script past the bound renders no step")
     Do $$$AssertEquals($ClassMethod(tPort, "Snippet", "Classes", "NEWDOC", .tQuery).%Size(), 0, "a read renders no step")
+}
+
+/// <p>A save or a create whose text is within the bound but whose script is not renders no step, and fails
+/// nowhere: three hundred thousand one-character lines are 600,000 characters of text and over twelve million
+/// of script, past the longest string the instance holds.</p>
+/// <p>Mutation (Rule 19): <method>OcuPilot.Port.AtelierPort.SaveScript</method> renders every line before the
+/// bound is read -- this goes red with <code>&lt;MAXSTRING&gt;</code>.</p>
+Method TestAScriptPastTheBoundRendersNoStepForAnyText()
+{
+    For tCase = $ListBuild("Classes", "OcuProbe2020.Many.cls", "SAVE"), $ListBuild("Routines", "OcuProbe2020Many.mac", "CREATE") {
+        Kill tQuery
+        Set tQuery("namespace") = ..#PROBENAMESPACE
+        Set tQuery("names") = $List(tCase, 2)
+        Set tQuery("content") = $Replace($Justify("", 300000), " ", "x" _ $Char(10))
+        Set tQuery("version") = "2026-10-09 09:00:00.000"
+        Set tQuery("Compile") = 1
+        Set tSteps = ""
+        Try {
+            Set tSteps = $ClassMethod(..#PORT, "Snippet", $List(tCase, 1), $List(tCase, 3), .tQuery)
+        } Catch ex {
+            Set tSteps = ex.DisplayString()
+        }
+        Do $$$AssertTrue($IsObject(tSteps) && (tSteps.%Size() = 0), $List(tCase, 1) _ " " _ $List(tCase, 3) _ " of many short lines renders no step: " _ $Select($IsObject(tSteps): tSteps.%Size(), 1: tSteps))
+    }
+}
+
+/// <p>Every line of every script the port renders closes each block it opens, so the script runs the same
+/// pasted line by line into a terminal, which runs each line on its own, as it does as a method body: the
+/// compile, the delete, the export, the import, and a class's and a routine's save and create. String
+/// literals are left out of the count.</p>
+/// <p>Mutation (Rule 19): <method>OcuPilot.Port.AtelierPort.SaveScript</method> wraps a create's steps in one
+/// block <code>If ... {</code> spanning lines -- this goes red.</p>
+Method TestEveryScriptLineClosesTheBlocksItOpens()
+{
+    Set tClass = "Class OcuProbe2020.Snip { ClassMethod Probe() { Quit 1 } }"
+    Set tRoutine = "ROUTINE OcuProbe2020Snip" _ $Char(10) _ " If 1 { Set tBrace = ""{"" }"
+    Set tLiteral = ##class(%Regex.Matcher).%New("""(?:[^""]|"""")*""")
+    For tCase = $ListBuild("Classes", "COMPILE", "A.cls,B.cls", ""), $ListBuild("Routines", "DELETE", "A.mac,B.mac", ""), $ListBuild("Classes", "EXPORT", "A.cls", ""), $ListBuild("Classes", "IMPORT", "A.cls", ""), $ListBuild("Classes", "SAVE", "OcuProbe2020.Snip.cls", tClass), $ListBuild("Classes", "CREATE", "OcuProbe2020.Snip.cls", tClass), $ListBuild("Routines", "SAVE", "OcuProbe2020Snip.mac", tRoutine), $ListBuild("Routines", "CREATE", "OcuProbe2020Snip.mac", tRoutine) {
+        Kill tQuery
+        Set tQuery("namespace") = ..#PROBENAMESPACE
+        Set tQuery("names") = $List(tCase, 3)
+        Set tQuery("content") = $List(tCase, 4)
+        Set tQuery("version") = "2026-10-09 09:00:00.000"
+        Set tQuery("Compile") = 1
+        Set tQuery("path") = "probe.xml"
+        Set tQuery("root") = "/tmp"
+        Set tSteps = $ClassMethod(..#PORT, "Snippet", $List(tCase, 1), $List(tCase, 2), .tQuery)
+        Do $$$AssertEquals(tSteps.%Size(), 1, $List(tCase, 2) _ " on " _ $List(tCase, 1) _ " renders one step")
+        If tSteps.%Size() '= 1 Continue
+        Set tText = tSteps.%Get(0).text
+        Set tOpen = ""
+        For tI = 1:1:$Length(tText, $Char(10)) {
+            Set tLiteral.Text = $Piece(tText, $Char(10), tI)
+            Set tLine = tLiteral.ReplaceAll("")
+            If ($Length(tLine, "{") '= $Length(tLine, "}")) && (tOpen = "") Set tOpen = $Piece(tText, $Char(10), tI)
+        }
+        Do $$$AssertEquals(tOpen, "", $List(tCase, 2) _ " on " _ $List(tCase, 1) _ ": no line leaves a block open")
+    }
 }
 
 }

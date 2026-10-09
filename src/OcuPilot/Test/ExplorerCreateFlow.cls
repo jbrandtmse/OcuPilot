@@ -118,6 +118,8 @@ Method TestAClassCreateShowsTheWholeTextAndWritesNothing()
     Set tSC = ..Dispatch(..#PROBENAMESPACE, ..#CLASSTOOL, ..Input(..#ALPHA _ ".cls", tText), .tContent, .tIsError, .tProposal)
     Do $$$AssertTrue($$$ISOK(tSC) && 'tIsError && $IsObject($Get(tProposal)), "the create is minted: " _ $Extract($Get(tContent), 1, 300))
     If '$IsObject($Get(tProposal)) Quit
+    Do $$$AssertEquals(tProposal.changed.%Size(), 1, "the proposal shows one row")
+    If tProposal.changed.%Size() '= 1 Quit
     Set tRow = tProposal.changed.%Get(0)
     Do $$$AssertEquals(tRow.kind _ " " _ tRow.line _ " [" _ tRow.before _ "]", "lines 1 []", "the row is a lines row from line 1 with nothing before")
     Do $$$AssertEquals(tRow.after, tText _ $Char(10), "and holds the whole new text")
@@ -131,7 +133,10 @@ Method TestAClassCreateShowsTheWholeTextAndWritesNothing()
 }
 
 /// <p>A confirmed class create writes the text, compiles it as the person, and is marked and ledgered: the class
-/// holds the text, is compiled, reports no error, and its confirm answers the change action <code>created</code>.</p>
+/// holds the text, is compiled, reports no error, its confirm answers the change action <code>created</code>, and
+/// the compile's own lines come back for the card.</p>
+/// <p>Mutation (Rule 19): <method>OcuPilot.Screen.Tool.ExplorerCreate.ComposeCreate</method> puts
+/// <code>Compile</code> false in the payload -- the compiled and output legs go red.</p>
 Method TestAConfirmedClassCreateIsWrittenCompiledAndMarked()
 {
     Set tText = $ClassMethod(..#PROBE, "NewClassText", ..#ALPHA)
@@ -145,6 +150,7 @@ Method TestAConfirmedClassCreateIsWrittenCompiledAndMarked()
     Do $$$AssertTrue($ClassMethod(..#PROBE, "Compiled", ..#PROBENAMESPACE, ..#ALPHA), "and is compiled")
     Do $$$AssertTrue($IsObject(tResult.output) && (tResult.output.%GetTypeOf("errors") = "boolean"), "the confirm answers a compile errors flag")
     Do $$$AssertEquals(tResult.output.errors, 0, "and its compile reports no error: " _ tResult.%ToJSON())
+    Do $$$AssertTrue((tResult.output.%GetTypeOf("lines") = "array") && (tResult.output.lines.%ToJSON() [ ("Compiling class " _ ..#ALPHA)), "and the compile's own lines, for the card: " _ tResult.output.%ToJSON())
 }
 
 /// <p>A create whose class does not compile is still saved: the confirm answers the compile's error, the class
@@ -178,15 +184,18 @@ Method TestANameTakenAfterTheMintIsNeverOverwritten()
     Do $$$AssertEquals($ClassMethod(..#PROBE, "Source", ..#PROBENAMESPACE, ..#ALPHA _ ".cls"), tOther, "and the other writer's document stands")
 }
 
-/// <p>A routine and an include file are each proposed and, on Confirm, written and compiled, with the name and
-/// header of the document held.</p>
+/// <p>A routine, an include file and an intermediate routine are each proposed and, on Confirm, written and
+/// compiled with no error, with the name and header of the document held.</p>
 Method TestARoutineAndAnIncludeFileAreCreatedOnConfirm()
 {
-    For tName = "OcuProbe2020Mac.mac", "OcuProbe2020Mac.inc" {
+    For tName = "OcuProbe2020Mac.mac", "OcuProbe2020Mac.inc", "OcuProbe2020Int.int" {
         Set tSC = ..Dispatch(..#PROBENAMESPACE, ..#ROUTINETOOL, ..Input(tName, $ClassMethod(..#PROBE, "NewRoutineText", tName)), .tContent, .tIsError, .tProposal)
         If '$IsObject($Get(tProposal)) || tIsError Do $$$AssertTrue(0, tName _ " is minted: " _ $Extract($Get(tContent), 1, 300)) Continue
         Set tSC = ##class(OcuPilot.Test.ExplorerWrite).ConfirmIn(..#PROBENAMESPACE, tProposal, .tResult, .tHttp, .tCode)
         Do $$$AssertStatusOK(tSC, tName _ " is confirmed: " _ $Get(tCode))
+        If '$IsObject($Get(tResult)) Continue
+        Do $$$AssertEquals(tResult.state _ " " _ tResult.action, "confirmed created", tName _ " is confirmed as a create")
+        Do $$$AssertTrue($IsObject(tResult.output) && (tResult.output.%GetTypeOf("errors") = "boolean") && 'tResult.output.errors, tName _ " compiles with no error: " _ tResult.%ToJSON())
         Do $$$AssertTrue($ClassMethod(..#PROBE, "Exists", ..#PROBENAMESPACE, tName), tName _ " is held")
         Do $$$AssertEquals($ZStrip($ClassMethod(..#PROBE, "Source", ..#PROBENAMESPACE, tName), "<>WC"), $ZStrip($ClassMethod(..#PROBE, "NewRoutineText", tName), "<>WC"), tName _ " holds its text")
     }

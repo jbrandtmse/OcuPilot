@@ -13,7 +13,11 @@ Parameter KINDPATTERN = "^%?[A-Za-z][A-Za-z0-9]*(\.[A-Za-z0-9]+)*\.(mac|int|inc)
 
 Parameter REASONKIND = "'Names' names one new routine or include file, as Name.mac, Name.int or Name.inc";
 
-Parameter DESCRIPTION = "Propose one new routine, include file or intermediate routine in the turn's namespace, which the user confirms. Confirm saves the text and then compiles it as the user, and the card shows the outcome, which this tool never answers. Send Names, the document's name as Name.mac, Name.int or Name.inc, and Text, the whole document in UDL form: ROUTINE Name, with [Type=INC] or [Type=INT] for an include file or an intermediate routine, at most 30,000 characters. A name the namespace holds is refused, and so is a routine or intermediate routine whose base name another routine of the namespace uses in the same case, because compiling replaces that name's intermediate code. Also refused: a name beginning with % or OcuPilot, a routine in %SYS, and a name the namespace stores in another database. To change an existing routine, use explorer.routines.save.";
+Parameter NAMESDESCRIPTION = "The one new document's name: a routine as Name.mac, an include file as Name.inc, or an intermediate routine as Name.int. A name the namespace holds is refused, and so is a routine or intermediate routine whose base name another routine of the namespace uses in the same case.";
+
+Parameter TEXTDESCRIPTION = "It starts with ROUTINE <Name>, with [Type=INC] for an include file or [Type=INT] for an intermediate routine.";
+
+Parameter DESCRIPTION = "Propose one new routine, include file or intermediate routine in the turn's namespace, which the user confirms. Confirm saves the text and then compiles it as the user, and the card shows the outcome, which this tool never answers. Send Names, the document's name as Name.mac, Name.int or Name.inc, and Text, the whole document in UDL form: ROUTINE Name, with [Type=INC] or [Type=INT] for an include file or an intermediate routine, at most 30,000 characters. A name the namespace holds is refused, and so is a routine or intermediate routine whose base name another routine of the namespace uses in the same case, because compiling replaces that name's intermediate code. Also refused: a name holding % or beginning with OcuPilot, a routine in %SYS, and a name the namespace stores in another database. To change an existing routine, use explorer.routines.save.";
 
 ClassMethod Endpoint() As %String
 {

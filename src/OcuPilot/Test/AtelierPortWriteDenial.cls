@@ -228,9 +228,12 @@ Method TestTheToolsDeclareTheRequestNamespacesWritePair()
         For tTool = "OcuPilot.Screen.Tool.ExplorerClassSave", "OcuPilot.Screen.Tool.ExplorerRoutineSave", "OcuPilot.Screen.Tool.ExplorerClassCreate", "OcuPilot.Screen.Tool.ExplorerRoutineCreate" {
             Set tDeclared = $ClassMethod(tTool, "PrivilegePairs", "", .tResolved)
             Do $$$AssertTrue(tResolved && $ListFind(tDeclared, $ListBuild("%Development", "USE")) && '$ListFind(tDeclared, $ListBuild($List(tCase, 2), "WRITE")), tTool _ " in " _ $List(tCase, 1) _ " declares %Development:USE and no WRITE pair")
-            Set tStored = {"Namespace": ($List(tCase, 1))}
+            Set tArgumentPairs = $ClassMethod(tTool, "ArgumentPairs", "", {}, .tResolved)
+            Do $$$AssertTrue(tResolved && $ListFind(tArgumentPairs, $ListBuild($List(tCase, 2), "WRITE")), tTool _ " in " _ $List(tCase, 1) _ " with no stored namespace takes WRITE from the request's")
+            Set tOpposite = $Select($List(tCase, 1) = ..#OTHERNAMESPACE: $ListBuild($Namespace, ##class(OcuPilot.Test.DeveloperFloorFixture).CodeResource()), 1: $ListBuild(..#OTHERNAMESPACE, "%DB_USER"))
+            Set tStored = {"Namespace": ($List(tOpposite, 1))}
             Set tArgumentPairs = $ClassMethod(tTool, "ArgumentPairs", "", tStored, .tResolved)
-            Do $$$AssertTrue(tResolved && $ListFind(tArgumentPairs, $ListBuild($List(tCase, 2), "WRITE")), tTool _ " in " _ $List(tCase, 1) _ " takes WRITE from its stored namespace")
+            Do $$$AssertTrue(tResolved && $ListFind(tArgumentPairs, $ListBuild($List(tOpposite, 2), "WRITE")) && '$ListFind(tArgumentPairs, $ListBuild($List(tCase, 2), "WRITE")), tTool _ " in " _ $List(tCase, 1) _ " with " _ $List(tOpposite, 1) _ " stored takes WRITE from the stored namespace, not the request's")
         }
         For tTool = "OcuPilot.Screen.Tool.ExplorerClassExport", "OcuPilot.Screen.Tool.ExplorerRoutineExport" {
             Set tPairs = $ClassMethod(tTool, "PrivilegePairs", "", .tResolved)

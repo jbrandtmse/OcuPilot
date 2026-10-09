@@ -13,7 +13,11 @@ Parameter KINDPATTERN = "^%?[A-Za-z][A-Za-z0-9]*(\.%?[A-Za-z][A-Za-z0-9]*)+\.cls
 
 Parameter REASONKIND = "'Names' names one new class with a package, as Package.Name.cls, and a class without a package is not created";
 
-Parameter DESCRIPTION = "Propose one new class in the turn's namespace, which the user confirms. Confirm saves the text and then compiles it as the user, and the card shows the outcome, which this tool never answers. Send Names, the class's name with its package as Package.Name.cls, and Text, the whole class in UDL form, starting Class Package.Name, at most 30,000 characters. A name the namespace already holds, in any letter case, is refused, and so is a class whose name begins with % or OcuPilot, a class in %SYS, and a name the namespace stores in another database. To change an existing class, use explorer.classes.save.";
+Parameter NAMESDESCRIPTION = "The one new class's name with its package, as Package.Name.cls. A name the namespace already holds, in any letter case, is refused.";
+
+Parameter TEXTDESCRIPTION = "It starts with Class <Package.Name>.";
+
+Parameter DESCRIPTION = "Propose one new class in the turn's namespace, which the user confirms. Confirm saves the text and then compiles it as the user, and the card shows the outcome, which this tool never answers. Send Names, the class's name with its package as Package.Name.cls, and Text, the whole class in UDL form, starting Class Package.Name, at most 30,000 characters. A name the namespace already holds, in any letter case, is refused, and so is a class whose name holds % or begins with OcuPilot, a class in %SYS, and a name the namespace stores in another database. To change an existing class, use explorer.classes.save.";
 
 ClassMethod Endpoint() As %String
 {

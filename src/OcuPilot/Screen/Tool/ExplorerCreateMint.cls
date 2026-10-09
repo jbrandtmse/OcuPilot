@@ -6,8 +6,8 @@
 /// <li>the name is not one of OcuPilot's own (<method>OcuPilot.Kernel.Proposal.Prohibited.IsOcuPilotCode</method>);</li>
 /// <li>the name may be created by the agent (<method>OcuPilot.Screen.Tool.ExplorerSave.AgentProblem</method>, with <code>pCreate</code>);</li>
 /// <li>the text is non-empty, carries no character the sanitizer would strip, and its header names the name;</li>
+/// <li>the one-row hunk of the whole text fits one card (<parameter>OcuPilot.Screen.Tool.ExplorerSave.CHANGEMAXLENGTH</parameter>);</li>
 /// <li>the namespace holds no document the name takes (the port's <code>NEWDOC</code>, 404 when none does);</li>
-/// <li>the one-row hunk of the whole text fits one card;</li>
 /// <li>the kernel's create mint runs with the text, <code>Compile</code> on and the namespace.</li>
 /// </ol>
 Class OcuPilot.Screen.Tool.ExplorerCreateMint Extends OcuPilot.Kernel.Proposal.Mint
@@ -49,13 +49,14 @@ ClassMethod Mint(pDescriptor As %String, pToolName As %String, pUser As %String,
         Set tText = pArgs.%Get("Text")
 
         Set tHunk = ##class(OcuPilot.Screen.Tool.ExplorerSaveMint).Hunk("", tText)
+        Set tLimit = ##class(OcuPilot.Screen.Tool.ExplorerSave).#CHANGEMAXLENGTH
         Try {
-            Set tWide = $Length(tHunk.%ToJSON()) > $Parameter(pToolClass, "CHANGEMAXLENGTH")
+            Set tWide = $Length(tHunk.%ToJSON()) > tLimit
         } Catch {
             Set tWide = 1
         }
         If tWide {
-            Set tSC = ..Refuse("the new document is wider than one card can show: a create takes one document of at most 30,000 characters, so write a smaller one", .pHttpStatus, .pFault)
+            Set tSC = ..Refuse("the new document is wider than one card can show: a create takes one document of at most " _ $FNumber(tLimit, ",") _ " characters, so write a smaller one", .pHttpStatus, .pFault)
             Quit
         }
 

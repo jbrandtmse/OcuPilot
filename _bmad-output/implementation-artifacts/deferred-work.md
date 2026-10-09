@@ -10759,11 +10759,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: AtelierPort.Snippet TYPESAVE always renders "<content>" (pinned by AtelierPortSave.TestTheSaveRendersItsScript); 20.21 advertised the save, so Draft.Take on its card closes the proposal and answers a script that, run as is, writes "<content>" into a routine; the routine branch's %Routine.Write would also need the UDL header removed
 - 2026-10-09T08:21:47Z status=routed owner=20-20-the-agent-creates-new-classes-and-routines-on-the-person-s-c by=cr note=20.20 adds the create's script beside the save's; render stored text (header-aware, bounded) for both
 - 2026-10-09T09:44:54Z by=orchestrator note=graded HIGH under Rule 6 (AD-59: the script is not the reviewed change, and run unread it replaces a routine with the placeholder); RELEASE-BLOCKING: no cut from a feature head that carries 20.21 (741b7801) without 20.20 fix; newest safe cut before it is b4b6ffb8
+- 2026-10-09T15:06:27Z status=resolved-by:20-20-the-agent-creates-new-classes-and-routines-on-the-person-s-c by=adjudication note=AC7: AtelierPort.Snippet renders the stored text (routine header dropped, FreeCheck guard, one-line steps, script bound); AtelierPortScriptRun runs class and routine save and create scripts as a method body and line by line, stored text equals the reviewed text; mutations red in the spec's Verification
 
 ### DW-2242: An agent code write's Confirm gates WRITE on the request's namespace's routines database, not the proposal's stored Namespace
 - source: spec-20-21-the-agent-saves-edits-to-existing-classes-and-routines.md | severity: med | fix-risk: med | footprint: in-epic
 - evidence: ExplorerWrite.PrivilegePairs reads Kernel.Scope.Current() at confirm while the write targets the stored Namespace; a USER save confirmed with the shell scoped to HSCUSTOM is gated on HSCUSTOM's WRITE (the port's own gate still checks USER, so no escalation, only a false refusal); ExplorerSaveTurn had granted HSCUSTOM RW to pass
 - 2026-10-09T08:21:47Z status=routed owner=20-20-the-agent-creates-new-classes-and-routines-on-the-person-s-c by=cr note=20.20's create resolves the same pair; declare it from the stored Namespace for saves and creates
+- 2026-10-09T15:06:27Z status=resolved-by:20-20-the-agent-creates-new-classes-and-routines-on-the-person-s-c by=adjudication note=AC6: saves' and creates' WRITE pair is an argument pair from the proposal's stored Namespace (ArgumentPairs); ExplorerCreateTurn confirms at ?ns=HSCUSTOM and the in-process DW-2242 leg tells the stored namespace from the request's
 
 ### DW-2243: The agent cannot copy an exact Old from lines past the source read's 60,000-character cut
 - source: spec-20-21-the-agent-saves-edits-to-existing-classes-and-routines.md | severity: low | fix-risk: med | footprint: out-of-footprint
@@ -10784,8 +10786,14 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-20-20-the-agent-creates-new-classes-and-routines-on-the-person-s-c.md | severity: med | fix-risk: low | footprint: in-story
 - evidence: AtelierPort.Route seeds If-None-Match only for a non-empty value and CREATE passes empty (unverified, inference); 20.17's plan measured 409 on an existing document without a version
 - 2026-10-09T11:03:40Z status=open owner=20-20-the-agent-creates-new-classes-and-routines-on-the-person-s-c by=harvest note=settle with a PUT over an existing name and no If-None-Match on ocupilot-b-ci, read back; QA pins it
+- 2026-10-09T15:04:14Z status=resolved-by:20-20-the-agent-creates-new-classes-and-routines-on-the-person-s-c by=cr note=exact name: vendor 409 on a no-version PUT measured, pinned by AtelierPortScriptRun.TestAPutOverAHeldDocumentWithNoVersion*
 
 ### DW-2248: Flake: LogHubWire.TestTheRouteAndTheToolAnswerTheSameEntriesAndSources compares the event log's count and last entry between the route and the tool, which differ when anything writes the event log between the two reads
 - source: cycle-log-epic-20.md (20.20 runner-side sweep shard 3/30, run 108) | severity: low | fix-risk: low | footprint: out-of-footprint
 - evidence: Red once in the local sweep on ocupilot-b-ci ('with the same count and last entry'), green alone at once (run 116); its doc says only this class writes the store during the run, which a background writer breaks
 - 2026-10-09T11:21:16Z status=routed owner=23-5-the-range-end-cleanup-part-5 by=lead note=compare the tool's last entry against a route read taken after it, or seed a marker and compare by marker; CI flake class, Rule 27
+
+### DW-2253: System Explorer's compile, delete and import Confirm still gate WRITE on the request's namespace while the write targets the proposal's (DW-2242's root cause, outside 20.20's scope)
+- source: spec-20-20-the-agent-creates-new-classes-and-routines-on-the-person-s-c.md | severity: med | fix-risk: med | footprint: out-of-footprint
+- evidence: ExplorerWrite.PrivilegePairs reads Kernel.Scope.Current() at Confirm while ExplorerWrite.PortQuery sends the re-read and write to the payload's Namespace; a USER compile or delete confirmed at ?ns=HSCUSTOM is gated on HSCUSTOM's WRITE (false refusal only: the port's own WritePairs checks USER). 20.20's spec forbids changing these pairs.
+- 2026-10-09T15:04:14Z status=escalated owner=burndown by=cr note=fix would store Namespace in their mint args and read it in ArgumentPairs, as 20.20 did for saves and creates

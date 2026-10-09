@@ -5,13 +5,14 @@
 /// the new name (<method>OcuPilot.Screen.Tool.ExplorerSave.AgentProblem</method> with <code>pCreate</code>)
 /// and refuses a name the namespace already holds. The fresh read is <code>NEWDOC</code>, which must find
 /// the name absent; the absence fingerprint covers it, so a name taken after the mint refuses at Confirm.
-/// The write is <code>CREATE</code>: the port sends no version and refuses a held name before any vendor
-/// call (<class>OcuPilot.Port.AtelierPort</class>). Nothing is ever overwritten.</p>
+/// The write is <code>CREATE</code>: the port sends no version and refuses a held name before the PUT
+/// (<class>OcuPilot.Port.AtelierPort</class>), and the vendor refuses a PUT over the exact name with 409.</p>
 /// <p><b>The payload</b> is <code>{content, Compile, Namespace}</code> and the diff one row, the whole new
 /// text as added lines (<method>ComposeCreate</method>). The card needs no client change: a row with an
 /// empty <code>before</code> draws every line as added.</p>
 /// <p><b>WRITE</b> is an argument pair read from the namespace the proposal stored (DW-2242,
-/// <class>OcuPilot.Screen.Tool.ExplorerSave</class>.<method>CodeWritePairs</method>).</p>
+/// <class>OcuPilot.Screen.Tool.ExplorerSave</class>.<method>CodeWritePairs</method>). The consequence, the
+/// card's size limit, the port query and the write's output are the save's.</p>
 Class OcuPilot.Screen.Tool.ExplorerCreate Extends OcuPilot.Screen.Tool.ExplorerWrite [ Abstract ]
 {
 
@@ -43,17 +44,17 @@ Parameter READANSWERS = "Present,Namespace";
 /// <p>The absence fingerprint's subject, for a create (AD-54).</p>
 Parameter FINGERPRINTSUBJECT = "Present,Namespace";
 
-/// <p>The consequence code the proposal carries: the create compiles the text on Confirm, as the person.</p>
-Parameter CONSEQUENCE = "EXPLORER.SAVE.COMPILES";
-
-/// <p>The most characters one card shows whole (as a save's change).</p>
-Parameter CHANGEMAXLENGTH As INTEGER = 30000;
-
 /// <p>The pattern a new name must match for this list's kind (<method>SetProblem</method>).</p>
 Parameter KINDPATTERN = "";
 
 /// <p>What the refusal of a name of the wrong kind says.</p>
 Parameter REASONKIND = "";
+
+/// <p>What the schema says <code>Names</code> takes, for this list's kind.</p>
+Parameter NAMESDESCRIPTION = "";
+
+/// <p>How the schema says <code>Text</code> starts, for this list's kind.</p>
+Parameter TEXTDESCRIPTION = "";
 
 /// <p>The one value a create sends: the whole text.</p>
 ClassMethod SettableFields() As %List
@@ -76,9 +77,10 @@ ClassMethod InputSchema(pDescriptor As %String = "") As %DynamicObject
 {
     Set tSchema = {"type": "object", "properties": {}, "required": [], "additionalProperties": false}
     Set tProperties = tSchema.%Get("properties")
-    Do tProperties.%Set(..#IDARGUMENT, {"type": "string", "description": "The one new document's name: a class as Package.Name.cls, with a package, or a routine as Name.mac, Name.int or Name.inc, as this list's kind. A name the namespace already holds, in any letter case, is refused."})
+    Do tProperties.%Set(..#IDARGUMENT, {"type": "string", "description": (..#NAMESDESCRIPTION)})
     Do tSchema.%Get("required").%Push(..#IDARGUMENT)
-    Do tProperties.%Set("Text", {"type": "string", "description": "The document's whole text in UDL form, one string with line feeds. A class starts with Class <Package.Name>; a routine starts with ROUTINE <Name>, with [Type=INC] or [Type=INT] for an include file or an intermediate routine. At most 30,000 characters. The header must name the document in Names."})
+    Set tLimit = $FNumber(##class(OcuPilot.Screen.Tool.ExplorerSave).#CHANGEMAXLENGTH, ",")
+    Do tProperties.%Set("Text", {"type": "string", "description": ("The document's whole text in UDL form, one string with line feeds. " _ ..#TEXTDESCRIPTION _ " At most " _ tLimit _ " characters. The header must name the document in Names.")})
     Do tSchema.%Get("required").%Push("Text")
     Do tProperties.%Set("rationale", {"type": "string", "description": "Why this new document is being proposed, in one sentence, shown to the user above the diff."})
     Do tProperties.%Set("expectedImpact", {"type": "string", "description": "What the user should expect to happen once this is confirmed, in one sentence."})
@@ -122,17 +124,13 @@ ClassMethod ComposeCreate(pArgs As %DynamicObject, pIdArgument As %String, pSett
     Quit $$$OK
 }
 
-/// <p>The namespace the stored payload was minted in, then the text and <code>Compile</code> (as
-/// <code>1</code> or <code>0</code>) under the port's query keys, so the confirm's re-read and its write
-/// reach the namespace the proposal read (AD-52).</p>
+/// <p>The save's port query (<class>OcuPilot.Screen.Tool.ExplorerSave</class>): the namespace the stored
+/// payload was minted in, then the text and <code>Compile</code> under the port's query keys, so the
+/// confirm's re-read and its write reach the namespace the proposal read (AD-52). A create's payload holds
+/// no version.</p>
 ClassMethod PortQuery(pPayload As %DynamicObject, ByRef pQuery)
 {
-    Do ##super(pPayload, .pQuery)
-    If '$IsObject(pPayload) Quit
-    Set tContent = ##class(OcuPilot.Port.AtelierPort).#CONTENTKEY
-    If (pPayload.%GetTypeOf(tContent) = "string") && (pPayload.%Get(tContent) '= "") Set pQuery(tContent) = pPayload.%Get(tContent)
-    Set tCompile = ##class(OcuPilot.Port.AtelierPort).#COMPILEKEY
-    If pPayload.%GetTypeOf(tCompile) = "boolean" Set pQuery(tCompile) = $Select(pPayload.%Get(tCompile): 1, 1: 0)
+    Do ##class(OcuPilot.Screen.Tool.ExplorerSave).PortQuery(pPayload, .pQuery)
 }
 
 /// <p>The mint's class for an agent's create: <class>OcuPilot.Screen.Tool.ExplorerCreateMint</class>.</p>
@@ -152,19 +150,18 @@ ClassMethod ConfirmProblem(pIdValue As %String, pArgs As %DynamicObject, Output 
     Quit $$$OK
 }
 
-/// <p>What the screen shows of the create the port answered <var>pWritten</var> for: its compile's
-/// <code>{lines, errors}</code>, or <code>""</code>. Never stored, logged or sent to the model (AD-39).</p>
+/// <p>What the screen shows of the create the port answered <var>pWritten</var> for: the save's
+/// (<class>OcuPilot.Screen.Tool.ExplorerSave</class>), its compile's <code>{lines, errors}</code>, or
+/// <code>""</code>. Never stored, logged or sent to the model (AD-39).</p>
 ClassMethod WriteOutput(pWritten) As %DynamicObject
 {
-    If '$IsObject($Get(pWritten)) || 'pWritten.%IsA("%Library.DynamicObject") Quit ""
-    If pWritten.%GetTypeOf("lines") '= "array" Quit ""
-    Quit pWritten
+    Quit ##class(OcuPilot.Screen.Tool.ExplorerSave).WriteOutput(.pWritten)
 }
 
-/// <p>The consequence code every create carries.</p>
+/// <p>The save's consequence code: the text compiles on Confirm, as the person.</p>
 ClassMethod Consequence(pPayload As %DynamicObject, pPrivileged As %Boolean = 0, pEffect As %String = "") As %String
 {
-    Quit ..#CONSEQUENCE
+    Quit ##class(OcuPilot.Screen.Tool.ExplorerSave).Consequence(pPayload, pPrivileged, pEffect)
 }
 
 }

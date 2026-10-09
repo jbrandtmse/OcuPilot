@@ -4,7 +4,7 @@
 /// through its other kind, is refused at the mint; a free name beside it is proposed; and Confirm's own
 /// refusal (<method>ConfirmProblem</method>) refuses what the mint would.</p>
 /// <p><b>What it needs from the environment:</b> OcuPilot installed in <code>HSCUSTOM</code> and serving over HTTP,
-/// a <code>USER</code> namespace whose routines database the suite account can read, and the <code>ENSLIB</code>
+/// a <code>USER</code> namespace whose routines database the suite account can write, and the <code>ENSLIB</code>
 /// database mapped for the <code>Ens</code> package. It creates and removes the documents
 /// <class>OcuPilot.Test.ExplorerCreateProbe</class> names, and snapshots the stored governance policy around each
 /// test.</p>
@@ -29,6 +29,8 @@ Method OnBeforeOneTest() As %Status
     Set tSC = ##class(OcuPilot.Test.GovernanceFixture).Snapshot(.tRows)
     If $$$ISERR(tSC) Quit tSC
     Merge ..StoredPolicy = tRows
+    Set tSC = ##class(OcuPilot.Test.GovernanceFixture).Clear()
+    If $$$ISERR(tSC) Quit tSC
     Quit $ClassMethod(..#PROBE, "Remove", ..#PROBENAMESPACE)
 }
 
@@ -42,26 +44,6 @@ Method OnAfterOneTest() As %Status
     Do $$$AssertStatusOK($ClassMethod(..#PROBE, "Remove", ..#PROBENAMESPACE), "every probe document is removed")
     Do $$$AssertStatusOK(##class(OcuPilot.Test.ProposalFixture).RemoveSeeded(.tRemaining), "the probe proposals and turns are removed")
     Quit $$$OK
-}
-
-/// <p>Sends <var>pTool</var> with <var>pInput</var> through the agent's dispatcher in <var>pNamespace</var>,
-/// inside a completed turn seeded for the running account.</p>
-ClassMethod Dispatch(pNamespace As %String, pTool As %String, pInput As %DynamicObject, Output pContent, Output pIsError, Output pProposal) As %Status
-{
-    Set tWrite = ##class(OcuPilot.Test.ExplorerWrite).%New("")
-    Quit tWrite.DispatchFor(pTool, pNamespace, pInput, .pContent, .pIsError, .pProposal)
-}
-
-/// <p>The <code>code</code> member of the JSON result <var>pContent</var>, or <code>""</code>.</p>
-ClassMethod CodeOf(pContent As %String) As %String
-{
-    Set tCode = ""
-    Try {
-        Set tCode = ##class(%DynamicAbstractObject).%FromJSON(pContent).%Get("code")
-    } Catch {
-        Set tCode = ""
-    }
-    Quit tCode
 }
 
 /// <p>The problem sentence a refusal carries in <code>detail.problem</code>, or <code>""</code>.</p>
@@ -82,16 +64,16 @@ ClassMethod Input(pName As %String, pText As %String) As %DynamicObject
     Quit {"Names": (pName), "Text": (pText), "rationale": "a probe", "expectedImpact": "none"}
 }
 
-/// <p>Asserts that the call of <var>pTool</var> for <var>pName</var> with <var>pText</var> in <var>pNamespace</var>
-/// is refused with <var>pCode</var>, with <var>pText2</var> in its problem, and that no proposal row is added for
-/// the tool.</p>
+/// <p>Asserts that the call of <var>pTool</var> for <var>pName</var> with <var>pBody</var> in <var>pNamespace</var>
+/// is refused with <var>pCode</var>, with <var>pSentence</var> in its problem, and that no proposal row is added for
+/// the tool. The dispatch is <class>OcuPilot.Test.ExplorerCreateFlow</class>'s.</p>
 Method Refused(pNamespace As %String, pTool As %String, pName As %String, pBody As %String, pCode As %String, pSentence As %String)
 {
     Set tBefore = ##class(OcuPilot.Test.ExplorerSave).ProposalRows(pTool)
     Do $$$AssertTrue(tBefore >= 0, "the proposal count reads")
-    Set tSC = ..Dispatch(pNamespace, pTool, ..Input(pName, pBody), .tContent, .tIsError, .tProposal)
+    Set tSC = ##class(OcuPilot.Test.ExplorerCreateFlow).Dispatch(pNamespace, pTool, ..Input(pName, pBody), .tContent, .tIsError, .tProposal)
     Do $$$AssertTrue($$$ISOK(tSC) && tIsError, pName _ " is refused: " _ $Extract($Get(tContent), 1, 240))
-    Do $$$AssertEquals(..CodeOf($Get(tContent)), pCode, pName _ " answers " _ pCode)
+    Do $$$AssertEquals(##class(OcuPilot.Test.ExplorerCreateFlow).CodeOf($Get(tContent)), pCode, pName _ " answers " _ pCode)
     If pSentence '= "" Do $$$AssertTrue(..ProblemOf($Get(tContent)) [ pSentence, pName _ " names its reason (" _ pSentence _ "): " _ ..ProblemOf($Get(tContent)))
     Do $$$AssertEquals(##class(OcuPilot.Test.ExplorerSave).ProposalRows(pTool), tBefore, pName _ " adds no proposal")
 }
@@ -156,9 +138,9 @@ Method TestAHeldNameIsRefusedAtTheMintAndAFreeOneIsProposed()
     Do ..Refused(..#PROBENAMESPACE, ..#CLASSTOOL, "OcuProbe2020.HELD.cls", $ClassMethod(..#PROBE, "NewClassText", "OcuProbe2020.HELD"), "TOOL.ARGUMENTS", "already held")
     Do ..Refused(..#PROBENAMESPACE, ..#ROUTINETOOL, "OcuProbe2020Int.mac", $ClassMethod(..#PROBE, "NewRoutineText", "OcuProbe2020Int.mac"), "TOOL.ARGUMENTS", "already held")
     Do ..Refused(..#PROBENAMESPACE, ..#ROUTINETOOL, "OcuProbe2020Mac.int", $ClassMethod(..#PROBE, "NewRoutineText", "OcuProbe2020Mac.int"), "TOOL.ARGUMENTS", "already held")
-    Set tSC = ..Dispatch(..#PROBENAMESPACE, ..#ROUTINETOOL, ..Input("OcuProbe2020Mac.inc", $ClassMethod(..#PROBE, "NewRoutineText", "OcuProbe2020Mac.inc")), .tContent, .tIsError, .tProposal)
+    Set tSC = ##class(OcuPilot.Test.ExplorerCreateFlow).Dispatch(..#PROBENAMESPACE, ..#ROUTINETOOL, ..Input("OcuProbe2020Mac.inc", $ClassMethod(..#PROBE, "NewRoutineText", "OcuProbe2020Mac.inc")), .tContent, .tIsError, .tProposal)
     Do $$$AssertTrue($$$ISOK(tSC) && 'tIsError && $IsObject($Get(tProposal)), "an include file beside a held routine of its name is proposed: " _ $Extract($Get(tContent), 1, 200))
-    Set tSC = ..Dispatch(..#PROBENAMESPACE, ..#ROUTINETOOL, ..Input("OcuProbe2020INT.mac", $ClassMethod(..#PROBE, "NewRoutineText", "OcuProbe2020INT.mac")), .tContent, .tIsError, .tProposal)
+    Set tSC = ##class(OcuPilot.Test.ExplorerCreateFlow).Dispatch(..#PROBENAMESPACE, ..#ROUTINETOOL, ..Input("OcuProbe2020INT.mac", $ClassMethod(..#PROBE, "NewRoutineText", "OcuProbe2020INT.mac")), .tContent, .tIsError, .tProposal)
     Do $$$AssertTrue($$$ISOK(tSC) && 'tIsError && $IsObject($Get(tProposal)), "a routine name differing only in case is proposed: " _ $Extract($Get(tContent), 1, 200))
 }
 

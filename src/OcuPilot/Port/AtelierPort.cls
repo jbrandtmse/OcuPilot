@@ -359,11 +359,15 @@ Parameter TYPESAVE = "SAVE";
 Parameter TYPENEWDOC = "NEWDOC";
 
 /// <p>The list endpoints' create of one new document's text (<method>SaveSet</method> with the create
-/// flag): it sends no version and refuses a name the namespace holds, before any vendor call.</p>
+/// flag): it sends no version and refuses a name the namespace holds before the PUT.</p>
 Parameter TYPECREATE = "CREATE";
 
 /// <p>The most characters one script step may carry. A longer step renders no script (AD-59).</p>
 Parameter SNIPPETMAXCHARACTERS As INTEGER = 1000000;
+
+/// <p>The routine types, of those <code>docnames</code> lists, whose document takes a new routine or
+/// intermediate routine of its base name (<method>Takes</method>): every one but the include file.</p>
+Parameter TAKINGROUTINETYPES = "mac,int,bas,mvi,mvb";
 
 /// <p>The writes whose vendor call this port composes from the caller's declared values, as
 /// <code>endpoint/type</code> (AD-51): a compile from its three booleans, a delete from the set
@@ -2501,7 +2505,7 @@ ClassMethod SaveSet(pVersion As %Integer, pNamespace As %String, pEndpoint As %S
             Quit
         }
         ; AD-61 rule 3. A save sends the version it read; a create sends none, and the vendor refuses a
-        ; held document of that name with its own 409 (Story 20.20).
+        ; held document of that exact name with its own 409 (Story 20.20).
         Set tReadVersion = $Get(pQuery(..#VERSIONKEY))
         If 'pCreate && (tReadVersion = "") {
             Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONSAVEVERSION, .pHttpStatus, .pFault)
@@ -2625,13 +2629,14 @@ ClassMethod Takers(pVersion As %Integer, pNamespace As %String, pEndpoint As %St
 /// <p>Whether the held document <var>pHeld</var> takes the new name <var>pName</var> of the endpoint's
 /// kind. A class is taken by a class of the same name in any letter case (measured: the vendor refuses
 /// a save differing only in case, #5092). A routine is taken by a routine of the same base name in
-/// exact case, other than an include file, because compiling a new routine replaces the intermediate
-/// code of that name (measured). An include file is taken only by the same name, exactly.</p>
+/// exact case whose type is one of <parameter>TAKINGROUTINETYPES</parameter>, because compiling a new
+/// routine replaces the intermediate code of that name (measured). An include file is taken only by the
+/// same name, exactly. <method>SaveScript</method>'s create check renders the same rule.</p>
 ClassMethod Takes(pEndpoint As %String, pName As %String, pHeld As %String) As %Boolean [ Private ]
 {
     If pEndpoint = ..#ENDPOINTCLASSES Quit $ZConvert(pHeld, "U") = $ZConvert(pName, "U")
     If ..Extension(pName) = "inc" Quit pHeld = pName
-    If ..Extension(pHeld) = "inc" Quit 0
+    If '$ListFind($ListFromString(..#TAKINGROUTINETYPES), ..Extension(pHeld)) Quit 0
     Quit ..BaseName(pHeld) = ..BaseName(pName)
 }
 
@@ -3290,12 +3295,14 @@ ClassMethod SnippetForm(pEndpoint As %String, pType As %String) As %String
 /// <code>$System.OBJ.Export</code> of the set to it, and <parameter>TYPEIMPORT</parameter> that file
 /// and <code>$System.OBJ.Load</code> of it, with <parameter>IMPORTCOMPILEFLAGS</parameter> when
 /// <code>Compile</code> is on, and <parameter>TYPESAVE</parameter> the text saved as the one document
-/// <code>names</code> holds, and <parameter>TYPECREATE</parameter> the same under the existence guard
+/// <code>names</code> holds, and <parameter>TYPECREATE</parameter> the same while the name is free
 /// (<method>SaveScript</method>), with the stored text rendered line by line (DW-2241); then, when
-/// <code>Compile</code> is on, <code>$System.OBJ.CompileList</code> of it with
-/// <parameter>IMPORTCOMPILEFLAGS</parameter>. A read writes nothing and answers no step. A script
-/// longer than <parameter>SNIPPETMAXCHARACTERS</parameter> answers no step at all. Every value is
-/// rendered as a string literal, so nothing the query carries runs as code.</p>
+/// <code>Compile</code> is on and the write succeeded, <code>$System.OBJ.CompileList</code> of it with
+/// <parameter>IMPORTCOMPILEFLAGS</parameter>. A read writes nothing and answers no step. A text or a
+/// script longer than <parameter>SNIPPETMAXCHARACTERS</parameter> answers no step at all. Every value is
+/// rendered as a string literal, so nothing the query carries runs as code. No line opens a block it
+/// does not close, so the script runs the same as a method body and pasted line by line into a
+/// terminal, which runs each line on its own.</p>
 ClassMethod Snippet(pEndpoint As %String, pType As %String, ByRef pQuery, pBody As %DynamicAbstractObject = "", pContext As %DynamicObject = "") As %DynamicArray
 {
     If ..SnippetForm(pEndpoint, pType) = "" Quit []
@@ -3317,13 +3324,11 @@ ClassMethod Snippet(pEndpoint As %String, pType As %String, ByRef pQuery, pBody 
         }
         Set tText = tText _ $Char(10) _ " Do $System.Status.DisplayError(tSC)"
     } ElseIf (pType = ..#TYPESAVE) || (pType = ..#TYPECREATE) {
+        If $Length($Get(pQuery(..#CONTENTKEY))) > ..#SNIPPETMAXCHARACTERS Quit []
         Do ..FlagValue($Get(pQuery(..#COMPILEKEY)), .tCompile)
         Set tText = tText _ $Char(10) _ ..SaveScript(pEndpoint, tNames, ..SavedLines($Get(pQuery(..#CONTENTKEY))), tCompile, pType = ..#TYPECREATE)
     } Else {
-        Set tText = tText _ $Char(10) _ " For tI = 1:1:$Length(" _ ..Literal(tNames) _ ", "","") {"
-        Set tText = tText _ $Char(10) _ "     Set tSC = ##class(%RoutineMgr).Delete($Piece(" _ ..Literal(tNames) _ ", "","", tI))"
-        Set tText = tText _ $Char(10) _ "     Do $System.Status.DisplayError(tSC)"
-        Set tText = tText _ $Char(10) _ " }"
+        Set tText = tText _ $Char(10) _ " For tI = 1:1:$Length(" _ ..Literal(tNames) _ ", "","") { Set tSC = ##class(%RoutineMgr).Delete($Piece(" _ ..Literal(tNames) _ ", "","", tI)) Do $System.Status.DisplayError(tSC) }"
     }
     If $Length(tText) > ..#SNIPPETMAXCHARACTERS Quit []
     Set tStep = {}
@@ -3338,38 +3343,64 @@ ClassMethod Snippet(pEndpoint As %String, pType As %String, ByRef pQuery, pBody 
 /// <code>%Compiler.UDL.TextServices.SetTextFromArray</code>; a routine is written line by line with
 /// <code>%Routine</code>, leaving out the header line <method>HeaderAt</method> names, which the
 /// routine's own name carries. <var>pCompile</var> adds the compile the write makes, with the flags
-/// <parameter>IMPORTCOMPILEFLAGS</parameter>. <var>pCreate</var> runs the steps only while the name is
-/// free, and otherwise reports that it created nothing. Every line is rendered as a string literal.</p>
+/// <parameter>IMPORTCOMPILEFLAGS</parameter>, run only when the write succeeded, as the port's write
+/// compiles only after its PUT. <var>pCreate</var> first renders the name's taken check
+/// (<method>FreeCheck</method>) and every later step runs only while the name is free; otherwise the script
+/// reports that it created nothing. Each step is one line that opens no block it does not close. Every
+/// line of text is rendered as a string literal. Rendering stops once the script passes
+/// <parameter>SNIPPETMAXCHARACTERS</parameter>, so <method>Snippet</method> refuses it whole.</p>
 ClassMethod SaveScript(pEndpoint As %String, pName As %String, pLines As %DynamicArray, pCompile As %Boolean, pCreate As %Boolean) As %String [ Private ]
 {
     Set tClass = (pEndpoint = ..#ENDPOINTCLASSES)
     Set tHeader = -1
     If 'tClass Do ..HeaderAt(pLines, .tHeader)
-    Set tBody = ""
-    If tClass {
-        Set tBody = " Kill tText"
-        For tI = 0:1:pLines.%Size() - 1 {
-            Set tBody = tBody _ $Char(10) _ " Set tText($Increment(tText(0))) = " _ ..Literal(pLines.%Get(tI))
-        }
-        Set tBody = tBody _ $Char(10) _ " Set tSC = ##class(%Compiler.UDL.TextServices).SetTextFromArray($NAMESPACE, " _ ..Literal($Piece(pName, ".", 1, $Length(pName, ".") - 1)) _ ", .tText)"
-        Set tBody = tBody _ $Char(10) _ " Do $System.Status.DisplayError(tSC)"
+    Set tGate = $Select(pCreate: " If tFree", 1: "")
+    If pCreate {
+        Set tBody = " Set tSC = 0, tFree = 0, tFree = " _ ..FreeCheck(pEndpoint, pName)
+        Set tBody = tBody _ $Char(10) _ " If 'tFree Do $System.Status.DisplayError($System.Status.Error(5001, " _ ..Literal(pName _ " is taken: this namespace holds it or another document of its name, so nothing was created.") _ "))"
     } Else {
-        Set tBody = " Set tRoutine = ##class(%Routine).%New(" _ ..Literal(pName) _ ")"
-        Set tBody = tBody _ $Char(10) _ " Do tRoutine.Clear()"
+        Set tBody = " Set tSC = 0"
+    }
+    If tClass {
+        Set tBody = tBody _ $Char(10) _ tGate _ " Kill tText"
+        For tI = 0:1:pLines.%Size() - 1 {
+            Set tBody = tBody _ $Char(10) _ tGate _ " Set tText($Increment(tText(0))) = " _ ..Literal(pLines.%Get(tI))
+            If $Length(tBody) > ..#SNIPPETMAXCHARACTERS Quit
+        }
+        Set tBody = tBody _ $Char(10) _ tGate _ " Set tSC = ##class(%Compiler.UDL.TextServices).SetTextFromArray($NAMESPACE, " _ ..Literal(..BaseName(pName)) _ ", .tText)"
+    } Else {
+        Set tBody = tBody _ $Char(10) _ tGate _ " Set tRoutine = ##class(%Routine).%New(" _ ..Literal(pName) _ ")"
+        Set tBody = tBody _ $Char(10) _ tGate _ " Do tRoutine.Clear()"
         For tI = 0:1:pLines.%Size() - 1 {
             If tI = tHeader Continue
-            Set tBody = tBody _ $Char(10) _ " Do tRoutine.WriteLine(" _ ..Literal(pLines.%Get(tI)) _ ")"
+            Set tBody = tBody _ $Char(10) _ tGate _ " Do tRoutine.WriteLine(" _ ..Literal(pLines.%Get(tI)) _ ")"
+            If $Length(tBody) > ..#SNIPPETMAXCHARACTERS Quit
         }
-        Set tBody = tBody _ $Char(10) _ " Set tSC = tRoutine.Save()"
-        Set tBody = tBody _ $Char(10) _ " Do $System.Status.DisplayError(tSC)"
+        Set tBody = tBody _ $Char(10) _ tGate _ " Set tSC = tRoutine.Save()"
     }
+    Set tBody = tBody _ $Char(10) _ tGate _ " Do $System.Status.DisplayError(tSC)"
     If pCompile {
-        Set tBody = tBody _ $Char(10) _ " Set tSC = $System.OBJ.CompileList(" _ ..Literal(pName) _ ", " _ ..Literal(..#IMPORTCOMPILEFLAGS) _ ")"
-        Set tBody = tBody _ $Char(10) _ " Do $System.Status.DisplayError(tSC)"
+        Set tBody = tBody _ $Char(10) _ " If " _ $Select(pCreate: "tFree,", 1: "") _ "$System.Status.IsOK(tSC) Set tSC = $System.OBJ.CompileList(" _ ..Literal(pName) _ ", " _ ..Literal(..#IMPORTCOMPILEFLAGS) _ ") Do $System.Status.DisplayError(tSC)"
     }
-    If 'pCreate Quit tBody
-    Set tGuard = " If '##class(%RoutineMgr).Exists(" _ ..Literal(pName) _ ") {" _ $Char(10) _ tBody
-    Quit tGuard _ $Char(10) _ " } Else {" _ $Char(10) _ "     Set tSC = $System.Status.Error(5001, " _ ..Literal(pName _ " already exists; nothing was created.") _ ")" _ $Char(10) _ "     Do $System.Status.DisplayError(tSC)" _ $Char(10) _ " }"
+    Quit tBody
+}
+
+/// <p>The expression a create's script reads as true while nothing holds a document that takes
+/// <var>pName</var>, the rule <method>Takes</method> applies: for a class, no class of that name in any
+/// letter case, read from the class index the vendor keys by the upper-case name (measured: it holds mapped
+/// classes and follows a save and a delete); for an include file, no document of exactly that name; for a
+/// routine or intermediate routine, no routine of its base name of a type in
+/// <parameter>TAKINGROUTINETYPES</parameter>.</p>
+ClassMethod FreeCheck(pEndpoint As %String, pName As %String) As %String [ Private ]
+{
+    If pEndpoint = ..#ENDPOINTCLASSES Quit "'$Data(^rINDEXCLASS(" _ ..Literal($ZConvert(..BaseName(pName), "U")) _ "))"
+    If ..Extension(pName) = "inc" Quit "'##class(%RoutineMgr).Exists(" _ ..Literal(pName) _ ")"
+    Set tTypes = ..#TAKINGROUTINETYPES
+    Set tCheck = ""
+    For tI = 1:1:$Length(tTypes, ",") {
+        Set tCheck = tCheck _ $Select(tCheck = "": "", 1: " || ") _ "##class(%RoutineMgr).Exists(" _ ..Literal(..BaseName(pName) _ "." _ $Piece(tTypes, ",", tI)) _ ")"
+    }
+    Quit "'(" _ tCheck _ ")"
 }
 
 /// <p><var>pValue</var> as an ObjectScript string literal, a control character spelled as a

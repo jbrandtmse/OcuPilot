@@ -58,7 +58,7 @@ const CLASS = 'OcuProbe2022.BrowserCreate';
 const DOCUMENT = `${CLASS}.cls`;
 const ROUTINE = 'OcuProbe2022Browser.mac';
 
-/** A five-line class, its whole text, as the create proposes it. */
+/** A seven-line class, its whole text, as the create proposes it. */
 const CLASS_TEXT = [
   `Class ${CLASS} Extends %RegisteredObject`,
   '{',
@@ -278,7 +278,7 @@ test('a new twelve-line routine starts collapsed under its summary line, Confirm
     assert.deepEqual(await cardViolations(page), [], 'the card adds no structural violation in light or dark, at either width');
 
     await page.click('.ocu-proposal-card-confirm');
-    await page.waitForSelector('app-proposal-card .ocu-proposal-card-status', { timeout: config.navigationTimeoutMs });
+    await page.waitForSelector('app-proposal-card .ocu-proposal-card-status-confirmed', { timeout: config.navigationTimeoutMs });
     assert.equal(held(ROUTINE), true, 'Confirm creates the routine without the diff being opened');
   } finally {
     await context.close();

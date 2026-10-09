@@ -12,8 +12,8 @@ Parameter OWNPACKAGE = "OcuPilotProbe2020";
 
 Parameter ROUTINEPREFIX = "OcuProbe2020";
 
-/// <p>Every routine the create tests make or hold, so <method>Remove</method> deletes each one.</p>
-Parameter ROUTINES = "OcuProbe2020Mac.mac,OcuProbe2020Mac.inc,OcuProbe2020Mac.int,OcuProbe2020Inc.inc,OcuProbe2020Int.int,OcuProbe2020Int.mac,OcuProbe2020Other.mac";
+/// <p>Every routine the create tests make, hold or assert free, so <method>Remove</method> deletes each one.</p>
+Parameter ROUTINES = "OcuProbe2020Mac.mac,OcuProbe2020Mac.inc,OcuProbe2020Mac.int,OcuProbe2020Inc.inc,OcuProbe2020Inc.mac,OcuProbe2020Int.int,OcuProbe2020Int.mac,OcuProbe2020Int.inc,OcuProbe2020INT.mac,OcuProbe2020Other.mac";
 
 Parameter LOCKGLOBAL = "OcuProbe2020Lock";
 

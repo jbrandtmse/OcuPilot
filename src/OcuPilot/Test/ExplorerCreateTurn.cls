@@ -2,10 +2,10 @@
 /// principal holding the development permission, WRITE on <code>USER</code>'s routines database and READ alone on
 /// <code>HSCUSTOM</code>'s, asks through a scripted model for a new class in <code>USER</code>. The proposal is
 /// confirmed over HTTP, scoped to <code>USER</code>: the class is held, compiled, and its confirm answers the compile's
-/// output with no errors. A second turn in <code>USER</code> proposes a new include file and a save of the class, and
+/// output with no errors. A second turn in <code>USER</code> proposes a new routine and a save of the class, and
 /// each is confirmed over HTTP scoped to <code>HSCUSTOM</code>, which the principal may not write: both are answered 200
 /// and written in <code>USER</code>, where the proposal stored the namespace (DW-2242). No provider request carries a
-/// compile line.</p>
+/// compile line, though the second turn's requests carry the first turn's history.</p>
 /// <p><b>What it needs from the environment:</b> OcuPilot installed and serving over HTTP on a throwaway, and both
 /// <parameter>ARMINGVARIABLE</parameter> and <parameter>PROVIDERVARIABLE</parameter> reading <code>1</code>: it creates
 /// a turn principal and a <code>turnprobe</code> definition, runs two turn jobs, and creates the probe documents
@@ -95,6 +95,8 @@ Method OnBeforeOneTest() As %Status
     Set tSC = ##class(OcuPilot.Test.GovernanceFixture).Clear()
     If $$$ISERR(tSC) Quit tSC
     Do $ClassMethod(..#FIXTURE, "Sweep", $ListBuild(..#TAG))
+    Set tSC = ..RemoveProbes()
+    If $$$ISERR(tSC) Quit tSC
     Quit $ClassMethod(..#FIXTURE, "SetTag", ..PreparedDefinitionId, ..#TAG)
 }
 
@@ -147,9 +149,9 @@ Method Confirm(pKey As %String, pNamespace As %String, pUser As %String, Output 
     Quit tStatus
 }
 
-/// <p>Mutation (Rule 19): <class>OcuPilot.Screen.Tool.ExplorerCreateMint</class> stores <code>Compile: false</code> --
-/// the first confirm's output leg goes red. <method>OcuPilot.Screen.Tool.ExplorerSave.CodeWritePairs</method> reads the
-/// request's namespace rather than the stored one -- the second turn's confirms go red.</p>
+/// <p>Mutation (Rule 19): <class>OcuPilot.Port.AtelierPort</class>'s <code>CREATE</code> skips the compile -- the
+/// first confirm's compiled and output legs go red. <method>OcuPilot.Screen.Tool.ExplorerSave.CodeWritePairs</method>
+/// reads the request's namespace rather than the stored one -- the second turn's confirms go red.</p>
 Method TestTheAgentsCreatesAreConfirmedOverHTTPAndCompile()
 {
     Set tUser = $Parameter(..#FIXTURE, "USERA")
@@ -185,6 +187,7 @@ Method TestTheAgentsCreatesAreConfirmedOverHTTPAndCompile()
     Do $$$AssertEquals(tStatus, 200, "the class confirm, scoped to USER, answers 200: " _ $Extract($Get(tConfirmText), 1, 300))
     Set tBody = ..Parsed($Get(tConfirmText))
     Do $$$AssertTrue($IsObject(tBody) && $IsObject(tBody.%Get("output")) && (tBody.output.%GetTypeOf("errors") = "boolean") && 'tBody.output.errors, "the confirm answers the compile's output, with no errors")
+    Do $$$AssertTrue($IsObject(tBody) && $IsObject(tBody.%Get("output")) && (tBody.output.%GetTypeOf("lines") = "array") && (tBody.output.lines.%ToJSON() [ ("Compiling class " _ ..#PROBECLASS)), "and the compile's lines, which the model must never see")
     Do $$$AssertEquals($ZStrip(##class(OcuPilot.Test.ExplorerSaveProbe).Source(..#NAMESPACE, ..#PROBECLASS _ ".cls"), "<>WC"), $ZStrip(tClassText, "<>WC"), "the class holds the new text")
     Do $$$AssertTrue($ClassMethod("OcuPilot.Test.ExplorerCreateProbe", "Compiled", ..#NAMESPACE, ..#PROBECLASS), "and is compiled")
 
@@ -201,6 +204,7 @@ Method TestTheAgentsCreatesAreConfirmedOverHTTPAndCompile()
         }
         Do $$$AssertTrue($ClassMethod("OcuPilot.Test.ExplorerCreateProbe", "Exists", ..#NAMESPACE, ..#PROBEROUTINE), "the routine is written in USER")
         Do $$$AssertEquals($Piece(##class(OcuPilot.Test.ExplorerSaveProbe).Source(..#NAMESPACE, ..#PROBECLASS _ ".cls"), $Char(10), 6), "    Quit 2", "and the class holds the saved answer")
+        Do $$$AssertTrue(##class(OcuPilot.Test.TurnProvider).Recorded(..#TAG, 3, "messages") [ "CREATETURNREPLYONE", "the second turn's first request carries the first turn's history, where a compile line would have leaked")
         For tCall = 1:1:4 {
             Set tRecorded = ##class(OcuPilot.Test.TurnProvider).Recorded(..#TAG, tCall, "messages")
             Do $$$AssertTrue(tRecorded '= "", "call " _ tCall _ " is recorded")

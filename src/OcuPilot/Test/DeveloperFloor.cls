@@ -40,10 +40,11 @@ Parameter SCREENS = "AgentGuardrails,AgentLedger,AgentScreenPermissions,AgentTra
 /// <p>The tools whose required pairs it holds.</p>
 Parameter TOOLS = "agent.screenpermissions.addpair,agent.screenpermissions.read,agent.screenpermissions.removepair,agent.screenpermissions.reset,agent.transcripts.read,explorer.class.read,explorer.class.source,explorer.classes.create,explorer.classes.export,explorer.classes.read,explorer.classes.save,explorer.docdb.read,explorer.macro.read,explorer.routine.read,explorer.routine.source,explorer.routines.create,explorer.routines.export,explorer.routines.read,explorer.routines.save,explorer.search.read,explorer.sqlcachedqueries.read,explorer.sqlconstraints.read,explorer.sqldata.save,explorer.sqlfields.read,explorer.sqlindices.read,explorer.sqlpartitionmappings.read,explorer.sqlpartitions.read,explorer.sqlprocedure.read,explorer.sqlprocedures.read,explorer.sqlprocedurestatements.read,explorer.sqlquery.read,explorer.sqlquery.run,explorer.sqlschemas.read,explorer.sqltable.read,explorer.sqltables.read,explorer.sqltablestatements.read,explorer.sqltriggers.read,explorer.sqlview.read,explorer.sqlviewfields.read,explorer.sqlviews.read,explorer.sqlviewstatements.read,logs.analytics.read,shell.instance.read,shell.namespaces.read,shell.privileges.read,shell.screen.open";
 
-/// <p>The write tools among <parameter>TOOLS</parameter>: an export needs the read pairs alone, and
-/// every other System Explorer write also WRITE on the namespace's routines database, which the
-/// developer lacks in the install namespace, but SQL query's run and the data browser's save, which
-/// declare no pair beyond their screens' (Stories 19.6 and 19.8).</p>
+/// <p>The write tools among <parameter>TOOLS</parameter>: an export needs the read pairs alone; SQL
+/// query's run and the data browser's save declare no pair beyond their screens' (Stories 19.6 and 19.8);
+/// and a save's and a create's WRITE on the routines database is an argument pair, which the declared
+/// level does not read (Story 20.20, DW-2242). Every other System Explorer write declares that WRITE,
+/// which the developer lacks in the install namespace.</p>
 Parameter HELDWRITES = "agent.screenpermissions.addpair,agent.screenpermissions.removepair,agent.screenpermissions.reset,explorer.classes.create,explorer.classes.export,explorer.classes.save,explorer.routines.create,explorer.routines.export,explorer.routines.save,explorer.sqldata.save,explorer.sqlquery.run";
 
 /// <p>The second namespace System Explorer is read in, whose code database
