@@ -7709,7 +7709,7 @@ So that a small correction does not need a separate IDE.
 - **When** this ships
 - **Then** it is new capability rather than parity.
 
-[AMENDED 2026-10-07, owner decision relayed by the Planner: the agent may now propose class and routine source edits on the person's confirmation, reversing this story's person-only save; Story 20.17 builds it, and this story's own Save stays as shipped.]
+[AMENDED 2026-10-07, owner decision relayed by the Planner: the agent may now propose class and routine source edits on the person's confirmation, reversing this story's person-only save; Story 20.21 builds it [AMENDED 2026-10-08, orchestrator, Rule 5], and this story's own Save stays as shipped.]
 
 ### Story 19.4: Search, compare and macro lookup
 
@@ -8460,6 +8460,8 @@ So that a change I ask for in conversation lands in the source.
 - **Given** any further security-posture question its plan finds
 - **When** it is planned
 - **Then** the question is returned to the orchestrator for the owner, with options and a recommendation.
+
+- DW-2228: the model's copy of a source read passes AD-60, so an `Old` it copies can differ from the stored text; the mint matches each `Old` exactly against the instance text and refuses otherwise, and says so to the model (ledger; routed by cr 2026-10-09)
 
 ---
 

@@ -2,7 +2,9 @@
 title: "Story 20.19: The agent reads class and routine source"
 type: 'feature'
 created: '2026-10-08'
-status: 'draft'
+status: 'done'
+baseline_revision: 'f69ec5ccf275183a2c7da1b1476bd7986dba0240'
+baseline_commit: 'f69ec5ccf275183a2c7da1b1476bd7986dba0240'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -23,7 +25,7 @@ deferred: []
 
 **Always:**
 
-- **Names.** The spine's convention is `<area>.<screen>.<verb>`, with `read` for the one read tool per screen. The reads bind to the viewer screens `explorer.class` and `explorer.routine` (descriptors `ExplorerClassDocument`, `ExplorerRoutineDocument`), which carry no read tool today, so they are `explorer.class.read` and `explorer.routine.read`. If the plan finds a reason they cannot be, it names the reason under Design Notes (orchestrator, 2026-10-08).
+- **Names.** The reads bind to the viewer screens `explorer.class` and `explorer.routine` (descriptors `ExplorerClassDocument`, `ExplorerRoutineDocument`). Their declared reads already hold `explorer.class.read` and `explorer.routine.read`, so the two tools are `explorer.class.source` and `explorer.routine.source` (Design Notes, Names; the spine's Tool naming row).
 - **The source read.**
   - Input `{name}`: one document, as the viewer's `name` criterion takes it (maxLength 256).
   - Gate: the viewer's pairs (`Gate.Evaluate`), then the port's own gate.
@@ -46,7 +48,7 @@ Setup: in process as the suite account in `USER`, on probe documents made by `Ex
 
 | Scenario | Input / State | Expected | Error |
 |---|---|---|---|
-| Read | `explorer.class.read {name: OcuProbe193.Alpha.cls}` | `text` equals `ExplorerSaveProbe.Source`; `truncated` false; `linesSent` = `lines` | none |
+| Read | `explorer.class.source {name: OcuProbe193.Alpha.cls}` | `text` equals `ExplorerSaveProbe.Source`; `truncated` false; `linesSent` = `lines` | none |
 | Read cut | A probe class whose text escapes to more than 60,000 characters, quotes and backslashes included | `truncated` true; `text` is whole lines; serialized `text` at most 60,000; `linesSent` < `lines` | none |
 | Read refused | `name` `Bad`; an absent class; a screen pair denied | 400 `PORT.VALIDATION`; 404 `PORT.NOTFOUND`; 403 `AUTH.NOPRIVILEGE` | no read |
 
@@ -54,163 +56,97 @@ Setup: in process as the suite account in `USER`, on probe documents made by `Ex
 
 ## Code Map
 
+**Names.** The two tools are `explorer.class.source` and `explorer.routine.source` (Design Notes, Names).
+
 Server (`src/OcuPilot/`):
 
-- `Screen/Tool/ExplorerSave.cls`: `ADVERTISED` :23, `DESTRUCTIVE` :36, `SettableFields` :50 (keep), `InputSchema` :65-75, `PortQuery` :101 (keep), `StateDiff` :113 (keep `[]`), `WriteOutput` :123. Its header :1-20 says person-only.
-- `Screen/Tool/ExplorerClassSave.cls` / `ExplorerRoutineSave.cls`: `DESCRIPTION` :9 ("never offered to the agent").
-- `Screen/Tool/ExplorerWrite.cls`: `MintClass` :64 (to override), `SetProblem` :72, `PrivilegePairs` (routines-DB WRITE).
-- `Screen/Tool/ExplorerMint.cls` :21-49: the template (validate, normalize the id with `EntityRef.NormalizedId`, clone the args, `##super`).
-- `Kernel/Proposal/Mint.cls`:
-  - `Mint` :131: fresh read :164-170; `MergeUpdate` :203; `ArgumentProblem` :219; fingerprint projection :283.
-  - `StoredArguments` :308 stores the subclass's rewritten args.
-  - `ConsequenceOf` :780; `Refuse` :966 (Private, so a subclass may call it); `pProposal` :367-373.
-- `Screen/Tool/Write.cls`: `MergeUpdate` :365, `ConfirmProblem` :935 (asked at Confirm only, 400 with `detail.problem`).
-- `Kernel/Proposal/Confirm.cls`: `Operation.Gate` :299 (Prohibits); `ConfirmProblem` :394-406; `FingerprintMatches` :672 (re-merge :728); `output` :519-522. No stored-argument re-validation.
-- `Kernel/Proposal/Prohibited.cls`: `IsOcuPilotCode` :2542 and `ReasonFor` :935, both public; `OCUPILOTCODE` :638. Read only.
-- `Kernel/Agent/Dispatch.cls` `Capped` :790-841: a rowless result over the reply budget (65,536 at most) is `TOOL.RESULTTOOLARGE`, after a write's row is stored. Hence `CHANGEMAXLENGTH` and the read's own cut.
-- `Port/AtelierPort.cls`:
-  - `Invoke` :830, which needs `namespace` in the query for `LIST` :848-853; `Document` :2584-2678 (`content` array, `modified`, `available`).
-  - Keys `NAMEKEY` :477, `FORMKEY` :480, `NAMESPACEKEY` :453; endpoints `ENDPOINTCLASS` :90 and `ENDPOINTROUTINE` :93.
-  - `Lines` :2142, `Header` :2173, `MAXIMPORTCHARACTERS` :401; `SaveSet` :2459-2511 (header :2484, compile :2496-2503).
-- `Port/DocDbPort.cls` `IsMapped` :150-165: the destination comparison.
-- `Screen/Tool/ExplorerSqlRead.cls`: the read-tool template (declaration :25-58, pairs :63-66, `ResultSchema` :80-105, `View` :117-190). Registration is by class discovery (`Registry.ToolClasses`), so the class itself is the registration.
-- `Screen/Tool/ExplorerImport.cls` :57 and :172-175: the `CONSEQUENCE` precedent.
-- `Screen/Context.cls` `ScreenTools` :164-245: the viewer's context lists a read bound to it; the lists' contexts list the saves through their `save` row action.
-- `Screen/Tool/ExplorerSqlRun.cls` :13: the doc claim "the agent never authors code".
-- `Kernel/Governance/Baseline.cls` :199-200.
-
-Client (`ui/src/app/`):
-
-- `core/turn.ts` `parseProposalDiff` :623-639 (and the `TurnProposalDiffRow` type).
-- `core/proposal-view.ts`: `ProposalDiffRow` :35-42; the `CONSEQUENCE_*` constants (`EXPLORERIMPORTREPLACES` :216); `consequenceSentence` :390-477.
-- `shell/proposal-card.ts`:
-  - summary :139-146, diff long block :148-180 (rows :152-177);
-  - status and read-back :335-358, output :359-363;
-  - `diffLines` :699-704, `summaryVisible` :723-732, `summaryFields` :735-742.
-- `areas/system-explorer/line-diff.ts`:
-  - exports `lineDiff`, `hunks`, `changeCounts`, `MAX_EDITS`, `CONTEXT_LINES`; spec `line-diff.spec.ts`.
-  - Consumers are `code-compare.store.ts` :13 and `code-compare.page.ts` :14.
-  - Markup is at `code-compare.page.ts` :140-155, with `SIGNS` :47, `DIRECTIONS` :50 and `segmentViews` :52-71; the styles are `styles/_components.scss` :7615-7672.
-- `core/strings.ts`: 20.17's keys :182-193 (insert beside them); `explorerCompareUnchanged` :4563. `tools/strings.test.mjs`: the bound :606-609, about 2,960 of 3,000 (inference); citation rule :841-886.
-- `tools/proposal.test.mjs`: assign no literal to a proposal field.
+- `Screen/Tool/ExplorerSqlRead.cls` -- the template for a read with a class of its own: declaration :25-58, `PrivilegePairs` :63-66, `SecretArguments` :70-74, closed `ResultSchema` :80-105, `View` :117-186 (argument refusal :125-129; screen gate and `Kernel.Denial` fault :130-137). Discovery (`Registry.ListTools` :106-147) is the registration.
+- `Screen/Tool/Registry.cls` -- header :11-17 and `Claim` :727-745: a name two sources claim refuses the whole listing. `TOOLNAMEPATTERN` :33.
+- `Port/AtelierPort.cls` -- `Invoke` :830 (`maxRows` :938-942, one document :960); `Document` :2584-2678 answers `{name, form, available, content, modified, ...}`, a bad name 400 `PORT.VALIDATION`, an absent one 404 `PORT.NOTFOUND`. Keys `NAMESPACEKEY` :453, `MAXROWSKEY` :456, `NAMEKEY` :477, `FORMKEY` :480; `ENDPOINTCLASS` :90, `ENDPOINTROUTINE` :93; `REASONNOTFOUND` :557.
+- `Kernel/Agent/Dispatch.cls` :323-346: a result with no `rows` skips `Bound` and takes `Capped` :790-841 (total only). `Kernel/Agent/Loop.cls` :463-470 and :511: one 65,536-character budget per model reply, shared by its calls; :638 `Sanitize.Results` (AD-60).
+- `Kernel/Agent/Bound.cls` :80-82: the surrogate-pair guard the first-line cut copies.
+- `Screen/Context.cls` `ScreenTools` :164-245: lists every advertised read bound by `DESCRIPTORCLASS`, so the viewers' context `tools` gain the reads with no edit.
+- `Screen/Descriptor/ExplorerClassDocument.cls` and `ExplorerRoutineDocument.cls` :5-9: the header says the read tool never sees `document`.
 
 Test templates:
 
 | Need | Template |
 |---|---|
-| Agent mint and confirm, in process | `Test/ExplorerWrite.cls` `MintFor` :81, `DispatchFor` :99, `ConfirmIn` :126, `TestTheAgentCompilesThroughConfirm` :254 |
-| Probe documents | `Test/ExplorerSaveProbe.cls` (`Document`, `Version` :39, `Source` :48, `ClassText` :62, `Rewrite` :72); `Test/ExplorerProbe.cls` `MakeClass` :26 (`pBroken`), `MakeRoutine` :38, `Remove` :150 |
-| Turn over the wire, provider request recorded | `Test/SqlAgentRead.cls` `TestATurnReadsRowsFramedAsData` :299; `TurnProvider` `Script` :48, `Recorded` :150, `ToolUseReply` :169 |
-| Seeded-injection source | `Test/InjectionSeed.cls` `Plant` :168 (`h` :198), `Remove` :227 (`h` :244), `ReadCall` :623 (`h` :640); `Test/InjectionChannels.cls` `TestClassDescription` :261 |
-| Browser agent write on Explorer | `browser/agent-sql.browser-spec.mjs`; `browser/system-explorer-editor.browser-spec.mjs` :50-82; `browser/panel-collapse.browser-spec.mjs` :78-157, :345-437 |
+| Probe documents in `USER` | `Test/ExplorerSaveProbe.cls` (`Document` :24, `Source` :45; `ExplorerProbe.MakeClass` :26, `MakeRoutine` :38, `Remove` :150); `Kernel.Scope.Set` / `Clear` |
+| Object-only routine | `Test/AtelierPortDocument.cls` :211-218 (`AtelierPortFixture.UseFakeRoutes`, `SetVersion`, `SetResources`, `Arm`, `Clear`) |
+| A pair denied at dispatch | `Test/ScreenRefusal.cls` `Refused` :44-55 (`ToolDispatchProbe.DenyPair`, `Answer`, `Reset`) |
+| A turn over the wire | `Test/SqlAgentRead.cls` `OnBeforeAllTests` :57-78 (USERA with `%Development:U` and the namespace's code database), `TestATurnReadsRowsFramedAsData` :299-338 (`TurnProvider.Script`, `Recorded`; `TurnWireFixture.Unwrapped`) |
+| Seeded injection | `Test/InjectionSeed.cls` `Plant` :168 (`h` :198), `Remove` :227 (`h` :244), `ReadCall` :623 (`h` :640); `Test/InjectionChannels.cls` `ReadSource` :182, `TestClassDescription` :261 |
 
 ## Tasks & Acceptance
 
-**Execution** (in dependency order):
+**Execution:**
 
-- **Part A: the source read.**
-  - `src/OcuPilot/Screen/Tool/ExplorerSourceRead.cls` (new, abstract, extends `Tool.Base`, `KIND` read).
-    - `SOURCEMAXLENGTH` 60000; `InputSchema`, `PrivilegePairs` (`Gate.RequiredPairs(..#DESCRIPTORCLASS)`), `SecretArguments` (declared none), `ResultSchema` (closed; all six members required).
-    - `View` as Boundaries says, following `ExplorerSqlRead.View`'s refusal shapes.
-    - `ClassMethod Endpoint()` abstract.
-  - `ExplorerClassSource.cls` (`explorer.class.source`, `ExplorerClassDocument`, `ENDPOINTCLASS`) and `ExplorerRoutineSource.cls` (`explorer.routine.source`, `ExplorerRoutineDocument`, `ENDPOINTROUTINE`), both new.
-    - Each `DESCRIPTION` names its viewer, says the text is cut and `truncated` reports it, and says to copy each `Old` from this text before proposing a save.
-- **Part B, server.**
-  - `src/OcuPilot/Screen/Tool/ExplorerSave.cls`:
-    - `ADVERTISED` 1; header rewritten.
-    - `InputSchema` adds `Edits` (array, `minItems` 1, `maxItems` 20, items `{type: object, description}`; `RoleUpdate.InputSchema` :100-110 is the precedent).
-    - `MintClass` answers `OcuPilot.Screen.Tool.ExplorerSaveMint`.
-    - Add `MergeUpdate`, `AgentProblem(pNamespace, pName) As %String`, `ConfirmProblem`, `Parameter CONSEQUENCE = "EXPLORER.SAVE.COMPILES"` with `Consequence`, `CHANGEMAXLENGTH` 30000, and `ClassMethod DocumentEndpoint()` (Class or Routine for the subclass).
-  - `src/OcuPilot/Screen/Tool/ExplorerSaveMint.cls` (new, extends `Kernel.Proposal.Mint`): `Mint`, as the seven steps in Boundaries.
-  - `ExplorerClassSave.cls` / `ExplorerRoutineSave.cls`: the agent-facing `DESCRIPTION`, as `ExplorerClassCompile`'s :9 is written. It names the source read, says the output is shown on the card and never to the agent, and says `%` and `OcuPilot` names are refused.
-  - `src/OcuPilot/Kernel/Governance/Baseline.cls` :199-200: `true`.
-  - `src/OcuPilot/Screen/Tool/ExplorerSqlRun.cls` :13: "the agent authors code only through the class and routine saves (Story 20.19)".
-- **Part B, client.**
-  - `ui/src/app/areas/system-explorer/line-diff.ts` and `line-diff.spec.ts`: `git mv` to `ui/src/app/core/`, and update the two `code-compare` imports.
-    - Add `lineCounts(before, after): {removed, added}`, which falls back to whole-hunk counts when `lineDiff` answers null.
-  - `ui/src/app/core/turn.ts` and `proposal-view.ts`: rows gain optional `kind` (a string) and `line` (a number), copied with no literal.
-    - Add `CONSEQUENCE_EXPLORERSAVECOMPILES`, mapped in `consequenceSentence`.
-  - `ui/src/app/shell/text-diff.ts` (new, `app-text-diff`, OnPush): inputs `before`, `after`, `line`.
-    - It renders the compare page's markup and classes; numbers are offset by `line - 1`; segments go through `hunks(..., CONTEXT_LINES)` with `explorerCompareUnchanged`.
-    - When `lineDiff` is null, every before line is removed, then every after line is added.
-  - `ui/src/app/shell/proposal-card.ts`:
-    - A `kind === 'lines'` row renders `app-text-diff`, and `diffLines` counts its before and after lines.
-    - `summaryFields` reads `proposalSummaryLines` when the card holds a lines row.
-    - Add `savedNotCompiled` and `<p class="ocu-proposal-card-saved-not-compiled" data-slot="saved-not-compiled">` after the read-back. Add its token-only rule in `ui/src/styles/_components.scss`.
-  - `ui/src/app/core/strings.ts`: after :193, add three keys, each cited `EXPERIENCE.md:604`, the middle dot authored as `·` (Rule 14):
-    - `proposalSummaryLines`: `<name>: <n> lines removed · <m> lines added`;
-    - `explorerSaveCompilesOnConfirm`: `Confirming saves this text and then compiles it as you. The compile's outcome shows here once it has run.`;
-    - `explorerSaveNotCompiled`: `Saved, but it did not compile. The saved text is what is now on the instance.`
-    - In the same change, append the three to EXPERIENCE.md :604's strings cell and "; an agent's class or routine save card: its consequence, compile-failure and summary lines (Story 20.19) [ADDED 2026-10-08, Story 20.19]" to its usage cell. Run `npm run test:tools`.
-- **Tests (new).** Each is at most about 500 lines, with no `Test*` property.
-  - `Test/ExplorerSource.cls` (in process): the Read, Read cut and Read refused rows. Also: both tools are advertised read tools with their viewer's pairs, and the viewer's context `tools` carries each.
-  - `Test/ExplorerSourceTurn.cls` (the Integration AC):
-    - A scripted turn calls `explorer_class_source` on a probe class carrying a provider-key shape (`sk-` plus 20 characters).
-    - The recorded provider request's tool_result is wrapped in `<ocupilot-data>`, carries the class's text, and reads `[redacted]` for the key.
-    - It declares and arms what `SqlAgentRead` does; add it to `scripts/ci-throwaway.sh`'s TEST_PROVIDER block (:521-533), and to the PRINCIPALS block (before :402) if it makes a principal. Both are new `# classes:` lines.
-  - `Test/ExplorerSaveAgent.cls`: the Edit, Routine, Confirm, Saved-not-compiled and Changed rows.
-  - `Test/ExplorerSaveRules.cls`: the Bad edit, Too wide, Own code, `%` name, [Q1] System code and Confirm rule rows.
-  - `ui/browser/agent-code-edit.browser-spec.mjs`, against a probe class in `USER`:
-    - a one-line edit card shows the line diff and the consequence sentence; Confirm saves, and no saved-not-compiled line shows;
-    - a breaking edit, confirmed, shows `explorerSaveNotCompiled` and the instance holds the new text;
-    - a 12-line edit collapses with the summary `<name>: 12 lines removed · 12 lines added`, and Confirm is enabled without opening it.
-    - It removes its probe and proposals in `after`.
-  - `ui/src/app/shell/text-diff.spec.ts`.
-- **Tests (edited; the shared surfaces):**
-  - `Test/ExplorerSave.cls`:
-    - :201-216 becomes `TestTheKeysShipEnabledAndAPersonsSaveWrites`, expecting "1 1 1".
-    - :226-279 becomes `TestTheSaveIsOfferedToTheAgent`: the provider list, the dispatch lookup, `Resolve` and the Classes list's context carry the save; a save carrying only `Names` is 400 `TOOL.ARGUMENTS` with no row.
-    - Correct the header :7-8.
-  - `Test/ExplorerDescriptor.cls`:
-    - :142 becomes `TestTheAreaAdvertisesItsReadsAndWrites`; :157 gains the two saves and the two source reads ("twenty-eight reads and thirteen writes"); :158 gains both saves.
-    - :167 reads `=true` for both saves.
-    - :177-199 becomes `TestTheTwoSavesAreAdvertisedDestructiveWrites`: `advertised` 1, declarations `1/...`, schema `Names,Edits,...`.
-  - `Test/SurfaceCoverage.cls` :345-354: the ten rows name the renamed methods.
-  - `Test/Governance.cls` :30-34 and `Test/GovernanceBaseline.cls` :15: drop both saves from the disabled lists.
-  - `Test/ReadTool.cls` :93-94: 315 becomes 317, with both names in order.
-  - `Test/ToolEmit.cls`: an `ElseIf` for `ExplorerSourceRead` subclasses beside :313-317; drop "the saves" from :89.
-  - `Test/ToolSetFull.cls` :193: drop "the saves".
-  - `Test/ToolRoundTrip.cls` :83: add `explorer.class.source:TOOL.ARGUMENTS,explorer.routine.source:TOOL.ARGUMENTS`.
-  - `Test/DeveloperFloor.cls` :39 and :494-495: add both source reads ("forty-two").
-  - `Test/InjectionSeed.cls`: a source `p` (the `h` probe class, read through `explorer_class_source`). `Test/InjectionChannels.cls`: `TestClassSourceText` beside :261.
-  - Client: `proposal-card.spec.ts` (the lines row, the summary form, `savedNotCompiled` only with the code, confirmed and `errors` true), `tools/proposal-view.test.mjs` (the mapping; the code is read from `ExplorerSave.cls`) and `tools/turn.test.mjs` (`kind` and `line` parsed).
+- `src/OcuPilot/Screen/Tool/ExplorerSourceRead.cls` (new, `[ Abstract ]`, extends `Screen.Tool.Base`) -- the shared read.
+  - `KIND` read; `SOURCEMAXLENGTH` 60000; `NAMEHINT` (set by each subclass); abstract `Endpoint()`.
+  - `InputSchema`: closed, `name` a string, maxLength 256, required, described by `NAMEHINT`. `PrivilegePairs`: `Gate.RequiredPairs(..#DESCRIPTORCLASS)`. `ResultSchema`: closed, the six members required. No `SecretArguments` here: an abstract intermediate declares none of its own (DW-1121, pinned by `ToolWrite.cls` :355-361).
+  - `View` as Boundaries, with `ExplorerSqlRead.View`'s refusal shapes. It sends `maxRows` 1 (the rows are not answered). `available` false is 404 built with `Kernel.Fault.Build(Api.Error.#NOTFOUND, Api.Error.#PORTNOTFOUND, AtelierPort.#REASONNOTFOUND)`. A port refusal passes through unchanged.
+  - `ClassMethod Cut(pLines As %DynamicArray, pMax As %Integer, Output pSent As %Integer, Output pTruncated As %Boolean) As %String`, public and pure, the one home of the cut. Each line is measured from a `%DynamicArray` it was `%Push`ed into with type `"string"`, because a line the array holds as a number otherwise serializes unquoted. A first line over `pMax` is cut at a character boundary, never ending on a high surrogate.
+- `src/OcuPilot/Screen/Tool/ExplorerClassSource.cls` and `ExplorerRoutineSource.cls` (new) -- `TOOLNAME` `explorer.class.source` / `explorer.routine.source`; `DESCRIPTORCLASS` the viewer; `Endpoint` `ENDPOINTCLASS` / `ENDPOINTROUTINE`; `NAMEHINT` the viewer's own `name` hint (descriptor :58); `SecretArguments` declared none, on each class. `DESCRIPTION` says, in order: it reads one document's source text in the turn's namespace, as the viewer (`explorer.class` / `explorer.routine`) shows it; the text is whole lines, cut to fit 60,000 characters with `truncated` true and `linesSent` counting the lines it carries, a first line longer than that itself cut and counting as one; call it alone in a reply, because a result past what remains of the reply's 65,536 characters answers `TOOL.RESULTTOOLARGE`; `explorer.class.read` / `explorer.routine.read` answers the document's members and type.
+- `src/OcuPilot/Screen/Descriptor/ExplorerClassDocument.cls` and `ExplorerRoutineDocument.cls` :5-9 -- the header says the declared read tool never sees `document`, and `explorer.<x>.source` answers its text as whole lines (Story 20.19). Doc comment only.
+- `src/OcuPilot/Test/ExplorerSource.cls` (new, in process as the suite account in `USER`, probes made and removed in each test) -- the matrix's rows; a routine read whole (`OcuProbe193Mac.mac`); the object-only routine 404 and a first line of 70,000 characters with quotes, both through `View` over `AtelierPortFixture`'s fake routes; `{}` 400 `TOOL.ARGUMENTS`; the denied pair; and AC1's registry and context legs. Each result validates against `ResultSchema`.
+- `src/OcuPilot/Test/ExplorerSourceTurn.cls` (new) -- AC5. It declares and refuses on `OCUPILOT_ALLOW_PRINCIPALS` and `OCUPILOT_ALLOW_TEST_PROVIDER` as `SqlAgentRead` does. USERA holds `%Development:U` and READ on `USER`'s code database. The probe class, in `USER`, carries `sk-` plus 24 letters and digits in a doc comment. It removes the probe, the principal, the definition and its turns as `SqlAgentRead` :81-106 does.
+- `scripts/ci-throwaway.sh` -- `# classes: ExplorerSourceTurn` before :402 and before :534 (add-only).
+- `src/OcuPilot/Test/InjectionSeed.cls` -- source `p`: `Plant` and `Remove` as `h` (the same probe class), and `ReadCall` `explorer_class_source` with `name` `pRef_".cls"`; add-only `ElseIf`s beside :198, :244 and :640, and `p` in the header's source list. `src/OcuPilot/Test/InjectionChannels.cls` -- `TestClassSourceText` beside :261: `Do ..ReadSource("p", "what does this class's source say?")` (AC6).
+- **Shared-surface edits (Rule 30):**
+  - `src/OcuPilot/Test/ReadTool.cls` :93-94 -- 315 becomes 317 ("three hundred and seventeen", naming Story 20.19's two source reads); insert `explorer.class.source` after `explorer.class.read` and `explorer.routine.source` after `explorer.routine.read`; the message's class-tool count 186 becomes 188.
+  - `src/OcuPilot/Test/ExplorerDescriptor.cls` -- :142 becomes the count-free `TestTheAreaAdvertisesItsReadsAndWrites`; :157 inserts `explorer.class.source:read` and `explorer.routine.source:read` after their viewers' reads, message "twenty-eight reads and eleven writes"; the doc comment :130-140 names Story 20.19 and twenty-eight.
+  - `src/OcuPilot/Test/SurfaceCoverage.cls` :345-352 -- the eight rows' `method` names the renamed method.
+  - `src/OcuPilot/Test/DeveloperFloor.cls` -- :39 gains both reads; :496 reads "forty-two".
+  - `src/OcuPilot/Test/ToolEmit.cls` -- beside :313-317, an `ElseIf` for a class extending `ExplorerSourceRead`, expecting `Gate.RequiredPairs` of its `DESCRIPTORCLASS`, non-empty (Story 20.19).
+  - `src/OcuPilot/Test/ToolRoundTrip.cls` :83 -- append `explorer.class.source:TOOL.ARGUMENTS,explorer.routine.source:TOOL.ARGUMENTS`, with one doc line beside :81.
 
 **Acceptance Criteria:**
 
-- **AC1 (advertised, offered, enabled).**
-  - **Given** the two saves and the two source reads,
-  - **when** the provider list, the dispatch lookup and the screen contexts are built,
-  - **then** each is present: the saves on the Classes and Routines lists, the reads on the two viewers. Both save keys resolve `true`, and `explorer.sqldata.save` stays unadvertised and `false`.
-- **AC2 (the source read, Q2).**
-  - **Given** a document,
-  - **when** the agent reads it,
-  - **then** it gets the whole text or its first whole lines within 60,000 escaped characters, with `truncated` saying which, and the model receives it through AD-60's sanitizer.
-- **AC3 (the card).**
-  - **Given** a minted save,
-  - **when** its card shows,
-  - **then** it shows the whole change as a line diff with line numbers, the consequence that the compile runs on Confirm, the destructive Confirm, and (when long) the lines summary.
-- **AC4 (changed after the mint).**
-  - **Given** a document changed after the mint,
-  - **when** the save is confirmed,
-  - **then** it is refused 409 and nothing is written.
-- **AC5 (compile and marker).**
-  - **Given** a confirmed save,
-  - **when** it completes,
-  - **then** the card shows the compile's output and outcome, saying plainly when it saved but did not compile, and one agent marker records the proposal.
-- **AC6 (pinned refusals).**
-  - **Given** OcuPilot's own documents, `%` names, [Q1] system code, and `explorer.sqldata.save`,
-  - **when** this story ships,
-  - **then** each is refused or unchanged as the matrix and `SqlSave` :164-171 and `SqlDataSaveRoutes` :226-233 state.
-- **AC7 (at the mint and at Confirm).**
-  - **Given** an `OcuPilot` or `%` name,
-  - **when** the agent would mint it,
-  - **then** the mint refuses it, and Confirm's `Prohibited` or `ConfirmProblem` refuses it again.
-- **AC8 (Integration).**
-  - **Given** a scripted turn and a scripted card in a real browser,
-  - **when** they run on `ocupilot-b-ci`,
-  - **then** the provider request carries the sanitized source, and the panel's card saves and reports as AC3 and AC5 state.
+- **AC1 (advertised on the viewers).** Given the registry, when the provider tool list, the dispatch lookup and the two viewers' screen context are built, then each source read is an advertised read requiring exactly its viewer's effective pairs, and `explorer.class`'s context `tools` reads `["explorer_class_read","explorer_class_source"]` (the routine viewer's likewise), while the editors' stay `[]`.
+- **AC2 (the cut).** Given a document whose text escapes past 60,000 characters, or whose first line alone does, when it is read, then `text` is whole lines (or the first line cut) escaping to at most 60,000 characters, the next line would not fit, `truncated` is true and `linesSent` is below `lines`, or 1 when the first line alone was cut.
+- **AC3 (routines and object code).** Given a probe routine, when `explorer.routine.source` reads it, then `text` is its whole text; and given a routine the instance keeps only as object code, the read answers 404 `PORT.NOTFOUND`.
+- **AC4 (the viewer's pairs).** Given `%Development:USE` denied, when the model calls `explorer_class_source`, then it reads `AUTH.NOPRIVILEGE` naming `%Development:USE` and the screen `explorer.class`.
+- **AC5 (Integration: the provider request, AD-60).** Given a real turn on `ocupilot-b-ci` as a principal holding the viewer's pairs, when the scripted model calls `explorer_class_source` on a probe class in `USER`, then the next provider request's `tool_result` is wrapped in `<ocupilot-data>`, carries the class's lines, and reads `[redacted]` where the class holds the `sk-` key.
+- **AC6 (untrusted text, AD-11).** Given a seed in a probe class's source (source `p`), when a real turn reads it through `explorer.class.source`, then the seed arrives inside a `tool_result` and `InjectionChannels`' invariants hold.
+- **AC7 (nothing else moves).** Given this story, when `ExplorerSave`, `SqlDataSaveRoutes` and `GovernanceBaseline` run unchanged, then the two saves and `explorer.sqldata.save` stay unadvertised and their keys unchanged, and no governance key, client file or string is added.
+
+### Review Findings
+
+Code review 2026-10-08 (bmad-code-review, full-opus: blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor). Story 20.19's first review.
+
+- [x] [Review][Patch] HIGH (Rule 6): AD-36's and AD-24's 20.19 amendments said "whole lines" while Boundaries and AC2 specify the first-line cut -- spine amended at origin (AD-36 :717, AD-24 :550, memlog), code unchanged [ARCHITECTURE-SPINE.md]
+- [x] [Review][Patch] MED: both `DESCRIPTION`s told the model `linesSent` is below `lines` when cut, false for a cut first line; reworded, and the routine read names the object-code `PORT.NOTFOUND` [ExplorerClassSource.cls:11, ExplorerRoutineSource.cls:12]; AC2 and the Tasks' description clause corrected (brief item 1: the code and `ResultSchema` are right)
+- [x] [Review][Patch] MED (Rule 19): AD-24's named exception was unpinned where dispatch delivers the text; the full-size leg now asserts the dispatched `text` equals the class's first `linesSent` lines and exceeds 1,000 characters [ExplorerSourceEdges.cls]
+- [x] [Review][Patch] LOW: `maxLength` 256 was pinned from the refusal side only; a 256-character leg added [ExplorerSourceEdges.cls]
+- [x] [Review][Patch] LOW: AC5's principal held `%DB_USER:RW` against the Tasks' READ; now `:R`, and the real turn stays green [ExplorerSourceTurn.cls]
+- [x] [Review][Patch] LOW: AC1 checked only the class editor and one wire name; both editors and both wire names now [ExplorerSource.cls]
+- [x] [Review][Patch] LOW: the object-code leg ran its tool assertions after a failed vendor precondition; it now ends there (Rule 30 judged: image-shipped vendor state, asserted first, same as `AtelierPortDocument`) [ExplorerSourceEdges.cls]
+- [x] [Review][Patch] LOW wording: `ReadTool`'s 188 enumeration, `InjectionSeed`'s source range and header, `Escaped`'s type-hint reason (brief item 3) and the test helpers' "independently" [ReadTool.cls:94, InjectionSeed.cls, ExplorerSourceRead.cls, ExplorerSource.cls, ExplorerSourceEdges.cls]
+- [x] [Review][Defer] MED DW-2228 routed owner=20-21: the model's copy of source passes AD-60, so 20.21's mint must match each `Old` exactly
+- [x] [Review][Defer] MED DW-2229 escalated: README's agent-visibility section does not mention source reads (owner wording)
+- Rejected:
+  - No input to read past the cut, and no cut sized to the reply's remaining budget: spec-bound (input `{name}`; `TOOL.RESULTTOOLARGE` is a named limit).
+  - The object-only refusal's reason text: only `code` and an object `detail` reach the model (`Dispatch.ErrorContent` :751); the description now names the case.
+  - Empty `detail` on a gate refusal naming no pair: `ErrorContent` drops a non-object detail, as for `ExplorerSqlRead` :134.
+  - The turn test skipping `RemoveKeyed` on a parse fault: `OnAfterAllTests` removes the probe.
+  - A cut first line indistinguishable from a whole one when `lines` > 1: needs a new field, for a first line past 60,000 characters.
+  - Per-call token cost: the named limit already says each later call carries the text again.
+  - The tool card showing no cut: no card AC or client change; the step keeps `truncated` ahead of `text`.
+  - `DeveloperFloor`'s method name: stale before this story (it read thirty-five at forty).
+  - `NAMEHINT` and the 60,000/65,536 literals could drift: developer-only, and a derivation adds code.
+  - `View`'s own screen-gate branch untested: dispatch gates the same pairs first; a test needs a gate seam.
+  - `ExplorerSource` validates no answer against `ResultSchema`: `ExplorerSourceEdges` does, for all three shapes.
+  - The test oracle reads through the same port: `AtelierPortDocument` pins the port; the "independently" wording is patched.
+  - Unguarded `tDetails` and a missing status assertion: a fault there fails the test loudly.
+  - Duplicated helpers and an argument no caller passes: no harm.
+  - AC1's mutation not run against `ExplorerDescriptor`: Rule 19 needs one observed red per AC, recorded.
+  - The spec's `done` and the uncommitted QA class: build-auto's machine state, and the runner commits the class.
+- Brief items: (2) confirmed: the fake routes are methods of `AtelierPortFixture`, which the port calls while switched into the target namespace, so those legs run in the test's namespace; the real port is covered in `USER` by the whole, cut, routine, include and dispatch legs and the turn. (3) `PortClass()` matches `Screen/Read.cls` and `Write.cls`; the `||` branches equal add-only `ElseIf`s. (4) Rule 11: this story's side of `ToolRoundTrip` :83-84, the eight `SurfaceCoverage` rows and `ReadTool`'s 317 is correct. (5) the text reaches the provider only through `Sanitize.Results` (`Loop.cls` :638); the ledger records name, arguments, pairs and code; no log line carries it; the step record and transcript keep its first 4,096 raw characters, as every read tool's do (AD-33, AD-60). (6) `Cut` and `Dispatch.Capped` measure with the same `%ToJSON`; a full read alone is at most about 60,400 of 65,536.
 
 ## Spec Change Log
+
+- 2026-10-08, runner, spec gate: the intent contract's names follow the plan's finding (the viewers' declared reads hold `.read`), so it names `.source` throughout; the AD-36, AD-24 and Tool naming amendments are applied to the spine.
 
 - 2026-10-08, runner, orchestrator rulings on the first plan (by=merge_gate, feature 2bc6d842): Q3 split. This spec keeps Part A, the source read; Part B (the saves) is Story 20.21, which reads the first plan at `git show eda69374:_bmad-output/implementation-artifacts/spec-20-19-the-agent-edits-existing-classes-and-routines-on-the-person.md`. Q1 A and Q2 A are 20.21's. The read tools are named by the spine's convention. Status reset to draft for a re-plan.
 
@@ -218,129 +154,107 @@ Test templates:
 
 ## Design Notes
 
-**Governing ADs.**
+**Names: `explorer.class.source` and `explorer.routine.source`, not `.read`.** The viewers already carry a read: `ExplorerClassDocument` :50-62 and `ExplorerRoutineDocument` :50-62 declare one, which the registry lists as `explorer.class.read` and `explorer.routine.read` (pinned in `ReadTool.cls` :94, `ExplorerDescriptor.cls` :157, `DeveloperFloor.cls` :39; called in `InjectionSeed.cls` :641). A class tool claiming either name makes `Registry.Claim` (:727-731) refuse the whole tool listing, so no tool would be offered. Folding the text into the declared read was rejected: the contract's input `{name}` and answer shape are not the declared read's, the declared read's tool view is its rows under AD-24's per-field cut, and every member listing would then carry up to 60,000 characters. `source` follows the precedent of a second read-kind tool on a screen with a verb other than `read` (`permissions.privileges.check` on the Users list, Story 16.3).
 
-- AD-53 (the reversal, and two callers of one operation) and AD-36 (a document's text was screen-only).
-- AD-24, whose per-field bound does not reach a rowless result.
-- AD-60 and AD-11: untrusted source, the seeded-injection source `p`, and the prompt unchanged.
-- AD-6, AD-34 and AD-51: the mint, the hold, the fingerprint over `Modified`, and the stored args.
-- AD-10 (the code arm, also at the mint), AD-8 and AD-61 rule 1 (routines-database WRITE), AD-22 (the keys).
-- AD-39's fifth exception, AD-15 (the marker), AD-58 (the read-back), AD-7 (no new shape: `explorer.class.read` already reads through the same port read in a turn) and AD-19.
+**Governing ADs.** AD-36 (a document's text was screen-only; the reversal), AD-24 (the per-field bound, which `Bound` applies only to row fields), AD-60 and AD-11 (untrusted source, framed and redacted; source `p`), AD-61 (the port's gate and document read), AD-29, AD-8 (the viewer's effective pairs, AD-64 adjustments included), AD-7 (no new shape: the declared read already issues the same `GET doc` in the turn job), AD-10 (the code arm refuses writes; "an export only reads and is not refused"), AD-22 (reads carry no key), AD-53 (the saves stay unadvertised until 20.21).
 
-**Owner's words for the spec gate.** "Yes it should send the code." (2026-10-08, relayed by the Planner.) AD-36 should carry it.
+**Owner's words.** "Yes it should send the code." (2026-10-08, relayed by the Planner). No on/off switch.
 
-**Proposed amendments (one line each, for the runner at the spec gate).**
+**Spine amendments (one line each, for the runner at the spec gate):**
 
-- **AD-36, L717:** replace "A document's whole text stays the screen-only payload beside the rows and never reaches a tool." with "A document's whole text stays the screen-only payload beside the rows; the agent's source read (`explorer.class.source`, `explorer.routine.source`, Story 20.19) is the one tool that returns it, as whole lines escaping to at most 60,000 characters with the cut reported, through AD-60 (owner, 2026-10-08: "Yes it should send the code.")."
-- **AD-24:** "The source read's `text` is bounded by AD-36's 60,000-character cut in place of the per-field bound (Story 20.19)."
-- **AD-53:**
-  - replace "Until Story 20.19 ships, both Saves stay unadvertised." with "Story 20.19 advertised both Saves: the agent sends exact replacements, the mint applies them on the instance and stores a changed-lines hunk, and the save always compiles."
-  - Drop "System Explorer's two Saves (Story 19.3)" from the unadvertised list.
-  - Replace "because the agent never authors code" with "because the agent authors code only through the confirmed class and routine saves (Story 20.19)".
-- **AD-8:** drop "System Explorer's two Save tools, Story 19.3" from the unadvertised parenthesis.
-- **AD-10, the code arm:** "An agent's save is refused at the mint as well, and the agent is refused every `%` name [Q1: and a document outside its namespace's own routines database, or in `%SYS`] at the mint and at Confirm (Story 20.19); a person's Save is unchanged."
-- **EXPERIENCE.md `### proposal-card`, after :717:** "**code change** [ADDED 2026-10-08, Story 20.19]: an agent's save of a class or routine shows its changed lines, with three lines of context and line numbers, as one line diff in the diff's long block; the consequence line says the compile runs on Confirm, and a confirmed save whose compile failed says so under the status line, naming the saved text as what the instance now holds." Write it with no quoted string, then run `npm run test:tools`.
+- **AD-36, line 717:** replace "A document's whole text stays the screen-only payload beside the rows and never reaches a tool." with "A document's whole text stays the screen-only payload beside the rows; the agent's source reads, `explorer.class.source` and `explorer.routine.source` (Story 20.19), are read tools, not declared reads, and answer it as whole lines escaping to at most 60,000 characters with the cut reported, through AD-60 (owner, 2026-10-08: "Yes it should send the code."). Named limit: a credential a person wrote into their source as a literal reaches the model unless it matches one of AD-60's shapes."
+- **AD-24:** "Named exception: the source reads' `text` (Story 20.19) is one field bounded by its own cut, whole lines escaping to at most 60,000 characters, in place of the 1,000-character field bound; the total bound still applies, so a read past what remains of its reply's budget answers `TOOL.RESULTTOOLARGE`." Needed, as checked: AD-24's Rule puts the field bound on every read tool result, while `Bound.Apply` cuts only row values (:64-99) and a result without `rows` goes to `Capped`, which bounds the total alone (`Dispatch` :332-346).
+- **Conventions, Tool naming (line 1215):** append "A viewer whose declared read already holds `<screen>.read` names its source read `<screen>.source` (`explorer.class.source`, `explorer.routine.source`, Story 20.19)."
+- **AD-8:** none. The reads declare exactly the viewer's effective pairs, as `explorer.sqlquery.read` declares its screen's, and the port adds the namespace's database pairs at call time (AD-61 rule 1).
 
-**Decisions.**
+**Posture:** no new refusal and no open question: the reads answer only what the person can open in the viewer (its effective pairs, then the port's database pairs); AD-10's code arm already lets a read of OcuPilot's own code through ("an export only reads and is not refused"), OcuPilot's source is published, and `%` and `%SYS` source ships with the instance; a credential literal in a person's own source is covered by the owner's ruling and named in AD-36's amendment.
 
-- **Exact replacements, not whole text.** The read is cut at 60,000 characters, and a provider's output cap bounds a whole text, so replacements are the only input that reaches every line of a long document the mint can read whole. The mint, never the model, writes the text the card reviews (AD-6).
-- **A server hunk, a client rendering.** Prefix and suffix trimming bounds the stored row and the model's result. `line-diff.ts`, moved to `core/` because the shell is not an area, draws it exactly as Compare does.
-- **Agent rules live on the tool.** `ExplorerSaveMint` (the agent's only path) and `ConfirmProblem` (reached only by a proposal) apply them, and AD-10's one home is untouched.
-- **Named limit.** A save's result shares the reply budget with the other calls of one model reply. Past it, the row is stored and the model reads `TOOL.RESULTTOOLARGE`, as it does for every write today.
+**Named limits.**
 
-**Questions for the orchestrator** (the plan builds each recommended option; Q1 blocks).
+- A read shares its reply's 65,536-character budget with that reply's other calls (`Loop` :463-470): a full-size read after about 5,000 characters of earlier results answers `TOOL.RESULTTOOLARGE`, and the model can re-read it alone, as the description says.
+- Each later provider call in the turn carries the text again: about 15,000 tokens per full read (inference), within the turn's 500,000.
 
-| # | Question | Options | Recommended |
-|---|---|---|---|
-| Q1 (posture, blocking) | AC6 says the system classes stay refused, which holds today only where their database is read-only. In `%SYS`, `Security.*`, `Config.*`, `SYS.*` and other non-`%` system code is stored in IRISSYS, mounted read-write (measured on `ocupilot-b-ci`: both packages' destination is the manager directory, `ReadOnly` 0). A person's Save already replaces them with `%Development:USE` and `%DB_IRISSYS:WRITE`, and an agent save would too. `%SYS` is a selectable scope (inference: no exclusion in `Scope` or `AtelierPort`). | **A** The agent saves only a document stored in its namespace's own routines database, and never in `%SYS`, at the mint and at Confirm. That also refuses ENSLIB/HSLIB library classes before any write, and packages mapped from another database. A person's Save is unchanged. **B** Refuse the agent `%SYS` only; read-only libraries stay the vendor's refusal at Confirm. **C** No new rule; AC6 reworded to "where their database is read-only". | A |
-| Q2 (Rule 11) | Non-add-only edits to files Epic 18 is changing. `Baseline.cls` :199-200 (values; Epic 18 adds at :84). `SurfaceCoverage.cls` :345-354 (method names; Epic 18 adds at :218). `ToolRoundTrip.cls` :83 (**the same line** Epic 18 rewrites, so the forward merge conflicts textually; resolve it as the union). EXPERIENCE.md :604 (cells; Epic 18 is at :478). | **A** clear them on union terms. **B** hold this story until Epic 18 merges. | A |
-| Q3 (size) | The spec is past the template's budget, and implement runs on Haiku. | **A** one story, as planned. **B** two: the source read first (Part A, AC2 and its rows; AD-36 and AD-24), then the saves (Part B). Each half ships alone. | B |
+**Integration ACs (Rules 1 and 2).** AC5 is the Integration AC: the turn loop and the provider request consume the new tools on a real instance.
 
-**Integration ACs (Rules 1 and 2).**
+- **Consumes:** `AtelierPort`'s document read (Story 19.1); `Gate.RequiredPairs` and its adjustments (20.15); dispatch's screen-named refusal (20.18); AD-60's sanitizer (14.3).
+- **Consumed-by:** Story 20.21, through the model: it copies each `Old` from this text. Its mint does not consume the tool: it reads the document through `AtelierPort.Invoke` itself. Stories 20.20 and 20.16 have the model read neighbouring or current source before proposing.
 
-- **Consumes:** `AtelierPort`'s document read and `SAVE` (Stories 19.1, 19.3); the kernel mint and confirm; 20.17's long block and summary line; 20.18's screen-named refusal (`explorer.classes`, `explorer.class`). AC8 exercises them on a real instance.
-- **Consumed-by:**
-  - Story 20.20: creates reuse `AgentProblem`, the source read, `app-text-diff` and both compile sentences.
-  - Story 20.16: rule, DTL and BPL edits build on the agent's source edits.
-
-**Rule 11** (checked 2026-10-08 against `epic-18` `origin/feature...HEAD` and `status -s`):
+**Rule 11** (checked 2026-10-08 against `epic-18` `origin/feature...HEAD` and `status -s`; Epic 18 is implementing 18.29, which adds `Screen/Tool/UserCopy.cls`):
 
 | File | Edit | Status |
 |---|---|---|
-| `Kernel/Governance/Baseline.cls` | two values | CONTENDED, non-add-only (Q2) |
-| `Test/SurfaceCoverage.cls` | ten rows' method | CONTENDED, non-add-only (Q2) |
-| `Test/ToolRoundTrip.cls` :83 | two entries | CONTENDED, same line (Q2) |
-| EXPERIENCE.md :604 | cells | CONTENDED, non-add-only (Q2) |
-| `ui/src/app/core/strings.ts` | three keys after :193 | add-only (Epic 18 adds at :2002) |
-| `scripts/ci-throwaway.sh` | new `# classes:` lines | add-only (Epic 18 is at :262) |
-| `Test/ReadTool.cls` :93-94 | count and list | shared, not in Epic 18's diff |
+| `Test/ToolRoundTrip.cls` :83 | two entries | CONTENDED: Epic 18 rewrites this line; cleared on union terms (orchestrator, Q2), keep both sides' entries |
+| `Test/SurfaceCoverage.cls` :345-352 | eight rows' method name | CONTENDED, non-add-only (Epic 18 edits elsewhere in the file); cleared on union terms |
+| `scripts/ci-throwaway.sh` | two `# classes:` lines | add-only (Epic 18 edits the file) |
+| `Test/ReadTool.cls` :93-94 | count and list | not in Epic 18's diff today; 18.29's `UserCopy` tool will change the same line (inference), so the forward merge takes the union and sums the counts |
+| `Test/ExplorerDescriptor.cls`, `DeveloperFloor.cls`, `ToolEmit.cls`, `InjectionSeed.cls`, `InjectionChannels.cls`, the two descriptors | as Tasks | not in Epic 18's diff |
 
-**Ledger and standing rules.**
+No edit to `Baseline.cls`, EXPERIENCE.md, `strings.ts` or any client file.
 
-- The inbox is empty.
-- DW-1882: no new route; the confirm and the screen action route already hold, and `SaveHoldCoverage` exempts both for that hold.
-- Declined DW-2096: it masks statement text the instance records, while a document's source is the code itself, which reaches the model through AD-60 as ruled (Q2).
+**Ledger and standing rules.** The inbox is empty. FR-80: no write, so no field list. DW-2096 declined: `SqlPort.PASSWORDPATTERN` spans a whole text under `(?s)` and would rewrite source lines such as `Property Password`, which 20.21's edits copy verbatim. DW-1337 and 11.3's prompts: no client or screen change. No new error code.
 
-**Budgets.**
-
-- Bundle: about +5-10 kB (inference): `app-text-diff`, and the line diff moving into the initial bundle if Compare is lazy. Stop above 3,800 kB.
-- Fixed strings: +3, about 2,963 of 3,000 (inference).
-
-**Posture:** the plan finds one further question, Q1.
+**Budgets.** Client: no file changes, so +0 kB against the 3,326 kB warning. Fixed strings: +0.
 
 ## Verification
 
-**Shared surfaces (Rule 30):**
-
-- the advertised tool set (two saves, two reads), and the Classes and Routines lists' and viewers' context `tools`;
-- the Guardrails confirm list (derived);
-- the baseline values;
-- the proposal card (lines row, consequence, saved-not-compiled line, summary form);
-- the line-diff module path;
-- the seeded-injection sources;
-- the SurfaceCoverage rows;
-- EXPERIENCE.md :604.
+**Shared surfaces (Rule 30):** the registry's roster and count (`ReadTool`); the System Explorer area's advertised tools (`ExplorerDescriptor`, and `SurfaceCoverage`'s method names); the developer's held tools (`DeveloperFloor`); the per-class pair branches (`ToolEmit`); the empty-call refusals (`ToolRoundTrip`); the provider tool list and the two viewers' context `tools`; the seeded-injection sources (`InjectionSeed`); `ci-throwaway.sh`'s arming rosters.
 
 **Standing criterion (Rule 30):** existing tests that assert a surface this story changes are updated in this story, and every test the story adds or changes passes on a freshly built instance and in either order.
 
-**Setup (slot B):**
-
-- Sync with `rsync -a --delete /Users/jbrandt/git/OcuPilot/.worktrees/epic-20/src/ /Users/jbrandt/.ocupilot-throwaways/ocupilot-b-ci/src/`.
-- Load in `docker exec -i ocupilot-b-ci iris session iris -U HSCUSTOM` with `$System.OBJ.LoadDir("/opt/ocupilot/src/OcuPilot","ck-d",.tErrors,1)`, checking both the status and `tErrors`.
-- Before a browser run: `cd ui && npm run build && docker cp dist/ocupilot-ui/browser/. ocupilot-b-ci:/durable/iris/csp/ocupilot/`.
-- Run one class or spec file per call, and never re-submit after a client-side timeout.
+**Setup (slot B):** sync with `rsync -a --delete /Users/jbrandt/git/OcuPilot/.worktrees/epic-20/src/ /Users/jbrandt/.ocupilot-throwaways/ocupilot-b-ci/src/`, then load in `docker exec -i ocupilot-b-ci iris session iris -U HSCUSTOM` with `$System.OBJ.LoadDir("/opt/ocupilot/src/OcuPilot","ck-d",.tErrors,1)`, checking the status and `tErrors`. One class per runner call; never re-submit after a client-side timeout.
 
 **Commands:**
 
-- `(loop)` `uv run scripts/check-objectscript.py <changed .cls>`: expected clean.
-- `(loop)` `cd ui && node tools/ci-runner.mjs --container ocupilot-b-ci --class OcuPilot.Test.<C>`, one per call. Expected: 0 failed, read from `%UnitTest_Result`. The classes:
-  - new: `ExplorerSource`, `ExplorerSourceTurn`, `ExplorerSaveAgent`, `ExplorerSaveRules`;
-  - edited: `ExplorerSave`, `ExplorerDescriptor`, `SurfaceCoverage`, `Governance`, `GovernanceBaseline`, `ReadTool`, `ToolEmit`, `ToolSetFull`, `ToolRoundTrip`, `DeveloperFloor`, `InjectionChannels`;
-  - re-run: `ExplorerWrite`, `SqlSave`, `SqlDataSaveRoutes`, `ScreenRefusal`, `Guardrails`, `AtelierPortWriteDenial`, `SaveHoldCoverage`.
-- `(loop)` `cd ui && OCUPILOT_BROWSER_ORIGIN=http://localhost:52777 OCUPILOT_BROWSER_CONTAINER=ocupilot-b-ci node --test --test-concurrency=1 browser/agent-code-edit.browser-spec.mjs browser/system-explorer-editor.browser-spec.mjs browser/system-explorer-find.browser-spec.mjs browser/panel-collapse.browser-spec.mjs`: expected pass.
-- `(loop)` `cd ui && npm run test:tools && npm run test:components`, then `bash scripts/lint-docs.sh`: expected clean.
-- `(once, before dev_complete)`:
-  1. the full ObjectScript sweep, one class at a time;
-  2. `cd ui && npm test && npm run build`, with the bundle under the 3326 kB warning, and a stop if it passes 3,800 kB;
-  3. `bash scripts/smoke.sh --container ocupilot-b-ci --user _SYSTEM --password SYS`.
-- `(CI)` The full browser suite runs in CI's shards only (Rule 29).
+- `(loop)` `uv run scripts/check-objectscript.py` -- expected: 0 problems.
+- `(loop)` `cd ui && node tools/ci-runner.mjs --container ocupilot-b-ci --class OcuPilot.Test.<C>`, one class per call -- expected: 0 failed, read back from `%UnitTest_Result`. Classes: new `ExplorerSource`, `ExplorerSourceTurn`; edited `ReadTool`, `ExplorerDescriptor`, `SurfaceCoverage`, `DeveloperFloor`, `ToolEmit`, `ToolRoundTrip`, `InjectionChannels`; re-run `ExplorerSave`, `SqlDataSaveRoutes`, `GovernanceBaseline`, `ScreenRefusal`, `ToolSetFull`, `AtelierPortDocument`.
+- `(loop)` `cd ui && npm run test:tools` (the `ci-throwaway.sh` rosters in `tools/ci.test.mjs`) -- expected: pass.
+- `(once, before dev_complete)` the full ObjectScript sweep, `cd ui && node tools/ci-runner.mjs --container ocupilot-b-ci` -- expected: 0 failed; then `bash scripts/smoke.sh --container ocupilot-b-ci --user _SYSTEM --password SYS` -- expected: pass.
+- `(CI)` The browser suite runs in CI's shards only (Rule 29). This story adds and changes no browser spec and no client file.
 
 **Planned pinning mutations (Rule 19).** Apply each, observe red, revert to a byte-identical tree, and record a `mutation:` line here.
 
 | AC | Mutation | Expected red |
 |---|---|---|
-| AC1 | `ExplorerSave.ADVERTISED` 0 | `ExplorerSave` offered leg; `ExplorerDescriptor` |
-| AC2 | the cut ignores escaping (raw `$Length`) | `ExplorerSource` Read cut |
-| AC3 | `MergeUpdate` keeps `Mint.Merge`'s rows | `ExplorerSaveAgent` Edit; browser diff leg |
-| AC4 | `FINGERPRINTSUBJECT` drops `Modified` | `ExplorerSaveAgent` Changed |
-| AC5 | `savedNotCompiled` always false | `proposal-card.spec.ts`; browser breaking leg |
-| AC6 | `AgentProblem` answers `""` | `ExplorerSaveRules` `%` and [Q1] rows |
-| AC7 | the mint's `IsOcuPilotCode` step removed | `ExplorerSaveRules` Own code |
-| AC8 | `Kernel/Agent/Loop.cls` :638 hands the results on without `Sanitize.Results` | `ExplorerSourceTurn` (wrapper and `[redacted]` legs) |
+| AC1 | `ExplorerClassSource` `ADVERTISED` 0 | `ExplorerSource` registry and context legs; `ExplorerDescriptor` area roster |
+| AC2 | `Cut` measures the raw `$Length` of each line | `ExplorerSource` long-class leg |
+| AC2 | `Cut` drops the first-line cut | `ExplorerSource` first-line leg |
+| AC3 | `ExplorerRoutineSource.Endpoint` answers `ENDPOINTCLASS` | `ExplorerSource` routine leg |
+| AC3 | `View` ignores `available` | `ExplorerSource` object-only leg |
+| AC4 | `PrivilegePairs` answers `""` | `ExplorerSource` denied leg |
+| AC5 | `Kernel/Agent/Loop.cls` :638 skips `Sanitize.Results` | `ExplorerSourceTurn` wrapper and `[redacted]` legs |
+| AC6 | `Loop.Run` appends the last `tool_result` content to the system prompt | `InjectionChannels.TestClassSourceText` |
+| AC7 | `ExplorerClassSave` `ADVERTISED` 1 | `ExplorerSave`'s roster leg |
+
+mutation: AC1 `ExplorerClassSource` `ADVERTISED` 0 red in ExplorerSource's advertised, context-tools and provider legs (and its denied-pair leg, the tool no longer resolving); ExplorerDescriptor not run under it.
+mutation: AC2 `Cut` measuring raw `$Length` red in ExplorerSource's long-class leg (62,709 escaped) and its cut-counting leg.
+mutation: AC2 `Cut`'s first-line branch disabled red in ExplorerSource's wide-first-line leg.
+mutation: AC3 `ExplorerRoutineSource.Endpoint` answering the class endpoint red in ExplorerSource's routine and object-only legs.
+mutation: AC3 `View` ignoring `available` red in ExplorerSource's object-only leg.
+mutation: AC4 `PrivilegePairs` answering `""` red in ExplorerSource's denied-pair and pairs-equality legs.
+mutation: AC5 `Loop.cls` :638 skipping `Sanitize.Results` red in ExplorerSourceTurn's wrapper, `[redacted]` and key-absent assertions.
+mutation: AC6 `Loop.Run` appending the last `tool_result` blocks to the system prompt red in InjectionChannels.TestClassSourceText (invariant 1 on call 2, the stub obeyed); 15 sibling sources red too.
+mutation: AC7 `ExplorerClassSave` `ADVERTISED` 1 red in ExplorerSave.TestTheSaveIsAbsentFromEveryRosterTheAgentSees.
+
+(QA) `src/OcuPilot/Test/ExplorerSourceEdges.cls` -- 12 tests, in process; needs no arming variable; green on `ocupilot-b-ci` before and after `ExplorerSource`.
+
+mutation: (QA) AC2 `Cut` flagging a cut first line truncated only when the document holds more than one line red in ExplorerSourceEdges.TestAOneLineDocumentOverTheCapKeepsItsOneLine.
+mutation: (QA) AC2 `ExplorerRoutineSource` declaring `SOURCEMAXLENGTH` 600000 red in ExplorerSourceEdges.TestALongRoutineIsCutAtWholeLines.
+mutation: (QA) AC2 `ExplorerSourceRead` `SOURCEMAXLENGTH` 66000 red in ExplorerSourceEdges.TestAFullSizeCutReadFitsAReplyAloneAndIsRefusedWhenTheReplyHasLess (the long-routine and one-line legs too).
+mutation: (QA) AC2 `Escaped` pushing its text without the `string` type red in ExplorerSourceEdges.TestANumberTypedLineIsMeasuredAsAString.
+mutation: (QA) AC2 `CutFirst` without its surrogate guard red in ExplorerSourceEdges.TestACutFirstLineNeverEndsOnAHighSurrogate.
+mutation: (QA) AC2 `Cut` starting its lines-sent count at 1 red in ExplorerSourceEdges.TestADocumentOfNoLinesReadsAsNone.
+mutation: (QA) AC3 `ExplorerRoutineSource.Endpoint` answering the class endpoint red in ExplorerSourceEdges.TestAnIncludeFileAndAnIntermediateRoutineReadWhole (and three other legs).
+mutation: (QA) AC3 `View` ignoring `available` red in ExplorerSourceEdges.TestARoutineKeptOnlyAsObjectCodeOnTheInstanceAnswersNotFound.
+mutation: (QA) AC4 `ExplorerRoutineSource` declaring the class viewer as `DESCRIPTORCLASS` red in ExplorerSourceEdges.TestADeniedRoutinePairNamesTheRoutineScreen.
+mutation: (QA) Tasks, a port refusal passes through unchanged: `View` answering every port refusal as 404 `PORT.NOTFOUND` red in ExplorerSourceEdges.TestThePortsOwnRefusalPassesThroughAndNothingIsRead.
+mutation: (QA) Tasks, bounded input: `InputSchema` without `maxLength` red in ExplorerSourceEdges.TestTheArgumentsAreClosedAndBounded (the 257-character leg; re-observed in review, run 610).
+mutation: (review) Tasks, bounded input: `InputSchema` `maxLength` 128 red in ExplorerSourceEdges.TestTheArgumentsAreClosedAndBounded (the 256-character leg, run 611).
+mutation: (review) AC2 / AD-24's named exception: `Dispatch` cutting a rowless result's `text` to 1,000 characters red in ExplorerSourceEdges.TestAFullSizeCutReadFitsAReplyAloneAndIsRefusedWhenTheReplyHasLess (the dispatched-text legs; the three earlier assertions stayed green, run 610).
+mutation: (QA) Tasks, each result validates against `ResultSchema`: `View` adding a member to its answer red in ExplorerSourceEdges.TestEveryAnswerConformsToTheResultSchema.
 
 ## Auto Run Result
 
-Status: blocked
-Blocking condition: intent gap: Q1 (security posture) — AC6 says the system classes stay refused, but in `%SYS` the non-`%` system classes and routines (`Security.*`, `Config.*`, `SYS.*`) live in IRISSYS, mounted read-write (measured on `ocupilot-b-ci`), so a person's Save already replaces them and an agent save would too. Options: A (recommended) the agent saves only documents stored in its namespace's own routines database and never in `%SYS`, at the mint and at Confirm, a person's Save unchanged; B refuse the agent `%SYS` only; C no new rule, AC6 reworded to read-only databases.
+Status: done
+Blocking condition: none
 
-The plan is complete with option A built in (marked [Q1]). Q2 asks the runner to clear four contended non-add-only edits on union terms; `ToolRoundTrip.cls` :83 is the line Epic 18 rewrites. Q3 recommends splitting the story into the source read, then the saves.
+The implement stage's handoff ran detached after its stage returned (harness default, Rule 18 item 5); the runner reconciled its finished work into one commit. Its own report: full ObjectScript sweep on `ocupilot-b-ci` 526 classes, 4,169 tests, 0 failed; `check-objectscript.py` 0 problems; `test:tools` 1900/1900; smoke 50/50; nine mutations red and restored. Build-auto's own review layers did not run; QA and code review follow.
