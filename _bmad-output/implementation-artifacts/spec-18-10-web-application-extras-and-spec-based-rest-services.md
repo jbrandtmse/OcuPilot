@@ -2,7 +2,7 @@
 title: 'Story 18.10: Web application extras and spec-based REST services'
 type: 'feature'
 created: '2026-10-08'
-status: 'done'
+status: 'in-progress'
 baseline_commit: 'b4b6ffb83a729e3205cb3f7b737aaff001561ce2'
 baseline_revision: '5325154a7e6483ba67258f37fe37cb56e64df989'
 review_loop_iteration: 0
@@ -91,6 +91,15 @@ Paths are under `src/OcuPilot/` unless they start with `ui/`.
 - [x] [Sweep] `ExplorerWire.TestTheReadToolsAnswerRowsAndNeverTheDocument` (run 158; again alone, run 535). Its `explorer.class.read` leg reads `OcuPilot.Port.AdminPort.cls`, which this story grew past the 65,536-character tool-result cap (`TOOL.RESULTTOOLARGE`). Point the leg at a small, stable class whose read stays well under the cap and still answers its `Description` row, for example `OcuPilot.Kernel.Agent.Limits.cls` (Rule 30: a test never relies on a growing production class's size). The cap itself is filed separately by the lead.
 - [x] [Deferred] Settle pass 3's two `deferred:` items with evidence on `ocupilot-ci`. (a) Does the vendor's `Security.PrivilegedRoutine` `PUT` empty an omitted `MatchRoles` or `Roles`? Measure it on a probe privileged routine application your test creates and removes. If it does, the endpoint arm must treat an omitted `MatchRoles` or `Roles` on `OcuPilotState` or `OcuPilotIdentity` as a change and refuse it, with its own Rule 19 leg. (b) Does any caller other than `PctAccessPort` reach `WebApp.PctClassAccess` writes? Grep the routes and tools, and remember the try-it console refuses `/api/admin` writes. If none does, record why under Design Notes; if one does, route it through the shape check. Remove each settled item from `deferred:`.
 
+**Rework items (orchestrator quality review, 2026-10-09).** The Planner's read-only review (Opus, four reviewers, on `f33263ed`) made the claims below. Each is a claim to verify against the code, not a finding to accept. Verify each one, patch what verifies, and record each as `confirmed` or `refuted`, with its evidence, in a new Review Triage Log entry, "2026-10-09 — Orchestrator quality review". The code review that ran after `f33263ed` may already have closed some (marked below); verify those against the current tree too.
+
+- [ ] [Rework] Claim 1, the arm's scope (the orchestrator's ruling, pending the owner's word). Build the arm to refuse **every** change to `OcuPilotState` and `OcuPilotIdentity`, by every path: delete, `Enabled`, `MatchRoles`, `Routines`, `Resource`, and any other field. This is what `Prohibited` already does for OcuPilot's own web applications; reuse that arm's shape rather than writing a field list. Paths: the kernel `Prohibits`, the early 403 (`RefusesDeleteBeforeState`, extended to every write type), and `AdminPort`'s `PRIVROUTINEENDPOINT` arm. Remove the `Roles` pins, which neither target carries (`OwnRoutineApplication.cls` around :153, :154 and :259). Pin each arm with its own Rule 19 mutation. If an "any field" refusal is already in place for OcuPilot's own web applications, reuse that predicate and pin it for these two names.
+- [ ] [Rework] Claim 7. Add a wire test that sends `Enabled`, and then `Resource`, for a routine application through the `WebAppSave` `PUT` route, and asserts 403 `PROHIBITED.OCUPILOTROUTINEAPP` with nothing changed. Mutation: the arm's any-field clause removed, and the test reddens.
+- [ ] [Rework] Claim 2, the duplicate id rule. `foldfirst` duplicates `foldcase-firstpart` in both languages (`EntityRef.cls` :64, :94 and :310, `entity-ref.ts` :112, `screen-mirror.mjs`, and a test). Map `pct-class-access` to `foldcase-firstpart` and remove `foldfirst` everywhere, including its test leg. The lead reverts the AD-13 amendment.
+- [ ] [Rework] Claim 5. Move the new `Prohibited.cls` parameters out from between the covered-types doc and `TYPEWEBAPPLICATION` (around :252-262) to where their family's parameters sit. Fix the reference at about :258 to the nonexistent `ROUTINEAPPLICATIONROLEFIELDS`. The claim that the refusal sentence is missing from EXPERIENCE.md's Fixed strings was closed by the code review (row 475); verify it.
+- [ ] [Rework] Claim 6, trivia. `AdminPort.cls` around :1248 narrates "Task 1 as ruled Q4"; state what the code does instead (CLAUDE.md's prose discipline). Fix `PctAccessSave`'s header order: the code reads first. Remove the unused `pTarget` (`Prohibited.cls` around :4549), or record why it is part of a shared signature.
+- [ ] [Rework] Claims 3 and 4, both closed by the code review: the one-home rule restored over the whole tree, the tests using `ReasonFor`; and the tab re-reading after a Delete, pinned by the browser Delete leg. Verify both against the current tree and record them; change nothing unless they are open.
+
 **Acceptance Criteria:**
 
 - Given a web application in the editor, when its Percent class access tab is read, an entry added and a user entry deleted, then each round-trips through the admin API.
@@ -157,6 +166,7 @@ Code review 2026-10-09 (four layers, `full-opus`): 67 raw rows; 15 entries survi
 
 ## Spec Change Log
 
+- 2026-10-09, lead: re-opened `in-progress` after code review, for the orchestrator's quality review claims. Implement runs on Sonnet: the owner ended the Haiku trial. Feature `98ab67bf` (Story 20.21) is merged in.
 - 2026-10-09, lead: re-opened `in-progress` for pass 4 after the runner's full sweep (4 reds, all from this story), with pass 3's two deferred items. Implement passes so far: three.
 - 2026-10-09, lead: pass 2 closed the four rework items and returned `blocked` on the endpoint arm. Decision 3 is (a), which ruling Q4 already requires. Pass 3's scope is the four items above; pass 2's review block was moved under the Review Triage Log.
 - 2026-10-09, lead: pass 1 (Haiku) returned `blocked` on two decisions, with its work uncommitted and kept for pass 2's finalize. Decision 1 is a targeted early 403 in `WebAppDelete` for OcuPilot's two applications (Task 1's wording). Decision 2 types the confirmation against `Class`. The orchestrator confirmed the `Enabled` leg of the arm. The four rework items above are pass 2's whole scope.
