@@ -10747,3 +10747,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: measured at 18.10 plan on ocupilot-ci: Prohibited.Prohibits answered 0 for webapp.list.delete on OcuPilotState and for webapp.list.update MatchRoles=:%All; Prohibited.cls:5181
 - 2026-10-09T03:28:57Z status=routed owner=burndown by=harvest note=pending the orchestrator's 18.10 split: the privileged routine applications story would own it with the AD-10 arm and a target-type check
 - 2026-10-09T03:56:23Z status=routed owner=18-10-web-application-extras-and-spec-based-rest-services by=orchestrator note=ruling_Q4_2026-10-09:own_criterion_in_narrowed_18.10;AD-10_arm_refuses_delete_and_MatchRoles/Roles_changes_through_every_path_incl_the_privileged-routine_endpoint;target-type_check;Rule_19_mutation_per_arm
+
+### DW-2240: CI flake: sql-activity.browser-spec.mjs 'Nothing running' waits for the empty-state sentence, so it relies on the instance running no SQL statement at all; another spec's statement in the same shard keeps the sentence from appearing (Rule 30: a test relies on a store being empty)
+- source: cycle-log-epic-18.md (18.29 run 37877773715) | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: run 37877773715 browser shard 2/3: ui/browser/sql-activity.browser-spec.mjs:287 Waiting failed 30000ms at :295; same code green locally 7/7 on ocupilot-ci; 18.29 touches no SQL activity file
+- 2026-10-09T04:37:13Z status=routed owner=23-5-the-range-end-cleanup-part-5 by=harvest note=assert on the probe's own row's absence, or filter the table to the probe's marker, rather than on the empty-state sentence
