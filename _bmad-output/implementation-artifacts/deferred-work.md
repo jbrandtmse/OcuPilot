@@ -10735,6 +10735,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-20-19-the-agent-reads-class-and-routine-source.md | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: README.md :436-456 lists screen context, secrets, destination and framing; Story 20.19 sends a document's text to the provider and AD-36 names that a literal key in source reaches it unless AD-60 matches
 - 2026-10-09T00:19:36Z status=escalated owner=burndown by=cr note=owner wording call for the next README feature commit (plain language); no product change
+- 2026-10-09T02:53:14Z status=routed owner=burndown by=owner note=owner approved the suggested README line as worded ("No that is good wording.", relayed by the Planner); the Planner adds it to What the agent sees at the cut that ships 20.19 and closes this resolved at that README commit; no runner action
 
 ### DW-2236: CI flake: BackgroundTasksLive.TestTheScreensActionsResumePauseAndCancelACompact read Pause and Cancel answer 409 TASK.BACKGROUND.STATE (the seeded compact left Running before the Pause; DW-1802 recurrence)
 - source: cycle-log-epic-20.md (run 37865082072 attempt 1) | severity: med | fix-risk: low | footprint: out-of-footprint
