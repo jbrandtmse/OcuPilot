@@ -8203,6 +8203,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-28T23:43:52Z occurrence=16-5-background-tasks
 - 2026-09-28T23:51:23Z status=resolved-by:16-5-background-tasks by=adjudication note=CI 36496304575 red on the agent pause leg reading the state at once; Settled polls until it leaves Running (inference: async pause)
 - 2026-09-29T17:04:25Z occurrence=18-3-databases-configuration-creation-properties-and-volumes
+- 2026-10-09T01:39:27Z occurrence=20-19-the-agent-reads-class-and-routine-source by=lead note=recurred in CI run 37865082072; filed as DW-2236
 
 ### DW-1805: Background tasks lists OcuPilot's own port-queued async tasks under Admin API with Cancel, Pause and Resume, and AdminPort's await does not treat Canceled as terminal
 - source: spec-16-5-background-tasks.md | severity: low | fix-risk: low | footprint: in-story
@@ -10687,3 +10688,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-20-19-the-agent-reads-class-and-routine-source.md | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: README.md :436-456 lists screen context, secrets, destination and framing; Story 20.19 sends a document's text to the provider and AD-36 names that a literal key in source reaches it unless AD-60 matches
 - 2026-10-09T00:19:36Z status=escalated owner=burndown by=cr note=owner wording call for the next README feature commit (plain language); no product change
+
+### DW-2236: CI flake: BackgroundTasksLive.TestTheScreensActionsResumePauseAndCancelACompact read Pause and Cancel answer 409 TASK.BACKGROUND.STATE (the seeded compact left Running before the Pause; DW-1802 recurrence)
+- source: cycle-log-epic-20.md (run 37865082072 attempt 1) | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: Red in instance shard 2/5 on ac551bcf (20.19, no background-task code); the class passed 8/8 on ocupilot-b-ci at 20.19's tree; adminport logged #40320 Async task cannot be canceled
+- 2026-10-09T01:39:27Z status=routed owner=23-5-the-range-end-cleanup-part-5 by=lead note=wait for the compact to be pausable (or re-seed) before Pause and Cancel; CI flake, Rule 27
