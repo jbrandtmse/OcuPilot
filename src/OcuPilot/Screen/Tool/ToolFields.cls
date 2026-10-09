@@ -1053,6 +1053,9 @@ XData Tools
   {"path":"WSGICallable","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
   {"path":"WSGIDebug","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"},
   {"path":"WSGIType","shape":"literal","templateType":"string","itemType":"","class":"ordinary"}
+]},
+"webapp.pctaccess.create": {"fieldList":"WebApp.PctClassAccess","fields":[
+  {"path":"AllowAccess","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"}
 ]}
 }
 }

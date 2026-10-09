@@ -7673,6 +7673,8 @@ So that the first area reaches parity for privileged routine applications. [AMEN
 - **When** each is created, changed or deleted, through its list, its editor and its three tools
 - **Then** it round-trips through the admin API, a target that is not a privileged routine application is refused, and OcuPilot's own two are refused under Story 18.10's AD-10 arm.
 
+- DW-2252: A web-application write naming a privileged routine application reaches WebApp.App PUT, which refuses #799 at 500 INTERNAL and logs at severity 2; only OcuPilot's own two are refused before it (ledger; routed by cr 2026-10-09)
+
 ### Story 18.32: Spec-based REST services
 
 As a developer-administrator,

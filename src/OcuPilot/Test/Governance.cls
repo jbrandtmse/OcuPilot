@@ -57,6 +57,9 @@ Parameter WALLETKEYDISABLED = "security.secrets.replacersa,security.secrets.repl
 
 Parameter ENCRYPTIONDISABLED = "security.encryptionkeyfile.create,security.encryptionkeyfile.addkey,security.encryptionkeyfile.removekey,security.encryptionkeyfileadmins.addadministrator,security.encryptionkeyfileadmins.removeadministrator,security.databaseencryption.activate,security.databaseencryption.deactivate,security.dataelementencryption.activate,security.dataelementencryption.deactivate,security.encryptionstartup.update";
 
+/// <p>The percent class access delete, which the baseline also disables (Story 18.10).</p>
+Parameter PCTACCESSDELETE = "webapp.pctaccess.delete";
+
 /// <p>Story 18.4's eight disk operations, which the baseline disables.</p>
 Parameter DISKOPERATIONS = "osmgmt.databasedetails.compact,osmgmt.databasedetails.defragment,osmgmt.databasedetails.dismount,osmgmt.databasedetails.mount,osmgmt.databasedetails.truncate,osmgmt.databases.integrity,osmgmt.localdatabases.expand,osmgmt.localdatabases.grow";
 
@@ -140,7 +143,7 @@ Method TestTheDefaultEnablesEveryWriteButTheBaselineDisabled()
         Set tKey = $Order(tKeys(tKey))
         If tKey = "" Quit
         Set tCount = tCount + 1
-        Set tExpected = $Select((tKey = ..#PURGE) || (tKey = ..#NAMESPACEDELETE) || (tKey = ..#DATABASEDELETE) || (tKey = ..#TASKIMPORT) || (tKey = ..#ENABLEINTEROP) || $ListFind($ListFromString(..#DISKOPERATIONS), tKey) || $ListFind($ListFromString(..#EXPLORERDISABLED), tKey): "0|baseline", 1: "1|baseline")
+        Set tExpected = $Select((tKey = ..#PURGE) || (tKey = ..#NAMESPACEDELETE) || (tKey = ..#DATABASEDELETE) || (tKey = ..#TASKIMPORT) || (tKey = ..#ENABLEINTEROP) || (tKey = ..#PCTACCESSDELETE) || $ListFind($ListFromString(..#DISKOPERATIONS), tKey) || $ListFind($ListFromString(..#EXPLORERDISABLED), tKey): "0|baseline", 1: "1|baseline")
         If tKey = ..#REMOTEDATABASEDELETE Set tExpected = "0|baseline"
         If tKey = ..#SUPERSERVERDELETE Set tExpected = "0|baseline"
         If $ListFind($ListFromString(..#MFTDISABLED), tKey) Set tExpected = "0|baseline"
@@ -151,7 +154,7 @@ Method TestTheDefaultEnablesEveryWriteButTheBaselineDisabled()
         If ..Resolved(tKey) '= tExpected Set tWrong = tWrong _ $ListBuild(tKey _ "=" _ ..Resolved(tKey))
     }
     Do $$$AssertTrue(tCount > 0, "there are write keys to resolve (" _ tCount _ ")")
-    Do $$$AssertEquals($ListToString(tWrong, ", "), "", "each resolves enabled by the baseline, the purge, the namespace delete, the database delete, the task import, the eight disk operations, the enable of interoperability, the two document deletes, the two document imports, the license key's activation, the license server delete, the ECP data server status change and delete, the five key file writes, the four encryption key writes, the encryption startup settings' update and the two wallet key replaces disabled")
+    Do $$$AssertEquals($ListToString(tWrong, ", "), "", "each resolves enabled by the baseline, the purge, the namespace delete, the database delete, the task import, the eight disk operations, the enable of interoperability, the two document deletes, the two document imports, the percent class access delete, the license key's activation, the license server delete, the ECP data server status change and delete, the five key file writes, the four encryption key writes, the encryption startup settings' update and the two wallet key replaces disabled")
     Do $$$AssertEquals(..Resolved(..#PURGE), "0|baseline", "the purge's source is the baseline")
 }
 

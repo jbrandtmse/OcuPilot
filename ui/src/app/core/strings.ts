@@ -391,6 +391,24 @@ export const STRINGS = {
   webAppColumnResource: 'Resource',
   /** EXPERIENCE.md:316 */
   webAppListEmpty: 'No web applications in <NAMESPACE>.',
+  webAppPctAccessListLabel: 'Percent class access',
+  pctAccessEntityLabel: 'Class access entry',
+  webAppPctAccessListEmpty: 'No percent class access entries for this application.',
+  webAppPctAccessListEmptyAgent: 'give a web application access to a percent class',
+  webAppPctAccessListPrompt1: 'Which percent classes can this application reach?',
+  webAppPctAccessListPrompt2: 'Give this application access to a package of percent classes',
+  webAppPctAccessListPrompt3: 'Remove an access entry this application no longer needs',
+  webAppPctAccessApplication: 'Application of this entry',
+  webAppPctAccessColumnAllowType: 'Allow type',
+  webAppPctAccessColumnClass: 'Class or package',
+  webAppPctAccessColumnAllowAccess: 'Allow access',
+  webAppPctAccessColumnSystem: 'Instance entry',
+  pctAccessRefusalSystem: 'This entry belongs to the instance and goes only with its application, so it cannot be deleted on its own.',
+  /** EXPERIENCE.md:475 */
+  routineAppRefusalOcuPilot: 'OcuPilot reads its own protected state through this privileged routine application, so it cannot be deleted, disabled or changed.',
+  webAppPctAccessDialogTitle: 'Add a percent class access entry',
+  webAppPctAccessClassField: 'Class or package name',
+  webAppPctAccessAllApplications: 'Apply to all applications',
   /** EXPERIENCE.md:316 */
   tableReadOnlyEmptyNext: 'Open another screen from the command box.',
   /** EXPERIENCE.md:317 */

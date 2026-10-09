@@ -172,6 +172,8 @@ XData Keys [ MimeType = application/json ]
   "webapp.list.create": true,
   "webapp.list.delete": true,
   "webapp.list.update": true,
+  "webapp.pctaccess.create": true,
+  "webapp.pctaccess.delete": false,
   "webapp.sessions.end": true,
   "tasks.background.cancel": true,
   "tasks.background.pause": true,

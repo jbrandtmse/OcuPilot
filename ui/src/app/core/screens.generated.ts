@@ -10,7 +10,7 @@
  * declarations disagree.
  */
 
-export type EntityTypeKey = 'web-application' | 'rest-service' | 'user' | 'role' | 'resource' | 'service' | 'ssl-configuration' | 'x509-credential' | 'ldap-configuration' | 'wallet-collection' | 'wallet-secret' | 'oauth2-client-configuration' | 'oauth2-server-definition' | 'oauth2-resource-server' | 'oauth2-server' | 'oauth2-server-client' | 'audit-event' | 'audit-user-event' | 'auditing-configuration' | 'task' | 'task-history-entry' | 'process' | 'lock' | 'database' | 'device' | 'audit-record' | 'application-error' | 'log-entry' | 'agent-definition' | 'agent-switch' | 'agent-policy' | 'allowed-directory' | 'screen-permission' | 'namespace' | 'web-session' | 'background-task' | 'global-mapping' | 'routine-mapping' | 'package-mapping' | 'database-configuration' | 'language-server' | 'class' | 'routine' | 'journal-file' | 'journal-file-database' | 'journal-settings' | 'journal-record' | 'license-key' | 'license-server' | 'ecp-data-server' | 'ecp-settings' | 'ecp-ssl-connection' | 'encryption-key-file' | 'database-encryption-keys' | 'data-element-encryption-keys' | 'encryption-startup' | 'docdb-database' | 'sql-statement' | 'authentication-options' | 'superserver' | 'mft-connection' | 'production';
+export type EntityTypeKey = 'web-application' | 'rest-service' | 'user' | 'role' | 'resource' | 'service' | 'ssl-configuration' | 'x509-credential' | 'ldap-configuration' | 'wallet-collection' | 'wallet-secret' | 'oauth2-client-configuration' | 'oauth2-server-definition' | 'oauth2-resource-server' | 'oauth2-server' | 'oauth2-server-client' | 'audit-event' | 'audit-user-event' | 'auditing-configuration' | 'task' | 'task-history-entry' | 'process' | 'lock' | 'database' | 'device' | 'audit-record' | 'application-error' | 'log-entry' | 'agent-definition' | 'agent-switch' | 'agent-policy' | 'allowed-directory' | 'screen-permission' | 'namespace' | 'web-session' | 'background-task' | 'global-mapping' | 'routine-mapping' | 'package-mapping' | 'database-configuration' | 'language-server' | 'class' | 'routine' | 'journal-file' | 'journal-file-database' | 'journal-settings' | 'journal-record' | 'license-key' | 'license-server' | 'ecp-data-server' | 'ecp-settings' | 'ecp-ssl-connection' | 'encryption-key-file' | 'database-encryption-keys' | 'data-element-encryption-keys' | 'encryption-startup' | 'docdb-database' | 'sql-statement' | 'authentication-options' | 'superserver' | 'mft-connection' | 'production' | 'pct-class-access';
 
 /**
  * The closed archetype vocabulary, mirrored from OcuPilot.Screen.Archetype. A screen's
@@ -531,7 +531,8 @@ export const ENTITY_TYPES: readonly EntityTypeKey[] = [
   "authentication-options",
   "superserver",
   "mft-connection",
-  "production"
+  "production",
+  "pct-class-access"
 ];
 
 /**
@@ -565,6 +566,7 @@ export const ENTITY_ID_RULES: Readonly<Partial<Record<EntityTypeKey, string>>> =
   "oauth2-server": "singleton",
   "namespace": "foldcase",
   "global-mapping": "foldcase-firstpart",
+  "pct-class-access": "foldcase-firstpart",
   "routine-mapping": "foldcase-firstpart",
   "package-mapping": "foldcase-firstpart",
   "database-configuration": "foldcase",
@@ -22508,6 +22510,168 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "emptyAgentKey": "webAppListEmptyAgent"
     },
     "toolIdentifier": "webapp.list",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.WebAppPctAccessList",
+    "route": "web-applications/list/class-access",
+    "area": "web-applications",
+    "labelKey": "webAppPctAccessListLabel",
+    "sideBarPosition": 0,
+    "archetype": "list (server criteria)",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Secure",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "pct-class-access",
+    "entityLabelKey": "pctAccessEntityLabel",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "composite",
+      "parts": [
+        "Name",
+        "AllowType",
+        "Class"
+      ]
+    },
+    "primaryAction": {
+      "id": "create",
+      "selfProtection": ""
+    },
+    "rowActions": [
+      {
+        "id": "delete",
+        "selfProtection": "system-pct-access"
+      }
+    ],
+    "context": {
+      "fields": [
+        "Name",
+        "AllowType",
+        "Class",
+        "AllowAccess",
+        "System"
+      ],
+      "secretFields": []
+    },
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "emptyStateKey": "webAppPctAccessListEmpty",
+    "commandAliases": [
+      "class access",
+      "percent class access"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "userPromptGroupAccess",
+        "textKey": "webAppPctAccessListPrompt1"
+      },
+      {
+        "groupKey": "userPromptGroupAccess",
+        "textKey": "webAppPctAccessListPrompt2"
+      },
+      {
+        "groupKey": "webAppPromptGroupCode",
+        "textKey": "webAppPctAccessListPrompt3"
+      }
+    ],
+    "classicPage": "%CSP.UI.Portal.Applications.Web",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "admin",
+        "endpoint": "WebApp.PctClassAccess",
+        "type": "LIST"
+      },
+      "fields": [
+        "Name",
+        "AllowType",
+        "Class",
+        "AllowAccess",
+        "System"
+      ],
+      "filter": [
+        "Name",
+        "AllowType",
+        "Class"
+      ],
+      "sort": {
+        "fields": [
+          "Name",
+          "AllowType",
+          "Class",
+          "AllowAccess",
+          "System"
+        ],
+        "default": "Name",
+        "direction": "asc"
+      },
+      "paging": "cap",
+      "criteria": {
+        "fields": [
+          {
+            "param": "application",
+            "labelKey": "webAppPctAccessApplication",
+            "kind": "text",
+            "maxLength": 256,
+            "vendorParam": "names",
+            "hint": "The web application whose entries to list, with all-applications for the entries that cover every application."
+          }
+        ]
+      }
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Name",
+          "labelKey": "tableColumnName",
+          "kind": "name"
+        },
+        {
+          "field": "AllowType",
+          "labelKey": "webAppPctAccessColumnAllowType",
+          "kind": "text"
+        },
+        {
+          "field": "Class",
+          "labelKey": "webAppPctAccessColumnClass",
+          "kind": "identifier"
+        },
+        {
+          "field": "AllowAccess",
+          "labelKey": "webAppPctAccessColumnAllowAccess",
+          "kind": "status"
+        },
+        {
+          "field": "System",
+          "labelKey": "webAppPctAccessColumnSystem",
+          "kind": "status"
+        }
+      ],
+      "emptyNextKey": "",
+      "emptyAgentKey": "webAppPctAccessListEmptyAgent"
+    },
+    "toolIdentifier": "webapp.pctaccess",
     "refreshDefault": 0,
     "banner": null,
     "tab": null,

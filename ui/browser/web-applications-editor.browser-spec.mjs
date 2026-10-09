@@ -197,9 +197,9 @@ function effects(page) {
   return page.$$eval('app-web-app-editor-page [id$="-effect"]', (nodes) => nodes.map((node) => node.textContent.trim()));
 }
 
-const TAB_LABELS = [STRINGS.processDetailsGroupGeneral, STRINGS.webAppFormApplicationRoles, STRINGS.webAppTabMatchingRoles, STRINGS.webAppTabCors];
+const TAB_LABELS = [STRINGS.processDetailsGroupGeneral, STRINGS.webAppFormApplicationRoles, STRINGS.webAppTabMatchingRoles, STRINGS.webAppTabCors, STRINGS.webAppPctAccessListLabel];
 
-test('a row\u2019s name opens the editor on its four tabs', async () => {
+test('a row\u2019s name opens the editor on its five tabs', async () => {
   // Mutation (Rule 19): put WebAppForm back in `CREATE_ONLY_FORMS` and redeploy -> the name cell
   // opens no editor and the URL wait goes red.
   const { context, page } = await signedInAt(LIST_URL);

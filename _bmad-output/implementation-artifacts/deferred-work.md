@@ -10553,6 +10553,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: 20.1 (Home tiles 7 vs 8, rail 9 vs 11) and 18.9 (users and roles editor tab lists) went red on literals; the entity-type count is written out in Test/Descriptor, MftConnectionDescriptor and SuperserverDescriptor; find the rest by grepping ui/browser, ui/tools and src/OcuPilot/Test for literal counts
 - 2026-10-08T08:48:06Z status=routed owner=23-5-the-range-end-cleanup-part-5 by=orchestrator note=Rule 30's derive-not-literal clause applied to the existing suite; roster pins (SurfaceCoverage, EndpointCoverage, FLOORONLY) stay literal by design
 - 2026-10-08T16:01:56Z occurrence=18-28-sql-column-and-admin-privileges
+- 2026-10-09T11:53:18Z occurrence=18-10-web-application-extras-and-spec-based-rest-services
 
 ### DW-2204: IRIS defect candidate: the admin API's Security.SQLPrivilege.Column LIST and REVOKE match the object's case exactly while GRANT accepts any case, so a revoke in another case answers 200 and removes nothing
 - source: spec-18-28-sql-column-and-admin-privileges.md | severity: low | fix-risk: high | footprint: out-of-footprint
@@ -10752,12 +10753,39 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: measured at 18.10 plan on ocupilot-ci: Prohibited.Prohibits answered 0 for webapp.list.delete on OcuPilotState and for webapp.list.update MatchRoles=:%All; Prohibited.cls:5181
 - 2026-10-09T03:28:57Z status=routed owner=burndown by=harvest note=pending the orchestrator's 18.10 split: the privileged routine applications story would own it with the AD-10 arm and a target-type check
 - 2026-10-09T03:56:23Z status=routed owner=18-10-web-application-extras-and-spec-based-rest-services by=orchestrator note=ruling_Q4_2026-10-09:own_criterion_in_narrowed_18.10;AD-10_arm_refuses_delete_and_MatchRoles/Roles_changes_through_every_path_incl_the_privileged-routine_endpoint;target-type_check;Rule_19_mutation_per_arm
+- 2026-10-09T12:16:07Z status=resolved-by:18-10-web-application-extras-and-spec-based-rest-services by=adjudication note=AD-10_arm_PROHIBITED.OCUPILOTROUTINEAPP(delete,disable,MatchRoles,Roles)_on_kernel,early_403(Prohibited.RefusesDeleteBeforeState:route,mint,confirm)_and_AdminPort_PRIVROUTINEENDPOINT+type_check;OwnRoutineApplication_11/11,OwnRoutineApplicationWire;mutations_runs_89,94,563-567,587;residual_other_routine_apps=DW-2252(18-31)
+- 2026-10-09T13:44:29Z status=resolved-by:18-10-web-application-extras-and-spec-based-rest-services by=adjudication note=owner:"Refuse_every_change";every_write_to_OcuPilotState_or_OcuPilotIdentity(delete,disable,any_field)_refused_PROHIBITED.OCUPILOTROUTINEAPP_through_every_tool_and_endpoint(kernel_Prohibits,RefusesBeforeState,AdminPort_PRIVROUTINEENDPOINT);rework_3921f4b4
+- 2026-10-09T14:07:27Z status=resolved-by:18-10-web-application-extras-and-spec-based-rest-services by=adjudication note=owner:"Refuse_every_change";every_write(delete,disable,any_field)_to_OcuPilotState/OcuPilotIdentity_refused_PROHIBITED.OCUPILOTROUTINEAPP_by_every_tool_and_endpoint(3921f4b4;re-review_runs_81-85);residual_other_routine_apps=DW-2252(owner_18-31)
 
 ### DW-2240: CI flake: sql-activity.browser-spec.mjs 'Nothing running' waits for the empty-state sentence, so it relies on the instance running no SQL statement at all; another spec's statement in the same shard keeps the sentence from appearing (Rule 30: a test relies on a store being empty)
 - source: cycle-log-epic-18.md (18.29 run 37877773715) | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: run 37877773715 browser shard 2/3: ui/browser/sql-activity.browser-spec.mjs:287 Waiting failed 30000ms at :295; same code green locally 7/7 on ocupilot-ci; 18.29 touches no SQL activity file
 - 2026-10-09T04:37:13Z status=routed owner=23-5-the-range-end-cleanup-part-5 by=harvest note=assert on the probe's own row's absence, or filter the table to the probe's marker, rather than on the empty-state sentence
 
+### DW-2246: explorer.class.read refuses a large class's view as TOOL.RESULTTOOLARGE: OcuPilot.Port.AdminPort.cls (247,939 bytes after 18.10) now answers over the 65,536-character tool-result cap, so the agent cannot read a large class's view at all
+- source: cycle-log-epic-18.md (18.10 runner sweep) | severity: med | fix-risk: med | footprint: out-of-footprint
+- evidence: ExplorerWire.TestTheReadToolsAnswerRowsAndNeverTheDocument red runs 158 and 535 on ocupilot-ci at fe8e3832; the cap is Kernel/Agent/Limits TOOLRESULTMAXLENGTH 65536; 20.19's source reads carry a 60,000-character exception, the class view read does not
+- 2026-10-09T10:32:54Z status=routed owner=23-5-the-range-end-cleanup-part-5 by=harvest note=page or truncate the class view read as 20.19 does for source, or name the cap in the refusal; 18.10 moves ExplorerWire's leg to a small class
+
+### DW-2249: PctAccessPort STATE's any-case application match (Task 5) has no pinning leg
+- source: spec-18-10-web-application-extras-and-spec-based-rest-services.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Entry folds Name on both sides (PctAccessPort.cls:143); every STATE call in the suite uses the stored spelling
+- 2026-10-09T11:53:18Z status=wontfix-accepted owner=18-10-web-application-extras-and-spec-based-rest-services by=cr note=reopen_if=a STATE of an entry named with a re-cased application answers 404 while the list holds it
+
+### DW-2250: POST /web-app/pct-access has no least-privileged denial leg (AD-8 gate on PctAccessSave)
+- source: spec-18-10-web-application-extras-and-spec-based-rest-services.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: PctAccessSave.Gate is reached by no test as a principal short of a pair; SuperserverGate is the sibling pattern
+- 2026-10-09T11:53:18Z status=wontfix-accepted owner=18-10-web-application-extras-and-spec-based-rest-services by=cr note=reopen_if=the route answers anything but 403 naming the pair for a principal without %DB_IRISSYS:READ
+
+### DW-2251: ExplorerWire's explorer.class.read leg exercises the 1,000-character field bound on one Limits.cls doc block
+- source: spec-18-10-web-application-extras-and-spec-based-rest-services.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Limits.cls holds one doc block over 1,000 characters (PROVIDERCALLSECONDS, 1,590); the bound check passes vacuously without it
+- 2026-10-09T11:53:18Z status=wontfix-accepted owner=18-10-web-application-extras-and-spec-based-rest-services by=cr note=reopen_if=Limits.cls holds no doc block over 1,000 characters
+
+### DW-2252: A web-application write naming a privileged routine application reaches WebApp.App PUT, which refuses #799 at 500 INTERNAL and logs at severity 2; only OcuPilot's own two are refused before it
+- source: spec-18-10-web-application-extras-and-spec-based-rest-services.md | severity: med | fix-risk: low | footprint: in-epic
+- evidence: Measured on ocupilot-ci (cr run 587, MatchRoles arm mutated): WebApp.App failed with HTTP 500, ERROR #799 Invalid Application name OcuPilotState/OcuPilotIdentity
+- 2026-10-09T12:13:14Z status=routed owner=18-31-privileged-routine-applications by=cr note=refuse a routine-type target on the web-application tools before the vendor, as AdminPort's type check does
 ### DW-2241: Take as script on an agent's class or routine save renders the text as the placeholder "<content>", so the script is not the reviewed change (AD-59)
 - source: spec-20-21-the-agent-saves-edits-to-existing-classes-and-routines.md | severity: med | fix-risk: med | footprint: in-epic
 - evidence: AtelierPort.Snippet TYPESAVE always renders "<content>" (pinned by AtelierPortSave.TestTheSaveRendersItsScript); 20.21 advertised the save, so Draft.Take on its card closes the proposal and answers a script that, run as is, writes "<content>" into a routine; the routine branch's %Routine.Write would also need the UDL header removed
@@ -10807,3 +10835,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: cycle-log-epic-20.md (run 37952814550 attempt 1) | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: Red in instance shard 1/5 on 39ed66f1 ('OcuProbe1814PageLacking: the child process ran as the principal' then each explorer tool's refusal); green 8/8 on ocupilot-b-ci at the same tree (run 59); 20.20 adds tools but changes no page gate
 - 2026-10-09T16:53:29Z status=routed owner=23-5-the-range-end-cleanup-part-5 by=lead note=wait for the child's run record before asserting (NamespaceWriteGate.Ran); CI flake, Rule 27
+### DW-2254: CI flake: proposal-privilege.browser-spec.mjs (b) waits REVOKE_WINDOW_MS (5000 ms) for the privilege warning after a pair is revoked; under a loaded CI shard the card's poll can land after the window
+- source: cycle-log-epic-18.md (18.10 run 37944323086) | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: run 37944323086 browser shard 3/3: ui/browser/proposal-privilege.browser-spec.mjs:270 (b) Waiting failed 5000ms at :291; the same code green locally 3/3 on ocupilot-ci; 18.10 touches only the two routine-application names in Mint/Prohibited
+- 2026-10-09T15:20:57Z status=routed owner=23-5-the-range-end-cleanup-part-5 by=harvest note=size the window from the card's own poll interval plus one re-read, or wait on the card's answered signal
+- 2026-10-09T16:33:26Z status=wontfix-accepted by=adjudication note=host_contention(owner_report_via_orchestrator_2026-10-09:a_large_local_model_under_oMLX_slowed_the_containers);re-run_attempt_2_green;reopen_if=proposal-privilege_(b)_reds_again_on_an_uncontended_host

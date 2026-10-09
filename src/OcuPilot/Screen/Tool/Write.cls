@@ -535,6 +535,17 @@ ClassMethod StateDiff(pFresh As %DynamicObject, Output pRows As %DynamicArray, O
     Quit $$$OK
 }
 
+/// <p>Whether this write's target is refused by the prohibited set before its state precondition is read, and the
+/// <code>PROHIBITED.*</code> code that refuses it. The screen's action route and the mint call it before
+/// <method>StateDiff</method>, so a refusal that must be a 403 is not answered as the precondition's 400.</p>
+/// <p><b>Caller contract:</b> <var>pIdValue</var> is the target's id argument as the caller holds it. Answers 0 with
+/// <var>pCode</var> <code>""</code> unless a tool overrides it; the default refuses nothing.</p>
+ClassMethod RefusedBeforeState(pIdValue As %String, Output pCode As %String) As %Boolean
+{
+    Set pCode = ""
+    Quit 0
+}
+
 /// <p>The class a minted proposal is built by. Overridable so a test can observe what a tool
 /// asked for; production never overrides it.</p>
 ClassMethod MintClass() As %String

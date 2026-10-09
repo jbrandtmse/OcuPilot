@@ -49,6 +49,9 @@ Parameter SPLITTARGETS = "global-mapping,routine-mapping,package-mapping";
 /// a composite.</p>
 Parameter SPLITTARGETID = "OcuPilotDraftNamespace,OcuPilotDraftName";
 
+/// <p>The three parts of the percent-class access entry whose composite id the probe builds (Story 18.10).</p>
+Parameter PCTTARGETID = "all-applications,AllowClass,%Utility.Example";
+
 /// <p>The synthetic target id of an entity type whose port reads the id as more than a name, as
 /// <code>&lt;type&gt;=&lt;id&gt;</code> entries separated by <code>;</code>: a <code>process</code>
 /// id is a pid set, which the broadcast's port refuses to compose from anything else (Story
@@ -292,6 +295,7 @@ ClassMethod SecretProblem(pTool As %DynamicObject) As %String
     Set tDescriptor = $Parameter(tClass, "DESCRIPTORCLASS")
     Set tType = $ClassMethod(tDescriptor, "PrimaryEntityType")
     Set tTargetId = $Select($ListFind($ListFromString(..#SPLITTARGETS), tType): ##class(OcuPilot.Kernel.EntityId).JoinComposite($ListFromString(..#SPLITTARGETID)), 1: ..#TARGETID)
+    If tType = "pct-class-access" Set tTargetId = ##class(OcuPilot.Kernel.EntityId).JoinComposite($ListFromString(..#PCTTARGETID))
     For tI = 1:1:$Length(..#TYPEDTARGETIDS, ";") {
         If $Piece($Piece(..#TYPEDTARGETIDS, ";", tI), "=", 1) = tType Set tTargetId = $Piece($Piece(..#TYPEDTARGETIDS, ";", tI), "=", 2, *)
     }

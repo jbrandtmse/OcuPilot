@@ -138,7 +138,7 @@ Method TestTheEntityTypeKeepsItsIdExactly()
     Do $$$AssertStatusOK(##class(OcuPilot.Kernel.EntityRef).Key("mft-connection", "instance", "ocumftprobea", .tLower), "and so does its lower-case spelling")
     Do $$$AssertNotEquals(tUpper, tLower, "the two are two targets")
     Do $$$AssertTrue($ListFind($ClassMethod(..#PROHIBITED, "CoveredTypes"), "mft-connection") > 0, "the prohibited set covers it")
-    Do $$$AssertEquals(##class(OcuPilot.Kernel.EntityType).Count(), 62, "sixty-two entity types")
+    Do $$$AssertEquals(##class(OcuPilot.Kernel.EntityType).Count(), 63, "sixty-three entity types")
 }
 
 /// <p>The delete's card lists the four settings the prohibited set reviews, each removed, the client

@@ -233,6 +233,13 @@ ClassMethod Mint(pDescriptor As %String, pToolName As %String, pUser As %String,
         ; state the action moves it out of is refused here, before anything is stored, rather than
         ; minting a proposal whose diff says nothing changes.
         If (pToolClass '= "") && 'tCreates {
+            ; Story 18.10: a target the prohibited set refuses before its precondition is read is a 403, not the 400 below.
+            If $ClassMethod(pToolClass, "RefusedBeforeState", pIdValue, .tEarlyCode) {
+                Set pHttpStatus = 403
+                Set pFault = ##class(OcuPilot.Kernel.Fault).Build(##class(OcuPilot.Api.Error).#FORBIDDEN, tEarlyCode, ##class(OcuPilot.Kernel.Proposal.Prohibited).ReasonFor(tEarlyCode))
+                Set tSC = $$$ERROR($$$GeneralError, tEarlyCode)
+                Quit
+            }
             Set tStateSC = $ClassMethod(pToolClass, "StateDiff", tFresh, .tStateRows, .tStateProblem)
             If $$$ISERR(tStateSC) {
                 Set tSC = ..Internal("the proposal's state diff could not be computed: " _ $System.Status.GetErrorText(tStateSC), .pHttpStatus, .pFault)
