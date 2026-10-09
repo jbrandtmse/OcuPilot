@@ -4531,6 +4531,19 @@ ClassMethod OwnRoutineApplication(pPath As %String) As %Boolean
     Quit (tPath = ..NormalizedPath(##class(OcuPilot.Kernel.State.Base).#APPLICATION)) || (tPath = ..NormalizedPath(##class(OcuPilot.Kernel.State.Base).#IDENTITYAPPLICATION))
 }
 
+/// <p>The early refusal of a delete of one of OcuPilot's own privileged routine applications, answered before any
+/// state is read (<method>OwnRoutineApplication</method>): <var>pCode</var> is the code and the function answers 1, or
+/// the function answers 0 and <var>pCode</var> is empty. The code's sentence is <method>ReasonFor</method>'s alone.</p>
+ClassMethod RefusesDeleteBeforeState(pIdValue As %String, Output pCode As %String) As %Boolean
+{
+    Set pCode = ""
+    If ..OwnRoutineApplication(pIdValue) {
+        Set pCode = ..#OCUPILOTROUTINEAPP
+        Quit 1
+    }
+    Quit 0
+}
+
 /// <p>Whether this write changes one of <parameter>ROUTINEAPPLICATIONFIELDS</parameter>, or disables the application
 /// (<method>Disables</method>), for an OcuPilot routine application the caller has already identified.</p>
 ClassMethod RoutineApplicationChanges(pPayload As %DynamicObject, pTarget As %DynamicObject, ByRef pChanged) As %Boolean

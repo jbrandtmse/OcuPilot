@@ -116,7 +116,7 @@ Method TestTheScreenRouteRefusesEveryArmedAction()
 /// their confirms are refused 403. Each application reads back unchanged.</p>
 /// <p>Mutation (Rule 19): <class>OcuPilot.Kernel.Proposal.Prohibited</class>'s <parameter>ROUTINEAPPLICATIONFIELDS</parameter>
 /// <code>"MatchRoles,Roles"</code> to <code>"Roles"</code> -- the agent's confirmed <code>MatchRoles</code> leg goes red.</p>
-/// <p>Mutation (Rule 19): <code>OcuPilot.Screen.Tool.WebAppDelete.RefusedBeforeState</code> answers 0 -- the mint's delete
+/// <p>Mutation (Rule 19): <code>OcuPilot.Kernel.Proposal.Prohibited.RefusesDeleteBeforeState</code> answers 0 -- the mint's delete
 /// leg answers 400 from the precondition and goes red.</p>
 Method TestTheAgentConfirmRefusesEveryArmedAction()
 {

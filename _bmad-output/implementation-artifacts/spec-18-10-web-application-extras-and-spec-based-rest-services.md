@@ -2,29 +2,14 @@
 title: 'Story 18.10: Web application extras and spec-based REST services'
 type: 'feature'
 created: '2026-10-08'
-status: 'in-progress'
+status: 'done'
 baseline_revision: '5325154a7e6483ba67258f37fe37cb56e64df989'
 review_loop_iteration: 0
-followup_review_recommended: true
+followup_review_recommended: false
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-18-context.md'
 warnings: ['multiple-goals', 'oversized']
-deferred:
-  - summary: >-
-      AdminPort's generic WebApp.PctClassAccess PUT and DELETE may skip the PctAccessPort shape check, so a malformed class reaches the vendor.
-    evidence: |-
-      (inference, maybe-false) The shape check lives in PctAccessPort.Shape; WebApp.PctClassAccess PUT and DELETE are in AdminPort MUTATINGTYPES. Settle by reading the route table to see whether the REST surface reaches AdminPort's generic endpoint for that type while bypassing PctAccessPort.
-    location: >- # file:line
-      src/OcuPilot/Port/AdminPort.cls:472
-    severity: medium (unverified)
-  - summary: >-
-      The privileged routine endpoint's routine arm refuses a PUT that names MatchRoles, Roles or Enabled, not a PUT that omits them, so a PUT that omits MatchRoles or Roles may reach the vendor.
-    evidence: |-
-      (inference, unverified) The arm keys on the body's keys, and the vendor's upsert may empty a field the body omits (AD-4 states this for Routines). Settle by a PUT over a throwaway copy of a routine application that omits both keys, read before and after, before 18.31 routes any caller here.
-    location: >- # file:line
-      src/OcuPilot/Kernel/Proposal/Prohibited.cls:4557
-    severity: medium (unverified)
-
+deferred: []
 ---
 
 <intent-contract>
@@ -100,10 +85,10 @@ Paths are under `src/OcuPilot/` unless they start with `ui/`.
 
 **Sweep items (pass 4, lead, 2026-10-09).** The runner's full ObjectScript sweep ran on a fresh `ocupilot-ci` over `fe8e3832`: 534 classes, 4,250 tests, 4 failed.
 
-- [ ] [Sweep] `Governance.TestTheDefaultEnablesEveryWriteButTheBaselineDisabled` (run 171) and `ToolDispatch.TestTheShippedGateAllowsEveryLiveToolButTheBaselineDisabled` (run 462). The baseline-disabled roster in both lacks `webapp.pctaccess.delete`. Add it to each roster, with its count and sentence, derived where the test already derives.
-- [ ] [Sweep] `Prohibited.TestTheSetHasOneHomeAndOneSentencePerCode` (run 324). `WebAppDelete` spells `PROHIBITED.OCUPILOTROUTINEAPP` and its sentence outside the set. Route the early 403 through a `Prohibited` method that answers the code and its reason, so the code and the sentence each live once, in `Prohibited.cls`. Keep Decision 1's behavior: 403 before the precondition, with `OwnRoutineApplicationWire` still green.
-- [ ] [Sweep] `ExplorerWire.TestTheReadToolsAnswerRowsAndNeverTheDocument` (run 158; again alone, run 535). Its `explorer.class.read` leg reads `OcuPilot.Port.AdminPort.cls`, which this story grew past the 65,536-character tool-result cap (`TOOL.RESULTTOOLARGE`). Point the leg at a small, stable class whose read stays well under the cap and still answers its `Description` row, for example `OcuPilot.Kernel.Agent.Limits.cls` (Rule 30: a test never relies on a growing production class's size). The cap itself is filed separately by the lead.
-- [ ] [Deferred] Settle pass 3's two `deferred:` items with evidence on `ocupilot-ci`. (a) Does the vendor's `Security.PrivilegedRoutine` `PUT` empty an omitted `MatchRoles` or `Roles`? Measure it on a probe privileged routine application your test creates and removes. If it does, the endpoint arm must treat an omitted `MatchRoles` or `Roles` on `OcuPilotState` or `OcuPilotIdentity` as a change and refuse it, with its own Rule 19 leg. (b) Does any caller other than `PctAccessPort` reach `WebApp.PctClassAccess` writes? Grep the routes and tools, and remember the try-it console refuses `/api/admin` writes. If none does, record why under Design Notes; if one does, route it through the shape check. Remove each settled item from `deferred:`.
+- [x] [Sweep] `Governance.TestTheDefaultEnablesEveryWriteButTheBaselineDisabled` (run 171) and `ToolDispatch.TestTheShippedGateAllowsEveryLiveToolButTheBaselineDisabled` (run 462). The baseline-disabled roster in both lacks `webapp.pctaccess.delete`. Add it to each roster, with its count and sentence, derived where the test already derives.
+- [x] [Sweep] `Prohibited.TestTheSetHasOneHomeAndOneSentencePerCode` (run 324). `WebAppDelete` spells `PROHIBITED.OCUPILOTROUTINEAPP` and its sentence outside the set. Route the early 403 through a `Prohibited` method that answers the code and its reason, so the code and the sentence each live once, in `Prohibited.cls`. Keep Decision 1's behavior: 403 before the precondition, with `OwnRoutineApplicationWire` still green.
+- [x] [Sweep] `ExplorerWire.TestTheReadToolsAnswerRowsAndNeverTheDocument` (run 158; again alone, run 535). Its `explorer.class.read` leg reads `OcuPilot.Port.AdminPort.cls`, which this story grew past the 65,536-character tool-result cap (`TOOL.RESULTTOOLARGE`). Point the leg at a small, stable class whose read stays well under the cap and still answers its `Description` row, for example `OcuPilot.Kernel.Agent.Limits.cls` (Rule 30: a test never relies on a growing production class's size). The cap itself is filed separately by the lead.
+- [x] [Deferred] Settle pass 3's two `deferred:` items with evidence on `ocupilot-ci`. (a) Does the vendor's `Security.PrivilegedRoutine` `PUT` empty an omitted `MatchRoles` or `Roles`? Measure it on a probe privileged routine application your test creates and removes. If it does, the endpoint arm must treat an omitted `MatchRoles` or `Roles` on `OcuPilotState` or `OcuPilotIdentity` as a change and refuse it, with its own Rule 19 leg. (b) Does any caller other than `PctAccessPort` reach `WebApp.PctClassAccess` writes? Grep the routes and tools, and remember the try-it console refuses `/api/admin` writes. If none does, record why under Design Notes; if one does, route it through the shape check. Remove each settled item from `deferred:`.
 
 **Acceptance Criteria:**
 
@@ -217,6 +202,22 @@ The four intent_gap rows are one group (one root cause: the endpoint carries no 
   - `[low]` `[reject]` Intent layer: the spec title still names spec-based REST services. The title mirrors the stories.yaml entry, and changing it would desynchronize the registry.
   - `[maybe-false]` `[reject]` Intent layer: the editor's shape handling is not established from the diff. The matrix row is met at `PctAccessPort.Shape`, which refuses on its field; the dialog's own behavior is not in the matrix.
 
+### 2026-10-09 — Review pass (pass 4, verification-gap and intent-alignment)
+
+- verdicts: 11 findings — high 0, medium 0, low 6, false 4, maybe-false 0
+- findings:
+  - `[low]` `[patch]` `GovernanceBaseline`'s exact-equality leg reddens on the `webapp.pctaccess.delete` flip, but no `mutation:` line records it — patched: the pass-4 Verification now records the run (553 red on `TestThePurgeIsTheOneDisabledLine`, reverted byte-identical, 554 green).
+  - `[low]` `[patch]` `WebAppPctAccess` `Prohibited.cls:250` `COVEREDTYPES` row (`pct-class-access`) is load-bearing and had no recorded mutation — patched: removing the entry reddens run 556 on `TestAgentCreateAndDeleteMintConfirmAndReadBack`; reverted byte-identical, run 557 green.
+  - `[low]` `[patch]` `OwnRoutineApplicationWire.cls` mutation comment still names `WebAppDelete.RefusedBeforeState` — patched: the comment now names `Prohibited.RefusesDeleteBeforeState`, where the seam lives.
+  - `[low]` `[reject]` `ExplorerWire` explorer read leg asserts row count, not the `Description` text — rejected: the leg's purpose (no document, the field bound, rows present) is asserted; pinning the text would tie the test to production wording, which is more than a direct correction.
+  - `[low]` `[reject]` `ToolDispatch` `||$ListFind` spacing — rejected: cosmetic; the line compiles and no reader is misled.
+  - `[false]` `[reject]` `Roles` has no reachable path, so the arm's `Roles` leg is kernel-only — refuted as a defect: no route, confirm or vendor body writes `Roles` on this build (`Security.Applications` has no `Roles` property; Design Notes (a)), so no change can reach the vendor through it.
+  - `[false]` `[reject]` the shape check lives only in `PctAccessPort`, so a malformed class is refused at confirm and not on the field — refuted: the codes name the field (`PCTACCESS.ALLOWTYPE`, `PCTACCESS.CLASS`, Task 5), and the refusal is before the vendor.
+  - `[false]` `[reject]` a `PUT` naming an absent `/csp/` path reaches the vendor — refuted: `AdminPort` answers 501 `PORT.NOTIMPLEMENTED` for `Security.PrivilegedRoutine` `PUT` and `DELETE` on an absent name before any vendor call (measured on `ocupilot-ci` this pass), so OcuPilot never reaches the vendor for it.
+  - `[false]` `[reject]` a `MatchRoles` omitted from a `PUT` may be emptied — refuted by the endpoint's `MergeJsonAndProperties` (sets `MatchRoles` only when the body carries it) and the probe (Design Notes (a)). The reviewer's note that the pass-3 Auto Run Result listed it as residual is a spec-text point, resolved by the pass-4 Auto Run Result, which no longer carries it.
+  - `[low]` `[reject]` `ApplicationHeld` reads any failed `WebApp.App` `GET` as an absent application — rejected: a fault-versus-absent distinction is more than a direct correction, and the harm is a misleading message on a rare transient read.
+  - `[false]` `[reject]` the `Roles` and `Disables` clauses of the route and confirm legs — refuted: the route and confirm legs name `MatchRoles` and `Enabled` only, and no route carries `Roles`; the kernel and endpoint legs cover `Roles`.
+
 ## Design Notes
 
 **Task 0, this scope.** Measured on `ocupilot-ci` on 2026-10-08, after `LOAD-OK`:
@@ -235,6 +236,11 @@ The four intent_gap rows are one group (one root cause: the endpoint carries no 
 - `PctAccessPort` alone checks shapes. Otherwise the vendor logs #869, #1496 or #1498 at severity 2.
 - The arm keys on the two production names, as `OcuPilotRoles` does.
 - No endpoint has `Roles`, so the `Roles` leg calls `Prohibits` directly.
+
+**Pass 4 settlements (measured on `ocupilot-ci`, 2026-10-09, probe created and removed by the measurement):**
+
+- (a) The vendor's `PUT` on `Security.PrivilegedRoutine` (`%Api.Admin.Endpoints.Security.PrivilegedRoutine`'s `MergeJsonAndProperties`) sets `MatchRoles` only when the body carries it. An application created with `MatchRoles` `%Manager:%All`, then `PUT` with `{"Enabled":true,"Description":...}`, still reads `MatchRoles` `%Manager:%All`: an omitted `MatchRoles` is not emptied, so no omitted-key clause is needed. The same `PUT` always sets `Routines`, which reads empty afterwards (the AD-4 behavior, not a `MatchRoles` or `Roles` question). `Roles` is not in the endpoint's body at all, and `Security.Applications` has no `Roles` property on this build: a `Roles` value written through `Security.Applications.Modify` did not persist, so there is no `Roles` an omitted key could empty. The `Roles` leg of the arm therefore stays as it is.
+- (b) No path other than `PctAccessPort` reaches `WebApp.PctClassAccess` writes. Grep of `src/OcuPilot`: the only `ENDPOINT` that names it is `PctAccessPort`'s; the `POST /web-app/pct-access` route is `PctAccessSave`; `OcuPilot.Port.AdminRoutes` maps its `PUT` and `DELETE` rows, which only `AdminPort`'s transport reads for the calls `PctAccessPort` makes. (inference: no other caller passes a request-supplied endpoint to `AdminPort.Invoke`, from a grep of its callers, which pass a literal endpoint each.) The try-it console refuses `/api/admin` writes, as recorded in Task 0 above. No shape check is added to a second path.
 
 **Governing ADs:** AD-2, 3, 5, 8, 9, 10, 13, 15, 22, 29, 36, 44, 51, 52, 53, 54, 55, 58, 59.
 
@@ -327,6 +333,22 @@ The four intent_gap rows are one group (one root cause: the endpoint carries no 
 - `web-applications-class-access.browser-spec.mjs` Add leg (F5b): `mutation`: `PCT_ACCESS_SAVE_PATH` to `/api/ocupilot/web-app/pct-access/x`, rebuilt and redeployed; the Add leg red (waited out the row-count wait). Reverted, `shasum` identical, rebuilt, redeployed: 3 of 3 green.
 - `OwnRoutineApplicationWire.TestTheScreenRouteRefusesEveryArmedAction` (F6): `mutation`: `RoutineApplicationChanges` field-loop test `If $ListFind(tFields, tField) Quit` to `If 0 Quit` in `Prohibited`; run 136 red on the screen `add-matching-role` legs (and the agent `MatchRoles` confirm legs). Reverted, `shasum` identical; run 137 green (2/2).
 
+**Pass 4 (2026-10-09) sweep pins.** One class per run on `ocupilot-ci`, after `load-ocupilot-ci.sh` each time. Each mutation was applied to the worktree source, loaded, run, then reverted from a saved copy and checked byte-identical against the pre-mutation hash.
+
+- The four red classes ran green on the clean tree: `Governance` run 536 (14/14), `ToolDispatch` run 537 (18/18), `Prohibited` run 540 (14/14, after the one-home fix), `ExplorerWire` run 541 (6/6); then the clean `OwnRoutineApplication` run 542 (11/11), `OwnRoutineApplicationWire` run 543 (2/2), `WebAppPctAccess` run 544 (10/10), `GovernanceBaseline` run 545 (3/3). `Governance` again after the revert: run 548 (14/14).
+- `OcuPilot.Test.Governance.TestTheDefaultEnablesEveryWriteButTheBaselineDisabled` (the `webapp.pctaccess.delete` roster leg): `mutation`: `Kernel/Governance/Baseline.cls` `"webapp.pctaccess.delete": false` to `true`; run 546 red on that leg. Reverted, `shasum` identical.
+- `OcuPilot.Test.ToolDispatch.TestTheShippedGateAllowsEveryLiveToolButTheBaselineDisabled` (the same roster line): `mutation`: the same baseline line; run 547 red on that leg. Reverted as above.
+- `OcuPilot.Test.Prohibited.TestTheSetHasOneHomeAndOneSentencePerCode` (one-home; the sentence count is over production classes, since the test classes quote each sentence as their pinned copy): `mutation`: the sentence copied into the doc comment of `Screen/Tool/WebAppDelete.cls`; run 551 red on that leg. Reverted, `shasum` identical; run 552 green (14/14).
+- `OcuPilot.Test.OwnRoutineApplicationWire` (the early 403, now `Kernel/Proposal/Prohibited.cls` `RefusesDeleteBeforeState`, Decision 1): `mutation`: `If ..OwnRoutineApplication(pIdValue) {` to `If 0 {`; run 549 red, 2 of 2 (the 400 precondition answers again). Reverted, `shasum` identical; run 550 green (2/2). This replaces the pass-2 mutation line, which named `WebAppDelete.RefusedBeforeState`.
+- `OcuPilot.Test.ExplorerWire.TestTheReadToolsAnswerRowsAndNeverTheDocument` (the explorer class read leg now reads `OcuPilot.Kernel.Agent.Limits.cls`, not a growing production class): no new pin; green in run 541.
+- Browser (rebuilt and redeployed bundle): `web-applications-class-access.browser-spec.mjs` 3/3 green, with `OCUPILOT_BROWSER_ORIGIN=http://localhost:52776`.
+- `ui`: `npm run build` green (prebuild checkers and postbuild licenses); `npm run test:tools` 1903/1903; `npm run test:components` 2733/2733 in 212 files.
+
+**Pass 4 review patches (2026-10-09), each mutation applied to the worktree source, loaded, run, then reverted and checked by `shasum`:**
+
+- `OcuPilot.Test.GovernanceBaseline.TestThePurgeIsTheOneDisabledLine` (the exact disabled-line roster): `mutation`: `Kernel/Governance/Baseline.cls` `"webapp.pctaccess.delete": false` to `true`; run 553 red on that leg. Reverted, `shasum` identical; run 554 green (3/3).
+- `OcuPilot.Test.WebAppPctAccess.TestAgentCreateAndDeleteMintConfirmAndReadBack` (the `pct-class-access` covered-type row): `mutation`: `,pct-class-access";` removed from `COVEREDTYPES` in `Kernel/Proposal/Prohibited.cls`; run 556 red on that leg. Reverted, `shasum` identical; run 557 green (10/10).
+
 **Manual checks:** `ocupilot-ci` is at S0 (read after run 90: no `%OcuProbe1810` entry, no `Ens.Director` entry on `all-applications`, `OcuPilotState` and `OcuPilotIdentity` present and enabled, `/csp/ocuprobe1810` absent).
 
 ## Auto Run Result
@@ -334,9 +356,10 @@ The four intent_gap rows are one group (one root cause: the endpoint carries no 
 Status: done
 Blocking condition: none
 
-- Pass 3 closed the four rework items: the endpoint arm (DELETE, disable, `MatchRoles`, `Roles`) refuses 403 before the vendor with a leg each; the pass-2 patch rows are applied; the Auto Run Result and S0 read are done. Review findings F1 to F8 are patched; see the pass-3 entry in the Review Triage Log.
-- Runs on ocupilot-ci after the review patches: `OwnRoutineApplicationWire` 128 green (2/2), `WebAppPctAccess` 131 green (10/10), `OwnRoutineApplication` 135 green (11/11). Clean runs from the handoff: `OwnRoutineApplication` 123, `WebAppPctAccess` 119, `OwnRoutineApplicationWire` 120, `PctAccessSaveWire` 121 (not re-run after the patches). Every mutation red, then reverted byte-identical.
-- Browser: `web-applications-class-access.browser-spec.mjs` 3/3 green on the reverted bundle; `web-applications-editor.browser-spec.mjs` 7/7 green, run before the review patches.
-- Measured (handoff): bundle initial total 3,185,847 bytes (main 2,980,450), under 3,326 kB; Fixed-strings literals 2980 against the 3000 bound, not raised. Tools 1903/1903 and components 2733/2733 in the handoff; `self-protection.test.mjs` 36/36 and the tab spec 4/4 after the patches; check-objectscript 0 problems; lint-docs 0 issues.
-- S0 after the patch pass: both routine applications enabled, no `/csp/ocuprobe1810`, no `%OcuProbe1810` user. The `Ens.Director` leftover check was inconclusive; "monitor state 0" is read as that count (inference).
-- Residual risk (`followup_review_recommended` true): a PUT to `Security.PrivilegedRoutine` that omits `MatchRoles` or `Roles` may still reach the vendor, which may empty them (deferred, medium, unverified). A confirm that the arm refuses returns 500 `INTERNAL` when the arm is disabled (run 126), so the 403 leg is the only check on the refusal path.
+- Pass 4 closed the four sweep items and the two deferred items. Changed: the `webapp.pctaccess.delete` roster in `Test/Governance.cls` and `Test/ToolDispatch.cls`; the early 403 now runs through `Prohibited.RefusesDeleteBeforeState`, so the code and its sentence live only in `Prohibited.cls`; the one-home sentence count runs over production classes; the explorer class read leg reads `OcuPilot.Kernel.Agent.Limits.cls`; review patches add the `GovernanceBaseline` and `COVEREDTYPES` mutation lines and fix a stale comment in `Test/OwnRoutineApplicationWire.cls`.
+- Runs on `ocupilot-ci`, one class per call, green on the clean tree: `Governance` 536 and 548, `ToolDispatch` 537, `Prohibited` 540 and 552, `ExplorerWire` 541, `OwnRoutineApplication` 542, `OwnRoutineApplicationWire` 543 and 550, `WebAppPctAccess` 544 and 557, `GovernanceBaseline` 545 and 554. Every mutation red, then reverted byte-identical (Verification, pass 4 and pass 4 review patches).
+- Browser: `web-applications-class-access.browser-spec.mjs` 3/3 green on the rebuilt, redeployed bundle. `npm run test:tools` 1903/1903; `npm run test:components` 2733/2733 in 212 files; `npm run build` green.
+- Measured: bundle initial total 3,185,847 bytes (main 2,980,450, styles 205,397), under the 3,326 kB warning. Fixed strings 2980 against the 3000 bound, not raised (no UI strings changed this pass).
+- Deferred items settled and removed (Design Notes, pass 4 settlements): the vendor `PUT` keeps an omitted `MatchRoles` and cannot carry `Roles`; no path other than `PctAccessPort` writes `WebApp.PctClassAccess`.
+- Review (verification-gap and intent-alignment): 11 findings, 0 high, 0 medium; 3 low patched; 8 rejected on refutation or as cosmetic or more-than-correction. `followup_review_recommended` false.
+- S0 after the runs: both routine applications enabled with `MatchRoles` unchanged; no `%OcuProbe1810` user; no `/csp/ocuprobe1810pr` application. The monitor count was not re-read this pass.

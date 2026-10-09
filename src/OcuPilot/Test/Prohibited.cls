@@ -780,9 +780,11 @@ Method TestTheSetHasOneHomeAndOneSentencePerCode()
         For {
             Set tName = $Order(tSources(tName))
             If tName = "" Quit
+            ; The test classes quote each sentence as their pinned copy, so the count is over the production classes.
+            If $Extract(tName, 1, 14) = "OcuPilot.Test." Continue
             Set tSeen = tSeen + ($Length(tSources(tName), tReason) - 1)
         }
-        Do $$$AssertEquals(tSeen, 1, "the sentence for " _ $List(tCodes, tI) _ " is written exactly once in the tree")
+        Do $$$AssertEquals(tSeen, 1, "the sentence for " _ $List(tCodes, tI) _ " is written exactly once in the production classes")
     }
 }
 
