@@ -356,6 +356,8 @@ XData Coverage
 <tool name="explorer.routines.import" class="OcuPilot.Test.ExplorerDescriptor" method="TestTheAreaAdvertisesItsReadsAndWrites" corpus="the area's thirteen writes are asserted together in one loop"/>
 <tool name="explorer.classes.save" class="OcuPilot.Test.ExplorerDescriptor" method="TestTheTwoSavesAreAdvertisedDestructiveWrites" corpus="the two System Explorer saves are asserted together in one loop"/>
 <tool name="explorer.routines.save" class="OcuPilot.Test.ExplorerDescriptor" method="TestTheTwoSavesAreAdvertisedDestructiveWrites" corpus="the two System Explorer saves are asserted together in one loop"/>
+<tool name="explorer.classes.create" class="OcuPilot.Test.ExplorerCreateFlow" method="TestTheCreatesAreAdvertisedAgentOnlyWrites" corpus="the two System Explorer creates are asserted together in one loop"/>
+<tool name="explorer.routines.create" class="OcuPilot.Test.ExplorerCreateFlow" method="TestTheCreatesAreAdvertisedAgentOnlyWrites" corpus="the two System Explorer creates are asserted together in one loop"/>
 <tool name="explorer.sqlquery.run" class="OcuPilot.Test.SqlPort" method="TestTheToolDeclaresItsWritePath"/>
 <tool name="explorer.sqldata.save" class="OcuPilot.Test.SqlSave" method="TestTheToolDeclaresItsWritePath"/>
 <tool name="explorer.docdb.create" class="OcuPilot.Test.DocDbWrite" method="TestTheAgentsCreateConfirmsAndATakenNameIsRefused"/>

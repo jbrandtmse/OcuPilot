@@ -201,6 +201,8 @@ XData Keys [ MimeType = application/json ]
   "explorer.classes.import": false,
   "explorer.classes.save": true,
   "explorer.routines.save": true,
+  "explorer.classes.create": true,
+  "explorer.routines.create": true,
   "explorer.sqlquery.run": false,
   "explorer.routines.import": false,
   "explorer.sqldata.save": false,
