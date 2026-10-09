@@ -59,6 +59,17 @@ ClassMethod InputSchema(pDescriptor As %String = "") As %DynamicObject
     Quit tSchema
 }
 
+/// <p>The create's pairs with the classic user page's custom resource added (AD-44): the copy's page is
+/// <parameter>CLASSICPAGES</parameter>, so an assigned page gates the copy as it gates the classic page.</p>
+/// <p>Mutation (Rule 19): drop the <method>WithClassicPages</method> call -- the assigned-page leg of
+/// <class>OcuPilot.Test.ClassicPageGate</class> goes red.</p>
+ClassMethod PrivilegePairs(pDescriptor As %String = "", Output pResolved As %Boolean) As %List
+{
+    Set tPairs = ##super(pDescriptor, .pResolved)
+    If 'pResolved Quit ""
+    Quit ##class(OcuPilot.Screen.Gate).WithClassicPages(tPairs, ..#CLASSICPAGES)
+}
+
 /// <p>The create rules' problems (<method>OcuPilot.Screen.Tool.UserCreate.ArgumentProblem</method>) and a
 /// missing or empty source, which the copy requires.</p>
 ClassMethod ArgumentProblem(pIdValue As %String, pArgs As %DynamicObject, Output pProblem As %String) As %Status

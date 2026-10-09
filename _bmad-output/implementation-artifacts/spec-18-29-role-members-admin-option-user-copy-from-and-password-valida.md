@@ -2,7 +2,7 @@
 title: "Story 18.29: Role members' admin option, user Copy from and password validation"
 type: 'feature'
 created: '2026-10-08'
-status: 'in-progress'
+status: 'done'
 baseline_revision: '33287e8bc06efb6258cdd7a82da9645b12444440'
 review_loop_iteration: 0
 followup_review_recommended: false
@@ -11,26 +11,47 @@ context:
 warnings: ['multiple-goals', 'oversized']
 deferred:
   - summary: >-
-      The client's privileged flag for a copy source may be computed only from the role rules' flags, so a source whose escalation roles grant a privilege the server counts may not show the consequence line.
+      Read-back field set (ReadBackFields) has no mismatch leg and no per-field check; outcome is pinned by stored-state asserts.
     evidence: |-
-      (inference) Settles by comparing the client's privileged computation in user-create-form.store.ts absorbSource with the server's GrantsPrivilegeByEffect for an escalation-role source; a source with %All as an escalation role must show the consequence line.
-    location: >-
+      Test/UserCopy.cls asserts readBack verdict 'matches' only on success; removing EscalationRoles from ReadBackFields would not redden. Stored state is pinned separately, so only the read-back's discrimination is unpinned.
+    location: >- # file:line
+      Screen/Tool/UserCopy.cls ReadBackFields
+    severity: low
+  - summary: >-
+      Create-path password refusal passes only the code; the policy reason from PasswordPolicy.Verdict is computed and unused.
+    evidence: |-
+      UserCreateRules.cls around line 133 computes tPolicyReason and calls Add with USERPASSWORDPOLICY only, so the operator sees the generic sentence on create. The fix changes the Violations shape, so it is deferred to the story that owns create-form refusal text.
+    location: >- # file:line
+      src/OcuPilot/Area/Permissions/UserCreateRules.cls:133
+    severity: medium
+  - summary: >-
+      DW-1662 test builds its own default-role list instead of the editor's real pre-ticked request.
+    evidence: |-
+      Intent: the surface is the editor's pre-ticked request. The OAuth wire test posts [%DB_IRISSYS, %Manager] itself. The spec's open question on whether the editor posts %Manager is unresolved, so the leg does not prove the editor's request.
+    location: >- # file:line
+      src/OcuPilot/Test/OAuthAuthorizationServerWire.cls
+    severity: medium
+  - summary: >-
+      Client privileged flag may miss an escalation role the server counts (inference).
+    evidence: |-
+      user-create-form.store.ts computes privileged from the form's role flags plus escalation names. Unverified (inference): an escalation role absent from that list would give privileged false. Settles with a browser leg against a real instance whose copy source holds an escalation role.
+    location: >- # file:line
       ui/src/app/areas/permissions/user-create-form.store.ts
     severity: medium (unverified)
   - summary: >-
-      UserCreateRules.Account no longer removes EscalationRoles for any caller, so the update form's read may now carry escalation roles that its save writes back, a change the spec does not state.
+      SurfaceCoverage row for permissions.users.copy points at the route-envelope test, not a tool-pinning test.
     evidence: |-
-      (inference) Settles by reading UserUpdate's read and save path: whether an update that does not touch escalation roles writes them back unchanged, and whether an update can add an escalation role it did not before.
-    location: >-
-      src/OcuPilot/Area/Permissions/UserCreateRules.cls
-    severity: medium (unverified)
+      Test/SurfaceCoverage.cls row (around line 219) is in Epic 20's diff against origin/feature, so Rule 11 blocks the repoint in this pass. The new tool test TestTheCopyToolPinsItsInputSchemaAndSnippetForm exists and is mutation-checked; the row must be repointed when Epic 20 lands.
+    location: >- # file:line
+      src/OcuPilot/Test/SurfaceCoverage.cls
+    severity: low
   - summary: >-
-      The DW-1662 default-role leg may not post %Manager in its body, so the wire test may not cover the pre-ticked roles the intent names.
+      MapVendorRefusal (#837, #838, #845, #958, unlisted code) has no test.
     evidence: |-
-      (inference) Settles by reading the default-role leg of OcuPilot.Test.OAuthAuthorizationServerWire and confirming its body carries %DB_IRISSYS and %Manager.
-    location: >-
-      src/OcuPilot/Test/OAuthAuthorizationServerWire.cls
-    severity: medium (unverified)
+      Port/UserCopyPort.cls MapVendorRefusal is [Private]; a $ClassMethod call from a test raises <PRIVATE METHOD>. Visibility was not changed. Settles by a test seam that does not change visibility, or by the owner accepting the gap.
+    location: >- # file:line
+      src/OcuPilot/Port/UserCopyPort.cls:234
+    severity: medium
 ---
 
 <intent-contract>
@@ -172,15 +193,15 @@ deferred:
 
 **Sweep items (pass 3, lead, 2026-10-08).** The runner's full ObjectScript sweep ran on a fresh `ocupilot-ci` over the tree merged with feature `19f2011d`: 526 classes, 4,188 tests, 8 failed, every failure from this story's new surfaces.
 
-- [ ] [Sweep] `ClassicPageGate.TestWithNoAssignmentEachToolsPairsAreItsDeclaredSet` (run 62). `permissions.users.copy` declares a replaced classic page but is absent from `OWNPAIRS` (68 declaring tools, 67 declared). Add its entry, in the form its `permissions.users.*` neighbours use, and make the count sentence "sixty-eight".
-- [ ] [Sweep] `MappingDescriptor.TestTheClassicPagesRosterIsTheDeclaringTools` (run 243). The classic-pages roster lacks the copy tool and its page. Add the row.
-- [ ] [Sweep] `PortGate.TestEveryPortDeclaresANamedGate` (run 310). `OcuPilot.Port.UserCopyPort` must declare and evaluate a named pair set (AD-29), as the other ports do, and join `PortGate`'s roster.
-- [ ] [Sweep] `ProhibitedRoute.TestTheUserWriteVerbsAreRosteredAndALiveSystemDisableOrDeleteIsRefused` (run 320). The users write-verb roster, now "seven", must name `permissions.users.copy` and count eight, with the copy asserted the way the roster's other verbs are.
-- [ ] [Sweep] `ReadTool.TestTheRegistryListsDescriptorReadsAndInheritedKinds` (run 346). Feature's 315 already includes Epic 20's 20.18 tools; the copy tool makes 316. Take the number and the names from the registry, and update both assertions' counts and sentences.
-- [ ] [Sweep] `SaveHoldCoverage.TestEveryWriteRouteTakesTheHoldOrIsExempt` (run 371). `POST /users/password-check` neither takes the target hold nor is listed exempt. It writes nothing, so add it to the exemption list with that reason, as other non-writing POSTs are listed; if it does write, it takes the hold.
-- [ ] [Sweep] `ToolWrite.TestEveryWriteToolsRequestTypeAgreesWithThePortsBodylessRoster` (run 464). `permissions.users.copy` writes `Security.User/COPY`, which the port declares a mutating pair, while the roster the test reads (the registry's pairs plus `AHEADTYPES`) does not admit it. Reconcile it as the test's message says.
-- [ ] [Sweep] `UserSave.TestTheSaveAndTheFormReadAnswerOneEnvelopeOverTheWire` (run 496): "without its escalation roles". This proves pass 2's deferred item about `UserCreateRules.Account`. The user form's read must answer without escalation roles again, for every caller, as before this story; only the copy path keeps the source's escalation roles. Pin it, with a mutation line.
-- [ ] [Deferred] Settle pass 2's other two `deferred:` items: the client's privileged flag for an escalation-role source (`user-create-form.store.ts`), and whether the DW-1662 default-role leg posts `%Manager`. Fix each one that is real, with a pinning test and its mutation line, or record under Design Notes, with evidence, why it is not. Then remove all three settled items from the frontmatter `deferred:` list.
+- [x] [Sweep] `ClassicPageGate.TestWithNoAssignmentEachToolsPairsAreItsDeclaredSet` (run 62). `permissions.users.copy` declares a replaced classic page but is absent from `OWNPAIRS` (68 declaring tools, 67 declared). Add its entry, in the form its `permissions.users.*` neighbours use, and make the count sentence "sixty-eight".
+- [x] [Sweep] `MappingDescriptor.TestTheClassicPagesRosterIsTheDeclaringTools` (run 243). The classic-pages roster lacks the copy tool and its page. Add the row.
+- [x] [Sweep] `PortGate.TestEveryPortDeclaresANamedGate` (run 310). `OcuPilot.Port.UserCopyPort` must declare and evaluate a named pair set (AD-29), as the other ports do, and join `PortGate`'s roster.
+- [x] [Sweep] `ProhibitedRoute.TestTheUserWriteVerbsAreRosteredAndALiveSystemDisableOrDeleteIsRefused` (run 320). The users write-verb roster, now "seven", must name `permissions.users.copy` and count eight, with the copy asserted the way the roster's other verbs are.
+- [x] [Sweep] `ReadTool.TestTheRegistryListsDescriptorReadsAndInheritedKinds` (run 346). Feature's 315 already includes Epic 20's 20.18 tools; the copy tool makes 316. Take the number and the names from the registry, and update both assertions' counts and sentences.
+- [x] [Sweep] `SaveHoldCoverage.TestEveryWriteRouteTakesTheHoldOrIsExempt` (run 371). `POST /users/password-check` neither takes the target hold nor is listed exempt. It writes nothing, so add it to the exemption list with that reason, as other non-writing POSTs are listed; if it does write, it takes the hold.
+- [x] [Sweep] `ToolWrite.TestEveryWriteToolsRequestTypeAgreesWithThePortsBodylessRoster` (run 464). `permissions.users.copy` writes `Security.User/COPY`, which the port declares a mutating pair, while the roster the test reads (the registry's pairs plus `AHEADTYPES`) does not admit it. Reconcile it as the test's message says.
+- [x] [Sweep] `UserSave.TestTheSaveAndTheFormReadAnswerOneEnvelopeOverTheWire` (run 496): "without its escalation roles". This proves pass 2's deferred item about `UserCreateRules.Account`. The user form's read must answer without escalation roles again, for every caller, as before this story; only the copy path keeps the source's escalation roles. Pin it, with a mutation line.
+- [x] [Deferred] Settle pass 2's other two `deferred:` items: the client's privileged flag for an escalation-role source (`user-create-form.store.ts`), and whether the DW-1662 default-role leg posts `%Manager`. Fix each one that is real, with a pinning test and its mutation line, or record under Design Notes, with evidence, why it is not. Then remove all three settled items from the frontmatter `deferred:` list.
 
 **Acceptance Criteria:**
 
@@ -190,6 +211,23 @@ deferred:
 - **C4.** Given a candidate password on the create form and the set-password dialog, when it is checked or sent, then `$SYSTEM.Security.ValidatePassword` answers. A refusal is 422 `USER.PASSWORD.POLICY` before any vendor write, and no reason, log line or card carries the password.
 - **C5 (DW-1662).** Given a principal holding only the authorization server tab's two pairs, when it creates a configuration with the pre-ticked default roles, then the instance stores it.
 - **Integration.** Given `ocupilot-ci`, when each consumer acts, then the create form goes through `POST /users/copy` and `POST /users/password-check`, the set-password dialog through the check route, the agent through `permissions.users.copy`, and the role editor through `GET /roles/form`.
+
+
+### Review patches (pass 3 review, 2026-10-08)
+
+Applied by a fresh implementation subagent. Each closes one finding in the Review Triage Log's pass-3 entry; each writes or corrects its `mutation:` line in `## Verification`.
+
+- [x] RP1 `Area/Security/OAuthAuthorizationServerRules.cls` `Defaults()` read (around line 392): run the C5 mutation on `ocupilot-ci` (revert the create read to the pre-change `StoredRoles(pFresh)`), observe `OAuthAuthorizationServerWire` red, revert, record `(run n)` on the C5 mutation line.
+- [x] RP2 `ui/src/app/areas/permissions/user-create-form.store.ts` `checkPassword` (around line 436, generation and `passwordValue` guard): add a vitest leg where the first check answer resolves after the value has changed and assert its reason is absent; add a mutation line that removes the guard.
+- [x] RP3 `ui/src/app/areas/permissions/user-create-form.store.spec.ts` (the leg named for a valid answer clearing the refusal): add a `checkPassword` answering valid and assert `violationFor('Password') === ''`; mutation: delete the clear branch in `checkPassword`, observe red.
+- [x] RP4 `user-create-form.store.spec.ts`: record the two unrecorded mutations, dropping `copy=1` from `setCopyFrom` and dropping `escalationRoles` from the `.some` at `absorbSource` (around line 650), each with the red test name and `(run n)`.
+- [x] RP5 Component spec for `ui/src/app/areas/permissions/user-create-form.page.ts` consequence caption: a privileged copy source renders the sentence, a plain source does not. In `ui/browser/users-create.browser-spec.mjs` (around line 396) replace the fixed 500 ms sleep with a wait for the source read's answered signal. Mutation: mark every copy source privileged, observe the component spec red.
+- [x] RP6 `Test/UserCopy.cls`: assert the `reason` field equals `UserCopyError` `REASONSOURCE` in the 422 body and `REASONSOURCECHANGED` in the 409 body. Mutation: change `REASONSOURCECHANGED`, observe red.
+- [x] RP7 `Test/UserCopy.cls` `TestTheLeastPrivilegedPrincipalCopiesAndChecksAndTheOtherIsRefused`: assert roles, escalation roles, settings and read-back on the principal's copy, the same content asserts the `_SYSTEM` route copy makes. Mutation: `ComposeCreate` drops `EscalationRoles`, observe the principal leg red.
+- [ ] RP8 (tests and mutation done; SurfaceCoverage repoint BLOCKED, Epic 20 edits that file) `Screen/Tool/UserCopy.cls`: one assertion on `InputSchema` properties and required list, one on `SnippetForm`'s kind. Repoint the `permissions.users.copy` row in `Test/SurfaceCoverage.cls` (around line 219) at a method that pins the tool, only if `Test/SurfaceCoverage.cls` is unchanged on Epic 20's side since the merge base (`git -C /Users/jbrandt/git/OcuPilot/.worktrees/epic-20 diff --name-only origin/feature/OCU-1_ocupilot-mvp...HEAD`); otherwise report it as a blocking condition.
+- [ ] RP9 (KNOWN GAP: private method, not reachable from a test; visibility unchanged) `Port/UserCopyPort.cls` `MapVendorRefusal` (`[Private]`, around line 234): a test for #837, #838, #845, #958 and an unlisted code. If it cannot be reached from a test without changing its visibility, report it as a known gap in the Auto Run Result and do not change visibility.
+
+Deferred and rejected in the triage log, not patched here: the create refusal's policy reason (`UserCreateRules.cls` around line 133), the read-back field set, the DW-1662 editor request, the client `privileged` inference.
 
 ## Spec Change Log
 
@@ -250,6 +288,31 @@ deferred:
   - `[maybe-false]` `[defer]` I-R6: `UserCreateRules.Account` now keeps `EscalationRoles` for every caller, which may change the update form's save (medium if true); deferred with the settling check in the frontmatter.
   - `[maybe-false]` `[defer]` I-DW1662: the DW-1662 default-role leg's body may not carry `%Manager` (medium if true); deferred with the settling check in the frontmatter.
 
+
+### 2026-10-08 — Review pass (pass 3, sweep rework)
+
+- verdicts: 19 findings — high 0, medium 10, low 8, false 0, maybe-false 1 (of the 19, 5 are rejected: intent-alignment 1, 2, 6, 7 and verification-gap Other 2)
+- findings:
+  - `[medium]` `[patch]` verification-gap 1: C5's mutation was not run against the leg that now pins it (`OAuthAuthorizationServerRules.cls` create read) — patch RP1, run and recorded.
+  - `[medium]` `[patch]` verification-gap 2: no test where a first password answer resolves after the value changed, so a stale refusal could land on a valid field — patch RP2.
+  - `[medium]` `[patch]` verification-gap 3: the store leg named for clearing asserts only that a reason is set; deleting the clear branch stays green — patch RP3.
+  - `[low]` `[patch]` verification-gap 4: the copy-URL (`copy=1`) and escalation-source client legs have no recorded mutation — patch RP4.
+  - `[medium]` `[patch]` verification-gap 5: the consequence line has no component assertion, and the browser negative waits a fixed 500 ms before asserting absence — patch RP5. The pass-3 Auto Run Result claim that R7 is in the tree is corrected at its origin.
+  - `[medium]` `[patch]` verification-gap 6: the two refusal sentences are never asserted; `REASONSOURCE` and `REASONSOURCECHANGED` can change unseen — patch RP6.
+  - `[medium]` `[patch]` verification-gap 7: the least-privileged principal's copy asserts status and existence only, not roles, escalation roles, settings or read-back — patch RP7.
+  - `[low]` `[defer]` verification-gap 8: `ReadBackFields` has no mismatch leg and no per-field check; the outcome is pinned independently by the stored-state assertions, so only the read-back's own discrimination is unpinned — deferred with `ReadBackFields` named.
+  - `[medium]` `[patch]` verification-gap 9: no assertion on the tool's `InputSchema` properties, the `SnippetForm` kind, and the SurfaceCoverage row points at the route-envelope test — patch RP8.
+  - `[medium]` `[defer]` verification-gap Other 1: the create path's password refusal passes only the code (`USERPASSWORDPOLICY`); `tPolicyReason` from `PasswordPolicy.Verdict` is computed and unused, so the operator sees the generic sentence on create. Deferred, not patched: the fix changes the `Violations` shape; route to the story that owns create-form refusal text.
+  - `[low]` `[reject]` verification-gap Other 2: `Api/Account.cls` has its own password-change arm; the spec excludes that file ("never an Account.cls change"), so the review's scope note stands and nothing is changed. Not a defect of this diff.
+  - `[low]` `[patch]` verification-gap Other 3: the pass-3 Auto Run Result says R1 to R9 are in the tree, but R7's component assertion is not — corrected in the Auto Run Result by the lead.
+  - `[low]` `[reject]` intent-alignment 1: the intent names `%Admin_Secure:USE` as the copy's gate (`## Boundaries` COPY, step 1). The diff implements that gate. The least-privileged principal's coverage is the verification-gap 7 patch, not an intent divergence.
+  - `[low]` `[reject]` intent-alignment 2: the escalation check in `GrantsPrivilegeByEffect`'s user branch reaches create and update proposals. The intent's Prohibited bullet names that branch explicitly, so the wider scope is the spec's own wording, not drift.
+  - `[maybe-false]` `[defer]` intent-alignment 3: the client's `privileged` may miss an escalation role the server counts, because the store reads the form's role flags. Unverified; medium if true. Settles with a browser leg against a real instance whose copy source holds an escalation role.
+  - `[medium]` `[patch]` intent-alignment 4: `MapVendorRefusal` (#837, #838, #845, #958 and the unlisted 500) has no test that reaches it — patch RP9.
+  - `[medium]` `[defer]` intent-alignment 5: the DW-1662 test posts the roles it builds itself, not the editor's real request. The spec's own open question covers whether the editor posts `%Manager`; deferred to that question.
+  - `[low]` `[reject]` intent-alignment 6: `InputSchema` may advertise create arguments beyond the intent's list. Not verified and at most low (it advertises existing create fields); not worth a fix here.
+  - `[low]` `[reject]` intent-alignment 7: the inherited tool metadata comes from `UserCreate`, which this diff does not change. Not a defect of this change.
+
 ## Design Notes
 
 **Task 0, measured at plan** (`ocupilot-ci`, 2026-10-08; probe principal with exactly `%Admin_Secure:U`, `%DB_IRISSYS:R` and `%DB_HSCUSTOM:R`):
@@ -290,6 +353,14 @@ deferred:
 
 **Port gate (R3).** On the wire, the `%Admin_Secure:USE` check in `UserCopyPort.Copy` never answers first: the copy route's floor refuses a principal without it, and the confirm's pair gate does the same on the proposal path (runs 78, 82, 84). The port's own gate is pinned in-process by `Test/UserCopyNoGate`, a subclass whose `HoldsResource` answers no. That tests the gate's answer, not a real principal's identity; a real identity test would need `$System.Security.Login`, which CLAUDE.md forbids.
 
+**Pass 3 (sweep and deferred items).** Each sweep failure is closed in its named test; the three deferred items settle as follows.
+
+- *Escalation roles reach the copy source (real, fixed).* The form read had lost its `EscalationRoles` strip (commit 555bda7e), so `absorbSource` never saw a source's escalation roles. The strip is restored in `UserCreateRules.Account`, and the create form's copy-source read adds `copy=1` (`COPYSOURCEQUERY`), which keeps them. The privileged flag is `roles` plus `EscalationRoles` checked against the instance role list's server flags; that list holds every role the instance holds, so each escalation name carries a server flag (inference: a name the list omitted would be missed, and the list is the full `Security.Role` listing).
+- *`UserCreateRules.Account` (real, fixed).* The update form's Save writes back what its read returns, so the read answers without escalation roles; only the copy-source read keeps them (`copy=1`). Pinned by `UserSave`.
+- *DW-1662 default-role leg (real, fixed).* The leg posted `%DB_IRISSYS` alone. It now posts `%DB_IRISSYS` and `%Manager`, the pair the editor pre-ticks, in `OAuthAuthorizationServerWire`.
+- *Copy's classic page gate (found in the sweep, fixed).* `UserCopy.PrivilegePairs` inherited `UserCreate`'s, which does not call `WithClassicPages`, so an assigned `%CSP.UI.Portal.User` did not gate the copy. It now calls it (AD-44), pinned by `ClassicPageGate`.
+- *Named port gate (found in the sweep, fixed).* `UserCopyPort` declares `PAIRS = "%Admin_Secure:USE"` (AD-29) and evaluates it through `HoldsPairs`, which calls `HoldsResource` per resource, the seam `UserCopyNoGate` overrides.
+
 ## Verification
 
 **Setup.** Load with `sh /Users/jbrandt/git/OcuPilot/.worktrees/.coordination/carry-2026-10-08/epic-18-d8/load-ocupilot-ci.sh` (`LOAD-OK`, `STARTPATH-OK`). Browser runs use a rebuilt bundle `docker cp`'d to `ocupilot-ci`, with `OCUPILOT_BROWSER_ORIGIN=http://localhost:52776` and `OCUPILOT_BROWSER_CONTAINER=ocupilot-ci`. S0 means no `OcuProbe1829*` principal, role or privilege row; `PasswordValidationRoutine` restored; monitor 0.
@@ -323,7 +394,16 @@ deferred:
 - C3: the inserted `EscalationRoles` line is removed -> `UserCopy`'s escalation leg red. R6/R9: the same removal -> `UserCopy`'s privileged-copy and create/directory-service legs red (run 57); reverted byte-identical.
 - C4: `Verdict` returns the raw text (the codes forced, the quoting check dropped) -> `PasswordPolicy`'s quoting, check-route and verdict legs red (run 48); the guard is removed -> its set-password leg red.
 - R7 browser: the copy's Save posts to `/users` -> `users-create` AC6 red (run: timeout at the Saved wait); the store's privileged flag forced true -> `users-create` AC6's plain-source leg red; `onBlur('Password')` removed from the create page -> `users-create` AC7 red; `AdminOption` hard-coded `0` -> `roles-editor` AC8 red; the dialog's `(blur)="onBlur()"` removed -> `users-actions` AC6 red. Each rebuilt, deployed, run red, restored byte-identical and rebuilt.
-- C5: the `Defaults()` read is reverted -> `OAuthAuthorizationServerWire` red.
+- C5: the create's `Defaults()` read is reverted to `Set tStored = ..StoredRoles(pFresh)` -> `OAuthAuthorizationServerWire` red (run 564, `TestALeastPrivilegedPrincipalCreatesWithTheDefaultRoles`); reverted, hash-identical, green (run 565).
+- RP2 mutation: the `generation` / `passwordValue` guard line removed from `checkPassword` -> `user-create-form.store.spec.ts` leg `a check answer that lands after the password changed does not mark the new value` red (component run, `AssertionError` on the reason); reverted, hash-identical.
+- RP3 mutation: the `if (valid)` clear branch deleted from `checkPassword` -> `user-create-form.store.spec.ts` leg `... and a valid answer clears it` red (component run); reverted, hash-identical.
+- RP4 mutation: `&copy=1` dropped from `setCopyFrom`'s read -> `user-create-form.store.spec.ts` leg `Story 18.29 (pass 3): a copy source whose only privilege is an escalation role ...` red (component run, `expected false to be true`); reverted, hash-identical.
+- RP4 mutation: `escalationRoles` dropped from `absorbSource`'s `.some` -> the same leg red (component run); reverted, hash-identical.
+- RP5 mutation: `absorbSource` marks every copy source privileged (`const privileged = true`) -> `user-create-form.page.spec.ts` leg `a copy of a plain source states no consequence` red (component run); reverted, hash-identical. The browser leg `AC6: a copy source that holds no privileged role` waits on the drawn role instead of a fixed sleep; its own mutation is not re-run here.
+- RP6 mutation: `UserCopyError.REASONSOURCECHANGED` loses its final period -> `OcuPilot.Test.UserCopy` `TestTheSourceChangedAtTheWriteIsRefused` red (run 569, the reason leg); reverted, byte-identical to HEAD, green (run 570).
+- RP7 mutation: `ComposeCreate` drops `EscalationRoles` -> `OcuPilot.Test.UserCopy` `TestTheLeastPrivilegedPrincipalCopiesAndChecksAndTheOtherIsRefused` red (run 571, and again run 572, on its `201` and escalation-role legs); reverted, hash-identical, green (run 573).
+- RP8 mutation: `CopyFrom` removed from `InputSchema`'s required list -> `OcuPilot.Test.UserCopy` `TestTheCopyToolPinsItsInputSchemaAndSnippetForm` red (run 574, `and requires CopyFrom`); reverted, hash-identical. The `permissions.users.copy` SurfaceCoverage repoint is blocked (Epic 20 changes `Test/SurfaceCoverage.cls`).
+- RP9: no mutation. `MapVendorRefusal` is `[ Private ]` and a test cannot reach it without changing its visibility (`$ClassMethod` raises `<PRIVATE METHOD>`); known gap, visibility unchanged.
 - Integration: Save posts to `/users` -> `user-create-form.store.spec.ts`'s copy leg red (`USERS_COPY_PATH`, run n), and `users-create` AC6 red under the same change.
 - P1 (review pass 2): the Roles clause dropped from the source-changed check -> `UserCopy` roles-only leg red (run 98); reverted green (run 99).
 - P2 (review pass 2): `AdminPort.PasswordGuard` logs the refused password under key `body` -> `UserCopy` log leg red (run 100); reverted green (run 101). `set-password-dialog.ts` appends the password to the reason -> `set-password-dialog.spec.ts` blur leg red (component run).
@@ -338,6 +418,16 @@ deferred:
 - Every mutated file was restored from a saved copy and matched its pre-mutation hash.
 - Review-pass verification: `UserCopy` 21/21 (run 96 initial, run 110 reverted); `PasswordPolicy` 9/9 (run 97 initial, run 111 reverted); `npm run test:tools` 1893 pass; `npm run test:components` 2686 pass; `check-objectscript.py` 0 problems over 1781 files.
 
+- **Pass 3 mutations (Rule 19), applied on `ocupilot-ci` and each reverted to a saved copy, hash-checked, then reloaded:**
+  - `UserCreateRules.Account` strip made `If 0` -> `UserSave` red (run 553); reverted and green (run 558).
+  - `HandleForm` `copy=1` ignored (`(0)`) -> `UserSave` copy leg red (run 559); reverted and green (run 561).
+  - `UserCopy.PrivilegePairs` without `WithClassicPages` -> `ClassicPageGate` assigned-page leg red (run 549); reverted and green (run 554).
+  - `UserCopyPort.PAIRS` emptied -> `PortGate` named-gate roster leg red (run 550); reverted and green (run 555).
+  - `Security.User/COPY` removed from `AdminPort.MUTATINGTYPES` -> `ToolWrite` bodyless-roster leg red (run 551); reverted and green (run 556).
+  - `/users/password-check` exemption removed from `SaveHoldCoverage.Exemptions` -> `SaveHoldCoverage` red (run 552); reverted and green (run 557).
+  - `permissions.users.copy` removed from `ProhibitedRoute`'s users roster -> roster leg red (run 560); reverted and green (run 562).
+- **Pass 3 not re-applied:** the DW-1662 default-role leg's pre-existing mutation (`CustomizationViolations` reads a create's roles from nothing) was not re-run after the leg changed; `ReadTool`'s count and name roster (pinned by its own red on any registry drift) has no mutation run; the client store's copy-URL leg has no mutation run.
+
 ## Auto Run Result
 
 Status: done
@@ -351,3 +441,18 @@ Blocking condition: none
 - Not run here: the full ObjectScript sweep (the runner's) and the full browser suite (CI). Pass 2 changed client spec files only.
 - Follow-up review recommendation: false. The patches were medium and low; none was high.
 - Residual risks: the port gate's test is a seam, not a real principal (`UserCopyNoGate` overrides `HoldsResource`). `Test/UserCopy.cls` is about 780 lines, above the 500-line guide; splitting it is left to the lead. The two deferred items are unverified.
+
+### Pass 3 (rework, lead's sweep and deferred items)
+
+- Changed: `Port/UserCopyPort.cls` (`PAIRS`, `HoldsPairs`), `Screen/Tool/UserCopy.cls` (`PrivilegePairs` gates on the classic page), `Area/Permissions/UserCreateRules.cls` (escalation strip restored; `copy=1` flag), `Port/AdminPort.cls` (`Security.User/COPY` mutating), `Test/PortFixture.cls` (same), `Test/ClassicPageGate.cls` (OWNPAIRS `permissions.users.copy` entry and the probe body), `Test/MappingDescriptor.cls` (classic roster row), `Test/PortGate.cls` (roster row), `Test/ProhibitedRoute.cls` (copy in the users roster, eight), `Test/ReadTool.cls` (316, name inserted), `Test/SaveHoldCoverage.cls` (password-check exemption), `Test/UserSave.cls` (default strip and `copy=1` legs), `Test/OAuthAuthorizationServerWire.cls` (default-role leg posts both pre-ticked roles), `ui/src/app/areas/permissions/user-create-form.store.ts` (copy-source read adds `copy=1`), and its spec (one escalation-source leg).
+- ObjectScript on `ocupilot-ci` (one class per run, after each reload): `ClassicPageGate` 8/8 (run 532, the green run after the last edit; the summary line carries no index), `MappingDescriptor` 6/6 (533), `PortGate` 4/4 (534), `ProhibitedRoute` 24/24 (535), `ReadTool` 28/28 (536), `SaveHoldCoverage` 2/2 (537), `ToolWrite` 34/34 (538), `UserSave` 7/7 (539), `UserCopy` 21/21 (540), `PasswordPolicy` 9/9 (541), `OAuthAuthorizationServerWire` 8/8 (542), `UserCreate` 9/9 (543), `UserCreateWire` 5/5 (544), `UserUpdate` 23/23 (545), `RoleSave` 8/8 (546), `GovernanceBaseline` 3/3 (548). Run 547 is an extra, unplanned `OAuthAuthorizationServerWire` run from a repeated shell command; its output was discarded, so its result is not recorded here.
+- Client: `npm run test:tools` 1900/1900 pass; `npm run test:components` 2720/2720 pass (209 files); `npm run build` clean. Initial total 3,173,310 bytes (main 2,967,913 + styles 205,397), under the `angular.json` `maximumWarning` of 3326kB, which Epic 20 re-based (commit ddd5f82a); no re-base was needed here. The spec's earlier "3165kB" figure is superseded by that re-base.
+- Browser: `users-create` 8/8 on the rebuilt bundle (`docker cp` to `ocupilot-ci`).
+- `ocupilot-ci` state after the runs: no `OcuProbe1829*` user, role or resource (SQL counts 0); `PasswordValidationRoutine` reads empty; `$SYSTEM.Monitor.State()` reads 2, not 0 as the S0 definition says. I did not clean or restart anything, and I did not establish whether the 2 predates this pass. Reported to the lead as a non-S0 reading.
+- Epic 20 contention: `Test/ReadTool.cls` is a listed shared file; the edit is in place (one count literal, one name, one sentence), as the sweep item asks. No other shared file was touched.
+- Not run here: the full ObjectScript sweep, the full browser suite, `smoke.sh`.
+- Review (pass 3, 2026-10-08): 19 findings from verification-gap and intent-alignment; 0 high, 10 medium, 8 low, 1 maybe-false; 5 rejected (the Triage Log has each row). Patched as RP1-RP7 (C5 mutation run 564 red, 565 green; RP6 mutation run 569 red, 570 green; RP7 mutation runs 571-572 red, 573 green; RP8 test mutation run 574 red, 575 green; RP2-RP5 vitest and the users-create browser spec, 8/8). Deferred to the frontmatter `deferred:` list: RP8 row repoint (blocked by Epic 20's diff on SurfaceCoverage.cls, Rule 11) and RP9 (MapVendorRefusal is Private), plus four review items.
+- Non-S0 reading on `ocupilot-ci` after the RP runs: a role `OcuPilotProbeProhibitedRouteRole` is present. Not created by this pass's runs as reported by the patch subagent; not cleaned, and the lead decides.
+- Patch follow-up: `Test/UserCopy.cls` is about 860 lines, above the 500-line guide (residual, as in pass 2).
+- Follow-up review recommendation: false (no high patched; the medium patches close review items with tests, not logic changes).
+

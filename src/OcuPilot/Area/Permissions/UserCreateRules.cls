@@ -48,6 +48,14 @@ Parameter TWOFACTORTOTPBIT As INTEGER = 2097152;
 /// <p>The field the edit form read carries the account in, and the member it never answers.</p>
 Parameter FORMUSERKEY = "user";
 
+/// <p>The member an edit form's read never answers: the account's escalation roles, which the form's Save
+/// would write back. The create form's copy-source read keeps them (<parameter>COPYSOURCEQUERY</parameter>).</p>
+Parameter FIELDESCALATIONROLES = "EscalationRoles";
+
+/// <p>The query flag <code>copy=1</code> on <code>GET /users/form?name=</code> that keeps the account's
+/// escalation roles in the read, for the copy source the create form shows.</p>
+Parameter COPYSOURCEQUERY = "copy";
+
 /// <p>The longest a user name may be: <class>%Library.Username</class>'s own <code>MAXLEN</code>,
 /// the type <property>Security.Users.Name</property> is declared with.</p>
 Parameter NAMEMAXLENGTH As INTEGER = 160;
@@ -370,7 +378,7 @@ ClassMethod HandleForm() As %Status
         Do tBody.%Set("roles", tRoles)
         Set tName = $Get(%request.Data("name", 1))
         If tName '= "" {
-            Set tReadSC = ..Account(tName, .tUser, .tHttp, .tFault)
+            Set tReadSC = ..Account(tName, .tUser, .tHttp, .tFault, ($Get(%request.Data(..#COPYSOURCEQUERY, 1)) = "1"))
             If $$$ISERR(tReadSC) && (+$Get(tHttp) = 404) {
                 Set tSC = ##class(OcuPilot.Api.Error).Render(404, ##class(OcuPilot.Api.Error).#NOTFOUND, ##class(OcuPilot.Api.Error).#REASONUSERNAMEABSENT, ##class(OcuPilot.Api.Error).#USERNAMEABSENT)
                 Quit
@@ -451,7 +459,7 @@ ClassMethod Taken(pName As %String, Output pTaken As %Boolean) As %Status
 /// <p>The account <var>pName</var> as <parameter>UPDATETOOL</parameter>'s own read answers it,
 /// through its own port (AD-52), in <var>pUser</var>, escalation roles included: a copy takes them from
 /// its source. An absent account is an error status with <var>pHttpStatus</var> 404.</p>
-ClassMethod Account(pName As %String, Output pUser As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status
+ClassMethod Account(pName As %String, Output pUser As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, pKeepEscalation As %Boolean = 0) As %Status
 {
     Set pUser = ""
     Set tClass = ..#UPDATETOOL
@@ -463,6 +471,7 @@ ClassMethod Account(pName As %String, Output pUser As %DynamicObject, Output pHt
         Set pHttpStatus = 404
         Quit $$$ERROR($$$GeneralError, ##class(OcuPilot.Api.Error).#USERNAMEABSENT)
     }
+    If 'pKeepEscalation Do tFresh.%Remove(..#FIELDESCALATIONROLES)
     Set pUser = tFresh
     Quit $$$OK
 }

@@ -28,6 +28,10 @@ Parameter COPYTYPE = "COPY";
 /// list does not offer either to copy.</p>
 Parameter LDAPFLAG = 2;
 
+/// <p>The pair set a copy requires, as <code>resource:permission</code>. Each resource is answered through
+/// <method>HoldsResource</method>, the seam <method>Copy</method> evaluates it through (AD-29).</p>
+Parameter PAIRS = "%Admin_Secure:USE";
+
 Parameter DELEGATEDFLAG = 4;
 
 /// <p>The admin port's call, except that <code>Security.User</code> <code>COPY</code> is the copy above.
@@ -56,7 +60,7 @@ ClassMethod Copy(pName As %String, pBody As %DynamicAbstractObject, Output pResu
     Set pFault = ""
     Set tSC = $$$OK
     Try {
-        If '..HoldsResource("%Admin_Secure") {
+        If '..HoldsPairs() {
             Set tSC = ..Fail(..#USEREndpoint, 403, $$$OK, .pHttpStatus, .pFault)
             Quit
         }
@@ -105,6 +109,18 @@ ClassMethod Copy(pName As %String, pBody As %DynamicAbstractObject, Output pResu
         Do ..LogFault("user copy failed", tSC, "")
     }
     Quit tSC
+}
+
+/// <p>Whether the caller holds every pair <parameter>PAIRS</parameter> names, each through
+/// <method>HoldsResource</method>; false when the set is empty, so a mis-edited parameter fails closed.</p>
+ClassMethod HoldsPairs() As %Boolean
+{
+    Set tPairs = ##class(OcuPilot.Screen.Gate).ParsePairSpec(..#PAIRS)
+    Set tHeld = $ListLength(tPairs) > 0
+    For tI = 1:1:$ListLength(tPairs) {
+        If '..HoldsResource($List($List(tPairs, tI), 1)) Set tHeld = 0 Quit
+    }
+    Quit tHeld
 }
 
 /// <p>The account <var>pName</var> as the admin API reads it now, which carries no password; an empty object when

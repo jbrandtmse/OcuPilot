@@ -344,7 +344,8 @@ export class UserCreateForm {
     this.notify();
     if (name === '') return;
     const generation = this.generation;
-    const result = await this.api().requestJson<unknown>(`${USERS_FORM_PATH}?name=${encodeURIComponent(name)}`);
+    // copy=1 keeps the source's escalation roles in the read: the form's own read omits them (the edit form would write them back).
+    const result = await this.api().requestJson<unknown>(`${USERS_FORM_PATH}?name=${encodeURIComponent(name)}&copy=1`);
     if (generation !== this.generation || this.copyFromValue !== name) return;
     if (result.kind !== 'ok') return;
     const source = absorbSource(result.body, this.rulesValue);

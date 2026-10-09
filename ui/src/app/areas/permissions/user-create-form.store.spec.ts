@@ -60,7 +60,8 @@ const SOURCE_FORM = {
 function mount(
   createAnswer: JsonResult<unknown> = { kind: 'ok', status: 201, body: { name: 'probeuser', user: {} } },
   nameAnswer: JsonResult<unknown> = { kind: 'ok', status: 200, body: { name: 'probeuser', available: true, reason: '' } },
-  checkAnswer: JsonResult<unknown> = { kind: 'ok', status: 200, body: { valid: true, reason: '' } }
+  checkAnswer: JsonResult<unknown> = { kind: 'ok', status: 200, body: { valid: true, reason: '' } },
+  sourceAnswer: unknown = SOURCE_FORM
 ) {
   TestBed.resetTestingModule();
   const calls: { path: string; method: string; body: string }[] = [];
@@ -71,7 +72,7 @@ function mount(
         return { kind: 'ok', status: 200, body: RULES } as unknown as JsonResult<T>;
       }
       if (path.startsWith(`${USERS_FORM_PATH}?name=`)) {
-        return { kind: 'ok', status: 200, body: SOURCE_FORM } as unknown as JsonResult<T>;
+        return { kind: 'ok', status: 200, body: sourceAnswer } as unknown as JsonResult<T>;
       }
       if (path === USERS_LIST_READ_PATH) {
         return { kind: 'ok', status: 200, body: { rows: [{ Name: 'Src' }, { Name: 'Other' }] } } as unknown as JsonResult<T>;
@@ -295,8 +296,20 @@ describe('the create-a-user form store', () => {
     expect(Object.keys(JSON.parse(post!.body) as Record<string, unknown>).sort()).toEqual(['CopyFrom', 'FullName', 'Name', 'Password']);
   });
 
+  it('Story 18.29 (pass 3): a copy source whose only privilege is an escalation role reads its escalation roles and is privileged', async () => {
+    const escalationSource = { ...RULES, user: { Name: 'Src', FullName: 'Source Person', Roles: [], EscalationRoles: ['%All'] } };
+    const { store, calls } = mount(undefined, undefined, undefined, escalationSource);
+    await store.open();
+    await store.setCopyFrom('Src');
+    await settle();
+    expect(calls.some((call) => call.path === `${USERS_FORM_PATH}?name=Src&copy=1`)).toBe(true);
+    expect(store.source()?.escalationRoles).toEqual(['%All']);
+    expect(store.source()?.privileged).toBe(true);
+  });
+
   it('Story 18.29: blurring a password shows the instance policy reason on the field, and a valid answer clears it', async () => {
-    const { store, calls } = mount(undefined, undefined, { kind: 'ok', status: 200, body: { valid: false, reason: 'Too short for this instance.' } });
+    const answer: { kind: 'ok'; status: number; body: unknown } = { kind: 'ok', status: 200, body: { valid: false, reason: 'Too short for this instance.' } };
+    const { store, calls } = mount(undefined, undefined, answer);
     await store.open();
     store.setValue('Name', 'probeuser');
     store.setPassword('a');
@@ -306,5 +319,24 @@ describe('the create-a-user form store', () => {
     const check = calls.filter((call) => call.path === USERS_PASSWORD_CHECK_PATH).at(-1);
     expect(check?.method).toBe('POST');
     expect(JSON.parse(check!.body)).toEqual({ name: 'probeuser', password: 'a' });
+    answer.body = { valid: true, reason: '' };
+    await store.onBlur('Password');
+    await settle();
+    expect(store.violationFor('Password')).toBe('');
+  });
+
+  it('Story 18.29 (pass 3): a check answer that lands after the password changed does not mark the new value', async () => {
+    let answerCheck: (answer: JsonResult<unknown>) => void = () => undefined;
+    const pending = new Promise<JsonResult<unknown>>((resolve) => { answerCheck = resolve; });
+    const { store } = mount(undefined, undefined, pending as unknown as JsonResult<unknown>);
+    await store.open();
+    store.setValue('Name', 'probeuser');
+    store.setPassword('a');
+    const blur = store.onBlur('Password');
+    store.setPassword('b');
+    answerCheck({ kind: 'ok', status: 200, body: { valid: false, reason: 'Too short for this instance.' } });
+    await blur;
+    await settle();
+    expect(store.violationFor('Password')).toBe('');
   });
 });

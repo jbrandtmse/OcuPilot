@@ -158,6 +158,7 @@ Method TestAnAbsentSourceIsRefusedOnCopyFrom()
     Do $$$AssertStatusOK(tSC, "the request completes")
     Do $$$AssertEquals(tStatus, 422, "an absent source is 422")
     Do $$$AssertTrue(..Mentions($Get(tBody), "USERCOPY.SOURCE"), "on the USERCOPY.SOURCE code")
+    Do $$$AssertEquals(..ViolationReasonOf($Get(tBody)), "Copy from a local user this instance holds, not a directory-service or delegated account.", "with the source sentence as its reason")
     Do $$$AssertTrue('..Exists(..#TARGET), "and no account was created")
 }
 
@@ -229,6 +230,7 @@ Method TestTheSourceChangedAtTheWriteIsRefused()
     Set tSC = ##class(OcuPilot.Port.UserCopyPort).Invoke("Security.User", "COPY", .tQuery, tBody, .tResult, .tHttp, .tFault)
     Do $$$AssertEquals(tHttp, 409, "a source whose roles moved is 409")
     Do $$$AssertEquals($Select($IsObject($Get(tFault)): tFault.%Get("code"), 1: ""), "USERCOPY.SOURCECHANGED", "on USERCOPY.SOURCECHANGED")
+    Do $$$AssertEquals($Select($IsObject($Get(tFault)): tFault.%Get("reason"), 1: ""), "The source user's roles changed after this copy was proposed. Propose the copy again to review them.", "with the source-changed sentence as its reason")
     Do $$$AssertTrue('..Exists(..#TARGET), "and no account was created")
 }
 
@@ -372,6 +374,11 @@ Method TestTheLeastPrivilegedPrincipalCopiesAndChecksAndTheOtherIsRefused()
     Do $$$AssertStatusOK(tSC, "the principal's copy request completes")
     Do $$$AssertEquals(tStatus, 201, "the principal with exactly the copy's pairs copies: " _ tRaw)
     Do $$$AssertTrue(..Exists(..#TARGET), "and the account exists")
+    Set tCopy = ##class(%DynamicAbstractObject).%FromJSON(tRaw)
+    Do $$$AssertTrue($IsObject(tCopy) && $IsObject(tCopy.%Get("user")) && (tCopy.%Get("user").%ToJSON() [ "%Developer"), "the principal's copy carries the source's roles")
+    Do $$$AssertTrue($IsObject(tCopy) && $IsObject(tCopy.%Get("readBack")) && (tCopy.%Get("readBack").%Get("verdict") = "matches"), "and the principal's write reads back as written")
+    Do $$$AssertEquals(..Setting(..#TARGET, "EscalationRoles"), ..#ESCROLE, "the stored account holds the source's escalation role")
+    Do $$$AssertEquals(..Setting(..#TARGET, "AccountNeverExpires"), "1", "and the source's setting, AccountNeverExpires")
 
     Set tSC = ..AsPrincipal(..#PRINCIPAL, "POST", ..#CHECKPATH, "{""name"":""" _ ..#TARGET _ """,""password"":""a""}", .tStatus, .tRaw)
     Do $$$AssertStatusOK(tSC, "the principal's check request completes")
@@ -614,6 +621,23 @@ ClassMethod Body(pName As %String, pPassword As %String, pFrom As %String) As %S
     Quit "{""Name"":""" _ pName _ """,""CopyFrom"":""" _ tFrom _ """,""FullName"":"""",""Password"":""" _ pPassword _ """}"
 }
 
+/// <p>The first violation's <code>reason</code> in an answer's <code>detail</code>, given as a JSON text or an object,
+/// or <code>""</code> when the answer carries none.</p>
+ClassMethod ViolationReasonOf(pBody As %String) As %String
+{
+    Set tObj = pBody
+    If '$IsObject(tObj) {
+        Try {
+            Set tObj = ##class(%DynamicAbstractObject).%FromJSON(pBody)
+        } Catch ex {
+            Set tObj = ""
+        }
+    }
+    If '$IsObject(tObj) Quit ""
+    If '$IsObject(tObj.%Get("detail")) Quit ""
+    Quit tObj.%Get("detail").%Get("violations").%Get(0).%Get("reason")
+}
+
 /// <p>Whether <var>pText</var> contains <var>pWord</var>.</p>
 ClassMethod Mentions(pText As %String, pWord As %String) As %Boolean
 {
@@ -777,6 +801,21 @@ ClassMethod RemoveProbes() As %Status
     }
     Set $NAMESPACE = tOrigNS
     Quit $$$OK
+}
+
+/// <p>Story 18.29, AD-59: the copy tool's input schema names <code>CopyFrom</code> as a required string and drops
+/// <code>Roles</code>, and the copy's snippet form is ObjectScript.</p>
+/// <p>Mutation (Rule 19): remove <code>CopyFrom</code> from the required list in
+/// <method>OcuPilot.Screen.Tool.UserCopy.InputSchema</method> -- the required-list leg reddens.</p>
+Method TestTheCopyToolPinsItsInputSchemaAndSnippetForm()
+{
+    Set tSchema = ##class(OcuPilot.Screen.Tool.UserCopy).InputSchema()
+    Set tProps = tSchema.%Get("properties")
+    Do $$$AssertEquals(tProps.%GetTypeOf("CopyFrom"), "object", "the input schema names CopyFrom as a property")
+    Do $$$AssertEquals(tProps.%GetTypeOf("Roles"), "unassigned", "and drops Roles")
+    Do $$$AssertTrue(tSchema.%Get("required").%ToJSON() [ """CopyFrom""", "and requires CopyFrom: " _ tSchema.%Get("required").%ToJSON())
+    Do $$$AssertEquals(##class(OcuPilot.Port.UserCopyPort).SnippetForm(##class(OcuPilot.Port.UserCopyPort).#USEREndpoint, ##class(OcuPilot.Port.UserCopyPort).#COPYTYPE), "objectscript", "the copy's snippet is ObjectScript")
+    Quit
 }
 
 }

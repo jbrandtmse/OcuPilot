@@ -391,7 +391,11 @@ test('AC6: a copy source that holds no privileged role states no consequence', a
     await page.waitForFunction((value) => document.querySelector(`#ocu-user-CopyFrom option[value="${value}"]`) !== null, { timeout: config.navigationTimeoutMs }, 'OcuPilotProbeCopyPlain');
     await page.select('#ocu-user-CopyFrom', 'OcuPilotProbeCopyPlain');
     await page.waitForFunction((name) => document.querySelector('#ocu-user-CopyFrom')?.value === name, { timeout: config.navigationTimeoutMs }, 'OcuPilotProbeCopyPlain');
-    await new Promise((resolve) => setTimeout(resolve, 500));
+    // The source read has answered once its role is drawn in the copy's role list.
+    await page.waitForFunction(
+      () => [...document.querySelectorAll('.ocu-form-role-name')].some((node) => node.textContent.trim() === '%Developer'),
+      { timeout: config.navigationTimeoutMs }
+    );
     const text = await page.evaluate(() => document.body.innerText);
     assert.ok(!text.includes(STRINGS.userCopyPrivilegedEffect), 'no consequence is stated for a source without a privileged role');
   } finally {

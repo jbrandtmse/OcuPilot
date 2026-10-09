@@ -277,7 +277,7 @@ Method TestACallerWhoCannotReadTheRolesKeepsOnlyStoredRoles()
 }
 
 /// <p>Story 18.29 (DW-1662): a principal holding only the tab's two pairs creates a configuration with the
-/// default customization role the editor pre-ticks, and the instance stores it. A create's default roles are
+/// default customization roles the editor pre-ticks (%DB_IRISSYS and %Manager), and the instance stores them. A create's default roles are
 /// read as stored, so the role list the principal cannot read is not consulted for them.</p>
 /// <p>Mutation (Rule 19): <method>OcuPilot.Area.Security.OAuthAuthorizationServerRules.CustomizationViolations</method>
 /// reads a create's stored roles from nothing instead of <method>Defaults</method> -- the pre-ticked role then
@@ -285,9 +285,9 @@ Method TestACallerWhoCannotReadTheRolesKeepsOnlyStoredRoles()
 Method TestALeastPrivilegedPrincipalCreatesWithTheDefaultRoles()
 {
     Set tUser = ..#LEASTUSER
-    Set tBody = $ClassMethod(..#PROBE, "Body").%ToJSON()
+    Set tBody = $ClassMethod(..#PROBE, "Body", {"CustomizationRoles": ["%DB_IRISSYS", "%Manager"]}).%ToJSON()
     Set tSC = ..Request("POST", ..#SAVEPATH, tBody, tUser, .tStatus, .tRaw, .tHeaders)
-    Do $$$AssertEquals(tStatus, 201, "the create with the pre-ticked default role answers 201: " _ $Extract(tRaw, 1, 300))
+    Do $$$AssertEquals(tStatus, 201, "the create with the pre-ticked default roles, %DB_IRISSYS and %Manager, answers 201: " _ $Extract(tRaw, 1, 300))
     Do $$$AssertEquals($ClassMethod(..#PROBE, "Holds"), 1, "and the configuration is stored")
 }
 
