@@ -7,8 +7,9 @@
 /// pure <method>Hunk</method>.</p>
 /// <p><b>What it needs from the environment:</b> OcuPilot installed in <code>HSCUSTOM</code> and serving over
 /// HTTP, a <code>USER</code> namespace with the probe documents <class>OcuPilot.Test.ExplorerSaveAgentProbe</class>
-/// names, and the <code>ENSLIB</code> database mapped for <code>Ens.Director</code>. It removes what it creates
-/// and runs under one test run at a time.</p>
+/// names, and the <code>ENSLIB</code> database mapped for <code>Ens.Director</code>. It removes what it creates,
+/// snapshots the stored governance policy before each test, clears it and puts it back after it, and runs under
+/// one test run at a time.</p>
 Class OcuPilot.Test.ExplorerSaveRules Extends %UnitTest.TestCase
 {
 
@@ -18,17 +19,27 @@ Parameter PROBENAMESPACE = "USER";
 
 Parameter ALPHA = "OcuProbe2021.Rules";
 
+/// <p>The policy found before the test, put back after it.</p>
+Property StoredPolicy [ MultiDimensional ];
+
 Method OnBeforeOneTest() As %Status
 {
     Do ##class(OcuPilot.Kernel.Proposal.Caller).Clear()
     Do ##class(OcuPilot.Kernel.Scope).Clear()
-    Quit $$$OK
+    Kill ..StoredPolicy
+    Set tSC = ##class(OcuPilot.Test.GovernanceFixture).Snapshot(.tRows)
+    If $$$ISERR(tSC) Quit tSC
+    Merge ..StoredPolicy = tRows
+    Quit ##class(OcuPilot.Test.GovernanceFixture).Clear()
 }
 
 Method OnAfterOneTest() As %Status
 {
     Do ##class(OcuPilot.Kernel.Proposal.Caller).Clear()
     Do ##class(OcuPilot.Kernel.Scope).Clear()
+    Kill tRows
+    Merge tRows = ..StoredPolicy
+    Do $$$AssertStatusOK(##class(OcuPilot.Test.GovernanceFixture).Restore(.tRows), "the policy found before the test is put back")
     Do $$$AssertStatusOK($ClassMethod(..#PROBE, "Remove", ..#PROBENAMESPACE), "every probe document is removed")
     Do $$$AssertStatusOK(##class(OcuPilot.Test.ProposalFixture).RemoveSeeded(.tRemaining), "the probe proposals and turns are removed")
     Quit $$$OK
@@ -67,10 +78,15 @@ Method TestARepeatedOldIsRefused()
     Do ..Refused(..#PROBENAMESPACE, "explorer.classes.save", {"Names": (..#ALPHA _ ".cls"), "Edits": [{"Old": "    Quit 1", "New": "    Quit 2"}]}, "occurs 2 times", "a repeated Old")
 }
 
+/// <p>An edit whose result saves as the stored lines is a no-op, a line-ending carriage return included: the
+/// port's save drops it, so the card would show no change and Confirm would save none.</p>
+/// <p>Mutation (Rule 19): <method>OcuPilot.Screen.Tool.ExplorerSaveMint.Mint</method> compares the raw texts
+/// (<code>tNew = tOld</code>) -- the carriage-return leg goes red.</p>
 Method TestAnEmptyOrNoOpEditIsRefused()
 {
     Do $$$AssertStatusOK($ClassMethod(..#PROBE, "MakeClass", ..#PROBENAMESPACE, ..#ALPHA), "a probe class is saved")
     Do ..Refused(..#PROBENAMESPACE, "explorer.classes.save", {"Names": (..#ALPHA _ ".cls"), "Edits": [{"Old": "    Quit 1", "New": "    Quit 1"}]}, "the edits change nothing", "a no-op edit")
+    Do ..Refused(..#PROBENAMESPACE, "explorer.classes.save", {"Names": (..#ALPHA _ ".cls"), "Edits": [{"Old": "    Quit 1", "New": ("    Quit 1" _ $Char(13))}]}, "the edits change nothing", "an edit adding only a line-ending carriage return")
     Do ..Refused(..#PROBENAMESPACE, "explorer.classes.save", {"Names": (..#ALPHA _ ".cls"), "Edits": [{"Old": "", "New": "x"}]}, "Old is empty", "an empty Old")
 }
 
@@ -156,7 +172,10 @@ Method TestTheConfirmRuleRefusesWhatTheMintWould()
 }
 
 /// <p>Hunk legs: an interior change keeps three lines of context each side and numbers from the first of them;
-/// a change on the first line numbers from 1; an appended line keeps the shared lines as context.</p>
+/// a change on the first line numbers from 1; an appended line keeps the shared lines as context; and a final
+/// line feed, which the save puts as an empty last line, is shown as that line.</p>
+/// <p>Mutation (Rule 19), last leg: <method>OcuPilot.Screen.Tool.ExplorerSaveMint.Hunk</method> reads both sides
+/// with <method>OcuPilot.Port.AtelierPort.Lines</method> alone -- the final-line-feed leg goes red.</p>
 /// <p>Mutation (Rule 19): <method>OcuPilot.Screen.Tool.ExplorerSaveMint.Hunk</method> with the context cut at four
 /// lines -- the interior leg goes red.</p>
 Method TestTheHunkKeepsThreeLinesOfContext()
@@ -171,6 +190,8 @@ Method TestTheHunkKeepsThreeLinesOfContext()
     Do $$$AssertEquals(tFirst.line, 1, "a change on the first line numbers from 1")
     Set tAppend = ##class(OcuPilot.Screen.Tool.ExplorerSaveMint).Hunk("a" _ $Char(10) _ "b", "a" _ $Char(10) _ "b" _ $Char(10) _ "c")
     Do $$$AssertEquals(tAppend.after, "a" _ $Char(10) _ "b" _ $Char(10) _ "c" _ $Char(10), "an appended line is shown after the shared lines")
+    Set tEmptyLast = ##class(OcuPilot.Screen.Tool.ExplorerSaveMint).Hunk("a" _ $Char(10) _ "b", "a" _ $Char(10) _ "b" _ $Char(10))
+    Do $$$AssertEquals(tEmptyLast.before _ "|" _ tEmptyLast.after, "a" _ $Char(10) _ "b" _ $Char(10) _ "|a" _ $Char(10) _ "b" _ $Char(10) _ $Char(10), "a final line feed the save puts as an empty last line is shown as that line")
 }
 
 }

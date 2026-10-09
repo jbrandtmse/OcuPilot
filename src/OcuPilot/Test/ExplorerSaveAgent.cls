@@ -4,8 +4,9 @@
 /// says so; a document changed after the mint is refused 409 and nothing is written.</p>
 /// <p><b>What it needs from the environment:</b> OcuPilot installed in <code>HSCUSTOM</code> and serving
 /// over HTTP as <class>OcuPilot.Test.Http</class>'s account, and a <code>USER</code> namespace. It creates
-/// and removes the documents <class>OcuPilot.Test.ExplorerSaveAgentProbe</class> names, and it runs under
-/// one test run at a time on that instance.</p>
+/// and removes the documents <class>OcuPilot.Test.ExplorerSaveAgentProbe</class> names, snapshots the stored
+/// governance policy before each test, clears it and puts it back after it, and it runs under one test run
+/// at a time on that instance.</p>
 Class OcuPilot.Test.ExplorerSaveAgent Extends %UnitTest.TestCase
 {
 
@@ -20,17 +21,27 @@ Parameter ROUTINETOOL = "explorer.routines.save";
 
 Parameter ALPHA = "OcuProbe2021.Alpha";
 
+/// <p>The policy found before the test, put back after it.</p>
+Property StoredPolicy [ MultiDimensional ];
+
 Method OnBeforeOneTest() As %Status
 {
     Do ##class(OcuPilot.Kernel.Proposal.Caller).Clear()
     Do ##class(OcuPilot.Kernel.Scope).Clear()
-    Quit $$$OK
+    Kill ..StoredPolicy
+    Set tSC = ##class(OcuPilot.Test.GovernanceFixture).Snapshot(.tRows)
+    If $$$ISERR(tSC) Quit tSC
+    Merge ..StoredPolicy = tRows
+    Quit ##class(OcuPilot.Test.GovernanceFixture).Clear()
 }
 
 Method OnAfterOneTest() As %Status
 {
     Do ##class(OcuPilot.Kernel.Proposal.Caller).Clear()
     Do ##class(OcuPilot.Kernel.Scope).Clear()
+    Kill tRows
+    Merge tRows = ..StoredPolicy
+    Do $$$AssertStatusOK(##class(OcuPilot.Test.GovernanceFixture).Restore(.tRows), "the policy found before the test is put back")
     Do $$$AssertStatusOK($ClassMethod(..#PROBE, "Remove", ..#PROBENAMESPACE), "every probe document is removed")
     Do $$$AssertStatusOK(##class(OcuPilot.Test.ProposalFixture).RemoveSeeded(.tRemaining), "the probe proposals and turns are removed")
     Quit $$$OK
@@ -48,9 +59,8 @@ ClassMethod EditOf(pAnswer As %String = "2") As %DynamicObject
     Quit {"Names": (..#ALPHA _ ".cls"), "Edits": [{"Old": "    Quit 1", "New": ("    Quit " _ pAnswer)}], "rationale": "change the answer", "expectedImpact": "the method answers the new value"}
 }
 
-/// <p>The Edit mints one proposal: its change is one changed-lines row with three lines of context, its
-/// consequence is <code>EXPLORER.SAVE.COMPILES</code>, it is destructive, and the stored row carries the
-/// write's own requirement on the routines database.</p>
+/// <p>The Edit mints one proposal: its change is one changed-lines row with three lines of context, and its
+/// stored consequence is <code>EXPLORER.SAVE.COMPILES</code>.</p>
 /// <p>Mutation (Rule 19): <parameter>OcuPilot.Screen.Tool.ExplorerSave.ADVERTISED</parameter> 0 -- this
 /// goes red.</p>
 Method TestTheEditMintsOneChangedLinesRow()
@@ -82,8 +92,7 @@ Method TestTheRoutineEditMints()
     Do $$$AssertTrue(tProposal.changed.%Get(0).after [ " Quit 1", "the new line is shown")
 }
 
-/// <p>Confirm saves the new text, answers the compile's output with no errors, and writes one marker; the
-/// ledger row for the proposal is <code>ok</code>.</p>
+/// <p>Confirm saves the new text and answers the compile's output with no errors.</p>
 Method TestTheConfirmSavesAndCompiles()
 {
     Do $$$AssertStatusOK($ClassMethod(..#PROBE, "MakeClass", ..#PROBENAMESPACE, ..#ALPHA), "a probe class is saved")
@@ -112,10 +121,9 @@ Method TestTheSavedButNotCompiledIsSaid()
     Do $$$AssertTrue($Piece(##class(OcuPilot.Test.ExplorerSaveProbe).Source(..#PROBENAMESPACE, ..#ALPHA _ ".cls"), $Char(10), 6) = "    Quit (1", "the instance holds the new text")
 }
 
-/// <p>A document changed after the mint is refused 409 at the confirm, and nothing is written: the source
-/// is the other writer's text.</p>
-/// <p>Mutation (Rule 19): <parameter>OcuPilot.Kernel.Proposal.Mint</parameter>'s fingerprint subject without
-/// <code>Modified</code> -- this goes red.</p>
+/// <p>A document changed after the mint is refused 409 <code>TARGETCHANGED</code> at the confirm, the
+/// kernel's changed-target answer and not the port's version conflict, and nothing is written: the source is
+/// the other writer's text.</p>
 Method TestAChangedDocumentIsRefusedAndNothingIsWritten()
 {
     Do $$$AssertStatusOK($ClassMethod(..#PROBE, "MakeClass", ..#PROBENAMESPACE, ..#ALPHA), "a probe class is saved")
@@ -123,7 +131,7 @@ Method TestAChangedDocumentIsRefusedAndNothingIsWritten()
     If '$IsObject($Get(tProposal)) Do $$$AssertTrue(0, "the Edit is minted: " _ $Extract($Get(tContent), 1, 300)) Quit
     Do $$$AssertStatusOK($ClassMethod(..#PROBE, "Rewrite", ..#PROBENAMESPACE, ..#ALPHA, "9"), "another writer changes the class")
     Set tConfirmSC = ##class(OcuPilot.Test.ExplorerWrite).ConfirmIn(..#PROBENAMESPACE, tProposal, .tResult, .tHttp, .tCode)
-    Do $$$AssertEquals($Get(tHttp), 409, "the confirm is refused 409: " _ $Get(tCode))
+    Do $$$AssertEquals($Get(tHttp) _ " " _ $Get(tCode), "409 " _ ##class(OcuPilot.Kernel.Proposal.Write).#TARGETCHANGED, "the confirm is refused as a changed target")
     Do $$$AssertEquals($Piece(##class(OcuPilot.Test.ExplorerSaveProbe).Source(..#PROBENAMESPACE, ..#ALPHA _ ".cls"), $Char(10), 6), "    Quit 9", "and the source is the other writer's text")
 }
 

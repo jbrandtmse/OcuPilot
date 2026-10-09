@@ -2,13 +2,15 @@
 /// the class viewer's pairs and the routines database's WRITE asks, through a scripted model, for the class's
 /// source and then for two replacements in one reply. One replacement quotes a key-shaped value the read showed
 /// as <code>[redacted]</code>, so the mint refuses it; the other is a line copied from the read. The proposal the
-/// second one mints is confirmed over HTTP as the same principal: the class holds the new text, the confirm answers
-/// the compile's output, and no provider request carries a compile line.</p>
+/// second one mints is confirmed over HTTP as the same principal, scoped to <code>USER</code> as the client scopes
+/// it: the class holds the new text and the confirm answers the compile's output. A second turn in the same
+/// conversation, after the compile, replays the first and carries no compile line.</p>
 /// <p><b>What it needs from the environment:</b> OcuPilot installed and serving over HTTP on a throwaway, a
 /// <code>USER</code> namespace, and both <parameter>ARMINGVARIABLE</parameter> and
 /// <parameter>PROVIDERVARIABLE</parameter> reading <code>1</code>: it creates a turn principal, the probe class and
-/// the <code>turnprobe</code> definition, and runs one turn job. Everything is removed in
-/// <method>OnAfterAllTests</method> and after each test.</p>
+/// the <code>turnprobe</code> definition, and runs two turn jobs. It snapshots the stored governance policy before
+/// the test, clears it and puts it back after it. Everything is removed in <method>OnAfterAllTests</method> and
+/// after each test.</p>
 Class OcuPilot.Test.ExplorerSaveTurn Extends %UnitTest.TestCase
 {
 
@@ -37,6 +39,9 @@ Property PreparedDefinitionId As %String;
 
 Property PreparedPrior As %String;
 
+/// <p>The policy found before the test, put back after it.</p>
+Property StoredPolicy [ MultiDimensional ];
+
 Method %OnNew(initvalue As %String = "") As %Status
 {
     Set tSC = ##super(initvalue)
@@ -55,11 +60,7 @@ Method OnBeforeAllTests() As %Status
     Set ..PreparedTurnPassword = $ClassMethod(..#FIXTURE, "NewPassword")
     Do ##class(OcuPilot.Port.AtelierPort).DatabaseResources(..#NAMESPACE, .tCode, .tGlobals, .tMapped, .tResolved)
     If 'tResolved || (tCode = "") Quit $$$ERROR($$$GeneralError, "the " _ ..#NAMESPACE _ " namespace's code database could not be resolved")
-    ; The confirm resolves its write pairs for the request's namespace (the default), not the proposal's, so the
-    ; principal also holds WRITE on that namespace's routines database.
-    Do ##class(OcuPilot.Port.AtelierPort).DatabaseResources("HSCUSTOM", .tDefaultCode, .tDefaultGlobals, .tDefaultMapped, .tDefaultResolved)
     Set tGrants = ..#DEVELOPMENTGRANT _ "," _ tCode _ ":RW"
-    If (tDefaultCode '= "") && (tDefaultCode '= tCode) Set tGrants = tGrants _ "," _ tDefaultCode _ ":RW"
     Set tUser = $Parameter(..#FIXTURE, "USERA")
     Set tSC = $ClassMethod(..#FIXTURE, "EnsurePrincipal", tUser, ..PreparedTurnPassword, $ClassMethod(..#FIXTURE, "Resources", 0), tGrants)
     If $$$ISERR(tSC) Quit tSC
@@ -82,6 +83,12 @@ Method OnAfterAllTests() As %Status
 Method OnBeforeOneTest() As %Status
 {
     Do ##class(OcuPilot.Kernel.Scope).Clear()
+    Kill ..StoredPolicy
+    Set tSC = ##class(OcuPilot.Test.GovernanceFixture).Snapshot(.tRows)
+    If $$$ISERR(tSC) Quit tSC
+    Merge ..StoredPolicy = tRows
+    Set tSC = ##class(OcuPilot.Test.GovernanceFixture).Clear()
+    If $$$ISERR(tSC) Quit tSC
     Do $ClassMethod(..#FIXTURE, "Sweep", $ListBuild(..#TAG))
     Quit $ClassMethod(..#FIXTURE, "SetTag", ..PreparedDefinitionId, ..#TAG)
 }
@@ -89,6 +96,9 @@ Method OnBeforeOneTest() As %Status
 Method OnAfterOneTest() As %Status
 {
     Do ##class(OcuPilot.Kernel.Scope).Clear()
+    Kill tRows
+    Merge tRows = ..StoredPolicy
+    Do $$$AssertStatusOK(##class(OcuPilot.Test.GovernanceFixture).Restore(.tRows), "the policy found before the test is put back")
     Do $$$AssertEquals($ClassMethod(..#FIXTURE, "Sweep", $ListBuild(..#TAG)), "", "no probe job, turn, slot or stub node survives the method")
     Quit $$$OK
 }
@@ -127,8 +137,46 @@ ClassMethod Answer() As %String
     Quit "    Quit " _ $Piece($Piece(tText, "    Quit ", 2), $Char(10), 1)
 }
 
+/// <p>The tool results of the provider request <var>pCall</var>, by tool-use id, each unwrapped from its data
+/// frame: <var>pResults</var>(id) is the body, and <var>pWrapped</var>(id) whether it was framed.</p>
+ClassMethod ResultsOf(pCall As %Integer, Output pResults, Output pWrapped)
+{
+    Kill pResults, pWrapped
+    Set tMessages = ""
+    Try {
+        Set tMessages = ##class(%DynamicAbstractObject).%FromJSON(##class(OcuPilot.Test.TurnProvider).Recorded(..#TAG, pCall, "messages"))
+    } Catch {
+        Set tMessages = ""
+    }
+    If '$IsObject(tMessages) Quit
+    Set tIterator = tMessages.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tMessage) {
+        If (tMessage.%Get("role") '= "user") || (tMessage.%GetTypeOf("content") '= "array") Continue
+        Set tBlocks = tMessage.%Get("content").%GetIterator()
+        While tBlocks.%GetNext(.tBlockIndex, .tBlock) {
+            If tBlock.%Get("type") '= "tool_result" Continue
+            Set tId = tBlock.%Get("tool_use_id")
+            Set pResults(tId) = $ClassMethod(..#FIXTURE, "Unwrapped", tBlock.%Get("content"), .tFramed)
+            Set pWrapped(tId) = tFramed
+        }
+    }
+}
+
+/// <p>The JSON object <var>pText</var> holds, or <code>""</code>.</p>
+ClassMethod Parsed(pText As %String) As %DynamicAbstractObject
+{
+    Set tParsed = ""
+    Try {
+        Set tParsed = ##class(%DynamicAbstractObject).%FromJSON(pText)
+    } Catch {
+        Set tParsed = ""
+    }
+    Quit tParsed
+}
+
 /// <p>Mutation (Rule 19): <class>OcuPilot.Screen.Tool.ExplorerSaveMint</class> stores <code>Compile: false</code>
-/// -- the confirm's output leg goes red.</p>
+/// -- the confirm's output leg goes red. <method>OcuPilot.Kernel.State.Convo.HistoryMessages</method> appends a
+/// compile line to each replayed reply -- the second turn's leg goes red.</p>
 Method TestTheAgentsSaveIsConfirmedOverHTTPAndCompiles()
 {
     Set tUser = $Parameter(..#FIXTURE, "USERA")
@@ -141,7 +189,8 @@ Method TestTheAgentsSaveIsConfirmedOverHTTPAndCompiles()
     Do tGood.%Set("name", ##class(OcuPilot.Screen.Tool.Registry).WireName("explorer.classes.save"), "string")
     Do ##class(OcuPilot.Test.TurnProvider).Script(..#TAG, 0, ##class(OcuPilot.Test.TurnProvider).ToolUseReply([(tRead)]))
     Do ##class(OcuPilot.Test.TurnProvider).Script(..#TAG, 0, ##class(OcuPilot.Test.TurnProvider).ToolUseReply([(tBad), (tGood)]))
-    Do ##class(OcuPilot.Test.TurnProvider).Script(..#TAG, 0, ##class(OcuPilot.Test.TurnProvider).TextReply("done"))
+    Do ##class(OcuPilot.Test.TurnProvider).Script(..#TAG, 0, ##class(OcuPilot.Test.TurnProvider).TextReply("SAVETURNREPLYONE"))
+    Do ##class(OcuPilot.Test.TurnProvider).Script(..#TAG, 0, ##class(OcuPilot.Test.TurnProvider).TextReply("SAVETURNREPLYTWO"))
     Set tConvId = $ClassMethod(..#FIXTURE, "StartConversation", tUser, ..PreparedTurnPassword, .tStatus, .tText)
     Do $$$AssertNotEquals(tConvId, "", "the principal starts a conversation: " _ tStatus)
     Do $ClassMethod(..#FIXTURE, "Call", "POST", "/turn?ns=" _ ..#NAMESPACE, tUser, ..PreparedTurnPassword, $ClassMethod(..#FIXTURE, "StartBody", "change the probe class's answer to 2", tConvId), .tStatus, .tText, .tHeaders)
@@ -154,6 +203,15 @@ Method TestTheAgentsSaveIsConfirmedOverHTTPAndCompiles()
     Do $$$AssertEquals(tState, "completed", "the turn completes")
     Do $$$AssertEquals(##class(OcuPilot.Test.TurnProvider).Calls(..#TAG), 3, "after three provider calls")
 
+    Do ..ResultsOf(3, .tResults, .tWrapped)
+    Set tRefused = ..Parsed($Get(tResults("toolu_bad")))
+    Do $$$AssertTrue($IsObject(tRefused) && (tRefused.%Get("code") = "TOOL.ARGUMENTS") && $IsObject(tRefused.%Get("detail")) && (tRefused.detail.%Get("problem") [ "matched exactly"), "the [redacted] copy is refused TOOL.ARGUMENTS and told its Old is matched exactly (DW-2228): " _ $Extract($Get(tResults("toolu_bad")), 1, 300))
+    Set tMinted = ..Parsed($Get(tResults("toolu_good")))
+    Set tRow = ""
+    If $IsObject(tMinted) && (tMinted.%GetTypeOf("changed") = "array") && (tMinted.changed.%Size() = 1) Set tRow = tMinted.changed.%Get(0)
+    Do $$$AssertTrue($Get(tWrapped("toolu_good")) && $IsObject(tRow) && (tRow.%Get("kind") = "lines") && (tRow.%Get("after") [ "    Quit 2"), "the model's result for the valid edit is framed and carries the changed-lines hunk: " _ $Extract($Get(tResults("toolu_good")), 1, 300))
+    Do $$$AssertTrue($IsObject(tRow) && (tRow.%Get("before") [ "[redacted]") && ($Get(tResults("toolu_good")) '[ ..#SECRET), "the hunk's key-bearing context line reaches the model as [redacted], never as the key")
+
     Set tProposals = $Select($IsObject($Get(tView)) && $IsObject(tView.%Get("proposals")): tView.proposals, 1: [])
     Do $$$AssertEquals(tProposals.%Size(), 1, "the turn holds one proposal, the valid edit's: " _ tProposals.%ToJSON())
     If tProposals.%Size() '= 1 {
@@ -161,24 +219,21 @@ Method TestTheAgentsSaveIsConfirmedOverHTTPAndCompiles()
         Quit
     }
     Set tKey = tProposals.%Get(0).%Get("proposalId")
-    Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("POST", "/api/ocupilot/proposal/" _ tKey _ "/confirm", tUser, ..PreparedTurnPassword, .tStatus, .tText, .tHeaders, "", "application/json")
-    Do $$$AssertEquals(tStatus, 200, "the confirm answers 200: " _ $Extract($Get(tText), 1, 300))
-    Set tBody = ""
-    Try {
-        Set tBody = ##class(%DynamicAbstractObject).%FromJSON(tText)
-    } Catch {
-        Set tBody = ""
-    }
-    Do $$$AssertTrue($IsObject(tBody) && $IsObject(tBody.%Get("output")), "the confirm answers the compile's output")
+    Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("POST", "/api/ocupilot/proposal/" _ tKey _ "/confirm?ns=" _ ..#NAMESPACE, tUser, ..PreparedTurnPassword, .tStatus, .tText, .tHeaders, "", "application/json")
+    Do $$$AssertEquals(tStatus, 200, "the confirm, scoped to the proposal's namespace, answers 200: " _ $Extract($Get(tText), 1, 300))
+    Set tBody = ..Parsed($Get(tText))
+    Do $$$AssertTrue($IsObject(tBody) && $IsObject(tBody.%Get("output")) && (tBody.output.%GetTypeOf("errors") = "boolean") && 'tBody.output.errors, "the confirm answers the compile's output, with no errors")
     Do $$$AssertEquals(..Answer(), "    Quit 2", "the class holds the new text: " _ ##class(OcuPilot.Test.ExplorerSaveProbe).Source(..#NAMESPACE, ..#PROBECLASS _ ".cls"))
-    Set tRecorded = ""
-    For tCall = 1:1:3 {
-        Set tRecorded = tRecorded _ ##class(OcuPilot.Test.TurnProvider).Recorded(..#TAG, tCall, "messages")
+
+    Do $ClassMethod(..#FIXTURE, "Call", "POST", "/turn?ns=" _ ..#NAMESPACE, tUser, ..PreparedTurnPassword, $ClassMethod(..#FIXTURE, "StartBody", "what changed?", tConvId), .tStatus, .tText, .tHeaders)
+    Do $$$AssertEquals(tStatus, 202, "a second turn starts after the confirm: " _ $Extract(tText, 1, 200))
+    If tStatus = 202 {
+        Set tState = $ClassMethod(..#FIXTURE, "AwaitEnd", ##class(%DynamicObject).%FromJSON(tText).turnId, tUser, ..PreparedTurnPassword, 90, .tView)
+        Do $$$AssertEquals(tState, "completed", "the second turn completes")
+        Set tAfter = ##class(OcuPilot.Test.TurnProvider).Recorded(..#TAG, 4, "messages")
+        Do $$$AssertTrue(tAfter [ "SAVETURNREPLYONE", "the request made after the compile replays the first turn")
+        Do $$$AssertTrue((tAfter '[ "Compiling") && (tAfter '[ "Compilation"), "and carries no compile line")
     }
-    Do $$$AssertTrue((tRecorded [ "kind") && (tRecorded [ "lines"), "the provider requests carry the change's hunk")
-    Do $$$AssertTrue(tRecorded [ "matched exactly", "the refused replacement tells the model its Old is matched exactly (DW-2228)")
-    Do $$$AssertTrue((tRecorded '[ "Compiling") && (tRecorded '[ "Compilation"), "and no provider request carries a compile line")
     Do ..RemoveKeyed()
 }
-
 }

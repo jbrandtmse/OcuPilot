@@ -41,7 +41,7 @@ import {
 } from './example-proposal';
 import { CodeBlock } from './code-block';
 import { LongBlock } from './long-block';
-import { TextDiff, hunkCounts } from './text-diff';
+import { TextDiff, hunkCounts, hunkRowTexts } from './text-diff';
 
 /**
  * The entity type whose delete carries the residue sentence (AD-48, DW-1480).
@@ -711,10 +711,17 @@ export class ProposalCard {
     return prefix === '' ? '' : `${prefix}:${part}`;
   }
 
-  /** The changed rows' estimate: each row's `field before after`, summed. */
+  /**
+   * The changed rows' estimate, summed: a changed-lines row's drawn rows (`hunkRowTexts`), and every
+   * other row's `field before after`.
+   */
   protected get diffLines(): number {
     return this.changedRows.reduce(
-      (total, row) => total + estimateLines(`${row.field} ${row.before} ${row.after}`),
+      (total, row) =>
+        total +
+        (row.kind === 'lines'
+          ? estimateLines(hunkRowTexts(row.before, row.after).join('\n'))
+          : estimateLines(`${row.field} ${row.before} ${row.after}`)),
       0
     );
   }
@@ -1031,7 +1038,7 @@ export class ProposalCard {
 
   /**
    * Whether a confirmed agent save did not compile (Story 20.21): the save's own consequence, and the
-   * confirm's `output.errors`. It is the one place the card says so, under the status line.
+   * confirm's `output.errors`. The line sits under the status line, outside every long block.
    */
   protected get savedNotCompiledVisible(): boolean {
     return this.confirmed && this.view().consequence === CONSEQUENCE_EXPLORERSAVECOMPILES && this.outputErrors() === true;

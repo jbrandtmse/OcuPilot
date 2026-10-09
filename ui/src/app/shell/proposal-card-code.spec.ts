@@ -14,7 +14,8 @@ import { ProposalCard } from './proposal-card';
  *
  * Mutations (Rule 19), component level: make the card ignore `kind` so a lines row draws as a
  * changed-field row -> the lines-row test goes red; make `savedNotCompiledVisible` always false ->
- * the saved-not-compiled test goes red.
+ * the saved-not-compiled test goes red; estimate a lines row from its `field before after` -> the
+ * short-hunk test goes red.
  */
 
 const NOW_MS = Date.parse('2026-10-08T09:50:00Z');
@@ -89,10 +90,20 @@ describe('ProposalCard for an agent code save', () => {
 
   it('reads the lines counts in the summary line of a long hunk', () => {
     const long = Array.from({ length: 12 }, (_, index) => `    Set x${index} = ${index}`).join('\n') + '\n';
-    const changed = long.replace('x0 = 0', 'x0 = 99');
+    const changed = Array.from({ length: 12 }, (_, index) => `    Set x${index} = ${index + 100}`).join('\n') + '\n';
     const card = mount('live', view({ changed: [{ ...LINES_ROW, before: long, after: changed, line: 1 }] }));
     const summary = card.querySelector('.ocu-proposal-card-summary-fields')?.textContent?.trim();
-    expect(summary).toBe('OcuProbe2021.Demo.cls: lines changed, 1 removed and 1 added');
+    expect(summary).toBe('OcuProbe2021.Demo.cls: lines changed, 12 removed and 12 added');
+    expect(card.querySelector('.ocu-proposal-card-diff .ocu-long-block-toggle')).not.toBeNull();
+  });
+
+  it('keeps a one-line change with three lines of context each side open: it draws eight rows', () => {
+    const before = 'a\nb\nc\n    Quit 1\nd\ne\nf\n';
+    const after = 'a\nb\nc\n    Quit 2\nd\ne\nf\n';
+    const card = mount('live', view({ changed: [{ ...LINES_ROW, before, after, line: 2 }] }));
+    expect(card.querySelectorAll('app-text-diff .ocu-line-diff-line')).toHaveLength(8);
+    expect(card.querySelector('.ocu-proposal-card-diff .ocu-long-block-toggle')).toBeNull();
+    expect(card.querySelector('.ocu-proposal-card-summary-fields')).toBeNull();
   });
 
   it('says a confirmed save that did not compile, under the status line', () => {

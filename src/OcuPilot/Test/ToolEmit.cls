@@ -86,7 +86,7 @@ Method TestEveryLiveToolIsAdvertisedInTheSubset()
     Do $$$AssertStatusOK($ClassMethod(..#REGISTRY, "ProviderTools", .tAdvertised), "the tools are advertised")
     Do $$$AssertStatusOK($ClassMethod(..#REGISTRY, "ListTools", .tListed), "the live tools list")
     If '$IsObject(tListed) Quit
-    ; AD-53: an unadvertised tool (the license key's activation, the data browser's save) is listed and never advertised.
+    ; AD-53: an unadvertised tool (the license key's activation, for one) is listed and never advertised.
     Set tTools = []
     Set tListIterator = tListed.%GetIterator()
     While tListIterator.%GetNext(.tListIndex, .tListedTool) { If $ClassMethod(..#REGISTRY, "IsAdvertised", tListedTool) Do tTools.%Push(tListedTool) }

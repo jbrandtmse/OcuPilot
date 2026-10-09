@@ -40,6 +40,16 @@ export function hunkCounts(before: string, after: string): { readonly removed: n
   return changeCounts(hunkScript(before, after));
 }
 
+/**
+ * The rows `app-text-diff` draws for a hunk, as text: each drawn line's text, and an empty row for each
+ * collapsed run of unchanged lines. The card's long-block estimate counts these, not the hunk's two sides.
+ */
+export function hunkRowTexts(before: string, after: string): string[] {
+  return hunks(hunkScript(before, after), CONTEXT_LINES).flatMap((segment: DiffSegment): string[] =>
+    segment.kind === 'collapsed' ? [''] : segment.lines.map((line) => line.text)
+  );
+}
+
 /** The sign each kind of line carries before its text. */
 const SIGNS: Readonly<Record<DiffLine['kind'], string>> = { same: ' ', removed: '\u2212', added: '+' };
 

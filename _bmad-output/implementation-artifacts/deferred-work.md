@@ -10730,6 +10730,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-20-19-the-agent-reads-class-and-routine-source.md | severity: med | fix-risk: low | footprint: in-epic
 - evidence: Loop.cls :638 sanitizes tool_result content before the provider sees it; 20.19's Consumed-by says 20.21's model copies each Old from this text, while its mint reads the document itself
 - 2026-10-09T00:19:36Z status=routed owner=20-21-the-agent-saves-edits-to-existing-classes-and-routines by=cr note=20.21's mint must match each Old exactly against the instance text and refuse otherwise, never fuzzily; say so to the model
+- 2026-10-09T08:24:53Z status=resolved-by:20-21-the-agent-saves-edits-to-existing-classes-and-routines by=adjudication note=AC7: ExplorerSaveMint matches each Old exactly (ExplorerSaveRules DW-2228 and absent legs, ExplorerSaveMintUnit exact-match legs), the description and every match refusal carry the DW-2228 sentence (ExplorerSaveFlow provider leg), ExplorerSaveTurn's [redacted] copy refused
 
 ### DW-2229: README's What the agent sees section does not say class and routine source now reaches the configured provider, and its Secrets bullet reads against AD-36's named limit for credential literals in source
 - source: spec-20-19-the-agent-reads-class-and-routine-source.md | severity: med | fix-risk: low | footprint: out-of-footprint
@@ -10752,3 +10753,28 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: cycle-log-epic-18.md (18.29 run 37877773715) | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: run 37877773715 browser shard 2/3: ui/browser/sql-activity.browser-spec.mjs:287 Waiting failed 30000ms at :295; same code green locally 7/7 on ocupilot-ci; 18.29 touches no SQL activity file
 - 2026-10-09T04:37:13Z status=routed owner=23-5-the-range-end-cleanup-part-5 by=harvest note=assert on the probe's own row's absence, or filter the table to the probe's marker, rather than on the empty-state sentence
+
+### DW-2241: Take as script on an agent's class or routine save renders the text as the placeholder "<content>", so the script is not the reviewed change (AD-59)
+- source: spec-20-21-the-agent-saves-edits-to-existing-classes-and-routines.md | severity: med | fix-risk: med | footprint: in-epic
+- evidence: AtelierPort.Snippet TYPESAVE always renders "<content>" (pinned by AtelierPortSave.TestTheSaveRendersItsScript); 20.21 advertised the save, so Draft.Take on its card closes the proposal and answers a script that, run as is, writes "<content>" into a routine; the routine branch's %Routine.Write would also need the UDL header removed
+- 2026-10-09T08:21:47Z status=routed owner=20-20-the-agent-creates-new-classes-and-routines-on-the-person-s-c by=cr note=20.20 adds the create's script beside the save's; render stored text (header-aware, bounded) for both
+
+### DW-2242: An agent code write's Confirm gates WRITE on the request's namespace's routines database, not the proposal's stored Namespace
+- source: spec-20-21-the-agent-saves-edits-to-existing-classes-and-routines.md | severity: med | fix-risk: med | footprint: in-epic
+- evidence: ExplorerWrite.PrivilegePairs reads Kernel.Scope.Current() at confirm while the write targets the stored Namespace; a USER save confirmed with the shell scoped to HSCUSTOM is gated on HSCUSTOM's WRITE (the port's own gate still checks USER, so no escalation, only a false refusal); ExplorerSaveTurn had granted HSCUSTOM RW to pass
+- 2026-10-09T08:21:47Z status=routed owner=20-20-the-agent-creates-new-classes-and-routines-on-the-person-s-c by=cr note=20.20's create resolves the same pair; declare it from the stored Namespace for saves and creates
+
+### DW-2243: The agent cannot copy an exact Old from lines past the source read's 60,000-character cut
+- source: spec-20-21-the-agent-saves-edits-to-existing-classes-and-routines.md | severity: low | fix-risk: med | footprint: out-of-footprint
+- evidence: ExplorerSourceRead takes only a name, no starting line, so a class longer than the cut has lines the model never reads; a save quoting them fails safe (Old occurs 0 times)
+- 2026-10-09T08:21:47Z status=wontfix-accepted owner=20-21-the-agent-saves-edits-to-existing-classes-and-routines by=cr note=reopen_if=an agent save of a document over 60,000 characters is refused for an Old past the cut in a real session
+
+### DW-2244: The agent-save mapped-document legs rely on USER mapping the Ens package and routines to ENSLIB
+- source: spec-20-21-the-agent-saves-edits-to-existing-classes-and-routines.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: ExplorerSaveRules, ExplorerSaveFlow and ExplorerSaveMintUnit assert 'database ENSLIB' for Ens.* in USER, a product mapping of IRIS for Health that no test creates (declared in each class header; DocDb tests share it)
+- 2026-10-09T08:21:47Z status=wontfix-accepted owner=20-21-the-agent-saves-edits-to-existing-classes-and-routines by=cr note=reopen_if=a CI instance whose USER namespace does not map Ens to ENSLIB reddens these legs
+
+### DW-2245: A Compile route fault after PutDoc saved answers the save as failed while the instance holds the new text
+- source: spec-20-21-the-agent-saves-edits-to-existing-classes-and-routines.md | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: AtelierPort.SaveSet quits with the Compile route's error status after a successful PutDoc (19.3), so the card reads a failed write; a compile error (not a fault) is reported as output.errors
+- 2026-10-09T08:21:47Z status=wontfix-theoretical owner=20-21-the-agent-saves-edits-to-existing-classes-and-routines by=cr note=real only if the Compile route itself faults (not a compile error) after PutDoc succeeded

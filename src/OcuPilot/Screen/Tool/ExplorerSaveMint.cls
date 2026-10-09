@@ -8,7 +8,8 @@
 /// <li>each replacement is well formed, and its <code>New</code> carries no character the sanitizer would strip;</li>
 /// <li>the document's stored text is read through the port;</li>
 /// <li>each <code>Old</code> occurs exactly once in the text the earlier replacements left, compared exactly;</li>
-/// <li>the result differs from the stored text, fits the port's save, and keeps the document's name;</li>
+/// <li>the result saves as different lines from the stored text, fits the port's save (a length that cannot
+/// be measured counts as over), and keeps the document's name;</li>
 /// <li>the change's hunk is built and fits one card;</li>
 /// <li>the kernel's mint runs with the stored text, the read version, the compile choice and the hunk.</li>
 /// </ol>
@@ -80,13 +81,17 @@ ClassMethod Mint(pDescriptor As %String, pToolName As %String, pUser As %String,
             Set tSC = ..Refuse(tApplyProblem, .pHttpStatus, .pFault)
             Quit
         }
-        If tNew = tOld {
-            Set tSC = ..Refuse("the edits change nothing: the result is the stored text", .pHttpStatus, .pFault)
+        If ..SameLines(..SaveLines(tNew), ..SaveLines(tOld)) {
+            Set tSC = ..Refuse("the edits change nothing: the result saves as the stored text", .pHttpStatus, .pFault)
             Quit
         }
         Set tOneLine = []
         Do tOneLine.%Push(tNew, "string")
-        Set tTooLarge = ($Length(tOneLine.%ToJSON()) - 4) > ##class(OcuPilot.Port.AtelierPort).#MAXIMPORTCHARACTERS
+        Try {
+            Set tTooLarge = ($Length(tOneLine.%ToJSON()) - 4) > ##class(OcuPilot.Port.AtelierPort).#MAXIMPORTCHARACTERS
+        } Catch {
+            Set tTooLarge = 1
+        }
         If tTooLarge {
             Set tSC = ..Refuse("the edited document is longer than one save takes", .pHttpStatus, .pFault)
             Quit
@@ -97,8 +102,13 @@ ClassMethod Mint(pDescriptor As %String, pToolName As %String, pUser As %String,
         }
 
         Set tHunk = ..Hunk(tOld, tNew)
-        If $Length(tHunk.%ToJSON()) > $Parameter(pToolClass, "CHANGEMAXLENGTH") {
-            Set tSC = ..Refuse("the change is wider than one card can show: make the edits narrower", .pHttpStatus, .pFault)
+        Try {
+            Set tWide = $Length(tHunk.%ToJSON()) > $Parameter(pToolClass, "CHANGEMAXLENGTH")
+        } Catch {
+            Set tWide = 1
+        }
+        If tWide {
+            Set tSC = ..Refuse("the change is wider than one card can show: make the edits narrower, or propose edits far apart as separate saves, each once the one before it is confirmed", .pHttpStatus, .pFault)
             Quit
         }
 
@@ -160,7 +170,7 @@ ClassMethod Apply(pText As %String, pEdits As %DynamicArray, pRule As %String, O
         Set tOld = tEdit.%Get("Old")
         Set tCount = ..Occurrences(pNew, tOld)
         If tCount '= 1 {
-            Set tProblem = "edit " _ (tI + 1) _ ": Old occurs " _ tCount _ " times in the stored text, and must occur exactly once. " _ pRule
+            Set tProblem = "edit " _ (tI + 1) _ ": Old occurs " _ tCount _ " times in the stored text" _ $Select(tI = 0: "", 1: " as the earlier edits left it") _ ", and must occur exactly once. " _ pRule
             Quit
         }
         Set pNew = ..Replace(pNew, tOld, tEdit.%Get("New"))
@@ -203,16 +213,39 @@ ClassMethod JoinLines(pLines As %DynamicArray) As %String
     Quit tText
 }
 
-/// <p>The one changed-lines row a card shows for the change from <var>pOld</var> to <var>pNew</var>: the
-/// lines both texts share at their start (<var>p</var>) and end (<var>s</var>) are left out, and three
-/// lines of context on each side are kept, with <code>line</code> the first line shown (1-based). Each
-/// side's lines are followed by a line feed.</p>
+/// <p>The lines <var>pText</var> saves as: <method>OcuPilot.Port.AtelierPort.Lines</method>, plus an empty
+/// last line when the text ends with a line feed, as the port's save puts them.</p>
+ClassMethod SaveLines(pText As %String) As %DynamicArray
+{
+    Set tLines = ##class(OcuPilot.Port.AtelierPort).Lines(pText)
+    If $Extract(pText, *) = $Char(10) Do tLines.%Push("", "string")
+    Quit tLines
+}
+
+/// <p>Whether the line lists <var>pA</var> and <var>pB</var> hold the same lines in the same order.</p>
+ClassMethod SameLines(pA As %DynamicArray, pB As %DynamicArray) As %Boolean
+{
+    If pA.%Size() '= pB.%Size() Quit 0
+    Set tSame = 1
+    For tI = 0:1:pA.%Size() - 1 {
+        If pA.%Get(tI) '= pB.%Get(tI) {
+            Set tSame = 0
+            Quit
+        }
+    }
+    Quit tSame
+}
+
+/// <p>The one changed-lines row a card shows for the change from <var>pOld</var> to <var>pNew</var>, over
+/// the lines each text saves as (<method>SaveLines</method>): the lines both share at their start
+/// (<var>p</var>) and end (<var>s</var>) are left out, and three lines of context on each side are kept,
+/// with <code>line</code> the first line shown (1-based). Each side's lines are followed by a line feed.</p>
 /// <p><b>Caller contract:</b> a pure function of its two texts, asked by the tests as well as the mint.
 /// The row is <code>{field: "Text", kind: "lines", line, before, after}</code>.</p>
 ClassMethod Hunk(pOld As %String, pNew As %String) As %DynamicObject
 {
-    Set tA = ##class(OcuPilot.Port.AtelierPort).Lines(pOld)
-    Set tB = ##class(OcuPilot.Port.AtelierPort).Lines(pNew)
+    Set tA = ..SaveLines(pOld)
+    Set tB = ..SaveLines(pNew)
     Set tNA = tA.%Size()
     Set tNB = tB.%Size()
     Set tMin = $Select(tNA < tNB: tNA, 1: tNB)

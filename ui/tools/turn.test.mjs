@@ -2259,6 +2259,31 @@ test('a changed-lines row keeps the kind and line the instance sent, and a field
   assert.equal('line' in proposal.changed[1], false, 'and carries no line');
 });
 
+// Story 20.21 (QA): a `kind` or `line` of the wrong type is dropped rather than carried, so a card never
+// reads a lines row from a value the instance did not mean as one.
+//
+// Mutation (Rule 19): accept a numeric string for `line` in `parseProposalDiff` -> the string leg goes red.
+
+test('a changed row carries a kind only if it is a non-empty string and a line only if it is a finite number', () => {
+  const [proposal] = parsePrivilegeProposals([
+    wireProposal({
+      target: { type: 'ExplorerSave', scope: 'USER', id: 'OcuProbe2021.Demo.cls' },
+      tool: 'explorer.classes.save',
+      changed: [
+        { field: 'Text', before: 'a\n', after: 'b\n', kind: 'lines', line: '12' },
+        { field: 'Text', before: 'a\n', after: 'b\n', kind: '', line: null },
+        { field: 'Text', before: 'a\n', after: 'b\n', kind: 7, line: 1.5 },
+      ],
+    }),
+  ]);
+  assert.equal(proposal.changed[0].kind, 'lines', 'a string kind is kept');
+  assert.equal('line' in proposal.changed[0], false, 'a numeric string is not a line');
+  assert.equal('kind' in proposal.changed[1], false, 'an empty kind is dropped');
+  assert.equal('line' in proposal.changed[1], false, 'a null line is dropped');
+  assert.equal('kind' in proposal.changed[2], false, 'a numeric kind is dropped');
+  assert.equal(proposal.changed[2].line, 1.5, 'and a finite number is a line as sent');
+});
+
 // Story 19.11: a confirmed SQL run answers an `outcome`, not `lines`; the card shows its status line and, for
 // an error, the instance's own message beneath it (AD-39's sixth exception). A compile's lines read as before.
 //

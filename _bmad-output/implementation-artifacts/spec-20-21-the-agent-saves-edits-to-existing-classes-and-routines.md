@@ -201,6 +201,48 @@ Part 2 -- client.
 - **AC7 (DW-2228).** Given an `Old` that differs from the stored text, including a copy carrying `[redacted]`, when the save is minted, then it is refused and says that `Old` is matched exactly against the stored text.
 - **AC8 (Integration).** Given a real turn on `ocupilot-b-ci`, when its proposal is confirmed over HTTP, then the class's source holds the new text, the confirm answers `output`, and no provider request carries a compile line.
 
+### Review Findings
+
+Code review 2026-10-09 (four layers: blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor; QA's four issues judged). 61 rows, 22 entries after grouping and rejection (0 high, 7 medium, 15 low); every patch below applied and verified on `ocupilot-b-ci`.
+
+- [x] [Review][Patch] A long changed line overflowed its row (DW-1337, QA issue 1, Compare shares the rule): `.ocu-line-diff` is one grid column as wide as the longest line or the box [ui/src/styles/_components.scss:7625]
+- [x] [Review][Patch] Every one-line edit started collapsed (QA issue 4): a lines row is estimated from the rows `app-text-diff` draws (`hunkRowTexts`) [ui/src/app/shell/proposal-card.ts:718]
+- [x] [Review][Patch] `ExplorerSaveTurn`'s "no compile line" check read only requests made before the compile, its hunk check matched the source read, and it never checked the refused call's code, `errors` or the key: a second turn after the confirm, parsed tool results, `TOOL.ARGUMENTS`, `[redacted]`, and the confirm scoped `?ns=USER` as the client sends it, without the extra HSCUSTOM grant [src/OcuPilot/Test/ExplorerSaveTurn.cls:221]
+- [x] [Review][Patch] The agent's rationale, expected impact and reverse were never asserted after the mint rewrites the arguments [src/OcuPilot/Test/ExplorerSaveFlow.cls:189]
+- [x] [Review][Patch] `ExplorerSaveAgent`, `ExplorerSaveRules` and `ExplorerSaveTurn` relied on a governance policy they did not set (Rule 30): snapshot, clear and restore as `ExplorerSaveFlow` does; the browser spec resets the policy in `before` [src/OcuPilot/Test/ExplorerSaveAgent.cls:27]
+- [x] [Review][Patch] `ExplorerSaveAgent`'s Changed leg asserted only 409, which the port's own conflict also answers; it asserts `TARGETCHANGED`, and AC3's `mutation:` line names `ExplorerSaveFlow`'s pin [src/OcuPilot/Test/ExplorerSaveAgent.cls:134]
+- [x] [Review][Patch] An oversized result answered 500 `INTERNAL` (QA issue 3): both length measurements count a throw as over, a 2,200,000-quote leg pins it [src/OcuPilot/Screen/Tool/ExplorerSaveMint.cls:91]
+- [x] [Review][Patch] A carriage-return-only edit minted a card that saves nothing, and a final line feed's empty last line was invisible (QA issue 2): the no-op check and `Hunk` read the lines the save puts (`SaveLines`) [src/OcuPilot/Screen/Tool/ExplorerSaveMint.cls:84]
+- [x] [Review][Patch] Doc comments and mutation notes that claimed what their tests do not assert (`ExplorerSaveAgent` Edit and Confirm legs, the browser spec's line-number and changed-after-mint notes, `ExplorerSaveFlow`'s second-proposal note); the browser one-line leg now asserts the removed line's document number [ui/browser/agent-code-save.browser-spec.mjs:225]
+- [x] [Review][Patch] AD-53's "because the agent never authors code" (the spec gate's fourth amendment line) was not applied [_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md:1075]
+- [x] [Review][Patch] A later edit's match refusal said "the stored text" for the text the earlier edits left [src/OcuPilot/Screen/Tool/ExplorerSaveMint.cls:173]
+- [x] [Review][Patch] Two distant one-line edits were told to "make the edits narrower": the refusal also says to propose far-apart edits as separate saves [src/OcuPilot/Screen/Tool/ExplorerSaveMint.cls:111]
+- [x] [Review][Patch] `.ocu-text-diff` sat under `.ocu-line-diff`'s comment, and the new rule is outside the spec's "No new CSS" (kept: QA's containment pin needs it; tokens only) [ui/src/styles/_components.scss:7612]
+- [x] [Review][Patch] `savedNotCompiledVisible`'s comment called the banner "the one place" the card says so; the 20.17 summary says it too [ui/src/app/shell/proposal-card.ts:1043]
+- [x] [Review][Patch] `ToolEmit` and `ToolSetFull` comments listed two unadvertised tools of three [src/OcuPilot/Test/ToolEmit.cls:89]
+- [x] [Review][Defer] Take as script on an agent save renders `"<content>"`, not the stored text (AD-59) [src/OcuPilot/Port/AtelierPort.cls:3183] — deferred: DW-2241, routed to 20.20 (fix-risk med: the routine branch needs the UDL header removed and a size bound; 19.3's test pins the placeholder)
+- [x] [Review][Defer] Confirm gates WRITE on the request's namespace, not the stored one [src/OcuPilot/Screen/Tool/ExplorerWrite.cls:102] — deferred: DW-2242, routed to 20.20 (pre-existing since 19.2; the port's own gate still checks the stored namespace)
+- [x] [Review][Defer] Lines past the source read's 60,000-character cut cannot be quoted as an Old [src/OcuPilot/Screen/Tool/ExplorerSourceRead.cls] — deferred: DW-2243 wontfix-accepted (20.19's read; fails safe)
+- [x] [Review][Defer] The mapped-document legs rely on USER mapping Ens to ENSLIB [src/OcuPilot/Test/ExplorerSaveRules.cls:143] — deferred: DW-2244 wontfix-accepted (IRIS for Health product mapping, declared in each header)
+- [x] [Review][Defer] A Compile route fault after PutDoc saved reads as a failed write [src/OcuPilot/Port/AtelierPort.cls:2496] — deferred: DW-2245 wontfix-theoretical (19.3)
+
+Rejected:
+
+- by-design: the descriptions and the mapped refusal say the person can save refused names from the editor, though OcuPilot's code and the read-only ENSLIB refuse a person too (Boundaries and Tasks fix that sentence).
+- by-design: an HSLIB or HSSYS namespace's own documents pass `AgentProblem` (ruling Q1's predicate; a read-only database refuses at the write).
+- by-design: `explorerSaveCompilesOnConfirm` says "saves this text" (the spec's verbatim string).
+- by-design: invisible characters outside the sanitizer's strip set pass the `New` check (the spec binds the check to `Sanitize.Strip`).
+- by-design: the saved-not-compiled line is gone after a reload, and a document changed between the mint's read and the kernel's fresh read is refused 409 at the write (both Named limits).
+- by-design: compile-time code (generators, projections) runs at Confirm as the user (the owner's ruling; the consequence says so).
+- false: a mid-line carriage return could hide code from the card (probed: the class and routine compilers keep it inside the comment line).
+- false: `Consequence` drops a privileged or effect consequence (no save carries either; `ExplorerImport` is the precedent).
+- low: the summary and the diff recompute the line diff on each change detection (hunks are bounded at 30,000 characters).
+- low: a document the instance keeps no text for reads "no document by that name"; `.bas`/`.mvi`/`.mvb` and generated `.int` names are not refused by kind (rare; each fix adds a branch).
+- low: no end-to-end Confirm-side refusal (the kernel's wiring is pinned by other tools' tests, the rule by `ExplorerSaveMintUnit`); `ExplorerSaveRules.Refused` checks the text, not the code (`ExplorerSaveFlow` pins codes); the five classes overlap.
+- low: an empty read version, or stored lines ending in a carriage return or BOM (never answered by the vendor's read).
+- low: the person's-Save leg uses DEL for U+200B; DEL is in the same strip set, so it proves the same rule.
+- low: the Auto Run Result's mutation count (a spec edit).
+
 ## Spec Change Log
 
 ## Review Triage Log
@@ -313,7 +355,7 @@ Part 2 -- client.
 
 - mutation: `ExplorerSave.ADVERTISED` 1 -> 0 → `ExplorerSave.TestTheSaveIsOfferedToTheAgent`; `ExplorerDescriptor.TestTheAreaAdvertisesItsReadsAndWrites` and `TestTheTwoSavesAreAdvertisedDestructiveWrites`
 - mutation: `ExplorerSave.MergeUpdate` keeps the kernel's rows instead of `[pArgs.Hunk]` → `ExplorerSaveAgent.TestTheEditMintsOneChangedLinesRow` and `TestTheRoutineEditMints`
-- mutation: `ExplorerSave.FINGERPRINTSUBJECT` drops `Modified` → `ExplorerSaveAgent.TestAChangedDocumentIsRefusedAndNothingIsWritten` (Changed); the same reload also reddens the other legs of `ExplorerSaveAgent`, which share the mint's subject
+- AC3's pin is `ExplorerSaveFlow.TestAnOutsideRewriteAfterTheMintIsRefusedAsAChangedTarget`, demonstrated by QA's `Confirm.FingerprintMatches` mutation below; `ExplorerSaveAgent.TestAChangedDocumentIsRefusedAndNothingIsWritten` now asserts `TARGETCHANGED` too
 - mutation: `Baseline` `explorer.sqldata.save` true → `ExplorerDescriptor.TestTheAreaAdvertisesItsReadsAndWrites` (baseline leg)
 - mutation: `ExplorerSave.AgentProblem` answers `""` → `ExplorerSaveRules.TestAPercentNameIsRefused`, `TestASystemNamespaceIsRefused`, `TestAMappedClassIsRefusedByItsDatabase`, `TestTheConfirmRuleRefusesWhatTheMintWould`
 - mutation: `ExplorerSaveMint` step 2 (`IsOcuPilotCode`) removed → `ExplorerSaveRules.TestOcuPilotsOwnClassIsRefused`
@@ -321,6 +363,49 @@ Part 2 -- client.
 - mutation: `ExplorerSaveMint` stores `Compile` 0 → `ExplorerSaveTurn.TestTheAgentsSaveIsConfirmedOverHTTPAndCompiles` (the output leg)
 - mutation: card ignores `kind` (client, component) → `proposal-card-code.spec.ts` "draws a lines row as a line diff"; (client, browser) → `agent-code-save.browser-spec` "a one-line edit draws a line diff", after a rebuild and redeploy
 - mutation: `savedNotCompiledVisible` always false (client, component) → `proposal-card-code.spec.ts` "says a confirmed save that did not compile"; (client, browser) → `agent-code-save.browser-spec` "a breaking edit, confirmed, says it did not compile", after a rebuild and redeploy
+
+**QA additions (Rule 19, recorded 2026-10-09 on `ocupilot-b-ci`; each server mutation reverted to a byte-identical tree and reloaded, each stylesheet mutation reverted, rebuilt and redeployed):**
+
+- (QA) `src/OcuPilot/Test/ExplorerSaveMintUnit.cls`, `src/OcuPilot/Test/ExplorerSaveFlow.cls`, `ui/src/app/shell/text-diff-rows.spec.ts`, `ui/src/app/shell/proposal-card-code-states.spec.ts`; tests appended to `ui/tools/turn.test.mjs` (one) and `ui/browser/agent-code-save.browser-spec.mjs` (four).
+- mutation: `EditItemProblem` accepts an item with a third member → `ExplorerSaveMintUnit.TestAMalformedReplacementListIsRefused`
+- mutation: the New check also drops tab from its stripped copy → `ExplorerSaveMintUnit.TestANewIsRefusedOnlyWhereTheSanitizerWouldChangeIt`
+- mutation: `Apply` counts each Old against the unedited text → `ExplorerSaveMintUnit.TestEachOldMustOccurOnceInTheTextTheEarlierEditsLeft`
+- mutation: `Hunk` drops the trailing context → `ExplorerSaveMintUnit.TestTheHunkSpansFromTheFirstChangeToTheLastWithContext`
+- mutation: `Hunk` counts the suffix without the `p + s < min` limit → `ExplorerSaveMintUnit.TestTheHunkAtTheEndsAndOnDuplicateLines`
+- mutation: `AgentProblem` reads a routine's destination without its name → `ExplorerSaveMintUnit.TestTheAgentsDestinationRuleRefusesWhatItCannotVouchFor`
+- mutation: `ConfirmProblem` asks nothing → `ExplorerSaveMintUnit.TestTheConfirmRuleAsksTheStoredNamespace`
+- mutation: `MergeUpdate` keeps the kernel's diff → `ExplorerSaveMintUnit.TestTheMergeShowsTheHunkAndNothingElse`
+- mutation: `ExplorerRoutineSave.DocumentEndpoint` answers the class endpoint → `ExplorerSaveMintUnit.TestEachListReadsTheDocumentThroughItsOwnEndpoint`; `ExplorerSaveFlow` routine legs
+- mutation: the mint asks `AgentProblem` after the read → `ExplorerSaveFlow.TestARefusalComesBeforeTheReadOfTheDocument` alone (`ExplorerSaveRules` stays green)
+- mutation: `InputSchema` offers a `content` property → `ExplorerSaveFlow.TestTheAgentCannotSupplyTheTextTheVersionOrTheCompileChoice`, `TestTheProviderIsShownTheEditsContract`
+- mutation: `Hunk` starts every hunk at line 1 → `ExplorerSaveFlow.TestTheMintedProposalShowsTheHunkRequiresTheWriteAndWritesNothing`
+- mutation: `Confirm` takes the write as unmarked → `ExplorerSaveFlow.TestAConfirmedSaveIsMarkedLedgeredAndStoresNoCompileLine`, `TestARoutineEditIsSavedCompiledAndMarked`
+- mutation: `Confirm.FingerprintMatches` skips the fresh digest's comparison → `ExplorerSaveFlow.TestASecondProposalIsRefusedOnceTheFirstIsConfirmed`, `TestAnOutsideRewriteAfterTheMintIsRefusedAsAChangedTarget` (`ExplorerSaveAgent` stays green: the port's own 409 answers); browser changed-after-mint test
+- mutation: the mint measures the unescaped text against the port's bound → `ExplorerSaveFlow.TestAnEditPastThePortsBoundIsRefused`
+- mutation: `Gate.Decide` always allows → `ExplorerSaveFlow.TestTheSaveKeyGovernsTheAgentAtTheDispatcherAndAtConfirm`
+- mutation: a person's Save refuses a text the sanitizer would change → `ExplorerSaveFlow.TestAPersonsSaveIsUnchangedByTheAgentsKeyAndRules`
+- mutation: `ExplorerClassSave.DESCRIPTION` drops the exact-match sentences → `ExplorerSaveFlow.TestTheProviderIsShownTheEditsContract`
+- mutation: the mint skips the header-names-the-document check → `ExplorerSaveFlow.TestARoutineHeaderEditIsRefused`
+- mutation: `app-text-diff` does not clamp the hunk line → `text-diff-rows.spec.ts` "numbers from the first line when the hunk line is below one"
+- mutation: `app-text-diff` keeps one line of context → `text-diff-rows.spec.ts` "keeps document numbers across a collapsed run"
+- mutation: `hunkScript` never falls back past the edit bound → `text-diff-rows.spec.ts` "draws every removal and then every addition"
+- mutation: the card's summary counts only the first lines row → `proposal-card-code-states.spec.ts` "sums the counts of every lines row"
+- mutation: `savedNotCompiledVisible` without `this.confirmed` → `proposal-card-code-states.spec.ts` "says a save did not compile only once confirmed"
+- mutation: the saved-not-compiled banner is `role="alert"` → `proposal-card-code-states.spec.ts` "puts the saved-not-compiled line after the status line"
+- mutation: `parseProposalDiff` carries a numeric-string `line` → `turn.test.mjs` "a changed row carries a kind only if ... a line only if it is a finite number"
+- mutation: `diffLines` estimates a lines row from `field before after` → `proposal-card-code.spec.ts` "keeps a one-line change ... open"; (browser, after a rebuild and redeploy) `agent-code-save.browser-spec` "(QA) a one-line edit shows its changed lines inside the diff box" (Show more offered)
+- mutation: `.ocu-line-diff` `overflow: visible` → `agent-code-save.browser-spec` "(QA) a long changed line in an opened diff scrolls inside it"
+- mutation: drop `display: grid` from `.ocu-line-diff` → the same test's row-containment leg (after a rebuild and redeploy)
+- mutation: removed rows from the eleventh take their background color as text color → `agent-code-save.browser-spec` "(QA) an opened 12-line diff passes the DW-1337 invariants" (the collapsed walk reddens too: the detector counts clipped rows)
+- mutation: the confirm skips the fresh digest's comparison → `agent-code-save.browser-spec` "(QA) a document changed after the mint is refused at Confirm"
+
+**Code review additions (Rule 19, recorded 2026-10-09 on `ocupilot-b-ci`; each reverted to a byte-identical file, reloaded or rebuilt and redeployed, and the class or spec re-run green):**
+
+- mutation: the mint's no-op check compares the raw texts → `ExplorerSaveRules.TestAnEmptyOrNoOpEditIsRefused` (carriage-return leg)
+- mutation: `Hunk` reads both sides with `AtelierPort.Lines` alone → `ExplorerSaveRules.TestTheHunkKeepsThreeLinesOfContext` (final-line-feed leg)
+- mutation: the mint measures the escaped text without its `Try` → `ExplorerSaveFlow.TestAnEditPastThePortsBoundIsRefused` (2,200,000 leg answers 500 `INTERNAL`)
+- mutation: the mint stops copying `rationale`, `expectedImpact` and `reverse` → `ExplorerSaveFlow.TestTheMintedProposalShowsTheHunkRequiresTheWriteAndWritesNothing` (agent's-words leg)
+- mutation: `Convo.HistoryMessages` appends a compile line to each replayed reply → `ExplorerSaveTurn.TestTheAgentsSaveIsConfirmedOverHTTPAndCompiles` (second turn's leg)
 
 ## Auto Run Result
 

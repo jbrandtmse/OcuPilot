@@ -7607,20 +7607,25 @@ app-log-hub-page {
   border: 0;
 }
 
-// The line diff draws on the plain surface in code type rather than on the code surface, because
-// the role colors on the code surface miss contrast in the light theme. A removed line sits on the
-// destructive container and an added one on the success container, each led by its sign in the
-// role's own color and a visually hidden direction (`.ocu-diff-direction`); a collapsed run of
-// unchanged lines is one muted line.
+// A proposal card's changed-lines hunk (Story 20.21): as wide as the card, never wider, so a long line
+// scrolls inside the diff below.
 .ocu-text-diff {
   display: block;
   min-width: 0;
   contain: inline-size;
 }
 
+// The line diff draws on the plain surface in code type rather than on the code surface, because
+// the role colors on the code surface miss contrast in the light theme. A removed line sits on the
+// destructive container and an added one on the success container, each led by its sign in the
+// role's own color and a visually hidden direction (`.ocu-diff-direction`); a collapsed run of
+// unchanged lines is one muted line. Its rows are one grid column as wide as the longest line or
+// the box, whichever is wider, so a long line stays inside its row and every row's tint runs as far
+// as the box scrolls.
 .ocu-line-diff {
   @include typo.ocu-type('code');
 
+  display: grid;
   box-sizing: border-box;
   max-width: 100%;
   max-height: 70vh;
