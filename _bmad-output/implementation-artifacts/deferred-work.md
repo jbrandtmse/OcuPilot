@@ -10758,6 +10758,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-20-21-the-agent-saves-edits-to-existing-classes-and-routines.md | severity: med | fix-risk: med | footprint: in-epic
 - evidence: AtelierPort.Snippet TYPESAVE always renders "<content>" (pinned by AtelierPortSave.TestTheSaveRendersItsScript); 20.21 advertised the save, so Draft.Take on its card closes the proposal and answers a script that, run as is, writes "<content>" into a routine; the routine branch's %Routine.Write would also need the UDL header removed
 - 2026-10-09T08:21:47Z status=routed owner=20-20-the-agent-creates-new-classes-and-routines-on-the-person-s-c by=cr note=20.20 adds the create's script beside the save's; render stored text (header-aware, bounded) for both
+- 2026-10-09T09:44:54Z by=orchestrator note=graded HIGH under Rule 6 (AD-59: the script is not the reviewed change, and run unread it replaces a routine with the placeholder); RELEASE-BLOCKING: no cut from a feature head that carries 20.21 (741b7801) without 20.20 fix; newest safe cut before it is b4b6ffb8
 
 ### DW-2242: An agent code write's Confirm gates WRITE on the request's namespace's routines database, not the proposal's stored Namespace
 - source: spec-20-21-the-agent-saves-edits-to-existing-classes-and-routines.md | severity: med | fix-risk: med | footprint: in-epic
