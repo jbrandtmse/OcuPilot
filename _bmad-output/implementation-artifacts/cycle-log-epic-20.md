@@ -310,3 +310,5 @@
 2026-10-09T16:19:06Z	Epic 20	story_chartered	stories=20.22(20-22-production-item-settings;owner_Q1=A_in_block) reason=rule5_split(by=merge_gate,feature_67e70c72) order=20.3,20.22,20.4-20.6 tracker=generated(new_entries=1,valid) amendments=epics.md:20.3_block(AMENDED_note,AC_narrowed),20.22_block
 2026-10-09T16:19:06Z	Epic 20	deps_hash_rerecorded	reason=rule5_amendment(20.3_split)
 2026-10-09T16:19:06Z	Story 20.3	spec_reset	status=blocked->draft intent_contract=narrowed_to_items(enable,disable,add,remove,DW-2157,DW-2162) change_log=1_line reason=re-dispatch_protocol(split)
+2026-10-09T16:21:28Z	Epic 20	epic_context_compiled	reason=planning_artifact_newer(20.3_split,20.22_chartered) model=opus lines=135
+2026-10-09T16:21:28Z	Story 20.3	stage_spawned	stage=plan spawn_at=2026-10-09T16:21:28Z model=opus agent_name=20-3-plan-2 cycle_iteration=2 dispatch=spec_path(draft,re-dispatch_protocol)
