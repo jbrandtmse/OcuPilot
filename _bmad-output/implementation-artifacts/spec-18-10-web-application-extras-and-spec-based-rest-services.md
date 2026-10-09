@@ -3,6 +3,7 @@ title: 'Story 18.10: Web application extras and spec-based REST services'
 type: 'feature'
 created: '2026-10-08'
 status: 'done'
+baseline_commit: 'b4b6ffb83a729e3205cb3f7b737aaff001561ce2'
 baseline_revision: '5325154a7e6483ba67258f37fe37cb56e64df989'
 review_loop_iteration: 0
 followup_review_recommended: false
