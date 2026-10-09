@@ -322,3 +322,9 @@ spawn_at=2026-10-06T16:01:05Z	Story 23.4	cr_complete	batch=b 2026-10-06T20:34:58
 2026-10-06T21:26:04Z	Story 23.4	batch_boundary_reported	batch=b to=main code_head=5a98c500 run=37527682358 branch_head=486e66f6 feature_code_moved=no(b00b4fed_contained) decisions_for_user=none
 2026-10-06T21:26:04Z	Epic 23	throwaway_down	container=ocupilot-ci dir=/Users/jbrandt/.ocupilot-throwaways/ocupilot-ci by=this_runner(up_logged_07:12:27Z_and_rebuild_10:49:56Z) down_exit=0 others_untouched=ocupilot,ocupilot-slot-b,ocupilot-slot-c,iris-community-edition
 2026-10-06T21:26:04Z	Epic 23	epic_runner_complete	stories_completed=1(23.4) ready_for_merge=true code_head=5a98c500 ci=success(37527682358) decisions_for_user=none amendments=epics.md:8471(DW-1223_AC);EXPERIENCE.md:361(DW-1013) spine=Stack_CI,OpsEnvelope,AD-14,AD-22,AD-26,AD-34,AD-35,AD-36,AD-53,AD-58
+2026-10-09T16:35:24Z	Epic 23	lead_model_gate	model=claude-opus-5-5 action=proceed dispatch=e23-6(story_23.6_only)
+2026-10-09T16:35:24Z	Epic 23	runtime_gate	bmad=6.12.0 uv=0.12.9 ci=gh
+2026-10-09T16:35:24Z	Epic 23	telemetry_gate	pending=0 action=none
+2026-10-09T16:35:24Z	Epic 23	integrate_forward	from=origin/feature/OCU-1_ocupilot-mvp@328aeb28 mode=ff-only from_head=ac16e4cc carries=18.10 lacks=20.20(implement_held_until_merged) lockfile_changed=no bootstrap=not_needed
+2026-10-09T16:35:24Z	Epic 23	spine_resolved	path=_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md ads=64 status=final
+2026-10-09T16:35:24Z	Epic 23	ledger_load	total=1711 open=0 routed=86 escalated=1 decision_pending=35 terminal=1589 owner_unknown=0 burndown=51 reowned_none=0 owner_23-6=0 note=epic-start_gates_not_repeated(dispatch)
