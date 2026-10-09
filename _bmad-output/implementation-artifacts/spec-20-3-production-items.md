@@ -2,7 +2,7 @@
 title: 'Story 20.3: Production items'
 type: 'feature'
 created: '2026-10-09'
-status: 'draft'
+status: 'ready-for-dev'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -63,194 +63,169 @@ deferred: []
 ### Port and errors
 
 - `src/OcuPilot/Port/InteropPort.cls`:
-  - `ENDPOINTS` :49
-  - `Pairs` :185 maps every non-Productions endpoint to `CODEPAIRS`; Items and Settings must map to the production pairs.
-  - `Serves` :199, `Invoke` :287 (gate order :294-325), `ReadState` :486, `Perform` :559
-  - `Statused` :620 maps only the singular `ErrJobNotStopped` (DW-2162)
-  - `SnippetForm`/`Snippet` :719/:734, `Literal` :759
-- `src/OcuPilot/Api/InteropError.cls` (119 lines): add the codes. `Api/Error.cls`'s `INTEROP.` prefix branch already routes them, so no Error.cls edit is needed.
-- `src/OcuPilot/Kernel/Shell/Namespaces.cls`: `GlobalDatabase` :84 reads `NamespaceInfo` :75. Add a sibling `RoutineDatabase` at the end of the class. `AtelierPort.DatabaseResources` :693 is the precedent.
-- `src/OcuPilot/Kernel/EntityId.cls`: `JoinComposite`/`SplitComposite` :74/:81. `Screen/Tool/MappingMint.cls`:22-54 composes a two-part id at a mint.
+  - `ENDPOINTS` :49, `PRODUCTIONPAIRS` :62, `WRITEPAIRS` :72, `CODEJOBNOTSTOPPED` :122
+  - `IsWrite` :176; `Pairs` :185 maps every non-Productions endpoint to `CODEPAIRS`, so `Items` must map to `PRODUCTIONPAIRS`; `Serves` :199
+  - `Refusal` :221 is the pure precondition shape the item refusals copy
+  - `Invoke` :287, gate :298-325 (the globals pair :320); `ReadState` :486, `StateRow` :543, `Perform` :559
+  - `Statused` :620 maps only the singular `ErrJobNotStopped` (DW-2162); `Snippet` :734
+- `src/OcuPilot/Api/InteropError.cls` (119 lines): `REASONSTOP` :64 and `REASONRESTART` :68 are the two reworded sentences; `ConsequenceCodes` :86, `PreconditionCodes` :94. `Api/Error.cls`'s `INTEROP.` prefix branch already routes new codes, so `Error.cls` is not edited.
+- `src/OcuPilot/Kernel/Shell/Namespaces.cls`: `GlobalDatabase` :84 reads `NamespaceInfo` :75. `AtelierPort.DatabaseResources` :693 is the routines-database precedent.
+- `src/OcuPilot/Kernel/EntityId.cls` `JoinComposite`/`SplitComposite` :74/:81. `Screen/Tool/MappingMint.cls` is the composite-id mint the item tools copy.
+- Vendor, read through the worktree's `irislib` link:
+  - `Ens.Director.EnableConfigItem` :1562
+  - `Ens.Config.Production`: `SaveToClass(pItem)` :123, `RemoveItem` :195
+  - `Ens.Config.Item`: `Name` :20 (MAXLEN 128), `PoolSize` :41 (MINVAL 0), `Enabled` :47 (InitialExpression 1), `GetBusinessType` :218
+  - `Ens.Util.Auditing.AuditModifyProductionConfig` :182; `%CSP.Portal.SourceControl.Util.IsEnabled` :53
 
-### Tools (20.2's are the template)
+### Tools
 
 - `Screen/Tool/InteropProductionAction.cls`: `PrivilegePairs` :120, `PortQuery` :144, `StateDiff` :158, `READSVALUES`/`READANSWERS` :31-34.
-- `Screen/Tool/InteropProductionStop.cls`: add `AfterWrite`. `Write.AfterWrite` is at :282; `Operation.ApplyAt` (`Kernel/Proposal/Operation.cls`:473) marks a write applied before `AfterWrite` runs.
-- `Screen/Tool/Write.cls` parameters:
-  - `CREATES` :151, `SCREENACTIONS` :167, `READSVALUES` :176, `SCREENVALUES` :226, `SCREENOPTIONAL` :232, `PRECONDITIONCODES` :508, `READBACKFIELDS` :958
-  - `ReadBackGone` :294, `ComposeCreate` :352, `ArgumentProblem` :920
-- Precedents:
-  - create: `ExplorerDocDbCreate.cls` :23-77, `ExplorerCreate.cls` :31-45, :112, :131
-  - destructive action: `ExplorerDocDbDelete.cls` :21-72
-  - declared-value action: `ScreenAccessAddPair.cls` :18-48, `EncryptionKeyFileAddKey.cls`
-- AD-55 Save route: `Area/Security/MftConnectionSave.cls`, which takes `Operation.HoldTool` at :73 and runs `Unexpected` :224 and `Prohibited` :246. Routes are at `Api/Router.cls`:253-255.
+- `Screen/Tool/InteropProductionStop.cls` gains `AfterWrite`. `Write.AfterWrite` is at :282, and `Operation.ApplyAt` (`Kernel/Proposal/Operation.cls`:473) marks a write applied before `AfterWrite` runs.
+- `Screen/Tool/Write.cls`: `CREATES` :151, `SCREENACTIONS` :167, `READSVALUES` :176, `SCREENVALUES` :226, `PRECONDITIONCODES` :508, `READBACKFIELDS` :958; `ReadBackGone` :294, `ComposeCreate` :352, `ArgumentProblem` :920.
+- Precedents: create `ExplorerDocDbCreate.cls` :23-77; destructive action `ExplorerDocDbDelete.cls` :21-72; composite-id tools `MappingCreate` and `MappingDelete` over `MappingMint`.
+- AD-55 Save: `Area/Security/MftConnectionSave.cls` takes `Operation.HoldTool` at :73 and runs `Unexpected` :224 and `Prohibited` :246. Routes are at `Api/Router.cls`:253-255.
 
 ### Screens and registry
 
-- `Screen/Descriptor/InteropProductionList.cls`:23-67 is the shape. `WalletSecretList.cls`:37-83 is a child list (`parentScope`, one criterion), opened from its parent's name cell by `ui/src/app/core/navigation.ts` `childListFor` :329.
-- `Screen/Registry.cls`: the interop source rules :1282-1297; the criteria port list :1683-1684, which refuses `interop`; the one-criterion rule for a parent-scoped read :1694-1697.
+- `Screen/Descriptor/InteropProductionList.cls`:23-67 is the shape. `WalletSecretList.cls`:37-83 is a child list (`parentScope`, one criterion with `hint`), opened from its parent's name cell by `ui/src/app/core/navigation.ts` `childListFor` :329.
+- `Screen/Read.cls`: the interop branch :547-556 sends no criteria; the encryption branch :523-530 is the `SeedCriteria` precedent; the route-criterion requirement is :655-668.
+- `Screen/Registry.cls`: the interop source rules :1282-1297; the criteria port list :1683-1684, which refuses `interop`; the one-criterion rule for a parented read :1694-1697.
 - `ui/tools/screen-mirror.mjs`: the same rules at :1405-1418 and :1885-1887; `interopEndpoints` :1095. Regenerate `ui/src/app/core/screens.generated.ts`.
-- `Kernel/EntityType.cls`:98 `TYPES` (62 entries); `Kernel/Proposal/Prohibited.cls`:
-  - `COVEREDTYPES` :250, `TYPEPRODUCTION` :616, the chain :1295, the branch :1550-1555
-  - `PermittedChangeFields` :1052, `PermittedCreateFields` :1186
+- `Kernel/EntityType.cls`:98 `TYPES` (62 entries).
+- `Kernel/Proposal/Prohibited.cls`: `COVEREDTYPES` :250, `TYPEPRODUCTION` :618, the chain :1295, the production branch :1550-1555, `PermittedCreateFields` :1186.
 - `Kernel/Governance/Baseline.cls`:209-213, the interop keys.
 
 ### Client
 
 - `ui/src/app/shell/screen-action-handler.ts`:
   - `SCREEN_ACTION_DESCRIPTORS` :64 (interop :113)
-  - `VALUE_ACTIONS` :347, `UNDRAWN_ACTIONS` :352
-  - `DESTRUCTIVE_ACTIONS` :424, which already holds no `remove`; `LockList` uses `remove` for its own destructive dialog
-  - `DESTRUCTIVE_CONSEQUENCES` :452, `WARNING_CONSEQUENCES` :575 (interop :603-608), `startFor` :1009
-- `ui/src/app/core/screen-actions.ts` `ACTION_LABELS` :79-112; `ui/src/app/core/proposal-view.ts` `INTEROP` consequences :364-367 and :481-484.
+  - `UNDRAWN_ACTIONS` :352; Locks' page-registered `remove` is at :369
+  - `DESTRUCTIVE_ACTIONS` :424, `DESTRUCTIVE_CONSEQUENCES` :452
+  - `TYPED_NAME_ROWS` :532; the mapping lists type `Name` for a composite key
+  - `WARNING_CONSEQUENCES` :575 (interop :603-608)
+- `ui/src/app/core/screen-actions.ts` `ACTION_LABELS` :112-145; `ui/src/app/core/proposal-view.ts` `INTEROP` consequences :364-367 and :481-484.
 - `ui/src/app/core/strings.ts`: the interop block :6149-6233, each key citing `EXPERIENCE.md:604`.
-- `ui/tools/interop.test.mjs`: `SENTENCES` :29-43, the 15 s pin :71.
-- `ui/browser/interop-productions.browser-spec.mjs` probe hooks :51-55 and :151-174; `waitForMapAnswered` (`browser/namespace-features.mjs`:62).
+- `ui/tools/interop.test.mjs`: `SENTENCES` :29-43, the 15 s pin :71. `ui/tools/strings.test.mjs`: the bound :602-608.
+- `ui/browser/interop-productions.browser-spec.mjs`: probe hooks :51-55 and :151-174. `waitForMapAnswered` is in `browser/namespace-features.mjs`:62.
 
 ### Tests and fixtures
 
 - `Test/ProductionProbe.cls`:
-  - `CheckOwn` :112, `Create` :120, `Send` :154, `SetSetting` :175, `Settle` :247, `Remove` :322
+  - `CheckOwn` :112, `Create` :120, `Send` :154, `Settle` :247, `Remove` :322
   - the probe op class text :42-84
-- `Test/InteropControl.cls` (445 lines) and `Test/InteropGate.cls`: the job-and-`Login` probe at :197-265.
-- Classic pages: `EnsPortal.ProductionConfig` sets RESOURCE `%Ens_ProductionConfig:READ` and EDITRESOURCE `:WRITE` (PC:25, :29). `EnsPortal.Dialog.ProductionAddService`, `…AddProcess` and `…AddOperation` (base `ProductionAddHost`, RESOURCE `:WRITE`).
+- `Test/InteropControl.cls`; `Test/InteropGate.cls` (the job-and-`Login` probe :197-265); `Test/InteropGateSeam.cls` is the seam precedent.
+- Classic pages: `EnsPortal.ProductionConfig` sets RESOURCE `%Ens_ProductionConfig:READ` and EDITRESOURCE `:WRITE`. `EnsPortal.Dialog.ProductionAddService`, `…AddProcess` and `…AddOperation` have base `ProductionAddHost` and RESOURCE `:WRITE`.
 
 ## Tasks & Acceptance
 
 **Execution:**
 
-- [ ] **Task 0 (`ocupilot-b-ci` only, through `docker exec`).** Re-measure only the cells the plan left open, and record them as `Task 0:` lines under Verification:
+- [ ] **Task 0 (`ocupilot-b-ci` only, through `docker exec`).** Measure only the open cells, and record each as a `Task 0:` line under Verification:
   - that `Ens.Config.Production` opened at concurrency 4 makes a second writer's open wait;
   - the `NormalizePage` spellings of the three add-host dialogs;
-  - the SDS-supplied `Enabled` refusal;
-  - one HTTP confirm per new tool answering exactly one envelope.
-  - A cell that disagrees with the Design Notes vocabulary table: HALT `intent gap`.
+  - what `EnableConfigItem` answers when a system default supplies `Enabled`;
+  - whether a partial stop (DW-2162) records `%Ensemble/%Production/StartStop`;
+  - that one HTTP confirm per new tool answers exactly one envelope.
+  - A cell that disagrees with Design Notes › Measured: HALT `intent gap`.
 - [ ] `src/OcuPilot/Port/InteropPort.cls` (extend):
-  - **Endpoints and pairs.**
-    - `ENDPOINTS` gains `Items,Settings`. `Pairs` maps both to `PRODUCTIONPAIRS`, plus a new `ITEMWRITEPAIRS = "%Ens_ProductionConfig:WRITE"` for their writes. A write also needs WRITE on the namespace's globals and routines databases (measured: `<PROTECT>` on `^Ens.Config.ItemD` and `^oddDEF`).
-    - Types: `Items` `LIST` (criterion `production`), `ITEM`, `ENABLE`, `DISABLE`, `ADD`, `REMOVE`; `Settings` `LIST` (criterion `item`, the item's composite id), `SETTING`, `SET`, `RESET`.
+  - **Endpoint, types and pairs.**
+    - `ENDPOINTS` gains `Items`, with types `LIST` (criterion `production`), `ITEM`, `ENABLE`, `DISABLE`, `ADD` and `REMOVE`.
+    - `Pairs` maps `Items` to `PRODUCTIONPAIRS`, plus a new `ITEMWRITEPAIRS = "%Ens_ProductionConfig:WRITE"` for its writes.
+    - An item write's gate also requires WRITE on the namespace's routines database, after the globals one (measured: `<PROTECT>` on `^Ens.Config.ItemD` and `^oddDEF`). It does not require `%Ens_ProductionRun:USE`.
     - `IsWrite` stays the production writes'. An `IsItemWrite` serves the gate.
-  - **Fresh reads.**
-    - `ITEM` and `SETTING` answer the row plus `Namespace`, `ProductionState`, `Current` and `Count`. With `ACTIONKEY` they refuse by code, as `Refusal` does.
-    - An absent item is 404 `PORT.NOTFOUND`, unlogged.
-    - `Count > 1` is `.AMBIGUOUS`.
+  - **LIST.** One row per `Ens.Config.Item` of the named production: `Production, Name, ClassName, Type, Enabled, EnabledSource, PoolSize, Category, Comment`. An unknown production is 404 `PORT.NOTFOUND`.
+    - `Type` is `service`, `process` or `operation`, from `GetBusinessType`.
+    - `Enabled` is the effective value. `EnabledSource` is `default` when `Ens.Config.DefaultSettings.%GetSetting(prod, item, class, "", "Enabled", .v)` supplies it (the vendor's own check, `Ens.Config.Item`:248), else `production`.
+  - **ITEM, the fresh read.**
+    - The id is the composite `[Production, Name]`. It answers the row plus `Namespace` and `Count`.
+    - An absent item is 404 `PORT.NOTFOUND`, unlogged. `Count > 1` is `.AMBIGUOUS`.
     - Source control enabled is `.SOURCECONTROL`, read through an overridable `SourceControlled(ns)` seam.
+    - With `ACTIONKEY` it refuses by code, as `Refusal` does: `.ENABLED`, `.DISABLED`, `.DEFAULTSETTING`, `.POOLZERO`, `.ENABLEDREMOVE`. For `add` it inverts (AD-54): absent is the 404 the create expects, and present is `.TAKEN`.
   - **Writes, in one switched block.**
-    - Open the production at concurrency 4, so concurrent writers on one production are serialized by the vendor's row lock.
-    - Then:
-      - enable/disable: `Ens.Director.EnableConfigItem("<prod>||<name>", x, 0)`, which records the vendor's own event;
-      - add: a new `Ens.Config.Item`, then `Items.Insert` and `%Save`;
-      - remove: `RemoveItem` and `%Save`;
-      - set/reset: `Settings` (Host/Adapter) or the Core property, then the item's `%Save`.
-    - Then `SaveToClass(item)` every time, and drop every reference before the restore.
-    - Add, remove, set and reset record `%Ensemble/%Production/ModifyConfiguration` through `Ens.Util.Auditing.AuditModifyProductionConfig`, naming the operation and setting names, never a value. The classic page's server methods record this event.
-    - Validate before any vendor call. Values go through the class's own `<Name>IsValid`, Host target `ClassName`, Adapter target `AdapterClassName()`, Core `Ens.Config.Item`. A class must pass `Ens.Config.Item.GetBusinessType` ∈ 1, 2, 3. Name rules are in Design Notes.
-  - **Reads and settings rows.**
-    - Settings rows come from `PopulateVirtualSettings` plus the four Core rows: `{Production, Item, Target, Name, Value, Default, Source, Category, Type, Masked}`.
-    - `Value` and `Default` read empty, with `Masked` true, when `Kernel/Audit/Log.IsCredentialName` matches the name.
+    - Validate first: the name rule (Design Notes), the class through `GetBusinessType` ∈ 1, 2, 3, and add's fields through `Ens.Config.Item`'s own `<Prop>IsValid`.
+    - Open the production at concurrency 4, so writers on one production serialize on the vendor's row lock.
+    - Enable and disable: `Ens.Director.EnableConfigItem("<prod>||<name>", x, 0)`.
+    - Add: a new `Ens.Config.Item` (`Enabled` 0 unless sent true), then `Items.Insert` and `%Save`.
+    - Remove: `RemoveItem`, then `%Save`.
+    - Then `SaveToClass` every time (with no item for a remove). Drop every reference, then restore the namespace.
+    - Add and remove record `%Ensemble/%Production/ModifyConfiguration` through `Ens.Util.Auditing.AuditModifyProductionConfig`. The record names the operation and the item, never a value.
+    - A `SaveToClass` failure after the configuration saved is a logged 500.
   - **DW-2162:** `Statused` maps `<Ens>ErrJobsNotStopped` to 409 `INTEROP.PRODUCTION.PARTSTOPPED`, unlogged.
   - **Scripts:** `Snippet` gains one objectscript branch per new write type, each block closed on its line (AD-59).
-- [ ] `src/OcuPilot/Api/InteropError.cls`: the codes and reasons in Design Notes; extend `PreconditionCodes` with the item and setting state codes.
+- [ ] `src/OcuPilot/Api/InteropError.cls`: the codes and sentences in Design Notes; `PreconditionCodes` and `ConsequenceCodes` extended; `REASONSTOP` and `REASONRESTART` reworded (Q3).
 - [ ] `src/OcuPilot/Kernel/Shell/Namespaces.cls`: append `RoutineDatabase(ns, .resource, .readOnly)`, mirroring `GlobalDatabase`.
-- [ ] `src/OcuPilot/Kernel/EntityType.cls`:
-  - append `production-item` (composite `[Production, Name]`) and `production-item-setting` (`[Production, Item, Target, Name]`), both kept exactly (no `IDRULES` row).
-  - Counts in `Test/Descriptor.cls`:1761, `Test/SuperserverDescriptor.cls`:130 and `Test/MftConnectionDescriptor.cls`:141: 62 → 64.
-- [ ] `src/OcuPilot/Kernel/Proposal/Prohibited.cls`: cover both types (`COVEREDTYPES`, two `TYPE*`, the chain, `ReviewedFewOnly` branches).
-  - `PermittedCreateFields(production-item)` = `Name,ClassName,PoolSize,Enabled,Category,Comment`.
-  - `PermittedChangeFields(production-item-setting)` = `Value`.
-  - AD-10 gains no arm (Design Notes).
-- [ ] `src/OcuPilot/Screen/Read.cls`: the interop branch passes one criterion through to the port's query.
-- [ ] `src/OcuPilot/Screen/Registry.cls` :1683-1684 and `ui/tools/screen-mirror.mjs` :1885-1887: admit `interop` criteria only on a parent-scoped read. The edit is in place (Q3 clearance). Regenerate `screens.generated.ts`.
+- [ ] `src/OcuPilot/Kernel/EntityType.cls`: append `production-item` (composite `[Production, Name]`, kept exactly, with no `IDRULES` row). The count 62 → 63 in `Test/Descriptor.cls`:1761, `Test/SuperserverDescriptor.cls`:130 and `Test/MftConnectionDescriptor.cls`:141 (Design Notes › Contended files).
+- [ ] `src/OcuPilot/Kernel/Proposal/Prohibited.cls`: cover `production-item` (`COVEREDTYPES`, a `TYPEPRODUCTIONITEM`, the chain, and a `ReviewedFewOnly` branch like `production`'s), with `PermittedCreateFields(production-item)` = `Name, ClassName, PoolSize, Enabled, Category, Comment`. AD-10 gains no arm.
+- [ ] `src/OcuPilot/Screen/Read.cls`: the interop branch seeds its criteria with `SeedCriteria`, as the encryption branch does, and requires a parent-scoped list's route criterion.
+- [ ] `src/OcuPilot/Screen/Registry.cls` :1683-1684 and `ui/tools/screen-mirror.mjs` :1885-1887: admit `interop` criteria on a parent-scoped read only. These two edits are in place (Q3). Regenerate `screens.generated.ts`.
 - [ ] `src/OcuPilot/Screen/Descriptor/InteropItemList.cls` (new):
   - `route` `interoperability/productions/items`, `parentScope` `interoperability/productions`, `sideBarPosition` 0, archetype `list`
   - entity type `production-item`, composite id `[Production, Name]`
-  - read `{interop, Items, LIST}`, criterion `production`
+  - read `{interop, Items, LIST}`, with criterion `production` (with a `hint`)
   - `privileges` `[%Ens_Portal:USE, %Ens_ProductionConfig:READ]`, own `%Ens_ProductionConfig:READ`
   - `classicPage` `EnsPortal.ProductionConfig`
   - `primaryAction` `add`; `rowActions` `enable, disable, remove`
   - context fields `Name, ClassName, Type, Enabled, PoolSize`
   - three prompts; `toolIdentifier` `interop.items`
-- [ ] `src/OcuPilot/Screen/Descriptor/InteropItemSettingList.cls` (new):
-  - `route` `interoperability/productions/items/settings`, `parentScope` the items route
-  - entity type `production-item-setting`, read `{interop, Settings, LIST}`, criterion `item`
-  - the same pairs and classic page
-  - `rowActions` `set, reset`
-  - context `Target, Name, Value, Source`, with `Value` masked as read
-  - three prompts; `toolIdentifier` `interop.itemsettings`
 - [ ] Tools (new):
-  - `Screen/Tool/InteropItemAction.cls` (abstract, `PORTCLASS` `InteropPort`, `READTYPE` `ITEM`, `READSVALUES` 1, `SENDSBODY` 0, `NAMESPACEFIELD`). `PrivilegePairs` = screen pairs + `%Ens_ProductionConfig:WRITE` + globals- and routines-database WRITE + `WithClassicPages`, each refused by name before any port call. `Consequence` answers `INTEROP.ITEM.PENDING` when the fresh read finds the production current and Running.
-  - `InteropItemEnable`/`InteropItemDisable`: `STATEFIELD` `Enabled`, subject `Enabled,EnabledSource,Namespace`.
-  - `InteropItemRemove`: `DESTRUCTIVE` 1, `CHANGEACTION` deleted, `CONSEQUENCECODE` `INTEROP.ITEM.REMOVE`, subject `Enabled,ClassName,Namespace`.
-  - `InteropItemAdd`: `CREATES` 1; arguments `Production, Name, ClassName, PoolSize, Enabled, Category, Comment`; id composed as `MappingMint` does; `READBACKFIELDS` the six fields; `CLASSICPAGES` the three add-host dialogs (Task 0 spellings).
-  - `InteropItemSettingAction` (abstract, `READTYPE` `SETTING`), with `InteropItemSettingSet` (`SCREENVALUES` `set=Value`) and `InteropItemSettingReset`, `STATEFIELD` `Value`.
+  - `Screen/Tool/InteropItemMint.cls`: `MappingMint`'s shape for `[Production, Name]`.
+  - `Screen/Tool/InteropItemAction.cls`, abstract:
+    - `PORTCLASS` `InteropPort`, `READTYPE` `ITEM`, `READSVALUES` 1, `SENDSBODY` 0, `NAMESPACEFIELD`, and the item mint
+    - `PrivilegePairs` = the screen's pairs + `%Ens_ProductionConfig:WRITE` + WRITE on the namespace's globals and routines databases + `WithClassicPages`, each refused by name before any port call
+    - `CONSEQUENCECODE` `INTEROP.ITEM.PENDING`
+  - Each tool declares its `SCREENACTIONS` id and, in `PRECONDITIONCODES`, the `ITEM` refusals its action can meet.
+  - `InteropItemEnable` and `InteropItemDisable`: `STATEFIELD` `Enabled`, subject `Enabled, EnabledSource, Namespace`.
+  - `InteropItemRemove`: `DESTRUCTIVE` 1, `CHANGEACTION` deleted, `CONSEQUENCECODE` `INTEROP.ITEM.REMOVE`, subject `Enabled, ClassName, Namespace`.
+  - `InteropItemAdd`:
+    - `CREATES` 1, `CONSEQUENCECODE` `INTEROP.ITEM.PENDING`
+    - arguments `Production, Name, ClassName, PoolSize, Enabled, Category, Comment`
+    - `READBACKFIELDS` the six fields after `Production`
+    - `CLASSICPAGES` the three add-host dialogs (Task 0 spellings)
 - [ ] `src/OcuPilot/Screen/Tool/InteropProductionStop.cls` (DW-2157): `AfterWrite` re-reads `STATE`. Suspended answers 409 `INTEROP.PRODUCTION.SUSPENDED` with `detail.state`, so the write stays applied and marked.
-- [ ] `src/OcuPilot/Area/Interop/ItemSave.cls` (new) and an add-only route `POST /interop/items` in `Api/Router.cls`: the person's Add, as `MftConnectionSave` does:
-  - the hold;
-  - `Unexpected`;
-  - the rules;
-  - the absence read;
-  - `ComposeCreate`;
-  - `Prohibited`;
-  - the port's `ADD`;
-  - the read-back.
-- [ ] `src/OcuPilot/Kernel/Governance/Baseline.cls`: append six keys. `interop.items.remove` is `false`; the others are `true`.
-- [ ] `src/OcuPilot/Test/ProductionProbe.cls` (add-only): a second op class whose `OnTearDown` waits `TearDownSeconds`, for DW-2162, removed by `Remove`.
-- [ ] Tests (new; armed under `OCUPILOT_ALLOW_PRINCIPALS`, one class per run; each creates its probe production and removes it):
-  - `Test/InteropItemControl.cls`: every matrix row through mint and confirm and through the screen caller. After each write it asserts:
+- [ ] `src/OcuPilot/Area/Interop/ItemSave.cls` (new) and an add-only route `POST /interop/items` in `Api/Router.cls`: the person's Add, in `MftConnectionSave`'s order (the hold (DW-1882), `Unexpected`, the rules, the absence read, `ComposeCreate`, `Prohibited`, the port's `ADD`, the read-back).
+- [ ] `src/OcuPilot/Kernel/Governance/Baseline.cls`: append `interop.items.enable`, `interop.items.disable` and `interop.items.add` as `true`, and `interop.items.remove` as `false`.
+- [ ] `src/OcuPilot/Test/ProductionProbe.cls` (add-only): a second op class whose `OnTearDown` waits `TearDownSeconds`, for DW-2162. `Remove` removes it.
+- [ ] Tests (new). Each is armed under `OCUPILOT_ALLOW_PRINCIPALS`, run one class per call, creates its own probe production and removes it, and splits beyond about 500 lines.
+  - `Test/InteropItemControl.cls`: every item row of the matrix but Gates and Source control, through mint and HTTP confirm and through the screen caller. After each write it asserts:
     - the stored row;
     - the class XData, after a recompile;
-    - no job started or stopped, with the production reading update pending when running;
-    - the change event, the marker, the vendor audit row (names, no values) and the snippets.
-  - `Test/InteropItemSettings.cls`: set, reset, refusals and masking, through both callers and the read tool.
-  - `Test/InteropItemGate.cls`: each missing pair refused by name on the port, the route, the tool and the Save. The split-database routines leg uses `Test/InteropItemSeam.cls`, which also drives `.SOURCECONTROL`.
+    - on a running production, that no job started or stopped and that the production reads update pending, and then that 20.2's Update applies the change (AC5);
+    - the change event, the marker, the vendor audit row (names, no values) and the snippet.
+  - `Test/InteropItemGate.cls`: one principal per declared pair, each missing that one pair, refused naming it on the port, the read, the tool and the Save, before any vendor call. The routines-database leg and `.SOURCECONTROL` run through `Test/InteropItemSeam.cls`, the `InteropGateSeam` pattern.
   - `Test/InteropStopOutcome.cls`: the DW-2157 and DW-2162 legs, through confirm and the row action.
-  - `Test/InteropItemDescriptor.cls`: declarations, registry rules on synthetic sources, and every new code resolving through `ReasonFor`.
-  - A leg that confirms `interop.items.remove` sets its governance key from a snapshot and restores it. A test asserts only on its own probe rows, never on an empty store.
-- [ ] Roster sweep (Rule 30; Design Notes › Shared surfaces):
-  - `ReadTool` :93-94
-  - `SurfaceCoverage`
-  - `Navigation` :529-530
-  - `navigation.test.mjs` :344
-  - `ClassicPageGate` :75 and :154
-  - `MappingDescriptor` :24
-  - `ToolEmit` :226
-  - `ToolRoundTrip` :84
-  - `ToolWrite` :1338
-  - `PortGate` :29
-  - `Prohibited` :232
-  - `GovernanceBaseline` :15
-  - the `InteropFloor*` rosters, including `InteropFloor` :357, which says no principal holds a write
-  - `InteropFloorRoutes`, `SaveHoldCoverage`, `EndpointCoverage`
-  - `screen-mirror.test.mjs` :2387, :2877
-  - `interop.test.mjs`
-  - `ci-throwaway.sh` :402 `# classes:` with `ci.test.mjs`
+  - `Test/InteropItemDescriptor.cls`: the declarations, the registry rules on synthetic sources, screen-and-tool row equality, and every new code resolving through `ReasonFor`.
+  - A leg that confirms `interop.items.remove` sets its governance key from a snapshot and restores it. A test asserts only on its own probe rows.
+- [ ] Roster sweep (Rule 30; Design Notes › Contended files):
+  - `ReadTool` :93-94, `SurfaceCoverage`, `Navigation` :526-530, `navigation.test.mjs` :344
+  - `ClassicPageGate` :75 and :154, `MappingDescriptor` :24, `PortGate` :29, `Prohibited` :232
+  - `ToolEmit` :226, `ToolRoundTrip` :84, `ToolWrite` :1338, `DraftRegistry`, `GovernanceBaseline` :15
+  - `InteropFloor` :357, which asserts that no floor kind holds a write tool: a kind that now holds an item write moves to the set read from the instance
+  - `InteropFloorRoutes`, `InteropFloorOwnPairs`, `SaveHoldCoverage`, `EndpointCoverage`
+  - `screen-mirror.test.mjs` :2387 and :2877, `interop.test.mjs`
+  - `ci-throwaway.sh` :402, a new `# classes:` line, with `ci.test.mjs`
 - [ ] Client:
   - `screen-action-handler.ts`:
-    - add `InteropItemList` and `InteropItemSettingList` to `SCREEN_ACTION_DESCRIPTORS`
-    - `DESTRUCTIVE_CONSEQUENCES` and typed name for `remove`
-    - a `setting` kind in `VALUE_ACTIONS`: one text field, or a checkbox for a `%Library.Boolean` setting
-    - on `INTEROP.PRODUCTION.SUSPENDED`/`.PARTSTOPPED`, re-read the Productions list
-  - a new `ui/src/app/areas/interoperability/interop-item-add-dialog.ts` posting to `/api/ocupilot/interop/items`
-  - `screen-actions.ts` labels; `proposal-view.ts` consequences
-  - `strings.ts`: add-only keys, plus the two reworded stop and restart values (Q3)
-- [ ] `EXPERIENCE.md`:
-  - `:604` gains every new literal and a Story 20.3 Where clause, and the two stop/restart literals are reworded (Q3)
-  - `:173` names the Add item and Set value dialogs
-  - `ui/tools/strings.test.mjs` bound 3000 → 3400, with one comment line
-  - then `cd ui && npm run test:tools`
-- [ ] `ui/browser/interop-items.browser-spec.mjs` (new; `before`/`after` run `ProductionProbe.Remove`/`Create`; every step waits for `waitForMapAnswered` and the list's rows). In USER:
+    - add `InteropItemList` to `SCREEN_ACTION_DESCRIPTORS`;
+    - append `remove` to `DESTRUCTIVE_ACTIONS` (Locks' `remove` is page-registered, so the handler never draws it);
+    - add `WARNING_CONSEQUENCES` entries for `enable` and `disable` with the PENDING sentence;
+    - add a `DESTRUCTIVE_CONSEQUENCES` entry, and a `TYPED_NAME_ROWS` row with `name: 'Name'`, as the mapping lists have;
+    - on `INTEROP.PRODUCTION.SUSPENDED` or `.PARTSTOPPED`, re-read the Productions list.
+  - `ui/src/app/areas/interoperability/interop-item-add-dialog.ts` (new): opened by the list's `add`, stating the PENDING sentence and posting to `/api/ocupilot/interop/items`.
+  - `screen-actions.ts` labels; `proposal-view.ts` consequences for `INTEROP.ITEM.PENDING` and `.REMOVE`.
+  - `strings.ts`: add-only keys, plus the two reworded stop and restart values (Q3).
+- [ ] `EXPERIENCE.md`: `:604` gains every new literal and a Story 20.3 Where clause, with the stop and restart literals reworded (Q3), and `:173` names the Add item dialog. `ui/tools/strings.test.mjs`'s bound moves 3000 → 3400 with one comment line; then `cd ui && npm run test:tools`.
+- [ ] `ui/browser/interop-items.browser-spec.mjs` (new). `before` creates the probe production, removing any leftover first, and `after` removes it. Every step waits for `waitForMapAnswered` and the list's rows. In USER:
   - open the probe production's items from its name cell;
   - disable and enable `OcuPilotProbeOp`;
-  - add and then remove (typed name) an item;
-  - set and reset `HangSeconds` on the settings list.
+  - add an item, then remove it through the typed-name dialog.
 
 **Acceptance Criteria:**
 
-- **AC1 (lists, integration):** Given the probe production in USER on `ocupilot-b-ci`, when its Productions row's name is opened and then an item's name, then Production items and Item settings list its items and settings through `InteropPort`, and `interop.items.read` and `interop.itemsettings.read` return the same rows.
-- **AC2 (confirmed item writes, integration):** Given each of enable, disable, add, remove, set and reset, when the agent proposes it and the person confirms it over HTTP, or the person acts on the screen, then the change shows in the stored configuration and in the production class after a recompile. A running production keeps its jobs and reads update pending, which its card says.
+- **AC1 (list, integration):** Given the probe production in USER on `ocupilot-b-ci`, when its Productions row's name is opened, then Production items lists its items through `InteropPort`, and `interop.items.read` returns the same rows.
+- **AC2 (confirmed item writes, integration):** Given each of enable, disable, add and remove, when the agent proposes it and the person confirms it over HTTP, or the person acts on the screen, then the change is in the stored configuration and in the production class after a recompile. On a running production no job starts or stops, and the production reads update pending, which the enable, disable and add cards say. Remove asks for the item's name typed, and its governance key ships `false`.
 - **AC3 (refusals):** Given any refusal row of the matrix, when it is proposed or acted on, then it is refused by its code before any vendor call.
-- **AC4 (gates):** Given a principal lacking one declared pair, when it reads, proposes, acts or saves, then it is refused naming that pair before any vendor call.
-- **AC5 (secrets):** Given a setting whose name matches the credential pattern, when it is read, sent as context or set, then its value never leaves the instance and the write is refused.
+- **AC4 (gates):** Given a principal lacking one declared pair, when it reads, proposes, acts or saves, then it is refused naming that pair before any vendor call. Every declared pair has its own leg.
+- **AC5 (Update applies it, integration):** Given a running production with an item disabled, or added enabled, through OcuPilot, when 20.2's Update is confirmed, then the disabled item's job stops, or the added item's starts, and the production reads up to date.
 - **AC6 (DW-2157, DW-2162):** Given a stop that ends Suspended, or jobs that outlast the cap, when stop or restart runs, then it answers its own code and sentence. The row shows the state the production was left in, and the stop and restart consequences name a partial stop.
 
 ## Spec Change Log
@@ -261,54 +236,43 @@ deferred: []
 
 ## Design Notes
 
-**Governing ADs:** AD-1, AD-3, AD-5, AD-6, AD-7, AD-8, AD-10, AD-11, AD-13, AD-14, AD-15, AD-16, AD-21, AD-22, AD-24, AD-29, AD-34, AD-35, AD-36, AD-39, AD-44, AD-51, AD-52, AD-53, AD-54, AD-55, AD-56, AD-58, AD-59, AD-60, AD-62.
+**Governing ADs:** AD-1, AD-3, AD-5, AD-6, AD-7, AD-8, AD-10, AD-11, AD-13, AD-14, AD-15, AD-16, AD-22, AD-24, AD-29, AD-34, AD-36, AD-39, AD-44, AD-51, AD-52, AD-53, AD-54, AD-55, AD-56, AD-58, AD-59, AD-60, AD-62.
 
-**Vocabulary, measured at this plan on `ocupilot-b-ci`** (USER, `ProductionProbe` plus a scratch class, all removed afterwards):
+**Rulings** (orchestrator, by=merge_gate, 2026-10-09, feature 67e70c72): the split (settings are 20.22's), Q2 A and Q3 on union terms, as the Spec Change Log records. No further security-posture question remains for this story.
+
+**Reading of the intent:** in this story, "a value the host class refuses" is an add field that `Ens.Config.Item` refuses (`INTEROP.ITEM.VALUE`). Setting values are 20.22's.
+
+**Measured at the first plan on `ocupilot-b-ci`** (USER, `ProductionProbe` plus a scratch class, removed afterwards; reused here, not re-probed):
 
 - **Stopped production.**
-  - `EnableConfigItem(…,0,0)` answers OK and records `%Ensemble/%Production/ModifyConfiguration` ("item disabled by <caller>"). It does **not** touch the class XData (the runtime differs from the class), and compiling the class reloaded it, with the item enabled again and every item id renumbered.
-  - Repeating it answers `<Ens>ErrGeneral` "already disabled". An unknown item answers `<Ens>ErrConfigItemNotFound`, and an unknown production `ErrProductionNotRegistered`.
-- **Settings and classes.**
-  - Item `%Save` followed by `SaveToClass(item)` answers OK, and the XData carries the change. The class is then not up to date, which is the vendor's own path.
-  - `SetItemSettingValue` stored `"abc"` in an `%Integer` setting and an unknown setting name. The vendor validates neither, while the classic page calls `<Name>IsValid`. `PoolSize` -1 is refused #7204.
-- **Add and remove.**
-  - Add stored a duplicate enabled name, and also a non-host class.
-  - A missing class saved the table row and then failed `SaveToClass` with `<CLASS DOES NOT EXIST>`, leaving the table and the class apart. `Bad|Name` and `_Bad` are refused at `%Save`.
-  - Remove answers OK.
-  - No vendor audit event records `SetItemSettingValue`, the composed save, add or remove.
+  - `EnableConfigItem(…,0,0)` answers OK and records `%Ensemble/%Production/ModifyConfiguration` ("item disabled by <caller>"). It does not touch the class XData. Compiling the class then reloaded it with the item enabled again and every item id renumbered.
+  - Repeating it answers `<Ens>ErrGeneral` "already disabled". An unknown item answers `ErrConfigItemNotFound`, and an unknown production `ErrProductionNotRegistered`.
+- **Class, add and remove.**
+  - Item `%Save` then `SaveToClass(item)` answers OK, and the XData carries the change. The class then reads not up to date, as on the vendor's own path.
+  - `PoolSize` -1 is refused #7204. `Bad|Name` and `_Bad` are refused at `%Save`.
+  - Add stored a duplicate enabled name, and a non-host class. A missing class saved the table row and then failed `SaveToClass` with `<CLASS DOES NOT EXIST>`.
+  - Remove answers OK. The vendor records no audit event for add, remove or the composed save.
 - **Running production.**
-  - Each item write leaves `NeedsUpdate` 1, with the vendor's reason ("Job … needs to be terminated", "1 new job … needs to be started", "Registration … needs to be deleted"). `UpdateProduction(10,0)` applied each one.
-  - With the item busy past a 3 s cap, `UpdateProduction` answers `<Ens>ErrJobNotStopped` in 3.01 s. The disable stays stored and the job runs on until a later update.
-  - `EnableConfigItem(…,1)` runs that update itself with the uncapped production timeout.
+  - Each item write leaves `NeedsUpdate` 1 with the vendor's reason. `UpdateProduction(10,0)` applied each one.
+  - With the item busy past a 3 s cap, `UpdateProduction` answers `<Ens>ErrJobNotStopped` in 3.01 s. The disable stays stored.
+  - `EnableConfigItem(…,1)` runs that update itself, uncapped.
 - **Privilege.**
-  - A principal holding only `%Ens_Portal:U` and `%DB_USER:RW` performed every item write and the audit call, so the vendor checks nothing.
-  - With `%DB_USER:R` it got `<PROTECT>` on `^Ens.Config.ItemD` (the item save) and on `^oddDEF` (`SaveToClass`). The audit call landed for both principals.
-  - Stock roles: `%EnsRole_Administrator` and `_WebDeveloper` hold `%Ens_ProductionConfig:W`; `_Operator` holds `:R` plus `%Ens_ConfigItemRun:U` and `%Ens_ProductionRun:U`.
+  - A principal holding only `%Ens_Portal:U` and `%DB_USER:RW` performed every item write and the audit call.
+  - With `%DB_USER:R` it got `<PROTECT>` on `^Ens.Config.ItemD` and `^oddDEF`.
+  - Stock roles: `%EnsRole_Administrator` and `_WebDeveloper` hold `%Ens_ProductionConfig:W`. `_Operator` holds `:R` plus `%Ens_ConfigItemRun:U` and `%Ens_ProductionRun:U`.
 - **DW-2157:** stop(15) with three messages queued behind a 3 s handler answered OK in 5.50 s, and the production reads Suspended.
-- **DW-2162:** an op whose `OnTearDown` waits 20 s made stop(3) answer `<Ens>ErrJobsNotStopped` in 3.02 s. The production reads Running with `NeedsUpdate` 1 and only the stuck job left, and after 22 s it still reads Running with no jobs.
-- **Half-applied states the vendor can leave:**
-  - A configuration change the running production has not yet taken (`NeedsUpdate`), which a busy update prolongs.
-  - A class that is stale after `EnableConfigItem`, which a recompile reverts.
-  - A table row whose `SaveToClass` failed.
-  - The port's validation and its always-`SaveToClass` rule close the last two. Q2 decides the first.
-- **Source control:** off in USER. The classic save goes through the Hidden `prodConfigSCPage.CallProductionUpdateAndSaveToClass`, read from the instance, which calls the source-control hooks around `%Save` and `SaveToClass`.
+- **DW-2162:** an op whose `OnTearDown` waits 20 s made stop(3) answer `<Ens>ErrJobsNotStopped` in 3.02 s. The production reads Running with `NeedsUpdate` 1 and only the stuck job, and after 22 s it reads Running with no jobs.
+- **Source control:** off in USER. The classic save goes through the Hidden `prodConfigSCPage`, which calls the source-control hooks around `%Save` and `SaveToClass`.
 
 **Decisions this plan takes:**
 
-- **Name rule:** the vendor's `CheckForIllegalCharacters` plus the classic client's checks:
-  - 1-128 characters, with no leading or trailing space
-  - none of `| ; , [`
-  - not starting with `-` or `_`, not ending with `-`, `!` or `$`
-  - not `*`
-- **Identity:** an item is `[Production, Name]`, and a duplicate name is refused, never guessed.
-- **Classic pages and pairs:** the four non-add writes are performed on `EnsPortal.ProductionConfig` itself, so they declare no `CLASSICPAGES`.
-  - Named limits: a holder of only `%Ens_ConfigItemRun:USE`, which the classic page admits for enable, disable and Apply, is refused.
-  - An item's own class is not checked for a mapped package (inference).
-- **AD-10:** OcuPilot runs no production of its own, so no item is self-protection, and no arm is added.
-- **Audit (AD-15, AD-53):**
-  - Enable and disable carry the vendor's own event. Add, remove, set and reset record the same event through the documented `Ens.Util.Auditing`, as the classic server methods do, so no named gap is added.
-  - Named limit: a partial stop (DW-2162) records neither the vendor's StartStop event nor a marker. Its ledger row carries the code.
-- **New codes and sentences** (`InteropError`; each also in `strings.ts` and `EXPERIENCE.md:604`):
+- **Name rule** (the vendor's `CheckForIllegalCharacters` plus the classic client's checks): 1-128 characters with no leading or trailing space; none of `| ; , [`; not starting with `-` or `_`; not ending with `-`, `!` or `$`; not `*`.
+- **Identity:** an item is `[Production, Name]`. A duplicate name is refused, never guessed.
+- **Classic pages:** enable, disable and remove are performed on the list's own page, so they declare no `CLASSICPAGES`. Named limits: a holder of only `%Ens_ConfigItemRun:USE`, which the classic page admits for enable and disable, is refused; an item's own class is not checked for a mapped package (inference).
+- **AD-10:** OcuPilot runs no production of its own, so no item is self-protection.
+- **Audit (AD-15, AD-53):** enable and disable carry the vendor's own event, and add and remove record it through `Ens.Util.Auditing`, as the classic server methods do. Named limit: a partial stop (DW-2162) records no marker.
+- **Pending update:** `INTEROP.ITEM.PENDING` is static, so it holds for a stopped and a running production alike. Enable, disable and add carry it on their cards, and enable and disable warn with it first, since an action's warning is its card's consequence. Remove carries `INTEROP.ITEM.REMOVE` instead: it is refused while the item is enabled, so no job is affected.
+- **Codes and sentences** (in `InteropError`, `strings.ts` and `EXPERIENCE.md:604`):
   - `INTEROP.ITEM.ENABLED`: "This item is already enabled."
   - `INTEROP.ITEM.DISABLED`: "This item is already disabled."
   - `INTEROP.ITEM.DEFAULTSETTING`: "A system default setting decides whether this item is enabled, so change it in System Default Settings."
@@ -317,102 +281,89 @@ deferred: []
   - `INTEROP.ITEM.AMBIGUOUS`: "This production holds more than one item of that name, so change it in the classic production configuration page."
   - `INTEROP.ITEM.CLASS`: "Name a business service, business process or business operation class compiled in this namespace."
   - `INTEROP.ITEM.NAME`: the name rule above, as one sentence.
+  - `INTEROP.ITEM.VALUE`: "A production item does not accept this value for that field."
   - `INTEROP.ITEM.ENABLEDREMOVE`: "Disable this item before removing it."
   - `INTEROP.ITEM.SOURCECONTROL`: "This namespace uses source control, so change this production's items in the classic production configuration page."
-  - consequence `INTEROP.ITEM.PENDING`: "This production is running, so the change takes effect when the production is updated on Productions."
+  - consequence `INTEROP.ITEM.PENDING`: "The change takes effect when this production next starts or, while it runs, when it is updated on Productions."
   - consequence `INTEROP.ITEM.REMOVE`: "Removing this item deletes it and every setting it holds from the production."
-  - `INTEROP.SETTING.UNKNOWN`: "This item has no setting of that name."
-  - `INTEROP.SETTING.VALUE`: "The item's class does not accept this value for that setting."
-  - `INTEROP.SETTING.SAME`: "This setting already holds that value."
-  - `INTEROP.SETTING.NODEFAULT`: "This setting holds no value of the production's own, so there is nothing to reset."
-  - `INTEROP.SETTING.SECRET`: "This setting holds a secret, so set it in the classic production configuration page or point the item at a credentials entry."
   - `INTEROP.PRODUCTION.SUSPENDED`: "The production stopped, but messages still queued left it Suspended rather than Stopped. Start it to process them."
   - `INTEROP.PRODUCTION.PARTSTOPPED`: "Some of the production's jobs did not stop within 15 seconds, so it is left partly stopped and still reads Running. Stop it again to finish, or update it to start its jobs again."
-  - Stop's reworded consequence ends "…nothing is stopped; if a job then takes longer than 15 seconds to stop, the production is left partly stopped." Restart's is reworded the same way.
-  - About 55 literals in all, with the titles, columns, type and source words, prompts and dialog labels. The table reads 2,967 (measured), so it moves to about 3,022.
-- **Client weight:** two small dialogs, handler entries and strings, about 15-25 kB (inference) against 3,178,307 bytes and a 3326 kB warning. Measure it at implement.
+  - Stop's consequence ends "…nothing is stopped; if a job then takes longer than 15 seconds to stop, the production is left partly stopped." Restart's is reworded the same way.
+- **Fixed strings:** about 40 literals in all, with the title, empty states, prompts, columns, type words, labels and the add dialog. The table moves from 2,967 (measured) to about 3,007, so the bound moves 3000 → 3400.
+- **Client weight:** one dialog, handler entries and strings, about 10-20 kB (inference), against 3,178,307 bytes and the 3326 kB warning. Implement measures it and states it in the Auto Run Result.
 
-**Questions returned to the orchestrator (posture and contended edits; this spec is written to the recommended options):**
+**Spine drafts (Rule 20, one line each, applied at the spec gate):**
 
-- **Q1 (settings that hold secrets or locations).**
-  - Measured: the classic page shows every value in clear to `%Ens_ProductionConfig:READ` holders and audits `old>>new` values in clear. Most credentials are references (`Credentials` ids), but a host class may declare any property, a literal password included, as a setting. `ExtraHeaders` can carry an `Authorization` header, and file adapters' settings are server paths.
-  - **(A, recommended)** A name matching the Conventions › Secrets pattern is secret. Its value and default are never returned (screen, tool, context, ledger) and never set through OcuPilot (`INTEROP.SETTING.SECRET`, both callers). Every other setting is shown, reaches the model through AD-60, and is settable by both callers, validated by its class. A location setting is permitted as its host's own validated value, extending AD-21's third case to item settings, with the diff row naming it. Named limit: a secret under a non-matching name.
-  - **(B)** As A, but a person (never the agent) may replace a secret-named setting write-only, through a new per-row secret channel. That needs kernel work, because `secretArguments` is static.
-  - **(C)** Mirror the classic page: show, send and set every value.
-  - **(D)** As A, and also refuse every location-valued setting under AD-21's strict reading.
-- **Q2 (a write that could stop a running production).**
-  - **(A, recommended)** Item writes change only the stored configuration and the class. A running production reads update pending, and 20.2's confirmed Update applies the change. A remove is refused while the item is enabled. AD-62 rule 6 stays true, every write stays short, and every job stop stays a separately confirmed Update.
-  - **(B)** Chain the capped update in the same request, as the classic page chains its Update dialog. A busy update then answers a new partial code (stored, not applied), and AD-62 rule 6 is amended.
-- **Q3 (non-add-only edits in files Epic 18 is changing).** Clearance for:
-  - `Screen/Registry.cls`:1683-1684 and `ui/tools/screen-mirror.mjs`:1885-1887 (the criteria port list). Epic 18's hunks are at :2958-2967 and :315.
-  - the two stop and restart literals in `strings.ts` and `EXPERIENCE.md:604`. Epic 18's EXPERIENCE.md hunks are at :471 and :475; its strings.ts lines are add-only elsewhere.
-  - All measured line-clean on 2026-10-09. Recommended: clear, as 20.2's count-word edits were.
-- **Split (`oversized`).** Recommended seam: keep items here (the `Items` endpoint, the list, enable, disable, add and remove, DW-2157 and DW-2162). Move Item settings, `set`, `reset`, `production-item-setting` and Q1 to a new Story 20.22 that consumes this one. Q2 and Q3 stay with 20.3.
-
-**Spine decisions for the runner (Rule 20), once ruled:**
-
-- AD-62 gains `Items` and `Settings`, configuration-only item writes, the always-`SaveToClass` rule, the source-control refusal, the audit emission and the pairs.
-- AD-36's interop clause takes one parent criterion.
-- AD-13 adds the two composite ids, kept exactly.
-- AD-44 adds the add tool's `CLASSICPAGES`.
-- AD-8 adds the item writes' extra pairs.
-- AD-21 extends its third case, per Q1.
-- Conventions › Secrets names item settings.
+- **AD-62:** `InteropPort` gains `Items` (`LIST` with one `production` criterion, `ITEM`, `ENABLE`, `DISABLE`, `ADD`, `REMOVE`); an item write changes the stored configuration and the production class only, and a running production reads update pending until 20.2's confirmed Update applies it (rule 6 holds; a remove is refused while the item is enabled); measured, `Ens.Director.EnableConfigItem` alone leaves the production class stale, and a recompile re-enables the item and renumbers every item id, so every item write also calls `SaveToClass` and an item is identified by `[Production, Name]`, never by the vendor's integer id; a namespace under source control refuses every item write (`INTEROP.ITEM.SOURCECONTROL`); enable and disable carry the vendor's `ModifyConfiguration` event, and the vendor records none for add and remove, so the port records it through `Ens.Util.Auditing.AuditModifyProductionConfig`, never with a value; an item write's pairs are `%Ens_ProductionConfig:WRITE` and WRITE on the namespace's globals and routines databases, and never `%Ens_ProductionRun:USE`.
+- **AD-8:** measured at Story 20.3's plan, the vendor's item writes check no privilege of their own (a principal holding only `%Ens_Portal:U` and `%DB_USER:RW` did every item write), so OcuPilot's declared pairs are the only gate; 20.3's write tools declare their pairs, each pinned by a Rule 19 test that removes one pair and observes the refusal.
+- **AD-36:** a parent-scoped `interop` list takes its parent's route id as its one criterion (Production items, `production`), required as a single-object read's is; the port answers the parent key on each row, so nothing is seeded.
+- **AD-13:** a `production-item` id is the composite `[Production, Name]`, each part kept exactly.
+- **AD-44:** Story 20.3's add declares `EnsPortal.Dialog.ProductionAddService`, `…AddProcess` and `…AddOperation` (Task 0 spellings); enable, disable and remove are performed on the list's own page and declare none.
 
 **Integration ACs, Consumed-by and Consumes:**
 
-- Integration: AC1 and AC2 run against a real instance (`ocupilot-b-ci`, HTTP confirm and the screen route).
-- Consumed-by: 20.4 (per-host tabs opened from an item row), 20.6 (testing a host named by its item), 20.8 (the configuration diagram's items), 20.12 (guided workflows: disable, then Update).
-- Consumes: 20.2 (`InteropPort`, `production`, Productions list, Update), 18.14's and 6.6's child-list pattern, and `Test/ProductionProbe`.
+- Integration: AC1, AC2 and AC5 run against a real instance (`ocupilot-b-ci`, HTTP confirm and the screen route). AC5's consumer is 20.2's Update.
+- Consumed-by: 20.22 (Item settings opens from an item row and reuses `production-item`, the `ITEM` read, the item tools' pairs and the always-`SaveToClass` rule), 20.4 (per-host tabs from an item row), 20.6 (a host test names its item), 20.8 (the configuration diagram's items), 20.12 (a guided disable, then Update).
+- Consumes: 20.2 (`InteropPort`, `production`, the Productions list and Update), 18.14's and 6.6's child-list pattern, and `Test/ProductionProbe`.
 
-**Ledger inbox (Rule 17):** DW-2157 is addressed by AC6 (stop's `AfterWrite`, `SUSPENDED`), and DW-2162 by AC6 (`PARTSTOPPED` and the reworded consequences). Both follow the orchestrator's 2026-10-07 rulings.
+**Ledger inbox (Rule 17):** AC6 addresses DW-2157 (stop's `AfterWrite`, `SUSPENDED`) and DW-2162 (`PARTSTOPPED` and the reworded consequences).
 
-**Contended files (Rule 11), checked against `.worktrees/epic-18` on 2026-10-09:**
+**Contended files (Rule 11),** checked against `.worktrees/epic-18` at `ba8df993` on 2026-10-09:
 
-- Single-line rosters both epics append to: `EntityType.cls`:98; `Prohibited.cls`:250 and :1295; `Test/` `PortGate`:29, `ClassicPageGate`:75 and :154, `MappingDescriptor`:24, `ReadTool`:93-94, `Descriptor`:1761, `Prohibited`:232 and `ToolRoundTrip`:84. The union is taken at merge, as 20.2 did.
-- Add-only: `Baseline.cls`, `Router.cls`, `SurfaceCoverage`, `SaveHoldCoverage`, `EndpointCoverage`, `screen-action-handler.ts`, `strings.ts` (new keys), `screens.generated.ts` (regenerated).
-- Clearance: Q3.
-- Untouched: `Mint.cls`, `ScreenAction.cls`, `EntityRef.cls`, `AdminPort.cls`, `angular.json`, and 23.6's `Explorer*` and `proposal-card.ts`.
+- Single-line rosters both epics append to, with the union taken at merge, as 20.2 did: `EntityType.cls`:98; `Prohibited.cls`:250 and :1295; in `Test/`, `PortGate`:29, `ClassicPageGate`:75 and :154, `MappingDescriptor`:24, `ReadTool`:93-94, `Prohibited`:232, `ToolRoundTrip`:84, and the entity-type count in `Descriptor`:1761, `SuperserverDescriptor`:130 and `MftConnectionDescriptor`:141.
+- Story 18.10 also raises that count 62 → 63, so an identical `63` from both epics merges clean and reads wrong. Whichever merge brings both sets all three to the union (64).
+- Add-only: `Baseline.cls`, `Router.cls`, `SurfaceCoverage`, `SaveHoldCoverage`, `EndpointCoverage`, `DraftRegistry`, `screen-action-handler.ts` (`DESTRUCTIVE_ACTIONS` :424 is a one-line array, appended), `strings.ts` (new keys), `screen-mirror.test.mjs`, `navigation.test.mjs`, `ci-throwaway.sh`, and `screens.generated.ts` (regenerated).
+- In place, cleared (Q3): `Registry.cls`:1683-1684, `screen-mirror.mjs`:1885-1887, and the stop and restart literals in `strings.ts` and `EXPERIENCE.md`:604. Epic 18's hunks there are at :2958-2967, :315, :471 and :475, so all four are line-clean.
+- Untouched: `Mint.cls`, `ScreenAction.cls`, `EntityRef.cls`, `AdminPort.cls`, `Api/Error.cls`, `angular.json`, and 23.6's `Explorer*` and `proposal-card.ts`.
 
 ## Verification
 
-**Shared surfaces:** the Productions list (its name cell now opens Production items), the entity types, the interop source kind's criteria, the Interoperability navigation count, the write-tool rosters, and the Fixed-strings table. *Existing tests that assert a surface this story changes are updated in this story, and every test the story adds or changes passes on a freshly built instance and in either order.*
+**Shared surfaces:** the Productions list (its name cell now opens Production items), the entity types, the interop source kind's criteria, the Interoperability area's screens, the write-tool rosters and governance baseline, the stop and restart consequences, and the Fixed-strings table.
+
+*Existing tests that assert a surface this story changes are updated in this story, and every test the story adds or changes passes on a freshly built instance and in either order.*
 
 **Setup (slot B):**
 
 - `rsync -a --checksum --delete /Users/jbrandt/git/OcuPilot/.worktrees/epic-20/src/ /Users/jbrandt/.ocupilot-throwaways/ocupilot-b-ci/src/`
-- then in `docker exec -i ocupilot-b-ci iris session iris -U HSCUSTOM`, run `$System.OBJ.LoadDir("/opt/ocupilot/src/OcuPilot","ck-d",.tErrors,1)`
+- then, in `docker exec -i ocupilot-b-ci iris session iris -U HSCUSTOM`, run `$System.OBJ.LoadDir("/opt/ocupilot/src/OcuPilot","ck-d",.tErrors,1)`
 - Before a browser run: `cd ui && npm run build && docker cp dist/ocupilot-ui/browser/. ocupilot-b-ci:/durable/iris/csp/ocupilot/`.
 - Never the dev instance `ocupilot-slot-b`.
 
 **Commands:**
 
 - `(loop)` `cd ui && node tools/ci-runner.mjs --container ocupilot-b-ci --class OcuPilot.Test.<C>`, one class per call, each read from `%UnitTest_Result`. Classes:
-  - `InteropItemControl`, `InteropItemSettings`, `InteropItemGate`, `InteropStopOutcome`, `InteropItemDescriptor`
-  - `InteropControl`, `InteropDescriptor`, `InteropGate`
+  - new: `InteropItemControl`, `InteropItemGate`, `InteropStopOutcome`, `InteropItemDescriptor`
+  - existing: `InteropControl`, `InteropDescriptor`, `InteropGate`
   - each sweep class touched: `ReadTool`, `SurfaceCoverage`, `Navigation`, `ClassicPageGate`, `MappingDescriptor`, `ToolEmit`, `ToolRoundTrip`, `ToolWrite`, `DraftRegistry`, `PortGate`, `Prohibited`, `Descriptor`, `SuperserverDescriptor`, `MftConnectionDescriptor`, `GovernanceBaseline`, `InteropFloor`, `InteropFloorRoutes`, `InteropFloorOwnPairs`, `SaveHoldCoverage`, `EndpointCoverage`
-- `(loop)` `cd ui && OCUPILOT_BROWSER_ORIGIN=http://localhost:52777 OCUPILOT_BROWSER_CONTAINER=ocupilot-b-ci node --test --test-concurrency=1 browser/<file>`, one file per call: `interop-items.browser-spec.mjs`, `interop-productions.browser-spec.mjs`, `a11y-structural-invariants.browser-spec.mjs` (DW-1337, both themes).
+- `(loop)` `cd ui && OCUPILOT_BROWSER_ORIGIN=http://localhost:52777 OCUPILOT_BROWSER_CONTAINER=ocupilot-b-ci node --test --test-concurrency=1 browser/<file>`, one file per call: `interop-items.browser-spec.mjs`, `interop-productions.browser-spec.mjs`, and `a11y-structural-invariants.browser-spec.mjs` (DW-1337, both themes).
 - `(loop)` Expected clean:
   - `cd ui && npm run test:tools && npm run test:components`
   - `uv run scripts/check-objectscript.py <changed .cls>`
   - `bash scripts/lint-docs.sh`
-- `(once, before dev_complete, runner-side in foreground batches)` The full ObjectScript sweep on `ocupilot-b-ci`, one class at a time. Then `cd ui && npm test && npm run build` (under 3326 kB) and `bash scripts/smoke.sh --container ocupilot-b-ci --user _SYSTEM --password SYS`.
+- `(once, before dev_complete, runner-side in foreground batches)`:
+  - the full ObjectScript sweep on `ocupilot-b-ci`, one class at a time;
+  - then `cd ui && npm test && npm run build`, under 3326 kB;
+  - then `bash scripts/smoke.sh --container ocupilot-b-ci --user _SYSTEM --password SYS`.
 - `(CI)` The full browser suite.
 
 **Planned pinning mutations (Rule 19):**
 
 | AC | Mutation | Expected red |
 |---|---|---|
-| AC1 | Drop the criterion from the interop branch in `Read.cls` | `InteropItemDescriptor`'s screen and tool equality |
+| AC1 | Drop `SeedCriteria` from the interop branch in `Read.cls` | `InteropItemDescriptor`'s screen-and-tool rows leg |
 | AC2 | Skip `SaveToClass` after `EnableConfigItem` | `InteropItemControl`'s after-recompile leg |
-| AC2 | Call `UpdateProduction` after a disable | `InteropItemControl`'s no-job-change leg |
-| AC3 | Drop the `TAKEN` check | `InteropItemControl`'s duplicate leg |
-| AC4 | Drop the routines-database pair | `InteropItemGate`'s seam leg |
-| AC5 | Unmask `Value` | `InteropItemSettings`'s masking leg |
+| AC2 | Pass `pDoUpdate` 1 to `EnableConfigItem` | `InteropItemControl`'s no-job-change leg |
+| AC3 | Drop the `TAKEN` check | `InteropItemControl`'s duplicate-add leg |
+| AC3 | Drop the `ENABLEDREMOVE` check | `InteropItemControl`'s remove-while-enabled leg |
+| AC4 | Drop each declared pair in turn: `%Ens_Portal:USE`, `%Ens_ProductionConfig:READ`, `%Ens_ProductionConfig:WRITE`, globals WRITE, routines WRITE | that pair's `InteropItemGate` leg |
+| AC5 | Save only the class, not the configuration, on a disable | `InteropItemControl`'s pending-then-Update leg |
 | AC6 | Remove stop's `AfterWrite` | `InteropStopOutcome`'s Suspended leg |
-| AC6 | Map the plural code to `$$$OK` | `InteropStopOutcome`'s partial-stop leg |
+| AC6 | Drop the plural mapping in `Statused` | `InteropStopOutcome`'s partial-stop leg |
 
 ## Auto Run Result
 
-Status: blocked
-Blocking condition: intent gap: Q1 how item settings that hold secrets or server locations are shown, sent to the model and edited (recommended A: credential-pattern names never returned and never set through OcuPilot; others shown, sent and settable, location settings permitted under AD-21's third case); Q2 whether an item write on a running production also runs the update that stops or starts its jobs (recommended A: configuration-only, 20.2's confirmed Update applies it, remove refused while enabled); Q3 clearance for in-place edits in Epic 18's files (Registry.cls:1683-1684, screen-mirror.mjs:1885-1887, the stop and restart literals in strings.ts and EXPERIENCE.md:604; all line-clean). Split recommended: item settings to a new Story 20.22.
+Status: ready-for-dev
+Blocking condition: none
+
+- This pass re-planned after the split: settings, `production-item-setting`, `INTEROP.SETTING.*`, the settings list and the secrets AC are removed. AC5 is now the Integration AC against 20.2's Update, so AC6 keeps DW-2157 and DW-2162.
+- Spine drafts: AD-62, AD-8, AD-36, AD-13, AD-44. A merge hazard is named: Epic 18 bumps the same entity-type count.
