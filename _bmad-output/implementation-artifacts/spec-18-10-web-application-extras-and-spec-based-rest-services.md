@@ -105,7 +105,7 @@ Paths are under `src/OcuPilot/` unless they start with `ui/`.
 - Given a web application in the editor, when its Percent class access tab is read, an entry added and a user entry deleted, then each round-trips through the admin API.
 - Given the agent, when it proposes `webapp.pctaccess.create` or `.delete`, then it mints and confirms, its read-back verdict is `matches` (create) or `notFound` (delete), and it renders a `Snippet`.
 - Given a system entry, when its delete is clicked or proposed, then it is refused `PCTACCESS.SYSTEM` before the vendor, and its Delete is `aria-disabled` with that sentence.
-- Given `OcuPilotState` or `OcuPilotIdentity`, when a delete, a disable or a `MatchRoles` or `Roles` change reaches the prohibited set from the screen's action route or an agent's confirm, then it answers 403 `PROHIBITED.OCUPILOTROUTINEAPP` with the published sentence, and nothing changes.
+- Given `OcuPilotState` or `OcuPilotIdentity`, when any write to it (a delete, a disable or a change to any field) arrives from the screen's action route, the editor's Save, the agent's mint or the agent's confirm, then it answers 403 `PROHIBITED.OCUPILOTROUTINEAPP` with the published sentence, and nothing changes.
 - Given `Security.PrivilegedRoutine` naming a web application, when `AdminPort` is called, then it refuses before the vendor (`GET` 404, `PUT` and `DELETE` 409 `PRIVROUTINE.TYPE`), while `OcuPilotState` still reads.
 
 **Review patches (pass 1, 2026-10-08; each is a finding in `## Review Triage Log`; the test pins are not intent):**
@@ -163,6 +163,23 @@ Code review 2026-10-09 (four layers, `full-opus`): 67 raw rows; 15 entries survi
 - `low` `ROUTINEAPPBIT` literal, `"Enabled,"` literal, unused `pTarget`, `SnippetForm` override, prompt 3's group, `$IsObject` guards, the dialog spec's sample sentence, `strings.ts` comment refs: cosmetic, no reader misled.
 - `low` A truncated read is not flagged on the tab: needs over 200 entries for one application.
 - `low` Spec and cycle-log bookkeeping, the Auto Run Result's S0 line, the fe8e3832 message: the fix edits the spec or history; this review records the measured S0 below.
+
+**Re-review 2026-10-09** (rework `2ac4272d..HEAD`, four layers, `full-opus`): 34 raw rows; 4 entries survive, all low, all patched; no high or medium.
+
+- [x] [Review][Patch] `PutBack` compares only `Enabled` and `MatchRoles`, while the legs now send `Resource`, `Description` and an empty-body `PUT`; it now compares every stored field [src/OcuPilot/Test/OwnRoutineApplication.cls:81] — low; fix-risk low; in-story.
+- [x] [Review][Patch] `TestTheEditorSaveRefusesEveryField` discards `Stored`'s status [src/OcuPilot/Test/OwnRoutineApplicationWire.cls:174] — low; low; in-story.
+- [x] [Review][Patch] No leg pins that the endpoint arm spares other applications (its name check) [src/OcuPilot/Test/OwnRoutineApplication.cls:206] — low; low; in-story. New `TestTheEndpointArmSparesOtherApplications`.
+- [x] [Review][Patch] The wire class header puts the agent's mint on the confirm route [src/OcuPilot/Test/OwnRoutineApplicationWire.cls:3] — low; low; in-story.
+
+Rejected:
+
+- `false` The three-part fold is unpinned on the server: run 82 truncating it reddens `TestAgentCreateAndDeleteMintConfirmAndReadBack` and `TestADeleteOfASystemEntryIsRefusedOnTheRouteAndTheMint` (`EntityRef.Key` folds the id `Target()` reads).
+- `false` A `%`-class access entry naming `OcuPilotState` is a write to it: the entry is its own `Security.WebAppPctAccess` object (IdKey `NameLowerCase, AllowType, Class`), not a field of the application.
+- `false` AD-10 lost its 18.31 pointer: AD-10 binds "every tool and endpoint", and Story 18.31's own criterion refuses OcuPilot's two under this arm.
+- `false` `baseline_commit` overwritten; `TestDisableRefused` and `TestMatchRolesRefused` lack mutation lines (run 38 names both).
+- `low` The mint asks the arm after the merge and field rules, so a malformed update reads 400 first: nothing is stored or sent, and reordering the shared mint is more than a correction.
+- `low` A non-`GET` read naming either application is refused at the endpoint; the arm sits after `ServesOcuPilot`; the read-back cannot differ on this build; `PCTACCESSFIELD` has no doc line: no caller reaches the endpoint, a failed state read writes nothing, the 403, code and sentence are the pins, cosmetic.
+- `low` Spine and bookkeeping (AD-13 no longer names `pct-class-access`, AD-10's tag, the memlog attribution, DW-2239's last trailer) and stale spec text (AC4's `Roles`, P11's `Enabled` clause, the Auto Run Result's "For the lead" line, Design Notes "Settled", the renamed agent test, the vendor measurement unlabelled, the loop commands): the lead's artifacts, or a spec edit; named in the closing report.
 
 ## Spec Change Log
 
@@ -341,7 +358,7 @@ The four intent_gap rows are one group (one root cause: the endpoint carries no 
 
 - **AD-10:** "**OcuPilot's own privileged routine applications** (Story 18.10, DW-2239): every write to `OcuPilotState` or `OcuPilotIdentity` -- a delete, a disable, a change to any field -- is refused `PROHIBITED.OCUPILOTROUTINEAPP` from either caller, through every tool and endpoint that reaches them, as AD-9's escalation."
 - **Also:** AD-2 (the type check), AD-13 (`pct-class-access` takes `foldcase-firstpart`; no new rule), AD-44 (the create's `CLASSICPAGES`), AD-51 (`STATE`).
-- **Settled:** the arm refuses every write to either application (orchestrator quality review, Claim 1). The AD-10, AD-2, AD-13, AD-44 and AD-51 amendments are written; the lead restates AD-10 as above and removes AD-13's `foldfirst`.
+- **Settled:** the arm refuses every write to either application (the owner: "Refuse every change"). AD-10 is restated, AD-13's `foldfirst` amendment is removed, and the AD-2, AD-44 and AD-51 amendments stand.
 
 **Baseline for 18.30-18.32** (first plan, 2026-10-08; pairs `%Admin_Secure:U` and `%DB_IRISSYS:R`):
 
@@ -491,6 +508,13 @@ The four intent_gap rows are one group (one root cause: the endpoint carries no 
 - After the patches and the sentence reword, clean: `OwnRoutineApplication` run 74 (11/11), `OwnRoutineApplicationWire` 75 (3/3), `ProhibitedRoute` 76 (24/24), `WebAppWeakening` 77 (6/6); before the patches, with the reworded sentence, `RefusalCopy` 61 (8/8), `Prohibited` 62 (14/14), `OwnRoutineApplication` 63 and `OwnRoutineApplicationWire` 64. `npm run test:tools` 1904/1904, `npm run test:components` 2763 in 216 files, `npm run build` green, the class-access browser spec 3/3 on the rebuilt, redeployed bundle. The mutation line of the published sentence (`cannot` to `can not`) still applies to the reworded sentence.
 - S0 after the pass: both routine applications enabled, `MatchRoles` `:%DB_OCUPILOT` and `:OcuPilotIdentity`; 47 applications, none a probe; no probe user, role or resource; 28 percent-class access entries, none a probe; no turn and no proposal row; monitor state 2.
 
+**Re-review (2026-10-09) pins and runs.** On `ocupilot-ci`, one class per call after `load-ocupilot-ci.sh`, totals read from `%UnitTest_Result`; each mutation reverted and checked by `shasum`.
+
+- `mutation` (`OwnRoutineApplication.TestTheEndpointArmSparesOtherApplications`): ` || '..OwnRoutineApplication(pName)` dropped from `RoutineEndpointRefused`; run 81 red on that leg alone. Reverted (`b573429c`).
+- `mutation` (three-part fold): `NormalizedId`'s `$Piece(pId, tSeparator, 2, *)` to `$Piece(pId, tSeparator, 2)`; run 82 red on `WebAppPctAccess`'s agent mint and system-delete legs. Reverted (`0f60004b`).
+- `PutBack`: on a probe routine application created and removed by the probe, a changed `Description` and `Resource` read back as recorded.
+- Clean, final tree: `WebAppPctAccess` run 83 (10/10), `OwnRoutineApplication` 84 (12/12), `OwnRoutineApplicationWire` 85 (3/3). S0: both routine applications enabled, `MatchRoles` `:%DB_OCUPILOT` and `:OcuPilotIdentity`, `Resource` empty; 28 percent-class access entries; no probe application.
+
 **Manual checks:** `ocupilot-ci` is at S0 (read after run 90: no `%OcuProbe1810` entry, no `Ens.Director` entry on `all-applications`, `OcuPilotState` and `OcuPilotIdentity` present and enabled, `/csp/ocuprobe1810` absent).
 
 ## Auto Run Result
@@ -503,5 +527,5 @@ Blocking condition: none
 - Client: `npm run test:tools` 1904/1904; `npm run test:components` 2763 in 216 files; `npm run build` green; `web-applications-class-access.browser-spec.mjs` 3/3 on the rebuilt, redeployed bundle.
 - Measured: bundle initial total 3,190,503 bytes (main 2,985,032, styles 205,471), under the 3,326 kB warning. Fixed strings 2984 against the 3000 bound, not raised (no literal added).
 - Review (verification-gap and intent-alignment): 14 findings, 0 high, 0 medium, 12 low, 2 false; 4 low patched, 10 rejected. `followup_review_recommended` false (no `high` patched).
-- For the lead (Rule 20): AD-10 (spine line 363) still lists a delete, a disable and `MatchRoles` or `Roles` and defers `Routines` and `Resource` to 18.31; the arm now refuses every write (text in Design Notes, "For the lead"). AD-13 (line 442) names `foldfirst`, which no longer exists. The Intent's wording is narrower than the arm and is read-only here.
+- Spine (Rule 20): done at `b5dfee5a`. AD-10 is restated as every change (the owner's answer), and AD-13's `foldfirst` amendment is removed.
 - S0: both routine applications enabled with `MatchRoles` as at the start; no `%OcuProbe1810` entry, probe application, user, role or resource; 28 percent-class access entries; no turn or proposal row; monitor state 2.

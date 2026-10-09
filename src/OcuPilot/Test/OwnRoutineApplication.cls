@@ -42,7 +42,7 @@ Method OnBeforeOneTest() As %Status
     Quit tSC
 }
 
-/// <p>Puts back the stored state of each routine application whose enabled flag or matching roles differ from the record.</p>
+/// <p>Puts back the stored state of each routine application whose stored fields differ from the record.</p>
 Method OnAfterOneTest() As %Status
 {
     For tName = ##class(OcuPilot.Kernel.State.Base).#APPLICATION, ##class(OcuPilot.Kernel.State.Base).#IDENTITYAPPLICATION {
@@ -75,14 +75,21 @@ ClassMethod Stored(pName As %String, Output pProps) As %Status
     Quit tSC
 }
 
-/// <p>Puts the application <var>pName</var> back to <var>pWas</var>, as <method>Stored</method> read it, when its enabled
-/// flag or matching roles differ now: modified when the instance still holds it, created when not. A caller that records with
+/// <p>Puts the application <var>pName</var> back to <var>pWas</var>, as <method>Stored</method> read it, when any of its
+/// stored fields differs now: modified when the instance still holds it, created when not. A caller that records with
 /// <method>Stored</method> before a test restores with this after it.</p>
 ClassMethod PutBack(pName As %String, ByRef pWas) As %Status
 {
     Set tSC = ..Stored(pName, .tNow)
     If $$$ISERR(tSC) Quit tSC
-    If $Data(tNow) && ($Get(tNow("Enabled")) = $Get(pWas("Enabled"))) && ($Get(tNow("MatchRoles")) = $Get(pWas("MatchRoles"))) Quit $$$OK
+    Set tSame = ($Data(tNow) > 0)
+    Set tField = ""
+    For {
+        Set tField = $Order(pWas(tField))
+        If (tField = "") || 'tSame Quit
+        If $Get(tNow(tField)) '= $Get(pWas(tField)) Set tSame = 0
+    }
+    If tSame Quit $$$OK
     Kill tProps
     Merge tProps = pWas
     Set tOrigNS = $NAMESPACE
@@ -192,6 +199,20 @@ Method TestAnyOtherWriteIsRefused()
         Do $$$AssertStatusOK(tSC, "the set answers a create of " _ tName)
         Do $$$AssertTrue(tProhibits, "a create of " _ tName _ " is prohibited")
         Do $$$AssertEquals(tCode, "PROHIBITED.OCUPILOTROUTINEAPP", "a create of " _ tName _ " answers the routine application code")
+    }
+    Quit
+}
+
+/// <p>The privileged routine endpoint's arm refuses a write only when it names OcuPilotState or OcuPilotIdentity: a
+/// <code>PUT</code> or <code>DELETE</code> naming another application is left to the port.</p>
+/// <p>Mutation (Rule 19): in <class>OcuPilot.Kernel.Proposal.Prohibited</class>'s <method>RoutineEndpointRefused</method>, drop
+/// <code> || '..OwnRoutineApplication(pName)</code> from the first condition: both legs go red.</p>
+Method TestTheEndpointArmSparesOtherApplications()
+{
+    For tType = "PUT", "DELETE" {
+        Set tRefused = ##class(OcuPilot.Kernel.Proposal.Prohibited).RoutineEndpointRefused(tType, "OcuProbe1810Routine", .tCode)
+        Do $$$AssertTrue('tRefused, "a " _ tType _ " naming another application is not refused by the arm")
+        Do $$$AssertEquals(tCode, "", "and carries no routine application code")
     }
     Quit
 }

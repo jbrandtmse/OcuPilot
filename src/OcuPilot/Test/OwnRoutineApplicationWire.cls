@@ -1,7 +1,7 @@
 /// <p>Pins the routine application arm (AD-10 as amended, DW-2239, Story 18.10) over the three routes that reach it: the web
 /// applications screen's row actions over <code>POST /screens/webapp.list/action</code>, the editor's Save over
-/// <code>PUT /web-applications/:id</code>, and the agent's proposal, minted and confirmed over
-/// <code>POST /proposal/:id/confirm</code>. Every write to <code>OcuPilotState</code> and to <code>OcuPilotIdentity</code> --
+/// <code>PUT /web-applications/:id</code>, and the agent's proposal, minted in process as the turn's write tool mints it and
+/// confirmed over <code>POST /proposal/:id/confirm</code>. Every write to <code>OcuPilotState</code> and to <code>OcuPilotIdentity</code> --
 /// a delete, a disable, a <code>MatchRoles</code> change, a change to any other field -- is refused 403
 /// <code>PROHIBITED.OCUPILOTROUTINEAPP</code> with the kernel's own sentence, and the application reads back unchanged.</p>
 /// <p>The agent's mint refuses at once, before it stores a proposal. A stored proposal that reached its confirm anyway (a row
@@ -67,7 +67,7 @@ Method OnBeforeOneTest() As %Status
     Quit tSC
 }
 
-/// <p>Puts back each routine application whose enabled flag or roles changed, then removes the proposal rows this class
+/// <p>Puts back each routine application whose stored fields changed, then removes the proposal rows this class
 /// seeded.</p>
 Method OnAfterOneTest() As %Status
 {
@@ -172,6 +172,7 @@ Method TestTheEditorSaveRefusesEveryField()
         Do $$$AssertNotEquals(tBefore, "", tName _ " is present to begin with")
         If tBefore = "" Continue
         Set tSC = ##class(OcuPilot.Test.OwnRoutineApplication).Stored(tName, .tStored)
+        Do $$$AssertStatusOK(tSC, tName _ "'s stored fields read")
         Set tResource = $Select($Get(tStored("Resource")) = "%Admin_Manage": "%Development", 1: "%Admin_Manage")
 
         Set tSC = ..Put(tName, {"Enabled": false}, .tStatus, .tBody)
