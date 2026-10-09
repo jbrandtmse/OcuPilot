@@ -355,16 +355,20 @@ Method TestTheSaveRendersItsScript()
     Kill tQuery
     Set tQuery("namespace") = "USER"
     Set tQuery("names") = "Pkg.Name.cls"
-    Set tQuery("content") = "Class Pkg.Name { ClassMethod Probe() { Quit ""TEXTMARKER"" } }"
+    Set tQuery("content") = "Class Pkg.Name { ClassMethod TEXTMARKER() { Quit 1 } }"
     Set tQuery("version") = "2026-10-02 09:00:00.120"
     Set tQuery("Compile") = 1
-    Do $$$AssertEquals($ClassMethod(tPort, "Snippet", "Classes", "SAVE", .tQuery).%Get(0).text, " Set $NAMESPACE = ""USER""" _ $Char(10) _ " Set tSC = ##class(%Compiler.UDL.TextServices).SetTextFromString($NAMESPACE, ""Pkg.Name"", ""<content>"", $Char(10))" _ $Char(10) _ " Do $System.Status.DisplayError(tSC)" _ $Char(10) _ " Set tSC = $System.OBJ.CompileList(""Pkg.Name.cls"", ""cuk"")" _ $Char(10) _ " Do $System.Status.DisplayError(tSC)", "a class")
+    Set tExpect = " Set $NAMESPACE = ""USER""" _ $Char(10) _ " Kill tText" _ $Char(10) _ " Set tText($Increment(tText(0))) = ""Class Pkg.Name { ClassMethod TEXTMARKER() { Quit 1 } }""" _ $Char(10) _ " Set tSC = ##class(%Compiler.UDL.TextServices).SetTextFromArray($NAMESPACE, ""Pkg.Name"", .tText)" _ $Char(10) _ " Do $System.Status.DisplayError(tSC)" _ $Char(10) _ " Set tSC = $System.OBJ.CompileList(""Pkg.Name.cls"", ""cuk"")" _ $Char(10) _ " Do $System.Status.DisplayError(tSC)"
+    Do $$$AssertEquals($ClassMethod(tPort, "Snippet", "Classes", "SAVE", .tQuery).%Get(0).text, tExpect, "a class renders its stored lines, then the compile")
+    Set tQuery("content") = "ROUTINE Name [Type=INC]" _ $Char(10) _ "#define TEXTMARKER 1"
     Set tQuery("names") = "Name.inc"
     Set tQuery("Compile") = 0
     Set tText = $ClassMethod(tPort, "Snippet", "Routines", "SAVE", .tQuery).%Get(0).text
-    Do $$$AssertEquals(tText, " Set $NAMESPACE = ""USER""" _ $Char(10) _ " Set tRoutine = ##class(%Routine).%New(""Name.inc"")" _ $Char(10) _ " Do tRoutine.Clear()" _ $Char(10) _ " Do tRoutine.Write(""<content>"")" _ $Char(10) _ " Set tSC = tRoutine.Save()" _ $Char(10) _ " Do $System.Status.DisplayError(tSC)", "a routine, not compiled when Compile is off")
-    Do $$$AssertTrue((tText '[ "TEXTMARKER") && (tText '[ "2026-10-02"), "and the text and version are never rendered")
+    Set tExpect = " Set $NAMESPACE = ""USER""" _ $Char(10) _ " Set tRoutine = ##class(%Routine).%New(""Name.inc"")" _ $Char(10) _ " Do tRoutine.Clear()" _ $Char(10) _ " Do tRoutine.WriteLine(""#define TEXTMARKER 1"")" _ $Char(10) _ " Set tSC = tRoutine.Save()" _ $Char(10) _ " Do $System.Status.DisplayError(tSC)"
+    Do $$$AssertEquals(tText, tExpect, "a routine renders its stored lines without its ROUTINE line, and is not compiled when Compile is off")
+    Do $$$AssertTrue((tText '[ "2026-10-02") && (tText '[ "ROUTINE Name"), "and the version is never rendered, nor the header line")
     Do $$$AssertEquals($ClassMethod(tPort, "Snippet", "Classes", "SAVEDOCS", .tQuery).%Size(), 0, "a read renders no step")
 }
+
 
 }

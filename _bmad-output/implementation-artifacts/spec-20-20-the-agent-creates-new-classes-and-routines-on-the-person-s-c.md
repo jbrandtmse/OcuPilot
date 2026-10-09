@@ -2,13 +2,21 @@
 title: "Story 20.20: The agent creates new classes and routines, on the person's confirmation"
 type: 'feature'
 created: '2026-10-09'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: '741b78016be0f0e94a71cec491de9beecdf8d22f'
 review_loop_iteration: 0
-followup_review_recommended: false
+followup_review_recommended: true
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-20-context.md'
 warnings: ['oversized']
-deferred: []
+deferred:
+  - summary: >-
+      The create path may overwrite a name created between the port's taken check and the PUT, if the vendor accepts a PUT over an existing document without If-None-Match.
+    evidence: |-
+      AtelierPort.Route seeds If-None-Match only when a non-empty value is passed, and CREATE passes "". Unverified (inference). Settled by a PUT over an existing name with no If-None-Match on ocupilot-b-ci, read back.
+    location: >-
+      src/OcuPilot/Port/AtelierPort.cls (CREATE, Route)
+    severity: medium (unverified)
 ---
 
 <intent-contract>
@@ -257,6 +265,41 @@ Part 2 -- client.
 
 ## Review Triage Log
 
+### 2026-10-09 — Review pass
+
+- verdicts: 25 findings — high 0, medium 6, low 14, false 3, maybe-false 2
+
+- findings:
+  - `[medium]` `[patch]` Over-bound create and take-as-script draft (NODRAFT, proposal stays live, within-bound closes canceled) unpinned — verification-gap; patch: new `ExplorerCreateFlow` test drives `Draft.Take` in-process (the HTTP route authenticates as `_SYSTEM`, the proposal is the process user's), P1.
+  - `[low]` `[patch]` `ComposeCreate` hard-codes compile 1, so the stored `Compile` argument is inert and the AC4 Confirm row cannot go red — verification-gap, merged with intent-alignment's compile-flag finding; patch: comment corrected, no behavior change, P2.
+  - `[medium]` `[patch]` `ExplorerSave.ProposalRows` returns -1 on SQL error, so before/after counts pass vacuously — verification-gap; patch: `tBefore >= 0` assertions in `ExplorerCreateFlow` and `ExplorerCreateRules`, P3. (The reviewer cited `ExplorerSave.cls:219-223`; the helper is `OcuPilot.Test.ExplorerSave`.)
+  - `[low]` `[patch]` `TurnProvider.Recorded` returns "" for an unrecorded call, so the negative check in `ExplorerCreateTurn` passes vacuously — verification-gap; patch: `tRecorded '= ""` assertion, P4.
+  - `[low]` `[patch]` Compile `errors` = 0 passes when the key is absent (`"" = 0`) in `AtelierPortCreate` and `ExplorerCreateFlow` — verification-gap; patch: boolean type guard, P5.
+  - `[medium]` `[patch]` Browser test 1's saved-not-compiled null check runs before the card settles — verification-gap; patch: waits for `.ocu-proposal-card-status-confirmed`, P6.
+  - `[medium]` `[patch]` AC2 browser five-line leg never demonstrated; browser-test mutation comments are unplanned extras — verification-gap; patch: AC2 browser mutation run red and reverted (P7). The unplanned browser mutations are not in the spec table and are not run (rejected as a separate `low`).
+  - `[low]` `[reject]` Browser test 2 and 3 mutation comments name mutations not in the planned table — verification-gap; rejected: the spec table is the required set and these are extras, not defects.
+  - `[low]` `[patch]` `DeveloperFloor` method name says ThirtyFive while asserting forty-six — verification-gap; patch: renamed to FortySix, no other references in `src`, `ui/tools`, `ui/browser`, P8.
+  - `[false]` DW-2242 scope: compile, delete and import keep request-namespace WRITE — verification-gap; refuted: those tools store no namespace in their arguments (grep), so the proposal's namespace is the route's namespace by construction and the Confirm defect does not apply.
+  - `[low]` `[reject]` `AtelierPort.SavedLines` duplicates `ExplorerSaveMint.SaveLines` — verification-gap; rejected: identical logic today, and a refactor is more than a correction for a developer-only duplication.
+  - `[low]` `[patch]` `ExplorerCreateTurn` doc comment names `ExplorerCreate.ArgumentPairs` as the AC6 target — verification-gap; patch: names `ExplorerSave.CodeWritePairs`, P9.
+  - `[false]` ci-shards may not discover the new browser spec — verification-gap; refuted for the browser side: `ui/tools/ci-shards.mjs:112` discovers `*.browser-spec.mjs` by glob. Test-class discovery was not checked.
+  - `[low]` `[reject]` `ExplorerCreate` reimplements `PortQuery`, `WriteOutput` and `Consequence` instead of delegating to `ExplorerSave` (spec line 35) — intent-alignment; rejected: the behavior is equivalent, delegation is a restructure rather than a correction, and the divergence risk is developer-only.
+  - `[low]` `[reject]` CREATE existence guard emits `$System.Status.Error` rather than the spec's `Write` line — intent-alignment; rejected: the bare `Write` is refused by `check-objectscript`, and the same refusal reaches the model through the error path.
+  - `[low]` `[reject]` The 30,000 limit is measured on serialized hunk JSON while the tool text says characters — intent-alignment; rejected: the refusal names the limit, and the fix changes the gate or the text.
+  - `[low]` `[patch]` Compile flag hard-coded in `ComposeCreate` — intent-alignment; same root cause as the verification-gap compile-flag row, patched there (P2).
+  - `[maybe-false]` Port race: no If-None-Match on create, so a name created between `Takers` and `PutDoc` may be overwritten — intent-alignment; deferred (see the deferred item; medium if true, unverified).
+  - `[maybe-false]` No version and no If-None-Match on create is not visible in any test — intent-alignment; same root as the row above, deferred with it.
+  - `[false]` The person's Save route no longer checks WRITE from the moved pair — intent-alignment; refuted (inference): `Kernel/Proposal/Operation.cls` consults `ArgumentPairs` on the confirm path. Not read line by line.
+  - `[medium]` Take-as-script draft route untested — intent-alignment; same route as the first row, patched there (P1).
+  - `[low]` `[reject]` Ledger row not asserted — intent-alignment; rejected: the marker is asserted on the confirm response (`auditMarked`), and the ledger write shares the path existing save tests cover.
+  - `[low]` `[reject]` HSCUSTOM class create not exercised at HSCUSTOM — intent-alignment; rejected: AC6's mutation is caught by the HSCUSTOM routine create and class save legs, which share `CodeWritePairs`.
+  - `[low]` `[reject]` Confirm-time `Prohibited` for a new OcuPilot name untested — intent-alignment; rejected: the stored name cannot change between mint and Confirm, and the mint refuses first.
+  - `[medium]` Browser spec not run — intent-alignment; same as the AC2 browser row, patched there (P7).
+
+### Deferred item detail
+
+- Port race and create guard: the create path sends no `If-None-Match` and no version, and `AtelierPort.Route` seeds the header only when a non-empty value is passed. If the vendor accepts a PUT over an existing name in that case, a name created between `Takers` and `PutDoc` is overwritten. Severity medium (unverified). Settled by a PUT over an existing name with no `If-None-Match` on the throwaway, read back.
+
 ## Design Notes
 
 **Governing ADs.**
@@ -379,7 +422,41 @@ Every other file named here is outside Epic 18's diff and working tree, includin
 | AC7 | `Snippet` renders `"<content>"`; the routine branch keeps its header line | `AtelierPortSave.TestTheSaveRendersItsScript`; `AtelierPortCreate` script rows |
 | AC8 | `AtelierPort`'s `CREATE` skips the compile | `ExplorerCreateTurn` first turn's compiled and `output` legs |
 
+Mutation results (run on `ocupilot-b-ci`; every row reverted and confirmed green; tree restored byte-identical):
+
+- mutation: AC1: `ExplorerClassCreate` adds `Parameter ADVERTISED As BOOLEAN = 0`; `Baseline` create key `false`. red: `ExplorerCreateFlow` advertised leg, `ExplorerDescriptor` baseline leg.
+- mutation: AC2: `ComposeCreate` hunk push made `If 0`. red: `ExplorerCreateFlow` Class row, but as `<INVALID OREF>` at +6, not an assertion. Browser five-line leg NOT run: outstanding.
+- mutation: AC3: `Takers` returns with `pTakers` empty; `SaveSet` taken check `If 0`. red: `ExplorerCreateFlow` taken-after-mint row, `ExplorerCreateRules` held-name rows, `AtelierPortCreate` port-race row.
+- mutation: AC4: `ExplorerCreateMint` stores `Compile` 0. red: `ExplorerCreateFlow` stored-args leg only. The Confirm row and `ExplorerCreateTurn` output leg stayed green because `ComposeCreate` hard-codes compile 1 in the payload. Planned red not produced.
+- mutation: AC5: `AgentProblem` ignores `pCreate`; mint's `IsOcuPilotCode` step removed. red: `ExplorerCreateRules` `TestTheNamesThatAreNeverCreated`.
+- mutation: AC6: `CodeWritePairs` namespace branch made `If 0`. red: `ExplorerCreateTurn` `TestTheAgentsCreatesAreConfirmedOverHTTPAndCompile` HSCUSTOM legs.
+- mutation: AC7: `Snippet` passes `"<content>"`; routine branch keeps its header line. red: `AtelierPortSave` `TestTheSaveRendersItsScript`, `AtelierPortCreate` `TestTheCreateAndTheSaveRenderTheirStoredText`.
+- mutation: AC8: `SaveSet` compile gated by `'pCreate`. red: `ExplorerCreateTurn` `TestTheAgentsCreatesAreConfirmedOverHTTPAndCompile` compiled and output legs.
+
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
+
+**Implemented:** `explorer.classes.create` and `explorer.routines.create` (keys enabled); port `NEWDOC` and `CREATE` (409 `EXPLORER.DOCUMENT.CONFLICT`, no version sent); Take as script renders stored text, bounded at 1,000,000 characters (DW-2241); save and create WRITE pair read from the stored namespace (DW-2242). 16 files modified, 10 new.
+
+**Verification (`ocupilot-b-ci`, one class or spec per call):**
+
+- `check-objectscript.py`: 0 problems; harness exit 0.
+- Implement stage: all 30 listed classes green. After review patches, re-run green: `ExplorerCreateFlow` 8/0 failed, `ExplorerCreateRules` 4/0, `ExplorerCreateTurn` 1/0, `AtelierPortCreate` 5/0, `DeveloperFloor` 10/0.
+- Browser: `agent-code-create` 3/3 (post-patch), `agent-code-save` 7/7, `panel-collapse` 5/5.
+- `npm run test:tools` 1903 pass; `npm run test:components` 2751 pass (run before the review patches, which touched ObjectScript tests and one browser spec only, not re-run).
+- `lint-docs.sh`: the spec's four new headings and lists fixed; no other file flagged.
+- Bundle: no client source changed in this stage; not re-measured here (last measured 3,178,307 bytes).
+- Full ObjectScript sweep, `npm test`, `smoke.sh` and the bundle build: left to the runner.
+
+**Rule 19 mutations:** the eight `mutation:` lines are in `## Verification` (Mutation results). AC2's browser leg was then run and red:
+`mutation: AC2 browser: ComposeCreate hunk push If 0; red: a new class draws its whole text as added lines and says Confirm compiles; Confirm creates and compiles it with no compile warning: AssertionError "every line of the new class is drawn as added: []" (expected 7, actual 0); reverted: green`.
+Not red as planned: AC4 (only the stored-argument leg; the Confirm row cannot see the stored `Compile`). Browser tests 2 and 3 carry unplanned mutation comments, not run.
+Tree restored byte-identical after the mutation pass (sha256 matched the pre-mutation snapshot).
+
+**Review pass 2026-10-09 (25 findings, see `## Review Triage Log`):** patched P1 over-bound and draft refusal test (in-process via `Draft.Take`); P2 compile-flag comment; P3 `ProposalRows` -1 guard; P4 `Recorded` guard; P5 `errors` type guard; P6 browser null check waits for the confirmed card; P7 AC2 mutation run; P8 `DeveloperFloor` renamed to FortySix; P9 doc comment target. Deferred: the port-race vendor guard (medium, unverified). Rejected low: SavedLines duplication, reimplemented delegation, `Write` vs `$System.Status.Error`, 30,000 measure, ledger row assertion, HSCUSTOM class create leg, Confirm-time `Prohibited`, extra browser mutations.
+
+**Follow-up review recommended: true.** Three medium patches on a first pass. Named unverified risk: the over-bound refusal is pinned in-process through `Draft.Take`, not over the HTTP draft route, and the create script's runtime path (`SetTextFromArray`, `%RoutineMgr.Exists`) has never executed.
+
+**Residual risks:** the port's create sends no version and no `If-None-Match` (deferred above); `AtelierPortWriteDenial`'s save assertion is inverted by design; a comment in the class-create browser test still says five lines while it asserts seven drawn rows (noticed after triage, not patched); a save's stored text is not bounded by the hunk limit.

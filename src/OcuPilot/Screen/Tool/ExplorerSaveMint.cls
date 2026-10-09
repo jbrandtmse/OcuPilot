@@ -280,9 +280,9 @@ ClassMethod Span(pLines As %DynamicArray, pFrom As %Integer, pTo As %Integer) As
     Quit tText
 }
 
-/// <p>The refusal of an agent's save that the instance's own code rule names, 403 with the rule's code and
+/// <p>The refusal of an agent's save or create that the instance's own code rule names, 403 with the rule's code and
 /// its published sentence, before anything is read or stored.</p>
-ClassMethod Forbidden(pCode As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+ClassMethod Forbidden(pCode As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status
 {
     Set pHttpStatus = ##class(OcuPilot.Kernel.Denial).#STATUS
     Set pFault = ##class(OcuPilot.Kernel.Fault).Build(##class(OcuPilot.Kernel.Denial).Slug(), pCode, ##class(OcuPilot.Kernel.Proposal.Prohibited).ReasonFor(pCode))

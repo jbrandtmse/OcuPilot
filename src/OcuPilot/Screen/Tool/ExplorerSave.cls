@@ -11,8 +11,9 @@
 /// the agent's replacements, and the text is never stored, logged or put on a card or the ledger. The
 /// target is exactly one document (<method>SetProblem</method>).</p>
 /// <p><b>It is destructive</b>: a save replaces the document's text, which cannot be undone from
-/// OcuPilot. It declares WRITE on the namespace's routines database (AD-8), and the kernel refuses a
-/// document whose name begins with <code>OcuPilot</code>
+/// OcuPilot. Its WRITE pair on the routines database is an argument pair (<method>ArgumentPairs</method>):
+/// it resolves from the namespace the proposal stored, else the request's, so a confirm writes where the
+/// proposal read (DW-2242, AD-8). The kernel refuses a document whose name begins with <code>OcuPilot</code>
 /// (<parameter>OcuPilot.Kernel.Proposal.Prohibited.OCUPILOTCODE</parameter>). The compile's console
 /// lines reach the screen and the proposal card only (AD-39's fifth exception). No classic page has an
 /// editor, so it declares none (AD-44).</p>
@@ -66,6 +67,38 @@ ClassMethod DocumentEndpoint() As %String [ Abstract ]
 ClassMethod SettableFields() As %List
 {
     Quit $ListBuild(##class(OcuPilot.Port.AtelierPort).#CONTENTKEY, ##class(OcuPilot.Port.AtelierPort).#VERSIONKEY, ##class(OcuPilot.Port.AtelierPort).#COMPILEKEY)
+}
+
+/// <p>The screen's declared pairs, then the custom resource of each <parameter>CLASSICPAGES</parameter>
+/// page. WRITE is not among them: <method>ArgumentPairs</method> carries it (DW-2242).</p>
+ClassMethod PrivilegePairs(pDescriptor As %String = "", Output pResolved As %Boolean) As %List
+{
+    Set tPairs = ##class(OcuPilot.Screen.Gate).RequiredPairs(..#DESCRIPTORCLASS, .pResolved)
+    If 'pResolved Quit ""
+    Quit ##class(OcuPilot.Screen.Gate).WithClassicPages(tPairs, ..#CLASSICPAGES)
+}
+
+/// <p>The WRITE pair a save or a create of <var>pArgs</var> requires (DW-2242, AD-8): WRITE on the
+/// routines database of the namespace the proposal stored in its <code>Namespace</code> argument, else
+/// of the request's scope. <var>pResolved</var> is 0 when that database names no resource, which the
+/// caller refuses.</p>
+ClassMethod ArgumentPairs(pDescriptor As %String = "", pArgs As %DynamicObject, Output pResolved As %Boolean) As %List
+{
+    Quit ..CodeWritePairs(pArgs, .pResolved)
+}
+
+/// <p>The WRITE pair on the routines database of <var>pArgs</var>' <code>Namespace</code>, or of the
+/// request's scope when that is absent or empty (<method>ArgumentPairs</method>). Shared by a save and a
+/// create (<class>OcuPilot.Screen.Tool.ExplorerCreate</class>).</p>
+ClassMethod CodeWritePairs(pArgs As %DynamicObject, Output pResolved As %Boolean) As %List
+{
+    Set tNamespace = ""
+    If $IsObject(pArgs) && (pArgs.%GetTypeOf("Namespace") = "string") Set tNamespace = pArgs.%Get("Namespace")
+    If tNamespace = "" Set tNamespace = ##class(OcuPilot.Kernel.Scope).Current()
+    Do ##class(OcuPilot.Port.AtelierPort).DatabaseResources(tNamespace, .tRoutine, .tGlobal, .tMapped, .tResolved)
+    Set pResolved = tResolved && (tRoutine '= "")
+    If 'pResolved Quit ""
+    Quit $ListBuild($ListBuild(tRoutine, "WRITE"))
 }
 
 /// <p>What is wrong with <var>pValue</var> as the document a save names, or <code>""</code>: exactly
@@ -153,25 +186,31 @@ ClassMethod MintClass() As %String
 
 /// <p>What is wrong with saving document <var>pName</var> in namespace <var>pNamespace</var> on the
 /// agent's behalf, or <code>""</code>. The mint asks it, and Confirm asks it again before anything is
-/// written; a person's Save never asks it.</p>
+/// written; a person's Save never asks it. With <var>pCreate</var> the same rules apply to a new name
+/// (Story 20.20): the sentences say create, and a name holding <code>%</code> anywhere is refused.</p>
 /// <p>Refused: an empty namespace, <code>%SYS</code>, a name beginning with <code>%</code>, and a document
 /// whose database is not its namespace's own routines database. A mapped document's answer names the
 /// database it is stored in and says the person can save it from the editor. An answer that cannot be
 /// read refuses.</p>
-ClassMethod AgentProblem(pNamespace As %String, pName As %String) As %String
+ClassMethod AgentProblem(pNamespace As %String, pName As %String, pCreate As %Boolean = 0) As %String
 {
     Set tProblem = ""
+    Set tVerb = $Select(pCreate: "create", 1: "save")
     Try {
         If pNamespace = "" {
-            Set tProblem = "the namespace of the document is not known, so the agent does not save it"
+            Set tProblem = $Select(pCreate: "the namespace is not known, so the agent does not create the document", 1: "the namespace of the document is not known, so the agent does not save it")
             Quit
         }
         If $ZConvert(pNamespace, "U") = "%SYS" {
-            Set tProblem = "the agent does not save a document in %SYS"
+            Set tProblem = "the agent does not " _ tVerb _ " a document in %SYS"
+            Quit
+        }
+        If pCreate && (pName [ "%") {
+            Set tProblem = "the agent does not create a document whose name holds %"
             Quit
         }
         If $Extract(pName) = "%" {
-            Set tProblem = "the agent does not save a document whose name begins with %"
+            Set tProblem = "the agent does not " _ tVerb _ " a document whose name begins with %"
             Quit
         }
         Set tPieces = $Length(pName, ".")
@@ -186,7 +225,7 @@ ClassMethod AgentProblem(pNamespace As %String, pName As %String) As %String
             Set tDest = ##class(%SYS.Namespace).GetRoutineDest(pNamespace, tBase, tType)
         }
         If (tDest = "") || (tRoutineDest = "") {
-            Set tProblem = "the database that holds '" _ pName _ "' could not be read, so the agent does not save it"
+            Set tProblem = $Select(pCreate: "the database that would hold '" _ pName _ "' could not be read, so the agent does not create it", 1: "the database that holds '" _ pName _ "' could not be read, so the agent does not save it")
             Quit
         }
         If tDest = tRoutineDest Quit
@@ -196,9 +235,13 @@ ClassMethod AgentProblem(pNamespace As %String, pName As %String) As %String
         Set tResource = $Get(tInfo("RoutineDB", "Resource"))
         Set tWhere = "another database"
         If $Extract(tResource, 1, 4) = "%DB_" Set tWhere = "database " _ $Extract(tResource, 5, *)
-        Set tProblem = "'" _ pName _ "' is stored in " _ tWhere _ ", not in this namespace's own routines database, so the agent does not save it. The person can save it from the class or routine editor."
+        If pCreate {
+            Set tProblem = "'" _ pName _ "' would be stored in " _ tWhere _ ", not in this namespace's own routines database, so the agent does not create it"
+        } Else {
+            Set tProblem = "'" _ pName _ "' is stored in " _ tWhere _ ", not in this namespace's own routines database, so the agent does not save it. The person can save it from the class or routine editor."
+        }
     } Catch {
-        Set tProblem = "the database that holds '" _ pName _ "' could not be read, so the agent does not save it"
+        Set tProblem = $Select(pCreate: "the database that would hold '" _ pName _ "' could not be read, so the agent does not create it", 1: "the database that holds '" _ pName _ "' could not be read, so the agent does not save it")
     }
     Quit tProblem
 }

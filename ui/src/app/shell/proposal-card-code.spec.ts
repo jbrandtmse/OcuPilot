@@ -7,7 +7,7 @@ import { EXAMPLE_PROPOSAL, type ProposalCardView, type ProposalDiffRow } from '.
 import { ProposalCard } from './proposal-card';
 
 /**
- * The proposal card for an agent's class or routine save (Story 20.21): a `lines` row draws as
+ * The proposal card for an agent's class or routine save or create (Stories 20.21 and 20.20): a `lines` row draws as
  * `app-text-diff` labeled with the card's name; a long hunk's summary line reads the lines counts;
  * the save's consequence states that Confirm compiles; and a confirmed save whose compile reported
  * errors says so under the status line, and nowhere else. Needs nothing from the environment.
@@ -82,6 +82,18 @@ describe('ProposalCard for an agent code save', () => {
     expect(diff?.querySelector('[role="region"]')?.getAttribute('aria-label')).toBe('OcuProbe2021.Demo.cls');
     expect(diff?.querySelector('[data-ocu-diff="removed"] .ocu-line-diff-number')?.textContent).toBe('5');
     expect(card.querySelectorAll('.ocu-diff-row')).toHaveLength(0);
+  });
+
+  it('draws a create as the whole new document, every line added from line 1, and counts the lines added', () => {
+    const text = Array.from({ length: 12 }, (_, index) => `    Set x${index} = ${index}`).join('\n') + '\n';
+    const card = mount('live', view({ targetType: 'ExplorerCreate', changed: [{ ...LINES_ROW, before: '', after: text, line: 1 }] }));
+    const added = card.querySelectorAll('app-text-diff [data-ocu-diff="added"] .ocu-line-diff-number');
+    expect(added).toHaveLength(12);
+    expect(added[0]?.textContent).toBe('1');
+    expect(added[11]?.textContent).toBe('12');
+    expect(card.querySelector('.ocu-proposal-card-summary-fields')?.textContent?.trim()).toBe(
+      'OcuProbe2021.Demo.cls: lines changed, 0 removed and 12 added'
+    );
   });
 
   it('states that Confirm compiles the saved text as the user', () => {
