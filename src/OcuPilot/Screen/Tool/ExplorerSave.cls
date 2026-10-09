@@ -1,26 +1,26 @@
-/// <p>System Explorer's save of one document's text (AD-6, AD-10, AD-51, AD-53, Story 19.3): what the
-/// Classes and Routines lists' save tools share. The class and routine editors' Save sends the text,
-/// the version the editor read and the compile choice as the list's <code>save</code> action's
-/// declared values, and <class>OcuPilot.Port.AtelierPort</class> puts the text against that version,
-/// refusing a document another writer changed since, and compiles it when asked.</p>
-/// <p><b>It is unadvertised</b> (<parameter>ADVERTISED</parameter> 0, AD-53's named case): only a
-/// person's Save writes code. The provider's tool list, the dispatch lookup and the screen context's
-/// <code>tools</code> never carry it, and its baseline key ships disabled; a person's own Save is
-/// never asked governance (AD-22).</p>
-/// <p><b>The text is a screen value alone</b>: the input schema names only the document
-/// (<method>InputSchema</method>), and the text is never stored, logged or put on a proposal, a card
-/// or the ledger. The target is exactly one document (<method>SetProblem</method>).</p>
+/// <p>System Explorer's save of one document's text (AD-6, AD-10, AD-51, AD-53, Stories 19.3 and 20.21):
+/// what the Classes and Routines lists' save tools share. A person's Save sends the text, the version
+/// the editor read and the compile choice as the list's <code>save</code> action's declared values, and
+/// <class>OcuPilot.Port.AtelierPort</class> puts the text against that version, refusing a document
+/// another writer changed since, and compiles it when asked.</p>
+/// <p><b>The agent's save</b> sends exact replacements instead (<code>Edits</code>), which
+/// <class>OcuPilot.Screen.Tool.ExplorerSaveMint</class> applies to the stored text, so the card reviews
+/// what will be saved. The agent's rules (<method>AgentProblem</method>, <method>ConfirmProblem</method>)
+/// apply to that path only; a person's Save never asks them.</p>
+/// <p><b>The text is a screen value alone</b> for a person's Save: the input schema names the document and
+/// the agent's replacements, and the text is never stored, logged or put on a card or the ledger. The
+/// target is exactly one document (<method>SetProblem</method>).</p>
 /// <p><b>It is destructive</b>: a save replaces the document's text, which cannot be undone from
 /// OcuPilot. It declares WRITE on the namespace's routines database (AD-8), and the kernel refuses a
 /// document whose name begins with <code>OcuPilot</code>
 /// (<parameter>OcuPilot.Kernel.Proposal.Prohibited.OCUPILOTCODE</parameter>). The compile's console
-/// lines reach the screen only (AD-39's fifth exception). No classic page has an editor, so it
-/// declares none (AD-44).</p>
+/// lines reach the screen and the proposal card only (AD-39's fifth exception). No classic page has an
+/// editor, so it declares none (AD-44).</p>
 Class OcuPilot.Screen.Tool.ExplorerSave Extends OcuPilot.Screen.Tool.ExplorerWrite [ Abstract ]
 {
 
-/// <p>Reached by a person's Save alone (AD-53).</p>
-Parameter ADVERTISED As BOOLEAN = 0;
+/// <p>Offered to the agent as well as reached by a person's Save (AD-53, Story 20.21).</p>
+Parameter ADVERTISED As BOOLEAN = 1;
 
 /// <p>The list's save, which the editors send.</p>
 Parameter SCREENACTIONS = "save";
@@ -46,6 +46,22 @@ Parameter READANSWERS = "Present,Modified,Absent,Namespace,content,version,Compi
 /// <p>The document's version, the namespace, and the text, version and compile choice saved.</p>
 Parameter FINGERPRINTSUBJECT = "Modified,Absent,Namespace,content,version,Compile";
 
+/// <p>The consequence code the proposal carries: the save compiles the text on Confirm.</p>
+Parameter CONSEQUENCE = "EXPLORER.SAVE.COMPILES";
+
+/// <p>The most characters one change's hunk may serialize to, so the card shows it whole.</p>
+Parameter CHANGEMAXLENGTH As INTEGER = 30000;
+
+/// <p>The rule a match refusal states, shared by every refusal of an <code>Old</code> text (DW-2228).</p>
+Parameter MATCHRULE = "Each Old is matched exactly, character for character, against the text this instance stores. The copy explorer.class.source and explorer.routine.source send can differ from it: control and invisible characters are removed, a key-shaped value reads [redacted], and the data delimiter's name is changed. Choose an Old that avoids those places.";
+
+/// <p>The endpoint that reads one document of the tool's kind, as the agent's mint reads its stored text.
+/// Abstract: each list names its own.</p>
+ClassMethod DocumentEndpoint() As %String [ Abstract ]
+{
+    Quit ""
+}
+
 /// <p>The three declared values the port reads beyond the document.</p>
 ClassMethod SettableFields() As %List
 {
@@ -60,7 +76,7 @@ ClassMethod SetProblem(pValue As %String) As %String
     Quit "'" _ ..#IDARGUMENT _ "' names exactly one document of this list, as this instance's list reports it"
 }
 
-/// <p>The schema: the document alone, required, and the agent's own words. The text, the version and
+/// <p>The schema: the document, the agent's replacements and its own words. The text, the version and
 /// the compile choice are never advertised, so the closed schema refuses them.</p>
 ClassMethod InputSchema(pDescriptor As %String = "") As %DynamicObject
 {
@@ -68,6 +84,10 @@ ClassMethod InputSchema(pDescriptor As %String = "") As %DynamicObject
     Set tProperties = tSchema.%Get("properties")
     Do tProperties.%Set(..#IDARGUMENT, {"type": "string", "description": "The one document, named exactly as this instance's own list reports it."})
     Do tSchema.%Get("required").%Push(..#IDARGUMENT)
+    Set tEdits = {"type": "array", "minItems": 1, "maxItems": 20, "description": "One to 20 exact replacements, applied in order to the document's stored text. Each is an object with exactly Old and New. Read the document first with explorer.class.source or explorer.routine.source, and copy each Old from that read."}
+    Do tEdits.%Set("items", {"type": "object", "description": "One replacement: Old, the text to replace, which must occur exactly once in the stored text at the point its edit applies, and New, the text that replaces it. Send exactly these two members."})
+    Do tProperties.%Set("Edits", tEdits)
+    Do tSchema.%Get("required").%Push("Edits")
     Do tProperties.%Set("rationale", {"type": "string", "description": "Why this change is being proposed, in one sentence, shown to the user above the diff."})
     Do tProperties.%Set("expectedImpact", {"type": "string", "description": "What the user should expect to happen once this is confirmed, in one sentence."})
     Do tProperties.%Set("reverse", {"type": "string", "description": "How to undo this change, in one sentence. Omit it where no reversal exists."})
@@ -109,11 +129,88 @@ ClassMethod PortQuery(pPayload As %DynamicObject, ByRef pQuery)
     If pPayload.%GetTypeOf(tCompile) = "boolean" Set pQuery(tCompile) = $Select(pPayload.%Get(tCompile): 1, 1: 0)
 }
 
-/// <p>No state row: a save's card, were one minted, would show nothing of the text.</p>
-ClassMethod StateDiff(pFresh As %DynamicObject, Output pRows As %DynamicArray, Output pProblem As %String) As %Status
+/// <p>The body the mint and the confirm's re-merge take for a save: the fresh read merged with the
+/// stored text, version and compile choice by the kernel's merge, and the diff replaced by the one row
+/// the agent's mint computed, <code>[pArgs.Hunk]</code>, or <code>[]</code> when no hunk is present (a
+/// person's Save carries none, so its diff is empty, as before).</p>
+/// <p><b>Caller contract:</b> the same signature as <method>OcuPilot.Screen.Tool.Write.MergeUpdate</method>.
+/// A person's Save calls the kernel merge itself, so its payload and diff are unchanged.</p>
+ClassMethod MergeUpdate(pFresh As %DynamicObject, pArgs As %DynamicObject, pIdArgument As %String, pSettable As %List, Output pPayload As %DynamicObject, Output pDiff As %DynamicArray, Output pUnchanged As %Integer, Output pProblem As %String) As %Status
 {
-    Set pRows = []
+    Set tSC = ##class(OcuPilot.Kernel.Proposal.Mint).Merge(pFresh, pArgs, pIdArgument, pSettable, .pPayload, .pDiff, .pUnchanged, .pProblem)
+    If $$$ISERR(tSC) Quit tSC
+    Set pDiff = []
+    If $IsObject(pArgs) && (pArgs.%GetTypeOf("Hunk") = "object") Do pDiff.%Push(pArgs.%Get("Hunk"))
+    Quit $$$OK
+}
+
+/// <p>The mint's class for an agent's save: <class>OcuPilot.Screen.Tool.ExplorerSaveMint</class>, which
+/// applies the agent's replacements and computes the hunk (Story 20.21).</p>
+ClassMethod MintClass() As %String
+{
+    Quit "OcuPilot.Screen.Tool.ExplorerSaveMint"
+}
+
+/// <p>What is wrong with saving document <var>pName</var> in namespace <var>pNamespace</var> on the
+/// agent's behalf, or <code>""</code>. The mint asks it, and Confirm asks it again before anything is
+/// written; a person's Save never asks it.</p>
+/// <p>Refused: an empty namespace, <code>%SYS</code>, a name beginning with <code>%</code>, and a document
+/// whose database is not its namespace's own routines database. A mapped document's answer names the
+/// database it is stored in and says the person can save it from the editor. An answer that cannot be
+/// read refuses.</p>
+ClassMethod AgentProblem(pNamespace As %String, pName As %String) As %String
+{
+    Set tProblem = ""
+    Try {
+        If pNamespace = "" {
+            Set tProblem = "the namespace of the document is not known, so the agent does not save it"
+            Quit
+        }
+        If $ZConvert(pNamespace, "U") = "%SYS" {
+            Set tProblem = "the agent does not save a document in %SYS"
+            Quit
+        }
+        If $Extract(pName) = "%" {
+            Set tProblem = "the agent does not save a document whose name begins with %"
+            Quit
+        }
+        Set tPieces = $Length(pName, ".")
+        Set tBase = $Piece(pName, ".", 1, tPieces - 1)
+        Set tExtension = $ZConvert($Piece(pName, ".", tPieces), "L")
+        Set tRoutineDest = ##class(%SYS.Namespace).GetRoutineDest(pNamespace)
+        If tExtension = "cls" {
+            Set tPackage = $Piece(tBase, ".", 1, $Length(tBase, ".") - 1)
+            Set tDest = ##class(%SYS.Namespace).GetPackageDest(pNamespace, tPackage)
+        } Else {
+            Set tType = $Select(tExtension = "inc": "INC", tExtension = "int": "INT", 1: "MAC")
+            Set tDest = ##class(%SYS.Namespace).GetRoutineDest(pNamespace, tBase, tType)
+        }
+        If (tDest = "") || (tRoutineDest = "") {
+            Set tProblem = "the database that holds '" _ pName _ "' could not be read, so the agent does not save it"
+            Quit
+        }
+        If tDest = tRoutineDest Quit
+        Set tPath = "^" _ tDest
+        Kill tInfo
+        Do ##class(%SYS.Namespace).GetAllNSInfo(tPath, .tInfo, 1)
+        Set tResource = $Get(tInfo("RoutineDB", "Resource"))
+        Set tWhere = "another database"
+        If $Extract(tResource, 1, 4) = "%DB_" Set tWhere = "database " _ $Extract(tResource, 5, *)
+        Set tProblem = "'" _ pName _ "' is stored in " _ tWhere _ ", not in this namespace's own routines database, so the agent does not save it. The person can save it from the class or routine editor."
+    } Catch {
+        Set tProblem = "the database that holds '" _ pName _ "' could not be read, so the agent does not save it"
+    }
+    Quit tProblem
+}
+
+/// <p>The refusal of the agent's confirmed save, asked again at the write with the stored arguments
+/// <var>pArgs</var> (the namespace the mint read), in <var>pProblem</var>, or <code>""</code>. A name
+/// the mint refused, or a document moved to another database since, refuses here (AD-6, AD-40).</p>
+ClassMethod ConfirmProblem(pIdValue As %String, pArgs As %DynamicObject, Output pProblem As %String) As %Status
+{
     Set pProblem = ""
+    If '$IsObject(pArgs) Quit $$$OK
+    Set pProblem = ..AgentProblem(pArgs.%Get("Namespace"), pIdValue)
     Quit $$$OK
 }
 
@@ -125,6 +222,12 @@ ClassMethod WriteOutput(pWritten) As %DynamicObject
     If '$IsObject($Get(pWritten)) || 'pWritten.%IsA("%Library.DynamicObject") Quit ""
     If pWritten.%GetTypeOf("lines") '= "array" Quit ""
     Quit pWritten
+}
+
+/// <p>The consequence code every save carries: the text compiles on Confirm, as the user.</p>
+ClassMethod Consequence(pPayload As %DynamicObject, pPrivileged As %Boolean = 0, pEffect As %String = "") As %String
+{
+    Quit ..#CONSEQUENCE
 }
 
 }

@@ -201,6 +201,13 @@ export interface TurnProposalDiffRow {
    * `serviceAllowedUnrestricted`. Present only where the instance sent a non-empty key.
    */
   readonly emptyKey?: string;
+  /**
+   * The row's shape, as the tool declares it. Present only where the instance sent one; `"lines"` is a
+   * changed-lines hunk of a document's text (Story 20.21), whose `line` is the number of its first line.
+   */
+  readonly kind?: string;
+  /** The line number of a `kind` `"lines"` row's first `before` line, as the instance computed it. */
+  readonly line?: number;
 }
 
 /**
@@ -633,6 +640,8 @@ function parseProposalDiff(value: unknown): TurnProposalDiffRow[] {
       removed: boolAt(row, 'removed'),
       ...(boolAt(row, 'optional') ? { optional: true } : {}),
       ...(textAt(row, 'emptyKey') !== '' ? { emptyKey: textAt(row, 'emptyKey') } : {}),
+      ...(textAt(row, 'kind') !== '' ? { kind: textAt(row, 'kind') } : {}),
+      ...(typeof row['line'] === 'number' && Number.isFinite(row['line']) ? { line: row['line'] } : {}),
     });
   }
   return rows;

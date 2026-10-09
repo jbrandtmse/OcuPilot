@@ -10,7 +10,7 @@
 /// a person's own run is never asked governance. <class>OcuPilot.Screen.Tool.ExplorerSqlRunMint</class>
 /// runs the console's own checks before anything is minted and refuses a query, a statement the
 /// instance did not prepare, a statement that carries code (<method>OcuPilot.Port.SqlPort.CarriesCode</method>:
-/// the agent never authors code) and a wrong value count.</p>
+/// the agent authors code only through the class and routine saves (Story 20.21)) and a wrong value count.</p>
 /// <p><b>The statement, its values and its row cap are the write's values</b>
 /// (<parameter>SCREENVALUES</parameter> for the screen), and the fresh read is composed from them
 /// (<parameter>READSVALUES</parameter>, AD-51): the mint, a screen action and the confirm's re-read all

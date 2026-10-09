@@ -2237,6 +2237,53 @@ test('a diff row and an unchanged row keep the emptyKey the instance sent, and a
   assert.equal('emptyKey' in proposal.unchanged[1], false, 'and a row with none carries none');
 });
 
+// Story 20.21: a changed-lines row carries the `kind` and the `line` the instance sent; a row sent with
+// neither carries neither key, so a field diff keeps its shape.
+//
+// Mutation (Rule 19): drop the `kind` spread from `parseProposalDiff` -> the first leg goes red.
+
+test('a changed-lines row keeps the kind and line the instance sent, and a field row carries neither', () => {
+  const [proposal] = parsePrivilegeProposals([
+    wireProposal({
+      target: { type: 'ExplorerSave', scope: 'USER', id: 'OcuProbe2021.Demo.cls' },
+      tool: 'explorer.classes.save',
+      changed: [
+        { field: 'Text', before: 'Quit 1\n', after: 'Quit 2\n', kind: 'lines', line: 12 },
+        { field: 'Enabled', before: 'false', after: 'true' },
+      ],
+    }),
+  ]);
+  assert.equal(proposal.changed[0].kind, 'lines', 'the changed row keeps its kind');
+  assert.equal(proposal.changed[0].line, 12, 'and its line');
+  assert.equal('kind' in proposal.changed[1], false, 'a row sent without a kind carries none');
+  assert.equal('line' in proposal.changed[1], false, 'and carries no line');
+});
+
+// Story 20.21 (QA): a `kind` or `line` of the wrong type is dropped rather than carried, so a card never
+// reads a lines row from a value the instance did not mean as one.
+//
+// Mutation (Rule 19): accept a numeric string for `line` in `parseProposalDiff` -> the string leg goes red.
+
+test('a changed row carries a kind only if it is a non-empty string and a line only if it is a finite number', () => {
+  const [proposal] = parsePrivilegeProposals([
+    wireProposal({
+      target: { type: 'ExplorerSave', scope: 'USER', id: 'OcuProbe2021.Demo.cls' },
+      tool: 'explorer.classes.save',
+      changed: [
+        { field: 'Text', before: 'a\n', after: 'b\n', kind: 'lines', line: '12' },
+        { field: 'Text', before: 'a\n', after: 'b\n', kind: '', line: null },
+        { field: 'Text', before: 'a\n', after: 'b\n', kind: 7, line: 1.5 },
+      ],
+    }),
+  ]);
+  assert.equal(proposal.changed[0].kind, 'lines', 'a string kind is kept');
+  assert.equal('line' in proposal.changed[0], false, 'a numeric string is not a line');
+  assert.equal('kind' in proposal.changed[1], false, 'an empty kind is dropped');
+  assert.equal('line' in proposal.changed[1], false, 'a null line is dropped');
+  assert.equal('kind' in proposal.changed[2], false, 'a numeric kind is dropped');
+  assert.equal(proposal.changed[2].line, 1.5, 'and a finite number is a line as sent');
+});
+
 // Story 19.11: a confirmed SQL run answers an `outcome`, not `lines`; the card shows its status line and, for
 // an error, the instance's own message beneath it (AD-39's sixth exception). A compile's lines read as before.
 //

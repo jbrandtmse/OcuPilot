@@ -191,6 +191,12 @@ export const STRINGS = {
   proposalSummaryCompiled: 'Compiled without errors.',
   /** EXPERIENCE.md:604 */
   proposalSummaryCompileErrors: 'Compiled with errors.',
+  /** EXPERIENCE.md:604 */
+  proposalSummaryLines: '<name>: lines changed, <removed> removed and <added> added',
+  /** EXPERIENCE.md:604 */
+  explorerSaveCompilesOnConfirm: 'Confirming saves this text and then compiles it as you. The compile\'s outcome shows here once it has run.',
+  /** EXPERIENCE.md:604 */
+  explorerSaveNotCompiled: 'Saved, but it did not compile. The saved text is what is now on the instance.',
   /** EXPERIENCE.md:277 */
   proposalExampleCardTitle: 'Example \u2014 this is what a proposal looks like',
   /** EXPERIENCE.md:278 */

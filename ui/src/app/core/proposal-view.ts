@@ -39,6 +39,10 @@ export interface ProposalDiffRow {
   readonly removed?: boolean;
   /** The `STRINGS` key an empty value of this field reads as, the tool's own declaration (DW-1016). */
   readonly emptyKey?: string;
+  /** The row's shape: `"lines"` is a changed-lines hunk of a document's text (Story 20.21). */
+  readonly kind?: string;
+  /** The line number of a `"lines"` row's first `before` line. */
+  readonly line?: number;
 }
 
 /**
@@ -214,6 +218,9 @@ export const CONSEQUENCE_EXPLOREREXPORTREPLACES = 'EXPLORER.EXPORT.REPLACES';
 
 /** Story 19.13: a System Explorer import, which replaces each document of the same name. */
 export const CONSEQUENCE_EXPLORERIMPORTREPLACES = 'EXPLORER.IMPORT.REPLACES';
+
+/** Story 20.21: an agent's class or routine save, which compiles the saved text on Confirm, as the user. */
+export const CONSEQUENCE_EXPLORERSAVECOMPILES = 'EXPLORER.SAVE.COMPILES';
 
 /**
  * Story 19.11: an agent-proposed SQL statement, by the kind the instance classified it, each stated as the
@@ -418,6 +425,8 @@ export function consequenceSentence(code: string | undefined): string {
   if (code === CONSEQUENCE_EXPLOREREXPORTREPLACES) return STRINGS.taskExportReplaces;
   // The import dialog's own consequence line, published once.
   if (code === CONSEQUENCE_EXPLORERIMPORTREPLACES) return STRINGS.explorerImportReplaces;
+  // Story 20.21: an agent's class or routine save states that Confirm compiles the saved text, published once.
+  if (code === CONSEQUENCE_EXPLORERSAVECOMPILES) return STRINGS.explorerSaveCompilesOnConfirm;
   // Story 19.11: an agent-proposed SQL statement's own confirmation sentences, published once; the DML
   // sentence names the statement's tables, so the card states it through `sqlConsequenceSentence`.
   if (code === CONSEQUENCE_SQLCHANGESSCHEMA) return STRINGS.explorerSqlConfirmDdl;

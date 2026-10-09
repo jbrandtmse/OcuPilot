@@ -8461,6 +8461,10 @@ So that a document I ask for in conversation is created on the instance.
 - **When** it is planned
 - **Then** the question is returned to the orchestrator for the owner, with options and a recommendation.
 
+- DW-2241: Take as script on an agent's class or routine save renders the text as the placeholder "<content>", so the script is not the reviewed change (AD-59); render the stored text, header-aware and bounded, for saves and creates (ledger; routed by cr 2026-10-09)
+
+- DW-2242: an agent code write's Confirm gates WRITE on the request's namespace's routines database, not the proposal's stored Namespace; declare the pair from the stored Namespace for saves and creates (ledger; routed by cr 2026-10-09)
+
 ### Story 20.21: The agent saves edits to existing classes and routines
 
 [AMENDED 2026-10-08, orchestrator ruling on Story 20.19's plan (Q3 split), by=merge_gate, Rule 5] Chartered from Story 20.19's saves (its plan's Part B). Order: 20.17, 20.19, 20.21, 20.20, then 20.3-20.6. Story 20.19's source read is in place before this story starts.
