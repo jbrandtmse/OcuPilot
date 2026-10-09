@@ -1379,6 +1379,11 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
                 Set tSC = ..UnderOcuPilot(tId, .tServes)
                 If $$$ISERR(tSC) Quit
             }
+            ; Story 18.29: a copy's payload is the four fields its composition sets, and no other.
+            If (tType = ..#TYPEUSER) && (..WriteTypeOf(..ToolClassNamed(pToolName)) = "COPY") {
+                Set tSC = ..Copied(..ParsedObject(pPayload), .pProhibits, .pCode)
+                Quit
+            }
             Set tSC = ..Created(tType, tServes, ..ParsedObject(pPayload), .pProhibits, .pCode, tId)
             Quit
         }
@@ -4354,6 +4359,9 @@ ClassMethod GrantsPrivilegeByEffect(pType As %String, pPayload As %DynamicObject
         Set tTarget = $Select($IsObject(pTarget): pTarget, 1: {})
         If pType = ..#TYPEUSER {
             Set tSC = ..GrantsPrivilege(pPayload, tTarget, .pGrants)
+            ; Story 18.29, AD-10: an escalation role confers the ability to become that role, so it counts.
+            ; It is asked only after the roles answered, so an error there is never overwritten.
+            If $$$ISOK(tSC) && 'pGrants Set tSC = ..GrantsPrivilege(pPayload, tTarget, .pGrants, "EscalationRoles")
             Quit
         }
         If pType = ..#TYPERESOURCE {
@@ -5600,6 +5608,26 @@ ClassMethod ServingSessionId() As %String
         Set tId = ""
     }
     Quit tId
+}
+
+
+/// <p>Whether a user copy's payload names only the fields its composition sets: <code>CopyFrom</code>,
+/// <code>FullName</code>, <code>Roles</code> and <code>EscalationRoles</code>. Any other field is refused
+/// <parameter>UNCOVEREDFIELD</parameter>, because the copy admits no other setting (Story 18.29).</p>
+ClassMethod Copied(pPayload As %DynamicObject, Output pProhibits As %Boolean, Output pCode As %String) As %Status [ Private ]
+{
+    Set pProhibits = 0
+    Set pCode = ""
+    If '$IsObject(pPayload) Quit $$$OK
+    Set tPermitted = $ListBuild("CopyFrom", "FullName", "Roles", "EscalationRoles")
+    Set tIterator = pPayload.%GetIterator()
+    While tIterator.%GetNext(.tKey, .tValue) {
+        If '$ListFind(tPermitted, tKey) {
+            Do ..Refuse(..#UNCOVEREDFIELD, .pProhibits, .pCode)
+            Quit
+        }
+    }
+    Quit $$$OK
 }
 
 }

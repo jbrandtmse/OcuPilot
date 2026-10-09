@@ -466,6 +466,31 @@ XData Entries
       "Password": "secret"
     }
   },
+  "permissions.users.copy": {
+    "fieldList": "Security.User",
+    "compare": {"Roles": "unordered"},
+    "classification": {
+      "AccountNeverExpires": "ordinary",
+      "AutheEnabled": "ordinary",
+      "ChangePassword": "ordinary",
+      "Comment": "ordinary",
+      "EmailAddress": "ordinary",
+      "Enabled": "ordinary",
+      "ExpirationDate": "ordinary",
+      "FullName": "ordinary",
+      "HOTPKeyDisplay": "ordinary",
+      "NameSpace": "ordinary",
+      "PasswordNeverExpires": "ordinary",
+      "PhoneNumber": "ordinary",
+      "PhoneProvider": "ordinary",
+      "Roles": "opaque",
+      "EscalationRoles": "opaque",
+      "Routine": "ordinary"
+    },
+    "authored": {
+      "Password": "secret"
+    }
+  },
   "permissions.roles.create": {
     "fieldList": "Security.Role",
     "compare": {"GrantedRoles": "unordered", "Resources": "unordered", "Resources[].Permissions": "letters"},

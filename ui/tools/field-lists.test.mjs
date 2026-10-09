@@ -498,6 +498,7 @@ test('a compare declaration is emitted onto its rows, and every malformed one is
   assert.deepEqual(declared, {
     'permissions.users.update': { Roles: 'unordered' },
     'permissions.users.create': { Roles: 'unordered' },
+    'permissions.users.copy': { Roles: 'unordered' },
     'permissions.roles.create': roles,
     'permissions.roles.update': roles,
     'permissions.resources.create': { PublicPermission: 'letters' },

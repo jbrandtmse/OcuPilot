@@ -1233,6 +1233,7 @@ ClassMethod ReasonForToolCode(pCode As %String) As %String
     If $Extract(pCode, 1, 6) = "DOCDB." Set tReason = ##class(OcuPilot.Api.DocDbError).ReasonFor(pCode)
     If $Extract(pCode, 1, 8) = "INTEROP." Set tReason = ##class(OcuPilot.Api.InteropError).ReasonFor(pCode)
     If $Extract(pCode, 1, 7) = "ACCESS." Set tReason = ##class(OcuPilot.Api.AccessError).ReasonFor(pCode)
+    If $Extract(pCode, 1, 9) = "USERCOPY." Set tReason = ##class(OcuPilot.Api.UserCopyError).ReasonFor(pCode)
     If tReason '= "" Quit tReason
     Quit ..#REASONTOOLUNAVAILABLE
 }
@@ -1440,6 +1441,7 @@ ClassMethod ReasonForViolation(pCode As %String) As %String
     If $Extract(pCode, 1, 8) = "SQLPRIV." Quit ##class(OcuPilot.Api.SqlPrivilegeError).ReasonFor(pCode)
     If $Extract(pCode, 1, 8) = "INTEROP." Quit ##class(OcuPilot.Api.InteropError).ReasonFor(pCode)
     If $Extract(pCode, 1, 7) = "ACCESS." Quit ##class(OcuPilot.Api.AccessError).ReasonFor(pCode)
+    If $Extract(pCode, 1, 9) = "USERCOPY." Quit ##class(OcuPilot.Api.UserCopyError).ReasonFor(pCode)
     Quit ""
 }
 

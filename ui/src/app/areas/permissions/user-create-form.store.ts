@@ -15,6 +15,21 @@ export const USERS_FORM_PATH = `${USERS_PATH}/form`;
 /** The blur check: whether a name is already taken. A read of the instance, not a validation. */
 export const USERS_NAME_PATH = `${USERS_PATH}/name`;
 
+/** The copy's route: the create's Save when the form copies an existing account (Story 18.29). */
+export const USERS_COPY_PATH = `${USERS_PATH}/copy`;
+
+/** The password check: whether the instance's policy accepts a password for an account (Story 18.29). */
+export const USERS_PASSWORD_CHECK_PATH = `${USERS_PATH}/password-check`;
+
+/** The Users list's declared read, which the copy's source picker is drawn from (AD-5). */
+export const USERS_LIST_READ_PATH = '/api/ocupilot/screens/permissions.users/read?maxRows=1000';
+
+/** The field the copy names its source by. */
+export const COPY_FROM_FIELD = 'CopyFrom';
+
+/** The machine code a refused password carries, which the server answers on the Password field. */
+export const PASSWORD_POLICY_CODE = 'USER.PASSWORD.POLICY';
+
 /** The entity type and scope every change this form publishes carries (AD-13, AD-14). */
 export const USER_ENTITY = 'user';
 
@@ -36,6 +51,16 @@ export interface RoleOption {
    * Whether granting it grants %All or an administrative privilege, which the form states at the
    * field while it is ticked (AD-10). The server's classifier decides; the client decides nothing.
    */
+  readonly privileged: boolean;
+}
+
+/** The account a copy takes, as `GET /users/form?name=` answers it, with its roles read-only (Story 18.29). */
+export interface SourceAccount {
+  readonly name: string;
+  readonly fullName: string;
+  readonly roles: readonly string[];
+  readonly escalationRoles: readonly string[];
+  /** Whether one of its roles, or one of its escalation roles, grants %All or an administrative privilege. */
   readonly privileged: boolean;
 }
 
@@ -136,6 +161,15 @@ export class UserCreateForm {
 
   private retainingValue = false;
 
+  private copyFromValue = '';
+
+  private sourceValue: SourceAccount | null = null;
+
+  private usersValue: readonly string[] = [];
+
+  /** The full name the last source pre-filled, so a later choice replaces it rather than keeping it. */
+  private prefilledFullName = '';
+
   subscribe(listener: () => void): () => void {
     this.listeners.add(listener);
     return () => {
@@ -215,6 +249,18 @@ export class UserCreateForm {
     return this.formDirty.dirty();
   }
 
+  /** The account this form copies from, or `''` for a create from nothing. */
+  copyFrom(): string {
+    return this.copyFromValue;
+  }
+  /** The source account the copy reads, or `null` while the form is not copying. */
+  source(): SourceAccount | null {
+    return this.sourceValue;
+  }
+  /** The account names the source picker offers, from the Users list's declared read. */
+  users(): readonly string[] {
+    return this.usersValue;
+  }
   /** Whether this store is being carried across the create's own route replacement. */
   retaining(): boolean {
     return this.retainingValue;
@@ -245,6 +291,10 @@ export class UserCreateForm {
     this.generation += 1;
     this.buffer = emptyBuffer();
     this.rolesValue = [];
+    this.copyFromValue = '';
+    this.sourceValue = null;
+    this.usersValue = [];
+    this.prefilledFullName = '';
     this.loadedValue = false;
     this.savingValue = false;
     this.violationList = [];
@@ -275,6 +325,45 @@ export class UserCreateForm {
       this.rememberRefusal(result, {});
     }
     this.loadedValue = true;
+    this.notify();
+    void this.loadUsers(generation);
+  }
+
+  /** Read the Users list's names for the source picker. A read that fails leaves the picker empty. */
+  private async loadUsers(generation: number): Promise<void> {
+    const result = await this.api().requestJson<unknown>(USERS_LIST_READ_PATH);
+    if (generation !== this.generation || result.kind !== 'ok') return;
+    const rows = arrayAt(result.body, 'rows');
+    this.usersValue = rows.map((row) => textAt(row, 'Name')).filter((name) => name !== '');
+    this.notify();
+  }
+
+  /**
+   * Choose the account to copy from, or `''` to create from nothing. A choice reads the source
+   * (`GET /users/form?name=`) and pre-fills the full name when the field is empty or still holds the
+   * previous source's; an earlier choice's refusal and pre-filled full name do not outlive it.
+   */
+  async setCopyFrom(name: string): Promise<void> {
+    this.copyFromValue = name;
+    this.sourceValue = null;
+    this.clearFieldViolation(COPY_FROM_FIELD);
+    if (this.prefilledFullName !== '' && this.buffer['FullName'] === this.prefilledFullName) this.setValue('FullName', '');
+    this.prefilledFullName = '';
+    this.markDirty();
+    this.notify();
+    if (name === '') return;
+    const generation = this.generation;
+    // copy=1 keeps the source's escalation roles in the read: the form's own read omits them (the edit form would write them back).
+    const result = await this.api().requestJson<unknown>(`${USERS_FORM_PATH}?name=${encodeURIComponent(name)}&copy=1`);
+    if (generation !== this.generation || this.copyFromValue !== name) return;
+    if (result.kind !== 'ok') return;
+    const source = absorbSource(result.body, this.rulesValue);
+    if (source === null) return;
+    this.sourceValue = source;
+    if (this.buffer['FullName'] === '' && source.fullName !== '') {
+      this.setValue('FullName', source.fullName);
+      this.prefilledFullName = source.fullName;
+    }
     this.notify();
   }
 
@@ -313,6 +402,10 @@ export class UserCreateForm {
   async onBlur(field: string): Promise<void> {
     this.dropStaleViolation(field);
     this.markEmptyRequired(field);
+    if (field === PASSWORD_FIELD) {
+      await this.checkPassword();
+      return;
+    }
     if (field !== 'Name') return;
     const name = this.value('Name');
     if (name === '') return;
@@ -334,6 +427,36 @@ export class UserCreateForm {
       ...this.violationList.filter((entry) => entry.field !== 'Name'),
       { field: 'Name', code: NAME_TAKEN_CODE, reason },
     ];
+    this.notify();
+  }
+
+  /**
+   * On the password's blur: ask the instance's policy and show its reason on the field. The check
+   * sends the password once and keeps no copy of it; an answer for a password that has since changed
+   * is dropped.
+   */
+  private async checkPassword(): Promise<void> {
+    const password = this.passwordValue;
+    if (password === '') return;
+    const generation = this.generation;
+    const name = this.value('Name');
+    const result = await this.api().requestJson<unknown>(USERS_PASSWORD_CHECK_PATH, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, password }),
+    });
+    if (generation !== this.generation || this.passwordValue !== password) return;
+    if (result.kind !== 'ok') return;
+    const valid = (result.body as Record<string, unknown> | null)?.['valid'] === true;
+    const others = this.violationList.filter((entry) => entry.field !== PASSWORD_FIELD);
+    if (valid) {
+      this.violationList = others;
+      this.notify();
+      return;
+    }
+    const reason = textAt(result.body, 'reason');
+    if (reason === '') return;
+    this.violationList = [...others, { field: PASSWORD_FIELD, code: PASSWORD_POLICY_CODE, reason }];
     this.notify();
   }
 
@@ -365,7 +488,7 @@ export class UserCreateForm {
     this.notify();
 
     const sent = this.snapshotValues();
-    const result = await this.api().requestJson<unknown>(USERS_PATH, {
+    const result = await this.api().requestJson<unknown>(this.copyFromValue === '' ? USERS_PATH : USERS_COPY_PATH, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(this.body()),
@@ -426,6 +549,12 @@ export class UserCreateForm {
     const out: Record<string, unknown> = {};
     out['Name'] = this.value('Name');
     out[PASSWORD_FIELD] = this.passwordValue;
+    if (this.copyFromValue !== '') {
+      // A copy names its source and takes the roles, escalation roles and settings from it.
+      out[COPY_FROM_FIELD] = this.copyFromValue;
+      out['FullName'] = this.value('FullName');
+      return out;
+    }
     for (const field of TEXT_FIELDS) {
       if (field !== 'Name') out[field] = this.value(field);
     }
@@ -521,4 +650,15 @@ function absorbRules(body: unknown): UserFormRules {
     rules,
     roles,
   };
+}
+
+/** The source account a form read answers, narrowed; `null` when it carries no account. */
+function absorbSource(body: unknown, rules: UserFormRules): SourceAccount | null {
+  const user = body !== null && typeof body === 'object' ? (body as Record<string, unknown>)['user'] : null;
+  if (user === null || typeof user !== 'object') return null;
+  const roles = arrayAt(user, 'Roles').filter((entry): entry is string => typeof entry === 'string');
+  const escalationRoles = arrayAt(user, 'EscalationRoles').filter((entry): entry is string => typeof entry === 'string');
+  const privilegedNames = rules.roles.filter((role) => role.privileged).map((role) => role.name.toUpperCase());
+  const privileged = [...roles, ...escalationRoles].some((role) => privilegedNames.includes(role.toUpperCase()));
+  return { name: textAt(user, 'Name'), fullName: textAt(user, 'FullName'), roles, escalationRoles, privileged };
 }

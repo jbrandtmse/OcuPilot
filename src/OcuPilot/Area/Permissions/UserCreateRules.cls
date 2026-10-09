@@ -48,7 +48,13 @@ Parameter TWOFACTORTOTPBIT As INTEGER = 2097152;
 /// <p>The field the edit form read carries the account in, and the member it never answers.</p>
 Parameter FORMUSERKEY = "user";
 
+/// <p>The member an edit form's read never answers: the account's escalation roles, which the form's Save
+/// would write back. The create form's copy-source read keeps them (<parameter>COPYSOURCEQUERY</parameter>).</p>
 Parameter FIELDESCALATIONROLES = "EscalationRoles";
+
+/// <p>The query flag <code>copy=1</code> on <code>GET /users/form?name=</code> that keeps the account's
+/// escalation roles in the read, for the copy source the create form shows.</p>
+Parameter COPYSOURCEQUERY = "copy";
 
 /// <p>The longest a user name may be: <class>%Library.Username</class>'s own <code>MAXLEN</code>,
 /// the type <property>Security.Users.Name</property> is declared with.</p>
@@ -89,8 +95,8 @@ Parameter FIELDPHONEPROVIDER = "PhoneProvider";
 Parameter FIELDAUTHE = "AutheEnabled";
 
 /// <p>Every rule a create applies, in <var>pViolations</var> as
-/// <code>pViolations(n) = $ListBuild(field, code)</code> with the count in
-/// <code>pViolations</code>.</p>
+/// <code>pViolations(n) = $ListBuild(field, code[, reason])</code> with the count in
+/// <code>pViolations</code>; a password the policy refuses carries the policy's reason.</p>
 /// <p><var>pCheckTaken</var> 0 skips the name look-up and <var>pCheckPassword</var> 0 skips the
 /// password rules, for the agent's mint, which has read the target's absence and never holds a
 /// password (<method>OcuPilot.Screen.Tool.UserCreate.ArgumentProblem</method>).</p>
@@ -124,10 +130,12 @@ ClassMethod Validate(pName As %String, pArgs As %DynamicObject, Output pViolatio
             If $IsObject(pArgs) && (pArgs.%GetTypeOf(..#FIELDPASSWORD) = "string") Set tPassword = pArgs.%Get(..#FIELDPASSWORD)
             If tPassword = "" {
                 Do ..Add(.pViolations, ..#FIELDPASSWORD, ##class(OcuPilot.Api.Error).#USERPASSWORDREQUIRED)
-            } ElseIf '..MeetsPolicy(tPassword) {
-                Do ..Add(.pViolations, ..#FIELDPASSWORD, ##class(OcuPilot.Api.Error).#USERPASSWORDPOLICY)
+            } ElseIf '##class(OcuPilot.Kernel.PasswordPolicy).Verdict(tPassword, pName, .tPolicyReason) {
+                ; AD-39: the refusal carries the policy's own reason, which never holds the password.
+                Do ..Add(.pViolations, ..#FIELDPASSWORD, ##class(OcuPilot.Api.Error).#USERPASSWORDPOLICY, tPolicyReason)
             }
             Set tPassword = ""
+            Set tPolicyReason = ""
         }
 
         For tField = ..#FIELDFULLNAME, ..#FIELDEXPIRY, ..#FIELDNAMESPACE, ..#FIELDROUTINE {
@@ -277,33 +285,6 @@ ClassMethod NameIsUsable(pName As %String) As %Boolean
     Quit tUsable
 }
 
-/// <p>Whether <var>pPassword</var> matches <property>Security.System.PasswordPattern</property>,
-/// read in <code>%SYS</code> by AD-16's explicit save and restore and matched with the pattern
-/// operator. An instance with no pattern accepts any non-empty password. The value is never
-/// logged, returned or placed in a status (AD-35).</p>
-ClassMethod MeetsPolicy(pPassword As %String) As %Boolean
-{
-    Set tMeets = 0
-    Set tOrigNS = $NAMESPACE
-    Try {
-        Set $NAMESPACE = "%SYS"
-        Set tPattern = ""
-        Set tSystem = ##class(Security.System).%OpenId("SYSTEM")
-        If $IsObject(tSystem) Set tPattern = tSystem.PasswordPattern
-        Set tSystem = ""
-        Set $NAMESPACE = tOrigNS
-        If tPattern = "" {
-            Set tMeets = 1
-        } Else {
-            Set tMeets = ''(pPassword?@tPattern)
-        }
-    } Catch {
-        Set $NAMESPACE = tOrigNS
-        Set tMeets = 0
-    }
-    Quit tMeets
-}
-
 /// <p>Whether <var>pValue</var> is a real calendar date written <code>YYYY-MM-DD</code>: the
 /// shape, and a round trip through the instance's own date conversion, so
 /// <code>2027-02-30</code> is refused.</p>
@@ -399,7 +380,7 @@ ClassMethod HandleForm() As %Status
         Do tBody.%Set("roles", tRoles)
         Set tName = $Get(%request.Data("name", 1))
         If tName '= "" {
-            Set tReadSC = ..Account(tName, .tUser, .tHttp, .tFault)
+            Set tReadSC = ..Account(tName, .tUser, .tHttp, .tFault, ($Get(%request.Data(..#COPYSOURCEQUERY, 1)) = "1"))
             If $$$ISERR(tReadSC) && (+$Get(tHttp) = 404) {
                 Set tSC = ##class(OcuPilot.Api.Error).Render(404, ##class(OcuPilot.Api.Error).#NOTFOUND, ##class(OcuPilot.Api.Error).#REASONUSERNAMEABSENT, ##class(OcuPilot.Api.Error).#USERNAMEABSENT)
                 Quit
@@ -478,9 +459,10 @@ ClassMethod Taken(pName As %String, Output pTaken As %Boolean) As %Status
 }
 
 /// <p>The account <var>pName</var> as <parameter>UPDATETOOL</parameter>'s own read answers it,
-/// through its own port (AD-52), without <parameter>FIELDESCALATIONROLES</parameter>, in
-/// <var>pUser</var>. An absent account is an error status with <var>pHttpStatus</var> 404.</p>
-ClassMethod Account(pName As %String, Output pUser As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status
+/// through its own port (AD-52), in <var>pUser</var>, without <parameter>FIELDESCALATIONROLES</parameter> unless
+/// <var>pKeepEscalation</var> is 1, which the copy source's read asks (<parameter>COPYSOURCEQUERY</parameter>).
+/// An absent account is an error status with <var>pHttpStatus</var> 404.</p>
+ClassMethod Account(pName As %String, Output pUser As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, pKeepEscalation As %Boolean = 0) As %Status
 {
     Set pUser = ""
     Set tClass = ..#UPDATETOOL
@@ -492,7 +474,7 @@ ClassMethod Account(pName As %String, Output pUser As %DynamicObject, Output pHt
         Set pHttpStatus = 404
         Quit $$$ERROR($$$GeneralError, ##class(OcuPilot.Api.Error).#USERNAMEABSENT)
     }
-    Do tFresh.%Remove(..#FIELDESCALATIONROLES)
+    If 'pKeepEscalation Do tFresh.%Remove(..#FIELDESCALATIONROLES)
     Set pUser = tFresh
     Quit $$$OK
 }
@@ -643,10 +625,45 @@ ClassMethod Names(pList As %String) As %DynamicArray [ Private ]
     Quit tRows
 }
 
-/// <p>Append one <code>(field, code)</code> violation.</p>
-ClassMethod Add(Output pViolations, pField As %String, pCode As %String) [ Private ]
+/// <p>Append one <code>(field, code)</code> violation, with <var>pReason</var> as its sentence when it is not
+/// empty; an empty one leaves the code's published sentence.</p>
+ClassMethod Add(Output pViolations, pField As %String, pCode As %String, pReason As %String = "") [ Private ]
 {
-    Set pViolations($Increment(pViolations)) = $ListBuild(pField, pCode)
+    Set pViolations($Increment(pViolations)) = $Select(pReason = "": $ListBuild(pField, pCode), 1: $ListBuild(pField, pCode, pReason))
+}
+
+/// <p>Answer <code>POST /users/password-check</code> with <code>{valid, reason}</code>: whether the body's
+/// <code>password</code> passes the instance's policy for the account <code>name</code>
+/// (<class>OcuPilot.Kernel.PasswordPolicy</class>). The body is never logged, and the password is answered
+/// in no field. Gated by the form's pairs (AD-8).</p>
+ClassMethod HandlePasswordCheck() As %Status
+{
+    Set tSC = $$$OK
+    Try {
+        Set tGateSC = ..Gate(.tRefused)
+        If tRefused || $$$ISERR(tGateSC) {
+            Set tSC = tGateSC
+            Quit
+        }
+        Set tReadSC = ##class(OcuPilot.Kernel.Utils).ReadRequestBody(.tBody, .tStage)
+        If $$$ISERR(tReadSC) || '$IsObject(tBody) || 'tBody.%IsA("%Library.DynamicObject") {
+            Set tSC = ##class(OcuPilot.Api.Error).Render(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#REASONAGENTBADBODY, ##class(OcuPilot.Api.Error).#AGENTBADBODY)
+            Quit
+        }
+        Set tPassword = ""
+        If tBody.%GetTypeOf("password") = "string" Set tPassword = tBody.%Get("password")
+        Set tName = ""
+        If tBody.%GetTypeOf("name") = "string" Set tName = tBody.%Get("name")
+        Set tValid = ##class(OcuPilot.Kernel.PasswordPolicy).Verdict(tPassword, tName, .tReason)
+        Set tPassword = ""
+        Set tAnswer = {}
+        Do tAnswer.%Set("valid", tValid, "boolean")
+        Do tAnswer.%Set("reason", tReason, "string")
+        Set tSC = ##class(OcuPilot.Api.Response).JSONStatus(200, tAnswer)
+    } Catch ex {
+        Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ex)
+    }
+    Quit tSC
 }
 
 }

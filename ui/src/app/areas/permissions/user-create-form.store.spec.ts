@@ -7,8 +7,11 @@ import { entityRefKey } from '../../core/entity-ref';
 import { FormDirty } from '../../core/form-dirty';
 import {
   NAME_TAKEN_CODE,
+  USERS_COPY_PATH,
   USERS_FORM_PATH,
+  USERS_LIST_READ_PATH,
   USERS_NAME_PATH,
+  USERS_PASSWORD_CHECK_PATH,
   USERS_PATH,
   USER_ENTITY,
   USER_SCOPE,
@@ -48,9 +51,17 @@ async function settle(): Promise<void> {
   for (let pass = 0; pass < 4; pass += 1) await new Promise((resolve) => setTimeout(resolve, 2));
 }
 
+/** The source a copy reads through `GET /users/form?name=`: a privileged role and a full name. */
+const SOURCE_FORM = {
+  ...RULES,
+  user: { Name: 'Src', FullName: 'Source Person', Roles: ['%All'], EscalationRoles: [] },
+};
+
 function mount(
   createAnswer: JsonResult<unknown> = { kind: 'ok', status: 201, body: { name: 'probeuser', user: {} } },
-  nameAnswer: JsonResult<unknown> = { kind: 'ok', status: 200, body: { name: 'probeuser', available: true, reason: '' } }
+  nameAnswer: JsonResult<unknown> = { kind: 'ok', status: 200, body: { name: 'probeuser', available: true, reason: '' } },
+  checkAnswer: JsonResult<unknown> = { kind: 'ok', status: 200, body: { valid: true, reason: '' } },
+  sourceAnswer: unknown = SOURCE_FORM
 ) {
   TestBed.resetTestingModule();
   const calls: { path: string; method: string; body: string }[] = [];
@@ -60,6 +71,15 @@ function mount(
       if (path === USERS_FORM_PATH) {
         return { kind: 'ok', status: 200, body: RULES } as unknown as JsonResult<T>;
       }
+      if (path.startsWith(`${USERS_FORM_PATH}?name=`)) {
+        // A function answers per path, so a test can name each source's read or hold one back.
+        if (typeof sourceAnswer === 'function') return (await (sourceAnswer as (path: string) => unknown)(path)) as JsonResult<T>;
+        return { kind: 'ok', status: 200, body: sourceAnswer } as unknown as JsonResult<T>;
+      }
+      if (path === USERS_LIST_READ_PATH) {
+        return { kind: 'ok', status: 200, body: { rows: [{ Name: 'Src' }, { Name: 'Other' }] } } as unknown as JsonResult<T>;
+      }
+      if (path === USERS_PASSWORD_CHECK_PATH) return checkAnswer as JsonResult<T>;
       if (path.startsWith(USERS_NAME_PATH)) return nameAnswer as JsonResult<T>;
       return createAnswer as JsonResult<T>;
     },
@@ -259,5 +279,106 @@ describe('the create-a-user form store', () => {
     expect(store.violationFor('Password')).toBe('Enter a password.');
     store.setPassword('x');
     expect(store.violationFor('Password')).toBe('');
+  });
+
+  it('Story 18.29: a copy reads its source, pre-fills the full name and posts the four fields to the copy route', async () => {
+    const { store, calls } = mount();
+    await store.open();
+    await store.setCopyFrom('Src');
+    await settle();
+    expect(store.copyFrom()).toBe('Src');
+    expect(store.users()).toEqual(['Src', 'Other']);
+    expect(store.source()?.privileged).toBe(true);
+    expect(store.value('FullName')).toBe('Source Person');
+    store.setValue('Name', 'probeuser');
+    store.setPassword('Ocu-Probe-1829xyz!');
+    await store.save();
+    const post = calls.filter((call) => call.method === 'POST').at(-1);
+    expect(post!.path).toBe(USERS_COPY_PATH);
+    expect(Object.keys(JSON.parse(post!.body) as Record<string, unknown>).sort()).toEqual(['CopyFrom', 'FullName', 'Name', 'Password']);
+  });
+
+  it('Story 18.29: a copy source whose only privilege is an escalation role reads its escalation roles and is privileged', async () => {
+    const escalationSource = { ...RULES, user: { Name: 'Src', FullName: 'Source Person', Roles: [], EscalationRoles: ['%All'] } };
+    const { store, calls } = mount(undefined, undefined, undefined, escalationSource);
+    await store.open();
+    await store.setCopyFrom('Src');
+    await settle();
+    expect(calls.some((call) => call.path === `${USERS_FORM_PATH}?name=Src&copy=1`)).toBe(true);
+    expect(store.source()?.escalationRoles).toEqual(['%All']);
+    expect(store.source()?.privileged).toBe(true);
+  });
+
+  it('Story 18.29: blurring a password shows the instance policy reason on the field, and a valid answer clears it', async () => {
+    const answer: { kind: 'ok'; status: number; body: unknown } = { kind: 'ok', status: 200, body: { valid: false, reason: 'Too short for this instance.' } };
+    const { store, calls } = mount(undefined, undefined, answer);
+    await store.open();
+    store.setValue('Name', 'probeuser');
+    store.setPassword('a');
+    await store.onBlur('Password');
+    await settle();
+    expect(store.violationFor('Password')).toBe('Too short for this instance.');
+    const check = calls.filter((call) => call.path === USERS_PASSWORD_CHECK_PATH).at(-1);
+    expect(check?.method).toBe('POST');
+    expect(JSON.parse(check!.body)).toEqual({ name: 'probeuser', password: 'a' });
+    answer.body = { valid: true, reason: '' };
+    await store.onBlur('Password');
+    await settle();
+    expect(store.violationFor('Password')).toBe('');
+  });
+
+  it('Story 18.29: a check answer that lands after the password changed does not mark the new value', async () => {
+    let answerCheck: (answer: JsonResult<unknown>) => void = () => undefined;
+    const pending = new Promise<JsonResult<unknown>>((resolve) => { answerCheck = resolve; });
+    const { store } = mount(undefined, undefined, pending as unknown as JsonResult<unknown>);
+    await store.open();
+    store.setValue('Name', 'probeuser');
+    store.setPassword('a');
+    const blur = store.onBlur('Password');
+    store.setPassword('b');
+    answerCheck({ kind: 'ok', status: 200, body: { valid: false, reason: 'Too short for this instance.' } });
+    await blur;
+    await settle();
+    expect(store.violationFor('Password')).toBe('');
+  });
+
+  it('Story 18.29: choosing another source replaces the first one\'s full name and refusal, a late first answer is dropped, and clearing it makes the Save a plain create', async () => {
+    const person = (name: string) => ({ kind: 'ok', status: 200, body: { ...RULES, user: { Name: name, FullName: `Person ${name}`, Roles: ['%Developer'], EscalationRoles: [] } } });
+    let answerA: (answer: unknown) => void = () => undefined;
+    const heldA = new Promise((resolve) => { answerA = resolve; });
+    let holdA = false;
+    const { store, calls } = mount(undefined, undefined, undefined, (path: string) => {
+      if (path.includes('name=A&') && holdA) return heldA;
+      return person(path.includes('name=A&') ? 'A' : 'B');
+    });
+    await store.open();
+    await store.setCopyFrom('A');
+    await settle();
+    expect(store.value('FullName')).toBe('Person A');
+    await store.setCopyFrom('B');
+    await settle();
+    expect(store.value('FullName')).toBe('Person B');
+    expect(store.source()?.name).toBe('B');
+
+    holdA = true;
+    const late = store.setCopyFrom('A');
+    await store.setCopyFrom('B');
+    answerA(person('A'));
+    await late;
+    await settle();
+    expect(store.source()?.name).toBe('B');
+    expect(store.value('FullName')).toBe('Person B');
+
+    await store.setCopyFrom('');
+    await settle();
+    expect(store.copyFrom()).toBe('');
+    expect(store.source()).toBeNull();
+    expect(store.value('FullName')).toBe('');
+    store.setValue('Name', 'probeuser');
+    store.setPassword('Ocu-Probe-1829xyz!');
+    await store.save();
+    const post = calls.filter((call) => call.method === 'POST' && call.path !== USERS_PASSWORD_CHECK_PATH).at(-1);
+    expect(post!.path).toBe(USERS_PATH);
+    expect(Object.keys(JSON.parse(post!.body) as Record<string, unknown>)).not.toContain('CopyFrom');
   });
 });

@@ -70,7 +70,9 @@ Method OnBeforeOneTest() As %Status
 /// <code>USER.NAME.ABSENT</code> for an account the instance does not hold.</p>
 /// <p>Mutation (Rule 19): drop the <code>user</code> member from
 /// <method>OcuPilot.Area.Permissions.UserCreateRules.HandleForm</method> -- the form-read legs go
-/// red.</p>
+/// red. Drop the escalation-roles removal from <method>OcuPilot.Area.Permissions.UserCreateRules.Account</method>
+/// -- the default form-read leg goes red. Ignore <code>copy=1</code> in <method>HandleForm</method> -- the
+/// copy-source leg goes red.</p>
 Method TestTheSaveAndTheFormReadAnswerOneEnvelopeOverTheWire()
 {
     Set tSC = ##class(OcuPilot.Test.Http).MakeRequest("PUT", ..Path(..#PROBEUSER), .tStatus, .tBody, "{}", "application/json")
@@ -93,6 +95,11 @@ Method TestTheSaveAndTheFormReadAnswerOneEnvelopeOverTheWire()
         Do $$$AssertEquals(..Count(tUser), ..#PROPERTYCOUNT - 1, "and with every other property the vendor's read answers")
         Do $$$AssertEquals(tUser.%Get("Comment"), ..#PROBEMARKER, "as the instance holds them")
     }
+    ; Story 18.29: the create form's copy source keeps the escalation roles the edit form drops (copy=1).
+    Set tSC = ##class(OcuPilot.Test.Http).MakeRequest("GET", ..#FORMPATH _ "?name=" _ ..#PROBEUSER _ "&copy=1", .tCopyStatus, .tCopyBody)
+    Do $$$AssertEquals(tCopyStatus, 200, "the copy source's read answers 200")
+    Set tCopyUser = $Select($IsObject($Get(tCopyBody)): tCopyBody.%Get("user"), 1: "")
+    Do $$$AssertTrue($IsObject(tCopyUser) && (tCopyUser.%GetTypeOf("EscalationRoles") '= "unassigned"), "and with copy=1 carries the escalation roles the edit form omits")
     Do $$$AssertTrue($IsObject($Get(tBody)) && (tBody.%Get("roles").%Size() > 0), "beside the roles the instance holds")
 
     For tPath = ..Path("OcuPilotNoSuchUserSave"), ..#FORMPATH _ "?name=OcuPilotNoSuchUserSave" {

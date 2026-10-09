@@ -56,6 +56,8 @@ export const MEMBER_TYPE_ESCALATION = 'User (escalation)';
 export interface Member {
   readonly name: string;
   readonly type: string;
+  /** Whether the member holds the role WITH ADMIN OPTION (Story 18.29). */
+  readonly adminOption: boolean;
 }
 
 interface Buffer {
@@ -517,7 +519,7 @@ export class RoleEditor {
       .filter((grant) => grant.name !== '');
     this.grantedList = arrayAt(role, GRANTED_ROLES_FIELD).filter((name): name is string => typeof name === 'string' && name !== '');
     this.memberList = arrayAt(body, 'members')
-      .map((entry) => ({ name: textAt(entry, 'Name'), type: textAt(entry, 'Type') }))
+      .map((entry) => ({ name: textAt(entry, 'Name'), type: textAt(entry, 'Type'), adminOption: flagAt(entry, 'AdminOption') }))
       .filter((member) => member.name !== '');
     if (!fields) return;
     this.buffer = { description: textAt(role, DESCRIPTION_FIELD), escalationOnly: flagAt(role, ESCALATION_FIELD) };
