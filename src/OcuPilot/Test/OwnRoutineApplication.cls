@@ -1,19 +1,31 @@
 /// <p>Pins AD-10's privileged routine application arm (DW-2239, Story 18.10): a delete, a disable, or a change to
 /// <code>MatchRoles</code> or <code>Roles</code> of <code>OcuPilotState</code> or <code>OcuPilotIdentity</code> is
-/// refused <code>PROHIBITED.OCUPILOTROUTINEAPP</code>, and an unrelated application is not refused by the arm.</p>
+/// refused <code>PROHIBITED.OCUPILOTROUTINEAPP</code> with the kernel's own sentence, a change outside those fields is not
+/// refused by the arm, and an unrelated application is not refused by it.</p>
 /// <p>The privileged routine endpoint's legs (<class>OcuPilot.Port.AdminPort</class>) refuse the same four writes before the
 /// vendor is reached, and each leg reads the application before and after the call.</p>
-/// <p>Needs the throwaway's install (both applications exist and read). The endpoint legs can reach the vendor only when
-/// their guard is mutated, so <code>OnBeforeOneTest</code> records both applications' stored state and
-/// <code>OnAfterOneTest</code> puts back any of it that changed. Each leg's mutation is named in the spec's Verification.</p>
+/// <p>Needs the throwaway's install (both applications exist and read). <class>OcuPilot.Port.AdminPort</class> admits no
+/// <code>Security.PrivilegedRoutine</code> <code>PUT</code> or <code>DELETE</code> on this build, so a mutated arm answers 501
+/// before any vendor call and the after-read cannot differ yet; it carries weight once Story 18.31 admits them.
+/// <code>OnBeforeOneTest</code> records both applications' stored state and <code>OnAfterOneTest</code> puts back any of it
+/// that changed (<method>PutBack</method>). Each leg's mutation is named in the spec's Verification.</p>
 Class OcuPilot.Test.OwnRoutineApplication Extends %UnitTest.TestCase
 {
 
+/// <p>The environment variable that arms this class, set by <file>scripts/ci-throwaway.sh</file> alone.</p>
+Parameter ARMINGVARIABLE = "OCUPILOT_ALLOW_PRINCIPALS";
+
+/// <p>Refuses to run anywhere <parameter>ARMINGVARIABLE</parameter> does not read 1: this class restores OcuPilot's own privileged routine applications when a mutated guard lets a write through.</p>
+Method OnBeforeAllTests() As %Status
+{
+    If $System.Util.GetEnviron(..#ARMINGVARIABLE) '= 1 {
+        Quit $$$ERROR($$$GeneralError, "OcuPilot.Test.OwnRoutineApplication restores OcuPilot's own privileged routine applications when a mutated guard lets a write through, and runs on a throwaway container only. " _ ..#ARMINGVARIABLE _ " does not read 1 here, so nothing was changed. Bring one up with scripts/ci-throwaway.sh, which sets it.")
+    }
+    Quit $$$OK
+}
+
 /// <p>The probe application the unrelated leg asks about; it is absent, so the set answers not prohibited.</p>
 Parameter PROBEPATH = "/csp/ocuprobe1810";
-
-/// <p>The sentence the arm answers, as the published text states it.</p>
-Parameter REASON = "OcuPilot reads its own protected state through this privileged routine application, so it cannot be deleted or disabled and the roles it grants cannot be changed.";
 
 /// <p>The stored state of both applications before the test, keyed by application name and then by field.</p>
 Property PreparedApps [ MultiDimensional ];
@@ -30,17 +42,14 @@ Method OnBeforeOneTest() As %Status
     Quit tSC
 }
 
-/// <p>Puts back the stored state of each routine application whose enabled flag or roles differ from the record. An
-/// application the instance no longer holds is created again from the record.</p>
+/// <p>Puts back the stored state of each routine application whose enabled flag or roles differ from the record.</p>
 Method OnAfterOneTest() As %Status
 {
     For tName = ##class(OcuPilot.Kernel.State.Base).#APPLICATION, ##class(OcuPilot.Kernel.State.Base).#IDENTITYAPPLICATION {
-        Set tSC = ..Stored(tName, .tNow)
-        If $$$ISERR(tSC) Quit
         If $Data(..PreparedApps(tName)) = 0 Continue
-        Set tSame = $Data(tNow) && ($Get(tNow("Enabled")) = $Get(..PreparedApps(tName, "Enabled"))) && ($Get(tNow("MatchRoles")) = $Get(..PreparedApps(tName, "MatchRoles"))) && ($Get(tNow("Roles")) = $Get(..PreparedApps(tName, "Roles")))
-        If tSame Continue
-        Set tSC = ..Restore(tName)
+        Kill tWas
+        Merge tWas = ..PreparedApps(tName)
+        Set tSC = ..PutBack(tName, .tWas)
         Do $$$AssertStatusOK(tSC, tName _ " is put back as it was recorded")
     }
     Quit $$$OK
@@ -66,13 +75,17 @@ ClassMethod Stored(pName As %String, Output pProps) As %Status
     Quit tSC
 }
 
-/// <p>Writes the recorded fields of <var>pName</var> back: modified when the instance still holds it, created when not.</p>
-Method Restore(pName As %String) As %Status
+/// <p>Puts the application <var>pName</var> back to <var>pWas</var>, as <method>Stored</method> read it, when its enabled
+/// flag or roles differ now: modified when the instance still holds it, created when not. A caller that records with
+/// <method>Stored</method> before a test restores with this after it.</p>
+ClassMethod PutBack(pName As %String, ByRef pWas) As %Status
 {
+    Set tSC = ..Stored(pName, .tNow)
+    If $$$ISERR(tSC) Quit tSC
+    If $Data(tNow) && ($Get(tNow("Enabled")) = $Get(pWas("Enabled"))) && ($Get(tNow("MatchRoles")) = $Get(pWas("MatchRoles"))) && ($Get(tNow("Roles")) = $Get(pWas("Roles"))) Quit $$$OK
     Kill tProps
-    Merge tProps = ..PreparedApps(pName)
+    Merge tProps = pWas
     Set tOrigNS = $NAMESPACE
-    Set tSC = $$$OK
     Try {
         Set $NAMESPACE = "%SYS"
         If ##class(Security.Applications).Exists(pName) {
@@ -159,6 +172,18 @@ Method TestRolesRefused()
     Quit
 }
 
+/// <p>A change outside the arm's fields is not refused by the arm.</p>
+/// <p>Mutation (Rule 19): in <class>OcuPilot.Kernel.Proposal.Prohibited</class>'s <method>RoutineApplicationChanges</method>,
+/// change <code>If $ListFind(tFields, tField) Quit</code> to <code>Quit</code> -- the description leg goes red.</p>
+Method TestAnUnlistedChangeIsNotRefused()
+{
+    Set tDiff = [{"field": "Description", "before": "a", "after": "b"}]
+    Set tProhibits = ..Ask("webapp.list.update", "OcuPilotState", "{""Description"": ""b""}", tDiff.%ToJSON(), .tCode, .tSC)
+    Do $$$AssertStatusOK(tSC, "the set answers a description change of OcuPilotState")
+    Do $$$AssertNotEquals(tCode, ##class(OcuPilot.Kernel.Proposal.Prohibited).#OCUPILOTROUTINEAPP, "a description change of OcuPilotState is not refused by the arm")
+    Quit
+}
+
 /// <p>An absent application the arm does not name is not refused by it.</p>
 Method TestUnrelatedNotRefused()
 {
@@ -217,15 +242,15 @@ Method AssertEndpointRefused(pLabel As %String, pName As %String, pType As %Stri
         Set tReason = tFault.reason
     }
     Do $$$AssertEquals(tCode, ##class(OcuPilot.Kernel.Proposal.Prohibited).#OCUPILOTROUTINEAPP, pLabel _ " is refused the routine application code")
-    Do $$$AssertEquals(tReason, ..#REASON, pLabel _ " carries the published sentence")
+    Do $$$AssertEquals(tReason, ##class(OcuPilot.Kernel.Proposal.Prohibited).#OCUPILOTROUTINEAPPREASON, pLabel _ " carries the arm's own sentence")
     Do $$$AssertEquals(..WebAppJSON(pName), tBefore, pLabel _ " and the vendor was not reached: " _ pName _ " reads as it did")
     Quit
 }
 
 /// <p>The privileged routine endpoint refuses a delete of OcuPilotState before the vendor.</p>
 /// <p>Mutation (Rule 19): in <class>OcuPilot.Kernel.Proposal.Prohibited</class>'s <method>RoutineEndpointRefused</method>,
-/// change <code>If pType = "DELETE" {</code> to <code>If 0 {</code>. The vendor is then asked to delete the application on
-/// the throwaway, the read after the call is empty and this leg goes red; <code>OnAfterOneTest</code> puts it back.</p>
+/// change <code>If pType = "DELETE" {</code> to <code>If 0 {</code>. The call then reaches the port's 501 for an endpoint
+/// type it does not admit, and this leg goes red on the status and the code.</p>
 Method TestEndpointDeleteRefused()
 {
     Do ..AssertEndpointRefused("the privileged routine endpoint's delete of OcuPilotState", ##class(OcuPilot.Kernel.State.Base).#APPLICATION, "DELETE")
@@ -234,8 +259,7 @@ Method TestEndpointDeleteRefused()
 
 /// <p>The privileged routine endpoint refuses a PUT that sets OcuPilotIdentity's Enabled to false before the vendor.</p>
 /// <p>Mutation (Rule 19): in <method>RoutineEndpointRefused</method>, change <code>Set tFields = "Enabled," _</code> to
-/// <code>Set tFields = </code>. The disable is then passed to the vendor, the read after the call differs and this leg goes
-/// red; <code>OnAfterOneTest</code> puts the enabled flag back.</p>
+/// <code>Set tFields = </code>. The call then reaches the port's 501, and this leg goes red on the status and the code.</p>
 Method TestEndpointDisableRefused()
 {
     Do ..AssertEndpointRefused("the privileged routine endpoint's disable of OcuPilotIdentity", ##class(OcuPilot.Kernel.State.Base).#IDENTITYAPPLICATION, "PUT", {"Enabled": false})

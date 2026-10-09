@@ -1,11 +1,13 @@
 import { ChangeDetectionStrategy, Component, DestroyRef, effect, inject, input, signal } from '@angular/core';
 
 import { ApiService } from '../../core/api';
+import { ChangeBus } from '../../core/change-bus';
 import { joinCompositeId } from '../../core/entity-id';
 import { createScreenRead, type ScreenReadCriteria } from '../../core/screen-read';
 import { selfProtectionReason, SYSTEM_PCT_ACCESS_RULE } from '../../core/self-protection';
 import { STRINGS } from '../../core/strings';
 import { SCREENS, type ScreenDeclaration } from '../../core/screens.generated';
+import { cellView } from '../../core/table-model';
 import { ScreenActionDialogs } from '../../shell/screen-action-dialogs';
 import { ScreenActionHandler, type ActionSink } from '../../shell/screen-action-handler';
 import { WebAppClassAccessDialog } from './web-app-class-access-dialog';
@@ -15,6 +17,9 @@ export const PCT_ACCESS_DESCRIPTOR = 'OcuPilot.Screen.Descriptor.WebAppPctAccess
 
 /** The row action the tab's Delete carries out. */
 export const PCT_ACCESS_DELETE = 'delete';
+
+/** The entity type a change to an entry carries on the change bus. */
+export const PCT_ACCESS_ENTITY = 'pct-class-access';
 
 /** The most rows the tab reads. */
 export const PCT_ACCESS_MAX_ROWS = 200;
@@ -29,7 +34,8 @@ export type PctAccessRow = Readonly<Record<string, unknown>>;
  *
  * Delete goes through `ScreenActionHandler.startFor`, the same path the list's row action takes. A system entry's
  * Delete is `aria-disabled` and names the rule's sentence through `aria-describedby`, and the instance refuses it
- * again on the call. Add opens `WebAppClassAccessDialog`; a success re-reads the list.
+ * again on the call. Add opens `WebAppClassAccessDialog`; a success re-reads the list, and so do an applied Delete and a
+ * confirmed change to any entry on the change bus (AD-14).
  */
 @Component({
   selector: 'app-web-app-class-access-tab',
@@ -49,7 +55,7 @@ export type PctAccessRow = Readonly<Record<string, unknown>>;
       <p class="ocu-pct-access-empty">{{ STRINGS.webAppPctAccessListEmpty }}</p>
     }
     @if (hasRows) {
-      <table class="ocu-pct-access-table">
+      <table class="ocu-pct-access-table" [attr.aria-label]="STRINGS.webAppPctAccessListLabel">
         <thead>
           <tr>
             <th scope="col">{{ STRINGS.tableColumnName }}</th>
@@ -74,6 +80,7 @@ export type PctAccessRow = Readonly<Record<string, unknown>>;
                   class="ocu-button-secondary ocu-pct-access-delete"
                   [attr.aria-disabled]="view.refused ? 'true' : null"
                   [attr.aria-describedby]="view.refused ? view.reasonId : null"
+                  [attr.aria-label]="view.deleteLabel"
                   (click)="remove(view.row)"
                 >
                   {{ STRINGS.actionDelete }}
@@ -111,6 +118,9 @@ export class WebAppClassAccessTab {
 
   protected readonly loadFailedSignal = signal(false);
 
+  /** Whether a read has answered, so the empty sentence is not drawn before the first one does. */
+  protected readonly loaded = signal(false);
+
   protected readonly refusal = signal('');
 
   protected readonly addingSignal = signal(false);
@@ -128,8 +138,9 @@ export class WebAppClassAccessTab {
         name: String(row['Name'] ?? ''),
         allowType: String(row['AllowType'] ?? ''),
         className: String(row['Class'] ?? ''),
-        access: String(row['AllowAccess'] ?? ''),
-        system: String(row['System'] ?? ''),
+        access: cellView(row['AllowAccess'], 'status').text,
+        system: cellView(row['System'], 'status').text,
+        deleteLabel: `${STRINGS.actionDelete} ${String(row['Class'] ?? '')}`,
         refused: reason !== '',
         reason,
         reasonId: this.reasonId(row),
@@ -146,7 +157,7 @@ export class WebAppClassAccessTab {
   }
 
   protected get isEmpty(): boolean {
-    return this.rows().length === 0 && !this.loadFailedSignal();
+    return this.loaded() && this.rows().length === 0 && !this.loadFailedSignal();
   }
 
   protected get hasRefusal(): boolean {
@@ -165,13 +176,20 @@ export class WebAppClassAccessTab {
       this.application();
       void this.load();
     });
-    this.destroyRef.onDestroy(() => this.rows.set([]));
+    const stopChanges = inject(ChangeBus, { optional: true })?.subscribe((event) => {
+      if (event.kind === 'changed' && event.type === PCT_ACCESS_ENTITY) void this.load();
+    });
+    this.destroyRef.onDestroy(() => {
+      stopChanges?.();
+      this.rows.set([]);
+    });
   }
 
   /** Re-reads the list for the current application. */
   protected async load(): Promise<void> {
     if (this.read === null) return;
     const result = await this.read({ maxRows: PCT_ACCESS_MAX_ROWS });
+    this.loaded.set(true);
     if (result.kind !== 'ok') {
       this.loadFailedSignal.set(true);
       this.rows.set([]);
@@ -210,7 +228,7 @@ export class WebAppClassAccessTab {
 
   /** Delete a row through the list's own action path; a system entry's refusal is shown here. */
   protected remove(row: PctAccessRow): void {
-    const sink: ActionSink = { setRefusal: (reason: string) => this.refusal.set(reason) };
+    const sink: ActionSink = { setRefusal: (reason: string) => this.refusal.set(reason), applied: () => void this.load() };
     this.refusal.set('');
     this.actions.startFor(PCT_ACCESS_DESCRIPTOR, PCT_ACCESS_DELETE, this.targetOf(row), row, sink);
   }

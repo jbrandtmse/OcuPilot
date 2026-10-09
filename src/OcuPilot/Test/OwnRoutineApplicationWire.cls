@@ -2,15 +2,28 @@
 /// applications screen's row actions over <code>POST /screens/webapp.list/action</code>, and the agent's proposal confirmed
 /// over <code>POST /proposal/:id/confirm</code>. A delete, a disable and a <code>MatchRoles</code> change of
 /// <code>OcuPilotState</code> and of <code>OcuPilotIdentity</code> are each refused 403
-/// <code>PROHIBITED.OCUPILOTROUTINEAPP</code> with the published sentence, and the application reads back unchanged.</p>
+/// <code>PROHIBITED.OCUPILOTROUTINEAPP</code> with the kernel's own sentence, and the application reads back unchanged.</p>
 /// <p>The agent route carries a delete, a disable and a <code>MatchRoles</code> change: <class>OcuPilot.Screen.Tool.WebAppUpdate</class>
 /// admits <code>MatchRoles</code> among its settable fields, so an agent proposal can carry it; the mint stores it and its confirm is refused at the arm.</p>
 /// <p><b>What it needs from the environment:</b> OcuPilot installed and serving over HTTP as
 /// <class>OcuPilot.Test.Http</class>'s test account, with both routine applications present. It creates no application and
-/// sends no change the arm allows; <method>OnAfterOneTest</method> removes the proposal rows it seeded. Throwaway only: a
-/// leg that is not refused would change a routine application.</p>
+/// sends no change the arm allows. Throwaway only: a leg that is not refused changes a routine application, so
+/// <method>OnBeforeOneTest</method> records both and <method>OnAfterOneTest</method> puts back what changed, then removes the
+/// proposal rows it seeded.</p>
 Class OcuPilot.Test.OwnRoutineApplicationWire Extends %UnitTest.TestCase
 {
+
+/// <p>The environment variable that arms this class, set by <file>scripts/ci-throwaway.sh</file> alone.</p>
+Parameter ARMINGVARIABLE = "OCUPILOT_ALLOW_PRINCIPALS";
+
+/// <p>Refuses to run anywhere <parameter>ARMINGVARIABLE</parameter> does not read 1: this class sends writes that would change OcuPilot's own privileged routine applications if the arm did not refuse them.</p>
+Method OnBeforeAllTests() As %Status
+{
+    If $System.Util.GetEnviron(..#ARMINGVARIABLE) '= 1 {
+        Quit $$$ERROR($$$GeneralError, "OcuPilot.Test.OwnRoutineApplicationWire sends writes that would change OcuPilot's own privileged routine applications if the arm did not refuse them, and runs on a throwaway container only. " _ ..#ARMINGVARIABLE _ " does not read 1 here, so nothing was changed. Bring one up with scripts/ci-throwaway.sh, which sets it.")
+    }
+    Quit $$$OK
+}
 
 /// <p>The API base the routes are served under.</p>
 Parameter APIBASE = "/api/ocupilot";
@@ -26,9 +39,6 @@ Parameter IDENTITYAPP = "OcuPilotIdentity";
 /// <p>The code the arm answers.</p>
 Parameter CODE = "PROHIBITED.OCUPILOTROUTINEAPP";
 
-/// <p>The sentence the arm answers, as the published text states it.</p>
-Parameter REASON = "OcuPilot reads its own protected state through this privileged routine application, so it cannot be deleted or disabled and the roles it grants cannot be changed.";
-
 /// <p>The limits class the agent's mint reads.</p>
 Parameter LIMITS = "OcuPilot.Kernel.Agent.Limits";
 
@@ -40,9 +50,33 @@ Parameter DELETETOOL = "OcuPilot.Screen.Tool.WebAppDelete";
 
 Parameter UPDATETOOL = "OcuPilot.Screen.Tool.WebAppUpdate";
 
-/// <p>Removes the proposal rows this class seeded.</p>
+/// <p>The stored state of both routine applications before the test, keyed by application name and then by field.</p>
+Property PreparedApps [ MultiDimensional ];
+
+/// <p>Records both routine applications' stored state, so the after-test can put back what a regressed arm let through.</p>
+Method OnBeforeOneTest() As %Status
+{
+    Kill ..PreparedApps
+    Set tSC = $$$OK
+    For tName = ..#STATEAPP, ..#IDENTITYAPP {
+        Set tSC = ##class(OcuPilot.Test.OwnRoutineApplication).Stored(tName, .tProps)
+        If $$$ISERR(tSC) Quit
+        Merge ..PreparedApps(tName) = tProps
+    }
+    Quit tSC
+}
+
+/// <p>Puts back each routine application whose enabled flag or roles changed, then removes the proposal rows this class
+/// seeded.</p>
 Method OnAfterOneTest() As %Status
 {
+    For tName = ..#STATEAPP, ..#IDENTITYAPP {
+        If $Data(..PreparedApps(tName)) = 0 Continue
+        Kill tWas
+        Merge tWas = ..PreparedApps(tName)
+        Set tSC = ##class(OcuPilot.Test.OwnRoutineApplication).PutBack(tName, .tWas)
+        Do $$$AssertStatusOK(tSC, tName _ " is put back as it was recorded")
+    }
     Set tSC = ##class(OcuPilot.Test.ProposalFixture).RemoveSeeded(.tRemaining)
     Do $$$AssertStatusOK(tSC, "the proposal rows this class seeded are removed")
     Quit $$$OK
@@ -69,7 +103,7 @@ ClassMethod ConfirmKey(pKey As %String, Output pStatus As %Integer, Output pBody
     Quit tSC
 }
 
-/// <p>Asserts one refusal: 403, the arm's code, the published sentence, and the application <var>pName</var> reading back as
+/// <p>Asserts one refusal: 403, the arm's code, the kernel's own sentence, and the application <var>pName</var> reading back as
 /// <var>pBefore</var>. <var>pLabel</var> names the leg in each message.</p>
 Method AssertRefused(pLabel As %String, pName As %String, pBefore As %String, pStatus As %Integer, pBody)
 {
@@ -81,7 +115,7 @@ Method AssertRefused(pLabel As %String, pName As %String, pBefore As %String, pS
         Set tReason = pBody.%Get("reason")
     }
     Do $$$AssertEquals(tCode, ..#CODE, pLabel _ " is refused the routine application code")
-    Do $$$AssertEquals(tReason, ..#REASON, pLabel _ " carries the published sentence")
+    Do $$$AssertEquals(tReason, ##class(OcuPilot.Kernel.Proposal.Prohibited).#OCUPILOTROUTINEAPPREASON, pLabel _ " carries the arm's own sentence")
     Do $$$AssertEquals(##class(OcuPilot.Test.OwnRoutineApplication).WebAppJSON(pName), pBefore, pLabel _ " leaves " _ pName _ " as it was")
 }
 

@@ -128,7 +128,7 @@ Method TestTheBaselineKeyShipsDisabled()
 }
 
 /// <p>AD-10, AD-53: <code>PROHIBITED.STARTUPINTERACTIVE</code> answers its own parameter, which names no
-/// caller, and is one of the set's thirty-three codes.</p>
+/// caller, and is one of the set's thirty-four codes.</p>
 Method TestTheInteractiveRefusalIsItsParameterAndNamesNoCaller()
 {
     Set tProhibited = ..#PROHIBITED

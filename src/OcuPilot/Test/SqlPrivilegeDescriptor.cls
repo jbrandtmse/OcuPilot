@@ -359,7 +359,7 @@ Method TestTheCodesAnswerTheirSentences()
     Do $$$AssertTrue(($Parameter(tClass, "REASONTYPE") [ "ADMIN") && ($Parameter(tClass, "REASONOBJECT") [ "ADMIN"), "and the type and object sentences name ADMIN")
 }
 
-/// <p>AD-10: the kernel declares the arm's code once, with its published sentence, among thirty-three codes, and
+/// <p>AD-10: the kernel declares the arm's code once, with its published sentence, among thirty-four codes, and
 /// refuses a grant or revoke on one of OcuPilot's own schemas or for one of its own roles from the stored
 /// payload alone, for a whole object and for one of its columns.</p>
 /// <p>Mutation (Rule 19): make <method>OcuPilot.Kernel.Proposal.Prohibited.SqlPrivilege</method> skip

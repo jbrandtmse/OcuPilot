@@ -76,6 +76,22 @@ describe('the percent class access add dialog (Story 18.10)', () => {
     expect(JSON.parse(calls[0].body).Name).toBe('all-applications');
   });
 
+  it('sends the allow type chosen and an entry that denies access when Allow access is cleared', async () => {
+    // Mutation (Rule 19): post `AllowType: ALLOW_TYPES[0]` or `AllowAccess: true` in `submit` -> red.
+    const { fixture, calls, host } = await mount({ kind: 'ok', status: 201, body: {} });
+    const select = host.querySelector('select') as HTMLSelectElement;
+    select.value = 'AllowPrefix';
+    select.dispatchEvent(new Event('change'));
+    type(fixture, host, 'input[type="text"]', '%Api.');
+    const access = [...host.querySelectorAll('input[type="checkbox"]')][0] as HTMLInputElement;
+    access.checked = false;
+    access.dispatchEvent(new Event('change'));
+    fixture.detectChanges();
+    (host.querySelector('.ocu-button-primary') as HTMLButtonElement).click();
+    await fixture.whenStable();
+    expect(JSON.parse(calls[0].body)).toEqual({ Name: '/csp/probe', AllowType: 'AllowPrefix', Class: '%Api.', AllowAccess: false });
+  });
+
   it('shows a refusal on the dialog and keeps the entry for another try', async () => {
     const { fixture, host } = await mount({ kind: 'error', status: 409, code: 'PCTACCESS.EXISTS', reason: STRINGS.pctAccessRefusalSystem, detail: null } as never);
     type(fixture, host, 'input[type="text"]', '%Api.Admin');

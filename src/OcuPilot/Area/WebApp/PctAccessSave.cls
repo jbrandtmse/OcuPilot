@@ -4,9 +4,9 @@
 /// <p><b>It resolves everything about the write from the tool class</b>: the endpoint, the request type, the port and
 /// the pairs the write needs beyond the screen's. It mints no proposal and takes no confirm token. It runs, in order: the
 /// screen's pairs and the tool's (AD-8), a body naming only <code>Name</code>, <code>AllowType</code>, <code>Class</code>
-/// and <code>AllowAccess</code>, AD-10's prohibited set, a read of the entry, which refuses one already held
-/// (<code>PCTACCESS.EXISTS</code>), and only then the port's write, whose shape checks run before the vendor; then the
-/// read-back (AD-58).</p>
+/// and <code>AllowAccess</code>, the target's hold (AD-34), a read of the entry, whose shape checks run before the vendor
+/// and which refuses one already held (<code>PCTACCESS.EXISTS</code>), AD-10's prohibited set, and only then the port's
+/// write; then the read-back (AD-58).</p>
 Class OcuPilot.Area.WebApp.PctAccessSave Extends %RegisteredObject
 {
 

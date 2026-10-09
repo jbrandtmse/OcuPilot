@@ -9,7 +9,7 @@
  * 2. **Add posts an entry through the route** and the list shows it, and the entry reads back on the instance
  *    (AD-58).
  * 3. **Delete on a non-system entry** is confirmed in its typed-name dialog, which asks for the entry's class, and the
- *    entry is gone on the instance.
+ *    entry is gone on the instance and from the tab's list.
  *
  * It creates one entry, `%OcuProbe1810.Browser` on the existing application `/csp/user`, and removes it through the
  * instance's own port in `after`, whether or not a test failed. It writes nothing else.
@@ -196,6 +196,13 @@ test('Delete on a non-system entry is confirmed in its typed-name dialog, and th
     assert.equal((await answered).status(), 200, 'the instance answers the confirmed delete');
     await page.waitForFunction(() => document.querySelector('.ocu-typed-name-field') === null, { timeout: config.navigationTimeoutMs });
     assert.equal(entryStatus('GONE'), '404', 'the entry is gone on the instance after the confirm');
+    // Mutation (Rule 19): drop both of the tab's re-reads, the sink's `applied` and its change bus subscription, and
+    // redeploy -> the row stays drawn. Either one alone still re-reads the list.
+    await page.waitForFunction(
+      (wanted) => ![...document.querySelectorAll('.ocu-pct-access-table tbody tr')].some((row) => row.textContent.includes(wanted)),
+      { timeout: config.navigationTimeoutMs },
+      PROBE_CLASS
+    );
   } finally {
     await context.close();
   }

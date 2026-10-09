@@ -4,7 +4,7 @@
 /// applications area's fifth editor tab, and the list lives on the web application editor, not in the side bar
 /// (<code>sideBarPosition</code> 0).</p>
 /// <p><b>Its id is the composite <code>[Name, AllowType, Class]</code></b> (AD-13): the vendor addresses one entry by
-/// all three, and the first part is folded to lower case (<code>foldcase-firstpart</code>), the rest kept exact.</p>
+/// all three, and the first part is folded to lower case (<code>foldfirst</code>), the rest kept exact.</p>
 /// <p><b>Its read is filtered by one criterion, <code>application</code></b>, which the editor sends as
 /// <code>&lt;name&gt;,all-applications</code>, so an application's own entries and the instance-wide ones are listed
 /// together.</p>

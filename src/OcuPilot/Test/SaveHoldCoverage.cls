@@ -5,7 +5,7 @@
 /// <p><b>A tripwire aimed at later epics.</b> A new write route fails this class until its handler
 /// takes the hold or the route joins <method>Exemptions</method> with a reason. A listed route that is
 /// no longer in the map fails it too, so the list cannot go stale.</p>
-/// <p>Two create Saves build their target's id from more than one body field, as their tools' mints
+/// <p>Three create Saves build their target's id from more than one body field, as their tools' mints
 /// do; <method>TestACreateSaveHoldsTheKeyItsMintComputes</method> holds each mint's key and sees the
 /// Save wait on it.</p>
 /// <p><b>What it needs from the environment:</b> OcuPilot compiled with its class definitions, which
@@ -77,6 +77,9 @@ Method TestACreateSaveHoldsTheKeyItsMintComputes()
     Set tKeyFile = ##class(OcuPilot.Kernel.EntityId).JoinComposite($ListBuild("/ocuprobe/hold/", "hold.key"))
     Do ..HeldLeg("/audit-events", "OcuPilot.Screen.Tool.AuditUserEventCreate", "OcuProbeHold/Hold/Key", {"Source": "OcuProbeHold", "Type": "Hold", "Name": "Key", "Enabled": "not a flag"}.%ToJSON())
     Do ..HeldLeg("/encryption-key-file", "OcuPilot.Screen.Tool.EncryptionKeyFileCreate", tKeyFile, {"root": "/ocuprobe/hold/", "path": "hold.key", "OcuProbeUnexpected": 1}.%ToJSON())
+    ; The Save names the application in another case, so the leg holds only if both sides fold it (foldfirst).
+    Set tEntry = ##class(OcuPilot.Kernel.EntityId).JoinComposite($ListBuild("/csp/ocuprobehold", "AllowClass", "%OcuProbe1810.Hold"))
+    Do ..HeldLeg("/web-app/pct-access", "OcuPilot.Screen.Tool.WebAppPctAccessCreate", tEntry, {"Name": "/CSP/OcuProbeHold", "AllowType": "AllowClass", "Class": "%OcuProbe1810.Hold", "AllowAccess": "not a flag"}.%ToJSON())
 }
 
 /// <p>Hold the key <var>pTool</var>'s mint computes for <var>pId</var>, <code>POST</code>

@@ -249,13 +249,14 @@ Parameter WRITETOOLBASE = "OcuPilot.Screen.Tool.Write";
 /// <parameter>UNCOVERED</parameter>.</p>
 Parameter COVEREDTYPES = "screen-permission,web-application,user,auditing-configuration,task,process,application-error,role,resource,x509-credential,wallet-secret,device,oauth2-client-configuration,oauth2-server-client,audit-event,audit-user-event,ssl-configuration,service,ldap-configuration,oauth2-server-definition,oauth2-resource-server,oauth2-server,namespace,web-session,background-task,global-mapping,routine-mapping,package-mapping,database-configuration,database,language-server,lock,class,routine,journal-file,journal-settings,license-key,license-server,ecp-data-server,ecp-settings,ecp-ssl-connection,encryption-key-file,database-encryption-keys,data-element-encryption-keys,encryption-startup,docdb-database,authentication-options,superserver,mft-connection,production,pct-class-access";
 
-/// <p>The covered types, each named once so the dispatch and the list cannot drift apart.</p>
-/// <p>The one sentence <parameter>OCUPILOTROUTINEAPP</parameter> carries (AD-10, DW-2239, Story 18.10).</p>
+/// <p>The one sentence <parameter>OCUPILOTROUTINEAPP</parameter> carries (AD-10, DW-2239, Story 18.10), caller-neutral,
+/// published in EXPERIENCE.md's Fixed strings and pinned equal to <code>routineAppRefusalOcuPilot</code> by
+/// <file>ui/tools/self-protection.test.mjs</file>.</p>
 Parameter OCUPILOTROUTINEAPPREASON = "OcuPilot reads its own protected state through this privileged routine application, so it cannot be deleted or disabled and the roles it grants cannot be changed.";
 
 /// <p>A privileged routine application OcuPilot reads its own protected state through (AD-10, DW-2239, Story 18.10).
-/// Deleting or disabling either, or changing its <parameter>APPLICATIONROLEFIELDS</parameter> or
-/// <parameter>ROUTINEAPPLICATIONROLEFIELDS</parameter>, is refused <parameter>OCUPILOTROUTINEAPP</parameter>.</p>
+/// Deleting or disabling either, or changing one of its <parameter>ROUTINEAPPLICATIONFIELDS</parameter>, is refused
+/// <parameter>OCUPILOTROUTINEAPP</parameter>.</p>
 Parameter OCUPILOTROUTINEAPP = "PROHIBITED.OCUPILOTROUTINEAPP";
 
 /// <p>The routine application fields the arm refuses a change to, on either of OcuPilot's own routine applications.</p>
@@ -266,6 +267,7 @@ Parameter TYPEPCTACCESS = "pct-class-access";
 
 Parameter PCTACCESSFIELD = "AllowAccess";
 
+/// <p>The covered types, each named once so the dispatch and the list cannot drift apart.</p>
 Parameter TYPEWEBAPPLICATION = "web-application";
 
 Parameter TYPEUSER = "user";
@@ -4531,8 +4533,8 @@ ClassMethod OwnRoutineApplication(pPath As %String) As %Boolean
     Quit (tPath = ..NormalizedPath(##class(OcuPilot.Kernel.State.Base).#APPLICATION)) || (tPath = ..NormalizedPath(##class(OcuPilot.Kernel.State.Base).#IDENTITYAPPLICATION))
 }
 
-/// <p>The early refusal of a delete of one of OcuPilot's own privileged routine applications, answered before any
-/// state is read (<method>OwnRoutineApplication</method>): <var>pCode</var> is the code and the function answers 1, or
+/// <p>The early refusal of a delete of one of OcuPilot's own privileged routine applications, answered before the
+/// delete tool's precondition is read (<method>OwnRoutineApplication</method>): <var>pCode</var> is the code and the function answers 1, or
 /// the function answers 0 and <var>pCode</var> is empty. The code's sentence is <method>ReasonFor</method>'s alone.</p>
 ClassMethod RefusesDeleteBeforeState(pIdValue As %String, Output pCode As %String) As %Boolean
 {

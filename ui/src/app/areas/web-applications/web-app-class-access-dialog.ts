@@ -4,7 +4,7 @@ import { ApiService } from '../../core/api';
 import { STRINGS } from '../../core/strings';
 import { Dialog } from '../../shell/dialog';
 
-/** The two access types the instance accepts, in the order the select offers them (`Prohibited` and the port agree). */
+/** The two access types the instance accepts, in the order the select offers them (`PctAccessPort.ALLOWTYPES`). */
 export const ALLOW_TYPES: readonly string[] = ['AllowClass', 'AllowPrefix'];
 
 /** The path the create posts to (Story 18.10, `OcuPilot.Area.WebApp.PctAccessSave`). */

@@ -326,8 +326,8 @@ XData Coverage
 <tool name="security.ldap.delete" class="OcuPilot.Test.LdapCreate" method="TestBothCallersDeleteAConfiguration"/>
 <tool name="webapp.list.delete" class="OcuPilot.Test.ToolWrite" method="TestTheWebApplicationDeleteToolIsAnActionWriteOverTheScreensOwnPairs"/>
 <tool name="webapp.list.update" class="OcuPilot.Test.ToolWrite" method="TestTheRegistryAdvertisesItAsAWriteToolFulfilledOnTheInstance"/>
-<tool name="webapp.pctaccess.create" class="OcuPilot.Test.WebAppPctAccess" method="TestCreateReadDelete" corpus="the create is asserted through the port: the entry is written, read back as STATE and removed; the tool's own mint is not yet exercised by a test"/>
-<tool name="webapp.pctaccess.delete" class="OcuPilot.Test.WebAppPctAccess" method="TestSystemEntryRefused" corpus="the delete is asserted through the port: an instance-owned entry is refused PCTACCESS.SYSTEM before the vendor; the tool's own mint is not yet exercised by a test"/>
+<tool name="webapp.pctaccess.create" class="OcuPilot.Test.WebAppPctAccess" method="TestAgentCreateAndDeleteMintConfirmAndReadBack" corpus="the create and the delete are each minted, confirmed and read back in one method"/>
+<tool name="webapp.pctaccess.delete" class="OcuPilot.Test.WebAppPctAccess" method="TestAgentCreateAndDeleteMintConfirmAndReadBack" corpus="the create and the delete are each minted, confirmed and read back in one method"/>
 <tool name="webapp.sessions.end" class="OcuPilot.Test.WebSessions" method="TestTheToolIsADestructiveActionWriteOverTheListsPairsAndTheWritePair"/>
 <tool name="tasks.background.cancel" class="OcuPilot.Test.BackgroundTasks" method="TestTheToolsAreActionWritesOverTheScreensOwnPairs" corpus="the three Background tasks control tools are asserted together in one loop"/>
 <tool name="tasks.background.pause" class="OcuPilot.Test.BackgroundTasks" method="TestTheToolsAreActionWritesOverTheScreensOwnPairs" corpus="the three Background tasks control tools are asserted together in one loop"/>

@@ -8,6 +8,18 @@
 Class OcuPilot.Test.PctAccessSaveWire Extends %UnitTest.TestCase
 {
 
+/// <p>The environment variable that arms this class, set by <file>scripts/ci-throwaway.sh</file> alone.</p>
+Parameter ARMINGVARIABLE = "OCUPILOT_ALLOW_PRINCIPALS";
+
+/// <p>Refuses to run anywhere <parameter>ARMINGVARIABLE</parameter> does not read 1: this class creates and removes a percent-class access entry on this instance.</p>
+Method OnBeforeAllTests() As %Status
+{
+    If $System.Util.GetEnviron(..#ARMINGVARIABLE) '= 1 {
+        Quit $$$ERROR($$$GeneralError, "OcuPilot.Test.PctAccessSaveWire creates and removes a percent-class access entry on this instance, and runs on a throwaway container only. " _ ..#ARMINGVARIABLE _ " does not read 1 here, so nothing was changed. Bring one up with scripts/ci-throwaway.sh, which sets it.")
+    }
+    Quit $$$OK
+}
+
 /// <p>The route the test posts to.</p>
 Parameter SAVEPATH = "/web-app/pct-access";
 

@@ -398,6 +398,8 @@ export const STRINGS = {
   webAppPctAccessColumnAllowAccess: 'Allow access',
   webAppPctAccessColumnSystem: 'Instance entry',
   pctAccessRefusalSystem: 'This entry belongs to the instance and goes only with its application, so it cannot be deleted on its own.',
+  /** EXPERIENCE.md:475 */
+  routineAppRefusalOcuPilot: 'OcuPilot reads its own protected state through this privileged routine application, so it cannot be deleted or disabled and the roles it grants cannot be changed.',
   webAppPctAccessDialogTitle: 'Add a percent class access entry',
   webAppPctAccessClassField: 'Class or package name',
   webAppPctAccessAllApplications: 'Apply to all applications',

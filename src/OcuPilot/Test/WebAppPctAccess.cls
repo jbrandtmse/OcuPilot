@@ -5,10 +5,22 @@
 /// <p>Needs the throwaway's install and the instance's own system entries. It creates one entry, named
 /// <code>%OcuProbe1810.Entry</code> on <code>all-applications</code>. <code>OnBeforeOneTest</code> records the entries the
 /// instance holds and the stored governance policy; <code>OnAfterOneTest</code> removes every <code>%OcuProbe1810</code>
-/// entry, every entry a test added to <code>all-applications</code>, and restores the policy. The one test that enables the
-/// delete tool does so only for its own span.</p>
+/// entry, every entry a test added to <code>all-applications</code>, the turn and proposals the agent test seeded, and
+/// restores the policy. The one test that enables the delete tool does so only for its own span.</p>
 Class OcuPilot.Test.WebAppPctAccess Extends %UnitTest.TestCase
 {
+
+/// <p>The environment variable that arms this class, set by <file>scripts/ci-throwaway.sh</file> alone.</p>
+Parameter ARMINGVARIABLE = "OCUPILOT_ALLOW_PRINCIPALS";
+
+/// <p>Refuses to run anywhere <parameter>ARMINGVARIABLE</parameter> does not read 1: this class creates and removes percent-class access entries on this instance.</p>
+Method OnBeforeAllTests() As %Status
+{
+    If $System.Util.GetEnviron(..#ARMINGVARIABLE) '= 1 {
+        Quit $$$ERROR($$$GeneralError, "OcuPilot.Test.WebAppPctAccess creates and removes percent-class access entries on this instance, and runs on a throwaway container only. " _ ..#ARMINGVARIABLE _ " does not read 1 here, so nothing was changed. Bring one up with scripts/ci-throwaway.sh, which sets it.")
+    }
+    Quit $$$OK
+}
 
 /// <p>The composite ids of the entries held before the test, keyed by id.</p>
 Property PreparedEntries [ MultiDimensional ];
@@ -23,6 +35,9 @@ Parameter PROBEAPP = "all-applications";
 
 /// <p>The prefix every probe class carries; an entry under it is removed whichever application holds it.</p>
 Parameter PROBEPREFIX = "%OcuProbe1810";
+
+/// <p>The screen action route the percent-class access screen's row actions post to.</p>
+Parameter ACTIONROUTE = "/api/ocupilot/screens/webapp.pctaccess/action";
 
 /// <p>The composite id of the probe entry.</p>
 ClassMethod ProbeId() As %String
@@ -83,6 +98,9 @@ Method OnAfterOneTest() As %Status
     Merge tPolicy = ..PreparedPolicy
     Set tRestoreSC = ##class(OcuPilot.Test.GovernanceFixture).Restore(.tPolicy)
     Do $$$AssertStatusOK(tRestoreSC, "the stored governance policy is put back")
+    Set tSeedSC = ##class(OcuPilot.Test.ProposalFixture).RemoveSeeded(.tRemaining)
+    Do $$$AssertStatusOK(tSeedSC, "the turn and the proposals this test seeded are removed")
+    Do $$$AssertEquals(+$Get(tRemaining), 0, "no proposal of the seeded turn survives")
     Quit $$$OK
 }
 
@@ -220,6 +238,69 @@ Method TestSystemEntryRefused()
     Quit
 }
 
+/// <p>The first instance-owned entry the port's list holds, as its composite id in <var>pId</var>; the function answers 0 when
+/// the instance lists none.</p>
+ClassMethod FirstSystemEntry(Output pId As %String) As %Boolean
+{
+    Set pId = ""
+    Set tSC = ..Entries(.tRows)
+    If $$$ISERR(tSC) Quit 0
+    Set tIterator = tRows.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tRow) {
+        If tRow.%Get("System") = 1 Set pId = ..KeyOf(tRow) Quit
+    }
+    Quit (pId '= "")
+}
+
+/// <p>Whether the port's list holds the entry <var>pId</var>.</p>
+ClassMethod Holds(pId As %String) As %Boolean
+{
+    Set tSC = ..Entries(.tRows)
+    If $$$ISERR(tSC) Quit 0
+    Set tFound = 0
+    Set tIterator = tRows.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tRow) {
+        If ..KeyOf(tRow) = pId Set tFound = 1 Quit
+    }
+    Quit tFound
+}
+
+/// <p>Clicked or proposed, a delete of an instance-owned entry is refused with the <code>PCTACCESS.SYSTEM</code> sentence
+/// before anything is sent: the screen action route and the agent's mint each answer 400 <code>TOOL.ARGUMENTS</code> whose
+/// problem is that sentence, and the entry is still listed afterwards.</p>
+/// <p>Mutation (Rule 19): drop the <code>System</code> branch in <class>OcuPilot.Screen.Tool.WebAppPctAccessDelete</class>'s
+/// <method>StateDiff</method> -- the route and the mint no longer refuse at the diff and both legs go red; the port's own
+/// refusal still stops the vendor.</p>
+Method TestADeleteOfASystemEntryIsRefusedOnTheRouteAndTheMint()
+{
+    Set tHeld = ..FirstSystemEntry(.tId)
+    Do $$$AssertTrue(tHeld, "the instance lists at least one of its own entries to ask about")
+    If 'tHeld Quit
+    Set tReason = ##class(OcuPilot.Api.PctAccessError).#REASONSYSTEM
+
+    Set tRequest = {"action": "delete", "id": (tId)}
+    Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("POST", ..#ACTIONROUTE, ##class(OcuPilot.Test.Http).GetTestUsername(), ##class(OcuPilot.Test.Http).GetTestPassword(), .tStatus, .tRaw, .tHeaders, tRequest.%ToJSON(), "application/json")
+    Do $$$AssertStatusOK(tSC, "the delete is sent over the screen action route")
+    Set tBody = ""
+    Try { Set tBody = ##class(%DynamicObject).%FromJSON(tRaw) } Catch { Set tBody = "" }
+    Do $$$AssertEquals(tStatus, 400, "the route refuses a delete of an instance-owned entry")
+    Do $$$AssertTrue($IsObject(tBody) && (tBody.%Get("code") = "TOOL.ARGUMENTS"), "the route's refusal is the tool arguments refusal")
+    Do $$$AssertTrue($IsObject(tBody) && $IsObject(tBody.%Get("detail")) && (tBody.%Get("detail").%Get("problem") = tReason), "and its problem is the system sentence")
+    Do $$$AssertTrue(..Holds(tId), "the entry is still listed after the route's refusal")
+
+    Set tSC = ##class(OcuPilot.Test.ProposalFixture).SeedTurn($Username, "completed", .tTurn)
+    Do $$$AssertStatusOK(tSC, "a completed turn is seeded")
+    If $$$ISERR(tSC) Quit
+    Set tParts = ##class(OcuPilot.Kernel.EntityId).SplitComposite(tId)
+    Set tArgs = {"Name": ($List(tParts, 1)), "AllowType": ($List(tParts, 2)), "Class": ($List(tParts, 3))}
+    Set tSC = ..MintFor("OcuPilot.Screen.Tool.WebAppPctAccessDelete", tTurn, tArgs, .tProposal, .tHttp, .tFault)
+    Do $$$AssertStatusNotOK(tSC, "the agent's delete of an instance-owned entry does not mint")
+    Do $$$AssertEquals(tHttp, 400, "the mint refuses it as a tool arguments refusal")
+    Do $$$AssertTrue($IsObject(tFault) && $IsObject(tFault.%Get("detail")) && (tFault.%Get("detail").%Get("problem") = tReason), "and its problem is the system sentence")
+    Do $$$AssertTrue(..Holds(tId), "the entry is still listed after the mint's refusal")
+    Quit
+}
+
 /// <p>The delete tool's state diff refuses an entry the instance marks as its own, before anything is sent, with the
 /// port's published sentence and no row.</p>
 /// <p>Mutation (Rule 19): drop the <code>System</code> branch in <class>OcuPilot.Screen.Tool.WebAppPctAccessDelete</class>'s
@@ -252,9 +333,9 @@ Method TestStateDiffRefusesAnUnknownOrigin()
 /// test enables it in the stored policy for its own span only; <code>OnAfterOneTest</code> restores the policy.</p>
 /// <p>The snippet is taken from the port's <code>Snippet</code> directly, not from a copy-out draft, which would close
 /// the proposal.</p>
-/// <p>Mutation (Rule 19): make <class>OcuPilot.Port.PctAccessPort</class>'s <code>STATE</code> answer 200 for an
-/// absent entry -- the delete's confirm then reads <code>matches</code> rather than <code>notFound</code>, and the verdict
-/// leg goes red.</p>
+/// <p>Mutation (Rule 19): in <class>OcuPilot.Port.PctAccessPort</class>'s <method>State</method>, change
+/// <code>If '$IsObject(tEntry)</code> to <code>If 0</code> -- an absent entry no longer reads 404, so the create's mint or
+/// the delete's read-back goes red.</p>
 Method TestAgentCreateAndDeleteMintConfirmAndReadBack()
 {
     Set tSC = ##class(OcuPilot.Test.ProposalFixture).SeedTurn($Username, "completed", .tTurn)
@@ -269,6 +350,10 @@ Method TestAgentCreateAndDeleteMintConfirmAndReadBack()
     Do $$$AssertStatusOK(tSC, "the create confirms: " _ $Get(tCode))
     Do $$$AssertEquals(..Verdict($Get(tResult)), "matches", "the create reads back as matches")
 
+    Kill tQuery
+    Set tQuery("name") = ..ProbeId()
+    Set tSteps = ##class(OcuPilot.Port.PctAccessPort).Snippet("WebApp.PctClassAccess", "PUT", .tQuery, {"AllowAccess": true}, {})
+    Do $$$AssertTrue($IsObject(tSteps) && (tSteps.%Size() > 0), "the create's snippet is non-empty")
     Kill tQuery
     Set tQuery("name") = ..ProbeId()
     Set tSteps = ##class(OcuPilot.Port.PctAccessPort).Snippet("WebApp.PctClassAccess", "DELETE", .tQuery, "", {})

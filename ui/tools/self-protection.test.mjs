@@ -318,6 +318,9 @@ const KERNEL_REFUSALS = [
   ['OCUPILOTSQLPRIVILEGE', 'sqlPrivilegeRefusalOcuPilot'],
   // Story 20.15: one of OcuPilot's own screens, whose permissions either caller is refused changing.
   ['OCUPILOTSCREEN', 'screenPermissionsRefusalOcuPilot'],
+  // Story 18.10: OcuPilot's own privileged routine applications, whose delete, disable or role change either caller is
+  // refused with this sentence.
+  ['OCUPILOTROUTINEAPP', 'routineAppRefusalOcuPilot'],
 ];
 
 test('DW-1598, AD-53: each kernel refusal is published verbatim in Fixed strings and is the sentence ReasonFor returns', () => {

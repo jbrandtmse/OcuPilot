@@ -1,4 +1,4 @@
-/// <p>The percent-class access codes (AD-39, Story 18.10): the four <code>PCTACCESS.*</code> codes a
+/// <p>The percent-class access codes (AD-39, Story 18.10): the seven <code>PCTACCESS.*</code> codes a
 /// class access entry answers and the one <code>PRIVROUTINE.TYPE</code> code the privileged routine
 /// endpoint answers, each with the sentence it carries. They live beside
 /// <class>OcuPilot.Api.Error</class> because that class holds the compiler's limit of 1,000 parameters
