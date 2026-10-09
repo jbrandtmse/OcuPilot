@@ -2,7 +2,9 @@
 title: "Story 20.21: The agent saves edits to existing classes and routines"
 type: 'feature'
 created: '2026-10-08'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: '242b49a8b5b0c41ea1cb3cdb46519afb26f6ec7f'
+baseline_commit: '242b49a8b5b0c41ea1cb3cdb46519afb26f6ec7f'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -307,9 +309,22 @@ Part 2 -- client.
 | AC7 | step 6 compares `$ZConvert(...,"L")` of both sides | `ExplorerSaveRules` DW-2228 and absent legs |
 | AC8 | `ExplorerSaveMint` stores `Compile: false` | `ExplorerSaveTurn` output leg |
 
+**Demonstrated mutations (Rule 19, recorded 2026-10-09 on `ocupilot-b-ci`; each reverted to a byte-identical tree and reloaded):**
+
+- mutation: `ExplorerSave.ADVERTISED` 1 -> 0 → `ExplorerSave.TestTheSaveIsOfferedToTheAgent`; `ExplorerDescriptor.TestTheAreaAdvertisesItsReadsAndWrites` and `TestTheTwoSavesAreAdvertisedDestructiveWrites`
+- mutation: `ExplorerSave.MergeUpdate` keeps the kernel's rows instead of `[pArgs.Hunk]` → `ExplorerSaveAgent.TestTheEditMintsOneChangedLinesRow` and `TestTheRoutineEditMints`
+- mutation: `ExplorerSave.FINGERPRINTSUBJECT` drops `Modified` → `ExplorerSaveAgent.TestAChangedDocumentIsRefusedAndNothingIsWritten` (Changed); the same reload also reddens the other legs of `ExplorerSaveAgent`, which share the mint's subject
+- mutation: `Baseline` `explorer.sqldata.save` true → `ExplorerDescriptor.TestTheAreaAdvertisesItsReadsAndWrites` (baseline leg)
+- mutation: `ExplorerSave.AgentProblem` answers `""` → `ExplorerSaveRules.TestAPercentNameIsRefused`, `TestASystemNamespaceIsRefused`, `TestAMappedClassIsRefusedByItsDatabase`, `TestTheConfirmRuleRefusesWhatTheMintWould`
+- mutation: `ExplorerSaveMint` step 2 (`IsOcuPilotCode`) removed → `ExplorerSaveRules.TestOcuPilotsOwnClassIsRefused`
+- mutation: `ExplorerSaveMint.Occurrences` matches case-folded text → `ExplorerSaveRules.TestAnOldThatDiffersOnlyInCaseIsRefused` (the DW-2228 leg stays green: its copy is absent under either comparison, so the case leg is the falsifier)
+- mutation: `ExplorerSaveMint` stores `Compile` 0 → `ExplorerSaveTurn.TestTheAgentsSaveIsConfirmedOverHTTPAndCompiles` (the output leg)
+- mutation: card ignores `kind` (client, component) → `proposal-card-code.spec.ts` "draws a lines row as a line diff"; (client, browser) → `agent-code-save.browser-spec` "a one-line edit draws a line diff", after a rebuild and redeploy
+- mutation: `savedNotCompiledVisible` always false (client, component) → `proposal-card-code.spec.ts` "says a confirmed save that did not compile"; (client, browser) → `agent-code-save.browser-spec` "a breaking edit, confirmed, says it did not compile", after a rebuild and redeploy
+
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
 
-Planned only (halt after planning). Oversized (about 33 KB): one goal across server and card. If the implement budget needs two passes, split at the Tasks seam: Part 1 (server, ACs 1, 3, 5-8) then Part 2 (card, ACs 2 and 4). AC2 and AC4 ship only with Part 2, so the plan recommends one story.
+The implement stage's handoff ran its last checks as background commands and returned early (Rule 18 item 5); the stage halted correctly and the runner finished the verification in the foreground and committed the work. Runner-side verification on `ocupilot-b-ci`: `check-objectscript.py` 0 problems; the 22 listed classes 180 tests 0 failed; the four browser specs together 12/12; `test:tools` 1901/1901; `test:components` 211 files, 2726 tests; `lint-docs` clean; build initial total 3,171,600 bytes against the 3326kB warning; the full ObjectScript sweep in 30 foreground shards, 530 classes, 4,202 tests, 0 failed; smoke 50/50. The handoff's eleven `mutation:` lines stand as written (its last two mutations were confirmed reverted by `cmp`). Build-auto's own review layers did not run; QA and code review follow.

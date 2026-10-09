@@ -128,16 +128,16 @@ Method TestEveryScreenDeclaresThreePromptsInTheCodeGroup()
     }
 }
 
-/// <p>Stories 19.2 AC9, 19.13 AC7, 19.4 AC6, 19.5 AC5, 19.14 AC7, 19.11 and 19.17: the area's advertised tools are
-/// its twenty-eight reads (Story 20.19 adds the two source reads, one per viewer) and eleven writes, the lists' compile, delete, export and import, each over the source code API port with its
-/// own request type, fingerprint subject and precondition -- a delete covers each document's modified
-/// time and an import its reviewed documents; the compile and export keys are enabled and the delete,
-/// import and save keys disabled at the baseline; Document databases' create and drop over the DocDB
-/// port, the create's key enabled and the drop's disabled; the SQL query's run over the SQL port, its key
-/// disabled; and the two lists declare the seven row
-/// actions, compile, delete and export acting on the checked rows, at most one hundred, while the
-/// viewers and editors declare none. The two unadvertised saves are
-/// <method>TestTheTwoSavesAreUnadvertisedDestructiveWrites</method>'s.</p>
+/// <p>Stories 19.2 AC9, 19.13 AC7, 19.4 AC6, 19.5 AC5, 19.14 AC7, 19.11, 19.17 and 20.21: the area's advertised
+/// tools are its twenty-eight reads (Story 20.19 adds the two source reads, one per viewer) and thirteen writes
+/// (the lists' compile, delete, export, import and save, Story 20.21 adding the two saves), each over the source
+/// code API port with its own request type, fingerprint subject and precondition -- a delete covers each
+/// document's modified time, an import its reviewed documents and a save the text, version and compile choice;
+/// the compile, export, save and document database create keys are enabled and the delete, import, SQL run,
+/// data browser save and document database drop keys disabled at the baseline; the SQL query's run over the SQL
+/// port; and the two lists declare the seven row actions, compile, delete and export acting on the checked rows,
+/// at most one hundred, while the viewers and editors declare none. The two saves are
+/// <method>TestTheTwoSavesAreAdvertisedDestructiveWrites</method>'s.</p>
 /// <p>Mutation (Rule 19): enable a delete key in the baseline -- the baseline leg goes red.</p>
 Method TestTheAreaAdvertisesItsReadsAndWrites()
 {
@@ -154,8 +154,8 @@ Method TestTheAreaAdvertisesItsReadsAndWrites()
         Set tClass = tTool.class
         Set tWriters = tWriters _ $Select(tWriters = "": "", 1: ",") _ tTool.name _ ":" _ $Piece($Parameter(tClass, "DESCRIPTORCLASS"), ".", *) _ "/" _ $ClassMethod(tClass, "PortClass") _ "/" _ $ClassMethod(tClass, "Endpoint") _ "/" _ $ClassMethod(tClass, "WriteType") _ "/" _ $ClassMethod(tClass, "Destructive") _ "/" _ $ListToString($ClassMethod(tClass, "FingerprintSubject"), "+") _ "/" _ $ClassMethod(tClass, "PreconditionField")
     }
-    Do $$$AssertEquals(tExplorer, "explorer.class.read:read,explorer.class.source:read,explorer.classes.compile:write,explorer.classes.delete:write,explorer.classes.export:write,explorer.classes.import:write,explorer.classes.read:read,explorer.docdb.create:write,explorer.docdb.delete:write,explorer.docdb.read:read,explorer.macro.read:read,explorer.routine.read:read,explorer.routine.source:read,explorer.routines.compile:write,explorer.routines.delete:write,explorer.routines.export:write,explorer.routines.import:write,explorer.routines.read:read,explorer.search.read:read,explorer.sqlcachedqueries.read:read,explorer.sqlconstraints.read:read,explorer.sqlfields.read:read,explorer.sqlindices.read:read,explorer.sqlpartitionmappings.read:read,explorer.sqlpartitions.read:read,explorer.sqlprocedure.read:read,explorer.sqlprocedures.read:read,explorer.sqlprocedurestatements.read:read,explorer.sqlquery.read:read,explorer.sqlquery.run:write,explorer.sqlschemas.read:read,explorer.sqltable.read:read,explorer.sqltables.read:read,explorer.sqltablestatements.read:read,explorer.sqltriggers.read:read,explorer.sqlview.read:read,explorer.sqlviewfields.read:read,explorer.sqlviews.read:read,explorer.sqlviewstatements.read:read", "the area's advertised tools are twenty-eight reads and eleven writes, and Compare has none")
-    Do $$$AssertEquals(tWriters, "explorer.classes.compile:ExplorerClassList/OcuPilot.Port.AtelierPort/Classes/COMPILE/0/Present+Absent+Namespace+KeepSource+CompileDependents+SkipUpToDate/Present,explorer.classes.delete:ExplorerClassList/OcuPilot.Port.AtelierPort/Classes/DELETE/1/Modified+Absent+Namespace/Modified,explorer.classes.export:ExplorerClassList/OcuPilot.Port.AtelierPort/Classes/EXPORT/0/Present+Absent+Namespace+root+path/Present,explorer.classes.import:ExplorerClassList/OcuPilot.Port.AtelierPort/Classes/IMPORT/1/Namespace+root+path+fileName+content+documents+Compile/documents,explorer.docdb.create:ExplorerDocDbList/OcuPilot.Port.DocDbPort/Databases/CREATE/0//,explorer.docdb.delete:ExplorerDocDbList/OcuPilot.Port.DocDbPort/Databases/DROP/1/Name+Class+Namespace/Class,explorer.routines.compile:ExplorerRoutineList/OcuPilot.Port.AtelierPort/Routines/COMPILE/0/Present+Absent+Namespace+KeepSource+CompileDependents+SkipUpToDate/Present,explorer.routines.delete:ExplorerRoutineList/OcuPilot.Port.AtelierPort/Routines/DELETE/1/Modified+Absent+Namespace/Modified,explorer.routines.export:ExplorerRoutineList/OcuPilot.Port.AtelierPort/Routines/EXPORT/0/Present+Absent+Namespace+root+path/Present,explorer.routines.import:ExplorerRoutineList/OcuPilot.Port.AtelierPort/Routines/IMPORT/1/Namespace+root+path+fileName+content+documents+Compile/documents,explorer.sqlquery.run:ExplorerSqlQuery/OcuPilot.Port.SqlPort/Sql/RUN/1/Namespace+Kind+StatementType+Tables+statement+parameters+maxRows/Kind", "each write names its list, its port (the source code API's, or the DocDB port for Document databases), its endpoint and type, its fingerprint subject and precondition, and the deletes, imports, the drop and the SQL run are destructive")
+    Do $$$AssertEquals(tExplorer, "explorer.class.read:read,explorer.class.source:read,explorer.classes.compile:write,explorer.classes.delete:write,explorer.classes.export:write,explorer.classes.import:write,explorer.classes.read:read,explorer.classes.save:write,explorer.docdb.create:write,explorer.docdb.delete:write,explorer.docdb.read:read,explorer.macro.read:read,explorer.routine.read:read,explorer.routine.source:read,explorer.routines.compile:write,explorer.routines.delete:write,explorer.routines.export:write,explorer.routines.import:write,explorer.routines.read:read,explorer.routines.save:write,explorer.search.read:read,explorer.sqlcachedqueries.read:read,explorer.sqlconstraints.read:read,explorer.sqlfields.read:read,explorer.sqlindices.read:read,explorer.sqlpartitionmappings.read:read,explorer.sqlpartitions.read:read,explorer.sqlprocedure.read:read,explorer.sqlprocedures.read:read,explorer.sqlprocedurestatements.read:read,explorer.sqlquery.read:read,explorer.sqlquery.run:write,explorer.sqlschemas.read:read,explorer.sqltable.read:read,explorer.sqltables.read:read,explorer.sqltablestatements.read:read,explorer.sqltriggers.read:read,explorer.sqlview.read:read,explorer.sqlviewfields.read:read,explorer.sqlviews.read:read,explorer.sqlviewstatements.read:read", "the area's advertised tools are twenty-eight reads and thirteen writes, and Compare has none")
+    Do $$$AssertEquals(tWriters, "explorer.classes.compile:ExplorerClassList/OcuPilot.Port.AtelierPort/Classes/COMPILE/0/Present+Absent+Namespace+KeepSource+CompileDependents+SkipUpToDate/Present,explorer.classes.delete:ExplorerClassList/OcuPilot.Port.AtelierPort/Classes/DELETE/1/Modified+Absent+Namespace/Modified,explorer.classes.export:ExplorerClassList/OcuPilot.Port.AtelierPort/Classes/EXPORT/0/Present+Absent+Namespace+root+path/Present,explorer.classes.import:ExplorerClassList/OcuPilot.Port.AtelierPort/Classes/IMPORT/1/Namespace+root+path+fileName+content+documents+Compile/documents,explorer.classes.save:ExplorerClassList/OcuPilot.Port.AtelierPort/Classes/SAVE/1/Modified+Absent+Namespace+content+version+Compile/Modified,explorer.docdb.create:ExplorerDocDbList/OcuPilot.Port.DocDbPort/Databases/CREATE/0//,explorer.docdb.delete:ExplorerDocDbList/OcuPilot.Port.DocDbPort/Databases/DROP/1/Name+Class+Namespace/Class,explorer.routines.compile:ExplorerRoutineList/OcuPilot.Port.AtelierPort/Routines/COMPILE/0/Present+Absent+Namespace+KeepSource+CompileDependents+SkipUpToDate/Present,explorer.routines.delete:ExplorerRoutineList/OcuPilot.Port.AtelierPort/Routines/DELETE/1/Modified+Absent+Namespace/Modified,explorer.routines.export:ExplorerRoutineList/OcuPilot.Port.AtelierPort/Routines/EXPORT/0/Present+Absent+Namespace+root+path/Present,explorer.routines.import:ExplorerRoutineList/OcuPilot.Port.AtelierPort/Routines/IMPORT/1/Namespace+root+path+fileName+content+documents+Compile/documents,explorer.routines.save:ExplorerRoutineList/OcuPilot.Port.AtelierPort/Routines/SAVE/1/Modified+Absent+Namespace+content+version+Compile/Modified,explorer.sqlquery.run:ExplorerSqlQuery/OcuPilot.Port.SqlPort/Sql/RUN/1/Namespace+Kind+StatementType+Tables+statement+parameters+maxRows/Kind", "each write names its list, its port (the source code API's, or the DocDB port for Document databases), its endpoint and type, its fingerprint subject and precondition, and the deletes, imports, the drop and the SQL run are destructive")
     Set tSC = ##class(OcuPilot.Kernel.Governance.Baseline).Keys(.tKeys)
     Do $$$AssertStatusOK(tSC, "the baseline reads")
     If $$$ISERR(tSC) Quit
@@ -164,7 +164,7 @@ Method TestTheAreaAdvertisesItsReadsAndWrites()
     While tIterator.%GetNext(.tKey, .tValue) {
         If $Extract(tKey, 1, 9) = "explorer." Set tBaselined = tBaselined _ $Select(tBaselined = "": "", 1: ",") _ tKey _ "=" _ $Select(tValue: "true", 1: "false")
     }
-    Do $$$AssertEquals(tBaselined, "explorer.classes.compile=true,explorer.classes.delete=false,explorer.routines.compile=true,explorer.routines.delete=false,explorer.classes.export=true,explorer.routines.export=true,explorer.classes.import=false,explorer.classes.save=false,explorer.routines.save=false,explorer.sqlquery.run=false,explorer.routines.import=false,explorer.sqldata.save=false,explorer.docdb.create=true,explorer.docdb.delete=false", "the compile, export and document database create keys ship enabled and the delete, import, save, SQL run, data browser save and document database drop keys disabled")
+    Do $$$AssertEquals(tBaselined, "explorer.classes.compile=true,explorer.classes.delete=false,explorer.routines.compile=true,explorer.routines.delete=false,explorer.classes.export=true,explorer.routines.export=true,explorer.classes.import=false,explorer.classes.save=true,explorer.routines.save=true,explorer.sqlquery.run=false,explorer.routines.import=false,explorer.sqldata.save=false,explorer.docdb.create=true,explorer.docdb.delete=false", "the compile, export, save and document database create keys ship enabled and the delete, import, SQL run, data browser save and document database drop keys disabled")
     For tI = 1:1:$Length(..#DESCRIPTORS, ",") {
         Set tClass = $Piece(..#DESCRIPTORS, ",", tI)
         Set tSC = $ClassMethod(tClass, "DeclarationJson", .tDeclaration)
@@ -174,25 +174,25 @@ Method TestTheAreaAdvertisesItsReadsAndWrites()
     }
 }
 
-/// <p>Story 19.3 AC7: the two lists' saves are unadvertised, destructive, action-style writes over the
-/// source code API port's <code>SAVEDOCS</code> and <code>SAVE</code>, fingerprinting the document's
-/// version, the namespace and the three values the list's <code>save</code> action declares -- the
-/// text, the version and the compile choice -- none of which their closed schema advertises; and
+/// <p>Story 20.21 AC1: the two lists' saves are advertised, destructive, action-style writes over the source
+/// code API port's <code>SAVEDOCS</code> and <code>SAVE</code>, fingerprinting the document's version, the
+/// namespace and the three values the list's <code>save</code> action declares -- the text, the version and
+/// the compile choice; their closed schema names the document, the agent's replacements and its own words; and
 /// they declare no classic page.</p>
-Method TestTheTwoSavesAreUnadvertisedDestructiveWrites()
+Method TestTheTwoSavesAreAdvertisedDestructiveWrites()
 {
     For tCase = $ListBuild("OcuPilot.Screen.Tool.ExplorerClassSave", "explorer.classes.save", "ExplorerClassList", "Classes"), $ListBuild("OcuPilot.Screen.Tool.ExplorerRoutineSave", "explorer.routines.save", "ExplorerRoutineList", "Routines") {
         Set tClass = $List(tCase, 1)
         Do ##class(OcuPilot.Screen.Tool.Registry).Resolve($List(tCase, 2), .tEntry, 1)
-        Do $$$AssertTrue($IsObject($Get(tEntry)) && (tEntry.class = tClass) && (tEntry.kind = "write") && (tEntry.advertised = 0), $List(tCase, 2) _ ": a registered, unadvertised write")
-        Do $$$AssertEquals($ClassMethod(tClass, "Advertised") _ "/" _ $Piece($Parameter(tClass, "DESCRIPTORCLASS"), ".", *) _ "/" _ $ClassMethod(tClass, "PortClass") _ "/" _ $ClassMethod(tClass, "Endpoint") _ "/" _ $ClassMethod(tClass, "ReadType") _ "/" _ $ClassMethod(tClass, "WriteType") _ "/" _ $ClassMethod(tClass, "SendsBody") _ "/" _ $ClassMethod(tClass, "Destructive") _ "/" _ $ClassMethod(tClass, "ChangeAction") _ "/" _ $ListToString($ClassMethod(tClass, "FingerprintSubject"), "+") _ "/" _ $ClassMethod(tClass, "PreconditionField") _ "/" _ $Parameter(tClass, "CLASSICPAGES"), "0/" _ $List(tCase, 3) _ "/OcuPilot.Port.AtelierPort/" _ $List(tCase, 4) _ "/SAVEDOCS/SAVE/0/1/updated/Modified+Absent+Namespace+content+version+Compile/Modified/", $List(tCase, 2) _ ": its declarations")
+        Do $$$AssertTrue($IsObject($Get(tEntry)) && (tEntry.class = tClass) && (tEntry.kind = "write") && (tEntry.advertised = 1), $List(tCase, 2) _ ": a registered, advertised write")
+        Do $$$AssertEquals($ClassMethod(tClass, "Advertised") _ "/" _ $Piece($Parameter(tClass, "DESCRIPTORCLASS"), ".", *) _ "/" _ $ClassMethod(tClass, "PortClass") _ "/" _ $ClassMethod(tClass, "Endpoint") _ "/" _ $ClassMethod(tClass, "ReadType") _ "/" _ $ClassMethod(tClass, "WriteType") _ "/" _ $ClassMethod(tClass, "SendsBody") _ "/" _ $ClassMethod(tClass, "Destructive") _ "/" _ $ClassMethod(tClass, "ChangeAction") _ "/" _ $ListToString($ClassMethod(tClass, "FingerprintSubject"), "+") _ "/" _ $ClassMethod(tClass, "PreconditionField") _ "/" _ $Parameter(tClass, "CLASSICPAGES"), "1/" _ $List(tCase, 3) _ "/OcuPilot.Port.AtelierPort/" _ $List(tCase, 4) _ "/SAVEDOCS/SAVE/0/1/updated/Modified+Absent+Namespace+content+version+Compile/Modified/", $List(tCase, 2) _ ": its declarations")
         Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).FingerprintSubjectProblem(tClass), "", $List(tCase, 2) _ ": which the registration guard holds adequate")
         Do $$$AssertEquals($ListToString($ClassMethod(tClass, "ScreenActionIds")) _ " " _ $ListToString($ClassMethod(tClass, "ScreenActionValueNames", "save")) _ " " _ $ListToString($ClassMethod(tClass, "SettableFields")), "save content,version,Compile content,version,Compile", $List(tCase, 2) _ ": carrying the list's save and its three values")
         Set tSchema = $ClassMethod(tClass, "InputSchema")
         Set tNames = ""
         Set tIterator = tSchema.properties.%GetIterator()
         While tIterator.%GetNext(.tName, .tValue) { Set tNames = tNames _ $Select(tNames = "": "", 1: ",") _ tName }
-        Do $$$AssertEquals(tNames _ " " _ tSchema.required.%ToJSON() _ " " _ tSchema.additionalProperties, "Names,rationale,expectedImpact,reverse [""Names""] 0", $List(tCase, 2) _ ": a closed schema naming the document alone")
+        Do $$$AssertEquals(tNames _ " " _ tSchema.required.%ToJSON() _ " " _ tSchema.additionalProperties, "Names,Edits,rationale,expectedImpact,reverse [""Names"",""Edits""] 0", $List(tCase, 2) _ ": a closed schema naming the document and the replacements")
         Set tOne = $Select($List(tCase, 4) = "Classes": "A.cls", 1: "A.mac")
         Do $$$AssertEquals($ClassMethod(tClass, "SetProblem", tOne) _ "|" _ ($ClassMethod(tClass, "SetProblem", tOne _ "," _ $Replace(tOne, "A.", "B.")) '= ""), "|1", $List(tCase, 2) _ ": exactly one document")
     }

@@ -1,16 +1,16 @@
-/// <p>Pins Story 19.3's save end to end (AD-8, AD-10, AD-22, AD-39, AD-53, AD-61): the Classes and
-/// Routines lists' <code>save</code> action over HTTP on probe documents in <code>USER</code> -- the
-/// text saved at the version read and answered with its target, read again through the viewer's own
-/// declared read; a concurrent change refused <code>CONFLICT</code> and kept; a held document refused
-/// <code>LOCKED</code>, its holder logged at information severity; an empty text or a compile choice
-/// other than true or false refused by the route; OcuPilot's own code refused; the compile's lines on
-/// the screen's answer alone; the save keys shipping disabled while a person's Save writes; and both
-/// save tools absent from every roster the agent sees.</p>
-/// <p><b>What it needs from the environment:</b> OcuPilot installed in <code>HSCUSTOM</code> and
-/// serving over HTTP as <class>OcuPilot.Test.Http</class>'s account, and a <code>USER</code> namespace.
-/// It creates and removes the documents <class>OcuPilot.Test.ExplorerSaveProbe</class> names and one
-/// lock job, released before its test ends, reads the tail of <code>messages.log</code>, and
-/// snapshots the stored governance policy before each test and puts it back after it.</p>
+/// <p>Pins Story 19.3's person save end to end, and Story 20.21's advertising of both saves (AD-8, AD-10,
+/// AD-22, AD-39, AD-53, AD-61): the Classes and Routines lists' <code>save</code> action over HTTP on probe
+/// documents in <code>USER</code> -- the text saved at the version read and answered with its target, read again
+/// through the viewer's own declared read; a concurrent change refused <code>CONFLICT</code> and kept; a held
+/// document refused <code>LOCKED</code>, its holder logged at information severity; an empty text or a compile
+/// choice other than true or false refused by the route; OcuPilot's own code refused; the compile's lines on the
+/// screen's answer alone; the save keys shipping enabled while a person's Save writes; and both saves offered to
+/// the agent.</p>
+/// <p><b>What it needs from the environment:</b> OcuPilot installed in <code>HSCUSTOM</code> and serving over
+/// HTTP as <class>OcuPilot.Test.Http</class>'s account, and a <code>USER</code> namespace. It creates and removes
+/// the documents <class>OcuPilot.Test.ExplorerSaveProbe</class> names and one lock job, released before its test
+/// ends, reads the tail of <code>messages.log</code>, and snapshots the stored governance policy before each test
+/// and puts it back after it.</p>
 Class OcuPilot.Test.ExplorerSave Extends %UnitTest.TestCase
 {
 
@@ -198,15 +198,15 @@ Method TestACompileAnswersItsLinesToTheScreen()
     Do $$$AssertTrue($ClassMethod(..#PROBE, "Compiled", ..#PROBENAMESPACE, ..#ALPHA), "and the class is compiled")
 }
 
-/// <p>AC7, AD-22: both save keys are in the baseline and ship disabled, so the governance policy
-/// reads them disabled, while a person's own Save writes.</p>
-Method TestTheKeysShipDisabledAndAPersonsSaveWrites()
+/// <p>AC1, AD-22: both save keys are in the baseline and ship enabled, so the governance policy reads
+/// them enabled, while a person's own Save writes.</p>
+Method TestTheKeysShipEnabledAndAPersonsSaveWrites()
 {
     For tI = 1:1:$Length(..#TOOLS, ",") {
         Set tKey = $Piece(..#TOOLS, ",", tI)
         Set tValue = ##class(OcuPilot.Kernel.Governance.Baseline).Seed(tKey, .tListed)
         Set tSC = ##class(OcuPilot.Kernel.Governance.Policy).Resolve(tKey, "write", .tEnabled, .tSource)
-        Do $$$AssertEquals(tListed _ " " _ tValue _ " " _ ''$Get(tEnabled), "1 0 0", tKey _ ": listed, disabled, and read disabled")
+        Do $$$AssertEquals(tListed _ " " _ tValue _ " " _ ''$Get(tEnabled), "1 1 1", tKey _ ": listed, enabled, and read enabled")
     }
     Do $$$AssertStatusOK($ClassMethod(..#PROBE, "MakeClass", ..#PROBENAMESPACE, ..#ALPHA), "a probe class is saved")
     Set tText = $ClassMethod(..#PROBE, "ClassText", ..#ALPHA, "5")
@@ -223,41 +223,32 @@ ClassMethod ProposalRows(pToolName As %String) As %Integer
     Quit +tRS.%Get("N")
 }
 
-/// <p>AC7, AD-53: neither save tool is in the provider tool list, the dispatch lookup, a proposal-path
-/// resolve or either list's screen-context <code>tools</code>, where the compile is; the registry
-/// still lists each, so the screen route resolves it; and a model's call of either is refused as an
-/// unknown tool with no proposal written.</p>
-/// <p>Mutation (Rule 19): <parameter>OcuPilot.Screen.Tool.ExplorerSave.ADVERTISED</parameter> 1 -- this
-/// goes red.</p>
-Method TestTheSaveIsAbsentFromEveryRosterTheAgentSees()
+/// <p>AC1, AD-53, Story 20.21: each save is advertised: it is in the provider tool list, the dispatch lookup,
+/// a proposal-path resolve and each list's screen-context <code>tools</code>, and its <code>Advertised</code> is
+/// 1. A call carrying only <code>Names</code> is refused 400 <code>TOOL.ARGUMENTS</code> with no proposal written.</p>
+/// <p>Mutation (Rule 19): <parameter>OcuPilot.Screen.Tool.ExplorerSave.ADVERTISED</parameter> 0 -- this goes red.</p>
+Method TestTheSaveIsOfferedToTheAgent()
 {
     Set tRegistry = "OcuPilot.Screen.Tool.Registry"
     Do $$$AssertStatusOK($ClassMethod(tRegistry, "ProviderTools", .tProvider), "the provider tool list builds")
     Set tProviderNames = ""
     For tI = 1:1:+$Get(tProvider) Set tProviderNames = tProviderNames _ $ListBuild(tProvider(tI, "name"))
-    Do $$$AssertStatusOK($ClassMethod(tRegistry, "ListTools", .tAll), "the registry lists")
-    Set tListed = ""
-    Set tIterator = tAll.%GetIterator()
-    While tIterator.%GetNext(.tIndex, .tEntry) { Set tListed = tListed _ $ListBuild(tEntry.%Get("name")) }
     For tI = 1:1:$Length(..#TOOLS, ",") {
         Set tTool = $Piece(..#TOOLS, ",", tI)
         Set tList = $Select(tI = 1: "classes", 1: "routines")
         Set tWire = $ClassMethod(tRegistry, "WireName", tTool)
-        Set tCompileWire = $ClassMethod(tRegistry, "WireName", "explorer." _ tList _ ".compile")
-        Do $$$AssertTrue('$ListFind(tProviderNames, tWire) && $ListFind(tProviderNames, tCompileWire), tTool _ ": the provider tool list leaves it out and carries the compile")
-        Kill tByWire, tCompileByWire, tByName, tForRoute
+        Do $$$AssertTrue($ListFind(tProviderNames, tWire) > 0, tTool _ ": the provider tool list carries the save")
+        Kill tByWire
         Do $ClassMethod(tRegistry, "ResolveWire", tWire, .tByWire)
-        Do $ClassMethod(tRegistry, "ResolveWire", tCompileWire, .tCompileByWire)
-        Do $$$AssertTrue('$IsObject($Get(tByWire)) && $IsObject($Get(tCompileByWire)), tTool _ ": the dispatch lookup finds the compile and not the save")
+        Do $$$AssertTrue($IsObject($Get(tByWire)), tTool _ ": the dispatch lookup finds the save")
+        Kill tByName
         Do $ClassMethod(tRegistry, "Resolve", tTool, .tByName)
-        Do $$$AssertTrue('$IsObject($Get(tByName)), tTool _ ": nor does a proposal-path resolve")
-        Do $ClassMethod(tRegistry, "Resolve", tTool, .tForRoute, 1)
-        Do $$$AssertTrue($IsObject($Get(tForRoute)) && $ListFind(tListed, tTool), tTool _ ": while the registry lists it and the prohibited set's resolve reaches it")
+        Do $$$AssertTrue($IsObject($Get(tByName)), tTool _ ": a proposal-path resolve finds the save")
         Kill tTools
         Do $$$AssertStatusOK(##class(OcuPilot.Screen.Context).ScreenTools("OcuPilot.Screen.Descriptor.Explorer" _ $Select(tI = 1: "Class", 1: "Routine") _ "List", .tTools), tTool _ ": the list's context tools build")
         Set tJson = $Select($IsObject($Get(tTools)): tTools.%ToJSON(), 1: "")
-        Do $$$AssertTrue((tJson '[ tWire) && (tJson '[ tTool) && ((tJson [ tCompileWire) || (tJson [ ("explorer." _ tList _ ".compile"))), tTool _ ": the list's context tools carry the compile and not the save: " _ tJson)
-        Do $$$AssertEquals($ClassMethod("OcuPilot.Screen.Tool.Explorer" _ $Select(tI = 1: "Class", 1: "Routine") _ "Save", "Advertised"), 0, tTool _ ": declared unadvertised")
+        Do $$$AssertTrue(tJson [ tWire, tTool _ ": the list's context tools carry the save: " _ tJson)
+        Do $$$AssertEquals($ClassMethod("OcuPilot.Screen.Tool.Explorer" _ $Select(tI = 1: "Class", 1: "Routine") _ "Save", "Advertised"), 1, tTool _ ": declared advertised")
     }
 
     Set tBefore = ..ProposalRows("explorer.classes.save")
@@ -265,7 +256,7 @@ Method TestTheSaveIsAbsentFromEveryRosterTheAgentSees()
     Do ##class(OcuPilot.Kernel.Scope).Set(..#PROBENAMESPACE)
     Set tSC = ##class(OcuPilot.Test.ProposalFixture).SeedTurn($Username, "completed", .tTurn)
     Do $$$AssertStatusOK(tSC, "a completed probe turn is seeded")
-    Set tUse = {"type": "tool_use", "id": "toolu_save", "input": {"Names": "OcuProbe193.Alpha.cls", "rationale": "probe", "expectedImpact": "probe"}}
+    Set tUse = {"type": "tool_use", "id": "toolu_save", "input": {"Names": "OcuProbe193.Alpha.cls"}}
     Do tUse.%Set("name", $ClassMethod(tRegistry, "WireName", "explorer.classes.save"), "string")
     Do ##class(OcuPilot.Kernel.Proposal.Caller).Set(tTurn)
     Set tSC = ##class(OcuPilot.Kernel.Agent.Dispatch).Answer(tTurn, $Username, "", [(tUse)], "OcuPilot.Kernel.Agent.Limits", .tResults, .tNames, 0, 0, .tDetails)
@@ -274,7 +265,7 @@ Method TestTheSaveIsAbsentFromEveryRosterTheAgentSees()
     Do $$$AssertStatusOK(tSC, "the dispatch answers")
     Set tCode = ""
     If $IsObject($Get(tResults)) && (tResults.%Size() = 1) Set tCode = ##class(%DynamicObject).%FromJSON(tResults.%Get(0).%Get("content")).%Get("code")
-    Do $$$AssertEquals(tCode, ##class(OcuPilot.Api.Error).#TOOLUNKNOWN, "a model's save is refused as an unknown tool")
+    Do $$$AssertEquals(tCode, ##class(OcuPilot.Api.Error).#TOOLARGUMENTS, "a call carrying only Names is refused TOOL.ARGUMENTS")
     Do $$$AssertEquals(..ProposalRows("explorer.classes.save"), tBefore, "and no proposal is written")
 }
 

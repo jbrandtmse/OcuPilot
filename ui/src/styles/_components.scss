@@ -7612,6 +7612,12 @@ app-log-hub-page {
 // destructive container and an added one on the success container, each led by its sign in the
 // role's own color and a visually hidden direction (`.ocu-diff-direction`); a collapsed run of
 // unchanged lines is one muted line.
+.ocu-text-diff {
+  display: block;
+  min-width: 0;
+  contain: inline-size;
+}
+
 .ocu-line-diff {
   @include typo.ocu-type('code');
 
