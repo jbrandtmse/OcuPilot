@@ -124,6 +124,8 @@ deferred: []
 ## Spec Change Log
 
 - 2026-10-09, lead, spec gate: appended the orchestrator's addendum from the Planner's read-only reviews of 18.10 (`357985c0`) and 20.20 (`39ed66f1`). It adds a third CHANGED matrix row (18.10-1), its acceptance criterion, the addendum tasks, verdict table and Verification lines, and the matching tier-1 amendment to the story block in `epics.md`. Filed: DW-2256 to DW-2261 (the plan's filing candidates), DW-2262 (18.10-4a, to 18.31), and DW-2263 and DW-2264 (record-only).
+- 2026-10-09, lead, before implement: forward-merged feature `81fc2d01` (20.20 merged at `51fef06d`, green on `6eaf65d4`, run 37981328129). Every story file is unchanged from `39ed66f1` through `6eaf65d4` to the merged head. Each 20.21, 20.20 and 20.19-1 row re-verifies at the merged head, including both `ConfirmProblem` early quits, `maxItems` 20, `SaveSet`'s doc, `SavedLines` and `SaveLines`, and the `(measured)` doc. `FreeCheck` still reads `^rINDEXCLASS`. Rule 31, as reworded, is on the branch: the 20.20-4 and 20.20-6 declines state their reasons.
+- 2026-10-09, lead: the Baseline task's "before" is CI run 37981328129, green on `6eaf65d4`, whose code equals implement's baseline. Re-running the whole class list before editing is therefore skipped, because the dispatch says not to re-run unchanged suites. A class may still be run before its own edit where a local reference helps. The red-first legs are still observed red on unchanged product code.
 
 ## Review Triage Log
 
