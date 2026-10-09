@@ -189,20 +189,36 @@ Method TestASeededPortalCompactIsListedPaused()
 /// test from <method>OcuPilot.Port.BackgroundTaskPort.Control</method> -- the refusal leg answers 500
 /// and goes red; add <code>%Admin_Secure:USE</code> to
 /// <parameter>OcuPilot.Port.BackgroundTaskPort.PAIRS</parameter> -- the least-privileged Pause is
-/// refused and goes red.</p>
+/// refused and goes red; make <method>OcuPilot.Port.BackgroundTaskPort.PortalControl</method> skip only the
+/// Pause call -- the row-re-reads-Paused leg goes red.</p>
+/// <p>A resumed compact that ends before the Pause reaches it is answered by the state refusal, which
+/// the test asserts, and a fresh compact is seeded, at most three in all.</p>
 Method TestTheScreensActionsResumePauseAndCancelACompact()
 {
-    Set tSC = $ClassMethod(..#SEED, "PausedCompact", .tJob, .tTaskId)
-    Do $$$AssertStatusOK(tSC, "a portal compact is seeded and paused: " _ $System.Status.GetErrorText(tSC))
-    If $$$ISERR(tSC) Quit
-    Set tId = ##class(OcuPilot.Kernel.EntityId).JoinComposite($ListBuild("Management Portal", tJob))
-    Set tSC = ..Act("resume", tId, "", "", .tStatus, .tBody)
-    Do $$$AssertEquals(tStatus, 200, "the screen's Resume answers 200: " _ $Select($IsObject(tBody): tBody.%ToJSON(), 1: tBody))
-    Do $$$AssertTrue($IsObject(tBody) && $IsObject(tBody.%Get("target")), "and answers the change event: " _ $Select($IsObject(tBody): tBody.%ToJSON(), 1: tBody))
-    If $IsObject(tBody) && $IsObject(tBody.%Get("target")) Do $$$AssertEquals(tBody.%Get("action") _ " " _ tBody.%Get("target").%Get("type") _ " " _ tBody.%Get("target").%Get("scope") _ " " _ (tBody.%Get("target").%Get("id") = tId), "updated background-task instance 1", "publishing the updated event for the row")
-    Do $$$AssertTrue($ListFind($ListBuild("Running", "Done"), $ClassMethod(..#SEED, "State", tTaskId)), "and the compact runs again: " _ $ClassMethod(..#SEED, "State", tTaskId))
-    Set tSC = ..Act("pause", tId, ..#READERUSER, ..PreparedPassword, .tStatus, .tBody)
-    Do $$$AssertEquals(tStatus, 200, "the screen's Pause answers 200 to a holder of the screen's pairs alone: " _ $Select($IsObject(tBody): tBody.%ToJSON(), 1: tBody))
+    ; A resumed compact can end before the Pause reaches it on a fast host; that Pause is then the
+    ; vendor's state refusal for an ended task, asserted as such, and a fresh compact is seeded, at
+    ; most three in all, so Pause and Cancel are still asserted on a running one.
+    Set tPauseStatus = ""
+    Set tPauseBody = ""
+    For tTry = 1:1:3 {
+        Set tSC = $ClassMethod(..#SEED, "PausedCompact", .tJob, .tTaskId)
+        Do $$$AssertStatusOK(tSC, "a portal compact is seeded and paused: " _ $System.Status.GetErrorText(tSC))
+        If $$$ISERR(tSC) Quit
+        Set tId = ##class(OcuPilot.Kernel.EntityId).JoinComposite($ListBuild("Management Portal", tJob))
+        Set tSC = ..Act("resume", tId, "", "", .tStatus, .tBody)
+        Do $$$AssertEquals(tStatus, 200, "the screen's Resume answers 200: " _ $Select($IsObject(tBody): tBody.%ToJSON(), 1: tBody))
+        Do $$$AssertTrue($IsObject(tBody) && $IsObject(tBody.%Get("target")), "and answers the change event: " _ $Select($IsObject(tBody): tBody.%ToJSON(), 1: tBody))
+        If $IsObject(tBody) && $IsObject(tBody.%Get("target")) Do $$$AssertEquals(tBody.%Get("action") _ " " _ tBody.%Get("target").%Get("type") _ " " _ tBody.%Get("target").%Get("scope") _ " " _ (tBody.%Get("target").%Get("id") = tId), "updated background-task instance 1", "publishing the updated event for the row")
+        Do $$$AssertTrue($ListFind($ListBuild("Running", "Done"), $ClassMethod(..#SEED, "State", tTaskId)), "and the compact runs again: " _ $ClassMethod(..#SEED, "State", tTaskId))
+        Set tSC = ..Act("pause", tId, ..#READERUSER, ..PreparedPassword, .tPauseStatus, .tBody)
+        Set tPauseBody = $Select($IsObject(tBody): tBody.%ToJSON(), 1: tBody)
+        If tPauseStatus = 200 Quit
+        Set tEnded = $ClassMethod(..#SEED, "State", tTaskId)
+        Do $$$AssertEquals(tPauseStatus _ " " _ ..Code(tBody) _ " " _ tEnded, "409 TASK.BACKGROUND.STATE Done", "a refused Pause is only the state refusal of a compact that already ended (seed " _ tTry _ "): " _ tPauseBody)
+        If tEnded '= "Done" Quit
+    }
+    Do $$$AssertEquals(tPauseStatus, 200, "the screen's Pause answers 200 to a holder of the screen's pairs alone, on one of three seeded compacts: " _ tPauseBody)
+    If tPauseStatus '= 200 Quit
     Do $$$AssertEquals(..StatusOf("Management Portal", tJob), "Paused", "and the row re-reads Paused")
     Set tSC = ..Act("cancel", tId, "", "", .tStatus, .tBody)
     Do $$$AssertEquals(tStatus, 200, "the screen's Cancel answers 200: " _ $Select($IsObject(tBody): tBody.%ToJSON(), 1: tBody))
