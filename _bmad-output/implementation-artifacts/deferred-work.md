@@ -10752,3 +10752,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: cycle-log-epic-18.md (18.29 run 37877773715) | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: run 37877773715 browser shard 2/3: ui/browser/sql-activity.browser-spec.mjs:287 Waiting failed 30000ms at :295; same code green locally 7/7 on ocupilot-ci; 18.29 touches no SQL activity file
 - 2026-10-09T04:37:13Z status=routed owner=23-5-the-range-end-cleanup-part-5 by=harvest note=assert on the probe's own row's absence, or filter the table to the probe's marker, rather than on the empty-state sentence
+
+### DW-2246: explorer.class.read refuses a large class's view as TOOL.RESULTTOOLARGE: OcuPilot.Port.AdminPort.cls (247,939 bytes after 18.10) now answers over the 65,536-character tool-result cap, so the agent cannot read a large class's view at all
+- source: cycle-log-epic-18.md (18.10 runner sweep) | severity: med | fix-risk: med | footprint: out-of-footprint
+- evidence: ExplorerWire.TestTheReadToolsAnswerRowsAndNeverTheDocument red runs 158 and 535 on ocupilot-ci at fe8e3832; the cap is Kernel/Agent/Limits TOOLRESULTMAXLENGTH 65536; 20.19's source reads carry a 60,000-character exception, the class view read does not
+- 2026-10-09T10:32:54Z status=routed owner=23-5-the-range-end-cleanup-part-5 by=harvest note=page or truncate the class view read as 20.19 does for source, or name the cap in the refusal; 18.10 moves ExplorerWire's leg to a small class

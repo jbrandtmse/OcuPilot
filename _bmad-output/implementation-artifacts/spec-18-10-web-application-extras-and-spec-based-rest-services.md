@@ -2,7 +2,7 @@
 title: 'Story 18.10: Web application extras and spec-based REST services'
 type: 'feature'
 created: '2026-10-08'
-status: 'done'
+status: 'in-progress'
 baseline_revision: '5325154a7e6483ba67258f37fe37cb56e64df989'
 review_loop_iteration: 0
 followup_review_recommended: true
@@ -98,6 +98,13 @@ Paths are under `src/OcuPilot/` unless they start with `ui/`.
 - [x] [Rework] Replace the whole body of `## Auto Run Result` with this pass's record only: the two contract lines, then no more than eight lines covering what changed, the runs with their indices, the bundle size, the Fixed-strings count, and S0. Earlier passes' notes are in the Spec Change Log and the triage log; do not restate them.
 - [x] [Rework] Read S0 in full at the end: no `%OcuProbe1810*` entry, probe application or principal; both routine applications' `MatchRoles`, `Roles` and `Enabled` as at the start; monitor state 0.
 
+**Sweep items (pass 4, lead, 2026-10-09).** The runner's full ObjectScript sweep ran on a fresh `ocupilot-ci` over `fe8e3832`: 534 classes, 4,250 tests, 4 failed.
+
+- [ ] [Sweep] `Governance.TestTheDefaultEnablesEveryWriteButTheBaselineDisabled` (run 171) and `ToolDispatch.TestTheShippedGateAllowsEveryLiveToolButTheBaselineDisabled` (run 462). The baseline-disabled roster in both lacks `webapp.pctaccess.delete`. Add it to each roster, with its count and sentence, derived where the test already derives.
+- [ ] [Sweep] `Prohibited.TestTheSetHasOneHomeAndOneSentencePerCode` (run 324). `WebAppDelete` spells `PROHIBITED.OCUPILOTROUTINEAPP` and its sentence outside the set. Route the early 403 through a `Prohibited` method that answers the code and its reason, so the code and the sentence each live once, in `Prohibited.cls`. Keep Decision 1's behavior: 403 before the precondition, with `OwnRoutineApplicationWire` still green.
+- [ ] [Sweep] `ExplorerWire.TestTheReadToolsAnswerRowsAndNeverTheDocument` (run 158; again alone, run 535). Its `explorer.class.read` leg reads `OcuPilot.Port.AdminPort.cls`, which this story grew past the 65,536-character tool-result cap (`TOOL.RESULTTOOLARGE`). Point the leg at a small, stable class whose read stays well under the cap and still answers its `Description` row, for example `OcuPilot.Kernel.Agent.Limits.cls` (Rule 30: a test never relies on a growing production class's size). The cap itself is filed separately by the lead.
+- [ ] [Deferred] Settle pass 3's two `deferred:` items with evidence on `ocupilot-ci`. (a) Does the vendor's `Security.PrivilegedRoutine` `PUT` empty an omitted `MatchRoles` or `Roles`? Measure it on a probe privileged routine application your test creates and removes. If it does, the endpoint arm must treat an omitted `MatchRoles` or `Roles` on `OcuPilotState` or `OcuPilotIdentity` as a change and refuse it, with its own Rule 19 leg. (b) Does any caller other than `PctAccessPort` reach `WebApp.PctClassAccess` writes? Grep the routes and tools, and remember the try-it console refuses `/api/admin` writes. If none does, record why under Design Notes; if one does, route it through the shape check. Remove each settled item from `deferred:`.
+
 **Acceptance Criteria:**
 
 - Given a web application in the editor, when its Percent class access tab is read, an entry added and a user entry deleted, then each round-trips through the admin API.
@@ -123,6 +130,7 @@ Paths are under `src/OcuPilot/` unless they start with `ui/`.
 
 ## Spec Change Log
 
+- 2026-10-09, lead: re-opened `in-progress` for pass 4 after the runner's full sweep (4 reds, all from this story), with pass 3's two deferred items. Implement passes so far: three.
 - 2026-10-09, lead: pass 2 closed the four rework items and returned `blocked` on the endpoint arm. Decision 3 is (a), which ruling Q4 already requires. Pass 3's scope is the four items above; pass 2's review block was moved under the Review Triage Log.
 - 2026-10-09, lead: pass 1 (Haiku) returned `blocked` on two decisions, with its work uncommitted and kept for pass 2's finalize. Decision 1 is a targeted early 403 in `WebAppDelete` for OcuPilot's two applications (Task 1's wording). Decision 2 types the confirmation against `Class`. The orchestrator confirmed the `Enabled` leg of the arm. The four rework items above are pass 2's whole scope.
 - 2026-10-09, spec gate (lead): `Enabled` joins the arm. Disabling `OcuPilotState` or `OcuPilotIdentity` is refused (measured: `Prohibits` answered 0 for disabling `OcuPilotIdentity`), in the `SERVINGPATH` doctrine that refuses breaking OcuPilot's own serving path. `Routines` and `Resource` stay with 18.31's gate. Its mutation: the `Enabled` clause is removed and the disable leg reddens. Spine amendments written: AD-10, AD-2, AD-13, AD-44, AD-51.
