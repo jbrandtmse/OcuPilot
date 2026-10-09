@@ -2,7 +2,7 @@
 title: 'Story 18.10: Web application extras and spec-based REST services'
 type: 'feature'
 created: '2026-10-08'
-status: 'blocked'
+status: 'draft'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -22,27 +22,28 @@ deferred:
 
 ## Intent
 
-**Problem:** Three admin-API surfaces from the classic Applications menu have no OcuPilot screen: the web-app editor's %-class access list, Doc DB applications and privileged routine applications. The REST API explorer also cannot create or delete a spec-based REST service.
+**Problem:** The web application editor has no `%`-class access list, which the classic page offers. And OcuPilot's own privileged routine applications, `OcuPilotState` and `OcuPilotIdentity`, are reachable by the web application tools with no AD-10 arm refusing a delete or a `MatchRoles` change (DW-2239, measured at this story's first plan). The vendor's privileged-routine endpoint also writes any application type.
 
-**Approach:** Not planned for build. The plan measured all four write paths on `ocupilot-ci` (Design Notes) and found the story larger than one implement pass and larger than the Fixed-strings headroom. It proposes a split and raises one question about AD-53.
+**Approach:** This follows the orchestrator's 2026-10-09 rulings Q1 and Q4 on this story's first plan. Two parts:
+
+- The `%`-class access list on the web application editor, read and changed through the admin API.
+- An AD-10 arm refusing a delete of OcuPilot's own two privileged routine applications, and any change to their `MatchRoles` or `Roles`, through every path that reaches them, including the vendor's privileged-routine endpoint. It sits in the family of the existing arms for OcuPilot's own web applications (`PROHIBITED.PRIVILEGEGRANT`, and deleting OcuPilot's own web applications). A target-type check goes wherever OcuPilot reaches that endpoint. A Rule 19 test proves each arm reddens under its mutation, and AD-10 is amended at this story's spec gate.
+
+Doc DB applications (18.30), privileged routine applications (18.31) and spec-based REST services (18.32) are split out.
 
 ## Boundaries & Constraints
 
-**Always:** Whichever story builds a part takes the measurements below as its Task 0 baseline, and re-measures only what they leave open.
+**Always:** The measurements in Design Notes are this story's baseline and the split stories' Task 0 baseline; re-measure only what they leave open. Under ruling Q3 (2026-10-09), the Fixed-strings bound becomes 3400 in the first code head that needs it, with a comment line in `strings.test.mjs` naming the ruling; a merge takes the higher value.
 
-**Never:** Raise the Fixed-strings bound in this plan. Build on DW-2084 or any other owner-hold entry.
+**Never:** Build Doc DB applications, the privileged routine application screens and tools, or spec-based REST services here. Build on DW-2084 or any other owner-hold entry.
 
 ## I/O & Edge-Case Matrix
 
-These are the refusals the building stories owe before any vendor call. The last column is what the vendor does without them (measured).
-
 | Scenario | Input / State | Expected Output / Behavior | Error Handling |
 |----------|--------------|---------------------------|----------------|
-| Privileged-routine write to a web application | `PUT` or `DELETE` on `Security.PrivilegedRoutine` naming `/csp/...` | Refused by name; nothing sent | Vendor: changes the application then answers 500, or deletes it |
-| OcuPilot's own privileged routine application | Any write to `OcuPilotState` or `OcuPilotIdentity`, through either endpoint | Refused (the AD-10 arm in (a)) | Today: `Prohibits` answers 0 |
+| OcuPilot's own privileged routine application | A delete of `OcuPilotState` or `OcuPilotIdentity`, or a change to its `MatchRoles` or `Roles`, through any path | Refused by the AD-10 arm; nothing sent | Today: `Prohibits` answers 0 |
+| Privileged-routine write to a web application | `PUT` or `DELETE` on `Security.PrivilegedRoutine` naming `/csp/...` | Refused by the type check; nothing sent | Vendor: changes the application then answers 500, or deletes it |
 | %-class access field shape | A class without a leading `%`, a type other than `AllowClass` or `AllowPrefix`, or an absent application | Refused on its field | Vendor: 500 #1498, #1496 or #869, each logged at severity 2 |
-| REST create name | A `%` or `OcuPilot*` package | Refused at the mint and again at Confirm | Vendor: 404 carrying a server directory, plus a Protect audit row |
-| REST delete of an absent service | The name is not listed | Refused at the fresh read | Vendor: answers 200 |
 
 </intent-contract>
 
@@ -60,6 +61,8 @@ These are the refusals the building stories owe before any vendor call. The last
 No build tasks. The story is blocked (Auto Run Result).
 
 ## Spec Change Log
+
+- 2026-10-09, lead: the orchestrator's rulings on the first plan were applied to the intent block. Q1 narrows 18.10 to the `%`-class access list plus DW-2239 and splits out 18.30 (Doc DB applications), 18.31 (privileged routine applications) and 18.32 (spec-based REST services). Q2 answers AD-53 with (B), written at 18.32's gate. Q3 sets the Fixed-strings bound to 3400. Q4 puts DW-2239's AD-10 arm and type check here. Reset to `draft` for a re-plan.
 
 ## Review Triage Log
 

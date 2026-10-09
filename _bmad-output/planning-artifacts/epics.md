@@ -7281,18 +7281,20 @@ So that the Permissions area reaches parity for SQL objects. [AMENDED 2026-10-07
 ### Story 18.10: Web application extras and spec-based REST services
 
 As a developer-administrator,
-I want the remaining web application surfaces,
-So that the first area reaches parity.
+I want the `%`-class access list on the web application editor, with OcuPilot's own privileged routine applications protected,
+So that the first area moves toward parity without exposing OcuPilot's own applications. [AMENDED 2026-10-09, orchestrator ruling on Story 18.10's plan: narrowed for size and the Fixed-strings bound, Rule 5; Doc DB applications, privileged routine applications and spec-based REST services split to Stories 18.30, 18.31 and 18.32; DW-2239 added as its own criterion]
 
 **Acceptance Criteria:**
 
-- **Given** the `%`-class access list, Doc DB applications and privileged routine applications
-- **When** each runs
+- **Given** a web application's `%`-class access list
+- **When** it is read and changed
 - **Then** it round-trips through the admin API.
 
-- **Given** create and delete of a spec-based REST service from an OpenAPI document
-- **When** each runs
-- **Then** it round-trips through the management API, whose route is already wired for the Release 1 explorer.
+- **Given** OcuPilot's own privileged routine applications, `OcuPilotState` and `OcuPilotIdentity`
+- **When** any path proposes deleting one or changing its `MatchRoles` or `Roles`, through the web application tools or the vendor's privileged-routine endpoint
+- **Then** an AD-10 arm refuses it, in the family of the existing arms for OcuPilot's own web applications, and the privileged-routine endpoint's port checks its target's type.
+
+- DW-2239: The web-application tools can reach OcuPilot's own privileged routine applications, and no AD-10 arm refuses a delete or a `MatchRoles` `:%All` update (ledger; routed by orchestrator 2026-10-09)
 
 ### Story 18.11: Monitoring extras and the live log tail
 
@@ -7646,6 +7648,46 @@ So that the Permissions area reaches parity with the classic user and role pages
 
 - A role owner's `AdminOption` arrives as the string `"0"` or `"1"`, not a boolean (reported). `"0"` is truthy in TypeScript, so compare the value.
 - DW-1662: A principal holding only the authorization server tab's two pairs cannot create a configuration: a create admits only readable roles, and the editor pre-checks the default roles it then refuses (ledger; routed by merge_gate 2026-10-06)
+
+### Story 18.30: Doc DB applications
+
+As a developer-administrator,
+I want the Doc DB applications list and editor,
+So that the first area reaches parity for document database applications. [AMENDED 2026-10-09, orchestrator ruling on Story 18.10's plan: split from Story 18.10 for size, Rule 5; after Story 18.10]
+
+**Acceptance Criteria:**
+
+- **Given** the Doc DB applications
+- **When** each is created, changed or deleted
+- **Then** it round-trips through the admin API, managing `Security.DocDBs` records only and leaving Story 19.17's document database create and drop unchanged.
+
+### Story 18.31: Privileged routine applications
+
+As a developer-administrator,
+I want the privileged routine applications list and editor,
+So that the first area reaches parity for privileged routine applications. [AMENDED 2026-10-09, orchestrator ruling on Story 18.10's plan: split from Story 18.10 for size, Rule 5; after Story 18.30, building on Story 18.10's AD-10 arm and target-type check]
+
+**Acceptance Criteria:**
+
+- **Given** the privileged routine applications
+- **When** each is created, changed or deleted, through its list, its editor and its three tools
+- **Then** it round-trips through the admin API, a target that is not a privileged routine application is refused, and OcuPilot's own two are refused under Story 18.10's AD-10 arm.
+
+### Story 18.32: Spec-based REST services
+
+As a developer-administrator,
+I want to create and delete a spec-based REST service from an OpenAPI document,
+So that the first area reaches parity for REST services. [AMENDED 2026-10-09, orchestrator ruling on Story 18.10's plan: split from Story 18.10, Rule 5; waits until Story 20.21 is merged into feature and reuses its namespace-routines-database check; if reached first, Stories 18.11 to 18.13 run ahead of it; AD-53 is amended at its spec gate under ruling Q2 (B)]
+
+**Acceptance Criteria:**
+
+- **Given** create and delete of a spec-based REST service from an OpenAPI document
+- **When** each runs
+- **Then** it round-trips through the management API, whose route is already wired for the Release 1 explorer.
+
+- **Given** the agent proposes a create
+- **When** it is minted and again at Confirm
+- **Then** the generated classes land only in the namespace's own routines database, never in `%SYS`, under a `%` name or as `OcuPilot*`; the create's key ships enabled and the delete's, destructive, ships disabled (AD-22).
 
 ## Epic 19: Stage 3 - System Explorer over the Atelier API
 

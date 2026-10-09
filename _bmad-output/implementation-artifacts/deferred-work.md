@@ -10746,3 +10746,4 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-10-web-application-extras-and-spec-based-rest-services.md | severity: high | fix-risk: low | footprint: out-of-footprint
 - evidence: measured at 18.10 plan on ocupilot-ci: Prohibited.Prohibits answered 0 for webapp.list.delete on OcuPilotState and for webapp.list.update MatchRoles=:%All; Prohibited.cls:5181
 - 2026-10-09T03:28:57Z status=routed owner=burndown by=harvest note=pending the orchestrator's 18.10 split: the privileged routine applications story would own it with the AD-10 arm and a target-type check
+- 2026-10-09T03:56:23Z status=routed owner=18-10-web-application-extras-and-spec-based-rest-services by=orchestrator note=ruling_Q4_2026-10-09:own_criterion_in_narrowed_18.10;AD-10_arm_refuses_delete_and_MatchRoles/Roles_changes_through_every_path_incl_the_privileged-routine_endpoint;target-type_check;Rule_19_mutation_per_arm
