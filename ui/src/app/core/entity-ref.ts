@@ -101,15 +101,9 @@ const ID_RULES: Readonly<Record<string, (id: string) => string>> = {
   // A namespace mapping is keyed by the composite `[namespace, Name]` (Story 18.14): the instance
   // resolves the namespace without case, while a global's or routine's name is case-sensitive. So
   // only the text before the first `COMPOSITE_SEPARATOR` is folded, and an id with no separator is
-  // folded whole -- what `OcuPilot.Kernel.EntityRef.NormalizedId` answers for the same rule.
+  // folded whole -- what `OcuPilot.Kernel.EntityRef.NormalizedId` answers for the same rule. A
+  // percent-class access entry, keyed by `[application, AllowType, Class]` (Story 18.10), takes it too.
   'foldcase-firstpart': (id) => {
-    const at = id.indexOf(COMPOSITE_SEPARATOR);
-    if (at < 0) return id.toLowerCase();
-    return id.slice(0, at).toLowerCase() + id.slice(at);
-  },
-  // A percent-class access entry is keyed by `[application, AllowType, Class]` (Story 18.10): the same fold
-  // as `foldcase-firstpart`, which `OcuPilot.Kernel.EntityRef.NormalizedId` answers for `foldfirst`.
-  foldfirst: (id) => {
     const at = id.indexOf(COMPOSITE_SEPARATOR);
     if (at < 0) return id.toLowerCase();
     return id.slice(0, at).toLowerCase() + id.slice(at);

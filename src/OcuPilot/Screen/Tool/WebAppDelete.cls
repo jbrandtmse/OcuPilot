@@ -119,8 +119,7 @@ ClassMethod PrivilegePairs(pDescriptor As %String = "", Output pResolved As %Boo
 /// <parameter>PRECONDITIONFIELD</parameter>, which would otherwise answer 400. Other applications are not refused here.</p>
 ClassMethod RefusedBeforeState(pIdValue As %String, Output pCode As %String) As %Boolean
 {
-    Set tRefused = ##class(OcuPilot.Kernel.Proposal.Prohibited).RefusesDeleteBeforeState(pIdValue, .pCode)
-    Quit tRefused
+    Quit ##class(OcuPilot.Kernel.Proposal.Prohibited).RefusesBeforeState(pIdValue, .pCode)
 }
 
 /// <p>The removal rows this proposal's card shows, from the fresh <code>GET</code>

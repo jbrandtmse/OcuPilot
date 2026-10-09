@@ -566,7 +566,7 @@ export const ENTITY_ID_RULES: Readonly<Partial<Record<EntityTypeKey, string>>> =
   "oauth2-server": "singleton",
   "namespace": "foldcase",
   "global-mapping": "foldcase-firstpart",
-  "pct-class-access": "foldfirst",
+  "pct-class-access": "foldcase-firstpart",
   "routine-mapping": "foldcase-firstpart",
   "package-mapping": "foldcase-firstpart",
   "database-configuration": "foldcase",

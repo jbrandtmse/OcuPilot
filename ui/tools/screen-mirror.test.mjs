@@ -250,7 +250,7 @@ test('AD-13: the id-rule table is read from the kernel and is what the mirror em
     // Story 18.14: a mapping is keyed by `[namespace, Name]`; only the namespace part folds.
     ['global-mapping', 'foldcase-firstpart'],
     // Story 18.10: a percent-class access entry is keyed by `[application, AllowType, Class]`; only the application folds.
-    ['pct-class-access', 'foldfirst'],
+    ['pct-class-access', 'foldcase-firstpart'],
     ['routine-mapping', 'foldcase-firstpart'],
     ['package-mapping', 'foldcase-firstpart'],
     // Story 18.3: a database configuration name resolves without case and is stored upper case.
@@ -280,7 +280,7 @@ test('AD-13: the id-rule table is read from the kernel and is what the mirror em
     // Story 18.25: a superserver is keyed by its port and bind address.
     ['superserver', 'portbind'],
   ]);
-  assert.deepEqual(parseIdRuleNames(text), ['foldcase-striptrailingslash', 'foldcase', 'singleton', 'integer', 'foldcase-firstpart', 'foldfirst', 'integerset', 'directoryset', 'documentset', 'portbind']);
+  assert.deepEqual(parseIdRuleNames(text), ['foldcase-striptrailingslash', 'foldcase', 'singleton', 'integer', 'foldcase-firstpart', 'integerset', 'directoryset', 'documentset', 'portbind']);
   // `null`, never `[]`, when the parameter is missing: an absent table and a table that declares
   // nothing are different facts, and only one of them is a source to build from.
   assert.equal(parseIdRules('Class X { }'), null);
@@ -394,7 +394,7 @@ test('AD-13: the generator refuses an id rule no reader can apply, naming the ru
 
   // The roster the third refusal is judged against is the one `entity-ref.ts` is pinned equal to
   // by `ui/tools/entity-ref.test.mjs`, so neither side can grow a rule alone.
-  assert.deepEqual(IMPLEMENTED_ID_RULES, ['foldcase-striptrailingslash', 'foldcase', 'singleton', 'integer', 'foldcase-firstpart', 'foldfirst', 'integerset', 'directoryset', 'documentset', 'portbind']);
+  assert.deepEqual(IMPLEMENTED_ID_RULES, ['foldcase-striptrailingslash', 'foldcase', 'singleton', 'integer', 'foldcase-firstpart', 'integerset', 'directoryset', 'documentset', 'portbind']);
 });
 
 test('AD-14: the generator refuses an entity type the kernel enum does not hold, naming both', () => {

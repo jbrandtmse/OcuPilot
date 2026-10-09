@@ -1245,9 +1245,9 @@ ClassMethod InvokeLocated(pEndpoint As %String, pType As %String, ByRef pQuery, 
         If pEndpoint = ..#PRIVROUTINEENDPOINT {
             Set tSC = ..PrivilegedRoutineGuard(pType, $Get(pQuery("name")), .pHttpStatus, .pFault)
             If $$$ISERR(tSC) Quit
-            ; Story 18.10 (DW-2239, Task 1 as ruled Q4): OcuPilot's own routine applications are refused the routine arm
-            ; here too, before the vendor and unlogged, by the kernel's own predicates.
-            If ##class(OcuPilot.Kernel.Proposal.Prohibited).RoutineEndpointRefused(pType, $Get(pQuery("name")), pBody, .tRoutineCode) {
+            ; Story 18.10 (DW-2239): every call but a read that names one of OcuPilot's own routine applications is refused
+            ; 403, before the vendor and unlogged, by the predicate the prohibited set owns.
+            If ##class(OcuPilot.Kernel.Proposal.Prohibited).RoutineEndpointRefused(pType, $Get(pQuery("name")), .tRoutineCode) {
                 Set tSC = ..Refuse(403, ##class(OcuPilot.Api.Error).#FORBIDDEN, tRoutineCode, ##class(OcuPilot.Kernel.Proposal.Prohibited).ReasonFor(tRoutineCode), .pHttpStatus, .pFault)
                 Quit
             }

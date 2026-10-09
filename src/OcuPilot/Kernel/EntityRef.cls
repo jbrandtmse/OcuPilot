@@ -56,12 +56,12 @@ Parameter TYPEWEBAPPLICATION = "web-application";
 /// <parameter>OcuPilot.Kernel.EntityType.TYPES</parameter>, or a rule the generator cannot
 /// implement, fails <code>npm run build</code> rather than reaching the client as a silent
 /// no-op. A later write-tool story adds one pair here, never a branch in two languages.</p>
-Parameter IDRULES = "web-application:foldcase-striptrailingslash,user:foldcase,auditing-configuration:singleton,task:integer,process:integerset,application-error:foldcase,role:foldcase,resource:foldcase,audit-event:foldcase,audit-user-event:foldcase,service:foldcase,ldap-configuration:foldcase,oauth2-server:singleton,namespace:foldcase,global-mapping:foldcase-firstpart,pct-class-access:foldfirst,routine-mapping:foldcase-firstpart,package-mapping:foldcase-firstpart,database-configuration:foldcase,database:directoryset,class:documentset,routine:documentset,journal-settings:singleton,license-key:singleton,license-server:foldcase,ecp-data-server:foldcase,ecp-settings:singleton,database-encryption-keys:singleton,data-element-encryption-keys:singleton,encryption-startup:singleton,docdb-database:foldcase,authentication-options:singleton,superserver:portbind";
+Parameter IDRULES = "web-application:foldcase-striptrailingslash,user:foldcase,auditing-configuration:singleton,task:integer,process:integerset,application-error:foldcase,role:foldcase,resource:foldcase,audit-event:foldcase,audit-user-event:foldcase,service:foldcase,ldap-configuration:foldcase,oauth2-server:singleton,namespace:foldcase,global-mapping:foldcase-firstpart,pct-class-access:foldcase-firstpart,routine-mapping:foldcase-firstpart,package-mapping:foldcase-firstpart,database-configuration:foldcase,database:directoryset,class:documentset,routine:documentset,journal-settings:singleton,license-key:singleton,license-server:foldcase,ecp-data-server:foldcase,ecp-settings:singleton,database-encryption-keys:singleton,data-element-encryption-keys:singleton,encryption-startup:singleton,docdb-database:foldcase,authentication-options:singleton,superserver:portbind";
 
 /// <p>The closed rule vocabulary <parameter>IDRULES</parameter> selects from. A rule named there
 /// and absent here is a declaration error, pinned by
 /// <class>OcuPilot.Test.EntityRef</class>.</p>
-Parameter IDRULENAMES = "foldcase-striptrailingslash,foldcase,singleton,integer,foldcase-firstpart,foldfirst,integerset,directoryset,documentset,portbind";
+Parameter IDRULENAMES = "foldcase-striptrailingslash,foldcase,singleton,integer,foldcase-firstpart,integerset,directoryset,documentset,portbind";
 
 /// <p>The web-application rule: fold to lower case, then strip every trailing slash.</p>
 Parameter RULEFOLDCASESTRIPTRAILINGSLASH = "foldcase-striptrailingslash";
@@ -87,11 +87,9 @@ Parameter RULEFOLDCASE = "foldcase";
 /// A mapping's composite id is <code>[namespace, Name]</code>; the instance resolves a namespace
 /// without case, while a global's or routine's name is case-sensitive. An id with no separator is
 /// folded whole.</p>
+/// <p>A percent-class access entry (Story 18.10) takes the same rule: its id is <code>[application, AllowType, Class]</code>,
+/// and only the application folds.</p>
 Parameter RULEFOLDCASEFIRSTPART = "foldcase-firstpart";
-
-/// <p>The percent-class access rule (Story 18.10): lower-cases the first composite part and keeps the rest, as
-/// <parameter>RULEFOLDCASEFIRSTPART</parameter> does.</p>
-Parameter RULEFOLDFIRST = "foldfirst";
 
 /// <p>The rule of a configuration with exactly one instance -- the auditing configuration and the
 /// OAuth 2.0 authorization server configuration: answer <parameter>RULESINGLETONID</parameter>
@@ -307,7 +305,7 @@ ClassMethod NormalizedId(pType As %String, pId As %String) As %String
         Quit ..PlainInteger($Piece(pId, tSeparator, 1)) _ tSeparator _ tBind
     }
     If tRule = ..#RULEFOLDCASE Quit $ZConvert(pId, "L")
-    If (tRule = ..#RULEFOLDCASEFIRSTPART) || (tRule = ..#RULEFOLDFIRST) {
+    If tRule = ..#RULEFOLDCASEFIRSTPART {
         Set tSeparator = $Char(##class(OcuPilot.Kernel.EntityId).#COMPOSITESEPARATOR)
         If pId '[ tSeparator Quit $ZConvert(pId, "L")
         Quit $ZConvert($Piece(pId, tSeparator, 1), "L") _ tSeparator _ $Piece(pId, tSeparator, 2, *)

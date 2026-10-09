@@ -1,10 +1,11 @@
-/// <p>Pins the routine application arm (AD-10 as amended, DW-2239, Story 18.10) over the two routes that reach it: the web
-/// applications screen's row actions over <code>POST /screens/webapp.list/action</code>, and the agent's proposal confirmed
-/// over <code>POST /proposal/:id/confirm</code>. A delete, a disable and a <code>MatchRoles</code> change of
-/// <code>OcuPilotState</code> and of <code>OcuPilotIdentity</code> are each refused 403
+/// <p>Pins the routine application arm (AD-10 as amended, DW-2239, Story 18.10) over the three routes that reach it: the web
+/// applications screen's row actions over <code>POST /screens/webapp.list/action</code>, the editor's Save over
+/// <code>PUT /web-applications/:id</code>, and the agent's proposal, minted and confirmed over
+/// <code>POST /proposal/:id/confirm</code>. Every write to <code>OcuPilotState</code> and to <code>OcuPilotIdentity</code> --
+/// a delete, a disable, a <code>MatchRoles</code> change, a change to any other field -- is refused 403
 /// <code>PROHIBITED.OCUPILOTROUTINEAPP</code> with the kernel's own sentence, and the application reads back unchanged.</p>
-/// <p>The agent route carries a delete, a disable and a <code>MatchRoles</code> change: <class>OcuPilot.Screen.Tool.WebAppUpdate</class>
-/// admits <code>MatchRoles</code> among its settable fields, so an agent proposal can carry it; the mint stores it and its confirm is refused at the arm.</p>
+/// <p>The agent's mint refuses at once, before it stores a proposal. A stored proposal that reached its confirm anyway (a row
+/// minted before the arm refused it) is refused there; the class seeds those rows directly.</p>
 /// <p><b>What it needs from the environment:</b> OcuPilot installed and serving over HTTP as
 /// <class>OcuPilot.Test.Http</class>'s test account, with both routine applications present. It creates no application and
 /// sends no change the arm allows. Throwaway only: a leg that is not refused changes a routine application, so
@@ -119,11 +120,24 @@ Method AssertRefused(pLabel As %String, pName As %String, pBefore As %String, pS
     Do $$$AssertEquals(##class(OcuPilot.Test.OwnRoutineApplication).WebAppJSON(pName), pBefore, pLabel _ " leaves " _ pName _ " as it was")
 }
 
+/// <p>One <code>PUT</code> of <var>pBody</var> to the editor's Save route for the application <var>pName</var>, as the test
+/// account: the status and the parsed answer.</p>
+ClassMethod Put(pName As %String, pBody As %DynamicObject, Output pStatus As %Integer, Output pAnswer) As %Status
+{
+    Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("PUT", ..#APIBASE _ "/web-applications/" _ pName, ##class(OcuPilot.Test.Http).GetTestUsername(), ##class(OcuPilot.Test.Http).GetTestPassword(), .pStatus, .tRaw, .tHeaders, pBody.%ToJSON(), "application/json")
+    Set pAnswer = ""
+    Try { Set pAnswer = ##class(%DynamicObject).%FromJSON(tRaw) } Catch { Set pAnswer = $Get(tRaw) }
+    Quit tSC
+}
+
 /// <p>Screen route: a delete, a disable and a <code>MatchRoles</code> change of each routine application are refused over
 /// the wire, and each application reads back unchanged.</p>
-/// <p>Mutation (Rule 19): drop the <code>MatchRoles</code> and <code>Roles</code> arm's branch in
-/// <class>OcuPilot.Kernel.Proposal.Prohibited</class>'s <method>RoutineApplicationChanges</method> -- the matching-role leg
-/// goes red.</p>
+/// <p>Mutation (Rule 19): <class>OcuPilot.Screen.Tool.WebAppDelete</class>'s <code>RefusedBeforeState</code> answers 0 -- the
+/// delete legs answer 400 from the precondition and go red.</p>
+/// <p>Mutation (Rule 19): in <class>OcuPilot.Kernel.Proposal.Prohibited</class>'s <method>Prohibits</method>, append
+/// <code>&amp;&amp; (..WriteTypeOf(..ToolClassNamed(pToolName)) = "DELETE")</code> to the routine arm's condition, and make
+/// <class>OcuPilot.Screen.Tool.WebAppUpdate</class>'s <code>RefusedBeforeState</code> answer 0 -- the disable and the
+/// matching-role legs go red. Either alone leaves them refused by the other.</p>
 Method TestTheScreenRouteRefusesEveryArmedAction()
 {
     For tName = ..#STATEAPP, ..#IDENTITYAPP {
@@ -145,14 +159,42 @@ Method TestTheScreenRouteRefusesEveryArmedAction()
     }
 }
 
-/// <p>Agent route: the mint of a delete of each routine application is refused 403 before its precondition, and a delete
-/// stored before that refusal is refused 403 at its confirm; a disable and a <code>MatchRoles</code> change are minted and
-/// their confirms are refused 403. Each application reads back unchanged.</p>
-/// <p>Mutation (Rule 19): <class>OcuPilot.Kernel.Proposal.Prohibited</class>'s <parameter>ROUTINEAPPLICATIONFIELDS</parameter>
-/// <code>"MatchRoles,Roles"</code> to <code>"Roles"</code> -- the agent's confirmed <code>MatchRoles</code> leg goes red.</p>
-/// <p>Mutation (Rule 19): <code>OcuPilot.Kernel.Proposal.Prohibited.RefusesDeleteBeforeState</code> answers 0 -- the mint's delete
-/// leg answers 400 from the precondition and goes red.</p>
-Method TestTheAgentConfirmRefusesEveryArmedAction()
+/// <p>Editor Save: a <code>PUT</code> of <code>Enabled</code>, and then of <code>Resource</code>, for each routine application
+/// is refused 403 over the wire, and the application reads back unchanged. The Save asks the prohibited set over the merged
+/// payload, so the refusal does not depend on the field.</p>
+/// <p>Mutation (Rule 19): in <class>OcuPilot.Kernel.Proposal.Prohibited</class>'s <method>Prohibits</method>, append
+/// <code>&amp;&amp; (..WriteTypeOf(..ToolClassNamed(pToolName)) = "DELETE")</code> to the routine arm's condition -- both legs go
+/// red (the vendor refuses a write to a routine application and changes nothing, so the application still reads as it did).</p>
+Method TestTheEditorSaveRefusesEveryField()
+{
+    For tName = ..#STATEAPP, ..#IDENTITYAPP {
+        Set tBefore = ##class(OcuPilot.Test.OwnRoutineApplication).WebAppJSON(tName)
+        Do $$$AssertNotEquals(tBefore, "", tName _ " is present to begin with")
+        If tBefore = "" Continue
+        Set tSC = ##class(OcuPilot.Test.OwnRoutineApplication).Stored(tName, .tStored)
+        Set tResource = $Select($Get(tStored("Resource")) = "%Admin_Manage": "%Development", 1: "%Admin_Manage")
+
+        Set tSC = ..Put(tName, {"Enabled": false}, .tStatus, .tBody)
+        Do $$$AssertStatusOK(tSC, "the Save of Enabled for " _ tName _ " is sent")
+        Do ..AssertRefused("the editor Save's disable of " _ tName, tName, tBefore, tStatus, tBody)
+
+        Set tSC = ..Put(tName, {"Resource": (tResource)}, .tStatus2, .tBody2)
+        Do $$$AssertStatusOK(tSC, "the Save of Resource for " _ tName _ " is sent")
+        Do ..AssertRefused("the editor Save's Resource change of " _ tName, tName, tBefore, tStatus2, tBody2)
+    }
+}
+
+/// <p>Agent route: the mint of a delete, a disable, a <code>MatchRoles</code> change and a <code>Description</code> change of
+/// each routine application is refused 403 at once; a proposal stored before the arm refused it, whatever the write, is
+/// refused 403 at its confirm. Each application reads back unchanged.</p>
+/// <p>Mutation (Rule 19): <class>OcuPilot.Screen.Tool.WebAppUpdate</class>'s <code>RefusedBeforeState</code> answers 0 -- the
+/// mint legs of the three updates answer 200 and go red, and the seeded confirms stay refused.</p>
+/// <p>Mutation (Rule 19): <class>OcuPilot.Screen.Tool.WebAppDelete</class>'s <code>RefusedBeforeState</code> answers 0 -- the
+/// mint's delete leg answers 400 from the precondition and goes red.</p>
+/// <p>Mutation (Rule 19): in <method>Prohibits</method>, append
+/// <code>&amp;&amp; (..WriteTypeOf(..ToolClassNamed(pToolName)) = "DELETE")</code> to the routine arm's condition -- the three
+/// seeded update confirms go red.</p>
+Method TestTheAgentRefusesEveryWriteAtTheMintAndTheConfirm()
 {
     Set tSC = ##class(OcuPilot.Test.ProposalFixture).SeedTurn(##class(OcuPilot.Test.Http).GetTestUsername(), "completed", .tTurn)
     Do $$$AssertStatusOK(tSC, "a completed turn is seeded for the agent's proposals")
@@ -162,51 +204,52 @@ Method TestTheAgentConfirmRefusesEveryArmedAction()
         Set tBefore = ##class(OcuPilot.Test.OwnRoutineApplication).WebAppJSON(tName)
         Do $$$AssertNotEquals(tBefore, "", tName _ " is present to begin with")
         If tBefore = "" Continue
+        Set tMatchRoles = [{"MatchRole": "", "TargetRoles": ["%All"]}]
 
         Set tSC = ..MintFor(..#DELETETOOL, tTurn, {"Name": (tName)}, .tProposal, .tHttp, .tFault)
         Do ..AssertRefused("the agent's mint of a delete of " _ tName, tName, tBefore, tHttp, tFault)
-
-        Set tSC = ..SeedDelete(tName, tTurn, .tDeleteKey)
-        Do $$$AssertStatusOK(tSC, "a delete of " _ tName _ " is stored, as a mint the arm did not refuse would store it")
-        If $$$ISOK(tSC) {
-            Set tSC = ..ConfirmKey(tDeleteKey, .tStatus, .tBody)
-            Do $$$AssertStatusOK(tSC, "the confirm of the stored delete of " _ tName _ " is sent")
-            Do ..AssertRefused("the agent's confirmed delete of " _ tName, tName, tBefore, tStatus, tBody)
-        }
-
         Set tSC = ..MintFor(..#UPDATETOOL, tTurn, {"Name": (tName), "Enabled": false}, .tProposal2, .tHttp2, .tFault2)
-        Do $$$AssertStatusOK(tSC, "the agent's disable of " _ tName _ " mints")
-        If $$$ISOK(tSC) {
-            Set tSC = ..ConfirmKey(tProposal2.%Get("proposalId"), .tStatus2, .tBody2)
-            Do $$$AssertStatusOK(tSC, "the confirm of the disable of " _ tName _ " is sent")
-            Do ..AssertRefused("the agent's confirmed disable of " _ tName, tName, tBefore, tStatus2, tBody2)
-        }
+        Do ..AssertRefused("the agent's mint of a disable of " _ tName, tName, tBefore, tHttp2, tFault2)
+        Set tSC = ..MintFor(..#UPDATETOOL, tTurn, {"Name": (tName), "MatchRoles": (tMatchRoles)}, .tProposal3, .tHttp3, .tFault3)
+        Do ..AssertRefused("the agent's mint of a MatchRoles change of " _ tName, tName, tBefore, tHttp3, tFault3)
+        Set tSC = ..MintFor(..#UPDATETOOL, tTurn, {"Name": (tName), "Description": "changed"}, .tProposal4, .tHttp4, .tFault4)
+        Do ..AssertRefused("the agent's mint of a Description change of " _ tName, tName, tBefore, tHttp4, tFault4)
 
-        Set tSC = ..MintFor(..#UPDATETOOL, tTurn, {"Name": (tName), "MatchRoles": [{"MatchRole": "", "TargetRoles": ["%All"]}]}, .tProposal3, .tHttp3, .tFault3)
-        Do $$$AssertStatusOK(tSC, "the agent's MatchRoles change of " _ tName _ " mints: the arm answers at the confirm, as for a disable")
-        If $$$ISOK(tSC) {
-            Set tSC = ..ConfirmKey(tProposal3.%Get("proposalId"), .tStatus3, .tBody3)
-            Do $$$AssertStatusOK(tSC, "the confirm of the MatchRoles change of " _ tName _ " is sent")
-            Do ..AssertRefused("the agent's confirmed MatchRoles change of " _ tName, tName, tBefore, tStatus3, tBody3)
-        }
+        Do ..ConfirmSeeded("delete", ..#DELETETOOL, tName, tTurn, {"Name": (tName)}, {}, [], tBefore)
+        Do ..ConfirmSeeded("disable", ..#UPDATETOOL, tName, tTurn, {"Name": (tName), "Enabled": false}, {"Enabled": false}, [{"field": "Enabled", "before": "true", "after": "false"}], tBefore)
+        Do ..ConfirmSeeded("MatchRoles change", ..#UPDATETOOL, tName, tTurn, {"Name": (tName), "MatchRoles": (tMatchRoles)}, {"MatchRoles": (tMatchRoles)}, [{"field": "MatchRoles", "before": "a", "after": "b"}], tBefore)
+        Do ..ConfirmSeeded("Description change", ..#UPDATETOOL, tName, tTurn, {"Name": (tName), "Description": "changed"}, {"Description": "changed"}, [{"field": "Description", "before": "a", "after": "changed"}], tBefore)
     }
 }
 
-/// <p>Stores one delete proposal of <var>pName</var> over the turn <var>pTurn</var>, the row a mint stored before the arm
-/// refused the delete at the mint; its confirm is what the caller asserts.</p>
-ClassMethod SeedDelete(pName As %String, pTurn As %String, Output pKey As %String) As %Status
+/// <p>Seeds one proposal of <var>pToolClass</var> against <var>pName</var>, as a mint the arm did not refuse would store it,
+/// confirms it, and asserts the confirm's refusal and the application reading back as <var>pBefore</var>.</p>
+Method ConfirmSeeded(pLabel As %String, pToolClass As %String, pName As %String, pTurn As %String, pArgs As %DynamicObject, pPayload As %DynamicObject, pDiff As %DynamicArray, pBefore As %String)
+{
+    Set tSC = ..SeedWrite(pToolClass, pName, pTurn, pArgs, pPayload, pDiff, .tKey)
+    Do $$$AssertStatusOK(tSC, "a " _ pLabel _ " of " _ pName _ " is stored")
+    If $$$ISERR(tSC) Quit
+    Set tSC = ..ConfirmKey(tKey, .tStatus, .tBody)
+    Do $$$AssertStatusOK(tSC, "the confirm of the stored " _ pLabel _ " of " _ pName _ " is sent")
+    Do ..AssertRefused("the agent's confirmed " _ pLabel _ " of " _ pName, pName, pBefore, tStatus, tBody)
+}
+
+/// <p>Stores one proposal of <var>pToolClass</var> against <var>pName</var> over the turn <var>pTurn</var>, with the stored
+/// arguments, payload and diff given: the row a mint stored before the arm refused it; its confirm is what the caller
+/// asserts.</p>
+ClassMethod SeedWrite(pToolClass As %String, pName As %String, pTurn As %String, pArgs As %DynamicObject, pPayload As %DynamicObject, pDiff As %DynamicArray, Output pKey As %String) As %Status
 {
     Do ##class(OcuPilot.Kernel.EntityRef).Key("web-application", "instance", pName, .tTargetRef)
     Kill tValues
     Set tValues("user") = ##class(OcuPilot.Test.Http).GetTestUsername()
     Set tValues("convKey") = ""
     Set tValues("turnKey") = pTurn
-    Set tValues("toolName") = $Parameter(..#DELETETOOL, "TOOLNAME")
+    Set tValues("toolName") = $Parameter(pToolClass, "TOOLNAME")
     Set tValues("targetRef") = tTargetRef
     Set tValues("fingerprint") = "0"
-    Set tValues("arguments") = {"Name": (pName)}.%ToJSON()
-    Set tValues("payload") = "{}"
-    Set tValues("diff") = "[]"
+    Set tValues("arguments") = pArgs.%ToJSON()
+    Set tValues("payload") = pPayload.%ToJSON()
+    Set tValues("diff") = pDiff.%ToJSON()
     Set tValues("unchangedCount") = 0
     Quit ##class(OcuPilot.Test.ProposalFixture).SeedProposal(.tValues, .pKey, .tToken)
 }

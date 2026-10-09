@@ -77,7 +77,7 @@ Method TestACreateSaveHoldsTheKeyItsMintComputes()
     Set tKeyFile = ##class(OcuPilot.Kernel.EntityId).JoinComposite($ListBuild("/ocuprobe/hold/", "hold.key"))
     Do ..HeldLeg("/audit-events", "OcuPilot.Screen.Tool.AuditUserEventCreate", "OcuProbeHold/Hold/Key", {"Source": "OcuProbeHold", "Type": "Hold", "Name": "Key", "Enabled": "not a flag"}.%ToJSON())
     Do ..HeldLeg("/encryption-key-file", "OcuPilot.Screen.Tool.EncryptionKeyFileCreate", tKeyFile, {"root": "/ocuprobe/hold/", "path": "hold.key", "OcuProbeUnexpected": 1}.%ToJSON())
-    ; The Save names the application in another case, so the leg holds only if both sides fold it (foldfirst).
+    ; The Save names the application in another case, so the leg holds only if both sides fold it (foldcase-firstpart).
     Set tEntry = ##class(OcuPilot.Kernel.EntityId).JoinComposite($ListBuild("/csp/ocuprobehold", "AllowClass", "%OcuProbe1810.Hold"))
     Do ..HeldLeg("/web-app/pct-access", "OcuPilot.Screen.Tool.WebAppPctAccessCreate", tEntry, {"Name": "/CSP/OcuProbeHold", "AllowType": "AllowClass", "Class": "%OcuProbe1810.Hold", "AllowAccess": "not a flag"}.%ToJSON())
 }

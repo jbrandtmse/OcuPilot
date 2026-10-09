@@ -145,6 +145,15 @@ Parameter PRIVILEGEGRANT = "PROHIBITED.PRIVILEGEGRANT";
 /// <code>webAppPrivilegeGrantRefusal</code> (AD-53).</p>
 Parameter PRIVILEGEGRANTREASON = "OcuPilot's own web applications carry only the roles its installer gives them. A role set there would run every OcuPilot request with it.";
 
+/// <p>Any write to one of OcuPilot's own privileged routine applications, <code>OcuPilotState</code> or
+/// <code>OcuPilotIdentity</code> (<method>OwnRoutineApplication</method>): a delete, a disable, a change to any field.
+/// OcuPilot reads its own protected state through them (AD-9, AD-10, DW-2239, Story 18.10).</p>
+Parameter OCUPILOTROUTINEAPP = "PROHIBITED.OCUPILOTROUTINEAPP";
+
+/// <p>The one sentence <parameter>OCUPILOTROUTINEAPP</parameter> carries, caller-neutral, published in EXPERIENCE.md's
+/// Fixed strings and pinned equal to <code>routineAppRefusalOcuPilot</code> by <file>ui/tools/self-protection.test.mjs</file>.</p>
+Parameter OCUPILOTROUTINEAPPREASON = "OcuPilot reads its own protected state through this privileged routine application, so it cannot be deleted, disabled or changed.";
+
 /// <p>The write would remove the account the caller is signed in as, or its administration
 /// (<method>RemovesAdministration</method>).</p>
 Parameter CURRENTUSER = "PROHIBITED.CURRENTUSER";
@@ -248,24 +257,6 @@ Parameter WRITETOOLBASE = "OcuPilot.Screen.Tool.Write";
 /// (<class>OcuPilot.Kernel.EntityType</class>'s spelling). A type outside this list is
 /// <parameter>UNCOVERED</parameter>.</p>
 Parameter COVEREDTYPES = "screen-permission,web-application,user,auditing-configuration,task,process,application-error,role,resource,x509-credential,wallet-secret,device,oauth2-client-configuration,oauth2-server-client,audit-event,audit-user-event,ssl-configuration,service,ldap-configuration,oauth2-server-definition,oauth2-resource-server,oauth2-server,namespace,web-session,background-task,global-mapping,routine-mapping,package-mapping,database-configuration,database,language-server,lock,class,routine,journal-file,journal-settings,license-key,license-server,ecp-data-server,ecp-settings,ecp-ssl-connection,encryption-key-file,database-encryption-keys,data-element-encryption-keys,encryption-startup,docdb-database,authentication-options,superserver,mft-connection,production,pct-class-access";
-
-/// <p>The one sentence <parameter>OCUPILOTROUTINEAPP</parameter> carries (AD-10, DW-2239, Story 18.10), caller-neutral,
-/// published in EXPERIENCE.md's Fixed strings and pinned equal to <code>routineAppRefusalOcuPilot</code> by
-/// <file>ui/tools/self-protection.test.mjs</file>.</p>
-Parameter OCUPILOTROUTINEAPPREASON = "OcuPilot reads its own protected state through this privileged routine application, so it cannot be deleted or disabled and the roles it grants cannot be changed.";
-
-/// <p>A privileged routine application OcuPilot reads its own protected state through (AD-10, DW-2239, Story 18.10).
-/// Deleting or disabling either, or changing one of its <parameter>ROUTINEAPPLICATIONFIELDS</parameter>, is refused
-/// <parameter>OCUPILOTROUTINEAPP</parameter>.</p>
-Parameter OCUPILOTROUTINEAPP = "PROHIBITED.OCUPILOTROUTINEAPP";
-
-/// <p>The routine application fields the arm refuses a change to, on either of OcuPilot's own routine applications.</p>
-Parameter ROUTINEAPPLICATIONFIELDS = "MatchRoles,Roles";
-
-/// <p>A web application's percent-class access entry (Story 18.10): its one settable field is the access it grants.</p>
-Parameter TYPEPCTACCESS = "pct-class-access";
-
-Parameter PCTACCESSFIELD = "AllowAccess";
 
 /// <p>The covered types, each named once so the dispatch and the list cannot drift apart.</p>
 Parameter TYPEWEBAPPLICATION = "web-application";
@@ -590,6 +581,11 @@ Parameter TYPESCREENPERMISSION = "screen-permission";
 /// <p>A managed file transfer connection (Story 18.26), whose create, change, delete and token revoke the
 /// reviewed-few sweep alone judges (<method>MftConnectionFields</method>): AD-10 names no effect on one.</p>
 Parameter TYPEMFTCONNECTION = "mft-connection";
+
+/// <p>A web application's percent-class access entry (Story 18.10): its one settable field is the access it grants.</p>
+Parameter TYPEPCTACCESS = "pct-class-access";
+
+Parameter PCTACCESSFIELD = "AllowAccess";
 
 /// <p>The write would cut off the superserver the web gateway connects through (AD-10 as amended 2026-10-07,
 /// Story 18.25): it deletes it, turns off <code>Enabled</code> or <code>EnableCSP</code>, or requires SSL/TLS of
@@ -1383,9 +1379,10 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
             Quit
         }
 
-        ; Story 18.10 (DW-2239): OcuPilot's own privileged routine application is refused a delete before its target is
-        ; read, whichever path reaches it.
-        If (tType = ..#TYPEWEBAPPLICATION) && ..OwnRoutineApplication(tId) && (..WriteTypeOf(..ToolClassNamed(pToolName)) = "DELETE") {
+        ; Story 18.10 (DW-2239): every write to one of OcuPilot's own privileged routine applications -- a create, a delete,
+        ; a change to any field -- is refused over the application, as the last arm of WebApplication is for OcuPilot's own
+        ; web applications, so it reads no target and lists no field.
+        If (tType = ..#TYPEWEBAPPLICATION) && ..OwnRoutineApplication(tId) {
             Do ..Refuse(..#OCUPILOTROUTINEAPP, .pProhibits, .pCode)
             Quit
         }
@@ -1422,11 +1419,6 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
         Set tSC = ..Changed(pDiff, tPayloadObject, tTarget, ..SkippedFields($Get(tToolClass)), .tChanged)
         If $$$ISERR(tSC) Quit
 
-        ; Story 18.10 (DW-2239): a disable, or a change to a listed field, of OcuPilot's own routine application.
-        If (tType = ..#TYPEWEBAPPLICATION) && ..OwnRoutineApplication(tId) && ..RoutineApplicationChanges(tPayloadObject, tTarget, .tChanged) {
-            Do ..Refuse(..#OCUPILOTROUTINEAPP, .pProhibits, .pCode)
-            Quit
-        }
         If tType = ..#TYPEUSER {
             Set tSC = ..User(tId, tPayloadObject, tTarget, .tChanged, ..RemovesOf($Get(tToolClass)), .pProhibits, .pCode, ..WriteTypeOf($Get(tToolClass)))
             Quit
@@ -4525,7 +4517,8 @@ ClassMethod IsPrivilegedRole(pRole As %String) As %Boolean [ Private ]
 
 /// <p>Whether <var>pPath</var> names one of OcuPilot's own privileged routine applications (<class>OcuPilot.Kernel.State.Base</class>'s
 /// <parameter>APPLICATION</parameter> and <parameter>IDENTITYAPPLICATION</parameter>), compared through
-/// <method>NormalizedPath</method> so that a re-cased or slash-suffixed spelling earns the same verdict.</p>
+/// <method>NormalizedPath</method> so that a re-cased or slash-suffixed spelling earns the same verdict. Every write to
+/// one is refused <parameter>OCUPILOTROUTINEAPP</parameter>, whatever its type or field.</p>
 ClassMethod OwnRoutineApplication(pPath As %String) As %Boolean
 {
     Set tPath = ..NormalizedPath(pPath)
@@ -4533,10 +4526,12 @@ ClassMethod OwnRoutineApplication(pPath As %String) As %Boolean
     Quit (tPath = ..NormalizedPath(##class(OcuPilot.Kernel.State.Base).#APPLICATION)) || (tPath = ..NormalizedPath(##class(OcuPilot.Kernel.State.Base).#IDENTITYAPPLICATION))
 }
 
-/// <p>The early refusal of a delete of one of OcuPilot's own privileged routine applications, answered before the
-/// delete tool's precondition is read (<method>OwnRoutineApplication</method>): <var>pCode</var> is the code and the function answers 1, or
+/// <p>The early refusal of a write to one of OcuPilot's own privileged routine applications, answered before a write tool's
+/// precondition is read (<method>OwnRoutineApplication</method>): <var>pCode</var> is the code and the function answers 1, or
 /// the function answers 0 and <var>pCode</var> is empty. The code's sentence is <method>ReasonFor</method>'s alone.</p>
-ClassMethod RefusesDeleteBeforeState(pIdValue As %String, Output pCode As %String) As %Boolean
+/// <p><b>Caller contract:</b> <var>pIdValue</var> is the target's id argument as the caller holds it; the answer does not
+/// depend on the write's type or fields.</p>
+ClassMethod RefusesBeforeState(pIdValue As %String, Output pCode As %String) As %Boolean
 {
     Set pCode = ""
     If ..OwnRoutineApplication(pIdValue) {
@@ -4546,50 +4541,16 @@ ClassMethod RefusesDeleteBeforeState(pIdValue As %String, Output pCode As %Strin
     Quit 0
 }
 
-/// <p>Whether this write changes one of <parameter>ROUTINEAPPLICATIONFIELDS</parameter>, or disables the application
-/// (<method>Disables</method>), for an OcuPilot routine application the caller has already identified.</p>
-ClassMethod RoutineApplicationChanges(pPayload As %DynamicObject, pTarget As %DynamicObject, ByRef pChanged) As %Boolean
-{
-    If ..Disables(pPayload, .pChanged) Quit 1
-    Set tFields = $ListFromString(..#ROUTINEAPPLICATIONFIELDS)
-    Set tField = ""
-    For {
-        Set tField = $Order(pChanged(tField))
-        If tField = "" Quit
-        If $ListFind(tFields, tField) Quit
-    }
-    Quit (tField '= "")
-}
-
 /// <p>Whether a call to the privileged routine endpoint (<parameter>PRIVROUTINEENDPOINT</parameter> in
-/// <class>OcuPilot.Port.AdminPort</class>) is refused by the routine arm (AD-10 as amended, Story 18.10): a
-/// <code>DELETE</code> of OcuPilot's own routine application, or a <code>PUT</code> that sets <code>Enabled</code>
-/// false, or names <code>MatchRoles</code> or <code>Roles</code>, as <method>RoutineApplicationChanges</method> decides. A <code>GET</code> is never refused here. The same predicates as the
-/// kernel arm decide, so the two cannot drift.</p>
-/// <p><b>Caller contract:</b> <var>pBody</var> is the request body as a dynamic object, or <code>""</code>. A field the body
-/// names is a change, whether or not its value differs from the stored one.</p>
-ClassMethod RoutineEndpointRefused(pType As %String, pName As %String, pBody, Output pCode As %String) As %Boolean
+/// <class>OcuPilot.Port.AdminPort</class>) is refused by the routine arm (AD-10, Story 18.10): any call but a
+/// <code>GET</code> that names one of OcuPilot's own routine applications (<method>OwnRoutineApplication</method>), whatever
+/// its body. A <code>GET</code> reads and is never refused here.</p>
+ClassMethod RoutineEndpointRefused(pType As %String, pName As %String, Output pCode As %String) As %Boolean
 {
     Set pCode = ""
-    If (pName = "") || '..OwnRoutineApplication(pName) Quit 0
-    If pType = "DELETE" {
-        Set pCode = ..#OCUPILOTROUTINEAPP
-        Quit 1
-    }
-    If pType '= "PUT" Quit 0
-    Set tPayload = {}
-    If $IsObject(pBody) && pBody.%IsA("%DynamicObject") Set tPayload = pBody
-    Kill tChanged
-    Set tFields = "Enabled," _ ..#ROUTINEAPPLICATIONFIELDS
-    For tI = 1:1:$Length(tFields, ",") {
-        Set tField = $Piece(tFields, ",", tI)
-        If tPayload.%IsDefined(tField) Set tChanged(tField) = ""
-    }
-    If ..RoutineApplicationChanges(tPayload, "", .tChanged) {
-        Set pCode = ..#OCUPILOTROUTINEAPP
-        Quit 1
-    }
-    Quit 0
+    If (pType = "GET") || (pName = "") || '..OwnRoutineApplication(pName) Quit 0
+    Set pCode = ..#OCUPILOTROUTINEAPP
+    Quit 1
 }
 
 /// <p>Whether this proposal disables the target by effect: the diff names <code>Enabled</code> and

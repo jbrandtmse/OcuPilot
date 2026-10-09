@@ -153,20 +153,6 @@ Method TestShapeRefused()
     Quit
 }
 
-/// <p>The composite id's first part is folded to lower case for a percent-class access entry, and the access type and the
-/// class are kept as spelled.</p>
-/// <p>Mutation (Rule 19): in <class>OcuPilot.Kernel.EntityRef</class>'s <method>NormalizedId</method>, change
-/// <code>|| (tRule = ..#RULEFOLDFIRST)</code> to <code>|| 0</code>. The application part then keeps its case, and this
-/// leg goes red on the spelling.</p>
-Method TestFoldFirstFoldsOnlyTheApplication()
-{
-    Set tId = ##class(OcuPilot.Kernel.EntityId).JoinComposite($ListBuild("All-Applications", "AllowClass", "%Utility.Example"))
-    Set tFolded = ##class(OcuPilot.Kernel.EntityRef).NormalizedId("pct-class-access", tId)
-    Set tExpected = ##class(OcuPilot.Kernel.EntityId).JoinComposite($ListBuild("all-applications", "AllowClass", "%Utility.Example"))
-    Do $$$AssertEquals(tFolded, tExpected, "the application is folded and the access type and class keep their spelling")
-    Quit
-}
-
 /// <p>Each refusal code the percent-class access port and its save route answer carries its published sentence, read from
 /// <class>OcuPilot.Api.PctAccessError</class>; a changed sentence reddens here.</p>
 /// <p>Mutation (Rule 19): in <class>OcuPilot.Api.PctAccessError</class>, change the parameter
