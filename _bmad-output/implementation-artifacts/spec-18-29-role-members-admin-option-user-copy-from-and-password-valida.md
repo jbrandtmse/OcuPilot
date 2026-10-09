@@ -3,6 +3,7 @@ title: "Story 18.29: Role members' admin option, user Copy from and password val
 type: 'feature'
 created: '2026-10-08'
 status: 'done'
+baseline_commit: '19f2011de94e0054f05c028db480a61fea08a95c'
 baseline_revision: '33287e8bc06efb6258cdd7a82da9645b12444440'
 review_loop_iteration: 0
 followup_review_recommended: false

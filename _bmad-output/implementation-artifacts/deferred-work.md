@@ -10677,3 +10677,33 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: Epic 20 runner report 2026-10-08 (20.17 implement handoff); cycle-log-parallel.md | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: A 20.17 handoff subagent ran panel-collapse, stream-reply and agent-sql with both unset between 15:48Z and ~16:35Z 10-08; they arm and disarm a probe agent definition on ocupilot-ci; ui/tools/browser-config.test.mjs pins the one-unset refusals but allows both unset
 - 2026-10-08T16:35:45Z status=routed owner=23-5-the-range-end-cleanup-part-5 by=orchestrator note=CI sets both per shard, so a both-unset refusal costs CI nothing; update browser-config.test.mjs and the README/DEVELOPMENT browser-run lines that rely on the default
+
+### DW-2230: UserCopy tool's ReadBackFields has no mismatch leg and no per-field check; the outcome is pinned only by stored-state asserts
+- source: spec-18-29-role-members-admin-option-user-copy-from-and-password-valida.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Screen/Tool/UserCopy.cls ReadBackFields; implement pass 3 deferred
+- 2026-10-09T01:20:50Z status=open owner=18-29-role-members-admin-option-user-copy-from-and-password-valida by=harvest note=for the 18.29 code review to patch or close
+
+### DW-2231: The create path's password refusal passes only the code; PasswordPolicy.Verdict's reason is computed and unused
+- source: spec-18-29-role-members-admin-option-user-copy-from-and-password-valida.md | severity: med | fix-risk: low | footprint: in-story
+- evidence: src/OcuPilot/Area/Permissions/UserCreateRules.cls:133; implement pass 3 deferred
+- 2026-10-09T01:20:50Z status=open owner=18-29-role-members-admin-option-user-copy-from-and-password-valida by=harvest note=for the 18.29 code review to patch
+
+### DW-2232: The DW-1662 wire test builds its own default-role list instead of posting the editor's real pre-ticked request
+- source: spec-18-29-role-members-admin-option-user-copy-from-and-password-valida.md | severity: med | fix-risk: low | footprint: in-story
+- evidence: src/OcuPilot/Test/OAuthAuthorizationServerWire.cls; implement passes 2 and 3 deferred
+- 2026-10-09T01:20:50Z status=open owner=18-29-role-members-admin-option-user-copy-from-and-password-valida by=harvest note=for the 18.29 code review to patch
+
+### DW-2233: The user create form's privileged flag for a copy source may miss an escalation role the server counts (inference)
+- source: spec-18-29-role-members-admin-option-user-copy-from-and-password-valida.md | severity: med | fix-risk: low | footprint: in-story
+- evidence: ui/src/app/areas/permissions/user-create-form.store.ts vs Prohibited GrantsPrivilegeByEffect; implement passes 2 and 3 deferred, unsettled
+- 2026-10-09T01:20:50Z status=open owner=18-29-role-members-admin-option-user-copy-from-and-password-valida by=harvest note=for the 18.29 code review to settle and patch
+
+### DW-2234: SurfaceCoverage's permissions.users.copy row points at the route-envelope test rather than a tool-pinning test
+- source: spec-18-29-role-members-admin-option-user-copy-from-and-password-valida.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: src/OcuPilot/Test/SurfaceCoverage.cls; pass 3 held it as Rule 11 contention, but the row is 18.29's own, absent from feature
+- 2026-10-09T01:20:50Z status=open owner=18-29-role-members-admin-option-user-copy-from-and-password-valida by=harvest note=editing this story's own row is add-only relative to feature
+
+### DW-2235: UserCopyPort.MapVendorRefusal (#837, #838, #845, #958 and an unlisted code) has no pinning test
+- source: spec-18-29-role-members-admin-option-user-copy-from-and-password-valida.md | severity: med | fix-risk: low | footprint: in-story
+- evidence: src/OcuPilot/Port/UserCopyPort.cls:234; implement pass 3 deferred
+- 2026-10-09T01:20:50Z status=open owner=18-29-role-members-admin-option-user-copy-from-and-password-valida by=harvest note=pin through the public Copy path (a taken name, an absent source, a bad password) for the 18.29 code review
