@@ -10784,3 +10784,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-20-20-the-agent-creates-new-classes-and-routines-on-the-person-s-c.md | severity: med | fix-risk: low | footprint: in-story
 - evidence: AtelierPort.Route seeds If-None-Match only for a non-empty value and CREATE passes empty (unverified, inference); 20.17's plan measured 409 on an existing document without a version
 - 2026-10-09T11:03:40Z status=open owner=20-20-the-agent-creates-new-classes-and-routines-on-the-person-s-c by=harvest note=settle with a PUT over an existing name and no If-None-Match on ocupilot-b-ci, read back; QA pins it
+
+### DW-2248: Flake: LogHubWire.TestTheRouteAndTheToolAnswerTheSameEntriesAndSources compares the event log's count and last entry between the route and the tool, which differ when anything writes the event log between the two reads
+- source: cycle-log-epic-20.md (20.20 runner-side sweep shard 3/30, run 108) | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: Red once in the local sweep on ocupilot-b-ci ('with the same count and last entry'), green alone at once (run 116); its doc says only this class writes the store during the run, which a background writer breaks
+- 2026-10-09T11:21:16Z status=routed owner=23-5-the-range-end-cleanup-part-5 by=lead note=compare the tool's last entry against a route read taken after it, or seed a marker and compare by marker; CI flake class, Rule 27
