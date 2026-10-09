@@ -8906,3 +8906,59 @@ So that the screens read cleanly at every common width and say what they mean.
 - **Given** the fixes
 - **When** they land
 - **Then** they land in batches grouped by area, each with CI green on its own head, so a failing batch is reopened alone.
+
+### Story 23.6: The Haiku-story cleanup
+
+Chartered by the orchestrator on 2026-10-09 on the owner's decision "One cleanup story" (relayed by the Planner), after the Planner's read-only quality review of the three merged stories built during the Haiku trial: keep each, with targeted cleanup. It runs on slot A after Stories 18.10 and 20.20 merge and before Epic 18's next story, with implement on Sonnet. Line references are at the merged heads: 20.21 `d94d922a`, 20.19 `ac551bcf`, 18.29 `866790f4`.
+
+As a maintainer of OcuPilot,
+I want the review's findings on Stories 20.19, 20.21 and 18.29 fixed or declined with a reason,
+So that their code reads like the rest of the codebase and their comments and tests say what the code does.
+
+**Acceptance Criteria:**
+
+- **Given** each item below
+- **When** this story plans
+- **Then** the item is first verified at the current head, as a reviewer's finding rather than a fact, and the spec records it confirmed, refuted or already fixed.
+
+- **Given** the one correctness item (20.21, item 2)
+- **When** it is fixed
+- **Then** a test reddens on the old behavior before the fix (Rule 19).
+
+- **Given** a refactor or comment item
+- **When** it lands
+- **Then** behavior is unchanged: the affected classes and specs pass before and after, and Rule 30's fresh check passes.
+
+- **Given** the items
+- **When** this story completes
+- **Then** each is fixed, or declined with a reason, in the spec's Review Triage Log.
+
+**Story 20.21:**
+
+1. `ExplorerSaveRules.cls:96`: the header-rename test matches only "name"; match "change the document's name".
+2. `ExplorerSave.cls:210-211`: `ConfirmProblem` lets a confirm through when the stored arguments do not parse; it refuses instead.
+3. `ExplorerSaveAgent.cls:51-54`: `ClassText` is unused; delete it.
+4. `proposal-card.ts`: `:762` `linesRows` is documented "Whether the card holds…" but returns rows; the `:767` `summaryFields` comment omits the lines-changed form.
+5. `ExplorerSaveMint.cls`: `:14` "stored text" is ambiguous between the new text and the instance's; `:241` has stray `p` and `s` names.
+6. `ExplorerSaveAgentProbe.cls:14-15`: the `Wide` comment does not match what the code writes.
+7. `ExplorerSave.cls:87`: a literal 20 beside `ExplorerSaveMint.MAXEDITS`; reference the parameter.
+8. Optional: fold `ExplorerSaveAgent`'s duplicate tests into `ExplorerSaveFlow`.
+
+**Story 20.19:**
+
+1. `ExplorerDescriptor.cls:132`: a 192-character doc line narrating "Story 20.19 adds…"; re-wrap it and drop the narration.
+2. `Escaped`, `Fetch` and `ArmDocument` are duplicated in `ExplorerSource.cls:49-89` and `ExplorerSourceEdges.cls:66-110`, and production has a third, private `Escaped` (`ExplorerSourceRead.cls:184`); make one shared helper.
+3. `ExplorerSourceRead.cls:118-120`: an object-only routine answers `REASONNOTFOUND`, which is untrue; give it its own reason.
+4. `ExplorerSourceTurn.cls:133` and `:161` discard `RemoveKeyed()`'s status.
+
+**Story 18.29:**
+
+1. `Area/Permissions/UserCopy.cls:29-103` duplicates about 60 of `UserCreate.Perform`'s 70 lines (`UserCreate.cls:111-179`); add a compose hook in the parent.
+2. Comments that do not match the code: `UserCopy.cls:22` and `:61` ("require the source"); `Test/UserCopy.cls:751-753` says two principals but creates three accounts and four roles.
+3. `Test/UserCopy.cls` is 825 lines with a test method after the helpers (`:814`); split it into two or three classes around a shared probe fixture.
+4. Prose: `Test/UserCopy.cls:461` narrates "run 78"; `Screen/Tool/UserCopy.cls:64-65` carries a Rule 19 mutation note in a product class.
+5. `Port/UserCopyPort.cls:21`: `Parameter USEREndpoint` becomes all capitals, with its references.
+6. Duplicated logic and literals: `UserCopyPort.cls:237-261` duplicates the 422 body `AdminPort.PasswordGuard` (`:3893`) builds; the copy fields are written twice (`Prohibited.cls:5622`, `Screen/Tool/UserCopy.cls:119`); "COPY" is a literal at `Prohibited.cls:1383`; "USERCOPY.SOURCE" is a literal at `Screen/Tool/UserCopy.cls:80` and `:98` instead of `UserCopyError.#SOURCE`.
+7. Client: `set-password-dialog.ts:18` redefines the path `user-create-form.store.ts:22` already exports; `user-create-form.page.ts:182-263` is not indented inside `@if (!copying)`.
+
+Not in scope: `text-diff.ts` duplicating Compare (a later story can move Compare onto the shared component), and DW-2241 (Story 20.20 fixes it).
