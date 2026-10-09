@@ -328,3 +328,4 @@ spawn_at=2026-10-06T16:01:05Z	Story 23.4	cr_complete	batch=b 2026-10-06T20:34:58
 2026-10-09T16:35:24Z	Epic 23	integrate_forward	from=origin/feature/OCU-1_ocupilot-mvp@328aeb28 mode=ff-only from_head=ac16e4cc carries=18.10 lacks=20.20(implement_held_until_merged) lockfile_changed=no bootstrap=not_needed
 2026-10-09T16:35:24Z	Epic 23	spine_resolved	path=_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md ads=64 status=final
 2026-10-09T16:35:24Z	Epic 23	ledger_load	total=1711 open=0 routed=86 escalated=1 decision_pending=35 terminal=1589 owner_unknown=0 burndown=51 reowned_none=0 owner_23-6=0 note=epic-start_gates_not_repeated(dispatch)
+2026-10-09T16:40:58Z	Story 23.6	stage_spawned	stage=plan spawn_at=2026-10-09T16:40:58Z model=opus agent_name=23-6-the-haiku-story-cleanup-plan-1 cycle_iteration=1 ledger_inbox=none feature=328aeb28 note=20.20_unmerged(plan_notes_overlap;implement_held)
