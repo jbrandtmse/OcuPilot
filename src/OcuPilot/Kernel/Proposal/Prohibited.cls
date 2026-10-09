@@ -247,9 +247,25 @@ Parameter WRITETOOLBASE = "OcuPilot.Screen.Tool.Write";
 /// <p>The entity types this release evaluates predicates for, comma-separated
 /// (<class>OcuPilot.Kernel.EntityType</class>'s spelling). A type outside this list is
 /// <parameter>UNCOVERED</parameter>.</p>
-Parameter COVEREDTYPES = "screen-permission,web-application,user,auditing-configuration,task,process,application-error,role,resource,x509-credential,wallet-secret,device,oauth2-client-configuration,oauth2-server-client,audit-event,audit-user-event,ssl-configuration,service,ldap-configuration,oauth2-server-definition,oauth2-resource-server,oauth2-server,namespace,web-session,background-task,global-mapping,routine-mapping,package-mapping,database-configuration,database,language-server,lock,class,routine,journal-file,journal-settings,license-key,license-server,ecp-data-server,ecp-settings,ecp-ssl-connection,encryption-key-file,database-encryption-keys,data-element-encryption-keys,encryption-startup,docdb-database,authentication-options,superserver,mft-connection,production";
+Parameter COVEREDTYPES = "screen-permission,web-application,user,auditing-configuration,task,process,application-error,role,resource,x509-credential,wallet-secret,device,oauth2-client-configuration,oauth2-server-client,audit-event,audit-user-event,ssl-configuration,service,ldap-configuration,oauth2-server-definition,oauth2-resource-server,oauth2-server,namespace,web-session,background-task,global-mapping,routine-mapping,package-mapping,database-configuration,database,language-server,lock,class,routine,journal-file,journal-settings,license-key,license-server,ecp-data-server,ecp-settings,ecp-ssl-connection,encryption-key-file,database-encryption-keys,data-element-encryption-keys,encryption-startup,docdb-database,authentication-options,superserver,mft-connection,production,pct-class-access";
 
 /// <p>The covered types, each named once so the dispatch and the list cannot drift apart.</p>
+/// <p>The one sentence <parameter>OCUPILOTROUTINEAPP</parameter> carries (AD-10, DW-2239, Story 18.10).</p>
+Parameter OCUPILOTROUTINEAPPREASON = "OcuPilot reads its own protected state through this privileged routine application, so it cannot be deleted or disabled and the roles it grants cannot be changed.";
+
+/// <p>A privileged routine application OcuPilot reads its own protected state through (AD-10, DW-2239, Story 18.10).
+/// Deleting or disabling either, or changing its <parameter>APPLICATIONROLEFIELDS</parameter> or
+/// <parameter>ROUTINEAPPLICATIONROLEFIELDS</parameter>, is refused <parameter>OCUPILOTROUTINEAPP</parameter>.</p>
+Parameter OCUPILOTROUTINEAPP = "PROHIBITED.OCUPILOTROUTINEAPP";
+
+/// <p>The routine application fields the arm refuses a change to, on either of OcuPilot's own routine applications.</p>
+Parameter ROUTINEAPPLICATIONFIELDS = "MatchRoles,Roles";
+
+/// <p>A web application's percent-class access entry (Story 18.10): its one settable field is the access it grants.</p>
+Parameter TYPEPCTACCESS = "pct-class-access";
+
+Parameter PCTACCESSFIELD = "AllowAccess";
+
 Parameter TYPEWEBAPPLICATION = "web-application";
 
 Parameter TYPEUSER = "user";
@@ -923,10 +939,10 @@ Parameter READTYPE = "GET";
 /// <method>Mapping</method> adds, the one <method>Database</method> adds, and the one
 /// <method>Lock</method> adds, and the one <method>Code</method> adds, and the one
 /// <method>SqlStatement</method> adds, the key arm's and the encryption start arm's, and the two
-/// <method>AuthOptions</method> adds, and the one <method>Superserver</method> adds, and the SQL privilege arm's, and the one <method>ScreenPermission</method> adds last -- thirty-two in all.</p>
+/// <method>AuthOptions</method> adds, and the one <method>Superserver</method> adds, and the SQL privilege arm's, and the one <method>ScreenPermission</method> adds last, and the one <method>OwnRoutineApplication</method> arm adds after it -- thirty-four in all.</p>
 ClassMethod Codes() As %List
 {
-    Quit $ListBuild(..#SERVINGPATH, ..#UNAUTHENTICATED, ..#AUTHORIZATION, ..#DISPATCH, ..#SYSTEMACCOUNT, ..#SERVICEACCOUNT, ..#CURRENTUSER, ..#LASTALLHOLDER, ..#PRIVILEGEGRANT, ..#OCUPILOTPROCESS, ..#SYSTEMPROCESS, ..#UNCOVEREDFIELD, ..#UNCOVERED, ..#OCUPILOTROLE, ..#OCUPILOTRESOURCE, ..#SERVICEACCOUNTSIGNIN, ..#OCUPILOTSSL, ..#SERVINGSERVICE, ..#OCUPILOTNAMESPACE, ..#OCUPILOTSESSION, ..#PRESERVEDSESSION, ..#OCUPILOTMAPPING, ..#OCUPILOTDATABASE, ..#OCUPILOTLOCK, ..#OCUPILOTCODE, ..#OCUPILOTSQL, ..#OCUPILOTKEY, ..#STARTUPINTERACTIVE, ..#OCUPILOTSIGNIN, ..#OCUPILOTSTART, ..#SERVINGSUPERSERVER, ..#OCUPILOTSQLPRIVILEGE, ..#OCUPILOTSCREEN)
+    Quit $ListBuild(..#SERVINGPATH, ..#UNAUTHENTICATED, ..#AUTHORIZATION, ..#DISPATCH, ..#SYSTEMACCOUNT, ..#SERVICEACCOUNT, ..#CURRENTUSER, ..#LASTALLHOLDER, ..#PRIVILEGEGRANT, ..#OCUPILOTPROCESS, ..#SYSTEMPROCESS, ..#UNCOVEREDFIELD, ..#UNCOVERED, ..#OCUPILOTROLE, ..#OCUPILOTRESOURCE, ..#SERVICEACCOUNTSIGNIN, ..#OCUPILOTSSL, ..#SERVINGSERVICE, ..#OCUPILOTNAMESPACE, ..#OCUPILOTSESSION, ..#PRESERVEDSESSION, ..#OCUPILOTMAPPING, ..#OCUPILOTDATABASE, ..#OCUPILOTLOCK, ..#OCUPILOTCODE, ..#OCUPILOTSQL, ..#OCUPILOTKEY, ..#STARTUPINTERACTIVE, ..#OCUPILOTSIGNIN, ..#OCUPILOTSTART, ..#SERVINGSUPERSERVER, ..#OCUPILOTSQLPRIVILEGE, ..#OCUPILOTSCREEN, ..#OCUPILOTROUTINEAPP)
 }
 
 /// <p>The written sentence a <code>PROHIBITED.*</code> code carries, or <code>""</code> for any
@@ -971,6 +987,7 @@ ClassMethod ReasonFor(pCode As %String) As %String
     If pCode = ..#SERVINGSUPERSERVER Quit ..#SERVINGSUPERSERVERREASON
     If pCode = ..#OCUPILOTSQLPRIVILEGE Quit ..#OCUPILOTSQLPRIVILEGEREASON
     If pCode = ..#OCUPILOTSCREEN Quit ..#OCUPILOTSCREENREASON
+    If pCode = ..#OCUPILOTROUTINEAPP Quit ..#OCUPILOTROUTINEAPPREASON
     Quit ""
 }
 
@@ -1059,6 +1076,7 @@ ClassMethod PermittedChangeFields(pType As %String) As %List
     If pType = ..#TYPEAUDITEVENT Quit $ListBuild(..#FIELDENABLED)
     If pType = ..#TYPEAUDITUSEREVENT Quit $ListBuild("Description", ..#FIELDENABLED)
     If pType = ..#TYPEWEBAPPLICATION Quit ..WebApplicationSettingFields() _ $ListFromString(..#APPLICATIONROLEFIELDS)
+    If pType = ..#TYPEPCTACCESS Quit $ListBuild(..#PCTACCESSFIELD)
     If pType = ..#TYPEUSER Quit $ListBuild(..#FIELDENABLED, ..#FIELDROLES, ..#FIELDCHANGEPASSWORD) _ ..UserSettingFields()
     If pType = ..#TYPEAUDITING Quit $ListBuild(..#FIELDENABLED)
 
@@ -1190,6 +1208,7 @@ ClassMethod PermittedCreateFields(pType As %String) As %List
     If pType = ..#TYPEOAUTHRESOURCESERVER Quit ..OAuthResourceServerFields()
     If pType = ..#TYPEOAUTHAUTHSERVER Quit ..OAuthAuthorizationServerFields()
     If pType = ..#TYPEOAUTHSERVERCLIENT Quit ..OAuthRegisteredClientFields()
+    If pType = ..#TYPEPCTACCESS Quit $ListBuild(..#PCTACCESSFIELD)
     If pType = ..#TYPEWEBAPPLICATION Quit $ListBuild("AutheEnabled", "Description", "DispatchClass", "Enabled", "MatchRoles", "NameSpace", "Recurse", "Resource", "WSGIAppLocation", "WSGIAppName", "WSGICallable", "WSGIType")
     If pType = ..#TYPEUSER Quit $ListBuild("ExpirationDate", "FullName", "NameSpace", "Routine", ..#FIELDROLES)
     If pType = ..#TYPEROLE Quit $ListBuild("Description", ..#FIELDGRANTEDROLES, ..#FIELDRESOURCES)
@@ -1292,7 +1311,7 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
             Do ..Refuse(..#UNCOVERED, .pProhibits, .pCode)
             Quit
         }
-        If (tType '= ..#TYPESCREENPERMISSION) && (tType '= ..#TYPEWEBAPPLICATION) && (tType '= ..#TYPEUSER) && (tType '= ..#TYPEAUDITING) && (tType '= ..#TYPETASK) && (tType '= ..#TYPEPROCESS) && (tType '= ..#TYPEAPPLICATIONERROR) && (tType '= ..#TYPEROLE) && (tType '= ..#TYPERESOURCE) && (tType '= ..#TYPEX509) && (tType '= ..#TYPEWALLETSECRET) && (tType '= ..#TYPEDEVICE) && (tType '= ..#TYPEOAUTHCLIENT) && (tType '= ..#TYPEOAUTHSERVERCLIENT) && (tType '= ..#TYPEAUDITEVENT) && (tType '= ..#TYPEAUDITUSEREVENT) && (tType '= ..#TYPESSL) && (tType '= ..#TYPESERVICE) && (tType '= ..#TYPELDAP) && (tType '= ..#TYPEOAUTHSERVERDEF) && (tType '= ..#TYPEOAUTHRESOURCESERVER) && (tType '= ..#TYPEOAUTHAUTHSERVER) && (tType '= ..#TYPENAMESPACE) && (tType '= ..#TYPEWEBSESSION) && (tType '= ..#TYPEBACKGROUNDTASK) && (tType '= ..#TYPEDATABASECONFIG) && (tType '= ..#TYPEDATABASE) && '..IsMappingType(tType) && (tType '= ..#TYPELANGUAGESERVER) && (tType '= ..#TYPELOCK) && (tType '= ..#TYPECLASS) && (tType '= ..#TYPEROUTINE) && (tType '= ..#TYPEJOURNALFILE) && (tType '= ..#TYPEJOURNALSETTINGS) && (tType '= ..#TYPELICENSEKEY) && (tType '= ..#TYPELICENSESERVER) && (tType '= ..#TYPEECPDATASERVER) && (tType '= ..#TYPEECPSETTINGS) && (tType '= ..#TYPEECPSSLCONNECTION) && (tType '= ..#TYPEENCRYPTIONKEYFILE) && (tType '= ..#TYPEDATABASEKEYS) && (tType '= ..#TYPEDATAELEMENTKEYS) && (tType '= ..#TYPEENCRYPTIONSTARTUP) && (tType '= ..#TYPEAUTHOPTIONS) && (tType '= ..#TYPESUPERSERVER) && (tType '= ..#TYPEMFTCONNECTION) && (tType '= ..#TYPEDOCDBDATABASE) && (tType '= ..#TYPEPRODUCTION) {
+        If (tType '= ..#TYPESCREENPERMISSION) && (tType '= ..#TYPEWEBAPPLICATION) && (tType '= ..#TYPEUSER) && (tType '= ..#TYPEAUDITING) && (tType '= ..#TYPETASK) && (tType '= ..#TYPEPROCESS) && (tType '= ..#TYPEAPPLICATIONERROR) && (tType '= ..#TYPEROLE) && (tType '= ..#TYPERESOURCE) && (tType '= ..#TYPEX509) && (tType '= ..#TYPEWALLETSECRET) && (tType '= ..#TYPEDEVICE) && (tType '= ..#TYPEOAUTHCLIENT) && (tType '= ..#TYPEOAUTHSERVERCLIENT) && (tType '= ..#TYPEAUDITEVENT) && (tType '= ..#TYPEAUDITUSEREVENT) && (tType '= ..#TYPESSL) && (tType '= ..#TYPESERVICE) && (tType '= ..#TYPELDAP) && (tType '= ..#TYPEOAUTHSERVERDEF) && (tType '= ..#TYPEOAUTHRESOURCESERVER) && (tType '= ..#TYPEOAUTHAUTHSERVER) && (tType '= ..#TYPENAMESPACE) && (tType '= ..#TYPEWEBSESSION) && (tType '= ..#TYPEBACKGROUNDTASK) && (tType '= ..#TYPEDATABASECONFIG) && (tType '= ..#TYPEDATABASE) && '..IsMappingType(tType) && (tType '= ..#TYPELANGUAGESERVER) && (tType '= ..#TYPELOCK) && (tType '= ..#TYPECLASS) && (tType '= ..#TYPEROUTINE) && (tType '= ..#TYPEJOURNALFILE) && (tType '= ..#TYPEJOURNALSETTINGS) && (tType '= ..#TYPELICENSEKEY) && (tType '= ..#TYPELICENSESERVER) && (tType '= ..#TYPEECPDATASERVER) && (tType '= ..#TYPEECPSETTINGS) && (tType '= ..#TYPEECPSSLCONNECTION) && (tType '= ..#TYPEENCRYPTIONKEYFILE) && (tType '= ..#TYPEDATABASEKEYS) && (tType '= ..#TYPEDATAELEMENTKEYS) && (tType '= ..#TYPEENCRYPTIONSTARTUP) && (tType '= ..#TYPEAUTHOPTIONS) && (tType '= ..#TYPESUPERSERVER) && (tType '= ..#TYPEMFTCONNECTION) && (tType '= ..#TYPEDOCDBDATABASE) && (tType '= ..#TYPEPRODUCTION) && (tType '= ..#TYPEPCTACCESS) {
             ; A type COVEREDTYPES lists and no branch evaluates. Fail closed rather than write.
             Do ..Refuse(..#UNCOVERED, .pProhibits, .pCode)
             Quit
@@ -1362,6 +1381,12 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
             Quit
         }
 
+        ; Story 18.10 (DW-2239): OcuPilot's own privileged routine application is refused a delete before its target is
+        ; read, whichever path reaches it.
+        If (tType = ..#TYPEWEBAPPLICATION) && ..OwnRoutineApplication(tId) && (..WriteTypeOf(..ToolClassNamed(pToolName)) = "DELETE") {
+            Do ..Refuse(..#OCUPILOTROUTINEAPP, .pProhibits, .pCode)
+            Quit
+        }
         Set tSC = ..Target(pToolName, tId, .tTarget, .tPresent, .tToolClass)
         If $$$ISERR(tSC) Quit
         ; AD-54. A create's target is CORRECTLY absent, so the early-out below -- which reasons that
@@ -1395,6 +1420,11 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
         Set tSC = ..Changed(pDiff, tPayloadObject, tTarget, ..SkippedFields($Get(tToolClass)), .tChanged)
         If $$$ISERR(tSC) Quit
 
+        ; Story 18.10 (DW-2239): a disable, or a change to a listed field, of OcuPilot's own routine application.
+        If (tType = ..#TYPEWEBAPPLICATION) && ..OwnRoutineApplication(tId) && ..RoutineApplicationChanges(tPayloadObject, tTarget, .tChanged) {
+            Do ..Refuse(..#OCUPILOTROUTINEAPP, .pProhibits, .pCode)
+            Quit
+        }
         If tType = ..#TYPEUSER {
             Set tSC = ..User(tId, tPayloadObject, tTarget, .tChanged, ..RemovesOf($Get(tToolClass)), .pProhibits, .pCode, ..WriteTypeOf($Get(tToolClass)))
             Quit
@@ -1561,6 +1591,12 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
         ; A managed file transfer connection (Story 18.26): AD-10 names no effect on one.
         If tType = ..#TYPEMFTCONNECTION {
             Set tSC = ..ReviewedFewOnly(tType, .tChanged, .pProhibits, .pCode)
+            Quit
+        }
+        ; A percent-class access entry (Story 18.10): AD-10 names no effect on one, so its one field passes the reviewed-few
+        ; sweep and nothing else.
+        If tType = ..#TYPEPCTACCESS {
+            Set tSC = ..ReviewedFewOnly(..#TYPEPCTACCESS, .tChanged, .pProhibits, .pCode)
             Quit
         }
         ; A superserver (Story 18.25): the one the web gateway connects through is not cut off.
@@ -4483,6 +4519,62 @@ ClassMethod IsPrivilegedRole(pRole As %String) As %Boolean [ Private ]
     If tName = "" Quit 0
     If tName = $ZConvert(..#ALLROLE, "U") Quit 1
     Quit $Extract(tName, 1, $Length(..#ADMINROLEPREFIX)) = $ZConvert(..#ADMINROLEPREFIX, "U")
+}
+
+/// <p>Whether <var>pPath</var> names one of OcuPilot's own privileged routine applications (<class>OcuPilot.Kernel.State.Base</class>'s
+/// <parameter>APPLICATION</parameter> and <parameter>IDENTITYAPPLICATION</parameter>), compared through
+/// <method>NormalizedPath</method> so that a re-cased or slash-suffixed spelling earns the same verdict.</p>
+ClassMethod OwnRoutineApplication(pPath As %String) As %Boolean
+{
+    Set tPath = ..NormalizedPath(pPath)
+    If tPath = "" Quit 0
+    Quit (tPath = ..NormalizedPath(##class(OcuPilot.Kernel.State.Base).#APPLICATION)) || (tPath = ..NormalizedPath(##class(OcuPilot.Kernel.State.Base).#IDENTITYAPPLICATION))
+}
+
+/// <p>Whether this write changes one of <parameter>ROUTINEAPPLICATIONFIELDS</parameter>, or disables the application
+/// (<method>Disables</method>), for an OcuPilot routine application the caller has already identified.</p>
+ClassMethod RoutineApplicationChanges(pPayload As %DynamicObject, pTarget As %DynamicObject, ByRef pChanged) As %Boolean
+{
+    If ..Disables(pPayload, .pChanged) Quit 1
+    Set tFields = $ListFromString(..#ROUTINEAPPLICATIONFIELDS)
+    Set tField = ""
+    For {
+        Set tField = $Order(pChanged(tField))
+        If tField = "" Quit
+        If $ListFind(tFields, tField) Quit
+    }
+    Quit (tField '= "")
+}
+
+/// <p>Whether a call to the privileged routine endpoint (<parameter>PRIVROUTINEENDPOINT</parameter> in
+/// <class>OcuPilot.Port.AdminPort</class>) is refused by the routine arm (AD-10 as amended, Story 18.10): a
+/// <code>DELETE</code> of OcuPilot's own routine application, or a <code>PUT</code> that sets <code>Enabled</code>
+/// false, or names <code>MatchRoles</code> or <code>Roles</code>, as <method>RoutineApplicationChanges</method> decides. A <code>GET</code> is never refused here. The same predicates as the
+/// kernel arm decide, so the two cannot drift.</p>
+/// <p><b>Caller contract:</b> <var>pBody</var> is the request body as a dynamic object, or <code>""</code>. A field the body
+/// names is a change, whether or not its value differs from the stored one.</p>
+ClassMethod RoutineEndpointRefused(pType As %String, pName As %String, pBody, Output pCode As %String) As %Boolean
+{
+    Set pCode = ""
+    If (pName = "") || '..OwnRoutineApplication(pName) Quit 0
+    If pType = "DELETE" {
+        Set pCode = ..#OCUPILOTROUTINEAPP
+        Quit 1
+    }
+    If pType '= "PUT" Quit 0
+    Set tPayload = {}
+    If $IsObject(pBody) && pBody.%IsA("%DynamicObject") Set tPayload = pBody
+    Kill tChanged
+    Set tFields = "Enabled," _ ..#ROUTINEAPPLICATIONFIELDS
+    For tI = 1:1:$Length(tFields, ",") {
+        Set tField = $Piece(tFields, ",", tI)
+        If tPayload.%IsDefined(tField) Set tChanged(tField) = ""
+    }
+    If ..RoutineApplicationChanges(tPayload, "", .tChanged) {
+        Set pCode = ..#OCUPILOTROUTINEAPP
+        Quit 1
+    }
+    Quit 0
 }
 
 /// <p>Whether this proposal disables the target by effect: the diff names <code>Enabled</code> and

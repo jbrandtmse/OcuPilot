@@ -32,6 +32,7 @@ const REGISTRY = join(REPO_ROOT, 'src', 'OcuPilot', 'Screen', 'Registry.cls');
 const ROSTER = join(REPO_ROOT, 'src', 'OcuPilot', 'Install', 'Roster.cls');
 
 const PROHIBITED = join(REPO_ROOT, 'src', 'OcuPilot', 'Kernel', 'Proposal', 'Prohibited.cls');
+const PCTACCESSERROR = join(REPO_ROOT, 'src', 'OcuPilot', 'Api', 'PctAccessError.cls');
 
 const STRINGS_SOURCE = join(REPO_ROOT, 'ui', 'src', 'app', 'core', 'strings.ts');
 
@@ -77,6 +78,21 @@ test('AD-53, AD-39: the serving-path refusal is one sentence on both surfaces', 
   );
   // And it names no caller: the same predicate refuses the agent and the screen alike (AD-53).
   assert.ok(!kernel[1].toLowerCase().includes('the agent'), `it names no caller: ${kernel[1]}`);
+});
+
+test('Story 18.10: the percent-class access system refusal is one sentence on both surfaces', () => {
+  // The Delete the editor disables and the envelope the port answers name the same rule, so their
+  // sentence is the same published text. The comparison lives here for the reason the serving-path
+  // pin above gives: neither file is readable from the other at run time.
+  //
+  // Mutation (Rule 19): change one word of `REASONSYSTEM` in `PctAccessError.cls` -> this goes red naming both.
+  const kernel = /Parameter REASONSYSTEM = "([^"]+)";/.exec(readFileSync(PCTACCESSERROR, 'utf8'));
+  assert.notEqual(kernel, null, 'PctAccessError.cls declares REASONSYSTEM');
+  assert.equal(
+    kernel[1],
+    stringValue('pctAccessRefusalSystem'),
+    "the kernel's reason and the client's copy are one published sentence"
+  );
 });
 
 test('AD-53: the client draws exactly the self-protection rules the instance declares', () => {

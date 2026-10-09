@@ -131,6 +131,7 @@ XData Coverage
 <screen name="WalletSecretList" class="OcuPilot.Test.ReadTool" method="TestTheRegistryListsDescriptorReadsAndInheritedKinds" corpus="named inside the production read-tool roster, which asserts every descriptor-derived read in one loop"/>
 <screen name="WebAppForm" class="OcuPilot.Test.WebAppCreate" method="TestTheFormDescriptorIsBuiltUnlistedAndCarriesTheListsOwnPairs"/>
 <screen name="WebAppList" class="OcuPilot.Test.Descriptor" method="TestTheWebApplicationsListValidatesAndNamesItsClassicPageInItsOwnCase"/>
+<screen name="WebAppPctAccessList" class="OcuPilot.Test.WebAppPctAccess" method="TestAbsentApplicationRefused"/>
 <screen name="X509Form" class="OcuPilot.Test.X509Import" method="TestTheFormDescriptorIsBuiltUnlistedAndCarriesTheListsOwnPairs"/>
 <screen name="X509CredentialList" class="OcuPilot.Test.ReadTool" method="TestTheRegistryListsDescriptorReadsAndInheritedKinds" corpus="named inside the production read-tool roster, which asserts every descriptor-derived read in one loop"/>
 <screen name="DeviceForm" class="OcuPilot.Test.DeviceCreate" method="TestTheFormDescriptorIsBuiltUnlistedAndCarriesTheListsOwnPairs"/>
@@ -325,6 +326,8 @@ XData Coverage
 <tool name="security.ldap.delete" class="OcuPilot.Test.LdapCreate" method="TestBothCallersDeleteAConfiguration"/>
 <tool name="webapp.list.delete" class="OcuPilot.Test.ToolWrite" method="TestTheWebApplicationDeleteToolIsAnActionWriteOverTheScreensOwnPairs"/>
 <tool name="webapp.list.update" class="OcuPilot.Test.ToolWrite" method="TestTheRegistryAdvertisesItAsAWriteToolFulfilledOnTheInstance"/>
+<tool name="webapp.pctaccess.create" class="OcuPilot.Test.WebAppPctAccess" method="TestCreateReadDelete" corpus="the create is asserted through the port: the entry is written, read back as STATE and removed; the tool's own mint is not yet exercised by a test"/>
+<tool name="webapp.pctaccess.delete" class="OcuPilot.Test.WebAppPctAccess" method="TestSystemEntryRefused" corpus="the delete is asserted through the port: an instance-owned entry is refused PCTACCESS.SYSTEM before the vendor; the tool's own mint is not yet exercised by a test"/>
 <tool name="webapp.sessions.end" class="OcuPilot.Test.WebSessions" method="TestTheToolIsADestructiveActionWriteOverTheListsPairsAndTheWritePair"/>
 <tool name="tasks.background.cancel" class="OcuPilot.Test.BackgroundTasks" method="TestTheToolsAreActionWritesOverTheScreensOwnPairs" corpus="the three Background tasks control tools are asserted together in one loop"/>
 <tool name="tasks.background.pause" class="OcuPilot.Test.BackgroundTasks" method="TestTheToolsAreActionWritesOverTheScreensOwnPairs" corpus="the three Background tasks control tools are asserted together in one loop"/>

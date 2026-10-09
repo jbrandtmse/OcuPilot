@@ -84,6 +84,12 @@ export const OCUPILOT_SSL_CONFIGURATION = 'OcuPilotProvider';
 export const OCUPILOT_SESSION_RULE = 'ocupilot-session';
 
 /**
+ * The rule that explains a percent-class access entry the instance owns (Story 18.10): a row whose `System` reads true
+ * goes only with its application, so its delete is refused the rule's sentence on either caller.
+ */
+export const SYSTEM_PCT_ACCESS_RULE = 'system-pct-access';
+
+/**
  * The ECP SSL/TLS authorization rules (Story 18.21): Authorize and Reject need a row whose `Status`
  * reads `Pending`, and Delete one whose `Status` reads `Authorized`. Each tool refuses any other row
  * with the rule's sentence, on both callers, because the vendor answers OK for any name; with no row
@@ -161,6 +167,11 @@ export function selfProtectionReason(
     const pending = rule === ECP_SSL_PENDING_RULE;
     if (row['Status'] === (pending ? ECP_SSL_PENDING_STATUS : ECP_SSL_AUTHORIZED_STATUS)) return '';
     return pending ? STRINGS.ecpSslRefusalNotPending : STRINGS.ecpSslRefusalNotAuthorized;
+  }
+  if (rule === SYSTEM_PCT_ACCESS_RULE) {
+    if (row === null) return '';
+    const system = row['System'];
+    return system === true || system === 'true' || system === 1 || system === '1' ? STRINGS.pctAccessRefusalSystem : '';
   }
   if (rule === OCUPILOT_SESSION_RULE) {
     const application = row?.['Application'];

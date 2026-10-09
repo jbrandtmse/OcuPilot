@@ -107,6 +107,13 @@ const ID_RULES: Readonly<Record<string, (id: string) => string>> = {
     if (at < 0) return id.toLowerCase();
     return id.slice(0, at).toLowerCase() + id.slice(at);
   },
+  // A percent-class access entry is keyed by `[application, AllowType, Class]` (Story 18.10): the same fold
+  // as `foldcase-firstpart`, which `OcuPilot.Kernel.EntityRef.NormalizedId` answers for `foldfirst`.
+  foldfirst: (id) => {
+    const at = id.indexOf(COMPOSITE_SEPARATOR);
+    if (at < 0) return id.toLowerCase();
+    return id.slice(0, at).toLowerCase() + id.slice(at);
+  },
   // A superserver is keyed by the composite `[Port, BindAddress]` (Story 18.25): the port in its plain
   // decimal spelling (folded to lower case when it is no integer), an empty bind address as `0.0.0.0`,
   // and the bind address in lower case. An id with no separator reads as `[id, '']` -- what

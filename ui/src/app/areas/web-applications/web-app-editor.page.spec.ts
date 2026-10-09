@@ -161,7 +161,7 @@ afterEach(() => {
 });
 
 describe('the web application editor (Story 9.2)', () => {
-  it('opens an application on its four tabs, the fixed settings under one caption', async () => {
+  it('opens an application on its five tabs, the fixed settings under one caption', async () => {
     // Mutation (Rule 19): drop the Matching roles tab from the page's `tabs` -> the tab list goes red.
     const { host } = await mount();
     expect(tabs(host).map((tab) => tab.querySelector('.ocu-form-tab-label')?.textContent?.trim())).toEqual([
@@ -169,6 +169,7 @@ describe('the web application editor (Story 9.2)', () => {
       STRINGS.webAppFormApplicationRoles,
       STRINGS.webAppTabMatchingRoles,
       STRINGS.webAppTabCors,
+      STRINGS.webAppPctAccessListLabel,
     ]);
     const fixed = host.querySelector('.ocu-form-fixed') as HTMLElement;
     expect(fixed.querySelector('.ocu-field-caption')?.textContent?.trim()).toBe(STRINGS.webAppEditorFixedFields);

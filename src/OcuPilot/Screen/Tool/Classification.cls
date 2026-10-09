@@ -341,6 +341,12 @@ XData Entries
       "Enabled": "ordinary"
     }
   },
+  "webapp.pctaccess.create": {
+    "fieldList": "WebApp.PctClassAccess",
+    "classification": {
+      "AllowAccess": "ordinary"
+    }
+  },
   "webapp.list.create": {
     "fieldList": "WebApp.App",
     "classification": {

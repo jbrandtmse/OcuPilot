@@ -342,6 +342,11 @@ ClassMethod Run(pTool As %DynamicObject, pToolClass As %String, pActionId As %St
         Do tDelta.%Set($ClassMethod(pToolClass, "IdArgument"), pId, "string")
         Set tArgs = tDelta
 
+        ; Story 18.10: a target the prohibited set refuses before its precondition is read is a 403, not Body's 400.
+        If $ClassMethod(pToolClass, "RefusedBeforeState", pId, .tEarlyCode) {
+            Set tSC = ##class(OcuPilot.Api.Error).Render(403, ##class(OcuPilot.Api.Error).#FORBIDDEN, ..ReasonFor(tEarlyCode), tEarlyCode)
+            Quit
+        }
         Set tBuildSC = ..Body(pToolClass, tFresh, tArgs, .tPayload, .tDiff, .tProblem)
         If $$$ISERR(tBuildSC) {
             Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ##class(%Exception.StatusException).CreateFromStatus(tBuildSC))

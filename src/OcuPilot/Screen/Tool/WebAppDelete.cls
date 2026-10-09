@@ -114,6 +114,19 @@ ClassMethod PrivilegePairs(pDescriptor As %String = "", Output pResolved As %Boo
     Quit tPairs _ $ListBuild(tOwn)
 }
 
+/// <p>OcuPilot's own privileged routine applications (AD-10, DW-2239, Story 18.10) are refused the delete as
+/// <parameter>PROHIBITED.OCUPILOTROUTINEAPP</parameter> before the precondition below reads them: they report an empty
+/// <parameter>PRECONDITIONFIELD</parameter>, which would otherwise answer 400. Other applications are not refused here.</p>
+ClassMethod RefusedBeforeState(pIdValue As %String, Output pCode As %String) As %Boolean
+{
+    Set pCode = ""
+    If ##class(OcuPilot.Kernel.Proposal.Prohibited).OwnRoutineApplication(pIdValue) {
+        Set pCode = $Parameter("OcuPilot.Kernel.Proposal.Prohibited", "OCUPILOTROUTINEAPP")
+        Quit 1
+    }
+    Quit 0
+}
+
 /// <p>The removal rows this proposal's card shows, from the fresh <code>GET</code>
 /// <var>pFresh</var>: one per subject field, carrying the field and the value the instance holds
 /// and no after-state, which is what a delete's diff row is (EXPERIENCE.md's

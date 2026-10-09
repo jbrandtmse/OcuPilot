@@ -161,7 +161,7 @@ export function parseEntityTypes(text) {
  * `prebuild`, naming the rule, rather than being mirrored into a key builder that does nothing
  * with it (AD-5, AD-13 as amended by DW-1359).
  */
-export const IMPLEMENTED_ID_RULES = ['foldcase-striptrailingslash', 'foldcase', 'singleton', 'integer', 'foldcase-firstpart', 'integerset', 'directoryset', 'documentset', 'portbind'];
+export const IMPLEMENTED_ID_RULES = ['foldcase-striptrailingslash', 'foldcase', 'singleton', 'integer', 'foldcase-firstpart', 'foldfirst', 'integerset', 'directoryset', 'documentset', 'portbind'];
 
 /**
  * The per-type canonical id rules, from the kernel's own `IDRULES` parameter: `[[type, rule],
@@ -312,7 +312,7 @@ function oneActionProblem(action, where, rules) {
  * no explanation, which is the divergence `checkedDeclaredNameKinds` exists to prevent for its own
  * vocabulary (AD-5, AD-53).
  */
-export const IMPLEMENTED_SELF_PROTECTION_RULES = ['serves-ocupilot', 'protected-account', 'service-account-sign-in', 'ocupilot-application-roles', 'system-role', 'system-resource', 'ocupilot-ssl', 'ocupilot-session', 'ecp-ssl-pending', 'ecp-ssl-authorized'];
+export const IMPLEMENTED_SELF_PROTECTION_RULES = ['serves-ocupilot', 'protected-account', 'service-account-sign-in', 'ocupilot-application-roles', 'system-role', 'system-resource', 'ocupilot-ssl', 'ocupilot-session', 'ecp-ssl-pending', 'ecp-ssl-authorized', 'system-pct-access'];
 
 /**
  * The projection names this module's `declaredNames` fills, for the roster check against

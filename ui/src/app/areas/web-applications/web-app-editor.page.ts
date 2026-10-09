@@ -21,6 +21,7 @@ import { STRINGS } from '../../core/strings';
 import { STATE_CONFLICT_CODE, type Violation } from '../../core/violations';
 import { Dialog } from '../../shell/dialog';
 import { FormTabBody, FormTabs, type FormTabView } from '../../shell/form-tabs';
+import { WebAppClassAccessTab } from './web-app-class-access-tab';
 import {
   ADD_APPLICATION_ROLE,
   ADD_MATCHING_ROLE,
@@ -34,6 +35,7 @@ import {
   APPLICATION_ROLES_TAB,
   AUTHE_FIELD,
   CORS_FIELDS,
+  CLASS_ACCESS_TAB,
   CORS_TAB,
   DERIVED_PYTHON,
   DERIVED_REST,
@@ -164,7 +166,7 @@ interface HeldRoleView {
 @Component({
   selector: 'app-web-app-editor-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [Dialog, FormTabs, FormTabBody],
+  imports: [Dialog, FormTabs, FormTabBody, WebAppClassAccessTab],
   template: `<section class="ocu-form-page">
     @if (hasSummary) {
       <div #summary class="ocu-banner ocu-form-summary" role="alert" tabindex="-1">
@@ -501,6 +503,9 @@ interface HeldRoleView {
           }
         </div>
       </ng-template>
+      <ng-template ocuFormTab="class-access">
+        <app-web-app-class-access-tab [application]="applicationName" />
+      </ng-template>
     </app-form-tabs>
 
     <div class="ocu-form-bar">
@@ -663,6 +668,7 @@ export class WebAppEditorPage {
       { key: APPLICATION_ROLES_TAB, label: STRINGS.webAppFormApplicationRoles, count: counts[APPLICATION_ROLES_TAB] ?? 0 },
       { key: MATCHING_ROLES_TAB, label: STRINGS.webAppTabMatchingRoles, count: counts[MATCHING_ROLES_TAB] ?? 0 },
       { key: CORS_TAB, label: STRINGS.webAppTabCors, count: counts[CORS_TAB] ?? 0 },
+      { key: CLASS_ACCESS_TAB, label: STRINGS.webAppPctAccessListLabel, count: 0 },
     ];
   }
 

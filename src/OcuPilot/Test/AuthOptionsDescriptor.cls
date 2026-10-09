@@ -163,7 +163,7 @@ Method TestTheCodesAnswerTheirSentences()
         Do $$$AssertTrue($ZConvert(tReason, "L") '[ "the agent", tCode _ " names no caller")
         Do $$$AssertTrue($ListFind($ClassMethod(tProhibited, "Codes"), tCode) > 0, tCode _ " is one of the set's codes")
     }
-    Do $$$AssertEquals($ListLength($ClassMethod(tProhibited, "Codes")), 33, "thirty-three codes")
+    Do $$$AssertEquals($ListLength($ClassMethod(tProhibited, "Codes")), 34, "thirty-four codes")
 }
 
 /// <p>A2, AD-4: the merge leaves an <code>AutheKB</code> the call does not change out of the payload, and

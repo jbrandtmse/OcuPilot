@@ -537,6 +537,9 @@ const TYPED_NAME_ROWS: Readonly<
   [AUDIT_USER_EVENT_LIST]: { name: 'EventName', field: 'EventName', equals: AGENT_WRITE_EVENT, advisory: STRINGS.proposalAuditWarning },
   // An X.509 credential is typed by its alias, which is also its row key; it carries no advisory.
   'OcuPilot.Screen.Descriptor.X509CredentialList': { name: 'Alias', field: '', equals: '', advisory: '' },
+  // Story 18.10: a percent-class access entry is keyed by its composite id, which no one types, so its Delete types the
+  // entry's class as the row shows it.
+  'OcuPilot.Screen.Descriptor.WebAppPctAccessList': { name: 'Class', field: '', equals: '', advisory: '' },
   // A mapping is keyed by `[namespace, Name]`, whose separator no one can type, so its Delete types
   // the mapping's name and sends the row key.
   [GLOBAL_MAPPING_LIST]: { name: 'Name', field: '', equals: '', advisory: '' },

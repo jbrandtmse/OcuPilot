@@ -98,6 +98,7 @@ XData UrlMap [ XMLNamespace = "http://www.intersystems.com/urlmap" ]
   <Route Url="/web-applications/name" Method="GET" Call="WebAppNameCheck"/>
   <Route Url="/web-applications/:id" Method="PUT" Call="WebAppUpdate"/>
   <Route Url="/web-applications" Method="POST" Call="WebAppCreate"/>
+  <Route Url="/web-app/pct-access" Method="POST" Call="WebAppPctAccessSave"/>
   <Route Url="/users/form" Method="GET" Call="UserFormRules"/>
   <Route Url="/users/name" Method="GET" Call="UserNameCheck"/>
   <Route Url="/users/effective" Method="GET" Call="UserEffective"/>
@@ -407,6 +408,13 @@ ClassMethod AgentDefinitionCreate() As %Status
 ClassMethod AgentProviders() As %Status
 {
     Quit ##class(OcuPilot.Api.Definitions).HandleProviders()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /web-app/pct-access</code> (Story 18.10): a class access entry's
+/// create, delegating to <class>OcuPilot.Area.WebApp.PctAccessSave</class>.</p>
+ClassMethod WebAppPctAccessSave() As %Status
+{
+    Quit ##class(OcuPilot.Area.WebApp.PctAccessSave).HandleCreate()
 }
 
 /// <p>Thin <code>Call=</code> target for <code>GET /web-applications/form</code> (Story 8.1):

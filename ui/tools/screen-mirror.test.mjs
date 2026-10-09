@@ -249,6 +249,8 @@ test('AD-13: the id-rule table is read from the kernel and is what the mirror em
     ['namespace', 'foldcase'],
     // Story 18.14: a mapping is keyed by `[namespace, Name]`; only the namespace part folds.
     ['global-mapping', 'foldcase-firstpart'],
+    // Story 18.10: a percent-class access entry is keyed by `[application, AllowType, Class]`; only the application folds.
+    ['pct-class-access', 'foldfirst'],
     ['routine-mapping', 'foldcase-firstpart'],
     ['package-mapping', 'foldcase-firstpart'],
     // Story 18.3: a database configuration name resolves without case and is stored upper case.
@@ -278,7 +280,7 @@ test('AD-13: the id-rule table is read from the kernel and is what the mirror em
     // Story 18.25: a superserver is keyed by its port and bind address.
     ['superserver', 'portbind'],
   ]);
-  assert.deepEqual(parseIdRuleNames(text), ['foldcase-striptrailingslash', 'foldcase', 'singleton', 'integer', 'foldcase-firstpart', 'integerset', 'directoryset', 'documentset', 'portbind']);
+  assert.deepEqual(parseIdRuleNames(text), ['foldcase-striptrailingslash', 'foldcase', 'singleton', 'integer', 'foldcase-firstpart', 'foldfirst', 'integerset', 'directoryset', 'documentset', 'portbind']);
   // `null`, never `[]`, when the parameter is missing: an absent table and a table that declares
   // nothing are different facts, and only one of them is a source to build from.
   assert.equal(parseIdRules('Class X { }'), null);
@@ -392,7 +394,7 @@ test('AD-13: the generator refuses an id rule no reader can apply, naming the ru
 
   // The roster the third refusal is judged against is the one `entity-ref.ts` is pinned equal to
   // by `ui/tools/entity-ref.test.mjs`, so neither side can grow a rule alone.
-  assert.deepEqual(IMPLEMENTED_ID_RULES, ['foldcase-striptrailingslash', 'foldcase', 'singleton', 'integer', 'foldcase-firstpart', 'integerset', 'directoryset', 'documentset', 'portbind']);
+  assert.deepEqual(IMPLEMENTED_ID_RULES, ['foldcase-striptrailingslash', 'foldcase', 'singleton', 'integer', 'foldcase-firstpart', 'foldfirst', 'integerset', 'directoryset', 'documentset', 'portbind']);
 });
 
 test('AD-14: the generator refuses an entity type the kernel enum does not hold, naming both', () => {
@@ -1340,7 +1342,8 @@ test('criteriaProblem returns every sentence OcuPilot.Test.CriteriaCorpus declar
   // Story 19.14's nine further tabs, whose one criterion is the table, view or procedure the route id names.
   // Story 18.19's Journal records, whose six criteria are the classic record browser's search.
   // Story 18.7's two key file lists, whose two criteria are the key file's root and path.
-  // Story 18.9's SQL privileges, whose two criteria are the grantee and the namespace.
+  // Story 18.9's SQL privileges, whose two criteria are the grantee and the namespace. Story 18.10's percent-class
+  // access list, whose one criterion is the application.
   const withCriteria = emittedScreens.filter((screen) => (screen.read?.criteria ?? null) !== null);
   assert.deepEqual(
     withCriteria.map((screen) => screen.descriptor),
@@ -1392,6 +1395,7 @@ test('criteriaProblem returns every sentence OcuPilot.Test.CriteriaCorpus declar
       'OcuPilot.Screen.Descriptor.TaskRunList',
       'OcuPilot.Screen.Descriptor.TaskUpcomingList',
       'OcuPilot.Screen.Descriptor.WalletSecretList',
+      'OcuPilot.Screen.Descriptor.WebAppPctAccessList',
     ]
   );
   for (const descriptor of ['GlobalMappingList', 'RoutineMappingList', 'PackageMappingList']) {

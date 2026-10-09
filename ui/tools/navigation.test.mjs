@@ -252,6 +252,8 @@ test('a side bar lists only built screens, in side-bar order', () => {
       'permissions/services',
       'web-applications/rest-apis/document',
       'web-applications/list/edit',
+      // Story 18.10: the percent-class access list, unlisted, the editor's fifth tab.
+      'web-applications/list/class-access',
       'web-applications/list',
       'web-applications/rest-apis',
       // Story 16.2: Web sessions, the third Web applications entry.

@@ -317,6 +317,23 @@ test('AD-13: the foldcase-firstpart rule folds a mapping id\'s namespace part an
   );
 });
 
+// Story 18.10 (AD-13): a percent-class access entry is keyed by `[application, AllowType, Class]`, and only the
+// application folds, as the `foldfirst` rule says. The rule is the one `foldcase-firstpart` names for the mappings.
+//
+// Mutation (Rule 19): implement `foldfirst` as `(id) => id` in `entity-ref.ts` -> the folded application leg goes red;
+// as `(id) => id.toLowerCase()` -> the allow-type and class legs go red.
+test('Story 18.10: the foldfirst rule folds a percent-class entry\'s application and keeps its class', () => {
+  assert.equal(ENTITY_ID_RULES['pct-class-access'], 'foldfirst', 'the mirrored table declares foldfirst for pct-class-access');
+  const type = 'pct-class-access';
+  const canonical = joinCompositeId(['/csp/user', 'AllowClass', '%OcuProbe1810.Entry']);
+  assert.equal(normalizeEntityId(type, joinCompositeId(['/CSP/USER', 'AllowClass', '%OcuProbe1810.Entry'])), canonical, 'the application folds');
+  assert.notEqual(
+    normalizeEntityId(type, joinCompositeId(['all-applications', 'AllowClass', '%OcuProbe1810.Entry'])),
+    normalizeEntityId(type, joinCompositeId(['all-applications', 'AllowClass', '%ocuprobe1810.entry'])),
+    'a class differing only in case is another entry'
+  );
+});
+
 
 // Story 16.6, AD-13: a process id may name a set of pids. The client answers what
 // `OcuPilot.Kernel.EntityRef.PlainIntegerSet` answers for the same corpus (`OcuPilot.Test.EntityRef`):
