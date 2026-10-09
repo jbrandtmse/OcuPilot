@@ -221,7 +221,8 @@ Method TestAnAssignedPageGatesEveryDeclaringToolOnTheAgentsCaller()
             Do tPlan.%Push({"kind": "dispatch", "turnKey": (tTurnKey), "tool": ($List(tTools, tI)), "input": (..AgentInput($List(tTools, tI)))})
         }
         Set tRun = ##class(OcuPilot.Test.MappingWriteGate).RunAs(tUser, tPlan)
-        Do $$$AssertEquals(##class(OcuPilot.Test.NamespaceWriteGate).Ran(tRun), tUser _ " 1", tUser _ ": the child process ran as the principal")
+        Set tRan = ##class(OcuPilot.Test.NamespaceWriteGate).Ran(tRun)
+        Do $$$AssertEquals(tRan, tUser _ " 1", tUser _ ": the child process ran as the principal (it answered: " _ tRan _ ")")
         For tI = 1:1:$ListLength(tTools) {
             Set tLeg = ##class(OcuPilot.Test.NamespaceWriteGate).Leg(tRun, tI)
             Set tSaid = $Select($IsObject(tLeg): tLeg.%Get("http") _ " " _ tLeg.%Get("code") _ " " _ tLeg.%Get("failedPair"), 1: "absent")
