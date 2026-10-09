@@ -10743,6 +10743,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Red in instance shard 2/5 on ac551bcf (20.19, no background-task code); the class passed 8/8 on ocupilot-b-ci at 20.19's tree; adminport logged #40320 Async task cannot be canceled
 - 2026-10-09T01:39:27Z status=routed owner=23-5-the-range-end-cleanup-part-5 by=lead note=wait for the compact to be pausable (or re-seed) before Pause and Cancel; CI flake, Rule 27
 - 2026-10-09T16:53:28Z occurrence=20-20-the-agent-creates-new-classes-and-routines-on-the-person-s-c by=lead note=recurred in CI run 37952814550 instance shard 2/5 (Pause 409 TASK.BACKGROUND.STATE)
+- 2026-10-09T18:05:07Z occurrence=20-20-the-agent-creates-new-classes-and-routines-on-the-person-s-c by=lead note=red again in run 37952814550 attempt 2 (shard 2/5, same Pause 409); the test's own 'runs again' leg admits Done, so a compact that finishes between Resume and Pause makes Pause unanswerable; fix: re-seed while the resumed compact reads Done (bounded), or a larger fill
 
 ### DW-2239: The web-application tools can reach OcuPilot's own privileged routine applications (OcuPilotState, OcuPilotIdentity): no AD-10 arm refuses a delete or a MatchRoles :%All update, and the vendor's privileged-routine endpoint also writes any application type
 - source: spec-18-10-web-application-extras-and-spec-based-rest-services.md | severity: high | fix-risk: low | footprint: out-of-footprint
