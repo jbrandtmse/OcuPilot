@@ -10742,6 +10742,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: cycle-log-epic-20.md (run 37865082072 attempt 1) | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: Red in instance shard 2/5 on ac551bcf (20.19, no background-task code); the class passed 8/8 on ocupilot-b-ci at 20.19's tree; adminport logged #40320 Async task cannot be canceled
 - 2026-10-09T01:39:27Z status=routed owner=23-5-the-range-end-cleanup-part-5 by=lead note=wait for the compact to be pausable (or re-seed) before Pause and Cancel; CI flake, Rule 27
+- 2026-10-09T16:53:28Z occurrence=20-20-the-agent-creates-new-classes-and-routines-on-the-person-s-c by=lead note=recurred in CI run 37952814550 instance shard 2/5 (Pause 409 TASK.BACKGROUND.STATE)
 
 ### DW-2239: The web-application tools can reach OcuPilot's own privileged routine applications (OcuPilotState, OcuPilotIdentity): no AD-10 arm refuses a delete or a MatchRoles :%All update, and the vendor's privileged-routine endpoint also writes any application type
 - source: spec-18-10-web-application-extras-and-spec-based-rest-services.md | severity: high | fix-risk: low | footprint: out-of-footprint
@@ -10798,3 +10799,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-20-20-the-agent-creates-new-classes-and-routines-on-the-person-s-c.md | severity: med | fix-risk: med | footprint: out-of-footprint
 - evidence: ExplorerWrite.PrivilegePairs reads Kernel.Scope.Current() at Confirm while ExplorerWrite.PortQuery sends the re-read and write to the payload's Namespace; a USER compile or delete confirmed at ?ns=HSCUSTOM is gated on HSCUSTOM's WRITE (false refusal only: the port's own WritePairs checks USER). 20.20's spec forbids changing these pairs.
 - 2026-10-09T15:04:14Z status=escalated owner=burndown by=cr note=fix would store Namespace in their mint args and read it in ArgumentPairs, as 20.20 did for saves and creates
+
+### DW-2255: CI flake: ClassicPageGate.TestAnAssignedPageGatesEveryDeclaringToolOnTheAgentsCaller read its child process as not having run as the probe principal, so every later refusal assertion failed
+- source: cycle-log-epic-20.md (run 37952814550 attempt 1) | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: Red in instance shard 1/5 on 39ed66f1 ('OcuProbe1814PageLacking: the child process ran as the principal' then each explorer tool's refusal); green 8/8 on ocupilot-b-ci at the same tree (run 59); 20.20 adds tools but changes no page gate
+- 2026-10-09T16:53:29Z status=routed owner=23-5-the-range-end-cleanup-part-5 by=lead note=wait for the child's run record before asserting (NamespaceWriteGate.Ran); CI flake, Rule 27

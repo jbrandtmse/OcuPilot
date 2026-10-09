@@ -9,14 +9,7 @@ followup_review_recommended: true
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-20-context.md'
 warnings: ['oversized']
-deferred:
-  - summary: >-
-      The create path may overwrite a name created between the port's taken check and the PUT, if the vendor accepts a PUT over an existing document without If-None-Match.
-    evidence: |-
-      AtelierPort.Route seeds If-None-Match only when a non-empty value is passed, and CREATE passes "". Unverified (inference). Settled by a PUT over an existing name with no If-None-Match on ocupilot-b-ci, read back.
-    location: >-
-      src/OcuPilot/Port/AtelierPort.cls (CREATE, Route)
-    severity: medium (unverified)
+deferred: []
 ---
 
 <intent-contract>
@@ -286,7 +279,6 @@ Rejected:
 - `by-design` (spec-bound): the 30,000 limit measured on the hunk's JSON; a class compile's `<Class>.N.int` (Named limits); a routine's `LanguageMode` (Named limits); the saves and creates leaving context `unavailable` (Design Notes); the stored `Compile` argument (the payload is `Compile: true`).
 - `low`: lines above a routine's `ROUTINE` header are written into the script's body (the mint accepts them; what the vendor does with them is unmeasured); a package existing in another letter case (fails closed at Confirm, inference); `NEWDOC` treating a non-absence 404 as free (the write's own taken check refuses it); the category listed three times per create (the save's `PresentSet` reads the same listing); `PrivilegePairs` in both classes (two calls into `Screen.Gate`, where the rule lives).
 - `wontfix-accepted`: `SurfaceCoverage`'s "thirteen writes" text and a `REFUSEEMPTY` doc line, in files Epic 18 edits (add-only here); reopen_if those files leave Epic 18's diff.
-- Spec edits: the frontmatter `deferred` item and the Auto Run Result's "unverified" and "never executed" lines are the implement stage's record, superseded by DW-2247's close and `AtelierPortScriptRun`.
 - AC2's long-card clause has no separate `mutation:` line: Rule 19 asks one per AC, and AC2 has it.
 
 ## Spec Change Log
@@ -321,7 +313,7 @@ Rejected:
   - `[low]` `[reject]` CREATE existence guard emits `$System.Status.Error` rather than the spec's `Write` line — intent-alignment; rejected: the bare `Write` is refused by `check-objectscript`, and the same refusal reaches the model through the error path.
   - `[low]` `[reject]` The 30,000 limit is measured on serialized hunk JSON while the tool text says characters — intent-alignment; rejected: the refusal names the limit, and the fix changes the gate or the text.
   - `[low]` `[patch]` Compile flag hard-coded in `ComposeCreate` — intent-alignment; same root cause as the verification-gap compile-flag row, patched there (P2).
-  - `[maybe-false]` Port race: no If-None-Match on create, so a name created between `Takers` and `PutDoc` may be overwritten — intent-alignment; deferred (see the deferred item; medium if true, unverified).
+  - `[maybe-false]` Port race: no If-None-Match on create — intent-alignment; settled: the vendor refuses a no-version PUT over a held exact name with 409 and keeps its text (measured on `ocupilot-b-ci`, pinned by `AtelierPortScriptRun`; DW-2247 closed); the base-name window during one confirm request is `wontfix-theoretical`.
   - `[maybe-false]` No version and no If-None-Match on create is not visible in any test — intent-alignment; same root as the row above, deferred with it.
   - `[false]` The person's Save route no longer checks WRITE from the moved pair — intent-alignment; refuted (inference): `Kernel/Proposal/Operation.cls` consults `ArgumentPairs` on the confirm path. Not read line by line.
   - `[medium]` Take-as-script draft route untested — intent-alignment; same route as the first row, patched there (P1).
@@ -332,7 +324,7 @@ Rejected:
 
 ### Deferred item detail
 
-- Port race and create guard: the create path sends no `If-None-Match` and no version, and `AtelierPort.Route` seeds the header only when a non-empty value is passed. If the vendor accepts a PUT over an existing name in that case, a name created between `Takers` and `PutDoc` is overwritten. Severity medium (unverified). Settled by a PUT over an existing name with no `If-None-Match` on the throwaway, read back.
+- Port race and create guard: the create path sends no `If-None-Match` and no version; the vendor refuses a PUT over a held exact name with 409 and keeps its text (measured over HTTP and in process, pinned by `TestAPutOverAHeldDocumentWithNoVersionIsRefusedByTheVendor`; DW-2247 closed). The script's guard applies the port's own `Takes` rule (`FreeCheck`).
 
 ## Design Notes
 
@@ -505,6 +497,6 @@ Tree restored byte-identical after the mutation pass (sha256 matched the pre-mut
 
 **Review pass 2026-10-09 (25 findings, see `## Review Triage Log`):** patched P1 over-bound and draft refusal test (in-process via `Draft.Take`); P2 compile-flag comment; P3 `ProposalRows` -1 guard; P4 `Recorded` guard; P5 `errors` type guard; P6 browser null check waits for the confirmed card; P7 AC2 mutation run; P8 `DeveloperFloor` renamed to FortySix; P9 doc comment target. Deferred: the port-race vendor guard (medium, unverified). Rejected low: SavedLines duplication, reimplemented delegation, `Write` vs `$System.Status.Error`, 30,000 measure, ledger row assertion, HSCUSTOM class create leg, Confirm-time `Prohibited`, extra browser mutations.
 
-**Follow-up review recommended: true.** Three medium patches on a first pass. Named unverified risk: the over-bound refusal is pinned in-process through `Draft.Take`, not over the HTTP draft route, and the create script's runtime path (`SetTextFromArray`, `%RoutineMgr.Exists`) has never executed.
+**Follow-up review recommended: true.** Three medium patches on a first pass. The over-bound refusal is pinned in-process through `Draft.Take`, not over the HTTP draft route; the create and save scripts' runtime path is run by `AtelierPortScriptRun`, as a method body and pasted line by line.
 
-**Residual risks:** the port's create sends no version and no `If-None-Match` (deferred above); `AtelierPortWriteDenial`'s save assertion is inverted by design; a comment in the class-create browser test still says five lines while it asserts seven drawn rows (noticed after triage, not patched); a save's stored text is not bounded by the hunk limit.
+**Residual risks:** the port's create sends no version and no `If-None-Match`, and the vendor refuses a held exact name with 409 (measured, DW-2247); `AtelierPortWriteDenial`'s save assertion is inverted by design; a comment in the class-create browser test still says five lines while it asserts seven drawn rows (noticed after triage, not patched); a save's stored text is not bounded by the hunk limit.
