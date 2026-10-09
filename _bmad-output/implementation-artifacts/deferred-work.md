@@ -8205,6 +8205,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-28T23:51:23Z status=resolved-by:16-5-background-tasks by=adjudication note=CI 36496304575 red on the agent pause leg reading the state at once; Settled polls until it leaves Running (inference: async pause)
 - 2026-09-29T17:04:25Z occurrence=18-3-databases-configuration-creation-properties-and-volumes
 - 2026-10-09T01:39:27Z occurrence=20-19-the-agent-reads-class-and-routine-source by=lead note=recurred in CI run 37865082072; filed as DW-2236
+- 2026-10-09T19:19:59Z status=resolved-by:20-20-the-agent-creates-new-classes-and-routines-on-the-person-s-c by=lead note=same race as DW-2236 (a seeded compact finishing between Resume and Pause or mint), fixed in 6557da7e and 9d467e37
 
 ### DW-1805: Background tasks lists OcuPilot's own port-queued async tasks under Admin API with Cancel, Pause and Resume, and AdminPort's await does not treat Canceled as terminal
 - source: spec-16-5-background-tasks.md | severity: low | fix-risk: low | footprint: in-story
@@ -10744,6 +10745,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-09T01:39:27Z status=routed owner=23-5-the-range-end-cleanup-part-5 by=lead note=wait for the compact to be pausable (or re-seed) before Pause and Cancel; CI flake, Rule 27
 - 2026-10-09T16:53:28Z occurrence=20-20-the-agent-creates-new-classes-and-routines-on-the-person-s-c by=lead note=recurred in CI run 37952814550 instance shard 2/5 (Pause 409 TASK.BACKGROUND.STATE)
 - 2026-10-09T18:05:07Z occurrence=20-20-the-agent-creates-new-classes-and-routines-on-the-person-s-c by=lead note=red again in run 37952814550 attempt 2 (shard 2/5, same Pause 409); the test's own 'runs again' leg admits Done, so a compact that finishes between Resume and Pause makes Pause unanswerable; fix: re-seed while the resumed compact reads Done (bounded), or a larger fill
+- 2026-10-09T19:19:59Z status=resolved-by:20-20-the-agent-creates-new-classes-and-routines-on-the-person-s-c by=lead note=6557da7e and 9d467e37: both BackgroundTasksLive compact tests branch on the observed state (an ended compact's Pause is the 409 state refusal, an ended held compact's confirm the target-changed refusal, each asserted) and re-seed at most three; mutations: PortalControl skipping Pause and dropping Hold redden them; green 8/8 on ocupilot-b-ci
 
 ### DW-2239: The web-application tools can reach OcuPilot's own privileged routine applications (OcuPilotState, OcuPilotIdentity): no AD-10 arm refuses a delete or a MatchRoles :%All update, and the vendor's privileged-routine endpoint also writes any application type
 - source: spec-18-10-web-application-extras-and-spec-based-rest-services.md | severity: high | fix-risk: low | footprint: out-of-footprint
