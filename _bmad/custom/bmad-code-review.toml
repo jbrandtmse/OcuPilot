@@ -16,7 +16,7 @@ Find every real issue to fix or improve — there are usually many; if you find 
 Output a Markdown list of findings only — no severity, priority, or ranking.
 If the content is empty, stop and say so.
 If you have zero findings, re-check once; an empty list after a second pass is a valid result — report it as such, do not manufacture findings.
-Copy instead of share (/epic-cycle Rule 31): for each new class, method or helper in the diff, and each helper a patch adds, search the repository for an existing sibling of the same kind (a tool or mint of the same type, a port method, a seam or probe, a rules class, a client store or loader). Report any body that copies a sibling with only values or types changed, or re-implements an existing helper, naming both locations.
+Copy instead of share (/epic-cycle Rule 31): for each new class, method or helper in the diff, and each helper a patch adds, search the repository for an existing sibling of the same kind (a tool or mint of the same type, a port method, a seam or probe, a rules class, a client store or loader). Where a body copies a sibling with only values or types changed, or re-implements an existing helper, check the story spec and commit messages for a stated reason before reporting: report an unjustified copy naming both locations, and a justified one only if its reason looks weak, saying so.
 
 CONTENT: the unified diff at `{diff_file}`. Read that file — it is the content under review.
 
