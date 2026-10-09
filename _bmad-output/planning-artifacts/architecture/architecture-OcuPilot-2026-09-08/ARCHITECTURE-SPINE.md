@@ -111,6 +111,8 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
 
   **The guard refuses a password the instance's policy refuses** [AMENDED 2026-10-08, Story 18.29 spec gate, Rule 20]: on a `Security.User` create or set-password, `AdminPort` runs the password helper (`$SYSTEM.Security.ValidatePassword`) and answers 422 before the vendor call, unlogged, so a bad password does not raise the alert state. `UserCopyPort` maps the vendor's #837, #838, #845 and #958 to unlogged refusals; on `AdminPort` a vendor refusal after the guard has passed (a policy change between the two) is logged like any other vendor fault.
 
+  **A privileged-routine call is checked against its target's type** [AMENDED 2026-10-09, Story 18.10 spec gate, Rule 20]: the vendor's `Security.PrivilegedRoutine` endpoint writes any application type (measured: a `PUT` changed a web application and then answered 500, and a `DELETE` deleted one). So `AdminPort` refuses a `GET`, `PUT` or `DELETE` naming an application whose type lacks the routine bit (4) before any vendor call and unlogged, `GET` with 404 and `PUT` and `DELETE` with 409 `PRIVROUTINE.TYPE`. An absent name passes.
+
 ### AD-3 — Write payload field lists are derived; the semantic half is authored once per tool
 
 - **Binds:** every write tool in 5.5–5.10; the ~40 rows the PRD lists as built against an unverified contract
@@ -358,6 +360,8 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
 
   **A copied user's escalation roles count as its roles** [AMENDED 2026-10-08, Story 18.29 spec gate, Rule 20]: a copy whose source holds `%All` or an `%Admin_*` role, directly or as an escalation role, is confirmed at the destructive treatment and names the privilege.
 
+  **OcuPilot's own privileged routine applications** [AMENDED 2026-10-09, Story 18.10 spec gate, Rule 20], DW-2239: deleting `OcuPilotState` or `OcuPilotIdentity`, disabling either, or changing its `MatchRoles` or `Roles` is refused `PROHIBITED.OCUPILOTROUTINEAPP` from either caller, through every tool that reaches them, in the family of the arms for OcuPilot's own web applications. Story 18.31's privileged routine application tools meet the same arm, and their `Routines` and `Resource` are settled at its gate.
+
 ### AD-11 — Untrusted content never becomes instruction
 
 - **Binds:** NFR-6, FR-13, FR-15; screen context, tool results, log text, audit entries, entity names and comments
@@ -434,6 +438,8 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
   **A `docdb-database` id keeps `foldcase`**, because the instance resolves a document database's name in any case (measured on `ocupilot-a2-ci`: `Exists`, `GetDatabase` and `DropDatabase("OCUPROBE1917A")` reached `OcuProbe1917A`, and `CreateDatabase("ocuprobe1917a")` threw #25051) (Story 19.17) [AMENDED 2026-10-05, Story 19.17 spec gate, Rule 20].
 
   **A `screen-permission` id is the screen's `toolIdentifier`, kept exactly** (Story 20.15) [AMENDED 2026-10-07, Story 20.15 spec gate, Rule 20].
+
+  **A `pct-class-access` id composes the application, the allow type and the class** [AMENDED 2026-10-09, Story 18.10 spec gate, Rule 20]: the `foldfirst` id rule lower-cases the first composite part, the application, and keeps the rest exact.
 
 ### AD-14 — A confirmed write emits one change event; screens re-fetch, never patch
 
@@ -889,6 +895,8 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
 
   **A rail area may declare the namespace feature it applies to** [AMENDED 2026-10-07, Story 20.1 spec gate, Rule 20] (`appliesWhen`, from the closed vocabulary `Kernel/Shell/NamespaceFeatures.FEATURES`): `interoperability` is `%Library.EnsembleMgr.IsEnsembleNamespace`, and `analytics` is `%DeepSee.Utils.%IsDeepSeeEnabled`, never `%SYS` or an implied namespace. Each is read in the caller's process for the route's namespace on every navigation read, and answered on the map as `applies`. A non-applying area is drawn nowhere and stays on the wire with its verdict; a check that throws, or a value outside the vocabulary, answers `false`. This is applicability, not a privilege gate: AD-8's area verdict and its 'never hidden' are unchanged, so an area that applies and that the caller cannot open is still drawn, unavailable, naming its pair. Story 20.1's Interoperability area declares `%Ens_Portal:USE` and its Analytics area `%DeepSee_Portal:USE`, each its classic menu's check.
 
+  **Story 18.10's `CLASSICPAGES`** [AMENDED 2026-10-09, Story 18.10 spec gate, Rule 20]: the `%`-class access create declares `%CSP.UI.Portal.Dialog.WebAppPctAccess`.
+
 ### AD-45 — There is one smoke path, and it is also the health check
 
 - **Binds:** FR-66, FR-67, NFR-9, AD-38; the installer, CI, the demo
@@ -1011,6 +1019,8 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
   **Story 19.6's case** [AMENDED 2026-10-03, Story 19.6 spec gate, Rule 20]: `SqlPort` builds the run from the tool's declared screen values and answers its fresh read through a port-composed `GUARD` type. **Story 19.8's case** [AMENDED 2026-10-04, Story 19.8 spec gate, Rule 20]: `SqlPort` builds the save's statements from the tool's declared screen values and answers its fresh read through a port-composed `PLAN` type.
 
   **A tool may declare that its fresh read is composed from its own values** (`READSVALUES`, Story 19.11) [AMENDED 2026-10-05, Story 19.11 spec gate, Rule 20]: the mint passes its arguments and a screen action its declared values through the tool's `PortQuery`, as Confirm's re-read passes the stored payload, so all three read the same state. `explorer.sqlquery.run` declares it, so its `GUARD` read and its fingerprint cover the statement's own `Kind`, `StatementType` and `Tables` (DW-2004).
+
+  **A `%`-class access tool reads `STATE`** [AMENDED 2026-10-09, Story 18.10 spec gate, Rule 20]: the `%`-class access tools read through `PctAccessPort` with `READTYPE` `STATE`, their fresh read composed from the entry's own values.
 
 ### AD-52 — A write tool declares the port it reaches its target through
 
