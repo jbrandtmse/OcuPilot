@@ -40,9 +40,6 @@ Parameter FLOORPRINCIPAL = "OcuProbe1829Floor";
 
 Parameter FLOORROLE = "OcuProbe1829FloorRole";
 
-/// <p>A role that grants <code>%All</code>, held by a source as its escalation role in the privileged leg.</p>
-Parameter ALLROLE = "OcuProbe1829AllRole";
-
 /// <p>A role that grants <code>%Admin_Operate:U</code>, held by a source first as a role and then as its escalation role.</p>
 Parameter ADMINROLE = "OcuProbe1829AdminRole";
 
@@ -415,6 +412,15 @@ Method TestAPrivilegedCopyIsProposedDestructiveAndConfirmedAsThePrincipal()
     Do $$$AssertEquals(tStatus, 200, "the principal's confirm writes the copy: " _ tRaw)
     Do $$$AssertTrue(..Exists(..#TARGET), "and the account exists")
     Do $$$AssertTrue(..Setting(..#TARGET, "EscalationRoles") [ "%All", "and holds the escalation role the proposal named")
+    Do $$$AssertTrue(..Setting(..#TARGET, "Roles") [ "%Developer", "and the source's roles")
+    Do $$$AssertEquals(..Setting(..#TARGET, "AccountNeverExpires"), "1", "and the source's setting, AccountNeverExpires")
+    Set tAnswer = ""
+    Try {
+        Set tAnswer = ##class(%DynamicAbstractObject).%FromJSON(tRaw)
+    } Catch ex {
+        Set tAnswer = ""
+    }
+    Do $$$AssertEquals($Select($IsObject(tAnswer) && $IsObject(tAnswer.%Get("readBack")): tAnswer.%Get("readBack").%Get("verdict"), 1: ""), "matches", "and the confirm's read-back matches what was written")
 }
 
 /// <p>AD-55, AD-58: a copy whose source's escalation roles change between the mint and the confirm is refused 409
@@ -461,7 +467,7 @@ Method TestTheConfirmOfACopyAsAPrincipalWithoutAdminSecureIsRefusedByTheConfirmP
     If $$$ISERR(tSC) Quit
     Set tSC = ..AsPrincipal(..#NOGATE, "POST", "/proposal/" _ tKey _ "/confirm", "{""Password"":""" _ ..#GOODPASSWORD _ """}", .tStatus, .tRaw)
     Do $$$AssertStatusOK(tSC, "the confirm request completes")
-    Do $$$AssertEquals(tStatus, 403, "the port refuses the confirm of a principal without %Admin_Secure: " _ tRaw)
+    Do $$$AssertEquals(tStatus, 403, "the confirm's pair gate refuses a principal without %Admin_Secure: " _ tRaw)
     Do $$$AssertTrue('..Exists(..#TARGET), "and no account was created")
 }
 
@@ -744,8 +750,7 @@ ClassMethod MakeFlaggedSource(pName As %String, pFlags As %Integer) As %Status
 
 /// <p>Create the two least-privileged principals and their roles, in <code>%SYS</code>: the copier, which holds
 /// exactly <code>%Admin_Secure:U</code>, <code>%DB_IRISSYS:R</code> and <code>%DB_HSCUSTOM:R</code>, and the one that
-/// holds the code-database reads without <code>%Admin_Secure</code>. The administrator's ALLROLE grants
-/// <code>%All</code>.</p>
+/// holds the code-database reads without <code>%Admin_Secure</code>.</p>
 ClassMethod MakePrincipals() As %Status
 {
     Set tOrigNS = $NAMESPACE
@@ -755,7 +760,6 @@ ClassMethod MakePrincipals() As %Status
         Set tSC = ##class(Security.Roles).Create(..#PRINCIPALROLE, ..#MARKER, "%Admin_Secure:U,%DB_IRISSYS:R,%DB_HSCUSTOM:R", "")
         If $$$ISOK(tSC) Set tSC = ##class(Security.Roles).Create(..#NOGATEROLE, ..#MARKER, "%DB_IRISSYS:R,%DB_HSCUSTOM:R", "")
         If $$$ISOK(tSC) Set tSC = ##class(Security.Roles).Create(..#FLOORROLE, ..#MARKER, "%Admin_Manage:U,%DB_IRISSYS:R,%DB_HSCUSTOM:R", "")
-        If $$$ISOK(tSC) Set tSC = ##class(Security.Roles).Create(..#ALLROLE, ..#MARKER, "", "%All")
         If $$$ISOK(tSC) Set tSC = ##class(Security.Roles).Create(..#ADMINROLE, ..#MARKER, "%Admin_Operate:U", "")
         If $$$ISOK(tSC) Set tSC = ##class(Security.Users).Create(..#PRINCIPAL, ..#PRINCIPALROLE, ..#GOODPASSWORD, "Probe copier", "", "", "", 0, 1, ..#MARKER)
         If $$$ISOK(tSC) Set tSC = ##class(Security.Users).Create(..#NOGATE, ..#NOGATEROLE, ..#GOODPASSWORD, "Probe no gate", "", "", "", 0, 1, ..#MARKER)
@@ -794,7 +798,7 @@ ClassMethod RemoveProbes() As %Status
     Set tOrigNS = $NAMESPACE
     Try {
         Set $NAMESPACE = "%SYS"
-        For tRole = ..#PRINCIPALROLE, ..#NOGATEROLE, ..#FLOORROLE, ..#ALLROLE, ..#ADMINROLE {
+        For tRole = ..#PRINCIPALROLE, ..#NOGATEROLE, ..#FLOORROLE, ..#ADMINROLE {
             If ##class(Security.Roles).Exists(tRole) Do ##class(Security.Roles).Delete(tRole)
         }
     } Catch ex {

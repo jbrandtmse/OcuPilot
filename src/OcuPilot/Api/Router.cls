@@ -448,7 +448,7 @@ ClassMethod WebAppUpdate(pId As %String) As %Status
 
 /// <p>Thin <code>Call=</code> target for <code>GET /users/form</code> (Story 8.2): delegates to
 /// <class>OcuPilot.Area.Permissions.UserCreateRules</class> and carries no logic of its own. The
-/// three sub-resources precede <code>POST /users</code>, the order the REST convention requires.</p>
+/// five sub-resources precede <code>POST /users</code>, the order the REST convention requires.</p>
 ClassMethod UserFormRules() As %Status
 {
     Quit ##class(OcuPilot.Area.Permissions.UserCreateRules).HandleForm()

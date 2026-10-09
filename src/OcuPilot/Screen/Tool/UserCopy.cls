@@ -84,8 +84,9 @@ ClassMethod ArgumentProblem(pIdValue As %String, pArgs As %DynamicObject, Output
 
 /// <p>The composed payload and diff of the copy (AD-54): the source read through
 /// <class>OcuPilot.Port.UserCopyPort</class>, then the four fields <method>PermittedFields</method> and the
-/// payload name, composed by the kernel's create composition. An absent or unsupported source answers
-/// <var>pProblem</var>, and nothing is composed.</p>
+/// payload name, composed by the kernel's create composition. An absent, directory-service or delegated
+/// source answers <var>pProblem</var>, and nothing is composed; a source read that fails for any other reason
+/// is an error status (AD-36: only the vendor's 404 is an absence).</p>
 ClassMethod ComposeCreate(pArgs As %DynamicObject, pIdArgument As %String, pSettable As %List, Output pPayload As %DynamicObject, Output pDiff As %DynamicArray, Output pUnchanged As %Integer, Output pProblem As %String) As %Status
 {
     Set pPayload = ""
@@ -94,10 +95,16 @@ ClassMethod ComposeCreate(pArgs As %DynamicObject, pIdArgument As %String, pSett
     Set pProblem = ""
     Set tFrom = ""
     If $IsObject(pArgs) && (pArgs.%GetTypeOf(..#SOURCEARGUMENT) = "string") Set tFrom = pArgs.%Get(..#SOURCEARGUMENT)
+    Set tSourceProblem = "'" _ ..#SOURCEARGUMENT _ "': " _ ##class(OcuPilot.Api.Error).ReasonForViolation("USERCOPY.SOURCE")
+    If tFrom = "" {
+        Set pProblem = tSourceProblem
+        Quit $$$OK
+    }
     Set tHttp = 0
-    Set tSource = ##class(OcuPilot.Port.UserCopyPort).SourceOf(tFrom, .tHttp)
-    If '$IsObject(tSource) {
-        Set pProblem = "'" _ ..#SOURCEARGUMENT _ "': " _ ##class(OcuPilot.Api.Error).ReasonForViolation("USERCOPY.SOURCE")
+    Set tSource = ##class(OcuPilot.Port.UserCopyPort).SourceOf(tFrom, .tHttp, .tFault, .tReadSC)
+    If '$IsObject(tSource) && (tHttp '= 404) Quit $$$ERROR($$$GeneralError, "the copy's source could not be read: " _ $System.Status.GetErrorText(tReadSC))
+    If ##class(OcuPilot.Port.UserCopyPort).Unsupported(tSource) {
+        Set pProblem = tSourceProblem
         Quit $$$OK
     }
     Set tFull = ""
@@ -110,12 +117,6 @@ ClassMethod ComposeCreate(pArgs As %DynamicObject, pIdArgument As %String, pSett
     Do tComposed.%Set("Roles", tSource.%Get("Roles"))
     Do tComposed.%Set("EscalationRoles", tSource.%Get("EscalationRoles"))
     Quit ##class(OcuPilot.Kernel.Proposal.Mint).Compose(tComposed, pIdArgument, $ListBuild(..#SOURCEARGUMENT, "FullName", "Roles", "EscalationRoles"), .pPayload, .pDiff, .pUnchanged, .pProblem)
-}
-
-/// <p>What the write's read-back compares (AD-58): the full name and both role lists.</p>
-ClassMethod ReadBackFields() As %List
-{
-    Quit $ListBuild("FullName", "Roles", "EscalationRoles")
 }
 
 }

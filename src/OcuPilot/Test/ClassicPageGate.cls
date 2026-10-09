@@ -182,6 +182,14 @@ Method TestWithNoAssignmentEachToolsPairsAreItsDeclaredSet()
     }
 }
 
+/// <p>The arguments the probe sends a tool. Every tool takes none but a copy, whose input schema requires a
+/// name and a source, so the copy names <code>_SYSTEM</code>, a local account every instance holds (Story 18.29).</p>
+ClassMethod AgentInput(pTool As %String) As %DynamicObject
+{
+    If pTool = $Parameter("OcuPilot.Screen.Tool.UserCopy", "TOOLNAME") Quit {"Name": "OcuProbeGate", "CopyFrom": "_SYSTEM"}
+    Quit {}
+}
+
 /// <p>With the probe resource assigned to every declared page, each declaring tool's call on the
 /// agent's caller is refused 403 <code>AUTH.NOPRIVILEGE</code> naming <code>OcuProbe1814Page:USE</code>
 /// for the principal lacking it, before its arguments are read; the principal holding it passes that
@@ -196,15 +204,6 @@ Method TestWithNoAssignmentEachToolsPairsAreItsDeclaredSet()
 /// <method>OcuPilot.Screen.Gate.WithClassicPages</method> -> that read goes red.</p>
 /// <p>Mutation (Rule 19): <method>OcuPilot.Screen.Gate.WithClassicPages</method> answers
 /// <var>pPairs</var> unchanged -> the lacking principal is admitted and this goes red.</p>
-/// <p>The arguments the probe sends a tool. Every tool takes none but a copy, whose argument check reads its
-/// source before the gate answers, so the copy names <code>_SYSTEM</code>, a local account every instance holds,
-/// and its page gate is the answer under test (Story 18.29).</p>
-ClassMethod AgentInput(pTool As %String) As %DynamicObject
-{
-    If pTool = $Parameter("OcuPilot.Screen.Tool.UserCopy", "TOOLNAME") Quit {"Name": "OcuProbeGate", "CopyFrom": "_SYSTEM"}
-    Quit {}
-}
-
 Method TestAnAssignedPageGatesEveryDeclaringToolOnTheAgentsCaller()
 {
     Do $$$AssertStatusOK(..EnableDelete(), "the agent's namespace and database delete keys and its task import key are enabled, so only the pairs stand in the way")

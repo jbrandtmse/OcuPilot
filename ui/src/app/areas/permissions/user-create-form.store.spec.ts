@@ -72,6 +72,8 @@ function mount(
         return { kind: 'ok', status: 200, body: RULES } as unknown as JsonResult<T>;
       }
       if (path.startsWith(`${USERS_FORM_PATH}?name=`)) {
+        // A function answers per path, so a test can name each source's read or hold one back.
+        if (typeof sourceAnswer === 'function') return (await (sourceAnswer as (path: string) => unknown)(path)) as JsonResult<T>;
         return { kind: 'ok', status: 200, body: sourceAnswer } as unknown as JsonResult<T>;
       }
       if (path === USERS_LIST_READ_PATH) {
@@ -296,7 +298,7 @@ describe('the create-a-user form store', () => {
     expect(Object.keys(JSON.parse(post!.body) as Record<string, unknown>).sort()).toEqual(['CopyFrom', 'FullName', 'Name', 'Password']);
   });
 
-  it('Story 18.29 (pass 3): a copy source whose only privilege is an escalation role reads its escalation roles and is privileged', async () => {
+  it('Story 18.29: a copy source whose only privilege is an escalation role reads its escalation roles and is privileged', async () => {
     const escalationSource = { ...RULES, user: { Name: 'Src', FullName: 'Source Person', Roles: [], EscalationRoles: ['%All'] } };
     const { store, calls } = mount(undefined, undefined, undefined, escalationSource);
     await store.open();
@@ -325,7 +327,7 @@ describe('the create-a-user form store', () => {
     expect(store.violationFor('Password')).toBe('');
   });
 
-  it('Story 18.29 (pass 3): a check answer that lands after the password changed does not mark the new value', async () => {
+  it('Story 18.29: a check answer that lands after the password changed does not mark the new value', async () => {
     let answerCheck: (answer: JsonResult<unknown>) => void = () => undefined;
     const pending = new Promise<JsonResult<unknown>>((resolve) => { answerCheck = resolve; });
     const { store } = mount(undefined, undefined, pending as unknown as JsonResult<unknown>);
@@ -338,5 +340,45 @@ describe('the create-a-user form store', () => {
     await blur;
     await settle();
     expect(store.violationFor('Password')).toBe('');
+  });
+
+  it('Story 18.29: choosing another source replaces the first one\'s full name and refusal, a late first answer is dropped, and clearing it makes the Save a plain create', async () => {
+    const person = (name: string) => ({ kind: 'ok', status: 200, body: { ...RULES, user: { Name: name, FullName: `Person ${name}`, Roles: ['%Developer'], EscalationRoles: [] } } });
+    let answerA: (answer: unknown) => void = () => undefined;
+    const heldA = new Promise((resolve) => { answerA = resolve; });
+    let holdA = false;
+    const { store, calls } = mount(undefined, undefined, undefined, (path: string) => {
+      if (path.includes('name=A&') && holdA) return heldA;
+      return person(path.includes('name=A&') ? 'A' : 'B');
+    });
+    await store.open();
+    await store.setCopyFrom('A');
+    await settle();
+    expect(store.value('FullName')).toBe('Person A');
+    await store.setCopyFrom('B');
+    await settle();
+    expect(store.value('FullName')).toBe('Person B');
+    expect(store.source()?.name).toBe('B');
+
+    holdA = true;
+    const late = store.setCopyFrom('A');
+    await store.setCopyFrom('B');
+    answerA(person('A'));
+    await late;
+    await settle();
+    expect(store.source()?.name).toBe('B');
+    expect(store.value('FullName')).toBe('Person B');
+
+    await store.setCopyFrom('');
+    await settle();
+    expect(store.copyFrom()).toBe('');
+    expect(store.source()).toBeNull();
+    expect(store.value('FullName')).toBe('');
+    store.setValue('Name', 'probeuser');
+    store.setPassword('Ocu-Probe-1829xyz!');
+    await store.save();
+    const post = calls.filter((call) => call.method === 'POST' && call.path !== USERS_PASSWORD_CHECK_PATH).at(-1);
+    expect(post!.path).toBe(USERS_PATH);
+    expect(Object.keys(JSON.parse(post!.body) as Record<string, unknown>)).not.toContain('CopyFrom');
   });
 });

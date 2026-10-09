@@ -4360,7 +4360,8 @@ ClassMethod GrantsPrivilegeByEffect(pType As %String, pPayload As %DynamicObject
         If pType = ..#TYPEUSER {
             Set tSC = ..GrantsPrivilege(pPayload, tTarget, .pGrants)
             ; Story 18.29, AD-10: an escalation role confers the ability to become that role, so it counts.
-            If 'pGrants Set tSC = ..GrantsPrivilege(pPayload, tTarget, .pGrants, "EscalationRoles")
+            ; It is asked only after the roles answered, so an error there is never overwritten.
+            If $$$ISOK(tSC) && 'pGrants Set tSC = ..GrantsPrivilege(pPayload, tTarget, .pGrants, "EscalationRoles")
             Quit
         }
         If pType = ..#TYPERESOURCE {

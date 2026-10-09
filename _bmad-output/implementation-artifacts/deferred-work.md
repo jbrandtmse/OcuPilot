@@ -7463,6 +7463,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-30T06:34:05Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down plan 2026-09-29 (23.1 closed; its slice re-sorted): queued for the standing cleanup after the next release (Story 23.3 or later), priority p4
 - 2026-10-05T18:41:41Z status=routed owner=18-9-sql-privileges-and-the-permission-extras by=merge_gate note=owner-approved burn-down scope 2026-10-05: feature-sized, re-routed from the cleanup queue to the permission-extras story
 - 2026-10-08T00:50:58Z owner=18-29-role-members-admin-option-user-copy-from-and-password-valida by=spec_gate note=orchestrator split 2026-10-07: Story 18.9 split; DW-1662 rides with role members, Copy from and password validation
+- 2026-10-09T02:30:47Z status=resolved-by:18-29-role-members-admin-option-user-copy-from-and-password-valida by=adjudication note=C5_Area/Security/OAuthAuthorizationServerRules_Defaults;OAuthAuthorizationServerWire.TestALeastPrivilegedPrincipalCreatesWithTheDefaultRoles_mutation_run_564;ui/tools/oauth-server-defaults.test.mjs
 
 ### DW-1663: The authorization server's privileged customization-role effect is name-only, so adding %Manager, %Operator or %SecurityAdministrator (which carry %Admin_* resources) is not minted destructive
 - source: spec-12-7-the-oauth-2-0-authorization-server-editor.md | severity: med | fix-risk: high | footprint: in-story
@@ -10391,6 +10392,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-9-sql-privileges-and-the-permission-extras.md (split) | severity: med | fix-risk: med | footprint: in-epic
 - evidence: 18.9 plan on ocupilot-ci: detection needs every grantee on the schema enumerated; refusal half stays with 18.9's new AD-10 arm (orchestrator ruling 2026-10-07)
 - 2026-10-08T00:50:05Z status=routed owner=18-13-multi-namespace-install by=spec_gate note=orchestrator: detection half to 18.13, beside install's schema-grant read-back (AD-38)
+- 2026-10-09T02:27:03Z occurrence=18-29-role-members-admin-option-user-copy-from-and-password-valida note=a user copy (Security.Users.Copy) reproduces a source's SQL grant on OcuPilot's schemas made outside OcuPilot; by-design under AD-8's 18.29 amendment
 
 ### DW-2173: IRIS defect candidate: the admin API's Security.SQLPrivilege.Column grant the SQL layer refuses answers 200 and stores nothing
 - source: spec-18-9-sql-privileges-and-the-permission-extras.md (split) | severity: med | fix-risk: high | footprint: out-of-footprint
@@ -10682,28 +10684,44 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-29-role-members-admin-option-user-copy-from-and-password-valida.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: Screen/Tool/UserCopy.cls ReadBackFields; implement pass 3 deferred
 - 2026-10-09T01:20:50Z status=open owner=18-29-role-members-admin-option-user-copy-from-and-password-valida by=harvest note=for the 18.29 code review to patch or close
+- 2026-10-09T02:30:47Z status=resolved-by:18-29-role-members-admin-option-user-copy-from-and-password-valida by=adjudication note=QA_TestTheReadBackNamesEachFieldThatDisagreesWithTheCopy(run_581);ReadBackFields_deleted_by_cr_as_dead_code(ToolFields_rows_drive_the_read-back)
 
 ### DW-2231: The create path's password refusal passes only the code; PasswordPolicy.Verdict's reason is computed and unused
 - source: spec-18-29-role-members-admin-option-user-copy-from-and-password-valida.md | severity: med | fix-risk: low | footprint: in-story
 - evidence: src/OcuPilot/Area/Permissions/UserCreateRules.cls:133; implement pass 3 deferred
 - 2026-10-09T01:20:50Z status=open owner=18-29-role-members-admin-option-user-copy-from-and-password-valida by=harvest note=for the 18.29 code review to patch
+- 2026-10-09T02:30:47Z status=resolved-by:18-29-role-members-admin-option-user-copy-from-and-password-valida by=adjudication note=cr_high_patched;PasswordPolicy.TestACreateRefusalCarriesThePolicysOwnReason_red_run_599_green_603
 
 ### DW-2232: The DW-1662 wire test builds its own default-role list instead of posting the editor's real pre-ticked request
 - source: spec-18-29-role-members-admin-option-user-copy-from-and-password-valida.md | severity: med | fix-risk: low | footprint: in-story
 - evidence: src/OcuPilot/Test/OAuthAuthorizationServerWire.cls; implement passes 2 and 3 deferred
 - 2026-10-09T01:20:50Z status=open owner=18-29-role-members-admin-option-user-copy-from-and-password-valida by=harvest note=for the 18.29 code review to patch
+- 2026-10-09T02:30:48Z status=resolved-by:18-29-role-members-admin-option-user-copy-from-and-password-valida by=adjudication note=QA:oauth-server-form.store.spec_untouched_create_posts_%DB_IRISSYS+%Manager;oauth-server-defaults.test.mjs_ties_client,Defaults(),wire_lists
 
 ### DW-2233: The user create form's privileged flag for a copy source may miss an escalation role the server counts (inference)
 - source: spec-18-29-role-members-admin-option-user-copy-from-and-password-valida.md | severity: med | fix-risk: low | footprint: in-story
 - evidence: ui/src/app/areas/permissions/user-create-form.store.ts vs Prohibited GrantsPrivilegeByEffect; implement passes 2 and 3 deferred, unsettled
 - 2026-10-09T01:20:50Z status=open owner=18-29-role-members-admin-option-user-copy-from-and-password-valida by=harvest note=for the 18.29 code review to settle and patch
+- 2026-10-09T02:30:48Z status=dropped by=adjudication note=invalid(cr):the_form's_privileged_flag_comes_from_the_server_predicate(UserCreateRules.cls:498),no_client-side_computation
 
 ### DW-2234: SurfaceCoverage's permissions.users.copy row points at the route-envelope test rather than a tool-pinning test
 - source: spec-18-29-role-members-admin-option-user-copy-from-and-password-valida.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: src/OcuPilot/Test/SurfaceCoverage.cls; pass 3 held it as Rule 11 contention, but the row is 18.29's own, absent from feature
 - 2026-10-09T01:20:50Z status=open owner=18-29-role-members-admin-option-user-copy-from-and-password-valida by=harvest note=editing this story's own row is add-only relative to feature
+- 2026-10-09T02:30:48Z status=resolved-by:18-29-role-members-admin-option-user-copy-from-and-password-valida by=adjudication note=QA:SurfaceCoverage_row_names_TestTheCopyToolPinsItsInputSchemaAndSnippetForm(misspelling_red_run_584;row_removed_red_run_585)
 
 ### DW-2235: UserCopyPort.MapVendorRefusal (#837, #838, #845, #958 and an unlisted code) has no pinning test
 - source: spec-18-29-role-members-admin-option-user-copy-from-and-password-valida.md | severity: med | fix-risk: low | footprint: in-story
 - evidence: src/OcuPilot/Port/UserCopyPort.cls:234; implement pass 3 deferred
 - 2026-10-09T01:20:50Z status=open owner=18-29-role-members-admin-option-user-copy-from-and-password-valida by=harvest note=pin through the public Copy path (a taken name, an absent source, a bad password) for the 18.29 code review
+- 2026-10-09T02:30:48Z status=resolved-by:18-29-role-members-admin-option-user-copy-from-and-password-valida by=adjudication note=QA:Test/UserCopyRefusals_via_UserCopyVendorFault_seam;#958_clause_dropped_red_run_578,837_respelt_red_579,final_arm_rerouted_red_580
+
+### DW-2237: Test/UserCopy.cls is about 825 lines against the 500-line class guide (objectscript-testing.md)
+- source: spec-18-29-role-members-admin-option-user-copy-from-and-password-valida.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: Measured 2026-10-08 at code review: 825 lines after the review's patches; splitting it moves about 300 lines of legs and helpers into a new class, beyond a two-way door.
+- 2026-10-09T02:27:02Z status=wontfix-accepted owner=18-29-role-members-admin-option-user-copy-from-and-password-valida by=cr note=reopen_if=Test/UserCopy.cls passes 900 lines or another copy leg is added to it
+
+### DW-2238: The copy's SQL-privilege leg covers standard and admin privileges in USER as _SYSTEM, not column privileges, HSCUSTOM or the least-privileged principal
+- source: spec-18-29-role-members-admin-option-user-copy-from-and-password-valida.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: TestTheCopyCarriesTheSourcesSqlPrivilegesAndTheTeardownRemovesThem runs the screen route as _SYSTEM in USER; the vendor copies the rest itself (Task 0, measured), and VendorCopy's flags are pinned (run 79).
+- 2026-10-09T02:27:02Z status=wontfix-accepted owner=18-29-role-members-admin-option-user-copy-from-and-password-valida by=cr note=reopen_if=VendorCopy's arguments change or the port gains per-namespace handling of the copy

@@ -12,7 +12,8 @@ Class OcuPilot.Kernel.PasswordPolicy Extends %RegisteredObject
 {
 
 /// <p>The validator's error codes whose own text is a sentence the user may read: 5001 is the
-/// routine's refusal, 845 the pattern and length refusal and 958 the history refusal.</p>
+/// routine's refusal, 845 the length and pattern refusal (<code>UserPasswordInvalidFormat</code>) and 958
+/// the pattern refusal (<code>InvalidPasswordPattern</code>), as <code>%occErrors.inc</code> names them.</p>
 Parameter POLICYCODES = "5001,845,958";
 
 /// <p>Whether <var>pPassword</var> is acceptable for account <var>pUser</var> under the instance's

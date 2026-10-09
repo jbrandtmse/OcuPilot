@@ -95,7 +95,7 @@ Method TestTheSaveAndTheFormReadAnswerOneEnvelopeOverTheWire()
         Do $$$AssertEquals(..Count(tUser), ..#PROPERTYCOUNT - 1, "and with every other property the vendor's read answers")
         Do $$$AssertEquals(tUser.%Get("Comment"), ..#PROBEMARKER, "as the instance holds them")
     }
-    ; Story 18.29 pass 3: the create form's copy source keeps the escalation roles the edit form drops (copy=1).
+    ; Story 18.29: the create form's copy source keeps the escalation roles the edit form drops (copy=1).
     Set tSC = ##class(OcuPilot.Test.Http).MakeRequest("GET", ..#FORMPATH _ "?name=" _ ..#PROBEUSER _ "&copy=1", .tCopyStatus, .tCopyBody)
     Do $$$AssertEquals(tCopyStatus, 200, "the copy source's read answers 200")
     Set tCopyUser = $Select($IsObject($Get(tCopyBody)): tCopyBody.%Get("user"), 1: "")

@@ -108,13 +108,22 @@ interface FieldView {
       <div class="ocu-field">
         <label class="ocu-field-label" [attr.for]="copyFromField.id">{{ STRINGS.userCopyFrom }}</label>
         <div class="ocu-field-control">
-          <select class="ocu-field-input" [id]="copyFromField.id" (change)="onCopyFrom($event)">
+          <select
+            class="ocu-field-input"
+            [id]="copyFromField.id"
+            [attr.aria-invalid]="copyFromField.invalid"
+            [attr.aria-describedby]="copyFromDescribedBy"
+            (change)="onCopyFrom($event)"
+          >
             <option value="" [selected]="copyFromValue === ''"></option>
             @for (user of userOptions; track user) {
               <option [value]="user" [selected]="user === copyFromValue">{{ user }}</option>
             }
           </select>
         </div>
+        @if (copyFromField.invalid) {
+          <p class="ocu-form-error" [id]="copyFromField.id + '-reason'">{{ copyFromField.reason }}</p>
+        }
       </div>
 
       <div class="ocu-field">
@@ -257,7 +266,7 @@ interface FieldView {
           @for (role of copiedRoles; track role) {
             <span class="ocu-form-role-name">{{ role }}</span>
           }
-          <legend class="ocu-field-label">{{ STRINGS.userCopyEscalationRoles }}</legend>
+          <p class="ocu-field-label">{{ STRINGS.userCopyEscalationRoles }}</p>
           @for (role of copiedEscalationRoles; track role) {
             <span class="ocu-form-role-name">{{ role }}</span>
           }
@@ -519,6 +528,12 @@ export class UserCreateFormPage {
 
   protected get copyFromField(): FieldView {
     return this.fieldView(COPY_FROM_FIELD);
+  }
+
+  /** The select's description: its refusal, and the consequence line while a privileged source is chosen. */
+  protected get copyFromDescribedBy(): string | null {
+    const described = [this.copyFromField.describedBy, this.copiedPrivileged ? this.copyEffectId : null].filter((id): id is string => id !== null);
+    return described.length === 0 ? null : described.join(' ');
   }
 
   // --- intents ---------------------------------------------------------------------------------

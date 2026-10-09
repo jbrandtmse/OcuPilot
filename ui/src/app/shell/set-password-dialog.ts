@@ -168,6 +168,8 @@ export class SetPasswordDialog {
 
   protected onInput(): void {
     this.filled.set(this.passwordInput().nativeElement.value !== '');
+    // A refusal names the value it was given; an edit leaves it describing nothing on the field.
+    if (this.reasonText() !== '') this.reasonText.set('');
   }
 
   /**

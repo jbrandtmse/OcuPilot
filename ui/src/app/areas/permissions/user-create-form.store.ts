@@ -167,6 +167,9 @@ export class UserCreateForm {
 
   private usersValue: readonly string[] = [];
 
+  /** The full name the last source pre-filled, so a later choice replaces it rather than keeping it. */
+  private prefilledFullName = '';
+
   subscribe(listener: () => void): () => void {
     this.listeners.add(listener);
     return () => {
@@ -290,6 +293,8 @@ export class UserCreateForm {
     this.rolesValue = [];
     this.copyFromValue = '';
     this.sourceValue = null;
+    this.usersValue = [];
+    this.prefilledFullName = '';
     this.loadedValue = false;
     this.savingValue = false;
     this.violationList = [];
@@ -335,11 +340,15 @@ export class UserCreateForm {
 
   /**
    * Choose the account to copy from, or `''` to create from nothing. A choice reads the source
-   * (`GET /users/form?name=`) and pre-fills the full name when the field is empty.
+   * (`GET /users/form?name=`) and pre-fills the full name when the field is empty or still holds the
+   * previous source's; an earlier choice's refusal and pre-filled full name do not outlive it.
    */
   async setCopyFrom(name: string): Promise<void> {
     this.copyFromValue = name;
     this.sourceValue = null;
+    this.clearFieldViolation(COPY_FROM_FIELD);
+    if (this.prefilledFullName !== '' && this.buffer['FullName'] === this.prefilledFullName) this.setValue('FullName', '');
+    this.prefilledFullName = '';
     this.markDirty();
     this.notify();
     if (name === '') return;
@@ -351,7 +360,10 @@ export class UserCreateForm {
     const source = absorbSource(result.body, this.rulesValue);
     if (source === null) return;
     this.sourceValue = source;
-    if (this.buffer['FullName'] === '' && source.fullName !== '') this.setValue('FullName', source.fullName);
+    if (this.buffer['FullName'] === '' && source.fullName !== '') {
+      this.setValue('FullName', source.fullName);
+      this.prefilledFullName = source.fullName;
+    }
     this.notify();
   }
 

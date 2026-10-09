@@ -151,4 +151,52 @@ describe('the set-password dialog (Story 7.2, AD-56)', () => {
     expect(nextHost.textContent).not.toContain('Too short for this instance.');
     nextHost.remove();
   });
+
+  it('Story 18.29: an edit clears a shown refusal, and an answer for a value since changed is never shown', async () => {
+    let answerFirst: (answer: unknown) => void = () => undefined;
+    const first = new Promise((resolve) => { answerFirst = resolve; });
+    let call = 0;
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({
+      providers: [
+        { provide: OverlayStack, useValue: new OverlayStack() },
+        {
+          provide: ApiService,
+          useValue: {
+            requestJson: async () => {
+              call += 1;
+              if (call === 1) return first;
+              return { kind: 'ok', body: { valid: false, reason: 'Too short for this instance.' } };
+            },
+          },
+        },
+      ],
+    });
+    const next = TestBed.createComponent(Host);
+    const nextHost = next.nativeElement as HTMLElement;
+    document.body.appendChild(nextHost);
+    next.detectChanges();
+    const input = nextHost.querySelector('input[autocomplete="new-password"]') as HTMLInputElement;
+    // The first check is held back while the value changes; its refusal must not land on the new value.
+    input.value = 'Zq1829';
+    input.dispatchEvent(new Event('input'));
+    input.dispatchEvent(new Event('blur'));
+    input.value = 'Zq18291829';
+    input.dispatchEvent(new Event('input'));
+    answerFirst({ kind: 'ok', body: { valid: false, reason: 'Too short for this instance.' } });
+    await new Promise((resolve) => setTimeout(resolve, 5));
+    next.detectChanges();
+    expect(nextHost.textContent).not.toContain('Too short for this instance.');
+    // A refusal shown for the field's value is cleared by the next edit.
+    input.dispatchEvent(new Event('blur'));
+    await new Promise((resolve) => setTimeout(resolve, 5));
+    next.detectChanges();
+    expect(nextHost.textContent).toContain('Too short for this instance.');
+    input.value = 'Zq182918291';
+    input.dispatchEvent(new Event('input'));
+    next.detectChanges();
+    expect(nextHost.textContent).not.toContain('Too short for this instance.');
+    expect(input.getAttribute('aria-invalid')).toBeNull();
+    nextHost.remove();
+  });
 });

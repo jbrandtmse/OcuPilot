@@ -152,17 +152,20 @@ Method TestTheSaveAndTheFormReadAnswerOneEnvelopeOverTheWire()
     Set tAdminTyped = 1
     Set tEscalationAdmin = 1
     Set tMemberAdmin = ""
+    Set tRoleAdmin = ""
     If $IsObject(tMembers) {
         Set tIterator = tMembers.%GetIterator()
         While tIterator.%GetNext(.tIndex, .tRow) {
             If tRow.%GetTypeOf("AdminOption") '= "boolean" Set tAdminTyped = 0
             If (tRow.%Get("Name") = ..#ESCALATIONUSER) && (tRow.%Get("AdminOption") '= 0) Set tEscalationAdmin = 0
             If (tRow.%Get("Name") = ..#MEMBERUSER) && (tRow.%Get("Type") = "User") Set tMemberAdmin = tRow.%Get("AdminOption")
+            If tRow.%Get("Name") = ..#MEMBERROLE Set tRoleAdmin = tRow.%Get("AdminOption")
         }
     }
     Do $$$AssertTrue(tAdminTyped, "every member carries AdminOption as a boolean")
     Do $$$AssertTrue(tEscalationAdmin, "the escalation-only holder's AdminOption reads false")
     Do $$$AssertEquals(tMemberAdmin, 1, "the member granted WITH ADMIN OPTION reads AdminOption true")
+    Do $$$AssertEquals(tRoleAdmin, 0, "and the role member's AdminOption reads false")
     Do $$$AssertEquals($Select($IsObject($Get(tBody)): tBody.%Get("holders"), 1: ""), 2, "and holders counts the two distinct accounts, an escalation holder among them")
 
     For tPath = ..Path("OcuPilotNoSuchRoleSave"), ..#FORMPATH _ "?name=OcuPilotNoSuchRoleSave" {

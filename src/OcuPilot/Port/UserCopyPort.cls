@@ -8,7 +8,7 @@
 /// and adds no privilege. A copy always takes the password the caller supplies, never the source's hash.</p>
 /// <p><b>Order of a copy</b> (<method>Copy</method>): the gate; the body's shape; the instance's password
 /// verdict; the source read (absent, directory-service and delegated accounts are refused as
-/// <code>USERCOPY.SOURCE</code>); the source's roles and escalation roles, compared with the payload's as
+/// <code>USERCOPY.SOURCE</code>, and a read that fails otherwise is a fault); the source's roles and escalation roles, compared with the payload's as
 /// sets without regard to case (<code>USERCOPY.SOURCECHANGED</code>); and then the one vendor call.</p>
 /// <p><b>Vendor refusals</b> (<method>MapVendorRefusal</method>): #837 is <code>USER.NAME.TAKEN</code> on
 /// <code>Name</code>, #838 is <code>USERCOPY.SOURCE</code> on <code>CopyFrom</code>, and #845 and #958 are
@@ -28,11 +28,12 @@ Parameter COPYTYPE = "COPY";
 /// list does not offer either to copy.</p>
 Parameter LDAPFLAG = 2;
 
+/// <p>The delegated account's <code>Flags</code> bit (<parameter>LDAPFLAG</parameter> gives the source).</p>
+Parameter DELEGATEDFLAG = 4;
+
 /// <p>The pair set a copy requires, as <code>resource:permission</code>. Each resource is answered through
 /// <method>HoldsResource</method>, the seam <method>Copy</method> evaluates it through (AD-29).</p>
 Parameter PAIRS = "%Admin_Secure:USE";
-
-Parameter DELEGATEDFLAG = 4;
 
 /// <p>The admin port's call, except that <code>Security.User</code> <code>COPY</code> is the copy above.
 /// <var>pBody</var> carries <code>CopyFrom</code>, <code>FullName</code>, <code>Roles</code>,
@@ -51,8 +52,9 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
 }
 
 /// <p>Copy the source named in <var>pBody</var> to a new account <var>pName</var>, as the guarded sequence
-/// the class description gives. On success <var>pResult</var> is <code>{}</code> and <var>pHttpStatus</var>
-/// 200; the caller reads the account back itself (AD-58).</p>
+/// the class description gives. On success <var>pResult</var> is the new account as the admin API reads it
+/// (<method>AccountOf</method>) and <var>pHttpStatus</var> 200; the caller still runs its own read-back (AD-58).
+/// A source read that fails for any reason but the account's absence is a fault, not a refusal of the source.</p>
 ClassMethod Copy(pName As %String, pBody As %DynamicAbstractObject, Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status
 {
     Set pResult = ""
@@ -79,13 +81,21 @@ ClassMethod Copy(pName As %String, pBody As %DynamicAbstractObject, Output pResu
             Quit
         }
 
-        Set tSource = ..SourceOf(tFrom, .tSourceHttp)
-        If (tSourceHttp = 404) || '$IsObject(tSource) {
-            Set tSC = ..SourceRefusal(.pHttpStatus, .pFault)
+        Set tSource = ..SourceOf(tFrom, .tSourceHttp, .tSourceFault, .tSourceSC)
+        If '$IsObject(tSource) {
+            If tSourceHttp = 404 {
+                Set tSC = ..SourceRefusal(.pHttpStatus, .pFault)
+            } ElseIf $IsObject(tSourceFault) {
+                ; AD-36: only the vendor's 404 is an absence. The admin read answered, and logged, its own fault.
+                Set pHttpStatus = tSourceHttp
+                Set pFault = tSourceFault
+                Set tSC = tSourceSC
+            } Else {
+                Set tSC = ..Fail(..#USEREndpoint, 500, tSourceSC, .pHttpStatus, .pFault)
+            }
             Quit
         }
-        Set tFlags = +tSource.%Get("Flags")
-        If $ZBoolean(tFlags, ..#LDAPFLAG, 1) || $ZBoolean(tFlags, ..#DELEGATEDFLAG, 1) {
+        If ..Unsupported(tSource) {
             Set tSC = ..SourceRefusal(.pHttpStatus, .pFault)
             Quit
         }
@@ -102,13 +112,22 @@ ClassMethod Copy(pName As %String, pBody As %DynamicAbstractObject, Output pResu
             Set pHttpStatus = 200
             Quit
         }
-        Set tSC = ..MapVendorRefusal(tCopySC, tFrom, pName, .pHttpStatus, .pFault)
+        Set tSC = ..MapVendorRefusal(tCopySC, tFrom, pName, pBody, .pHttpStatus, .pFault)
     } Catch ex {
         Set pResult = ""
-        Set tSC = ex.AsStatus()
-        Do ..LogFault("user copy failed", tSC, "")
+        ; AD-35: logged through Fail with the body, so the status text is screened for the password.
+        Set tSC = ..Fail(..#USEREndpoint, 500, ex.AsStatus(), .pHttpStatus, .pFault, "", pBody)
     }
     Quit tSC
+}
+
+/// <p>Whether the source <var>pSource</var> (<method>SourceOf</method>'s read) is a directory-service or
+/// delegated account, which the classic user list does not offer to copy.</p>
+ClassMethod Unsupported(pSource As %DynamicObject) As %Boolean
+{
+    If '$IsObject(pSource) Quit 1
+    Set tFlags = +pSource.%Get("Flags")
+    Quit $ZBoolean(tFlags, ..#LDAPFLAG, 1) || $ZBoolean(tFlags, ..#DELEGATEDFLAG, 1)
 }
 
 /// <p>Whether the caller holds every pair <parameter>PAIRS</parameter> names, each through
@@ -151,15 +170,22 @@ ClassMethod VendorCopy(pFrom As %String, pName As %String, pFullName As %String,
 }
 
 /// <p>The source account's admin read with its <code>Flags</code> from <code>Security.Users.Get</code> in
-/// <code>%SYS</code>, or <code>""</code> when the source is absent. <var>pHttp</var> is the admin read's
-/// status (404 for an absent account).</p>
-ClassMethod SourceOf(pFrom As %String, Output pHttp As %Integer) As %DynamicObject
+/// <code>%SYS</code>, or <code>""</code> when it cannot be read. <var>pHttp</var> is 404 for an absent account
+/// and the failing status otherwise (500 when none was answered); <var>pFault</var> is the admin read's own
+/// fault when that read failed, and <var>pSC</var> the failure's status.</p>
+ClassMethod SourceOf(pFrom As %String, Output pHttp As %Integer, Output pFault As %DynamicObject, Output pSC As %Status) As %DynamicObject
 {
     Set pHttp = 0
+    Set pFault = ""
+    Set pSC = $$$OK
     Kill tQuery
     Set tQuery("name") = pFrom
-    Set tSC = ##class(OcuPilot.Port.AdminPort).Invoke(..#USEREndpoint, "GET", .tQuery, "", .tRead, .pHttp, .tFault)
-    If $$$ISERR(tSC) || '$IsObject(tRead) Quit ""
+    Set tSC = ##class(OcuPilot.Port.AdminPort).Invoke(..#USEREndpoint, "GET", .tQuery, "", .tRead, .pHttp, .pFault)
+    If $$$ISERR(tSC) || '$IsObject(tRead) {
+        Set pSC = $Select($$$ISERR(tSC): tSC, 1: $$$ERROR($$$GeneralError, "the source account's read answered no account"))
+        If +pHttp < 400 Set pHttp = 500
+        Quit ""
+    }
     Set tOrigNS = $NAMESPACE
     Set tProps = ""
     Try {
@@ -169,7 +195,12 @@ ClassMethod SourceOf(pFrom As %String, Output pHttp As %Integer) As %DynamicObje
         Set tGetSC = ex.AsStatus()
     }
     Set $NAMESPACE = tOrigNS
-    If $$$ISERR(tGetSC) Quit ""
+    If $$$ISERR(tGetSC) {
+        Set pHttp = 500
+        Set pFault = ""
+        Set pSC = tGetSC
+        Quit ""
+    }
     Do tRead.%Set("Flags", +$Get(tProps("Flags")), "number")
     Quit tRead
 }
@@ -230,14 +261,15 @@ ClassMethod ViolationRefusal(pCode As %String, pField As %String, pReason As %St
 }
 
 /// <p>Map a refused vendor copy to its own answer (<class>OcuPilot.Port.UserCopyPort</class> class
-/// description). A code the port does not name is a logged 500 through <method>Fail</method>.</p>
-ClassMethod MapVendorRefusal(pVendorSC As %Status, pFrom As %String, pName As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+/// description). A code the port does not name is a logged 500 through <method>Fail</method>, which is given
+/// the copy's body <var>pBody</var> so the logged text is screened for the password (AD-35).</p>
+ClassMethod MapVendorRefusal(pVendorSC As %Status, pFrom As %String, pName As %String, pBody As %DynamicAbstractObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
 {
     Set tCodes = "," _ $System.Status.GetErrorCodes(pVendorSC) _ ","
     If tCodes [ (",837,") Quit ..ViolationRefusal(##class(OcuPilot.Api.Error).#USERNAMETAKEN, "Name", ##class(OcuPilot.Api.Error).#REASONUSERNAMETAKEN, .pHttpStatus, .pFault)
     If tCodes [ (",838,") Quit ..SourceRefusal(.pHttpStatus, .pFault)
     If (tCodes [ (",845,")) || (tCodes [ (",958,")) Quit ..PolicyRefusal(##class(OcuPilot.Api.Error).#REASONUSERPASSWORDPOLICY, .pHttpStatus, .pFault)
-    Quit ..Fail(..#USEREndpoint, 500, pVendorSC, .pHttpStatus, .pFault)
+    Quit ..Fail(..#USEREndpoint, 500, pVendorSC, .pHttpStatus, .pFault, "", pBody)
 }
 
 /// <p><method>Invoke</method>'s copy as a script (AD-59): the vendor call with the password shown as

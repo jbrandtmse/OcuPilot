@@ -8,7 +8,8 @@
 /// instance's <code>PasswordValidationRoutine</code>. Each test restores that setting and <method>OnAfterAllTests</method>
 /// deletes the probe routine.</p>
 /// <p>Mutations (Rule 19): make <method>OcuPilot.Kernel.PasswordPolicy.Verdict</method> return the routine's raw
-/// text as the reason -- the quoting leg reddens. Make <method>OcuPilot.Port.AdminPort.InvokeLocated</method> read
+/// text as the reason -- the quoting leg reddens. Remove 845 from <parameter>OcuPilot.Kernel.PasswordPolicy.POLICYCODES</parameter>
+/// -- the pattern leg reddens. Drop the reason from the create rules' password violation -- the create leg reddens. Make <method>OcuPilot.Port.AdminPort.InvokeLocated</method> read
 /// the account name from the query on a <code>POST</code> -- the body-named leg reddens. Drop <code>"POST"</code>
 /// from <method>OcuPilot.Port.AdminPort.IsPasswordType</method> -- the same leg reddens. Remove the guard's call in
 /// <method>OcuPilot.Port.AdminPort.InvokeLocated</method> -- the set-password leg reaches the vendor and reddens.</p>
@@ -45,7 +46,12 @@ Parameter NAMESENTENCE = "Passwords on this instance may not contain the account
 /// <p>The sentence the probe routine's <code>Other</code> entry answers with error 5002, a code the published set does not list.</p>
 Parameter OTHERSENTENCE = "Probe sentence 1829 other.";
 
+/// <p>The text the probe routine's <code>Pattern</code> entry gives error 958, the instance's pattern refusal.</p>
+Parameter PATTERNTEXT = "Probe pattern 1829";
+
 Parameter CHECKPATH = "/users/password-check";
+
+Parameter CREATEPATH = "/users";
 
 /// <p>The instance's <code>PasswordValidationRoutine</code> as <method>OnBeforeAllTests</method> read it, which
 /// every teardown restores.</p>
@@ -95,8 +101,8 @@ Method OnAfterOneTest() As %Status
 }
 
 /// <p>AD-35: an accepted password answers 1 with no reason; a password the pattern refuses answers 0 with the
-/// published sentence, because the vendor's pattern sentence (error 845) quotes the password <code>a</code>, which
-/// the verdict replaces; an empty password answers 0 with the required sentence.</p>
+/// published sentence, because the vendor's pattern sentence (error 845) contains <code>a</code>, the whole password,
+/// so the verdict replaces it; an empty password answers 0 with the required sentence.</p>
 Method TestTheVerdictAcceptsAndRefusesAndNeverEmptiesTheReason()
 {
     Set tOK = ##class(OcuPilot.Kernel.PasswordPolicy).Verdict(..#GOODPASSWORD, ..#ACCOUNT, .tReason)
@@ -213,6 +219,73 @@ Method TestAnUnlistedRefusalCodeIsReplacedByThePublishedSentence()
     Do $$$AssertEquals(tReason, ##class(OcuPilot.Api.Error).#REASONUSERPASSWORDPOLICY, "with the published sentence, not the routine's text")
 }
 
+/// <p>AD-39: a refusal keeps the validator's own sentence for 845 and 958. <code>Zq</code> is refused by the
+/// instance's length and pattern rule (845), whose sentence does not contain it; the probe routine's
+/// <code>Pattern</code> entry refuses with 958.</p>
+/// <p>Mutation (Rule 19): remove 845 from <parameter>OcuPilot.Kernel.PasswordPolicy.POLICYCODES</parameter> -- the
+/// 845 leg reddens.</p>
+Method TestThePatternRefusalsKeepTheirOwnSentence()
+{
+    Set tSC = $System.Security.ValidatePassword("Zq", ..#ACCOUNT)
+    Do $$$AssertEquals($Piece($System.Status.GetErrorCodes(tSC), ",", 1), 845, "the instance refuses Zq with 845, its length and pattern refusal")
+    Set tOwn = $System.Status.GetOneStatusText(tSC, 1)
+    Set tOK = ##class(OcuPilot.Kernel.PasswordPolicy).Verdict("Zq", ..#ACCOUNT, .tReason)
+    Do $$$AssertEquals(tOK, 0, "Zq is refused")
+    Do $$$AssertEquals(tReason, tOwn, "with the validator's own 845 sentence")
+    Do $$$AssertNotEquals(tReason, ##class(OcuPilot.Api.Error).#REASONUSERPASSWORDPOLICY, "not the published sentence")
+
+    Set tSC = ..UseEntry("Pattern")
+    Do $$$AssertStatusOK(tSC, "the setting names the 958 entry")
+    Set tOK = ##class(OcuPilot.Kernel.PasswordPolicy).Verdict(..#MARKEDPASSWORD, ..#ACCOUNT, .tReason)
+    Do $$$AssertEquals(tOK, 0, "a password the routine refuses with 958 is refused")
+    Do $$$AssertEquals(tReason, $System.Status.GetOneStatusText($System.Status.Error(958, ..#PATTERNTEXT), 1), "with the 958 refusal's own sentence")
+}
+
+/// <p>AD-35, AD-2: a set-password names its account in the query, so a password the routine refuses because it
+/// carries that name is 422 <code>USER.PASSWORD.POLICY</code> with the routine's sentence, before the vendor.</p>
+/// <p>Mutation (Rule 19): read no account name for a <code>CHANGEPWD</code> in
+/// <method>OcuPilot.Port.AdminPort.InvokeLocated</method> -- this leg reddens.</p>
+Method TestASetPasswordIsJudgedByTheAccountNameInItsQuery()
+{
+    Set tSC = ..UseEntry("User")
+    Do $$$AssertStatusOK(tSC, "the setting names the account-name entry")
+    Kill tQuery
+    Set tQuery("name") = ..#ACCOUNT
+    Set tBody = {}
+    Do tBody.%Set("Password", ..#ACCOUNT _ "!x", "string")
+    Set tSC = ##class(OcuPilot.Port.AdminPort).Invoke("Security.User", "CHANGEPWD", .tQuery, tBody, .tResult, .tHttp, .tFault)
+    Do $$$AssertEquals(tHttp, 422, "a password carrying the query's account name is 422")
+    Do $$$AssertEquals($Select($IsObject($Get(tFault)): tFault.%Get("code"), 1: ""), ##class(OcuPilot.Api.Error).#USERPASSWORDPOLICY, "on USER.PASSWORD.POLICY")
+    Do $$$AssertEquals($Select($IsObject($Get(tFault)): tFault.%Get("reason"), 1: ""), ..#NAMESENTENCE, "with the routine's own sentence")
+}
+
+/// <p>AD-39 (DW-2231): a create through <code>POST /users</code> whose password the routine refuses answers 422 with
+/// the routine's own sentence on <code>Password</code>, in one envelope with the request's other broken rule, because
+/// the create rules ask the policy before the port is reached. Nothing is created.</p>
+/// <p>Mutation (Rule 19): drop the reason from the password violation in
+/// <method>OcuPilot.Area.Permissions.UserCreateRules.Validate</method> -- the reason leg reddens.</p>
+Method TestACreateRefusalCarriesThePolicysOwnReason()
+{
+    Set tSC = ..UseEntry("Refuse")
+    Do $$$AssertStatusOK(tSC, "the setting names the refusing entry")
+    Set tBody = "{""Name"":""" _ ..#NEWACCOUNT _ """,""Password"":""" _ ..#MARKEDPASSWORD _ """,""ExpirationDate"":""2027-02-30""}"
+    Set tSC = ##class(OcuPilot.Test.Http).MakeRequest("POST", ..#CREATEPATH, .tStatus, .tAnswer, tBody, "application/json")
+    Do $$$AssertStatusOK(tSC, "the create request completes")
+    Do $$$AssertEquals(tStatus, 422, "a refused password is 422")
+    Set tPasswordReason = ""
+    Set tExpiryCode = ""
+    If $IsObject($Get(tAnswer)) && $IsObject(tAnswer.%Get("detail")) && $IsObject(tAnswer.%Get("detail").%Get("violations")) {
+        Set tIterator = tAnswer.%Get("detail").%Get("violations").%GetIterator()
+        While tIterator.%GetNext(.tIndex, .tViolation) {
+            If tViolation.%Get("field") = "Password" Set tPasswordReason = tViolation.%Get("reason")
+            If tViolation.%Get("field") = "ExpirationDate" Set tExpiryCode = tViolation.%Get("code")
+        }
+    }
+    Do $$$AssertEquals(tPasswordReason, ..#REFUSALSENTENCE, "the password's violation carries the routine's own sentence")
+    Do $$$AssertNotEquals(tExpiryCode, "", "beside the expiry date's violation, in the same envelope")
+    Do $$$AssertTrue('..Exists(..#NEWACCOUNT), "and no account was created")
+}
+
 /// <p>AD-35, AD-2: a refused <code>POST</code> and a refused set-password write no part of the password to the console
 /// log. The lines written since before the two refusals are read after a flush, which is asserted first, so an empty
 /// read is a read that happened.</p>
@@ -236,7 +309,9 @@ Method TestARefusedPostAndSetPasswordWriteNoPasswordToTheLog()
     Set tSC = ##class(OcuPilot.Port.AdminPort).Invoke("Security.User", "CHANGEPWD", .tQuery, tBody, .tResult, .tHttp, .tFault)
     Do $$$AssertEquals(tHttp, 422, "a refused set-password is 422")
     Do $$$AssertTrue(##class(OcuPilot.Test.SslSinks).Flush(tOffset), "messages.log is written past the refusals")
-    Do $$$AssertEquals(##class(OcuPilot.Test.SslSinks).LogSince(tOffset) [ ..#MARKER, 0, "and no line written since carries the password's marker")
+    Set tLog = ##class(OcuPilot.Test.SslSinks).LogSince(tOffset)
+    Do $$$AssertEquals(tLog [ ..#MARKER, 0, "and no line written since carries the password's marker")
+    Do $$$AssertEquals(tLog [ "Security.User failed", 0, "and neither refusal writes a fault line")
 }
 
 /// <p>Point the instance's <code>PasswordValidationRoutine</code> at entry <var>pTag</var> of the probe routine, in
@@ -318,6 +393,10 @@ Method InstallRoutine() As %Status
         Do tRoutine.WriteLine("}")
         Do tRoutine.WriteLine("User(Username,Password) PUBLIC {")
         Do tRoutine.WriteLine(" If (Username '= """") && ($ZConvert(Password,""L"") [ $ZConvert(Username,""L"")) Quit $System.Status.Error(5001,""" _ ..#NAMESENTENCE _ """)")
+        Do tRoutine.WriteLine(" Quit 1")
+        Do tRoutine.WriteLine("}")
+        Do tRoutine.WriteLine("Pattern(Username,Password) PUBLIC {")
+        Do tRoutine.WriteLine(" If Password [ """ _ ..#MARKER _ """ Quit $System.Status.Error(958,""" _ ..#PATTERNTEXT _ """)")
         Do tRoutine.WriteLine(" Quit 1")
         Do tRoutine.WriteLine("}")
         Do tRoutine.WriteLine("Other(Username,Password) PUBLIC {")

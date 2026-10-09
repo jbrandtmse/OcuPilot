@@ -95,8 +95,8 @@ Parameter FIELDPHONEPROVIDER = "PhoneProvider";
 Parameter FIELDAUTHE = "AutheEnabled";
 
 /// <p>Every rule a create applies, in <var>pViolations</var> as
-/// <code>pViolations(n) = $ListBuild(field, code)</code> with the count in
-/// <code>pViolations</code>.</p>
+/// <code>pViolations(n) = $ListBuild(field, code[, reason])</code> with the count in
+/// <code>pViolations</code>; a password the policy refuses carries the policy's reason.</p>
 /// <p><var>pCheckTaken</var> 0 skips the name look-up and <var>pCheckPassword</var> 0 skips the
 /// password rules, for the agent's mint, which has read the target's absence and never holds a
 /// password (<method>OcuPilot.Screen.Tool.UserCreate.ArgumentProblem</method>).</p>
@@ -131,9 +131,11 @@ ClassMethod Validate(pName As %String, pArgs As %DynamicObject, Output pViolatio
             If tPassword = "" {
                 Do ..Add(.pViolations, ..#FIELDPASSWORD, ##class(OcuPilot.Api.Error).#USERPASSWORDREQUIRED)
             } ElseIf '##class(OcuPilot.Kernel.PasswordPolicy).Verdict(tPassword, pName, .tPolicyReason) {
-                Do ..Add(.pViolations, ..#FIELDPASSWORD, ##class(OcuPilot.Api.Error).#USERPASSWORDPOLICY)
+                ; AD-39: the refusal carries the policy's own reason, which never holds the password.
+                Do ..Add(.pViolations, ..#FIELDPASSWORD, ##class(OcuPilot.Api.Error).#USERPASSWORDPOLICY, tPolicyReason)
             }
             Set tPassword = ""
+            Set tPolicyReason = ""
         }
 
         For tField = ..#FIELDFULLNAME, ..#FIELDEXPIRY, ..#FIELDNAMESPACE, ..#FIELDROUTINE {
@@ -457,8 +459,9 @@ ClassMethod Taken(pName As %String, Output pTaken As %Boolean) As %Status
 }
 
 /// <p>The account <var>pName</var> as <parameter>UPDATETOOL</parameter>'s own read answers it,
-/// through its own port (AD-52), in <var>pUser</var>, escalation roles included: a copy takes them from
-/// its source. An absent account is an error status with <var>pHttpStatus</var> 404.</p>
+/// through its own port (AD-52), in <var>pUser</var>, without <parameter>FIELDESCALATIONROLES</parameter> unless
+/// <var>pKeepEscalation</var> is 1, which the copy source's read asks (<parameter>COPYSOURCEQUERY</parameter>).
+/// An absent account is an error status with <var>pHttpStatus</var> 404.</p>
 ClassMethod Account(pName As %String, Output pUser As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, pKeepEscalation As %Boolean = 0) As %Status
 {
     Set pUser = ""
@@ -622,10 +625,11 @@ ClassMethod Names(pList As %String) As %DynamicArray [ Private ]
     Quit tRows
 }
 
-/// <p>Append one <code>(field, code)</code> violation.</p>
-ClassMethod Add(Output pViolations, pField As %String, pCode As %String) [ Private ]
+/// <p>Append one <code>(field, code)</code> violation, with <var>pReason</var> as its sentence when it is not
+/// empty; an empty one leaves the code's published sentence.</p>
+ClassMethod Add(Output pViolations, pField As %String, pCode As %String, pReason As %String = "") [ Private ]
 {
-    Set pViolations($Increment(pViolations)) = $ListBuild(pField, pCode)
+    Set pViolations($Increment(pViolations)) = $Select(pReason = "": $ListBuild(pField, pCode), 1: $ListBuild(pField, pCode, pReason))
 }
 
 /// <p>Answer <code>POST /users/password-check</code> with <code>{valid, reason}</code>: whether the body's

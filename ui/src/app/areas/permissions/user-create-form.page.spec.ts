@@ -92,6 +92,10 @@ describe('the create-a-user page copy consequence (AD-10, Story 18.29)', () => {
     const fixture = await mount(['%All']);
     await chooseSource(fixture);
     expect(effectCaptions(fixture.nativeElement)).toContain(STRINGS.userCopyPrivilegedEffect);
+    // The select is described by the consequence, so it is read with the choice.
+    const select = fixture.nativeElement.querySelector('select') as HTMLSelectElement;
+    const described = (select.getAttribute('aria-describedby') ?? '').split(' ').map((id) => document.getElementById(id)?.textContent?.trim() ?? '');
+    expect(described).toContain(STRINGS.userCopyPrivilegedEffect);
   });
 
   it('a copy of a plain source states no consequence', async () => {

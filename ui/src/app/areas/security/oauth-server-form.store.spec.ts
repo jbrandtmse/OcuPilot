@@ -156,6 +156,23 @@ describe('the authorization server editor store', () => {
     expect(formDirty.dirty()).toBe(false);
   });
 
+  // Story 18.29 (DW-1662): the editor's own request. A create the user leaves on the pre-ticked roles posts
+  // %DB_IRISSYS and %Manager, the pair `OAuthAuthorizationServerRules.Defaults` treats as stored and
+  // `OAuthAuthorizationServerWire` posts; `tools/oauth-server-defaults.test.mjs` holds the three lists equal.
+  // Mutation (Rule 19): take '%Manager' out of NEW_HELD.roles in the store -> this goes red.
+  it('DW-1662: a create left on its pre-ticked roles posts %DB_IRISSYS and %Manager', async () => {
+    const { store, calls } = mount(null, { kind: 'ok', status: 201, body: { issuer: ISSUER } });
+    await store.open();
+    store.setText('issuer', ISSUER);
+    store.addScope();
+    store.setScope(0, 'scope', 'openid');
+    expect(await store.save()).toBe(true);
+    const sent = writes(calls);
+    expect(sent).toHaveLength(1);
+    const body = JSON.parse(sent[0].body) as Record<string, unknown>;
+    expect(body['CustomizationRoles']).toEqual(['%DB_IRISSYS', '%Manager']);
+  });
+
   it('AC2, AD-4: an edit puts only what changed, the scopes whole and the metadata as its changed members', async () => {
     const { store, calls } = mount(DEFINITION);
     await store.open();
