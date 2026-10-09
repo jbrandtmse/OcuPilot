@@ -261,6 +261,8 @@ Part 2 -- client.
 
 ## Spec Change Log
 
+- 2026-10-09, runner, orchestrator ruling: DW-2241 is HIGH under Rule 6 (AD-59) and release-blocking, so AC7 is the story's first criterion in priority; QA adds an end-to-end pin that Take as script on an agent save renders the reviewed text. ACs keep their numbers so the `mutation:` lines stay valid.
+
 - 2026-10-09, runner, spec gate: the spine amendments are applied; the AD-61 line is folded into AD-53's creates sentence, because AD-61's rule 3 is the CSP stub and carries no write-version text. The 1,000,000-character script bound is accepted.
 
 ## Review Triage Log

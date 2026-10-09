@@ -10778,3 +10778,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-20-21-the-agent-saves-edits-to-existing-classes-and-routines.md | severity: low | fix-risk: low | footprint: out-of-footprint
 - evidence: AtelierPort.SaveSet quits with the Compile route's error status after a successful PutDoc (19.3), so the card reads a failed write; a compile error (not a fault) is reported as output.errors
 - 2026-10-09T08:21:47Z status=wontfix-theoretical owner=20-21-the-agent-saves-edits-to-existing-classes-and-routines by=cr note=real only if the Compile route itself faults (not a compile error) after PutDoc succeeded
+
+### DW-2247: The agent's create may overwrite a name created between the port's taken check and the PUT, if the vendor accepts a PUT over an existing document without If-None-Match
+- source: spec-20-20-the-agent-creates-new-classes-and-routines-on-the-person-s-c.md | severity: med | fix-risk: low | footprint: in-story
+- evidence: AtelierPort.Route seeds If-None-Match only for a non-empty value and CREATE passes empty (unverified, inference); 20.17's plan measured 409 on an existing document without a version
+- 2026-10-09T11:03:40Z status=open owner=20-20-the-agent-creates-new-classes-and-routines-on-the-person-s-c by=harvest note=settle with a PUT over an existing name and no If-None-Match on ocupilot-b-ci, read back; QA pins it

@@ -8439,6 +8439,8 @@ So that a document I ask for in conversation is created on the instance.
 
 **Acceptance Criteria:**
 
+- DW-2241 (first criterion, release-blocking) [AMENDED 2026-10-09, orchestrator, HIGH under Rule 6 / AD-59]: Take as script on an agent's class or routine save renders the text as the placeholder "<content>", so the script is not the reviewed change (AD-59); render the stored text, header-aware and bounded, for saves and creates (ledger; routed by cr 2026-10-09)
+
 - **Given** a request to create a new class or routine
 - **When** the agent proposes it
 - **Then** it is a confirmed proposal whose card shows the whole new document and its compile outcome.
@@ -8458,8 +8460,6 @@ So that a document I ask for in conversation is created on the instance.
 - **Given** any further security-posture question its plan finds
 - **When** it is planned
 - **Then** the question is returned to the orchestrator for the owner, with options and a recommendation.
-
-- DW-2241: Take as script on an agent's class or routine save renders the text as the placeholder "<content>", so the script is not the reviewed change (AD-59); render the stored text, header-aware and bounded, for saves and creates (ledger; routed by cr 2026-10-09)
 
 - DW-2242: an agent code write's Confirm gates WRITE on the request's namespace's routines database, not the proposal's stored Namespace; declare the pair from the stored Namespace for saves and creates (ledger; routed by cr 2026-10-09)
 
