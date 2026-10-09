@@ -3,20 +3,13 @@ title: 'Story 18.10: Web application extras and spec-based REST services'
 type: 'feature'
 created: '2026-10-08'
 status: 'in-progress'
-baseline_revision: 'aae612042dc4d159aa931e144974a5bd3912a973'
+baseline_revision: 'b7f09a234a0e7c38837508a540b876a3b2bdc576'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-18-context.md'
 warnings: ['multiple-goals', 'oversized']
 deferred:
-  - summary: >-
-      AdminPort's direct PUT and DELETE on Security.PrivilegedRoutine may reach the vendor for OcuPilotState or OcuPilotIdentity, without the AD-10 arm.
-    evidence: |-
-      (inference, maybe-false) The guard refuses only web-application names; the AD-10 arm lives in Prohibited.Prohibits, which the proposal tools call. Whether AdminPort's PUT or DELETE on this endpoint consults Prohibits is not settled: EndpointType admits PUT through TYPESUFFIXES, and the endpoint is not in MUTATINGTYPES. Settle by reading EndpointType and the mutating path for Security.PrivilegedRoutine, with no live write to OcuPilotState.
-    location: >- # file:line
-      src/OcuPilot/Port/AdminPort.cls:1246
-    severity: high (unverified)
   - summary: >-
       AdminPort's generic WebApp.PctClassAccess PUT and DELETE may skip the PctAccessPort shape check, so a malformed class reaches the vendor.
     evidence: |-
@@ -86,10 +79,17 @@ Paths are under `src/OcuPilot/` unless they start with `ui/`.
 
 **Rework items (pass 2, lead decisions 2026-10-09, after pass 1 returned `blocked` with its work uncommitted):**
 
-- [ ] [Rework] Decision 1, the 403. `WebAppDelete`'s `NameSpace` precondition answers 400 `TOOL.ARGUMENTS` before the AD-10 arm runs, because `OcuPilotState` and `OcuPilotIdentity` have an empty `NameSpace`. `WebAppDelete` answers 403 `PROHIBITED.OCUPILOTROUTINEAPP`, with `Prohibited`'s own reason and envelope, for those two before its precondition, on every caller path: the screen action route, the agent's mint and the agent's confirm. This is Task 1's "refuse a `DELETE` before `Target()`". Other privileged routine applications keep today's precondition refusal unchanged (18.31 owns them). Do not reorder `Prohibits` against `StateDiff` globally. Then write P1, the route and confirm 403 test. Mutation: remove the early check, so the answer is 400 again and P1 reddens.
-- [ ] [Rework] Decision 2, the typed name. A `%`-class access entry's Delete confirmation is typed against the entry's `Class` value, exactly as its row shows it, never the composite id with its U+0001 separators. Set that on the pct-class-access descriptor and write P7, the browser Delete leg. Mutation: the dialog compares against the id, so the Delete button never enables and P7 reddens.
-- [ ] [Rework] P11, the port-side `System` refusal. Demonstrate its mutation through a test-only seam that replaces the vendor call (as `Test/UserCopyVendorFault` does), never a real delete of an instance-owned entry.
-- [ ] [Rework] Re-measure after the patches and write the numbers into `## Auto Run Result`: the bundle's initial total, and the Fixed-strings literal count against the 3000 bound. If the count crosses 3000, raise the bound to exactly 3400 with ruling Q3's comment line.
+- [x] [Rework] Decision 1, the 403. `WebAppDelete`'s `NameSpace` precondition answers 400 `TOOL.ARGUMENTS` before the AD-10 arm runs, because `OcuPilotState` and `OcuPilotIdentity` have an empty `NameSpace`. `WebAppDelete` answers 403 `PROHIBITED.OCUPILOTROUTINEAPP`, with `Prohibited`'s own reason and envelope, for those two before its precondition, on every caller path: the screen action route, the agent's mint and the agent's confirm. This is Task 1's "refuse a `DELETE` before `Target()`". Other privileged routine applications keep today's precondition refusal unchanged (18.31 owns them). Do not reorder `Prohibits` against `StateDiff` globally. Then write P1, the route and confirm 403 test. Mutation: remove the early check, so the answer is 400 again and P1 reddens.
+- [x] [Rework] Decision 2, the typed name. A `%`-class access entry's Delete confirmation is typed against the entry's `Class` value, exactly as its row shows it, never the composite id with its U+0001 separators. Set that on the pct-class-access descriptor and write P7, the browser Delete leg. Mutation: the dialog compares against the id, so the Delete button never enables and P7 reddens.
+- [x] [Rework] P11, the port-side `System` refusal. Demonstrate its mutation through a test-only seam that replaces the vendor call (as `Test/UserCopyVendorFault` does), never a real delete of an instance-owned entry.
+- [x] [Rework] Re-measure after the patches and write the numbers into `## Auto Run Result`: the bundle's initial total, and the Fixed-strings literal count against the 3000 bound. If the count crosses 3000, raise the bound to exactly 3400 with ruling Q3's comment line.
+
+**Rework items (pass 3, lead decision 2026-10-09, after pass 2 returned `blocked` on the endpoint arm):**
+
+- [ ] [Rework] Decision 3, option (a), as ruling Q4 requires ("through every path that reaches them, including the vendor's privileged-routine endpoint"). In `AdminPort`'s `PRIVROUTINEENDPOINT` branch, before any vendor call and unlogged, consult `Prohibited` and refuse 403 `PROHIBITED.OCUPILOTROUTINEAPP` for `OcuPilotState` or `OcuPilotIdentity` on a `DELETE`, and on a `PUT` that sets `Enabled` false or changes `MatchRoles` or `Roles`. Use the same `OwnRoutineApplication` and `RoutineApplicationChanges` predicates the kernel arm uses, never a second copy. A `GET` still reads. Give each clause its own Rule 19 leg (delete, disable, `MatchRoles`, `Roles`), each with its mutation line. Each leg asserts that the vendor was not reached, by reading the application's stored state before and after and failing on an empty read.
+- [ ] [Rework] Apply every `[patch]` row marked "(not applied)" in the "2026-10-09 — Review pass (pass 2 …)" entry of the Review Triage Log: the `foldfirst` pin, the published-sentence and refusal-code assertions, the vendor-untouched read that cannot pass on `""`, and the `PctAccessError` sentences. Run every mutation that entry and `## Verification` record as named but not run (the AC1 Delete `startFor` leg, the AC2 Snippet and `webapp` mint legs, P2, P3's PUT leg, P4, P5, P6, P8 and P10), then write or correct each `mutation:` line. Leave the rows marked `[reject]` alone.
+- [ ] [Rework] Replace the whole body of `## Auto Run Result` with this pass's record only: the two contract lines, then no more than eight lines covering what changed, the runs with their indices, the bundle size, the Fixed-strings count, and S0. Earlier passes' notes are in the Spec Change Log and the triage log; do not restate them.
+- [ ] [Rework] Read S0 in full at the end: no `%OcuProbe1810*` entry, probe application or principal; both routine applications' `MatchRoles`, `Roles` and `Enabled` as at the start; monitor state 0.
 
 **Acceptance Criteria:**
 
@@ -116,6 +116,7 @@ Paths are under `src/OcuPilot/` unless they start with `ui/`.
 
 ## Spec Change Log
 
+- 2026-10-09, lead: pass 2 closed the four rework items and returned `blocked` on the endpoint arm. Decision 3 is (a), which ruling Q4 already requires. Pass 3's scope is the four items above; pass 2's review block was moved under the Review Triage Log.
 - 2026-10-09, lead: pass 1 (Haiku) returned `blocked` on two decisions, with its work uncommitted and kept for pass 2's finalize. Decision 1 is a targeted early 403 in `WebAppDelete` for OcuPilot's two applications (Task 1's wording). Decision 2 types the confirmation against `Class`. The orchestrator confirmed the `Enabled` leg of the arm. The four rework items above are pass 2's whole scope.
 - 2026-10-09, spec gate (lead): `Enabled` joins the arm. Disabling `OcuPilotState` or `OcuPilotIdentity` is refused (measured: `Prohibits` answered 0 for disabling `OcuPilotIdentity`), in the `SERVINGPATH` doctrine that refuses breaking OcuPilot's own serving path. `Routines` and `Resource` stay with 18.31's gate. Its mutation: the `Enabled` clause is removed and the disable leg reddens. Spine amendments written: AD-10, AD-2, AD-13, AD-44, AD-51.
 - 2026-10-09, lead: the orchestrator's rulings on the first plan were applied to the intent block. Q1 narrows 18.10 to the `%`-class access list plus DW-2239 and splits out 18.30 (Doc DB applications), 18.31 (privileged routine applications) and 18.32 (spec-based REST services). Q2 answers AD-53 with (B), written at 18.32's gate. Q3 sets the Fixed-strings bound to 3400. Q4 puts DW-2239's AD-10 arm and type check here. Reset to `draft` for a re-plan.
@@ -149,6 +150,34 @@ Paths are under `src/OcuPilot/` unless they start with `ui/`.
   - `[false]` `[reject]` The fixed-strings bound was not touched. Same refutation as the bound finding above; the bound is the ruling's 3000 until the count exceeds it.
   - `[false]` `[reject]` The spine's AD-10 amendment is absent from the diff. The amendment is in the base revision (`aae612042`, five "Story 18.10 spec gate" hits), so it is not a defect of this change.
   - `[low]` `[reject]` CI bookkeeping (`ci-timings.json`) — the same claim as the ci-timings finding above; same reason.
+
+### 2026-10-09 — Review pass (pass 2, follow-up after the rework)
+
+- verdicts: 22 findings — high 0, medium 11, low 6, false 3, maybe-false 2
+- findings:
+  - `[medium]` `[intent_gap]` Verification-gap and intent layers: `Security.PrivilegedRoutine` PUT and DELETE naming `OcuPilotState` or `OcuPilotIdentity` reach the vendor unguarded. `PrivilegedRoutineGuard` refuses only web-application names (routine-type names pass by design), and `AdminPort` never consults `Prohibited`. The Intent requires the arm on every path, including this endpoint. Verified in code; latent, because grep finds no production caller of that endpoint today (the smoke test, the task read and the token and OAuth ports name other endpoints). Not patched: this is a decision, see the blocking condition. No test sends PUT or DELETE naming a routine (`OwnRoutineApplication` line 96 onward uses `/csp/user` only).
+  - `[medium]` `[intent_gap]` Intent layer, same root cause: the endpoint carries no AD-10 arm, so the spec's "every path" reading and the diff's kernel-only arm diverge at `AdminPort.cls` `PRIVROUTINEENDPOINT`.
+  - `[medium]` `[intent_gap]` Intent layer, same root cause: a `Roles` change on the routine application has no tool-path test, and the endpoint refuses it by nothing. `Roles` is not reachable through the arm's own `web-application` type.
+  - `[medium]` `[patch]` (not applied: intent gap halts the pass first) `foldfirst` branch of `EntityRef.NormalizedId` (line 310) has no ObjectScript pin. Verified by grep: `foldfirst` and `RULEFOLDFIRST` appear only in `EntityRef.cls`, and only the TypeScript copy is pinned. Fix: an assertion in `WebAppPctAccess` with the mutation "remove the branch".
+  - `[low]` `[patch]` (not applied) `OwnRoutineApplicationWire.AssertRefused` compares the envelope to `Prohibited.ReasonFor`, which is the same sentence the envelope was built from; the published sentence is not pinned literally. Fix: compare against the literal text.
+  - `[low]` `[patch]` (not applied) `OwnRoutineApplication` PUT leg (line 110 to 114) compares `WebAppJSON` before and after, and both read `""` if the read fails, so "the vendor was not reached" can pass without a read. Fix: an `AssertNotEquals(tBefore, "")` guard.
+  - `[low]` `[patch]` (not applied) `PctAccessSaveWire.TestAnUnexpectedKeyIsRefused` asserts only a 400 and a JSON content type, so a 400 from another cause passes. Fix: assert the refusal code.
+  - `[medium]` `[patch]` (not applied) AC1 Delete leg's mutation (drop `delete` from `startFor`) is named but not run.
+  - `[medium]` `[patch]` (not applied) AC2 has no mutation for the Snippet leg, and the `webapp` mint mutation (line 213) is not run.
+  - `[medium]` `[patch]` (not applied) AC3's client `aria-disabled` half has no mutation line in `## Verification`.
+  - `[medium]` `[patch]` (not applied) AC4's read-back and sentence legs have no mutation line.
+  - `[medium]` `[patch]` (not applied) AC5's DELETE leg and its "still reads" leg have no mutation line.
+  - `[low]` `[reject]` The DELETE leg of `TestPrivilegedRoutineEndpointRefusesAWebApp` sends a real vendor DELETE to `/csp/user` if its guard is removed. That is the mutation's purpose and runs only on the throwaway, so it is not a defect.
+  - `[false]` `[reject]` `ApplicationHeld` answers 422 for a vendor failure. The doc comment states that behavior; it is a design note, not a gap.
+  - `[low]` `[patch]` (not applied) The `PCTACCESS.APPLICATION`, `ALLOWTYPE`, `CLASS`, `BADID`, `NOTFOUND` and `PRIVROUTINETYPE` sentences in `PctAccessError.cls` are never asserted, only their codes.
+  - `[maybe-false]` `[reject]` `tResult.System` against 0 at `WebAppPctAccess` line 131 may pass on an empty value. Reviewer said redundant with the agent delete leg; not verified, and the harm is a test that is weaker than it looks, not a defect in the product.
+  - `[low]` `[reject]` The confirm-path refusal is inferred to come from `Prohibits` at write time rather than the early 403. Inference; the confirm arm is covered by the seeded-row leg, so the claim is not a defect.
+  - `[medium]` `[patch]` (not applied) Rule 19 mutations recorded as not run: P2, P3 PUT leg, P4, P5, P6, P8, P10 and the browser `startFor` leg.
+  - `[low]` `[reject]` The spec title says "spec-based REST services", which is the story's original scope. The Intent records the split of 18.30 to 18.32; a title edit is not worth a review finding.
+  - `[false]` `[reject]` Fixed-strings count against the bound. `ui/tools/strings.test.mjs` asserts at most 3000 and `npm run test:tools` is 1903/1903 green on this tree, so the count is within the bound. Measured by the rework subagent at 2980.
+  - `[false]` `[reject]` The intent layer's "%-class surface" check found a close match between intent and diff; no divergence, so no finding.
+
+The four intent_gap rows are one group (one root cause: the endpoint carries no AD-10 arm). Lower entries are moot under the intent_gap branch, so no patch was applied and no code was reverted.
 
 ## Design Notes
 
@@ -208,29 +237,30 @@ Paths are under `src/OcuPilot/` unless they start with `ui/`.
 - `OwnRoutineApplication.TestDisableRefused` (P11, Enabled clause): mutation: `If ..Disables(pPayload, .pChanged) Quit 1` -> `If 0 Quit 1` in `Prohibited.RoutineApplicationChanges`; run 89 red on that leg; reverted, `cmp` byte-identical; run 90 green.
 - `WebAppPctAccess.TestStateDiffRefusesASystemEntry` (P11, StateDiff): mutation: `If pFresh.%Get("System") = 1` -> `If 0` in `WebAppPctAccessDelete.StateDiff`; run 85 red (three legs); reverted, byte-identical; run 86 green.
 - `WebAppPctAccess.TestShapeRefused` (P11, percent sign; P12 cleanup): mutation: `If '$Match(tClass, ..#CLASSPATTERN) Quit` -> `If 0 Quit` in `PctAccessPort`; run 87 red; the `Ens.Director` row the mutation wrote is removed by `OnAfterOneTest` (runner: 0 probe leftovers); reverted, byte-identical; run 88 green.
-- `WebAppPctAccess.TestSystemEntryRefused` port-side System refusal (P11): NOT RUN. Mutation `If pType = "DELETE"` -> `If 0` in `PctAccessPort.Invoke` would send a vendor DELETE of an instance-owned entry on the throwaway (it lists the `/api/*` entries), which cannot be restored from here. Needs a fresh throwaway or the lead's word.
+- `WebAppPctAccess.TestSystemEntryRefused` port-side System refusal (P11, pass 2): RUN. The delete goes through the seam `OcuPilot.Test.PctAccessVendorFault`, which counts a vendor `DELETE` and never sends it. Mutation: `If pType = "DELETE" {` -> `If 0 {` in `OcuPilot.Port.PctAccessPort`'s `Invoke`, with the seam recompiled; run 97 red on the vendor-count leg (one delete reached the vendor), then the 409 and `PCTACCESS.SYSTEM` legs. (Run 96, before the count leg moved ahead of the status leg, was red through an `<INVALID OREF>` after the 409 leg.) Reverted, `shasum` identical to the pre-mutation hash; run 98 green (7/7).
 - `WebAppPctAccess.TestStateDiffRefusesAnUnknownOrigin` (P5): mutation: drops the `unassigned` branch of `StateDiff`; not run.
 - `WebAppPctAccess.TestAgentCreateAndDeleteMintConfirmAndReadBack` (P4): mutation: `STATE` answers 200 for an absent entry, so the delete confirm reads `matches`; not run. The snippet leg asserts `PctAccessPort.Snippet` directly, not the copy-out draft.
 - `PctAccessSaveWire.TestAnExistingEntryIsRefusedAndNotWrittenAgain` (P6): mutation: removes the `EXISTS` branch in `PctAccessSave.Create`; not run.
 - `OwnRoutineApplication.TestUnrelatedNotRefused` (P2) and `TestPrivilegedRoutineEndpointRefusesAWebApp` PUT leg (P3): mutation for P2 is `Ask` returning 0 without a status; for P3 the PUT branch of `PrivilegedRoutineGuard` removed. Not run; the DELETE mutation is destructive on the throwaway, so the PUT leg is the only one of the two that could run.
-- `OwnRoutineApplicationWire` (P1), both legs: mutation: drops the `DELETE` clause of the arm. Not run; the legs are red on the unmodified code (blocker below).
+- `OwnRoutineApplicationWire` (P1, pass 2, Decision 1): the screen route and the agent mint answer 403 `PROHIBITED.OCUPILOTROUTINEAPP` before the precondition (`Api/ScreenAction.cls` and `Kernel/Proposal/Mint.cls` call `RefusedBeforeState`, which `Screen/Tool/WebAppDelete.cls` overrides); the agent's stored delete is refused at its confirm. Run 91 green (2/2). Mutation: `WebAppDelete.RefusedBeforeState` `Quit 1` -> `Quit 0` in its routine branch; run 94 red, 2 of 2, both delete legs answering 400 `TOOL.ARGUMENTS` (the precondition). Reverted, `shasum` identical; run 95 green (2/2).
+- `OwnRoutineApplicationWire` (P1, pass 2, Decision 1) also: `WebAppPctAccess` run 92 green (7/7) and `OwnRoutineApplication` run 93 green (7/7) on the unmutated tree.
 - `ui/tools/self-protection.test.mjs` Story 18.10 pin (P8): mutation: changes one word of `REASONSYSTEM` in `PctAccessError.cls`; not run.
 - `ui/tools/entity-ref.test.mjs` foldfirst pin (P10): mutation: `foldfirst` as `(id) => id`; not run. `screen-mirror.test.mjs` pins (P10) updated to `foldfirst`; green.
-- `web-applications-class-access.browser-spec.mjs` Delete leg (P7): mutation: drops `delete` from the tab's `startFor`; not run; the leg is red (blocker below).
+- `web-applications-class-access.browser-spec.mjs` Delete leg (P7, pass 2, Decision 2): the dialog asks for the entry's `Class` as the row shows it (`TYPED_NAME_ROWS` in `ui/src/app/shell/screen-action-handler.ts`), and the leg waits for the action's POST answer before reading the instance. Unmutated, 3/3 green on the rebuilt, redeployed bundle. Mutation: the `WebAppPctAccessList` entry removed from `TYPED_NAME_ROWS`, rebuilt and redeployed; the class assertion goes red (the dialog asks for `/csp/user` U+0001 `AllowClass` U+0001 `%OcuProbe1810.Browser`). Reverted, `shasum` identical; rebuilt, redeployed, 3/3 green. The `drop delete from startFor` mutation of this leg was not run in pass 2.
 - `web-app-class-access-tab.spec.ts` (P7 side fix): fake handler gains `pending`; green.
 
-**Blockers (pass 1, not resolved by this pass):**
+**Blockers (pass 1; both closed in pass 2, see the Verification lines above):**
 
-- **P1 delete legs.** On `OcuPilotState` and `OcuPilotIdentity` the vendor reads an empty `NameSpace` (measured: `NS=` on both). `WebAppDelete.StateDiff` answers that as "did not report that web application's own record", so both the screen route and the mint answer `TOOL.ARGUMENTS` (400) before `Prohibited` runs. The arm's delete branch is correct when asked directly (`OwnRoutineApplication` green), but no route reaches it. Decide: reorder the routine check ahead of the precondition, or change the precondition for routine applications, then re-run `OwnRoutineApplicationWire`.
+- **P1 delete legs.** Closed in pass 2 (Decision 1): the early 403 precedes the precondition on both routes; `OwnRoutineApplicationWire` green.
 - **P1 MatchRoles on the agent path.** `WebAppUpdate` excludes `MatchRoles` from its settable fields, so no agent proposal carries it; the test's class header says so. The screen route pins it (green).
-- **P7 Delete.** The tab's Delete opens the typed-name dialog, which asks for the composite id (`/csp/user<U+0001>AllowClass<U+0001>%OcuProbe1810.Browser`); the destructive button stays `aria-disabled` after the displayed text is typed, and the entry stays. The editor page did not mount `app-screen-action-dialogs`, so before this pass the Delete drew nothing; the tab now mounts it. Decide the typed name for this descriptor (for example the class).
+- **P7 Delete.** Closed in pass 2 (Decision 2): the typed name is the entry's class; the browser Delete leg is green. The `app-screen-action-dialogs` mount from pass 1 is unchanged.
 
 **Manual checks:** `ocupilot-ci` is at S0 (read after run 90: no `%OcuProbe1810` entry, no `Ens.Director` entry on `all-applications`, `OcuPilotState` and `OcuPilotIdentity` present and enabled, `/csp/ocuprobe1810` absent).
 
 ## Auto Run Result
 
 Status: blocked
-Blocking condition: review patches P1 and P7 need two decisions. (1) The routine-application delete answers 400 TOOL.ARGUMENTS from WebAppDelete.StateDiff before the AD-10 arm runs, because the routine applications report an empty NameSpace; AC4's 403 PROHIBITED.OCUPILOTROUTINEAPP is therefore not reached through the screen route. Decide whether the routine check moves ahead of the StateDiff precondition or the precondition changes for routine applications. (2) The editor's Delete confirmation is a typed-name dialog whose composite id contains invisible U+0001 separators, so the displayed text cannot be typed to enable the destructive button; decide the typed name for the pct-class-access descriptor. Also open: the P11 port-side System refusal mutation was not run, because it would send a vendor DELETE of an instance-owned entry on the throwaway.
+Blocking condition: intent gap (review pass 2): the Intent requires the AD-10 arm on every path, including the vendor's privileged-routine endpoint, but PUT and DELETE on Security.PrivilegedRoutine naming OcuPilotState or OcuPilotIdentity reach the vendor, because PrivilegedRoutineGuard refuses only web-application names and AdminPort never consults Prohibited. No production caller reaches that endpoint today (latent until 18.31). Decide: (a) add the endpoint arm now, refusing DELETE and the Enabled, MatchRoles and Roles writes of the two names in AdminPort's PRIVROUTINEENDPOINT branch via Prohibited, with one Rule 19 leg per clause; or (b) amend the matrix row and the Intent to say the endpoint arm lands with 18.31's routine tools, and keep the gap in the deferred list.
 
 Pass 1 (2026-10-08, implement of 18.10 at baseline aae612042). Implementation subagent: the %-class access list (port, tools, Save route, editor tab, dialog), the AD-10 arm and the privileged-routine guard, and the Rule 30 sweep. Review layers (verification-gap, intent-alignment) triaged 23 findings: 13 patch, 4 reject-as-false, 3 reject, 2 defer (see the Review Triage Log pass entry).
 
@@ -245,3 +275,9 @@ Not applied: P1 (blocked decision 1) and P7 (blocked decision 2). Their rows in 
 Throwaway ocupilot-ci reads S0 after the last run. Nothing committed, staged or pushed. The worktree holds the uncommitted pass-1 work for the lead's decision.
 
 Re-planned after the 2026-10-09 rulings. Task 0 was re-measured on `ocupilot-ci`, which is left at S0.
+
+Pass 2 (2026-10-09, rework re-dispatch). Implementation subagent on baseline b7f09a23: the four Rework items. Decision 1: `RefusedBeforeState` answers 403 `PROHIBITED.OCUPILOTROUTINEAPP` before the precondition on the screen route and the mint (`Screen/Tool/Write.cls`, `Screen/Tool/WebAppDelete.cls`, `Api/ScreenAction.cls`, `Kernel/Proposal/Mint.cls`). Decision 2: `TYPED_NAME_ROWS` in `ui/src/app/shell/screen-action-handler.ts` types the Delete confirmation against the entry's `Class`. P11: the port-side System refusal runs through the seam `Test/PctAccessVendorFault.cls`.
+Runs on ocupilot-ci (each one class or spec per call): `OwnRoutineApplicationWire` run 91 green (2/2), mutation run 94 red, reverted, run 95 green; `WebAppPctAccess` run 92 green (7/7), P11 mutation run 96 then 97 red, reverted, run 98 green (7/7); `OwnRoutineApplication` run 93 green (7/7); browser `web-applications-class-access.browser-spec.mjs` 3/3 green on the rebuilt, redeployed bundle, with the Decision-2 mutation red and reverted. `npm run test:tools` 1903/1903; `npm run test:components` 2733/2733; `npm run build` exit 0; `check-objectscript.py` 0 problems; `lint-docs.sh` 0 issues.
+Measured: bundle initial total 3,185,847 bytes (main 2,980,450 and styles 205,397), under the 3326 kB warning. Fixed-strings literals 2980 against the 3000 bound, unchanged. Throwaway `ocupilot-ci` reads partly S0 on a read-only spot check after the rework run: `/csp/ocuprobe1810` absent, `OcuProbe1810.Browser` absent, `/csp/user` present. The full S0 read (Ens.Director entries, the two routine applications) was not repeated this pass.
+Review pass 2: verification-gap and intent-alignment layers, 22 findings triaged (see the Review Triage Log). One intent_gap group (the endpoint arm), blocking. No patch applied, no code reverted, nothing committed, staged or pushed; the 60-path uncommitted tree is intact for the lead's decision.
+Deferred list: the endpoint item was removed from `deferred:` because it is the blocking gap above, not a deferral. The second item (the generic `WebApp.PctClassAccess` endpoint) is unchanged.
