@@ -9,7 +9,7 @@ Class OcuPilot.Screen.Tool.ExplorerRoutineSource Extends OcuPilot.Screen.Tool.Ex
 
 Parameter TOOLNAME = "explorer.routine.source";
 
-Parameter DESCRIPTION = "Read one routine's or include file's source text in the namespace this turn is scoped to, as the routine viewer (explorer.routine) shows it. The text is whole lines, cut to fit 60,000 characters: when it is cut, truncated is true and linesSent is below lines. Call this alone in a reply: a result past what remains of the reply's 65,536 characters answers TOOL.RESULTTOOLARGE. explorer.routine.read answers the routine's type and fields.";
+Parameter DESCRIPTION = "Read one routine's or include file's source text in the namespace this turn is scoped to, as the routine viewer (explorer.routine) shows it. The text is whole lines, cut to fit 60,000 characters: when it is cut, truncated is true and linesSent counts the lines it carries; a first line longer than that is itself cut and counts as one. Call this alone in a reply: a result past what remains of the reply's 65,536 characters answers TOOL.RESULTTOOLARGE. explorer.routine.read answers the routine's type and fields. A routine kept only as object code has no text and answers PORT.NOTFOUND.";
 
 /// <p>The viewer whose pairs this tool requires and whose context lists it.</p>
 Parameter DESCRIPTORCLASS = "OcuPilot.Screen.Descriptor.ExplorerRoutineDocument";

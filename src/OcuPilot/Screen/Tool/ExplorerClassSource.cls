@@ -8,7 +8,7 @@ Class OcuPilot.Screen.Tool.ExplorerClassSource Extends OcuPilot.Screen.Tool.Expl
 
 Parameter TOOLNAME = "explorer.class.source";
 
-Parameter DESCRIPTION = "Read one class's source text in the namespace this turn is scoped to, as the class viewer (explorer.class) shows it. The text is whole lines, cut to fit 60,000 characters: when it is cut, truncated is true and linesSent is below lines. Call this alone in a reply: a result past what remains of the reply's 65,536 characters answers TOOL.RESULTTOOLARGE. explorer.class.read answers the class's members and type.";
+Parameter DESCRIPTION = "Read one class's source text in the namespace this turn is scoped to, as the class viewer (explorer.class) shows it. The text is whole lines, cut to fit 60,000 characters: when it is cut, truncated is true and linesSent counts the lines it carries; a first line longer than that is itself cut and counts as one. Call this alone in a reply: a result past what remains of the reply's 65,536 characters answers TOOL.RESULTTOOLARGE. explorer.class.read answers the class's members and type.";
 
 /// <p>The viewer whose pairs this tool requires and whose context lists it.</p>
 Parameter DESCRIPTORCLASS = "OcuPilot.Screen.Descriptor.ExplorerClassDocument";

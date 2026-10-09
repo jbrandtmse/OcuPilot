@@ -27,7 +27,8 @@ Parameter PROBECLASS = "OcuProbe201.Keyed";
 /// <p>A credential-shaped key: <code>sk-</code> and twenty-four letters and digits.</p>
 Parameter SECRET = "sk-Probe201Secret0123456789";
 
-/// <p>What the turn principal's second role grants beyond the fixture's own resources.</p>
+/// <p>What the turn principal's second role grants beyond the fixture's own resources, beside READ
+/// on <parameter>NAMESPACE</parameter>'s code database.</p>
 Parameter DEVELOPMENTGRANT = "%Development:U";
 
 Property PreparedTurnPassword As %String;
@@ -55,7 +56,7 @@ Method OnBeforeAllTests() As %Status
     Do ##class(OcuPilot.Port.AtelierPort).DatabaseResources(..#NAMESPACE, .tCode, .tGlobals, .tMapped, .tResolved)
     If 'tResolved || (tCode = "") Quit $$$ERROR($$$GeneralError, "the " _ ..#NAMESPACE _ " namespace's code database could not be resolved")
     Set tUser = $Parameter(..#FIXTURE, "USERA")
-    Set tSC = $ClassMethod(..#FIXTURE, "EnsurePrincipal", tUser, ..PreparedTurnPassword, $ClassMethod(..#FIXTURE, "Resources", 0), ..#DEVELOPMENTGRANT _ "," _ tCode _ ":RW")
+    Set tSC = $ClassMethod(..#FIXTURE, "EnsurePrincipal", tUser, ..PreparedTurnPassword, $ClassMethod(..#FIXTURE, "Resources", 0), ..#DEVELOPMENTGRANT _ "," _ tCode _ ":R")
     If $$$ISERR(tSC) Quit tSC
     Set ..PreparedPrior = $ClassMethod(..#FIXTURE, "MarkedDefault")
     Set tSC = $ClassMethod(..#FIXTURE, "EnsureDefinition", ..#TAG, .tId)

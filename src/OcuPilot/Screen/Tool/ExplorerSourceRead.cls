@@ -65,7 +65,7 @@ ClassMethod ResultSchema(pDescriptor As %String = "") As %DynamicObject
             "lines": {"type": "integer", "description": "How many lines the document has."},
             "linesSent": {"type": "integer", "description": "How many lines the text carries, counted from the first. When the first line itself was cut, one."},
             "truncated": {"type": "boolean", "description": "True when the text does not carry every line in full."},
-            "text": {"type": "string", "description": "The document's first linesSent lines, joined by line feeds, at most 60,000 characters escaped."}
+            "text": {"type": "string", "description": "The document's first linesSent lines, joined by line feeds, at most 60,000 characters escaped; a first line longer than that is cut."}
         },
         "required": ["name", "namespace", "lines", "linesSent", "truncated", "text"],
         "additionalProperties": false
@@ -179,8 +179,8 @@ ClassMethod Cut(pLines As %DynamicArray, pMax As %Integer, Output pSent As %Inte
 }
 
 /// <p>The length of <var>pText</var> as a JSON string, without its quotes: the count
-/// <method>Cut</method> measures. It serializes the text as a pushed string, so a numeric-looking line
-/// keeps its quotes.</p>
+/// <method>Cut</method> measures. It serializes the text as a pushed string, so a line the array holds
+/// as a number is measured with the quotes it is sent with.</p>
 ClassMethod Escaped(pText As %String) As %Integer [ Private ]
 {
     Set tOne = []

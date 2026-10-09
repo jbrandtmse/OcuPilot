@@ -10677,3 +10677,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: Epic 20 runner report 2026-10-08 (20.17 implement handoff); cycle-log-parallel.md | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: A 20.17 handoff subagent ran panel-collapse, stream-reply and agent-sql with both unset between 15:48Z and ~16:35Z 10-08; they arm and disarm a probe agent definition on ocupilot-ci; ui/tools/browser-config.test.mjs pins the one-unset refusals but allows both unset
 - 2026-10-08T16:35:45Z status=routed owner=23-5-the-range-end-cleanup-part-5 by=orchestrator note=CI sets both per shard, so a both-unset refusal costs CI nothing; update browser-config.test.mjs and the README/DEVELOPMENT browser-run lines that rely on the default
+
+### DW-2228: The model's copy of a source read passes AD-60 (controls stripped, key shapes [redacted], the delimiter's name neutralized), so an Old the model copies from it can differ from the stored text
+- source: spec-20-19-the-agent-reads-class-and-routine-source.md | severity: med | fix-risk: low | footprint: in-epic
+- evidence: Loop.cls :638 sanitizes tool_result content before the provider sees it; 20.19's Consumed-by says 20.21's model copies each Old from this text, while its mint reads the document itself
+- 2026-10-09T00:19:36Z status=routed owner=20-21-the-agent-saves-edits-to-existing-classes-and-routines by=cr note=20.21's mint must match each Old exactly against the instance text and refuse otherwise, never fuzzily; say so to the model
+
+### DW-2229: README's What the agent sees section does not say class and routine source now reaches the configured provider, and its Secrets bullet reads against AD-36's named limit for credential literals in source
+- source: spec-20-19-the-agent-reads-class-and-routine-source.md | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: README.md :436-456 lists screen context, secrets, destination and framing; Story 20.19 sends a document's text to the provider and AD-36 names that a literal key in source reaches it unless AD-60 matches
+- 2026-10-09T00:19:36Z status=escalated owner=burndown by=cr note=owner wording call for the next README feature commit (plain language); no product change

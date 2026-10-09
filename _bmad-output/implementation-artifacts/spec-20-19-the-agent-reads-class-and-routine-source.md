@@ -86,8 +86,8 @@ Test templates:
   - `KIND` read; `SOURCEMAXLENGTH` 60000; `NAMEHINT` (set by each subclass); abstract `Endpoint()`.
   - `InputSchema`: closed, `name` a string, maxLength 256, required, described by `NAMEHINT`. `PrivilegePairs`: `Gate.RequiredPairs(..#DESCRIPTORCLASS)`. `ResultSchema`: closed, the six members required. No `SecretArguments` here: an abstract intermediate declares none of its own (DW-1121, pinned by `ToolWrite.cls` :355-361).
   - `View` as Boundaries, with `ExplorerSqlRead.View`'s refusal shapes. It sends `maxRows` 1 (the rows are not answered). `available` false is 404 built with `Kernel.Fault.Build(Api.Error.#NOTFOUND, Api.Error.#PORTNOTFOUND, AtelierPort.#REASONNOTFOUND)`. A port refusal passes through unchanged.
-  - `ClassMethod Cut(pLines As %DynamicArray, pMax As %Integer, Output pSent As %Integer, Output pTruncated As %Boolean) As %String`, public and pure, the one home of the cut. Each line is measured from a `%DynamicArray` it was `%Push`ed into with type `"string"`, because a numeric-looking line otherwise serializes unquoted. A first line over `pMax` is cut at a character boundary, never ending on a high surrogate.
-- `src/OcuPilot/Screen/Tool/ExplorerClassSource.cls` and `ExplorerRoutineSource.cls` (new) -- `TOOLNAME` `explorer.class.source` / `explorer.routine.source`; `DESCRIPTORCLASS` the viewer; `Endpoint` `ENDPOINTCLASS` / `ENDPOINTROUTINE`; `NAMEHINT` the viewer's own `name` hint (descriptor :58); `SecretArguments` declared none, on each class. `DESCRIPTION` says, in order: it reads one document's source text in the turn's namespace, as the viewer (`explorer.class` / `explorer.routine`) shows it; the text is whole lines, cut to fit 60,000 characters with `truncated` true and `linesSent` below `lines`; call it alone in a reply, because a result past what remains of the reply's 65,536 characters answers `TOOL.RESULTTOOLARGE`; `explorer.class.read` / `explorer.routine.read` answers the document's members and type.
+  - `ClassMethod Cut(pLines As %DynamicArray, pMax As %Integer, Output pSent As %Integer, Output pTruncated As %Boolean) As %String`, public and pure, the one home of the cut. Each line is measured from a `%DynamicArray` it was `%Push`ed into with type `"string"`, because a line the array holds as a number otherwise serializes unquoted. A first line over `pMax` is cut at a character boundary, never ending on a high surrogate.
+- `src/OcuPilot/Screen/Tool/ExplorerClassSource.cls` and `ExplorerRoutineSource.cls` (new) -- `TOOLNAME` `explorer.class.source` / `explorer.routine.source`; `DESCRIPTORCLASS` the viewer; `Endpoint` `ENDPOINTCLASS` / `ENDPOINTROUTINE`; `NAMEHINT` the viewer's own `name` hint (descriptor :58); `SecretArguments` declared none, on each class. `DESCRIPTION` says, in order: it reads one document's source text in the turn's namespace, as the viewer (`explorer.class` / `explorer.routine`) shows it; the text is whole lines, cut to fit 60,000 characters with `truncated` true and `linesSent` counting the lines it carries, a first line longer than that itself cut and counting as one; call it alone in a reply, because a result past what remains of the reply's 65,536 characters answers `TOOL.RESULTTOOLARGE`; `explorer.class.read` / `explorer.routine.read` answers the document's members and type.
 - `src/OcuPilot/Screen/Descriptor/ExplorerClassDocument.cls` and `ExplorerRoutineDocument.cls` :5-9 -- the header says the declared read tool never sees `document`, and `explorer.<x>.source` answers its text as whole lines (Story 20.19). Doc comment only.
 - `src/OcuPilot/Test/ExplorerSource.cls` (new, in process as the suite account in `USER`, probes made and removed in each test) -- the matrix's rows; a routine read whole (`OcuProbe193Mac.mac`); the object-only routine 404 and a first line of 70,000 characters with quotes, both through `View` over `AtelierPortFixture`'s fake routes; `{}` 400 `TOOL.ARGUMENTS`; the denied pair; and AC1's registry and context legs. Each result validates against `ResultSchema`.
 - `src/OcuPilot/Test/ExplorerSourceTurn.cls` (new) -- AC5. It declares and refuses on `OCUPILOT_ALLOW_PRINCIPALS` and `OCUPILOT_ALLOW_TEST_PROVIDER` as `SqlAgentRead` does. USERA holds `%Development:U` and READ on `USER`'s code database. The probe class, in `USER`, carries `sk-` plus 24 letters and digits in a doc comment. It removes the probe, the principal, the definition and its turns as `SqlAgentRead` :81-106 does.
@@ -104,12 +104,45 @@ Test templates:
 **Acceptance Criteria:**
 
 - **AC1 (advertised on the viewers).** Given the registry, when the provider tool list, the dispatch lookup and the two viewers' screen context are built, then each source read is an advertised read requiring exactly its viewer's effective pairs, and `explorer.class`'s context `tools` reads `["explorer_class_read","explorer_class_source"]` (the routine viewer's likewise), while the editors' stay `[]`.
-- **AC2 (the cut).** Given a document whose text escapes past 60,000 characters, or whose first line alone does, when it is read, then `text` is whole lines (or the first line cut) escaping to at most 60,000 characters, the next line would not fit, `truncated` is true and `linesSent` is below `lines`.
+- **AC2 (the cut).** Given a document whose text escapes past 60,000 characters, or whose first line alone does, when it is read, then `text` is whole lines (or the first line cut) escaping to at most 60,000 characters, the next line would not fit, `truncated` is true and `linesSent` is below `lines`, or 1 when the first line alone was cut.
 - **AC3 (routines and object code).** Given a probe routine, when `explorer.routine.source` reads it, then `text` is its whole text; and given a routine the instance keeps only as object code, the read answers 404 `PORT.NOTFOUND`.
 - **AC4 (the viewer's pairs).** Given `%Development:USE` denied, when the model calls `explorer_class_source`, then it reads `AUTH.NOPRIVILEGE` naming `%Development:USE` and the screen `explorer.class`.
 - **AC5 (Integration: the provider request, AD-60).** Given a real turn on `ocupilot-b-ci` as a principal holding the viewer's pairs, when the scripted model calls `explorer_class_source` on a probe class in `USER`, then the next provider request's `tool_result` is wrapped in `<ocupilot-data>`, carries the class's lines, and reads `[redacted]` where the class holds the `sk-` key.
 - **AC6 (untrusted text, AD-11).** Given a seed in a probe class's source (source `p`), when a real turn reads it through `explorer.class.source`, then the seed arrives inside a `tool_result` and `InjectionChannels`' invariants hold.
 - **AC7 (nothing else moves).** Given this story, when `ExplorerSave`, `SqlDataSaveRoutes` and `GovernanceBaseline` run unchanged, then the two saves and `explorer.sqldata.save` stay unadvertised and their keys unchanged, and no governance key, client file or string is added.
+
+### Review Findings
+
+Code review 2026-10-08 (bmad-code-review, full-opus: blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor). Story 20.19's first review.
+
+- [x] [Review][Patch] HIGH (Rule 6): AD-36's and AD-24's 20.19 amendments said "whole lines" while Boundaries and AC2 specify the first-line cut -- spine amended at origin (AD-36 :717, AD-24 :550, memlog), code unchanged [ARCHITECTURE-SPINE.md]
+- [x] [Review][Patch] MED: both `DESCRIPTION`s told the model `linesSent` is below `lines` when cut, false for a cut first line; reworded, and the routine read names the object-code `PORT.NOTFOUND` [ExplorerClassSource.cls:11, ExplorerRoutineSource.cls:12]; AC2 and the Tasks' description clause corrected (brief item 1: the code and `ResultSchema` are right)
+- [x] [Review][Patch] MED (Rule 19): AD-24's named exception was unpinned where dispatch delivers the text; the full-size leg now asserts the dispatched `text` equals the class's first `linesSent` lines and exceeds 1,000 characters [ExplorerSourceEdges.cls]
+- [x] [Review][Patch] LOW: `maxLength` 256 was pinned from the refusal side only; a 256-character leg added [ExplorerSourceEdges.cls]
+- [x] [Review][Patch] LOW: AC5's principal held `%DB_USER:RW` against the Tasks' READ; now `:R`, and the real turn stays green [ExplorerSourceTurn.cls]
+- [x] [Review][Patch] LOW: AC1 checked only the class editor and one wire name; both editors and both wire names now [ExplorerSource.cls]
+- [x] [Review][Patch] LOW: the object-code leg ran its tool assertions after a failed vendor precondition; it now ends there (Rule 30 judged: image-shipped vendor state, asserted first, same as `AtelierPortDocument`) [ExplorerSourceEdges.cls]
+- [x] [Review][Patch] LOW wording: `ReadTool`'s 188 enumeration, `InjectionSeed`'s source range and header, `Escaped`'s type-hint reason (brief item 3) and the test helpers' "independently" [ReadTool.cls:94, InjectionSeed.cls, ExplorerSourceRead.cls, ExplorerSource.cls, ExplorerSourceEdges.cls]
+- [x] [Review][Defer] MED DW-2228 routed owner=20-21: the model's copy of source passes AD-60, so 20.21's mint must match each `Old` exactly
+- [x] [Review][Defer] MED DW-2229 escalated: README's agent-visibility section does not mention source reads (owner wording)
+- Rejected:
+  - No input to read past the cut, and no cut sized to the reply's remaining budget: spec-bound (input `{name}`; `TOOL.RESULTTOOLARGE` is a named limit).
+  - The object-only refusal's reason text: only `code` and an object `detail` reach the model (`Dispatch.ErrorContent` :751); the description now names the case.
+  - Empty `detail` on a gate refusal naming no pair: `ErrorContent` drops a non-object detail, as for `ExplorerSqlRead` :134.
+  - The turn test skipping `RemoveKeyed` on a parse fault: `OnAfterAllTests` removes the probe.
+  - A cut first line indistinguishable from a whole one when `lines` > 1: needs a new field, for a first line past 60,000 characters.
+  - Per-call token cost: the named limit already says each later call carries the text again.
+  - The tool card showing no cut: no card AC or client change; the step keeps `truncated` ahead of `text`.
+  - `DeveloperFloor`'s method name: stale before this story (it read thirty-five at forty).
+  - `NAMEHINT` and the 60,000/65,536 literals could drift: developer-only, and a derivation adds code.
+  - `View`'s own screen-gate branch untested: dispatch gates the same pairs first; a test needs a gate seam.
+  - `ExplorerSource` validates no answer against `ResultSchema`: `ExplorerSourceEdges` does, for all three shapes.
+  - The test oracle reads through the same port: `AtelierPortDocument` pins the port; the "independently" wording is patched.
+  - Unguarded `tDetails` and a missing status assertion: a fault there fails the test loudly.
+  - Duplicated helpers and an argument no caller passes: no harm.
+  - AC1's mutation not run against `ExplorerDescriptor`: Rule 19 needs one observed red per AC, recorded.
+  - The spec's `done` and the uncommitted QA class: build-auto's machine state, and the runner commits the class.
+- Brief items: (2) confirmed: the fake routes are methods of `AtelierPortFixture`, which the port calls while switched into the target namespace, so those legs run in the test's namespace; the real port is covered in `USER` by the whole, cut, routine, include and dispatch legs and the turn. (3) `PortClass()` matches `Screen/Read.cls` and `Write.cls`; the `||` branches equal add-only `ElseIf`s. (4) Rule 11: this story's side of `ToolRoundTrip` :83-84, the eight `SurfaceCoverage` rows and `ReadTool`'s 317 is correct. (5) the text reaches the provider only through `Sanitize.Results` (`Loop.cls` :638); the ledger records name, arguments, pairs and code; no log line carries it; the step record and transcript keep its first 4,096 raw characters, as every read tool's do (AD-33, AD-60). (6) `Cut` and `Dispatch.Capped` measure with the same `%ToJSON`; a full read alone is at most about 60,400 of 65,536.
 
 ## Spec Change Log
 
@@ -201,6 +234,23 @@ mutation: AC4 `PrivilegePairs` answering `""` red in ExplorerSource's denied-pai
 mutation: AC5 `Loop.cls` :638 skipping `Sanitize.Results` red in ExplorerSourceTurn's wrapper, `[redacted]` and key-absent assertions.
 mutation: AC6 `Loop.Run` appending the last `tool_result` blocks to the system prompt red in InjectionChannels.TestClassSourceText (invariant 1 on call 2, the stub obeyed); 15 sibling sources red too.
 mutation: AC7 `ExplorerClassSave` `ADVERTISED` 1 red in ExplorerSave.TestTheSaveIsAbsentFromEveryRosterTheAgentSees.
+
+(QA) `src/OcuPilot/Test/ExplorerSourceEdges.cls` -- 12 tests, in process; needs no arming variable; green on `ocupilot-b-ci` before and after `ExplorerSource`.
+
+mutation: (QA) AC2 `Cut` flagging a cut first line truncated only when the document holds more than one line red in ExplorerSourceEdges.TestAOneLineDocumentOverTheCapKeepsItsOneLine.
+mutation: (QA) AC2 `ExplorerRoutineSource` declaring `SOURCEMAXLENGTH` 600000 red in ExplorerSourceEdges.TestALongRoutineIsCutAtWholeLines.
+mutation: (QA) AC2 `ExplorerSourceRead` `SOURCEMAXLENGTH` 66000 red in ExplorerSourceEdges.TestAFullSizeCutReadFitsAReplyAloneAndIsRefusedWhenTheReplyHasLess (the long-routine and one-line legs too).
+mutation: (QA) AC2 `Escaped` pushing its text without the `string` type red in ExplorerSourceEdges.TestANumberTypedLineIsMeasuredAsAString.
+mutation: (QA) AC2 `CutFirst` without its surrogate guard red in ExplorerSourceEdges.TestACutFirstLineNeverEndsOnAHighSurrogate.
+mutation: (QA) AC2 `Cut` starting its lines-sent count at 1 red in ExplorerSourceEdges.TestADocumentOfNoLinesReadsAsNone.
+mutation: (QA) AC3 `ExplorerRoutineSource.Endpoint` answering the class endpoint red in ExplorerSourceEdges.TestAnIncludeFileAndAnIntermediateRoutineReadWhole (and three other legs).
+mutation: (QA) AC3 `View` ignoring `available` red in ExplorerSourceEdges.TestARoutineKeptOnlyAsObjectCodeOnTheInstanceAnswersNotFound.
+mutation: (QA) AC4 `ExplorerRoutineSource` declaring the class viewer as `DESCRIPTORCLASS` red in ExplorerSourceEdges.TestADeniedRoutinePairNamesTheRoutineScreen.
+mutation: (QA) Tasks, a port refusal passes through unchanged: `View` answering every port refusal as 404 `PORT.NOTFOUND` red in ExplorerSourceEdges.TestThePortsOwnRefusalPassesThroughAndNothingIsRead.
+mutation: (QA) Tasks, bounded input: `InputSchema` without `maxLength` red in ExplorerSourceEdges.TestTheArgumentsAreClosedAndBounded (the 257-character leg; re-observed in review, run 610).
+mutation: (review) Tasks, bounded input: `InputSchema` `maxLength` 128 red in ExplorerSourceEdges.TestTheArgumentsAreClosedAndBounded (the 256-character leg, run 611).
+mutation: (review) AC2 / AD-24's named exception: `Dispatch` cutting a rowless result's `text` to 1,000 characters red in ExplorerSourceEdges.TestAFullSizeCutReadFitsAReplyAloneAndIsRefusedWhenTheReplyHasLess (the dispatched-text legs; the three earlier assertions stayed green, run 610).
+mutation: (QA) Tasks, each result validates against `ResultSchema`: `View` adding a member to its answer red in ExplorerSourceEdges.TestEveryAnswerConformsToTheResultSchema.
 
 ## Auto Run Result
 

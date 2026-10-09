@@ -8461,6 +8461,8 @@ So that a change I ask for in conversation lands in the source.
 - **When** it is planned
 - **Then** the question is returned to the orchestrator for the owner, with options and a recommendation.
 
+- DW-2228: the model's copy of a source read passes AD-60, so an `Old` it copies can differ from the stored text; the mint matches each `Old` exactly against the instance text and refuses otherwise, and says so to the model (ledger; routed by cr 2026-10-09)
+
 ---
 
 ## Epic 21: Stage 5 - custom-REST parity from the MCP suite's handlers

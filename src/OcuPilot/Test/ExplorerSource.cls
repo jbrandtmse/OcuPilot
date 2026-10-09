@@ -57,7 +57,7 @@ ClassMethod Fetch(pTool As %String, pName As %String, pNamespace As %String = {.
 }
 
 /// <p>The JSON string length of <var>pText</var>, quotes excluded: the measure the source read's cut
-/// uses, computed here independently by serializing the text as a pushed string.</p>
+/// uses, computed here by serializing the text as a pushed string.</p>
 ClassMethod Escaped(pText As %String) As %Integer
 {
     Set tOne = []
@@ -257,8 +257,12 @@ Method TestBothSourceReadsAreAdvertisedOnTheirViewers()
     Do $$$AssertStatusOK(tSC, "the routine viewer's tools build")
     If $$$ISERR(tSC) Quit
     Do $$$AssertEquals(tRoutineTools.%ToJSON(), "[""explorer_routine_read"",""explorer_routine_source""]", "the routine viewer's context lists its read and its source read")
-    Set tSC = ##class(OcuPilot.Screen.Context).ScreenTools("OcuPilot.Screen.Descriptor.ExplorerClassEditor", .tEditorTools, .tEditorList)
-    Do $$$AssertEquals(tEditorTools.%ToJSON(), "[]", "the class editor's context tools stay empty")
+    For tEditor = "ExplorerClassEditor", "ExplorerRoutineEditor" {
+        Set tSC = ##class(OcuPilot.Screen.Context).ScreenTools("OcuPilot.Screen.Descriptor." _ tEditor, .tEditorTools, .tEditorList)
+        Do $$$AssertStatusOK(tSC, tEditor _ "'s tools build")
+        If $$$ISERR(tSC) Continue
+        Do $$$AssertEquals(tEditorTools.%ToJSON(), "[]", tEditor _ "'s context tools stay empty")
+    }
     Set tSC = ##class(OcuPilot.Screen.Tool.Registry).ProviderTools(.tProvider)
     Do $$$AssertStatusOK(tSC, "the provider tool list builds")
     If $$$ISERR(tSC) Quit
@@ -273,10 +277,12 @@ Method TestBothSourceReadsAreAdvertisedOnTheirViewers()
     }
     Do $$$AssertTrue(tFoundClass, "the provider tool list carries explorer_class_source")
     Do $$$AssertTrue(tFoundRoutine, "and explorer_routine_source")
-    Set tSC = ##class(OcuPilot.Screen.Tool.Registry).ResolveWire("explorer_class_source", .tResolved)
-    Do $$$AssertStatusOK(tSC, "the dispatch lookup resolves the wire name")
-    If $$$ISERR(tSC) Quit
-    Do $$$AssertEquals(tResolved.name, "explorer.class.source", "to the canonical name")
+    For tName = "explorer.class.source", "explorer.routine.source" {
+        Set tSC = ##class(OcuPilot.Screen.Tool.Registry).ResolveWire($Translate(tName, ".", "_"), .tResolved)
+        Do $$$AssertStatusOK(tSC, "the dispatch lookup resolves " _ tName _ "'s wire name")
+        If $$$ISERR(tSC) Continue
+        Do $$$AssertEquals(tResolved.name, tName, "to the canonical name")
+    }
 }
 
 }
