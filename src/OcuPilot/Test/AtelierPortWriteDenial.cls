@@ -207,9 +207,10 @@ ClassMethod Refusal(pBody) As %String
     Quit pBody.%Get("code") _ " " _ $Select($IsObject(pBody.%Get("detail")): pBody.detail.%Get("failedPair"), 1: "")
 }
 
-/// <p>The compile, delete, import and save tools declare the routines database's WRITE pair of the
-/// namespace the request is scoped to, beside the list's own pair; the export tools declare the
-/// list's pair alone.</p>
+/// <p>The compile, delete and import tools declare the routines database's WRITE pair of the namespace the
+/// request is scoped to, beside the list's own pair. A save and a create declare the list's pair alone and
+/// take WRITE as an argument pair, from the namespace the proposal stored (DW-2242). The export tools declare
+/// the list's pair alone.</p>
 /// <p>Mutation (Rule 19): drop the WRITE pair from
 /// <method>OcuPilot.Screen.Tool.ExplorerWrite.PrivilegePairs</method> -- this goes red; give the import
 /// <class>OcuPilot.Screen.Tool.ExplorerExport</class>'s <method>PrivilegePairs</method> -- the import
@@ -218,9 +219,21 @@ Method TestTheToolsDeclareTheRequestNamespacesWritePair()
 {
     For tCase = $ListBuild(..#OTHERNAMESPACE, "%DB_USER"), $ListBuild($Namespace, ##class(OcuPilot.Test.DeveloperFloorFixture).CodeResource()) {
         Do ##class(OcuPilot.Kernel.Scope).Set($List(tCase, 1))
-        For tTool = "OcuPilot.Screen.Tool.ExplorerClassCompile", "OcuPilot.Screen.Tool.ExplorerRoutineDelete", "OcuPilot.Screen.Tool.ExplorerClassImport", "OcuPilot.Screen.Tool.ExplorerRoutineImport", "OcuPilot.Screen.Tool.ExplorerClassSave", "OcuPilot.Screen.Tool.ExplorerRoutineSave" {
+        For tTool = "OcuPilot.Screen.Tool.ExplorerClassCompile", "OcuPilot.Screen.Tool.ExplorerRoutineDelete", "OcuPilot.Screen.Tool.ExplorerClassImport", "OcuPilot.Screen.Tool.ExplorerRoutineImport" {
             Set tPairs = $ClassMethod(tTool, "PrivilegePairs", "", .tResolved)
             Do $$$AssertTrue(tResolved && $ListFind(tPairs, $ListBuild("%Development", "USE")) && $ListFind(tPairs, $ListBuild($List(tCase, 2), "WRITE")), tTool _ " in " _ $List(tCase, 1) _ " declares " _ $List(tCase, 2) _ ":WRITE beside %Development:USE")
+        }
+        ; Story 20.20 (DW-2242): a save and a create carry WRITE as an argument pair, read from the
+        ; namespace the proposal stored, and never from their declared pairs.
+        For tTool = "OcuPilot.Screen.Tool.ExplorerClassSave", "OcuPilot.Screen.Tool.ExplorerRoutineSave", "OcuPilot.Screen.Tool.ExplorerClassCreate", "OcuPilot.Screen.Tool.ExplorerRoutineCreate" {
+            Set tDeclared = $ClassMethod(tTool, "PrivilegePairs", "", .tResolved)
+            Do $$$AssertTrue(tResolved && $ListFind(tDeclared, $ListBuild("%Development", "USE")) && '$ListFind(tDeclared, $ListBuild($List(tCase, 2), "WRITE")), tTool _ " in " _ $List(tCase, 1) _ " declares %Development:USE and no WRITE pair")
+            Set tArgumentPairs = $ClassMethod(tTool, "ArgumentPairs", "", {}, .tResolved)
+            Do $$$AssertTrue(tResolved && $ListFind(tArgumentPairs, $ListBuild($List(tCase, 2), "WRITE")), tTool _ " in " _ $List(tCase, 1) _ " with no stored namespace takes WRITE from the request's")
+            Set tOpposite = $Select($List(tCase, 1) = ..#OTHERNAMESPACE: $ListBuild($Namespace, ##class(OcuPilot.Test.DeveloperFloorFixture).CodeResource()), 1: $ListBuild(..#OTHERNAMESPACE, "%DB_USER"))
+            Set tStored = {"Namespace": ($List(tOpposite, 1))}
+            Set tArgumentPairs = $ClassMethod(tTool, "ArgumentPairs", "", tStored, .tResolved)
+            Do $$$AssertTrue(tResolved && $ListFind(tArgumentPairs, $ListBuild($List(tOpposite, 2), "WRITE")) && '$ListFind(tArgumentPairs, $ListBuild($List(tCase, 2), "WRITE")), tTool _ " in " _ $List(tCase, 1) _ " with " _ $List(tOpposite, 1) _ " stored takes WRITE from the stored namespace, not the request's")
         }
         For tTool = "OcuPilot.Screen.Tool.ExplorerClassExport", "OcuPilot.Screen.Tool.ExplorerRoutineExport" {
             Set tPairs = $ClassMethod(tTool, "PrivilegePairs", "", .tResolved)

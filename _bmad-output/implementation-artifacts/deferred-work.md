@@ -8205,6 +8205,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-28T23:51:23Z status=resolved-by:16-5-background-tasks by=adjudication note=CI 36496304575 red on the agent pause leg reading the state at once; Settled polls until it leaves Running (inference: async pause)
 - 2026-09-29T17:04:25Z occurrence=18-3-databases-configuration-creation-properties-and-volumes
 - 2026-10-09T01:39:27Z occurrence=20-19-the-agent-reads-class-and-routine-source by=lead note=recurred in CI run 37865082072; filed as DW-2236
+- 2026-10-09T19:19:59Z status=resolved-by:20-20-the-agent-creates-new-classes-and-routines-on-the-person-s-c by=lead note=same race as DW-2236 (a seeded compact finishing between Resume and Pause or mint), fixed in 6557da7e and 9d467e37
 
 ### DW-1805: Background tasks lists OcuPilot's own port-queued async tasks under Admin API with Cancel, Pause and Resume, and AdminPort's await does not treat Canceled as terminal
 - source: spec-16-5-background-tasks.md | severity: low | fix-risk: low | footprint: in-story
@@ -10743,6 +10744,9 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: cycle-log-epic-20.md (run 37865082072 attempt 1) | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: Red in instance shard 2/5 on ac551bcf (20.19, no background-task code); the class passed 8/8 on ocupilot-b-ci at 20.19's tree; adminport logged #40320 Async task cannot be canceled
 - 2026-10-09T01:39:27Z status=routed owner=23-5-the-range-end-cleanup-part-5 by=lead note=wait for the compact to be pausable (or re-seed) before Pause and Cancel; CI flake, Rule 27
+- 2026-10-09T16:53:28Z occurrence=20-20-the-agent-creates-new-classes-and-routines-on-the-person-s-c by=lead note=recurred in CI run 37952814550 instance shard 2/5 (Pause 409 TASK.BACKGROUND.STATE)
+- 2026-10-09T18:05:07Z occurrence=20-20-the-agent-creates-new-classes-and-routines-on-the-person-s-c by=lead note=red again in run 37952814550 attempt 2 (shard 2/5, same Pause 409); the test's own 'runs again' leg admits Done, so a compact that finishes between Resume and Pause makes Pause unanswerable; fix: re-seed while the resumed compact reads Done (bounded), or a larger fill
+- 2026-10-09T19:19:59Z status=resolved-by:20-20-the-agent-creates-new-classes-and-routines-on-the-person-s-c by=lead note=6557da7e and 9d467e37: both BackgroundTasksLive compact tests branch on the observed state (an ended compact's Pause is the 409 state refusal, an ended held compact's confirm the target-changed refusal, each asserted) and re-seed at most three; mutations: PortalControl skipping Pause and dropping Hold redden them; green 8/8 on ocupilot-b-ci
 
 ### DW-2239: The web-application tools can reach OcuPilot's own privileged routine applications (OcuPilotState, OcuPilotIdentity): no AD-10 arm refuses a delete or a MatchRoles :%All update, and the vendor's privileged-routine endpoint also writes any application type
 - source: spec-18-10-web-application-extras-and-spec-based-rest-services.md | severity: high | fix-risk: low | footprint: out-of-footprint
@@ -10787,11 +10791,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: AtelierPort.Snippet TYPESAVE always renders "<content>" (pinned by AtelierPortSave.TestTheSaveRendersItsScript); 20.21 advertised the save, so Draft.Take on its card closes the proposal and answers a script that, run as is, writes "<content>" into a routine; the routine branch's %Routine.Write would also need the UDL header removed
 - 2026-10-09T08:21:47Z status=routed owner=20-20-the-agent-creates-new-classes-and-routines-on-the-person-s-c by=cr note=20.20 adds the create's script beside the save's; render stored text (header-aware, bounded) for both
 - 2026-10-09T09:44:54Z by=orchestrator note=graded HIGH under Rule 6 (AD-59: the script is not the reviewed change, and run unread it replaces a routine with the placeholder); RELEASE-BLOCKING: no cut from a feature head that carries 20.21 (741b7801) without 20.20 fix; newest safe cut before it is b4b6ffb8
+- 2026-10-09T15:06:27Z status=resolved-by:20-20-the-agent-creates-new-classes-and-routines-on-the-person-s-c by=adjudication note=AC7: AtelierPort.Snippet renders the stored text (routine header dropped, FreeCheck guard, one-line steps, script bound); AtelierPortScriptRun runs class and routine save and create scripts as a method body and line by line, stored text equals the reviewed text; mutations red in the spec's Verification
 
 ### DW-2242: An agent code write's Confirm gates WRITE on the request's namespace's routines database, not the proposal's stored Namespace
 - source: spec-20-21-the-agent-saves-edits-to-existing-classes-and-routines.md | severity: med | fix-risk: med | footprint: in-epic
 - evidence: ExplorerWrite.PrivilegePairs reads Kernel.Scope.Current() at confirm while the write targets the stored Namespace; a USER save confirmed with the shell scoped to HSCUSTOM is gated on HSCUSTOM's WRITE (the port's own gate still checks USER, so no escalation, only a false refusal); ExplorerSaveTurn had granted HSCUSTOM RW to pass
 - 2026-10-09T08:21:47Z status=routed owner=20-20-the-agent-creates-new-classes-and-routines-on-the-person-s-c by=cr note=20.20's create resolves the same pair; declare it from the stored Namespace for saves and creates
+- 2026-10-09T15:06:27Z status=resolved-by:20-20-the-agent-creates-new-classes-and-routines-on-the-person-s-c by=adjudication note=AC6: saves' and creates' WRITE pair is an argument pair from the proposal's stored Namespace (ArgumentPairs); ExplorerCreateTurn confirms at ?ns=HSCUSTOM and the in-process DW-2242 leg tells the stored namespace from the request's
 
 ### DW-2243: The agent cannot copy an exact Old from lines past the source read's 60,000-character cut
 - source: spec-20-21-the-agent-saves-edits-to-existing-classes-and-routines.md | severity: low | fix-risk: med | footprint: out-of-footprint
@@ -10808,6 +10814,28 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: AtelierPort.SaveSet quits with the Compile route's error status after a successful PutDoc (19.3), so the card reads a failed write; a compile error (not a fault) is reported as output.errors
 - 2026-10-09T08:21:47Z status=wontfix-theoretical owner=20-21-the-agent-saves-edits-to-existing-classes-and-routines by=cr note=real only if the Compile route itself faults (not a compile error) after PutDoc succeeded
 
+### DW-2247: The agent's create may overwrite a name created between the port's taken check and the PUT, if the vendor accepts a PUT over an existing document without If-None-Match
+- source: spec-20-20-the-agent-creates-new-classes-and-routines-on-the-person-s-c.md | severity: med | fix-risk: low | footprint: in-story
+- evidence: AtelierPort.Route seeds If-None-Match only for a non-empty value and CREATE passes empty (unverified, inference); 20.17's plan measured 409 on an existing document without a version
+- 2026-10-09T11:03:40Z status=open owner=20-20-the-agent-creates-new-classes-and-routines-on-the-person-s-c by=harvest note=settle with a PUT over an existing name and no If-None-Match on ocupilot-b-ci, read back; QA pins it
+- 2026-10-09T15:04:14Z status=resolved-by:20-20-the-agent-creates-new-classes-and-routines-on-the-person-s-c by=cr note=exact name: vendor 409 on a no-version PUT measured, pinned by AtelierPortScriptRun.TestAPutOverAHeldDocumentWithNoVersion*
+
+### DW-2248: Flake: LogHubWire.TestTheRouteAndTheToolAnswerTheSameEntriesAndSources compares the event log's count and last entry between the route and the tool, which differ when anything writes the event log between the two reads
+- source: cycle-log-epic-20.md (20.20 runner-side sweep shard 3/30, run 108) | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: Red once in the local sweep on ocupilot-b-ci ('with the same count and last entry'), green alone at once (run 116); its doc says only this class writes the store during the run, which a background writer breaks
+- 2026-10-09T11:21:16Z status=routed owner=23-5-the-range-end-cleanup-part-5 by=lead note=compare the tool's last entry against a route read taken after it, or seed a marker and compare by marker; CI flake class, Rule 27
+- 2026-10-09T16:18:28Z by=lead note=the red came during the owner-reported host contention window (oMLX model load, 2026-10-09) and passed on immediate re-run; Rule 27 flake priority in 23.5; close there if it has not recurred
+
+### DW-2253: System Explorer's compile, delete and import Confirm still gate WRITE on the request's namespace while the write targets the proposal's (DW-2242's root cause, outside 20.20's scope)
+- source: spec-20-20-the-agent-creates-new-classes-and-routines-on-the-person-s-c.md | severity: med | fix-risk: med | footprint: out-of-footprint
+- evidence: ExplorerWrite.PrivilegePairs reads Kernel.Scope.Current() at Confirm while ExplorerWrite.PortQuery sends the re-read and write to the payload's Namespace; a USER compile or delete confirmed at ?ns=HSCUSTOM is gated on HSCUSTOM's WRITE (false refusal only: the port's own WritePairs checks USER). 20.20's spec forbids changing these pairs.
+- 2026-10-09T15:04:14Z status=escalated owner=burndown by=cr note=fix would store Namespace in their mint args and read it in ArgumentPairs, as 20.20 did for saves and creates
+
+### DW-2255: CI flake: ClassicPageGate.TestAnAssignedPageGatesEveryDeclaringToolOnTheAgentsCaller read its child process as not having run as the probe principal, so every later refusal assertion failed
+- source: cycle-log-epic-20.md (run 37952814550 attempt 1) | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: Red in instance shard 1/5 on 39ed66f1 ('OcuProbe1814PageLacking: the child process ran as the principal' then each explorer tool's refusal); green 8/8 on ocupilot-b-ci at the same tree (run 59); 20.20 adds tools but changes no page gate
+- 2026-10-09T16:53:29Z status=routed owner=23-5-the-range-end-cleanup-part-5 by=lead note=wait for the child's run record before asserting (NamespaceWriteGate.Ran); CI flake, Rule 27
+- 2026-10-09T21:07:51Z occurrence=20-20-the-agent-creates-new-classes-and-routines-on-the-person-s-c by=lead note=recurred in run 37981328129 shard 1/5 (6eaf65d4); not reproduced on ocupilot-b-ci in CI's exact shard-1 order on a fresh instance (11 classes, 0 failed); passed in 37952814550 attempt 2's rerun of the same shard; the failing assertion prints no actual value, so the child's answer (no answer, a job-start timeout or a login error) is unknown
 ### DW-2254: CI flake: proposal-privilege.browser-spec.mjs (b) waits REVOKE_WINDOW_MS (5000 ms) for the privilege warning after a pair is revoked; under a loaded CI shard the card's poll can land after the window
 - source: cycle-log-epic-18.md (18.10 run 37944323086) | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: run 37944323086 browser shard 3/3: ui/browser/proposal-privilege.browser-spec.mjs:270 (b) Waiting failed 5000ms at :291; the same code green locally 3/3 on ocupilot-ci; 18.10 touches only the two routine-application names in Mint/Prohibited

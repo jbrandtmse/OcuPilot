@@ -353,11 +353,27 @@ Parameter TYPESAVEDOCS = "SAVEDOCS";
 /// <p>The list endpoints' save of one document's text (<method>SaveSet</method>).</p>
 Parameter TYPESAVE = "SAVE";
 
+/// <p>The list endpoints' read of whether a name is free: <method>NewDocument</method>, answered
+/// <code>{Present, Namespace}</code> when the namespace holds a document the name takes, or 404
+/// <code>PORT.NOTFOUND</code> when nothing does.</p>
+Parameter TYPENEWDOC = "NEWDOC";
+
+/// <p>The list endpoints' create of one new document's text (<method>SaveSet</method> with the create
+/// flag): it sends no version and refuses a name the namespace holds before the PUT.</p>
+Parameter TYPECREATE = "CREATE";
+
+/// <p>The most characters one script step may carry. A longer step renders no script (AD-59).</p>
+Parameter SNIPPETMAXCHARACTERS As INTEGER = 1000000;
+
+/// <p>The routine types, of those <code>docnames</code> lists, whose document takes a new routine or
+/// intermediate routine of its base name (<method>Takes</method>): every one but the include file.</p>
+Parameter TAKINGROUTINETYPES = "mac,int,bas,mvi,mvb";
+
 /// <p>The writes whose vendor call this port composes from the caller's declared values, as
 /// <code>endpoint/type</code> (AD-51): a compile from its three booleans, a delete from the set
-/// alone, an export from the set and its file, an import from its file, and a save from its text,
-/// its version and its compile choice.</p>
-Parameter COMPOSEDTYPES = "Classes/COMPILE,Routines/COMPILE,Classes/DELETE,Routines/DELETE,Classes/EXPORT,Routines/EXPORT,Classes/IMPORT,Routines/IMPORT,Classes/SAVE,Routines/SAVE";
+/// alone, an export from the set and its file, an import from its file, and a save or a create from
+/// its text, its version and its compile choice.</p>
+Parameter COMPOSEDTYPES = "Classes/COMPILE,Routines/COMPILE,Classes/DELETE,Routines/DELETE,Classes/EXPORT,Routines/EXPORT,Classes/IMPORT,Routines/IMPORT,Classes/SAVE,Routines/SAVE,Classes/CREATE,Routines/CREATE";
 
 /// <p>The query key carrying an import's target, and the one target it takes, compared without
 /// regard to case.</p>
@@ -762,7 +778,7 @@ ClassMethod MinVersion(pEndpoint As %String, pType As %String = {..#REQUESTTYPE}
 {
     Set tImport = (pType = ..#TYPEIMPORTTARGET) || (pType = ..#TYPEPREVIEW) || (pType = ..#TYPEIMPORT)
     Set tExport = (pType = ..#TYPEEXPORTDOCS) || (pType = ..#TYPEEXPORT)
-    Set tSave = (pType = ..#TYPESAVEDOCS) || (pType = ..#TYPESAVE)
+    Set tSave = (pType = ..#TYPESAVEDOCS) || (pType = ..#TYPESAVE) || (pType = ..#TYPENEWDOC) || (pType = ..#TYPECREATE)
     Set tRoutes = $Select(..IsCatalog(pEndpoint): $ListBuild("Query"), pEndpoint = ..#ENDPOINTSEARCH: $ListBuild("Search"), pEndpoint = ..#ENDPOINTMACRO: $ListBuild("GetDoc", "GetMacroDefinition", "GetMacroLocation"), (pEndpoint = ..#ENDPOINTCLASS) || (pEndpoint = ..#ENDPOINTROUTINE): $ListBuild("Index", "GetDoc"), pType = ..#TYPEDOCS: $ListBuild("GetDocNames"), pType = ..#TYPECOMPILE: $ListBuild("GetDocNames", "Compile"), pType = ..#TYPEDELETE: $ListBuild("GetDocNames", "DeleteDocs"), tExport: $ListBuild("GetDocNames", "ExportToXMLFile"), tImport: $ListBuild("GetDocNames", "ListDocumentsInXMLFiles", "LoadXMLFiles", "PutDoc", "Compile"), tSave: $ListBuild("GetDocNames", "PutDoc", "Compile"), 1: $ListBuild("GetNamespace", "GetDocNames"))
     Set tNeeded = 1
     For tI = 1:1:$ListLength(tRoutes) {
@@ -841,9 +857,9 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
             Set tSC = ..Deny(tFailedPair, .pHttpStatus, .pFault)
             Quit
         }
-        Set tSetType = (pType = ..#TYPEDOCS) || (pType = ..#TYPECOMPILE) || (pType = ..#TYPEDELETE) || (pType = ..#TYPEEXPORTDOCS) || (pType = ..#TYPEEXPORT) || (pType = ..#TYPESAVEDOCS) || (pType = ..#TYPESAVE)
+        Set tSetType = (pType = ..#TYPEDOCS) || (pType = ..#TYPECOMPILE) || (pType = ..#TYPEDELETE) || (pType = ..#TYPEEXPORTDOCS) || (pType = ..#TYPEEXPORT) || (pType = ..#TYPESAVEDOCS) || (pType = ..#TYPESAVE) || (pType = ..#TYPENEWDOC) || (pType = ..#TYPECREATE)
         Set tImportType = (pType = ..#TYPEIMPORTTARGET) || (pType = ..#TYPEPREVIEW) || (pType = ..#TYPEIMPORT)
-        Set tWrite = (pType = ..#TYPECOMPILE) || (pType = ..#TYPEDELETE) || (pType = ..#TYPEIMPORT) || (pType = ..#TYPESAVE)
+        Set tWrite = (pType = ..#TYPECOMPILE) || (pType = ..#TYPEDELETE) || (pType = ..#TYPEIMPORT) || (pType = ..#TYPESAVE) || (pType = ..#TYPECREATE)
         Set tNamespace = $Get(pQuery(..#NAMESPACEKEY))
         If (tNamespace = "") && (tSetType || tImportType) Set tNamespace = ##class(OcuPilot.Kernel.Scope).Current()
         If '$Match(tNamespace, ..#NAMESPACEPATTERN) {
@@ -925,6 +941,14 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
             }
             If pType = ..#TYPESAVE {
                 Set tSC = ..SaveSet(tVersion, tNamespace, pEndpoint, tNames, .pQuery, .pResult, .pHttpStatus, .pFault)
+                Quit
+            }
+            If pType = ..#TYPECREATE {
+                Set tSC = ..SaveSet(tVersion, tNamespace, pEndpoint, tNames, .pQuery, .pResult, .pHttpStatus, .pFault, 1)
+                Quit
+            }
+            If pType = ..#TYPENEWDOC {
+                Set tSC = ..NewDocument(tVersion, tNamespace, pEndpoint, tNames, .pResult, .pHttpStatus, .pFault)
                 Quit
             }
             If pType = ..#TYPECOMPILE {
@@ -2172,7 +2196,16 @@ ClassMethod Lines(pText As %String) As %DynamicArray
 /// shape.</p>
 ClassMethod Header(pLines As %DynamicArray) As %String
 {
+    Quit ..HeaderAt(pLines, .tIndex)
+}
+
+/// <p>The name <method>Header</method> reads, and in <var>pIndex</var> the zero-based index of the line
+/// that decided it: the header line a routine's script leaves out (Story 20.20). <var>pIndex</var> is
+/// <code>-1</code> when no line decides.</p>
+ClassMethod HeaderAt(pLines As %DynamicArray, Output pIndex As %Integer) As %String
+{
     Set tName = ""
+    Set pIndex = -1
     Set tInComment = 0
     Set tIterator = pLines.%GetIterator()
     While tIterator.%GetNext(.tIndex, .tLine) {
@@ -2189,6 +2222,7 @@ ClassMethod Header(pLines As %DynamicArray) As %String
         }
         Set tKeyword = $ZConvert($Piece(tWords, " ", 1), "L")
         If (tKeyword = "include") || (tKeyword = "includegenerator") || (tKeyword = "import") Continue
+        Set pIndex = tIndex
         If tKeyword = "class" {
             Set tCandidate = $Piece(tWords, " ", 2) _ ".cls"
             If $Match(tCandidate, ..#CLASSNAMEPATTERN) Set tName = tCandidate
@@ -2456,7 +2490,7 @@ ClassMethod ImportSet(pVersion As %Integer, pNamespace As %String, ByRef pQuery,
 /// <p><var>pResult</var> is <code>{lines, errors}</code>, the compiler's console lines and whether it
 /// reported an error, when it compiled, and <code>{}</code> otherwise. A compile error is the compile's
 /// own result and does not undo the save. The text is never stored or logged.</p>
-ClassMethod SaveSet(pVersion As %Integer, pNamespace As %String, pEndpoint As %String, pNames As %List, ByRef pQuery, Output pResult As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+ClassMethod SaveSet(pVersion As %Integer, pNamespace As %String, pEndpoint As %String, pNames As %List, ByRef pQuery, Output pResult As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, pCreate As %Boolean = 0) As %Status [ Private ]
 {
     Set tSC = $$$OK
     Set pResult = ""
@@ -2470,8 +2504,10 @@ ClassMethod SaveSet(pVersion As %Integer, pNamespace As %String, pEndpoint As %S
             Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONIMPORTCOMPILE, .pHttpStatus, .pFault)
             Quit
         }
+        ; AD-61 rule 3. A save sends the version it read; a create sends none, and the vendor refuses a
+        ; held document of that exact name with its own 409 (Story 20.20).
         Set tReadVersion = $Get(pQuery(..#VERSIONKEY))
-        If tReadVersion = "" {
+        If 'pCreate && (tReadVersion = "") {
             Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONSAVEVERSION, .pHttpStatus, .pFault)
             Quit
         }
@@ -2479,18 +2515,28 @@ ClassMethod SaveSet(pVersion As %Integer, pNamespace As %String, pEndpoint As %S
             Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.AtelierError).#SAVETOOLARGE, ##class(OcuPilot.Api.AtelierError).#REASONSAVETOOLARGE, .pHttpStatus, .pFault)
             Quit
         }
-        Set tLines = ..Lines($Get(pQuery(..#CONTENTKEY)))
-        If $Extract($Get(pQuery(..#CONTENTKEY)), *) = $Char(10) Do tLines.%Push("", "string")
+        Set tLines = ..SavedLines($Get(pQuery(..#CONTENTKEY)))
         If ..Header(tLines) '= tName {
             Set tSC = ..Refuse(422, ##class(OcuPilot.Api.Error).#VALIDATIONFAILED, ##class(OcuPilot.Api.AtelierError).#SAVEHEADER, ##class(OcuPilot.Api.AtelierError).#REASONSAVEHEADER, .pHttpStatus, .pFault)
             Quit
         }
-        Set tSC = ..PresentSet(pVersion, pNamespace, pEndpoint, pNames, .pHttpStatus, .pFault)
-        If $$$ISERR(tSC) Quit
+        If pCreate {
+            ; Story 20.20: the name must be free, checked before anything is sent. A save refuses an absent
+            ; document instead (PresentSet).
+            Set tSC = ..Takers(pVersion, pNamespace, pEndpoint, tName, .tTakers, .pHttpStatus, .pFault)
+            If $$$ISERR(tSC) Quit
+            If tTakers '= "" {
+                Set tSC = ..Refuse(409, ##class(OcuPilot.Api.Error).#CONFLICT, ##class(OcuPilot.Api.AtelierError).#DOCUMENTCONFLICT, ##class(OcuPilot.Api.AtelierError).#REASONDOCUMENTCONFLICT, .pHttpStatus, .pFault)
+                Quit
+            }
+        } Else {
+            Set tSC = ..PresentSet(pVersion, pNamespace, pEndpoint, pNames, .pHttpStatus, .pFault)
+            If $$$ISERR(tSC) Quit
+        }
         Set tDocument = {"enc": false}
         Do tDocument.%Set("content", tLines)
         Kill tNoParams
-        Set tSC = ..Route(pVersion, pNamespace, "PutDoc", tName, .tNoParams, tDocument, .tAnswer, .pHttpStatus, .pFault, 0, , , tReadVersion)
+        Set tSC = ..Route(pVersion, pNamespace, "PutDoc", tName, .tNoParams, tDocument, .tAnswer, .pHttpStatus, .pFault, 0, , , $Select(pCreate: "", 1: tReadVersion))
         If $$$ISERR(tSC) Quit
         Set pResult = {}
         If tCompile {
@@ -2508,6 +2554,102 @@ ClassMethod SaveSet(pVersion As %Integer, pNamespace As %String, pEndpoint As %S
         Set tSC = ..Fail("the save failed inside the port", ex.AsStatus(), .pHttpStatus, .pFault)
     }
     Quit tSC
+}
+
+/// <p>The lines a save or a create writes for the text <var>pText</var>: <method>Lines</method>, plus an
+/// empty last line when the text ends with a line feed, as the vendor's document keeps them.</p>
+ClassMethod SavedLines(pText As %String) As %DynamicArray
+{
+    Set tLines = ..Lines(pText)
+    If $Extract(pText, *) = $Char(10) Do tLines.%Push("", "string")
+    Quit tLines
+}
+
+/// <p>The one name a list endpoint's <parameter>TYPENEWDOC</parameter> read answers for: 200
+/// <code>{Present, Namespace}</code>, <code>Present</code> the held documents the name takes
+/// (<method>Takers</method>, comma-joined), or 404 <code>PORT.NOTFOUND</code>, unlogged, when none
+/// does. <var>pNames</var> names one document.</p>
+ClassMethod NewDocument(pVersion As %Integer, pNamespace As %String, pEndpoint As %String, pNames As %List, Output pResult As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Set pResult = ""
+    Try {
+        If $ListLength(pNames) '= 1 {
+            Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONNAMES, .pHttpStatus, .pFault)
+            Quit
+        }
+        Set tSC = ..Takers(pVersion, pNamespace, pEndpoint, $List(pNames, 1), .tTakers, .pHttpStatus, .pFault)
+        If $$$ISERR(tSC) Quit
+        If tTakers = "" {
+            Set tSC = ..Refuse(404, ##class(OcuPilot.Api.Error).#NOTFOUND, ##class(OcuPilot.Api.Error).#PORTNOTFOUND, ..#REASONNOTFOUND, .pHttpStatus, .pFault)
+            Quit
+        }
+        Set pResult = {}
+        Do pResult.%Set("Present", tTakers, "string")
+        Do pResult.%Set("Namespace", pNamespace, "string")
+        Set pHttpStatus = 200
+    } Catch ex {
+        Set pResult = ""
+        Set tSC = ..Fail("the name read failed inside the port", ex.AsStatus(), .pHttpStatus, .pFault)
+    }
+    Quit tSC
+}
+
+/// <p>The held documents of the endpoint's category, generated ones included, that <var>pName</var>
+/// takes, comma-joined in the vendor's order, in <var>pTakers</var>: one <code>docnames</code> read
+/// (<method>Takes</method> says which names take which).</p>
+ClassMethod Takers(pVersion As %Integer, pNamespace As %String, pEndpoint As %String, pName As %String, Output pTakers As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Set pTakers = ""
+    Try {
+        Kill tParams
+        Set tParams("generated") = 1
+        Set tSC = ..Route(pVersion, pNamespace, "GetDocNames", $Select(pEndpoint = ..#ENDPOINTCLASSES: "CLS", 1: "RTN"), .tParams, "", .tAnswer, .pHttpStatus, .pFault)
+        If $$$ISERR(tSC) Quit
+        Set tContent = $Select($IsObject(tAnswer): tAnswer.%Get("content"), 1: "")
+        If '$IsObject(tContent) || 'tContent.%IsA("%Library.DynamicArray") {
+            Set tSC = ..Fail("GetDocNames answered no content array", $$$ERROR($$$GeneralError, "docnames answered no content array"), .pHttpStatus, .pFault)
+            Quit
+        }
+        Set tIterator = tContent.%GetIterator()
+        While tIterator.%GetNext(.tIndex, .tDoc) {
+            If '$IsObject(tDoc) || 'tDoc.%IsA("%Library.DynamicObject") Continue
+            Set tHeld = tDoc.%Get("name")
+            If (tHeld = "") || '..Takes(pEndpoint, pName, tHeld) Continue
+            Set pTakers = pTakers _ $Select(pTakers = "": "", 1: ",") _ tHeld
+        }
+    } Catch ex {
+        Set pTakers = ""
+        Set tSC = ..Fail("the name read failed inside the port", ex.AsStatus(), .pHttpStatus, .pFault)
+    }
+    Quit tSC
+}
+
+/// <p>Whether the held document <var>pHeld</var> takes the new name <var>pName</var> of the endpoint's
+/// kind. A class is taken by a class of the same name in any letter case (measured: the vendor refuses
+/// a save differing only in case, #5092). A routine is taken by a routine of the same base name in
+/// exact case whose type is one of <parameter>TAKINGROUTINETYPES</parameter>, because compiling a new
+/// routine replaces the intermediate code of that name (measured). An include file is taken only by the
+/// same name, exactly. <method>SaveScript</method>'s create check renders the same rule.</p>
+ClassMethod Takes(pEndpoint As %String, pName As %String, pHeld As %String) As %Boolean [ Private ]
+{
+    If pEndpoint = ..#ENDPOINTCLASSES Quit $ZConvert(pHeld, "U") = $ZConvert(pName, "U")
+    If ..Extension(pName) = "inc" Quit pHeld = pName
+    If '$ListFind($ListFromString(..#TAKINGROUTINETYPES), ..Extension(pHeld)) Quit 0
+    Quit ..BaseName(pHeld) = ..BaseName(pName)
+}
+
+/// <p>The name of <var>pName</var> without its last extension.</p>
+ClassMethod BaseName(pName As %String) As %String [ Private ]
+{
+    Quit $Piece(pName, ".", 1, $Length(pName, ".") - 1)
+}
+
+/// <p>The lower-case extension of <var>pName</var>.</p>
+ClassMethod Extension(pName As %String) As %String [ Private ]
+{
+    Quit $ZConvert($Piece(pName, ".", $Length(pName, ".")), "L")
 }
 
 /// <p>Push each string of <var>pFrom</var>, where it is an array, onto <var>pTo</var>.</p>
@@ -3135,12 +3277,12 @@ ClassMethod Fail(pMessage As %String, pStatus As %Status, Output pHttpStatus As 
 
 /// <p><code>objectscript</code> for a list endpoint's <parameter>TYPECOMPILE</parameter>,
 /// <parameter>TYPEDELETE</parameter>, <parameter>TYPEEXPORT</parameter>,
-/// <parameter>TYPEIMPORT</parameter> and <parameter>TYPESAVE</parameter>, the writes this port
-/// carries; <code>""</code> for every read, which has no script form (AD-59).</p>
+/// <parameter>TYPEIMPORT</parameter>, <parameter>TYPESAVE</parameter> and <parameter>TYPECREATE</parameter>,
+/// the writes this port carries; <code>""</code> for every read, which has no script form (AD-59).</p>
 ClassMethod SnippetForm(pEndpoint As %String, pType As %String) As %String
 {
     If (pEndpoint '= ..#ENDPOINTCLASSES) && (pEndpoint '= ..#ENDPOINTROUTINES) Quit ""
-    If (pType = ..#TYPECOMPILE) || (pType = ..#TYPEDELETE) || (pType = ..#TYPEEXPORT) || (pType = ..#TYPEIMPORT) || (pType = ..#TYPESAVE) Quit "objectscript"
+    If (pType = ..#TYPECOMPILE) || (pType = ..#TYPEDELETE) || (pType = ..#TYPEEXPORT) || (pType = ..#TYPEIMPORT) || (pType = ..#TYPESAVE) || (pType = ..#TYPECREATE) Quit "objectscript"
     Quit ""
 }
 
@@ -3153,12 +3295,14 @@ ClassMethod SnippetForm(pEndpoint As %String, pType As %String) As %String
 /// <code>$System.OBJ.Export</code> of the set to it, and <parameter>TYPEIMPORT</parameter> that file
 /// and <code>$System.OBJ.Load</code> of it, with <parameter>IMPORTCOMPILEFLAGS</parameter> when
 /// <code>Compile</code> is on, and <parameter>TYPESAVE</parameter> the text saved as the one document
-/// <code>names</code> holds -- <code>%Compiler.UDL.TextServices.SetTextFromString</code> for a class,
-/// a <code>%Routine</code> for a routine -- then, when <code>Compile</code> is on,
-/// <code>$System.OBJ.CompileList</code> of it with <parameter>IMPORTCOMPILEFLAGS</parameter>. The
-/// save's text is rendered as the placeholder <code>"&lt;content&gt;"</code>, never as the text. A
-/// read writes nothing and answers no step. Every value is rendered as a string literal, so nothing
-/// the query carries runs as code.</p>
+/// <code>names</code> holds, and <parameter>TYPECREATE</parameter> the same while the name is free
+/// (<method>SaveScript</method>), with the stored text rendered line by line (DW-2241); then, when
+/// <code>Compile</code> is on and the write succeeded, <code>$System.OBJ.CompileList</code> of it with
+/// <parameter>IMPORTCOMPILEFLAGS</parameter>. A read writes nothing and answers no step. A text or a
+/// script longer than <parameter>SNIPPETMAXCHARACTERS</parameter> answers no step at all. Every value is
+/// rendered as a string literal, so nothing the query carries runs as code. No line opens a block it
+/// does not close, so the script runs the same as a method body and pasted line by line into a
+/// terminal, which runs each line on its own.</p>
 ClassMethod Snippet(pEndpoint As %String, pType As %String, ByRef pQuery, pBody As %DynamicAbstractObject = "", pContext As %DynamicObject = "") As %DynamicArray
 {
     If ..SnippetForm(pEndpoint, pType) = "" Quit []
@@ -3179,32 +3323,84 @@ ClassMethod Snippet(pEndpoint As %String, pType As %String, ByRef pQuery, pBody 
             Set tText = tText _ $Char(10) _ " Set tSC = $System.OBJ.Load(tFile, " _ ..Literal($Select(tCompile: ..#IMPORTCOMPILEFLAGS, 1: "")) _ ")"
         }
         Set tText = tText _ $Char(10) _ " Do $System.Status.DisplayError(tSC)"
-    } ElseIf pType = ..#TYPESAVE {
-        Set tPlaceholder = ..Literal("<" _ ..#CONTENTKEY _ ">")
-        If pEndpoint = ..#ENDPOINTCLASSES {
-            Set tText = tText _ $Char(10) _ " Set tSC = ##class(%Compiler.UDL.TextServices).SetTextFromString($NAMESPACE, " _ ..Literal($Piece(tNames, ".", 1, $Length(tNames, ".") - 1)) _ ", " _ tPlaceholder _ ", $Char(10))"
-        } Else {
-            Set tText = tText _ $Char(10) _ " Set tRoutine = ##class(%Routine).%New(" _ ..Literal(tNames) _ ")"
-            Set tText = tText _ $Char(10) _ " Do tRoutine.Clear()"
-            Set tText = tText _ $Char(10) _ " Do tRoutine.Write(" _ tPlaceholder _ ")"
-            Set tText = tText _ $Char(10) _ " Set tSC = tRoutine.Save()"
-        }
-        Set tText = tText _ $Char(10) _ " Do $System.Status.DisplayError(tSC)"
+    } ElseIf (pType = ..#TYPESAVE) || (pType = ..#TYPECREATE) {
+        If $Length($Get(pQuery(..#CONTENTKEY))) > ..#SNIPPETMAXCHARACTERS Quit []
         Do ..FlagValue($Get(pQuery(..#COMPILEKEY)), .tCompile)
-        If tCompile {
-            Set tText = tText _ $Char(10) _ " Set tSC = $System.OBJ.CompileList(" _ ..Literal(tNames) _ ", " _ ..Literal(..#IMPORTCOMPILEFLAGS) _ ")"
-            Set tText = tText _ $Char(10) _ " Do $System.Status.DisplayError(tSC)"
-        }
+        Set tText = tText _ $Char(10) _ ..SaveScript(pEndpoint, tNames, ..SavedLines($Get(pQuery(..#CONTENTKEY))), tCompile, pType = ..#TYPECREATE)
     } Else {
-        Set tText = tText _ $Char(10) _ " For tI = 1:1:$Length(" _ ..Literal(tNames) _ ", "","") {"
-        Set tText = tText _ $Char(10) _ "     Set tSC = ##class(%RoutineMgr).Delete($Piece(" _ ..Literal(tNames) _ ", "","", tI))"
-        Set tText = tText _ $Char(10) _ "     Do $System.Status.DisplayError(tSC)"
-        Set tText = tText _ $Char(10) _ " }"
+        Set tText = tText _ $Char(10) _ " For tI = 1:1:$Length(" _ ..Literal(tNames) _ ", "","") { Set tSC = ##class(%RoutineMgr).Delete($Piece(" _ ..Literal(tNames) _ ", "","", tI)) Do $System.Status.DisplayError(tSC) }"
     }
+    If $Length(tText) > ..#SNIPPETMAXCHARACTERS Quit []
     Set tStep = {}
     Do tStep.%Set("kind", "objectscript", "string")
     Do tStep.%Set("text", tText, "string")
     Quit [(tStep)]
+}
+
+/// <p>The script of a save or a create of the one document <var>pName</var> holding the lines
+/// <var>pLines</var> (<method>SavedLines</method>), as the lines the port's own write would put in
+/// the document (AD-59, DW-2241). A class is set from its lines with
+/// <code>%Compiler.UDL.TextServices.SetTextFromArray</code>; a routine is written line by line with
+/// <code>%Routine</code>, leaving out the header line <method>HeaderAt</method> names, which the
+/// routine's own name carries. <var>pCompile</var> adds the compile the write makes, with the flags
+/// <parameter>IMPORTCOMPILEFLAGS</parameter>, run only when the write succeeded, as the port's write
+/// compiles only after its PUT. <var>pCreate</var> first renders the name's taken check
+/// (<method>FreeCheck</method>) and every later step runs only while the name is free; otherwise the script
+/// reports that it created nothing. Each step is one line that opens no block it does not close. Every
+/// line of text is rendered as a string literal. Rendering stops once the script passes
+/// <parameter>SNIPPETMAXCHARACTERS</parameter>, so <method>Snippet</method> refuses it whole.</p>
+ClassMethod SaveScript(pEndpoint As %String, pName As %String, pLines As %DynamicArray, pCompile As %Boolean, pCreate As %Boolean) As %String [ Private ]
+{
+    Set tClass = (pEndpoint = ..#ENDPOINTCLASSES)
+    Set tHeader = -1
+    If 'tClass Do ..HeaderAt(pLines, .tHeader)
+    Set tGate = $Select(pCreate: " If tFree", 1: "")
+    If pCreate {
+        Set tBody = " Set tSC = 0, tFree = 0, tFree = " _ ..FreeCheck(pEndpoint, pName)
+        Set tBody = tBody _ $Char(10) _ " If 'tFree Do $System.Status.DisplayError($System.Status.Error(5001, " _ ..Literal(pName _ " is taken: this namespace holds it or another document of its name, so nothing was created.") _ "))"
+    } Else {
+        Set tBody = " Set tSC = 0"
+    }
+    If tClass {
+        Set tBody = tBody _ $Char(10) _ tGate _ " Kill tText"
+        For tI = 0:1:pLines.%Size() - 1 {
+            Set tBody = tBody _ $Char(10) _ tGate _ " Set tText($Increment(tText(0))) = " _ ..Literal(pLines.%Get(tI))
+            If $Length(tBody) > ..#SNIPPETMAXCHARACTERS Quit
+        }
+        Set tBody = tBody _ $Char(10) _ tGate _ " Set tSC = ##class(%Compiler.UDL.TextServices).SetTextFromArray($NAMESPACE, " _ ..Literal(..BaseName(pName)) _ ", .tText)"
+    } Else {
+        Set tBody = tBody _ $Char(10) _ tGate _ " Set tRoutine = ##class(%Routine).%New(" _ ..Literal(pName) _ ")"
+        Set tBody = tBody _ $Char(10) _ tGate _ " Do tRoutine.Clear()"
+        For tI = 0:1:pLines.%Size() - 1 {
+            If tI = tHeader Continue
+            Set tBody = tBody _ $Char(10) _ tGate _ " Do tRoutine.WriteLine(" _ ..Literal(pLines.%Get(tI)) _ ")"
+            If $Length(tBody) > ..#SNIPPETMAXCHARACTERS Quit
+        }
+        Set tBody = tBody _ $Char(10) _ tGate _ " Set tSC = tRoutine.Save()"
+    }
+    Set tBody = tBody _ $Char(10) _ tGate _ " Do $System.Status.DisplayError(tSC)"
+    If pCompile {
+        Set tBody = tBody _ $Char(10) _ " If " _ $Select(pCreate: "tFree,", 1: "") _ "$System.Status.IsOK(tSC) Set tSC = $System.OBJ.CompileList(" _ ..Literal(pName) _ ", " _ ..Literal(..#IMPORTCOMPILEFLAGS) _ ") Do $System.Status.DisplayError(tSC)"
+    }
+    Quit tBody
+}
+
+/// <p>The expression a create's script reads as true while nothing holds a document that takes
+/// <var>pName</var>, the rule <method>Takes</method> applies: for a class, no class of that name in any
+/// letter case, read from the class index the vendor keys by the upper-case name (measured: it holds mapped
+/// classes and follows a save and a delete); for an include file, no document of exactly that name; for a
+/// routine or intermediate routine, no routine of its base name of a type in
+/// <parameter>TAKINGROUTINETYPES</parameter>.</p>
+ClassMethod FreeCheck(pEndpoint As %String, pName As %String) As %String [ Private ]
+{
+    If pEndpoint = ..#ENDPOINTCLASSES Quit "'$Data(^rINDEXCLASS(" _ ..Literal($ZConvert(..BaseName(pName), "U")) _ "))"
+    If ..Extension(pName) = "inc" Quit "'##class(%RoutineMgr).Exists(" _ ..Literal(pName) _ ")"
+    Set tTypes = ..#TAKINGROUTINETYPES
+    Set tCheck = ""
+    For tI = 1:1:$Length(tTypes, ",") {
+        Set tCheck = tCheck _ $Select(tCheck = "": "", 1: " || ") _ "##class(%RoutineMgr).Exists(" _ ..Literal(..BaseName(pName) _ "." _ $Piece(tTypes, ",", tI)) _ ")"
+    }
+    Quit "'(" _ tCheck _ ")"
 }
 
 /// <p><var>pValue</var> as an ObjectScript string literal, a control character spelled as a
