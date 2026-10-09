@@ -10807,3 +10807,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-20-21-the-agent-saves-edits-to-existing-classes-and-routines.md | severity: low | fix-risk: low | footprint: out-of-footprint
 - evidence: AtelierPort.SaveSet quits with the Compile route's error status after a successful PutDoc (19.3), so the card reads a failed write; a compile error (not a fault) is reported as output.errors
 - 2026-10-09T08:21:47Z status=wontfix-theoretical owner=20-21-the-agent-saves-edits-to-existing-classes-and-routines by=cr note=real only if the Compile route itself faults (not a compile error) after PutDoc succeeded
+
+### DW-2254: CI flake: proposal-privilege.browser-spec.mjs (b) waits REVOKE_WINDOW_MS (5000 ms) for the privilege warning after a pair is revoked; under a loaded CI shard the card's poll can land after the window
+- source: cycle-log-epic-18.md (18.10 run 37944323086) | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: run 37944323086 browser shard 3/3: ui/browser/proposal-privilege.browser-spec.mjs:270 (b) Waiting failed 5000ms at :291; the same code green locally 3/3 on ocupilot-ci; 18.10 touches only the two routine-application names in Mint/Prohibited
+- 2026-10-09T15:20:57Z status=routed owner=23-5-the-range-end-cleanup-part-5 by=harvest note=size the window from the card's own poll interval plus one re-read, or wait on the card's answered signal
