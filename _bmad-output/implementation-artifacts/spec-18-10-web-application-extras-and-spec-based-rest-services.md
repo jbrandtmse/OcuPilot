@@ -3,7 +3,7 @@ title: 'Story 18.10: Web application extras and spec-based REST services'
 type: 'feature'
 created: '2026-10-08'
 status: 'done'
-baseline_commit: 'b4b6ffb83a729e3205cb3f7b737aaff001561ce2'
+baseline_commit: '2ac4272dc852498fde08f81358c3bb357838a8ca'
 baseline_revision: '2ac4272dc852498fde08f81358c3bb357838a8ca'
 review_loop_iteration: 0
 followup_review_recommended: false
@@ -22,7 +22,7 @@ deferred: []
 **Approach:** This follows the orchestrator's 2026-10-09 rulings Q1 and Q4 on this story's first plan. Two parts:
 
 - The `%`-class access list on the web application editor, read and changed through the admin API.
-- An AD-10 arm refusing a delete of OcuPilot's own two privileged routine applications, disabling either, and any change to their `MatchRoles` or `Roles`, through every path that reaches them, including the vendor's privileged-routine endpoint. It sits in the family of the existing arms for OcuPilot's own web applications (`PROHIBITED.PRIVILEGEGRANT`, and deleting OcuPilot's own web applications). A target-type check goes wherever OcuPilot reaches that endpoint. A Rule 19 test proves each arm reddens under its mutation, and AD-10 is amended at this story's spec gate.
+- An AD-10 arm refusing every change to OcuPilot's own two privileged routine applications (the owner: "Refuse every change"): a delete, a disable or a change to any field, through every path that reaches them, including the vendor's privileged-routine endpoint. It sits in the family of the existing arms for OcuPilot's own web applications (`PROHIBITED.PRIVILEGEGRANT`, and deleting OcuPilot's own web applications). A target-type check goes wherever OcuPilot reaches that endpoint. A Rule 19 test proves each arm reddens under its mutation, and AD-10 is amended at this story's spec gate.
 
 Doc DB applications (18.30), privileged routine applications (18.31) and spec-based REST services (18.32) are split out.
 
@@ -36,7 +36,7 @@ Doc DB applications (18.30), privileged routine applications (18.31) and spec-ba
 
 | Scenario | Input / State | Expected Output / Behavior | Error Handling |
 |----------|--------------|---------------------------|----------------|
-| OcuPilot's own privileged routine application | A delete of `OcuPilotState` or `OcuPilotIdentity`, disabling either, or a change to its `MatchRoles` or `Roles`, through any path | Refused by the AD-10 arm; nothing sent | Today: `Prohibits` answers 0 |
+| OcuPilot's own privileged routine application | A delete of `OcuPilotState` or `OcuPilotIdentity`, disabling either, or a change to any of its fields, through any path | Refused by the AD-10 arm; nothing sent | Today: `Prohibits` answers 0 |
 | Privileged-routine write to a web application | `PUT` or `DELETE` on `Security.PrivilegedRoutine` naming `/csp/...` | Refused by the type check; nothing sent | Vendor: changes the application then answers 500, or deletes it |
 | %-class access field shape | A class without a leading `%`, a type other than `AllowClass` or `AllowPrefix`, or an absent application | Refused on its field | Vendor: 500 #1498, #1496 or #869, each logged at severity 2 |
 
@@ -166,6 +166,7 @@ Code review 2026-10-09 (four layers, `full-opus`): 67 raw rows; 15 entries survi
 
 ## Spec Change Log
 
+- 2026-10-09, lead: the owner answered the scope with "Refuse every change". The Intent's arm and matrix row now say every change, matching the delivered arm. In the spine, AD-10's sentence is restated and AD-13's `foldfirst` amendment removed.
 - 2026-10-09, lead: re-opened `in-progress` after code review, for the orchestrator's quality review claims. Implement runs on Sonnet: the owner ended the Haiku trial. Feature `98ab67bf` (Story 20.21) is merged in.
 - 2026-10-09, lead: re-opened `in-progress` for pass 4 after the runner's full sweep (4 reds, all from this story), with pass 3's two deferred items. Implement passes so far: three.
 - 2026-10-09, lead: pass 2 closed the four rework items and returned `blocked` on the endpoint arm. Decision 3 is (a), which ruling Q4 already requires. Pass 3's scope is the four items above; pass 2's review block was moved under the Review Triage Log.

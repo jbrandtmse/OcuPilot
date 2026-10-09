@@ -360,7 +360,7 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
 
   **A copied user's escalation roles count as its roles** [AMENDED 2026-10-08, Story 18.29 spec gate, Rule 20]: a copy whose source holds `%All` or an `%Admin_*` role, directly or as an escalation role, is confirmed at the destructive treatment and names the privilege.
 
-  **OcuPilot's own privileged routine applications** [AMENDED 2026-10-09, Story 18.10 spec gate, Rule 20], DW-2239: deleting `OcuPilotState` or `OcuPilotIdentity`, disabling either, or changing its `MatchRoles` or `Roles` is refused `PROHIBITED.OCUPILOTROUTINEAPP` from either caller, through every tool that reaches them, in the family of the arms for OcuPilot's own web applications. Story 18.31's privileged routine application tools meet the same arm, and their `Routines` and `Resource` are settled at its gate.
+  **OcuPilot's own privileged routine applications** [AMENDED 2026-10-09, Story 18.10 spec gate, Rule 20], DW-2239: the owner chose "Refuse every change". Every write to `OcuPilotState` or `OcuPilotIdentity`, whether a delete, a disable or a change to any field, is refused `PROHIBITED.OCUPILOTROUTINEAPP` from either caller, through every tool and endpoint that reaches them, as OcuPilot's own web applications are.
 
 ### AD-11 — Untrusted content never becomes instruction
 
@@ -438,8 +438,6 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
   **A `docdb-database` id keeps `foldcase`**, because the instance resolves a document database's name in any case (measured on `ocupilot-a2-ci`: `Exists`, `GetDatabase` and `DropDatabase("OCUPROBE1917A")` reached `OcuProbe1917A`, and `CreateDatabase("ocuprobe1917a")` threw #25051) (Story 19.17) [AMENDED 2026-10-05, Story 19.17 spec gate, Rule 20].
 
   **A `screen-permission` id is the screen's `toolIdentifier`, kept exactly** (Story 20.15) [AMENDED 2026-10-07, Story 20.15 spec gate, Rule 20].
-
-  **A `pct-class-access` id composes the application, the allow type and the class** [AMENDED 2026-10-09, Story 18.10 spec gate, Rule 20]: the `foldfirst` id rule lower-cases the first composite part, the application, and keeps the rest exact.
 
 ### AD-14 — A confirmed write emits one change event; screens re-fetch, never patch
 
