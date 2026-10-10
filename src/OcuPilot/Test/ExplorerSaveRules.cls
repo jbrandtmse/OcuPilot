@@ -5,11 +5,11 @@
 /// <code>%</code>, a class in <code>%SYS</code>, a class stored in another database, and the confirm's own rule.
 /// The hunk's context and first-line rules are pinned on <class>OcuPilot.Screen.Tool.ExplorerSaveMint</class>'s
 /// pure <method>Hunk</method>.</p>
-/// <p><b>What it needs from the environment:</b> OcuPilot installed in <code>HSCUSTOM</code> and serving over
-/// HTTP, a <code>USER</code> namespace with the probe documents <class>OcuPilot.Test.ExplorerSaveAgentProbe</class>
-/// names, and the <code>ENSLIB</code> database mapped for <code>Ens.Director</code>. It removes what it creates,
-/// snapshots the stored governance policy before each test, clears it and puts it back after it, and runs under
-/// one test run at a time.</p>
+/// <p><b>What it needs from the environment:</b> OcuPilot installed in <code>HSCUSTOM</code>, a <code>USER</code>
+/// namespace with the probe documents <class>OcuPilot.Test.ExplorerSaveAgentProbe</class> names, and the
+/// <code>ENSLIB</code> database mapped for <code>Ens.Director</code>. It runs in process and opens no HTTP request.
+/// It removes what it creates, snapshots the stored governance policy before each test, clears it and puts it
+/// back after it, and runs under one test run at a time.</p>
 Class OcuPilot.Test.ExplorerSaveRules Extends %UnitTest.TestCase
 {
 

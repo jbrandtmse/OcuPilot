@@ -96,7 +96,7 @@ Method OnAfterOneTest() As %Status
     Quit $$$OK
 }
 
-/// <p>Revoke every SQL privilege the source and the copy target hold in <parameter>NAMESPACE</parameter> (the standard
+/// <p>Revoke every SQL privilege the source and the copy target hold in <code>USER</code> (the standard
 /// and admin privileges, through the vendor's own calls), then delete any privilege row of either grantee that is
 /// left, as <class>OcuPilot.Test.SqlPrivilegeProbe</class>'s sweep does for its own grantees. Idempotent: a revoke of an
 /// absent grant is not an error, so the returned status reports the sweep and any fault that escaped it.</p>
@@ -180,9 +180,9 @@ ClassMethod Body(pName As %String, pPassword As %String, pFrom As %String) As %S
     Quit "{""Name"":""" _ pName _ """,""CopyFrom"":""" _ tFrom _ """,""FullName"":"""",""Password"":""" _ pPassword _ """}"
 }
 
-/// <p>The first violation's <code>reason</code> in an answer's <code>detail</code>, given as a JSON text or an object,
-/// or <code>""</code> when the answer carries none.</p>
-ClassMethod ViolationReasonOf(pBody As %String) As %String
+/// <p>The <code>violations</code> array of an answer's <code>detail</code>, given as a JSON text or an object, or
+/// <code>""</code> when the answer carries none.</p>
+ClassMethod ViolationsOf(pBody As %String) As %DynamicArray
 {
     Set tObj = pBody
     If '$IsObject(tObj) {
@@ -194,7 +194,17 @@ ClassMethod ViolationReasonOf(pBody As %String) As %String
     }
     If '$IsObject(tObj) Quit ""
     If '$IsObject(tObj.%Get("detail")) Quit ""
-    Quit tObj.%Get("detail").%Get("violations").%Get(0).%Get("reason")
+    Set tViolations = tObj.%Get("detail").%Get("violations")
+    Quit $Select($IsObject(tViolations): tViolations, 1: "")
+}
+
+/// <p>The first violation's <code>reason</code> in an answer's <code>detail</code>, given as a JSON text or an object,
+/// or <code>""</code> when the answer carries none.</p>
+ClassMethod ViolationReasonOf(pBody As %String) As %String
+{
+    Set tViolations = ..ViolationsOf(pBody)
+    If '$IsObject(tViolations) || (tViolations.%Size() = 0) Quit ""
+    Quit tViolations.%Get(0).%Get("reason")
 }
 
 /// <p>Whether <var>pText</var> contains <var>pWord</var>.</p>

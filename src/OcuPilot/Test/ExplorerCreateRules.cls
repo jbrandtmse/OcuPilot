@@ -80,9 +80,11 @@ Method Refused(pNamespace As %String, pTool As %String, pName As %String, pBody 
 
 /// <p>A name the instance's own code rule names, a name holding <code>%</code> anywhere, one in <code>%SYS</code>,
 /// one the namespace stores in another database, and a class without a package are refused before anything is
-/// stored, each with its sentence.</p>
+/// stored, each with its sentence. At the confirm, stored arguments that are not an object are refused as unreadable,
+/// and <code>{}</code> for its missing namespace.</p>
 /// <p>Mutation (Rule 19): <method>OcuPilot.Screen.Tool.ExplorerSave.AgentProblem</method> ignores <code>pCreate</code>
-/// -- the <code>%</code>-anywhere leg goes red.</p>
+/// -- the <code>%</code>-anywhere leg goes red. <method>OcuPilot.Screen.Tool.ExplorerCreate.ConfirmProblem</method>
+/// treating <code>{}</code> as unreadable -- the missing-namespace leg goes red.</p>
 Method TestTheNamesThatAreNeverCreated()
 {
     Set tText = $ClassMethod(..#PROBE, "NewClassText", "OcuPilotProbe2020.New")
@@ -101,6 +103,9 @@ Method TestTheNamesThatAreNeverCreated()
         Set tSC = $ClassMethod($List(tCase, 1), "ConfirmProblem", $List(tCase, 2), "", .tProblem)
         Do $$$AssertStatusOK(tSC, $List(tCase, 2) _ " with stored arguments that are not an object answers")
         Do $$$AssertTrue(tProblem [ "could not be read", $List(tCase, 2) _ " with stored arguments that are not an object is refused at the confirm: " _ tProblem)
+        Set tProblem = ""
+        Set tSC = $ClassMethod($List(tCase, 1), "ConfirmProblem", $List(tCase, 2), {}, .tProblem)
+        Do $$$AssertTrue($$$ISOK(tSC) && (tProblem [ "the namespace is not known"), $List(tCase, 2) _ " with stored arguments {} is refused for its missing namespace, not as unreadable: " _ tProblem)
     }
 }
 

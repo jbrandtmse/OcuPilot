@@ -86,8 +86,9 @@ ClassMethod ArgumentProblem(pIdValue As %String, pArgs As %DynamicObject, Output
 }
 
 /// <p>The composed payload and diff of the copy (AD-54): the source read through
-/// <class>OcuPilot.Port.UserCopyPort</class>, then the four fields <method>PermittedFields</method> and the
-/// payload name, composed by the kernel's create composition. An absent, directory-service or delegated
+/// <class>OcuPilot.Port.UserCopyPort</class>, then the four fields
+/// <parameter>OcuPilot.Kernel.Proposal.Prohibited.COPYFIELDS</parameter> names and the payload name, composed by
+/// the kernel's create composition. An absent, directory-service or delegated
 /// source answers <var>pProblem</var>, and nothing is composed; a source read that fails for any other reason
 /// is an error status (AD-36: only the vendor's 404 is an absence).</p>
 ClassMethod ComposeCreate(pArgs As %DynamicObject, pIdArgument As %String, pSettable As %List, Output pPayload As %DynamicObject, Output pDiff As %DynamicArray, Output pUnchanged As %Integer, Output pProblem As %String) As %Status

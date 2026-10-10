@@ -2,7 +2,8 @@
 /// share: the namespace their probe documents live in, the fixture that answers the fake routes, one call
 /// of a source read, and an index answer and a document answer armed on those routes. It declares no test
 /// of its own.</p>
-/// <p>Needs the Atelier fixture free for the fake-route legs; it creates and removes nothing itself.</p>
+/// <p>Needs the Atelier fixture free for the fake-route legs. <method>ArmDocument</method> arms the fixture and
+/// clears nothing; each subclass clears it after each test.</p>
 Class OcuPilot.Test.ExplorerSourceTestCase Extends %UnitTest.TestCase [ Abstract ]
 {
 

@@ -364,7 +364,8 @@ Method TestAgentCreateAndDeleteMintConfirmAndReadBack()
 }
 
 /// <p>A mint refused because the entry is absent (a delete) or already present (a create) names the entry's parts with
-/// the breadcrumb between them, <code>$Char(8250)</code>, and holds no composite separator, <code>$Char(1)</code>.</p>
+/// the breadcrumb between them, <code>$Char(8250)</code>, and holds no composite separator, <code>$Char(1)</code>. The
+/// probe entry is removed first, so the delete leg's absence is the test's own.</p>
 /// <p>Mutation (Rule 19): drop the <method>OcuPilot.Screen.Tool.ErrorDeleteMint.ReadableId</method> pass from
 /// <method>OcuPilot.Screen.Tool.WebAppPctAccessMint.Mint</method> -- both legs go red.</p>
 Method TestAPresenceRefusalNamesTheEntryReadably()
@@ -373,7 +374,10 @@ Method TestAPresenceRefusalNamesTheEntryReadably()
     Do $$$AssertStatusOK(tSC, "a completed turn is seeded")
     If $$$ISERR(tSC) Quit
     Set tSeparator = $Char(##class(OcuPilot.Kernel.EntityId).#COMPOSITESEPARATOR)
-    Set tBreadcrumb = $Char(8250)
+    Set tReadable = ..#PROBEAPP _ " " _ $Char(8250) _ " AllowClass " _ $Char(8250) _ " " _ ..#PROBECLASS
+    Kill tQuery
+    Set tQuery("name") = ..ProbeId()
+    Do ##class(OcuPilot.Port.PctAccessPort).Invoke("WebApp.PctClassAccess", "DELETE", .tQuery, "", .tResult, .tGoneHttp, .tGoneFault)
     Set tArgs = {"Name": (..#PROBEAPP), "AllowType": "AllowClass", "Class": (..#PROBECLASS)}
     Set tSC = ..MintFor("OcuPilot.Screen.Tool.WebAppPctAccessDelete", tTurn, tArgs, .tProposal, .tHttp, .tFault)
     Do $$$AssertStatusNotOK(tSC, "the agent's delete of an entry the application does not hold does not mint")
@@ -381,7 +385,7 @@ Method TestAPresenceRefusalNamesTheEntryReadably()
     Do $$$AssertEquals(tHttp _ " " _ $Select($IsObject(tFault): tFault.%Get("code"), 1: ""), "400 " _ ##class(OcuPilot.Api.Error).#TOOLARGUMENTS, "the mint refuses it as a tool arguments refusal")
     Do $$$AssertTrue(tProblem [ "is not present", "and says the entry is not present: " _ tProblem)
     Do $$$AssertTrue(tProblem '[ tSeparator, "its problem holds no U+0001")
-    Do $$$AssertTrue(tProblem [ tBreadcrumb, "and names the entry's parts with the breadcrumb")
+    Do $$$AssertTrue(tProblem [ tReadable, "and names the entry's parts with the breadcrumb: " _ tProblem)
 
     Kill tQuery
     Set tQuery("name") = ..ProbeId()
@@ -395,7 +399,7 @@ Method TestAPresenceRefusalNamesTheEntryReadably()
     Do $$$AssertEquals(tHttp _ " " _ $Select($IsObject(tFault): tFault.%Get("code"), 1: ""), "400 " _ ##class(OcuPilot.Api.Error).#TOOLARGUMENTS, "the mint refuses it as a tool arguments refusal")
     Do $$$AssertTrue(tProblem [ "is already present", "and says the entry is already present: " _ tProblem)
     Do $$$AssertTrue(tProblem '[ tSeparator, "its problem holds no U+0001")
-    Do $$$AssertTrue(tProblem [ tBreadcrumb, "and names the entry's parts with the breadcrumb")
+    Do $$$AssertTrue(tProblem [ tReadable, "and names the entry's parts with the breadcrumb: " _ tProblem)
     Quit
 }
 

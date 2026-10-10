@@ -16,7 +16,8 @@ Parameter CHECKPATH = "/users/password-check";
 /// <code>%DB_IRISSYS:R</code> and <code>%DB_HSCUSTOM:R</code>, copies over the wire and checks a password; the
 /// principal without <code>%Admin_Secure</code> is refused the copy and the check, and nothing is created.</p>
 /// <p>The principal without <code>%Admin_Secure</code> holds no administrative resource, so the API floor refuses both
-/// its requests before any route gate runs; the form's own gate is pinned by the floor-only principal's test.</p>
+/// its requests before any route gate runs; the form's own gate is pinned by
+/// <method>OcuPilot.Test.UserCopy.TestThePasswordCheckIsRefusedToAPrincipalWithTheFloorButNotTheFormsPair</method>.</p>
 Method TestTheLeastPrivilegedPrincipalCopiesAndChecksAndTheOtherIsRefused()
 {
     Set tSC = ..AsPrincipal(..#PRINCIPAL, "POST", ..#COPYPATH, ..Body(..#TARGET, ..#GOODPASSWORD, ""), .tStatus, .tRaw)
@@ -147,7 +148,7 @@ Method TestThePortRefusesACopyWhoseCallerLacksAdminSecureWhateverTheRoute()
 }
 
 /// <p>AD-35, AD-10: a copy carries the source's SQL privileges (the standard SELECT and the admin privilege
-/// <code>%CREATE_TABLE</code>) in <parameter>NAMESPACE</parameter>, as the vendor copies them; the copy's teardown
+/// <code>%CREATE_TABLE</code>) in <code>USER</code>, as the vendor copies them; the copy's teardown
 /// revokes every privilege the copy reproduced and the source's, and no row of an OcuProbe1829 grantee survives.</p>
 /// <p>Mutation (Rule 19): pass <code>0</code> for <code>SQLObjPrivs</code> in
 /// <method>OcuPilot.Port.UserCopyPort.VendorCopy</method> -- the SELECT leg reddens.</p>

@@ -253,9 +253,10 @@ Method TestTheAgentsDestinationRuleRefusesWhatItCannotVouchFor()
 
 /// <p>The confirm's own rule asks the namespace the mint stored: a document of the namespace's own database
 /// passes, a stored namespace that is missing, <code>%SYS</code> or unknown refuses, and so does a name
-/// the mint would have refused, for a routine as for a class.</p>
+/// the mint would have refused, for a routine as for a class. Stored arguments that are not an object are refused as
+/// unreadable, and <code>{}</code> for its missing namespace.</p>
 /// <p>Mutation (Rule 19): <method>OcuPilot.Screen.Tool.ExplorerSave.ConfirmProblem</method> asks nothing -- the
-/// refusing legs go red.</p>
+/// refusing legs go red. Treating <code>{}</code> as unreadable there -- the missing-namespace leg goes red.</p>
 Method TestTheConfirmRuleAsksTheStoredNamespace()
 {
     Set tOk = ""
@@ -273,6 +274,9 @@ Method TestTheConfirmRuleAsksTheStoredNamespace()
         Set tSC = $ClassMethod($List(tCase, 1), "ConfirmProblem", $List(tCase, 2), "", .tProblem)
         Do $$$AssertStatusOK(tSC, $List(tCase, 2) _ " with stored arguments that are not an object answers")
         Do $$$AssertTrue(tProblem [ "could not be read", $List(tCase, 2) _ " with stored arguments that are not an object is refused at the confirm: " _ tProblem)
+        Set tProblem = ""
+        Set tSC = $ClassMethod($List(tCase, 1), "ConfirmProblem", $List(tCase, 2), {}, .tProblem)
+        Do $$$AssertTrue($$$ISOK(tSC) && (tProblem [ "namespace of the document is not known"), $List(tCase, 2) _ " with stored arguments {} is refused for its missing namespace, not as unreadable: " _ tProblem)
     }
 }
 

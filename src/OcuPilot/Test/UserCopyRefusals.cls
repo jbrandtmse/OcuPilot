@@ -249,8 +249,8 @@ Method TestTheReadBackNamesEachFieldThatDisagreesWithTheCopy()
 }
 
 /// <p>The copy of <parameter>SOURCE</parameter> to <var>pName</var> through port class <var>pPort</var>, with the
-/// source's roles and escalation role as the body names them and <var>pPassword</var> as its password. <var>pHttp</var> and <var>pFault</var> are the port's
-/// answer, and <var>pResult</var> the account it read back.</p>
+/// source's roles and escalation role as the body names them and <var>pPassword</var> as its password.
+/// <var>pHttp</var> and <var>pFault</var> are the port's answer, and <var>pResult</var> the account it read back.</p>
 ClassMethod Copy(pPort As %String, pName As %String, Output pHttp As %Integer, Output pFault As %DynamicObject, Output pResult, pFullName As %String = "", pPassword As %String = {..#GOODPASSWORD})
 {
     Kill tQuery

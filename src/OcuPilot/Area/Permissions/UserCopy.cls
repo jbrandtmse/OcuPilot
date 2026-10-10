@@ -19,25 +19,18 @@ Parameter TOOLCLASS = "OcuPilot.Screen.Tool.UserCopy";
 Parameter DESCRIPTORCLASS = "OcuPilot.Screen.Descriptor.UserForm";
 
 /// <p>The copy's payload (<method>OcuPilot.Area.Permissions.UserCreate.ComposePayload</method>): the tool's own
-/// <method>OcuPilot.Screen.Tool.UserCopy.ComposeCreate</method>, which reads the source as it stands now. An
-/// empty <code>CopyFrom</code>, or a source that composition refuses (absent, directory-service or delegated),
-/// is one violation on <code>CopyFrom</code>, <parameter>OcuPilot.Api.UserCopyError.SOURCE</parameter>, and
-/// nothing is composed. The create rules (<method>OcuPilot.Area.Permissions.UserCreateRules.Validate</method>)
+/// <method>OcuPilot.Screen.Tool.UserCopy.ComposeCreate</method>, which reads the source as it stands now. A
+/// source that composition refuses (empty, absent, directory-service or delegated) is one violation on
+/// <code>CopyFrom</code>, <parameter>OcuPilot.Api.UserCopyError.SOURCE</parameter>, and nothing is composed. The create rules (<method>OcuPilot.Area.Permissions.UserCreateRules.Validate</method>)
 /// require the password and check its policy; the source check is the copy's own.</p>
 ClassMethod ComposePayload(pName As %String, pArgs As %DynamicObject, Output pPayload As %DynamicObject, ByRef pViolations) As %Status
 {
-    Set pPayload = ""
     Set tClass = ..#TOOLCLASS
-    Set tCopyFrom = ""
-    If pArgs.%GetTypeOf("CopyFrom") = "string" Set tCopyFrom = pArgs.%Get("CopyFrom")
-    Set tProblem = ""
-    If tCopyFrom '= "" {
-        Set tSC = $ClassMethod(tClass, "ComposeCreate", pArgs, ..#IDARGUMENT, $ClassMethod(tClass, "SettableFields"), .pPayload, .tDiff, .tUnchanged, .tProblem)
-        If $$$ISERR(tSC) Quit tSC
-    }
-    If (tCopyFrom = "") || (tProblem '= "") {
+    Set tSC = $ClassMethod(tClass, "ComposeCreate", pArgs, ..#IDARGUMENT, $ClassMethod(tClass, "SettableFields"), .pPayload, .tDiff, .tUnchanged, .tProblem)
+    If $$$ISERR(tSC) Quit tSC
+    If tProblem '= "" {
         Set pViolations = 1
-        Set pViolations(1) = $ListBuild("CopyFrom", ##class(OcuPilot.Api.UserCopyError).#SOURCE)
+        Set pViolations(1) = $ListBuild($Parameter(tClass, "SOURCEARGUMENT"), ##class(OcuPilot.Api.UserCopyError).#SOURCE)
     }
     Quit $$$OK
 }

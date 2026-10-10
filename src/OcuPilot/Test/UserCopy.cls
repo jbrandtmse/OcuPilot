@@ -1,8 +1,8 @@
-/// <p>Pins the user copy (AD-27, AD-35, AD-55, AD-58) over a real HTTP request: <code>POST /users/copy</code>
-/// and its refusals and sources, the password check route <code>POST /users/password-check</code>, the port's
-/// source-changed refusal at the write, the composed payload, the copy's prohibited set and privilege
-/// classification, the snippet and the tool's input schema. The principal, confirm, port-gate and SQL privilege
-/// legs are <class>OcuPilot.Test.UserCopyConfirm</class>'s. The probe accounts, the arming and the helpers are
+/// <p>Pins the user copy (AD-27, AD-35, AD-55, AD-58). Over a real HTTP request: <code>POST /users/copy</code>
+/// and its refusals and sources, and the password check route <code>POST /users/password-check</code>. In
+/// process: the port's source-changed refusal at the write, the composed payload, the copy's prohibited set and
+/// privilege classification, the snippet and the tool's input schema. The least-privileged principal, confirm,
+/// port-gate and SQL privilege legs are <class>OcuPilot.Test.UserCopyConfirm</class>'s. The probe accounts, the arming and the helpers are
 /// <class>OcuPilot.Test.UserCopyTestCase</class>'s.</p>
 /// <p>Mutation (Rule 19): make <method>OcuPilot.Port.UserCopyPort.SameNames</method> answer 1 for any two
 /// arrays -- the source-changed leg reddens.</p>
@@ -46,22 +46,30 @@ Method TestTheCopyRouteCreatesTheAccountWithTheSourcesRoles()
     Do $$$AssertTrue(..Exists(..#TARGET), "the account exists on the instance")
 }
 
-/// <p>AD-35, AD-55: a password the policy refuses is 422 <code>USER.PASSWORD.POLICY</code> on
-/// <code>Password</code>, and nothing is created.</p>
+/// <p>AD-35, AD-55: a password the policy refuses is 422 with one violation, <code>USER.PASSWORD.POLICY</code> on
+/// <code>Password</code> carrying the policy's own reason, and nothing is created.</p>
+/// <p>Mutation (Rule 19): make <method>OcuPilot.Area.Permissions.UserCreateRules.Validate</method> put a fixed
+/// sentence in place of the policy's reason on the <code>Password</code> violation -- the reason leg reddens.</p>
 Method TestAWeakPasswordIsRefusedAndCreatesNothing()
 {
+    Set tReason = ""
+    Do $$$AssertTrue('##class(OcuPilot.Kernel.PasswordPolicy).Verdict("a", ..#TARGET, .tReason), "the policy refuses the password")
     Set tSC = ##class(OcuPilot.Test.Http).MakeRequest("POST", ..#COPYPATH, .tStatus, .tBody, ..Body(..#TARGET, "a", ""), "application/json")
     Do $$$AssertStatusOK(tSC, "the refused copy request completes")
     Do $$$AssertEquals(tStatus, 422, "a refused password is 422")
-    Do $$$AssertTrue(..Mentions($Get(tBody), "USER.PASSWORD.POLICY"), "on the USER.PASSWORD.POLICY code")
-    Do $$$AssertTrue(..Mentions($Get(tBody), "Password"), "naming the Password field")
+    Set tViolations = ..ViolationsOf($Get(tBody))
+    Do $$$AssertEquals($Select($IsObject(tViolations): tViolations.%Size(), 1: 0), 1, "with one violation")
+    Set tViolation = $Select($IsObject(tViolations) && (tViolations.%Size() > 0): tViolations.%Get(0), 1: {})
+    Do $$$AssertEquals(tViolation.%Get("code"), ##class(OcuPilot.Api.Error).#USERPASSWORDPOLICY, "on the USER.PASSWORD.POLICY code")
+    Do $$$AssertEquals(tViolation.%Get("field"), "Password", "naming the Password field")
+    Do $$$AssertEquals(tViolation.%Get("reason"), tReason, "with the policy's reason")
     Do $$$AssertTrue('..Exists(..#TARGET), "and no account was created")
 }
 
 /// <p>AD-55, AD-58: an absent source, and a body whose <code>CopyFrom</code> is empty or missing, are each 422
 /// with the violation on <code>CopyFrom</code> (<code>USERCOPY.SOURCE</code>), and nothing is created.</p>
 /// <p>Mutation (Rule 19): make <method>OcuPilot.Area.Permissions.UserCopy.ComposePayload</method> record no
-/// violation -- the empty and missing legs go red, because the port then answers its own 400.</p>
+/// violation -- the empty and missing legs go red.</p>
 Method TestAnAbsentSourceIsRefusedOnCopyFrom()
 {
     Set tSC = ##class(OcuPilot.Test.Http).MakeRequest("POST", ..#COPYPATH, .tStatus, .tBody, ..Body(..#TARGET, ..#GOODPASSWORD, "OcuProbe1829Nope"), "application/json")
@@ -78,8 +86,9 @@ Method TestAnAbsentSourceIsRefusedOnCopyFrom()
         Set tSC = ##class(OcuPilot.Test.Http).MakeRequest("POST", ..#COPYPATH, .tStatus, .tBody, $List(tCase, 2), "application/json")
         Do $$$AssertStatusOK(tSC, "the request with " _ $List(tCase, 1) _ " CopyFrom completes")
         Do $$$AssertEquals(tStatus, 422, $List(tCase, 1) _ " source is 422")
-        Do $$$AssertTrue(..Mentions($Get(tBody), "USERCOPY.SOURCE"), "on the USERCOPY.SOURCE code")
-        Do $$$AssertTrue(..Mentions($Get(tBody), "CopyFrom"), "naming the CopyFrom field")
+        Set tViolations = ..ViolationsOf($Get(tBody))
+        Set tViolation = $Select($IsObject(tViolations) && (tViolations.%Size() = 1): tViolations.%Get(0), 1: {})
+        Do $$$AssertEquals(tViolation.%Get("code") _ " " _ tViolation.%Get("field"), "USERCOPY.SOURCE CopyFrom", "with its one violation on CopyFrom, USERCOPY.SOURCE")
         Do $$$AssertTrue('..Exists(..#TARGET), "and no account was created")
     }
 }
@@ -306,7 +315,9 @@ Method TestTheSnippetRendersTheCopyWithThePasswordPlaceholder()
 }
 
 /// <p>Story 18.29, AD-59: the copy tool's input schema names <code>CopyFrom</code> as a required string and drops
-/// <code>Roles</code>, and the copy's snippet form is ObjectScript.</p>
+/// <code>Roles</code>, and the copy's snippet form is ObjectScript. The tool's <parameter>SOURCECODE</parameter>
+/// is <parameter>OcuPilot.Api.UserCopyError.SOURCE</parameter>, and the tool's <parameter>WRITETYPE</parameter> and
+/// the port's <parameter>COPYTYPE</parameter> are <parameter>OcuPilot.Kernel.Proposal.Prohibited.COPYWRITETYPE</parameter>.</p>
 /// <p>Mutation (Rule 19): remove <code>CopyFrom</code> from the required list in
 /// <method>OcuPilot.Screen.Tool.UserCopy.InputSchema</method> -- the required-list leg reddens.</p>
 Method TestTheCopyToolPinsItsInputSchemaAndSnippetForm()
@@ -318,6 +329,8 @@ Method TestTheCopyToolPinsItsInputSchemaAndSnippetForm()
     Do $$$AssertTrue(tSchema.%Get("required").%ToJSON() [ """CopyFrom""", "and requires CopyFrom: " _ tSchema.%Get("required").%ToJSON())
     Do $$$AssertEquals(##class(OcuPilot.Port.UserCopyPort).SnippetForm(##class(OcuPilot.Port.UserCopyPort).#USERENDPOINT, ##class(OcuPilot.Port.UserCopyPort).#COPYTYPE), "objectscript", "the copy's snippet is ObjectScript")
     Do $$$AssertEquals(##class(OcuPilot.Screen.Tool.UserCopy).#SOURCECODE, ##class(OcuPilot.Api.UserCopyError).#SOURCE, "and the tool's source violation code is the published one")
+    Set tCopyType = ##class(OcuPilot.Kernel.Proposal.Prohibited).#COPYWRITETYPE
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Tool.UserCopy).#WRITETYPE _ " " _ ##class(OcuPilot.Port.UserCopyPort).#COPYTYPE, tCopyType _ " " _ tCopyType, "and the tool's write type and the port's copy type are the kernel's copy write type")
     Quit
 }
 

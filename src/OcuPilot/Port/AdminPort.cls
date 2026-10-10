@@ -173,7 +173,7 @@ Parameter PRIVROUTINEENDPOINT = "Security.PrivilegedRoutine";
 /// <code>NeedsRequestBody()</code> is <code>..IsTypePut()</code> so the type reads no body, and its
 /// <code>ValidateQueryParams</code> requires the <code>name</code> query parameter -- so it is
 /// listed in <parameter>BODYLESSTYPES</parameter> under its own endpoint too. The
-/// <code>:159-163</code> note that <code>DELETE</code> is deliberately absent is scoped to
+/// <code>Process/DELETE</code> note below, that <code>DELETE</code> is deliberately absent, is scoped to
 /// <code>Process</code>, whose delete is its terminate.</p>
 /// <p>The two <code>WebApp.PctClassAccess</code> pairs are issued through
 /// <class>OcuPilot.Port.PctAccessPort</class>, which splits an entry's id into the <code>name</code>,

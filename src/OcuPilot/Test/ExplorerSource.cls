@@ -128,6 +128,10 @@ Method TestCutCountsEscapedCharactersAndLineFeeds()
     Do $$$AssertEquals(tText _ "|" _ tSent _ "|" _ tTruncated, "a""b" _ $Char(10) _ "c|2|0", "the same two lines fit 7 exactly")
 }
 
+/// <p>A routine the instance keeps only as object code answers 404 <code>PORT.NOTFOUND</code> with the reason that the
+/// instance keeps no source, which is not the reason an absent document answers.</p>
+/// <p>Mutation (Rule 19): give <parameter>OcuPilot.Port.AtelierPort.REASONNOSOURCE</parameter> the sentence of
+/// <parameter>OcuPilot.Port.AtelierPort.REASONNOTFOUND</parameter> -- the not-equal leg goes red.</p>
 Method TestAnObjectOnlyRoutineAnswersNotFound()
 {
     Set tName = "OcuProbe193Obj.mac"
@@ -136,6 +140,7 @@ Method TestAnObjectOnlyRoutineAnswersNotFound()
     Do $$$AssertEquals(tHttp, 404, "an object-only routine answers 404")
     Do $$$AssertEquals($Select($IsObject(tFault): tFault.code, 1: ""), "PORT.NOTFOUND", "as PORT.NOTFOUND")
     Do $$$AssertEquals($Select($IsObject(tFault): tFault.reason, 1: ""), ##class(OcuPilot.Port.AtelierPort).#REASONNOSOURCE, "whose reason says the instance keeps no source")
+    Do $$$AssertNotEquals(##class(OcuPilot.Port.AtelierPort).#REASONNOSOURCE, ##class(OcuPilot.Port.AtelierPort).#REASONNOTFOUND, "which is not the reason an absent document answers")
     Do $$$AssertStatusNotOK(tSC, "and the read is an error")
 }
 
