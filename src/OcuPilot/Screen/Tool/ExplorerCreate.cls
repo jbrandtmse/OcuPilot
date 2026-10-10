@@ -141,11 +141,15 @@ ClassMethod MintClass() As %String
 
 /// <p>The refusal of the agent's confirmed create, asked again at Confirm with the stored namespace:
 /// <code>ExplorerSave.AgentProblem</code> with <code>pCreate</code>, so a name the mint refused, or one now
-/// stored in another database, refuses here before anything is written.</p>
+/// stored in another database, refuses here before anything is written. Stored arguments that are not an
+/// object refuse too.</p>
 ClassMethod ConfirmProblem(pIdValue As %String, pArgs As %DynamicObject, Output pProblem As %String) As %Status
 {
     Set pProblem = ""
-    If '$IsObject(pArgs) Quit $$$OK
+    If '$IsObject(pArgs) {
+        Set pProblem = "the proposal's stored arguments could not be read, so the agent does not create it"
+        Quit $$$OK
+    }
     Set pProblem = ##class(OcuPilot.Screen.Tool.ExplorerSave).AgentProblem(pArgs.%Get("Namespace"), pIdValue, 1)
     Quit $$$OK
 }

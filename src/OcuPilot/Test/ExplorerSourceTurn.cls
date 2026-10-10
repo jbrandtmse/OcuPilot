@@ -130,7 +130,7 @@ Method TestTheClassSourceReachesTheModelFramedAndMasked()
     Do $ClassMethod(..#FIXTURE, "Call", "POST", "/turn?ns=" _ ..#NAMESPACE, tUser, ..PreparedTurnPassword, $ClassMethod(..#FIXTURE, "StartBody", "read the probe class's source", tConvId), .tStatus, .tText, .tHeaders)
     Do $$$AssertEquals(tStatus, 202, "the turn starts: " _ $Extract(tText, 1, 200))
     If tStatus '= 202 {
-        Do ..RemoveKeyed()
+        Do $$$AssertStatusOK(..RemoveKeyed(), "the probe package is removed")
         Quit
     }
     Set tState = $ClassMethod(..#FIXTURE, "AwaitEnd", ##class(%DynamicObject).%FromJSON(tText).turnId, tUser, ..PreparedTurnPassword, 60, .tView)
@@ -158,7 +158,7 @@ Method TestTheClassSourceReachesTheModelFramedAndMasked()
         Do $$$AssertTrue('(tParsed.%Get("text") [ ..#SECRET), "and the key itself does not reach the model")
         Do $$$AssertEquals(tParsed.%Get("truncated"), 0, "the class is read whole")
     }
-    Do ..RemoveKeyed()
+    Do $$$AssertStatusOK(..RemoveKeyed(), "the probe package is removed")
 }
 
 }

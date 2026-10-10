@@ -180,86 +180,86 @@ interface FieldView {
       </div>
 
       @if (!copying) {
-      <div class="ocu-field">
-        <label class="ocu-field-label" [attr.for]="expiryField.id">{{ STRINGS.userFormExpiry }}</label>
-        <div class="ocu-field-control">
-          <input
-            class="ocu-field-input"
-            type="date"
-            [id]="expiryField.id"
-            [value]="value('ExpirationDate')"
-            [attr.aria-invalid]="expiryField.invalid"
-            [attr.aria-describedby]="expiryField.describedBy"
-            (input)="onText('ExpirationDate', $event)"
-            (blur)="onBlur('ExpirationDate')"
-          />
-        </div>
-        @if (expiryField.invalid) {
-          <p class="ocu-form-error" [id]="expiryField.id + '-reason'">{{ expiryField.reason }}</p>
-        }
-      </div>
-
-      <div class="ocu-field">
-        <label class="ocu-field-label" [attr.for]="namespaceField.id">{{ STRINGS.userFormNamespace }}</label>
-        <div class="ocu-field-control">
-          <input
-            class="ocu-field-input"
-            type="text"
-            [id]="namespaceField.id"
-            [value]="value('NameSpace')"
-            [attr.maxlength]="maxLength('NameSpace')"
-            [attr.aria-invalid]="namespaceField.invalid"
-            [attr.aria-describedby]="namespaceField.describedBy"
-            (input)="onText('NameSpace', $event)"
-            (blur)="onBlur('NameSpace')"
-          />
-        </div>
-        @if (namespaceField.invalid) {
-          <p class="ocu-form-error" [id]="namespaceField.id + '-reason'">{{ namespaceField.reason }}</p>
-        }
-      </div>
-
-      <div class="ocu-field">
-        <label class="ocu-field-label" [attr.for]="routineField.id">{{ STRINGS.userFormRoutine }}</label>
-        <div class="ocu-field-control">
-          <input
-            class="ocu-field-input"
-            type="text"
-            [id]="routineField.id"
-            [value]="value('Routine')"
-            [attr.maxlength]="maxLength('Routine')"
-            [attr.aria-invalid]="routineField.invalid"
-            [attr.aria-describedby]="routineField.describedBy"
-            (input)="onText('Routine', $event)"
-            (blur)="onBlur('Routine')"
-          />
-        </div>
-        @if (routineField.invalid) {
-          <p class="ocu-form-error" [id]="routineField.id + '-reason'">{{ routineField.reason }}</p>
-        }
-      </div>
-
-      <fieldset class="ocu-field ocu-form-authe" [attr.id]="rolesField.id" tabindex="-1">
-        <legend class="ocu-field-label">{{ STRINGS.userColumnRoles }}</legend>
-        @for (role of roleOptions; track role.name) {
-          <label class="ocu-field-checkbox">
+        <div class="ocu-field">
+          <label class="ocu-field-label" [attr.for]="expiryField.id">{{ STRINGS.userFormExpiry }}</label>
+          <div class="ocu-field-control">
             <input
-              type="checkbox"
-              [id]="roleId(role.name)"
-              [checked]="roleChecked(role.name)"
-              [attr.aria-describedby]="role.privileged && privilegedChecked ? rolesEffectId : null"
-              (change)="onRole(role.name, $event)"
+              class="ocu-field-input"
+              type="date"
+              [id]="expiryField.id"
+              [value]="value('ExpirationDate')"
+              [attr.aria-invalid]="expiryField.invalid"
+              [attr.aria-describedby]="expiryField.describedBy"
+              (input)="onText('ExpirationDate', $event)"
+              (blur)="onBlur('ExpirationDate')"
             />
-            <span>{{ role.name }}</span>
-          </label>
-        }
-        @if (privilegedChecked) {
-          <p class="ocu-field-caption" [id]="rolesEffectId">{{ STRINGS.privilegedGrantEffect }}</p>
-        }
-        @if (rolesField.invalid) {
-          <p class="ocu-form-error" [id]="rolesField.id + '-reason'">{{ rolesField.reason }}</p>
-        }
-      </fieldset>
+          </div>
+          @if (expiryField.invalid) {
+            <p class="ocu-form-error" [id]="expiryField.id + '-reason'">{{ expiryField.reason }}</p>
+          }
+        </div>
+
+        <div class="ocu-field">
+          <label class="ocu-field-label" [attr.for]="namespaceField.id">{{ STRINGS.userFormNamespace }}</label>
+          <div class="ocu-field-control">
+            <input
+              class="ocu-field-input"
+              type="text"
+              [id]="namespaceField.id"
+              [value]="value('NameSpace')"
+              [attr.maxlength]="maxLength('NameSpace')"
+              [attr.aria-invalid]="namespaceField.invalid"
+              [attr.aria-describedby]="namespaceField.describedBy"
+              (input)="onText('NameSpace', $event)"
+              (blur)="onBlur('NameSpace')"
+            />
+          </div>
+          @if (namespaceField.invalid) {
+            <p class="ocu-form-error" [id]="namespaceField.id + '-reason'">{{ namespaceField.reason }}</p>
+          }
+        </div>
+
+        <div class="ocu-field">
+          <label class="ocu-field-label" [attr.for]="routineField.id">{{ STRINGS.userFormRoutine }}</label>
+          <div class="ocu-field-control">
+            <input
+              class="ocu-field-input"
+              type="text"
+              [id]="routineField.id"
+              [value]="value('Routine')"
+              [attr.maxlength]="maxLength('Routine')"
+              [attr.aria-invalid]="routineField.invalid"
+              [attr.aria-describedby]="routineField.describedBy"
+              (input)="onText('Routine', $event)"
+              (blur)="onBlur('Routine')"
+            />
+          </div>
+          @if (routineField.invalid) {
+            <p class="ocu-form-error" [id]="routineField.id + '-reason'">{{ routineField.reason }}</p>
+          }
+        </div>
+
+        <fieldset class="ocu-field ocu-form-authe" [attr.id]="rolesField.id" tabindex="-1">
+          <legend class="ocu-field-label">{{ STRINGS.userColumnRoles }}</legend>
+          @for (role of roleOptions; track role.name) {
+            <label class="ocu-field-checkbox">
+              <input
+                type="checkbox"
+                [id]="roleId(role.name)"
+                [checked]="roleChecked(role.name)"
+                [attr.aria-describedby]="role.privileged && privilegedChecked ? rolesEffectId : null"
+                (change)="onRole(role.name, $event)"
+              />
+              <span>{{ role.name }}</span>
+            </label>
+          }
+          @if (privilegedChecked) {
+            <p class="ocu-field-caption" [id]="rolesEffectId">{{ STRINGS.privilegedGrantEffect }}</p>
+          }
+          @if (rolesField.invalid) {
+            <p class="ocu-form-error" [id]="rolesField.id + '-reason'">{{ rolesField.reason }}</p>
+          }
+        </fieldset>
       } @else {
         <fieldset class="ocu-field ocu-form-authe">
           <legend class="ocu-field-label">{{ STRINGS.userColumnRoles }}</legend>

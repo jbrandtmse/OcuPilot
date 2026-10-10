@@ -759,12 +759,15 @@ export class ProposalCard {
     return cardTitleName(this.view());
   }
 
-  /** Whether the card holds a changed-lines hunk (Story 20.21), which its summary line counts. */
+  /** The card's changed-lines rows, which its summary line counts. */
   private get linesRows(): readonly ProposalDiffRow[] {
     return this.changedRows.filter((row) => row.kind === 'lines');
   }
 
-  /** The name and how many fields change: `cardTitleName` alone when none do. */
+  /**
+   * The summary line's text: the name and the lines removed and added when the card holds changed-lines rows,
+   * otherwise the name and how many fields change, `cardTitleName` alone when none do.
+   */
   protected get summaryFields(): string {
     const view = this.view();
     const name = cardTitleName(view);

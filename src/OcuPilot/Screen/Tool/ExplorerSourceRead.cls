@@ -10,7 +10,9 @@
 /// (<method>OcuPilot.Screen.Gate.Evaluate</method>), then the port's own gate and document read
 /// (<method>OcuPilot.Port.AtelierPort.Invoke</method>, which refuses a name it does not accept as 400
 /// and a document the namespace does not hold as 404). A document whose text the instance keeps only
-/// as object code answers 404 <code>PORT.NOTFOUND</code>.</p>
+/// as object code answers 404 <code>PORT.NOTFOUND</code> with the reason that the instance keeps no source
+/// (<parameter>OcuPilot.Port.AtelierPort.REASONNOSOURCE</parameter>), where a document the namespace does not
+/// hold gets <parameter>OcuPilot.Port.AtelierPort.REASONNOTFOUND</parameter>.</p>
 Class OcuPilot.Screen.Tool.ExplorerSourceRead Extends OcuPilot.Screen.Tool.Base [ Abstract ]
 {
 
@@ -75,7 +77,8 @@ ClassMethod ResultSchema(pDescriptor As %String = "") As %DynamicObject
 /// <p>Answer the document's text as <method>ResultSchema</method>'s object. Every refusal is an error
 /// status with <var>pHttpStatus</var> and <var>pFault</var>: 400 <code>TOOL.ARGUMENTS</code> for an
 /// argument the schema refuses, 403 for a missing pair, the port's own faults, and 404
-/// <code>PORT.NOTFOUND</code> for a document whose text the instance does not keep.</p>
+/// <code>PORT.NOTFOUND</code> with <parameter>OcuPilot.Port.AtelierPort.REASONNOSOURCE</parameter> for a
+/// document whose text the instance does not keep.</p>
 /// <p>Caller contract: not called from an escalated frame (AD-9). The caller's namespace is read from
 /// <method>OcuPilot.Kernel.Scope.Current</method> and not changed.</p>
 ClassMethod View(pDescriptor As %String, pArgs As %DynamicAbstractObject, pContextCap As %Integer, Output pResult As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status
@@ -117,7 +120,7 @@ ClassMethod View(pDescriptor As %String, pArgs As %DynamicAbstractObject, pConte
         If '$IsObject(tDocument) || 'tDocument.%Get("available") {
             Set tSC = $$$ERROR($$$GeneralError, "the instance keeps no text for " _ tName)
             Set pHttpStatus = 404
-            Set pFault = ##class(OcuPilot.Kernel.Fault).Build(##class(OcuPilot.Api.Error).#NOTFOUND, ##class(OcuPilot.Api.Error).#PORTNOTFOUND, ##class(OcuPilot.Port.AtelierPort).#REASONNOTFOUND)
+            Set pFault = ##class(OcuPilot.Kernel.Fault).Build(##class(OcuPilot.Api.Error).#NOTFOUND, ##class(OcuPilot.Api.Error).#PORTNOTFOUND, ##class(OcuPilot.Port.AtelierPort).#REASONNOSOURCE)
             Quit
         }
 
@@ -181,7 +184,7 @@ ClassMethod Cut(pLines As %DynamicArray, pMax As %Integer, Output pSent As %Inte
 /// <p>The length of <var>pText</var> as a JSON string, without its quotes: the count
 /// <method>Cut</method> measures. It serializes the text as a pushed string, so a line the array holds
 /// as a number is measured with the quotes it is sent with.</p>
-ClassMethod Escaped(pText As %String) As %Integer [ Private ]
+ClassMethod Escaped(pText As %String) As %Integer
 {
     Set tOne = []
     Do tOne.%Push(pText, "string")

@@ -3,9 +3,9 @@
 /// refusal answers its code and sentence, and adds no proposal. A name the namespace holds, in any case or
 /// through its other kind, is refused at the mint; a free name beside it is proposed; and Confirm's own
 /// refusal (<method>ConfirmProblem</method>) refuses what the mint would.</p>
-/// <p><b>What it needs from the environment:</b> OcuPilot installed in <code>HSCUSTOM</code> and serving over HTTP,
-/// a <code>USER</code> namespace whose routines database the suite account can write, and the <code>ENSLIB</code>
-/// database mapped for the <code>Ens</code> package. It creates and removes the documents
+/// <p><b>What it needs from the environment:</b> OcuPilot installed in <code>HSCUSTOM</code>, a <code>USER</code>
+/// namespace whose routines database the running account can write, and the <code>ENSLIB</code> database mapped for
+/// the <code>Ens</code> package. It runs in process and opens no HTTP request. It creates and removes the documents
 /// <class>OcuPilot.Test.ExplorerCreateProbe</class> names, and snapshots the stored governance policy around each
 /// test.</p>
 Class OcuPilot.Test.ExplorerCreateRules Extends %UnitTest.TestCase
@@ -80,9 +80,11 @@ Method Refused(pNamespace As %String, pTool As %String, pName As %String, pBody 
 
 /// <p>A name the instance's own code rule names, a name holding <code>%</code> anywhere, one in <code>%SYS</code>,
 /// one the namespace stores in another database, and a class without a package are refused before anything is
-/// stored, each with its sentence.</p>
+/// stored, each with its sentence. At the confirm, stored arguments that are not an object are refused as unreadable,
+/// and <code>{}</code> for its missing namespace.</p>
 /// <p>Mutation (Rule 19): <method>OcuPilot.Screen.Tool.ExplorerSave.AgentProblem</method> ignores <code>pCreate</code>
-/// -- the <code>%</code>-anywhere leg goes red.</p>
+/// -- the <code>%</code>-anywhere leg goes red. <method>OcuPilot.Screen.Tool.ExplorerCreate.ConfirmProblem</method>
+/// treating <code>{}</code> as unreadable -- the missing-namespace leg goes red.</p>
 Method TestTheNamesThatAreNeverCreated()
 {
     Set tText = $ClassMethod(..#PROBE, "NewClassText", "OcuPilotProbe2020.New")
@@ -96,6 +98,15 @@ Method TestTheNamesThatAreNeverCreated()
     Do ..Refused(..#PROBENAMESPACE, ..#CLASSTOOL, "OcuProbe2020Bare.cls", $ClassMethod(..#PROBE, "NewClassText", "OcuProbe2020Bare"), "TOOL.ARGUMENTS", "with a package")
     Set tSC = ##class(OcuPilot.Screen.Tool.ExplorerClassCreate).ConfirmProblem("%Probe2020.New.cls", {"Namespace": "USER"}, .tProblem)
     Do $$$AssertTrue($$$ISOK(tSC) && (tProblem [ "holds %"), "Confirm refuses a name the mint would refuse: " _ $Get(tProblem))
+    For tCase = $ListBuild("OcuPilot.Screen.Tool.ExplorerClassCreate", "OcuProbe2020.New.cls"), $ListBuild("OcuPilot.Screen.Tool.ExplorerRoutineCreate", "OcuProbe2020Mac.mac") {
+        Set tProblem = ""
+        Set tSC = $ClassMethod($List(tCase, 1), "ConfirmProblem", $List(tCase, 2), "", .tProblem)
+        Do $$$AssertStatusOK(tSC, $List(tCase, 2) _ " with stored arguments that are not an object answers")
+        Do $$$AssertTrue(tProblem [ "could not be read", $List(tCase, 2) _ " with stored arguments that are not an object is refused at the confirm: " _ tProblem)
+        Set tProblem = ""
+        Set tSC = $ClassMethod($List(tCase, 1), "ConfirmProblem", $List(tCase, 2), {}, .tProblem)
+        Do $$$AssertTrue($$$ISOK(tSC) && (tProblem [ "the namespace is not known"), $List(tCase, 2) _ " with stored arguments {} is refused for its missing namespace, not as unreadable: " _ tProblem)
+    }
 }
 
 /// <p>A name that is not one new document of the tool's kind is refused: a routine named to the Classes tool, a

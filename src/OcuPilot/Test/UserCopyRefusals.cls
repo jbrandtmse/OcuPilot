@@ -127,6 +127,24 @@ Method TestAnUnlistedVendorCodeIsA500WithoutTheVendorsText()
     Do $$$AssertTrue($IsObject(tFault) && (tFault.%ToJSON() '[ $Parameter(..#FAULTPORT, "TEXTMARKER")), "and the answer carries none of the vendor's text")
 }
 
+/// <p>AD-35, AD-2: a password the policy refuses is answered 422 <code>USER.PASSWORD.POLICY</code> on
+/// <code>Password</code> with the policy's own reason before the vendor is called, so a vendor that would fail with
+/// a code the port does not name is never reached.</p>
+/// <p>Mutation (Rule 19): delete the <method>OcuPilot.Port.AdminPort.PasswordGuard</method> call in
+/// <method>OcuPilot.Port.UserCopyPort.Copy</method> -- this reddens, because the vendor's unlisted code is then
+/// answered 500.</p>
+Method TestAWeakPasswordIsRefusedBeforeTheVendorIsCalled()
+{
+    Do ##class(OcuPilot.Test.UserCopyVendorFault).SetCode(5001)
+    Do ..Copy(..#FAULTPORT, ..#TARGET, .tHttp, .tFault, .tResult, "", "a")
+    Set tReason = ""
+    Set tVerdict = ##class(OcuPilot.Kernel.PasswordPolicy).Verdict("a", ..#TARGET, .tReason)
+    Do $$$AssertTrue('tVerdict, "the policy refuses the password")
+    Do $$$AssertEquals(tHttp, 422, "a refused password is 422 and the vendor's 500 is not reached")
+    Do ..AssertViolation(tFault, ##class(OcuPilot.Api.Error).#USERPASSWORDPOLICY, "Password", tReason)
+    Do $$$AssertTrue('..Exists(..#TARGET), "and no account was created")
+}
+
 /// <p>AD-2, AD-35: only the refusal the port does not name reaches the log, with the vendor's text, and the four it names
 /// write nothing. The log window opens before the five refusals and is read after a flush, and the unlisted refusal's
 /// own line is the positive control that the window sees a line of this kind.</p>
@@ -231,14 +249,14 @@ Method TestTheReadBackNamesEachFieldThatDisagreesWithTheCopy()
 }
 
 /// <p>The copy of <parameter>SOURCE</parameter> to <var>pName</var> through port class <var>pPort</var>, with the
-/// source's roles and escalation role as the body names them. <var>pHttp</var> and <var>pFault</var> are the port's
-/// answer, and <var>pResult</var> the account it read back.</p>
-ClassMethod Copy(pPort As %String, pName As %String, Output pHttp As %Integer, Output pFault As %DynamicObject, Output pResult, pFullName As %String = "")
+/// source's roles and escalation role as the body names them and <var>pPassword</var> as its password.
+/// <var>pHttp</var> and <var>pFault</var> are the port's answer, and <var>pResult</var> the account it read back.</p>
+ClassMethod Copy(pPort As %String, pName As %String, Output pHttp As %Integer, Output pFault As %DynamicObject, Output pResult, pFullName As %String = "", pPassword As %String = {..#GOODPASSWORD})
 {
     Kill tQuery
     Set tQuery("name") = pName
     Set tBody = ..Sent(pFullName, [(..#SOURCEROLE)], [(..#SOURCEESCALATION)])
-    Do tBody.%Set("Password", ..#GOODPASSWORD, "string")
+    Do tBody.%Set("Password", pPassword, "string")
     Set pResult = ""
     Set tSC = $ClassMethod(pPort, "Invoke", "Security.User", "COPY", .tQuery, tBody, .pResult, .pHttp, .pFault)
 }

@@ -43,7 +43,7 @@ export type PctAccessRow = Readonly<Record<string, unknown>>;
   imports: [ScreenActionDialogs, WebAppClassAccessDialog],
   template: `<div class="ocu-pct-access">
     <div class="ocu-pct-access-bar">
-      <button type="button" class="ocu-button-secondary ocu-pct-access-add" (click)="openAdd()">{{ STRINGS.screenPermissionsAddButton }}</button>
+      <button type="button" class="ocu-button-secondary ocu-pct-access-add" (click)="openAdd()">{{ STRINGS.webAppPctAccessAdd }}</button>
     </div>
     @if (loadFailed) {
       <p role="alert">{{ STRINGS.connectivityServerFault }}</p>

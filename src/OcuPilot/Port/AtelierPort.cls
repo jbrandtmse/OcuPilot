@@ -366,7 +366,9 @@ Parameter TYPECREATE = "CREATE";
 Parameter SNIPPETMAXCHARACTERS As INTEGER = 1000000;
 
 /// <p>The routine types, of those <code>docnames</code> lists, whose document takes a new routine or
-/// intermediate routine of its base name (<method>Takes</method>): every one but the include file.</p>
+/// intermediate routine of its base name (<method>Takes</method>): every one but the include file. The rule
+/// was measured for <code>mac</code> and <code>int</code>; for <code>bas</code>, <code>mvi</code> and
+/// <code>mvb</code> it is (inference).</p>
 Parameter TAKINGROUTINETYPES = "mac,int,bas,mvi,mvb";
 
 /// <p>The writes whose vendor call this port composes from the caller's declared values, as
@@ -571,6 +573,10 @@ Parameter REASONFORM = "form must be udl, xml or int.";
 
 /// <p>The reason a document the namespace does not hold is refused with.</p>
 Parameter REASONNOTFOUND = "This namespace holds no document by that name.";
+
+/// <p>The reason a document the instance holds only as object code is refused with, where a source read
+/// has no text to answer.</p>
+Parameter REASONNOSOURCE = "The instance keeps no source for this document.";
 
 /// <p>The reason a vendor 400 is refused with.</p>
 Parameter REASONVALIDATION = "The source code API refused one of the values supplied.";
@@ -2469,18 +2475,19 @@ ClassMethod ImportSet(pVersion As %Integer, pNamespace As %String, ByRef pQuery,
 /// <var>pNamespace</var>, against the version it was read at, and compile it when
 /// <code>Compile</code> is on (AD-51, AD-61 rule 3). In order, each refusal sending nothing:</p>
 /// <ol>
-/// <li>a set of more than one document, a <code>Compile</code> that is not true or false, or an empty
-/// <code>version</code>, is 400 <code>PORT.VALIDATION</code>;</li>
+/// <li>a set of more than one document, a <code>Compile</code> that is not true or false, or, without
+/// <var>pCreate</var>, an empty <code>version</code>, is 400 <code>PORT.VALIDATION</code>;</li>
 /// <li>a <code>content</code> longer than <parameter>MAXIMPORTCHARACTERS</parameter> is 400
 /// <code>EXPLORER.SAVE.TOOLARGE</code>;</li>
 /// <li>a text whose header (<method>Header</method> of <method>Lines</method>) does not name the
 /// document exactly, kind included, is 422 <code>EXPLORER.SAVE.HEADER</code>;</li>
-/// <li>a document the namespace no longer holds is <method>PresentSet</method>'s 404, so a save never
-/// creates one;</li>
+/// <li>without <var>pCreate</var>, a document the namespace no longer holds is <method>PresentSet</method>'s
+/// 404, so a save never creates one; with it, a name the namespace holds (<method>Takers</method>) is 409
+/// <code>EXPLORER.DOCUMENT.CONFLICT</code>, checked before the <code>PUT</code>;</li>
 /// <li>the text's lines (<method>Lines</method>, plus an empty last line when the text ends with a line
 /// feed) are put with <code>PUT doc/&lt;name&gt;</code>, carrying <code>version</code> as
-/// the vendor's <code>If-None-Match</code> and never <code>ignoreConflict</code>, so a document changed
-/// since the read is refused 409 <code>EXPLORER.DOCUMENT.CONFLICT</code> and one another process holds
+/// the vendor's <code>If-None-Match</code> (a create sends none) and never <code>ignoreConflict</code>, so a
+/// document changed since the read is refused 409 <code>EXPLORER.DOCUMENT.CONFLICT</code> and one another process holds
 /// 409 <code>EXPLORER.DOCUMENT.LOCKED</code>, neither logged as a fault, and a text the vendor refuses under 200
 /// is 422 <code>EXPLORER.SAVE.REFUSED</code>, or 403 <code>PORT.ACCESSDENIED</code> for an access
 /// refusal (<method>Outcome</method>);</li>
@@ -2630,8 +2637,9 @@ ClassMethod Takers(pVersion As %Integer, pNamespace As %String, pEndpoint As %St
 /// kind. A class is taken by a class of the same name in any letter case (measured: the vendor refuses
 /// a save differing only in case, #5092). A routine is taken by a routine of the same base name in
 /// exact case whose type is one of <parameter>TAKINGROUTINETYPES</parameter>, because compiling a new
-/// routine replaces the intermediate code of that name (measured). An include file is taken only by the
-/// same name, exactly. <method>SaveScript</method>'s create check renders the same rule.</p>
+/// routine replaces the intermediate code of that name (measured for <code>mac</code> and <code>int</code>;
+/// (inference) for <code>bas</code>, <code>mvi</code> and <code>mvb</code>). An include file is taken only by
+/// the same name, exactly. <method>SaveScript</method>'s create check renders the same rule.</p>
 ClassMethod Takes(pEndpoint As %String, pName As %String, pHeld As %String) As %Boolean [ Private ]
 {
     If pEndpoint = ..#ENDPOINTCLASSES Quit $ZConvert(pHeld, "U") = $ZConvert(pName, "U")

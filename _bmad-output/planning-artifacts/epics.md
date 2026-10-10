@@ -8998,3 +8998,23 @@ So that their code reads like the rest of the codebase and their comments and te
 7. Client: `set-password-dialog.ts:18` redefines the path `user-create-form.store.ts:22` already exports; `user-create-form.page.ts:182-263` is not indented inside `@if (!copying)`.
 
 Not in scope: `text-diff.ts` duplicating Compare (a later story can move Compare onto the shared component), and DW-2241 (Story 20.20 fixes it).
+
+**18.10 and 20.20 items (addendum).** [AMENDED 2026-10-09, orchestrator relay of the Planner's read-only reviews of 18.10 at `357985c0` and 20.20 at `39ed66f1`, under the owner's "One cleanup story" decision; Rule 5 tier-1] Each is verified at the current head before it is fixed, as above. Line references are at those heads.
+
+**Story 18.10:**
+
+1. Correctness, red-first (Rule 19): `WebAppPctAccessMint.Mint` passes the superclass's `detail.problem` through unchanged, and `Mint` builds "already present" and "not present" from the composite id, so the text carries a raw U+0001. Clean it with `ErrorDeleteMint.ReadableId`, as `MappingMint` and `SuperserverMint` do, with a test leg.
+2. `AdminPort.cls:470`: `PRIVROUTINEENDPOINT` sits between `MUTATINGTYPES`' doc block and `MUTATINGTYPES`. Move it, with its own one-line doc, and add a short paragraph on `WebApp.PctClassAccess` `PUT` and `DELETE` to `MUTATINGTYPES`' doc.
+3. `strings.ts:394-406` and `:409-411`: 16 keys lack their `/** EXPERIENCE.md:NNN */` cites (rows 471 and 475).
+4. Cosmetic: `PRIVROUTINE.TYPE` lives in `PctAccessError.cls` (may wait for Story 18.31, noted in the triage log); `AdminPort.cls:1971` names its bit test `(+tKept \ 4) # 2`; `web-app-class-access-dialog.ts:80/82` uses fixed ids, not `Math.random`; the Add button gets its own string key instead of `screenPermissionsAddButton`; `WebAppDelete.cls:118` and `WebAppUpdate.cls:237` class-qualify their `OCUPILOTROUTINEAPP` cites; `web-app-editor.page.ts:671` reads the new tab's count as its siblings do.
+
+**Story 20.20:**
+
+1. `AtelierPort.SaveSet`'s doc is stale for `pCreate`, which it does not document.
+2. `AtelierPort.SavedLines` and `ExplorerSaveMint.SaveLines` are identical and must stay so; one delegates to the other.
+3. Not this story's: Epic 20 corrects its own spec.
+4. Optional: `ExplorerCreateFlow.Dispatch` and `CodeOf`, and `ExplorerCreateRules.ProblemOf`, copy `ExplorerSaveFlow`'s.
+5. One-line fixes: `ExplorerCreateFlow` and `ExplorerCreateRules` say "serving over HTTP" but run in process; `agent-code-create.browser-spec.mjs:264` names a mutation of a branch that does not exist; `AtelierPort`'s taking rule says "(measured)" for every routine type, where only `.mac` and `.int` were measured, so `bas`, `mvi` and `mvb` read "(inference)".
+6. Optional: `ExplorerCreateMint` stores `Compile: true`, which nothing reads.
+
+Recorded in the ledger only: the create script's class check reads the undocumented `^rINDEXCLASS`, to re-measure when IRIS 2027.1 lands; and a save line of roughly 300,000 control characters might overflow while `Literal` escapes it (inference).

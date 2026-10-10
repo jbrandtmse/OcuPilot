@@ -140,6 +140,35 @@ Method TestTheStoredLinesAreJoinedByLineFeeds()
     Do $$$AssertEquals($ClassMethod(..#MINT, "JoinLines", ""), "", "no array")
 }
 
+/// <p>The mint measures the lines a text saves as by the port's own rule, <method>OcuPilot.Port.AtelierPort.SavedLines</method>:
+/// a text ending in a line feed has an empty last line, and a text without one has its lines alone.</p>
+/// <p>Mutation (Rule 19): <method>OcuPilot.Port.AtelierPort.SavedLines</method> drops its empty last line -- the first
+/// leg goes red through <method>OcuPilot.Screen.Tool.ExplorerSaveMint.SaveLines</method>.</p>
+Method TestTheMintMeasuresLinesAsThePortSavesThem()
+{
+    Set tLF = $Char(10)
+    Set tEnded = $ClassMethod(..#MINT, "SaveLines", "a" _ tLF _ "b" _ tLF)
+    Do $$$AssertEquals(tEnded.%ToJSON(), "[""a"",""b"",""""]", "a text ending in a line feed saves with an empty last line")
+    Set tPlain = $ClassMethod(..#MINT, "SaveLines", "a" _ tLF _ "b")
+    Do $$$AssertEquals(tPlain.%ToJSON(), "[""a"",""b""]", "and a text without one saves as its lines alone")
+}
+
+/// <p>The save tools' <code>Edits</code> schema, read straight from <method>InputSchema</method> and not through
+/// the provider list: its limit is a JSON number equal to the mint's <parameter>MAXEDITS</parameter>, and its
+/// description counts the same limit.</p>
+/// <p>Mutation (Rule 19): set <code>maxItems</code> with the <code>"string"</code> hint in
+/// <method>OcuPilot.Screen.Tool.ExplorerSave.InputSchema</method> -- the type leg goes red.</p>
+Method TestTheEditsLimitIsAJsonNumberCountedFromTheMint()
+{
+    Set tMax = $Parameter(..#MINT, "MAXEDITS")
+    For tTool = ..#CLASSSAVE, ..#ROUTINESAVE {
+        Set tEdits = $ClassMethod(tTool, "InputSchema").properties.Edits
+        Do $$$AssertEquals(tEdits.%GetTypeOf("maxItems"), "number", tTool _ "'s Edits limit is a JSON number")
+        Do $$$AssertEquals(tEdits.maxItems, tMax, "equal to the mint's limit")
+        Do $$$AssertTrue(tEdits.description [ ("One to " _ tMax _ " exact replacements"), "and its description counts the same limit: " _ tEdits.description)
+    }
+}
+
 /// <p>Builds <var>pCount</var> lines <code>l1</code> to <code>l&lt;pCount&gt;</code> joined by line feeds, with
 /// line <var>pChanged</var> (a $LIST of numbers) written in upper case.</p>
 ClassMethod Lines(pCount As %Integer, pChanged As %List = "") As %String
@@ -224,9 +253,10 @@ Method TestTheAgentsDestinationRuleRefusesWhatItCannotVouchFor()
 
 /// <p>The confirm's own rule asks the namespace the mint stored: a document of the namespace's own database
 /// passes, a stored namespace that is missing, <code>%SYS</code> or unknown refuses, and so does a name
-/// the mint would have refused, for a routine as for a class.</p>
+/// the mint would have refused, for a routine as for a class. Stored arguments that are not an object are refused as
+/// unreadable, and <code>{}</code> for its missing namespace.</p>
 /// <p>Mutation (Rule 19): <method>OcuPilot.Screen.Tool.ExplorerSave.ConfirmProblem</method> asks nothing -- the
-/// refusing legs go red.</p>
+/// refusing legs go red. Treating <code>{}</code> as unreadable there -- the missing-namespace leg goes red.</p>
 Method TestTheConfirmRuleAsksTheStoredNamespace()
 {
     Set tOk = ""
@@ -238,6 +268,15 @@ Method TestTheConfirmRuleAsksTheStoredNamespace()
         Set tProblem = ""
         Do $ClassMethod($List(tCase, 1), "ConfirmProblem", $List(tCase, 2), ##class(%DynamicObject).%FromJSON($List(tCase, 3)), .tProblem)
         Do $$$AssertTrue(tProblem '= "", $List(tCase, 2) _ " with " _ $List(tCase, 3) _ " is refused at the confirm: " _ tProblem)
+    }
+    For tCase = $ListBuild(..#CLASSSAVE, "OcuProbe2021.Alpha.cls"), $ListBuild(..#ROUTINESAVE, "OcuProbe2021Mac.mac") {
+        Set tProblem = ""
+        Set tSC = $ClassMethod($List(tCase, 1), "ConfirmProblem", $List(tCase, 2), "", .tProblem)
+        Do $$$AssertStatusOK(tSC, $List(tCase, 2) _ " with stored arguments that are not an object answers")
+        Do $$$AssertTrue(tProblem [ "could not be read", $List(tCase, 2) _ " with stored arguments that are not an object is refused at the confirm: " _ tProblem)
+        Set tProblem = ""
+        Set tSC = $ClassMethod($List(tCase, 1), "ConfirmProblem", $List(tCase, 2), {}, .tProblem)
+        Do $$$AssertTrue($$$ISOK(tSC) && (tProblem [ "namespace of the document is not known"), $List(tCase, 2) _ " with stored arguments {} is refused for its missing namespace, not as unreadable: " _ tProblem)
     }
 }
 

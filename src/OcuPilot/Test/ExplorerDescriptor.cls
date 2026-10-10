@@ -128,16 +128,16 @@ Method TestEveryScreenDeclaresThreePromptsInTheCodeGroup()
     }
 }
 
-/// <p>Stories 19.2 AC9, 19.13 AC7, 19.4 AC6, 19.5 AC5, 19.14 AC7, 19.11, 19.17 and 20.21: the area's advertised
-/// tools are its twenty-eight reads (Story 20.19 adds the two source reads, one per viewer) and fifteen writes
-/// (the lists' compile, create, delete, export, import and save, Story 20.21 adding the two saves and Story 20.20
-/// the two creates), each over the source
-/// code API port with its own request type, fingerprint subject and precondition -- a delete covers each
-/// document's modified time, an import its reviewed documents and a save the text, version and compile choice;
-/// the compile, export, save and document database create keys are enabled and the delete, import, SQL run,
-/// data browser save and document database drop keys disabled at the baseline; the SQL query's run over the SQL
-/// port; and the two lists declare the seven row actions, compile, delete and export acting on the checked rows,
-/// at most one hundred, while the viewers and editors declare none. The two saves are
+/// <p>The area's advertised tools are its twenty-eight reads and fifteen writes: the lists' compile, create,
+/// delete, export, import and save, the SQL run, and the document database create and drop. Each write names
+/// its screen, its port, its endpoint and request type, whether it is destructive (the deletes, imports,
+/// saves, drop and SQL run are), its fingerprint subject and its precondition -- a delete covers each
+/// document's modified time, an import its reviewed documents and a save the text, version and compile
+/// choice. The compile, export, save, class and routine create, and document database create keys ship
+/// enabled, and the delete, import, SQL run, data browser save and document database drop keys disabled.
+/// The two lists declare the seven row actions, with compile, delete and export acting on the checked rows,
+/// at most one hundred. The SQL query screen declares its run, the data browser its save, and the document
+/// database list its create and a row's drop; the viewers and editors declare none. The two saves are
 /// <method>TestTheTwoSavesAreAdvertisedDestructiveWrites</method>'s.</p>
 /// <p>Mutation (Rule 19): enable a delete key in the baseline -- the baseline leg goes red.</p>
 Method TestTheAreaAdvertisesItsReadsAndWrites()

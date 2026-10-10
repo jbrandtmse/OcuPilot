@@ -10827,6 +10827,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Red once in the local sweep on ocupilot-b-ci ('with the same count and last entry'), green alone at once (run 116); its doc says only this class writes the store during the run, which a background writer breaks
 - 2026-10-09T11:21:16Z status=routed owner=23-5-the-range-end-cleanup-part-5 by=lead note=compare the tool's last entry against a route read taken after it, or seed a marker and compare by marker; CI flake class, Rule 27
 - 2026-10-09T16:18:28Z by=lead note=the red came during the owner-reported host contention window (oMLX model load, 2026-10-09) and passed on immediate re-run; Rule 27 flake priority in 23.5; close there if it has not recurred
+- 2026-10-10T06:12:14Z occurrence=23-6-the-haiku-story-cleanup by=lead note=run 38025941539 instance shard 3/5 on b5067cfa; green locally in the 23.6 sweep; failed jobs re-run
+- 2026-10-10T08:23:24Z status=resolved-by:23-6-the-haiku-story-cleanup by=adjudication note=cause was each read adding audit rows ahead of the event log at the 200-row cut, not a background writer; LogHubWire now asserts non-rising counts across route, tool, route (23.6 rework, ocupilot-ci runs 563-572)
 
 ### DW-2253: System Explorer's compile, delete and import Confirm still gate WRITE on the request's namespace while the write targets the proposal's (DW-2242's root cause, outside 20.20's scope)
 - source: spec-20-20-the-agent-creates-new-classes-and-routines-on-the-person-s-c.md | severity: med | fix-risk: med | footprint: out-of-footprint
@@ -10900,3 +10902,59 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-20-3-production-items.md | severity: low | fix-risk: med | footprint: out-of-footprint
 - evidence: Screen/Registry.cls:1685 and ui/tools/screen-mirror.mjs:1887; the sentence is pinned in CriteriaCorpus, InteropDescriptor, InteropItemDescriptor, SqlActivityDescriptor and DocDbDescriptor, across three epics
 - 2026-10-10T08:25:19Z status=wontfix-accepted owner=20-3-production-items by=cr note=reopen_if=a descriptor author is misled by it, or the next story that edits the AD-36 criteria arm
+### DW-2256: ExplorerSaveMint.Mint answers REASONNOTFOUND for a document the instance keeps no source for
+- source: spec-23-6-the-haiku-story-cleanup.md | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: ExplorerSaveMint.cls:70-74 at a3455ddb answers REASONNOTFOUND when the read's available is false; Story 23.6 adds AtelierPort.REASONNOSOURCE for that case
+- 2026-10-09T17:02:33Z status=routed owner=range-end-cleanup by=spec_gate note=23.6 plan filing candidate 1; not absorbed (dispatch)
+
+### DW-2257: ExplorerSaveMint measures a line's escaped length inline, duplicating ExplorerSourceRead.Escaped
+- source: spec-23-6-the-haiku-story-cleanup.md | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: ExplorerSaveMint.cls:91 at a3455ddb; Story 23.6 makes ExplorerSourceRead.Escaped public
+- 2026-10-09T17:02:33Z status=routed owner=range-end-cleanup by=spec_gate note=23.6 plan filing candidate 2; not absorbed (dispatch)
+
+### DW-2258: ExplorerSaveTurn discards RemoveKeyed()'s status three times
+- source: spec-23-6-the-haiku-story-cleanup.md | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: Test/ExplorerSaveTurn.cls:199,218,237 at a3455ddb; the same shape Story 23.6 fixes in ExplorerSourceTurn (20.19-4)
+- 2026-10-09T17:02:33Z status=routed owner=range-end-cleanup by=spec_gate note=23.6 plan filing candidate 3; not absorbed (dispatch)
+
+### DW-2259: ci-runner testClassesOnDisk misses a test class that reaches TestCase through a project base class
+- source: spec-23-6-the-haiku-story-cleanup.md | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: ui/tools/ci-runner.mjs:369 reads the direct Extends only, so ProviderStream and ProviderStreamFamilies (Extends StreamCase) are off the local floor; CI legs split the instance's list, so they still run
+- 2026-10-09T17:02:33Z status=routed owner=range-end-cleanup by=spec_gate note=23.6 plan filing candidate 4; its comment says widen the matcher once such a base exists
+
+### DW-2260: USERS_PATH is declared twice in the client
+- source: spec-23-6-the-haiku-story-cleanup.md | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: ui/src/app/areas/permissions/user-create-form.store.ts:10 and user-editor.store.ts:15 at a3455ddb
+- 2026-10-09T17:02:33Z status=routed owner=range-end-cleanup by=spec_gate note=23.6 plan filing candidate 5; not absorbed (dispatch)
+
+### DW-2261: Explorer source tests repeat LIMIT = 60000 instead of reading SOURCEMAXLENGTH
+- source: spec-23-6-the-haiku-story-cleanup.md | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: Test/ExplorerSource*.cls LIMIT parameter equals ExplorerSourceRead SOURCEMAXLENGTH at a3455ddb
+- 2026-10-09T17:02:33Z status=routed owner=range-end-cleanup by=spec_gate note=23.6 plan filing candidate 6; not absorbed (dispatch)
+
+### DW-2262: PRIVROUTINE.TYPE lives in PctAccessError rather than a privileged-routine home
+- source: spec-23-6-the-haiku-story-cleanup.md | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: Api/PctAccessError.cls:51-55 at 357985c0 (Planner review of 18.10, item 4); a move leaves the code string unchanged
+- 2026-10-09T17:02:33Z status=routed owner=18-31-privileged-routine-applications by=spec_gate note=23.6 addendum 18.10-4a left for 18.31, which builds the privileged routine application screens (coordinator: may wait for 18.31)
+
+### DW-2263: The create script's class check reads the undocumented ^rINDEXCLASS, measured on 2026.2 only
+- source: spec-23-6-the-haiku-story-cleanup.md | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: AtelierPort.FreeCheck (:3396 at 39ed66f1) renders a $Data(^rINDEXCLASS(..)) check; Planner review of 20.20
+- 2026-10-09T17:02:33Z status=wontfix-accepted owner=23-6-the-haiku-story-cleanup by=spec_gate note=reopen_if=an IRIS image newer than 2026.2 (2027.1) is adopted: re-measure ^rINDEXCLASS before the pin moves
+
+### DW-2264: A save line of about 300,000 or more control characters might overflow while AtelierPort.Literal escapes it (inference)
+- source: spec-23-6-the-haiku-story-cleanup.md | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: Planner review of 20.20 at 39ed66f1 (inference, unmeasured): Literal expands each control character
+- 2026-10-09T17:02:33Z status=wontfix-accepted owner=23-6-the-haiku-story-cleanup by=spec_gate note=reopen_if=a save or create carrying a line of 300,000 or more control characters fails to render or PUT with <MAXSTRING>
+
+### DW-2265: The user copy's write type COPY is spelled three times: Prohibited.COPYWRITETYPE, the tool's WRITETYPE and UserCopyPort.COPYTYPE
+- source: _bmad-output/implementation-artifacts/spec-23-6-the-haiku-story-cleanup.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Prohibited.COPYWRITETYPE (new in 23.6) is compared with Screen/Tool/UserCopy.WRITETYPE; UserCopyPort.COPYTYPE matches it; implement deferral at a478581c
+- 2026-10-10T01:01:44Z status=open owner=23-6-the-haiku-story-cleanup by=harvest note=implement deferral; code review decides patch (tie both to the kernel constant) or close
+- 2026-10-10T01:48:35Z status=resolved-by:23-6-the-haiku-story-cleanup owner=23-6-the-haiku-story-cleanup by=cr note=UserCopy pins tool WRITETYPE and port COPYTYPE equal to Prohibited.COPYWRITETYPE; each stays its own literal
+
+### DW-2266: BackgroundTaskMint and EncryptionKeyFileMint pass a presence refusal's detail.problem through without ErrorDeleteMint.ReadableId, so it may carry a raw U+0001
+- source: _bmad-output/implementation-artifacts/spec-23-6-the-haiku-story-cleanup.md | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: Both call JoinComposite and neither names ReadableId (SuperserverMint, MappingMint and, since 23.6, WebAppPctAccessMint do); Mint.Mint writes the composite id into 'not present'; unverified: mint a background-task cancel for an absent id and read detail.problem
+- 2026-10-10T01:01:44Z status=routed owner=range-end-cleanup by=harvest note=same root cause as 23.6's 18.10-1; not absorbed (dispatch)
+- 2026-10-10T01:48:35Z status=routed owner=range-end-cleanup by=cr note=one shared fault helper for the ReadableId pass (Superserver, Mapping, ErrorDelete, WebAppPctAccess mints) would close this too

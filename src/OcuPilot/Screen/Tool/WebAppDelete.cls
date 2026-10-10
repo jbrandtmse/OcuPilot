@@ -115,8 +115,9 @@ ClassMethod PrivilegePairs(pDescriptor As %String = "", Output pResolved As %Boo
 }
 
 /// <p>OcuPilot's own privileged routine applications (AD-10, DW-2239, Story 18.10) are refused the delete as
-/// <parameter>OCUPILOTROUTINEAPP</parameter> before the precondition below reads them: they report an empty
-/// <parameter>PRECONDITIONFIELD</parameter>, which would otherwise answer 400. Other applications are not refused here.</p>
+/// <parameter>OcuPilot.Kernel.Proposal.Prohibited.OCUPILOTROUTINEAPP</parameter> before the precondition below
+/// reads them: they report an empty <parameter>PRECONDITIONFIELD</parameter>, which would otherwise answer 400.
+/// Other applications are not refused here.</p>
 ClassMethod RefusedBeforeState(pIdValue As %String, Output pCode As %String) As %Boolean
 {
     Quit ##class(OcuPilot.Kernel.Proposal.Prohibited).RefusesBeforeState(pIdValue, .pCode)

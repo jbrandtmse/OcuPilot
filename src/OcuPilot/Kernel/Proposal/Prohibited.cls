@@ -283,6 +283,15 @@ Parameter TYPEPROCESS = "process";
 /// Story 16.6), keyed on the tool's declared write type.</p>
 Parameter BROADCASTWRITETYPE = "BROADCAST";
 
+/// <p>The user write whose payload <method>Copied</method> checks, keyed on the tool's declared write type: a
+/// copy of an existing account (AD-10).</p>
+Parameter COPYWRITETYPE = "COPY";
+
+/// <p>The only fields a user copy's payload names, comma-separated: the source, the full name, and the roles
+/// and escalation roles taken from the source. <method>Copied</method> refuses any other, and
+/// <class>OcuPilot.Screen.Tool.UserCopy</class> composes exactly these (AD-3, AD-10).</p>
+Parameter COPYFIELDS = "CopyFrom,FullName,Roles,EscalationRoles";
+
 Parameter TYPEAPPLICATIONERROR = "application-error";
 
 Parameter TYPEOAUTHCLIENT = "oauth2-client-configuration";
@@ -1411,7 +1420,7 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
                 If $$$ISERR(tSC) Quit
             }
             ; Story 18.29: a copy's payload is the four fields its composition sets, and no other.
-            If (tType = ..#TYPEUSER) && (..WriteTypeOf(..ToolClassNamed(pToolName)) = "COPY") {
+            If (tType = ..#TYPEUSER) && (..WriteTypeOf(..ToolClassNamed(pToolName)) = ..#COPYWRITETYPE) {
                 Set tSC = ..Copied(..ParsedObject(pPayload), .pProhibits, .pCode)
                 Quit
             }
@@ -5708,7 +5717,7 @@ ClassMethod Copied(pPayload As %DynamicObject, Output pProhibits As %Boolean, Ou
     Set pProhibits = 0
     Set pCode = ""
     If '$IsObject(pPayload) Quit $$$OK
-    Set tPermitted = $ListBuild("CopyFrom", "FullName", "Roles", "EscalationRoles")
+    Set tPermitted = $ListFromString(..#COPYFIELDS)
     Set tIterator = pPayload.%GetIterator()
     While tIterator.%GetNext(.tKey, .tValue) {
         If '$ListFind(tPermitted, tKey) {

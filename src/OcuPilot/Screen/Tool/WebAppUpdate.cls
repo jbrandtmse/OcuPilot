@@ -234,8 +234,9 @@ ClassMethod PrivilegePairs(pDescriptor As %String = "", Output pResolved As %Boo
 }
 
 /// <p>OcuPilot's own privileged routine applications (AD-10, DW-2239, Story 18.10) are refused every change as
-/// <parameter>OCUPILOTROUTINEAPP</parameter> before a proposal is stored or a write is sent, so the screen's action and the
-/// agent's mint answer 403. Other applications are not refused here.</p>
+/// <parameter>OcuPilot.Kernel.Proposal.Prohibited.OCUPILOTROUTINEAPP</parameter> before a proposal is stored or a
+/// write is sent, so the screen's action and the agent's mint answer 403. Other applications are not refused
+/// here.</p>
 ClassMethod RefusedBeforeState(pIdValue As %String, Output pCode As %String) As %Boolean
 {
     Quit ##class(OcuPilot.Kernel.Proposal.Prohibited).RefusesBeforeState(pIdValue, .pCode)

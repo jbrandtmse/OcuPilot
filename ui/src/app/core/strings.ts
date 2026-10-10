@@ -391,24 +391,42 @@ export const STRINGS = {
   webAppColumnResource: 'Resource',
   /** EXPERIENCE.md:316 */
   webAppListEmpty: 'No web applications in <NAMESPACE>.',
+  /** EXPERIENCE.md:471 */
   webAppPctAccessListLabel: 'Percent class access',
+  /** EXPERIENCE.md:471 */
   pctAccessEntityLabel: 'Class access entry',
+  /** EXPERIENCE.md:471 */
   webAppPctAccessListEmpty: 'No percent class access entries for this application.',
+  /** EXPERIENCE.md:471 */
   webAppPctAccessListEmptyAgent: 'give a web application access to a percent class',
+  /** EXPERIENCE.md:471 */
   webAppPctAccessListPrompt1: 'Which percent classes can this application reach?',
+  /** EXPERIENCE.md:471 */
   webAppPctAccessListPrompt2: 'Give this application access to a package of percent classes',
+  /** EXPERIENCE.md:471 */
   webAppPctAccessListPrompt3: 'Remove an access entry this application no longer needs',
+  /** EXPERIENCE.md:471 */
   webAppPctAccessApplication: 'Application of this entry',
+  /** EXPERIENCE.md:471 */
   webAppPctAccessColumnAllowType: 'Allow type',
+  /** EXPERIENCE.md:471 */
   webAppPctAccessColumnClass: 'Class or package',
+  /** EXPERIENCE.md:471 */
   webAppPctAccessColumnAllowAccess: 'Allow access',
+  /** EXPERIENCE.md:471 */
   webAppPctAccessColumnSystem: 'Instance entry',
+  /** EXPERIENCE.md:475 */
   pctAccessRefusalSystem: 'This entry belongs to the instance and goes only with its application, so it cannot be deleted on its own.',
   /** EXPERIENCE.md:475 */
   routineAppRefusalOcuPilot: 'OcuPilot reads its own protected state through this privileged routine application, so it cannot be deleted, disabled or changed.',
+  /** EXPERIENCE.md:471 */
   webAppPctAccessDialogTitle: 'Add a percent class access entry',
+  /** EXPERIENCE.md:471 */
   webAppPctAccessClassField: 'Class or package name',
+  /** EXPERIENCE.md:471 */
   webAppPctAccessAllApplications: 'Apply to all applications',
+  /** EXPERIENCE.md:471 */
+  webAppPctAccessAdd: 'Add entry',
   /** EXPERIENCE.md:316 */
   tableReadOnlyEmptyNext: 'Open another screen from the command box.',
   /** EXPERIENCE.md:317 */

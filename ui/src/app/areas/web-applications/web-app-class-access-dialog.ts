@@ -13,6 +13,9 @@ export const PCT_ACCESS_SAVE_PATH = '/api/ocupilot/web-app/pct-access';
 /** The application name the "Apply to all applications" choice sends (`PctAccessPort`). */
 export const ALL_APPLICATIONS = 'all-applications';
 
+/** How many class-access dialogs have been constructed, which makes each one's field ids its own. */
+let dialogCount = 0;
+
 /**
  * Add a percent-class access entry to a web application (Story 18.10): the allow type, the class or
  * package name and whether it allows access, with "Apply to all applications" choosing the
@@ -57,7 +60,7 @@ export const ALL_APPLICATIONS = 'all-applications';
       <p class="ocu-broadcast-refusal" role="alert">{{ refusal() }}</p>
     }
     <button dialogAction type="button" class="ocu-button-primary" [attr.aria-disabled]="busy() ? 'true' : null" (click)="submit()">
-      {{ STRINGS.screenPermissionsAddButton }}
+      {{ STRINGS.webAppPctAccessAdd }}
     </button>
   </app-dialog>`,
 })
@@ -77,9 +80,11 @@ export class WebAppClassAccessDialog {
 
   protected readonly allowTypes = ALLOW_TYPES;
 
-  protected readonly typeId = `ocu-pct-type-${Math.random().toString(36).slice(2, 8)}`;
+  private readonly instance = ++dialogCount;
 
-  protected readonly classId = `ocu-pct-class-${Math.random().toString(36).slice(2, 8)}`;
+  protected readonly typeId = `ocu-pct-type-${this.instance}`;
+
+  protected readonly classId = `ocu-pct-class-${this.instance}`;
 
   protected readonly allowType = signal(ALLOW_TYPES[0]);
 
