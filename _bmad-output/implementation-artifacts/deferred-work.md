@@ -10887,3 +10887,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-23-6-the-haiku-story-cleanup.md | severity: low | fix-risk: low | footprint: out-of-footprint
 - evidence: Planner review of 20.20 at 39ed66f1 (inference, unmeasured): Literal expands each control character
 - 2026-10-09T17:02:33Z status=wontfix-accepted owner=23-6-the-haiku-story-cleanup by=spec_gate note=reopen_if=a save or create carrying a line of 300,000 or more control characters fails to render or PUT with <MAXSTRING>
+
+### DW-2265: The user copy's write type COPY is spelled three times: Prohibited.COPYWRITETYPE, the tool's WRITETYPE and UserCopyPort.COPYTYPE
+- source: _bmad-output/implementation-artifacts/spec-23-6-the-haiku-story-cleanup.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Prohibited.COPYWRITETYPE (new in 23.6) is compared with Screen/Tool/UserCopy.WRITETYPE; UserCopyPort.COPYTYPE matches it; implement deferral at a478581c
+- 2026-10-10T01:01:44Z status=open owner=23-6-the-haiku-story-cleanup by=harvest note=implement deferral; code review decides patch (tie both to the kernel constant) or close
+
+### DW-2266: BackgroundTaskMint and EncryptionKeyFileMint pass a presence refusal's detail.problem through without ErrorDeleteMint.ReadableId, so it may carry a raw U+0001
+- source: _bmad-output/implementation-artifacts/spec-23-6-the-haiku-story-cleanup.md | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: Both call JoinComposite and neither names ReadableId (SuperserverMint, MappingMint and, since 23.6, WebAppPctAccessMint do); Mint.Mint writes the composite id into 'not present'; unverified: mint a background-task cancel for an absent id and read detail.problem
+- 2026-10-10T01:01:44Z status=routed owner=range-end-cleanup by=harvest note=same root cause as 23.6's 18.10-1; not absorbed (dispatch)
