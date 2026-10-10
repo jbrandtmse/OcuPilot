@@ -10901,3 +10901,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Both call JoinComposite and neither names ReadableId (SuperserverMint, MappingMint and, since 23.6, WebAppPctAccessMint do); Mint.Mint writes the composite id into 'not present'; unverified: mint a background-task cancel for an absent id and read detail.problem
 - 2026-10-10T01:01:44Z status=routed owner=range-end-cleanup by=harvest note=same root cause as 23.6's 18.10-1; not absorbed (dispatch)
 - 2026-10-10T01:48:35Z status=routed owner=range-end-cleanup by=cr note=one shared fault helper for the ReadableId pass (Superserver, Mapping, ErrorDelete, WebAppPctAccess mints) would close this too
+
+### DW-2278: Rule 31: the Superserver, MFT and Doc DB slices each carry their own Save, Rules and form of one shape; one base would serve all three
+- source: spec-18-30-doc-db-applications.md | severity: med | fix-risk: med | footprint: in-epic
+- evidence: 18.30's code map copies the MFT slice's Rules/Save/form shape because one slice may not depend on another (stated reason); 18.25 Superserver and 18.26 MFT are the siblings
+- 2026-10-10T10:42:42Z status=routed owner=range-end-cleanup by=harvest note=unify behind a kernel base the slices extend; recorded at the 18.30 spec gate
+
+### DW-2279: MappingMint's empty-namespace refusal names a 'mapping' for the Doc DB application tools
+- source: spec-18-30-doc-db-applications.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: 18.30 reuses MappingMint unchanged because Epic 20's 20.3 is editing it (Rule 11)
+- 2026-10-10T10:42:42Z status=routed owner=18-31-privileged-routine-applications by=harvest note=once 20.3 is on feature, give MappingMint a per-tool noun parameter and set it for the Doc DB tools

@@ -159,6 +159,8 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
 
   **`Security.MFT` keeps a key its body omits and is an upsert**, 201 on create, which requires all five fields; `Service` is create-only, because a `PUT` changing it relabels the stored object (Story 18.26; measured) [AMENDED 2026-10-07, Story 18.26 spec gate, Rule 20].
 
+  **A Doc DB application record is an upsert that keeps omitted keys** [AMENDED 2026-10-10, Story 18.30 spec gate, Rule 20]: `DocDB`'s `PUT` creates an absent record and keeps every key it omits (measured), so the update tool sends a merge of all three fields.
+
 ### AD-5 — One screen descriptor is the source of everything about a screen
 
 - **Binds:** all 60 screens across 5.5–5.10; FR-4, FR-11, FR-14, FR-16
@@ -305,6 +307,8 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
 
   **Story 19.17** [AMENDED 2026-10-05, Story 19.17 spec gate, Rule 20]: Document databases declares `%DocDB_Admin:USE` and `%Service_DocDB:USE` as its own pairs beside System Explorer's `%Development:USE`, and `DocDbPort` adds the namespace's READ pairs at the call (AD-61's rule 1). `explorer.docdb.create` and `explorer.docdb.delete` also declare WRITE on the resources guarding the namespace's routines and globals databases, resolved at the call, each refused by name before any port call: without the routines database's WRITE a create raised `<PROTECT>` on `^oddDEF` and a drop #5883, the database intact (measured by Story 19.9), and the globals database holds the registry row and the documents (inference).
 
+  **Story 18.30's Doc DB applications declare no pair beyond the area's** [AMENDED 2026-10-10, Story 18.30 spec gate, Rule 20] (measured on a principal holding exactly `%Admin_Secure:USE`, `%DB_IRISSYS:READ` and `%DB_HSCUSTOM:READ`).
+
 ### AD-9 — OcuPilot's own state is protected by a privileged routine application
 
 - **Binds:** FR-29, FR-66; agent definitions, switches, the ledger, transcripts, proposals
@@ -440,6 +444,8 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
   **A `docdb-database` id keeps `foldcase`**, because the instance resolves a document database's name in any case (measured on `ocupilot-a2-ci`: `Exists`, `GetDatabase` and `DropDatabase("OCUPROBE1917A")` reached `OcuProbe1917A`, and `CreateDatabase("ocuprobe1917a")` threw #25051) (Story 19.17) [AMENDED 2026-10-05, Story 19.17 spec gate, Rule 20].
 
   **A `screen-permission` id is the screen's `toolIdentifier`, kept exactly** (Story 20.15) [AMENDED 2026-10-07, Story 20.15 spec gate, Rule 20].
+
+  **A `doc-db-application` id is `[Namespace, Name]`** [AMENDED 2026-10-10, Story 18.30 spec gate, Rule 20], as `MappingMint` and `NamespacePort` expect; it takes `foldcase`, since the instance resolves both parts in any case.
 
 ### AD-14 — A confirmed write emits one change event; screens re-fetch, never patch
 
@@ -897,6 +903,8 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
 
   **Story 18.10's `CLASSICPAGES`** [AMENDED 2026-10-09, Story 18.10 spec gate, Rule 20]: the `%`-class access create declares `%CSP.UI.Portal.Dialog.WebAppPctAccess`.
 
+  **Story 18.30's `CLASSICPAGES`** [AMENDED 2026-10-10, Story 18.30 spec gate, Rule 20]: the Doc DB application create and update declare `%CSP.UI.Portal.Applications.DocDB`; the delete, on the list's page, declares none.
+
 ### AD-45 — There is one smoke path, and it is also the health check
 
 - **Binds:** FR-66, FR-67, NFR-9, AD-38; the installer, CI, the demo
@@ -1097,6 +1105,8 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
   **The protection is load-bearing, not ceremony, and it was measured rather than assumed.** Verified on this build from `%Api.Admin.Endpoints.WebApp.App`: `RunPut:117-122` reads `If ##class(Security.Applications).Exists(..Name) { Modify(...) } Else { Create(...) ... SetRespStatus(..#HTTP201CREATED) }` - an **upsert with no refusal path**. Without the absence fingerprint a confirmed create silently rewrites whichever fields it sends onto somebody else's application, and answers 200 while doing it. A later create story whose endpoint refuses a duplicate on its own still declares the absence fingerprint: the guarantee is OcuPilot's, not the vendor's, and a per-endpoint exemption is the divergence this Rule exists to prevent.
 
   **The prohibited set's per-type field lists are keyed by create versus change** (AD-10, whose one-home rule is unchanged - this refines how the predicates are structured, not where they live). "What may a change to a live target touch" and "what may a create set" are different questions, so a create tool carries its own reviewed per-type list, and the absent-target early-out that reasons "the fingerprint will refuse it moments later" does not apply to a create, whose target is correctly absent. A field prohibited because it repoints a **serving** object - one of OcuPilot's own applications, AD-10 [clarified 2026-09-24, Story 9.2 spec gate] - is prohibited on a change and permitted on a create, which repoints nothing; a field prohibited by effect under AD-10 - setting application roles on one of OcuPilot's own web applications - stays prohibited on **both**, unconditionally [AMENDED 2026-09-23 with AD-10's owner decisions: was "on any web application"].
+
+  **A composite create sends its name as typed** [AMENDED 2026-10-10, Story 18.30 spec gate, Rule 20]: a tool whose id has more than one part answers `TypedId(pArgs)` (`Screen/Tool/Write`), which the confirm and the draft send in place of the folded id, because the vendor stores the name exactly as sent (measured on `DocDB`).
 
 ### AD-55 - A screen's own Save against an instance object resolves through the write tool
 
