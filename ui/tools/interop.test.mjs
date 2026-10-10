@@ -40,6 +40,21 @@ const SENTENCES = [
   ['REASONRESTART', 'interopRestartConsequence'],
   ['REASONUPDATE', 'interopUpdateConsequence'],
   ['REASONRECOVER', 'interopRecoverConsequence'],
+  ['REASONSUSPENDED', 'interopRefusalSuspended'],
+  ['REASONPARTSTOPPED', 'interopRefusalPartStopped'],
+  ['REASONITEMENABLED', 'interopItemRefusalEnabled'],
+  ['REASONITEMDISABLED', 'interopItemRefusalDisabled'],
+  ['REASONITEMDEFAULTSETTING', 'interopItemRefusalDefaultSetting'],
+  ['REASONITEMPOOLZERO', 'interopItemRefusalPoolZero'],
+  ['REASONITEMTAKEN', 'interopItemRefusalTaken'],
+  ['REASONITEMAMBIGUOUS', 'interopItemRefusalAmbiguous'],
+  ['REASONITEMCLASS', 'interopItemRefusalClass'],
+  ['REASONITEMNAME', 'interopItemRefusalName'],
+  ['REASONITEMVALUE', 'interopItemRefusalValue'],
+  ['REASONITEMENABLEDREMOVE', 'interopItemRefusalEnabledRemove'],
+  ['REASONITEMSOURCECONTROL', 'interopItemRefusalSourceControl'],
+  ['REASONITEMPENDING', 'interopItemPendingConsequence'],
+  ['REASONITEMREMOVE', 'interopItemRemoveConsequence'],
 ];
 
 /** The value `key` holds in `strings.ts`, which may sit on the line after its key. */
@@ -73,7 +88,7 @@ test("Story 20.2: the wait the stop, restart, update and busy sentences state is
   const match = /Parameter STOPSECONDS = (\d+);/.exec(readFileSync(PORT, 'utf8'));
   assert.notEqual(match, null, 'InteropPort.cls declares STOPSECONDS');
   const seconds = match[1];
-  for (const key of ['interopStopConsequence', 'interopRestartConsequence', 'interopUpdateConsequence', 'interopRefusalBusy']) {
+  for (const key of ['interopStopConsequence', 'interopRestartConsequence', 'interopUpdateConsequence', 'interopRefusalBusy', 'interopRefusalPartStopped']) {
     assert.ok(stringValue(key).includes(`${seconds} seconds`), `${key} states a wait of ${seconds} seconds`);
   }
   for (const key of ['interopRecoverConsequence', 'interopRefusalRunning']) {

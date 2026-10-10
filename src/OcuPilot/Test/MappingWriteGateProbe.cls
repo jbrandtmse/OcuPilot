@@ -37,13 +37,16 @@ ClassMethod Run(pParent As %Integer, pUsername As %String, pPlan As %String)
     Set tOut = {}
     Try {
         Set ^||OcuPilotNamespaceWritePort = ..#RECORD
+        Set ^IRIS.Temp.OcuPilotProbeProgress(pParent) = "login"
         Do tOut.%Set("loggedIn", ''$SYSTEM.Security.Login(pUsername), "boolean")
         Do tOut.%Set("username", $Username)
         Set tSteps = []
         Set tIterator = ##class(%DynamicArray).%FromJSON(pPlan).%GetIterator()
         While tIterator.%GetNext(.tIndex, .tStep) {
+            Set ^IRIS.Temp.OcuPilotProbeProgress(pParent) = "step " _ (tIndex + 1) _ " " _ tStep.%Get("tool")
             Do tSteps.%Push(..Step(tStep))
         }
+        Set ^IRIS.Temp.OcuPilotProbeProgress(pParent) = "copies"
         Do tOut.%Set("steps", tSteps)
         Do tOut.%Set("tasks", ..QueuedCopies())
     } Catch ex {

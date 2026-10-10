@@ -32,6 +32,10 @@ Parameter OPNAME = "OcuPilotProbeOp";
 /// <p>The probe service's configuration name.</p>
 Parameter SVCNAME = "OcuPilotProbeSvc";
 
+/// <p>The probe operation whose teardown waits (Story 20.3): its configuration name, added to the stored
+/// production by <method>AddTearItem</method>.</p>
+Parameter TEARNAME = "OcuPilotProbeTearOp";
+
 /// <p>The probe business rule class, a bare <code>Ens.Rule.Definition</code> subclass.</p>
 Parameter RULECLASS = "OcuPilotProbe.Interop.Rule";
 
@@ -54,6 +58,18 @@ ClassMethod ClassText(pName As %String) As %String [ Private ]
             " If +..HangSeconds > 0 Hang ..HangSeconds" _ tNL _ " Quit $$$OK" _ tNL _ "}" _ tNL _
             "XData MessageMap" _ tNL _ "{" _ tNL _
             "<MapItems><MapItem MessageType=""Ens.Request""><Method>Hang</Method></MapItem></MapItems>" _ tNL _ "}" _ tNL _ "}" _ tNL
+    }
+    If pName = "TearOp" {
+        Quit "Class " _ ..#PACKAGE _ ".TearOp Extends Ens.BusinessOperation" _ tNL _ "{" _ tNL _
+            "Parameter INVOCATION = ""Queue"";" _ tNL _
+            "Parameter SETTINGS = ""TearDownSeconds:Probe"";" _ tNL _
+            "Property TearDownSeconds As %Integer [ InitialExpression = 0 ];" _ tNL _
+            "Method OnTearDown() As %Status" _ tNL _ "{" _ tNL _
+            " If +..TearDownSeconds > 0 Hang ..TearDownSeconds" _ tNL _ " Quit $$$OK" _ tNL _ "}" _ tNL _
+            "Method Idle(pRequest As Ens.Request, Output pResponse As Ens.Response) As %Status" _ tNL _ "{" _ tNL _
+            " Quit $$$OK" _ tNL _ "}" _ tNL _
+            "XData MessageMap" _ tNL _ "{" _ tNL _
+            "<MapItems><MapItem MessageType=""Ens.Request""><Method>Idle</Method></MapItem></MapItems>" _ tNL _ "}" _ tNL _ "}" _ tNL
     }
     If pName = "Rule" {
         Quit "Class " _ ..#RULECLASS _ " Extends Ens.Rule.Definition" _ tNL _ "{" _ tNL _
@@ -121,7 +137,7 @@ ClassMethod Create() As %Status
 {
     Set tSC = ..CheckOwn()
     If $$$ISERR(tSC) Quit tSC
-    For tName = "Op", "Svc", "Rule", "Production", "Other" {
+    For tName = "Op", "Svc", "TearOp", "Rule", "Production", "Other" {
         Set tClass = $Select(tName = "Production": ..#PRODUCTION, tName = "Other": ..#OTHER, 1: ..#PACKAGE _ "." _ tName)
         Set tSC = ##class(%Compiler.UDL.TextServices).SetTextFromString(..#NAMESPACE, tClass, ..ClassText(tName))
         If $$$ISERR(tSC) Quit
@@ -148,6 +164,72 @@ ClassMethod OpItem(pProduction As Ens.Config.Production) As Ens.Config.Item [ Pr
         If pProduction.Items.GetAt(tI).Name = ..#OPNAME Set tItem = pProduction.Items.GetAt(tI)
     }
     Quit tItem
+}
+
+/// <p>Add the item <var>pName</var>, of class <var>pClass</var>, to the stored probe production with pool size
+/// <var>pPoolSize</var>, enabled unless <var>pEnabled</var> is 0, and, when <var>pSettingName</var> is
+/// given, with that host setting at <var>pSettingValue</var> (Story 20.3). It works on the stored
+/// configuration the way the vendor's own code does and never through OcuPilot's port, so a test can build a
+/// state the port refuses to make, such as a second item of one name. The production class is not saved, so
+/// the item lasts until <method>ResetProduction</method> or the class is compiled again.</p>
+ClassMethod AddItem(pName As %String, pClass As %String, pPoolSize As %Integer = 1, pEnabled As %Boolean = 1, pSettingName As %String = "", pSettingValue As %String = "") As %Status
+{
+    Set tSC = ..CheckOwn()
+    If $$$ISERR(tSC) Quit tSC
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = ..#NAMESPACE
+        Set tProduction = ##class(Ens.Config.Production).%OpenId(..#PRODUCTION, 4)
+        Set tItem = ##class(Ens.Config.Item).%New(pClass)
+        Set tItem.Name = pName
+        Set tItem.PoolSize = pPoolSize
+        Set tItem.Enabled = ''pEnabled
+        If pSettingName '= "" {
+            Set tSetting = ##class(Ens.Config.Setting).%New()
+            Set tSetting.Target = "Host"
+            Set tSetting.Name = pSettingName
+            Set tSetting.Value = pSettingValue
+            Do tItem.Settings.Insert(tSetting)
+        }
+        Do tProduction.Items.Insert(tItem)
+        Set tSC = tProduction.%Save()
+        Set tSetting = "", tItem = "", tProduction = ""
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>Add the probe operation whose teardown waits <var>pSeconds</var> seconds (Story 20.3) to the stored
+/// probe production, enabled, as <parameter>TEARNAME</parameter>: a production that stops with it running
+/// quiesces and then outlasts a stop's wait, which the vendor answers <code>ErrJobsNotStopped</code>.</p>
+ClassMethod AddTearItem(pSeconds As %Integer) As %Status
+{
+    Quit ..AddItem(..#TEARNAME, ..#PACKAGE _ ".TearOp", 1, 1, "TearDownSeconds", +pSeconds)
+}
+
+/// <p>Put the probe production back as <method>ClassText</method> declares it (Story 20.3): its class is
+/// written again and compiled, so the stored configuration is reloaded from the class and every item an
+/// earlier test added, removed or switched is as it was made. It refuses, touching nothing, when
+/// <code>USER</code>'s current production is not one of the probe's own.</p>
+ClassMethod ResetProduction() As %Status
+{
+    Set tSC = ..CheckOwn()
+    If $$$ISERR(tSC) Quit tSC
+    Set tSC = ##class(%Compiler.UDL.TextServices).SetTextFromString(..#NAMESPACE, ..#PRODUCTION, ..ClassText("Production"))
+    If $$$ISERR(tSC) Quit tSC
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = ..#NAMESPACE
+        Set tSC = $System.OBJ.Compile(..#PRODUCTION, "ck-d")
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
 }
 
 /// <p>Queue one message to the probe operation, through the probe service, which must be running.</p>

@@ -1882,7 +1882,8 @@ export function criteriaProblem(declaration) {
   if (keysFault !== null) return keysFault;
 
   const port = isObject(read.source) ? read.source.port : undefined;
-  if (port !== SOURCE_ADMIN && port !== SOURCE_MGMNT && port !== SOURCE_ATELIER && port !== SOURCE_TIMELINE && port !== SOURCE_ENCRYPTION) {
+  // AD-36 as amended (Story 20.3): an interop read takes criteria only as its parent's route id, on a parent-scoped list.
+  if (port !== SOURCE_ADMIN && port !== SOURCE_MGMNT && port !== SOURCE_ATELIER && port !== SOURCE_TIMELINE && port !== SOURCE_ENCRYPTION && (port !== SOURCE_INTEROP || !parented)) {
     return `read.criteria is declared on a '${shown(port)}' source, and server criteria travel on the admin, mgmnt, atelier, timeline and encryption ports alone (AD-21)`;
   }
 

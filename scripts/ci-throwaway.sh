@@ -285,8 +285,9 @@ services:
       # classes: DatabaseActionsGate, DatabaseIntegrity
       # classes: WebSessionsLive
       # The Background tasks classes also create a scratch database and pause, resume and cancel a
-      # compact of it; AdminPortForget runs the whole retention sweep.
-      # classes: AdminPortForget, BackgroundSeed, BackgroundTasksLive
+      # compact of it, and the port seam class maps the test package into %SYS for its run;
+      # AdminPortForget runs the whole retention sweep.
+      # classes: AdminPortForget, BackgroundSeed, BackgroundTaskPortSeam, BackgroundTasksLive
       # The 404 class creates and deletes a probe role through the real port and reads messages.log.
       # classes: AdminPortAbsence
       # The broadcast's live class also starts terminal sessions of its own and broadcasts to them.
@@ -407,6 +408,15 @@ services:
       # missing one pair the interoperability port requires and reads and controls the probe as them
       # (Story 20.2).
       # classes: InteropControl, InteropDescriptor, InteropGate
+      # The Production items classes compile and run the same probe production in USER, writing its items
+      # (Story 20.3): the control, refusals and stop-outcome classes drive the item writes and the stop
+      # outcomes, the descriptor class compiles the probe classes, and the gate class signs in as probe
+      # principals each missing one pair an item write requires.
+      # classes: InteropItemControl, InteropItemDescriptor, InteropItemGate, InteropItemRefusals, InteropStopOutcome
+      # The item identity class compiles the probe production's class between an agent's mint and its confirm,
+      # and the split gate class creates and deletes a namespace configuration over two existing databases
+      # (Story 20.3).
+      # classes: InteropItemGateSplit, InteropItemIdentity
       # classes: ExplorerSourceTurn
       # classes: ExplorerSaveTurn
       # classes: ExplorerCreateTurn
