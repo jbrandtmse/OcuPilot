@@ -61,11 +61,15 @@ const REVOKED_PAIR = '%Admin_Secure:USE';
 const TOOL_GRANTS = ',%Admin_Secure:U,%DB_IRISSYS:R';
 const TOOL_GRANTS_REVOKED = ',%DB_IRISSYS:R';
 
-/** How long the panel has to show the revoked line once the role changes. */
-const REVOKE_WINDOW_MS = 5000;
-
 /** How long (c)'s ended turn has to show it: one 15 s re-read, and the read itself. */
 const REREAD_WINDOW_MS = 20000;
+
+/**
+ * How long the panel has to show the revoked line once the role changes: the card's own poll
+ * interval (1 s) plus one re-read, the same window (c) uses, because a loaded host can delay the
+ * poll that carries the change past a fixed few seconds (DW-2254).
+ */
+const REVOKE_WINDOW_MS = 1000 + REREAD_WINDOW_MS;
 
 /**
  * How long (b)'s second provider call hangs, keeping the panel polling while the role changes. No
