@@ -591,6 +591,22 @@ deferred:
 - mutation (review pass): `journalSentence` drops its empty-value guard -> `proposal-card.spec.ts` AC5, the cleared-location leg
 - mutation: `onOpen` returns at once -> browser AC2 and AC3 red; its secret test dropped -> browser AC3 and `interop-item-setting-list.page.spec.ts` red; the page does not register `set` -> 7 red; the `WARNING_CONSEQUENCES` entry removed -> browser AC2 red
 
+**QA pass** (all on `ocupilot-b-ci`, one class per call, each green on the final source: `InteropSettingIdentity` 3, `InteropSettingGate` 5, `InteropSettingDescent` 8, `InteropSettingControl` 7, `InteropSettingPaths` 5, `InteropSettingRefusals` 7, `InteropSettingSecrets` 3; `ci.test.mjs` and `ci-shards.test.mjs` 120 pass; `check-objectscript.py` 0 problems). Test files:
+
+- `src/OcuPilot/Test/InteropSettingIdentity.cls` (QA, new, armed in `scripts/ci-throwaway.sh`)
+- `src/OcuPilot/Test/InteropSettingDescent.cls` (QA, four methods added)
+- `src/OcuPilot/Test/InteropSettingGate.cls` (QA, two methods added)
+- `src/OcuPilot/Test/InteropSettingControl.cls` (QA, `Stored` and `InClass` take an optional item)
+
+- mutation (QA): the routines-database test in `Admit` drops `IsSettingWrite` -> `InteropSettingGate.TestASettingWriteNeedsTheRoutinesDatabaseToo`
+- mutation (QA): `%Ens_ProductionConfig:WRITE` dropped from both `InteropAction.PrivilegePairs` and `InteropPort.Pairs` -> `InteropSettingGate.TestEachMissingPairIsRefusedByNameOnTheResetRoute` (and the set route and port tests); the descriptor's `%Ens_Portal:USE` dropped -> `InteropItemGate.TestEachMissingPairIsRefusedByNameOnEachTool`, both setting tools; `ROUTINESDATABASE` 0 on `InteropSettingAction` -> `InteropItemGateSplit`, both setting tools
+- mutation (QA): `SettingStep` takes `pLocked.Items.GetAt(1)` -> `InteropSettingIdentity.TestAnAgentsSetMintedBeforeACompileReachesTheNamedItemAfterIt` and `TestAPersonsSetAndResetAfterACompileReachTheNamedItem`; `GatherSettings` takes the first item's name -> all three identity tests (the list test's row-ownership assertion was first written without parentheses around the `[` operand and passed under the mutation; fixed, then red)
+- mutation (QA): `InteropSettingAction.ConfirmProblem` answers no problem -> `InteropSettingDescent.TestTheAgentsConfirmOfALevelsSetIsRefusedWhenThePathMovesAfterTheMint`
+- mutation (QA): `SettingStep` skips `ChangeProblem` -> `InteropSettingDescent.TestTheAgentsConfirmOfAResetIsRefusedWhenThePathMovesAfterTheMint` (a reset's confirm passes the fingerprint and the claim, and the write refuses)
+- mutation (QA): `DescentReaches` tests the manager directory only -> `InteropSettingDescent.TestTheServedDirectoryIsReachedByDescentToo`; it ignores the levels -> the same test's served-directory-two-levels-down legs
+- mutation (QA): every `FilePath` judged with one level of descent -> `InteropSettingDescent.TestAnOutboundAdaptersFilePathIsJudgedAsADirectoryAlone`
+- spot checks (QA), each red on the existing test named: `SettingRow` stops blanking `Value`, and separately `Default` -> `InteropSettingSecrets.TestTheSecretAppearsInNoRowToolResultOrContext`; `Dispatch` drops the `CallSecretNames` union -> `TestAValueTheAgentSentIsRedactedInTheLedgerRowAndTheStep`; `InvokeSettings` drops its `SECRET` refusal -> `TestASetAndAResetOfItAreRefusedFromBothCallers`; `SettingViolations` skips `ChangeProblem` -> the mint legs of `InteropSettingPaths` (3 red, the port and screen legs stay green because the write refuses)
+
 ## Auto Run Result
 
 Status: done

@@ -133,16 +133,17 @@ ClassMethod Row(pTarget As %String, pName As %String) As %DynamicObject
     Quit tRow
 }
 
-/// <p>The probe operation's stored value of the setting <var>pTarget</var>/<var>pName</var> (an item's own property
-/// for <code>Core</code>), <code>&lt;none&gt;</code> when it holds no element.</p>
-ClassMethod Stored(pTarget As %String, pName As %String) As %String
+/// <p>The stored value of the setting <var>pTarget</var>/<var>pName</var> of the probe item <var>pItem</var>, the probe
+/// operation unless another is named (an item's own property for <code>Core</code>), <code>&lt;none&gt;</code> when it holds
+/// no element.</p>
+ClassMethod Stored(pTarget As %String, pName As %String, pItem As %String = {..#OPNAME}) As %String
 {
     Set tText = "<none>"
     Set tOrigNS = $NAMESPACE
     Try {
         Set $NAMESPACE = ..#NAMESPACE
         Set tProduction = ##class(Ens.Config.Production).%OpenId(..#PRODUCTION)
-        Set tItem = tProduction.FindItemByConfigName(..#OPNAME)
+        Set tItem = tProduction.FindItemByConfigName(pItem)
         If pTarget = "Core" {
             Set tText = $Property(tItem, pName)
         } Else {
@@ -176,22 +177,25 @@ ClassMethod ClassText() As %String
     Quit tText
 }
 
-/// <p>What the class's XData carries for the probe operation's setting <var>pTarget</var>/<var>pName</var>: the
-/// element's text for a Host or Adapter setting, the item's attribute for a <code>Core</code> one;
-/// <code>&lt;none&gt;</code> when the XData carries none.</p>
-ClassMethod InClass(pTarget As %String, pName As %String) As %String
+/// <p>What the class's XData carries for the setting <var>pTarget</var>/<var>pName</var> of the probe item
+/// <var>pItem</var>, the probe operation unless another is named: the element's text for a Host or Adapter setting, the
+/// item's attribute for a <code>Core</code> one; <code>&lt;none&gt;</code> when the XData carries none. Only the item's own
+/// element is read, which ends where the next item's begins.</p>
+ClassMethod InClass(pTarget As %String, pName As %String, pItem As %String = {..#OPNAME}) As %String
 {
     Set tText = ..ClassText()
+    Set tStart = $Find(tText, "<Item Name=""" _ pItem _ """")
+    If 'tStart Quit "<none>"
     If pTarget = "Core" {
-        Set tPos = $Find(tText, "<Item Name=""" _ ..#OPNAME _ """")
-        If 'tPos Quit "<none>"
-        Set tTag = $Extract(tText, tPos, $Find(tText, ">", tPos) - 1)
+        Set tTag = $Extract(tText, tStart, $Find(tText, ">", tStart) - 1)
         Quit $Piece($Piece(tTag, " " _ pName _ "=""", 2), """", 1)
     }
+    Set tNext = $Find(tText, "<Item Name=""", tStart)
+    Set tScope = $Extract(tText, tStart, $Select(tNext: tNext - 1, 1: $Length(tText)))
     Set tOpen = "<Setting Target=""" _ pTarget _ """ Name=""" _ pName _ """>"
-    Set tPos = $Find(tText, tOpen)
+    Set tPos = $Find(tScope, tOpen)
     If 'tPos Quit "<none>"
-    Quit $Piece($Extract(tText, tPos, *), "</Setting>", 1)
+    Quit $Piece($Extract(tScope, tPos, *), "</Setting>", 1)
 }
 
 /// <p>The probe operation's stored settings and its class's XData as one text, which a refusal must leave as it was.</p>

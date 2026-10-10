@@ -27,6 +27,10 @@ Parameter ITEMGATE = "OcuPilot.Test.InteropItemGate";
 
 Parameter CONTROL = "OcuPilot.Test.InteropSettingControl";
 
+Parameter SEAM = "OcuPilot.Test.InteropSettingSeam";
+
+Parameter PATHS = "OcuPilot.Test.InteropSettingPaths";
+
 Parameter NAMESPACE = "USER";
 
 Parameter PRODUCTION = "OcuPilotProbe.Interop.Production";
@@ -107,6 +111,8 @@ Method OnBeforeOneTest() As %Status
 
 Method OnAfterOneTest() As %Status
 {
+    Do $ClassMethod(..#SEAM, "Disarm")
+    Do ##class(OcuPilot.Test.ScreenGate).Reset()
     Do $$$AssertEquals(..Settings(), ..PreparedBaseline, "the probe operation's settings are as they began")
     Quit $ClassMethod(..#CONTROL, "Reset")
 }
@@ -206,6 +212,63 @@ Method TestEachMissingPairIsRefusedByNameOnTheScreenRoutes()
     Set tRequest = {"action": "reset"}
     Do tRequest.%Set("id", $ClassMethod(..#CONTROL, "IdOf", "Host", "InitSeconds"), "string")
     Do $$$AssertEquals(..Post(..#SCREEN _ "/action", tRequest, "OcuP203Exact", .tRaw), 200, "and its Reset to default: " _ $Get(tRaw))
+}
+
+/// <p>AC6: a setting write also needs WRITE on the routines database, named by its own resource when that is not the
+/// globals database's (the production class is saved in <code>^oddDEF</code>). A set and a reset refused for it are
+/// refused naming it, 403, and change nothing; the list and the setting's read do not ask for it; and a caller holding it
+/// passes the gate, shown by a refusal that comes after the gate. In <code>USER</code> the two databases share one
+/// resource, so the seam names another, as <class>OcuPilot.Test.InteropItemGate</class> does for the item writes.</p>
+/// <p>Mutation (Rule 19): drop <code>IsSettingWrite</code> from the routines-database test in
+/// <method>OcuPilot.Port.InteropPort.Admit</method> -- the set and reset rows go red.</p>
+Method TestASettingWriteNeedsTheRoutinesDatabaseToo()
+{
+    Set tResource = "%DB_OCUP2022ROUTINES"
+    Set tId = $ClassMethod(..#CONTROL, "IdOf", "Host", "InitSeconds")
+    Do $ClassMethod(..#PATHS, "HoldTheWriterPairs")
+    Do $ClassMethod(..#SEAM, "Arm", tResource)
+    Set tOut = {}
+    Kill tQuery
+    Set tQuery("namespace") = ..#NAMESPACE
+    Set tQuery("id") = tId
+    Do ..Leg(tOut, "set", ..#SEAM, "SET", .tQuery, {"Value": "7"})
+    Do ..Leg(tOut, "reset", ..#SEAM, "RESET", .tQuery)
+    Do ..Leg(tOut, "read", ..#SEAM, "SETTING", .tQuery)
+    Kill tQuery
+    Set tQuery("namespace") = ..#NAMESPACE
+    Set tQuery("item") = $ClassMethod(..#CONTROL, "ItemId")
+    Set tQuery("maxRows") = 5
+    Do ..Leg(tOut, "list", ..#SEAM, "LIST", .tQuery)
+    Set tRefused = "403 AUTH.NOPRIVILEGE " _ tResource _ ":WRITE"
+    Do $$$AssertEquals(..LegText(tOut, "set"), tRefused, "a set is refused naming the routines database")
+    Do $$$AssertEquals(..LegText(tOut, "reset"), tRefused, "and so is a reset")
+    Do $$$AssertEquals(..LegText(tOut, "read") _ "|" _ ..LegText(tOut, "list"), "200  |200  ", "the setting's read and the list do not ask for it")
+    Do $$$AssertEquals(..Settings(), ..PreparedBaseline, "no refused write changed a setting")
+    Do ##class(OcuPilot.Test.ScreenGate).Hold(tResource, "WRITE")
+    Kill tQuery
+    Set tQuery("namespace") = ..#NAMESPACE
+    Set tQuery("id") = tId
+    Set tOut = {}
+    Do ..Leg(tOut, "reset", ..#SEAM, "RESET", .tQuery)
+    Do $$$AssertEquals(..LegText(tOut, "reset"), "409 INTEROP.SETTING.DEFAULTED ", "a caller holding it passes the gate and is refused for the state, which holds no value of its own")
+}
+
+/// <p>AC6: on the screen route the Reset to default row action is refused naming the pair each principal lacks, as the
+/// Set value row action is, before the setting is read or written; the exact principal's reset is admitted in
+/// <method>TestEachMissingPairIsRefusedByNameOnTheScreenRoutes</method>.</p>
+/// <p>Mutation (Rule 19): drop <code>%Ens_ProductionConfig:WRITE</code> from both
+/// <method>OcuPilot.Screen.Tool.InteropAction.PrivilegePairs</method> and
+/// <method>OcuPilot.Port.InteropPort.Pairs</method> -- the missing-write row goes red.</p>
+Method TestEachMissingPairIsRefusedByNameOnTheResetRoute()
+{
+    Set tBefore = ..Settings()
+    For tCase = $ListBuild("OcuP203NoPortal", "%Ens_Portal:USE"), $ListBuild("OcuP203NoCfgRead", "%Ens_ProductionConfig:READ"), $ListBuild("OcuP203NoCfgWrite", "%Ens_ProductionConfig:WRITE"), $ListBuild("OcuP203NoWrite", "%DB_USER:WRITE"), $ListBuild("OcuP203NoRead", "%DB_USER:READ") {
+        Set tRequest = {"action": "reset"}
+        Do tRequest.%Set("id", $ClassMethod(..#CONTROL, "IdOf", "Host", "InitSeconds"), "string")
+        Set tStatus = ..Post(..#SCREEN _ "/action", tRequest, $List(tCase, 1), .tRaw)
+        Do $$$AssertEquals(tStatus _ " " _ ..FailedPair(tRaw), "403 " _ $List(tCase, 2), $List(tCase, 1) _ ": Reset to default is refused naming the pair: " _ $Get(tRaw))
+    }
+    Do $$$AssertEquals(..Settings(), tBefore, "no refused request changed a setting")
 }
 
 /// <p><code>code failedPair</code> of a wire refusal (raw JSON), the pair <code>""</code> when it names none.</p>

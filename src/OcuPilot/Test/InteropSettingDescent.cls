@@ -5,7 +5,9 @@
 /// manager directory or the served directory is refused <code>INTEROP.SETTING.DESCENT</code>, from the three callers, at
 /// the mint and again at the write: <code>FilePath</code> as the manager directory's parent with one level, one level over
 /// that stored path, and a reset to a default that does either. Zero levels, the grandparent with one level, and
-/// lowering the levels are accepted.</p>
+/// lowering the levels are accepted. The served directory is reached as the manager directory is; the agent's confirm
+/// over HTTP judges the descent again when the path moves after the mint; and an outbound file adapter, which descends
+/// nothing, is judged as a directory alone.</p>
 /// <p>It runs on a disabled <code>EnsLib.File.PassthroughService</code> item, sets values only, starts no production and
 /// creates no file or directory. The directories are read from the instance.</p>
 /// <p><b>What it needs from the environment:</b> as <class>OcuPilot.Test.InteropSettingControl</class>, whose helpers it
@@ -27,6 +29,12 @@ Parameter PROBE = "OcuPilot.Test.ProductionProbe";
 Parameter SEAM = "OcuPilot.Test.InteropSettingSeam";
 
 Parameter FIXTURE = "OcuPilot.Test.PathPortFixture";
+
+Parameter ITEMS = "OcuPilot.Test.InteropItemControl";
+
+Parameter SETTOOL = "OcuPilot.Screen.Tool.InteropSettingSet";
+
+Parameter RESETTOOL = "OcuPilot.Screen.Tool.InteropSettingReset";
 
 /// <p>The disabled inbound file item the class adds to the probe production.</p>
 Parameter ITEM = "OcuPilotProbeFileSvc";
@@ -193,6 +201,128 @@ Method TestTheWriteJudgesTheDescentAgain()
     Set tHttpCode = $ClassMethod(..#PATHS, "BySeam", "SET", "Adapter", "SubdirectoryLevels", "1", ..#ITEM)
     Do $$$AssertEquals(tHttpCode, "422 INTEROP.SETTING.DESCENT", "the served directory has moved one level below the path: the port refuses the levels")
     Do $$$AssertEquals(..StoredOf("SubdirectoryLevels"), "0", "and stores nothing")
+}
+
+/// <p>The agent's call of <var>pTool</var> for the file item's <var>pName</var>, minted for the HTTP account on a seeded
+/// turn: the proposal in <var>pProposal</var> (<code>""</code> when the mint refused) and its turn in <var>pTurn</var>.</p>
+ClassMethod Mint(pTool As %String, pName As %String, pValue As %String, Output pProposal, Output pTurn) As %Status
+{
+    Set tArgs = $ClassMethod(..#CONTROL, "ArgsFor", "Adapter", pName, pValue, ..#ITEM)
+    Quit $ClassMethod(..#ITEMS, "MintAs", pTool, tArgs, ##class(OcuPilot.Test.Http).GetTestUsername(), .pProposal, .tHttp, .tFault, .pTurn)
+}
+
+/// <p>The agent's confirm of <var>pProposal</var> over HTTP, as <code>status code</code>, the answer in
+/// <var>pAnswer</var>.</p>
+ClassMethod Confirm(pProposal As %DynamicObject, Output pAnswer) As %String
+{
+    Set tSC = $ClassMethod(..#ITEMS, "ConfirmHttp", pProposal.proposalId, .tStatus, .tRaw, .pAnswer)
+    Quit tStatus _ " " _ $Select($IsObject(pAnswer): pAnswer.%Get("code"), 1: "")
+}
+
+/// <p>AC9: the agent's confirm judges the descent again. A set of the levels is minted over a safe path and accepted; the
+/// file path then moves to the manager directory's parent, which no proposal can see, and the confirm over HTTP is
+/// refused <code>TOOL.ARGUMENTS</code> with the descent sentence before the claim, storing nothing and leaving the
+/// proposal live. With the path moved back the same proposal confirms: the refusal was the descent's.</p>
+/// <p>Mutation (Rule 19): make <method>OcuPilot.Port.InteropPort.DescentReaches</method> answer 0 -- the confirm is
+/// admitted and the first leg goes red; make <method>OcuPilot.Screen.Tool.InteropSettingAction.ConfirmProblem</method>
+/// answer no problem -- the claim is made first, the port refuses it, and the proposal is spent: the first and last legs
+/// go red.</p>
+Method TestTheAgentsConfirmOfALevelsSetIsRefusedWhenThePathMovesAfterTheMint()
+{
+    Set tSC = ..Mint(..#SETTOOL, "SubdirectoryLevels", "1", .tProposal, .tTurn)
+    Do $$$AssertTrue($IsObject($Get(tProposal)), "the mint accepts one level over the safe path")
+    If '$IsObject($Get(tProposal)) Quit
+    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "PutItemSetting", ..#ITEM, "Adapter", "FilePath", ..Parent()), "the file path moves to the manager directory's parent behind the proposal's back")
+    Set tBefore = ..StoredOf("FilePath") _ "|" _ ..StoredOf("SubdirectoryLevels") _ "|" _ $ClassMethod(..#CONTROL, "ClassText")
+    Set tSince = ##class(OcuPilot.Test.AuditEvent).Now()
+    Do $$$AssertEquals(..Confirm(tProposal, .tAnswer), "400 TOOL.ARGUMENTS", "the confirm is refused before the claim: " _ $Select($IsObject(tAnswer): tAnswer.%ToJSON(), 1: tAnswer))
+    Do $$$AssertTrue($IsObject(tAnswer) && $IsObject(tAnswer.%Get("detail")) && (tAnswer.detail.%Get("problem") [ ##class(OcuPilot.Api.InteropError).ReasonFor("INTEROP.SETTING.DESCENT")), "and says why, in the descent sentence")
+    Do $$$AssertEquals(..StoredOf("FilePath") _ "|" _ ..StoredOf("SubdirectoryLevels") _ "|" _ $ClassMethod(..#CONTROL, "ClassText"), tBefore, "nothing was stored and the class is as it was")
+    Do $$$AssertEquals($ClassMethod(..#CONTROL, "SettingAudited", tSince), "", "and the vendor audited no setting")
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).Field(tProposal.proposalId, "State"), ##class(OcuPilot.Kernel.State.Propose).#STATELIVE, "the proposal is still live")
+    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "PutItemSetting", ..#ITEM, "Adapter", "FilePath", ..#SAFE), "the file path moves back")
+    Do $$$AssertEquals(..Confirm(tProposal, .tAnswer), "200 ", "the same proposal now confirms: " _ $Select($IsObject(tAnswer): tAnswer.%ToJSON(), 1: tAnswer))
+    Do $$$AssertEquals(..StoredOf("SubdirectoryLevels"), "1", "and stores the levels")
+    Do ##class(OcuPilot.Kernel.State.Ledger).GuardedDeleteForTurn(tTurn)
+}
+
+/// <p>AC9: the agent's confirm of a reset is refused by the write when the path moves after the mint. A reset of the levels
+/// to a system default of one is minted over a safe path and confirms; the same reset minted again is confirmed after the
+/// file path moves to the manager directory's parent. The confirm's fingerprint holds (the levels' own row is unchanged),
+/// the claim is made, and the write judges the default it would leave in force: 409
+/// <code>INTEROP.SETTING.DESCENT</code> at the write, the production's own value kept.</p>
+/// <p>Mutation (Rule 19): skip <method>OcuPilot.Port.InteropPort.ChangeProblem</method> in
+/// <method>OcuPilot.Port.InteropPort.SettingStep</method> -- the second leg is admitted and goes red; make
+/// <method>OcuPilot.Port.InteropPort.DescentReaches</method> answer 0 -- the same.</p>
+Method TestTheAgentsConfirmOfAResetIsRefusedWhenThePathMovesAfterTheMint()
+{
+    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "PutDefault", ..#ITEM, "Adapter", "SubdirectoryLevels", "1"), "a system default sets one level")
+    Set tSC = ..Mint(..#RESETTOOL, "SubdirectoryLevels", $Char(0), .tFirst, .tFirstTurn)
+    Do $$$AssertTrue($IsObject($Get(tFirst)), "the mint of a reset over the safe path is accepted")
+    If '$IsObject($Get(tFirst)) Quit
+    Do $$$AssertEquals(..Confirm(tFirst, .tAnswer), "200 ", "and confirms while the path stays: " _ $Select($IsObject(tAnswer): tAnswer.%ToJSON(), 1: tAnswer))
+    Do $$$AssertEquals(..StoredOf("SubdirectoryLevels"), "<none>", "removing the production's own levels")
+    Do ##class(OcuPilot.Kernel.State.Ledger).GuardedDeleteForTurn(tFirstTurn)
+    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "PutItemSetting", ..#ITEM, "Adapter", "SubdirectoryLevels", 0), "the production holds its own levels again")
+    Set tSC = ..Mint(..#RESETTOOL, "SubdirectoryLevels", $Char(0), .tProposal, .tTurn)
+    Do $$$AssertTrue($IsObject($Get(tProposal)), "the second mint is accepted")
+    If '$IsObject($Get(tProposal)) Quit
+    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "PutItemSetting", ..#ITEM, "Adapter", "FilePath", ..Parent()), "the file path moves to the manager directory's parent behind the proposal's back")
+    Set tBefore = ..StoredOf("FilePath") _ "|" _ ..StoredOf("SubdirectoryLevels") _ "|" _ $ClassMethod(..#CONTROL, "ClassText")
+    Set tSince = ##class(OcuPilot.Test.AuditEvent).Now()
+    Do $$$AssertEquals(..Confirm(tProposal, .tAnswer), "409 INTEROP.SETTING.DESCENT", "the confirm is refused by the write: " _ $Select($IsObject(tAnswer): tAnswer.%ToJSON(), 1: tAnswer))
+    Do $$$AssertEquals($Select($IsObject(tAnswer) && $IsObject(tAnswer.%Get("detail")): tAnswer.detail.%Get("state"), 1: ""), "confirmed", "after the claim, which the fingerprint let through: the reset's own row had not changed")
+    Do $$$AssertEquals(..StoredOf("FilePath") _ "|" _ ..StoredOf("SubdirectoryLevels") _ "|" _ $ClassMethod(..#CONTROL, "ClassText"), tBefore, "nothing was stored and the class is as it was")
+    Do $$$AssertEquals($ClassMethod(..#CONTROL, "SettingAudited", tSince), "", "and the vendor audited no setting")
+    Do ##class(OcuPilot.Kernel.State.Ledger).GuardedDeleteForTurn(tTurn)
+}
+
+/// <p>AC9: descent reaches the served directory as it reaches the manager directory, from the three callers: with one
+/// level, <code>FilePath</code> as the served directory's parent is refused <code>INTEROP.SETTING.DESCENT</code>, and so is
+/// one level over that stored path, while no level is accepted. The served directory moved two levels below the path
+/// (through <class>OcuPilot.Test.InteropSettingSeam</class>) is not reached by one level and is by two.</p>
+/// <p>Mutation (Rule 19): drop <code>ServedDirectory</code> from the directories
+/// <method>OcuPilot.Port.InteropPort.DescentReaches</method> tests -- every leg goes red.</p>
+Method TestTheServedDirectoryIsReachedByDescentToo()
+{
+    Set tServedParent = ##class(%File).ParentDirectoryName($ClassMethod(..#PATHS, "Served"))
+    Do $$$AssertEquals($ClassMethod("OcuPilot.Port.PathPort", "Contains", tServedParent, $ClassMethod(..#PATHS, "Manager")), 0, "the served directory's parent holds no manager directory below it, so only the served directory can be reached")
+    Set tDescent = "422 INTEROP.SETTING.DESCENT"
+    Do $$$AssertEquals($ClassMethod(..#REFUSALS, "ByMint", "SET", "Adapter", "FilePath", tServedParent, .tProblem, ..#ITEM), "minted", "the served directory's parent with no level is accepted at the mint")
+    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "PutItemSetting", ..#ITEM, "Adapter", "SubdirectoryLevels", 1), "the adapter descends one level")
+    Do ..Refused("FilePath as the served directory's parent, one level", "SET", "FilePath", tServedParent, tDescent, "400 TOOL.ARGUMENTS", tDescent)
+    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "PutItemSetting", ..#ITEM, "Adapter", "SubdirectoryLevels", 0), "the adapter descends no level")
+    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "PutItemSetting", ..#ITEM, "Adapter", "FilePath", tServedParent), "and starts in the served directory's parent")
+    Do ..Refused("one level over that parent", "SET", "SubdirectoryLevels", "1", tDescent, "400 TOOL.ARGUMENTS", tDescent)
+    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "PutItemSetting", ..#ITEM, "Adapter", "FilePath", ..#SAFE), "the path returns to the safe directory")
+    Do $ClassMethod(..#PATHS, "HoldTheWriterPairs")
+    Do $ClassMethod(..#SEAM, "UsePathPortFixture")
+    Do $ClassMethod(..#FIXTURE, "UseServedDirectory", ..#SAFE _ "a/b/")
+    Do $$$AssertEquals($ClassMethod(..#PATHS, "BySeam", "SET", "Adapter", "SubdirectoryLevels", "1", ..#ITEM), "200 ", "a served directory two levels below the path is not reached by one level")
+    Do $$$AssertEquals(..StoredOf("SubdirectoryLevels"), "1", "and the levels are stored")
+    Do $$$AssertEquals($ClassMethod(..#PATHS, "BySeam", "SET", "Adapter", "SubdirectoryLevels", "2", ..#ITEM), tDescent, "two levels reach it")
+    Do $$$AssertEquals(..StoredOf("SubdirectoryLevels"), "1", "and the stored levels stay one")
+}
+
+/// <p>AC9: an outbound file adapter reads no directory below its path, so its <code>FilePath</code> is judged as a
+/// directory alone: the manager directory's parent is accepted by the mint and the port, which store it, while the manager
+/// directory itself is still refused <code>PATH.MANAGERDIR</code> by the mint, the port and the person's row action.</p>
+/// <p>Mutation (Rule 19): judge every <code>FilePath</code> with one level of descent in
+/// <method>OcuPilot.Port.InteropPort.ChangeProblem</method> (<code>Set tLevels = 1</code> for the file path) -- the
+/// accepted legs go red.</p>
+Method TestAnOutboundAdaptersFilePathIsJudgedAsADirectoryAlone()
+{
+    Set tOutbound = "OcuPilotProbeFileOp"
+    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "AddFileItem", tOutbound, "EnsLib.File.PassthroughOperation", ..#SAFE), "a disabled outbound file item is added")
+    Set tManager = $ClassMethod(..#PATHS, "Manager")
+    Set tRefused = "422 PATH.MANAGERDIR"
+    Do $$$AssertEquals($ClassMethod(..#REFUSALS, "ByMint", "SET", "Adapter", "FilePath", ..Parent(), .tProblem, tOutbound), "minted", "the manager directory's parent is accepted at the mint: nothing below it is read")
+    Do $$$AssertEquals($ClassMethod(..#REFUSALS, "ByPort", "SET", "Adapter", "FilePath", ..Parent(), tOutbound), "200 ", "and by the port")
+    Do $$$AssertEquals($ClassMethod(..#CONTROL, "Stored", "Adapter", "FilePath", tOutbound), ..Parent(), "which stores it as given")
+    Do $$$AssertEquals($ClassMethod(..#REFUSALS, "ByPort", "SET", "Adapter", "FilePath", tManager, tOutbound), tRefused, "the manager directory itself is refused by the port")
+    Do $$$AssertEquals($ClassMethod(..#REFUSALS, "ByMint", "SET", "Adapter", "FilePath", tManager, .tProblem, tOutbound), "400 TOOL.ARGUMENTS", "by the agent's mint")
+    Do $$$AssertEquals($ClassMethod(..#REFUSALS, "ByScreen", "SET", "Adapter", "FilePath", tManager, tOutbound), tRefused, "and by the person's row action")
+    Do $$$AssertEquals($ClassMethod(..#CONTROL, "Stored", "Adapter", "FilePath", tOutbound), ..Parent(), "which leave the stored path as it was")
 }
 
 }
