@@ -11032,3 +11032,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: ARCHITECTURE-SPINE.md:986 reads 'not an exception: Story 20.22: InteropPort reads ...' before the bullets that colon introduced; :1181 ends with two identical [AMENDED 2026-10-10, Story 20.22 spec gate, Rule 20] tags (spec-gate commit 8a40bf0e)
 - 2026-10-10T20:07:00Z status=open owner=20-22-production-item-settings by=cr note=the runner fixes it under Rule 20 at ledger_adjudicated: move the clause after the sentence it splits, drop the duplicate tag
 - 2026-10-10T20:21:23Z status=resolved-by:20-22-production-item-settings owner=20-22-production-item-settings by=lead note=Rule 20 at ledger_adjudicated: AD-51's sentence ends at its colon again and the 20.22 clause is its own case line after Story 18.26's; AD-62's duplicate AMENDED tag dropped; lint_spine one standing low
+
+### DW-2297: The queue and job actions (abort one queued message, abort a whole queue, abort or suspend a job's message, stop a job) are Story 20.4's stated partial
+- source: spec-20-4-per-host-tabs-the-monitor-queues-and-jobs.md | severity: med | fix-risk: med | footprint: in-epic
+- evidence: 20.4's second AC names the actions as custom endpoints and reads-first as a stated partial; measured on ocupilot-b-ci at 20.4's plan: each action is a vendor class method with its own check, writes no audit row, and AbortOperation, SuspendOperation and Stop answer OK on a target where they do nothing
+- 2026-10-10T22:06:19Z status=routed owner=20-23-queue-and-job-actions by=lead note=chartered as Story 20.23 at 20.4's spec gate; its charter is 20.4's Design Notes › Split
+
+### DW-2298: The classic per-host Actions tab's remaining item actions (temporary stop, start and restart of one item, change class, copy) have no story; enable, disable and remove are 20.3's row actions and Test is 20.6's
+- source: spec-20-4-per-host-tabs-the-monitor-queues-and-jobs.md | severity: med | fix-risk: med | footprint: in-epic
+- evidence: irislib/EnsPortal/ProductionConfig.cls:952-1077 and :4240 (updateActions); Story 20.4's criteria name only abort, abort all, suspend and stop; IO-08's change class and copy are unbuilt
+- 2026-10-10T22:06:19Z status=routed owner=20-23-queue-and-job-actions by=lead note=20.23's plan carries them beside the queue and job actions or names the further story they need
