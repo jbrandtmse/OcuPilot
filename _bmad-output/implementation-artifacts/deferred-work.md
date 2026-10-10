@@ -10972,3 +10972,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: cycle-log-epic-20.md (run 38047135210 attempt 1) | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: Red in browser shard 2/3 on 9a8f2b2e; no change to _components.scss or tool-call-card.ts since 20.3's baseline; passed in attempt 2's rerun of the shard
 - 2026-10-10T16:05:47Z status=routed owner=23-5-the-range-end-cleanup-part-5 by=lead note=wait for the tool-call card to settle (spinner gone) before the structural walk, or exempt the transient spinner; CI flake, Rule 27
+
+### DW-2285: Sweep flake: Retention.TestADeletedUsersSettingsGoAndTheirTranscriptsStay's 'the deleted account's token is refused' fails in a long local sweep on a reused throwaway and passes alone
+- source: cycle-log-epic-20.md (20.22 runner-side sweep shard 22/30, run 189) | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: Red at run 189 on ocupilot-b-ci mid-sweep, green alone at once (run 196); also seen green-alone in 20.18's sweep (2026-10-08); not yet seen in CI
+- 2026-10-10T17:33:40Z status=routed owner=23-5-the-range-end-cleanup-part-5 by=lead note=likely a token or session cache the earlier classes warm; make the leg read the refusal after the cache's own expiry or clear it; flake class, Rule 27
