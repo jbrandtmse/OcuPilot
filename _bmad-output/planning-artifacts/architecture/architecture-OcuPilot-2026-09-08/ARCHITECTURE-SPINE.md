@@ -362,6 +362,8 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
 
   **OcuPilot's own privileged routine applications** [AMENDED 2026-10-09, Story 18.10 spec gate, Rule 20], DW-2239: the owner chose "Refuse every change". Every write to `OcuPilotState` or `OcuPilotIdentity`, whether a delete, a disable or a change to any field, is refused `PROHIBITED.OCUPILOTROUTINEAPP` from either caller, through every tool and endpoint that reaches them, as OcuPilot's own web applications are.
 
+  **Removing a mirror together with its databases** [AMENDED 2026-10-09, owner decision for Story 21.2, relayed by the Planner, Rule 20]: removing a mirror's configuration with its databases deleted (`SYS.Mirror.RemoveMirrorConfiguration` with `DeleteDB`, `RemoveOneMirrorSet` with `DeleteDBs`) is refused from either caller; its code is named at Story 21.2's spec gate. It is the one backup or mirroring action in the set beyond the self-protection arms above, which reach OcuPilot's own and the protected databases through these paths too, by effect. Every other backup and mirroring write, the same removal keeping its databases included, is a confirmed proposal whose destructive key defaults to disabled (FR-72; owner 2026-09-23, developer tool first). Writes are never frozen without a bound: every external freeze OcuPilot issues, from either caller, carries a bounded suspend limit; the bound, its mechanism, and how it holds where `Backup.General` ignores `WDSuspendLimit` (a clustered system) are measured in Story 21.2.
+
 ### AD-11 — Untrusted content never becomes instruction
 
 - **Binds:** NFR-6, FR-13, FR-15; screen context, tool results, log text, audit entries, entity names and comments
