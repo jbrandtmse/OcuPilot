@@ -7664,14 +7664,14 @@ So that the first area reaches parity for document database applications. [AMEND
 ### Story 18.31: Privileged routine applications
 
 As a developer-administrator,
-I want the privileged routine applications list and editor,
-So that the first area reaches parity for privileged routine applications. [AMENDED 2026-10-09, orchestrator ruling on Story 18.10's plan: split from Story 18.10 for size, Rule 5; after Story 18.30, building on Story 18.10's AD-10 arm and target-type check]
+I want the privileged routine applications list and editor's General tab,
+So that the first area reaches parity for privileged routine applications. [AMENDED 2026-10-09, orchestrator ruling on Story 18.10's plan: split from Story 18.10 for size, Rule 5; after Story 18.30, building on Story 18.10's AD-10 arm and target-type check] [AMENDED 2026-10-10, orchestrator ruling on Story 18.31's plan: split for size, Rule 5; the Application roles, Matching roles and Routines tabs, the database list and the `%All` grant check moved to Story 18.33]
 
 **Acceptance Criteria:**
 
 - **Given** the privileged routine applications
-- **When** each is created, changed or deleted, through its list, its editor and its three tools
-- **Then** it round-trips through the admin API, a target that is not a privileged routine application is refused, and OcuPilot's own two are refused under Story 18.10's AD-10 arm.
+- **When** each is created, changed or deleted over its `Description`, `Enabled` and `Resource`, through its list, its editor's General tab and its three tools
+- **Then** it round-trips through the admin API, the update resending the freshly read roles and routines, a target that is not a privileged routine application is refused, and OcuPilot's own two are refused under Story 18.10's AD-10 arm.
 
 - DW-2252: A web-application write naming a privileged routine application reaches WebApp.App PUT, which refuses #799 at 500 INTERNAL and logs at severity 2; only OcuPilot's own two are refused before it (ledger; routed by cr 2026-10-09)
 - DW-2262: PRIVROUTINE.TYPE lives in PctAccessError rather than a privileged-routine home (ledger; routed by orchestrator 2026-10-10)
@@ -7692,6 +7692,22 @@ So that the first area reaches parity for REST services. [AMENDED 2026-10-09, or
 - **Given** the agent proposes a create
 - **When** it is minted and again at Confirm
 - **Then** the generated classes land only in the namespace's own routines database, never in `%SYS`, under a `%` name or as `OcuPilot*`; the create's key ships enabled and the delete's, destructive, ships disabled (AD-22).
+
+### Story 18.33: Privileged routine application roles and routines
+
+As a developer-administrator,
+I want a privileged routine application's roles, matching roles and routines,
+So that the privileged routine application editor reaches parity with the classic page. [AMENDED 2026-10-10, orchestrator ruling on Story 18.31's plan: split from Story 18.31 for size, Rule 5; after Story 18.31]
+
+**Acceptance Criteria:**
+
+- **Given** a privileged routine application's Application roles, Matching roles and Routines tabs
+- **When** a role, a matching role or a routine is added or removed, through the editor and its tools
+- **Then** it round-trips through the admin API, the update sending the complete roles and routines sets, with the database list the Routines tab offers, and OcuPilot's own two refused under Story 18.10's AD-10 arm.
+
+- **Given** a change that would grant `%All` or an `%Admin_*` privilege through a role, a matching role or a routine
+- **When** it is proposed
+- **Then** it is confirmed at the destructive treatment naming the privilege (AD-10 as amended 2026-09-23).
 
 ## Epic 19: Stage 3 - System Explorer over the Atelier API
 

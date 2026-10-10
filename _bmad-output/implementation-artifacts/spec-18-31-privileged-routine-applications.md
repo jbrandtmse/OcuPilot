@@ -2,7 +2,7 @@
 title: 'Story 18.31: Privileged routine applications'
 type: 'feature'
 created: '2026-10-10'
-status: 'blocked'
+status: 'draft'
 baseline_commit: 'd4be0dc200f1df903669dd692e3533e00bdf8529'
 review_loop_iteration: 0
 followup_review_recommended: false
@@ -18,7 +18,7 @@ deferred: []
 
 **Problem:** Privileged routine applications are `Security.Applications` type 4, behind the classic `%CSP.UI.Portal.Applications.PrivRoutineList` and `.PrivRoutine` pages, gated by `%Admin_Secure`. They are classic-only: `AdminPort` answers `Security.PrivilegedRoutine` writes 501, and a web-application write naming one fails as a logged 500 (DW-2252).
 
-**Approach:** A Web applications list at position 5. An unlisted editor with the classic page's tabs: General, Application roles, Matching roles, and Routines and classes. Four tools, `webapp.routineapps.read`, `.create`, `.update` and `.delete`. OcuPilot's own two are refused by Story 18.10's arm, extended to the new type.
+**Approach:** A Web applications list at position 5. An unlisted editor with the classic page's General tab. Four tools: `webapp.routineapps.read`, `.create`, `.update` and `.delete`, over `Description`, `Enabled` and `Resource`. The update resends the freshly read roles and routines, because the vendor empties routines it isn't sent. OcuPilot's own two are refused by Story 18.10's arm, extended to the new type. The Application roles, Matching roles and Routines tabs, the database list and the `%All` grant check are Story 18.33's (orchestrator ruling on this story's first plan, 2026-10-10: split for size, Rule 5).
 
 ## Boundaries & Constraints
 
@@ -161,6 +161,8 @@ Paths are under `src/OcuPilot/` unless they start with `ui/`. **Analog: Story 18
 - **Integration.** On `ocupilot-ci`, the page consumes the three routes and the screen actions, and the agent the four tools (C1-C6 and the browser spec).
 
 ## Spec Change Log
+
+- 2026-10-10, lead: the orchestrator ruled to split for size. 18.31 keeps the list, the General tab and the four tools over `Description`, `Enabled` and `Resource`, plus DW-2252, DW-2262 and DW-2279 (conditional on 20.3). The roles, matching roles and routines tabs, the database list and C6 move to 18.33, whose plan is seeded from this spec's first version (commit `18436f8d`). The status is reset to `draft` for a re-plan.
 
 ## Review Triage Log
 
