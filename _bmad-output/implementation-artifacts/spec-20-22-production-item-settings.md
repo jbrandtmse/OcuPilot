@@ -2,7 +2,7 @@
 title: 'Story 20.22: Production item settings'
 type: 'feature'
 created: '2026-10-10'
-status: 'ready-for-dev'
+status: 'draft'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -24,6 +24,7 @@ deferred: []
 
 **Always:**
 
+- **Path settings keep PathPort's self-protection refusals** (orchestrator ruling under its grant, 2026-10-09, feature dbaee68c; AD-10's self-protection family; the owner's "keep only self-protection" and 09-29 "nothing writes into the manager directory"), from either caller, evaluated at the mint and again at the write: a directory setting is refused for the manager directory itself (`PATH.MANAGERDIR`) and for the served directory or anything under it (`PATH.SERVED`); a file setting is refused for a file directly in the manager directory (`PATH.MANAGER`) or under the served directory (`PATH.SERVED`). The predicates and codes are PathPort's own (`IsManagerDirectory`, `InServedDirectory`, `DirectlyInManagerDirectory`), reused, never copied (Rule 31). Every other path is accepted as its declaring class validates it. The plan measures whether an accepted ancestor directory whose item descends into subdirectories (an inbound adapter's subdirectory levels) can reach a protected directory, and either refuses that case or names it as a limit in AD-21's ninth case.
 - A setting whose name the Conventions › Secrets pattern matches (`Kernel/Audit/Log.IsCredentialName`) has its value and default answered empty by the port, with `Secret` true. So neither ever reaches the screen, a tool, the context or the ledger. Its set and reset are refused `INTEROP.SETTING.SECRET` from both callers, before any vendor call.
 - Every other setting is shown, reaches the model through AD-60, and is settable by both callers. Its value is validated by the class that declares it: Core by `Ens.Config.Item.<Name>IsValid`, Host by the item's class, Adapter by `AdapterClassName()`.
 - A server-path setting (editor context `directorySelector` or `fileSelector`) is set as its class validates it, under AD-21's new named case, and the card names it a location on the server (`INTEROP.SETTING.LOCATION`).
@@ -290,6 +291,8 @@ deferred: []
 - **AC8 (navigation):** Given a confirmed setting write, when its toast is opened, then Item settings opens on that item; and a Production items toast opens on its production.
 
 ## Spec Change Log
+
+- 2026-10-10, runner, orchestrator ruling (feature dbaee68c): path settings keep PathPort's self-protection refusals (Always); status reset to draft for a re-plan that adds the refusals, their tests and the subdirectory-descent measurement.
 
 ## Review Triage Log
 
