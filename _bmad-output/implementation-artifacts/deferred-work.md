@@ -10906,8 +10906,15 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-30-doc-db-applications.md | severity: med | fix-risk: med | footprint: in-epic
 - evidence: 18.30's code map copies the MFT slice's Rules/Save/form shape because one slice may not depend on another (stated reason); 18.25 Superserver and 18.26 MFT are the siblings
 - 2026-10-10T10:42:42Z status=routed owner=range-end-cleanup by=harvest note=unify behind a kernel base the slices extend; recorded at the 18.30 spec gate
+- 2026-10-10T12:49:19Z occurrence=18-30-doc-db-applications
 
 ### DW-2279: MappingMint's empty-namespace refusal names a 'mapping' for the Doc DB application tools
 - source: spec-18-30-doc-db-applications.md | severity: low | fix-risk: low | footprint: in-epic
 - evidence: 18.30 reuses MappingMint unchanged because Epic 20's 20.3 is editing it (Rule 11)
 - 2026-10-10T10:42:42Z status=routed owner=18-31-privileged-routine-applications by=harvest note=once 20.3 is on feature, give MappingMint a per-tool noun parameter and set it for the Doc DB tools
+- 2026-10-10T12:49:19Z occurrence=18-30-doc-db-applications
+
+### DW-2280: IRIS defect candidate: the admin API's DocDB PUT answers a Description over 256 characters with a logged 500 rather than a field refusal
+- source: spec-18-30-doc-db-applications.md | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: measured in 18.30's implement on ocupilot-ci; the vendor DocDB endpoint
+- 2026-10-10T12:49:19Z status=decision-pending owner=burndown by=harvest note=owner_hold: IRIS defect candidate, never reported upstream

@@ -29,7 +29,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 09-09-2026 07:49
-last_updated: '10-10-2026 10:42'
+last_updated: '10-10-2026 15:42'
 project: OcuPilot
 project_key: NOKEY
 tracking_system: file-system
@@ -304,7 +304,7 @@ development_status:
   18-27-the-operator-s-read-only-ldap-view: done
   18-28-sql-column-and-admin-privileges: done
   18-29-role-members-admin-option-user-copy-from-and-password-valida: done
-  18-30-doc-db-applications: in-progress
+  18-30-doc-db-applications: review
   18-31-privileged-routine-applications: backlog
   18-32-spec-based-rest-services: backlog
   epic-18-retrospective: optional

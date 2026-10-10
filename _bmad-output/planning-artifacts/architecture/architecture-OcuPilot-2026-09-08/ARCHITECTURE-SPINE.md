@@ -445,7 +445,7 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
 
   **A `screen-permission` id is the screen's `toolIdentifier`, kept exactly** (Story 20.15) [AMENDED 2026-10-07, Story 20.15 spec gate, Rule 20].
 
-  **A `doc-db-application` id is `[Namespace, Name]`** [AMENDED 2026-10-10, Story 18.30 spec gate, Rule 20], as `MappingMint` and `NamespacePort` expect; it takes `foldcase`, since the instance resolves both parts in any case.
+  **A `docdb-application` id is `[Namespace, Name]`** [AMENDED 2026-10-10, Story 18.30 spec gate, Rule 20], as `MappingMint` and `NamespacePort` expect; it takes `foldcase`, since the instance resolves both parts in any case.
 
 ### AD-14 — A confirmed write emits one change event; screens re-fetch, never patch
 

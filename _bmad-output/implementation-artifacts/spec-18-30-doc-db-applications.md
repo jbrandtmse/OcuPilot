@@ -3,6 +3,7 @@ title: 'Story 18.30: Doc DB applications'
 type: 'feature'
 created: '2026-10-10'
 status: 'done'
+baseline_commit: '7e2006816d9e0f49327717c5c19294392511581b'
 baseline_revision: '7e2006816d9e0f49327717c5c19294392511581b'
 review_loop_iteration: 0
 followup_review_recommended: false
