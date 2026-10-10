@@ -4,8 +4,8 @@
 /// an item write's <code>%Ens_ProductionConfig:WRITE</code>, READ on <code>USER</code>'s database or, for a
 /// write, WRITE on it -- is refused 403 naming that pair through the port, on the screen routes, on the Save
 /// route and on each tool's pairs, before any vendor call, so a refused call changes no item; a principal
-/// holding exactly the set lists and reads the items, disables, enables, adds and removes one, and does the
-/// same through the screen.</p>
+/// holding exactly the set lists and reads the items and disables, enables, adds and removes one through the
+/// port, and reads, disables and enables one through the screen.</p>
 /// <p>The routines database's own WRITE (a resource the globals database's cannot stand in for) and a
 /// namespace under source control are arranged in process through <class>OcuPilot.Test.InteropItemSeam</class>,
 /// because <code>USER</code> keeps both databases behind one resource and no throwaway can be put under
@@ -84,8 +84,11 @@ Method OnBeforeAllTests() As %Status
     Set tSC = $ClassMethod(..#PROBE, "Remove")
     If $$$ISERR(tSC) Quit tSC
     Set tSC = $ClassMethod(..#PROBE, "Create")
-    If $$$ISERR(tSC) Quit tSC
-    Quit ..EnsurePrincipals()
+    If $$$ISERR(tSC) Quit $$$ADDSC(tSC, ..OnAfterAllTests())
+    Set tSC = ..EnsurePrincipals()
+    ; %UnitTest skips OnAfterAllTests when this method fails, so a failed setup removes what it made here.
+    If $$$ISERR(tSC) Set tSC = $$$ADDSC(tSC, ..OnAfterAllTests())
+    Quit tSC
 }
 
 /// <p>Remove the probe, the principals and their roles; a failing status when any survives.</p>
@@ -180,12 +183,14 @@ Method TestEachMissingPairIsRefusedByNameOnEachTool()
 
 /// <p>AC4: on the screen routes each principal is refused naming the pair its read or action needs, before
 /// the production's items are read or written: the Items list's read, the Disable row action, and the Save
-/// that adds an item; a principal without READ on the namespace's database is refused at the namespace entry,
-/// <code>NS.DENIED</code>, before any pair of the route; and the exact principal reads the list and disables
-/// and enables an item through the screen.</p>
+/// that adds an item, the last also for a body the rules after the gate would refuse, so the refusal is the
+/// Save's own gate and not a later one; a principal without READ on the namespace's database is refused at the
+/// namespace entry, <code>NS.DENIED</code>, before any pair of the route; and the exact principal reads the
+/// list and disables and enables an item through the screen.</p>
 /// <p>Mutation (Rule 19): drop <code>%Ens_ProductionConfig:WRITE</code> from
 /// <method>OcuPilot.Screen.Tool.InteropItemAction.PrivilegePairs</method> -- the action and Save rows go
-/// red.</p>
+/// red; delete the <code>..Gate</code> call from <method>OcuPilot.Area.Interop.ItemSave.HandleCreate</method> --
+/// the illegal-name Save rows go red.</p>
 Method TestEachMissingPairIsRefusedByNameOnTheScreenRoutes()
 {
     Set tBase = $Parameter("OcuPilot.Test.Http", "BASEPATH")
@@ -203,6 +208,9 @@ Method TestEachMissingPairIsRefusedByNameOnTheScreenRoutes()
         Do tSave.%Set("Name", ..#ADDED, "string")
         Set tStatus = ..Post("/interop/items", tSave, $List(tCase, 1), .tRaw)
         Do $$$AssertEquals(tStatus _ " " _ ..FailedPair(tRaw), "403 " _ $List(tCase, 2), $List(tCase, 1) _ ": the Save is refused naming the pair: " _ $Get(tRaw))
+        Do tSave.%Set("Name", "-OcuP203Bad", "string")
+        Set tStatus = ..Post("/interop/items", tSave, $List(tCase, 1), .tRaw)
+        Do $$$AssertEquals(tStatus _ " " _ ..FailedPair(tRaw), "403 " _ $List(tCase, 2), $List(tCase, 1) _ ": a Save of an illegal name is refused naming the pair, not the name: " _ $Get(tRaw))
     }
     Do $$$AssertEquals($ClassMethod(..#CONTROL, "Items"), ..#BASELINE, "no refused request changed an item")
     Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("GET", tBase _ ..#SCREEN _ "/read?ns=" _ ..#NAMESPACE _ "&production=" _ ..#PRODUCTION _ "&maxRows=5", "OcuP203Exact", ..PreparedPassword, .tStatus, .tRaw)

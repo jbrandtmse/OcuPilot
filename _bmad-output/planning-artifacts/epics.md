@@ -8545,6 +8545,8 @@ So that a host's configuration is changed where it is listed rather than in the 
 - **When** it is planned
 - **Then** the question is returned to the orchestrator for the owner, with options and a recommendation.
 
+- DW-2268: InteropItemAction copies InteropProductionAction's IdArgument, IdParam, SettableFields, Consequence, PortQuery and PrivilegePairs with only values changed; extend a shared parent when the settings tools join them (Rule 31) (ledger; routed by cr 2026-10-10)
+
 ---
 
 ## Epic 21: Stage 5 - custom-REST parity from the MCP suite's handlers

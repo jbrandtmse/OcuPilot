@@ -248,6 +248,51 @@ deferred:
 - **AC5 (Update applies it, integration):** Given a running production with an item disabled, or added enabled, through OcuPilot, when 20.2's Update is confirmed, then the disabled item's job stops, or the added item's starts, and the production reads up to date.
 - **AC6 (DW-2157, DW-2162):** Given a stop that ends Suspended, or jobs that outlast the cap, when stop or restart runs, then it answers its own code and sentence. The row shows the state the production was left in, and the stop and restart consequences name a partial stop.
 
+### Review Findings
+
+Code review, 2026-10-10 (four layers, full-opus: Blind Hunter, Edge Case Hunter, Verification Gap, Acceptance Auditor). 37 rows: high 1, medium 9, low 25, false 2. Patched 19; ledgered 11 (one routed, ten terminal); rejected 7.
+
+- [x] [Review][Patch] (high, AD-62 rules 2-3, AD-29) The port's public `ProductionHeld` and `AddViolations` switched into a namespace and called vendor classes outside the port's gate, so the Add's Save in a namespace without interoperability answered a logged 500, not 409 `INTEROP.NAMESPACE`. `Invoke`'s gate is now `Admit`, and both helpers call no vendor class unless it admits [src/OcuPilot/Port/InteropPort.cls:413]
+- [x] [Review][Patch] (med) An agent's add confirmed while the shell is scoped to another namespace was judged there (`ConfirmProblem` read the request's scope): a false 400, or a 500 in a namespace without interoperability. The add's stored arguments now carry the minted namespace [src/OcuPilot/Screen/Tool/InteropItemMint.cls:29, src/OcuPilot/Screen/Tool/InteropItemAdd.cls:129]
+- [x] [Review][Patch] (med) Enable or disable of an item whose class the vendor types as no host reached `EnableConfigItem`, which answers `ErrConfigItemNotFound`, as a logged 500. Now 404, unlogged, before the vendor call [src/OcuPilot/Port/InteropPort.cls:882]
+- [x] [Review][Patch] (med) The copy-out item script opened the production at concurrency 4 and never let it go, so a terminal that ran it kept the production's exclusive lock [src/OcuPilot/Port/InteropPort.cls:1371]
+- [x] [Review][Patch] (med, Rule 31) `InteropItemControl` copied `InteropControl`'s `State`, `LastStart` and `Act`, the pattern P9 removed from `InteropItemGate`; it now reads them through `PRODUCTIONS` [src/OcuPilot/Test/InteropItemControl.cls:28]
+- [x] [Review][Patch] (med, verification-gap) No test could fail if the Save's own gate were removed, because the port's later gate answered the same 403; the Save now also posts an illegal name per principal [src/OcuPilot/Test/InteropItemGate.cls:211]
+- [x] [Review][Patch] (med, verification-gap) The port's routines-database lookup was tested only through the seam's override [src/OcuPilot/Test/InteropItemGateSplit.cls:155]
+- [x] [Review][Patch] (med, verification-gap) The `Enabled`, `Category` and `Comment` shape checks of `AddViolations` had no test of their own (P5 was partial) [src/OcuPilot/Test/InteropItemRefusals.cls]
+- [x] [Review][Patch] (med, Rule 30) A setup failure after the split namespace, the probe or some principals were made left them on the instance, since %UnitTest skips `OnAfterAllTests` then [src/OcuPilot/Test/InteropItemGateSplit.cls:89, src/OcuPilot/Test/InteropItemGate.cls:87]
+- [x] [Review][Patch] (low) A remove of an item a system default keeps enabled said "Disable this item first", which a disable then refuses; it now answers `DEFAULTSETTING` [src/OcuPilot/Port/InteropPort.cls:870]
+- [x] [Review][Patch] (low) The `ITEM` read with no action answered a duplicated name 200, though the Task says `Count > 1` is `AMBIGUOUS` [src/OcuPilot/Port/InteropPort.cls:1009]
+- [x] [Review][Patch] (low) `PerformItem`'s catch restored the namespace while the concurrency-4 reference was still held, so the lock would be released in the caller's namespace. No pinning test: no reachable exception after the open was found (probed: `SaveToClass` beside an item with a missing class answers OK) [src/OcuPilot/Port/InteropPort.cls:1146]
+- [x] [Review][Patch] (low) `PerformItem`'s doc said a failed audit record is logged; the vendor drops a disabled event without an error [src/OcuPilot/Port/InteropPort.cls:1051]
+- [x] [Review][Patch] (low) The dialog's Category and Comment fields named caption ids that are never drawn, and Enabled's caption was not linked [ui/src/app/areas/interoperability/interop-item-add-dialog.ts:213]
+- [x] [Review][Patch] (low) A refusal on `Production` or `Enabled`, which the dialog draws no field for, blanked the dialog's reason [ui/src/app/areas/interoperability/interop-item-add.store.ts:232]
+- [x] [Review][Patch] (low) An add dismissed while in flight published no change, so the list stayed stale [ui/src/app/areas/interoperability/interop-item-add.store.ts:195]
+- [x] [Review][Patch] (low) The name hint left out the control-character and asterisk rules (`strings.ts` and `EXPERIENCE.md`:604) [ui/src/app/core/strings.ts:6273]
+- [x] [Review][Patch] (low) Three test headers claimed more than their tests assert: `InteropItemRefusals`, `InteropItemGate` and `interop-stop-confirm.browser-spec.mjs` [src/OcuPilot/Test/InteropItemRefusals.cls:5]
+- [x] [Review][Patch] (low, Rule 19) The draft test's fourth term was always true for the add and remove rows [src/OcuPilot/Test/InteropItemControl.cls:517]
+- [x] [Review][Defer] (med, Rule 31) `InteropItemAction` copies `InteropProductionAction`'s id, settable-field, consequence, port-query and pair methods with no stated reason; a shared base needs 20.2's class [src/OcuPilot/Screen/Tool/InteropItemAction.cls] — DW-2268, routed to 20-22-production-item-settings
+- [x] [Review][Defer] (low) The item tools' pairs read the confirming request's namespace at a confirm (DW-2242's root cause) — occurrence on DW-2253
+- [x] [Review][Defer] (low, Rule 31) The Add store, dialog and page follow docdb-create's shape; 56 stores share it and the slice rule forbids extending another area's — DW-2269, wontfix-accepted
+- [x] [Review][Defer] (low, Rule 31) `ItemSave`'s leaf helpers copy `DocDbSave` and `MftConnectionSave`; the stated reason covers only the order — DW-2270, wontfix-accepted
+- [x] [Review][Defer] (low, Rule 31) `InteropPort.Violations` re-implements `AgentRules.ViolationsJson`; no port names that class — DW-2271, wontfix-accepted
+- [x] [Review][Defer] (low) Case-insensitive name matching against a target id in the caller's spelling — DW-2272, wontfix-accepted
+- [x] [Review][Defer] (low) The mint's field rules run the agent-named host class's own methods — DW-2273, wontfix-theoretical
+- [x] [Review][Defer] (low) A failed concurrency-4 open read as 503 — DW-2274, wontfix-theoretical
+- [x] [Review][Defer] (low) P7's log line has no test — DW-2275, wontfix-accepted
+- [x] [Review][Defer] (low) The item copy-out scripts are never executed — DW-2276, wontfix-accepted
+- [x] [Review][Defer] (low) Registry's criteria sentence still says "five ports alone" — DW-2277, wontfix-accepted
+
+Rejected:
+
+- `false`: a remove of a disabled item whose job still runs on a running production. The job stops at the next Update, the effect the disable already left pending.
+- `false`: in-place edits in the spec's add-only files. Epic 18's head is an ancestor of this branch, and Story 23.6 touches none of those files.
+- `low`: `ReadTool`'s assertion-message counts. That is message prose in a contended roster line, and no assertion changes.
+- `low`: `InteropProductionStop.SUSPENDEDCODE` duplicates `InteropError.SUSPENDED`. A test pins the two equal.
+- `low`: no standing positive control for the seam's log capture. P6's recorded mutations meet Rule 19.
+- `low`: AC2's running-production leg drives only the person's writes. Both callers run one operation (AD-53).
+- `low`: `InteropItemControl` is over 500 lines. It is 533 after the helpers above were removed.
+
 ## Spec Change Log
 
 - 2026-10-09, runner, orchestrator rulings (by=merge_gate, feature 67e70c72): split approved, so item settings (the Item settings list, set, reset, the setting entity type, secret-named settings) move to Story 20.22, which reads the first plan at `git show 6def26fa:_bmad-output/implementation-artifacts/spec-20-3-production-items.md`; Q2 A (configuration and class only; 20.2's Update applies; remove refused while enabled); Q3 cleared on union terms. Status reset to draft for a re-plan.
@@ -456,6 +501,32 @@ deferred:
 - Client: `npm run test:tools` 1,905 of 1,905; `npm run test:components` 2,778 of 2,778; the production build's initial total is 3,209,276 bytes (3,190,503 before), under `maximumWarning` 3326kB, so `angular.json` is unchanged.
 - Browser, each file run alone against a redeployed bundle: `interop-items` 3 of 3, `interop-productions` 5 of 5, `a11y-structural-invariants` 13 of 13 with `interoperability/productions/items` in `SKIP`, since HSCUSTOM holds no production.
 - `check-objectscript.py` over the 44 changed or new classes: 0 problems. `lint-docs.sh`: 0 issues in 264 files.
+
+**QA (ocupilot-b-ci, 2026-10-09; each mutation reverted byte-identical, the tree recompiled or the bundle rebuilt and redeployed after each).**
+
+- (QA) `src/OcuPilot/Test/InteropItemIdentity.cls` (2 tests, run 720), `src/OcuPilot/Test/InteropItemGateSplit.cls` (1 test, run 719), `ui/browser/interop-stop-confirm.browser-spec.mjs` (2 of 2, each leg also alone); `scripts/ci-throwaway.sh` gains their `# classes:` line.
+- mutation: P2 at runtime, the `PRODUCTION_STATE_MOVED` publication skipped in `TurnStore.decideProposal` (bundle rebuilt and redeployed, then restored and redeployed) -> red: both legs of `interop-stop-confirm.browser-spec.mjs` (0 of 2).
+- mutation: AC2 identity (AD-13), `PerformItem`'s enable and disable branch taking its name from the production's first item -> red: `InteropItemIdentity.TestAnAgentsWriteMintedBeforeACompileReachesTheNamedItemAfterIt` (1 of 2, run 711); `ItemObject` answering the production's last item -> red: `TestARemoveAfterACompileTakesTheNamedItemAmongSeveral` (1 of 2, run 712).
+- mutation: AC4 tools, `InteropItemAction.PrivilegePairs` iterating the globals database only (the four tools recompiled) -> red: `InteropItemGateSplit` (1 of 1, run 715), each tool's routines-database row and declared-pairs row.
+- mutation: roster, the two classes dropped from `ci-throwaway.sh`'s `# classes:` lines -> red: `ci.test.mjs` "each arming roster names exactly the classes that declare that variable".
+- Gates: each of the four tools' pairs is pinned singly. `%Ens_Portal:USE`, `%Ens_ProductionConfig:READ`, `:WRITE` and the globals WRITE by `InteropItemGate.TestEachMissingPairIsRefusedByNameOnEachTool` and the exact-set leg of `InteropItemDescriptor`; the routines WRITE, which `USER` cannot withhold alone, by `InteropItemGateSplit` in a namespace over `USER` (globals) and `HSCUSTOM` (routines). The Add's classic-page resource is the configuration WRITE pair, deduplicated, so it has no leg of its own. The port's routines pair keeps its seam leg: a port call scoped to the split namespace answers 409 `INTEROP.NAMESPACE` first (read on the instance), because the namespace runs no interoperability.
+- Not covered: P7's log line, because nothing reachable through `PerformItem` makes `AuditModifyProductionConfig` fail; a test needs the audit call behind an overridable method of the port.
+- Results: `InteropItemControl` 6, `InteropItemGate` 5, `InteropItemGateSplit` 1, `InteropItemIdentity` 2, run in that order, all green; `ci.test.mjs` 87 of 87; `test:tools` 1,905 of 1,905; `client-lint.mjs` and `browser-reset.mjs` clean; `check-objectscript.py` over the two new classes: 0 problems.
+
+**Code review (ocupilot-b-ci, 2026-10-10; each mutation reverted byte-identical and the tree reloaded).**
+
+- mutation: review high, the `Admit` check dropped from `AddViolations` -> red: `InteropItemRefusals.TestASaveInANamespaceWithoutInteroperabilityIsRefusedByTheGate` (run 731).
+- mutation: the namespace read from the request's scope alone in `InteropItemAdd.ArgumentProblem` -> red: `InteropItemIdentity.TestAnAddConfirmedFromAnotherScopeIsJudgedAndWrittenWhereItWasMinted` (1 of 3, run 733).
+- mutation: `VendorCannotFind` answering 0 -> red: `InteropItemRefusals.TestAnItemTheVendorCannotTypeIsAbsentToAnEnableAndADisable` (run 731).
+- mutation: the last line of `ItemSnippet` dropped -> red: `InteropItemDescriptor.TestTheScriptForms` (run 732).
+- mutation: the remove's `DEFAULTSETTING` line dropped from `ItemRefusalToken` -> red: `InteropItemDescriptor.TestTheItemRefusalMatrix` (run 732).
+- mutation: `ReadItem`'s no-action `AMBIGUOUS` dropped -> red: `InteropItemRefusals.TestATakenNameAndADuplicatedNameAreRefused` (run 731).
+- mutation: the `Enabled` shape line dropped from `AddViolations` -> red: `InteropItemRefusals.TestThePortsOwnAddJudgesTheFieldsItself` (run 731; that run applied the four mutations above with the three refusals rows, and exactly those four tests went red, 4 of 8).
+- mutation: `ItemSave.HandleCreate` without its `..Gate` call -> red: `InteropItemGate.TestEachMissingPairIsRefusedByNameOnTheScreenRoutes`, the four illegal-name Save rows alone (run 734).
+- mutation: `InteropPort.RoutineResource` calling `GlobalDatabase` -> red: `InteropItemGateSplit.TestThePortNamesTheRoutinesDatabaseItsGateAsksFor` (1 of 2, run 735).
+- Rule 30: `CreateSplit`'s read-back forced to fail -> the class reported its setup error (run 736) and `Config.Namespaces.Exists("OCUP203SPLIT")` read 0 afterwards.
+- mutation: client, Category described by `describedBy` again, every member counted as drawn in `refuse`, and an early return when the generation moved -> red: the dialog's describes-each-field leg and the store's two new legs (3 of 12).
+- Results: `InteropItemDescriptor` 9, `InteropItemGateSplit` 2, `InteropItemRefusals` 8, `InteropItemIdentity` 3, `InteropItemGate` 5, `InteropItemControl` 6, `InteropDescriptor` 12, `InteropGate` 4, `InteropControl` 11 and `InteropStopOutcome` 4, all green (runs 721-730); the five mutated classes green again on the restored tree (runs 737-741). `test:tools` 1,905 of 1,905; `test:components` 2,781 of 2,781; initial bundle 3,209,473 bytes; `interop-items.browser-spec.mjs` 3 of 3 on the redeployed bundle. No split namespace, `OcuP203*` user or `ocup203` application remains.
 
 ## Auto Run Result
 

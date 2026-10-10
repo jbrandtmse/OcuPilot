@@ -10274,6 +10274,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-07T16:08:56Z status=open owner=20-2-productions-listed-and-controlled by=harvest note=unverified; settle with a stop against a probe holding queued messages and a read of the answer
 - 2026-10-07T18:13:30Z status=decision-pending owner=burndown by=adjudication note=product call, same family as DW-2162: recommended route to 20.3 (extends InteropPort): a stop answers the state its post-write read finds, with a code and a Fixed-strings sentence when the production ends Suspended
 - 2026-10-07T18:58:44Z status=routed owner=20-3-production-items by=merge_gate note=orchestrator ruling 2026-10-07: a stop answers the state its post-write read finds, with a new INTEROP code and Fixed-strings sentence when the production ends Suspended
+- 2026-10-10T08:30:23Z status=resolved-by:20-3-production-items by=adjudication note=AC6: a stop that ends Suspended answers 409 INTEROP.PRODUCTION.SUSPENDED, applied and marked (InteropStopOutcome; interop-stop-confirm browser spec's Suspended leg refreshes the row)
 
 ### DW-2158: InteropControl's row-action test stops straight after a restart with no settle, which may flake
 - source: spec-20-2-productions-listed-and-controlled.md | severity: low | fix-risk: low | footprint: in-story
@@ -10301,6 +10302,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-07T22:38:19Z occurrence=18-26-managed-file-transfer-connections
 - 2026-10-07T18:44:36Z status=decision-pending owner=burndown by=merge_repair note=restored: the 15:41:54Z occurrence=18-25-superservers line above is DW-2149's, moved here by a union merge; DW-2162 has no 18.25 occurrence
 - 2026-10-07T18:58:44Z status=routed owner=20-3-production-items by=merge_gate note=orchestrator ruling 2026-10-07: a stop or restart left half-stopped past the cap answers its own INTEROP code and Fixed-strings sentence, not a generic 500, and the card says so
+- 2026-10-10T08:30:23Z status=resolved-by:20-3-production-items by=adjudication note=AC6: jobs outlasting the cap answer 409 INTEROP.PRODUCTION.PARTSTOPPED, unlogged, with the reworded consequences (InteropStopOutcome; interop-stop-confirm's partial-stop leg)
 
 ### DW-2150: The serving-superserver arm's real ServingSuperserverPort() (the $PRINCIPAL read) is never driven to a non-empty answer by a test; SuperserverSet overrides it and the real-HTTP legs serve through the system default
 - source: spec-18-25-superservers.md | severity: med | fix-risk: low | footprint: in-footprint
@@ -10831,6 +10833,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: ExplorerWrite.PrivilegePairs reads Kernel.Scope.Current() at Confirm while ExplorerWrite.PortQuery sends the re-read and write to the payload's Namespace; a USER compile or delete confirmed at ?ns=HSCUSTOM is gated on HSCUSTOM's WRITE (false refusal only: the port's own WritePairs checks USER). 20.20's spec forbids changing these pairs.
 - 2026-10-09T15:04:14Z status=escalated owner=burndown by=cr note=fix would store Namespace in their mint args and read it in ArgumentPairs, as 20.20 did for saves and creates
 - 2026-10-09T23:09:46Z status=routed owner=burndown by=orchestrator note=decided: false refusal only (the port checks WRITE on the target namespace itself, so nothing is wrongly allowed); fix as 20.20 did for saves and creates (store Namespace in the mint args, read it in ArgumentPairs) in Epic 20 close burn-down; not release-blocking
+- 2026-10-10T08:25:19Z occurrence=20-3-production-items
 
 ### DW-2255: CI flake: ClassicPageGate.TestAnAssignedPageGatesEveryDeclaringToolOnTheAgentsCaller read its child process as not having run as the probe principal, so every later refusal assertion failed
 - source: cycle-log-epic-20.md (run 37952814550 attempt 1) | severity: med | fix-risk: low | footprint: out-of-footprint
@@ -10847,3 +10850,53 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-20-3-production-items.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: Descriptor/InteropItemList.cls names both keys; strings.test.mjs 'every value is unique' refused a new key of either value
 - 2026-10-10T03:09:55Z status=wontfix-accepted owner=20-3-production-items by=harvest note=reopen_if=a translation or a wording change needs the Production items label or column to differ from the existing keys
+
+### DW-2268: InteropItemAction copies InteropProductionAction's IdArgument, IdParam, SettableFields, Consequence, PortQuery and PrivilegePairs with only values changed, and no reason is stated (Rule 31)
+- source: spec-20-3-production-items.md | severity: med | fix-risk: med | footprint: in-epic
+- evidence: Screen/Tool/InteropItemAction.cls:61-185 against Screen/Tool/InteropProductionAction.cls:68-180; neither the spec's Code Map, Design Notes nor commit 4dffa796 gives a reason; a shared base needs 20.2's class
+- 2026-10-10T08:25:19Z status=routed owner=20-22-production-item-settings by=cr note=extract one abstract interop action base (state field and database list as parameters) when 20.22 adds its item tools
+
+### DW-2269: Production items' Add store, dialog and page follow docdb-create's shape with only the fields changed, and no reason is stated (Rule 31)
+- source: spec-20-3-production-items.md | severity: low | fix-risk: high | footprint: out-of-footprint
+- evidence: areas/interoperability/interop-item-add.store.ts against areas/system-explorer/docdb-create.store.ts; 56 stores repeat the generation-guard pattern and a slice may not extend another area's store, so sharing means a new core base
+- 2026-10-10T08:25:19Z status=wontfix-accepted owner=20-3-production-items by=cr note=reopen_if=a shared create-dialog store base lands in ui/src/app/core
+
+### DW-2270: ItemSave's Gate, Body, Unexpected, Prohibited and CallerFields copy DocDbSave and MftConnectionSave; the stated reason (its own order) covers HandleCreate and Create, not these leaf helpers (Rule 31)
+- source: spec-20-3-production-items.md | severity: low | fix-risk: high | footprint: out-of-footprint
+- evidence: Area/Interop/ItemSave.cls:187-292 against Area/Explorer/DocDbSave.cls and Area/Security/MftConnectionSave.cls:224; the slice rule forbids one area calling another's, so the share is a kernel Save helper
+- 2026-10-10T08:25:19Z status=wontfix-accepted owner=20-3-production-items by=cr note=reopen_if=a fourth Area Save copies these helpers, or a kernel Save helper is introduced
+
+### DW-2271: InteropPort.Violations re-implements Kernel.AgentRules.ViolationsJson's field, code and reason array (Rule 31)
+- source: spec-20-3-production-items.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: Port/InteropPort.cls Violations against Kernel/AgentRules.cls:405; no port names Kernel.AgentRules today, so sharing adds a port-to-kernel dependency the spine's direction does not name
+- 2026-10-10T08:25:19Z status=wontfix-accepted owner=20-3-production-items by=cr note=reopen_if=a second port re-implements the violations array, or a port-level violations helper is introduced
+
+### DW-2272: Item names match without regard to case while the proposal target, hold key and change event keep the caller's spelling, so the Changed mark can miss the row
+- source: spec-20-3-production-items.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: GatherItems compares the upper-cased names; a disable of probeop acts on ProbeOp and publishes the id ending probeop; the vendor's own findItemIdByName lookup is case-insensitive too; the implement-stage triage cited an Auto Run Result record that does not exist
+- 2026-10-10T08:25:19Z status=wontfix-accepted owner=20-3-production-items by=cr note=reopen_if=the Changed mark is reported missing on an item written under a differently cased name
+
+### DW-2273: The add's field rules at the mint construct Ens.Config.Item for the agent-named class, which runs its %GetParameter and, for a duplex host, OnBusinessType before review
+- source: spec-20-3-production-items.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: AddViolations calls Ens.Config.Item.%New(ClassName) and BusinessType(); the class must already be a compiled host subclass in the namespace, and the vendor's list and add dialog run the same methods for every item
+- 2026-10-10T08:25:19Z status=wontfix-theoretical owner=20-3-production-items by=cr note=real if a host class's OnBusinessType or class parameters had side effects a reviewer must see first
+
+### DW-2274: PerformItem reads any failed concurrency-4 open of the production as 503 PORT.UNAVAILABLE, though only a lock wait is expected there
+- source: spec-20-3-production-items.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: Port/InteropPort.cls PerformItem: %OpenId(pProduction, 4) without its status argument; %ExistsId answered 1 in the same block, so only the lock wait remains reachable
+- 2026-10-10T08:25:19Z status=wontfix-theoretical owner=20-3-production-items by=cr note=real if a production row that exists could fail to load for a reason other than its lock
+
+### DW-2275: P7: the log line for a failed add or remove audit record has no test
+- source: spec-20-3-production-items.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: irislib/Ens/Util/Auditing.cls:182-206 answers an error only when the system audit call raises (a disabled event is dropped silently), and PerformItem always passes both arguments, so nothing reachable takes the branch without a port seam
+- 2026-10-10T08:25:19Z status=wontfix-accepted owner=20-3-production-items by=cr note=reopen_if=a principal the item gate admits gets an error status from AuditModifyProductionConfig
+
+### DW-2276: The four item copy-out scripts are checked by substring and never executed
+- source: spec-20-3-production-items.md | severity: low | fix-risk: med | footprint: in-epic
+- evidence: InteropItemDescriptor.TestTheScriptForms and InteropItemControl.TestEachToolsDraftRendersItsScript match fragments; DraftExecute runs only AdminPort and LogSourcePort scripts; Story 20.2's production scripts have the same coverage
+- 2026-10-10T08:25:19Z status=wontfix-accepted owner=20-3-production-items by=cr note=reopen_if=DraftExecute gains an interoperability leg, or a pasted item script is reported failing
+
+### DW-2277: Registry's criteria refusal says server criteria travel on five ports alone, though a parent-scoped interop list now takes one route-id criterion
+- source: spec-20-3-production-items.md | severity: low | fix-risk: med | footprint: out-of-footprint
+- evidence: Screen/Registry.cls:1685 and ui/tools/screen-mirror.mjs:1887; the sentence is pinned in CriteriaCorpus, InteropDescriptor, InteropItemDescriptor, SqlActivityDescriptor and DocDbDescriptor, across three epics
+- 2026-10-10T08:25:19Z status=wontfix-accepted owner=20-3-production-items by=cr note=reopen_if=a descriptor author is misled by it, or the next story that edits the AD-36 criteria arm

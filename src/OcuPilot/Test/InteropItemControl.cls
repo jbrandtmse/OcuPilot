@@ -23,6 +23,10 @@ Parameter PROBE = "OcuPilot.Test.ProductionProbe";
 
 Parameter PORT = "OcuPilot.Port.InteropPort";
 
+/// <p>Story 20.2's control test, whose probe production is this class's: the production's state, last start and
+/// Productions row action are read through it.</p>
+Parameter PRODUCTIONS = "OcuPilot.Test.InteropControl";
+
 Parameter NAMESPACE = "USER";
 
 Parameter SCREEN = "/screens/interop.items";
@@ -238,17 +242,6 @@ ClassMethod Jobs() As %String
         Set tText = tText _ $Select(tText = "": "", 1: ",") _ tName
     }
     Quit tText
-}
-
-/// <p>The probe production's state as <code>State|NeedsUpdate</code>, read through the port.</p>
-ClassMethod State() As %String
-{
-    Kill tQuery
-    Set tQuery("namespace") = ..#NAMESPACE
-    Set tQuery("id") = ..#PRODUCTION
-    Set tSC = $ClassMethod(..#PORT, "Invoke", "Productions", "STATE", .tQuery, "", .tResult, .tHttp, .tFault)
-    If '$IsObject($Get(tResult)) Quit "unread " _ $Get(tHttp)
-    Quit tResult.State _ "|" _ tResult.NeedsUpdate
 }
 
 /// <p>The vendor's <code>ModifyConfiguration</code> audit rows since <var>pSince</var> that name the probe
@@ -491,52 +484,25 @@ Method TestAWriteOnARunningProductionChangesNoJobAndTheUpdateAppliesIt()
     Do $$$AssertEquals(+$Get(tHttp), 200, "the probe is started")
     Hang 3
     Do $$$AssertEquals(..Jobs(), "OcuPilotProbeOp", "the operation has its job")
-    Do $$$AssertEquals(..State(), "Running|0", "and nothing is pending")
-    Set tStarted = ..Started()
+    Do $$$AssertEquals($ClassMethod(..#PRODUCTIONS, "State"), "Running|0", "and nothing is pending")
+    Set tStarted = $ClassMethod(..#PRODUCTIONS, "LastStart")
     Do $$$AssertEquals(..Act("disable", ..#OPNAME, .tAnswer), "200 ", "Disable answers 200")
     Set tFields = {"ClassName": "OcuPilotProbe.Interop.Op", "PoolSize": 1, "Enabled": true}
     Do $$$AssertEquals(..Save(..#ADDED, tFields, .tAnswer), "201 ", "an enabled add is saved")
     Hang 2
     Do $$$AssertEquals(..Jobs(), "OcuPilotProbeOp", "no job started or stopped")
-    Do $$$AssertEquals(..Started(), tStarted, "and the production was not started again")
+    Do $$$AssertEquals($ClassMethod(..#PRODUCTIONS, "LastStart"), tStarted, "and the production was not started again")
     For tTry = 1:1:10 {
-        If $Piece(..State(), "|", 2) Quit
+        If $Piece($ClassMethod(..#PRODUCTIONS, "State"), "|", 2) Quit
         Hang 0.5
     }
-    Do $$$AssertEquals(..State(), "Running|1", "the production reads as needing an update")
+    Do $$$AssertEquals($ClassMethod(..#PRODUCTIONS, "State"), "Running|1", "the production reads as needing an update")
     Do $$$AssertEquals(..Items(), "OcuPilotProbeOp:0,OcuPilotProbeSvc:1,OcuPilotProbeAdded:1", "while the configuration already holds both changes")
     Set tSC = ##class(OcuPilot.Test.ProposalFixture).SeedTurn(##class(OcuPilot.Test.Http).GetTestUsername(), "completed", .tTurn)
-    Set tText = ..ActOnProductions("update")
+    Set tText = $ClassMethod(..#PRODUCTIONS, "Act", "update", ..#PRODUCTION)
     Do $$$AssertEquals(tText, "200 ", "the Productions screen's Update answers 200")
     Do $$$AssertEquals(..Jobs(), "OcuPilotProbeAdded", "the disabled item's job stopped and the added item's started")
-    Do $$$AssertEquals(..State(), "Running|0", "and the production reads up to date")
-}
-
-/// <p>The probe production's <code>LastStartTime</code> as the port's list reads it.</p>
-ClassMethod Started() As %String
-{
-    Kill tQuery
-    Set tQuery("namespace") = ..#NAMESPACE
-    Set tQuery("maxRows") = 1000
-    Set tSC = $ClassMethod(..#PORT, "Invoke", "Productions", "LIST", .tQuery, "", .tRows, .tHttp, .tFault)
-    Set tTime = ""
-    If $IsObject($Get(tRows)) {
-        Set tIterator = tRows.%GetIterator()
-        While tIterator.%GetNext(.tIndex, .tRow) {
-            If tRow.Name = ..#PRODUCTION Set tTime = tRow.LastStartTime
-        }
-    }
-    Quit tTime
-}
-
-/// <p>One row action on the Productions screen for the probe production, as <code>status code</code>.</p>
-ClassMethod ActOnProductions(pAction As %String) As %String
-{
-    Set tBody = {}
-    Do tBody.%Set("action", pAction, "string")
-    Do tBody.%Set("id", ..#PRODUCTION, "string")
-    Do ..Call("POST", "/screens/interop.productions/action", tBody, .tStatus, .tAnswer)
-    Quit tStatus _ " " _ $Select($IsObject(tAnswer): tAnswer.%Get("code"), 1: "")
+    Do $$$AssertEquals($ClassMethod(..#PRODUCTIONS, "State"), "Running|0", "and the production reads up to date")
 }
 
 /// <p>AD-59: each tool's copy-out draft renders one ObjectScript step that switches to the namespace the
@@ -548,7 +514,7 @@ Method TestEachToolsDraftRendersItsScript()
     Do $$$AssertStatusOK($ClassMethod(..#PROBE, "AddItem", "OcuPilotProbeDraft", ..#OPCLASS, 1, 0), "a disabled item is added to the stored configuration for the enable and the remove")
     Set tAdd = ..ArgsFor(..#ADDED)
     Do tAdd.%Set("ClassName", ..#OPCLASS, "string")
-    For tCase = $ListBuild("InteropItemDisable", ..#OPNAME, "EnableConfigItem(", ", 0, 0)"), $ListBuild("InteropItemEnable", "OcuPilotProbeDraft", "EnableConfigItem(", ", 1, 0)"), $ListBuild("InteropItemAdd", ..#ADDED, "Ens.Config.Item", ""), $ListBuild("InteropItemRemove", "OcuPilotProbeDraft", "RemoveItem(", "") {
+    For tCase = $ListBuild("InteropItemDisable", ..#OPNAME, "EnableConfigItem(", ", 0, 0)"), $ListBuild("InteropItemEnable", "OcuPilotProbeDraft", "EnableConfigItem(", ", 1, 0)"), $ListBuild("InteropItemAdd", ..#ADDED, "Ens.Config.Item", "Items.Insert(tItem)"), $ListBuild("InteropItemRemove", "OcuPilotProbeDraft", "RemoveItem(", "FindItemByConfigName(") {
         Set tTool = "OcuPilot.Screen.Tool." _ $List(tCase, 1)
         Set tArgs = $Select($List(tCase, 1) = "InteropItemAdd": tAdd, 1: ..ArgsFor($List(tCase, 2)))
         Set tSC = ..MintAs(tTool, tArgs, tUser, .tProposal, .tHttp, .tFault, .tTurn)

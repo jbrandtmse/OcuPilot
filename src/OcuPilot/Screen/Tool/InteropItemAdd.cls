@@ -119,12 +119,14 @@ ClassMethod CreatedId(pWritten) As %String
 
 /// <p>The rules over the caller's fields and the production, as one sentence naming each field and its
 /// published sentence, or <code>""</code> (AD-55): <method>OcuPilot.Port.InteropPort.AddViolations</method>
-/// in the request's namespace, and a production the namespace holds. The screen's Save and the mint apply
-/// them alike.</p>
+/// and a production the namespace holds, in the namespace <var>pArgs</var> carries under
+/// <parameter>NAMESPACEFIELD</parameter> (the mint stores it, <class>OcuPilot.Screen.Tool.InteropItemMint</class>),
+/// else the request's. The screen's Save and the mint apply them alike.</p>
 ClassMethod ArgumentProblem(pIdValue As %String, pArgs As %DynamicObject, Output pProblem As %String) As %Status
 {
     Set pProblem = ""
     Set tNamespace = ##class(OcuPilot.Kernel.Scope).Current()
+    If $IsObject(pArgs) && (pArgs.%GetTypeOf(..#NAMESPACEFIELD) = "string") && (pArgs.%Get(..#NAMESPACEFIELD) '= "") Set tNamespace = pArgs.%Get(..#NAMESPACEFIELD)
     Set tParts = ##class(OcuPilot.Kernel.EntityId).SplitComposite(pIdValue)
     If '$ClassMethod(..#PORTCLASS, "ProductionHeld", tNamespace, $ListGet(tParts, 1)) {
         Set pProblem = "'" _ ..#PRODUCTIONARGUMENT _ "' names no production of this namespace"
@@ -138,8 +140,9 @@ ClassMethod ArgumentProblem(pIdValue As %String, pArgs As %DynamicObject, Output
     Quit $$$OK
 }
 
-/// <p>The same rules again at the write, so a confirm is refused what the mint would now refuse -- a class
-/// compiled away since -- before the claim, leaving the proposal live (AD-6, AD-40).</p>
+/// <p>The same rules again at the write, in the namespace the proposal read, so a confirm is refused what the
+/// mint would now refuse -- a class compiled away since -- before the claim, leaving the proposal live, whatever
+/// namespace the confirming request is scoped to (AD-6, AD-40, AD-52).</p>
 ClassMethod ConfirmProblem(pIdValue As %String, pArgs As %DynamicObject, Output pProblem As %String) As %Status
 {
     Quit ..ArgumentProblem(pIdValue, pArgs, .pProblem)

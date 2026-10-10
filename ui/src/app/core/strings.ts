@@ -6270,7 +6270,7 @@ export const STRINGS = {
   /** EXPERIENCE.md:604 */
   interopItemAddTitle: 'Add item',
   /** EXPERIENCE.md:604 */
-  interopItemAddNameHint: 'It is 1 to 128 characters with no space at either end. It cannot contain a vertical bar, a semicolon, a comma or an opening bracket, begin with a hyphen or an underscore, or end with a hyphen, an exclamation mark or a dollar sign.',
+  interopItemAddNameHint: 'It is 1 to 128 characters with no control character and no space at either end. It cannot contain a vertical bar, a semicolon, a comma or an opening bracket, begin with a hyphen or an underscore, end with a hyphen, an exclamation mark or a dollar sign, or be an asterisk.',
   /** EXPERIENCE.md:604 */
   interopItemAddClassHint: 'The business service, business process or business operation class that runs the item. It must be compiled in this namespace.',
   /** EXPERIENCE.md:604 */

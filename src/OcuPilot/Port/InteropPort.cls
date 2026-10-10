@@ -347,44 +347,10 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
             Quit
         }
         Set tWrite = ..IsWrite(pType) || ..IsItemWrite(pType)
-        Set tFailedPair = ""
-        ; EvaluateRequired, not EvaluatePairs: a pair list mis-edited to empty fails closed.
-        If '$ClassMethod(..GateClass(), "EvaluateRequired", ..Pairs(pEndpoint, pType), .tFailedPair) {
-            Set tSC = ..Deny(tFailedPair, .pHttpStatus, .pFault)
-            Quit
-        }
         Set tNamespace = $Get(pQuery(..#NAMESPACEKEY))
         If tNamespace = "" Set tNamespace = ##class(OcuPilot.Kernel.Scope).Current()
-        If '$Match(tNamespace, ##class(OcuPilot.Port.AtelierPort).#NAMESPACEPATTERN) {
-            Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONNAMESPACESHAPE, .pHttpStatus, .pFault)
-            Quit
-        }
-        If '##class(OcuPilot.Kernel.Shell.NamespaceFeatures).Reports("interoperability", tNamespace) {
-            Set tSC = ..Conflict(##class(OcuPilot.Api.InteropError).#NAMESPACE, .pHttpStatus, .pFault)
-            Quit
-        }
-        Set tResource = ""
-        If '##class(OcuPilot.Kernel.Shell.Namespaces).GlobalDatabase(tNamespace, .tResource, .tReadOnly) || (tResource = "") {
-            Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONNAMESPACEUNKNOWN, .pHttpStatus, .pFault)
-            Quit
-        }
-        Set tDatabasePair = $ListBuild($ListBuild(tResource, $Select(tWrite: ..#WRITEPERMISSION, 1: ..#READPERMISSION)))
-        If '$ClassMethod(..GateClass(), "EvaluateRequired", tDatabasePair, .tFailedPair) {
-            Set tSC = ..Deny(tFailedPair, .pHttpStatus, .pFault)
-            Quit
-        }
-        ; An item write also writes the routines database (^oddDEF), after the globals one.
-        If ..IsItemWrite(pType) {
-            Set tRoutineResource = ""
-            If '..RoutineResource(tNamespace, .tRoutineResource) || (tRoutineResource = "") {
-                Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONROUTINESUNKNOWN, .pHttpStatus, .pFault)
-                Quit
-            }
-            If '$ClassMethod(..GateClass(), "EvaluateRequired", $ListBuild($ListBuild(tRoutineResource, ..#WRITEPERMISSION)), .tFailedPair) {
-                Set tSC = ..Deny(tFailedPair, .pHttpStatus, .pFault)
-                Quit
-            }
-        }
+        Set tSC = ..Admit(pEndpoint, pType, tNamespace, .pHttpStatus, .pFault)
+        If $$$ISERR(tSC) Quit
 
         If pEndpoint = ..#ENDPOINTITEMS {
             Set tSC = ..InvokeItems(tNamespace, pType, .pQuery, pBody, .pResult, .pHttpStatus, .pFault)
@@ -437,6 +403,32 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
         Set tSC = ..Fail(pEndpoint _ " failed inside the port", ex.AsStatus(), .pHttpStatus, .pFault)
     }
     Quit tSC
+}
+
+/// <p>This port's gate (AD-29, AD-62), evaluated before any vendor call for <var>pType</var> on
+/// <var>pEndpoint</var> in <var>pNamespace</var>, in this order: the endpoint's pairs; the namespace's shape;
+/// the namespace reporting interoperability; READ on its globals database (WRITE for a write); and, for an item
+/// write, WRITE on its routines database. A refusal is an error status with <var>pHttpStatus</var> and
+/// <var>pFault</var> set as <method>Invoke</method> answers them. Names no vendor class.</p>
+ClassMethod Admit(pEndpoint As %String, pType As %String, pNamespace As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pHttpStatus = 0
+    Set pFault = ""
+    Set tWrite = ..IsWrite(pType) || ..IsItemWrite(pType)
+    Set tFailedPair = ""
+    ; EvaluateRequired, not EvaluatePairs: a pair list mis-edited to empty fails closed.
+    If '$ClassMethod(..GateClass(), "EvaluateRequired", ..Pairs(pEndpoint, pType), .tFailedPair) Quit ..Deny(tFailedPair, .pHttpStatus, .pFault)
+    If '$Match(pNamespace, ##class(OcuPilot.Port.AtelierPort).#NAMESPACEPATTERN) Quit ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONNAMESPACESHAPE, .pHttpStatus, .pFault)
+    If '##class(OcuPilot.Kernel.Shell.NamespaceFeatures).Reports("interoperability", pNamespace) Quit ..Conflict(##class(OcuPilot.Api.InteropError).#NAMESPACE, .pHttpStatus, .pFault)
+    Set tResource = ""
+    If '##class(OcuPilot.Kernel.Shell.Namespaces).GlobalDatabase(pNamespace, .tResource, .tReadOnly) || (tResource = "") Quit ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONNAMESPACEUNKNOWN, .pHttpStatus, .pFault)
+    If '$ClassMethod(..GateClass(), "EvaluateRequired", $ListBuild($ListBuild(tResource, $Select(tWrite: ..#WRITEPERMISSION, 1: ..#READPERMISSION))), .tFailedPair) Quit ..Deny(tFailedPair, .pHttpStatus, .pFault)
+    ; An item write also writes the routines database (^oddDEF), after the globals one.
+    If '..IsItemWrite(pType) Quit $$$OK
+    Set tRoutineResource = ""
+    If '..RoutineResource(pNamespace, .tRoutineResource) || (tRoutineResource = "") Quit ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONROUTINESUNKNOWN, .pHttpStatus, .pFault)
+    If '$ClassMethod(..GateClass(), "EvaluateRequired", $ListBuild($ListBuild(tRoutineResource, ..#WRITEPERMISSION)), .tFailedPair) Quit ..Deny(tFailedPair, .pHttpStatus, .pFault)
+    Quit $$$OK
 }
 
 /// <p>The Productions list: one row per <code>Ens.Config.Production</code>, <code>{Name, Status,
@@ -755,13 +747,16 @@ ClassMethod NameProblem(pName As %String) As %String
 /// <code>Category</code> and <code>Comment</code> must be what <code>Ens.Config.Item</code>'s own
 /// <code>&lt;Prop&gt;IsValid</code> accepts; <code>Enabled</code> must be a boolean. A field of the wrong
 /// JSON type is <code>PORT.FIELD.SHAPE</code>. The vendor classes run in <var>pNamespace</var>, switched
-/// by explicit save and restore.</p>
+/// by explicit save and restore, and only once this port's gate admits an add there (<method>Admit</method>);
+/// when it does not, only the rules that need no vendor class are judged, and the caller's next
+/// <method>Invoke</method> answers the gate's refusal.</p>
 ClassMethod AddViolations(pNamespace As %String, pName As %String, pBody As %DynamicObject, Output pViolations) As %Status
 {
     Kill pViolations
     Set pViolations = 0
     Set tSC = $$$OK
     Set tOrigNS = $NAMESPACE
+    Set tAdmitted = $$$ISOK(..Admit(..#ENDPOINTITEMS, ..#TYPEADD, pNamespace, .tHttp, .tFault))
     Try {
         If '$IsObject(pBody) || 'pBody.%IsA("%Library.DynamicObject") Set pBody = {}
         If ..NameProblem(pName) '= "" Set pViolations($Increment(pViolations)) = $ListBuild("Name", ##class(OcuPilot.Api.InteropError).#ITEMNAME)
@@ -787,6 +782,7 @@ ClassMethod AddViolations(pNamespace As %String, pName As %String, pBody As %Dyn
         If (tCategoryType '= "unassigned") && (tCategoryType '= "string") Set pViolations($Increment(pViolations)) = $ListBuild("Category", tShape)
         If (tCommentType '= "unassigned") && (tCommentType '= "string") Set pViolations($Increment(pViolations)) = $ListBuild("Comment", tShape)
         If (tEnabledType '= "unassigned") && (tEnabledType '= "boolean") Set pViolations($Increment(pViolations)) = $ListBuild("Enabled", tShape)
+        If 'tAdmitted Quit
         Set $NAMESPACE = pNamespace
         If tClassOk {
             Set tItem = ##class(Ens.Config.Item).%New(tClass)
@@ -805,10 +801,12 @@ ClassMethod AddViolations(pNamespace As %String, pName As %String, pBody As %Dyn
     Quit tSC
 }
 
-/// <p>Whether <var>pNamespace</var> holds the production <var>pProduction</var>. A fault in the look-up
-/// answers 1, so the write's own refusal decides rather than this one.</p>
+/// <p>Whether <var>pNamespace</var> holds the production <var>pProduction</var>. A namespace this port's gate
+/// does not admit an item read in (<method>Admit</method>), and a fault in the look-up, answer 1 without a
+/// vendor call, so the write's own refusal decides rather than this one.</p>
 ClassMethod ProductionHeld(pNamespace As %String, pProduction As %String) As %Boolean
 {
+    If $$$ISERR(..Admit(..#ENDPOINTITEMS, ..#TYPEITEM, pNamespace, .tHttp, .tFault)) Quit 1
     Set tSC = ..GatherItems(pNamespace, pProduction, "", 1, .tExists, .tFound, .tCount, .tCaught)
     Quit $IsObject(tCaught) || tExists
 }
@@ -839,7 +837,8 @@ ClassMethod Violations(ByRef pViolations, Output pHttpStatus As %Integer, Output
 /// supplies <code>Enabled</code>.</li>
 /// <li>Disable: <code>DISABLED</code> when it is, then <code>DEFAULTSETTING</code>, then
 /// <code>POOLZERO</code> for a business process whose pool size is 0.</li>
-/// <li>Remove: <code>ENABLEDREMOVE</code> while it is enabled.</li>
+/// <li>Remove: <code>DEFAULTSETTING</code> while a system default keeps it enabled, else
+/// <code>ENABLEDREMOVE</code> while it is enabled.</li>
 /// </ul>
 ClassMethod ItemRefusal(pType As %String, pCount As %Integer, pEnabled As %Boolean, pSource As %String, pBusinessType As %Integer, pPoolSize As %String) As %String
 {
@@ -868,10 +867,23 @@ ClassMethod ItemRefusalToken(pType As %String, pCount As %Integer, pEnabled As %
         Quit ""
     }
     If pType = ..#TYPEREMOVE {
+        If pEnabled && (pSource = "default") Quit "DEFAULTSETTING"
         If pEnabled Quit "ENABLEDREMOVE"
         Quit ""
     }
     Quit ""
+}
+
+/// <p>Whether an enable or a disable (<var>pType</var>) of the one item <var>pLine</var>
+/// (<method>GatherItems</method>'s element, <var>pCount</var> items of the name) would not find it:
+/// <code>Ens.Director:EnableConfigItem</code> skips an item whose class it types as no business host and
+/// answers <code>ErrConfigItemNotFound</code>, so such an item reads absent to an enable and a disable, as it
+/// does to the vendor. It names no other class, so it runs while the production's namespace is switched.</p>
+ClassMethod VendorCannotFind(pType As %String, pCount As %Integer, pLine As %List) As %Boolean
+{
+    If (pType '= ..#TYPEENABLE) && (pType '= ..#TYPEDISABLE) Quit 0
+    If (pCount '= 1) || (pLine = "") Quit 0
+    Quit (+$List(pLine, 3) = 0)
 }
 
 /// <p>The code <var>pToken</var> names: <code>INTEROP.ITEM.</code> and the token; <code>""</code> for no
@@ -977,7 +989,9 @@ ClassMethod ListItems(pNamespace As %String, pProduction As %String, pMax As %In
 /// <p>One item, fresh (Story 20.3): the item row with <code>Namespace</code> and <code>Count</code>.
 /// A namespace under source control is <code>INTEROP.ITEM.SOURCECONTROL</code> first; an item the
 /// production does not hold, or a production it does not hold, is 404 <code>PORT.NOTFOUND</code>,
-/// unlogged. With <var>pAction</var> it refuses what that action would be refused
+/// unlogged, and so is an item an enable or a disable would not find (<method>VendorCannotFind</method>); a
+/// name the production holds more than once is <code>AMBIGUOUS</code>. With <var>pAction</var> it refuses
+/// what that action would be refused
 /// (<method>ItemRefusal</method>); for an add (AD-54) it inverts, so absence is the 404 the create
 /// expects and a held name is <code>TAKEN</code>.</p>
 ClassMethod ReadItem(pNamespace As %String, pProduction As %String, pName As %String, pAction As %String, Output pRow As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
@@ -992,6 +1006,8 @@ ClassMethod ReadItem(pNamespace As %String, pProduction As %String, pName As %St
     }
     If 'tExists || (tCount = 0) Quit ..Absent(.pHttpStatus, .pFault)
     Set tLine = tFound(1)
+    If tCount > 1 Quit ..Conflict(##class(OcuPilot.Api.InteropError).#ITEMAMBIGUOUS, .pHttpStatus, .pFault)
+    If ..VendorCannotFind(pAction, tCount, tLine) Quit ..Absent(.pHttpStatus, .pFault)
     If pAction '= "" {
         Set tCode = ..ItemRefusal(pAction, tCount, $List(tLine, 4), $List(tLine, 5), $List(tLine, 3), $List(tLine, 6))
         If tCode '= "" Quit ..Conflict(tCode, .pHttpStatus, .pFault)
@@ -1031,7 +1047,8 @@ ClassMethod ItemObject(pProduction As Ens.Config.Production, pName As %String) A
 /// <code>Ens.Config.Item</code> and saves the production; remove calls <code>RemoveItem</code> and saves
 /// it. Add and remove record <code>%Ensemble/%Production/ModifyConfiguration</code> through
 /// <code>Ens.Util.Auditing</code>, naming the operation and the item and never a value; enable and
-/// disable carry the vendor's own event. A record that cannot be written is logged once the namespace is
+/// disable carry the vendor's own event. The vendor answers an error status only when the audit call
+/// raises (an event that is disabled is dropped without one); that status is logged once the namespace is
 /// restored and never fails the write.</li>
 /// <li>The production class is saved every time (<code>SaveToClass</code>), because the configuration
 /// alone is reverted by the next compile of the class. A failure there, after the configuration saved, is
@@ -1071,6 +1088,8 @@ ClassMethod PerformItem(pNamespace As %String, pType As %String, pProduction As 
                 If $IsObject(tGatherCaught) Throw tGatherCaught
                 Set tLine = $Get(tFound(1))
                 If (pType '= ..#TYPEADD) && (tCount = 0) {
+                    Set tAbsent = 1
+                } ElseIf ..VendorCannotFind(pType, tCount, tLine) {
                     Set tAbsent = 1
                 } Else {
                     If tLine = "" {
@@ -1124,6 +1143,8 @@ ClassMethod PerformItem(pNamespace As %String, pType As %String, pProduction As 
         Set tProduction = ""
         Set $NAMESPACE = tOrigNS
     } Catch ex {
+        ; The production's lock is released in the namespace it was taken in.
+        Set tTarget = "", tNew = "", tProduction = ""
         Set $NAMESPACE = tOrigNS
         Set tCaught = ex
     }
@@ -1314,7 +1335,8 @@ ClassMethod Snippet(pEndpoint As %String, pType As %String, ByRef pQuery, pBody 
 }
 
 /// <p>The lines <method>Snippet</method> adds for the item write <var>pType</var> of the item the composite
-/// id <var>pId</var> names, carrying the add's body <var>pBody</var>.</p>
+/// id <var>pId</var> names, carrying the add's body <var>pBody</var>. The last line drops the production, so a
+/// terminal that runs the script does not keep its exclusive lock.</p>
 ClassMethod ItemSnippet(pType As %String, pId As %String, pBody As %DynamicAbstractObject) As %String [ Private ]
 {
     Set tParts = ##class(OcuPilot.Kernel.EntityId).SplitComposite(pId)
@@ -1345,6 +1367,8 @@ ClassMethod ItemSnippet(pType As %String, pId As %String, pBody As %DynamicAbstr
         Set tText = tText _ tNL _ " Set tSC = tProduction.%Save()"
         Set tText = tText _ tNL _ " If $System.Status.IsOK(tSC) Set tSC = tProduction.SaveToClass()"
     }
+    ; The production was opened with its exclusive lock, which lasts while a reference to it does.
+    Set tText = tText _ tNL _ " Kill tItem, tProduction"
     Quit tText
 }
 

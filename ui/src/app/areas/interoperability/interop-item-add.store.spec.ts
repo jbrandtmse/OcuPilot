@@ -104,6 +104,47 @@ describe('InteropItemAddStore', () => {
     expect(store.name()).toBe('');
   });
 
+  it('shows a refusal on a member the dialog draws no field for as the dialog\u2019s reason', async () => {
+    // Mutation (Rule 19): count every member the store sends as drawn in `refuse` -> the reason reads '' and this goes red.
+    const violation = { field: 'Production', code: 'PORT.FIELD.SHAPE', reason: 'The production is not named.' };
+    const { store } = mount(() => ({ kind: 'error', status: 422, code: 'PORT.FIELD.SHAPE', reason: 'The production is not named.', detail: { violations: [violation] } }));
+    store.set('name', 'ProbeNew');
+    store.set('className', 'Probe.Op');
+    expect(await store.add('USER', '')).toBe(false);
+    expect(store.reason()).toBe('The production is not named.');
+  });
+
+  it('announces an item the instance added after the dialog was dismissed, and keeps nothing of the answer', async () => {
+    // Mutation (Rule 19): return before publishing when the generation moved -> no event and this goes red.
+    let release: (value: JsonResult<unknown>) => void = () => undefined;
+    TestBed.resetTestingModule();
+    const api = {
+      requestJson: async <T,>(): Promise<JsonResult<T>> =>
+        (await new Promise<JsonResult<unknown>>((resolve) => {
+          release = resolve;
+        })) as JsonResult<T>,
+    };
+    const bus = new ChangeBus();
+    const events: ChangeEvent[] = [];
+    bus.subscribe((event) => events.push(event));
+    TestBed.configureTestingModule({
+      providers: [
+        { provide: ApiService, useValue: api as unknown as ApiService },
+        { provide: ChangeBus, useValue: bus },
+      ],
+    });
+    const store = TestBed.inject(InteropItemAddStore);
+    store.set('name', 'ProbeNew');
+    store.set('className', 'Probe.Op');
+    const pending = store.add('USER', 'Probe.Production');
+    store.reset();
+    release({ kind: 'ok', status: 201, body: { id: ID, target: { type: 'production-item', scope: 'USER', id: ID }, readBack: { verdict: 'matches' } } });
+    expect(await pending).toBe(false);
+    expect(events.map((event) => [event.kind, event.type, event.scope, event.id, event.action])).toEqual([['changed', 'production-item', 'USER', ID, 'created']]);
+    expect(store.readBack()).toBeNull();
+    expect(store.busy()).toBe(false);
+  });
+
   it('posts once while an add is in flight', async () => {
     let release: (value: JsonResult<unknown>) => void = () => undefined;
     TestBed.resetTestingModule();

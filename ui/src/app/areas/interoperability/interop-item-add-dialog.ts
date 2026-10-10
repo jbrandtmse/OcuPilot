@@ -97,10 +97,17 @@ let dialogCount = 0;
       </div>
       <div class="ocu-field">
         <label class="ocu-field-checkbox">
-          <input type="checkbox" data-interop-item-add-enabled [id]="fieldId('enabled')" [checked]="enabled" (change)="onEnabled($event)" />
+          <input
+            type="checkbox"
+            data-interop-item-add-enabled
+            [id]="fieldId('enabled')"
+            [checked]="enabled"
+            [attr.aria-describedby]="hintId('enabled')"
+            (change)="onEnabled($event)"
+          />
           {{ STRINGS.tableColumnEnabled }}
         </label>
-        <p class="ocu-field-caption">{{ STRINGS.interopItemAddEnabledHint }}</p>
+        <p class="ocu-field-caption" [id]="hintId('enabled')">{{ STRINGS.interopItemAddEnabledHint }}</p>
       </div>
       <div class="ocu-field">
         <label class="ocu-field-label" [attr.for]="fieldId('category')">{{ STRINGS.interopItemColumnCategory }}</label>
@@ -113,7 +120,7 @@ let dialogCount = 0;
             [id]="fieldId('category')"
             [value]="category"
             [attr.aria-invalid]="categoryViolation ? 'true' : null"
-            [attr.aria-describedby]="describedBy('category', categoryViolation)"
+            [attr.aria-describedby]="reasonOnly('category', categoryViolation)"
             (input)="onText('category', $event)"
             (keydown.enter)="onEnter($event)"
           />
@@ -133,7 +140,7 @@ let dialogCount = 0;
             [id]="fieldId('comment')"
             [value]="comment"
             [attr.aria-invalid]="commentViolation ? 'true' : null"
-            [attr.aria-describedby]="describedBy('comment', commentViolation)"
+            [attr.aria-describedby]="reasonOnly('comment', commentViolation)"
             (input)="onText('comment', $event)"
             (keydown.enter)="onEnter($event)"
           />
@@ -200,6 +207,11 @@ export class InteropItemAddDialog {
 
   protected describedBy(field: string, violation: string): string {
     return violation === '' ? this.hintId(field) : `${this.hintId(field)} ${this.reasonId(field)}`;
+  }
+
+  /** For a field drawn with no caption: its refusal's id while it has one, else nothing. */
+  protected reasonOnly(field: string, violation: string): string | null {
+    return violation === '' ? null : this.reasonId(field);
   }
 
   protected get name(): string {

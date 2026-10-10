@@ -23,6 +23,15 @@ export const INTEROP_ITEM_FIELDS = {
   comment: 'Comment',
 } as const;
 
+/** The members the dialog draws a field for, so a refusal on one of them is shown under it. */
+const DRAWN_FIELDS: readonly string[] = [
+  INTEROP_ITEM_FIELDS.name,
+  INTEROP_ITEM_FIELDS.className,
+  INTEROP_ITEM_FIELDS.poolSize,
+  INTEROP_ITEM_FIELDS.category,
+  INTEROP_ITEM_FIELDS.comment,
+];
+
 /** Whether `text` is a whole number the add can send as the pool size. */
 function isWholeNumber(text: string): boolean {
   return /^\d{1,9}$/.test(text);
@@ -39,7 +48,8 @@ function isWholeNumber(text: string): boolean {
  *
  * **The namespace is the caller's**, passed to `add` and sent as `?ns=`, so the item lands where the list
  * that opened the dialog reads. An accepted add publishes one `created` change event for the item the server
- * names, which re-reads the list (AD-14).
+ * names, which re-reads the list (AD-14), even when the dialog was dismissed while the add was in flight. A
+ * refusal on a field the dialog does not draw is shown as the dialog's reason.
  */
 @Injectable({ providedIn: 'root' })
 export class InteropItemAddStore {
@@ -180,24 +190,33 @@ export class InteropItemAddStore {
       body: JSON.stringify(body),
       scope: namespace,
     });
-    if (generation !== this.generation) return false;
-    this.savingValue = false;
+    // A dialog dismissed while the add was in flight keeps none of its answer, but an item the instance added
+    // is still announced, so the list re-reads.
+    const current = generation === this.generation;
     if (result.kind !== 'ok') {
-      this.refuse(result);
+      if (current) {
+        this.savingValue = false;
+        this.refuse(result);
+      }
       return false;
     }
     const answer = result.body !== null && typeof result.body === 'object' ? (result.body as Record<string, unknown>) : {};
-    this.readBackValue = readBackOf(answer['readBack']);
+    const readBack = readBackOf(answer['readBack']);
     const target = answer['target'] !== null && typeof answer['target'] === 'object' ? (answer['target'] as Record<string, unknown>) : {};
     const id = typeof target['id'] === 'string' && target['id'] !== '' ? target['id'] : typeof answer['id'] === 'string' ? answer['id'] : '';
+    if (current) {
+      this.savingValue = false;
+      this.readBackValue = readBack;
+    }
     this.injector.get(ChangeBus).publish({
       kind: 'changed',
       type: INTEROP_ITEM_ENTITY,
       scope: scopeFor(NAMESPACE_SCOPE, namespace),
       id,
       action: 'created',
-      readBack: this.readBackValue,
+      readBack,
     });
+    if (!current) return false;
     this.notify();
     return true;
   }
@@ -210,7 +229,7 @@ export class InteropItemAddStore {
 
   private refuse(result: JsonResult<unknown>): void {
     this.violationList = violationsOf(result);
-    const named = this.violationList.some((entry) => Object.values(INTEROP_ITEM_FIELDS).includes(entry.field as never));
+    const named = this.violationList.some((entry) => DRAWN_FIELDS.includes(entry.field));
     this.envelopeReason = !named && result.kind === 'error' ? (result.reason ?? '') : '';
     this.notify();
   }

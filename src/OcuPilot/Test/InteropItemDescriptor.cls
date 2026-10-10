@@ -174,9 +174,11 @@ Method TestTheToolPairsAddTheConfigurationWriteAndTheDatabaseWrites()
 
 /// <p><method>OcuPilot.Port.InteropPort.ItemRefusal</method> over the state matrix: the vendor stores a
 /// duplicate name, answers a no-op as a success or an error text, or changes a system default instead of the
-/// production, and the port names each by its own code before any vendor call (AD-62).</p>
+/// production, and the port names each by its own code before any vendor call (AD-62). A remove of an item a
+/// system default keeps enabled names the default, since a disable of it is refused too.</p>
 /// <p>Mutation (Rule 19): drop the <code>DEFAULTSETTING</code> refusal from
-/// <method>OcuPilot.Port.InteropPort.ItemRefusalToken</method> -- the default rows go red.</p>
+/// <method>OcuPilot.Port.InteropPort.ItemRefusalToken</method> -- the default rows go red; drop the remove's
+/// alone -- the remove's default row goes red.</p>
 Method TestTheItemRefusalMatrix()
 {
     Set tP = "INTEROP.ITEM."
@@ -184,7 +186,7 @@ Method TestTheItemRefusalMatrix()
     For tCase = $ListBuild("ADD", 0, 0, "", 0, "", ""), $ListBuild("ADD", 1, 1, "production", 3, 1, tP _ "TAKEN"), $ListBuild("ADD", 2, 1, "production", 3, 1, tP _ "TAKEN"),
         $ListBuild("ENABLE", 1, 0, "production", 3, 1, ""), $ListBuild("ENABLE", 1, 1, "production", 3, 1, tP _ "ENABLED"), $ListBuild("ENABLE", 1, 0, "default", 3, 1, tP _ "DEFAULTSETTING"), $ListBuild("ENABLE", 1, 1, "default", 3, 1, tP _ "ENABLED"), $ListBuild("ENABLE", 2, 0, "production", 3, 1, tP _ "AMBIGUOUS"),
         $ListBuild("DISABLE", 1, 1, "production", 3, 1, ""), $ListBuild("DISABLE", 1, 0, "production", 3, 1, tP _ "DISABLED"), $ListBuild("DISABLE", 1, 1, "default", 3, 1, tP _ "DEFAULTSETTING"), $ListBuild("DISABLE", 1, 1, "production", 2, 0, tP _ "POOLZERO"), $ListBuild("DISABLE", 1, 1, "production", 2, 1, ""), $ListBuild("DISABLE", 1, 1, "production", 3, 0, ""), $ListBuild("DISABLE", 3, 1, "production", 3, 1, tP _ "AMBIGUOUS"), $ListBuild("DISABLE", 1, 0, "production", 2, 0, tP _ "DISABLED"),
-        $ListBuild("REMOVE", 1, 0, "production", 3, 1, ""), $ListBuild("REMOVE", 1, 1, "production", 3, 1, tP _ "ENABLEDREMOVE"), $ListBuild("REMOVE", 2, 0, "production", 3, 1, tP _ "AMBIGUOUS"), $ListBuild("RESTART", 1, 1, "production", 3, 1, "") {
+        $ListBuild("REMOVE", 1, 0, "production", 3, 1, ""), $ListBuild("REMOVE", 1, 1, "production", 3, 1, tP _ "ENABLEDREMOVE"), $ListBuild("REMOVE", 1, 1, "default", 3, 1, tP _ "DEFAULTSETTING"), $ListBuild("REMOVE", 1, 0, "default", 3, 1, ""), $ListBuild("REMOVE", 2, 0, "production", 3, 1, tP _ "AMBIGUOUS"), $ListBuild("RESTART", 1, 1, "production", 3, 1, "") {
         Set tCode = $ClassMethod(..#PORT, "ItemRefusal", $List(tCase, 1), $List(tCase, 2), $List(tCase, 3), $List(tCase, 4), $List(tCase, 5), $List(tCase, 6))
         Do $$$AssertEquals(tCode, $List(tCase, 7), $List(tCase, 1) _ " of " _ $List(tCase, 2) _ " item(s), enabled " _ $List(tCase, 3) _ " from " _ $List(tCase, 4) _ ", host type " _ $List(tCase, 5) _ ", pool " _ $List(tCase, 6))
     }
@@ -208,8 +210,11 @@ Method TestTheItemNameRule()
 
 /// <p>The port's script forms (AD-59): <code>objectscript</code> for each of the four item writes, none for
 /// the reads; each script switches to the namespace, opens the production and calls the vendor with the
-/// production and the item as string literals, saves the production class, and opens no block it does not
-/// close on its line; no script names <code>CleanProduction</code> or <code>UpdateProduction</code>.</p>
+/// production and the item as string literals, saves the production class, opens no block it does not close on
+/// its line, and ends by dropping the production, whose exclusive lock a terminal would otherwise keep; no
+/// script names <code>CleanProduction</code> or <code>UpdateProduction</code>.</p>
+/// <p>Mutation (Rule 19): drop the last line of <method>OcuPilot.Port.InteropPort.ItemSnippet</method> -- the
+/// last-line row goes red for each write.</p>
 Method TestTheScriptForms()
 {
     For tType = "ENABLE", "DISABLE", "ADD", "REMOVE" {
@@ -232,6 +237,7 @@ Method TestTheScriptForms()
             If $Extract($ZStrip($Piece(tText, $Char(10), tLine), "<>W"), *) = "{" Set tOpens = tOpens + 1
         }
         Do $$$AssertEquals(tOpens, 0, $List(tCase, 1) _ ": no line opens a block it does not close")
+        Do $$$AssertEquals($Piece(tText, $Char(10), *), " Kill tItem, tProduction", $List(tCase, 1) _ ": the last line drops the production")
     }
     Set tSteps = $ClassMethod(..#PORT, "Snippet", "Items", "ADD", .tQuery, tBody)
     Set tText = tSteps.%Get(0).text

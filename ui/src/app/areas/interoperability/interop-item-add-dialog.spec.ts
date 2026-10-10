@@ -97,6 +97,26 @@ describe('the Add item dialog', () => {
     expect(confirm(host).getAttribute('aria-disabled')).toBeNull();
   });
 
+  it('describes each field only by elements it draws: Category and Comment by their refusal alone, Enabled by its caption', async () => {
+    // Mutation (Rule 19): describe Category by `describedBy` again -> it names a caption the dialog does not draw and this goes red.
+    const violation = { field: 'Category', code: 'INTEROP.ITEM.VALUE', reason: STRINGS.interopItemRefusalValue };
+    const { fixture, host } = await mount({ kind: 'error', status: 422, code: 'INTEROP.ITEM.VALUE', reason: STRINGS.interopItemRefusalValue, detail: { violations: [violation] } });
+    const described = (): string[] =>
+      [...host.querySelectorAll('[aria-describedby]')].flatMap((element) => (element.getAttribute('aria-describedby') ?? '').split(' ').filter((id) => id !== ''));
+    for (const id of described()) expect(document.getElementById(id), id).not.toBeNull();
+    expect(host.querySelector('input[data-interop-item-add-category]')?.hasAttribute('aria-describedby')).toBe(false);
+    const enabled = host.querySelector('input[data-interop-item-add-enabled]') as HTMLInputElement;
+    expect(document.getElementById(enabled.getAttribute('aria-describedby') ?? '')?.textContent?.trim()).toBe(STRINGS.interopItemAddEnabledHint);
+    type(fixture, host, 'name', 'ProbeNew');
+    type(fixture, host, 'class', 'Probe.Op');
+    type(fixture, host, 'category', 'x');
+    confirm(host).click();
+    await settle(fixture);
+    const category = host.querySelector('input[data-interop-item-add-category]') as HTMLInputElement;
+    expect(category.getAttribute('aria-describedby')).toBe(host.querySelector('[data-interop-item-add-violation="Category"]')?.id);
+    for (const id of described()) expect(document.getElementById(id), id).not.toBeNull();
+  });
+
   it('posts the item to the production and namespace given and emits its name once the instance added it', async () => {
     const { fixture, host, sent } = await mount({ kind: 'ok', status: 201, body: { readBack: { verdict: 'matches' } } });
     type(fixture, host, 'name', 'ProbeNew');

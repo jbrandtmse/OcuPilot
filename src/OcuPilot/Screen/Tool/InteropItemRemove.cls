@@ -33,7 +33,7 @@ Parameter PRECONDITIONFIELD = "Enabled";
 /// <p>The removal rows the card shows: what the removed item held.</p>
 Parameter REMOVALROWS = "ClassName,Enabled";
 
-Parameter PRECONDITIONCODES = "INTEROP.ITEM.ENABLEDREMOVE,INTEROP.ITEM.AMBIGUOUS,INTEROP.ITEM.SOURCECONTROL,INTEROP.NAMESPACE";
+Parameter PRECONDITIONCODES = "INTEROP.ITEM.ENABLEDREMOVE,INTEROP.ITEM.DEFAULTSETTING,INTEROP.ITEM.AMBIGUOUS,INTEROP.ITEM.SOURCECONTROL,INTEROP.NAMESPACE";
 
 /// <p>The removal rows this proposal's card shows, from the fresh read <var>pFresh</var>: one per
 /// <parameter>REMOVALROWS</parameter> name, carrying the value the instance holds and no after-state. A read

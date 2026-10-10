@@ -2,8 +2,9 @@
 /// AD-54, AD-55, AD-62): each state the vendor would answer as a silent success, or refuse, is refused by its
 /// own 409 code with the published sentence before any vendor call, from the screen and at the agent's
 /// mint; a name the production holds in any letter case is taken, and a name it holds twice is ambiguous; an
-/// add the rules refuse is 422 with every violation named; and every refusal leaves the items and the
-/// vendor's audit trail as they were.</p>
+/// add the rules refuse is 422 with every violation named; an item whose class the vendor types as no business
+/// host is absent to an enable and a disable; a Save in a namespace that runs no interoperability is refused by
+/// the port's gate; and every refusal leaves the items as they were.</p>
 /// <p>It shares <class>OcuPilot.Test.InteropItemControl</class>'s helpers and its probe. <b>What it needs
 /// from the environment:</b> the same as that class, and <parameter>ARMINGVARIABLE</parameter> reading
 /// <code>1</code>, because it compiles and <b>runs a probe production in <code>USER</code></b> and writes
@@ -150,7 +151,8 @@ Method TestTheMintRefusesWhatTheScreenRefuses()
 }
 
 /// <p>AC3: a system default that supplies an item's <code>Enabled</code> makes the list read it with source
-/// <code>default</code> and refuses an enable and a disable by <code>DEFAULTSETTING</code>; a business process
+/// <code>default</code> and refuses an enable and a disable by <code>DEFAULTSETTING</code>, and a remove of an
+/// item the default keeps enabled by the same code; a business process
 /// whose pool size is 0 cannot be disabled (<code>POOLZERO</code>) but a business service with pool size 0
 /// can be, and nothing changes in any of them.</p>
 /// <p>Mutation (Rule 19): drop the <code>DEFAULTSETTING</code> refusal from
@@ -175,6 +177,8 @@ Method TestADefaultSettingAndAPoolZeroProcessAreRefused()
     Do $$$AssertEquals(tText _ "|" _ tReason, "409 " _ $Parameter(tE, "ITEMDEFAULTSETTING") _ "|" _ $Parameter(tE, "REASONITEMDEFAULTSETTING"), "a disable is refused: the default decides")
     Set tText = ..Act("enable", $Parameter(..#CONTROL, "OPNAME"), .tReason)
     Do $$$AssertEquals(tText _ "|" _ tReason, "409 " _ $Parameter(tE, "ITEMENABLED") _ "|" _ $Parameter(tE, "REASONITEMENABLED"), "an enable of what the default already enables is refused as enabled")
+    Set tText = ..Act("remove", $Parameter(..#CONTROL, "OPNAME"), .tReason)
+    Do $$$AssertEquals(tText _ "|" _ tReason, "409 " _ $Parameter(tE, "ITEMDEFAULTSETTING") _ "|" _ $Parameter(tE, "REASONITEMDEFAULTSETTING"), "a remove of what the default keeps enabled names the default, which a disable cannot change")
     Do ..RemoveDefault()
     Do $$$AssertStatusOK($ClassMethod(..#PROBE, "AddItem", ..#ROUTER, "EnsLib.MsgRouter.RoutingEngine", 0, 1), "a business process with pool size 0 is added to the stored configuration")
     Set tText = ..Act("disable", ..#ROUTER, .tReason)
@@ -186,9 +190,11 @@ Method TestADefaultSettingAndAPoolZeroProcessAreRefused()
 
 /// <p>AC3, AD-54: an add of a name the production holds, in any letter case, is 409 <code>TAKEN</code> from
 /// the Save and at the agent's mint; a name it holds twice refuses an enable, a disable and a remove by
-/// <code>AMBIGUOUS</code> from the screen and at the mint, and both rows still list.</p>
+/// <code>AMBIGUOUS</code> from the screen and at the mint, and so does the item read asked for no action; both
+/// rows still list.</p>
 /// <p>Mutation (Rule 19): drop the <code>TAKEN</code> test from
-/// <method>OcuPilot.Port.InteropPort.ReadItem</method> -- the Save and mint rows go red.</p>
+/// <method>OcuPilot.Port.InteropPort.ReadItem</method> -- the Save and mint rows go red; drop its
+/// <code>AMBIGUOUS</code> test for a read with no action -- the read row goes red.</p>
 Method TestATakenNameAndADuplicatedNameAreRefused()
 {
     Set tE = ..#ERROR
@@ -205,6 +211,11 @@ Method TestATakenNameAndADuplicatedNameAreRefused()
     Do $$$AssertEquals(+$Get(tHttp) _ " " _ $Select($IsObject($Get(tFault)): tFault.code, 1: ""), "409 " _ $Parameter(tE, "ITEMTAKEN"), "the agent's add of the lower-case name is taken at the mint")
     Do $$$AssertEquals($ClassMethod(..#CONTROL, "Items"), $Parameter(..#CONTROL, "BASELINE"), "no refused add stored an item")
     Do $$$AssertStatusOK($ClassMethod(..#PROBE, "AddItem", tOp, $Parameter(..#CONTROL, "OPCLASS"), 1, 1), "a second item of that name is stored")
+    Kill tQuery
+    Set tQuery("namespace") = "USER"
+    Set tQuery("id") = $ClassMethod(..#CONTROL, "IdOf", tOp)
+    Set tSC = $ClassMethod($Parameter(..#CONTROL, "PORT"), "Invoke", "Items", "ITEM", .tQuery, "", .tRow, .tHttp, .tFault)
+    Do $$$AssertEquals(+$Get(tHttp) _ " " _ $Select($IsObject($Get(tFault)): tFault.code, 1: ""), "409 " _ $Parameter(tE, "ITEMAMBIGUOUS"), "the item read of the duplicated name, asked for no action, is ambiguous")
     For tAction = "enable", "disable", "remove" {
         Set tText = ..Act(tAction, tOp, .tReason)
         Do $$$AssertEquals(tText _ "|" _ tReason, "409 " _ $Parameter(tE, "ITEMAMBIGUOUS") _ "|" _ $Parameter(tE, "REASONITEMAMBIGUOUS"), tAction _ " of the duplicated name is ambiguous")
@@ -269,12 +280,14 @@ ClassMethod PortAdd(pName As %String, pBody As %DynamicObject) As %String
 }
 
 /// <p>AC3: the port's own <code>ADD</code> judges an add's fields itself: a <code>PoolSize</code> of the wrong
-/// JSON type is 422 <code>PORT.FIELD.SHAPE</code> naming the field, a <code>Comment</code> or a
+/// JSON type is 422 <code>PORT.FIELD.SHAPE</code> naming the field, and so is an <code>Enabled</code>, a
+/// <code>Category</code> or a <code>Comment</code> of the wrong type; a <code>Comment</code> or a
 /// <code>Category</code> longer than the item property holds is 422 <code>INTEROP.ITEM.VALUE</code>, and an
 /// illegal name is 422 <code>INTEROP.ITEM.NAME</code>; nothing is stored.</p>
 /// <p>Mutation (Rule 19): delete the shape arms (the four <code>PORT.FIELD.SHAPE</code> lines for
 /// <code>PoolSize</code>, <code>Category</code>, <code>Comment</code> and <code>Enabled</code>) from
-/// <method>OcuPilot.Port.InteropPort.AddViolations</method> -- the <code>PoolSize</code> row goes red.</p>
+/// <method>OcuPilot.Port.InteropPort.AddViolations</method> -- the four shape rows go red; delete the
+/// <code>Enabled</code> line alone -- its row goes red.</p>
 Method TestThePortsOwnAddJudgesTheFieldsItself()
 {
     Set tE = ..#ERROR
@@ -284,6 +297,11 @@ Method TestThePortsOwnAddJudgesTheFieldsItself()
     Set tBody = {"PoolSize": "many"}
     Do tBody.%Set("ClassName", tClass, "string")
     Do $$$AssertEquals(..PortAdd(tNew, tBody), "422 " _ tShape _ " PoolSize", "a PoolSize that is no number is a shape violation naming it")
+    For tCase = $ListBuild("Enabled", "{""Enabled"": ""yes""}"), $ListBuild("Category", "{""Category"": 5}"), $ListBuild("Comment", "{""Comment"": true}") {
+        Set tBody = ##class(%DynamicObject).%FromJSON($List(tCase, 2))
+        Do tBody.%Set("ClassName", tClass, "string")
+        Do $$$AssertEquals(..PortAdd(tNew, tBody), "422 " _ tShape _ " " _ $List(tCase, 1), "an " _ $List(tCase, 1) _ " of the wrong type is a shape violation naming it")
+    }
     Set tBody = {}
     Do tBody.%Set("ClassName", tClass, "string")
     Do tBody.%Set("Comment", $Translate($Justify("", 2001), " ", "x"), "string")
@@ -296,6 +314,46 @@ Method TestThePortsOwnAddJudgesTheFieldsItself()
     Do tBody.%Set("ClassName", tClass, "string")
     Do $$$AssertEquals(..PortAdd("-bad", tBody), "422 " _ $Parameter(tE, "ITEMNAME") _ " Name", "an illegal name reaches the port's own violation branch")
     Do $$$AssertEquals($ClassMethod(..#CONTROL, "Items"), $Parameter(..#CONTROL, "BASELINE"), "no refused add stored an item")
+}
+
+/// <p>AC3: an item whose class the vendor types as no business host (a class no longer compiled) is not found by
+/// the vendor's enable and disable, so both answer 404 <code>PORT.NOTFOUND</code>, unlogged, through the row
+/// action and the port, rather than the vendor's failure as a logged 500; it still lists, as <code>unknown</code>.</p>
+/// <p>Mutation (Rule 19): make <method>OcuPilot.Port.InteropPort.VendorCannotFind</method> answer 0 -- the port
+/// row answers 500 and the action row answers 500, and both go red.</p>
+Method TestAnItemTheVendorCannotTypeIsAbsentToAnEnableAndADisable()
+{
+    Set tGhost = "OcuP203Ghost"
+    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "AddItem", tGhost, "OcuPilotProbe.No.Such.Class", 1, 0), "an item whose class does not exist is stored, disabled")
+    Do $$$AssertEquals(..Act("enable", tGhost, .tReason), "404 PORT.NOTFOUND", "its Enable is not found")
+    Kill tQuery
+    Set tQuery("namespace") = "USER"
+    Set tQuery("id") = $ClassMethod(..#CONTROL, "IdOf", tGhost)
+    Set tSC = $ClassMethod($Parameter(..#CONTROL, "PORT"), "Invoke", "Items", "ENABLE", .tQuery, "", .tResult, .tHttp, .tFault)
+    Do $$$AssertEquals(+$Get(tHttp) _ " " _ $Select($IsObject($Get(tFault)): tFault.code, 1: ""), "404 PORT.NOTFOUND", "and so is the port's enable")
+    Do $$$AssertEquals($ClassMethod(..#CONTROL, "Items"), $Parameter(..#CONTROL, "BASELINE") _ "," _ tGhost _ ":0", "nothing changed")
+}
+
+/// <p>AC3, AD-62: a Save scoped to a namespace that runs no interoperability (<code>%SYS</code>) is refused 409
+/// <code>INTEROP.NAMESPACE</code> by the port's gate, and the port's own add rules there judge only what needs no
+/// vendor class, so neither calls into a namespace the gate does not admit.</p>
+/// <p>Mutation (Rule 19): drop the <code>Admit</code> check from
+/// <method>OcuPilot.Port.InteropPort.AddViolations</method> -- the Save answers 500 and the rules row errors, and
+/// both go red.</p>
+Method TestASaveInANamespaceWithoutInteroperabilityIsRefusedByTheGate()
+{
+    Set tBody = {"ClassName": "OcuPilotProbe.Interop.Op", "PoolSize": 1, "Enabled": false}
+    Do tBody.%Set("Production", $Parameter(..#CONTROL, "PRODUCTION"), "string")
+    Do tBody.%Set("Name", "OcuP203Elsewhere", "string")
+    Kill tExtra
+    Set tUrl = $Parameter("OcuPilot.Test.Http", "BASEPATH") _ "/interop/items?ns=%25SYS"
+    Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("POST", tUrl, ##class(OcuPilot.Test.Http).GetTestUsername(), ##class(OcuPilot.Test.Http).GetTestPassword(), .tStatus, .tRaw, .tHeaders, tBody.%ToJSON(), "application/json", .tExtra, 120)
+    Set tCode = ""
+    Try { Set tCode = ##class(%DynamicObject).%FromJSON(tRaw).%Get("code") } Catch { Set tCode = "" }
+    Do $$$AssertEquals($Get(tStatus) _ " " _ tCode, "409 " _ $Parameter(..#ERROR, "NAMESPACE"), "the Save in %SYS is refused by the namespace: " _ $Extract($Get(tRaw), 1, 300))
+    Set tSC = $ClassMethod($Parameter(..#CONTROL, "PORT"), "AddViolations", "%SYS", "OcuP203Elsewhere", {"ClassName": "OcuPilotProbe.Interop.Op"}, .tViolations)
+    Do $$$AssertStatusOK(tSC, "the port's add rules in %SYS raise nothing")
+    Do $$$AssertEquals(+$Get(tViolations), 0, "and judge no vendor rule there")
 }
 
 }

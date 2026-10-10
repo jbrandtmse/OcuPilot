@@ -406,6 +406,10 @@ services:
       # outcomes, the descriptor class compiles the probe classes, and the gate class signs in as probe
       # principals each missing one pair an item write requires.
       # classes: InteropItemControl, InteropItemDescriptor, InteropItemGate, InteropItemRefusals, InteropStopOutcome
+      # The item identity class compiles the probe production's class between an agent's mint and its confirm,
+      # and the split gate class creates and deletes a namespace configuration over two existing databases
+      # (Story 20.3).
+      # classes: InteropItemGateSplit, InteropItemIdentity
       # classes: ExplorerSourceTurn
       # classes: ExplorerSaveTurn
       # classes: ExplorerCreateTurn
