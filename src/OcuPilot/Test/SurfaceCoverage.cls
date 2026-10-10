@@ -216,6 +216,7 @@ XData Coverage
 <screen name="InteropProcessList" class="OcuPilot.Test.InteropDescriptor" method="TestTheFourDeclarationsRegister" corpus="one declaration test pins all four Story 20.2 Interoperability screens in one loop"/>
 <screen name="InteropTransformList" class="OcuPilot.Test.InteropDescriptor" method="TestTheFourDeclarationsRegister" corpus="one declaration test pins all four Story 20.2 Interoperability screens in one loop"/>
 <screen name="InteropRuleList" class="OcuPilot.Test.InteropDescriptor" method="TestTheFourDeclarationsRegister" corpus="one declaration test pins all four Story 20.2 Interoperability screens in one loop"/>
+<screen name="InteropItemList" class="OcuPilot.Test.InteropItemDescriptor" method="TestTheDescriptorDeclaresTheProductionItemsList"/>
 <tool name="permissions.users.create" class="OcuPilot.Test.UserCreate" method="TestTheSchemaCarriesNoSecretAndThePermittedSetIsTheSets"/>
 <tool name="permissions.users.copy" class="OcuPilot.Test.UserCopy" method="TestTheCopyToolPinsItsInputSchemaAndSnippetForm"/>
 <tool name="permissions.roles.create" class="OcuPilot.Test.RoleCreate" method="TestTheSchemaCarriesNoEscalationOnlyAndThePermittedSetIsTheSets"/>
@@ -367,6 +368,10 @@ XData Coverage
 <tool name="interop.productions.restart" class="OcuPilot.Test.InteropControl" method="TestTheAgentsRestartConfirms"/>
 <tool name="interop.productions.update" class="OcuPilot.Test.InteropControl" method="TestTheAgentsUpdateConfirms"/>
 <tool name="interop.productions.recover" class="OcuPilot.Test.InteropControl" method="TestTheAgentsRecoverConfirms"/>
+<tool name="interop.items.enable" class="OcuPilot.Test.InteropItemControl" method="TestTheAgentsDisableAndEnableConfirmOverHttp" corpus="the enable and the disable are asserted together in one test"/>
+<tool name="interop.items.disable" class="OcuPilot.Test.InteropItemControl" method="TestTheAgentsDisableAndEnableConfirmOverHttp" corpus="the enable and the disable are asserted together in one test"/>
+<tool name="interop.items.add" class="OcuPilot.Test.InteropItemControl" method="TestTheAgentsAddAndRemoveConfirmOverHttp" corpus="the add and the remove are asserted together in one test"/>
+<tool name="interop.items.remove" class="OcuPilot.Test.InteropItemControl" method="TestTheAgentsAddAndRemoveConfirmOverHttp" corpus="the add and the remove are asserted together in one test"/>
 <tool name="osmgmt.remotedatabases.create" class="OcuPilot.Test.RemoteDatabaseDescriptor" method="TestTheToolsDeclareTheirFieldsKindsAndPairs" corpus="the three remote database tools are asserted together in one loop"/>
 <tool name="osmgmt.remotedatabases.update" class="OcuPilot.Test.RemoteDatabaseDescriptor" method="TestTheToolsDeclareTheirFieldsKindsAndPairs" corpus="the three remote database tools are asserted together in one loop"/>
 <tool name="osmgmt.remotedatabases.delete" class="OcuPilot.Test.RemoteDatabaseDescriptor" method="TestTheToolsDeclareTheirFieldsKindsAndPairs" corpus="the three remote database tools are asserted together in one loop"/>

@@ -100,6 +100,9 @@ export const SKIP = {
   'system-explorer/sql-views/document': 'HSCUSTOM holds no view outside the system schemas, so the SQL views list opens with no row to open',
   'system-explorer/sql-views/fields': 'HSCUSTOM holds no view outside the system schemas, so the SQL views list opens with no row to open',
   'system-explorer/sql-views/statements': 'HSCUSTOM holds no view outside the system schemas, so the SQL views list opens with no row to open',
+  // Story 20.3: HSCUSTOM holds no production, so the Productions list opens with no row to open; the walk is
+  // interop-items.browser-spec.mjs's, on the probe production it creates.
+  'interoperability/productions/items': 'HSCUSTOM holds no production, so the Productions list opens with no row to open',
 };
 
 /** The limits class the seeded entry is capped by, as the turn's own append is. */

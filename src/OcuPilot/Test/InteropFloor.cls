@@ -37,12 +37,12 @@ Parameter BASEAREAS = "agent,analytics,home,logs";
 /// <p>See <parameter>BASESCREENS</parameter>.</p>
 Parameter BASETOOLS = "agent.transcripts.read,logs.analytics.read,shell.instance.read,shell.namespaces.read,shell.privileges.read,shell.screen.open";
 
-/// <p>What the Operator role adds: Productions through <code>%Ens_ProductionConfig:READ</code> and the
-/// event log through <code>%Ens_EventLog:USE</code>.</p>
-Parameter OPERATORSCREENS = "InteropProductionList,LogEventViewer";
+/// <p>What the Operator role adds: Productions and its Production items child list through
+/// <code>%Ens_ProductionConfig:READ</code> and the event log through <code>%Ens_EventLog:USE</code>.</p>
+Parameter OPERATORSCREENS = "InteropItemList,InteropProductionList,LogEventViewer";
 
 /// <p>See <parameter>OPERATORSCREENS</parameter>.</p>
-Parameter OPERATORTOOLS = "interop.productions.read,logs.eventlog.read";
+Parameter OPERATORTOOLS = "interop.items.read,interop.productions.read,logs.eventlog.read";
 
 /// <p>What the Administrator role adds beside the Operator's: the three code lists, each through its
 /// own <code>%Ens_Code:READ</code>.</p>

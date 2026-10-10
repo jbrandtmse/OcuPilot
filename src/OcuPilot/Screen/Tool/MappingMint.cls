@@ -11,8 +11,18 @@
 Class OcuPilot.Screen.Tool.MappingMint Extends OcuPilot.Kernel.Proposal.Mint
 {
 
-/// <p>The argument naming the namespace the mapping belongs to.</p>
+/// <p>The argument naming the namespace the mapping belongs to. A subclass whose composite id has another
+/// first part (a production's item, Story 20.3) names it here and words the three refusals below.</p>
 Parameter NAMESPACEARGUMENT = "Namespace";
+
+/// <p>What the first part names, as the refusal for an empty one says it.</p>
+Parameter PARENTDESCRIPTION = "the namespace the mapping belongs to";
+
+/// <p>What the second part names, as the refusal for an empty one says it.</p>
+Parameter CHILDDESCRIPTION = "the mapping";
+
+/// <p>The two kinds of name the separator character cannot appear in, as the refusal for it says them.</p>
+Parameter SEPARATORNOUNS = "namespace or mapping name";
 
 /// <p>The superclass's <method>OcuPilot.Kernel.Proposal.Mint.Mint</method>, with
 /// <var>pIdValue</var> -- the agent's <code>Name</code> -- replaced by the composite id of that name
@@ -30,15 +40,15 @@ ClassMethod Mint(pDescriptor As %String, pToolName As %String, pUser As %String,
         Set tNamespace = ""
         If $IsObject(pArgs) && (pArgs.%GetTypeOf(..#NAMESPACEARGUMENT) = "string") Set tNamespace = pArgs.%Get(..#NAMESPACEARGUMENT)
         If tNamespace = "" {
-            Set tSC = ..Refuse("'" _ ..#NAMESPACEARGUMENT _ "' names the namespace the mapping belongs to and cannot be empty", .pHttpStatus, .pFault)
+            Set tSC = ..Refuse("'" _ ..#NAMESPACEARGUMENT _ "' names " _ ..#PARENTDESCRIPTION _ " and cannot be empty", .pHttpStatus, .pFault)
             Quit
         }
         If pIdValue = "" {
-            Set tSC = ..Refuse("'" _ pIdArgument _ "' names the mapping and cannot be empty", .pHttpStatus, .pFault)
+            Set tSC = ..Refuse("'" _ pIdArgument _ "' names " _ ..#CHILDDESCRIPTION _ " and cannot be empty", .pHttpStatus, .pFault)
             Quit
         }
         If (tNamespace [ tSeparator) || (pIdValue [ tSeparator) {
-            Set tSC = ..Refuse("'" _ $Select(tNamespace [ tSeparator: ..#NAMESPACEARGUMENT, 1: pIdArgument) _ "' carries the character U+0001, which no namespace or mapping name holds", .pHttpStatus, .pFault)
+            Set tSC = ..Refuse("'" _ $Select(tNamespace [ tSeparator: ..#NAMESPACEARGUMENT, 1: pIdArgument) _ "' carries the character U+0001, which no " _ ..#SEPARATORNOUNS _ " holds", .pHttpStatus, .pFault)
             Quit
         }
         Set tId = ##class(OcuPilot.Kernel.EntityId).JoinComposite($ListBuild(tNamespace, pIdValue))

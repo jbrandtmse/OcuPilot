@@ -83,14 +83,29 @@ ClassMethod NamespaceInfo(pNamespace As %String, ByRef pInfo, pDontConnect As %B
 /// entry rather than admitted ungated.</p>
 ClassMethod GlobalDatabase(pNamespace As %String, Output pResource As %String, Output pReadOnly As %Boolean) As %Boolean
 {
+    Quit ..DatabaseOf(pNamespace, "GlobalDB", .pResource, .pReadOnly)
+}
+
+/// <p>The guarding resource and mount state of <var>pNamespace</var>'s default routine database
+/// (<method>GlobalDatabase</method>'s counterpart): 0 when the instance reports no resource for it,
+/// which a caller refuses rather than admits.</p>
+ClassMethod RoutineDatabase(pNamespace As %String, Output pResource As %String, Output pReadOnly As %Boolean) As %Boolean
+{
+    Quit ..DatabaseOf(pNamespace, "RoutineDB", .pResource, .pReadOnly)
+}
+
+/// <p>The resource and read-only flag <method>NamespaceInfo</method> reports under the key
+/// <var>pKey</var> (<code>GlobalDB</code> or <code>RoutineDB</code>) for <var>pNamespace</var>.</p>
+ClassMethod DatabaseOf(pNamespace As %String, pKey As %String, Output pResource As %String, Output pReadOnly As %Boolean) As %Boolean [ Private ]
+{
     Set pResource = ""
     Set pReadOnly = 0
     Set tResolved = 0
     Try {
         Kill tInfo
         Do ..NamespaceInfo(pNamespace, .tInfo, 1)
-        Set pResource = $Get(tInfo("GlobalDB", "Resource"))
-        Set pReadOnly = ''$Get(tInfo("GlobalDB", "ReadOnly"))
+        Set pResource = $Get(tInfo(pKey, "Resource"))
+        Set pReadOnly = ''$Get(tInfo(pKey, "ReadOnly"))
         Set tResolved = (pResource '= "")
     } Catch {
         Set pResource = ""

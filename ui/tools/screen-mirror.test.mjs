@@ -1343,7 +1343,8 @@ test('criteriaProblem returns every sentence OcuPilot.Test.CriteriaCorpus declar
   // Story 18.19's Journal records, whose six criteria are the classic record browser's search.
   // Story 18.7's two key file lists, whose two criteria are the key file's root and path.
   // Story 18.9's SQL privileges, whose two criteria are the grantee and the namespace. Story 18.10's percent-class
-  // access list, whose one criterion is the application.
+  // access list, whose one criterion is the application. Story 20.3's Production items, whose one criterion is
+  // the production the route id names.
   const withCriteria = emittedScreens.filter((screen) => (screen.read?.criteria ?? null) !== null);
   assert.deepEqual(
     withCriteria.map((screen) => screen.descriptor),
@@ -1378,6 +1379,7 @@ test('criteriaProblem returns every sentence OcuPilot.Test.CriteriaCorpus declar
       'OcuPilot.Screen.Descriptor.ExplorerSqlViewStatements',
       'OcuPilot.Screen.Descriptor.ExplorerSqlViews',
       'OcuPilot.Screen.Descriptor.GlobalMappingList',
+      'OcuPilot.Screen.Descriptor.InteropItemList',
       'OcuPilot.Screen.Descriptor.JournalFileDatabaseList',
       'OcuPilot.Screen.Descriptor.JournalFileDetails',
       'OcuPilot.Screen.Descriptor.JournalRecordList',
@@ -2377,7 +2379,8 @@ test('ownPrivilegesProblem returns every sentence OwnPrivilegeCases declares, an
   // Story 18.7's three key file screens own %Admin_FileSystemAccess beside Security's two pairs.
   // Story 19.17's Document databases owns %DocDB_Admin and %Service_DocDB beside System Explorer's
   // %Development. Story 20.2's four Interoperability lists own their classic page's resource beside the
-  // area's %Ens_Portal.
+  // area's %Ens_Portal. Story 20.3's Production items
+  // owns %Ens_ProductionConfig:READ the same way.
   assert.deepEqual(
     owners.sort(),
     [
@@ -2388,6 +2391,7 @@ test('ownPrivilegesProblem returns every sentence OwnPrivilegeCases declares, an
       'OcuPilot.Screen.Descriptor.EncryptionKeyFileAdminList',
       'OcuPilot.Screen.Descriptor.EncryptionKeyFileForm',
       'OcuPilot.Screen.Descriptor.ExplorerDocDbList',
+      'OcuPilot.Screen.Descriptor.InteropItemList',
       'OcuPilot.Screen.Descriptor.InteropProcessList',
       'OcuPilot.Screen.Descriptor.InteropProductionList',
       'OcuPilot.Screen.Descriptor.InteropRuleList',

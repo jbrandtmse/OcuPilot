@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 import { ApiService, type ApiRequestInit, type JsonResult } from '../core/api';
 import { ChangeBus, type ChangeEvent } from '../core/change-bus';
+import { ScopeService } from '../core/scope';
 import { ScreenActions } from '../core/screen-actions';
 import { ScreenStores } from '../core/screen-store';
 import { ENTITY_SINGLETON_ID, SCREENS } from '../core/screens.generated';
@@ -80,6 +81,7 @@ function mount(answer: JsonResult<unknown> = { kind: 'ok', status: 200, body: {}
       { provide: ChangeBus, useValue: bus },
       { provide: ScreenStores, useValue: stores },
       { provide: ScreenActions, useValue: new ScreenActions() },
+      { provide: ScopeService, useValue: { namespace: () => 'USER' } as unknown as ScopeService },
     ],
   });
   const actions = TestBed.inject(ScreenActions);
@@ -2198,5 +2200,92 @@ describe('Productions\u2019 row actions (Story 20.2)', () => {
     await settle();
     expect(store.refusal()).toBe(STRINGS.interopRefusalNotRunning);
     expect(events).toEqual([]);
+  });
+});
+
+/**
+ * Story 20.3: Production items' Enable and Disable, which warn first that a running production reads the change
+ * only at its next update, and its Remove, which types the item's name and sends the whole row key; and a stop
+ * that left the production Suspended or partly stopped, which re-reads the Productions list.
+ */
+describe('Production items\u2019 row actions (Story 20.3)', () => {
+  const ITEMS = 'OcuPilot.Screen.Descriptor.InteropItemList';
+  const PRODUCTIONS = 'OcuPilot.Screen.Descriptor.InteropProductionList';
+  const PRODUCTION = 'Probe.Production';
+  const NAME = 'ProbeOp';
+  const TARGET_ID = `${PRODUCTION}\u0001${NAME}`;
+  const ROW = { Production: PRODUCTION, Name: NAME, ClassName: 'Probe.Op', Type: 'operation', Enabled: true, PoolSize: 1 };
+  const TARGET = { type: 'production-item', scope: 'USER', id: TARGET_ID };
+
+  it('registers the three declared row actions, and leaves Add for the page\u2019s own dialog', () => {
+    // Mutation (Rule 19): drop the list from SCREEN_ACTION_DESCRIPTORS -> nothing registers and this goes red.
+    const { actions } = mount(undefined, ITEMS);
+    for (const id of ['enable', 'disable', 'remove']) expect(actions.has(ITEMS, id), id).toBe(true);
+    expect(actions.has(ITEMS, 'add')).toBe(false);
+  });
+
+  it('warns before Enable and Disable with the pending-update sentence, and sends once past Proceed with the row key', async () => {
+    // Mutation (Rule 19): remove the list's entry from WARNING_CONSEQUENCES -> each action is sent at once.
+    for (const action of ['enable', 'disable'] as const) {
+      const { handler, store, calls, events } = mount({ kind: 'ok', status: 200, body: { action: 'updated', target: TARGET } }, ITEMS);
+      handler.startFor(ITEMS, action, TARGET_ID, ROW, store);
+      expect(handler.pending()?.kind).toBe('warning');
+      expect(handler.pending()?.consequence).toBe(STRINGS.interopItemPendingConsequence);
+      handler.cancelPending();
+      await settle();
+      expect(calls).toHaveLength(0);
+      handler.startFor(ITEMS, action, TARGET_ID, ROW, store);
+      handler.confirmPending();
+      await settle();
+      expect(calls.map((call) => JSON.parse(call.body))).toEqual([{ action, id: TARGET_ID }]);
+      expect(events.map((event) => `${event.action} ${event.type} ${event.id}`)).toEqual([`updated production-item ${TARGET_ID}`]);
+      TestBed.resetTestingModule();
+    }
+  });
+
+  it('types the item\u2019s name before Remove, states what it deletes, and sends the whole row key', async () => {
+    // Mutation (Rule 19): drop the list's TYPED_NAME_ROWS entry -> the dialog asks for the joined row key and the
+    // name assertion goes red; drop its DESTRUCTIVE_CONSEQUENCES entry -> the consequence assertion goes red.
+    const screen = SCREENS.find((entry) => entry.descriptor === ITEMS)!;
+    const { handler, store, calls, events } = mount({ kind: 'ok', status: 200, body: { action: 'deleted', target: TARGET } }, ITEMS);
+    handler.startFor(ITEMS, 'remove', TARGET_ID, ROW, store);
+    expect(handler.pending()?.kind).toBe('typed-name');
+    expect(handler.pending()?.name).toBe(NAME);
+    expect(handler.pending()?.target).toBe(TARGET_ID);
+    expect(handler.pending()?.consequence).toBe(STRINGS.interopItemRemoveConsequence);
+    expect(calls).toHaveLength(0);
+    handler.confirmPending();
+    await settle();
+    expect(calls).toHaveLength(1);
+    expect(calls[0].path).toBe(`/api/ocupilot/screens/${screen.toolIdentifier}/action`);
+    expect(JSON.parse(calls[0].body)).toEqual({ action: 'remove', id: TARGET_ID });
+    expect(events.map((event) => `${event.action} ${event.type} ${event.id}`)).toEqual([`deleted production-item ${TARGET_ID}`]);
+  });
+
+  it('shows an item refusal\u2019s published sentence from the envelope and publishes nothing', async () => {
+    const refused = { kind: 'error', status: 409, code: 'INTEROP.ITEM.ENABLED', reason: STRINGS.interopItemRefusalEnabled, detail: null } as unknown as JsonResult<unknown>;
+    const { handler, store, events } = mount(refused, ITEMS);
+    handler.startFor(ITEMS, 'enable', TARGET_ID, ROW, store);
+    handler.confirmPending();
+    await settle();
+    expect(store.refusal()).toBe(STRINGS.interopItemRefusalEnabled);
+    expect(events).toEqual([]);
+  });
+
+  it('re-reads the Productions list after a stop that ended Suspended or partly stopped, and shows the sentence', async () => {
+    // Mutation (Rule 19): drop the PRODUCTION_STATE_MOVED branch -> nothing is published and this goes red.
+    for (const [code, reason] of [
+      ['INTEROP.PRODUCTION.SUSPENDED', STRINGS.interopRefusalSuspended],
+      ['INTEROP.PRODUCTION.PARTSTOPPED', STRINGS.interopRefusalPartStopped],
+    ] as const) {
+      const refused = { kind: 'error', status: 409, code, reason, detail: null } as unknown as JsonResult<unknown>;
+      const { handler, store, events } = mount(refused, PRODUCTIONS);
+      handler.startFor(PRODUCTIONS, 'stop', PRODUCTION, { Name: PRODUCTION, Status: 'Running', LastStartTime: '', LastStopTime: '' }, store);
+      handler.confirmPending();
+      await settle();
+      expect(store.refusal(), code).toBe(reason);
+      expect(events.map((event) => `${event.action} ${event.type} ${event.scope} ${event.id}`), code).toEqual([`updated production USER ${PRODUCTION}`]);
+      TestBed.resetTestingModule();
+    }
   });
 });

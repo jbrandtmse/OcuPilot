@@ -401,6 +401,11 @@ services:
       # missing one pair the interoperability port requires and reads and controls the probe as them
       # (Story 20.2).
       # classes: InteropControl, InteropDescriptor, InteropGate
+      # The Production items classes compile and run the same probe production in USER, writing its items
+      # (Story 20.3): the control, refusals and stop-outcome classes drive the item writes and the stop
+      # outcomes, the descriptor class compiles the probe classes, and the gate class signs in as probe
+      # principals each missing one pair an item write requires.
+      # classes: InteropItemControl, InteropItemDescriptor, InteropItemGate, InteropItemRefusals, InteropStopOutcome
       # classes: ExplorerSourceTurn
       # classes: ExplorerSaveTurn
       # classes: ExplorerCreateTurn

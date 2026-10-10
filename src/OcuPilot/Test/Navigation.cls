@@ -521,13 +521,14 @@ Method TestThePayloadCarriesEveryAreaWithAVerdict()
         }
     }
 
-    ; Interoperability (Story 20.2): its four screens are the area's whole side bar, in the classic
-    ; List menu's order; an added Interoperability screen updates this count and the order with it.
+    ; Interoperability (Story 20.2, Story 20.3): its four listed screens are the area's side bar, in the classic
+    ; List menu's order, and the roster also carries the unlisted Production items list, which sorts first at
+    ; position 0; an added Interoperability screen updates this count and the order with it.
     Set tInterop = ##class(OcuPilot.Test.Descriptor).AreaEntry(tObject.areas, "interoperability")
     Do $$$AssertTrue($IsObject(tInterop), "the payload carries the interoperability area")
     If $IsObject(tInterop) {
-        Do $$$AssertEquals(tInterop.screens.%Size(), 4, "which carries its four built screens -- an added Interoperability screen updates this count and the order below with it")
-        Set tOrder = $ListBuild("interoperability/productions|interopProductionsLabel", "interoperability/processes|interopProcessesLabel", "interoperability/transforms|interopTransformsLabel", "interoperability/rules|interopRulesLabel")
+        Do $$$AssertEquals(tInterop.screens.%Size(), 5, "which carries its five built screens -- an added Interoperability screen updates this count and the order below with it")
+        Set tOrder = $ListBuild("interoperability/productions/items|interopItemsLabel", "interoperability/productions|interopProductionsLabel", "interoperability/processes|interopProcessesLabel", "interoperability/transforms|interopTransformsLabel", "interoperability/rules|interopRulesLabel")
         For tAt = 1:1:$ListLength(tOrder) {
             Set tScreen = tInterop.screens.%Get(tAt - 1)
             Do $$$AssertEquals($Select($IsObject(tScreen): tScreen.route _ "|" _ tScreen.labelKey, 1: ""), $List(tOrder, tAt), "interoperability position " _ tAt _ " is its declared screen, under its own label key")

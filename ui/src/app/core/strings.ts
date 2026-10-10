@@ -6218,10 +6218,10 @@ export const STRINGS = {
   actionRecover: 'Recover',
   /** EXPERIENCE.md:604 */
   interopStopConsequence: 
-    'Stopping this production waits up to 15 seconds for its work in progress to finish. If it takes longer, nothing is stopped.',
+    'Stopping this production waits up to 15 seconds for its work in progress to finish. If it takes longer, nothing is stopped; if a job then takes longer than 15 seconds to stop, the production is left partly stopped.',
   /** EXPERIENCE.md:604 */
   interopRestartConsequence: 
-    'Restarting this production stops it and starts it again. If its work in progress takes longer than 15 seconds to finish, nothing is stopped.',
+    'Restarting this production stops it and starts it again. If its work in progress takes longer than 15 seconds to finish, nothing is stopped; if a job then takes longer than 15 seconds to stop, the production is left partly stopped.',
   /** EXPERIENCE.md:604 */
   interopUpdateConsequence: 
     'Updating this production restarts only the items whose settings changed, and starts or stops the items enabled or disabled since it started. If an item takes longer than 15 seconds to finish its work, the update is refused and the production keeps running.',
@@ -6249,6 +6249,64 @@ export const STRINGS = {
     'The production\'s work in progress did not finish within 15 seconds, so it was left as it was.',
   /** EXPERIENCE.md:604 */
   interopRefusalState: 'This production\'s state does not allow that action here.',
+  /** EXPERIENCE.md:604 */
+  interopItemsLabel: 'Production items',
+  /** EXPERIENCE.md:604 */
+  interopItemColumnClass: 'Host class',
+  /** EXPERIENCE.md:604 */
+  interopItemColumnPoolSize: 'Pool size',
+  /** EXPERIENCE.md:604 */
+  interopItemColumnCategory: 'Category',
+  /** EXPERIENCE.md:604 */
+  interopItemsEmpty: 'This production holds no items.',
+  /** EXPERIENCE.md:604 */
+  interopItemsEmptyAgent: 'Ask the agent which item this production should hold.',
+  /** EXPERIENCE.md:604 */
+  interopItemsPrompt1: 'Which items of this production are disabled?',
+  /** EXPERIENCE.md:604 */
+  interopItemsPrompt2: 'Which items of this production run in the shared actor pool?',
+  /** EXPERIENCE.md:604 */
+  interopItemsPrompt3: 'What does each item of this production do?',
+  /** EXPERIENCE.md:604 */
+  interopItemAddTitle: 'Add item',
+  /** EXPERIENCE.md:604 */
+  interopItemAddNameHint: 'It is 1 to 128 characters with no space at either end. It cannot contain a vertical bar, a semicolon, a comma or an opening bracket, begin with a hyphen or an underscore, or end with a hyphen, an exclamation mark or a dollar sign.',
+  /** EXPERIENCE.md:604 */
+  interopItemAddClassHint: 'The business service, business process or business operation class that runs the item. It must be compiled in this namespace.',
+  /** EXPERIENCE.md:604 */
+  interopItemAddPoolHint: 'Leave it empty for the class\'s own default.',
+  /** EXPERIENCE.md:604 */
+  interopItemAddEnabledHint: 'Leave it unchecked to add the item disabled.',
+  /** EXPERIENCE.md:604 */
+  interopItemPendingConsequence: 'The change takes effect when this production next starts or, while it runs, when it is updated on Productions.',
+  /** EXPERIENCE.md:604 */
+  interopItemRemoveConsequence: 'Removing this item deletes it and every setting it holds from the production.',
+  /** EXPERIENCE.md:604 */
+  interopRefusalSuspended: 'The production stopped, but messages still queued left it Suspended rather than Stopped. Start it to process them.',
+  /** EXPERIENCE.md:604 */
+  interopRefusalPartStopped: 'Some of the production\'s jobs did not stop within 15 seconds, so it is left partly stopped and still reads Running. Stop it again to finish, or update it to start its jobs again.',
+  /** EXPERIENCE.md:604 */
+  interopItemRefusalEnabled: 'This item is already enabled.',
+  /** EXPERIENCE.md:604 */
+  interopItemRefusalDisabled: 'This item is already disabled.',
+  /** EXPERIENCE.md:604 */
+  interopItemRefusalDefaultSetting: 'A system default setting decides whether this item is enabled, so change it in System Default Settings.',
+  /** EXPERIENCE.md:604 */
+  interopItemRefusalPoolZero: 'This business process runs in the production\'s shared actor pool, so it cannot be disabled.',
+  /** EXPERIENCE.md:604 */
+  interopItemRefusalTaken: 'This production already holds an item of that name.',
+  /** EXPERIENCE.md:604 */
+  interopItemRefusalAmbiguous: 'This production holds more than one item of that name, so change it in the classic production configuration page.',
+  /** EXPERIENCE.md:604 */
+  interopItemRefusalClass: 'Name a business service, business process or business operation class compiled in this namespace.',
+  /** EXPERIENCE.md:604 */
+  interopItemRefusalName: 'An item name is 1 to 128 characters with no control character and no space at either end. It cannot contain a vertical bar, a semicolon, a comma or an opening bracket, begin with a hyphen or an underscore, end with a hyphen, an exclamation mark or a dollar sign, or be an asterisk.',
+  /** EXPERIENCE.md:604 */
+  interopItemRefusalValue: 'A production item does not accept this value for that field.',
+  /** EXPERIENCE.md:604 */
+  interopItemRefusalEnabledRemove: 'Disable this item before removing it.',
+  /** EXPERIENCE.md:604 */
+  interopItemRefusalSourceControl: 'This namespace uses source control, so change this production\'s items in the classic production configuration page.',
   /** EXPERIENCE.md:468 */
   sqlPrivilegesLabel: 'SQL privileges',
   /** EXPERIENCE.md:468 */

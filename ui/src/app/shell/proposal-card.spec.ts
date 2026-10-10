@@ -869,13 +869,16 @@ describe('the proposal card', () => {
     expect(lines[0].textContent).toContain(STRINGS.webAppRepointedEffect);
   });
 
-  it('Story 20.2: a production stop, restart, update or recover states its own published sentence, not drawn destructive', () => {
-    // Mutation (Rule 19): drop the INTEROP.RECOVER code from `consequenceSentence` -> the recover leg goes red.
+  it('Story 20.2, 20.3: a production stop, restart, update or recover, and an item write or removal, states its own published sentence, not drawn destructive', () => {
+    // Mutation (Rule 19): drop the INTEROP.RECOVER code from `consequenceSentence` -> the recover leg goes red;
+    // drop the INTEROP.ITEM.PENDING and INTEROP.ITEM.REMOVE branches -> the two item legs go red.
     for (const [code, sentence] of [
       ['INTEROP.STOP', STRINGS.interopStopConsequence],
       ['INTEROP.RESTART', STRINGS.interopRestartConsequence],
       ['INTEROP.UPDATE', STRINGS.interopUpdateConsequence],
       ['INTEROP.RECOVER', STRINGS.interopRecoverConsequence],
+      ['INTEROP.ITEM.PENDING', STRINGS.interopItemPendingConsequence],
+      ['INTEROP.ITEM.REMOVE', STRINGS.interopItemRemoveConsequence],
     ] as const) {
       const { card } = mount(liveView({ consequence: code, destructive: false, maskedFields: [] }), { phase: 'live' });
       expect(card.classList.contains('ocu-proposal-card-destructive')).toBe(false);

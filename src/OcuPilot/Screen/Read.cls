@@ -546,9 +546,22 @@ ClassMethod Execute(pDescriptor As %String, pMaxRows As %String = "", Output pRe
             }
         } ElseIf tSource.%Get("port") = ..#SOURCEINTEROP {
             ; The namespace's productions and interoperability classes (Story 20.2): the route's own
-            ; scope travels as the port's namespace, and the port's gate runs before any row.
+            ; scope travels as the port's namespace, and the port's gate runs before any row. A
+            ; parent-scoped list (a production's items, Story 20.3) takes its parent's route id as its one
+            ; criterion, required as a single-object read's is.
             Set tQuery("maxRows") = tMax + 1
             Set tQuery("namespace") = ##class(OcuPilot.Kernel.Scope).Current()
+            Set tRouteParam = ""
+            If $ClassMethod(pDescriptor, "ParentScope") '= "" Set tRouteParam = ..ObjectCriterionParam(tRead)
+            If (tRouteParam '= "") && ($Get(pCriteria(tRouteParam)) = "") {
+                Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#READCRITERION, tRouteParam _ " is required", .pHttpStatus, .pFault)
+                Quit
+            }
+            Set tCriterionProblem = ..SeedCriteria(tRead, .pCriteria, .tQuery, .tApplied, .tCutoffs)
+            If tCriterionProblem '= "" {
+                Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#READCRITERION, tCriterionProblem, .pHttpStatus, .pFault)
+                Quit
+            }
             Set tPortSC = $ClassMethod(..InteropPortClass(), "Invoke", tSource.%Get("endpoint"), ..#READTYPE, .tQuery, "", .tAnswer, .pHttpStatus, .pFault)
             If $$$ISERR(tPortSC) {
                 Set tSC = tPortSC

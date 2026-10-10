@@ -5,7 +5,7 @@
 /// <p><b>A tripwire aimed at later epics.</b> A new write route fails this class until its handler
 /// takes the hold or the route joins <method>Exemptions</method> with a reason. A listed route that is
 /// no longer in the map fails it too, so the list cannot go stale.</p>
-/// <p>Three create Saves build their target's id from more than one body field, as their tools' mints
+/// <p>Four create Saves build their target's id from more than one body field, as their tools' mints
 /// do; <method>TestACreateSaveHoldsTheKeyItsMintComputes</method> holds each mint's key and sees the
 /// Save wait on it.</p>
 /// <p><b>What it needs from the environment:</b> OcuPilot compiled with its class definitions, which
@@ -63,14 +63,17 @@ Method TestEveryWriteRouteTakesTheHoldOrIsExempt()
 }
 
 /// <p>The audit event create holds <code>Source/Type/Name</code>, the create tool's
-/// <code>EventName</code>, and the key file create the composite of <code>root</code> and
-/// <code>path</code> its tool's mint builds: with this process holding each key as another write
-/// would, the Save waits out <parameter>OcuPilot.Kernel.State.Propose.CLAIMLOCKSECONDS</parameter> and
-/// answers 409 <code>WRITE.TARGETBUSY</code>. Each body also breaks a rule the Save checks after the
-/// hold, so a Save holding any other key answers that refusal instead, and neither writes.</p>
+/// <code>EventName</code>, the key file create the composite of <code>root</code> and
+/// <code>path</code> its tool's mint builds, and the production item add the composite of
+/// <code>Production</code> and <code>Name</code> in the request's namespace: with this process holding
+/// each key as another write would, the Save waits out
+/// <parameter>OcuPilot.Kernel.State.Propose.CLAIMLOCKSECONDS</parameter> and answers 409
+/// <code>WRITE.TARGETBUSY</code>. Each body also breaks a rule the Save checks after the hold, so a Save
+/// holding any other key answers that refusal instead, and neither writes.</p>
 /// <p>Mutation (Rule 19): hold the key file's <code>path</code> alone in
 /// <method>OcuPilot.Area.Security.EncryptionKeyFileSave.HandleCreate</method>, or the body's absent
-/// <code>EventName</code> in <method>OcuPilot.Area.Security.AuditEventSave.HandleCreate</method> --
+/// <code>EventName</code> in <method>OcuPilot.Area.Security.AuditEventSave.HandleCreate</method>, or the
+/// item's <code>Name</code> alone in <method>OcuPilot.Area.Interop.ItemSave.HandleCreate</method> --
 /// that leg answers 400 or 422 at once and goes red.</p>
 Method TestACreateSaveHoldsTheKeyItsMintComputes()
 {
@@ -80,6 +83,11 @@ Method TestACreateSaveHoldsTheKeyItsMintComputes()
     ; The Save names the application in another case, so the leg holds only if both sides fold it (foldcase-firstpart).
     Set tEntry = ##class(OcuPilot.Kernel.EntityId).JoinComposite($ListBuild("/csp/ocuprobehold", "AllowClass", "%OcuProbe1810.Hold"))
     Do ..HeldLeg("/web-app/pct-access", "OcuPilot.Screen.Tool.WebAppPctAccessCreate", tEntry, {"Name": "/CSP/OcuProbeHold", "AllowType": "AllowClass", "Class": "%OcuProbe1810.Hold", "AllowAccess": "not a flag"}.%ToJSON())
+    ; A production item is namespace-scoped, so the request and this process name the same namespace.
+    Set tItem = ##class(OcuPilot.Kernel.EntityId).JoinComposite($ListBuild("OcuProbeHold.Production", "OcuProbeHold"))
+    Do ##class(OcuPilot.Kernel.Scope).Set("USER")
+    Do ..HeldLeg("/interop/items?ns=USER", "OcuPilot.Screen.Tool.InteropItemAdd", tItem, {"Production": "OcuProbeHold.Production", "Name": "OcuProbeHold", "OcuProbeUnexpected": 1}.%ToJSON())
+    Do ##class(OcuPilot.Kernel.Scope).Clear()
 }
 
 /// <p>Hold the key <var>pTool</var>'s mint computes for <var>pId</var>, <code>POST</code>

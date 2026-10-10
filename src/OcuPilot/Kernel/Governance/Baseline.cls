@@ -212,7 +212,11 @@ XData Keys [ MimeType = application/json ]
   "interop.productions.stop": true,
   "interop.productions.restart": true,
   "interop.productions.update": true,
-  "interop.productions.recover": true
+  "interop.productions.recover": true,
+  "interop.items.enable": true,
+  "interop.items.disable": true,
+  "interop.items.add": true,
+  "interop.items.remove": false
 }
 }
 

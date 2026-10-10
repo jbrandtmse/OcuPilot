@@ -343,6 +343,8 @@ test('a side bar lists only built screens, in side-bar order', () => {
       'system-explorer/sql-data',
       // Story 19.17: Document databases, after Data browser.
       'system-explorer/docdb',
+      // Story 20.3: the unlisted Production items list, reached from a Productions row, ahead of its area's listed lists.
+      'interoperability/productions/items',
       // Story 20.2: Interoperability's four lists, in the classic List menu's order.
       'interoperability/productions',
       'interoperability/processes',

@@ -10,7 +10,7 @@
  * declarations disagree.
  */
 
-export type EntityTypeKey = 'web-application' | 'rest-service' | 'user' | 'role' | 'resource' | 'service' | 'ssl-configuration' | 'x509-credential' | 'ldap-configuration' | 'wallet-collection' | 'wallet-secret' | 'oauth2-client-configuration' | 'oauth2-server-definition' | 'oauth2-resource-server' | 'oauth2-server' | 'oauth2-server-client' | 'audit-event' | 'audit-user-event' | 'auditing-configuration' | 'task' | 'task-history-entry' | 'process' | 'lock' | 'database' | 'device' | 'audit-record' | 'application-error' | 'log-entry' | 'agent-definition' | 'agent-switch' | 'agent-policy' | 'allowed-directory' | 'screen-permission' | 'namespace' | 'web-session' | 'background-task' | 'global-mapping' | 'routine-mapping' | 'package-mapping' | 'database-configuration' | 'language-server' | 'class' | 'routine' | 'journal-file' | 'journal-file-database' | 'journal-settings' | 'journal-record' | 'license-key' | 'license-server' | 'ecp-data-server' | 'ecp-settings' | 'ecp-ssl-connection' | 'encryption-key-file' | 'database-encryption-keys' | 'data-element-encryption-keys' | 'encryption-startup' | 'docdb-database' | 'sql-statement' | 'authentication-options' | 'superserver' | 'mft-connection' | 'production' | 'pct-class-access';
+export type EntityTypeKey = 'web-application' | 'rest-service' | 'user' | 'role' | 'resource' | 'service' | 'ssl-configuration' | 'x509-credential' | 'ldap-configuration' | 'wallet-collection' | 'wallet-secret' | 'oauth2-client-configuration' | 'oauth2-server-definition' | 'oauth2-resource-server' | 'oauth2-server' | 'oauth2-server-client' | 'audit-event' | 'audit-user-event' | 'auditing-configuration' | 'task' | 'task-history-entry' | 'process' | 'lock' | 'database' | 'device' | 'audit-record' | 'application-error' | 'log-entry' | 'agent-definition' | 'agent-switch' | 'agent-policy' | 'allowed-directory' | 'screen-permission' | 'namespace' | 'web-session' | 'background-task' | 'global-mapping' | 'routine-mapping' | 'package-mapping' | 'database-configuration' | 'language-server' | 'class' | 'routine' | 'journal-file' | 'journal-file-database' | 'journal-settings' | 'journal-record' | 'license-key' | 'license-server' | 'ecp-data-server' | 'ecp-settings' | 'ecp-ssl-connection' | 'encryption-key-file' | 'database-encryption-keys' | 'data-element-encryption-keys' | 'encryption-startup' | 'docdb-database' | 'sql-statement' | 'authentication-options' | 'superserver' | 'mft-connection' | 'production' | 'pct-class-access' | 'production-item';
 
 /**
  * The closed archetype vocabulary, mirrored from OcuPilot.Screen.Archetype. A screen's
@@ -532,7 +532,8 @@ export const ENTITY_TYPES: readonly EntityTypeKey[] = [
   "superserver",
   "mft-connection",
   "production",
-  "pct-class-access"
+  "pct-class-access",
+  "production-item"
 ];
 
 /**
@@ -10603,6 +10604,191 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "toolIdentifier": "shell.home",
     "read": null,
     "table": null,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.InteropItemList",
+    "route": "interoperability/productions/items",
+    "area": "interoperability",
+    "labelKey": "interopItemsLabel",
+    "sideBarPosition": 0,
+    "archetype": "list",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Ens_Portal",
+        "permission": "USE"
+      },
+      {
+        "resource": "%Ens_ProductionConfig",
+        "permission": "READ"
+      }
+    ],
+    "ownPrivileges": [
+      {
+        "resource": "%Ens_ProductionConfig",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "production-item",
+    "secondaryEntityTypes": [],
+    "scope": "namespace",
+    "parentScope": "interoperability/productions",
+    "id": {
+      "kind": "composite",
+      "parts": [
+        "Production",
+        "Name"
+      ]
+    },
+    "primaryAction": {
+      "id": "add",
+      "selfProtection": ""
+    },
+    "rowActions": [
+      {
+        "id": "enable",
+        "selfProtection": ""
+      },
+      {
+        "id": "disable",
+        "selfProtection": ""
+      },
+      {
+        "id": "remove",
+        "selfProtection": ""
+      }
+    ],
+    "context": {
+      "fields": [
+        "Name",
+        "ClassName",
+        "Type",
+        "Enabled",
+        "PoolSize"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "interopItemsEmpty",
+    "commandAliases": [],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "interopItemsPrompt1"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "interopItemsPrompt2"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "interopItemsPrompt3"
+      }
+    ],
+    "classicPage": "EnsPortal.ProductionConfig",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "interop",
+        "endpoint": "Items",
+        "type": "LIST"
+      },
+      "fields": [
+        "Production",
+        "Name",
+        "ClassName",
+        "Type",
+        "Enabled",
+        "EnabledSource",
+        "PoolSize",
+        "Category",
+        "Comment"
+      ],
+      "filter": [
+        "Name",
+        "ClassName",
+        "Type"
+      ],
+      "sort": {
+        "fields": [
+          "Name",
+          "ClassName",
+          "Type",
+          "Enabled",
+          "PoolSize"
+        ],
+        "default": "Name",
+        "direction": "asc"
+      },
+      "paging": "cap",
+      "criteria": {
+        "fields": [
+          {
+            "param": "production",
+            "labelKey": "systemInfoProduction",
+            "kind": "text",
+            "maxLength": 128,
+            "hint": "One production, spelled as interop.productions.read answers its Name."
+          }
+        ]
+      }
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Name",
+          "labelKey": "tableColumnName",
+          "kind": "name"
+        },
+        {
+          "field": "ClassName",
+          "labelKey": "interopItemColumnClass",
+          "kind": "identifier"
+        },
+        {
+          "field": "Type",
+          "labelKey": "tableColumnType",
+          "kind": "text"
+        },
+        {
+          "field": "Enabled",
+          "labelKey": "tableColumnEnabled",
+          "kind": "status"
+        },
+        {
+          "field": "PoolSize",
+          "labelKey": "interopItemColumnPoolSize",
+          "kind": "number"
+        },
+        {
+          "field": "Category",
+          "labelKey": "interopItemColumnCategory",
+          "kind": "text"
+        },
+        {
+          "field": "Comment",
+          "labelKey": "userFieldComment",
+          "kind": "text"
+        }
+      ],
+      "emptyNextKey": "",
+      "emptyAgentKey": "interopItemsEmptyAgent"
+    },
+    "toolIdentifier": "interop.items",
+    "refreshDefault": 0,
     "banner": null,
     "tab": null,
     "rowTarget": null,

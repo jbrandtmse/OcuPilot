@@ -39,6 +39,7 @@ import type { ApiService, JsonResult } from './api';
 import { CHANGE_ACTIONS, type ChangeAction, type ChangeBus } from './change-bus.ts';
 import { parseCitations, type Citation } from './citations.ts';
 import { impactOf, type Impact } from './impact.ts';
+import { PRODUCTION_STATE_MOVED } from './proposal-view.ts';
 import { readBackOf, type ReadBack } from './read-back.ts';
 import { sqlOutcomeLines } from './sql-answer.ts';
 import type { ScreenContextPayload } from './screen-context';
@@ -1389,7 +1390,8 @@ export class TurnStore {
    * The order is `proposal-closed` then `changed`: `recordProposalState` republishes first, so the
    * AD-43 pause has lifted by the time the re-fetch the change event asks for is issued. A
    * refusal, a cancel and a confirm whose row did not reach `confirmed` publish nothing -- the
-   * instance did not change.
+   * instance did not change -- except a stop refused with a `PRODUCTION_STATE_MOVED` code, which
+   * did apply and so publishes `changed` for its production.
    */
   private async decideProposal(
     path: string,
@@ -1472,6 +1474,22 @@ export class TurnStore {
       output: [],
     };
     if (outcome.state !== '') this.recordProposalState(id, outcome);
+    // A stop that left the production Suspended or partly stopped was applied and moved it (Story 20.3), so
+    // the screens showing it are told, as the row action's refusal tells them.
+    const moved = PRODUCTION_STATE_MOVED.includes(outcome.code)
+      ? this.everyProposal().find((proposal) => proposal.proposalId === id)
+      : undefined;
+    if (moved !== undefined) {
+      this.bus?.publish({
+        kind: 'changed',
+        type: moved.target.type,
+        scope: moved.target.scope,
+        id: moved.target.id,
+        action: 'updated',
+        proposalId: id,
+        tool: moved.tool,
+      });
+    }
     // DW-1348: a refusal that left the row live closes nothing and so records no state, and until
     // now left the caller nothing to render -- the card went back to offering Confirm as though
     // the press had not happened. The envelope's own written reason is published here, per
