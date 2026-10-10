@@ -10830,6 +10830,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-20-20-the-agent-creates-new-classes-and-routines-on-the-person-s-c.md | severity: med | fix-risk: med | footprint: out-of-footprint
 - evidence: ExplorerWrite.PrivilegePairs reads Kernel.Scope.Current() at Confirm while ExplorerWrite.PortQuery sends the re-read and write to the payload's Namespace; a USER compile or delete confirmed at ?ns=HSCUSTOM is gated on HSCUSTOM's WRITE (false refusal only: the port's own WritePairs checks USER). 20.20's spec forbids changing these pairs.
 - 2026-10-09T15:04:14Z status=escalated owner=burndown by=cr note=fix would store Namespace in their mint args and read it in ArgumentPairs, as 20.20 did for saves and creates
+- 2026-10-09T23:09:46Z status=routed owner=burndown by=orchestrator note=decided: false refusal only (the port checks WRITE on the target namespace itself, so nothing is wrongly allowed); fix as 20.20 did for saves and creates (store Namespace in the mint args, read it in ArgumentPairs) in Epic 20 close burn-down; not release-blocking
 
 ### DW-2255: CI flake: ClassicPageGate.TestAnAssignedPageGatesEveryDeclaringToolOnTheAgentsCaller read its child process as not having run as the probe principal, so every later refusal assertion failed
 - source: cycle-log-epic-20.md (run 37952814550 attempt 1) | severity: med | fix-risk: low | footprint: out-of-footprint
