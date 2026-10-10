@@ -10931,3 +10931,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-31-privileged-routine-applications.md | severity: low | fix-risk: low | footprint: out-of-footprint
 - evidence: measured at 18.31's plan on ocupilot-ci: Type other than Routine stored as Class; an empty member dropped; an omitted Type answers 400 #40301
 - 2026-10-10T17:24:12Z status=decision-pending owner=burndown by=harvest note=owner_hold: IRIS defect candidate, never reported upstream
+
+### DW-2296: The agent's mint of a routine-application change or delete naming a web application answers 400 TOOL.ARGUMENTS 'not present' rather than 404 PRIVROUTINE.TYPE
+- source: spec-18-31-privileged-routine-applications.md | severity: low | fix-risk: med | footprint: in-epic
+- evidence: 18.31 implement review: the Save, the list's Delete and the port answer 404; the mint's absence read answers first; nothing is sent on any path; a fix changes the shared Kernel/Proposal/Mint
+- 2026-10-10T20:55:30Z status=wontfix-accepted owner=18-31-privileged-routine-applications by=harvest note=reopen_if=a user reports the mint's wording, or the shared Mint gains a per-tool absence answer
