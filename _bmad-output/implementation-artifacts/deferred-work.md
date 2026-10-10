@@ -10915,6 +10915,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: 18.30 reuses MappingMint unchanged because Epic 20's 20.3 is editing it (Rule 11)
 - 2026-10-10T10:42:42Z status=routed owner=18-31-privileged-routine-applications by=harvest note=once 20.3 is on feature, give MappingMint a per-tool noun parameter and set it for the Doc DB tools
 - 2026-10-10T12:49:19Z occurrence=18-30-doc-db-applications
+- 2026-10-10T18:27:02Z status=routed owner=18-33-privileged-routine-application-roles-and-routines by=spec_gate note=20.3_not_on_feature_at_18.31's_gate(MappingMint_unchanged);18.33_takes_it_once_20.3_has_merged
 
 ### DW-2280: IRIS defect candidate: the admin API's DocDB PUT answers a Description over 256 characters with a logged 500 rather than a field refusal
 - source: spec-18-30-doc-db-applications.md | severity: low | fix-risk: low | footprint: out-of-footprint

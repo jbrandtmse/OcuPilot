@@ -7675,17 +7675,16 @@ So that the first area reaches parity for privileged routine applications. [AMEN
 
 - DW-2252: A web-application write naming a privileged routine application reaches WebApp.App PUT, which refuses #799 at 500 INTERNAL and logs at severity 2; only OcuPilot's own two are refused before it (ledger; routed by cr 2026-10-09)
 - DW-2262: PRIVROUTINE.TYPE lives in PctAccessError rather than a privileged-routine home (ledger; routed by orchestrator 2026-10-10)
-- DW-2279: MappingMint's empty-namespace refusal names a 'mapping' for the Doc DB application tools (ledger; routed by spec_gate 2026-10-10)
 
 ### Story 18.32: Spec-based REST services
 
 As a developer-administrator,
-I want to create and delete a spec-based REST service from an OpenAPI document,
-So that the first area reaches parity for REST services. [AMENDED 2026-10-09, orchestrator ruling on Story 18.10's plan: split from Story 18.10, Rule 5; waits until Story 20.21 is merged into feature and reuses its namespace-routines-database check; if reached first, Stories 18.11 to 18.13 run ahead of it; AD-53 is amended at its spec gate under ruling Q2 (B)]
+I want the agent to create, and either caller to delete, a spec-based REST service from an OpenAPI document,
+So that the first area reaches parity for REST services. [AMENDED 2026-10-09, orchestrator ruling on Story 18.10's plan: split from Story 18.10, Rule 5; waits until Story 20.21 is merged into feature and reuses its namespace-routines-database check; if reached first, Stories 18.11 to 18.13 run ahead of it; AD-53 is amended at its spec gate under ruling Q2 (B)] [AMENDED 2026-10-10, orchestrator ruling on Story 18.32's plan: split for size, Rule 5; the person's Create dialog moved to Story 18.34, so the create is agent-only until it lands]
 
 **Acceptance Criteria:**
 
-- **Given** create and delete of a spec-based REST service from an OpenAPI document
+- **Given** an agent-proposed create, or a delete from either caller, of a spec-based REST service from an OpenAPI document
 - **When** each runs
 - **Then** it round-trips through the management API, whose route is already wired for the Release 1 explorer.
 
@@ -7708,6 +7707,20 @@ So that the privileged routine application editor reaches parity with the classi
 - **Given** a change that would grant `%All` or an `%Admin_*` privilege through a role, a matching role or a routine
 - **When** it is proposed
 - **Then** it is confirmed at the destructive treatment naming the privilege (AD-10 as amended 2026-09-23).
+
+- DW-2279: MappingMint's empty-namespace refusal names a 'mapping' for the Doc DB application tools (ledger; re-owned by spec_gate 2026-10-10: 20.3 not yet on feature at 18.31's gate)
+
+### Story 18.34: The person's REST service create
+
+As a developer-administrator,
+I want to create a spec-based REST service from an OpenAPI document myself,
+So that the REST services screen's create is not agent-only. [AMENDED 2026-10-10, orchestrator ruling on Story 18.32's plan: split from Story 18.32 for size, Rule 5; after Story 18.32]
+
+**Acceptance Criteria:**
+
+- **Given** the REST services screen's Create dialog
+- **When** a person submits an OpenAPI document
+- **Then** it round-trips through the management API by Story 18.32's port, under the same rules the agent's create meets, its Save taking the per-target hold.
 
 ## Epic 19: Stage 3 - System Explorer over the Atelier API
 

@@ -113,6 +113,8 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
 
   **A privileged-routine call is checked against its target's type** [AMENDED 2026-10-09, Story 18.10 spec gate, Rule 20]: the vendor's `Security.PrivilegedRoutine` endpoint writes any application type (measured: a `PUT` changed a web application and then answered 500, and a `DELETE` deleted one). So `AdminPort` refuses a `GET`, `PUT` or `DELETE` naming an application whose type lacks the routine bit (4) before any vendor call and unlogged, `GET` with 404 and `PUT` and `DELETE` with 409 `PRIVROUTINE.TYPE`. An absent name passes.
 
+  **The type check also covers `WebApp.App`'s writes** [AMENDED 2026-10-10, Story 18.31 spec gate, Rule 20], DW-2252: a `PUT` or `DELETE` on `WebApp.App` naming a privileged routine application is refused 409 `PRIVROUTINE.WEBAPP` before the vendor call and unlogged (measured: the vendor answers a `PUT` 500 #799 and a `DELETE` deletes the routine application); its `GET` is unchanged.
+
 ### AD-3 — Write payload field lists are derived; the semantic half is authored once per tool
 
 - **Binds:** every write tool in 5.5–5.10; the ~40 rows the PRD lists as built against an unverified contract
@@ -446,6 +448,8 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
   **A `screen-permission` id is the screen's `toolIdentifier`, kept exactly** (Story 20.15) [AMENDED 2026-10-07, Story 20.15 spec gate, Rule 20].
 
   **A `docdb-application` id is `[Namespace, Name]`** [AMENDED 2026-10-10, Story 18.30 spec gate, Rule 20], as `MappingMint` and `NamespacePort` expect; it takes `foldcase`, since the instance resolves both parts in any case.
+
+  **A `routine-application` id is its name** [AMENDED 2026-10-10, Story 18.31 spec gate, Rule 20], `foldcase`, since the instance resolves the name in any case and stores it as typed.
 
 ### AD-14 — A confirmed write emits one change event; screens re-fetch, never patch
 
@@ -905,6 +909,8 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
 
   **Story 18.30's `CLASSICPAGES`** [AMENDED 2026-10-10, Story 18.30 spec gate, Rule 20]: the Doc DB application create and update declare `%CSP.UI.Portal.Applications.DocDB`; the delete, on the list's page, declares none.
 
+  **Story 18.31's `CLASSICPAGES`** [AMENDED 2026-10-10, Story 18.31 spec gate, Rule 20]: the privileged routine application create and update declare `%CSP.UI.Portal.Applications.PrivRoutine`; the delete, on the list's page, declares none.
+
 ### AD-45 — There is one smoke path, and it is also the health check
 
 - **Binds:** FR-66, FR-67, NFR-9, AD-38; the installer, CI, the demo
@@ -1106,7 +1112,7 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
 
   **The prohibited set's per-type field lists are keyed by create versus change** (AD-10, whose one-home rule is unchanged - this refines how the predicates are structured, not where they live). "What may a change to a live target touch" and "what may a create set" are different questions, so a create tool carries its own reviewed per-type list, and the absent-target early-out that reasons "the fingerprint will refuse it moments later" does not apply to a create, whose target is correctly absent. A field prohibited because it repoints a **serving** object - one of OcuPilot's own applications, AD-10 [clarified 2026-09-24, Story 9.2 spec gate] - is prohibited on a change and permitted on a create, which repoints nothing; a field prohibited by effect under AD-10 - setting application roles on one of OcuPilot's own web applications - stays prohibited on **both**, unconditionally [AMENDED 2026-09-23 with AD-10's owner decisions: was "on any web application"].
 
-  **A composite create sends its name as typed** [AMENDED 2026-10-10, Story 18.30 spec gate, Rule 20]: a create whose id rule folds a part the vendor stores exactly as sent overrides `TypedId(pArgs)` (`Screen/Tool/Write`), which the confirm and the draft send in place of the folded id (measured on `DocDB`; `DocDbAppCreate` overrides it). Every other tool keeps the default, the folded id.
+  **A composite create sends its name as typed** [AMENDED 2026-10-10, Story 18.30 spec gate, Rule 20]: a create whose id rule folds a part the vendor stores exactly as sent overrides `TypedId(pArgs)` (`Screen/Tool/Write`), which the confirm and the draft send in place of the folded id (measured on `DocDB` and `Security.PrivilegedRoutine`; `DocDbAppCreate` and `RoutineAppCreate` [AMENDED 2026-10-10, Story 18.31 spec gate, Rule 20] override it). Every other tool keeps the default, the folded id.
 
 ### AD-55 - A screen's own Save against an instance object resolves through the write tool
 

@@ -2,8 +2,8 @@
 title: 'Story 18.31: Privileged routine applications'
 type: 'feature'
 created: '2026-10-10'
-status: 'draft'
-baseline_commit: 'd4be0dc200f1df903669dd692e3533e00bdf8529'
+status: 'ready-for-dev'
+baseline_commit: 'bb49cd147447d4dbade1191a14f16c3c0cb1d490'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -25,10 +25,9 @@ deferred: []
 **Always:**
 
 - The id is the name, `foldcase`; a create sends it as typed.
-- An update merges the complete set over a fresh `GET` (AD-4). General's Save sends `Description`, `Enabled` and `Resource`. The role and routine tabs act only through the update tool's screen actions, each a delta over the fresh read (AD-56 (ii)).
+- An update merges the complete set over a fresh `GET` (AD-4). General's Save sends `Description`, `Enabled` and `Resource`.
 - Keys: create and update `true`, delete `false` (AD-22).
 - Every Rules row is refused before any `PUT` (AD-39).
-- A `MatchRoles` grant of `%All` or an `%Admin_*` role is minted destructive (AD-10).
 
 **Never:**
 
@@ -45,9 +44,8 @@ deferred: []
 | Read | List or read tool | One read's rows, with `Enabled` and `Description` from each row's `GET` | Missing pair: 403 |
 | Create | `OcuProbe1831A` | 201, stored as typed (either caller) | Name any application holds: `PRIVROUTINE.TAKEN` |
 | Update | A setting | The complete set, with lists as freshly read | 404; 409 `WRITE.TARGETBUSY` |
-| Deltas | Add or remove an application role, a matching role, or a routine `{RoutineOrClass, Db, Type}` | Applied over the fresh read | Absent role, duplicate, or not held: refused |
 | Delete | A probe | Gone; the name is typed to confirm | 404 `PORT.NOTFOUND` |
-| Rules | `Name` empty or over 64; `Description` over 256; `Enabled` not one of its six forms; `Resource` neither empty nor a listed `Service`, `System` or `Application` resource; a role entry with no targets or naming an absent role; a routine entry with an empty name, an undefined `Db`, or a `Type` other than `Routine` or `Class`; a wrong shape | 422 `PRIVROUTINE.*` on the field; nothing sent | The mint refuses the same way |
+| Rules | `Name` empty or over 64; `Description` over 256; `Enabled` not one of its six forms; `Resource` neither empty nor a listed `Service`, `System` or `Application` resource; a wrong shape | 422 `PRIVROUTINE.*` on the field; nothing sent | The mint refuses the same way |
 | Own two | Any write, by any path | 403 `PROHIBITED.OCUPILOTROUTINEAPP`; controls `aria-disabled` | Nothing sent |
 | Web app | A routine tool naming `/csp/user` | 404 `PRIVROUTINE.TYPE` from the fresh read | Nothing sent |
 | DW-2252 | `WebApp.App` `PUT` or `DELETE` naming a routine app | 409 `PRIVROUTINE.WEBAPP`, unlogged, before the vendor | Today: 500 #799, and `DELETE` deletes it |
@@ -56,18 +54,13 @@ deferred: []
 
 ## Code Map
 
-Paths are under `src/OcuPilot/` unless they start with `ui/`. **Analog: Story 18.30** (`git show 05b99fd1 c494cfe5`): every roster it edits has a counterpart here.
+Paths are under `src/OcuPilot/` unless they start with `ui/`. **Analog: Story 18.30** (`git show 05b99fd1 c494cfe5`): each roster it edits has a counterpart here.
 
-**Siblings (Rule 31):**
-
-- `Screen/Tool/RoutineAppUpdate` extends `WebAppUpdate`, keeping `MatchRoles`, the role actions and `ScreenActionDelta` (:259).
-- `RoutineAppCreate` and `RoutineAppDelete` extend their `DocDbApp*` counterparts, overriding `PORTCLASS` (`AdminPort`), `MintClass` (the default mint), `TypedId`, `ArgumentProblem` and `Described`.
-- `Area/WebApp/RoutineAppRules` and `RoutineAppSave` extend `DocDbAppRules` and `DocDbAppSave`, overriding only the members bound to Doc DB's composite id or fields.
-- `Api/RoutineAppError`, the `RoutineAppList` and `RoutineAppForm` descriptors and `Test/RoutineAppProbe` take their Doc DB siblings' shapes.
-
-**Client:** `ui/src/app/areas/web-applications/routine-app-form.page.ts`, `.store.ts` and `routine-app-actions.ts`. General copies the Doc DB form and imports its constants. The role tabs copy `web-app-editor.page.ts` :334-457: no tab component exists, and DW-2278 owns the shared base.
-
-**No new port:** `AdminRoutes` :188-189 and `FieldLists` :534 exist.
+- **Tools.** `Screen/Tool/RoutineAppCreate`, `RoutineAppUpdate` and `RoutineAppDelete` extend the `DocDbApp*` tools, overriding the tool, descriptor, `PORTCLASS` (`AdminPort`), `RULES`, `CLASSICPAGES`, `Endpoint`, `MintClass` (the kernel's `Mint`), `InputSchema` (no `Namespace`) and `RefusedBeforeState`; the create also `TypedId` and `ArgumentProblem`.
+- **Rules and Save.** `Area/WebApp/RoutineAppRules` and `RoutineAppSave` extend Doc DB's, whose new `ERRORCLASS` (default `OcuPilot.Api.DocDbAppError`) and `NAMESPACED` (default 1; 0 drops `Namespace`, its rule and the composite join) leave Doc DB unchanged.
+- `Api/RoutineAppError`, `RoutineAppList`, `RoutineAppForm` and `Test/RoutineAppProbe` take their Doc DB siblings' shapes; the `rowGet` is `LdapConfigList` :68's.
+- `ui/src/app/areas/web-applications/routine-app-form.page.ts`, `.store.ts` and `routine-app-actions.ts` copy the Doc DB form without `Namespace`: no form base exists (DW-2278).
+- `Mint.Merge` :550 sends the whole fresh read, so the update resends `MatchRoles` and `Routines`.
 
 ## Tasks & Acceptance
 
@@ -75,92 +68,42 @@ Paths are under `src/OcuPilot/` unless they start with `ui/`. **Analog: Story 18
 
 **Execution:**
 
-1. **Entity type.** `Kernel/EntityType.cls` :102 adds `routine-application`, and `Kernel/EntityRef.cls` :59 adds `routine-application:foldcase`.
-2. **Codes (DW-2262).** New `Api/RoutineAppError.cls` holds `PRIVROUTINE.VALIDATION`, `.NAME`, `.DESCRIPTION`, `.ENABLED`, `.RESOURCE`, `.ROLES`, `.ROUTINES`, `.TAKEN` and `.WEBAPP`. `PRIVROUTINE.TYPE` and its sentence move there unchanged from `Api/PctAccessError.cls` :2, :51-55 and :67. Repoint `AdminPort` :1972 and :1985-1986, and `Api/Error.cls` :1239 and :1450.
-3. **`Port/AdminPort.cls` (DW-2252):**
-   - `MUTATINGTYPES` :484 adds `Security.PrivilegedRoutine/PUT` and `/DELETE`; `BODYLESSTYPES` :500 adds `/DELETE`; mirror both in `Test/PortFixture.cls` :21.
-   - `PrivilegedRoutineGuard` :1975 takes the endpoint. For a `WebApp.App` `PUT` or `DELETE` whose `KeptType` has bit 4, it answers 409 `PRIVROUTINE.WEBAPP`, unlogged. The branch at :1257 calls it for both endpoints.
-   - Add `DatabaseDefined` and `DatabaseNames` beside `NamespaceDefined` :2936, reading `Config.Databases` in `%SYS`.
-4. **`Kernel/Proposal/Prohibited.cls`**, add-only, because Epic 20 edits it too:
-   - `TYPEROUTINEAPPLICATION` beside :596, also in `COVEREDTYPES` :259 and the chain :1327.
-   - A private `RoutineApplicationFields` supplies the fields beside :1124 (five) and :1244 (three).
-   - After :1400, a branch refusing `OCUPILOTROUTINEAPP` when `OwnRoutineApplication(tId)` holds; a `ReviewedFewOnly` branch beside :1606.
-   - One line before :4463 hands the type to the web application's `MatchRoles` privilege check.
-5. **Descriptors.**
-   - `RoutineAppList`:
-     - `web-applications/routine-applications`, position 5, `list`, `instance`, the area's pairs, `create`.
-     - `rowActions` `delete`, the four role actions, `add-routine` and `remove-routine`, all with `selfProtection` `ocupilot-routine-application`.
-     - Read: `LIST`, `rowGet` `{key: Name, param: name, fields: [Enabled, Description]}`. Columns: `Name`, `Enabled`, `Resource`, `Description`.
-     - Classic page `.PrivRoutineList`; three prompts; `webapp.routineapps`.
-   - `RoutineAppForm`: `.../edit`, 0, `form-page`, classic page `.PrivRoutine`, three prompts, `webapp.routineappform`.
-6. **Rule `ocupilot-routine-application`.** Add it to `Screen/Registry.cls` :2967, `ui/tools/screen-mirror.mjs` :315 and `core/self-protection.ts`. `self-protection.test.mjs` pins its names to `Kernel/State/Base`'s `APPLICATION` and `IDENTITYAPPLICATION`. Its sentence is `routineAppRefusalOcuPilot`.
-7. **Tools** (`RoutineAppList`, `%Admin_Secure:USE`):
-   - Create: the three settings, `CLASSICPAGES` `.PrivRoutine`, and `ArgumentProblem` adds `Taken`.
-   - Update:
-     - `PERMITTEDFIELDS` are the three settings, with the same `CLASSICPAGES`; `ArgumentProblem` calls `RoutineAppRules.Problem`.
-     - `MatchRoles` and `Routines` are excluded from the derived fields and authored as complete lists.
-     - `SCREENACTIONS` are the role actions, `add-routine=RoutineOrClass:Db:Type` and `remove-routine=RoutineOrClass:Db`.
-     - `ScreenActionDelta` handles the routine actions and sends the rest to `##super`.
-   - Delete: `READANSWERS` and `FINGERPRINTSUBJECT` hold all five fields, and `RefusedBeforeState` calls `Prohibited.RefusesBeforeState`.
-8. **`RoutineAppRules`.**
-   - `Check` and `RoutineEntryProblem`, which the delta shares.
-   - `Taken` answers true for an object, or for a 404 carrying `PRIVROUTINE.TYPE`.
-   - `HandleForm` answers `{row, roles, databases}`, taking roles from `FormRules.Roles` :405.
-   - `RenderViolations` and `DefaultRow`.
-   - `RoutineAppSave` answers 400 `PORT.FIELDUNEXPECTED` to a body carrying `MatchRoles` or `Routines`.
-9. **Wiring.**
-   - `Api/Router.cls`, beside :257-259: `GET /routine-application/form`, `PUT /routine-application/:id` and `POST /routine-application`, with their wrappers beside :1918.
-   - `Classification.cls`, beside :685: two entries of three `ordinary` fields; then run `bash scripts/field-lists.sh`.
-   - `Baseline.cls`, beside :172: `true`, `true`, `false`.
-10. **Client.**
-    - A create shows General only. The Routines tab adds a routine through a database picker.
-    - The tabs call `ScreenActionHandler.startFor`. On the own two, every control is `aria-disabled` with the rule's sentence.
-    - Wire in: `shell/screen-outlet.ts` :245; `screen-action-handler.ts` :114, :482 (`routineAppDeleteConsequence`) and :564 (`{name: 'Name'}`); `app.ts` :60-61, :383-385 and :730.
-    - Then run `node tools/screen-mirror.mjs`.
-11. **Strings.** `strings.ts` is add-only, each string cited `/** EXPERIENCE.md:NNN */`. EXPERIENCE.md :167 and :357 are edited in place, `[ADDED 2026-10-10 - Story 18.31]`. The bound stays 3400; stop past 3350.
-12. **DW-2279.** Only if `grep -c PARENTDESCRIPTION src/OcuPilot/Screen/Tool/MappingMint.cls` is non-zero here:
-    - add `Screen/Tool/DocDbAppMint`, extending `MappingMint` with Doc DB wording in its three description parameters;
-    - point the `DocDbApp*` tools' `MintClass` at it;
-    - add a `DocDbAppWrite` leg.
+1. `routine-application`, `foldcase`, beside `docdb-application` in `Kernel/EntityType.cls`, `Kernel/EntityRef.cls` and `ui/src/app/core/entity-ref.ts`.
+2. **DW-2262.** `Api/RoutineAppError.cls`: `PRIVROUTINE.VALIDATION`, `.NAME`, `.DESCRIPTION`, `.ENABLED`, `.RESOURCE`, `.TAKEN`, `.WEBAPP`, and `.TYPE` moved unchanged from `Api/PctAccessError.cls` :2, :49-55 and :67. Repoint `AdminPort` :1972, :1985-1986 and `Api/Error.cls` :1239, :1450.
+3. **DW-2252.** `Port/AdminPort.cls`: `Security.PrivilegedRoutine/PUT` and `/DELETE` join `MUTATINGTYPES` :484, `/DELETE` `BODYLESSTYPES` :500 (and `Test/PortFixture.cls` :21). :1257 also calls `PrivilegedRoutineGuard` :1975 for `WebApp.App`: a `PUT` or `DELETE` on a `KeptType` with bit 4 answers 409 `PRIVROUTINE.WEBAPP`, unlogged.
+4. `Kernel/Proposal/Prohibited.cls`, add-only (Epic 20 edits it): `TYPEROUTINEAPPLICATION` beside :596 and in :259 and :1327; the lists beside :1124 and :1244 answer `DocDbApplicationFields()`; after :1403, refuse `OCUPILOTROUTINEAPP` for the type when `OwnRoutineApplication(tId)`; `ReviewedFewOnly` beside :1606.
+5. `Screen/Descriptor/RoutineAppList`: `web-applications/routine-applications`, position 5, list, instance, id `Name`, the area's pairs, create, and delete with `selfProtection` `ocupilot-routine-application`; `LIST` with `rowGet {key: Name, param: name, fields: [Enabled, Description]}`; columns `Name`, `Enabled`, `Resource`, `Description`; `.PrivRoutineList`; three prompts; `webapp.routineapps`. `RoutineAppForm`: `.../edit`, 0, form-page, `.PrivRoutine`, three prompts, `webapp.routineappform`.
+6. Rule `ocupilot-routine-application`, a `Name` of `OcuPilotState` or `OcuPilotIdentity` in any case, sentence `routineAppRefusalOcuPilot` (exists): `Screen/Registry.cls` :2967, `ui/tools/screen-mirror.mjs` :315, `ui/src/app/core/self-protection.ts`; `self-protection.test.mjs` pins the names to `Kernel/State/Base`.
+7. `Screen/Tool/RoutineApp*` (`%Admin_Secure:USE`, `PERMITTEDFIELDS` `Description,Enabled,Resource`): create and update declare `CLASSICPAGES` `%CSP.UI.Portal.Applications.PrivRoutine`; the create's `ArgumentProblem` adds `Taken` (`PRIVROUTINE.TAKEN`); the delete's `READANSWERS` and `FINGERPRINTSUBJECT` name all five fields.
+8. `Area/WebApp/RoutineAppRules` overrides `IsName` (non-empty, at most 64 characters) and `Taken` (an object, or a 404 carrying `PRIVROUTINE.TYPE`).
+9. `Api/Router.cls`, beside Doc DB's: `GET /routine-application/form`, `PUT /routine-application/:id`, `POST /routine-application`. `Screen/Tool/Classification.cls` beside :685: `webapp.routineapps.create` and `.update`, three `ordinary` settings, `MatchRoles` and `Routines` unnamed as in `webapp.list.update`; then `bash scripts/field-lists.sh`. `Kernel/Governance/Baseline.cls`: `true`, `true`, `false`.
+10. Client: the Code Map's form (`Name` on create only); on the own two, Save is `aria-disabled` with the rule's sentence. Wire it beside Doc DB's in `ui/src/app/`: `shell/screen-outlet.ts`, `shell/screen-action-handler.ts` (`routineAppDeleteConsequence`, `{name: 'Name'}`) and `app.ts`, sign-out reset included; run `node tools/screen-mirror.mjs`.
+11. `ui/src/app/core/strings.ts` add-only, cited `/** EXPERIENCE.md:NNN */`; EXPERIENCE.md :167 and :357 in place, `[ADDED 2026-10-10 - Story 18.31]`. 3000 of 3400 used; stop past 3350.
+12. **DW-2279**, only if `grep -c PARENTDESCRIPTION src/OcuPilot/Screen/Tool/MappingMint.cls` is non-zero here: add `Screen/Tool/DocDbAppMint`, extending `MappingMint` with Doc DB wording in its three description parameters; name it in the `DocDbApp*` tools' `MintClass`; add a `DocDbAppWrite` leg. Otherwise change nothing and say so in Auto Run Result.
 
-    Otherwise, change nothing and say so in Auto Run Result.
+**Tests** (prefix `OcuProbe1831`; `OCUPILOT_ALLOW_PRINCIPALS` arms all but the descriptor class; `OnAfterOneTest` runs `RoutineAppProbe.RemoveAll`):
 
-**Tests** (armed by `OCUPILOT_ALLOW_PRINCIPALS` except the descriptor class; `OnAfterOneTest` runs `RoutineAppProbe.RemoveAll`; each class under 500 lines):
-
-13. **ObjectScript.**
-    - `RoutineAppDescriptor`.
-    - `RoutineAppRead`: rows checked against the raw `GET`; the form read; 404 when absent.
-    - `RoutineAppWrite` and `RoutineAppDelta`: the matrix, through both callers and over the wire. The kernel branch is asked through `Prohibits` (as `OwnRoutineApplication.Ask` asks); the privilege mark and DW-2252 are checked on a probe.
-    - `RoutineAppGate`: exactly `%Admin_Secure:USE`, `%DB_IRISSYS:READ` and the install database's READ allow every operation. Without the first, each one is refused by name before any port call.
-14. **Client.** Specs, plus `ui/browser/routine-applications.browser-spec.mjs`:
-    - Open the list from the side bar and wait for `OcuPilotState`'s row, whose Delete is `aria-disabled`.
-    - Give a probe an application role, a matching role and a routine; change its `Description`; delete it by typed name.
-    - An after hook runs `RemoveAll`.
-15. **Rule 30 sweep**, each change made as 18.30 made it:
-    - Entity types go from 64 to 65: `Test/Descriptor.cls` :1763 (shape :179), `SuperserverDescriptor` :130, `MftConnectionDescriptor` :141. 20.3's type adds to these at the merge.
-    - Tool and route rosters: `ReadTool` :93-94 (327 to 331); `SurfaceCoverage` :211 and :410; `EndpointCoverage` :269; `ToolRoundTrip` :84.
-    - Governance: `Governance` :63 and :149; `ToolDispatch` :172; `GovernanceBaseline` :15 and :71.
-    - Pages and types: `ClassicPageGate` :75 and :154; `MappingDescriptor` :24; `Test/Prohibited.cls` :232; one `SaveHoldCoverage` leg.
-    - Area lists: `Wire` :534; `WireSecurityRead` :847, :998 and :1027; `WebSessionsLive` :290.
-    - Client tools: `navigation.test.mjs` :254-264 and :601; `side-bar-pins.test.mjs` :36; `screen-mirror.test.mjs` :283; `ci-throwaway.sh` :388.
-    - `ScreenRead` :220, only if it goes red.
-    - Story 18.10's tests:
-      - `WebAppPctAccess.cls` :170 reads `RoutineAppError`.
-      - `OwnRoutineApplication.cls` drops "501" from its header (:8-9) and its mutation lines.
-      - Its endpoint `DELETE` mutation is not re-run.
+13. `Test/RoutineAppDescriptor`: declarations, classification, baseline, codes. `RoutineAppRead`: rows against the raw `GET`, the form read, absent 404. `RoutineAppWrite`: this story's matrix rows, both callers and the wire; the own two through `Prohibits`, as `OwnRoutineApplication.Ask`. `RoutineAppGate`: exactly `%Admin_Secure:USE`, `%DB_IRISSYS:READ` and the install database's READ allow everything; without the first, each is refused by name before any port call.
+14. Page, store and actions specs. `ui/browser/routine-applications.browser-spec.mjs`: from the side bar, wait for `OcuPilotState`'s row (Delete `aria-disabled`); create, change and typed-name delete a probe; an after hook runs `RemoveAll`.
+15. **Rule 30 sweep**, as 18.30 did:
+    - entity types 64 to 65: `Test/Descriptor`, `SuperserverDescriptor`, `MftConnectionDescriptor`;
+    - `ReadTool` (327 to 331), `SurfaceCoverage`, `EndpointCoverage`, `ToolRoundTrip`, `Governance`, `ToolDispatch`, `GovernanceBaseline`, `ClassicPageGate`, `MappingDescriptor`, `Test/Prohibited`, a `SaveHoldCoverage` leg; `ScreenRead`, `ToolWrite`, `PortGate`, `ProhibitedRoute`, `RefusalCopy` and `field-lists.test.mjs` only if red;
+    - `Wire`, `WireSecurityRead`, `WebSessionsLive`, `navigation.test.mjs`, `side-bar-pins.test.mjs`, `screen-mirror.test.mjs`, `ci-throwaway.sh`'s arming roster;
+    - `WebAppPctAccess` :170 reads `RoutineAppError`; `OwnRoutineApplication` drops "501" from :7-9, :291 and :302 and does not re-run its endpoint `DELETE` mutation.
 
 **Acceptance Criteria:**
 
-- **C1.** Given the list and the read tool, when each reads, then both answer one read's rows with each row's `GET` `Enabled` and `Description`, and the form read answers the record with its roles and databases.
-- **C2.** Given a probe, when either caller runs the matrix's Create, Update, Deltas and Delete rows on it, then each holds and its read-back `matches`, or reads absent after the delete.
-- **C3.** Given a Rules row, when either caller sends it, then it is refused before any `PUT`.
-- **C4.** Given `OcuPilotState` or `OcuPilotIdentity`, when the list, the editor, the mint or the confirm targets it, then the answer is 403 `PROHIBITED.OCUPILOTROUTINEAPP`, nothing changes, and Delete is drawn `aria-disabled` with that sentence.
-- **C5.** Given a probe routine application, when `AdminPort` sends a `WebApp.App` `PUT` or `DELETE` naming it, then the answer is 409 `PRIVROUTINE.WEBAPP` and the application is unchanged (DW-2252).
-- **C6.** Given a probe, when the agent proposes adding `%All` to its `MatchRoles`, then the proposal is destructive and names the privilege.
-- **C7.** Given the rosters, when the suites run, then position 5, keys `true`/`true`/`false`, `routine-application` with `foldcase` on both sides, `PRIVROUTINE.TYPE` from `RoutineAppError` unchanged (DW-2262), and the strings bound all hold.
-- **Integration.** On `ocupilot-ci`, the page consumes the three routes and the screen actions, and the agent the four tools (C1-C6 and the browser spec).
+- **C1.** Given the list and `webapp.routineapps.read`, when each reads, then both answer one read's rows with each row's `GET` `Enabled` and `Description`; the form read answers the name and three settings.
+- **C2.** Given probes, when either caller runs the matrix's Create, Update, Delete, Rules, Web app and DW-2252 rows, then each answers as the matrix says, a refusal sends nothing, read-backs `match` (absent after a delete), and a change keeps a probe's role and routine (AD-4).
+- **C3.** Given `OcuPilotState` or `OcuPilotIdentity`, when the list, the editor, the mint or the confirm targets it, then it answers 403 `PROHIBITED.OCUPILOTROUTINEAPP`, nothing changes, and Delete and Save are `aria-disabled` with that sentence.
+- **C4.** Given the rosters, when the suites run, then position 5, keys `true`/`true`/`false`, `routine-application` `foldcase` on both sides, `PRIVROUTINE.TYPE` from `RoutineAppError` (DW-2262) and the strings bound hold.
+- **Integration.** Given `ocupilot-ci`, when the page and the agent act, then the page consumes the three routes and the delete action, and the agent the four tools (C1-C3, the browser spec).
 
 ## Spec Change Log
+
+- 2026-10-10, spec gate (lead): DW-2279 re-owned to 18.33, because 20.3 is not on feature (Task 12 stays unbuilt here); AD-2, AD-13, AD-44 and AD-54 amended.
+
+- 2026-10-10, spec gate (lead): the intent was trimmed of 18.33's half (the Deltas row, the role and routine Rules clauses, and the tab-delta and `MatchRoles`-grant Always bullets), matching the split ruling.
 
 - 2026-10-10, lead: the orchestrator ruled to split for size. 18.31 keeps the list, the General tab and the four tools over `Description`, `Enabled` and `Resource`, plus DW-2252, DW-2262 and DW-2279 (conditional on 20.3). The roles, matching roles and routines tabs, the database list and C6 move to 18.33, whose plan is seeded from this spec's first version (commit `18436f8d`). The status is reset to `draft` for a re-plan.
 
@@ -168,87 +111,40 @@ Paths are under `src/OcuPilot/` unless they start with `ui/`. **Analog: Story 18
 
 ## Design Notes
 
-**Measured at plan** (2026-10-10, `ocupilot-ci`; 18.10's `622b70eb` baseline holds):
+**Scope.** 18.33 builds the role, matching-role and routine deltas, their rules, the database list and the `MatchRoles` grant check; this story builds none of them.
 
-- **Reads.**
-  - `LIST` rows are `{Name, Namespace, NamespaceDefault, Enabled, Type, Resource, IsSystemApp, DispatchClass}`, with `Enabled` always false.
-  - `GET` answers `{MatchRoles, Routines[{RoutineOrClass, Db, Type: Routine|Class}], Enabled, Resource, Description}`.
-  - A `GET` body sent back with `PUT` changes nothing.
-- **Names.** A create stores the name as typed (201). A lower-cased `PUT` keeps the stored spelling.
-- **Writes.**
-  - A sent `MatchRoles` replaces the list.
-  - Any `Type` other than `Routine` is stored as `Class`; an omitted `Type` is 400 #40301.
-  - An empty entry is dropped silently, and an absent `Db` is stored as given.
-  - An absent match role is 500 #875; a name over 64 characters or a description over 256 is 500 #7201.
-- **`WebApp.App`.** `LIST` omits routine apps and `GET` answers one with web defaults. `PUT` on one is 500 #799, and `DELETE` (200) deletes it.
-- **Least privilege.** Holding exactly `%Admin_Secure:U` and `%DB_IRISSYS:R`, over HTTP it listed, created one with roles and routines, read roles and resources, round-tripped and deleted. With `%DB_HSCUSTOM:R` added it read `Config.Databases` in process (`Exists`, and a `List` of 14).
-- **`AdminPort` in process.** `LIST` 200, a new `PUT` 501, and an `OcuPilotState` `PUT` 403. S0 held, with the monitor at 0.
+**Measured** (`ocupilot-ci`; the first plan, `18436f8d`, seeds 18.33; the epic context has the rest):
 
-**Decisions** (spine, at the gate):
+- `LIST` answers no `Description`; a `GET` body sent back changes nothing. `PUT` keeps the name as typed, and a three-setting create answered 201 with both lists empty (this re-plan). A name over 64 or a description over 256 is 500 #7201.
+- For 18.33: a sent `MatchRoles` replaces the list; any `Type` but `Routine` stores `Class` and an empty entry is dropped (vendor candidates, owner hold); no `Type` is 400 #40301; `%DB_HSCUSTOM:R` reads `Config.Databases`.
 
-- AD-13: `routine-application` is `foldcase`.
-- AD-4: the complete set.
-- AD-36: `rowGet`.
-- AD-8: no pair beyond the area's.
-- AD-44: create and update declare `.PrivRoutine`.
-- AD-2: the type check covers `WebApp.App` writes; `GET` is unchanged, because 18.10's 403 on the web application Save follows it.
-- AD-10: one predicate covers both types.
-- AD-15: `ApplicationChange`.
+**For the lead.** DW-2283: `OwnRoutineApplicationWire` settles the own two, DW-2252's `DELETE` leg the rest. The monitor state read 1 before the probe; S0 omits it (epic context).
 
-**Rule 31.** Each override is bound to Doc DB's composite id or fields, and DW-2278 owns the base. `Prohibited` is contended, so its branch reuses the predicate.
+**Ledger.** DW-2252: Task 3, C2. DW-2262: Task 2, C4. DW-2279: Task 12, which the lead re-owns while 20.3 is off feature, as now.
 
-**For the lead.** Vendor candidates, on owner hold and never reported:
-
-- `WebApp.App` `DELETE` deletes a routine application.
-- `PUT` reads any `Type` as `Class` and drops an empty entry silently.
-
-**Ledger.** DW-2252 is Task 3 and C5; DW-2262 is Task 2 and C7; DW-2279 is Task 12, conditional, or else re-owned by the lead.
-
-**Proposed split** (the lead numbers it; 18.33 is the burn-down):
-
-- **18.31, narrowed.**
-  - The list, the General editor and the three tools over the three settings; the update still sends the fresh `MatchRoles` and `Routines` (AD-4).
-  - The entity type, the kernel branch, the self-protection rule and `MUTATINGTYPES`.
-  - DW-2252, DW-2262 and DW-2279.
-  - Tasks 1-6 and 9-15, without the delta parts.
-- **New story.** The Application roles, Matching roles and Routines and classes tabs:
-  - the update's `MatchRoles` and `Routines` arguments and the six delta actions (`WebAppUpdate`'s role delta, plus a routine delta);
-  - the role and routine rules;
-  - `DatabaseDefined` and `DatabaseNames`;
-  - C6.
-- **Alternative.** Waive the bound and dispatch this spec as written, which is complete for one story.
-
-**Governing ADs:** AD-2, 3, 4, 5, 6, 8, 10, 13, 14, 15, 22, 27, 34, 36, 39, 44, 52, 53, 54, 55, 56, 58, 59. **Consumed-by:** 18.12. **Consumes:** 18.10, 18.30, 9.2 (`WebAppUpdate`), 8.x (`ResourceList`, `FormRules.Roles`).
+**Governing ADs:** AD-2 (now `WebApp.App` writes), 3, 4, 5, 6, 8, 10, 13 (`routine-application`, `foldcase`), 14, 15, 22, 27, 34, 36, 39, 44 (`.PrivRoutine`), 52, 53, 54 (`TypedId` on a single-part id), 55, 58, 59; the noted ones want spine lines at the gate (Rule 20). **Consumed-by:** 18.33 (its tabs extend these tools and form; it may re-parent the update onto `WebAppUpdate`), 18.12. **Consumes:** 18.10, 18.30, 8.x (`ResourceList`). **Integration ACs:** the Integration line, `RoutineAppWrite`, the browser spec.
 
 ## Verification
 
-**Shared surfaces:** Web applications side bar and lists, entity types, tool, route, key and classic-page rosters, self-protection rules, the home of `PRIVROUTINE.TYPE`, 18.10's routine tests, and Fixed strings.
+**Shared surfaces:** Web applications side bar and lists, entity types, tool, route, key and classic-page rosters, self-protection rules, `PRIVROUTINE.TYPE`'s home, Doc DB's Rules and Save, 18.10's tests, Fixed strings.
 
 **Standing criterion:** *existing tests that assert a surface this story changes are updated in this story, and every test the story adds or changes passes on a freshly built instance and in either order.*
 
 **Commands:**
 
 - `(loop)` `sh /Users/jbrandt/git/OcuPilot/.worktrees/.coordination/carry-2026-10-08/epic-18-d8/load-ocupilot-ci.sh` -- expected `LOAD-OK` and `STARTPATH-OK`.
-- `(loop)` `cd ui && node tools/ci-runner.mjs --container ocupilot-ci --class OcuPilot.Test.<C>`, one class at a time, totals read from `%UnitTest_Result`. Run the new classes, Task 15's, and `DocDbAppWrite`, `OwnRoutineApplication`, `OwnRoutineApplicationWire` and `WebAppPctAccess`.
+- `(loop)` `cd ui && node tools/ci-runner.mjs --container ocupilot-ci --class OcuPilot.Test.<C>`, one at a time, totals from `%UnitTest_Result`: the new classes, Task 15's, the four `DocDbApp*`, both `OwnRoutineApplication*` and `WebAppPctAccess`.
 - `(loop)` `cd ui && npm run test:tools && npm run test:components`; `uv run scripts/check-objectscript.py`.
-- `(loop)` With `OCUPILOT_BROWSER_ORIGIN=http://localhost:52776` and `OCUPILOT_BROWSER_CONTAINER=ocupilot-ci`, run `cd ui && npm run build && docker cp dist/ocupilot-ui/browser/. ocupilot-ci:/durable/iris/csp/ocupilot/`, then `node --test --test-concurrency=1 browser/routine-applications.browser-spec.mjs` and Task 15's specs.
-- `(once, before dev_complete)` The full ObjectScript sweep, one class at a time.
-- `(once, before dev_complete)` `cd ui && npm test && npm run build`, then the bundle: 3,213,418 bytes at 18.30, warning at 3326kB (DW-1166).
-- `(once, before dev_complete)` `bash scripts/smoke.sh --container ocupilot-ci --user _SYSTEM --password SYS`, then S0.
+- `(loop)` With `OCUPILOT_BROWSER_ORIGIN=http://localhost:52776` and `OCUPILOT_BROWSER_CONTAINER=ocupilot-ci`: `cd ui && npm run build && docker cp dist/ocupilot-ui/browser/. ocupilot-ci:/durable/iris/csp/ocupilot/`, then `node --test --test-concurrency=1 browser/routine-applications.browser-spec.mjs` and Task 15's specs.
+- `(once, before dev_complete)` The full ObjectScript sweep, one class at a time; `cd ui && npm test && npm run build`, the bundle against 3,213,418 bytes and the 3326kB warning (DW-1166); `bash scripts/smoke.sh --container ocupilot-ci --user _SYSTEM --password SYS`; S0.
 
-**Mutations (Rule 19).** Record each as `mutation:`.
+**Mutations (Rule 19),** each recorded as `mutation:`, none writing the own two: C1 drop `rowGet`; C2 drop, each alone, the absence fingerprint, one rule, the `Routines` resend and the guard's `WebApp.App` branch; C3 drop the kernel branch (asked through `Prohibits`; the port arm stays), then the client rule; C4 the delete's key `true`.
 
-- C1: drop `rowGet`.
-- C2: drop the absence fingerprint, then the routine delta.
-- C3: drop one rule.
-- C4: drop the kernel branch, then the client rule.
-- C5: drop the guard's `WebApp.App` branch.
-- C6: drop the privilege line.
-- C7: set delete to `true`.
-
-**S0:** no `OcuProbe1831*` application, role or user; the own two as recorded; the monitor at 0.
+**S0:** no `OcuProbe1831*` application, role or user; the own two as Task 0 recorded them.
 
 ## Auto Run Result
 
-Status: blocked
-Blocking condition: size: the plan is 18.4 KB after four trims, over the stage's 16 KB bound, and about 40% larger than Story 18.30, which filled one implement pass; the proposed split is under Design Notes (or the lead waives the bound and dispatches this spec as written)
+Status: ready-for-dev
+Blocking condition: none
+
+Re-planned to the split; one probe; S0 held.
