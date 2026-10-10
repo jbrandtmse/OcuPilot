@@ -356,3 +356,6 @@
 2026-10-10T10:27:54Z	Epic 20	spine_updated	ad=AD-21(ninth_case_gains_PathPort_self-protection_exception) reason=orchestrator_ruling by=runner story=20-22
 2026-10-10T10:27:54Z	Story 20.22	spec_reset	status=ready-for-dev->draft intent_contract=+path_self-protection_bullet reason=re-dispatch_protocol(orchestrator_ruling)
 2026-10-10T10:27:54Z	Story 20.22	stage_spawned	stage=plan spawn_at=2026-10-10T10:27:54Z model=opus agent_name=20-22-plan-2 cycle_iteration=2 dispatch=spec_path(draft)
+2026-10-10T10:47:50Z	Story 20.22	story_created	spawn_at=2026-10-10T10:28Z model=opus agent_name=20-22-plan-2 cycle_iteration=2 build_status=ready-for-dev added=AC9_path_self-protection(PathPort_predicates_via_PathPortClass_seam,mint+write),INTEROP.SETTING.DESCENT(measured:FilePath_parent+SubdirectoryLevels_1_took_files_in_manager_and_served_dirs),InteropSettingPaths,InteropSettingSeam,10_mutations posture=none_remaining
+2026-10-10T10:47:50Z	Epic 20	spine_updated	ad=AD-21(descent_sentence_measured),AD-62(location_values_judged_by_PathPort) reason=rule20(story_20.22_spec_gate,re-plan) by=runner story=20-22 lint=ok(pre-existing_low_{id})
+2026-10-10T10:47:50Z	Story 20.22	spec_validated	re-gate=after_orchestrator_ruling decision_dependency=none rule31=PathPort_predicates_reused_via_seam(no_PathPort_edit) footprint=epic-18_clean_on_the_six_files model=claude-opus-5-5
