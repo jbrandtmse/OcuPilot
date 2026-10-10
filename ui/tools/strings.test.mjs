@@ -605,6 +605,8 @@ test("EXPERIENCE.md's Fixed strings table itself holds roughly 200 distinct lite
   // (approved).
   // Story 18.30's fifteen Doc DB application literals take the table to 3000. Orchestrator ruling Q3, 2026-10-09: a
   // drift tripwire, not a budget; raised once to 3400; the next raise when the count is within 50 of the bound.
+  // Story 20.3's Production items literals take the table past 3000; the bound moves to 3400 under the same protocol
+  // (approved at its spec gate).
   assert.ok(
     expectedLiterals.length >= 150 && expectedLiterals.length <= 3400,
     `expected between 150 and 3400 distinct literals, extracted ${expectedLiterals.length} -- the extractor's row range or quote-matching may have drifted from the table`

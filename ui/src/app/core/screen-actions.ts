@@ -153,6 +153,8 @@ const ACTION_LABELS: Readonly<Record<string, string>> = {
  * elsewhere, which is the whole reason this map is keyed by descriptor.
  */
 const DESCRIPTOR_ACTION_LABELS: Readonly<Record<string, Readonly<Record<string, string>>>> = {
+  // Story 20.3: Production items' Add opens the dialog that adds one item, and its Remove deletes one.
+  'OcuPilot.Screen.Descriptor.InteropItemList': { add: STRINGS.interopItemAddTitle, remove: STRINGS.actionRemove },
   // Story 8.5: the X.509 list's Create imports a credential rather than typing one in.
   'OcuPilot.Screen.Descriptor.X509CredentialList': { create: STRINGS.actionImport },
   'OcuPilot.Screen.Descriptor.AgentSwitches': {

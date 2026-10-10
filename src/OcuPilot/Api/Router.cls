@@ -258,6 +258,7 @@ XData UrlMap [ XMLNamespace = "http://www.intersystems.com/urlmap" ]
   <Route Url="/docdb-application/:id" Method="PUT" Call="DocDbAppUpdate"/>
   <Route Url="/docdb-application" Method="POST" Call="DocDbAppCreate"/>
   <Route Url="/explorer/docdb" Method="POST" Call="ExplorerDocDbCreate"/>
+  <Route Url="/interop/items" Method="POST" Call="InteropItemCreate"/>
 </Routes>
 }
 
@@ -1854,6 +1855,13 @@ ClassMethod EncryptionStartupUpdate() As %Status
 ClassMethod ExplorerDocDbCreate() As %Status
 {
     Quit ##class(OcuPilot.Area.Explorer.DocDbSave).HandleCreate()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /interop/items</code> (Story 20.3): Production items'
+/// Add, resolved through the one tool the agent's confirm uses (AD-55).</p>
+ClassMethod InteropItemCreate() As %Status
+{
+    Quit ##class(OcuPilot.Area.Interop.ItemSave).HandleCreate()
 }
 
 /// <p>Thin <code>Call=</code> target for <code>GET /authentication-options/form</code> (Story 18.8): the
