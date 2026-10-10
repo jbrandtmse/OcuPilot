@@ -6,9 +6,12 @@ import { ChangeBus, type ChangeAction } from '../core/change-bus';
 import { splitCompositeId } from '../core/entity-id';
 import { impactLine, impactOf } from '../core/impact';
 import { checkedSetReason, checkedSetTarget, isCheckedSetAction } from '../core/multi-select';
+import { PRODUCTION_STATE_MOVED } from '../core/proposal-view';
 import { readBackOf, type ReadBack } from '../core/read-back';
 import { ScreenActions, actionLabel } from '../core/screen-actions';
 import { SCREEN_READ_PATH_PREFIX } from '../core/screen-read';
+import { NAMESPACE_SCOPE, scopeFor } from '../core/entity-ref';
+import { ScopeService } from '../core/scope';
 import { ScreenStores } from '../core/screen-store';
 import { SCREENS, type ScreenDeclaration } from '../core/screens.generated';
 import { selfProtectionReason } from '../core/self-protection';
@@ -114,6 +117,9 @@ export const SCREEN_ACTION_DESCRIPTORS: readonly string[] = [
   'OcuPilot.Screen.Descriptor.InteropProductionList',
   // Story 20.15: Screen permissions, whose Reset warns first and whose Add and Remove its own page's dialog sends.
   'OcuPilot.Screen.Descriptor.AgentScreenPermissions',
+  // Story 20.3: Production items, whose Enable and Disable warn first, whose Remove types the item's name, and whose
+  // Add its own page's dialog sends.
+  'OcuPilot.Screen.Descriptor.InteropItemList',
 ];
 
 /**
@@ -421,7 +427,7 @@ const ACTION_ADDRESS: Readonly<Record<string, string>> = {
  * `DESTRUCTIVE` declaration. This is EXPERIENCE.md's `confirm-dialog` rule -- a delete carries the
  * typed-name field and a `button-destructive` -- applied to the verb that deletes.
  */
-const DESTRUCTIVE_ACTIONS: readonly string[] = ['delete', 'terminate', 'revoke-tokens', 'revoke-token', 'end', ENCRYPTION_REMOVE_ADMIN, ENCRYPTION_REMOVE_KEY, ENCRYPTION_DEACTIVATE];
+const DESTRUCTIVE_ACTIONS: readonly string[] = ['delete', 'terminate', 'revoke-tokens', 'revoke-token', 'end', ENCRYPTION_REMOVE_ADMIN, ENCRYPTION_REMOVE_KEY, ENCRYPTION_DEACTIVATE, 'remove'];
 
 /**
  * The destructive actions whose typed-name dialog states the removal's impact as its advisory,
@@ -495,6 +501,8 @@ const DESTRUCTIVE_CONSEQUENCES: Readonly<Record<string, Readonly<Record<string, 
   [DATA_ELEMENT_ENCRYPTION_KEYS]: { [ENCRYPTION_DEACTIVATE]: STRINGS.encryptionKeyDeactivateDataElementConsequence },
   // Story 19.17: a document database's Drop types its name.
   'OcuPilot.Screen.Descriptor.ExplorerDocDbList': { delete: STRINGS.explorerDocDbDropConsequence },
+  // Story 20.3: a production item's Remove types its name and deletes the settings it holds.
+  'OcuPilot.Screen.Descriptor.InteropItemList': { remove: STRINGS.interopItemRemoveConsequence },
 };
 
 /**
@@ -555,6 +563,9 @@ const TYPED_NAME_ROWS: Readonly<
   // Story 18.22: an active key's row is its `Id`, and the write targets the singleton, which no one types.
   [DATABASE_ENCRYPTION_KEYS]: { name: 'Id', field: '', equals: '', advisory: '' },
   [DATA_ELEMENT_ENCRYPTION_KEYS]: { name: 'Id', field: '', equals: '', advisory: '' },
+  // Story 20.3: a production item is keyed by `[Production, Name]`, whose separator no one can type, so its Remove types
+  // the item's name and sends the row key.
+  'OcuPilot.Screen.Descriptor.InteropItemList': { name: 'Name', field: '', equals: '', advisory: '' },
 };
 
 /**
@@ -609,6 +620,12 @@ const WARNING_CONSEQUENCES: Readonly<Record<string, Readonly<Record<string, stri
     restart: STRINGS.interopRestartConsequence,
     update: STRINGS.interopUpdateConsequence,
     recover: STRINGS.interopRecoverConsequence,
+  },
+  // Story 20.3: an item's Enable and Disable change the stored configuration, and a running production
+  // reads them only at its next update.
+  'OcuPilot.Screen.Descriptor.InteropItemList': {
+    enable: STRINGS.interopItemPendingConsequence,
+    disable: STRINGS.interopItemPendingConsequence,
   },
 };
 
@@ -686,6 +703,9 @@ const PUBLISHED_PROBLEMS: readonly string[] = [
   STRINGS.encryptionKeyAllActive,
   STRINGS.encryptionKeyDefault,
 ];
+
+/** The entity type of a production, which the re-read event names (AD-14). */
+const PRODUCTION_ENTITY = 'production';
 
 /** The sentence a refused action shows: a published state refusal, else the envelope's own reason. */
 function refusalReason(result: { readonly reason: string | null; readonly detail: Record<string, unknown> | null }): string {
@@ -1315,8 +1335,19 @@ export class ScreenActionHandler {
         : null;
     if (result.kind !== 'ok') {
       // The envelope's own sentence (AD-39), or a published state refusal. A refused write changed
-      // nothing, so nothing is published and no row is marked.
+      // nothing, so nothing is published and no row is marked -- except a stop that left the production
+      // Suspended or partly stopped, which moved it (Story 20.3): its list re-reads the state it was left in.
       store.setRefusal(result.kind === 'error' ? refusalReason(result) : '');
+      if (result.kind === 'error' && PRODUCTION_STATE_MOVED.includes(result.code ?? '')) {
+        this.injector.get(ChangeBus).publish({
+          kind: 'changed',
+          type: PRODUCTION_ENTITY,
+          scope: scopeFor(NAMESPACE_SCOPE, scope ?? this.injector.get(ScopeService).namespace()),
+          id: target,
+          action: 'updated',
+          tool: addressed.toolIdentifier,
+        });
+      }
       return false;
     }
     const answer = result.body;

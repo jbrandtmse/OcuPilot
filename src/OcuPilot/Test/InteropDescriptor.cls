@@ -76,7 +76,8 @@ XData Cases
     {"name": "an interop LIST of Productions is sound", "check": "read", "source": {"port": "interop", "endpoint": "Productions", "type": "LIST"}, "expected": null},
     {"name": "so is each code list", "check": "read", "source": {"port": "interop", "endpoint": "Rules", "type": "LIST"}, "expected": null},
     {"name": "and declares no criteria", "check": "criteria", "source": {"port": "interop", "endpoint": "Productions", "type": "LIST"}, "expected": null},
-    {"name": "an endpoint the port does not serve", "check": "read", "source": {"port": "interop", "endpoint": "Items", "type": "LIST"}, "expected": "read.source.endpoint 'Items' is not one of the interop port's endpoints ('Productions', 'Processes', 'Transforms', 'Rules') (AD-62)"},
+    {"name": "an endpoint the port does not serve", "check": "read", "source": {"port": "interop", "endpoint": "Nothing", "type": "LIST"}, "expected": "read.source.endpoint 'Nothing' is not one of the interop port's endpoints ('Productions', 'Processes', 'Transforms', 'Rules', 'Items') (AD-62)"},
+    {"name": "the Items endpoint is served (Story 20.3)", "check": "read", "source": {"port": "interop", "endpoint": "Items", "type": "LIST"}, "expected": null},
     {"name": "a type other than LIST", "check": "read", "source": {"port": "interop", "endpoint": "Productions", "type": "GET"}, "expected": "read.source.type 'GET' is declared on an interop source, which lists the namespace's productions and classes (AD-36)"},
     {"name": "rowGet", "check": "read", "source": {"port": "interop", "endpoint": "Productions", "type": "LIST", "rowGet": {"key": "Name", "param": "name", "fields": ["Status"], "derived": []}}, "expected": "read.source.rowGet is declared on an interop source, which answers its list whole (AD-36)"},
     {"name": "forEach", "check": "read", "source": {"port": "interop", "endpoint": "Productions", "type": "LIST", "forEach": ["Rules"]}, "expected": "read.source.forEach is declared on an interop source, which answers its list whole (AD-36)"},
@@ -365,7 +366,7 @@ Method TestAnUnknownProductionAndAnUnservedOperation()
     }
     Set tSC = $ClassMethod(..#PORT, "Invoke", "Rules", "START", .tQuery, "", .tResult, .tHttp, .tFault)
     Do $$$AssertEquals(+$Get(tHttp) _ "|" _ $Select($IsObject($Get(tFault)): tFault.code, 1: ""), "501|" _ ##class(OcuPilot.Api.Error).#PORTNOTIMPLEMENTED, "a write on a code list is not implemented")
-    Set tSC = $ClassMethod(..#PORT, "Invoke", "Items", "LIST", .tQuery, "", .tResult, .tHttp, .tFault)
+    Set tSC = $ClassMethod(..#PORT, "Invoke", "Nothing", "LIST", .tQuery, "", .tResult, .tHttp, .tFault)
     Do $$$AssertEquals(+$Get(tHttp), 501, "an endpoint the port does not serve is not implemented")
 }
 
@@ -378,7 +379,7 @@ Method TestAnUnknownProductionAndAnUnservedOperation()
 Method TestEveryInteropErrorCodeResolvesToItsSentence()
 {
     Set tError = ..#ERROR
-    Set tCodes = $ListFromString("NAMESPACE,RUNNING,OTHER,TROUBLED,NOTRUNNING,UPTODATE,NOTTROUBLED,BUSY,STATE,STOP,RESTART,UPDATE,RECOVER")
+    Set tCodes = $ListFromString("NAMESPACE,RUNNING,OTHER,TROUBLED,NOTRUNNING,UPTODATE,NOTTROUBLED,BUSY,STATE,STOP,RESTART,UPDATE,RECOVER,SUSPENDED,PARTSTOPPED,ITEMENABLED,ITEMDISABLED,ITEMDEFAULTSETTING,ITEMPOOLZERO,ITEMTAKEN,ITEMAMBIGUOUS,ITEMCLASS,ITEMNAME,ITEMVALUE,ITEMENABLEDREMOVE,ITEMSOURCECONTROL,ITEMPENDING,ITEMREMOVE")
     For tI = 1:1:$ListLength(tCodes) {
         Set tName = $List(tCodes, tI)
         Set tCode = $Parameter(tError, tName)

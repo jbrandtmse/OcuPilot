@@ -365,6 +365,15 @@ export const CONSEQUENCE_INTEROPSTOP = 'INTEROP.STOP';
 export const CONSEQUENCE_INTEROPRESTART = 'INTEROP.RESTART';
 export const CONSEQUENCE_INTEROPUPDATE = 'INTEROP.UPDATE';
 export const CONSEQUENCE_INTEROPRECOVER = 'INTEROP.RECOVER';
+/** Story 20.3: an item write's pending-update sentence, and a removal's. */
+export const CONSEQUENCE_INTEROPITEMPENDING = 'INTEROP.ITEM.PENDING';
+export const CONSEQUENCE_INTEROPITEMREMOVE = 'INTEROP.ITEM.REMOVE';
+/**
+ * The codes of a production stop that was applied but did not end the production Stopped (Story 20.3):
+ * Suspended with messages still queued, and partly stopped with jobs still running. The action is refused with
+ * its own sentence, and the Productions list re-reads the state the production was left in.
+ */
+export const PRODUCTION_STATE_MOVED: readonly string[] = ['INTEROP.PRODUCTION.SUSPENDED', 'INTEROP.PRODUCTION.PARTSTOPPED'];
 
 /** The consequences of a managed file transfer connection's delete and token revoke (Story 18.26). */
 export const CONSEQUENCE_MFTDELETE = 'MFT.DELETE';
@@ -482,6 +491,9 @@ export function consequenceSentence(code: string | undefined): string {
   if (code === CONSEQUENCE_INTEROPRESTART) return STRINGS.interopRestartConsequence;
   if (code === CONSEQUENCE_INTEROPUPDATE) return STRINGS.interopUpdateConsequence;
   if (code === CONSEQUENCE_INTEROPRECOVER) return STRINGS.interopRecoverConsequence;
+  // Story 20.3: an item write's pending-update sentence and a removal's, each published once.
+  if (code === CONSEQUENCE_INTEROPITEMPENDING) return STRINGS.interopItemPendingConsequence;
+  if (code === CONSEQUENCE_INTEROPITEMREMOVE) return STRINGS.interopItemRemoveConsequence;
   return '';
 }
 

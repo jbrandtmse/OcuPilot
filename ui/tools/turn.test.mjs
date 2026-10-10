@@ -1781,6 +1781,52 @@ test('a confirm the instance refused publishes no change, and neither does a can
   );
 });
 
+test('a stop refused as Suspended or partly stopped publishes the production change, and any other refusal does not (Story 20.3)', async () => {
+  // Mutation (Rule 19): drop the `PRODUCTION_STATE_MOVED` branch from the error path of `decideProposal`
+  // -> both state legs go red, and the Productions list keeps the state it held before the stop.
+  const production = { type: 'production', scope: 'USER', id: 'OcuPilotProbe' };
+  for (const [code, detail, published] of [
+    ['INTEROP.PRODUCTION.SUSPENDED', { state: 'confirmed', closedReason: '' }, true],
+    ['INTEROP.PRODUCTION.PARTSTOPPED', { state: 'confirmed', closedReason: '' }, true],
+    ['INTEROP.PRODUCTION.NOTRUNNING', null, false],
+  ]) {
+    const bus = recordingBus();
+    const proposal = wireProposal({ target: production, tool: 'interop.production.stop' });
+    const api = fakeApi({
+      [conversationReadPath('c1')]: [ok({ turns: [{ seq: 1, message: 'stop it', state: 'completed', proposals: [proposal] }] })],
+      [turnProgressPath('turn-1')]: [
+        ok({ state: 'completed', steps: [], stepsDropped: 0, reply: 'done', error: null, proposals: [proposal] }),
+      ],
+      [TURN_PATH]: [ok({ turnId: 'turn-1' }, 202)],
+      [CONVERSATION_PATH]: [ok({ conversationId: 'c1' }, 201)],
+      [proposalConfirmPath('p1')]: [err(409, code, 'refused', detail)],
+    });
+    const { schedule, scheduled } = fakeSchedule();
+    const turn = new TurnStore({ api, storage: memoryStorage(), navigationType: freshTab(), schedule, now: () => NOW_MS, bus });
+    await turn.send('stop it');
+    await settle();
+    scheduled.shift()?.run();
+    await settle();
+
+    await turn.confirmProposal('p1');
+    const changed = bus.events.filter((event) => event.kind === 'changed');
+    if (!published) {
+      assert.deepEqual(changed, [], `${code} changed nothing`);
+      continue;
+    }
+    assert.equal(changed.length, 1, `${code} publishes the one change`);
+    assert.deepEqual(
+      [changed[0].type, changed[0].scope, changed[0].id, changed[0].action, changed[0].tool, changed[0].proposalId],
+      ['production', 'USER', 'OcuPilotProbe', 'updated', 'interop.production.stop', 'p1'],
+      `${code} names the proposal's own production and tool`
+    );
+    assert.ok(
+      bus.events.findIndex((event) => event.kind === 'proposal-closed') < bus.events.findIndex((event) => event.kind === 'changed'),
+      `${code} lifts the pause before the re-fetch it asks for`
+    );
+  }
+});
+
 test('a live row past its own expiresAt opens no pause (DW-1209)', async () => {
   const bus = recordingBus();
   const api = fakeApi({
