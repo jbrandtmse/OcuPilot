@@ -10919,3 +10919,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-30-doc-db-applications.md | severity: low | fix-risk: low | footprint: out-of-footprint
 - evidence: measured in 18.30's implement on ocupilot-ci; the vendor DocDB endpoint
 - 2026-10-10T12:49:19Z status=decision-pending owner=burndown by=harvest note=owner_hold: IRIS defect candidate, never reported upstream
+
+### DW-2283: IRIS defect candidate: the admin API's web-application DELETE deletes a privileged routine application
+- source: spec-18-31-privileged-routine-applications.md | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: measured at 18.31's plan on ocupilot-ci (OcuProbe1831Mixed): WebApp.App DELETE answers 200 and the routine application is gone; its list leaves routine apps out and a read answers web-app defaults
+- 2026-10-10T17:24:12Z status=decision-pending owner=burndown by=harvest note=owner_hold: IRIS defect candidate, never reported upstream; DW-2252 refuses it on OcuPilot's side
+
+### DW-2284: IRIS defect candidate: the privileged-routine PUT stores any unknown routine Type as Class and silently drops an empty entry
+- source: spec-18-31-privileged-routine-applications.md | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: measured at 18.31's plan on ocupilot-ci: Type other than Routine stored as Class; an empty member dropped; an omitted Type answers 400 #40301
+- 2026-10-10T17:24:12Z status=decision-pending owner=burndown by=harvest note=owner_hold: IRIS defect candidate, never reported upstream
