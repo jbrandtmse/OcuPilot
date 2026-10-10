@@ -1705,6 +1705,52 @@ describe('the Doc DB applications list\u2019s Delete (Story 18.30)', () => {
 });
 
 /**
+ * Story 18.31: the privileged routine applications list's Delete types the application's name under its published
+ * consequence and sends the row key; OcuPilot's own two applications are refused at the click with the rule's sentence,
+ * in any case, and nothing is sent.
+ */
+describe('the privileged routine applications list\u2019s Delete (Story 18.31)', () => {
+  const descriptor = 'OcuPilot.Screen.Descriptor.RoutineAppList';
+  const target = 'OcuProbe1831A';
+
+  it('registers Delete, typing the application\u2019s name under the published consequence', () => {
+    // Mutation (Rule 19): drop the list's `DESTRUCTIVE_CONSEQUENCES` entry -> the registration goes red and the
+    // list draws no Delete. The list's `TYPED_NAME_ROWS` entry names the typed field outright; the row key is the name,
+    // so dropping it changes nothing a test can see.
+    const { actions, handler, store, calls } = mount(undefined, descriptor);
+    expect(actions.has(descriptor, 'delete')).toBe(true);
+    handler.startFor(descriptor, 'delete', target, { Name: target, Enabled: true, Resource: '', Description: '' }, store);
+    expect([handler.pending()?.kind, handler.pending()?.name, handler.pending()?.target, handler.pending()?.consequence]).toEqual(['typed-name', target, target, STRINGS.routineAppDeleteConsequence]);
+    expect(calls).toHaveLength(0);
+  });
+
+  it('sends a confirmed Delete with the row key', async () => {
+    const screen = SCREENS.find((entry) => entry.descriptor === descriptor)!;
+    const { handler, store, calls } = mount({ kind: 'ok', status: 200, body: { action: 'deleted', target: { type: 'routine-application', scope: 'instance', id: target } } }, descriptor);
+    handler.startFor(descriptor, 'delete', target, { Name: target }, store);
+    handler.confirmPending();
+    await settle();
+    expect(calls).toHaveLength(1);
+    expect(calls[0].path).toBe(`/api/ocupilot/screens/${screen.toolIdentifier}/action`);
+    expect(JSON.parse(calls[0].body)).toEqual({ action: 'delete', id: target });
+  });
+
+  it('refuses OcuPilot\u2019s own two applications at the click, in any case, with the rule\u2019s sentence and sends nothing', async () => {
+    // Mutation (Rule 19): drop the `ocupilot-routine-application` branch from `selfProtectionReason` -> each leg opens
+    // the typed-name dialog instead and goes red.
+    for (const own of ['OcuPilotState', 'OcuPilotIdentity', 'ocupilotstate', 'OCUPILOTIDENTITY']) {
+      const { handler, store, calls } = mount(undefined, descriptor);
+      handler.startFor(descriptor, 'delete', own, { Name: own, Enabled: true, Resource: '', Description: '' }, store);
+      expect(handler.pending()).toBeNull();
+      expect(store.refusal()).toBe(STRINGS.routineAppRefusalOcuPilot);
+      await settle();
+      expect(calls).toHaveLength(0);
+      TestBed.resetTestingModule();
+    }
+  });
+});
+
+/**
  * Story 16.4: `sendFor` with a sink of its own keeps a refusal off the list's banner, and
  * `lastRefusal` answers what the instance refused with -- its sentence, its field-level violations and
  * its detail -- until the next send, which clears it.

@@ -154,7 +154,8 @@ Method TestShapeRefused()
 }
 
 /// <p>Each refusal code the percent-class access port and its save route answer carries its published sentence, read from
-/// <class>OcuPilot.Api.PctAccessError</class>; a changed sentence reddens here.</p>
+/// <class>OcuPilot.Api.PctAccessError</class>, and the privileged routine type refusal's, which
+/// <class>OcuPilot.Api.RoutineAppError</class> carries; a changed sentence reddens here.</p>
 /// <p>Mutation (Rule 19): in <class>OcuPilot.Api.PctAccessError</class>, change the parameter
 /// <code>REASONALLOWTYPE = "Choose Allow access ..."</code> to <code>"Pick Allow access ..."</code>. The allow type leg goes
 /// red, which is this test's own leg.</p>
@@ -167,7 +168,7 @@ Method TestRefusalSentencesArePublished()
     Do $$$AssertEquals(##class(OcuPilot.Api.PctAccessError).ReasonFor("PCTACCESS.APPLICATION"), "Name a web application this instance holds, or all applications.", "the application sentence is the published one")
     Do $$$AssertEquals(##class(OcuPilot.Api.PctAccessError).ReasonFor("PCTACCESS.EXISTS"), "This application already has an entry for that allow type and class, so it is not added again.", "the exists sentence is the published one")
     Do $$$AssertEquals(##class(OcuPilot.Api.PctAccessError).ReasonFor("PCTACCESS.SYSTEM"), "This entry belongs to the instance and goes only with its application, so it cannot be deleted on its own.", "the system sentence is the published one")
-    Do $$$AssertEquals(##class(OcuPilot.Api.PctAccessError).ReasonFor("PRIVROUTINE.TYPE"), "This application is not a privileged routine application, so this endpoint does not read or change it.", "the privileged routine type sentence is the published one")
+    Do $$$AssertEquals(##class(OcuPilot.Api.RoutineAppError).ReasonFor("PRIVROUTINE.TYPE"), "This application is not a privileged routine application, so this endpoint does not read or change it.", "the privileged routine type sentence is the published one")
     Quit
 }
 

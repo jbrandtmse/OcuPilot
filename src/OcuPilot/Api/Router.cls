@@ -257,6 +257,9 @@ XData UrlMap [ XMLNamespace = "http://www.intersystems.com/urlmap" ]
   <Route Url="/docdb-application/form" Method="GET" Call="DocDbAppFormRead"/>
   <Route Url="/docdb-application/:id" Method="PUT" Call="DocDbAppUpdate"/>
   <Route Url="/docdb-application" Method="POST" Call="DocDbAppCreate"/>
+  <Route Url="/routine-application/form" Method="GET" Call="RoutineAppFormRead"/>
+  <Route Url="/routine-application/:id" Method="PUT" Call="RoutineAppUpdate"/>
+  <Route Url="/routine-application" Method="POST" Call="RoutineAppCreate"/>
   <Route Url="/explorer/docdb" Method="POST" Call="ExplorerDocDbCreate"/>
 </Routes>
 }
@@ -1935,6 +1938,28 @@ ClassMethod DocDbAppUpdate(pId As %String) As %Status
 ClassMethod DocDbAppCreate() As %Status
 {
     Quit ##class(OcuPilot.Area.WebApp.DocDbAppSave).HandleCreate()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /routine-application/form</code> (Story 18.31): the privileged
+/// routine application editor's form read, delegating to <class>OcuPilot.Area.WebApp.RoutineAppRules</class>. It
+/// precedes <code>/routine-application/:id</code>.</p>
+ClassMethod RoutineAppFormRead() As %Status
+{
+    Quit ##class(OcuPilot.Area.WebApp.RoutineAppRules).HandleForm()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>PUT /routine-application/:id</code>: the form's edit, resolved through
+/// the one tool the agent's confirm uses (AD-55).</p>
+ClassMethod RoutineAppUpdate(pId As %String) As %Status
+{
+    Quit ##class(OcuPilot.Area.WebApp.RoutineAppSave).HandleUpdate(pId)
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /routine-application</code>: the form's create, resolved through
+/// the one tool the agent's confirm uses (AD-55).</p>
+ClassMethod RoutineAppCreate() As %Status
+{
+    Quit ##class(OcuPilot.Area.WebApp.RoutineAppSave).HandleCreate()
 }
 
 }

@@ -1,6 +1,5 @@
 /// <p>The percent-class access codes (AD-39, Story 18.10): the seven <code>PCTACCESS.*</code> codes a
-/// class access entry answers and the one <code>PRIVROUTINE.TYPE</code> code the privileged routine
-/// endpoint answers, each with the sentence it carries. They live beside
+/// class access entry answers, each with the sentence it carries. They live beside
 /// <class>OcuPilot.Api.Error</class> because that class holds the compiler's limit of 1,000 parameters
 /// (ERROR #5290); <method>OcuPilot.Api.Error.ReasonForToolCode</method> and
 /// <method>OcuPilot.Api.Error.ReasonForViolation</method> answer these codes through <method>ReasonFor</method>.</p>
@@ -48,12 +47,6 @@ Parameter SYSTEM = "PCTACCESS.SYSTEM";
 
 Parameter REASONSYSTEM = "This entry belongs to the instance and goes only with its application, so it cannot be deleted on its own.";
 
-/// <p>Refusal (409) on <code>Security.PrivilegedRoutine</code>: the named application is not a privileged
-/// routine application, so the endpoint does not change it.</p>
-Parameter PRIVROUTINETYPE = "PRIVROUTINE.TYPE";
-
-Parameter REASONPRIVROUTINETYPE = "This application is not a privileged routine application, so this endpoint does not read or change it.";
-
 /// <p>The sentence <var>pCode</var> carries, or <code>""</code> for any code this class does not declare.</p>
 ClassMethod ReasonFor(pCode As %String) As %String
 {
@@ -64,7 +57,6 @@ ClassMethod ReasonFor(pCode As %String) As %String
     If pCode = ..#APPLICATION Quit ..#REASONAPPLICATION
     If pCode = ..#SYSTEM Quit ..#REASONSYSTEM
     If pCode = ..#EXISTS Quit ..#REASONEXISTS
-    If pCode = ..#PRIVROUTINETYPE Quit ..#REASONPRIVROUTINETYPE
     Quit ""
 }
 

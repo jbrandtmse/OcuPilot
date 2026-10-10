@@ -72,7 +72,8 @@ Method TestEveryWriteRouteTakesTheHoldOrIsExempt()
 /// <method>OcuPilot.Area.Security.EncryptionKeyFileSave.HandleCreate</method>, or the body's absent
 /// <code>EventName</code> in <method>OcuPilot.Area.Security.AuditEventSave.HandleCreate</method> --
 /// that leg answers 400 or 422 at once and goes red; so does the Doc DB application leg when
-/// <method>OcuPilot.Area.WebApp.DocDbAppSave.HandleCreate</method> holds the name alone.</p>
+/// <method>OcuPilot.Area.WebApp.DocDbAppSave.HandleCreate</method> holds the name alone; so does the privileged routine
+/// application leg when <method>OcuPilot.Area.WebApp.RoutineAppSave.HandleCreate</method> does.</p>
 Method TestACreateSaveHoldsTheKeyItsMintComputes()
 {
     Set tKeyFile = ##class(OcuPilot.Kernel.EntityId).JoinComposite($ListBuild("/ocuprobe/hold/", "hold.key"))
@@ -83,6 +84,8 @@ Method TestACreateSaveHoldsTheKeyItsMintComputes()
     Do ..HeldLeg("/web-app/pct-access", "OcuPilot.Screen.Tool.WebAppPctAccessCreate", tEntry, {"Name": "/CSP/OcuProbeHold", "AllowType": "AllowClass", "Class": "%OcuProbe1810.Hold", "AllowAccess": "not a flag"}.%ToJSON())
     ; The Save names the namespace in lower case, so the leg holds only if both sides fold the composite (foldcase).
     Do ..HeldLeg("/docdb-application", "OcuPilot.Screen.Tool.DocDbAppCreate", ##class(OcuPilot.Kernel.EntityId).JoinComposite($ListBuild("USER", "OcuProbe1830Hold")), {"Namespace": "user", "Name": "OcuProbe1830Hold", "Enabled": "not a flag"}.%ToJSON())
+    ; The Save names the application in another case, so the leg holds only if both sides fold the name (foldcase).
+    Do ..HeldLeg("/routine-application", "OcuPilot.Screen.Tool.RoutineAppCreate", "ocuprobe1831hold", {"Name": "OcuProbe1831Hold", "Enabled": "not a flag"}.%ToJSON())
 }
 
 /// <p>Hold the key <var>pTool</var>'s mint computes for <var>pId</var>, <code>POST</code>

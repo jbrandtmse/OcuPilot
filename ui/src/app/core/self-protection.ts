@@ -90,6 +90,21 @@ export const OCUPILOT_SESSION_RULE = 'ocupilot-session';
 export const SYSTEM_PCT_ACCESS_RULE = 'system-pct-access';
 
 /**
+ * The rule that explains OcuPilot's own two privileged routine applications (Story 18.31, AD-10): the instance refuses
+ * every write to either whoever asks, so a surface draws Delete and Save disabled with this rule's sentence.
+ */
+export const OCUPILOT_ROUTINE_APPLICATION_RULE = 'ocupilot-routine-application';
+
+/** The entity type `OCUPILOT_ROUTINE_APPLICATION_RULE` canonicalizes an id under (AD-13). */
+const ROUTINE_APPLICATION = 'routine-application';
+
+/**
+ * OcuPilot's own privileged routine applications, as `OcuPilot.Kernel.State.Base` names them -- mirrored, and pinned
+ * equal to it by `ui/tools/self-protection.test.mjs`.
+ */
+export const OCUPILOT_ROUTINE_APPLICATIONS: readonly string[] = ['OcuPilotState', 'OcuPilotIdentity'];
+
+/**
  * The ECP SSL/TLS authorization rules (Story 18.21): Authorize and Reject need a row whose `Status`
  * reads `Pending`, and Delete one whose `Status` reads `Authorized`. Each tool refuses any other row
  * with the rule's sentence, on both callers, because the vendor answers OK for any name; with no row
@@ -141,6 +156,8 @@ export const SERVICE_ACCOUNTS: readonly string[] = ['CSPSystem', '_Ensemble', 'i
  * `serves-ocupilot` does, with the privilege-grant sentence.
  *
  * `ocupilot-ssl` answers for OcuPilot's own provider SSL/TLS configuration, compared exactly.
+ * `ocupilot-routine-application` answers for OcuPilot's own two privileged routine applications, compared as the
+ * instance resolves a routine application's name, in any case.
  *
  * `row` is the row's own fields where the caller holds them. `system-role` reads the key alone;
  * `system-resource` reads the row's `AllowDelete` and answers `''` with no row, where the instance
@@ -172,6 +189,11 @@ export function selfProtectionReason(
     if (row === null) return '';
     const system = row['System'];
     return system === true || system === 'true' || system === 1 || system === '1' ? STRINGS.pctAccessRefusalSystem : '';
+  }
+  if (rule === OCUPILOT_ROUTINE_APPLICATION_RULE) {
+    const canonical = normalizeEntityId(ROUTINE_APPLICATION, rowKey);
+    const own = OCUPILOT_ROUTINE_APPLICATIONS.some((name) => normalizeEntityId(ROUTINE_APPLICATION, name) === canonical);
+    return own ? STRINGS.routineAppRefusalOcuPilot : '';
   }
   if (rule === OCUPILOT_SESSION_RULE) {
     const application = row?.['Application'];

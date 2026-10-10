@@ -45,6 +45,21 @@ ClassMethod ProhibitedClass() As %String
     Quit "OcuPilot.Kernel.Proposal.Prohibited"
 }
 
+/// <p>Whether a record is keyed by a namespace as well as a name: <parameter>RULES</parameter>' own declaration
+/// (<parameter>OcuPilot.Area.WebApp.DocDbAppRules.NAMESPACED</parameter>). When it is 0 the body names no
+/// <code>Namespace</code>, the id is the name, and the answer carries no namespace.</p>
+ClassMethod Namespaced() As %Boolean
+{
+    Quit ''$Parameter(..#RULES, "NAMESPACED")
+}
+
+/// <p>The id of the record <var>pName</var> in <var>pNamespace</var>
+/// (<method>OcuPilot.Area.WebApp.DocDbAppRules.IdOf</method>).</p>
+ClassMethod IdOf(pNamespace As %String, pName As %String) As %String
+{
+    Quit $ClassMethod(..#RULES, "IdOf", pNamespace, pName)
+}
+
 /// <p>Answer <code>POST /docdb-application</code>: create one record from the body <code>{Namespace, Name,
 /// &lt;settings&gt;}</code> and answer <code>{id, namespace, name, readBack}</code> with 201 (AD-58), the name as
 /// written and the namespace as the instance stores it. A broken rule is one 422
@@ -67,7 +82,9 @@ ClassMethod HandleCreate() As %Status
         Set tName = ""
         Kill tShape
         Set tShape = 0
-        For tMember = ..#NAMESPACEMEMBER, ..#NAMEMEMBER {
+        Set tMembers = $Select(..Namespaced(): $ListBuild(..#NAMESPACEMEMBER, ..#NAMEMEMBER), 1: $ListBuild(..#NAMEMEMBER))
+        For tI = 1:1:$ListLength(tMembers) {
+            Set tMember = $List(tMembers, tI)
             Set tType = tBody.%GetTypeOf(tMember)
             If tType = "string" {
                 If tMember = ..#NAMESPACEMEMBER Set tNamespace = tBody.%Get(tMember)
@@ -80,7 +97,7 @@ ClassMethod HandleCreate() As %Status
             Set tSC = $ClassMethod(..#RULES, "RenderViolations", .tShape)
             Quit
         }
-        Set tHoldSC = ##class(OcuPilot.Kernel.Proposal.Operation).HoldTool(..#CREATETOOL, ##class(OcuPilot.Kernel.EntityId).JoinComposite($ListBuild(tNamespace, tName)), .tHeld, .tHoldKey)
+        Set tHoldSC = ##class(OcuPilot.Kernel.Proposal.Operation).HoldTool(..#CREATETOOL, ..IdOf(tNamespace, tName), .tHeld, .tHoldKey)
         If $$$ISERR(tHoldSC) || 'tHeld {
             Set tSC = ##class(OcuPilot.Api.Error).RenderTargetBusy(tHoldSC)
             Quit
@@ -114,21 +131,29 @@ ClassMethod HandleUpdate(pId As %String) As %Status
             Set tSC = ##class(OcuPilot.Api.Error).Render(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#REASONAGENTBADBODY, ##class(OcuPilot.Api.Error).#AGENTBADBODY)
             Quit
         }
-        Set tParts = ##class(OcuPilot.Kernel.EntityId).SplitComposite(##class(OcuPilot.Kernel.EntityId).Decode(pId))
-        Set tNamespace = $ListGet(tParts, 1)
-        Set tName = $ListGet(tParts, 2)
-        If ($ListLength(tParts) '= 2) || (tNamespace = "") || (tName = "") {
+        Set tDecoded = ##class(OcuPilot.Kernel.EntityId).Decode(pId)
+        If ..Namespaced() {
+            Set tParts = ##class(OcuPilot.Kernel.EntityId).SplitComposite(tDecoded)
+            Set tNamespace = $ListGet(tParts, 1)
+            Set tName = $ListGet(tParts, 2)
+            Set tWhole = ($ListLength(tParts) = 2) && (tNamespace '= "") && (tName '= "")
+        } Else {
+            Set tNamespace = ""
+            Set tName = tDecoded
+            Set tWhole = (tName '= "")
+        }
+        If 'tWhole {
             Set tSC = $ClassMethod(..#RULES, "RenderRead", $$$ERROR($$$GeneralError, ##class(OcuPilot.Api.Error).#PORTNOTFOUND), 404, "")
             Quit
         }
-        Set tHoldSC = ##class(OcuPilot.Kernel.Proposal.Operation).HoldTool(..#UPDATETOOL, ##class(OcuPilot.Kernel.EntityId).JoinComposite($ListBuild(tNamespace, tName)), .tHeld, .tHoldKey)
+        Set tHoldSC = ##class(OcuPilot.Kernel.Proposal.Operation).HoldTool(..#UPDATETOOL, ..IdOf(tNamespace, tName), .tHeld, .tHoldKey)
         If $$$ISERR(tHoldSC) || 'tHeld {
             Set tSC = ##class(OcuPilot.Api.Error).RenderTargetBusy(tHoldSC)
             Quit
         }
         Set tPerformSC = ..Update(tNamespace, tName, tBody, .tHttp, .tFault, .tViolations, .tReadBack)
         If $$$ISERR(tPerformSC) && (+$Get(tViolations) = 0) && (+$Get(tHttp) = 404) {
-            Set tSC = $ClassMethod(..#RULES, "RenderRead", tPerformSC, 404, "")
+            Set tSC = $ClassMethod(..#RULES, "RenderRead", tPerformSC, 404, $Get(tFault))
             Quit
         }
         Set tSC = ..Answer(tPerformSC, .tViolations, $Get(tHttp), $Get(tFault), 200, tNamespace, tName, $Get(tReadBack))
@@ -162,10 +187,10 @@ ClassMethod Create(pNamespace As %String, pName As %String, pArgs As %DynamicObj
         If pViolations = 0 {
             Set tSC = $ClassMethod(..#RULES, "Taken", ..PortClass(), pNamespace, pName, .tTaken)
             If $$$ISERR(tSC) Quit
-            If tTaken Do ..Add(.pViolations, ..#NAMEMEMBER, ##class(OcuPilot.Api.DocDbAppError).#TAKEN)
+            If tTaken Do ..Add(.pViolations, ..#NAMEMEMBER, $Parameter($Parameter(..#RULES, "ERRORCLASS"), "TAKEN"))
         }
         If pViolations > 0 Quit
-        Set tId = ##class(OcuPilot.Kernel.EntityId).JoinComposite($ListBuild(pNamespace, pName))
+        Set tId = ..IdOf(pNamespace, pName)
         Set tSC = $ClassMethod(tClass, "ComposeCreate", pArgs, $ClassMethod(tClass, "IdArgument"), $ClassMethod(tClass, "SettableFields"), .tPayload, .tDiff, .tUnchanged, .tProblem)
         If $$$ISERR(tSC) Quit
         If tProblem '= "" {
@@ -199,7 +224,7 @@ ClassMethod Update(pNamespace As %String, pName As %String, pArgs As %DynamicObj
     Set tSC = $$$OK
     Try {
         Set tClass = ..#UPDATETOOL
-        Set tId = ##class(OcuPilot.Kernel.EntityId).JoinComposite($ListBuild(pNamespace, pName))
+        Set tId = ..IdOf(pNamespace, pName)
         Set tSC = ..Unexpected(tClass, pArgs, .pHttpStatus, .pFault)
         If $$$ISERR(tSC) Quit
         Set tSC = $ClassMethod(..#RULES, "Check", "", "", pArgs, "", "update", ..PortClass(), .pViolations, 0)
@@ -298,10 +323,10 @@ ClassMethod Answer(pSC As %Status, ByRef pViolations, pHttp As %Integer, pFault 
         }
         Quit ##class(OcuPilot.Api.Error).Render($Select(+pHttp: +pHttp, 1: 500), pFault.error, pFault.reason, pFault.code, pFault.%Get("detail"))
     }
-    Set tNamespace = $ZConvert(pNamespace, "U")
+    Set tNamespace = $Select(..Namespaced(): $ZConvert(pNamespace, "U"), 1: "")
     Set tAnswer = {}
-    Do tAnswer.%Set("id", ##class(OcuPilot.Kernel.EntityId).JoinComposite($ListBuild(tNamespace, pName)), "string")
-    Do tAnswer.%Set("namespace", tNamespace, "string")
+    Do tAnswer.%Set("id", ..IdOf(tNamespace, pName), "string")
+    If ..Namespaced() Do tAnswer.%Set("namespace", tNamespace, "string")
     Do tAnswer.%Set("name", pName, "string")
     If $IsObject(pReadBack) Do tAnswer.%Set("readBack", pReadBack)
     Quit ##class(OcuPilot.Api.Response).JSONStatus(pSuccess, tAnswer)
@@ -316,12 +341,13 @@ ClassMethod Body(Output pBody As %DynamicObject) As %Boolean [ Private ]
     Quit 1
 }
 
-/// <p>A create's own body fields, minus the two identifying members, as one <class>%DynamicObject</class>.</p>
+/// <p>A create's own body fields, minus the identifying members (the name, and the namespace when
+/// <method>Namespaced</method>), as one <class>%DynamicObject</class>.</p>
 ClassMethod CallerFields(pArgs As %DynamicObject) As %DynamicObject
 {
     Set tFields = ##class(%DynamicAbstractObject).%FromJSON(pArgs.%ToJSON())
     Do:(tFields.%GetTypeOf(..#NAMEMEMBER) '= "unassigned") tFields.%Remove(..#NAMEMEMBER)
-    Do:(tFields.%GetTypeOf(..#NAMESPACEMEMBER) '= "unassigned") tFields.%Remove(..#NAMESPACEMEMBER)
+    Do:(..Namespaced() && (tFields.%GetTypeOf(..#NAMESPACEMEMBER) '= "unassigned")) tFields.%Remove(..#NAMESPACEMEMBER)
     Quit tFields
 }
 

@@ -6212,6 +6212,34 @@ export const STRINGS = {
   docDbAppRefusedAction: 'change the Doc DB application',
   /** EXPERIENCE.md:357 */
   docDbAppDeleteConsequence: 'The record is removed. A document database of the same name is not dropped.',
+  /** EXPERIENCE.md:357 */
+  routineAppListLabel: 'Privileged routine applications',
+  /** EXPERIENCE.md:357 */
+  aboutRoutineApplication: 'Privileged routine application',
+  /** EXPERIENCE.md:357 */
+  routineAppListEmpty: 'No privileged routine application is defined on this instance.',
+  /** EXPERIENCE.md:357 */
+  routineAppListEmptyAgent: 'create a privileged routine application',
+  /** EXPERIENCE.md:357 */
+  routineAppListPrompt1: 'Which privileged routine applications does this instance define, and which are enabled?',
+  /** EXPERIENCE.md:357 */
+  routineAppListPrompt2: 'Which privileged routine applications are controlled by a resource?',
+  /** EXPERIENCE.md:357 */
+  routineAppListPrompt3: 'Create a privileged routine application named MyRoutines.',
+  /** EXPERIENCE.md:357 */
+  routineAppFormPrompt1: 'What does each field of this privileged routine application mean?',
+  /** EXPERIENCE.md:357 */
+  routineAppFormPrompt2: 'Which resources can control this privileged routine application?',
+  /** EXPERIENCE.md:357 */
+  routineAppFormPrompt3: 'What does deleting this privileged routine application do?',
+  /** EXPERIENCE.md:357 */
+  routineAppNameHint: 'At most 64 characters, kept exactly as written. It cannot change once the application exists.',
+  /** EXPERIENCE.md:357 */
+  routineAppResourceHint: 'The service, system or application resource that controls the application. Choose none to leave it uncontrolled.',
+  /** EXPERIENCE.md:357 */
+  routineAppRefusedAction: 'change the privileged routine application',
+  /** EXPERIENCE.md:357 */
+  routineAppDeleteConsequence: 'The application is removed, with the roles and routines it holds. No code is deleted.',
   /** EXPERIENCE.md:604 */
   interopProductionsLabel: 'Productions',
   /** EXPERIENCE.md:604 */

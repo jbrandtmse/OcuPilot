@@ -151,7 +151,20 @@ ClassMethod Facts() As %String
     Quit tRows.%ToJSON()
 }
 
-/// <p>The probe records the instance lists, as a <class>%List</class> of <code>Namespace|Name</code> exactly as
+/// <p>The entry <method>Names</method> lists for the list row <var>pRow</var>: <code>Namespace|Name</code> exactly as
+/// stored.</p>
+ClassMethod Entry(pRow As %DynamicObject) As %String
+{
+    Quit pRow.%Get("Namespace") _ "|" _ pRow.%Get("Name")
+}
+
+/// <p>The vendor id of the <method>Entry</method> <var>pEntry</var>.</p>
+ClassMethod IdOfEntry(pEntry As %String) As %String
+{
+    Quit ..Id($Piece(pEntry, "|", 1), $Piece(pEntry, "|", 2, 99))
+}
+
+/// <p>The probe records the instance lists, as a <class>%List</class> of <method>Entry</method> exactly as
 /// stored.</p>
 ClassMethod Names() As %List
 {
@@ -161,7 +174,7 @@ ClassMethod Names() As %List
     If $$$ISERR(tSC) || '$IsObject($Get(tRows)) Quit tNames
     Set tIterator = tRows.%GetIterator()
     While tIterator.%GetNext(.tIndex, .tRow) {
-        If ..IsProbe(tRow.%Get("Name")) Set tNames = tNames _ $ListBuild(tRow.%Get("Namespace") _ "|" _ tRow.%Get("Name"))
+        If ..IsProbe(tRow.%Get("Name")) Set tNames = tNames _ $ListBuild(..Entry(tRow))
     }
     Quit tNames
 }
@@ -175,7 +188,7 @@ ClassMethod RemoveAll() As %Status
     Set tNames = ..Names()
     For tI = 1:1:$ListLength(tNames) {
         Kill tQuery
-        Set tQuery("name") = ..Id($Piece($List(tNames, tI), "|", 1), $Piece($List(tNames, tI), "|", 2, 99))
+        Set tQuery("name") = ..IdOfEntry($List(tNames, tI))
         Do $ClassMethod(..#PORT, "Invoke", ..#ENDPOINT, "DELETE", .tQuery, "", .tResult, .tHttp, .tFault)
     }
     Set tSC = $$$ADDSC(tSC, ..RemoveResource())
@@ -208,7 +221,7 @@ ClassMethod RunAs(pUser As %String, pPlan As %DynamicArray, pWaitSeconds As %Int
     Try {
         Do $System.Event.Clear($Job)
         Set tPlan = pPlan.%ToJSON()
-        Job ##class(OcuPilot.Test.DocDbAppProbe).Child($Job, pUser, tPlan)::10
+        Job ##class(OcuPilot.Test.DocDbAppProbe).Child($Job, pUser, tPlan, ..#PORT)::10
         If '$Test {
             Do tOut.%Set("error", "the probe process did not start")
             Quit
@@ -227,12 +240,12 @@ ClassMethod RunAs(pUser As %String, pPlan As %DynamicArray, pWaitSeconds As %Int
 }
 
 /// <p>The child process <method>RunAs</method> starts: log in as <var>pUser</var>, run each step of <var>pPlan</var>
-/// and signal the answers to <var>pParent</var>.</p>
-ClassMethod Child(pParent As %Integer, pUser As %String, pPlan As %String)
+/// through the port <var>pPort</var> and signal the answers to <var>pParent</var>.</p>
+ClassMethod Child(pParent As %Integer, pUser As %String, pPlan As %String, pPort As %String = "")
 {
     Set tOut = {}
     Try {
-        Set ^||OcuPilotDatabaseWritePort = ..#PORT
+        Set ^||OcuPilotDatabaseWritePort = $Select(pPort '= "": pPort, 1: ..#PORT)
         Do tOut.%Set("loggedIn", ''$SYSTEM.Security.Login(pUser), "boolean")
         Do tOut.%Set("username", $Username, "string")
         Set tSteps = []

@@ -4,11 +4,11 @@
 /// application is not refused by it.</p>
 /// <p>The privileged routine endpoint's legs (<class>OcuPilot.Port.AdminPort</class>) refuse every call but a read before the
 /// vendor is reached, and each leg reads the application before and after the call.</p>
-/// <p>Needs the throwaway's install (both applications exist and read). <class>OcuPilot.Port.AdminPort</class> admits no
-/// <code>Security.PrivilegedRoutine</code> <code>PUT</code> or <code>DELETE</code> on this build, so a mutated arm answers 501
-/// before any vendor call and the after-read cannot differ yet; it carries weight once Story 18.31 admits them.
-/// <code>OnBeforeOneTest</code> records both applications' stored state and <code>OnAfterOneTest</code> puts back any of it
-/// that changed (<method>PutBack</method>). Each leg's mutation is named in the spec's Verification.</p>
+/// <p>Needs the throwaway's install (both applications exist and read). <class>OcuPilot.Port.AdminPort</class> admits
+/// <code>Security.PrivilegedRoutine</code> <code>PUT</code> and <code>DELETE</code> (Story 18.31), so a mutated arm reaches the
+/// vendor and the after-read shows it. <code>OnBeforeOneTest</code> records both applications' stored state and
+/// <code>OnAfterOneTest</code> puts back any of it that changed (<method>PutBack</method>). Each leg's mutation is named in
+/// the spec's Verification.</p>
 Class OcuPilot.Test.OwnRoutineApplication Extends %UnitTest.TestCase
 {
 
@@ -286,10 +286,9 @@ Method AssertEndpointRefused(pLabel As %String, pName As %String, pType As %Stri
 }
 
 /// <p>The privileged routine endpoint refuses a delete of OcuPilotState before the vendor.</p>
-/// <p>Mutation (Rule 19): in <class>OcuPilot.Kernel.Proposal.Prohibited</class>'s <method>RoutineEndpointRefused</method>,
-/// change <code>(pType = "GET")</code> to <code>(pType = "GET") || (pType = "DELETE")</code>, so a <code>DELETE</code> is no longer
-/// refused. The delete then reaches the port's 501 for an endpoint type it does not admit, and this leg goes red on the status
-/// and the code.</p>
+/// <p>Mutation (Rule 19): not re-run. The port admits <code>Security.PrivilegedRoutine</code> <code>DELETE</code> (Story 18.31),
+/// so an arm that stopped refusing a <code>DELETE</code> would delete OcuPilotState; the leg's status, code, sentence and
+/// unchanged-read assertions are what pin the arm.</p>
 Method TestEndpointDeleteRefused()
 {
     Do ..AssertEndpointRefused("the privileged routine endpoint's delete of OcuPilotState", ##class(OcuPilot.Kernel.State.Base).#APPLICATION, "DELETE")
@@ -298,8 +297,8 @@ Method TestEndpointDeleteRefused()
 
 /// <p>The privileged routine endpoint refuses a PUT that sets OcuPilotIdentity's Enabled to false before the vendor.</p>
 /// <p>Mutation (Rule 19): in <method>RoutineEndpointRefused</method>, change <code>(pType = "GET")</code> to
-/// <code>(pType = "GET") || (pType = "PUT")</code>, so a <code>PUT</code> is no longer refused. The call then reaches the port's
-/// 501, and this leg goes red on the status and the code, with the other <code>PUT</code> legs.</p>
+/// <code>(pType = "GET") || (pType = "PUT")</code>, so a <code>PUT</code> is no longer refused. Not re-run: the call then
+/// reaches the vendor, which writes OcuPilotIdentity, and <method>OnAfterOneTest</method> puts the application back.</p>
 Method TestEndpointDisableRefused()
 {
     Do ..AssertEndpointRefused("the privileged routine endpoint's disable of OcuPilotIdentity", ##class(OcuPilot.Kernel.State.Base).#IDENTITYAPPLICATION, "PUT", {"Enabled": false})

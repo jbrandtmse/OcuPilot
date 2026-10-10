@@ -55,6 +55,11 @@ Class OcuPilot.Screen.Tool.Classification Extends %RegisteredObject
 /// <p><b><code>webapp.docdbapps.create</code></b> and <b><code>webapp.docdbapps.update</code></b> (Story 18.30) classify
 /// <code>DocDB</code>'s three rows <code>ordinary</code>: a Doc DB application record holds no secret. Both tools admit
 /// all three.</p>
+/// <p><b><code>webapp.routineapps.create</code></b> and <b><code>webapp.routineapps.update</code></b> (Story 18.31)
+/// classify <code>Security.PrivilegedRoutine</code>'s <code>Description</code>, <code>Enabled</code> and
+/// <code>Resource</code> <code>ordinary</code> and leave <code>MatchRoles</code> and <code>Routines</code> unnamed, as
+/// <code>webapp.list.update</code> leaves its role lists: they emit <code>secret</code>, so neither tool admits them,
+/// and the update still sends the lists its fresh read answered (AD-4).</p>
 /// <p><b><code>security.secrets.creatersa</code></b>, <b>.createsymmetric</b>, <b>.replacersa</b> and
 /// <b>.replacesymmetric</b> (Story 18.24) classify their type's list: <code>Length</code>,
 /// <code>HasPrivateKey</code>, <code>HasCertificate</code> and <code>KeyId</code> are <code>ordinary</code>
@@ -692,6 +697,22 @@ XData Entries
   },
   "webapp.docdbapps.update": {
     "fieldList": "DocDB",
+    "classification": {
+      "Description": "ordinary",
+      "Enabled": "ordinary",
+      "Resource": "ordinary"
+    }
+  },
+  "webapp.routineapps.create": {
+    "fieldList": "Security.PrivilegedRoutine",
+    "classification": {
+      "Description": "ordinary",
+      "Enabled": "ordinary",
+      "Resource": "ordinary"
+    }
+  },
+  "webapp.routineapps.update": {
+    "fieldList": "Security.PrivilegedRoutine",
     "classification": {
       "Description": "ordinary",
       "Enabled": "ordinary",

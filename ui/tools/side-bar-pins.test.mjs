@@ -50,6 +50,7 @@ const SIDE_BAR_SPECS = [
   'permissions-effective.browser-spec.mjs',
   'permissions.browser-spec.mjs',
   'remote-databases.browser-spec.mjs',
+  'routine-applications.browser-spec.mjs',
   'security.browser-spec.mjs',
   'ssl.browser-spec.mjs',
   'superservers.browser-spec.mjs',

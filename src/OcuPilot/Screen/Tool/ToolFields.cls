@@ -1066,6 +1066,26 @@ XData Tools
 ]},
 "webapp.pctaccess.create": {"fieldList":"WebApp.PctClassAccess","fields":[
   {"path":"AllowAccess","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"}
+]},
+"webapp.routineapps.create": {"fieldList":"Security.PrivilegedRoutine","fields":[
+  {"path":"Routines[].Db","shape":"literal","templateType":"string","itemType":"","class":"secret"},
+  {"path":"Routines[].RoutineOrClass","shape":"literal","templateType":"string","itemType":"","class":"secret"},
+  {"path":"Routines[].Type","shape":"literal","templateType":"string","itemType":"","class":"secret"},
+  {"path":"Description","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"Enabled","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"},
+  {"path":"Resource","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"MatchRoles[].MatchRole","shape":"literal","templateType":"string","itemType":"","class":"secret"},
+  {"path":"MatchRoles[].TargetRoles[]","shape":"literal","templateType":"string","itemType":"","class":"secret"}
+]},
+"webapp.routineapps.update": {"fieldList":"Security.PrivilegedRoutine","fields":[
+  {"path":"Routines[].Db","shape":"literal","templateType":"string","itemType":"","class":"secret"},
+  {"path":"Routines[].RoutineOrClass","shape":"literal","templateType":"string","itemType":"","class":"secret"},
+  {"path":"Routines[].Type","shape":"literal","templateType":"string","itemType":"","class":"secret"},
+  {"path":"Description","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"Enabled","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"},
+  {"path":"Resource","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"MatchRoles[].MatchRole","shape":"literal","templateType":"string","itemType":"","class":"secret"},
+  {"path":"MatchRoles[].TargetRoles[]","shape":"literal","templateType":"string","itemType":"","class":"secret"}
 ]}
 }
 }
