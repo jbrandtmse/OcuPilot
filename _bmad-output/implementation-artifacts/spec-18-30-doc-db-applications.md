@@ -2,13 +2,39 @@
 title: 'Story 18.30: Doc DB applications'
 type: 'feature'
 created: '2026-10-10'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: '7e2006816d9e0f49327717c5c19294392511581b'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-18-context.md'
 warnings: ['oversized']
-deferred: []
+deferred:
+  - summary: >-
+      Unify the Superserver, MFT connection and Doc DB application Saves, Rules and editor forms under one base (Rule 31).
+    evidence: |-
+      DocDbAppSave, DocDbAppRules and the docdb-app-form files repeat the MFT connection ones with the field set changed;
+      the copies were planned because a base outside the slices would move two shipped Saves (spec Code Map).
+    location: >-
+      src/OcuPilot/Area/WebApp/DocDbAppSave.cls
+    severity: low
+  - summary: >-
+      Replace the "mapping" wording in MappingMint's refusals with noun parameters once Story 20.3 has merged.
+    evidence: |-
+      MappingMint is shared by the Doc DB application tools and still words its refusals for a mapping; Story 20.3 is
+      changing the file, so this story did not edit it (DW-2279).
+    location: >-
+      src/OcuPilot/Screen/Tool/MappingMint.cls
+    severity: low
+  - summary: >-
+      Vendor candidate, decision-pending and never reported upstream: the DocDB PUT answers a Description over 256
+      characters with a logged 500 in place of a validation fault.
+    evidence: |-
+      Measured by the implement stage on ocupilot-ci. DocDbAppRules refuses the value before any PUT, so no user meets
+      it through OcuPilot; the owner's hold on IRIS defect candidates applies.
+    location: >-
+      DocDB PUT /doc-db?name=&namespace=
+    severity: low
 ---
 
 <intent-contract>
@@ -104,6 +130,29 @@ Kernel seam: `Screen/Tool/Write.cls` gains `TypedId(pArgs)`, defaulting to `pArg
 
 ## Review Triage Log
 
+### 2026-10-10 — Review pass
+
+- verdicts: 18 findings — high 0, medium 4, low 9, false 5, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` The shared live-row sweep skips `DocDbAppList` and `DocDbAppRead` pinned neither the list's `Description` and `Resource` nor a form read of a non-empty `Resource` — `DocDbAppRead` now seeds a resource-bound probe, checks every declared field against the raw `DocDB` `LIST` row, compares the screen rows' description and resource, and reads a non-empty `Resource` through the form; mutated (runs 641).
+  - `[medium]` `[patch]` The `Keys(...)` assertions in `DocDbAppRead` hold whatever the vendor row carries (same root cause as the row above) — replaced by the live-row check and the value comparison above.
+  - `[medium]` `[patch]` `Draft.Render`'s use of the new `TypedId` seam was pinned by no test — `DocDbAppRead.TestTheDraftOfACreateNamesTheRecordAsTyped` drives the copy-out route over a Doc DB create; reverting the seam makes the draft answer an error (641).
+  - `[low]` `[patch]` Client specs, the browser spec, the C6 client pins and the new roster rows had no recorded mutation — each mutated, red observed, reverted byte-identical and recorded in `## Verification`; the browser leg ran against a rebuilt and redeployed bundle.
+  - `[low]` `[patch]` The C3 mutation line pointed at a batch that holds no `TypedId` mutation — the line cites run 651, where removing the override reddens `DocDbAppDescriptor.TestTheCreateNamesItsTargetAsTyped`.
+  - `[medium]` `[patch]` No test sent an update with an admitted non-boolean `Enabled` — `DocDbAppWrite.TestEveryEnabledFormChangesTheFlagOnTheFormsSave` sends each of the six forms through the Save against a record holding the opposite flag; green first time, so no defect, and a mutation of `IsEnabled` reddens it (642).
+  - `[low]` `[patch]` `TestTheSideBarListsTheScreenAfterTheAreasOtherEntries` asserted "last listed entry" as a bare tripwire — the assertion is dropped, the position-3 predecessor and `navigation.test.mjs` hold the order.
+  - `[low]` `[reject]` Through `Write.View` the schema types `Enabled` boolean, so `1`, `0`, `"1"` and `"0"` reach the rules only at the mint and the Save — the validator has no union type and a refusal names the property and the type, so the model resends a boolean; the fix is beyond a direct correction.
+  - `[low]` `[reject]` Read refusals are tested for `%Admin_Secure` on the screen read route alone — the screen and `webapp.docdbapps.read` take the one descriptor's pairs and `DocDbAppGate` holds every write and the read route to them.
+  - `[low]` `[reject]` `WRITE.TARGETBUSY` is tested for the form's create and update, not under an agent confirm — the confirm's hold is the kernel's shared path, which this story leaves as it was.
+  - `[false]` `[reject]` A create present in any case is refused by `DOCDBAPP.TAKEN` on the Save and by the absence fingerprint on the agent — the Design Notes decide exactly this split.
+  - `[false]` `[reject]` The Save judges every field sent before the read and only changed fields after it — a value that breaks a rule can never equal a stored one except `Resource`, which only the post-read pass judges and `TestEveryChangeRuleIsRefusedBeforeAnyPutOnBothCallers` pins.
+  - `[low]` `[reject]` No test confirms a stored proposal that has since become invalid — the rules read no state but `Resource`, which a confirm re-checks; unlikely to be met.
+  - `[low]` `[reject]` Field refusals appear only in jsdom specs — Task 11 asks the browser spec for create, change and typed-name delete.
+  - `[false]` `[reject]` `Write.TypedId`, `Confirm` and `Draft` are touched beyond the named surface — Task 2 prescribes them and the default delegates to the old read.
+  - `[false]` `[reject]` The `Prohibited` type branch is an "AD-10 arm" — Task 7 prescribes the `ReviewedFewOnly` branch; no predicate or `PROHIBITED.*` code is added.
+  - `[low]` `[reject]` `RemoveAll` clears the monitor and the browser spec accepts any throwaway — five sibling probes clear the monitor, and a browser spec runs against the shard's own throwaway.
+  - `[false]` `[reject]` DW-2084 cannot be judged from the diff — `git diff` over `DocDbPort`, `DocDbSave` and `ExplorerDocDb*` is empty and `DocDbWrite` is green.
+
 ## Design Notes
 
 **Measured at plan** (2026-10-10, `ocupilot-ci` after `LOAD-OK`; 18.10's first-plan baseline, `git show 622b70eb:<spec>`, holds):
@@ -142,9 +191,44 @@ Standing criterion: *existing tests that assert a surface this story changes are
 
 **Mutations (Rule 19; the implement stage records each as `mutation:`):** C1 the read tool reads another endpoint; C2 no absence fingerprint; C3 `TypedId` override removed (the agent leg stores the name lower-cased); C4 one rule removed; C6 the delete key `true`. C5 is the diff and needs none.
 
+- mutation: C1 `DocDbAppList` read source `DocDB` pointed at `WebApp.App` → `DocDbAppRead.TestTheScreenAndTheReadToolAnswerTheSameRows` red (run 615).
+- mutation: C2 `Mint.AbsenceState` ignores its argument (no absence fingerprint; `Mint` and its 22 descendants recompiled) → `DocDbAppWrite.TestATakenNameAMovedTargetAndABusyTargetAreRefused` red (run 616).
+- mutation: C3 `DocDbAppCreate.TypedId` removed → `DocDbAppWrite.TestACreateStoresTheNameAsTypedOnBothCallers` red, the agent leg storing the name lower-cased (run 617); `DocDbAppDescriptor.TestTheCreateNamesItsTargetAsTyped` red (run 651).
+- mutation: C4 `DocDbAppRules.Valid` accepts any `Description` (the length rule removed) → `DocDbAppWrite.TestEveryCreateRuleIsRefusedBeforeAnyPutOnBothCallers` and `TestEveryChangeRuleIsRefusedBeforeAnyPutOnBothCallers` red, the vendor answering 500 (run 618).
+- mutation: C6 `Baseline` `webapp.docdbapps.delete` set `true` → `DocDbAppDescriptor.TestTheBaselineKeysShipAsTheSpecSays` red (run 619).
+- mutation: C5 is the diff: `git diff --stat` over `DocDbPort`, `Area/Explorer`, `ExplorerDocDb*`, `DocDbError` and `ExplorerDocDbList` is empty and `Baseline` gains the three `webapp.docdbapps` lines alone; `DocDbWrite` green (run 630).
+- mutation (descriptor batch, each reddening its own test in one run, 621): list `sideBarPosition` 5 → `TestTheListIsDeclaredAsTheSpecPlacesIt`; update `PERMITTEDFIELDS` without `Resource` → `TestTheToolsDeclareTheirKindPortPairsAndFields`; create entry's `Resource` classified secret → `TestTheClassificationIsReviewed`; `docdb-application:foldcase` dropped from `IDRULES` → `TestTheEntityTypeKeepsOneKeyForAnyCase`; delete `READANSWERS` without `Resource` → `TestTheDeleteCardListsWhatTheActionRemoves`; `REASONENABLED` emptied → `TestTheCodesAnswerTheirSentences`.
+- mutation (port, run 622): `DocDbAppPort.MAPPINGENDPOINTS` emptied → all four `DocDbAppRead` tests red, the split, form and script legs among them.
+- mutation (write batch, 624 and 626): `DocDbAppRules.CreateBody` returns its argument → `TestEveryEnabledFormIsStoredAsABooleanOnBothCallers` and `TestACreateOfTheTwoPartsAloneTakesTheInstancesDefaults` red; `DocDbAppUpdate.MergeUpdate` drops `Resource` from its payload → `TestAChangeKeepsWhatItDoesNotSendOnBothCallers` red; `RESOURCETYPES` `Application` alone → `TestAListedServiceOrApplicationResourceIsAccepted` red; the update's resource guard in `Check` read as true → `TestEveryChangeRuleIsRefusedBeforeAnyPutOnBothCallers` red alone.
+- mutation (gate, 627 and 628): `DocDbAppSave.Gate` passes every caller → `DocDbAppGate.TestWithoutTheAreasResourceEveryReadAndWriteIsRefused` and `TestWithoutTheSystemDatabaseReadEveryWriteIsRefused` red; it refuses every caller → `TestTheDeclaredPairsReadAndWrite` red.
+- mutation (review pass, `ocupilot-ci`, the mutated classes loaded each time and reverted byte-identical):
+  - `Draft.Render` reads the id argument alone in place of `TypedId` → `DocDbAppRead.TestTheDraftOfACreateNamesTheRecordAsTyped` red (641).
+  - `DocDbAppRules.HandleForm` answers an empty `Resource` → `DocDbAppRead.TestTheFormReadAnswersTheFiveFields` red (641); the list's read field `Resource` renamed → `TestTheScreenAndTheReadToolAnswerTheSameRows` red on the live-row key leg (641).
+  - `DocDbAppRules.IsEnabled` refuses a number → `DocDbAppWrite.TestEveryEnabledFormChangesTheFlagOnTheFormsSave` red (642).
+  - `DocDbAppSave.HandleCreate` holds the name alone → `SaveHoldCoverage.TestACreateSaveHoldsTheKeyItsMintComputes` red (643).
+  - Roster rows removed, each reddening its own test: `ToolRoundTrip` `REFUSEEMPTY` → `TestEveryToolConformsToItsResultSchemaOrAnswersACode` (645); `ClassicPageGate` `OWNPAIRS` → `TestWithNoAssignmentEachToolsPairsAreItsDeclaredSet` (646); `MappingDescriptor` `CLASSICROSTER` → `TestTheClassicPagesRosterIsTheDeclaringTools` (647); `ReadTool` names → `TestTheRegistryListsDescriptorReadsAndInheritedKinds` (648); `SurfaceCoverage` delete row → `TestEveryWriteToolHasACoverageRowAndBack` (649); `EndpointCoverage` form probe → `TestEveryRouteHasAProbeAndEveryProbeHasARoute` (650).
+- mutation (client, Integration and C6):
+  - The store drops `readBackOf` → `docdb-app-form.page.spec.ts` create leg red; the page binds Description to the `Resource` field → its create and edit legs red; `DocDbAppActions` drops its `register` → `docdb-app-actions.spec.ts` two tests red; `app.ts` drops `docDbAppForm.reset()` → `app.spec.ts` AD-8 sign-out red.
+  - `TYPED_NAME_ROWS` loses the list's entry → `screen-action-handler.spec.ts` Doc DB Delete red and, with the bundle rebuilt and redeployed, the create, change and delete leg of `docdb-applications.browser-spec.mjs` red.
+  - The mirror lists the screen at position 0 → `navigation.test.mjs` side-bar order red; `docdb-application:foldcase` dropped from `IDRULES` → `screen-mirror.test.mjs` AD-13 id-rule table red; a Fixed string removed from `strings.ts` → `strings.test.mjs` three legs red.
+
 **S0:** no `Security.DocDBs` record whose name begins `OcuProbe1830`, `AuthOptionsProbe.Remaining()` 0, no probe resource.
 
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
+
+**Summary.** Doc DB applications (`Security.DocDBs`) have a Web applications list at position 4, an unlisted editor form, `webapp.docdbapps.read` and create, update and delete tools. The id is `[Namespace, Name]` (`foldcase`); a create stores the name as typed in the upper-cased namespace on both callers through a new `Write.TypedId` seam. Governance keys read true, true, false.
+
+**Files.**
+
+- New ObjectScript: `Port/DocDbAppPort`, `Api/DocDbAppError`, `Area/WebApp/DocDbAppRules` and `DocDbAppSave`, `Screen/Descriptor/DocDbAppList` and `DocDbAppForm`, `Screen/Tool/DocDbAppCreate`, `Update`, `Delete`; tests `DocDbAppProbe`, `DocDbAppDescriptor`, `DocDbAppRead`, `DocDbAppWrite`, `DocDbAppGate`.
+- Edited ObjectScript: the `TypedId` seam (`Write`, `Confirm`, `Draft`), `EntityType`, `EntityRef`, `Baseline`, `Prohibited`, `AdminPort`, `Error`, `Router`, `Classification`, `ToolFields`, `ci-throwaway.sh`, and the Rule 30 rosters in 21 test classes.
+- Client: the form page, store and actions with specs, `screen-outlet`, `screen-action-handler`, `app.ts`, `strings.ts`, the regenerated `screens.generated.ts`, four tools tests, `docdb-applications.browser-spec.mjs`; `EXPERIENCE.md` at :167 and :357.
+
+**Review.** 18 findings: 7 patched (4 medium, 3 low; test additions and comments only), 11 rejected with their reasons in the triage log, 3 items deferred (two ledger candidates and one vendor candidate, decision-pending). Follow-up review recommended: false; the patches changed no production code and each ran green and was mutated.
+
+**Verification.** On `ocupilot-ci`: `DocDbAppDescriptor` 10/10 (654), `DocDbAppRead` 5/5 (652), `DocDbAppWrite` 11/11 (653), `DocDbAppGate` 3/3 (637), every sweep-changed class green; `test:tools` 1904/1904, `test:components` 2786/2786, `check-objectscript.py` 0 problems, `lint-docs.sh` clean, the browser spec 2/2, `smoke.sh` 49 of 49 with one skipped. Initial bundle 3,213,418 bytes (warning 3,326 kB, `angular.json` unchanged). Fixed strings 3000 of a bound raised to 3400 under ruling Q3. S0 held. Mutations are recorded in `## Verification`.
+
+**Residual risks.** The new and changed tests have not yet met a fresh instance in either order (the runner's Rule 30 check). The spine's AD-13 amendment spells the entity type `doc-db-application`, the spec and code `docdb-application`; the spine line wants the one-word correction. The agent's `Enabled` schema is boolean, so `1`, `0`, `"1"` and `"0"` reach the rules through the Save and the mint only.

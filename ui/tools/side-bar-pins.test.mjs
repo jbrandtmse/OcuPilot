@@ -33,6 +33,7 @@ const SIDE_BAR_SPECS = [
   'auth-options.browser-spec.mjs',
   'background-tasks.browser-spec.mjs',
   'definitions.browser-spec.mjs',
+  'docdb-applications.browser-spec.mjs',
   'ecp-application-servers.browser-spec.mjs',
   'ecp-data-servers.browser-spec.mjs',
   'ecp-settings.browser-spec.mjs',

@@ -5,7 +5,7 @@
 /// <p><b>A tripwire aimed at later epics.</b> A new write route fails this class until its handler
 /// takes the hold or the route joins <method>Exemptions</method> with a reason. A listed route that is
 /// no longer in the map fails it too, so the list cannot go stale.</p>
-/// <p>Three create Saves build their target's id from more than one body field, as their tools' mints
+/// <p>Four create Saves build their target's id from more than one body field, as their tools' mints
 /// do; <method>TestACreateSaveHoldsTheKeyItsMintComputes</method> holds each mint's key and sees the
 /// Save wait on it.</p>
 /// <p><b>What it needs from the environment:</b> OcuPilot compiled with its class definitions, which
@@ -71,7 +71,8 @@ Method TestEveryWriteRouteTakesTheHoldOrIsExempt()
 /// <p>Mutation (Rule 19): hold the key file's <code>path</code> alone in
 /// <method>OcuPilot.Area.Security.EncryptionKeyFileSave.HandleCreate</method>, or the body's absent
 /// <code>EventName</code> in <method>OcuPilot.Area.Security.AuditEventSave.HandleCreate</method> --
-/// that leg answers 400 or 422 at once and goes red.</p>
+/// that leg answers 400 or 422 at once and goes red; so does the Doc DB application leg when
+/// <method>OcuPilot.Area.WebApp.DocDbAppSave.HandleCreate</method> holds the name alone.</p>
 Method TestACreateSaveHoldsTheKeyItsMintComputes()
 {
     Set tKeyFile = ##class(OcuPilot.Kernel.EntityId).JoinComposite($ListBuild("/ocuprobe/hold/", "hold.key"))
@@ -80,6 +81,8 @@ Method TestACreateSaveHoldsTheKeyItsMintComputes()
     ; The Save names the application in another case, so the leg holds only if both sides fold it (foldcase-firstpart).
     Set tEntry = ##class(OcuPilot.Kernel.EntityId).JoinComposite($ListBuild("/csp/ocuprobehold", "AllowClass", "%OcuProbe1810.Hold"))
     Do ..HeldLeg("/web-app/pct-access", "OcuPilot.Screen.Tool.WebAppPctAccessCreate", tEntry, {"Name": "/CSP/OcuProbeHold", "AllowType": "AllowClass", "Class": "%OcuProbe1810.Hold", "AllowAccess": "not a flag"}.%ToJSON())
+    ; The Save names the namespace in lower case, so the leg holds only if both sides fold the composite (foldcase).
+    Do ..HeldLeg("/docdb-application", "OcuPilot.Screen.Tool.DocDbAppCreate", ##class(OcuPilot.Kernel.EntityId).JoinComposite($ListBuild("USER", "OcuProbe1830Hold")), {"Namespace": "user", "Name": "OcuProbe1830Hold", "Enabled": "not a flag"}.%ToJSON())
 }
 
 /// <p>Hold the key <var>pTool</var>'s mint computes for <var>pId</var>, <code>POST</code>

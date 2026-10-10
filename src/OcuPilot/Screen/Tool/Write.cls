@@ -581,6 +581,15 @@ ClassMethod IdArgument() As %String
     Quit "Name"
 }
 
+/// <p>The id a confirmed or drafted create sends for its target, as the caller typed it, read from the stored
+/// arguments <var>pArgs</var>: the <method>IdArgument</method> member. A tool whose id has more than one part
+/// overrides it to join the parts as typed. <code>""</code> names no typed spelling, and the canonical id is sent.</p>
+ClassMethod TypedId(pArgs As %DynamicObject) As %String
+{
+    If '$IsObject(pArgs) Quit ""
+    Quit pArgs.%Get(..IdArgument())
+}
+
 /// <p>The query parameter this endpoint's <code>GET</code> identifies a target by, which is the
 /// vendor's own spelling and need not match <method>IdArgument</method>.</p>
 ClassMethod IdParam() As %String

@@ -127,7 +127,7 @@ Method TestTheEntityTypeCanonicalizesItsId()
     Do $$$AssertEquals(##class(OcuPilot.Kernel.EntityRef).NormalizedId("superserver", "1985"), "1985" _ tSep _ "0.0.0.0", "an id with no separator reads as [value, empty]")
     Do $$$AssertEquals(##class(OcuPilot.Kernel.EntityRef).NormalizedId("superserver", "+1985" _ tSep _ "LOCALHOST"), "1985" _ tSep _ "localhost", "LOCALHOST reads localhost")
     Do $$$AssertTrue($ListFind($ClassMethod(..#PROHIBITED, "CoveredTypes"), "superserver") > 0, "the prohibited set covers it")
-    Do $$$AssertEquals(##class(OcuPilot.Kernel.EntityType).Count(), 63, "sixty-three entity types")
+    Do $$$AssertEquals(##class(OcuPilot.Kernel.EntityType).Count(), 64, "sixty-four entity types")
 }
 
 /// <p>B5, AD-22: the create and update keys are in the baseline and enabled, the delete's is listed and

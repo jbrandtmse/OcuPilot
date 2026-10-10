@@ -57,6 +57,8 @@ import { SuperserverActions } from './areas/security/superserver-actions';
 import { SuperserverForm } from './areas/security/superserver-form.store';
 import { MftConnectionActions } from './areas/security/mft-connection-actions';
 import { MftConnectionForm } from './areas/security/mft-connection-form.store';
+import { DocDbAppActions } from './areas/web-applications/docdb-app-actions';
+import { DocDbAppForm } from './areas/web-applications/docdb-app-form.store';
 import { MappingActions } from './areas/os-management/mapping-actions';
 import { MappingForm } from './areas/os-management/mapping-form.store';
 import { OAuthActions } from './areas/security/oauth-actions';
@@ -378,6 +380,9 @@ export class App {
   // Managed file transfer's declared Create (`areas/security/mft-connection-actions.ts`), with the form's store (Story 18.26).
   private readonly mftConnectionActions = inject(MftConnectionActions);
   private readonly mftConnectionForm = inject(MftConnectionForm);
+  // Doc DB applications' declared Create (`areas/web-applications/docdb-app-actions.ts`), with the form's store (Story 18.30).
+  private readonly docDbAppActions = inject(DocDbAppActions);
+  private readonly docDbAppForm = inject(DocDbAppForm);
   // The three mapping lists' declared Create, the same way (`areas/os-management/mapping-actions.ts`).
   private readonly mappingActions = inject(MappingActions);
   private readonly mappingForm = inject(MappingForm);
@@ -721,6 +726,8 @@ export class App {
       this.superserverForm.reset();
       // The connection form holds a managed file transfer connection THIS principal was creating or editing and has not saved.
       this.mftConnectionForm.reset();
+      // The Doc DB application form holds a record THIS principal was creating or editing and has not saved.
+      this.docDbAppForm.reset();
       // The mapping editor holds a mapping THIS principal was creating or editing and has not saved.
       this.mappingForm.reset();
       // The SSL/TLS form holds a private key password THIS principal typed and has not saved (AD-35).

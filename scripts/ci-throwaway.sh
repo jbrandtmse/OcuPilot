@@ -383,6 +383,9 @@ services:
       # the OAuth 2.0 client configurations and descriptions they name, and probe principals, and the gate
       # class writes them as principals holding Security's pairs and each without one (Story 18.26).
       # classes: MftConnectionGate, MftConnectionRead, MftConnectionWrite
+      # The Doc DB application classes create and delete probe records named OcuProbe1830, and the gate class
+      # writes them as principals holding the Web applications area's pairs and each without one (Story 18.30).
+      # classes: DocDbAppGate, DocDbAppRead, DocDbAppWrite
       # The SQL object privilege classes create and remove a probe user and role named OcuSqlPrivProbe and a probe
       # schema's objects in USER, set up privileges as the running account, and the gate class writes them as
       # principals holding Security's pairs and each without one (Story 18.9).

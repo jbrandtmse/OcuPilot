@@ -6182,6 +6182,36 @@ export const STRINGS = {
   mftDeleteConsequence: 'The connection is removed. Its OAuth 2.0 client configuration is deleted with it unless another connection names it, and so is that client\'s server description when no other client uses it.',
   /** EXPERIENCE.md:364 */
   mftRevokeConsequence: 'The connection\'s access token is removed and the file service is asked to revoke it. The connection cannot transfer files until it is authorized again on the classic Managed File Transfer Connections page.',
+  /** EXPERIENCE.md:357 */
+  docDbAppListLabel: 'Doc DB applications',
+  /** EXPERIENCE.md:357 */
+  aboutDocDbApplication: 'Doc DB application',
+  /** EXPERIENCE.md:357 */
+  docDbAppListEmpty: 'No Doc DB application is defined on this instance.',
+  /** EXPERIENCE.md:357 */
+  docDbAppListEmptyAgent: 'create a Doc DB application',
+  /** EXPERIENCE.md:357 */
+  docDbAppListPrompt1: 'Which Doc DB applications does this instance define, and in which namespaces?',
+  /** EXPERIENCE.md:357 */
+  docDbAppListPrompt2: 'Which Doc DB applications are disabled or controlled by a resource?',
+  /** EXPERIENCE.md:357 */
+  docDbAppListPrompt3: 'Create a Doc DB application named My.Docs in the USER namespace.',
+  /** EXPERIENCE.md:357 */
+  docDbAppFormPrompt1: 'What does each field of this Doc DB application mean?',
+  /** EXPERIENCE.md:357 */
+  docDbAppFormPrompt2: 'Which resources can control this Doc DB application?',
+  /** EXPERIENCE.md:357 */
+  docDbAppFormPrompt3: 'What does deleting this record do to the document database?',
+  /** EXPERIENCE.md:357 */
+  docDbAppNameHint: 'A class name such as My.Docs, kept exactly as written. It cannot change once the record exists.',
+  /** EXPERIENCE.md:357 */
+  docDbAppCreateOnlyHint: 'It cannot change once the record exists.',
+  /** EXPERIENCE.md:357 */
+  docDbAppResourceHint: 'The service or application resource that controls the document database. Choose none to leave it uncontrolled.',
+  /** EXPERIENCE.md:357 */
+  docDbAppRefusedAction: 'change the Doc DB application',
+  /** EXPERIENCE.md:357 */
+  docDbAppDeleteConsequence: 'The record is removed. A document database of the same name is not dropped.',
   /** EXPERIENCE.md:604 */
   interopProductionsLabel: 'Productions',
   /** EXPERIENCE.md:604 */

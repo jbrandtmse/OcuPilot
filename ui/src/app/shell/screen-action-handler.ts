@@ -110,6 +110,8 @@ export const SCREEN_ACTION_DESCRIPTORS: readonly string[] = [
   'OcuPilot.Screen.Descriptor.SuperserverList',
   // Story 18.26: managed file transfer connections, whose Delete and Revoke token each type the connection's name.
   'OcuPilot.Screen.Descriptor.MftConnectionList',
+  // Story 18.30: Doc DB applications, whose Delete types the record's name.
+  'OcuPilot.Screen.Descriptor.DocDbAppList',
   // Story 20.2: Productions, whose Start is sent at once and whose Stop, Restart, Update and Recover warn first.
   'OcuPilot.Screen.Descriptor.InteropProductionList',
   // Story 20.15: Screen permissions, whose Reset warns first and whose Add and Remove its own page's dialog sends.
@@ -476,6 +478,8 @@ const DESTRUCTIVE_CONSEQUENCES: Readonly<Record<string, Readonly<Record<string, 
   [SUPERSERVER_LIST]: { delete: STRINGS.superserverDeleteConsequence },
   // Story 18.26: a connection's Delete and Revoke token each type its name.
   [MFT_CONNECTION_LIST]: { delete: STRINGS.mftDeleteConsequence, 'revoke-token': STRINGS.mftRevokeConsequence },
+  // Story 18.30: a Doc DB application's Delete types its name.
+  'OcuPilot.Screen.Descriptor.DocDbAppList': { delete: STRINGS.docDbAppDeleteConsequence },
   [LOCAL_DATABASE_LIST]: { delete: STRINGS.localDatabaseDeleteConsequence },
   // Story 16.25: the language server's Delete types the server's name.
   'OcuPilot.Screen.Descriptor.LanguageServerList': { delete: STRINGS.languageServerDeleteConsequence },
@@ -555,6 +559,9 @@ const TYPED_NAME_ROWS: Readonly<
   // Story 18.22: an active key's row is its `Id`, and the write targets the singleton, which no one types.
   [DATABASE_ENCRYPTION_KEYS]: { name: 'Id', field: '', equals: '', advisory: '' },
   [DATA_ELEMENT_ENCRYPTION_KEYS]: { name: 'Id', field: '', equals: '', advisory: '' },
+  // Story 18.30: a Doc DB application is keyed by `[Namespace, Name]`, whose separator no one can type, so its Delete
+  // types the record's name and sends the row key.
+  'OcuPilot.Screen.Descriptor.DocDbAppList': { name: 'Name', field: '', equals: '', advisory: '' },
 };
 
 /**

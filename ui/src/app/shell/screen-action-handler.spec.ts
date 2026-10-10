@@ -1674,6 +1674,37 @@ describe('the Managed file transfer list\u2019s Delete and Revoke token (Story 1
 });
 
 /**
+ * Story 18.30: the Doc DB applications list's Delete types the record's name -- the row key is `[Namespace, Name]`,
+ * whose separator no one can type -- under its published consequence, and sends the whole row key.
+ */
+describe('the Doc DB applications list\u2019s Delete (Story 18.30)', () => {
+  const descriptor = 'OcuPilot.Screen.Descriptor.DocDbAppList';
+  const target = 'USER\u0001OcuProbe1830A';
+
+  it('registers Delete, typing the record\u2019s name under the published consequence', () => {
+    // Mutation (Rule 19): drop the list's `DESTRUCTIVE_CONSEQUENCES` entry -> the registration goes red and the
+    // list draws no Delete; drop its `TYPED_NAME_ROWS` entry -> the name assertion goes red, the dialog asking for
+    // the joined row key.
+    const { actions, handler, store, calls } = mount(undefined, descriptor);
+    expect(actions.has(descriptor, 'delete')).toBe(true);
+    handler.startFor(descriptor, 'delete', target, { Name: 'OcuProbe1830A', Namespace: 'USER', Enabled: true, Resource: '', Description: '' }, store);
+    expect([handler.pending()?.kind, handler.pending()?.name, handler.pending()?.target, handler.pending()?.consequence]).toEqual(['typed-name', 'OcuProbe1830A', target, STRINGS.docDbAppDeleteConsequence]);
+    expect(calls).toHaveLength(0);
+  });
+
+  it('sends a confirmed Delete with the whole row key', async () => {
+    const screen = SCREENS.find((entry) => entry.descriptor === descriptor)!;
+    const { handler, store, calls } = mount({ kind: 'ok', status: 200, body: { action: 'deleted', target: { type: 'docdb-application', scope: 'instance', id: target } } }, descriptor);
+    handler.startFor(descriptor, 'delete', target, { Name: 'OcuProbe1830A', Namespace: 'USER' }, store);
+    handler.confirmPending();
+    await settle();
+    expect(calls).toHaveLength(1);
+    expect(calls[0].path).toBe(`/api/ocupilot/screens/${screen.toolIdentifier}/action`);
+    expect(JSON.parse(calls[0].body)).toEqual({ action: 'delete', id: target });
+  });
+});
+
+/**
  * Story 16.4: `sendFor` with a sink of its own keeps a refusal off the list's banner, and
  * `lastRefusal` answers what the instance refused with -- its sentence, its field-level violations and
  * its detail -- until the next send, which clears it.

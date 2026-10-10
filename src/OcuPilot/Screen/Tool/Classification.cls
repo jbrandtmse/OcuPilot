@@ -52,6 +52,9 @@ Class OcuPilot.Screen.Tool.Classification Extends %RegisteredObject
 /// (Story 18.26) classify <code>Security.MFT</code>'s five rows <code>ordinary</code>: a connection holds no
 /// secret, its authorization being a token the classic page obtains and no read returns. The update tool's
 /// positive list leaves out <code>Service</code>, which only a create sets.</p>
+/// <p><b><code>webapp.docdbapps.create</code></b> and <b><code>webapp.docdbapps.update</code></b> (Story 18.30) classify
+/// <code>DocDB</code>'s three rows <code>ordinary</code>: a Doc DB application record holds no secret. Both tools admit
+/// all three.</p>
 /// <p><b><code>security.secrets.creatersa</code></b>, <b>.createsymmetric</b>, <b>.replacersa</b> and
 /// <b>.replacesymmetric</b> (Story 18.24) classify their type's list: <code>Length</code>,
 /// <code>HasPrivateKey</code>, <code>HasCertificate</code> and <code>KeyId</code> are <code>ordinary</code>
@@ -677,6 +680,22 @@ XData Entries
       "SSLConfiguration": "ordinary",
       "Username": "ordinary",
       "ApplicationName": "ordinary"
+    }
+  },
+  "webapp.docdbapps.create": {
+    "fieldList": "DocDB",
+    "classification": {
+      "Description": "ordinary",
+      "Enabled": "ordinary",
+      "Resource": "ordinary"
+    }
+  },
+  "webapp.docdbapps.update": {
+    "fieldList": "DocDB",
+    "classification": {
+      "Description": "ordinary",
+      "Enabled": "ordinary",
+      "Resource": "ordinary"
     }
   },
   "security.secrets.create": {

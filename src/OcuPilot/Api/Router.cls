@@ -254,6 +254,9 @@ XData UrlMap [ XMLNamespace = "http://www.intersystems.com/urlmap" ]
   <Route Url="/mft-connection/form" Method="GET" Call="MftConnectionFormRead"/>
   <Route Url="/mft-connection/:id" Method="PUT" Call="MftConnectionUpdate"/>
   <Route Url="/mft-connection" Method="POST" Call="MftConnectionCreate"/>
+  <Route Url="/docdb-application/form" Method="GET" Call="DocDbAppFormRead"/>
+  <Route Url="/docdb-application/:id" Method="PUT" Call="DocDbAppUpdate"/>
+  <Route Url="/docdb-application" Method="POST" Call="DocDbAppCreate"/>
   <Route Url="/explorer/docdb" Method="POST" Call="ExplorerDocDbCreate"/>
 </Routes>
 }
@@ -1910,6 +1913,28 @@ ClassMethod MftConnectionUpdate(pId As %String) As %Status
 ClassMethod MftConnectionCreate() As %Status
 {
     Quit ##class(OcuPilot.Area.Security.MftConnectionSave).HandleCreate()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /docdb-application/form</code> (Story 18.30): the Doc DB
+/// application editor's form read, delegating to <class>OcuPilot.Area.WebApp.DocDbAppRules</class>. It precedes
+/// <code>/docdb-application/:id</code>.</p>
+ClassMethod DocDbAppFormRead() As %Status
+{
+    Quit ##class(OcuPilot.Area.WebApp.DocDbAppRules).HandleForm()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>PUT /docdb-application/:id</code>: the form's edit, resolved through
+/// the one tool the agent's confirm uses (AD-55).</p>
+ClassMethod DocDbAppUpdate(pId As %String) As %Status
+{
+    Quit ##class(OcuPilot.Area.WebApp.DocDbAppSave).HandleUpdate(pId)
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /docdb-application</code>: the form's create, resolved through
+/// the one tool the agent's confirm uses (AD-55).</p>
+ClassMethod DocDbAppCreate() As %Status
+{
+    Quit ##class(OcuPilot.Area.WebApp.DocDbAppSave).HandleCreate()
 }
 
 }
