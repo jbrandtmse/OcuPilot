@@ -29,8 +29,8 @@ export const RESOURCE_LIST_DESCRIPTOR = 'OcuPilot.Screen.Descriptor.ResourceList
 /** The most rows the picker's read asks for. */
 export const RESOURCE_MAX_ROWS = 500;
 
-/** The `ResourceType` values the Resources list reads for the resources a record may name. */
-export const RESOURCE_TYPES: readonly string[] = ['Service', 'Application'];
+/** The `ResourceType` values the Resources list reads for the resources a record may name: the classic Doc DB page's. */
+export const RESOURCE_TYPES: readonly string[] = ['Service', 'System', 'Application'];
 
 /** The fields, named as the server names them. */
 export const NAMESPACE_FIELD = 'Namespace';
@@ -176,7 +176,7 @@ export class DocDbAppForm {
     return this.idValue;
   }
 
-  /** The service and application resources the picker offers, by name. */
+  /** The service, system and application resources the picker offers, by name. */
   resources(): readonly string[] {
     return this.resourceNames;
   }
@@ -402,7 +402,7 @@ export class DocDbAppForm {
     return out;
   }
 
-  /** The service and application resources' names, from the list's own declared read (AD-5); none when it fails. */
+  /** The service, system and application resources' names, from the list's own declared read (AD-5); none when it fails. */
   private async readResources(): Promise<readonly string[]> {
     const screen = screenForDescriptor(RESOURCE_LIST_DESCRIPTOR);
     if (screen === null || screen.read === null) return [];

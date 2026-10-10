@@ -70,7 +70,7 @@ deferred:
 | Create | `OcuProbe1830A` in `user` | 201; stored as `OcuProbe1830A` in `USER` by either caller; read-back `matches` | Present in any case: refused by the absence fingerprint |
 | Update | A probe's `Description` | The fresh read's three fields with the change | Moved target refused; a held lock: 409 `WRITE.TARGETBUSY` after 10 s |
 | Delete | A probe | Gone; the screen's confirmation is typed against `Name` | Absent: 404 `PORT.NOTFOUND` |
-| Rules | `Name` failing `%Dictionary.Classname.IsValid`; `Namespace` empty or refused by `AdminPort.NamespaceDefined`; `Description` over 256 characters; `Enabled` not `true`, `false`, `1`, `0`, `"1"`, `"0"`; `Resource` neither empty nor a listed `Service` or `Application` resource; a string field of another type | 422 `DOCDBAPP.*` on the field; nothing sent | The mint refuses identically, an empty `Name` or `Namespace` as 400 `TOOL.ARGUMENTS` |
+| Rules | `Name` failing `%Dictionary.Classname.IsValid`; `Namespace` empty or refused by `AdminPort.NamespaceDefined`; `Description` over 256 characters; `Enabled` not `true`, `false`, `1`, `0`, `"1"`, `"0"`; `Resource` neither empty nor a listed `Service`, `System` or `Application` resource; a string field of another type | 422 `DOCDBAPP.*` on the field; nothing sent | The mint refuses identically, an empty `Name` or `Namespace` as 400 `TOOL.ARGUMENTS` |
 
 </intent-contract>
 
@@ -127,7 +127,46 @@ Kernel seam: `Screen/Tool/Write.cls` gains `TypedId(pArgs)`, defaulting to `pArg
 - **C6.** Given the rosters, when the suites run, then the side bar lists Doc DB applications at 4, the keys read `true`, `true`, `false`, `docdb-application` is pinned on both sides with `foldcase`, and the Fixed strings stay within the bound.
 - **Integration.** The page consumes `GET /docdb-application/form`, `POST /docdb-application`, `PUT /docdb-application/:id` and the delete action, and the agent the four tools, on `ocupilot-ci` (C1-C4, the browser spec).
 
+### Review Findings
+
+Code review 2026-10-10 (`full-opus`, four layers): 35 rows, 29 entries -- high 1, medium 6, low 19, false 3. Each patch ran green on `ocupilot-ci` and is mutated under `## Verification`.
+
+- [x] [Review][Patch] AD-54: a create's card showed the settings the caller left out as change rows -- `ComposeCreate` composes the supplied settings (`Enabled` read as a boolean) and `CompleteBody` adds the omitted ones at a new record's values, counted unchanged; the body sent is as before, so the read-back still compares all three (high; fix-risk low, the card's counts alone move) [src/OcuPilot/Screen/Tool/DocDbAppCreate.cls:133]
+- [x] [Review][Patch] The Resource rule and picker refused the 24 resources the classic Doc DB page offers that the admin read names `System` (`%DocDB_Admin`, `%Development`): that read names the vendor's application bit `System` and its user bit `Application`; both sides now admit `Service`, `System` and `Application` (18 + 24 + 49 = the page's 91, measured), and the sentences say "service, system or application resource" (medium; fix-risk med, wording in five sources and EXPERIENCE.md :357) [src/OcuPilot/Area/WebApp/DocDbAppRules.cls:32]
+- [x] [Review][Patch] Rule 31: `DocDbAppProbe.Mint`, `DocDbAppGate.Ran` and `DocDbAppWrite.Verdict` were byte copies of `MftProbe.Mint`, `NamespaceWriteGate.Ran` and `MftConnectionWrite.Verdict` with no stated reason -- each delegates (medium; fix-risk low) [src/OcuPilot/Test/DocDbAppProbe.cls:195]
+- [x] [Review][Patch] The form read's `Enabled` was pinned for a disabled record only -- the enabled record's flag is asserted (medium; fix-risk low) [src/OcuPilot/Test/DocDbAppRead.cls:127]
+- [x] [Review][Patch] No client spec opened the editor over a disabled record, so `flagAt`'s `true` fallback hid a dropped flag -- a page leg asserts the box clear and the toggle putting `{Enabled: true}` (medium; fix-risk low) [ui/src/app/areas/web-applications/docdb-app-form.page.spec.ts:216]
+- [x] [Review][Patch] Task 8's unsaved-changes guard had no spec -- a page leg dirties the form, asks to leave and answers the dialog (medium; fix-risk low) [ui/src/app/areas/web-applications/docdb-app-form.page.spec.ts:228]
+- [x] [Review][Patch] The tools' required `Namespace` was unpinned -- `Name,Namespace` is asserted for all three (low) [src/OcuPilot/Test/DocDbAppDescriptor.cls:102]
+- [x] [Review][Patch] `REASONNAME` left out the 220-character limit `IsName` enforces (low) [src/OcuPilot/Api/DocDbAppError.cls:20]
+- [x] [Review][Patch] `Write.TypedId`'s doc comment said every composite tool overrides it; `MappingCreate` and `SuperserverCreate` do not -- it states the folding condition (low) [src/OcuPilot/Screen/Tool/Write.cls:589]
+- [x] [Review][Patch] EXPERIENCE.md :357 cited `:134`, the Web sessions inventory row, for Doc DB applications -- `:167` alone (low) [_bmad-output/planning-artifacts/ux-designs/ux-OcuPilot-2026-09-08/EXPERIENCE.md:357]
+- [x] [Review][Patch] C6's bound clause had no recorded mutation (low) [ui/tools/strings.test.mjs:609]
+- [x] [Review][Defer] Whole-area screen lists in `Wire`, `WireSecurityRead` and `WebSessionsLive` are literals outside the area's roster (Rule 30) [src/OcuPilot/Test/WireSecurityRead.cls:847] -- deferred: pre-existing, Task 12 prescribed the updates; occurrence on DW-2202 (routed to 23.5).
+
+Rejected:
+
+- [low] Resource names compared in exact case -- the picker and the Resources list give the stored spelling; another case is refused with the sentence, never stored.
+- [low] The form read and the update answer name the record as the id spells it -- list links and the create's redirect carry the stored spelling; only a hand-typed id in another case meets it, and the fix needs a LIST read.
+- [low] The agent's `Enabled` description names six values its boolean schema refuses four of -- Task 5 requires the six (spec-bound), and the text ends "Send true or false".
+- [low] The Auto Run Result's residual-risk line is stale -- its fix edits the spec under review; the spine was corrected at `b465f5c2`.
+- [low] The name hint repeats the create-only sentence -- cosmetic.
+- [low] The Save and Rules repeat MFT's slice-agnostic helpers, `Gate` and `Add` twice within the slice as MFT does -- the Code Map states the reason; DW-2278 owns the unification.
+- [low] The tools repeat `PrivilegePairs` and a `Described` shaped like `MappingCreate`'s -- the Code Map's reason stands (`MappingCreate` carries mapping rules and pairs); `PrivilegePairs` is the per-tool idiom.
+- [low] The store repeats MFT's picker read, `textAt` and three constants -- the form copies are DW-2278's; the constants name stable classes.
+- [low] An agent create is not re-checked against the rules at confirm -- no sibling create re-checks (MFT, Superserver, Mapping, ECP), and the state reached equals a namespace or resource deleted after the create, which the vendor allows.
+- [low] The resource look-up reads the vendor's default page -- all 185 rows return on this build; real only past the vendor's LIST default.
+- [low] The picker reads 500 rows and says nothing on a refused read -- 185 here; MFT's picker reads the same way.
+- [low] An outside writer between the look-up and the upsert -- inherent to the vendor's upsert; the agent path holds AD-54's absence fingerprint.
+- [low] A non-text `Name` or `Namespace` returns before the other violations -- only a hand-made request sends one.
+- [low] `DocDbAppGate` runs no agent create or delete confirm as the principal -- the confirm's pair check is the kernel's shared path, proven here by the update leg, and `DocDbAppDescriptor` pins each tool's pairs.
+- [false] The Fixed-strings bound moved at 3000 with an unattested protocol -- the implement prompt directed the raise and ruling Q3's exact comment.
+- [false] The frontmatter reads `done` while sprint status reads `review` -- build-auto's machine state; this review sets the status.
+- [false] The browser spec's C6 leg has no recorded mutation -- Rule 19 asks one per AC, and C6 holds the `sideBarPosition` and navigation mutations.
+
 ## Spec Change Log
+
+- 2026-10-10, lead after code review: the resource kinds are `Service`, `System` or `Application`, as measured against the classic page's 91 resources, where the plan read `Service` or `Application`. AD-54's exception and its 18.30 amendment are restated to match the code.
 
 ## Review Triage Log
 
@@ -168,7 +207,7 @@ Kernel seam: `Screen/Tool/Write.cls` gains `TypedId(pArgs)`, defaulting to `pArg
 
 - AD-13: the id is `[Namespace, Name]`, as `MappingMint` and `NamespacePort` expect, `foldcase` since the instance resolves both parts in any case. AD-54: a composite create sends its name as typed through `TypedId`.
 - AD-8: the area's set, nothing beyond it (measured). AD-4: `DocDB` keeps omitted keys and is an upsert. AD-44: create and update declare `%CSP.UI.Portal.Applications.DocDB`; the delete, on the list's page, none.
-- `Resource` is empty or a listed `Service` or `Application` resource, as the classic page offers (inference: only `%All` holds `USE` on a `%DB_*` resource). `Namespace` must be defined and `Name` pass the record's datatype: an invalid name fails as a logged 500 (inference).
+- `Resource` is empty or a listed `Service`, `System` or `Application` resource, as the classic page offers (inference: only `%All` holds `USE` on a `%DB_*` resource). `Namespace` must be defined and `Name` pass the record's datatype: an invalid name fails as a logged 500 (inference).
 - Codes: `DOCDBAPP.VALIDATION`, `.NAME`, `.NAMESPACE`, `.DESCRIPTION`, `.ENABLED`, `.RESOURCE`, `.TAKEN` (a screen create of a present record).
 - Ledger candidates: one base for the Superserver, MFT and Doc DB Saves, Rules and forms (Rule 31); after 20.3 merges, `MappingMint`'s noun parameters for this story's "mapping" wording.
 
@@ -200,7 +239,7 @@ Standing criterion: *existing tests that assert a surface this story changes are
 - mutation: C5 is the diff: `git diff --stat` over `DocDbPort`, `Area/Explorer`, `ExplorerDocDb*`, `DocDbError` and `ExplorerDocDbList` is empty and `Baseline` gains the three `webapp.docdbapps` lines alone; `DocDbWrite` green (run 630).
 - mutation (descriptor batch, each reddening its own test in one run, 621): list `sideBarPosition` 5 → `TestTheListIsDeclaredAsTheSpecPlacesIt`; update `PERMITTEDFIELDS` without `Resource` → `TestTheToolsDeclareTheirKindPortPairsAndFields`; create entry's `Resource` classified secret → `TestTheClassificationIsReviewed`; `docdb-application:foldcase` dropped from `IDRULES` → `TestTheEntityTypeKeepsOneKeyForAnyCase`; delete `READANSWERS` without `Resource` → `TestTheDeleteCardListsWhatTheActionRemoves`; `REASONENABLED` emptied → `TestTheCodesAnswerTheirSentences`.
 - mutation (port, run 622): `DocDbAppPort.MAPPINGENDPOINTS` emptied → all four `DocDbAppRead` tests red, the split, form and script legs among them.
-- mutation (write batch, 624 and 626): `DocDbAppRules.CreateBody` returns its argument → `TestEveryEnabledFormIsStoredAsABooleanOnBothCallers` and `TestACreateOfTheTwoPartsAloneTakesTheInstancesDefaults` red; `DocDbAppUpdate.MergeUpdate` drops `Resource` from its payload → `TestAChangeKeepsWhatItDoesNotSendOnBothCallers` red; `RESOURCETYPES` `Application` alone → `TestAListedServiceOrApplicationResourceIsAccepted` red; the update's resource guard in `Check` read as true → `TestEveryChangeRuleIsRefusedBeforeAnyPutOnBothCallers` red alone.
+- mutation (write batch, 624 and 626): `DocDbAppRules.CreateBody` returns its argument → `TestEveryEnabledFormIsStoredAsABooleanOnBothCallers` red; `DocDbAppUpdate.MergeUpdate` drops `Resource` from its payload → `TestAChangeKeepsWhatItDoesNotSendOnBothCallers` red; `RESOURCETYPES` `Application` alone → `TestAListedServiceOrApplicationResourceIsAccepted` red; the update's resource guard in `Check` read as true → `TestEveryChangeRuleIsRefusedBeforeAnyPutOnBothCallers` red alone.
 - mutation (gate, 627 and 628): `DocDbAppSave.Gate` passes every caller → `DocDbAppGate.TestWithoutTheAreasResourceEveryReadAndWriteIsRefused` and `TestWithoutTheSystemDatabaseReadEveryWriteIsRefused` red; it refuses every caller → `TestTheDeclaredPairsReadAndWrite` red.
 - mutation (review pass, `ocupilot-ci`, the mutated classes loaded each time and reverted byte-identical):
   - `Draft.Render` reads the id argument alone in place of `TypedId` → `DocDbAppRead.TestTheDraftOfACreateNamesTheRecordAsTyped` red (641).
@@ -212,6 +251,18 @@ Standing criterion: *existing tests that assert a surface this story changes are
   - The store drops `readBackOf` → `docdb-app-form.page.spec.ts` create leg red; the page binds Description to the `Resource` field → its create and edit legs red; `DocDbAppActions` drops its `register` → `docdb-app-actions.spec.ts` two tests red; `app.ts` drops `docDbAppForm.reset()` → `app.spec.ts` AD-8 sign-out red.
   - `TYPED_NAME_ROWS` loses the list's entry → `screen-action-handler.spec.ts` Doc DB Delete red and, with the bundle rebuilt and redeployed, the create, change and delete leg of `docdb-applications.browser-spec.mjs` red.
   - The mirror lists the screen at position 0 → `navigation.test.mjs` side-bar order red; `docdb-application:foldcase` dropped from `IDRULES` → `screen-mirror.test.mjs` AD-13 id-rule table red; a Fixed string removed from `strings.ts` → `strings.test.mjs` three legs red.
+- mutation (QA, `ocupilot-ci`, each reverted byte-identical, `git status --short` empty, green again after):
+  - `Confirm.FingerprintMatches` reads the id argument alone in place of `TypedId` (`Confirm` and its 17 descendants recompiled) → `DocDbAppWrite.TestACreateStoresTheNameAsTypedOnBothCallers` red on the agent leg alone, the other ten green (549; green 550).
+  - `DocDbAppDelete` declares a `CONSEQUENCECODE` → `DocDbAppDescriptor.TestTheToolsDeclareTheirKindPortPairsAndFields` red (551; green 552).
+  - The `DESTRUCTIVE_CONSEQUENCES` entry of `DocDbAppList` dropped from `screen-action-handler.ts` → `screen-action-handler.spec.ts` "registers Delete, typing the record's name under the published consequence" red.
+- mutation (code review, `ocupilot-ci` runs 557-559, each reverted byte-identical and green again, run 560):
+  - `ComposeCreate` completes the body before the kernel composes it → `DocDbAppWrite.TestACreateOfTheTwoPartsAloneTakesTheInstancesDefaults` and `TestEveryEnabledFormIsStoredAsABooleanOnBothCallers` red on their card legs (557).
+  - `RESOURCETYPES` without `System` → `TestAListedServiceOrApplicationResourceIsAccepted` red on the `%DocDB_Admin` leg (557); the store's `RESOURCE_TYPES` without `System` → the store spec's open leg and the page spec's picker leg red.
+  - `DocDbAppRules.Truth` answers 0 → `DocDbAppRead.TestTheFormReadAnswersTheFiveFields` red on the enabled record (558).
+  - `Described` without the `Namespace` push → `DocDbAppDescriptor.TestTheToolsDeclareTheirKindPortPairsAndFields` red on the three required legs (559).
+  - `flagAt` answers `true` for every row → the page spec's disabled-record leg red; the page's leave dialog dropped → its leave leg red.
+  - C6: the `strings.test.mjs` bound set to 2999 → its bound leg red (the table holds 3000).
+- measured (QA, `ocupilot-ci`): a probe record deleted through `DocDbAppPort` left the document database of the same name in place (`GetDatabase` answered it, the same call raised #25351 once dropped), so the dialog's sentence `docDbAppDeleteConsequence` holds; the probe database and record were removed and S0 read 0.
 
 **S0:** no `Security.DocDBs` record whose name begins `OcuProbe1830`, `AuthOptionsProbe.Remaining()` 0, no probe resource.
 

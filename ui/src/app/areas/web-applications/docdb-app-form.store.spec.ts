@@ -24,6 +24,7 @@ const EMPTY_ROW = { Name: '', Namespace: '', Description: '', Enabled: true, Res
 const RESOURCE_ROWS = [
   { Name: 'OcuProbe1830Res', Description: '', PublicPermission: '', ResourceType: 'Application', AllowDelete: true },
   { Name: '%Service_DocDB', Description: '', PublicPermission: '', ResourceType: 'Service', AllowDelete: false },
+  { Name: '%DocDB_Admin', Description: '', PublicPermission: '', ResourceType: 'System', AllowDelete: false },
   { Name: '%DB_USER', Description: '', PublicPermission: '', ResourceType: 'Database', AllowDelete: false },
 ];
 
@@ -70,11 +71,13 @@ afterEach(() => {
 });
 
 describe('the Doc DB application store', () => {
-  it('B1, AD-5: a create opens over the form read and the Resources list\u2019s declared read, offering service and application resources only, in the namespace the person works in', async () => {
+  it('B1, AD-5: a create opens over the form read and the Resources list\u2019s declared read, offering the service, system and application resources the classic page offers, in the namespace the person works in', async () => {
     const { store, calls } = mount({ form: EMPTY_ROW });
     await store.open('', 'HSCUSTOM');
     expect(calls.map((call) => call.path).sort()).toEqual([DOCDB_APP_FORM_PATH, '/api/ocupilot/screens/permissions.resources/read?maxRows=500']);
-    expect([store.mode(), store.editable(), store.resources()]).toEqual(['create', true, ['OcuProbe1830Res', '%Service_DocDB']]);
+    // Mutation (Rule 19): drop 'System' from the store's `RESOURCE_TYPES` -> `%DocDB_Admin` leaves the picker and this
+    // goes red.
+    expect([store.mode(), store.editable(), store.resources()]).toEqual(['create', true, ['OcuProbe1830Res', '%Service_DocDB', '%DocDB_Admin']]);
     expect([store.value('Namespace'), store.value('Name'), store.enabled()]).toEqual(['HSCUSTOM', '', true]);
     expect(store.dirty()).toBe(false);
   });

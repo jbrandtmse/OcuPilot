@@ -195,12 +195,11 @@ ClassMethod User(pIndex As %Integer) As %String
     Quit $List($ClassMethod(..#PRINCIPALS, "Users"), pIndex)
 }
 
-/// <p>Who the child ran as, <code>username loggedIn</code>, or its error.</p>
+/// <p>Who the child ran as, <code>username loggedIn</code>, or its error
+/// (<method>OcuPilot.Test.NamespaceWriteGate.Ran</method>).</p>
 ClassMethod Ran(pRun As %DynamicObject) As %String
 {
-    If '$IsObject(pRun) Quit "no answer"
-    If pRun.%IsDefined("error") Quit pRun.%Get("error")
-    Quit pRun.%Get("username") _ " " _ pRun.%Get("loggedIn")
+    Quit ##class(OcuPilot.Test.NamespaceWriteGate).Ran(pRun)
 }
 
 /// <p>Step <var>pIndex</var> (from 1) of the child's answer <var>pRun</var> as <code>http failedPair</code>, or

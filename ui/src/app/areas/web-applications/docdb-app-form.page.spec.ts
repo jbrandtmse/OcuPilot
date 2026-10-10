@@ -31,6 +31,7 @@ const HELD_ROW = { Name: 'OcuProbe1830A', Namespace: 'USER', Description: 'probe
 const RESOURCE_ROWS = [
   { Name: '%DB_USER', Description: '', PublicPermission: '', ResourceType: 'Database', AllowDelete: false },
   { Name: '%Service_DocDB', Description: '', PublicPermission: '', ResourceType: 'Service', AllowDelete: false },
+  { Name: '%DocDB_Admin', Description: '', PublicPermission: '', ResourceType: 'System', AllowDelete: false },
   { Name: 'OcuProbe1830Res', Description: '', PublicPermission: '', ResourceType: 'Application', AllowDelete: true },
 ];
 
@@ -135,10 +136,10 @@ describe('DocDbAppFormPage', () => {
     expect(picker.value).toBe('HSCUSTOM');
   });
 
-  it('B1: the resource picker offers none and the service and application resources the Resources list reads, and no database resource', async () => {
+  it('B1: the resource picker offers none and the service, system and application resources the Resources list reads, and no database resource', async () => {
     const { host } = await mount();
     const options = [...(control(host, 'Resource') as HTMLSelectElement).options].map((option) => option.textContent?.trim());
-    expect(options).toEqual([STRINGS.tableEmptyValue, '%Service_DocDB', 'OcuProbe1830Res']);
+    expect(options).toEqual([STRINGS.tableEmptyValue, '%Service_DocDB', '%DocDB_Admin', 'OcuProbe1830Res']);
   });
 
   it('B2: a Save refused for a missing pair names the pair and this form\u2019s action', async () => {
@@ -210,5 +211,36 @@ describe('DocDbAppFormPage', () => {
       expect(put?.path, field).toBe(`${DOCDB_APP_PATH}/${encodeEntityId(ID)}`);
       expect(JSON.parse(put?.body ?? '{}'), field).toEqual({ [field]: sent });
     }
+  });
+
+  it('B1: an edit over a disabled record shows the flag clear, and checking it puts Enabled true alone', async () => {
+    // Mutation (Rule 19): make the store's `flagAt` answer `true` for every row -> the checkbox reads checked and the
+    // toggle puts nothing, and this goes red.
+    const { fixture, host, calls } = await mount({ url: `/web-applications/docdb-applications/edit/${encodeEntityId(ID)}`, row: { ...HELD_ROW, Enabled: false } });
+    expect((control(host, 'Enabled') as HTMLInputElement).checked).toBe(false);
+    await toggle(fixture, host);
+    save(host);
+    await settle(fixture);
+    const put = calls.find((call) => call.method === 'PUT');
+    expect(JSON.parse(put?.body ?? '{}')).toEqual({ Enabled: true });
+  });
+
+  it('B1: a change raises the dirty flag, and leaving asks the shared question first', async () => {
+    // Mutation (Rule 19): drop the page's `@if (leavePending)` dialog -> no dialog answers the guard and this goes red.
+    const { fixture, host } = await mount();
+    const formDirty = TestBed.inject(FormDirty);
+    expect(formDirty.dirty()).toBe(false);
+    await type(fixture, host, 'Name', 'OcuProbe1830B');
+    expect(formDirty.dirty()).toBe(true);
+    const asked = formDirty.requestLeave();
+    await settle(fixture);
+    const dialog = host.querySelector('[role="dialog"]') as HTMLElement;
+    expect(dialog).not.toBeNull();
+    expect(dialog.querySelector('.ocu-dialog-title')?.textContent?.trim()).toBe(STRINGS.formLeaveWithoutSaving);
+    (dialog.querySelectorAll('.ocu-dialog-actions button')[0] as HTMLButtonElement).click();
+    await settle(fixture);
+    expect(await asked).toBe(false);
+    expect(formDirty.dirty()).toBe(true);
+    expect(host.querySelector('[role="dialog"]')).toBeNull();
   });
 });

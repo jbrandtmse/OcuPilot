@@ -23,12 +23,13 @@ Parameter UPDATETOOL = "OcuPilot.Screen.Tool.DocDbAppUpdate";
 Parameter FIELDS = "Description,Enabled,Resource";
 
 /// <p>The resource endpoint, the member of its rows that names a resource's kind, and the kinds a record may
-/// name.</p>
+/// name: the service, application and user resources the classic Doc DB page offers, which that read names
+/// <code>Service</code>, <code>System</code> and <code>Application</code>.</p>
 Parameter RESOURCEENDPOINT = "Security.Resource";
 
 Parameter RESOURCETYPEFIELD = "ResourceType";
 
-Parameter RESOURCETYPES = "Service,Application";
+Parameter RESOURCETYPES = "Service,System,Application";
 
 /// <p>Every rule over <var>pBody</var>, in <var>pViolations</var> as <code>pViolations(n) = $ListBuild(field,
 /// code)</code> with the count in <code>pViolations</code>.</p>
@@ -37,9 +38,9 @@ Parameter RESOURCETYPES = "Service,Application";
 /// one this instance defines, and each setting sent must be valid. When it is <code>update</code> and
 /// <var>pFull</var> is 1, a setting is judged only where it differs from <var>pFresh</var>'s; with <var>pFull</var>
 /// 0 every setting sent is judged by the rules that need no read. With <var>pFull</var> 1 the rule that reads the
-/// instance applies too: a resource that is sent and changed, or any one on a create, must be empty or a service or
-/// application resource the instance lists, read through <var>pPortClass</var> as the caller. A look-up that cannot
-/// be made is an error status, never a pass. <var>pFresh</var> is <code>""</code> for a create.</p>
+/// instance applies too: a resource that is sent and changed, or any one on a create, must be empty or a service,
+/// system or application resource the instance lists, read through <var>pPortClass</var> as the caller. A look-up that
+/// cannot be made is an error status, never a pass. <var>pFresh</var> is <code>""</code> for a create.</p>
 ClassMethod Check(pNamespace As %String, pName As %String, pBody As %DynamicObject, pFresh As %DynamicObject, pMode As %String, pPortClass As %String, Output pViolations, pFull As %Boolean = 1) As %Status
 {
     Kill pViolations
@@ -105,24 +106,35 @@ ClassMethod IsEnabled(pType As %String, pValue As %String) As %Boolean
     Quit 0
 }
 
-/// <p>A copy of <var>pArgs</var> as a create sends it: <code>Enabled</code>, where <method>IsEnabled</method> admits it,
-/// a boolean (the number or text 1 or 0 read as <code>true</code> or <code>false</code>), and each of the three
-/// settings the caller left out at the instance's own default -- no description, enabled, no resource -- so the body is
-/// the complete set and its read-back compares all three. Every other member, and a setting the rules refuse, is as it
-/// was.</p>
+/// <p>A copy of <var>pArgs</var> as a create composes it: <code>Enabled</code>, where <method>IsEnabled</method> admits
+/// it, a boolean (the number or text 1 or 0 read as <code>true</code> or <code>false</code>). Every other member, and a
+/// value the rules refuse, is as it was.</p>
 ClassMethod CreateBody(pArgs As %DynamicObject) As %DynamicObject
 {
     If '$IsObject(pArgs) Quit pArgs
     Set tCopy = ##class(%DynamicAbstractObject).%FromJSON(pArgs.%ToJSON())
     Set tType = tCopy.%GetTypeOf("Enabled")
-    If tType = "unassigned" {
-        Do tCopy.%Set("Enabled", 1, "boolean")
-    } ElseIf (tType '= "boolean") && ..IsEnabled(tType, tCopy.%Get("Enabled")) {
+    If (tType '= "unassigned") && (tType '= "boolean") && ..IsEnabled(tType, tCopy.%Get("Enabled")) {
         Do tCopy.%Set("Enabled", +tCopy.%Get("Enabled"), "boolean")
     }
-    If tCopy.%GetTypeOf("Description") = "unassigned" Do tCopy.%Set("Description", "", "string")
-    If tCopy.%GetTypeOf("Resource") = "unassigned" Do tCopy.%Set("Resource", "", "string")
     Quit tCopy
+}
+
+/// <p>Set into the composed create body <var>pPayload</var> each setting of <var>pSettable</var> it omits at a new
+/// record's own value (<method>DefaultRow</method>), counting each in <var>pUnchanged</var> (AD-54): the body sent is the
+/// complete set, so its read-back compares all three (AD-58), while the diff holds only the settings the caller
+/// supplied.</p>
+ClassMethod CompleteBody(pPayload As %DynamicObject, pSettable As %List, ByRef pUnchanged As %Integer)
+{
+    Set tDefaults = {}
+    Do ..DefaultRow(tDefaults)
+    Set tFields = $ListFromString(..#FIELDS)
+    For tI = 1:1:$ListLength(tFields) {
+        Set tField = $List(tFields, tI)
+        If '$ListFind(pSettable, tField) || (pPayload.%GetTypeOf(tField) '= "unassigned") Continue
+        Do pPayload.%Set(tField, tDefaults.%Get(tField), tDefaults.%GetTypeOf(tField))
+        Set pUnchanged = pUnchanged + 1
+    }
 }
 
 /// <p>Whether <var>pName</var> is a record name: <code>%Dictionary.Classname</code>'s own check, which the stored
@@ -132,7 +144,7 @@ ClassMethod IsName(pName As %String) As %Boolean
     Quit $$$ISOK($ClassMethod("%Dictionary.Classname", "IsValid", pName))
 }
 
-/// <p>Whether the resource <var>pName</var> is one the instance lists as a service or application resource, in
+/// <p>Whether the resource <var>pName</var> is one the instance lists as a service, system or application resource, in
 /// <var>pListed</var>, read through <var>pPortClass</var> as the caller. A failed read is an error status.</p>
 ClassMethod ResourceListed(pPortClass As %String, pName As %String, Output pListed As %Boolean) As %Status
 {

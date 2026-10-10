@@ -83,7 +83,8 @@ Method TestTheEditorIsAnUnlistedFormPage()
 /// classic editor; the delete admits none, declares no classic page, fingerprints the three settings and states no
 /// consequence.</p>
 /// <p>Mutation (Rule 19): drop <code>Resource</code> from the update's <code>PERMITTEDFIELDS</code> -- the field legs
-/// go red.</p>
+/// go red; drop the push of <code>Namespace</code> onto <code>required</code> in
+/// <method>OcuPilot.Screen.Tool.DocDbAppCreate.Described</method> -- the required legs go red.</p>
 Method TestTheToolsDeclareTheirKindPortPairsAndFields()
 {
     For tClass = ..#CREATE, ..#UPDATE, ..#DELETE {
@@ -95,8 +96,10 @@ Method TestTheToolsDeclareTheirKindPortPairsAndFields()
         Do $$$AssertEquals(##class(OcuPilot.Test.EncryptionDescriptor).Pairs($ClassMethod(tClass, "PrivilegePairs", "", .tResolved)), "%Admin_Secure:USE,%DB_IRISSYS:READ", tName _ " needs the area's two pairs and no other")
         Do $$$AssertEquals($ClassMethod(tClass, "IdArgument") _ " " _ $ClassMethod(tClass, "IdParam") _ " " _ $ClassMethod(tClass, "Endpoint"), "Name name DocDB", tName _ " names its target by the composite id the port splits")
         Do $$$AssertEquals($ClassMethod(tClass, "MintClass"), "OcuPilot.Screen.Tool.MappingMint", tName _ " is minted by the mapping mint")
-        Set tProperties = $ClassMethod(tClass, "InputSchema").%Get("properties")
+        Set tSchema = $ClassMethod(tClass, "InputSchema")
+        Set tProperties = tSchema.%Get("properties")
         Do $$$AssertEquals(tProperties.%IsDefined("Namespace") _ tProperties.%IsDefined("Name"), "11", tName _ "'s schema carries the namespace and the name")
+        Do $$$AssertEquals(##class(OcuPilot.Test.EncryptionKeyRead).Joined(tSchema.%Get("required")), "Name,Namespace", tName _ "'s schema requires both")
     }
     For tClass = ..#CREATE, ..#UPDATE {
         Do $$$AssertEquals($Parameter(tClass, "CLASSICPAGES"), "%CSP.UI.Portal.Applications.DocDB", $Parameter(tClass, "TOOLNAME") _ " declares the classic editor")

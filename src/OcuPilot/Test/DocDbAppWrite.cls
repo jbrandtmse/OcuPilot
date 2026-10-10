@@ -128,6 +128,7 @@ Method TestEveryEnabledFormIsStoredAsABooleanOnBothCallers()
         Do $$$AssertStatusOK(tSC, "the agent's create with Enabled " _ $List(tForm, 2) _ " is minted (" _ tProblem _ ")")
         Set tPayload = ##class(%DynamicObject).%FromJSON(##class(OcuPilot.Test.SuperserverProhibited).Stored(tProposal, "payload"))
         Do $$$AssertEquals(##class(OcuPilot.Test.EncryptionStartupDescriptor).Keys(tPayload) _ " " _ tPayload.%GetTypeOf("Enabled"), "Description,Enabled,Resource boolean", "its proposal carries the complete set with Enabled a boolean")
+        Do $$$AssertEquals(##class(OcuPilot.Test.DatabaseWriteDetail).Fields(tProposal) _ "|" _ $Select($IsObject(tProposal): tProposal.%Get("unchangedCount"), 1: ""), "Enabled|2", "its card's one change row is the Enabled the caller sent, the two omitted settings counted unchanged (AD-54)")
         Do $$$AssertEquals($ClassMethod(..#AGENT, "Confirm", tProposal, .tResult) _ " " _ ..Verdict($Get(tResult)), "200  matches", "and confirmed, its read-back matching")
         Set tStored = $ClassMethod(..#PROBE, "Stored", "USER", tAgentName)
         Do $$$AssertEquals($Select($IsObject(tStored): tStored.%Get("Enabled") _ tStored.%GetTypeOf("Enabled"), 1: "-"), $List(tForm, 3) _ "boolean", "it stores " _ $List(tForm, 3))
@@ -299,14 +300,14 @@ Method TestEveryChangeRuleIsRefusedBeforeAnyPutOnBothCallers()
     Do $$$AssertStatusOK(tSC, "nor is the agent's (" _ tProblem _ ")")
 }
 
-/// <p>C2: a resource that is a service or an application resource the instance lists is accepted on both callers,
-/// and an empty one is.</p>
+/// <p>C2: a resource that is a service, system or application resource the instance lists -- each kind the classic Doc
+/// DB page offers -- is accepted on both callers, and an empty one is.</p>
 /// <p>Mutation (Rule 19): list only <code>Application</code> in <parameter>OcuPilot.Area.WebApp.DocDbAppRules.RESOURCETYPES</parameter>
-/// -- the service leg goes red.</p>
+/// -- the service and system legs go red.</p>
 Method TestAListedServiceOrApplicationResourceIsAccepted()
 {
     Do $$$AssertStatusOK($ClassMethod(..#PROBE, "EnsureResource"), "a probe resource")
-    Set tCases = $ListBuild($ListBuild("OcuProbe1830Svc", "%Service_DocDB"), $ListBuild("OcuProbe1830App", "OcuProbe1830Res"))
+    Set tCases = $ListBuild($ListBuild("OcuProbe1830Svc", "%Service_DocDB"), $ListBuild("OcuProbe1830Sys", "%DocDB_Admin"), $ListBuild("OcuProbe1830App", "OcuProbe1830Res"))
     For tI = 1:1:$ListLength(tCases) {
         Set tName = $List($List(tCases, tI), 1)
         Set tResource = $List($List(tCases, tI), 2)
@@ -410,7 +411,11 @@ Method TestTheWriteRoutesAnswerOverTheWire()
 }
 
 /// <p>The create with every field omitted but the id's two parts stores the instance's defaults: enabled, no
-/// description and no resource, on both callers.</p>
+/// description and no resource, on both callers. The agent's card shows no change row for a setting the caller did not
+/// send and counts the three unchanged (AD-54).</p>
+/// <p>Mutation (Rule 19): complete the body in <method>OcuPilot.Area.WebApp.DocDbAppRules.CreateBody</method>, before
+/// the kernel composes it, in place of <method>OcuPilot.Area.WebApp.DocDbAppRules.CompleteBody</method> after -- the
+/// card leg goes red.</p>
 Method TestACreateOfTheTwoPartsAloneTakesTheInstancesDefaults()
 {
     Do ..Save({"Namespace": "user", "Name": "OcuProbe1830D"}, .tStatus, .tAnswer)
@@ -419,6 +424,7 @@ Method TestACreateOfTheTwoPartsAloneTakesTheInstancesDefaults()
     Do $$$AssertStatusOK(tSC, "the agent's create is minted (" _ tProblem _ ")")
     Set tPayload = ##class(%DynamicObject).%FromJSON(##class(OcuPilot.Test.SuperserverProhibited).Stored(tProposal, "payload"))
     Do $$$AssertEquals(##class(OcuPilot.Test.EncryptionStartupDescriptor).Keys(tPayload), "Description,Enabled,Resource", "its proposal carries all three settings, the omitted ones at the instance's defaults")
+    Do $$$AssertEquals(##class(OcuPilot.Test.DatabaseWriteDetail).Fields(tProposal) _ "|" _ $Select($IsObject(tProposal): tProposal.%Get("unchangedCount"), 1: ""), "|3", "its card shows no change row for a setting the caller did not send, and counts the three unchanged")
     Do $$$AssertEquals($ClassMethod(..#AGENT, "Confirm", tProposal, .tResult), "200 ", "and confirmed")
     Do $$$AssertEquals($ClassMethod(..#PROBE, "Summary", "USER", "OcuProbe1830E"), "|1|", "the agent's stores the same")
 }
@@ -441,11 +447,11 @@ Method Remove(pId As %String, Output pStatus As %Integer, Output pAnswer)
     Set tSC = ##class(OcuPilot.Test.Http).MakeRequest("POST", "/screens/" _ ..#SCREEN _ "/action", .pStatus, .pAnswer, {"action": "delete", "id": (pId)}.%ToJSON(), "application/json")
 }
 
-/// <p>The read-back verdict of <var>pAnswer</var>, or <code>(none)</code>.</p>
+/// <p>The read-back verdict of <var>pAnswer</var>, or <code>(none)</code>
+/// (<method>OcuPilot.Test.MftConnectionWrite.Verdict</method>).</p>
 ClassMethod Verdict(pAnswer) As %String
 {
-    If '$IsObject(pAnswer) || (pAnswer.%GetTypeOf("readBack") '= "object") Quit "(none)"
-    Quit pAnswer.%Get("readBack").%Get("verdict")
+    Quit ##class(OcuPilot.Test.MftConnectionWrite).Verdict(pAnswer)
 }
 
 /// <p>The code of the violation on <var>pField</var> in the envelope <var>pAnswer</var>, or <code>""</code>.</p>

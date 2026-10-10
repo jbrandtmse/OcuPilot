@@ -10554,6 +10554,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-08T08:48:06Z status=routed owner=23-5-the-range-end-cleanup-part-5 by=orchestrator note=Rule 30's derive-not-literal clause applied to the existing suite; roster pins (SurfaceCoverage, EndpointCoverage, FLOORONLY) stay literal by design
 - 2026-10-08T16:01:56Z occurrence=18-28-sql-column-and-admin-privileges
 - 2026-10-09T11:53:18Z occurrence=18-10-web-application-extras-and-spec-based-rest-services
+- 2026-10-10T16:26:03Z occurrence=18-30-doc-db-applications
 
 ### DW-2204: IRIS defect candidate: the admin API's Security.SQLPrivilege.Column LIST and REVOKE match the object's case exactly while GRANT accepts any case, so a revoke in another case answers 200 and removes nothing
 - source: spec-18-28-sql-column-and-admin-privileges.md | severity: low | fix-risk: high | footprint: out-of-footprint

@@ -189,22 +189,12 @@ ClassMethod Remaining() As %Integer
     Quit $ListLength(..Names()) + (..HoldsResource() > 0)
 }
 
-/// <p>Mint the proposal for the tool <var>pToolClass</var> over <var>pArgs</var> through the tool's own mint class, as
-/// the agent's call does, naming the target <var>pName</var>. <var>pProblem</var> is the refusal's problem or
-/// code.</p>
+/// <p><method>OcuPilot.Test.MftProbe.Mint</method>: mint the proposal for the tool <var>pToolClass</var> over
+/// <var>pArgs</var> through the tool's own mint class, as the agent's call does, naming the target <var>pName</var>.
+/// <var>pProblem</var> is the refusal's problem or code.</p>
 ClassMethod Mint(pToolClass As %String, pName As %String, pArgs As %DynamicObject, Output pProposal As %DynamicObject, Output pHttp As %Integer, Output pProblem As %String, pUser As %String = {$Username}) As %Status
 {
-    Set pProposal = ""
-    Set pHttp = 0
-    Set pProblem = ""
-    Set tSC = ##class(OcuPilot.Test.ProposalFixture).SeedTurn(pUser, "completed", .tTurnKey)
-    If $$$ISERR(tSC) Quit tSC
-    Set tSC = $ClassMethod($ClassMethod(pToolClass, "MintClass"), "Mint", $Parameter(pToolClass, "DESCRIPTORCLASS"), $Parameter(pToolClass, "TOOLNAME"), pUser, "", tTurnKey, pArgs, "OcuPilot.Kernel.Agent.Limits", .tResult, .pHttp, .tFault, $ClassMethod(pToolClass, "Endpoint"), $ClassMethod(pToolClass, "IdParam"), pName, $ClassMethod(pToolClass, "IdArgument"), $ClassMethod(pToolClass, "SettableFields"), pToolClass)
-    If $IsObject($Get(tResult)) Set pProposal = tResult
-    If $IsObject($Get(tFault)) && $IsObject(tFault.%Get("detail")) Set pProblem = tFault.%Get("detail").%Get("problem")
-    If $IsObject($Get(tFault)) && (pProblem = "") Set pProblem = tFault.%Get("code")
-    If '$IsObject(pProposal) Quit $$$ERROR($$$GeneralError, "the mint answered no proposal: " _ pHttp _ " " _ pProblem)
-    Quit $$$OK
+    Quit ##class(OcuPilot.Test.MftProbe).Mint(pToolClass, pName, pArgs, .pProposal, .pHttp, .pProblem, pUser)
 }
 
 /// <p>Run the JSON array <var>pPlan</var> as the probe account <var>pUser</var> in a child process and answer

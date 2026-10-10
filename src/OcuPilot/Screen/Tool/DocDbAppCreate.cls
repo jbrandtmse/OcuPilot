@@ -17,7 +17,7 @@ Parameter TOOLNAME = "webapp.docdbapps.create";
 
 Parameter DESCRIPTORCLASS = "OcuPilot.Screen.Descriptor.DocDbAppList";
 
-Parameter DESCRIPTION = "Propose a new Doc DB application record. It creates nothing by itself: it answers a proposal the user reviews and confirms. Name the namespace the document database lives in and the record's name, a class name kept exactly as written, and optionally its description, whether it is enabled and the service or application resource that controls it. A record that already exists under that name in any case is refused. The record only registers a name: it does not create or drop a document database.";
+Parameter DESCRIPTION = "Propose a new Doc DB application record. It creates nothing by itself: it answers a proposal the user reviews and confirms. Name the namespace the document database lives in and the record's name, a class name kept exactly as written, and optionally its description, whether it is enabled and the service, system or application resource that controls it. A record that already exists under that name in any case is refused. The record only registers a name: it does not create or drop a document database.";
 
 /// <p>The port that splits the composite id (AD-52).</p>
 Parameter PORTCLASS = "OcuPilot.Port.DocDbAppPort";
@@ -115,7 +115,7 @@ ClassMethod Described(pSchema As %DynamicObject, pCreates As %Boolean) As %Dynam
     }
     Set tDescriptions("Description") = "A description of the record, at most 256 characters."
     Set tDescriptions("Enabled") = "Whether the record is enabled. One of true, false, 1, 0, ""1"" or ""0""; any other value is refused. Send true or false."
-    Set tDescriptions("Resource") = "The service or application resource that controls the document database, as the Resources list names it. Empty for none. A resource the instance does not list as a service or application resource is refused."
+    Set tDescriptions("Resource") = "The service, system or application resource that controls the document database, as the Resources list names it. Empty for none. A resource the instance does not list as a service, system or application resource is refused."
     Set tField = ""
     For {
         Set tField = $Order(tDescriptions(tField))
@@ -126,12 +126,16 @@ ClassMethod Described(pSchema As %DynamicObject, pCreates As %Boolean) As %Dynam
     Quit pSchema
 }
 
-/// <p>The create's body: <var>pArgs</var> as <method>OcuPilot.Area.WebApp.DocDbAppRules.CreateBody</method> completes
-/// it -- <code>Enabled</code> a boolean and the omitted settings at the instance's defaults -- so the diff the user
-/// reviews and the body sent read the same, then the kernel's composition.</p>
+/// <p>The create's body: the kernel's composition of the settings the arguments supply, <code>Enabled</code> read as a
+/// boolean (<method>OcuPilot.Area.WebApp.DocDbAppRules.CreateBody</method>), so each is a diff row; then each omitted
+/// setting at a new record's own value, counted unchanged
+/// (<method>OcuPilot.Area.WebApp.DocDbAppRules.CompleteBody</method>, AD-54).</p>
 ClassMethod ComposeCreate(pArgs As %DynamicObject, pIdArgument As %String, pSettable As %List, Output pPayload As %DynamicObject, Output pDiff As %DynamicArray, Output pUnchanged As %Integer, Output pProblem As %String) As %Status
 {
-    Quit ##super($ClassMethod(..#RULES, "CreateBody", pArgs), pIdArgument, pSettable, .pPayload, .pDiff, .pUnchanged, .pProblem)
+    Set tSC = ##super($ClassMethod(..#RULES, "CreateBody", pArgs), pIdArgument, pSettable, .pPayload, .pDiff, .pUnchanged, .pProblem)
+    If $$$ISERR(tSC) || (pProblem '= "") || '$IsObject(pPayload) Quit tSC
+    Do $ClassMethod(..#RULES, "CompleteBody", pPayload, pSettable, .pUnchanged)
+    Quit tSC
 }
 
 /// <p>The rules over the agent's arguments, create mode, each broken one as its field and published sentence

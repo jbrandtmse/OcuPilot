@@ -582,8 +582,10 @@ ClassMethod IdArgument() As %String
 }
 
 /// <p>The id a confirmed or drafted create sends for its target, as the caller typed it, read from the stored
-/// arguments <var>pArgs</var>: the <method>IdArgument</method> member. A tool whose id has more than one part
-/// overrides it to join the parts as typed. <code>""</code> names no typed spelling, and the canonical id is sent.</p>
+/// arguments <var>pArgs</var>: the <method>IdArgument</method> member. A tool whose composite id the canonical rule
+/// folds in a part the vendor stores as sent overrides it to join the parts as typed
+/// (<class>OcuPilot.Screen.Tool.DocDbAppCreate</class>). <code>""</code>, or a value that does not normalize to the
+/// target's id, names no typed spelling, and the canonical id is sent.</p>
 ClassMethod TypedId(pArgs As %DynamicObject) As %String
 {
     If '$IsObject(pArgs) Quit ""

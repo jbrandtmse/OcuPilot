@@ -59,7 +59,7 @@ interface Option {
  * and `web-applications/docdb-applications/edit/<id>` edits one, on the managed file transfer editor's model.
  *
  * **Its fields are the classic editor's**: the namespace (a picker over the namespaces the person may enter) and the
- * name (a create only), the description, whether the record is enabled and the service or application resource
+ * name (a create only), the description, whether the record is enabled and the service, system or application resource
  * that controls it (a picker over the resources the Resources list reads, and none).
  *
  * It composes no payload and authors no field sentence; the unsaved-changes guard is the `form-page` route guard,
@@ -377,7 +377,7 @@ export class DocDbAppFormPage {
     return held === '' ? [{ value: '', label: '' }, ...choices] : choices;
   }
 
-  /** The resource picker's options: none, every service and application resource, and the one held when it is neither. */
+  /** The resource picker's options: none, every service, system and application resource, and the one held when it is neither. */
   protected get resourceOptions(): readonly Option[] {
     this.generation();
     const names = [...this.store.resources()];

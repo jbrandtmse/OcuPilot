@@ -99,7 +99,8 @@ Method TestTheScreenAndTheReadToolAnswerTheSameRows()
 /// and its three settings; the same record named in another case answers the same record; an absent record and an id
 /// that is not two parts are 404; a new record's form carries its defaults.</p>
 /// <p>Mutation (Rule 19): drop <code>DocDB</code> from the port's <parameter>OcuPilot.Port.DocDbAppPort.MAPPINGENDPOINTS</parameter>
-/// -- the form read answers 404 for a record that exists and this leg goes red.</p>
+/// -- the form read answers 404 for a record that exists and this leg goes red; make
+/// <method>OcuPilot.Area.WebApp.DocDbAppRules.Truth</method> answer 0 -- the enabled record's leg goes red.</p>
 Method TestTheFormReadAnswersTheFiveFields()
 {
     Do $$$AssertStatusOK($ClassMethod(..#PROBE, "Seed", "user", "OcuProbe1830A", {"Description": "form", "Enabled": false, "Resource": ""}), "a probe record")
@@ -122,7 +123,8 @@ Method TestTheFormReadAnswersTheFiveFields()
     Do $$$AssertStatusOK($ClassMethod(..#PROBE, "Seed", "user", "OcuProbe1830R", {"Description": "held", "Enabled": true, "Resource": "OcuProbe1830Res"}), "a record naming it")
     Set tHeld = $ClassMethod(..#PROBE, "QueryId", $ClassMethod(..#PROBE, "Id", "USER", "OcuProbe1830R"))
     Do ##class(OcuPilot.Test.Http).AbsoluteRequest("GET", tBase _ "/docdb-application/form?id=" _ tHeld, tUser, tPassword, .tStatus, .tRaw, .tHeaders)
-    Do $$$AssertEquals(tStatus _ " " _ ##class(%DynamicObject).%FromJSON(tRaw).%Get("row").%Get("Resource"), "200 OcuProbe1830Res", "a record's resource is the one the form reads")
+    Set tHeldRow = ##class(%DynamicObject).%FromJSON(tRaw).%Get("row")
+    Do $$$AssertEquals(tStatus _ " " _ tHeldRow.%Get("Resource") _ " " _ tHeldRow.%Get("Enabled") _ tHeldRow.%GetTypeOf("Enabled"), "200 OcuProbe1830Res 1boolean", "an enabled record's resource and flag are the ones the form reads")
     Set tAbsent = $ClassMethod(..#PROBE, "QueryId", $ClassMethod(..#PROBE, "Id", "USER", "OcuProbe1830Z"))
     Do ##class(OcuPilot.Test.Http).AbsoluteRequest("GET", tBase _ "/docdb-application/form?id=" _ tAbsent, tUser, tPassword, .tStatus, .tRaw, .tHeaders)
     Do $$$AssertEquals(tStatus _ " " _ ##class(%DynamicObject).%FromJSON(tRaw).%Get("code"), "404 PORT.NOTFOUND", "a record the instance does not hold is 404 PORT.NOTFOUND")

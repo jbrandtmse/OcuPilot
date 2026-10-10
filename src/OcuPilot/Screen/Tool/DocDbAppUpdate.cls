@@ -13,7 +13,7 @@ Parameter TOOLNAME = "webapp.docdbapps.update";
 
 Parameter DESCRIPTORCLASS = "OcuPilot.Screen.Descriptor.DocDbAppList";
 
-Parameter DESCRIPTION = "Propose a change to one Doc DB application record. It changes nothing by itself: it answers a proposal the user reviews and confirms. Name the namespace and the record exactly as the Doc DB applications list reports them and send only the settings to change: the description, whether it is enabled, or the service or application resource that controls it. The record's namespace and name cannot be changed.";
+Parameter DESCRIPTION = "Propose a change to one Doc DB application record. It changes nothing by itself: it answers a proposal the user reviews and confirms. Name the namespace and the record exactly as the Doc DB applications list reports them and send only the settings to change: the description, whether it is enabled, or the service, system or application resource that controls it. The record's namespace and name cannot be changed.";
 
 Parameter PORTCLASS = "OcuPilot.Port.DocDbAppPort";
 

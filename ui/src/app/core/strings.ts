@@ -6207,7 +6207,7 @@ export const STRINGS = {
   /** EXPERIENCE.md:357 */
   docDbAppCreateOnlyHint: 'It cannot change once the record exists.',
   /** EXPERIENCE.md:357 */
-  docDbAppResourceHint: 'The service or application resource that controls the document database. Choose none to leave it uncontrolled.',
+  docDbAppResourceHint: 'The service, system or application resource that controls the document database. Choose none to leave it uncontrolled.',
   /** EXPERIENCE.md:357 */
   docDbAppRefusedAction: 'change the Doc DB application',
   /** EXPERIENCE.md:357 */

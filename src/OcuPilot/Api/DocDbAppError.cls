@@ -17,7 +17,7 @@ Parameter REASONVALIDATION = "The Doc DB application was refused.";
 /// <p>Violation code: a name that is not a valid class name, on <code>Name</code>.</p>
 Parameter NAME = "DOCDBAPP.NAME";
 
-Parameter REASONNAME = "The name is a valid class name: letters and digits in dot-separated parts, each starting with a letter, the first optionally with a percent sign.";
+Parameter REASONNAME = "The name is a valid class name of at most 220 characters: letters and digits in dot-separated parts, each starting with a letter, the first optionally with a percent sign.";
 
 /// <p>Violation code: a namespace that is empty or that this instance does not define, on
 /// <code>Namespace</code>.</p>
@@ -35,11 +35,11 @@ Parameter ENABLED = "DOCDBAPP.ENABLED";
 
 Parameter REASONENABLED = "Enabled is true, false, 1 or 0.";
 
-/// <p>Violation code: a resource that is neither empty nor a service or application resource this instance lists,
+/// <p>Violation code: a resource that is neither empty nor a service, system or application resource this instance lists,
 /// on <code>Resource</code>.</p>
 Parameter RESOURCE = "DOCDBAPP.RESOURCE";
 
-Parameter REASONRESOURCE = "The resource is empty, or a service or application resource this instance lists.";
+Parameter REASONRESOURCE = "The resource is empty, or a service, system or application resource this instance lists.";
 
 /// <p>Violation code: a record already exists under that namespace and name in any case, on <code>Name</code>.</p>
 Parameter TAKEN = "DOCDBAPP.TAKEN";
