@@ -8591,7 +8591,7 @@ So that the highest-consequence operations are reachable.
 
 - **Given** these are the most destructive operations OcuPilot has ever exposed
 - **When** the prohibited set is revisited
-- **Then** deleting backups and comparable actions are added **there**, in the kernel, rather than to a policy file - and the set grows by effect, as it always has.
+- **Then** every backup and mirroring write is a confirmed proposal whose destructive key defaults to disabled, for an administrator to switch on; only removing a mirror together with its databases joins the prohibited set, in the kernel (AD-10), beside the self-protection cases it already holds; and every freeze OcuPilot issues carries a bounded suspend limit, so writes never stay frozen indefinitely [AMENDED 2026-10-09, owner decision "I agree with your recommendations", relayed by the Planner, Rule 5].
 
 ### Story 21.3: Startup, memory and compatibility settings
 
