@@ -38,6 +38,11 @@ Parameter CLASSICPAGES = "%CSP.UI.Portal.User";
 /// <p>The one authored argument beyond the name: the account to copy from.</p>
 Parameter SOURCEARGUMENT = "CopyFrom";
 
+/// <p>The violation code of a missing, absent, directory-service or delegated source. It is
+/// <class>OcuPilot.Api.UserCopyError</class>'s <parameter>SOURCE</parameter>, which a tool does not name
+/// (dependency direction); <class>OcuPilot.Test.UserCopy</class> pins the two equal.</p>
+Parameter SOURCECODE = "USERCOPY.SOURCE";
+
 /// <p>The roles and escalation roles a copy takes from the source, never from the caller (the copy's payload
 /// names them; neither is an argument).</p>
 ClassMethod SettableFields() As %List
@@ -61,8 +66,6 @@ ClassMethod InputSchema(pDescriptor As %String = "") As %DynamicObject
 
 /// <p>The create's pairs with the classic user page's custom resource added (AD-44): the copy's page is
 /// <parameter>CLASSICPAGES</parameter>, so an assigned page gates the copy as it gates the classic page.</p>
-/// <p>Mutation (Rule 19): drop the <method>WithClassicPages</method> call -- the assigned-page leg of
-/// <class>OcuPilot.Test.ClassicPageGate</class> goes red.</p>
 ClassMethod PrivilegePairs(pDescriptor As %String = "", Output pResolved As %Boolean) As %List
 {
     Set tPairs = ##super(pDescriptor, .pResolved)
@@ -77,7 +80,7 @@ ClassMethod ArgumentProblem(pIdValue As %String, pArgs As %DynamicObject, Output
     Set tSC = ##super(pIdValue, pArgs, .pProblem)
     If $$$ISERR(tSC) Quit tSC
     If '$IsObject(pArgs) || (pArgs.%GetTypeOf(..#SOURCEARGUMENT) '= "string") || (pArgs.%Get(..#SOURCEARGUMENT) = "") {
-        Set pProblem = pProblem _ $Select(pProblem = "": "", 1: " ") _ "'" _ ..#SOURCEARGUMENT _ "': " _ ##class(OcuPilot.Api.Error).ReasonForViolation("USERCOPY.SOURCE")
+        Set pProblem = pProblem _ $Select(pProblem = "": "", 1: " ") _ "'" _ ..#SOURCEARGUMENT _ "': " _ ##class(OcuPilot.Api.Error).ReasonForViolation(..#SOURCECODE)
     }
     Quit $$$OK
 }
@@ -95,7 +98,7 @@ ClassMethod ComposeCreate(pArgs As %DynamicObject, pIdArgument As %String, pSett
     Set pProblem = ""
     Set tFrom = ""
     If $IsObject(pArgs) && (pArgs.%GetTypeOf(..#SOURCEARGUMENT) = "string") Set tFrom = pArgs.%Get(..#SOURCEARGUMENT)
-    Set tSourceProblem = "'" _ ..#SOURCEARGUMENT _ "': " _ ##class(OcuPilot.Api.Error).ReasonForViolation("USERCOPY.SOURCE")
+    Set tSourceProblem = "'" _ ..#SOURCEARGUMENT _ "': " _ ##class(OcuPilot.Api.Error).ReasonForViolation(..#SOURCECODE)
     If tFrom = "" {
         Set pProblem = tSourceProblem
         Quit $$$OK
@@ -116,7 +119,7 @@ ClassMethod ComposeCreate(pArgs As %DynamicObject, pIdArgument As %String, pSett
     Do tComposed.%Set("FullName", tFull, "string")
     Do tComposed.%Set("Roles", tSource.%Get("Roles"))
     Do tComposed.%Set("EscalationRoles", tSource.%Get("EscalationRoles"))
-    Quit ##class(OcuPilot.Kernel.Proposal.Mint).Compose(tComposed, pIdArgument, $ListBuild(..#SOURCEARGUMENT, "FullName", "Roles", "EscalationRoles"), .pPayload, .pDiff, .pUnchanged, .pProblem)
+    Quit ##class(OcuPilot.Kernel.Proposal.Mint).Compose(tComposed, pIdArgument, $ListFromString(##class(OcuPilot.Kernel.Proposal.Prohibited).#COPYFIELDS), .pPayload, .pDiff, .pUnchanged, .pProblem)
 }
 
 }

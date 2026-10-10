@@ -12,8 +12,9 @@
 /// consequence at the Roles field before Save (AD-10).</p>
 /// <p><b>The password is a secret</b> (AD-35): it is never logged, echoed or returned, and the
 /// created account the route answers is the vendor's own read, which carries none.</p>
-/// <p>Seams a subclass may override: <method>PortClass</method> and <method>ProhibitedClass</method>.
-/// Production overrides neither. The name look-up goes through
+/// <p>Seams a subclass may override: <method>PortClass</method> and <method>ProhibitedClass</method>, which
+/// production never overrides, and <method>ComposePayload</method>, which the copy overrides
+/// (<class>OcuPilot.Area.Permissions.UserCopy</class>). The name look-up goes through
 /// <method>OcuPilot.Area.Permissions.UserCreateRules.Taken</method>, which resolves the tool's own
 /// port directly.</p>
 Class OcuPilot.Area.Permissions.UserCreate Extends %RegisteredObject
@@ -148,15 +149,8 @@ ClassMethod Perform(pName As %String, pArgs As %DynamicObject, Output pCreated A
         Set tSC = $ClassMethod(tRules, "Validate", pName, pArgs, .pViolations)
         If $$$ISERR(tSC) || (pViolations > 0) Quit
 
-        Set tComposeSC = ##class(OcuPilot.Kernel.Proposal.Mint).Compose(pArgs, ..#IDARGUMENT, $ClassMethod(tClass, "SettableFields"), .tPayload, .tDiff, .tUnchanged, .tProblem)
-        If $$$ISERR(tComposeSC) {
-            Set tSC = tComposeSC
-            Quit
-        }
-        If tProblem '= "" {
-            Set tSC = $$$ERROR($$$GeneralError, "the create's payload could not be composed after its rules passed")
-            Quit
-        }
+        Set tSC = ..ComposePayload(pName, pArgs, .tPayload, .pViolations)
+        If $$$ISERR(tSC) || (pViolations > 0) Quit
 
         ; AD-35: the declared secrets join the body here, after the verdict and the rules, and
         ; nowhere else.
@@ -176,6 +170,22 @@ ClassMethod Perform(pName As %String, pArgs As %DynamicObject, Output pCreated A
         Set tSC = ex.AsStatus()
     }
     Quit tSC
+}
+
+/// <p>The payload the write sends, composed from <var>pArgs</var> over the tool's settable fields by the
+/// kernel's <method>OcuPilot.Kernel.Proposal.Mint.Compose</method>, in <var>pPayload</var>. It runs after the
+/// form's rules and before the declared secrets join the body. A composition problem is an error status; a
+/// subclass whose composition can fail on the caller's input reports it as a violation in
+/// <var>pViolations</var> and leaves the count above zero.</p>
+/// <p><b>Caller contract:</b> <var>pViolations</var> is <method>Perform</method>'s violation array, with a
+/// count of zero on entry. <var>pName</var> is the account name.</p>
+ClassMethod ComposePayload(pName As %String, pArgs As %DynamicObject, Output pPayload As %DynamicObject, ByRef pViolations) As %Status
+{
+    Set tClass = ..#TOOLCLASS
+    Set tSC = ##class(OcuPilot.Kernel.Proposal.Mint).Compose(pArgs, ..#IDARGUMENT, $ClassMethod(tClass, "SettableFields"), .pPayload, .tDiff, .tUnchanged, .tProblem)
+    If $$$ISERR(tSC) Quit tSC
+    If tProblem '= "" Quit $$$ERROR($$$GeneralError, "the create's payload could not be composed after its rules passed")
+    Quit $$$OK
 }
 
 /// <p>The caller's own body fields, minus the identifying argument and minus every name in

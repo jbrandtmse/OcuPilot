@@ -18,7 +18,7 @@ Class OcuPilot.Port.UserCopyPort Extends OcuPilot.Port.AdminPort
 {
 
 /// <p>The endpoint the copy is made on.</p>
-Parameter USEREndpoint = "Security.User";
+Parameter USERENDPOINT = "Security.User";
 
 /// <p>The request type a copy is issued with (<code>OcuPilot.Screen.Tool.UserCopy.WRITETYPE</code>).</p>
 Parameter COPYTYPE = "COPY";
@@ -42,7 +42,7 @@ Parameter PAIRS = "%Admin_Secure:USE";
 /// and <var>pQuery</var> is not modified.</p>
 ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody As %DynamicAbstractObject = "", Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status
 {
-    If (pEndpoint '= ..#USEREndpoint) || (pType '= ..#COPYTYPE) {
+    If (pEndpoint '= ..#USERENDPOINT) || (pType '= ..#COPYTYPE) {
         Quit ##super(pEndpoint, pType, .pQuery, pBody, .pResult, .pHttpStatus, .pFault)
     }
     Set pResult = ""
@@ -63,7 +63,7 @@ ClassMethod Copy(pName As %String, pBody As %DynamicAbstractObject, Output pResu
     Set tSC = $$$OK
     Try {
         If '..HoldsPairs() {
-            Set tSC = ..Fail(..#USEREndpoint, 403, $$$OK, .pHttpStatus, .pFault)
+            Set tSC = ..Fail(..#USERENDPOINT, 403, $$$OK, .pHttpStatus, .pFault)
             Quit
         }
         If '$IsObject(pBody) || (pBody.%GetTypeOf("CopyFrom") '= "string") || (pBody.%Get("CopyFrom") = "") || (pName = "") {
@@ -75,11 +75,8 @@ ClassMethod Copy(pName As %String, pBody As %DynamicAbstractObject, Output pResu
         Set tPassword = $Select(pBody.%GetTypeOf("Password") = "string": pBody.%Get("Password"), 1: "")
 
         ; AD-35: the password verdict before the source is read or the vendor is called.
-        Set tReason = ""
-        If '##class(OcuPilot.Kernel.PasswordPolicy).Verdict(tPassword, pName, .tReason) {
-            Set tSC = ..PolicyRefusal(tReason, .pHttpStatus, .pFault)
-            Quit
-        }
+        Set tSC = ..PasswordGuard(pName, tPassword, .pHttpStatus, .pFault)
+        If $$$ISERR(tSC) Quit
 
         Set tSource = ..SourceOf(tFrom, .tSourceHttp, .tSourceFault, .tSourceSC)
         If '$IsObject(tSource) {
@@ -91,7 +88,7 @@ ClassMethod Copy(pName As %String, pBody As %DynamicAbstractObject, Output pResu
                 Set pFault = tSourceFault
                 Set tSC = tSourceSC
             } Else {
-                Set tSC = ..Fail(..#USEREndpoint, 500, tSourceSC, .pHttpStatus, .pFault)
+                Set tSC = ..Fail(..#USERENDPOINT, 500, tSourceSC, .pHttpStatus, .pFault)
             }
             Quit
         }
@@ -116,7 +113,7 @@ ClassMethod Copy(pName As %String, pBody As %DynamicAbstractObject, Output pResu
     } Catch ex {
         Set pResult = ""
         ; AD-35: logged through Fail with the body, so the status text is screened for the password.
-        Set tSC = ..Fail(..#USEREndpoint, 500, ex.AsStatus(), .pHttpStatus, .pFault, "", pBody)
+        Set tSC = ..Fail(..#USERENDPOINT, 500, ex.AsStatus(), .pHttpStatus, .pFault, "", pBody)
     }
     Quit tSC
 }
@@ -148,7 +145,7 @@ ClassMethod AccountOf(pName As %String) As %DynamicObject
 {
     Kill tQuery
     Set tQuery("name") = pName
-    Set tSC = ##class(OcuPilot.Port.AdminPort).Invoke(..#USEREndpoint, "GET", .tQuery, "", .tAccount, .tHttp, .tFault)
+    Set tSC = ##class(OcuPilot.Port.AdminPort).Invoke(..#USERENDPOINT, "GET", .tQuery, "", .tAccount, .tHttp, .tFault)
     If $$$ISERR(tSC) || '$IsObject(tAccount) Quit {}
     Quit tAccount
 }
@@ -180,7 +177,7 @@ ClassMethod SourceOf(pFrom As %String, Output pHttp As %Integer, Output pFault A
     Set pSC = $$$OK
     Kill tQuery
     Set tQuery("name") = pFrom
-    Set tSC = ##class(OcuPilot.Port.AdminPort).Invoke(..#USEREndpoint, "GET", .tQuery, "", .tRead, .pHttp, .pFault)
+    Set tSC = ##class(OcuPilot.Port.AdminPort).Invoke(..#USERENDPOINT, "GET", .tQuery, "", .tRead, .pHttp, .pFault)
     If $$$ISERR(tSC) || '$IsObject(tRead) {
         Set pSC = $Select($$$ISERR(tSC): tSC, 1: $$$ERROR($$$GeneralError, "the source account's read answered no account"))
         If +pHttp < 400 Set pHttp = 500
@@ -246,20 +243,6 @@ ClassMethod SourceRefusal(Output pHttpStatus As %Integer, Output pFault As %Dyna
     Quit ..ViolationRefusal(##class(OcuPilot.Api.UserCopyError).#SOURCE, "CopyFrom", ##class(OcuPilot.Api.UserCopyError).#REASONSOURCE, .pHttpStatus, .pFault)
 }
 
-/// <p>One 422 validation envelope naming <var>pField</var> with <var>pCode</var>; nothing is logged.</p>
-ClassMethod ViolationRefusal(pCode As %String, pField As %String, pReason As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
-{
-    Set tViolation = {}
-    Do tViolation.%Set("field", pField, "string")
-    Do tViolation.%Set("code", pCode, "string")
-    Do tViolation.%Set("reason", pReason, "string")
-    Set tViolations = []
-    Do tViolations.%Push(tViolation)
-    Set tDetail = {}
-    Do tDetail.%Set("violations", tViolations)
-    Quit ..Refuse(422, ##class(OcuPilot.Api.Error).#VALIDATIONFAILED, pCode, pReason, .pHttpStatus, .pFault, tDetail)
-}
-
 /// <p>Map a refused vendor copy to its own answer (<class>OcuPilot.Port.UserCopyPort</class> class
 /// description). A code the port does not name is a logged 500 through <method>Fail</method>, which is given
 /// the copy's body <var>pBody</var> so the logged text is screened for the password (AD-35).</p>
@@ -269,14 +252,14 @@ ClassMethod MapVendorRefusal(pVendorSC As %Status, pFrom As %String, pName As %S
     If tCodes [ (",837,") Quit ..ViolationRefusal(##class(OcuPilot.Api.Error).#USERNAMETAKEN, "Name", ##class(OcuPilot.Api.Error).#REASONUSERNAMETAKEN, .pHttpStatus, .pFault)
     If tCodes [ (",838,") Quit ..SourceRefusal(.pHttpStatus, .pFault)
     If (tCodes [ (",845,")) || (tCodes [ (",958,")) Quit ..PolicyRefusal(##class(OcuPilot.Api.Error).#REASONUSERPASSWORDPOLICY, .pHttpStatus, .pFault)
-    Quit ..Fail(..#USEREndpoint, 500, pVendorSC, .pHttpStatus, .pFault, "", pBody)
+    Quit ..Fail(..#USERENDPOINT, 500, pVendorSC, .pHttpStatus, .pFault, "", pBody)
 }
 
 /// <p><method>Invoke</method>'s copy as a script (AD-59): the vendor call with the password shown as
 /// <code>&lt;Password&gt;</code>. Every other request is the admin port's script.</p>
 ClassMethod Snippet(pEndpoint As %String, pType As %String, ByRef pQuery, pBody As %DynamicAbstractObject = "", pContext As %DynamicObject = "") As %DynamicArray
 {
-    If (pEndpoint '= ..#USEREndpoint) || (pType '= ..#COPYTYPE) Quit ##super(pEndpoint, pType, .pQuery, pBody, pContext)
+    If (pEndpoint '= ..#USERENDPOINT) || (pType '= ..#COPYTYPE) Quit ##super(pEndpoint, pType, .pQuery, pBody, pContext)
     Set tFrom = ""
     Set tFull = ""
     If $IsObject(pBody) {
@@ -292,7 +275,7 @@ ClassMethod Snippet(pEndpoint As %String, pType As %String, ByRef pQuery, pBody 
 /// <p>The script step kind of <method>Snippet</method>'s copy: <code>objectscript</code>.</p>
 ClassMethod SnippetForm(pEndpoint As %String, pType As %String) As %String
 {
-    If (pEndpoint = ..#USEREndpoint) && (pType = ..#COPYTYPE) Quit "objectscript"
+    If (pEndpoint = ..#USERENDPOINT) && (pType = ..#COPYTYPE) Quit "objectscript"
     Quit ##super(pEndpoint, pType)
 }
 

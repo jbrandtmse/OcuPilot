@@ -7,8 +7,9 @@
 /// database, shows the model its hunk and not the document, and writes and compiles nothing before Confirm; a
 /// routine and an include file are saved and compiled on Confirm; a routine header rename and a text past the
 /// port's bound are refused; a confirmed save is marked, ledgered as <code>ok</code> and stores no compile
-/// line; a second proposal against the same document is refused 409 once the first is confirmed; the save
-/// key governs the agent at the dispatcher and at Confirm; and the provider is shown the contract.</p>
+/// line; a save that leaves the class uncompilable is confirmed and says it did not compile; a second
+/// proposal against the same document is refused 409 once the first is confirmed; the save key governs the
+/// agent at the dispatcher and at Confirm; and the provider is shown the contract.</p>
 /// <p><b>What it needs from the environment:</b> OcuPilot installed in <code>HSCUSTOM</code> and serving over
 /// HTTP as <class>OcuPilot.Test.Http</class>'s account, a <code>USER</code> namespace, and the
 /// <code>ENSLIB</code> database mapped for the <code>Ens</code> package and its routines. It creates and
@@ -176,7 +177,9 @@ Method TestTheMintedProposalShowsTheHunkRequiresTheWriteAndWritesNothing()
     Set tSC = ..Dispatch(..#PROBENAMESPACE, ..#CLASSTOOL, {"Names": (..#ALPHA _ ".cls"), "Edits": [{"Old": "    Set x20 = 20", "New": "    Set x20 = 0"}], "rationale": "zero one line", "expectedImpact": "x20 is zero", "reverse": "set x20 back to 20"}, .tContent, .tIsError, .tProposal)
     Do $$$AssertTrue($$$ISOK(tSC) && 'tIsError && $IsObject($Get(tProposal)), "the edit is minted: " _ $Extract($Get(tContent), 1, 300))
     If '$IsObject($Get(tProposal)) Quit
+    Do $$$AssertEquals(tProposal.changed.%Size(), 1, "the proposal carries one changed row")
     Set tRow = tProposal.changed.%Get(0)
+    Do $$$AssertEquals(tRow.field, "Text", "for the Text field")
     Do $$$AssertEquals(tRow.kind _ " " _ tRow.line, "lines 22", "the row is a lines row from three lines above the change at 25")
     Do $$$AssertTrue((tRow.before [ "Set x20 = 20") && (tRow.after [ "Set x20 = 0") && (tRow.before [ "Set x17 = 17") && (tRow.before [ "Set x23 = 23"), "it holds the change and three lines either side")
     Do $$$AssertTrue((tContent '[ "Set x1 = 1") && (tContent '[ "Set x40 = 40") && (tContent '[ ("Class " _ ..#ALPHA)), "the model's result holds neither the document's first line, its last, nor its header")
@@ -247,7 +250,10 @@ Method TestAConfirmedSaveIsMarkedLedgeredAndStoresNoCompileLine()
     Set tSC = ##class(OcuPilot.Test.ExplorerWrite).ConfirmIn(..#PROBENAMESPACE, tProposal, .tResult, .tHttp, .tCode)
     Do $$$AssertStatusOK(tSC, "the confirm writes: " _ $Get(tCode))
     If '$IsObject($Get(tResult)) Quit
+    Do $$$AssertEquals(tResult.state _ " " _ tResult.action, "confirmed updated", "the proposal is confirmed, as an update")
     Do $$$AssertEquals(tResult.auditMarked, 1, "the confirm reports the write marked")
+    Do $$$AssertEquals($Piece(##class(OcuPilot.Test.ExplorerSaveProbe).Source(..#PROBENAMESPACE, ..#ALPHA _ ".cls"), $Char(10), 6), "    Quit 2", "the source holds the new text")
+    Do $$$AssertEquals(tResult.output.errors, 0, "the compile reports no error")
     Do $$$AssertTrue(tResult.output.lines.%ToJSON() [ ("Compiling class " _ ..#ALPHA), "and the screen's answer carries the compile's lines")
     Do ##class(OcuPilot.Kernel.State.Propose).GuardedByKey(tProposal.proposalId, .tFound, .tValues)
     Set tSC = ##class(OcuPilot.Kernel.State.Ledger).GuardedIdsForWindow($Username, "", $Get(tValues("turnKey")), 100, .tIds, .tProblem)
@@ -265,6 +271,21 @@ Method TestAConfirmedSaveIsMarkedLedgeredAndStoresNoCompileLine()
     Set tStored = ##class(OcuPilot.Test.ExplorerWrite).StoredText(tProposal.proposalId, .tLedgerRows)
     Do $$$AssertTrue(tLedgerRows > 0, "the turn's ledger rows are read: " _ tLedgerRows)
     Do $$$AssertTrue((tStored '[ "Compilation") && (tStored '[ "Compiling") && (tStored '[ "qualifiers"), "and the stored proposal and the ledger rows hold no compile line: " _ $Extract(tStored, 1, 300))
+}
+
+/// <p>A save that leaves the class uncompilable is confirmed: the instance holds the new text and the output
+/// says the compile reported an error.</p>
+Method TestTheSavedButNotCompiledIsSaid()
+{
+    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "MakeClass", ..#PROBENAMESPACE, ..#ALPHA), "a probe class is saved")
+    Set tSC = ..Dispatch(..#PROBENAMESPACE, ..#CLASSTOOL, ..EditOf("(1"), .tContent, .tIsError, .tProposal)
+    If '$IsObject($Get(tProposal)) || tIsError Do $$$AssertTrue(0, "the edit is minted: " _ $Extract($Get(tContent), 1, 300)) Quit
+    Set tSC = ##class(OcuPilot.Test.ExplorerWrite).ConfirmIn(..#PROBENAMESPACE, tProposal, .tResult, .tHttp, .tCode)
+    Do $$$AssertStatusOK(tSC, "the confirm writes: " _ $Get(tCode))
+    If '$IsObject($Get(tResult)) Quit
+    Do $$$AssertEquals(tResult.state, "confirmed", "the proposal is confirmed")
+    Do $$$AssertEquals($Select($IsObject(tResult.%Get("output")): tResult.output.%GetTypeOf("errors") _ ":" _ tResult.output.errors, 1: "none"), "boolean:1", "the compile did not compile: " _ tResult.%ToJSON())
+    Do $$$AssertEquals($Piece(##class(OcuPilot.Test.ExplorerSaveProbe).Source(..#PROBENAMESPACE, ..#ALPHA _ ".cls"), $Char(10), 6), "    Quit (1", "the instance holds the new text")
 }
 
 /// <p>A document another writer changed after the mint is refused 409 <code>TARGETCHANGED</code>, the kernel's
@@ -402,6 +423,8 @@ Method TestTheProviderIsShownTheEditsContract()
         Do $$$AssertEquals(tSchema.required.%ToJSON() _ " " _ tSchema.additionalProperties, "[""Names"",""Edits""] 0", "requires the first two and allows nothing else")
         Set tEdits = tSchema.properties.Edits
         Do $$$AssertEquals(tEdits.type _ " " _ tEdits.minItems _ " " _ tEdits.maxItems _ " " _ tEdits.items.type, "array 1 20 object", "Edits is one to twenty objects")
+        Do $$$AssertEquals(tEdits.%GetTypeOf("maxItems"), "number", "whose limit is a JSON number")
+        Do $$$AssertTrue(tEdits.description [ "One to 20 exact replacements", "and whose description counts the same limit: " _ tEdits.description)
     }
 }
 

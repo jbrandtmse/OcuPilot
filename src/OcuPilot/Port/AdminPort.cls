@@ -125,6 +125,10 @@ Parameter ASYNCLOCATION = "async-result?id=";
 /// 18.7, read on this build). It is synchronous: the endpoint defines no <code>ShouldRunAsync</code>.</p>
 Parameter TYPESUFFIXES = "GET,LIST,INFO,CERTINFO,UPCOMING,HISTORY,VOLUMELIST,OWNERLIST,ACTIVITY,DATAELEMENTLIST";
 
+/// <p>The privileged routine endpoint, whose calls <method>PrivilegedRoutineGuard</method> checks against the
+/// target application's type.</p>
+Parameter PRIVROUTINEENDPOINT = "Security.PrivilegedRoutine";
+
 /// <p>The <b>mutating</b> <code>&lt;endpoint&gt;/&lt;type&gt;</code> pairs <method>Invoke</method>
 /// accepts, each type resolved through that endpoint's own <code>TYPE&lt;suffix&gt;</code>
 /// parameter exactly as <parameter>TYPESUFFIXES</parameter> is. Listed apart from the reads
@@ -171,6 +175,12 @@ Parameter TYPESUFFIXES = "GET,LIST,INFO,CERTINFO,UPCOMING,HISTORY,VOLUMELIST,OWN
 /// listed in <parameter>BODYLESSTYPES</parameter> under its own endpoint too. The
 /// <code>:159-163</code> note that <code>DELETE</code> is deliberately absent is scoped to
 /// <code>Process</code>, whose delete is its terminate.</p>
+/// <p>The two <code>WebApp.PctClassAccess</code> pairs are issued through
+/// <class>OcuPilot.Port.PctAccessPort</class>, which splits an entry's id into the <code>name</code>,
+/// <code>allowType</code> and <code>class</code> query parameters. <code>PUT</code> reads a body carrying
+/// <code>AllowAccess</code> and answered 201 for a new entry; <code>DELETE</code> reads no body (it is in
+/// <parameter>BODYLESSTYPES</parameter>) and answered 200. Both raise the vendor's
+/// <code>ApplicationChange</code> audit event. Read on this build.</p>
 /// <p><code>RESUME</code> is <code>Task.CRUD</code>'s bodyless resume and <code>Process</code>'s
 /// own (AD-51, Stories 5.11 and 5.12), and <code>SUSPEND</code> is <code>Process</code>'s
 /// suspend. Each vendor <code>NeedsRequestBody()</code> excludes them, each
@@ -467,8 +477,6 @@ Parameter TYPESUFFIXES = "GET,LIST,INFO,CERTINFO,UPCOMING,HISTORY,VOLUMELIST,OWN
 /// Story 18.28's, issued through the same port. They read no body either: a column <code>GRANT</code> takes the
 /// standard query and a <code>column</code>, its <code>REVOKE</code> an <code>asGrantor</code>, and an admin
 /// <code>GRANT</code> or <code>REVOKE</code> a <code>privilege</code> in place of the object, type and action.</p>
-Parameter PRIVROUTINEENDPOINT = "Security.PrivilegedRoutine";
-
 Parameter MUTATINGTYPES = "WebApp.App/PUT,WebApp.PctClassAccess/PUT,WebApp.PctClassAccess/DELETE,Security.User/PUT,Security.Audit.Enabled/PUT,Task.CRUD/RESUME,Process/SUSPEND,Process/RESUME,Security.User/POST,Security.Role/PUT,Security.Role/DELETE,Security.Resource/PUT,Security.Resource/DELETE,Security.X509Credential/POST,Security.X509Credential/PUT,Security.X509Credential/DELETE,Wallet.Secret/PUT,Device.Standard/PUT,Device.Standard/DELETE,WebApp.App/DELETE,Security.OAuth2.Client.ClientConfiguration/DELETE,Security.OAuth2.ServerClients/DELETE,Security.User/DELETE,Security.User/CHANGEPWD,Security.User/COPY,Task.CRUD/RUN,Task.CRUD/SUSPEND,Task.CRUD/DELETE,Process/TERMINATE,Security.Audit.Event/PUT,Security.Audit.Event/DELETE,Security.Audit.Event/CLEARCOUNT,Security.SSLConfig/PUT,Security.SSLConfig/DELETE,Wallet.Secret/DELETE,Task.CRUD/POST,Task.CRUD/PUT,Security.Service/PUT,Security.LDAP/PUT,Security.OAuth2.Server/REVOKE,Security.Audit.Record/COPY,Security.Audit.Record/PURGE,Security.OAuth2.Client.ServerDefinition/POST,Security.OAuth2.Client.ServerDefinition/PUT,Security.OAuth2.Client.ServerDefinition/DELETE,Security.OAuth2.Client.ServerDefinition/TOKEN,Security.OAuth2.Client.ServerDefinition/REFRESHJWKS,Security.OAuth2.Client.ClientConfiguration/PUT,Security.OAuth2.Client.ClientConfiguration/CHANGESECRET,Security.OAuth2.Client.ClientConfiguration/ROTATEKEYS,Security.OAuth2.Client.ClientConfiguration/REGISTERCLIENT,Security.OAuth2.ResourceServer/PUT,Security.OAuth2.ResourceServer/CHANGESECRET,Security.OAuth2.ResourceServer/DELETE,Security.OAuth2.ResourceServer/ADDMAPPING,Security.OAuth2.ResourceServer/REMOVEMAPPING,Security.OAuth2.ResourceServerMapping/PUT,Security.OAuth2.ResourceServerMapping/DELETE,Security.OAuth2.Server/PUT,Security.OAuth2.Server/DELETE,Security.OAuth2.Server/CHANGEPWD,Security.OAuth2.Server/ROTATEKEYS,Security.OAuth2.ServerClients/POST,Security.OAuth2.ServerClients/PUT,Security.OAuth2.ServerClients/SECRET,Security.OAuth2.ServerClients/REFRESHJWKS,Namespace.Namespace/PUT,Namespace.Namespace/DELETE,WebSession/DELETE,AsyncResult/CANCEL,AsyncResult/PAUSE,AsyncResult/RESUME,BackgroundTask/CANCEL,BackgroundTask/PAUSE,BackgroundTask/RESUME,Namespace.GlobalMappings/PUT,Namespace.GlobalMappings/DELETE,Namespace.RoutineMappings/PUT,Namespace.RoutineMappings/DELETE,Namespace.PackageMappings/PUT,Namespace.PackageMappings/DELETE,Namespace.Namespace/MAPPINGS,Process/BROADCAST,Database.SysCRUD/POST,Database.SysCRUD/PUT,Database.SysCRUD/DELETE,Database.ConfigCRUD/PUT,Database.ConfigCRUD/DELETE,Database.Actions/MOUNT,Database.Actions/DISMOUNT,Database.Actions/TRUNCATE,Database.Actions/COMPACT,Database.Actions/DEFRAGMENT,Database.Actions/EXPANDVOL,Database.Actions/MODIFYSIZE,Database.Actions/INTEGRITYCHECK,TaskTransfer/EXPORT,TaskTransfer/IMPORT,LanguageServer/START,LanguageServer/STOP,LanguageServer/PUT,LanguageServer/DELETE,Task.Manager/SUSPEND,Task.Manager/RESUME,Task.Manager/RUN,Lock/REMOVE,Lock/REMOVEOWNER,Lock/DELETE,Security.LDAP/CHANGEPWD,Security.LDAP/DELETE,Namespace.Namespace/INTEROP,Journal.Settings/SWITCHFILE,Journal.Settings/SWITCHDIR,Journal.File/INTEGRITYCHECK,Journal.Settings/PUT,License.Key/PUT,License.Server/PUT,License.Server/DELETE,ECP.DataServer/PUT,ECP.DataServer/DELETE,ECP.DataServer/SERVERACTION,ECP.Settings/PUT,ECP.AppServerSSLConnection/AUTHORIZE,ECP.AppServerSSLConnection/REJECT,ECP.AppServerSSLConnection/DELETE,Security.Encryption.File/POST,Security.Encryption.File/ACTIVATE,Security.Encryption.Key/DEACTIVATE,Security.Encryption.AdminInFile/POST,Security.Encryption.AdminInFile/DELETE,Security.Encryption.KeyInFile/POST,Security.Encryption.KeyInFile/DELETE,Security.Encryption.Settings/PUT,Security.WebAuth/PUT,Security.WebAuth/CHANGESMTPPWD,Security.Superserver/PUT,Security.Superserver/DELETE,Security.MFT/PUT,Security.MFT/DELETE,Security.MFT/REVOKE,Security.SQLPrivilege.Standard/GRANT,Security.SQLPrivilege.Standard/REVOKE,Security.SQLPrivilege.Column/GRANT,Security.SQLPrivilege.Column/REVOKE,Security.SQLPrivilege.Admin/GRANT,Security.SQLPrivilege.Admin/REVOKE";
 
 /// <p>The <parameter>MUTATINGTYPES</parameter> entries the vendor declares need no request body,
@@ -1968,7 +1976,8 @@ ClassMethod PrivilegedRoutineGuard(pType As %String, pName As %String, Output pH
     Set tSC = ..KeptType(pName, .tKept)
     If $$$ISERR(tSC) Quit tSC
     ; Application type bit 4 is the privileged routine type; a type without it is a different application.
-    If (tKept = "") || ((+tKept \ 4) # 2) Quit $$$OK
+    Set tIsRoutineApp = (+tKept \ 4) # 2
+    If (tKept = "") || tIsRoutineApp Quit $$$OK
     If pType = "GET" Quit ..Refuse(404, ##class(OcuPilot.Api.Error).#NOTFOUND, ##class(OcuPilot.Api.PctAccessError).#PRIVROUTINETYPE, ##class(OcuPilot.Api.PctAccessError).#REASONPRIVROUTINETYPE, .pHttpStatus, .pFault)
     Quit ..Refuse(409, ##class(OcuPilot.Api.Error).#CONFLICT, ##class(OcuPilot.Api.PctAccessError).#PRIVROUTINETYPE, ##class(OcuPilot.Api.PctAccessError).#REASONPRIVROUTINETYPE, .pHttpStatus, .pFault)
 }
@@ -3927,15 +3936,22 @@ ClassMethod PasswordGuard(pUser As %String, pPassword As %String, Output pHttpSt
 {
     Set tReason = ""
     If ##class(OcuPilot.Kernel.PasswordPolicy).Verdict(pPassword, pUser, .tReason) Quit $$$OK
+    Quit ..ViolationRefusal(##class(OcuPilot.Api.Error).#USERPASSWORDPOLICY, "Password", tReason, .pHttpStatus, .pFault)
+}
+
+/// <p>One 422 validation envelope naming <var>pField</var> with <var>pCode</var> and <var>pReason</var>, as
+/// that field's one violation (AD-39); nothing is logged.</p>
+ClassMethod ViolationRefusal(pCode As %String, pField As %String, pReason As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
     Set tViolation = {}
-    Do tViolation.%Set("field", "Password", "string")
-    Do tViolation.%Set("code", ##class(OcuPilot.Api.Error).#USERPASSWORDPOLICY, "string")
-    Do tViolation.%Set("reason", tReason, "string")
+    Do tViolation.%Set("field", pField, "string")
+    Do tViolation.%Set("code", pCode, "string")
+    Do tViolation.%Set("reason", pReason, "string")
     Set tViolations = []
     Do tViolations.%Push(tViolation)
     Set tDetail = {}
     Do tDetail.%Set("violations", tViolations)
-    Quit ..Refuse(422, ##class(OcuPilot.Api.Error).#VALIDATIONFAILED, ##class(OcuPilot.Api.Error).#USERPASSWORDPOLICY, tReason, .pHttpStatus, .pFault, tDetail)
+    Quit ..Refuse(422, ##class(OcuPilot.Api.Error).#VALIDATIONFAILED, pCode, pReason, .pHttpStatus, .pFault, tDetail)
 }
 
 }

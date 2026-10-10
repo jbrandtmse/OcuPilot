@@ -2,13 +2,36 @@
 title: 'Story 23.6: The Haiku-story cleanup'
 type: 'refactor'
 created: '2026-10-09'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: '056133abec3bb52e78f6a0e334ad22034437ee70'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
   - '{project-root}/_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md'
 warnings: ['multiple-goals', 'oversized']
-deferred: []
+deferred:
+  - summary: >-
+      The user copy's write type is spelled three times: Prohibited.COPYWRITETYPE (new), the tool's WRITETYPE
+      and the port's COPYTYPE, so the kernel's name for it and the two that issue it can drift apart.
+    evidence: |-
+      Prohibited.COPYWRITETYPE = "COPY" is compared with a tool's declared write type in the copy arm of
+      Prohibits; Screen/Tool/UserCopy.WRITETYPE = "COPY" declares it and Port/UserCopyPort.COPYTYPE = "COPY"
+      matches it. Not patched: 18.29-6 names the kernel's constant alone, and tying the other two to it is
+      its own change to a declared tool value.
+    location: >-
+      src/OcuPilot/Screen/Tool/UserCopy.cls (WRITETYPE), src/OcuPilot/Port/UserCopyPort.cls (COPYTYPE)
+    severity: low
+  - summary: >-
+      BackgroundTaskMint and EncryptionKeyFileMint join a composite id and do not pass the superclass's
+      detail.problem through ErrorDeleteMint.ReadableId, so a presence refusal may carry the raw U+0001 that
+      WebAppPctAccessMint no longer does.
+    evidence: |-
+      Both classes call JoinComposite and neither names ReadableId (SuperserverMint, MappingMint and now
+      WebAppPctAccessMint do); Mint.Mint writes "'<id>' is not present" from the composite id. Not run:
+      minting a background-task cancel for an absent id and reading detail.problem would settle it.
+    location: >-
+      src/OcuPilot/Screen/Tool/BackgroundTaskMint.cls, src/OcuPilot/Screen/Tool/EncryptionKeyFileMint.cls
+    severity: medium (unverified)
 ---
 
 <intent-contract>
@@ -129,6 +152,71 @@ deferred: []
 
 ## Review Triage Log
 
+- 20.21-1 fixed: `ExplorerSaveRules.TestAHeaderRenameIsRefused` matches "change the document's name"; the rename mutation reddens it (run 77).
+- 20.21-2 fixed: `ExplorerSave.ConfirmProblem` refuses stored arguments that are not an object ("the proposal's stored arguments could not be read, so the agent does not save it"); `ExplorerCreate.ConfirmProblem` the same, ending "does not create it" (folded, same root cause). Pinned by `ExplorerSaveMintUnit.TestTheConfirmRuleAsksTheStoredNamespace` and `ExplorerCreateRules.TestTheNamesThatAreNeverCreated`, each red first (runs 43, 44).
+- 20.21-3 fixed with 20.21-8: the unused `ExplorerSaveAgent.ClassText` went with its class.
+- 20.21-4 fixed: `proposal-card.ts` `linesRows` and `summaryFields` read as tasked; the unchanged `proposal-card*.spec.ts` stay green.
+- 20.21-5 fixed: `ExplorerSaveMint`'s last step reads "the new text"; `Hunk`'s doc drops `p` and `s`.
+- 20.21-6 fixed: `ExplorerSaveAgentProbe.Wide` states the lines it writes, pLines + 9.
+- 20.21-7 fixed: `ExplorerSave.InputSchema` sets `maxItems` as a number and counts "One to N" from `ExplorerSaveMint.#MAXEDITS`; pinned by `ExplorerSaveMintUnit.TestTheEditsLimitIsAJsonNumberCountedFromTheMint` (type, value and count legs, read from `InputSchema` directly) and `ExplorerSaveFlow.TestTheProviderIsShownTheEditsContract` (the provider list).
+- 20.21-8 fixed: `ExplorerSaveFlow` holds the Text-row, `confirmed updated`, line 6, `errors` 0 and not-compiled legs (15 tests, was 14, 431 lines); `ExplorerSaveAgent` is deleted and its compiled class removed from `ocupilot-ci`.
+- 20.19-1 fixed: the doc of `ExplorerDescriptor.TestTheAreaAdvertisesItsReadsAndWrites` states 28 reads and 15 writes, with no story parentheticals and lines of at most 109 characters.
+- 20.19-2 fixed: `ExplorerSourceRead.Escaped` is public; `ExplorerSourceTestCase` holds `NAMESPACE`, `FAKE`, `Fetch` and `ArmDocument`; `ExplorerSource` and `ExplorerSourceEdges` extend it and call the product `Escaped`.
+- 20.19-3 fixed: `ExplorerSourceRead.View` answers `AtelierPort.#REASONNOSOURCE` for a document with no source; `ExplorerSourceEdges` (live `EnsJob.mac`) and `ExplorerSource` (fake route) assert it, red first (runs 46, 47); an absent class still answers `#REASONNOTFOUND`, asserted in `ExplorerSource.TestAnAbsentClassAndABadNameAreRefused`.
+- 20.19-4 fixed: both `RemoveKeyed()` calls in `ExplorerSourceTurn` are asserted; its mutation reddens it (run 81).
+- 18.29-1 fixed: `UserCreate.ComposePayload` is the seam, `UserCopy` overrides it and its `Perform` is deleted; pinned by `UserCopy`, `UserCreate` and `UserCreateWire`.
+- 18.29-2 fixed: the override's doc says the create rules require the password and its policy and the source check is the copy's own; `MakePrincipals`' doc names three principals and four roles.
+- 18.29-3 fixed: `UserCopyTestCase` (365 lines), `UserCopy` (15 tests, 310 lines) and `UserCopyConfirm` (7 tests, 178 lines); each passes alone and in either order (runs 60, 61, then 86, 87). The two route-path parameters are declared in both concrete classes, not the base: the wire-test rule of `check-objectscript.py` looks for the route literal in the class that carries the status, content-type and body assertions.
+- 18.29-4 fixed: the "(run 78)" sentence is replaced; the Rule 19 note in `Screen/Tool/UserCopy.PrivilegePairs`' doc is deleted.
+- 18.29-5 fixed: `USERENDPOINT` at every reference.
+- 18.29-6 fixed, with one deviation: `AdminPort.ViolationRefusal` is shared by `PasswordGuard` and `UserCopyPort`; `Prohibited.#COPYWRITETYPE` and `#COPYFIELDS` replace the literals, and the tool's `ComposeCreate` reads `#COPYFIELDS`. `check-objectscript.py` refuses a `Screen/Tool` class that names `OcuPilot.Api.UserCopyError` (dependency direction), so the tool's two `"USERCOPY.SOURCE"` literals became one parameter, `SOURCECODE`, pinned equal to `UserCopyError.#SOURCE` in `UserCopy.TestTheCopyToolPinsItsInputSchemaAndSnippetForm`; the screen half, `Area/Permissions/UserCopy`, names the constant.
+- 18.29-7 fixed: `set-password-dialog.ts` imports `USERS_PASSWORD_CHECK_PATH`; the `@if (!copying)` body is indented two spaces and nothing else in the file changed (`git diff -w` is empty).
+- 18.10-1 fixed: `WebAppPctAccessMint.Mint` passes a string `detail.problem` through `ErrorDeleteMint.ReadableId`; pinned by `WebAppPctAccess.TestAPresenceRefusalNamesTheEntryReadably` (an absent delete and a held create), red first (run 48).
+- 18.10-2 fixed: `PRIVROUTINEENDPOINT` has its own doc ahead of `MUTATINGTYPES`' doc block, which gains a paragraph on the two `WebApp.PctClassAccess` pairs.
+- 18.10-3 fixed: the 16 keys carry `/** EXPERIENCE.md:471 */` (15) or `:475` (`pctAccessRefusalSystem`); `test:tools` is green.
+- 18.10-4a declined: DW-2262, routed to 18.31.
+- 18.10-4b fixed: `tIsRoutineApp` names the bit test in `PrivilegedRoutineGuard`.
+- 18.10-4c fixed: the dialog's ids come from a module counter, as its siblings'.
+- 18.10-4d fixed: the tab and the dialog read `STRINGS.webAppPctAccessAdd`, "Add entry", published in `EXPERIENCE.md` row 471 in place (no line added; 1,044 lines before and after). It cannot share `screenPermissionsAddButton`'s value, because `strings.test.mjs` holds each value to one key, so the button reads "Add entry" where it read "Add".
+- 18.10-4e fixed: the two cites read `OcuPilot.Kernel.Proposal.Prohibited.OCUPILOTROUTINEAPP`.
+- 18.10-4f fixed: the class-access tab reads `counts[CLASS_ACCESS_TAB] ?? 0`.
+- 20.20-1 fixed: `SaveSet`'s doc states `pCreate` (no version; 409 `EXPLORER.DOCUMENT.CONFLICT` before the `PUT`) and scopes "a save never creates one" to a save.
+- 20.20-2 fixed: `ExplorerSaveMint.SaveLines` delegates to `AtelierPort.SavedLines`; a new `ExplorerSaveMintUnit.TestTheMintMeasuresLinesAsThePortSavesThem` pins it (run 84).
+- 20.20-3 is Epic 20's own spec correction, not this story's.
+- 20.20-4 declined: three small helpers in three test classes; a shared helper adds a cross-class dependency for little gain.
+- 20.20-5 fixed: `TAKINGROUTINETYPES`' and `Takes`' docs say the rule was measured for `.mac` and `.int` (the 20.20 spec measured that compiling a new `X.mac` replaced a hand-written `X.int`) and is `(inference)` for `bas`, `mvi` and `mvb`; the two create test headers say they run in process; the browser spec's mutation comment names `linesRows` in `proposal-card.ts`, applied once on a rebuilt bundle and reverted.
+- 20.20-6 declined: it changes the stored proposal's shape and needs a 20.20 spec amendment, for no behavior gain.
+
+### 2026-10-09 -- Review pass
+
+- verdicts: 25 findings -- high 0, medium 0, low 22, false 2, maybe-false 1
+- findings:
+  - `[low]` `[patch]` `maxItems` type leg of `ExplorerSaveFlow` is shadowed by the registry's own refusal -- added `ExplorerSaveMintUnit.TestTheEditsLimitIsAJsonNumberCountedFromTheMint`, which reads `InputSchema` directly; mutation line added.
+  - `[low]` `[patch]` The "Add entry" label had no pinning test -- the tab and dialog specs now assert `STRINGS.webAppPctAccessAdd`; mutation line added.
+  - `[low]` `[patch]` The copy port's password guard was not pinned -- `UserCopyRefusals.TestAWeakPasswordIsRefusedBeforeTheVendorIsCalled` (fault port answering an unlisted code, weak password, expects 422 with the policy's reason); mutation line added. The reviewer's suggested reason check on the confirm test was not usable: the confirm answers its own envelope and the policy's reason equals the generic one.
+  - `[low]` `[reject]` Cut tests measure with the code under test -- the spec (20.19-2) tasks calling the product `Escaped`; independent literals remain for the quote legs and the live dispatch leg covers the real reply. Spec-bound.
+  - `[low]` `[patch]` `ExplorerSaveFlow:426` cannot fail alone -- grouped with the first row.
+  - `[low]` `[patch]` `TestTheMintMeasuresLinesAsThePortSavesThem`'s second leg compared the delegate with itself -- deleted; the literal legs carry the check (run 84 red).
+  - `[low]` `[reject]` Two `AssertStatusOK` legs on `ConfirmProblem` only fail on a throw -- the adjacent `could not be read` legs carry the check; deleting harmless legs is not worth a pass.
+  - `[low]` `[patch]` "Add entry" label without a mutation line -- grouped with the second row.
+  - `[low]` `[reject]` Dialog ids from `++dialogCount` have no uniqueness assertion -- the replaced `Math.random` ids had none, and a two-instance DOM test is more than a direct correction.
+  - `[low]` `[patch]` `COPYWRITETYPE` had no mutation line -- demonstrated; line added.
+  - `[low]` `[patch]` `SOURCECODE` equality had no mutation line -- demonstrated; line added.
+  - `[low]` `[patch]` `PasswordGuard` swap in `UserCopyPort.Copy` -- grouped with the third row.
+  - `[low]` `[patch]` Default `ComposePayload` had no mutation line -- demonstrated; line added.
+  - `[low]` `[reject]` The folded `field` `Text` leg cannot separate the old `MergeUpdate` mutation, and the 20.21 spec's mutation names deleted tests -- the leg is the spec's own task (20.21-8), `lines 22` covers the class path, and the 20.21 spec is closed.
+  - `[low]` `[reject]` `ExplorerSaveMint.Mint` still answers `REASONNOTFOUND` when `available` is false -- filed at the spec gate as DW-2256 (`routed owner=range-end-cleanup`); not absorbed.
+  - `[low]` `[reject]` The non-object `ConfirmProblem` refusals cannot be reached through Confirm -- the Code Map and verdict table say so (`ParsedObject` answers `{}`); the fail-closed branch is pinned by direct call. Spec-bound.
+  - `[low]` `[reject]` Intent audit: row 1's "through Confirm" half is not tested at Confirm -- same as the row above.
+  - `[false]` `[reject]` Intent audit: row 2 changes the shared base and the tests stop at `View` -- `View` is the method `Registry.InvokeTool` calls, and the class and routine source tools share the no-source branch.
+  - `[low]` `[patch]` Intent audit: row 8's test asserted only the HTTP status -- both legs now assert `400 TOOL.ARGUMENTS`.
+  - `[maybe-false]` `[defer]` Intent audit: `BackgroundTaskMint` and `EncryptionKeyFileMint` join a composite id and do not pass the superclass's `detail.problem` through `ReadableId` -- in `deferred:` as medium (unverified); a mint of an absent background-task id would settle it.
+  - `[low]` `[patch]` Intent audit: the policy-refused password's changed code and its tests sit at different places -- grouped with the third row.
+  - `[low]` `[patch]` Intent audit: the `Edits` leg is shadowed -- grouped with the first row.
+  - `[low]` `[patch]` Intent audit: the label change has no test -- grouped with the second row.
+  - `[low]` `[reject]` Intent audit: `SOURCECODE` is a third spelling of the source code -- the dependency-direction rule refuses the constant's own class in a tool; the spelling is pinned equal and mutation-checked.
+  - `[false]` `[reject]` Intent audit: a deleted test class is not an existing class that passes -- the verdict table folds 2 of 5 duplicated, 2 partly, 1 unique legs into `ExplorerSaveFlow` (15 tests, green).
+
 ## Design Notes
 
 **Verdicts at `a3455ddb`.** "Overlap" says whether 20.20 (`origin/OCU-1-epic20`) touches those lines.
@@ -242,21 +330,41 @@ Run on slot A with `ocupilot-ci` (52776/1975; directory `/Users/jbrandt/.ocupilo
 
 **Mutations (Rule 19). Name the red test on each line.**
 
-- `mutation:` restore `If '$IsObject(pArgs) Quit $$$OK` in `ExplorerSave.ConfirmProblem` → the non-object leg of `ExplorerSaveMintUnit` goes red. The same mutation in `ExplorerCreate` → `ExplorerCreateRules`.
-- `mutation:` `View` answers `REASONNOTFOUND` → the reason leg of `ExplorerSourceEdges`' live object-only test goes red.
-- `mutation:` `MAXEDITS` 19 → the `Edits` leg of `ExplorerSaveFlow` goes red. Setting `maxItems` as a string → its type leg goes red.
-- `mutation:` the rename refusal reads "…rename the document…" → `ExplorerSaveRules` `TestAHeaderRenameIsRefused` goes red.
-- `mutation:` delete `UserCopy`'s `ComposePayload` override → a named leg of `UserCopy` goes red.
-- `mutation:` drop `EscalationRoles` from `COPYFIELDS` → the admitted leg of `TestACopyPayloadAdmitsItsFourFieldsAlone` goes red.
-- `mutation:` `ViolationRefusal` names field `Pwd` → a named password-refusal leg of `UserCopy` or `PasswordPolicy` goes red.
-- `mutation:` change `USERS_PASSWORD_CHECK_PATH`'s suffix → `set-password-dialog.spec.ts:145` goes red.
-- `mutation:` `RemoveKeyed` answers an error → `ExplorerSourceTurn`'s new assertion goes red.
-- `mutation:` drop the `ReadableId` pass from `WebAppPctAccessMint.Mint` → `WebAppPctAccess` `TestAPresenceRefusalNamesTheEntryReadably` goes red.
-- `mutation:` `AtelierPort.SavedLines` drops its empty last line → `ExplorerSaveMintUnit` or `AtelierPortSave` goes red through the delegate. Name the test.
+- `mutation:` restore `If '$IsObject(pArgs) Quit $$$OK` in `ExplorerSave.ConfirmProblem` → the non-object leg of `ExplorerSaveMintUnit` goes red. The same mutation in `ExplorerCreate` → `ExplorerCreateRules`. Observed on the unchanged product code, before either fix: run 43, `ExplorerSaveMintUnit.TestTheConfirmRuleAsksTheStoredNamespace`, two `AssertTrue` legs, "OcuProbe2021.Alpha.cls with stored arguments that are not an object is refused at the confirm: " and the same for `OcuProbe2021Mac.mac`; run 44, `ExplorerCreateRules.TestTheNamesThatAreNeverCreated`, the same two legs for `OcuProbe2020.New.cls` and `OcuProbe2020Mac.mac`. Both green after the fix (runs 49, 53).
+- `mutation:` `View` answers `REASONNOTFOUND` → the reason leg of `ExplorerSourceEdges`' live object-only test goes red. Observed on the unchanged `View`: run 46, `ExplorerSourceEdges.TestARoutineKeptOnlyAsObjectCodeOnTheInstanceAnswersNotFound`, `AssertEquals: whose reason says the instance keeps no source`; run 47, `ExplorerSource.TestAnObjectOnlyRoutineAnswersNotFound`, the same assertion. Both green after the fix (runs 56, 57).
+- `mutation:` `MAXEDITS` 19 → the `Edits` leg of `ExplorerSaveFlow` goes red. Setting `maxItems` as a string → its type leg goes red. Observed: run 74 (`MAXEDITS` 19), `ExplorerSaveFlow.TestTheProviderIsShownTheEditsContract`, `AssertEquals: Edits is one to twenty objects` and `AssertTrue: and whose description counts the same limit: One to 19 exact replacements, ...`. Run 76 (`"string"`): 13 of 15 red, first `TestTheProviderIsShownTheEditsContract`, `AssertTrue: the provider tool list builds => ERROR #5001: explorer.classes.save input schema.properties.Edits.maxItems is not a whole number`; the registry refuses the schema, so the save tools leave the provider list and the type leg itself is not reached. Both reverted (`cmp` identical); `ExplorerSaveFlow` green after (run 75).
+- `mutation:` the rename refusal reads "…rename the document…" → `ExplorerSaveRules` `TestAHeaderRenameIsRefused` goes red. Observed: run 77, `ExplorerSaveRules.TestAHeaderRenameIsRefused`, `AssertTrue: a header rename names its rule (change the document's name): {"code":"TOOL.ARGUMENTS","detail":{"problem":"the edits rename the document, so the save would not be the document named 'OcuProbe2021.Rules.cls'"}}`. Reverted, `cmp` identical.
+- `mutation:` delete `UserCopy`'s `ComposePayload` override → a named leg of `UserCopy` goes red. Observed (the override renamed so it no longer overrides): run 78, 4 of 15 red, `UserCopy.TestAnAbsentSourceIsRefusedOnCopyFrom`, `AssertEquals: an absent source is 422`, and `TestADirectoryOrDelegatedSourceIsRefusedOnCopyFrom`, `TestTheCopyRouteAnswersOneJsonEnvelope`, `TestTheCopyRouteCreatesTheAccountWithTheSourcesRoles`. Reverted, `cmp` identical.
+- `mutation:` `UserCopy.ComposePayload` records no violation (`Set pViolations = 1` becomes `0`, applied to the throwaway's copy and restored by rsync, `diff -r` identical) → the empty and missing `CopyFrom` legs of `UserCopy.TestAnAbsentSourceIsRefusedOnCopyFrom` go red (run 115: `an empty source is 422`, `a missing source is 422`, each with the `USERCOPY.SOURCE` and `CopyFrom` legs), because the port then answers its own 400; green again at run 116. Added by the lead's Matrix Test Audit: the matrix's empty-`CopyFrom` row had no pinning test.
+- `mutation:` drop `EscalationRoles` from `COPYFIELDS` → the admitted leg of `TestACopyPayloadAdmitsItsFourFieldsAlone` goes red. Observed: run 79, 5 of 15 red, `UserCopy.TestACopyPayloadAdmitsItsFourFieldsAlone`, `AssertEquals: the four fields alone are not refused PROHIBITED.UNCOVEREDFIELD or any other code` and `and the copy is admitted`; also `TestTheComposedPayloadCarriesTheSourcesRolesAndEscalationRoles`, `TestAnAdminPrivilegeAsRoleOrEscalationRoleMakesTheCopyPrivileged`, `TestTheCopyRouteAnswersOneJsonEnvelope` and `TestTheCopyRouteCreatesTheAccountWithTheSourcesRoles`. `UserCopy.cls` (tool) force-recompiled. Reverted, `cmp` identical.
+- `mutation:` `ViolationRefusal` names field `Pwd` → a named password-refusal leg of `UserCopy` or `PasswordPolicy` goes red. Observed: run 80, `PasswordPolicy.TestAPostWithAPatternRefusalIsRefusedBeforeTheVendor` and `TestTheSetPasswordGuardRefusesBeforeTheVendor`, each `AssertEquals: naming the Password field`. The copy route's own password refusal comes from `UserCreateRules`, not this method, so `UserCopy` is not the class that reddens. Reverted, `cmp` identical.
+- `mutation:` change `USERS_PASSWORD_CHECK_PATH`'s suffix → `set-password-dialog.spec.ts:145` goes red. Observed (`password-verify`): `set-password-dialog.spec.ts` > "Story 18.29: a blur asks the instance policy and shows its reason beside the field, and a valid answer clears it", `AssertionError: expected '/api/ocupilot/users/password-verify' to be '/api/ocupilot/users/password-check'`, 1 failed of 6. Reverted, `cmp` identical.
+- `mutation:` `RemoveKeyed` answers an error → `ExplorerSourceTurn`'s new assertion goes red. Observed (an error status added after the delete): run 81, `ExplorerSourceTurn.TestTheClassSourceReachesTheModelFramedAndMasked`, `AssertStatusOK: the probe package is removed => ERROR #5001: removal failed`, and a class-level failure from `OnAfterAllTests`. Reverted, `cmp` identical.
+- `mutation:` drop the `ReadableId` pass from `WebAppPctAccessMint.Mint` → `WebAppPctAccess` `TestAPresenceRefusalNamesTheEntryReadably` goes red. Observed on the unchanged `Mint`, before the fix: run 48, `WebAppPctAccess.TestAPresenceRefusalNamesTheEntryReadably`, four `AssertTrue` legs, "its problem holds no U+0001" and "and names the entry's parts with the breadcrumb", each for the absent delete and the held create. Green after the fix (run 69).
+- `mutation:` `AtelierPort.SavedLines` drops its empty last line → `ExplorerSaveMintUnit` or `AtelierPortSave` goes red through the delegate. Name the test. Observed: run 84, `ExplorerSaveMintUnit.TestTheMintMeasuresLinesAsThePortSavesThem` (added by this pass; no existing mint test reddened), `AssertEquals: a text ending in a line feed saves with an empty last line`; run 82, `AtelierPortSave.TestEachRoutineKindIsSavedByItsHeader` and `TestTheVersionIsSentAsIfNoneMatch` through the port itself. Reverted, `cmp` identical.
+- `mutation:` `ExplorerSave.InputSchema` sets `maxItems` with the `"string"` hint (throwaway copy, restored by rsync, `diff -r` identical) → `ExplorerSaveMintUnit.TestTheEditsLimitIsAJsonNumberCountedFromTheMint` goes red alone (run 130, 1 of 13), with no registry refusal in the way.
+- `mutation:` the `PasswordGuard` call in `UserCopyPort.Copy` replaced by `Set tSC = $$$OK` → `UserCopyRefusals.TestAWeakPasswordIsRefusedBeforeTheVendorIsCalled` goes red alone (run 131, 1 of 9): the fake vendor's unlisted code is then answered 500.
+- `mutation:` `Prohibited.COPYWRITETYPE` reads `"COPYX"` → `UserCopy` goes red (run 132, 6 of 15, including `TestACopyPayloadAdmitsItsFourFieldsAlone`), because the copy arm of `Prohibits` no longer fires.
+- `mutation:` `Screen/Tool/UserCopy.SOURCECODE` reads `"USERCOPY.SOURCEX"` → `UserCopy.TestTheCopyToolPinsItsInputSchemaAndSnippetForm` goes red alone (run 134, 1 of 15).
+- `mutation:` the default `UserCreate.ComposePayload` answers an error status → `UserCreate.TestAPrivilegedRoleIsGrantedAtTheStrongestConfirmationOnBothCallers` and `TestTheScreenAndTheConfirmSendOneBody` go red (run 135, 2 of 9), so `POST /users` through the default is pinned.
+- `mutation:` the tab's and the dialog's Add button read `STRINGS.screenPermissionsAddButton` again (worktree files, restored with `cp`, `cmp` identical) → `web-app-class-access-tab.spec.ts` "labels its Add button with the percent class access key" and `web-app-class-access-dialog.spec.ts` "labels its primary button with the percent class access key" go red (`expected 'Add' to be 'Add entry'`, 2 of 15).
+- `mutation:` (20.20-5) make `linesRows` in `proposal-card.ts` answer `[]` → `agent-code-create.browser-spec.mjs` "a new twelve-line routine starts collapsed under its summary line, ..." goes red. Observed on a rebuilt and redeployed bundle: `AssertionError: the summary counts the added lines: OcuProbe2022Browser.mac: 1 changed field`, 1 failed of 3. Reverted (`cmp` identical), rebuilt, redeployed: 3 of 3 green.
 
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
 
-Planned at `a3455ddb` and halted after planning, as the dispatch asked. All 19 items were verified at that head: 19 confirmed, 0 refuted. Two are partly already fixed: 20.19-1's line wrap, and 20.21-2, which is unreachable through Confirm. Implement waits for 20.20 to merge.
+**Change.** Every item reads fixed in the Review Triage Log except 18.10-4a, 20.20-4 and 20.20-6 (declined, each with its reason) and 20.20-3 (Epic 20's own). The guard, the reason and the readable refusal went test-first (red runs 43, 44, 46, 47, 48). Four things differ from the spec's text: the tool's `"USERCOPY.SOURCE"` literals became one parameter pinned to `UserCopyError.#SOURCE`, because the dependency-direction rule refuses `Screen/Tool` naming that class (18.29-6); the Add button reads "Add entry", because a string value belongs to one key (18.10-4d); the route-path parameters sit in both concrete copy test classes (18.29-3); and `ExplorerSaveMintUnit` gained a mint-delegate test (20.20-2).
+
+**Files.** Product: `Area/Permissions` `UserCreate` (the `ComposePayload` seam) and `UserCopy` (its override, `Perform` removed); `Port` `AdminPort` (shared `ViolationRefusal`, docs, named bit test), `AtelierPort` (docs, `REASONNOSOURCE`), `UserCopyPort`; `Kernel/Proposal/Prohibited` (`COPYWRITETYPE`, `COPYFIELDS`); `Screen/Tool` `ExplorerSave`, `ExplorerCreate`, `ExplorerSaveMint`, `ExplorerSourceRead`, `UserCopy`, `WebAppPctAccessMint`, `WebAppDelete`, `WebAppUpdate`. Tests: `ExplorerSourceTestCase`, `UserCopyTestCase` and `UserCopyConfirm` added; `ExplorerSaveAgent` deleted; fifteen others edited. Client: `proposal-card.ts`, `set-password-dialog.ts`, `user-create-form.page.ts`, `strings.ts`, the class-access tab, dialog and their specs, `web-app-editor.page.ts`, `agent-code-create.browser-spec.mjs`. Other: `scripts/ci-throwaway.sh`, `EXPERIENCE.md` row 471.
+
+**Review.** Two layers reported 25 findings: 22 low, 2 false, 1 maybe-false. Patched: 14 rows, which are 5 changes (a direct `Edits` schema leg, the label assertions in two component specs, a port-level weak-password test, one tautological leg removed, the presence test's code assertion) and 4 more mutation lines. Rejected, each with its reason in the triage log: 10. Deferred: 1 (`BackgroundTaskMint` and `EncryptionKeyFileMint` and `ReadableId`, medium unverified). Follow-up review: not recommended (no high, no two mediums).
+
+**Verification** (`ocupilot-ci`, this tree loaded with 0 errors, one class per call).
+
+- The 25 classes under Verification, 238 tests, 0 failed; after the review patches `ExplorerSaveMintUnit` 13, `UserCopy` 15, `UserCopyConfirm` 7, `UserCopyRefusals` 9, `WebAppPctAccess` 11, `ExplorerSaveFlow` 15 and `SurfaceCoverage` 4, 0 failed (runs 136 to 142). `UserCopy` and `UserCopyConfirm` pass in either order.
+- `check-objectscript.py` 0 problems; `lint-docs.sh` 0 issues; `npm run test:tools` 1904 of 1904; 14 component spec files, 153 tests; `npm run build` green, initial total 3.19 MB (main 2.98 MB, styles 205.47 kB) against the 3,326 kB warning.
+- Browser, on the rebuilt bundle: `users-create`, `users-actions`, `web-applications-class-access` and `agent-code-create`, 17 of 17.
+
+**Residual risks.** The full ObjectScript sweep, the full browser suite and Rule 30's fresh-instance check are the lead's. The Add button's text changed from "Add" to "Add entry".

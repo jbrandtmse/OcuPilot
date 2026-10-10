@@ -668,7 +668,7 @@ export class WebAppEditorPage {
       { key: APPLICATION_ROLES_TAB, label: STRINGS.webAppFormApplicationRoles, count: counts[APPLICATION_ROLES_TAB] ?? 0 },
       { key: MATCHING_ROLES_TAB, label: STRINGS.webAppTabMatchingRoles, count: counts[MATCHING_ROLES_TAB] ?? 0 },
       { key: CORS_TAB, label: STRINGS.webAppTabCors, count: counts[CORS_TAB] ?? 0 },
-      { key: CLASS_ACCESS_TAB, label: STRINGS.webAppPctAccessListLabel, count: 0 },
+      { key: CLASS_ACCESS_TAB, label: STRINGS.webAppPctAccessListLabel, count: counts[CLASS_ACCESS_TAB] ?? 0 },
     ];
   }
 

@@ -93,7 +93,7 @@ Method TestAnEmptyOrNoOpEditIsRefused()
 Method TestAHeaderRenameIsRefused()
 {
     Do $$$AssertStatusOK($ClassMethod(..#PROBE, "MakeClass", ..#PROBENAMESPACE, ..#ALPHA), "a probe class is saved")
-    Do ..Refused(..#PROBENAMESPACE, "explorer.classes.save", {"Names": (..#ALPHA _ ".cls"), "Edits": [{"Old": "Class OcuProbe2021.Rules Extends", "New": "Class OcuProbe2021.Other Extends"}]}, "name", "a header rename")
+    Do ..Refused(..#PROBENAMESPACE, "explorer.classes.save", {"Names": (..#ALPHA _ ".cls"), "Edits": [{"Old": "Class OcuProbe2021.Rules Extends", "New": "Class OcuProbe2021.Other Extends"}]}, "change the document's name", "a header rename")
 }
 
 /// <p>Mutation (Rule 19): <parameter>OcuPilot.Screen.Tool.ExplorerSaveMint</parameter> step 4's strip check

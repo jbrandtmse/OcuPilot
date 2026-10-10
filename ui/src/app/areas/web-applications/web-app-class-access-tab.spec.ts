@@ -79,6 +79,12 @@ describe('the percent class access editor tab (Story 18.10)', () => {
     expect(host.querySelectorAll('tbody tr').length).toBe(2);
   });
 
+  it('labels its Add button with the percent class access key', async () => {
+    const { fixture, host } = mount({ kind: 'ok', status: 200, body: { fields: [], rows: ROWS, truncated: false, banner: '', bannerRequires: '' } });
+    await settle(fixture);
+    expect(host.querySelector('.ocu-pct-access-add')?.textContent?.trim()).toBe(STRINGS.webAppPctAccessAdd);
+  });
+
   it('marks a system entry\'s Delete aria-disabled with the rule\'s sentence, and leaves another enabled', async () => {
     const { fixture, host } = mount({ kind: 'ok', status: 200, body: { fields: [], rows: ROWS, truncated: false, banner: '', bannerRequires: '' } });
     await settle(fixture);

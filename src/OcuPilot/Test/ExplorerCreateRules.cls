@@ -3,9 +3,9 @@
 /// refusal answers its code and sentence, and adds no proposal. A name the namespace holds, in any case or
 /// through its other kind, is refused at the mint; a free name beside it is proposed; and Confirm's own
 /// refusal (<method>ConfirmProblem</method>) refuses what the mint would.</p>
-/// <p><b>What it needs from the environment:</b> OcuPilot installed in <code>HSCUSTOM</code> and serving over HTTP,
-/// a <code>USER</code> namespace whose routines database the suite account can write, and the <code>ENSLIB</code>
-/// database mapped for the <code>Ens</code> package. It creates and removes the documents
+/// <p><b>What it needs from the environment:</b> OcuPilot installed in <code>HSCUSTOM</code>, a <code>USER</code>
+/// namespace whose routines database the running account can write, and the <code>ENSLIB</code> database mapped for
+/// the <code>Ens</code> package. It runs in process and opens no HTTP request. It creates and removes the documents
 /// <class>OcuPilot.Test.ExplorerCreateProbe</class> names, and snapshots the stored governance policy around each
 /// test.</p>
 Class OcuPilot.Test.ExplorerCreateRules Extends %UnitTest.TestCase
@@ -96,6 +96,12 @@ Method TestTheNamesThatAreNeverCreated()
     Do ..Refused(..#PROBENAMESPACE, ..#CLASSTOOL, "OcuProbe2020Bare.cls", $ClassMethod(..#PROBE, "NewClassText", "OcuProbe2020Bare"), "TOOL.ARGUMENTS", "with a package")
     Set tSC = ##class(OcuPilot.Screen.Tool.ExplorerClassCreate).ConfirmProblem("%Probe2020.New.cls", {"Namespace": "USER"}, .tProblem)
     Do $$$AssertTrue($$$ISOK(tSC) && (tProblem [ "holds %"), "Confirm refuses a name the mint would refuse: " _ $Get(tProblem))
+    For tCase = $ListBuild("OcuPilot.Screen.Tool.ExplorerClassCreate", "OcuProbe2020.New.cls"), $ListBuild("OcuPilot.Screen.Tool.ExplorerRoutineCreate", "OcuProbe2020Mac.mac") {
+        Set tProblem = ""
+        Set tSC = $ClassMethod($List(tCase, 1), "ConfirmProblem", $List(tCase, 2), "", .tProblem)
+        Do $$$AssertStatusOK(tSC, $List(tCase, 2) _ " with stored arguments that are not an object answers")
+        Do $$$AssertTrue(tProblem [ "could not be read", $List(tCase, 2) _ " with stored arguments that are not an object is refused at the confirm: " _ tProblem)
+    }
 }
 
 /// <p>A name that is not one new document of the tool's kind is refused: a routine named to the Classes tool, a

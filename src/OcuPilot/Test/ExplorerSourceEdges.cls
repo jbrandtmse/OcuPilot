@@ -16,10 +16,8 @@
 /// <code>OcuProbe193Inc.inc</code> and <code>OcuProbe193Int.int</code> in <code>USER</code> and removes them
 /// before and after each method. The fake-route legs run in the test's own namespace: a canned route is a
 /// method of <class>OcuPilot.Test.AtelierPortFixture</class>, which <code>USER</code> does not hold.</p>
-Class OcuPilot.Test.ExplorerSourceEdges Extends %UnitTest.TestCase
+Class OcuPilot.Test.ExplorerSourceEdges Extends OcuPilot.Test.ExplorerSourceTestCase
 {
-
-Parameter NAMESPACE = "USER";
 
 Parameter PROBEPACKAGE = "OcuProbe193";
 
@@ -30,8 +28,6 @@ Parameter ROUTINETOOL = "OcuPilot.Screen.Tool.ExplorerRoutineSource";
 Parameter CLASSFIXTURE = "OcuPilot.Test.ExplorerClassSourceOnFixture";
 
 Parameter PROBE = "OcuPilot.Test.ExplorerSaveProbe";
-
-Parameter FAKE = "OcuPilot.Test.AtelierPortFixture";
 
 Parameter REGISTRY = "OcuPilot.Screen.Tool.Registry";
 
@@ -61,51 +57,10 @@ ClassMethod Reset()
     Do $ClassMethod(..#DISPATCH, "Reset")
 }
 
-/// <p>One call of the source read <var>pTool</var> on <var>pName</var> in <var>pNamespace</var>: the
-/// status, the answer and, for a refusal, the HTTP status and the wire fault.</p>
-ClassMethod Fetch(pTool As %String, pName As %String, pNamespace As %String = {..#NAMESPACE}, Output pResult As %DynamicObject, Output pHttp As %Integer, Output pFault As %DynamicObject) As %Status
-{
-    Do ##class(OcuPilot.Kernel.Scope).Set(pNamespace)
-    Set tArgs = {}
-    Do tArgs.%Set("name", pName, "string")
-    Set tSC = $ClassMethod(pTool, "View", "", tArgs, 0, .pResult, .pHttp, .pFault)
-    Do ##class(OcuPilot.Kernel.Scope).Clear()
-    Quit tSC
-}
-
-/// <p>The JSON string length of <var>pText</var>, quotes excluded, measured as the tool measures it:
-/// by serializing the text as a pushed string.</p>
-ClassMethod Escaped(pText As %String) As %Integer
-{
-    Set tOne = []
-    Do tOne.%Push(pText, "string")
-    Quit $Length(tOne.%ToJSON()) - 4
-}
-
 /// <p>The fault code of <var>pFault</var>, or <code>""</code> when it is not an object.</p>
 ClassMethod CodeOf(pFault As %DynamicObject) As %String
 {
     Quit $Select($IsObject(pFault): pFault.%Get("code"), 1: "")
-}
-
-/// <p>An index answer and a document answer for one class <var>pName</var> whose text is
-/// <var>pLines</var>, armed on the fake routes in the test's own namespace. A non-empty
-/// <var>pIndexStatus</var> is the status the index entry carries.</p>
-ClassMethod ArmDocument(pName As %String, pLines As %DynamicArray, pIndexStatus As %String = "")
-{
-    Set tEntry = {"name": "", "db": "USER", "ts": "2026-10-08 10:00:00", "upd": false, "cat": "CLS", "gen": false, "others": [], "status": "", "content": {}}
-    Do tEntry.%Set("name", pName, "string")
-    Do tEntry.%Set("status", pIndexStatus, "string")
-    Set tIndex = {"status": {"errors": [], "summary": ""}, "console": [], "result": {"content": []}}
-    Do tIndex.%Get("result").%Get("content").%Push(tEntry)
-    Set tDocument = {"status": {"errors": [], "summary": ""}, "console": [], "result": {"name": "", "db": "USER", "ts": "2026-10-08 10:00:00", "upd": false, "cat": "CLS", "status": "", "enc": false, "flags": 0, "content": []}}
-    Do tDocument.%Get("result").%Set("name", pName, "string")
-    Do tDocument.%Get("result").%Set("content", pLines)
-    Do $ClassMethod(..#FAKE, "UseFakeRoutes")
-    Do $ClassMethod(..#FAKE, "SetVersion", 8)
-    Do $ClassMethod(..#FAKE, "SetResources", "%DB_USER", "%DB_USER", "")
-    Do $ClassMethod(..#FAKE, "Arm", "Index", "200 OK", tIndex.%ToJSON())
-    Do $ClassMethod(..#FAKE, "Arm", "GetDoc", "200 OK", tDocument.%ToJSON())
 }
 
 /// <p>Save routine <var>pName</var> (one of the probe routines) in <parameter>NAMESPACE</parameter>:
@@ -189,7 +144,7 @@ Method TestAOneLineDocumentOverTheCapKeepsItsOneLine()
     Set tCut = tResult.%Get("text")
     Do $$$AssertEquals(tResult.%Get("lines") _ "|" _ tResult.%Get("linesSent") _ "|" _ tResult.%Get("truncated"), "1|1|1", "one line held, one line sent, and the cut is reported")
     Do $$$AssertEquals($Length(tCut), 30000, "the cut keeps the 30,000 quotes that escape to 60,000 characters")
-    Do $$$AssertTrue(..Escaped(tCut) <= ..#LIMIT, "the text escapes to at most 60,000 characters")
+    Do $$$AssertTrue(##class(OcuPilot.Screen.Tool.ExplorerSourceRead).Escaped(tCut) <= ..#LIMIT, "the text escapes to at most 60,000 characters")
     Do $$$AssertEquals(tCut, $Extract(tWide, 1, $Length(tCut)), "the text is a prefix of the line")
 }
 
@@ -211,11 +166,11 @@ Method TestALongRoutineIsCutAtWholeLines()
     Do $$$AssertEquals(tResult.%Get("truncated"), 1, "the cut is reported")
     Do $$$AssertTrue(tSent < tTotal, "fewer lines than the routine holds are sent: " _ tSent _ " of " _ tTotal)
     Do $$$AssertEquals(tTotal, 2003, "the routine holds its ROUTINE line, its label line, 2000 rows and its quit")
-    Do $$$AssertTrue(..Escaped(tCut) <= ..#LIMIT, "the text escapes to at most 60,000 characters: " _ ..Escaped(tCut))
+    Do $$$AssertTrue(##class(OcuPilot.Screen.Tool.ExplorerSourceRead).Escaped(tCut) <= ..#LIMIT, "the text escapes to at most 60,000 characters: " _ ##class(OcuPilot.Screen.Tool.ExplorerSourceRead).Escaped(tCut))
     Do $$$AssertEquals($Length(tCut, $Char(10)), tSent, "the text is exactly the lines it reports")
     Set tSource = $ClassMethod(..#PROBE, "Source", ..#NAMESPACE, tName)
     Do $$$AssertEquals(tCut, $Piece(tSource, $Char(10), 1, tSent), "the text is the routine's first lines, verbatim")
-    Do $$$AssertTrue(..Escaped(tCut _ $Char(10) _ $Piece(tSource, $Char(10), tSent + 1)) > ..#LIMIT, "the next line would not have fit")
+    Do $$$AssertTrue(##class(OcuPilot.Screen.Tool.ExplorerSourceRead).Escaped(tCut _ $Char(10) _ $Piece(tSource, $Char(10), tSent + 1)) > ..#LIMIT, "the next line would not have fit")
 }
 
 /// <p>An include file and an intermediate routine read whole through the routine tool, as the viewer's name
@@ -254,6 +209,7 @@ Method TestARoutineKeptOnlyAsObjectCodeOnTheInstanceAnswersNotFound()
     Set tSC = ..Fetch(..#ROUTINETOOL, "EnsJob.mac", $Namespace, .tResult, .tHttp, .tFault)
     Do $$$AssertStatusNotOK(tSC, "the read is an error")
     Do $$$AssertEquals(tHttp _ " " _ ..CodeOf(tFault), "404 PORT.NOTFOUND", "it answers 404 PORT.NOTFOUND")
+    Do $$$AssertEquals($Select($IsObject(tFault): tFault.reason, 1: ""), ##class(OcuPilot.Port.AtelierPort).#REASONNOSOURCE, "whose reason says the instance keeps no source")
     Do $$$AssertEquals(tResult, "", "and carries no result")
 }
 
@@ -404,7 +360,7 @@ Method TestAFullSizeCutReadFitsAReplyAloneAndIsRefusedWhenTheReplyHasLess()
     If $IsObject(tParsed) {
         Do $$$AssertEquals(tParsed.%Get("truncated"), 1, "the cut is reported")
         Do $$$AssertTrue(tParsed.%Get("linesSent") < tParsed.%Get("lines"), "fewer lines than the class holds are sent")
-        Do $$$AssertTrue(..Escaped(tParsed.%Get("text")) <= ..#LIMIT, "the text escapes to at most 60,000 characters")
+        Do $$$AssertTrue(##class(OcuPilot.Screen.Tool.ExplorerSourceRead).Escaped(tParsed.%Get("text")) <= ..#LIMIT, "the text escapes to at most 60,000 characters")
         Set tSource = $ClassMethod(..#PROBE, "Source", ..#NAMESPACE, tName)
         Do $$$AssertEquals(tParsed.%Get("text"), $Piece(tSource, $Char(10), 1, tParsed.%Get("linesSent")), "the text dispatch delivers is the class's first lines, uncut by the per-field bound")
         Do $$$AssertTrue($Length(tParsed.%Get("text")) > 1000, "and longer than the 1,000-character field bound: " _ $Length(tParsed.%Get("text")))

@@ -261,7 +261,7 @@ test('a new class draws its whole text as added lines and says Confirm compiles;
 });
 
 test('a new twelve-line routine starts collapsed under its summary line, Confirm works unopened, and the card passes the DW-1337 invariants', async () => {
-  // Mutation (Rule 19): drop the `proposalSummaryLines` branch for a create's row -> the summary assertion goes red.
+  // Mutation (Rule 19): make `linesRows` in `proposal-card.ts` answer `[]` -> the summary counts fields, not lines, and the summary assertion goes red.
   dropDocuments();
   await requireFreeSlot(config);
   const tag = nextTag();

@@ -11,7 +11,7 @@
 /// <li>the result saves as different lines from the stored text, fits the port's save (a length that cannot
 /// be measured counts as over), and keeps the document's name;</li>
 /// <li>the change's hunk is built and fits one card;</li>
-/// <li>the kernel's mint runs with the stored text, the read version, the compile choice and the hunk.</li>
+/// <li>the kernel's mint runs with the new text, the read version, the compile choice and the hunk.</li>
 /// </ol>
 /// <p>The superclass's <method>OcuPilot.Kernel.Proposal.Mint.Mint</method> then reads the fresh document
 /// and stores the proposal; a person's Save never reaches this class.</p>
@@ -213,13 +213,11 @@ ClassMethod JoinLines(pLines As %DynamicArray) As %String
     Quit tText
 }
 
-/// <p>The lines <var>pText</var> saves as: <method>OcuPilot.Port.AtelierPort.Lines</method>, plus an empty
-/// last line when the text ends with a line feed, as the port's save puts them.</p>
+/// <p>The lines <var>pText</var> saves as: <method>OcuPilot.Port.AtelierPort.SavedLines</method>, which
+/// is the one rule the port's save and create put them by, so the mint measures what is written.</p>
 ClassMethod SaveLines(pText As %String) As %DynamicArray
 {
-    Set tLines = ##class(OcuPilot.Port.AtelierPort).Lines(pText)
-    If $Extract(pText, *) = $Char(10) Do tLines.%Push("", "string")
-    Quit tLines
+    Quit ##class(OcuPilot.Port.AtelierPort).SavedLines(pText)
 }
 
 /// <p>Whether the line lists <var>pA</var> and <var>pB</var> hold the same lines in the same order.</p>
@@ -238,7 +236,7 @@ ClassMethod SameLines(pA As %DynamicArray, pB As %DynamicArray) As %Boolean
 
 /// <p>The one changed-lines row a card shows for the change from <var>pOld</var> to <var>pNew</var>, over
 /// the lines each text saves as (<method>SaveLines</method>): the lines both share at their start
-/// (<var>p</var>) and end (<var>s</var>) are left out, and three lines of context on each side are kept,
+/// and end are left out, and three lines of context on each side are kept,
 /// with <code>line</code> the first line shown (1-based). Each side's lines are followed by a line feed.</p>
 /// <p><b>Caller contract:</b> a pure function of its two texts, asked by the tests as well as the mint.
 /// The row is <code>{field: "Text", kind: "lines", line, before, after}</code>.</p>

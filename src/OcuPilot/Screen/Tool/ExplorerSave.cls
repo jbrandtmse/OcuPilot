@@ -117,7 +117,10 @@ ClassMethod InputSchema(pDescriptor As %String = "") As %DynamicObject
     Set tProperties = tSchema.%Get("properties")
     Do tProperties.%Set(..#IDARGUMENT, {"type": "string", "description": "The one document, named exactly as this instance's own list reports it."})
     Do tSchema.%Get("required").%Push(..#IDARGUMENT)
-    Set tEdits = {"type": "array", "minItems": 1, "maxItems": 20, "description": "One to 20 exact replacements, applied in order to the document's stored text. Each is an object with exactly Old and New. Read the document first with explorer.class.source or explorer.routine.source, and copy each Old from that read."}
+    Set tMax = ##class(OcuPilot.Screen.Tool.ExplorerSaveMint).#MAXEDITS
+    Set tEdits = {"type": "array", "minItems": 1}
+    Do tEdits.%Set("maxItems", tMax, "number")
+    Do tEdits.%Set("description", "One to " _ tMax _ " exact replacements, applied in order to the document's stored text. Each is an object with exactly Old and New. Read the document first with explorer.class.source or explorer.routine.source, and copy each Old from that read.")
     Do tEdits.%Set("items", {"type": "object", "description": "One replacement: Old, the text to replace, which must occur exactly once in the stored text at the point its edit applies, and New, the text that replaces it. Send exactly these two members."})
     Do tProperties.%Set("Edits", tEdits)
     Do tSchema.%Get("required").%Push("Edits")
@@ -248,11 +251,15 @@ ClassMethod AgentProblem(pNamespace As %String, pName As %String, pCreate As %Bo
 
 /// <p>The refusal of the agent's confirmed save, asked again at the write with the stored arguments
 /// <var>pArgs</var> (the namespace the mint read), in <var>pProblem</var>, or <code>""</code>. A name
-/// the mint refused, or a document moved to another database since, refuses here (AD-6, AD-40).</p>
+/// the mint refused, or a document moved to another database since, refuses here, and so do stored
+/// arguments that are not an object (AD-6, AD-40).</p>
 ClassMethod ConfirmProblem(pIdValue As %String, pArgs As %DynamicObject, Output pProblem As %String) As %Status
 {
     Set pProblem = ""
-    If '$IsObject(pArgs) Quit $$$OK
+    If '$IsObject(pArgs) {
+        Set pProblem = "the proposal's stored arguments could not be read, so the agent does not save it"
+        Quit $$$OK
+    }
     Set pProblem = ..AgentProblem(pArgs.%Get("Namespace"), pIdValue)
     Quit $$$OK
 }

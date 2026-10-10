@@ -363,6 +363,42 @@ Method TestAgentCreateAndDeleteMintConfirmAndReadBack()
     Quit
 }
 
+/// <p>A mint refused because the entry is absent (a delete) or already present (a create) names the entry's parts with
+/// the breadcrumb between them, <code>$Char(8250)</code>, and holds no composite separator, <code>$Char(1)</code>.</p>
+/// <p>Mutation (Rule 19): drop the <method>OcuPilot.Screen.Tool.ErrorDeleteMint.ReadableId</method> pass from
+/// <method>OcuPilot.Screen.Tool.WebAppPctAccessMint.Mint</method> -- both legs go red.</p>
+Method TestAPresenceRefusalNamesTheEntryReadably()
+{
+    Set tSC = ##class(OcuPilot.Test.ProposalFixture).SeedTurn($Username, "completed", .tTurn)
+    Do $$$AssertStatusOK(tSC, "a completed turn is seeded")
+    If $$$ISERR(tSC) Quit
+    Set tSeparator = $Char(##class(OcuPilot.Kernel.EntityId).#COMPOSITESEPARATOR)
+    Set tBreadcrumb = $Char(8250)
+    Set tArgs = {"Name": (..#PROBEAPP), "AllowType": "AllowClass", "Class": (..#PROBECLASS)}
+    Set tSC = ..MintFor("OcuPilot.Screen.Tool.WebAppPctAccessDelete", tTurn, tArgs, .tProposal, .tHttp, .tFault)
+    Do $$$AssertStatusNotOK(tSC, "the agent's delete of an entry the application does not hold does not mint")
+    Set tProblem = $Select($IsObject(tFault) && $IsObject(tFault.%Get("detail")): tFault.%Get("detail").%Get("problem"), 1: "")
+    Do $$$AssertEquals(tHttp _ " " _ $Select($IsObject(tFault): tFault.%Get("code"), 1: ""), "400 " _ ##class(OcuPilot.Api.Error).#TOOLARGUMENTS, "the mint refuses it as a tool arguments refusal")
+    Do $$$AssertTrue(tProblem [ "is not present", "and says the entry is not present: " _ tProblem)
+    Do $$$AssertTrue(tProblem '[ tSeparator, "its problem holds no U+0001")
+    Do $$$AssertTrue(tProblem [ tBreadcrumb, "and names the entry's parts with the breadcrumb")
+
+    Kill tQuery
+    Set tQuery("name") = ..ProbeId()
+    Set tSC = ##class(OcuPilot.Port.PctAccessPort).Invoke("WebApp.PctClassAccess", "PUT", .tQuery, {"AllowAccess": true}, .tResult, .tPutHttp, .tPutFault)
+    Do $$$AssertStatusOK(tSC, "the probe entry is created")
+    If $$$ISERR(tSC) Quit
+    Set tArgs = {"Name": (..#PROBEAPP), "AllowType": "AllowClass", "Class": (..#PROBECLASS), "AllowAccess": true}
+    Set tSC = ..MintFor("OcuPilot.Screen.Tool.WebAppPctAccessCreate", tTurn, tArgs, .tProposal, .tHttp, .tFault)
+    Do $$$AssertStatusNotOK(tSC, "the agent's create of an entry the application holds does not mint")
+    Set tProblem = $Select($IsObject(tFault) && $IsObject(tFault.%Get("detail")): tFault.%Get("detail").%Get("problem"), 1: "")
+    Do $$$AssertEquals(tHttp _ " " _ $Select($IsObject(tFault): tFault.%Get("code"), 1: ""), "400 " _ ##class(OcuPilot.Api.Error).#TOOLARGUMENTS, "the mint refuses it as a tool arguments refusal")
+    Do $$$AssertTrue(tProblem [ "is already present", "and says the entry is already present: " _ tProblem)
+    Do $$$AssertTrue(tProblem '[ tSeparator, "its problem holds no U+0001")
+    Do $$$AssertTrue(tProblem [ tBreadcrumb, "and names the entry's parts with the breadcrumb")
+    Quit
+}
+
 /// <p>The read-back verdict of a confirm's answer, or <code>""</code>.</p>
 ClassMethod Verdict(pBody) As %String
 {

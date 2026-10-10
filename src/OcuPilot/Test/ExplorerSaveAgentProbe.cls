@@ -10,8 +10,9 @@ Parameter ROUTINEPREFIX = "OcuProbe2021";
 Parameter ROUTINES = "OcuProbe2021Mac.mac,OcuProbe2021Inc.inc";
 Parameter LOCKGLOBAL = "OcuProbe2021Lock";
 
-/// <p>Write class <var>pName</var> in <var>pNamespace</var> with <var>pLines</var> method lines of the form
-/// <code>Set x = n</code> after its one method, so the class is about <var>pLines</var> lines long.</p>
+/// <p>Write class <var>pName</var> in <var>pNamespace</var> with <var>pLines</var> lines
+/// <code>Set x&lt;n&gt; = &lt;n&gt;</code>, n counted from 1, inside its one method and before
+/// <code>Quit 1</code>, so the class is <var>pLines</var> + 9 lines long.</p>
 ClassMethod Wide(pNamespace As %String, pName As %String, pLines As %Integer) As %Status
 {
     Set tText = "Class " _ pName _ " Extends %RegisteredObject" _ $Char(10) _ "{" _ $Char(10) _ $Char(10)

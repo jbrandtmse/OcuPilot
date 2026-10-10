@@ -10,12 +10,10 @@ import {
   viewChild,
 } from '@angular/core';
 
+import { USERS_PASSWORD_CHECK_PATH } from '../areas/permissions/user-create-form.store';
 import { ApiService } from '../core/api';
 import { STRINGS } from '../core/strings';
 import { Dialog } from './dialog';
-
-/** The password check (Story 18.29): the instance's policy verdict for an account's password. */
-const PASSWORD_CHECK_PATH = '/api/ocupilot/users/password-check';
 
 function textOf(source: unknown, key: string): string {
   if (source === null || typeof source !== 'object') return '';
@@ -185,7 +183,7 @@ export class SetPasswordDialog {
     }
     const seq = ++this.checkSeq;
     void this.api
-      .requestJson<unknown>(PASSWORD_CHECK_PATH, {
+      .requestJson<unknown>(USERS_PASSWORD_CHECK_PATH, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: this.target(), password }),

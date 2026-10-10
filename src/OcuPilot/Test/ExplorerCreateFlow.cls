@@ -4,10 +4,10 @@
 /// nothing; Confirm writes the document, compiles it as the person, and marks and ledgers it; a document that
 /// saved but did not compile is said plainly; a name taken after the mint is refused as a changed target and never
 /// overwritten; and the create key governs the agent at the dispatcher and at Confirm.</p>
-/// <p><b>What it needs from the environment:</b> OcuPilot installed in <code>HSCUSTOM</code> and serving over HTTP,
-/// and a <code>USER</code> namespace whose routines database the suite account can write. It creates and removes the
-/// documents <class>OcuPilot.Test.ExplorerCreateProbe</class> names, and snapshots the stored governance policy
-/// around each test.</p>
+/// <p><b>What it needs from the environment:</b> OcuPilot installed in <code>HSCUSTOM</code> and a <code>USER</code>
+/// namespace whose routines database the running account can write. It runs in process and opens no HTTP request. It
+/// creates and removes the documents <class>OcuPilot.Test.ExplorerCreateProbe</class> names, and snapshots the stored
+/// governance policy around each test.</p>
 Class OcuPilot.Test.ExplorerCreateFlow Extends %UnitTest.TestCase
 {
 

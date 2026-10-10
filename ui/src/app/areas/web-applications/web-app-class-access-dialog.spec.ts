@@ -50,6 +50,11 @@ afterEach(() => {
 });
 
 describe('the percent class access add dialog (Story 18.10)', () => {
+  it('labels its primary button with the percent class access key', async () => {
+    const { host } = await mount({ kind: 'ok', status: 201, body: {} });
+    expect((host.querySelector('.ocu-button-primary') as HTMLButtonElement).textContent?.trim()).toBe(STRINGS.webAppPctAccessAdd);
+  });
+
   it('posts the entry to the route and reports it added', async () => {
     const { fixture, calls, host } = await mount({ kind: 'ok', status: 201, body: { name: '/csp/probe' } });
     let added = 0;
