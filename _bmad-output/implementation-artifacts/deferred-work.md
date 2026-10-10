@@ -10958,3 +10958,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Both call JoinComposite and neither names ReadableId (SuperserverMint, MappingMint and, since 23.6, WebAppPctAccessMint do); Mint.Mint writes the composite id into 'not present'; unverified: mint a background-task cancel for an absent id and read detail.problem
 - 2026-10-10T01:01:44Z status=routed owner=range-end-cleanup by=harvest note=same root cause as 23.6's 18.10-1; not absorbed (dispatch)
 - 2026-10-10T01:48:35Z status=routed owner=range-end-cleanup by=cr note=one shared fault helper for the ReadableId pass (Superserver, Mapping, ErrorDelete, WebAppPctAccess mints) would close this too
+
+### DW-2281: Write.cls's ScreenActionEmptyNames and ScreenActionOptionalNames parse the same SCREENOPTIONAL grammar twice; 20.22's planned unification of the older method was not done
+- source: spec-20-22-production-item-settings.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: Write.cls carried Epic 18's uncommitted 18.30 edits (Rule 11), so 20.22 only appended SCREENEMPTY, ScreenActionNamesIn and ScreenActionEmptyNames
+- 2026-10-10T14:51:35Z status=wontfix-accepted owner=20-22-production-item-settings by=harvest note=reopen_if=a story edits ScreenActionOptionalNames while no other epic has Write.cls in flight; then have it call ScreenActionNamesIn (Rule 31)
