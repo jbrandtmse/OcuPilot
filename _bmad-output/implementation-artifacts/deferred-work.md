@@ -10977,3 +10977,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: cycle-log-epic-20.md (20.22 runner-side sweep shard 22/30, run 189) | severity: low | fix-risk: low | footprint: out-of-footprint
 - evidence: Red at run 189 on ocupilot-b-ci mid-sweep, green alone at once (run 196); also seen green-alone in 20.18's sweep (2026-10-08); not yet seen in CI
 - 2026-10-10T17:33:40Z status=routed owner=23-5-the-range-end-cleanup-part-5 by=lead note=likely a token or session cache the earlier classes warm; make the leg read the refusal after the cache's own expiry or clear it; flake class, Rule 27
+
+### DW-2286: Every agent tool call lists the whole tool registry twice before its gate: Dispatch.AnswerOne's ResolveWire and Governance.Gate.Decide (through Registry.Resolve) each run Registry.ListTools, 0.55 s apiece at 331 tools on a development host, so a call pays about 1.1 s before anything else and the cost grows with every tool
+- source: cycle-log-epic-20.md (DW-2255 diagnosis) | severity: med | fix-risk: med | footprint: out-of-footprint
+- evidence: ocupilot-b-ci at b340de34: Decide 0.576 s, ResolveWire 0.549 s, RequiredPairs 0.001 s, ValidateArguments 0.004 s for security.mftconnections.create; a 71-step dispatch plan 82 s (1.1-1.16 s every step, any tool)
+- 2026-10-10T18:47:04Z status=routed owner=burndown by=lead note=cache the listing per process or per registry generation, invalidated when a tool class compiles; contended with Epic 18 (both add tools); not release-blocking
