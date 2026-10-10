@@ -334,6 +334,8 @@ Rejected:
 
 ## Design Notes
 
+**Named limit (DW-2236, orchestrator ruling 2026-10-10):** on a host where a seeded compact finishes before the screen's Pause arrives, `BackgroundTasksLive`'s live Resume-Pause-Cancel leg sees the ended task's 409 `TASK.BACKGROUND.STATE` and asserts that (the gate passed; a 403 fails); the 200 mapping of Pause, Resume and Cancel is pinned at the port by `BackgroundTaskPortSeam` through a fake vendor task class. Holding the task's lock does not help: a Pause from another process blocks on it for 30 s (measured).
+
 **Governing ADs:** AD-1, AD-3, AD-5, AD-6, AD-7, AD-8, AD-10, AD-11, AD-13, AD-14, AD-15, AD-16, AD-22, AD-24, AD-29, AD-34, AD-36, AD-39, AD-44, AD-51, AD-52, AD-53, AD-54, AD-55, AD-56, AD-58, AD-59, AD-60, AD-62.
 
 **Rulings** (orchestrator, by=merge_gate, 2026-10-09, feature 67e70c72): the split (settings are 20.22's), Q2 A and Q3 on union terms, as the Spec Change Log records. No further security-posture question remains for this story.
