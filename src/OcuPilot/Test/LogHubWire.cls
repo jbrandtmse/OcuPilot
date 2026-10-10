@@ -180,13 +180,16 @@ ClassMethod Source(pAnswer As %DynamicObject, pRoute As %String) As %DynamicObje
 /// after the other, not from one: the merged answer is cut to the newest 200 rows and a read adds
 /// audit entries newer than every event-log row, so a later read counts at most as many event-log
 /// rows as an earlier one, whatever else wrote to the event log before this class ran. A route
-/// read, the tool's view and a second route read therefore show counts that do not rise and newest
-/// events that do not fall.</p>
+/// read, the tool's view and a second route read therefore show newest events that do not fall.
+/// An event-log row written during the reads becomes the newest event and can raise a later count,
+/// so the counts, which must not rise, and the whole newest entry, which must be the route's, are
+/// compared only when both route reads show the same newest event time.</p>
 /// <p>Mutation (Rule 19): drop <code>sources</code> from
 /// <method>OcuPilot.Screen.Tool.Read.View</method> -&gt; this goes red; give the view's event-log
-/// summary a count of 9999 and a newest event in year 9999 -&gt; the two upper-bound legs go red; a
-/// count of 1 and a newest event in 1970 -&gt; the two lower-bound legs go red; leave
-/// <method>OcuPilot.Screen.Timeline.Compose</method>'s counts at 0 -&gt; the two "at least 1" legs go red.</p>
+/// summary a count of 9999, or 50 fewer -&gt; the upper or the lower count bound goes red; change its
+/// newest entry's text -&gt; the whole-entry leg goes red; a newest event in year 9999, or in 1970
+/// -&gt; a time bound goes red; leave <method>OcuPilot.Screen.Timeline.Compose</method>'s counts at
+/// 0 -&gt; the two "at least 1" legs go red.</p>
 Method TestTheRouteAndTheToolAnswerTheSameEntriesAndSources()
 {
     Set tPath = "/api/ocupilot/screens/logs.hub/read?maxRows=200"
@@ -201,15 +204,15 @@ Method TestTheRouteAndTheToolAnswerTheSameEntriesAndSources()
     If '$IsObject($Get(tView)) Quit
     Do $$$AssertTrue($IsObject(tView.%Get("sources")), "the tool's view carries sources")
     If '$IsObject(tView.%Get("sources")) Quit
+    Set tSeeded = ..SeededRow(tRoute)
+    Do $$$AssertTrue(tSeeded '= "", "the route's timeline holds the seeded event")
+    Do $$$AssertEquals(..SeededRow(tView), tSeeded, "and the tool's the same row")
+    Do $$$AssertEquals(..Shown(tView), ..Shown(tRoute), "the same sources are shown")
     Set tSC = ..Fetch(tPath, .tAfterStatus, .tAfterBody)
     Do $$$AssertStatusOK(tSC, "a second route request, taken after the tool's view, completes")
     Do $$$AssertEquals(tAfterStatus, 200, "and answers 200")
     If tAfterStatus '= 200 Quit
     Set tAfter = ##class(%DynamicObject).%FromJSON(tAfterBody)
-    Set tSeeded = ..SeededRow(tRoute)
-    Do $$$AssertTrue(tSeeded '= "", "the route's timeline holds the seeded event")
-    Do $$$AssertEquals(..SeededRow(tView), tSeeded, "and the tool's the same row")
-    Do $$$AssertEquals(..Shown(tView), ..Shown(tRoute), "the same sources are shown")
     Set tRouteEvent = ..Source(tRoute, "logs/eventlog")
     Set tViewEvent = ..Source(tView, "logs/eventlog")
     Set tAfterEvent = ..Source(tAfter, "logs/eventlog")
@@ -217,13 +220,16 @@ Method TestTheRouteAndTheToolAnswerTheSameEntriesAndSources()
     If $IsObject(tRouteEvent) && $IsObject(tViewEvent) && $IsObject(tAfterEvent) {
         Do $$$AssertTrue(tRouteEvent.count >= 1, "the route counts the seeded event")
         Do $$$AssertTrue(tViewEvent.count >= 1, "and so does the tool")
-        Do $$$AssertTrue(tViewEvent.count <= tRouteEvent.count, "the tool, read after the route, counts no more event-log rows than the route did: " _ tViewEvent.count _ " against " _ tRouteEvent.count)
-        Do $$$AssertTrue(tAfterEvent.count <= tViewEvent.count, "and no fewer than a route read taken after it: " _ tViewEvent.count _ " against " _ tAfterEvent.count)
         Set tRouteLast = $Select($IsObject(tRouteEvent.last): tRouteEvent.last.time, 1: "")
         Set tViewLast = $Select($IsObject(tViewEvent.last): tViewEvent.last.time, 1: "")
         Set tAfterLast = $Select($IsObject(tAfterEvent.last): tAfterEvent.last.time, 1: "")
         Do $$$AssertTrue((tRouteLast '= "") && (tViewLast '= "") && '(tRouteLast ] tViewLast), "the tool's newest event is not older than the route's read before it: " _ tViewLast _ " against " _ tRouteLast)
         Do $$$AssertTrue((tViewLast '= "") && (tAfterLast '= "") && '(tViewLast ] tAfterLast), "and not newer than a route read taken after it: " _ tViewLast _ " against " _ tAfterLast)
+        If (tRouteLast '= "") && (tAfterLast = tRouteLast) {
+            Do $$$AssertTrue(tViewEvent.count <= tRouteEvent.count, "the tool, read after the route, counts no more event-log rows than the route did: " _ tViewEvent.count _ " against " _ tRouteEvent.count)
+            Do $$$AssertTrue(tAfterEvent.count <= tViewEvent.count, "and no fewer than a route read taken after it: " _ tViewEvent.count _ " against " _ tAfterEvent.count)
+            Do $$$AssertEquals($Select($IsObject(tViewEvent.last): tViewEvent.last.%ToJSON(), 1: ""), tRouteEvent.last.%ToJSON(), "and its newest event is the route's, whole")
+        }
     }
 }
 
