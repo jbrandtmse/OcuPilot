@@ -29,7 +29,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 09-09-2026 07:49
-last_updated: '10-10-2026 08:26'
+last_updated: '10-10-2026 10:17'
 project: OcuPilot
 project_key: NOKEY
 tracking_system: file-system
@@ -352,7 +352,7 @@ development_status:
   20-19-the-agent-reads-class-and-routine-source: done
   20-20-the-agent-creates-new-classes-and-routines-on-the-person-s-c: done
   20-21-the-agent-saves-edits-to-existing-classes-and-routines: done
-  20-22-production-item-settings: backlog
+  20-22-production-item-settings: ready-for-dev
   epic-20-retrospective: optional
 
   epic-21: backlog
