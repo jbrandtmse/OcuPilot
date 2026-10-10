@@ -10841,3 +10841,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: run 37944323086 browser shard 3/3: ui/browser/proposal-privilege.browser-spec.mjs:270 (b) Waiting failed 5000ms at :291; the same code green locally 3/3 on ocupilot-ci; 18.10 touches only the two routine-application names in Mint/Prohibited
 - 2026-10-09T15:20:57Z status=routed owner=23-5-the-range-end-cleanup-part-5 by=harvest note=size the window from the card's own poll interval plus one re-read, or wait on the card's answered signal
 - 2026-10-09T16:33:26Z status=wontfix-accepted by=adjudication note=host_contention(owner_report_via_orchestrator_2026-10-09:a_large_local_model_under_oMLX_slowed_the_containers);re-run_attempt_2_green;reopen_if=proposal-privilege_(b)_reds_again_on_an_uncontended_host
+
+### DW-2267: Production items draws its Production criterion label and Comment column with systemInfoProduction and userFieldComment, because strings.ts values must be unique
+- source: spec-20-3-production-items.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Descriptor/InteropItemList.cls names both keys; strings.test.mjs 'every value is unique' refused a new key of either value
+- 2026-10-10T03:09:55Z status=wontfix-accepted owner=20-3-production-items by=harvest note=reopen_if=a translation or a wording change needs the Production items label or column to differ from the existing keys
