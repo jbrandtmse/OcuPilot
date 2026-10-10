@@ -1061,7 +1061,7 @@ OcuPilot grows toward classic-portal parity in versioned increments, and every s
 - A stage's scope is the set of catalog rows `extract-stages.md` assigns it. Its acceptance is the contract above plus each row's own backing route or class; anything finer is authored when a row is picked up, not invented in advance, because no source specifies these rows at feature level.
 - Every destructive action a later stage adds is absent from the governance baseline and therefore defaults to disabled (FR-72).
 - The agent grows with each stage rather than after it: a read tool and a confirmed write tool arrive with the screen, from the same descriptor, with no hand-written tool code.
-- A stage may add to the Release 1 prohibited set (FR-18) when it exposes an action that must never be reachable — deleting backups, for instance — and does so in the one place that set is declared, never in a policy file.
+- A stage may add to the Release 1 prohibited set (FR-18) when it exposes an action that must never be reachable — removing a mirror together with its databases, for instance — and does so in the one place that set is declared, never in a policy file. [AMENDED 2026-10-09, Story 21.2 owner decision, Rule 5 tier-1: was "deleting backups"; backup and mirroring writes are confirmed proposals whose destructive keys default to disabled]
 
 ## 6. Cross-Cutting Non-Functional Requirements
 
