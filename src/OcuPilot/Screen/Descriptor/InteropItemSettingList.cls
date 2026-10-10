@@ -62,7 +62,7 @@ XData Declaration
     "sort": {"fields": ["Name", "Target", "Value", "Source"], "default": "Name", "direction": "asc"},
     "paging": "cap",
     "criteria": {
-      "fields": [{"param": "item", "labelKey": "interopItemSettingsCriterionItem", "kind": "text", "maxLength": 352, "hint": "One item, spelled as its Production, two vertical bars and its Name, as interop.items.read answers them."}]
+      "fields": [{"param": "item", "labelKey": "interopItemSettingsCriterionItem", "kind": "text", "maxLength": 352, "hint": "One item, spelled as interop.items.read answers its Production, then two vertical bars and its Name."}]
     }
   },
   "table": {
