@@ -218,6 +218,7 @@ ClassMethod RunAs(pUser As %String, pPlan As %DynamicArray) As %DynamicObject
     Set tOut = {}
     Try {
         Do $System.Event.Clear($Job)
+        Kill ^IRIS.Temp.OcuPilotProbeProgress($Job)
         Set tPlan = pPlan.%ToJSON()
         Job ##class(OcuPilot.Test.MappingWriteGateProbe).Run($Job, pUser, tPlan)::10
         If '$Test {
@@ -226,9 +227,10 @@ ClassMethod RunAs(pUser As %String, pPlan As %DynamicArray) As %DynamicObject
         }
         Set tMessage = $System.Event.WaitMsg("", 180)
         If $ListGet(tMessage, 1) '= 1 {
-            Do tOut.%Set("error", "the probe process signalled nothing within 180 seconds")
+            Do tOut.%Set("error", "the probe process signalled nothing within 180 seconds (last at: " _ $Get(^IRIS.Temp.OcuPilotProbeProgress($Job), "not started") _ ")")
             Quit
         }
+        Kill ^IRIS.Temp.OcuPilotProbeProgress($Job)
         Set tOut = ##class(%DynamicObject).%FromJSON($ListGet(tMessage, 2))
         Set tTasks = tOut.%Get("tasks")
         If $IsObject(tTasks) {
