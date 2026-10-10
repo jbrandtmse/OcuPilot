@@ -161,9 +161,11 @@ Method TestAFileDirectlyInTheManagerDirectoryIsRefused()
 
 /// <p>AC9: a reset is judged by the default it would leave in force. The production holds its own directory and a system
 /// default names the manager directory, a file directly in it, and the served directory: the reset's fresh read and the
-/// port's reset refuse each by the path code, 409; a default that names a safe path resets.</p>
+/// port's reset refuse each by the path code, 409, with PathPort's sentence; a default that names a safe path resets.</p>
 /// <p>Mutation (Rule 19): judge the current value, not the default, in
-/// <method>OcuPilot.Port.InteropPort.ReadSetting</method> -- the three callers' rows go red.</p>
+/// <method>OcuPilot.Port.InteropPort.ReadSetting</method> -- the three callers' rows go red; answer the refusal with
+/// <method>OcuPilot.Port.InteropPort.Conflict</method> there instead of <code>ConflictFor</code> -- the sentence leg goes
+/// red.</p>
 Method TestAResetToAProtectedDefaultIsRefused()
 {
     Set tManager = ..Manager()
@@ -174,6 +176,8 @@ Method TestAResetToAProtectedDefaultIsRefused()
     Set tRow = $ClassMethod(..#CONTROL, "Row", "Host", "ProbeDirectory")
     Do $$$AssertEquals(tRow.Value _ "|" _ tRow.Source _ "|" _ tRow.Default _ "|" _ tRow.DefaultSource, "/tmp/ocupilot-own-dir|production|" _ tManager _ "|systemDefault", "the row reads the production's value over the default")
     Do ..Refused("a reset to the manager directory", "RESET", "Host", "ProbeDirectory", $Char(0), "409 PATH.MANAGERDIR", "409 PATH.MANAGERDIR", "409 PATH.MANAGERDIR")
+    Do $$$AssertEquals($ClassMethod(..#CONTROL, "Act", "reset", "Host", "ProbeDirectory", $Char(0), .tAnswer), "409 PATH.MANAGERDIR", "the person's reset is refused")
+    Do $$$AssertEquals($Select($IsObject($Get(tAnswer)): tAnswer.%Get("reason"), 1: ""), ##class(OcuPilot.Api.Error).ReasonForPath("PATH.MANAGERDIR"), "with PathPort's own sentence, which the list's banner shows")
     Do ..Refused("a reset to a file in it", "RESET", "Host", "ProbeFile", $Char(0), "409 PATH.MANAGER", "409 PATH.MANAGER", "409 PATH.MANAGER")
     Do $ClassMethod(..#PROBE, "RemoveDefaults")
     Do $$$AssertStatusOK($ClassMethod(..#PROBE, "PutDefault", "OcuPilotProbeOp", "Host", "ProbeDirectory", ..Served()), "a system default names the served directory")

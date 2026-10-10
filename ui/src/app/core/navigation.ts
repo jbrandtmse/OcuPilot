@@ -589,9 +589,10 @@ export interface ChangeTarget {
  * `null` is not a fault. It is the "a type no built screen shows" row of this story's matrix: the
  * toast still says what changed, with no action to offer.
  *
- * **A parent-scoped list whose composite id opens with its one criterion is opened on that part**
- * (AD-36, Story 18.14): a mapping list's route id is the namespace it reads, not the mapping, so a
- * change to `[namespace, Name]` opens that namespace's list rather than reading for the joined id.
+ * **A parent-scoped composite list is opened on the leading parts of the id that form its parent
+ * screen's id** (AD-36, Stories 18.14 and 20.22; `routeIdFor`): a mapping list's route id is the
+ * namespace it reads, not the mapping, so a change to `[namespace, Name]` opens that namespace's list
+ * rather than reading for the joined id, and a setting change opens its item's list.
  */
 export function screenForChange(event: {
   readonly type: string;

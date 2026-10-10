@@ -153,7 +153,7 @@ Method TestEachMissingPairIsRefusedByNameThroughThePort()
         For tJ = 1:1:$Length(..#LEGS, ",") {
             Set tLeg = $Piece(..#LEGS, ",", tJ)
             Set tWanted = $List(tExpected, tJ)
-            Do $$$AssertEquals(..LegText(tProbe, tLeg), $Select(tWanted = "": "200  ", 1: "403 AUTH.NOPRIVILEGE " _ tWanted), tUser _ ": " _ tLeg)
+            Do $$$AssertEquals($ClassMethod(..#ITEMGATE, "LegText", tProbe, tLeg), $Select(tWanted = "": "200  ", 1: "403 AUTH.NOPRIVILEGE " _ tWanted), tUser _ ": " _ tLeg)
         }
         Do $$$AssertEquals(..Settings(), tBefore, tUser _ ": the probe operation's stored settings are as they were")
     }
@@ -171,12 +171,12 @@ Method TestThePathRuleNeedsNoPairAndTheVendorRefusesAReadOnlyPrincipal()
     Set tSince = ##class(OcuPilot.Test.AuditEvent).Now()
     Set tExact = ..ProbeAs("OcuP203Exact")
     Do $$$AssertEquals(tExact.%Get("error"), "", "the exact principal's probe ran: " _ tExact.%ToJSON())
-    Do $$$AssertEquals(..LegText(tExact, "served"), "422 PATH.SERVED ", "a served-directory value is refused PATH.SERVED, by the predicates, and not PROTECT")
+    Do $$$AssertEquals($ClassMethod(..#ITEMGATE, "LegText", tExact, "served"), "422 PATH.SERVED ", "a served-directory value is refused PATH.SERVED, by the predicates, and not PROTECT")
     Set tAudit = $ClassMethod(..#CONTROL, "SettingAudited", tSince)
     Do $$$AssertTrue((tAudit [ "setting set by OcuPilot, Host:InitSeconds") && (tAudit [ "setting reset by OcuPilot, Host:InitSeconds"), "the audit call ran as the principal and names the setting: " _ tAudit)
     Do $$$AssertEquals($ClassMethod(..#CONTROL, "Stored", "Host", "ProbeDirectory"), "<none>", "nothing was stored for the served value")
     Set tReadOnly = ..ProbeAs("OcuP203NoWrite", 1)
-    Do $$$AssertEquals(..LegText(tReadOnly, "protect"), "403 PORT.ACCESSDENIED ", "a principal with READ on the database only, past the gate, is refused by the vendor: " _ tReadOnly.%ToJSON())
+    Do $$$AssertEquals($ClassMethod(..#ITEMGATE, "LegText", tReadOnly, "protect"), "403 PORT.ACCESSDENIED ", "a principal with READ on the database only, past the gate, is refused by the vendor: " _ tReadOnly.%ToJSON())
     Do $$$AssertEquals($ClassMethod(..#CONTROL, "Stored", "Host", "InitSeconds"), "<none>", "and nothing was stored")
 }
 
@@ -193,18 +193,18 @@ Method TestEachMissingPairIsRefusedByNameOnTheScreenRoutes()
     Set tRead = tBase _ ..#SCREEN _ "/read?ns=" _ ..#NAMESPACE _ "&maxRows=100&item=" _ $ZConvert($ClassMethod(..#CONTROL, "ItemId"), "O", "URL")
     For tCase = $ListBuild("OcuP203NoPortal", "%Ens_Portal:USE"), $ListBuild("OcuP203NoCfgRead", "%Ens_ProductionConfig:READ"), $ListBuild("OcuP203NoRead", "%DB_USER:READ") {
         Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("GET", tRead, $List(tCase, 1), ..PreparedPassword, .tStatus, .tRaw)
-        Do $$$AssertEquals(tStatus _ " " _ ..FailedPair(tRaw), "403 " _ $List(tCase, 2), $List(tCase, 1) _ ": the list is refused naming the pair: " _ $Get(tRaw))
+        Do $$$AssertEquals(tStatus _ " " _ $ClassMethod(..#ITEMGATE, "FailedPair", tRaw), "403 " _ $List(tCase, 2), $List(tCase, 1) _ ": the list is refused naming the pair: " _ $Get(tRaw))
     }
     Set tBefore = ..Settings()
     For tCase = $ListBuild("OcuP203NoPortal", "%Ens_Portal:USE"), $ListBuild("OcuP203NoCfgRead", "%Ens_ProductionConfig:READ"), $ListBuild("OcuP203NoCfgWrite", "%Ens_ProductionConfig:WRITE"), $ListBuild("OcuP203NoWrite", "%DB_USER:WRITE"), $ListBuild("OcuP203NoRead", "%DB_USER:READ") {
         Set tRequest = {"action": "set", "values": {"Value": "7"}}
         Do tRequest.%Set("id", $ClassMethod(..#CONTROL, "IdOf", "Host", "InitSeconds"), "string")
         Set tStatus = ..Post(..#SCREEN _ "/action", tRequest, $List(tCase, 1), .tRaw)
-        Do $$$AssertEquals(tStatus _ " " _ ..FailedPair(tRaw), "403 " _ $List(tCase, 2), $List(tCase, 1) _ ": Set value is refused naming the pair: " _ $Get(tRaw))
+        Do $$$AssertEquals(tStatus _ " " _ $ClassMethod(..#ITEMGATE, "FailedPair", tRaw), "403 " _ $List(tCase, 2), $List(tCase, 1) _ ": Set value is refused naming the pair: " _ $Get(tRaw))
     }
     Do $$$AssertEquals(..Settings(), tBefore, "no refused request changed a setting")
     Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("GET", tRead, "OcuP203Exact", ..PreparedPassword, .tStatus, .tRaw)
-    Do $$$AssertEquals(tStatus _ " " _ ($Length(..RowNames(tRaw), ",") > 10), "200 1", "the exact principal reads the item's settings: " _ $Extract($Get(tRaw), 1, 200))
+    Do $$$AssertEquals(tStatus _ " " _ ($Length($ClassMethod(..#ITEMGATE, "RowNames", tRaw), ",") > 10), "200 1", "the exact principal reads the item's settings: " _ $Extract($Get(tRaw), 1, 200))
     Set tRequest = {"action": "set", "values": {"Value": "7"}}
     Do tRequest.%Set("id", $ClassMethod(..#CONTROL, "IdOf", "Host", "InitSeconds"), "string")
     Do $$$AssertEquals(..Post(..#SCREEN _ "/action", tRequest, "OcuP203Exact", .tRaw), 200, "the exact principal's Set value is admitted: " _ $Get(tRaw))
@@ -240,9 +240,9 @@ Method TestASettingWriteNeedsTheRoutinesDatabaseToo()
     Set tQuery("maxRows") = 5
     Do ..Leg(tOut, "list", ..#SEAM, "LIST", .tQuery)
     Set tRefused = "403 AUTH.NOPRIVILEGE " _ tResource _ ":WRITE"
-    Do $$$AssertEquals(..LegText(tOut, "set"), tRefused, "a set is refused naming the routines database")
-    Do $$$AssertEquals(..LegText(tOut, "reset"), tRefused, "and so is a reset")
-    Do $$$AssertEquals(..LegText(tOut, "read") _ "|" _ ..LegText(tOut, "list"), "200  |200  ", "the setting's read and the list do not ask for it")
+    Do $$$AssertEquals($ClassMethod(..#ITEMGATE, "LegText", tOut, "set"), tRefused, "a set is refused naming the routines database")
+    Do $$$AssertEquals($ClassMethod(..#ITEMGATE, "LegText", tOut, "reset"), tRefused, "and so is a reset")
+    Do $$$AssertEquals($ClassMethod(..#ITEMGATE, "LegText", tOut, "read") _ "|" _ $ClassMethod(..#ITEMGATE, "LegText", tOut, "list"), "200  |200  ", "the setting's read and the list do not ask for it")
     Do $$$AssertEquals(..Settings(), ..PreparedBaseline, "no refused write changed a setting")
     Do ##class(OcuPilot.Test.ScreenGate).Hold(tResource, "WRITE")
     Kill tQuery
@@ -250,7 +250,7 @@ Method TestASettingWriteNeedsTheRoutinesDatabaseToo()
     Set tQuery("id") = tId
     Set tOut = {}
     Do ..Leg(tOut, "reset", ..#SEAM, "RESET", .tQuery)
-    Do $$$AssertEquals(..LegText(tOut, "reset"), "409 INTEROP.SETTING.DEFAULTED ", "a caller holding it passes the gate and is refused for the state, which holds no value of its own")
+    Do $$$AssertEquals($ClassMethod(..#ITEMGATE, "LegText", tOut, "reset"), "409 INTEROP.SETTING.DEFAULTED ", "a caller holding it passes the gate and is refused for the state, which holds no value of its own")
 }
 
 /// <p>AC6: on the screen route the Reset to default row action is refused naming the pair each principal lacks, as the
@@ -266,32 +266,9 @@ Method TestEachMissingPairIsRefusedByNameOnTheResetRoute()
         Set tRequest = {"action": "reset"}
         Do tRequest.%Set("id", $ClassMethod(..#CONTROL, "IdOf", "Host", "InitSeconds"), "string")
         Set tStatus = ..Post(..#SCREEN _ "/action", tRequest, $List(tCase, 1), .tRaw)
-        Do $$$AssertEquals(tStatus _ " " _ ..FailedPair(tRaw), "403 " _ $List(tCase, 2), $List(tCase, 1) _ ": Reset to default is refused naming the pair: " _ $Get(tRaw))
+        Do $$$AssertEquals(tStatus _ " " _ $ClassMethod(..#ITEMGATE, "FailedPair", tRaw), "403 " _ $List(tCase, 2), $List(tCase, 1) _ ": Reset to default is refused naming the pair: " _ $Get(tRaw))
     }
     Do $$$AssertEquals(..Settings(), tBefore, "no refused request changed a setting")
-}
-
-/// <p><code>code failedPair</code> of a wire refusal (raw JSON), the pair <code>""</code> when it names none.</p>
-ClassMethod FailedPair(pRaw) As %String
-{
-    Set tBody = ""
-    Try { Set tBody = ##class(%DynamicObject).%FromJSON(pRaw) } Catch {}
-    If '$IsObject(tBody) || '$IsObject(tBody.%Get("detail")) Quit ""
-    Quit tBody.detail.%Get("failedPair")
-}
-
-/// <p>The names of a list read's rows (raw JSON), comma-separated.</p>
-ClassMethod RowNames(pRaw) As %String
-{
-    Set tBody = ""
-    Try { Set tBody = ##class(%DynamicObject).%FromJSON(pRaw) } Catch {}
-    If '$IsObject(tBody) || '$IsObject(tBody.%Get("rows")) Quit ""
-    Set tText = ""
-    Set tIterator = tBody.rows.%GetIterator()
-    While tIterator.%GetNext(.tIndex, .tRow) {
-        Set tText = tText _ $Select(tText = "": "", 1: ",") _ tRow.Name
-    }
-    Quit tText
 }
 
 /// <p><var>pBody</var> posted to <var>pPath</var> as <var>pUser</var>, scoped to <parameter>NAMESPACE</parameter>; the
@@ -327,14 +304,6 @@ ClassMethod ProbeAs(pUser As %String, pProtect As %Boolean = 0) As %DynamicObjec
         Do tOut.%Set("error", ex.DisplayString())
     }
     Quit tOut
-}
-
-/// <p>One leg of a probe as <code>http code failedPair</code>.</p>
-ClassMethod LegText(pProbe As %DynamicObject, pLeg As %String) As %String
-{
-    If '$IsObject(pProbe) || '$IsObject(pProbe.%Get(pLeg)) Quit "absent"
-    Set tLeg = pProbe.%Get(pLeg)
-    Quit tLeg.http _ " " _ tLeg.%Get("code") _ " " _ tLeg.%Get("failedPair")
 }
 
 /// <p>One port call of the probe, recorded as <code>{http, code, failedPair}</code> in <var>pOut</var> under

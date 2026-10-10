@@ -83,15 +83,16 @@ ClassMethod ScreenActionDelta(pActionId As %String, pValues As %DynamicObject, p
 }
 
 /// <p>The rules over the call: <code>SECRET</code> on the name, then the port's
-/// <method>OcuPilot.Port.InteropPort.SettingViolations</method> over the value, in the namespace the request is scoped
-/// to, as one sentence naming each field and its published sentence, or <code>""</code>.</p>
+/// <method>OcuPilot.Port.InteropPort.SettingViolations</method> over the value, in the namespace the arguments carry,
+/// else the request's (<method>ArgumentNamespace</method>), as one sentence naming each field and its published
+/// sentence, or <code>""</code>.</p>
 ClassMethod ArgumentProblem(pIdValue As %String, pArgs As %DynamicObject, Output pProblem As %String) As %Status
 {
     Set tSC = ##super(pIdValue, pArgs, .pProblem)
     If $$$ISERR(tSC) || (pProblem '= "") Quit tSC
     Set tParts = ##class(OcuPilot.Kernel.EntityId).SplitComposite(pIdValue)
     If $ListLength(tParts) '= 4 Quit $$$OK
-    Set tSC = $ClassMethod(..#PORTCLASS, "SettingViolations", ##class(OcuPilot.Kernel.Scope).Current(), $List(tParts, 1), $List(tParts, 2), $List(tParts, 3), $List(tParts, 4), pArgs, .tViolations)
+    Set tSC = $ClassMethod(..#PORTCLASS, "SettingViolations", ..ArgumentNamespace(pArgs), $List(tParts, 1), $List(tParts, 2), $List(tParts, 3), $List(tParts, 4), pArgs, .tViolations)
     If $$$ISERR(tSC) Quit tSC
     For tI = 1:1:$Get(tViolations) {
         Set pProblem = pProblem _ $Select(pProblem = "": "", 1: " ") _ "'" _ $List(tViolations(tI), 1) _ "': " _ ##class(OcuPilot.Api.Error).ReasonForViolation($List(tViolations(tI), 2))

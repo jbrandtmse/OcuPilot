@@ -114,6 +114,16 @@ ClassMethod PrivilegePairs(pDescriptor As %String = "", Output pResolved As %Boo
     Quit ##class(OcuPilot.Screen.Gate).WithClassicPages(tPairs, ..#CLASSICPAGES)
 }
 
+/// <p>The namespace a call's rules are judged in (AD-52): the one the arguments <var>pArgs</var> carry under
+/// <parameter>NAMESPACEFIELD</parameter>, which the mint stores for a tool that sends a body
+/// (<class>OcuPilot.Screen.Tool.InteropItemMint</class>), else the request's scope. So a confirm asks the rules
+/// again where the proposal read, whatever the confirming request is scoped to.</p>
+ClassMethod ArgumentNamespace(pArgs As %DynamicObject) As %String
+{
+    If $IsObject(pArgs) && (pArgs.%GetTypeOf(..#NAMESPACEFIELD) = "string") && (pArgs.%Get(..#NAMESPACEFIELD) '= "") Quit pArgs.%Get(..#NAMESPACEFIELD)
+    Quit ##class(OcuPilot.Kernel.Scope).Current()
+}
+
 /// <p>Compose the port's read (AD-52): the action key when the call carries no
 /// <parameter>STATEMARKER</parameter>, then the namespace the payload (<parameter>NAMESPACEFIELD</parameter>)
 /// holds.</p>

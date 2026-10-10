@@ -10838,6 +10838,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-09T15:04:14Z status=escalated owner=burndown by=cr note=fix would store Namespace in their mint args and read it in ArgumentPairs, as 20.20 did for saves and creates
 - 2026-10-09T23:09:46Z status=routed owner=burndown by=orchestrator note=decided: false refusal only (the port checks WRITE on the target namespace itself, so nothing is wrongly allowed); fix as 20.20 did for saves and creates (store Namespace in the mint args, read it in ArgumentPairs) in Epic 20 close burn-down; not release-blocking
 - 2026-10-10T08:25:19Z occurrence=20-3-production-items
+- 2026-10-10T20:07:04Z occurrence=20-22-production-item-settings
 
 ### DW-2255: CI flake: ClassicPageGate.TestAnAssignedPageGatesEveryDeclaringToolOnTheAgentsCaller read its child process as not having run as the probe principal, so every later refusal assertion failed
 - source: cycle-log-epic-20.md (run 37952814550 attempt 1) | severity: med | fix-risk: low | footprint: out-of-footprint
@@ -10861,6 +10862,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-20-3-production-items.md | severity: med | fix-risk: med | footprint: in-epic
 - evidence: Screen/Tool/InteropItemAction.cls:61-185 against Screen/Tool/InteropProductionAction.cls:68-180; neither the spec's Code Map, Design Notes nor commit 4dffa796 gives a reason; a shared base needs 20.2's class
 - 2026-10-10T08:25:19Z status=routed owner=20-22-production-item-settings by=cr note=extract one abstract interop action base (state field and database list as parameters) when 20.22 adds its item tools
+- 2026-10-10T20:07:04Z status=resolved-by:20-22-production-item-settings by=cr note=InteropAction holds the six; neither leaf declares them (TestTheSharedParentHoldsTheSixMethods); 20.2 and 20.3 classes green
 
 ### DW-2269: Production items' Add store, dialog and page follow docdb-create's shape with only the fields changed, and no reason is stated (Rule 31)
 - source: spec-20-3-production-items.md | severity: low | fix-risk: high | footprint: out-of-footprint
@@ -10967,6 +10969,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-20-22-production-item-settings.md | severity: low | fix-risk: low | footprint: in-epic
 - evidence: Write.cls carried Epic 18's uncommitted 18.30 edits (Rule 11), so 20.22 only appended SCREENEMPTY, ScreenActionNamesIn and ScreenActionEmptyNames
 - 2026-10-10T14:51:35Z status=wontfix-accepted owner=20-22-production-item-settings by=harvest note=reopen_if=a story edits ScreenActionOptionalNames while no other epic has Write.cls in flight; then have it call ScreenActionNamesIn (Rule 31)
+- 2026-10-10T20:07:04Z occurrence=20-22-production-item-settings
 
 ### DW-2282: CI flake: impact.browser-spec AC1/AC6 (line 348) structural gate at 720px read app-tool-call-card>span.ocu-tool-call-spinner 3px past its containing block while the spinner was still showing
 - source: cycle-log-epic-20.md (run 38047135210 attempt 1) | severity: med | fix-risk: low | footprint: out-of-footprint
@@ -10982,3 +10985,48 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: cycle-log-epic-20.md (DW-2255 diagnosis) | severity: med | fix-risk: med | footprint: out-of-footprint
 - evidence: ocupilot-b-ci at b340de34: Decide 0.576 s, ResolveWire 0.549 s, RequiredPairs 0.001 s, ValidateArguments 0.004 s for security.mftconnections.create; a 71-step dispatch plan 82 s (1.1-1.16 s every step, any tool)
 - 2026-10-10T18:47:04Z status=routed owner=burndown by=lead note=cache the listing per process or per registry generation, invalidated when a tool class compiles; contended with Epic 18 (both add tools); not release-blocking
+
+### DW-2287: A reset of a server-path setting carries the pending-update consequence, not the location sentence, though the default it restores is a location
+- source: spec-20-22-production-item-settings.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: InteropSettingAction.Consequence reads the payload's Location, and a reset's payload is narrowed to FINGERPRINTSUBJECT (Value,Source,Default,Namespace); InteropSettingControl.TestAServerPathIsNamedALocationOnTheServer pins INTEROP.ITEM.PENDING for a reset of a path; the warning dialog uses the same sentence
+- 2026-10-10T20:06:44Z status=by-design owner=20-22-production-item-settings by=cr note=AC5 names the set's card and dialog only; reopens via a spec amendment naming the reset's default as a location
+
+### DW-2288: An agent's reset confirm that the write refuses after a path or descent move spends the proposal, while a set's confirm is refused before the claim and stays live
+- source: spec-20-22-production-item-settings.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: InteropSettingAction.ConfirmProblem asks only SECRET for a reset; the confirm re-reads the stored payload without the action key, so no ChangeProblem runs before the claim; SettingStep refuses after it (AD-34), as InteropSettingDescent.TestTheAgentsConfirmOfAResetIsRefusedWhenThePathMovesAfterTheMint pins
+- 2026-10-10T20:06:44Z status=by-design owner=20-22-production-item-settings by=cr note=nothing is stored either way; the after-claim refusal matches AD-34, the item tools and DW-2138; the spec prescribes the reset's rule
+
+### DW-2289: The Set value dialog keeps a field refusal and aria-invalid while a new value is typed, until the next send
+- source: spec-20-22-production-item-settings.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: interop-item-setting-dialog.ts onText sets only typed; the page clears violation and refusal only in onOpen, onSet and onClose; 20.3's add store clears a field's refusal on a new value
+- 2026-10-10T20:06:44Z status=wontfix-accepted owner=20-22-production-item-settings by=cr note=reopen_if=a person reports the stale sentence, or a shared one-value dialog store lands in ui/src/app/core
+
+### DW-2290: InvokeSettings and ListSettings copy InvokeItems' maxRows check, 501 action guard and source-control, absent, ambiguous order beyond the stated reason, which covers only the row shape (Rule 31)
+- source: spec-20-22-production-item-settings.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: InteropPort.cls InvokeSettings :1267 and ListSettings :1731 against InvokeItems :737 and ListItems; the maxRows check now has three copies (:421, :750, :1279); the spec's Rule 31 reason is 'another row shape and criterion'
+- 2026-10-10T20:06:52Z status=wontfix-accepted owner=20-22-production-item-settings by=cr note=reopen_if=a fourth InteropPort endpoint copies the guards; then extract one limit and action-guard helper
+
+### DW-2291: interop-item-settings.browser-spec.mjs copies probe, frames, structural, settingRow, rowPresent and rowAction from interop-items.browser-spec.mjs, two of them byte-identical (Rule 31)
+- source: spec-20-22-production-item-settings.md | severity: low | fix-risk: med | footprint: in-epic
+- evidence: ui/browser/interop-item-settings.browser-spec.mjs:50-160 against ui/browser/interop-items.browser-spec.mjs:50-160; rowAction and structural are identical; list-spec.mjs and structural-walk.mjs host the shared row and walk helpers; no reason stated
+- 2026-10-10T20:06:52Z status=wontfix-accepted owner=20-22-production-item-settings by=cr note=reopen_if=a third Interoperability browser spec needs rowAction or structural; extract them into list-spec.mjs then
+
+### DW-2292: An inbound adapter whose stored FilePath already is or lies under the served directory can be given more subdirectory levels: DescentReaches tests only protected directories strictly below the path
+- source: spec-20-22-production-item-settings.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: InteropPort.DescentReaches skips a protected directory equal to or above pDirectory; ChangeProblem judges a SubdirectoryLevels change by DescentReaches alone, as the spec prescribes; OcuPilot refuses such a FilePath itself, so it must have been stored outside OcuPilot
+- 2026-10-10T20:06:52Z status=wontfix-accepted owner=20-22-production-item-settings by=cr note=reopen_if=an instance is found with a FilePath in the manager or served directory, or AD-21's ninth case is amended to judge it
+
+### DW-2293: AC2's 'no job started or stopped' compares the probe's job config names (InteropItemControl.Jobs), so a write that restarted the item's job would still pass
+- source: spec-20-22-production-item-settings.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: InteropItemControl.Jobs answers the sorted ConfigNames of Ens.Job:Enumerate; InteropSettingControl.TestAWriteOnARunningProductionChangesNoJobAndTheUpdateAppliesIt and 20.3's item legs compare it before and after; only the pending flag pins UpdateProduction
+- 2026-10-10T20:07:00Z status=wontfix-accepted owner=20-22-production-item-settings by=cr note=reopen_if=a setting or item write path gains any call beyond the item save and SaveToClass that can stop or start a job
+
+### DW-2294: InteropSettingControl's list leg reads RetryInterval as classDefault and PoolSize as production, which a wildcard Ens_Config.DefaultSettings row in USER would change (Rule 30)
+- source: spec-20-22-production-item-settings.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: ProductionProbe.RemoveDefaults removes only the probe production's rows; no test or fixture creates a wildcard row and a fresh instance holds none, so the leg passes fresh and in either order
+- 2026-10-10T20:07:00Z status=wontfix-accepted owner=20-22-production-item-settings by=cr note=reopen_if=a test or fixture creates a wildcard (*) system default setting in USER
+
+### DW-2295: The spine's AD-51 Story 20.22 clause sits mid-sentence ahead of AD-51's bullets, and AD-62 carries its 20.22 AMENDED tag twice
+- source: spec-20-22-production-item-settings.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: ARCHITECTURE-SPINE.md:986 reads 'not an exception: Story 20.22: InteropPort reads ...' before the bullets that colon introduced; :1181 ends with two identical [AMENDED 2026-10-10, Story 20.22 spec gate, Rule 20] tags (spec-gate commit 8a40bf0e)
+- 2026-10-10T20:07:00Z status=open owner=20-22-production-item-settings by=cr note=the runner fixes it under Rule 20 at ledger_adjudicated: move the clause after the sentence it splits, drop the duplicate tag

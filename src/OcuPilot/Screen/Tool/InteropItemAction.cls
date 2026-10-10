@@ -52,7 +52,7 @@ ClassMethod MintClass() As %String
     Quit "OcuPilot.Screen.Tool.InteropItemMint"
 }
 
-/// <p>The item's name, which the card titles the target by: the fresh read's, else the agent's own.</p>
+/// <p>The target's name, which the card titles it by: the fresh read's <code>Name</code>, else the agent's own.</p>
 ClassMethod TargetName(pFresh, pId As %String, pArgs) As %String
 {
     If $IsObject(pFresh) && (pFresh.%GetTypeOf("Name") = "string") Quit pFresh.%Get("Name")

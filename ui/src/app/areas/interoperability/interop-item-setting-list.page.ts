@@ -5,6 +5,7 @@ import { ScreenStores, type ScreenStore } from '../../core/screen-store';
 import { SCREENS } from '../../core/screens.generated';
 import { STRINGS } from '../../core/strings';
 import { rowFor } from '../../core/table-model';
+import { reasonForField } from '../../core/violations';
 import { ListPage } from '../../shell/list-page';
 import { ScreenActionHandler } from '../../shell/screen-action-handler';
 import { InteropItemSettingDialog } from './interop-item-setting-dialog';
@@ -156,7 +157,7 @@ export class InteropItemSettingListPage {
       return;
     }
     const refused = this.handler.lastRefusal();
-    const onField = refused?.violations.find((entry) => entry.field === SETTING_VALUE)?.reason ?? '';
+    const onField = reasonForField(refused?.violations ?? [], SETTING_VALUE);
     if (onField !== '') this.violation.set(onField);
     else this.refusal.set(refused?.reason ?? '');
   }

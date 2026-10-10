@@ -48,14 +48,6 @@ ClassMethod MintClass() As %String
     Quit "OcuPilot.Screen.Tool.InteropSettingMint"
 }
 
-/// <p>The setting's name, which the card titles the target by: the fresh read's, else the agent's own.</p>
-ClassMethod TargetName(pFresh, pId As %String, pArgs) As %String
-{
-    If $IsObject(pFresh) && (pFresh.%GetTypeOf("Name") = "string") Quit pFresh.%Get("Name")
-    If $IsObject(pArgs) && (pArgs.%GetTypeOf("Name") = "string") Quit pArgs.%Get("Name")
-    Quit ""
-}
-
 /// <p>What the schema says of the setting's name.</p>
 ClassMethod NameDescription() As %String
 {

@@ -6,8 +6,9 @@
  * the Item settings list of the probe operation under the published headers, listing its settings; Set value opens
  * the dialog, titled with the setting, which shows the current value and the default and the pending-update
  * sentence, sends the typed value, and stores it; Reset to default warns with the same sentence and, past Proceed,
- * removes the production's own value; on a setting whose name holds a credential Set value opens no dialog and the
- * list's banner states the published secret sentence; and the list passes the structural and contrast checks at
+ * removes the production's own value; on a setting whose name holds a credential, given a value and a system default,
+ * neither reaches the screen, Set value opens no dialog and the list's banner states the published secret sentence; and
+ * the list passes the structural and contrast checks at
  * 1280 light, 720 light and 1280 dark, with no entry beyond the baseline (DW-1337).
  *
  * **It compiles and writes a probe production in `USER`** through `OcuPilot.Test.ProductionProbe`, so it runs on a
@@ -42,6 +43,9 @@ const PRODUCTIONS_URL = '/ocupilot/interoperability/productions?ns=USER';
 const ACTION_PATH = '/api/ocupilot/screens/interop.itemsettings/action';
 const ROW_ID = (target, name) => `${PRODUCTION}\u0001${OPERATION}\u0001${target}\u0001${name}`;
 const NAME_TEXT = '.ocu-data-table-link, .ocu-data-table-text';
+/** What AC3 plants as the credential-named setting's own value and its system default, which the screen never shows. */
+const SECRET_VALUE = 'ocu2022plantedvalue';
+const SECRET_DEFAULT = 'ocu2022planteddefault';
 
 let browser = null;
 let created = false;
@@ -283,8 +287,11 @@ test('AC2: Set value opens its dialog and stores the typed value; Reset to defau
 });
 
 // AC3. Mutation (Rule 19): drop the secret test from `InteropItemSettingListPage.onOpen`, rebuild and redeploy -> the
-// dialog opens over ApiToken and this goes red.
-test('AC3: Set value on a credential-named setting opens no dialog and the list states the secret sentence', async () => {
+// dialog opens over ApiToken and this goes red; stop blanking `Value` in `InteropPort.SettingRow` -> the planted value
+// reaches the row and this goes red.
+test('AC3: a credential-named setting\'s value and default never reach the list; Set value opens no dialog and states the secret sentence', async () => {
+  const planted = probe('PLANTED', `$System.Status.IsOK(##class(${PROBE}).PutItemSetting("${OPERATION}","Host","ApiToken","${SECRET_VALUE}"))_$System.Status.IsOK(##class(${PROBE}).PutDefault("${OPERATION}","Host","ApiToken","${SECRET_DEFAULT}"))`);
+  assert.equal(planted.value, '11', `the setting holds a value of its own and a system default: ${planted.output}`);
   const { context, page } = await signedInAt(browser, config, PRODUCTIONS_URL, VIEWPORTS.wide);
   const posts = [];
   page.on('request', (request) => {
@@ -295,13 +302,16 @@ test('AC3: Set value on a credential-named setting opens no dialog and the list 
     const row = await settingRow(page, 'ApiToken');
     assert.ok(row !== null, 'the secret-named setting is listed');
     assert.deepEqual([row[2], row[4]], [STRINGS.tableEmptyValue, STRINGS.tableEmptyValue], 'its value and default read as empty');
+    const shown = await page.evaluate(() => document.body.innerText);
+    assert.equal(shown.includes(SECRET_VALUE) || shown.includes(SECRET_DEFAULT), false, 'and neither the value nor the default is anywhere on the screen');
     await rowAction(page, 'ApiToken', STRINGS.interopItemSettingSetAction);
     await page.waitForSelector('.ocu-list-page-banner', { visible: true, timeout: config.navigationTimeoutMs });
     assert.equal(await page.$eval('.ocu-list-page-banner .ocu-banner-message', (node) => node.textContent.trim()), STRINGS.interopSettingRefusalSecret, 'the list states the published secret sentence');
     assert.equal(await page.$('[role="dialog"]'), null, 'and no dialog opens');
     assert.deepEqual(posts, [], 'nothing was sent');
-    assert.equal(stored('ApiToken'), '<none>', 'and nothing was stored');
+    assert.equal(stored('ApiToken'), SECRET_VALUE, 'and nothing was stored');
   } finally {
     await context.close();
+    runIris(config.container, [`Do ##class(${PROBE}).RemoveDefaults()`]);
   }
 });

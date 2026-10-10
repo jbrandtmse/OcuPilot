@@ -357,6 +357,49 @@ deferred:
 - **AC8 (navigation):** Given a confirmed setting write, when its toast is opened, then Item settings opens on that item; and a Production items toast opens on its production.
 - **AC9 (path self-protection, integration):** Given a directory or file setting, or an inbound file adapter's `FilePath` and `SubdirectoryLevels`, when either caller proposes, confirms or acts on a set or reset that would leave the manager directory, a file directly in it, or the served directory or anything under it in force or within the descent, then it is refused with PathPort's code or `INTEROP.SETTING.DESCENT`. The refusal comes at the mint and again at the write, before any vendor write, and the stored configuration and the class are unchanged.
 
+### Review Findings
+
+Code review, 2026-10-10 (four layers, full-opus: Blind Hunter, Edge Case Hunter, Verification Gap, Acceptance Auditor). 35 rows: high 1, medium 5, low 26, false 3. Patched 9; ledgered 11 (nine entries, two occurrences); rejected 15.
+
+- [x] [Review][Patch] (high, AC3, AD-41) The agent loop's own step and refused-row writes read only the tool's declared secrets, so a credential-named setting's `Value` was stored in clear in the running step until the call finished, and for good on a stop, a budget refusal or a failed dispatch, ledger row included. `Loop.SecretNamesOf` and `RecordRefusedRow` now union `CallSecretNames` [src/OcuPilot/Kernel/Agent/Loop.cls:944]
+- [x] [Review][Patch] (med, AD-52) The set's confirm judged its value and path in the confirming request's namespace, so a confirm from another scope found no production, made the claim and was refused at the write, spending the proposal. A body-sending tool's stored arguments now carry the minted namespace, read by `InteropAction.ArgumentNamespace` for the set and the add [src/OcuPilot/Screen/Tool/InteropSettingSet.cls:95, src/OcuPilot/Screen/Tool/InteropItemMint.cls:33]
+- [x] [Review][Patch] (med, Rule 31) `InteropSettingGate` re-declared `InteropItemGate`'s `FailedPair`, `RowNames` and `LegText` byte for byte, and `InteropSettingRefusals` inlined the five holds `InteropSettingPaths.HoldTheWriterPairs` wraps; both now call the originals [src/OcuPilot/Test/InteropSettingGate.cls, src/OcuPilot/Test/InteropSettingRefusals.cls:193]
+- [x] [Review][Patch] (med, Rule 31) `InteropSettingAction` re-declared the `TargetName` it inherits, unchanged; removed [src/OcuPilot/Screen/Tool/InteropSettingAction.cls]
+- [x] [Review][Patch] (med, Rule 31) The page re-implemented core's `reasonForField` [ui/src/app/areas/interoperability/interop-item-setting-list.page.ts:160]
+- [x] [Review][Patch] (med, Rule 19, Rule 3) The browser AC3 leg asserted empty cells for a setting that held no value or default, so it could not fail; it now plants both and asserts neither reaches the screen [ui/browser/interop-item-settings.browser-spec.mjs]
+- [x] [Review][Patch] (low, verification-gap) No test read the sentence of a reset's path refusal, which `ConflictFor` supplies; the person's reset leg now asserts PathPort's sentence [src/OcuPilot/Test/InteropSettingPaths.cls:179]
+- [x] [Review][Patch] (low) `InteropSettingIdentity`'s `SECOND` claimed to catch a write that took the last item, which it cannot [src/OcuPilot/Test/InteropSettingIdentity.cls:33]
+- [x] [Review][Patch] (low) `screenForChange`'s doc still stated the old one-criterion rule after `routeIdFor` was generalized [ui/src/app/core/navigation.ts:592]
+- [x] [Review][Defer] (low) A reset of a server-path setting carries the pending-update sentence, not the location one — DW-2287, by-design (AC5 names the set)
+- [x] [Review][Defer] (low) A reset's confirm refused at the write after a path move spends the proposal, where a set's stays live — DW-2288, by-design (AD-34, DW-2138)
+- [x] [Review][Defer] (low) The Set value dialog keeps a field refusal while a new value is typed — DW-2289, wontfix-accepted
+- [x] [Review][Defer] (low, Rule 31) `InvokeSettings` and `ListSettings` copy the items endpoint's guards beyond the stated reason — DW-2290, wontfix-accepted
+- [x] [Review][Defer] (low, Rule 31) The settings browser spec copies six helpers from the items spec — DW-2291, wontfix-accepted
+- [x] [Review][Defer] (low) More subdirectory levels over a `FilePath` stored outside OcuPilot in the served directory are not refused — DW-2292, wontfix-accepted
+- [x] [Review][Defer] (low) AC2's "no job started or stopped" compares config names, not jobs — DW-2293, wontfix-accepted
+- [x] [Review][Defer] (low, Rule 30) The list leg's sources assume no wildcard system default in USER — DW-2294, wontfix-accepted
+- [x] [Review][Defer] (low) The spine's AD-51 20.22 clause splits a sentence and AD-62's tag is doubled — DW-2295, open for this story's adjudication (Rule 20)
+- [x] [Review][Defer] (low, Rule 31) `Write.cls` holds a third copy of the `SCREENOPTIONAL` parser (`ScreenActionValueNames`) — occurrence on DW-2281
+- [x] [Review][Defer] (low) The setting tools inherit pairs read from the confirming request's namespace — occurrence on DW-2253
+
+Rejected:
+
+- `false`: `InteropAction.PortQuery` now tests the marker's absence, not its type. A wrong-typed marker cannot reach it: `Dispatch.ValidateArguments` refuses an undeclared argument and a screen action admits only declared values.
+- `false`: `routeIdFor` regresses other lists. Of the twelve parent-scoped composite lists with one criterion, only Production items and Task history route differently, each now on its parent's id.
+- `false`: lowering the levels while a protected directory stays within reach is refused. AD-21's ninth case refuses a set that leaves one within the levels; the spec's "never refused" is the looser wording.
+- `low`: the set's `PRECONDITIONCODES` are not pinned statically. `InteropSettingRefusals` drives each code through the mint.
+- `low`: `InteropSettingPaths.UserDirectory` switches namespace without a Try. It is a test helper over `NormalizeDirectory`, which does not throw.
+- `low`: the violation-sentence loop in `InteropSettingSet.ArgumentProblem`. It is the project's idiom in 27 classes.
+- `low`: `ScreenActionDelta` matches `ScreenAccessAddPair`'s three lines. The share point would be the contended `Write.cls`.
+- `low`: `InteropSettingGate.ProbeAs` does not end a child past its budget. It follows `InteropItemGate`'s own, and no flake was seen.
+- `low`: `InteropSettingControl.Through` and `Reset` resemble `InteropItemControl`'s. `Through` asserts on its own test instance and already calls the item helpers; `Reset` differs.
+- `low`: `ProductionProbe.PutItemSetting` beside `SetSetting`. The spec makes the probe add-only, and `InteropItemRefusals.PutDefault` writes another shape.
+- `low`: the dialog's `fill` and the page's `text`. They are area-local, and the slice rule keeps another area's out.
+- `low`: duplicate setting elements of one name. They need a hand-edited XData, and the vendor takes the first too.
+- `low`: a non-empty path `%File` cannot normalize. No such value was shown, and the adapter could not use one either.
+- `low`: the copy-out script's `FindItemByConfigName`. `SaveToClass` does not compile, and a recompile gives new ids, so a stale runtime id opens nothing and the name lookup answers.
+- `low`: the gate snapshot and the bare-id identity leg cannot fail alone. Neither is a pinning assertion.
+
 ## Spec Change Log
 
 - 2026-10-10, runner, orchestrator ruling (feature dbaee68c): path settings keep PathPort's self-protection refusals (Always); status reset to draft for a re-plan that adds the refusals, their tests and the subdirectory-descent measurement.
@@ -606,6 +649,13 @@ deferred:
 - mutation (QA): `DescentReaches` tests the manager directory only -> `InteropSettingDescent.TestTheServedDirectoryIsReachedByDescentToo`; it ignores the levels -> the same test's served-directory-two-levels-down legs
 - mutation (QA): every `FilePath` judged with one level of descent -> `InteropSettingDescent.TestAnOutboundAdaptersFilePathIsJudgedAsADirectoryAlone`
 - spot checks (QA), each red on the existing test named: `SettingRow` stops blanking `Value`, and separately `Default` -> `InteropSettingSecrets.TestTheSecretAppearsInNoRowToolResultOrContext`; `Dispatch` drops the `CallSecretNames` union -> `TestAValueTheAgentSentIsRedactedInTheLedgerRowAndTheStep`; `InvokeSettings` drops its `SECRET` refusal -> `TestASetAndAResetOfItAreRefusedFromBothCallers`; `SettingViolations` skips `ChangeProblem` -> the mint legs of `InteropSettingPaths` (3 red, the port and screen legs stay green because the write refuses)
+
+**Code review pass** (on `ocupilot-b-ci`, one class per call, each green on the final source: `LedgerStep` 6, `InteropSettingDescent` 9, `InteropSettingPaths` 5, `InteropSettingGate` 5, `InteropSettingRefusals` 7, `InteropSettingControl` 7, `InteropSettingSecrets` 3, `InteropSettingDescriptor` 12, `InteropSettingIdentity` 3, `InteropItemIdentity` 3, `InteropItemRefusals` 8, `InteropItemControl` 6, `LedgerRedaction` 9, `Ledger` 11; `interop-item-settings` 3 and `interop-items` 3 on the rebuilt and redeployed bundle; the three touched component specs 85 pass; `test:tools` 1906 pass; bundle initial total 3,221,633 bytes; `check-objectscript.py` 0 problems):
+
+- mutation (code review): `Loop.SecretNamesOf` drops its `CallSecretNames` union -> `LedgerStep.TestEachPreDispatchWriteRedactsWhatACallNamesSecret`; `Loop.RecordRefusedRow` drops it -> the same test's budget and stop row legs
+- mutation (code review): `InteropSettingSet.ArgumentProblem` judges in `Kernel.Scope.Current()` -> `InteropSettingDescent.TestAConfirmFromAnotherScopeIsJudgedWhereTheSetWasMinted` (the claim is made and the proposal spent)
+- mutation (code review): `ReadSetting` answers a reset's path refusal with `Conflict` -> `InteropSettingPaths.TestAResetToAProtectedDefaultIsRefused`, its sentence leg
+- mutation (code review): `SettingRow` stops blanking `Value` -> `interop-item-settings.browser-spec.mjs` AC3 (the planted value reaches the row)
 
 ## Auto Run Result
 

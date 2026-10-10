@@ -6,8 +6,8 @@
 /// the mint and again at the write: <code>FilePath</code> as the manager directory's parent with one level, one level over
 /// that stored path, and a reset to a default that does either. Zero levels, the grandparent with one level, and
 /// lowering the levels are accepted. The served directory is reached as the manager directory is; the agent's confirm
-/// over HTTP judges the descent again when the path moves after the mint; and an outbound file adapter, which descends
-/// nothing, is judged as a directory alone.</p>
+/// judges the descent again when the path moves after the mint, in the namespace the set was minted in whatever scope
+/// confirms it; and an outbound file adapter, which descends nothing, is judged as a directory alone.</p>
 /// <p>It runs on a disabled <code>EnsLib.File.PassthroughService</code> item, sets values only, starts no production and
 /// creates no file or directory. The directories are read from the instance.</p>
 /// <p><b>What it needs from the environment:</b> as <class>OcuPilot.Test.InteropSettingControl</class>, whose helpers it
@@ -43,6 +43,9 @@ Parameter SERVICE = "EnsLib.File.PassthroughService";
 
 /// <p>A directory no rule protects, where the adapter starts.</p>
 Parameter SAFE = "/tmp/ocupilot-descent/";
+
+/// <p>A namespace that holds no probe production, which a confirm may be scoped to.</p>
+Parameter OTHERSCOPE = "HSCUSTOM";
 
 Method OnBeforeAllTests() As %Status
 {
@@ -243,6 +246,32 @@ Method TestTheAgentsConfirmOfALevelsSetIsRefusedWhenThePathMovesAfterTheMint()
     Do $$$AssertStatusOK($ClassMethod(..#PROBE, "PutItemSetting", ..#ITEM, "Adapter", "FilePath", ..#SAFE), "the file path moves back")
     Do $$$AssertEquals(..Confirm(tProposal, .tAnswer), "200 ", "the same proposal now confirms: " _ $Select($IsObject(tAnswer): tAnswer.%ToJSON(), 1: tAnswer))
     Do $$$AssertEquals(..StoredOf("SubdirectoryLevels"), "1", "and stores the levels")
+    Do ##class(OcuPilot.Kernel.State.Ledger).GuardedDeleteForTurn(tTurn)
+}
+
+/// <p>AC9, AD-52: the agent's confirm judges the set where the proposal was minted, whatever namespace the confirming
+/// request is scoped to. A set of the levels is minted in <code>USER</code> over a safe path, the file path moves to the
+/// manager directory's parent, and the confirm sent from <parameter>OTHERSCOPE</parameter>, which holds no probe
+/// production, is refused <code>TOOL.ARGUMENTS</code> before the claim, leaving the proposal live; with the path moved
+/// back the same confirm from that scope stores the levels in <code>USER</code>.</p>
+/// <p>Mutation (Rule 19): judge <method>OcuPilot.Screen.Tool.InteropSettingSet.ArgumentProblem</method> in
+/// <code>Kernel.Scope.Current()</code> again -- the confirm finds no production in the other scope, the claim is made and
+/// the write refuses it, and the first leg goes red.</p>
+Method TestAConfirmFromAnotherScopeIsJudgedWhereTheSetWasMinted()
+{
+    Set tArgs = $ClassMethod(..#CONTROL, "ArgsFor", "Adapter", "SubdirectoryLevels", "1", ..#ITEM)
+    Set tSC = $ClassMethod(..#ITEMS, "MintAs", ..#SETTOOL, tArgs, $Username, .tProposal, .tHttp, .tFault, .tTurn)
+    Do $$$AssertTrue($IsObject($Get(tProposal)), "the mint accepts one level over the safe path in USER")
+    If '$IsObject($Get(tProposal)) Quit
+    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "PutItemSetting", ..#ITEM, "Adapter", "FilePath", ..Parent()), "the file path moves to the manager directory's parent behind the proposal's back")
+    Set tSC = ##class(OcuPilot.Test.InteropControl).ConfirmIn(tProposal, .tResult, .tConfirmHttp, .tCode, ..#OTHERSCOPE)
+    Do $$$AssertEquals(+$Get(tConfirmHttp) _ " " _ $Get(tCode), "400 TOOL.ARGUMENTS", "the confirm from " _ ..#OTHERSCOPE _ "'s scope is refused before the claim")
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).Field(tProposal.proposalId, "State"), ##class(OcuPilot.Kernel.State.Propose).#STATELIVE, "the proposal is still live")
+    Do $$$AssertEquals(..StoredOf("SubdirectoryLevels"), "0", "and nothing was stored")
+    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "PutItemSetting", ..#ITEM, "Adapter", "FilePath", ..#SAFE), "the file path moves back")
+    Set tSC = ##class(OcuPilot.Test.InteropControl).ConfirmIn(tProposal, .tResult, .tConfirmHttp, .tCode, ..#OTHERSCOPE)
+    Do $$$AssertEquals(+$Get(tConfirmHttp) _ " " _ $Get(tCode), "200 ", "the same confirm from that scope is admitted")
+    Do $$$AssertEquals(..StoredOf("SubdirectoryLevels"), "1", "and stores the levels in USER")
     Do ##class(OcuPilot.Kernel.State.Ledger).GuardedDeleteForTurn(tTurn)
 }
 

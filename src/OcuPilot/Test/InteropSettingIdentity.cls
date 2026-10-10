@@ -28,8 +28,8 @@ Parameter SETTOOL = "OcuPilot.Screen.Tool.InteropSettingSet";
 /// <p>The probe's first Op item, which holds a value of its own for the setting both items declare.</p>
 Parameter FIRST = "OcuPilotProbeOp";
 
-/// <p>A second Op item the class adds, last in the production and disabled: a write that took the first item, or the
-/// last, or a position, instead of the named item would change the wrong one.</p>
+/// <p>A second Op item the class adds, last in the production and disabled: a write that took the first item instead
+/// of the named item would change the wrong one.</p>
 Parameter SECOND = "OcuP2022SettingB";
 
 Method OnBeforeAllTests() As %Status
