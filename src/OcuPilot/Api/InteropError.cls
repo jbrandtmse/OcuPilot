@@ -154,17 +154,60 @@ Parameter ITEMREMOVE = "INTEROP.ITEM.REMOVE";
 
 Parameter REASONITEMREMOVE = "Removing this item deletes it and every setting it holds from the production.";
 
+/// <p>A set or reset of a setting whose name the credential pattern matches (Story 20.22): OcuPilot neither shows
+/// nor sets such a value.</p>
+Parameter SETTINGSECRET = "INTEROP.SETTING.SECRET";
+
+Parameter REASONSETTINGSECRET = "This setting holds a secret, so OcuPilot neither shows nor sets it. Set it in the classic production configuration page, or point the item at a credentials entry.";
+
+/// <p>A set or reset of a setting a system default or a service registry entry decides.</p>
+Parameter SETTINGSUPPLIED = "INTEROP.SETTING.SUPPLIED";
+
+Parameter REASONSETTINGSUPPLIED = "A system default setting or a service registry entry decides this setting's value, so change it there.";
+
+/// <p>A set of a value the production already holds.</p>
+Parameter SETTINGSAME = "INTEROP.SETTING.SAME";
+
+Parameter REASONSETTINGSAME = "This setting already holds that value.";
+
+/// <p>A reset of a setting that already takes its default.</p>
+Parameter SETTINGDEFAULTED = "INTEROP.SETTING.DEFAULTED";
+
+Parameter REASONSETTINGDEFAULTED = "This setting already takes its default value, so there is nothing to reset.";
+
+/// <p>A reset of one of the item's own properties.</p>
+Parameter SETTINGCORE = "INTEROP.SETTING.CORE";
+
+Parameter REASONSETTINGCORE = "This is one of the item's own properties, which has no default to return to, so set the value you want instead.";
+
+/// <p>Violation code (422), on <code>Value</code>: a value the declaring class refuses, or one with a space or a
+/// control character at either end, which the vendor would store trimmed.</p>
+Parameter SETTINGVALUE = "INTEROP.SETTING.VALUE";
+
+Parameter REASONSETTINGVALUE = "The item's class does not accept this value for this setting.";
+
+/// <p>The consequence code a set of a server-path setting carries.</p>
+Parameter SETTINGLOCATION = "INTEROP.SETTING.LOCATION";
+
+Parameter REASONSETTINGLOCATION = "<value> is a location on this server that the item reads or writes when it runs. The change takes effect when this production next starts or, while it runs, when it is updated on Productions.";
+
+/// <p>A set or reset of <code>FilePath</code> or <code>SubdirectoryLevels</code> that lets an inbound file adapter
+/// descend into the manager directory or the directory OcuPilot serves its files from.</p>
+Parameter SETTINGDESCENT = "INTEROP.SETTING.DESCENT";
+
+Parameter REASONSETTINGDESCENT = "This item also reads the directories below its file path, as many levels down as its subdirectory levels, and that would reach the manager directory or the directory OcuPilot serves its files from. Choose another file path or fewer subdirectory levels.";
+
 /// <p>The refusals the port answers with, as a <class>%List</class>: every code that is not a
 /// consequence.</p>
 ClassMethod Codes() As %List
 {
-    Quit $ListBuild(..#NAMESPACE, ..#RUNNING, ..#OTHER, ..#TROUBLED, ..#NOTRUNNING, ..#UPTODATE, ..#NOTTROUBLED, ..#BUSY, ..#STATE, ..#SUSPENDED, ..#PARTSTOPPED) _ ..ItemCodes()
+    Quit $ListBuild(..#NAMESPACE, ..#RUNNING, ..#OTHER, ..#TROUBLED, ..#NOTRUNNING, ..#UPTODATE, ..#NOTTROUBLED, ..#BUSY, ..#STATE, ..#SUSPENDED, ..#PARTSTOPPED) _ ..ItemCodes() _ ..SettingCodes()
 }
 
 /// <p>The consequence codes, as a <class>%List</class>.</p>
 ClassMethod ConsequenceCodes() As %List
 {
-    Quit $ListBuild(..#STOP, ..#RESTART, ..#UPDATE, ..#RECOVER, ..#ITEMPENDING, ..#ITEMREMOVE)
+    Quit $ListBuild(..#STOP, ..#RESTART, ..#UPDATE, ..#RECOVER, ..#ITEMPENDING, ..#ITEMREMOVE, ..#SETTINGLOCATION)
 }
 
 /// <p>The item codes, as a <class>%List</class>: the refusals an item read or write answers with.</p>
@@ -179,6 +222,21 @@ ClassMethod ItemCodes() As %List
 ClassMethod ItemPreconditionCodes() As %List
 {
     Quit $ListBuild(..#ITEMENABLED, ..#ITEMDISABLED, ..#ITEMDEFAULTSETTING, ..#ITEMPOOLZERO, ..#ITEMTAKEN, ..#ITEMAMBIGUOUS, ..#ITEMENABLEDREMOVE, ..#ITEMSOURCECONTROL)
+}
+
+/// <p>The setting codes (Story 20.22), as a <class>%List</class>: the refusals an item setting read or write answers
+/// with, and the two violations of a set's value.</p>
+ClassMethod SettingCodes() As %List
+{
+    Quit $ListBuild(..#SETTINGSECRET, ..#SETTINGSUPPLIED, ..#SETTINGSAME, ..#SETTINGDEFAULTED, ..#SETTINGCORE, ..#SETTINGVALUE, ..#SETTINGDESCENT)
+}
+
+/// <p>The setting refusals a setting tool's fresh read answers when the action does not fit the setting, as a
+/// <class>%List</class>; the violations (<parameter>SETTINGVALUE</parameter> and <parameter>SETTINGDESCENT</parameter>)
+/// and <parameter>SETTINGSAME</parameter>, which the write alone judges, are not among them.</p>
+ClassMethod SettingPreconditionCodes() As %List
+{
+    Quit $ListBuild(..#SETTINGSECRET, ..#SETTINGSUPPLIED, ..#SETTINGDEFAULTED, ..#SETTINGCORE)
 }
 
 /// <p>The codes a production tool's fresh read refuses with when the action's precondition does not
@@ -221,6 +279,14 @@ ClassMethod ReasonFor(pCode As %String) As %String
     If pCode = ..#ITEMSOURCECONTROL Quit ..#REASONITEMSOURCECONTROL
     If pCode = ..#ITEMPENDING Quit ..#REASONITEMPENDING
     If pCode = ..#ITEMREMOVE Quit ..#REASONITEMREMOVE
+    If pCode = ..#SETTINGSECRET Quit ..#REASONSETTINGSECRET
+    If pCode = ..#SETTINGSUPPLIED Quit ..#REASONSETTINGSUPPLIED
+    If pCode = ..#SETTINGSAME Quit ..#REASONSETTINGSAME
+    If pCode = ..#SETTINGDEFAULTED Quit ..#REASONSETTINGDEFAULTED
+    If pCode = ..#SETTINGCORE Quit ..#REASONSETTINGCORE
+    If pCode = ..#SETTINGVALUE Quit ..#REASONSETTINGVALUE
+    If pCode = ..#SETTINGLOCATION Quit ..#REASONSETTINGLOCATION
+    If pCode = ..#SETTINGDESCENT Quit ..#REASONSETTINGDESCENT
     Quit ""
 }
 

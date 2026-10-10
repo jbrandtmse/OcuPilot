@@ -345,6 +345,8 @@ test('a side bar lists only built screens, in side-bar order', () => {
       'system-explorer/docdb',
       // Story 20.3: the unlisted Production items list, reached from a Productions row, ahead of its area's listed lists.
       'interoperability/productions/items',
+      // Story 20.22: the unlisted Item settings list, reached from a Production items row, beside it.
+      'interoperability/productions/items/settings',
       // Story 20.2: Interoperability's four lists, in the classic List menu's order.
       'interoperability/productions',
       'interoperability/processes',
@@ -681,6 +683,25 @@ test('Story 18.14: a mapping change opens the list of the namespace its composit
     screenForChange({ type: 'task-history-entry', id: '12\u00012026-09-28 10:00:00\u0001Completed' })?.route,
     `tasks/history/${encodeEntityId('12\u00012026-09-28 10:00:00\u0001Completed')}`,
     'while a list with no parent keeps the whole id'
+  );
+});
+
+// Story 20.22: a parent-scoped composite list opens on the leading parts of the id that form its parent screen's id,
+// as many as that id has -- one for a Productions row, two for a Production items row.
+//
+// Mutation (Rule 19): make `routeIdFor` keep the whole id -> the setting and the item legs go red, reading the
+// whole composite as the route id.
+test("Story 20.22: a setting change opens Item settings on its item, and an item change opens Production items on its production", () => {
+  const sep = '\u0001';
+  assert.equal(
+    screenForChange({ type: 'production-item-setting', id: `P.Prod${sep}Item${sep}Host${sep}InitSeconds` })?.route,
+    `interoperability/productions/items/settings/${encodeEntityId(`P.Prod${sep}Item`)}`,
+    'the production and the item, which are the Production items list\'s own id, are the route id'
+  );
+  assert.equal(
+    screenForChange({ type: 'production-item', id: `P.Prod${sep}Item` })?.route,
+    `interoperability/productions/items/${encodeEntityId('P.Prod')}`,
+    'an item change opens its production\'s list, whose parent is keyed by a simple id'
   );
 });
 

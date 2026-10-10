@@ -3,7 +3,9 @@
 /// creates, in package <parameter>PACKAGE</parameter>, the productions
 /// <parameter>PRODUCTION</parameter> and <parameter>OTHER</parameter>, a business operation
 /// (<parameter>OPNAME</parameter>, with a <code>HangSeconds</code> and an <code>InitSeconds</code>
-/// setting), a business service (<parameter>SVCNAME</parameter>) and a business rule class
+/// setting and, for Story 20.22, an <code>ApiToken</code> (a credential-named string), a
+/// <code>ProbeDirectory</code> (a <code>directorySelector</code>) and a <code>ProbeFile</code> (a
+/// <code>fileSelector</code>)), a business service (<parameter>SVCNAME</parameter>) and a business rule class
 /// (<parameter>RULECLASS</parameter>), and removes only those and the
 /// runtime state and message rows whose configuration names begin with
 /// <parameter>CONFIGPREFIX</parameter>.</p>
@@ -49,9 +51,12 @@ ClassMethod ClassText(pName As %String) As %String [ Private ]
     If pName = "Op" {
         Quit "Class " _ ..#PACKAGE _ ".Op Extends Ens.BusinessOperation" _ tNL _ "{" _ tNL _
             "Parameter INVOCATION = ""Queue"";" _ tNL _
-            "Parameter SETTINGS = ""HangSeconds:Probe,InitSeconds:Probe"";" _ tNL _
+            "Parameter SETTINGS = ""HangSeconds:Probe,InitSeconds:Probe,ApiToken:Probe,ProbeDirectory:Probe:directorySelector,ProbeFile:Probe:fileSelector"";" _ tNL _
             "Property HangSeconds As %Integer [ InitialExpression = 0 ];" _ tNL _
             "Property InitSeconds As %Integer [ InitialExpression = 0 ];" _ tNL _
+            "Property ApiToken As %String;" _ tNL _
+            "Property ProbeDirectory As %String;" _ tNL _
+            "Property ProbeFile As %String;" _ tNL _
             "Method OnInit() As %Status" _ tNL _ "{" _ tNL _
             " If +..InitSeconds > 0 Hang ..InitSeconds" _ tNL _ " Quit $$$OK" _ tNL _ "}" _ tNL _
             "Method Hang(pRequest As Ens.Request, Output pResponse As Ens.Response) As %Status" _ tNL _ "{" _ tNL _
@@ -168,11 +173,12 @@ ClassMethod OpItem(pProduction As Ens.Config.Production) As Ens.Config.Item [ Pr
 
 /// <p>Add the item <var>pName</var>, of class <var>pClass</var>, to the stored probe production with pool size
 /// <var>pPoolSize</var>, enabled unless <var>pEnabled</var> is 0, and, when <var>pSettingName</var> is
-/// given, with that host setting at <var>pSettingValue</var> (Story 20.3). It works on the stored
+/// given, with that setting at <var>pSettingValue</var> in the group <var>pSettingTarget</var>, Host unless
+/// another is given (Stories 20.3 and 20.22). It works on the stored
 /// configuration the way the vendor's own code does and never through OcuPilot's port, so a test can build a
 /// state the port refuses to make, such as a second item of one name. The production class is not saved, so
 /// the item lasts until <method>ResetProduction</method> or the class is compiled again.</p>
-ClassMethod AddItem(pName As %String, pClass As %String, pPoolSize As %Integer = 1, pEnabled As %Boolean = 1, pSettingName As %String = "", pSettingValue As %String = "") As %Status
+ClassMethod AddItem(pName As %String, pClass As %String, pPoolSize As %Integer = 1, pEnabled As %Boolean = 1, pSettingName As %String = "", pSettingValue As %String = "", pSettingTarget As %String = "Host") As %Status
 {
     Set tSC = ..CheckOwn()
     If $$$ISERR(tSC) Quit tSC
@@ -186,7 +192,7 @@ ClassMethod AddItem(pName As %String, pClass As %String, pPoolSize As %Integer =
         Set tItem.Enabled = ''pEnabled
         If pSettingName '= "" {
             Set tSetting = ##class(Ens.Config.Setting).%New()
-            Set tSetting.Target = "Host"
+            Set tSetting.Target = pSettingTarget
             Set tSetting.Name = pSettingName
             Set tSetting.Value = pSettingValue
             Do tItem.Settings.Insert(tSetting)
@@ -208,6 +214,90 @@ ClassMethod AddItem(pName As %String, pClass As %String, pPoolSize As %Integer =
 ClassMethod AddTearItem(pSeconds As %Integer) As %Status
 {
     Quit ..AddItem(..#TEARNAME, ..#PACKAGE _ ".TearOp", 1, 1, "TearDownSeconds", +pSeconds)
+}
+
+/// <p>Add a <b>disabled</b> item <var>pName</var> of the file class <var>pClass</var> (<code>EnsLib.File.PassthroughOperation</code>
+/// or <code>EnsLib.File.PassthroughService</code>) with its adapter's <code>FilePath</code> at <var>pFilePath</var> and,
+/// when <var>pLevels</var> is not empty, its <code>SubdirectoryLevels</code> at <var>pLevels</var> (Story 20.22). It is
+/// <method>AddItem</method> with the adapter group, so the item is never started and no job reads the path.</p>
+ClassMethod AddFileItem(pName As %String, pClass As %String, pFilePath As %String, pLevels As %String = "") As %Status
+{
+    Set tSC = ..AddItem(pName, pClass, 1, 0, "FilePath", pFilePath, "Adapter")
+    If $$$ISERR(tSC) || (pLevels = "") Quit tSC
+    Quit ..PutItemSetting(pName, "Adapter", "SubdirectoryLevels", pLevels)
+}
+
+/// <p>Store the setting <var>pTarget</var>/<var>pName</var> of the item <var>pItem</var> of the probe production at
+/// <var>pValue</var>, in the stored configuration only (Story 20.22); the production class is not saved.</p>
+ClassMethod PutItemSetting(pItem As %String, pTarget As %String, pName As %String, pValue As %String) As %Status
+{
+    Set tSC = ..CheckOwn()
+    If $$$ISERR(tSC) Quit tSC
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = ..#NAMESPACE
+        Set tProduction = ##class(Ens.Config.Production).%OpenId(..#PRODUCTION, 4)
+        Set tItem = tProduction.FindItemByConfigName(pItem)
+        If '$IsObject(tItem) {
+            Set tSC = $$$ERROR($$$GeneralError, "the probe production holds no item " _ pItem)
+        } Else {
+            Set tSetting = tItem.FindSettingByName(pName, pTarget)
+            If '$IsObject(tSetting) {
+                Set tSetting = ##class(Ens.Config.Setting).%New()
+                Set tSetting.Target = pTarget
+                Set tSetting.Name = pName
+                Do tItem.Settings.Insert(tSetting)
+            }
+            Set tSetting.Value = pValue
+            Set tSC = tProduction.%Save()
+        }
+        Set tSetting = "", tItem = "", tProduction = ""
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>Store a system default setting for the item <var>pItem</var> of the probe production (Story 20.22):
+/// <var>pName</var> of the group <var>pTarget</var> at <var>pValue</var>. An item's own Core setting is named bare, as the
+/// vendor reads it; a Host or Adapter setting by its group and name. <method>RemoveDefaults</method> removes every default
+/// the probe stored.</p>
+ClassMethod PutDefault(pItem As %String, pTarget As %String, pName As %String, pValue As %String) As %Status
+{
+    Set tProduction = ..#PRODUCTION
+    Set tSettingName = $Select(pTarget = "Core": pName, 1: pTarget _ ":" _ pName)
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = ..#NAMESPACE
+        Set tDefault = ##class(Ens.Config.DefaultSettings).%New()
+        Set tDefault.ProductionName = tProduction
+        Set tDefault.ItemName = pItem
+        Set tDefault.SettingName = tSettingName
+        Set tDefault.SettingValue = pValue
+        Set tSC = tDefault.%Save()
+        Set tDefault = ""
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>Remove every system default setting the probe stored for the probe production (Story 20.22).</p>
+ClassMethod RemoveDefaults()
+{
+    Set tProduction = ..#PRODUCTION
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = ..#NAMESPACE
+        &sql(DELETE FROM Ens_Config.DefaultSettings WHERE ProductionName = :tProduction)
+        Set $NAMESPACE = tOrigNS
+    } Catch {
+        Set $NAMESPACE = tOrigNS
+    }
 }
 
 /// <p>Put the probe production back as <method>ClassText</method> declares it (Story 20.3): its class is

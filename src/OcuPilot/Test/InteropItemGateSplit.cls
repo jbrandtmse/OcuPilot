@@ -23,7 +23,7 @@ Parameter GATE = "OcuPilot.Test.ScreenGate";
 Parameter SPLITNAMESPACE = "OCUP203SPLIT";
 
 /// <p>The tools whose pairs are evaluated.</p>
-Parameter TOOLS = "InteropItemEnable,InteropItemDisable,InteropItemRemove,InteropItemAdd";
+Parameter TOOLS = "InteropItemEnable,InteropItemDisable,InteropItemRemove,InteropItemAdd,InteropSettingSet,InteropSettingReset";
 
 /// <p>The pairs an item write tool declares in <parameter>SPLITNAMESPACE</parameter>, <code>resource:permission</code>,
 /// comma-separated: Interoperability's menu, Productions' read, an item write's configuration write, and WRITE on

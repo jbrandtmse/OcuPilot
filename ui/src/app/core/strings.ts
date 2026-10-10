@@ -6325,6 +6325,50 @@ export const STRINGS = {
   interopItemRefusalEnabledRemove: 'Disable this item before removing it.',
   /** EXPERIENCE.md:604 */
   interopItemRefusalSourceControl: 'This namespace uses source control, so change this production\'s items in the classic production configuration page.',
+  /** EXPERIENCE.md:604 */
+  interopItemSettingsLabel: 'Item settings',
+  /** EXPERIENCE.md:604 */
+  interopItemSettingsCriterionItem: 'Item',
+  /** EXPERIENCE.md:604 */
+  interopItemSettingsEmpty: 'This item declares no settings.',
+  /** EXPERIENCE.md:604 */
+  interopItemSettingsEmptyAgent: 'Ask the agent which settings this item could have.',
+  /** EXPERIENCE.md:604 */
+  interopItemSettingsPrompt1: 'Which settings of this item differ from their defaults?',
+  /** EXPERIENCE.md:604 */
+  interopItemSettingsPrompt2: 'Which settings of this item point at a location on the server?',
+  /** EXPERIENCE.md:604 */
+  interopItemSettingsPrompt3: 'What does each setting of this item do?',
+  /** EXPERIENCE.md:604 */
+  interopItemSettingSetAction: 'Set value',
+  /** EXPERIENCE.md:604 */
+  interopItemSettingResetAction: 'Reset to default',
+  /** EXPERIENCE.md:604 */
+  interopSettingSetTitle: 'Set value of <name>',
+  /** EXPERIENCE.md:604 */
+  interopSettingCurrentLine: 'Current value: <value>',
+  /** EXPERIENCE.md:604 */
+  interopSettingDefaultLine: 'Default: <value>',
+  /** EXPERIENCE.md:604 */
+  interopSettingBooleanHint: 'Checked stores 1 and unchecked stores 0.',
+  /** EXPERIENCE.md:604 */
+  interopSettingEmptyHint: 'Leave it empty to clear the value.',
+  /** EXPERIENCE.md:604 */
+  interopSettingLocationConsequence: '<value> is a location on this server that the item reads or writes when it runs. The change takes effect when this production next starts or, while it runs, when it is updated on Productions.',
+  /** EXPERIENCE.md:604 */
+  interopSettingRefusalSecret: 'This setting holds a secret, so OcuPilot neither shows nor sets it. Set it in the classic production configuration page, or point the item at a credentials entry.',
+  /** EXPERIENCE.md:604 */
+  interopSettingRefusalSupplied: 'A system default setting or a service registry entry decides this setting\'s value, so change it there.',
+  /** EXPERIENCE.md:604 */
+  interopSettingRefusalSame: 'This setting already holds that value.',
+  /** EXPERIENCE.md:604 */
+  interopSettingRefusalDefaulted: 'This setting already takes its default value, so there is nothing to reset.',
+  /** EXPERIENCE.md:604 */
+  interopSettingRefusalCore: 'This is one of the item\'s own properties, which has no default to return to, so set the value you want instead.',
+  /** EXPERIENCE.md:604 */
+  interopSettingRefusalValue: 'The item\'s class does not accept this value for this setting.',
+  /** EXPERIENCE.md:604 */
+  interopSettingRefusalDescent: 'This item also reads the directories below its file path, as many levels down as its subdirectory levels, and that would reach the manager directory or the directory OcuPilot serves its files from. Choose another file path or fewer subdirectory levels.',
   /** EXPERIENCE.md:468 */
   sqlPrivilegesLabel: 'SQL privileges',
   /** EXPERIENCE.md:468 */

@@ -513,6 +513,23 @@ ClassMethod SecretArguments(pTool As %DynamicObject, Output pDeclared As %Boolea
     Quit tNames
 }
 
+/// <p>The argument names of the call <var>pInput</var> to <var>pTool</var> that its ledger row and step redact
+/// beyond <method>SecretArguments</method>, as its class answers them
+/// (<method>OcuPilot.Screen.Tool.Write.CallSecretNames</method>, AD-3, AD-41): <code>""</code> for a tool that
+/// names none, a read tool among them, and for an answer that could not be read.</p>
+ClassMethod CallSecretNames(pTool As %DynamicObject, pInput As %DynamicAbstractObject) As %List
+{
+    Set tNames = ""
+    Try {
+        If '##class(%Dictionary.CompiledMethod).%ExistsId(pTool.%Get("class") _ "||CallSecretNames") Quit
+        Set tNames = $ClassMethod(pTool.%Get("class"), "CallSecretNames", pInput)
+        If '$ListValid(tNames) Set tNames = ""
+    } Catch {
+        Set tNames = ""
+    }
+    Quit tNames
+}
+
 /// <p>The names a confirm or a screen action's secret value may carry for write tool
 /// <var>pTool</var>, as its class answers them
 /// (<method>OcuPilot.Screen.Tool.Write.ChannelSecretNames</method>): its descriptor's declared

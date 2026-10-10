@@ -48,7 +48,7 @@ Parameter GATECLASS = "OcuPilot.Screen.Gate";
 /// <p>The endpoints this port serves, comma-separated: the namespace's productions, business
 /// processes, data transformations and business rules, and a production's items.
 /// <file>ui/tools/screen-mirror.mjs</file> reads this list.</p>
-Parameter ENDPOINTS = "Productions,Processes,Transforms,Rules,Items";
+Parameter ENDPOINTS = "Productions,Processes,Transforms,Rules,Items,Settings";
 
 Parameter ENDPOINTPRODUCTIONS = "Productions";
 
@@ -61,6 +61,12 @@ Parameter ENDPOINTRULES = "Rules";
 /// <p>A production's items: <code>LIST</code> for the production the <parameter>PRODUCTIONKEY</parameter>
 /// names, <code>ITEM</code> for one item and the four item writes (Story 20.3).</p>
 Parameter ENDPOINTITEMS = "Items";
+
+/// <p>An item's settings (Story 20.22): <code>LIST</code> for the item the <parameter>ITEMKEY</parameter> names,
+/// <code>SETTING</code> for one setting and the two setting writes <code>SET</code> and <code>RESET</code>. A
+/// setting is one of the item's own properties (<parameter>TARGETCORE</parameter>) or one the item's class
+/// (<parameter>TARGETHOST</parameter>) or its adapter (<parameter>TARGETADAPTER</parameter>) declares.</p>
+Parameter ENDPOINTSETTINGS = "Settings";
 
 /// <p>The pairs the Productions endpoint requires: the classic Interoperability menu's
 /// <code>%Ens_Portal:USE</code> and <code>EnsPortal.Productions</code>'s own resource (AD-8,
@@ -131,6 +137,43 @@ Parameter TYPEADD = "ADD";
 
 Parameter TYPEREMOVE = "REMOVE";
 
+/// <p>One setting: <code>{Production, Item, Target, Name, Value, Source, Default, DefaultSource, Type, Category,
+/// Location, Secret, Namespace, Count}</code>, the setting tools' fresh read. The id is the composite
+/// <code>[Production, Item, Target, Name]</code>. With <parameter>ACTIONKEY</parameter> in the query it refuses
+/// what that action would be refused (<method>SettingRefusalToken</method>).</p>
+Parameter TYPESETTING = "SETTING";
+
+/// <p>Store a value for a setting. The body names it in <code>Value</code>.</p>
+Parameter TYPESET = "SET";
+
+/// <p>Remove the production's own value of a Host or Adapter setting, so its default applies again.</p>
+Parameter TYPERESET = "RESET";
+
+/// <p>The query key naming the item a <code>Settings</code> list reads: its one criterion. Its value is the item's
+/// composite id <code>[Production, Name]</code> or the vendor's config name <code>Production||Name</code>.</p>
+Parameter ITEMKEY = "item";
+
+/// <p>What a setting refusal code begins with (<class>OcuPilot.Api.InteropError</class>).</p>
+Parameter SETTINGCODEPREFIX = "INTEROP.SETTING.";
+
+/// <p>The three groups a setting belongs to.</p>
+Parameter TARGETCORE = "Core";
+
+Parameter TARGETHOST = "Host";
+
+Parameter TARGETADAPTER = "Adapter";
+
+/// <p>The pair of adapter settings that makes an inbound file adapter read below its directory: the levels it
+/// descends, and the directory it starts from.</p>
+Parameter DESCENTSETTING = "SubdirectoryLevels";
+
+Parameter DESCENTPATH = "FilePath";
+
+/// <p>The editor-context components that mark a server path: a directory, or a file.</p>
+Parameter LOCATIONDIRECTORY = "directorySelector";
+
+Parameter LOCATIONFILE = "fileSelector";
+
 /// <p>The query key naming the production an <code>Items</code> list reads: its one criterion.</p>
 Parameter PRODUCTIONKEY = "production";
 
@@ -194,6 +237,8 @@ Parameter REASONITEMIDREQUIRED = "Name the production and the item.";
 
 Parameter REASONITEMBODY = "An item write names its fields in an object.";
 
+Parameter REASONSETTINGID = "Name the production, the item, the group (Core, Host or Adapter) and the setting.";
+
 /// <p>The class the pair sets are evaluated through. Overridable so a fixture can drive a denial in
 /// process; production never overrides it.</p>
 ClassMethod GateClass() As %String
@@ -226,6 +271,13 @@ ClassMethod IsItemWrite(pType As %String) As %Boolean
     Quit (pType = ..#TYPEENABLE) || (pType = ..#TYPEDISABLE) || (pType = ..#TYPEADD) || (pType = ..#TYPEREMOVE)
 }
 
+/// <p>Whether <var>pType</var> is one of the setting writes this port carries (Story 20.22). A setting write is an
+/// item write for the pairs and the databases it needs: it stores the item and the production class.</p>
+ClassMethod IsSettingWrite(pType As %String) As %Boolean
+{
+    Quit (pType = ..#TYPESET) || (pType = ..#TYPERESET)
+}
+
 /// <p>The pairs <var>pEndpoint</var> requires for <var>pType</var>, as the <code>%List</code> of
 /// two-element <code>%List</code>s the gate evaluates: the endpoint's own pairs, then
 /// <parameter>WRITEPAIRS</parameter> for a production write or <parameter>ITEMWRITEPAIRS</parameter> for an
@@ -233,7 +285,7 @@ ClassMethod IsItemWrite(pType As %String) As %Boolean
 /// Productions endpoint's pairs.</p>
 ClassMethod Pairs(pEndpoint As %String, pType As %String = "") As %List
 {
-    If (pEndpoint = ..#ENDPOINTPRODUCTIONS) || (pEndpoint = ..#ENDPOINTITEMS) {
+    If (pEndpoint = ..#ENDPOINTPRODUCTIONS) || (pEndpoint = ..#ENDPOINTITEMS) || (pEndpoint = ..#ENDPOINTSETTINGS) {
         Set tSpec = ..#PRODUCTIONPAIRS
     } ElseIf $ListFind(..Endpoints(), pEndpoint) {
         Set tSpec = ..#CODEPAIRS
@@ -241,7 +293,7 @@ ClassMethod Pairs(pEndpoint As %String, pType As %String = "") As %List
         Quit ""
     }
     If ..IsWrite(pType) Set tSpec = tSpec _ "," _ ..#WRITEPAIRS
-    If ..IsItemWrite(pType) Set tSpec = tSpec _ "," _ ..#ITEMWRITEPAIRS
+    If ..IsItemWrite(pType) || ..IsSettingWrite(pType) Set tSpec = tSpec _ "," _ ..#ITEMWRITEPAIRS
     Quit ##class(OcuPilot.Screen.Gate).ParsePairSpec(tSpec)
 }
 
@@ -251,6 +303,7 @@ ClassMethod Serves(pEndpoint As %String, pType As %String) As %Boolean
     If '$ListFind(..Endpoints(), pEndpoint) Quit 0
     If pType = ..#TYPELIST Quit 1
     If pEndpoint = ..#ENDPOINTITEMS Quit (pType = ..#TYPEITEM) || ..IsItemWrite(pType)
+    If pEndpoint = ..#ENDPOINTSETTINGS Quit (pType = ..#TYPESETTING) || ..IsSettingWrite(pType)
     If pEndpoint '= ..#ENDPOINTPRODUCTIONS Quit 0
     Quit (pType = ..#TYPESTATE) || ..IsWrite(pType)
 }
@@ -346,7 +399,7 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
             Set tSC = ..Refuse(501, ##class(OcuPilot.Api.Error).#NOTIMPLEMENTED, ##class(OcuPilot.Api.Error).#PORTNOTIMPLEMENTED, ..#REASONNOTIMPLEMENTED, .pHttpStatus, .pFault)
             Quit
         }
-        Set tWrite = ..IsWrite(pType) || ..IsItemWrite(pType)
+        Set tWrite = ..IsWrite(pType) || ..IsItemWrite(pType) || ..IsSettingWrite(pType)
         Set tNamespace = $Get(pQuery(..#NAMESPACEKEY))
         If tNamespace = "" Set tNamespace = ##class(OcuPilot.Kernel.Scope).Current()
         Set tSC = ..Admit(pEndpoint, pType, tNamespace, .pHttpStatus, .pFault)
@@ -354,6 +407,10 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
 
         If pEndpoint = ..#ENDPOINTITEMS {
             Set tSC = ..InvokeItems(tNamespace, pType, .pQuery, pBody, .pResult, .pHttpStatus, .pFault)
+            Quit
+        }
+        If pEndpoint = ..#ENDPOINTSETTINGS {
+            Set tSC = ..InvokeSettings(tNamespace, pType, .pQuery, pBody, .pResult, .pHttpStatus, .pFault)
             Quit
         }
 
@@ -414,7 +471,7 @@ ClassMethod Admit(pEndpoint As %String, pType As %String, pNamespace As %String,
 {
     Set pHttpStatus = 0
     Set pFault = ""
-    Set tWrite = ..IsWrite(pType) || ..IsItemWrite(pType)
+    Set tWrite = ..IsWrite(pType) || ..IsItemWrite(pType) || ..IsSettingWrite(pType)
     Set tFailedPair = ""
     ; EvaluateRequired, not EvaluatePairs: a pair list mis-edited to empty fails closed.
     If '$ClassMethod(..GateClass(), "EvaluateRequired", ..Pairs(pEndpoint, pType), .tFailedPair) Quit ..Deny(tFailedPair, .pHttpStatus, .pFault)
@@ -424,7 +481,7 @@ ClassMethod Admit(pEndpoint As %String, pType As %String, pNamespace As %String,
     If '##class(OcuPilot.Kernel.Shell.Namespaces).GlobalDatabase(pNamespace, .tResource, .tReadOnly) || (tResource = "") Quit ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONNAMESPACEUNKNOWN, .pHttpStatus, .pFault)
     If '$ClassMethod(..GateClass(), "EvaluateRequired", $ListBuild($ListBuild(tResource, $Select(tWrite: ..#WRITEPERMISSION, 1: ..#READPERMISSION))), .tFailedPair) Quit ..Deny(tFailedPair, .pHttpStatus, .pFault)
     ; An item write also writes the routines database (^oddDEF), after the globals one.
-    If '..IsItemWrite(pType) Quit $$$OK
+    If '..IsItemWrite(pType) && '..IsSettingWrite(pType) Quit $$$OK
     Set tRoutineResource = ""
     If '..RoutineResource(pNamespace, .tRoutineResource) || (tRoutineResource = "") Quit ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONROUTINESUNKNOWN, .pHttpStatus, .pFault)
     If '$ClassMethod(..GateClass(), "EvaluateRequired", $ListBuild($ListBuild(tRoutineResource, ..#WRITEPERMISSION)), .tFailedPair) Quit ..Deny(tFailedPair, .pHttpStatus, .pFault)
@@ -1055,10 +1112,17 @@ ClassMethod ItemObject(pProduction As Ens.Config.Production, pName As %String) A
 /// a logged 500.</li>
 /// </ol>
 /// <p>Every reference is dropped before the namespace is restored.</p>
-ClassMethod PerformItem(pNamespace As %String, pType As %String, pProduction As %String, pName As %String, pBody As %DynamicObject, Output pResult As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+ClassMethod PerformItem(pNamespace As %String, pType As %String, pProduction As %String, pName As %String, pBody As %DynamicObject, Output pResult As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, pSettingTarget As %String = "", pSettingName As %String = "") As %Status [ Private ]
 {
     Set pResult = ""
     If ..SourceControlled(pNamespace) Quit ..Conflict(##class(OcuPilot.Api.InteropError).#ITEMSOURCECONTROL, .pHttpStatus, .pFault)
+    Set tSetting = ..IsSettingWrite(pType)
+    If pType = ..#TYPESET {
+        If '$IsObject(pBody) || 'pBody.%IsA("%Library.DynamicObject") Quit ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONITEMBODY, .pHttpStatus, .pFault)
+        Set tViolationSC = ..SettingViolations(pNamespace, pProduction, pName, pSettingTarget, pSettingName, pBody, .tViolations)
+        If $$$ISERR(tViolationSC) Quit ..Fail("the setting's value could not be judged", tViolationSC, .pHttpStatus, .pFault)
+        If tViolations > 0 Quit ..Violations(.tViolations, .pHttpStatus, .pFault)
+    }
     If pType = ..#TYPEADD {
         If '$IsObject(pBody) || 'pBody.%IsA("%Library.DynamicObject") Quit ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONITEMBODY, .pHttpStatus, .pFault)
         Set tViolationSC = ..AddViolations(pNamespace, pName, pBody, .tViolations)
@@ -1074,6 +1138,8 @@ ClassMethod PerformItem(pNamespace As %String, pType As %String, pProduction As 
     Set tAuditSC = $$$OK
     Set tAfter = ""
     Set tCount = 0
+    Set tLocation = ""
+    Set tItemName = pName
     Set tOrigNS = $NAMESPACE
     Try {
         Set $NAMESPACE = pNamespace
@@ -1083,6 +1149,17 @@ ClassMethod PerformItem(pNamespace As %String, pType As %String, pProduction As 
             Set tProduction = ##class(Ens.Config.Production).%OpenId(pProduction, 4)
             If '$IsObject(tProduction) {
                 Set tBusy = 1
+            } ElseIf tSetting {
+                Do ..SettingStep(pNamespace, pType, pProduction, pName, pSettingTarget, pSettingName, pBody, tOrigNS, tProduction, .tStep)
+                Set tAbsent = tStep("absent")
+                Set tRefusal = tStep("refusal")
+                Set tLocation = tStep("location")
+                Set tVendorSC = tStep("vendor")
+                Set tAuditSC = tStep("audit")
+                Set tSaveSC = tStep("save")
+                Set tAfter = tStep("after")
+                Set tCount = tStep("afterCount")
+                Set tItemName = tStep("itemName")
             } Else {
                 Set tFactsSC = ..GatherItems(pNamespace, pProduction, pName, 0, .tExists, .tFound, .tCount, .tGatherCaught)
                 If $IsObject(tGatherCaught) Throw tGatherCaught
@@ -1143,7 +1220,12 @@ ClassMethod PerformItem(pNamespace As %String, pType As %String, pProduction As 
         Set tProduction = ""
         Set $NAMESPACE = tOrigNS
     } Catch ex {
-        ; The production's lock is released in the namespace it was taken in.
+        ; The production's lock is released in the namespace it was taken in: a setting write may have left it to
+        ; judge a server path.
+        Try {
+            Set $NAMESPACE = pNamespace
+        } Catch {
+        }
         Set tTarget = "", tNew = "", tProduction = ""
         Set $NAMESPACE = tOrigNS
         Set tCaught = ex
@@ -1152,10 +1234,19 @@ ClassMethod PerformItem(pNamespace As %String, pType As %String, pProduction As 
     If $IsObject(tCaught) Quit ..Mapped(tCaught, "the item " _ pType _ " failed", .pHttpStatus, .pFault)
     If tAbsent Quit ..Absent(.pHttpStatus, .pFault)
     If tBusy Quit ..Unavailable(.pHttpStatus, .pFault)
+    If tSetting && (tRefusal '= "") Quit ..Conflict(..SettingCode(tRefusal), .pHttpStatus, .pFault)
     If tRefusal '= "" Quit ..Conflict(..ItemCode(tRefusal), .pHttpStatus, .pFault)
+    If tLocation '= "" {
+        If pType = ..#TYPERESET Quit ..ConflictFor(tLocation, .pHttpStatus, .pFault)
+        Set tViolations = 1
+        Set tViolations(1) = $ListBuild("Value", tLocation)
+        Quit ..Violations(.tViolations, .pHttpStatus, .pFault)
+    }
     If $$$ISERR(tVendorSC) Quit ..Statused(tVendorSC, "the item " _ pType _ " failed", .pHttpStatus, .pFault)
     If $$$ISERR(tSaveSC) Quit ..Fail("the production class could not be saved after the item " _ pType, tSaveSC, .pHttpStatus, .pFault)
-    If tAfter = "" {
+    If tSetting && (tAfter '= "") {
+        Set pResult = ..SettingRow(pProduction, tItemName, tAfter, pNamespace, tCount)
+    } ElseIf tAfter = "" {
         Set pResult = {}
         Do pResult.%Set("Production", pProduction, "string")
         Do pResult.%Set("Name", pName, "string")
@@ -1166,6 +1257,651 @@ ClassMethod PerformItem(pNamespace As %String, pType As %String, pProduction As 
     }
     Set pHttpStatus = 200
     Quit $$$OK
+}
+
+/// <p>Serve the Settings endpoint (Story 20.22) after <method>Invoke</method>'s gate. A <code>LIST</code> names its
+/// item under <parameter>ITEMKEY</parameter>; every other type names a setting by the composite id
+/// <code>[Production, Item, Target, Name]</code> under <parameter>IDKEY</parameter>. A setting whose name the
+/// credential pattern matches is refused <code>INTEROP.SETTING.SECRET</code> for a write and for a read composed for
+/// one, on the name alone, before the namespace is switched.</p>
+ClassMethod InvokeSettings(pNamespace As %String, pType As %String, ByRef pQuery, pBody As %DynamicAbstractObject, Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Set pResult = ""
+    Try {
+        If pType = ..#TYPELIST {
+            If '..ItemParts($Get(pQuery(..#ITEMKEY)), .tProduction, .tItem) {
+                Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONITEMIDREQUIRED, .pHttpStatus, .pFault)
+                Quit
+            }
+            Set tMaxText = $Get(pQuery(..#MAXROWSKEY))
+            If (tMaxText '= "") && '$Match(tMaxText, "^[1-9][0-9]*$") {
+                Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONMAXROWS, .pHttpStatus, .pFault)
+                Quit
+            }
+            Set tSC = ..ListSettings(pNamespace, tProduction, tItem, +tMaxText, .pResult, .pHttpStatus, .pFault)
+            Quit
+        }
+        Set tParts = ##class(OcuPilot.Kernel.EntityId).SplitComposite($Get(pQuery(..#IDKEY)))
+        Set tValid = ($ListLength(tParts) = 4)
+        For tI = 1:1:$Select(tValid: 4, 1: 0) {
+            If $List(tParts, tI) = "" Set tValid = 0
+        }
+        If tValid && '$ListFind($ListBuild(..#TARGETCORE, ..#TARGETHOST, ..#TARGETADAPTER), $List(tParts, 3)) Set tValid = 0
+        If 'tValid {
+            Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONSETTINGID, .pHttpStatus, .pFault)
+            Quit
+        }
+        Set tProduction = $List(tParts, 1)
+        Set tItem = $List(tParts, 2)
+        Set tTarget = $List(tParts, 3)
+        Set tSetting = $List(tParts, 4)
+        Set tAction = $Select(..IsSettingWrite(pType): pType, 1: $Get(pQuery(..#ACTIONKEY)))
+        If (tAction '= "") && '..IsSettingWrite(tAction) {
+            Set tSC = ..Refuse(501, ##class(OcuPilot.Api.Error).#NOTIMPLEMENTED, ##class(OcuPilot.Api.Error).#PORTNOTIMPLEMENTED, ..#REASONNOTIMPLEMENTED, .pHttpStatus, .pFault)
+            Quit
+        }
+        If (tAction '= "") && ##class(OcuPilot.Kernel.Audit.Log).IsCredentialName(tSetting) {
+            Set tSC = ..Conflict(##class(OcuPilot.Api.InteropError).#SETTINGSECRET, .pHttpStatus, .pFault)
+            Quit
+        }
+        If ..IsSettingWrite(pType) {
+            Set tSC = ..PerformItem(pNamespace, pType, tProduction, tItem, pBody, .pResult, .pHttpStatus, .pFault, tTarget, tSetting)
+            Quit
+        }
+        Set tSC = ..ReadSetting(pNamespace, tProduction, tItem, tTarget, tSetting, tAction, .pResult, .pHttpStatus, .pFault)
+    } Catch ex {
+        Set pResult = ""
+        Set tSC = ..Fail("the setting call failed inside the port", ex.AsStatus(), .pHttpStatus, .pFault)
+    }
+    Quit tSC
+}
+
+/// <p>The production and the item <var>pText</var> names, in <var>pProduction</var> and <var>pItem</var>: the item's
+/// composite id <code>[Production, Name]</code>, or the vendor's config name <code>Production||Name</code>. Neither
+/// name can hold a vertical bar, so a text with another is not one. Pure.</p>
+ClassMethod ItemParts(pText As %String, Output pProduction As %String, Output pItem As %String) As %Boolean
+{
+    Set pProduction = ""
+    Set pItem = ""
+    If pText = "" Quit 0
+    If pText [ $Char(1) {
+        Set tParts = ##class(OcuPilot.Kernel.EntityId).SplitComposite(pText)
+        If $ListLength(tParts) '= 2 Quit 0
+        Set pProduction = $List(tParts, 1)
+        Set pItem = $List(tParts, 2)
+    } ElseIf pText [ "||" {
+        Set pProduction = $Piece(pText, "||", 1)
+        Set pItem = $Piece(pText, "||", 2, *)
+    } Else {
+        Quit 0
+    }
+    If (pProduction = "") || (pItem = "") || (pProduction [ "|") || (pItem [ "|") {
+        Set pProduction = ""
+        Set pItem = ""
+        Quit 0
+    }
+    Quit 1
+}
+
+/// <p>The decision on a setting read or write, as the last segment of the code (<code>AMBIGUOUS</code>,
+/// <code>SUPPLIED</code>, <code>CORE</code>, <code>DEFAULTED</code>), <code>""</code> for none (Story 20.22). It names
+/// no other class, so it runs while the production's namespace is switched. <var>pSource</var> is the setting's value
+/// source (1 production, 2 system default, 3 class default, 4 service registry), <var>pCount</var> how many items
+/// of the name the production holds. Pure.</p>
+/// <ul>
+/// <li>More than one item of the name: <code>AMBIGUOUS</code>, which is <code>INTEROP.ITEM.AMBIGUOUS</code>.</li>
+/// <li>A value a service registry entry supplies, and a Core setting a system default supplies:
+/// <code>SUPPLIED</code>.</li>
+/// <li>Reset: <code>CORE</code> for one of the item's own properties, then <code>DEFAULTED</code> when the
+/// production holds no value of its own.</li>
+/// </ul>
+ClassMethod SettingRefusalToken(pType As %String, pTarget As %String, pSource As %Integer, pCount As %Integer) As %String
+{
+    If pCount > 1 Quit "AMBIGUOUS"
+    If pSource = 4 Quit "SUPPLIED"
+    If (pTarget = "Core") && (pSource = 2) Quit "SUPPLIED"
+    If pType = "RESET" {
+        If pTarget = "Core" Quit "CORE"
+        If pSource '= 1 Quit "DEFAULTED"
+    }
+    Quit ""
+}
+
+/// <p>The code <var>pToken</var> names (<method>SettingRefusalToken</method>, or <code>SAME</code>):
+/// <code>INTEROP.ITEM.AMBIGUOUS</code> for <code>AMBIGUOUS</code>, else <code>INTEROP.SETTING.</code> and the token;
+/// <code>""</code> for no token.</p>
+ClassMethod SettingCode(pToken As %String) As %String
+{
+    If pToken = "" Quit ""
+    If pToken = "AMBIGUOUS" Quit ..#ITEMCODEPREFIX _ pToken
+    Quit ..#SETTINGCODEPREFIX _ pToken
+}
+
+/// <p>Whether a set of <var>pValue</var> would store what the production already holds (Story 20.22): its own
+/// value for a Host or Adapter setting (<var>pSource</var> 1), the property's for one of the item's own. Pure.</p>
+ClassMethod SameValue(pTarget As %String, pSource As %Integer, pHeld As %String, pValue As %String) As %Boolean
+{
+    If (pTarget '= "Core") && (pSource '= 1) Quit 0
+    Quit (pHeld = pValue)
+}
+
+/// <p>The word for a value source code, <code>""</code> for any other: <code>production</code>,
+/// <code>systemDefault</code>, <code>classDefault</code> or <code>registry</code>. Pure.</p>
+ClassMethod SourceWord(pCode As %Integer) As %String
+{
+    Quit $Case(+pCode, 1: "production", 2: "systemDefault", 3: "classDefault", 4: "registry", : "")
+}
+
+/// <p><code>directory</code> when the editor context <var>pContext</var> has the component
+/// <parameter>LOCATIONDIRECTORY</parameter> (the part before <code>?</code>), <code>file</code> for
+/// <parameter>LOCATIONFILE</parameter>, else <code>""</code> (Story 20.22). A setting of either kind is a location on
+/// the server. Pure.</p>
+ClassMethod LocationKind(pContext As %String) As %String
+{
+    Set tComponent = $Piece(pContext, "?", 1)
+    If tComponent = ..#LOCATIONDIRECTORY Quit "directory"
+    If tComponent = ..#LOCATIONFILE Quit "file"
+    Quit ""
+}
+
+/// <p>The class that answers the path predicates (AD-21, AD-62). Overridable so a fixture can move the served
+/// directory; production never overrides it.</p>
+ClassMethod PathPortClass() As %String
+{
+    Quit "OcuPilot.Port.PathPort"
+}
+
+/// <p><var>pValue</var> as the running process resolves it, in the current namespace, where a relative value is read
+/// against that namespace's database directory: <code>%File</code>'s one-argument <code>NormalizeDirectory</code> for a
+/// <code>directory</code>, <code>NormalizeFilename</code> for a <code>file</code>; <code>""</code> for either other
+/// kind and for an empty value. It names no other OcuPilot class, so it runs while the production's namespace is
+/// switched.</p>
+ClassMethod NormalizeLocation(pKind As %String, pValue As %String) As %String
+{
+    If pValue = "" Quit ""
+    If pKind = "directory" Quit ##class(%File).NormalizeDirectory(pValue)
+    If pKind = "file" Quit ##class(%File).NormalizeFilename(pValue)
+    Quit ""
+}
+
+/// <p>The code a server path is refused with, or <code>""</code> (Story 20.22): the self-protection <class>OcuPilot.Port.PathPort</class>
+/// keeps, evaluated through <method>PathPortClass</method> on <var>pNormalized</var>, the value as
+/// <method>NormalizeLocation</method> answers it. A <code>directory</code> is refused for the manager directory
+/// itself (<code>PATH.MANAGERDIR</code>) and for the served directory or anything under it
+/// (<code>PATH.SERVED</code>); with <var>pLevels</var> above zero, also when the adapter would descend that many
+/// levels into either (<method>DescentReaches</method>). A <code>file</code> is refused directly in the manager
+/// directory (<code>PATH.MANAGER</code>) and under the served directory (<code>PATH.SERVED</code>). The order is
+/// <method>OcuPilot.Port.PathPort.Resolve</method>'s. Runs only in the install namespace.</p>
+ClassMethod LocationProblem(pKind As %String, pNormalized As %String, pLevels As %Integer = 0) As %String
+{
+    If pNormalized = "" Quit ""
+    Set tPath = ..PathPortClass()
+    If pKind = "directory" {
+        If $ClassMethod(tPath, "IsManagerDirectory", pNormalized) Quit ##class(OcuPilot.Api.Error).#PATHMANAGERDIR
+        If $ClassMethod(tPath, "InServedDirectory", pNormalized) Quit ##class(OcuPilot.Api.Error).#PATHSERVED
+        If (+pLevels > 0) && ..DescentReaches(pNormalized, pLevels) Quit ##class(OcuPilot.Api.InteropError).#SETTINGDESCENT
+        Quit ""
+    }
+    If pKind = "file" {
+        If $ClassMethod(tPath, "DirectlyInManagerDirectory", pNormalized) Quit ##class(OcuPilot.Api.Error).#PATHMANAGER
+        If $ClassMethod(tPath, "InServedDirectory", pNormalized) Quit ##class(OcuPilot.Api.Error).#PATHSERVED
+    }
+    Quit ""
+}
+
+/// <p>Whether an adapter that starts in the normalized directory <var>pDirectory</var> and descends
+/// <var>pLevels</var> levels of subdirectories would enter the manager directory or the directory OcuPilot serves
+/// its files from (Story 20.22). Each is read through <method>PathPortClass</method> and normalized; one that lies
+/// strictly below <var>pDirectory</var> is approached one segment at a time up to <var>pLevels</var>, and each
+/// directory entered is tested with the same predicates the directory itself is. Textual, as the predicates are.
+/// Runs only in the install namespace.</p>
+ClassMethod DescentReaches(pDirectory As %String, pLevels As %Integer) As %Boolean
+{
+    If (pDirectory = "") || (+pLevels < 1) Quit 0
+    Set tPath = ..PathPortClass()
+    Set tDirectory = ##class(%File).NormalizeDirectory(pDirectory)
+    If tDirectory = "" Quit 0
+    Set tSeparator = $Extract(tDirectory, *)
+    Set tReached = 0
+    For tMethod = "ManagerDirectory", "ServedDirectory" {
+        Set tProtected = $ClassMethod(tPath, tMethod)
+        If tProtected '= "" Set tProtected = ##class(%File).NormalizeDirectory(tProtected)
+        If (tProtected = "") || (tProtected = tDirectory) Continue
+        If '$ClassMethod(tPath, "Contains", tDirectory, tProtected) Continue
+        Set tRelative = $Extract(tProtected, $Length(tDirectory) + 1, *)
+        Set tDepth = $Length(tRelative, tSeparator) - 1
+        Set tCandidate = tDirectory
+        For tK = 1:1:$Select(tDepth < +pLevels: tDepth, 1: +pLevels) {
+            Set tCandidate = tCandidate _ $Piece(tRelative, tSeparator, tK) _ tSeparator
+            If $ClassMethod(tPath, "IsManagerDirectory", tCandidate) || $ClassMethod(tPath, "InServedDirectory", tCandidate) {
+                Set tReached = 1
+                Quit
+            }
+        }
+        If tReached Quit
+    }
+    Quit tReached
+}
+
+/// <p>The code the change <var>pFacts</var> describes is refused with on a server path, or <code>""</code> (Story
+/// 20.22). <var>pFacts</var> is <method>SettingFacts</method>'s. A change of the subdirectory levels is judged by
+/// <method>DescentReaches</method> alone, on the effective file path and the levels that would take effect; any
+/// other location is judged by <method>LocationProblem</method>, with the effective levels when it is the file path of
+/// an item that holds both settings. Runs only in the install namespace.</p>
+ClassMethod ChangeProblem(ByRef pFacts) As %String
+{
+    Set tTarget = $Get(pFacts("target"))
+    Set tName = $Get(pFacts("name"))
+    Set tDescent = +$Get(pFacts("hasDescent")) && (tTarget = ..#TARGETADAPTER)
+    If tDescent && (tName = ..#DESCENTSETTING) {
+        If $Get(pFacts("pathNorm")) = "" Quit ""
+        If ..DescentReaches(pFacts("pathNorm"), +$Get(pFacts("newValue"))) Quit ##class(OcuPilot.Api.InteropError).#SETTINGDESCENT
+        Quit ""
+    }
+    Set tLevels = $Select(tDescent && (tName = ..#DESCENTPATH): +$Get(pFacts("levels")), 1: 0)
+    Quit ..LocationProblem($Get(pFacts("kind")), $Get(pFacts("normalized")), tLevels)
+}
+
+/// <p>The item <var>pItem</var> of <var>pProduction</var> in <var>pNamespace</var>, whose name matches without
+/// regard to case, with its settings (Story 20.22). <var>pExists</var> is whether the production is there,
+/// <var>pCount</var> how many items bear the name; only when it is one are <var>pFound</var> and
+/// <var>pFacts</var> filled. <var>pFound(n)</var> is <code>$ListBuild(Target, Name, Value, Source code, Default,
+/// DefaultSource code, Type, Category, EditorContext, Value normalized, Default normalized)</code>: the item's own
+/// settable properties first (<code>Core</code>, less the read-only ones and <code>Enabled</code>), then its Host
+/// settings, then its Adapter settings, each value the effective one. The two normalized values are the value and
+/// the default of a server path as <method>NormalizeLocation</method> reads them in this namespace, else
+/// <code>""</code>. <var>pFacts</var> holds <code>name</code>, <code>class</code> and <code>adapter</code>, the item's
+/// own name and its host and adapter classes. A fault is <var>pCaught</var>, with the namespace restored. Only
+/// vendor classes and this class run while the namespace is switched.</p>
+ClassMethod GatherSettings(pNamespace As %String, pProduction As %String, pItem As %String, Output pExists As %Boolean, Output pCount As %Integer, ByRef pFound, Output pFacts, Output pCaught) As %Status [ Private ]
+{
+    Kill pFound
+    Kill pFacts
+    Set pFound = 0
+    Set pExists = 0
+    Set pCount = 0
+    Set pCaught = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Set pExists = ''##class(Ens.Config.Production).%ExistsId(pProduction)
+        If pExists {
+            Set tProduction = ##class(Ens.Config.Production).%OpenId(pProduction)
+            If $IsObject(tProduction) {
+                Set tWanted = $ZConvert(pItem, "U")
+                Set tChosen = ""
+                For tI = 1:1:tProduction.Items.Count() {
+                    Set tCandidate = tProduction.Items.GetAt(tI)
+                    If '$IsObject(tCandidate) Continue
+                    If $ZConvert(tCandidate.Name, "U") '= tWanted Continue
+                    Set pCount = pCount + 1
+                    If pCount = 1 Set tChosen = tCandidate
+                }
+                If pCount = 1 {
+                    Set pFacts("name") = tChosen.Name
+                    Set pFacts("class") = tChosen.ClassName
+                    Set pFacts("adapter") = tChosen.AdapterClassName()
+                    Kill tStatic
+                    Set tStaticSC = tChosen.GetStaticSettings(.tStatic)
+                    If $$$ISERR(tStaticSC) Throw ##class(%Exception.StatusException).CreateFromStatus(tStaticSC)
+                    Set tKey = ""
+                    For {
+                        Set tKey = $Order(tStatic(tKey))
+                        If tKey = "" Quit
+                        Set tRow = tStatic(tKey)
+                        If (+$List(tRow, 4) = 0) || ($List(tRow, 2) = "Enabled") Continue
+                        Set pFound($Increment(pFound)) = ..SettingLine(tRow, "Core")
+                    }
+                    Set tVirtualSC = tChosen.PopulateVirtualSettings()
+                    If $$$ISERR(tVirtualSC) Throw ##class(%Exception.StatusException).CreateFromStatus(tVirtualSC)
+                    For tGroup = "Host", "Adapter" {
+                        For tI = 1:1:tChosen.VirtualSettings.Count() {
+                            Set tRow = tChosen.VirtualSettings.GetAt(tI)
+                            If $List(tRow, 1) '= tGroup Continue
+                            Set pFound($Increment(pFound)) = ..SettingLine(tRow, tGroup)
+                        }
+                    }
+                }
+            }
+            Set tChosen = ""
+            Set tCandidate = ""
+            Set tProduction = ""
+        }
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set pCaught = ex
+    }
+    Quit $$$OK
+}
+
+/// <p>The line <method>GatherSettings</method> keeps of one setting row <var>pRow</var> of group
+/// <var>pTarget</var>, the vendor's 18-element row (Story 20.22). Called while the namespace is switched.</p>
+ClassMethod SettingLine(pRow As %List, pTarget As %String) As %List [ Private ]
+{
+    Set tKind = ..LocationKind($List(pRow, 18))
+    Set tValue = $List(pRow, 3)
+    Set tDefault = $List(pRow, 5)
+    Quit $ListBuild(pTarget, $List(pRow, 2), tValue, +$List(pRow, 4), tDefault, +$List(pRow, 6), $List(pRow, 8), $List(pRow, 16), $List(pRow, 18), ..NormalizeLocation(tKind, tValue), ..NormalizeLocation(tKind, tDefault))
+}
+
+/// <p>Everything one setting call needs, read in the current namespace, which must be <var>pNamespace</var>
+/// (Story 20.22), in <var>pFacts</var>. It is <method>GatherSettings</method> and the facts about the one setting
+/// <var>pTarget</var>/<var>pName</var> that <var>pType</var> (<code>SET</code>, <code>RESET</code> or
+/// <code>""</code>) is about:</p>
+/// <ul>
+/// <li><code>exists</code>, <code>count</code>, <code>itemName</code>, <code>class</code>, <code>adapter</code>,
+/// <code>rows</code> and <code>row(n)</code>: the production, how many items bear the name, the item and its
+/// settings. <code>line</code> is the one setting's line, <code>""</code> when the item declares none.</li>
+/// <li><code>kind</code>: <method>LocationKind</method> of the setting. <code>newValue</code> and
+/// <code>normalized</code>: the value the change leaves in force and its normalized form, which a set takes from
+/// <var>pValue</var> and a reset from the default.</li>
+/// <li><code>hasDescent</code>, <code>pathNorm</code> and <code>levels</code>: whether the item holds both
+/// <parameter>DESCENTSETTING</parameter> and <parameter>DESCENTPATH</parameter> as adapter settings, the effective
+/// file path normalized and the effective levels.</li>
+/// <li><code>valid</code>: for a set, whether the declaring class's <code>&lt;Name&gt;IsValid</code> accepts
+/// <var>pValue</var> (<method>ValueAccepted</method>).</li>
+/// </ul>
+/// <p>A fault is thrown. Only vendor classes and this class run.</p>
+ClassMethod SettingFacts(pNamespace As %String, pProduction As %String, pItem As %String, pTarget As %String, pName As %String, pType As %String, pValue As %String, Output pFacts) [ Private ]
+{
+    Kill pFacts
+    Set pFacts("exists") = 0
+    Set pFacts("count") = 0
+    Set pFacts("itemName") = ""
+    Set pFacts("class") = ""
+    Set pFacts("adapter") = ""
+    Set pFacts("rows") = 0
+    Set pFacts("line") = ""
+    Set pFacts("target") = pTarget
+    Set pFacts("name") = pName
+    Set pFacts("kind") = ""
+    Set pFacts("newValue") = ""
+    Set pFacts("normalized") = ""
+    Set pFacts("hasDescent") = 0
+    Set pFacts("pathNorm") = ""
+    Set pFacts("levels") = 0
+    Set pFacts("valid") = 1
+    Set tGatherSC = ..GatherSettings(pNamespace, pProduction, pItem, .tExists, .tCount, .tFound, .tItemFacts, .tCaught)
+    If $IsObject(tCaught) Throw tCaught
+    Set pFacts("exists") = tExists
+    Set pFacts("count") = tCount
+    If tCount '= 1 Quit
+    Set pFacts("itemName") = tItemFacts("name")
+    Set pFacts("class") = tItemFacts("class")
+    Set pFacts("adapter") = tItemFacts("adapter")
+    Set pFacts("rows") = tFound
+    Set tHasLevels = 0
+    Set tHasPath = 0
+    For tI = 1:1:tFound {
+        Set tLine = tFound(tI)
+        Set pFacts("row", tI) = tLine
+        If $List(tLine, 1) = ..#TARGETADAPTER {
+            If $List(tLine, 2) = ..#DESCENTSETTING {
+                Set tHasLevels = 1
+                Set pFacts("levels") = +$List(tLine, 3)
+            } ElseIf $List(tLine, 2) = ..#DESCENTPATH {
+                Set tHasPath = 1
+                Set pFacts("pathNorm") = $List(tLine, 10)
+            }
+        }
+        If ($List(tLine, 1) = pTarget) && ($List(tLine, 2) = pName) Set pFacts("line") = tLine
+    }
+    Set pFacts("hasDescent") = (tHasLevels && tHasPath)
+    If pFacts("line") = "" Quit
+    Set tKind = ..LocationKind($List(pFacts("line"), 9))
+    Set pFacts("kind") = tKind
+    If pType = ..#TYPESET {
+        Set pFacts("newValue") = pValue
+        Set pFacts("normalized") = ..NormalizeLocation(tKind, pValue)
+        Set pFacts("valid") = ..ValueAccepted(.pFacts, pTarget, pName, pValue)
+    } ElseIf pType = ..#TYPERESET {
+        Set pFacts("newValue") = $List(pFacts("line"), 5)
+        Set pFacts("normalized") = $List(pFacts("line"), 11)
+    }
+}
+
+/// <p>Whether the class that declares the setting accepts <var>pValue</var> (Story 20.22): an item's own property by
+/// <code>Ens.Config.Item</code>'s <code>&lt;Name&gt;IsValid</code>, a Host setting by the item's class, an Adapter
+/// setting by its adapter class, as the classic configuration page asks them. An empty value is not judged for a
+/// Host or Adapter setting, as there; a class that has no such method accepts anything. Called while the namespace
+/// is switched.</p>
+ClassMethod ValueAccepted(ByRef pFacts, pTarget As %String, pName As %String, pValue As %String) As %Boolean [ Private ]
+{
+    Set tClass = $Case(pTarget, "Core": "Ens.Config.Item", "Host": pFacts("class"), "Adapter": pFacts("adapter"), : "")
+    If tClass = "" Quit 1
+    If (pTarget '= "Core") && (pValue = "") Quit 1
+    If '##class(%Dictionary.CompiledMethod).%ExistsId(tClass _ "||" _ pName _ "IsValid") Quit 1
+    Quit ''$$$ISOK($ClassMethod(tClass, pName _ "IsValid", pValue))
+}
+
+/// <p>The setting row <var>pLine</var> (<method>GatherSettings</method>'s element) of item <var>pItemName</var> of
+/// <var>pProduction</var> as the list and the setting read answer it: <code>{Production, Item, Target, Name, Value,
+/// Source, Default, DefaultSource, Type, Category, Location, Secret}</code>; with <var>pNamespace</var> and
+/// <var>pCount</var> it also carries <code>Namespace</code> and <code>Count</code>. A setting whose name the
+/// credential pattern matches (<method>OcuPilot.Kernel.Audit.Log.IsCredentialName</method>) answers an empty
+/// <code>Value</code> and <code>Default</code> and <code>Secret</code> true: the value is dropped here, in the
+/// install namespace, and reaches nothing that renders the row (AD-35, Story 20.22).</p>
+ClassMethod SettingRow(pProduction As %String, pItemName As %String, pLine As %List, pNamespace As %String = "", pCount As %Integer = "") As %DynamicObject [ Private ]
+{
+    Set tName = $List(pLine, 2)
+    Set tSecret = ##class(OcuPilot.Kernel.Audit.Log).IsCredentialName(tName)
+    Set tRow = {}
+    Do tRow.%Set("Production", pProduction, "string")
+    Do tRow.%Set("Item", pItemName, "string")
+    Do tRow.%Set("Target", $List(pLine, 1) _ "", "string")
+    Do tRow.%Set("Name", tName _ "", "string")
+    Do tRow.%Set("Value", $Select(tSecret: "", 1: $List(pLine, 3) _ ""), "string")
+    Do tRow.%Set("Source", ..SourceWord($List(pLine, 4)), "string")
+    Do tRow.%Set("Default", $Select(tSecret: "", 1: $List(pLine, 5) _ ""), "string")
+    Do tRow.%Set("DefaultSource", ..SourceWord($List(pLine, 6)), "string")
+    Do tRow.%Set("Type", $List(pLine, 7) _ "", "string")
+    Do tRow.%Set("Category", $List(pLine, 8) _ "", "string")
+    Do tRow.%Set("Location", ''(..LocationKind($List(pLine, 9)) '= ""), "boolean")
+    Do tRow.%Set("Secret", ''tSecret, "boolean")
+    If pNamespace '= "" {
+        Do tRow.%Set("Namespace", pNamespace, "string")
+        Do tRow.%Set("Count", +pCount, "number")
+    }
+    Quit tRow
+}
+
+/// <p>The facts of <var>pType</var> on one setting, read in <var>pNamespace</var> (<method>SettingFacts</method>),
+/// with the namespace restored whatever happens. A fault is <var>pCaught</var>.</p>
+ClassMethod SettingsOf(pNamespace As %String, pProduction As %String, pItem As %String, pTarget As %String, pName As %String, pType As %String, pValue As %String, Output pFacts, Output pCaught) [ Private ]
+{
+    Kill pFacts
+    Set pCaught = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Do ..SettingFacts(pNamespace, pProduction, pItem, pTarget, pName, pType, pValue, .pFacts)
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set pCaught = ex
+    }
+}
+
+/// <p>The settings of the item <var>pItem</var> of <var>pProduction</var>, one row per setting in
+/// <method>GatherSettings</method>'s order, at most <var>pMax</var> when it is above zero (Story 20.22). An unknown
+/// production or item is 404 <code>PORT.NOTFOUND</code>, unlogged; a name the production holds more than once is
+/// <code>INTEROP.ITEM.AMBIGUOUS</code>.</p>
+ClassMethod ListSettings(pNamespace As %String, pProduction As %String, pItem As %String, pMax As %Integer, Output pRows As %DynamicArray, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pRows = ""
+    Do ..SettingsOf(pNamespace, pProduction, pItem, "", "", "", "", .tFacts, .tCaught)
+    If $IsObject(tCaught) Quit ..Mapped(tCaught, "the item settings list failed", .pHttpStatus, .pFault)
+    If 'tFacts("exists") || (tFacts("count") = 0) Quit ..Absent(.pHttpStatus, .pFault)
+    If tFacts("count") > 1 Quit ..Conflict(##class(OcuPilot.Api.InteropError).#ITEMAMBIGUOUS, .pHttpStatus, .pFault)
+    Set pRows = []
+    For tI = 1:1:tFacts("rows") {
+        If (pMax > 0) && (tI > pMax) Quit
+        Do pRows.%Push(..SettingRow(pProduction, tFacts("itemName"), tFacts("row", tI)))
+    }
+    Set pHttpStatus = 200
+    Quit $$$OK
+}
+
+/// <p>One setting, fresh (Story 20.22): the setting row with <code>Namespace</code> and <code>Count</code>. A
+/// namespace under source control is <code>INTEROP.ITEM.SOURCECONTROL</code> first; an unknown production, item or
+/// setting, and <code>Enabled</code>, are 404 <code>PORT.NOTFOUND</code>, unlogged; a name the production holds more
+/// than once is <code>AMBIGUOUS</code>. With <var>pAction</var> it refuses what that action would be refused
+/// (<method>SettingRefusalToken</method>), and for a reset the server path the default would leave in force
+/// (<method>ChangeProblem</method>), 409 with that code.</p>
+ClassMethod ReadSetting(pNamespace As %String, pProduction As %String, pItem As %String, pTarget As %String, pName As %String, pAction As %String, Output pRow As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pRow = ""
+    If ..SourceControlled(pNamespace) Quit ..Conflict(##class(OcuPilot.Api.InteropError).#ITEMSOURCECONTROL, .pHttpStatus, .pFault)
+    Do ..SettingsOf(pNamespace, pProduction, pItem, pTarget, pName, $Select(pAction = ..#TYPERESET: pAction, 1: ""), "", .tFacts, .tCaught)
+    If $IsObject(tCaught) Quit ..Mapped(tCaught, "the setting read failed", .pHttpStatus, .pFault)
+    Set tCount = tFacts("count")
+    If 'tFacts("exists") || (tCount = 0) Quit ..Absent(.pHttpStatus, .pFault)
+    If tCount > 1 Quit ..Conflict(##class(OcuPilot.Api.InteropError).#ITEMAMBIGUOUS, .pHttpStatus, .pFault)
+    Set tLine = tFacts("line")
+    If tLine = "" Quit ..Absent(.pHttpStatus, .pFault)
+    If pAction '= "" {
+        Set tToken = ..SettingRefusalToken(pAction, pTarget, $List(tLine, 4), tCount)
+        If tToken '= "" Quit ..Conflict(..SettingCode(tToken), .pHttpStatus, .pFault)
+        If pAction = ..#TYPERESET {
+            Set tLocation = ..ChangeProblem(.tFacts)
+            If tLocation '= "" Quit ..ConflictFor(tLocation, .pHttpStatus, .pFault)
+        }
+    }
+    Set pRow = ..SettingRow(pProduction, tFacts("itemName"), tLine, pNamespace, tCount)
+    Set pHttpStatus = 200
+    Quit $$$OK
+}
+
+/// <p>Every rule over a set's value, in <var>pViolations</var> as <code>pViolations(n) = $ListBuild(field, code)</code>
+/// with the count in <code>pViolations</code> (Story 20.22), for the setting <var>pTarget</var>/<var>pName</var> of the
+/// item <var>pItem</var> of <var>pProduction</var>: <code>Value</code> must be a JSON string
+/// (<code>PORT.FIELD.SHAPE</code>); a Host or Adapter value has no space or control character at either end, which the
+/// vendor would store trimmed; the declaring class's <code>&lt;Name&gt;IsValid</code> accepts it
+/// (<code>INTEROP.SETTING.VALUE</code>, <method>ValueAccepted</method>); and a server path breaks no self-protection
+/// (<method>ChangeProblem</method>: <code>PATH.MANAGERDIR</code>, <code>PATH.SERVED</code>, <code>PATH.MANAGER</code> or
+/// <code>INTEROP.SETTING.DESCENT</code>). A setting the item does not declare earns none, and the call answers its 404.
+/// The vendor classes run in <var>pNamespace</var>, switched by explicit save and restore, and only once this port's gate
+/// admits a set there (<method>Admit</method>).</p>
+ClassMethod SettingViolations(pNamespace As %String, pProduction As %String, pItem As %String, pTarget As %String, pName As %String, pBody As %DynamicObject, Output pViolations) As %Status
+{
+    Kill pViolations
+    Set pViolations = 0
+    Set tSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Set tAdmitted = $$$ISOK(..Admit(..#ENDPOINTSETTINGS, ..#TYPESET, pNamespace, .tHttp, .tFault))
+    Try {
+        If '$IsObject(pBody) || 'pBody.%IsA("%Library.DynamicObject") Set pBody = {}
+        If pBody.%GetTypeOf("Value") '= "string" {
+            Set pViolations($Increment(pViolations)) = $ListBuild("Value", ##class(OcuPilot.Api.Error).#PORTFIELDSHAPE)
+            Quit
+        }
+        If 'tAdmitted Quit
+        Set tValue = pBody.%Get("Value")
+        If (pTarget '= ..#TARGETCORE) && ($ZStrip(tValue, "<>WC") '= tValue) {
+            Set pViolations($Increment(pViolations)) = $ListBuild("Value", ##class(OcuPilot.Api.InteropError).#SETTINGVALUE)
+            Quit
+        }
+        Do ..SettingsOf(pNamespace, pProduction, pItem, pTarget, pName, ..#TYPESET, tValue, .tFacts, .tCaught)
+        If $IsObject(tCaught) {
+            Set tSC = tCaught.AsStatus()
+            Quit
+        }
+        If (tFacts("count") '= 1) || (tFacts("line") = "") Quit
+        If 'tFacts("valid") {
+            Set pViolations($Increment(pViolations)) = $ListBuild("Value", ##class(OcuPilot.Api.InteropError).#SETTINGVALUE)
+            Quit
+        }
+        Set tCode = ..ChangeProblem(.tFacts)
+        If tCode '= "" Set pViolations($Increment(pViolations)) = $ListBuild("Value", tCode)
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>The in-lock part of a setting write (Story 20.22), called by <method>PerformItem</method> while the namespace
+/// is switched to <var>pNamespace</var> and <var>pLocked</var>, the production, is open at concurrency 4 with the lock
+/// held. It reads the setting's facts under that lock and answers in <var>pStep</var>:</p>
+/// <ul>
+/// <li><code>absent</code>: the production holds no such item, or the item declares no such setting.</li>
+/// <li><code>refusal</code>: <method>SettingRefusalToken</method>'s decision, else <code>SAME</code> for a set of the value
+/// the production already holds.</li>
+/// <li><code>location</code>: the code <method>ChangeProblem</method> refuses a server path with, judged from the rows
+/// just read. The namespace is left for that judgement, which calls classes it cannot see, and entered again; the
+/// production stays open, so its lock is held throughout, and nothing is stored when a code is answered.</li>
+/// <li>Otherwise the write: an item's own property is set; a Host or Adapter setting is updated or inserted, or, for
+/// a reset, removed; the item is saved; <code>%Ensemble/%Production/ModifyConfiguration</code> is recorded through
+/// <code>Ens.Util.Auditing</code>, naming the setting and never a value; and the production class is saved
+/// (<code>SaveToClass</code>). <code>vendor</code>, <code>audit</code> and <code>save</code> are the three statuses;
+/// <code>after</code> and <code>afterCount</code> are the setting's line and its item count once saved.</li>
+/// </ul>
+ClassMethod SettingStep(pNamespace As %String, pType As %String, pProduction As %String, pItem As %String, pTarget As %String, pName As %String, pBody As %DynamicObject, pOrigNS As %String, pLocked As Ens.Config.Production, Output pStep) [ Private ]
+{
+    Kill pStep
+    Set pStep("absent") = 0
+    Set pStep("refusal") = ""
+    Set pStep("location") = ""
+    Set pStep("vendor") = $$$OK
+    Set pStep("audit") = $$$OK
+    Set pStep("save") = $$$OK
+    Set pStep("after") = ""
+    Set pStep("afterCount") = 0
+    Set pStep("itemName") = pItem
+    Set tValue = $Select(pType = ..#TYPESET: pBody.%Get("Value"), 1: "")
+    Do ..SettingFacts(pNamespace, pProduction, pItem, pTarget, pName, pType, tValue, .tFacts)
+    Set tCount = tFacts("count")
+    Set tLine = tFacts("line")
+    If (tCount = 0) || ((tCount = 1) && (tLine = "")) {
+        Set pStep("absent") = 1
+        Quit
+    }
+    Set pStep("itemName") = tFacts("itemName")
+    Set tSource = $Select(tLine = "": 0, 1: +$List(tLine, 4))
+    Set pStep("refusal") = ..SettingRefusalToken(pType, pTarget, tSource, tCount)
+    If (pStep("refusal") = "") && (pType = ..#TYPESET) && ..SameValue(pTarget, tSource, $List(tLine, 3), tValue) Set pStep("refusal") = "SAME"
+    If pStep("refusal") '= "" Quit
+    Set $NAMESPACE = pOrigNS
+    Set pStep("location") = ..ChangeProblem(.tFacts)
+    Set $NAMESPACE = pNamespace
+    If pStep("location") '= "" Quit
+    Set tItemObject = ..ItemObject(pLocked, tFacts("itemName"))
+    If pTarget = ..#TARGETCORE {
+        Set $Property(tItemObject, pName) = tValue
+    } ElseIf pType = ..#TYPESET {
+        Set tHeld = tItemObject.FindSettingByName(pName, pTarget)
+        If '$IsObject(tHeld) {
+            Set tHeld = ##class(Ens.Config.Setting).%New()
+            Set tHeld.Target = pTarget
+            Set tHeld.Name = pName
+            Do tItemObject.Settings.Insert(tHeld)
+        }
+        Set tHeld.Value = tValue
+    } Else {
+        For tI = 1:1:tItemObject.Settings.Count() {
+            Set tHeld = tItemObject.Settings.GetAt(tI)
+            If (tHeld.Name = pName) && (tHeld.Target = pTarget) {
+                Do tItemObject.Settings.RemoveAt(tI)
+                Quit
+            }
+        }
+    }
+    Set pStep("vendor") = tItemObject.%Save()
+    If $$$ISOK(pStep("vendor")) {
+        Set tActions = "setting " _ $Select(pType = ..#TYPESET: "set", 1: "reset") _ " by OcuPilot"
+        Set tActions(pTarget _ ":" _ pName) = ""
+        Set pStep("audit") = ##class(Ens.Util.Auditing).AuditModifyProductionConfig(pProduction, tFacts("itemName"), .tActions)
+        Set pStep("save") = pLocked.SaveToClass(tItemObject)
+        Set tHeld = ""
+        Set tItemObject = ""
+        Do ..SettingFacts(pNamespace, pProduction, pItem, pTarget, pName, "", "", .tAfter)
+        Set pStep("after") = tAfter("line")
+        Set pStep("afterCount") = tAfter("count")
+    }
+    Set tHeld = ""
+    Set tItemObject = ""
 }
 
 /// <p>Whether status <var>pStatus</var> carries vendor status code <var>pCode</var>, as one whole entry of
@@ -1264,6 +2000,13 @@ ClassMethod Conflict(pCode As %String, Output pHttpStatus As %Integer, Output pF
     Quit ..Refuse(409, ##class(OcuPilot.Api.Error).#CONFLICT, pCode, ##class(OcuPilot.Api.InteropError).ReasonFor(pCode), .pHttpStatus, .pFault)
 }
 
+/// <p>The 409 refusal <var>pCode</var>, with the sentence <method>OcuPilot.Api.Error.ReasonForViolation</method> gives
+/// it: a code of this port's own or one of <class>OcuPilot.Port.PathPort</class>'s.</p>
+ClassMethod ConflictFor(pCode As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Quit ..Refuse(409, ##class(OcuPilot.Api.Error).#CONFLICT, pCode, ##class(OcuPilot.Api.Error).ReasonForViolation(pCode), .pHttpStatus, .pFault)
+}
+
 /// <p>404 <code>PORT.NOTFOUND</code>: the production is not there. Unlogged (AD-2).</p>
 ClassMethod Absent(Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
 {
@@ -1294,6 +2037,7 @@ ClassMethod Fail(pMessage As %String, pStatus As %Status, Output pHttpStatus As 
 ClassMethod SnippetForm(pEndpoint As %String, pType As %String) As %String
 {
     If (pEndpoint = ..#ENDPOINTITEMS) && ..IsItemWrite(pType) Quit "objectscript"
+    If (pEndpoint = ..#ENDPOINTSETTINGS) && ..IsSettingWrite(pType) Quit "objectscript"
     If pEndpoint '= ..#ENDPOINTPRODUCTIONS Quit ""
     If ..IsWrite(pType) Quit "objectscript"
     Quit ""
@@ -1315,6 +2059,8 @@ ClassMethod Snippet(pEndpoint As %String, pType As %String, ByRef pQuery, pBody 
     Set tText = " Set $NAMESPACE = " _ ..Literal($Get(pQuery(..#NAMESPACEKEY)))
     If pEndpoint = ..#ENDPOINTITEMS {
         Set tText = tText _ ..ItemSnippet(pType, $Get(pQuery(..#IDKEY)), pBody)
+    } ElseIf pEndpoint = ..#ENDPOINTSETTINGS {
+        Set tText = tText _ ..SettingSnippet(pType, $Get(pQuery(..#IDKEY)), pBody)
     } ElseIf pType = ..#TYPESTART {
         Set tText = tText _ $Char(10) _ " Set tSC = ##class(Ens.Director).StartProduction(" _ ..Literal($Get(pQuery(..#IDKEY))) _ ")"
     } ElseIf pType = ..#TYPERECOVER {
@@ -1369,6 +2115,39 @@ ClassMethod ItemSnippet(pType As %String, pId As %String, pBody As %DynamicAbstr
     }
     ; The production was opened with its exclusive lock, which lasts while a reference to it does.
     Set tText = tText _ tNL _ " Kill tItem, tProduction"
+    Quit tText
+}
+
+/// <p>The lines <method>Snippet</method> adds for the setting write <var>pType</var> of the setting the composite id
+/// <var>pId</var> names, carrying the set's body <var>pBody</var> (Story 20.22): the item opened with the production,
+/// the property or the setting stored or removed, the item saved and the production class saved. Names and values are
+/// string literals. The last line drops the production, so a terminal that runs the script does not keep its
+/// exclusive lock.</p>
+ClassMethod SettingSnippet(pType As %String, pId As %String, pBody As %DynamicAbstractObject) As %String [ Private ]
+{
+    Set tParts = ##class(OcuPilot.Kernel.EntityId).SplitComposite(pId)
+    Set tProduction = ..Literal($ListGet(tParts, 1))
+    Set tItemName = ..Literal($ListGet(tParts, 2))
+    Set tTarget = $ListGet(tParts, 3)
+    Set tName = ..Literal($ListGet(tParts, 4))
+    Set tNL = $Char(10)
+    Set tValue = ""
+    If $IsObject(pBody) && (pBody.%GetTypeOf("Value") = "string") Set tValue = pBody.%Get("Value")
+    Set tText = tNL _ " Set tProduction = ##class(Ens.Config.Production).%OpenId(" _ tProduction _ ", 4)"
+    Set tText = tText _ tNL _ " Set tItem = tProduction.FindItemByConfigName(" _ tItemName _ ")"
+    If tTarget = ..#TARGETCORE {
+        Set tText = tText _ tNL _ " Set $Property(tItem, " _ tName _ ") = " _ ..Literal(tValue)
+    } ElseIf pType = ..#TYPESET {
+        Set tText = tText _ tNL _ " Set tSetting = tItem.FindSettingByName(" _ tName _ ", " _ ..Literal(tTarget) _ ")"
+        Set tText = tText _ tNL _ " If '$IsObject(tSetting) Set tSetting = ##class(Ens.Config.Setting).%New(), tSetting.Target = " _ ..Literal(tTarget) _ ", tSetting.Name = " _ tName _ " Do tItem.Settings.Insert(tSetting)"
+        Set tText = tText _ tNL _ " Set tSetting.Value = " _ ..Literal(tValue)
+    } Else {
+        Set tText = tText _ tNL _ " For tI = 1:1:tItem.Settings.Count() { If (tItem.Settings.GetAt(tI).Name = " _ tName _ ") && (tItem.Settings.GetAt(tI).Target = " _ ..Literal(tTarget) _ ") { Do tItem.Settings.RemoveAt(tI) Quit } }"
+    }
+    Set tText = tText _ tNL _ " Set tSC = tItem.%Save()"
+    Set tText = tText _ tNL _ " If $System.Status.IsOK(tSC) Set tSC = tProduction.SaveToClass(tItem)"
+    ; The production was opened with its exclusive lock, which lasts while a reference to it does.
+    Set tText = tText _ tNL _ " Kill tSetting, tItem, tProduction"
     Quit tText
 }
 

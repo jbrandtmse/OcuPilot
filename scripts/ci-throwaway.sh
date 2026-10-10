@@ -410,6 +410,11 @@ services:
       # and the split gate class creates and deletes a namespace configuration over two existing databases
       # (Story 20.3).
       # classes: InteropItemGateSplit, InteropItemIdentity
+      # The Item settings classes compile and run the same probe production in USER, writing its settings
+      # (Story 20.22): the control, refusals, secrets, paths and descent classes drive the setting writes and every
+      # refusal of them, and the gate class signs in as probe principals each missing one pair a setting write
+      # requires.
+      # classes: InteropSettingControl, InteropSettingDescent, InteropSettingGate, InteropSettingPaths, InteropSettingRefusals, InteropSettingSecrets
       # classes: ExplorerSourceTurn
       # classes: ExplorerSaveTurn
       # classes: ExplorerCreateTurn

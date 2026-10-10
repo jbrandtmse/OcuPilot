@@ -89,6 +89,7 @@ import { MacroLookupPage } from '../areas/system-explorer/macro-lookup.page';
 import { SqlQueryPage } from '../areas/system-explorer/sql-query.page';
 import { DataBrowserPage } from '../areas/system-explorer/data-browser.page';
 import { InteropItemListPage } from '../areas/interoperability/interop-item-list.page';
+import { InteropItemSettingListPage } from '../areas/interoperability/interop-item-setting-list.page';
 import { DocDbListPage } from '../areas/system-explorer/docdb-list.page';
 import { decodeEntityId } from '../core/entity-id';
 import { NavigationService, screenForUrl } from '../core/navigation';
@@ -264,6 +265,8 @@ export const DESCRIPTOR_PAGES: Readonly<Record<string, Type<unknown>>> = {
   'OcuPilot.Screen.Descriptor.ExplorerDocDbList': DocDbListPage,
   // Story 20.3: Production items, the list with its add dialog.
   'OcuPilot.Screen.Descriptor.InteropItemList': InteropItemListPage,
+  // Story 20.22: Item settings, the list with its Set value dialog.
+  'OcuPilot.Screen.Descriptor.InteropItemSettingList': InteropItemSettingListPage,
 };
 
 /**

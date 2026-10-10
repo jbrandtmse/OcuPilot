@@ -103,6 +103,9 @@ export const SKIP = {
   // Story 20.3: HSCUSTOM holds no production, so the Productions list opens with no row to open; the walk is
   // interop-items.browser-spec.mjs's, on the probe production it creates.
   'interoperability/productions/items': 'HSCUSTOM holds no production, so the Productions list opens with no row to open',
+  // Story 20.22: Item settings is reached from a Production items row; the walk is interop-item-settings.browser-spec.mjs's,
+  // on the probe production it creates.
+  'interoperability/productions/items/settings': 'HSCUSTOM holds no production, so the Productions list opens with no row to open',
 };
 
 /** The limits class the seeded entry is capped by, as the turn's own append is. */

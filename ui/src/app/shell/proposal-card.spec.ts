@@ -834,6 +834,37 @@ describe('the proposal card', () => {
     expect(other.card.textContent).not.toContain(STRINGS.journalIntegrityConsequence.replace('<file>', file));
   });
 
+  it('Story 20.22, AC5: a setting set that is a location on the server states it, naming the value its diff row stores', () => {
+    // Mutation (Rule 19): drop the location branch from `journalSentence` -> the location leg goes red.
+    const path = '/tmp/ocupilot-probe-dir';
+    const location = mount(
+      liveView({ consequence: 'INTEROP.SETTING.LOCATION', name: 'ProbeDirectory', changed: [{ field: 'Value', before: '', after: path }], maskedFields: [] }),
+      { phase: 'live' }
+    );
+    const lines = location.card.querySelectorAll('[data-slot="consequence"]');
+    expect(lines.length).toBe(1);
+    expect(lines[0].textContent).toContain(STRINGS.interopSettingLocationConsequence.replace('<value>', path));
+    TestBed.resetTestingModule();
+
+    // An ordinary setting set states the pending-update sentence alone.
+    const ordinary = mount(
+      liveView({ consequence: 'INTEROP.ITEM.PENDING', name: 'InitSeconds', changed: [{ field: 'Value', before: '0', after: '7' }], maskedFields: [] }),
+      { phase: 'live' }
+    );
+    expect(ordinary.card.textContent).toContain(STRINGS.interopItemPendingConsequence);
+    expect(ordinary.card.textContent).not.toContain('a location on this server');
+    TestBed.resetTestingModule();
+
+    // A location cleared to nothing names no location: the pending-update sentence stands alone. Mutation (Rule 19): drop the
+    // empty-value guard from `journalSentence` -> this leg goes red.
+    const cleared = mount(
+      liveView({ consequence: 'INTEROP.SETTING.LOCATION', name: 'ProbeDirectory', changed: [{ field: 'Value', before: path, after: '' }], maskedFields: [] }),
+      { phase: 'live' }
+    );
+    expect(cleared.card.textContent).toContain(STRINGS.interopItemPendingConsequence);
+    expect(cleared.card.textContent).not.toContain('a location on this server');
+  });
+
   it('AD-10: a privileged grant is drawn destructive and names the privilege in one consequence line', () => {
     // The kernel marks the proposal destructive and carries the code; an unauthenticated
     // application that is also privileged carries one combined code, never two lines.

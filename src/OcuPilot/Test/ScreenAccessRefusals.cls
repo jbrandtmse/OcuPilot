@@ -169,4 +169,24 @@ Method TestAnUnknownScreenIsNotFound()
     Do ..Refused("reset", "no.such", "", 404, "ACCESS.SCREEN.UNKNOWN")
 }
 
+/// <p>An empty value is refused unless the tool names it (Story 20.22, AD-56 (ii)): the add's <code>Pair</code>, which
+/// no <code>SCREENEMPTY</code> names, sent as an empty string is 400 <code>TOOL.ARGUMENTS</code> and stores nothing, as
+/// it was before a tool could name one.</p>
+/// <p>Mutation (Rule 19): admit an empty value whatever the tool names in
+/// <method>OcuPilot.Api.ScreenAction.Values</method> -- this goes red.</p>
+Method TestAnEmptyValueNoToolNamesIsStillRefused()
+{
+    Do $$$AssertTrue(..PreparedSetupOk, "setup read back the principals' grants")
+    Set tBefore = ..Stored()
+    Set tBody = {"action": "add-pair"}
+    Do tBody.%Set("id", ..#ONEPAIR, "string")
+    Do tBody.%Set("values", {"Pair": ""})
+    Set tSC = $ClassMethod(..#FIXTURE, "Call", "POST", "/screens/" _ ..#SCREEN _ "/action", $ClassMethod(..#FIXTURE, "Dev"), ..PreparedPassword, .tStatus, .tText, tBody.%ToJSON())
+    Set tAnswer = ""
+    Try { Set tAnswer = ##class(%DynamicAbstractObject).%FromJSON(tText) } Catch {}
+    Do $$$AssertEquals(tStatus _ "|" _ $Select($IsObject(tAnswer): tAnswer.%Get("code"), 1: ""), "400|TOOL.ARGUMENTS", "an empty Pair is refused: " _ $Get(tText))
+    Do $$$AssertEquals(..Stored(), tBefore, "and nothing was stored")
+    Do $$$AssertEquals($ListLength($ClassMethod("OcuPilot.Screen.Tool.ScreenAccessAddPair", "ScreenActionEmptyNames", "add-pair")), 0, "because the tool names no value it may send empty")
+}
+
 }

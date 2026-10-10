@@ -1380,6 +1380,7 @@ test('criteriaProblem returns every sentence OcuPilot.Test.CriteriaCorpus declar
       'OcuPilot.Screen.Descriptor.ExplorerSqlViews',
       'OcuPilot.Screen.Descriptor.GlobalMappingList',
       'OcuPilot.Screen.Descriptor.InteropItemList',
+      'OcuPilot.Screen.Descriptor.InteropItemSettingList',
       'OcuPilot.Screen.Descriptor.JournalFileDatabaseList',
       'OcuPilot.Screen.Descriptor.JournalFileDetails',
       'OcuPilot.Screen.Descriptor.JournalRecordList',
@@ -1537,8 +1538,15 @@ test('every declared banner severity has a .ocu-banner- rule in the stylesheet, 
 // agent context carries (AD-24) and nothing constrains it to `read.fields`; `context.secretFields`
 // is not, because naming key material there is what it is for.
 //
+// **One named flag is exempt.** Item settings' rows carry `Secret`, a boolean the port sets true for a setting whose
+// name matches the credential pattern (Story 20.22, AD-36); the flag holds no credential, and the row's value and
+// default are empty when it is true. The exemption is this one descriptor's one read field, so a column, a filter or
+// a context field of that name, or the field on any other screen, is still an offender.
+//
 // Mutation (Rule 19): rename a production column field to `ApiKey` -> this goes red naming the
 // descriptor and the field.
+const CREDENTIAL_FLAG_FIELDS = new Set(['InteropItemSettingList.cls read.fields: Secret']);
+
 test('AD-35: no production descriptor names a read, filter, sort, column or context field matching the credential pattern', () => {
   const { screens } = readSources();
   const offenders = [];
@@ -1555,7 +1563,7 @@ test('AD-35: no production descriptor names a read, filter, sort, column or cont
       ...(context?.fields ?? []).map((field) => ['context.fields', field]),
     ];
     for (const [where, field] of named) {
-      if (typeof field === 'string' && isCredentialName(field)) offenders.push(`${screen.file} ${where}: ${field}`);
+      if (typeof field === 'string' && isCredentialName(field) && !CREDENTIAL_FLAG_FIELDS.has(`${screen.file} ${where}: ${field}`)) offenders.push(`${screen.file} ${where}: ${field}`);
     }
   }
   assert.ok(checked > 0, `at least one shipped descriptor declares a read: ${checked}`);
@@ -2392,6 +2400,7 @@ test('ownPrivilegesProblem returns every sentence OwnPrivilegeCases declares, an
       'OcuPilot.Screen.Descriptor.EncryptionKeyFileForm',
       'OcuPilot.Screen.Descriptor.ExplorerDocDbList',
       'OcuPilot.Screen.Descriptor.InteropItemList',
+      'OcuPilot.Screen.Descriptor.InteropItemSettingList',
       'OcuPilot.Screen.Descriptor.InteropProcessList',
       'OcuPilot.Screen.Descriptor.InteropProductionList',
       'OcuPilot.Screen.Descriptor.InteropRuleList',
