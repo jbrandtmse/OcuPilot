@@ -2,7 +2,7 @@
 title: 'Story 23.6: The Haiku-story cleanup'
 type: 'refactor'
 created: '2026-10-09'
-status: 'done'
+status: 'in-progress'
 baseline_revision: '056133abec3bb52e78f6a0e334ad22034437ee70'
 baseline_commit: '056133abec3bb52e78f6a0e334ad22034437ee70'
 review_loop_iteration: 0
@@ -185,6 +185,8 @@ Rejected:
 - false: AC4's fresh check is missing. It is the lead's gate after review.
 - spec edit: the Triage Log's line counts predate QA's additions.
 - low: `REASONNOSOURCE` repeats a client sentence. The spec dictates the literal, and the server reason and the viewer's sentence are separate surfaces.
+
+- [ ] [CI] instance shard 3/5, run 38025941539 (attempts 1 and 2), on `b5067cfa`: `LogHubWire.TestTheRouteAndTheToolAnswerTheSameEntriesAndSources` fails "with the same count and last entry" (DW-2248). The story's roster changes regrouped the shards, so `InteropControl` now runs earlier in the same leg and writes about 146 event-log rows. Reproduced on `ocupilot-ci`: `InteropControl`, then `LogHubWire`, then `LogHubWire` alone are red each time. The route's event-log summary reads `count` 147 and the tool's 146, both `truncated`, with the same `last` entry. That fits the tool's view being the route's narrowed by AD-24's bound (AD-36) (inference). Fix in the test only: keep the seeded-row and shown-sources equalities. For the event log, assert the tool's count is at most the route's and both are at least 1, and the tool's `last` is not newer than a route read taken after the tool read. Correct the method's doc, which claims only this class writes the event log. Verify that `InteropControl` then `LogHubWire` is green and that `LogHubWire` alone is green. Keep a mutation line that reddens it.
 
 ## Spec Change Log
 
