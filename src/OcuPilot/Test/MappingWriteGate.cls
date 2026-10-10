@@ -42,6 +42,13 @@ Parameter COPIERUSER = "OcuProbe1814GateCopier";
 /// <p>The principal holding exactly every pair the mapping and copy tools declare.</p>
 Parameter FULLUSER = "OcuProbe1814GateFull";
 
+/// <p>The seconds every child is given before its steps' share (<method>WaitSeconds</method>).</p>
+Parameter WAITFLOOR = 180;
+
+/// <p>The seconds each step of a plan adds. A dispatch step costs about 1.1 seconds on a development
+/// host and up to about 2.8 on a slow CI runner (inference), most of it the registry's tool listing.</p>
+Parameter STEPSECONDS = 4;
+
 /// <p>The throwaway principals' password, generated for the run.</p>
 Property PreparedPassword As %String;
 
@@ -185,6 +192,37 @@ Method TestExactlyTheDeclaredPairsWriteOnBothCallers()
     Do $$$AssertEquals($ClassMethod(..#PROBE, "Names", "global", tDestination), "OcuProbe1814GC", "and so did the agent's")
 }
 
+/// <p>A child that has not answered within its budget is ended rather than left running: the error
+/// names the budget and the step the child last reached, and its process is gone, so a late answer
+/// cannot be taken for the next run's.</p>
+/// <p>Mutation (Rule 19): drop the <code>Terminate</code> from <method>RunAs</method> -> the child is
+/// still running and this goes red.</p>
+Method TestAChildPastItsBudgetIsEndedNamingItsLastStep()
+{
+    Set tSC = ##class(OcuPilot.Test.ProposalFixture).SeedTurn(..#FULLUSER, "running", .tTurnKey)
+    Do $$$AssertStatusOK(tSC, "a running turn is seeded")
+    If $$$ISERR(tSC) Quit
+    Set tPlan = []
+    For tI = 1:1:20 {
+        Do tPlan.%Push({"kind": "dispatch", "turnKey": (tTurnKey), "tool": "osmgmt.globalmappings.create", "input": {}})
+    }
+    Set tRun = ..RunAs(..#FULLUSER, tPlan, 6)
+    Set tError = $Select($IsObject(tRun): tRun.%Get("error"), 1: "")
+    Do $$$AssertTrue(tError [ "signalled nothing within 6 seconds (last at: step ", "the error names the budget and the last step reached (" _ tError _ ")")
+    Do $$$AssertTrue(tError [ "osmgmt.globalmappings.create)", "and that step's tool (" _ tError _ ")")
+    Set tChild = $Select($IsObject(tRun): +tRun.%Get("child"), 1: 0)
+    Set tGone = 0
+    For tTry = 1:1:20 {
+        If (tChild > 0) && '$Data(^$JOB(tChild)) {
+            Set tGone = 1
+            Quit
+        }
+        Hang 0.25
+    }
+    Do $$$AssertTrue(tGone, "the child process " _ tChild _ " is ended")
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Ledger).GuardedDeleteForTurn(tTurnKey), "this test removes the ledger rows its calls wrote")
+}
+
 /// <p>Mint the agent's create of <var>pNew</var>, edit of <var>pAgentEdit</var> and delete of
 /// <var>pAgentDelete</var> for <var>pUser</var>, then run as <var>pUser</var> the screen's create of
 /// <var>pScreenNew</var>, edit of <var>pEdit</var> and delete of <var>pDelete</var> and the three
@@ -213,10 +251,14 @@ Method Run(pUser As %String, pScreenNew As %String, pEdit As %String, pDelete As
 /// <var>pPlan</var> in a child process and answer what it signalled, or an object carrying
 /// <code>error</code>. Each copy the child's user left in the vendor's task store is deleted
 /// through <method>OcuPilot.Port.AdminPort.ForgetTask</method>, as this process's user, unread.</p>
-ClassMethod RunAs(pUser As %String, pPlan As %DynamicArray) As %DynamicObject
+/// <p>The child is given <var>pWaitSeconds</var>, by default <method>WaitSeconds</method> for the
+/// plan's length. One that has not answered by then is ended, and the error names the budget and the
+/// last step the child reached and carries its process id as <code>child</code>.</p>
+ClassMethod RunAs(pUser As %String, pPlan As %DynamicArray, pWaitSeconds As %Integer = "") As %DynamicObject
 {
     Set tOut = {}
     Try {
+        Set tWait = $Select(+pWaitSeconds > 0: +pWaitSeconds, 1: ..WaitSeconds(pPlan.%Size()))
         Do $System.Event.Clear($Job)
         Kill ^IRIS.Temp.OcuPilotProbeProgress($Job)
         Set tPlan = pPlan.%ToJSON()
@@ -225,9 +267,15 @@ ClassMethod RunAs(pUser As %String, pPlan As %DynamicArray) As %DynamicObject
             Do tOut.%Set("error", "the probe process did not start")
             Quit
         }
-        Set tMessage = $System.Event.WaitMsg("", 180)
+        Set tChild = $ZChild
+        Set tMessage = $System.Event.WaitMsg("", tWait)
         If $ListGet(tMessage, 1) '= 1 {
-            Do tOut.%Set("error", "the probe process signalled nothing within 180 seconds (last at: " _ $Get(^IRIS.Temp.OcuPilotProbeProgress($Job), "not started") _ ")")
+            Set tLast = $Get(^IRIS.Temp.OcuPilotProbeProgress($Job), "not started")
+            ; Left running, the child's late answer would be the next run's first message.
+            Do $System.Process.Terminate(tChild)
+            Kill ^IRIS.Temp.OcuPilotProbeProgress($Job)
+            Do tOut.%Set("error", "the probe process signalled nothing within " _ tWait _ " seconds (last at: " _ tLast _ ")")
+            Do tOut.%Set("child", tChild, "number")
             Quit
         }
         Kill ^IRIS.Temp.OcuPilotProbeProgress($Job)
@@ -242,6 +290,13 @@ ClassMethod RunAs(pUser As %String, pPlan As %DynamicArray) As %DynamicObject
         Do tOut.%Set("error", ex.DisplayString())
     }
     Quit tOut
+}
+
+/// <p>The seconds a plan of <var>pSteps</var> steps is given: <parameter>WAITFLOOR</parameter> and
+/// <parameter>STEPSECONDS</parameter> for each step.</p>
+ClassMethod WaitSeconds(pSteps As %Integer) As %Integer
+{
+    Quit ..#WAITFLOOR + (..#STEPSECONDS * +pSteps)
 }
 
 /// <p>Step <var>pIndex</var> (from 1) of the child's answer <var>pRun</var>.</p>
