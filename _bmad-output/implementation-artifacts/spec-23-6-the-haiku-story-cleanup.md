@@ -2,8 +2,8 @@
 title: 'Story 23.6: The Haiku-story cleanup'
 type: 'refactor'
 created: '2026-10-09'
-status: 'in-progress'
-baseline_revision: '056133abec3bb52e78f6a0e334ad22034437ee70'
+status: 'done'
+baseline_revision: 'a683127c45f0d02dd5343f18cd08ae5aa34fead1'
 baseline_commit: '056133abec3bb52e78f6a0e334ad22034437ee70'
 review_loop_iteration: 0
 followup_review_recommended: false
@@ -186,7 +186,7 @@ Rejected:
 - spec edit: the Triage Log's line counts predate QA's additions.
 - low: `REASONNOSOURCE` repeats a client sentence. The spec dictates the literal, and the server reason and the viewer's sentence are separate surfaces.
 
-- [ ] [CI] instance shard 3/5, run 38025941539 (attempts 1 and 2), on `b5067cfa`: `LogHubWire.TestTheRouteAndTheToolAnswerTheSameEntriesAndSources` fails "with the same count and last entry" (DW-2248). The story's roster changes regrouped the shards, so `InteropControl` now runs earlier in the same leg and writes about 146 event-log rows. Reproduced on `ocupilot-ci`: `InteropControl`, then `LogHubWire`, then `LogHubWire` alone are red each time. The route's event-log summary reads `count` 147 and the tool's 146, both `truncated`, with the same `last` entry. That fits the tool's view being the route's narrowed by AD-24's bound (AD-36) (inference). Fix in the test only: keep the seeded-row and shown-sources equalities. For the event log, assert the tool's count is at most the route's and both are at least 1, and the tool's `last` is not newer than a route read taken after the tool read. Correct the method's doc, which claims only this class writes the event log. Verify that `InteropControl` then `LogHubWire` is green and that `LogHubWire` alone is green. Keep a mutation line that reddens it.
+- [x] [CI] instance shard 3/5, run 38025941539 (attempts 1 and 2), on `b5067cfa`: `LogHubWire.TestTheRouteAndTheToolAnswerTheSameEntriesAndSources` fails "with the same count and last entry" (DW-2248). The story's roster changes regrouped the shards, so `InteropControl` now runs earlier in the same leg and writes about 146 event-log rows. Reproduced on `ocupilot-ci`: `InteropControl`, then `LogHubWire`, then `LogHubWire` alone are red each time. The route's event-log summary reads `count` 147 and the tool's 146, both `truncated`, with the same `last` entry. Observed on `ocupilot-ci`: the merged answer is cut at 200 rows and each read adds an audit entry newer than every event-log row, so the later read counts fewer event-log rows (audit plus event-log counts stay 200); `Read.View` passes `sources` through unnarrowed. Fix in the test only: keep the seeded-row and shown-sources equalities. For the event log, assert the tool's count is at most the route's and both are at least 1, and the tool's `last` is not newer than a route read taken after the tool read. Correct the method's doc, which claims only this class writes the event log. Verify that `InteropControl` then `LogHubWire` is green and that `LogHubWire` alone is green. Keep a mutation line that reddens it.
 
 ## Spec Change Log
 
@@ -231,6 +231,7 @@ Rejected:
 - 20.20-5 fixed: `TAKINGROUTINETYPES`' and `Takes`' docs say the rule was measured for `.mac` and `.int` (the 20.20 spec measured that compiling a new `X.mac` replaced a hand-written `X.int`) and is `(inference)` for `bas`, `mvi` and `mvb`; the two create test headers say they run in process; the browser spec's mutation comment names `linesRows` in `proposal-card.ts`, applied once on a rebuilt bundle and reverted.
 - 20.20-6 declined: it changes the stored proposal's shape and needs a 20.20 spec amendment, for no behavior gain.
 - DW-2265 resolved at code review: `UserCopy.TestTheCopyToolPinsItsInputSchemaAndSnippetForm` pins the tool's `WRITETYPE` and the port's `COPYTYPE` equal to `Prohibited.#COPYWRITETYPE` (run 169 red on `"COPYX"`). Each stays its own literal, as every tool's `WRITETYPE` and `BROADCAST`'s three spellings do; code review's other findings are under `### Review Findings`.
+- CI-1 fixed: `LogHubWire.TestTheRouteAndTheToolAnswerTheSameEntriesAndSources` reads the event-log summary three times (route, the tool's view, route) and asserts counts that do not rise (`after <= tool <= route`), each of route and tool at least 1, and the tool's `last` between the two route reads'; the seeded-row and shown-sources equalities stay. Cause observed (runs 548, 549 and probes of consecutive tool reads on `ocupilot-ci`): `Read.View` leaves `sources` unnarrowed, the merged answer is cut at `maxRows` 200, and each read adds an audit entry newer than every event-log row; in each of the seven reads that printed both counts, audit plus event-log counts were 200 (audit 45 to 53, event log 155 to 147, `last` unchanged). Not an AD-36 disagreement. Runs 556 to 558 green. mutation: `Read.View` gives the event-log summary count 9999 and `last.time` 9999-12-31 -> the count upper-bound leg and the `last` upper-bound leg go red, and only they (run 559); count 1 and `last.time` 1970-01-01 -> the two lower-bound legs alone (run 560); `Timeline.Compose` leaves counts at 0 -> the two "at least 1" legs alone (run 561); each applied to the throwaway's copy, restored by rsync, `diff -r` identical, run 562 green.
 
 ### 2026-10-09 -- Review pass
 
@@ -261,6 +262,21 @@ Rejected:
   - `[low]` `[patch]` Intent audit: the label change has no test -- grouped with the second row.
   - `[low]` `[reject]` Intent audit: `SOURCECODE` is a third spelling of the source code -- the dependency-direction rule refuses the constant's own class in a tool; the spelling is pinned equal and mutation-checked.
   - `[false]` `[reject]` Intent audit: a deleted test class is not an existing class that passes -- the verdict table folds 2 of 5 duplicated, 2 partly, 1 unique legs into `ExplorerSaveFlow` (15 tests, green).
+
+### 2026-10-10 -- Review pass
+
+- verdicts: 10 findings -- high 0, medium 1, low 7, false 2, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` The count and `last` legs bounded the tool from one side, so a tool reporting a lower count or an older newest event stayed green, and `Read.View` has no other pin on the hub's `sources` -- added `after <= tool` and `route.last <= tool.last`; the lower-bound mutation reddens them (run 560).
+  - `[low]` `[patch]` The 50-more-rows mutation reddens only where the merged answer is already cut -- replaced by set-value mutations that redden on any instance (runs 559, 560).
+  - `[low]` `[patch]` The method doc named two mutations and the triage line a third -- the doc names all four.
+  - `[low]` `[patch]` The "at least 1" legs had no mutation -- `Timeline.Compose` leaving counts at 0 reddens both (run 561).
+  - `[low]` `[patch]` "Summed to 200 always" generalized from a handful of probes -- the line says seven reads, and gives the observed ranges.
+  - `[false]` `[reject]` Intent audit: the diff touches the log hub, which no matrix row names -- the `[CI]` task and the boundary "existing classes pass before and after" put a red class in scope.
+  - `[low]` `[patch]` Intent audit: the pinned relation is weaker than the old equality -- grouped with the first row.
+  - `[low]` `[reject]` Intent audit: DW-2248's evidence names a background writer, not the audit cut -- the ledger is the lead's to write (Rule 15); the completion message names the correction.
+  - `[false]` `[reject]` Intent audit: the green and mutation evidence exists only as prose -- runs 548 to 562 are in `%UnitTest_Result` on `ocupilot-ci`.
+  - `[low]` `[patch]` Intent audit: the `last` mutation sat only in the triage line -- grouped with the doc row.
 
 ## Design Notes
 
@@ -409,16 +425,13 @@ Run on slot A with `ocupilot-ci` (52776/1975; directory `/Users/jbrandt/.ocupilo
 Status: done
 Blocking condition: none
 
-**Change.** Every item reads fixed in the Review Triage Log except 18.10-4a, 20.20-4 and 20.20-6 (declined, each with its reason) and 20.20-3 (Epic 20's own). The guard, the reason and the readable refusal went test-first (red runs 43, 44, 46, 47, 48). Four things differ from the spec's text: the tool's `"USERCOPY.SOURCE"` literals became one parameter pinned to `UserCopyError.#SOURCE`, because the dependency-direction rule refuses `Screen/Tool` naming that class (18.29-6); the Add button reads "Add entry", because a string value belongs to one key (18.10-4d); the route-path parameters sit in both concrete copy test classes (18.29-3); and `ExplorerSaveMintUnit` gained a mint-delegate test (20.20-2).
+**This pass.** Closes the `[CI]` item (DW-2248). The earlier passes' items closed in the Review Triage Log above.
 
-**Files.** Product: `Area/Permissions` `UserCreate` (the `ComposePayload` seam) and `UserCopy` (its override, `Perform` removed); `Port` `AdminPort` (shared `ViolationRefusal`, docs, named bit test), `AtelierPort` (docs, `REASONNOSOURCE`), `UserCopyPort`; `Kernel/Proposal/Prohibited` (`COPYWRITETYPE`, `COPYFIELDS`); `Screen/Tool` `ExplorerSave`, `ExplorerCreate`, `ExplorerSaveMint`, `ExplorerSourceRead`, `UserCopy`, `WebAppPctAccessMint`, `WebAppDelete`, `WebAppUpdate`. Tests: `ExplorerSourceTestCase`, `UserCopyTestCase` and `UserCopyConfirm` added; `ExplorerSaveAgent` deleted; fifteen others edited. Client: `proposal-card.ts`, `set-password-dialog.ts`, `user-create-form.page.ts`, `strings.ts`, the class-access tab, dialog and their specs, `web-app-editor.page.ts`, `agent-code-create.browser-spec.mjs`. Other: `scripts/ci-throwaway.sh`, `EXPERIENCE.md` row 471.
+- Cause, observed on `ocupilot-ci`: `Read.View` passes `sources` through unnarrowed; the merged answer is cut at `maxRows` 200 and each read adds an audit entry newer than every event-log row, so a later read counts fewer event-log rows. The route and the tool do not disagree in a way AD-36 forbids.
+- Change: `src/OcuPilot/Test/LogHubWire.cls`, `TestTheRouteAndTheToolAnswerTheSameEntriesAndSources` and its doc. It reads route, tool, route, keeps the seeded-row and shown-sources equalities, and asserts event-log counts that do not rise across the three reads, each of route and tool at least 1, and `last` between the two route reads'. The spec's `baseline_revision` moved to `a683127c` so the review diff is this pass.
 
-**Review.** Two layers reported 25 findings: 22 low, 2 false, 1 maybe-false. Patched: 14 rows, which are 5 changes (a direct `Edits` schema leg, the label assertions in two component specs, a port-level weak-password test, one tautological leg removed, the presence test's code assertion) and 4 more mutation lines. Rejected, each with its reason in the triage log: 10. Deferred: 1 (`BackgroundTaskMint` and `EncryptionKeyFileMint` and `ReadableId`, medium unverified). Follow-up review: not recommended (no high, no two mediums).
+**Review.** Two layers, 10 findings: 1 medium, 7 low, 2 false. Patched 7 rows, which are 5 changes (the lower bounds, mutations that redden on any instance, the doc, the zero-count mutation, the wording of the evidence line); rejected 3, each with its reason in the Triage Log. Deferred 0. Follow-up review recommended: false (patched high 0, medium 1).
 
-**Verification** (`ocupilot-ci`, this tree loaded with 0 errors, one class per call).
+**Verification** (`ocupilot-ci`, tree loaded with 0 errors, one class per call). Before the fix, `InteropControl` (run 548) then `LogHubWire` (run 549) was red. After it: `InteropControl` 11 tests (run 556), `LogHubWire` 4 tests after it (run 557) and alone (run 558), all green; run 562 green after the mutations were reverted, trees `diff -r` identical. Mutations: runs 559, 560 and 561, each red on the legs named in the CI-1 line only. `check-objectscript.py` 0 problems.
 
-- The 25 classes under Verification, 238 tests, 0 failed; after the review patches `ExplorerSaveMintUnit` 13, `UserCopy` 15, `UserCopyConfirm` 7, `UserCopyRefusals` 9, `WebAppPctAccess` 11, `ExplorerSaveFlow` 15 and `SurfaceCoverage` 4, 0 failed (runs 136 to 142). `UserCopy` and `UserCopyConfirm` pass in either order.
-- `check-objectscript.py` 0 problems; `lint-docs.sh` 0 issues; `npm run test:tools` 1904 of 1904; 14 component spec files, 153 tests; `npm run build` green, initial total 3.19 MB (main 2.98 MB, styles 205.47 kB) against the 3,326 kB warning.
-- Browser, on the rebuilt bundle: `users-create`, `users-actions`, `web-applications-class-access` and `agent-code-create`, 17 of 17.
-
-**Residual risks.** The full ObjectScript sweep, the full browser suite and Rule 30's fresh-instance check are the lead's. The Add button's text changed from "Add" to "Add entry".
+**Residual risks.** The bound `after <= tool <= route` assumes nothing writes an event-log row and no row leaves the one-hour window within the three reads; both hold on a fresh CI leg and can fail on a long-lived instance. DW-2248's ledger text still names a background writer as the cause; the lead corrects it at origin. The full sweep and Rule 30's fresh check stay the lead's.
