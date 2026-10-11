@@ -769,6 +769,8 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
 
   **A declared read may name the monitor port** (source kind `monitor`, Story 18.11) [AMENDED 2026-10-11, Story 18.11 spec gate, Rule 20]: `MonitorPort`'s `Metrics`/`LIST`, with no namespace and no criteria, cut at the cap plus one; a malformed sample fails the read closed, logged once. **A parent-scoped read requires its criterion before any port call** (DW-1872): a `VOLUMELIST` read without `dir` is refused 400 `READ.CRITERION`, as a bare-rows read is, so the vendor's 400 is never reached or logged.
 
+  **`AdminPort` answers two composed read types** (Story 18.36) [AMENDED 2026-10-11, Story 18.36 spec gate, Rule 20]: `Monitor` `RESOURCEROWS`, `{"Resources": <DASHBOARDRESOURCES' array>}`, and `BUSYPROCESSES`, `{"BusyProcesses": <DASHBOARDMAIN's SystemUsage.BusyProcesses less rows whose Process is empty, in order>}`, each read over that one member (`source.rows`); an answer of another shape fails the read closed, logged once. The read grammar is unchanged.
+
 ### AD-37 — OcuPilot's own state has a declared lifecycle against the objects it references
 
 - **Binds:** AD-9, FR-21, 7.2; transcripts, the ledger, proposals, agent definitions
@@ -922,6 +924,8 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
 
   **Story 18.31's `CLASSICPAGES`** [AMENDED 2026-10-10, Story 18.31 spec gate, Rule 20]: the privileged routine application create and update declare `%CSP.UI.Portal.Applications.PrivRoutine`; the delete, on the list's page, declares none.
   **Story 20.23's `CLASSICPAGES`** [AMENDED 2026-10-11, Story 20.23 spec gate, Rule 20]: the five queue and job tools declare `EnsPortal.ProductionConfig`, and a job's abort and suspend `EnsPortal.Queues` too.
+
+  **Story 18.36's `classicPage` keys** [AMENDED 2026-10-11, Story 18.36 spec gate, Rule 20]: the global and routine, ECP and system resource statistics screens declare `%cspapp.op.utilsysstatisticsglobal`, `%cspapp.op.utilsysstatisticsecp` and `%cspapp.op.utilsysstatisticsresource`, and the most active processes screen `%cspapp.op.utildashboard` (Task 0 checks each through `%SYS.Portal.Resources.NormalizePage`).
 
 ### AD-45 — There is one smoke path, and it is also the health check
 
