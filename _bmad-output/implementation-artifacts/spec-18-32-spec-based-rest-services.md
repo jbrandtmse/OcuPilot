@@ -2,9 +2,9 @@
 title: 'Story 18.32: Spec-based REST services'
 type: 'feature'
 created: '2026-10-10'
-status: 'in-progress'
+status: 'done'
 review_loop_iteration: 0
-baseline_revision: '057f013c3b112916cb262594a49ce3c5d917625c'
+baseline_revision: '2089d16f9c01c899e639b2805b36135e5a8118c2'
 baseline_commit: '057f013c3b112916cb262594a49ce3c5d917625c'
 followup_review_recommended: false
 context:
@@ -19,6 +19,16 @@ deferred:
       MgmntPort.Service cannot see a failed delete in the answer; the read-back (the SERVICE read finding the service gone) is the only check, as AD-58 intends.
     location: >-
       src/OcuPilot/Port/MgmntPort.cls
+    severity: low
+  - summary: >-
+      The doc comment of OcuPilot.Test.ToolEmit.TestEveryLiveToolRequiresItsScreensPairs says no other live tool's arguments add
+      pairs (AD-48) and its Mutations list names no branch of the family branches; ExplorerSave, ExplorerCreate and the
+      RestServiceWrite family now add them.
+    evidence: |-
+      ToolEmit.cls, the method's doc comment (before the method): "no other live tool's arguments add any (AD-48)"; the ExplorerSave/ExplorerCreate branch (Story 20.20) already contradicted it, the RestServiceWrite branch is a second counterexample.
+      Epic 20's worktree has uncommitted edits to ToolEmit.cls, so rewording a sentence there is not an add-only edit (Rule 11).
+    location: >-
+      src/OcuPilot/Test/ToolEmit.cls
     severity: low
 ---
 
@@ -141,7 +151,7 @@ Rejected:
 - (false) `RestServiceReadBack` untracked: QA's file, committed by the lead. `ci-timings.json`: `ci.test.mjs` passes without the entry (87 of 87).
 - (AD-10, decided) A screen delete of an unlisted `OcuPilot*` name answers 404 `PORT.NOTFOUND`: nothing is sent, AD-10 judges the resolved target, and the matrix's Delete row governs an unlisted name; by-design.
 
-- [ ] [Smoke] The runner's full sweep is red on one class: `OcuPilot.Test.ToolEmit.TestEveryLiveToolRequiresItsScreensPairs` fails "and exactly the pairs its arguments add" for `webapp.restapis.create` and `webapp.restapis.delete` (run 503, `ocupilot-ci`) -- `src/OcuPilot/Test/ToolEmit.cls`, the per-family branches of that method -- the `RestServiceWrite` family has no branch, so its `ArgumentPairs` (`ExplorerSave.CodeWritePairs`) meets the default's empty expectation. Add the family to that method the way the `ExplorerSave`/`ExplorerCreate` branch reads `CodeWritePairs` for its expected added pairs, keeping the tools' own pairs (`%Development:USE` from `PrivilegePairs`) in the expected required pairs; run `ToolEmit` green on `ocupilot-ci`, and record a `mutation:` line (drop the new branch -> red). Touch nothing else.
+- [x] [Smoke] The runner's full sweep is red on one class: `OcuPilot.Test.ToolEmit.TestEveryLiveToolRequiresItsScreensPairs` fails "and exactly the pairs its arguments add" for `webapp.restapis.create` and `webapp.restapis.delete` (run 503, `ocupilot-ci`) -- `src/OcuPilot/Test/ToolEmit.cls`, the per-family branches of that method -- the `RestServiceWrite` family has no branch, so its `ArgumentPairs` (`ExplorerSave.CodeWritePairs`) meets the default's empty expectation. Add the family to that method the way the `ExplorerSave`/`ExplorerCreate` branch reads `CodeWritePairs` for its expected added pairs, keeping the tools' own pairs (`%Development:USE` from `PrivilegePairs`) in the expected required pairs; run `ToolEmit` green on `ocupilot-ci`, and record a `mutation:` line (drop the new branch -> red). Touch nothing else.
 
 ## Spec Change Log
 
@@ -175,6 +185,17 @@ Rejected:
   - `[low]` `[patch]` Intent audit: wording versus measurement of the card limit. Same root cause as the 30,000-character row above.
   - `[false]` `[reject]` Intent audit: a vendor 400 is unlogged as well as the 404. The Code Map says "a vendor 400 or 404 ... unlogged (as 18.6's 400)".
   - `[false]` `[reject]` Intent audit: additions beyond the contract (empty-state invitation, three strings, the EXPERIENCE.md cell, the `rest` script form, roster and count edits, the `log-entry` swap). Each is a named task or Code Map line; the `ci-timings.json` entry is required by `ci.test.mjs` AC9, which fails without it (checked).
+
+### 2026-10-11 - Review pass (rework iteration 1, the [Smoke] item)
+
+- verdicts: 6 findings - high 0, medium 0, low 5, false 1, maybe-false 0
+- findings:
+  - `[low]` `[patch]` The `mutation:` line for the ToolEmit change dropped the test's own new branch, not the code under test. Patched: `RestServiceWrite.ArgumentPairs` answering no pair reddens `TestEveryLiveToolRequiresItsScreensPairs` for both tools (run 580, reverted byte-identical, green again at run 581); the line names both.
+  - `[low]` `[defer]` The method's doc comment says no other live tool's arguments add pairs (AD-48) and omits the new branch from its `Mutations:` list. The sentence was already false after Story 20.20's branch; ToolEmit.cls is contended with Epic 20's uncommitted edits, so a reword is not add-only. Deferred to `deferred:`.
+  - `[low]` `[patch]` Intent audit: the recorded mutation reverts the test edit rather than mutating product code. Same root cause as the first row; patched with it.
+  - `[false]` `[reject]` Intent audit: the diff exercises only the registry's static pair surface, not mint, confirm or the wire. The item is the roster's per-family expectation; the wire and port re-check are pinned by `RestServiceGate`, `RestServiceDescriptor` and `RestServiceWrite`, unchanged and green at the previous pass.
+  - `[low]` `[reject]` Intent audit: the expected side calls the same `CodeWritePairs` the product delegates to. The sibling `ExplorerSave`/`ExplorerCreate` branch does the same, the non-empty assertion keeps both sides from being empty, and `RestServiceDescriptor` pins the literal `%DB_USER:WRITE` pair.
+  - `[low]` `[reject]` Intent audit: `tExpectedAddedResolved` is an output read nowhere. The sibling branch leaves it unread too, so removing it here alone diverges the branches for no reader.
 
 ## Design Notes
 
@@ -225,6 +246,7 @@ Rejected:
 - mutation: (CR) C1, AD-54: `MgmntPort.Held` answers `""` → `RestServiceWrite.TestANameWhoseClassesAreHeldIsRefusedAtTheMint` red (run 190).
 - mutation: (CR) C2: the `IsOcuPilotCode` refusal removed from `RestServiceCreateMint.Mint` → `RestServiceWrite.TestTheCodeRulesAndOcuPilotsOwnCodeAreRefusedOnBothTools` red (run 191).
 - mutation: (CR) C3: the card-width refusal in `RestServiceCreateMint.Mint` dropped → `RestServiceWrite.TestTheRulesRefuseTheAgentBeforeAnythingIsStored` red (run 192); the state read exact → `MgmntPort.TestTheServiceReadsAreExactAndRefuseADeployedService` red (run 193); a `CreateApplication` 400 or 404 sent to `Fail` → `MgmntPort.TestTheCreateAnswersEachVendorStatusInItsOwnWords` red (run 194); `Resolved` matching case-blind → `MgmntPort.TestTheDeleteIsSentOnlyForAnUndeployedListedService` and `TestTheServiceReadsAreExactAndRefuseADeployedService` red (run 195); the oversized-text guard in `DocumentProblem` accepting → `MgmntPort.TestTheCreatesRulesAreCheckedBeforeTheVendor` red (run 196).
+- mutation: (smoke) C5: the `RestServiceWrite` branch of `ToolEmit.TestEveryLiveToolRequiresItsScreensPairs` dropped -> that test red for `webapp.restapis.create` and `webapp.restapis.delete` (run 577); `RestServiceWrite.ArgumentPairs` answering no pair -> the same test red for both tools (run 580).
 
 **S0:** no `OcuProbe1832*` class in any case in USER or HSCUSTOM; no `/api/ocuprobe1832*` application; `AuthOptionsProbe.Remaining()` 0.
 
@@ -242,3 +264,5 @@ Blocking condition: none
 **Verification** on `ocupilot-ci` (source loaded, S0 read after): `RestServiceDescriptor` 8 (run 170), `RestServiceWrite` 11 (run 159), `RestServiceGate` 3 (run 156), `MgmntPort` 17 (run 158), all green; the Task 14 sweep classes were green at the implement pass and the runner runs the full sweep. Mutations: runs 160 to 169, recorded in `## Verification`. Client: `test:tools` 1907 of 1907, `test:components` 2848 of 2848, `rest-services-write` 2 of 2 and `rest-apis` 4 of 4 against the rebuilt bundle (3,267,522 bytes against the 3326 kB warning); Fixed strings 3068 of 3400; `check-objectscript` and `lint-docs` clean.
 
 **Residual risks.** `ci-timings.json` carries a placeholder 12.5 s for the new spec until the lead's refresh. `Prohibited.cls`'s covered-types line and the `ReadTool` and `ToolWrite` count lines are also edited by Epic 20, so a textual merge conflict resolves by union.
+
+**Rework 1 (the `[Smoke]` item).** `src/OcuPilot/Test/ToolEmit.cls` gains a `RestServiceWrite` branch in `TestEveryLiveToolRequiresItsScreensPairs`: its expected added pairs are `ExplorerSave.CodeWritePairs({})`, asserted non-empty, with `%Development:USE` still in the required side. Verified on `ocupilot-ci` (source loaded, S0 read after): `ToolEmit` 11 of 11 green (run 581; run 575 was the red); mutations in `## Verification` (runs 577, 580). Review: 6 findings, 1 root cause patched (a production-code mutation line), 1 low deferred (the method's stale doc comment, a contended file), 4 rejected with reasons, in `## Review Triage Log`. Follow-up review recommended: `false` (no high patched).
