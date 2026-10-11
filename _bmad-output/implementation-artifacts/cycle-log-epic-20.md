@@ -395,3 +395,6 @@
 2026-10-11T01:46:45Z	Epic 20	slot_binding_verified	slot=b docker_port=52775 profile=ocupilot-slot-b baseUrl=http://localhost:52775 bootstrap=node_modules_ok,irislib_ok
 2026-10-11T01:46:45Z	Story 20.22	ci_resolved	story=20.22 run=38089930771 result=success attempt=2 head=4dbcf227 resolved_at=resume
 2026-10-11T01:46:45Z	Story 20.22	forward_merge_started	feature=33e95d37 base=0a451914 checkout=temp_clone(scratchpad/e20r/m22) reason=18.30_merged_after_20.22_base
+2026-10-11T02:15:19Z	Story 20.22	forward_merge_verified	merge=db51c1a6(feature_33e95d37)+feature_21b9e337(bookkeeping_only) conflicts=13_unions(EntityType_66,Prohibited_covered_54,ClassicPageGate_73,MappingDescriptor,ToolRoundTrip,ReadTool_335,Descriptor_66,sprint-status,epic-dependencies_hash) screens.generated.ts=regenerated(163_descriptors,66_types) prebuild=clean test_tools=1906/1906 throwaway=ocupilot-b-ci_fresh_from_merged_tree(1170_test_classes) classes=41_run_one_at_a_time(446_tests,0_failed;InteropSettingSeam_is_a_seam_not_a_test) smoke=50/50
+2026-10-11T02:15:19Z	Epic 20	ledger_load	total=1757 open=0 routed=97 escalated=1 decision_pending=38 terminal=1621 owner_unknown=1 burndown=58 reowned_none=0
+2026-10-11T02:15:19Z	Epic 20	ledger_owner_repaired	repaired=1 halted=0 entries=DW-2266(range-end-cleanup->23-7-the-range-end-cleanup-part-6;kit_2026-10-10.1_owner_grammar)
