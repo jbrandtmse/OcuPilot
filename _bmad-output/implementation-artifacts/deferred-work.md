@@ -11037,3 +11037,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-31-privileged-routine-applications.md | severity: low | fix-risk: med | footprint: in-epic
 - evidence: 18.31 implement review: the Save, the list's Delete and the port answer 404; the mint's absence read answers first; nothing is sent on any path; a fix changes the shared Kernel/Proposal/Mint
 - 2026-10-10T20:55:30Z status=wontfix-accepted owner=18-31-privileged-routine-applications by=harvest note=reopen_if=a user reports the mint's wording, or the shared Mint gains a per-tool absence answer
+
+### DW-2299: Rule 31: RestServiceDelete.StateDiff will copy ExplorerDocDbDelete.StateDiff because their shared home, Screen/Tool/Write.cls, is Epic 20's while 18.32 runs
+- source: spec-18-32-spec-based-rest-services.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: 18.32's code map states the copy and its reason (Write.cls off-limits under Rule 11); ExplorerDocDbDelete.cls:57 is the sibling
+- 2026-10-11T05:02:16Z status=routed owner=23-7-the-range-end-cleanup-part-6 by=spec_gate note=lift StateDiff into Write.cls once Epic 20 has merged; both deletes then extend it
