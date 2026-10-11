@@ -140,11 +140,12 @@ The MCP-server rule above and the container detail below this block are the oper
   a pass.
 - **CI runs all of the above on every push** (`.github/workflows/ci.yml`, seven jobs: `gates`,
   `instance-shard`, `instance`, `browser-shard`, `browser`, `images`, `package`). The ObjectScript
-  suite runs as five shard legs and the browser specs as three, every leg on its own fresh throwaway and
+  suite runs as eight shard legs and the browser specs as five, every leg on its own fresh throwaway and
   still one class or spec file at a time; the `instance` and `browser` roll-ups fail unless every
   class and spec ran in exactly one leg. Shares come longest-first from `ui/tools/ci-timings.json`;
-  refresh it from a green run with `cd ui && node tools/ci-shards.mjs refresh --run <id>`. A run
-  takes about 50 to 65 minutes (run 37527682358 took 47.7). A test that needs something a sibling test left, or an
+  refresh it from a green run with `cd ui && node tools/ci-shards.mjs refresh --run <id>` (the
+  `/epic-cycle` merge gate does this at every merge). A run takes about 30 minutes (run 38119364148
+  took 27.4). A test that needs something a sibling test left, or an
   instance older than a few minutes, fails in whichever leg it lands in. `gates` runs **once per Node band `engines.node` declares, at each
   band's floor** (22.22.3 / 24.15.0 / 26.0.0) — `ui/tools/ci.test.mjs` holds that list and
   `engines.node` equal in both directions, so a declared band with no leg is red. A single-version

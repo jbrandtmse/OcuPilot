@@ -305,8 +305,8 @@ development_status:
   18-28-sql-column-and-admin-privileges: done
   18-29-role-members-admin-option-user-copy-from-and-password-valida: done
   18-30-doc-db-applications: done
-  18-31-privileged-routine-applications: in-progress
-  18-32-spec-based-rest-services: backlog
+  18-31-privileged-routine-applications: done
+  18-32-spec-based-rest-services: ready-for-dev
   18-33-privileged-routine-application-roles-and-routines: backlog
   18-34-the-person-s-rest-service-create: backlog
   epic-18-retrospective: optional

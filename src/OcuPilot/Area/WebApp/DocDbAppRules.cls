@@ -22,6 +22,16 @@ Parameter UPDATETOOL = "OcuPilot.Screen.Tool.DocDbAppUpdate";
 /// <p>The three settings a record carries, in the order they are judged.</p>
 Parameter FIELDS = "Description,Enabled,Resource";
 
+/// <p>The class whose parameters carry this rule set's codes and sentences: <code>VALIDATION</code>, <code>NAME</code>,
+/// <code>DESCRIPTION</code>, <code>ENABLED</code>, <code>RESOURCE</code> and <code>TAKEN</code> with their
+/// <code>REASON</code> forms, <code>DESCRIPTIONMAX</code>, and <code>NAMESPACE</code> when <parameter>NAMESPACED</parameter>
+/// is 1.</p>
+Parameter ERRORCLASS = "OcuPilot.Api.DocDbAppError";
+
+/// <p>Whether a record is keyed by a namespace as well as a name. 0 drops the <code>Namespace</code> member, its rule
+/// and the composite join: the id is the name.</p>
+Parameter NAMESPACED As BOOLEAN = 1;
+
 /// <p>The resource endpoint, the member of its rows that names a resource's kind, and the kinds a record may
 /// name: the service, application and user resources the classic Doc DB page offers, which that read names
 /// <code>Service</code>, <code>System</code> and <code>Application</code>.</p>
@@ -34,8 +44,9 @@ Parameter RESOURCETYPES = "Service,System,Application";
 /// <p>Every rule over <var>pBody</var>, in <var>pViolations</var> as <code>pViolations(n) = $ListBuild(field,
 /// code)</code> with the count in <code>pViolations</code>.</p>
 /// <p>A value that is not text where text is meant is a shape violation on its field. When <var>pMode</var> is
-/// <code>create</code>, <var>pName</var> must be a valid class name (<method>IsName</method>) and <var>pNamespace</var>
-/// one this instance defines, and each setting sent must be valid. When it is <code>update</code> and
+/// <code>create</code>, <var>pName</var> must be a name <method>IsName</method> admits (here a valid class name) and, when
+/// <parameter>NAMESPACED</parameter> is 1, <var>pNamespace</var> one this instance defines, and each setting sent must be
+/// valid. When it is <code>update</code> and
 /// <var>pFull</var> is 1, a setting is judged only where it differs from <var>pFresh</var>'s; with <var>pFull</var>
 /// 0 every setting sent is judged by the rules that need no read. With <var>pFull</var> 1 the rule that reads the
 /// instance applies too: a resource that is sent and changed, or any one on a create, must be empty or a service,
@@ -51,8 +62,8 @@ ClassMethod Check(pNamespace As %String, pName As %String, pBody As %DynamicObje
         Set tCreate = (pMode = "create")
         Set tFresh = $Select($IsObject(pFresh): pFresh, 1: {})
         If tCreate {
-            If '..IsName(pName) Do ..Add(.pViolations, "Name", ##class(OcuPilot.Api.DocDbAppError).#NAME)
-            If '##class(OcuPilot.Port.AdminPort).NamespaceDefined(pNamespace) Do ..Add(.pViolations, "Namespace", ##class(OcuPilot.Api.DocDbAppError).#NAMESPACE)
+            If '..IsName(pName) Do ..Add(.pViolations, "Name", $Parameter(..#ERRORCLASS, "NAME"))
+            If ..#NAMESPACED && '##class(OcuPilot.Port.AdminPort).NamespaceDefined(pNamespace) Do ..Add(.pViolations, "Namespace", $Parameter(..#ERRORCLASS, "NAMESPACE"))
         }
         Set tFields = $ListFromString(..#FIELDS)
         For tI = 1:1:$ListLength(tFields) {
@@ -70,7 +81,7 @@ ClassMethod Check(pNamespace As %String, pName As %String, pBody As %DynamicObje
         If (pBody.%GetTypeOf("Resource") = "string") && (tCreate || (pBody.%Get("Resource") '= ..Text(tFresh, "Resource"))) && (pBody.%Get("Resource") '= "") {
             Set tSC = ..ResourceListed(pPortClass, pBody.%Get("Resource"), .tListed)
             If $$$ISERR(tSC) Quit
-            If 'tListed Do ..Add(.pViolations, "Resource", ##class(OcuPilot.Api.DocDbAppError).#RESOURCE)
+            If 'tListed Do ..Add(.pViolations, "Resource", $Parameter(..#ERRORCLASS, "RESOURCE"))
         }
     } Catch ex {
         Set tSC = ex.AsStatus()
@@ -81,9 +92,9 @@ ClassMethod Check(pNamespace As %String, pName As %String, pBody As %DynamicObje
 /// <p>The violation code of the setting <var>pField</var>.</p>
 ClassMethod CodeFor(pField As %String) As %String
 {
-    If pField = "Description" Quit ##class(OcuPilot.Api.DocDbAppError).#DESCRIPTION
-    If pField = "Enabled" Quit ##class(OcuPilot.Api.DocDbAppError).#ENABLED
-    Quit ##class(OcuPilot.Api.DocDbAppError).#RESOURCE
+    If pField = "Description" Quit $Parameter(..#ERRORCLASS, "DESCRIPTION")
+    If pField = "Enabled" Quit $Parameter(..#ERRORCLASS, "ENABLED")
+    Quit $Parameter(..#ERRORCLASS, "RESOURCE")
 }
 
 /// <p>Whether the setting <var>pField</var> of <var>pBody</var> is acceptable by shape and length alone: a description
@@ -92,7 +103,7 @@ ClassMethod CodeFor(pField As %String) As %String
 ClassMethod Valid(pField As %String, pBody As %DynamicObject) As %Boolean
 {
     If pField = "Enabled" Quit ..IsEnabled(pBody.%GetTypeOf("Enabled"), pBody.%Get("Enabled"))
-    If pField = "Description" Quit $Length(pBody.%Get("Description")) <= ##class(OcuPilot.Api.DocDbAppError).#DESCRIPTIONMAX
+    If pField = "Description" Quit $Length(pBody.%Get("Description")) <= $Parameter(..#ERRORCLASS, "DESCRIPTIONMAX")
     Quit 1
 }
 
@@ -170,7 +181,7 @@ ClassMethod Taken(pPortClass As %String, pNamespace As %String, pName As %String
 {
     Set pTaken = 0
     Kill tQuery
-    Set tQuery($ClassMethod(..#UPDATETOOL, "IdParam")) = ##class(OcuPilot.Kernel.EntityId).JoinComposite($ListBuild(pNamespace, pName))
+    Set tQuery($ClassMethod(..#UPDATETOOL, "IdParam")) = ..IdOf(pNamespace, pName)
     Set tSC = $ClassMethod(pPortClass, "Invoke", $ClassMethod(..#UPDATETOOL, "Endpoint"), $ClassMethod(..#UPDATETOOL, "ReadType"), .tQuery, "", .tRead, .tHttp, .tFault)
     If $$$ISERR(tSC) {
         If +$Get(tHttp) = 404 Quit $$$OK
@@ -195,13 +206,21 @@ ClassMethod Problem(pNamespace As %String, pName As %String, pBody As %DynamicOb
     Quit $$$OK
 }
 
-/// <p>Render <var>pViolations</var> as one 422 <parameter>OcuPilot.Api.DocDbAppError.VALIDATION</parameter>
-/// envelope carrying every broken rule in <code>detail.violations</code> (AD-39).</p>
+/// <p>Render <var>pViolations</var> as one 422 envelope, <parameter>ERRORCLASS</parameter>'s <code>VALIDATION</code>,
+/// carrying every broken rule in <code>detail.violations</code> (AD-39).</p>
 ClassMethod RenderViolations(ByRef pViolations) As %Status
 {
     Set tDetail = {}
     Do tDetail.%Set("violations", ##class(OcuPilot.Kernel.AgentRules).ViolationsJson(.pViolations))
-    Quit ##class(OcuPilot.Api.Error).Render(422, ##class(OcuPilot.Api.Error).#VALIDATIONFAILED, ##class(OcuPilot.Api.DocDbAppError).#REASONVALIDATION, ##class(OcuPilot.Api.DocDbAppError).#VALIDATION, tDetail)
+    Quit ##class(OcuPilot.Api.Error).Render(422, ##class(OcuPilot.Api.Error).#VALIDATIONFAILED, $Parameter(..#ERRORCLASS, "REASONVALIDATION"), $Parameter(..#ERRORCLASS, "VALIDATION"), tDetail)
+}
+
+/// <p>The id of the record <var>pName</var> in <var>pNamespace</var>: their composite when the records are keyed by
+/// namespace (<parameter>NAMESPACED</parameter>), the name alone otherwise.</p>
+ClassMethod IdOf(pNamespace As %String, pName As %String) As %String
+{
+    If ..#NAMESPACED Quit ##class(OcuPilot.Kernel.EntityId).JoinComposite($ListBuild(pNamespace, pName))
+    Quit pName
 }
 
 /// <p>Render a failed read of a record: 404 <code>PORT.NOTFOUND</code>, the fault the port answered, or an
@@ -221,7 +240,8 @@ ClassMethod RenderRead(pSC As %Status, pHttpStatus As %Integer, pFault As %Dynam
 /// <p>Answer <code>GET /docdb-application/form[?id=&lt;composite id&gt;]</code>: <code>{row}</code>. With an id,
 /// <code>row</code> is <code>Name</code>, <code>Namespace</code> and the three settings from the update tool's fresh
 /// <code>GET</code>, <code>Enabled</code> a boolean; an id the instance does not hold, or that is not two parts, is 404
-/// <code>PORT.NOTFOUND</code>. Without one it is a new record's, enabled and otherwise empty.</p>
+/// <code>PORT.NOTFOUND</code>. Without one it is a new record's, enabled and otherwise empty. When
+/// <parameter>NAMESPACED</parameter> is 0 the id is the name alone and the row carries no <code>Namespace</code>.</p>
 ClassMethod HandleForm() As %Status
 {
     Set tSC = $$$OK
@@ -236,10 +256,12 @@ ClassMethod HandleForm() As %Status
         If tId = "" {
             Do ..DefaultRow(tRow)
         } Else {
-            Set tParts = ##class(OcuPilot.Kernel.EntityId).SplitComposite(tId)
-            If ($ListLength(tParts) '= 2) || ($ListGet(tParts, 1) = "") || ($ListGet(tParts, 2) = "") {
-                Set tSC = ..RenderRead($$$ERROR($$$GeneralError, ##class(OcuPilot.Api.Error).#PORTNOTFOUND), 404, "")
-                Quit
+            If ..#NAMESPACED {
+                Set tParts = ##class(OcuPilot.Kernel.EntityId).SplitComposite(tId)
+                If ($ListLength(tParts) '= 2) || ($ListGet(tParts, 1) = "") || ($ListGet(tParts, 2) = "") {
+                    Set tSC = ..RenderRead($$$ERROR($$$GeneralError, ##class(OcuPilot.Api.Error).#PORTNOTFOUND), 404, "")
+                    Quit
+                }
             }
             Set tPort = $ClassMethod(..#UPDATETOOL, "PortClass")
             Kill tQuery
@@ -253,8 +275,12 @@ ClassMethod HandleForm() As %Status
                 Set tSC = ..RenderRead($$$ERROR($$$GeneralError, ##class(OcuPilot.Api.Error).#PORTNOTFOUND), 404, "")
                 Quit
             }
-            Do tRow.%Set("Name", $ListGet(tParts, 2), "string")
-            Do tRow.%Set("Namespace", $ZConvert($ListGet(tParts, 1), "U"), "string")
+            If ..#NAMESPACED {
+                Do tRow.%Set("Name", $ListGet(tParts, 2), "string")
+                Do tRow.%Set("Namespace", $ZConvert($ListGet(tParts, 1), "U"), "string")
+            } Else {
+                Do tRow.%Set("Name", tId, "string")
+            }
             Do tRow.%Set("Description", ..Text(tFresh, "Description"), "string")
             Do tRow.%Set("Enabled", ''..Truth(tFresh), "boolean")
             Do tRow.%Set("Resource", ..Text(tFresh, "Resource"), "string")
@@ -273,7 +299,7 @@ ClassMethod HandleForm() As %Status
 ClassMethod DefaultRow(pRow As %DynamicObject)
 {
     Do pRow.%Set("Name", "", "string")
-    Do pRow.%Set("Namespace", "", "string")
+    If ..#NAMESPACED Do pRow.%Set("Namespace", "", "string")
     Do pRow.%Set("Description", "", "string")
     Do pRow.%Set("Enabled", 1, "boolean")
     Do pRow.%Set("Resource", "", "string")

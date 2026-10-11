@@ -210,6 +210,8 @@ XData Coverage
 <screen name="MftConnectionForm" class="OcuPilot.Test.MftConnectionDescriptor" method="TestTheEditorIsAnUnlistedFormPage"/>
 <screen name="DocDbAppList" class="OcuPilot.Test.DocDbAppDescriptor" method="TestTheListIsDeclaredAsTheSpecPlacesIt"/>
 <screen name="DocDbAppForm" class="OcuPilot.Test.DocDbAppDescriptor" method="TestTheEditorIsAnUnlistedFormPage"/>
+<screen name="RoutineAppList" class="OcuPilot.Test.RoutineAppDescriptor" method="TestTheListIsDeclaredAsTheSpecPlacesIt"/>
+<screen name="RoutineAppForm" class="OcuPilot.Test.RoutineAppDescriptor" method="TestTheEditorIsAnUnlistedFormPage"/>
 <screen name="SqlPrivilegeList" class="OcuPilot.Test.SqlPrivilegeDescriptor" method="TestTheScreenIsDeclaredAsTheSpecPlacesIt"/>
 <screen name="SqlColumnPrivilegeList" class="OcuPilot.Test.SqlPrivilegeDescriptor" method="TestTheColumnAndAdminScreensAreDeclared" corpus="one declaration test pins both Story 18.28 sub-resource screens in one loop"/>
 <screen name="SqlAdminPrivilegeList" class="OcuPilot.Test.SqlPrivilegeDescriptor" method="TestTheColumnAndAdminScreensAreDeclared" corpus="one declaration test pins both Story 18.28 sub-resource screens in one loop"/>
@@ -427,6 +429,9 @@ XData Coverage
 <tool name="webapp.docdbapps.create" class="OcuPilot.Test.DocDbAppDescriptor" method="TestTheToolsDeclareTheirKindPortPairsAndFields" corpus="the three Doc DB application tools are asserted together in one loop"/>
 <tool name="webapp.docdbapps.update" class="OcuPilot.Test.DocDbAppDescriptor" method="TestTheToolsDeclareTheirKindPortPairsAndFields" corpus="the three Doc DB application tools are asserted together in one loop"/>
 <tool name="webapp.docdbapps.delete" class="OcuPilot.Test.DocDbAppDescriptor" method="TestTheToolsDeclareTheirKindPortPairsAndFields" corpus="the three Doc DB application tools are asserted together in one loop"/>
+<tool name="webapp.routineapps.create" class="OcuPilot.Test.RoutineAppDescriptor" method="TestTheToolsDeclareTheirKindPortPairsAndFields" corpus="the three privileged routine application tools are asserted together in one loop"/>
+<tool name="webapp.routineapps.update" class="OcuPilot.Test.RoutineAppDescriptor" method="TestTheToolsDeclareTheirKindPortPairsAndFields" corpus="the three privileged routine application tools are asserted together in one loop"/>
+<tool name="webapp.routineapps.delete" class="OcuPilot.Test.RoutineAppDescriptor" method="TestTheToolsDeclareTheirKindPortPairsAndFields" corpus="the three privileged routine application tools are asserted together in one loop"/>
 <tool name="permissions.users.grantsql" class="OcuPilot.Test.SqlPrivilegeDescriptor" method="TestTheToolsDeclareTheirKindPortPairsAndArguments" corpus="the four SQL privilege tools are asserted together in one loop"/>
 <tool name="permissions.users.revokesql" class="OcuPilot.Test.SqlPrivilegeDescriptor" method="TestTheToolsDeclareTheirKindPortPairsAndArguments" corpus="the four SQL privilege tools are asserted together in one loop"/>
 <tool name="permissions.roles.grantsql" class="OcuPilot.Test.SqlPrivilegeDescriptor" method="TestTheToolsDeclareTheirKindPortPairsAndArguments" corpus="the four SQL privilege tools are asserted together in one loop"/>

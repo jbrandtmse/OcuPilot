@@ -253,6 +253,8 @@ test('a side bar lists only built screens, in side-bar order', () => {
       // Story 18.30: the unlisted Doc DB application editor, reached from Doc DB applications.
       'web-applications/docdb-applications/edit',
       'web-applications/rest-apis/document',
+      // Story 18.31: the unlisted privileged routine application editor, reached from Privileged routine applications.
+      'web-applications/routine-applications/edit',
       'web-applications/list/edit',
       // Story 18.10: the percent-class access list, unlisted, the editor's fifth tab.
       'web-applications/list/class-access',
@@ -262,6 +264,8 @@ test('a side bar lists only built screens, in side-bar order', () => {
       'web-applications/sessions',
       // Story 18.30: Doc DB applications, the fourth Web applications entry.
       'web-applications/docdb-applications',
+      // Story 18.31: Privileged routine applications, the fifth Web applications entry.
+      'web-applications/routine-applications',
       // Story 7.4: the two unlisted audit event lists, then Auditing configuration at position 6.
       'security/auditing/system-events',
       'security/auditing/user-events',
@@ -613,8 +617,8 @@ test('documentScreenFor resolves the REST API explorer to its unlisted, id-keyed
   assert.equal(editorScreenFor(roles)?.route, 'permissions/roles/edit', 'and a row name opens the role editor at its id route');
   assert.deepEqual(
     listedScreensForArea('web-applications').map((screen) => screen.route),
-    ['web-applications/list', 'web-applications/rest-apis', 'web-applications/sessions', 'web-applications/docdb-applications'],
-    'the side bar lists Web applications, the REST API explorer, Web sessions (Story 16.2) and Doc DB applications (Story 18.30) -- the viewer takes no position'
+    ['web-applications/list', 'web-applications/rest-apis', 'web-applications/sessions', 'web-applications/docdb-applications', 'web-applications/routine-applications'],
+    'the side bar lists Web applications, the REST API explorer, Web sessions (Story 16.2), Doc DB applications (Story 18.30) and Privileged routine applications (Story 18.31) -- the viewer takes no position'
   );
   assert.equal(isListedScreen(screenForRoute('web-applications/rest-apis/document')), false, 'the viewer is the unlisted one');
 });

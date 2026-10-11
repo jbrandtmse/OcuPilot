@@ -2965,7 +2965,11 @@ ClassMethod FingerprintSubjectProblem(pToolClass As %String) As %String
 /// <parameter>OcuPilot.Api.EcpError.REASONSSLNOTPENDING</parameter> and
 /// <parameter>OcuPilot.Api.EcpError.REASONSSLNOTAUTHORIZED</parameter> and refused by each tool's
 /// <code>StateDiff</code>.</p>
-Parameter SELFPROTECTIONRULES = "serves-ocupilot,protected-account,service-account-sign-in,ocupilot-application-roles,system-role,system-resource,ocupilot-ssl,ocupilot-session,ecp-ssl-pending,ecp-ssl-authorized,system-pct-access";
+/// <p><code>ocupilot-routine-application</code> is one of OcuPilot's own two privileged routine applications (Story 18.31):
+/// a <code>Name</code> of <code>OcuPilotState</code> or <code>OcuPilotIdentity</code> in any case, explained by the
+/// <code>routineAppRefusalOcuPilot</code> sentence and refused for every write by
+/// <parameter>OcuPilot.Kernel.Proposal.Prohibited.OCUPILOTROUTINEAPP</parameter>.</p>
+Parameter SELFPROTECTIONRULES = "serves-ocupilot,protected-account,service-account-sign-in,ocupilot-application-roles,system-role,system-resource,ocupilot-ssl,ocupilot-session,ecp-ssl-pending,ecp-ssl-authorized,system-pct-access,ocupilot-routine-application";
 
 /// <p>The fewest suggested prompts a declaration that declares any may carry (Story 11.3).</p>
 Parameter SUGGESTEDPROMPTSMIN As INTEGER = 3;

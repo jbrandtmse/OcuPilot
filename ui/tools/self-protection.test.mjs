@@ -364,6 +364,26 @@ test("Story 9.5: ocupilot-ssl answers OcuPilot's own provider configuration alon
   assert.equal(selfProtectionReason(OCUPILOT_SSL_RULE, 'ISC.FeatureTracker.SSL.Config'), '', 'and any other configuration is not');
 });
 
+test("Story 18.31: ocupilot-routine-application answers OcuPilot's own two routine applications alone, named as Base names them, in any case", async () => {
+  // Mutation (Rule 19): answer '' for `ocupilot-routine-application` -> the own-application legs go red; rename a
+  // name in `OCUPILOT_ROUTINE_APPLICATIONS` -> the Base.cls legs go red.
+  const { selfProtectionReason, OCUPILOT_ROUTINE_APPLICATION_RULE, OCUPILOT_ROUTINE_APPLICATIONS } = await import('../src/app/core/self-protection.ts');
+  const { STRINGS } = await import('../src/app/core/strings.ts');
+  const base = readFileSync(join(REPO_ROOT, 'src', 'OcuPilot', 'Kernel', 'State', 'Base.cls'), 'utf8');
+  const state = /Parameter APPLICATION As %String = "([^"]+)";/.exec(base);
+  const identity = /Parameter IDENTITYAPPLICATION As %String = "([^"]+)";/.exec(base);
+  assert.notEqual(state, null, 'Base.cls declares APPLICATION');
+  assert.notEqual(identity, null, 'Base.cls declares IDENTITYAPPLICATION');
+  assert.deepEqual([...OCUPILOT_ROUTINE_APPLICATIONS], [state[1], identity[1]], 'one pair of names, read by both sides');
+  for (const name of OCUPILOT_ROUTINE_APPLICATIONS) {
+    assert.equal(selfProtectionReason(OCUPILOT_ROUTINE_APPLICATION_RULE, name), STRINGS.routineAppRefusalOcuPilot, `${name} is refused`);
+    assert.equal(selfProtectionReason(OCUPILOT_ROUTINE_APPLICATION_RULE, name.toLowerCase()), STRINGS.routineAppRefusalOcuPilot, `and in lower case, as the instance resolves a name`);
+    assert.equal(selfProtectionReason(OCUPILOT_ROUTINE_APPLICATION_RULE, name.toUpperCase()), STRINGS.routineAppRefusalOcuPilot, `and in upper case`);
+  }
+  assert.equal(selfProtectionReason(OCUPILOT_ROUTINE_APPLICATION_RULE, 'OcuProbe1831A'), '', 'any other routine application is not');
+  assert.equal(selfProtectionReason(OCUPILOT_ROUTINE_APPLICATION_RULE, ''), '', 'and no key answers nothing');
+});
+
 test("Story 16.2: ocupilot-session answers a row under one of OcuPilot's own applications, in every spelling the instance resolves", async () => {
   // Mutation (Rule 19): answer '' for `ocupilot-session` -> the four own-application legs go red;
   // compare the Application without normalizeEntityId -> the re-cased and slash-suffixed legs go red.

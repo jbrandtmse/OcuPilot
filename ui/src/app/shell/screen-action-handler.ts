@@ -115,6 +115,8 @@ export const SCREEN_ACTION_DESCRIPTORS: readonly string[] = [
   'OcuPilot.Screen.Descriptor.MftConnectionList',
   // Story 18.30: Doc DB applications, whose Delete types the record's name.
   'OcuPilot.Screen.Descriptor.DocDbAppList',
+  // Story 18.31: privileged routine applications, whose Delete types the application's name.
+  'OcuPilot.Screen.Descriptor.RoutineAppList',
   // Story 20.2: Productions, whose Start is sent at once and whose Stop, Restart, Update and Recover warn first.
   'OcuPilot.Screen.Descriptor.InteropProductionList',
   // Story 20.15: Screen permissions, whose Reset warns first and whose Add and Remove its own page's dialog sends.
@@ -490,6 +492,8 @@ const DESTRUCTIVE_CONSEQUENCES: Readonly<Record<string, Readonly<Record<string, 
   [MFT_CONNECTION_LIST]: { delete: STRINGS.mftDeleteConsequence, 'revoke-token': STRINGS.mftRevokeConsequence },
   // Story 18.30: a Doc DB application's Delete types its name.
   'OcuPilot.Screen.Descriptor.DocDbAppList': { delete: STRINGS.docDbAppDeleteConsequence },
+  // Story 18.31: a privileged routine application's Delete types its name.
+  'OcuPilot.Screen.Descriptor.RoutineAppList': { delete: STRINGS.routineAppDeleteConsequence },
   [LOCAL_DATABASE_LIST]: { delete: STRINGS.localDatabaseDeleteConsequence },
   // Story 16.25: the language server's Delete types the server's name.
   'OcuPilot.Screen.Descriptor.LanguageServerList': { delete: STRINGS.languageServerDeleteConsequence },
@@ -574,6 +578,8 @@ const TYPED_NAME_ROWS: Readonly<
   // Story 18.30: a Doc DB application is keyed by `[Namespace, Name]`, whose separator no one can type, so its Delete
   // types the record's name and sends the row key.
   'OcuPilot.Screen.Descriptor.DocDbAppList': { name: 'Name', field: '', equals: '', advisory: '' },
+  // Story 18.31: a privileged routine application is keyed by its name, which its Delete types.
+  'OcuPilot.Screen.Descriptor.RoutineAppList': { name: 'Name', field: '', equals: '', advisory: '' },
   // Story 20.3: a production item is keyed by `[Production, Name]`, whose separator no one can type, so its Remove types
   // the item's name and sends the row key.
   'OcuPilot.Screen.Descriptor.InteropItemList': { name: 'Name', field: '', equals: '', advisory: '' },

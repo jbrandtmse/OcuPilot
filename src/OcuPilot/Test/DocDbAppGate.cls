@@ -10,6 +10,10 @@
 /// <parameter>ARMINGVARIABLE</parameter> reading <code>1</code>, because the class creates and deletes probe users, roles
 /// and records (<class>OcuPilot.Test.AuthOptionsProbe</class>'s principals) and sets the governance policy. Every probe
 /// object is removed, and after each test the record list reads as that test found it.</p>
+/// <p>A slice of the same shape reuses these legs by extending the class and overriding <parameter>PROBE</parameter>,
+/// <parameter>SCREEN</parameter>, <parameter>UPDATETOOL</parameter>, <parameter>LIST</parameter>,
+/// <parameter>SAVEPATH</parameter>, <parameter>NAMESPACE</parameter> and <parameter>OBJECTS</parameter>; the probe names
+/// come from <parameter>PROBE</parameter>'s own <code>PREFIX</code>.</p>
 Class OcuPilot.Test.DocDbAppGate Extends %UnitTest.TestCase
 {
 
@@ -26,6 +30,15 @@ Parameter SCREEN = "webapp.docdbapps";
 Parameter UPDATETOOL = "OcuPilot.Screen.Tool.DocDbAppUpdate";
 
 Parameter LIST = "OcuPilot.Screen.Descriptor.DocDbAppList";
+
+/// <p>The Save's route under the API: <code>POST</code> creates, and <code>PUT</code> with the path id appended changes.</p>
+Parameter SAVEPATH = "/docdb-application";
+
+/// <p>The namespace a probe is seeded and named in, as sent; <code>""</code> for objects keyed by their name alone.</p>
+Parameter NAMESPACE = "user";
+
+/// <p>What the class creates beside users and roles, for the refusal <method>OnBeforeAllTests</method> answers.</p>
+Parameter OBJECTS = "Doc DB application records";
 
 /// <p>The principals' resources beyond the install namespace's code read, by the order of the probe's principal list:
 /// the holder holds the area's two pairs; the outsider the file-system pair and the system database's read, without
@@ -56,9 +69,9 @@ Method %OnNew(initvalue As %String = "") As %Status
 Method OnBeforeAllTests() As %Status
 {
     If $System.Util.GetEnviron(..#ARMINGVARIABLE) '= 1 {
-        Quit $$$ERROR($$$GeneralError, "OcuPilot.Test.DocDbAppGate creates and deletes users, roles and Doc DB application records on this instance and runs on a throwaway container only. " _ ..#ARMINGVARIABLE _ " does not read 1 here, so nothing was created. Bring one up with scripts/ci-throwaway.sh, which sets it.")
+        Quit $$$ERROR($$$GeneralError, $ClassName() _ " creates and deletes users, roles and " _ ..#OBJECTS _ " on this instance and runs on a throwaway container only. " _ ..#ARMINGVARIABLE _ " does not read 1 here, so nothing was created. Bring one up with scripts/ci-throwaway.sh, which sets it.")
     }
-    Set ..PreparedPassword = "OcuProbe1830Gate" _ $Translate($System.Encryption.Base64Encode($System.Encryption.GenCryptRand(18), 1), "+/=", "") _ "!Aa9"
+    Set ..PreparedPassword = ..Name("Gate") _ $Translate($System.Encryption.Base64Encode($System.Encryption.GenCryptRand(18), 1), "+/=", "") _ "!Aa9"
     Set tSC = ##class(OcuPilot.Test.GovernanceFixture).Snapshot(.tRows)
     If $$$ISERR(tSC) Quit tSC
     Merge ..PreparedPolicy = tRows
@@ -70,9 +83,9 @@ Method OnBeforeOneTest() As %Status
 {
     Set ..PreparedFacts = $ClassMethod(..#PROBE, "Facts")
     Kill tSettings
-    Set tSettings("webapp.docdbapps.create") = "enabled"
-    Set tSettings("webapp.docdbapps.update") = "enabled"
-    Set tSettings("webapp.docdbapps.delete") = "enabled"
+    Set tSettings(..#SCREEN _ ".create") = "enabled"
+    Set tSettings(..#SCREEN _ ".update") = "enabled"
+    Set tSettings(..#SCREEN _ ".delete") = "enabled"
     Set tSC = ##class(OcuPilot.Test.GovernanceFixture).Apply("", .tSettings)
     If $$$ISERR(tSC) Quit tSC
     Set tRoles = $ClassMethod(..#PRINCIPALS, "Roles")
@@ -81,8 +94,8 @@ Method OnBeforeOneTest() As %Status
         If $$$ISERR(tSC) Quit
     }
     If $$$ISERR(tSC) Quit tSC
-    For tName = "OcuProbe1830A", "OcuProbe1830B" {
-        Set tSC = $ClassMethod(..#PROBE, "Seed", "user", tName, {"Description": "before", "Enabled": true, "Resource": ""})
+    For tName = ..Name("A"), ..Name("B") {
+        Set tSC = $ClassMethod(..#PROBE, "Seed", ..#NAMESPACE, tName, {"Description": "before", "Enabled": true, "Resource": ""})
         If $$$ISERR(tSC) Quit
     }
     Set ..PreparedSeeded = $ClassMethod(..#PROBE, "Facts")
@@ -95,10 +108,10 @@ Method OnAfterOneTest() As %Status
     Do $$$AssertStatusOK(##class(OcuPilot.Test.GovernanceFixture).Restore(.tRows), "the governance policy is restored")
     Do $$$AssertStatusOK($ClassMethod(..#PRINCIPALS, "RemoveAll"), "every probe principal is removed")
     Do $$$AssertEquals($ClassMethod(..#PRINCIPALS, "Remaining"), 0, "and none is left")
-    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "RemoveAll"), "every probe record is removed by exact namespace and name")
+    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "RemoveAll"), "every probe object is removed by exact id")
     Do $$$AssertEquals($ClassMethod(..#PROBE, "Remaining"), 0, "and none is left")
-    Do $$$AssertNotEquals(..PreparedFacts, "unreadable", "the record list was read before the test")
-    Do $$$AssertEquals($ClassMethod(..#PROBE, "Facts"), ..PreparedFacts, "the record list reads as before the test")
+    Do $$$AssertNotEquals(..PreparedFacts, "unreadable", "the probe list was read before the test")
+    Do $$$AssertEquals($ClassMethod(..#PROBE, "Facts"), ..PreparedFacts, "the probe list reads as before the test")
     Do ##class(OcuPilot.Test.ProposalFixture).RemoveSeeded(.tSeeded)
     Quit $$$OK
 }
@@ -118,21 +131,21 @@ Method OnAfterAllTests() As %Status
 Method TestTheDeclaredPairsReadAndWrite()
 {
     Set tUser = ..User(1)
-    Do $$$AssertEquals(..Wire("GET", "/screens/" _ ..#SCREEN _ "/read?maxRows=10", "", tUser), "200 ", "the records read answers the holder")
-    Do $$$AssertEquals(..Wire("GET", "/docdb-application/form?id=" _ $ClassMethod(..#PROBE, "QueryId", $ClassMethod(..#PROBE, "Id", "USER", "OcuProbe1830A")), "", tUser), "200 ", "and the form read")
-    Set tSC = $ClassMethod(..#PROBE, "Mint", ..#UPDATETOOL, "OcuProbe1830A", {"Namespace": "user", "Name": "OcuProbe1830A", "Description": "agent"}, .tProposal, .tHttp, .tProblem, tUser)
+    Do $$$AssertEquals(..Wire("GET", "/screens/" _ ..#SCREEN _ "/read?maxRows=10", "", tUser), "200 ", "the list read answers the holder")
+    Do $$$AssertEquals(..Wire("GET", ..#SAVEPATH _ "/form?id=" _ $ClassMethod(..#PROBE, "QueryId", ..Id(..Name("A"))), "", tUser), "200 ", "and the form read")
+    Set tSC = $ClassMethod(..#PROBE, "Mint", ..#UPDATETOOL, ..Name("A"), ..Body("A", {"Description": "agent"}), .tProposal, .tHttp, .tProblem, tUser)
     Do $$$AssertStatusOK(tSC, "the agent's change is minted for the holder (" _ tProblem _ ")")
     Set tPlan = [{"kind": "confirm", "proposalId": ($Select($IsObject(tProposal): tProposal.%Get("proposalId"), 1: ""))}, {"kind": "entry", "descriptor": (..#LIST)}]
     Set tRun = $ClassMethod(..#PROBE, "RunAs", tUser, tPlan)
     Do $$$AssertEquals(..Ran(tRun), tUser _ " 1", "the child process ran as " _ tUser)
     Do $$$AssertEquals(..Leg(tRun, 1), "200 ", "the holder's confirm of the agent's change is accepted")
     Do $$$AssertEquals(..Leg(tRun, 2), "200 ", "and the side bar lists the screen for it")
-    Do $$$AssertEquals($ClassMethod(..#PROBE, "StoredField", "USER", "OcuProbe1830A", "Description"), "agent", "the instance holds the change")
-    Do $$$AssertEquals(..Wire("POST", "/docdb-application", {"Namespace": "user", "Name": "OcuProbe1830N", "Description": "holder"}, tUser), "201 ", "the holder's create is accepted")
-    Do $$$AssertEquals(..Wire("PUT", "/docdb-application/" _ $ClassMethod(..#PROBE, "PathId", $ClassMethod(..#PROBE, "Id", "USER", "OcuProbe1830N")), {"Description": "changed"}, tUser), "200 ", "and so is its change")
-    Do $$$AssertEquals($ClassMethod(..#PROBE, "StoredField", "USER", "OcuProbe1830N", "Description"), "changed", "which the instance holds")
-    Do $$$AssertEquals(..Wire("POST", "/screens/" _ ..#SCREEN _ "/action", {"action": "delete", "id": ($ClassMethod(..#PROBE, "Id", "USER", "OcuProbe1830B"))}, tUser), "200 ", "the holder's delete is accepted")
-    Do $$$AssertEquals($IsObject($ClassMethod(..#PROBE, "Stored", "USER", "OcuProbe1830B")), 0, "and the record is gone")
+    Do $$$AssertEquals($ClassMethod(..#PROBE, "StoredField", ..StoredNamespace(), ..Name("A"), "Description"), "agent", "the instance holds the change")
+    Do $$$AssertEquals(..Wire("POST", ..#SAVEPATH, ..Body("N", {"Description": "holder"}), tUser), "201 ", "the holder's create is accepted")
+    Do $$$AssertEquals(..Wire("PUT", ..#SAVEPATH _ "/" _ $ClassMethod(..#PROBE, "PathId", ..Id(..Name("N"))), {"Description": "changed"}, tUser), "200 ", "and so is its change")
+    Do $$$AssertEquals($ClassMethod(..#PROBE, "StoredField", ..StoredNamespace(), ..Name("N"), "Description"), "changed", "which the instance holds")
+    Do $$$AssertEquals(..Wire("POST", "/screens/" _ ..#SCREEN _ "/action", {"action": "delete", "id": (..Id(..Name("B")))}, tUser), "200 ", "the holder's delete is accepted")
+    Do $$$AssertEquals($IsObject($ClassMethod(..#PROBE, "Stored", ..StoredNamespace(), ..Name("B"))), 0, "and the object is gone")
 }
 
 /// <p>Without <code>%Admin_Secure:USE</code>, both reads, the three writes over the wire and the confirm are refused
@@ -144,11 +157,11 @@ Method TestWithoutTheAreasResourceEveryReadAndWriteIsRefused()
     Set tUser = ..User(2)
     Set tPair = "%Admin_Secure:USE"
     Do $$$AssertEquals(..Wire("GET", "/screens/" _ ..#SCREEN _ "/read?maxRows=10", "", tUser), "403 " _ tPair, "the read is refused naming the pair")
-    Do $$$AssertEquals(..Wire("GET", "/docdb-application/form", "", tUser), "403 " _ tPair, "and the form read")
-    Do $$$AssertEquals(..Wire("POST", "/docdb-application", {"Namespace": "user", "Name": "OcuProbe1830N"}, tUser), "403 " _ tPair, "and a create")
-    Do $$$AssertEquals(..Wire("PUT", "/docdb-application/" _ $ClassMethod(..#PROBE, "PathId", $ClassMethod(..#PROBE, "Id", "USER", "OcuProbe1830A")), {"Description": "outsider"}, tUser), "403 " _ tPair, "and a change")
-    Do $$$AssertEquals(..Wire("POST", "/screens/" _ ..#SCREEN _ "/action", {"action": "delete", "id": ($ClassMethod(..#PROBE, "Id", "USER", "OcuProbe1830B"))}, tUser), "403 " _ tPair, "and a delete")
-    Set tSC = $ClassMethod(..#PROBE, "Mint", ..#UPDATETOOL, "OcuProbe1830A", {"Namespace": "user", "Name": "OcuProbe1830A", "Description": "agent"}, .tProposal, .tHttp, .tProblem, tUser)
+    Do $$$AssertEquals(..Wire("GET", ..#SAVEPATH _ "/form", "", tUser), "403 " _ tPair, "and the form read")
+    Do $$$AssertEquals(..Wire("POST", ..#SAVEPATH, ..Body("N", {}), tUser), "403 " _ tPair, "and a create")
+    Do $$$AssertEquals(..Wire("PUT", ..#SAVEPATH _ "/" _ $ClassMethod(..#PROBE, "PathId", ..Id(..Name("A"))), {"Description": "outsider"}, tUser), "403 " _ tPair, "and a change")
+    Do $$$AssertEquals(..Wire("POST", "/screens/" _ ..#SCREEN _ "/action", {"action": "delete", "id": (..Id(..Name("B")))}, tUser), "403 " _ tPair, "and a delete")
+    Set tSC = $ClassMethod(..#PROBE, "Mint", ..#UPDATETOOL, ..Name("A"), ..Body("A", {"Description": "agent"}), .tProposal, .tHttp, .tProblem, tUser)
     Do $$$AssertStatusOK(tSC, "a change is minted for the outsider (" _ tProblem _ ")")
     Set tPlan = [{"kind": "confirm", "proposalId": ($Select($IsObject(tProposal): tProposal.%Get("proposalId"), 1: ""))}, {"kind": "entry", "descriptor": (..#LIST)}]
     Set tRun = $ClassMethod(..#PROBE, "RunAs", tUser, tPlan)
@@ -166,10 +179,10 @@ Method TestWithoutTheSystemDatabaseReadEveryWriteIsRefused()
 {
     Set tUser = ..User(3)
     Set tPair = "%DB_IRISSYS:READ"
-    Do $$$AssertEquals(..Wire("POST", "/docdb-application", {"Namespace": "user", "Name": "OcuProbe1830N"}, tUser), "403 " _ tPair, "a create is refused naming the system database's read")
-    Do $$$AssertEquals(..Wire("PUT", "/docdb-application/" _ $ClassMethod(..#PROBE, "PathId", $ClassMethod(..#PROBE, "Id", "USER", "OcuProbe1830A")), {"Description": "third"}, tUser), "403 " _ tPair, "and a change")
-    Do $$$AssertEquals(..Wire("POST", "/screens/" _ ..#SCREEN _ "/action", {"action": "delete", "id": ($ClassMethod(..#PROBE, "Id", "USER", "OcuProbe1830B"))}, tUser), "403 " _ tPair, "and a delete")
-    Set tSC = $ClassMethod(..#PROBE, "Mint", ..#UPDATETOOL, "OcuProbe1830A", {"Namespace": "user", "Name": "OcuProbe1830A", "Description": "agent"}, .tProposal, .tHttp, .tProblem, tUser)
+    Do $$$AssertEquals(..Wire("POST", ..#SAVEPATH, ..Body("N", {}), tUser), "403 " _ tPair, "a create is refused naming the system database's read")
+    Do $$$AssertEquals(..Wire("PUT", ..#SAVEPATH _ "/" _ $ClassMethod(..#PROBE, "PathId", ..Id(..Name("A"))), {"Description": "third"}, tUser), "403 " _ tPair, "and a change")
+    Do $$$AssertEquals(..Wire("POST", "/screens/" _ ..#SCREEN _ "/action", {"action": "delete", "id": (..Id(..Name("B")))}, tUser), "403 " _ tPair, "and a delete")
+    Set tSC = $ClassMethod(..#PROBE, "Mint", ..#UPDATETOOL, ..Name("A"), ..Body("A", {"Description": "agent"}), .tProposal, .tHttp, .tProblem, tUser)
     Do $$$AssertStatusOK(tSC, "a change is minted for the third principal (" _ tProblem _ ")")
     Set tRun = $ClassMethod(..#PROBE, "RunAs", tUser, [{"kind": "confirm", "proposalId": ($Select($IsObject(tProposal): tProposal.%Get("proposalId"), 1: ""))}])
     Do $$$AssertEquals(..Ran(tRun), tUser _ " 1", "the child process ran as " _ tUser)
@@ -187,6 +200,34 @@ Method Wire(pMethod As %String, pPath As %String, pBody As %DynamicObject, pUser
     Try { Set tAnswer = ##class(%DynamicObject).%FromJSON($Get(tBody, "{}")) } Catch {}
     Set tDetail = $Select($IsObject(tAnswer): tAnswer.%Get("detail"), 1: "")
     Quit $Get(tStatus) _ " " _ $Select($IsObject(tDetail): tDetail.%Get("failedPair"), 1: "")
+}
+
+/// <p>The probe name <var>pSuffix</var> names: <parameter>PROBE</parameter>'s <code>PREFIX</code> with it appended.</p>
+ClassMethod Name(pSuffix As %String) As %String
+{
+    Quit $Parameter(..#PROBE, "PREFIX") _ pSuffix
+}
+
+/// <p>The vendor id of the probe <var>pName</var> in <parameter>NAMESPACE</parameter>.</p>
+ClassMethod Id(pName As %String) As %String
+{
+    Quit $ClassMethod(..#PROBE, "Id", ..StoredNamespace(), pName)
+}
+
+/// <p><parameter>NAMESPACE</parameter> as the instance stores it, the spelling the probe's reads take.</p>
+ClassMethod StoredNamespace() As %String
+{
+    Quit $ZConvert(..#NAMESPACE, "U")
+}
+
+/// <p>A Save or mint body for the probe <var>pSuffix</var> names: <var>pFields</var> with its <code>Name</code>, and its
+/// <code>Namespace</code> when <parameter>NAMESPACE</parameter> is not empty.</p>
+ClassMethod Body(pSuffix As %String, pFields As %DynamicObject) As %DynamicObject
+{
+    Set tBody = ##class(%DynamicAbstractObject).%FromJSON(pFields.%ToJSON())
+    If ..#NAMESPACE '= "" Do tBody.%Set("Namespace", ..#NAMESPACE)
+    Do tBody.%Set("Name", ..Name(pSuffix))
+    Quit tBody
 }
 
 /// <p>The principal of entry <var>pIndex</var> of the probe's principal list.</p>

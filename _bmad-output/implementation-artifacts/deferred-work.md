@@ -10826,6 +10826,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-10-web-application-extras-and-spec-based-rest-services.md | severity: med | fix-risk: low | footprint: in-epic
 - evidence: Measured on ocupilot-ci (cr run 587, MatchRoles arm mutated): WebApp.App failed with HTTP 500, ERROR #799 Invalid Application name OcuPilotState/OcuPilotIdentity
 - 2026-10-09T12:13:14Z status=routed owner=18-31-privileged-routine-applications by=cr note=refuse a routine-type target on the web-application tools before the vendor, as AdminPort's type check does
+- 2026-10-11T06:06:01Z status=resolved-by:18-31-privileged-routine-applications by=adjudication note=AdminPort guard 409 PRIVROUTINE.WEBAPP before WebApp.App PUT/DELETE; RoutineAppWebAppGuard pins both callers (run 577)
 ### DW-2241: Take as script on an agent's class or routine save renders the text as the placeholder "<content>", so the script is not the reviewed change (AD-59)
 - source: spec-20-21-the-agent-saves-edits-to-existing-classes-and-routines.md | severity: med | fix-risk: med | footprint: in-epic
 - evidence: AtelierPort.Snippet TYPESAVE always renders "<content>" (pinned by AtelierPortSave.TestTheSaveRendersItsScript); 20.21 advertised the save, so Draft.Take on its card closes the proposal and answers a script that, run as is, writes "<content>" into a routine; the routine branch's %Routine.Write would also need the UDL header removed
@@ -10985,6 +10986,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-23-6-the-haiku-story-cleanup.md | severity: low | fix-risk: low | footprint: out-of-footprint
 - evidence: Api/PctAccessError.cls:51-55 at 357985c0 (Planner review of 18.10, item 4); a move leaves the code string unchanged
 - 2026-10-09T17:02:33Z status=routed owner=18-31-privileged-routine-applications by=spec_gate note=23.6 addendum 18.10-4a left for 18.31, which builds the privileged routine application screens (coordinator: may wait for 18.31)
+- 2026-10-11T06:06:01Z status=resolved-by:18-31-privileged-routine-applications by=adjudication note=PRIVROUTINE codes in Api/RoutineAppError, strings unchanged; RoutineAppDescriptor pins all eight (run 569)
 
 ### DW-2263: The create script's class check reads the undocumented ^rINDEXCLASS, measured on 2026.2 only
 - source: spec-23-6-the-haiku-story-cleanup.md | severity: low | fix-risk: low | footprint: out-of-footprint
@@ -11095,6 +11097,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-10T10:42:42Z status=routed owner=range-end-cleanup by=harvest note=unify behind a kernel base the slices extend; recorded at the 18.30 spec gate
 - 2026-10-10T12:49:19Z occurrence=18-30-doc-db-applications
 - 2026-10-11T01:02:21Z status=routed owner=23-7-the-range-end-cleanup-part-6 by=merge_gate note=re-own from range-end-cleanup at 18.30's merge (kit 2026-10-10.1 owner grammar)
+- 2026-10-11T06:02:59Z occurrence=18-31-privileged-routine-applications
 
 ### DW-2279: MappingMint's empty-namespace refusal names a 'mapping' for the Doc DB application tools
 - source: spec-18-30-doc-db-applications.md | severity: low | fix-risk: low | footprint: in-epic
@@ -11118,6 +11121,15 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: measured at 18.31's plan on ocupilot-ci: Type other than Routine stored as Class; an empty member dropped; an omitted Type answers 400 #40301
 - 2026-10-10T17:24:12Z status=decision-pending owner=burndown by=harvest note=owner_hold: IRIS defect candidate, never reported upstream
 
+### DW-2296: The agent's mint of a routine-application change or delete naming a web application answers 400 TOOL.ARGUMENTS 'not present' rather than 404 PRIVROUTINE.TYPE
+- source: spec-18-31-privileged-routine-applications.md | severity: low | fix-risk: med | footprint: in-epic
+- evidence: 18.31 implement review: the Save, the list's Delete and the port answer 404; the mint's absence read answers first; nothing is sent on any path; a fix changes the shared Kernel/Proposal/Mint
+- 2026-10-10T20:55:30Z status=wontfix-accepted owner=18-31-privileged-routine-applications by=harvest note=reopen_if=a user reports the mint's wording, or the shared Mint gains a per-tool absence answer
+
+### DW-2299: Rule 31: RestServiceDelete.StateDiff will copy ExplorerDocDbDelete.StateDiff because their shared home, Screen/Tool/Write.cls, is Epic 20's while 18.32 runs
+- source: spec-18-32-spec-based-rest-services.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: 18.32's code map states the copy and its reason (Write.cls off-limits under Rule 11); ExplorerDocDbDelete.cls:57 is the sibling
+- 2026-10-11T05:02:16Z status=routed owner=23-7-the-range-end-cleanup-part-6 by=spec_gate note=lift StateDiff into Write.cls once Epic 20 has merged; both deletes then extend it
 ### DW-2300: A tool class's compile time is recorded a few milliseconds before its compiled code, so a ListTools build in that gap can cache the class's previous view until the next compile
 - source: spec-20-24-agent-tool-calls-stop-re-listing-the-tool-registry.md | severity: low | fix-risk: high | footprint: in-story
 - evidence: Measured on ocupilot-b-ci at code review: the CompiledClass row and TimeChanged lead %Extends and $Parameter by 1.6-4.2 ms (one 53 ms); the before/after check cannot see it; 20 batch-compile trials ended with 0 stale listings; a production build reads a class at least 38 ms after its signature read
