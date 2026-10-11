@@ -106,6 +106,14 @@ export const SKIP = {
   // Story 20.22: Item settings is reached from a Production items row; the walk is interop-item-settings.browser-spec.mjs's,
   // on the probe production it creates.
   'interoperability/productions/items/settings': 'HSCUSTOM holds no production, so the Productions list opens with no row to open',
+  // Story 20.4: the item's other five tabs are reached from the same row, and Queue messages from a Queues row, which
+  // HSCUSTOM, running no production, lists none of; interop-host-tabs.browser-spec.mjs walks them on the probe production.
+  'interoperability/productions/items/document': 'HSCUSTOM holds no production, so the Productions list opens with no row to open',
+  'interoperability/productions/items/queue': 'HSCUSTOM holds no production, so the Productions list opens with no row to open',
+  'interoperability/productions/items/log': 'HSCUSTOM holds no production, so the Productions list opens with no row to open',
+  'interoperability/productions/items/messages': 'HSCUSTOM holds no production, so the Productions list opens with no row to open',
+  'interoperability/productions/items/jobs': 'HSCUSTOM holds no production, so the Productions list opens with no row to open',
+  'interoperability/queues/messages': 'HSCUSTOM runs no production, so the Queues list opens with no row to open',
 };
 
 /** The limits class the seeded entry is capped by, as the turn's own append is. */

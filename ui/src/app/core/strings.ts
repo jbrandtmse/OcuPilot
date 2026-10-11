@@ -6427,6 +6427,122 @@ export const STRINGS = {
   interopSettingRefusalValue: 'The item\'s class does not accept this value for this setting.',
   /** EXPERIENCE.md:604 */
   interopSettingRefusalDescent: 'This item also reads the directories below its file path, as many levels down as its subdirectory levels, and that would reach the manager directory or the directory OcuPilot serves its files from. Choose another file path or fewer subdirectory levels.',
+  /** EXPERIENCE.md:604 */
+  interopMonitorLabel: 'Production monitor',
+  /** EXPERIENCE.md:604 */
+  interopQueuesLabel: 'Queues',
+  /** EXPERIENCE.md:604 */
+  interopQueueMessagesLabel: 'Queue messages',
+  /** EXPERIENCE.md:604 */
+  interopJobsLabel: 'Jobs',
+  /** EXPERIENCE.md:604 */
+  interopItemStatusLabel: 'Item status',
+  /** EXPERIENCE.md:604 */
+  interopItemQueueLabel: 'Item queue',
+  /** EXPERIENCE.md:604 */
+  interopItemLogLabel: 'Item log',
+  /** EXPERIENCE.md:604 */
+  interopItemMessagesLabel: 'Item messages',
+  /** EXPERIENCE.md:604 */
+  interopItemJobsLabel: 'Item jobs',
+  /** EXPERIENCE.md:604 */
+  interopItemTabSettings: 'Settings',
+  /** EXPERIENCE.md:604 */
+  interopItemTabLog: 'Log',
+  /** EXPERIENCE.md:604 */
+  interopItemTabMessages: 'Messages',
+  /** EXPERIENCE.md:604 */
+  interopColumnAdapterState: 'Adapter state',
+  /** EXPERIENCE.md:604 */
+  interopColumnQueue: 'Queue',
+  /** EXPERIENCE.md:604 */
+  interopColumnCount: 'Count',
+  /** EXPERIENCE.md:604 */
+  interopColumnActive: 'Active',
+  /** EXPERIENCE.md:604 */
+  interopColumnMessageId: 'Message ID',
+  /** EXPERIENCE.md:604 */
+  interopColumnBodyClass: 'Body class',
+  /** EXPERIENCE.md:604 */
+  interopColumnJob: 'Job',
+  /** EXPERIENCE.md:604 */
+  interopColumnActiveMessage: 'Active message',
+  /** EXPERIENCE.md:604 */
+  interopColumnDead: 'Dead',
+  /** EXPERIENCE.md:604 */
+  interopColumnId: 'ID',
+  /** EXPERIENCE.md:604 */
+  interopMonitorEmpty: 'No production is running in this namespace.',
+  /** EXPERIENCE.md:604 */
+  interopQueuesEmpty: 'This namespace holds no queues.',
+  /** EXPERIENCE.md:604 */
+  interopQueueMessagesEmpty: 'This queue holds no messages.',
+  /** EXPERIENCE.md:604 */
+  interopJobsEmpty: 'No production is running here, so no jobs are listed.',
+  /** EXPERIENCE.md:604 */
+  interopItemStatusEmpty: 'This item has no status to show.',
+  /** EXPERIENCE.md:604 */
+  interopItemQueueEmpty: 'No messages are waiting in this item\'s queue.',
+  /** EXPERIENCE.md:604 */
+  interopItemLogEmpty: 'The event log holds no entries for this item.',
+  /** EXPERIENCE.md:604 */
+  interopItemMessagesEmpty: 'No messages came from or went to this item.',
+  /** EXPERIENCE.md:604 */
+  interopItemJobsEmpty: 'This item has no running jobs.',
+  /** EXPERIENCE.md:604 */
+  interopMonitorPrompt1: 'Which items of the running production are in error?',
+  /** EXPERIENCE.md:604 */
+  interopMonitorPrompt2: 'Which items have messages waiting in their queues?',
+  /** EXPERIENCE.md:604 */
+  interopMonitorPrompt3: 'Which items have been idle the longest?',
+  /** EXPERIENCE.md:604 */
+  interopQueuesPrompt1: 'Which queues hold the most messages?',
+  /** EXPERIENCE.md:604 */
+  interopQueuesPrompt2: 'Which queues hold messages that no job is working on?',
+  /** EXPERIENCE.md:604 */
+  interopQueuesPrompt3: 'How many messages are waiting in all queues together?',
+  /** EXPERIENCE.md:604 */
+  interopQueueMessagesPrompt1: 'Which messages in this queue have waited the longest?',
+  /** EXPERIENCE.md:604 */
+  interopQueueMessagesPrompt2: 'Which hosts sent the messages waiting in this queue?',
+  /** EXPERIENCE.md:604 */
+  interopQueueMessagesPrompt3: 'What kinds of messages are waiting in this queue?',
+  /** EXPERIENCE.md:604 */
+  interopJobsPrompt1: 'Which jobs are working on a message right now?',
+  /** EXPERIENCE.md:604 */
+  interopJobsPrompt2: 'Is any job dead or retrying a message?',
+  /** EXPERIENCE.md:604 */
+  interopJobsPrompt3: 'Which host runs the most jobs?',
+  /** EXPERIENCE.md:604 */
+  interopItemStatusPrompt1: 'Is this item running, and is its adapter connected?',
+  /** EXPERIENCE.md:604 */
+  interopItemStatusPrompt2: 'When was this item last active?',
+  /** EXPERIENCE.md:604 */
+  interopItemStatusPrompt3: 'Why is this item not processing messages?',
+  /** EXPERIENCE.md:604 */
+  interopItemQueuePrompt1: 'How many messages wait in this item\'s queue?',
+  /** EXPERIENCE.md:604 */
+  interopItemQueuePrompt2: 'What has the oldest message waiting for this item been waiting for?',
+  /** EXPERIENCE.md:604 */
+  interopItemQueuePrompt3: 'Which hosts sent the messages waiting for this item?',
+  /** EXPERIENCE.md:604 */
+  interopItemLogPrompt1: 'What errors has this item logged recently?',
+  /** EXPERIENCE.md:604 */
+  interopItemLogPrompt2: 'Summarize this item\'s latest event log entries.',
+  /** EXPERIENCE.md:604 */
+  interopItemLogPrompt3: 'Has this item logged a warning since it last started?',
+  /** EXPERIENCE.md:604 */
+  interopItemMessagesPrompt1: 'What did this item receive and send most recently?',
+  /** EXPERIENCE.md:604 */
+  interopItemMessagesPrompt2: 'Which messages of this item ended in an error?',
+  /** EXPERIENCE.md:604 */
+  interopItemMessagesPrompt3: 'Which hosts exchange messages with this item?',
+  /** EXPERIENCE.md:604 */
+  interopItemJobsPrompt1: 'Which job of this item is working on a message?',
+  /** EXPERIENCE.md:604 */
+  interopItemJobsPrompt2: 'Is any job of this item dead or retrying a message?',
+  /** EXPERIENCE.md:604 */
+  interopItemJobsPrompt3: 'How many jobs does this item run?',
   /** EXPERIENCE.md:468 */
   sqlPrivilegesLabel: 'SQL privileges',
   /** EXPERIENCE.md:468 */
