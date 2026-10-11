@@ -336,6 +336,28 @@ Rejected:
 - `low` `InteropQueueActions` (556 lines) and `InteropRuntimeGate` (518) exceed about 500: the fix is a class split.
 - `low` The Auto Run Result's residual risk and the 2851/2852 count are stale: both are spec edits outside Verification.
 
+Re-review 2026-10-11 (rework 1, baseline `48f37a83`), four layers on the full-opus tier: 24 rows, 16 entries after grouping (high 0, medium 2, low 3, 11 rejected). Patches re-ran green on `ocupilot-b-ci`: `InteropJobStop` 8, `InteropJobActions` 7, `InteropRuntimeBounds` 3. The `[CI]` cause shows in that instance's event log: on its first start the monitor marked the terminated job dead (row 7) before the schedule handler's start update logged `updated.` (row 10); each of its 126 starts logs that update.
+
+- [x] [Review][Patch] (medium, Rule 19 hermeticity) The helper terminated before the production's own start update had run, and that update removes every dead row, so a ghost answered first reads 404 once it lands (shown: ghost `Z18063_9456` answered, then removed by the late update). `InteropJobEnd.StartUpdated` waits for the schedule handler's line after the newest start; `TestAStartWhoseOwnUpdateHasNotRunIsNotActedOn` pins it by holding the runtime lock across a start [src/OcuPilot/Test/InteropJobEnd.cls:66]
+- [x] [Review][Patch] (medium, Rule 19) The replacement pin could pass through the first job's ghost, whose rename also set its premise flag. The seam records the first pid and the test asserts the answered id is a later job's [src/OcuPilot/Test/InteropJobStop.cls:431]
+- [x] [Review][Patch] (low) The seam discarded the setting's and the update's statuses; a failure now lands in the premise flag as its text [src/OcuPilot/Test/InteropJobStop.cls:409]
+- [x] [Review][Patch] (low) The Troubled refusal held only before the terminate; `DeadJob` now ends its wait on a Troubled production by name [src/OcuPilot/Test/InteropJobEnd.cls:168]
+- [x] [Review][Patch] (low) The replacement test read a process-private node it had not cleared [src/OcuPilot/Test/InteropJobStop.cls:425]
+
+Rejected (re-review):
+
+- `false` An earlier job's ghost can be answered: each start kills the job-status rows (`Ens.Director` `StartProduction`), and any dead id of the host meets the premise.
+- `false` `DeadJob` has no process-gone exit: the job's own row reads Dead once its process is gone (`JobRow` reads `^$JOB`) and is answered when no rename comes; answering it earlier lets the rename turn it into a 404.
+- `false` The ghost is not tied to the terminated job: as above, no other dead row of the host survives a start.
+- `false` The new tests call the vendor outside the Never list and AD-62: both bind product code, and `ProductionProbe` already updates and troubles the production.
+- `low` A replacement listed while the terminated process still exists: the update restarts a host only once its job is gone.
+- `low` `LiveJob` is private while `StartProbe`, `UpdateStartsAJob`, `ArmRetry` and `Listed` keep their own reads (Rule 2): that code predates the rework and the finding is not high.
+- `low` The fresh-instance proof is outstanding: it is the runner's Rule 30 fresh check, which runs `InteropJobStop` first; the lock pin forces the late-update order on any instance.
+- `low` The Auto Run Result no longer carries the first pass's account: a rework's Auto Run Result covers that pass only.
+- `low` The rework's Spec Change Log entry sits below the lead's: a spec edit outside Verification.
+- `low` The cycle log's `inference_confirmed_by_probe` and `review_loop_iteration=1` differ from the spec: lead telemetry.
+- `low` The `[CI]` item's text grew in the pass that checked it: spec history.
+
 ## Spec Change Log
 
 - 2026-10-11, rework 1 (lead): re-opened on a CI story red (`[CI]` item under Tasks & Acceptance).
@@ -651,6 +673,7 @@ Rule 19 (rework 1), each applied to the throwaway's copy of `src` only, the clas
 - mutation: `InteropJobEnd.Terminated` skips the `Terminate` call -> `InteropJobStop.TestADeadOrAbsentJobIsRefusedBeforeTheVendorIsCalled` and `TestAJobTheProductionReplacesIsEndedInItsTurn`, each naming that no job of the host read Dead in about 20 seconds
 - mutation: `InteropJobEnd` `ATTEMPTS` 3 -> 1 -> `InteropJobStop.TestAJobTheProductionReplacesIsEndedInItsTurn` alone, naming that a live job replaced the terminated one
 - mutation: `InteropJobEnd` `TROUBLED` 4 -> 5 -> `InteropJobStop.TestATroubledProductionRefusesTheDeadJobPremiseByName` alone
+- mutation (code review, rework 1): `InteropJobEnd.StartUpdated` answers 1 at once -> `InteropJobStop.TestAStartWhoseOwnUpdateHasNotRunIsNotActedOn` alone (run 22), the job terminated and a dead id answered; the `ATTEMPTS` line above re-observed after the replacement test gained its later-job leg (run 23)
 
 ## Auto Run Result
 

@@ -4,7 +4,8 @@
 /// hung on a message, with the wait shortened to two seconds through <class>OcuPilot.Test.InteropGateSeam</class>, forces it, puts its
 /// message back on its queue and leaves its host reading Error; a job whose process has ended and a pid no job holds are refused, with
 /// no vendor call and so no <code>Stopping job</code> row in the event log; each stop leaves one OcuPilot audit row; and the dead-job
-/// premise helper <class>OcuPilot.Test.InteropJobEnd</class> ends a job the production replaced and refuses a Troubled production by name.</p>
+/// premise helper <class>OcuPilot.Test.InteropJobEnd</class> waits for a start's own update, ends a job the production replaced and
+/// refuses a Troubled production by name.</p>
 /// <p><b>What it needs from the environment:</b> OcuPilot installed in <code>HSCUSTOM</code> and serving over HTTP as
 /// <class>OcuPilot.Test.Http</class>'s account, an interoperability-enabled <code>USER</code> namespace, and
 /// <parameter>ARMINGVARIABLE</parameter> reading <code>1</code>, because it <b>compiles and runs a probe production in
@@ -384,23 +385,28 @@ Method TestADeadOrAbsentJobIsRefusedBeforeTheVendorIsCalled()
 
 /// <p>The seam <class>OcuPilot.Test.InteropJobEnd</class> calls with the process id of the job it just terminated: wait for that process
 /// to end, change the plain operation's setting so that the update has work to do, update the probe production in <code>USER</code>, and
-/// record in <code>^||OcuPilotJobEndDropped</code> whether the Jobs list then holds no row under that process id.</p>
+/// record the process id in <code>^||OcuPilotJobEndFirst</code> and, in <code>^||OcuPilotJobEndDropped</code>, 1 when the setting and
+/// the update succeeded and the Jobs list then holds no row under that process id, 0 when it holds one, and the error text when either
+/// call failed.</p>
 ClassMethod UpdateOnceGone(pPid As %String)
 {
+    Set ^||OcuPilotJobEndFirst = pPid
     Set ^||OcuPilotJobEndDropped = 0
     For tTry = 1:1:200 {
         If '$Data(^$JOB(pPid)) Quit
         Hang 0.05
     }
-    Do $ClassMethod(..#PROBE, "SetHang", 1)
+    Set tSC = $ClassMethod(..#PROBE, "SetHang", 1)
     Set tOrigNS = $NAMESPACE
     Try {
         Set $NAMESPACE = ..#NAMESPACE
-        Set tSC = ##class(Ens.Director).UpdateProduction()
+        If $$$ISOK(tSC) Set tSC = ##class(Ens.Director).UpdateProduction()
         Set $NAMESPACE = tOrigNS
-    } Catch {
+    } Catch ex {
         Set $NAMESPACE = tOrigNS
+        Set tSC = ex.AsStatus()
     }
+    If $$$ISERR(tSC) Set ^||OcuPilotJobEndDropped = $System.Status.GetErrorText(tSC) Quit
     Set tCount = ##class(OcuPilot.Test.InteropJobEnd).HostRows(..#OPNAME, .tRows)
     Set ^||OcuPilotJobEndDropped = 1
     For tI = 1:1:tCount {
@@ -409,17 +415,50 @@ ClassMethod UpdateOnceGone(pPid As %String)
 }
 
 /// <p>A job whose row the production drops after its process ends, and that it replaces with a live job some moments later, is not the end
-/// of the premise: <class>OcuPilot.Test.InteropJobEnd</class> terminates the replacement in its turn and answers a dead id. The update
-/// runs once the first job's process is gone, through the helper's seam.</p>
+/// of the premise: <class>OcuPilot.Test.InteropJobEnd</class> terminates the replacement in its turn and answers a dead id, a later job's
+/// and not the first job's ghost. The update runs once the first job's process is gone, through the helper's seam.</p>
 /// <p>Mutation (Rule 19): set <class>OcuPilot.Test.InteropJobEnd</class>'s <parameter>ATTEMPTS</parameter> to 1 -- this test goes red,
 /// the helper answering <code>""</code> and saying that a live job replaced the terminated one.</p>
 Method TestAJobTheProductionReplacesIsEndedInItsTurn()
 {
     Do $$$AssertStatusOK(..StartProbe(), "the probe production runs")
+    Kill ^||OcuPilotJobEndDropped, ^||OcuPilotJobEndFirst
     Set tDead = ##class(OcuPilot.Test.InteropJobEnd).Terminated(..#OPNAME, .tWhy, ..%ClassName(1) _ ":UpdateOnceGone")
-    Do $$$AssertEquals($Get(^||OcuPilotJobEndDropped), 1, "the update dropped the terminated job's row")
-    Kill ^||OcuPilotJobEndDropped
+    Set tFirst = $Get(^||OcuPilotJobEndFirst)
+    Do $$$AssertEquals($Get(^||OcuPilotJobEndDropped), 1, "the update ran and dropped the terminated job's row")
+    Kill ^||OcuPilotJobEndDropped, ^||OcuPilotJobEndFirst
     Do $$$AssertNotEquals(tDead, "", tWhy)
+    Do $$$AssertTrue((tFirst '= "") && (tDead '= tFirst) && ($Extract(tDead, 1, $Length(tFirst) + 2) '= ("Z" _ tFirst _ "_")), "the dead id " _ tDead _ " is a later job's, not the first job " _ tFirst _ "'s")
+}
+
+/// <p>A start whose own update has not run is not acted on: the production is started while this process holds the vendor's runtime lock in
+/// <code>USER</code>, which its schedule handler's update waits on, so no update is logged after the start, and
+/// <class>OcuPilot.Test.InteropJobEnd</class> terminates nothing and refuses the premise by name after its wait.</p>
+/// <p>Mutation (Rule 19): make <class>OcuPilot.Test.InteropJobEnd</class>'s <method>StartUpdated</method> answer 1 at once -- this test goes
+/// red, the job being terminated and a dead id answered.</p>
+Method TestAStartWhoseOwnUpdateHasNotRunIsNotActedOn()
+{
+    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "Settle"), "the probe production is stopped")
+    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "ResetProduction"), "the probe production is as it was made")
+    Set tOrigNS = $NAMESPACE
+    Set $NAMESPACE = ..#NAMESPACE
+    Lock +^Ens.Runtime:5
+    Set tLocked = $Test
+    Set $NAMESPACE = tOrigNS
+    Kill tQuery
+    Set tQuery("namespace") = ..#NAMESPACE
+    Set tQuery("id") = ..#PRODUCTION
+    Set tSC = $ClassMethod(..#PORT, "Invoke", "Productions", "START", .tQuery, "", .tResult, .tHttp, .tFault)
+    Set tDead = ##class(OcuPilot.Test.InteropJobEnd).Terminated(..#OPNAME, .tWhy)
+    Set tRow = $ClassMethod(..#JOBS, "JobOf", ..#OPNAME)
+    Set $NAMESPACE = ..#NAMESPACE
+    If tLocked Lock -^Ens.Runtime
+    Set $NAMESPACE = tOrigNS
+    Do $$$AssertTrue(tLocked, "this process held the runtime lock across the start")
+    Do $$$AssertStatusOK(tSC, "the probe production starts")
+    Do $$$AssertEquals(tDead, "", "no dead id is answered before the start's own update has run")
+    Do $$$AssertTrue(tWhy [ "logged no update", "the premise is refused naming the missing update, not: " _ tWhy)
+    Do $$$AssertTrue($IsObject(tRow) && 'tRow.Dead, "and the plain operation's job was not terminated")
 }
 
 /// <p>A production that reads Troubled and lists no live job of the host is refused as the premise, naming Troubled, at once.</p>
