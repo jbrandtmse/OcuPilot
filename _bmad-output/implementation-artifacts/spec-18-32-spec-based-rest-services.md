@@ -2,7 +2,7 @@
 title: 'Story 18.32: Spec-based REST services'
 type: 'feature'
 created: '2026-10-10'
-status: 'blocked'
+status: 'draft'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -17,7 +17,7 @@ deferred: []
 
 **Problem:** The REST API explorer (`RestApiList`, type `rest-service`, port `MgmntPort`) can only read. There is no way to create a spec-based REST service from an OpenAPI document, or to delete one.
 
-**Approach:** Add `webapp.restapis.create` (AD-54) and `webapp.restapis.delete` (AD-51, destructive), the port's first writes. A person creates through a Create dialog (Save route) and deletes through a row action that asks for the typed name. The agent can propose either. Ruling Q2 (B) holds the agent's create to Story 20.21's rules at mint and at Confirm.
+**Approach:** Add `webapp.restapis.create` (AD-54) and `webapp.restapis.delete` (AD-51, destructive), the port's first writes. The agent proposes the create; ruling Q2 (B) holds it to Story 20.21's rules at mint and at Confirm. Either caller deletes: a person through a row action that asks for the typed name, the agent through its proposal. The person's Create dialog (the Save route, its page, dialog and store) is Story 18.34's, so until it lands the create is agent-only, as Story 20.20's creates were.
 
 ## Boundaries & Constraints
 
@@ -26,7 +26,7 @@ deferred: []
 - `Name` is a package with no `%`. It generates `<Name>.spec`, `.disp` and `.impl` in the request's namespace.
 - The port passes the vendor a parsed `%DynamicObject` and refuses a string (AD-21: a string makes the vendor fetch a URL or read a server file).
 - Pairs (AD-8): the screen's own, `%Development:USE`, and WRITE on the namespace's routines database as an argument pair (`ExplorerSave.CodeWritePairs`). The port re-checks the last two before any vendor call.
-- The agent's create, at mint and at Confirm, runs `ExplorerSave.AgentProblem(ns, <class>.cls, 1)` on all three names. A person's create skips it.
+- The agent's create, at mint and at Confirm, runs `ExplorerSave.AgentProblem(ns, <class>.cls, 1)` on all three names. The person's create (Story 18.34) will skip it.
 - An `OcuPilot*` package, in any case, is refused `PROHIBITED.OCUPILOTCODE` on both tools and both callers (AD-10).
 - Keys: create `true`, delete `false` (AD-22).
 - Each write holds (AD-34), reads back (AD-58) and emits a change event (AD-14).
@@ -45,8 +45,8 @@ deferred: []
 
 | Scenario | Input / State | Expected Output / Behavior | Error Handling |
 |----------|--------------|---------------------------|----------------|
-| Create | `OcuProbe1832A`, valid 2.0 document, USER | 201. Three classes exist, the row is listed, read-back `matches` (`Name`) | Present in any case: 409 `RESTSERVICE.TAKEN` on screen; agent refused by absence |
-| Rules | `Name` not a package, or holds `%`. `Document` not a JSON object, `swagger` not `"2.0"`, or over 1,000,000 characters. Agent only: card over 30,000 characters | 422 `RESTSERVICE.NAME` or `.DOCUMENT` on the field (agent: 400 `TOOL.ARGUMENTS`) | Nothing sent; a string never reaches the vendor |
+| Create | The agent proposes `OcuProbe1832A` with a valid 2.0 document in USER; confirmed | Three classes exist, the row is listed, read-back `matches` (`Name`) | Present in any case: refused by absence at mint and at Confirm |
+| Rules | `Name` not a package, or holds `%`. `Document` not a JSON object, `swagger` not `"2.0"`, or over 1,000,000 characters. Card over 30,000 characters | Agent: 400 `TOOL.ARGUMENTS`; the port refuses the same rules as 422 `RESTSERVICE.NAME` or `.DOCUMENT` | Nothing sent; a string never reaches the vendor |
 | Build failure | A 2.0 document the vendor cannot build | 422 `RESTSERVICE.BUILD` on `Document`, no class left | Vendor 404 not logged |
 | Delete | A listed service no web application dispatches to | `.spec` and `.disp` gone, `.impl` kept; read-back absent | Not listed exactly: 404 `PORT.NOTFOUND` |
 | Delete refused | A web application dispatches to `<Name>.disp`, or the id starts with `/` | 409 `RESTSERVICE.DEPLOYED` | Nothing sent |
@@ -198,6 +198,8 @@ Supporting changes:
 - **Integration.** Given `ocupilot-ci`, when they run, then the page consumes `POST /rest-service` and the delete action, and the agent consumes both tools (C1, the browser spec).
 
 ## Spec Change Log
+
+- 2026-10-11, lead: split A on the orchestrator's ruling (feature `7ce024f9`, Rule 5). The person's Create dialog (`RestServiceSave`, `POST /rest-service`, the page, dialog, store, their specs and Fixed strings, the C1 screen-create leg, the `EndpointCoverage` and `SaveHoldCoverage` rows) moved to Story 18.34. The intent's Approach, the person-create line and the Create and Rules rows were narrowed to match; status reset to `draft` for a re-plan in place.
 
 ## Review Triage Log
 
