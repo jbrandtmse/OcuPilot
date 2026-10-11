@@ -2,11 +2,15 @@
 /// <code>/api/mgmnt</code> (AD-1, AD-29). <b>This is the only product class that names
 /// <code>%Api.Mgmnt.*</code>, <code>%REST.*</code> or <code>%SYS.REST</code></b>, and it names the
 /// vendor's implementation class only through <parameter>IMPLCLASS</parameter>.</p>
-/// <p><method>Invoke</method> is the one way in. It serves two endpoints, both of request type
+/// <p><method>Invoke</method> is the one way in. It serves two read endpoints, both of request type
 /// <parameter>REQUESTTYPE</parameter>: <parameter>ENDPOINTAPPLICATIONS</parameter>, the REST
 /// applications a namespace offers, and <parameter>ENDPOINTDOCUMENT</parameter>, one application's
-/// OpenAPI document with a row per operation. The vendor methods are called in process, never over
-/// HTTP.</p>
+/// OpenAPI document with a row per operation. Its third, <parameter>ENDPOINTSERVICE</parameter>
+/// (Story 18.32), reads and writes one spec-based service by its package name:
+/// <parameter>TYPESTATE</parameter> and <parameter>TYPESERVICE</parameter> read it,
+/// <parameter>TYPECREATE</parameter> builds it from an OpenAPI 2.0 document and
+/// <parameter>TYPEDELETE</parameter> removes its specification and dispatch classes (<method>Service</method>).
+/// The vendor methods are called in process, never over HTTP.</p>
 /// <p><b>The order of every call is fixed.</b> The declared pair set <parameter>PAIRS</parameter> is
 /// evaluated in the calling process first, before any argument is read and before any vendor call,
 /// so a denial reaches no vendor code. The arguments are shape-checked next. Each vendor method then
@@ -104,6 +108,44 @@ Parameter REASONBUILD = "The management API could not build this document.";
 /// <p>The reason the vendor's refused namespace switch (its 403) is refused with.</p>
 Parameter REASONNAMESPACE = "The management API refused to enter this namespace for this account.";
 
+/// <p>The endpoint reading and writing one spec-based service (Story 18.32).</p>
+Parameter ENDPOINTSERVICE = "Service";
+
+/// <p>The request type answering <code>{Name, Namespace}</code> for a service the namespace lists, in any letter
+/// case: the fresh read of a create.</p>
+Parameter TYPESTATE = "STATE";
+
+/// <p>The request type answering <code>{Name, Namespace, Implementation}</code> for a service the namespace lists
+/// exactly and no web application dispatches to: the fresh read of a delete.</p>
+Parameter TYPESERVICE = "SERVICE";
+
+/// <p>The request type building a service from the body's <parameter>DOCUMENTFIELD</parameter>
+/// (<code>CreateApplication</code>).</p>
+Parameter TYPECREATE = "POST";
+
+/// <p>The request type removing a service's specification and dispatch classes (<code>DeleteApplication</code>).</p>
+Parameter TYPEDELETE = "DELETE";
+
+/// <p>The pairs a create or a delete requires beyond <parameter>PAIRS</parameter>, comma-separated as
+/// <code>resource:permission</code> (AD-8): the code editors' resource. WRITE on the namespace's routines database
+/// is added for the namespace written (<method>WritePairs</method>).</p>
+Parameter WRITEPAIRS = "%Development:USE";
+
+/// <p>The permission a create or a delete requires on the resource guarding its namespace's routines database.</p>
+Parameter WRITEPERMISSION = "WRITE";
+
+/// <p>The body member carrying the OpenAPI document.</p>
+Parameter DOCUMENTFIELD = "Document";
+
+/// <p>The shape a created service's package name must take: no percent sign.</p>
+Parameter NAMEPATTERN = "^[A-Za-z][A-Za-z0-9]*(\.[A-Za-z][A-Za-z0-9]*)*$";
+
+/// <p>The suffix of a spec-based service's implementation class, which a delete keeps.</p>
+Parameter IMPLEMENTATIONSUFFIX = ".impl";
+
+/// <p>The reason a namespace whose databases cannot be resolved is refused with.</p>
+Parameter REASONNAMESPACEUNKNOWN = "This instance cannot name the databases that namespace reads code from.";
+
 /// <p>The class the pair set is evaluated through. Overridable so a fixture can drive a denial in
 /// process; production never overrides it.</p>
 ClassMethod GateClass() As %String
@@ -152,6 +194,8 @@ ClassMethod Pairs() As %List
 /// or a document the vendor could not build, 404 <code>PORT.NOTFOUND</code>, 403
 /// <code>PORT.ACCESSDENIED</code> for a namespace the vendor refused to enter, and 500
 /// <code>INTERNAL</code> for anything else.</p>
+/// <p><parameter>ENDPOINTSERVICE</parameter> is answered by <method>Service</method>: its pairs, namespace and
+/// argument rules are that method's, and <var>pDocument</var> is not set.</p>
 /// <p>Caller contract: must not be called from an escalated frame (AD-9); the caller's namespace,
 /// <code>%request</code>, <code>%response</code> and <code>%session</code> are unchanged on
 /// return.</p>
@@ -169,6 +213,11 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
         If '$ClassMethod(..GateClass(), "EvaluateRequired", ..Pairs(), .tFailedPair) {
             Set tDenial = ##class(OcuPilot.Kernel.Denial).Detail(tFailedPair)
             Set tSC = ..Refuse(##class(OcuPilot.Kernel.Denial).#STATUS, ##class(OcuPilot.Kernel.Denial).Slug(), ##class(OcuPilot.Kernel.Denial).Code(), ##class(OcuPilot.Kernel.Denial).Reason(), .pHttpStatus, .pFault, tDenial)
+            Quit
+        }
+
+        If pEndpoint = ..#ENDPOINTSERVICE {
+            Set tSC = ..Service(pType, .pQuery, pBody, .pResult, .pHttpStatus, .pFault)
             Quit
         }
 
@@ -214,6 +263,197 @@ ClassMethod ApplicationShapeOk(pApplication As %String) As %Boolean
     If (pApplication = "") || ($Length(pApplication) > ..#APPLICATIONMAXLENGTH) Quit 0
     If $Extract(pApplication) = "/" Quit '$Locate(pApplication, "[\x00-\x1F\x7F]")
     Quit $Match(pApplication, ..#PACKAGEPATTERN)
+}
+
+/// <p>The <parameter>ENDPOINTSERVICE</parameter> answer for request type <var>pType</var> (Story 18.32), after
+/// <parameter>PAIRS</parameter> has passed. The order is fixed, and nothing reaches the vendor before all of it has
+/// passed:</p>
+/// <ol>
+/// <li>the type: <parameter>TYPESTATE</parameter>, <parameter>TYPESERVICE</parameter>,
+/// <parameter>TYPECREATE</parameter> or <parameter>TYPEDELETE</parameter>, else 501;</li>
+/// <li>the namespace: the query's <parameter>NAMESPACEKEY</parameter>, or the request's scope
+/// (<method>OcuPilot.Kernel.Scope.Current</method>), its shape checked;</li>
+/// <li>for a create or a delete, <method>WritePairs</method> for that namespace, refused 403 naming the first pair
+/// the caller lacks;</li>
+/// <li>the service name (<parameter>APPLICATIONKEY</parameter>): a create's package rules
+/// (<method>NameProblem</method>) and then its document rules (<method>DocumentProblem</method>), refused 422;
+/// every other type's shape (<method>ApplicationShapeOk</method>), refused 400.</li>
+/// </ol>
+/// <p>Answers, at 200 unless stated: <parameter>TYPESTATE</parameter> <code>{Name, Namespace}</code> for a service
+/// the namespace lists in any letter case, else 404 <code>PORT.NOTFOUND</code>, not logged;
+/// <parameter>TYPESERVICE</parameter> <code>{Name, Namespace, Implementation}</code>, the
+/// <parameter>IMPLEMENTATIONSUFFIX</parameter> class a delete keeps (<method>Resolved</method>);
+/// <parameter>TYPECREATE</parameter> <code>{Name, Namespace}</code> at the vendor's 201, or 200 where it replaced a
+/// service, with a vendor 400 or 404 answered 422 <parameter>OcuPilot.Api.RestServiceError.BUILD</parameter> and not
+/// logged; <parameter>TYPEDELETE</parameter> <code>{Name, Namespace}</code>. A delete and a service read refuse 409
+/// <parameter>OcuPilot.Api.RestServiceError.DEPLOYED</parameter> for a service a web application dispatches to and for
+/// a name that starts with <code>/</code>.</p>
+ClassMethod Service(pType As %String, ByRef pQuery, pBody As %DynamicAbstractObject = "", Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Set pResult = ""
+    Try {
+        Set tWrite = (pType = ..#TYPECREATE) || (pType = ..#TYPEDELETE)
+        If 'tWrite && (pType '= ..#TYPESTATE) && (pType '= ..#TYPESERVICE) {
+            Set tSC = ..Refuse(501, ##class(OcuPilot.Api.Error).#NOTIMPLEMENTED, ##class(OcuPilot.Api.Error).#PORTNOTIMPLEMENTED, ..#REASONNOTIMPLEMENTED, .pHttpStatus, .pFault)
+            Quit
+        }
+        Set tNamespace = $Get(pQuery(..#NAMESPACEKEY))
+        If tNamespace = "" Set tNamespace = ##class(OcuPilot.Kernel.Scope).Current()
+        If '$Match(tNamespace, ..#NAMESPACEPATTERN) {
+            Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONNAMESPACESHAPE, .pHttpStatus, .pFault)
+            Quit
+        }
+        If tWrite {
+            Set tPairs = ..WritePairs(tNamespace)
+            If tPairs = "" {
+                Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONNAMESPACEUNKNOWN, .pHttpStatus, .pFault)
+                Quit
+            }
+            Set tFailedPair = ""
+            If '$ClassMethod(..GateClass(), "EvaluateRequired", tPairs, .tFailedPair) {
+                Set tDenial = ##class(OcuPilot.Kernel.Denial).Detail(tFailedPair)
+                Set tSC = ..Refuse(##class(OcuPilot.Kernel.Denial).#STATUS, ##class(OcuPilot.Kernel.Denial).Slug(), ##class(OcuPilot.Kernel.Denial).Code(), ##class(OcuPilot.Kernel.Denial).Reason(), .pHttpStatus, .pFault, tDenial)
+                Quit
+            }
+        }
+
+        Set tName = $Get(pQuery(..#APPLICATIONKEY))
+        If pType = ..#TYPECREATE {
+            Set tSC = ..Build(tNamespace, tName, pBody, .pResult, .pHttpStatus, .pFault)
+            Quit
+        }
+        If '..ApplicationShapeOk(tName) {
+            Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONAPPLICATIONSHAPE, .pHttpStatus, .pFault)
+            Quit
+        }
+        If pType = ..#TYPESTATE {
+            Set tSC = ..Listed(tNamespace, tName, 0, .tRow, .pHttpStatus, .pFault)
+            If $$$ISERR(tSC) Quit
+            Set pResult = {}
+            Do pResult.%Set("Name", tRow.%Get("name"), "string")
+            Do pResult.%Set("Namespace", tNamespace, "string")
+            Set pHttpStatus = 200
+            Quit
+        }
+        Set tSC = ..Resolved(tNamespace, tName, .tRow, .pHttpStatus, .pFault)
+        If $$$ISERR(tSC) Quit
+        If pType = ..#TYPESERVICE {
+            Set pResult = {}
+            Do pResult.%Set("Name", tRow.%Get("name"), "string")
+            Do pResult.%Set("Namespace", tNamespace, "string")
+            Do pResult.%Set("Implementation", tRow.%Get("name") _ ..#IMPLEMENTATIONSUFFIX, "string")
+            Set pHttpStatus = 200
+            Quit
+        }
+        Set tSC = ..Call("DeleteApplication", tNamespace, tName, .tAnswer, .pHttpStatus, .pFault)
+        If $$$ISERR(tSC) Quit
+        Set pResult = {}
+        Do pResult.%Set("Name", tName, "string")
+        Do pResult.%Set("Namespace", tNamespace, "string")
+    } Catch ex {
+        Set pResult = ""
+        Set tSC = ..Fail("the service call failed inside the port", ex.AsStatus(), .pHttpStatus, .pFault)
+    }
+    Quit tSC
+}
+
+/// <p>The pairs a create or a delete in <var>pNamespace</var> requires beyond <parameter>PAIRS</parameter>:
+/// <parameter>WRITEPAIRS</parameter>, then <parameter>WRITEPERMISSION</parameter> on the resource guarding the
+/// namespace's routines database; <code>""</code> when that resource cannot be resolved, which the caller refuses
+/// rather than admits.</p>
+ClassMethod WritePairs(pNamespace As %String) As %List
+{
+    Do ##class(OcuPilot.Port.AtelierPort).DatabaseResources(pNamespace, .tRoutine, .tGlobal, .tMapped, .tResolved)
+    If 'tResolved || (tRoutine = "") Quit ""
+    Quit ##class(OcuPilot.Screen.Gate).ParsePairSpec(..#WRITEPAIRS) _ $ListBuild($ListBuild(tRoutine, ..#WRITEPERMISSION))
+}
+
+/// <p>The published sentence refusing <var>pName</var> as the package a create builds, or <code>""</code>: it must
+/// match <parameter>NAMEPATTERN</parameter> and be at most
+/// <parameter>OcuPilot.Api.RestServiceError.NAMEMAX</parameter> characters. Pure.</p>
+ClassMethod NameProblem(pName As %String) As %String
+{
+    If $IsObject(pName) || '$Match(pName, ..#NAMEPATTERN) || ($Length(pName) > ##class(OcuPilot.Api.RestServiceError).#NAMEMAX) Quit ##class(OcuPilot.Api.RestServiceError).#REASONNAME
+    Quit ""
+}
+
+/// <p>The published sentence refusing the document <var>pBody</var> carries, or <code>""</code>: its
+/// <parameter>DOCUMENTFIELD</parameter> must be a parsed JSON object, never a string, whose <code>swagger</code> is
+/// the string <code>2.0</code>, and its JSON text at most
+/// <parameter>OcuPilot.Api.RestServiceError.DOCUMENTMAX</parameter> characters. Pure.</p>
+ClassMethod DocumentProblem(pBody As %DynamicAbstractObject) As %String
+{
+    Set tReason = ##class(OcuPilot.Api.RestServiceError).#REASONDOCUMENT
+    If '$IsObject(pBody) || 'pBody.%IsA("%Library.DynamicObject") Quit tReason
+    If pBody.%GetTypeOf(..#DOCUMENTFIELD) '= "object" Quit tReason
+    Set tDocument = pBody.%Get(..#DOCUMENTFIELD)
+    If (tDocument.%GetTypeOf("swagger") '= "string") || (tDocument.%Get("swagger") '= "2.0") Quit tReason
+    If $Length(tDocument.%ToJSON()) > ##class(OcuPilot.Api.RestServiceError).#DOCUMENTMAX Quit tReason
+    Quit ""
+}
+
+/// <p>Build service <var>pName</var> in <var>pNamespace</var> from the document <var>pBody</var> carries, after the
+/// create's rules (<method>NameProblem</method>, <method>DocumentProblem</method>). The vendor is handed a parsed copy
+/// of the document, never text: a string would make it fetch a URL or read a server file (AD-21).</p>
+ClassMethod Build(pNamespace As %String, pName As %String, pBody As %DynamicAbstractObject, Output pResult As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pResult = ""
+    If ..NameProblem(pName) '= "" Quit ..Violation(##class(OcuPilot.Api.RestServiceError).#NAME, .pHttpStatus, .pFault)
+    If ..DocumentProblem(pBody) '= "" Quit ..Violation(##class(OcuPilot.Api.RestServiceError).#DOCUMENT, .pHttpStatus, .pFault)
+    Set tDocument = ##class(%DynamicAbstractObject).%FromJSON(pBody.%Get(..#DOCUMENTFIELD).%ToJSON())
+    Set tSC = ..Call("CreateApplication", pNamespace, pName, .tAnswer, .pHttpStatus, .pFault, tDocument)
+    If $$$ISERR(tSC) Quit tSC
+    Set pResult = {}
+    Do pResult.%Set("Name", pName, "string")
+    Do pResult.%Set("Namespace", pNamespace, "string")
+    Quit $$$OK
+}
+
+/// <p>The row of <var>pNamespace</var>'s <code>GetRESTApps</code> whose <code>name</code> is <var>pName</var> --
+/// exactly when <var>pExact</var>, else without regard to letter case -- in <var>pRow</var>. A name no row carries is
+/// 404 <code>PORT.NOTFOUND</code>, not logged.</p>
+ClassMethod Listed(pNamespace As %String, pName As %String, pExact As %Boolean, Output pRow As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pRow = ""
+    Set tSC = ..Call("GetRESTApps", pNamespace, "", .tServices, .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) Quit tSC
+    Set tWanted = $Select(pExact: pName, 1: $ZConvert(pName, "U"))
+    Set tIterator = tServices.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tService) {
+        If '$IsObject(tService) || 'tService.%IsA("%Library.DynamicObject") Continue
+        If tService.%GetTypeOf("name") '= "string" Continue
+        If $Select(pExact: tService.%Get("name"), 1: $ZConvert(tService.%Get("name"), "U")) '= tWanted Continue
+        Set pRow = tService
+        Quit
+    }
+    If $IsObject(pRow) Quit $$$OK
+    Quit ..Refuse(404, ##class(OcuPilot.Api.Error).#NOTFOUND, ##class(OcuPilot.Api.Error).#PORTNOTFOUND, ..#REASONUNLISTED, .pHttpStatus, .pFault)
+}
+
+/// <p>The listed service a delete or a service read is about, in <var>pRow</var>: a name starting with
+/// <code>/</code> is a web application, and a service some web application of <var>pNamespace</var> dispatches to
+/// (<code>&lt;name&gt;.disp</code>, without regard to letter case) is deployed; both are 409
+/// <parameter>OcuPilot.Api.RestServiceError.DEPLOYED</parameter>, before the service list is read. Any other name must
+/// be listed exactly (<method>Listed</method>).</p>
+ClassMethod Resolved(pNamespace As %String, pName As %String, Output pRow As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pRow = ""
+    If $Extract(pName) = "/" Quit ..Deployed(.pHttpStatus, .pFault)
+    Set tSC = ..Call("GetWebRESTApps", pNamespace, "", .tWeb, .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) Quit tSC
+    Set tDispatch = $ZConvert(pName _ ..#DISPATCHSUFFIX, "U")
+    Set tDeployed = 0
+    Set tIterator = tWeb.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tApp) {
+        If '$IsObject(tApp) || 'tApp.%IsA("%Library.DynamicObject") Continue
+        If tApp.%GetTypeOf("dispatchClass") '= "string" Continue
+        If $ZConvert(tApp.%Get("dispatchClass"), "U") '= tDispatch Continue
+        Set tDeployed = 1
+        Quit
+    }
+    If tDeployed Quit ..Deployed(.pHttpStatus, .pFault)
+    Quit ..Listed(pNamespace, pName, 1, .pRow, .pHttpStatus, .pFault)
 }
 
 /// <p>The <parameter>ENDPOINTAPPLICATIONS</parameter> rows for <var>pNamespace</var>, at most
@@ -471,14 +711,14 @@ ClassMethod StringOf(pObject As %DynamicObject, pKey As %String) As %String [ Pr
 }
 
 /// <p>Call vendor method <var>pMethod</var> with <var>pNamespace</var> and, when it is not
-/// <code>""</code>, <var>pName</var>, and answer its value as <var>pAnswer</var>.</p>
+/// <code>""</code>, <var>pName</var> and then <var>pDocument</var>, and answer its value as <var>pAnswer</var>.</p>
 /// <p>The call runs behind <code>New</code>ed <code>%request</code>, <code>%response</code> and
 /// <code>%session</code>, with fresh request and response stubs and the device captured, so neither
 /// the caller's CSP objects nor its response device is read or written. A 2xx status carrying the
 /// value the method answers on success -- an array from a list method, an object from a document
-/// method -- is success; every other outcome is an error status built by
+/// method, or the message object a write method answers -- is success; every other outcome is an error status built by
 /// <method>Outcome</method>.</p>
-ClassMethod Call(pMethod As %String, pNamespace As %String, pName As %String, Output pAnswer, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+ClassMethod Call(pMethod As %String, pNamespace As %String, pName As %String, Output pAnswer, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, pDocument As %DynamicObject = "") As %Status [ Private ]
 {
     Set tSC = $$$OK
     Set pAnswer = ""
@@ -495,6 +735,8 @@ ClassMethod Call(pMethod As %String, pNamespace As %String, pName As %String, Ou
             Set tCapturing = 1
             If pName = "" {
                 Set tAnswer = $ClassMethod(..ImplClass(), pMethod, pNamespace)
+            } ElseIf $IsObject(pDocument) {
+                Set tAnswer = $ClassMethod(..ImplClass(), pMethod, pNamespace, pName, pDocument)
             } Else {
                 Set tAnswer = $ClassMethod(..ImplClass(), pMethod, pNamespace, pName)
             }
@@ -525,15 +767,18 @@ ClassMethod Call(pMethod As %String, pNamespace As %String, pName As %String, Ou
 
 /// <p>What one vendor call's outcome means.</p>
 /// <p>A call that did not raise, under a 2xx status, answering an array from a list method or an
-/// object from a document method, is success. A 403 is the vendor's refused namespace switch. A 404
-/// from <code>GetApplication</code> or <code>GetWebRESTApplication</code> is that method's own
-/// refusal, and a 400 from either is a document the vendor could not build. Anything else is an
-/// internal failure. The vendor's own status and captured output are logged on every error path and
-/// never put on the wire.</p>
+/// object from a document method or a write method, is success. A 403 is the vendor's refused namespace
+/// switch. A 404 from <code>GetApplication</code> or <code>GetWebRESTApplication</code> is that method's own
+/// refusal, and a 400 from either is a document the vendor could not build. A 400 or 404 from
+/// <code>CreateApplication</code> is a document it could not build too, answered 422
+/// <parameter>OcuPilot.Api.RestServiceError.BUILD</parameter> and not logged. Anything else is an internal
+/// failure. The vendor's own status and captured output are logged on every other error path and never put on the
+/// wire.</p>
 ClassMethod Outcome(pMethod As %String, pCallSC As %Status, pAnswer, pHttp As %Integer, pCaptured As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
 {
     Set tDocumentMethod = (pMethod = "GetApplication") || (pMethod = "GetWebRESTApplication")
-    Set tWanted = $Select(tDocumentMethod: "%Library.DynamicObject", 1: "%Library.DynamicArray")
+    Set tBuildMethod = (pMethod = "CreateApplication")
+    Set tWanted = $Select(tDocumentMethod || tBuildMethod || (pMethod = "DeleteApplication"): "%Library.DynamicObject", 1: "%Library.DynamicArray")
     If $$$ISOK(pCallSC) && (pHttp >= 200) && (pHttp < 300) && $IsObject(pAnswer) && pAnswer.%IsA(tWanted) {
         Set pHttpStatus = pHttp
         Quit $$$OK
@@ -550,6 +795,8 @@ ClassMethod Outcome(pMethod As %String, pCallSC As %Status, pAnswer, pHttp As %I
         Set tSC = ..Refuse(404, ##class(OcuPilot.Api.Error).#NOTFOUND, ##class(OcuPilot.Api.Error).#PORTNOTFOUND, tReason, .pHttpStatus, .pFault)
     } ElseIf tDocumentMethod && (pHttp = 400) {
         Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONBUILD, .pHttpStatus, .pFault)
+    } ElseIf tBuildMethod && ((pHttp = 400) || (pHttp = 404)) {
+        Quit ..Violation(##class(OcuPilot.Api.RestServiceError).#BUILD, .pHttpStatus, .pFault)
     } Else {
         Quit ..Fail(pMethod _ " failed", tRawSC, .pHttpStatus, .pFault)
     }
@@ -574,6 +821,26 @@ ClassMethod Refuse(pHttp As %Integer, pSlug As %String, pCode As %String, pReaso
     Quit $$$ERROR($$$GeneralError, pCode _ ": " _ pReason)
 }
 
+/// <p>The 422 refusal <var>pCode</var> on its field: the envelope carries the code and its sentence, and
+/// <code>detail.violations</code> the one violation (AD-39).</p>
+ClassMethod Violation(pCode As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set tReason = ##class(OcuPilot.Api.RestServiceError).ReasonFor(pCode)
+    Set tViolation = {}
+    Do tViolation.%Set("field", ##class(OcuPilot.Api.RestServiceError).FieldOf(pCode), "string")
+    Do tViolation.%Set("code", pCode, "string")
+    Do tViolation.%Set("reason", tReason, "string")
+    Set tDetail = {"violations": []}
+    Do tDetail.%Get("violations").%Push(tViolation)
+    Quit ..Refuse(422, ##class(OcuPilot.Api.Error).#VALIDATIONFAILED, pCode, tReason, .pHttpStatus, .pFault, tDetail)
+}
+
+/// <p>The 409 refusal <parameter>OcuPilot.Api.RestServiceError.DEPLOYED</parameter>: nothing is sent.</p>
+ClassMethod Deployed(Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Quit ..Refuse(409, ##class(OcuPilot.Api.Error).#CONFLICT, ##class(OcuPilot.Api.RestServiceError).#DEPLOYED, ##class(OcuPilot.Api.RestServiceError).#REASONDEPLOYED, .pHttpStatus, .pFault)
+}
+
 /// <p>An unexpected failure: the generic internal fault on the wire, the raw status to the log.</p>
 ClassMethod Fail(pMessage As %String, pStatus As %Status, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
 {
@@ -583,17 +850,37 @@ ClassMethod Fail(pMessage As %String, pStatus As %Status, Output pHttpStatus As 
     Quit $$$ERROR($$$GeneralError, pFault.code _ ": " _ pFault.reason)
 }
 
-/// <p><code>""</code>: no write reaches the management API through this port, so no request type
-/// has a script form (AD-59).</p>
+/// <p><code>rest</code> for <parameter>TYPECREATE</parameter> and <parameter>TYPEDELETE</parameter> on
+/// <parameter>ENDPOINTSERVICE</parameter>, the two writes this port carries; <code>""</code> for every read, which
+/// has no script form (AD-59).</p>
 ClassMethod SnippetForm(pEndpoint As %String, pType As %String) As %String
 {
+    If pEndpoint '= ..#ENDPOINTSERVICE Quit ""
+    If (pType = ..#TYPECREATE) || (pType = ..#TYPEDELETE) Quit "rest"
     Quit ""
 }
 
-/// <p>No step: every branch of <method>Invoke</method> is a read (AD-59).</p>
+/// <p><method>Service</method>'s write branches as one <code>curl</code> step on
+/// <parameter>SPECPREFIX</parameter><code>&lt;namespace&gt;/&lt;name&gt;</code> (AD-59): a create posts the document
+/// the body carries, a delete sends no body. Every value is shell-quoted, so nothing the query carries runs as code. A
+/// read, and a body carrying no document, answer no step.</p>
 ClassMethod Snippet(pEndpoint As %String, pType As %String, ByRef pQuery, pBody As %DynamicAbstractObject = "", pContext As %DynamicObject = "") As %DynamicArray
 {
-    Quit []
+    If ..SnippetForm(pEndpoint, pType) = "" Quit []
+    Set tOrigin = ""
+    Set tUser = ""
+    If $IsObject(pContext) {
+        Set tOrigin = pContext.%Get("origin")
+        Set tUser = pContext.%Get("user")
+    }
+    Set tUrl = tOrigin _ ..#SPECPREFIX _ $ZConvert($Get(pQuery(..#NAMESPACEKEY)), "O", "URL") _ "/" _ $ZConvert($Get(pQuery(..#APPLICATIONKEY)), "O", "URL")
+    Set tBreak = " \" _ $Char(10) _ "  "
+    Set tText = "curl -u " _ ##class(OcuPilot.Port.AdminPort).ShellQuoted(tUser) _ " -X " _ pType _ " " _ ##class(OcuPilot.Port.AdminPort).ShellQuoted(tUrl)
+    If pType = ..#TYPECREATE {
+        If '$IsObject(pBody) || (pBody.%GetTypeOf(..#DOCUMENTFIELD) '= "object") Quit []
+        Set tText = tText _ tBreak _ "-H " _ ##class(OcuPilot.Port.AdminPort).ShellQuoted("Content-Type: application/json") _ tBreak _ "-d " _ ##class(OcuPilot.Port.AdminPort).ShellQuoted(pBody.%Get(..#DOCUMENTFIELD).%ToJSON())
+    }
+    Quit [(##class(OcuPilot.Port.AdminPort).Step("rest", tText))]
 }
 
 }

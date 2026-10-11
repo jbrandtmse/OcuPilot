@@ -177,6 +177,8 @@ XData Keys [ MimeType = application/json ]
   "webapp.list.update": true,
   "webapp.pctaccess.create": true,
   "webapp.pctaccess.delete": false,
+  "webapp.restapis.create": true,
+  "webapp.restapis.delete": false,
   "webapp.routineapps.create": true,
   "webapp.routineapps.delete": false,
   "webapp.routineapps.update": true,

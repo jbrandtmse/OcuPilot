@@ -1753,6 +1753,52 @@ describe('the privileged routine applications list\u2019s Delete (Story 18.31)',
 });
 
 /**
+ * Story 18.32: the REST API explorer's Delete types the service's package under its published consequence and sends the
+ * row key. A web application's row, and a service a web application dispatches to, are offered the action like any
+ * other row: the instance refuses them after the click, and the handler draws its sentence and publishes nothing.
+ */
+describe('the REST API explorer\u2019s Delete (Story 18.32)', () => {
+  const descriptor = 'OcuPilot.Screen.Descriptor.RestApiList';
+  const target = 'OcuProbe1832A';
+  const row = { Name: target, Namespace: 'USER', DispatchClass: `${target}.disp`, SpecBased: true, Enabled: null };
+
+  it('registers Delete, typing the service\u2019s package under the published consequence', () => {
+    // Mutation (Rule 19): drop the explorer's `DESTRUCTIVE_CONSEQUENCES` entry -> the registration goes red and the
+    // list draws no Delete. The explorer's id is the package, so it needs no `TYPED_NAME_ROWS` entry.
+    const { actions, handler, store, calls } = mount(undefined, descriptor);
+    expect(actions.has(descriptor, 'delete')).toBe(true);
+    handler.startFor(descriptor, 'delete', target, row, store);
+    expect([handler.pending()?.kind, handler.pending()?.name, handler.pending()?.target, handler.pending()?.consequence]).toEqual(['typed-name', target, target, STRINGS.restServiceDeleteConsequence]);
+    expect(calls).toHaveLength(0);
+  });
+
+  it('sends a confirmed Delete with the row key', async () => {
+    const screen = SCREENS.find((entry) => entry.descriptor === descriptor)!;
+    const { handler, store, calls } = mount({ kind: 'ok', status: 200, body: { action: 'deleted', target: { type: 'rest-service', scope: 'USER', id: target } } }, descriptor);
+    handler.startFor(descriptor, 'delete', target, row, store);
+    handler.confirmPending();
+    await settle();
+    expect(calls).toHaveLength(1);
+    expect(calls[0].path).toBe(`/api/ocupilot/screens/${screen.toolIdentifier}/action`);
+    expect(JSON.parse(calls[0].body)).toEqual({ action: 'delete', id: target });
+  });
+
+  it('draws the instance\u2019s refusal of a deployed service, or of a web application\u2019s row, and publishes nothing', async () => {
+    const reason = 'A web application dispatches to this service, so it is not deleted here.';
+    for (const id of [target, '/api/probe']) {
+      const refused = { kind: 'error', status: 409, code: 'RESTSERVICE.DEPLOYED', reason, detail: null } as unknown as JsonResult<unknown>;
+      const { handler, store, events } = mount(refused, descriptor);
+      handler.startFor(descriptor, 'delete', id, { ...row, Name: id }, store);
+      handler.confirmPending();
+      await settle();
+      expect(store.refusal(), id).toBe(reason);
+      expect(events, id).toEqual([]);
+      TestBed.resetTestingModule();
+    }
+  });
+});
+
+/**
  * Story 16.4: `sendFor` with a sink of its own keeps a refusal off the list's banner, and
  * `lastRefusal` answers what the instance refused with -- its sentence, its field-level violations and
  * its detail -- until the next send, which clears it.

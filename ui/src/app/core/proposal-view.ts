@@ -222,6 +222,9 @@ export const CONSEQUENCE_EXPLORERIMPORTREPLACES = 'EXPLORER.IMPORT.REPLACES';
 /** Story 20.21: an agent's class or routine save, which compiles the saved text on Confirm, as the user. */
 export const CONSEQUENCE_EXPLORERSAVECOMPILES = 'EXPLORER.SAVE.COMPILES';
 
+/** Story 18.32: an agent's REST service create, which compiles the service's three classes on Confirm. */
+export const CONSEQUENCE_RESTSERVICECREATE = 'RESTSERVICE.CREATE.COMPILES';
+
 /**
  * Story 19.11: an agent-proposed SQL statement, by the kind the instance classified it, each stated as the
  * SQL query console's own confirmation states it. `consequenceSentence` answers `''` for the DML code,
@@ -447,6 +450,8 @@ export function consequenceSentence(code: string | undefined): string {
   if (code === CONSEQUENCE_EXPLORERIMPORTREPLACES) return STRINGS.explorerImportReplaces;
   // Story 20.21: an agent's class or routine save states that Confirm compiles the saved text, published once.
   if (code === CONSEQUENCE_EXPLORERSAVECOMPILES) return STRINGS.explorerSaveCompilesOnConfirm;
+  // Story 18.32: an agent's REST service create states that Confirm compiles the service's classes, published once.
+  if (code === CONSEQUENCE_RESTSERVICECREATE) return STRINGS.restServiceCreateEffect;
   // Story 19.11: an agent-proposed SQL statement's own confirmation sentences, published once; the DML
   // sentence names the statement's tables, so the card states it through `sqlConsequenceSentence`.
   if (code === CONSEQUENCE_SQLCHANGESSCHEMA) return STRINGS.explorerSqlConfirmDdl;

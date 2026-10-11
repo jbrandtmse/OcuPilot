@@ -2,13 +2,23 @@
 title: 'Story 18.32: Spec-based REST services'
 type: 'feature'
 created: '2026-10-10'
-status: 'ready-for-dev'
+status: 'done'
 review_loop_iteration: 0
+baseline_revision: '057f013c3b112916cb262594a49ce3c5d917625c'
 followup_review_recommended: false
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-18-context.md'
 warnings: ['oversized']
-deferred: []
+deferred:
+  - summary: >-
+      Vendor candidate (decision-pending, on the owner's hold, not reported): %Api.Mgmnt.v2.impl.DeleteApplication discards the status of
+      %REST.API.DeleteApplication and always answers 200 {"msg": ...}.
+    evidence: |-
+      irissys/%Api/Mgmnt/v2/impl.cls DeleteApplication calls %REST.API.DeleteApplication without reading its status and sets 200 ("Always return success"); measured on ocupilot-ci at the first plan: a delete of an absent service answers 200 too.
+      MgmntPort.Service cannot see a failed delete in the answer; the read-back (the SERVICE read finding the service gone) is the only check, as AD-58 intends.
+    location: >-
+      src/OcuPilot/Port/MgmntPort.cls
+    severity: low
 ---
 
 <intent-contract>
@@ -108,6 +118,30 @@ Under `src/OcuPilot/` unless `ui/`; siblings per Rule 31.
 
 ## Review Triage Log
 
+### 2026-10-11 - Review pass
+
+- verdicts: 19 findings - high 0, medium 1, low 11, false 7, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` The card's document text was asserted against `FormattedDocument`, the method under test - the expected value moved with the code. Patched: `RestServiceWrite.TestTheAgentsCreateConfirmsAndTheServiceIsListed` also parses the shown text back to the document sent and requires several lines; the compact-text mutation reddens it (run 164).
+  - `[low]` `[patch]` The unresolvable-namespace refusal in `MgmntPort.Service` had no test. Patched: a leg in `MgmntPort.TestAWriteIsRefusedByNameUntilTheCallerHoldsTheAddedPairs`; dropping the guard reddens it (run 161).
+  - `[low]` `[reject]` `CLASSPARTS` is pinned to its own literal. The three classes share one database, so no input tells them apart; the roster pin is the best available and the spec says so. Any other pin adds machinery for a loop bound.
+  - `[low]` `[patch]` `mutation:` lines missed C1's second half, C2's 403 clause and C3's name rules. Patched: lines added to `## Verification`, each with an observed run.
+  - `[false]` `[reject]` The spec records no mutation outcome and its Auto Run Result reads `ready-for-dev`. The outcomes are recorded in `## Verification` with run indexes, and the Auto Run Result is written by this step's Finalize.
+  - `[false]` `[reject]` `RestServiceGate`'s header claim that an `ArgumentPairs` answering no pair reddens the confirm leg. Applied on `ocupilot-ci`: `TestWithReadButNotWriteOnTheCodeDatabaseEveryWriteIsRefused` went red at "the confirm is refused naming the pair" (run 160).
+  - `[low]` `[patch]` The browser spec's C3 mutation comment said the instance would delete the service. Applied: dropping the leading-slash refusal makes the page draw "lists no REST application" and the sentence assertion goes red. The comment now says so.
+  - `[low]` `[patch]` `RestServiceDescriptor`'s header said it needs nothing from the environment while its pair legs read the stock `USER` and `HSCUSTOM` mappings. Header corrected.
+  - `[low]` `[patch]` The tool text, schema and mint refusal limited the document's formatted text to 30,000 characters while the check measures the card's row, escaped. Reworded to say "formatted and escaped as the card carries it" in all three places (grouped with the intent audit's wording row).
+  - `[low]` `[patch]` Boundary legs were missing: a 215-character name and a 1,000,000-character document. Patched in `MgmntPort.TestTheCreatesRulesAreCheckedBeforeTheVendor`; a `>=` at either limit reddens it (runs 162, 163).
+  - `[false]` `[reject]` Intent audit: the person's create route does not exist, so "both callers" is proved at the kernel predicate. Story 18.34 owns that route (Spec Change Log, 2026-10-11); nothing in this diff skips it.
+  - `[false]` `[reject]` Intent audit: the matrix's observed outcomes are asserted only by classes that need the armed throwaway. That is the project's two-tier convention; the fixture tier pins the port's calls and the throwaway tier pins the instance.
+  - `[low]` `[reject]` Intent audit: the agent's delete is never confirmed as a limited principal. Its declared pairs are pinned in `RestServiceDescriptor` and the port re-checks them; the fix is a fourth principal leg for a path the Gate's create and screen-delete legs already exercise.
+  - `[low]` `[reject]` Intent audit (inference): the default delete mint stores no `Namespace`, so the tool-level WRITE pair at Confirm follows the confirming request's scope. The port re-checks WRITE on the payload's namespace before any vendor call, so the worst case is a refusal, never a write; the shape is the sibling delete's.
+  - `[false]` `[reject]` Intent audit: a service deployed after the mint answers 409 `TARGETCHANGED` at Confirm, not `RESTSERVICE.DEPLOYED`. The kernel's re-read contract (AD-34) owns that code; `TestAServiceDeployedAfterTheMintIsNotDeleted` pins it.
+  - `[low]` `[reject]` Intent audit: no test races two spellings of one name under AD-34's hold. The state read and the Confirm re-read are case-blind, which the sequential test pins; a race needs two in-flight confirms the kernel serialises by key.
+  - `[low]` `[patch]` Intent audit: wording versus measurement of the card limit. Same root cause as the 30,000-character row above.
+  - `[false]` `[reject]` Intent audit: a vendor 400 is unlogged as well as the 404. The Code Map says "a vendor 400 or 404 ... unlogged (as 18.6's 400)".
+  - `[false]` `[reject]` Intent audit: additions beyond the contract (empty-state invitation, three strings, the EXPERIENCE.md cell, the `rest` script form, roster and count edits, the `log-entry` swap). Each is a named task or Code Map line; the `ci-timings.json` entry is required by `ci.test.mjs` AC9, which fails without it (checked).
+
 ## Design Notes
 
 **Measured at the first plan** (2026-10-10, `ocupilot-ci`): create 201, then 200; `ocuprobe1832a` over `OcuProbe1832A` 404 (#5092: presence is case-blind, so no id rule); an undeclared path parameter 404 (#8711), no class left; delete 200 keeping `.impl`, 200 when absent; a deployed service went 404 once deleted; `AgentProblem` refused `%SYS` and named ENSLIB for `Ens.*`; `IsOcuPilotCode` caught `ocupilotx.spec.cls`. 18.34's seeds: `git show bb49cd147447d4dbade1191a14f16c3c0cb1d490:<this spec>`.
@@ -137,11 +171,30 @@ Under `src/OcuPilot/` unless `ui/`; siblings per Rule 31.
 - `(loop)` With `OCUPILOT_BROWSER_ORIGIN=http://localhost:52776`, `OCUPILOT_BROWSER_CONTAINER=ocupilot-ci`: `cd ui && npm run build && docker cp dist/ocupilot-ui/browser/. ocupilot-ci:/durable/iris/csp/ocupilot/`, then `node --test --test-concurrency=1 browser/rest-services-write.browser-spec.mjs browser/rest-apis.browser-spec.mjs`. Re-measure the bundle (3,213,418 bytes at 18.30; warning 3326kB; DW-1166 if crossed).
 - Full sweeps: the runner's (ObjectScript), CI's (browser). End at S0.
 
-**Mutations** (Rule 19): C1 `POST` ignores `Document`; C2 `ConfirmProblem` answers `""`, `AgentProblems` skips `.impl`; C3 `DocumentProblem` accepts any `swagger`, `SERVICE` skips the deployed check; C4 the delete key `true`; C5 a roster row removed; Integration `DESTRUCTIVE_CONSEQUENCES` drops `RestApiList`.
+**Mutations** (Rule 19), applied on `ocupilot-ci` with the mutated class and its descendants recompiled:
+
+- mutation: C1 `MgmntPort.Build` hands the vendor `{}` for the document → `RestServiceWrite.TestTheAgentsCreateConfirmsAndTheServiceIsListed` red.
+- mutation: C1 `RestServiceCreateMint.FormattedDocument` answers the compact text → `RestServiceWrite.TestTheAgentsCreateConfirmsAndTheServiceIsListed` red (run 164); `MgmntPort.Service` skips the vendor delete → `RestServiceWrite.TestTheScreensDeleteRemovesTheServiceOverTheWire` red; the `.impl` class deleted after the vendor delete → `RestServiceWrite.TestAnExistingImplementationKeepsItsCode` red.
+- mutation: C2 `RestServiceCreate.ConfirmProblem` answers `""` → `RestServiceWrite.TestTheCodeRulesAndOcuPilotsOwnCodeAreRefusedOnBothTools` red (run 165); the `rest-service` arm of `Prohibited.Prohibits` removed → that test and five more in `RestServiceWrite` red (run 166); `CLASSPARTS` drops `impl` → `RestServiceDescriptor.TestTheCreatesRulesAreThePortsAndTheCodeSaves` red.
+- mutation: C3 `MgmntPort.DocumentProblem` accepts any `swagger` → `MgmntPort.TestTheCreatesRulesAreCheckedBeforeTheVendor` red; `NameProblem` or `DocumentProblem` refuses at the limit itself (`>=`) → the same test red (runs 162, 163); the unresolved-pairs refusal in `MgmntPort.Service` dropped → `MgmntPort.TestAWriteIsRefusedByNameUntilTheCallerHoldsTheAddedPairs` red (run 161); `MgmntPort.Resolved` drops the deployed check → `RestServiceWrite.TestADeployedServiceAndAWebApplicationPathAreRefused` and `MgmntPort.TestTheServiceReadsAreExactAndRefuseADeployedService` red.
+- mutation: C4 the delete key `true` in `Baseline` → `RestServiceWrite.TestTheAgentsDeleteIsGovernedThenConfirmedAndKeepsTheImplementation` and `GovernanceBaseline.TestThePurgeIsTheOneDisabledLine` red (run 167).
+- mutation: the pair at Confirm, `RestServiceWrite.ArgumentPairs` answers no pair → `RestServiceGate.TestWithReadButNotWriteOnTheCodeDatabaseEveryWriteIsRefused` red (run 160); `Resolved` without its leading-slash refusal → `rest-services-write.browser-spec.mjs` C3 red.
+- mutation: C5 `webapp.restapis.create` removed from `ReadTool`'s names → `ReadTool.TestTheRegistryListsDescriptorReadsAndInheritedKinds` red (run 168); the create's `SurfaceCoverage` row removed → `SurfaceCoverage.TestEveryWriteToolHasACoverageRowAndBack` red (run 169).
+- mutation: Integration `DESTRUCTIVE_CONSEQUENCES` drops `RestApiList` → `screen-action-handler.spec.ts` "registers Delete" and the browser spec's Integration test red.
 
 **S0:** no `OcuProbe1832*` class in any case in USER or HSCUSTOM; no `/api/ocuprobe1832*` application; `AuthOptionsProbe.Remaining()` 0.
 
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
+
+**Change.** `MgmntPort` gains the `Service` endpoint (state and service reads; create and delete behind `%Development:USE` and WRITE on the namespace's routines database, a parsed document only, 422 `RESTSERVICE.BUILD` unlogged, 409 `RESTSERVICE.DEPLOYED`, a `rest` script form). `webapp.restapis.create` (key `true`) and `.delete` (destructive, key `false`) ship as `RestServiceWrite`, `RestServiceCreate`, `RestServiceCreateMint` and `RestServiceDelete`; the create is held to `ExplorerSave.AgentProblem` on all three classes and to `PROHIBITED.OCUPILOTCODE` at mint and Confirm. The explorer gains a Delete row action and an agent invitation; the client registers the Delete, the compile sentence and three Fixed strings.
+
+**Files.** Product: `Port/MgmntPort.cls`, `Api/RestServiceError.cls` (+ `Api/Error.cls`), four `Screen/Tool/RestService*.cls`, `Screen/Descriptor/RestApiList.cls`, `Kernel/Proposal/Prohibited.cls` (type, covered-types entry, guard clause, arm), `Kernel/Governance/Baseline.cls`. Client: `screen-action-handler.ts`, `proposal-view.ts`, `strings.ts`, `screens.generated.ts` (regenerated), `EXPERIENCE.md:357`. Tests: `RestServiceProbe`, `RestServiceDescriptor`, `RestServiceWrite`, `RestServiceGate`, legs in `MgmntPort` and `MgmntImplFixture`, `rest-services-write.browser-spec.mjs`, the specs for the handler and the proposal view, and the Task 14 rosters. `ui/tools/ci-timings.json` gains one estimate because `ci.test.mjs` AC9 fails without it.
+
+**Review.** One pass, 19 findings: 1 medium and 6 low patched, 4 low rejected with a reason, 7 false. Deferred: the vendor `DeleteApplication` candidate, decision-pending. Follow-up review: `false` (one medium patched, no high).
+
+**Verification** on `ocupilot-ci` (source loaded, S0 read after): `RestServiceDescriptor` 8 (run 170), `RestServiceWrite` 11 (run 159), `RestServiceGate` 3 (run 156), `MgmntPort` 17 (run 158), all green; the Task 14 sweep classes were green at the implement pass and the runner runs the full sweep. Mutations: runs 160 to 169, recorded in `## Verification`. Client: `test:tools` 1907 of 1907, `test:components` 2848 of 2848, `rest-services-write` 2 of 2 and `rest-apis` 4 of 4 against the rebuilt bundle (3,267,522 bytes against the 3326 kB warning); Fixed strings 3068 of 3400; `check-objectscript` and `lint-docs` clean.
+
+**Residual risks.** `ci-timings.json` carries a placeholder 12.5 s for the new spec until the lead's refresh. `Prohibited.cls`'s covered-types line and the `ReadTool` and `ToolWrite` count lines are also edited by Epic 20, so a textual merge conflict resolves by union.

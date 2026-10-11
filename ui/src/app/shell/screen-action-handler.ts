@@ -117,6 +117,9 @@ export const SCREEN_ACTION_DESCRIPTORS: readonly string[] = [
   'OcuPilot.Screen.Descriptor.DocDbAppList',
   // Story 18.31: privileged routine applications, whose Delete types the application's name.
   'OcuPilot.Screen.Descriptor.RoutineAppList',
+  // Story 18.32: the REST API explorer, whose Delete types the service's package; a web application's row is refused
+  // by the instance after the click.
+  'OcuPilot.Screen.Descriptor.RestApiList',
   // Story 20.2: Productions, whose Start is sent at once and whose Stop, Restart, Update and Recover warn first.
   'OcuPilot.Screen.Descriptor.InteropProductionList',
   // Story 20.15: Screen permissions, whose Reset warns first and whose Add and Remove its own page's dialog sends.
@@ -494,6 +497,8 @@ const DESTRUCTIVE_CONSEQUENCES: Readonly<Record<string, Readonly<Record<string, 
   'OcuPilot.Screen.Descriptor.DocDbAppList': { delete: STRINGS.docDbAppDeleteConsequence },
   // Story 18.31: a privileged routine application's Delete types its name.
   'OcuPilot.Screen.Descriptor.RoutineAppList': { delete: STRINGS.routineAppDeleteConsequence },
+  // Story 18.32: a REST service's Delete types its package, and keeps the implementation class.
+  'OcuPilot.Screen.Descriptor.RestApiList': { delete: STRINGS.restServiceDeleteConsequence },
   [LOCAL_DATABASE_LIST]: { delete: STRINGS.localDatabaseDeleteConsequence },
   // Story 16.25: the language server's Delete types the server's name.
   'OcuPilot.Screen.Descriptor.LanguageServerList': { delete: STRINGS.languageServerDeleteConsequence },

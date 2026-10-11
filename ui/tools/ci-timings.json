@@ -678,6 +678,7 @@
     "reply.browser-spec.mjs": 62.2,
     "resources-editor.browser-spec.mjs": 24.9,
     "rest-apis.browser-spec.mjs": 12.5,
+    "rest-services-write.browser-spec.mjs": 12.5,
     "roles-create.browser-spec.mjs": 38.4,
     "roles-editor.browser-spec.mjs": 50.9,
     "screen-grounding.browser-spec.mjs": 12,
