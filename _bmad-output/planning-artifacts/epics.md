@@ -8609,6 +8609,32 @@ So that a stuck production is unblocked where it is diagnosed.
 
 ---
 
+### Story 20.24: Agent tool calls stop re-listing the tool registry
+
+[AMENDED 2026-10-10, owner decision on DW-2286 ("Fix it next on slot B", relayed by the Planner, logged at feature 21b9e337), Rule 5] Chartered by the orchestrator as slot B's next story after 20.22; ordered before 20.4 and 20.23. Contended with Epic 18's 18.12, which adds tools and touches the registry: registry and dispatch files are checked against Epic 18's diff before each edit, and only add-only edits proceed without asking.
+
+As a person working with the agent,
+I want each tool call to stop paying for two full listings of the tool registry,
+So that a multi-step plan does not spend about a second per step before any tool runs.
+
+**Acceptance Criteria:**
+
+- **Given** an agent tool call
+- **When** it passes its gate and dispatch
+- **Then** the tool registry's listing is built once and served from one cache to every caller (the gate's resolve, the wire resolve and dispatch), not one cache per caller (Rule 31).
+
+- **Given** the measured baseline of about 1.1 s per call (DW-2286's evidence)
+- **When** the same call is measured before and after the change on the throwaway
+- **Then** both numbers are recorded and the saving is shown per tool call.
+
+- **Given** a tool class compiled after the listing was cached (the in-place IPM upgrade case behind DW-2214)
+- **When** the next tool call arrives
+- **Then** the new tool appears in it, with no restart, and a test pins that.
+
+- DW-2286: every agent tool call lists the whole tool registry twice before its gate (ledger; routed by merge_gate 2026-10-10)
+
+---
+
 ## Epic 21: Stage 5 - custom-REST parity from the MCP suite's handlers
 
 Every remaining classic portal leaf with a backing class but no route becomes reachable: backup and mirroring, startup and memory tables, NLS locales, SQL settings, globals and the whole SQL tuning track, interoperability credentials, purge, deployment, record maps, workflow, the analytics editors, and a developer-tools set. The agent gains the 28 harvested inspection tools and undo by snapshot and revert.

@@ -11029,6 +11029,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: cycle-log-epic-20.md (DW-2255 diagnosis) | severity: med | fix-risk: med | footprint: out-of-footprint
 - evidence: ocupilot-b-ci at b340de34: Decide 0.576 s, ResolveWire 0.549 s, RequiredPairs 0.001 s, ValidateArguments 0.004 s for security.mftconnections.create; a 71-step dispatch plan 82 s (1.1-1.16 s every step, any tool)
 - 2026-10-10T18:47:04Z status=routed owner=burndown by=lead note=cache the listing per process or per registry generation, invalidated when a tool class compiles; contended with Epic 18 (both add tools); not release-blocking
+- 2026-10-11T02:16:39Z status=routed owner=20-24-agent-tool-calls-stop-re-listing-the-tool-registry by=merge_gate note=owner 2026-10-10 "Fix it next on slot B" (via Planner, feature 21b9e337): Story 20.24
 
 ### DW-2287: A reset of a server-path setting carries the pending-update consequence, not the location sentence, though the default it restores is a location
 - source: spec-20-22-production-item-settings.md | severity: low | fix-risk: low | footprint: in-story
