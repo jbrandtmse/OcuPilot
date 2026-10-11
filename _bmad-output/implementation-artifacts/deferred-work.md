@@ -11090,6 +11090,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: irislib/EnsPortal/ProductionConfig.cls:952-1077 and :4240 (updateActions); Story 20.4's criteria name only abort, abort all, suspend and stop; IO-08's change class and copy are unbuilt
 - 2026-10-10T22:06:19Z status=routed owner=20-23-queue-and-job-actions by=lead note=20.23's plan carries them beside the queue and job actions or names the further story they need
 - 2026-10-11T00:42:34Z status=routed owner=23-7-the-range-end-cleanup-part-6 by=load note=re-own from range-end-cleanup: kit 2026-10-10.1 owners are story keys or burndown
+- 2026-10-11T09:31:48Z status=routed owner=20-23-queue-and-job-actions by=lead note=returned from 23-7 by orchestrator ruling: a 2f2e972f re-own trailer was copied under it by a later ledger merge; its owner was 20-23, never range-end-cleanup
+- 2026-10-11T09:33:14Z status=routed owner=20-25-item-runtime-and-configuration-actions by=spec_gate note=20.23 declines it (item operations, not queue or job actions); Story 20.25 chartered for it
 
 ### DW-2278: Rule 31: the Superserver, MFT and Doc DB slices each carry their own Save, Rules and form of one shape; one base would serve all three
 - source: spec-18-30-doc-db-applications.md | severity: med | fix-risk: med | footprint: in-epic

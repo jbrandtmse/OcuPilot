@@ -311,6 +311,7 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
   **Story 19.17** [AMENDED 2026-10-05, Story 19.17 spec gate, Rule 20]: Document databases declares `%DocDB_Admin:USE` and `%Service_DocDB:USE` as its own pairs beside System Explorer's `%Development:USE`, and `DocDbPort` adds the namespace's READ pairs at the call (AD-61's rule 1). `explorer.docdb.create` and `explorer.docdb.delete` also declare WRITE on the resources guarding the namespace's routines and globals databases, resolved at the call, each refused by name before any port call: without the routines database's WRITE a create raised `<PROTECT>` on `^oddDEF` and a drop #5883, the database intact (measured by Story 19.9), and the globals database holds the registry row and the documents (inference).
 
   **Story 18.30's Doc DB applications declare no pair beyond the area's** [AMENDED 2026-10-10, Story 18.30 spec gate, Rule 20] (measured on a principal holding exactly `%Admin_Secure:USE`, `%DB_IRISSYS:READ` and `%DB_HSCUSTOM:READ`).
+  **Story 20.23's queue and job tools declare the vendor's own checks** [AMENDED 2026-10-11, Story 20.23 spec gate, Rule 20], read in `Ens.Queue` and `Ens.Job`: `%Ens_Queues:WRITE` for the two queue aborts, `%Ens_Jobs:WRITE` for a job's abort and stop, `%Ens_MessageSuspend:USE` for its suspend, and WRITE on the namespace's globals database.
 
 ### AD-9 — OcuPilot's own state is protected by a privileged routine application
 
@@ -468,6 +469,7 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
 - **Named case 2026-10-07 (Story 20.15).** An adjustment of a screen's pairs (AD-64) records OcuPilot's own `OcuPilot/Security/SecurityChange` event from either caller, with the pairs before and after, beside the agent's marker for an agent write [AMENDED 2026-10-07, Story 20.15 spec gate, Rule 20].
 
 - **Named gap 2026-10-08 (Story 18.29).** A user copy records the vendor's own "Create User" event and nothing for the SQL privileges it copies (measured, auditing on); on the agent path the agent's marker and the proposal row are their only record, and a copy saved from the form leaves none. This covers only the privileges a copy carries.
+- **Named case 2026-10-11 (Story 20.23).** The queue and job actions, which the vendor does not audit, record OcuPilot's own `ConfigChange` from either caller, beside the marker for an agent write [AMENDED 2026-10-11, Story 20.23 spec gate, Rule 20].
 
 ### AD-16 — Namespace is switched by explicit save and restore
 
@@ -915,6 +917,7 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
   **Story 18.30's `CLASSICPAGES`** [AMENDED 2026-10-10, Story 18.30 spec gate, Rule 20]: the Doc DB application create and update declare `%CSP.UI.Portal.Applications.DocDB`; the delete, on the list's page, declares none.
 
   **Story 18.31's `CLASSICPAGES`** [AMENDED 2026-10-10, Story 18.31 spec gate, Rule 20]: the privileged routine application create and update declare `%CSP.UI.Portal.Applications.PrivRoutine`; the delete, on the list's page, declares none.
+  **Story 20.23's `CLASSICPAGES`** [AMENDED 2026-10-11, Story 20.23 spec gate, Rule 20]: the five queue and job tools declare `EnsPortal.ProductionConfig`, and a job's abort and suspend `EnsPortal.Queues` too.
 
 ### AD-45 — There is one smoke path, and it is also the health check
 
@@ -1041,6 +1044,7 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
   **A tool may declare that its fresh read is composed from its own values** (`READSVALUES`, Story 19.11) [AMENDED 2026-10-05, Story 19.11 spec gate, Rule 20]: the mint passes its arguments and a screen action its declared values through the tool's `PortQuery`, as Confirm's re-read passes the stored payload, so all three read the same state. `explorer.sqlquery.run` declares it, so its `GUARD` read and its fingerprint cover the statement's own `Kind`, `StatementType` and `Tables` (DW-2004).
 
   **A `%`-class access tool reads `STATE`** [AMENDED 2026-10-09, Story 18.10 spec gate, Rule 20]: the `%`-class access tools read through `PctAccessPort` with `READTYPE` `STATE`, their fresh read composed from the entry's own values.
+  **The queue and job actions read port-composed types** [AMENDED 2026-10-11, Story 20.23 spec gate, Rule 20]: `InteropPort` answers the five actions' fresh reads through port-composed `QUEUE`, `ENTRY` and `JOB` types, and the queue abort's write takes its reviewed digest from the stored payload.
 
 ### AD-52 — A write tool declares the port it reaches its target through
 
@@ -1208,6 +1212,7 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
   6. **Each write finishes in its own request (AD-7).** Start returns once its jobs are launched; stop, restart and update pass the production's own timeout capped at 15 s, and a production that does not quiesce in time is refused by the vendor and left as it was (`INTEROP.PRODUCTION.BUSY`, measured). No spawn site and no `PORT.STARTED` answer is added. Clean is never called: recover is the response to a troubled production, and its card says so. None of the five writes is destructive (AD-22): each is undone by its inverse, and recover marks messages Discarded or Suspended and deletes none.
   7. **Pairs beyond the screens' sets (AD-8).** The five production tools declare `%Ens_ProductionRun:USE` and WRITE on the namespace's globals database, resolved at the call, each refused by name before any port call (measured: start, stop and restart answer #940 without the run resource; recover raises `<PROTECT>` on `^Ens.Suspended` without WRITE). Named limits: the classic rules, transformations and processes pages take an OR list of resources a pair set cannot express, so those lists declare `%Ens_Code:READ`, held by every shipped role that reaches them, and refuse a holder of only `%Ens_Rules`, `%Ens_RoutingRules`, `%Ens_BusinessRules`, `%Ens_DTL` or `%Ens_BPL`; and a holder of only `%Ens_ConfigItemRun` is refused Update, which the vendor admits. These are narrower audiences, as AD-8 accepts for Stories 18.15, 18.16 and 19.17.
   8. **Declared reads, ids and classic pages.** A declared read may name the interoperability port (source kind `interop`, AD-36): `LIST` on its four endpoints, with no criteria, detail call or parts. A `production` id is the production class name, kept exactly (AD-13). The five tools' `CLASSICPAGES` (AD-44) are `EnsPortal.ProductionConfig`, `EnsPortal.Dialog.UpdateProduction` and `EnsPortal.StartStopFrame`. Home's production line, category gating and the interoperability event log keep their existing reads.
+  9. **Queue and job actions** [AMENDED 2026-10-11, Story 20.23 spec gate, Rule 20]. `InteropPort` gains `QUEUE`/`ABORTQUEUE` on Queues, `ENTRY`/`ABORTMESSAGE` on QueueItems, and `JOB`/`ABORTJOB`/`SUSPENDJOB`/`STOPJOB` on Jobs, each action-style over its port-composed read. Before any vendor call it refuses by name an empty queue, a job whose process has ended, and an abort or suspend of a job not retrying its message (measured: the vendor answers OK for any pid and leaves the request set, and a request left on an idle job kept the next production stop from quiescing); a pid no job of the running production holds reads absent. The queue abort aborts exactly the entries its read enumerated, through `Ens.Queue.AbortItem`, and refuses a queue whose entries moved; `AbortQueue` is never called. A stop passes the production's update timeout capped at 15 s and forces, as the classic Jobs page does, and ends only a job of the running production, never a system process (AD-10). The three aborts are destructive; suspend and stop are not.
 
 ### AD-63 -- The vendor's interoperability editors load in a same-origin frame, in normal mode, and OcuPilot never reaches into it
 

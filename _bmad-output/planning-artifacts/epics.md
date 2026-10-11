@@ -8635,6 +8635,32 @@ So that a multi-step plan does not spend about a second per step before any tool
 
 ---
 
+### Story 20.25: Item runtime and configuration actions
+
+[AMENDED 2026-10-11, Story 20.23 spec gate (DW-2298), Rule 5] Chartered from Story 20.23's plan, which declined the classic per-host Actions tab's remaining item actions as item operations, not queue or job actions; that spec's Design Notes › Ledger inbox carries the charter as read in the vendor source. Consumes Story 20.3's Production items and Story 20.4's per-host tabs. Its place in the order is the orchestrator's.
+
+As an interoperability operator,
+I want to temporarily stop, start and restart one item, copy an item and change its class from the item's screens,
+So that the classic per-host Actions tab is not needed for them.
+
+**Acceptance Criteria:**
+
+- **Given** an item of the running production
+- **When** a temporary stop, a start or a restart is proposed and confirmed
+- **Then** each runs through the interoperability port as a confirmed write over a fresh read, followed by the production update the vendor requires, and is refused by name before any vendor call where the vendor would answer success while doing nothing (a stopped production, a disabled item).
+
+- **Given** an item
+- **When** a copy or a change of class is proposed and confirmed
+- **Then** each runs through the port as the classic page does, and the vendor's own audit records it.
+
+- **Given** the vendor behavior measured at its plan
+- **When** each action is planned
+- **Then** its destructiveness, its governance key's default and its audit record are stated (AD-22).
+
+- DW-2298: the classic per-host Actions tab's remaining item actions (temporary stop, start and restart of one item, change class, copy) have no story (ledger; routed by spec_gate 2026-10-11)
+
+---
+
 ## Epic 21: Stage 5 - custom-REST parity from the MCP suite's handlers
 
 Every remaining classic portal leaf with a backing class but no route becomes reachable: backup and mirroring, startup and memory tables, NLS locales, SQL settings, globals and the whole SQL tuning track, interoperability credentials, purge, deployment, record maps, workflow, the analytics editors, and a developer-tools set. The agent gains the 28 harvested inspection tools and undo by snapshot and revert.
