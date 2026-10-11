@@ -109,6 +109,45 @@ Paths are under `src/OcuPilot/` unless they start with `ui/`. **Analog: Story 18
 - **C4.** Given the rosters, when the suites run, then position 5, keys `true`/`true`/`false`, `routine-application` `foldcase` on both sides, `PRIVROUTINE.TYPE` from `RoutineAppError` (DW-2262) and the strings bound hold.
 - **Integration.** Given `ocupilot-ci`, when the page and the agent act, then the page consumes the three routes and the delete action, and the agent the four tools (C1-C3, the browser spec).
 
+### Review Findings
+
+Code review 2026-10-11 (full-opus, four layers; 30 layer rows, 2 reviewer rows). 0 decision-needed, 10 patch (applied), 1 defer, 20 rejected.
+
+- [x] [Review][Patch] MED: `RoutineAppProbe.Facts` read only the vendor `LIST`, which carries no `Description` and a constant `Enabled`, so "nothing was written" could not fail for 4 of 7 change cases or the gate's change and confirm legs; it now appends each probe's own `GET` (fix-risk low) [src/OcuPilot/Test/RoutineAppProbe.cls:45]
+- [x] [Review][Patch] MED: the page spec's C3 "a click sends nothing" could not fail, an unchanged buffer sending nothing anyway; the buffer is changed first. The browser twin ("sends nothing" after a Delete that needs a typed name) is removed (fix-risk low) [ui/src/app/areas/web-applications/routine-app-form.page.spec.ts:217]
+- [x] [Review][Patch] MED (Rule 30): `RoutineAppRead` asserted the own two's `Enabled` as literals it never set; it now compares each with its `GET` at that moment (fix-risk low) [src/OcuPilot/Test/RoutineAppRead.cls:92]
+- [x] [Review][Patch] MED (Rule 30): entity-type count literals outside the roster pin; dropped from `SuperserverDescriptor` and `MftConnectionDescriptor`, as feature already has them (fix-risk low) [src/OcuPilot/Test/SuperserverDescriptor.cls:130]
+- [x] [Review][Patch] MED (Rule 30): the browser spec clicked a side-bar item and a filtered row before either answered; it waits for the item and for the filter to apply (fix-risk low) [ui/browser/routine-applications.browser-spec.mjs:142]
+- [x] [Review][Patch] MED (Rule 2/31): `RoutineAppGate` was a 215-line near-copy of `DocDbAppGate` with no stated reason; it now extends it, which gains `SAVEPATH`, `NAMESPACE`, `OBJECTS` and name, id and body helpers (fix-risk med) [src/OcuPilot/Test/RoutineAppGate.cls:14]
+- [x] [Review][Patch] LOW: `MappingDescriptor` named seventy-three tools; `CLASSICROSTER` holds 74 [src/OcuPilot/Test/MappingDescriptor.cls:119]
+- [x] [Review][Patch] LOW: `DocDbAppRules.ERRORCLASS` and `Check` docs did not say the namespace code and rule apply only when `NAMESPACED` [src/OcuPilot/Area/WebApp/DocDbAppRules.cls:29]
+- [x] [Review][Patch] LOW: `AdminPort.MUTATINGTYPES` said the routine `PUT` empties any list it omits; only the routines were measured [src/OcuPilot/Port/AdminPort.cls:489]
+- [x] [Review][Patch] LOW: `RoutineAppWrite`'s header named a `MergeUpdate` the class lacks and an unrecorded `Resource` mutation [src/OcuPilot/Test/RoutineAppWrite.cls:190]
+- [x] [Review][Defer] MED (Rule 2): the client form, store and actions copy Doc DB's for DW-2278's reason (no form base) [ui/src/app/areas/web-applications/routine-app-form.store.ts:1] — deferred: occurrence appended to DW-2278, routed to 23-7-the-range-end-cleanup-part-6
+
+Decisions: QA's finding (a web application delete naming a routine application answers `WebAppDelete.StateDiff`'s 400 before the port's 409 `PRIVROUTINE.WEBAPP`) matches DW-2252's intent: nothing reaches the vendor and nothing is logged on any path, and the 409 is pinned at the port and on the `PUT` callers, so QA's either-refusal delete legs stand (`by-design`). Doc DB's hooks default to its old behavior (`RenderRead` ignores the fault on a 404); `DocDbAppGate` is green after the refactor. `MappingMint` and `Mint` are untouched. No story test counts applications, so `/csp/myapp` (48 against 47) matters to none. DW-2296 stays as harvested.
+
+Rejected:
+
+- false: a `WebApp.PctClassAccess` write naming `OcuPilotState` reaches the application — the vendor writes `Security.WebAppPctAccess`, not the application (vendor source read on `ocupilot-ci`).
+- false: a trailing slash slips past the `WebApp.App` guard — `Security.Applications.Exists` and `Get` resolve `OcuPilotState/` as type 4 (probed).
+- false: `ReadTool`'s write-tool count is stale — the message lists each story's additions, 18.31's among them.
+- false: no `%Admin_Secure`-only read legs — `WireSecurityRead` pins that principal's `%DB_IRISSYS:READ` verdict on both routine screens; Task 13 words the read leg "without the first".
+- false: `RoutineAppProbe.Lists` can throw — the vendor `GET` always answers both lists, and a missing one fails loudly.
+- false: own-two fields use native `disabled` — Save, the gated action, is `aria-disabled` with the sentence; read-only fields use `[disabled]="locked"` as ten sibling form pages do.
+- false: no audit measurement — `%System/%Security/ApplicationChange` records each create and delete (168 events for `OcuProbe1831` names on `ocupilot-ci`), so AD-53 owes no named gap.
+- low, wontfix-accepted: a create naming an own application answers "already present" or 422 `PRIVROUTINE.TAKEN`, not 403 — `Mint` skips `RefusedBeforeState` for a create, so the Code Map's override would be inert, and nothing is sent; reopen_if= such a create is accepted or sends a `PUT`.
+- low, wontfix-accepted: the card states no consequence when `Resource` is cleared — no sibling editor states one; reopen_if= 18.33's grant check or the owner asks for it.
+- low, wontfix-accepted: the form read echoes the URL's spelling of the name — the list links the stored spelling; reopen_if= a name opened from the list shows re-cased.
+- low, wontfix-accepted: `WireSecurityRead`'s messages omit the new screens — cosmetic; reopen_if= a reader is misled by one.
+- low, wontfix-accepted: only the update confirm runs least-privileged — as `DocDbAppGate`; reopen_if= a create or delete confirm skips its gate.
+- low, wontfix-accepted: a padded or whitespace-only name passes `IsName` — reopen_if= one is stored or answers 500.
+- low, wontfix-theoretical: a client application (type 8) passes the `WebApp.App` guard — outside DW-2252; real if an instance holds one and a web application write names it.
+- low, wontfix-theoretical: a create racing another writer between `Taken` and the `PUT` — real only for a writer outside OcuPilot inside one Save; OcuPilot's writers take the per-target hold.
+- low, wontfix-accepted: the resource picker reads 500 rows, as Doc DB's — reopen_if= an instance lists more.
+- low, wontfix-accepted: the delete's precondition text says "record" — unreachable here, a routine application's `GET` always answering its settings; reopen_if= it is reached.
+- not re-opened: the mint's 400 for a web application name (DW-2296), the shape codes (earlier triage) and the Rule 30 sweep's counts (a spec edit).
+
 ## Spec Change Log
 
 - 2026-10-10, spec gate (lead): DW-2279 re-owned to 18.33, because 20.3 is not on feature (Task 12 stays unbuilt here); AD-2, AD-13, AD-44 and AD-54 amended.
@@ -191,6 +230,14 @@ Paths are under `src/OcuPilot/` unless they start with `ui/`. **Analog: Story 18
 - mutation (write batch, 90 to 96): `NAMEMAX` 63 → `TestTheLongestNameAndDescriptionAreAccepted`; `IsEnabled` refusing a number → `TestEveryEnabledFormChangesTheFlagOnTheFormsSave`; `CreateBody` returning its argument → `TestEveryEnabledFormIsStoredAsABooleanOnBothCallers`; `RESOURCETYPES` `Application` alone → `TestAListedServiceOrApplicationResourceIsAccepted`; an unchanged resource judged → `TestEveryChangeRuleIsRefusedBeforeAnyPutOnBothCallers`; `RoutineAppRules.Taken` reading a `PRIVROUTINE.TYPE` 404 as free → `TestATakenNameAMovedTargetAndABusyTargetAreRefused` on the web application name; `ComposeCreate` without `CompleteBody` → `TestACreateOfTheNameAloneTakesTheInstancesDefaults`.
 - mutation (read and gate, 97 to 102): `RoutineAppRules.UPDATETOOL` at the Doc DB tool → `RoutineAppRead.TestTheFormReadAnswersTheNameAndThreeSettings`; `Truth` answering 0 → the same test; `PrivilegedRoutineGuard` passing every name → `TestAWebApplicationNameIsRefusedByTheTypeCheck` and the form leg; `DocDbAppSave.Gate` refusing every caller → `RoutineAppGate.TestTheDeclaredPairsReadAndWrite`; passing every caller → `TestWithoutTheAreasResourceEveryReadAndWriteIsRefused` and `TestWithoutTheSystemDatabaseReadEveryWriteIsRefused`. A mutation that skipped only the screen-pair half of `Gate` stayed green (run 101): the write tool's pairs, asked next, cover the same two.
 - mutation (client, each reverted byte-identical): the store drops `readBackOf` → the page spec's create leg red; the page binds Description to `Name` → its create and edit legs red; `flagAt` answers `ON` for every row → its disabled-application leg red; the leave dialog dropped → its leave leg red; `RESOURCE_TYPES` without `System` → the store and page pickers' legs red; `RoutineAppActions` drops its `register` → `routine-app-actions.spec.ts` two tests red; the list's `DESTRUCTIVE_CONSEQUENCES` entry dropped → `screen-action-handler.spec.ts`'s registration leg red; `app.ts` drops `routineAppForm.reset()` → `app.spec.ts`'s sign-out leg red. The list's `TYPED_NAME_ROWS` entry stays unfalsified: a single-name id types its row key, which is the name, so the entry the spec asks for is explicit and untestable.
+- (QA) files: `src/OcuPilot/Test/RoutineAppWebAppGuard.cls` (new, armed in `scripts/ci-throwaway.sh`), `RoutineAppDescriptor.TestTheCodeStringsAreThePublishedOnes`, and the list-row assertion in `ui/browser/routine-applications.browser-spec.mjs`.
+- mutation: C2 (DW-2252, through the web application callers) `AdminPort.PrivilegedRoutineGuard` without its `pWebApp` branch → `RoutineAppWebAppGuard` red on the editor's Save and the agent's update confirm, both answering the vendor's refusal (run 561); its delete legs stay green, because `WebAppDelete.StateDiff` refuses a routine application's empty record first; with that precondition also removed the delete legs go red and the probe is deleted (run 562); both reverted byte-identical.
+- mutation: C4 (DW-2262) `RoutineAppError.WEBAPP` set to `PRIVROUTINE.WEBAPPS` → `RoutineAppDescriptor.TestTheCodeStringsAreThePublishedOnes` red alone (run 565).
+- mutation: the arming roster line for `RoutineAppWebAppGuard` removed from `scripts/ci-throwaway.sh` → `ci.test.mjs` "each arming roster names exactly the classes that declare that variable" red.
+- mutation (browser, each rebuilt and redeployed, reverted byte-identical): the store's create body without `Description` → the C2 test red on the create body; the action handler sending the delete's id upper-cased → red on the delete's id; the list descriptor without `rowGet`, recompiled → red on the new row assertion; the list's `sideBarPosition` 0 with the mirror regenerated → the C4 test red on the fifth-place assertion.
+- mutation (review): C2 a temporary `RoutineAppSave.Update` override that writes the description `leaked` through the port after the inherited Save → `RoutineAppWrite.TestEveryChangeRuleIsRefusedBeforeAnyPutOnBothCallers` red on all seven "nothing was written" legs, its 422 legs green (run 570); reverted byte-identical, green (run 573).
+- mutation (review): `DocDbAppSave.Gate` passing every caller → the inherited legs red in `RoutineAppGate` (3 of 3, run 571) and `DocDbAppGate` (2 of 3, run 572); reverted byte-identical, green (runs 574, 575).
+- mutation (review): C3 `RoutineAppFormPage.onSave` without its `saveBlocked` guard → `routine-app-form.page.spec.ts`'s C3 test red, the changed buffer put for `OcuPilotState`; reverted byte-identical.
 
 **S0:** no `OcuProbe1831*` application, role or user; the own two as Task 0 recorded them.
 

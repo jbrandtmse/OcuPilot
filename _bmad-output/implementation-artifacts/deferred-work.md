@@ -10825,6 +10825,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-10-web-application-extras-and-spec-based-rest-services.md | severity: med | fix-risk: low | footprint: in-epic
 - evidence: Measured on ocupilot-ci (cr run 587, MatchRoles arm mutated): WebApp.App failed with HTTP 500, ERROR #799 Invalid Application name OcuPilotState/OcuPilotIdentity
 - 2026-10-09T12:13:14Z status=routed owner=18-31-privileged-routine-applications by=cr note=refuse a routine-type target on the web-application tools before the vendor, as AdminPort's type check does
+- 2026-10-11T06:06:01Z status=resolved-by:18-31-privileged-routine-applications by=adjudication note=AdminPort guard 409 PRIVROUTINE.WEBAPP before WebApp.App PUT/DELETE; RoutineAppWebAppGuard pins both callers (run 577)
 ### DW-2241: Take as script on an agent's class or routine save renders the text as the placeholder "<content>", so the script is not the reviewed change (AD-59)
 - source: spec-20-21-the-agent-saves-edits-to-existing-classes-and-routines.md | severity: med | fix-risk: med | footprint: in-epic
 - evidence: AtelierPort.Snippet TYPESAVE always renders "<content>" (pinned by AtelierPortSave.TestTheSaveRendersItsScript); 20.21 advertised the save, so Draft.Take on its card closes the proposal and answers a script that, run as is, writes "<content>" into a routine; the routine branch's %Routine.Write would also need the UDL header removed
@@ -10980,6 +10981,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-23-6-the-haiku-story-cleanup.md | severity: low | fix-risk: low | footprint: out-of-footprint
 - evidence: Api/PctAccessError.cls:51-55 at 357985c0 (Planner review of 18.10, item 4); a move leaves the code string unchanged
 - 2026-10-09T17:02:33Z status=routed owner=18-31-privileged-routine-applications by=spec_gate note=23.6 addendum 18.10-4a left for 18.31, which builds the privileged routine application screens (coordinator: may wait for 18.31)
+- 2026-10-11T06:06:01Z status=resolved-by:18-31-privileged-routine-applications by=adjudication note=PRIVROUTINE codes in Api/RoutineAppError, strings unchanged; RoutineAppDescriptor pins all eight (run 569)
 
 ### DW-2263: The create script's class check reads the undocumented ^rINDEXCLASS, measured on 2026.2 only
 - source: spec-23-6-the-haiku-story-cleanup.md | severity: low | fix-risk: low | footprint: out-of-footprint
@@ -11010,6 +11012,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-10T10:42:42Z status=routed owner=range-end-cleanup by=harvest note=unify behind a kernel base the slices extend; recorded at the 18.30 spec gate
 - 2026-10-10T12:49:19Z occurrence=18-30-doc-db-applications
 - 2026-10-11T01:02:21Z status=routed owner=23-7-the-range-end-cleanup-part-6 by=merge_gate note=re-own from range-end-cleanup at 18.30's merge (kit 2026-10-10.1 owner grammar)
+- 2026-10-11T06:02:59Z occurrence=18-31-privileged-routine-applications
 
 ### DW-2279: MappingMint's empty-namespace refusal names a 'mapping' for the Doc DB application tools
 - source: spec-18-30-doc-db-applications.md | severity: low | fix-risk: low | footprint: in-epic

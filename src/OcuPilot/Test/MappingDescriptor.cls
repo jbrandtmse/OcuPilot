@@ -116,7 +116,7 @@ Method TestTheToolsDeclareTheirFieldsKindsAndPairs()
     Do $$$AssertEquals(##class(OcuPilot.Kernel.EntityRef).NormalizedId("global-mapping", "OCUPROBE1814X" _ $Char(1) _ "OcuProbe1814Case"), "ocuprobe1814x" _ $Char(1) _ "OcuProbe1814Case", "a mapping's id folds its namespace part alone (AD-13)")
 }
 
-/// <p>The replaced classic pages (AD-44, DW-1784): exactly the seventy-three tools of
+/// <p>The replaced classic pages (AD-44, DW-1784): exactly the seventy-four tools of
 /// <parameter>CLASSICROSTER</parameter> declare <parameter>OcuPilot.Screen.Tool.Write.CLASSICPAGES</parameter>,
 /// each its page, and no other registered tool declares one; every declared page is spelled exactly as
 /// the instance names it, because the custom-resource store does not fold case: a compiled class, or,

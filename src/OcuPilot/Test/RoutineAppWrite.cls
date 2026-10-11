@@ -187,9 +187,9 @@ Method TestEveryEnabledFormChangesTheFlagOnTheFormsSave()
 /// <p>C2 (AD-4): a change on both callers keeps every setting it does not send and the role and the routine the application
 /// holds, applies the ones it does, answers the read-back, and the application's name stays as stored although the id
 /// names it in another case; a change that changes nothing sends nothing.</p>
-/// <p>Mutation (Rule 19): drop <code>Routines</code> from the payload <method>OcuPilot.Screen.Tool.RoutineAppUpdate.MergeUpdate</method>
-/// answers -- the vendor empties the routines and the lists legs go red on both callers; drop <code>Resource</code> from it
-/// -- the agent's payload leg goes red.</p>
+/// <p>Mutation (Rule 19): a temporary <code>MergeUpdate</code> override on
+/// <class>OcuPilot.Screen.Tool.RoutineAppUpdate</class> that calls the inherited one and removes <code>Routines</code>
+/// from the payload -- the vendor empties the routines and the lists legs go red on both callers.</p>
 Method TestAChangeKeepsWhatItDoesNotSendOnBothCallers()
 {
     Do $$$AssertStatusOK($ClassMethod(..#PROBE, "EnsureResource"), "a probe resource")

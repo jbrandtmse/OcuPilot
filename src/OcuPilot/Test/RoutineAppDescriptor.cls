@@ -229,6 +229,16 @@ Method TestTheCodesAnswerTheirSentences()
     Do $$$AssertEquals($ClassMethod(tClass, "ReasonFor", "DOCDBAPP.NAME"), "", "and this class answers none of theirs")
 }
 
+/// <p>AD-39, DW-2262: the eight codes keep their published strings, in the order
+/// <method>OcuPilot.Api.RoutineAppError.Codes</method> lists them -- the envelope, the five field codes, the web
+/// application refusal and the type refusal -- because a client keys on the string, not on the parameter's name.</p>
+/// <p>Mutation (Rule 19): change <parameter>OcuPilot.Api.RoutineAppError.WEBAPP</parameter> to
+/// <code>PRIVROUTINE.WEBAPPS</code> -- this goes red alone.</p>
+Method TestTheCodeStringsAreThePublishedOnes()
+{
+    Do $$$AssertEquals($ListToString($ClassMethod(..#ERRORS, "Codes")), "PRIVROUTINE.VALIDATION,PRIVROUTINE.NAME,PRIVROUTINE.DESCRIPTION,PRIVROUTINE.ENABLED,PRIVROUTINE.RESOURCE,PRIVROUTINE.TAKEN,PRIVROUTINE.WEBAPP,PRIVROUTINE.TYPE", "the codes read as published")
+}
+
 /// <p>Rule 31: the Doc DB rule set and Save keep their own error class and their namespace key, and the routine
 /// application ones extend them with theirs.</p>
 /// <p>Mutation (Rule 19): set <parameter>OcuPilot.Area.WebApp.DocDbAppRules.NAMESPACED</parameter> to 0 -- the Doc DB legs

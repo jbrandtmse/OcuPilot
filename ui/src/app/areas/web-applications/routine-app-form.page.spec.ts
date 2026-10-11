@@ -11,7 +11,7 @@ import { OverlayStack } from '../../core/overlay-stack';
 import { SCREENS } from '../../core/screens.generated';
 import { STRINGS } from '../../core/strings';
 import { RoutineAppFormPage } from './routine-app-form.page';
-import { ROUTINE_APP_FORM_PATH, ROUTINE_APP_PATH } from './routine-app-form.store';
+import { ROUTINE_APP_FORM_PATH, ROUTINE_APP_PATH, RoutineAppForm } from './routine-app-form.store';
 
 /**
  * The privileged routine application editor over stubs of what an instance supplies -- the form read, the Resources
@@ -216,7 +216,8 @@ describe('RoutineAppFormPage', () => {
 
   it('C3, AD-10: OcuPilot\u2019s own two applications are drawn refused -- the fields read-only, Save aria-disabled and described by the rule\u2019s sentence -- and a click sends nothing', async () => {
     // Mutation (Rule 19): drop the `ocupilot-routine-application` branch from `selfProtectionReason`, or the page's
-    // `ownRefusal` -> Save loses `aria-disabled`, the sentence is gone and this goes red.
+    // `ownRefusal` -> Save loses `aria-disabled`, the sentence is gone and this goes red; drop `onSave`'s `saveBlocked`
+    // guard -> the changed buffer is put and the no-write assertion goes red.
     for (const own of ['OcuPilotState', 'OcuPilotIdentity', 'ocupilotstate']) {
       const { fixture, host, calls } = await mount({ url: `/web-applications/routine-applications/edit/${encodeEntityId(own)}`, row: { ...HELD_ROW, Name: own } });
       const sentence = host.querySelector('[data-routine-app="own-refusal"]');
@@ -225,6 +226,9 @@ describe('RoutineAppFormPage', () => {
       expect(button.getAttribute('aria-disabled'), own).toBe('true');
       expect(button.getAttribute('aria-describedby'), own).toBe(sentence?.id);
       expect([(control(host, 'Description') as HTMLInputElement).readOnly, (control(host, 'Enabled') as HTMLInputElement).disabled, (control(host, 'Resource') as HTMLSelectElement).disabled], own).toEqual([true, true, true]);
+      // A changed buffer, so the store would put it: only the page's refusal stands between the click and a PUT.
+      TestBed.inject(RoutineAppForm).setValue('Description', 'changed');
+      await settle(fixture);
       save(host);
       await settle(fixture);
       expect(calls.filter((call) => call.method !== 'GET'), own).toEqual([]);

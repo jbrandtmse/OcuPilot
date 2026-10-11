@@ -1,7 +1,7 @@
 /// <p>Test-only helper for Story 18.31's suites: <class>OcuPilot.Test.DocDbAppProbe</class> over the privileged routine
-/// applications. The probe applications, the probe resource they name (<parameter>RESOURCE</parameter>), the list as one
-/// JSON text (<method>Facts</method>), the agent's mint through a tool's own class (<method>Mint</method>) and a confirm
-/// run as a real principal in a child process (<method>RunAs</method>) are the parent's; an application is named by its
+/// applications. The probe applications, the probe resource they name (<parameter>RESOURCE</parameter>), the agent's
+/// mint through a tool's own class (<method>Mint</method>) and a confirm run as a real principal in a child process
+/// (<method>RunAs</method>) are the parent's; an application is named by its
 /// name alone, so the namespace argument every parent method takes is <code>""</code> here. It holds no
 /// assertions.</p>
 /// <p><b>Only <parameter>PREFIX</parameter> is ever touched.</b> An application or resource is named from it, in any
@@ -37,6 +37,21 @@ ClassMethod Entry(pRow As %DynamicObject) As %String
 ClassMethod IdOfEntry(pEntry As %String) As %String
 {
     Quit pEntry
+}
+
+/// <p>The list as one JSON text, then each probe application's settings and lists as its own <code>GET</code> reads
+/// them: the vendor's <code>LIST</code> carries no <code>Description</code> and reads <code>Enabled</code> false on every
+/// row, so the list alone cannot show a write to either.</p>
+ClassMethod Facts() As %String
+{
+    Set tFacts = ##super()
+    If tFacts = "unreadable" Quit tFacts
+    Set tNames = ..Names()
+    For tI = 1:1:$ListLength(tNames) {
+        Set tName = $List(tNames, tI)
+        Set tFacts = tFacts _ $Char(10) _ tName _ "=" _ ..Summary("", tName) _ "|" _ ..Lists(tName)
+    }
+    Quit tFacts
 }
 
 /// <p>The two lists of the application <var>pName</var> as the vendor's <code>GET</code> reads them,

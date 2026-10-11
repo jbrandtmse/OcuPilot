@@ -23,8 +23,9 @@ Parameter UPDATETOOL = "OcuPilot.Screen.Tool.DocDbAppUpdate";
 Parameter FIELDS = "Description,Enabled,Resource";
 
 /// <p>The class whose parameters carry this rule set's codes and sentences: <code>VALIDATION</code>, <code>NAME</code>,
-/// <code>NAMESPACE</code>, <code>DESCRIPTION</code>, <code>ENABLED</code>, <code>RESOURCE</code> and
-/// <code>TAKEN</code> with their <code>REASON</code> forms, and <code>DESCRIPTIONMAX</code>.</p>
+/// <code>DESCRIPTION</code>, <code>ENABLED</code>, <code>RESOURCE</code> and <code>TAKEN</code> with their
+/// <code>REASON</code> forms, <code>DESCRIPTIONMAX</code>, and <code>NAMESPACE</code> when <parameter>NAMESPACED</parameter>
+/// is 1.</p>
 Parameter ERRORCLASS = "OcuPilot.Api.DocDbAppError";
 
 /// <p>Whether a record is keyed by a namespace as well as a name. 0 drops the <code>Namespace</code> member, its rule
@@ -43,8 +44,9 @@ Parameter RESOURCETYPES = "Service,System,Application";
 /// <p>Every rule over <var>pBody</var>, in <var>pViolations</var> as <code>pViolations(n) = $ListBuild(field,
 /// code)</code> with the count in <code>pViolations</code>.</p>
 /// <p>A value that is not text where text is meant is a shape violation on its field. When <var>pMode</var> is
-/// <code>create</code>, <var>pName</var> must be a valid class name (<method>IsName</method>) and <var>pNamespace</var>
-/// one this instance defines, and each setting sent must be valid. When it is <code>update</code> and
+/// <code>create</code>, <var>pName</var> must be a name <method>IsName</method> admits (here a valid class name) and, when
+/// <parameter>NAMESPACED</parameter> is 1, <var>pNamespace</var> one this instance defines, and each setting sent must be
+/// valid. When it is <code>update</code> and
 /// <var>pFull</var> is 1, a setting is judged only where it differs from <var>pFresh</var>'s; with <var>pFull</var>
 /// 0 every setting sent is judged by the rules that need no read. With <var>pFull</var> 1 the rule that reads the
 /// instance applies too: a resource that is sent and changed, or any one on a create, must be empty or a service,

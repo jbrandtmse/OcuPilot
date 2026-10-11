@@ -55,7 +55,7 @@ Method OnAfterAllTests() As %Status
 /// <p>C1: the screen and the tool answer the same rows, each carrying the four list fields with <code>Enabled</code> a
 /// boolean read from the application's own <code>GET</code> -- the vendor's <code>LIST</code> answers it false on every
 /// row and answers no description -- and the probe applications are listed named as written; OcuPilot's own two are
-/// listed enabled.</p>
+/// listed with the flag each one's <code>GET</code> reads at that moment.</p>
 /// <p>Mutation (Rule 19): drop the <code>rowGet</code> from <class>OcuPilot.Screen.Descriptor.RoutineAppList</class> --
 /// the live-list legs stay and the rows legs go red, the screen answering <code>Enabled</code> false and no
 /// description.</p>
@@ -89,7 +89,8 @@ Method TestTheScreenAndTheReadToolAnswerTheSameRows()
         If $ListFind($ListBuild("OcuPilotState", "OcuPilotIdentity"), tRow.%Get("Name")) Set tOwn = tOwn _ $Select(tOwn = "": "", 1: ",") _ tRow.%Get("Name") _ ":" _ tRow.%Get("Enabled")
     }
     Do $$$AssertEquals(tSeen, "OcuProbe1831A:0:first:,ocuprobe1831b:1:second:OcuProbe1831Res", "both probes are listed, named as written, with Enabled, description and resource as stored")
-    Do $$$AssertEquals(..Sorted(tOwn), "OcuPilotIdentity:1,OcuPilotState:1", "and OcuPilot's own two are listed enabled")
+    Set tOwnStored = "OcuPilotIdentity:" _ ''$ClassMethod(..#PROBE, "StoredField", "", "OcuPilotIdentity", "Enabled") _ ",OcuPilotState:" _ ''$ClassMethod(..#PROBE, "StoredField", "", "OcuPilotState", "Enabled")
+    Do $$$AssertEquals(..Sorted(tOwn), tOwnStored, "and OcuPilot's own two are listed with the flag each one's GET reads")
     Set tSC = ##class(OcuPilot.Screen.Tool.Registry).Resolve(..#SCREEN _ ".read", .tTool)
     Do $$$AssertStatusOK(tSC, "webapp.routineapps.read resolves")
     Set tSC = ##class(OcuPilot.Screen.Tool.Registry).InvokeTool(tTool, {"maxRows": 100}, 100, .tResult, .tHttp, .tFault)
@@ -134,7 +135,7 @@ Method TestTheFormReadAnswersTheNameAndThreeSettings()
     Do $$$AssertEquals(tStatus _ " " _ ##class(OcuPilot.Test.EncryptionStartupDescriptor).Keys(tNew) _ " " _ tNew.%Get("Name") _ tNew.%Get("Description") _ tNew.%Get("Resource") _ " " _ tNew.%Get("Enabled") _ tNew.%GetTypeOf("Enabled"), "200 Description,Enabled,Name,Resource  1boolean", "a new application's form carries the same members, enabled and otherwise empty")
     Do ##class(OcuPilot.Test.Http).AbsoluteRequest("GET", tBase _ "/routine-application/form?id=OcuPilotState", tUser, tPassword, .tStatus, .tRaw, .tHeaders)
     Set tOwn = ##class(%DynamicObject).%FromJSON(tRaw).%Get("row")
-    Do $$$AssertEquals(tStatus _ " " _ tOwn.%Get("Name") _ " " _ tOwn.%Get("Enabled"), "200 OcuPilotState 1", "OcuPilot's own application is read, which no rule refuses")
+    Do $$$AssertEquals(tStatus _ " " _ tOwn.%Get("Name") _ " " _ tOwn.%Get("Enabled"), "200 OcuPilotState " _ ''$ClassMethod(..#PROBE, "StoredField", "", "OcuPilotState", "Enabled"), "OcuPilot's own application is read, which no rule refuses")
 }
 
 /// <p>AD-10, DW-2262: the admin port answers a read of a name another kind of application holds as 404

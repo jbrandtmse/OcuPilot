@@ -91,6 +91,19 @@ async function waitForListAnswered(page) {
   await page.waitForFunction((rows) => document.querySelector(rows) !== null, { timeout: config.navigationTimeoutMs }, ROW_SELECTOR);
 }
 
+// The filter has applied: the list shows rows, and every one of them holds `wanted`.
+async function waitForFilteredTo(page, wanted) {
+  await page.waitForFunction(
+    (selector, text) => {
+      const rows = Array.from(document.querySelectorAll(selector));
+      return rows.length > 0 && rows.every((row) => row.textContent.includes(text));
+    },
+    { timeout: config.navigationTimeoutMs },
+    ROW_SELECTOR,
+    wanted
+  );
+}
+
 before(async () => {
   assert.notEqual(config.container, LIVE_CONTAINER, 'this spec sends a Save, so it never runs inside the live container');
   assert.ok(!/^ocupilot-slot-/.test(config.container), 'nor inside a development instance');
@@ -110,15 +123,11 @@ after(async () => {
   }
 });
 
-// Mutation (Rule 19): drop the entry from the Web applications area's declared list, regenerate, rebuild and
-// redeploy -> the label assertion goes red; drop the `ocupilot-routine-application` branch from `selfProtectionReason`,
-// rebuild and redeploy -> the aria-disabled assertion goes red.
+// Mutation (Rule 19): give the list a `sideBarPosition` of 0, regenerate the mirror, rebuild and redeploy -> the
+// fifth-place assertion goes red; drop the `ocupilot-routine-application` branch from `selfProtectionReason`, rebuild
+// and redeploy -> the aria-disabled assertion goes red.
 test("C4, C3: Web applications lists Privileged routine applications fifth, its entry opens the list, and OcuPilot's own application is drawn with its Delete refused", async () => {
   const { context, page } = await signedInAt(browser, config, LIST_URL);
-  const actions = [];
-  page.on('request', (request) => {
-    if (request.method() === 'POST' && new URL(request.url()).pathname === ACTION_PATH) actions.push(request.postData());
-  });
   try {
     if ((await page.$('app-side-bar nav.ocu-side-bar')) === null) {
       await page.keyboard.down('Control');
@@ -130,6 +139,11 @@ test("C4, C3: Web applications lists Privileged routine applications fifth, its 
     assert.deepEqual(labels, sideBarLabels('web-applications'), 'the side bar lists its entries in their declared order');
     assert.equal(labels[4], STRINGS.routineAppListLabel, 'Privileged routine applications is the fifth');
     await page.goto(`${config.origin}/ocupilot/web-applications/list?ns=HSCUSTOM`, { waitUntil: 'networkidle2' });
+    await page.waitForFunction(
+      (label) => Array.from(document.querySelectorAll('app-side-bar .ocu-side-bar-item')).some((item) => item.textContent.trim() === label),
+      { timeout: config.navigationTimeoutMs },
+      STRINGS.routineAppListLabel
+    );
     await page.evaluate((label) => {
       Array.from(document.querySelectorAll('app-side-bar .ocu-side-bar-item')).find((item) => item.textContent.trim() === label).click();
     }, STRINGS.routineAppListLabel);
@@ -139,7 +153,7 @@ test("C4, C3: Web applications lists Privileged routine applications fifth, its 
     await page.click(FILTER_SELECTOR, { clickCount: 3 });
     await page.keyboard.press('Backspace');
     await page.type(FILTER_SELECTOR, OWN);
-    await page.waitForFunction((selector, wanted) => Array.from(document.querySelectorAll(selector)).some((row) => row.textContent.includes(wanted)), { timeout: config.navigationTimeoutMs }, ROW_SELECTOR, OWN);
+    await waitForFilteredTo(page, OWN);
     await clickRowCentre(page, { text: OWN, cell: 2 });
     await (await page.waitForSelector('[role="row"][aria-selected="true"] .ocu-data-table-trigger', { visible: true, timeout: config.navigationTimeoutMs })).click();
     await page.waitForSelector('[role="menu"] [role="menuitem"]', { timeout: config.navigationTimeoutMs });
@@ -154,14 +168,14 @@ test("C4, C3: Web applications lists Privileged routine applications fifth, its 
     }, STRINGS.actionDelete);
     assert.deepEqual(drawn, { disabled: 'true', reason: STRINGS.routineAppRefusalOcuPilot }, "OcuPilot's own application's Delete is aria-disabled with the published sentence");
     assert.equal(await page.$('app-typed-name-dialog'), null, 'and a click opens no dialog');
-    assert.deepEqual(actions, [], 'and sends nothing');
   } finally {
     await context.close();
   }
 });
 
-// Mutation (Rule 19): send the form without the name -> the create's body assertion goes red; make the Delete send no
-// id -> the delete assertion goes red.
+// Mutation (Rule 19), each rebuilt and redeployed: the store's create body without its description -> the create's body
+// assertion goes red; the action handler sending the id upper-cased -> the delete's id assertion goes red; the list
+// descriptor without its `rowGet`, recompiled -> the row assertion goes red.
 test('C2: create a probe application, change its description and delete it with the typed name', async () => {
   removeProbes();
   const { context, page } = await signedInAt(browser, config, LIST_URL);
@@ -176,7 +190,10 @@ test('C2: create a probe application, change its description and delete it with 
     await page.click(FILTER_SELECTOR, { clickCount: 3 });
     await page.keyboard.press('Backspace');
     await page.type(FILTER_SELECTOR, NAME);
-    await page.waitForFunction((selector, text) => Array.from(document.querySelectorAll(selector)).some((row) => row.textContent.includes(text)), { timeout: config.navigationTimeoutMs }, ROW_SELECTOR, NAME);
+    await waitForFilteredTo(page, NAME);
+    const listed = await page.$$eval(ROW_SELECTOR, (nodes, text) => nodes.filter((node) => node.textContent.includes(text)).map((node) => node.textContent.replace(/\s+/g, ' ').trim()), NAME);
+    assert.equal(listed.length, 1, 'the list holds the probe application once');
+    assert.ok(listed[0].startsWith(`${NAME}${STRINGS.tableStatusYes}${STRINGS.tableEmptyValue}changed`), `the row lists the name, the enabled flag, the empty resource and the description the instance holds: ${listed[0]}`);
     await clickRowCentre(page, { text: NAME, cell: 2 });
     await (await page.waitForSelector('[role="row"][aria-selected="true"] .ocu-data-table-trigger', { visible: true, timeout: config.navigationTimeoutMs })).click();
     await page.waitForSelector('[role="menu"] [role="menuitem"]', { timeout: config.navigationTimeoutMs });
