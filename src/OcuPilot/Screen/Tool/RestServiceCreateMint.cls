@@ -9,7 +9,7 @@
 /// <li>the one-row hunk of the formatted document fits one card
 /// (<parameter>OcuPilot.Screen.Tool.ExplorerSave.CHANGEMAXLENGTH</parameter>);</li>
 /// <li>the kernel's create mint runs with the document and the namespace; its fresh read finds no service of the
-/// package's name in any letter case.</li>
+/// package's name, and no class of its specification's or dispatch class's name, in any letter case.</li>
 /// </ol>
 Class OcuPilot.Screen.Tool.RestServiceCreateMint Extends OcuPilot.Kernel.Proposal.Mint
 {

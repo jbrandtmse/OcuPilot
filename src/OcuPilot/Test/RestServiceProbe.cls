@@ -77,6 +77,26 @@ ClassMethod Listed(pNamespace As %String, pName As %String) As %Boolean
     Quit $$$ISOK($ClassMethod(..#PORT, "Invoke", ..#ENDPOINT, "STATE", .tQuery, "", .tResult, .tHttp, .tFault))
 }
 
+/// <p>Save class <var>pClass</var>, a plain <class>%RegisteredObject</class> no service lists, in <var>pNamespace</var>.
+/// A name that does not begin with <parameter>PREFIX</parameter>, in any case, is refused.</p>
+ClassMethod SeedClass(pNamespace As %String, pClass As %String) As %Status
+{
+    If $ZConvert($Extract(pClass, 1, $Length(..#PREFIX)), "U") '= $ZConvert(..#PREFIX, "U") Quit $$$ERROR($$$GeneralError, "not a probe class: " _ pClass)
+    Set tSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Set tDefinition = ##class(%Dictionary.ClassDefinition).%New(pClass)
+        Set tDefinition.Super = "%RegisteredObject"
+        Set tSC = tDefinition.%Save()
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
 /// <p>Whether <var>pNamespace</var> holds class <var>pClass</var>.</p>
 ClassMethod HasClass(pNamespace As %String, pClass As %String) As %Boolean
 {

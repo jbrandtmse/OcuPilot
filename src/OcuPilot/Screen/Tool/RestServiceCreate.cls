@@ -8,8 +8,9 @@
 /// with <code>OcuPilot</code> is refused by the kernel on either caller
 /// (<parameter>OcuPilot.Kernel.Proposal.Prohibited.OCUPILOTCODE</parameter>). The mint is
 /// <class>OcuPilot.Screen.Tool.RestServiceCreateMint</class>.</p>
-/// <p><b>A create</b> (AD-54): its fresh read must find no service of that name in any letter case, and a name taken
-/// since the mint reads present at the confirm's re-read and closes the proposal target-changed. An implementation
+/// <p><b>A create</b> (AD-54): its fresh read must find no service of that name, and no class of its specification's or
+/// dispatch class's name, in any letter case, and a name taken since the mint reads present at the confirm's re-read and
+/// closes the proposal target-changed. An implementation
 /// class that already exists keeps its code (measured).</p>
 /// <p><b>Its payload is <code>{Name, Document, Namespace}</code></b> (<method>ComposeCreate</method>); the card shows the
 /// whole document as added lines, at most <parameter>OcuPilot.Screen.Tool.ExplorerSave.CHANGEMAXLENGTH</parameter>
@@ -21,7 +22,7 @@ Class OcuPilot.Screen.Tool.RestServiceCreate Extends OcuPilot.Screen.Tool.RestSe
 
 Parameter TOOLNAME = "webapp.restapis.create";
 
-Parameter DESCRIPTION = "Propose creating a spec-based REST service in this namespace from a whole OpenAPI 2.0 document. It creates nothing by itself: it answers a proposal the user reviews and confirms, and confirming compiles the classes <Name>.spec, <Name>.disp and <Name>.impl. Name is the package: letters and digits in dot-separated parts, each starting with a letter, with no percent sign, at most 215 characters. Document is the OpenAPI 2.0 document as a JSON object, never text or a URL, whose swagger member is 2.0; it must fit one card: formatted and escaped as the card carries it, it is at most 30,000 characters. A name this namespace already lists in any letter case, a name whose class begins with OcuPilot, a namespace whose code is stored in another database and %SYS are refused. An implementation class that already exists keeps its code.";
+Parameter DESCRIPTION = "Propose creating a spec-based REST service in this namespace from a whole OpenAPI 2.0 document. It creates nothing by itself: it answers a proposal the user reviews and confirms, and confirming compiles the classes <Name>.spec, <Name>.disp and <Name>.impl. Name is the package: letters and digits in dot-separated parts, each starting with a letter, with no percent sign, at most 215 characters. Document is the OpenAPI 2.0 document as a JSON object, never text or a URL, whose swagger member is 2.0; it must fit one card: formatted and escaped as the card carries it, it is at most 30,000 characters. A name this namespace already lists, or whose <Name>.spec or <Name>.disp class it already holds, in any letter case, a name whose class begins with OcuPilot, a package whose classes would be stored outside this namespace's own routines database, and %SYS are refused. An implementation class that already exists keeps its code.";
 
 /// <p>This tool creates its target (AD-54).</p>
 Parameter CREATES As BOOLEAN = 1;
@@ -77,7 +78,7 @@ ClassMethod InputSchema(pDescriptor As %String = "") As %DynamicObject
 {
     Set tSchema = {"type": "object", "properties": {}, "required": [], "additionalProperties": false}
     Set tProperties = tSchema.%Get("properties")
-    Do tProperties.%Set(..IdArgument(), {"type": "string", "description": "The package the new service takes: letters and digits in dot-separated parts, each starting with a letter, with no percent sign, at most 215 characters. The classes <Name>.spec, <Name>.disp and <Name>.impl are created. A name this namespace already lists, in any letter case, is refused, so check the REST API explorer first."})
+    Do tProperties.%Set(..IdArgument(), {"type": "string", "description": "The package the new service takes: letters and digits in dot-separated parts, each starting with a letter, with no percent sign, at most 215 characters. The classes <Name>.spec, <Name>.disp and <Name>.impl are created. A name this namespace already lists, or whose <Name>.spec or <Name>.disp class it already holds, in any letter case, is refused, so check the REST API explorer first."})
     Do tSchema.%Get("required").%Push(..IdArgument())
     Set tLimit = $FNumber(##class(OcuPilot.Screen.Tool.ExplorerSave).#CHANGEMAXLENGTH, ",")
     Do tProperties.%Set(..#DOCUMENTFIELD, {"type": "object", "description": ("The whole OpenAPI 2.0 document, as a JSON object (never a string or a URL), whose swagger member is the string 2.0. The user reviews it as sent, formatted, and it must fit one card: formatted and escaped as the card carries it, at most " _ tLimit _ " characters.")})
@@ -88,7 +89,7 @@ ClassMethod InputSchema(pDescriptor As %String = "") As %DynamicObject
     Quit tSchema
 }
 
-/// <p>The port's rules for a create, as the screen's Save refuses them (AD-55): the package
+/// <p>The port's rules for a create, as the port refuses them (AD-55): the package
 /// (<method>OcuPilot.Port.MgmntPort.NameProblem</method>), then the document
 /// (<method>OcuPilot.Port.MgmntPort.DocumentProblem</method>).</p>
 ClassMethod ArgumentProblem(pIdValue As %String, pArgs As %DynamicObject, Output pProblem As %String) As %Status

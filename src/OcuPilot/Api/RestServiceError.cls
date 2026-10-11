@@ -35,7 +35,7 @@ Parameter REASONBUILD = "The management API could not build a service from this 
 /// Nothing is sent.</p>
 Parameter DEPLOYED = "RESTSERVICE.DEPLOYED";
 
-Parameter REASONDEPLOYED = "A web application dispatches to this service, so it is not deleted here. Delete or repoint the web application first.";
+Parameter REASONDEPLOYED = "This row is a web application, or a web application dispatches to this service, so it is not deleted here. Web applications are deleted or repointed from the Web applications list.";
 
 /// <p>The longest document the port sends the management API, in characters of its JSON text.</p>
 Parameter DOCUMENTMAX = 1000000;

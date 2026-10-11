@@ -111,8 +111,8 @@ Parameter REASONNAMESPACE = "The management API refused to enter this namespace 
 /// <p>The endpoint reading and writing one spec-based service (Story 18.32).</p>
 Parameter ENDPOINTSERVICE = "Service";
 
-/// <p>The request type answering <code>{Name, Namespace}</code> for a service the namespace lists, in any letter
-/// case: the fresh read of a create.</p>
+/// <p>The request type answering <code>{Name, Namespace}</code> for a service the namespace lists, or whose
+/// specification or dispatch class it holds, in any letter case: the fresh read of a create.</p>
 Parameter TYPESTATE = "STATE";
 
 /// <p>The request type answering <code>{Name, Namespace, Implementation}</code> for a service the namespace lists
@@ -142,6 +142,9 @@ Parameter NAMEPATTERN = "^[A-Za-z][A-Za-z0-9]*(\.[A-Za-z][A-Za-z0-9]*)*$";
 
 /// <p>The suffix of a spec-based service's implementation class, which a delete keeps.</p>
 Parameter IMPLEMENTATIONSUFFIX = ".impl";
+
+/// <p>The suffix of a spec-based service's specification class.</p>
+Parameter SPECIFICATIONSUFFIX = ".spec";
 
 /// <p>The reason a namespace whose databases cannot be resolved is refused with.</p>
 Parameter REASONNAMESPACEUNKNOWN = "This instance cannot name the databases that namespace reads code from.";
@@ -280,7 +283,8 @@ ClassMethod ApplicationShapeOk(pApplication As %String) As %Boolean
 /// every other type's shape (<method>ApplicationShapeOk</method>), refused 400.</li>
 /// </ol>
 /// <p>Answers, at 200 unless stated: <parameter>TYPESTATE</parameter> <code>{Name, Namespace}</code> for a service
-/// the namespace lists in any letter case, else 404 <code>PORT.NOTFOUND</code>, not logged;
+/// the namespace lists in any letter case, or whose class the namespace holds (<method>Held</method>), else 404
+/// <code>PORT.NOTFOUND</code>, not logged;
 /// <parameter>TYPESERVICE</parameter> <code>{Name, Namespace, Implementation}</code>, the
 /// <parameter>IMPLEMENTATIONSUFFIX</parameter> class a delete keeps (<method>Resolved</method>);
 /// <parameter>TYPECREATE</parameter> <code>{Name, Namespace}</code> at the vendor's 201, or 200 where it replaced a
@@ -329,6 +333,14 @@ ClassMethod Service(pType As %String, ByRef pQuery, pBody As %DynamicAbstractObj
         }
         If pType = ..#TYPESTATE {
             Set tSC = ..Listed(tNamespace, tName, 0, .tRow, .pHttpStatus, .pFault)
+            If $$$ISERR(tSC) && (pHttpStatus = 404) {
+                Set tHeld = ..Held(tNamespace, tName)
+                If tHeld '= "" {
+                    Set tSC = $$$OK
+                    Set pFault = ""
+                    Set tRow = {"name": (tHeld)}
+                }
+            }
             If $$$ISERR(tSC) Quit
             Set pResult = {}
             Do pResult.%Set("Name", tRow.%Get("name"), "string")
@@ -381,7 +393,8 @@ ClassMethod NameProblem(pName As %String) As %String
 /// <p>The published sentence refusing the document <var>pBody</var> carries, or <code>""</code>: its
 /// <parameter>DOCUMENTFIELD</parameter> must be a parsed JSON object, never a string, whose <code>swagger</code> is
 /// the string <code>2.0</code>, and its JSON text at most
-/// <parameter>OcuPilot.Api.RestServiceError.DOCUMENTMAX</parameter> characters. Pure.</p>
+/// <parameter>OcuPilot.Api.RestServiceError.DOCUMENTMAX</parameter> characters; a text longer than the instance's
+/// longest string is refused, not raised. Pure.</p>
 ClassMethod DocumentProblem(pBody As %DynamicAbstractObject) As %String
 {
     Set tReason = ##class(OcuPilot.Api.RestServiceError).#REASONDOCUMENT
@@ -389,7 +402,12 @@ ClassMethod DocumentProblem(pBody As %DynamicAbstractObject) As %String
     If pBody.%GetTypeOf(..#DOCUMENTFIELD) '= "object" Quit tReason
     Set tDocument = pBody.%Get(..#DOCUMENTFIELD)
     If (tDocument.%GetTypeOf("swagger") '= "string") || (tDocument.%Get("swagger") '= "2.0") Quit tReason
-    If $Length(tDocument.%ToJSON()) > ##class(OcuPilot.Api.RestServiceError).#DOCUMENTMAX Quit tReason
+    Try {
+        Set tLong = ($Length(tDocument.%ToJSON()) > ##class(OcuPilot.Api.RestServiceError).#DOCUMENTMAX)
+    } Catch {
+        Set tLong = 1
+    }
+    If tLong Quit tReason
     Quit ""
 }
 
@@ -429,6 +447,22 @@ ClassMethod Listed(pNamespace As %String, pName As %String, pExact As %Boolean, 
     }
     If $IsObject(pRow) Quit $$$OK
     Quit ..Refuse(404, ##class(OcuPilot.Api.Error).#NOTFOUND, ##class(OcuPilot.Api.Error).#PORTNOTFOUND, ..#REASONUNLISTED, .pHttpStatus, .pFault)
+}
+
+/// <p>The package, as the instance spells it, of the class <var>pName</var><parameter>SPECIFICATIONSUFFIX</parameter>
+/// or <var>pName</var><parameter>DISPATCHSUFFIX</parameter> that <var>pNamespace</var> holds in any letter case, or
+/// <code>""</code>. It reads the class index (<code>^rINDEXCLASS</code>, which follows the namespace's package
+/// mappings), as a class create's name check does. The vendor's create rewrites the first and deletes the second, so a
+/// create's fresh read counts either as present (AD-54).</p>
+ClassMethod Held(pNamespace As %String, pName As %String) As %String [ Private ]
+{
+    Set tHeld = ""
+    For tSuffix = ..#SPECIFICATIONSUFFIX, ..#DISPATCHSUFFIX {
+        Set tHeld = $ListGet($Get(^|pNamespace|rINDEXCLASS($ZConvert(pName _ tSuffix, "U"))), 2)
+        If tHeld '= "" Quit
+    }
+    If tHeld = "" Quit ""
+    Quit $Piece(tHeld, ".", 1, $Length(tHeld, ".") - 1)
 }
 
 /// <p>The listed service a delete or a service read is about, in <var>pRow</var>: a name starting with

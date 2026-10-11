@@ -572,7 +572,8 @@ Method TestTheCreateAnswersEachVendorStatusInItsOwnWords()
 /// <p>The create's rules are checked before any vendor call (Story 18.32): a package that is empty, holds a space, a
 /// percent sign, an underscore, a leading digit or an empty part, or is over 215 characters is 422
 /// <code>RESTSERVICE.NAME</code> on <code>Name</code>; a document that is no object (text, an array, none), whose
-/// <code>swagger</code> is a number, another version or absent, or whose text is over 1,000,000 characters is 422
+/// <code>swagger</code> is a number, another version or absent, or whose text is over 1,000,000 characters (or longer
+/// than the instance's longest string) is 422
 /// <code>RESTSERVICE.DOCUMENT</code> on <code>Document</code>. A document sent as text never reaches the vendor.</p>
 /// <p>Mutation (Rule 19): accept any <code>swagger</code> in <method>OcuPilot.Port.MgmntPort.DocumentProblem</method> --
 /// the version legs go red; refuse at <code>&gt;=</code> the limits in <method>OcuPilot.Port.MgmntPort.NameProblem</method>
@@ -606,6 +607,10 @@ Method TestTheCreatesRulesAreCheckedBeforeTheVendor()
         Do $$$AssertEquals(..FaultText(tHttp, tFault), "422 RESTSERVICE.DOCUMENT " _ ##class(OcuPilot.Api.RestServiceError).#REASONDOCUMENT, "document " _ tI _ " is refused")
         Do $$$AssertEquals(tFault.detail.violations.%Get(0).field, "Document", "on Document")
     }
+    Set tChunk = $Translate($Justify("", 1000000), " ", "c")
+    Set tHuge = {"swagger": "2.0"}
+    For tI = 1:1:4 Do tHuge.%Set("part" _ tI, tChunk)
+    Do $$$AssertEquals(##class(OcuPilot.Port.MgmntPort).DocumentProblem({"Document": (tHuge)}), ##class(OcuPilot.Api.RestServiceError).#REASONDOCUMENT, "a document whose text is longer than the instance's longest string is refused, not raised")
     Set tSC = ..Service("POST", "USER", "OcuProbe1832Z", "", .tResult, .tHttp, .tFault)
     Do $$$AssertEquals(tHttp _ " " _ tFault.code, "422 RESTSERVICE.DOCUMENT", "a call with no body is refused too")
     Do $$$AssertEquals(##class(OcuPilot.Test.MgmntImplFixture).CallCount(), 0, "none of them reached the vendor")

@@ -58,7 +58,9 @@ ClassMethod PrivilegePairs(pDescriptor As %String = "", Output pResolved As %Boo
 }
 
 /// <p>WRITE on the routines database of the namespace the proposal stored in its <code>Namespace</code> argument, else
-/// of the request's scope, so a confirm writes where the proposal read (DW-2242, AD-8).</p>
+/// of the request's scope (DW-2242, AD-8). The create's mint stores it; the delete's stores none, so its pair is
+/// resolved for the confirming request's scope, as System Explorer's delete is, and the port checks WRITE again for the
+/// namespace it writes.</p>
 ClassMethod ArgumentPairs(pDescriptor As %String = "", pArgs As %DynamicObject, Output pResolved As %Boolean) As %List
 {
     Quit ##class(OcuPilot.Screen.Tool.ExplorerSave).CodeWritePairs(pArgs, .pResolved)

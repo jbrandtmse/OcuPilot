@@ -295,8 +295,9 @@ Method TestTheRulesRefuseTheAgentBeforeAnythingIsStored()
 /// <p>A name the namespace lists in another case is refused at the mint; a free name is minted, and refused at the confirm
 /// as a changed target once another session has built the same package in another case, whose three classes stand.</p>
 /// <p>Mutation (Rule 19): make the state read exact (<code>Listed</code> with <code>pExact</code> 1 in
-/// <method>OcuPilot.Port.MgmntPort.Service</method>) -- the mint accepts the other case, the confirm no longer sees the
-/// name taken and this goes red.</p>
+/// <method>OcuPilot.Port.MgmntPort.Service</method>, and <method>OcuPilot.Port.MgmntPort.Held</method> matching the
+/// class name as typed) -- the mint accepts the other case, the confirm no longer sees the name taken and this goes
+/// red.</p>
 Method TestANameListedInAnyCaseIsRefusedAtTheMintAndTheConfirm()
 {
     Do $$$AssertStatusOK($ClassMethod(..#PROBE, "Seed", ..#NAMESPACE, "OcuProbe1832A"), "a probe service is built")
@@ -309,6 +310,23 @@ Method TestANameListedInAnyCaseIsRefusedAtTheMintAndTheConfirm()
     Set tSC = ..ConfirmIn(tProposal, .tResult, .tHttp, .tCode)
     Do $$$AssertEquals(tHttp _ " " _ $Get(tCode), "409 " _ ##class(OcuPilot.Kernel.Proposal.Write).#TARGETCHANGED, "the confirm is refused as a moved target")
     Do $$$AssertEquals(..Classes("OCUPROBE1832B"), "111", "and the other session's service stands")
+}
+
+/// <p>AD-54: a name whose specification or dispatch class the namespace already holds, in any letter case, is refused at
+/// the mint although no service lists it, because the management API's create would rewrite the one and replace the
+/// other; the held class stands.</p>
+/// <p>Mutation (Rule 19): answer <code>""</code> from <method>OcuPilot.Port.MgmntPort.Held</method> -- both names are
+/// minted and this goes red.</p>
+Method TestANameWhoseClassesAreHeldIsRefusedAtTheMint()
+{
+    For tCase = $ListBuild("OcuProbe1832H.disp", "OcuProbe1832H"), $ListBuild("OcuProbe1832J.spec", "OCUPROBE1832J") {
+        Set tClass = $List(tCase, 1)
+        Do $$$AssertStatusOK($ClassMethod(..#PROBE, "SeedClass", ..#NAMESPACE, tClass), tClass _ " is held, and no service lists it")
+        Do $$$AssertEquals($ListFind($ClassMethod(..#PROBE, "Services", ..#NAMESPACE), $Piece(tClass, ".", 1)), 0, tClass _ ": no service of its package is listed")
+        Set tSC = ..Dispatch(..#CREATE, ..CreateInput($List(tCase, 2)), .tContent, .tIsError, .tProposal)
+        Do $$$AssertTrue($$$ISOK(tSC) && tIsError && (..CodeOf($Get(tContent)) = "TOOL.ARGUMENTS") && ($Get(tContent) [ "already present"), $List(tCase, 2) _ " is refused at the mint: " _ $Extract($Get(tContent), 1, 240))
+        Do $$$AssertTrue($ClassMethod(..#PROBE, "HasClass", ..#NAMESPACE, tClass), tClass _ " stands")
+    }
 }
 
 /// <p>C3's build failure: a 2.0 document the management API cannot build passes the rules and the mint, and its confirm

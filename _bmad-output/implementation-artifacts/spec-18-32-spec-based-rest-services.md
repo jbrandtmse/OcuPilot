@@ -112,6 +112,35 @@ Under `src/OcuPilot/` unless `ui/`; siblings per Rule 31.
 - **C5.** Given the rosters, when the suites run, then both tools are pinned, `rest-service` is covered and the Fixed strings stay within the bound.
 - **Integration.** Given a seeded service on `ocupilot-ci`, when the explorer's Delete runs with its typed name, then `webapp.restapis.delete` removes it via the screen action route and its row leaves the list (the browser spec).
 
+### Review Findings
+
+Code review 2026-10-11 (four layers, full tier): 32 rows, 3 medium and 14 low entries, 0 high.
+
+- [x] [Review][Patch] (med, fix-risk med, in-story, AD-54) The create's fresh read missed a `<Name>.spec` or `<Name>.disp` class no service lists, and the vendor's create rewrote or replaced it (measured: a hand-written `OcuProbe1832Q.disp` was replaced, `newApplication` 1). `STATE` now also counts a held class in any case (`MgmntPort.Held`, the class index, as Story 20.20's create checks); the Code Map's `STATE` line is extended to match. Pinned by `RestServiceWrite.TestANameWhoseClassesAreHeldIsRefusedAtTheMint` [src/OcuPilot/Port/MgmntPort.cls:457]
+- [x] [Review][Patch] (med, fix-risk low, in-story, Rule 30) `RestServiceDescriptor` asserted the explorer's unchanged prompt count as a literal; the leg is removed [src/OcuPilot/Test/RestServiceDescriptor.cls:39]
+- [x] [Review][Patch] (low) `RestServiceWrite.ArgumentPairs` claimed a confirm writes where the proposal read; the delete stores no `Namespace`. Doc corrected; the behavior is DW-2253's root cause (occurrence appended) [src/OcuPilot/Screen/Tool/RestServiceWrite.cls:64]
+- [x] [Review][Patch] (low) `DocumentProblem` raised `<MAXSTRING>` (500, logged) on a document longer than the longest string; it now refuses it 422 `RESTSERVICE.DOCUMENT`, with a test leg [src/OcuPilot/Port/MgmntPort.cls:408]
+- [x] [Review][Patch] (low) The create's `DESCRIPTION` misstated the code-database rule (it is per package, not per namespace) and `ArgumentProblem`'s doc named a screen Save that is Story 18.34's [src/OcuPilot/Screen/Tool/RestServiceCreate.cls:25]
+- [x] [Review][Patch] (low) `RestServiceDescriptor`'s header and port leg claimed script forms they do not assert [src/OcuPilot/Test/RestServiceDescriptor.cls:1]
+- [x] [Review][Patch] (low) `REASONDEPLOYED` told the person to delete or repoint "the web application" when the row is one; reworded to cover both refusals [src/OcuPilot/Api/RestServiceError.cls:38]
+- [x] [Review][Patch] (low, Rule 19) Missing `mutation:` lines: C2's mint-time `OcuPilot*` refusal, and C1/C3's case-blind state read, card limit, build refusal and exact delete match. Demonstrated, runs 191 to 196, under `## Verification`
+- [x] [Review][Defer] (med, fix-risk high, in-story) The delete's deployed check sees only direct dispatch by the same namespace's web applications; a Forward-reached or cross-namespace-dispatched service reads undeployed [src/OcuPilot/Port/MgmntPort.cls:473] — deferred: DW-2311, escalated owner=burndown
+
+Rejected:
+
+- (low, by-design) `RESTSERVICE.VALIDATION` is declared but unsent: Task 1 names it, in `DocDbAppError`'s shape.
+- (low, by-design) The delete has no `%`, `%SYS` or mapped-database refusal: "no `AgentProblem` (as 19.2's delete)". The `%SYS` services sit in read-only IRISLIB (measured), so the vendor delete fails and the read-back reads present.
+- (low, by-design) `SERVICE`'s `Implementation` is unused: the Code Map specifies it.
+- (low, wontfix-accepted) Limits written as literals in sentences. reopen_if: `NAMEMAX`, `DOCUMENTMAX` or `CHANGEMAXLENGTH` changes.
+- (low, wontfix-accepted) `ReadTool`'s count words are stale ("one hundred and eighty-five write tools"). The line is Epic 20's too. reopen_if: the phrase is still there after Epic 20 merges.
+- (low, wontfix-theoretical) A race between the confirm's re-read and the vendor create. It becomes real only if another tool creates the package within that window; OcuPilot's own creates hold AD-34's lock.
+- (low, wontfix-accepted) `ConfirmProblem` repeats `ExplorerCreate`'s four-line wrapper, as the Code Map sanctions; a shared helper would couple the Atelier and management API tools. reopen_if: a fourth wrapper of that shape.
+- (low, wontfix-accepted) `Test/MgmntPort.cls` is 713 lines. reopen_if: a story adds a method to it.
+- (false) `COVEREDTYPES` and `Test/Prohibited.cls` :215 and :233 edits: list-entry appends that Tasks 4 and 14 direct; Epic 20 does not touch either file.
+- (false) The browser spec exercises only the leading-slash branch: a deployed service is listed only as its web application's row; the dispatch branch is pinned in `MgmntPort` and `RestServiceWrite`.
+- (false) `RestServiceReadBack` untracked: QA's file, committed by the lead. `ci-timings.json`: `ci.test.mjs` passes without the entry (87 of 87).
+- (AD-10, decided) A screen delete of an unlisted `OcuPilot*` name answers 404 `PORT.NOTFOUND`: nothing is sent, AD-10 judges the resolved target, and the matrix's Delete row governs an unlisted name; by-design.
+
 ## Spec Change Log
 
 - 2026-10-11, lead: split A on the orchestrator's ruling (feature `7ce024f9`, Rule 5). The person's Create dialog (`RestServiceSave`, `POST /rest-service`, the page, dialog, store, their specs and Fixed strings, the C1 screen-create leg, the `EndpointCoverage` and `SaveHoldCoverage` rows) moved to Story 18.34. The intent's Approach, the person-create line and the Create and Rules rows were narrowed to match; status reset to `draft` for a re-plan in place.
@@ -170,6 +199,8 @@ Under `src/OcuPilot/` unless `ui/`; siblings per Rule 31.
 - `(loop)` `cd ui && node tools/ci-runner.mjs --container ocupilot-ci --class OcuPilot.Test.<C>`, one at a time, totals checked in `%UnitTest_Result`: the four new classes; `MgmntPort`, `MgmntPortWire`, `DraftRegistry`, `DraftRoute`; each class Task 14 changed.
 - `(loop)` `cd ui && npm run test:tools && npm run test:components`; `uv run scripts/check-objectscript.py`; `bash scripts/lint-docs.sh`.
 - `(loop)` With `OCUPILOT_BROWSER_ORIGIN=http://localhost:52776`, `OCUPILOT_BROWSER_CONTAINER=ocupilot-ci`: `cd ui && npm run build && docker cp dist/ocupilot-ui/browser/. ocupilot-ci:/durable/iris/csp/ocupilot/`, then `node --test --test-concurrency=1 browser/rest-services-write.browser-spec.mjs browser/rest-apis.browser-spec.mjs`. Re-measure the bundle (3,213,418 bytes at 18.30; warning 3326kB; DW-1166 if crossed).
+- `(QA)` `src/OcuPilot/Test/RestServiceReadBack.cls` (run 178): the delete's read-back reads `present` when the vendor answered 200 and the service is still listed, `notFound` once it is not; fixture tier, needs no principals.
+- (CR) After the review patches, on `ocupilot-ci` with the source loaded: `MgmntPort` 17 (run 197), `RestServiceWrite` 12 (run 198), `RestServiceDescriptor` 8 (run 187), `RestServiceGate` 3 (run 188), `RestServiceReadBack` 1 (run 189), `MgmntPortWire` 8 (run 199), `DraftRegistry` 9 (run 200), all green; S0 read after.
 - Full sweeps: the runner's (ObjectScript), CI's (browser). End at S0.
 
 **Mutations** (Rule 19), applied on `ocupilot-ci` with the mutated class and its descendants recompiled:
@@ -182,6 +213,14 @@ Under `src/OcuPilot/` unless `ui/`; siblings per Rule 31.
 - mutation: the pair at Confirm, `RestServiceWrite.ArgumentPairs` answers no pair → `RestServiceGate.TestWithReadButNotWriteOnTheCodeDatabaseEveryWriteIsRefused` red (run 160); `Resolved` without its leading-slash refusal → `rest-services-write.browser-spec.mjs` C3 red.
 - mutation: C5 `webapp.restapis.create` removed from `ReadTool`'s names → `ReadTool.TestTheRegistryListsDescriptorReadsAndInheritedKinds` red (run 168); the create's `SurfaceCoverage` row removed → `SurfaceCoverage.TestEveryWriteToolHasACoverageRowAndBack` red (run 169).
 - mutation: Integration `DESTRUCTIVE_CONSEQUENCES` drops `RestApiList` → `screen-action-handler.spec.ts` "registers Delete" and the browser spec's Integration test red.
+- mutation: (QA) Integration, observed: that same drop reddens 1 of 112 in `screen-action-handler.spec.ts` ("registers Delete"), and with the bundle rebuilt and redeployed both `rest-services-write.browser-spec.mjs` tests wait in vain for the row menu's trigger.
+- mutation: (QA) C1, DW-2309: `MgmntPort.Service` answers 200 without sending the vendor delete → `RestServiceWrite.TestTheScreensDeleteRemovesTheServiceOverTheWire`, `TestTheAgentsDeleteIsGovernedThenConfirmedAndKeepsTheImplementation` and `TestAnExistingImplementationKeepsItsCode` red (run 177); `RestServiceDelete.ReadBackGone` answers `1` → `RestServiceReadBack.TestAVendorDeleteThatRemovedNothingReadsBackPresent` red (run 172).
+- mutation: (QA) C3, AD-21: `MgmntPort.Build` hands the vendor the document's text → `MgmntPort.TestTheCreateAnswersEachVendorStatusInItsOwnWords` red (run 175); `DocumentProblem` accepts a text `Document` → `MgmntPort.TestTheCreatesRulesAreCheckedBeforeTheVendor` red (run 176).
+- mutation: (QA) C4: the create's key `false` in `Baseline` → `RestServiceDescriptor.TestTheBaselineKeysShipAsTheSpecSays` red (run 173).
+- mutation: (QA) C5: `rest-service` dropped from `Prohibited.COVEREDTYPES` → `Prohibited.TestAnUncoveredEntityTypeIsRefusedWholesale` and `TestNoRegisteredWriteToolHasAnUncoveredEntityType` red (run 174).
+- mutation: (CR) C1, AD-54: `MgmntPort.Held` answers `""` → `RestServiceWrite.TestANameWhoseClassesAreHeldIsRefusedAtTheMint` red (run 190).
+- mutation: (CR) C2: the `IsOcuPilotCode` refusal removed from `RestServiceCreateMint.Mint` → `RestServiceWrite.TestTheCodeRulesAndOcuPilotsOwnCodeAreRefusedOnBothTools` red (run 191).
+- mutation: (CR) C3: the card-width refusal in `RestServiceCreateMint.Mint` dropped → `RestServiceWrite.TestTheRulesRefuseTheAgentBeforeAnythingIsStored` red (run 192); the state read exact → `MgmntPort.TestTheServiceReadsAreExactAndRefuseADeployedService` red (run 193); a `CreateApplication` 400 or 404 sent to `Fail` → `MgmntPort.TestTheCreateAnswersEachVendorStatusInItsOwnWords` red (run 194); `Resolved` matching case-blind → `MgmntPort.TestTheDeleteIsSentOnlyForAnUndeployedListedService` and `TestTheServiceReadsAreExactAndRefuseADeployedService` red (run 195); the oversized-text guard in `DocumentProblem` accepting → `MgmntPort.TestTheCreatesRulesAreCheckedBeforeTheVendor` red (run 196).
 
 **S0:** no `OcuProbe1832*` class in any case in USER or HSCUSTOM; no `/api/ocuprobe1832*` application; `AuthOptionsProbe.Remaining()` 0.
 

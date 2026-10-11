@@ -1,7 +1,6 @@
 /// <p>Pins Story 18.32's declarations: the REST API explorer's row action and empty state, the two write tools' kinds,
 /// port, pairs, schemas, read and write types, fingerprint subject and consequence, the entity type the kernel covers
-/// without an id rule, the two baseline keys, the codes and their sentences, and the port's write pairs and script
-/// forms.</p>
+/// without an id rule, the two baseline keys, the codes and their sentences, and the port's write pairs.</p>
 /// <p><b>Reads only.</b> Every leg is a pure question to a class; the pair legs read the stock <code>USER</code> and <code>HSCUSTOM</code> database mappings.</p>
 Class OcuPilot.Test.RestServiceDescriptor Extends %UnitTest.TestCase
 {
@@ -50,7 +49,6 @@ Method TestTheExplorerDeclaresItsDeleteAndItsInvitation()
     Do $$$AssertEquals("[" _ tTable.%Get("emptyNextKey") _ "] " _ tTable.%Get("emptyAgentKey"), "[] restApiListEmptyAgent", "the empty state invites the agent")
     Set tRead = $ClassMethod(tClass, "Read")
     Do $$$AssertEquals(tRead.%Get("source").%Get("port") _ " " _ tRead.%Get("source").%Get("endpoint") _ " " _ tRead.%Get("source").%Get("type"), "mgmnt Applications LIST", "the read is the management API's explorer list")
-    Do $$$AssertEquals($ClassMethod(tClass, "Field", "suggestedPrompts").%Size(), 3, "three prompts")
 }
 
 /// <p>The create is an advertised, non-destructive agent-only create and the delete an advertised, destructive action
@@ -176,8 +174,8 @@ Method TestTheCodesAnswerTheirSentences()
     Do $$$AssertEquals(##class(OcuPilot.Api.DocDbAppError).ReasonFor("RESTSERVICE.NAME"), "", "another family's class answers none of them")
 }
 
-/// <p>The port declares the pair its writes add, <code>%Development:USE</code>, and a script form for its two writes
-/// alone (AD-8, AD-59).</p>
+/// <p>The port declares the pair its writes add, <code>%Development:USE</code>, and WRITE on the routines database of
+/// the namespace a write names (AD-8).</p>
 /// <p>Mutation (Rule 19): change <parameter>OcuPilot.Port.MgmntPort.WRITEPAIRS</parameter> -- this goes red.</p>
 Method TestThePortDeclaresItsWritePairs()
 {
