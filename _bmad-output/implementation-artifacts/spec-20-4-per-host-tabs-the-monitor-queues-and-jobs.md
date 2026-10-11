@@ -252,6 +252,29 @@ deferred:
 - **AC6 (reads change nothing):** Given every new read, when it runs, then the vendor's queue, active-message, job-request and job-status globals and the probe's header statuses are unchanged, a dead job included where Task 0 allows.
 - **AC7 (navigation):** Given the tab group, when Production items' name cell or a monitor row is opened, then the item's Status tab opens. A setting change's toast still opens Item settings on its item, and an item change's toast still opens Production items.
 
+### Review Findings
+
+Code review 2026-10-11 (full-opus; blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor; diff `00b1beef` plus QA's tree). 34 rows, 17 entries after grouping: high 0, medium 3, low 14. Every medium is patched.
+
+- [x] [Review][Patch] (med, fix-risk low) A runtime read that cannot take the production's runtime lock (a start, stop or update holds it) answered a logged 500, not `Invoke`'s documented 503: `Mapped` now answers `CODERUNTIMELOCK` with `Unavailable`; pinned by `InteropHostEdges.TestABusyRuntimeLockAnswersUnavailable` [InteropPort.cls `Mapped`]
+- [x] [Review][Patch] (med, fix-risk low) `ProductionProbe.Release` slept a fixed 3 s for the vendor's dead-job repair; it now waits, 15 s at most, until the ended jobs' rows leave the host monitor [ProductionProbe.cls `Release`]
+- [x] [Review][Patch] (med, fix-risk low) The zone leg's local half assumed a UTC instance; its oracle is now the reading process's own offset [InteropHostEdges.cls `TestTheStampsAreConvertedOnceToTheZoneOfTheReader`]
+- [x] [Review][Patch] (low) `InteropHostRead`'s header and its snapshot test's mutation note said dead jobs are pinned only on the row builder; they now name `InteropHostEdges`' Troubled leg
+- [x] [Review][Patch] (low) `TestAStoppedProductionAnswersNoRuntimeRow`'s comment claimed a Queues leg it never runs; the clause and an unused `Kill` are gone
+- [x] [Review][Patch] (low) `GatherJobs`' comment said it keeps `GatherHosts`' hosts; it now says every host `EnumerateHostStatus` answers, the vendor's included
+- [x] [Review][Patch] (low) `InteropHostEdges`' header now states the child session's sign-in requirement and the lock holder
+- [x] [Review][Patch] (low) The browser spec's header and `TestEachReadToolIsRegistered`'s comment claimed checks they do not make; reworded
+- [x] [Review][Patch] (low) `InteropHostRead` read `.Status` on a lookup that can miss (`<INVALID OREF>` in place of a named failure); guarded
+- [x] [Review][Patch] (low) `Invoke`'s comment listed no result for the nine reads; it points at `InvokeRuntime`
+- [x] [Review][Defer] (low) Log and Messages match the item's name in any production, case-insensitively: by-design, the classic statements do the same; the port's comments now say so - DW-2303
+- [x] [Review][Defer] (low) Jobs omits `Ens.MonitorService`, `Ens.Alarm` and `Ens.Alert`, which `EnumerateHostStatus` skips: by-design (Tasks) - DW-2302
+- [x] [Review][Defer] (low) A pool-size-0 process's Jobs tab reads no row (inference): by-design, the classic per-host tab reads the same query - DW-2304
+- [x] [Review][Defer] (low) A monitor row links the Monitor role to a Status tab it is refused: wontfix-accepted, row links are drawn whatever the target's pairs - DW-2305
+- [x] [Review][Defer] (low) The reads' `%ResultSet` loops drop `Next()`'s status: wontfix-theoretical - DW-2306
+- [x] [Review][Defer] (low) AC6's snapshot covers the operation's queue and job, not the whole trees: wontfix-accepted, the whole trees move on their own - DW-2307
+- [x] [Review][Defer] (low) `InteropHostEdges` is 615 lines: wontfix-accepted until it next grows - DW-2308
+- Rejected: the spec's pre-merge counts (the fix edits this spec); a Jobs-tab `rowTarget` (Registry refuses one on `detail`); an orphan `Ens.Actor` entry shown on every pool-size-0 tab (the classic page keeps it as `*Deleted*`); AC2's stopped-production leg as unfalsifiable (a read answering configured items without vendor rows turns it red); clause-level mutation lines for AC1-AC3 (one per AC is the bar, and each has one); AC4's tool-call refusal (InteropFloor pins each role's tool roster, the tool shares the screen's gate); Status's missing `Item` (the matrix names its fields; the composite carries the parent); the gate comments' "before any vendor call" and the monitor's "light" (both hold).
+
 ## Spec Change Log
 
 ## Review Triage Log
@@ -460,6 +483,33 @@ This story's edits there are appended roster rows and list entries, plus the cou
 - mutation: P8 and AC1, `InteropItemSettingListPage` hosting `<app-list-page />` again (rebuilt and redeployed) -> `interop-host-tabs.browser-spec.mjs` "the Settings tab carries the same strip" went red with an empty strip; reverted byte for byte (the bundle hash `main-QGQHPIB6` is the unmutated build's), rebuilt, redeployed and green.
 - mutation: P8 and AC6, `JobRow`'s `Dead` forced false -> `InteropHostDescriptor.TestAJobNoProcessHoldsReadsDead` went red, and so did `InteropHostEdges.TestATroubledProductionStillAnswersItsRowsAndChangesNothing`.
 
+**QA stage (2026-10-11, slot B; each mutation applied to the throwaway's copy of the source, reloaded, run, reverted byte-identical and reloaded, so the worktree never held one):**
+
+- (QA) `src/OcuPilot/Test/InteropHostEdges.cls` (modified, 548 lines, 7 tests): `TestEachRowCarriesTheOrderAndFiguresTheVendorGives` and `TestAHostWithNoQueueOrJobAnswersNoRow`, with the helpers `VendorRow` and `Clock`. No new class: it would need the arming roster and the shard timings, which this stage does not edit.
+- (QA) `src/OcuPilot/Test/InteropHostRead.cls` (modified): `TestTheStampsAreTheInstancesLocalClockTime` reads the stored columns raw. Its oracle applied the vendor's conversion to `%EXTERNAL(...)`, which already converts; read by a process under `TZ=PST8` it expected 13:23:12.126 where the port, converting once, answers 21:23:12.126 for a stamp stored 05:23:12.126.
+- mutation: AC1, `InteropItemQueueTab`'s `tab` dropped -> `InteropHostDescriptor.TestTheItemTabsFormOneGroupInOrder` and `TestTheNineDeclarationsRegister` went red.
+- mutation: AC2, `GatherHosts` no longer leaving out the hosts the production does not configure -> `InteropHostRead.TestEachEndpointAnswersTheProbesRows` went red.
+- AC2 equivalence: `LiveCurrent` answering the current production whatever its state leaves `InteropHostRead` and `InteropHostEdges` green. Measured: a production stopped with force with messages queued reads state 3 (Suspended) with `EnumerateHostStatus` and `EnumerateJobStatus` answering no row, and a Stopped one names no production, so the word test guards nothing observable on this vendor. The identity-clause mutation above carries AC2.
+- mutation: AC3, `ItemQueueName` ignoring pool size 0 -> `InteropHostDescriptor.TestAnItemsQueueFollowsItsKindAndPoolSize` went red.
+- mutation: AC4, `JOBPAIRS` without `%Ens_Jobs:READ` -> `InteropHostGate.TestEachMissingPairIsRefusedByNameThroughThePort` and `TestAPrincipalHoldingExactlyAnEndpointsPairsReadsItsRows` went red.
+- mutation: AC5, `ResolveItem` without its ambiguity refusal -> `InteropHostRead.TestAnInputThatNamesNoReadIsRefusedByName` went red.
+- mutation: AC6, `GatherQueueEntries` calling `Ens.Queue.AbortItem` on each entry it reads -> `InteropHostRead.TestNoReadChangesWhatTheVendorKeeps` ("no read changed the queue ...") went red, with two row legs.
+- mutation: AC7, `documentScreenFor` answering null for Production items -> `navigation.test.mjs` "Story 20.4: the Status tab is what an item row opens" ("the Production items name cell opens the Status tab") went red; reverted with `git checkout`.
+- mutation: `LOGSQL` ordered by `ID` ascending -> `InteropHostEdges.TestEachRowCarriesTheOrderAndFiguresTheVendorGives` ("the log is newest first", "its newest line ...") went red; `InteropHostRead` stayed green, so the Log tab's order had no pin.
+- mutation: `QueueEntryRow` answering the index as the priority -> the same test ("each is listed under the priority and index the vendor's queue gives it") went red; `InteropHostRead` stayed green.
+- mutation: `HostRow` answering `Count` from the elapsed-time column -> the same test's two monitor legs went red.
+- mutation: `ReadItemStatus` copying `Status` and `LastActivity` but not `AdapterState` -> "the item's status carries the monitor's light" went red.
+- mutation: `JobRow` answering the adapter state as the status -> "the operation's job row is the vendor's" went red.
+- mutation: `ListQueues` reading `Created` from the count column -> "the operation's queue row is the vendor's" went red.
+- mutation: `ListQueueEntries` answering 404 for an empty queue -> `InteropHostEdges.TestAHostWithNoQueueOrJobAnswersNoRow` (the service's queue and the missing queue) went red; every other test stayed green.
+- mutation: `LocalStamp` reformatting without converting, `InteropHostRead` run under `TZ=PST8` -> `TestTheStampsAreTheInstancesLocalClockTime` went red on its three stamp legs. Before the oracle change the same run was red with `LocalStamp` correct.
+- Final tree, each class run alone: `InteropHostEdges` 7, `InteropHostRead` 7, `InteropHostGate` 3, `InteropHostDescriptor` 8 (runs 610-613), `interop-host-tabs.browser-spec.mjs` 4 of 4.
+
+**Code review (2026-10-11, slot B, applied to the throwaway's copy only, reverted byte-identical and reloaded):**
+
+- mutation: the runtime-lock test dropped from `InteropPort.Mapped` -> `InteropHostEdges.TestABusyRuntimeLockAnswersUnavailable` went red (run 615); green again on the reverted tree (run 616).
+- After the review patches, each class run alone: `InteropHostEdges` 8, `InteropHostRead` 7, `InteropHostGate` 3, `InteropHostDescriptor` 8, `InteropControl` 11, `InteropItemControl` 6, `InteropSettingControl` 7 (runs 616-622); `interop-host-tabs.browser-spec.mjs` 4 of 4; `npm run test:tools` 1907.
+
 ## Auto Run Result
 
 Status: done
@@ -502,7 +552,7 @@ It adds no write and no governance key, and no posture question remains. Flagged
 
 **Verification (final tree, on the freshly synced `ocupilot-b-ci`).**
 
-- ObjectScript classes, each run alone, every test passing: `InteropHostEdges` 5, `InteropHostRead` 7, `InteropHostGate` 3, `InteropHostDescriptor` 8, `InteropSettingDescriptor` 12, `InteropSettingControl` 7, `InteropItemControl` 6, `InteropControl` 11, `InteropFloor` 7, `InteropFloorTurn` 1, `Navigation` 14, `ReadTool` 28, `Descriptor` 60, `SurfaceCoverage` 4, `InteropItemGate` 5, `InteropSettingGate` 5, `InteropDescriptor` 12, `ToolRoundTrip` 2 (runs 171 to 188).
+- ObjectScript classes, each run alone, every test passing: `InteropHostEdges` 7, `InteropHostRead` 7, `InteropHostGate` 3, `InteropHostDescriptor` 8, `InteropSettingDescriptor` 12, `InteropSettingControl` 7, `InteropItemControl` 6, `InteropControl` 11, `InteropFloor` 7, `InteropFloorTurn` 1, `Navigation` 14, `ReadTool` 28, `Descriptor` 60, `SurfaceCoverage` 4, `InteropItemGate` 5, `InteropSettingGate` 5, `InteropDescriptor` 12, `ToolRoundTrip` 2 (runs 171 to 188).
 - `uv run scripts/check-objectscript.py`: 0 problems over 1873 files. `bash scripts/lint-docs.sh`: 0 issues, 0 prose problems. `npm run test:tools`: 1907 pass. `npm run test:components`: 220 files, 2800 tests pass. `node tools/screen-mirror.mjs --check`: 170 descriptors, 11 areas, 68 entity types.
 - Browser specs, one per call on the rebuilt, redeployed bundle: `interop-host-tabs` 4 of 4, `interop-items` 3 of 3, `interop-item-settings` 3 of 3, `a11y-structural-invariants` 13 of 13 on the first and the third run. Two runs between them failed on screens this story does not touch: one visit of `security/auditing/user-events` did not settle within 20 s, and one run failed before measuring, cause not captured.
 - Bundle initial total 3,245,971 bytes (`main` 3,040,500 and `styles` 205,471) under `maximumWarning` 3326kB; `angular.json` unchanged.

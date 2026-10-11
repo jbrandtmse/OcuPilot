@@ -2,8 +2,9 @@
 /// (AD-7, AD-24, AD-62): a Troubled production still answers its rows and a dead job is answered <code>Dead</code> and left
 /// as it is; the Messages tab holds the headers an item sourced as well as those sent to it; a business process of pool
 /// size 0 reads only its own entries of the shared <code>Ens.Actor</code> queue; a row cap of one answers one row on every
-/// endpoint; and a header's and a log row's stamps are converted from UTC once, to the zone of the process that reads
-/// them.</p>
+/// endpoint; a log is newest first and each row carries the keys and figures the vendor's own queries give; a host with
+/// no queue or job reads no row; a read that cannot take the production's runtime lock answers 503; and a header's and a
+/// log row's stamps are converted from UTC once, to the zone of the process that reads them.</p>
 /// <p>The zone leg runs the reads in a child process started with the environment variable <code>TZ</code> set, because
 /// the conversion follows the operating system's zone for the process: a process can set <code>$ZTIMEZONE</code> without
 /// changing it. The expected stamp is the stored UTC value moved by the child's offset, computed by arithmetic on the day
@@ -11,9 +12,11 @@
 /// <p><b>What it needs from the environment:</b> a <code>USER</code> namespace that runs interoperability,
 /// <parameter>ARMINGVARIABLE</parameter> reading <code>1</code> and <code>%System_CallOut:USE</code>, because it
 /// <b>compiles a probe production in <code>USER</code></b> (<class>OcuPilot.Test.ProductionProbe</class>), starts it, hangs
-/// its operation, sends it messages, leaves it Troubled, queues headers in <code>Ens.Actor</code> and starts a child
-/// session. It stops and removes the probe, the queued entries and the rows it left, after the last test. One class per
-/// run.</p>
+/// its operation, sends it messages, leaves it Troubled, queues headers in <code>Ens.Actor</code>, holds the production's
+/// runtime lock from a child process for a few seconds, and starts a child <code>iris session</code>, which signs in
+/// without a password, as the operating system's user of the instance does in the container, and must hold the nine
+/// reads' pairs. It stops and removes the probe, the queued entries and the rows it left, after the last test. One class
+/// per run.</p>
 Class OcuPilot.Test.InteropHostEdges Extends %UnitTest.TestCase
 {
 
@@ -366,9 +369,160 @@ Method TestARowCapOfOneAnswersOneRowOnEveryEndpoint()
     }
 }
 
+/// <p>AC1, AC2, AC3: the Log tab is newest first, its rows naming the job Jobs lists; each queue entry carries the priority
+/// and index the vendor's queue lists it under; and the monitor's, the item status's, the jobs' and the queues' rows carry the
+/// figures the vendor's own queries give for the same hosts (type, light, last activity, queue and message counts, retry,
+/// active message), but for the elapsed time, which moves.</p>
+/// <p>Mutation (Rule 19): <parameter>OcuPilot.Port.InteropPort:LOGSQL</parameter> ordered by <code>ID</code> ascending -- the
+/// log leg goes red; <method>OcuPilot.Port.InteropPort.QueueEntryRow</method> answering the index as the priority -- the entry
+/// leg; <method>OcuPilot.Port.InteropPort.HostRow</method> answering the elapsed time as the message count -- the monitor leg.</p>
+Method TestEachRowCarriesTheOrderAndFiguresTheVendorGives()
+{
+    Do $$$AssertStatusOK(..Arm(), "the probe runs with its operation hung on one message and two waiting")
+    Set tMonitor = ..ProbeRows("Monitor", .tHttp)
+    For tName = ..#OPNAME, ..#SVCNAME {
+        Set tVendor = ..VendorRow("Ens.Util.Statistics:EnumerateHostStatus", "", 1, tName)
+        Set tHost = $ClassMethod(..#READ, "RowWhere", tMonitor, "Name", tName)
+        Do $$$AssertEquals($Select($IsObject(tHost): tHost.Type _ "|" _ tHost.AdapterState _ "|" _ tHost.LastActivity _ "|" _ tHost.Queue _ "|" _ tHost.Count, 1: "none"), $ListGet(tVendor, 2) _ "|" _ $ListGet(tVendor, 4) _ "|" _ ..Clock($ListGet(tVendor, 5)) _ "|" _ +$ListGet(tVendor, 7) _ "|" _ +$ListGet(tVendor, 8), tName _ ": its monitor row is the vendor's")
+    }
+    Set tVendor = ..VendorRow("Ens.Util.Statistics:EnumerateHostStatus", "", 1, ..#OPNAME)
+    Set tStatus = ..ProbeRows("ItemStatus", .tHttp)
+    Do $$$AssertEquals($Select(..SizeOf(tStatus) = 1: tStatus.%Get(0).Status _ "|" _ tStatus.%Get(0).AdapterState _ "|" _ tStatus.%Get(0).LastActivity, 1: "none"), $ListGet(tVendor, 3) _ "|" _ $ListGet(tVendor, 4) _ "|" _ ..Clock($ListGet(tVendor, 5)), "the item's status carries the monitor's light")
+    Set tJob = $ClassMethod(..#READ, "RowWhere", ..ProbeRows("Jobs", .tHttp), "Host", ..#OPNAME)
+    Set tVendor = ..VendorRow("Ens.Util.Statistics:EnumerateJobStatus", ..#OPNAME, 1, ..#OPNAME)
+    Do $$$AssertEquals($Select($IsObject(tJob): tJob.Job _ "|" _ tJob.Status _ "|" _ tJob.AdapterState _ "|" _ tJob.LastActivity _ "|" _ tJob.Retry _ "|" _ tJob.ActiveMessage, 1: "none"), $ListGet(tVendor, 2) _ "|" _ $ListGet(tVendor, 3) _ "|" _ $ListGet(tVendor, 4) _ "|" _ ..Clock($ListGet(tVendor, 5)) _ "|" _ +$ListGet(tVendor, 8) _ "|" _ $ListGet(tVendor, 9), "the operation's job row is the vendor's")
+
+    Set tLog = ..ProbeRows("ItemLog", .tHttp)
+    Do $$$AssertTrue(..SizeOf(tLog) > 1, "the operation's log holds its start line and its message line")
+    If (..SizeOf(tLog) > 1) && $IsObject(tJob) {
+        Do $$$AssertTrue(+tLog.%Get(0).ID > +tLog.%Get(1).ID, "the log is newest first")
+        Do $$$AssertEquals(tLog.%Get(0).Text _ "|" _ tLog.%Get(0).Job, $Parameter(..#PROBE, "LOGTEXT") _ "|" _ tJob.Job, "its newest line is the one the operation wrote for its message, written by the job Jobs lists")
+    }
+
+    Set tEntries = ..ProbeRows("QueueItems", .tHttp)
+    If '$IsObject(tEntries) Set tEntries = []
+    Set (tSeen, tVendorSeen) = ""
+    Set tIterator = tEntries.%GetIterator()
+    While tIterator.%GetNext(.tAt, .tEntry) {
+        Set tVendor = ..VendorRow("Ens.Queue:EnumerateItem", ..#OPNAME, 3, tEntry.MessageId)
+        Set tSeen = tSeen _ tEntry.Priority _ "/" _ tEntry.Index _ " "
+        Set tVendorSeen = tVendorSeen _ +$ListGet(tVendor, 1) _ "/" _ +$ListGet(tVendor, 2) _ " "
+    }
+    Do $$$AssertTrue(tSeen '= "", "the queue holds entries")
+    Do $$$AssertEquals(tSeen, tVendorSeen, "each is listed under the priority and index the vendor's queue gives it")
+    Set tQueue = $ClassMethod(..#READ, "RowWhere", ..ProbeRows("Queues", .tHttp), "Name", ..#OPNAME)
+    Set tVendor = ..VendorRow("Ens.Queue:Enumerate", "", 1, ..#OPNAME)
+    Do $$$AssertEquals($Select($IsObject(tQueue): tQueue.Count _ "|" _ tQueue.Created, 1: "none"), +$ListGet(tVendor, 2) _ "|" _ ..Clock($ListGet(tVendor, 3)), "the operation's queue row is the vendor's")
+}
+
+/// <p>AC3: a queue with no entry and an item with no queue or job read no row, not a refusal: the probe's service has no
+/// queue and no job, and a queue that does not exist holds nothing.</p>
+/// <p>Mutation (Rule 19): <method>OcuPilot.Port.InteropPort.ListQueueEntries</method> answering 404 for an empty queue.</p>
+Method TestAHostWithNoQueueOrJobAnswersNoRow()
+{
+    Do $$$AssertStatusOK(..Arm(), "the probe runs with its operation hung on one message and two waiting")
+    Do $$$AssertEquals(..SizeOf(..RowsOf("ItemQueue", ..#SVCNAME, , , .tQueueHttp)) _ "|" _ tQueueHttp, "0|200", "the service's queue holds no entry")
+    Do $$$AssertEquals(..SizeOf(..RowsOf("ItemJobs", ..#SVCNAME, , , .tJobHttp)) _ "|" _ tJobHttp, "0|200", "and it has no job")
+    Do $$$AssertEquals(..SizeOf(..RowsOf("QueueItems", , "OcuPilotProbeNoSuchQueue", , .tEntryHttp)) _ "|" _ tEntryHttp, "0|200", "a queue that does not exist holds no entry")
+}
+
+/// <p>A read that asks the vendor for the production's state while another process holds the runtime lock, as the
+/// vendor's start, stop and update hold it, answers 503 <code>PORT.UNAVAILABLE</code>, as a state read does, not a logged
+/// 500. With the production stopped, a child process holds the lock until it is told to let go.</p>
+/// <p>Mutation (Rule 19): drop the runtime-lock test from <method>OcuPilot.Port.InteropPort.Mapped</method> -- each leg
+/// reads 500 <code>INTERNAL</code> and this goes red.</p>
+Method TestABusyRuntimeLockAnswersUnavailable()
+{
+    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "Settle"), "the probe production is stopped")
+    Set ..PreparedIds = ""
+    Set tHolder = ..HoldRuntime()
+    Do $$$AssertTrue(tHolder > 0, "a child process holds the production's runtime lock")
+    For tEndpoint = "Monitor", "Jobs", "ItemStatus", "ItemJobs", "ItemQueue" {
+        Kill tQuery, tResult
+        Set tQuery("namespace") = ..#NAMESPACE
+        If $ListFind($ClassMethod(..#PORT, "ItemEndpoints"), tEndpoint) Set tQuery("item") = ..ItemOf(..#OPNAME)
+        Set tHttp = 0
+        Set tFault = ""
+        Set tSC = $ClassMethod(..#PORT, "Invoke", tEndpoint, "LIST", .tQuery, "", .tResult, .tHttp, .tFault)
+        Do $$$AssertEquals(tHttp _ "|" _ $Select($IsObject(tFault): tFault.%Get("code"), 1: ""), "503|PORT.UNAVAILABLE", tEndpoint _ " answers that the state could not be read just now")
+    }
+    Do ..LetGo(tHolder)
+    Do $$$AssertEquals(..SizeOf(..ProbeRows("Monitor", .tHttp)) _ "|" _ tHttp, "0|200", "once the lock is let go, the stopped production's monitor answers no row")
+}
+
+/// <p>Start <method>Holder</method> in a child process and answer its pid once it holds the runtime lock; 0 when it did
+/// not signal that it does.</p>
+ClassMethod HoldRuntime() As %Integer
+{
+    Do $System.Event.Clear($Job)
+    Job ##class(OcuPilot.Test.InteropHostEdges).Holder($Job)::10
+    If '$Test Quit 0
+    Set tChild = $ZChild
+    Set tMessage = $System.Event.WaitMsg("", 20)
+    If $ListGet(tMessage, 2) = "held" Quit tChild
+    Do ..LetGo(tChild)
+    Quit 0
+}
+
+/// <p>The child process <method>HoldRuntime</method> starts: hold <code>^Ens.Runtime</code> in <parameter>NAMESPACE</parameter>,
+/// signal <code>held</code> to process <var>pParent</var>, and let go when signalled or after a minute.</p>
+ClassMethod Holder(pParent As %Integer)
+{
+    Set $NAMESPACE = ..#NAMESPACE
+    Lock +^Ens.Runtime:5
+    If '$Test {
+        Do $System.Event.Signal(pParent, "busy")
+        Quit
+    }
+    Do $System.Event.Signal(pParent, "held")
+    Set tMessage = $System.Event.WaitMsg("", 60)
+    Lock -^Ens.Runtime
+}
+
+/// <p>Tell the holder <var>pChild</var> to let go, and wait, ten seconds at most, until its process has ended.</p>
+ClassMethod LetGo(pChild As %Integer)
+{
+    If pChild '> 0 Quit
+    Do $System.Event.Signal(pChild, "release")
+    For tTry = 1:1:40 {
+        If '$Data(^$JOB(pChild)) Quit
+        Hang 0.25
+    }
+}
+
+/// <p>The first row of the vendor query <var>pQuery</var> (<code>Class:Query</code>, run in <code>USER</code> with
+/// <var>pArg</var> unless that is empty) whose column <var>pAt</var> reads <var>pKey</var>, as a <class>%List</class> of its
+/// columns; <code>""</code> when there is none.</p>
+ClassMethod VendorRow(pQuery As %String, pArg As %String, pAt As %Integer, pKey As %String) As %List
+{
+    Set tLine = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = ..#NAMESPACE
+        Set tResult = ##class(%ResultSet).%New(pQuery)
+        Set tSC = $Select(pArg = "": tResult.Execute(), 1: tResult.Execute(pArg))
+        While $$$ISOK(tSC) && tResult.Next() {
+            If tResult.GetData(pAt) '= pKey Continue
+            For tI = 1:1:tResult.GetColumnCount() Set tLine = tLine _ $ListBuild(tResult.GetData(tI))
+            Quit
+        }
+        Do tResult.Close()
+        Set $NAMESPACE = tOrigNS
+    } Catch {
+        Set $NAMESPACE = tOrigNS
+    }
+    Quit tLine
+}
+
+/// <p>The vendor's local <code>YYYY-MM-DD HH:MM:SS[.f]</code> <var>pLocal</var> as the port writes it, <code>YYYY-MM-DDTHH:MM:SS.fff</code>.</p>
+ClassMethod Clock(pLocal As %String) As %String
+{
+    Quit $Select(pLocal = "": "", 1: $Translate($Extract(pLocal, 1, 19), " ", "T") _ "." _ $Extract($Piece(pLocal, ".", 2) _ "000", 1, 3))
+}
+
 /// <p>The stamps of a header, a queue entry and a log row are converted from UTC to local time once: read by a process
-/// whose zone is eight hours west of Greenwich, each is the stored UTC value less eight hours; read by this process, whose
-/// zone is UTC, each is the stored value. The stored values are read from the columns, never through
+/// whose zone is eight hours west of Greenwich, each is the stored UTC value less eight hours; read by this process, each
+/// is the stored value moved by this process's own offset. The stored values are read from the columns, never through
 /// <code>%EXTERNAL</code>, which converts too.</p>
 /// <p>Mutation (Rule 19): <method>OcuPilot.Port.InteropPort.LocalStamp</method> reformatting its argument without
 /// converting -- the western legs go red; <code>%EXTERNAL</code> put back around the stamp in
@@ -385,7 +539,8 @@ Method TestTheStampsAreConvertedOnceToTheZoneOfTheReader()
     Do $$$AssertTrue($Match(tCreated, "^[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}(\.[0-9]*)?$") && $Match(tLogged, "^[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}(\.[0-9]*)?$"), "the stored stamps are UTC times: " _ tCreated _ " and " _ tLogged)
 
     Set tHere = ..StampsRead(tHeaderId, tLogId)
-    Do $$$AssertEquals(tHere.%Get("messages") _ "|" _ tHere.%Get("queue") _ "|" _ tHere.%Get("log"), ..MovedWest(tCreated, 0) _ "|" _ ..MovedWest(tCreated, 0) _ "|" _ ..MovedWest(tLogged, 0), "read in UTC, each stamp is the stored one")
+    Set tHereWest = +tHere.%Get("west")
+    Do $$$AssertEquals(tHere.%Get("messages") _ "|" _ tHere.%Get("queue") _ "|" _ tHere.%Get("log"), ..MovedWest(tCreated, tHereWest) _ "|" _ ..MovedWest(tCreated, tHereWest) _ "|" _ ..MovedWest(tLogged, tHereWest), "read here, " _ tHereWest _ " minutes west, each stamp is the stored one moved by that")
     Set tThere = ..ReadInZone(..#ZONE, tHeaderId, tLogId)
     Do $$$AssertEquals(tThere.%Get("error") _ "|" _ tThere.%Get("west"), "|" _ ..#ZONEWEST, "the child ran eight hours west of Greenwich: " _ tThere.%ToJSON())
     Set tWest = +tThere.%Get("west")

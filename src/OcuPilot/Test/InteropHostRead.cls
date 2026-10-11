@@ -5,9 +5,10 @@
 /// a namespace that runs no interoperability are refused by name; the instance's queue, active-message, job-request and
 /// job-status globals and the probe's message statuses are the same after every read; and the stamps of a header and a log
 /// row are the instance's local clock time.</p>
-/// <p>The vendor repairs a job whose process died within about a second, without any read (measured at Story 20.4's
-/// Task 0), so a read that finds a dead job is pinned on the row builder (<class>OcuPilot.Test.InteropHostDescriptor</class>)
-/// and on the globals that stay the same, not on a job killed here.</p>
+/// <p>While the production runs, its monitor service repairs a job whose process died within about a second, without any
+/// read (measured at Story 20.4's Task 0), so no job is killed here: a read that finds a dead job is pinned on the row
+/// builder (<class>OcuPilot.Test.InteropHostDescriptor</class>) and in a Troubled production, where nothing repairs it
+/// (<class>OcuPilot.Test.InteropHostEdges</class>).</p>
 /// <p><b>What it needs from the environment:</b> a <code>USER</code> namespace that runs interoperability and
 /// <parameter>ARMINGVARIABLE</parameter> reading <code>1</code>, because it <b>compiles a probe production in
 /// <code>USER</code></b> (<class>OcuPilot.Test.ProductionProbe</class>), starts it, hangs its operation for ten minutes
@@ -329,7 +330,8 @@ Method TestEachEndpointAnswersTheProbesRows()
             Do $$$AssertTrue(0, "message " _ tI _ " is among the item's messages")
         }
     }
-    Do $$$AssertEquals(..RowWhere(tMessages, "ID", $Piece(..PreparedIds, ",", 3)).Status, "Queued", "a waiting message reads Queued")
+    Set tWaitingHeader = ..RowWhere(tMessages, "ID", $Piece(..PreparedIds, ",", 3))
+    Do $$$AssertEquals($Select($IsObject(tWaitingHeader): tWaitingHeader.Status, 1: "none"), "Queued", "a waiting message reads Queued")
 
     Set tJobs = ..ProbeRows("Jobs", .tHttp, .tFault)
     Do $$$AssertEquals(tHttp, 200, "Jobs answers")
@@ -428,7 +430,7 @@ ClassMethod Projected(pRows As %DynamicArray, pClass As %String) As %DynamicArra
 }
 
 /// <p>AC2, AC3, AC5: with the production stopped, Monitor, Jobs and the item's jobs answer no row and the item's
-/// status keeps its configuration facts with empty runtime fields; Queues still lists the queues the vendor lists.</p>
+/// status keeps its configuration facts with empty runtime fields.</p>
 /// <p>The vendor answers no row for a stopped production (measured at Story 20.4's Task 0), so the running-or-troubled
 /// test in <method>OcuPilot.Port.InteropPort.LiveCurrent</method> is a second guard and dropping it turns nothing red here.
 /// The production-identity clause it also carries is pinned by <method>TestAnItemOfAnotherProductionReadsNoRuntimeRow</method>,
@@ -448,7 +450,6 @@ Method TestAStoppedProductionAnswersNoRuntimeRow()
         Set tRow = tStatus.%Get(0)
         Do $$$AssertEquals(tRow.Name _ "|" _ tRow.ClassName _ "|" _ tRow.Enabled _ "|" _ tRow.Status _ "|" _ tRow.AdapterState _ "|" _ tRow.LastActivity, ..#OPNAME _ "|OcuPilotProbe.Interop.Op|1|||", "with its configuration facts and empty runtime fields")
     }
-    Kill tQuery
     Set tScreenSC = ##class(OcuPilot.Screen.Read).Execute("OcuPilot.Screen.Descriptor.InteropMonitorList", 1000, .tAnswer, .tScreenHttp, .tScreenFault, .tNone)
     Do $$$AssertEquals(+$Get(tScreenHttp) _ "|" _ $Select($IsObject($Get(tAnswer)): tAnswer.rows.%Size(), 1: -1), "200|0", "and the Production monitor lists none")
 }
@@ -594,9 +595,9 @@ ClassMethod Snapshot() As %String
 /// were before, and the snapshot is not empty: it holds the operation's two waiting entries, the message its job is working
 /// on and its job.</p>
 /// <p>Mutation (Rule 19): make <method>OcuPilot.Port.InteropPort.GatherQueueEntries</method> call
-/// <code>Ens.Queue.AbortItem</code> on each entry it reads -- the snapshot differs and this goes red; read
-/// <code>Ens.Job:Enumerate</code> in <method>OcuPilot.Port.InteropPort.GatherJobs</method> -- the same leg, once a job is
-/// dead (the vendor repairs one within a second on its own, so no leg here waits for it).</p>
+/// <code>Ens.Queue.AbortItem</code> on each entry it reads -- the snapshot differs and this goes red. No job is dead here,
+/// so <code>Ens.Job:Enumerate</code> in <method>OcuPilot.Port.InteropPort.GatherJobs</method> is read by
+/// <method>OcuPilot.Test.InteropHostEdges.TestATroubledProductionStillAnswersItsRowsAndChangesNothing</method>.</p>
 Method TestNoReadChangesWhatTheVendorKeeps()
 {
     Do $$$AssertStatusOK(..Arm(), "the probe runs with its operation hung on one message and two waiting")
@@ -629,18 +630,18 @@ Method TestTheStampsAreTheInstancesLocalClockTime()
 {
     Do $$$AssertStatusOK(..Arm(), "the probe runs with its operation hung on one message and two waiting")
     Set tHeaderId = $Piece(..PreparedIds, ",", 1)
-    Set tStored = ..StoredStamp("SELECT %EXTERNAL(TimeCreated) FROM Ens.MessageHeader WHERE ID = ?", tHeaderId)
-    Do $$$AssertTrue($Match(tStored, "^[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}\.[0-9]{3}$"), "the stored stamp is a UTC time: " _ tStored)
+    Set tStored = ..StoredStamp("SELECT TimeCreated FROM Ens.MessageHeader WHERE ID = ?", tHeaderId)
+    Do $$$AssertTrue($Match(tStored, "^[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}(\.[0-9]*)?$"), "the stored stamp is a UTC time: " _ tStored)
     Set tMessages = ..ProbeRows("ItemMessages", .tHttp, .tFault)
     Set tRow = ..RowWhere(tMessages, "ID", tHeaderId)
     Do $$$AssertEquals($Select($IsObject(tRow): tRow.TimeCreated, 1: "none"), ..LocalForm(tStored), "a header's stamp is the stored one in local time, in the log readers' form")
     Set tLog = ..ProbeRows("ItemLog", .tLogHttp, .tLogFault)
     Set tLine = ..RowWhere(tLog, "Text", $Parameter(..#PROBE, "LOGTEXT"))
-    Set tLogged = ..StoredStamp("SELECT %EXTERNAL(TimeLogged) FROM Ens_Util.Log WHERE ID = ?", $Select($IsObject(tLine): tLine.ID, 1: 0))
+    Set tLogged = ..StoredStamp("SELECT TimeLogged FROM Ens_Util.Log WHERE ID = ?", $Select($IsObject(tLine): tLine.ID, 1: 0))
     Do $$$AssertEquals($Select($IsObject(tLine): tLine.TimeLogged, 1: "none"), ..LocalForm(tLogged), "and so is a log row's")
     Set tQueue = ..ProbeRows("QueueItems", .tQueueHttp, .tQueueFault)
     Set tEntry = ..RowWhere(tQueue, "MessageId", $Piece(..PreparedIds, ",", 2))
-    Set tEntryStored = ..StoredStamp("SELECT %EXTERNAL(TimeCreated) FROM Ens.MessageHeader WHERE ID = ?", $Piece(..PreparedIds, ",", 2))
+    Set tEntryStored = ..StoredStamp("SELECT TimeCreated FROM Ens.MessageHeader WHERE ID = ?", $Piece(..PreparedIds, ",", 2))
     Do $$$AssertEquals($Select($IsObject(tEntry): tEntry.TimeCreated, 1: "none"), ..LocalForm(tEntryStored), "and so is a queue entry's")
 }
 

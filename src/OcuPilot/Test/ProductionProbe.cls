@@ -461,9 +461,10 @@ ClassMethod Settle() As %Status
 
 /// <p>End the probe operation's jobs that hold a message while its stored <code>HangSeconds</code> is above
 /// <parameter>RELEASEABOVE</parameter>: a job hung that long outlasts any stop, and a forced stop puts its message back
-/// on the queue, which leaves the production Suspended and its next start hung again. The vendor marks an ended job
-/// dead and takes its message back within about a second and a half (measured at Story 20.4's Task 0), and the
-/// queues are aborted after. Called only inside <code>USER</code>, while the probe's own production is current.</p>
+/// on the queue, which leaves the production Suspended and its next start hung again. It waits, fifteen seconds at
+/// most, until the vendor has marked each ended job dead and taken its message back (the job's own row leaves the host
+/// monitor), so the queues are aborted after. Called only inside <code>USER</code>, while the probe's own production is
+/// current.</p>
 ClassMethod Release() [ Private ]
 {
     Set tProduction = ##class(Ens.Config.Production).%OpenId(..#PRODUCTION)
@@ -480,7 +481,7 @@ ClassMethod Release() [ Private ]
     Do tRS.Execute(..#OPNAME)
     Kill tPids
     While tRS.Next() {
-        If tRS.GetData(9) '= "" Set tPids(+tRS.GetData(2)) = ""
+        If (tRS.GetData(9) '= "") && (+tRS.GetData(2) > 0) Set tPids(+tRS.GetData(2)) = ""
     }
     Set tPid = ""
     For {
@@ -488,7 +489,18 @@ ClassMethod Release() [ Private ]
         If tPid = "" Quit
         If tPid > 0 Do $System.Process.Terminate(tPid)
     }
-    If $Data(tPids) Hang 3
+    If '$Data(tPids) Quit
+    For tTry = 1:1:60 {
+        Hang 0.25
+        Set tHeld = 0
+        Set tRS = ##class(%ResultSet).%New("Ens.Util.Statistics:EnumerateJobStatus")
+        Do tRS.Execute(..#OPNAME)
+        While tRS.Next() {
+            If $Data(tPids(+tRS.GetData(2))) Set tHeld = 1
+        }
+        Do tRS.Close()
+        If 'tHeld Quit
+    }
 }
 
 /// <p>Abort the interoperability queues of <code>USER</code> that hold a message and are the scheduler's

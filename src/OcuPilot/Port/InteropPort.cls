@@ -467,7 +467,7 @@ ClassMethod ReasonFor(pCode As %String) As %String
 /// array of <code>{Name, Modified}</code> (the document name <code>&lt;class&gt;.cls</code> and the
 /// class's last change as <code>YYYY-MM-DD HH:MM:SS</code>), cut at <parameter>MAXROWSKEY</parameter>;
 /// for <code>STATE</code> and after every write <code>{Name, Namespace, State, Current,
-/// NeedsUpdate}</code>.</p>
+/// NeedsUpdate}</code>; for the nine runtime reads an array of rows (<method>InvokeRuntime</method>).</p>
 /// <p>Otherwise an error status is returned, <var>pHttpStatus</var> is the status to answer with and
 /// <var>pFault</var> the wire fault: 403 <code>AUTH.NOPRIVILEGE</code> with
 /// <code>detail.failedPair</code>; 400 <code>PORT.VALIDATION</code> for a namespace, id or cap of the
@@ -2047,11 +2047,13 @@ ClassMethod Statused(pStatus As %Status, pMessage As %String, Output pHttpStatus
     Quit ..Fail(pMessage, pStatus, .pHttpStatus, .pFault)
 }
 
-/// <p>A vendor exception <var>pException</var> in this port's own words: <code>&lt;PROTECT&gt;</code>
+/// <p>A vendor exception <var>pException</var> in this port's own words: a lock the vendor could not take is 503
+/// <code>PORT.UNAVAILABLE</code>, unlogged, as <method>Statused</method> answers it; <code>&lt;PROTECT&gt;</code>
 /// is 403 <code>PORT.ACCESSDENIED</code>, anything else 500 <code>INTERNAL</code>, each logging the
 /// vendor's text under <var>pMessage</var>.</p>
 ClassMethod Mapped(pException As %Exception.AbstractException, pMessage As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
 {
+    If ..HasCode(pException.AsStatus(), ..#CODERUNTIMELOCK) Quit ..Unavailable(.pHttpStatus, .pFault)
     Set tProtect = 0
     Try {
         Set tProtect = (pException.Name [ "<PROTECT>")
@@ -2334,9 +2336,10 @@ ClassMethod ReadItemStatus(pNamespace As %String, pProduction As %String, pLine 
     Quit $$$OK
 }
 
-/// <p>The job rows of the hosts <method>GatherHosts</method>'s rule admits (<var>pProduction</var> and <var>pHost</var>
-/// as it takes them; every host the monitor answers when <var>pHost</var> is empty), only while the namespace's
-/// production is running or troubled: <var>pFound(n)</var> is <code>Ens.Util.Statistics:EnumerateJobStatus</code>'s row
+/// <p>The job rows of the host <var>pHost</var>, or of every host <code>Ens.Util.Statistics:EnumerateHostStatus</code>
+/// answers when it is empty (the vendor's own hosts the production does not configure included, unlike
+/// <method>GatherHosts</method>), only while the namespace's production is running or troubled and, when
+/// <var>pProduction</var> is given, is that production: <var>pFound(n)</var> is <code>Ens.Util.Statistics:EnumerateJobStatus</code>'s row
 /// <code>$ListBuild(Name, Job, Status, AdapterState, LastActivity, Count, Method, Retry, ActiveMessage)</code>, at most
 /// <var>pMax</var> when that is above zero. <var>pCurrent</var> is the production they belong to, <code>""</code> when
 /// there are none to give. A fault is <var>pCaught</var>, with the namespace restored.</p>
@@ -2691,8 +2694,9 @@ Parameter SQLMAX = 1000;
 
 /// <p>The item's event log (Story 20.4): <code>{Production, Item, ID, TimeLogged, Type, Text, Job, SessionId}</code>,
 /// newest first, at most <var>pMax</var> (<parameter>SQLMAX</parameter> when that is not above zero). The rows are the
-/// ones whose <code>ConfigName</code> is the item's name. Every value is bound, and <code>TimeLogged</code> is the
-/// instance's local clock time (<method>LocalStamp</method>).</p>
+/// ones whose <code>ConfigName</code> is the item's name: the vendor keeps no production on a log row, so an item of a
+/// production that is not current reads the rows of any item of that name, as the classic page does. Every value is
+/// bound, and <code>TimeLogged</code> is the instance's local clock time (<method>LocalStamp</method>).</p>
 ClassMethod ListItemLog(pNamespace As %String, pProduction As %String, pItem As %String, pMax As %Integer, Output pRows As %DynamicArray, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
 {
     Set pRows = ""
@@ -2718,9 +2722,9 @@ ClassMethod ListItemLog(pNamespace As %String, pProduction As %String, pItem As 
 }
 
 /// <p>The item's message headers (Story 20.4): <code>{Production, Item, ID, TimeCreated, Status, Source, Target,
-/// BodyClass, SessionId}</code>, newest first, the headers sourced by the item and those targeted at it, at most
-/// <var>pMax</var> (<parameter>SQLMAX</parameter> when that is not above zero). No body or contents are read. Every
-/// value is bound, and <code>TimeCreated</code> is the instance's local clock time (<method>LocalStamp</method>).</p>
+/// BodyClass, SessionId}</code>, newest first, the headers sourced by the item's name and those targeted at it (a
+/// header names no production, as a log row does not), at most <var>pMax</var> (<parameter>SQLMAX</parameter> when that
+/// is not above zero). No body or contents are read. Every value is bound, and <code>TimeCreated</code> is the instance's local clock time (<method>LocalStamp</method>).</p>
 ClassMethod ListItemMessages(pNamespace As %String, pProduction As %String, pItem As %String, pMax As %Integer, Output pRows As %DynamicArray, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
 {
     Set pRows = ""

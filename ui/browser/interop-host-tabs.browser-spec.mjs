@@ -8,8 +8,8 @@
  * their headers, the line the operation logged, the three messages sent, and the operation's job with the message it is
  * working on; Production monitor lists the operation and its name cell opens the same Status tab, and its auto-refresh chip
  * starts off and, turned on, reads the screen again; Queues lists the operation's queue with its count and opens Queue
- * messages; Jobs lists the operation's job with a link to Process details; and every one of them passes the structural and
- * contrast checks at 1280 light, 720 light and 1280 dark, with no entry beyond the baseline (DW-1337).
+ * messages; Jobs lists the operation's job with a link to Process details; and every screen this story adds passes the
+ * structural and contrast checks at 1280 light, 720 light and 1280 dark, with no entry beyond the baseline (DW-1337).
  *
  * **It compiles, starts and writes a probe production in `USER`** through `OcuPilot.Test.ProductionProbe`, so it runs on a
  * throwaway only; the `after` hook stops and removes the production, its classes and its messages, whatever the tests

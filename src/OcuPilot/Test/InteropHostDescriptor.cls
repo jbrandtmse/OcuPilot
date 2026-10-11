@@ -205,9 +205,7 @@ Method TestAJobNoProcessHoldsReadsDead()
 }
 
 /// <p>Every read tool is registered with the kind <code>read</code> and answered by the shared read tool class from its
-/// descriptor, and none of the nine descriptors declares an action, so no write tool or governance key belongs to them.</p>
-/// <p>Mutation (Rule 19): give one descriptor a <code>rowActions</code> entry -- the action leg of
-/// <method>TestTheNineDeclarationsRegister</method> goes red.</p>
+/// descriptor. That none of the nine declares an action is <method>TestTheNineDeclarationsRegister</method>'s leg.</p>
 Method TestEachReadToolIsRegistered()
 {
     For tI = 1:1:$Length(..#SCREENS, ";") {
