@@ -1,9 +1,10 @@
-/// <p>Pins Story 18.32's pairs with least-privileged principals (AD-8, AD-29): a principal holding exactly the REST API
-/// explorer's two pairs, <code>%Development:USE</code>, <code>%DB_USER:RW</code> and read on the install namespace's code
-/// database confirms the agent's create in <code>USER</code> in a process of its own and deletes a probe service through the
-/// explorer's action; without <code>%Development:USE</code> both writes are refused naming it, and holding
-/// <code>%DB_USER:READ</code> without WRITE both are refused naming <code>%DB_USER:WRITE</code> -- each before the
-/// management API port is reached, so nothing is built or deleted.</p>
+/// <p>Pins Story 18.32's and Story 18.34's pairs with least-privileged principals (AD-8, AD-29): a principal holding
+/// exactly the REST API explorer's two pairs, <code>%Development:USE</code>, <code>%DB_USER:RW</code> and read on the
+/// install namespace's code database confirms the agent's create in <code>USER</code> in a process of its own, deletes a
+/// probe service through the explorer's action and builds one through the Save, <code>POST /rest-service</code>; without
+/// <code>%Development:USE</code> all three writes are refused naming it, and holding <code>%DB_USER:READ</code> without
+/// WRITE all are refused naming <code>%DB_USER:WRITE</code> -- each before the management API port is reached, so nothing
+/// is built or deleted, and the Save before it reads whether the name is taken.</p>
 /// <p>The agent's confirm runs in a child process logged in as the principal
 /// (<method>OcuPilot.Test.RestServiceProbe.RunAs</method>), which reaches the real port.</p>
 /// <p><b>What it needs from the environment:</b> OcuPilot installed and serving, a <code>USER</code> namespace, and
@@ -27,6 +28,9 @@ Parameter NAMESPACE = "USER";
 
 /// <p>The explorer's action route, relative to the API base.</p>
 Parameter ACTIONPATH = "/screens/webapp.restapis/action";
+
+/// <p>The Save route, relative to the API base.</p>
+Parameter SAVEPATH = "/rest-service";
 
 /// <p>The principals' resources beyond the install namespace's code read, by the order of the probe's principal list: the
 /// holder holds the screen's two pairs, the code editors' resource and read and write on <code>USER</code>'s database;
@@ -107,10 +111,11 @@ Method OnAfterAllTests() As %Status
     Quit $$$ADDSC(tSC, $ClassMethod(..#PRINCIPALS, "RemoveAll"))
 }
 
-/// <p>The holder confirms the agent's create of a new probe service in a process of its own, and deletes another through
-/// the explorer's action over the wire; the instance holds the first and no longer lists the second.</p>
+/// <p>The holder confirms the agent's create of a new probe service in a process of its own, deletes another through the
+/// explorer's action over the wire and builds a third through the Save; the instance holds the first and the third and
+/// no longer lists the second.</p>
 /// <p>Mutation (Rule 19): add <code>%Admin_Manage:USE</code> to <parameter>OcuPilot.Port.MgmntPort.WRITEPAIRS</parameter> --
-/// the holder lacks it, the port refuses both legs and this goes red.</p>
+/// the holder lacks it, the port refuses all three legs and this goes red.</p>
 Method TestTheDeclaredPairsCreateAndDelete()
 {
     Set tUser = ..User(1)
@@ -122,10 +127,12 @@ Method TestTheDeclaredPairsCreateAndDelete()
     Do $$$AssertEquals($ClassMethod(..#PROBE, "Classes", ..#NAMESPACE, "OcuProbe1832N"), "111", "the instance holds the new service")
     Do $$$AssertEquals(..Wire("POST", ..#ACTIONPATH, {"action": "delete", "id": "OcuProbe1832B"}, tUser), "200 ", "the holder's delete is accepted")
     Do $$$AssertEquals($ClassMethod(..#PROBE, "Classes", ..#NAMESPACE, "OcuProbe1832B"), "001", "and the service's specification and dispatch classes are gone")
+    Do $$$AssertEquals(..Wire("POST", ..#SAVEPATH, ..SaveBody("OcuProbe1832M"), tUser), "201 ", "the holder's Save is accepted")
+    Do $$$AssertEquals($ClassMethod(..#PROBE, "Classes", ..#NAMESPACE, "OcuProbe1832M"), "111", "and the instance holds the service it built")
 }
 
-/// <p>Without <code>%Development:USE</code>, the delete over the wire and the confirm of the agent's create are each
-/// refused 403 naming the pair, and nothing is built or deleted.</p>
+/// <p>Without <code>%Development:USE</code>, the delete over the wire, the Save and the confirm of the agent's create are
+/// each refused 403 naming the pair, and nothing is built or deleted.</p>
 /// <p>Mutation (Rule 19): drop the added pair from <method>OcuPilot.Screen.Tool.RestServiceWrite.PrivilegePairs</method> and
 /// name <code>%Admin_Secure:USE</code> in <parameter>OcuPilot.Port.MgmntPort.WRITEPAIRS</parameter> -- both legs write and
 /// go red.</p>
@@ -134,20 +141,23 @@ Method TestWithoutTheCodeEditorsResourceEveryWriteIsRefused()
     Do ..AssertRefused(..User(2), "%Development:USE")
 }
 
-/// <p>Holding <code>%DB_USER:READ</code> without WRITE, the delete over the wire and the confirm of the agent's create are
-/// each refused 403 naming <code>%DB_USER:WRITE</code>, and nothing is built or deleted.</p>
+/// <p>Holding <code>%DB_USER:READ</code> without WRITE, the delete over the wire, the Save and the confirm of the agent's
+/// create are each refused 403 naming <code>%DB_USER:WRITE</code>, and nothing is built or deleted.</p>
 /// <p>Mutation (Rule 19): make <method>OcuPilot.Screen.Tool.RestServiceWrite.ArgumentPairs</method> answer no pair -- the
-/// confirm leg goes red (the port's own write pairs still refuse the delete).</p>
+/// confirm leg goes red (the port's own write pairs still refuse the delete); drop <code>ArgumentPairs</code> from
+/// <method>OcuPilot.Area.WebApp.RestServiceSave.Gate</method> -- the Save finds the seeded <code>OcuProbe1832B</code>
+/// taken, answers 422 <code>RESTSERVICE.TAKEN</code> and the Save leg goes red.</p>
 Method TestWithReadButNotWriteOnTheCodeDatabaseEveryWriteIsRefused()
 {
     Do ..AssertRefused(..User(3), "%DB_USER:WRITE")
 }
 
-/// <p>Both writes as principal <var>pUser</var> are refused 403 naming <var>pPair</var>, and the probe state is as it
+/// <p>All three writes as principal <var>pUser</var> are refused 403 naming <var>pPair</var>, and the probe state is as it
 /// was.</p>
 Method AssertRefused(pUser As %String, pPair As %String)
 {
     Do $$$AssertEquals(..Wire("POST", ..#ACTIONPATH, {"action": "delete", "id": "OcuProbe1832B"}, pUser), "403 " _ pPair, "a delete is refused naming the pair")
+    Do $$$AssertEquals(..Wire("POST", ..#SAVEPATH, ..SaveBody("OcuProbe1832B"), pUser), "403 " _ pPair, "a Save naming the seeded service is refused naming the pair, before the name is read as taken")
     Set tSC = ..MintCreate("OcuProbe1832N", pUser, .tProposal)
     Do $$$AssertStatusOK(tSC, "a create is minted for " _ pUser)
     Set tRun = $ClassMethod(..#PROBE, "RunAs", pUser, [{"kind": "confirm", "proposalId": ($Select($IsObject(tProposal): tProposal.%Get("proposalId"), 1: ""))}])
@@ -163,6 +173,12 @@ Method MintCreate(pName As %String, pUser As %String, Output pProposal As %Dynam
     Set tArgs = {"Name": (pName), "Document": ($ClassMethod(..#PROBE, "Document"))}
     Set tSC = $ClassMethod(..#PROBE, "Mint", ..#CREATETOOL, pName, tArgs, .pProposal, .tHttp, .tProblem, pUser)
     Quit tSC
+}
+
+/// <p>The Save's body for the package <var>pName</var>: the probe document as the text a person pastes.</p>
+ClassMethod SaveBody(pName As %String) As %DynamicObject
+{
+    Quit {"Name": (pName), "Document": ($ClassMethod(..#PROBE, "Document").%ToJSON())}
 }
 
 /// <p>A request by <var>pMethod</var> to <var>pPath</var> under the API over the wire as <var>pUser</var> with the JSON

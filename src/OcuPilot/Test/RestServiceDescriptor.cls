@@ -32,10 +32,11 @@ Method OnAfterOneTest() As %Status
     Quit $$$OK
 }
 
-/// <p>The explorer keeps its read, route and pairs, and gains Delete as its one row action with no self-protection, no
-/// primary action, and the agent's invitation in place of the read-only line in its empty state.</p>
+/// <p>The explorer keeps its read, route and pairs, and declares Delete as its one row action with no self-protection,
+/// Create as its primary action with none, and the agent's invitation in place of the read-only line in its empty state;
+/// its screen context lists the agent's create beside the delete.</p>
 /// <p>Mutation (Rule 19): put <code>tableReadOnlyEmptyNext</code> back as <code>emptyNextKey</code> -- the empty-state
-/// leg goes red.</p>
+/// leg goes red; declare no primary action -- the primary-action and context-tools legs go red.</p>
 Method TestTheExplorerDeclaresItsDeleteAndItsInvitation()
 {
     Set tClass = ..#LIST
@@ -44,7 +45,16 @@ Method TestTheExplorerDeclaresItsDeleteAndItsInvitation()
     Do $$$AssertEquals(##class(OcuPilot.Test.EncryptionDescriptor).Pairs($ClassMethod(tClass, "PrivilegePairs")), ..#SCREENPAIRS, "the area's two pairs")
     Set tActions = $ClassMethod(tClass, "Field", "rowActions")
     Do $$$AssertEquals(tActions.%Size() _ " " _ tActions.%Get(0).%Get("id") _ " [" _ tActions.%Get(0).%Get("selfProtection") _ "]", "1 delete []", "Delete alone, with no self-protection rule: the instance refuses a web application's row after the click")
-    Do $$$AssertEquals($ClassMethod(tClass, "Field", "primaryAction").%Get("id"), "", "and no primary action: the person's create is another story's")
+    Set tPrimary = $ClassMethod(tClass, "Field", "primaryAction")
+    Do $$$AssertEquals(tPrimary.%Get("id") _ " [" _ tPrimary.%Get("selfProtection") _ "]", "create []", "and Create as its primary action, with no self-protection rule: the person's create")
+    Do $$$AssertStatusOK(##class(OcuPilot.Screen.Context).ScreenTools(tClass, .tTools), "the screen's context tools are built")
+    Set tWires = ""
+    Set tIterator = tTools.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tWire) {
+        Set tWires = tWires _ $ListBuild(tWire)
+    }
+    Do $$$AssertEquals($ListFind(tWires, ##class(OcuPilot.Screen.Tool.Registry).WireName($Parameter(..#CREATE, "TOOLNAME"))) > 0, 1, "which lists the agent's create beside the delete")
+    Do $$$AssertEquals($ListFind(tWires, ##class(OcuPilot.Screen.Tool.Registry).WireName($Parameter(..#DELETE, "TOOLNAME"))) > 0, 1, "and the delete")
     Set tTable = $ClassMethod(tClass, "Field", "table")
     Do $$$AssertEquals("[" _ tTable.%Get("emptyNextKey") _ "] " _ tTable.%Get("emptyAgentKey"), "[] restApiListEmptyAgent", "the empty state invites the agent")
     Set tRead = $ClassMethod(tClass, "Read")

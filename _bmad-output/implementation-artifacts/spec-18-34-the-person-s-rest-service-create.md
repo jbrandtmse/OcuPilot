@@ -2,13 +2,21 @@
 title: 'Story 18.34: The person''s REST service create'
 type: 'feature'
 created: '2026-10-11'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: '24dba4ad46979d0bfbe1931f82e6301624bf4aa3'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-18-context.md'
 warnings: ['oversized']
-deferred: []
+deferred:
+  - summary: >-
+      A create answered after the dialog was dismissed publishes no change event, so a service built in that window leaves the list stale until it is next read.
+    evidence: |-
+      RestServiceCreateStore.create drops a result whose generation moved (reset() runs when the dialog is destroyed); Escape, Cancel and the scrim dismiss the dialog while the post is pending. The Document databases store (docdb-create.store.ts) has the same pattern, so the fix belongs to both, under DW-2278's unification.
+    location: >-
+      ui/src/app/areas/web-applications/rest-service-create.store.ts:139
+    severity: low
 ---
 
 <intent-contract>
@@ -102,6 +110,23 @@ Under `src/OcuPilot/` unless `ui/`; siblings per Rule 31.
 
 ## Review Triage Log
 
+### 2026-10-11 -- Review pass
+
+- verdicts: 12 findings -- high 0, medium 2, low 9, false 1, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` In-flight guard on Create (`confirmDisabled`, store) pinned by no spec -- added `Create is unavailable while a create is in flight` to `rest-service-create-dialog.spec.ts` (a held answer, two clicks, one post) with its mutation line.
+  - `[low]` `[reject]` A non-404 failure of the taken-name read is not pinned -- the code returns the port's refusal and sends no `POST` (fail-closed); no Save in this family has a seam test and one needs a fake port class.
+  - `[low]` `[reject]` `handler.pending()` guard on the page is not pinned -- copies `docdb-list.page.ts`; the command bar sits behind the Delete scrim.
+  - `[low]` `[reject]` Legs without their own mutation line (C2 agent half and wide document, C3 BADBODY and build failure, C4 holder, client refusal tests) -- Rule 19 asks one mutation per AC, and each AC has one recorded.
+  - `[low]` `[patch]` Browser test 1 named a mutation (no Document from the store) never observed -- the clause is removed; the swagger 3.0 test's template mutation was observed red and recorded.
+  - `[medium]` `[patch]` `actionLabel(...)` assertion in `rest-api-list.page.spec.ts` falls back to the shared `create` label whether or not the page registers Create -- deleted with its two unused imports; the `actions.has` assertion stays load-bearing.
+  - `[low]` `[defer]` A create answered after the dialog is dismissed publishes no change event -- same pattern as the Document databases store; entered in `deferred:`.
+  - `[low]` `[reject]` `## Auto Run Result` read `ready-for-dev` during review -- rewritten at Finalize in this pass.
+  - `[false]` `[reject]` Create is declared with no pair gate on the descriptor -- by design: the Save refuses naming the pair (C4), as the explorer's Delete does.
+  - `[low]` `[reject]` Real `Name`, 403, 409 and `PROHIBITED.OCUPILOTCODE` sentences are not drawn from a live response in the browser -- Task 8 names two browser tests; the server tests pin each response and the unit specs pin the drawing.
+  - `[low]` `[reject]` The `%SYS` routines-database pair is not exercised for a non-superuser -- C4 is stated for USER's routines database; C2 builds in `%SYS` as the privileged account.
+  - `[low]` `[reject]` "Nothing read or sent" is checked as unchanged probe state, not by observing reads -- the taken read changes nothing; the vendor-write half is what the state check pins.
+
 ## Design Notes
 
 **Governing ADs:** AD-5, 8, 10, 12, 13, 14, 19, 20, 21, 22, 29, 34, 39, 44, 52, 53, 54, 55, 58. **Consumes:** 18.32 (`MgmntPort` `Service`, `webapp.restapis.create`, `RestServiceError`, `RestServiceProbe`), 19.17 (page, dialog, store), 18.6 (Load from file), 23.4 (`Operation.HoldTool`). **Consumed-by:** this story's page alone (Integration). **Ledger inbox:** empty.
@@ -139,9 +164,36 @@ Under `src/OcuPilot/` unless `ui/`; siblings per Rule 31.
 - C5: drop the hold from `RestServiceSave.HandleCreate` -> `SaveHoldCoverage`'s derived test and the `/rest-service` held leg red.
 - Integration: the page registers no Create -> the browser spec's dialog test red.
 
+Observed on `ocupilot-ci` (each reverted, tree byte-identical, reloaded):
+
+- mutation: C1, `RestServiceSave.Create` hands the port `{}` as the document -> `RestServiceSave` `TestTheSaveBuildsTheServiceAndTheExplorersDeleteRemovesIt` red (run 595).
+- mutation: C2, `Create` refuses with `RestServiceCreate.AgentProblems` -> `TestThePersonBuildsWhereTheAgentIsRefused` red on the `%SYS` person leg (run 596).
+- mutation: C3, drop the unexpected-key refusal from `HandleCreate` -> `TestABodyThatIsNotNameAndDocumentAloneIsRefused` red, the `Namespace` leg builds (run 597); the taken check answers free -> `TestATakenNameIsRefusedInAnyLetterCase` red, the held `.disp` and `.spec` legs build (run 598); drop the `Prohibited` call -> `TestABuildFailureLeavesNothingAndOcuPilotsOwnCodeIsNeverSent` red, both own-code legs answer 422 `RESTSERVICE.BUILD` and no `OcuPilotProbe1834` class exists in USER, HSCUSTOM or `%SYS` afterwards (run 599); drop the document rule -> `TestTheRulesAreTheMgmntPortsAndNothingIsBuilt` red on the taken-name order leg (run 600); drop the name rule -> the same test red on the package legs (run 601).
+- mutation: C4, drop `ArgumentPairs` from `RestServiceSave.Gate` -> `RestServiceGate` `TestWithReadButNotWriteOnTheCodeDatabaseEveryWriteIsRefused` red on the Save leg (run 602).
+- mutation: C5, drop the hold from `HandleCreate` -> `SaveHoldCoverage` `TestACreateSaveHoldsTheKeyItsMintComputes` and `TestEveryWriteRouteTakesTheHoldOrIsExempt` red (run 603).
+- mutation: shared surfaces, remove the `/rest-service` probe row -> `EndpointCoverage` red (run 604); `RestApiList` primary action `""` -> `RestServiceDescriptor` `TestTheExplorerDeclaresItsDeleteAndItsInvitation` red (run 605); empty `REASONTAKEN` -> `TestTheCodesAnswerTheirSentences` red (run 606).
+- mutation: client, `RestApiListPage` registers no Create -> `rest-api-list.page.spec.ts` red; the store drops `scope: namespace` -> `rest-service-create.store.spec.ts` red; the dialog drops the document check from `confirmDisabled` -> `rest-service-create-dialog.spec.ts` red.
+- mutation: client in-flight, drop `this.store.busy() ||` from `RestServiceCreateDialog.confirmDisabled` -> `rest-service-create-dialog.spec.ts` "Create is unavailable while a create is in flight" red (`aria-disabled` reads null).
+- mutation: browser refusal, drop the document violation paragraph from the dialog template, bundle rebuilt and redeployed -> `rest-services-write.browser-spec.mjs` swagger 3.0 test red (the sentence never draws; 90 s wait); reverted, rebuilt and redeployed -> green.
+- mutation: Integration, `RestApiListPage` registers no Create, bundle rebuilt and redeployed -> `rest-services-write.browser-spec.mjs` Create and Document-refusal tests red (the command bar draws no Create); reverted, rebuilt and redeployed -> green.
+
 **S0:** no `OcuProbe1832*` class in any case in USER, HSCUSTOM or `%SYS`; no `/api/ocuprobe1832*` application; `AuthOptionsProbe.Remaining()` 0.
 
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
+
+**Change:** the REST API explorer's Create. `POST /rest-service` (`Area/WebApp/RestServiceSave`) parses the pasted OpenAPI 2.0 text on the instance and builds the three classes in the request's namespace through the agent's tool class and `MgmntPort`, under the per-target hold; it meets the port's rules and never `AgentProblems`, so a person builds in `%SYS`. The explorer declares Create as its primary action and its page opens a dialog (package, document, Load from file).
+
+**Files:**
+
+- Server: `Area/WebApp/RestServiceSave.cls` (new), `Api/RestServiceError.cls` (`TAKEN`), `Api/Router.cls` (route, wrapper), `Screen/Descriptor/RestApiList.cls` (primary action), `Screen/Tool/RestServiceCreate.cls` (doc).
+- Tests: `Test/RestServiceSave.cls` (new, 6), `Test/RestServiceGate.cls`, `Test/RestServiceDescriptor.cls`, `Test/EndpointCoverage.cls`, `Test/SaveHoldCoverage.cls`, `scripts/ci-throwaway.sh` (arming roster).
+- Client: `rest-api-list.page.ts`, `rest-service-create-dialog.ts`, `rest-service-create.store.ts` and their three specs, `screen-outlet.ts`, `strings.ts` (4 keys), `screens.generated.ts` (regenerated), `browser/rest-services-write.browser-spec.mjs` (2 tests), `EXPERIENCE.md` :357.
+
+**Review:** 12 findings, no high. Patched: two medium (an in-flight Create test with its mutation, an unfalsifiable label assertion deleted) and one low (an unobserved mutation clause removed). Deferred: one low (a create answered after the dialog is dismissed publishes no change event; the Document databases store shares it). Rejected: eight, with their reasons in the triage log. Follow-up review: `false`; no risk the patches leave unverified (patched counts: medium 2, low 1, all test-side).
+
+**Verified on `ocupilot-ci`** after a fresh `src` load: `RestServiceSave` 6 (run 616), `RestServiceGate` 3 (617), `RestServiceDescriptor` 8 (618), `EndpointCoverage` 2 (619), `SaveHoldCoverage` 2 (620), `ToolEmit` 11 (621), `Descriptor` 60 (622), `SurfaceCoverage` 4 (623), `ClassicPageGate` 8 (624), all green. `check-objectscript` 0 problems, `lint-docs` 0 issues, `screen-mirror --check` and `client-lint` clean, `test:tools` 1908 passed, `test:components` 230 files and 2878 tests passed before the patches and the three REST specs (11 tests) after them. Browser: `rest-services-write` 4 and `rest-apis` 4 passed on the rebuilt, redeployed bundle. Bundle initial total 3,320,456 bytes against the 3326kB warning (no re-base); Fixed strings 3134 of 3400. The throwaway reads S0.
+
+**Residual risk:** about 5.5 kB of bundle headroom under the warning. The full ObjectScript sweep and the full browser suite are the runner's and CI's.

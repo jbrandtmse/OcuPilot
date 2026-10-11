@@ -1,7 +1,8 @@
 /// <p>The spec-based REST services' create (AD-53, AD-54, AD-55, Story 18.32): propose building a service in the
 /// request's namespace from a whole OpenAPI 2.0 document, which compiles <code>&lt;Name&gt;.spec</code>,
-/// <code>.disp</code> and <code>.impl</code>. The agent reaches it by proposal and confirmation; the person's own
-/// create is Story 18.34's, so until it lands the screen carries none.</p>
+/// <code>.disp</code> and <code>.impl</code>. The agent reaches it by proposal and confirmation; the person's caller is
+/// <class>OcuPilot.Area.WebApp.RestServiceSave</class> (<code>POST /rest-service</code>), which meets the port's rules and
+/// not <method>AgentProblems</method>.</p>
 /// <p><b>It is the agent's second code path</b> (AD-53): the classes are compiled from the document, so the mint and
 /// the confirm hold it to the code saves' rules (<method>AgentProblems</method>: only the namespace's own routines
 /// database, never <code>%SYS</code> or a <code>%</code> name, for each of the three classes), and a package beginning

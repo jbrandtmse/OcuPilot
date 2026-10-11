@@ -31,6 +31,12 @@ Parameter BUILD = "RESTSERVICE.BUILD";
 
 Parameter REASONBUILD = "The management API could not build a service from this document.";
 
+/// <p>Violation code: a name the namespace already lists as a REST service, or whose specification or dispatch class it
+/// holds, in any letter case, on <code>Name</code>. Nothing is sent.</p>
+Parameter TAKEN = "RESTSERVICE.TAKEN";
+
+Parameter REASONTAKEN = "This namespace already has a REST service of that name, or its specification or dispatch class, in some letter case.";
+
 /// <p>Refusal (409) on a delete: a web application dispatches to the service, or the row is itself a web application.
 /// Nothing is sent.</p>
 Parameter DEPLOYED = "RESTSERVICE.DEPLOYED";
@@ -47,19 +53,19 @@ Parameter NAMEMAX = 215;
 /// <p>Every <code>RESTSERVICE.*</code> code, as a <class>%List</class>.</p>
 ClassMethod Codes() As %List
 {
-    Quit $ListBuild(..#VALIDATION, ..#NAME, ..#DOCUMENT, ..#BUILD, ..#DEPLOYED)
+    Quit $ListBuild(..#VALIDATION, ..#NAME, ..#DOCUMENT, ..#BUILD, ..#DEPLOYED, ..#TAKEN)
 }
 
 /// <p>The field-level codes, as a <class>%List</class>, each with its field in <method>FieldOf</method>.</p>
 ClassMethod ViolationCodes() As %List
 {
-    Quit $ListBuild(..#NAME, ..#DOCUMENT, ..#BUILD)
+    Quit $ListBuild(..#NAME, ..#DOCUMENT, ..#BUILD, ..#TAKEN)
 }
 
 /// <p>The form field a violation code refuses, or <code>""</code>.</p>
 ClassMethod FieldOf(pCode As %String) As %String
 {
-    If pCode = ..#NAME Quit "Name"
+    If (pCode = ..#NAME) || (pCode = ..#TAKEN) Quit "Name"
     If (pCode = ..#DOCUMENT) || (pCode = ..#BUILD) Quit "Document"
     Quit ""
 }
@@ -73,6 +79,7 @@ ClassMethod ReasonFor(pCode As %String) As %String
     If pCode = ..#DOCUMENT Quit ..#REASONDOCUMENT
     If pCode = ..#BUILD Quit ..#REASONBUILD
     If pCode = ..#DEPLOYED Quit ..#REASONDEPLOYED
+    If pCode = ..#TAKEN Quit ..#REASONTAKEN
     Quit ""
 }
 
