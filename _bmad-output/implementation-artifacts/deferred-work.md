@@ -3374,6 +3374,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-18T00:46:24Z status=routed owner=4-7-the-agent-takes-you-to-a-screen by=harvest note=lead harvest of the 4.6 spec deferred list; routed to 4.7 which owns the selection tool
 - 2026-09-30T03:32:46Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down decision sheet 2026-09-29: into Story 23.3 (after the following release)
 - 2026-10-11T00:42:30Z status=routed owner=23-7-the-range-end-cleanup-part-6 by=load note=re-own from range-end-cleanup: kit 2026-10-10.1 owners are story keys or burndown
+- 2026-10-11T02:03:07Z status=routed owner=18-12-the-agent-grows-with-the-stage by=merge_gate note=owner decision 2026-10-10 on 23.7, "Pull 5, hold rest (Recommended)", relayed by the Planner; placed by footprint: Kernel/Agent/Prompt.cls BUILTIN
 
 ### DW-1085: ReplyNode carries no attribute beyond href/src/alt, so an ordered list's start and a link or image title are dropped against core/reply.ts's own "nothing is silently dropped" contract
 - source: spec-4-6-replies-render-safely-and-offline.md | severity: low | fix-risk: low | footprint: in-story
@@ -8727,6 +8728,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: on ocupilot-c-ci after the 1.0.3 to 1.0.4 upgrade: a hand-made request without dir took Monitor.State to 2; the details and activity reads refuse a missing parameter with 400 before the admin call and log nothing; the UI always sends dir
 - 2026-09-30T17:16:05Z status=routed owner=range-end-cleanup by=orchestrator note=queued for the standing cleanup after the next release, priority p4: refuse a missing dir before the admin call, as the sibling reads do
 - 2026-10-11T00:42:32Z status=routed owner=23-7-the-range-end-cleanup-part-6 by=load note=re-own from range-end-cleanup: kit 2026-10-10.1 owners are story keys or burndown
+- 2026-10-11T02:03:07Z status=routed owner=18-11-monitoring-extras-and-the-live-log-tail by=merge_gate note=owner decision 2026-10-10 on 23.7, "Pull 5, hold rest (Recommended)", relayed by the Planner; placed by footprint: monitor state raised by OcuPilot logging
 
 ### DW-1875: A Windows clone made with core.autocrlf=true before the *.sh eol=lf rule keeps its CRLF scripts after pulling the rule (git status reads clean), so compose up still fails until its scripts are checked out again
 - source: spec-23-2-the-range-end-cleanup-part-2.md | severity: med | fix-risk: low | footprint: out-of-footprint
@@ -8874,6 +8876,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-01T13:37:15Z status=routed owner=range-end-cleanup by=harvest note=Rule 27: non-blocking; the port should not log a bound it converts to started
 - 2026-10-04T06:51:59Z occurrence=18-20-ecp-data-servers
 - 2026-10-11T00:42:33Z status=routed owner=23-7-the-range-end-cleanup-part-6 by=load note=re-own from range-end-cleanup: kit 2026-10-10.1 owners are story keys or burndown
+- 2026-10-11T02:03:07Z status=routed owner=18-11-monitoring-extras-and-the-live-log-tail by=merge_gate note=owner decision 2026-10-10 on 23.7, "Pull 5, hold rest (Recommended)", relayed by the Planner; placed by footprint: monitor state raised by AdminPort.AwaitTask logging
 
 ### DW-1899: A gate-probe child that runs a screen action later fails an AsyncResult call with <FUNCTION>BeginCapture+4^%SYS.Capture, three alerts per run
 - source: spec-18-15-enable-interoperability-on-a-namespace.md | severity: low | fix-risk: low | footprint: out-of-footprint
@@ -10084,6 +10087,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: CI run 35466022679 on 240618d, attempt 1: tests 45-49 of ui/browser/error-log.browser-spec.mjs all failed 'Navigation timeout of 30000 ms exceeded' on page.goto inside the shared signedInAtScreen() helper at :342, five sequential 30 s losses, then the rest of the suite ran normally and only DW-1169 failed. Attempt 2 on the same head, same code, was 185/186 with those five passing. Both parents of the merge were individually healthy (epic 10 cf2012f 186/186, feature ed11819 184/185), so this is not an integration regression. Something makes the instance briefly unable to serve that screen's route -- the error-log spec's own seeding is the obvious suspect since it is the heaviest fixture in the suite. Probe: run error-log.browser-spec.mjs alone against a fresh throwaway with the instance's process table and journal watched, and check whether the seed step precedes the stall
 - 2026-10-06T11:56:04Z status=routed owner=range-end-cleanup by=lead note=re-filed from DW-1223 (id collision); routed to 13-2 on 09-19, declined there as Epic 5's; same shape in run 36483764167
 - 2026-10-11T00:42:33Z status=routed owner=23-7-the-range-end-cleanup-part-6 by=load note=re-own from range-end-cleanup: kit 2026-10-10.1 owners are story keys or burndown
+- 2026-10-11T02:03:07Z status=routed owner=burndown by=merge_gate note=owner decision 2026-10-10 on 23.7, "Pull 5, hold rest (Recommended)", relayed by the Planner; CI flake, the next epic burn-down gate takes it
 
 ### DW-2112: SaveHoldCoverage checks Save handler source text; only the web-application Save is held at runtime, so a wrong hold key in another Save is not caught
 - source: spec-23-4-the-range-end-cleanup-part-4.md | severity: med | fix-risk: low | footprint: in-story
@@ -10151,6 +10155,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: run 37492247584 (head ae8afad7) instance shard 3/5: 0.0.0.0:52776 address already in use on attempts 1-3, exit 1 before the suite; DW-439's bounded retry (13.2) did not outlast it
 - 2026-10-06T20:34:11Z status=routed owner=range-end-cleanup by=lead note=recurrence of DW-439's shape past its bounded retry; a longer or backed-off wait, or a port probe, would cover it
 - 2026-10-11T00:42:33Z status=routed owner=23-7-the-range-end-cleanup-part-6 by=load note=re-own from range-end-cleanup: kit 2026-10-10.1 owners are story keys or burndown
+- 2026-10-11T02:03:07Z status=routed owner=burndown by=merge_gate note=owner decision 2026-10-10 on 23.7, "Pull 5, hold rest (Recommended)", relayed by the Planner; CI flake, the next epic burn-down gate takes it
 
 ### DW-2124: IRIS defect candidate: the admin API's Wallet.Secret PUT of a %Wallet.SymmetricKey stores a random key when Length rides with Secret64, and stores no Length for an imported key (SymmetricKey.Create sets Length on a local subscript)
 - source: spec-18-24-rsa-and-symmetric-key-wallet-secrets.md | severity: low | fix-risk: high | footprint: out-of-footprint
