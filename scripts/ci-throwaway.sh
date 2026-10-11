@@ -444,6 +444,13 @@ services:
       # one pair an action requires and as principals holding exactly one action's pairs. The bounds class lowers the queue
       # abort's limit to one through a seam, forces a hung job's stop against a wider cap, and mints each refusal.
       # classes: InteropJobActions, InteropJobStop, InteropQueueActions, InteropRuntimeBounds, InteropRuntimeGate
+      # The lookup table classes write probe lookup tables and a probe business partner in USER and remove them (Story 20.5): the
+      # read class reads them through the port, the screens and the read tools and snapshots the vendor's globals, the control
+      # class drives the entry and table writes from both callers and reads the audit rows each leaves, the refusals class holds
+      # a vendor lock from this process so the requests wait it out, and the gate class signs in as probe principals each
+      # missing one pair a lookup read or write requires. The transfer class exports a probe table to a probe file and to the
+      # browser, deletes it, imports it back, and mints and confirms both tools.
+      # classes: InteropLookupControl, InteropLookupGate, InteropLookupRead, InteropLookupRefusals, InteropLookupTransfer
       # classes: ExplorerSourceTurn
       # classes: ExplorerSaveTurn
       # classes: ExplorerCreateTurn

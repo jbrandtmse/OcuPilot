@@ -2138,7 +2138,7 @@ ClassMethod ImportSource(ByRef pQuery, Output pText As %String, Output pLabel As
 
 /// <p><var>pFile</var>'s text, read as UTF-8, in <var>pText</var>; <var>pTooLarge</var> is 1, and
 /// <var>pText</var> empty, once it passes <parameter>MAXIMPORTCHARACTERS</parameter>.</p>
-ClassMethod ReadText(pFile As %String, Output pText As %String, Output pTooLarge As %Boolean) As %Status [ Private ]
+ClassMethod ReadText(pFile As %String, Output pText As %String, Output pTooLarge As %Boolean) As %Status
 {
     Set tSC = $$$OK
     Set pText = ""

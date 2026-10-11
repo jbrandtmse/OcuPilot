@@ -114,6 +114,9 @@ export const SKIP = {
   'interoperability/productions/items/messages': 'HSCUSTOM holds no production, so the Productions list opens with no row to open',
   'interoperability/productions/items/jobs': 'HSCUSTOM holds no production, so the Productions list opens with no row to open',
   'interoperability/queues/messages': 'HSCUSTOM runs no production, so the Queues list opens with no row to open',
+  // Story 20.5: a table's entries are reached from a Lookup tables name cell and need that table's name as their id, which the
+  // walk does not create; interop-lookup-tables.browser-spec.mjs walks them on the probe table it creates.
+  'interoperability/lookup-tables/entries': 'the entries route needs a lookup table to open, and the walk creates none',
 };
 
 /** The limits class the seeded entry is capped by, as the turn's own append is. */

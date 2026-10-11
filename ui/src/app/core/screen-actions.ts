@@ -164,6 +164,15 @@ const DESCRIPTOR_ACTION_LABELS: Readonly<Record<string, Readonly<Record<string, 
   'OcuPilot.Screen.Descriptor.InteropItemJobTab': { abort: STRINGS.interopJobsAbortAction, suspend: STRINGS.interopJobsSuspendAction, stop: STRINGS.interopJobsStopAction },
   // Story 20.22: Item settings' Set value opens its dialog, and its Reset to default returns a setting to its default.
   'OcuPilot.Screen.Descriptor.InteropItemSettingList': { set: STRINGS.interopItemSettingSetAction, reset: STRINGS.interopItemSettingResetAction },
+  // Story 20.5: Lookup tables' New table opens the dialog that creates a table with its first entry, its Delete removes a table and its Export
+  // writes the selected one;
+  // a table's entries' Add entry opens the dialog that adds one, its Set value opens the dialog that sets one, and its Remove deletes one.
+  'OcuPilot.Screen.Descriptor.InteropLookupTableList': { add: STRINGS.interopLookupTableAddAction, delete: STRINGS.actionDelete, export: STRINGS.taskExportAction },
+  'OcuPilot.Screen.Descriptor.InteropLookupEntryList': {
+    add: STRINGS.interopLookupEntryAddAction,
+    set: STRINGS.interopLookupEntrySetAction,
+    remove: STRINGS.actionRemove,
+  },
   // Story 8.5: the X.509 list's Create imports a credential rather than typing one in.
   'OcuPilot.Screen.Descriptor.X509CredentialList': { create: STRINGS.actionImport },
   'OcuPilot.Screen.Descriptor.AgentSwitches': {

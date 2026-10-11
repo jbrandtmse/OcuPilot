@@ -1,4 +1,4 @@
-/// <p>The interoperability codes and sentences (AD-29, AD-39, AD-62, Story 20.2): every
+/// <p>The interoperability codes and sentences (AD-29, AD-39, AD-62, Stories 20.2 and 20.5): every
 /// <code>INTEROP.*</code> code <class>OcuPilot.Port.InteropPort</class> answers with, the four
 /// consequence codes the production tools' proposals carry, and the sentence each carries. Each sentence
 /// is published once in EXPERIENCE.md's Fixed strings and pinned equal to its
@@ -245,17 +245,94 @@ Parameter JOBSTOP = "INTEROP.JOB.STOP";
 
 Parameter REASONJOBSTOP = "Stopping this job asks it to finish its current message within 15 seconds, or sooner when the production's update timeout is shorter. A job that does not is ended, and its message goes back on its queue. The item runs a job short until the production is updated on Productions.";
 
+/// <p>An add of a key the lookup table already holds (Story 20.5).</p>
+Parameter LOOKUPTAKEN = "INTEROP.LOOKUP.TAKEN";
+
+Parameter REASONLOOKUPTAKEN = "This lookup table already holds an entry with that key.";
+
+/// <p>An add into a table whose name differs only in letter case from one the namespace holds: table names are case
+/// sensitive and the classic page treats them as one table.</p>
+Parameter LOOKUPTABLECASE = "INTEROP.LOOKUP.TABLECASE";
+
+Parameter REASONLOOKUPTABLECASE = "A lookup table whose name differs from this one only in letter case already exists. Use its spelling, or choose another name.";
+
+/// <p>A set of the value the entry already holds.</p>
+Parameter LOOKUPSAME = "INTEROP.LOOKUP.SAME";
+
+Parameter REASONLOOKUPSAME = "This entry already holds that value.";
+
+/// <p>An add or a set of an entry whose key the credential pattern matches: OcuPilot neither shows nor sets such a value.</p>
+Parameter LOOKUPSECRET = "INTEROP.LOOKUP.SECRET";
+
+Parameter REASONLOOKUPSECRET = "This key names a credential, so OcuPilot neither shows nor sets its value. Set it in the classic Lookup Tables page.";
+
+/// <p>Every lookup write in a namespace under source control.</p>
+Parameter LOOKUPSOURCECONTROL = "INTEROP.LOOKUP.SOURCECONTROL";
+
+Parameter REASONLOOKUPSOURCECONTROL = "This namespace uses source control, so change lookup tables in the classic Lookup Tables page.";
+
+/// <p>A lookup write while the vendor's own table lock is held past the wait.</p>
+Parameter LOOKUPLOCKED = "INTEROP.LOOKUP.LOCKED";
+
+Parameter REASONLOOKUPLOCKED = "Someone else is changing this lookup table right now, so nothing was written. Try again in a moment.";
+
+/// <p>Violation codes (422): a table name, an entry key and an entry value the vendor's own limits refuse. The rules are
+/// <method>OcuPilot.Port.InteropPort.LookupViolations</method>'s.</p>
+Parameter LOOKUPTABLENAME = "INTEROP.LOOKUP.TABLENAME";
+
+Parameter REASONLOOKUPTABLENAME = "A lookup table name is 1 to 255 characters with no control character.";
+
+Parameter LOOKUPKEY = "INTEROP.LOOKUP.KEY";
+
+Parameter REASONLOOKUPKEY = "An entry key is 1 to 255 characters with no control character.";
+
+Parameter LOOKUPVALUE = "INTEROP.LOOKUP.VALUE";
+
+Parameter REASONLOOKUPVALUE = "An entry value is at most 32,000 characters.";
+
+/// <p>An import file that is not exactly one lookup table with at least one entry and nothing else, or that holds another table than
+/// the one named (Story 20.5).</p>
+Parameter LOOKUPIMPORTSHAPE = "INTEROP.LOOKUP.IMPORTSHAPE";
+
+Parameter REASONLOOKUPIMPORTSHAPE = "An import file must hold exactly one lookup table with at least one entry and nothing else, in the form the Export action writes.";
+
+/// <p>An import whose file, or whose table, is not what it was reviewed as.</p>
+Parameter LOOKUPIMPORTCHANGED = "INTEROP.LOOKUP.IMPORTCHANGED";
+
+Parameter REASONLOOKUPIMPORTCHANGED = "The file or the table changed after the import was reviewed, so nothing was imported. Review the import again.";
+
+/// <p>An export or an import file longer than <parameter>OcuPilot.Port.AtelierPort.MAXIMPORTCHARACTERS</parameter> characters; the
+/// sentence states that number, pinned by <file>ui/tools/interop.test.mjs</file>.</p>
+Parameter LOOKUPTOOLARGE = "INTEROP.LOOKUP.TOOLARGE";
+
+Parameter REASONLOOKUPTOOLARGE = "A lookup table file holds at most 3,000,000 characters, and this one holds more.";
+
+/// <p>The consequence code the import proposal carries.</p>
+Parameter LOOKUPIMPORT = "INTEROP.LOOKUP.IMPORT";
+
+Parameter REASONLOOKUPIMPORT = "Importing replaces the table's entries with the file's, and entries the file does not hold are removed.";
+
+/// <p>The consequence codes the entry remove and the table delete proposals carry (Story 20.5). The client maps each to its
+/// warning sentence (<file>ui/src/app/core/proposal-view.ts</file>).</p>
+Parameter LOOKUPREMOVE = "INTEROP.LOOKUP.REMOVE";
+
+Parameter REASONLOOKUPREMOVE = "Removing this entry cannot be undone from OcuPilot. When it is the table's last entry, the table is removed too.";
+
+Parameter LOOKUPDELETE = "INTEROP.LOOKUP.DELETE";
+
+Parameter REASONLOOKUPDELETE = "Deleting this lookup table removes every entry in it. Rules and transformations that read it then get their default value.";
+
 /// <p>The refusals the port answers with, as a <class>%List</class>: every code that is not a
 /// consequence.</p>
 ClassMethod Codes() As %List
 {
-    Quit $ListBuild(..#NAMESPACE, ..#RUNNING, ..#OTHER, ..#TROUBLED, ..#NOTRUNNING, ..#UPTODATE, ..#NOTTROUBLED, ..#BUSY, ..#STATE, ..#SUSPENDED, ..#PARTSTOPPED) _ ..ItemCodes() _ ..SettingCodes() _ ..RuntimeCodes()
+    Quit $ListBuild(..#NAMESPACE, ..#RUNNING, ..#OTHER, ..#TROUBLED, ..#NOTRUNNING, ..#UPTODATE, ..#NOTTROUBLED, ..#BUSY, ..#STATE, ..#SUSPENDED, ..#PARTSTOPPED) _ ..ItemCodes() _ ..SettingCodes() _ ..RuntimeCodes() _ ..LookupCodes()
 }
 
 /// <p>The consequence codes, as a <class>%List</class>.</p>
 ClassMethod ConsequenceCodes() As %List
 {
-    Quit $ListBuild(..#STOP, ..#RESTART, ..#UPDATE, ..#RECOVER, ..#ITEMPENDING, ..#ITEMREMOVE, ..#SETTINGLOCATION, ..#MESSAGEABORT, ..#QUEUEABORT, ..#JOBABORT, ..#JOBSUSPEND, ..#JOBSTOP)
+    Quit $ListBuild(..#STOP, ..#RESTART, ..#UPDATE, ..#RECOVER, ..#ITEMPENDING, ..#ITEMREMOVE, ..#SETTINGLOCATION, ..#MESSAGEABORT, ..#QUEUEABORT, ..#JOBABORT, ..#JOBSUSPEND, ..#JOBSTOP, ..#LOOKUPREMOVE, ..#LOOKUPDELETE, ..#LOOKUPIMPORT)
 }
 
 /// <p>The item codes, as a <class>%List</class>: the refusals an item read or write answers with.</p>
@@ -293,6 +370,22 @@ ClassMethod SettingPreconditionCodes() As %List
 ClassMethod RuntimeCodes() As %List
 {
     Quit $ListBuild(..#QUEUEEMPTY, ..#QUEUECHANGED, ..#JOBDEAD, ..#JOBNOTRETRYING, ..#JOBNOTSTOPPED)
+}
+
+/// <p>The lookup codes (Story 20.5), as a <class>%List</class>: the refusals a lookup read or write answers with, the three
+/// violations of an entry's table, key and value and the three refusals of an import file and an export. The three consequence
+/// codes are <method>ConsequenceCodes</method>'s.</p>
+ClassMethod LookupCodes() As %List
+{
+    Quit $ListBuild(..#LOOKUPTAKEN, ..#LOOKUPTABLECASE, ..#LOOKUPSAME, ..#LOOKUPSECRET, ..#LOOKUPSOURCECONTROL, ..#LOOKUPLOCKED, ..#LOOKUPTABLENAME, ..#LOOKUPKEY, ..#LOOKUPVALUE, ..#LOOKUPIMPORTSHAPE, ..#LOOKUPIMPORTCHANGED, ..#LOOKUPTOOLARGE)
+}
+
+/// <p>The lookup refusals an entry tool's fresh read answers when the action does not fit the entry, as a
+/// <class>%List</class>; the violations and <parameter>LOOKUPLOCKED</parameter>, which the write alone judges, and
+/// <parameter>LOOKUPSAME</parameter>, which the write and the set's mint judge, are not among them.</p>
+ClassMethod LookupPreconditionCodes() As %List
+{
+    Quit $ListBuild(..#LOOKUPTAKEN, ..#LOOKUPTABLECASE, ..#LOOKUPSECRET, ..#LOOKUPSOURCECONTROL)
 }
 
 /// <p>The codes a production tool's fresh read refuses with when the action's precondition does not
@@ -353,6 +446,21 @@ ClassMethod ReasonFor(pCode As %String) As %String
     If pCode = ..#JOBABORT Quit ..#REASONJOBABORT
     If pCode = ..#JOBSUSPEND Quit ..#REASONJOBSUSPEND
     If pCode = ..#JOBSTOP Quit ..#REASONJOBSTOP
+    If pCode = ..#LOOKUPTAKEN Quit ..#REASONLOOKUPTAKEN
+    If pCode = ..#LOOKUPTABLECASE Quit ..#REASONLOOKUPTABLECASE
+    If pCode = ..#LOOKUPSAME Quit ..#REASONLOOKUPSAME
+    If pCode = ..#LOOKUPSECRET Quit ..#REASONLOOKUPSECRET
+    If pCode = ..#LOOKUPSOURCECONTROL Quit ..#REASONLOOKUPSOURCECONTROL
+    If pCode = ..#LOOKUPLOCKED Quit ..#REASONLOOKUPLOCKED
+    If pCode = ..#LOOKUPTABLENAME Quit ..#REASONLOOKUPTABLENAME
+    If pCode = ..#LOOKUPKEY Quit ..#REASONLOOKUPKEY
+    If pCode = ..#LOOKUPVALUE Quit ..#REASONLOOKUPVALUE
+    If pCode = ..#LOOKUPREMOVE Quit ..#REASONLOOKUPREMOVE
+    If pCode = ..#LOOKUPDELETE Quit ..#REASONLOOKUPDELETE
+    If pCode = ..#LOOKUPIMPORTSHAPE Quit ..#REASONLOOKUPIMPORTSHAPE
+    If pCode = ..#LOOKUPIMPORTCHANGED Quit ..#REASONLOOKUPIMPORTCHANGED
+    If pCode = ..#LOOKUPTOOLARGE Quit ..#REASONLOOKUPTOOLARGE
+    If pCode = ..#LOOKUPIMPORT Quit ..#REASONLOOKUPIMPORT
     Quit ""
 }
 

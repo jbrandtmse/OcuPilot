@@ -2,9 +2,10 @@
 title: 'Story 20.5: Lookup tables and business partners'
 type: 'feature'
 created: '2026-10-11'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: '24c7a2b87e5755e1d6ad8d00df0cdfedd4233ba0'
 review_loop_iteration: 0
-followup_review_recommended: false
+followup_review_recommended: true
 context:
   - '{project-root}/_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md'
   - '{project-root}/_bmad-output/planning-artifacts/ux-designs/ux-OcuPilot-2026-09-08/EXPERIENCE.md'
@@ -18,6 +19,21 @@ deferred:
     location: >-
       src/OcuPilot/Port/InteropPort.cls
     severity: med
+  - summary: >-
+      The lookup table export tool declares %Admin_FileSystemAccess:USE for both of its actions, so a principal holding only the stock Interoperability roles cannot export a table, not even to the browser, though the classic page's export needs only the table read.
+    evidence: |-
+      With the tool's own pair left at the lookup read pair, InteropFloor.TestTheToolsEachPrincipalHoldsAreItsRoster goes red: the operator and administrator principals then hold a write-kind tool, which that test forbids. %EnsRole_Administrator, %EnsRole_Operator and %EnsRole_WebDeveloper hold no %Admin_FileSystemAccess (read on the instance); only %Manager does.
+      The spec's gate for an export (the lookup read pairs and READ on the globals database) and the floor's invariant cannot both hold. A posture call: keep the pair, let the browser action name no pair of its own, or classify the tool as a read.
+    location: >-
+      src/OcuPilot/Screen/Tool/InteropLookupTableExport.cls:34
+    severity: medium
+  - summary: >-
+      After the last entry of a table is removed, the entries page keeps the removed entry's row until the person leaves the screen, because the re-read of a table that no longer exists is 404.
+    evidence: |-
+      Disclosed in the implement pass; interop-lookup-tables.browser-spec.mjs navigates away rather than waiting for the row to go. The card and the dialog already say that removing the last entry removes the table.
+    location: >-
+      ui/src/app/areas/interoperability/interop-lookup-entry-list.page.ts
+    severity: low
 ---
 
 <intent-contract>
@@ -188,7 +204,7 @@ deferred:
 
 **Execution.** The split seam is between Part A and Part B (Design Notes › Split): Part B's tasks, its two ACs and its tests move as a block.
 
-- [ ] **Task 0** (`ocupilot-b-ci` only, through `docker exec`). Record each item as a `Task 0:` line under Verification:
+- [x] **Task 0** (`ocupilot-b-ci` only, through `docker exec`). Record each item as a `Task 0:` line under Verification:
   - `NormalizePage` spells `EnsPortal.LookupSettings`, `EnsPortal.BusinessPartners` and `EnsPortal.Dialog.Import` as written.
   - `%ExistsTable(name, 1, , .match)` answers a case-variant of an existing table whose prefix is shared by another table, without an error. The source's upper-case branch can fall off without a `Quit`. If it errs, `TABLECASE` walks `Enumerate` comparing `$ZConvert(…, "U")`, bounded by the table count.
   - `LocalStamp` gets `$ZDateTime(getTimestamp, 3, , 3)` (the stamp is `$ZTS`, UTC, measured).
@@ -196,7 +212,7 @@ deferred:
 
 **Part A: lookup tables, entries and business partners.**
 
-- [ ] `src/OcuPilot/Port/InteropPort.cls` (extend):
+- [x] `src/OcuPilot/Port/InteropPort.cls` (extend):
   - `ENDPOINTS` gains `LookupTables,LookupEntries,BusinessPartners`.
   - Pair sets:
     - `LOOKUPPAIRS` = `%Ens_Portal:USE,%Ens_LookupTables:READ` for both lookup endpoints
@@ -234,15 +250,15 @@ deferred:
     - These are the vendor's `MAXLEN`s, measured (255 + 220 subscripts fit).
   - Snippets: a `SnippetForm` arm and `LookupSnippet` rendering each write's vendor call with `Literal` (lock, call, unlock).
   - Header: the write and seam lists gain the lookup writes and the new seam `LockTable`.
-- [ ] `src/OcuPilot/Api/InteropError.cls`: `LookupCodes()` and `LookupPreconditionCodes()` join `Codes()` and `ReasonFor`.
+- [x] `src/OcuPilot/Api/InteropError.cls`: `LookupCodes()` and `LookupPreconditionCodes()` join `Codes()` and `ReasonFor`.
   - Refusals: `TAKEN`, `TABLECASE`, `SAME`, `SECRET`, `SOURCECONTROL` and `LOCKED`, each `INTEROP.LOOKUP.*`.
   - Violations: `TABLENAME`, `KEY` and `VALUE`.
   - Consequences, which join `ConsequenceCodes()`:
     - `REMOVE`: "Removing this entry cannot be undone from OcuPilot. When it is the table's last entry, the table is removed too."
     - `DELETE`: "Deleting this lookup table removes every entry in it. Rules and transformations that read it then get their default value."
-- [ ] `src/OcuPilot/Kernel/EntityType.cls` (append): `lookup-table` (its name), `lookup-entry` (`[Table, Key]`) and `business-partner` (its name), each kept exactly, with a class-comment line each.
-- [ ] `src/OcuPilot/Kernel/Proposal/Prohibited.cls` (add-only): `lookup-table` and `lookup-entry` join `COVEREDTYPES`, the `TYPE*` parameters and the exclusion :1360, each with a `ReviewedFewOnly` arm. `PermittedChangeFields("lookup-entry")` is `Value`; `PermittedCreateFields("lookup-entry")` is `Table, Key, Value, Namespace`. OcuPilot stores nothing in `^Ens.LookupTable` (grep: 0), so no self-protection arm exists (AD-10).
-- [ ] Tools (new, `src/OcuPilot/Screen/Tool/`):
+- [x] `src/OcuPilot/Kernel/EntityType.cls` (append): `lookup-table` (its name), `lookup-entry` (`[Table, Key]`) and `business-partner` (its name), each kept exactly, with a class-comment line each.
+- [x] `src/OcuPilot/Kernel/Proposal/Prohibited.cls` (add-only): `lookup-table` and `lookup-entry` join `COVEREDTYPES`, the `TYPE*` parameters and the exclusion :1360, each with a `ReviewedFewOnly` arm. `PermittedChangeFields("lookup-entry")` is `Value`; `PermittedCreateFields("lookup-entry")` is `Table, Key, Value, Namespace`. OcuPilot stores nothing in `^Ens.LookupTable` (grep: 0), so no self-protection arm exists (AD-10).
+- [x] Tools (new, `src/OcuPilot/Screen/Tool/`):
   - `InteropLookupEntryAction` (abstract, extends `InteropAction`):
     - descriptor `InteropLookupEntryList`, `WRITERESOURCE` `%Ens_LookupTables`, `READTYPE` `LOOKUPENTRY`, `STATEMARKER` `Secret` (the read answers it, and no argument carries it)
     - `MintClass` `InteropLookupEntryMint`, `IdArgument` `Key`, `Endpoint` `LookupEntries`
@@ -265,16 +281,16 @@ deferred:
     - `FINGERPRINTSUBJECT` `Entries,Modified`, `CONSEQUENCECODE` `INTEROP.LOOKUP.DELETE`, `IdArgument` `Name`; key `false`
     - `StateDiff` shows `Name` and `Entries` as removed rows, as `InteropItemRemove`'s does; the entry remove's shows `Key` and `Value`
   - None declares `CLASSICPAGES`: each is performed on `EnsPortal.LookupSettings` itself (AD-44).
-- [ ] `src/OcuPilot/Area/Interop/ItemSave.cls` (in place, Epic 20's own) becomes extensible, with item behavior unchanged:
+- [x] `src/OcuPilot/Area/Interop/ItemSave.cls` (in place, Epic 20's own) becomes extensible, with item behavior unchanged:
   - `ParentHeld(namespace, parent)` and `Violations(namespace, parent, name, fields, .v)` become overridable class methods wrapping today's `ProductionHeld` and `AddViolations` calls.
   - Parameters `TAKENCODE` and `TAKENREASON` replace the literal `ITEMTAKEN` in `Absent`. `PARENTEMPTYCODE` and `NAMEEMPTYCODE` replace the two codes `Create` gives an empty member (today `PORT.FIELD.SHAPE` and `INTEROP.ITEM.NAME`).
-- [ ] `src/OcuPilot/Area/Interop/LookupEntrySave.cls` (new, extends `ItemSave`): `POST /interop/lookup-entries`.
+- [x] `src/OcuPilot/Area/Interop/LookupEntrySave.cls` (new, extends `ItemSave`): `POST /interop/lookup-entries`.
   - `CREATETOOL` `InteropLookupEntryAdd`, `DESCRIPTORCLASS` `InteropLookupEntryList`; members `Table` and `Key` through the two member parameters.
   - `ParentHeld` answers 1, because a missing table is created.
   - `Violations` calls `LookupViolations`. `TAKENCODE` is `INTEROP.LOOKUP.TAKEN`, and the empty-member codes are `INTEROP.LOOKUP.TABLENAME` and `INTEROP.LOOKUP.KEY`.
   - `Api/Router.cls` (add-only): the route after :264 and a thin `InteropLookupEntryCreate`.
-- [ ] `src/OcuPilot/Kernel/Governance/Baseline.cls` (append after :234): the four keys as above.
-- [ ] Descriptors (new, `src/OcuPilot/Screen/Descriptor/`). Each has area `interoperability`, scope `namespace`, three suggested prompts, a table, context fields, `classicPage`, no refresh, and its `toolIdentifier`. Privileges are the endpoint's pairs, and `ownPrivileges` those less `%Ens_Portal:USE`.
+- [x] `src/OcuPilot/Kernel/Governance/Baseline.cls` (append after :234): the four keys as above.
+- [x] Descriptors (new, `src/OcuPilot/Screen/Descriptor/`). Each has area `interoperability`, scope `namespace`, three suggested prompts, a table, context fields, `classicPage`, no refresh, and its `toolIdentifier`. Privileges are the endpoint's pairs, and `ownPrivileges` those less `%Ens_Portal:USE`.
   - `InteropLookupTableList`:
     - route `interoperability/lookup-tables`, `sideBarPosition` 8, `list`
     - entity `lookup-table`, single (`Name`), `secondaryEntityTypes` `["lookup-entry"]`, so an entry change re-reads the list
@@ -290,7 +306,7 @@ deferred:
     - entity `business-partner`, single (`Name`), no actions; read-only, so it declares `table.emptyNextKey` and no `emptyAgentKey` (`Registry` :2695)
     - read `BusinessPartners` with the matrix's fields; columns Name, Description, Primary contact, Phone and Email
     - `EnsPortal.BusinessPartners`; `interop.businesspartners`
-- [ ] Client:
+- [x] Client:
   - `areas/interoperability/interop-lookup-table-list.page.ts` hosts `<app-list-page />` and the entry dialog in New-table mode, and registers `add`.
   - `interop-lookup-entry-list.page.ts` hosts the entry dialog in add mode and the set dialog; it registers `add` and `set`, and `set` is undrawn.
   - `interop-lookup-entry-dialog.ts` with `interop-lookup-entry.store.ts`, `POST /api/ocupilot/interop/lookup-entries`:
@@ -306,12 +322,12 @@ deferred:
     - `TYPED_NAME_ROWS` names `Name` for a table and `Key` for an entry
   - `strings.ts` (add-only): titles, empty states, agent lines, prompts, column labels, the `table` criterion, dialog strings, and the refusal and consequence sentences. Existing values are reused.
   - Regenerate `screens.generated.ts`.
-- [ ] `EXPERIENCE.md`, no line inserted above :604:
+- [x] `EXPERIENCE.md`, no line inserted above :604:
   - :159 gains " · Lookup tables · Business partners", and that a table's name opens its entries.
   - :173 gains the entry dialog (New table and Add entry) and Set entry value, and the table delete and entry remove join the delete confirmations.
   - :604 gains a Story 20.5 clause with every new literal.
   - Then `cd ui && npm run test:tools`.
-- [ ] Tests (new, each under about 500 lines, one class per call). The fixtures create their own tables (`OcuProbe205*`) and partner in USER and remove them in `OnAfterAllTests`:
+- [x] Tests (new, each under about 500 lines, one class per call). The fixtures create their own tables (`OcuProbe205*`) and partner in USER and remove them in `OnAfterAllTests`:
   - `Test/InteropLookupDescriptor.cls`:
     - the three declarations, their three read tools and the four write tools, with `Pairs`, `Serves` and `ENDPOINTS`
     - the key defaults and the codes' lists
@@ -333,8 +349,8 @@ deferred:
   - `Test/InteropLookupGate.cls` (armed under `OCUPILOT_ALLOW_PRINCIPALS`, reusing `InteropItemGate`'s `FailedPair` and `LegText` as `InteropHostGate` does):
     - a principal holding exactly each endpoint's or tool's pairs reads or writes
     - dropping each pair, or holding READ only on the globals database, is refused by name before any vendor call, through the port and through the screen routes
-- [ ] Roster sweep (Rule 30). Every row of the Code Map's roster table, the arming lines for the new classes, and the `ItemSave` refactor's consumers (`InteropItemControl`, `SaveHoldCoverage`) join the targeted set.
-- [ ] `ui/browser/interop-lookup-tables.browser-spec.mjs` (new). `before` and `after` follow `interop-items`'. Every step waits for `waitForMapAnswered` and its rows:
+- [x] Roster sweep (Rule 30). Every row of the Code Map's roster table, the arming lines for the new classes, and the `ItemSave` refactor's consumers (`InteropItemControl`, `SaveHoldCoverage`) join the targeted set.
+- [x] `ui/browser/interop-lookup-tables.browser-spec.mjs` (new). `before` and `after` follow `interop-items`'. Every step waits for `waitForMapAnswered` and its rows:
   1. New table creates a table with its first entry.
   2. Its name opens the entries.
   3. Add, Set value and Remove (typing the key) each change the rows.
@@ -343,7 +359,7 @@ deferred:
 
 **Part B: import and export.**
 
-- [ ] `InteropPort.cls` (extend):
+- [x] `InteropPort.cls` (extend):
   - Types: reads `IMPORTTABLE`; writes `IMPORT` and `EXPORT`, served on `LookupTables`.
   - `EXPORT`:
     - Gate: `LOOKUPPAIRS` plus READ on the globals database.
@@ -360,8 +376,8 @@ deferred:
     - Then `$System.OBJ.LoadStream(text, "-d", .err, .loaded, 0, T_".LUT")`, which reaches the `.LUT` document's `ImportStream` and replaces the table (measured).
     - Audit verb `import`.
   - Snippets for both.
-- [ ] `InteropError.cls`: `IMPORTSHAPE`, `IMPORTCHANGED` and `TOOLARGE`; consequence `IMPORT`: "Importing replaces the table's entries with the file's, and entries the file does not hold are removed."
-- [ ] Tools:
+- [x] `InteropError.cls`: `IMPORTSHAPE`, `IMPORTCHANGED` and `TOOLARGE`; consequence `IMPORT`: "Importing replaces the table's entries with the file's, and entries the file does not hold are removed."
+- [x] Tools:
   - `InteropLookupTableExport`, `interop.lookuptables.export`:
     - `SCREENACTIONS` `export,export-browser`, `SCREENVALUES` `export=root:path`, `BROWSERACTION`
     - `ArgumentPairs` through `ExplorerExport.FilePairs`, `FileProblem`/`AddFileArguments` through `TaskExport`
@@ -373,11 +389,11 @@ deferred:
     - `READTYPE` `IMPORTTABLE`, `FINGERPRINTSUBJECT` `Namespace,root,path,fileName,Table,FileEntries,Digest,Present,Entries,Modified`
     - `DESTRUCTIVE`; `CLASSICPAGES` `EnsPortal.Dialog.Import`; key `false`
   - The target is the table the file names. The page reads it from the file's `<Document name="….LUT">`, and the port refuses a target the file does not hold.
-- [ ] Client:
+- [x] Client:
   - The tables list registers a screen-level Import and a row action Export. Both reuse the Explorer export and import dialogs, their Explorer wording made inputs.
   - Export to the browser saves `<Table>.xml` through `saveText`.
   - `strings.ts`, `EXPERIENCE.md` :173/:604 and the handler maps as in Part A.
-- [ ] `Test/InteropLookupTransfer.cls` (new, armed as its siblings are):
+- [x] `Test/InteropLookupTransfer.cls` (new, armed as its siblings are):
   - export to a server file and to the browser
   - export, delete, import from the server file and from local text, restoring the same entries
   - keys the file lacks are removed
@@ -387,6 +403,20 @@ deferred:
   - PathPort's pairs required only for a server file
   - the agent's mint and confirm for both tools
   - Plus `ui/browser/interop-lookup-transfer.browser-spec.mjs`: browser export, then local import.
+
+**Review fix pack (iteration 1).** Parts A and B are implemented and were verified; do not redo them. Each item below is a patch from the review layers. Every pinning leg an item adds or changes gets a demonstrated mutation (apply it on `ocupilot-b-ci`, recompile the class and every descendant, observe red, revert byte-identical, reload), recorded in `## Verification` as a row of the observed-mutation table.
+
+- [x] **FP1** `InteropLookupRefusals.cls`, `InteropLookupDescriptor.cls` (AC4). `InteropLookupEntryAction.CallSecretNames` has no test. Add a leg modeled on `InteropSettingSecrets.TestAValueTheAgentSentIsRedactedInTheLedgerRowAndTheStep`, through `Dispatch.Answer`: an agent add and an agent set whose `Key` is credential-named and whose `Value` is a marker; neither the ledger row nor the step may carry the marker. Add a `CallSecretNames` assertion to the descriptor test, modeled on `InteropSettingDescriptor.TestTheCallSecretNamesAreTheSettingToolsAlone`: the entry add and set return `Value` for a credential-named key and `""` otherwise, and no other lookup tool returns anything. Mutation: `CallSecretNames` quits `""`.
+- [x] **FP2** `InteropLookupTransfer.cls` or `InteropLookupRefusals.cls` (AC4, AC9). The import's guards are unpinned. Add legs: under `InteropItemSeam.Arm(, 1)` an import's mint read and its write are `409 INTEROP.LOOKUP.SOURCECONTROL` and load nothing; with this process holding `Lock +^Ens.LookupTable(<table>)` (the `LockTable` seam, as the lock leg uses it) the write is `LOCKED` and loads nothing; a table whose stamp or entry count moves between `PerformImport`'s first read and its lock is `IMPORTCHANGED` and loads nothing; a server file over `MAXIMPORTCHARACTERS` is `TOOLARGE`. Mutations: delete `PerformImport`'s `SourceControlled` line; delete its `LockTable` call; drop its in-lock stamp-and-count comparison.
+- [x] **FP3** `InteropLookupGate.cls` (AC5). `LEGS` and `TOOLS` hold no transfer type or tool. Add `EXPORT`, `IMPORT` and `IMPORTTABLE` to the port legs and `interop.lookuptables.export` and `interop.lookuptables.import` to the tool legs, so a principal missing `%Ens_LookupTables:WRITE`, holding READ only on the globals database, or missing `%Admin_FileSystemAccess:USE` is refused by name through the port, the tool pairs and the screen routes, and one holding exactly the pairs succeeds. Mutations: name ones the new legs turn red, such as dropping `TYPEIMPORT` from `IsLookupWrite` and setting the export's `DATABASEPERMISSION` to `WRITE`.
+- [x] **FP4** `InteropLookupDescriptor.cls`, `TestEveryLookupWriteRendersItsScript`. Render `Snippet` for `IMPORT` and `EXPORT` too: assert the lock and unlock lines (import), the document name, and that a table name or path holding a double quote or a control character stays inside its string literal. Mutation: drop the lock lines from `TransferSnippet`.
+- [x] **FP5** `ui/src/app/shell/proposal-card.spec.ts` (the consequence loop near `INTEROP.LOOKUP.REMOVE` and `INTEROP.LOOKUP.DELETE`). Add `INTEROP.LOOKUP.IMPORT`. Mutation: delete its mapping line in `ui/src/app/core/proposal-view.ts`.
+- [x] **FP6** `InteropLookupDescriptor.cls`, the accepted-bounds row. It accepts a one-character key. Use a 255-character key so `KEYMAX` is pinned from below as the table's and the value's are. Mutation: `KEYMAX` 100.
+- [x] **FP7** `InteropLookupRead.cls`, `InteropLookupFixture.cls` (AC1, AC6). The partners `maxRows` leg cannot cut with one probe partner, the tables list has no cut leg, and the wire leg's `rows` check sits behind an `If $IsObject(...)` that skips silently. Add a second probe partner to the fixture (removed in `OnAfterAllTests`), assert `maxRows=1` answers one row for partners and for the probe tables, and assert `rows` on the wire unconditionally before the credential-value check. Mutations: `ListPartners` ignores `pMax`; `ListLookupTables` ignores `pMax`.
+- [x] **FP8** `InteropLookupRefusals.cls` (AC4). The agent's `SAME` leg asserts only `NotEquals(tVerdict, "minted")`. Assert that the agent's refusal is `INTEROP.LOOKUP.SAME` with its sentence. If the kernel refuses an empty change first under another code, the agent path does not meet the matrix row: fix the mint so the refusal is `SAME`, and say so in the fix pack result.
+- [x] **FP9** `ui/browser/interop-lookup-tables.browser-spec.mjs` (Rule 19 hermeticity). Tests 2 and 3 depend on the table test 1 created. Make each test arrange its own table through the fixture, as `interop-lookup-transfer.browser-spec.mjs`' `arrange()` does, and remove what it made, so each passes alone and in either order. Test 1 still creates its table through the screen. Run the file whole, then each test alone with `--test-name-pattern`.
+- [x] **FP10** `InteropPort.cls`, `ReadImportTable` and `PerformImport` (AC9; the refuse-by-name list). An import whose file names a table held under another letter case silently creates a second table. Refuse it `INTEROP.LOOKUP.TABLECASE` when the exact table is absent and a case-variant is held: in `ReadImportTable` when an action is named (as `ReadLookupEntry` does for an add), and in `PerformImport` under the lock, before the load, from `LookupFactsHere`'s `match`. Reuse the code and its sentence; add no new code. Add legs to `InteropLookupTransfer` for the mint and the write, with nothing loaded. Mutation: drop the check.
+- [x] **FP11** This spec's `## Verification`. The observed-mutation table has no AC column. Give it an `AC` column, label each existing row with the AC or ACs it pins from the planned table (do not re-run the old mutations), and add a row per mutation above. Then add a short `**Fix pack result.**` paragraph under `## Auto Run Result` covering this pass only. Do not touch the frontmatter, `## Review Triage Log` or anything inside `<intent-contract>`.
 
 **Acceptance Criteria:**
 
@@ -405,6 +435,33 @@ deferred:
 - 2026-10-11, spec gate (lead): rulings recorded under Design Notes › Gate rulings (Q1 asked, Q2 under DW-1166, Q3 (A), partners chartered as Story 20.26 / DW-2324); Part A spine drafts written.
 
 ## Review Triage Log
+
+### 2026-10-11 — Review pass
+
+- verdicts: 22 findings -- high 0, medium 9, low 8, false 5, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` Verification gap: `CallSecretNames` redaction of the entry tools has no test -- a lookup tool that stops redacting would leave an agent-sent credential value in the ledger row and the step. Patched by FP1: a dispatched add and set on a credential-named key, and a `CallSecretNames` roster assertion; mutation `CallSecretNames` quits `""` reddens both.
+  - `[medium]` `[patch]` Verification gap: the import's source-control refusal, vendor-lock path, in-lock stamp-and-count recheck and server-file `TOOLARGE` are unpinned -- the most destructive write ships without the guards the other writes have pinned. Patched by FP2 (legs and mutations in the observed table).
+  - `[medium]` `[patch]` Verification gap: the Part B tools and types are never gate-tested against a principal missing a pair -- AC5 was proven for the Part A tools only. Patched by FP3: the port, tool and screen-route legs now cover `EXPORT`, `IMPORT` and `IMPORTTABLE`.
+  - `[low]` `[patch]` Verification gap: the export and import script forms (`TransferSnippet`) are untested. Patched by FP4.
+  - `[low]` `[patch]` Verification gap: the import's consequence-code mapping is unpinned on the client; deleting `proposal-view.ts`'s line leaves every test green. Patched by FP5.
+  - `[low]` `[patch]` Verification gap: the key bound is pinned from above only; `KEYMAX` 100 stays green. Patched by FP6 with a 255-character key.
+  - `[low]` `[patch]` Verification gap: the partners `maxRows` cut cannot fail with one probe partner, the tables list has no cut leg, and the wire rows check is skipped silently. Patched by FP7.
+  - `[medium]` `[patch]` Verification gap: the agent's `SAME` leg asserts only "not minted". Verified real: the kernel answered `TOOL.ARGUMENTS`, so the agent path did not meet the matrix row. Patched by FP8: `InteropLookupEntryMint.Mint` refuses a set to the held value with `INTEROP.LOOKUP.SAME`.
+  - `[medium]` `[patch]` Verification gap: tests 2 and 3 of `interop-lookup-tables.browser-spec.mjs` depend on the table test 1 created (Rule 19 hermeticity). Patched by FP9: each test arranges and removes its own table; the file passes whole and each test alone.
+  - `[low]` `[patch]` Other: the observed-mutation table had no AC column, so the AC-to-mutation mapping was inferred. Patched by FP11.
+  - `[low]` `[defer]` Other: the entries page keeps the removed last entry's row until the person leaves the screen (disclosed, no pin or deferral). The card and dialog already say the table goes with its last entry. Deferred in the frontmatter, severity low.
+  - `[low]` `[reject]` Other: a credential-named entry's remove fingerprint (`Key,Value`) cannot see a hidden value change. Both the mint's and the confirm's read blank `Value` for such a key, so the person reviewed nothing a change could invalidate, and the target (the key) is the same.
+  - `[medium]` `[defer]` Intent alignment: the export tool declares `%Admin_FileSystemAccess:USE` for both actions, so a stock-role principal cannot export even to the browser. Verified real: with the tool's own pair set to the lookup read pair, `InteropFloor.TestTheToolsEachPrincipalHoldsAreItsRoster` goes red for the operator and administrator, and none of the stock roles holds the file-system pair. The spec's gate and the floor invariant conflict; a posture call, deferred in the frontmatter (medium).
+  - `[medium]` `[patch]` Intent alignment: Part B gate verification has no real-principal leg for export, import or the import read (same root cause as the gate gap above). Patched by FP3.
+  - `[medium]` `[patch]` Intent alignment: the import's source-control refusal has no test leg (same root cause as the import-guards gap above). Patched by FP2.
+  - `[medium]` `[patch]` Intent alignment: an import whose file names a table held under another letter case silently creates a second table, though the Always list refuses a table "held in another letter case" with no "(on add)". Verified: `PerformImport` never read `match`. Patched by FP10: `INTEROP.LOOKUP.TABLECASE` at the import's mint read and under the lock before the load.
+  - `[false]` `[reject]` Intent alignment: import and export bypass the credential-key rule. Design Notes > Decisions > Secret keys states that export and import carry the file's text, show only counts and are not refused; the specified behavior is the reading the diff implements.
+  - `[false]` `[reject]` Intent alignment: no AD-60 code or test for table names, keys, values or contact fields. AD-60's Rule puts the one sanitizer at the turn loop for every tool result and says a new read tool needs no change.
+  - `[false]` `[reject]` Intent alignment: the screen shows five of the partner's fourteen fields. The descriptor bullet in Tasks & Acceptance names the five columns, and the read tool answers all fourteen (AC6).
+  - `[low]` `[defer]` Intent alignment: the entries page keeps a stale row after the last entry's removal (the same root cause as the deferred row above, no second entry).
+  - `[false]` `[reject]` Intent alignment: edits to `Prohibited.cls` and EXPERIENCE.md replace whole existing lines. Those are single-line lists and single-line sentences, so an addition is necessarily a line replacement; no other line of either file changes, and the forward merge resolves them (Rule 22).
+  - `[false]` `[reject]` Intent alignment: the per-target hold (AD-34) is pinned only on the Save route. The row actions and the confirm take it in the shared `Operation` code every write tool uses, and this story adds no hold code beyond the Save route's `LookupEntrySave`, which `SaveHoldCoverage` pins.
 
 ## Design Notes
 
@@ -561,6 +618,13 @@ deferred:
   - Rule 30's fresh check
 - `(CI)` the full browser suite.
 
+**Task 0 (measured on `ocupilot-b-ci` in USER at the implement pass; the probe tables were removed):**
+
+- Task 0: `%SYS.Portal.Resources.NormalizePage` answers `EnsPortal.LookupSettings`, `EnsPortal.BusinessPartners` and `EnsPortal.Dialog.Import` as written.
+- Task 0: `%ExistsTable(name, 1, , .match)` answered `1` with the stored spelling for a case-variant of `OcuProbe205T0Ab` and of `OcuProbe205T0AbCd` (two tables sharing a prefix), and `0` with no error for an absent name sharing that prefix. `TABLECASE` needs no `Enumerate` walk.
+- Task 0: `$ZDateTime(getTimestamp, 3, , 3)` of a fresh table's stamp equals `$ZDateTime($ZTimeStamp, 3, , 3)` taken at the same moment, so the stamp is UTC and `LocalStamp` takes that string.
+- Task 0: the screen action route accepts an import whose target table is absent. `InteropLookupTransfer` and `interop-lookup-transfer.browser-spec.mjs` delete the table first and import it back from the file.
+
 **Planned pinning mutations (Rule 19):**
 
 | AC | Mutation | Expected red |
@@ -579,11 +643,77 @@ deferred:
 | AC6 | Partners answer no contact fields | `InteropLookupRead`'s partner leg |
 | AC7 | `LOOKUPTABLE` removes and re-adds the table's first entry (`%RemoveValue`, then `%UpdateValue`) | `InteropLookupRead`'s snapshot leg (the stamp moves) |
 | AC8 | Export writes the legacy `%Export` form | `InteropLookupTransfer`'s round-trip leg |
-| AC9 | The listing check is skipped (the class document is loaded) | `InteropLookupTransfer`'s class-document leg |
+| AC9 | `ImportShape` accepts the first document the listing names (the single-document check is dropped) | `InteropLookupTransfer`'s two-tables leg |
+
+**Observed pinning mutations (Rule 19), each reverted byte-identical and the tree reloaded:**
+
+| AC | Mutation | Red |
+|---|---|---|
+| AC1, AC6, AC7 | Entries read ignores `table`; credential key answers its value; partners answer no contact; `LOOKUPTABLE` re-adds the first entry | `InteropLookupRead`'s entries, secret, partner and snapshot legs |
+| AC2, AC3, AC4 | Write skips the vendor lock; `AuditRuntime` not called; delete clears the first key only; `SAME` and `TABLECASE` dropped | `InteropLookupRefusals`' lock, same and case legs; `InteropLookupControl`'s audit and delete legs |
+| AC5, AC3 | `LOOKUPWRITEPAIR` weakened; delete subject without `Modified` | `InteropLookupGate`'s write legs; the target-changed leg |
+| AC1, AC2 | Entries list loses `parentScope`; tables list loses `secondaryEntityTypes` | `navigation.test.mjs` and the mirror generator; the browser New-table leg after a rebuild and redeploy |
+| AC8 | Export writes the legacy `%Export` form | `InteropLookupTransfer.TestTheServerRoundTripRestoresTheSameEntries` |
+| AC9 | `ImportShape` accepts the first document listed | `InteropLookupTransfer.TestAFileOfAnotherShapeIsRefusedBeforeAnyLoad`, two-tables and agent mint legs |
+| AC9 | The reviewed-digest comparison is dropped from `PerformImport` | `InteropLookupTransfer.TestAChangedFileOrTableAndAnOversizeFileAreRefused`, first leg |
+| AC8, AC9 | `content` dropped from `InteropLookupTableImport.ScreenActionDelta` | `InteropLookupTransfer.TestTheBrowserRoundTripRestoresTheSameEntries` |
+| AC9 | `ImportFile` answers a constant digest | the agent's target-changed leg in `TestTheAgentsImportConfirmsOverHttp`, and the 64-character digest leg (a subject that omits `Digest` is refused by the tool registry itself) |
+| AC9 | The import's `DESTRUCTIVE` is 0, or its baseline key is not seeded | `InteropLookupDescriptor.TestTheTwoTransferToolsAreDeclaredAsThePlanPlacesThem` |
+| AC4 | `InteropLookupEntryAction.CallSecretNames` quits `""` | `InteropLookupDescriptor.TestTheCallSecretNamesAreTheEntryToolsAlone` (every credential-key row and the registry row) and `InteropLookupRefusals.TestAValueTheAgentSentForACredentialKeyIsRedactedInTheLedgerRowAndTheStep` (the add and the set: the ledger row and the step carry the value sent) |
+| AC4, AC9 | `PerformImport`'s `SourceControlled` line deleted | `InteropLookupRefusals.TestAnImportIsRefusedForSourceControlAtItsReadAndItsWrite`, the write leg and the nothing-loaded leg |
+| AC4, AC9 | `ReadImportTable`'s `SourceControlled` line deleted | the same test, the read-composed-for-the-import leg |
+| AC4, AC9 | `PerformImport` takes no vendor lock (`tLocked` set to 1) | `InteropLookupRefusals.TestAnImportIsRefusedLockedWhileTheVendorLockIsHeld`, and both legs of `TestAnImportIsRefusedChangedWhenTheTableMovesBetweenItsReadAndItsLock`, whose seam hooks the lock |
+| AC9 | `PerformImport`'s stamp and count comparison under the lock dropped | `InteropLookupRefusals.TestAnImportIsRefusedChangedWhenTheTableMovesBetweenItsReadAndItsLock`, the stamp-moves leg and the stamp-and-count-move leg |
+| AC9 | `ImportText` no longer tests the size of a server file's text | `InteropLookupTransfer.TestAChangedFileOrTableAndAnOversizeFileAreRefused`, the server file leg (the answer is `IMPORTSHAPE`) |
+| AC5 | `IsLookupWrite` without `TYPEIMPORT` | `InteropLookupGate.TestEachMissingPairIsRefusedByNameThroughThePort`, the import leg of the no-write, no-database and read-only principals, and `TestEachMissingPairIsRefusedByNameOnTheScreenRoutes` |
+| AC5 | `IsLookupWrite` with `TYPEIMPORTTABLE` | `InteropLookupGate.TestEachMissingPairIsRefusedByNameThroughThePort`, the import read leg of the same three principals |
+| AC5 | The export tool's `DATABASEPERMISSION` is WRITE | `InteropLookupGate.TestEachMissingPairIsRefusedByNameOnEachTool`, the read-only principal's export row, and `TestEachMissingPairIsRefusedByNameOnTheScreenRoutes`, its export to the browser |
+| AC5 | The export tool's own resource is `%Ens_Portal` in place of `%Admin_FileSystemAccess` | `InteropLookupGate.TestEachMissingPairIsRefusedByNameOnEachTool` (the no-file, no-write and no-database principals) and `TestEachMissingPairIsRefusedByNameOnTheScreenRoutes` (the no-file principal's export to the browser) |
+| AC5, AC9 | The import tool's `WRITEPERMISSION` is READ | `InteropLookupGate.TestEachMissingPairIsRefusedByNameOnEachTool`, the no-write principal's import row, and `TestEachMissingPairIsRefusedByNameOnTheScreenRoutes`, its server-file import (PathPort's pair is named in place of the lookup write pair) |
+| AC5, AC8 | `ExportTable` does not resolve the server file (`ExportFile` skipped) | `InteropLookupGate.TestEachMissingPairIsRefusedByNameThroughThePort`, the server-file export leg of four principals |
+| AC8, AC9 | `TransferSnippet` drops its lock and unlock lines | `InteropLookupDescriptor.TestEveryLookupWriteRendersItsScript`, the import's lock assertion and its line count |
+| AC9 | The `INTEROP.LOOKUP.IMPORT` mapping line deleted from `proposal-view.ts` | `proposal-card.spec.ts`, the Story 20.5 consequence test, its `INTEROP.LOOKUP.IMPORT` leg |
+| AC4 | `KEYMAX` is 100 | `InteropLookupDescriptor.TestTheWriteDecisionAndTheBoundsAreTheVendors`, the 255-character key row |
+| AC6 | `ListPartners` ignores `pMax` | `InteropLookupRead.TestThePartnersListHoldsBothContacts`, the cut to one of two partners |
+| AC1 | `ListLookupTables` ignores `pMax` | `InteropLookupRead.TestTheTablesAndEntriesReadThroughThePort`, the cut to one of the tables |
+| AC1 | The screen read answers its rows under another key | `InteropLookupRead.TestTheReadRoutesAnswerOverTheWire`, the rows assertion, and `TestEachScreenAndToolAnswerTheSameRowsAsThePort` |
+| AC4 | The `SAME` check dropped from `InteropLookupEntryMint.Mint` | `InteropLookupRefusals.TestSameAndAbsentAreRefusedFromBothCallers`, the agent's leg (the kernel answers `TOOL.ARGUMENTS`) |
+| AC9 | `ReadImportTable`'s `TABLECASE` check dropped | `InteropLookupTransfer.TestAFileWhoseTableIsHeldInAnotherLetterCaseIsRefusedBeforeAnyLoad`, the agent's mint leg |
+| AC9 | `PerformImport`'s `TABLECASE` check under the lock dropped | the same test, the write leg, the nothing-loaded leg and the no-second-table leg |
+| AC1, AC2 | The arrange step removed from the entries test of `interop-lookup-tables.browser-spec.mjs` | that test run alone: it waits for the table row and times out |
 
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
 
 **Plan summary.** The vendor was read and measured on `ocupilot-b-ci` (USER, two principals, every probe object removed). The vendor's lookup and partner calls check no privilege and audit nothing. Removing a table's last entry removes it. Export and selected load round-trip one `.LUT` document. The plan extends `InteropPort` with three lists and four lookup writes (Part A), plus import and export (Part B). Business partners are read-only, with a charter for their save and remove. Flagged `oversized` and `multiple-goals`. Three gate questions (split, bundle budget, empty tables) and the spine drafts are in Design Notes.
+
+**Implement result.** Parts A and B are both implemented; Part B was not split off.
+
+- **Server.** `InteropPort` carries the three lists, the entry add, set and remove, the table delete, `IMPORTTABLE`, `IMPORT` and `EXPORT`, with the vendor lock, explicit namespace switches and one audit row of OcuPilot's own per write. Six write tools and two mints were added, with `LookupEntrySave` and `POST /interop/lookup-entries`. Rosters and baselines were updated wherever a test asserts a surface this story changes.
+- **Client.** Three pages and two dialogs for the lists and the entry add, set and remove. The tables page opens System Explorer's export and import dialogs with the table's wording (`title`, `replaces`, `accept` and `compileOption` are now their inputs). The browser export saves `<table>.xml`. The strings were added, with EXPERIENCE.md's side-bar sentence, dialog list and Fixed-strings row.
+- **Verified.** Every ObjectScript test class the story adds or changes ran green one class per call on `ocupilot-b-ci`, as did every class that lists the tools. The browser specs `interop-lookup-tables`, `interop-lookup-transfer`, `system-explorer-transfer` and `a11y-structural-invariants` ran green on a bundle rebuilt and redeployed first. `npm run test:tools`, the component specs, `check-objectscript` and `lint-docs.sh` were clean. The bundle measured 3,346,956 bytes and the warning is 3515kB (gate Q2).
+- **Deviations from the plan.** (1) A create's `PermittedCreateFields` for an entry is `Key,Value`. (2) The remove and delete subjects were widened to `Key,Value` and `Name,Entries,Modified` so the confirm's sweep covers the fields. (3) The audit effect member is `entry`, since the audit writer redacts any member named `key`. (4) `AtelierPort.ReadText` is public. (5) The import row carries an empty `content`, and `content` is in the import's fingerprint subject, which is how the screen's local file reaches the write; an agent's proposal never carries one. (6) The export requires `%Admin_FileSystemAccess:USE` beside the lookup read pairs, since it writes a file and a principal that only reads holds no write tool (`InteropFloor`). (7) `InteropPort.COMPOSEDTYPES` names the export and import, so `Prohibited` and `ToolWrite` treat them as port-composed. (8) The tool registry holds 364 tools, not 358.
+- **Residual.** A table literally named `import` read from a file holding another table is the id sentinel's one oddity. After the last entry's removal the entries page keeps its stale row until it leaves the screen. The source-control refusal is tested at the port only, since the throwaway has no source control. Business partners' save and remove stay deferred (frontmatter).
+- **Rule 31 justified copy.** `InteropLookupEntryAdd.ComposeCreate` and `PortQuery` follow `InteropItemAdd`'s shape without extending it: the item base class composes a production, a category and a class name that a lookup entry does not have, so sharing would mean parameterising the item tool for a second caller.
+
+**Fix pack result.** FP1 to FP11 are in; the earlier passes are not redone.
+
+- **Code changes.** (1) `InteropLookupEntryMint.Mint` refuses a set to the value the entry holds with `INTEROP.LOOKUP.SAME` (FP8). The kernel refused it first as `TOOL.ARGUMENTS` ("nothing would change"), so the agent's path did not meet the matrix row. (2) An import whose file names a table held under another letter case is `INTEROP.LOOKUP.TABLECASE` at `ReadImportTable` when an action is named, and in `PerformImport` under the lock (FP10); the import tool lists the code among its precondition codes. No new code or sentence.
+- **Test support.** `InteropItemSeam.MoveTableBeforeLock` stores an entry just before the next lock of a table. The fixture gains a second probe partner and `Drop`. `InteropLookupGate` gains the principal `OcuP205NoFile`, the file system's pair on two principals, six tools instead of four and eleven port legs instead of seven, and the tables screen's transfer actions.
+- **Deviations.** (1) FP1: the remove inherits `CallSecretNames` from the entry base class, so the descriptor test expects `Value` from the add, the set and the remove, and none from the three table tools. (2) FP3: the port's own gate for an export carries no file system pair. A server file is refused by PathPort, naming `%Admin_FileSystemAccess:USE` and then `%DB_IRISSYS:READ`, which the server file leg pins. The export tool's file system pair is the deferred posture question, so a posture change updates `InteropLookupGate`'s roster.
+- **Verified.** One class per call on `ocupilot-b-ci`: `InteropLookupDescriptor` 9, `InteropLookupRead` 5, `InteropLookupControl` 7, `InteropLookupRefusals` 9, `InteropLookupGate` 3, `InteropLookupTransfer` 8, then `InteropFloor`, `ToolEmit`, `Descriptor`, `SurfaceCoverage`, `Prohibited`, `InteropItemRefusals`, `ToolRoundTrip`, `ToolDispatch`, `ClassicPageGate`, `InteropItemControl`, `SaveHoldCoverage` and `LedgerRedaction`, all green. `npm run test:tools` (1,910) and `npm run test:components` (2,921) passed. `interop-lookup-tables.browser-spec.mjs` passed whole and each test alone on a rebuilt and redeployed bundle. `check-objectscript` and `lint-docs.sh` were clean. Every mutation above was reverted byte-identical and the tree reloaded.
+
+**Review and finalize (2026-10-11).**
+
+- **Files changed.**
+  - Server: `Port/InteropPort.cls` (three lists, the entry and table writes, import and export), `Port/AtelierPort.cls` (`ReadText` public), `Api/InteropError.cls`, `Api/Router.cls`, `Area/Interop/ItemSave.cls` (extension hooks) and `LookupEntrySave.cls`, `Kernel/EntityType.cls`, `Kernel/Governance/Baseline.cls`, `Kernel/Proposal/Prohibited.cls`.
+  - Screens and tools: three descriptors, six write tools, their entry, export and import mints.
+  - Client: three pages, the entry dialog and store, a shared create helper, the Explorer transfer dialogs made reusable, strings, the handler maps, the generated mirror, `angular.json` (`maximumWarning` 3326kB to 3515kB, 5% above the measured 3,346,956 bytes) and its pin.
+  - Docs and arming: EXPERIENCE.md (:159, :173, :604) and `scripts/ci-throwaway.sh`.
+  - Tests: seven new ObjectScript classes and a fixture, two browser specs, five component specs, and the roster tests that assert a changed surface.
+- **Review findings.** 22 findings from two layers: 13 rows patched (FP1 to FP11), 3 deferred (two frontmatter entries: the export tool's file system pair, and the entries page's stale row after the last entry), 6 rejected (5 false, 1 low) with their reasons in the triage log. No high.
+- **Follow-up review recommended: true.** Patched entries at entry verdict: 6 medium (the credential redaction pin, the import guards, the transfer gates, the agent's `SAME`, the browser spec's hermeticity, the import's `TABLECASE`) and 5 low. The unverified risk: the product code written after the layers reported, `InteropLookupEntryMint.Mint` and the `TABLECASE` checks in `ReadImportTable` and `PerformImport`, is pinned by tests and mutations but was not seen by a review layer.
+- **Verification (this stage, on `ocupilot-b-ci`).** After the fix pack, every new class and every changed or consuming class in the `(loop)` list ran green, plus the classes that use `InteropItemSeam`; `npm run test:tools` (1,910), `npm run test:components` (2,921), `check-objectscript`, `lint-docs.sh` and `npm run build` passed; `interop-lookup-tables`, `interop-lookup-transfer`, `interop-items` and `a11y-structural-invariants` ran green on the rebuilt and redeployed bundle. The Task 0 lines are under `## Verification`. The full ObjectScript sweep, the smoke and Rule 30's fresh check are the runner's.
+- **Residual risks.** The export tool's file system pair (deferred, a posture call). `angular.json` and its pin raise `maximumWarning` to 3515kB while Epic 18's branch has raised the same line to 3487kB, so the forward merge re-bases both to 5% above the merged total. The long single-line lists in `Prohibited.cls`, `strings.ts`, `screen-action-handler.ts` and EXPERIENCE.md are the lines most likely to conflict at the forward merge; `screens.generated.ts` is regenerated, not merged.

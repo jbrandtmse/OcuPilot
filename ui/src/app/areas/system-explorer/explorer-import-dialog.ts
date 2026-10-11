@@ -23,6 +23,10 @@ export type ImportChoice =
  * replaces each document of the same name, and a primary Import beside Cancel. Import is
  * `aria-disabled` until a file is named or read, and while a send is in flight.
  *
+ * **Its wording and its compile choice are the page's to set** (Story 20.5): `title` replaces the heading, `replaces` the sentence
+ * about what an import replaces, `accept` the extensions the file picker offers, and `compileOption` false draws no compile
+ * checkbox and always sends the choice as off, for an import that loads nothing that compiles.
+ *
  * **A local file above `IMPORT_MAX_CHARACTERS` is refused here**, with the instance's own sentence,
  * and nothing is sent. Every other check is the instance's: a refusal on the root or the name arrives
  * as `rootReason` or `pathReason` and the picker draws it on that field, and any other refusal, the
@@ -32,7 +36,7 @@ export type ImportChoice =
   selector: 'app-explorer-import-dialog',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [Dialog, ServerPathPicker],
-  template: `<app-dialog [heading]="STRINGS.actionImport" [closeLabel]="STRINGS.actionCancel" (closed)="cancelled.emit()">
+  template: `<app-dialog [heading]="heading" [closeLabel]="STRINGS.actionCancel" (closed)="cancelled.emit()">
     <div class="ocu-explorer-transfer-choice">
       <label class="ocu-field-checkbox ocu-explorer-compile-flag">
         <input type="radio" name="ocu-explorer-import-source" data-explorer-import-source="server" [checked]="onServer" (change)="onSource('server')" />
@@ -58,16 +62,18 @@ export type ImportChoice =
         class="ocu-explorer-import-file"
         type="file"
         data-explorer-import-file
-        [attr.accept]="accept"
+        [attr.accept]="accept()"
         [attr.aria-label]="STRINGS.explorerTransferLocal"
         (change)="onFile($event)"
       />
     }
-    <label class="ocu-criteria-marker ocu-explorer-compile-flag">
-      <input type="checkbox" data-explorer-import-compile [checked]="compile()" (change)="onCompile($event)" />
-      {{ STRINGS.explorerImportCompile }}
-    </label>
-    <p class="ocu-task-transfer-note" data-explorer-import-replaces>{{ STRINGS.explorerImportReplaces }}</p>
+    @if (compileOffered) {
+      <label class="ocu-criteria-marker ocu-explorer-compile-flag">
+        <input type="checkbox" data-explorer-import-compile [checked]="compile()" (change)="onCompile($event)" />
+        {{ STRINGS.explorerImportCompile }}
+      </label>
+    }
+    <p class="ocu-task-transfer-note" data-explorer-import-replaces>{{ note }}</p>
     @if (shownRefusal; as reason) {
       <p class="ocu-task-transfer-refusal" role="alert" data-explorer-transfer-refusal>{{ reason }}</p>
     }
@@ -98,6 +104,18 @@ export class ExplorerImportDialog {
   /** A send is in flight. */
   readonly sending = input(false);
 
+  /** The heading, when the page words it itself; `''` is "Import". */
+  readonly title = input('');
+
+  /** The sentence about what an import replaces, when the page words it itself; `''` is the shared one. */
+  readonly replaces = input('');
+
+  /** The extensions the file picker offers. */
+  readonly accept = input(IMPORT_ACCEPT);
+
+  /** Whether the dialog offers the compile checkbox. */
+  readonly compileOption = input(true);
+
   /** The chosen file and compile choice, once per Import. */
   readonly submitted = output<ImportChoice>();
 
@@ -105,8 +123,6 @@ export class ExplorerImportDialog {
   readonly cancelled = output<void>();
 
   protected readonly STRINGS = STRINGS;
-
-  protected readonly accept = IMPORT_ACCEPT;
 
   protected readonly source = signal<'server' | 'local'>('server');
 
@@ -121,6 +137,18 @@ export class ExplorerImportDialog {
   private readonly localRefusal = signal('');
 
   protected readonly compile = signal(true);
+
+  protected get compileOffered(): boolean {
+    return this.compileOption();
+  }
+
+  protected get heading(): string {
+    return this.title() !== '' ? this.title() : STRINGS.actionImport;
+  }
+
+  protected get note(): string {
+    return this.replaces() !== '' ? this.replaces() : STRINGS.explorerImportReplaces;
+  }
 
   protected get onServer(): boolean {
     return this.source() === 'server';
@@ -175,13 +203,18 @@ export class ExplorerImportDialog {
     reader.readAsText(file);
   }
 
+  /** The compile choice a send carries: the checkbox's, or off where the dialog offers none. */
+  private get compileSent(): boolean {
+    return this.compileOption() && this.compile();
+  }
+
   protected onConfirm(): void {
     if (this.confirmDisabled !== null) return;
     const local = this.local();
     if (!this.onServer && local !== null) {
-      this.submitted.emit({ source: 'local', fileName: local.fileName, content: local.content, compile: this.compile() });
+      this.submitted.emit({ source: 'local', fileName: local.fileName, content: local.content, compile: this.compileSent });
       return;
     }
-    this.submitted.emit({ source: 'server', root: this.root(), path: this.path(), compile: this.compile() });
+    this.submitted.emit({ source: 'server', root: this.root(), path: this.path(), compile: this.compileSent });
   }
 }

@@ -231,6 +231,9 @@ XData Coverage
 <screen name="InteropItemLogTab" class="OcuPilot.Test.InteropHostDescriptor" method="TestTheNineDeclarationsRegister" corpus="one declaration test pins all nine Story 20.4 runtime screens in one loop"/>
 <screen name="InteropItemMessageTab" class="OcuPilot.Test.InteropHostDescriptor" method="TestTheNineDeclarationsRegister" corpus="one declaration test pins all nine Story 20.4 runtime screens in one loop"/>
 <screen name="InteropItemJobTab" class="OcuPilot.Test.InteropHostDescriptor" method="TestTheNineDeclarationsRegister" corpus="one declaration test pins all nine Story 20.4 runtime screens in one loop"/>
+<screen name="InteropLookupTableList" class="OcuPilot.Test.InteropLookupDescriptor" method="TestTheThreeDeclarationsRegister" corpus="one declaration test pins all three Story 20.5 screens in one loop"/>
+<screen name="InteropLookupEntryList" class="OcuPilot.Test.InteropLookupDescriptor" method="TestTheThreeDeclarationsRegister" corpus="one declaration test pins all three Story 20.5 screens in one loop"/>
+<screen name="InteropBusinessPartnerList" class="OcuPilot.Test.InteropLookupDescriptor" method="TestTheThreeDeclarationsRegister" corpus="one declaration test pins all three Story 20.5 screens in one loop"/>
 <tool name="permissions.users.create" class="OcuPilot.Test.UserCreate" method="TestTheSchemaCarriesNoSecretAndThePermittedSetIsTheSets"/>
 <tool name="permissions.users.copy" class="OcuPilot.Test.UserCopy" method="TestTheCopyToolPinsItsInputSchemaAndSnippetForm"/>
 <tool name="permissions.roles.create" class="OcuPilot.Test.RoleCreate" method="TestTheSchemaCarriesNoEscalationOnlyAndThePermittedSetIsTheSets"/>
@@ -393,6 +396,12 @@ XData Coverage
 <tool name="interop.jobs.abort" class="OcuPilot.Test.InteropJobActions" method="TestTheAgentsAbortOfARetriedMessageLeavesItAborted"/>
 <tool name="interop.jobs.suspend" class="OcuPilot.Test.InteropJobActions" method="TestTheAgentsSuspendOfARetriedMessageLeavesItSuspended"/>
 <tool name="interop.jobs.stop" class="OcuPilot.Test.InteropJobStop" method="TestTheAgentsStopEndsTheJobAndTheUpdateStartsItAgain"/>
+<tool name="interop.lookupentries.add" class="OcuPilot.Test.InteropLookupControl" method="TestTheAgentsAddConfirmsOverHttp"/>
+<tool name="interop.lookupentries.set" class="OcuPilot.Test.InteropLookupControl" method="TestTheAgentsSetConfirmsOverHttp"/>
+<tool name="interop.lookupentries.remove" class="OcuPilot.Test.InteropLookupControl" method="TestTheAgentsRemoveConfirmsOverHttp"/>
+<tool name="interop.lookuptables.delete" class="OcuPilot.Test.InteropLookupControl" method="TestTheAgentsDeleteConfirmsOverHttp"/>
+<tool name="interop.lookuptables.export" class="OcuPilot.Test.InteropLookupTransfer" method="TestTheAgentsExportConfirmsOverHttp"/>
+<tool name="interop.lookuptables.import" class="OcuPilot.Test.InteropLookupTransfer" method="TestTheAgentsImportConfirmsOverHttp"/>
 <tool name="osmgmt.remotedatabases.create" class="OcuPilot.Test.RemoteDatabaseDescriptor" method="TestTheToolsDeclareTheirFieldsKindsAndPairs" corpus="the three remote database tools are asserted together in one loop"/>
 <tool name="osmgmt.remotedatabases.update" class="OcuPilot.Test.RemoteDatabaseDescriptor" method="TestTheToolsDeclareTheirFieldsKindsAndPairs" corpus="the three remote database tools are asserted together in one loop"/>
 <tool name="osmgmt.remotedatabases.delete" class="OcuPilot.Test.RemoteDatabaseDescriptor" method="TestTheToolsDeclareTheirFieldsKindsAndPairs" corpus="the three remote database tools are asserted together in one loop"/>

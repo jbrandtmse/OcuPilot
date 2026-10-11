@@ -246,6 +246,16 @@ Method TestEveryLiveToolRequiresItsScreensPairs()
             Set tWritePair = $ListBuild(tGlobalResource, "WRITE")
             If '$ListFind(tExpected, tRunPair) Set tExpected = tExpected _ $ListBuild(tRunPair)
             If '$ListFind(tExpected, tWritePair) Set tExpected = tExpected _ $ListBuild(tWritePair)
+        } ElseIf $ClassMethod(tTool.class, "%Extends", "OcuPilot.Screen.Tool.InteropAction") && ($Parameter(tTool.class, "DESCRIPTORCLASS") [ "OcuPilot.Screen.Descriptor.InteropLookup") {
+            ; Story 20.5: the lookup writes declare their own resource at its permission, then WRITE or READ on the globals database
+            ; of the request's namespace, here this one's, after their screen's pairs, each once (AD-8, AD-62); the export's own
+            ; pair is the file system's, since it writes a file.
+            Set tExpected = ##class(OcuPilot.Screen.Gate).RequiredPairs($Parameter(tTool.class, "DESCRIPTORCLASS"), .tExpectedResolved)
+            Do $$$AssertTrue($ListLength(tExpected) > 0, tTool.name _ ": its screen declares pairs")
+            Do $$$AssertTrue(##class(OcuPilot.Kernel.Shell.Namespaces).GlobalDatabase($Namespace, .tGlobalResource, .tReadOnly), tTool.name _ ": this namespace's globals database resolves")
+            For tOwnPair = $ListBuild($Parameter(tTool.class, "WRITERESOURCE"), $Parameter(tTool.class, "WRITEPERMISSION")), $ListBuild(tGlobalResource, $Parameter(tTool.class, "DATABASEPERMISSION")) {
+                If '$ListFind(tExpected, tOwnPair) Set tExpected = tExpected _ $ListBuild(tOwnPair)
+            }
         } ElseIf $ClassMethod(tTool.class, "%Extends", "OcuPilot.Screen.Tool.Write") {
             ; Story 5.1: a write tool is a class of its own, so its pairs are its descriptor's
             ; together with the pair the write itself names (AD-8). DW-1208: that pair is the one

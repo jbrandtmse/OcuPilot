@@ -76,7 +76,7 @@ XData Cases
     {"name": "an interop LIST of Productions is sound", "check": "read", "source": {"port": "interop", "endpoint": "Productions", "type": "LIST"}, "expected": null},
     {"name": "so is each code list", "check": "read", "source": {"port": "interop", "endpoint": "Rules", "type": "LIST"}, "expected": null},
     {"name": "and declares no criteria", "check": "criteria", "source": {"port": "interop", "endpoint": "Productions", "type": "LIST"}, "expected": null},
-    {"name": "an endpoint the port does not serve", "check": "read", "source": {"port": "interop", "endpoint": "Nothing", "type": "LIST"}, "expected": "read.source.endpoint 'Nothing' is not one of the interop port's endpoints ('Productions', 'Processes', 'Transforms', 'Rules', 'Items', 'Settings', 'Monitor', 'ItemStatus', 'Queues', 'QueueItems', 'ItemQueue', 'ItemLog', 'ItemMessages', 'Jobs', 'ItemJobs') (AD-62)"},
+    {"name": "an endpoint the port does not serve", "check": "read", "source": {"port": "interop", "endpoint": "Nothing", "type": "LIST"}, "expected": "read.source.endpoint 'Nothing' is not one of the interop port's endpoints ('Productions', 'Processes', 'Transforms', 'Rules', 'Items', 'Settings', 'Monitor', 'ItemStatus', 'Queues', 'QueueItems', 'ItemQueue', 'ItemLog', 'ItemMessages', 'Jobs', 'ItemJobs', 'LookupTables', 'LookupEntries', 'BusinessPartners') (AD-62)"},
     {"name": "the Settings endpoint is served (Story 20.22)", "check": "read", "source": {"port": "interop", "endpoint": "Settings", "type": "LIST"}, "expected": null},
     {"name": "the Items endpoint is served (Story 20.3)", "check": "read", "source": {"port": "interop", "endpoint": "Items", "type": "LIST"}, "expected": null},
     {"name": "the Monitor endpoint is served (Story 20.4)", "check": "read", "source": {"port": "interop", "endpoint": "Monitor", "type": "LIST"}, "expected": null},
@@ -88,6 +88,9 @@ XData Cases
     {"name": "the ItemMessages endpoint is served (Story 20.4)", "check": "read", "source": {"port": "interop", "endpoint": "ItemMessages", "type": "LIST"}, "expected": null},
     {"name": "the Jobs endpoint is served (Story 20.4)", "check": "read", "source": {"port": "interop", "endpoint": "Jobs", "type": "LIST"}, "expected": null},
     {"name": "the ItemJobs endpoint is served (Story 20.4)", "check": "read", "source": {"port": "interop", "endpoint": "ItemJobs", "type": "LIST"}, "expected": null},
+    {"name": "the LookupTables endpoint is served (Story 20.5)", "check": "read", "source": {"port": "interop", "endpoint": "LookupTables", "type": "LIST"}, "expected": null},
+    {"name": "the LookupEntries endpoint is served (Story 20.5)", "check": "read", "source": {"port": "interop", "endpoint": "LookupEntries", "type": "LIST"}, "expected": null},
+    {"name": "the BusinessPartners endpoint is served (Story 20.5)", "check": "read", "source": {"port": "interop", "endpoint": "BusinessPartners", "type": "LIST"}, "expected": null},
     {"name": "a type other than LIST", "check": "read", "source": {"port": "interop", "endpoint": "Productions", "type": "GET"}, "expected": "read.source.type 'GET' is declared on an interop source, which lists the namespace's productions and classes (AD-36)"},
     {"name": "rowGet", "check": "read", "source": {"port": "interop", "endpoint": "Productions", "type": "LIST", "rowGet": {"key": "Name", "param": "name", "fields": ["Status"], "derived": []}}, "expected": "read.source.rowGet is declared on an interop source, which answers its list whole (AD-36)"},
     {"name": "forEach", "check": "read", "source": {"port": "interop", "endpoint": "Productions", "type": "LIST", "forEach": ["Rules"]}, "expected": "read.source.forEach is declared on an interop source, which answers its list whole (AD-36)"},
@@ -389,7 +392,7 @@ Method TestAnUnknownProductionAndAnUnservedOperation()
 Method TestEveryInteropErrorCodeResolvesToItsSentence()
 {
     Set tError = ..#ERROR
-    Set tCodes = $ListFromString("NAMESPACE,RUNNING,OTHER,TROUBLED,NOTRUNNING,UPTODATE,NOTTROUBLED,BUSY,STATE,STOP,RESTART,UPDATE,RECOVER,SUSPENDED,PARTSTOPPED,ITEMENABLED,ITEMDISABLED,ITEMDEFAULTSETTING,ITEMPOOLZERO,ITEMTAKEN,ITEMAMBIGUOUS,ITEMCLASS,ITEMNAME,ITEMVALUE,ITEMENABLEDREMOVE,ITEMSOURCECONTROL,ITEMPENDING,ITEMREMOVE,SETTINGSECRET,SETTINGSUPPLIED,SETTINGSAME,SETTINGDEFAULTED,SETTINGCORE,SETTINGVALUE,SETTINGLOCATION,SETTINGDESCENT,QUEUEEMPTY,QUEUECHANGED,JOBDEAD,JOBNOTRETRYING,JOBNOTSTOPPED,MESSAGEABORT,QUEUEABORT,JOBABORT,JOBSUSPEND,JOBSTOP")
+    Set tCodes = $ListFromString("NAMESPACE,RUNNING,OTHER,TROUBLED,NOTRUNNING,UPTODATE,NOTTROUBLED,BUSY,STATE,STOP,RESTART,UPDATE,RECOVER,SUSPENDED,PARTSTOPPED,ITEMENABLED,ITEMDISABLED,ITEMDEFAULTSETTING,ITEMPOOLZERO,ITEMTAKEN,ITEMAMBIGUOUS,ITEMCLASS,ITEMNAME,ITEMVALUE,ITEMENABLEDREMOVE,ITEMSOURCECONTROL,ITEMPENDING,ITEMREMOVE,SETTINGSECRET,SETTINGSUPPLIED,SETTINGSAME,SETTINGDEFAULTED,SETTINGCORE,SETTINGVALUE,SETTINGLOCATION,SETTINGDESCENT,QUEUEEMPTY,QUEUECHANGED,JOBDEAD,JOBNOTRETRYING,JOBNOTSTOPPED,MESSAGEABORT,QUEUEABORT,JOBABORT,JOBSUSPEND,JOBSTOP,LOOKUPTAKEN,LOOKUPTABLECASE,LOOKUPSAME,LOOKUPSECRET,LOOKUPSOURCECONTROL,LOOKUPLOCKED,LOOKUPTABLENAME,LOOKUPKEY,LOOKUPVALUE,LOOKUPREMOVE,LOOKUPDELETE,LOOKUPIMPORTSHAPE,LOOKUPIMPORTCHANGED,LOOKUPTOOLARGE,LOOKUPIMPORT")
     For tI = 1:1:$ListLength(tCodes) {
         Set tName = $List(tCodes, tI)
         Set tCode = $Parameter(tError, tName)

@@ -65,7 +65,8 @@ Method TestEveryWriteRouteTakesTheHoldOrIsExempt()
 /// <p>The audit event create holds <code>Source/Type/Name</code>, the create tool's
 /// <code>EventName</code>, the key file create the composite of <code>root</code> and
 /// <code>path</code> its tool's mint builds, and the production item add the composite of
-/// <code>Production</code> and <code>Name</code> in the request's namespace: with this process holding
+/// <code>Production</code> and <code>Name</code> in the request's namespace, and the lookup entry add the composite of
+/// <code>Table</code> and <code>Key</code> in it: with this process holding
 /// each key as another write would, the Save waits out
 /// <parameter>OcuPilot.Kernel.State.Propose.CLAIMLOCKSECONDS</parameter> and answers 409
 /// <code>WRITE.TARGETBUSY</code>. Each body also breaks a rule the Save checks after the hold, so a Save
@@ -73,7 +74,8 @@ Method TestEveryWriteRouteTakesTheHoldOrIsExempt()
 /// <p>Mutation (Rule 19): hold the key file's <code>path</code> alone in
 /// <method>OcuPilot.Area.Security.EncryptionKeyFileSave.HandleCreate</method>, or the body's absent
 /// <code>EventName</code> in <method>OcuPilot.Area.Security.AuditEventSave.HandleCreate</method>, or the
-/// item's <code>Name</code> alone in <method>OcuPilot.Area.Interop.ItemSave.HandleCreate</method> --
+/// item's <code>Name</code> alone in <method>OcuPilot.Area.Interop.ItemSave.HandleCreate</method>, which the lookup entry add
+/// shares --
 /// that leg answers 400 or 422 at once and goes red; so does the Doc DB application leg when
 /// <method>OcuPilot.Area.WebApp.DocDbAppSave.HandleCreate</method> holds the name alone; so does the privileged routine
 /// application leg when <method>OcuPilot.Area.WebApp.RoutineAppSave.HandleCreate</method> does.</p>
@@ -93,6 +95,9 @@ Method TestACreateSaveHoldsTheKeyItsMintComputes()
     Set tItem = ##class(OcuPilot.Kernel.EntityId).JoinComposite($ListBuild("OcuProbeHold.Production", "OcuProbeHold"))
     Do ##class(OcuPilot.Kernel.Scope).Set("USER")
     Do ..HeldLeg("/interop/items?ns=USER", "OcuPilot.Screen.Tool.InteropItemAdd", tItem, {"Production": "OcuProbeHold.Production", "Name": "OcuProbeHold", "OcuProbeUnexpected": 1}.%ToJSON())
+    ; A lookup entry is namespace-scoped too, and its id is the table and the key.
+    Set tEntry = ##class(OcuPilot.Kernel.EntityId).JoinComposite($ListBuild("OcuProbeHold205", "hold"))
+    Do ..HeldLeg("/interop/lookup-entries?ns=USER", "OcuPilot.Screen.Tool.InteropLookupEntryAdd", tEntry, {"Table": "OcuProbeHold205", "Key": "hold", "OcuProbeUnexpected": 1}.%ToJSON())
     Do ##class(OcuPilot.Kernel.Scope).Clear()
 }
 

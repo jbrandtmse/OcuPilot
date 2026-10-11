@@ -21,6 +21,8 @@ const PORT = join(REPO_ROOT, 'src', 'OcuPilot', 'Port', 'InteropPort.cls');
 
 const ERROR = join(REPO_ROOT, 'src', 'OcuPilot', 'Api', 'InteropError.cls');
 
+const ATELIER_PORT = join(REPO_ROOT, 'src', 'OcuPilot', 'Port', 'AtelierPort.cls');
+
 const STRINGS_SOURCE = join(REPO_ROOT, 'ui', 'src', 'app', 'core', 'strings.ts');
 
 const EXPERIENCE = join(REPO_ROOT, '_bmad-output', 'planning-artifacts', 'ux-designs', 'ux-OcuPilot-2026-09-08', 'EXPERIENCE.md');
@@ -73,6 +75,21 @@ const SENTENCES = [
   ['REASONJOBABORT', 'interopJobAbortConsequence'],
   ['REASONJOBSUSPEND', 'interopJobSuspendConsequence'],
   ['REASONJOBSTOP', 'interopJobStopConsequence'],
+  ['REASONLOOKUPTAKEN', 'interopLookupRefusalTaken'],
+  ['REASONLOOKUPTABLECASE', 'interopLookupRefusalTableCase'],
+  ['REASONLOOKUPSAME', 'interopLookupRefusalSame'],
+  ['REASONLOOKUPSECRET', 'interopLookupRefusalSecret'],
+  ['REASONLOOKUPSOURCECONTROL', 'interopLookupRefusalSourceControl'],
+  ['REASONLOOKUPLOCKED', 'interopLookupRefusalLocked'],
+  ['REASONLOOKUPTABLENAME', 'interopLookupRefusalTableName'],
+  ['REASONLOOKUPKEY', 'interopLookupRefusalKey'],
+  ['REASONLOOKUPVALUE', 'interopLookupRefusalValue'],
+  ['REASONLOOKUPREMOVE', 'interopLookupRemoveConsequence'],
+  ['REASONLOOKUPDELETE', 'interopLookupDeleteConsequence'],
+  ['REASONLOOKUPIMPORTSHAPE', 'interopLookupRefusalImportShape'],
+  ['REASONLOOKUPIMPORTCHANGED', 'interopLookupRefusalImportChanged'],
+  ['REASONLOOKUPTOOLARGE', 'interopLookupRefusalTooLarge'],
+  ['REASONLOOKUPIMPORT', 'interopLookupImportConsequence'],
 ];
 
 /** The value `key` holds in `strings.ts`, which may sit on the line after its key. */
@@ -121,4 +138,13 @@ test("Story 20.23: the number the abort-all sentence states is the port's ABORTM
   const stated = `up to the first ${Number(match[1]).toLocaleString('en-US')},`;
   assert.ok(stringValue('interopQueueAbortConsequence').includes(stated), `interopQueueAbortConsequence states "${stated}"`);
   assert.ok(serverSentence('REASONQUEUEABORT').includes(stated), `REASONQUEUEABORT states "${stated}"`);
+});
+
+test("Story 20.5: the number the too-large sentence states is the Atelier port's MAXIMPORTCHARACTERS", () => {
+  // Mutation (Rule 19): change MAXIMPORTCHARACTERS in AtelierPort.cls to 4000000 -> this goes red.
+  const match = /Parameter MAXIMPORTCHARACTERS(?: As \w+)? = (\d+);/.exec(readFileSync(ATELIER_PORT, 'utf8'));
+  assert.notEqual(match, null, 'AtelierPort.cls declares MAXIMPORTCHARACTERS');
+  const stated = `${Number(match[1]).toLocaleString('en-US')} characters`;
+  assert.ok(serverSentence('REASONLOOKUPTOOLARGE').includes(stated), `REASONLOOKUPTOOLARGE states "${stated}"`);
+  assert.ok(stringValue('interopLookupRefusalTooLarge').includes(stated), `interopLookupRefusalTooLarge states "${stated}"`);
 });

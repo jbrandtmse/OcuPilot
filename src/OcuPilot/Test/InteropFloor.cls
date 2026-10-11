@@ -45,14 +45,15 @@ Parameter MONITORSCREENS = "InteropMonitorList";
 Parameter MONITORTOOLS = "interop.monitor.read";
 
 /// <p>What the Operator role adds beside the Monitor's: Productions and its Production items list, the item's tabs
-/// (Status, Item settings, Queue, Log, Messages and Jobs) and Queues with Queue messages and Jobs, through
-/// <code>%Ens_ProductionConfig:READ</code>, <code>%Ens_Queues:READ</code>, <code>%Ens_Jobs:READ</code>,
-/// <code>%Ens_EventLog:USE</code> and <code>%Ens_MessageHeader:USE</code>, and the event log through
+/// (Status, Item settings, Queue, Log, Messages and Jobs) and Queues with Queue messages and Jobs, and Lookup tables with a
+/// table's entries and Business partners (Story 20.5), through <code>%Ens_ProductionConfig:READ</code>,
+/// <code>%Ens_Queues:READ</code>, <code>%Ens_Jobs:READ</code>, <code>%Ens_EventLog:USE</code>,
+/// <code>%Ens_MessageHeader:USE</code> and <code>%Ens_LookupTables:READ</code>, and the event log through
 /// <code>%Ens_EventLog:USE</code>.</p>
-Parameter OPERATORSCREENS = "InteropItemJobTab,InteropItemList,InteropItemLogTab,InteropItemMessageTab,InteropItemQueueTab,InteropItemSettingList,InteropItemStatusTab,InteropJobList,InteropProductionList,InteropQueueList,InteropQueueMessageList,LogEventViewer";
+Parameter OPERATORSCREENS = "InteropBusinessPartnerList,InteropItemJobTab,InteropItemList,InteropItemLogTab,InteropItemMessageTab,InteropItemQueueTab,InteropItemSettingList,InteropItemStatusTab,InteropJobList,InteropLookupEntryList,InteropLookupTableList,InteropProductionList,InteropQueueList,InteropQueueMessageList,LogEventViewer";
 
 /// <p>See <parameter>OPERATORSCREENS</parameter>.</p>
-Parameter OPERATORTOOLS = "interop.itemjobs.read,interop.itemlog.read,interop.itemmessages.read,interop.itemqueue.read,interop.items.read,interop.itemsettings.read,interop.itemstatus.read,interop.jobs.read,interop.productions.read,interop.queuemessages.read,interop.queues.read,logs.eventlog.read";
+Parameter OPERATORTOOLS = "interop.businesspartners.read,interop.itemjobs.read,interop.itemlog.read,interop.itemmessages.read,interop.itemqueue.read,interop.items.read,interop.itemsettings.read,interop.itemstatus.read,interop.jobs.read,interop.lookupentries.read,interop.lookuptables.read,interop.productions.read,interop.queuemessages.read,interop.queues.read,logs.eventlog.read";
 
 /// <p>What the Administrator role adds beside the Operator's: the three code lists, each through its
 /// own <code>%Ens_Code:READ</code>.</p>

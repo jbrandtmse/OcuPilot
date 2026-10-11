@@ -256,7 +256,7 @@ Parameter WRITETOOLBASE = "OcuPilot.Screen.Tool.Write";
 /// <p>The entity types this release evaluates predicates for, comma-separated
 /// (<class>OcuPilot.Kernel.EntityType</class>'s spelling). A type outside this list is
 /// <parameter>UNCOVERED</parameter>.</p>
-Parameter COVEREDTYPES = "screen-permission,web-application,user,auditing-configuration,task,process,application-error,role,resource,x509-credential,wallet-secret,device,oauth2-client-configuration,oauth2-server-client,audit-event,audit-user-event,ssl-configuration,service,ldap-configuration,oauth2-server-definition,oauth2-resource-server,oauth2-server,namespace,web-session,background-task,global-mapping,routine-mapping,package-mapping,database-configuration,database,language-server,lock,class,routine,journal-file,journal-settings,license-key,license-server,ecp-data-server,ecp-settings,ecp-ssl-connection,encryption-key-file,database-encryption-keys,data-element-encryption-keys,encryption-startup,docdb-database,authentication-options,superserver,mft-connection,production,pct-class-access,docdb-application,routine-application,production-item,production-item-setting,interop-queue,interop-message,interop-job,rest-service";
+Parameter COVEREDTYPES = "screen-permission,web-application,user,auditing-configuration,task,process,application-error,role,resource,x509-credential,wallet-secret,device,oauth2-client-configuration,oauth2-server-client,audit-event,audit-user-event,ssl-configuration,service,ldap-configuration,oauth2-server-definition,oauth2-resource-server,oauth2-server,namespace,web-session,background-task,global-mapping,routine-mapping,package-mapping,database-configuration,database,language-server,lock,class,routine,journal-file,journal-settings,license-key,license-server,ecp-data-server,ecp-settings,ecp-ssl-connection,encryption-key-file,database-encryption-keys,data-element-encryption-keys,encryption-startup,docdb-database,authentication-options,superserver,mft-connection,production,pct-class-access,docdb-application,routine-application,production-item,production-item-setting,interop-queue,interop-message,interop-job,rest-service,lookup-table,lookup-entry";
 
 /// <p>The covered types, each named once so the dispatch and the list cannot drift apart.</p>
 Parameter TYPEWEBAPPLICATION = "web-application";
@@ -672,6 +672,13 @@ Parameter TYPEINTEROPMESSAGE = "interop-message";
 
 Parameter TYPEINTEROPJOB = "interop-job";
 
+/// <p>A lookup table of a namespace and one entry of it (AD-62, Story 20.5). AD-10 names no effect on either: OcuPilot stores
+/// nothing in <code>^Ens.LookupTable</code>, so no entry is self-protection. A write passes the reviewed-few sweep -- an
+/// entry's one changeable field is <code>Value</code> -- and nothing else.</p>
+Parameter TYPELOOKUPTABLE = "lookup-table";
+
+Parameter TYPELOOKUPENTRY = "lookup-entry";
+
 /// <p>The two objects an ECP settings write carries, whose <code>&lt;Object&gt;.&lt;member&gt;</code>
 /// diff rows are judged as their object, as <parameter>CUSTOMFIELD</parameter>'s are (Story 18.21).</p>
 Parameter ECPSETTINGSGROUPS = "AppServerSettings,DataServerSettings";
@@ -679,6 +686,9 @@ Parameter ECPSETTINGSGROUPS = "AppServerSettings,DataServerSettings";
 /// <p>The write type of a class or routine export (Story 19.13), which only reads and which the code
 /// arm does not judge.</p>
 Parameter EXPORTWRITETYPE = "EXPORT";
+
+/// <p>The write type of a tool that imports a file whose one lookup table replaces the table of that name (Story 20.5).</p>
+Parameter LOOKUPIMPORTWRITETYPE = "IMPORT";
 
 /// <p>The one target a class or routine import takes (Story 19.13), compared without regard to case;
 /// its documents are the stored payload's <parameter>IMPORTDOCUMENTS</parameter>.</p>
@@ -1122,6 +1132,7 @@ ClassMethod PermittedChangeFields(pType As %String) As %List
 
     If pType = ..#TYPERESOURCE Quit $ListBuild("Description", ..#FIELDPUBLICPERMISSION)
     If pType = ..#TYPEPRODUCTIONITEMSETTING Quit $ListBuild("Value")
+    If pType = ..#TYPELOOKUPENTRY Quit $ListBuild("Value")
     If pType = ..#TYPEROLE Quit $ListBuild("Description", ..#FIELDESCALATIONONLY, ..#FIELDGRANTEDROLES, ..#FIELDRESOURCES)
     If pType = ..#TYPEX509 Quit $ListBuild("OwnerList", "PeerNames")
     If pType = ..#TYPEWALLETSECRET Quit $ListBuild("Usage", "RequireTLS", "AllowedHosts", "Secret")
@@ -1279,6 +1290,8 @@ ClassMethod PermittedCreateFields(pType As %String) As %List
     If pType = ..#TYPERESTSERVICE Quit $ListBuild("Name", "Document")
     ; Story 20.3: an item add sets these six; its production is the id's and its namespace the payload's.
     If pType = ..#TYPEPRODUCTIONITEM Quit $ListBuild("Name", "ClassName", "PoolSize", "Enabled", "Category", "Comment")
+    ; Story 20.5: an entry add sets its key and its value; its table is the id's and its namespace the payload's.
+    If pType = ..#TYPELOOKUPENTRY Quit $ListBuild("Key", "Value")
     Quit ""
 }
 
@@ -1359,7 +1372,7 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
             Do ..Refuse(..#UNCOVERED, .pProhibits, .pCode)
             Quit
         }
-        If (tType '= ..#TYPESCREENPERMISSION) && (tType '= ..#TYPEWEBAPPLICATION) && (tType '= ..#TYPEUSER) && (tType '= ..#TYPEAUDITING) && (tType '= ..#TYPETASK) && (tType '= ..#TYPEPROCESS) && (tType '= ..#TYPEAPPLICATIONERROR) && (tType '= ..#TYPEROLE) && (tType '= ..#TYPERESOURCE) && (tType '= ..#TYPEX509) && (tType '= ..#TYPEWALLETSECRET) && (tType '= ..#TYPEDEVICE) && (tType '= ..#TYPEOAUTHCLIENT) && (tType '= ..#TYPEOAUTHSERVERCLIENT) && (tType '= ..#TYPEAUDITEVENT) && (tType '= ..#TYPEAUDITUSEREVENT) && (tType '= ..#TYPESSL) && (tType '= ..#TYPESERVICE) && (tType '= ..#TYPELDAP) && (tType '= ..#TYPEOAUTHSERVERDEF) && (tType '= ..#TYPEOAUTHRESOURCESERVER) && (tType '= ..#TYPEOAUTHAUTHSERVER) && (tType '= ..#TYPENAMESPACE) && (tType '= ..#TYPEWEBSESSION) && (tType '= ..#TYPEBACKGROUNDTASK) && (tType '= ..#TYPEDATABASECONFIG) && (tType '= ..#TYPEDATABASE) && '..IsMappingType(tType) && (tType '= ..#TYPELANGUAGESERVER) && (tType '= ..#TYPELOCK) && (tType '= ..#TYPECLASS) && (tType '= ..#TYPEROUTINE) && (tType '= ..#TYPEJOURNALFILE) && (tType '= ..#TYPEJOURNALSETTINGS) && (tType '= ..#TYPELICENSEKEY) && (tType '= ..#TYPELICENSESERVER) && (tType '= ..#TYPEECPDATASERVER) && (tType '= ..#TYPEECPSETTINGS) && (tType '= ..#TYPEECPSSLCONNECTION) && (tType '= ..#TYPEENCRYPTIONKEYFILE) && (tType '= ..#TYPEDATABASEKEYS) && (tType '= ..#TYPEDATAELEMENTKEYS) && (tType '= ..#TYPEENCRYPTIONSTARTUP) && (tType '= ..#TYPEAUTHOPTIONS) && (tType '= ..#TYPESUPERSERVER) && (tType '= ..#TYPEMFTCONNECTION) && (tType '= ..#TYPEDOCDBDATABASE) && (tType '= ..#TYPEPRODUCTION) && (tType '= ..#TYPEPRODUCTIONITEM) && (tType '= ..#TYPEPRODUCTIONITEMSETTING) && (tType '= ..#TYPEPCTACCESS) && (tType '= ..#TYPEDOCDBAPPLICATION) && (tType '= ..#TYPEROUTINEAPPLICATION) && (tType '= ..#TYPEINTEROPQUEUE) && (tType '= ..#TYPEINTEROPMESSAGE) && (tType '= ..#TYPEINTEROPJOB) && (tType '= ..#TYPERESTSERVICE) {
+        If (tType '= ..#TYPESCREENPERMISSION) && (tType '= ..#TYPEWEBAPPLICATION) && (tType '= ..#TYPEUSER) && (tType '= ..#TYPEAUDITING) && (tType '= ..#TYPETASK) && (tType '= ..#TYPEPROCESS) && (tType '= ..#TYPEAPPLICATIONERROR) && (tType '= ..#TYPEROLE) && (tType '= ..#TYPERESOURCE) && (tType '= ..#TYPEX509) && (tType '= ..#TYPEWALLETSECRET) && (tType '= ..#TYPEDEVICE) && (tType '= ..#TYPEOAUTHCLIENT) && (tType '= ..#TYPEOAUTHSERVERCLIENT) && (tType '= ..#TYPEAUDITEVENT) && (tType '= ..#TYPEAUDITUSEREVENT) && (tType '= ..#TYPESSL) && (tType '= ..#TYPESERVICE) && (tType '= ..#TYPELDAP) && (tType '= ..#TYPEOAUTHSERVERDEF) && (tType '= ..#TYPEOAUTHRESOURCESERVER) && (tType '= ..#TYPEOAUTHAUTHSERVER) && (tType '= ..#TYPENAMESPACE) && (tType '= ..#TYPEWEBSESSION) && (tType '= ..#TYPEBACKGROUNDTASK) && (tType '= ..#TYPEDATABASECONFIG) && (tType '= ..#TYPEDATABASE) && '..IsMappingType(tType) && (tType '= ..#TYPELANGUAGESERVER) && (tType '= ..#TYPELOCK) && (tType '= ..#TYPECLASS) && (tType '= ..#TYPEROUTINE) && (tType '= ..#TYPEJOURNALFILE) && (tType '= ..#TYPEJOURNALSETTINGS) && (tType '= ..#TYPELICENSEKEY) && (tType '= ..#TYPELICENSESERVER) && (tType '= ..#TYPEECPDATASERVER) && (tType '= ..#TYPEECPSETTINGS) && (tType '= ..#TYPEECPSSLCONNECTION) && (tType '= ..#TYPEENCRYPTIONKEYFILE) && (tType '= ..#TYPEDATABASEKEYS) && (tType '= ..#TYPEDATAELEMENTKEYS) && (tType '= ..#TYPEENCRYPTIONSTARTUP) && (tType '= ..#TYPEAUTHOPTIONS) && (tType '= ..#TYPESUPERSERVER) && (tType '= ..#TYPEMFTCONNECTION) && (tType '= ..#TYPEDOCDBDATABASE) && (tType '= ..#TYPEPRODUCTION) && (tType '= ..#TYPEPRODUCTIONITEM) && (tType '= ..#TYPEPRODUCTIONITEMSETTING) && (tType '= ..#TYPEPCTACCESS) && (tType '= ..#TYPEDOCDBAPPLICATION) && (tType '= ..#TYPEROUTINEAPPLICATION) && (tType '= ..#TYPEINTEROPQUEUE) && (tType '= ..#TYPEINTEROPMESSAGE) && (tType '= ..#TYPEINTEROPJOB) && (tType '= ..#TYPERESTSERVICE) && (tType '= ..#TYPELOOKUPTABLE) && (tType '= ..#TYPELOOKUPENTRY) {
             ; A type COVEREDTYPES lists and no branch evaluates. Fail closed rather than write.
             Do ..Refuse(..#UNCOVERED, .pProhibits, .pCode)
             Quit
@@ -1448,6 +1461,9 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
             Do ..Refuse(..#OCUPILOTROUTINEAPP, .pProhibits, .pCode)
             Quit
         }
+        ; Story 20.5: a lookup table import is named by a literal id no table answers, and AD-10 names no effect on a lookup
+        ; table, so the arm reads no target; the port refuses a file that is not exactly one lookup table before any load.
+        If (tType = ..#TYPELOOKUPTABLE) && (..WriteTypeOf(..ToolClassNamed(pToolName)) = ..#LOOKUPIMPORTWRITETYPE) Quit
         Set tSC = ..Target(pToolName, tId, .tTarget, .tPresent, .tToolClass)
         If $$$ISERR(tSC) Quit
         ; AD-54. A create's target is CORRECTLY absent, so the early-out below -- which reasons that
@@ -1476,6 +1492,13 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
                 Set tItemPayload = ..ParsedObject(pPayload)
                 If tItemPayload.%GetTypeOf("Namespace") '= "unassigned" Do tItemPayload.%Remove("Namespace")
                 Set tSC = ..Created(tType, 0, tItemPayload, .pProhibits, .pCode, tId)
+                Quit
+            }
+            ; Story 20.5: an entry add carries the namespace it was composed in beside its fields, as an item add does.
+            If tType = ..#TYPELOOKUPENTRY {
+                Set tEntryPayload = ..ParsedObject(pPayload)
+                If tEntryPayload.%GetTypeOf("Namespace") '= "unassigned" Do tEntryPayload.%Remove("Namespace")
+                Set tSC = ..Created(tType, 0, tEntryPayload, .pProhibits, .pCode, tId)
                 Quit
             }
             Set tSC = ..Created(tType, tServes, ..ParsedObject(pPayload), .pProhibits, .pCode, tId)
@@ -1672,6 +1695,16 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
         }
         If tType = ..#TYPEINTEROPJOB {
             Set tSC = ..ReviewedFewOnly(..#TYPEINTEROPJOB, .tChanged, .pProhibits, .pCode)
+            Quit
+        }
+        ; A lookup table and one of its entries (Story 20.5): AD-10 names no effect on either -- OcuPilot stores nothing in the
+        ; vendor's lookup global -- so a write passes the reviewed-few sweep and nothing else.
+        If tType = ..#TYPELOOKUPTABLE {
+            Set tSC = ..ReviewedFewOnly(..#TYPELOOKUPTABLE, .tChanged, .pProhibits, .pCode)
+            Quit
+        }
+        If tType = ..#TYPELOOKUPENTRY {
+            Set tSC = ..ReviewedFewOnly(..#TYPELOOKUPENTRY, .tChanged, .pProhibits, .pCode)
             Quit
         }
         ; The authentication and web session options (Story 18.8): OcuPilot's own sign-in and start are not cut.

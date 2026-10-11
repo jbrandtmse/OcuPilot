@@ -17,9 +17,10 @@ Parameter ITEMS = "interoperability/productions/items";
 /// Jobs tab offer Abort, Suspend and Stop.</p>
 Parameter SCREENS = "InteropMonitorList|interoperability/monitor|5|list|production-item|Monitor|interop.monitor|EnsPortal.ProductionMonitor|1|0|;InteropQueueList|interoperability/queues|6|list|interop-queue|Queues|interop.queues|EnsPortal.Queues|1|0|abort;InteropQueueMessageList|interoperability/queues/messages|0|list|interop-message|QueueItems|interop.queuemessages|EnsPortal.Queues|0|0|abort;InteropJobList|interoperability/jobs|7|list|interop-job|Jobs|interop.jobs|EnsPortal.Jobs|1|0|abort,suspend,stop;InteropItemStatusTab|interoperability/productions/items/document|0|detail|production-item|ItemStatus|interop.itemstatus|EnsPortal.ProductionConfig|0|1|;InteropItemQueueTab|interoperability/productions/items/queue|0|detail|interop-message|ItemQueue|interop.itemqueue|EnsPortal.ProductionConfig|0|3|abort;InteropItemLogTab|interoperability/productions/items/log|0|detail|log-entry|ItemLog|interop.itemlog|EnsPortal.ProductionConfig|0|4|;InteropItemMessageTab|interoperability/productions/items/messages|0|detail|interop-message|ItemMessages|interop.itemmessages|EnsPortal.ProductionConfig|0|5|;InteropItemJobTab|interoperability/productions/items/jobs|0|detail|interop-job|ItemJobs|interop.itemjobs|EnsPortal.ProductionConfig|0|6|abort,suspend,stop";
 
-/// <p>The endpoint roster the port declares (AD-62): the four Story 20.2 endpoints, Items and Settings, then the nine
-/// runtime reads. Pinned as a literal, because a roster that derives both sides proves nothing.</p>
-Parameter ENDPOINTS = "Productions,Processes,Transforms,Rules,Items,Settings,Monitor,ItemStatus,Queues,QueueItems,ItemQueue,ItemLog,ItemMessages,Jobs,ItemJobs";
+/// <p>The endpoint roster the port declares (AD-62): the four Story 20.2 endpoints, Items and Settings, the nine
+/// runtime reads, then Story 20.5's LookupTables, LookupEntries and BusinessPartners. Pinned as a literal, because a roster
+/// that derives both sides proves nothing.</p>
+Parameter ENDPOINTS = "Productions,Processes,Transforms,Rules,Items,Settings,Monitor,ItemStatus,Queues,QueueItems,ItemQueue,ItemLog,ItemMessages,Jobs,ItemJobs,LookupTables,LookupEntries,BusinessPartners";
 
 /// <p>The pairs each runtime endpoint requires, <code>&lt;endpoint&gt;=&lt;pairs&gt;</code>, separated by <code>;</code>: its classic
 /// page's resource beside the Interoperability menu's, and each item tab's beside Productions' (AD-8, AD-29).</p>

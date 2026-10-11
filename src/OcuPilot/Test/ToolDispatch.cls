@@ -180,6 +180,7 @@ Method TestTheShippedGateAllowsEveryLiveToolButTheBaselineDisabled()
         If tTool.name = $Parameter("OcuPilot.Test.Governance", "SUPERSERVERDELETE") Set tExpected = "0|" _ ##class(OcuPilot.Api.Error).#GOVERNANCEDISABLED
         If tTool.name = $Parameter("OcuPilot.Test.Governance", "INTEROPITEMREMOVE") Set tExpected = "0|" _ ##class(OcuPilot.Api.Error).#GOVERNANCEDISABLED
         If $ListFind($ListFromString($Parameter("OcuPilot.Test.Governance", "INTEROPRUNTIMEDISABLED")), tTool.name) Set tExpected = "0|" _ ##class(OcuPilot.Api.Error).#GOVERNANCEDISABLED
+        If $ListFind($ListFromString($Parameter("OcuPilot.Test.Governance", "INTEROPLOOKUPDISABLED")), tTool.name) Set tExpected = "0|" _ ##class(OcuPilot.Api.Error).#GOVERNANCEDISABLED
         If $ListFind($ListFromString($Parameter("OcuPilot.Test.Governance", "MFTDISABLED")), tTool.name) Set tExpected = "0|" _ ##class(OcuPilot.Api.Error).#GOVERNANCEDISABLED
         Do $$$AssertEquals($Get(tDecision("allowed")) _ "|" _ $Get(tDecision("code")), tExpected, tTool.name _ ": " _ tExpected)
     }

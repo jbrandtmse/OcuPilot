@@ -25,6 +25,10 @@ function fill(template: string, placeholder: string, value: string): string {
  *
  * **The sentence** is the pending-update one, or, for a setting that is a location on the server, the one that
  * names the value typed as a location the item reads or writes when it runs.
+ *
+ * **Lookup table entries use the same dialog** (Story 20.5): `title` replaces the heading, `statement` the sentence,
+ * `multiline` draws the value as a text area, and `defaultShown` false leaves out the default line an entry has none of.
+ * Each default is today's item-settings wording.
  */
 @Component({
   selector: 'app-interop-item-setting-dialog',
@@ -33,7 +37,9 @@ function fill(template: string, placeholder: string, value: string): string {
   template: `<app-dialog [heading]="heading()" [closeLabel]="STRINGS.actionCancel" (closed)="onClosed()">
     <p class="ocu-banner" data-interop-setting-consequence>{{ consequence() }}</p>
     <p class="ocu-field-caption" data-interop-setting-current>{{ currentLine() }}</p>
-    <p class="ocu-field-caption" data-interop-setting-default>{{ defaultLine() }}</p>
+    @if (showDefault) {
+      <p class="ocu-field-caption" data-interop-setting-default>{{ defaultLine() }}</p>
+    }
     @if (hasRefusal) {
       <p class="ocu-banner ocu-banner-warning" role="alert" data-interop-setting-reason>{{ refusal() }}</p>
     }
@@ -54,19 +60,33 @@ function fill(template: string, placeholder: string, value: string): string {
         } @else {
           <label class="ocu-field-label" [attr.for]="fieldId">{{ STRINGS.errorLogColumnValue }}</label>
           <div class="ocu-field-control">
-            <input
-              class="ocu-field-input"
-              type="text"
-              autocomplete="off"
-              spellcheck="false"
-              data-interop-setting-value
-              [id]="fieldId"
-              [value]="text()"
-              [attr.aria-invalid]="violation() ? 'true' : null"
-              [attr.aria-describedby]="describedBy()"
-              (input)="onText($event)"
-              (keydown.enter)="onEnter($event)"
-            />
+            @if (multilineField) {
+              <textarea
+                class="ocu-field-input ocu-field-textarea"
+                rows="4"
+                spellcheck="false"
+                data-interop-setting-value
+                [id]="fieldId"
+                [value]="text()"
+                [attr.aria-invalid]="violation() ? 'true' : null"
+                [attr.aria-describedby]="describedBy()"
+                (input)="onText($event)"
+              ></textarea>
+            } @else {
+              <input
+                class="ocu-field-input"
+                type="text"
+                autocomplete="off"
+                spellcheck="false"
+                data-interop-setting-value
+                [id]="fieldId"
+                [value]="text()"
+                [attr.aria-invalid]="violation() ? 'true' : null"
+                [attr.aria-describedby]="describedBy()"
+                (input)="onText($event)"
+                (keydown.enter)="onEnter($event)"
+              />
+            }
           </div>
         }
         <p class="ocu-field-caption" data-interop-setting-hint [id]="hintId">{{ hint() }}</p>
@@ -88,8 +108,20 @@ function fill(template: string, placeholder: string, value: string): string {
   </app-dialog>`,
 })
 export class InteropItemSettingDialog {
-  /** The setting's name, which titles the dialog. */
-  readonly name = input.required<string>();
+  /** The setting's name, which titles the dialog unless `title` is given. */
+  readonly name = input<string>('');
+
+  /** The dialog's heading, in place of the one that names the setting; `''` keeps that one. */
+  readonly title = input<string>('');
+
+  /** The sentence the dialog states above its fields, in place of the pending-update one; `''` keeps that one. */
+  readonly statement = input<string>('');
+
+  /** Whether the value is drawn as a multi-line field, for a value that may be long. */
+  readonly multiline = input<boolean>(false);
+
+  /** Whether the default line is drawn; an entry of a lookup table has no default. */
+  readonly defaultShown = input<boolean>(true);
 
   /** The setting's current value as the instance reported it. */
   readonly current = input<string>('');
@@ -133,7 +165,7 @@ export class InteropItemSettingDialog {
 
   private closed = false;
 
-  protected readonly heading = computed(() => fill(STRINGS.interopSettingSetTitle, 'name', this.name()));
+  protected readonly heading = computed(() => (this.title() !== '' ? this.title() : fill(STRINGS.interopSettingSetTitle, 'name', this.name())));
 
   protected readonly isBoolean = computed(() => this.type() === BOOLEAN_TYPE);
 
@@ -152,6 +184,7 @@ export class InteropItemSettingDialog {
 
   /** The pending-update sentence, or the location sentence naming the value typed. */
   protected readonly consequence = computed(() => {
+    if (this.statement() !== '') return this.statement();
     const value = this.typed() ?? this.current();
     if (!this.location() || this.isBoolean() || value === '') return STRINGS.interopItemPendingConsequence;
     return STRINGS.interopSettingLocationConsequence.split('<value>').join(value);
@@ -171,12 +204,20 @@ export class InteropItemSettingDialog {
     return this.isBoolean();
   }
 
+  protected get multilineField(): boolean {
+    return this.multiline();
+  }
+
+  protected get showDefault(): boolean {
+    return this.defaultShown();
+  }
+
   private line(template: string, value: string): string {
     return fill(template, 'value', value === '' ? STRINGS.tableEmptyValue : value);
   }
 
   protected onText(event: Event): void {
-    this.typed.set((event.target as HTMLInputElement).value);
+    this.typed.set((event.target as HTMLInputElement | HTMLTextAreaElement).value);
   }
 
   protected onChecked(event: Event): void {

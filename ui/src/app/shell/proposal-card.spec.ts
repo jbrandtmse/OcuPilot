@@ -938,6 +938,22 @@ describe('the proposal card', () => {
     }
   });
 
+  it('Story 20.5: a lookup table entry\'s removal, a lookup table\'s deletion and a lookup table\'s import each state their own published sentence, drawn destructive', () => {
+    // Mutation (Rule 19): drop one of the three INTEROP.LOOKUP codes from `consequenceSentence` -> its leg goes red.
+    for (const [code, sentence] of [
+      ['INTEROP.LOOKUP.REMOVE', STRINGS.interopLookupRemoveConsequence],
+      ['INTEROP.LOOKUP.DELETE', STRINGS.interopLookupDeleteConsequence],
+      ['INTEROP.LOOKUP.IMPORT', STRINGS.interopLookupImportConsequence],
+    ] as const) {
+      const { card } = mount(liveView({ consequence: code, destructive: true, maskedFields: [] }), { phase: 'live' });
+      expect(card.classList.contains('ocu-proposal-card-destructive'), code).toBe(true);
+      const lines = card.querySelectorAll('[data-slot="consequence"]');
+      expect(lines.length, code).toBe(1);
+      expect(lines[0].textContent, code).toContain(sentence);
+      TestBed.resetTestingModule();
+    }
+  });
+
   it('AD-10, Story 9.5: a change turning an SSL/TLS configuration\'s peer verification off is drawn destructive and states its effect', () => {
     // Mutation (Rule 19): drop the NOPEERCHECK code from `consequenceSentence` -> this goes red.
     const { card } = mount(liveView({ consequence: 'SSL.NOPEERCHECK', destructive: true, maskedFields: [] }), { phase: 'live' });

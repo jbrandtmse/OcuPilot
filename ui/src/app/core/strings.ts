@@ -6602,6 +6602,117 @@ export const STRINGS = {
   /** EXPERIENCE.md:604 */
   interopRefusalJobNotStopped: 
     'The job did not stop within the wait, even after it was ended. Look at Jobs again, and update the production on Productions to start its jobs again.',
+  /** EXPERIENCE.md:604 */
+  interopLookupTablesLabel: 'Lookup tables',
+  /** EXPERIENCE.md:604 */
+  interopLookupEntriesLabel: 'Lookup table entries',
+  /** EXPERIENCE.md:604 */
+  interopBusinessPartnersLabel: 'Business partners',
+  /** EXPERIENCE.md:604 */
+  interopLookupTablesEmpty: 'This namespace holds no lookup tables.',
+  /** EXPERIENCE.md:604 */
+  interopLookupEntriesEmpty: 'This lookup table holds no entries.',
+  /** EXPERIENCE.md:604 */
+  interopBusinessPartnersEmpty: 'This namespace holds no business partners.',
+  /** EXPERIENCE.md:604 */
+  interopBusinessPartnersEmptyNext: 'Business partners are added and changed in the classic Business Partners page.',
+  /** EXPERIENCE.md:604 */
+  interopLookupTablesEmptyAgent: 'Ask the agent to create a lookup table here.',
+  /** EXPERIENCE.md:604 */
+  interopLookupEntriesEmptyAgent: 'Ask the agent to add an entry to this lookup table.',
+  /** EXPERIENCE.md:604 */
+  interopLookupTablesPrompt1: 'Which lookup tables does this namespace hold?',
+  /** EXPERIENCE.md:604 */
+  interopLookupTablesPrompt2: 'Which lookup table was changed most recently?',
+  /** EXPERIENCE.md:604 */
+  interopLookupTablesPrompt3: 'How does a rule or a transformation read a lookup table?',
+  /** EXPERIENCE.md:604 */
+  interopLookupEntriesPrompt1: 'What does this lookup table map?',
+  /** EXPERIENCE.md:604 */
+  interopLookupEntriesPrompt2: 'Which entries of this lookup table hold an empty value?',
+  /** EXPERIENCE.md:604 */
+  interopLookupEntriesPrompt3: 'Which rules or transformations might read this lookup table?',
+  /** EXPERIENCE.md:604 */
+  interopBusinessPartnersPrompt1: 'Which business partners does this namespace list?',
+  /** EXPERIENCE.md:604 */
+  interopBusinessPartnersPrompt2: 'Who is the primary contact of each business partner?',
+  /** EXPERIENCE.md:604 */
+  interopBusinessPartnersPrompt3: 'What are business partners used for in a production?',
+  /** EXPERIENCE.md:604 */
+  interopLookupColumnKey: 'Entry key',
+  /** EXPERIENCE.md:604 */
+  interopLookupColumnSecret: 'Secret entry',
+  /** EXPERIENCE.md:604 */
+  interopPartnerColumnContact: 'Primary contact',
+  /** EXPERIENCE.md:604 */
+  interopPartnerColumnPhone: 'Phone',
+  /** EXPERIENCE.md:604 */
+  interopLookupEntriesCriterionTable: 'Lookup table',
+  /** EXPERIENCE.md:604 */
+  interopLookupTableAddAction: 'New table',
+  /** EXPERIENCE.md:604 */
+  interopLookupEntryAddAction: 'Add lookup entry',
+  /** EXPERIENCE.md:604 */
+  interopLookupEntrySetAction: 'Set entry value',
+  /** EXPERIENCE.md:604 */
+  interopLookupTableDialogTitle: 'New lookup table',
+  /** EXPERIENCE.md:604 */
+  interopLookupEntryDialogTitle: 'Add an entry',
+  /** EXPERIENCE.md:604 */
+  interopLookupSetDialogTitle: 'Set the value of this entry',
+  /** EXPERIENCE.md:604 */
+  interopLookupFieldTable: 'Table name',
+  /** EXPERIENCE.md:604 */
+  interopLookupNewTableHelp: 'A table is created by its first entry, so give the new table its first key and value.',
+  /** EXPERIENCE.md:604 */
+  interopLookupEntryHelp: 'The entry is in effect at once: rules and transformations that call Lookup() see it on their next call.',
+  /** EXPERIENCE.md:604 */
+  interopLookupRefusalTaken: 'This lookup table already holds an entry with that key.',
+  /** EXPERIENCE.md:604 */
+  interopLookupRefusalTableCase: 
+    'A lookup table whose name differs from this one only in letter case already exists. Use its spelling, or choose another name.',
+  /** EXPERIENCE.md:604 */
+  interopLookupRefusalSame: 'This entry already holds that value.',
+  /** EXPERIENCE.md:604 */
+  interopLookupRefusalSecret: 'This key names a credential, so OcuPilot neither shows nor sets its value. Set it in the classic Lookup Tables page.',
+  /** EXPERIENCE.md:604 */
+  interopLookupRefusalSourceControl: 'This namespace uses source control, so change lookup tables in the classic Lookup Tables page.',
+  /** EXPERIENCE.md:604 */
+  interopLookupRefusalLocked: 'Someone else is changing this lookup table right now, so nothing was written. Try again in a moment.',
+  /** EXPERIENCE.md:604 */
+  interopLookupRefusalTableName: 'A lookup table name is 1 to 255 characters with no control character.',
+  /** EXPERIENCE.md:604 */
+  interopLookupRefusalKey: 'An entry key is 1 to 255 characters with no control character.',
+  /** EXPERIENCE.md:604 */
+  interopLookupRefusalValue: 'An entry value is at most 32,000 characters.',
+  /** EXPERIENCE.md:604 */
+  interopLookupRemoveConsequence: 'Removing this entry cannot be undone from OcuPilot. When it is the table\'s last entry, the table is removed too.',
+  /** EXPERIENCE.md:604 */
+  interopLookupDeleteConsequence: 
+    'Deleting this lookup table removes every entry in it. Rules and transformations that read it then get their default value.',
+  /** EXPERIENCE.md:604 */
+  interopLookupExportTitle: 'Export lookup table <table>',
+  /** EXPERIENCE.md:604 */
+  interopLookupExportReplaces: 'A file already at this name is replaced. The file holds every key and value of the table.',
+  /** EXPERIENCE.md:604 */
+  interopLookupImportTitle: 'Import a lookup table',
+  /** EXPERIENCE.md:604 */
+  interopLookupImportConsequence:
+    'Importing replaces the table\'s entries with the file\'s, and entries the file does not hold are removed.',
+  /** EXPERIENCE.md:604 */
+  interopLookupExportDone: 'Exported lookup table <table> to <path>.',
+  /** EXPERIENCE.md:604 */
+  interopLookupExportSaved: 'Saved lookup table <table> as <file>.',
+  /** EXPERIENCE.md:604 */
+  interopLookupImportDone: 'Imported the lookup table in <file>.',
+  /** EXPERIENCE.md:604 */
+  interopLookupRefusalImportShape:
+    'An import file must hold exactly one lookup table with at least one entry and nothing else, in the form the Export action writes.',
+  /** EXPERIENCE.md:604 */
+  interopLookupRefusalImportChanged:
+    'The file or the table changed after the import was reviewed, so nothing was imported. Review the import again.',
+  /** EXPERIENCE.md:604 */
+  interopLookupRefusalTooLarge: 'A lookup table file holds at most 3,000,000 characters, and this one holds more.',
   /** EXPERIENCE.md:468 */
   sqlPrivilegesLabel: 'SQL privileges',
   /** EXPERIENCE.md:468 */
