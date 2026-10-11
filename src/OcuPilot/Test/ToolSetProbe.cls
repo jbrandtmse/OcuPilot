@@ -7,10 +7,11 @@
 Class OcuPilot.Test.ToolSetProbe Extends %RegisteredObject
 {
 
-/// <p>Log in as <var>pUsername</var>, advertise, and signal
-/// <code>{loggedIn, username, roles, count, names, status}</code> to process <var>pParent</var>,
-/// or <code>{error}</code> when something raised. <code>names</code> is the wire names in the
-/// order they were advertised, comma-separated.</p>
+/// <p>Log in as <var>pUsername</var>, advertise, list the tools once more, and signal
+/// <code>{loggedIn, username, roles, count, names, status, relisted, rebuilt}</code> to process
+/// <var>pParent</var>, or <code>{error}</code> when something raised. <code>names</code> is the wire
+/// names in the order they were advertised, comma-separated; <code>relisted</code> is the second
+/// listing's error text and <code>rebuilt</code> how many listings it built.</p>
 ClassMethod Run(pParent As %Integer, pUsername As %String)
 {
     Set tOut = {}
@@ -26,6 +27,10 @@ ClassMethod Run(pParent As %Integer, pUsername As %String)
         }
         Do tOut.%Set("count", +$Get(tTools), "number")
         Do tOut.%Set("names", tNames, "string")
+        Set tBuilds = ##class(OcuPilot.Screen.Tool.Registry).BuildCount()
+        Set tSC = ##class(OcuPilot.Screen.Tool.Registry).ListTools(.tAgain)
+        Do tOut.%Set("relisted", $System.Status.GetErrorText(tSC))
+        Do tOut.%Set("rebuilt", ##class(OcuPilot.Screen.Tool.Registry).BuildCount() - tBuilds, "number")
     } Catch ex {
         Do tOut.%Set("error", ex.DisplayString())
     }

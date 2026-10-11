@@ -11030,6 +11030,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: ocupilot-b-ci at b340de34: Decide 0.576 s, ResolveWire 0.549 s, RequiredPairs 0.001 s, ValidateArguments 0.004 s for security.mftconnections.create; a 71-step dispatch plan 82 s (1.1-1.16 s every step, any tool)
 - 2026-10-10T18:47:04Z status=routed owner=burndown by=lead note=cache the listing per process or per registry generation, invalidated when a tool class compiles; contended with Epic 18 (both add tools); not release-blocking
 - 2026-10-11T02:16:39Z status=routed owner=20-24-agent-tool-calls-stop-re-listing-the-tool-registry by=merge_gate note=owner 2026-10-10 "Fix it next on slot B" (via Planner, feature 21b9e337): Story 20.24
+- 2026-10-11T05:12:54Z status=resolved-by:20-24-agent-tool-calls-stop-re-listing-the-tool-registry by=adjudication note=a1cb8b30+review: warm write Answer 1.18s->0.017s, Decide 0.58->0.003s; RegistryCache AC1/AC3 green
 
 ### DW-2287: A reset of a server-path setting carries the pending-update consequence, not the location sentence, though the default it restores is a location
 - source: spec-20-22-production-item-settings.md | severity: low | fix-risk: low | footprint: in-story
@@ -11116,3 +11117,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-31-privileged-routine-applications.md | severity: low | fix-risk: low | footprint: out-of-footprint
 - evidence: measured at 18.31's plan on ocupilot-ci: Type other than Routine stored as Class; an empty member dropped; an omitted Type answers 400 #40301
 - 2026-10-10T17:24:12Z status=decision-pending owner=burndown by=harvest note=owner_hold: IRIS defect candidate, never reported upstream
+
+### DW-2300: A tool class's compile time is recorded a few milliseconds before its compiled code, so a ListTools build in that gap can cache the class's previous view until the next compile
+- source: spec-20-24-agent-tool-calls-stop-re-listing-the-tool-registry.md | severity: low | fix-risk: high | footprint: in-story
+- evidence: Measured on ocupilot-b-ci at code review: the CompiledClass row and TimeChanged lead %Extends and $Parameter by 1.6-4.2 ms (one 53 ms); the before/after check cannot see it; 20 batch-compile trials ended with 0 stale listings; a production build reads a class at least 38 ms after its signature read
+- 2026-10-11T05:10:03Z status=by-design owner=20-24-agent-tool-calls-stop-re-listing-the-tool-registry by=cr note=spec Named limit; AD-5's 'seen on the next call' has this ms gap; reopens only by a spec or AD-5 amendment

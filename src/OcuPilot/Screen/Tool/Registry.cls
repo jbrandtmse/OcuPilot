@@ -17,6 +17,19 @@
 /// sources claim is refused rather than resolved to either.</p>
 /// <p><b>The registry reads no kernel state</b> (the dependency direction in the spine): a cap or
 /// a policy a tool is called under is its caller's to supply.</p>
+/// <p><b>The listing is cached per process.</b> <method>ListTools</method> keeps the listing it
+/// builds in the process variable <code>%OcuPilotToolList</code>, keyed by namespace and registry
+/// class, as JSON text, and answers each call an array of its own. It holds
+/// the listing and nothing else: a privilege pair, a policy, a restraint verdict, a schema and a
+/// description are each read by their own reader on every call (AD-8, AD-22, AD-30, AD-64). Every
+/// call first reads the compile signature of <parameter>TOOLPACKAGE</parameter> from the class
+/// dictionary -- the count of compiled classes and the sums of their compile times -- and rebuilds
+/// when it differs from the one the cached listing was built under, so a compile in any process is
+/// seen on the next call. A failed build, a build during which the signature changed, and every
+/// build made while the signature cannot be read are never cached. A class's compile time is
+/// recorded a few milliseconds before its compiled code is in place, so a build that falls in that
+/// gap at the end of a compile can keep that class's previous view until the next compile or the
+/// end of the process.</p>
 Class OcuPilot.Screen.Tool.Registry Extends %RegisteredObject
 {
 
@@ -93,6 +106,91 @@ ClassMethod ReadToolClass() As %String
 }
 
 /// <p>Every tool, in name order, as a <class>%DynamicArray</class> of
+/// <code>{name, kind, class, descriptor, fulfilment, advertised}</code>, as
+/// <method>BuildListing</method> builds it and refuses it. The listing is built once per process,
+/// registry class and namespace, and revalidated against the compile signature on every call (the
+/// class description); each call answers an array of its own, so a caller may change its answer.
+/// A class overriding this method bypasses the cache.</p>
+ClassMethod ListTools(Output pTools As %DynamicArray) As %Status
+{
+    Set tSC = $$$OK
+    Set pTools = ""
+    Try {
+        Set tNamespace = $Namespace
+        Set tClass = $ClassName()
+        Set tSignatureSC = ..CompileSignature(.tSignature)
+        If $$$ISOK(tSignatureSC) && ($Get(%OcuPilotToolList(tNamespace, tClass, "signature")) = tSignature) {
+            Set pTools = ##class(%DynamicArray).%FromJSON(%OcuPilotToolList(tNamespace, tClass, "listing"))
+            Quit
+        }
+        Do ..ForgetListing()
+        Set %OcuPilotToolList(tNamespace, tClass, "builds") = ..BuildCount() + 1
+        Set tSC = ..BuildListing(.tBuilt)
+        If $$$ISERR(tSC) Quit
+        If $$$ISOK(tSignatureSC) {
+            Set tAfterSC = ..CompileSignature(.tAfter)
+            If $$$ISOK(tAfterSC) && (tAfter = tSignature) {
+                Set %OcuPilotToolList(tNamespace, tClass, "listing") = tBuilt.%ToJSON()
+                Set %OcuPilotToolList(tNamespace, tClass, "signature") = tSignature
+            }
+        }
+        Set pTools = tBuilt
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    If $$$ISERR(tSC) Set pTools = ""
+    Quit tSC
+}
+
+/// <p>How many times this process has built this registry class's listing in this namespace,
+/// whether the build succeeded or not. A call answered from the cache does not count.</p>
+ClassMethod BuildCount() As %Integer
+{
+    Quit +$Get(%OcuPilotToolList($Namespace, $ClassName(), "builds"))
+}
+
+/// <p>Drop this process's cached listing for this registry class and namespace, so the next
+/// <method>ListTools</method> builds it again. <method>BuildCount</method> is not changed.</p>
+ClassMethod ForgetListing()
+{
+    Kill %OcuPilotToolList($Namespace, $ClassName(), "signature")
+    Kill %OcuPilotToolList($Namespace, $ClassName(), "listing")
+}
+
+/// <p>The compile signature of <parameter>TOOLPACKAGE</parameter> in <var>pSignature</var>:
+/// <code>count,days,seconds</code>, the number of compiled classes whose name starts with it and
+/// the sums of the day part and of the seconds part of their <code>TimeChanged</code>. A compile
+/// raises a sum, and a new or deleted class changes the count, so any change to the package
+/// changes the signature. Sums, because <code>TimeChanged</code> is a <code>$HOROLOG</code> text
+/// whose string order is not time order, and a compile batch stamps every class it compiles with
+/// the batch's start. Embedded SQL, for the reason
+/// <method>OcuPilot.Screen.Registry.Descriptors</method> gives. An error status when the query
+/// fails, with <var>pSignature</var> empty.</p>
+ClassMethod CompileSignature(Output pSignature As %String) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Set pSignature = ""
+    Try {
+        Set tRoot = ..#TOOLPACKAGE
+        Set tCount = ""
+        Set tDays = ""
+        Set tSeconds = ""
+        &sql(SELECT COUNT(*), SUM(CAST($PIECE(TimeChanged,',',1) AS INTEGER)), SUM(CAST($PIECE(TimeChanged,',',2) AS NUMERIC(20,9)))
+             INTO :tCount, :tDays, :tSeconds
+             FROM %Dictionary.CompiledClass WHERE Name %STARTSWITH :tRoot)
+        If SQLCODE '= 0 {
+            Set tSC = $$$ERROR($$$GeneralError, "the compile signature query failed: SQLCODE " _ SQLCODE)
+            Quit
+        }
+        Set pSignature = tCount _ "," _ tDays _ "," _ tSeconds
+    } Catch ex {
+        Set pSignature = ""
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>Every tool, in name order, as a <class>%DynamicArray</class> of
 /// <code>{name, kind, class, descriptor, fulfilment, advertised}</code>. <code>descriptor</code> is
 /// <code>""</code> for a tool with a class of its own; <code>class</code> is
 /// <method>ReadToolClass</method> for a read tool. <code>advertised</code> is false only for a tool
@@ -103,7 +201,7 @@ ClassMethod ReadToolClass() As %String
 /// a read-declaring descriptor whose read <method>OcuPilot.Screen.Registry.ReadProblem</method>
 /// refuses; and a name claimed twice. A discovery query that did not open or stopped early is an
 /// error too, never a shorter list.</p>
-ClassMethod ListTools(Output pTools As %DynamicArray) As %Status
+ClassMethod BuildListing(Output pTools As %DynamicArray) As %Status [ Private ]
 {
     Set tSC = $$$OK
     Set pTools = ""
