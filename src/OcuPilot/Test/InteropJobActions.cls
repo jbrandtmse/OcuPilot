@@ -153,16 +153,7 @@ Method EnableKey(pKey As %String)
 /// it lists several.</p>
 ClassMethod JobOf(pHost As %String) As %DynamicObject
 {
-    Kill tQuery
-    Set tQuery("namespace") = ..#NAMESPACE
-    Set tQuery("maxRows") = 1000
-    Set tSC = $ClassMethod(..#PORT, "Invoke", "Jobs", "LIST", .tQuery, "", .tRows, .tHttp, .tFault)
-    If '$IsObject($Get(tRows)) Quit ""
-    Set tIterator = tRows.%GetIterator()
-    While tIterator.%GetNext(.tIndex, .tRow) {
-        If tRow.Host = pHost Quit
-    }
-    If $IsObject($Get(tRow)) && (tRow.Host = pHost) Quit tRow
+    If ##class(OcuPilot.Test.InteropJobEnd).HostRows(pHost, .tRows) Quit tRows(1)
     Quit ""
 }
 
@@ -356,8 +347,8 @@ Method TestAnAbortOrSuspendOfAnIdleJobIsRefusedAndLeavesNoRequest()
 Method TestAnAbortOrSuspendOfAJobWhoseProcessEndedIsRefusedAndLeavesNoRequest()
 {
     Do $$$AssertStatusOK(..ArmRetry(), "the production runs")
-    Set tDead = ..TerminatedJob(..#OPNAME)
-    Do $$$AssertNotEquals(tDead, "", "the plain operation's job was terminated and reads Dead")
+    Set tDead = ..TerminatedJob(..#OPNAME, .tWhy)
+    Do $$$AssertNotEquals(tDead, "", tWhy)
     If tDead = "" Quit
     Do ..HoldJobPairs()
     Do $ClassMethod(..#SEAM, "Arm")
@@ -374,22 +365,12 @@ Method TestAnAbortOrSuspendOfAJobWhoseProcessEndedIsRefusedAndLeavesNoRequest()
     Do $$$AssertEquals($ClassMethod(..#SEAM, "Logged"), 0, "nothing was logged as a fault")
 }
 
-/// <p>Terminate the process of host <var>pHost</var>'s job and answer the id the Jobs read lists it under once it reads <code>Dead</code>,
-/// waiting ten seconds at most; <code>""</code> when it never did. The vendor renames a dead job's id a second after its process ends,
-/// and the row then stays for as long as the production runs.</p>
-ClassMethod TerminatedJob(pHost As %String) As %String
+/// <p>Terminate the process of host <var>pHost</var>'s job and answer the id the Jobs read lists that job under once it reads
+/// <code>Dead</code>, which is the id the port refuses as dead; <code>""</code> when it never did, with <var>pWhy</var> naming the step
+/// that failed. <var>pWhy</var> is a sentence for the assertion that follows. See <class>OcuPilot.Test.InteropJobEnd</class>.</p>
+ClassMethod TerminatedJob(pHost As %String, Output pWhy As %String) As %String
 {
-    Set tRow = ..JobOf(pHost)
-    If '$IsObject(tRow) Quit ""
-    Set tOriginal = tRow.Job
-    Do $System.Process.Terminate(tOriginal)
-    For tTry = 1:1:40 {
-        Hang 0.25
-        Set tRow = ..JobOf(pHost)
-        If $IsObject(tRow) && tRow.Dead && (tRow.Job '= tOriginal) Quit
-    }
-    If $IsObject(tRow) && tRow.Dead Quit tRow.Job
-    Quit ""
+    Quit ##class(OcuPilot.Test.InteropJobEnd).Terminated(pHost, .pWhy)
 }
 
 /// <p>Declare the pairs of a principal who reads and acts on jobs, for the calls through <class>OcuPilot.Test.InteropItemSeam</class>.</p>

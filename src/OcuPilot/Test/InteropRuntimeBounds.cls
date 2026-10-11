@@ -245,8 +245,8 @@ Method TestTheMintRefusesWhatTheScreenRefuses()
         Set tGot = ..MintRefusal($Piece(tCase, "|", 1), $Piece(tCase, "|", 2), $Piece(tCase, "|", 3))
         Do $$$AssertEquals(tGot, $Piece(tCase, "|", 4), $Piece(tCase, "|", 1) _ " for " _ $Piece(tCase, "|", 2) _ " " _ $Piece(tCase, "|", 3) _ " is refused at the mint, and nothing is stored, not " _ tGot)
     }
-    Set tDead = $ClassMethod(..#JOBS, "TerminatedJob", ..#OPNAME)
-    Do $$$AssertNotEquals(tDead, "", "the plain operation's job was terminated and reads Dead")
+    Set tDead = $ClassMethod(..#JOBS, "TerminatedJob", ..#OPNAME, .tWhy)
+    Do $$$AssertNotEquals(tDead, "", tWhy)
     If tDead '= "" {
         For tTool = "InteropJobAbort", "InteropJobSuspend", "InteropJobStop" {
             Set tGot = ..MintRefusal(tTool, "Job", tDead)

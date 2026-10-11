@@ -3,7 +3,8 @@
 /// off the Jobs list and the production reading an update pending, and Story 20.2's confirmed Update starts a job again; a stop of a job
 /// hung on a message, with the wait shortened to two seconds through <class>OcuPilot.Test.InteropGateSeam</class>, forces it, puts its
 /// message back on its queue and leaves its host reading Error; a job whose process has ended and a pid no job holds are refused, with
-/// no vendor call and so no <code>Stopping job</code> row in the event log; and each stop leaves one OcuPilot audit row.</p>
+/// no vendor call and so no <code>Stopping job</code> row in the event log; each stop leaves one OcuPilot audit row; and the dead-job
+/// premise helper <class>OcuPilot.Test.InteropJobEnd</class> ends a job the production replaced and refuses a Troubled production by name.</p>
 /// <p><b>What it needs from the environment:</b> OcuPilot installed in <code>HSCUSTOM</code> and serving over HTTP as
 /// <class>OcuPilot.Test.Http</class>'s account, an interoperability-enabled <code>USER</code> namespace, and
 /// <parameter>ARMINGVARIABLE</parameter> reading <code>1</code>, because it <b>compiles and runs a probe production in
@@ -355,8 +356,8 @@ Method TestAStopTheVendorRefusesIsAnsweredInThePortsOwnWords()
 Method TestADeadOrAbsentJobIsRefusedBeforeTheVendorIsCalled()
 {
     Do $$$AssertStatusOK(..StartProbe(), "the probe production runs")
-    Set tDead = $ClassMethod(..#JOBS, "TerminatedJob", ..#OPNAME)
-    Do $$$AssertNotEquals(tDead, "", "the plain operation's job was terminated and reads Dead")
+    Set tDead = $ClassMethod(..#JOBS, "TerminatedJob", ..#OPNAME, .tWhy)
+    Do $$$AssertNotEquals(tDead, "", tWhy)
     If tDead = "" Quit
     Do ..HoldPairs()
     Do $ClassMethod(..#SEAM, "Arm")
@@ -379,6 +380,60 @@ Method TestADeadOrAbsentJobIsRefusedBeforeTheVendorIsCalled()
     Do $$$AssertEquals(..StoppingRows(tMark), 0, "no Stopping job line reached the event log")
     Do $$$AssertEquals($ClassMethod(..#QUEUES, "AuditRows", tSince, "interop-job", tDead, "stop", .tData) + $ClassMethod(..#QUEUES, "AuditRows", tSince, "interop-job", "999999", "stop", .tMore), 0, "and no audit row names either")
     Do $$$AssertEquals($ClassMethod(..#SEAM, "Logged"), 0, "nothing was logged as a fault")
+}
+
+/// <p>The seam <class>OcuPilot.Test.InteropJobEnd</class> calls with the process id of the job it just terminated: wait for that process
+/// to end, change the plain operation's setting so that the update has work to do, update the probe production in <code>USER</code>, and
+/// record in <code>^||OcuPilotJobEndDropped</code> whether the Jobs list then holds no row under that process id.</p>
+ClassMethod UpdateOnceGone(pPid As %String)
+{
+    Set ^||OcuPilotJobEndDropped = 0
+    For tTry = 1:1:200 {
+        If '$Data(^$JOB(pPid)) Quit
+        Hang 0.05
+    }
+    Do $ClassMethod(..#PROBE, "SetHang", 1)
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = ..#NAMESPACE
+        Set tSC = ##class(Ens.Director).UpdateProduction()
+        Set $NAMESPACE = tOrigNS
+    } Catch {
+        Set $NAMESPACE = tOrigNS
+    }
+    Set tCount = ##class(OcuPilot.Test.InteropJobEnd).HostRows(..#OPNAME, .tRows)
+    Set ^||OcuPilotJobEndDropped = 1
+    For tI = 1:1:tCount {
+        If tRows(tI).Job = pPid Set ^||OcuPilotJobEndDropped = 0
+    }
+}
+
+/// <p>A job whose row the production drops after its process ends, and that it replaces with a live job some moments later, is not the end
+/// of the premise: <class>OcuPilot.Test.InteropJobEnd</class> terminates the replacement in its turn and answers a dead id. The update
+/// runs once the first job's process is gone, through the helper's seam.</p>
+/// <p>Mutation (Rule 19): set <class>OcuPilot.Test.InteropJobEnd</class>'s <parameter>ATTEMPTS</parameter> to 1 -- this test goes red,
+/// the helper answering <code>""</code> and saying that a live job replaced the terminated one.</p>
+Method TestAJobTheProductionReplacesIsEndedInItsTurn()
+{
+    Do $$$AssertStatusOK(..StartProbe(), "the probe production runs")
+    Set tDead = ##class(OcuPilot.Test.InteropJobEnd).Terminated(..#OPNAME, .tWhy, ..%ClassName(1) _ ":UpdateOnceGone")
+    Do $$$AssertEquals($Get(^||OcuPilotJobEndDropped), 1, "the update dropped the terminated job's row")
+    Kill ^||OcuPilotJobEndDropped
+    Do $$$AssertNotEquals(tDead, "", tWhy)
+}
+
+/// <p>A production that reads Troubled and lists no live job of the host is refused as the premise, naming Troubled, at once.</p>
+/// <p>Mutation (Rule 19): change <class>OcuPilot.Test.InteropJobEnd</class>'s <parameter>TROUBLED</parameter> to 5 -- this test goes red,
+/// the sentence naming the state number after twenty seconds.</p>
+Method TestATroubledProductionRefusesTheDeadJobPremiseByName()
+{
+    Do $$$AssertStatusOK(..StartProbe(), "the probe production runs")
+    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "MakeTroubled"), "the production reads Troubled")
+    Set tStart = $ZHorolog
+    Set tDead = ##class(OcuPilot.Test.InteropJobEnd).Terminated(..#OPNAME, .tWhy)
+    Do $$$AssertEquals(tDead, "", "no dead id is answered for a Troubled production")
+    Do $$$AssertTrue(tWhy [ "Troubled", "the premise is refused naming Troubled, not: " _ tWhy)
+    Do $$$AssertTrue($ZHorolog - tStart < 10, "and at once, not after the wait")
 }
 
 }
