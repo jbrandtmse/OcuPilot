@@ -174,6 +174,13 @@ export const REMOVE_APPLICATION_ROLE = 'remove-application-role';
 export const ADD_MATCHING_ROLE = 'add-matching-role';
 export const REMOVE_MATCHING_ROLE = 'remove-matching-role';
 
+/** The privileged routine applications list's descriptor, whose six role and routine actions its editor's tabs send (Story 18.33). */
+const ROUTINE_APP_LIST = 'OcuPilot.Screen.Descriptor.RoutineAppList';
+
+/** The privileged routine application's two routine actions, beside the four role ones (AD-56 (ii)). */
+export const ADD_ROUTINE = 'add-routine';
+export const REMOVE_ROUTINE = 'remove-routine';
+
 /** The Roles list's descriptor, whose four value actions the role editor sends (Story 9.3). */
 export const ROLE_LIST = 'OcuPilot.Screen.Descriptor.RoleList';
 
@@ -377,6 +384,8 @@ const UNDRAWN_ACTIONS: Readonly<Record<string, readonly string[]>> = {
   [USER_LIST]: [REQUIRE_PASSWORD_CHANGE, GRANT_SQL, REVOKE_SQL],
   // The web application editor draws these beside each roles tab's pickers, which supply the values.
   [WEB_APP_LIST]: [ADD_APPLICATION_ROLE, REMOVE_APPLICATION_ROLE, ADD_MATCHING_ROLE, REMOVE_MATCHING_ROLE],
+  // The privileged routine application editor draws these beside its three member tabs' pickers, which supply the values.
+  [ROUTINE_APP_LIST]: [ADD_APPLICATION_ROLE, REMOVE_APPLICATION_ROLE, ADD_MATCHING_ROLE, REMOVE_MATCHING_ROLE, ADD_ROUTINE, REMOVE_ROUTINE],
   [PROCESS_LIST]: [TERMINATE_WITH_ERROR],
   [PROCESS_DETAILS]: [TERMINATE_WITH_ERROR],
   // The role editor draws these beside its grants, members and assigned roles, which supply the values.

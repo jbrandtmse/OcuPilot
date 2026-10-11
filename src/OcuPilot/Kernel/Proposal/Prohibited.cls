@@ -1102,6 +1102,7 @@ ClassMethod CoveredTypes() As %List
 /// 2026-09-21). Every other property of that object -- the audit-database location, encryption --
 /// is refused by the reviewed-few rule.</p>
 /// <p>A task's thirty-two are <method>TaskChangeFields</method>'s.</p>
+/// <p>A privileged routine application's five are <method>RoutineApplicationChangeFields</method>'s.</p>
 /// <p>A write tool advertises no field outside this list, which is the other half of AD-10; the
 /// tool states its own admitted names and a test asserts the two agree, so the tool layer never
 /// reads the kernel.</p>
@@ -1150,6 +1151,7 @@ ClassMethod PermittedChangeFields(pType As %String) As %List
     If pType = ..#TYPEAUTHOPTIONS Quit ..AuthOptionsFields()
     If pType = ..#TYPESUPERSERVER Quit ..SuperserverFields()
     If pType = ..#TYPEMFTCONNECTION Quit ..MftConnectionFields(0)
+    If pType = ..#TYPEROUTINEAPPLICATION Quit ..RoutineApplicationChangeFields()
     If (pType = ..#TYPEDOCDBAPPLICATION) || (pType = ..#TYPEROUTINEAPPLICATION) Quit ..DocDbApplicationFields()
     Quit ""
 }
@@ -4485,6 +4487,8 @@ ClassMethod ResourceNames(pObject As %DynamicObject, Output pNames) [ Private ]
 /// import's <code>runAs</code>, the accounts of the tasks it creates, when any is another account. The authorization
 /// server configuration's <code>CustomizationRoles</code> grants privilege when it adds a privileged
 /// role (<method>AddsPrivilegedCustomizationRole</method>). Any other type grants nothing here.</p>
+/// <p>A privileged routine application's <code>MatchRoles</code> is judged as a web application's, and a routine it
+/// adds while a target role escalates is a grant too (<method>AddsRoutineUnderPrivilege</method>, Story 18.33).</p>
 ClassMethod GrantsPrivilegeByEffect(pType As %String, pPayload As %DynamicObject, pTarget As %DynamicObject, Output pGrants As %Boolean, pId As %String = "") As %Status
 {
     Set pGrants = 0
@@ -4543,6 +4547,13 @@ ClassMethod GrantsPrivilegeByEffect(pType As %String, pPayload As %DynamicObject
             If tTarget.%GetTypeOf("RunAsUser") = "string" Set tHeld = tTarget.%Get("RunAsUser")
             If (tHeld '= "") && ($ZConvert(tRunAs, "U") = $ZConvert(tHeld, "U")) Quit
             Set pGrants = ((tRunAs '= "") && ($ZConvert(tRunAs, "U") '= $ZConvert($Username, "U")))
+            Quit
+        }
+        If pType = ..#TYPEROUTINEAPPLICATION {
+            ; Story 18.33: a role added to MatchRoles is judged as a web application's is, and a routine added while a
+            ; target role in MatchRoles escalates is a grant too.
+            Set tSC = ..GrantsPrivilegeByEffect(..#TYPEWEBAPPLICATION, pPayload, tTarget, .pGrants, pId)
+            If $$$ISOK(tSC) && 'pGrants Set tSC = ..AddsRoutineUnderPrivilege(pPayload, tTarget, .pGrants)
             Quit
         }
         If pType = ..#TYPEWEBAPPLICATION {
@@ -5808,6 +5819,62 @@ ClassMethod Copied(pPayload As %DynamicObject, Output pProhibits As %Boolean, Ou
 ClassMethod DocDbApplicationFields() As %List [ Private ]
 {
     Quit $ListBuild("Description", "Enabled", "Resource")
+}
+
+/// <p>A privileged routine application's change fields (Story 18.33): <method>DocDbApplicationFields</method>'s three
+/// settings and its two lists, <code>MatchRoles</code> and <code>Routines</code>. A create sets the three alone
+/// (<method>PermittedCreateFields</method>).</p>
+ClassMethod RoutineApplicationChangeFields() As %List [ Private ]
+{
+    Quit ..DocDbApplicationFields() _ $ListBuild("MatchRoles", "Routines")
+}
+
+/// <p>Whether <var>pPayload</var>'s <code>Routines</code> adds an entry <var>pTarget</var>'s does not hold while a
+/// target role of the application's <code>MatchRoles</code> escalates (<method>RoleEscalates</method>), in
+/// <var>pGrants</var> (Story 18.33, AD-10). The application's roles are <var>pPayload</var>'s when it sends them and
+/// <var>pTarget</var>'s otherwise. An entry is held when its name and type match and its database matches without
+/// regard to case. Removing an entry, or adding one under unprivileged roles, grants nothing.</p>
+ClassMethod AddsRoutineUnderPrivilege(pPayload As %DynamicObject, pTarget As %DynamicObject, Output pGrants As %Boolean) As %Status [ Private ]
+{
+    Set pGrants = 0
+    Set tSC = $$$OK
+    Try {
+        If pPayload.%GetTypeOf("Routines") '= "array" Quit
+        Kill tHeldRoutines
+        If pTarget.%GetTypeOf("Routines") = "array" {
+            Set tIterator = pTarget.%Get("Routines").%GetIterator()
+            While tIterator.%GetNext(.tIndex, .tEntry) {
+                If $IsObject(tEntry) && tEntry.%IsA("%Library.DynamicObject") Set tHeldRoutines(tEntry.%Get("RoutineOrClass") _ $Char(1) _ $ZConvert(tEntry.%Get("Db"), "U") _ $Char(1) _ tEntry.%Get("Type")) = ""
+            }
+        }
+        Set tAdds = 0
+        Set tIterator = pPayload.%Get("Routines").%GetIterator()
+        While tIterator.%GetNext(.tIndex, .tEntry) {
+            If '$IsObject(tEntry) || 'tEntry.%IsA("%Library.DynamicObject") Continue
+            If '$Data(tHeldRoutines(tEntry.%Get("RoutineOrClass") _ $Char(1) _ $ZConvert(tEntry.%Get("Db"), "U") _ $Char(1) _ tEntry.%Get("Type"))) {
+                Set tAdds = 1
+                Quit
+            }
+        }
+        If 'tAdds Quit
+        Do ..ApplicationRoleNames($Select(pPayload.%GetTypeOf("MatchRoles") = "array": pPayload, 1: pTarget), .tRoles)
+        Set tKey = ""
+        For {
+            Set tKey = $Order(tRoles(tKey))
+            If tKey = "" Quit
+            Set tSC = ..RoleEscalates(tRoles(tKey), .tEscalates)
+            If $$$ISERR(tSC) Quit
+            If tEscalates {
+                Set pGrants = 1
+                Quit
+            }
+        }
+    } Catch ex {
+        Set pGrants = 0
+        Set tSC = ex.AsStatus()
+    }
+    If $$$ISERR(tSC) Set pGrants = 0
+    Quit tSC
 }
 
 }

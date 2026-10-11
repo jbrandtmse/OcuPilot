@@ -3,11 +3,13 @@ import { Injectable, Injector, inject } from '@angular/core';
 import { ApiService, type JsonResult } from '../../core/api';
 import { ChangeBus, type ChangeAction } from '../../core/change-bus';
 import { encodeEntityId } from '../../core/entity-id';
+import { normalizeEntityId } from '../../core/entity-ref';
 import { FormDirty } from '../../core/form-dirty';
 import { screenForDescriptor } from '../../core/navigation';
 import { readBackOf, type ReadBack } from '../../core/read-back';
 import { screenReadPath } from '../../core/screen-read';
 import { reasonForField, type Violation, violationsOf } from '../../core/violations';
+import type { ApplicationRoleOption } from './create-form.store';
 
 /** The routes the form saves through: `POST` creates, `PUT <path>/<id>` edits. */
 export const ROUTINE_APP_PATH = '/api/ocupilot/routine-application';
@@ -47,6 +49,33 @@ export const CREATE_FIELDS: readonly string[] = [NAME_FIELD, DESCRIPTION_FIELD, 
 /** What the form is doing: creating an application, or editing the one its route names. */
 export type FormMode = 'create' | 'edit';
 
+/** The four tabs of an edit, named after the classic editor's (`%CSP.UI.Portal.Applications.PrivRoutine`). */
+export const GENERAL_TAB = 'general';
+export const APPLICATION_ROLES_TAB = 'application-roles';
+export const MATCHING_ROLES_TAB = 'matching-roles';
+export const ROUTINES_TAB = 'routines';
+
+/** Which tab each field a Save can refuse is drawn on; the lists change through the tabs' row actions, never a Save. */
+export const ROUTINE_APP_FIELD_TABS: Readonly<Record<string, string>> = {
+  [NAME_FIELD]: GENERAL_TAB,
+  [DESCRIPTION_FIELD]: GENERAL_TAB,
+  [ENABLED_FIELD]: GENERAL_TAB,
+  [RESOURCE_FIELD]: GENERAL_TAB,
+};
+
+/** One matching role the application grants: the role a caller must hold and the role it then receives. */
+export interface MatchingRole {
+  readonly match: string;
+  readonly role: string;
+}
+
+/** One routine or class that may add roles for the application. */
+export interface RoutineEntry {
+  readonly name: string;
+  readonly db: string;
+  readonly type: string;
+}
+
 /** The text a flag's buffer holds. */
 const ON = 'true';
 const OFF = 'false';
@@ -69,6 +98,24 @@ function textAt(source: unknown, key: string): string {
   return '';
 }
 
+function arrayAt(source: unknown, key: string): readonly unknown[] {
+  if (source === null || typeof source !== 'object') return [];
+  const value = (source as Record<string, unknown>)[key];
+  return Array.isArray(value) ? value : [];
+}
+
+/** The roles a form read lists as `[{name, privileged}]`; a role whose mark the server did not send as false reads as privileged. */
+function roleOptionsOf(entries: readonly unknown[]): readonly ApplicationRoleOption[] {
+  const out: ApplicationRoleOption[] = [];
+  for (const entry of entries) {
+    const name = textAt(entry, 'name');
+    if (name === '' || out.some((role) => role.name === name)) continue;
+    const mark = (entry as Record<string, unknown>)['privileged'];
+    out.push({ name, privileged: !(mark === false || mark === 0) });
+  }
+  return out;
+}
+
 function flagAt(source: unknown, key: string): string {
   if (source === null || typeof source !== 'object') return ON;
   const value = (source as Record<string, unknown>)[key];
@@ -86,7 +133,12 @@ function flagAt(source: unknown, key: string): string {
  * **It composes no payload of its own.** `POST /routine-application` and `PUT /routine-application/<id>` resolve the
  * same tool classes the agent's `webapp.routineapps.create` and `.update` do, and every field sentence is the
  * server's (AD-39). An edit sends only the fields changed since its fresh read (AD-4); `Name` is shown and never sent
- * on an edit. The roles and routines the application holds are the server's to send back, and are not this form's.
+ * on an edit.
+ *
+ * **The two lists are not this form's fields** (Story 18.33, AD-56 (ii)): the application roles, matching roles and
+ * routines the form read answers are kept beside the General buffer, and change only through the list's six row actions,
+ * each a delta the instance applies over its own fresh read; {@link refresh} reads them again. The instance's roles and
+ * databases, which the tabs' pickers offer, ride the same read.
  */
 @Injectable({ providedIn: 'root' })
 export class RoutineAppForm {
@@ -107,6 +159,16 @@ export class RoutineAppForm {
   private idValue = '';
 
   private resourceNames: readonly string[] = [];
+
+  private matchRolesValue: readonly unknown[] = [];
+
+  private routinesValue: readonly RoutineEntry[] = [];
+
+  private roleOptions: readonly ApplicationRoleOption[] = [];
+
+  private databaseNames: readonly string[] = [];
+
+  private actionRefusalValue = '';
 
   private loadedValue = false;
 
@@ -180,6 +242,61 @@ export class RoutineAppForm {
     return this.resourceNames;
   }
 
+  /** The application roles it grants every request, as the instance spells them. */
+  applicationRoles(): readonly string[] {
+    const out: string[] = [];
+    for (const entry of this.matchRolesValue) {
+      if (textAt(entry, 'MatchRole') !== '') continue;
+      for (const role of arrayAt(entry, 'TargetRoles')) if (typeof role === 'string' && role !== '') out.push(role);
+    }
+    return out;
+  }
+
+  /** The matching roles it grants, one per matching role and target role. */
+  matchingRoles(): readonly MatchingRole[] {
+    const out: MatchingRole[] = [];
+    for (const entry of this.matchRolesValue) {
+      const match = textAt(entry, 'MatchRole');
+      if (match === '') continue;
+      for (const role of arrayAt(entry, 'TargetRoles')) if (typeof role === 'string' && role !== '') out.push({ match, role });
+    }
+    return out;
+  }
+
+  /** The routines and classes it lists, as the instance spells them. */
+  routines(): readonly RoutineEntry[] {
+    return this.routinesValue;
+  }
+
+  /** The roles the instance holds, each with the server's privilege mark (AD-10). */
+  roleChoices(): readonly ApplicationRoleOption[] {
+    return this.roleOptions;
+  }
+
+  /**
+   * Whether granting `role` grants `%All` or an administrative privilege, as the server marked it, the name matched without
+   * regard to case as the instance resolves a role; unknown names read as privileged.
+   */
+  privileged(role: string): boolean {
+    const choice = this.roleOptions.find((option) => option.name.toLowerCase() === role.toLowerCase());
+    return choice === undefined ? true : choice.privileged;
+  }
+
+  /** The databases the instance defines, which a routine entry may name. */
+  databases(): readonly string[] {
+    return this.databaseNames;
+  }
+
+  /** The refusal sentence a tab's row action was answered with, or `''`. */
+  actionRefusal(): string {
+    return this.actionRefusalValue;
+  }
+
+  /** Whether the form shows the application `name`, in the one spelling a reference carries (AD-13). */
+  is(name: string): boolean {
+    return this.idValue !== '' && normalizeEntityId(ROUTINE_APP_ENTITY, name) === normalizeEntityId(ROUTINE_APP_ENTITY, this.idValue);
+  }
+
   /** Whether the fields take input: in edit mode only once the fresh read is held. */
   editable(): boolean {
     return this.modeValue === 'create' || this.heldValue;
@@ -247,6 +364,11 @@ export class RoutineAppForm {
     this.opened = EMPTY_BUFFER;
     this.idValue = '';
     this.resourceNames = [];
+    this.matchRolesValue = [];
+    this.routinesValue = [];
+    this.roleOptions = [];
+    this.databaseNames = [];
+    this.actionRefusalValue = '';
     this.loadedValue = false;
     this.heldValue = false;
     this.absentValue = false;
@@ -282,6 +404,26 @@ export class RoutineAppForm {
     this.resourceNames = resources;
     this.absorb(result, id);
     this.loadedValue = true;
+    this.notify();
+  }
+
+  /**
+   * Read the application again after a change event (AD-14) or an applied row action: its lists, roles and databases
+   * always, and its General fields only while the form is clean, so nothing typed is overwritten.
+   */
+  async refresh(): Promise<void> {
+    if (!this.heldValue) return;
+    const generation = this.generation;
+    const result = await this.api().requestJson<unknown>(`${ROUTINE_APP_FORM_PATH}?id=${encodeURIComponent(this.idValue)}`);
+    if (generation !== this.generation || result.kind !== 'ok') return;
+    this.absorb(result, this.idValue, !this.formDirty.dirty());
+    this.notify();
+  }
+
+  /** Put a row action's refusal on screen, or clear it with `''`. */
+  setActionRefusal(reason: string): void {
+    if (this.actionRefusalValue === reason) return;
+    this.actionRefusalValue = reason;
     this.notify();
   }
 
@@ -414,7 +556,7 @@ export class RoutineAppForm {
       .filter((name) => name !== '');
   }
 
-  private absorb(result: JsonResult<unknown>, id: string): void {
+  private absorb(result: JsonResult<unknown>, id: string, fields = true): void {
     if (result.kind !== 'ok') {
       this.envelopeReason = result.kind === 'error' ? (result.reason ?? '') : '';
       this.rememberRefusal(result, {});
@@ -428,6 +570,15 @@ export class RoutineAppForm {
       if (id !== '') this.absentValue = true;
       return;
     }
+    this.matchRolesValue = arrayAt(row, 'MatchRoles');
+    this.routinesValue = arrayAt(row, 'Routines').map((entry) => ({
+      name: textAt(entry, 'RoutineOrClass'),
+      db: textAt(entry, 'Db'),
+      type: textAt(entry, 'Type'),
+    }));
+    this.roleOptions = roleOptionsOf(arrayAt(record, 'roles'));
+    this.databaseNames = arrayAt(record, 'databases').filter((entry): entry is string => typeof entry === 'string' && entry !== '');
+    if (!fields) return;
     const held: Record<string, string> = {};
     for (const field of CREATE_FIELDS) held[field] = field === ENABLED_FIELD ? flagAt(row, field) : textAt(row, field);
     this.buffer = held;

@@ -263,13 +263,21 @@ ClassMethod Update(pNamespace As %String, pName As %String, pArgs As %DynamicObj
     Quit tSC
 }
 
+/// <p>The body keys this Save admits for the tool <var>pToolClass</var>, as a <class>%List</class>: the tool's
+/// <method>OcuPilot.Screen.Tool.Write.SettableFields</method> here. A subclass whose tool settles more than its form
+/// edits answers the narrower list.</p>
+ClassMethod SaveFields(pToolClass As %String) As %List
+{
+    Quit $ClassMethod(pToolClass, "SettableFields")
+}
+
 /// <p>Refuse 400 <parameter>OcuPilot.Api.Error.PORTFIELDUNEXPECTED</parameter> when <var>pArgs</var> carries a
 /// key <var>pToolClass</var> does not settle, before anything is read or sent.</p>
 ClassMethod Unexpected(pToolClass As %String, pArgs As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
 {
     Set pHttpStatus = 0
     Set pFault = ""
-    Set tAllowed = $ClassMethod(pToolClass, "SettableFields")
+    Set tAllowed = ..SaveFields(pToolClass)
     Set tIterator = pArgs.%GetIterator()
     While tIterator.%GetNext(.tKey, .tValue) {
         If $ListFind(tAllowed, tKey) Continue

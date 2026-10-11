@@ -8,9 +8,10 @@ import { FormDirty } from '../../core/form-dirty';
 import { ROUTINE_APP_FORM_PATH, ROUTINE_APP_PATH, RoutineAppForm } from './routine-app-form.store';
 
 /**
- * The privileged routine application editor's store (Story 18.31, AD-4, AD-14, AD-39, AD-55): the form read beside the
- * Resources list's declared read, a create sending the four fields, an edit sending the changed fields alone and never
- * the name, and violations on their fields. The bus is real and only the server's answers are stubbed.
+ * The privileged routine application editor's store (Stories 18.31 and 18.33, AD-4, AD-14, AD-39, AD-55): the form read
+ * beside the Resources list's declared read, a create sending the four fields, an edit sending the changed fields alone
+ * and never the name, violations on their fields, and the two lists, the roles and the databases kept beside the General
+ * buffer and read again by `refresh`. The bus is real and only the server's answers are stubbed.
  */
 
 const ID = 'OcuProbe1831A';
@@ -36,15 +37,30 @@ interface Call {
   readonly body: string;
 }
 
-function mount(options: { form?: Record<string, unknown>; formResult?: JsonResult<unknown>; save?: JsonResult<unknown> } = {}) {
+const ROLES = [
+  { name: '%Developer', privileged: false },
+  { name: '%Manager', privileged: true },
+  { name: '%SQL' },
+];
+
+const LISTS = {
+  MatchRoles: [
+    { MatchRole: '', TargetRoles: ['%SQL', '%Manager'] },
+    { MatchRole: '%Operator', TargetRoles: ['%Developer'] },
+  ],
+  Routines: [{ RoutineOrClass: 'OcuProbe1831.Routine', Db: 'HSCUSTOM', Type: 'Class' }],
+};
+
+function mount(options: { form?: Record<string, unknown>; formResult?: JsonResult<unknown>; save?: JsonResult<unknown>; extras?: Record<string, unknown> } = {}) {
   TestBed.resetTestingModule();
+  const served = { form: options.form ?? row() };
   const calls: Call[] = [];
   const api = {
     requestJson: async <T,>(path: string, init: ApiRequestInit = {}): Promise<JsonResult<T>> => {
       const method = init.method ?? 'GET';
       calls.push({ path, method, body: init.body ?? '' });
       if (path.includes('/read?')) return { kind: 'ok', status: 200, body: { rows: RESOURCE_ROWS, truncated: false, banner: '' } } as unknown as JsonResult<T>;
-      if (path.startsWith(ROUTINE_APP_FORM_PATH)) return (options.formResult ?? { kind: 'ok', status: 200, body: { row: options.form ?? row() } }) as JsonResult<T>;
+      if (path.startsWith(ROUTINE_APP_FORM_PATH)) return (options.formResult ?? { kind: 'ok', status: 200, body: { row: served.form, ...options.extras } }) as JsonResult<T>;
       return (options.save ?? ACCEPTED) as JsonResult<T>;
     },
   };
@@ -59,7 +75,7 @@ function mount(options: { form?: Record<string, unknown>; formResult?: JsonResul
       { provide: FormDirty, useValue: formDirty },
     ],
   });
-  return { store: TestBed.inject(RoutineAppForm), calls, events, formDirty };
+  return { store: TestBed.inject(RoutineAppForm), calls, events, formDirty, served };
 }
 
 function writes(calls: readonly Call[]): Call[] {
@@ -170,4 +186,91 @@ describe('the privileged routine application store', () => {
     store.reset();
     expect([store.value('Name'), store.loaded(), store.dirty()]).toEqual(['', false, false]);
   });
+
+  it('Story 18.33, C1: the lists, the roles and the databases ride the form read beside the General buffer, which they never enter', async () => {
+    // Mutation (Rule 19): make `absorb` ignore `row.MatchRoles` -> the roles legs go red; ignore `roles` or `databases` -> the
+    // pickers\u2019 legs go red.
+    const { store } = mount({ form: row(LISTS), extras: { roles: ROLES, databases: ['HSCUSTOM', 'USER'] } });
+    await store.open(ID);
+    expect(store.applicationRoles()).toEqual(['%SQL', '%Manager']);
+    expect(store.matchingRoles()).toEqual([{ match: '%Operator', role: '%Developer' }]);
+    expect(store.routines()).toEqual([{ name: 'OcuProbe1831.Routine', db: 'HSCUSTOM', type: 'Class' }]);
+    expect(store.roleChoices().map((role) => `${role.name}:${role.privileged}`)).toEqual(['%Developer:false', '%Manager:true', '%SQL:true']);
+    // Mutation (Rule 19): match the role's name in `privileged` exactly -> the other-case leg reads privileged and goes red.
+    expect([store.privileged('%Developer'), store.privileged('%developer'), store.privileged('%Manager'), store.privileged('NoSuchRole')]).toEqual([false, false, true, true]);
+    expect(store.databases()).toEqual(['HSCUSTOM', 'USER']);
+    store.setValue('MatchRoles', 'x');
+    store.setValue('Routines', 'x');
+    expect([store.value('MatchRoles'), store.value('Routines'), store.dirty()]).toEqual(['', '', false]);
+  });
+
+  it('Story 18.33, C2: refresh takes the lists again always, and the General fields only while the form is clean', async () => {
+    // Mutation (Rule 19): pass `true` for `fields` in `refresh` -> the dirty leg loses what was typed and goes red; pass
+    // `false` -> the clean leg keeps the old description and goes red.
+    const { store, served, calls } = mount({ form: row(LISTS), extras: { roles: ROLES, databases: ['HSCUSTOM'] } });
+    await store.open(ID);
+    served.form = row({ Description: 'elsewhere', MatchRoles: [], Routines: [...LISTS.Routines, { RoutineOrClass: 'Other', Db: 'USER', Type: 'Routine' }] });
+    await store.refresh();
+    expect(store.applicationRoles()).toEqual([]);
+    expect(store.routines().map((entry) => entry.name)).toEqual(['OcuProbe1831.Routine', 'Other']);
+    expect(store.value('Description')).toBe('elsewhere');
+    expect(calls.filter((call) => call.path.startsWith(ROUTINE_APP_FORM_PATH) && call.method === 'GET').length).toBeGreaterThan(1);
+    store.setValue('Description', 'typed');
+    served.form = row({ Description: 'again', MatchRoles: LISTS.MatchRoles, Routines: [] });
+    await store.refresh();
+    expect(store.value('Description')).toBe('typed');
+    expect([store.applicationRoles(), store.routines()]).toEqual([['%SQL', '%Manager'], []]);
+    expect(store.dirty()).toBe(true);
+  });
+
+  it('Story 18.33: refresh reads nothing before an edit holds its application, a failed read keeps what is held, and an action refusal is kept until cleared', async () => {
+    const created = mount({ form: EMPTY_ROW });
+    await created.store.open('');
+    const before = created.calls.length;
+    await created.store.refresh();
+    expect(created.calls).toHaveLength(before);
+    const edit = mount({ form: row(LISTS) });
+    await edit.store.open(ID);
+    edit.served.form = row({ MatchRoles: [], Routines: [] });
+    TestBed.inject(ApiService).requestJson = async () => ({ kind: 'error', status: 500, code: 'INTERNAL', reason: 'x', detail: null }) as unknown as JsonResult<never>;
+    await edit.store.refresh();
+    expect(edit.store.applicationRoles()).toEqual(['%SQL', '%Manager']);
+    // Mutation (Rule 19): drop the `result.kind !== 'ok'` guard from `refresh` -> the failed read becomes the form's reason and this goes red.
+    expect([edit.store.reason(), edit.store.refusalCode(), edit.store.absent()]).toEqual(['', '', false]);
+    expect(edit.store.actionRefusal()).toBe('');
+    edit.store.setActionRefusal('the application already grants that role there');
+    expect(edit.store.actionRefusal()).toBe('the application already grants that role there');
+    edit.store.setActionRefusal('');
+    expect(edit.store.actionRefusal()).toBe('');
+  });
+
+  it('Story 18.33: a read that lands after the form has moved on is dropped', async () => {
+    // Mutation (Rule 19): drop the `generation` guard from `refresh` -> the late reply fills the reset form with the old lists and this goes red.
+    const { store } = mount({ form: row(LISTS), extras: { roles: ROLES, databases: ['HSCUSTOM'] } });
+    await store.open(ID);
+    const api = TestBed.inject(ApiService);
+    const real = api.requestJson.bind(api);
+    let release: () => void = () => undefined;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    api.requestJson = (async (path: string, init?: ApiRequestInit) => {
+      await gate;
+      return real(path, init);
+    }) as typeof api.requestJson;
+    const pending = store.refresh();
+    store.reset();
+    release();
+    await pending;
+    expect([store.applicationRoles(), store.matchingRoles(), store.routines(), store.databases()]).toEqual([[], [], [], []]);
+  });
+
+  it('Story 18.33: the store knows its application in the one spelling a reference carries, and a reset forgets the lists', async () => {
+    const { store } = mount({ form: row(LISTS), extras: { roles: ROLES, databases: ['HSCUSTOM'] } });
+    await store.open(ID);
+    expect([store.is(ID), store.is(ID.toLowerCase()), store.is('Other')]).toEqual([true, true, false]);
+    store.reset();
+    expect([store.is(ID), store.applicationRoles(), store.matchingRoles(), store.routines(), store.roleChoices(), store.databases()]).toEqual([false, [], [], [], [], []]);
+  });
+
 });

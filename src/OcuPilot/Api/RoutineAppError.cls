@@ -36,6 +36,12 @@ Parameter RESOURCE = "PRIVROUTINE.RESOURCE";
 
 Parameter REASONRESOURCE = "The resource is empty, or a service, system or application resource this instance lists.";
 
+/// <p>Violation code: a routine entry that is not exactly a routine or class name, a database this instance defines and a
+/// type, Routine or Class, on <code>Routines</code>.</p>
+Parameter ROUTINES = "PRIVROUTINE.ROUTINES";
+
+Parameter REASONROUTINES = "Each routine entry names a routine or class, a database this instance defines and its type, Routine or Class.";
+
 /// <p>Violation code: an application of any kind already holds that name, on <code>Name</code>.</p>
 Parameter TAKEN = "PRIVROUTINE.TAKEN";
 
@@ -62,13 +68,13 @@ Parameter NAMEMAX = 64;
 /// <p>Every <code>PRIVROUTINE.*</code> code, as a <class>%List</class>.</p>
 ClassMethod Codes() As %List
 {
-    Quit $ListBuild(..#VALIDATION, ..#NAME, ..#DESCRIPTION, ..#ENABLED, ..#RESOURCE, ..#TAKEN, ..#WEBAPP, ..#TYPE)
+    Quit $ListBuild(..#VALIDATION, ..#NAME, ..#DESCRIPTION, ..#ENABLED, ..#RESOURCE, ..#ROUTINES, ..#TAKEN, ..#WEBAPP, ..#TYPE)
 }
 
 /// <p>The field-level codes, as a <class>%List</class>, each with its field in <method>FieldOf</method>.</p>
 ClassMethod ViolationCodes() As %List
 {
-    Quit $ListBuild(..#NAME, ..#DESCRIPTION, ..#ENABLED, ..#RESOURCE, ..#TAKEN)
+    Quit $ListBuild(..#NAME, ..#DESCRIPTION, ..#ENABLED, ..#RESOURCE, ..#ROUTINES, ..#TAKEN)
 }
 
 /// <p>The form field a violation code refuses, or <code>""</code>.</p>
@@ -78,6 +84,7 @@ ClassMethod FieldOf(pCode As %String) As %String
     If pCode = ..#DESCRIPTION Quit "Description"
     If pCode = ..#ENABLED Quit "Enabled"
     If pCode = ..#RESOURCE Quit "Resource"
+    If pCode = ..#ROUTINES Quit "Routines"
     Quit ""
 }
 
@@ -90,6 +97,7 @@ ClassMethod ReasonFor(pCode As %String) As %String
     If pCode = ..#DESCRIPTION Quit ..#REASONDESCRIPTION
     If pCode = ..#ENABLED Quit ..#REASONENABLED
     If pCode = ..#RESOURCE Quit ..#REASONRESOURCE
+    If pCode = ..#ROUTINES Quit ..#REASONROUTINES
     If pCode = ..#TAKEN Quit ..#REASONTAKEN
     If pCode = ..#WEBAPP Quit ..#REASONWEBAPP
     If pCode = ..#TYPE Quit ..#REASONTYPE

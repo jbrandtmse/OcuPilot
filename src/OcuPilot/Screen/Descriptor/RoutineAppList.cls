@@ -9,7 +9,10 @@
 /// (<class>OcuPilot.Area.WebApp.RoutineAppRules</class>).</p>
 /// <p>Its Create opens <class>OcuPilot.Screen.Descriptor.RoutineAppForm</class>, as does a row's name cell; its row
 /// action Delete is the screen's caller of <class>OcuPilot.Screen.Tool.RoutineAppDelete</class> (AD-53) and carries the
-/// <code>ocupilot-routine-application</code> rule, which explains the refusal OcuPilot's own two applications earn.</p>
+/// <code>ocupilot-routine-application</code> rule, which explains the refusal OcuPilot's own two applications earn. The
+/// editor's Application roles, Matching roles and Routines and classes tabs send the six other row actions, each the
+/// screen's caller of <class>OcuPilot.Screen.Tool.RoutineAppUpdate</class> and each carrying the same rule (Story
+/// 18.33).</p>
 /// <p><b>Its pairs are the Web applications area's</b>, <code>%Admin_Secure:USE</code> and
 /// <code>%DB_IRISSYS:READ</code>: a principal holding exactly those two listed, created and deleted a privileged
 /// routine application (AD-8, measured at Story 18.31's plan). The classic page is
@@ -36,7 +39,15 @@ XData Declaration
   "parentScope": "",
   "id": {"kind": "single", "parts": []},
   "primaryAction": {"id": "create", "selfProtection": ""},
-  "rowActions": [{"id": "delete", "selfProtection": "ocupilot-routine-application"}],
+  "rowActions": [
+    {"id": "add-application-role", "selfProtection": "ocupilot-routine-application"},
+    {"id": "remove-application-role", "selfProtection": "ocupilot-routine-application"},
+    {"id": "add-matching-role", "selfProtection": "ocupilot-routine-application"},
+    {"id": "remove-matching-role", "selfProtection": "ocupilot-routine-application"},
+    {"id": "add-routine", "selfProtection": "ocupilot-routine-application"},
+    {"id": "remove-routine", "selfProtection": "ocupilot-routine-application"},
+    {"id": "delete", "selfProtection": "ocupilot-routine-application"}
+  ],
   "context": {"fields": ["Name", "Enabled", "Resource", "Description"], "secretFields": []},
   "emptyStateKey": "routineAppListEmpty",
   "commandAliases": ["privileged routine applications", "create privileged routine application"],

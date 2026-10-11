@@ -8,7 +8,7 @@ import { SCREEN_ACTION_DESCRIPTORS } from '../../shell/screen-action-handler';
 import { CREATE_ACTION, ROUTINE_APP_LIST_DESCRIPTOR, RoutineAppActions } from './routine-app-actions';
 
 /**
- * The privileged routine applications list's declared Create and Delete (Story 18.31): Create registered once against
+ * The privileged routine applications list's declared Create, Delete and six tab actions (Stories 18.31 and 18.33): Create registered once against
  * the list's descriptor and opening the form at the bare route the mirror pairs with the list, the namespace carried;
  * Delete carried by the screen action handler. The real `ScreenActions` and router run.
  */
@@ -45,9 +45,18 @@ describe('RoutineAppActions', () => {
     expect(navigate).toHaveBeenCalledWith('/web-applications/routine-applications/edit?ns=HSCUSTOM');
   });
 
-  it('declares Delete as its one row action, which the screen action handler carries', () => {
+  it('declares the six role and routine actions the editor\u2019s tabs send and Delete, all carrying the own-application rule, which the screen action handler carries', () => {
     const list = SCREENS.find((screen) => screen.descriptor === ROUTINE_APP_LIST_DESCRIPTOR);
-    expect(list?.rowActions.map((action) => action.id)).toEqual(['delete']);
+    expect(list?.rowActions.map((action) => action.id)).toEqual([
+      'add-application-role',
+      'remove-application-role',
+      'add-matching-role',
+      'remove-matching-role',
+      'add-routine',
+      'remove-routine',
+      'delete',
+    ]);
+    expect(new Set(list?.rowActions.map((action) => action.selfProtection))).toEqual(new Set(['ocupilot-routine-application']));
     expect(SCREEN_ACTION_DESCRIPTORS).toContain(ROUTINE_APP_LIST_DESCRIPTOR);
   });
 });

@@ -10,11 +10,15 @@
  * 2. **Create, change and delete** (C2): from the list's Create, a probe application is created on the form and the
  *    instance holds it under the name as typed; a changed description is sent alone and stored; and the typed-name
  *    dialog deletes it from the list.
+ * 3. **The editor's tabs** (Story 18.33, C2, C4, C5): on a probe of its own, the Application roles, Matching roles and
+ *    Routines and classes tabs add and remove a role, a matching role and a routine, each row appearing and going and
+ *    the instance holding the change; a privileged role states its effect and a routine added under it does too; and
+ *    OcuPilot's own application draws every tab control `aria-disabled`, which a click leaves as it was.
  *
- * **It refuses the live and development containers.** It touches only probe applications named `OcuProbe1831...`:
- * `before` and `after` remove them by exact name with `OcuPilot.Test.RoutineAppProbe.RemoveAll`. It never sends a write
- * naming `OcuPilotState` or `OcuPilotIdentity`: its click on the own application's refused Delete is asserted to send
- * nothing. Every read of the list waits for the list's own answer, its rows, before it counts or clicks.
+ * **It refuses the live and development containers.** It touches only probe applications named `OcuProbe1831...` and
+ * probe roles named `OcuProbe1833Role...`: `before` and `after` remove them by exact name with
+ * `OcuPilot.Test.RoutineAppProbe.RemoveAll`. It never sends a write naming `OcuPilotState` or `OcuPilotIdentity`: its
+ * clicks on the own application's refused Delete and refused tab controls are asserted to send nothing. Every read of the list waits for the list's own answer, its rows, before it counts or clicks.
  *
  * Run, from `ui/`: `npm run build && docker cp dist/ocupilot-ui/browser/. <throwaway>:/durable/iris/csp/ocupilot/`,
  * then `OCUPILOT_BROWSER_ORIGIN=... OCUPILOT_BROWSER_CONTAINER=... node --test --test-concurrency=1
@@ -254,6 +258,133 @@ test('C2: create a probe application, change its description and delete it with 
     assert.equal(actions.length, 1, 'one action was sent');
     assert.deepEqual(actions[0], { action: 'delete', id: NAME }, 'naming the probe application');
     assert.equal(held(), '', 'the application is gone');
+  } finally {
+    await context.close();
+    removeProbes();
+  }
+});
+
+// Mutation (Rule 19), each rebuilt and redeployed: send `Role` under another name in the tabs' `onAssignApplicationRole`
+// -> the first action assertion goes red; the tabs' `ruleReason` answering `''` -> the own application's aria-disabled
+// legs go red (its clicks then post, refused 403 by the instance, so the own two are never written).
+test("C2, C4, C5: the editor's tabs add and remove a role, a matching role and a routine; OcuPilot's own application's tab controls are aria-disabled", async () => {
+  removeProbes();
+  const tabsName = 'OcuProbe1831Tabs';
+  const privilegedRole = 'OcuProbe1833RoleTab';
+  const own = () => iris([mark('OWN', `$Translate(##class(OcuPilot.Test.RoutineAppWrite).OwnTwo(),$Char(10),"|")`)], ['OWN']).values.OWN;
+  const targets = (match) => iris([mark('T', `##class(${PROBE}).Targets("${tabsName}","${match}")`)], ['T']).values.T;
+  const entries = () => iris([mark('E', `##class(${PROBE}).Entries("${tabsName}")`)], ['E']).values.E;
+  iris([`Do ##class(${PROBE}).EnsureRole("Tab","%Admin_Secure:U")`, `Do ##class(${PROBE}).Seed("","${tabsName}")`]);
+  const ownBefore = own();
+  assert.ok(ownBefore !== null && ownBefore.includes('OcuPilotState'), "OcuPilot's own applications are read before");
+  const { context, page } = await signedInAt(browser, config, `/ocupilot/${FORM_ROUTE}/${tabsName}?ns=HSCUSTOM`);
+  const actions = [];
+  page.on('request', (request) => {
+    if (request.method() === 'POST' && new URL(request.url()).pathname === ACTION_PATH) actions.push(JSON.parse(request.postData() ?? '{}'));
+  });
+  const openTab = async (key) => {
+    await page.click(`button[data-tab="${key}"]`);
+    await page.waitForFunction((tab) => document.querySelector(`[data-tab-body="${tab}"]`)?.hidden === false, { timeout: config.navigationTimeoutMs }, key);
+  };
+  const rowTexts = (selector) => page.$$eval(selector, (nodes) => nodes.map((node) => node.textContent.replace(/\s+/g, ' ').trim()));
+  const waitForRows = async (selector, predicate) => {
+    const deadline = Date.now() + 90000;
+    for (;;) {
+      const texts = await rowTexts(selector);
+      if (predicate(texts)) return texts;
+      if (Date.now() > deadline) assert.fail(`${selector} never matched: ${JSON.stringify(texts)}`);
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
+  };
+  const act = async (selector) => {
+    const before = actions.length;
+    await page.click(selector);
+    for (let wait = 0; wait < 90 && actions.length === before; wait += 1) await new Promise((resolve) => setTimeout(resolve, 100));
+    assert.equal(actions.length, before + 1, `${selector} sends one action`);
+    return actions[actions.length - 1];
+  };
+  try {
+    await page.waitForSelector('#ocu-routine-app-Description', { visible: true, timeout: config.navigationTimeoutMs });
+    assert.equal(
+      (await rowTexts('[role="tab"] .ocu-form-tab-label')).join(','),
+      [STRINGS.processDetailsGroupGeneral, STRINGS.webAppFormApplicationRoles, STRINGS.webAppTabMatchingRoles, STRINGS.routineAppTabRoutines].join(','),
+      'an edit opens on the four tabs'
+    );
+
+    // Application roles: an unprivileged role, then a privileged one that states its effect.
+    const roleRows = `ul[aria-label="${STRINGS.webAppFormApplicationRoles}"] .ocu-form-role-name`;
+    await openTab('application-roles');
+    await page.select('#ocu-routine-app-application-role', '%Developer');
+    await page.waitForSelector('[data-action="add-application-role"]:not([aria-disabled="true"])', { timeout: config.navigationTimeoutMs });
+    assert.equal(await page.$('#ocu-routine-app-application-role-effect'), null, 'an unprivileged role states no effect');
+    assert.deepEqual(await act('[data-action="add-application-role"]'), { action: 'add-application-role', id: tabsName, values: { Role: '%Developer' } });
+    await waitForRows(roleRows, (texts) => texts.includes('%Developer'));
+    assert.equal(targets(''), '%Developer', 'the instance holds the application role');
+    await page.select('#ocu-routine-app-application-role', privilegedRole);
+    await page.waitForSelector('#ocu-routine-app-application-role-effect', { timeout: config.navigationTimeoutMs });
+    assert.equal(await page.$eval('#ocu-routine-app-application-role-effect', (node) => node.textContent.trim()), STRINGS.privilegedGrantEffect, 'a privileged role states the privilege at the field');
+    assert.deepEqual(await act('[data-action="add-application-role"]'), { action: 'add-application-role', id: tabsName, values: { Role: privilegedRole } });
+    await waitForRows(roleRows, (texts) => texts.length === 2);
+    assert.equal(targets(''), `%Developer,${privilegedRole}`, 'and both roles');
+
+    // Matching roles: add one and remove it.
+    const matchRows = `ul[aria-label="${STRINGS.webAppTabMatchingRoles}"] .ocu-form-role-name`;
+    await openTab('matching-roles');
+    await page.select('#ocu-routine-app-match-role', '%Developer');
+    await page.select('#ocu-routine-app-match-target', '%SQL');
+    assert.deepEqual(await act('[data-action="add-matching-role"]'), { action: 'add-matching-role', id: tabsName, values: { MatchRole: '%Developer', Role: '%SQL' } });
+    await waitForRows(matchRows, (texts) => texts.length === 2);
+    assert.deepEqual(await rowTexts(matchRows), ['%Developer', '%SQL'], 'the matching role is listed with its target');
+    assert.equal(targets('%Developer'), '%SQL', 'the instance holds it');
+
+    // Routines: a class added under the privileged role states the privilege, then removed.
+    await openTab('routines');
+    assert.equal(await page.$eval('#ocu-routine-app-routine-effect', (node) => node.textContent.trim()), STRINGS.privilegedGrantEffect, 'a routine added while a privileged role is granted states the privilege');
+    await page.type('#ocu-routine-app-routine-name', 'OcuProbe1833.Tab');
+    await page.select('#ocu-routine-app-routine-db', 'HSCUSTOM');
+    await page.select('#ocu-routine-app-routine-type', 'Class');
+    assert.deepEqual(await act('[data-action="add-routine"]'), { action: 'add-routine', id: tabsName, values: { RoutineOrClass: 'OcuProbe1833.Tab', Db: 'HSCUSTOM', Type: 'Class' } });
+    const routineCells = `table[aria-label="${STRINGS.routineAppTabRoutines}"] tbody td`;
+    await waitForRows(routineCells, (texts) => texts.includes('OcuProbe1833.Tab'));
+    assert.deepEqual((await rowTexts(routineCells)).slice(0, 3), ['HSCUSTOM', 'OcuProbe1833.Tab', 'Class'], 'the routine is listed with its database and type');
+    assert.equal(entries(), 'OcuProbe1833.Tab:HSCUSTOM:Class', 'the instance holds it');
+    assert.deepEqual(await act('[data-action="remove-routine"]'), { action: 'remove-routine', id: tabsName, values: { RoutineOrClass: 'OcuProbe1833.Tab', Db: 'HSCUSTOM', Type: 'Class' } });
+    await waitForRows(routineCells, (texts) => texts.length === 0);
+    assert.equal(entries(), '', 'the routine is gone from the instance');
+
+    // Remove what was added, tab by tab.
+    await openTab('matching-roles');
+    assert.deepEqual(await act('[data-action="remove-matching-role"]'), { action: 'remove-matching-role', id: tabsName, values: { MatchRole: '%Developer', Role: '%SQL' } });
+    await waitForRows(matchRows, (texts) => texts.length === 0);
+    assert.equal(targets('%Developer'), '', 'the matching role is gone');
+    await openTab('application-roles');
+    await act('[data-action="remove-application-role"]');
+    await waitForRows(roleRows, (texts) => texts.length === 1);
+    await act('[data-action="remove-application-role"]');
+    await waitForRows(roleRows, (texts) => texts.length === 0);
+    assert.equal(targets(''), '', 'and both application roles');
+    assert.equal(actions.length, 8, 'eight actions were sent in all');
+
+    // OcuPilot's own application: every tab control is aria-disabled, and a click sends nothing.
+    await page.goto(`${config.origin}/ocupilot/${FORM_ROUTE}/${OWN}?ns=HSCUSTOM`, { waitUntil: 'networkidle2' });
+    await page.waitForSelector('[data-routine-app="own-refusal"]', { timeout: config.navigationTimeoutMs });
+    const sent = actions.length;
+    for (const key of ['application-roles', 'matching-roles', 'routines']) {
+      await openTab(key);
+      const controls = await page.$$eval(`[data-tab-body="${key}"] button[data-action]`, (nodes) =>
+        nodes.map((node) => ({ action: node.dataset.action, disabled: node.getAttribute('aria-disabled'), described: node.getAttribute('aria-describedby') ?? '' }))
+      );
+      assert.ok(controls.some((control) => control.action.startsWith('add-')), `${key} draws its Assign`);
+      for (const control of controls) {
+        assert.equal(control.disabled, 'true', `${key} ${control.action} is aria-disabled`);
+        assert.ok(control.described.split(' ').includes(`ocu-routine-app-members-refusal-${key}`), `${key} ${control.action} is described by the sentence`);
+      }
+      assert.equal(await page.$eval(`[data-tab-body="${key}"] #ocu-routine-app-members-refusal-${key}`, (node) => node.textContent.trim()), STRINGS.routineAppRefusalOcuPilot, `${key} says why`);
+      await page.$$eval(`[data-tab-body="${key}"] button[data-action]`, (nodes) => nodes.forEach((node) => node.click()));
+    }
+    await page.waitForNetworkIdle({ idleTime: 500, timeout: config.navigationTimeoutMs });
+    assert.equal(actions.length, sent, 'and a click on any of them sends nothing');
+    assert.equal(own(), ownBefore, "OcuPilot's own applications read as before");
   } finally {
     await context.close();
     removeProbes();

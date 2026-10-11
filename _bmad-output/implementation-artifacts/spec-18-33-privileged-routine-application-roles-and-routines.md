@@ -2,13 +2,22 @@
 title: 'Story 18.33: Privileged routine application roles and routines'
 type: 'feature'
 created: '2026-10-11'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: 'd76c76d9cee17c5358a191962e3768aa3026f2e0'
+baseline_commit: 'd76c76d9cee17c5358a191962e3768aa3026f2e0'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-18-context.md'
 warnings: ['oversized']
-deferred: []
+deferred:
+  - summary: >-
+      `Prohibited.PermittedChangeFields` still names the routine application type in its Doc DB clause, which the new routine line above it makes unreachable; remove that term when Epic 20's open diff to the file has merged.
+    evidence: |-
+      Epic 20's committed Story 20.23 (6aa1f459) changes `Prohibited.cls`, so Rule 11 allowed this story lines added only; the old clause `(pType = ..#TYPEDOCDBAPPLICATION) || (pType = ..#TYPEROUTINEAPPLICATION)` is dead for the routine type.
+    location: >-
+      src/OcuPilot/Kernel/Proposal/Prohibited.cls:1146
+    severity: low
 ---
 
 <intent-contract>
@@ -113,11 +122,77 @@ Paths are under `src/OcuPilot/` unless under `ui/`; Tasks carry the rest:
 - **C6.** Given the rosters, when the suites run, then Task 12's descriptor facts, the Save's list refusal, DW-2279's wording and the strings bound hold.
 - **Integration.** Given `ocupilot-ci`, when the page and the agent act, then the page consumes the form read and the six actions, and the agent the update's two lists (C1-C5, the browser spec).
 
+### Review Findings
+
+Code review, 2026-10-11, four layers on the parent tier: 41 rows, 32 entries (0 high, 5 medium, 24 low, 3 false or maybe-false); 14 patched, 4 ledgered, 14 rejected.
+
+- [x] [Review][Patch] A routine name of only spaces passed the shared rule, so the agent's whole `Routines` could store it while only the screen's delta refused it (AD-39, AD-55, C3) [src/OcuPilot/Area/WebApp/RoutineAppRules.cls:117]
+- [x] [Review][Patch] A routine added under a matching role's privileged target had no server-side pin (C5) [src/OcuPilot/Test/RoutineAppGrant.cls:119]
+- [x] [Review][Patch] `RoutineAppRules`' header said every caller runs `Check` and that a list equal to the fresh read is never judged [src/OcuPilot/Area/WebApp/RoutineAppRules.cls:10]
+- [x] [Review][Patch] `GrantsPrivilegeByEffect`'s doc omitted the routine type; a line added, the file staying add-only [src/OcuPilot/Kernel/Proposal/Prohibited.cls:4466]
+- [x] [Review][Patch] `RoutineAppUpdate` re-declared the rules' three entry-member parameters; it reads `RULES`' (Rule 31) [src/OcuPilot/Screen/Tool/RoutineAppUpdate.cls:120]
+- [x] [Review][Patch] The three member-tab bodies, all kept in the DOM, shared one refusal id; it is per tab [ui/src/app/areas/web-applications/routine-app-member-tabs.ts:385]
+- [x] [Review][Patch] On the own two only the buttons were `aria-disabled` where Task 10 says every control; the pickers and the name input are too, described by the sentence [ui/src/app/areas/web-applications/routine-app-member-tabs.ts:92]
+- [x] [Review][Patch] `privileged()` matched a role's name exactly, so a held role spelled in another case read privileged [ui/src/app/areas/web-applications/routine-app-form.store.ts:280]
+- [x] [Review][Patch] `focusField`'s tab switch was pinned only together with `afterRefusal`'s; a summary press from a member tab pins it [ui/src/app/areas/web-applications/routine-app-form.page.spec.ts:469]
+- [x] [Review][Patch] The browser spec's comment claimed a mutation the ChangeBus re-read cannot let go red [ui/browser/routine-applications.browser-spec.mjs:267]
+- [x] [Review][Patch] `RoutineAppProbe.Roles` read a failed look-up as no roles, so "none is left" could not fail on it; it throws [src/OcuPilot/Test/RoutineAppProbe.cls:97]
+- [x] [Review][Patch] `RoutineAppProbe.RemoveAll`'s doc stated the wrong order [src/OcuPilot/Test/RoutineAppProbe.cls:138]
+- [x] [Review][Patch] Two `RoutineAppMembers` comments named an editor 422 no caller emits and a rule set that judges only an empty name [src/OcuPilot/Test/RoutineAppMembers.cls:218]
+- [x] [Review][Patch] `RoutineAppRead` switched to `%SYS` with no `Catch` restoring it [src/OcuPilot/Test/RoutineAppRead.cls:175]
+- [x] [Review][Defer] A held privileged target moved to another `MatchRole`, or to every caller under an empty one, is not a grant [src/OcuPilot/Kernel/Proposal/Prohibited.cls:4562] — deferred: pre-existing in the web branch this story reuses; DW-2320, routed to the burn-down
+- [x] [Review][Defer] The agent's update takes both lists whole and no read tool answers them [src/OcuPilot/Screen/Descriptor/RoutineAppList.cls:68] — deferred: `webapp.list.update` shares it; DW-2321, routed to 18.12
+- [x] [Review][Defer] Clearing the Resource, or enabling the application, while it grants a privileged role is not a grant [src/OcuPilot/Kernel/Proposal/Prohibited.cls:4528] — deferred: 18.31's settings, and AD-10 names no such effect; DW-2322, decision-pending
+- [x] [Review][Defer] `Classification.cls` still says neither routine tool admits the lists [src/OcuPilot/Screen/Tool/Classification.cls:61] — deferred: a shared add-only file while Epic 20 runs; DW-2323, wontfix-accepted
+
+**Rejected.**
+
+- low, by design: the agent's arguments are judged whole before any read, so a stored entry naming a deleted database or role blocks its list change; Task 4 states it and `TestEveryListRuleIsRefusedBeforeAnyPut` pins it.
+- low, by design: the lists keep the generator's `secret` default (Code Map, as `webapp.list.update`), so the read-back reports them written and the copy-out masks them.
+- low, acceptable: an applied row action reads the form twice, the tabs' `applied` and the page's ChangeBus; the generation guard keeps it correct, it costs one bounded read per click, and the web editor does the same.
+- low: a row action's refusal banner shows on every member tab until the next action, as the web editor's does.
+- low: a second press before the first action answers is refused truthfully.
+- low: two overlapping refreshes landing out of order show the earlier read until the next one.
+- low: an exact duplicate entry in the agent's list is not refused; the Rules row names no such rule.
+- low, inference: two stored entries with one `MatchRole`, which only an agent list makes, are edited first-only by the web role delta.
+- low, by design: `EntryValid` matches `Db` exactly (Task 2) while the held matchers ignore case (Task 6); the kernel keeps its own entry key because it reads no tool class.
+- low, spec edit: Task 7's split is DW-2313's; the Rules row's 422 was closed at the implement review.
+- maybe-false: an over-long `RoutineOrClass` fails at the vendor; `Routines` entries are `%String(MAXLEN = 32767)`.
+- false: `RoutineAppDescriptor`'s literal counts break Rule 30; they pin the class's own declarations.
+- false: two changed store tests lack a `mutation:` line; Rule 19 scopes the line to an AC's pinning test.
+
 ## Spec Change Log
 
 - 2026-10-11, lead, spec gate: Epic 20's open diff no longer touches `Prohibited.cls`, so the intent's Never bullet admits splitting the :1139 clause and Task 7 replaces it instead of leaving it unreached (Rule 5 tier 1); Task 0's probe takes the `OcuProbe1833` prefix S0 checks; AD-4 and AD-10 amended; AD-56 (ii) and AD-8 need no line; `AdminPort`'s `Config.Databases` read follows `NamespaceDefined`'s precedent; AD-15 is written from Task 0's measurement at `dev_complete`.
 
 ## Review Triage Log
+
+### 2026-10-11 -- Review pass
+
+- verdicts: 22 findings -- high 0, medium 4, low 15, false 3, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` A list equal to the fresh read is never judged (`Judged`), and no test seeds a refused stored list -- added the stale-list legs to `RoutineAppMembers.TestEveryListRuleIsRefusedBeforeAnyPut`; mutation red.
+  - `[medium]` `[patch]` The editor page's ChangeBus re-read is untested -- added a page spec (update re-reads, deletion and another application do not); mutation red.
+  - `[medium]` `[patch]` The Routines tab's privilege caption for a privileged matching-role target is unpinned -- added the leg to the C5 page test; mutation red.
+  - `[low]` `[patch]` A refused Save sent from another tab, opening General with its count, is unpinned -- added a page spec; the two switches cover each other, so the mutation drops both.
+  - `[low]` `[patch]` The store spec's failed-read test cannot see `refresh`'s guards -- asserted reason, refusal code and absence, and added the late-read test; both mutations red.
+  - `[medium]` `[patch]` The routine delta's refusal sentences and "echoing no value" are unasserted -- `RoutineAppMembers` asserts status, `TOOL.ARGUMENTS` and the exact sentence; sentence swap red.
+  - `[low]` `[patch]` `DatabaseNames` ordering is unpinned (reported as defer) -- a case-insensitive order check in `RoutineAppRead`; reversal red.
+  - `[low]` `[patch]` `DatabaseDefined` has no caller and no test -- Task 2 names it; an exact-name leg in `RoutineAppRead`; case-ignoring mutation red.
+  - `[low]` `[patch]` A tautological half in the Save's description assertion -- reduced to the stored description.
+  - `[low]` `[patch]` The equal-list mint refusal asserted a not-OK status alone -- asserts the "nothing would change" sentence.
+  - `[low]` `[patch]` Two browser negatives could pass before the render or request landed -- the first waits for the Assign to enable, the second for network idle.
+  - `[low]` `[reject]` Surrounding whitespace in a direct API caller's routine name is stored as sent -- the UI trims, the vendor's trimming is unknown, and a guard adds a rule no AC names.
+  - `[low]` `[defer]` The routine type's old name in `PermittedChangeFields`' Doc DB clause is now unreachable -- Rule 11 allowed lines added only while Epic 20's 20.23 edits the file; recorded in `deferred:`.
+  - `[false]` `[reject]` The spec's `## Auto Run Result` read `ready-for-dev` -- the Finalize step rewrites it.
+  - `[low]` `[patch]` The client-specs mutation line named no spec -- it points at the four specs whose comments carry each mutation.
+  - `[low]` `[patch]` The Integration AC had no mutation line -- added: a renamed `Role` sent by the tab turns the browser spec red.
+  - `[low]` `[reject]` The Rules row names a 422 no caller emits for the list codes -- the Save refuses a list (400) and the actions answer 400, the codes ride the shared rule set and the mint's sentence; the fix is a spec edit.
+  - `[low]` `[patch]` The Roles and Routines rows' `TOOL.ARGUMENTS` code was not asserted -- `RoutineAppMembers.Refusal` asserts it on every refused action.
+  - `[low]` `[reject]` A person's privileged add is a caption, not a confirm -- by design: the Boundaries bullet gives a person's tab `privilegedGrantEffect` and the agent the destructive treatment.
+  - `[low]` `[defer]` `Prohibited` routes the routine type ahead of the shared clause rather than splitting it -- the same root cause as the deferred dead term above.
+  - `[false]` `[reject]` Tabs are for an edit and a create shows General alone -- Task 10 says so.
+  - `[false]` `[reject]` `Judged` is behavior the intent does not state -- Task 4 states it and AD-4 needs it for a setting-only update.
 
 ## Design Notes
 
@@ -149,9 +224,40 @@ Paths are under `src/OcuPilot/` unless under `ui/`; Tasks carry the rest:
 
 **Mutations (Rule 19),** each recorded as `mutation:`, none writing the own two: C1 `FormRead` adds nothing; C2 the routine delta answers `##super`, then `Routines` leaves `SettableFields`; C3 `RoutinesViolation` accepts any `Db`; C4 the client rule answers `''` (the kernel arm only through `Prohibits`); C5 drop `AddsRoutineUnderPrivilege`, then the web delegation; C6 drop a row action, then `SaveFields`, then a `MintClass`.
 
+- mutation: C1 `RoutineAppRules.FormRead` returns at once → `RoutineAppRead.TestTheFormReadCarriesTheListsTheRolesAndTheDatabases` and `TestTheFormReadAnswersTheNameAndThreeSettings` red (run 661); with only the row's lists skipped, the same two (run 660).
+- mutation: C2 `RoutineAppUpdate.ScreenActionDelta` sends the routine actions to `##super` → `RoutineAppMembers.TestTheRoutineActionsApplyADeltaAndKeepTheRoles` red (run 662); its forwarded role delta sent to `##super` → `TestTheRoleActionsApplyADeltaAndKeepTheRoutines` red (run 675); `Routines` out of `SettableFields` → `RoutineAppMembers.TestTheAgentSendsEachListWhole`, `TestTheRoutineActionsApplyADeltaAndKeepTheRoles` and `RoutineAppDescriptor.TestTheToolsDeclareTheirKindPortPairsAndFields` red (runs 663, 664).
+- mutation: C3 `RoutineAppRules.EntryValid` accepts any `Db` → `RoutineAppMembers.TestEveryListRuleIsRefusedBeforeAnyPut` and `TestTheRoutineActionsApplyADeltaAndKeepTheRoles` red (run 665); `RoutinesViolation` adding nothing → the same two (run 678); `Judged` answering 0 → the first alone, every row (run 677).
+- mutation: C4 the client rule, `selfProtectionReason`'s `ocupilot-routine-application` branch answering `''` → `routine-app-member-tabs.spec.ts`, `routine-app-form.page.spec.ts` (both of its own-application tests) red, and with the bundle rebuilt and redeployed `routine-applications.browser-spec.mjs`'s first and third tests red on `aria-disabled` and the own-application sentence; no click was made, and the own two read as they did.
+- mutation: C4 the kernel arm, the `routine-application` own-application arm of `Prohibited.Prohibits` dropped (one arm at a time; `RefusedBeforeState` and the port arm stay) → `RoutineAppMembers.TestTheOwnTwoAreRefusedByEachActionAndTheMint` red on its `Prohibits` legs alone (run 668); `RoutineAppUpdate.RefusedBeforeState` answering 0 → the same test red on the removes and the mint (the set still refuses the write; run 676); `S0` read after each.
+- mutation: C5 `AddsRoutineUnderPrivilege` dropped → `RoutineAppGrant.TestARoutineAddedUnderAPrivilegedRoleIsAGrant` and `TestTheClassifierAnswersTheSameWhenAskedDirectly` red (run 666); the web delegation dropped → all three red (run 667); `IsPrivilegedRole` without the `%Admin_` prefix → all three red (run 679).
+- mutation: C6 `add-routine` dropped from `RoutineAppList` → `RoutineAppDescriptor.TestTheListIsDeclaredAsTheSpecPlacesIt` red (run 669); from `RoutineAppUpdate.SCREENACTIONS` → `TestTheSixRowActionsAreTheUpdatesAndTheSaveAdmitsTheThreeSettings` red (run 680); `RoutineAppSave.SaveFields` answering `##super` → `RoutineAppMembers.TestTheGeneralSaveRefusesAListAndKeepsBoth` and that descriptor test red (runs 670, 671); `RoutineAppError.FieldOf` without the routines line → `TestTheCodesAnswerTheirSentences` and the same descriptor test red (run 681); `DocDbAppUpdate.MintClass` answering `MappingMint` → `DocDbAppDescriptor.TestTheMintNamesARecordInItsRefusals` and `TestTheToolsDeclareTheirKindPortPairsAndFields` red (run 672); `DocDbAppUpdate.PrivilegePairs` answering no pair → `RoutineAppGate.TestWithoutAPairTheRoleAndRoutineActionsAreRefusedByName` and the two inherited refusal tests red (run 673), `RoutineAppUpdate.SCREENACTIONS` emptied → its holder test and refusal test red (run 674).
+- mutation: C6 `RoutineApplicationChangeFields` without the two lists (the three settings alone) → `RoutineAppWrite.TestTheOwnTwoApplicationsAreRefusedEveryWrite` red on its `Routines` and `MatchRoles` legs (run 686); its line in `PermittedChangeFields` dropped → `RoutineAppDescriptor.TestTheToolsDeclareTheirKindPortPairsAndFields` and three `RoutineAppMembers` tests red (runs 683 to 685).
+- mutation: client specs, each reverted byte-identical: the store's `absorb` ignoring `row.MatchRoles`, `refresh` taking the fields always or never, the page's tab entry dropped or the strip drawn on a create, the tabs' `Role` sent under another name, `MatchRole` and `Role` swapped, `Type` sent as its label, the databases picker emptied, the privilege caption dropped or always drawn, `onApplied` without `refresh` or without the picker reset, the sink without `setRefusal` or reading again on a refusal, the name untrimmed, the database guard dropped, a body drawn for every tab, and the list's `UNDRAWN_ACTIONS` entry dropped → the spec carrying that mutation comment above its pinning test red each time (`routine-app-form.store.spec.ts`, `routine-app-form.page.spec.ts`, `routine-app-member-tabs.spec.ts`, `screen-action-handler.spec.ts`).
+- mutation: C2 the routine delta's held and not-held sentences swapped → `RoutineAppMembers.TestTheRoutineActionsApplyADeltaAndKeepTheRoles` red on its three sentence legs (run 706); C3 `Judged` answering 1 for any sent list → `TestEveryListRuleIsRefusedBeforeAnyPut` red on its two stale-list legs (run 706).
+- mutation: C1 `AdminPort.DatabaseNames` building its list in reverse and `DatabaseDefined` ignoring case → `RoutineAppRead.TestTheFormReadCarriesTheListsTheRolesAndTheDatabases` red on the order and exact-name legs (run 707).
+- mutation: C2, C5 the page's ChangeBus subscription not refreshing → `routine-app-form.page.spec.ts` "another caller's change" red; `hasRoutineEffect` without the matching-role targets → its C5 test red; `refresh` not returning on a failed read → the store spec's failed-read test red; `refresh` without its `generation` guard → "a read that lands after the form has moved on" red; `afterRefusal`'s `tabToOpen` and `focusField`'s tab switch both dropped (each alone is covered by the other) → "a Save refused for a General field" red.
+- mutation: Integration the tabs' `onAssignApplicationRole` sending `Name` for `Role`, bundle rebuilt and redeployed → `routine-applications.browser-spec.mjs`'s third test red on its first action assertion; reverted byte-identical, green again.
+- (QA) `src/OcuPilot/Test/RoutineAppMembers.cls`: `TestABlankRoutineValueIsRefusedByBothRoutineActions` (C3, the Rules row's empty value on the routine actions; the class now has 7 tests, run 712).
+- mutation: C3 `RoutineAppUpdate.ScreenActionDelta`'s blank test without its `$ZStrip` → `RoutineAppMembers.TestABlankRoutineValueIsRefusedByBothRoutineActions` red on its six spaces legs (run 722, with the review's `EntryValid` fix loaded); reverted byte-identical, green again (run 723).
+- mutation: C3 `RoutineAppRules.EntryValid`'s name test without its `$ZStrip` → `RoutineAppMembers.TestEveryListRuleIsRefusedBeforeAnyPut` red on its only-spaces row, the agent's mint accepting it (run 720); reverted byte-identical, green again (run 723).
+- mutation: C5 `Prohibited.AddsRoutineUnderPrivilege` collecting only the entries whose `MatchRole` is empty → `RoutineAppGrant.TestARoutineAddedUnderAPrivilegedRoleIsAGrant` and `TestTheClassifierAnswersTheSameWhenAskedDirectly` red on their matching-role legs (run 721); reverted, green again (run 724).
+- mutation: C4 the Database picker without `aria-disabled` → `routine-app-member-tabs.spec.ts`'s own-application test red; C5 `privileged` matching a name exactly → `routine-app-form.store.spec.ts`'s C1 test red on the other-case leg; `focusField` without its tab switch → `routine-app-form.page.spec.ts`'s "a Save refused for a General field" red on its summary-press leg; each reverted byte-identical.
+
 **S0:** no `OcuProbe1831*` or `OcuProbe1833*` application, role, resource or user; `OcuPilotState` and `OcuPilotIdentity` type 4 and enabled, as Task 0 recorded them.
 
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
+
+**Change.** The routine application editor has Application roles, Matching roles, and Routines and classes tabs on an edit (General alone on a create), each add or remove one of the list's six row actions, a delta over the fresh read. The agent's `webapp.routineapps.update` sends `MatchRoles` and `Routines` whole; one rule set (`RoutineAppRules.Check`, new `PRIVROUTINE.ROUTINES`) judges both callers before any `PUT`, and General's Save refuses a list. A grant through a role, matching role or routine is destructive with `GRANT.PRIVILEGED` (`AddsRoutineUnderPrivilege`); OcuPilot's own two stay 403 on all six actions and every tab control is `aria-disabled`. DW-2279: `DocDbAppMint` names the record in the three Doc DB tools' refusals. No tool, route, governance key, entity type or `PROHIBITED.*` code was added.
+
+**Files.** Server: `Api/RoutineAppError`, `Area/WebApp/{Create,DocDbAppRules,DocDbAppSave,RoutineAppRules,RoutineAppSave}`, `Kernel/Proposal/Prohibited` (lines added), `Port/AdminPort` (`DatabaseNames`, `DatabaseDefined`), `Screen/Descriptor/RoutineAppList`, `Screen/Tool/{RoutineAppUpdate,DocDbAppMint,DocDbAppCreate,DocDbAppUpdate,DocDbAppDelete}`. Client: the form store and page, `routine-app-member-tabs.ts`, `screen-action-handler.ts`, `strings.ts`, `screens.generated.ts`, EXPERIENCE.md :357. Tests: `RoutineAppMembers` and `RoutineAppGrant` (new, in `scripts/ci-throwaway.sh`'s roster), `RoutineAppProbe`, `RoutineAppRead`, `RoutineAppGate`, `RoutineAppDescriptor`, `RoutineAppWrite`, `DocDbAppDescriptor`, five client specs and the browser spec's third test.
+
+**Review.** 22 findings: 4 medium and 10 low patched (tests, a test helper and spec lines only; no source file changed in the patch pass), 2 deferred as one item (the dead routine term in `Prohibited`'s Doc DB clause, Rule 11), 6 rejected with reasons in the log. `followup_review_recommended` false: every patched medium was a missing pin, closed by a test whose mutation was observed red.
+
+**Verification** (`ocupilot-ci`, src reloaded after the patch pass): `RoutineAppMembers` 6 (run 708), `RoutineAppRead` 4 (run 709); before the patches, `RoutineAppGrant` 3, `RoutineAppGate` 5, `RoutineAppDescriptor` 13, `DocDbAppDescriptor` 11, `RoutineAppWrite` 15, `DocDbAppWrite` 11, `WebAppSave` 7, `ToolEmit` 11 (runs 695 to 703); the implement pass's Rule 30 sweep of 29 classes (runs 631 to 659) was green. `check-objectscript` 0 problems; `test:tools` 1908; `test:components` 227 files, 2868 tests; the browser spec 3 of 3 on a rebuilt, redeployed bundle (3.31 MB initial, under the 3326kB warning, `angular.json` unchanged). Fixed strings 3126 to 3130 (bound 3400). S0 holds: no `OcuProbe18*` role, resource, user or application, and the own two read as before.
+
+**Task 0 (AD-15).** A list-only `PUT` on a probe privileged routine application records `%System/%Security/ApplicationChange` ("Modify Application <name>", the data naming the `MatchRoles` and `Routines` changes), so the case is audited, not a named gap.
+
+**Residual.** Each applied row action reads the form twice (the tabs' `applied` and the page's change-bus subscription). `ci-timings.json` has no rows for the two new classes. The deferred item waits on Epic 20's merge.

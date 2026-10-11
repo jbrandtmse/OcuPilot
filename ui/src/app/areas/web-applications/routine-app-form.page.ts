@@ -1,3 +1,4 @@
+import { NgTemplateOutlet } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -11,15 +12,32 @@ import {
 } from '@angular/core';
 import { NavigationEnd, Router } from '@angular/router';
 
+import { ChangeBus } from '../../core/change-bus';
 import { encodeEntityId } from '../../core/entity-id';
 import { FormDirty } from '../../core/form-dirty';
+import { tabErrorCounts, tabToOpen } from '../../core/form-tabs';
 import { NavigationService, formatDeniedAction, ownIdSegment, screenForRoute, withQuery } from '../../core/navigation';
 import { savedLine } from '../../core/read-back';
 import { OCUPILOT_ROUTINE_APPLICATION_RULE, selfProtectionReason } from '../../core/self-protection';
 import { STRINGS } from '../../core/strings';
 import { STATE_CONFLICT_CODE, type Violation } from '../../core/violations';
 import { Dialog } from '../../shell/dialog';
-import { DESCRIPTION_FIELD, ENABLED_FIELD, NAME_FIELD, RESOURCE_FIELD, RoutineAppForm } from './routine-app-form.store';
+import { FormTabBody, FormTabs, type FormTabView } from '../../shell/form-tabs';
+import { RoutineAppMemberTabs } from './routine-app-member-tabs';
+import {
+  APPLICATION_ROLES_TAB,
+  CREATE_FIELDS,
+  DESCRIPTION_FIELD,
+  ENABLED_FIELD,
+  GENERAL_TAB,
+  MATCHING_ROLES_TAB,
+  NAME_FIELD,
+  RESOURCE_FIELD,
+  ROUTINES_TAB,
+  ROUTINE_APP_ENTITY,
+  ROUTINE_APP_FIELD_TABS,
+  RoutineAppForm,
+} from './routine-app-form.store';
 
 /** The list this form is reached from, which Cancel returns to. */
 export const ROUTINE_APP_LIST_ROUTE = 'web-applications/routine-applications';
@@ -61,11 +79,12 @@ interface Option {
  *
  * **Its fields are the classic editor's General tab**: the name (a create only), the description, whether the
  * application is enabled and the service, system or application resource that controls it (a picker over the
- * resources the Resources list reads, and none). The roles, matching roles and routines are other tabs, which this
- * form does not carry.
+ * resources the Resources list reads, and none). An edit also shows the classic editor's other three tabs, Application
+ * roles, Matching roles, and Routines and classes (Story 18.33); they are not this form's fields, and each act on them
+ * is one of the list's row actions (`RoutineAppMemberTabs`). A create shows General alone.
  *
  * **OcuPilot's own two applications are drawn refused**: their fields are read-only and Save is `aria-disabled`,
- * described by the sentence the instance would answer with (AD-10, AD-53).
+ * described by the sentence the instance would answer with (AD-10, AD-53); so is every control of the member tabs.
  *
  * It composes no payload and authors no field sentence; the unsaved-changes guard is the `form-page` route guard,
  * answered here. Every control-flow condition is a paren-free member reference, for the reason `sign-in.ts` records.
@@ -73,7 +92,7 @@ interface Option {
 @Component({
   selector: 'app-routine-app-form-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [Dialog],
+  imports: [Dialog, FormTabs, FormTabBody, NgTemplateOutlet, RoutineAppMemberTabs],
   template: `<section class="ocu-form-page" [attr.aria-busy]="busyFlag">
     @if (hasSummary) {
       <div #summary class="ocu-banner ocu-form-summary" role="alert" tabindex="-1">
@@ -97,6 +116,7 @@ interface Option {
       <p class="ocu-field-caption" data-routine-app="own-refusal" [id]="ownRefusalId">{{ ownRefusal }}</p>
     }
     <p class="ocu-form-legend">{{ STRINGS.formRequiredFieldsLegend }}</p>
+    <ng-template #generalFields>
     <fieldset class="ocu-form-fields ocu-field" data-group="application">
       <legend class="ocu-field-label">{{ STRINGS.processDetailsGroupGeneral }}</legend>
       <div class="ocu-field" data-field="Name">
@@ -177,6 +197,25 @@ interface Option {
         }
       </div>
     </fieldset>
+    </ng-template>
+    @if (creating) {
+      <ng-container [ngTemplateOutlet]="generalFields" />
+    } @else {
+      <app-form-tabs [tabs]="tabs" [selected]="selectedTab()" (selectedChange)="selectTab($event)">
+        <ng-template ocuFormTab="general">
+          <ng-container [ngTemplateOutlet]="generalFields" />
+        </ng-template>
+        <ng-template ocuFormTab="application-roles">
+          <app-routine-app-member-tabs tab="application-roles" />
+        </ng-template>
+        <ng-template ocuFormTab="matching-roles">
+          <app-routine-app-member-tabs tab="matching-roles" />
+        </ng-template>
+        <ng-template ocuFormTab="routines">
+          <app-routine-app-member-tabs tab="routines" />
+        </ng-template>
+      </app-form-tabs>
+    }
 
     <div class="ocu-form-bar">
       <div class="ocu-form-bar-status">
@@ -224,6 +263,9 @@ export class RoutineAppFormPage {
 
   protected readonly ownRefusalId = 'ocu-routine-app-own-refusal';
 
+  /** The key of the tab on screen. */
+  protected readonly selectedTab = signal(GENERAL_TAB);
+
   /** Bumped by both stores, so the template re-reads them under `OnPush`. */
   private readonly generation = signal(0);
 
@@ -243,13 +285,20 @@ export class RoutineAppFormPage {
       const id = this.routeId();
       if (id === followed) return;
       followed = id;
+      this.selectedTab.set(GENERAL_TAB);
       void this.store.open(id);
+    });
+    // AD-14: a change to this application, from either caller, reads it again; a delete is the list's.
+    const stopChanges = this.injector.get(ChangeBus).subscribe((event) => {
+      if (event.kind !== 'changed' || event.type !== ROUTINE_APP_ENTITY || event.action === 'deleted') return;
+      if (this.store.is(event.id)) void this.store.refresh();
     });
     afterNextRender(() => this.focusRefusal(), { injector: this.injector });
     inject(DestroyRef).onDestroy(() => {
       stopStore();
       stopDirty();
       stopIdChange.unsubscribe();
+      stopChanges();
       // Kept across a create's own route replacement, which destroys this page and builds it again
       // over the new application; torn down on every other departure.
       if (!this.store.retaining()) this.store.reset();
@@ -307,6 +356,18 @@ export class RoutineAppFormPage {
 
   protected get saveDescribedBy(): string | null {
     return this.hasOwnRefusal ? this.ownRefusalId : null;
+  }
+
+  /** The tabs of an edit, in the classic editor's order; a refusal's count rides the tab that holds its field. */
+  protected get tabs(): readonly FormTabView[] {
+    this.generation();
+    const counts = tabErrorCounts(ROUTINE_APP_FIELD_TABS, this.store.violations());
+    return [
+      { key: GENERAL_TAB, label: STRINGS.processDetailsGroupGeneral, count: counts[GENERAL_TAB] ?? 0 },
+      { key: APPLICATION_ROLES_TAB, label: STRINGS.webAppFormApplicationRoles, count: counts[APPLICATION_ROLES_TAB] ?? 0 },
+      { key: MATCHING_ROLES_TAB, label: STRINGS.webAppTabMatchingRoles, count: counts[MATCHING_ROLES_TAB] ?? 0 },
+      { key: ROUTINES_TAB, label: STRINGS.routineAppTabRoutines, count: counts[ROUTINES_TAB] ?? 0 },
+    ];
   }
 
   protected get violations(): readonly Violation[] {
@@ -395,6 +456,10 @@ export class RoutineAppFormPage {
 
   // --- intents ---------------------------------------------------------------------------------
 
+  protected selectTab(key: string): void {
+    this.selectedTab.set(key);
+  }
+
   protected onText(field: string, event: Event): void {
     const target = event.target;
     if (target instanceof HTMLInputElement) this.store.setValue(field, target.value);
@@ -430,7 +495,14 @@ export class RoutineAppFormPage {
     }
   }
 
+  /** Open the tab that holds `field`, then focus it. */
   protected focusField(field: string): void {
+    const tab = ROUTINE_APP_FIELD_TABS[field];
+    if (tab !== undefined && tab !== this.selectedTab()) {
+      this.selectedTab.set(tab);
+      afterNextRender(() => document.getElementById(routineAppControlId(field))?.focus(), { injector: this.injector });
+      return;
+    }
     document.getElementById(routineAppControlId(field))?.focus();
   }
 
@@ -451,6 +523,8 @@ export class RoutineAppFormPage {
   }
 
   private afterRefusal(): void {
+    const open = tabToOpen(ROUTINE_APP_FIELD_TABS, CREATE_FIELDS, this.store.violations());
+    if (open !== null) this.selectedTab.set(open);
     if (this.store.violations()[0] === undefined) return;
     this.focusedSummary = false;
     afterNextRender(() => this.focusRefusal(), { injector: this.injector });
