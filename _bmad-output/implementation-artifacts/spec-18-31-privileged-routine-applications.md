@@ -3,7 +3,7 @@ title: 'Story 18.31: Privileged routine applications'
 type: 'feature'
 created: '2026-10-10'
 status: 'done'
-baseline_commit: 'bb49cd147447d4dbade1191a14f16c3c0cb1d490'
+baseline_commit: '7324381b4e3ac5644f73160b12bd78cac5c938fc'
 baseline_revision: '0b19284d3a08a8945f7139dc8cf3c23ef9958c10'
 review_loop_iteration: 0
 followup_review_recommended: false
