@@ -1128,8 +1128,8 @@ Parameter READTOOLIDENTIFIERPATTERN = "^[a-z][a-z0-9]*\.[a-z][a-z0-9]*$";
 /// shape <method>TableProblem</method> checks, unless it is a <code>form-page</code> that declares none
 /// (<method>RendersNoTable</method>); a <code>table</code> with no read is refused here.
 /// Last of all, a read on the <code>admin</code>, <code>path</code> or <code>monitor</code> port whose
-/// <code>privileges</code> omit <code>%DB_IRISSYS:READ</code> is refused, because the admin port
-/// runs every endpoint in <code>%SYS</code> -- a <code>state</code> read runs in the install namespace and needs no such
+/// <code>privileges</code> omit <code>%DB_IRISSYS:READ</code> is refused, because each of those
+/// ports does its work in <code>%SYS</code> -- a <code>state</code> read runs in the install namespace and needs no such
 /// pair, so the rule is on the source kind rather than on every read. <file>ui/tools/screen-mirror.mjs</file>'s <code>readProblem</code> refuses the
 /// same shapes before the mirror is emitted, and
 /// <class>OcuPilot.Test.AdminPairCorpus</class> is the corpus both engines run.</p>
@@ -1585,8 +1585,9 @@ ClassMethod ReadProblem(pDeclaration As %DynamicObject) As %String
         ; no predicate on the endpoint, and IRIS requires READ on a namespace's default globals
         ; database -- IRISSYS, resource %DB_IRISSYS -- to make it current. Without the pair the
         ; vendor endpoint fails inside %SYS and the port answers 500 where the gate would have
-        ; named the missing privilege (AD-2, AD-8). A logsource read is outside the rule: it reads
-        ; a file off disk and never enters %SYS.
+        ; named the missing privilege (AD-2, AD-8). A monitor read's port gate names the pair itself,
+        ; so for it the rule keeps the side bar's verdict equal to the port's (AD-29). A logsource
+        ; read is outside the rule: it reads a file off disk and never enters %SYS.
         If (tPort = ##class(OcuPilot.Screen.Read).#SOURCEADMIN) || (tPort = ##class(OcuPilot.Screen.Read).#SOURCEPATH) || (tPort = ##class(OcuPilot.Screen.Read).#SOURCEMONITOR) {
             Set tHasSystemRead = 0
             Set tDeclaredPairs = pDeclaration.%Get("privileges")

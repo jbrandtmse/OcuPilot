@@ -40,12 +40,10 @@ Parameter SENSORSCLASS = "SYS.Monitor.SAM.Sensors";
 /// unlabeled Prometheus metric it is read from, named by <method>MetricName</method>.</p>
 Parameter METRICS = "cacheEfficiency:cache_efficiency,globalReferencesPerSecond:glo_ref_per_sec,globalUpdatesPerSecond:glo_update_per_sec,diskReadsPerSecond:phys_reads_per_sec,diskWritesPerSecond:phys_writes_per_sec";
 
-/// <p>The one endpoint <method>Invoke</method> answers: the sensors, as a declared read's
-/// <code>monitor</code> part names them (AD-36).</p>
+/// <p>The endpoint a declared read's <code>monitor</code> part names: the sensors (AD-36).</p>
 Parameter SENSORSENDPOINT = "Sensors";
 
-/// <p>The one request type <method>Invoke</method> answers, the type a <code>monitor</code> part
-/// declares.</p>
+/// <p>The request type a <code>monitor</code> part declares.</p>
 Parameter SENSORSTYPE = "SENSORS";
 
 /// <p>The values a <code>monitor</code> part answers, in the grammar of <parameter>METRICS</parameter>:
@@ -333,7 +331,8 @@ ClassMethod Parse(pText As %String, Output pValues As %DynamicObject, pMetrics A
 /// <li><code>Value</code> is a JSON number when it is a valid number, otherwise its text
 /// (<code>NaN</code>, <code>+Inf</code>).</li>
 /// </ul>
-/// <p>The whole exposition is read before the cut, so the answer does not depend on <var>pMax</var>.
+/// <p>The whole exposition is read before the cut, so whether the read fails does not depend on
+/// <var>pMax</var>.
 /// A sample with no name or no value, or whose label set is not closed, fails the read: an error
 /// status naming the line, with <var>pRows</var> empty. <method>Parse</method>, which reads only the
 /// unlabeled lines it is asked for, is a separate and tolerant reader.</p>
@@ -343,17 +342,21 @@ ClassMethod Samples(pText As %String, pMax As %Integer, Output pRows As %Dynamic
     Set pRows = ""
     Try {
         Kill tHelp
-        Set tLines = $Length(pText, $Char(10))
-        For tI = 1:1:tLines {
-            Set tLine = $ZStrip($Piece(pText, $Char(10), tI), "<>WC")
+        Set tLines = $ListFromString(pText, $Char(10))
+        Set tAt = 0
+        While $ListNext(tLines, tAt, tRaw) {
+            Set tLine = $ZStrip($Get(tRaw), "<>WC")
             If $Extract(tLine, 1, 7) '= "# HELP " Continue
             Set tHelpName = $Piece($Extract(tLine, 8, *), " ", 1)
             If (tHelpName '= "") && '$Data(tHelp(tHelpName)) Set tHelp(tHelpName) = $Piece($Extract(tLine, 8, *), " ", 2, *)
         }
 
         Set tRows = []
-        For tI = 1:1:tLines {
-            Set tLine = $ZStrip($Piece(pText, $Char(10), tI), "<>WC")
+        Set tAt = 0
+        Set tI = 0
+        While $ListNext(tLines, tAt, tRaw) {
+            Set tI = tI + 1
+            Set tLine = $ZStrip($Get(tRaw), "<>WC")
             If (tLine = "") || ($Extract(tLine) = "#") Continue
             Set tLength = $Length(tLine)
 

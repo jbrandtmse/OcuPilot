@@ -4,8 +4,8 @@
 /// exposition text, through <class>OcuPilot.Test.Read.ReadFixture</class>; and the read tool over the
 /// live collection.</p>
 /// <p><b>What it needs from the environment:</b> the compiled registries. Live-safe: it creates
-/// nothing and writes only process-private globals; its one live read takes a sensor collection, as
-/// every read does (AD-7).</p>
+/// nothing and writes only process-private globals; each of its two live reads takes a sensor
+/// collection, as every read does (AD-7).</p>
 Class OcuPilot.Test.MetricsDescriptor Extends %UnitTest.TestCase
 {
 

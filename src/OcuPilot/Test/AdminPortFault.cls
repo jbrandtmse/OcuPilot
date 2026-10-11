@@ -325,6 +325,27 @@ Method TestAQueuedWriteStillRunningAtTheBoundLogsNothing()
     }
 }
 
+/// <p>The bound's silence is every <parameter>OcuPilot.Port.AdminPort.QUEUEDWRITES</parameter> pair's, not
+/// the one pair the test above names: each, still running at the bound, is <code>PORT.TIMEOUT</code> and
+/// logs nothing.</p>
+/// <p>Mutation (Rule 19): narrow the <method>OcuPilot.Port.AdminPort.AwaitTask</method> guard to one
+/// pair (<code>Namespace.Namespace</code> <code>MAPPINGS</code>) -&gt; every other pair's log leg goes red.</p>
+Method TestEveryQueuedWritePairStillRunningAtTheBoundLogsNothing()
+{
+    Set tAnswer = {"State": "Running", "TaskName": "GET /v2/ocupilot/fixture/endpoint", "FailureReason": "", "Result": {}}
+    Do ##class(OcuPilot.Test.PortFixture).SetCannedAnswer(tAnswer.%ToJSON())
+    Do ##class(OcuPilot.Test.PortFixture).SetAsyncTimeout(0)
+    Set tPairs = $ListFromString($Parameter("OcuPilot.Port.AdminPort", "QUEUEDWRITES"))
+    Do $$$AssertTrue($ListLength(tPairs) > 0, "the port declares queued writes")
+    For tI = 1:1:$ListLength(tPairs) {
+        Set tPair = $List(tPairs, tI)
+        Do ##class(OcuPilot.Test.LogProbe).Clear()
+        Set tSC = ##class(OcuPilot.Test.PortFixture).Await($Piece(tPair, "/", 1), $Piece(tPair, "/", 2), .tHttp, .tFault)
+        Do ..AssertFault(tSC, tHttp, tFault, 503, "unavailable", "PORT.TIMEOUT", tPair)
+        Do $$$AssertEquals(##class(OcuPilot.Test.LogProbe).Captured("message"), "", tPair _ ": a queued write at the bound logs nothing")
+    }
+}
+
 /// <p>DW-274. An erroring call whose declared backing-query pair set the caller holds <b>none</b>
 /// of is answered 403 <code>PORT.ACCESSDENIED</code> naming the pair -- where it used to be a 500
 /// naming nothing, because the vendor's own refusal never reaches this port.</p>

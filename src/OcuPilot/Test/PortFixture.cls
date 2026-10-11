@@ -88,8 +88,9 @@ ClassMethod SetCannedPollRefusal(pHttp As %Integer, pText As %String)
 /// <p>A recorded value: <code>name</code> (the endpoint's <code>Name</code> when
 /// <code>Run()</code> was about to start), <code>taskName</code> (the last real poll's
 /// <code>TaskName</code>), <code>forgot</code> (the GUID last passed to
-/// <method>ForgetTask</method>) or <code>polls</code> (how many polls ran). <code>""</code> when
-/// never recorded.</p>
+/// <method>ForgetTask</method>), <code>polls</code> (how many polls ran) or <code>endpoint</code>
+/// (the endpoint name last asked of the port, before any vendor endpoint is constructed).
+/// <code>""</code> when never recorded.</p>
 ClassMethod Recorded(pKey As %String) As %String
 {
     Quit $Get(^||OcuPilotPortFixture("recorded", pKey), "")
@@ -117,6 +118,7 @@ ClassMethod ProbeEndpointClass() As %String
 
 ClassMethod EndpointClass(pEndpoint As %String) As %String
 {
+    Set ^||OcuPilotPortFixture("recorded", "endpoint") = pEndpoint
     Set tForced = $Get(^||OcuPilotPortFixture("endpoint"), "")
     If tForced '= "" Quit tForced
     Quit ##super(pEndpoint)

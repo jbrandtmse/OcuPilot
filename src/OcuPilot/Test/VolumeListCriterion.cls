@@ -2,7 +2,7 @@
 /// is refused 400 <code>READ.CRITERION</code> before any vendor endpoint runs, so the vendor's own 400
 /// is never reached and never logged (AD-2, AD-36): through
 /// <class>OcuPilot.Test.Read.ReadFixture</class> over <class>OcuPilot.Test.PortFixture</class>, whose
-/// recorded endpoint name stays empty and whose log capture stays empty, and over the wire. A read that
+/// recorded endpoint stays empty and whose log capture stays empty, and over the wire. A read that
 /// carries its directory is still served.</p>
 /// <p><b>What it needs from the environment:</b> OcuPilot installed and serving, and one database. Live-safe:
 /// it creates nothing and writes only process-private globals.</p>
@@ -42,14 +42,14 @@ Method TestAReadWithoutItsDirectoryIsRefusedBeforeTheVendorIsAsked()
     Set tSC = ##class(OcuPilot.Test.Read.ReadFixture).Execute(..#DESCRIPTOR, "", .tResult, .tHttp, .tFault)
     Do $$$AssertStatusNotOK(tSC, "a read with no criterion fails")
     Do $$$AssertEquals(..Sentence(tHttp, tFault), ..#SENTENCE, "as 400 READ.CRITERION naming dir")
-    Do $$$AssertEquals(##class(OcuPilot.Test.PortFixture).Recorded("name"), "", "and no endpoint ran")
+    Do $$$AssertEquals(##class(OcuPilot.Test.PortFixture).Recorded("endpoint"), "", "and the port was asked for no endpoint")
     Do $$$AssertEquals(##class(OcuPilot.Test.LogProbe).Captured("message"), "", "and nothing was logged")
 
     Kill tCriteria
     Set tCriteria("dir") = ""
     Set tSC = ##class(OcuPilot.Test.Read.ReadFixture).Execute(..#DESCRIPTOR, "", .tResult2, .tHttp2, .tFault2, .tCriteria)
     Do $$$AssertEquals(..Sentence(tHttp2, tFault2), ..#SENTENCE, "an empty dir is refused the same way")
-    Do $$$AssertEquals(##class(OcuPilot.Test.PortFixture).Recorded("name"), "", "with no endpoint run")
+    Do $$$AssertEquals(##class(OcuPilot.Test.PortFixture).Recorded("endpoint"), "", "with the port asked for none")
     Do $$$AssertEquals(##class(OcuPilot.Test.LogProbe).Captured("message"), "", "and nothing logged")
 }
 

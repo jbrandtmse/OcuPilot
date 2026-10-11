@@ -8730,6 +8730,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-30T17:16:05Z status=routed owner=range-end-cleanup by=orchestrator note=queued for the standing cleanup after the next release, priority p4: refuse a missing dir before the admin call, as the sibling reads do
 - 2026-10-11T00:42:32Z status=routed owner=23-7-the-range-end-cleanup-part-6 by=load note=re-own from range-end-cleanup: kit 2026-10-10.1 owners are story keys or burndown
 - 2026-10-11T02:03:07Z status=routed owner=18-11-monitoring-extras-and-the-live-log-tail by=merge_gate note=owner decision 2026-10-10 on 23.7, "Pull 5, hold rest (Recommended)", relayed by the Planner; placed by footprint: monitor state raised by OcuPilot logging
+- 2026-10-11T22:35:16Z status=resolved-by:18-11-monitoring-extras-and-the-live-log-tail by=adjudication note=Read.cls requires dir for a parent-scoped VOLUMELIST read before any port call; VolumeListCriterion pins it (QA run 673 mutation)
 
 ### DW-1875: A Windows clone made with core.autocrlf=true before the *.sh eol=lf rule keeps its CRLF scripts after pulling the rule (git status reads clean), so compose up still fails until its scripts are checked out again
 - source: spec-23-2-the-range-end-cleanup-part-2.md | severity: med | fix-risk: low | footprint: out-of-footprint
@@ -8878,6 +8879,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-04T06:51:59Z occurrence=18-20-ecp-data-servers
 - 2026-10-11T00:42:33Z status=routed owner=23-7-the-range-end-cleanup-part-6 by=load note=re-own from range-end-cleanup: kit 2026-10-10.1 owners are story keys or burndown
 - 2026-10-11T02:03:07Z status=routed owner=18-11-monitoring-extras-and-the-live-log-tail by=merge_gate note=owner decision 2026-10-10 on 23.7, "Pull 5, hold rest (Recommended)", relayed by the Planner; placed by footprint: monitor state raised by AdminPort.AwaitTask logging
+- 2026-10-11T22:35:16Z status=resolved-by:18-11-monitoring-extras-and-the-live-log-tail by=adjudication note=AwaitTask logs no bound for a queued-write pair; AdminPortFault iterates all twelve QUEUEDWRITES pairs (runs 669-670)
 
 ### DW-1899: A gate-probe child that runs a screen action later fails an AsyncResult call with <FUNCTION>BeginCapture+4^%SYS.Capture, three alerts per run
 - source: spec-18-15-enable-interoperability-on-a-namespace.md | severity: low | fix-risk: low | footprint: out-of-footprint
@@ -11286,3 +11288,19 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Measured on ocupilot-ci 2026-10-11: a 4 MB string or 1e999 raises MAXSTRING/MAXNUMBER in %Iterator.Object.%GetNext without its type; RestServiceSave.UnexpectedKey fixed in 18.34, 48 Area files keep the form
 - 2026-10-11T18:27:53Z status=wontfix-accepted owner=18-34-the-person-s-rest-service-create by=cr note=reopen_if=a Save whose UI can send a field over 3.6 MB, or an out-of-range number, answers 500
 - 2026-10-11T21:38:31Z status=routed owner=burndown by=lead note=orchestrator: audit the 48 two-argument %GetNext sites at the Epic 18 burn-down; fix any that read caller-controlled JSON (the same 500) or charter a sweep if many
+
+### DW-2328: Rows of an id-none list share one key when its name column repeats: MetricsList's 942 rows hold 115 Metric values, so a click selects every row of a metric and the arrow keys stop at a group's first row
+- source: spec-18-11-monitoring-extras-and-the-live-log-tail.md | severity: med | fix-risk: med | footprint: out-of-footprint
+- evidence: table-model.ts rowKey keys a non-composite id by its name column and data-table.ts activeIndex is lastKeys.indexOf(active); a live read on ocupilot-ci answered 942 rows over 115 metric names; the log viewers key by time
+- 2026-10-11T22:33:47Z status=routed owner=burndown by=cr note=fix the shell (a row-unique key for id kind none) or declare MetricsList's id composite [Metric, Labels]
+
+### DW-2329: MonitorPort.Samples would fail the whole metrics table on an instance whose label value ends in an unescaped backslash (a Windows dir); unverified
+- source: spec-18-11-monitoring-extras-and-the-live-log-tail.md | severity: med | fix-risk: low | footprint: in-story
+- evidence: LabelsEnd reads a backslash as an escape, as the Prometheus format does; dir labels hold directories (/durable/iris/mgr/user/ here); the vendor's Sensors source is withheld and no Windows instance was read
+- 2026-10-11T22:33:47Z status=decision-pending owner=burndown by=cr note=human=GET /api/monitor/metrics on a Windows instance: are backslashes in dir labels doubled
+
+### DW-2330: AD-36's Story 18.11 amendment says every parent-scoped read requires its criterion before any port call; the code covers bare-rows and VOLUMELIST reads, and TaskRunList answers {}
+- source: spec-18-11-monitoring-extras-and-the-live-log-tail.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: ARCHITECTURE-SPINE.md:775 headline; Read.Execute's route-criterion guard tests tBareRows or VOLUMELISTTYPE; TaskRunList (parent-scoped HISTORY) is not in ToolRoundTrip's REFUSEEMPTY
+- 2026-10-11T22:33:47Z status=open owner=18-11-monitoring-extras-and-the-live-log-tail by=cr note=the lead narrows the headline to the VOLUMELIST and bare-rows cases (Rule 20)
+- 2026-10-11T22:35:17Z status=resolved-by:18-11-monitoring-extras-and-the-live-log-tail by=adjudication note=AD-36 sentence narrowed to bare-rows and VOLUMELIST reads at origin

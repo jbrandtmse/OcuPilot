@@ -1,7 +1,7 @@
-/// <p>Prometheus metrics: every sample the instance's sensors answer, in the order they answer them,
-/// read through <class>OcuPilot.Port.MonitorPort</class> (AD-29, AD-36) and rendered by the
-/// <code>list</code> archetype's page from the declared <code>table</code> (AD-5). OS management's
-/// twenty-first screen.</p>
+/// <p>Prometheus metrics: every sample the instance's sensors answer, sorted by metric, read through
+/// <class>OcuPilot.Port.MonitorPort</class> (AD-29, AD-36) and rendered by the <code>list</code>
+/// archetype's page from the declared <code>table</code> (AD-5). OS management's twenty-first
+/// side-bar entry.</p>
 /// <p><b>Its scope is <code>instance</code></b> and its id is <code>none</code>: a sample is named by
 /// its metric and labels together, and the screen opens no detail and takes no action.</p>
 /// <p><b>Its pairs are the port's</b>, <code>%Admin_Operate:USE</code> and

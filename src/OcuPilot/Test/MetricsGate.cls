@@ -76,13 +76,19 @@ Method TestTheExactPairsReadTheSamples()
 }
 
 /// <p>A principal missing <code>%Admin_Operate:USE</code>, or <code>%DB_IRISSYS:READ</code>, is refused
-/// 403 naming it, and the refusals take no sensor collection.</p>
+/// 403 naming it, and the refusals take no sensor collection. A read by the holder of both pairs
+/// first shows the stamp moves, so the unchanged stamp after the refusals is a measurement.</p>
 /// <p>Mutation (Rule 19): make <method>OcuPilot.Port.MonitorPort.Gate</method> answer OK, declare
 /// <code>%Admin_Operate:USE</code> alone in <class>OcuPilot.Screen.Descriptor.MetricsList</class> and
 /// relax <method>OcuPilot.Screen.Registry.ReadProblem</method>'s system-database arm for
-/// <code>monitor</code>, since both gates refuse -- the NoSys leg goes red.</p>
+/// <code>monitor</code>, since both gates refuse -- the NoSys leg goes red; make
+/// <method>LastCollection</method> read a node no collection writes -- the stamp leg goes red.</p>
 Method TestEachMissingPairIsRefusedByNameAndTakesNoCollection()
 {
+    Set tSeen = ..LastCollection()
+    Hang 1.1
+    Do $$$AssertEquals(..Wire(..#READPATH, "OcuProbe1811Exact", .tAnswer), "200 ", "the holder of both pairs reads")
+    Do $$$AssertNotEquals(..LastCollection(), tSeen, "and its read moves the collection stamp")
     Set tBefore = ..LastCollection()
     Hang 1.1
     For tCase = $ListBuild("OcuProbe1811NoOperate", "%Admin_Operate:USE"), $ListBuild("OcuProbe1811NoSys", "%DB_IRISSYS:READ") {

@@ -220,7 +220,7 @@ ClassMethod ReadList(pMaxRows As %String, Output pRows, Output pHttp As %Integer
     Quit ##class(OcuPilot.Test.MonitorPortFixture).Invoke(##class(OcuPilot.Port.MonitorPort).#ENDPOINT, ##class(OcuPilot.Port.MonitorPort).#TYPELIST, .tQuery, "", .pRows, .pHttp, .pFault)
 }
 
-/// <p>Metrics list, the grammar: a bare sample, a labeled one whose value follows a timestamp, a
+/// <p>Metrics list, the grammar: a bare sample, a labeled one with a timestamp after its value, a
 /// label value holding a space, a <code>}</code> and an escaped quote, empty braces, <code>NaN</code>
 /// and <code>+Inf</code> as text, a carriage return and blank lines. <code>HELP</code> sets the help
 /// of the samples of its name, <code>TYPE</code> and <code>UNIT</code> are skipped, and the rows come
@@ -256,6 +256,57 @@ Method TestTheSampleGrammarAnswersEveryLineShape()
     Set tSC = ..ReadList("", .tNone, .tHttp, .tFault)
     Do $$$AssertStatusOK(tSC, "an exposition with no sample reads")
     Do $$$AssertEquals(tHttp _ " " _ $Select($IsObject(tNone): tNone.%Size(), 1: "absent"), "200 0", "and answers no rows")
+}
+
+/// <p>Metrics list, the values: a negative fraction, a leading dot, negative and positive exponents (the
+/// latter beside a timestamp), a tab between the fields, surrounding blanks, a zero and a negative zero
+/// answer JSON numbers, and <code>-Inf</code> answers its text; the answer, as it goes on the wire,
+/// holds only valid JSON and reads back to itself.</p>
+/// <p>Mutation: recognise a number by <code>^-?[0-9]+(\.[0-9]+)?$</code> alone in
+/// <method>OcuPilot.Port.MonitorPort.Samples</method> -&gt; the leading-dot and exponent rows go red.</p>
+Method TestEveryValueShapeAnswersAsAJsonNumberOrAsItsText()
+{
+    Set tTab = $Char(9)
+    Set tText = ..Joined($ListBuild("probe_a -1.5e-3", "probe_b .5", "probe_c 4.7e-05", "probe_d 1.5e+06 1700000000", "probe_e" _ tTab _ "8", "  probe_f   7  ", "probe_g -Inf", "probe_h 0", "probe_i -0"))
+    Do ##class(OcuPilot.Test.MonitorPortFixture).SetText(tText)
+    Set tSC = ..ReadList("", .tRows, .tHttp, .tFault)
+    Do $$$AssertStatusOK(tSC, "the read succeeds")
+    Set tPairs = $ListBuild($ListBuild("probe_a", "-0.0015"), $ListBuild("probe_b", "0.5"), $ListBuild("probe_c", "0.000047"), $ListBuild("probe_d", "1500000"), $ListBuild("probe_e", "8"), $ListBuild("probe_f", "7"), $ListBuild("probe_g", """-Inf"""), $ListBuild("probe_h", "0"), $ListBuild("probe_i", "0"))
+    Set tExpected = ""
+    For tI = 1:1:$ListLength(tPairs) {
+        Set tPair = $List(tPairs, tI)
+        Set tExpected = tExpected _ $Select(tI > 1: ",", 1: "") _ "{""Metric"":""" _ $List(tPair, 1) _ """,""Labels"":"""",""Value"":" _ $List(tPair, 2) _ ",""Help"":""""}"
+    }
+    Set tExpected = "[" _ tExpected _ "]"
+    Do $$$AssertEquals($Select($IsObject(tRows): tRows.%ToJSON(), 1: "absent"), tExpected, "each value as the JSON number or text the wire carries")
+    Set tBack = ""
+    Try { Set tBack = ##class(%DynamicArray).%FromJSON(tRows.%ToJSON()) } Catch {}
+    Do $$$AssertEquals($Select($IsObject(tBack): tBack.%ToJSON(), 1: "unparsed"), tExpected, "and reads back to itself")
+}
+
+/// <p>Metrics list, help and quoting: a <code>HELP</code> line gives its text to every sample of its name,
+/// labeled or not; a <code>HELP</code> with no text gives <code>""</code>, a comment that is none and a
+/// <code>HELP</code> naming no sample give no row or help; and a <code>{</code>, a <code>#</code>, a lone
+/// <code>}</code> and a backslash before the closing quote, inside a quoted label value, neither end the
+/// label set nor the line.</p>
+/// <p>Mutation: let the first sample of a name take its help out of the table in
+/// <method>OcuPilot.Port.MonitorPort.Samples</method> -&gt; the second shared-help row goes red; let a
+/// backslash escape only a following quote in <method>OcuPilot.Port.MonitorPort.LabelsEnd</method> -&gt;
+/// the <code>C:\\</code> row goes red.</p>
+Method TestHelpReachesEverySampleOfItsNameAndQuotedSpecialsStayInTheLabels()
+{
+    Set tQuote = """"
+    Set tLabelsM1 = "id=" _ tQuote _ "1" _ tQuote
+    Set tLabelsM2 = "id=" _ tQuote _ "2" _ tQuote
+    Set tLabelsQ = "a=" _ tQuote _ "x{y#z" _ tQuote _ ",b=" _ tQuote _ "}" _ tQuote
+    Set tLabelsS = "path=" _ tQuote _ "C:\\" _ tQuote
+    Set tText = ..Joined($ListBuild("# HELP probe_m shared help", "probe_m{" _ tLabelsM1 _ "} 1", "probe_m{" _ tLabelsM2 _ "} 2", "# HELP probe_n", "probe_n 3", "# a plain comment about probe_o", "probe_o 4", "# HELP probe_unsampled nobody reads this", "probe_q{" _ tLabelsQ _ "} 5", "probe_s{" _ tLabelsS _ "} 6"))
+    Do ##class(OcuPilot.Test.MonitorPortFixture).SetText(tText)
+    Set tSC = ..ReadList("", .tRows, .tHttp, .tFault)
+    Do $$$AssertStatusOK(tSC, "the read succeeds")
+    Set tExpected = ..Joined($ListBuild("probe_m|" _ tLabelsM1 _ "|1:number|shared help", "probe_m|" _ tLabelsM2 _ "|2:number|shared help", "probe_n||3:number|", "probe_o||4:number|", "probe_q|" _ tLabelsQ _ "|5:number|", "probe_s|" _ tLabelsS _ "|6:number|"))
+    Do $$$AssertEquals(..RowsText(tRows), tExpected, "one row per sample, the shared help on both of probe_m's, none for the others")
+    Do $$$AssertEquals(##class(OcuPilot.Test.MonitorPortFixture).LogCalls(), 0, "and nothing is logged")
 }
 
 /// <p>Metrics list, the cut: at most the cap's rows come back, the first ones, whatever follows them;

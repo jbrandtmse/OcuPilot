@@ -80,6 +80,40 @@ Paths under `src/OcuPilot/` unless `ui/` or `scripts/`; checked on this branch. 
 - **C4.** Given the browser, when the screen answers, then OS management's side bar lists Prometheus metrics at position 21, the table shows the read's rows under the note, and a metric's filter leaves only its rows.
 - **Integration.** Given `ocupilot-ci`, when the agent's `osmgmt.metrics.read` runs through dispatch with `{}` and the page opens, then the tool answers at most 200 rows, conforming to its result schema (`ToolRoundTrip`), and the page consumes the same read (C4).
 
+### Review Findings
+
+Code review 2026-10-11 (four layers, full-opus). Severity, fix-risk, footprint and spec-status per Rule 15.
+
+- [x] [Review][Patch] `low`, fix-risk low, in-story: three `WireSecurityRead` assertions this story re-rostered keep the old messages (sixteen Operate denials, now seventeen; forty-one of forty-six allowed, now forty-two of forty-seven; the Operate list omits Prometheus metrics) [src/OcuPilot/Test/WireSecurityRead.cls:612]
+- [x] [Review][Patch] `low`, fix-risk low, in-story: doc comments that state what the code does not: `SENSORSENDPOINT`/`SENSORSTYPE` "the one endpoint/type `Invoke` answers"; `Samples` "the answer does not depend on `pMax`"; `MetricsList` "twenty-first screen" and "in the order they answer them" (the table sorts by metric); `MetricsDescriptor` "its one live read" (two); the grammar test's "value follows a timestamp" [src/OcuPilot/Port/MonitorPort.cls:43]
+- [x] [Review][Patch] `low`, fix-risk low, in-story: `ReadProblem`'s doc and code comment give the `%DB_IRISSYS:READ` rule's reason as the admin port's 500, which does not hold for `monitor`, whose own gate names the pair [src/OcuPilot/Screen/Registry.cls:526]
+- [x] [Review][Patch] `low`, fix-risk low, in-story: `AdminPairCorpus` still says the system-read rule covers admin and path reads alone [src/OcuPilot/Test/AdminPairCorpus.cls:7]
+- [x] [Review][Patch] `low`, fix-risk low, in-story: `MetricsGate`'s no-collection leg compares a stamp it never shows can move; only a sibling method proves the stamp is live [src/OcuPilot/Test/MetricsGate.cls:1046]
+- [x] [Review][Patch] `low`, fix-risk low, in-story: `Samples` re-scans the text for every line (measured on `ocupilot-ci`: 0.03 s at 1,300 lines, 0.46 s at 5,000, 1.81 s at 10,000) [src/OcuPilot/Port/MonitorPort.cls:339]
+- [x] [Review][Defer] `medium`, fix-risk med, out-of-footprint: for an id of kind `none` the client keys rows by the name column, so rows sharing a `Metric` share one key: a click selects all of them and the arrow keys stop at the first row of a group (`table-model.ts` `rowKey`, `data-table.ts` `activeIndex`); 942 rows hold 115 metric names [ui/src/app/core/table-model.ts:40] — deferred: root cause in the shared shell, which also keys the log viewers by `time`; ledgered DW-2328, `routed owner=burndown`
+- [x] [Review][Defer] `medium` if real, unverified: a Windows instance whose `dir` labels end in an unescaped backslash would read as an unclosed label set and fail the whole table [src/OcuPilot/Port/MonitorPort.cls:413] — deferred: settled by one `GET /api/monitor/metrics` on a Windows instance (are backslashes in `dir` labels doubled?); ledgered DW-2329, `decision-pending note=human`
+- [x] [Review][Defer] `low`, fix-risk low: the AD-36 amendment's headline "A parent-scoped read requires its criterion before any port call" states a universal; the code covers bare-rows and `VOLUMELIST` reads, and `TaskRunList` (parent-scoped `HISTORY`) answers `{}` [ARCHITECTURE-SPINE.md:775] — deferred: the spine sentence is the lead's (Rule 20); ledgered DW-2330, `open owner=18-11-monitoring-extras-and-the-live-log-tail`
+
+**Rejected** (17):
+
+- `low` The registry's monitor arm requires `%DB_IRISSYS:READ` but not `%Admin_Operate:USE` - one monitor descriptor exists and `MetricsDescriptor` pins its pairs equal to `PAIRS`.
+- `low` Nothing enforces that a `VOLUMELIST` read is parent-scoped with one criterion - one such descriptor exists, pinned by `VolumeListCriterion` and `ToolRoundTrip`.
+- `low` Callers are not told `dir` is required (doc, tool schema) - the refusal names the criterion, as every route-required criterion's does (seeded part, interop, bare rows).
+- `low` DW-1898 relies on five ports' started handlers with no roster - every one of the twelve `QUEUEDWRITES` pairs reaches `AuditPort`, `NamespacePort`, `DatabasePort`, `JournalPort` or `EcpPort`, each converting `PORT.TIMEOUT`.
+- `low` The browser spec never compares rendered rows with the route, and `VolumeListCriterion`'s served leg runs in process - each C4 leg has a recorded mutation, a count equality would tie the spec to the page's cap, and the method doc does not claim the route for that leg.
+- `low` `MonitorPort` copies `Refuse`, `MAXROWSKEY` and the `maxRows` check (Rule 2) - the per-port copy is the convention of ten ports, each an independent vendor seam, and the spec names the sqlactivity pattern; `wontfix-accepted`, reopen_if a shared port-validation helper lands.
+- `low` `MetricsGate.Wire` near-copies `DocDbAppGate.Wire` (Rule 31) - a six-line helper bound to each class's own password property, named by the spec as its model; sharing it means editing another epic's gate; `wontfix-accepted`, reopen_if a third gate copies it.
+- `false` The monitor branch in `Read.Execute` copies the sqlactivity branch (Rule 31) - `Execute` keeps one branch per source port (twelve), and the spec names it.
+- `false` `ReadFixture`'s header is stale - it still says what the fixture arms, which the new reads also use.
+- `low` A whitespace-only `dir` passes the guard - the same guard serves every route criterion; trimming adds behavior no caller needs.
+- `false` `+tValue` can raise `<MAXNUMBER>` - `$IsValidNum("1E200")` answers 0 on this build, so such a value is answered as text.
+- `low` HELP escapes are not decoded - no live HELP text holds a backslash (942 rows on `ocupilot-ci`).
+- `low` The browser legs pick from a later collection than the page's - three collections 1.2 s apart on `ocupilot-ci` answered the same 942 `(Metric, Labels)` keys.
+- `low` `VolumeListCriterion` skips its served leg on an empty database list - no instance has one.
+- `false` C1's 401 clause has no `mutation:` line - `## Verification` records why: no OcuPilot code answers it.
+- `false` No live sample is shown to carry its HELP - all 942 live rows on `ocupilot-ci` carry `Help`; the name match is pinned over canned text (run 667).
+- `false` Rule 11: in-place edits outside the pre-authorized lines - `Navigation.cls` :494 and `screen-mirror.test.mjs` :214, :2782 are roster edits on hunks disjoint from Epic 20's uncommitted 20.5 changes (:523-531; :1358-2449).
+
 ## Design Notes
 
 **Ledger.** DW-1872: Task 2, `VolumeListCriterion`, `ToolRoundTrip`. DW-1898: Task 6, `AdminPortFault`, `AuditStarted`; one guard covers all twelve `QUEUEDWRITES` pairs, so its 18.20 occurrence (`EcpPort`) closes with it.
@@ -120,6 +154,13 @@ Paths under `src/OcuPilot/` unless `ui/` or `scripts/`; checked on this branch. 
 - mutation: Integration, `SOURCEMONITOR` out of Read's allow-list -> `ToolRoundTrip` `TestEveryToolConformsToItsResultSchemaOrAnswersACode` red (run 628) and `MetricsDescriptor` read, failure and tool legs red (run 629).
 - mutation: DW-1872, `VOLUMELIST` out of the route-criterion guard -> `VolumeListCriterion` both tests red (run 630) and `ToolRoundTrip` red on `osmgmt.databasevolumes.read:READ.CRITERION` (run 631).
 - mutation: DW-1898, the `IsQueuedWrite` guard dropped from `AwaitTask` -> `AdminPortFault` `TestAQueuedWriteStillRunningAtTheBoundLogsNothing` red (run 632) and `AuditStarted` `TestTheScreenRouteAnswersThatACopyStillRunningContinues` red (run 633).
+- (QA) tests added to existing classes: `Test/MonitorPort.cls` `TestEveryValueShapeAnswersAsAJsonNumberOrAsItsText` and `TestHelpReachesEverySampleOfItsNameAndQuotedSpecialsStayInTheLabels`; `Test/AdminPortFault.cls` `TestEveryQueuedWritePairStillRunningAtTheBoundLogsNothing`; `Test/VolumeListCriterion.cls` asserts `PortFixture.Recorded("endpoint")` (new key in `Test/PortFixture.cls` `EndpointClass`), because the volume list endpoint has no `Name`, so the `Recorded("name")` assertions it replaces could not go red.
+- (QA) mutation: C1, `Take` called before `Gate` in `MonitorPort.Invoke` -> `MonitorPort` `TestTheGateRefusesTheListBeforeAnyCollection` red on its two "with no collection" legs, the 403 legs green (run 665).
+- (QA) mutation: C2, a number recognized by `^-?[0-9]+(\.[0-9]+)?$` alone -> `TestEveryValueShapeAnswersAsAJsonNumberOrAsItsText` and `TestTheSampleGrammarAnswersEveryLineShape` red (run 666); the first sample of a name removing its help from the table -> `TestHelpReachesEverySampleOfItsNameAndQuotedSpecialsStayInTheLabels` red alone (run 667); a backslash escaping only a following quote in `LabelsEnd` -> the same test red alone (run 668).
+- (QA) mutation: C3, the mirror's monitor arm switched off -> `node --test --test-name-pattern="Story 18.11" tools/screen-mirror.test.mjs` red on the `Sensors` case, green after the revert.
+- (QA) mutation: DW-1872, `VOLUMELIST` out of the route-criterion guard -> `VolumeListCriterion` both tests red, including the port-asked-for-no-endpoint legs (run 673).
+- (QA) mutation: DW-1898, the guard narrowed to `Namespace.Namespace` `MAPPINGS` -> `TestEveryQueuedWritePairStillRunningAtTheBoundLogsNothing` red on the eleven other pairs, the one-pair test green (run 669); the log call under `If 0` -> `TestAQueuedWriteStillRunningAtTheBoundLogsNothing` read leg and `TestATaskStillRunningAtTheBoundTimesOut` red (run 670).
+- (CR) mutation: C1 over the wire, `MetricsGate.LastCollection` reads a node no collection writes -> `TestEachMissingPairIsRefusedByNameAndTakesNoCollection` red on its new stamp leg and `TestTheExactPairsReadTheSamples` red (run 683); reverted byte-identical -> 3 of 3 green (run 684).
 
 **S0:** no `OcuProbe1811*` user or role.
 

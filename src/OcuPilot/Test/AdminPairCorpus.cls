@@ -4,7 +4,7 @@
 /// off disk. Each case replaces the sound declaration's <code>privileges</code> with its own, and
 /// names the exact sentence both engines return, or <code>null</code> for a shape neither refuses.
 /// A case may also replace the whole <code>read</code> with <code>null</code>, which is how the
-/// rule's scope -- admin and path reads only -- is exercised, and may replace <code>read.source.port</code>
+/// rule's scope -- admin, path and monitor reads only -- is exercised, and may replace <code>read.source.port</code>
 /// and set <code>read.source.rowGet</code>, which is how the port vocabulary and the mgmnt and
 /// atelier sources' refused detail call are; a <code>path</code> or <code>background</code> case also sets the source's
 /// <code>endpoint</code>, <code>type</code>, <code>forEach</code>, <code>query</code> or <code>parts</code>. A later story
@@ -49,11 +49,11 @@ XData Cases
     {"name": "a declaration with no read is outside the rule", "readless": true, "privileges": [{"resource": "%Admin_Secure", "permission": "USE"}], "expected": null},
     {"name": "and so is a read-less declaration with no privileges at all", "readless": true, "privileges": [], "expected": null},
     {"name": "a mgmnt read carrying both pairs is sound", "readless": false, "port": "mgmnt", "privileges": [{"resource": "%Admin_Secure", "permission": "USE"}, {"resource": "%DB_IRISSYS", "permission": "READ"}], "expected": null},
-    {"name": "the system-read rule names admin and path reads alone, so a mgmnt read is outside it", "readless": false, "port": "mgmnt", "privileges": [{"resource": "%Admin_Secure", "permission": "USE"}], "expected": null},
+    {"name": "the system-read rule names admin, path and monitor reads alone, so a mgmnt read is outside it", "readless": false, "port": "mgmnt", "privileges": [{"resource": "%Admin_Secure", "permission": "USE"}], "expected": null},
     {"name": "a mgmnt read declares no per-row detail call", "readless": false, "port": "mgmnt", "rowGet": {"key": "Name", "param": "name", "fields": ["Description"], "derived": []}, "privileges": [{"resource": "%Admin_Secure", "permission": "USE"}, {"resource": "%DB_IRISSYS", "permission": "READ"}], "expected": "read.source.rowGet is declared on a mgmnt source, which reads whole rows from the management API and has no per-row detail call (AD-36)"},
     {"name": "and the same detail call on an admin read is sound", "readless": false, "rowGet": {"key": "Name", "param": "name", "fields": ["Description"], "derived": []}, "privileges": [{"resource": "%Admin_Secure", "permission": "USE"}, {"resource": "%DB_IRISSYS", "permission": "READ"}], "expected": null},
     {"name": "a logsource read carrying one pair is sound", "readless": false, "port": "logsource", "privileges": [{"resource": "%Admin_Operate", "permission": "USE"}], "expected": null},
-    {"name": "the system-read rule names admin and path reads alone, so a logsource read with no privileges at all is outside it -- it reads a file off disk and never enters %SYS", "readless": false, "port": "logsource", "privileges": [], "expected": null},
+    {"name": "the system-read rule names admin, path and monitor reads alone, so a logsource read with no privileges at all is outside it -- it reads a file off disk and never enters %SYS", "readless": false, "port": "logsource", "privileges": [], "expected": null},
     {"name": "a logsource read declares no per-row detail call", "readless": false, "port": "logsource", "rowGet": {"key": "Name", "param": "name", "fields": ["Description"], "derived": []}, "privileges": [{"resource": "%Admin_Operate", "permission": "USE"}], "expected": "read.source.rowGet is declared on a logsource source, which reads whole rows from a log file's bounded tail and has no per-row detail call (AD-36)"},
     {"name": "a port outside the fourteen sources is refused", "readless": false, "port": "metrics", "privileges": [{"resource": "%Admin_Secure", "permission": "USE"}, {"resource": "%DB_IRISSYS", "permission": "READ"}], "expected": "read.source.port 'metrics' is not one of 'admin', 'state', 'mgmnt', 'logsource', 'path', 'timeline', 'background', 'atelier', 'encryption', 'docdb', 'sqlactivity', 'interop', 'access' or 'monitor', the fourteen sources a declared read names (AD-36)"},
     {"name": "a path read of the roots carrying both pairs is sound", "readless": false, "port": "path", "endpoint": "roots", "privileges": [{"resource": "%Admin_FileSystemAccess", "permission": "USE"}, {"resource": "%DB_IRISSYS", "permission": "READ"}], "expected": null},
