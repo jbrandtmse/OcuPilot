@@ -11243,6 +11243,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-20-5-lookup-tables-and-business-partners.md | severity: med | fix-risk: med | footprint: in-epic
 - evidence: 20.5's AC: the read-only half ships first; the classic page declares no edit resource (inference from source); the vendor audits nothing (measured at 20.5's plan)
 - 2026-10-11T17:14:49Z status=routed owner=20-26-business-partners-saved-and-removed by=spec_gate note=chartered as Story 20.26 at 20.5's spec gate
+- 2026-10-11T23:29:55Z occurrence=20-5-lookup-tables-and-business-partners
 ### DW-2313: Prohibited.PermittedChangeFields' Doc DB clause still names the routine application type, unreachable since 18.33's routine line above it
 - source: spec-18-33-privileged-routine-application-roles-and-routines.md | severity: low | fix-risk: low | footprint: in-epic
 - evidence: Epic 20's committed 20.23 (6aa1f459) edits Prohibited.cls, so Rule 11 kept 18.33's edit to added lines; the old clause's routine term is dead
@@ -11268,3 +11269,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-33-privileged-routine-application-roles-and-routines.md | severity: low | fix-risk: low | footprint: in-epic
 - evidence: Classification.cls:61 'so neither tool admits them'; RoutineAppUpdate.SettableFields adds both lists; Classification.cls is a shared add-only file while Epic 20 runs, so the sentence was not replaced in place
 - 2026-10-11T14:41:38Z status=wontfix-accepted owner=18-33-privileged-routine-application-roles-and-routines by=cr note=reopen_if=a story edits Classification.cls in place after Epic 20 merges; replace the sentence then
+
+### DW-2331: The lookup table export tool declares %Admin_FileSystemAccess:USE for both actions, so stock Interoperability roles cannot export a table even to the browser, though the classic page needs only the table read pair
+- source: spec-20-5-lookup-tables-and-business-partners.md | severity: med | fix-risk: med | footprint: in-story
+- evidence: InteropFloor's invariant (stock roles hold no write-kind tool) reddens with the export left at the read pair; the spec's export gate and the floor cannot both hold
+- 2026-10-11T23:29:55Z status=open owner=20-5-lookup-tables-and-business-partners by=harvest note=posture stricter than the classic page; review settles it (keep the pair, a pairless browser action, or a read-kind export)
+
+### DW-2332: After a table's last entry is removed, the entries page keeps the removed row until the person leaves the screen, because the re-read of a table that no longer exists answers 404
+- source: spec-20-5-lookup-tables-and-business-partners.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: disclosed in the implement pass; interop-lookup-tables.browser-spec.mjs navigates away instead of waiting for the row to go
+- 2026-10-11T23:29:55Z status=open owner=20-5-lookup-tables-and-business-partners by=harvest note=two-way door: the page could treat the 404 re-read as an empty table
