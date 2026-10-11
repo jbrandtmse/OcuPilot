@@ -603,6 +603,8 @@ test("EXPERIENCE.md's Fixed strings table itself holds roughly 200 distinct lite
   // Story 20.15's thirty literals (Screen permissions and its refusals), merged beside Story 18.26's
   // MFT connections, take the table past 2900; the bound moves to 3000 under the same protocol
   // (approved).
+  // Story 18.30's fifteen Doc DB application literals take the table to 3000. Orchestrator ruling Q3, 2026-10-09: a
+  // drift tripwire, not a budget; raised once to 3400; the next raise when the count is within 50 of the bound.
   // Story 20.3's Production items literals take the table past 3000; the bound moves to 3400 under the same protocol
   // (approved at its spec gate).
   assert.ok(

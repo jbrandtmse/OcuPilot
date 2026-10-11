@@ -7664,32 +7664,63 @@ So that the first area reaches parity for document database applications. [AMEND
 ### Story 18.31: Privileged routine applications
 
 As a developer-administrator,
-I want the privileged routine applications list and editor,
-So that the first area reaches parity for privileged routine applications. [AMENDED 2026-10-09, orchestrator ruling on Story 18.10's plan: split from Story 18.10 for size, Rule 5; after Story 18.30, building on Story 18.10's AD-10 arm and target-type check]
+I want the privileged routine applications list and editor's General tab,
+So that the first area reaches parity for privileged routine applications. [AMENDED 2026-10-09, orchestrator ruling on Story 18.10's plan: split from Story 18.10 for size, Rule 5; after Story 18.30, building on Story 18.10's AD-10 arm and target-type check] [AMENDED 2026-10-10, orchestrator ruling on Story 18.31's plan: split for size, Rule 5; the Application roles, Matching roles and Routines tabs, the database list and the `%All` grant check moved to Story 18.33]
 
 **Acceptance Criteria:**
 
 - **Given** the privileged routine applications
-- **When** each is created, changed or deleted, through its list, its editor and its three tools
-- **Then** it round-trips through the admin API, a target that is not a privileged routine application is refused, and OcuPilot's own two are refused under Story 18.10's AD-10 arm.
+- **When** each is created, changed or deleted over its `Description`, `Enabled` and `Resource`, through its list, its editor's General tab and its three tools
+- **Then** it round-trips through the admin API, the update resending the freshly read roles and routines, a target that is not a privileged routine application is refused, and OcuPilot's own two are refused under Story 18.10's AD-10 arm.
 
 - DW-2252: A web-application write naming a privileged routine application reaches WebApp.App PUT, which refuses #799 at 500 INTERNAL and logs at severity 2; only OcuPilot's own two are refused before it (ledger; routed by cr 2026-10-09)
+- DW-2262: PRIVROUTINE.TYPE lives in PctAccessError rather than a privileged-routine home (ledger; routed by orchestrator 2026-10-10)
 
 ### Story 18.32: Spec-based REST services
 
 As a developer-administrator,
-I want to create and delete a spec-based REST service from an OpenAPI document,
-So that the first area reaches parity for REST services. [AMENDED 2026-10-09, orchestrator ruling on Story 18.10's plan: split from Story 18.10, Rule 5; waits until Story 20.21 is merged into feature and reuses its namespace-routines-database check; if reached first, Stories 18.11 to 18.13 run ahead of it; AD-53 is amended at its spec gate under ruling Q2 (B)]
+I want the agent to create, and either caller to delete, a spec-based REST service from an OpenAPI document,
+So that the first area reaches parity for REST services. [AMENDED 2026-10-09, orchestrator ruling on Story 18.10's plan: split from Story 18.10, Rule 5; waits until Story 20.21 is merged into feature and reuses its namespace-routines-database check; if reached first, Stories 18.11 to 18.13 run ahead of it; AD-53 is amended at its spec gate under ruling Q2 (B)] [AMENDED 2026-10-10, orchestrator ruling on Story 18.32's plan: split for size, Rule 5; the person's Create dialog moved to Story 18.34, so the create is agent-only until it lands]
 
 **Acceptance Criteria:**
 
-- **Given** create and delete of a spec-based REST service from an OpenAPI document
+- **Given** an agent-proposed create, or a delete from either caller, of a spec-based REST service from an OpenAPI document
 - **When** each runs
 - **Then** it round-trips through the management API, whose route is already wired for the Release 1 explorer.
 
 - **Given** the agent proposes a create
 - **When** it is minted and again at Confirm
 - **Then** the generated classes land only in the namespace's own routines database, never in `%SYS`, under a `%` name or as `OcuPilot*`; the create's key ships enabled and the delete's, destructive, ships disabled (AD-22).
+
+### Story 18.33: Privileged routine application roles and routines
+
+As a developer-administrator,
+I want a privileged routine application's roles, matching roles and routines,
+So that the privileged routine application editor reaches parity with the classic page. [AMENDED 2026-10-10, orchestrator ruling on Story 18.31's plan: split from Story 18.31 for size, Rule 5; after Story 18.31]
+
+**Acceptance Criteria:**
+
+- **Given** a privileged routine application's Application roles, Matching roles and Routines tabs
+- **When** a role, a matching role or a routine is added or removed, through the editor and its tools
+- **Then** it round-trips through the admin API, the update sending the complete roles and routines sets, with the database list the Routines tab offers, and OcuPilot's own two refused under Story 18.10's AD-10 arm.
+
+- **Given** a change that would grant `%All` or an `%Admin_*` privilege through a role, a matching role or a routine
+- **When** it is proposed
+- **Then** it is confirmed at the destructive treatment naming the privilege (AD-10 as amended 2026-09-23).
+
+- DW-2279: MappingMint's empty-namespace refusal names a 'mapping' for the Doc DB application tools (ledger; re-owned by spec_gate 2026-10-10: 20.3 not yet on feature at 18.31's gate)
+
+### Story 18.34: The person's REST service create
+
+As a developer-administrator,
+I want to create a spec-based REST service from an OpenAPI document myself,
+So that the REST services screen's create is not agent-only. [AMENDED 2026-10-10, orchestrator ruling on Story 18.32's plan: split from Story 18.32 for size, Rule 5; after Story 18.32]
+
+**Acceptance Criteria:**
+
+- **Given** the REST services screen's Create dialog
+- **When** a person submits an OpenAPI document
+- **Then** it round-trips through the management API by Story 18.32's port, under the same rules the agent's create meets, its Save taking the per-target hold.
 
 ## Epic 19: Stage 3 - System Explorer over the Atelier API
 
@@ -9047,3 +9078,17 @@ Not in scope: `text-diff.ts` duplicating Compare (a later story can move Compare
 6. Optional: `ExplorerCreateMint` stores `Compile: true`, which nothing reads.
 
 Recorded in the ledger only: the create script's class check reads the undocumented `^rINDEXCLASS`, to re-measure when IRIS 2027.1 lands; and a save line of roughly 300,000 control characters might overflow while `Literal` escapes it (inference).
+
+### Story 23.7: The range-end cleanup, part 6
+
+Chartered by the orchestrator on 2026-10-10 as the holder for the `range-end-cleanup` queue, so the 36 entries it held have a story key that the /epic-cycle kit's ledger tool accepts (Kit-Version 2026-10-10.1, installed on the owner's approval). It keeps the queue's meaning: batch (d) and the doc and test-gap hygiene filed since stay unscheduled, and an entry is fixed early only when a story next works in its area and takes it over. It is not in any dispatch order. It runs only on the owner's word, and its scope is the batch the owner then picks.
+
+As a maintainer of OcuPilot,
+I want the deferred doc, comment and test-gap entries held under one story,
+So that none is lost, and each is fixed or declined when its turn comes.
+
+**Acceptance Criteria:**
+
+- **Given** an entry owned by this story
+- **When** a story that works in its area takes it over, or the owner schedules this story
+- **Then** the ledger tool records the new owner, or a disposition: `resolved-by` with the commit, or `wontfix-accepted` or `by-design` with a reason.

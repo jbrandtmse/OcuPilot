@@ -43,7 +43,7 @@ Parameter TARGETID = "OcuPilotDraftSource/OcuPilotDraftType/OcuPilotDraftName";
 /// <p>The entity types whose port splits the target id into its composite parts, comma-separated
 /// (Story 18.14's mappings, keyed <code>[namespace, Name]</code>): their synthetic id is
 /// <parameter>SPLITTARGETID</parameter>, since a port answers no step for an id it cannot split.</p>
-Parameter SPLITTARGETS = "global-mapping,routine-mapping,package-mapping";
+Parameter SPLITTARGETS = "global-mapping,routine-mapping,package-mapping,docdb-application";
 
 /// <p>The parts of the synthetic id a <parameter>SPLITTARGETS</parameter> type is given, joined as
 /// a composite.</p>
