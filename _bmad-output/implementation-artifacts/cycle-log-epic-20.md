@@ -491,3 +491,4 @@
 2026-10-11T19:08:32Z	Story 20.23	smoke_complete	method=other(fresh_instance_class-first) result=pass iterations=2 defects_caught=1(CI_red_reproduced_locally_then_fixed) evidence=fresh_ocupilot-b-ci_InteropJobStop_first_8/8;smoke_50/50 model=claude-opus-5-5
 2026-10-11T19:08:32Z	Story 20.23	fresh_check	env=recipe(down+up_from_08197a5d,feature_4a96bbdc_merged) tests=InteropJobStop_first(8)+rework_and_merge-area_11_classes(82_tests)_forward_and_reverse result=pass order=forward,reverse smoke=50/50
 2026-10-11T19:08:32Z	Story 20.23	committed	sha=08197a5d submodules= ci=pending run=38166734097 fix_for=20-23-queue-and-job-actions merge=feature_4a96bbdc amendments=none_this_pass
+2026-10-11T19:08:44Z	Story 20.5	stage_spawned	stage=implement spawn_at=2026-10-11T19:08:44Z model=sonnet agent_name=20-5-implement-1 cycle_iteration=1 ci_prior=pending_38166734097(20.23_08197a5d) rule28=orchestrator_override(carry_on_locally;no_push_before_20.23_green)
