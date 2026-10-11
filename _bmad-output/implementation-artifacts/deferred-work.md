@@ -11107,6 +11107,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-11T06:02:59Z occurrence=18-31-privileged-routine-applications
 - 2026-10-11T11:11:25Z occurrence=18-34-the-person-s-rest-service-create
 - 2026-10-11T14:41:26Z occurrence=18-33-privileged-routine-application-roles-and-routines
+- 2026-10-11T17:41:40Z occurrence=18-34-the-person-s-rest-service-create
 
 ### DW-2279: MappingMint's empty-namespace refusal names a 'mapping' for the Doc DB application tools
 - source: spec-18-30-doc-db-applications.md | severity: low | fix-risk: low | footprint: in-epic
@@ -11268,3 +11269,19 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-33-privileged-routine-application-roles-and-routines.md | severity: low | fix-risk: low | footprint: in-epic
 - evidence: Classification.cls:61 'so neither tool admits them'; RoutineAppUpdate.SettableFields adds both lists; Classification.cls is a shared add-only file while Epic 20 runs, so the sentence was not replaced in place
 - 2026-10-11T14:41:38Z status=wontfix-accepted owner=18-33-privileged-routine-application-roles-and-routines by=cr note=reopen_if=a story edits Classification.cls in place after Epic 20 merges; replace the sentence then
+
+### DW-2325: A REST service create answered after its dialog was dismissed publishes no change event, so the list stays stale until next read
+- source: spec-18-34-the-person-s-rest-service-create.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: RestServiceCreateStore.create drops a result whose generation moved (reset() runs when the dialog is destroyed); docdb-create.store.ts (Story 19.17) has the same pattern
+- 2026-10-11T17:41:40Z status=open owner=18-34-the-person-s-rest-service-create by=harvest note=code review: fix-pack it in-story (publish the change event even when the dialog is gone) or close with a probe
+- 2026-10-11T18:27:53Z status=resolved-by:18-34-the-person-s-rest-service-create by=cr note=the store publishes created even after the dialog is gone; pinned in rest-service-create.store.spec, mutation observed
+
+### DW-2326: Rule 31: the twelve test record ports each carry their own ^|| call log; a recorder mixin beside each port subclass would serve all
+- source: spec-18-34-the-person-s-rest-service-create.md | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: RestServiceRecordPort (18.34 QA) repeats the call-log bookkeeping of MappingRecordPort and OAuthClientRecordPort with no stated reason; each must subclass its own port, the log half need not
+- 2026-10-11T18:27:53Z status=wontfix-accepted owner=18-34-the-person-s-rest-service-create by=cr note=reopen_if=a recorder fix lands in one record port while a sibling keeps the defect
+
+### DW-2327: Area Saves and Rules iterate request bodies with a two-argument %GetNext: a value past the longest string or largest number raises and answers 500, not the field refusal
+- source: spec-18-34-the-person-s-rest-service-create.md | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: Measured on ocupilot-ci 2026-10-11: a 4 MB string or 1e999 raises MAXSTRING/MAXNUMBER in %Iterator.Object.%GetNext without its type; RestServiceSave.UnexpectedKey fixed in 18.34, 48 Area files keep the form
+- 2026-10-11T18:27:53Z status=wontfix-accepted owner=18-34-the-person-s-rest-service-create by=cr note=reopen_if=a Save whose UI can send a field over 3.6 MB, or an out-of-range number, answers 500

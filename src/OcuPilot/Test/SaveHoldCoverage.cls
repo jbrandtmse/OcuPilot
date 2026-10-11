@@ -26,6 +26,8 @@ ClassMethod Exemptions() As %List
 /// every exemption names a route that exists.</p>
 /// <p>Mutation (Rule 19): drop the hold from <method>OcuPilot.Area.Explorer.DocDbSave.HandleCreate</method>
 /// -- its route goes red here.</p>
+/// <p>Mutation (Rule 19): drop the hold from <method>OcuPilot.Area.WebApp.RestServiceSave.HandleCreate</method> --
+/// <code>POST /rest-service</code> goes red here.</p>
 Method TestEveryWriteRouteTakesTheHoldOrIsExempt()
 {
     Set tRoutes = ..Routes()
@@ -77,6 +79,9 @@ Method TestEveryWriteRouteTakesTheHoldOrIsExempt()
 /// that leg answers 400 or 422 at once and goes red; so does the Doc DB application leg when
 /// <method>OcuPilot.Area.WebApp.DocDbAppSave.HandleCreate</method> holds the name alone; so does the privileged routine
 /// application leg when <method>OcuPilot.Area.WebApp.RoutineAppSave.HandleCreate</method> does.</p>
+/// <p>The REST service create holds its package as typed, in the request's namespace, the same way.</p>
+/// <p>Mutation (Rule 19): drop the hold from <method>OcuPilot.Area.WebApp.RestServiceSave.HandleCreate</method> -- the
+/// REST service leg answers 422 <code>RESTSERVICE.DOCUMENT</code> at once and goes red.</p>
 Method TestACreateSaveHoldsTheKeyItsMintComputes()
 {
     Set tKeyFile = ##class(OcuPilot.Kernel.EntityId).JoinComposite($ListBuild("/ocuprobe/hold/", "hold.key"))
@@ -93,6 +98,8 @@ Method TestACreateSaveHoldsTheKeyItsMintComputes()
     Set tItem = ##class(OcuPilot.Kernel.EntityId).JoinComposite($ListBuild("OcuProbeHold.Production", "OcuProbeHold"))
     Do ##class(OcuPilot.Kernel.Scope).Set("USER")
     Do ..HeldLeg("/interop/items?ns=USER", "OcuPilot.Screen.Tool.InteropItemAdd", tItem, {"Production": "OcuProbeHold.Production", "Name": "OcuProbeHold", "OcuProbeUnexpected": 1}.%ToJSON())
+    ; A REST service is namespace-scoped and named by its package as typed; the document breaks a rule the Save checks after the hold.
+    Do ..HeldLeg("/rest-service?ns=USER", "OcuPilot.Screen.Tool.RestServiceCreate", "OcuProbe1832Hold", {"Name": "OcuProbe1832Hold", "Document": "not json"}.%ToJSON())
     Do ##class(OcuPilot.Kernel.Scope).Clear()
 }
 

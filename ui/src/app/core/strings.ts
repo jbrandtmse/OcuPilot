@@ -6254,6 +6254,14 @@ export const STRINGS = {
   restServiceDeleteConsequence: 'The service is removed: its specification and dispatch classes are deleted. Its implementation class is kept.',
   /** EXPERIENCE.md:357 */
   restApiListEmptyAgent: 'create a REST service from an OpenAPI 2.0 document',
+  /** EXPERIENCE.md:357 */
+  restServiceCreateTitle: 'Create REST service',
+  /** EXPERIENCE.md:357 */
+  restServiceNameHint: 'The package, such as My.Api: it creates My.Api.spec, My.Api.disp and My.Api.impl.',
+  /** EXPERIENCE.md:357 */
+  restServiceDocumentLabel: 'OpenAPI 2.0 document',
+  /** EXPERIENCE.md:357 */
+  restServiceDocumentHint: 'The whole document as JSON, pasted or loaded from a file. Nothing is fetched.',
   /** EXPERIENCE.md:604 */
   interopProductionsLabel: 'Productions',
   /** EXPERIENCE.md:604 */

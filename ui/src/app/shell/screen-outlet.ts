@@ -81,6 +81,7 @@ import { RoutineAppFormPage } from '../areas/web-applications/routine-app-form.p
 import { WebAppCreateFormPage } from '../areas/web-applications/create-form.page';
 import { WebAppEditorPage } from '../areas/web-applications/web-app-editor.page';
 import { OpenApiViewerPage } from '../areas/web-applications/openapi-viewer.page';
+import { RestApiListPage } from '../areas/web-applications/rest-api-list.page';
 import { GovernancePage } from '../areas/agent/governance.page';
 import { CodeListPage } from '../areas/system-explorer/code-list.page';
 import { SourceViewerPage } from '../areas/system-explorer/document-viewer.page';
@@ -269,6 +270,8 @@ export const DESCRIPTOR_PAGES: Readonly<Record<string, Type<unknown>>> = {
   'OcuPilot.Screen.Descriptor.ExplorerSqlData': DataBrowserPage,
   // Story 19.17: Document databases, the list with its create dialog and the disabled-service strip.
   'OcuPilot.Screen.Descriptor.ExplorerDocDbList': DocDbListPage,
+  // Story 18.34: the REST API explorer, the list with its create dialog.
+  'OcuPilot.Screen.Descriptor.RestApiList': RestApiListPage,
   // Story 20.3: Production items, the list with its add dialog.
   'OcuPilot.Screen.Descriptor.InteropItemList': InteropItemListPage,
   // Story 20.22: Item settings, the list with its Set value dialog.
