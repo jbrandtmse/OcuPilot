@@ -199,17 +199,10 @@ Method TestExactlyTheDeclaredPairsWriteOnBothCallers()
 /// still running and this goes red.</p>
 Method TestAChildPastItsBudgetIsEndedNamingItsLastStep()
 {
-    Set tSC = ##class(OcuPilot.Test.ProposalFixture).SeedTurn(..#FULLUSER, "running", .tTurnKey)
-    Do $$$AssertStatusOK(tSC, "a running turn is seeded")
-    If $$$ISERR(tSC) Quit
-    Set tPlan = []
-    For tI = 1:1:20 {
-        Do tPlan.%Push({"kind": "dispatch", "turnKey": (tTurnKey), "tool": "osmgmt.globalmappings.create", "input": {}})
-    }
-    Set tRun = ..RunAs(..#FULLUSER, tPlan, 6)
+    Set tRun = ..RunAs(..#FULLUSER, [{"kind": "hang", "seconds": 30}], 6)
     Set tError = $Select($IsObject(tRun): tRun.%Get("error"), 1: "")
     Do $$$AssertTrue(tError [ "signalled nothing within 6 seconds (last at: step ", "the error names the budget and the last step reached (" _ tError _ ")")
-    Do $$$AssertTrue(tError [ "osmgmt.globalmappings.create)", "and that step's tool (" _ tError _ ")")
+    Do $$$AssertTrue(tError [ "(last at: step 1 hang)", "and that it is the step that waits (" _ tError _ ")")
     Set tChild = $Select($IsObject(tRun): +tRun.%Get("child"), 1: 0)
     Set tGone = 0
     For tTry = 1:1:20 {
@@ -220,7 +213,6 @@ Method TestAChildPastItsBudgetIsEndedNamingItsLastStep()
         Hang 0.25
     }
     Do $$$AssertTrue(tGone, "the child process " _ tChild _ " is ended")
-    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Ledger).GuardedDeleteForTurn(tTurnKey), "this test removes the ledger rows its calls wrote")
 }
 
 /// <p>Mint the agent's create of <var>pNew</var>, edit of <var>pAgentEdit</var> and delete of
