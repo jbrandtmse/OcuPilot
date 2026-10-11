@@ -415,6 +415,9 @@ services:
       # activity port requires, or holding READ on USER's database and %Development, and reads
       # another account's running probe statement as them (Story 19.10).
       # classes: SqlActivityGate, SqlActivityProbe
+      # The metrics gate class signs in as probe principals each missing one pair the monitor port requires, and
+      # reads the Prometheus metrics list as them and as a principal holding both (Story 18.11).
+      # classes: MetricsGate
       # The interoperability control class compiles and runs a probe production in USER and starts,
       # stops, restarts, updates and recovers it; its descriptor class compiles the probe classes in USER;
       # its gate class signs in as probe principals each

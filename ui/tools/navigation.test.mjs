@@ -227,6 +227,8 @@ test('a side bar lists only built screens, in side-bar order', () => {
       'os-management/ecp-application-servers',
       // Story 19.10: SQL activity, the twentieth.
       'os-management/sql-activity',
+      // Story 18.11: Prometheus metrics, the twenty-first.
+      'os-management/metrics',
       'tasks/schedule/details',
       // Story 9.7: the unlisted New Task wizard, reached from the Task schedule's Create.
       'tasks/schedule/edit',
@@ -430,6 +432,8 @@ test('OS management lists Processes, Locks, System usage, Databases, Integrity l
       'os-management/ecp-application-servers',
       // Story 19.10: the twentieth.
       'os-management/sql-activity',
+      // Story 18.11: the twenty-first.
+      'os-management/metrics',
     ]
   );
   // Story 18.18: Journal settings follows Journals, a listed form page of its own.
@@ -487,6 +491,12 @@ test('OS management lists Processes, Locks, System usage, Databases, Integrity l
   assert.equal(stringFor(sqlActivity.labelKey), STRINGS.sqlActivityLabel);
   assert.equal(sqlActivity.sideBarPosition, 20);
   assert.deepEqual(sqlActivity.rowTarget, { route: 'os-management/processes/details', field: 'ProcessID', unless: 'Remote' });
+  // Story 18.11: Prometheus metrics is the twenty-first entry, a list that opens nothing and never refreshes.
+  const metrics = screenForRoute('os-management/metrics');
+  assert.equal(stringFor(metrics.labelKey), STRINGS.metricsLabel);
+  assert.equal(metrics.sideBarPosition, 21);
+  assert.equal(metrics.rowTarget, null);
+  assert.equal(metrics.refreshes, false);
 });
 
 // Story 3.5. `sideBarPosition` 0 is the sentinel for routable-but-unlisted: the route table reads

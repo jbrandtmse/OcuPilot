@@ -978,7 +978,9 @@ export const SOURCE_ACCESS = 'access';
 /** The one endpoint and request type an `access` source declares (`OcuPilot.Screen.Read`). */
 export const ACCESS_ENDPOINT = 'Screens';
 export const ACCESS_READ_TYPE = 'LIST';
-export const READ_SOURCE_PORTS = [SOURCE_ADMIN, SOURCE_STATE, SOURCE_MGMNT, SOURCE_LOGSOURCE, SOURCE_PATH, SOURCE_TIMELINE, SOURCE_BACKGROUND, SOURCE_ATELIER, SOURCE_ENCRYPTION, SOURCE_DOCDB, SOURCE_SQLACTIVITY, SOURCE_INTEROP, SOURCE_ACCESS];
+/** The instance's Prometheus metrics read through `OcuPilot.Port.MonitorPort` (AD-29, Story 18.11). */
+export const SOURCE_MONITOR = 'monitor';
+export const READ_SOURCE_PORTS = [SOURCE_ADMIN, SOURCE_STATE, SOURCE_MGMNT, SOURCE_LOGSOURCE, SOURCE_PATH, SOURCE_TIMELINE, SOURCE_BACKGROUND, SOURCE_ATELIER, SOURCE_ENCRYPTION, SOURCE_DOCDB, SOURCE_SQLACTIVITY, SOURCE_INTEROP, SOURCE_ACCESS, SOURCE_MONITOR];
 
 /** Where `OcuPilot.Port.PathPort` declares the source keys a `path` read may name. */
 export const PATH_PORT_SOURCE = join(REPO_ROOT, 'src', 'OcuPilot', 'Port', 'PathPort.cls');
@@ -1077,6 +1079,25 @@ export function sqlActivityEndpoint() {
 
 /** The one request type a `sqlactivity` source declares. */
 export const SQLACTIVITY_READ_TYPE = 'LIST';
+
+/** Where `OcuPilot.Port.MonitorPort` declares the one endpoint a `monitor` read names. */
+export const MONITOR_PORT_SOURCE = join(REPO_ROOT, 'src', 'OcuPilot', 'Port', 'MonitorPort.cls');
+
+let monitorEndpointCache;
+
+/**
+ * The endpoint `OcuPilot.Port.MonitorPort`'s `ENDPOINT` parameter declares, read from its own class as
+ * the background port's is, or `null` when the parameter is missing.
+ */
+export function monitorEndpoint() {
+  if (monitorEndpointCache === undefined) {
+    monitorEndpointCache = parseBackgroundEndpoint(readFileSync(MONITOR_PORT_SOURCE, 'utf8'));
+  }
+  return monitorEndpointCache;
+}
+
+/** The one request type a `monitor` source declares. */
+export const MONITOR_READ_TYPE = 'LIST';
 
 /** Where `OcuPilot.Port.InteropPort` declares the four endpoints an `interop` read names. */
 export const INTEROP_PORT_SOURCE = join(REPO_ROOT, 'src', 'OcuPilot', 'Port', 'InteropPort.cls');
@@ -1305,8 +1326,8 @@ export function readProblem(declaration) {
   if (!READ_SOURCE_PORTS.includes(source.port)) {
     return (
       `read.source.port '${shown(source.port)}' is not one of '${SOURCE_ADMIN}', '${SOURCE_STATE}', ` +
-      `'${SOURCE_MGMNT}', '${SOURCE_LOGSOURCE}', '${SOURCE_PATH}', '${SOURCE_TIMELINE}', '${SOURCE_BACKGROUND}', '${SOURCE_ATELIER}', '${SOURCE_ENCRYPTION}', '${SOURCE_DOCDB}', '${SOURCE_SQLACTIVITY}', '${SOURCE_INTEROP}' or '${SOURCE_ACCESS}', ` +
-      'the thirteen sources a declared read names (AD-36)'
+      `'${SOURCE_MGMNT}', '${SOURCE_LOGSOURCE}', '${SOURCE_PATH}', '${SOURCE_TIMELINE}', '${SOURCE_BACKGROUND}', '${SOURCE_ATELIER}', '${SOURCE_ENCRYPTION}', '${SOURCE_DOCDB}', '${SOURCE_SQLACTIVITY}', '${SOURCE_INTEROP}', '${SOURCE_ACCESS}' or '${SOURCE_MONITOR}', ` +
+      'the fourteen sources a declared read names (AD-36)'
     );
   }
   if (typeof source.endpoint !== 'string' || !ENDPOINT_RE.test(source.endpoint)) {
@@ -1396,6 +1417,24 @@ export function readProblem(declaration) {
     const declared = PATH_REFUSED_SOURCE_KEYS.find((key) => source[key] !== undefined && source[key] !== null);
     if (declared !== undefined) {
       return `read.source.${declared} is declared on a sqlactivity source, which answers the running statements whole (AD-36)`;
+    }
+  }
+  // A monitor source lists the instance's Prometheus metrics through `OcuPilot.Port.MonitorPort`, which
+  // answers every sample of one collection whole behind its own gate (AD-29, AD-36, Story 18.11): the
+  // port's own endpoint, a LIST, and nothing the port would have to issue per row, per parent, under a
+  // fixed query or in parts.
+  if (source.port === SOURCE_MONITOR) {
+    const endpoint = monitorEndpoint();
+    if (endpoint === null) return `${MONITOR_PORT_SOURCE} declares no 'Parameter ENDPOINT'`;
+    if (source.endpoint !== endpoint) {
+      return `read.source.endpoint '${source.endpoint}' is not the monitor port's endpoint ('${endpoint}') (AD-29)`;
+    }
+    if (source.type !== MONITOR_READ_TYPE) {
+      return `read.source.type '${source.type}' is declared on a monitor source, which lists the instance's Prometheus metrics (AD-36)`;
+    }
+    const declared = PATH_REFUSED_SOURCE_KEYS.find((key) => source[key] !== undefined && source[key] !== null);
+    if (declared !== undefined) {
+      return `read.source.${declared} is declared on a monitor source, which answers the metrics whole (AD-36)`;
     }
   }
   // An interop source lists the namespace's productions or interoperability classes through
@@ -1648,6 +1687,12 @@ export function readProblem(declaration) {
     return (
       "read.source.port 'path' requires the declared privileges to include %DB_IRISSYS:READ, " +
       'because the port reads the allow-list through the admin API in %SYS (AD-2, AD-8, AD-21)'
+    );
+  }
+  if (source.port === SOURCE_MONITOR && !declaresSystemRead(declaration.privileges)) {
+    return (
+      "read.source.port 'monitor' requires the declared privileges to include %DB_IRISSYS:READ, " +
+      'because the port takes its collection in %SYS (AD-29)'
     );
   }
   return null;

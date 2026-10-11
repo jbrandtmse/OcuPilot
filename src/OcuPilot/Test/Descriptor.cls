@@ -183,6 +183,7 @@ XData ReadShapes
 <screen name="SqlAdminPrivilegeList" filter="Privilege,GrantedVia" sort="Privilege,GrantedVia" kinds="Privilege:name,GrantOption:text,GrantedVia:text"/>
 <screen name="ExplorerDocDbList" filter="Name,Class,DocumentType,Resource" sort="Name,Class,DocumentType,Resource" kinds="Name:name,Class:identifier,DocumentType:identifier,Resource:identifier"/>
 <screen name="SqlActivityList" filter="ProcessID,UserName,Namespace,RunType,Statement,Routine" sort="ProcessID,UserName,Namespace,RunType,Elapsed,Started" kinds="ProcessID:name,UserName:text,Namespace:text,RunType:text,Elapsed:number,Statement:identifier,Routine:identifier,Started:text"/>
+<screen name="MetricsList" filter="Metric,Labels,Help" sort="Metric,Value" kinds="Metric:name,Labels:identifier,Value:number,Help:text"/>
 <screen name="InteropProductionList" filter="Name,Status" sort="Name,Status,LastStartTime,LastStopTime" kinds="Name:name,Status:status,LastStartTime:text,LastStopTime:text"/>
 <screen name="InteropProcessList" filter="Name" sort="Name,Modified" kinds="Name:name,Modified:text"/>
 <screen name="InteropTransformList" filter="Name" sort="Name,Modified" kinds="Name:name,Modified:text"/>

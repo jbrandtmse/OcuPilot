@@ -1097,7 +1097,7 @@ Parameter READTOOLIDENTIFIERPATTERN = "^[a-z][a-z0-9]*\.[a-z][a-z0-9]*$";
 /// <code>rowGet</code> or <code>forEach</code> either. A source's optional
 /// <code>forEach</code> lists a parent endpoint first (<method>ForEachProblem</method>), and its
 /// optional <code>query</code> fixes parameters no caller can change
-/// (<method>SourceQueryProblem</method>). The thirteen source ports are
+/// (<method>SourceQueryProblem</method>). The fourteen source ports are
 /// <code>admin</code>, an instance endpoint reached through the port, with a
 /// dotted endpoint name and an optional <code>rowGet</code> (<method>RowGetProblem</method>);
 /// <code>mgmnt</code>, the management API reached through its own port, which declares no
@@ -1106,10 +1106,10 @@ Parameter READTOOLIDENTIFIERPATTERN = "^[a-z][a-z0-9]*\.[a-z][a-z0-9]*$";
 /// <code>state</code>, one of OcuPilot's own kernel stores (AD-9) named without a package, which
 /// declares neither a <code>rowGet</code> nor <code>criteria</code>; <code>logsource</code>, a log
 /// file's bounded tail, which declares no <code>rowGet</code>; <code>encryption</code>, a key file's
-/// lists; <code>path</code>, <code>background</code>, <code>docdb</code>, <code>sqlactivity</code> and
-/// <code>interop</code>, each a <code>LIST</code> of its port's own endpoint (the path port's of
-/// one of its sources) that declares no <code>rowGet</code>, <code>forEach</code>, <code>query</code>
-/// or <code>parts</code>; <code>access</code>, the screens' required permissions, a <code>LIST</code> on
+/// lists; <code>path</code>, <code>background</code>, <code>docdb</code>, <code>sqlactivity</code>,
+/// <code>monitor</code> and <code>interop</code>, each a <code>LIST</code> of its port's own endpoint
+/// (the path port's of one of its sources) that declares no <code>rowGet</code>, <code>forEach</code>,
+/// <code>query</code> or <code>parts</code>; <code>access</code>, the screens' required permissions, a <code>LIST</code> on
 /// <code>Screens</code> that declares none of those and no <code>read.criteria</code>; or <code>timeline</code>, an area's listed screens' reads composed, whose
 /// shape is fixed (<method>TimelineProblem</method>);
 /// A source may instead declare <code>rows</code>, a bare admin type's one-object answer read as a
@@ -1127,7 +1127,7 @@ Parameter READTOOLIDENTIFIERPATTERN = "^[a-z][a-z0-9]*\.[a-z][a-z0-9]*$";
 /// no secret field. A read-declaring declaration also declares its <code>table</code>, whose
 /// shape <method>TableProblem</method> checks, unless it is a <code>form-page</code> that declares none
 /// (<method>RendersNoTable</method>); a <code>table</code> with no read is refused here.
-/// Last of all, a read on the <code>admin</code> or <code>path</code> port whose
+/// Last of all, a read on the <code>admin</code>, <code>path</code> or <code>monitor</code> port whose
 /// <code>privileges</code> omit <code>%DB_IRISSYS:READ</code> is refused, because the admin port
 /// runs every endpoint in <code>%SYS</code> -- a <code>state</code> read runs in the install namespace and needs no such
 /// pair, so the rule is on the source kind rather than on every read. <file>ui/tools/screen-mirror.mjs</file>'s <code>readProblem</code> refuses the
@@ -1164,8 +1164,8 @@ ClassMethod ReadProblem(pDeclaration As %DynamicObject) As %String
         Set tProblem = ..UnknownKeyProblem(tSource, "read.source", $ListBuild("port", "endpoint", "type", "rowGet", "forEach", "query", "parts", "rows"))
         If tProblem '= "" Quit
         Set tPort = tSource.%Get("port")
-        If (tSource.%GetTypeOf("port") '= "string") || '$ListFind($ListBuild(##class(OcuPilot.Screen.Read).#SOURCEADMIN, ##class(OcuPilot.Screen.Read).#SOURCESTATE, ##class(OcuPilot.Screen.Read).#SOURCEMGMNT, ##class(OcuPilot.Screen.Read).#SOURCELOGSOURCE, ##class(OcuPilot.Screen.Read).#SOURCEPATH, ##class(OcuPilot.Screen.Read).#SOURCETIMELINE, ##class(OcuPilot.Screen.Read).#SOURCEBACKGROUND, ##class(OcuPilot.Screen.Read).#SOURCEATELIER, ##class(OcuPilot.Screen.Read).#SOURCEENCRYPTION, ##class(OcuPilot.Screen.Read).#SOURCEDOCDB, ##class(OcuPilot.Screen.Read).#SOURCESQLACTIVITY, ##class(OcuPilot.Screen.Read).#SOURCEINTEROP, ##class(OcuPilot.Screen.Read).#SOURCEACCESS), tPort) {
-            Set tProblem = "read.source.port '" _ tPort _ "' is not one of '" _ ##class(OcuPilot.Screen.Read).#SOURCEADMIN _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCESTATE _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCEMGMNT _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCELOGSOURCE _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCEPATH _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCETIMELINE _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCEBACKGROUND _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCEATELIER _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCEENCRYPTION _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCEDOCDB _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCESQLACTIVITY _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCEINTEROP _ "' or '" _ ##class(OcuPilot.Screen.Read).#SOURCEACCESS _ "', the thirteen sources a declared read names (AD-36)"
+        If (tSource.%GetTypeOf("port") '= "string") || '$ListFind($ListBuild(##class(OcuPilot.Screen.Read).#SOURCEADMIN, ##class(OcuPilot.Screen.Read).#SOURCESTATE, ##class(OcuPilot.Screen.Read).#SOURCEMGMNT, ##class(OcuPilot.Screen.Read).#SOURCELOGSOURCE, ##class(OcuPilot.Screen.Read).#SOURCEPATH, ##class(OcuPilot.Screen.Read).#SOURCETIMELINE, ##class(OcuPilot.Screen.Read).#SOURCEBACKGROUND, ##class(OcuPilot.Screen.Read).#SOURCEATELIER, ##class(OcuPilot.Screen.Read).#SOURCEENCRYPTION, ##class(OcuPilot.Screen.Read).#SOURCEDOCDB, ##class(OcuPilot.Screen.Read).#SOURCESQLACTIVITY, ##class(OcuPilot.Screen.Read).#SOURCEINTEROP, ##class(OcuPilot.Screen.Read).#SOURCEACCESS, ##class(OcuPilot.Screen.Read).#SOURCEMONITOR), tPort) {
+            Set tProblem = "read.source.port '" _ tPort _ "' is not one of '" _ ##class(OcuPilot.Screen.Read).#SOURCEADMIN _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCESTATE _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCEMGMNT _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCELOGSOURCE _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCEPATH _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCETIMELINE _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCEBACKGROUND _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCEATELIER _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCEENCRYPTION _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCEDOCDB _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCESQLACTIVITY _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCEINTEROP _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCEACCESS _ "' or '" _ ##class(OcuPilot.Screen.Read).#SOURCEMONITOR _ "', the fourteen sources a declared read names (AD-36)"
             Quit
         }
         If (tSource.%GetTypeOf("endpoint") '= "string") || '$Match(tSource.%Get("endpoint"), "^[A-Za-z][A-Za-z0-9]*(\.[A-Za-z][A-Za-z0-9]*)*$") {
@@ -1271,6 +1271,28 @@ ClassMethod ReadProblem(pDeclaration As %DynamicObject) As %String
                 Set tKeyType = tSource.%GetTypeOf(tKey)
                 If (tKeyType = "unassigned") || (tKeyType = "null") Continue
                 Set tProblem = "read.source." _ tKey _ " is declared on a sqlactivity source, which answers the running statements whole (AD-36)"
+                Quit
+            }
+            If tProblem '= "" Quit
+        }
+        ; A monitor source lists the instance's Prometheus metrics through OcuPilot.Port.MonitorPort,
+        ; which answers every sample of one collection whole behind its own gate (AD-29, AD-36, Story
+        ; 18.11): the port's own endpoint, a LIST, and nothing the port would have to issue per row,
+        ; per parent, under a fixed query or in parts.
+        If tPort = ##class(OcuPilot.Screen.Read).#SOURCEMONITOR {
+            Set tMonitorEndpoint = ##class(OcuPilot.Port.MonitorPort).#ENDPOINT
+            If tSource.%Get("endpoint") '= tMonitorEndpoint {
+                Set tProblem = "read.source.endpoint '" _ tSource.%Get("endpoint") _ "' is not the monitor port's endpoint ('" _ tMonitorEndpoint _ "') (AD-29)"
+                Quit
+            }
+            If tSource.%Get("type") '= ##class(OcuPilot.Port.MonitorPort).#TYPELIST {
+                Set tProblem = "read.source.type '" _ tSource.%Get("type") _ "' is declared on a monitor source, which lists the instance's Prometheus metrics (AD-36)"
+                Quit
+            }
+            For tKey = "rowGet", "forEach", "query", "parts" {
+                Set tKeyType = tSource.%GetTypeOf(tKey)
+                If (tKeyType = "unassigned") || (tKeyType = "null") Continue
+                Set tProblem = "read.source." _ tKey _ " is declared on a monitor source, which answers the metrics whole (AD-36)"
                 Quit
             }
             If tProblem '= "" Quit
@@ -1565,7 +1587,7 @@ ClassMethod ReadProblem(pDeclaration As %DynamicObject) As %String
         ; vendor endpoint fails inside %SYS and the port answers 500 where the gate would have
         ; named the missing privilege (AD-2, AD-8). A logsource read is outside the rule: it reads
         ; a file off disk and never enters %SYS.
-        If (tPort = ##class(OcuPilot.Screen.Read).#SOURCEADMIN) || (tPort = ##class(OcuPilot.Screen.Read).#SOURCEPATH) {
+        If (tPort = ##class(OcuPilot.Screen.Read).#SOURCEADMIN) || (tPort = ##class(OcuPilot.Screen.Read).#SOURCEPATH) || (tPort = ##class(OcuPilot.Screen.Read).#SOURCEMONITOR) {
             Set tHasSystemRead = 0
             Set tDeclaredPairs = pDeclaration.%Get("privileges")
             If $IsObject(tDeclaredPairs) {
@@ -1577,6 +1599,7 @@ ClassMethod ReadProblem(pDeclaration As %DynamicObject) As %String
             }
             If 'tHasSystemRead && (tPort = ##class(OcuPilot.Screen.Read).#SOURCEADMIN) Set tProblem = "read.source.port 'admin' requires the declared privileges to include %DB_IRISSYS:READ, because the port runs every endpoint in %SYS (AD-2, AD-8)"
             If 'tHasSystemRead && (tPort = ##class(OcuPilot.Screen.Read).#SOURCEPATH) Set tProblem = "read.source.port 'path' requires the declared privileges to include %DB_IRISSYS:READ, because the port reads the allow-list through the admin API in %SYS (AD-2, AD-8, AD-21)"
+            If 'tHasSystemRead && (tPort = ##class(OcuPilot.Screen.Read).#SOURCEMONITOR) Set tProblem = "read.source.port 'monitor' requires the declared privileges to include %DB_IRISSYS:READ, because the port takes its collection in %SYS (AD-29)"
         }
     } Catch ex {
         Set tProblem = "the read declaration could not be read: " _ ex.DisplayString()

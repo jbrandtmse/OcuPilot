@@ -2,13 +2,15 @@
 /// that names <code>SYS.Monitor.SAM.Sensors</code></b>, the class whose
 /// <code>PrometheusMetrics()</code> <code>/api/monitor/metrics</code> serves; it is called in process
 /// in <code>%SYS</code>, never over HTTP.</p>
-/// <p>Two ways in, each evaluating <parameter>PAIRS</parameter> in the calling process before
+/// <p>Three ways in, each evaluating <parameter>PAIRS</parameter> in the calling process before
 /// anything else, so a denial reaches no sensor code, and each taking one sensor collection.
 /// <method>Performance</method> parses it into the five values <parameter>METRICS</parameter> names,
 /// for Home's performance row. <method>Invoke</method> answers a declared read's
 /// <code>monitor</code> part (AD-36) with the value <parameter>PARTMETRICS</parameter> names, for
-/// the Dashboard's CPU meter. The per-second values are the sensors' own, each over the interval
-/// since the previous collection on the instance.</p>
+/// the Dashboard's CPU meter, and a declared <code>monitor</code> read with every sample the
+/// collection holds (<method>Samples</method>), for the Prometheus metrics table. The per-second
+/// values are the sensors' own, each over the interval since the previous collection on the
+/// instance.</p>
 /// <p><b>Every collection rewrites the vendor's sensor baseline</b> (AD-7, AD-29): measured on
 /// <code>ocupilot-ci</code> 2026-09-28, each <code>PrometheusMetrics()</code> call rewrites 24
 /// sensor-baseline nodes of the vendor's SAM temporary global (the previous values, the CPU state
@@ -49,6 +51,21 @@ Parameter SENSORSTYPE = "SENSORS";
 /// <p>The values a <code>monitor</code> part answers, in the grammar of <parameter>METRICS</parameter>:
 /// the system-wide CPU use, a percentage.</p>
 Parameter PARTMETRICS = "cpuUsage:cpu_usage";
+
+/// <p>The one endpoint a declared <code>monitor</code> read names (AD-36): every sample of one
+/// collection.</p>
+Parameter ENDPOINT = "Metrics";
+
+/// <p>The one request type a declared <code>monitor</code> read names.</p>
+Parameter TYPELIST = "LIST";
+
+/// <p>The query key bounding a list's rows.</p>
+Parameter MAXROWSKEY = "maxRows";
+
+/// <p>The cap a list that names none is read under.</p>
+Parameter DEFAULTMAXROWS As INTEGER = 1000;
+
+Parameter REASONMAXROWS = "maxRows must be a whole number above zero.";
 
 /// <p>The prefix every metric name the sensors answer carries, before an underscore.</p>
 Parameter METRICPREFIX = "iris";
@@ -96,16 +113,7 @@ ClassMethod Performance(Output pValues As %DynamicObject, Output pHttpStatus As 
             Quit
         }
 
-        Set tText = ""
-        Set tOrigNS = $NAMESPACE
-        Try {
-            Set $NAMESPACE = "%SYS"
-            Set tText = ..Source()
-            Set $NAMESPACE = tOrigNS
-        } Catch exSource {
-            Set $NAMESPACE = tOrigNS
-            Set tSC = ..Fail("the sensor collection raised", exSource.AsStatus(), .pHttpStatus, .pFault)
-        }
+        Set tSC = ..Take(.tText, .pHttpStatus, .pFault)
         If $$$ISERR(tSC) Quit
 
         Set tParseSC = ..Parse(tText, .tValues)
@@ -122,18 +130,26 @@ ClassMethod Performance(Output pValues As %DynamicObject, Output pHttpStatus As 
     Quit tSC
 }
 
-/// <p>Answer a declared read's <code>monitor</code> part (AD-36), with
-/// <method>OcuPilot.Port.AdminPort.Invoke</method>'s signature so the read issues a part through
-/// either port the same way. <var>pQuery</var> and <var>pBody</var> are accepted and unused.</p>
+/// <p>Answer a declared read's <code>monitor</code> part or its <code>monitor</code> list (AD-36),
+/// with <method>OcuPilot.Port.AdminPort.Invoke</method>'s signature so the read issues either
+/// through either port the same way. <var>pBody</var> is accepted and unused, and so is
+/// <var>pQuery</var> except for <parameter>MAXROWSKEY</parameter>.</p>
 /// <p>First <parameter>PAIRS</parameter> is evaluated in the calling process: a caller lacking
 /// either pair is answered 403 <code>AUTH.NOPRIVILEGE</code> with <code>detail.failedPair</code>
-/// and no sensor call is made. Then <var>pEndpoint</var> must be
-/// <parameter>SENSORSENDPOINT</parameter> and <var>pType</var> <parameter>SENSORSTYPE</parameter>;
-/// anything else is 500 <code>INTERNAL</code>, logged once. Then one collection is taken and
-/// <var>pResult</var> is a <class>%DynamicObject</class> carrying each member of
-/// <parameter>PARTMETRICS</parameter> as a JSON number, with <var>pHttpStatus</var> 200. A
-/// collection that raises, or that lacks a member or answers it as no number, is 500
-/// <code>INTERNAL</code>, logged once, with <var>pResult</var> empty -- never a partial answer.</p>
+/// and no sensor call is made. Then:</p>
+/// <ul>
+/// <li><parameter>ENDPOINT</parameter> with <parameter>TYPELIST</parameter> takes one collection
+/// and answers <method>Samples</method>' rows, at most <parameter>MAXROWSKEY</parameter> of them
+/// (<parameter>DEFAULTMAXROWS</parameter> when absent); a cap that is not a whole number above zero
+/// is 400 <code>PORT.VALIDATION</code>, before any collection.</li>
+/// <li><parameter>SENSORSENDPOINT</parameter> with <parameter>SENSORSTYPE</parameter> takes one
+/// collection and answers a <class>%DynamicObject</class> carrying each member of
+/// <parameter>PARTMETRICS</parameter> as a JSON number.</li>
+/// <li>Anything else is 500 <code>INTERNAL</code>, logged once.</li>
+/// </ul>
+/// <p>A collection that raises, or that lacks a member or answers it as no number, or holds a
+/// sample <method>Samples</method> cannot read, is 500 <code>INTERNAL</code>, logged once, with
+/// <var>pResult</var> empty -- never a partial answer. <var>pHttpStatus</var> is 200 otherwise.</p>
 /// <p>Caller contract: must not be called from an escalated frame (AD-9); the caller's namespace is
 /// unchanged on return.</p>
 ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody As %DynamicAbstractObject = "", Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status
@@ -146,6 +162,24 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
         Set tSC = ..Gate(.pHttpStatus, .pFault)
         If $$$ISERR(tSC) Quit
 
+        If (pEndpoint = ..#ENDPOINT) && (pType = ..#TYPELIST) {
+            Set tMaxText = $Get(pQuery(..#MAXROWSKEY))
+            If (tMaxText '= "") && '$Match(tMaxText, "^[1-9][0-9]*$") {
+                Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONMAXROWS, .pHttpStatus, .pFault)
+                Quit
+            }
+            Set tSC = ..Take(.tText, .pHttpStatus, .pFault)
+            If $$$ISERR(tSC) Quit
+            Set tSamplesSC = ..Samples(tText, $Select(tMaxText = "": ..#DEFAULTMAXROWS, 1: +tMaxText), .tRows)
+            If $$$ISERR(tSamplesSC) {
+                Set tSC = ..Fail("the sensor collection could not be read", tSamplesSC, .pHttpStatus, .pFault)
+                Quit
+            }
+            Set pResult = tRows
+            Set pHttpStatus = 200
+            Quit
+        }
+
         If (pEndpoint '= ..#SENSORSENDPOINT) || (pType '= ..#SENSORSTYPE) {
             Set tSC = ..Fail("the monitor port answers no " _ pEndpoint _ " " _ pType, $$$ERROR($$$GeneralError, "unknown endpoint or type"), .pHttpStatus, .pFault)
             Quit
@@ -157,7 +191,7 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
         Set pHttpStatus = 200
     } Catch ex {
         Set pResult = ""
-        Set tSC = ..Fail("the monitor part read raised", ex.AsStatus(), .pHttpStatus, .pFault)
+        Set tSC = ..Fail("the monitor read raised", ex.AsStatus(), .pHttpStatus, .pFault)
     }
     Quit tSC
 }
@@ -178,25 +212,35 @@ ClassMethod Gate(Output pHttpStatus As %Integer, Output pFault As %DynamicObject
     Quit $$$ERROR($$$GeneralError, pFault.code _ ": " _ pFault.reason)
 }
 
-/// <p>Take one collection in <code>%SYS</code> and parse the members <var>pMetrics</var> names
+/// <p>Take one collection in <code>%SYS</code>, as the exposition text. On a raise the status is an
+/// error and the fault is the generic internal one, logged once; the caller's namespace is restored
+/// either way.</p>
+ClassMethod Take(Output pText As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Set pText = ""
+    Set pHttpStatus = 0
+    Set pFault = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = "%SYS"
+        Set pText = ..Source()
+        Set $NAMESPACE = tOrigNS
+    } Catch exSource {
+        Set $NAMESPACE = tOrigNS
+        Set pText = ""
+        Set tSC = ..Fail("the sensor collection raised", exSource.AsStatus(), .pHttpStatus, .pFault)
+    }
+    Quit tSC
+}
+
+/// <p>Take one collection (<method>Take</method>) and parse the members <var>pMetrics</var> names
 /// (<method>Parse</method>'s grammar). On a failure the status is an error and the fault is the
 /// generic internal one, logged once.</p>
 ClassMethod Collect(pMetrics As %String, Output pValues As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
 {
-    Set tSC = $$$OK
     Set pValues = ""
-    Set pHttpStatus = 0
-    Set pFault = ""
-    Set tText = ""
-    Set tOrigNS = $NAMESPACE
-    Try {
-        Set $NAMESPACE = "%SYS"
-        Set tText = ..Source()
-        Set $NAMESPACE = tOrigNS
-    } Catch exSource {
-        Set $NAMESPACE = tOrigNS
-        Set tSC = ..Fail("the sensor collection raised", exSource.AsStatus(), .pHttpStatus, .pFault)
-    }
+    Set tSC = ..Take(.tText, .pHttpStatus, .pFault)
     If $$$ISERR(tSC) Quit tSC
 
     Set tParseSC = ..Parse(tText, .tValues, pMetrics)
@@ -214,7 +258,7 @@ ClassMethod MetricName(pSuffix As %String) As %String
 
 /// <p>One sensor collection, as the Prometheus exposition text the vendor answers.</p>
 /// <p><b>Caller contract: <code>$NAMESPACE</code> is already <code>%SYS</code></b> --
-/// <method>Performance</method> switches and restores around this call. Raises whatever the
+/// <method>Take</method> switches and restores around this call. Raises whatever the
 /// collection raises. A stream answer is read into a string. Overridable so a test can supply the
 /// text; production never overrides it.</p>
 ClassMethod Source() As %String
@@ -273,6 +317,128 @@ ClassMethod Parse(pText As %String, Output pValues As %DynamicObject, pMetrics A
         Set tSC = ex.AsStatus()
     }
     Quit tSC
+}
+
+/// <p>Every sample of <var>pText</var>, one collection's exposition, as <var>pRows</var>: a
+/// <class>%DynamicArray</class> of at most <var>pMax</var> objects <code>{Metric, Labels, Value,
+/// Help}</code>, in exposition order.</p>
+/// <p>A blank line and a comment are skipped, except <code># HELP &lt;name&gt; &lt;text&gt;</code>,
+/// whose text is <code>Help</code> for every sample of that name. A sample is
+/// <code>&lt;name&gt;[{&lt;labels&gt;}] &lt;value&gt;[ &lt;timestamp&gt;]</code>:</p>
+/// <ul>
+/// <li><code>Metric</code> runs to the first <code>{</code> or space.</li>
+/// <li><code>Labels</code> is the text between the braces as answered, <code>""</code> when there
+/// are none. The closing brace is the first <code>}</code> outside a double-quoted value, in which
+/// <code>\"</code> does not end the value.</li>
+/// <li><code>Value</code> is a JSON number when it is a valid number, otherwise its text
+/// (<code>NaN</code>, <code>+Inf</code>).</li>
+/// </ul>
+/// <p>The whole exposition is read before the cut, so the answer does not depend on <var>pMax</var>.
+/// A sample with no name or no value, or whose label set is not closed, fails the read: an error
+/// status naming the line, with <var>pRows</var> empty. <method>Parse</method>, which reads only the
+/// unlabeled lines it is asked for, is a separate and tolerant reader.</p>
+ClassMethod Samples(pText As %String, pMax As %Integer, Output pRows As %DynamicArray) As %Status
+{
+    Set tSC = $$$OK
+    Set pRows = ""
+    Try {
+        Kill tHelp
+        Set tLines = $Length(pText, $Char(10))
+        For tI = 1:1:tLines {
+            Set tLine = $ZStrip($Piece(pText, $Char(10), tI), "<>WC")
+            If $Extract(tLine, 1, 7) '= "# HELP " Continue
+            Set tHelpName = $Piece($Extract(tLine, 8, *), " ", 1)
+            If (tHelpName '= "") && '$Data(tHelp(tHelpName)) Set tHelp(tHelpName) = $Piece($Extract(tLine, 8, *), " ", 2, *)
+        }
+
+        Set tRows = []
+        For tI = 1:1:tLines {
+            Set tLine = $ZStrip($Piece(pText, $Char(10), tI), "<>WC")
+            If (tLine = "") || ($Extract(tLine) = "#") Continue
+            Set tLength = $Length(tLine)
+
+            Set tNameEnd = 1
+            While (tNameEnd <= tLength) && ($Extract(tLine, tNameEnd) '= "{") && ($Extract(tLine, tNameEnd) '= " ") && ($Extract(tLine, tNameEnd) '= $Char(9)) {
+                Set tNameEnd = tNameEnd + 1
+            }
+            Set tName = $Extract(tLine, 1, tNameEnd - 1)
+            If tName = "" {
+                Set tSC = $$$ERROR($$$GeneralError, "line " _ tI _ " is a sample with no metric name")
+                Quit
+            }
+
+            Set tLabels = ""
+            Set tRest = $Extract(tLine, tNameEnd, *)
+            If $Extract(tRest) = "{" {
+                Set tClose = ..LabelsEnd(tLine, tNameEnd)
+                If 'tClose {
+                    Set tSC = $$$ERROR($$$GeneralError, "line " _ tI _ " is a sample whose label set is not closed")
+                    Quit
+                }
+                Set tLabels = $Extract(tLine, tNameEnd + 1, tClose - 1)
+                Set tRest = $Extract(tLine, tClose + 1, *)
+            }
+
+            Set tValue = $Piece($ZStrip($Translate(tRest, $Char(9), " "), "<>WC"), " ", 1)
+            If tValue = "" {
+                Set tSC = $$$ERROR($$$GeneralError, "line " _ tI _ " is a sample with no value")
+                Quit
+            }
+
+            If tRows.%Size() < pMax {
+                Set tRow = {}
+                Do tRow.%Set("Metric", tName, "string")
+                Do tRow.%Set("Labels", tLabels, "string")
+                If $IsValidNum(tValue) {
+                    Do tRow.%Set("Value", +tValue, "number")
+                } Else {
+                    Do tRow.%Set("Value", tValue, "string")
+                }
+                Do tRow.%Set("Help", $Get(tHelp(tName)), "string")
+                Do tRows.%Push(tRow)
+            }
+        }
+        If $$$ISERR(tSC) Quit
+        Set pRows = tRows
+    } Catch ex {
+        Set pRows = ""
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>The position of the brace closing the label set that opens at <var>pOpen</var> in
+/// <var>pLine</var>, or 0 when it is not closed. A brace inside a double-quoted value does not
+/// close it, and a backslash inside a quoted value escapes the character after it.</p>
+ClassMethod LabelsEnd(pLine As %String, pOpen As %Integer) As %Integer [ Private ]
+{
+    Set tQuoted = 0
+    Set tI = pOpen + 1
+    Set tLength = $Length(pLine)
+    While tI <= tLength {
+        Set tChar = $Extract(pLine, tI)
+        If tQuoted {
+            If tChar = "\" {
+                Set tI = tI + 1
+            } ElseIf tChar = """" {
+                Set tQuoted = 0
+            }
+        } ElseIf tChar = """" {
+            Set tQuoted = 1
+        } ElseIf tChar = "}" {
+            Quit
+        }
+        Set tI = tI + 1
+    }
+    Quit $Select(tI <= tLength: tI, 1: 0)
+}
+
+/// <p>A refusal this port decided, with a written reason (AD-39).</p>
+ClassMethod Refuse(pHttp As %Integer, pSlug As %String, pCode As %String, pReason As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pHttpStatus = pHttp
+    Set pFault = ##class(OcuPilot.Kernel.Fault).Build(pSlug, pCode, pReason)
+    Quit $$$ERROR($$$GeneralError, pCode _ ": " _ pReason)
 }
 
 /// <p>Send a raw status to the log, and nowhere else (AD-39). Overridable so a fixture can capture

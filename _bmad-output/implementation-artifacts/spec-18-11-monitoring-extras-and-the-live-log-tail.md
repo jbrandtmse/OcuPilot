@@ -2,7 +2,8 @@
 title: 'Story 18.11: Monitoring extras and the live log tail'
 type: 'feature'
 created: '2026-10-11'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: 'b2be790d12e58d2c3b5579f32d578027cdb75965'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -103,18 +104,57 @@ Paths under `src/OcuPilot/` unless `ui/` or `scripts/`; checked on this branch. 
 - `(loop)` `sh /Users/jbrandt/git/OcuPilot/.worktrees/.coordination/carry-2026-10-08/epic-18-d8/load-ocupilot-ci.sh` -- expected `LOAD-OK` and `STARTPATH-OK`.
 - `(loop)` `cd ui && node tools/ci-runner.mjs --container ocupilot-ci --class OcuPilot.Test.<C>`, one at a time, totals from `%UnitTest_Result`: `MonitorPort`, `MetricsDescriptor`, `MetricsGate`, `VolumeListCriterion`, `AdminPortFault`, `AuditStarted`, and every class Task 10 edits or runs.
 - `(loop)` `cd ui && npm run test:tools && npm run test:components`; `uv run scripts/check-objectscript.py`; `bash scripts/lint-docs.sh`.
-- `(loop)` With `OCUPILOT_BROWSER_ORIGIN=http://localhost:52776` and `OCUPILOT_BROWSER_CONTAINER=ocupilot-ci`: `cd ui && npm run build && docker cp dist/ocupilot-ui/browser/. ocupilot-ci:/durable/iris/csp/ocupilot/`, then `node --test --test-concurrency=1 browser/prometheus-metrics.browser-spec.mjs` and any spec the sweep changes. Initial bundle against the 3326kB warning: re-base under DW-1166 if crossed; stop and ask above 3800kB.
+- `(loop)` With `OCUPILOT_BROWSER_ORIGIN=http://localhost:52776` and `OCUPILOT_BROWSER_CONTAINER=ocupilot-ci`: `cd ui && npm run build && docker cp dist/ocupilot-ui/browser/. ocupilot-ci:/durable/iris/csp/ocupilot/`, then `node --test --test-concurrency=1 browser/prometheus-metrics.browser-spec.mjs` and any spec the sweep changes. Initial bundle against the 3487kB warning: re-base under DW-1166 if crossed; stop and ask above 3800kB.
 - Full ObjectScript sweep: the runner's; browser suite: CI's.
 
-**Mutations (Rule 19),** each recorded as `mutation:`: C1 `MonitorPort.Gate` answering OK (`MonitorPort`'s gate leg), then with `MetricsList` declaring `%Admin_Operate:USE` alone and the :1578 rule relaxed too, since both gates refuse (`MetricsGate`'s `NoSys` leg); C2 `Samples` splitting on the first space, then `Value` always a number; C3 the Registry's monitor arm dropped, then the mirror's; C4 `Metric` out of the descriptor's filter (bundle rebuilt); Integration `SOURCEMONITOR` out of Read's :422 list (`ToolRoundTrip` on `osmgmt.metrics.read`); DW-1872 `VOLUMELIST` out of the :677 guard (`VolumeListCriterion`, `ToolRoundTrip`); DW-1898 the `IsQueuedWrite` guard dropped (`AdminPortFault`, `AuditStarted`).
+**Mutations (Rule 19),** each recorded as `mutation:`, applied on `ocupilot-ci` with the mutated class and every descendant recompiled (or the bundle rebuilt and redeployed) and reverted byte-identical:
+
+- mutation: C1, `MonitorPort.Gate` answers OK -> `MonitorPort` `TestTheGateRefusesTheListBeforeAnyCollection` red (run 620); with `MetricsList` declaring `%Admin_Operate:USE` alone and the system-database arm relaxed for `monitor` too, since both gates refuse -> `MetricsGate` `TestEachMissingPairIsRefusedByNameAndTakesNoCollection` red on the NoSys leg (run 621); `PAIRS` without `%DB_IRISSYS:READ` -> `MetricsDescriptor` `TestTheDescriptorShape` and `TestAMalformedSampleAndAMissingPairFailTheRead` red (run 647); `Take` answers no text -> `MetricsGate` `TestTheExactPairsReadTheSamples` red (run 644).
+- mutation: C2, the name scan runs on to the first space -> `MonitorPort` `TestTheSampleGrammarAnswersEveryLineShape` and `TestAMalformedSampleFailsTheWholeRead` red (run 624); `Value` always a number -> `TestTheSampleGrammarAnswersEveryLineShape` red (run 625) and `MetricsDescriptor` `TestTheReadAnswersTheSamplesInOrderAndReportsTheCut` red (run 626); the cut dropped -> `TestTheListIsCutAtTheCap` and `TestTheLiveCollectionAnswersSamples` red (run 641); a sample with no value read as a value -> `TestAMalformedSampleFailsTheWholeRead` red (run 642) and `MetricsDescriptor` `TestAMalformedSampleAndAMissingPairFailTheRead` red (run 643).
+- mutation: C2 (escape and raise), the backslash branch of `LabelsEnd` dropped -> `MonitorPort` `TestTheSampleGrammarAnswersEveryLineShape` red on the escaped-quote-then-brace row (run 659); the status test after `Take` dropped in the list branch -> `TestAListCollectionThatRaisesAnswersTheInternalFault` red (run 660).
+- mutation: C3, the Registry's monitor arm dropped -> `MetricsDescriptor` `TestTheMonitorSourceRefusals` red (run 627); the mirror's arm dropped -> `screen-mirror.test.mjs` "Story 18.11" red; the Registry's system-database arm drops `monitor` -> `TestTheMonitorSourceRefusals` red (run 645); `MetricsList` declaring `refreshes` true -> `TestTheDescriptorShape` red (run 646).
+- mutation: C4, `Metric` out of `MetricsList`'s filter, mirror regenerated, bundle rebuilt and redeployed -> `prometheus-metrics.browser-spec.mjs` filter test red; reverted, rebuilt and redeployed -> 4 of 4 green.
+- mutation: C4 (side bar, refresh, labels), `MetricsList` `sideBarPosition` 0 with the mirror regenerated and the bundle rebuilt and redeployed -> `prometheus-metrics.browser-spec.mjs` side-bar leg red; `refreshes` true with `refreshRates` set, same rebuild -> the same leg red; `Labels` blanked in `MonitorPort.Samples` -> the labeled-row leg red alone; each reverted byte-identical, rebuilt and redeployed -> 4 of 4 green.
+- C1's 401 clause (`MetricsGate` `TestARequestWithNoCredentialsIsRefused`) has no mutation: the web application's authentication answers it before any OcuPilot code runs (inference), so the test pins the deployment, not a method.
+- mutation: Integration, `SOURCEMONITOR` out of Read's allow-list -> `ToolRoundTrip` `TestEveryToolConformsToItsResultSchemaOrAnswersACode` red (run 628) and `MetricsDescriptor` read, failure and tool legs red (run 629).
+- mutation: DW-1872, `VOLUMELIST` out of the route-criterion guard -> `VolumeListCriterion` both tests red (run 630) and `ToolRoundTrip` red on `osmgmt.databasevolumes.read:READ.CRITERION` (run 631).
+- mutation: DW-1898, the `IsQueuedWrite` guard dropped from `AwaitTask` -> `AdminPortFault` `TestAQueuedWriteStillRunningAtTheBoundLogsNothing` red (run 632) and `AuditStarted` `TestTheScreenRouteAnswersThatACopyStillRunningContinues` red (run 633).
 
 **S0:** no `OcuProbe1811*` user or role.
 
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
+
+**Change.** Prometheus metrics, OS management's twenty-first screen: a `monitor` read source kind, `MonitorPort`'s `Metrics`/`LIST` read (`Samples`, `LabelsEnd`, `Take`) behind the port's two pairs, `MetricsList`, eight strings, and the Registry and mirror arms. DW-1872: a `VOLUMELIST` read requires its `dir` criterion before any call. DW-1898: `AwaitTask` logs the bound only for a pair outside `QUEUEDWRITES`.
+
+**Files.** Product: `Port/MonitorPort.cls`, `Port/AdminPort.cls`, `Screen/Read.cls`, `Screen/Registry.cls`, `Screen/Descriptor/MetricsList.cls`, `ui/tools/screen-mirror.mjs`, `ui/src/app/core/strings.ts`, `ui/src/app/core/screens.generated.ts` (regenerated), `EXPERIENCE.md` (:164, :603), `scripts/ci-throwaway.sh` (roster). Tests: `MonitorPort`, `MetricsDescriptor`, `MetricsGate`, `MetricsProbe`, `VolumeListCriterion`, `AdminPortFault`, `AuditStarted`, `AuditStartedPort`, `PortFixture`, `prometheus-metrics.browser-spec.mjs`, `screen-mirror.test.mjs`. Sweep: `ReadTool`, `SurfaceCoverage`, `Descriptor`, `Navigation`, `Wire`, `WireSecurityRead`, `WireAreaAnyScreen`, `ToolRoundTrip`, `InteropDescriptor`, `SqlActivityDescriptor`, `DocDbDescriptor`, `AdminPairCorpus`, `navigation.test.mjs`, `side-bar-pins.test.mjs`, `area-verdict.spec.ts`.
+
+**Review.** Eleven findings, two patched at medium and one at low, eight rejected (`## Review Triage Log`); nothing deferred. Follow-up review: not recommended; the patches are test additions, each shown red under its mutation and green after.
+
+**Verification** (on `ocupilot-ci`, run indexes from `%UnitTest_Result`). Story classes: `MonitorPort` 661 (12), `MetricsDescriptor` 662 (6), `MetricsGate` 652 (3), `VolumeListCriterion` 654 (2), `AdminPortFault` 655 (25), `AuditStarted` 656 (3), `ToolRoundTrip` 657 (2). The sweep classes ran green in the implement pass (`ReadTool`, `SurfaceCoverage`, `Descriptor`, `Navigation`, `Wire`, `WireSecurityRead`, `WireAreaAnyScreen`, `InteropDescriptor`, `SqlActivityDescriptor`, `DocDbDescriptor`, `EndpointCoverage`, `ToolDispatch`, `ToolEmit`, `PortGate`, `ClassicPageGate`, `MappingDescriptor`, `Dashboard`, `DashboardLive`, `ScreenRead`, `AdminPortAsync`, `NamespaceCopy`, `NamespaceInterop`). `AdminPairCorpus` is a corpus with no methods of its own. Client: `test:tools` 1909 of 1909, `test:components` 2880 of 2880, `prometheus-metrics.browser-spec.mjs` 4 of 4 on a rebuilt and redeployed bundle. `check-objectscript` 0 problems, `lint-docs` 0 issues. Initial bundle 3.32 MB against the 3487kB warning, so `angular.json` is untouched; fixed strings 3,134 to 3,142 of 3,400. S0 holds on `ocupilot-ci`.
+
+**Residual risk.** The full ObjectScript sweep and the browser suite are the runner's and CI's. The DW-1872 mutation let the vendor's 400 reach `messages.log` on `ocupilot-ci` once; no probe object remains.
 
 ## Spec Change Log
 
 - 2026-10-11, lead: narrowed on the orchestrator's split ruling (feature 39cb1e27, Rule 5): 18.11 keeps the metrics table, DW-1872 and DW-1898; the drill-downs, interoperability usage and live tail moved to Stories 18.36, 18.37 and 18.38 (their anchors are in this Code Map's slices 2 to 4, kept to seed them). The intent was narrowed to match and the Proposed Split section removed; status reset to `draft` for a re-plan in place.
+
+## Review Triage Log
+
+### 2026-10-11 - Review pass
+
+- verdicts: 11 findings - high 0, medium 2, low 8, false 1, maybe-false 0 (the intent-alignment auditor's divergences are each one row)
+- findings:
+  - `[medium]` `[patch]` `MonitorPort.LabelsEnd`'s backslash branch is pinned by no test: the grammar test's escaped quotes come in a pair with no brace between them, so a scanner that ignores `\` closes in the same place - added a `probe_h` sample whose value holds `\"}`; dropping the branch is red (run 659).
+  - `[medium]` `[patch]` The list branch of `Invoke` has no test for a collection that raises; without its status test a raise is answered 200 with no rows - added `TestAListCollectionThatRaisesAnswersTheInternalFault`; dropping the status test is red (run 660).
+  - `[low]` `[patch]` C1's 401 clause and C4's side-bar, no-refresh and labels clauses had no recorded `mutation:` line (Rule 19) - ran position 0, `refreshes` true and blank `Labels`, each red, and recorded them; the 401 clause has no OcuPilot code to mutate and the line says so.
+  - `[low]` `[reject]` `MetricsDescriptor` `TestTheScriptForms` asserts two constants - it pins AD-59's rule that a read-only port has no script form and goes red when either method changes, as `SqlActivityDescriptor`'s does.
+  - `[low]` `[reject]` The spec's `## Auto Run Result` read `ready-for-dev` and recorded no class totals - finalize rewrites it with the totals; a finding whose fix edits this spec is rejected.
+  - `[low]` `[reject]` DW-1898 is tested at `AwaitTask` (503) while the matrix names the caller's 202 - the 202 is each caller's own contract and this diff only removes a log call; `AuditStarted` pins the started answer and the continuing route and ran green (run 656).
+  - `[low]` `[reject]` The DW-1898 log assertions read the in-process seam, not `messages.log` - `LogFault` is the bound line's only writer and the guard's mutation reddens both tests (runs 632 and 633).
+  - `[low]` `[reject]` DW-1872's wire test asserts only the 400 sentence - the route and the in-process read run the same `Read.Execute`; dropping the guard reddens both `VolumeListCriterion` tests and `ToolRoundTrip` (runs 630 and 631).
+  - `[low]` `[reject]` The guard covers only the `VOLUMELIST` type under a parent scope - the intent names that route; other parent-scoped lists are another story's.
+  - `[false]` `[reject]` No assertion that the vendor's alerts read is never called - no source file outside `Test/DashboardLive` mentions it (searched `src/OcuPilot` for `LastAlertSent`, `SAM.Alerts` and `monitor/alerts`).
+  - `[low]` `[reject]` The spec's title and filename still say "live log tail" - the lead renames them at the split; the intent contract and the diff agree on the metrics table.

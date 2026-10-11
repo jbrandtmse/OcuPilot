@@ -170,7 +170,7 @@ export interface ReadSourcePart {
  * `timeline` source's fields and criterion are fixed.
  */
 export interface ReadSource {
-  readonly port: 'admin' | 'state' | 'mgmnt' | 'logsource' | 'path' | 'timeline' | 'background' | 'atelier' | 'encryption' | 'docdb' | 'sqlactivity' | 'interop' | 'access';
+  readonly port: 'admin' | 'state' | 'mgmnt' | 'logsource' | 'path' | 'timeline' | 'background' | 'atelier' | 'encryption' | 'docdb' | 'sqlactivity' | 'interop' | 'access' | 'monitor';
   readonly endpoint: string;
   /**
    * `LIST` reads rows; `GET` reads one object as the one row, and a 404 reads as none;
@@ -17359,6 +17359,142 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "emptyAgentKey": ""
     },
     "toolIdentifier": "logs.xdbc",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.MetricsList",
+    "route": "os-management/metrics",
+    "area": "os-management",
+    "labelKey": "metricsLabel",
+    "sideBarPosition": 21,
+    "archetype": "list",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Operate",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "none",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "Metric",
+        "Labels",
+        "Value",
+        "Help"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "metricsEmpty",
+    "commandAliases": [
+      "prometheus metrics",
+      "metrics",
+      "sensors"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupCapacity",
+        "textKey": "metricsPrompt1"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "metricsPrompt2"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "metricsPrompt3"
+      }
+    ],
+    "classicPage": "",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "monitor",
+        "endpoint": "Metrics",
+        "type": "LIST"
+      },
+      "fields": [
+        "Metric",
+        "Labels",
+        "Value",
+        "Help"
+      ],
+      "filter": [
+        "Metric",
+        "Labels",
+        "Help"
+      ],
+      "sort": {
+        "fields": [
+          "Metric",
+          "Value"
+        ],
+        "default": "Metric",
+        "direction": "asc"
+      },
+      "paging": "cap",
+      "note": {
+        "key": "metricsNote",
+        "text": "Each read takes a new sensor collection, which shortens the per-second intervals an external Prometheus scraper reports."
+      }
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Metric",
+          "labelKey": "metricsColumnMetric",
+          "kind": "name"
+        },
+        {
+          "field": "Labels",
+          "labelKey": "metricsColumnLabels",
+          "kind": "identifier"
+        },
+        {
+          "field": "Value",
+          "labelKey": "errorLogColumnValue",
+          "kind": "number"
+        },
+        {
+          "field": "Help",
+          "labelKey": "tableColumnDescription",
+          "kind": "text"
+        }
+      ],
+      "emptyNextKey": "tableReadOnlyEmptyNext",
+      "emptyAgentKey": ""
+    },
+    "toolIdentifier": "osmgmt.metrics",
     "refreshDefault": 0,
     "banner": null,
     "tab": null,

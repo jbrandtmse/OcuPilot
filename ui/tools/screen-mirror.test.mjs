@@ -204,12 +204,14 @@ test('every read note\'s text is the string its key names, and the three SQL sta
       'OcuPilot.Screen.Descriptor.ExplorerSqlProcedureStatements',
       'OcuPilot.Screen.Descriptor.ExplorerSqlTableStatements',
       'OcuPilot.Screen.Descriptor.ExplorerSqlViewStatements',
+      // Story 18.11: Prometheus metrics states that each read shortens an external scraper's intervals.
+      'OcuPilot.Screen.Descriptor.MetricsList',
       // Story 23.4: the Services list states what an empty Allowed IP addresses list means.
       'OcuPilot.Screen.Descriptor.ServiceList',
       // Story 19.10: SQL activity states whose statement text it shows.
       'OcuPilot.Screen.Descriptor.SqlActivityList',
     ],
-    'the three SQL statements reads, the ECP Connections tab, Services and SQL activity declare a note'
+    'the three SQL statements reads, the ECP Connections tab, Services, SQL activity and Prometheus metrics declare a note'
   );
   for (const screen of noted) {
     const { key, text } = screen.declaration.read.note;
@@ -2779,7 +2781,7 @@ test('timelineMemberProblem refuses a timeline member that declares a timeline i
 // Mutation (Rule 19): drop SOURCE_BACKGROUND from READ_SOURCE_PORTS -> the roster pin goes red and
 // the list's read is refused.
 test('Story 16.5: the Background tasks list reads through the background port, the seventh read source', () => {
-  assert.deepEqual(READ_SOURCE_PORTS, ['admin', 'state', 'mgmnt', 'logsource', 'path', 'timeline', 'background', 'atelier', 'encryption', 'docdb', 'sqlactivity', 'interop', 'access']);
+  assert.deepEqual(READ_SOURCE_PORTS, ['admin', 'state', 'mgmnt', 'logsource', 'path', 'timeline', 'background', 'atelier', 'encryption', 'docdb', 'sqlactivity', 'interop', 'access', 'monitor']);
   const { screens } = readSources();
   const background = screens.find((candidate) => candidate.className === 'OcuPilot.Screen.Descriptor.BackgroundTaskList');
   assert.ok(background !== undefined, 'the Background tasks list is declared');
@@ -2913,6 +2915,36 @@ test('Story 19.10: SQL activity reads through the sqlactivity port, the eleventh
   assert.equal(readProblem(screen.declaration), null, 'its read passes');
   assert.equal(screen.declaration.ownPrivileges, undefined, 'it declares no own pair');
   assert.deepEqual(screen.declaration.refreshRates, [5, 10, 30, 60]);
+});
+
+// Story 18.11: Prometheus metrics reads through the monitor port, the fourteenth read source, which both
+// engines admit as one LIST of `Metrics` with no criteria, per-row call, parent list, query, parts or rows,
+// under the port's two pairs. Every case in `OcuPilot.Test.MetricsDescriptor`'s corpus gets its exact
+// sentence, or none, here as the instance's registry gives it there.
+// Mutation (Rule 19): drop the monitor arm from `readProblem` -> the endpoint, type and key cases go red;
+// drop `SOURCE_MONITOR` from the system database rule -> the privileges case goes red.
+test('Story 18.11: Prometheus metrics reads through the monitor port, the fourteenth read source, and the corpus agrees', () => {
+  assert.ok(READ_SOURCE_PORTS.includes('monitor'), 'the monitor port is a read source');
+  const corpus = testCorpus(['Test', 'MetricsDescriptor.cls'], 'Cases');
+  let refusals = 0;
+  for (const testCase of corpus.cases) {
+    const declaration = structuredClone(corpus.declaration);
+    declaration.read.source = structuredClone(testCase.source);
+    if (testCase.criteria !== undefined) declaration.read.criteria = structuredClone(testCase.criteria);
+    if (testCase.privileges !== undefined) declaration.privileges = structuredClone(testCase.privileges);
+    const problem = testCase.check === 'criteria' ? criteriaProblem(declaration) : readProblem(declaration);
+    assert.equal(problem, testCase.expected, testCase.name);
+    if (testCase.expected !== null) refusals += 1;
+  }
+  assert.ok(refusals >= 10, `the corpus refuses its shapes (${refusals})`);
+  const { screens } = readSources();
+  const screen = screens.find((candidate) => candidate.className === 'OcuPilot.Screen.Descriptor.MetricsList');
+  assert.ok(screen !== undefined, 'Prometheus metrics is declared');
+  assert.deepEqual(screen.declaration.read.source, { port: 'monitor', endpoint: 'Metrics', type: 'LIST' });
+  assert.equal(readProblem(screen.declaration), null, 'its read passes');
+  assert.equal(screen.declaration.ownPrivileges, undefined, 'it declares no own pair');
+  assert.equal(screen.declaration.refreshes, false, 'it never refreshes');
+  assert.equal(screen.declaration.sideBarPosition, 21, 'OS management lists it at position 21');
 });
 
 // Story 20.2: the four Interoperability lists read through the interop port, the twelfth read source,

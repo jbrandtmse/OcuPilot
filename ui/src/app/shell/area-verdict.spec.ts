@@ -188,6 +188,8 @@ describe('an area opens when any screen it lists is allowed (AD-8, DW-1768)', ()
       manage,
       // Story 19.10: SQL activity, the twentieth, open on Operate and the system database's read.
       open,
+      // Story 18.11: Prometheus metrics, the twenty-first, open on the same two pairs.
+      open,
     ]);
   });
 });
