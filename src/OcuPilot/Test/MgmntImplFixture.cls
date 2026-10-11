@@ -1,11 +1,12 @@
 /// <p>Stands in for the management API's business-logic class behind
-/// <class>OcuPilot.Test.MgmntPortFixture</class>. It answers the four methods
+/// <class>OcuPilot.Test.MgmntPortFixture</class>. It answers the six methods
 /// <class>OcuPilot.Port.MgmntPort</class> calls with whatever a test armed -- a status on
 /// <code>%response</code>, a JSON value, and optionally a thrown exception or vendor-shaped text
 /// written to the device -- which is how the 400, 403, 404 and fault rows the live instance cannot
 /// produce on demand are driven.</p>
-/// <p>Every call is recorded, method and arguments, so a test reads "no vendor call was made" off a
-/// counter. A method nothing armed answers 500 with no value. State lives in
+/// <p>Every call is recorded, method and arguments -- the document <code>CreateApplication</code> was handed
+/// included, with the class it arrived as (<method>DocumentAt</method>) -- so a test reads "no vendor call was made"
+/// off a counter. A method nothing armed answers 500 with no value. State lives in
 /// <code>^||OcuPilotMgmntImpl</code>; <method>Clear</method> forgets it.</p>
 Class OcuPilot.Test.MgmntImplFixture Extends %RegisteredObject
 {
@@ -43,6 +44,15 @@ ClassMethod CallAt(pAt As %Integer) As %String
     Set tCall = $Get(^||OcuPilotMgmntImpl("call", pAt))
     If tCall = "" Quit ""
     Quit $List(tCall, 1) _ "(" _ $List(tCall, 2) _ $Select($List(tCall, 3) = "": "", 1: "," _ $List(tCall, 3)) _ ")"
+}
+
+/// <p>The document call <var>pAt</var> was handed, as the class it arrived as and its JSON text, <code>none</code> for
+/// a call handed none, or <code>string</code> and the text for one handed text; <code>""</code> for no such call.</p>
+ClassMethod DocumentAt(pAt As %Integer) As %String
+{
+    Set tCall = $Get(^||OcuPilotMgmntImpl("call", pAt))
+    If tCall = "" Quit ""
+    Quit $ListGet(tCall, 4)
 }
 
 /// <p>Every recorded call, in order, joined by <code>|</code>.</p>
@@ -102,13 +112,24 @@ ClassMethod GetWebRESTApplication(pNamespace As %String, pName As %String) As %D
     Quit ..Answer("GetWebRESTApplication", pNamespace, pName)
 }
 
+ClassMethod CreateApplication(pNamespace As %String, pName As %String, pSwagger) As %DynamicObject
+{
+    Quit ..Answer("CreateApplication", pNamespace, pName, .pSwagger)
+}
+
+ClassMethod DeleteApplication(pNamespace As %String, pName As %String) As %DynamicObject
+{
+    Quit ..Answer("DeleteApplication", pNamespace, pName)
+}
+
 /// <p>Record the call, clear <code>%session</code> as a vendor method that touched it would, then
 /// answer as armed.</p>
-ClassMethod Answer(pMethod As %String, pNamespace As %String, pName As %String) As %DynamicAbstractObject [ Private ]
+ClassMethod Answer(pMethod As %String, pNamespace As %String, pName As %String, ByRef pDocument = "") As %DynamicAbstractObject [ Private ]
 {
     Set tCount = ..CallCount() + 1
     Set ^||OcuPilotMgmntImpl("calls") = tCount
-    Set ^||OcuPilotMgmntImpl("call", tCount) = $ListBuild(pMethod, pNamespace, pName)
+    Set tDocument = $Select($IsObject(pDocument): pDocument.%ClassName(1) _ " " _ pDocument.%ToJSON(), pDocument = "": "none", 1: "string " _ pDocument)
+    Set ^||OcuPilotMgmntImpl("call", tCount) = $ListBuild(pMethod, pNamespace, pName, tDocument)
     Set %session = ""
     Set tArm = $Get(^||OcuPilotMgmntImpl("arm", pMethod))
     If tArm = "" {

@@ -254,6 +254,13 @@ Method TestEveryLiveToolRequiresItsScreensPairs()
             ; (AD-34, AD-40), never a privilege delta.
             Set tExpected = ##class(OcuPilot.Screen.Gate).RequiredPairs($Parameter(tTool.class, "DESCRIPTORCLASS"), .tExpectedResolved)
             Do $$$AssertTrue($ListLength(tExpected) > 0, tTool.name _ ": its screen declares pairs")
+            ; Story 18.32: the spec-based REST service writes declare %Development:USE as their own pair, and
+            ; as an argument pair WRITE on the routines database of the namespace their proposal stored, which
+            ; with no namespace argument is the request's scope, as System Explorer's save and create do (AD-8).
+            If $ClassMethod(tTool.class, "%Extends", "OcuPilot.Screen.Tool.RestServiceWrite") {
+                Set tExpectedAdded = ##class(OcuPilot.Screen.Tool.ExplorerSave).CodeWritePairs({}, .tExpectedAddedResolved)
+                Do $$$AssertTrue($ListLength(tExpectedAdded) > 0, tTool.name _ ": the expected argument pair, WRITE on the scope's routines database, resolves")
+            }
             ; Story 18.15: the enable of interoperability declares %All:USE first, before the poll's
             ; pair, and names no write pair of its own (AD-8 as amended 2026-10-01).
             If tTool.name = "osmgmt.namespaces.enableinterop" Set tExpected = tExpected _ $ListBuild($ListBuild("%All", "USE"))

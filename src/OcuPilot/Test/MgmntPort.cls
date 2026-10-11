@@ -453,4 +453,261 @@ Method TestTheReadHandsThePortTheScopeAndCarriesTheDocument()
     Do $$$AssertEquals(##class(OcuPilot.Test.MgmntImplFixture).CallCount(), 0, "before the port is called")
 }
 
+/// <p>One Service call (Story 18.32) of request type <var>pType</var> in <var>pNamespace</var> for
+/// <var>pName</var> with the body <var>pBody</var>, through the fixture port.</p>
+ClassMethod Service(pType As %String, pNamespace As %String, pName As %String, pBody, Output pResult, Output pHttp As %Integer, Output pFault As %DynamicObject) As %Status
+{
+    Kill tQuery
+    If pNamespace '= "" Set tQuery("namespace") = pNamespace
+    If pName '= "" Set tQuery("application") = pName
+    Quit ##class(OcuPilot.Test.MgmntPortFixture).Invoke("Service", pType, .tQuery, $Get(pBody), .pResult, .pHttp, .pFault)
+}
+
+/// <p>The caller holds every pair a Service write requires: the area's two, <code>%Development:USE</code>, and WRITE on
+/// <code>USER</code>'s routines database.</p>
+ClassMethod HoldAllWritePairs()
+{
+    Do ##class(OcuPilot.Test.MgmntPortFixture).SetGateClass("OcuPilot.Test.ScreenGate")
+    Do ##class(OcuPilot.Test.ScreenGate).Reset()
+    Do ##class(OcuPilot.Test.ScreenGate).Hold("%Admin_Secure", "USE")
+    Do ##class(OcuPilot.Test.ScreenGate).Hold("%DB_IRISSYS", "READ")
+    Do ##class(OcuPilot.Test.ScreenGate).Hold("%Development", "USE")
+    Do ##class(OcuPilot.Test.ScreenGate).Hold(..UserCodeResource(), "WRITE")
+}
+
+/// <p>The resource guarding <code>USER</code>'s routines database, as the instance reports it.</p>
+ClassMethod UserCodeResource() As %String
+{
+    Do ##class(OcuPilot.Port.AtelierPort).DatabaseResources("USER", .tRoutine, .tGlobal, .tMapped, .tResolved)
+    Quit tRoutine
+}
+
+/// <p>A valid OpenAPI 2.0 document, as the create's body carries it.</p>
+ClassMethod CreateBody() As %DynamicObject
+{
+    Quit {"Document": {"swagger": "2.0", "info": {"title": "probe", "version": "1"}, "paths": {}}}
+}
+
+/// <p>The Service endpoint's two reads (Story 18.32). A state read answers the listed spelling of a service the
+/// namespace lists in any letter case and 404 <code>PORT.NOTFOUND</code>, not logged, for one it does not; a service
+/// read answers the service, its namespace and its implementation class for one listed exactly that no web application
+/// dispatches to, 404 for one listed in another case, and 409 <code>RESTSERVICE.DEPLOYED</code> for one a web
+/// application dispatches to (in any case) and, without a vendor call, for a name starting with <code>/</code>. The
+/// namespace is the scope's when none is named.</p>
+/// <p>Mutation (Rule 19): drop the dispatch-class comparison from <method>OcuPilot.Port.MgmntPort.Resolved</method> --
+/// the deployed legs answer 200 and go red.</p>
+Method TestTheServiceReadsAreExactAndRefuseADeployedService()
+{
+    Do ..ArmCanned()
+    Set tSC = ..Service("STATE", "USER", "ORPHAN.V2", "", .tResult, .tHttp, .tFault)
+    Do $$$AssertStatusOK(tSC, "a state read of a service listed in another case is served")
+    Do $$$AssertEquals(tHttp _ " " _ tResult.%ToJSON(), "200 {""Name"":""Orphan.v2"",""Namespace"":""USER""}", "answering the listed spelling and the namespace")
+    Set tSC = ..Service("STATE", "USER", "Nosuch.v1", "", .tResult, .tHttp, .tFault)
+    Do $$$AssertEquals(..FaultText(tHttp, tFault), "404 PORT.NOTFOUND This namespace lists no REST application by that name.", "a service the namespace does not list is not found")
+    Do $$$AssertEquals(##class(OcuPilot.Test.LogProbe).Captured("message"), "", "and the refusal is not logged")
+
+    Do ##class(OcuPilot.Test.MgmntImplFixture).Clear()
+    Do ..ArmCanned()
+    Set tSC = ..Service("SERVICE", "USER", "Orphan.v2", "", .tResult, .tHttp, .tFault)
+    Do $$$AssertEquals(tHttp _ " " _ tResult.%ToJSON(), "200 {""Name"":""Orphan.v2"",""Namespace"":""USER"",""Implementation"":""Orphan.v2.impl""}", "a service read answers the service and the implementation class a delete keeps")
+    Do $$$AssertEquals(##class(OcuPilot.Test.MgmntImplFixture).CallText(), "GetWebRESTApps(USER)|GetRESTApps(USER)", "after the web applications and the services were listed")
+    Set tSC = ..Service("SERVICE", "USER", "orphan.v2", "", .tResult, .tHttp, .tFault)
+    Do $$$AssertEquals(..FaultText(tHttp, tFault), "404 PORT.NOTFOUND This namespace lists no REST application by that name.", "a service listed in another case is not found")
+    For tName = "Probe.v1", "probe.V1" {
+        Do ##class(OcuPilot.Test.MgmntImplFixture).Clear()
+        Do ..ArmCanned()
+        Set tSC = ..Service("SERVICE", "USER", tName, "", .tResult, .tHttp, .tFault)
+        Do $$$AssertEquals(..FaultText(tHttp, tFault), "409 " _ ##class(OcuPilot.Api.RestServiceError).#DEPLOYED _ " " _ ##class(OcuPilot.Api.RestServiceError).#REASONDEPLOYED, tName _ ": a web application dispatches to it")
+        Do $$$AssertEquals(##class(OcuPilot.Test.MgmntImplFixture).CallText(), "GetWebRESTApps(USER)", tName _ ": and the service list was not read")
+    }
+    Do ##class(OcuPilot.Test.MgmntImplFixture).Clear()
+    Set tSC = ..Service("SERVICE", "USER", "/api/probe", "", .tResult, .tHttp, .tFault)
+    Do $$$AssertEquals(tHttp _ " " _ tFault.code, "409 " _ ##class(OcuPilot.Api.RestServiceError).#DEPLOYED, "a web application's path is deployed")
+    Do $$$AssertEquals(##class(OcuPilot.Test.MgmntImplFixture).CallCount(), 0, "without a vendor call")
+
+    Do ##class(OcuPilot.Test.MgmntImplFixture).Clear()
+    Do ..ArmCanned()
+    Do ##class(OcuPilot.Kernel.Scope).Set("PROBENS")
+    Set tSC = ..Service("STATE", "", "Probe.v1", "", .tResult, .tHttp, .tFault)
+    Do $$$AssertEquals(##class(OcuPilot.Test.MgmntImplFixture).CallText(), "GetRESTApps(PROBENS)", "a read naming no namespace runs in the scope's")
+}
+
+/// <p>The create answers each vendor status in its own words (Story 18.32): 201 and 200 are served with the package and
+/// the namespace; a 400 or a 404 is 422 <code>RESTSERVICE.BUILD</code> on <code>Document</code> and logs nothing; a 403
+/// is <code>PORT.ACCESSDENIED</code> and a 500 the generic internal fault, each logged with the vendor's text and
+/// neither putting it on the wire. The vendor is handed a parsed object, never text.</p>
+/// <p>Mutation (Rule 19): log the 400 and the 404 in <method>OcuPilot.Port.MgmntPort.Outcome</method> -- the unlogged
+/// legs go red; hand the vendor the document's text -- the object leg goes red.</p>
+Method TestTheCreateAnswersEachVendorStatusInItsOwnWords()
+{
+    Set tObject = "%Library.DynamicObject " _ ..CreateBody().Document.%ToJSON()
+    Set tCases = $ListBuild(
+        $ListBuild("201 Created", "{""msg"":""New application created""}", "", "201 {""Name"":""OcuProbe1832Z"",""Namespace"":""USER""}", 0),
+        $ListBuild("200 OK", "{""msg"":""Application updated""}", "", "200 {""Name"":""OcuProbe1832Z"",""Namespace"":""USER""}", 0),
+        $ListBuild("400 Bad Request", "", "write", "422 RESTSERVICE.BUILD " _ ##class(OcuPilot.Api.RestServiceError).#REASONBUILD, 0),
+        $ListBuild("404 Not Found", "", "write", "422 RESTSERVICE.BUILD " _ ##class(OcuPilot.Api.RestServiceError).#REASONBUILD, 0),
+        $ListBuild("403 Forbidden", "", "write", "403 PORT.ACCESSDENIED The management API refused to enter this namespace for this account.", 1),
+        $ListBuild("500 Internal Server Error", "", "write", "500 INTERNAL An internal error occurred", 1))
+    For tI = 1:1:$ListLength(tCases) {
+        Set tCase = $List(tCases, tI)
+        Do ##class(OcuPilot.Test.MgmntImplFixture).Clear()
+        Do ##class(OcuPilot.Test.LogProbe).Clear()
+        Do ..HoldAllWritePairs()
+        Do ##class(OcuPilot.Test.MgmntImplFixture).Arm("CreateApplication", $List(tCase, 1), $List(tCase, 2), $List(tCase, 3))
+        Set tSC = ..Service("POST", "USER", "OcuProbe1832Z", ..CreateBody(), .tResult, .tHttp, .tFault)
+        Set tWhere = $List(tCase, 1)
+        Do $$$AssertEquals($Select($IsObject(tFault): ..FaultText(tHttp, tFault), 1: tHttp _ " " _ tResult.%ToJSON()), $List(tCase, 4), tWhere _ ": answered in its own words")
+        Do $$$AssertEquals(##class(OcuPilot.Test.MgmntImplFixture).CallText(), "CreateApplication(USER,OcuProbe1832Z)", tWhere _ ": one vendor call")
+        Do $$$AssertEquals(##class(OcuPilot.Test.MgmntImplFixture).DocumentAt(1), tObject, tWhere _ ": handed a parsed object")
+        If $List(tCase, 5) {
+            Do $$$AssertTrue(##class(OcuPilot.Test.LogProbe).Captured("message") [ ##class(OcuPilot.Test.MgmntImplFixture).#VENDORTEXT, tWhere _ ": the vendor's text reaches the log")
+            Do $$$AssertTrue($IsObject(tFault) && '(tFault.%ToJSON() [ "ERROR #"), tWhere _ ": and never the wire")
+        } ElseIf $IsObject(tFault) {
+            Do $$$AssertEquals(##class(OcuPilot.Test.LogProbe).Captured("message"), "", tWhere _ ": a build refusal logs nothing")
+            Do $$$AssertEquals(tFault.detail.violations.%Get(0).field _ " " _ tFault.detail.violations.%Get(0).code, "Document RESTSERVICE.BUILD", tWhere _ ": on Document")
+        }
+    }
+}
+
+/// <p>The create's rules are checked before any vendor call (Story 18.32): a package that is empty, holds a space, a
+/// percent sign, an underscore, a leading digit or an empty part, or is over 215 characters is 422
+/// <code>RESTSERVICE.NAME</code> on <code>Name</code>; a document that is no object (text, an array, none), whose
+/// <code>swagger</code> is a number, another version or absent, or whose text is over 1,000,000 characters (or longer
+/// than the instance's longest string) is 422
+/// <code>RESTSERVICE.DOCUMENT</code> on <code>Document</code>. A document sent as text never reaches the vendor.</p>
+/// <p>Mutation (Rule 19): accept any <code>swagger</code> in <method>OcuPilot.Port.MgmntPort.DocumentProblem</method> --
+/// the version legs go red; refuse at <code>&gt;=</code> the limits in <method>OcuPilot.Port.MgmntPort.NameProblem</method>
+/// and <method>OcuPilot.Port.MgmntPort.DocumentProblem</method> -- the edge legs go red.</p>
+Method TestTheCreatesRulesAreCheckedBeforeTheVendor()
+{
+    Do ..HoldAllWritePairs()
+    Set tSentence = ##class(OcuPilot.Api.RestServiceError).#REASONNAME
+    For tName = "", "Bad Name", "%Api.Probe", "1Probe", "Probe..v1", "Probe_v1", ("P" _ $Translate($Justify("", 215), " ", "a")) {
+        Set tSC = ..Service("POST", "USER", tName, ..CreateBody(), .tResult, .tHttp, .tFault)
+        Do $$$AssertEquals(..FaultText(tHttp, tFault), "422 RESTSERVICE.NAME " _ tSentence, "package '" _ $Extract(tName, 1, 12) _ "' is refused")
+        Do $$$AssertEquals(tFault.detail.violations.%Get(0).field, "Name", "on Name")
+    }
+    Do $$$AssertEquals(##class(OcuPilot.Port.MgmntPort).NameProblem("P" _ $Translate($Justify("", 214), " ", "a")), "", "a package of exactly 215 characters is accepted")
+    Set tEdge = ##class(%DynamicObject).%FromJSON("{""swagger"":""2.0"",""a"":""" _ $Translate($Justify("", 999976), " ", "b") _ """}")
+    Do $$$AssertEquals($Length(tEdge.%ToJSON()), 1000000, "the edge document is exactly the 1,000,000 characters the limit allows")
+    Do $$$AssertEquals(##class(OcuPilot.Port.MgmntPort).DocumentProblem({"Document": (tEdge)}), "", "and is accepted")
+    Set tText = ##class(%DynamicObject).%FromJSON("{""a"":""" _ $Translate($Justify("", 1000000), " ", "b") _ """}")
+    Do tText.%Set("swagger", "2.0")
+    Kill tDocuments
+    Set tAsText = "{""swagger"":""2.0""}"
+    Set tDocuments(1) = {"Document": (tAsText)}
+    Set tDocuments(2) = {"Document": []}
+    Set tDocuments(3) = {}
+    Set tDocuments(4) = {"Document": {"swagger": 2}}
+    Set tDocuments(5) = {"Document": {"swagger": "3.0"}}
+    Set tDocuments(6) = {"Document": {"info": {}}}
+    Set tDocuments(7) = {"Document": (tText)}
+    For tI = 1:1:7 {
+        Set tSC = ..Service("POST", "USER", "OcuProbe1832Z", tDocuments(tI), .tResult, .tHttp, .tFault)
+        Do $$$AssertEquals(..FaultText(tHttp, tFault), "422 RESTSERVICE.DOCUMENT " _ ##class(OcuPilot.Api.RestServiceError).#REASONDOCUMENT, "document " _ tI _ " is refused")
+        Do $$$AssertEquals(tFault.detail.violations.%Get(0).field, "Document", "on Document")
+    }
+    Set tChunk = $Translate($Justify("", 1000000), " ", "c")
+    Set tHuge = {"swagger": "2.0"}
+    For tI = 1:1:4 Do tHuge.%Set("part" _ tI, tChunk)
+    Do $$$AssertEquals(##class(OcuPilot.Port.MgmntPort).DocumentProblem({"Document": (tHuge)}), ##class(OcuPilot.Api.RestServiceError).#REASONDOCUMENT, "a document whose text is longer than the instance's longest string is refused, not raised")
+    Set tSC = ..Service("POST", "USER", "OcuProbe1832Z", "", .tResult, .tHttp, .tFault)
+    Do $$$AssertEquals(tHttp _ " " _ tFault.code, "422 RESTSERVICE.DOCUMENT", "a call with no body is refused too")
+    Do $$$AssertEquals(##class(OcuPilot.Test.MgmntImplFixture).CallCount(), 0, "none of them reached the vendor")
+}
+
+/// <p>A create and a delete require the screen's pairs, then <code>%Development:USE</code>, then WRITE on the
+/// namespace's routines database, each named in turn and each refused before any vendor call (Story 18.32, AD-8); a
+/// caller holding all of them reaches the vendor.</p>
+/// <p>Mutation (Rule 19): empty <parameter>OcuPilot.Port.MgmntPort.WRITEPAIRS</parameter> -- the first named pair is
+/// no longer <code>%Development:USE</code> and this goes red; drop the empty-pairs refusal from
+/// <method>OcuPilot.Port.MgmntPort.Service</method> -- the last leg goes red.</p>
+Method TestAWriteIsRefusedByNameUntilTheCallerHoldsTheAddedPairs()
+{
+    Set tCode = ..UserCodeResource()
+    Do $$$AssertEquals(tCode, "%DB_USER", "USER's routines database is guarded by %DB_USER")
+    For tType = "POST", "DELETE" {
+        Do ##class(OcuPilot.Test.MgmntImplFixture).Clear()
+        Do ..ArmCanned()
+        Do ##class(OcuPilot.Test.MgmntImplFixture).Arm("CreateApplication", "201 Created", "{""msg"":""created""}")
+        Do ##class(OcuPilot.Test.MgmntImplFixture).Arm("DeleteApplication", "200 OK", "{""msg"":""deleted""}")
+        Do ##class(OcuPilot.Test.ScreenGate).Reset()
+        Do ##class(OcuPilot.Test.MgmntPortFixture).SetGateClass("OcuPilot.Test.ScreenGate")
+        Do ##class(OcuPilot.Test.ScreenGate).Hold("%Admin_Secure", "USE")
+        Do ##class(OcuPilot.Test.ScreenGate).Hold("%DB_IRISSYS", "READ")
+        Set tSC = ..Service(tType, "USER", "Orphan.v2", ..CreateBody(), .tResult, .tHttp, .tFault)
+        Do $$$AssertEquals(..FaultText(tHttp, tFault), "403 AUTH.NOPRIVILEGE This account does not hold the privilege this request requires. %Development:USE", tType _ ": the code editors' pair is named first")
+        Do ##class(OcuPilot.Test.ScreenGate).Hold("%Development", "USE")
+        Set tSC = ..Service(tType, "USER", "Orphan.v2", ..CreateBody(), .tResult, .tHttp, .tFault)
+        Do $$$AssertEquals(..FaultText(tHttp, tFault), "403 AUTH.NOPRIVILEGE This account does not hold the privilege this request requires. " _ tCode _ ":WRITE", tType _ ": then WRITE on the routines database")
+        Do ##class(OcuPilot.Test.ScreenGate).Hold(tCode, "READ")
+        Set tSC = ..Service(tType, "USER", "Orphan.v2", ..CreateBody(), .tResult, .tHttp, .tFault)
+        Do $$$AssertEquals(tHttp, 403, tType _ ": READ is not WRITE")
+        Do $$$AssertEquals(##class(OcuPilot.Test.MgmntImplFixture).CallCount(), 0, tType _ ": no vendor call was made")
+        Do ##class(OcuPilot.Test.ScreenGate).Hold(tCode, "WRITE")
+        Set tSC = ..Service(tType, "USER", "Orphan.v2", ..CreateBody(), .tResult, .tHttp, .tFault)
+        Do $$$AssertStatusOK(tSC, tType _ ": a caller holding every pair is served")
+    }
+    Do ##class(OcuPilot.Test.MgmntImplFixture).Clear()
+    Do ..HoldAllWritePairs()
+    Set tSC = ..Service("POST", "OcuNoSuchNs1832", "OcuProbe1832Z", ..CreateBody(), .tResult, .tHttp, .tFault)
+    Do $$$AssertEquals(..FaultText(tHttp, tFault), "400 PORT.VALIDATION " _ ##class(OcuPilot.Port.MgmntPort).#REASONNAMESPACEUNKNOWN, "a namespace whose databases cannot be resolved is refused by its own sentence")
+    Do $$$AssertEquals(##class(OcuPilot.Test.MgmntImplFixture).CallCount(), 0, "and no vendor call was made")
+}
+
+/// <p>A delete is sent only for a service listed exactly that no web application dispatches to (Story 18.32): it reads
+/// the web applications and the services, then calls <code>DeleteApplication</code>; a deployed service, a web
+/// application's path and a name listed in another case send none; a 403 and a 500 from the vendor are answered in
+/// their own words and logged.</p>
+/// <p>Mutation (Rule 19): skip the <code>Resolved</code> call in the delete branch of
+/// <method>OcuPilot.Port.MgmntPort.Service</method> -- the deployed legs send the delete and go red.</p>
+Method TestTheDeleteIsSentOnlyForAnUndeployedListedService()
+{
+    Do ..ArmCanned()
+    Do ##class(OcuPilot.Test.MgmntImplFixture).Arm("DeleteApplication", "200 OK", "{""msg"":""deleted""}")
+    Do ..HoldAllWritePairs()
+    Set tSC = ..Service("DELETE", "USER", "Orphan.v2", "", .tResult, .tHttp, .tFault)
+    Do $$$AssertEquals(tHttp _ " " _ tResult.%ToJSON(), "200 {""Name"":""Orphan.v2"",""Namespace"":""USER""}", "a listed, undeployed service is deleted")
+    Do $$$AssertEquals(##class(OcuPilot.Test.MgmntImplFixture).CallText(), "GetWebRESTApps(USER)|GetRESTApps(USER)|DeleteApplication(USER,Orphan.v2)", "after both lists were read")
+    For tName = "Probe.v1", "/api/probe", "orphan.v2" {
+        Do ##class(OcuPilot.Test.MgmntImplFixture).Clear()
+        Do ..ArmCanned()
+        Do ##class(OcuPilot.Test.MgmntImplFixture).Arm("DeleteApplication", "200 OK", "{""msg"":""deleted""}")
+        Set tSC = ..Service("DELETE", "USER", tName, "", .tResult, .tHttp, .tFault)
+        Do $$$AssertStatusNotOK(tSC, tName _ ": is refused")
+        Do $$$AssertTrue(##class(OcuPilot.Test.MgmntImplFixture).CallText() '[ "DeleteApplication", tName _ ": and no delete was sent: " _ ##class(OcuPilot.Test.MgmntImplFixture).CallText())
+    }
+    For tCase = $ListBuild("403 Forbidden", "403 PORT.ACCESSDENIED The management API refused to enter this namespace for this account."), $ListBuild("500 Internal Server Error", "500 INTERNAL An internal error occurred") {
+        Do ##class(OcuPilot.Test.MgmntImplFixture).Clear()
+        Do ##class(OcuPilot.Test.LogProbe).Clear()
+        Do ..ArmCanned()
+        Do ##class(OcuPilot.Test.MgmntImplFixture).Arm("DeleteApplication", $List(tCase, 1), "", "write")
+        Set tSC = ..Service("DELETE", "USER", "Orphan.v2", "", .tResult, .tHttp, .tFault)
+        Do $$$AssertEquals(..FaultText(tHttp, tFault), $List(tCase, 2), $List(tCase, 1) _ ": answered in its own words")
+        Do $$$AssertTrue(##class(OcuPilot.Test.LogProbe).Captured("message") [ ##class(OcuPilot.Test.MgmntImplFixture).#VENDORTEXT, $List(tCase, 1) _ ": and the vendor's text reaches the log")
+    }
+}
+
+/// <p>The Service endpoint's two writes have a <code>rest</code> script form and its two reads have none (Story 18.32,
+/// AD-59): a create is one <code>curl</code> step posting the document to the management API's route for the namespace
+/// and package, a delete one without a body, and a create with no document answers no step.</p>
+/// <p>Mutation (Rule 19): answer <code>""</code> from <method>OcuPilot.Port.MgmntPort.SnippetForm</method> for
+/// <code>POST</code> -- the form leg goes red.</p>
+Method TestTheServiceWritesHaveARestScriptForm()
+{
+    Set tPort = "OcuPilot.Port.MgmntPort"
+    Do $$$AssertEquals($ClassMethod(tPort, "SnippetForm", "Service", "POST") _ "|" _ $ClassMethod(tPort, "SnippetForm", "Service", "DELETE") _ "|" _ $ClassMethod(tPort, "SnippetForm", "Service", "STATE") _ "|" _ $ClassMethod(tPort, "SnippetForm", "Service", "SERVICE") _ "|" _ $ClassMethod(tPort, "SnippetForm", "Applications", "LIST"), "rest|rest|||", "the writes script as rest, the reads not at all")
+    Set tContext = {"origin": "https://draft.example:52773", "user": "probe'user"}
+    Kill tQuery
+    Set tQuery("namespace") = "USER"
+    Set tQuery("application") = "OcuProbe1832Z"
+    Set tSteps = $ClassMethod(tPort, "Snippet", "Service", "POST", .tQuery, ..CreateBody(), tContext)
+    Do $$$AssertEquals(tSteps.%Size() _ " " _ tSteps.%Get(0).kind, "1 rest", "a create is one rest step")
+    Set tText = tSteps.%Get(0).text
+    Do $$$AssertTrue((tText [ "curl -u 'probe'\''user' -X POST 'https://draft.example:52773/api/mgmnt/v2/USER/OcuProbe1832Z'") && (tText [ "-d '" _ ..CreateBody().Document.%ToJSON() _ "'"), "naming the caller, the route and the document: " _ tText)
+    Set tSteps = $ClassMethod(tPort, "Snippet", "Service", "DELETE", .tQuery, "", tContext)
+    Do $$$AssertTrue((tSteps.%Size() = 1) && (tSteps.%Get(0).text [ "-X DELETE") && (tSteps.%Get(0).text '[ "-d "), "a delete is one step with no body")
+    Do $$$AssertEquals($ClassMethod(tPort, "Snippet", "Service", "POST", .tQuery, {}, tContext).%Size() _ $ClassMethod(tPort, "Snippet", "Service", "STATE", .tQuery, "", tContext).%Size(), "00", "a create with no document and a read answer no step")
+}
+
 }

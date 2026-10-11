@@ -1237,6 +1237,7 @@ ClassMethod ReasonForToolCode(pCode As %String) As %String
     If $Extract(pCode, 1, 9) = "USERCOPY." Set tReason = ##class(OcuPilot.Api.UserCopyError).ReasonFor(pCode)
     If $Extract(pCode, 1, 10) = "PCTACCESS." Set tReason = ##class(OcuPilot.Api.PctAccessError).ReasonFor(pCode)
     If $Extract(pCode, 1, 12) = "PRIVROUTINE." Set tReason = ##class(OcuPilot.Api.RoutineAppError).ReasonFor(pCode)
+    If $Extract(pCode, 1, 12) = "RESTSERVICE." Set tReason = ##class(OcuPilot.Api.RestServiceError).ReasonFor(pCode)
     If tReason '= "" Quit tReason
     Quit ..#REASONTOOLUNAVAILABLE
 }
@@ -1448,6 +1449,7 @@ ClassMethod ReasonForViolation(pCode As %String) As %String
     If $Extract(pCode, 1, 9) = "USERCOPY." Quit ##class(OcuPilot.Api.UserCopyError).ReasonFor(pCode)
     If $Extract(pCode, 1, 10) = "PCTACCESS." Quit ##class(OcuPilot.Api.PctAccessError).ReasonFor(pCode)
     If $Extract(pCode, 1, 12) = "PRIVROUTINE." Quit ##class(OcuPilot.Api.RoutineAppError).ReasonFor(pCode)
+    If $Extract(pCode, 1, 12) = "RESTSERVICE." Quit ##class(OcuPilot.Api.RestServiceError).ReasonFor(pCode)
     Quit ""
 }
 

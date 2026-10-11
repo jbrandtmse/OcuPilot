@@ -72,6 +72,9 @@ Parameter DOCDBAPPDELETE = "webapp.docdbapps.delete";
 /// <p>The privileged routine application delete, which the baseline also disables (Story 18.31).</p>
 Parameter ROUTINEAPPDELETE = "webapp.routineapps.delete";
 
+/// <p>The REST service delete, which the baseline also disables (Story 18.32).</p>
+Parameter RESTAPIDELETE = "webapp.restapis.delete";
+
 /// <p>Story 18.4's eight disk operations, which the baseline disables.</p>
 Parameter DISKOPERATIONS = "osmgmt.databasedetails.compact,osmgmt.databasedetails.defragment,osmgmt.databasedetails.dismount,osmgmt.databasedetails.mount,osmgmt.databasedetails.truncate,osmgmt.databases.integrity,osmgmt.localdatabases.expand,osmgmt.localdatabases.grow";
 
@@ -155,7 +158,7 @@ Method TestTheDefaultEnablesEveryWriteButTheBaselineDisabled()
         Set tKey = $Order(tKeys(tKey))
         If tKey = "" Quit
         Set tCount = tCount + 1
-        Set tExpected = $Select((tKey = ..#PURGE) || (tKey = ..#NAMESPACEDELETE) || (tKey = ..#DATABASEDELETE) || (tKey = ..#TASKIMPORT) || (tKey = ..#ENABLEINTEROP) || (tKey = ..#PCTACCESSDELETE) || (tKey = ..#DOCDBAPPDELETE) || (tKey = ..#ROUTINEAPPDELETE) || $ListFind($ListFromString(..#DISKOPERATIONS), tKey) || $ListFind($ListFromString(..#EXPLORERDISABLED), tKey): "0|baseline", 1: "1|baseline")
+        Set tExpected = $Select((tKey = ..#PURGE) || (tKey = ..#NAMESPACEDELETE) || (tKey = ..#DATABASEDELETE) || (tKey = ..#TASKIMPORT) || (tKey = ..#ENABLEINTEROP) || (tKey = ..#PCTACCESSDELETE) || (tKey = ..#DOCDBAPPDELETE) || (tKey = ..#ROUTINEAPPDELETE) || (tKey = ..#RESTAPIDELETE) || $ListFind($ListFromString(..#DISKOPERATIONS), tKey) || $ListFind($ListFromString(..#EXPLORERDISABLED), tKey): "0|baseline", 1: "1|baseline")
         If tKey = ..#REMOTEDATABASEDELETE Set tExpected = "0|baseline"
         If tKey = ..#SUPERSERVERDELETE Set tExpected = "0|baseline"
         If tKey = ..#INTEROPITEMREMOVE Set tExpected = "0|baseline"

@@ -6240,6 +6240,12 @@ export const STRINGS = {
   routineAppRefusedAction: 'change the privileged routine application',
   /** EXPERIENCE.md:357 */
   routineAppDeleteConsequence: 'The application is removed, with the roles and routines it holds. No code is deleted.',
+  /** EXPERIENCE.md:357 */
+  restServiceCreateEffect: 'Confirming compiles the service\'s specification, dispatch and implementation classes in this namespace. An implementation class already there keeps its code.',
+  /** EXPERIENCE.md:357 */
+  restServiceDeleteConsequence: 'The service is removed: its specification and dispatch classes are deleted. Its implementation class is kept.',
+  /** EXPERIENCE.md:357 */
+  restApiListEmptyAgent: 'create a REST service from an OpenAPI 2.0 document',
   /** EXPERIENCE.md:604 */
   interopProductionsLabel: 'Productions',
   /** EXPERIENCE.md:604 */

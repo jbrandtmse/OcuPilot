@@ -10877,6 +10877,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-09T23:09:46Z status=routed owner=burndown by=orchestrator note=decided: false refusal only (the port checks WRITE on the target namespace itself, so nothing is wrongly allowed); fix as 20.20 did for saves and creates (store Namespace in the mint args, read it in ArgumentPairs) in Epic 20 close burn-down; not release-blocking
 - 2026-10-10T08:25:19Z occurrence=20-3-production-items
 - 2026-10-10T20:07:04Z occurrence=20-22-production-item-settings
+- 2026-10-11T09:46:42Z occurrence=18-32-spec-based-rest-services
 
 ### DW-2255: CI flake: ClassicPageGate.TestAnAssignedPageGatesEveryDeclaringToolOnTheAgentsCaller read its child process as not having run as the probe principal, so every later refusal assertion failed
 - source: cycle-log-epic-20.md (run 37952814550 attempt 1) | severity: med | fix-risk: low | footprint: out-of-footprint
@@ -10970,6 +10971,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: ui/tools/ci-runner.mjs:369 reads the direct Extends only, so ProviderStream and ProviderStreamFamilies (Extends StreamCase) are off the local floor; CI legs split the instance's list, so they still run
 - 2026-10-09T17:02:33Z status=routed owner=range-end-cleanup by=spec_gate note=23.6 plan filing candidate 4; its comment says widen the matcher once such a base exists
 - 2026-10-11T00:42:33Z status=routed owner=23-7-the-range-end-cleanup-part-6 by=load note=re-own from range-end-cleanup: kit 2026-10-10.1 owners are story keys or burndown
+- 2026-10-11T08:55:26Z occurrence=18-31-privileged-routine-applications
+- 2026-10-11T09:52:03Z occurrence=18-32-spec-based-rest-services
 
 ### DW-2260: USERS_PATH is declared twice in the client
 - source: spec-23-6-the-haiku-story-cleanup.md | severity: low | fix-risk: low | footprint: out-of-footprint
@@ -11102,6 +11105,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-10T12:49:19Z occurrence=18-30-doc-db-applications
 - 2026-10-11T01:02:21Z status=routed owner=23-7-the-range-end-cleanup-part-6 by=merge_gate note=re-own from range-end-cleanup at 18.30's merge (kit 2026-10-10.1 owner grammar)
 - 2026-10-11T06:02:59Z occurrence=18-31-privileged-routine-applications
+- 2026-10-11T11:11:25Z occurrence=18-34-the-person-s-rest-service-create
 
 ### DW-2279: MappingMint's empty-namespace refusal names a 'mapping' for the Doc DB application tools
 - source: spec-18-30-doc-db-applications.md | severity: low | fix-risk: low | footprint: in-epic
@@ -11134,11 +11138,33 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-32-spec-based-rest-services.md | severity: low | fix-risk: low | footprint: in-epic
 - evidence: 18.32's code map states the copy and its reason (Write.cls off-limits under Rule 11); ExplorerDocDbDelete.cls:57 is the sibling
 - 2026-10-11T05:02:16Z status=routed owner=23-7-the-range-end-cleanup-part-6 by=spec_gate note=lift StateDiff into Write.cls once Epic 20 has merged; both deletes then extend it
+- 2026-10-11T06:59:46Z status=routed owner=23-7-the-range-end-cleanup-part-6 by=spec_gate note=the REMOVALROWS StateDiff body already repeats in 13 delete tools; one Write.cls default serves all, so 23.7 lifts it once
+- 2026-10-11T08:55:17Z status=routed owner=burndown by=lead note=23.7 takes no new routings (orchestrator); lift StateDiff into Screen/Tool/Write.cls once Epic 20 has merged (Write.cls is Epic 20's until then), and the 13 deletes extend it
 ### DW-2300: A tool class's compile time is recorded a few milliseconds before its compiled code, so a ListTools build in that gap can cache the class's previous view until the next compile
 - source: spec-20-24-agent-tool-calls-stop-re-listing-the-tool-registry.md | severity: low | fix-risk: high | footprint: in-story
 - evidence: Measured on ocupilot-b-ci at code review: the CompiledClass row and TimeChanged lead %Extends and $Parameter by 1.6-4.2 ms (one 53 ms); the before/after check cannot see it; 20 batch-compile trials ended with 0 stale listings; a production build reads a class at least 38 ms after its signature read
 - 2026-10-11T05:10:03Z status=by-design owner=20-24-agent-tool-calls-stop-re-listing-the-tool-registry by=cr note=spec Named limit; AD-5's 'seen on the next call' has this ms gap; reopens only by a spec or AD-5 amendment
 
+### DW-2309: IRIS defect candidate: %Api.Mgmnt.v2.impl.DeleteApplication discards %REST.API.DeleteApplication's status and always answers 200
+- source: spec-18-32-spec-based-rest-services.md | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: irissys/%Api/Mgmnt/v2/impl.cls sets 200 without reading the status; a delete of an absent service answers 200 (measured, ocupilot-ci); MgmntPort relies on the read-back (AD-58)
+- 2026-10-11T08:55:17Z status=decision-pending owner=burndown by=harvest note=owner_hold: IRIS defect candidate, never reported upstream
+
+### DW-2310: ci-runner.mjs testClassesOnDisk floor misses a test class whose tests are all inherited from a project base (RoutineAppGate extends DocDbAppGate)
+- source: 18.31 fresh check (runner) | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: the matcher needs Extends ...TestCase and an own Test method; the instance's PrimarySuper list still offers RoutineAppGate and CI shards that list, so coverage holds
+- 2026-10-11T08:55:17Z status=routed owner=burndown by=lead note=orchestrator: owner burndown (18.35); widen the matcher to follow project bases or count inherited Test methods
+- 2026-10-11T08:55:25Z status=dropped owner=burndown by=lead note=duplicate of DW-2259 (same root cause, already in 23.7's held set); occurrence appended there
+
+### DW-2311: The REST service delete's deployed check sees only a web application of the same namespace dispatching to <Name>.disp: a service reached through another dispatch class's Forward route, or dispatched from another namespace sharing the package, reads undeployed and is deleted
+- source: spec-18-32-spec-based-rest-services.md | severity: med | fix-risk: high | footprint: in-story
+- evidence: MgmntPort.Resolved reads GetWebRESTApps(pNamespace) and matches dispatchClass = <Name>.disp only. %Api.InteropEditors forwards /v1../v7 to %Api.InteropEditors.vN.disp (irissys/%Api/InteropEditors.cls:28-35) and GetRESTApps(%SYS) lists those eight with no web application on ocupilot-ci (they sit in read-only IRISLIB, so there the vendor delete fails); a user's router forwarding to a spec-first service in a writable database would lose its .spec and .disp.
+- 2026-10-11T09:46:42Z status=escalated owner=burndown by=cr note=fix walks each listed web app's UrlMap Forward targets or reads every namespace's apps; matrix row names direct dispatch only
+
+### DW-2312: ToolEmit.TestEveryLiveToolRequiresItsScreensPairs's doc comment says no other live tool's arguments add pairs; the ExplorerSave and RestServiceWrite branches contradict it
+- source: spec-18-32-spec-based-rest-services.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: 18.32 rework 1 added the second counterexample; a reword is not add-only while Epic 20 has uncommitted ToolEmit.cls edits (Rule 11)
+- 2026-10-11T11:25:21Z status=wontfix-accepted owner=18-32-spec-based-rest-services by=harvest note=reopen_if=the next story that edits ToolEmit's method after Epic 20 merges it, which rewords the sentence in passing
 ### DW-2301: flake: a11y-structural-invariants.browser-spec.mjs AC5 recorded security/auditing/user-events (1280 light) as unsettled within 20 s in one local run, and one run failed before measuring (cause not captured)
 - source: spec-20-4-per-host-tabs-the-monitor-queues-and-jobs.md | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: local ocupilot-b-ci 2026-10-10: 2 of 4 runs red on untouched screens; 2026-10-11 after a full sweep: user-events read 8-13 ms, 2 of 2 runs green; six IRIS containers share the host (inference: CPU contention)

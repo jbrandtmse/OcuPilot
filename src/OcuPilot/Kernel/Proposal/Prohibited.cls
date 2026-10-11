@@ -256,7 +256,7 @@ Parameter WRITETOOLBASE = "OcuPilot.Screen.Tool.Write";
 /// <p>The entity types this release evaluates predicates for, comma-separated
 /// (<class>OcuPilot.Kernel.EntityType</class>'s spelling). A type outside this list is
 /// <parameter>UNCOVERED</parameter>.</p>
-Parameter COVEREDTYPES = "screen-permission,web-application,user,auditing-configuration,task,process,application-error,role,resource,x509-credential,wallet-secret,device,oauth2-client-configuration,oauth2-server-client,audit-event,audit-user-event,ssl-configuration,service,ldap-configuration,oauth2-server-definition,oauth2-resource-server,oauth2-server,namespace,web-session,background-task,global-mapping,routine-mapping,package-mapping,database-configuration,database,language-server,lock,class,routine,journal-file,journal-settings,license-key,license-server,ecp-data-server,ecp-settings,ecp-ssl-connection,encryption-key-file,database-encryption-keys,data-element-encryption-keys,encryption-startup,docdb-database,authentication-options,superserver,mft-connection,production,pct-class-access,docdb-application,routine-application,production-item,production-item-setting,interop-queue,interop-message,interop-job";
+Parameter COVEREDTYPES = "screen-permission,web-application,user,auditing-configuration,task,process,application-error,role,resource,x509-credential,wallet-secret,device,oauth2-client-configuration,oauth2-server-client,audit-event,audit-user-event,ssl-configuration,service,ldap-configuration,oauth2-server-definition,oauth2-resource-server,oauth2-server,namespace,web-session,background-task,global-mapping,routine-mapping,package-mapping,database-configuration,database,language-server,lock,class,routine,journal-file,journal-settings,license-key,license-server,ecp-data-server,ecp-settings,ecp-ssl-connection,encryption-key-file,database-encryption-keys,data-element-encryption-keys,encryption-startup,docdb-database,authentication-options,superserver,mft-connection,production,pct-class-access,docdb-application,routine-application,production-item,production-item-setting,interop-queue,interop-message,interop-job,rest-service";
 
 /// <p>The covered types, each named once so the dispatch and the list cannot drift apart.</p>
 Parameter TYPEWEBAPPLICATION = "web-application";
@@ -643,6 +643,11 @@ Parameter EFFECTAUDITENCRYPTION = "AUDIT.ENCRYPTIONCHANGE";
 /// <p>A document database (Story 19.17), whose create and drop are judged by the class its name creates
 /// (<method>OcuPilot.Port.DocDbPort.ClassNameOf</method>) under the code arm (<method>Code</method>).</p>
 Parameter TYPEDOCDBDATABASE = "docdb-database";
+
+/// <p>A spec-based REST service of a namespace (Story 18.32), keyed by its package, whose create and delete are judged
+/// by the package alone under the code arm (<method>Code</method>): a package beginning with OcuPilot is OcuPilot's
+/// own code in any letter case.</p>
+Parameter TYPERESTSERVICE = "rest-service";
 
 /// <p>An interoperability production of a namespace (AD-62, Story 20.2). AD-10 names no effect on one,
 /// so its writes pass the reviewed-few sweep and nothing else.</p>
@@ -1268,6 +1273,8 @@ ClassMethod PermittedCreateFields(pType As %String) As %List
     If (pType = ..#TYPEDOCDBAPPLICATION) || (pType = ..#TYPEROUTINEAPPLICATION) Quit ..DocDbApplicationFields()
     ; Story 19.17: a document database create sets its name, which the docdb arm judges by the class it creates.
     If pType = ..#TYPEDOCDBDATABASE Quit $ListBuild("Name")
+    ; Story 18.32: a REST service create sets its package and its document, which the rest-service arm judges by the package.
+    If pType = ..#TYPERESTSERVICE Quit $ListBuild("Name", "Document")
     ; Story 20.3: an item add sets these six; its production is the id's and its namespace the payload's.
     If pType = ..#TYPEPRODUCTIONITEM Quit $ListBuild("Name", "ClassName", "PoolSize", "Enabled", "Category", "Comment")
     Quit ""
@@ -1350,7 +1357,7 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
             Do ..Refuse(..#UNCOVERED, .pProhibits, .pCode)
             Quit
         }
-        If (tType '= ..#TYPESCREENPERMISSION) && (tType '= ..#TYPEWEBAPPLICATION) && (tType '= ..#TYPEUSER) && (tType '= ..#TYPEAUDITING) && (tType '= ..#TYPETASK) && (tType '= ..#TYPEPROCESS) && (tType '= ..#TYPEAPPLICATIONERROR) && (tType '= ..#TYPEROLE) && (tType '= ..#TYPERESOURCE) && (tType '= ..#TYPEX509) && (tType '= ..#TYPEWALLETSECRET) && (tType '= ..#TYPEDEVICE) && (tType '= ..#TYPEOAUTHCLIENT) && (tType '= ..#TYPEOAUTHSERVERCLIENT) && (tType '= ..#TYPEAUDITEVENT) && (tType '= ..#TYPEAUDITUSEREVENT) && (tType '= ..#TYPESSL) && (tType '= ..#TYPESERVICE) && (tType '= ..#TYPELDAP) && (tType '= ..#TYPEOAUTHSERVERDEF) && (tType '= ..#TYPEOAUTHRESOURCESERVER) && (tType '= ..#TYPEOAUTHAUTHSERVER) && (tType '= ..#TYPENAMESPACE) && (tType '= ..#TYPEWEBSESSION) && (tType '= ..#TYPEBACKGROUNDTASK) && (tType '= ..#TYPEDATABASECONFIG) && (tType '= ..#TYPEDATABASE) && '..IsMappingType(tType) && (tType '= ..#TYPELANGUAGESERVER) && (tType '= ..#TYPELOCK) && (tType '= ..#TYPECLASS) && (tType '= ..#TYPEROUTINE) && (tType '= ..#TYPEJOURNALFILE) && (tType '= ..#TYPEJOURNALSETTINGS) && (tType '= ..#TYPELICENSEKEY) && (tType '= ..#TYPELICENSESERVER) && (tType '= ..#TYPEECPDATASERVER) && (tType '= ..#TYPEECPSETTINGS) && (tType '= ..#TYPEECPSSLCONNECTION) && (tType '= ..#TYPEENCRYPTIONKEYFILE) && (tType '= ..#TYPEDATABASEKEYS) && (tType '= ..#TYPEDATAELEMENTKEYS) && (tType '= ..#TYPEENCRYPTIONSTARTUP) && (tType '= ..#TYPEAUTHOPTIONS) && (tType '= ..#TYPESUPERSERVER) && (tType '= ..#TYPEMFTCONNECTION) && (tType '= ..#TYPEDOCDBDATABASE) && (tType '= ..#TYPEPRODUCTION) && (tType '= ..#TYPEPRODUCTIONITEM) && (tType '= ..#TYPEPRODUCTIONITEMSETTING) && (tType '= ..#TYPEPCTACCESS) && (tType '= ..#TYPEDOCDBAPPLICATION) && (tType '= ..#TYPEROUTINEAPPLICATION) && (tType '= ..#TYPEINTEROPQUEUE) && (tType '= ..#TYPEINTEROPMESSAGE) && (tType '= ..#TYPEINTEROPJOB) {
+        If (tType '= ..#TYPESCREENPERMISSION) && (tType '= ..#TYPEWEBAPPLICATION) && (tType '= ..#TYPEUSER) && (tType '= ..#TYPEAUDITING) && (tType '= ..#TYPETASK) && (tType '= ..#TYPEPROCESS) && (tType '= ..#TYPEAPPLICATIONERROR) && (tType '= ..#TYPEROLE) && (tType '= ..#TYPERESOURCE) && (tType '= ..#TYPEX509) && (tType '= ..#TYPEWALLETSECRET) && (tType '= ..#TYPEDEVICE) && (tType '= ..#TYPEOAUTHCLIENT) && (tType '= ..#TYPEOAUTHSERVERCLIENT) && (tType '= ..#TYPEAUDITEVENT) && (tType '= ..#TYPEAUDITUSEREVENT) && (tType '= ..#TYPESSL) && (tType '= ..#TYPESERVICE) && (tType '= ..#TYPELDAP) && (tType '= ..#TYPEOAUTHSERVERDEF) && (tType '= ..#TYPEOAUTHRESOURCESERVER) && (tType '= ..#TYPEOAUTHAUTHSERVER) && (tType '= ..#TYPENAMESPACE) && (tType '= ..#TYPEWEBSESSION) && (tType '= ..#TYPEBACKGROUNDTASK) && (tType '= ..#TYPEDATABASECONFIG) && (tType '= ..#TYPEDATABASE) && '..IsMappingType(tType) && (tType '= ..#TYPELANGUAGESERVER) && (tType '= ..#TYPELOCK) && (tType '= ..#TYPECLASS) && (tType '= ..#TYPEROUTINE) && (tType '= ..#TYPEJOURNALFILE) && (tType '= ..#TYPEJOURNALSETTINGS) && (tType '= ..#TYPELICENSEKEY) && (tType '= ..#TYPELICENSESERVER) && (tType '= ..#TYPEECPDATASERVER) && (tType '= ..#TYPEECPSETTINGS) && (tType '= ..#TYPEECPSSLCONNECTION) && (tType '= ..#TYPEENCRYPTIONKEYFILE) && (tType '= ..#TYPEDATABASEKEYS) && (tType '= ..#TYPEDATAELEMENTKEYS) && (tType '= ..#TYPEENCRYPTIONSTARTUP) && (tType '= ..#TYPEAUTHOPTIONS) && (tType '= ..#TYPESUPERSERVER) && (tType '= ..#TYPEMFTCONNECTION) && (tType '= ..#TYPEDOCDBDATABASE) && (tType '= ..#TYPEPRODUCTION) && (tType '= ..#TYPEPRODUCTIONITEM) && (tType '= ..#TYPEPRODUCTIONITEMSETTING) && (tType '= ..#TYPEPCTACCESS) && (tType '= ..#TYPEDOCDBAPPLICATION) && (tType '= ..#TYPEROUTINEAPPLICATION) && (tType '= ..#TYPEINTEROPQUEUE) && (tType '= ..#TYPEINTEROPMESSAGE) && (tType '= ..#TYPEINTEROPJOB) && (tType '= ..#TYPERESTSERVICE) {
             ; A type COVEREDTYPES lists and no branch evaluates. Fail closed rather than write.
             Do ..Refuse(..#UNCOVERED, .pProhibits, .pCode)
             Quit
@@ -1417,6 +1424,13 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
                 If $IsObject(tPayloadObject) && (tPayloadObject.%GetTypeOf("Name") = "string") && (tPayloadObject.%Get("Name") '= "") Set tName = tPayloadObject.%Get("Name")
             }
             Set tSC = ..Code(##class(OcuPilot.Port.DocDbPort).ClassNameOf(tName), .pProhibits, .pCode)
+            Quit
+        }
+
+        ; Story 18.32: a spec-based REST service is judged by its package, the target id for a create and a delete alike,
+        ; so the arm reads no target.
+        If tType = ..#TYPERESTSERVICE {
+            Set tSC = ..Code(tId, .pProhibits, .pCode)
             Quit
         }
 

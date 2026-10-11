@@ -20363,7 +20363,12 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "id": "",
       "selfProtection": ""
     },
-    "rowActions": [],
+    "rowActions": [
+      {
+        "id": "delete",
+        "selfProtection": ""
+      }
+    ],
     "context": {
       "fields": [
         "Name",
@@ -20457,8 +20462,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
           "kind": "status"
         }
       ],
-      "emptyNextKey": "tableReadOnlyEmptyNext",
-      "emptyAgentKey": ""
+      "emptyNextKey": "",
+      "emptyAgentKey": "restApiListEmptyAgent"
     },
     "toolIdentifier": "webapp.restapis",
     "refreshDefault": 0,
