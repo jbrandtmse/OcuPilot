@@ -163,6 +163,9 @@ ClassMethod ProbeAs(pUser As %String) As %DynamicObject
 /// <method>OcuPilot.Screen.Tool.Registry.ProviderTools</method>'s roster by
 /// <method>OcuPilot.Screen.Gate.HoldsPrivilege</method> -> this goes red, because the probe's
 /// principal holds one resource and the roster is not.</p>
+/// <p>Also pins that the principal's next listing is answered from the per-process cache of
+/// <method>OcuPilot.Screen.Tool.Registry.ListTools</method>. Mutation (Rule 19): read the compile
+/// signature by dynamic SQL -> this goes red on that assertion alone.</p>
 Method TestEveryToolIsAdvertisedToALeastPrivilegedPrincipal()
 {
     Do $$$AssertTrue(..PreparedSetupOk, "setup confirmed the principal holds exactly one administrative resource")
@@ -182,6 +185,7 @@ Method TestEveryToolIsAdvertisedToALeastPrivilegedPrincipal()
     Do $$$AssertEquals(tProbe.%Get("status"), "", "the advertisement itself did not fail")
     Do $$$AssertEquals(tProbe.%Get("count"), tAllCount, "the least-privileged principal is offered every tool: " _ tProbe.%Get("count") _ " against " _ tAllCount)
     Do $$$AssertEquals(tProbe.%Get("names"), tAllNames, "in the same order, by the same names")
+    Do $$$AssertEquals(tProbe.%Get("relisted") _ "|" _ tProbe.%Get("rebuilt"), "|0", "and its next listing came from the per-process cache, so it can read the compile signature")
 
     ; The control: the principal really is least-privileged, so the identical rosters above are a
     ; measurement and not two readings of the same %All identity.

@@ -190,14 +190,15 @@ Method TestOneListingServesEveryCaller()
     Do $$$AssertTrue(+$Get(tProvider) > 0, "and advertises tools")
     Do $$$AssertStatusOK(##class(OcuPilot.Kernel.Governance.Gate).Decide(tName, "write", $Username, {}, .tDecision), "the governance gate decides")
 
-    ; The schema refuses the undeclared argument before the tool is invoked, so the call mints nothing.
+    ; The gate, the restraint verdict and the privilege pairs are read first; then the schema refuses
+    ; the input before the tool is invoked, so the call mints nothing.
     Set tUse = {"type": "tool_use", "id": "toolu_1", "input": {"registryCacheUndeclared": 1}}
     Do tUse.%Set("name", tWire, "string")
     Set tUses = []
     Do tUses.%Push(tUse)
     Do $$$AssertStatusOK(##class(OcuPilot.Kernel.Agent.Dispatch).Answer(..#TURNKEY, $Username, "", tUses, ..#LIMITS, .tResults, .tNames), "a production dispatch answers")
     Do $$$AssertEquals(tNames.%Get(0), tName, "recorded under the tool's canonical dotted name")
-    Do $$$AssertEquals(tResults.%Get(0)."is_error", 1, "and refused")
+    Do $$$AssertTrue(tResults.%Get(0)."is_error" && (tResults.%Get(0).content [ """code"":""TOOL.ARGUMENTS"""), "and refused by the schema (" _ tResults.%Get(0).content _ ")")
 
     Do $$$AssertEquals($ClassMethod(tRegistry, "BuildCount") - tBuilds, 0, "none of the five callers built the listing again")
     Do $$$AssertStatusOK($ClassMethod(tRegistry, "ListTools", .tCached), "the cached listing is read")
@@ -267,7 +268,7 @@ Method TestCompileInAnotherProcessIsSeen()
 }
 
 /// <p>AC4 -- a caller that changes its answer, an entry or the array, changes nothing the next
-/// call reads. Every answer is read from the cache.</p>
+/// call reads. Both answers after the first are read from the cache.</p>
 /// <p>Mutation: the cache stores and answers the built <class>%DynamicArray</class> itself -> this
 /// goes red.</p>
 Method TestCachedListingIsACopy()
@@ -288,8 +289,9 @@ Method TestCachedListingIsACopy()
 }
 
 /// <p>AC4 -- every entry of a listing, built or cached, carries the six keys of the listing in
-/// order and nothing that depends on the caller. Read from the production registry and from the
-/// fixture registry holding the probe.</p>
+/// order and no others. Read from the production registry and from the
+/// fixture registry holding the probe. The first pass builds and the second is answered from the
+/// cache, which the build count shows.</p>
 /// <p>Mutation: <code>Claim</code> adds a seventh key -> this goes red.</p>
 Method TestEntriesCarryOnlyTheListing()
 {
@@ -297,7 +299,9 @@ Method TestEntriesCarryOnlyTheListing()
     For tRegistry = ..#PRODUCTION, ..#FIXTURE {
         Do $ClassMethod(tRegistry, "ForgetListing")
         For tPass = "built", "cached" {
+            Set tBuilds = $ClassMethod(tRegistry, "BuildCount")
             Do $$$AssertStatusOK($ClassMethod(tRegistry, "ListTools", .tList), tRegistry _ " lists (" _ tPass _ ")")
+            Do $$$AssertEquals($ClassMethod(tRegistry, "BuildCount") - tBuilds, $Select(tPass = "built": 1, 1: 0), tRegistry _ " answered the " _ tPass _ " pass from " _ $Select(tPass = "built": "a build", 1: "the cache"))
             Set tEntries = 0
             Set tOdd = ""
             Set tIterator = tList.%GetIterator()
@@ -311,6 +315,48 @@ Method TestEntriesCarryOnlyTheListing()
             Do $$$AssertEquals(tOdd, "", "every entry carries exactly " _ ..#ENTRYKEYS _ " (" _ tPass _ ")")
         }
     }
+}
+
+/// <p>Row "other registry" -- each registry class keeps a listing of its own in this namespace:
+/// the production registry and the fixture registry answer different rosters from the same
+/// compile signature, and forgetting or rebuilding one leaves the other cached. The cache is kept
+/// under this namespace and the registry class name.</p>
+/// <p>Mutation: the cache key drops the registry class -> this goes red, the fixture registry is
+/// answered the production listing; drops the namespace -> the last assertion goes red.</p>
+Method TestEachRegistryClassHasItsOwnEntry()
+{
+    Do $$$AssertStatusOK(..CompileProbe(), "the probe is compiled")
+    Set tProductionBuilds = $ClassMethod(..#PRODUCTION, "BuildCount")
+    Set tFixtureBuilds = $ClassMethod(..#FIXTURE, "BuildCount")
+    Do $ClassMethod(..#PRODUCTION, "ForgetListing")
+    Do $ClassMethod(..#FIXTURE, "ForgetListing")
+
+    Do $$$AssertStatusOK($ClassMethod(..#PRODUCTION, "ListTools", .tProduction), "the production registry lists")
+    Do $$$AssertStatusOK($ClassMethod(..#FIXTURE, "ListTools", .tFixture), "the fixture registry lists")
+    Do $$$AssertEquals($ClassMethod(..#PRODUCTION, "BuildCount") - tProductionBuilds, 1, "the production registry built once")
+    Do $$$AssertEquals($ClassMethod(..#FIXTURE, "BuildCount") - tFixtureBuilds, 1, "and the fixture registry built once for itself")
+    Do $$$AssertEquals(tFixture.%Size(), 1, "the fixture registry lists its one tool")
+    Do $$$AssertEquals(tFixture.%Get(0).name, ..#LATENAME, "the probe")
+    Do $$$AssertTrue(tProduction.%Size() > 1, "and the production registry lists more")
+    Set tProductionHasProbe = 0
+    Set tIterator = tProduction.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tEntry) {
+        If tEntry.name = ..#LATENAME Set tProductionHasProbe = 1
+    }
+    Do $$$AssertTrue('tProductionHasProbe, "without the fixture's tool")
+
+    Do $ClassMethod(..#FIXTURE, "ForgetListing")
+    Do $$$AssertStatusOK($ClassMethod(..#PRODUCTION, "ListTools", .tProduction), "after the fixture registry forgets, the production registry lists")
+    Do $$$AssertEquals($ClassMethod(..#PRODUCTION, "BuildCount") - tProductionBuilds, 1, "from its own cache")
+    Do $$$AssertStatusOK($ClassMethod(..#FIXTURE, "ListTools", .tFixture), "the fixture registry lists")
+    Do $$$AssertEquals($ClassMethod(..#FIXTURE, "BuildCount") - tFixtureBuilds, 2, "and builds again")
+    Do $ClassMethod(..#PRODUCTION, "ForgetListing")
+    Do $$$AssertStatusOK($ClassMethod(..#FIXTURE, "ListTools", .tFixture), "after the production registry forgets, the fixture registry lists")
+    Do $$$AssertEquals($ClassMethod(..#FIXTURE, "BuildCount") - tFixtureBuilds, 2, "from its own cache")
+
+    ; The spec fixes the variable and its key: namespace, then registry class.
+    Do $$$AssertTrue($Data(%OcuPilotToolList($Namespace, ..#FIXTURE, "listing")) && $Data(%OcuPilotToolList($Namespace, ..#FIXTURE, "signature")), "the fixture registry's cached listing is held under the namespace and its class")
+    Do $$$AssertTrue('$Data(%OcuPilotToolList($Namespace, ..#PRODUCTION, "listing")), "and the production registry's forgotten listing is gone from there")
 }
 
 /// <p>AC4 -- a registry whose build fails builds again on every call: the failure is returned each

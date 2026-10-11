@@ -160,6 +160,39 @@ deferred: []
   - Then: the second answer is unchanged, and every entry carries exactly the six keys.
   - And: `BadFulfilment.Registry`'s failing build moves `BuildCount` on every call (it is never cached).
 
+### Review Findings
+
+Code review, 2026-10-11, review tier full-opus (blind-hunter, edge-case-hunter, verification-gap and acceptance-auditor all ran): 33 rows, 7 entries (high 0, medium 1, low 6), 15 rejected.
+
+- [x] [Review][Patch] Medium: no test showed that a principal without `%All` gets cache hits, so a signature read by dynamic SQL would ship green [src/OcuPilot/Test/ToolSetProbe.cls:30] -- the probe lists again after advertising, and `ToolSetFull` asserts that the second listing built nothing (mutation under Verification).
+- [x] [Review][Patch] The class header said a build that a compile overlapped is never cached. Measured: a compile records a class's time 1.6 to 4.2 ms before its code is in place, so a build in that gap is cached [src/OcuPilot/Screen/Tool/Registry.cls:28] -- the header now says what is never cached and names the gap; the residual is DW-2300 below.
+- [x] [Review][Patch] The header did not say that a build made while the signature cannot be read is never cached [src/OcuPilot/Screen/Tool/Registry.cls:28] -- added to the same sentence.
+- [x] [Review][Patch] `TestEachRegistryClassHasItsOwnEntry`'s last assertion held on the `builds` node alone [src/OcuPilot/Test/RegistryCache.cls:358] -- it now reads the fixture registry's `listing` and `signature` nodes (mutation under Verification).
+- [x] [Review][Patch] AC1's dispatch accepted any refusal while its comment named the schema [src/OcuPilot/Test/RegistryCache.cls:201] -- it asserts `TOOL.ARGUMENTS`, reached after the gate, restraint and pair reads (run 102).
+- [x] [Review][Patch] Two test doc comments claimed more than their tests check [src/OcuPilot/Test/RegistryCache.cls:271] and [:292].
+- [x] [Review][Patch] AC2 had no `mutation:` line -- written under Verification (run 105).
+- [x] [Review][Defer] The stamp-before-code gap at the end of a compile [src/OcuPilot/Screen/Tool/Registry.cls:132] -- deferred: closed by-design as DW-2300. It is the spec's Named limit, the before/after check cannot see it, and 20 batch-compile trials on `ocupilot-b-ci` ended with 0 stale listings.
+
+Rule checks: Rule 3 exemption accepted (an internal path with no response-shape change; AC1 drives the production `Dispatch.Answer`, and the smoke passed). Rule 6: AD-5's mechanism matches its Rule; no build callee reads `$Username`, `$Roles`, a privilege check, policy or an adjustment; gate, restraint, pairs and schemas are still read per call (AD-8, AD-22, AD-30, AD-64); the signature query binds `:tRoot` (AD-21). Rule 2/31: the cache copies the sibling shape for the stated reason (a package-wide signature against a per-class hash). `DispatchOne` copies `ToolDispatch.Call`, whose file the Never list forbids. No other test was found using the old listing cost as a clock.
+
+Rejected:
+
+- `false` The 6-second budget in `MappingWriteGate` now depends on host speed -- the earlier test needed its child to reach step 1 within the same 6 seconds, and it passed CI.
+- `false` A `CompileSignature` override that answers OK with an empty signature raises `<UNDEFINED>` -- the production method always answers a count.
+- `false` `ForgetListing` runs on every miss, including an unreadable signature -- an entry that cannot be validated must go.
+- `false` `SQLCODE '= 0` is stricter than "< 0" -- an aggregate `SELECT` always answers one row, so nothing behaves differently.
+- `low` The overlap row has no test, the post-build check is inert, and the spec's "no seam" is stale -- a real overlap leaves the signature changed, so the pre-build signature invalidates itself; the check is spec-required, and the wording fix is a spec edit.
+- `low` The spec omits `NamespaceInteropGate` as a `RunAs` caller -- the probe change alters only timeout text that no assertion there reads; it is a spec edit, and the lead's sweep runs that class.
+- `low` A child that outlasts the 60-second wait is not ended -- a failure path only, on which the test is already red.
+- `low` A cycle-log note about a read-only query on the dev instance -- an earlier stage's process note, not this diff.
+- `low` `<MAXSTRING>` on a large listing -- 57,520 characters against a limit of about 3.6 million.
+- `low` A subclass package outside `TOOLPACKAGE` -- every registry and descriptor package is under `OcuPilot.`; adjudicated at build.
+- `low` `DropProbe` discards the delete status -- `AssertProbeUnknown` would expose a leftover probe at once.
+- `low` A failed `GovernanceFixture.Clear` -- the pattern is inherited from `ToolDispatch`, and the failure is unlikely.
+- `low` `MappingWriteGate` dropped its tool-label assertion -- diagnostic text in a test probe; the test's stated intent holds.
+- `low` A build call answers the built array rather than a parse of the cached text -- nothing else holds that array; the header wording is corrected.
+- `low` The spec's Change Log does not list the `MappingWriteGate` edits -- a spec edit; the triage log records why.
+
 ## Spec Change Log
 
 - 2026-10-10, spec gate (lead): the full ObjectScript sweep moved from the implement stage's `(once)` lines to the runner; AD-5 amended in the spine with the plan's proposed wording, shortened (Rule 20).
@@ -316,6 +349,25 @@ The first line of a fresh session is the cold call and the rest are warm. The sn
 - mutation (`MappingWriteGate`): `Terminate` commented out of `RunAs` -> `TestAChildPastItsBudgetIsEndedNamingItsLastStep` red on "the child process ... is ended" (run 72, on the final form of the test); reverted, tree identical, reloaded, green (run 74).
 - mutation (matrix row "Signature unreadable"): `ListTools` reads the cache without checking the signature read's status -> `TestUnreadableSignatureBuildsWithoutCaching` red alone (run 69, `<UNDEFINED>` on the first call); reverted, tree identical, the throwaway reloaded and all fifteen `Tool.Registry` subclasses recompiled, green (run 70).
 
+**QA pass (Rule 19), `ocupilot-b-ci`.** No new file. `src/OcuPilot/Test/RegistryCache.cls` (QA) gained one test and tighter assertions, and now has 8 tests (run 101 green, 0 leftovers):
+
+- `TestEntriesCarryOnlyTheListing` asserts a `BuildCount` delta of 1 on its "built" pass and 0 on its "cached" pass, so the "cached" label is proven.
+- New `TestEachRegistryClassHasItsOwnEntry` pins matrix row "other registry": a listing per registry class, forgetting one leaves the other cached, and the cache sits under `$Namespace` then the class (the spec-fixed variable).
+- Every mutation below was applied to the throwaway's copy of `Registry.cls` only; the working tree stayed unchanged (`git status --short` shows only the `RegistryCache.cls` and spec edits), and after the last one `src/` was re-synced (`diff -rq` identical), `Registry.cls` reloaded and all fifteen `Tool.Registry` subclasses recompiled.
+- mutation (QA, AC1): the cache read replaced by `If 0` -> `TestOneListingServesEveryCaller` red on "none of the five callers built the listing again", with four more (run 88).
+- mutation (QA, AC3): `CompileSignature` answers a constant -> `TestCompiledToolAppearsOnNextCall` and `TestCompileInAnotherProcessIsSeen` red alone (run 89).
+- mutation (QA, AC4): the cache answers the built array itself -> `TestCachedListingIsACopy` red alone (run 90); `Claim` sets a seventh key -> `TestEntriesCarryOnlyTheListing` red alone (run 91); a failed build cached -> `TestFailedBuildIsNotCached` red alone (run 92).
+- mutation (QA, row "recompile with `ADVERTISED` 0"): the signature is the count alone -> `TestCompiledToolAppearsOnNextCall` red on the unadvertised-recompile assertions, the other seven green (run 99).
+- mutation (QA, row "class deleted"): the hit test becomes "rebuild only when the signature string grows" -> `TestCompiledToolAppearsOnNextCall` red on "and finds nothing" after `DropProbe` (run 98). Under the constant-signature mutation that assertion stays green, because the listing never held the probe, so this one is what proves it.
+- mutation (QA, row "other registry"): the key drops the class (a constant in its place) -> `TestEachRegistryClassHasItsOwnEntry` red, with the two `AC3` tests (run 96); the key drops the namespace -> `TestEachRegistryClassHasItsOwnEntry` red alone, on the `$Data` assertion (run 97). A null subscript is a `<SUBSCRIPT>` error and reddens all eight, so the first attempts (runs 93 to 95) prove nothing.
+- mutation (QA, row "signature unreadable"): the signature status unchecked on the cache read -> `TestUnreadableSignatureBuildsWithoutCaching` red alone (run 100).
+
+**Code review pass, `ocupilot-b-ci`.** Each mutation was applied to the throwaway's copy of `Registry.cls` only, then reloaded with its subclasses; afterwards `src/` was re-synced (`diff -rq` identical, `cmp` against the backup) and reloaded. `RegistryCache` was green on runs 102 and 107 (8 tests), `ToolSetFull` on runs 103 and 108 (2 tests), `npm run test:tools` passed 1906, and `check-objectscript` reported 0 problems.
+
+- mutation (code review, AC2): the cache read replaced by `If 0 && ...` -> `TestOneListingServesEveryCaller` red on "none of the five callers built the listing again", with five others (run 105). That `BuildCount` delta of 0 across the five callers is AC2's deterministic half; its timings are measurements.
+- mutation (code review, row "other registry"): the `listing` and `signature` nodes keyed without the namespace, `builds` left under it -> `TestEachRegistryClassHasItsOwnEntry` red alone (run 106). The earlier assertion stays green under this mutation.
+- mutation (code review, least-privileged principal): `CompileSignature` reads by dynamic SQL -> `ToolSetFull.TestEveryToolIsAdvertisedToALeastPrivilegedPrincipal` red on "its next listing came from the per-process cache" alone (run 104).
+
 ## Auto Run Result
 
 Status: done
@@ -326,7 +378,7 @@ Blocking condition: none
 **Files changed.**
 
 - `src/OcuPilot/Screen/Tool/Registry.cls`: old `ListTools` body moved in place to private `BuildListing`; new `ListTools`, `BuildCount`, `ForgetListing`, private `CompileSignature`; one header paragraph.
-- `src/OcuPilot/Test/RegistryCache.cls`: seven tests for AC1, AC3, AC4 and the unreadable-signature row.
+- `src/OcuPilot/Test/RegistryCache.cls`: eight tests for AC1, AC3, AC4, the unreadable-signature row and the other-registry row.
 - `src/OcuPilot/Test/RegistryCacheProbe/Registry.cls` and `UnreadableRegistry.cls`: the fixture registry and its failing-signature subclass.
 - `src/OcuPilot/Test/MappingWriteGate.cls` and `MappingWriteGateProbe.cls`: the budget test waits on a new `hang` step instead of relying on the old listing cost.
 

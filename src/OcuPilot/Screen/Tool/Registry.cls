@@ -19,13 +19,17 @@
 /// a policy a tool is called under is its caller's to supply.</p>
 /// <p><b>The listing is cached per process.</b> <method>ListTools</method> keeps the listing it
 /// builds in the process variable <code>%OcuPilotToolList</code>, keyed by namespace and registry
-/// class, as JSON text, and answers each call an array of its own parsed from that text. It holds
+/// class, as JSON text, and answers each call an array of its own. It holds
 /// the listing and nothing else: a privilege pair, a policy, a restraint verdict, a schema and a
 /// description are each read by their own reader on every call (AD-8, AD-22, AD-30, AD-64). Every
 /// call first reads the compile signature of <parameter>TOOLPACKAGE</parameter> from the class
 /// dictionary -- the count of compiled classes and the sums of their compile times -- and rebuilds
 /// when it differs from the one the cached listing was built under, so a compile in any process is
-/// seen on the next call. A failed build, and a build a compile overlapped, are never cached.</p>
+/// seen on the next call. A failed build, a build during which the signature changed, and every
+/// build made while the signature cannot be read are never cached. A class's compile time is
+/// recorded a few milliseconds before its compiled code is in place, so a build that falls in that
+/// gap at the end of a compile can keep that class's previous view until the next compile or the
+/// end of the process.</p>
 Class OcuPilot.Screen.Tool.Registry Extends %RegisteredObject
 {
 
