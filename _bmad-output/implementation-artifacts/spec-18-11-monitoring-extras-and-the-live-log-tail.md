@@ -2,12 +2,12 @@
 title: 'Story 18.11: Monitoring extras and the live log tail'
 type: 'feature'
 created: '2026-10-11'
-status: 'blocked'
+status: 'draft'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-18-context.md'
-warnings: ['multiple-goals', 'oversized']
+warnings: []
 deferred: []
 ---
 
@@ -15,13 +15,13 @@ deferred: []
 
 ## Intent
 
-**Problem:** Monitoring in OcuPilot is sampled. There is no raw metrics table, no dashboard drill-down, no interoperability usage view, and no live tail on a text log.
+**Problem:** Monitoring in OcuPilot is sampled: there is no table of the instance's raw Prometheus metrics. Two of OcuPilot's own reads also raise the instance's monitor and alert state (DW-1872, DW-1898).
 
-**Approach (as epics.md states it):** Four read surfaces, each through its own port behind its own resource gate, plus a long-poll live tail with a heartbeat on the text logs that opt in. The Release 1 bounded-page rule holds for every other source. Ledger inbox: DW-1872 and DW-1898.
+**Approach:** A read-only Prometheus metrics table through `MonitorPort` behind its own resource gate (a `monitor` read source kind), plus DW-1872 and DW-1898. Split on the orchestrator's ruling (2026-10-11, Rule 5): the dashboard drill-downs are Story 18.36's, interoperability usage Story 18.37's and the live log tail Story 18.38's.
 
 ## Boundaries & Constraints
 
-**Always:** The monitoring API's anonymous reachability never becomes OcuPilot's (AD-29). The bounded-page rule is superseded only for the sources that opt in.
+**Always:** The monitoring API's anonymous reachability never becomes OcuPilot's (AD-29). The Release 1 bounded-page rule is unchanged (the live tail is Story 18.38's).
 
 **Never:** Call the vendor's alerts read, which advances `LastAlertSent` (AD-7). Build on a `decision-pending` entry.
 
@@ -34,37 +34,6 @@ deferred: []
 
 </intent-contract>
 
-## Proposed Split
-
-The planned scope does not fit one implement pass or a 16 KB spec. It covers four surfaces, each the size of a story in this epic, plus two ledger items. Narrowing 18.11's criteria and adding stories is Rule 5's ask-first tier, so this plan halts here. The lead (or orchestrator) amends `epics.md`, and 18.11 is planned again.
-
-Recommendation: keep the key `18-11-monitoring-extras-and-the-live-log-tail`, so the ledger inbox needs no re-own; retitling it is the lead's call. Number the three new stories after 18.34. The run order already names 18.35 for the burn-down.
-
-1. **18.11: the Prometheus metrics table, DW-1872 and DW-1898.** This slice keeps the first criterion for the metrics table.
-   - `MonitorPort` answers a `LIST` with one row per exposition line, `{Metric, Labels, Value}`, from one collection, cut at the cap plus one.
-   - A `monitor` read source kind lets a `list` descriptor in OS management render through `ListPage`, behind the port's `%Admin_Operate:USE` and `%DB_IRISSYS:READ`.
-   - Each read rewrites the sensor baseline. AD-7 already names that shape.
-   - The two ledger items are small, and both touch code this slice already opens (`Read.cls` and `AdminPort`).
-2. **New: the dashboard drill-downs.** The admin API's `GET /v2/monitor/dashboard/globals-and-routines`, `/ecp` and `/system-resources` (`spec/admin-v2-paths.json` :215-226) become read-only screens reached from the Dashboard.
-   - The repository does not record the request types behind those three routes. Only `DASHBOARDMAIN` is in `AdminPort`'s `BARETYPES` (:1015), so Task 0 reads them on a throwaway.
-   - `BusyProcesses`' empty rows are dropped, as the "Admin API behavior to design for" block in `epics.md` says.
-3. **New: interoperability usage.** It carries two architecture questions that need an answer before a port is built:
-   - **AD-8.** The classic page `%CSP.UI.Portal.InteroperabilityUsage` (`RESOURCE` `%Admin_Operate`, :22) queries `SYS.Monitor.Interop.Interface.Utils:InteropInterfaces` (:124). `/api/monitor/interop` (`%Api.InteropMetrics.v1`, deprecated) checks nothing. It reaches `%SYS.Ensemble.SetSAMSensorsForInterop*` (:771-1160, `[Internal]`), and each of those escalates with `$$$AddAllRoleTemporaryInTry`. AD-8 accepts a vendor escalation only after the vendor has checked the caller.
-   - **AD-7.** Do the sensor setters write state? If they do, that is a new AD-7 shape.
-   - The epic context says the view reads `%Api.InteropMetrics.v1`; the classic page reads a different query. The story's plan chooses between them.
-4. **New: the live log tail (the second criterion).**
-   - **Sources.** `messages.log` and `alerts.log` are the only sources with `LogSourcePort`'s offset-and-identity cursor (`Page` :709). They opt in through a descriptor key, which is an AD-5 addition.
-   - **The route.** An OcuPilot route long-polls within `Kernel.Provider.TestCall.BoundSeconds`. Between waits it re-checks the file's size and identity, because no vendor event signals a log write. The pattern is iris-couch's `ChangesHandler` (`/Users/jbrandt/git/iris-couch/src/IRISCouch/API/ChangesHandler.cls` :208-260).
-   - **AD-12.** Today no handler writes or flushes before its envelope; only `Response` and `Error` write. The heartbeat therefore needs an AD-12 carve-out.
-   - **Rule amendments.** EXPERIENCE.md :646, :848 and :899 ("Tail, not live … live tail is P2") and AD-43 are amended in place.
-   - **Tests.** The "nothing streams" pins in `ui/src/app/areas/logs/log-viewer.spec.ts` :279 and `src/OcuPilot/Test/Descriptor.cls` :1065 and :1109 are re-scoped to the sources that do not opt in.
-
-**Why the scope is too big (evidence):**
-
-- A new read source kind has been a whole story twice before (19.10 `sqlactivity`, 19.17 `docdb`).
-- 18.33's spec covered one surface and reached 37 KB.
-- Slices 3 and 4 each need an amendment to an architecture decision at the spec gate.
-- Slices 2 and 3 each need a Task 0 measurement. This stage could not run one: `ocupilot-ci` was busy, and `ocupilot` was read-only.
 
 ## Code Map
 
@@ -159,3 +128,7 @@ Not planned. The re-plan writes it, with its `Shared surfaces:` line and the sta
 
 Status: blocked
 Blocking condition: scope exceeds one implement pass and the 16 KB spec cap: four story-sized surfaces (Prometheus metrics table, dashboard drill-downs, interoperability usage, live log tail) plus DW-1872 and DW-1898; proposed split in ## Proposed Split (18.11 keeps the metrics table, DW-1872 and DW-1898; three new stories take the drill-downs, interoperability usage and the live tail). Narrowing 18.11's criteria and adding stories is Rule 5's ask-first tier, the lead's or orchestrator's call.
+
+## Spec Change Log
+
+- 2026-10-11, lead: narrowed on the orchestrator's split ruling (feature 39cb1e27, Rule 5): 18.11 keeps the metrics table, DW-1872 and DW-1898; the drill-downs, interoperability usage and live tail moved to Stories 18.36, 18.37 and 18.38 (their anchors are in this Code Map's slices 2 to 4, kept to seed them). The intent was narrowed to match and the Proposed Split section removed; status reset to `draft` for a re-plan in place.
