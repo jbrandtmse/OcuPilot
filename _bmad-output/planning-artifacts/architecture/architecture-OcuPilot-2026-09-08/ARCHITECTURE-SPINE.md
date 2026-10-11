@@ -163,6 +163,8 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
 
   **A Doc DB application record is an upsert that keeps omitted keys** [AMENDED 2026-10-10, Story 18.30 spec gate, Rule 20]: `DocDB`'s `PUT` creates an absent record and keeps every key it omits (measured), so the update tool sends a merge of all three fields.
 
+  **A privileged routine application's `PUT` replaces a sent `MatchRoles` and empties an omitted `Routines`** [AMENDED 2026-10-11, Story 18.33 spec gate, Rule 20]: so every update sends both lists, as read or as changed (measured at Story 18.31's plan), and the editor's tabs change one entry at a time by AD-56 (ii)'s delta over the fresh read.
+
 ### AD-5 — One screen descriptor is the source of everything about a screen
 
 - **Binds:** all 60 screens across 5.5–5.10; FR-4, FR-11, FR-14, FR-16
@@ -367,7 +369,7 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
 
   **A copied user's escalation roles count as its roles** [AMENDED 2026-10-08, Story 18.29 spec gate, Rule 20]: a copy whose source holds `%All` or an `%Admin_*` role, directly or as an escalation role, is confirmed at the destructive treatment and names the privilege.
 
-  **OcuPilot's own privileged routine applications** [AMENDED 2026-10-09, Story 18.10 spec gate, Rule 20], DW-2239: the owner chose "Refuse every change". Every write to `OcuPilotState` or `OcuPilotIdentity`, whether a delete, a disable or a change to any field, is refused `PROHIBITED.OCUPILOTROUTINEAPP` from either caller, through every tool and endpoint that reaches them, as OcuPilot's own web applications are.
+  **OcuPilot's own privileged routine applications** [AMENDED 2026-10-09, Story 18.10 spec gate, Rule 20], DW-2239: the owner chose "Refuse every change". Every write to `OcuPilotState` or `OcuPilotIdentity`, whether a delete, a disable or a change to any field, is refused `PROHIBITED.OCUPILOTROUTINEAPP` from either caller, through every tool and endpoint that reaches them, as OcuPilot's own web applications are. A privilege grant also reaches a privileged routine application through its routines: a routine added while a target role in its `MatchRoles` grants `%All` or an `%Admin_*` privilege is proposed at the destructive treatment with `GRANT.PRIVILEGED`, as a role grant is [AMENDED 2026-10-11, Story 18.33 spec gate, Rule 20].
 
   **Removing a mirror together with its databases** [AMENDED 2026-10-09, owner decision for Story 21.2, relayed by the Planner, Rule 20]: removing a mirror's configuration with its databases deleted (`SYS.Mirror.RemoveMirrorConfiguration` with `DeleteDB`, `RemoveOneMirrorSet` with `DeleteDBs`) is refused from either caller; its code is named at Story 21.2's spec gate. It is the one backup or mirroring action in the set beyond the self-protection arms above, which reach OcuPilot's own and the protected databases through these paths too, by effect. Every other backup and mirroring write, the same removal keeping its databases included, is a confirmed proposal whose destructive key defaults to disabled (FR-72; owner 2026-09-23, developer tool first). Writes are never frozen without a bound: every external freeze OcuPilot issues, from either caller, carries a bounded suspend limit; the bound, its mechanism, and how it holds where `Backup.General` ignores `WDSuspendLimit` (a clustered system) are measured in Story 21.2.
 
