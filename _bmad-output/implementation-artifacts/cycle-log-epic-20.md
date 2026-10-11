@@ -470,3 +470,5 @@
 2026-10-11T16:36:06Z	Story 20.23	protocol_violation	stage=runner depth=1 agent=epic-runner-20 violation=a_30-class_forward_run_overran_the_10-min_foreground_cap_and_was_moved_to_the_background consequence=none(no_other_run_started;waited_to_exit_0_in-turn;reverse_run_split_into_three_calls) detected_by=runner outcome=size_class_batches_by_count_under_about_15
 2026-10-11T16:36:06Z	Story 20.23	committed	sha=71aa05e7 submodules= ci=pending run=38156123238 amendments=epics.md:Story_20.25_charter,spine_AD-62_item_9+items_1-2,AD-10,AD-15,AD-8,AD-44,AD-51 footprint_extensions=none(shared_rosters_add-only)
 2026-10-11T16:36:06Z	Story 20.23	story_cycle	plan_to_commit_min=465 implement_passes=1 reviews=1 rework=0 first_ci=pending models=plan:opus,implement:sonnet,qa:sonnet,cr:opus
+2026-10-11T16:39:40Z	Epic 20	epic_context_compiled	reason=planning_artifact_newer(20.25_charter,AD-62/10/15/8/44/51,EXPERIENCE.md,feature_18.32) model=opus lines=108
+2026-10-11T16:39:40Z	Story 20.5	stage_spawned	stage=plan spawn_at=2026-10-11T16:39:40Z model=opus agent_name=20-5-plan-1 cycle_iteration=1 inbox=none
