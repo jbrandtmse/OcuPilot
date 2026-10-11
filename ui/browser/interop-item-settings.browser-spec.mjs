@@ -3,7 +3,8 @@
  * Set value and Reset to default (AD-5, AD-35, AD-36, AD-44, AD-53, AD-55, AD-56, AD-62).
  *
  * What it pins: in `USER`, whose probe production this spec creates, the Production items list's name cell opens
- * the Item settings list of the probe operation under the published headers, listing its settings; Set value opens
+ * the probe operation's Status tab, whose strip's Settings tab is the Item settings list of the probe operation under
+ * the published headers, listing its settings; Set value opens
  * the dialog, titled with the setting, which shows the current value and the default and the pending-update
  * sentence, sends the typed value, and stores it; Reset to default warns with the same sentence and, past Proceed,
  * removes the production's own value; on a setting whose name holds a credential, given a value and a system default,
@@ -39,10 +40,13 @@ const CONTROL = 'OcuPilot.Test.InteropSettingControl';
 const PRODUCTION = 'OcuPilotProbe.Interop.Production';
 const OPERATION = 'OcuPilotProbeOp';
 const ROUTE = 'interoperability/productions/items/settings';
+const STATUS_ROUTE = 'interoperability/productions/items/document';
 const PRODUCTIONS_URL = '/ocupilot/interoperability/productions?ns=USER';
 const ACTION_PATH = '/api/ocupilot/screens/interop.itemsettings/action';
 const ROW_ID = (target, name) => `${PRODUCTION}\u0001${OPERATION}\u0001${target}\u0001${name}`;
 const NAME_TEXT = '.ocu-data-table-link, .ocu-data-table-text';
+/** The walk's own emulation: the item's tab strip transitions its label colour, which a measurement must not catch mid-way (Story 20.4). */
+const REDUCED_MOTION = [{ name: 'prefers-reduced-motion', value: 'reduce' }];
 /** What AC3 plants as the credential-named setting's own value and its system default, which the screen never shows. */
 const SECRET_VALUE = 'ocu2022plantedvalue';
 const SECRET_DEFAULT = 'ocu2022planteddefault';
@@ -160,7 +164,10 @@ async function rowAction(page, name, label) {
   }, label);
 }
 
-/** Open the probe operation's settings: the probe production's items from the Productions list, then the operation's name cell. */
+/**
+ * Open the probe operation's settings: the probe production's items from the Productions list, the operation's name
+ * cell, which opens its Status tab (Story 20.4), then the strip's Settings tab.
+ */
 async function openSettings(page) {
   await waitForRows(page, config.navigationTimeoutMs);
   await waitForMapAnswered(page, config.navigationTimeoutMs);
@@ -169,6 +176,9 @@ async function openSettings(page) {
   await waitForRows(page, config.navigationTimeoutMs);
   await rowPresent(page, OPERATION);
   await clickRowCentre(page, { text: OPERATION, link: true });
+  await page.waitForFunction((suffix) => new URL(window.location.href).pathname.includes(suffix), { timeout: config.navigationTimeoutMs }, `/${STATUS_ROUTE}/`);
+  await waitForMapAnswered(page, config.navigationTimeoutMs);
+  await (await page.waitForSelector(`button.ocu-detail-tab[data-route="${ROUTE}"]`, { visible: true, timeout: config.navigationTimeoutMs })).click();
   await page.waitForFunction((suffix) => new URL(window.location.href).pathname.includes(suffix), { timeout: config.navigationTimeoutMs }, `/${ROUTE}/`);
   await waitForRows(page, config.navigationTimeoutMs);
   await rowPresent(page, 'InitSeconds');
@@ -197,10 +207,10 @@ after(async () => {
   }
 });
 
-// AC1, AC8. Mutation (Rule 19): make `childListFor` answer null for Production items, rebuild and redeploy -> the
+// AC1, AC8. Mutation (Rule 19): make `documentScreenFor` answer null for Production items, rebuild and redeploy -> the
 // operation's name cell opens nothing and this goes red. `routeIdFor` is the toast's route, pinned by navigation.test.mjs.
-test('AC1, AC8: the Production items name cell opens the operation\'s settings, under the published headers, and the walk passes', async () => {
-  const { context, page } = await signedInAt(browser, config, PRODUCTIONS_URL, VIEWPORTS.wide);
+test('AC1, AC8: the Production items name cell opens the operation\'s Status tab and its Settings tab lists the settings, under the published headers, and the walk passes', async () => {
+  const { context, page } = await signedInAt(browser, config, PRODUCTIONS_URL, VIEWPORTS.wide, REDUCED_MOTION);
   try {
     await openSettings(page);
     const headers = await page.$$eval('.ocu-data-table-header-label', (items) => items.map((item) => item.textContent.trim()));
@@ -224,7 +234,7 @@ test('AC1, AC8: the Production items name cell opens the operation\'s settings, 
 // AC2, AC5. Mutation (Rule 19): make `InteropItemSettingListPage.onOpen` return at once, rebuild and redeploy -> the dialog
 // never opens and this goes red; remove the list's entry from WARNING_CONSEQUENCES -> Reset is sent at once.
 test('AC2: Set value opens its dialog and stores the typed value; Reset to default warns, then removes the production\'s own value', async () => {
-  const { context, page } = await signedInAt(browser, config, PRODUCTIONS_URL, VIEWPORTS.wide);
+  const { context, page } = await signedInAt(browser, config, PRODUCTIONS_URL, VIEWPORTS.wide, REDUCED_MOTION);
   const posts = [];
   page.on('request', (request) => {
     if (new URL(request.url()).pathname === ACTION_PATH) posts.push(JSON.parse(request.postData() ?? '{}'));
@@ -292,7 +302,7 @@ test('AC2: Set value opens its dialog and stores the typed value; Reset to defau
 test('AC3: a credential-named setting\'s value and default never reach the list; Set value opens no dialog and states the secret sentence', async () => {
   const planted = probe('PLANTED', `$System.Status.IsOK(##class(${PROBE}).PutItemSetting("${OPERATION}","Host","ApiToken","${SECRET_VALUE}"))_$System.Status.IsOK(##class(${PROBE}).PutDefault("${OPERATION}","Host","ApiToken","${SECRET_DEFAULT}"))`);
   assert.equal(planted.value, '11', `the setting holds a value of its own and a system default: ${planted.output}`);
-  const { context, page } = await signedInAt(browser, config, PRODUCTIONS_URL, VIEWPORTS.wide);
+  const { context, page } = await signedInAt(browser, config, PRODUCTIONS_URL, VIEWPORTS.wide, REDUCED_MOTION);
   const posts = [];
   page.on('request', (request) => {
     if (new URL(request.url()).pathname === ACTION_PATH) posts.push(JSON.parse(request.postData() ?? '{}'));

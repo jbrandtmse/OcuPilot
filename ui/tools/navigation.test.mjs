@@ -344,14 +344,25 @@ test('a side bar lists only built screens, in side-bar order', () => {
       // Story 19.17: Document databases, after Data browser.
       'system-explorer/docdb',
       // Story 20.3: the unlisted Production items list, reached from a Productions row, ahead of its area's listed lists.
+      // Story 20.4: the item's tabs around it -- Jobs, Log, Messages, Queue, Item settings (Story 20.22) and the Status
+      // head -- and Queue messages after them, all unlisted, in the descriptors' class order.
+      'interoperability/productions/items/jobs',
       'interoperability/productions/items',
-      // Story 20.22: the unlisted Item settings list, reached from a Production items row, beside it.
+      'interoperability/productions/items/log',
+      'interoperability/productions/items/messages',
+      'interoperability/productions/items/queue',
       'interoperability/productions/items/settings',
+      'interoperability/productions/items/document',
+      'interoperability/queues/messages',
       // Story 20.2: Interoperability's four lists, in the classic List menu's order.
       'interoperability/productions',
       'interoperability/processes',
       'interoperability/transforms',
       'interoperability/rules',
+      // Story 20.4: Production monitor, Queues and Jobs, listed after them.
+      'interoperability/monitor',
+      'interoperability/queues',
+      'interoperability/jobs',
       'agent/definitions/edit',
       'agent/transcripts/details',
       'agent/definitions',
@@ -699,9 +710,57 @@ test("Story 20.22: a setting change opens Item settings on its item, and an item
     'the production and the item, which are the Production items list\'s own id, are the route id'
   );
   assert.equal(
-    screenForChange({ type: 'production-item', id: `P.Prod${sep}Item` })?.route,
+    screenForChange({ type: 'production-item', id: `P.Prod${sep}Item`, tool: 'interop.items.add' })?.route,
     `interoperability/productions/items/${encodeEntityId('P.Prod')}`,
-    'an item change opens its production\'s list, whose parent is keyed by a simple id'
+    'an item change that names its tool opens its production\'s list, whose parent is keyed by a simple id'
+  );
+});
+
+// Story 20.4: the item's tabs. The Production items name cell and a Production monitor row open the Status tab, the
+// head of the group Item settings joins; a setting change still opens Item settings on its item; and an item change
+// that names its tool still opens Production items, where one that names none opens the Production monitor, the earlier
+// of the two lists in the side bar.
+//
+// Mutation (Rule 19): move InteropItemStatusTab off `interoperability/productions/items/document` -> the name-cell leg
+// goes red. Drop the monitor's `rowTarget` -> the monitor leg goes red. Drop `tool` from the add store's event -> the
+// item-change leg (and the add store's own spec) goes red.
+test('Story 20.4: the Status tab is what an item row opens, from Production items and from the monitor', () => {
+  const sep = '\u0001';
+  const items = screenForRoute('interoperability/productions/items');
+  assert.ok(items, 'Production items is declared');
+  assert.equal(documentScreenFor(items)?.route, 'interoperability/productions/items/document', 'the Production items name cell opens the Status tab');
+  assert.equal(childListFor(items), null, 'and Item settings, a detail tab now, is no longer its child list');
+  const monitor = screenForRoute('interoperability/monitor');
+  assert.ok(monitor, 'the Production monitor is declared');
+  assert.deepEqual(monitor.rowTarget, { route: 'interoperability/productions/items/document', field: 'Item' }, 'a monitor row opens the Status tab by the item\'s Production||Name');
+  assert.equal(screenForRoute(monitor.rowTarget.route)?.built, true, 'a built screen');
+  assert.equal(hasIdRoute(screenForRoute(monitor.rowTarget.route)), true, 'keyed by an id');
+  assert.deepEqual(
+    tabMembersFor(screenForRoute('interoperability/productions/items/document')).map((tab) => tab.route),
+    [
+      'interoperability/productions/items/document',
+      'interoperability/productions/items/settings',
+      'interoperability/productions/items/queue',
+      'interoperability/productions/items/log',
+      'interoperability/productions/items/messages',
+      'interoperability/productions/items/jobs',
+    ],
+    'the strip reads Status, Settings, Queue, Log, Messages, Jobs'
+  );
+  assert.equal(
+    screenForChange({ type: 'production-item-setting', id: `P.Prod${sep}Item${sep}Host${sep}InitSeconds` })?.route,
+    `interoperability/productions/items/settings/${encodeEntityId(`P.Prod${sep}Item`)}`,
+    'a setting change still opens Item settings on its item'
+  );
+  assert.equal(
+    screenForChange({ type: 'production-item', id: `P.Prod${sep}Item`, tool: 'interop.items.add' })?.screen.route,
+    'interoperability/productions/items',
+    'an item change that names its tool opens Production items'
+  );
+  assert.equal(
+    screenForChange({ type: 'production-item', id: `P.Prod${sep}Item` })?.screen.route,
+    'interoperability/monitor',
+    'and one that names none opens the earlier listed list of the type, the Production monitor'
   );
 });
 

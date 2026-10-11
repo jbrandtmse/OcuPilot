@@ -2,9 +2,10 @@
 title: 'Story 20.4: Per-host tabs, the monitor, queues and jobs (reads; the actions are the stated partial)'
 type: 'feature'
 created: '2026-10-10'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: '0a451914fe862a8cc51f4194f83f97289bcbdf99'
 review_loop_iteration: 0
-followup_review_recommended: false
+followup_review_recommended: true
 context:
   - '{project-root}/_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md'
   - '{project-root}/_bmad-output/planning-artifacts/ux-designs/ux-OcuPilot-2026-09-08/EXPERIENCE.md'
@@ -137,13 +138,13 @@ deferred:
 
 **Execution:**
 
-- [ ] **Task 0** (`ocupilot-b-ci` only, through `docker exec`; record each as a `Task 0:` line under Verification):
+- [x] **Task 0** (`ocupilot-b-ci` only, through `docker exec`; record each as a `Task 0:` line under Verification):
   - `NormalizePage` spells `EnsPortal.ProductionMonitor`, `EnsPortal.Queues` and `EnsPortal.Jobs` as written.
   - With the probe production stopped, record whether `EnumerateHostStatus` and `EnumerateJobStatus(op)` answer stale rows. The port's running-or-troubled check governs either way.
   - Terminate the running op job's process (`$SYSTEM.Process.Terminate`). Record how long its `^IRIS.Temp.EnsJobStatus` entry stays unrepaired with no OcuPilot call. If it stays at least 30 s, AC6's pin uses a dead job (Tests). Otherwise AC6 pins a live production and `Dead` through `JobRow` with a pid no process holds.
   - Record whether `%EXTERNAL(TimeCreated)` and `%EXTERNAL(TimeLogged)` read local time; the columns show what they read.
   - A Monitor-role principal (`%EnsRole_Monitor` plus `%DB_USER:R`) opens Production monitor, and is refused Status naming `%Ens_ProductionConfig:READ`.
-- [ ] `src/OcuPilot/Port/InteropPort.cls` (extend, reads only):
+- [x] `src/OcuPilot/Port/InteropPort.cls` (extend, reads only):
   - `ENDPOINTS` gains `Monitor, ItemStatus, Queues, QueueItems, ItemQueue, ItemLog, ItemMessages, Jobs, ItemJobs`, each serving `LIST` alone.
   - Pair sets:
     - `MONITORPAIRS` `%Ens_Portal:USE,%Ens_Dashboard:USE`
@@ -161,8 +162,8 @@ deferred:
       - The Messages statement is `ProductionConfig.cls`:851-864's union of the newest by source and by target.
   - Queues runs `Ens.Queue:Enumerate` plus `Active`, the count of `EnumerateJobStatus(name)` rows with an active message.
   - Every row carries its parent key: `Production` and `Item` on item rows, `Queue` on queue entries.
-- [ ] `Kernel/EntityType.cls` (append): `interop-queue`, `interop-message`, `interop-job`, each kept exactly, with no `IDRULES` row. Its class comment gains one line each.
-- [ ] Descriptors (new, `src/OcuPilot/Screen/Descriptor/`). Each declares area `interoperability`, scope `namespace`, privileges = its endpoint's pairs, `ownPrivileges` = those less `%Ens_Portal:USE`, no actions, three suggested prompts, a table, context fields, a `toolIdentifier`, and `classicPage`:
+- [x] `Kernel/EntityType.cls` (append): `interop-queue`, `interop-message`, `interop-job`, each kept exactly, with no `IDRULES` row. Its class comment gains one line each.
+- [x] Descriptors (new, `src/OcuPilot/Screen/Descriptor/`). Each declares area `interoperability`, scope `namespace`, privileges = its endpoint's pairs, `ownPrivileges` = those less `%Ens_Portal:USE`, no actions, three suggested prompts, a table, context fields, a `toolIdentifier`, and `classicPage`:
   - `InteropMonitorList`: route `interoperability/monitor`, `sideBarPosition` 5, `list`; refreshes at `[5,10,30,60]`, default off; entity `production-item`, composite `[Production, Name]`; `rowTarget` `{route: interoperability/productions/items/document, field: Item}`; `EnsPortal.ProductionMonitor`; `interop.monitor`.
   - `InteropQueueList`: `interoperability/queues`, `sideBarPosition` 6, `list`, refreshes as the monitor; entity `interop-queue`, single (`Name`); `EnsPortal.Queues`; `interop.queues`.
   - `InteropQueueMessageList`: `interoperability/queues/messages`, `sideBarPosition` 0, `list`, `parentScope` `interoperability/queues`, criterion `queue` (text, 256, with a hint); entity `interop-message`, single (`MessageId`); `EnsPortal.Queues`; `interop.queuemessages`.
@@ -177,19 +178,19 @@ deferred:
     | `InteropItemMessageTab` | `…/items/messages` | 5 | `interop-message` | `interop.itemmessages` |
     | `InteropItemJobTab` | `…/items/jobs` | 6 | `interop-job` | `interop.itemjobs` |
 
-- [ ] `InteropItemSettingList.cls` (in place, Epic 20's own): archetype `detail` and `tab` `{group, position 2, labelKey Settings}`. Its route, read, actions and `toolIdentifier` are unchanged.
-- [ ] Client:
+- [x] `InteropItemSettingList.cls` (in place, Epic 20's own): archetype `detail` and `tab` `{group, position 2, labelKey Settings}`. Its route, read, actions and `toolIdentifier` are unchanged.
+- [x] Client:
   - `interop-item-setting-list.page.ts`: import `DetailPage` for `ListPage` and render `<app-detail-page />`, so the strip draws over Item settings. Its action registration and dialog are unchanged.
   - `interop-item-add.store.ts` :211: the `changed` event it publishes names its tool (`interop.items.add`), with a leg in `interop-item-add.store.spec.ts`.
   - `strings.ts` (add-only): titles, empty states, prompts, tab labels, the `queue` criterion label, and the column labels no existing value covers. Reuse a key wherever its value exists.
   - Regenerate `screens.generated.ts`.
-- [ ] `EXPERIENCE.md`, no line inserted above :604:
+- [x] `EXPERIENCE.md`, no line inserted above :604:
   - :159 gains " · Production monitor · Queues · Jobs", plus a sentence naming the item tabs in order.
   - :604 gains a Story 20.4 clause with every new literal.
   - :896's roster gains Production monitor, Queues and Jobs after its last name.
   - Then `cd ui && npm run test:tools`.
-- [ ] `Test/ProductionProbe.cls` (in place): the op's `Hang` logs `$$$LOGINFO("OcuPilot probe message")` before it hangs, so each message leaves one row with the op's `ConfigName`.
-- [ ] Tests (new). Each class runs one per call and stays under about 500 lines. `InteropHostRead` and `InteropHostGate` each create and remove their own probe: `SetHang` 600 with the production running and three messages sent, then stopped with force and removed in `OnAfterAllTests`.
+- [x] `Test/ProductionProbe.cls` (in place): the op's `Hang` logs `$$$LOGINFO("OcuPilot probe message")` before it hangs, so each message leaves one row with the op's `ConfigName`.
+- [x] Tests (new). Each class runs one per call and stays under about 500 lines. `InteropHostRead` and `InteropHostGate` each create and remove their own probe: `SetHang` 600 with the production running and three messages sent, then stopped with force and removed in `OnAfterAllTests`.
   - `Test/InteropHostRead.cls`:
     - Each endpoint's rows on the probe: Monitor holds the op and the service and no vendor host; ItemStatus is one row; Queues and QueueItems show two entries with headers; ItemQueue matches them; ItemLog and ItemMessages hold the probe's rows; Jobs and ItemJobs hold the op job with its active message.
     - Each screen's read route and read tool answer the same rows.
@@ -206,7 +207,7 @@ deferred:
     - `ItemQueueName` for a pool-size-0 business process and for an operation
     - `JobRow`'s `Dead` for a pid no process holds
     - each read tool registered; no descriptor declaring an action
-- [ ] Roster sweep (Rule 30). Each file changed joins the targeted set:
+- [x] Roster sweep (Rule 30). Each file changed joins the targeted set:
   - `InteropSettingDescriptor` :35 (`detail`)
   - `InteropFloor`: a `MONITORSCREENS`/`MONITORTOOLS` pair for the Monitor role's `InteropMonitorList` and `interop.monitor.read`, and the Operator rosters gain all nine
   - `Navigation` :530-531 (6 → 15)
@@ -223,11 +224,22 @@ deferred:
   - `ci-throwaway.sh` with `ci.test.mjs`
   - `interop-items` and `interop-item-settings` browser specs: open the item, then the Settings tab
   - Governance, ToolDispatch, GovernanceBaseline and ClassicPageGate's `OWNPAIRS` are unchanged (no key, no write).
-- [ ] `ui/browser/interop-host-tabs.browser-spec.mjs` (new). `before` and `after` follow `interop-items`', with the probe running, hung, and holding waiting messages. Every step waits for `waitForMapAnswered` and its rows:
+- [x] `ui/browser/interop-host-tabs.browser-spec.mjs` (new). `before` and `after` follow `interop-items`', with the probe running, hung, and holding waiting messages. Every step waits for `waitForMapAnswered` and its rows:
   - open the op from Production items: the strip reads Status, Settings, Queue, Log, Messages, Jobs, and each tab shows its rows
   - Production monitor lists the op, and its name opens the Status tab
   - Queues lists the op's queue and opens Queue messages
   - Jobs lists the op job
+
+- [x] **Review patches, pass 1** (a fresh subagent; Rule 18). New legs go in a new class `Test/InteropHostEdges.cls` (under about 500 lines, its own probe created and removed as `InteropHostRead` does, armed in `scripts/ci-throwaway.sh` with `ui/tools/ci.test.mjs`); `InteropHostRead` does not grow:
+  - P1: `MakeTroubled` the probe production, then read Monitor, Jobs, ItemJobs and ItemStatus: rows still answered (`LIVEWORDS`), the vendor's job, queue and status globals unchanged across the reads, and, where the operation job's status entry persists unrepaired with `Ens.MonitorService` dead, its Jobs row `Dead` true. Settle the production afterwards. Mutations: `LIVEWORDS` = `Running` goes red; if a dead job is observed, `GatherJobs` on `Ens.Job:Enumerate` goes red.
+  - P2: `ItemMessages` for the probe service lists the three headers it sourced. Mutation: the first subselect on `TargetConfigName`.
+  - P3: a business process of pool size 0 with entries for two targets in `Ens.Actor`: `ItemQueue` lists only its own. Mutation: invert or delete the `Continue` in `GatherQueueEntries`.
+  - P4: `maxRows` 1 on each of the nine answers exactly one row where the probe holds more than one. Mutation: `tTop` always `SQLMAX`, or the `pMax` checks dropped.
+  - P5: read by a process whose operating-system zone is not UTC, `TimeCreated` and `TimeLogged` equal the stored UTC value moved by that offset, computed by arithmetic, not by the vendor primitive. Mutation: `LocalStamp` reformats without converting.
+  - P6: `ui/browser/interop-host-tabs.browser-spec.mjs`: the Jobs link is read from the operation's own row; the action-trigger count is taken on Queues as well as Queue messages. Mutation: `JobRow` marks only the operation's row dead.
+  - P7: `InteropHostGate` calls `FailedPair` and `LegText` through `InteropItemGate` as `InteropSettingGate` does, deleting its copies; its class header states why it keeps its own principals, `ProbeAs` and `Probe`.
+  - P8: demonstrate and record: AC1, `InteropItemSettingListPage` hosting `<app-list-page />` (rebuild, redeploy; the Settings strip leg goes red; revert byte for byte, rebuild, redeploy, green again); AC6, `JobRow`'s `Dead` forced false (`TestAJobNoProcessHoldsReadsDead` goes red).
+  - P9: replace the false sentence in `InteropHostRead`'s `TestAStoppedProductionAnswersNoRuntimeRow` comment with what Task 0 measured.
 
 **Acceptance Criteria:**
 
@@ -242,6 +254,30 @@ deferred:
 ## Spec Change Log
 
 ## Review Triage Log
+
+### 2026-10-10 - Review pass
+
+- verdicts: 19 findings - high 0, medium 9, low 8, false 2, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` Troubled production and the read-never-repairs half of AC6 have no test: `LIVEWORDS` = `Running` alone and `GatherJobs` on `Ens.Job:Enumerate` both stay green - verification-gap, pre-verified (`MakeTroubled` is unused by the new tests; Task 0's 1.28 s repair was measured with `Ens.MonitorService` alive) - fix: a Troubled leg in the new class `InteropHostEdges` (P1). Applied: `InteropHostEdges.TestATroubledProductionStillAnswersItsRowsAndChangesNothing`; in a Troubled production the dead job's entry stays unrepaired (at least 45 s), the reads answer it Dead and change nothing; both mutations red.
+  - `[medium]` `[patch]` The Messages tab's sourced-by half is never read: the first subselect can become `TargetConfigName = ?` unseen - verification-gap, pre-verified - fix: read the service's item (P2). Applied: `TestTheServicesMessagesAreThoseItSourced`; the `MESSAGESQL` mutation red.
+  - `[medium]` `[patch]` The pool-size-0 target filter in `GatherQueueEntries` has no executed test - verification-gap, pre-verified; the matrix row names it - fix: a pool-size-0 item with entries for two targets (P3). Applied: `TestAPoolSizeZeroItemReadsOnlyItsOwnActorEntries` with two pool-size-0 items and queued `Ens.Actor` entries, all removed; both mutations red.
+  - `[medium]` `[patch]` No test pins the row cap on any of the nine endpoints (AD-24, a stated boundary) - verification-gap, pre-verified - fix: `maxRows` 1 on each (P4). Applied: `TestARowCapOfOneAnswersOneRowOnEveryEndpoint`; both mutations red.
+  - `[medium]` `[patch]` The UTC-to-local stamp is unobservable in the UTC throwaway; the stamps test compares the port to the same vendor primitive - verification-gap, pre-verified - fix: a leg under a non-zero `$ZTIMEZONE` with arithmetic as the oracle (P5). Applied: `TestTheStampsAreConvertedOnceToTheZoneOfTheReader`, which reads in a child session under `TZ=PST8` (`$ZTIMEZONE` does not move the conversion). It found a real defect: `%EXTERNAL(TimeLogged)` and `%EXTERNAL(TimeCreated)` already convert to the reader's zone, so `LocalStamp` converted twice; `LOGSQL` and `MESSAGESQL` now read the stamps as stored. Both mutations red.
+  - `[medium]` `[patch]` The Jobs browser leg takes the link from the first link in the table, not the operation's row - verification-gap, pre-verified - fix: read it from that row's own cell (P6). Applied: the link is read from the operation's row and triggers are counted on Queues; the `JobRow` mutation red.
+  - `[low]` `[patch]` Rule 19: AC1's Settings-strip client mutation was not run, and `JobRow`'s `Dead` pin (`TestAJobNoProcessHoldsReadsDead`) has no `mutation:` line; the other listed pins are covered by their AC's demonstrated mutation (one per AC is the bar; AC4's gate test loops every endpoint and pair, so one mutated pair shows the loop discriminates) - closed in the review pass (P8). Applied: both mutations demonstrated and recorded (client rebuilt and redeployed both ways).
+  - `[medium]` `[patch]` `InteropHostGate` copies `InteropItemGate`'s `FailedPair` and `LegText` byte for byte, where `InteropSettingGate` calls them through `ITEMGATE` - Rule 31, no stated reason - fix: call them through `ITEMGATE`; its own principals and `ProbeAs`/`Probe` stay, with the reason in its class header (P7). Applied: its copies are deleted, the reason is in the class header, and `InteropItemGate`, `InteropSettingGate` and `InteropHostGate` are green.
+  - `[low]` `[patch]` `LiveCurrent` and `QueueOf` read the production state beside `ReadState` with no stated reason - `ReadState` also runs `ProductionNeedsUpdate` with up to a second of retries and answers 404 for a missing production, neither of which a gatherer inside a switched namespace wants; the reason goes in the commit message, no code change. Applied: the reason is in Design Notes and goes in the commit message.
+  - `[low]` `[reject]` `InteropHostRead` is 671 lines against the roughly 500 of the spec - the fix is a split, more than a direct correction; the legs the patch pass adds go to a new class so it does not grow.
+  - `[low]` `[patch]` A doc comment in `InteropHostRead` says the `LiveCurrent` word-test mutation "shows the check is load-bearing here", which the spec's Task 0 line contradicts (a stopped production leaves the vendor no row) - replace the sentence at its origin (P9). Applied.
+  - `[low]` `[patch]` The browser spec's closing assertion says "neither list offers an action" but counts triggers only on Queue messages - count them on Queues too (P6). Applied.
+  - `[low]` `[patch]` Intent audit: the browser surface carries the thinnest evidence and the Settings-strip client mutation was not run - same root as the Rule 19 row; closed by P8, which ran the client mutation. Browser specs ran green on a rebuilt, redeployed bundle in this pass.
+  - `[low]` `[reject]` Intent audit: the model-facing bounds, `truncated` and AD-60 are untested for these nine - they live in generic, unchanged layers (`Screen/Read.cls`'s interop branch, `Kernel/Agent/Loop.cls` applying `Sanitize` to every tool result, with `TurnSanitize`); the port-level cap is pinned by P4.
+  - `[low]` `[reject]` Intent audit: `QUEUESCANMAX` cuts a pool-size-0 scan silently at 10,000 entries - a named bound in the parameter's comment; a flag would add a field to every queue row for a queue that long.
+  - `[medium]` `[patch]` Intent audit: dead jobs are covered only at the row builder - same root as the first row (P1).
+  - `[medium]` `[patch]` Intent audit: the time zone is not tested - same root as the stamp row (P5).
+  - `[false]` `[reject]` Intent audit: the AD edits are not in the diff - commit b98144ee, before the baseline, amended AD-62, AD-29, AD-36, AD-13, AD-43, AD-8 and AD-44 (eight "Story 20.4" mentions in the spine).
+  - `[false]` `[reject]` Intent audit: `ProductionProbe.Settle`'s new `Release` reaches other probe classes - it acts only when the stored `HangSeconds` is above 30; the other users set 1 to 13.
 
 ## Design Notes
 
@@ -280,9 +316,9 @@ deferred:
 - **Rule 31.**
   - `InvokeRuntime` copies `InvokeItems`' dispatch shape for another row family; the reason is in the Code Map.
   - `GatherHosts`, `GatherQueueItems`, `GatherJobs` and `SqlRows` each serve two endpoints.
-  - The item lookup (`ItemParts`, `ItemObject`, the `AMBIGUOUS` count) and `ReadState` are reused.
+  - The item lookup (`ItemParts`, `ItemObject`, the `AMBIGUOUS` count) is reused. `LiveCurrent` and `QueueOf` read the production's state themselves, not through `ReadState`, which also runs the update check with up to a second of retries and answers 404 for a missing production, neither of which a gatherer inside a switched namespace wants.
   - The SQL copies `LogSourcePort.FetchEvents`' form; its reason is in the Code Map.
-  - `InteropHostGate` reuses `InteropItemGate`'s principals. Item settings' page reuses `DetailPage`. There is no new store or loader.
+  - `InteropHostGate` reads a leg and a refusal's failed pair through `InteropItemGate`, as `InteropSettingGate` does, but builds its own principals, `ProbeAs` and `Probe`: the nine reads need a principal missing each single pair and one holding exactly each endpoint's pairs, where that class's six are the item writes'. Item settings' page reuses `DetailPage`. There is no new store or loader.
 - **Posture.** None remains. The reads add no write, key or self-protection target: OcuPilot runs no production, so AD-10 gains no arm. `%ExecDirectNoPriv` follows AD-29's owner-reviewed LogSourcePort exception. The actions' posture is answered by the epic's standing rules (follow-up charter).
 
 **Split (`oversized`): reads first.** This spec is the reads. The follow-up, numbered 20.23 by the runner (Rule 5 apply-and-report; the AC names the partial), is the actions. Its charter is from this plan's measurements:
@@ -359,7 +395,7 @@ This story's edits there are appended roster rows and list entries, plus the cou
 **Commands:**
 
 - `(loop)` `cd ui && node tools/ci-runner.mjs --container ocupilot-b-ci --class OcuPilot.Test.<C>`, one class per call, each read from `%UnitTest_Result`:
-  - new: `InteropHostRead`, `InteropHostGate`, `InteropHostDescriptor`
+  - new: `InteropHostRead`, `InteropHostGate`, `InteropHostDescriptor`, `InteropHostEdges`
   - changed or consuming: `InteropSettingDescriptor`, `InteropSettingControl`, `InteropItemControl`, `InteropControl`, `InteropFloor`, `InteropFloorTurn`, `Navigation`, `ReadTool`, `Descriptor`, `SurfaceCoverage`
 - `(loop)` `cd ui && OCUPILOT_BROWSER_ORIGIN=http://localhost:52777 OCUPILOT_BROWSER_CONTAINER=ocupilot-b-ci node --test --test-concurrency=1 browser/<file>`, one file per call: `interop-host-tabs.browser-spec.mjs`, `interop-items.browser-spec.mjs`, `interop-item-settings.browser-spec.mjs`, `a11y-structural-invariants.browser-spec.mjs` (DW-1337, both themes).
 - `(loop)` Expected clean: `cd ui && npm run test:tools && npm run test:components`; `uv run scripts/check-objectscript.py <changed .cls>`; `bash scripts/lint-docs.sh`.
@@ -389,9 +425,43 @@ This story's edits there are appended roster rows and list entries, plus the cou
 | AC7 | `InteropItemStatusTab` moved off `…/document` | `navigation.test.mjs`' name-cell leg |
 | AC7 | The add store's event drops its `tool` | `interop-item-add.store.spec.ts`' tool leg; `navigation.test.mjs`' item-change leg |
 
+**Task 0 (ocupilot-b-ci, 2026-10-10; implement stage; the five open cells):**
+
+- Task 0: `NormalizePage` answers `EnsPortal.ProductionMonitor`, `EnsPortal.Queues` and `EnsPortal.Jobs` exactly as typed. Each is a compiled class with RESOURCE `%Ens_Dashboard:USE`, `%Ens_Queues:READ` and `%Ens_Jobs:READ`, which the descriptors' `classicPage` and pairs carry.
+- Task 0: with the probe production stopped, `EnumerateHostStatus` and `EnumerateJobStatus(OcuPilotProbeOp)` answered 0 rows and `^IRIS.Temp.EnsJobStatus("USER","sys")` held no job; a production stopped with force (a hung operation) left the same. The vendor's monitor holds no stale row, so the running-or-troubled word test is defense in depth: the clause that is load-bearing in `LiveCurrent` is the production-identity one, pinned by an item of the probe's second production (`TestAnItemOfAnotherProductionReadsNoRuntimeRow`).
+- Task 0: after `$System.Process.Terminate` of the operation job (pid 27851), the process was gone in 0.26 s and its `^IRIS.Temp.EnsJobStatus("USER","sys",<pid>)` entry was moved to a ghost id (`Z<pid>_<n>`) and its active message put back on the queue in 1.28 s, with no OcuPilot call (`Ens.MonitorService` logged `DeadJobAlert`). That is far under 30 s, so AC6 pins a live production and `Dead` through `JobRow` with a pid no process holds and with a ghost id (`InteropHostDescriptor`), not a killed job.
+- Task 0: a stamp's conversion follows the reading process's operating-system zone, not `$ZTIMEZONE`. Setting `$ZTIMEZONE` to 480 moved `$H` and left `Ens.DataType.UTC`'s conversion (`$$$timeUTCtoLocal`, which is also the display conversion `%EXTERNAL(TimeCreated)` and `%EXTERNAL(TimeLogged)` apply) and `LogSourcePort.LocalFromUtc` unchanged, while a session started with `TZ=PST8` (`$ZTIMEZONE` 480) read a log row stored `00:10:42.615` as `16:10:42.615` through `%EXTERNAL`. The container's zone is UTC, so a read there cannot tell local from UTC. The port reads the stamps as stored and converts once with `LocalStamp` (what the classic Queue tab does), writing the log readers' form, `YYYY-MM-DDTHH:MM:SS.mmm`; `InteropHostEdges` checks the conversion in a child session started with `TZ=PST8`, against arithmetic on the stored value.
+- Task 0: in a Troubled production (the probe armed, then `MakeTroubled`: state 4, every `_Ensemble` job ended), the operation job's `^IRIS.Temp.EnsJobStatus("USER","sys",<pid>)` entry (pid 52227) stayed unrepaired for at least 45 s with no OcuPilot call, holding its active message 261 beside the queue's two entries, because nothing ran `Ens.MonitorService`. Monitor, Jobs, ItemJobs and ItemStatus answered rows (`Status` OK, `AdapterState` n/a), the Jobs and ItemJobs rows read `Dead` true, and `Settle` recovered the production afterwards. So AC6's dead job is pinned in a Troubled production (`InteropHostEdges`), and the quick repair measured above needs a running monitor service.
+- Task 0: a Monitor-role principal (`monitor` in `InteropFloor`: `%EnsRole_Monitor` plus READ on the code database) opens Production monitor (the screen read answers 200 and the area, screen and `interop.monitor.read` rosters hold them) and is refused an item's Status tab naming `%Ens_ProductionConfig:READ`; the `%Ens_Portal` holder is refused Production monitor naming `%Ens_Dashboard:USE` (`InteropFloor.TestTheInteroperabilityReadsFollowTheirOwnPairs`, run 131).
+
+**Demonstrated mutations (Rule 19; each applied, observed red, reverted byte-identical and reloaded; implement stage):**
+
+- mutation: AC1, `InteropItemQueueTab`'s `tab` dropped -> `InteropHostDescriptor.TestTheItemTabsFormOneGroupInOrder` ("position 3 is Queue") and `TestTheNineDeclarationsRegister` went red.
+- mutation: AC1, the Log statement's `ConfigName = ?` filter replaced by `? IS NOT NULL` -> `InteropHostRead.TestEachEndpointAnswersTheProbesRows` ("the log holds no row of another item or of the production") went red.
+- mutation: AC2, `GatherHosts` no longer leaves out the hosts the production does not configure -> `InteropHostRead.TestEachEndpointAnswersTheProbesRows` (the monitor leg) went red.
+- mutation: AC2, `LiveCurrent` without its `pProduction '= tCurrent` clause -> `InteropHostRead.TestAnItemOfAnotherProductionReadsNoRuntimeRow` (status and jobs legs) went red. The planned "drop the running-or-troubled check -> the stopped-production leg" is not falsifiable alone (Task 0: a stopped production leaves the vendor no row), so the identity clause carries the AC.
+- mutation: AC2, the monitor's `rowTarget` set null in the mirror -> `navigation.test.mjs` "Story 20.4: the Status tab is what an item row opens" (monitor leg) went red.
+- mutation: AC3, `ItemQueueName` ignoring pool size 0 -> `InteropHostDescriptor.TestAnItemsQueueFollowsItsKindAndPoolSize` went red.
+- mutation: AC3, `GatherQueueEntries` answering empty header fields -> `InteropHostRead.TestEachEndpointAnswersTheProbesRows` ("each carries its header") and `TestTheStampsAreTheInstancesLocalClockTime` went red.
+- mutation: AC4, `%Ens_Queues:READ` dropped from `QUEUEPAIRS` -> `InteropHostGate.TestAPrincipalHoldingExactlyAnEndpointsPairsReadsItsRows` and the through-the-port leg went red for Queues and QueueItems.
+- mutation: AC4, `SqlRows` using `%ExecDirect` -> `InteropHostGate` ItemLog and ItemMessages legs (rows 0, the screens' 500) went red.
+- mutation: AC5, `ResolveItem` without its `AMBIGUOUS` count -> `InteropHostRead.TestAnInputThatNamesNoReadIsRefusedByName` went red for five item endpoints.
+- mutation: AC6, `GatherQueueEntries` calling `Ens.Queue.AbortItem` on each entry it reads -> `InteropHostRead.TestNoReadChangesWhatTheVendorKeeps` (and the two row legs) went red. The `Ens.Job:Enumerate` mutation is read by the Troubled leg below, where nothing repairs the dead job.
+- mutation: AC7, `documentScreenFor` answering null for Production items -> `navigation.test.mjs` "Story 20.4: the Status tab is what an item row opens" (name-cell leg) went red.
+- mutation: AC7, the add store's event without `tool` -> `interop-item-add.store.spec.ts` "names the add tool on the event it publishes" went red.
+- mutation: P1, `LIVEWORDS` = `Running` -> `InteropHostEdges.TestATroubledProductionStillAnswersItsRowsAndChangesNothing` went red (the Monitor, ItemStatus, Jobs and ItemJobs legs).
+- mutation: P1 and AC6, `GatherJobs` running `Ens.Job:Enumerate` -> the same test went red (the job reads Dead with its message gone, the snapshot differs, and the queue holds one message fewer).
+- mutation: P2, the first subselect of `MESSAGESQL` on `TargetConfigName` -> `InteropHostEdges.TestTheServicesMessagesAreThoseItSourced` went red.
+- mutation: P3, the target `Continue` in `GatherQueueEntries` deleted, then inverted -> `InteropHostEdges.TestAPoolSizeZeroItemReadsOnlyItsOwnActorEntries` went red each time, and left no entry or header behind.
+- mutation: P4, `tTop` always `SQLMAX` -> `InteropHostEdges.TestARowCapOfOneAnswersOneRowOnEveryEndpoint` went red for ItemLog and ItemMessages; the `pMax` tests dropped from the host, job, queue and entry gatherers -> the same test went red for Monitor, Queues, QueueItems, ItemQueue and Jobs.
+- mutation: P5, `LocalStamp` reformatting without converting -> `InteropHostEdges.TestTheStampsAreConvertedOnceToTheZoneOfTheReader` went red for the header, the queue entry and the log row. `%EXTERNAL` around the log and message stamps, as first written, converted them twice: the same test went red for the header and the log row, the queue entry staying green.
+- mutation: P6, `JobRow` marking only the operation's row dead -> `interop-host-tabs.browser-spec.mjs` "the operation's own row links to Process details" went red.
+- mutation: P8 and AC1, `InteropItemSettingListPage` hosting `<app-list-page />` again (rebuilt and redeployed) -> `interop-host-tabs.browser-spec.mjs` "the Settings tab carries the same strip" went red with an empty strip; reverted byte for byte (the bundle hash `main-QGQHPIB6` is the unmutated build's), rebuilt, redeployed and green.
+- mutation: P8 and AC6, `JobRow`'s `Dead` forced false -> `InteropHostDescriptor.TestAJobNoProcessHoldsReadsDead` went red, and so did `InteropHostEdges.TestATroubledProductionStillAnswersItsRowsAndChangesNothing`.
+
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
 
 **Plan summary.** Shape chosen from measurement: reads first, with the actions as the AC's stated partial. Measured on `ocupilot-b-ci`, each action is a vendor class method with its own check and no audit row. `AbortOperation`, `SuspendOperation` and `Stop` answer OK on an idle or unknown target, so the actions need their own design, and Design Notes › Split charters them as 20.23.
@@ -402,3 +472,40 @@ This spec ships nine read screens through `InteropPort`:
 - Production monitor, Queues with Queue messages, and Jobs
 
 It adds no write and no governance key, and no posture question remains. Flagged `oversized` and `multiple-goals`; a second seam is named in Design Notes. Spine drafts for AD-62, AD-29, AD-36, AD-13, AD-43, AD-8 and AD-44 are listed for the runner to write at the spec gate.
+
+### Implementation result (2026-10-10, slot B, `ocupilot-b-ci`)
+
+**Summary.** `InteropPort` gains nine `LIST` reads (`Monitor`, `ItemStatus`, `Queues`, `QueueItems`, `ItemQueue`, `ItemLog`, `ItemMessages`, `Jobs`, `ItemJobs`) behind their classic pages' pairs, one dispatcher (`InvokeRuntime`) and shared gatherers (`GatherHosts`, `GatherJobs`, `GatherQueueEntries`, `SqlRows`). The Log and Messages tabs read `Ens_Util.Log` and `Ens.MessageHeader` through `%ExecDirectNoPriv` after the gate, with every value bound. The port never calls `Ens.Job:Enumerate` or any queue or job action and writes nothing. Nine screens ship with derived read tools: Production monitor, Queues, Queue messages, Jobs, and the item's Status, Queue, Log, Messages and Jobs tabs; Item settings becomes the group's second tab. Three entity types are new (65 to 68). The add store's change event names `interop.items.add`. No write, no governance key.
+
+**Files changed.**
+
+- `src/OcuPilot/Port/InteropPort.cls`: the nine endpoints, pair sets, dispatcher, gatherers and row builders.
+- `src/OcuPilot/Kernel/EntityType.cls`: `interop-queue`, `interop-message`, `interop-job`.
+- `src/OcuPilot/Screen/Descriptor/`: nine new descriptors (`InteropMonitorList`, `InteropQueueList`, `InteropQueueMessageList`, `InteropJobList`, `InteropItemStatusTab`, `InteropItemQueueTab`, `InteropItemLogTab`, `InteropItemMessageTab`, `InteropItemJobTab`); `InteropItemSettingList` is now a `detail` tab at position 2.
+- `src/OcuPilot/Test/`: new `InteropHostRead`, `InteropHostGate`, `InteropHostDescriptor`, `InteropHostEdges`; `ProductionProbe` logs a line per message and gains `Release`; roster updates in `Descriptor`, `InteropDescriptor`, `InteropFloor`, `InteropSettingDescriptor`, `Navigation`, `ReadTool`, `SurfaceCoverage`, `ToolRoundTrip`.
+- `scripts/ci-throwaway.sh`: arming lines for the new classes.
+- `ui/`: Item settings' page hosts `DetailPage`; `interop-item-add.store.ts` names its tool; 58 strings; regenerated `screens.generated.ts`; new `interop-host-tabs.browser-spec.mjs`; `interop-item-settings` browser spec, `structural-walk.mjs`, `navigation.test.mjs`, `screen-mirror.test.mjs` and two component specs updated.
+- `EXPERIENCE.md`: the side-bar sentence, the Fixed-strings clause and the auto-refresh roster, edited in place.
+
+**Review (one pass; layers verification-gap and intent-alignment).** 19 findings: high 0, medium 9, low 8, false 2. Patches applied: the Troubled and dead-job leg, the sourced-by Messages leg, the pool-size-0 target leg, the row-cap leg, the zone leg, the Jobs link scoping, `InteropHostGate` reusing `InteropItemGate`'s `FailedPair` and `LegText`, the two stale comments, and the two missing mutations. The zone leg found a real defect, fixed in the port: `%EXTERNAL` already converts a stamp to the reader's zone, so `LocalStamp` converted twice; the Log and Messages statements now read the stamps as stored. Deferred: none. Rejected, with the reason in the Review Triage Log: `InteropHostRead` at 671 lines (the legs added go to `InteropHostEdges`), model-facing bounds and sanitizing (generic layers, unchanged), `QUEUESCANMAX` cutting silently (a named bound), the spine edits (commit b98144ee), `Settle`'s `Release` (acts only above a 30 s hang).
+
+**Follow-up review: recommended (`true`).** Seven medium entries were patched. The unverified risk: the patch pass (`InteropHostEdges`, the `InteropHostGate` refactor and the port's stamp change) was written after the review layers read the diff and has had no independent read, and the stamp conversion shows only under a non-UTC zone, which `InteropHostEdges` reaches with a child session under `TZ=PST8`.
+
+**Task 0 cells.**
+
+- `NormalizePage` spells `EnsPortal.ProductionMonitor`, `EnsPortal.Queues` and `EnsPortal.Jobs` as written (resources `%Ens_Dashboard:USE`, `%Ens_Queues:READ`, `%Ens_Jobs:READ`).
+- A stopped production leaves `EnumerateHostStatus` and `EnumerateJobStatus(op)` with 0 rows, forced stop included.
+- A terminated operation job's status entry was repaired in 1.28 s with the monitor service alive; in a Troubled production it stayed unrepaired for at least 45 s, so AC6 pins a dead job there (`InteropHostEdges`) and `JobRow` for a pid no process holds.
+- `%EXTERNAL(TimeCreated)` and `%EXTERNAL(TimeLogged)` convert to the reader's operating-system zone; the port reads the stamps as stored and converts once.
+- A Monitor-role principal opens Production monitor and is refused an item's Status tab naming `%Ens_ProductionConfig:READ`.
+
+**Verification (final tree, on the freshly synced `ocupilot-b-ci`).**
+
+- ObjectScript classes, each run alone, every test passing: `InteropHostEdges` 5, `InteropHostRead` 7, `InteropHostGate` 3, `InteropHostDescriptor` 8, `InteropSettingDescriptor` 12, `InteropSettingControl` 7, `InteropItemControl` 6, `InteropControl` 11, `InteropFloor` 7, `InteropFloorTurn` 1, `Navigation` 14, `ReadTool` 28, `Descriptor` 60, `SurfaceCoverage` 4, `InteropItemGate` 5, `InteropSettingGate` 5, `InteropDescriptor` 12, `ToolRoundTrip` 2 (runs 171 to 188).
+- `uv run scripts/check-objectscript.py`: 0 problems over 1873 files. `bash scripts/lint-docs.sh`: 0 issues, 0 prose problems. `npm run test:tools`: 1907 pass. `npm run test:components`: 220 files, 2800 tests pass. `node tools/screen-mirror.mjs --check`: 170 descriptors, 11 areas, 68 entity types.
+- Browser specs, one per call on the rebuilt, redeployed bundle: `interop-host-tabs` 4 of 4, `interop-items` 3 of 3, `interop-item-settings` 3 of 3, `a11y-structural-invariants` 13 of 13 on the first and the third run. Two runs between them failed on screens this story does not touch: one visit of `security/auditing/user-events` did not settle within 20 s, and one run failed before measuring, cause not captured.
+- Bundle initial total 3,245,971 bytes (`main` 3,040,500 and `styles` 205,471) under `maximumWarning` 3326kB; `angular.json` unchanged.
+- Mutations demonstrated, 22 `mutation:` lines in `## Verification`: AC1 (two, plus the Settings-strip client mutation), AC2 (three), AC3 (two), AC4 (two), AC5, AC6 (three, `Ens.Job:Enumerate` and `JobRow` among them), AC7 (two), and P1 to P6.
+- The full ObjectScript sweep, `npm test` and `smoke.sh` are left to the runner, as is the full browser suite (CI).
+
+**Residual risks.** `QUEUESCANMAX` (10,000) stops a pool-size-0 scan silently. The zone leg needs `%System_CallOut:USE` and a child IRIS session in the container. The two `a11y-structural-invariants` failures above were not diagnosed. The Rule 31 copies (`InvokeRuntime` beside `InvokeItems`; `SqlRows` beside `LogSourcePort.FetchEvents`; `InteropHostGate`'s own principals, `ProbeAs` and `Probe`; `LiveCurrent` and `QueueOf` beside `ReadState`) have their reasons in the Code Map, Design Notes and the commit message.

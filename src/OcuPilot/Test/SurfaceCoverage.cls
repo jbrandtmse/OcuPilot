@@ -218,6 +218,15 @@ XData Coverage
 <screen name="InteropRuleList" class="OcuPilot.Test.InteropDescriptor" method="TestTheFourDeclarationsRegister" corpus="one declaration test pins all four Story 20.2 Interoperability screens in one loop"/>
 <screen name="InteropItemList" class="OcuPilot.Test.InteropItemDescriptor" method="TestTheDescriptorDeclaresTheProductionItemsList"/>
 <screen name="InteropItemSettingList" class="OcuPilot.Test.InteropSettingDescriptor" method="TestTheDescriptorDeclaresTheItemSettingsList"/>
+<screen name="InteropMonitorList" class="OcuPilot.Test.InteropHostDescriptor" method="TestTheNineDeclarationsRegister" corpus="one declaration test pins all nine Story 20.4 runtime screens in one loop"/>
+<screen name="InteropQueueList" class="OcuPilot.Test.InteropHostDescriptor" method="TestTheNineDeclarationsRegister" corpus="one declaration test pins all nine Story 20.4 runtime screens in one loop"/>
+<screen name="InteropQueueMessageList" class="OcuPilot.Test.InteropHostDescriptor" method="TestTheNineDeclarationsRegister" corpus="one declaration test pins all nine Story 20.4 runtime screens in one loop"/>
+<screen name="InteropJobList" class="OcuPilot.Test.InteropHostDescriptor" method="TestTheNineDeclarationsRegister" corpus="one declaration test pins all nine Story 20.4 runtime screens in one loop"/>
+<screen name="InteropItemStatusTab" class="OcuPilot.Test.InteropHostDescriptor" method="TestTheNineDeclarationsRegister" corpus="one declaration test pins all nine Story 20.4 runtime screens in one loop"/>
+<screen name="InteropItemQueueTab" class="OcuPilot.Test.InteropHostDescriptor" method="TestTheNineDeclarationsRegister" corpus="one declaration test pins all nine Story 20.4 runtime screens in one loop"/>
+<screen name="InteropItemLogTab" class="OcuPilot.Test.InteropHostDescriptor" method="TestTheNineDeclarationsRegister" corpus="one declaration test pins all nine Story 20.4 runtime screens in one loop"/>
+<screen name="InteropItemMessageTab" class="OcuPilot.Test.InteropHostDescriptor" method="TestTheNineDeclarationsRegister" corpus="one declaration test pins all nine Story 20.4 runtime screens in one loop"/>
+<screen name="InteropItemJobTab" class="OcuPilot.Test.InteropHostDescriptor" method="TestTheNineDeclarationsRegister" corpus="one declaration test pins all nine Story 20.4 runtime screens in one loop"/>
 <tool name="permissions.users.create" class="OcuPilot.Test.UserCreate" method="TestTheSchemaCarriesNoSecretAndThePermittedSetIsTheSets"/>
 <tool name="permissions.users.copy" class="OcuPilot.Test.UserCopy" method="TestTheCopyToolPinsItsInputSchemaAndSnippetForm"/>
 <tool name="permissions.roles.create" class="OcuPilot.Test.RoleCreate" method="TestTheSchemaCarriesNoEscalationOnlyAndThePermittedSetIsTheSets"/>

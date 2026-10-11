@@ -9,21 +9,21 @@ import { ScreenActions } from '../../core/screen-actions';
 import { ScreenStores } from '../../core/screen-store';
 import { SCREENS } from '../../core/screens.generated';
 import { STRINGS } from '../../core/strings';
-import { ListPage } from '../../shell/list-page';
+import { DetailPage } from '../../shell/detail-page';
 import { ScreenActionHandler } from '../../shell/screen-action-handler';
 import { stubAccountPreferences } from '../../testing/account-preferences';
 import { INTEROP_ITEM_SETTING_LIST, INTEROP_SETTING_SET_ACTION, InteropItemSettingListPage } from './interop-item-setting-list.page';
 
 /**
- * The Item settings page (Story 20.22). The shared list page is replaced by an empty stand-in, so only this page's
+ * The Item settings page (Story 20.22). The detail page that hosts the list (Story 20.4) is replaced by an empty stand-in, so only this page's
  * own wiring runs: the one action it registers after the shell's handler, the dialog it opens over the selected row,
  * no dialog over a secret setting, the request each Set value sends -- an empty value included -- a refusal kept in the
  * dialog and the change event an applied change publishes. The handler, the stores and the bus are real; only the
  * server's answers are stubbed.
  */
 
-@Component({ selector: 'app-list-page', template: '' })
-class StubListPage {}
+@Component({ selector: 'app-detail-page', template: '' })
+class StubDetailPage {}
 
 const LIST = SCREENS.find((screen) => screen.descriptor === INTEROP_ITEM_SETTING_LIST)!;
 
@@ -99,7 +99,7 @@ function mount(answers: (JsonResult<unknown> | Promise<JsonResult<unknown>>)[]) 
       { provide: OverlayStack, useValue: new OverlayStack() },
     ],
   });
-  TestBed.overrideComponent(InteropItemSettingListPage, { remove: { imports: [ListPage] }, add: { imports: [StubListPage] } });
+  TestBed.overrideComponent(InteropItemSettingListPage, { remove: { imports: [DetailPage] }, add: { imports: [StubDetailPage] } });
   const store = stores.for(LIST.descriptor, LIST.refreshRates);
   store.applyTick(ROWS, false, '', new Date());
   const fixture = TestBed.createComponent(InteropItemSettingListPage);

@@ -37,12 +37,22 @@ Parameter BASEAREAS = "agent,analytics,home,logs";
 /// <p>See <parameter>BASESCREENS</parameter>.</p>
 Parameter BASETOOLS = "agent.transcripts.read,logs.analytics.read,shell.instance.read,shell.namespaces.read,shell.privileges.read,shell.screen.open";
 
-/// <p>What the Operator role adds: Productions and its Production items and Item settings child lists through
-/// <code>%Ens_ProductionConfig:READ</code> and the event log through <code>%Ens_EventLog:USE</code>.</p>
-Parameter OPERATORSCREENS = "InteropItemList,InteropItemSettingList,InteropProductionList,LogEventViewer";
+/// <p>What the Monitor role adds: the Production monitor, through the <code>%Ens_Dashboard:USE</code> the role holds (Story
+/// 20.4). The Operator and Administrator roles hold it too.</p>
+Parameter MONITORSCREENS = "InteropMonitorList";
+
+/// <p>See <parameter>MONITORSCREENS</parameter>.</p>
+Parameter MONITORTOOLS = "interop.monitor.read";
+
+/// <p>What the Operator role adds beside the Monitor's: Productions and its Production items list, the item's tabs
+/// (Status, Item settings, Queue, Log, Messages and Jobs) and Queues with Queue messages and Jobs, through
+/// <code>%Ens_ProductionConfig:READ</code>, <code>%Ens_Queues:READ</code>, <code>%Ens_Jobs:READ</code>,
+/// <code>%Ens_EventLog:USE</code> and <code>%Ens_MessageHeader:USE</code>, and the event log through
+/// <code>%Ens_EventLog:USE</code>.</p>
+Parameter OPERATORSCREENS = "InteropItemJobTab,InteropItemList,InteropItemLogTab,InteropItemMessageTab,InteropItemQueueTab,InteropItemSettingList,InteropItemStatusTab,InteropJobList,InteropProductionList,InteropQueueList,InteropQueueMessageList,LogEventViewer";
 
 /// <p>See <parameter>OPERATORSCREENS</parameter>.</p>
-Parameter OPERATORTOOLS = "interop.items.read,interop.itemsettings.read,interop.productions.read,logs.eventlog.read";
+Parameter OPERATORTOOLS = "interop.itemjobs.read,interop.itemlog.read,interop.itemmessages.read,interop.itemqueue.read,interop.items.read,interop.itemsettings.read,interop.itemstatus.read,interop.jobs.read,interop.productions.read,interop.queuemessages.read,interop.queues.read,logs.eventlog.read";
 
 /// <p>What the Administrator role adds beside the Operator's: the three code lists, each through its
 /// own <code>%Ens_Code:READ</code>.</p>
@@ -109,13 +119,14 @@ Method OnAfterAllTests() As %Status
 /// <p>The areas the map opens to kind <var>pKind</var>.</p>
 ClassMethod Areas(pKind As %String) As %String
 {
-    Quit ..#BASEAREAS _ $Select($ListFind($ListBuild("operator", "administrator"), pKind): ",interoperability", 1: "")
+    Quit ..#BASEAREAS _ $Select($ListFind($ListBuild("monitor", "operator", "administrator"), pKind): ",interoperability", 1: "")
 }
 
 /// <p>The screens the map opens to kind <var>pKind</var>.</p>
 ClassMethod Screens(pKind As %String) As %String
 {
     Set tList = ..#BASESCREENS
+    If $ListFind($ListBuild("monitor", "operator", "administrator"), pKind) Set tList = tList _ "," _ ..#MONITORSCREENS
     If $ListFind($ListBuild("operator", "administrator"), pKind) Set tList = tList _ "," _ ..#OPERATORSCREENS
     If pKind = "administrator" Set tList = tList _ "," _ ..#ADMINISTRATORSCREENS
     Quit tList
@@ -125,6 +136,7 @@ ClassMethod Screens(pKind As %String) As %String
 ClassMethod Tools(pKind As %String) As %String
 {
     Set tList = ..#BASETOOLS
+    If $ListFind($ListBuild("monitor", "operator", "administrator"), pKind) Set tList = tList _ "," _ ..#MONITORTOOLS
     If $ListFind($ListBuild("operator", "administrator"), pKind) Set tList = tList _ "," _ ..#OPERATORTOOLS
     If pKind = "administrator" Set tList = tList _ "," _ ..#ADMINISTRATORTOOLS
     Quit tList
@@ -213,7 +225,9 @@ Method TestEachPrincipalSignsInAndOpensExactlyItsRoster()
 /// <p><b>Interoperability reads.</b> Productions answers the Operator and Administrator roles and
 /// refuses the <code>%Ens_Portal</code> holder naming <code>%Ens_ProductionConfig:READ</code>;
 /// Business processes answers the Administrator with rows and refuses the Operator naming
-/// <code>%Ens_Code:READ</code>.</p>
+/// <code>%Ens_Code:READ</code>; Production monitor answers the Monitor role and refuses the <code>%Ens_Portal</code>
+/// holder naming <code>%Ens_Dashboard:USE</code>, and an item's Status tab refuses the Monitor role naming
+/// <code>%Ens_ProductionConfig:READ</code> (Story 20.4).</p>
 /// <p>Mutation: give <class>OcuPilot.Screen.Descriptor.InteropProductionList</class> and
 /// <parameter>OcuPilot.Port.InteropPort.PRODUCTIONPAIRS</parameter>, the two gates the read meets, the
 /// pair set <code>%Ens_Portal:USE</code> alone -> the <code>%Ens_Portal</code> holder reads
@@ -232,6 +246,13 @@ Method TestTheInteroperabilityReadsFollowTheirOwnPairs()
     Do $$$AssertEquals(tStatus, 200, "the Administrator reads Business processes: " _ $Extract(tText, 1, 200))
     Set tRows = $Select($IsObject(tObject) && $IsObject(tObject.%Get("rows")): tObject.rows, 1: [])
     Do $$$AssertTrue(tRows.%Size() > 0, "with rows")
+    ; Story 20.4: the Monitor role holds the Production monitor's resource and nothing of an item's tabs.
+    Do ..Request("GET", "/screens/interop.monitor/read?ns=" _ tNs, "monitor", .tStatus, .tObject, .tText)
+    Do $$$AssertEquals(tStatus, 200, "the Monitor role reads Production monitor: " _ $Extract(tText, 1, 200))
+    Do ..Request("GET", "/screens/interop.itemstatus/read?ns=" _ tNs _ "&item=P.Prod%7C%7CItem", "monitor", .tStatus, .tObject, .tText)
+    Do $$$AssertEquals(..Refusal(tObject, tStatus), "403|AUTH.NOPRIVILEGE|%Ens_ProductionConfig:READ", "and is refused an item's Status tab: " _ $Extract(tText, 1, 200))
+    Do ..Request("GET", "/screens/interop.monitor/read?ns=" _ tNs, "portal", .tStatus, .tObject, .tText)
+    Do $$$AssertEquals(..Refusal(tObject, tStatus), "403|AUTH.NOPRIVILEGE|%Ens_Dashboard:USE", "the %Ens_Portal holder is refused Production monitor, naming its resource: " _ $Extract(tText, 1, 200))
 }
 
 /// <p><b>Event log.</b> The Operator reads it; the <code>%Ens_Portal</code> holder is refused naming

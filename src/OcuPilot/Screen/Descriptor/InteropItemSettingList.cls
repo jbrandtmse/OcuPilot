@@ -1,10 +1,13 @@
 /// <p>Interoperability's Item settings: the Core, Host and Adapter settings one production item holds, with their
 /// value, source, default and type, read through <class>OcuPilot.Port.InteropPort</class> (source kind
-/// <code>interop</code>, endpoint <code>Settings</code>) and rendered by the <code>list</code> archetype's page from the
-/// declared <code>table</code> (AD-5, AD-29, AD-36, AD-62, Story 20.22).</p>
+/// <code>interop</code>, endpoint <code>Settings</code>) and rendered from the declared <code>table</code> (AD-5, AD-29,
+/// AD-36, AD-62, Story 20.22).</p>
+/// <p><b>It is the second tab of the item group</b> <code>interoperability/productions/items/document</code> (Story
+/// 20.4), a <code>detail</code> archetype like its siblings, which keeps its own route; the strip over it carries the
+/// item from tab to tab.</p>
 /// <p><b>It is a sub-resource of the Production items list and never listed</b> (<code>sideBarPosition</code> 0): it
-/// declares <code>parentScope</code> <code>interoperability/productions/items</code> and is reached from that list's
-/// name cell at <code>interoperability/productions/items/settings/&lt;item&gt;</code>. Its one declared criterion,
+/// declares <code>parentScope</code> <code>interoperability/productions/items</code> and is reached from the item's
+/// Status tab at <code>interoperability/productions/items/settings/&lt;item&gt;</code>. Its one declared criterion,
 /// <code>item</code>, is the route id, required as a single-object read's is (AD-36); it is the item's composite
 /// id <code>[Production, Name]</code>, which the Production items rows carry, or the vendor's config name
 /// <code>Production||Name</code>, which the read tool's hint asks for. The port answers the production and the item
@@ -32,7 +35,7 @@ XData Declaration
   "area": "interoperability",
   "labelKey": "interopItemSettingsLabel",
   "sideBarPosition": 0,
-  "archetype": "list",
+  "archetype": "detail",
   "built": true,
   "refreshes": false,
   "refreshRates": [],
@@ -76,6 +79,7 @@ XData Declaration
     "emptyNextKey": "",
     "emptyAgentKey": "interopItemSettingsEmptyAgent"
   },
+  "tab": {"group": "interoperability/productions/items/document", "position": 2, "labelKey": "interopItemTabSettings"},
   "toolIdentifier": "interop.itemsettings"
 }
 }

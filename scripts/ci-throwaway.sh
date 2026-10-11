@@ -416,6 +416,12 @@ services:
       # refusal of them, the identity class writes a second item after a compile renumbered the production's items, and
       # the gate class signs in as probe principals each missing one pair a setting write requires.
       # classes: InteropSettingControl, InteropSettingDescent, InteropSettingGate, InteropSettingIdentity, InteropSettingPaths, InteropSettingRefusals, InteropSettingSecrets
+      # The production monitor classes compile and run the same probe production in USER, hang its operation and send it
+      # messages (Story 20.4): the read class reads the runtime state of that production through the port, the screens and
+      # the read tools, the edges class reads it Troubled, with a pool-size-0 item's actor-queue entries, under a row cap and
+      # from a session in another time zone, and the gate class signs in as probe principals each missing one pair a runtime
+      # read requires and as principals holding exactly one read's pairs.
+      # classes: InteropHostEdges, InteropHostGate, InteropHostRead
       # classes: ExplorerSourceTurn
       # classes: ExplorerSaveTurn
       # classes: ExplorerCreateTurn
