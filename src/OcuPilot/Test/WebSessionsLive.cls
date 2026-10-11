@@ -287,7 +287,7 @@ Method TestAnAreaHolderKeepsTheAreaAndIsRefusedWebSessions()
         If tScreen.%Get("sideBarPosition") = 0 Continue
         Set tVerdicts = tVerdicts _ $ListBuild(tScreen.%Get("route") _ "=" _ $Select(tScreen.%Get("allowed"): "open", 1: tScreen.%Get("failedPair")))
     }
-    Do $$$AssertEquals($ListToString(tVerdicts, " "), "web-applications/list=open web-applications/rest-apis=open web-applications/sessions=%Admin_Operate:USE", "its list and the REST API explorer are open, and Web sessions is refused on its own pair")
+    Do $$$AssertEquals($ListToString(tVerdicts, " "), "web-applications/list=open web-applications/rest-apis=open web-applications/sessions=%Admin_Operate:USE web-applications/docdb-applications=open", "its list, the REST API explorer and the Doc DB applications list are open, and Web sessions is refused on its own pair")
     Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("GET", tBase _ "/screens/webapp.sessions/read?maxRows=5", ..#AREAUSER, ..PreparedPassword, .tStatus, .tRaw, .tHeaders)
     Set tBody = ""
     Try { Set tBody = ##class(%DynamicObject).%FromJSON(tRaw) } Catch {}

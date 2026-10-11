@@ -29,7 +29,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 09-09-2026 07:49
-last_updated: '10-11-2026 01:14'
+last_updated: '10-11-2026 02:50'
 project: OcuPilot
 project_key: NOKEY
 tracking_system: file-system
@@ -304,9 +304,11 @@ development_status:
   18-27-the-operator-s-read-only-ldap-view: done
   18-28-sql-column-and-admin-privileges: done
   18-29-role-members-admin-option-user-copy-from-and-password-valida: done
-  18-30-doc-db-applications: backlog
-  18-31-privileged-routine-applications: backlog
+  18-30-doc-db-applications: done
+  18-31-privileged-routine-applications: in-progress
   18-32-spec-based-rest-services: backlog
+  18-33-privileged-routine-application-roles-and-routines: backlog
+  18-34-the-person-s-rest-service-create: backlog
   epic-18-retrospective: optional
 
   epic-19: done
@@ -354,6 +356,7 @@ development_status:
   20-21-the-agent-saves-edits-to-existing-classes-and-routines: done
   20-22-production-item-settings: done
   20-23-queue-and-job-actions: backlog
+  20-24-agent-tool-calls-stop-re-listing-the-tool-registry: ready-for-dev
   epic-20-retrospective: optional
 
   epic-21: backlog
@@ -382,6 +385,7 @@ development_status:
   23-4-the-range-end-cleanup-part-4: done
   23-5-the-range-end-cleanup-part-5: backlog
   23-6-the-haiku-story-cleanup: done
+  23-7-the-range-end-cleanup-part-6: backlog
   epic-23-retrospective: optional
 action_items:
   - id: "epic-4-retro-item-1-run-an-architecture-update-intent-on-the"

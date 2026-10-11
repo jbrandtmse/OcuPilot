@@ -41,6 +41,7 @@ import { EncryptionKeysStore } from './areas/security/encryption-keys.store';
 import { EncryptionStartupForm } from './areas/security/encryption-startup.store';
 import { SuperserverForm } from './areas/security/superserver-form.store';
 import { MftConnectionForm } from './areas/security/mft-connection-form.store';
+import { DocDbAppForm } from './areas/web-applications/docdb-app-form.store';
 import { UserCreateForm } from './areas/permissions/user-create-form.store';
 import { AuditSearch } from './areas/logs/audit.store';
 import { LedgerSearch } from './areas/agent/ledger.store';
@@ -1373,6 +1374,10 @@ describe('the shell frame', () => {
     const mftConnectionForm = TestBed.inject(MftConnectionForm);
     mftConnectionForm.setValue('Name', 'AMFTCONNECTIONTHISPRINCIPALTYPED');
     expect(mftConnectionForm.value('Name')).not.toBe('');
+    // And the Doc DB application form (Story 18.30): a name THIS principal typed for a new record.
+    const docDbAppForm = TestBed.inject(DocDbAppForm);
+    docDbAppForm.setValue('Name', 'ADOCDBAPPTHISPRINCIPALTYPED');
+    expect(docDbAppForm.value('Name')).not.toBe('');
     // And the license server and ECP data server forms (Stories 18.6 and 18.20): a name THIS principal
     // typed for a new server. A create takes input before its form read is made.
     const licenseServerForm = TestBed.inject(LicenseServerForm);
@@ -1560,6 +1565,9 @@ describe('the shell frame', () => {
     // one's typed name.
     expect(superserverForm.value('BindAddress')).toBe('');
     expect(mftConnectionForm.value('Name')).toBe('');
+    // Mutation (Rule 19): delete `this.docDbAppForm.reset()` from `App.verifyWhenSignedIn` -> this goes red, and
+    // the next principal's Doc DB application form holds the previous one's typed name.
+    expect(docDbAppForm.value('Name')).toBe('');
     // Mutation (Rule 19): delete `this.licenseServerForm.reset()` or `this.ecpDataServerForm.reset()`
     // from `App.verifyWhenSignedIn` -> that line goes red, and the next principal's form holds the
     // previous one's typed name.

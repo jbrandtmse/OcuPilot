@@ -956,6 +956,16 @@ XData Tools
   {"path":"Description","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
   {"path":"Settings","shape":"object","templateType":"object","itemType":"","class":"opaque","compare":"written"}
 ]},
+"webapp.docdbapps.create": {"fieldList":"DocDB","fields":[
+  {"path":"Description","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"Enabled","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"Resource","shape":"literal","templateType":"string","itemType":"","class":"ordinary"}
+]},
+"webapp.docdbapps.update": {"fieldList":"DocDB","fields":[
+  {"path":"Description","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"Enabled","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"Resource","shape":"literal","templateType":"string","itemType":"","class":"ordinary"}
+]},
 "webapp.list.create": {"fieldList":"WebApp.App","fields":[
   {"path":"AutheEnabled","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
   {"path":"AutoCompile","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"},

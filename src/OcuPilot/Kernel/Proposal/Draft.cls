@@ -146,7 +146,7 @@ ClassMethod Render(pTool As %DynamicObject, ByRef pRow, pOrigin As %String, pUse
         Set tCreates = ##class(OcuPilot.Kernel.Proposal.Mint).CreatesOf(tClass)
         If tCreates {
             ; AD-54: a create names its target as the caller typed it, as the confirm sends it.
-            Set tTyped = ..ParsedObject($Get(pRow("arguments"))).%Get($ClassMethod(tClass, "IdArgument"))
+            Set tTyped = $ClassMethod(tClass, "TypedId", ..ParsedObject($Get(pRow("arguments"))))
             If (tTyped '= "") && '$IsObject(tTyped) && (##class(OcuPilot.Kernel.EntityRef).NormalizedId(tType, tTyped) = ##class(OcuPilot.Kernel.EntityRef).NormalizedId(tType, tIdValue)) Set tIdValue = tTyped
         }
         Set tPort = ##class(OcuPilot.Kernel.Proposal.Operation).PortClassOf(tClass, ..PortClass())

@@ -7,7 +7,7 @@ paradigm: 'Descriptor-driven vertical slices, hexagonal at the edges'
 scope: 'OcuPilot in full: Release 1 (119 P0 rows, contest deadline 2026-09-27) binding; Stages 2-6 decided where their gates are already clear, named as staged decisions where they are not.'
 status: final
 created: '2026-09-08'
-updated: '2026-10-08'
+updated: '2026-10-10'
 binds:
   - 'Areas 5.1-5.12 (shell, agent co-pilot, agent tools, agent config, web apps + REST explorer, permissions, security and secrets, tasks, OS management, logs, packaging, polish)'
   - 'FR-1 through FR-79, NFR-1 through NFR-14'
@@ -113,6 +113,8 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
 
   **A privileged-routine call is checked against its target's type** [AMENDED 2026-10-09, Story 18.10 spec gate, Rule 20]: the vendor's `Security.PrivilegedRoutine` endpoint writes any application type (measured: a `PUT` changed a web application and then answered 500, and a `DELETE` deleted one). So `AdminPort` refuses a `GET`, `PUT` or `DELETE` naming an application whose type lacks the routine bit (4) before any vendor call and unlogged, `GET` with 404 and `PUT` and `DELETE` with 409 `PRIVROUTINE.TYPE`. An absent name passes.
 
+  **The type check also covers `WebApp.App`'s writes** [AMENDED 2026-10-10, Story 18.31 spec gate, Rule 20], DW-2252: a `PUT` or `DELETE` on `WebApp.App` naming a privileged routine application is refused 409 `PRIVROUTINE.WEBAPP` before the vendor call and unlogged (measured: the vendor answers a `PUT` 500 #799 and a `DELETE` deletes the routine application); its `GET` is unchanged.
+
 ### AD-3 — Write payload field lists are derived; the semantic half is authored once per tool
 
 - **Binds:** every write tool in 5.5–5.10; the ~40 rows the PRD lists as built against an unverified contract
@@ -159,6 +161,8 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
 
   **`Security.MFT` keeps a key its body omits and is an upsert**, 201 on create, which requires all five fields; `Service` is create-only, because a `PUT` changing it relabels the stored object (Story 18.26; measured) [AMENDED 2026-10-07, Story 18.26 spec gate, Rule 20].
 
+  **A Doc DB application record is an upsert that keeps omitted keys** [AMENDED 2026-10-10, Story 18.30 spec gate, Rule 20]: `DocDB`'s `PUT` creates an absent record and keeps every key it omits (measured), so the update tool sends a merge of all three fields.
+
 ### AD-5 — One screen descriptor is the source of everything about a screen
 
 - **Binds:** all 60 screens across 5.5–5.10; FR-4, FR-11, FR-14, FR-16
@@ -179,6 +183,7 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
   - **A banner case may name the action it offers** (`action`, one of the screen's `rowActions`, Story 16.11) [AMENDED 2026-09-30, Story 16.11 spec gate, Rule 20]. The screen's read answers `bannerRequires` beside `banner`: the first pair that action's tool requires and the caller lacks, evaluated in the caller's process at each read and never part of the tool's view. The strip draws the action `aria-disabled` with that pair while it is non-empty. Validated alike by `Screen/Registry.cls` and `ui/tools/screen-mirror.mjs`.
   - **A page may issue another built screen's declared read.** Where a screen needs a second collection its own descriptor cannot hold -- a database's volume files beside its properties, or rows to render before a slower read resolves -- it issues that screen's read through the ordinary read route, so the other screen's own gate, cap and field set apply unchanged and no second query is written. It is never a way to widen a read: a page that issues another screen's read is subject to that screen's privilege set exactly as its own list would be (Story 6.11).
   - **Tool identity is independent of screen naming.** A tool's name comes from a stable identifier in the descriptor, not from the screen's route or display name, so renaming a screen never silently orphans its write tools or their governance keys.
+  - **The tool listing is built from compile-time declarations only, kept per process, and revalidated on every call** [AMENDED 2026-10-10, Story 20.24 spec gate, Rule 20]. `Screen.Tool.Registry.ListTools` keeps the listing it builds per process, keyed by namespace and registry class, and rebuilds it when the compile signature of the `OcuPilot.` package (the count of compiled classes and the sums of their compile times) differs from the one it was built under, so a compile in any process, an in-place IPM upgrade included, is seen on the next call with no restart. Only compile-time declarations may decide whether or how a tool is listed; a value read at run time (a setting, an adjustment, a grant, a policy) is read by its own reader on every call and never enters the listing (AD-8, AD-22, AD-30, AD-64).
 
 ### AD-6 — The proposal is server-minted, single-use, fingerprinted and expiring
 
@@ -304,6 +309,8 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
   **Story 19.7** [AMENDED 2026-10-04, Story 19.7 spec gate, Rule 20]: the data browser declares no pair beyond its screen's; its SQL privileges are the instance's at prepare (measured). **Story 19.8** [AMENDED 2026-10-04, Story 19.8 spec gate, Rule 20]: the data browser's save declares no pair beyond its screen's; its SQL privileges are the instance's at prepare (measured).
 
   **Story 19.17** [AMENDED 2026-10-05, Story 19.17 spec gate, Rule 20]: Document databases declares `%DocDB_Admin:USE` and `%Service_DocDB:USE` as its own pairs beside System Explorer's `%Development:USE`, and `DocDbPort` adds the namespace's READ pairs at the call (AD-61's rule 1). `explorer.docdb.create` and `explorer.docdb.delete` also declare WRITE on the resources guarding the namespace's routines and globals databases, resolved at the call, each refused by name before any port call: without the routines database's WRITE a create raised `<PROTECT>` on `^oddDEF` and a drop #5883, the database intact (measured by Story 19.9), and the globals database holds the registry row and the documents (inference).
+
+  **Story 18.30's Doc DB applications declare no pair beyond the area's** [AMENDED 2026-10-10, Story 18.30 spec gate, Rule 20] (measured on a principal holding exactly `%Admin_Secure:USE`, `%DB_IRISSYS:READ` and `%DB_HSCUSTOM:READ`).
 
 ### AD-9 — OcuPilot's own state is protected by a privileged routine application
 
@@ -440,6 +447,10 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
   **A `docdb-database` id keeps `foldcase`**, because the instance resolves a document database's name in any case (measured on `ocupilot-a2-ci`: `Exists`, `GetDatabase` and `DropDatabase("OCUPROBE1917A")` reached `OcuProbe1917A`, and `CreateDatabase("ocuprobe1917a")` threw #25051) (Story 19.17) [AMENDED 2026-10-05, Story 19.17 spec gate, Rule 20].
 
   **A `screen-permission` id is the screen's `toolIdentifier`, kept exactly** (Story 20.15) [AMENDED 2026-10-07, Story 20.15 spec gate, Rule 20].
+
+  **A `docdb-application` id is `[Namespace, Name]`** [AMENDED 2026-10-10, Story 18.30 spec gate, Rule 20], as `MappingMint` and `NamespacePort` expect; it takes `foldcase`, since the instance resolves both parts in any case.
+
+  **A `routine-application` id is its name** [AMENDED 2026-10-10, Story 18.31 spec gate, Rule 20], `foldcase`, since the instance resolves the name in any case and stores it as typed.
 
 ### AD-14 — A confirmed write emits one change event; screens re-fetch, never patch
 
@@ -901,6 +912,10 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
 
   **Story 18.10's `CLASSICPAGES`** [AMENDED 2026-10-09, Story 18.10 spec gate, Rule 20]: the `%`-class access create declares `%CSP.UI.Portal.Dialog.WebAppPctAccess`.
 
+  **Story 18.30's `CLASSICPAGES`** [AMENDED 2026-10-10, Story 18.30 spec gate, Rule 20]: the Doc DB application create and update declare `%CSP.UI.Portal.Applications.DocDB`; the delete, on the list's page, declares none.
+
+  **Story 18.31's `CLASSICPAGES`** [AMENDED 2026-10-10, Story 18.31 spec gate, Rule 20]: the privileged routine application create and update declare `%CSP.UI.Portal.Applications.PrivRoutine`; the delete, on the list's page, declares none.
+
 ### AD-45 — There is one smoke path, and it is also the health check
 
 - **Binds:** FR-66, FR-67, NFR-9, AD-38; the installer, CI, the demo
@@ -1094,7 +1109,7 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
   - **A write tool declares whether it creates its target**, defaulting to false. The create reaches its target through the same declared port (AD-52), the same endpoint and the same read type as any other write on that entity.
   - **The fresh read keeps its place and inverts its acceptance.** The target must be **absent**: a 404 is the success precondition, and a target that is present refuses the mint.
   - **The fingerprint covers the target's absence under AD-13's canonical spelling**, not a property set. For a create the property set is entirely the caller's own arguments, and nothing about it can move; what must be protected is that the name is still free. Confirm re-reads and refuses when the name has been taken since the mint.
-  - **AD-4 has no subject here.** Its Rule prevents "a confirmed change to two fields silently erasing the other forty"; a create erases nothing, because there was nothing there. The payload is **composed** from the caller's arguments over the endpoint's derived field list (AD-3) rather than merged over a fresh read, so every supplied field is a diff row and the unchanged count is zero - except where the vendor's create refuses anything but the complete body, where the keys the caller did not supply take a new object's own values and are counted unchanged [AMENDED 2026-09-24, Story 9.7 code review, Rule 20, DW-1629: the task create's POST answers 400 #40301 without all 34 keys].
+  - **AD-4 has no subject here.** Its Rule prevents "a confirmed change to two fields silently erasing the other forty"; a create erases nothing, because there was nothing there. The payload is **composed** from the caller's arguments over the endpoint's derived field list (AD-3) rather than merged over a fresh read, so every supplied field is a diff row and the unchanged count is zero - except where the vendor's create refuses anything but the complete body, or where the tool's read-back compares every field (`DocDbAppCreate` [AMENDED 2026-10-10, Story 18.30 code review, Rule 20]), where the keys the caller did not supply take a new object's own values and are counted unchanged [AMENDED 2026-09-24, Story 9.7 code review, Rule 20, DW-1629: the task create's POST answers 400 #40301 without all 34 keys].
   - **Every other gate is unmoved.** `TargetRef` carries the canonical intended name from the mint, so AD-34's per-target lock and sibling cancel cover two concurrent creates of the same name unchanged, and AD-10's prohibited set, AD-15's marker, AD-41's ledger row and AD-14's change event are all identical. A create is a narrower read, never a lighter path.
 
   This is AD-51's move applied one step further: AD-51 inverted *what the fingerprint covers* for a write that sends no body; a create inverts *what the fresh read must find*. AD-6's purpose survives both inversions intact, because what it prevents is a write against state that **moved under the reviewed diff** - and for a create the reviewed state is "this name is free".
@@ -1102,6 +1117,8 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
   **The protection is load-bearing, not ceremony, and it was measured rather than assumed.** Verified on this build from `%Api.Admin.Endpoints.WebApp.App`: `RunPut:117-122` reads `If ##class(Security.Applications).Exists(..Name) { Modify(...) } Else { Create(...) ... SetRespStatus(..#HTTP201CREATED) }` - an **upsert with no refusal path**. Without the absence fingerprint a confirmed create silently rewrites whichever fields it sends onto somebody else's application, and answers 200 while doing it. A later create story whose endpoint refuses a duplicate on its own still declares the absence fingerprint: the guarantee is OcuPilot's, not the vendor's, and a per-endpoint exemption is the divergence this Rule exists to prevent.
 
   **The prohibited set's per-type field lists are keyed by create versus change** (AD-10, whose one-home rule is unchanged - this refines how the predicates are structured, not where they live). "What may a change to a live target touch" and "what may a create set" are different questions, so a create tool carries its own reviewed per-type list, and the absent-target early-out that reasons "the fingerprint will refuse it moments later" does not apply to a create, whose target is correctly absent. A field prohibited because it repoints a **serving** object - one of OcuPilot's own applications, AD-10 [clarified 2026-09-24, Story 9.2 spec gate] - is prohibited on a change and permitted on a create, which repoints nothing; a field prohibited by effect under AD-10 - setting application roles on one of OcuPilot's own web applications - stays prohibited on **both**, unconditionally [AMENDED 2026-09-23 with AD-10's owner decisions: was "on any web application"].
+
+  **A composite create sends its name as typed** [AMENDED 2026-10-10, Story 18.30 spec gate, Rule 20]: a create whose id rule folds a part the vendor stores exactly as sent overrides `TypedId(pArgs)` (`Screen/Tool/Write`), which the confirm and the draft send in place of the folded id (measured on `DocDB` and `Security.PrivilegedRoutine`; `DocDbAppCreate` and `RoutineAppCreate` [AMENDED 2026-10-10, Story 18.31 spec gate, Rule 20] override it). Every other tool keeps the default, the folded id.
 
 ### AD-55 - A screen's own Save against an instance object resolves through the write tool
 
