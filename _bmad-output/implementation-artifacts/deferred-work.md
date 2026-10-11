@@ -11248,3 +11248,4 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-34-the-person-s-rest-service-create.md | severity: low | fix-risk: low | footprint: out-of-footprint
 - evidence: Measured on ocupilot-ci 2026-10-11: a 4 MB string or 1e999 raises MAXSTRING/MAXNUMBER in %Iterator.Object.%GetNext without its type; RestServiceSave.UnexpectedKey fixed in 18.34, 48 Area files keep the form
 - 2026-10-11T18:27:53Z status=wontfix-accepted owner=18-34-the-person-s-rest-service-create by=cr note=reopen_if=a Save whose UI can send a field over 3.6 MB, or an out-of-range number, answers 500
+- 2026-10-11T21:38:31Z status=routed owner=burndown by=lead note=orchestrator: audit the 48 two-argument %GetNext sites at the Epic 18 burn-down; fix any that read caller-controlled JSON (the same 500) or charter a sweep if many
