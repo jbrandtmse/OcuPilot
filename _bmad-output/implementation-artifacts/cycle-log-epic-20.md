@@ -387,3 +387,11 @@
 2026-10-10T22:07:10Z	Story 20.22	ci_recorded	run=38089930771 head=4dbcf227 ci=pending
 2026-10-10T22:07:10Z	Story 20.4	spec_validated	service_introducing=true(9_InteropPort_reads) integration_ac=present(AC1-AC4) rule30=shared_surfaces+standing_criterion_present adr_constrained_acs=AD-62,AD-36,AD-8,AD-13,AD-29,AD-43,AD-44,AD-5 decision_dependency=none owned_ledger=none split=accepted(reads_here;actions->20.23_chartered,Rule_5_apply-and-report) second_split=declined(AC_names_queues_and_jobs_reads) spine_written=AD-62,AD-29,AD-36,AD-13,AD-44,AD-43(set_ten->thirteen),AD-8(20.14_sentence_corrected_at_origin) harvested=DW-2297,DW-2298(routed_20-23) amendments=epics.md_20.4_note,20.23_block+DW_bullets deps_hash_rerecorded=reason:split_chartered model=claude-opus-5-5
 2026-10-10T22:07:28Z	Story 20.4	stage_spawned	stage=implement spawn_at=2026-10-10T22:07:28Z model=sonnet agent_name=20-4-implement-1 cycle_iteration=1 ci_prior=pending_38089930771(20.22_head_4dbcf227) weekend_rule=implement_locally_while_the_earlier_head_waits(no_code_push_before_green)
+2026-10-11T01:46:45Z	Epic 20	epic_resumed	reason=after_owner_account_switch+kit_2026-10-10.1 runner=fresh dispatch=prompts/e20-resume-2026-10-10-prompt.md
+2026-10-11T01:46:45Z	Epic 20	lead_model_gate	model=claude-opus-5-5 action=proceed
+2026-10-11T01:46:45Z	Epic 20	runtime_gate	bmad=6.12.0(worktree;6.12.1_arrives_with_feature) uv=0.12.9 ci=gh
+2026-10-11T01:46:45Z	Epic 20	launch_env	depth=4 watchdog=0 bash_max_ms=default
+2026-10-11T01:46:45Z	Epic 20	telemetry_gate	pending=0 action=none
+2026-10-11T01:46:45Z	Epic 20	slot_binding_verified	slot=b docker_port=52775 profile=ocupilot-slot-b baseUrl=http://localhost:52775 bootstrap=node_modules_ok,irislib_ok
+2026-10-11T01:46:45Z	Story 20.22	ci_resolved	story=20.22 run=38089930771 result=success attempt=2 head=4dbcf227 resolved_at=resume
+2026-10-11T01:46:45Z	Story 20.22	forward_merge_started	feature=33e95d37 base=0a451914 checkout=temp_clone(scratchpad/e20r/m22) reason=18.30_merged_after_20.22_base
