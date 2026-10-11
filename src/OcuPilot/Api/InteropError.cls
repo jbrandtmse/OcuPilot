@@ -197,17 +197,65 @@ Parameter SETTINGDESCENT = "INTEROP.SETTING.DESCENT";
 
 Parameter REASONSETTINGDESCENT = "This item also reads the directories below its file path, as many levels down as its subdirectory levels, and that would reach the manager directory or the directory OcuPilot serves its files from. Choose another file path or fewer subdirectory levels.";
 
+/// <p>An abort of a queue that holds no waiting message (Story 20.23): the vendor answers success and does nothing.</p>
+Parameter QUEUEEMPTY = "INTEROP.QUEUE.EMPTY";
+
+Parameter REASONQUEUEEMPTY = "This queue holds no messages, so there is nothing to abort.";
+
+/// <p>An abort of a queue whose messages are not the ones its read enumerated: nothing is aborted.</p>
+Parameter QUEUECHANGED = "INTEROP.QUEUE.CHANGED";
+
+Parameter REASONQUEUECHANGED = "The messages in this queue changed after they were reviewed, so nothing was aborted. Review the queue again.";
+
+/// <p>An action on a job whose process has ended.</p>
+Parameter JOBDEAD = "INTEROP.JOB.DEAD";
+
+Parameter REASONJOBDEAD = "This job's process has already ended, so there is nothing to act on. Update the production on Productions to start its jobs again.";
+
+/// <p>An abort or suspend of a job that is not retrying a message: the vendor answers success for any job and leaves the
+/// request set.</p>
+Parameter JOBNOTRETRYING = "INTEROP.JOB.NOTRETRYING";
+
+Parameter REASONJOBNOTRETRYING = "This job is not retrying a message now, so there is no message to abort or suspend. Its message can be aborted or suspended only while the job waits to retry it.";
+
+/// <p>A stop the vendor could not complete: the job did not stop within the wait, even after it was ended.</p>
+Parameter JOBNOTSTOPPED = "INTEROP.JOB.NOTSTOPPED";
+
+Parameter REASONJOBNOTSTOPPED = "The job did not stop within the wait, even after it was ended. Look at Jobs again, and update the production on Productions to start its jobs again.";
+
+/// <p>The consequence codes the queue and job action proposals carry (Story 20.23). The client maps each to its
+/// warning sentence (<file>ui/src/app/core/proposal-view.ts</file>).</p>
+Parameter MESSAGEABORT = "INTEROP.MESSAGE.ABORT";
+
+Parameter REASONMESSAGEABORT = "Aborting this message takes it off its queue and marks it Aborted, so it is never delivered, and a caller waiting for its reply receives an error instead. It cannot be undone.";
+
+Parameter QUEUEABORT = "INTEROP.QUEUE.ABORT";
+
+Parameter REASONQUEUEABORT = "Aborting all messages takes the messages waiting in this queue now, up to the first 10,000, off it and marks each Aborted, so none is delivered. A message that arrives later stays, and so does one a job is already working on. It cannot be undone.";
+
+Parameter JOBABORT = "INTEROP.JOB.ABORT";
+
+Parameter REASONJOBABORT = "Aborting this job's message marks the message it keeps retrying Aborted when its current retry wait ends, so it is never delivered, and the job moves on to its next message. It cannot be undone.";
+
+Parameter JOBSUSPEND = "INTEROP.JOB.SUSPEND";
+
+Parameter REASONJOBSUSPEND = "Suspending this job's message sets the message it keeps retrying aside as Suspended when its current retry wait ends, and the job moves on to its next message. A suspended message can be resent later.";
+
+Parameter JOBSTOP = "INTEROP.JOB.STOP";
+
+Parameter REASONJOBSTOP = "Stopping this job asks it to finish its current message within 15 seconds, or sooner when the production's update timeout is shorter. A job that does not is ended, and its message goes back on its queue. The item runs a job short until the production is updated on Productions.";
+
 /// <p>The refusals the port answers with, as a <class>%List</class>: every code that is not a
 /// consequence.</p>
 ClassMethod Codes() As %List
 {
-    Quit $ListBuild(..#NAMESPACE, ..#RUNNING, ..#OTHER, ..#TROUBLED, ..#NOTRUNNING, ..#UPTODATE, ..#NOTTROUBLED, ..#BUSY, ..#STATE, ..#SUSPENDED, ..#PARTSTOPPED) _ ..ItemCodes() _ ..SettingCodes()
+    Quit $ListBuild(..#NAMESPACE, ..#RUNNING, ..#OTHER, ..#TROUBLED, ..#NOTRUNNING, ..#UPTODATE, ..#NOTTROUBLED, ..#BUSY, ..#STATE, ..#SUSPENDED, ..#PARTSTOPPED) _ ..ItemCodes() _ ..SettingCodes() _ ..RuntimeCodes()
 }
 
 /// <p>The consequence codes, as a <class>%List</class>.</p>
 ClassMethod ConsequenceCodes() As %List
 {
-    Quit $ListBuild(..#STOP, ..#RESTART, ..#UPDATE, ..#RECOVER, ..#ITEMPENDING, ..#ITEMREMOVE, ..#SETTINGLOCATION)
+    Quit $ListBuild(..#STOP, ..#RESTART, ..#UPDATE, ..#RECOVER, ..#ITEMPENDING, ..#ITEMREMOVE, ..#SETTINGLOCATION, ..#MESSAGEABORT, ..#QUEUEABORT, ..#JOBABORT, ..#JOBSUSPEND, ..#JOBSTOP)
 }
 
 /// <p>The item codes, as a <class>%List</class>: the refusals an item read or write answers with.</p>
@@ -237,6 +285,14 @@ ClassMethod SettingCodes() As %List
 ClassMethod SettingPreconditionCodes() As %List
 {
     Quit $ListBuild(..#SETTINGSECRET, ..#SETTINGSUPPLIED, ..#SETTINGDEFAULTED, ..#SETTINGCORE)
+}
+
+/// <p>The queue and job codes (Story 20.23), as a <class>%List</class>: the refusals a queue or job read composed for an
+/// action answers with, and the vendor refusal of a stop. The five consequence codes are
+/// <method>ConsequenceCodes</method>'s.</p>
+ClassMethod RuntimeCodes() As %List
+{
+    Quit $ListBuild(..#QUEUEEMPTY, ..#QUEUECHANGED, ..#JOBDEAD, ..#JOBNOTRETRYING, ..#JOBNOTSTOPPED)
 }
 
 /// <p>The codes a production tool's fresh read refuses with when the action's precondition does not
@@ -287,6 +343,16 @@ ClassMethod ReasonFor(pCode As %String) As %String
     If pCode = ..#SETTINGVALUE Quit ..#REASONSETTINGVALUE
     If pCode = ..#SETTINGLOCATION Quit ..#REASONSETTINGLOCATION
     If pCode = ..#SETTINGDESCENT Quit ..#REASONSETTINGDESCENT
+    If pCode = ..#QUEUEEMPTY Quit ..#REASONQUEUEEMPTY
+    If pCode = ..#QUEUECHANGED Quit ..#REASONQUEUECHANGED
+    If pCode = ..#JOBDEAD Quit ..#REASONJOBDEAD
+    If pCode = ..#JOBNOTRETRYING Quit ..#REASONJOBNOTRETRYING
+    If pCode = ..#JOBNOTSTOPPED Quit ..#REASONJOBNOTSTOPPED
+    If pCode = ..#MESSAGEABORT Quit ..#REASONMESSAGEABORT
+    If pCode = ..#QUEUEABORT Quit ..#REASONQUEUEABORT
+    If pCode = ..#JOBABORT Quit ..#REASONJOBABORT
+    If pCode = ..#JOBSUSPEND Quit ..#REASONJOBSUSPEND
+    If pCode = ..#JOBSTOP Quit ..#REASONJOBSTOP
     Quit ""
 }
 

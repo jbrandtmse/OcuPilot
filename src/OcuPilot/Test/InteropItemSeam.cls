@@ -24,6 +24,72 @@ ClassMethod Disarm()
     Kill ^||OcuPilotInteropItemRoutine
     Kill ^||OcuPilotInteropItemSource
     Kill ^||OcuPilotInteropItemLog
+    Kill ^||OcuPilotInteropItemSend
+    Kill ^||OcuPilotInteropItemSent
+    Kill ^||OcuPilotInteropItemJobCode
+    Kill ^||OcuPilotInteropItemAbortMode
+}
+
+/// <p>Answer the next job writes with a vendor status carrying code <var>pCode</var> instead of calling the vendor (Story 20.23), so a
+/// refusal the vendor gives only under load or a held lock reaches the port's own mapping. <method>Disarm</method> clears it.</p>
+ClassMethod RefuseJobWith(pCode As %String)
+{
+    Set ^||OcuPilotInteropItemJobCode = pCode
+}
+
+ClassMethod VendorJob(pNamespace As %String, pType As %String, pPid As %String, pCap As %Integer, Output pCaught) As %Status [ Private ]
+{
+    If $Get(^||OcuPilotInteropItemJobCode) '= "" {
+        Set pCaught = ""
+        Quit $System.Status.Error(^||OcuPilotInteropItemJobCode, pPid, pCap)
+    }
+    Quit ##super(pNamespace, pType, pPid, pCap, .pCaught)
+}
+
+/// <p>Send the probe production one message just after the next queue entry is aborted (Story 20.23), so it joins the queue after a
+/// queue abort has enumerated the entries and before the abort is done. <method>Disarm</method> clears it.</p>
+ClassMethod SendAfterNextAbort()
+{
+    Set ^||OcuPilotInteropItemSend = 1
+}
+
+/// <p>How many messages <method>SendAfterNextAbort</method> sent since <method>Disarm</method>.</p>
+ClassMethod Sent() As %Integer
+{
+    Quit +$Get(^||OcuPilotInteropItemSent)
+}
+
+/// <p>Make the next queue entry abort reach the vendor twice (Story 20.23), so the second call answers the vendor's error for an entry that
+/// is no longer there, as when another process took it first. <method>Disarm</method> clears it.</p>
+ClassMethod AbortItemGoneOnce()
+{
+    Set ^||OcuPilotInteropItemAbortMode = "goneonce"
+}
+
+/// <p>Answer every queue entry abort with a vendor error, without calling the vendor, so the entry stays queued.
+/// <method>Disarm</method> clears it.</p>
+ClassMethod AbortItemRefused()
+{
+    Set ^||OcuPilotInteropItemAbortMode = "refused"
+}
+
+ClassMethod VendorAbortItem(pNamespace As %String, pQueue As %String, pPriority As %Integer, pIndex As %Integer, Output pCaught) As %Status [ Private ]
+{
+    Set tMode = $Get(^||OcuPilotInteropItemAbortMode)
+    If tMode = "refused" {
+        Set pCaught = ""
+        Quit $System.Status.Error(5001, "abort refused for the test")
+    }
+    Set tSC = ##super(pNamespace, pQueue, pPriority, pIndex, .pCaught)
+    If tMode = "goneonce" {
+        Kill ^||OcuPilotInteropItemAbortMode
+        Set tSC = ##super(pNamespace, pQueue, pPriority, pIndex, .pCaught)
+    }
+    If $Get(^||OcuPilotInteropItemSend) {
+        Kill ^||OcuPilotInteropItemSend
+        If $$$ISOK($ClassMethod("OcuPilot.Test.ProductionProbe", "Send")) Set ^||OcuPilotInteropItemSent = 1
+    }
+    Quit tSC
 }
 
 ClassMethod RoutineResource(pNamespace As %String, Output pResource As %String) As %Boolean

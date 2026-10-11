@@ -5,7 +5,9 @@
 /// <p><b>A job no process holds reads <code>Dead</code> and its link is withheld</b> (<code>rowTarget</code>
 /// <code>unless</code>), and it is never repaired: the classic Jobs page repairs it on every view, and a read does not
 /// write (AD-7). A live job's name cell opens Process details by its pid. It refreshes at the shared rates, default
-/// off (AD-43), and offers no action: stopping a job is a later story's.</p>
+/// off (AD-43). Its three row actions are <code>abort</code> and <code>suspend</code> (the message a job keeps retrying) and
+/// <code>stop</code> (Story 20.23): <code>interop.jobs.abort</code> is destructive and types the job's process id, and the other two
+/// warn first.</p>
 Class OcuPilot.Screen.Descriptor.InteropJobList Extends OcuPilot.Screen.Descriptor.Base
 {
 
@@ -28,7 +30,7 @@ XData Declaration
   "parentScope": "",
   "id": {"kind": "single", "parts": []},
   "primaryAction": {"id": "", "selfProtection": ""},
-  "rowActions": [],
+  "rowActions": [{"id": "abort", "selfProtection": ""}, {"id": "suspend", "selfProtection": ""}, {"id": "stop", "selfProtection": ""}],
   "context": {"fields": ["Job", "Host", "Status", "AdapterState", "LastActivity", "ActiveMessage", "Dead"], "secretFields": []},
   "emptyStateKey": "interopJobsEmpty",
   "commandAliases": [],
@@ -57,8 +59,8 @@ XData Declaration
       {"field": "ActiveMessage", "labelKey": "interopColumnActiveMessage", "kind": "identifier"},
       {"field": "Dead", "labelKey": "interopColumnDead", "kind": "status"}
     ],
-    "emptyNextKey": "tableReadOnlyEmptyNext",
-    "emptyAgentKey": ""
+    "emptyNextKey": "",
+    "emptyAgentKey": "interopJobsEmptyAgent"
   },
   "rowTarget": {"route": "os-management/processes/details", "field": "Job", "unless": "Dead"},
   "toolIdentifier": "interop.jobs"

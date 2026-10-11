@@ -129,6 +129,14 @@ export const SCREEN_ACTION_DESCRIPTORS: readonly string[] = [
   'OcuPilot.Screen.Descriptor.InteropItemList',
   // Story 20.22: Item settings, whose Reset to default warns first and whose Set value its own page's dialog sends.
   'OcuPilot.Screen.Descriptor.InteropItemSettingList',
+  // Story 20.23: Queues, whose Abort all types the queue's name; Queue messages and an item's Queue tab, whose Abort types the
+  // message id; and Jobs and an item's Jobs tab, whose Abort message types the job's process id and whose Suspend message and
+  // Stop job warn first.
+  'OcuPilot.Screen.Descriptor.InteropQueueList',
+  'OcuPilot.Screen.Descriptor.InteropQueueMessageList',
+  'OcuPilot.Screen.Descriptor.InteropItemQueueTab',
+  'OcuPilot.Screen.Descriptor.InteropJobList',
+  'OcuPilot.Screen.Descriptor.InteropItemJobTab',
 ];
 
 /**
@@ -431,12 +439,26 @@ interface DialogFlag {
 }
 
 /**
+ * Interoperability's Queues, Queue messages and Jobs lists (Story 20.23), whose row actions abort a queue's messages, one
+ * message or a job's retried message, suspend that message and stop a job, and the item Queue and Jobs tabs that act on the
+ * same messages and jobs and post to those lists' routes.
+ */
+const INTEROP_QUEUE_LIST = 'OcuPilot.Screen.Descriptor.InteropQueueList';
+const INTEROP_QUEUE_MESSAGE_LIST = 'OcuPilot.Screen.Descriptor.InteropQueueMessageList';
+const INTEROP_ITEM_QUEUE_TAB = 'OcuPilot.Screen.Descriptor.InteropItemQueueTab';
+const INTEROP_JOB_LIST = 'OcuPilot.Screen.Descriptor.InteropJobList';
+const INTEROP_ITEM_JOB_TAB = 'OcuPilot.Screen.Descriptor.InteropItemJobTab';
+
+/**
  * The screen whose action route a descriptor's row actions are sent to, where it is not the
  * descriptor's own: Process details acts on the pid it shows through the processes list's write
- * tools, which name that list (AD-53).
+ * tools, which name that list (AD-53), and an item's Queue and Jobs tabs act on a message and a job
+ * through the tools of the Queue messages and Jobs lists (Story 20.23).
  */
 const ACTION_ADDRESS: Readonly<Record<string, string>> = {
   [PROCESS_DETAILS]: PROCESS_LIST,
+  [INTEROP_ITEM_QUEUE_TAB]: INTEROP_QUEUE_MESSAGE_LIST,
+  [INTEROP_ITEM_JOB_TAB]: INTEROP_JOB_LIST,
 };
 
 /**
@@ -447,7 +469,7 @@ const ACTION_ADDRESS: Readonly<Record<string, string>> = {
  * `DESTRUCTIVE` declaration. This is EXPERIENCE.md's `confirm-dialog` rule -- a delete carries the
  * typed-name field and a `button-destructive` -- applied to the verb that deletes.
  */
-const DESTRUCTIVE_ACTIONS: readonly string[] = ['delete', 'terminate', 'revoke-tokens', 'revoke-token', 'end', ENCRYPTION_REMOVE_ADMIN, ENCRYPTION_REMOVE_KEY, ENCRYPTION_DEACTIVATE, 'remove'];
+const DESTRUCTIVE_ACTIONS: readonly string[] = ['delete', 'terminate', 'revoke-tokens', 'revoke-token', 'end', ENCRYPTION_REMOVE_ADMIN, ENCRYPTION_REMOVE_KEY, ENCRYPTION_DEACTIVATE, 'remove', 'abort'];
 
 /**
  * The destructive actions whose typed-name dialog states the removal's impact as its advisory,
@@ -529,6 +551,12 @@ const DESTRUCTIVE_CONSEQUENCES: Readonly<Record<string, Readonly<Record<string, 
   'OcuPilot.Screen.Descriptor.ExplorerDocDbList': { delete: STRINGS.explorerDocDbDropConsequence },
   // Story 20.3: a production item's Remove types its name and deletes the settings it holds.
   'OcuPilot.Screen.Descriptor.InteropItemList': { remove: STRINGS.interopItemRemoveConsequence },
+  // Story 20.23: an abort never delivers the messages it takes: all of a queue's, one waiting message, or the message a job keeps retrying.
+  [INTEROP_QUEUE_LIST]: { abort: STRINGS.interopQueueAbortConsequence },
+  [INTEROP_QUEUE_MESSAGE_LIST]: { abort: STRINGS.interopMessageAbortConsequence },
+  [INTEROP_ITEM_QUEUE_TAB]: { abort: STRINGS.interopMessageAbortConsequence },
+  [INTEROP_JOB_LIST]: { abort: STRINGS.interopJobAbortConsequence },
+  [INTEROP_ITEM_JOB_TAB]: { abort: STRINGS.interopJobAbortConsequence },
 };
 
 /**
@@ -597,6 +625,12 @@ const TYPED_NAME_ROWS: Readonly<
   // Story 20.3: a production item is keyed by `[Production, Name]`, whose separator no one can type, so its Remove types
   // the item's name and sends the row key.
   'OcuPilot.Screen.Descriptor.InteropItemList': { name: 'Name', field: '', equals: '', advisory: '' },
+  // Story 20.23: an abort types the queue's name, the message's id or the job's process id, which each list's name column shows.
+  [INTEROP_QUEUE_LIST]: { name: 'Name', field: '', equals: '', advisory: '' },
+  [INTEROP_QUEUE_MESSAGE_LIST]: { name: 'MessageId', field: '', equals: '', advisory: '' },
+  [INTEROP_ITEM_QUEUE_TAB]: { name: 'MessageId', field: '', equals: '', advisory: '' },
+  [INTEROP_JOB_LIST]: { name: 'Job', field: '', equals: '', advisory: '' },
+  [INTEROP_ITEM_JOB_TAB]: { name: 'Job', field: '', equals: '', advisory: '' },
 };
 
 /**
@@ -660,6 +694,9 @@ const WARNING_CONSEQUENCES: Readonly<Record<string, Readonly<Record<string, stri
   },
   // Story 20.22: a reset changes the stored configuration, which a running production reads only at its next update.
   'OcuPilot.Screen.Descriptor.InteropItemSettingList': { reset: STRINGS.interopItemPendingConsequence },
+  // Story 20.23: a suspend sets the retried message aside, and a stop ends the job within a wait the production's update starts again.
+  [INTEROP_JOB_LIST]: { suspend: STRINGS.interopJobSuspendConsequence, stop: STRINGS.interopJobStopConsequence },
+  [INTEROP_ITEM_JOB_TAB]: { suspend: STRINGS.interopJobSuspendConsequence, stop: STRINGS.interopJobStopConsequence },
 };
 
 /**

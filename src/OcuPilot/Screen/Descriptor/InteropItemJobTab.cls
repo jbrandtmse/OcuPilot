@@ -4,7 +4,9 @@
 /// <p><b>It is one tab of the item group</b> <code>interoperability/productions/items/document</code>, parent-scoped under Production items: its one
 /// criterion, <code>item</code>, is the route id, the item's composite id <code>[Production, Name]</code> or the
 /// vendor's <code>Production||Name</code>, and the strip carries it from tab to tab. Its pairs are the classic
-/// configuration page's for the tab (AD-8, AD-44), which adds <code>%Ens_Jobs:READ</code>. It does not refresh and offers no action.</p>
+/// configuration page's for the tab (AD-8, AD-44), which adds <code>%Ens_Jobs:READ</code>. It does not refresh. Its three row actions are
+/// the Jobs list's <code>abort</code>, <code>suspend</code> and <code>stop</code> (Story 20.23), posted to that list's route as Process
+/// details posts to Processes (AD-53).</p>
 Class OcuPilot.Screen.Descriptor.InteropItemJobTab Extends OcuPilot.Screen.Descriptor.Base
 {
 
@@ -27,7 +29,7 @@ XData Declaration
   "parentScope": "interoperability/productions/items",
   "id": {"kind": "single", "parts": []},
   "primaryAction": {"id": "", "selfProtection": ""},
-  "rowActions": [],
+  "rowActions": [{"id": "abort", "selfProtection": ""}, {"id": "suspend", "selfProtection": ""}, {"id": "stop", "selfProtection": ""}],
   "context": {"fields": ["Job", "Status", "AdapterState", "LastActivity", "ActiveMessage", "Dead"], "secretFields": []},
   "emptyStateKey": "interopItemJobsEmpty",
   "commandAliases": [],
@@ -58,8 +60,8 @@ XData Declaration
       {"field": "ActiveMessage", "labelKey": "interopColumnActiveMessage", "kind": "identifier"},
       {"field": "Dead", "labelKey": "interopColumnDead", "kind": "status"}
     ],
-    "emptyNextKey": "tableReadOnlyEmptyNext",
-    "emptyAgentKey": ""
+    "emptyNextKey": "",
+    "emptyAgentKey": "interopJobsEmptyAgent"
   },
   "tab": {"group": "interoperability/productions/items/document", "position": 6, "labelKey": "interopJobsLabel"},
   "toolIdentifier": "interop.itemjobs"

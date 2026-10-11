@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { ApiService, type ApiRequestInit, type JsonResult } from '../core/api';
 import { ChangeBus, type ChangeEvent } from '../core/change-bus';
 import { ScopeService } from '../core/scope';
-import { ScreenActions } from '../core/screen-actions';
+import { actionLabel, ScreenActions } from '../core/screen-actions';
 import { ScreenStores } from '../core/screen-store';
 import { ENTITY_SINGLETON_ID, SCREENS } from '../core/screens.generated';
 import { STRINGS } from '../core/strings';
@@ -2421,6 +2421,132 @@ describe('Production items\u2019 row actions (Story 20.3)', () => {
       await settle();
       expect(store.refusal(), code).toBe(reason);
       expect(events.map((event) => `${event.action} ${event.type} ${event.scope} ${event.id}`), code).toEqual([`updated production USER ${PRODUCTION}`]);
+      TestBed.resetTestingModule();
+    }
+  });
+});
+
+/**
+ * Story 20.23: Queues' Abort all, Queue messages' and an item's Queue tab's Abort, and Jobs' and an item's Jobs tab's Abort
+ * message, Suspend message and Stop job. An abort types the id the list shows and states what it takes; a suspend and a stop
+ * warn first; an item tab posts to the list whose tools it acts through.
+ */
+describe('Queue and job row actions (Story 20.23)', () => {
+  const QUEUES = 'OcuPilot.Screen.Descriptor.InteropQueueList';
+  const MESSAGES = 'OcuPilot.Screen.Descriptor.InteropQueueMessageList';
+  const QUEUE_TAB = 'OcuPilot.Screen.Descriptor.InteropItemQueueTab';
+  const JOBS = 'OcuPilot.Screen.Descriptor.InteropJobList';
+  const JOB_TAB = 'OcuPilot.Screen.Descriptor.InteropItemJobTab';
+  const TARGET = { type: 'interop-job', scope: 'USER', id: '4242' };
+
+  // Each row key differs from the name its row shows, so the dialog asking for the name proves it reads the named field.
+  const ABORTS = [
+    { descriptor: QUEUES, routeOf: QUEUES, id: 'queue-key', row: { Name: 'Probe.Op', Count: 2, Jobs: 1 }, name: 'Probe.Op', consequence: STRINGS.interopQueueAbortConsequence },
+    { descriptor: MESSAGES, routeOf: MESSAGES, id: 'message-key', row: { MessageId: '17', Queue: 'Probe.Op', Priority: 3, Index: 1 }, name: '17', consequence: STRINGS.interopMessageAbortConsequence },
+    { descriptor: QUEUE_TAB, routeOf: MESSAGES, id: 'message-key', row: { MessageId: '17', Queue: 'Probe.Op', Priority: 3, Index: 1 }, name: '17', consequence: STRINGS.interopMessageAbortConsequence },
+    { descriptor: JOBS, routeOf: JOBS, id: 'job-key', row: { Job: '4242', Host: 'Probe.Op', Dead: false }, name: '4242', consequence: STRINGS.interopJobAbortConsequence },
+    { descriptor: JOB_TAB, routeOf: JOBS, id: 'job-key', row: { Job: '4242', Host: 'Probe.Op', Dead: false }, name: '4242', consequence: STRINGS.interopJobAbortConsequence },
+  ] as const;
+
+  it('labels each screen\u2019s actions with its published copy', () => {
+    // Mutation (Rule 19): drop the Jobs tab's entry, or the Suspend entry of the Jobs list, from DESCRIPTOR_ACTION_LABELS -> the label
+    // falls back to the shared map and its row of this table goes red.
+    for (const [descriptor, actionId, label] of [
+      [QUEUES, 'abort', STRINGS.interopQueuesAbortAllAction],
+      [MESSAGES, 'abort', STRINGS.actionAbort],
+      [QUEUE_TAB, 'abort', STRINGS.actionAbort],
+      [JOBS, 'abort', STRINGS.interopJobsAbortAction],
+      [JOBS, 'suspend', STRINGS.interopJobsSuspendAction],
+      [JOBS, 'stop', STRINGS.interopJobsStopAction],
+      [JOB_TAB, 'abort', STRINGS.interopJobsAbortAction],
+      [JOB_TAB, 'suspend', STRINGS.interopJobsSuspendAction],
+      [JOB_TAB, 'stop', STRINGS.interopJobsStopAction],
+    ] as const) {
+      expect(actionLabel(descriptor, actionId), `${descriptor} ${actionId}`).toBe(label);
+    }
+    // The Jobs labels differ from the shared map's, so a fall back to it cannot pass for them.
+    expect(actionLabel(JOBS, 'suspend')).not.toBe(actionLabel('OcuPilot.Screen.Descriptor.Unknown', 'suspend'));
+  });
+
+  it('registers each screen\u2019s declared actions', () => {
+    // Mutation (Rule 19): drop a descriptor from SCREEN_ACTION_DESCRIPTORS -> its row of this table goes red.
+    for (const [descriptor, ids] of [
+      [QUEUES, ['abort']],
+      [MESSAGES, ['abort']],
+      [QUEUE_TAB, ['abort']],
+      [JOBS, ['abort', 'suspend', 'stop']],
+      [JOB_TAB, ['abort', 'suspend', 'stop']],
+    ] as const) {
+      const { actions } = mount(undefined, descriptor);
+      for (const id of ids) expect(actions.has(descriptor, id), `${descriptor} ${id}`).toBe(true);
+      TestBed.resetTestingModule();
+    }
+  });
+
+  it('types the id before an abort, states what it takes, and posts to the list whose tool acts', async () => {
+    // Mutation (Rule 19): drop 'abort' from DESTRUCTIVE_ACTIONS -> the dialog is a warning and the kind assertion goes red;
+    // drop a screen's TYPED_NAME_ROWS entry -> its name assertion goes red; drop an ACTION_ADDRESS entry -> an item tab
+    // posts to its own route and the path assertion goes red.
+    for (const abort of ABORTS) {
+      const route = SCREENS.find((entry) => entry.descriptor === abort.routeOf)!;
+      const { handler, store, calls, events } = mount({ kind: 'ok', status: 200, body: { action: 'updated', target: TARGET } }, abort.descriptor);
+      handler.startFor(abort.descriptor, 'abort', abort.id, abort.row, store);
+      expect(handler.pending()?.kind, abort.descriptor).toBe('typed-name');
+      expect(handler.pending()?.name, abort.descriptor).toBe(abort.name);
+      expect(handler.pending()?.consequence, abort.descriptor).toBe(abort.consequence);
+      expect(calls, abort.descriptor).toHaveLength(0);
+      handler.confirmPending();
+      await settle();
+      expect(calls, abort.descriptor).toHaveLength(1);
+      expect(calls[0].path, abort.descriptor).toBe(`/api/ocupilot/screens/${route.toolIdentifier}/action`);
+      expect(JSON.parse(calls[0].body), abort.descriptor).toEqual({ action: 'abort', id: abort.id });
+      expect(events.map((event) => `${event.action} ${event.type} ${event.id}`), abort.descriptor).toEqual([`updated interop-job 4242`]);
+      TestBed.resetTestingModule();
+    }
+  });
+
+  it('warns before Suspend message and Stop job with their own consequence, and sends once past Proceed', async () => {
+    // Mutation (Rule 19): drop the Jobs entry from WARNING_CONSEQUENCES -> each is sent at once and the warning assertions
+    // go red; swap the two sentences -> the consequence assertion goes red.
+    for (const descriptor of [JOBS, JOB_TAB]) {
+      const route = SCREENS.find((entry) => entry.descriptor === JOBS)!;
+      for (const [action, consequence] of [
+        ['suspend', STRINGS.interopJobSuspendConsequence],
+        ['stop', STRINGS.interopJobStopConsequence],
+      ] as const) {
+        const { handler, store, calls } = mount({ kind: 'ok', status: 200, body: { action: 'updated', target: TARGET } }, descriptor);
+        handler.startFor(descriptor, action, '4242', { Job: '4242', Host: 'Probe.Op', Dead: false }, store);
+        expect(handler.pending()?.kind, `${descriptor} ${action}`).toBe('warning');
+        expect(handler.pending()?.consequence, `${descriptor} ${action}`).toBe(consequence);
+        handler.cancelPending();
+        await settle();
+        expect(calls, `${descriptor} ${action}`).toHaveLength(0);
+        handler.startFor(descriptor, action, '4242', { Job: '4242', Host: 'Probe.Op', Dead: false }, store);
+        handler.confirmPending();
+        await settle();
+        expect(calls, `${descriptor} ${action}`).toHaveLength(1);
+        expect(calls[0].path).toBe(`/api/ocupilot/screens/${route.toolIdentifier}/action`);
+        expect(JSON.parse(calls[0].body)).toEqual({ action, id: '4242' });
+        TestBed.resetTestingModule();
+      }
+    }
+  });
+
+  it('shows a refusal\u2019s published sentence from the envelope and publishes nothing', async () => {
+    for (const [code, reason, descriptor, action] of [
+      ['INTEROP.QUEUE.CHANGED', STRINGS.interopRefusalQueueChanged, QUEUES, 'abort'],
+      ['INTEROP.QUEUE.EMPTY', STRINGS.interopRefusalQueueEmpty, QUEUES, 'abort'],
+      ['INTEROP.JOB.DEAD', STRINGS.interopRefusalJobDead, JOBS, 'stop'],
+      ['INTEROP.JOB.NOTRETRYING', STRINGS.interopRefusalJobNotRetrying, JOBS, 'abort'],
+      ['INTEROP.JOB.NOTSTOPPED', STRINGS.interopRefusalJobNotStopped, JOB_TAB, 'stop'],
+    ] as const) {
+      const refused = { kind: 'error', status: 409, code, reason, detail: null } as unknown as JsonResult<unknown>;
+      const { handler, store, events } = mount(refused, descriptor);
+      handler.startFor(descriptor, action, 'Probe.Op', { Name: 'Probe.Op', Job: '4242', Dead: false }, store);
+      handler.confirmPending();
+      await settle();
+      expect(store.refusal(), code).toBe(reason);
+      expect(events, code).toEqual([]);
       TestBed.resetTestingModule();
     }
   });

@@ -6581,6 +6581,51 @@ export const STRINGS = {
   interopItemJobsPrompt2: 'Is any job of this item dead or retrying a message?',
   /** EXPERIENCE.md:604 */
   interopItemJobsPrompt3: 'How many jobs does this item run?',
+  /** EXPERIENCE.md:604 */
+  interopQueuesEmptyAgent: 'Ask the agent why no queue is listed here.',
+  /** EXPERIENCE.md:604 */
+  interopQueueMessagesEmptyAgent: 'Ask the agent why no message is waiting in this queue.',
+  /** EXPERIENCE.md:604 */
+  interopJobsEmptyAgent: 'Ask the agent why no job is listed here.',
+  /** EXPERIENCE.md:604 */
+  actionAbort: 'Abort',
+  /** EXPERIENCE.md:604 */
+  interopQueuesAbortAllAction: 'Abort all',
+  /** EXPERIENCE.md:604 */
+  interopJobsAbortAction: 'Abort message',
+  /** EXPERIENCE.md:604 */
+  interopJobsSuspendAction: 'Suspend message',
+  /** EXPERIENCE.md:604 */
+  interopJobsStopAction: 'Stop job',
+  /** EXPERIENCE.md:604 */
+  interopMessageAbortConsequence: 
+    'Aborting this message takes it off its queue and marks it Aborted, so it is never delivered, and a caller waiting for its reply receives an error instead. It cannot be undone.',
+  /** EXPERIENCE.md:604 */
+  interopQueueAbortConsequence: 
+    'Aborting all messages takes the messages waiting in this queue now, up to the first 10,000, off it and marks each Aborted, so none is delivered. A message that arrives later stays, and so does one a job is already working on. It cannot be undone.',
+  /** EXPERIENCE.md:604 */
+  interopJobAbortConsequence: 
+    'Aborting this job\'s message marks the message it keeps retrying Aborted when its current retry wait ends, so it is never delivered, and the job moves on to its next message. It cannot be undone.',
+  /** EXPERIENCE.md:604 */
+  interopJobSuspendConsequence: 
+    'Suspending this job\'s message sets the message it keeps retrying aside as Suspended when its current retry wait ends, and the job moves on to its next message. A suspended message can be resent later.',
+  /** EXPERIENCE.md:604 */
+  interopJobStopConsequence: 
+    'Stopping this job asks it to finish its current message within 15 seconds, or sooner when the production\'s update timeout is shorter. A job that does not is ended, and its message goes back on its queue. The item runs a job short until the production is updated on Productions.',
+  /** EXPERIENCE.md:604 */
+  interopRefusalQueueEmpty: 'This queue holds no messages, so there is nothing to abort.',
+  /** EXPERIENCE.md:604 */
+  interopRefusalQueueChanged: 
+    'The messages in this queue changed after they were reviewed, so nothing was aborted. Review the queue again.',
+  /** EXPERIENCE.md:604 */
+  interopRefusalJobDead: 
+    'This job\'s process has already ended, so there is nothing to act on. Update the production on Productions to start its jobs again.',
+  /** EXPERIENCE.md:604 */
+  interopRefusalJobNotRetrying: 
+    'This job is not retrying a message now, so there is no message to abort or suspend. Its message can be aborted or suspended only while the job waits to retry it.',
+  /** EXPERIENCE.md:604 */
+  interopRefusalJobNotStopped: 
+    'The job did not stop within the wait, even after it was ended. Look at Jobs again, and update the production on Productions to start its jobs again.',
   /** EXPERIENCE.md:468 */
   sqlPrivilegesLabel: 'SQL privileges',
   /** EXPERIENCE.md:468 */

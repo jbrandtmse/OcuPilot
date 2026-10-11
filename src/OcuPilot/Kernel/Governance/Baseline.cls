@@ -226,7 +226,12 @@ XData Keys [ MimeType = application/json ]
   "interop.items.add": true,
   "interop.items.remove": false,
   "interop.itemsettings.set": true,
-  "interop.itemsettings.reset": true
+  "interop.itemsettings.reset": true,
+  "interop.queuemessages.abort": false,
+  "interop.queues.abort": false,
+  "interop.jobs.abort": false,
+  "interop.jobs.suspend": true,
+  "interop.jobs.stop": true
 }
 }
 

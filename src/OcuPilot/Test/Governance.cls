@@ -41,6 +41,9 @@ Parameter SUPERSERVERDELETE = "security.superservers.delete";
 /// <p>Story 20.3's destructive item remove, which ships disabled (AD-22).</p>
 Parameter INTEROPITEMREMOVE = "interop.items.remove";
 
+/// <p>Story 20.23's two queue aborts and its job abort, which ship disabled (AD-22).</p>
+Parameter INTEROPRUNTIMEDISABLED = "interop.queuemessages.abort,interop.queues.abort,interop.jobs.abort";
+
 /// <p>The managed file transfer connection delete and token revoke, which the baseline also disables
 /// (Story 18.26).</p>
 Parameter MFTDISABLED = "security.mftconnections.delete,security.mftconnections.revoketoken";
@@ -159,6 +162,7 @@ Method TestTheDefaultEnablesEveryWriteButTheBaselineDisabled()
         If tKey = ..#REMOTEDATABASEDELETE Set tExpected = "0|baseline"
         If tKey = ..#SUPERSERVERDELETE Set tExpected = "0|baseline"
         If tKey = ..#INTEROPITEMREMOVE Set tExpected = "0|baseline"
+        If $ListFind($ListFromString(..#INTEROPRUNTIMEDISABLED), tKey) Set tExpected = "0|baseline"
         If $ListFind($ListFromString(..#MFTDISABLED), tKey) Set tExpected = "0|baseline"
         If $ListFind($ListFromString(..#LICENSEDISABLED), tKey) Set tExpected = "0|baseline"
         If $ListFind($ListFromString(..#ECPDISABLED), tKey) Set tExpected = "0|baseline"

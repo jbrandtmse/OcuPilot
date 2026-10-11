@@ -142,6 +142,8 @@ const ACTION_LABELS: Readonly<Record<string, string>> = {
   restart: STRINGS.actionRestart,
   update: STRINGS.actionUpdate,
   recover: STRINGS.actionRecover,
+  // Story 20.23: an abort, on Queue messages and an item's Queue tab.
+  abort: STRINGS.actionAbort,
 };
 
 /**
@@ -155,6 +157,11 @@ const ACTION_LABELS: Readonly<Record<string, string>> = {
 const DESCRIPTOR_ACTION_LABELS: Readonly<Record<string, Readonly<Record<string, string>>>> = {
   // Story 20.3: Production items' Add opens the dialog that adds one item, and its Remove deletes one.
   'OcuPilot.Screen.Descriptor.InteropItemList': { add: STRINGS.interopItemAddTitle, remove: STRINGS.actionRemove },
+  // Story 20.23: Queues' Abort all aborts every message the queue's read enumerated; Jobs' and an item's Jobs tab's three actions act
+  // on the message a job keeps retrying and on the job itself.
+  'OcuPilot.Screen.Descriptor.InteropQueueList': { abort: STRINGS.interopQueuesAbortAllAction },
+  'OcuPilot.Screen.Descriptor.InteropJobList': { abort: STRINGS.interopJobsAbortAction, suspend: STRINGS.interopJobsSuspendAction, stop: STRINGS.interopJobsStopAction },
+  'OcuPilot.Screen.Descriptor.InteropItemJobTab': { abort: STRINGS.interopJobsAbortAction, suspend: STRINGS.interopJobsSuspendAction, stop: STRINGS.interopJobsStopAction },
   // Story 20.22: Item settings' Set value opens its dialog, and its Reset to default returns a setting to its default.
   'OcuPilot.Screen.Descriptor.InteropItemSettingList': { set: STRINGS.interopItemSettingSetAction, reset: STRINGS.interopItemSettingResetAction },
   // Story 8.5: the X.509 list's Create imports a credential rather than typing one in.

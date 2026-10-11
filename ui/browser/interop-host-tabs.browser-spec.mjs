@@ -160,6 +160,16 @@ async function answered(page) {
   await waitForRows(page, config.navigationTimeoutMs);
 }
 
+/** The labels of the menu entries the selected row offers, read by selecting the body row at `index` on its cell `cell`. */
+async function rowMenuLabels(page, index, cell) {
+  await clickRowCentre(page, { index, cell });
+  await (await page.waitForSelector('[role="row"][aria-selected="true"] .ocu-data-table-trigger', { visible: true, timeout: config.navigationTimeoutMs })).click();
+  await page.waitForSelector('[role="menu"] [role="menuitem"]', { timeout: config.navigationTimeoutMs });
+  const labels = await page.$$eval('[role="menu"] [role="menuitem"] .ocu-data-table-menu-label', (nodes) => nodes.map((node) => node.textContent.trim()));
+  await page.keyboard.press('Escape');
+  return labels;
+}
+
 /** The labels of the item strip's tabs, in order. */
 function stripLabels(page) {
   return page.$$eval('button.ocu-detail-tab .ocu-detail-tab-label', (labels) => labels.map((label) => label.textContent.trim()));
@@ -315,7 +325,7 @@ test('AC3: Queues lists the operation\'s queue with its count and opens its mess
     assert.equal(queue[1], '2', 'the queue holds two messages');
     assert.equal(queue[2], '1', 'and one job is working on one');
     assert.deepEqual(await structural(page, 'interoperability/queues'), [], 'Queues: no violation beyond the baseline\'s entries');
-    assert.equal((await page.$$('.ocu-data-table-trigger')).length, 0, 'Queues offers no action: aborting is a later story\'s');
+    assert.deepEqual(await rowMenuLabels(page, 0, 1), [STRINGS.interopQueuesAbortAllAction], 'Queues offers its one action: Abort all');
     await clickRowCentre(page, { text: OPERATION, link: true });
     await pathHolds(page, '/interoperability/queues/messages/');
     await answered(page);
@@ -323,7 +333,7 @@ test('AC3: Queues lists the operation\'s queue with its count and opens its mess
     assert.deepEqual(entries.map((row) => row[0]).sort(), messageIds.slice(1).sort(), 'Queue messages shows the two waiting messages');
     assert.ok(entries.every((row) => row.includes(SERVICE) && row.includes(OPERATION)), 'each with its header');
     assert.deepEqual(await structural(page, 'interoperability/queues/messages'), [], 'Queue messages: no violation beyond the baseline\'s entries');
-    assert.equal((await page.$$('.ocu-data-table-trigger')).length, 0, 'and neither does Queue messages');
+    assert.deepEqual(await rowMenuLabels(page, 0, 1), [STRINGS.actionAbort], 'and Queue messages offers its one action: Abort');
   } finally {
     await context.close();
   }

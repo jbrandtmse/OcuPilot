@@ -371,6 +371,12 @@ export const CONSEQUENCE_INTEROPRECOVER = 'INTEROP.RECOVER';
 /** Story 20.3: an item write's pending-update sentence, and a removal's. */
 export const CONSEQUENCE_INTEROPITEMPENDING = 'INTEROP.ITEM.PENDING';
 export const CONSEQUENCE_INTEROPITEMREMOVE = 'INTEROP.ITEM.REMOVE';
+/** Story 20.23: the queue and job actions' consequence sentences (AD-62); each is one published sentence. */
+export const CONSEQUENCE_INTEROPMESSAGEABORT = 'INTEROP.MESSAGE.ABORT';
+export const CONSEQUENCE_INTEROPQUEUEABORT = 'INTEROP.QUEUE.ABORT';
+export const CONSEQUENCE_INTEROPJOBABORT = 'INTEROP.JOB.ABORT';
+export const CONSEQUENCE_INTEROPJOBSUSPEND = 'INTEROP.JOB.SUSPEND';
+export const CONSEQUENCE_INTEROPJOBSTOP = 'INTEROP.JOB.STOP';
 /** Story 20.22: a set of a setting that is a location on the server (AD-21's ninth case). */
 export const CONSEQUENCE_INTEROPSETTINGLOCATION = 'INTEROP.SETTING.LOCATION';
 /** The field a setting set's diff names the value under. */
@@ -510,6 +516,12 @@ export function consequenceSentence(code: string | undefined): string {
   // Story 20.3: an item write's pending-update sentence and a removal's, each published once.
   if (code === CONSEQUENCE_INTEROPITEMPENDING) return STRINGS.interopItemPendingConsequence;
   if (code === CONSEQUENCE_INTEROPITEMREMOVE) return STRINGS.interopItemRemoveConsequence;
+  // Story 20.23: the queue and job actions' sentences, each published once.
+  if (code === CONSEQUENCE_INTEROPMESSAGEABORT) return STRINGS.interopMessageAbortConsequence;
+  if (code === CONSEQUENCE_INTEROPQUEUEABORT) return STRINGS.interopQueueAbortConsequence;
+  if (code === CONSEQUENCE_INTEROPJOBABORT) return STRINGS.interopJobAbortConsequence;
+  if (code === CONSEQUENCE_INTEROPJOBSUSPEND) return STRINGS.interopJobSuspendConsequence;
+  if (code === CONSEQUENCE_INTEROPJOBSTOP) return STRINGS.interopJobStopConsequence;
   return '';
 }
 

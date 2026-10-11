@@ -4,7 +4,9 @@
 /// <p><b>It is one tab of the item group</b> <code>interoperability/productions/items/document</code>, parent-scoped under Production items: its one
 /// criterion, <code>item</code>, is the route id, the item's composite id <code>[Production, Name]</code> or the
 /// vendor's <code>Production||Name</code>, and the strip carries it from tab to tab. Its pairs are the classic
-/// configuration page's for the tab (AD-8, AD-44), which adds <code>%Ens_Queues:READ</code>. It does not refresh and offers no action.</p>
+/// configuration page's for the tab (AD-8, AD-44), which adds <code>%Ens_Queues:READ</code>. It does not refresh. Its one row action is
+/// <code>abort</code> (Story 20.23), which Queue messages' tool carries out: the action is posted to that list's route, as Process
+/// details posts to Processes (AD-53).</p>
 Class OcuPilot.Screen.Descriptor.InteropItemQueueTab Extends OcuPilot.Screen.Descriptor.Base
 {
 
@@ -27,7 +29,7 @@ XData Declaration
   "parentScope": "interoperability/productions/items",
   "id": {"kind": "single", "parts": []},
   "primaryAction": {"id": "", "selfProtection": ""},
-  "rowActions": [],
+  "rowActions": [{"id": "abort", "selfProtection": ""}],
   "context": {"fields": ["MessageId", "Source", "Target", "BodyClass", "TimeCreated", "Status"], "secretFields": []},
   "emptyStateKey": "interopItemQueueEmpty",
   "commandAliases": [],
@@ -59,8 +61,8 @@ XData Declaration
       {"field": "TimeCreated", "labelKey": "journalColumnCreated", "kind": "text"},
       {"field": "Status", "labelKey": "taskHistoryColumnStatus", "kind": "status"}
     ],
-    "emptyNextKey": "tableReadOnlyEmptyNext",
-    "emptyAgentKey": ""
+    "emptyNextKey": "",
+    "emptyAgentKey": "interopQueueMessagesEmptyAgent"
   },
   "tab": {"group": "interoperability/productions/items/document", "position": 3, "labelKey": "interopColumnQueue"},
   "toolIdentifier": "interop.itemqueue"

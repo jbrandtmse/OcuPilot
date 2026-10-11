@@ -1,8 +1,9 @@
 /// <p>Interoperability's Queues: the namespace's interoperability queues with the messages waiting in each and the
 /// jobs working on one, read through <class>OcuPilot.Port.InteropPort</class> (source kind <code>interop</code>,
 /// endpoint <code>Queues</code>) and rendered by the <code>list</code> archetype's page (AD-5, AD-29, AD-36, AD-62,
-/// Story 20.4). A queue's name cell opens its Queue messages. It refreshes at the shared rates, default off (AD-43),
-/// and offers no action: aborting a message or a queue is a later story's.</p>
+/// Story 20.4). A queue's name cell opens its Queue messages. It refreshes at the shared rates, default off (AD-43).
+/// Its one row action is <code>abort</code>, Abort all (Story 20.23): <code>interop.queues.abort</code> aborts the messages the
+/// queue's read enumerated, destructive, with the queue's name typed.</p>
 Class OcuPilot.Screen.Descriptor.InteropQueueList Extends OcuPilot.Screen.Descriptor.Base
 {
 
@@ -25,7 +26,7 @@ XData Declaration
   "parentScope": "",
   "id": {"kind": "single", "parts": []},
   "primaryAction": {"id": "", "selfProtection": ""},
-  "rowActions": [],
+  "rowActions": [{"id": "abort", "selfProtection": ""}],
   "context": {"fields": ["Name", "Count", "Active"], "secretFields": []},
   "emptyStateKey": "interopQueuesEmpty",
   "commandAliases": [],
@@ -50,8 +51,8 @@ XData Declaration
       {"field": "Active", "labelKey": "interopColumnActive", "kind": "number"},
       {"field": "Created", "labelKey": "journalColumnCreated", "kind": "text"}
     ],
-    "emptyNextKey": "tableReadOnlyEmptyNext",
-    "emptyAgentKey": ""
+    "emptyNextKey": "",
+    "emptyAgentKey": "interopQueuesEmptyAgent"
   },
   "toolIdentifier": "interop.queues"
 }
