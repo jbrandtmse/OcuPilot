@@ -29,7 +29,8 @@ export const REST_SERVICE_DOCUMENT_FIELD = 'Document';
  *
  * **The namespace is the caller's**, passed to `create` and sent as `?ns=`, so the service is built
  * where the list that opened the dialog reads. An accepted create publishes one `created` change
- * event in that namespace's scope, which re-reads the list (AD-14).
+ * event in that namespace's scope, which re-reads the list (AD-14), also when the dialog was
+ * dismissed before the instance answered.
  */
 @Injectable({ providedIn: 'root' })
 export class RestServiceCreateStore {
@@ -136,14 +137,25 @@ export class RestServiceCreateStore {
       body: JSON.stringify({ [REST_SERVICE_NAME_FIELD]: name, [REST_SERVICE_DOCUMENT_FIELD]: text }),
       scope: namespace,
     });
-    if (generation !== this.generation) return false;
+    if (generation !== this.generation) {
+      // The dialog is gone and keeps nothing, but a service the instance built still re-reads the list.
+      if (result.kind === 'ok') this.publishCreated(result.body, name, namespace);
+      return false;
+    }
     this.savingValue = false;
     if (result.kind !== 'ok') {
       this.refuse(result);
       return false;
     }
-    const answer = result.body !== null && typeof result.body === 'object' ? (result.body as Record<string, unknown>) : {};
-    this.readBackValue = readBackOf(answer['readBack']);
+    this.readBackValue = this.publishCreated(result.body, name, namespace);
+    this.notify();
+    return true;
+  }
+
+  /** Publish the one `created` event for an accepted create in `namespace`'s scope, and answer its read-back. */
+  private publishCreated(body: unknown, name: string, namespace: string): ReadBack | null {
+    const answer = body !== null && typeof body === 'object' ? (body as Record<string, unknown>) : {};
+    const readBack = readBackOf(answer['readBack']);
     const created = typeof answer['name'] === 'string' && answer['name'] !== '' ? answer['name'] : name;
     this.injector.get(ChangeBus).publish({
       kind: 'changed',
@@ -151,10 +163,9 @@ export class RestServiceCreateStore {
       scope: scopeFor(NAMESPACE_SCOPE, namespace),
       id: created,
       action: 'created',
-      readBack: this.readBackValue,
+      readBack,
     });
-    this.notify();
-    return true;
+    return readBack;
   }
 
   private clearRefusal(): void {

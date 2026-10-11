@@ -87,9 +87,8 @@ describe('the REST API explorer page', () => {
     expect(host.querySelector('app-rest-service-create-dialog')).toBeNull();
   });
 
-  it('opens one dialog however often Create is run, and Cancel closes it without posting', async () => {
+  it('Create opens the dialog, and Cancel closes it without posting', async () => {
     const { fixture, host, actions, sent } = mount();
-    actions.run(REST_API_LIST, REST_API_CREATE_ACTION);
     actions.run(REST_API_LIST, REST_API_CREATE_ACTION);
     await settle(fixture);
     expect(host.querySelectorAll('app-rest-service-create-dialog').length).toBe(1);

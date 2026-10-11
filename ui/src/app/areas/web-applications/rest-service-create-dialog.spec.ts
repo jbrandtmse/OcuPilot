@@ -135,11 +135,19 @@ describe('the Create REST service dialog', () => {
     expect((fixture.componentInstance as Host).created).toEqual(['OcuProbe1832A']);
   });
 
-  it('Load from file puts the file\u2019s text in the document field, as a file input that takes JSON', async () => {
+  it('Load from file opens the file picker and puts the file\u2019s text in the document field, as a file input that takes JSON', async () => {
     const { fixture, host } = await mount({ kind: 'ok', status: 201, body: {} });
     const picker = host.querySelector('input[data-rest-service-create-file]') as HTMLInputElement;
     expect(picker.getAttribute('type')).toBe('file');
     expect(picker.getAttribute('accept')).toBe('.json');
+    let opened = 0;
+    picker.addEventListener('click', (event) => {
+      opened += 1;
+      event.preventDefault();
+    });
+    (host.querySelector('[data-rest-service-create-load]') as HTMLButtonElement).click();
+    // Mutation (Rule 19): make `pickFile` open nothing -> the button is dead and this goes red.
+    expect(opened).toBe(1);
     Object.defineProperty(picker, 'files', { configurable: true, value: [new File([TEXT], 'probe.json', { type: 'application/json' })] });
     picker.dispatchEvent(new Event('change'));
     await settle(fixture);

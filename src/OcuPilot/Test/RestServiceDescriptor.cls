@@ -1,4 +1,5 @@
-/// <p>Pins Story 18.32's declarations: the REST API explorer's row action and empty state, the two write tools' kinds,
+/// <p>Pins Story 18.32's declarations and Story 18.34's Create: the REST API explorer's row action, primary action and
+/// context tools, and its empty state, the two write tools' kinds,
 /// port, pairs, schemas, read and write types, fingerprint subject and consequence, the entity type the kernel covers
 /// without an id rule, the two baseline keys, the codes and their sentences, and the port's write pairs.</p>
 /// <p><b>Reads only.</b> Every leg is a pure question to a class; the pair legs read the stock <code>USER</code> and <code>HSCUSTOM</code> database mappings.</p>

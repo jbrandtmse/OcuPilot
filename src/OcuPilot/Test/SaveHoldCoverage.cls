@@ -25,8 +25,9 @@ ClassMethod Exemptions() As %List
 /// <p>Every <code>PUT</code> and <code>POST</code> route that is not exempt takes the hold, and
 /// every exemption names a route that exists.</p>
 /// <p>Mutation (Rule 19): drop the hold from <method>OcuPilot.Area.Explorer.DocDbSave.HandleCreate</method>
-/// -- its route goes red here; so does <code>POST /rest-service</code> when
-/// <method>OcuPilot.Area.WebApp.RestServiceSave.HandleCreate</method> loses its hold.</p>
+/// -- its route goes red here.</p>
+/// <p>Mutation (Rule 19): drop the hold from <method>OcuPilot.Area.WebApp.RestServiceSave.HandleCreate</method> --
+/// <code>POST /rest-service</code> goes red here.</p>
 Method TestEveryWriteRouteTakesTheHoldOrIsExempt()
 {
     Set tRoutes = ..Routes()
@@ -65,9 +66,8 @@ Method TestEveryWriteRouteTakesTheHoldOrIsExempt()
 
 /// <p>The audit event create holds <code>Source/Type/Name</code>, the create tool's
 /// <code>EventName</code>, the key file create the composite of <code>root</code> and
-/// <code>path</code> its tool's mint builds, the production item add the composite of
-/// <code>Production</code> and <code>Name</code> in the request's namespace, and the REST service create its
-/// package as typed: with this process holding
+/// <code>path</code> its tool's mint builds, and the production item add the composite of
+/// <code>Production</code> and <code>Name</code> in the request's namespace: with this process holding
 /// each key as another write would, the Save waits out
 /// <parameter>OcuPilot.Kernel.State.Propose.CLAIMLOCKSECONDS</parameter> and answers 409
 /// <code>WRITE.TARGETBUSY</code>. Each body also breaks a rule the Save checks after the hold, so a Save
@@ -78,9 +78,10 @@ Method TestEveryWriteRouteTakesTheHoldOrIsExempt()
 /// item's <code>Name</code> alone in <method>OcuPilot.Area.Interop.ItemSave.HandleCreate</method> --
 /// that leg answers 400 or 422 at once and goes red; so does the Doc DB application leg when
 /// <method>OcuPilot.Area.WebApp.DocDbAppSave.HandleCreate</method> holds the name alone; so does the privileged routine
-/// application leg when <method>OcuPilot.Area.WebApp.RoutineAppSave.HandleCreate</method> does; drop the hold from
-/// <method>OcuPilot.Area.WebApp.RestServiceSave.HandleCreate</method> -- the REST service leg answers 422
-/// <code>RESTSERVICE.DOCUMENT</code> at once and goes red.</p>
+/// application leg when <method>OcuPilot.Area.WebApp.RoutineAppSave.HandleCreate</method> does.</p>
+/// <p>The REST service create holds its package as typed, in the request's namespace, the same way.</p>
+/// <p>Mutation (Rule 19): drop the hold from <method>OcuPilot.Area.WebApp.RestServiceSave.HandleCreate</method> -- the
+/// REST service leg answers 422 <code>RESTSERVICE.DOCUMENT</code> at once and goes red.</p>
 Method TestACreateSaveHoldsTheKeyItsMintComputes()
 {
     Set tKeyFile = ##class(OcuPilot.Kernel.EntityId).JoinComposite($ListBuild("/ocuprobe/hold/", "hold.key"))

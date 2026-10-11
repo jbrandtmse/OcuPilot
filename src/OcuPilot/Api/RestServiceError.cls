@@ -1,6 +1,6 @@
-/// <p>The spec-based REST services' codes (AD-39, Story 18.32): every <code>RESTSERVICE.*</code> code
-/// <code>webapp.restapis.create</code>, <code>webapp.restapis.delete</code> and the management API port's service
-/// endpoint answer, and the one sentence each carries. They live beside <class>OcuPilot.Api.Error</class> rather than
+/// <p>The spec-based REST services' codes (AD-39, Stories 18.32 and 18.34): every <code>RESTSERVICE.*</code> code
+/// <code>webapp.restapis.create</code>, <code>webapp.restapis.delete</code>, the management API port's service
+/// endpoint and the REST API explorer's create Save answer, and the one sentence each carries. They live beside <class>OcuPilot.Api.Error</class> rather than
 /// in it because that class holds the compiler's limit of 1,000 parameters (ERROR #5290);
 /// <method>OcuPilot.Api.Error.ReasonForToolCode</method> and <method>OcuPilot.Api.Error.ReasonForViolation</method>
 /// answer these codes through <method>ReasonFor</method>.</p>

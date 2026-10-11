@@ -8,7 +8,7 @@ import { REST_SERVICE_CREATE_PATH, RestServiceCreateStore } from './rest-service
 /**
  * The REST API explorer's create store (Story 18.34) over a stub of the Save: the package and the
  * document text it posts as typed and the namespace it scopes the post to, the change event an
- * accepted create publishes, and the three kinds of refusal it keeps -- one on Name, one on
+ * accepted create publishes, also once the dialog is gone, and the three kinds of refusal it keeps -- one on Name, one on
  * Document, one naming neither.
  */
 
@@ -20,13 +20,13 @@ interface Sent {
 
 const TEXT = '{"swagger": "2.0", "info": {"title": "probe", "version": "1"}, "x": 12345678901234567890}';
 
-function mount(answer: () => JsonResult<unknown>) {
+function mount(answer: () => JsonResult<unknown> | Promise<JsonResult<unknown>>) {
   TestBed.resetTestingModule();
   const sent: Sent[] = [];
   const api = {
     requestJson: async <T,>(path: string, init?: ApiRequestInit): Promise<JsonResult<T>> => {
       sent.push({ path, scope: init?.scope, body: typeof init?.body === 'string' ? JSON.parse(init.body) : null });
-      return answer() as JsonResult<T>;
+      return (await answer()) as JsonResult<T>;
     },
   };
   const bus = new ChangeBus();
@@ -57,10 +57,28 @@ describe('RestServiceCreateStore', () => {
     expect(await store.create('USER')).toBe(true);
     // Mutation (Rule 19): drop `scope: namespace` from the post -> the scope reads undefined and this goes red.
     expect(sent).toEqual([{ path: REST_SERVICE_CREATE_PATH, scope: 'USER', body: { Name: 'OcuProbe1832A', Document: TEXT } }]);
-    expect(events.map((event) => [event.kind, event.type, event.scope, event.id, event.action])).toEqual([
-      ['changed', 'rest-service', 'USER', 'OcuProbe1832A', 'created'],
+    // Mutation (Rule 19): drop `readBack` from the published event -> the row's read-back is lost and this goes red.
+    expect(events.map((event) => [event.kind, event.type, event.scope, event.id, event.action, event.readBack?.verdict])).toEqual([
+      ['changed', 'rest-service', 'USER', 'OcuProbe1832A', 'created', 'matches'],
     ]);
     expect(store.readBack()?.verdict).toBe('matches');
+  });
+
+  it('publishes the created event for a create the instance answers after the dialog was dismissed, and keeps nothing', async () => {
+    let release: (result: JsonResult<unknown>) => void = () => undefined;
+    const pending = new Promise<JsonResult<unknown>>((resolve) => {
+      release = resolve;
+    });
+    const { store, events } = mount(() => pending);
+    store.setName('OcuProbe1832A');
+    store.setDocumentText(TEXT);
+    const created = store.create('USER');
+    store.reset();
+    release({ kind: 'ok', status: 201, body: { name: 'OcuProbe1832A', readBack: { verdict: 'matches' } } });
+    expect(await created).toBe(false);
+    // Mutation (Rule 19): publish nothing once the generation moved -> the list stays stale and this goes red.
+    expect(events.map((event) => [event.type, event.scope, event.id, event.action, event.readBack?.verdict])).toEqual([['rest-service', 'USER', 'OcuProbe1832A', 'created', 'matches']]);
+    expect([store.name(), store.documentText(), store.busy(), store.readBack()]).toEqual(['', '', false, null]);
   });
 
   it('keeps a refusal on Name and one on Document, and both fields, publishes nothing, and a new value in either field clears them', async () => {
@@ -78,6 +96,10 @@ describe('RestServiceCreateStore', () => {
     expect([store.name(), store.documentText()]).toEqual(['OcuProbe1832A', 'not json']);
     expect(events).toEqual([]);
     store.setDocumentText('{}');
+    expect([store.nameViolation(), store.documentViolation()]).toEqual(['', '']);
+    expect(await store.create('USER')).toBe(false);
+    // Mutation (Rule 19): drop `clearRefusal` from `setName` -> the refusals outlive a new package and this goes red.
+    store.setName('OcuProbe1832B');
     expect([store.nameViolation(), store.documentViolation()]).toEqual(['', '']);
   });
 

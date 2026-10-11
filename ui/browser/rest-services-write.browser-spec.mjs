@@ -15,6 +15,8 @@
  *    closes, the row appears, and the instance lists the service with its three classes.
  * 4. **The refusal on the Document field** (Story 18.34): a `{"swagger": "3.0"}` text keeps the dialog open with the
  *    Document field marked and the instance's sentence under it, and nothing is built.
+ * 5. **Load from file** (Story 18.34): a formatted document file handed to the dialog's file picker fills the Document
+ *    field with its text, and Create sends that text as it stands and builds the service from it.
  *
  * **It refuses the live and development containers.** It touches only probe services named `OcuProbe1832...` and a probe
  * web application under `/api/ocuprobe1832`: `before` and `after` remove them with
@@ -29,6 +31,8 @@
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import puppeteer from 'puppeteer';
@@ -51,8 +55,10 @@ const ACTION_PATH = '/api/ocupilot/screens/webapp.restapis/action';
 const SAVE_PATH = '/api/ocupilot/rest-service';
 const DIALOG_NAME = 'OcuProbe1832Dialog';
 const REFUSED_NAME = 'OcuProbe1832Refused';
+const FILE_NAME = 'OcuProbe1832File';
 const DOCUMENT_TEXT = JSON.stringify({ swagger: '2.0', info: { title: 'dialog', version: '1' }, basePath: '/probe', paths: { '/ping': { get: { operationId: 'ping', responses: { 200: { description: 'ok' } } } } } });
 const NAME_FIELD = 'input[data-rest-service-create-name]';
+const FILE_INPUT = 'input[data-rest-service-create-file]';
 const DOCUMENT_FIELD = 'textarea[data-rest-service-create-document]';
 const DOCUMENT_VIOLATION = '[data-rest-service-create-document-violation]';
 const CONFIRM = '[data-rest-service-create-confirm]';
@@ -196,13 +202,18 @@ test('C3: a service a web application dispatches to is refused by the instance a
   }
 });
 
-/** Open the create dialog from the command bar's Create, and fill both fields: the package typed, the document text set as a paste does. */
-async function fillCreate(page, name, text) {
+/** Open the create dialog from the command bar's Create. */
+async function openCreate(page) {
   const create = await page.waitForSelector(PRIMARY, { visible: true, timeout: config.navigationTimeoutMs });
   assert.equal(await create.evaluate((node) => node.textContent.trim()), STRINGS.actionCreate, 'the command bar offers Create');
   await create.click();
   await page.waitForSelector(NAME_FIELD, { visible: true, timeout: config.navigationTimeoutMs });
   assert.equal(await page.$eval('[role="dialog"] .ocu-dialog-title', (node) => node.textContent.trim()), STRINGS.restServiceCreateTitle);
+}
+
+/** Open the create dialog and fill both fields: the package typed, the document text set as a paste does. */
+async function fillCreate(page, name, text) {
+  await openCreate(page);
   await page.type(NAME_FIELD, name);
   await page.$eval(
     DOCUMENT_FIELD,
@@ -265,6 +276,37 @@ test('a document whose swagger is 3.0 is refused on the Document field with the 
     assert.equal(read('BUILT', `##class(${PROBE}).Classes("${NAMESPACE}","${REFUSED_NAME}")`), '000', 'and nothing is built');
   } finally {
     await context.close();
+    removeProbes();
+  }
+});
+
+// Mutation (Rule 19): make `RestServiceCreateDialog.onFile` put an empty text in the document field, rebuild and redeploy -> the
+// field never holds the file's text and the first assertion goes red.
+test('Load from file fills the Document field with the file\u2019s text, and Create builds the service from it', async () => {
+  removeProbes();
+  const directory = mkdtempSync(join(tmpdir(), 'ocupilot-1834-browser-'));
+  const fileText = JSON.stringify(JSON.parse(DOCUMENT_TEXT), null, 2);
+  const file = join(directory, 'probe.json');
+  writeFileSync(file, fileText);
+  const { context, page } = await signedInAt(browser, config, LIST_URL);
+  const saves = recordSaves(page);
+  try {
+    await waitForListAnswered(page);
+    await openCreate(page);
+    await page.type(NAME_FIELD, FILE_NAME);
+    const picker = await page.waitForSelector(FILE_INPUT, { timeout: config.navigationTimeoutMs });
+    assert.equal(await picker.evaluate((node) => node.type + ' ' + node.accept), 'file .json', 'the dialog offers a file input that takes JSON');
+    await picker.uploadFile(file);
+    await page.waitForFunction((selector, wanted) => document.querySelector(selector)?.value === wanted, { timeout: 30000 }, DOCUMENT_FIELD, fileText);
+    assert.deepEqual(saves, [], 'loading the file sends nothing');
+    await page.click(CONFIRM);
+    await page.waitForFunction(() => document.querySelector('[role="dialog"]') === null, { timeout: 90000 });
+    assert.deepEqual(saves, [{ ns: NAMESPACE, body: { Name: FILE_NAME, Document: fileText } }], 'one create was sent, carrying the file\u2019s text as it stands');
+    await page.waitForFunction((selector, wanted) => Array.from(document.querySelectorAll(selector)).some((row) => row.textContent.includes(wanted)), { timeout: 90000 }, ROW_SELECTOR, FILE_NAME);
+    assert.equal(read('BUILT', `##class(${PROBE}).Classes("${NAMESPACE}","${FILE_NAME}")`), '111', 'the instance built the service with its three classes');
+  } finally {
+    await context.close();
+    rmSync(directory, { recursive: true, force: true });
     removeProbes();
   }
 });

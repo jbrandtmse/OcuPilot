@@ -107,6 +107,41 @@ Under `src/OcuPilot/` unless `ui/`; siblings per Rule 31.
 - **C5.** Given the target held, when the Save runs, then it answers 409 `WRITE.TARGETBUSY` and writes nothing.
 - **Integration.** Given `ocupilot-ci`, when a person uses the explorer's Create, then `RestApiListPage` posts `POST /rest-service` and the new service's row appears.
 
+### Review Findings
+
+Code review 2026-10-11, four layers (full-opus): 32 rows, 14 entries (high 0, med 4, low 10), 13 rejected.
+
+- [x] [Review][Patch] (med) A body value past the longest string or largest number raised in `UnexpectedKey` and answered 500 (measured: a 4 MB `Document` and `"Big": 1e999`); `%GetNext` now takes the type, so they answer 422 `RESTSERVICE.DOCUMENT` and 400 `PORT.FIELD.UNEXPECTED` [src/OcuPilot/Area/WebApp/RestServiceSave.cls:223]
+- [x] [Review][Patch] (med) `RestServiceSave` asserted the install namespace free of probe classes without cleaning it; the hooks now remove and count them there too [src/OcuPilot/Test/RestServiceSave.cls:28]
+- [x] [Review][Patch] (med) No test clicked Load from file; the dialog spec now does [ui/src/app/areas/web-applications/rest-service-create-dialog.spec.ts:138]
+- [x] [Review][Patch] (med) No test read the created event's read-back (AD-58); the store spec now does [ui/src/app/areas/web-applications/rest-service-create.store.spec.ts:60]
+- [x] [Review][Patch] (low) DW-2325: a create answered after the dialog was dismissed published no change event; the store now publishes it and keeps nothing [ui/src/app/areas/web-applications/rest-service-create.store.ts:140]
+- [x] [Review][Patch] (low) "Before the port is touched" doc claims, though the taken read precedes AD-10's set [src/OcuPilot/Area/WebApp/RestServiceSave.cls:33]
+- [x] [Review][Patch] (low) `Create`'s caller contract said every error carries a fault [src/OcuPilot/Area/WebApp/RestServiceSave.cls:84]
+- [x] [Review][Patch] (low) `RestServiceError` and `RestServiceDescriptor` headers omitted this story [src/OcuPilot/Api/RestServiceError.cls:1]
+- [x] [Review][Patch] (low) "Either field clears" exercised only Document [ui/src/app/areas/web-applications/rest-service-create.store.spec.ts:101]
+- [x] [Review][Patch] (low) "Opens one dialog however often" could not fail on its guard; retitled to what it pins [ui/src/app/areas/web-applications/rest-api-list.page.spec.ts:90]
+- [x] [Review][Patch] (low) `SaveHoldCoverage` doc lines rewritten in place; now add-only [src/OcuPilot/Test/SaveHoldCoverage.cls:29]
+- [x] [Review][Defer] (low) Save and client files copy the Document databases slice [src/OcuPilot/Area/WebApp/RestServiceSave.cls:1] — deferred: DW-2278 (Story 23.7), occurrence already recorded
+- [x] [Review][Defer] (low) Twelfth record port repeats the call-log shape [src/OcuPilot/Test/RestServiceRecordPort.cls:1] — deferred: DW-2326 wontfix-accepted
+- [x] [Review][Defer] (low) Sibling Saves keep the two-argument `%GetNext` [src/OcuPilot/Area] — deferred: DW-2327 wontfix-accepted
+
+Rejected:
+
+- A case-variant concurrent create holds a second key (low): 18.32 measured the vendor refusing a case variant (#5092, 422 `RESTSERVICE.BUILD`, nothing replaced) and pins the id as typed.
+- `ProhibitedClass` seam's sentence is the kernel's (false): no subclass overrides it; `DocDbSave` and `DocDbAppSave` share the call.
+- Own-code legs outside the probe cleanup (false): run 599 left no `OcuPilotProbe1834` class anywhere; an unbuildable document leaves none.
+- `RESTSERVICE.DOCUMENT` sentence for a `Document` sent as an object (low): only a non-SPA caller can send one; a new sentence is a new Fixed string.
+- Load from file bound, read error and two quick picks (low): the size is the server's rule, and the rest needs new branches and copy.
+- WRITE on a mapped package's database (by-design): AD-53 names the routines database; IRIS still refuses a write the caller cannot make (inference).
+- A transport fault draws nothing in the dialog (false): `ApiService.report` hands it to the shell's fault channel.
+- The gate's build leg on a 30-second client timeout (false): the whole method took 2.1 s (runs 617, 626).
+- The browser spec's temporary directory before `try` (low): one file under the OS temp directory on a failed sign-in.
+- Stale counts in `## Auto Run Result` (low): its fix edits the spec under review.
+- `Codes()` roster derives both sides (low): no production consumer; pre-existing.
+- No leg pins "never asks governance" (low): no governance call exists; the family's create Saves pin none.
+- AD-55 "before any port is touched" against AD-53's order (by-design): read as the port's write; the spec's order and 18.30/18.31 match.
+
 ## Spec Change Log
 
 ## Review Triage Log
@@ -177,6 +212,18 @@ Observed on `ocupilot-ci` (each reverted, tree byte-identical, reloaded):
 - mutation: client in-flight, drop `this.store.busy() ||` from `RestServiceCreateDialog.confirmDisabled` -> `rest-service-create-dialog.spec.ts` "Create is unavailable while a create is in flight" red (`aria-disabled` reads null).
 - mutation: browser refusal, drop the document violation paragraph from the dialog template, bundle rebuilt and redeployed -> `rest-services-write.browser-spec.mjs` swagger 3.0 test red (the sentence never draws; 90 s wait); reverted, rebuilt and redeployed -> green.
 - mutation: Integration, `RestApiListPage` registers no Create, bundle rebuilt and redeployed -> `rest-services-write.browser-spec.mjs` Create and Document-refusal tests red (the command bar draws no Create); reverted, rebuilt and redeployed -> green.
+
+(QA) Files: `Test/RestServiceRecordPort.cls` and `Test/RestServiceSaveFixture.cls` (new; the Save's port recorded and forwarded), `Test/RestServiceSave.cls` (8 tests; the Save's calls in order with the parsed document alone, the per-target hold, a rebuild leg after the delete), `Test/RestServiceGate.cls` (a raw-body Save leg), `ui/browser/rest-services-write.browser-spec.mjs` (5 tests; Load from file). Runs 633 (`RestServiceSave` 8) and 634 (`RestServiceGate` 3) green; the spec's five browser tests and `rest-apis` 4 green on the rebuilt bundle.
+
+- mutation (QA): C1/AD-21 and the Save's order, `Create` composes the payload from the body's `Document` text -> `RestServiceSave` `TestThePortIsCalledInTheSavesOrderAndHandedTheParsedDocumentAlone` red on the vendor-body legs (run 627).
+- mutation (QA): C5, `HandleCreate` holds the key of one fixed package for every Save -> `TestTheHoldIsTheTargetsAloneAndTheBodyIsReadBeforeIt` red on the other package's 201 (run 629); the extra-key refusal read after the hold -> the same test red on the 400 (run 630).
+- mutation (QA): C4, `HandleCreate` reads the body before the pairs -> `RestServiceGate` both refusal tests red on the `[]` Save leg (run 631).
+- mutation (QA): C1, `MgmntPort.Held` counts the implementation class -> `TestTheSaveBuildsTheServiceAndTheExplorersDeleteRemovesIt` red on the rebuild leg (run 632).
+- mutation (QA): browser, `RestServiceCreateDialog.onFile` puts an empty text in the field, bundle rebuilt and redeployed -> `rest-services-write.browser-spec.mjs` Load from file test red (the field never holds the text; 30 s wait); reverted, rebuilt (same bundle hash) and redeployed -> green.
+- mutation (CR): C3 body, `UnexpectedKey` iterates without the value's type -> `RestServiceSave` `TestABodyThatIsNotNameAndDocumentAloneIsRefused` red on the `1e999` leg alone (run 636); a 4 MB `Document` answered 500 before the fix and 422 `RESTSERVICE.DOCUMENT` after it (curl, `ocupilot-ci`).
+- mutation (CR): hermeticity, `OcuProbe1832P.spec` seeded in HSCUSTOM and the install-namespace cleanup dropped from the hooks -> `TestTheSaveBuildsTheServiceAndTheExplorersDeleteRemovesIt` red (run 637); restored -> green and the seed removed (run 638).
+- mutation (CR): client, the store publishes nothing once the dialog is gone -> `rest-service-create.store.spec.ts` dismissal test red; `readBack` dropped from the event -> both publishing tests red; `clearRefusal` dropped from `setName` -> the refusal test red; `pickFile` opens nothing -> the dialog's Load from file test red. Each reverted, files byte-identical.
+- (CR) After the patches: `RestServiceSave` 8 (runs 635, 638), `SaveHoldCoverage` 2 (639), `RestServiceDescriptor` 8 (640), `RestServiceGate` 3 (641) green; the three REST specs 12 tests green; `rest-services-write` 5 green on the rebuilt, redeployed bundle (3,320,521 bytes); the throwaway reads S0.
 
 **S0:** no `OcuProbe1832*` class in any case in USER, HSCUSTOM or `%SYS`; no `/api/ocuprobe1832*` application; `AuthOptionsProbe.Remaining()` 0.
 

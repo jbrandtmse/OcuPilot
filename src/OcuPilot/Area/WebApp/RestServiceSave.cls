@@ -30,8 +30,8 @@ ClassMethod PortClass() As %String
     Quit $ClassMethod(..#CREATETOOL, "PortClass")
 }
 
-/// <p>AD-10's set, asked before the port is touched. Overridable for the reason <method>PortClass</method> is;
-/// production never overrides it.</p>
+/// <p>AD-10's set, asked after the port's state read and before its write. Overridable for the reason
+/// <method>PortClass</method> is; production never overrides it.</p>
 ClassMethod ProhibitedClass() As %String
 {
     Quit "OcuPilot.Kernel.Proposal.Prohibited"
@@ -81,8 +81,9 @@ ClassMethod HandleCreate() As %Status
 }
 
 /// <p>Build the service <var>pName</var> in the request's namespace from the document text <var>pBody</var> carries.</p>
-/// <p><b>Caller contract:</b> an error status carries <var>pHttpStatus</var> and <var>pFault</var>, and nothing was built
-/// except by a build the management API refused, which leaves no class. On success <var>pReadBack</var> is the write's
+/// <p><b>Caller contract:</b> a refusal is an error status carrying <var>pHttpStatus</var> and <var>pFault</var>; any
+/// other error status leaves <var>pFault</var> empty, and the caller answers it as internal. Nothing was built except
+/// by a build the management API refused, which leaves no class. On success <var>pReadBack</var> is the write's
 /// read-back (AD-58). The caller holds the target (AD-34).</p>
 ClassMethod Create(pName As %String, pBody As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, Output pReadBack As %DynamicObject) As %Status
 {
@@ -131,7 +132,7 @@ ClassMethod Create(pName As %String, pBody As %DynamicObject, Output pHttpStatus
             Set tSC = $$$ERROR($$$GeneralError, "the service's payload could not be composed after its rules passed: " _ tProblem)
             Quit
         }
-        ; AD-10, AD-55. The set the confirm asks, before the port, over the package.
+        ; AD-10, AD-55. The set the confirm asks, before the port's write, over the package.
         Set tSC = ..Prohibited(tClass, pName, tPayload, tDiff, .pHttpStatus, .pFault)
         If $$$ISERR(tSC) Quit
         Do ##class(OcuPilot.Kernel.Proposal.Operation).Query(tClass, $ClassMethod(tClass, "IdParam"), pName, tPayload.%ToJSON(), .tQuery)
@@ -213,12 +214,13 @@ ClassMethod IdArgument() As %String [ Private ]
 }
 
 /// <p>The first key of <var>pBody</var> other than the name and the document, or <code>""</code>: a create takes those
-/// two alone, never a namespace, a URL or a server path.</p>
+/// two alone, never a namespace, a URL or a server path. A value past the instance's longest string or largest number
+/// is iterated with its type, so it is judged by the rules and never raised.</p>
 ClassMethod UnexpectedKey(pBody As %DynamicObject) As %String [ Private ]
 {
     Set tUnexpected = ""
     Set tIterator = pBody.%GetIterator()
-    While tIterator.%GetNext(.tKey, .tValue) {
+    While tIterator.%GetNext(.tKey, .tValue, .tType) {
         If (tKey = ..IdArgument()) || (tKey = $Parameter(..#CREATETOOL, "DOCUMENTFIELD")) Continue
         Set tUnexpected = tKey
         Quit

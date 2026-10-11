@@ -135,7 +135,8 @@ Method TestTheDeclaredPairsCreateAndDelete()
 /// each refused 403 naming the pair, and nothing is built or deleted.</p>
 /// <p>Mutation (Rule 19): drop the added pair from <method>OcuPilot.Screen.Tool.RestServiceWrite.PrivilegePairs</method> and
 /// name <code>%Admin_Secure:USE</code> in <parameter>OcuPilot.Port.MgmntPort.WRITEPAIRS</parameter> -- both legs write and
-/// go red.</p>
+/// go red; read the body before the pairs in <method>OcuPilot.Area.WebApp.RestServiceSave.HandleCreate</method> -- the Save
+/// whose body is no object answers 400 and the Save leg goes red.</p>
 Method TestWithoutTheCodeEditorsResourceEveryWriteIsRefused()
 {
     Do ..AssertRefused(..User(2), "%Development:USE")
@@ -153,11 +154,12 @@ Method TestWithReadButNotWriteOnTheCodeDatabaseEveryWriteIsRefused()
 }
 
 /// <p>All three writes as principal <var>pUser</var> are refused 403 naming <var>pPair</var>, and the probe state is as it
-/// was.</p>
+/// was; the Save is refused on the pair before its body is read as well as before the name is read as taken.</p>
 Method AssertRefused(pUser As %String, pPair As %String)
 {
     Do $$$AssertEquals(..Wire("POST", ..#ACTIONPATH, {"action": "delete", "id": "OcuProbe1832B"}, pUser), "403 " _ pPair, "a delete is refused naming the pair")
     Do $$$AssertEquals(..Wire("POST", ..#SAVEPATH, ..SaveBody("OcuProbe1832B"), pUser), "403 " _ pPair, "a Save naming the seeded service is refused naming the pair, before the name is read as taken")
+    Do $$$AssertEquals(..Wire("POST", ..#SAVEPATH, "[]", pUser), "403 " _ pPair, "and so is a Save whose body is no object, before the body is read")
     Set tSC = ..MintCreate("OcuProbe1832N", pUser, .tProposal)
     Do $$$AssertStatusOK(tSC, "a create is minted for " _ pUser)
     Set tRun = $ClassMethod(..#PROBE, "RunAs", pUser, [{"kind": "confirm", "proposalId": ($Select($IsObject(tProposal): tProposal.%Get("proposalId"), 1: ""))}])
@@ -182,12 +184,12 @@ ClassMethod SaveBody(pName As %String) As %DynamicObject
 }
 
 /// <p>A request by <var>pMethod</var> to <var>pPath</var> under the API over the wire as <var>pUser</var> with the JSON
-/// <var>pBody</var>, scoped to <parameter>NAMESPACE</parameter>, answered as <code>status failedPair</code>: the failed pair,
-/// or <code>""</code>.</p>
-Method Wire(pMethod As %String, pPath As %String, pBody As %DynamicObject, pUser As %String) As %String
+/// <var>pBody</var> (an object, or the raw text of a body), scoped to <parameter>NAMESPACE</parameter>, answered as
+/// <code>status failedPair</code>: the failed pair, or <code>""</code>.</p>
+Method Wire(pMethod As %String, pPath As %String, pBody, pUser As %String) As %String
 {
     Set tBase = $Parameter("OcuPilot.Test.Http", "BASEPATH")
-    Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest(pMethod, tBase _ pPath _ "?ns=" _ ..#NAMESPACE, pUser, ..PreparedPassword, .tStatus, .tBody, .tHeaders, $Select($IsObject(pBody): pBody.%ToJSON(), 1: ""), "application/json")
+    Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest(pMethod, tBase _ pPath _ "?ns=" _ ..#NAMESPACE, pUser, ..PreparedPassword, .tStatus, .tBody, .tHeaders, $Select($IsObject(pBody): pBody.%ToJSON(), 1: pBody), "application/json")
     Set tAnswer = ""
     Try { Set tAnswer = ##class(%DynamicObject).%FromJSON($Get(tBody, "{}")) } Catch {}
     Set tDetail = $Select($IsObject(tAnswer): tAnswer.%Get("detail"), 1: "")
