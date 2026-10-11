@@ -45,7 +45,8 @@
 /// <p><b>Every refusal is a written reason</b> (AD-39): the vendor's text goes to
 /// <method>LogFault</method> and nowhere else, and a read answered 404 is not logged (AD-2).</p>
 /// <p>Seams a test subclass overrides: <method>GateClass</method>, <method>LogFault</method>,
-/// <method>StopSeconds</method>, <method>RoutineResource</method> and <method>SourceControlled</method>.
+/// <method>StopSeconds</method>, <method>RoutineResource</method>, <method>SourceControlled</method>,
+/// <method>VendorAbortItem</method> and <method>VendorJob</method>, and the parameter <parameter>ABORTMAX</parameter>.
 /// Production overrides none.</p>
 Class OcuPilot.Port.InteropPort Extends %RegisteredObject
 {
@@ -3299,7 +3300,8 @@ ClassMethod Snippet(pEndpoint As %String, pType As %String, ByRef pQuery, pBody 
 /// <p>The lines <method>Snippet</method> adds for the queue or job write <var>pType</var> (Story 20.23): the reviewed values
 /// of <var>pContext</var>'s <code>payload</code>, or the id <var>pId</var> the query names, each a string literal.
 /// <code>AbortItem</code> of the queue, priority and index the entry read gave; an <code>EnumerateItem</code> loop of the queue
-/// calling <code>AbortItem</code>; <code>AbortOperation</code> or <code>SuspendOperation</code> of the job; or the production's
+/// calling <code>AbortItem</code> for at most the payload's <code>Entries</code> (<parameter>ABORTMAX</parameter> when it holds
+/// none) and keeping every failure in <code>tSC</code>; <code>AbortOperation</code> or <code>SuspendOperation</code> of the job; or the production's
 /// update timeout capped at <parameter>STOPSECONDS</parameter> and <code>Stop</code> of the job with force on. Every line closes
 /// any block it opens.</p>
 ClassMethod RuntimeSnippet(pType As %String, pId As %String, pContext As %DynamicObject) As %String [ Private ]
@@ -3320,9 +3322,11 @@ ClassMethod RuntimeSnippet(pType As %String, pId As %String, pContext As %Dynami
     }
     If pType = ..#TYPEABORTQUEUE {
         Set tName = ..Literal(pId)
+        Set tEntries = ..#ABORTMAX
+        If $IsObject(tPayload) && (tPayload.%GetTypeOf("Entries") = "number") Set tEntries = tPayload.%Get("Entries")
         Set tText = tNL _ " Set tResult = ##class(%ResultSet).%New(""Ens.Queue:EnumerateItem"")"
-        Set tText = tText _ tNL _ " Set tSC = tResult.Execute(" _ tName _ ")"
-        Set tText = tText _ tNL _ " While tResult.Next() { Set tSC = ##class(Ens.Queue).AbortItem(" _ tName _ ", tResult.GetData(1), tResult.GetData(2)) }"
+        Set tText = tText _ tNL _ " Set tSC = tResult.Execute(" _ tName _ "), tLeft = " _ ..Literal(tEntries)
+        Set tText = tText _ tNL _ " While (tLeft > 0) && tResult.Next() { Set tLeft = tLeft - 1, tSC = $System.Status.AppendStatus(tSC, ##class(Ens.Queue).AbortItem(" _ tName _ ", tResult.GetData(1), tResult.GetData(2))) }"
         Quit tText
     }
     If pType = ..#TYPESTOPJOB {

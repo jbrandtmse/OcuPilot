@@ -305,6 +305,35 @@ deferred: []
 - **AC6 (gates):** Given a principal lacking one declared pair, when it reads, proposes, confirms or acts, then it is refused naming that pair before any vendor call; and a principal holding exactly a tool's pairs completes it.
 - **AC7 (screens):** Given Queues, Queue messages, Jobs and an item's Queue and Jobs tabs, when they render, then each row draws its actions: each abort through the typed-name dialog stating its consequence, suspend and stop through a warning, and a refusal showing its published sentence. The DW-1337 structural invariants hold in both themes.
 
+### Review Findings
+
+Code review 2026-10-11, four layers on the full-opus tier: 33 rows, 12 entries after grouping (high 0, medium 4, low 8), 9 rejected. Patches re-ran green on `ocupilot-b-ci`: `InteropRuntimeDescriptor` 14, `InteropJobActions` 7, `InteropRuntimeBounds` 3, `InteropRuntimeGate` 6, `InteropJobStop` 5, `InteropQueueActions` 10, and `proposal-card.spec.ts` 71.
+
+- [x] [Review][Patch] (low) The abort-all copy-out script aborted every entry present when run and kept only the last status. It now stops after the payload's reviewed `Entries` and appends every status. The missing digest check is DW-1718's by-design case, with an occurrence added [src/OcuPilot/Port/InteropPort.cls:3323]
+- [x] [Review][Patch] (medium) `TestThePersonsStopFromTheJobsRoute` could pass with nothing checked when no job was listed. It now asserts the live job first [src/OcuPilot/Test/InteropJobStop.cls:259]
+- [x] [Review][Patch] (medium, Rule 2) The retry arming was copied into `InteropRuntimeBounds` and `InteropRuntimeGate`. Both now arm through `InteropJobActions.ArmRetry`, made a class method [src/OcuPilot/Test/InteropJobActions.cls:172]
+- [x] [Review][Patch] (low) Four doc comments were wrong: the port's seam list, `InteropAction`'s tool list, a test name, and "a person's call carries none" [src/OcuPilot/Port/InteropPort.cls:47]
+- [x] [Review][Patch] (low, Rule 19) AC3's success outcome and AC5's destructiveness clause had no observed mutation. The lines are now under Verification [spec `## Verification`]
+- [x] [Review][Patch] (low) The proposal-card test's title said the client draws these codes destructive, but the test injects the flag. The title is corrected [ui/src/app/shell/proposal-card.spec.ts:923]
+- [x] [Review][Defer] (medium) The agent's Abort all closes target-changed on a queue that is still receiving messages [src/OcuPilot/Screen/Tool/InteropQueueAbort.cls:44] — deferred: DW-2314 decision-pending, for the decision sheet
+- [x] [Review][Defer] (medium) A request set during a re-attempt that succeeds stays on the job [src/OcuPilot/Port/InteropPort.cls:2894] — deferred: DW-2315 by-design. This is the spec-named limit, but the window spans the whole re-attempt, not one instant
+- [x] [Review][Defer] (low) Jobs rows offer actions the port will refuse [src/OcuPilot/Screen/Descriptor/InteropJobList.cls:33] — deferred: DW-2316 by-design (AC7)
+- [x] [Review][Defer] (low) The stop and message-abort payloads carry no STATEMARKER field [src/OcuPilot/Screen/Tool/InteropJobStop.cls:25] — deferred: DW-2317 wontfix-theoretical
+- [x] [Review][Defer] (low) Test helpers are copied per class: EnableKey, the gate's principals, the row menus — deferred: DW-2318 wontfix-accepted
+- [x] [Review][Defer] (low) AD-10 has no named case for the interop-job stop, and AD-62 items 1-2 read as production-write only — deferred: DW-2319 wontfix-accepted. The spine is the lead's (Rule 20)
+
+Rejected:
+
+- `false` The message abort's change event is `updated`: Design Notes › Change events decide this. The header remains and reads Aborted, and the list re-fetches (AD-14).
+- `false` The handler spec's canned target: the client relays the server's event, and `InteropQueueActions` asserts each abort's type and id.
+- `false` QA's files are uncommitted: the lead commits them by path.
+- `false` `InteropQueueMessageAbort`'s `PRECONDITIONCODES` adds `PORT.NOTFOUND`: this is required. The read-back after an abort answers 404, and `ReadBack.AfterPrecondition` reads `nothingSent` only for a listed code. The task text is stale.
+- `low` A partly failed Abort all answers without counts, and its audit ordering is untested: the case cannot be reached past the gate. `AbortItem`'s refusals are #940 and `<PROTECT>`, both gated, or a gone entry, which counts as Skipped.
+- `low` `AbortItem` failing after its own kill reads as gone: this needs a vendor failure after the kill, and the proposed guard would count another process's abort as this one's.
+- `low` The job-lock refusals reuse `REASONLOCK`: the vendor's 2 s and 10 s lock waits rarely fail, and the fix adds a reason, a fixed string and its pins.
+- `low` `InteropQueueActions` (556 lines) and `InteropRuntimeGate` (518) exceed about 500: the fix is a class split.
+- `low` The Auto Run Result's residual risk and the 2851/2852 count are stale: both are spec edits outside Verification.
+
 ## Spec Change Log
 
 - 2026-10-11, spec gate (lead): DW-2298 returned to this story by the orchestrator (a merged trailer had moved it to 23-7), then re-owned to the chartered Story 20.25 (Item runtime and configuration actions) as this plan's decline names; the five spine drafts written (AD-62 item 9, AD-15, AD-8, AD-44, AD-51), AD-8's pairs as read in the vendor source.
@@ -563,6 +592,38 @@ Rule 19, each applied on the throwaway with the class (and every descendant) rec
 - mutation: `SCREEN_ACTION_DESCRIPTORS` drops the Queues list -> the handler spec's registration test
 - mutation: `DESTRUCTIVE_CONSEQUENCES` drops the Queue tab's entry -> the handler spec's registration and abort tests
 - mutation: `DESCRIPTOR_ACTION_LABELS` drops the Queues entry -> the browser spec's four tests, the abort-all leg first (no menu entry reads Abort all)
+
+**QA pass (QA).** Files added: `src/OcuPilot/Test/InteropRuntimeCard.cls` (QA), `src/OcuPilot/Test/InteropRuntimeBounds.cls` (QA) and `src/OcuPilot/Test/InteropCapSeam.cls` (QA; a seam, no tests). Files changed: `ui/browser/interop-queue-job-actions.browser-spec.mjs` (two item-tab tests; `created` is set before the create is asserted), `scripts/ci-throwaway.sh` (`InteropRuntimeBounds` on the `# classes:` line).
+
+Gaps closed, each by a test that went red under its mutation while the existing suite stayed green where stated:
+
+- AC2: nothing exceeded `ABORTMAX`, so the limit on a queue's read and abort was unpinned (`InteropQueueActions` stays green with the limit removed). `InteropCapSeam` lowers it to one.
+- AC4, AC5: the stop passes the lesser of the production's timeout and the cap; every stop test shortens the cap below the timeout (`InteropJobStop` stays green with the cap passed whole). The bounds class raises the cap to 30 against the stock 10.
+- AC2, AC3, AC4: the agent's mint of a refusal was untested (only the port and the person's route were). The bounds class mints each refusal and asserts nothing is stored. A target no read finds is `400 TOOL.ARGUMENTS` at the mint, `404 PORT.NOTFOUND` at the port and the route.
+- AC2: the queue abort's card reads `Count - Entries`; no leg had `Entries` below `Count` (inference: the existing legs aborted every enumerated entry). `InteropRuntimeCard` calls each tool's `StateDiff` directly.
+- AC7: an item's Queue and Jobs tabs were driven over HTTP and in the handler spec only. Two browser tests open each tab from Productions, assert the menu, the dialog and the route the tab posts to.
+
+Loop on `ocupilot-b-ci`, each class on its own call: `InteropRuntimeCard` 3, `InteropRuntimeBounds` 3 (each also alone), `InteropRuntimeDescriptor` 14, `InteropQueueActions` 10, `InteropJobActions` 7, `InteropJobStop` 5, `InteropRuntimeGate` 6, 0 failed. `interop-queue-job-actions` browser spec 6 of 6 on the rebuilt bundle (the two item-tab tests pass alone). `npm run test:tools` 1909 passed. `check-objectscript.py` 0 problems.
+
+Rule 19 (QA), each applied on the throwaway with the class and its descendants recompiled or the bundle rebuilt and redeployed, observed red, then reverted; the tree matched its pre-mutation fingerprint afterwards:
+
+- mutation: `InteropQueueAbort.StateDiff` sets the after value to 0 -> `InteropRuntimeCard.TestTheQueueAbortCardTakesOnlyTheEntriesItEnumeratedOffTheCount`
+- mutation: `ReadQueue` enumerates without `ABORTMAX` -> `InteropRuntimeBounds.TestAnAbortOfAQueueHoldingMoreThanTheLimitKeepsTheRest`
+- mutation: `VendorJob` passes the cap whole in place of the lesser of it and the timeout -> `InteropRuntimeBounds.TestAStopWaitsTheProductionsTimeoutWhenItIsShorterThanTheCap` (30.01 s)
+- mutation: `InteropAction.PortQuery` stops composing the action key (the six tools recompiled) -> `InteropRuntimeBounds.TestTheMintRefusesWhatTheScreenRefuses`, and `InteropJobActions`' two refusal tests on the person's route
+- mutation: `ACTION_ADDRESS` drops the Queue and Jobs tabs -> both item-tab tests in `interop-queue-job-actions.browser-spec.mjs`
+- mutation: `PerformAbortMessage` skips the vendor call -> `InteropQueueActions`, four tests
+- mutation: `PerformAbortQueue` inverts its still-queued test -> `InteropQueueActions.TestAnAbortAllCountsAnEntryThatLeftTheQueueAndFailsOnOneStillQueued` alone
+- mutation: `ReadJob` answers a live process no host holds -> `InteropJobActions.TestALiveProcessThatIsNoJobOfTheProductionIsNotFound` alone
+- mutation: `JobStatused` drops its `NOTSTOPPED` line -> `InteropJobStop.TestAStopTheVendorRefusesIsAnsweredInThePortsOwnWords` alone
+- mutation: `AuditRuntime` skips the record -> `InteropJobStop`, three tests
+- mutation: `Pairs` drops `SUSPENDPAIR` -> `InteropRuntimeGate.TestEachMissingPairIsRefusedByNameThroughThePortTheToolsAndTheMint`
+
+Rule 19 (code review), each applied to the throwaway's copy of `src` only, the tree reloaded, observed red, then restored from the worktree and reloaded; the worktree's status and diff matched their pre-mutation fingerprint:
+
+- mutation: `VendorJob` answers OK without calling `AbortOperation` -> AC3's success leg, `InteropJobActions.TestTheAgentsAbortOfARetriedMessageLeavesItAborted` and `TestThePersonsSuspendAndAbortFromTheJobsRoute`
+- mutation: `InteropQueueMessageAbort` declares `DESTRUCTIVE` 0 -> AC5's destructiveness clause, `InteropRuntimeDescriptor.TestTheFiveToolsDeclareWhatTheSpecNames`
+- mutation: `RuntimeSnippet`'s queue loop drops its `tLeft` bound -> `InteropRuntimeDescriptor.TestEachWritesScriptRendersItsVendorCall`
 
 ## Auto Run Result
 

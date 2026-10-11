@@ -101,7 +101,7 @@ Method TestTheFiveToolsDeclareWhatTheSpecNames()
 /// <p>The pair set of each tool, in <code>USER</code>: the screen's two, the tool's own, WRITE on the namespace's globals database,
 /// then the custom resource of each classic page the tool declares (none assigned), each pair once.</p>
 /// <p>Mutation (Rule 19): drop the own pair from <method>OcuPilot.Screen.Tool.InteropAction.PrivilegePairs</method> -- this and
-/// <method>OcuPilot.Test.InteropRuntimeGate.TestEachMissingPairIsRefusedByNameThroughTheToolsAndRoutes</method> go red.</p>
+/// <method>OcuPilot.Test.InteropRuntimeGate.TestEachMissingPairIsRefusedByNameThroughThePortTheToolsAndTheMint</method> go red.</p>
 Method TestTheToolPairsAreTheScreensPlusTheOwnPairAndTheDatabase()
 {
     Do ##class(OcuPilot.Kernel.Scope).Set("USER")
@@ -184,7 +184,8 @@ Method TestAnActionKeyTheEndpointDoesNotServeIsNotImplemented()
 
 /// <p>The queue abort's write is given the digest its proposal was reviewed with: the composer the confirm and the screen action ask
 /// (<method>OcuPilot.Kernel.Proposal.Operation.Query</method>) puts the stored payload's <code>Digest</code> under
-/// <parameter>OcuPilot.Port.InteropPort.DIGESTKEY</parameter>, and a payload with none adds none (a person's call carries none). The
+/// <parameter>OcuPilot.Port.InteropPort.DIGESTKEY</parameter>, and a payload with none adds none (a mint's arguments carry none; a person's
+/// action carries the digest of the read it made moments before). The
 /// read answers that field.</p>
 /// <p>Mutation (Rule 19): delete the line of <method>OcuPilot.Screen.Tool.InteropQueueAbort.PortQuery</method> that sets the digest key --
 /// the first leg goes red.</p>
@@ -299,13 +300,14 @@ Method TestEveryNewCodeResolvesToItsSentence()
 
 /// <p>The copy-out script of each write (AD-59): the port gives each one an <code>objectscript</code> form; the script switches to the
 /// namespace the query names, renders the reviewed values as string literals, calls the vendor's own method, opens no block it does
-/// not close on the same line, and names neither <code>AbortQueue</code> nor <code>Enumerate</code>; a stop caps the production's
-/// timeout at <parameter>OcuPilot.Port.InteropPort.STOPSECONDS</parameter> and forces; and a read has no form.</p>
+/// not close on the same line, and names neither <code>AbortQueue</code> nor <code>Enumerate</code>; a queue abort's loop stops after the
+/// entries the proposal reviewed and keeps every failure; a stop caps the production's timeout at
+/// <parameter>OcuPilot.Port.InteropPort.STOPSECONDS</parameter> and forces; and a read has no form.</p>
 /// <p>Mutation (Rule 19): pass <code>0</code> for the force argument in the stop branch of <method>OcuPilot.Port.InteropPort.RuntimeSnippet</method>
 /// -- the stop row goes red.</p>
 Method TestEachWritesScriptRendersItsVendorCall()
 {
-    Set tContext = {"payload": {"Queue": "OcuPilotProbeOp", "Priority": 6, "Index": 2, "Namespace": "USER"}}
+    Set tContext = {"payload": {"Queue": "OcuPilotProbeOp", "Priority": 6, "Index": 2, "Entries": 2, "Namespace": "USER"}}
     For tCase = $ListBuild("QueueItems", "ABORTMESSAGE", "131", "Ens.Queue).AbortItem(""OcuPilotProbeOp"", ""6"", ""2"")"), $ListBuild("Queues", "ABORTQUEUE", "OcuPilotProbeOp", "Ens.Queue:EnumerateItem"), $ListBuild("Jobs", "ABORTJOB", "4242", "Ens.Job).AbortOperation(""4242"")"), $ListBuild("Jobs", "SUSPENDJOB", "4242", "Ens.Job).SuspendOperation(""4242"")"), $ListBuild("Jobs", "STOPJOB", "4242", "Ens.Job).Stop(""4242"", tTimeout, 1)") {
         Set tEndpoint = $List(tCase, 1)
         Set tType = $List(tCase, 2)
@@ -331,6 +333,9 @@ Method TestEachWritesScriptRendersItsVendorCall()
     Set tStopSteps = $ClassMethod(..#PORT, "Snippet", "Jobs", "STOPJOB", .tQuery, "", tContext)
     Set tText = tStopSteps.%Get(0).text
     Do $$$AssertTrue((tText [ ("If tTimeout > " _ $Parameter(..#PORT, "STOPSECONDS") _ " Set tTimeout = " _ $Parameter(..#PORT, "STOPSECONDS"))) && (tText [ "GetRunningProductionUpdateTimeout()"), "a stop's script caps the production's timeout")
+    Set tQuery("id") = "OcuPilotProbeOp"
+    Set tText = $ClassMethod(..#PORT, "Snippet", "Queues", "ABORTQUEUE", .tQuery, "", tContext).%Get(0).text
+    Do $$$AssertTrue((tText [ "tLeft = ""2""") && (tText [ "While (tLeft > 0) && tResult.Next()") && (tText [ "AppendStatus(tSC, "), "a queue abort's script aborts at most the two reviewed entries and keeps every failure: " _ tText)
     Set tQuery("id") = "o""ne" _ $Char(9) _ "queue"
     Set tQuoteSteps = $ClassMethod(..#PORT, "Snippet", "Queues", "ABORTQUEUE", .tQuery, "", tContext)
     Set tText = tQuoteSteps.%Get(0).text

@@ -256,6 +256,7 @@ Method TestThePersonsStopFromTheJobsRoute()
 {
     Do $$$AssertStatusOK(..StartProbe(), "the probe production runs")
     Set tRow = $ClassMethod(..#JOBS, "JobOf", ..#OPNAME)
+    Do $$$AssertTrue($IsObject(tRow) && 'tRow.Dead, "the plain operation has a live job")
     If '$IsObject(tRow) Quit
     Set tJob = tRow.Job
     Set tSince = ##class(OcuPilot.Test.AuditEvent).Now()

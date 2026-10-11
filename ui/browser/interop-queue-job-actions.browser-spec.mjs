@@ -7,7 +7,8 @@
  * while the message the job holds stays; Queue messages lists the two waiting messages, and Abort on one asks for its id
  * typed and leaves it Aborted beside the other; Abort message on the hung job, which is not retrying, is refused with the
  * published sentence and changes nothing; and Stop job warns first, ends the job, puts its message back on the queue and
- * takes the job's row off Jobs.
+ * takes the job's row off Jobs; and an item's Queue and Jobs tabs draw the same actions, post them to Queue messages' and
+ * Jobs' routes, and show the same dialogs and the published sentence of a refusal.
  *
  * **It compiles, starts and writes a probe production in `USER`** through `OcuPilot.Test.ProductionProbe`, so it runs on a
  * throwaway only; the `after` hook stops and removes the production, its classes and its messages, whatever the tests
@@ -39,6 +40,10 @@ const OPERATION = 'OcuPilotProbeOp';
 const ABORTED = '7';
 const QUEUES_URL = '/ocupilot/interoperability/queues?ns=USER';
 const JOBS_URL = '/ocupilot/interoperability/jobs?ns=USER';
+const PRODUCTIONS_URL = '/ocupilot/interoperability/productions?ns=USER';
+const PRODUCTION = 'OcuPilotProbe.Interop.Production';
+const ITEMS = 'interoperability/productions/items';
+const SUSPENDED = '5';
 const ACTION_PATH = /^\/api\/ocupilot\/screens\/([^/]+)\/action$/;
 const NAME_TEXT = '.ocu-data-table-link, .ocu-data-table-text';
 
@@ -51,9 +56,9 @@ let armedIds = [];
 function armFresh() {
   const removed = probe('QJCLEAN', `$System.Status.IsOK(##class(${PROBE}).Remove())`);
   assert.equal(removed.value, '1', `an earlier probe is removed: ${removed.output}`);
+  created = true;
   const made = probe('QJMADE', `$System.Status.IsOK(##class(${PROBE}).Create())`);
   assert.equal(made.value, '1', `the probe production is created: ${made.output}`);
-  created = true;
   const output = runIris(config.container, [`Set sc=##class(${READ}).ArmProbe(.ids)`, 'Write "OCU-QJARM-START:"_$System.Status.IsOK(sc)_"|"_ids_":OCU-QJARM-END",!']);
   const armed = markerValue(output, 'QJARM') ?? '';
   assert.match(armed, /^1\|\d+,\d+,\d+$/, `the probe production runs with its operation hung on a message and two waiting: ${output}`);
@@ -155,6 +160,38 @@ async function rowAction(page, text, label, cell) {
   await (await page.waitForSelector('[role="row"][aria-selected="true"] .ocu-data-table-trigger', { visible: true, timeout: config.navigationTimeoutMs })).click();
   await page.waitForSelector('[role="menu"] [role="menuitem"]', { timeout: config.navigationTimeoutMs });
   await page.evaluate((wanted) => {
+    Array.from(document.querySelectorAll('[role="menu"] [role="menuitem"]'))
+      .find((item) => item.querySelector('.ocu-data-table-menu-label')?.textContent.trim() === wanted)
+      .click();
+  }, label);
+}
+
+/** Open the probe operation from the Productions list and Production items, then the item strip's tab on `route`, and wait for its rows. */
+async function openItemTab(page, route) {
+  await answered(page);
+  await clickRowCentre(page, { text: PRODUCTION, link: true });
+  await pathHolds(page, `/${ITEMS}/`);
+  await answered(page);
+  await rowNamed(page, OPERATION);
+  await clickRowCentre(page, { text: OPERATION, link: true });
+  await pathHolds(page, `/${ITEMS}/document/`);
+  await answered(page);
+  await (await page.waitForSelector(`button.ocu-detail-tab[data-route="${route}"]`, { visible: true, timeout: config.navigationTimeoutMs })).click();
+  await pathHolds(page, `/${route}/`);
+  await answered(page);
+}
+
+/** Select the body row at `index` on its cell `cell` and open its menu; answer the labels of the entries it offers, in order. */
+async function openRowMenu(page, index, cell) {
+  await clickRowCentre(page, { index, cell });
+  await (await page.waitForSelector('[role="row"][aria-selected="true"] .ocu-data-table-trigger', { visible: true, timeout: config.navigationTimeoutMs })).click();
+  await page.waitForSelector('[role="menu"] [role="menuitem"]', { timeout: config.navigationTimeoutMs });
+  return page.$$eval('[role="menu"] [role="menuitem"] .ocu-data-table-menu-label', (nodes) => nodes.map((node) => node.textContent.trim()));
+}
+
+/** Choose the entry labeled `label` in the open row menu. */
+function chooseMenuEntry(page, label) {
+  return page.evaluate((wanted) => {
     Array.from(document.querySelectorAll('[role="menu"] [role="menuitem"]'))
       .find((item) => item.querySelector('.ocu-data-table-menu-label')?.textContent.trim() === wanted)
       .click();
@@ -338,6 +375,72 @@ test('AC4, AC7: Stop job warns first, ends the hung job, puts its message back a
       job[0]
     );
     assert.equal(queueCount(), String(waiting + 1), 'the job\'s message is back on the queue beside the ones waiting');
+  } finally {
+    await context.close();
+  }
+});
+
+// AC1, AC7. Mutation (Rule 19): drop the Queue tab from ACTION_ADDRESS, rebuild and redeploy -> the tab posts to its own screen
+// and the post assertion goes red; drop its entry from SCREEN_ACTION_DESCRIPTORS -> the row offers no menu and the menu wait goes red.
+test('AC1, AC7: an item\'s Queue tab draws Abort on a queued message, asks for its id typed and posts to Queue messages\' route', async () => {
+  const ids = armedIds.slice(1);
+  const { context, page } = await signedInAt(browser, config, PRODUCTIONS_URL, VIEWPORTS.wide);
+  const posts = captureActions(page);
+  try {
+    await openItemTab(page, `${ITEMS}/queue`);
+    const listed = await allRows(page);
+    assert.deepEqual(listed.map((cells) => cells[0]).sort(), [...ids].sort(), 'the Queue tab lists the two waiting messages');
+    assert.deepEqual(await openRowMenu(page, 0, 1), [STRINGS.actionAbort], 'a Queue tab row offers its one action: Abort');
+    await chooseMenuEntry(page, STRINGS.actionAbort);
+    const dialog = await typedNameDialog(page);
+    const target = await page.$eval('[role="dialog"] .ocu-dialog-title', (node, skip) => node.textContent.trim().slice(skip), STRINGS.actionAbort.length + 1);
+    assert.ok(ids.includes(target), `the dialog names the selected message by its id: ${dialog.title}`);
+    assert.deepEqual(dialog, { title: `${STRINGS.actionAbort} ${target}`, consequence: STRINGS.interopMessageAbortConsequence }, 'Abort asks for the message id and states what it takes');
+    assert.deepEqual(posts, [], 'nothing is sent while the dialog is open');
+    await typeAndConfirm(page, target);
+    await dialogClosed(page);
+    assert.deepEqual(posts, [{ screen: 'interop.queuemessages', action: 'abort', id: target }], 'one abort, posted to Queue messages\' route once the id matched');
+    const other = ids.find((id) => id !== target);
+    await rowsAre(page, [other]);
+    assert.equal(headerStatus(target), ABORTED, 'the aborted message reads Aborted');
+    assert.notEqual(headerStatus(other), ABORTED, 'the other does not');
+    assert.equal(queueCount(), '1', 'and one message waits in the queue');
+  } finally {
+    await context.close();
+  }
+});
+
+// AC3, AC7. Mutation (Rule 19): drop the Jobs tab from ACTION_ADDRESS, rebuild and redeploy -> the tab posts to its own screen and
+// the post assertion goes red; drop the Jobs entry from WARNING_CONSEQUENCES -> Suspend message is sent at once and the warning wait
+// goes red; drop `NOTRETRYING` from `RuntimeRefusal`, recompile the tree -> the suspend is answered 200 and the banner never shows.
+test('AC3, AC7: an item\'s Jobs tab offers Abort message, Suspend message and Stop job; Suspend warns, posts to the Jobs route and shows the refusal of a job not retrying', async () => {
+  const { context, page } = await signedInAt(browser, config, PRODUCTIONS_URL, VIEWPORTS.wide);
+  const posts = captureActions(page);
+  try {
+    await openItemTab(page, `${ITEMS}/jobs`);
+    const [job] = await allRows(page);
+    assert.match(job[0], /^\d+$/, `the Jobs tab lists the operation's job by its process id: ${JSON.stringify(job)}`);
+    const waiting = queueCount();
+    assert.deepEqual(await openRowMenu(page, 0, 1), [STRINGS.interopJobsAbortAction, STRINGS.interopJobsSuspendAction, STRINGS.interopJobsStopAction], 'a Jobs tab row offers Abort message, Suspend message and Stop job');
+    await chooseMenuEntry(page, STRINGS.interopJobsSuspendAction);
+    await page.waitForSelector('app-warning-dialog', { timeout: config.navigationTimeoutMs });
+    const opened = await page.evaluate(() => {
+      const surface = document.querySelector('[role="dialog"]');
+      return {
+        title: (surface.querySelector('.ocu-dialog-title')?.textContent ?? '').trim(),
+        body: (surface.querySelector('.ocu-warning-consequence')?.textContent ?? '').trim(),
+        destructive: surface.querySelector('.ocu-button-destructive') !== null,
+      };
+    });
+    assert.deepEqual(opened, { title: STRINGS.interopJobsSuspendAction, body: STRINGS.interopJobSuspendConsequence, destructive: false }, 'the warning is titled with the verb, states the published sentence and is not destructive');
+    assert.deepEqual(posts, [], 'nothing is sent while the dialog is open');
+    await page.click('[role="dialog"] .ocu-dialog-actions .ocu-button-primary');
+    await dialogClosed(page);
+    assert.deepEqual(posts, [{ screen: 'interop.jobs', action: 'suspend', id: job[0] }], 'one suspend, posted to Jobs\' route past Proceed');
+    await page.waitForSelector('.ocu-list-page-banner .ocu-banner-message', { timeout: config.navigationTimeoutMs });
+    assert.equal(await page.$eval('.ocu-list-page-banner .ocu-banner-message', (node) => node.textContent.trim()), STRINGS.interopRefusalJobNotRetrying, 'the refusal shows the published sentence');
+    assert.notEqual(headerStatus(armedIds[0]), SUSPENDED, 'and the message the job holds is not suspended');
+    assert.equal(queueCount(), waiting, 'the queue is as it was');
   } finally {
     await context.close();
   }

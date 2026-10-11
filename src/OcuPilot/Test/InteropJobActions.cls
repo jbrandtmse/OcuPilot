@@ -167,8 +167,9 @@ ClassMethod JobOf(pHost As %String) As %DynamicObject
 }
 
 /// <p>Bring the probe to the state every retry test assumes: its retrying operation (<code>RetryInterval</code>
-/// <parameter>INTERVAL</parameter>) running, sent one message it fails, and its job reading <code>Retry</code> with that message.</p>
-Method ArmRetry() As %Status
+/// <parameter>INTERVAL</parameter>) running, sent one message it fails, and its job reading <code>Retry</code> with that message.
+/// <class>OcuPilot.Test.InteropRuntimeBounds</class> and <class>OcuPilot.Test.InteropRuntimeGate</class> arm through it too.</p>
+ClassMethod ArmRetry() As %Status
 {
     Set tSC = $ClassMethod(..#PROBE, "Settle")
     If $$$ISOK(tSC) Set tSC = $ClassMethod(..#PROBE, "ResetProduction")
@@ -184,7 +185,7 @@ Method ArmRetry() As %Status
 }
 
 /// <p>Send the retrying operation one message and wait, fifteen seconds at most, until its job reads <code>Retry</code> with it.</p>
-Method SendAndWait() As %Status
+ClassMethod SendAndWait() As %Status
 {
     Set tSC = $ClassMethod(..#PROBE, "Send", ..#RETRYNAME)
     If $$$ISERR(tSC) Quit tSC

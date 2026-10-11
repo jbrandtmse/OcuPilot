@@ -1,10 +1,11 @@
-/// <p>What every write tool of Interoperability shares (AD-6, AD-51, AD-52, AD-53, AD-62, Stories 20.2, 20.3 and
-/// 20.22): a write reached through <class>OcuPilot.Port.InteropPort</class> by two callers, a row action of its
+/// <p>What every write tool of Interoperability shares (AD-6, AD-51, AD-52, AD-53, AD-62, Stories 20.2, 20.3,
+/// 20.22 and 20.23): a write reached through <class>OcuPilot.Port.InteropPort</class> by two callers, a row action of its
 /// screen and the agent's proposal and confirmation. It holds what the production tools
 /// (<class>OcuPilot.Screen.Tool.InteropProductionAction</class>), the item tools
-/// (<class>OcuPilot.Screen.Tool.InteropItemAction</class>) and the setting tools
-/// (<class>OcuPilot.Screen.Tool.InteropSettingAction</class>) declare alike, and each of those keeps only what
-/// differs.</p>
+/// (<class>OcuPilot.Screen.Tool.InteropItemAction</class>), the setting tools
+/// (<class>OcuPilot.Screen.Tool.InteropSettingAction</class>), the job tools
+/// (<class>OcuPilot.Screen.Tool.InteropJobAction</class>) and the two queue tools declare alike, and each of those
+/// keeps only what differs.</p>
 /// <p><b>The fresh read is composed from the action it is read for</b> (<method>PortQuery</method>). Given the
 /// call's <b>arguments</b> -- the mint's and a screen action's, which carry no <parameter>STATEMARKER</parameter> --
 /// the read is asked for this tool's action (<parameter>OcuPilot.Port.InteropPort.ACTIONKEY</parameter>), so a

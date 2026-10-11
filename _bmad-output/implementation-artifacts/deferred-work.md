@@ -7803,6 +7803,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-14-1-the-copy-out-draft.md | severity: med | fix-risk: med | footprint: in-story
 - evidence: Draft.Render reads only the stored row and never re-reads the target (no fingerprint check); Confirm refuses TARGETCHANGED, the draft cannot.
 - 2026-09-26T21:17:13Z status=by-design owner=14-1-the-copy-out-draft by=cr note=AD-59: the script runs outside OcuPilot's fingerprint (AD-6); reopen only via an AD-59 amendment
+- 2026-10-11T14:19:04Z occurrence=20-23-queue-and-job-actions
 
 ### DW-1720: DraftExecute application-error delete test accepts LOG.DATE when its two seeds straddle midnight
 - source: spec-14-1-the-copy-out-draft.md (cr rework 1) | severity: low | fix-risk: low | footprint: in-story
@@ -11084,6 +11085,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-20-4-per-host-tabs-the-monitor-queues-and-jobs.md | severity: med | fix-risk: med | footprint: in-epic
 - evidence: 20.4's second AC names the actions as custom endpoints and reads-first as a stated partial; measured on ocupilot-b-ci at 20.4's plan: each action is a vendor class method with its own check, writes no audit row, and AbortOperation, SuspendOperation and Stop answer OK on a target where they do nothing
 - 2026-10-10T22:06:19Z status=routed owner=20-23-queue-and-job-actions by=lead note=chartered as Story 20.23 at 20.4's spec gate; its charter is 20.4's Design Notes › Split
+- 2026-10-11T14:21:17Z status=resolved-by:20-23-queue-and-job-actions by=adjudication note=6aa1f459+review: the five queue and job tools through InteropPort, refusals before the vendor, own audit; InteropQueueActions, InteropJobActions, InteropJobStop green
 
 ### DW-2298: The classic per-host Actions tab's remaining item actions (temporary stop, start and restart of one item, change class, copy) have no story; enable, disable and remove are 20.3's row actions and Test is 20.6's
 - source: spec-20-4-per-host-tabs-the-monitor-queues-and-jobs.md | severity: med | fix-risk: med | footprint: in-epic
@@ -11176,3 +11178,34 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-20-4-per-host-tabs-the-monitor-queues-and-jobs.md | severity: low | fix-risk: med | footprint: in-story
 - evidence: wc -l src/OcuPilot/Test/InteropHostEdges.cls = 615; a split needs a new armed class, the arming roster in ci-throwaway.sh and ci.test.mjs
 - 2026-10-11T08:13:07Z status=wontfix-accepted owner=20-4-per-host-tabs-the-monitor-queues-and-jobs by=cr note=reopen_if=the class gains another leg; split it then, with its arming roster line
+
+### DW-2314: The agent's Abort all closes target-changed on any queue that gains a message between the mint and the confirm
+- source: spec-20-23-queue-and-job-actions.md | severity: med | fix-risk: med | footprint: in-story
+- evidence: InteropQueueAbort fingerprints Entries and a digest of every enumerated entry (ReadQueue, up to ABORTMAX), so one arrival changes both; AD-48's enumerated-set rule, which the spec cites, keeps arrivals as residue instead. The person's route reads at the click and is unaffected.
+- 2026-10-11T14:18:44Z status=decision-pending owner=burndown by=cr note=product call: keep refusing a grown queue (AC2 as written) or abort the reviewed prefix and leave arrivals
+
+### DW-2315: An abort or suspend requested while a retried message's re-attempt runs stays set on the job if that re-attempt succeeds
+- source: spec-20-23-queue-and-job-actions.md | severity: med | fix-risk: high | footprint: in-story
+- evidence: Ens.BusinessOperation keeps the job's monitor at Retry through each re-attempt and reads ShouldAbort only after a wait (:322-331); the spec names this limit as a millisecond window, but it spans the re-attempt's call.
+- 2026-10-11T14:18:48Z status=by-design owner=20-23-queue-and-job-actions by=cr note=spec-named limit; the vendor has no withdrawal and the Never list forbids writing ^Ens.JobRequest
+
+### DW-2316: Jobs rows offer Abort message, Suspend message and Stop job on a job the port will refuse (dead, or not retrying)
+- source: spec-20-23-queue-and-job-actions.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: InteropJobList and InteropItemJobTab declare the three actions with no per-row rule; the person types the pid in the destructive dialog before the refusal shows (the browser spec's AC3 test).
+- 2026-10-11T14:18:52Z status=by-design owner=20-23-queue-and-job-actions by=cr note=AC7 and the spec's browser task design the refusal-with-sentence path; reopen via a spec amendment
+
+### DW-2317: InteropJobStop and InteropQueueMessageAbort fingerprint no STATEMARKER field, so a stored payload is composed as call arguments
+- source: spec-20-23-queue-and-job-actions.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: FINGERPRINTSUBJECT Host,Dead,Namespace and Queue,Priority,Index,Namespace lack the inherited STATEMARKER Status, so InteropAction.PortQuery adds ACTIONKEY at the confirm's re-read and read-back.
+- 2026-10-11T14:18:56Z status=wontfix-theoretical owner=20-23-queue-and-job-actions by=cr note=no difference today; real if RuntimeRefusal gains a STOPJOB or ABORTMESSAGE refusal unfit for a re-read
+
+### DW-2318: Story 20.23's test helpers are copied per class: EnableKey and its policy restore, the gate's principal generator, row-menu helpers
+- source: spec-20-23-queue-and-job-actions.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: EnableKey is verbatim in InteropJobActions, InteropQueueActions and InteropRuntimeBounds (the restore also in InteropJobStop); InteropRuntimeGate writes its own EnsurePrincipals and ProbeAs, as InteropSettingGate and InteropHostGate do.
+- 2026-10-11T14:18:59Z status=wontfix-accepted owner=20-23-queue-and-job-actions by=cr note=reopen_if=a GovernanceFixture or gate-principal change has to be made in more than one of these classes
+
+### DW-2319: The spine's AD-10 carries no named case for the interop-job stop, and AD-62 items 1-2 still read as production-write only
+- source: spec-20-23-queue-and-job-actions.md | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: AD-10 puts the prohibited set in the kernel and names BROADCAST's exemption; the interop-job branch is ReviewedFewOnly, its guarantee AD-62 item 9's port read (Ens.Job.Stop forces only a holder of the job lock); item 2 names %Ens_ProductionRun:USE for every write.
+- 2026-10-11T14:19:04Z status=wontfix-accepted owner=20-23-queue-and-job-actions by=cr note=reopen_if=a plan or review reads AD-62 item 2 as gating a queue or job write, or cites AD-10 against interop-job
+- 2026-10-11T14:21:11Z status=resolved-by:20-23-queue-and-job-actions by=adjudication note=applied at origin: AD-62 items 1-2 scoped to production writes, AD-10 names the forced interop-job stop

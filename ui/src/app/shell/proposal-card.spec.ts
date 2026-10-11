@@ -920,7 +920,7 @@ describe('the proposal card', () => {
     }
   });
 
-  it('Story 20.23: a message, queue or job abort is drawn destructive and a suspend or stop is not, each stating its own published sentence', () => {
+  it('Story 20.23: each queue and job consequence code states its own published sentence, on a card drawn as the proposal\'s destructive flag says', () => {
     // Mutation (Rule 19): drop one of the five INTEROP.MESSAGE / QUEUE / JOB codes from `consequenceSentence` -> its leg goes red.
     for (const [code, destructive, sentence] of [
       ['INTEROP.MESSAGE.ABORT', true, STRINGS.interopMessageAbortConsequence],

@@ -434,8 +434,9 @@ services:
       # The queue and job action classes compile and run the same probe production in USER, a retrying operation among its
       # items (Story 20.23): the queue and job classes abort, suspend and stop on it and read the audit rows each leaves, the
       # job stop class forces a hung job and terminates another, and the gate class signs in as probe principals each missing
-      # one pair an action requires and as principals holding exactly one action's pairs.
-      # classes: InteropJobActions, InteropJobStop, InteropQueueActions, InteropRuntimeGate
+      # one pair an action requires and as principals holding exactly one action's pairs. The bounds class lowers the queue
+      # abort's limit to one through a seam, forces a hung job's stop against a wider cap, and mints each refusal.
+      # classes: InteropJobActions, InteropJobStop, InteropQueueActions, InteropRuntimeBounds, InteropRuntimeGate
       # classes: ExplorerSourceTurn
       # classes: ExplorerSaveTurn
       # classes: ExplorerCreateTurn

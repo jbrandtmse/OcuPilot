@@ -443,20 +443,7 @@ Method TestAPrincipalHoldingExactlyTheJobAbortPairsAbortsAndStops()
 Method TestAPrincipalHoldingExactlyTheSuspendPairsSuspends()
 {
     Set tJobs = ..#JOBS
-    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "ResetProduction"), "the probe is put back as declared")
-    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "AddRetryItem", ..#RETRYNAME, 2, 300), "a retrying operation is stored")
-    Kill tQuery
-    Set tQuery("namespace") = ..#NAMESPACE
-    Set tQuery("id") = ..#PRODUCTION
-    Set tSC = $ClassMethod(..#PORT, "Invoke", "Productions", "START", .tQuery, "", .tResult, .tHttp, .tFault)
-    Do $$$AssertStatusOK(tSC, "the probe production starts")
-    Hang 3
-    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "Send", ..#RETRYNAME), "a message is sent to it")
-    For tTry = 1:1:30 {
-        Set tRow = $ClassMethod(tJobs, "JobOf", ..#RETRYNAME)
-        If $IsObject(tRow) && (tRow.Status = "Retry") Quit
-        Hang 0.5
-    }
+    Do $$$AssertStatusOK($ClassMethod(tJobs, "ArmRetry"), "the probe production runs, its retrying operation retrying a message")
     Set tRow = $ClassMethod(tJobs, "JobOf", ..#RETRYNAME)
     Do $$$AssertTrue($IsObject(tRow) && (tRow.Status = "Retry"), "its job reads Retry")
     If '$IsObject(tRow) Quit
