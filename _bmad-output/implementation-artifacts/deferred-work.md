@@ -11122,3 +11122,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-20-24-agent-tool-calls-stop-re-listing-the-tool-registry.md | severity: low | fix-risk: high | footprint: in-story
 - evidence: Measured on ocupilot-b-ci at code review: the CompiledClass row and TimeChanged lead %Extends and $Parameter by 1.6-4.2 ms (one 53 ms); the before/after check cannot see it; 20 batch-compile trials ended with 0 stale listings; a production build reads a class at least 38 ms after its signature read
 - 2026-10-11T05:10:03Z status=by-design owner=20-24-agent-tool-calls-stop-re-listing-the-tool-registry by=cr note=spec Named limit; AD-5's 'seen on the next call' has this ms gap; reopens only by a spec or AD-5 amendment
+
+### DW-2301: flake: a11y-structural-invariants.browser-spec.mjs AC5 recorded security/auditing/user-events (1280 light) as unsettled within 20 s in one local run, and one run failed before measuring (cause not captured)
+- source: spec-20-4-per-host-tabs-the-monitor-queues-and-jobs.md | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: local ocupilot-b-ci 2026-10-10: 2 of 4 runs red on untouched screens; 2026-10-11 after a full sweep: user-events read 8-13 ms, 2 of 2 runs green; six IRIS containers share the host (inference: CPU contention)
+- 2026-10-11T06:55:40Z status=routed owner=burndown by=runner note=flake; reproduce with timings logged per visit before changing SETTLE_TIMEOUT_MS or QUIET_MS

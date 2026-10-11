@@ -430,3 +430,11 @@
 2026-10-11T05:17:18Z	Story 20.24	story_cycle	plan_to_commit_min=230 implement_passes=1 reviews=1 rework=0 first_ci=pending models=plan:opus,implement:sonnet,qa:sonnet,cr:opus
 2026-10-11T05:18:06Z	Story 20.24	story_cycle	plan_to_commit_min=175(corrects_the_230_above:plan_02:22Z->committed_05:17Z) implement_passes=1 reviews=1 rework=0 first_ci=pending models=plan:opus,implement:sonnet,qa:sonnet,cr:opus
 2026-10-11T05:18:06Z	Story 20.4	merged_forward	from=origin_00b1beef(20.24_code_head_090d09ab) into=local_20.4 conflicts=sprint-status_last_updated_only
+2026-10-11T06:55:50Z	Story 20.24	ci_resolved	story=20.24 run=38114282475 result=success head=090d09ab resolved_at=next_implement
+2026-10-11T06:55:50Z	Story 20.24	ci_green_verified	run=38114282475 head=090d09ab jobs=16_success boundary=reported_to_main merged_by_orchestrator=feature_143f5690
+2026-10-11T06:55:50Z	Story 20.4	runner_checks	tree=96334874(20.4+20.22+20.24+feature_35d09f5e) throwaway=ocupilot-b-ci_fresh(down+up_from_worktree,bundle_3.27MB) full_sweep=30/30_shards_569_classes_4484_tests_0_failed(05:20-06:40Z;one_batch_overran_the_10-min_cap_and_was_waited_out_in-turn) npm_test=tools_1907/1907+components_223_files_2822/2822 build=3.27MB(<3326kB) smoke=50/50
+2026-10-11T06:55:50Z	Story 20.4	flake_diagnosed	spec=a11y-structural-invariants test=AC5_unsettled_visit screen=security/auditing/user-events(untouched_by_20.4) read_latency=8-13ms runs_now=2/2_green earlier=2_of_4_red cause=undetermined(inference:host_CPU_contention,6_IRIS_containers) ledger=DW-2301(flake,routed_burndown)
+2026-10-11T06:55:50Z	Story 20.4	protocol_violation	stage=runner depth=1 agent=epic-runner-20 violation=a_5-shard_sweep_batch_overran_the_10-min_foreground_cap_and_was_moved_to_the_background consequence=none(no_other_run_started;waited_to_exit_0_in-turn) detected_by=runner outcome=helper_now_starts_a_shard_only_under_150s_elapsed
+2026-10-11T06:56:16Z	Story 20.4	review_scope	baseline_commit=00b1beef(origin_head_holding_20.22,20.24,feature;diff_equals_524e0afe_37_files_+5591/-215) reason=0a451914_predates_three_merges
+2026-10-11T06:56:16Z	Story 20.4	adr_verifications_complete	tool=none acs= result=none_required evidence= mutations=none model=claude-opus-5-5
+2026-10-11T06:56:16Z	Story 20.4	stage_spawned	stage=qa spawn_at=2026-10-11T06:56:16Z model=sonnet agent_name=20-4-qa-1 cycle_iteration=1
