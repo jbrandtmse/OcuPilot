@@ -457,3 +457,6 @@
 2026-10-11T09:34:37Z	Story 20.4	ci_resolved	story=20.4 run=38125834799 result=success head=e961e9f8 resolved_at=next_implement
 2026-10-11T09:34:37Z	Story 20.4	ci_green_verified	run=38125834799 head=e961e9f8 jobs=21_success boundary=reported_to_main
 2026-10-11T09:34:37Z	Story 20.23	stage_spawned	stage=implement spawn_at=2026-10-11T09:34:37Z model=sonnet agent_name=20-23-implement-1 cycle_iteration=1 ci_prior=success_38125834799(20.4_e961e9f8)
+2026-10-11T12:57:30Z	Story 20.23	dev_complete	spawn_at=(see_stage_spawned) model=sonnet agent_name=20-23-implement-1 build_sha=6aa1f459 baseline_revision=31c99597 review_loop_iteration=0 followup_review_recommended=true(patch_pass_added_seam_overrides,idle-process_test,per-test_browser_arming) deferred=0 bundle=3295800B verification=loop_green(5_new_classes+callers+rosters;browser_interop-queue-job-actions_4/4,interop-host-tabs_4/4,a11y_13/13;tools_1909;components_2852) note=handoff_overwrote_four_scratchpad_helper_scripts(outside_repo;shared_with_epic18)
+2026-10-11T12:57:30Z	Story 20.23	adr_verifications_complete	tool=none acs= result=none_required evidence= mutations=none model=claude-opus-5-5
+2026-10-11T12:57:30Z	Story 20.23	stage_spawned	stage=qa spawn_at=2026-10-11T12:57:30Z model=sonnet agent_name=20-23-qa-1 cycle_iteration=1
