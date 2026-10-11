@@ -9018,3 +9018,17 @@ Not in scope: `text-diff.ts` duplicating Compare (a later story can move Compare
 6. Optional: `ExplorerCreateMint` stores `Compile: true`, which nothing reads.
 
 Recorded in the ledger only: the create script's class check reads the undocumented `^rINDEXCLASS`, to re-measure when IRIS 2027.1 lands; and a save line of roughly 300,000 control characters might overflow while `Literal` escapes it (inference).
+
+### Story 23.7: The range-end cleanup, part 6
+
+Chartered by the orchestrator on 2026-10-10 as the holder for the `range-end-cleanup` queue, so the 36 entries it held have a story key that the /epic-cycle kit's ledger tool accepts (Kit-Version 2026-10-10.1, installed on the owner's approval). It keeps the queue's meaning: batch (d) and the doc and test-gap hygiene filed since stay unscheduled, and an entry is fixed early only when a story next works in its area and takes it over. It is not in any dispatch order. It runs only on the owner's word, and its scope is the batch the owner then picks.
+
+As a maintainer of OcuPilot,
+I want the deferred doc, comment and test-gap entries held under one story,
+So that none is lost, and each is fixed or declined when its turn comes.
+
+**Acceptance Criteria:**
+
+- **Given** an entry owned by this story
+- **When** a story that works in its area takes it over, or the owner schedules this story
+- **Then** the ledger tool records the new owner, or a disposition: `resolved-by` with the commit, or `wontfix-accepted` or `by-design` with a reason.
