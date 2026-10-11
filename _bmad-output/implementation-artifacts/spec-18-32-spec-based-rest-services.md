@@ -153,6 +153,17 @@ Rejected:
 
 - [x] [Smoke] The runner's full sweep is red on one class: `OcuPilot.Test.ToolEmit.TestEveryLiveToolRequiresItsScreensPairs` fails "and exactly the pairs its arguments add" for `webapp.restapis.create` and `webapp.restapis.delete` (run 503, `ocupilot-ci`) -- `src/OcuPilot/Test/ToolEmit.cls`, the per-family branches of that method -- the `RestServiceWrite` family has no branch, so its `ArgumentPairs` (`ExplorerSave.CodeWritePairs`) meets the default's empty expectation. Add the family to that method the way the `ExplorerSave`/`ExplorerCreate` branch reads `CodeWritePairs` for its expected added pairs, keeping the tools' own pairs (`%Development:USE` from `PrivilegePairs`) in the expected required pairs; run `ToolEmit` green on `ocupilot-ci`, and record a `mutation:` line (drop the new branch -> red). Touch nothing else.
 
+Code review 2026-10-11, rework re-review 1 (four layers, full tier, `2089d16f..HEAD`): 7 rows, 4 low entries, 0 high or medium. The `[Smoke]` item is confirmed fixed: `ToolEmit` 11 of 11 on `ocupilot-ci` (run 582).
+
+- [x] [Review][Patch] (low, fix-risk low, in-story) The new branch's comment named the request's scope for the argument pair, but `CodeWritePairs` reads the namespace the proposal stored first, and the create's mint stores one ("as a save's and a create's does" also misread). Reworded as the sibling branch says it [src/OcuPilot/Test/ToolEmit.cls:257]
+- [x] [Review][Patch] (low, fix-risk low, in-story) The non-empty assertion's message claimed the tool's arguments add the pair; it checks only that the expected pair resolves. Message now says so [src/OcuPilot/Test/ToolEmit.cls:261]
+
+Rejected:
+
+- (low, by-design) The expected side calls the same `CodeWritePairs` the product delegates to: the `[Smoke]` item names that source, as the sibling branch uses it; the run 580 mutation reddens it, and `RestServiceDescriptor` :73 and :77 pin the literal pair and the stored-namespace read. The suggested `DeveloperFloorFixture.CodeResource()` oracle names the install namespace's database, not the scope's (`RestServiceDescriptor` :76).
+- (false) The branch passes no `Namespace`, so an `ArgumentPairs` that ignores it would pass: `RestServiceDescriptor` :77 reddens on exactly that.
+- (low, wontfix-accepted, DW-2312) The method's doc comment still says no other tool's arguments add pairs and its `Mutations:` list omits this branch: rewording it is not add-only while Epic 20 edits `ToolEmit.cls` (Rule 11). reopen_if as DW-2312.
+
 ## Spec Change Log
 
 - 2026-10-11, lead: rework iteration 1 (trigger smoke: the runner's full sweep red on `ToolEmit`); one `[Smoke]` item.
@@ -226,6 +237,7 @@ Rejected:
 - `(loop)` With `OCUPILOT_BROWSER_ORIGIN=http://localhost:52776`, `OCUPILOT_BROWSER_CONTAINER=ocupilot-ci`: `cd ui && npm run build && docker cp dist/ocupilot-ui/browser/. ocupilot-ci:/durable/iris/csp/ocupilot/`, then `node --test --test-concurrency=1 browser/rest-services-write.browser-spec.mjs browser/rest-apis.browser-spec.mjs`. Re-measure the bundle (3,213,418 bytes at 18.30; warning 3326kB; DW-1166 if crossed).
 - `(QA)` `src/OcuPilot/Test/RestServiceReadBack.cls` (run 178): the delete's read-back reads `present` when the vendor answered 200 and the service is still listed, `notFound` once it is not; fixture tier, needs no principals.
 - (CR) After the review patches, on `ocupilot-ci` with the source loaded: `MgmntPort` 17 (run 197), `RestServiceWrite` 12 (run 198), `RestServiceDescriptor` 8 (run 187), `RestServiceGate` 3 (run 188), `RestServiceReadBack` 1 (run 189), `MgmntPortWire` 8 (run 199), `DraftRegistry` 9 (run 200), all green; S0 read after.
+- (CR, rework 1) After the comment and message patch to `ToolEmit.cls`, source loaded: `ToolEmit` 11 of 11 (run 582), totals read in `%UnitTest_Result`; S0 read after.
 - Full sweeps: the runner's (ObjectScript), CI's (browser). End at S0.
 
 **Mutations** (Rule 19), applied on `ocupilot-ci` with the mutated class and its descendants recompiled:
