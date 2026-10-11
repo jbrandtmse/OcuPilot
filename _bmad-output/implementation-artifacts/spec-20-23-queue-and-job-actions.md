@@ -2,7 +2,7 @@
 title: 'Story 20.23: Queue and job actions'
 type: 'feature'
 created: '2026-10-11'
-status: 'done'
+status: 'in-progress'
 review_loop_iteration: 0
 baseline_revision: '31c995977f969a043d44e340b61c5e2742c0a360'
 baseline_commit: '31c995977f969a043d44e340b61c5e2742c0a360'
@@ -295,6 +295,8 @@ deferred: []
   - Abort message on a job that is not retrying shows the `NOTRETRYING` sentence.
 - [x] Update `ui/browser/interop-host-tabs.browser-spec.mjs` :318 so it asserts the Abort all action Queues now offers.
 
+- [ ] [CI] instance shard 6/8 (run 38156123238, attempts 1 and 2, head 71aa05e7): `InteropJobStop.TestADeadOrAbsentJobIsRefusedBeforeTheVendorIsCalled` fails "the plain operation's job was terminated and reads Dead" -- `src/OcuPilot/Test/InteropJobActions.cls` `TerminatedJob` -- reproduced locally: on a freshly built `ocupilot-b-ci`, run `InteropJobStop` alone and first (no sibling class has started the probe production). Make the helper robust without depending on the vendor's dead-job rename timing: wait (bounded, with a re-read) for the host's job to be listed live before terminating it and check the terminate status; then wait, bounded and re-reading, for that job to read `Dead` under any id or for its process to be gone, and answer the id the port will see; if the production reads Troubled, refuse the test's premise by name (a failed assertion that says so) rather than time out. Keep the test's intent (a dead or absent job is refused 409 `INTEROP.JOB.DEAD` / 404 before any vendor call). Write the `mutation:` line for the fixed test, and prove the fix by the recipe above (fresh instance, class first) plus a run after a sibling class.
+
 **Acceptance Criteria:**
 
 - **AC1 (abort one, integration):** Given a message waiting in the probe operation's queue in USER on `ocupilot-b-ci`, when the agent proposes `interop.queuemessages.abort` and the person confirms over HTTP, or the person aborts it from Queue messages or from the item's Queue tab, then its entry leaves the queue, its header reads Aborted, and the queue's other messages stay; the change event and one OcuPilot audit row are recorded, and the agent's marker for the proposal.
@@ -335,6 +337,8 @@ Rejected:
 - `low` The Auto Run Result's residual risk and the 2851/2852 count are stale: both are spec edits outside Verification.
 
 ## Spec Change Log
+
+- 2026-10-11, rework 1 (lead): re-opened on a CI story red (`[CI]` item under Tasks & Acceptance).
 
 - 2026-10-11, spec gate (lead): DW-2298 returned to this story by the orchestrator (a merged trailer had moved it to 23-7), then re-owned to the chartered Story 20.25 (Item runtime and configuration actions) as this plan's decline names; the five spine drafts written (AD-62 item 9, AD-15, AD-8, AD-44, AD-51), AD-8's pairs as read in the vendor source.
 
