@@ -472,3 +472,8 @@
 2026-10-11T16:36:06Z	Story 20.23	story_cycle	plan_to_commit_min=465 implement_passes=1 reviews=1 rework=0 first_ci=pending models=plan:opus,implement:sonnet,qa:sonnet,cr:opus
 2026-10-11T16:39:40Z	Epic 20	epic_context_compiled	reason=planning_artifact_newer(20.25_charter,AD-62/10/15/8/44/51,EXPERIENCE.md,feature_18.32) model=opus lines=108
 2026-10-11T16:39:40Z	Story 20.5	stage_spawned	stage=plan spawn_at=2026-10-11T16:39:40Z model=opus agent_name=20-5-plan-1 cycle_iteration=1 inbox=none
+2026-10-11T17:15:48Z	Story 20.5	story_created	spawn_at=(see_stage_spawned) model=opus agent_name=20-5-plan-1 path=_bmad-output/implementation-artifacts/spec-20-5-lookup-tables-and-business-partners.md build_status=ready-for-dev spec_kb=54.8(oversized,multiple-goals) epic_context=reused
+2026-10-11T17:15:48Z	Story 20.5	spine_updated	ad=AD-62(item_10),AD-13,AD-36,AD-15,AD-44,AD-8,AD-10 reason=clarification(plan_drafts_at_spec_gate,Part_A) by=runner story=20-5 lint=ok(preexisting_low)
+2026-10-11T17:15:48Z	Epic 20	story_chartered	story=20.26 key=20-26-business-partners-saved-and-removed by=runner(20.5_spec_gate;the_AC_ships_partners_read-only_first) ledger=DW-2324 order=orchestrator_to_place ratification=asked
+2026-10-11T17:15:48Z	Epic 20	deps_hash_rerecorded	reason=story_chartered(20.26)
+2026-10-11T17:15:48Z	Story 20.5	spec_validated	service_introducing=false(extends_InteropPort) integration_ac=present(AC1-AC6) adr_constrained_acs=AD-62,AD-29,AD-8,AD-44,AD-13,AD-36,AD-22,AD-51,AD-53,AD-15,AD-34,AD-10 decision_dependency=none sections_created=none owned_ledger=none addressed=0 declined=0 mutates_shared_runtime=true(ocupilot-b-ci_named) gate=Q1_asked(default_one_story),Q2_DW-1166_standing_ruling,Q3_A,partners_to_20.26

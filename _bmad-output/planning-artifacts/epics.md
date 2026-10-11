@@ -8664,6 +8664,36 @@ So that the classic per-host Actions tab is not needed for them.
 
 ---
 
+### Story 20.26: Business partners saved and removed
+
+[AMENDED 2026-10-11, Story 20.5 spec gate (the stated partial), Rule 5] Chartered from Story 20.5, whose AC ships business partners read-only first and leaves save and remove to custom endpoints; that spec's Design Notes carry the charter as read in the vendor source. Consumes Story 20.5's Business partners screen and read. Its place in the order is the orchestrator's.
+
+As an interoperability developer,
+I want to create, edit and remove business partners,
+So that the partner records a production's settings name are managed without the classic page.
+
+**Acceptance Criteria:**
+
+- **Given** a business partner
+- **When** a create, an update or a remove is proposed and confirmed
+- **Then** each runs through the interoperability port on `Ens.Config.BusinessPartner` as a confirmed write over a fresh read, and records OcuPilot's own audit row, since the vendor records none.
+
+- **Given** a rename, which the vendor performs as a delete and a create with no transaction
+- **When** it is proposed
+- **Then** it is refused, or performed in one transaction, as the plan decides and states.
+
+- **Given** a remove of a partner that a production item's `BusinessPartner` setting names
+- **When** it is proposed
+- **Then** the port reads those items first and refuses or warns, as the plan decides and states.
+
+- **Given** the classic page declares no edit resource, so any `%Ens_ProductionConfig:READ` holder saves and removes there (inference from source)
+- **When** the writes' pairs are planned
+- **Then** the posture is returned to the orchestrator with options and a recommendation (Story 20.5's plan recommends `%Ens_ProductionConfig:WRITE`).
+
+- DW-2324: business partners' save and remove are Story 20.5's stated partial (ledger; routed by spec_gate 2026-10-11)
+
+---
+
 ## Epic 21: Stage 5 - custom-REST parity from the MCP suite's handlers
 
 Every remaining classic portal leaf with a backing class but no route becomes reachable: backup and mirroring, startup and memory tables, NLS locales, SQL settings, globals and the whole SQL tuning track, interoperability credentials, purge, deployment, record maps, workflow, the analytics editors, and a developer-tools set. The agent gains the 28 harvested inspection tools and undo by snapshot and revert.

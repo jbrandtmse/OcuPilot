@@ -11235,3 +11235,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: AD-10 puts the prohibited set in the kernel and names BROADCAST's exemption; the interop-job branch is ReviewedFewOnly, its guarantee AD-62 item 9's port read (Ens.Job.Stop forces only a holder of the job lock); item 2 names %Ens_ProductionRun:USE for every write.
 - 2026-10-11T14:19:04Z status=wontfix-accepted owner=20-23-queue-and-job-actions by=cr note=reopen_if=a plan or review reads AD-62 item 2 as gating a queue or job write, or cites AD-10 against interop-job
 - 2026-10-11T14:21:11Z status=resolved-by:20-23-queue-and-job-actions by=adjudication note=applied at origin: AD-62 items 1-2 scoped to production writes, AD-10 names the forced interop-job stop
+
+### DW-2324: Business partners' save and remove are Story 20.5's stated partial: create, update and delete on Ens.Config.BusinessPartner need custom endpoints, a rename rule, a remove check against items naming the partner, and a posture ruling
+- source: spec-20-5-lookup-tables-and-business-partners.md | severity: med | fix-risk: med | footprint: in-epic
+- evidence: 20.5's AC: the read-only half ships first; the classic page declares no edit resource (inference from source); the vendor audits nothing (measured at 20.5's plan)
+- 2026-10-11T17:14:49Z status=routed owner=20-26-business-partners-saved-and-removed by=spec_gate note=chartered as Story 20.26 at 20.5's spec gate

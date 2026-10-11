@@ -314,6 +314,7 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
 
   **Story 18.30's Doc DB applications declare no pair beyond the area's** [AMENDED 2026-10-10, Story 18.30 spec gate, Rule 20] (measured on a principal holding exactly `%Admin_Secure:USE`, `%DB_IRISSYS:READ` and `%DB_HSCUSTOM:READ`).
   **Story 20.23's queue and job tools declare the vendor's own checks** [AMENDED 2026-10-11, Story 20.23 spec gate, Rule 20], read in `Ens.Queue` and `Ens.Job`: `%Ens_Queues:WRITE` for the two queue aborts, `%Ens_Jobs:WRITE` for a job's abort and stop, `%Ens_MessageSuspend:USE` for its suspend, and WRITE on the namespace's globals database.
+  **Story 20.5's lookup and partner pairs** [AMENDED 2026-10-11, Story 20.5 spec gate, Rule 20]: `%EnsRole_Operator` opens Lookup tables, a table's entries and Business partners (`%Ens_LookupTables:READ`, `%Ens_ProductionConfig:READ`, read from the instance); the lookup writes need `%Ens_LookupTables:WRITE` and WRITE on the namespace's globals database.
 
 ### AD-9 — OcuPilot's own state is protected by a privileged routine application
 
@@ -373,6 +374,7 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
   **OcuPilot's own privileged routine applications** [AMENDED 2026-10-09, Story 18.10 spec gate, Rule 20], DW-2239: the owner chose "Refuse every change". Every write to `OcuPilotState` or `OcuPilotIdentity`, whether a delete, a disable or a change to any field, is refused `PROHIBITED.OCUPILOTROUTINEAPP` from either caller, through every tool and endpoint that reaches them, as OcuPilot's own web applications are. A privilege grant also reaches a privileged routine application through its routines: a routine added while a target role in its `MatchRoles` grants `%All` or an `%Admin_*` privilege is proposed at the destructive treatment with `GRANT.PRIVILEGED`, as a role grant is [AMENDED 2026-10-11, Story 18.33 spec gate, Rule 20].
 
   **Removing a mirror together with its databases** [AMENDED 2026-10-09, owner decision for Story 21.2, relayed by the Planner, Rule 20]: removing a mirror's configuration with its databases deleted (`SYS.Mirror.RemoveMirrorConfiguration` with `DeleteDB`, `RemoveOneMirrorSet` with `DeleteDBs`) is refused from either caller; its code is named at Story 21.2's spec gate. It is the one backup or mirroring action in the set beyond the self-protection arms above, which reach OcuPilot's own and the protected databases through these paths too, by effect. Every other backup and mirroring write, the same removal keeping its databases included, is a confirmed proposal whose destructive key defaults to disabled (FR-72; owner 2026-09-23, developer tool first). Writes are never frozen without a bound: every external freeze OcuPilot issues, from either caller, carries a bounded suspend limit; the bound, its mechanism, and how it holds where `Backup.General` ignores `WDSuspendLimit` (a clustered system) are measured in Story 21.2.
+  **Lookup tables are covered** [AMENDED 2026-10-11, Story 20.5 spec gate, Rule 20]: `lookup-table` and `lookup-entry` are covered types, `ReviewedFewOnly`; no self-protection target exists among them.
 
 ### AD-11 — Untrusted content never becomes instruction
 
@@ -454,6 +456,7 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
   **A `docdb-application` id is `[Namespace, Name]`** [AMENDED 2026-10-10, Story 18.30 spec gate, Rule 20], as `MappingMint` and `NamespacePort` expect; it takes `foldcase`, since the instance resolves both parts in any case.
 
   **A `routine-application` id is its name** [AMENDED 2026-10-10, Story 18.31 spec gate, Rule 20], `foldcase`, since the instance resolves the name in any case and stores it as typed.
+  **Story 20.5's ids** [AMENDED 2026-10-11, Story 20.5 spec gate, Rule 20]: `lookup-table` (the table's name), `lookup-entry` (`[Table, Key]`) and `business-partner` (the partner's name), each kept exactly.
 
 ### AD-14 — A confirmed write emits one change event; screens re-fetch, never patch
 
@@ -472,6 +475,7 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
 
 - **Named gap 2026-10-08 (Story 18.29).** A user copy records the vendor's own "Create User" event and nothing for the SQL privileges it copies (measured, auditing on); on the agent path the agent's marker and the proposal row are their only record, and a copy saved from the form leaves none. This covers only the privileges a copy carries.
 - **Named case 2026-10-11 (Story 20.23).** The queue and job actions, which the vendor does not audit, record OcuPilot's own `ConfigChange` from either caller, beside the marker for an agent write [AMENDED 2026-10-11, Story 20.23 spec gate, Rule 20].
+- **Named case 2026-10-11 (Story 20.5).** Lookup-table writes, which the vendor does not audit, record OcuPilot's own `ConfigChange` from either caller [AMENDED 2026-10-11, Story 20.5 spec gate, Rule 20].
 
 ### AD-16 — Namespace is switched by explicit save and restore
 
@@ -766,6 +770,7 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
   **Story 18.28's two unlisted reads** [AMENDED 2026-10-08, Story 18.28 spec gate, Rule 20]: `SqlColumnPrivilegeList` and `SqlAdminPrivilegeList` declare the column and admin `LIST`s, shared by the SQL privileges tab and their read tools (AD-36). Named limit: the column read finds no rows for an object spelled in another case.
 
   **An item setting whose name matches the credential pattern is never answered** (Story 20.22) [AMENDED 2026-10-10, owner decision "A: hide secrets, allow paths (Recommended)", by=merge_gate, Rule 20]: Item settings and its read tool answer such a row with an empty value and default and `Secret` true, and every other setting's value and default as row fields through AD-60. Named limit: a secret stored under a name the pattern does not match (an `ExtraHeaders` value carrying a credential) is answered like any other value.
+  **Lookup entries** [AMENDED 2026-10-11, Story 20.5 spec gate, Rule 20]: a parent-scoped `interop` list (`table`); an entry whose key matches the credential pattern is answered with an empty value and `Secret` true, Story 20.22's rule applied to keys.
 
 ### AD-37 — OcuPilot's own state has a declared lifecycle against the objects it references
 
@@ -920,6 +925,7 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
 
   **Story 18.31's `CLASSICPAGES`** [AMENDED 2026-10-10, Story 18.31 spec gate, Rule 20]: the privileged routine application create and update declare `%CSP.UI.Portal.Applications.PrivRoutine`; the delete, on the list's page, declares none.
   **Story 20.23's `CLASSICPAGES`** [AMENDED 2026-10-11, Story 20.23 spec gate, Rule 20]: the five queue and job tools declare `EnsPortal.ProductionConfig`, and a job's abort and suspend `EnsPortal.Queues` too.
+  **Story 20.5's `CLASSICPAGES`** [AMENDED 2026-10-11, Story 20.5 spec gate, Rule 20]: the lookup screens and tools declare `EnsPortal.LookupSettings`, and the partners screen `EnsPortal.BusinessPartners`.
 
 ### AD-45 — There is one smoke path, and it is also the health check
 
@@ -1215,6 +1221,7 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
   7. **Pairs beyond the screens' sets (AD-8).** The five production tools declare `%Ens_ProductionRun:USE` and WRITE on the namespace's globals database, resolved at the call, each refused by name before any port call (measured: start, stop and restart answer #940 without the run resource; recover raises `<PROTECT>` on `^Ens.Suspended` without WRITE). Named limits: the classic rules, transformations and processes pages take an OR list of resources a pair set cannot express, so those lists declare `%Ens_Code:READ`, held by every shipped role that reaches them, and refuse a holder of only `%Ens_Rules`, `%Ens_RoutingRules`, `%Ens_BusinessRules`, `%Ens_DTL` or `%Ens_BPL`; and a holder of only `%Ens_ConfigItemRun` is refused Update, which the vendor admits. These are narrower audiences, as AD-8 accepts for Stories 18.15, 18.16 and 19.17.
   8. **Declared reads, ids and classic pages.** A declared read may name the interoperability port (source kind `interop`, AD-36): `LIST` on its four endpoints, with no criteria, detail call or parts. A `production` id is the production class name, kept exactly (AD-13). The five tools' `CLASSICPAGES` (AD-44) are `EnsPortal.ProductionConfig`, `EnsPortal.Dialog.UpdateProduction` and `EnsPortal.StartStopFrame`. Home's production line, category gating and the interoperability event log keep their existing reads.
   9. **Queue and job actions** [AMENDED 2026-10-11, Story 20.23 spec gate, Rule 20]. `InteropPort` gains `QUEUE`/`ABORTQUEUE` on Queues, `ENTRY`/`ABORTMESSAGE` on QueueItems, and `JOB`/`ABORTJOB`/`SUSPENDJOB`/`STOPJOB` on Jobs, each action-style over its port-composed read. Before any vendor call it refuses by name an empty queue, a job whose process has ended, and an abort or suspend of a job not retrying its message (measured: the vendor answers OK for any pid and leaves the request set, and a request left on an idle job kept the next production stop from quiescing); a pid no job of the running production holds reads absent. The queue abort aborts exactly the entries its read enumerated, through `Ens.Queue.AbortItem`, and refuses a queue whose entries moved; `AbortQueue` is never called. A stop passes the production's update timeout capped at 15 s and forces, as the classic Jobs page does, and ends only a job of the running production, never a system process (AD-10). The three aborts are destructive; suspend and stop are not.
+  10. **Lookup tables and business partners** [AMENDED 2026-10-11, Story 20.5 spec gate, Rule 20]. `InteropPort` gains `LookupTables` (`LIST`, `LOOKUPTABLE`, `DELETETABLE`), `LookupEntries` (`LIST` with one `table` criterion, `LOOKUPENTRY`, `ADDENTRY`, `SETENTRY`, `REMOVEENTRY`) and `BusinessPartners` (`LIST`), calling `Ens.Util.LookupTable` under the vendor's own table lock (`^Ens.LookupTable(<table>)`, 3 s) as the classic page's save takes it. The vendor's lookup and partner calls check no privilege and audit nothing (measured), so the pairs are the classic pages' (`%Ens_LookupTables:READ`/`WRITE`, `%Ens_ProductionConfig:READ`) and each write records OcuPilot's own `ConfigChange`. A namespace under source control refuses every lookup write. A table is created with its first entry, and removing its last entry removes it (measured). Business-partner save and remove are a later story (Story 20.26).
 
 ### AD-63 -- The vendor's interoperability editors load in a same-origin frame, in normal mode, and OcuPilot never reaches into it
 
