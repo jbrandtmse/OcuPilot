@@ -1,12 +1,14 @@
-/// <p>The port to the instance's interoperability runtime (AD-62, AD-29, AD-52, Stories 20.2 and 20.3): <b>the
-/// only product class that starts, stops, restarts, updates or recovers a production, or enables, disables,
-/// adds or removes one of its items</b>, and the only one that reads the interoperability configuration for
+/// <p>The port to the instance's interoperability runtime (AD-62, AD-29, AD-52, Stories 20.2, 20.3 and 20.23): <b>the
+/// only product class that starts, stops, restarts, updates or recovers a production, enables, disables,
+/// adds or removes one of its items, or aborts a queued message, a queue's messages or a job's retried message,
+/// suspends that message or stops a job</b>, and the only one that reads the interoperability configuration for
 /// a declared read (source kind <code>interop</code>); Story 20.4 adds the nine runtime reads (<parameter>ENDPOINTS</parameter>
-/// from <code>Monitor</code> on), which write nothing and never call a queue or job action. It calls the documented classes the classic pages call --
-/// <code>Ens.Director</code>, <code>Ens.Config.Production:ProductionStatus</code> and
+/// from <code>Monitor</code> on), which write nothing. It calls the documented classes the classic pages call --
+/// <code>Ens.Director</code>, <code>Ens.Queue</code>, <code>Ens.Job</code>, <code>Ens.Config.Production:ProductionStatus</code> and
 /// <code>%Dictionary.ClassDefinition:SubclassOf</code> -- in the caller's process, as the signed-in
-/// user. Nothing here issues an HTTP request, calls a <code>%Api.InteropEditors</code> class or calls
-/// <code>Ens.Director.CleanProduction</code>.</p>
+/// user. Nothing here issues an HTTP request, calls a <code>%Api.InteropEditors</code> class, calls
+/// <code>Ens.Director.CleanProduction</code>, <code>Ens.Queue.AbortQueue</code> or <code>Ens.Job.Enumerate</code>, or writes a
+/// vendor global.</p>
 /// <p>The vendor's reads check no privilege (a principal holding only <code>%DB_USER:R</code> read the
 /// status, the production list and the rule list, measured), so <method>Invoke</method>'s gate is the
 /// whole gate for a read. <b>The order of every call is fixed</b>, and nothing reaches the vendor before
@@ -14,8 +16,9 @@
 /// <ol>
 /// <li>The endpoint and type are one this port serves, else 501 <code>PORT.NOTIMPLEMENTED</code>.</li>
 /// <li>The endpoint's pairs (<parameter>PRODUCTIONPAIRS</parameter> or <parameter>CODEPAIRS</parameter>)
-/// and, for a write, <parameter>WRITEPAIRS</parameter>, through
-/// <method>OcuPilot.Screen.Gate.EvaluateRequired</method>; a refusal is 403 naming the failed pair.</li>
+/// and, for a write, <parameter>WRITEPAIRS</parameter> or the queue or job action's own pair
+/// (<parameter>QUEUEWRITEPAIR</parameter>, <parameter>JOBWRITEPAIR</parameter>, <parameter>SUSPENDPAIR</parameter>),
+/// through <method>OcuPilot.Screen.Gate.EvaluateRequired</method>; a refusal is 403 naming the failed pair.</li>
 /// <li>The namespace: the query's <parameter>NAMESPACEKEY</parameter>, or the request's scope
 /// (<method>OcuPilot.Kernel.Scope.Current</method>), its shape checked; a namespace that does not report
 /// interoperability is 409 <parameter>OcuPilot.Api.InteropError.NAMESPACE</parameter>, refused before any
@@ -23,8 +26,9 @@
 /// <li>READ, or for a write WRITE, on the resource guarding the namespace's globals database, and for an
 /// item write WRITE on the one guarding its routines database too; an unresolved resource is 400
 /// <code>PORT.VALIDATION</code>.</li>
-/// <li>For a write, the production's state, read first and judged by <method>Refusal</method>: whatever
-/// the vendor would answer as a silent success is refused by its own code, and nothing is called.</li>
+/// <li>For a write, the target's state, read first and judged by <method>Refusal</method>, <method>ItemRefusalToken</method>
+/// or <method>RuntimeRefusal</method>: whatever the vendor would answer as a silent success is refused by its own code,
+/// and nothing is called.</li>
 /// <li>The vendor call, in the target namespace, switched by explicit save and restore (AD-16): the
 /// restore is the first line of every <code>Catch</code>, and no <code>OcuPilot.*</code> class is called
 /// while switched.</li>
@@ -34,7 +38,10 @@
 /// caller's <code>$USERNAME</code> and <code>$ROLES</code> read the same afterwards (measured). A write
 /// finishes inside its own request (AD-7): start returns once its jobs are launched, and stop, restart
 /// and update pass the production's own timeout capped at <parameter>STOPSECONDS</parameter>. A
-/// production that does not quiesce in that time is refused by the vendor and left as it was.</p>
+/// production that does not quiesce in that time is refused by the vendor and left as it was. A job stop passes the same
+/// capped timeout and forces.</p>
+/// <p><b>The queue and job actions record OcuPilot's own audit row</b> (<method>AuditRuntime</method>, AD-15), because the
+/// vendor records none for them.</p>
 /// <p><b>Every refusal is a written reason</b> (AD-39): the vendor's text goes to
 /// <method>LogFault</method> and nowhere else, and a read answered 404 is not logged (AD-2).</p>
 /// <p>Seams a test subclass overrides: <method>GateClass</method>, <method>LogFault</method>,
@@ -136,6 +143,18 @@ Parameter WRITEPAIRS = "%Ens_ProductionRun:USE";
 /// need <code>%Ens_ProductionRun:USE</code>.</p>
 Parameter ITEMWRITEPAIRS = "%Ens_ProductionConfig:WRITE";
 
+/// <p>The pair a queue abort (one message or all) adds to the Queues and QueueItems endpoints' pairs: the vendor's own
+/// check in <code>Ens.Queue.AbortItem</code> (Story 20.23).</p>
+Parameter QUEUEWRITEPAIR = "%Ens_Queues:WRITE";
+
+/// <p>The pair a job's abort or stop adds to the Jobs endpoint's pairs: the vendor's own check in
+/// <code>Ens.Job.AbortOperation</code> and <code>Ens.Job.Stop</code>.</p>
+Parameter JOBWRITEPAIR = "%Ens_Jobs:WRITE";
+
+/// <p>The pair a job's suspend adds to the Jobs endpoint's pairs: the vendor's own check in
+/// <code>Ens.Job.SuspendOperation</code>.</p>
+Parameter SUSPENDPAIR = "%Ens_MessageSuspend:USE";
+
 /// <p>The permission a read requires on the namespace's globals database.</p>
 Parameter READPERMISSION = "READ";
 
@@ -196,6 +215,39 @@ Parameter TYPESET = "SET";
 /// <p>Remove the production's own value of a Host or Adapter setting, so its default applies again.</p>
 Parameter TYPERESET = "RESET";
 
+/// <p>One queue (Story 20.23): <code>{Name, Count, Active, Created, Entries, Digest, Namespace}</code>, the queue abort's
+/// fresh read. <code>Entries</code> is how many entries the read enumerated, at most <parameter>ABORTMAX</parameter>, and
+/// <code>Digest</code> stands for them (<method>QueueDigest</method>). The id is the queue's name. With
+/// <parameter>ACTIONKEY</parameter> in the query it refuses what that action would be refused
+/// (<method>RuntimeRefusal</method>).</p>
+Parameter TYPEQUEUE = "QUEUE";
+
+/// <p>One queue entry (Story 20.23): <code>{Queue, Priority, Index, MessageId, Source, Target, BodyClass, TimeCreated,
+/// Status, Namespace}</code>, found through the message header's own <code>TargetQueueName</code>, so a message to a business
+/// process of pool size 0 is found in <parameter>ACTORQUEUE</parameter>. The id is the header's id.</p>
+Parameter TYPEENTRY = "ENTRY";
+
+/// <p>One job of the running production (Story 20.23): <method>JobRow</method>'s fields with <code>Production</code>, <code>Item</code> and
+/// <code>Namespace</code>. The id is the job's process id. With <parameter>ACTIONKEY</parameter> in the query it refuses what that
+/// action would be refused (<method>RuntimeRefusal</method>).</p>
+Parameter TYPEJOB = "JOB";
+
+/// <p>Abort the entries of a queue its read enumerated, one <code>Ens.Queue.AbortItem</code> each. <code>Ens.Queue.AbortQueue</code> is
+/// never called: it also aborts what arrived after the review.</p>
+Parameter TYPEABORTQUEUE = "ABORTQUEUE";
+
+/// <p>Abort one waiting message.</p>
+Parameter TYPEABORTMESSAGE = "ABORTMESSAGE";
+
+/// <p>Abort the message a job is retrying, when its current retry wait ends.</p>
+Parameter TYPEABORTJOB = "ABORTJOB";
+
+/// <p>Suspend the message a job is retrying, when its current retry wait ends.</p>
+Parameter TYPESUSPENDJOB = "SUSPENDJOB";
+
+/// <p>Stop one job of the running production, forcing it if it does not stop within the wait.</p>
+Parameter TYPESTOPJOB = "STOPJOB";
+
 /// <p>The query key naming the item a <code>Settings</code> list reads: its one criterion. Its value is the item's
 /// composite id <code>[Production, Name]</code> or the vendor's config name <code>Production||Name</code>.</p>
 Parameter ITEMKEY = "item";
@@ -203,9 +255,28 @@ Parameter ITEMKEY = "item";
 /// <p>The query key naming the queue a <code>QueueItems</code> list reads: its one criterion (Story 20.4).</p>
 Parameter QUEUEKEY = "queue";
 
+/// <p>The query key carrying the digest a queue abort was reviewed with (Story 20.23): the write refuses a queue whose
+/// entries no longer give it.</p>
+Parameter DIGESTKEY = "digest";
+
 /// <p>The queue a business process of pool size 0 shares with every other such process; its entries are told apart by
 /// the header's target.</p>
 Parameter ACTORQUEUE = "Ens.Actor";
+
+/// <p>The entity types and verbs the audit row of a queue or job write names (<method>AuditRuntime</method>, Story 20.23).</p>
+Parameter ENTITYQUEUE = "interop-queue";
+
+Parameter ENTITYMESSAGE = "interop-message";
+
+Parameter ENTITYJOB = "interop-job";
+
+Parameter VERBABORT = "abort";
+
+Parameter VERBABORTALL = "abortall";
+
+Parameter VERBSUSPEND = "suspend";
+
+Parameter VERBSTOP = "stop";
 
 /// <p>The state words a runtime read answers rows in: the namespace's current production, running or troubled
 /// (<method>ReadState</method>'s words).</p>
@@ -215,6 +286,11 @@ Parameter LIVEWORDS = "Running,Troubled";
 /// walked entry by entry and each header opened; past this many the read stops, so an item whose entries lie further
 /// down the queue shows only those it reached.</p>
 Parameter QUEUESCANMAX = 10000;
+
+/// <p>The most entries a queue read enumerates for <code>Entries</code> and <code>Digest</code>, and so the most a queue abort
+/// aborts (Story 20.23). The sentence that states it (<class>OcuPilot.Api.InteropError</class>) holds the same number, pinned by
+/// <file>ui/tools/interop.test.mjs</file>.</p>
+Parameter ABORTMAX = 10000;
 
 /// <p>What a setting refusal code begins with (<class>OcuPilot.Api.InteropError</class>).</p>
 Parameter SETTINGCODEPREFIX = "INTEROP.SETTING.";
@@ -271,6 +347,12 @@ Parameter CODESUSPENDEDMISMATCH = "<Ens>ErrProductionSuspendedMismatch";
 
 Parameter CODERUNTIMELOCK = "<Ens>ErrCanNotAcquireRuntimeLock";
 
+/// <p>The vendor's job-level locks (Story 20.23): the request lock an abort, suspend or stop takes on a job, and the status lock
+/// a forced stop takes.</p>
+Parameter CODEJOBLOCK = "<Ens>ErrCanNotAcquireJobLock";
+
+Parameter CODEJOBSTATUSLOCKED = "<Ens>ErrJobStatusLocked";
+
 /// <p>#940: the vendor's own privilege refusal.</p>
 Parameter CODEPRIVILEGE = 940;
 
@@ -299,6 +381,10 @@ Parameter REASONROUTINESUNKNOWN = "This instance cannot name the database that n
 Parameter REASONITEMIDREQUIRED = "Name the production and the item.";
 
 Parameter REASONQUEUEREQUIRED = "Name the queue.";
+
+Parameter REASONMESSAGEREQUIRED = "Name the message.";
+
+Parameter REASONJOBREQUIRED = "Name the job.";
 
 Parameter REASONITEMBODY = "An item write names its fields in an object.";
 
@@ -343,7 +429,16 @@ ClassMethod IsSettingWrite(pType As %String) As %Boolean
     Quit (pType = ..#TYPESET) || (pType = ..#TYPERESET)
 }
 
-/// <p>The endpoints Story 20.4 added, as a <class>%List</class>: the nine runtime reads, each <code>LIST</code> alone.</p>
+/// <p>Whether <var>pType</var> is one of the queue and job writes this port carries (Story 20.23): action-style writes
+/// over a port-composed read of the target, each needing WRITE on the namespace's globals database and no routines
+/// database.</p>
+ClassMethod IsRuntimeWrite(pType As %String) As %Boolean
+{
+    Quit (pType = ..#TYPEABORTQUEUE) || (pType = ..#TYPEABORTMESSAGE) || (pType = ..#TYPEABORTJOB) || (pType = ..#TYPESUSPENDJOB) || (pType = ..#TYPESTOPJOB)
+}
+
+/// <p>The endpoints Story 20.4 added, as a <class>%List</class>: the nine runtime reads. Each serves <code>LIST</code>; Queues,
+/// QueueItems and Jobs also serve the typed reads and writes of Story 20.23 (<method>Serves</method>).</p>
 ClassMethod RuntimeEndpoints() As %List
 {
     Quit $ListBuild(..#ENDPOINTMONITOR, ..#ENDPOINTITEMSTATUS, ..#ENDPOINTQUEUES, ..#ENDPOINTQUEUEITEMS, ..#ENDPOINTITEMQUEUE, ..#ENDPOINTITEMLOG, ..#ENDPOINTITEMMESSAGES, ..#ENDPOINTJOBS, ..#ENDPOINTITEMJOBS)
@@ -357,8 +452,10 @@ ClassMethod ItemEndpoints() As %List
 
 /// <p>The pairs <var>pEndpoint</var> requires for <var>pType</var>, as the <code>%List</code> of
 /// two-element <code>%List</code>s the gate evaluates: the endpoint's own pairs, then
-/// <parameter>WRITEPAIRS</parameter> for a production write or <parameter>ITEMWRITEPAIRS</parameter> for an
-/// item write; <code>""</code> for an endpoint this port does not serve. The Items and Settings endpoints take the
+/// <parameter>WRITEPAIRS</parameter> for a production write, <parameter>ITEMWRITEPAIRS</parameter> for an
+/// item write, or the queue or job write's own pair (<parameter>QUEUEWRITEPAIR</parameter>,
+/// <parameter>JOBWRITEPAIR</parameter>, <parameter>SUSPENDPAIR</parameter>); <code>""</code> for an endpoint this port does
+/// not serve. The Items and Settings endpoints take the
 /// Productions endpoint's pairs, and so does ItemStatus. The other runtime reads take the pairs of the classic page
 /// they replace (Story 20.4): Monitor, Queues and QueueItems, Jobs; and each item tab the Productions pairs plus its
 /// own (queue, event log, message headers, jobs).</p>
@@ -387,16 +484,25 @@ ClassMethod Pairs(pEndpoint As %String, pType As %String = "") As %List
     }
     If ..IsWrite(pType) Set tSpec = tSpec _ "," _ ..#WRITEPAIRS
     If ..IsItemWrite(pType) || ..IsSettingWrite(pType) Set tSpec = tSpec _ "," _ ..#ITEMWRITEPAIRS
+    If (pType = ..#TYPEABORTQUEUE) || (pType = ..#TYPEABORTMESSAGE) Set tSpec = tSpec _ "," _ ..#QUEUEWRITEPAIR
+    If (pType = ..#TYPEABORTJOB) || (pType = ..#TYPESTOPJOB) Set tSpec = tSpec _ "," _ ..#JOBWRITEPAIR
+    If pType = ..#TYPESUSPENDJOB Set tSpec = tSpec _ "," _ ..#SUSPENDPAIR
     Quit ##class(OcuPilot.Screen.Gate).ParsePairSpec(tSpec)
 }
 
-/// <p>Whether endpoint <var>pEndpoint</var> serves request type <var>pType</var>.</p>
+/// <p>Whether endpoint <var>pEndpoint</var> serves request type <var>pType</var>: <code>LIST</code> on every endpoint; and,
+/// beyond it, Productions the production reads and writes, Items and Settings theirs, and Queues (<code>QUEUE</code>,
+/// <code>ABORTQUEUE</code>), QueueItems (<code>ENTRY</code>, <code>ABORTMESSAGE</code>) and Jobs (<code>JOB</code>,
+/// <code>ABORTJOB</code>, <code>SUSPENDJOB</code>, <code>STOPJOB</code>).</p>
 ClassMethod Serves(pEndpoint As %String, pType As %String) As %Boolean
 {
     If '$ListFind(..Endpoints(), pEndpoint) Quit 0
     If pType = ..#TYPELIST Quit 1
     If pEndpoint = ..#ENDPOINTITEMS Quit (pType = ..#TYPEITEM) || ..IsItemWrite(pType)
     If pEndpoint = ..#ENDPOINTSETTINGS Quit (pType = ..#TYPESETTING) || ..IsSettingWrite(pType)
+    If pEndpoint = ..#ENDPOINTQUEUES Quit (pType = ..#TYPEQUEUE) || (pType = ..#TYPEABORTQUEUE)
+    If pEndpoint = ..#ENDPOINTQUEUEITEMS Quit (pType = ..#TYPEENTRY) || (pType = ..#TYPEABORTMESSAGE)
+    If pEndpoint = ..#ENDPOINTJOBS Quit (pType = ..#TYPEJOB) || (pType = ..#TYPEABORTJOB) || (pType = ..#TYPESUSPENDJOB) || (pType = ..#TYPESTOPJOB)
     If pEndpoint '= ..#ENDPOINTPRODUCTIONS Quit 0
     Quit (pType = ..#TYPESTATE) || ..IsWrite(pType)
 }
@@ -467,7 +573,8 @@ ClassMethod ReasonFor(pCode As %String) As %String
 /// array of <code>{Name, Modified}</code> (the document name <code>&lt;class&gt;.cls</code> and the
 /// class's last change as <code>YYYY-MM-DD HH:MM:SS</code>), cut at <parameter>MAXROWSKEY</parameter>;
 /// for <code>STATE</code> and after every write <code>{Name, Namespace, State, Current,
-/// NeedsUpdate}</code>; for the nine runtime reads an array of rows (<method>InvokeRuntime</method>).</p>
+/// NeedsUpdate}</code>; for the nine runtime reads an array of rows (<method>InvokeRuntime</method>); and for the typed
+/// queue, entry and job reads and the five queue and job writes one row (<method>InvokeTyped</method>).</p>
 /// <p>Otherwise an error status is returned, <var>pHttpStatus</var> is the status to answer with and
 /// <var>pFault</var> the wire fault: 403 <code>AUTH.NOPRIVILEGE</code> with
 /// <code>detail.failedPair</code>; 400 <code>PORT.VALIDATION</code> for a namespace, id or cap of the
@@ -492,7 +599,7 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
             Set tSC = ..Refuse(501, ##class(OcuPilot.Api.Error).#NOTIMPLEMENTED, ##class(OcuPilot.Api.Error).#PORTNOTIMPLEMENTED, ..#REASONNOTIMPLEMENTED, .pHttpStatus, .pFault)
             Quit
         }
-        Set tWrite = ..IsWrite(pType) || ..IsItemWrite(pType) || ..IsSettingWrite(pType)
+        Set tWrite = ..IsWrite(pType) || ..IsItemWrite(pType) || ..IsSettingWrite(pType) || ..IsRuntimeWrite(pType)
         Set tNamespace = $Get(pQuery(..#NAMESPACEKEY))
         If tNamespace = "" Set tNamespace = ##class(OcuPilot.Kernel.Scope).Current()
         Set tSC = ..Admit(pEndpoint, pType, tNamespace, .pHttpStatus, .pFault)
@@ -507,7 +614,7 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
             Quit
         }
         If $ListFind(..RuntimeEndpoints(), pEndpoint) {
-            Set tSC = ..InvokeRuntime(tNamespace, pEndpoint, .pQuery, .pResult, .pHttpStatus, .pFault)
+            Set tSC = ..InvokeRuntime(tNamespace, pEndpoint, pType, .pQuery, .pResult, .pHttpStatus, .pFault)
             Quit
         }
 
@@ -568,7 +675,7 @@ ClassMethod Admit(pEndpoint As %String, pType As %String, pNamespace As %String,
 {
     Set pHttpStatus = 0
     Set pFault = ""
-    Set tWrite = ..IsWrite(pType) || ..IsItemWrite(pType) || ..IsSettingWrite(pType)
+    Set tWrite = ..IsWrite(pType) || ..IsItemWrite(pType) || ..IsSettingWrite(pType) || ..IsRuntimeWrite(pType)
     Set tFailedPair = ""
     ; EvaluateRequired, not EvaluatePairs: a pair list mis-edited to empty fails closed.
     If '$ClassMethod(..GateClass(), "EvaluateRequired", ..Pairs(pEndpoint, pType), .tFailedPair) Quit ..Deny(tFailedPair, .pHttpStatus, .pFault)
@@ -2130,20 +2237,26 @@ ClassMethod Fail(pMessage As %String, pStatus As %Status, Output pHttpStatus As 
     Quit $$$ERROR($$$GeneralError, pFault.code _ ": " _ pFault.reason)
 }
 
-/// <p>Serve one of the nine runtime reads (Story 20.4) after <method>Invoke</method>'s gate. Each answers an array of
-/// rows, at most <parameter>MAXROWSKEY</parameter> of them when that is above zero, and writes nothing: no queue or
-/// job action is called, and <code>Ens.Job:Enumerate</code>, whose <code>MarkDeadJobs</code> writes, never is.</p>
+/// <p>Serve one of the nine runtime endpoints after <method>Invoke</method>'s gate. <code>LIST</code> answers an array of
+/// rows, at most <parameter>MAXROWSKEY</parameter> of them when that is above zero, and writes nothing:
+/// <code>Ens.Job:Enumerate</code>, whose <code>MarkDeadJobs</code> writes, is never called.</p>
 /// <ul>
 /// <li>Monitor, Queues and Jobs take no criterion; QueueItems takes <parameter>QUEUEKEY</parameter>; every other
 /// endpoint takes the item under <parameter>ITEMKEY</parameter> (the composite id or <code>Production||Name</code>),
 /// resolved as an item read resolves it: 400 when it is not one, 404 for an unknown production or item, 409
 /// <code>INTEROP.ITEM.AMBIGUOUS</code> for a name the production holds more than once.</li>
+/// <li>Queues, QueueItems and Jobs also serve a typed read (<parameter>TYPEQUEUE</parameter>, <parameter>TYPEENTRY</parameter>,
+/// <parameter>TYPEJOB</parameter>) and the action writes of Story 20.23 (<method>InvokeTyped</method>).</li>
 /// </ul>
-ClassMethod InvokeRuntime(pNamespace As %String, pEndpoint As %String, ByRef pQuery, Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+ClassMethod InvokeRuntime(pNamespace As %String, pEndpoint As %String, pType As %String, ByRef pQuery, Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
 {
     Set tSC = $$$OK
     Set pResult = ""
     Try {
+        If pType '= ..#TYPELIST {
+            Set tSC = ..InvokeTyped(pNamespace, pEndpoint, pType, .pQuery, .pResult, .pHttpStatus, .pFault)
+            Quit
+        }
         Set tMaxText = $Get(pQuery(..#MAXROWSKEY))
         If (tMaxText '= "") && '$Match(tMaxText, "^[1-9][0-9]*$") {
             Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONMAXROWS, .pHttpStatus, .pFault)
@@ -2341,9 +2454,10 @@ ClassMethod ReadItemStatus(pNamespace As %String, pProduction As %String, pLine 
 /// <method>GatherHosts</method>), only while the namespace's production is running or troubled and, when
 /// <var>pProduction</var> is given, is that production: <var>pFound(n)</var> is <code>Ens.Util.Statistics:EnumerateJobStatus</code>'s row
 /// <code>$ListBuild(Name, Job, Status, AdapterState, LastActivity, Count, Method, Retry, ActiveMessage)</code>, at most
-/// <var>pMax</var> when that is above zero. <var>pCurrent</var> is the production they belong to, <code>""</code> when
-/// there are none to give. A fault is <var>pCaught</var>, with the namespace restored.</p>
-ClassMethod GatherJobs(pNamespace As %String, pProduction As %String, pHost As %String, pMax As %Integer, Output pCurrent As %String, ByRef pFound, Output pCaught) As %Status [ Private ]
+/// <var>pMax</var> when that is above zero. With <var>pJob</var> only the job of that process id is kept, across every host.
+/// <var>pCurrent</var> is the production they belong to, <code>""</code> when there are none to give. A fault is
+/// <var>pCaught</var>, with the namespace restored.</p>
+ClassMethod GatherJobs(pNamespace As %String, pProduction As %String, pHost As %String, pMax As %Integer, Output pCurrent As %String, ByRef pFound, Output pCaught, pJob As %String = "") As %Status [ Private ]
 {
     Kill pFound
     Set pFound = 0
@@ -2372,11 +2486,13 @@ ClassMethod GatherJobs(pNamespace As %String, pProduction As %String, pHost As %
             }
             For tH = 1:1:tHosts {
                 If (pMax > 0) && (pFound >= pMax) Quit
+                If (pJob '= "") && pFound Quit
                 Set tResult = ##class(%ResultSet).%New("Ens.Util.Statistics:EnumerateJobStatus")
                 Set tExecuteSC = tResult.Execute(tHosts(tH))
                 If $$$ISERR(tExecuteSC) Throw ##class(%Exception.StatusException).CreateFromStatus(tExecuteSC)
                 While tResult.Next() {
                     If (pMax > 0) && (pFound >= pMax) Quit
+                    If (pJob '= "") && (tResult.GetData(2) '= pJob) Continue
                     Set pFound($Increment(pFound)) = $ListBuild(tResult.GetData(1), tResult.GetData(2), tResult.GetData(3), tResult.GetData(4), tResult.GetData(5), tResult.GetData(6), tResult.GetData(7), tResult.GetData(8), tResult.GetData(9))
                 }
                 Do tResult.Close()
@@ -2436,8 +2552,9 @@ ClassMethod ListJobs(pNamespace As %String, pProduction As %String, pHost As %St
 /// <p>The namespace's queues and the count of active messages in each (Story 20.4): <code>{Name, Count, Active,
 /// Created}</code> from <code>Ens.Queue:Enumerate</code>, <code>Active</code> the jobs of the host of that name that
 /// hold a message (<code>Ens.Util.Statistics:EnumerateJobStatus</code>), at most <var>pMax</var> when that is above
-/// zero. A queue of a stopped production still lists, as the vendor's query lists it.</p>
-ClassMethod ListQueues(pNamespace As %String, pMax As %Integer, Output pRows As %DynamicArray, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+/// zero. A queue of a stopped production still lists, as the vendor's query lists it. With <var>pName</var> only the queue
+/// of exactly that name is answered.</p>
+ClassMethod ListQueues(pNamespace As %String, pMax As %Integer, Output pRows As %DynamicArray, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, pName As %String = "") As %Status [ Private ]
 {
     Set pRows = ""
     Set tCaught = ""
@@ -2452,6 +2569,7 @@ ClassMethod ListQueues(pNamespace As %String, pMax As %Integer, Output pRows As 
         While tResult.Next() {
             If (pMax > 0) && (tFound >= pMax) Quit
             Set tName = tResult.GetData(1)
+            If (pName '= "") && (tName '= pName) Continue
             Set tActive = 0
             Set tJobs = ##class(%ResultSet).%New("Ens.Util.Statistics:EnumerateJobStatus")
             Set tJobSC = tJobs.Execute(tName)
@@ -2535,10 +2653,12 @@ ClassMethod QueueOf(pNamespace As %String, pProduction As %String, pItem As %Str
 /// header (<code>%OpenId</code>): <var>pFound(n)</var> is <code>$ListBuild(Priority, Index, MessageId, Source, Target,
 /// BodyClass, TimeCreated, Status)</code>, <code>Status</code> the display word. With <var>pTarget</var> an entry whose
 /// header names another target is left out; an entry whose header is gone is kept with empty fields. At most
-/// <var>pMax</var> are kept when that is above zero, and at most <parameter>QUEUESCANMAX</parameter> are examined. A
-/// fault is <var>pCaught</var>, with the namespace restored. Only vendor classes and this class run while it is
-/// switched.</p>
-ClassMethod GatherQueueEntries(pNamespace As %String, pQueue As %String, pTarget As %String, pMax As %Integer, ByRef pFound, Output pCaught) As %Status [ Private ]
+/// <var>pMax</var> are kept when that is above zero, and at most <parameter>QUEUESCANMAX</parameter> are examined.</p>
+/// <p>With <var>pMessageId</var> only the entry holding that message is kept, and the walk stops at it. With
+/// <var>pBare</var> no header is opened, so each element carries its priority, index and message id alone and
+/// <var>pTarget</var> is not applied (a queue abort's enumeration, Story 20.23). A fault is <var>pCaught</var>, with the
+/// namespace restored. Only vendor classes and this class run while it is switched.</p>
+ClassMethod GatherQueueEntries(pNamespace As %String, pQueue As %String, pTarget As %String, pMax As %Integer, ByRef pFound, Output pCaught, pMessageId As %String = "", pBare As %Boolean = 0) As %Status [ Private ]
 {
     Kill pFound
     Set pFound = 0
@@ -2554,19 +2674,23 @@ ClassMethod GatherQueueEntries(pNamespace As %String, pQueue As %String, pTarget
             Set tScanned = tScanned + 1
             If tScanned > ..#QUEUESCANMAX Quit
             Set tMessageId = tResult.GetData(3)
+            If (pMessageId '= "") && (tMessageId '= pMessageId) Continue
             Set (tSource, tTarget, tBody, tCreated, tStatus) = ""
-            Set tHeader = ##class(Ens.MessageHeader).%OpenId(tMessageId)
-            If $IsObject(tHeader) {
-                Set tSource = tHeader.SourceConfigName
-                Set tTarget = tHeader.TargetConfigName
-                Set tBody = tHeader.MessageBodyClassName
-                Set tCreated = tHeader.TimeCreated
-                Set tStatus = ##class(Ens.DataType.MessageStatus).LogicalToDisplay(tHeader.Status)
+            If 'pBare {
+                Set tHeader = ##class(Ens.MessageHeader).%OpenId(tMessageId)
+                If $IsObject(tHeader) {
+                    Set tSource = tHeader.SourceConfigName
+                    Set tTarget = tHeader.TargetConfigName
+                    Set tBody = tHeader.MessageBodyClassName
+                    Set tCreated = tHeader.TimeCreated
+                    Set tStatus = ##class(Ens.DataType.MessageStatus).LogicalToDisplay(tHeader.Status)
+                }
+                Set tHeader = ""
+                If (pTarget '= "") && (tTarget '= "") && (tTarget '= pTarget) Continue
             }
-            Set tHeader = ""
-            If (pTarget '= "") && (tTarget '= "") && (tTarget '= pTarget) Continue
             If (pMax > 0) && (pFound >= pMax) Quit
             Set pFound($Increment(pFound)) = $ListBuild(tResult.GetData(1), tResult.GetData(2), tMessageId, tSource, tTarget, tBody, tCreated, tStatus)
+            If pMessageId '= "" Quit
         }
         Do tResult.Close()
         Set tResult = ""
@@ -2750,13 +2874,384 @@ ClassMethod ListItemMessages(pNamespace As %String, pProduction As %String, pIte
     Quit $$$OK
 }
 
+/// <p>Whether a queue or job action of type <var>pType</var> is refused for the target state the arguments give, and the code
+/// it is refused with, or <code>""</code> when it may go ahead (Story 20.23): whatever the vendor would answer as a silent
+/// success is refused here by its own code, and nothing is called. Pure.</p>
+/// <ul>
+/// <li><parameter>TYPEABORTQUEUE</parameter> with <var>pEntries</var> 0: <code>INTEROP.QUEUE.EMPTY</code>. <var>pEntries</var> is
+/// how many entries the queue read enumerated.</li>
+/// <li>A job action (<parameter>TYPEABORTJOB</parameter>, <parameter>TYPESUSPENDJOB</parameter>, <parameter>TYPESTOPJOB</parameter>)
+/// with <var>pDead</var>, a job no process holds: <code>INTEROP.JOB.DEAD</code>.</li>
+/// <li>An abort or suspend unless <var>pStatus</var> reads <code>Retry</code> and <var>pActive</var>, the message the job is
+/// working on, is not empty: <code>INTEROP.JOB.NOTRETRYING</code>. The vendor answers either for any job and leaves its request
+/// set, and a request left on an idle job kept the next production stop from quiescing (measured).</li>
+/// </ul>
+ClassMethod RuntimeRefusal(pType As %String, pDead As %Boolean, pStatus As %String, pActive As %String, pEntries As %Integer) As %String
+{
+    If (pType = ..#TYPEABORTQUEUE) && 'pEntries Quit ##class(OcuPilot.Api.InteropError).#QUEUEEMPTY
+    If ((pType = ..#TYPEABORTJOB) || (pType = ..#TYPESUSPENDJOB) || (pType = ..#TYPESTOPJOB)) && pDead Quit ##class(OcuPilot.Api.InteropError).#JOBDEAD
+    If ((pType = ..#TYPEABORTJOB) || (pType = ..#TYPESUSPENDJOB)) && ((pStatus '= "Retry") || (pActive = "")) Quit ##class(OcuPilot.Api.InteropError).#JOBNOTRETRYING
+    Quit ""
+}
+
+/// <p><method>RuntimeRefusal</method> for the row <var>pRow</var> a queue or job read answered, which carries the fields it
+/// judges: <code>Entries</code>, <code>Dead</code>, <code>Status</code> and <code>ActiveMessage</code>.</p>
+ClassMethod RowRefusal(pType As %String, pRow As %DynamicObject) As %String
+{
+    If '$IsObject(pRow) Quit ""
+    Quit ..RuntimeRefusal(pType, ''pRow.%Get("Dead"), pRow.%Get("Status"), pRow.%Get("ActiveMessage"), +pRow.%Get("Entries"))
+}
+
+/// <p>The digest that stands for the queue entries <var>pFound</var> (<method>GatherQueueEntries</method>'s array): the
+/// SHA-256 of their <code>priority:index:messageId</code> lines in the order given, as lower-case hex. The same entries in
+/// another order give another digest. Pure.</p>
+ClassMethod QueueDigest(ByRef pFound) As %String
+{
+    Set tText = ""
+    For tI = 1:1:+$Get(pFound) {
+        Set tText = tText _ $List(pFound(tI), 1) _ ":" _ $List(pFound(tI), 2) _ ":" _ $List(pFound(tI), 3) _ $Char(10)
+    }
+    Quit $ZConvert(##class(%xsd.hexBinary).LogicalToXSD($System.Encryption.SHAHash(256, $ZConvert(tText, "O", "UTF8"))), "L")
+}
+
+/// <p>Serve a typed call on Queues, QueueItems or Jobs (Story 20.23) after <method>Invoke</method>'s gate: the read of one
+/// queue, entry or job, or one of the five writes. The target is named under <parameter>IDKEY</parameter>: 400 when it is
+/// not, with the reason of its kind. An <parameter>ACTIONKEY</parameter> that is not one of this endpoint's writes is 501.</p>
+ClassMethod InvokeTyped(pNamespace As %String, pEndpoint As %String, pType As %String, ByRef pQuery, Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pResult = ""
+    Set tId = $Get(pQuery(..#IDKEY))
+    If tId = "" {
+        Set tReason = $Case(pEndpoint, ..#ENDPOINTQUEUES: ..#REASONQUEUEREQUIRED, ..#ENDPOINTQUEUEITEMS: ..#REASONMESSAGEREQUIRED, : ..#REASONJOBREQUIRED)
+        Quit ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, tReason, .pHttpStatus, .pFault)
+    }
+    Set tWrite = ..IsRuntimeWrite(pType)
+    Set tAction = $Select(tWrite: pType, 1: $Get(pQuery(..#ACTIONKEY)))
+    If (tAction '= "") && '(..IsRuntimeWrite(tAction) && ..Serves(pEndpoint, tAction)) {
+        Quit ..Refuse(501, ##class(OcuPilot.Api.Error).#NOTIMPLEMENTED, ##class(OcuPilot.Api.Error).#PORTNOTIMPLEMENTED, ..#REASONNOTIMPLEMENTED, .pHttpStatus, .pFault)
+    }
+    If tWrite Quit ..PerformRuntime(pNamespace, pType, tId, .pQuery, .pResult, .pHttpStatus, .pFault)
+    If pType = ..#TYPEQUEUE {
+        Set tSC = ..ReadQueue(pNamespace, tId, .tRow, .tFound, .pHttpStatus, .pFault)
+    } ElseIf pType = ..#TYPEENTRY {
+        Set tSC = ..ReadEntry(pNamespace, tId, .tRow, .pHttpStatus, .pFault)
+    } Else {
+        Set tSC = ..ReadJob(pNamespace, tId, .tRow, .pHttpStatus, .pFault)
+    }
+    If $$$ISERR(tSC) Quit tSC
+    If tAction '= "" {
+        Set tCode = ..RowRefusal(tAction, tRow)
+        If tCode '= "" Quit ..Conflict(tCode, .pHttpStatus, .pFault)
+    }
+    Set pResult = tRow
+    Set pHttpStatus = 200
+    Quit $$$OK
+}
+
+/// <p>The queue <var>pName</var> as the queue abort reads it, in <var>pRow</var> (<code>{Name, Count, Active, Created, Entries,
+/// Digest, Namespace}</code>), with the entries <code>Entries</code> and <code>Digest</code> stand for in <var>pFound</var>:
+/// the queue's first <parameter>ABORTMAX</parameter> entries, enumerated without opening their headers. A queue the vendor
+/// does not list is 404 <code>PORT.NOTFOUND</code>, unlogged.</p>
+ClassMethod ReadQueue(pNamespace As %String, pName As %String, Output pRow As %DynamicObject, ByRef pFound, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pRow = ""
+    Set tSC = ..ListQueues(pNamespace, 0, .tRows, .pHttpStatus, .pFault, pName)
+    If $$$ISERR(tSC) Quit tSC
+    If 'tRows.%Size() Quit ..Absent(.pHttpStatus, .pFault)
+    Set tSC = ..GatherQueueEntries(pNamespace, pName, "", ..#ABORTMAX, .pFound, .tCaught, "", 1)
+    If $IsObject(tCaught) Quit ..Mapped(tCaught, "the queue's entries could not be read", .pHttpStatus, .pFault)
+    Set pRow = tRows.%Get(0)
+    Do pRow.%Set("Entries", pFound, "number")
+    Do pRow.%Set("Digest", ..QueueDigest(.pFound), "string")
+    Do pRow.%Set("Namespace", pNamespace, "string")
+    Set pHttpStatus = 200
+    Quit $$$OK
+}
+
+/// <p>The message header <var>pId</var> of <var>pNamespace</var>: <var>pExists</var>, the queue its own
+/// <code>TargetQueueName</code> names and its status as the display word. A fault is <var>pCaught</var>, with the namespace
+/// restored. No body is read.</p>
+ClassMethod HeaderFacts(pNamespace As %String, pId As %String, Output pExists As %Boolean, Output pQueue As %String, Output pStatus As %String, Output pCaught) As %Status [ Private ]
+{
+    Set pExists = 0
+    Set pQueue = ""
+    Set pStatus = ""
+    Set pCaught = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Set tHeader = ##class(Ens.MessageHeader).%OpenId(pId)
+        If $IsObject(tHeader) {
+            Set pExists = 1
+            Set pQueue = tHeader.TargetQueueName
+            Set pStatus = ##class(Ens.DataType.MessageStatus).LogicalToDisplay(tHeader.Status)
+        }
+        Set tHeader = ""
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set pCaught = ex
+    }
+    Quit $$$OK
+}
+
+/// <p>The queue entry of the message header <var>pId</var>, in <var>pRow</var> (<method>QueueEntryRow</method>'s fields and
+/// <code>Namespace</code>), found in the queue the header's own <code>TargetQueueName</code> names, so a message to a
+/// business process of pool size 0 is found in <parameter>ACTORQUEUE</parameter>. A header that is gone, one that names no
+/// queue and one whose message no longer waits in its queue are each 404 <code>PORT.NOTFOUND</code>, unlogged. Only the first
+/// <parameter>QUEUESCANMAX</parameter> entries of the queue are examined.</p>
+ClassMethod ReadEntry(pNamespace As %String, pId As %String, Output pRow As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pRow = ""
+    If '$Match(pId, "^[1-9][0-9]*$") Quit ..Absent(.pHttpStatus, .pFault)
+    Set tSC = ..HeaderFacts(pNamespace, pId, .tExists, .tQueue, .tStatus, .tCaught)
+    If $IsObject(tCaught) Quit ..Mapped(tCaught, "the message header could not be read", .pHttpStatus, .pFault)
+    If 'tExists || (tQueue = "") Quit ..Absent(.pHttpStatus, .pFault)
+    Set tSC = ..GatherQueueEntries(pNamespace, tQueue, "", 0, .tFound, .tCaught, pId)
+    If $IsObject(tCaught) Quit ..Mapped(tCaught, "the message's queue could not be read", .pHttpStatus, .pFault)
+    If 'tFound Quit ..Absent(.pHttpStatus, .pFault)
+    Set pRow = ..QueueEntryRow(tQueue, tFound(1))
+    Do pRow.%Set("Namespace", pNamespace, "string")
+    Set pHttpStatus = 200
+    Quit $$$OK
+}
+
+/// <p>The job of process id <var>pPid</var> among the running production's, across every host, in <var>pRow</var>
+/// (<method>JobRow</method>'s fields with <code>Production</code>, <code>Item</code> and <code>Namespace</code>). A namespace
+/// with no running or troubled production is 409 <parameter>OcuPilot.Api.InteropError.NOTRUNNING</parameter>; a pid no job of
+/// that production holds is 404 <code>PORT.NOTFOUND</code>, unlogged.</p>
+ClassMethod ReadJob(pNamespace As %String, pPid As %String, Output pRow As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pRow = ""
+    Set tSC = ..GatherJobs(pNamespace, "", "", 0, .tCurrent, .tFound, .tCaught, pPid)
+    If $IsObject(tCaught) Quit ..Mapped(tCaught, "the job could not be read", .pHttpStatus, .pFault)
+    If tCurrent = "" Quit ..Conflict(##class(OcuPilot.Api.InteropError).#NOTRUNNING, .pHttpStatus, .pFault)
+    If 'tFound Quit ..Absent(.pHttpStatus, .pFault)
+    Set pRow = ..JobRow(tFound(1), tCurrent)
+    Do pRow.%Set("Namespace", pNamespace, "string")
+    Set pHttpStatus = 200
+    Quit $$$OK
+}
+
+/// <p>A vendor status <var>pStatus</var> from a job action in this port's own words: a job that did not stop even forced is
+/// 409 <parameter>OcuPilot.Api.InteropError.JOBNOTSTOPPED</parameter>; the request lock and the status lock the vendor takes
+/// on a job are 503 <code>PORT.UNAVAILABLE</code>; anything else is <method>Statused</method>'s.</p>
+ClassMethod JobStatused(pStatus As %Status, pMessage As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    If ..HasCode(pStatus, ..#CODEJOBNOTSTOPPED) Quit ..Conflict(##class(OcuPilot.Api.InteropError).#JOBNOTSTOPPED, .pHttpStatus, .pFault)
+    If ..HasCode(pStatus, ..#CODEJOBLOCK) || ..HasCode(pStatus, ..#CODEJOBSTATUSLOCKED) Quit ..Unavailable(.pHttpStatus, .pFault)
+    Quit ..Statused(pStatus, pMessage, .pHttpStatus, .pFault)
+}
+
+/// <p>Run queue or job write <var>pType</var> on <var>pId</var> in <var>pNamespace</var> (Story 20.23) and answer what it
+/// leaves. The target is read again and judged by <method>RowRefusal</method> first, under the caller's per-target hold, so a
+/// state that moved since the review is refused by its own code with no vendor call.</p>
+ClassMethod PerformRuntime(pNamespace As %String, pType As %String, pId As %String, ByRef pQuery, Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pResult = ""
+    If pType = ..#TYPEABORTMESSAGE Quit ..PerformAbortMessage(pNamespace, pId, .pResult, .pHttpStatus, .pFault)
+    If pType = ..#TYPEABORTQUEUE Quit ..PerformAbortQueue(pNamespace, pId, $Get(pQuery(..#DIGESTKEY)), ''$Data(pQuery(..#DIGESTKEY)), .pResult, .pHttpStatus, .pFault)
+    Quit ..PerformJobAction(pNamespace, pType, pId, .pResult, .pHttpStatus, .pFault)
+}
+
+/// <p><code>Ens.Queue.AbortItem</code> of one entry, in <var>pNamespace</var>, switched by explicit save and restore. A thrown
+/// fault is <var>pCaught</var>. Only vendor classes run while it is switched.</p>
+ClassMethod VendorAbortItem(pNamespace As %String, pQueue As %String, pPriority As %Integer, pIndex As %Integer, Output pCaught) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Set pCaught = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Set tSC = ##class(Ens.Queue).AbortItem(pQueue, pPriority, pIndex)
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set pCaught = ex
+    }
+    Quit tSC
+}
+
+/// <p>Abort the one waiting message <var>pId</var> (<code>AbortItem</code> at the queue, priority and index its read gives).
+/// The entry is read first: a message that is gone or no longer waits is 404, with no vendor call. A vendor error whose entry
+/// is gone on a re-read is 404 too. The answer is the entry's row with the status the header reads once aborted.</p>
+ClassMethod PerformAbortMessage(pNamespace As %String, pId As %String, Output pResult As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pResult = ""
+    Set tSC = ..ReadEntry(pNamespace, pId, .tRow, .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) Quit tSC
+    Set tQueue = tRow.%Get("Queue")
+    Set tVendorSC = ..VendorAbortItem(pNamespace, tQueue, tRow.%Get("Priority"), tRow.%Get("Index"), .tCaught)
+    If $IsObject(tCaught) Quit ..Mapped(tCaught, "the message abort failed", .pHttpStatus, .pFault)
+    If $$$ISERR(tVendorSC) {
+        Set tAgainSC = ..ReadEntry(pNamespace, pId, .tAgain, .tAgainHttp, .tAgainFault)
+        If $$$ISERR(tAgainSC) && (tAgainHttp = 404) Quit ..Absent(.pHttpStatus, .pFault)
+        Quit ..Statused(tVendorSC, "the message abort failed", .pHttpStatus, .pFault)
+    }
+    Set tSC = ..HeaderFacts(pNamespace, pId, .tExists, .tHeaderQueue, .tStatus, .tCaught)
+    If tExists && (tStatus '= "") Do tRow.%Set("Status", tStatus, "string")
+    Set tEffects = {}
+    Do tEffects.%Set("namespace", pNamespace, "string")
+    Do tEffects.%Set("queue", tQueue, "string")
+    Do ..AuditRuntime(..#VERBABORT, ..#ENTITYMESSAGE, pId, tEffects)
+    Set pResult = tRow
+    Set pHttpStatus = 200
+    Quit $$$OK
+}
+
+/// <p>Abort the messages of queue <var>pName</var> its read enumerated, one <code>AbortItem</code> each, and leave the rest.
+/// An empty queue is 409 <code>INTEROP.QUEUE.EMPTY</code>. With <var>pHasDigest</var>, a queue whose enumerated entries no
+/// longer give <var>pDigest</var> is 409 <code>INTEROP.QUEUE.CHANGED</code>, with nothing aborted. An entry that left the
+/// queue meanwhile counts <code>Skipped</code>; one the vendor refuses while it is still queued fails the call. The answer is
+/// <code>{Name, Count, Aborted, Skipped, Namespace}</code>, <code>Count</code> the entries enumerated.</p>
+ClassMethod PerformAbortQueue(pNamespace As %String, pName As %String, pDigest As %String, pHasDigest As %Boolean, Output pResult As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pResult = ""
+    Set tSC = ..ReadQueue(pNamespace, pName, .tRow, .tFound, .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) Quit tSC
+    Set tCode = ..RowRefusal(..#TYPEABORTQUEUE, tRow)
+    If tCode '= "" Quit ..Conflict(tCode, .pHttpStatus, .pFault)
+    If pHasDigest && (pDigest '= tRow.%Get("Digest")) Quit ..Conflict(##class(OcuPilot.Api.InteropError).#QUEUECHANGED, .pHttpStatus, .pFault)
+    Set tAborted = 0
+    Set tCaughtAny = ""
+    Kill tRefused
+    For tI = 1:1:tFound {
+        Set tVendorSC = ..VendorAbortItem(pNamespace, pName, $List(tFound(tI), 1), $List(tFound(tI), 2), .tCaught)
+        If $IsObject(tCaught) {
+            Set tCaughtAny = tCaught
+            Quit
+        }
+        If $$$ISOK(tVendorSC) {
+            Set tAborted = tAborted + 1
+        } Else {
+            Set tRefused($Increment(tRefused)) = $ListBuild($List(tFound(tI), 1), $List(tFound(tI), 2), tVendorSC)
+        }
+    }
+    ; An entry the vendor refused is skipped only if it has left the queue; one still queued is a real refusal.
+    Set tSkipped = 0
+    Set tHardSC = $$$OK
+    If $Get(tRefused) {
+        Set tSC = ..GatherQueueEntries(pNamespace, pName, "", ..#ABORTMAX, .tNow, .tNowCaught, "", 1)
+        Kill tStillQueued
+        If '$IsObject(tNowCaught) {
+            For tI = 1:1:tNow {
+                Set tStillQueued($List(tNow(tI), 1), $List(tNow(tI), 2)) = ""
+            }
+        }
+        For tI = 1:1:tRefused {
+            If '$IsObject(tNowCaught) && '$Data(tStillQueued($List(tRefused(tI), 1), $List(tRefused(tI), 2))) {
+                Set tSkipped = tSkipped + 1
+            } ElseIf $$$ISOK(tHardSC) {
+                Set tHardSC = $List(tRefused(tI), 3)
+            }
+        }
+    }
+    If tAborted > 0 {
+        Set tEffects = {}
+        Do tEffects.%Set("namespace", pNamespace, "string")
+        Do tEffects.%Set("queue", pName, "string")
+        Do tEffects.%Set("aborted", tAborted, "number")
+        Do tEffects.%Set("skipped", tSkipped, "number")
+        Do ..AuditRuntime(..#VERBABORTALL, ..#ENTITYQUEUE, pName, tEffects)
+    }
+    If $IsObject(tCaughtAny) Quit ..Mapped(tCaughtAny, "the queue abort failed", .pHttpStatus, .pFault)
+    If $$$ISERR(tHardSC) Quit ..Statused(tHardSC, "the queue abort failed", .pHttpStatus, .pFault)
+    Set pResult = {}
+    Do pResult.%Set("Name", pName, "string")
+    Do pResult.%Set("Count", tFound, "number")
+    Do pResult.%Set("Aborted", tAborted, "number")
+    Do pResult.%Set("Skipped", tSkipped, "number")
+    Do pResult.%Set("Namespace", pNamespace, "string")
+    Set pHttpStatus = 200
+    Quit $$$OK
+}
+
+/// <p>The vendor call of job write <var>pType</var> on process <var>pPid</var>, in <var>pNamespace</var>, switched by explicit
+/// save and restore: <code>AbortOperation</code>, <code>SuspendOperation</code>, or <code>Stop</code> with the production's
+/// update timeout capped at <var>pCap</var> seconds and force on, as the classic Jobs page stops. A thrown fault is
+/// <var>pCaught</var>. Only vendor classes run while it is switched.</p>
+ClassMethod VendorJob(pNamespace As %String, pType As %String, pPid As %String, pCap As %Integer, Output pCaught) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Set pCaught = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        If pType = ..#TYPEABORTJOB {
+            Set tSC = ##class(Ens.Job).AbortOperation(pPid)
+        } ElseIf pType = ..#TYPESUSPENDJOB {
+            Set tSC = ##class(Ens.Job).SuspendOperation(pPid)
+        } Else {
+            Set tTimeout = ##class(Ens.Director).GetRunningProductionUpdateTimeout()
+            If tTimeout > pCap Set tTimeout = pCap
+            Set tSC = ##class(Ens.Job).Stop(pPid, tTimeout, 1)
+        }
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set pCaught = ex
+    }
+    Quit tSC
+}
+
+/// <p>Abort or suspend the message job <var>pPid</var> is retrying, or stop the job (Story 20.23). The job is read first and
+/// judged by <method>RowRefusal</method>: a namespace with no running production is 409
+/// <code>INTEROP.PRODUCTION.NOTRUNNING</code>, a pid no job of it holds 404, a dead job 409 <code>INTEROP.JOB.DEAD</code>, and an
+/// abort or suspend of a job not retrying 409 <code>INTEROP.JOB.NOTRETRYING</code>, each with no vendor call and no request left
+/// for the job. A stop passes the production's update timeout capped at <method>StopSeconds</method>.</p>
+/// <p>An abort or suspend answers the job's row read again; a stop answers <code>{Job, Host, Stopped, Namespace}</code>.</p>
+ClassMethod PerformJobAction(pNamespace As %String, pType As %String, pPid As %String, Output pResult As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pResult = ""
+    Set tSC = ..ReadJob(pNamespace, pPid, .tRow, .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) Quit tSC
+    Set tCode = ..RowRefusal(pType, tRow)
+    If tCode '= "" Quit ..Conflict(tCode, .pHttpStatus, .pFault)
+    Set tVendorSC = ..VendorJob(pNamespace, pType, pPid, ..StopSeconds(), .tCaught)
+    If $IsObject(tCaught) Quit ..Mapped(tCaught, "the job " _ pType _ " failed", .pHttpStatus, .pFault)
+    If $$$ISERR(tVendorSC) Quit ..JobStatused(tVendorSC, "the job " _ pType _ " failed", .pHttpStatus, .pFault)
+    Set tEffects = {}
+    Do tEffects.%Set("namespace", pNamespace, "string")
+    Do tEffects.%Set("host", tRow.%Get("Host"), "string")
+    If pType = ..#TYPESTOPJOB {
+        Do ..AuditRuntime(..#VERBSTOP, ..#ENTITYJOB, pPid, tEffects)
+        Set pResult = {}
+        Do pResult.%Set("Job", pPid, "string")
+        Do pResult.%Set("Host", tRow.%Get("Host"), "string")
+        Do pResult.%Set("Stopped", 1, "boolean")
+        Do pResult.%Set("Namespace", pNamespace, "string")
+        Set pHttpStatus = 200
+        Quit $$$OK
+    }
+    Do ..AuditRuntime($Select(pType = ..#TYPEABORTJOB: ..#VERBABORT, 1: ..#VERBSUSPEND), ..#ENTITYJOB, pPid, tEffects)
+    Set pResult = tRow
+    If $$$ISOK(..ReadJob(pNamespace, pPid, .tAfter, .tAfterHttp, .tAfterFault)) Set pResult = tAfter
+    Set pHttpStatus = 200
+    Quit $$$OK
+}
+
+/// <p>Record OcuPilot's own <code>ConfigChange</code> row for one queue or job write that read OK (AD-15, Story 20.23), from
+/// whichever caller made it: the vendor records none. <var>pVerb</var> is one of the <code>VERB</code> parameters,
+/// <var>pType</var> the entity type of the target and <var>pId</var> its id; <var>pEffects</var> names the namespace and,
+/// as the action has them, the queue, the counts or the host, and never a message's content. It never fails the write.
+/// Called after the namespace is restored. A seam a test reads through the audit database.</p>
+ClassMethod AuditRuntime(pVerb As %String, pType As %String, pId As %String, pEffects As %DynamicObject)
+{
+    Try {
+        Do ##class(OcuPilot.Kernel.Audit.Event).Record(pVerb, pType, pId, {}, 0, pEffects)
+    } Catch ex {
+        Do ..LogFault("the queue or job action could not be audited", ex.AsStatus())
+    }
+}
+
 /// <p><code>objectscript</code> for each write this port carries; <code>""</code> for
-/// <parameter>TYPELIST</parameter>, <parameter>TYPESTATE</parameter>, <parameter>TYPEITEM</parameter> and
-/// anything else, which have no script form (AD-59).</p>
+/// <parameter>TYPELIST</parameter>, <parameter>TYPESTATE</parameter>, <parameter>TYPEITEM</parameter>, the queue, entry and job
+/// reads and anything else, which have no script form (AD-59).</p>
 ClassMethod SnippetForm(pEndpoint As %String, pType As %String) As %String
 {
     If (pEndpoint = ..#ENDPOINTITEMS) && ..IsItemWrite(pType) Quit "objectscript"
     If (pEndpoint = ..#ENDPOINTSETTINGS) && ..IsSettingWrite(pType) Quit "objectscript"
+    If ..IsRuntimeWrite(pType) && ..Serves(pEndpoint, pType) Quit "objectscript"
     If pEndpoint '= ..#ENDPOINTPRODUCTIONS Quit ""
     If ..IsWrite(pType) Quit "objectscript"
     Quit ""
@@ -2766,9 +3261,9 @@ ClassMethod SnippetForm(pEndpoint As %String, pType As %String) As %String
 /// namespace <parameter>NAMESPACEKEY</parameter> names: <code>Ens.Director</code>'s
 /// <code>StartProduction</code> of the one production, <code>StopProduction</code>,
 /// <code>RestartProduction</code> and <code>UpdateProduction</code> with the production's own timeout capped
-/// at <parameter>STOPSECONDS</parameter>, and <code>RecoverProduction</code>; and an item's
+/// at <parameter>STOPSECONDS</parameter>, and <code>RecoverProduction</code>; an item's
 /// <code>EnableConfigItem</code>, add and remove, each followed by the production class's
-/// <code>SaveToClass</code>. A read writes nothing and answers no step. Every value is rendered as a
+/// <code>SaveToClass</code>; and the queue and job actions (<method>RuntimeSnippet</method>). A read writes nothing and answers no step. Every value is rendered as a
 /// string literal, so nothing the query carries runs as code, and every line closes any block it opens.
 /// Whoever runs the script is checked by the vendor's own run resource, and a recover by the namespace's
 /// database alone; an item write is checked by the databases alone.</p>
@@ -2780,6 +3275,8 @@ ClassMethod Snippet(pEndpoint As %String, pType As %String, ByRef pQuery, pBody 
         Set tText = tText _ ..ItemSnippet(pType, $Get(pQuery(..#IDKEY)), pBody)
     } ElseIf pEndpoint = ..#ENDPOINTSETTINGS {
         Set tText = tText _ ..SettingSnippet(pType, $Get(pQuery(..#IDKEY)), pBody)
+    } ElseIf ..IsRuntimeWrite(pType) {
+        Set tText = tText _ ..RuntimeSnippet(pType, $Get(pQuery(..#IDKEY)), pContext)
     } ElseIf pType = ..#TYPESTART {
         Set tText = tText _ $Char(10) _ " Set tSC = ##class(Ens.Director).StartProduction(" _ ..Literal($Get(pQuery(..#IDKEY))) _ ")"
     } ElseIf pType = ..#TYPERECOVER {
@@ -2797,6 +3294,44 @@ ClassMethod Snippet(pEndpoint As %String, pType As %String, ByRef pQuery, pBody 
     Do tStep.%Set("kind", "objectscript", "string")
     Do tStep.%Set("text", tText, "string")
     Quit [(tStep)]
+}
+
+/// <p>The lines <method>Snippet</method> adds for the queue or job write <var>pType</var> (Story 20.23): the reviewed values
+/// of <var>pContext</var>'s <code>payload</code>, or the id <var>pId</var> the query names, each a string literal.
+/// <code>AbortItem</code> of the queue, priority and index the entry read gave; an <code>EnumerateItem</code> loop of the queue
+/// calling <code>AbortItem</code>; <code>AbortOperation</code> or <code>SuspendOperation</code> of the job; or the production's
+/// update timeout capped at <parameter>STOPSECONDS</parameter> and <code>Stop</code> of the job with force on. Every line closes
+/// any block it opens.</p>
+ClassMethod RuntimeSnippet(pType As %String, pId As %String, pContext As %DynamicObject) As %String [ Private ]
+{
+    Set tNL = $Char(10)
+    Set tPayload = ""
+    If $IsObject(pContext) && (pContext.%GetTypeOf("payload") = "object") Set tPayload = pContext.%Get("payload")
+    If pType = ..#TYPEABORTMESSAGE {
+        Set tQueue = ""
+        Set tPriority = ""
+        Set tIndex = ""
+        If $IsObject(tPayload) {
+            If tPayload.%GetTypeOf("Queue") = "string" Set tQueue = tPayload.%Get("Queue")
+            If tPayload.%IsDefined("Priority") Set tPriority = tPayload.%Get("Priority")
+            If tPayload.%IsDefined("Index") Set tIndex = tPayload.%Get("Index")
+        }
+        Quit tNL _ " Set tSC = ##class(Ens.Queue).AbortItem(" _ ..Literal(tQueue) _ ", " _ ..Literal(tPriority) _ ", " _ ..Literal(tIndex) _ ")"
+    }
+    If pType = ..#TYPEABORTQUEUE {
+        Set tName = ..Literal(pId)
+        Set tText = tNL _ " Set tResult = ##class(%ResultSet).%New(""Ens.Queue:EnumerateItem"")"
+        Set tText = tText _ tNL _ " Set tSC = tResult.Execute(" _ tName _ ")"
+        Set tText = tText _ tNL _ " While tResult.Next() { Set tSC = ##class(Ens.Queue).AbortItem(" _ tName _ ", tResult.GetData(1), tResult.GetData(2)) }"
+        Quit tText
+    }
+    If pType = ..#TYPESTOPJOB {
+        Set tText = tNL _ " Set tTimeout = ##class(Ens.Director).GetRunningProductionUpdateTimeout()"
+        Set tText = tText _ tNL _ " If tTimeout > " _ ..#STOPSECONDS _ " Set tTimeout = " _ ..#STOPSECONDS
+        Set tText = tText _ tNL _ " Set tSC = ##class(Ens.Job).Stop(" _ ..Literal(pId) _ ", tTimeout, 1)"
+        Quit tText
+    }
+    Quit tNL _ " Set tSC = ##class(Ens.Job)." _ $Select(pType = ..#TYPEABORTJOB: "AbortOperation", 1: "SuspendOperation") _ "(" _ ..Literal(pId) _ ")"
 }
 
 /// <p>The lines <method>Snippet</method> adds for the item write <var>pType</var> of the item the composite

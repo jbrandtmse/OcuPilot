@@ -4,8 +4,9 @@
 /// AD-29, AD-36, AD-62, Story 20.4). No message body is read.</p>
 /// <p><b>It is a sub-resource of the Queues list and never listed</b> (<code>sideBarPosition</code> 0): it declares
 /// <code>parentScope</code> <code>interoperability/queues</code>, and its one criterion, <code>queue</code>, is the
-/// route id, required as a single-object read's is (AD-36). Its id is the message header's id, and it offers no
-/// action.</p>
+/// route id, required as a single-object read's is (AD-36). Its id is the message header's id, and its one row action is
+/// <code>abort</code> (Story 20.23): <code>interop.queuemessages.abort</code> aborts one waiting message, destructive, with the
+/// message id typed. An item's Queue tab posts its own Abort to this list's route (AD-53).</p>
 Class OcuPilot.Screen.Descriptor.InteropQueueMessageList Extends OcuPilot.Screen.Descriptor.Base
 {
 
@@ -28,7 +29,7 @@ XData Declaration
   "parentScope": "interoperability/queues",
   "id": {"kind": "single", "parts": []},
   "primaryAction": {"id": "", "selfProtection": ""},
-  "rowActions": [],
+  "rowActions": [{"id": "abort", "selfProtection": ""}],
   "context": {"fields": ["MessageId", "Source", "Target", "BodyClass", "TimeCreated", "Status"], "secretFields": []},
   "emptyStateKey": "interopQueueMessagesEmpty",
   "commandAliases": [],
@@ -60,8 +61,8 @@ XData Declaration
       {"field": "TimeCreated", "labelKey": "journalColumnCreated", "kind": "text"},
       {"field": "Status", "labelKey": "taskHistoryColumnStatus", "kind": "status"}
     ],
-    "emptyNextKey": "tableReadOnlyEmptyNext",
-    "emptyAgentKey": ""
+    "emptyNextKey": "",
+    "emptyAgentKey": "interopQueueMessagesEmptyAgent"
   },
   "toolIdentifier": "interop.queuemessages"
 }

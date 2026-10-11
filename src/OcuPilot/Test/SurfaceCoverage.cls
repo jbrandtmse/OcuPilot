@@ -388,6 +388,11 @@ XData Coverage
 <tool name="interop.items.remove" class="OcuPilot.Test.InteropItemControl" method="TestTheAgentsAddAndRemoveConfirmOverHttp" corpus="the add and the remove are asserted together in one test"/>
 <tool name="interop.itemsettings.set" class="OcuPilot.Test.InteropSettingControl" method="TestTheAgentsSetAndResetOfAHostSettingConfirmOverHttp" corpus="the set and the reset are asserted together in one test"/>
 <tool name="interop.itemsettings.reset" class="OcuPilot.Test.InteropSettingControl" method="TestTheAgentsSetAndResetOfAHostSettingConfirmOverHttp" corpus="the set and the reset are asserted together in one test"/>
+<tool name="interop.queuemessages.abort" class="OcuPilot.Test.InteropQueueActions" method="TestTheAgentsAbortOfOneMessageTakesItOffTheQueue"/>
+<tool name="interop.queues.abort" class="OcuPilot.Test.InteropQueueActions" method="TestTheAgentsQueueAbortTakesExactlyTheEntriesItsReadEnumerated"/>
+<tool name="interop.jobs.abort" class="OcuPilot.Test.InteropJobActions" method="TestTheAgentsAbortOfARetriedMessageLeavesItAborted"/>
+<tool name="interop.jobs.suspend" class="OcuPilot.Test.InteropJobActions" method="TestTheAgentsSuspendOfARetriedMessageLeavesItSuspended"/>
+<tool name="interop.jobs.stop" class="OcuPilot.Test.InteropJobStop" method="TestTheAgentsStopEndsTheJobAndTheUpdateStartsItAgain"/>
 <tool name="osmgmt.remotedatabases.create" class="OcuPilot.Test.RemoteDatabaseDescriptor" method="TestTheToolsDeclareTheirFieldsKindsAndPairs" corpus="the three remote database tools are asserted together in one loop"/>
 <tool name="osmgmt.remotedatabases.update" class="OcuPilot.Test.RemoteDatabaseDescriptor" method="TestTheToolsDeclareTheirFieldsKindsAndPairs" corpus="the three remote database tools are asserted together in one loop"/>
 <tool name="osmgmt.remotedatabases.delete" class="OcuPilot.Test.RemoteDatabaseDescriptor" method="TestTheToolsDeclareTheirFieldsKindsAndPairs" corpus="the three remote database tools are asserted together in one loop"/>

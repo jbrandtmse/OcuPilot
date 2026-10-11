@@ -63,6 +63,16 @@ const SENTENCES = [
   ['REASONSETTINGVALUE', 'interopSettingRefusalValue'],
   ['REASONSETTINGDESCENT', 'interopSettingRefusalDescent'],
   ['REASONSETTINGLOCATION', 'interopSettingLocationConsequence'],
+  ['REASONQUEUEEMPTY', 'interopRefusalQueueEmpty'],
+  ['REASONQUEUECHANGED', 'interopRefusalQueueChanged'],
+  ['REASONJOBDEAD', 'interopRefusalJobDead'],
+  ['REASONJOBNOTRETRYING', 'interopRefusalJobNotRetrying'],
+  ['REASONJOBNOTSTOPPED', 'interopRefusalJobNotStopped'],
+  ['REASONMESSAGEABORT', 'interopMessageAbortConsequence'],
+  ['REASONQUEUEABORT', 'interopQueueAbortConsequence'],
+  ['REASONJOBABORT', 'interopJobAbortConsequence'],
+  ['REASONJOBSUSPEND', 'interopJobSuspendConsequence'],
+  ['REASONJOBSTOP', 'interopJobStopConsequence'],
 ];
 
 /** The value `key` holds in `strings.ts`, which may sit on the line after its key. */
@@ -96,10 +106,19 @@ test("Story 20.2: the wait the stop, restart, update and busy sentences state is
   const match = /Parameter STOPSECONDS = (\d+);/.exec(readFileSync(PORT, 'utf8'));
   assert.notEqual(match, null, 'InteropPort.cls declares STOPSECONDS');
   const seconds = match[1];
-  for (const key of ['interopStopConsequence', 'interopRestartConsequence', 'interopUpdateConsequence', 'interopRefusalBusy', 'interopRefusalPartStopped']) {
+  for (const key of ['interopStopConsequence', 'interopRestartConsequence', 'interopUpdateConsequence', 'interopRefusalBusy', 'interopRefusalPartStopped', 'interopJobStopConsequence']) {
     assert.ok(stringValue(key).includes(`${seconds} seconds`), `${key} states a wait of ${seconds} seconds`);
   }
   for (const key of ['interopRecoverConsequence', 'interopRefusalRunning']) {
     assert.ok(!/\d+ seconds/.test(stringValue(key)), `${key} states no wait`);
   }
+});
+
+test("Story 20.23: the number the abort-all sentence states is the port's ABORTMAX", () => {
+  // Mutation (Rule 19): change ABORTMAX in InteropPort.cls to 5000 -> this goes red.
+  const match = /Parameter ABORTMAX = (\d+);/.exec(readFileSync(PORT, 'utf8'));
+  assert.notEqual(match, null, 'InteropPort.cls declares ABORTMAX');
+  const stated = `up to the first ${Number(match[1]).toLocaleString('en-US')},`;
+  assert.ok(stringValue('interopQueueAbortConsequence').includes(stated), `interopQueueAbortConsequence states "${stated}"`);
+  assert.ok(serverSentence('REASONQUEUEABORT').includes(stated), `REASONQUEUEABORT states "${stated}"`);
 });

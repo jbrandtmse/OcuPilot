@@ -10891,7 +10891,20 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "id": "",
       "selfProtection": ""
     },
-    "rowActions": [],
+    "rowActions": [
+      {
+        "id": "abort",
+        "selfProtection": ""
+      },
+      {
+        "id": "suspend",
+        "selfProtection": ""
+      },
+      {
+        "id": "stop",
+        "selfProtection": ""
+      }
+    ],
     "context": {
       "fields": [
         "Job",
@@ -11010,8 +11023,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
           "kind": "status"
         }
       ],
-      "emptyNextKey": "tableReadOnlyEmptyNext",
-      "emptyAgentKey": ""
+      "emptyNextKey": "",
+      "emptyAgentKey": "interopJobsEmptyAgent"
     },
     "tab": {
       "group": "interoperability/productions/items/document",
@@ -11615,7 +11628,12 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "id": "",
       "selfProtection": ""
     },
-    "rowActions": [],
+    "rowActions": [
+      {
+        "id": "abort",
+        "selfProtection": ""
+      }
+    ],
     "context": {
       "fields": [
         "MessageId",
@@ -11745,8 +11763,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
           "kind": "status"
         }
       ],
-      "emptyNextKey": "tableReadOnlyEmptyNext",
-      "emptyAgentKey": ""
+      "emptyNextKey": "",
+      "emptyAgentKey": "interopQueueMessagesEmptyAgent"
     },
     "tab": {
       "group": "interoperability/productions/items/document",
@@ -12157,7 +12175,20 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "id": "",
       "selfProtection": ""
     },
-    "rowActions": [],
+    "rowActions": [
+      {
+        "id": "abort",
+        "selfProtection": ""
+      },
+      {
+        "id": "suspend",
+        "selfProtection": ""
+      },
+      {
+        "id": "stop",
+        "selfProtection": ""
+      }
+    ],
     "context": {
       "fields": [
         "Job",
@@ -12271,8 +12302,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
           "kind": "status"
         }
       ],
-      "emptyNextKey": "tableReadOnlyEmptyNext",
-      "emptyAgentKey": ""
+      "emptyNextKey": "",
+      "emptyAgentKey": "interopJobsEmptyAgent"
     },
     "rowTarget": {
       "route": "os-management/processes/details",
@@ -12792,7 +12823,12 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "id": "",
       "selfProtection": ""
     },
-    "rowActions": [],
+    "rowActions": [
+      {
+        "id": "abort",
+        "selfProtection": ""
+      }
+    ],
     "context": {
       "fields": [
         "Name",
@@ -12874,8 +12910,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
           "kind": "text"
         }
       ],
-      "emptyNextKey": "tableReadOnlyEmptyNext",
-      "emptyAgentKey": ""
+      "emptyNextKey": "",
+      "emptyAgentKey": "interopQueuesEmptyAgent"
     },
     "toolIdentifier": "interop.queues",
     "refreshDefault": 0,
@@ -12925,7 +12961,12 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "id": "",
       "selfProtection": ""
     },
-    "rowActions": [],
+    "rowActions": [
+      {
+        "id": "abort",
+        "selfProtection": ""
+      }
+    ],
     "context": {
       "fields": [
         "MessageId",
@@ -13053,8 +13094,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
           "kind": "status"
         }
       ],
-      "emptyNextKey": "tableReadOnlyEmptyNext",
-      "emptyAgentKey": ""
+      "emptyNextKey": "",
+      "emptyAgentKey": "interopQueueMessagesEmptyAgent"
     },
     "toolIdentifier": "interop.queuemessages",
     "refreshDefault": 0,

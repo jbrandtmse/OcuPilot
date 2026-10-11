@@ -12,9 +12,10 @@ Parameter GROUP = "interoperability/productions/items/document";
 
 Parameter ITEMS = "interoperability/productions/items";
 
-/// <p>The nine screens, <code>&lt;class&gt;|&lt;route&gt;|&lt;side-bar position&gt;|&lt;archetype&gt;|&lt;entity type&gt;|&lt;endpoint&gt;|&lt;tool&gt;|&lt;classic page&gt;|&lt;refreshes&gt;|&lt;tab position&gt;</code>,
-/// separated by <code>;</code>.</p>
-Parameter SCREENS = "InteropMonitorList|interoperability/monitor|5|list|production-item|Monitor|interop.monitor|EnsPortal.ProductionMonitor|1|0;InteropQueueList|interoperability/queues|6|list|interop-queue|Queues|interop.queues|EnsPortal.Queues|1|0;InteropQueueMessageList|interoperability/queues/messages|0|list|interop-message|QueueItems|interop.queuemessages|EnsPortal.Queues|0|0;InteropJobList|interoperability/jobs|7|list|interop-job|Jobs|interop.jobs|EnsPortal.Jobs|1|0;InteropItemStatusTab|interoperability/productions/items/document|0|detail|production-item|ItemStatus|interop.itemstatus|EnsPortal.ProductionConfig|0|1;InteropItemQueueTab|interoperability/productions/items/queue|0|detail|interop-message|ItemQueue|interop.itemqueue|EnsPortal.ProductionConfig|0|3;InteropItemLogTab|interoperability/productions/items/log|0|detail|log-entry|ItemLog|interop.itemlog|EnsPortal.ProductionConfig|0|4;InteropItemMessageTab|interoperability/productions/items/messages|0|detail|interop-message|ItemMessages|interop.itemmessages|EnsPortal.ProductionConfig|0|5;InteropItemJobTab|interoperability/productions/items/jobs|0|detail|interop-job|ItemJobs|interop.itemjobs|EnsPortal.ProductionConfig|0|6";
+/// <p>The nine screens, <code>&lt;class&gt;|&lt;route&gt;|&lt;side-bar position&gt;|&lt;archetype&gt;|&lt;entity type&gt;|&lt;endpoint&gt;|&lt;tool&gt;|&lt;classic page&gt;|&lt;refreshes&gt;|&lt;tab position&gt;|&lt;row actions&gt;</code>,
+/// separated by <code>;</code>. The row actions are Story 20.23's: Queues, Queue messages and the Queue tab offer Abort, Jobs and the
+/// Jobs tab offer Abort, Suspend and Stop.</p>
+Parameter SCREENS = "InteropMonitorList|interoperability/monitor|5|list|production-item|Monitor|interop.monitor|EnsPortal.ProductionMonitor|1|0|;InteropQueueList|interoperability/queues|6|list|interop-queue|Queues|interop.queues|EnsPortal.Queues|1|0|abort;InteropQueueMessageList|interoperability/queues/messages|0|list|interop-message|QueueItems|interop.queuemessages|EnsPortal.Queues|0|0|abort;InteropJobList|interoperability/jobs|7|list|interop-job|Jobs|interop.jobs|EnsPortal.Jobs|1|0|abort,suspend,stop;InteropItemStatusTab|interoperability/productions/items/document|0|detail|production-item|ItemStatus|interop.itemstatus|EnsPortal.ProductionConfig|0|1|;InteropItemQueueTab|interoperability/productions/items/queue|0|detail|interop-message|ItemQueue|interop.itemqueue|EnsPortal.ProductionConfig|0|3|abort;InteropItemLogTab|interoperability/productions/items/log|0|detail|log-entry|ItemLog|interop.itemlog|EnsPortal.ProductionConfig|0|4|;InteropItemMessageTab|interoperability/productions/items/messages|0|detail|interop-message|ItemMessages|interop.itemmessages|EnsPortal.ProductionConfig|0|5|;InteropItemJobTab|interoperability/productions/items/jobs|0|detail|interop-job|ItemJobs|interop.itemjobs|EnsPortal.ProductionConfig|0|6|abort,suspend,stop";
 
 /// <p>The endpoint roster the port declares (AD-62): the four Story 20.2 endpoints, Items and Settings, then the nine
 /// runtime reads. Pinned as a literal, because a roster that derives both sides proves nothing.</p>
@@ -67,8 +68,9 @@ ClassMethod PairsOf(pEndpoint As %String) As %String
 /// <p>Each of the nine descriptors declares what the spec names: its route, side-bar position and archetype, the
 /// entity type, the endpoint of the interop source, the classic page and tool identifier, whether it refreshes (at the
 /// four shared rates, default off), the pairs of its endpoint and, as its own, those less
-/// <code>%Ens_Portal:USE</code>, no action, three prompts and a table with one name column; and the registry accepts
-/// the roster.</p>
+/// <code>%Ens_Portal:USE</code>, no primary action and the row actions <parameter>SCREENS</parameter> names (none for four of
+/// them), three prompts and a table with one name column; a screen with a row action draws the agent-inviting empty state and no
+/// next step, and one without keeps the read-only one; and the registry accepts the roster.</p>
 /// <p>Mutation (Rule 19): drop the <code>tab</code> from <class>OcuPilot.Screen.Descriptor.InteropItemQueueTab</class>
 /// -- the group leg of <method>TestTheItemTabsFormOneGroupInOrder</method> and this go red.</p>
 Method TestTheNineDeclarationsRegister()
@@ -86,7 +88,14 @@ Method TestTheNineDeclarationsRegister()
         Do $$$AssertEquals(..PairText(tDeclaration.privileges), ..PairsOf(tEndpoint), tClass _ ": its pairs are its endpoint's")
         Do $$$AssertEquals(..PairText(tDeclaration.privileges), ..PairText($ClassMethod(..#PORT, "Pairs", tEndpoint, "LIST")), tClass _ ": and the port's own")
         Do $$$AssertEquals(..PairText(tDeclaration.ownPrivileges), ..OwnText(..PairsOf(tEndpoint)), tClass _ ": its own pairs are those less the Interoperability menu's")
-        Do $$$AssertEquals(tDeclaration.primaryAction.id _ "|" _ tDeclaration.rowActions.%Size(), "|0", tClass _ ": it declares no action")
+        Set tActions = ""
+        Set tActionIterator = tDeclaration.rowActions.%GetIterator()
+        While tActionIterator.%GetNext(.tActionIndex, .tAction) {
+            Set tActions = tActions _ $Select(tActions = "": "", 1: ",") _ tAction.id
+        }
+        Do $$$AssertEquals(tDeclaration.primaryAction.id _ "|" _ tActions, "|" _ $Piece(tEntry, "|", 11), tClass _ ": no primary action, and its row actions")
+        Set tAgent = $Case($Piece(tEntry, "|", 1), "InteropQueueList": "interopQueuesEmptyAgent", "InteropQueueMessageList": "interopQueueMessagesEmptyAgent", "InteropItemQueueTab": "interopQueueMessagesEmptyAgent", "InteropJobList": "interopJobsEmptyAgent", "InteropItemJobTab": "interopJobsEmptyAgent", : "")
+        Do $$$AssertEquals(tDeclaration.table.emptyNextKey _ "|" _ tDeclaration.table.emptyAgentKey, $Select(tAgent = "": "tableReadOnlyEmptyNext|", 1: "|" _ tAgent), tClass _ ": its empty state")
         Do $$$AssertEquals(tDeclaration.suggestedPrompts.%Size(), 3, tClass _ ": it declares three suggested prompts")
         Do $$$AssertEquals(tDeclaration.refreshes _ "|" _ $Select(tDeclaration.refreshes: tDeclaration.refreshRates.%ToJSON(), 1: "") _ "|" _ tDeclaration.%IsDefined("refreshDefault"), $Piece(tEntry, "|", 9) _ "|" _ $Select($Piece(tEntry, "|", 9): "[5,10,30,60]", 1: "") _ "|0", tClass _ ": it refreshes at the four shared rates, default off, or not at all")
         Set tNames = 0
@@ -147,8 +156,9 @@ Method TestTheItemTabsFormOneGroupInOrder()
     Do $$$AssertEquals(tSettings.toolIdentifier _ "|" _ tSettings.tab.labelKey _ "|" _ tSettings.rowActions.%Size(), "interop.itemsettings|interopItemTabSettings|2", "Item settings keeps its tool and its two row actions, and labels its tab Settings")
 }
 
-/// <p>The port's endpoint roster is the one the spec names, every runtime endpoint serves <code>LIST</code> alone, and its
-/// <code>Pairs</code> are the declared sets; an endpoint the port does not serve has none.</p>
+/// <p>The port's endpoint roster is the one the spec names, every runtime endpoint serves <code>LIST</code> and none of the production,
+/// item or setting types (Queues, QueueItems and Jobs also serve Story 20.23's, which <class>OcuPilot.Test.InteropRuntimeDescriptor</class>
+/// pins), and its <code>Pairs</code> are the declared sets; an endpoint the port does not serve has none.</p>
 /// <p>Mutation (Rule 19): drop <code>%Ens_Queues:READ</code> from the <code>ItemQueue</code> branch of
 /// <method>OcuPilot.Port.InteropPort.Pairs</method> -- the pair leg goes red.</p>
 Method TestThePortServesTheNineEndpointsAndTheirPairs()

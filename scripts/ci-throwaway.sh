@@ -431,6 +431,11 @@ services:
       # from a session in another time zone, and the gate class signs in as probe principals each missing one pair a runtime
       # read requires and as principals holding exactly one read's pairs.
       # classes: InteropHostEdges, InteropHostGate, InteropHostRead
+      # The queue and job action classes compile and run the same probe production in USER, a retrying operation among its
+      # items (Story 20.23): the queue and job classes abort, suspend and stop on it and read the audit rows each leaves, the
+      # job stop class forces a hung job and terminates another, and the gate class signs in as probe principals each missing
+      # one pair an action requires and as principals holding exactly one action's pairs.
+      # classes: InteropJobActions, InteropJobStop, InteropQueueActions, InteropRuntimeGate
       # classes: ExplorerSourceTurn
       # classes: ExplorerSaveTurn
       # classes: ExplorerCreateTurn

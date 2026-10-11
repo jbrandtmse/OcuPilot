@@ -2,9 +2,10 @@
 title: 'Story 20.23: Queue and job actions'
 type: 'feature'
 created: '2026-10-11'
-status: 'ready-for-dev'
+status: 'done'
 review_loop_iteration: 0
-followup_review_recommended: false
+baseline_revision: '31c995977f969a043d44e340b61c5e2742c0a360'
+followup_review_recommended: true
 context:
   - '{project-root}/_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md'
   - '{project-root}/_bmad-output/planning-artifacts/ux-designs/ux-OcuPilot-2026-09-08/EXPERIENCE.md'
@@ -137,7 +138,7 @@ deferred: []
 | `Test/SurfaceCoverage.cls` | :380-390, :614-623 | one coverage row per write tool |
 | `Test/ToolEmit.cls` | :226/:237/:248 | per-base pair expectations |
 | `Test/ClassicPageGate.cls` | :75/:154 | `OWNPAIRS` 75 → 80 |
-| `Test/MappingDescriptor.cls` | :24/:156 | `CLASSICROSTER` 74 → 79 |
+| `Test/MappingDescriptor.cls` | :24/:156 | `CLASSICROSTER` 75 → 80 |
 | `Test/GovernanceBaseline.cls` | :15/:71 | `DISABLED`, baseline line order |
 | `Test/Governance.cls` | :42/:155/:158 | disabled-key constants |
 | `Test/ToolDispatch.cls` | :173/:180 | disabled-key expectations |
@@ -170,7 +171,7 @@ deferred: []
 
 **Execution:**
 
-- [ ] **Task 0** runs on `ocupilot-b-ci` only, through `docker exec ocupilot-b-ci iris session iris -U HSCUSTOM`. Record each result as a `Task 0:` line under Verification. A result that disagrees with Design Notes › Measured is HALT `intent gap`. The vendor bullets run first; the three marked *(after code)* run once the `ProductionProbe` task, or this story's code, compiles.
+- [x] **Task 0** runs on `ocupilot-b-ci` only, through `docker exec ocupilot-b-ci iris session iris -U HSCUSTOM`. Record each result as a `Task 0:` line under Verification. A result that disagrees with Design Notes › Measured is HALT `intent gap`. The vendor bullets run first; the three marked *(after code)* run once the `ProductionProbe` task, or this story's code, compiles.
   - A message to a pool-size-0 business process (`InteropHostEdges`' arrangement) has a header `TargetQueueName` that reads `Ens.Actor`, and `Ens.Queue:EnumerateItem("Ens.Actor")` holds its entry.
   - *(after code)* A principal holding exactly one tool's pairs (the screen's pairs, the own pair and `%DB_USER:RW`) completes that tool's action through the port, the forced stop included. With `%DB_USER:R` instead, record the vendor's answer past the gate.
   - `NormalizePage` spells `EnsPortal.ProductionConfig` and `EnsPortal.Queues` as written.
@@ -179,7 +180,7 @@ deferred: []
   - A job whose process `$System.Process.Terminate` ended still reads `Dead` in the Jobs read for at least 5 s.
   - `Ens.Job.Stop(<hung op job>, 2, 1)` puts its message back on the queue, leaves its host reading Error and the production update pending, and Update starts a job again. Record the wall clock.
   - *(after code)* One HTTP confirm per new tool answers exactly one envelope.
-- [ ] `src/OcuPilot/Port/InteropPort.cls`, extended (DW-2297):
+- [x] `src/OcuPilot/Port/InteropPort.cls`, extended (DW-2297):
   - **Types and pairs.**
     - Read types `QUEUE` (Queues), `ENTRY` (QueueItems) and `JOB` (Jobs).
     - Write types `ABORTQUEUE`, `ABORTMESSAGE`, `ABORTJOB`, `SUSPENDJOB` and `STOPJOB`, with `IsRuntimeWrite`.
@@ -203,8 +204,8 @@ deferred: []
     - `STOPJOB`: `Stop(pid, tTimeout, 1)` with `tTimeout` = `GetRunningProductionUpdateTimeout()` capped at `StopSeconds()`. `<Ens>ErrJobNotStopped` → 409 `JOBNOTSTOPPED`; `<Ens>ErrCanNotAcquireJobLock` and `<Ens>ErrJobStatusLocked` → 503; anything else goes to `Statused`. The answer is `{Job, Host, Stopped: true, Namespace}`.
     - After the restore, `AuditRuntime` records `Kernel/Audit/Event.Record(<abort|abortall|suspend|stop>, <type>, <id>, {}, 0, {namespace, plus queue/aborted/skipped or host})` inside a `Try`. It is a seam a test can read (Design Notes › Audit).
   - **Scripts.** `SnippetForm`/`Snippet` gain one objectscript branch per write. Each renders the reviewed values from `pContext.payload` through `Literal` with every line closed (AD-59): `AbortItem(<Queue>, <Priority>, <Index>)`; an `EnumerateItem` loop calling `AbortItem`; `AbortOperation`/`SuspendOperation(<Job>)`; and the capped timeout, then `Stop(<Job>, tTimeout, 1)`.
-- [ ] `src/OcuPilot/Api/InteropError.cls`: add the ten codes and sentences in Design Notes › Codes. Add `RuntimeCodes()`, and extend `Codes()`, `ConsequenceCodes()` and `ReasonFor`.
-- [ ] Tools (new), each with an agent-facing `DESCRIPTION` stating that it only proposes, how to name the target, and what is refused:
+- [x] `src/OcuPilot/Api/InteropError.cls`: add the ten codes and sentences in Design Notes › Codes. Add `RuntimeCodes()`, and extend `Codes()`, `ConsequenceCodes()` and `ReasonFor`.
+- [x] Tools (new), each with an agent-facing `DESCRIPTION` stating that it only proposes, how to name the target, and what is refused:
   - `Screen/Tool/InteropJobAction.cls` (abstract, extends `InteropAction`):
     - `DESCRIPTORCLASS` `InteropJobList`, `READTYPE` `JOB`, `READANSWERS` (the `JOB` fields), `STATEMARKER` `Status`, `CLASSICPAGES` `EnsPortal.ProductionConfig`, `Endpoint` Jobs, `IdArgument` `Job`
     - `InputSchema` describes `Job` as the pid the Jobs list or an item's Jobs tab reports
@@ -230,17 +231,17 @@ deferred: []
     - `FINGERPRINTSUBJECT` `Entries,Digest,Namespace`, `PRECONDITIONFIELD` `Entries`, `STATEFIELD` `Count` (row: `Count` → `Count - Entries`)
     - `PRECONDITIONCODES` `INTEROP.QUEUE.EMPTY,INTEROP.NAMESPACE`, `INTEROP.QUEUE.ABORT`
     - `PortQuery` adds the stored payload's `Digest` as `DIGESTKEY` after `##super`
-- [ ] Descriptors, in place (Epic 20's own):
+- [x] Descriptors, in place (Epic 20's own):
   - `InteropQueueList`: `rowActions` `abort`.
   - `InteropQueueMessageList` and `InteropItemQueueTab`: `abort`.
   - `InteropJobList` and `InteropItemJobTab`: `abort`, `suspend`, `stop`.
   - Each sets `emptyNextKey` `""` and `emptyAgentKey` to the new `interopQueuesEmptyAgent`, `interopQueueMessagesEmptyAgent` or `interopJobsEmptyAgent`; each tab uses its list's key, as `ProcessDetails` does.
   - Each doc comment's "offers no action" sentence is replaced with the actions it offers.
-- [ ] `Kernel/Proposal/Prohibited.cls`, add-only:
+- [x] `Kernel/Proposal/Prohibited.cls`, add-only:
   - Append `interop-queue,interop-message,interop-job` to `COVEREDTYPES`.
   - Add `TYPEINTEROPQUEUE`, `TYPEINTEROPMESSAGE` and `TYPEINTEROPJOB`, three clauses appended to the :1344 chain, and three `ReviewedFewOnly` branches beside the production ones, each with its reason (Design Notes).
-- [ ] `Kernel/Governance/Baseline.cls`: append `interop.queuemessages.abort: false`, `interop.queues.abort: false`, `interop.jobs.abort: false`, `interop.jobs.suspend: true` and `interop.jobs.stop: true`.
-- [ ] Client:
+- [x] `Kernel/Governance/Baseline.cls`: append `interop.queuemessages.abort: false`, `interop.queues.abort: false`, `interop.jobs.abort: false`, `interop.jobs.suspend: true` and `interop.jobs.stop: true`.
+- [x] Client:
   - `screen-action-handler.ts`, add-only:
     - `SCREEN_ACTION_DESCRIPTORS` gains the five descriptors.
     - `ACTION_ADDRESS` maps `InteropItemQueueTab` → `InteropQueueMessageList` and `InteropItemJobTab` → `InteropJobList`.
@@ -251,18 +252,18 @@ deferred: []
   - `screen-actions.ts`: an `abort` label "Abort". `DESCRIPTOR_ACTION_LABELS`: Queues `abort` "Abort all"; Jobs and the Jobs tab `abort` "Abort message", `suspend` "Suspend message" and `stop` "Stop job".
   - `proposal-view.ts`: the five consequence codes map to their sentences.
   - `strings.ts`: append after :6545. Then regenerate `screens.generated.ts`.
-- [ ] `EXPERIENCE.md`, appending to existing lines only:
+- [x] `EXPERIENCE.md`, appending to existing lines only:
   - :173: add "suspend a job's message or stop a job (Jobs and an item's Jobs tab, Story 20.23)" to the warning list before its closing parenthesis.
   - :173: add a `·` entry: "abort a queued message, every message of a queue, or a job's retried message (Queue messages, an item's Queue tab, Queues, Jobs and an item's Jobs tab, Story 20.23: the destructive treatment, typed name the message id, the queue's name or the job's process id)".
   - :604: add a Story 20.23 Where clause carrying every new literal.
   - Each addition carries `[ADDED 2026-10-11 - Story 20.23]`.
   - Then `cd ui && npm run test:tools`.
-- [ ] `Test/ProductionProbe.cls`, add-only:
+- [x] `Test/ProductionProbe.cls`, add-only:
   - A `RetryOp` class text (`INVOCATION` Queue; its method sets `..Retry = 1` and returns an error), joining `Create`'s list.
   - The `Svc` forwards to `pHint` when it is given, else to `OPNAME`. `Send(pTarget = "")` passes it.
   - `AddRetryItem(pName, pInterval = 2, pTimeout = 300)` extends `AddItem` with `PutItemSetting` for `RetryInterval` and `FailureTimeout`.
   - `Settle` and `Remove` keep leaving `Gone()` 1 (Task 0).
-- [ ] Tests (new). Each class creates and removes its own probe and principals and restores governance, runs one class per call, stays under about 500 lines, and declares `ARMINGVARIABLE` `OCUPILOT_ALLOW_PRINCIPALS` as the InteropHost* classes do, with one `# classes:` line in `scripts/ci-throwaway.sh`:
+- [x] Tests (new). Each class creates and removes its own probe and principals and restores governance, runs one class per call, stays under about 500 lines, and declares `ARMINGVARIABLE` `OCUPILOT_ALLOW_PRINCIPALS` as the InteropHost* classes do, with one `# classes:` line in `scripts/ci-throwaway.sh`:
   - `Test/InteropRuntimeDescriptor.cls`:
     - the five screens' actions and empty states, and the tool shapes (names, types, destructiveness, each key's baseline value, pairs, `CLASSICPAGES`, subjects, codes)
     - `Serves` and `Pairs` per type, the `RuntimeRefusal` matrix, `QueueDigest`'s order sensitivity, every new code through `InteropError.ReasonFor` and `Api/Error.ReasonForViolation`, and the script forms
@@ -285,13 +286,13 @@ deferred: []
   - `Test/InteropRuntimeGate.cls`:
     - Each missing pair is refused by name through the port, the mint and confirm, and the screen routes. A principal holding exactly each tool's pairs completes it.
     - It reuses `InteropItemGate`'s helpers through a parameter, as `InteropSettingGate` does, and `InteropHostGate`'s principal generator where its `UNIVERSE` can be supplied.
-- [ ] Roster sweep (Rule 30): every row of Code Map › Rosters. Grep `src/OcuPilot/Test`, `ui/tools`, `ui/browser` and the `ui/src` specs for the five screens and the five tools, and update each existing assertion of the old shape.
-- [ ] `ui/browser/interop-queue-job-actions.browser-spec.mjs` (new). `before` removes any leftover probe and creates one, armed as `InteropHostRead.ArmProbe` does; `after` removes it. Every step waits for the screen's answered signal. In USER:
+- [x] Roster sweep (Rule 30): every row of Code Map › Rosters. Grep `src/OcuPilot/Test`, `ui/tools`, `ui/browser` and the `ui/src` specs for the five screens and the five tools, and update each existing assertion of the old shape.
+- [x] `ui/browser/interop-queue-job-actions.browser-spec.mjs` (new). `beforeEach` removes any leftover probe and creates one, armed as `InteropHostRead.ArmProbe` does, so each test starts fresh and passes alone; `after` removes it. Every step waits for the screen's answered signal. In USER:
   - Abort all on `OcuPilotProbeOp` through the typed-name dialog: the queue's `Count` reads 0.
   - Send two messages, then abort one from Queue messages.
   - Stop the hung job from Jobs through its warning: the row leaves.
   - Abort message on a job that is not retrying shows the `NOTRETRYING` sentence.
-- [ ] Update `ui/browser/interop-host-tabs.browser-spec.mjs` :318 so it asserts the Abort all action Queues now offers.
+- [x] Update `ui/browser/interop-host-tabs.browser-spec.mjs` :318 so it asserts the Abort all action Queues now offers.
 
 **Acceptance Criteria:**
 
@@ -308,6 +309,29 @@ deferred: []
 - 2026-10-11, spec gate (lead): DW-2298 returned to this story by the orchestrator (a merged trailer had moved it to 23-7), then re-owned to the chartered Story 20.25 (Item runtime and configuration actions) as this plan's decline names; the five spine drafts written (AD-62 item 9, AD-15, AD-8, AD-44, AD-51), AD-8's pairs as read in the vendor source.
 
 ## Review Triage Log
+
+### 2026-10-11 - Review pass
+
+- verdicts: 18 findings - high 0, medium 4, low 14, false 0, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` The queue abort's reviewed digest reaches the write through `InteropQueueAbort.PortQuery` and no test calls it; the stale-digest test's "current digest" leg passed `pHasDigest` 0 - added `InteropRuntimeDescriptor.TestTheQueueAbortWriteIsGivenTheReviewedDigest` (through `Operation.Query`), made the leg send the digest, and wrote the mutation line.
+  - `[medium]` `[patch]` The partial-failure branches of `PerformAbortQueue` and `PerformAbortMessage` (an entry that left the queue, an entry still queued that the vendor refuses) run in no test - added the `InteropItemSeam` modes `AbortItemGoneOnce` and `AbortItemRefused` and two `InteropQueueActions` tests, with mutation lines.
+  - `[medium]` `[patch]` Nothing proves a live process that is no job of the production is refused by stop, abort or suspend; every not-a-job leg used a pid that names no process - added `InteropJobActions.TestALiveProcessThatIsNoJobOfTheProductionIsNotFound`, which starts an idle process and ends it in `OnAfterOneTest`, with its mutation line.
+  - `[medium]` `[patch]` Browser tests 2 to 4 relied on the queue state the test before left - `beforeEach` now arms a fresh probe, test 2 uses the armed waiting messages, tests 3 and 4 compare counts read at their own start, and each test passes alone.
+  - `[low]` `[patch]` The Suspend message label and the Jobs tab's labels are pinned by no test - added the label table to the handler spec's Story 20.23 block, with its mutation line.
+  - `[low]` `[patch]` The 501 for an action key the endpoint does not serve is untested (filed as defer) - a ten-line test closes it under Rule 15's two-way-door row, so it is patched, not deferred: `InteropRuntimeDescriptor.TestAnActionKeyTheEndpointDoesNotServeIsNotImplemented`.
+  - `[low]` `[patch]` `TestAStopTheVendorRefusesIsAnsweredInThePortsOwnWords` asserted `Listed` and `StoppingRows`, which the seam makes unable to fail - removed both; the audit leg stays.
+  - `[low]` `[reject]` Browser test 3 keeps two assertions that hold with `NOTRETRYING` dropped - the banner-sentence assertion in the same leg goes red without it, so the leg is falsifiable.
+  - `[low]` `[reject]` The handler spec's "published sentence from the envelope" echoes the injected reason - it pins the client's generic path for these codes, and the sentences themselves are pinned by `interop.test.mjs` and the browser spec.
+  - `[low]` `[patch]` `TestAPrincipalHoldingExactlyTheSuspendPairsSuspends` discarded the start status - asserted it. The `Hang 3` after a start is redundant beside the poll that follows it, not a defect, and stays.
+  - `[low]` `[reject]` `INTEROP.QUEUE.CHANGED` is reached end to end only through the fingerprint (`PROPOSAL.TARGETCHANGED`) - by design (Design Notes: a draining queue closes the proposal target-changed); the write's own digest check is pinned by a direct port call and by the `PortQuery` test above.
+  - `[low]` `[reject]` The item Queue and Jobs tabs are not driven in a browser - the spec's browser list names Queues, Queue messages and Jobs, and the tabs' rows are posted to the lists' routes over HTTP and in the handler spec.
+  - `[low]` `[reject]` `INTEROP.NAMESPACE` is tested at the port only - the tool and the route take the port's answer; `TestATypedCallInANamespaceWithoutInteroperabilityIsRefused` covers all eight types.
+  - `[low]` `[reject]` The 15 s cap is exercised through a 2 s seam - by design (Verification); the seam leg shows the cap binds against a 10 s production.
+  - `[low]` `[reject]` `ABORTMAX` was measured at 1,000 entries - Task 0's rule (N x 10 within 30 s) is met at 0.036 s per 1,000.
+  - `[low]` `[reject]` `ReadEntry` examines at most `QUEUESCANMAX` entries, so a message deeper than 10,000 reads absent - a documented limit of the read (reopen_if: a queue holds more than 10,000 waiting entries and a per-message abort is needed); the fix adds a second enumeration path.
+  - `[low]` `[reject]` A failed audit record is not forced in a test - `AuditRuntime` is one `Try`/`Catch`, and an unreachable failure is not worth a hook.
+  - `[low]` `[reject]` Abort all on a queue and Abort on a message in it take different holds - the `Skipped` accounting covers the overlap, and the partial-failure legs above pin it.
 
 ## Design Notes
 
@@ -432,7 +456,7 @@ deferred: []
 **Shared surfaces:**
 
 - the five 20.4 screens' row actions and empty states
-- the write-tool rosters (`ReadTool` 348 → 353, `ToolWrite` 31 → 36, `ToolRoundTrip`, `SurfaceCoverage`, `ToolEmit`, `ClassicPageGate` 75 → 80, `MappingDescriptor` 74 → 79)
+- the write-tool rosters (`ReadTool` 348 → 353, `ToolWrite` 31 → 36, `ToolRoundTrip`, `SurfaceCoverage`, `ToolEmit`, `ClassicPageGate` 75 → 80, `MappingDescriptor` 75 → 80)
 - the governance baseline and the disabled-key rosters (`GovernanceBaseline`, `Governance`, `ToolDispatch`, three more disabled)
 - the prohibited set's covered types
 - `InteropPort`'s `Serves`/`Pairs`
@@ -470,7 +494,7 @@ Never use the dev instance `ocupilot-slot-b`.
 |---|---|---|
 | AC1 | `ENTRY` ignores the header and scans the item's own queue | the actor-queue leg |
 | AC1 | `ABORTMESSAGE` skips `AbortItem` | every abort-one leg (the header still reads Queued) |
-| AC2 | `ABORTQUEUE` calls `AbortQueue` | the leg with a message sent after the read (it is aborted too) |
+| AC2 | `ABORTQUEUE` calls `AbortQueue` | the leg where a message joins the queue while the abort runs (`InteropItemSeam.SendAfterNextAbort`) |
 | AC2 | The write skips the digest check | the stale-digest port leg |
 | AC2 | `RuntimeRefusal` drops `QUEUEEMPTY` | the empty-queue legs, and the descriptor matrix |
 | AC3 | `RuntimeRefusal` drops `NOTRETRYING` | the idle-job legs (a request node appears), and the matrix |
@@ -484,7 +508,79 @@ Never use the dev instance `ocupilot-slot-b`.
 | AC7 | `DESTRUCTIVE_ACTIONS` drops `abort` | the browser abort-all leg and the handler spec |
 | AC7 | `ACTION_ADDRESS` drops the Queue tab | the handler spec's tab leg, and `InteropQueueActions`' tab leg if driven over HTTP |
 
+**Results (implement pass):**
+
+Task 0 (on `ocupilot-b-ci`, USER; every result agrees with Design Notes › Measured, so there is no halt):
+
+- Task 0: a message to a pool-size-0 business process has `TargetQueueName` `Ens.Actor`, and `Ens.Queue:EnumerateItem("Ens.Actor")` holds its entry.
+- Task 0: a principal holding exactly one tool's pairs (the screen's pairs, the own pair and `%DB_USER:RW`) completes that tool's action through the port, the forced stop included. With `%DB_USER:R` instead, the gate passes and the write is refused 403 `PORT.ACCESSDENIED` with nothing changed.
+- Task 0: `NormalizePage` spells `EnsPortal.ProductionConfig` and `EnsPortal.Queues` as written.
+- Task 0: `AbortItem` over 1,000 waiting entries took 0.036 s, so 10,000 would take about 0.4 s (inference) and `ABORTMAX` stays 10,000.
+- Task 0: the retry operation (`RetryInterval` 2, `FailureTimeout` 300) reads `Status` `Retry` with an `ActiveMessage`; after `Settle` and after `Remove`, `Gone()` reads 1.
+- Task 0: a job whose process `$System.Process.Terminate` ended read `Dead` for at least 19.8 s, its id renamed to a `Z<pid>_<n>` ghost id about 1 s after the termination.
+- Task 0: a forced stop of the hung operation's job at the stock 10 s production timeout took 10.00 s; its message went back on the queue (three waiting), its host read Error, the production read update pending, and Update started a job again. At the seam's 2 s cap the same stop took 2.01 s (`InteropJobStop`'s wall-clock assertion).
+- Task 0: one HTTP confirm of each new tool answers exactly one envelope.
+
+Loop, each class on its own call and read from `%UnitTest_Result` (0 failed in every one):
+
+- new: `InteropRuntimeDescriptor` 14, `InteropQueueActions` 10, `InteropJobActions` 7, `InteropJobStop` 5, `InteropRuntimeGate` 6
+- port callers: `InteropHostDescriptor` 8, `InteropHostRead` 7, `InteropHostEdges` 8, `InteropHostGate` 3, `InteropControl` 11, `InteropStopOutcome` 4, `InteropItemControl` 6, `InteropSettingControl` 7, `InteropItemGate` 5, `InteropSettingGate` 5
+- rosters: `Prohibited` 15, `ReadTool` 28, `ToolWrite` 34, `ToolRoundTrip` 2, `ToolEmit` 11, `SurfaceCoverage` 4, `EndpointCoverage` 2, `ClassicPageGate` 8, `MappingDescriptor` 6, `GovernanceBaseline` 3, `Governance` 14, `ToolDispatch` 18, `InteropDescriptor` 12, `InteropFloor` 7, `InteropFloorTurn` 1, `Descriptor` 60
+- browser, on the redeployed bundle: `interop-queue-job-actions` 4 of 4 (each test arms its own probe, and each passes alone), `interop-host-tabs` 4 of 4, `a11y-structural-invariants` 13 of 13 (174 declared screens, 163 walked, 11 skipped, 0 entries beyond the baseline, both themes)
+- `npm run test:tools` 1909 passed; `npm run test:components` 2851 passed in 226 files; `npm run build` initial total 3,295,800 bytes (warning at 3326 kB, error at 4000 kB)
+- `uv run scripts/check-objectscript.py` 0 problems over 1915 files; `bash scripts/lint-docs.sh` 0 issues
+
+Rule 19, each applied on the throwaway with the class (and every descendant) recompiled or the bundle rebuilt and redeployed, observed red, then reverted; the tree matched its pre-mutation fingerprint afterwards:
+
+- mutation: `ReadEntry` reads the header's `TargetConfigName` in place of `TargetQueueName` -> `InteropQueueActions.TestAnAbortFindsAMessageToAPoolSizeZeroProcessInTheActorQueue`
+- mutation: `PerformAbortMessage` skips `AbortItem` -> `InteropQueueActions` `TestTheAgentsAbortOfOneMessageTakesItOffTheQueue`, `TestThePersonsAbortFromQueueMessagesAndFromTheItemsQueueTab` and the actor-queue test
+- mutation: `PerformAbortQueue` calls `Ens.Queue.AbortQueue` in place of the per-entry loop -> `InteropQueueActions.TestAQueueAbortLeavesAMessageThatJoinsWhileItRuns`
+- mutation: `PerformAbortQueue` skips the digest comparison -> `InteropQueueActions.TestAStaleDigestAbortsNothingAndThePersonsAbortAllTakesTheWaitingMessages`
+- mutation: `RuntimeRefusal` drops `QUEUEEMPTY` -> `InteropQueueActions.TestAnEmptyQueueAndAGoneTargetAreRefusedWithNothingChanged` and `InteropRuntimeDescriptor.TestTheRuntimeRefusalMatrix`
+- mutation: `RuntimeRefusal` drops `JOBNOTRETRYING` -> `InteropJobActions.TestAnAbortOrSuspendOfAnIdleJobIsRefusedAndLeavesNoRequest` and the matrix
+- mutation: `RuntimeRefusal` drops `JOBDEAD` -> `InteropJobActions.TestAnAbortOrSuspendOfAJobWhoseProcessEndedIsRefusedAndLeavesNoRequest` and `InteropJobStop.TestADeadOrAbsentJobIsRefusedBeforeTheVendorIsCalled`
+- mutation: `VendorJob` passes force 0 to `Ens.Job.Stop` -> `InteropJobStop.TestAStopOfAHungJobIsForcedAndPutsItsMessageBack` (the answer is 409 `INTEROP.JOB.NOTSTOPPED`)
+- mutation: `VendorJob` ignores the `StopSeconds()` cap -> the same test's wall-clock assertion (10.02 s against the shortened 2 s)
+- mutation: `JobStatused` drops its `NOTSTOPPED` line (the status falls to `Statused`, a busy production), or drops its job-lock line, each with the class and its descendants recompiled -> `InteropJobStop.TestAStopTheVendorRefusesIsAnsweredInThePortsOwnWords`, which answers the three vendor codes through `InteropItemSeam.RefuseJobWith`
+- mutation: `Admit` drops its `INTEROP.NAMESPACE` refusal, with the port and its descendants recompiled -> `InteropRuntimeDescriptor.TestATypedCallInANamespaceWithoutInteroperabilityIsRefused`
+- mutation: `InteropQueueAbort.PortQuery` drops the digest line -> `InteropRuntimeDescriptor.TestTheQueueAbortWriteIsGivenTheReviewedDigest`
+- mutation: `InvokeTyped` drops the 501 refusal -> `InteropRuntimeDescriptor.TestAnActionKeyTheEndpointDoesNotServeIsNotImplemented`
+- mutation: `PerformAbortQueue` inverts its `$Data(tStillQueued(...))` test -> `InteropQueueActions.TestAnAbortAllCountsAnEntryThatLeftTheQueueAndFailsOnOneStillQueued`
+- mutation: `PerformAbortMessage` drops the 404 re-read -> `InteropQueueActions.TestAnAbortOfOneMessageWhoseVendorCallFailsIsJudgedByTheEntry`
+- mutation: `ReadJob` answers a live process id that no host holds as a job of its own -> `InteropJobActions.TestALiveProcessThatIsNoJobOfTheProductionIsNotFound`
+- mutation: `DESCRIPTOR_ACTION_LABELS` drops the Jobs tab's entry, or the Jobs list's `suspend` -> the handler spec's label test
+- mutation: `ReadJob` answers a pid it did not find -> `InteropJobActions.TestAPidNoJobHoldsIsNotFoundAndAStoppedProductionIsNotRunning`, `InteropJobStop.TestADeadOrAbsentJobIsRefusedBeforeTheVendorIsCalled` and the two stop tests that read the deleted event
+- mutation: `AuditRuntime` skips `Event.Record` -> six `InteropQueueActions`, three `InteropJobActions` and three `InteropJobStop` tests
+- mutation: `interop.jobs.abort` ships `true` in `Baseline.cls` -> `InteropRuntimeDescriptor.TestTheFiveToolsDeclareWhatTheSpecNames` and `GovernanceBaseline.TestThePurgeIsTheOneDisabledLine`
+- mutation: `Pairs` drops `QUEUEWRITEPAIR`, `JOBWRITEPAIR` and `SUSPENDPAIR` in turn -> `InteropRuntimeGate.TestEachMissingPairIsRefusedByNameThroughThePortTheToolsAndTheMint` each time (the job pair also reddens `TestAPrincipalHoldingExactlyTheSuspendPairsSuspends`)
+- mutation: the queue tools, `InteropJobAction` and `InteropJobSuspend` each declare no `WRITERESOURCE` -> `InteropRuntimeGate`'s three tests naming the pair (`TestAPrincipalHoldingExactly...`, `...OnTheScreenRoutes`, `...ThroughThePortTheToolsAndTheMint`)
+- mutation: `DESTRUCTIVE_ACTIONS` drops `abort` -> the handler spec's abort test, and in the browser the three abort legs (the typed-name dialog never opens)
+- mutation: `ACTION_ADDRESS` drops the Queue tab -> the handler spec's abort test (the tab posts to its own route)
+- mutation: `proposal-view.ts` drops `INTEROP.JOB.STOP` -> `proposal-card.spec.ts`'s Story 20.23 test
+- mutation: `WARNING_CONSEQUENCES` drops the Jobs entry -> the handler spec's warning test
+- mutation: `TYPED_NAME_ROWS` drops the Jobs entry -> the handler spec's abort test (its name assertion)
+- mutation: `SCREEN_ACTION_DESCRIPTORS` drops the Queues list -> the handler spec's registration test
+- mutation: `DESTRUCTIVE_CONSEQUENCES` drops the Queue tab's entry -> the handler spec's registration and abort tests
+- mutation: `DESCRIPTOR_ACTION_LABELS` drops the Queues entry -> the browser spec's four tests, the abort-all leg first (no menu entry reads Abort all)
+
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
+
+**Summary.** `InteropPort` carries the queue and job actions (AD-62): the `QUEUE`, `ENTRY` and `JOB` reads, `RuntimeRefusal` (an empty queue, a dead job, an abort or suspend of a job not retrying), and the five writes (`ABORTQUEUE` by `AbortItem` per enumerated entry, `ABORTMESSAGE`, `ABORTJOB`, `SUSPENDJOB`, `STOPJOB` with the production's timeout capped at `StopSeconds()` and force on). The port records OcuPilot's `ConfigChange` row for each. Five tools, five descriptors' row actions, the prohibited-set, baseline, error, client and EXPERIENCE.md additions, the probe's retry operation, five new test classes and one browser spec follow the spec.
+
+**Files changed.**
+
+- `src/OcuPilot/Port/InteropPort.cls`, `Api/InteropError.cls`: the port work and ten codes.
+- `src/OcuPilot/Screen/Tool/InteropJobAction.cls`, `InteropJobAbort.cls`, `InteropJobSuspend.cls`, `InteropJobStop.cls`, `InteropQueueAbort.cls`, `InteropQueueMessageAbort.cls`: the tools.
+- Five descriptors under `Screen/Descriptor/`, `Kernel/Proposal/Prohibited.cls`, `Kernel/Governance/Baseline.cls`: row actions, covered types, keys.
+- `ui/src/app/core/{strings,screen-actions,proposal-view,screens.generated}.ts`, `ui/src/app/shell/screen-action-handler.ts` and its two specs, `ui/tools/interop.test.mjs`, `EXPERIENCE.md`: the client, copy and pins.
+- `src/OcuPilot/Test/`: `InteropRuntimeDescriptor`, `InteropQueueActions`, `InteropJobActions`, `InteropJobStop`, `InteropRuntimeGate` (new); `ProductionProbe`, `InteropItemSeam` and the roster classes (changed); `scripts/ci-throwaway.sh` (one `# classes:` line).
+- `ui/browser/interop-queue-job-actions.browser-spec.mjs` (new), `interop-host-tabs.browser-spec.mjs` (changed).
+
+**Review.** Two layers reported 18 findings: patches applied 8 (medium 4, low 4), deferred 0, rejected 10 (each with its reason in the Review Triage Log). Follow-up review recommended: `true`, for the four medium patches. The patch pass added seam overrides (`VendorJob`, `VendorAbortItem` on `InteropItemSeam`), an idle-process test and a per-test arming of the browser spec, which no independent reviewer has read.
+
+**Verification.** Every `(loop)` line ran green on `ocupilot-b-ci`, before and after the patches: the new classes (14, 10, 7, 5 and 6 tests), the port's other callers, the roster and probe-user classes, the three browser specs, `npm run test:tools` (1909), `npm run test:components` (2852), `npm run build` (initial total 3,295,800 bytes, under the 3326 kB warning), `check-objectscript.py` and `lint-docs.sh`. Rule 19: 30 mutation lines in `## Verification`, each observed red and reverted. The full ObjectScript sweep, the smoke, Rule 30's fresh check and the full browser suite are the lead's and CI's.
+
+**Residual risks.** A message deeper than 10,000 entries in a queue reads absent to the per-message abort (documented in `ReadEntry`). The Queue and Jobs tabs' rows are covered over HTTP and in the handler spec, not in a browser.

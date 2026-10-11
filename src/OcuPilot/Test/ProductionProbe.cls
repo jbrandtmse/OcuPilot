@@ -6,8 +6,9 @@
 /// setting and, for Story 20.22, an <code>ApiToken</code> (a credential-named string), a
 /// <code>ProbeDirectory</code> (a <code>directorySelector</code>) and a <code>ProbeFile</code> (a
 /// <code>fileSelector</code>)), a business service (<parameter>SVCNAME</parameter>) and a business rule class
-/// (<parameter>RULECLASS</parameter>), and removes only those and the
-/// runtime state and message rows whose configuration names begin with
+/// (<parameter>RULECLASS</parameter>), and, for Story 20.23, a business operation that fails and asks to be retried
+/// (<parameter>RETRYCLASS</parameter>, added to the stored production by <method>AddRetryItem</method>), and removes only those
+/// and the runtime state and message rows whose configuration names begin with
 /// <parameter>CONFIGPREFIX</parameter>.</p>
 /// <p>Every entry point refuses, touching nothing, when <code>USER</code>'s current production is not
 /// one of the two the probe owns. The classes are compiled in <code>USER</code>, so a run of the
@@ -37,6 +38,10 @@ Parameter SVCNAME = "OcuPilotProbeSvc";
 /// <p>The probe operation whose teardown waits (Story 20.3): its configuration name, added to the stored
 /// production by <method>AddTearItem</method>.</p>
 Parameter TEARNAME = "OcuPilotProbeTearOp";
+
+/// <p>The probe operation that fails every message and asks to be retried (Story 20.23): its job reads <code>Retry</code>
+/// with the message it keeps retrying until its failure timeout.</p>
+Parameter RETRYCLASS = "OcuPilotProbe.Interop.RetryOp";
 
 /// <p>The probe business rule class, a bare <code>Ens.Rule.Definition</code> subclass.</p>
 Parameter RULECLASS = "OcuPilotProbe.Interop.Rule";
@@ -85,6 +90,14 @@ ClassMethod ClassText(pName As %String) As %String [ Private ]
             "XData MessageMap" _ tNL _ "{" _ tNL _
             "<MapItems><MapItem MessageType=""Ens.Request""><Method>Idle</Method></MapItem></MapItems>" _ tNL _ "}" _ tNL _ "}" _ tNL
     }
+    If pName = "RetryOp" {
+        Quit "Class " _ ..#RETRYCLASS _ " Extends Ens.BusinessOperation" _ tNL _ "{" _ tNL _
+            "Parameter INVOCATION = ""Queue"";" _ tNL _
+            "Method Fail(pRequest As Ens.Request, Output pResponse As Ens.Response) As %Status" _ tNL _ "{" _ tNL _
+            " Set ..Retry = 1" _ tNL _ " Quit $$$ERROR($$$GeneralError, ""OcuPilot probe retry"")" _ tNL _ "}" _ tNL _
+            "XData MessageMap" _ tNL _ "{" _ tNL _
+            "<MapItems><MapItem MessageType=""Ens.Request""><Method>Fail</Method></MapItem></MapItems>" _ tNL _ "}" _ tNL _ "}" _ tNL
+    }
     If pName = "Rule" {
         Quit "Class " _ ..#RULECLASS _ " Extends Ens.Rule.Definition" _ tNL _ "{" _ tNL _
             "XData RuleDefinition [ XMLNamespace = ""http://www.intersystems.com/rule"" ]" _ tNL _ "{" _ tNL _
@@ -95,7 +108,7 @@ ClassMethod ClassText(pName As %String) As %String [ Private ]
     If pName = "Svc" {
         Quit "Class " _ ..#PACKAGE _ ".Svc Extends Ens.BusinessService" _ tNL _ "{" _ tNL _
             "Method OnProcessInput(pInput As %RegisteredObject, Output pOutput As %RegisteredObject, ByRef pHint As %String) As %Status" _ tNL _ "{" _ tNL _
-            " Quit ..SendRequestAsync(""" _ ..#OPNAME _ """, pInput)" _ tNL _ "}" _ tNL _ "}" _ tNL
+            " Quit ..SendRequestAsync($Select($Get(pHint) '= """": pHint, 1: """ _ ..#OPNAME _ """), pInput)" _ tNL _ "}" _ tNL _ "}" _ tNL
     }
     Set tName = $Select(pName = "Other": ..#OTHER, 1: ..#PRODUCTION)
     Quit "Class " _ tName _ " Extends Ens.Production" _ tNL _ "{" _ tNL _
@@ -151,7 +164,7 @@ ClassMethod Create() As %Status
 {
     Set tSC = ..CheckOwn()
     If $$$ISERR(tSC) Quit tSC
-    For tName = "Op", "Svc", "TearOp", "Rule", "Production", "Other" {
+    For tName = "Op", "Svc", "TearOp", "RetryOp", "Rule", "Production", "Other" {
         Set tClass = $Select(tName = "Production": ..#PRODUCTION, tName = "Other": ..#OTHER, 1: ..#PACKAGE _ "." _ tName)
         Set tSC = ##class(%Compiler.UDL.TextServices).SetTextFromString(..#NAMESPACE, tClass, ..ClassText(tName))
         If $$$ISERR(tSC) Quit
@@ -214,6 +227,17 @@ ClassMethod AddItem(pName As %String, pClass As %String, pPoolSize As %Integer =
         Set $NAMESPACE = tOrigNS
         Set tSC = ex.AsStatus()
     }
+    Quit tSC
+}
+
+/// <p>Add the probe's retrying operation (Story 20.23) to the stored probe production as <var>pName</var>, enabled, with its
+/// <code>RetryInterval</code> at <var>pInterval</var> seconds and its <code>FailureTimeout</code> at <var>pTimeout</var>: a message
+/// sent to it fails, and the item's job reads <code>Retry</code> with that message until the timeout ends.</p>
+ClassMethod AddRetryItem(pName As %String, pInterval As %Integer = 2, pTimeout As %Integer = 300) As %Status
+{
+    Set tSC = ..AddItem(pName, ..#RETRYCLASS, 1, 1)
+    If $$$ISOK(tSC) Set tSC = ..PutItemSetting(pName, "Host", "RetryInterval", pInterval)
+    If $$$ISOK(tSC) Set tSC = ..PutItemSetting(pName, "Host", "FailureTimeout", pTimeout)
     Quit tSC
 }
 
@@ -331,16 +355,18 @@ ClassMethod ResetProduction() As %Status
     Quit tSC
 }
 
-/// <p>Queue one message to the probe operation, through the probe service, which must be running.</p>
-ClassMethod Send() As %Status
+/// <p>Queue one message to the probe operation, through the probe service, which must be running. With <var>pTarget</var> the
+/// service forwards it to the item of that name instead (Story 20.23).</p>
+ClassMethod Send(pTarget As %String = "") As %Status
 {
     Set tSC = ..CheckOwn()
     If $$$ISERR(tSC) Quit tSC
     Set tOrigNS = $NAMESPACE
     Try {
         Set $NAMESPACE = ..#NAMESPACE
+        Set tHint = pTarget
         Set tSC = ##class(Ens.Director).CreateBusinessService(..#SVCNAME, .tService)
-        If $$$ISOK(tSC) Set tSC = tService.ProcessInput(##class(Ens.Request).%New(), .tOutput)
+        If $$$ISOK(tSC) Set tSC = tService.ProcessInput(##class(Ens.Request).%New(), .tOutput, .tHint)
         Set tService = ""
         Set $NAMESPACE = tOrigNS
     } Catch ex {
@@ -443,6 +469,7 @@ ClassMethod Settle() As %Status
             }
             Set tCurrent = ..Current(.tState)
             If tState = 1 {
+                Do ..AbortRetrying()
                 Do ..Release()
                 Do ..AbortQueues()
                 If $$$ISERR(##class(Ens.Director).StopProduction(10, 0)) Do ##class(Ens.Director).StopProduction(10, 1)
@@ -457,6 +484,55 @@ ClassMethod Settle() As %Status
         Set tSC = ex.AsStatus()
     }
     Quit tSC
+}
+
+/// <p>Abort the message of every probe job that is retrying one (Story 20.23) and wait, fifteen seconds at most, until each job
+/// has taken the abort: a stop of a production whose job is retrying puts the message back on its queue, which leaves the
+/// production Suspended and its next start retrying again. The abort is the vendor's own, taken when the job's current retry
+/// wait ends. Called only inside <code>USER</code>, while the probe's own production is current.</p>
+ClassMethod AbortRetrying() [ Private ]
+{
+    Set tHosts = ##class(%ResultSet).%New("Ens.Util.Statistics:EnumerateHostStatus")
+    Do tHosts.Execute()
+    Kill tNames
+    While tHosts.Next() {
+        If $Extract(tHosts.GetData(1), 1, $Length(..#CONFIGPREFIX)) = ..#CONFIGPREFIX Set tNames(tHosts.GetData(1)) = ""
+    }
+    Do tHosts.Close()
+    If '..RetryingJobs(.tNames, .tPids) Quit
+    Set tPid = ""
+    For {
+        Set tPid = $Order(tPids(tPid))
+        If tPid = "" Quit
+        Do ##class(Ens.Job).AbortOperation(tPid)
+    }
+    For tTry = 1:1:60 {
+        Hang 0.25
+        If '..RetryingJobs(.tNames, .tAgain) Quit
+    }
+}
+
+/// <p>How many jobs of the hosts named in <var>pNames</var> (the subscripts) read <code>Retry</code> with a message, and their
+/// process ids in <var>pPids</var> (the subscripts).</p>
+ClassMethod RetryingJobs(ByRef pNames, Output pPids) As %Integer [ Private ]
+{
+    Kill pPids
+    Set tCount = 0
+    Set tName = ""
+    For {
+        Set tName = $Order(pNames(tName))
+        If tName = "" Quit
+        Set tRS = ##class(%ResultSet).%New("Ens.Util.Statistics:EnumerateJobStatus")
+        Do tRS.Execute(tName)
+        While tRS.Next() {
+            If (tRS.GetData(3) = "Retry") && (tRS.GetData(9) '= "") && (+tRS.GetData(2) > 0) {
+                Set pPids(tRS.GetData(2)) = ""
+                Set tCount = tCount + 1
+            }
+        }
+        Do tRS.Close()
+    }
+    Quit tCount
 }
 
 /// <p>End the probe operation's jobs that hold a message while its stored <code>HangSeconds</code> is above

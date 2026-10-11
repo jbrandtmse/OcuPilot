@@ -920,6 +920,24 @@ describe('the proposal card', () => {
     }
   });
 
+  it('Story 20.23: a message, queue or job abort is drawn destructive and a suspend or stop is not, each stating its own published sentence', () => {
+    // Mutation (Rule 19): drop one of the five INTEROP.MESSAGE / QUEUE / JOB codes from `consequenceSentence` -> its leg goes red.
+    for (const [code, destructive, sentence] of [
+      ['INTEROP.MESSAGE.ABORT', true, STRINGS.interopMessageAbortConsequence],
+      ['INTEROP.QUEUE.ABORT', true, STRINGS.interopQueueAbortConsequence],
+      ['INTEROP.JOB.ABORT', true, STRINGS.interopJobAbortConsequence],
+      ['INTEROP.JOB.SUSPEND', false, STRINGS.interopJobSuspendConsequence],
+      ['INTEROP.JOB.STOP', false, STRINGS.interopJobStopConsequence],
+    ] as const) {
+      const { card } = mount(liveView({ consequence: code, destructive, maskedFields: [] }), { phase: 'live' });
+      expect(card.classList.contains('ocu-proposal-card-destructive'), code).toBe(destructive);
+      const lines = card.querySelectorAll('[data-slot="consequence"]');
+      expect(lines.length, code).toBe(1);
+      expect(lines[0].textContent, code).toContain(sentence);
+      TestBed.resetTestingModule();
+    }
+  });
+
   it('AD-10, Story 9.5: a change turning an SSL/TLS configuration\'s peer verification off is drawn destructive and states its effect', () => {
     // Mutation (Rule 19): drop the NOPEERCHECK code from `consequenceSentence` -> this goes red.
     const { card } = mount(liveView({ consequence: 'SSL.NOPEERCHECK', destructive: true, maskedFields: [] }), { phase: 'live' });
