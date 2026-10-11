@@ -1120,3 +1120,4 @@ TAB-separated: `<UTC>\t<Story <id> | Epic <N>>\t<stage>\t<metadata>`
 2026-10-11T06:50:58Z	Story 18.31	story_cycle	plan_to_commit_min=~760(2026-10-10T18:27Z_plan-2_to_06:50Z;spans_the_account-switch_hold) implement_passes=1 reviews=1 rework=0 first_ci=pending models=plan:opus,implement:sonnet,qa:sonnet,cr:opus
 2026-10-11T06:51:51Z	Story 18.11	ledger_routed_planned	story=18-11-monitoring-extras-and-the-live-log-tail entries=2(DW-1872,DW-1898) excess=0 by=merge_gate
 2026-10-11T06:51:51Z	Story 18.12	ledger_routed_planned	story=18-12-the-agent-grows-with-the-stage entries=1(DW-1084) excess=0 by=merge_gate note=18.12_now_holds_DW-1756,DW-1084
+2026-10-11T06:58:57Z	Epic 18	epic_context_compiled	reason=planning_artifact_newer(merge_143f5690_spine_AD-5;18.32_gate_AD-53,AD-15;epics_DW_bullets) model=opus bytes=12303 flagged=18.34_rules_conflict(epics_same_rules_vs_18.32_intent_person_skips_AgentProblem;settle_at_18.34_plan)
