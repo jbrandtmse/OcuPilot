@@ -932,7 +932,49 @@ An operator reaches System Administration and System Operation parity on the hid
 
 **Implementation notes:** Row groups from `extract-stages.md`: SH-24; CP-35, CP-39, CP-41; WA-10 to WA-14; PM-19 to PM-22; SS-28 to SS-35; OS-16 to OS-22, OS-30; LG-11; SA-03 to SA-22; SO-01 to SO-08; PK-25. Gated by admin-v2 write payloads being observed, the `/async-result` polling pattern, SH-24's directory allow-list landing before any server-path picker, and the admin API's final form in IRIS 2027.1 - against which this stage re-derives the endpoint inventory before deepening the dependency. The agent's growth step here is confirmed single writes over the whole remainder, plus wallet-backed keys, context-window management as the tool roster roughly doubles, and proxy and custom-CA support. Epic 14's governance policy must cover this stage's new destructive actions as default-disabled.
 
-### Epic 19: Stage 3 - System Explorer over the Atelier API
+#### Story 18.36: Dashboard drill-downs
+
+As a production administrator,
+I want the dashboard's drill-down statistics,
+So that a figure on the dashboard leads to its detail. [AMENDED 2026-10-11, orchestrator ruling on Story 18.11's plan: split from Story 18.11 for size, Rule 5; read-only, with a Task 0 that reads the request types]
+
+**Acceptance Criteria:**
+
+- **Given** the dashboard's globals-and-routines, ECP and system-resources drill-downs
+- **When** each renders
+- **Then** it reads through its own port with its own resource gate - the monitoring API's anonymous reachability never becoming OcuPilot's.
+
+**Admin API behavior to design for.** [AMENDED 2026-09-28, owner: warnings from the DC article
+[20 places where the SysAdmin API specification and IRIS disagree](https://community.intersystems.com/post/20-places-where-sysadmin-api-specification-and-iris-disagree);
+"checked" means seen on slot A that day, "reported" means the article's word only]
+
+- `SystemUsage.BusyProcesses` in `GET /v2/monitor/dashboard/main` always has ten rows; unused ones are `{"Process": "", "Commands": 0}` (checked: 8 of 10 on slot A). Drop them before showing a top ten.
+
+### Story 18.37: Interoperability usage
+
+As a production administrator,
+I want the interoperability usage view,
+So that interface use is visible beside the instance's other monitoring. [AMENDED 2026-10-11, orchestrator ruling on Story 18.11's plan: split from Story 18.11 for size, Rule 5; at its spec gate prefer the source that keeps AD-8 as written (the classic page's query, if it checks the caller, over the deprecated metrics API that escalates unchecked); an option that needs AD-8 relaxed is the owner's call]
+
+**Acceptance Criteria:**
+
+- **Given** the interoperability usage view
+- **When** it renders
+- **Then** it reads through its own port with its own resource gate - the monitoring API's anonymous reachability never becoming OcuPilot's.
+
+### Story 18.38: The live log tail
+
+As a production administrator,
+I want a live tail on a text log,
+So that monitoring is continuous rather than sampled. [AMENDED 2026-10-11, orchestrator ruling on Story 18.11's plan: split from Story 18.11 for size, Rule 5; the AD-12 heartbeat carve-out, the AD-43 amendment and EXPERIENCE.md's "live tail is P2" lines are tier-1 amendments at its spec gate, and the "nothing streams" pins are re-scoped to the sources that do not opt in]
+
+**Acceptance Criteria:**
+
+- **Given** the live tail
+- **When** it is enabled on a text log
+- **Then** it long-polls with a heartbeat, and the Release 1 rule that log viewers load bounded pages is superseded **only** for the sources that opt into it.
+
+## Epic 19: Stage 3 - System Explorer over the Atelier API
 
 A developer gets classes and routines with source view, compile, delete, export, import and ETag-checked editing; search, compare and macro lookup; the SQL catalog with its query console behind a DML and DDL guard; and a data grid harvested from iris-table-editor with inline editing, staged saves and CSV export.
 
@@ -7299,26 +7341,16 @@ So that the first area moves toward parity without exposing OcuPilot's own appli
 ### Story 18.11: Monitoring extras and the live log tail
 
 As a production administrator,
-I want the raw metrics, the dashboard drill-downs, interoperability usage and a live log tail,
-So that monitoring is continuous rather than sampled.
+I want the raw Prometheus metrics as a table,
+So that monitoring is continuous rather than sampled. [AMENDED 2026-10-11, orchestrator ruling on Story 18.11's plan: split for size, Rule 5; the dashboard drill-downs moved to Story 18.36, interoperability usage to Story 18.37 and the live log tail to Story 18.38; the key is kept so the ledger inbox stays]
 
 **Acceptance Criteria:**
 
-- **Given** the Prometheus metrics table, the dashboard drill-down statistics and the interoperability usage view
-- **When** each renders
+- **Given** the Prometheus metrics table
+- **When** it renders
 - **Then** it reads through its own port with its own resource gate - the monitoring API's anonymous reachability never becoming OcuPilot's.
-
-- **Given** the live tail
-- **When** it is enabled on a text log
-- **Then** it long-polls with a heartbeat, and the Release 1 rule that log viewers load bounded pages is superseded **only** for the sources that opt into it.
 - DW-1872: GET /screens/osmgmt.databasevolumes/read without its dir parameter reaches the admin API, which answers 400, and OcuPilot logs it at severity 2, raising the instance monitor state (ledger; routed by merge_gate 2026-10-10)
 - DW-1898: NamespaceInterop's started legs raise the instance alert state: AdminPort.AwaitTask logs the bound before NamespacePort answers the queued write as started (ledger; routed by merge_gate 2026-10-10)
-
-**Admin API behavior to design for.** [AMENDED 2026-09-28, owner: warnings from the DC article
-[20 places where the SysAdmin API specification and IRIS disagree](https://community.intersystems.com/post/20-places-where-sysadmin-api-specification-and-iris-disagree);
-"checked" means seen on slot A that day, "reported" means the article's word only]
-
-- `SystemUsage.BusyProcesses` in `GET /v2/monitor/dashboard/main` always has ten rows; unused ones are `{"Process": "", "Commands": 0}` (checked: 8 of 10 on slot A). Drop them before showing a top ten.
 
 ### Story 18.12: The agent grows with the stage
 

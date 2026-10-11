@@ -11225,6 +11225,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-33-privileged-routine-application-roles-and-routines.md | severity: med | fix-risk: med | footprint: in-epic
 - evidence: Security.Applications: no resource means anyone can run the application, so a cleared Resource or Enabled false to true hands the held roles' escalation to more callers; GrantsPrivilegeByEffect's routine branch judges only MatchRoles and Routines
 - 2026-10-11T14:41:33Z status=decision-pending owner=burndown by=cr note=AD-10 names no such effect for a routine application; web apps take 'no authorization resource' at strongest confirmation
+- 2026-10-11T16:15:23Z status=routed owner=burndown by=lead note=orchestrator ruling: a grant (no Resource is runnable by anyone); privileged-grant treatment; fix at the Epic 18 burn-down
 
 ### DW-2323: Classification.cls says neither routine application tool admits MatchRoles or Routines; since 18.33 the update admits both
 - source: spec-18-33-privileged-routine-application-roles-and-routines.md | severity: low | fix-risk: low | footprint: in-epic
