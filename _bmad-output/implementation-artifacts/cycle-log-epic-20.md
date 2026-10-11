@@ -454,3 +454,6 @@
 2026-10-11T09:33:32Z	Epic 20	ledger_routed_planned	story=20-25-item-runtime-and-configuration-actions entries=1 excess=0 by=spec_gate dw=DW-2298(returned_to_20-23_by_orchestrator_ruling_then_re-owned)
 2026-10-11T09:33:32Z	Epic 20	deps_hash_rerecorded	reason=story_chartered(20.25)
 2026-10-11T09:33:32Z	Story 20.23	spec_validated	service_introducing=false(extends_InteropPort) integration_ac=present(AC1-AC4;AC4_consumer_20.2_Update) adr_constrained_acs=AD-8,AD-10,AD-15,AD-22,AD-44,AD-48,AD-51,AD-53,AD-62 decision_dependency=none sections_created=none owned_ledger=DW-2297,DW-2298 addressed=1 declined=1(DW-2298_to_20.25) mutates_shared_runtime=true(ocupilot-b-ci_named;probe_production_actions) posture_questions=none(spec_records_why)
+2026-10-11T09:34:37Z	Story 20.4	ci_resolved	story=20.4 run=38125834799 result=success head=e961e9f8 resolved_at=next_implement
+2026-10-11T09:34:37Z	Story 20.4	ci_green_verified	run=38125834799 head=e961e9f8 jobs=21_success boundary=reported_to_main
+2026-10-11T09:34:37Z	Story 20.23	stage_spawned	stage=implement spawn_at=2026-10-11T09:34:37Z model=sonnet agent_name=20-23-implement-1 cycle_iteration=1 ci_prior=success_38125834799(20.4_e961e9f8)
