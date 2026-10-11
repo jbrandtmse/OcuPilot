@@ -11156,3 +11156,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-32-spec-based-rest-services.md | severity: med | fix-risk: high | footprint: in-story
 - evidence: MgmntPort.Resolved reads GetWebRESTApps(pNamespace) and matches dispatchClass = <Name>.disp only. %Api.InteropEditors forwards /v1../v7 to %Api.InteropEditors.vN.disp (irissys/%Api/InteropEditors.cls:28-35) and GetRESTApps(%SYS) lists those eight with no web application on ocupilot-ci (they sit in read-only IRISLIB, so there the vendor delete fails); a user's router forwarding to a spec-first service in a writable database would lose its .spec and .disp.
 - 2026-10-11T09:46:42Z status=escalated owner=burndown by=cr note=fix walks each listed web app's UrlMap Forward targets or reads every namespace's apps; matrix row names direct dispatch only
+
+### DW-2312: ToolEmit.TestEveryLiveToolRequiresItsScreensPairs's doc comment says no other live tool's arguments add pairs; the ExplorerSave and RestServiceWrite branches contradict it
+- source: spec-18-32-spec-based-rest-services.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: 18.32 rework 1 added the second counterexample; a reword is not add-only while Epic 20 has uncommitted ToolEmit.cls edits (Rule 11)
+- 2026-10-11T11:25:21Z status=wontfix-accepted owner=18-32-spec-based-rest-services by=harvest note=reopen_if=the next story that edits ToolEmit's method after Epic 20 merges it, which rewords the sentence in passing
