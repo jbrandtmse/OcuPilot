@@ -2,7 +2,7 @@
 title: 'Story 18.32: Spec-based REST services'
 type: 'feature'
 created: '2026-10-10'
-status: 'done'
+status: 'in-progress'
 review_loop_iteration: 0
 baseline_revision: '057f013c3b112916cb262594a49ce3c5d917625c'
 baseline_commit: '057f013c3b112916cb262594a49ce3c5d917625c'
@@ -141,7 +141,11 @@ Rejected:
 - (false) `RestServiceReadBack` untracked: QA's file, committed by the lead. `ci-timings.json`: `ci.test.mjs` passes without the entry (87 of 87).
 - (AD-10, decided) A screen delete of an unlisted `OcuPilot*` name answers 404 `PORT.NOTFOUND`: nothing is sent, AD-10 judges the resolved target, and the matrix's Delete row governs an unlisted name; by-design.
 
+- [ ] [Smoke] The runner's full sweep is red on one class: `OcuPilot.Test.ToolEmit.TestEveryLiveToolRequiresItsScreensPairs` fails "and exactly the pairs its arguments add" for `webapp.restapis.create` and `webapp.restapis.delete` (run 503, `ocupilot-ci`) -- `src/OcuPilot/Test/ToolEmit.cls`, the per-family branches of that method -- the `RestServiceWrite` family has no branch, so its `ArgumentPairs` (`ExplorerSave.CodeWritePairs`) meets the default's empty expectation. Add the family to that method the way the `ExplorerSave`/`ExplorerCreate` branch reads `CodeWritePairs` for its expected added pairs, keeping the tools' own pairs (`%Development:USE` from `PrivilegePairs`) in the expected required pairs; run `ToolEmit` green on `ocupilot-ci`, and record a `mutation:` line (drop the new branch -> red). Touch nothing else.
+
 ## Spec Change Log
+
+- 2026-10-11, lead: rework iteration 1 (trigger smoke: the runner's full sweep red on `ToolEmit`); one `[Smoke]` item.
 
 - 2026-10-11, lead: split A on the orchestrator's ruling (feature `7ce024f9`, Rule 5). The person's Create dialog (`RestServiceSave`, `POST /rest-service`, the page, dialog, store, their specs and Fixed strings, the C1 screen-create leg, the `EndpointCoverage` and `SaveHoldCoverage` rows) moved to Story 18.34. The intent's Approach, the person-create line and the Create and Rules rows were narrowed to match; status reset to `draft` for a re-plan in place.
 - 2026-10-11, lead, spec gate: AD-53 amended as "For the lead" proposed, with AD-15's twenty-first case and AD-53's named gap twenty-one (the delete records no vendor event); the `StateDiff` copy is DW-2299, routed to Story 23.7.

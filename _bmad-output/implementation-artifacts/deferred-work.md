@@ -11101,6 +11101,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-10T12:49:19Z occurrence=18-30-doc-db-applications
 - 2026-10-11T01:02:21Z status=routed owner=23-7-the-range-end-cleanup-part-6 by=merge_gate note=re-own from range-end-cleanup at 18.30's merge (kit 2026-10-10.1 owner grammar)
 - 2026-10-11T06:02:59Z occurrence=18-31-privileged-routine-applications
+- 2026-10-11T11:11:25Z occurrence=18-34-the-person-s-rest-service-create
 
 ### DW-2279: MappingMint's empty-namespace refusal names a 'mapping' for the Doc DB application tools
 - source: spec-18-30-doc-db-applications.md | severity: low | fix-risk: low | footprint: in-epic
