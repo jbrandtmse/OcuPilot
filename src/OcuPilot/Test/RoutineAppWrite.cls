@@ -556,8 +556,8 @@ Method TestAWebApplicationNameIsAnsweredFromTheFreshReadByEveryRoutineTool()
 /// <p>Mutation (Rule 19): drop the <code>routine-application</code> arm from <method>OcuPilot.Kernel.Proposal.Prohibited.Prohibits</method>
 /// -- the <code>Prohibits</code> legs go red, asked as a pure question; the wire legs stay green because the port arm
 /// <method>OcuPilot.Kernel.Proposal.Prohibited.RoutineEndpointRefused</method> also refuses, so nothing is written either
-/// way. Drop the <code>routine-application</code> branch of <method>OcuPilot.Kernel.Proposal.Prohibited.Prohibits</method>'s
-/// reviewed-few sweep -- the <code>Routines</code> and <code>MatchRoles</code> legs go red.</p>
+/// way. Shrink <method>OcuPilot.Kernel.Proposal.Prohibited.RoutineApplicationChangeFields</method> to the three settings --
+/// the <code>Routines</code> and <code>MatchRoles</code> legs go red.</p>
 Method TestTheOwnTwoApplicationsAreRefusedEveryWrite()
 {
     For tName = "OcuPilotState", "OcuPilotIdentity", "ocupilotstate", "OCUPILOTIDENTITY" {
@@ -573,10 +573,17 @@ Method TestTheOwnTwoApplicationsAreRefusedEveryWrite()
     Do $$$AssertEquals(tProhibits _ " " _ tCode, "0 ", "which the arm does not refuse")
     For tField = "Routines", "MatchRoles" {
         Set tBody = {}
+        Do tBody.%Set(tField, $Select(tField = "Routines": [{"RoutineOrClass": "OcuProbe1831.Routine", "Db": "HSCUSTOM", "Type": "Class"}], 1: [{"MatchRole": "", "TargetRoles": ["%DB_HSCUSTOM"]}]))
+        Set tProhibits = ..Ask("webapp.routineapps.update", "OcuProbe1831A", tBody.%ToJSON(), [{"field": (tField), "before": "a", "after": "x"}].%ToJSON(), .tCode, .tSC)
+        Do $$$AssertStatusOK(tSC, "the set answers a diff naming " _ tField)
+        Do $$$AssertEquals(tProhibits _ " " _ tCode, "0 ", "a probe application's " _ tField _ " is one of the update's five fields")
+    }
+    For tField = "Name", "Type" {
+        Set tBody = {}
         Do tBody.%Set(tField, "x")
         Set tProhibits = ..Ask("webapp.routineapps.update", "OcuProbe1831A", tBody.%ToJSON(), [{"field": (tField), "before": "a", "after": "x"}].%ToJSON(), .tCode, .tSC)
         Do $$$AssertStatusOK(tSC, "the set answers a diff naming " _ tField)
-        Do $$$AssertEquals(tProhibits _ " " _ tCode, "1 " _ ##class(OcuPilot.Kernel.Proposal.Prohibited).#UNCOVEREDFIELD, "a probe application's " _ tField _ " is not a setting the tools change")
+        Do $$$AssertEquals(tProhibits _ " " _ tCode, "1 " _ ##class(OcuPilot.Kernel.Proposal.Prohibited).#UNCOVEREDFIELD, "a probe application's " _ tField _ " is not a field the tools change")
     }
     For tName = "OcuPilotState", "OcuPilotIdentity" {
         Set tSC = $ClassMethod(..#PROBE, "Mint", ..#UPDATETOOL, tName, {"Name": (tName), "Description": "x"}, .tProposal, .tHttp, .tProblem)

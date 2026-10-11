@@ -237,7 +237,8 @@ ClassMethod RenderRead(pSC As %Status, pHttpStatus As %Integer, pFault As %Dynam
     Quit ##class(OcuPilot.Api.Error).Render($Select(+$Get(pHttpStatus): +pHttpStatus, 1: 500), pFault.error, pFault.reason, pFault.code, pFault.%Get("detail"))
 }
 
-/// <p>Answer <code>GET /docdb-application/form[?id=&lt;composite id&gt;]</code>: <code>{row}</code>. With an id,
+/// <p>Answer <code>GET /docdb-application/form[?id=&lt;composite id&gt;]</code>: <code>{row}</code>, and what
+/// <method>FormRead</method> adds for an existing record. With an id,
 /// <code>row</code> is <code>Name</code>, <code>Namespace</code> and the three settings from the update tool's fresh
 /// <code>GET</code>, <code>Enabled</code> a boolean; an id the instance does not hold, or that is not two parts, is 404
 /// <code>PORT.NOTFOUND</code>. Without one it is a new record's, enabled and otherwise empty. When
@@ -287,11 +288,26 @@ ClassMethod HandleForm() As %Status
         }
         Set tBody = {}
         Do tBody.%Set("row", tRow)
+        If $IsObject($Get(tFresh)) {
+            Set tFormSC = ..FormRead(tFresh, tRow, tBody)
+            If $$$ISERR(tFormSC) {
+                Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ##class(%Exception.StatusException).CreateFromStatus(tFormSC))
+                Quit
+            }
+        }
         Set tSC = ##class(OcuPilot.Api.Response).JSON(tBody)
     } Catch ex {
         Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ex)
     }
     Quit tSC
+}
+
+/// <p>What a subclass adds to the form read of an existing record, given the fresh read <var>pFresh</var> the row came
+/// from: members of <var>pRow</var> and of the answer <var>pBody</var>. Nothing here; a failure is an error status the
+/// read answers as an internal error.</p>
+ClassMethod FormRead(pFresh As %DynamicObject, pRow As %DynamicObject, pBody As %DynamicObject) As %Status
+{
+    Quit $$$OK
 }
 
 /// <p>Set into <var>pRow</var> a new record's fields: enabled, as the instance defaults it, and every other one

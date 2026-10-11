@@ -2964,6 +2964,54 @@ ClassMethod NamespaceDefined(pNamespace As %String) As %Boolean
     Quit ''##class(%SYS.Namespace).Exists($ZConvert(pNamespace, "U"))
 }
 
+/// <p>The names of the databases this instance configures, in <var>pNames</var> as a <class>%List</class> sorted without
+/// regard to case, read on every call from <code>Config.Databases</code>' <code>List</code> query in <code>%SYS</code>
+/// by explicit save and restore (AD-16) and never kept between calls. On a failed read <var>pNames</var> is empty and
+/// the status says why.</p>
+ClassMethod DatabaseNames(Output pNames As %List) As %Status
+{
+    Set pNames = ""
+    Set tSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = "%SYS"
+        Kill tSorted
+        Set tRS = ##class(%ResultSet).%New("Config.Databases:List")
+        Set tSC = tRS.Execute("*")
+        While $$$ISOK(tSC) && tRS.Next(.tSC) {
+            Set tName = tRS.Get("Name")
+            If tName '= "" Set tSorted($ZConvert(tName, "U"), tName) = ""
+        }
+        Set $NAMESPACE = tOrigNS
+        If $$$ISERR(tSC) Quit
+        Set tUpper = ""
+        For {
+            Set tUpper = $Order(tSorted(tUpper))
+            If tUpper = "" Quit
+            Set tName = ""
+            For {
+                Set tName = $Order(tSorted(tUpper, tName))
+                If tName = "" Quit
+                Set pNames = pNames _ $ListBuild(tName)
+            }
+        }
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tSC = ex.AsStatus()
+    }
+    If $$$ISERR(tSC) Set pNames = ""
+    Quit tSC
+}
+
+/// <p>Whether <var>pName</var> is, exactly as written, one of the names <method>DatabaseNames</method> reads. A read that
+/// fails answers 0.</p>
+ClassMethod DatabaseDefined(pName As %String) As %Boolean
+{
+    If pName = "" Quit 0
+    If $$$ISERR(..DatabaseNames(.tNames)) Quit 0
+    Quit ''$ListFind(tNames, pName)
+}
+
 /// <p>The resources guarding <var>pNamespace</var>'s routines and globals databases, in <var>pResources</var> as a
 /// <class>%List</class> without repeats; <var>pResolved</var> 0 when either reports none.</p>
 ClassMethod NamespaceResources(pNamespace As %String, Output pResources As %List, Output pResolved As %Boolean)

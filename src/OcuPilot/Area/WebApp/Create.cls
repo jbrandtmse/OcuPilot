@@ -447,7 +447,7 @@ ClassMethod UpdateViolations(pChanged As %DynamicObject, pFresh As %DynamicObjec
 /// -- or one naming a role the instance does not hold
 /// (<parameter>OcuPilot.Api.Error.WEBAPPMATCHROLESUNKNOWN</parameter>). An absent member grants no
 /// role. Role names are looked up in <code>%SYS</code> by AD-16's explicit save and restore.</p>
-ClassMethod MatchRolesViolation(pArgs As %DynamicObject, Output pViolations) As %Status [ Private ]
+ClassMethod MatchRolesViolation(pArgs As %DynamicObject, Output pViolations) As %Status
 {
     Set tSC = $$$OK
     If '$IsObject(pArgs) Quit tSC

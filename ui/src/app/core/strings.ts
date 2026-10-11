@@ -6241,6 +6241,14 @@ export const STRINGS = {
   /** EXPERIENCE.md:357 */
   routineAppDeleteConsequence: 'The application is removed, with the roles and routines it holds. No code is deleted.',
   /** EXPERIENCE.md:357 */
+  routineAppTabRoutines: 'Routines and classes',
+  /** EXPERIENCE.md:357 */
+  routineAppRoutinesEmpty: 'This application lists no routines or classes.',
+  /** EXPERIENCE.md:357 */
+  routineAppFieldRoutine: 'Routine or class',
+  /** EXPERIENCE.md:357 */
+  routineAppRoutineHint: 'A routine name, or Package.Name for a class.',
+  /** EXPERIENCE.md:357 */
   restServiceCreateEffect: 'Confirming compiles the service\'s specification, dispatch and implementation classes in this namespace. An implementation class already there keeps its code.',
   /** EXPERIENCE.md:357 */
   restServiceDeleteConsequence: 'The service is removed: its specification and dispatch classes are deleted. Its implementation class is kept.',

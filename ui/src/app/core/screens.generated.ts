@@ -20773,6 +20773,30 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     },
     "rowActions": [
       {
+        "id": "add-application-role",
+        "selfProtection": "ocupilot-routine-application"
+      },
+      {
+        "id": "remove-application-role",
+        "selfProtection": "ocupilot-routine-application"
+      },
+      {
+        "id": "add-matching-role",
+        "selfProtection": "ocupilot-routine-application"
+      },
+      {
+        "id": "remove-matching-role",
+        "selfProtection": "ocupilot-routine-application"
+      },
+      {
+        "id": "add-routine",
+        "selfProtection": "ocupilot-routine-application"
+      },
+      {
+        "id": "remove-routine",
+        "selfProtection": "ocupilot-routine-application"
+      },
+      {
         "id": "delete",
         "selfProtection": "ocupilot-routine-application"
       }

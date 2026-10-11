@@ -79,7 +79,7 @@ Method TestTheEditorIsAnUnlistedFormPage()
 
 /// <p>The create and update are advertised merge writes and the delete an advertised action write, each on
 /// <class>OcuPilot.Port.DocDbAppPort</class> over the area's two pairs and no other, each minted by
-/// <class>OcuPilot.Screen.Tool.MappingMint</class>; the create and update admit the three settings and declare the
+/// <class>OcuPilot.Screen.Tool.DocDbAppMint</class>; the create and update admit the three settings and declare the
 /// classic editor; the delete admits none, declares no classic page, fingerprints the three settings and states no
 /// consequence.</p>
 /// <p>Mutation (Rule 19): drop <code>Resource</code> from the update's <code>PERMITTEDFIELDS</code> -- the field legs
@@ -95,7 +95,7 @@ Method TestTheToolsDeclareTheirKindPortPairsAndFields()
         Do $$$AssertEquals($ClassMethod(tClass, "PortClass"), "OcuPilot.Port.DocDbAppPort", tName _ " reaches the instance through the Doc DB application port")
         Do $$$AssertEquals(##class(OcuPilot.Test.EncryptionDescriptor).Pairs($ClassMethod(tClass, "PrivilegePairs", "", .tResolved)), "%Admin_Secure:USE,%DB_IRISSYS:READ", tName _ " needs the area's two pairs and no other")
         Do $$$AssertEquals($ClassMethod(tClass, "IdArgument") _ " " _ $ClassMethod(tClass, "IdParam") _ " " _ $ClassMethod(tClass, "Endpoint"), "Name name DocDB", tName _ " names its target by the composite id the port splits")
-        Do $$$AssertEquals($ClassMethod(tClass, "MintClass"), "OcuPilot.Screen.Tool.MappingMint", tName _ " is minted by the mapping mint")
+        Do $$$AssertEquals($ClassMethod(tClass, "MintClass"), "OcuPilot.Screen.Tool.DocDbAppMint", tName _ " is minted by the Doc DB application mint")
         Set tSchema = $ClassMethod(tClass, "InputSchema")
         Set tProperties = tSchema.%Get("properties")
         Do $$$AssertEquals(tProperties.%IsDefined("Namespace") _ tProperties.%IsDefined("Name"), "11", tName _ "'s schema carries the namespace and the name")
@@ -116,6 +116,38 @@ Method TestTheToolsDeclareTheirKindPortPairsAndFields()
     Do $$$AssertEquals($ClassMethod(..#CREATE, "Creates") _ " " _ $ClassMethod(..#UPDATE, "Creates"), "1 0", "only the create creates")
     Do $$$AssertEquals($ClassMethod(..#UPDATE, "SendsBody") _ " " _ $ClassMethod(..#DELETE, "SendsBody"), "1 0", "the delete sends no body")
     Do $$$AssertEquals($Parameter(..#DELETE, "FINGERPRINTSUBJECT") _ "|" _ $Parameter(..#DELETE, "READANSWERS") _ "|" _ $Parameter(..#DELETE, "CONSEQUENCECODE") _ "|" _ $Parameter(..#DELETE, "SCREENACTIONS"), "Description,Enabled,Resource|Description,Enabled,Resource||delete", "the delete fingerprints the three settings, states no consequence and is the list's Delete")
+}
+
+/// <p>DW-2279 (C6): each Doc DB application tool's mint refuses an empty namespace or name before anything is read, as
+/// 400 <code>TOOL.ARGUMENTS</code> naming the namespace the record belongs to, or the Doc DB application record, and a
+/// part carrying the composite separator as a namespace or record name; no sentence names a mapping.</p>
+/// <p>Mutation (Rule 19): point <class>OcuPilot.Screen.Tool.DocDbAppUpdate</class>'s <code>MintClass</code> back at
+/// <class>OcuPilot.Screen.Tool.MappingMint</class> -- the update's legs go red; drop <code>CHILDDESCRIPTION</code> from
+/// <class>OcuPilot.Screen.Tool.DocDbAppMint</class> -- the record leg goes red.</p>
+Method TestTheMintNamesARecordInItsRefusals()
+{
+    Set tSeparator = $Char(##class(OcuPilot.Kernel.EntityId).#COMPOSITESEPARATOR)
+    For tClass = ..#CREATE, ..#UPDATE, ..#DELETE {
+        Set tName = $Parameter(tClass, "TOOLNAME")
+        Do ..Refusal(tClass, "USER", "", .tHttp, .tProblem)
+        Do $$$AssertEquals(tHttp, 400, tName _ ": an empty name is refused 400")
+        Do $$$AssertEquals(tProblem, "'Name' names the Doc DB application record and cannot be empty", tName _ " names the record")
+        Do ..Refusal(tClass, "", "My.Docs", .tHttp, .tProblem)
+        Do $$$AssertEquals(tHttp, 400, tName _ ": an empty namespace is refused 400")
+        Do $$$AssertEquals(tProblem, "'Namespace' names the namespace the record belongs to and cannot be empty", tName _ " names the namespace the record belongs to")
+        Do ..Refusal(tClass, "US" _ tSeparator _ "ER", "My.Docs", .tHttp, .tProblem)
+        Do $$$AssertEquals(tProblem, "'Namespace' carries the character U+0001, which no namespace or record name holds", tName _ " names a namespace or record name for the separator")
+        Do $$$AssertTrue(tProblem '[ "mapping", tName _ " names no mapping")
+    }
+}
+
+/// <p>The 400 problem the mint of <var>pToolClass</var> refuses <var>pNamespace</var> and <var>pName</var> with, before
+/// anything is read: a pure question that stores nothing.</p>
+ClassMethod Refusal(pToolClass As %String, pNamespace As %String, pName As %String, Output pHttp As %Integer, Output pProblem As %String)
+{
+    Set pProblem = ""
+    Set tSC = $ClassMethod($ClassMethod(pToolClass, "MintClass"), "Mint", $Parameter(pToolClass, "DESCRIPTORCLASS"), $Parameter(pToolClass, "TOOLNAME"), $Username, "", "", {"Namespace": (pNamespace), "Name": (pName)}, "OcuPilot.Kernel.Agent.Limits", .tResult, .pHttp, .tFault, $ClassMethod(pToolClass, "Endpoint"), $ClassMethod(pToolClass, "IdParam"), pName, $ClassMethod(pToolClass, "IdArgument"), $ClassMethod(pToolClass, "SettableFields"), pToolClass)
+    If $IsObject($Get(tFault)) && $IsObject(tFault.%Get("detail")) Set pProblem = tFault.%Get("detail").%Get("problem")
 }
 
 /// <p>AD-54: the create names its target as the caller typed it -- the namespace and name as written, joined -- and

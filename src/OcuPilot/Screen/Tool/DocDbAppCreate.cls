@@ -3,7 +3,7 @@
 /// answer <b>nothing</b>, composes the body from the settings the arguments supply and mints a proposal the user
 /// confirms. It writes nothing.</p>
 /// <p>The agent names the record with <code>Namespace</code> and <code>Name</code>;
-/// <class>OcuPilot.Screen.Tool.MappingMint</class> joins them into the composite id the list's rows carry, and
+/// <class>OcuPilot.Screen.Tool.DocDbAppMint</class> joins them into the composite id the list's rows carry, and
 /// <class>OcuPilot.Port.DocDbAppPort</class> splits it for the vendor. The vendor's <code>PUT</code> is an upsert that
 /// resolves a name in any case, so the absence fingerprint is what stops a confirmed create rewriting a record
 /// somebody else created since the mint (AD-54). The vendor stores the name exactly as sent, so
@@ -55,10 +55,11 @@ ClassMethod Endpoint() As %String
     Quit "DocDB"
 }
 
-/// <p><class>OcuPilot.Screen.Tool.MappingMint</class>, which builds the composite id.</p>
+/// <p><class>OcuPilot.Screen.Tool.DocDbAppMint</class>, which builds the composite id and names a record in its
+/// refusals.</p>
 ClassMethod MintClass() As %String
 {
-    Quit "OcuPilot.Screen.Tool.MappingMint"
+    Quit "OcuPilot.Screen.Tool.DocDbAppMint"
 }
 
 /// <p>The vendor's <code>name</code> query parameter, which carries the composite id the port splits.</p>

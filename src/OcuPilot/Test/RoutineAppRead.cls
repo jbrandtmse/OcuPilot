@@ -1,9 +1,11 @@
-/// <p>Pins Story 18.31's reads: the screen's declared read and <code>webapp.routineapps.read</code> answer the same rows
+/// <p>Pins Stories 18.31's and 18.33's reads: the screen's declared read and <code>webapp.routineapps.read</code> answer the same rows
 /// from one read, each carrying <code>Enabled</code> and <code>Description</code> from the application's own
 /// <code>GET</code> (the list answers neither) and <code>Enabled</code> a boolean; <code>GET /routine-application/form</code>
 /// answers an application's name and three settings and a new application's defaults; an application the instance does
 /// not hold is 404 <code>PORT.NOTFOUND</code>, and a name another kind of application holds is 404
-/// <code>PRIVROUTINE.TYPE</code>.</p>
+/// <code>PRIVROUTINE.TYPE</code>. An existing application's form read also carries its two lists as the vendor's own
+/// <code>GET</code> reads them, the instance's roles with each one's privileged mark and the databases the instance
+/// defines.</p>
 /// <p><b>What it needs from the environment:</b> OcuPilot installed and serving and
 /// <parameter>ARMINGVARIABLE</parameter> reading <code>1</code>, because the class creates probe privileged routine
 /// applications (<class>OcuPilot.Test.RoutineAppProbe</class>) and removes them by exact name before all, after each and
@@ -115,9 +117,9 @@ Method TestTheFormReadAnswersTheNameAndThreeSettings()
     Do $$$AssertEquals(tStatus, 200, "GET /routine-application/form answers: " _ $Extract(tRaw, 1, 300))
     Do $$$AssertTrue($ZConvert($Get(tHeaders("CONTENT-TYPE")), "L") [ "application/json", "as JSON")
     Set tForm = ##class(%DynamicObject).%FromJSON(tRaw)
-    Do $$$AssertEquals(##class(OcuPilot.Test.EncryptionStartupDescriptor).Keys(tForm), "row", "the form answers one member")
+    Do $$$AssertEquals(##class(OcuPilot.Test.EncryptionStartupDescriptor).Keys(tForm), "databases,roles,row", "the form answers the row, the roles and the databases")
     Set tRow = tForm.%Get("row")
-    Do $$$AssertEquals(##class(OcuPilot.Test.EncryptionStartupDescriptor).Keys(tRow), "Description,Enabled,Name,Resource", "the row carries the name and the three settings, and no namespace")
+    Do $$$AssertEquals(##class(OcuPilot.Test.EncryptionStartupDescriptor).Keys(tRow), "Description,Enabled,MatchRoles,Name,Resource,Routines", "the row carries the name, the three settings and the two lists, and no namespace")
     Do $$$AssertEquals(tRow.%Get("Name") _ "|" _ tRow.%Get("Description") _ "|" _ tRow.%Get("Enabled") _ "|" _ tRow.%GetTypeOf("Enabled") _ "|" _ tRow.%Get("Resource"), "OcuProbe1831A|form|0|boolean|", "as the instance stores them, Enabled a boolean")
     Do ##class(OcuPilot.Test.Http).AbsoluteRequest("GET", tBase _ "/routine-application/form?id=ocuprobe1831a", tUser, tPassword, .tStatus, .tRaw, .tHeaders)
     Do $$$AssertEquals(tStatus _ " " _ ##class(%DynamicObject).%FromJSON(tRaw).%Get("row").%Get("Description"), "200 form", "the same application named in another case is the same application")
@@ -136,6 +138,65 @@ Method TestTheFormReadAnswersTheNameAndThreeSettings()
     Do ##class(OcuPilot.Test.Http).AbsoluteRequest("GET", tBase _ "/routine-application/form?id=OcuPilotState", tUser, tPassword, .tStatus, .tRaw, .tHeaders)
     Set tOwn = ##class(%DynamicObject).%FromJSON(tRaw).%Get("row")
     Do $$$AssertEquals(tStatus _ " " _ tOwn.%Get("Name") _ " " _ tOwn.%Get("Enabled"), "200 OcuPilotState " _ ''$ClassMethod(..#PROBE, "StoredField", "", "OcuPilotState", "Enabled"), "OcuPilot's own application is read, which no rule refuses")
+}
+
+/// <p>C1: the form read of an application holding a role and a routine answers the two lists exactly as the vendor's own
+/// <code>GET</code> does, <code>roles</code> as <code>[{name, privileged}]</code> with <code>%All</code> marked
+/// privileged and a database role not, and <code>databases</code> as the names <code>Config.Databases</code> lists; a new
+/// application's form carries neither.</p>
+/// <p>Mutation (Rule 19): make <method>OcuPilot.Area.WebApp.RoutineAppRules.FormRead</method> add nothing -- every leg
+/// goes red.</p>
+Method TestTheFormReadCarriesTheListsTheRolesAndTheDatabases()
+{
+    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "Seed", "", "OcuProbe1831A", $ClassMethod(..#PROBE, "WithLists", "lists")), "a probe application holding a role and a routine")
+    Set tBase = $Parameter("OcuPilot.Test.Http", "BASEPATH")
+    Do ##class(OcuPilot.Test.Http).AbsoluteRequest("GET", tBase _ "/routine-application/form?id=OcuProbe1831A", ##class(OcuPilot.Test.Http).GetTestUsername(), ##class(OcuPilot.Test.Http).GetTestPassword(), .tStatus, .tRaw, .tHeaders)
+    Do $$$AssertEquals(tStatus, 200, "GET /routine-application/form answers: " _ $Extract(tRaw, 1, 300))
+    Set tForm = ##class(%DynamicObject).%FromJSON(tRaw)
+    Set tStored = $ClassMethod(..#PROBE, "Stored", "", "OcuProbe1831A")
+    Do $$$AssertEquals(tForm.%Get("row").%Get("MatchRoles").%ToJSON(), tStored.%Get("MatchRoles").%ToJSON(), "the row's roles are the GET's")
+    Do $$$AssertEquals(tForm.%Get("row").%Get("Routines").%ToJSON(), tStored.%Get("Routines").%ToJSON(), "and its routines")
+    Do $$$AssertEquals(tForm.%Get("row").%Get("MatchRoles").%ToJSON(), "[{""MatchRole"":"""",""TargetRoles"":[""%DB_HSCUSTOM""]}]", "which are the ones the probe was created with")
+    Set tAll = ""
+    Set tDatabaseRole = ""
+    Set tShapes = 0
+    Set tIterator = tForm.%Get("roles").%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tRole) {
+        Set tShapes = tShapes + (##class(OcuPilot.Test.EncryptionStartupDescriptor).Keys(tRole) '= "name,privileged")
+        If tRole.%Get("name") = "%All" Set tAll = tRole.%Get("privileged") _ tRole.%GetTypeOf("privileged")
+        If tRole.%Get("name") = "%DB_HSCUSTOM" Set tDatabaseRole = tRole.%Get("privileged")
+    }
+    Do $$$AssertEquals(tShapes, 0, "each role carries its name and its mark")
+    Do $$$AssertEquals(tAll, "1boolean", "%All is marked privileged")
+    Do $$$AssertEquals(tDatabaseRole, 0, "and a database role is not")
+    Set tNames = ""
+    Set tOrigNS = $NAMESPACE
+    Set $NAMESPACE = "%SYS"
+    Set tRS = ##class(%ResultSet).%New("Config.Databases:List")
+    Do tRS.Execute("*")
+    While tRS.Next() {
+        Set tNames = tNames _ $Select(tNames = "": "", 1: ",") _ tRS.Get("Name")
+    }
+    Set $NAMESPACE = tOrigNS
+    Set tListed = ""
+    Set tIterator = tForm.%Get("databases").%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tName) {
+        Set tListed = tListed _ $Select(tListed = "": "", 1: ",") _ tName
+    }
+    Do $$$AssertNotEquals(tNames, "", "the instance defines databases")
+    Do $$$AssertEquals(..Sorted(tListed), ..Sorted(tNames), "the form lists the databases Config.Databases lists")
+    Set tPrevious = ""
+    Set tOrdered = 1
+    Set tIterator = tForm.%Get("databases").%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tName) {
+        If $ZConvert(tPrevious, "U") ] $ZConvert(tName, "U") Set tOrdered = 0
+        Set tPrevious = tName
+    }
+    Do $$$AssertEquals(tOrdered, 1, "in order, without regard to case")
+    Set tPort = "OcuPilot.Port.AdminPort"
+    Do $$$AssertEquals($ClassMethod(tPort, "DatabaseDefined", "HSCUSTOM") _ $ClassMethod(tPort, "DatabaseDefined", "hscustom") _ $ClassMethod(tPort, "DatabaseDefined", "") _ $ClassMethod(tPort, "DatabaseDefined", "OCUPROBE1833NODB"), "1000", "a database is defined by its name exactly as written")
+    Do ##class(OcuPilot.Test.Http).AbsoluteRequest("GET", tBase _ "/routine-application/form", ##class(OcuPilot.Test.Http).GetTestUsername(), ##class(OcuPilot.Test.Http).GetTestPassword(), .tStatus, .tRaw, .tHeaders)
+    Do $$$AssertEquals(##class(OcuPilot.Test.EncryptionStartupDescriptor).Keys(##class(%DynamicObject).%FromJSON(tRaw)), "row", "a new application's form carries the row alone")
 }
 
 /// <p>AD-10, DW-2262: the admin port answers a read of a name another kind of application holds as 404

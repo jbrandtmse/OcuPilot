@@ -50,10 +50,11 @@ ClassMethod Endpoint() As %String
     Quit "DocDB"
 }
 
-/// <p><class>OcuPilot.Screen.Tool.MappingMint</class>, which builds the composite id.</p>
+/// <p><class>OcuPilot.Screen.Tool.DocDbAppMint</class>, which builds the composite id and names a record in its
+/// refusals.</p>
 ClassMethod MintClass() As %String
 {
-    Quit "OcuPilot.Screen.Tool.MappingMint"
+    Quit "OcuPilot.Screen.Tool.DocDbAppMint"
 }
 
 ClassMethod IdParam() As %String

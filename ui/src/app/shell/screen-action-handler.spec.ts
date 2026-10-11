@@ -16,6 +16,7 @@ import {
   ADD_GRANTED_ROLE,
   ADD_MATCHING_ROLE,
   ADD_ROLE,
+  ADD_ROUTINE,
   COPY_MAPPINGS,
   ENABLE_INTEROP,
   DATABASE_DETAILS,
@@ -32,6 +33,7 @@ import {
   REMOVE_MATCHING_ROLE,
   REMOVE_RESOURCE_GRANT,
   REMOVE_ROLE,
+  REMOVE_ROUTINE,
   REQUIRE_PASSWORD_CHANGE,
   RESOURCE_LIST,
   REVOKE_SQL,
@@ -112,6 +114,17 @@ describe('the generic screen-action handler', () => {
       expect(actions.has(WEB_APPS.descriptor, action.id)).toBe(!undrawn.includes(action.id));
     }
     expect(actions.has(WEB_APPS.descriptor, 'terminate')).toBe(false);
+  });
+
+  it('registers Delete alone for the privileged routine applications list: its six role and routine actions are the editor\u2019s tabs\u2019, drawn by no list surface', () => {
+    // Mutation (Rule 19): drop the list's entry from `UNDRAWN_ACTIONS` -> the six register against the descriptor and
+    // this goes red (Story 18.33).
+    const list = 'OcuPilot.Screen.Descriptor.RoutineAppList';
+    const { actions } = mount(undefined, list);
+    for (const id of [ADD_APPLICATION_ROLE, REMOVE_APPLICATION_ROLE, ADD_MATCHING_ROLE, REMOVE_MATCHING_ROLE, ADD_ROUTINE, REMOVE_ROUTINE]) {
+      expect(actions.has(list, id), id).toBe(false);
+    }
+    expect(actions.has(list, 'delete')).toBe(true);
   });
 
   it('sends the selected row through the screen-action route and publishes what the instance answered', async () => {

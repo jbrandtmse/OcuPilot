@@ -19,4 +19,12 @@ Parameter DESCRIPTORCLASS = "OcuPilot.Screen.Descriptor.RoutineAppForm";
 
 Parameter RULES = "OcuPilot.Area.WebApp.RoutineAppRules";
 
+/// <p>The three settings the General tab edits (<parameter>OcuPilot.Area.WebApp.DocDbAppRules.FIELDS</parameter>): the
+/// update tool settles the two lists as well, which change only through the tabs' row actions (AD-56 (ii)), so a body
+/// carrying one is 400 <parameter>OcuPilot.Api.Error.PORTFIELDUNEXPECTED</parameter>.</p>
+ClassMethod SaveFields(pToolClass As %String) As %List
+{
+    Quit $ListFromString($Parameter(..#RULES, "FIELDS"))
+}
+
 }

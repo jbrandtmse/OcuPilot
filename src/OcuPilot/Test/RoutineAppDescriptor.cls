@@ -1,7 +1,7 @@
-/// <p>Pins Story 18.31's declarations: the privileged routine applications list and editor descriptors, the three write
-/// tools' kinds, port, pairs, permitted fields, mint and id grammar, the entity type and its exact id, the reviewed
-/// classification, the three baseline keys, the codes and their sentences, and the Doc DB rule set's unchanged
-/// defaults.</p>
+/// <p>Pins Stories 18.31's and 18.33's declarations: the privileged routine applications list and editor descriptors, the
+/// list's six role and routine row actions, the three write tools' kinds, port, pairs, permitted and settable fields,
+/// mint and id grammar, the entity type and its exact id, the reviewed classification, the three baseline keys, the codes
+/// and their sentences, and the Doc DB rule set's unchanged defaults.</p>
 /// <p><b>Reads only.</b> Every leg is a pure question to a class, and the class needs nothing from the environment.</p>
 Class OcuPilot.Test.RoutineAppDescriptor Extends %UnitTest.TestCase
 {
@@ -23,9 +23,16 @@ Parameter PROHIBITED = "OcuPilot.Kernel.Proposal.Prohibited";
 /// <p>The three settings a create or an edit admits, sorted.</p>
 Parameter THREE = "Description,Enabled,Resource";
 
+/// <p>The five fields the update tool settles and the kernel reviews for a change: the three settings and the two lists,
+/// sorted.</p>
+Parameter FIVE = "Description,Enabled,MatchRoles,Resource,Routines";
+
+/// <p>The six row actions the editor's tabs send, beside the list's Delete.</p>
+Parameter SIX = "add-application-role,remove-application-role,add-matching-role,remove-matching-role,add-routine,remove-routine";
+
 /// <p>The list is the Web applications area's fifth listed <code>list</code> over the application read, with the area's
-/// two pairs and no own pair, a single-name id, Create and a Delete that carries the own-application rule, three
-/// prompts and the classic list page; its read declares the per-row <code>GET</code> that supplies <code>Enabled</code>
+/// two pairs and no own pair, a single-name id, Create, six role and routine row actions and a Delete that each carry
+/// the own-application rule, three prompts and the classic list page; its read declares the per-row <code>GET</code> that supplies <code>Enabled</code>
 /// and <code>Description</code>, and its context and table carry the four fields.</p>
 /// <p>Mutation (Rule 19): change the list's <code>sideBarPosition</code> to 6 -- the position leg goes red; drop the
 /// <code>rowGet</code> from its read -- the read leg goes red and <class>OcuPilot.Test.RoutineAppRead</class> reads
@@ -43,7 +50,16 @@ Method TestTheListIsDeclaredAsTheSpecPlacesIt()
     Do $$$AssertEquals(##class(OcuPilot.Test.EncryptionDescriptor).Pairs($ClassMethod(tClass, "PrivilegePairs")), "%Admin_Secure:USE,%DB_IRISSYS:READ", "the area's two pairs")
     Do $$$AssertEquals(##class(OcuPilot.Test.EncryptionDescriptor).Pairs($ClassMethod(tClass, "OwnPrivilegePairs")), "", "and no own pair")
     Set tActions = $ClassMethod(tClass, "Field", "rowActions")
-    Do $$$AssertEquals($ClassMethod(tClass, "Field", "primaryAction").%Get("id") _ " " _ tActions.%Get(0).%Get("id") _ " " _ tActions.%Get(0).%Get("selfProtection") _ " " _ tActions.%Size(), "create delete ocupilot-routine-application 1", "Create, and Delete alone as a row action, carrying the own-application rule")
+    Do $$$AssertEquals($ClassMethod(tClass, "Field", "primaryAction").%Get("id") _ " " _ tActions.%Size(), "create 7", "Create, and seven row actions")
+    Set tSeen = ""
+    Set tRules = ""
+    Set tIterator = tActions.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tAction) {
+        Set tSeen = tSeen _ $Select(tSeen = "": "", 1: ",") _ tAction.%Get("id")
+        If tAction.%Get("selfProtection") '= "ocupilot-routine-application" Set tRules = tRules _ tAction.%Get("id") _ " "
+    }
+    Do $$$AssertEquals(tSeen, ..#SIX _ ",delete", "the six role and routine actions, then Delete")
+    Do $$$AssertEquals(tRules, "", "each carrying the own-application rule")
     Do $$$AssertEquals($ClassMethod(tClass, "Field", "suggestedPrompts").%Size(), 3, "three prompts")
     Set tRead = $ClassMethod(tClass, "Read")
     Set tSource = tRead.%Get("source")
@@ -88,7 +104,7 @@ Method TestTheEditorIsAnUnlistedFormPage()
 /// <p>The create and update are advertised merge writes and the delete an advertised action write, each on
 /// <class>OcuPilot.Port.AdminPort</class> over the area's two pairs and no other, each minted by the kernel's
 /// <class>OcuPilot.Kernel.Proposal.Mint</class>, naming its target by the name alone with no namespace in its schema;
-/// the create and update admit the three settings and declare the classic editor; the delete admits none, declares no
+/// the create admits the three settings and the update those and the two lists, both declaring the classic editor; the delete admits none, declares no
 /// classic page, fingerprints the three settings and the two lists and states no consequence.</p>
 /// <p>Mutation (Rule 19): drop <code>Resource</code> from the update's <code>PERMITTEDFIELDS</code> -- the field legs go
 /// red; leave <code>Namespace</code> in the schema <method>OcuPilot.Screen.Tool.RoutineAppCreate.Described</method>
@@ -108,8 +124,11 @@ Method TestTheToolsDeclareTheirKindPortPairsAndFields()
         Set tProperties = tSchema.%Get("properties")
         Do $$$AssertEquals(tProperties.%IsDefined("Namespace") _ tProperties.%IsDefined("Name"), "01", tName _ "'s schema carries the name and no namespace")
         Do $$$AssertEquals(##class(OcuPilot.Test.EncryptionKeyRead).Joined(tSchema.%Get("required")), "Name", tName _ "'s schema requires the name alone")
-        Do $$$AssertEquals(tProperties.%IsDefined("MatchRoles") _ tProperties.%IsDefined("Routines"), "00", tName _ "'s schema admits neither list")
+        Do $$$AssertEquals(tProperties.%IsDefined("MatchRoles") _ tProperties.%IsDefined("Routines"), $Select(tClass = ..#UPDATE: "11", 1: "00"), tName _ "'s schema admits " _ $Select(tClass = ..#UPDATE: "both lists", 1: "neither list"))
     }
+    Set tProperties = $ClassMethod(..#UPDATE, "InputSchema").%Get("properties")
+    Do $$$AssertEquals(tProperties.%Get("MatchRoles").%Get("type") _ " " _ tProperties.%Get("Routines").%Get("type"), "array array", "the update admits each list as an array")
+    Do $$$AssertTrue($Parameter(..#UPDATE, "DESCRIPTION") [ "complete list", "which its description says is the complete list")
     For tClass = ..#CREATE, ..#UPDATE {
         Do $$$AssertEquals($Parameter(tClass, "CLASSICPAGES"), "%CSP.UI.Portal.Applications.PrivRoutine", $Parameter(tClass, "TOOLNAME") _ " declares the classic editor")
         Set tEnabled = $ClassMethod(tClass, "InputSchema").%Get("properties").%Get("Enabled")
@@ -118,10 +137,11 @@ Method TestTheToolsDeclareTheirKindPortPairsAndFields()
     }
     Do $$$AssertEquals($Parameter(..#DELETE, "CLASSICPAGES") _ "|" _ $Parameter(..#DELETE, "DESTRUCTIVE") _ "|" _ $ListToString($ClassMethod(..#DELETE, "SettableFields")), "|1|", "the delete is destructive, names no classic page and admits no field")
     Do $$$AssertEquals(..Sorted($ListToString($ClassMethod(..#CREATE, "SettableFields"))), ..#THREE, "the create admits the three settings")
-    Do $$$AssertEquals(..Sorted($ListToString($ClassMethod(..#UPDATE, "SettableFields"))), ..#THREE, "the update admits the three settings")
+    Do $$$AssertEquals(..Sorted($ListToString($ClassMethod(..#UPDATE, "SettableFields"))), ..#FIVE, "the update admits the three settings and the two lists")
     Do $$$AssertEquals(..Sorted($ListToString($ClassMethod(..#UPDATE, "PermittedFields"))), ..#THREE, "which it declares as its permitted fields")
-    Do $$$AssertEquals(..Sorted($ListToString($ClassMethod(..#PROHIBITED, "PermittedChangeFields", "routine-application"))), ..#THREE, "the kernel's reviewed few for a change are the same")
-    Do $$$AssertEquals(..Sorted($ListToString($ClassMethod(..#PROHIBITED, "PermittedCreateFields", "routine-application"))), ..#THREE, "and for a create")
+    Do $$$AssertEquals(..Sorted($ListToString($ClassMethod(..#PROHIBITED, "PermittedChangeFields", "routine-application"))), ..#FIVE, "the kernel's reviewed few for a change are the update's five")
+    Do $$$AssertEquals(..Sorted($ListToString($ClassMethod(..#PROHIBITED, "PermittedCreateFields", "routine-application"))), ..#THREE, "and for a create the three")
+    Do $$$AssertEquals(..Sorted($ListToString($ClassMethod(..#PROHIBITED, "PermittedChangeFields", "docdb-application"))), ..#THREE, "while the Doc DB record's change fields stay the three")
     Do $$$AssertEquals($ClassMethod(..#CREATE, "Creates") _ " " _ $ClassMethod(..#UPDATE, "Creates"), "1 0", "only the create creates")
     Do $$$AssertEquals($ClassMethod(..#UPDATE, "SendsBody") _ " " _ $ClassMethod(..#DELETE, "SendsBody"), "1 0", "the delete sends no body")
     Do $$$AssertEquals($Parameter(..#DELETE, "FINGERPRINTSUBJECT") _ "|" _ $Parameter(..#DELETE, "READANSWERS") _ "|" _ $Parameter(..#DELETE, "CONSEQUENCECODE") _ "|" _ $Parameter(..#DELETE, "SCREENACTIONS"), "Description,Enabled,Resource,MatchRoles,Routines|Description,Enabled,Resource,MatchRoles,Routines||delete", "the delete fingerprints the three settings and the two lists, states no consequence and is the list's Delete")
@@ -209,7 +229,7 @@ Method TestTheCodesAnswerTheirSentences()
 {
     Set tClass = ..#ERRORS
     Set tCodes = $ClassMethod(tClass, "Codes")
-    Do $$$AssertEquals($ListLength(tCodes), 8, "eight codes")
+    Do $$$AssertEquals($ListLength(tCodes), 9, "nine codes")
     For tI = 1:1:$ListLength(tCodes) {
         Set tCode = $List(tCodes, tI)
         Set tReason = $ClassMethod(tClass, "ReasonFor", tCode)
@@ -229,14 +249,36 @@ Method TestTheCodesAnswerTheirSentences()
     Do $$$AssertEquals($ClassMethod(tClass, "ReasonFor", "DOCDBAPP.NAME"), "", "and this class answers none of theirs")
 }
 
-/// <p>AD-39, DW-2262: the eight codes keep their published strings, in the order
-/// <method>OcuPilot.Api.RoutineAppError.Codes</method> lists them -- the envelope, the five field codes, the web
+/// <p>AD-39, DW-2262: the nine codes keep their published strings, in the order
+/// <method>OcuPilot.Api.RoutineAppError.Codes</method> lists them -- the envelope, the six field codes, the web
 /// application refusal and the type refusal -- because a client keys on the string, not on the parameter's name.</p>
 /// <p>Mutation (Rule 19): change <parameter>OcuPilot.Api.RoutineAppError.WEBAPP</parameter> to
 /// <code>PRIVROUTINE.WEBAPPS</code> -- this goes red alone.</p>
 Method TestTheCodeStringsAreThePublishedOnes()
 {
-    Do $$$AssertEquals($ListToString($ClassMethod(..#ERRORS, "Codes")), "PRIVROUTINE.VALIDATION,PRIVROUTINE.NAME,PRIVROUTINE.DESCRIPTION,PRIVROUTINE.ENABLED,PRIVROUTINE.RESOURCE,PRIVROUTINE.TAKEN,PRIVROUTINE.WEBAPP,PRIVROUTINE.TYPE", "the codes read as published")
+    Do $$$AssertEquals($ListToString($ClassMethod(..#ERRORS, "Codes")), "PRIVROUTINE.VALIDATION,PRIVROUTINE.NAME,PRIVROUTINE.DESCRIPTION,PRIVROUTINE.ENABLED,PRIVROUTINE.RESOURCE,PRIVROUTINE.ROUTINES,PRIVROUTINE.TAKEN,PRIVROUTINE.WEBAPP,PRIVROUTINE.TYPE", "the codes read as published")
+}
+
+/// <p>Story 18.33 (C6): the update tool carries the six row actions, each with the values it admits; the editor's Save
+/// admits the three settings alone, so a list in its body is not one of its fields; and the routines code names its
+/// field and carries its published sentence.</p>
+/// <p>Mutation (Rule 19): drop <code>add-routine</code> from <parameter>OcuPilot.Screen.Tool.RoutineAppUpdate.SCREENACTIONS</parameter>
+/// -- this goes red; drop the <code>SaveFields</code> override from <class>OcuPilot.Area.WebApp.RoutineAppSave</class> --
+/// this goes red; drop <code>FieldOf</code>'s routines line from <class>OcuPilot.Api.RoutineAppError</class> -- this and
+/// <method>TestTheCodesAnswerTheirSentences</method> go red.</p>
+Method TestTheSixRowActionsAreTheUpdatesAndTheSaveAdmitsTheThreeSettings()
+{
+    Set tUpdate = ..#UPDATE
+    Do $$$AssertEquals($ListToString($ClassMethod(tUpdate, "ScreenActionIds")), ..#SIX, "the update carries the six row actions")
+    Do $$$AssertEquals($ListToString($ClassMethod(tUpdate, "ScreenActionValueNames", "add-application-role")) _ "|" _ $ListToString($ClassMethod(tUpdate, "ScreenActionValueNames", "remove-matching-role")) _ "|" _ $ListToString($ClassMethod(tUpdate, "ScreenActionValueNames", "add-routine")) _ "|" _ $ListToString($ClassMethod(tUpdate, "ScreenActionValueNames", "remove-routine")), "Role|MatchRole,Role|RoutineOrClass,Db,Type|RoutineOrClass,Db,Type", "each admitting the values the tab sends")
+    Do $$$AssertEquals($ListToString($ClassMethod(tUpdate, "ScreenActionValueNames", "delete")), "", "and no value on a name it does not carry")
+    Do $$$AssertEquals(..Sorted($ListToString($ClassMethod("OcuPilot.Area.WebApp.RoutineAppSave", "SaveFields", tUpdate))), ..#THREE, "the editor's Save admits the three settings for the update")
+    Do $$$AssertEquals(..Sorted($ListToString($ClassMethod("OcuPilot.Area.WebApp.RoutineAppSave", "SaveFields", ..#CREATE))), ..#THREE, "and for the create")
+    Do $$$AssertEquals(..Sorted($ListToString($ClassMethod("OcuPilot.Area.WebApp.DocDbAppSave", "SaveFields", "OcuPilot.Screen.Tool.DocDbAppUpdate"))), ..#THREE, "while Doc DB's Save keeps its tool's own list")
+    Set tCode = ##class(OcuPilot.Api.RoutineAppError).#ROUTINES
+    Do $$$AssertEquals(tCode _ " " _ ##class(OcuPilot.Api.RoutineAppError).FieldOf(tCode), "PRIVROUTINE.ROUTINES Routines", "the routines code names its field")
+    Do $$$AssertEquals(##class(OcuPilot.Api.Error).ReasonForViolation(tCode), "Each routine entry names a routine or class, a database this instance defines and its type, Routine or Class.", "and carries its published sentence")
+    Do $$$AssertTrue($ListFind(##class(OcuPilot.Api.RoutineAppError).ViolationCodes(), tCode) > 0, "which is one of the field codes")
 }
 
 /// <p>Rule 31: the Doc DB rule set and Save keep their own error class and their namespace key, and the routine

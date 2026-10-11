@@ -393,6 +393,10 @@ services:
       # The web application guard class creates a probe application named OcuProbe1831 and writes it through the web
       # application editor's Save, the list's Delete and the agent's web application tools (Story 18.31).
       # classes: RoutineAppWebAppGuard
+      # The routine application member classes change probe applications named OcuProbe1831 and create probe roles named
+      # OcuProbe1833Role, through the editor's six row actions and the agent's complete lists, and judge the grants they
+      # make (Story 18.33).
+      # classes: RoutineAppGrant, RoutineAppMembers
       # The REST service classes create and delete probe services named OcuProbe1832, and the gate class writes them as
       # principals holding the REST API explorer's pairs and each without one (Story 18.32).
       # classes: RestServiceGate, RestServiceWrite
