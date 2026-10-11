@@ -11158,6 +11158,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-32-spec-based-rest-services.md | severity: med | fix-risk: high | footprint: in-story
 - evidence: MgmntPort.Resolved reads GetWebRESTApps(pNamespace) and matches dispatchClass = <Name>.disp only. %Api.InteropEditors forwards /v1../v7 to %Api.InteropEditors.vN.disp (irissys/%Api/InteropEditors.cls:28-35) and GetRESTApps(%SYS) lists those eight with no web application on ocupilot-ci (they sit in read-only IRISLIB, so there the vendor delete fails); a user's router forwarding to a spec-first service in a writable database would lose its .spec and .disp.
 - 2026-10-11T09:46:42Z status=escalated owner=burndown by=cr note=fix walks each listed web app's UrlMap Forward targets or reads every namespace's apps; matrix row names direct dispatch only
+- 2026-10-11T13:57:30Z status=routed owner=burndown by=lead note=orchestrator ruling: fix at 18.35 (UrlMap Forward walk plus GetWebRESTApps over all namespaces in MgmntPort.Resolved); a forwarded or cross-namespace delete breaks a live API
 
 ### DW-2312: ToolEmit.TestEveryLiveToolRequiresItsScreensPairs's doc comment says no other live tool's arguments add pairs; the ExplorerSave and RestServiceWrite branches contradict it
 - source: spec-18-32-spec-based-rest-services.md | severity: low | fix-risk: low | footprint: in-epic
@@ -11202,3 +11203,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-20-4-per-host-tabs-the-monitor-queues-and-jobs.md | severity: low | fix-risk: med | footprint: in-story
 - evidence: wc -l src/OcuPilot/Test/InteropHostEdges.cls = 615; a split needs a new armed class, the arming roster in ci-throwaway.sh and ci.test.mjs
 - 2026-10-11T08:13:07Z status=wontfix-accepted owner=20-4-per-host-tabs-the-monitor-queues-and-jobs by=cr note=reopen_if=the class gains another leg; split it then, with its arming roster line
+
+### DW-2313: Prohibited.PermittedChangeFields' Doc DB clause still names the routine application type, unreachable since 18.33's routine line above it
+- source: spec-18-33-privileged-routine-application-roles-and-routines.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: Epic 20's committed 20.23 (6aa1f459) edits Prohibited.cls, so Rule 11 kept 18.33's edit to added lines; the old clause's routine term is dead
+- 2026-10-11T13:57:30Z status=wontfix-accepted owner=18-33-privileged-routine-application-roles-and-routines by=harvest note=reopen_if=Epic 20's open diff to Prohibited.cls has merged and a story edits PermittedChangeFields, which drops the term
