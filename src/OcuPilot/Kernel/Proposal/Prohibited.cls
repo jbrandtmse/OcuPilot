@@ -4463,6 +4463,8 @@ ClassMethod ResourceNames(pObject As %DynamicObject, Output pNames) [ Private ]
 /// import's <code>runAs</code>, the accounts of the tasks it creates, when any is another account. The authorization
 /// server configuration's <code>CustomizationRoles</code> grants privilege when it adds a privileged
 /// role (<method>AddsPrivilegedCustomizationRole</method>). Any other type grants nothing here.</p>
+/// <p>A privileged routine application's <code>MatchRoles</code> is judged as a web application's, and a routine it
+/// adds while a target role escalates is a grant too (<method>AddsRoutineUnderPrivilege</method>, Story 18.33).</p>
 ClassMethod GrantsPrivilegeByEffect(pType As %String, pPayload As %DynamicObject, pTarget As %DynamicObject, Output pGrants As %Boolean, pId As %String = "") As %Status
 {
     Set pGrants = 0

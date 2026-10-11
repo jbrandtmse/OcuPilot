@@ -90,6 +90,7 @@ interface HeldRoutineView {
             <select
               class="ocu-field-input"
               [id]="applicationRoleId"
+              [attr.aria-disabled]="blocked"
               [attr.aria-describedby]="applicationRoleDescribedBy"
               (change)="onPickApplicationRole($event)"
             >
@@ -146,7 +147,13 @@ interface HeldRoutineView {
         <div class="ocu-field">
           <label class="ocu-field-label" [attr.for]="matchRoleId">{{ STRINGS.webAppFieldMatchRole }}</label>
           <div class="ocu-field-control">
-            <select class="ocu-field-input" [id]="matchRoleId" (change)="onPickMatchRole($event)">
+            <select
+              class="ocu-field-input"
+              [id]="matchRoleId"
+              [attr.aria-disabled]="blocked"
+              [attr.aria-describedby]="describedBy"
+              (change)="onPickMatchRole($event)"
+            >
               <option value="" [selected]="matchRolePicked === ''"></option>
               @for (option of roleNames; track option) {
                 <option [value]="option" [selected]="option === matchRolePicked">{{ option }}</option>
@@ -160,6 +167,7 @@ interface HeldRoutineView {
             <select
               class="ocu-field-input"
               [id]="matchTargetId"
+              [attr.aria-disabled]="blocked"
               [attr.aria-describedby]="matchTargetDescribedBy"
               (change)="onPickMatchTarget($event)"
             >
@@ -237,7 +245,8 @@ interface HeldRoutineView {
               data-field="RoutineOrClass"
               [id]="routineNameId"
               [value]="routineNamePicked"
-              [attr.aria-describedby]="routineNameHintId"
+              [attr.aria-disabled]="blocked"
+              [attr.aria-describedby]="routineNameDescribedBy"
               (input)="onRoutineName($event)"
             />
           </div>
@@ -246,7 +255,14 @@ interface HeldRoutineView {
         <div class="ocu-field">
           <label class="ocu-field-label" [attr.for]="routineDbId">{{ STRINGS.systemInfoDatabase }}</label>
           <div class="ocu-field-control">
-            <select class="ocu-field-input" data-field="Db" [id]="routineDbId" (change)="onPickRoutineDb($event)">
+            <select
+              class="ocu-field-input"
+              data-field="Db"
+              [id]="routineDbId"
+              [attr.aria-disabled]="blocked"
+              [attr.aria-describedby]="describedBy"
+              (change)="onPickRoutineDb($event)"
+            >
               <option value="" [selected]="routineDbPicked === ''"></option>
               @for (option of databases; track option) {
                 <option [value]="option" [selected]="option === routineDbPicked">{{ option }}</option>
@@ -257,7 +273,14 @@ interface HeldRoutineView {
         <div class="ocu-field">
           <label class="ocu-field-label" [attr.for]="routineTypeId">{{ STRINGS.tableColumnType }}</label>
           <div class="ocu-field-control">
-            <select class="ocu-field-input" data-field="Type" [id]="routineTypeId" (change)="onPickRoutineType($event)">
+            <select
+              class="ocu-field-input"
+              data-field="Type"
+              [id]="routineTypeId"
+              [attr.aria-disabled]="blocked"
+              [attr.aria-describedby]="describedBy"
+              (change)="onPickRoutineType($event)"
+            >
               <option [value]="routineType" [selected]="routineTypePicked === routineType">{{ STRINGS.processColumnRoutine }}</option>
               <option [value]="classType" [selected]="routineTypePicked === classType">{{ STRINGS.explorerClassDocumentLabel }}</option>
             </select>
@@ -296,7 +319,6 @@ export class RoutineAppMemberTabs {
 
   protected readonly classType = CLASS_TYPE;
 
-  protected readonly refusalId = 'ocu-routine-app-members-refusal';
   protected readonly applicationRoleId = 'ocu-routine-app-application-role';
   protected readonly matchRoleId = 'ocu-routine-app-match-role';
   protected readonly matchTargetId = 'ocu-routine-app-match-target';
@@ -359,8 +381,13 @@ export class RoutineAppMemberTabs {
     return this.refusal !== '' || !this.store.editable() ? 'true' : null;
   }
 
+  /** The rule's sentence, one per body: every body stays in the DOM, so each needs its own id. */
+  protected get refusalId(): string {
+    return `ocu-routine-app-members-refusal-${this.tab()}`;
+  }
+
   protected get describedBy(): string | null {
-    return this.refusal !== '' ? this.refusalId : null;
+    return this.withRefusal();
   }
 
   /** The refusal a row action was answered with. */
@@ -414,7 +441,7 @@ export class RoutineAppMemberTabs {
   }
 
   protected get applicationRoleDescribedBy(): string | null {
-    return this.hasApplicationRoleEffect ? `${this.applicationRoleId}-effect` : null;
+    return this.withRefusal(this.hasApplicationRoleEffect ? `${this.applicationRoleId}-effect` : '');
   }
 
   protected get assignApplicationBlocked(): string | null {
@@ -454,7 +481,7 @@ export class RoutineAppMemberTabs {
   }
 
   protected get matchTargetDescribedBy(): string | null {
-    return this.hasMatchTargetEffect ? `${this.matchTargetId}-effect` : null;
+    return this.withRefusal(this.hasMatchTargetEffect ? `${this.matchTargetId}-effect` : '');
   }
 
   protected get assignMatchingBlocked(): string | null {
@@ -503,9 +530,12 @@ export class RoutineAppMemberTabs {
     return roles.some((role) => this.store.privileged(role));
   }
 
+  protected get routineNameDescribedBy(): string | null {
+    return this.withRefusal(this.routineNameHintId);
+  }
+
   protected get routineDescribedBy(): string | null {
-    const ids = [this.hasRoutineEffect ? this.routineEffectId : '', this.refusal !== '' ? this.refusalId : ''].filter((id) => id !== '');
-    return ids.length === 0 ? null : ids.join(' ');
+    return this.withRefusal(this.hasRoutineEffect ? this.routineEffectId : '');
   }
 
   protected get assignRoutineBlocked(): string | null {
@@ -592,6 +622,12 @@ export class RoutineAppMemberTabs {
     this.routineDbPick.set('');
     this.routineTypePick.set(ROUTINE_TYPE);
     void this.store.refresh();
+  }
+
+  /** `id`, when given, then the rule's sentence while one applies, as one `aria-describedby` value, or `null`. */
+  private withRefusal(id = ''): string | null {
+    const ids = [id, this.refusal !== '' ? this.refusalId : ''].filter((one) => one !== '');
+    return ids.length === 0 ? null : ids.join(' ');
   }
 
   /** The consequence a privileged role choice states (AD-10); `''` for a role the server did not mark. */

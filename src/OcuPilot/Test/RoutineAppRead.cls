@@ -171,13 +171,18 @@ Method TestTheFormReadCarriesTheListsTheRolesAndTheDatabases()
     Do $$$AssertEquals(tDatabaseRole, 0, "and a database role is not")
     Set tNames = ""
     Set tOrigNS = $NAMESPACE
-    Set $NAMESPACE = "%SYS"
-    Set tRS = ##class(%ResultSet).%New("Config.Databases:List")
-    Do tRS.Execute("*")
-    While tRS.Next() {
-        Set tNames = tNames _ $Select(tNames = "": "", 1: ",") _ tRS.Get("Name")
+    Try {
+        Set $NAMESPACE = "%SYS"
+        Set tRS = ##class(%ResultSet).%New("Config.Databases:List")
+        Do tRS.Execute("*")
+        While tRS.Next() {
+            Set tNames = tNames _ $Select(tNames = "": "", 1: ",") _ tRS.Get("Name")
+        }
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Do $$$AssertStatusOK(ex.AsStatus(), "Config.Databases:List is read")
     }
-    Set $NAMESPACE = tOrigNS
     Set tListed = ""
     Set tIterator = tForm.%Get("databases").%GetIterator()
     While tIterator.%GetNext(.tIndex, .tName) {

@@ -40,16 +40,10 @@ Parameter SCREENACTIONS = "add-application-role,remove-application-role,add-matc
 /// them, and a routine action's three members of one routine entry.</p>
 Parameter SCREENVALUES = "add-application-role=Role,remove-application-role=Role,add-matching-role=MatchRole:Role,remove-matching-role=MatchRole:Role,add-routine=RoutineOrClass:Db:Type,remove-routine=RoutineOrClass:Db:Type";
 
-/// <p>The two routine actions, and the members of one routine entry.</p>
+/// <p>The two routine actions. The members of one routine entry are <parameter>RULES</parameter>'.</p>
 Parameter ADDROUTINE = "add-routine";
 
 Parameter REMOVEROUTINE = "remove-routine";
-
-Parameter ENTRYNAME = "RoutineOrClass";
-
-Parameter ENTRYDB = "Db";
-
-Parameter ENTRYTYPE = "Type";
 
 ClassMethod Endpoint() As %String
 {
@@ -123,10 +117,13 @@ ClassMethod ScreenActionDelta(pActionId As %String, pValues As %DynamicObject, p
         }
         Set pArgs = {}
         Set tAdd = (pActionId = ..#ADDROUTINE)
-        For tMember = ..#ENTRYNAME, ..#ENTRYDB, ..#ENTRYTYPE {
+        Set tNameKey = $Parameter(..#RULES, "ENTRYNAME")
+        Set tDbKey = $Parameter(..#RULES, "ENTRYDB")
+        Set tTypeKey = $Parameter(..#RULES, "ENTRYTYPE")
+        For tMember = tNameKey, tDbKey, tTypeKey {
             Set tGiven(tMember) = $Select($IsObject(pValues) && (pValues.%GetTypeOf(tMember) = "string"): pValues.%Get(tMember), 1: "")
             If $ZStrip(tGiven(tMember), "<>W") = "" {
-                Set pProblem = "'" _ tMember _ "' names " _ $Case(tMember, ..#ENTRYNAME: "the routine or class", ..#ENTRYDB: "its database", : "its type, Routine or Class") _ " and cannot be empty"
+                Set pProblem = "'" _ tMember _ "' names " _ $Case(tMember, tNameKey: "the routine or class", tDbKey: "its database", : "its type, Routine or Class") _ " and cannot be empty"
                 Quit
             }
         }
@@ -137,7 +134,7 @@ ClassMethod ScreenActionDelta(pActionId As %String, pValues As %DynamicObject, p
             Set tIterator = pFresh.%Get("Routines").%GetIterator()
             While tIterator.%GetNext(.tIndex, .tEntry) {
                 If '$IsObject(tEntry) || 'tEntry.%IsA("%Library.DynamicObject") Continue
-                If (tEntry.%Get(..#ENTRYNAME) = tGiven(..#ENTRYNAME)) && ($ZConvert(tEntry.%Get(..#ENTRYDB), "U") = $ZConvert(tGiven(..#ENTRYDB), "U")) && (tEntry.%Get(..#ENTRYTYPE) = tGiven(..#ENTRYTYPE)) {
+                If (tEntry.%Get(tNameKey) = tGiven(tNameKey)) && ($ZConvert(tEntry.%Get(tDbKey), "U") = $ZConvert(tGiven(tDbKey), "U")) && (tEntry.%Get(tTypeKey) = tGiven(tTypeKey)) {
                     Set tHeld = 1
                     If 'tAdd Continue
                 }
@@ -153,9 +150,9 @@ ClassMethod ScreenActionDelta(pActionId As %String, pValues As %DynamicObject, p
                 Quit
             }
             Set tNew = {}
-            Do tNew.%Set(..#ENTRYNAME, tGiven(..#ENTRYNAME), "string")
-            Do tNew.%Set(..#ENTRYDB, tGiven(..#ENTRYDB), "string")
-            Do tNew.%Set(..#ENTRYTYPE, tGiven(..#ENTRYTYPE), "string")
+            Do tNew.%Set(tNameKey, tGiven(tNameKey), "string")
+            Do tNew.%Set(tDbKey, tGiven(tDbKey), "string")
+            Do tNew.%Set(tTypeKey, tGiven(tTypeKey), "string")
             Set tAlone = {"Routines": [(tNew)]}
             Kill tViolations
             Set tViolations = 0

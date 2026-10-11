@@ -466,6 +466,14 @@ describe('RoutineAppFormPage', () => {
     expect(host.querySelector('[data-tab-body="general"]')?.hasAttribute('hidden')).toBe(false);
     expect(host.querySelector('[data-tab-body="matching-roles"]')?.hasAttribute('hidden')).toBe(true);
     expect(control(host, 'Description').getAttribute('aria-invalid')).toBe('true');
+    // Mutation (Rule 19): drop `focusField`'s tab switch -> the summary entry, pressed from another tab, leaves General
+    // hidden and this goes red.
+    tabs(host)[3].click();
+    await settle(fixture);
+    (host.querySelector('.ocu-form-summary-list button') as HTMLButtonElement).click();
+    await settle(fixture);
+    expect(host.querySelector('[data-tab-body="general"]')?.hasAttribute('hidden')).toBe(false);
+    expect(document.activeElement?.id).toBe('ocu-routine-app-Description');
   });
 
   it('Story 18.33, C4, AD-10: on OcuPilot\u2019s own two applications every tab control is aria-disabled and described by the rule\u2019s sentence, and a click sends nothing', async () => {
@@ -473,15 +481,16 @@ describe('RoutineAppFormPage', () => {
     // pins) -> the aria-disabled and described-by legs go red and the clicks post.
     for (const own of ['OcuPilotState', 'OcuPilotIdentity', 'ocupilotstate']) {
       const { fixture, host, calls } = await mount({ url: editUrl(own), row: { ...HELD_ROW, Name: own } });
-      for (const [index, actions] of [[1, ['add-application-role', 'remove-application-role']], [2, ['add-matching-role', 'remove-matching-role']], [3, ['add-routine', 'remove-routine']]] as const) {
+      for (const [index, key, actions] of [[1, 'application-roles', ['add-application-role', 'remove-application-role']], [2, 'matching-roles', ['add-matching-role', 'remove-matching-role']], [3, 'routines', ['add-routine', 'remove-routine']]] as const) {
         tabs(host)[index].click();
         await settle(fixture);
-        const sentence = host.querySelector('#ocu-routine-app-members-refusal');
+        const sentenceId = `ocu-routine-app-members-refusal-${key}`;
+        const sentence = host.querySelector(`[data-tab-body="${key}"] #${sentenceId}`);
         expect(sentence?.textContent?.trim(), `${own} ${index}`).toBe(STRINGS.routineAppRefusalOcuPilot);
         for (const action of actions) {
           const button = host.querySelector(`[data-action="${action}"]`) as HTMLButtonElement;
           expect(button.getAttribute('aria-disabled'), `${own} ${action}`).toBe('true');
-          expect(button.getAttribute('aria-describedby'), `${own} ${action}`).toContain('ocu-routine-app-members-refusal');
+          expect(button.getAttribute('aria-describedby')?.split(' '), `${own} ${action}`).toContain(sentenceId);
           button.click();
           await settle(fixture);
         }

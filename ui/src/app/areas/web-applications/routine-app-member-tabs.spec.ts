@@ -172,15 +172,22 @@ describe('the privileged routine application member tabs (Story 18.33)', () => {
 
   it('draws every control of OcuPilot\u2019s own application aria-disabled, described by the rule\u2019s sentence, and a click posts nothing', async () => {
     // Mutation (Rule 19): drop the `ocupilot-routine-application` branch from `selfProtectionReason` -> the sentence is gone
-    // and the clicks post.
+    // and the clicks post; drop a picker's `aria-disabled` -> its leg goes red.
     for (const tab of ['application-roles', 'matching-roles', 'routines']) {
       const { fixture, host, calls } = await mount(tab, { name: 'OcuPilotState' });
-      expect(host.querySelector('#ocu-routine-app-members-refusal')?.textContent?.trim(), tab).toBe(STRINGS.routineAppRefusalOcuPilot);
+      const sentenceId = `ocu-routine-app-members-refusal-${tab}`;
+      expect(host.querySelector(`#${sentenceId}`)?.textContent?.trim(), tab).toBe(STRINGS.routineAppRefusalOcuPilot);
+      const pickers = [...host.querySelectorAll('select, input')] as HTMLElement[];
+      expect(pickers.length, tab).toBeGreaterThan(0);
+      for (const picker of pickers) {
+        expect(picker.getAttribute('aria-disabled'), `${tab} ${picker.id}`).toBe('true');
+        expect(picker.getAttribute('aria-describedby')?.split(' '), `${tab} ${picker.id}`).toContain(sentenceId);
+      }
       const buttons = [...host.querySelectorAll('button[data-action]')] as HTMLButtonElement[];
       expect(buttons.length, tab).toBeGreaterThan(1);
       for (const button of buttons) {
         expect(button.getAttribute('aria-disabled'), `${tab} ${button.dataset['action']}`).toBe('true');
-        expect(button.getAttribute('aria-describedby'), `${tab} ${button.dataset['action']}`).toContain('ocu-routine-app-members-refusal');
+        expect(button.getAttribute('aria-describedby')?.split(' '), `${tab} ${button.dataset['action']}`).toContain(sentenceId);
         button.click();
       }
       await settle(fixture);

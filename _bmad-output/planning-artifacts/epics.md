@@ -7345,6 +7345,7 @@ So that the portal and the agent stay in step.
 - **Then** a wallet-backed rung joins the environment-variable and IRIS-credential rungs.
 - DW-1756: Epic 16's Guardrails page lists the instance's limits without Story 14.6's turns-per-hour setting once the branches merge (ledger; routed by merge_gate 2026-10-06)
 - DW-1084: The built-in system prompt never asks the model to name rows in backticks or offer to select them, so AC6's offer half has no producer (ledger; routed by merge_gate 2026-10-10)
+- DW-2321: The agent's update tools take MatchRoles and Routines whole, but no read tool answers either list, so the agent cannot send the current list with one entry changed (ledger; routed by cr 2026-10-11)
 
 ### Story 18.13: Multi-namespace install
 

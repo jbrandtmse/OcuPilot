@@ -155,6 +155,30 @@ Method TestTheRoutineActionsApplyADeltaAndKeepTheRoles()
     Do $$$AssertEquals($ClassMethod(..#PROBE, "Entries", ..#APP) _ "|" _ $ClassMethod(..#PROBE, "Targets", ..#APP, ""), "|" _ tTargets, "leaving none, and the roles as read")
 }
 
+/// <p>C3: a routine action whose name, database or type is empty, or only spaces, is 400 and writes nothing, on both
+/// routine actions; the held entry is the base, so the blank member is the only thing wrong. A value of only spaces gets
+/// the sentence naming its member, which the rules' refusal does not name.</p>
+/// <p>Mutation (Rule 19): drop the <code>$ZStrip</code> from the blank test in
+/// <method>OcuPilot.Screen.Tool.RoutineAppUpdate.ScreenActionDelta</method> -- the spaces legs go red.</p>
+Method TestABlankRoutineValueIsRefusedByBothRoutineActions()
+{
+    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "Seed", "", ..#APP, $ClassMethod(..#PROBE, "WithLists")), "a probe application holding a role and a routine")
+    Set tFacts = $ClassMethod(..#PROBE, "Facts")
+    Set tRefused = "400 " _ ##class(OcuPilot.Api.Error).#TOOLARGUMENTS _ " '"
+    Set tMembers = $ListBuild($ListBuild("RoutineOrClass", "the routine or class"), $ListBuild("Db", "its database"), $ListBuild("Type", "its type, Routine or Class"))
+    For tAction = "add-routine", "remove-routine" {
+        For tI = 1:1:$ListLength(tMembers) {
+            Set tMember = $List($List(tMembers, tI), 1)
+            Set tEntry = ..Entry("OcuProbe1831.Routine", "HSCUSTOM", "Class")
+            Do tEntry.%Set(tMember, "   ")
+            Do $$$AssertEquals(..Refusal(tAction, ..#APP, tEntry), tRefused _ tMember _ "' names " _ $List($List(tMembers, tI), 2) _ " and cannot be empty", tAction _ ": a " _ tMember _ " of only spaces is refused naming the member")
+            Do tEntry.%Set(tMember, "")
+            Do $$$AssertEquals(..Act(tAction, ..#APP, tEntry), 400, tAction _ ": an empty " _ tMember _ " is refused")
+        }
+    }
+    Do $$$AssertEquals($ClassMethod(..#PROBE, "Facts"), tFacts, "none of them wrote anything")
+}
+
 /// <p>C2: the agent sends each list whole through the update's mint and confirm: a complete <code>MatchRoles</code>
 /// stores it and keeps the routines as read, a complete <code>Routines</code> stores it and keeps the roles as read, both
 /// at once store both, an empty list removes every entry, and the payload carries both lists whichever it changes
@@ -191,12 +215,13 @@ Method TestTheAgentSendsEachListWhole()
     Do $$$AssertEquals($ClassMethod(..#PROBE, "Lists", ..#APP), "[]|[]", "which removes every entry")
 }
 
-/// <p>C3: every row of the lists' rules is refused before any <code>PUT</code>: the rules answer the field and the code
-/// (the editor's 422 reads them), the agent's mint answers the field and the published sentence, and the application is
-/// as it was. A routines list with several broken entries answers its code once.</p>
+/// <p>C3: every row of the lists' rules is refused before any <code>PUT</code>: the rules answer the field and the code,
+/// the agent's mint answers the field and the published sentence, and the application is as it was. A routines list with
+/// several broken entries answers its code once.</p>
 /// <p>Mutation (Rule 19): make <method>OcuPilot.Area.WebApp.RoutineAppRules.RoutinesViolation</method> add nothing -- every
 /// routines row goes red; make <method>OcuPilot.Area.WebApp.RoutineAppRules.Judged</method> answer 0 -- every row goes
-/// red.</p>
+/// red; drop the <code>$ZStrip</code> from <method>OcuPilot.Area.WebApp.RoutineAppRules.EntryValid</method>'s name test
+/// -- the only-spaces row goes red.</p>
 Method TestEveryListRuleIsRefusedBeforeAnyPut()
 {
     Do $$$AssertStatusOK($ClassMethod(..#PROBE, "Seed", "", ..#APP, $ClassMethod(..#PROBE, "WithLists")), "a probe application holding a role and a routine")
@@ -205,7 +230,7 @@ Method TestEveryListRuleIsRefusedBeforeAnyPut()
     Set tUnknown = ##class(OcuPilot.Api.Error).#WEBAPPMATCHROLESUNKNOWN
     Set tRoutines = $Parameter($Parameter(..#RULES, "ERRORCLASS"), "ROUTINES")
     Set tCases = $ListBuild($ListBuild("roles not a list", "{""MatchRoles"": ""x""}", "MatchRoles", tShape), $ListBuild("role entry not an object", "{""MatchRoles"": [1]}", "MatchRoles", tShape), $ListBuild("role entry without targets", "{""MatchRoles"": [{""MatchRole"": """"}]}", "MatchRoles", tShape), $ListBuild("role entry with a third member", "{""MatchRoles"": [{""MatchRole"": """", ""TargetRoles"": [""%SQL""], ""Extra"": 1}]}", "MatchRoles", tShape), $ListBuild("role absent", "{""MatchRoles"": [{""MatchRole"": """", ""TargetRoles"": [""OcuProbe1833RoleNone""]}]}", "MatchRoles", tUnknown), $ListBuild("matching role absent", "{""MatchRoles"": [{""MatchRole"": ""OcuProbe1833RoleNone"", ""TargetRoles"": [""%SQL""]}]}", "MatchRoles", tUnknown))
-    Set tCases = tCases _ $ListBuild($ListBuild("routines not a list", "{""Routines"": ""x""}", "Routines", tRoutines), $ListBuild("entry not an object", "{""Routines"": [1]}", "Routines", tRoutines), $ListBuild("entry of two members", "{""Routines"": [{""RoutineOrClass"": ""a"", ""Db"": ""HSCUSTOM""}]}", "Routines", tRoutines), $ListBuild("entry of four members", "{""Routines"": [{""RoutineOrClass"": ""a"", ""Db"": ""HSCUSTOM"", ""Type"": ""Class"", ""Extra"": ""x""}]}", "Routines", tRoutines), $ListBuild("entry member a number", "{""Routines"": [{""RoutineOrClass"": ""a"", ""Db"": ""HSCUSTOM"", ""Type"": 1}]}", "Routines", tRoutines), $ListBuild("name empty", "{""Routines"": [{""RoutineOrClass"": """", ""Db"": ""HSCUSTOM"", ""Type"": ""Class""}]}", "Routines", tRoutines), $ListBuild("name with a comma", "{""Routines"": [{""RoutineOrClass"": ""a,b"", ""Db"": ""HSCUSTOM"", ""Type"": ""Class""}]}", "Routines", tRoutines), $ListBuild("name with a colon", "{""Routines"": [{""RoutineOrClass"": ""a:b"", ""Db"": ""HSCUSTOM"", ""Type"": ""Class""}]}", "Routines", tRoutines), $ListBuild("database unlisted", "{""Routines"": [{""RoutineOrClass"": ""a"", ""Db"": ""OCUPROBE1833NODB"", ""Type"": ""Class""}]}", "Routines", tRoutines), $ListBuild("database in other case", "{""Routines"": [{""RoutineOrClass"": ""a"", ""Db"": ""hscustom"", ""Type"": ""Class""}]}", "Routines", tRoutines), $ListBuild("type unknown", "{""Routines"": [{""RoutineOrClass"": ""a"", ""Db"": ""HSCUSTOM"", ""Type"": ""Function""}]}", "Routines", tRoutines), $ListBuild("type in other case", "{""Routines"": [{""RoutineOrClass"": ""a"", ""Db"": ""HSCUSTOM"", ""Type"": ""routine""}]}", "Routines", tRoutines))
+    Set tCases = tCases _ $ListBuild($ListBuild("routines not a list", "{""Routines"": ""x""}", "Routines", tRoutines), $ListBuild("entry not an object", "{""Routines"": [1]}", "Routines", tRoutines), $ListBuild("entry of two members", "{""Routines"": [{""RoutineOrClass"": ""a"", ""Db"": ""HSCUSTOM""}]}", "Routines", tRoutines), $ListBuild("entry of four members", "{""Routines"": [{""RoutineOrClass"": ""a"", ""Db"": ""HSCUSTOM"", ""Type"": ""Class"", ""Extra"": ""x""}]}", "Routines", tRoutines), $ListBuild("entry member a number", "{""Routines"": [{""RoutineOrClass"": ""a"", ""Db"": ""HSCUSTOM"", ""Type"": 1}]}", "Routines", tRoutines), $ListBuild("name empty", "{""Routines"": [{""RoutineOrClass"": """", ""Db"": ""HSCUSTOM"", ""Type"": ""Class""}]}", "Routines", tRoutines), $ListBuild("name of only spaces", "{""Routines"": [{""RoutineOrClass"": ""   "", ""Db"": ""HSCUSTOM"", ""Type"": ""Class""}]}", "Routines", tRoutines), $ListBuild("name with a comma", "{""Routines"": [{""RoutineOrClass"": ""a,b"", ""Db"": ""HSCUSTOM"", ""Type"": ""Class""}]}", "Routines", tRoutines), $ListBuild("name with a colon", "{""Routines"": [{""RoutineOrClass"": ""a:b"", ""Db"": ""HSCUSTOM"", ""Type"": ""Class""}]}", "Routines", tRoutines), $ListBuild("database unlisted", "{""Routines"": [{""RoutineOrClass"": ""a"", ""Db"": ""OCUPROBE1833NODB"", ""Type"": ""Class""}]}", "Routines", tRoutines), $ListBuild("database in other case", "{""Routines"": [{""RoutineOrClass"": ""a"", ""Db"": ""hscustom"", ""Type"": ""Class""}]}", "Routines", tRoutines), $ListBuild("type unknown", "{""Routines"": [{""RoutineOrClass"": ""a"", ""Db"": ""HSCUSTOM"", ""Type"": ""Function""}]}", "Routines", tRoutines), $ListBuild("type in other case", "{""Routines"": [{""RoutineOrClass"": ""a"", ""Db"": ""HSCUSTOM"", ""Type"": ""routine""}]}", "Routines", tRoutines))
     For tI = 1:1:$ListLength(tCases) {
         Set tCase = $List(tCases, tI)
         Set tChange = ##class(%DynamicObject).%FromJSON($List(tCase, 2))

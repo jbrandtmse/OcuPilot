@@ -273,9 +273,12 @@ export class RoutineAppForm {
     return this.roleOptions;
   }
 
-  /** Whether granting `role` grants `%All` or an administrative privilege, as the server marked it; unknown names read as privileged. */
+  /**
+   * Whether granting `role` grants `%All` or an administrative privilege, as the server marked it, the name matched without
+   * regard to case as the instance resolves a role; unknown names read as privileged.
+   */
   privileged(role: string): boolean {
-    const choice = this.roleOptions.find((option) => option.name === role);
+    const choice = this.roleOptions.find((option) => option.name.toLowerCase() === role.toLowerCase());
     return choice === undefined ? true : choice.privileged;
   }
 

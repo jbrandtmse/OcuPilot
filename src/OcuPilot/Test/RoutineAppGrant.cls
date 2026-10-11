@@ -94,10 +94,12 @@ Method TestARolePrivilegedByItsNameOrItsResourceIsAGrant()
 }
 
 /// <p>C5: a routine added while a target role in <code>MatchRoles</code> is privileged is a grant, with
-/// <code>GRANT.PRIVILEGED</code>, whether the role was held or is added by the same change; a routine added under
-/// unprivileged roles, a routine removed under privileged roles and an unchanged list are not.</p>
+/// <code>GRANT.PRIVILEGED</code>, whether the role was held or is added by the same change, and whether it is an
+/// application role or a matching role's target; a routine added under unprivileged roles, a routine removed under
+/// privileged roles and an unchanged list are not.</p>
 /// <p>Mutation (Rule 19): drop <method>OcuPilot.Kernel.Proposal.Prohibited.AddsRoutineUnderPrivilege</method> from the
-/// routine application branch -- the routine legs go red.</p>
+/// routine application branch -- the routine legs go red; let it collect only the entries whose <code>MatchRole</code>
+/// is empty -- the matching-role leg goes red.</p>
 Method TestARoutineAddedUnderAPrivilegedRoleIsAGrant()
 {
     Do $$$AssertStatusOK($ClassMethod(..#PROBE, "EnsureRole", "Admin", "%Admin_Secure:U"), "a probe role carrying an administrative resource")
@@ -113,6 +115,8 @@ Method TestARoutineAddedUnderAPrivilegedRoleIsAGrant()
     Do ..AssertMint({"Routines": [(tHeld), (tRoutine)]}, 0, "a routine added under it")
     Do ..AssertMint({"MatchRoles": [{"MatchRole": "", "TargetRoles": [(tAdmin)]}], "Routines": [(tHeld), (tRoutine)]}, 1, "a routine and a privileged role added together")
     Do ..AssertMint({"MatchRoles": [{"MatchRole": "", "TargetRoles": [(tAdmin)]}]}, 1, "the privileged role added alone")
+    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "Seed", "", ..#APP, {"Description": "probe", "Enabled": true, "Resource": "", "MatchRoles": [{"MatchRole": "", "TargetRoles": ["%DB_HSCUSTOM"]}, {"MatchRole": "%Developer", "TargetRoles": [(tAdmin)]}], "Routines": [(tHeld)]}), "the application now granting the privileged role to a matching role's holders alone")
+    Do ..AssertMint({"Routines": [(tHeld), (tRoutine)]}, 1, "a routine added under a matching role's privileged target")
 }
 
 /// <p>C5: the one classifier answers the same question when asked directly with a payload and the target it changes:
@@ -133,6 +137,7 @@ Method TestTheClassifierAnswersTheSameWhenAskedDirectly()
     Do ..AssertGrants({"MatchRoles": [{"MatchRole": "", "TargetRoles": ["%All"]}], "Routines": [(tRoutine)]}, {"MatchRoles": [{"MatchRole": "", "TargetRoles": ["%All"]}], "Routines": [{"RoutineOrClass": "OcuProbe1833.New", "Db": "hscustom", "Type": "Class"}]}, 0, "a routine the target lists with its database in other case")
     Do ..AssertGrants({"Description": "x"}, tTarget, 0, "a payload without lists")
     Do ..AssertGrants({"Routines": [(tRoutine)]}, {"MatchRoles": [{"MatchRole": "", "TargetRoles": ["%All"]}], "Routines": []}, 1, "a routine in a payload without roles, under the roles the target holds")
+    Do ..AssertGrants({"Routines": [(tRoutine)]}, {"MatchRoles": [{"MatchRole": "%Developer", "TargetRoles": ["%All"]}], "Routines": []}, 1, "a routine added under a matching role's privileged target")
     Set tSC = $ClassMethod(..#SET, "GrantsPrivilegeByEffect", ..#TYPE, "x", tTarget, .tGrants, ..#APP)
     Do $$$AssertEquals($System.Status.IsOK(tSC) _ " " _ tGrants, "1 0", "a payload that is not an object grants nothing")
 }

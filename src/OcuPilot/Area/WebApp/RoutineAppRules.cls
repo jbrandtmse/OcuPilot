@@ -7,10 +7,13 @@
 /// <p><b>The rules are OcuPilot's own.</b> The vendor stores a name or a description over its length as a logged 500
 /// and a resource it does not list as given (measured at Story 18.31's plan), so every condition is decided here. A name
 /// is not empty and at most 64 characters; the settings are the Doc DB rules'.</p>
-/// <p><b>The two lists are judged by the same rules on every caller</b> (<method>Check</method>): the application roles
-/// and matching roles by <method>OcuPilot.Area.WebApp.Create.MatchRolesViolation</method>, the routines by
-/// <method>RoutinesViolation</method>. A list that equals the fresh read's is never judged, so a stored entry is not
-/// refused for being as it is.</p>
+/// <p><b>The two lists are judged by one rule set</b>: <method>Check</method> judges the agent's lists, the application
+/// roles and matching roles by <method>OcuPilot.Area.WebApp.Create.MatchRolesViolation</method> and the routines by
+/// <method>RoutinesViolation</method>, and a screen action's delta judges only what it adds, a role the instance must
+/// hold and a routine entry by <method>RoutinesViolation</method>
+/// (<method>OcuPilot.Screen.Tool.RoutineAppUpdate.ScreenActionDelta</method>). At the merge a list equal to the fresh
+/// read's is not judged, so a setting-only change never refuses a stored entry; the agent's arguments, judged before
+/// any read, are judged whole.</p>
 Class OcuPilot.Area.WebApp.RoutineAppRules Extends OcuPilot.Area.WebApp.DocDbAppRules
 {
 
@@ -72,7 +75,7 @@ ClassMethod Judged(pBody As %DynamicObject, pFresh As %DynamicObject, pField As 
 
 /// <p>Add <parameter>OcuPilot.Api.RoutineAppError.ROUTINES</parameter> to <var>pViolations</var>, once, when
 /// <var>pBody</var>'s <code>Routines</code> is not an array of entries that are each exactly three strings: a
-/// routine or class name that is not empty and holds neither <code>,</code> nor <code>:</code> (the classic page's
+/// routine or class name that is not empty or only spaces and holds neither <code>,</code> nor <code>:</code> (the classic page's
 /// stored entry joins its parts with them), a database <method>OcuPilot.Port.AdminPort.DatabaseNames</method> lists
 /// and a type, <parameter>ENTRYTYPES</parameter>. A database list that cannot be read is an error status.</p>
 ClassMethod RoutinesViolation(pBody As %DynamicObject, ByRef pViolations) As %Status
@@ -111,7 +114,7 @@ ClassMethod EntryValid(pEntry As %DynamicObject, pDatabases As %List) As %Boolea
     If tCount '= 3 Quit 0
     If (pEntry.%GetTypeOf(..#ENTRYNAME) '= "string") || (pEntry.%GetTypeOf(..#ENTRYDB) '= "string") || (pEntry.%GetTypeOf(..#ENTRYTYPE) '= "string") Quit 0
     Set tName = pEntry.%Get(..#ENTRYNAME)
-    If (tName = "") || (tName [ ",") || (tName [ ":") Quit 0
+    If ($ZStrip(tName, "<>W") = "") || (tName [ ",") || (tName [ ":") Quit 0
     If '$ListFind(pDatabases, pEntry.%Get(..#ENTRYDB)) Quit 0
     Quit ''$ListFind($ListFromString(..#ENTRYTYPES), pEntry.%Get(..#ENTRYTYPE))
 }

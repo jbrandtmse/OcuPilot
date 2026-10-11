@@ -11104,6 +11104,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-11T01:02:21Z status=routed owner=23-7-the-range-end-cleanup-part-6 by=merge_gate note=re-own from range-end-cleanup at 18.30's merge (kit 2026-10-10.1 owner grammar)
 - 2026-10-11T06:02:59Z occurrence=18-31-privileged-routine-applications
 - 2026-10-11T11:11:25Z occurrence=18-34-the-person-s-rest-service-create
+- 2026-10-11T14:41:26Z occurrence=18-33-privileged-routine-application-roles-and-routines
 
 ### DW-2279: MappingMint's empty-namespace refusal names a 'mapping' for the Doc DB application tools
 - source: spec-18-30-doc-db-applications.md | severity: low | fix-risk: low | footprint: in-epic
@@ -11111,6 +11112,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-10T10:42:42Z status=routed owner=18-31-privileged-routine-applications by=harvest note=once 20.3 is on feature, give MappingMint a per-tool noun parameter and set it for the Doc DB tools
 - 2026-10-10T12:49:19Z occurrence=18-30-doc-db-applications
 - 2026-10-10T18:27:02Z status=routed owner=18-33-privileged-routine-application-roles-and-routines by=spec_gate note=20.3_not_on_feature_at_18.31's_gate(MappingMint_unchanged);18.33_takes_it_once_20.3_has_merged
+- 2026-10-11T14:45:07Z status=resolved-by:18-33-privileged-routine-application-roles-and-routines by=adjudication note=DocDbAppMint extends MappingMint with record wording; DocDbAppDescriptor pins the sentences (run 699)
 
 ### DW-2280: IRIS defect candidate: the admin API's DocDB PUT answers a Description over 256 characters with a logged 500 rather than a field refusal
 - source: spec-18-30-doc-db-applications.md | severity: low | fix-risk: low | footprint: out-of-footprint
@@ -11208,3 +11210,23 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-33-privileged-routine-application-roles-and-routines.md | severity: low | fix-risk: low | footprint: in-epic
 - evidence: Epic 20's committed 20.23 (6aa1f459) edits Prohibited.cls, so Rule 11 kept 18.33's edit to added lines; the old clause's routine term is dead
 - 2026-10-11T13:57:30Z status=wontfix-accepted owner=18-33-privileged-routine-application-roles-and-routines by=harvest note=reopen_if=Epic 20's open diff to Prohibited.cls has merged and a story edits PermittedChangeFields, which drops the term
+
+### DW-2320: The MatchRoles grant classifier compares target role names only, so moving a held privileged target to another MatchRole (to every caller via an empty one) is not a grant
+- source: spec-18-33-privileged-routine-application-roles-and-routines.md | severity: med | fix-risk: med | footprint: out-of-footprint
+- evidence: Prohibited.ApplicationRoleNames drops the MatchRole and GrantsPrivilegeByEffect's web branch skips a held name; {MatchRole:%Developer,TargetRoles:[%All]} to {MatchRole:'',TargetRoles:[%All]} mints ordinary for a web or routine application (code read), while the tab states privilegedGrantEffect
+- 2026-10-11T14:41:26Z status=routed owner=burndown by=cr note=key held and wanted targets by MatchRole and target; a non-add-only edit to Prohibited.cls, which Epic 20 holds
+
+### DW-2321: The agent's update tools take MatchRoles and Routines whole, but no read tool answers either list, so the agent cannot send the current list with one entry changed
+- source: spec-18-33-privileged-routine-application-roles-and-routines.md | severity: med | fix-risk: med | footprint: in-epic
+- evidence: webapp.routineapps.read and webapp.list.read declare Name, Enabled, Resource, Description (and their web fields) only; RoutineAppUpdate's DESCRIPTION says an entry left out is removed; only the screen-only form read carries the lists
+- 2026-10-11T14:41:33Z status=routed owner=18-12-the-agent-grows-with-the-stage by=cr note=expose the lists to the agent (a read field or a detail read) for both web and routine applications
+
+### DW-2322: Clearing a privileged routine application's Resource, or enabling it, while it grants a privileged role is not treated as a grant
+- source: spec-18-33-privileged-routine-application-roles-and-routines.md | severity: med | fix-risk: med | footprint: in-epic
+- evidence: Security.Applications: no resource means anyone can run the application, so a cleared Resource or Enabled false to true hands the held roles' escalation to more callers; GrantsPrivilegeByEffect's routine branch judges only MatchRoles and Routines
+- 2026-10-11T14:41:33Z status=decision-pending owner=burndown by=cr note=AD-10 names no such effect for a routine application; web apps take 'no authorization resource' at strongest confirmation
+
+### DW-2323: Classification.cls says neither routine application tool admits MatchRoles or Routines; since 18.33 the update admits both
+- source: spec-18-33-privileged-routine-application-roles-and-routines.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: Classification.cls:61 'so neither tool admits them'; RoutineAppUpdate.SettableFields adds both lists; Classification.cls is a shared add-only file while Epic 20 runs, so the sentence was not replaced in place
+- 2026-10-11T14:41:38Z status=wontfix-accepted owner=18-33-privileged-routine-application-roles-and-routines by=cr note=reopen_if=a story edits Classification.cls in place after Epic 20 merges; replace the sentence then

@@ -196,7 +196,8 @@ describe('the privileged routine application store', () => {
     expect(store.matchingRoles()).toEqual([{ match: '%Operator', role: '%Developer' }]);
     expect(store.routines()).toEqual([{ name: 'OcuProbe1831.Routine', db: 'HSCUSTOM', type: 'Class' }]);
     expect(store.roleChoices().map((role) => `${role.name}:${role.privileged}`)).toEqual(['%Developer:false', '%Manager:true', '%SQL:true']);
-    expect([store.privileged('%Developer'), store.privileged('%Manager'), store.privileged('NoSuchRole')]).toEqual([false, true, true]);
+    // Mutation (Rule 19): match the role's name in `privileged` exactly -> the other-case leg reads privileged and goes red.
+    expect([store.privileged('%Developer'), store.privileged('%developer'), store.privileged('%Manager'), store.privileged('NoSuchRole')]).toEqual([false, false, true, true]);
     expect(store.databases()).toEqual(['HSCUSTOM', 'USER']);
     store.setValue('MatchRoles', 'x');
     store.setValue('Routines', 'x');

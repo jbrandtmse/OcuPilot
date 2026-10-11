@@ -92,7 +92,8 @@ ClassMethod EnsureRole(pSuffix As %String, pResources As %String = "") As %Statu
     Quit tSC
 }
 
-/// <p>The probe roles the instance holds, as a <class>%List</class> of names exactly as stored.</p>
+/// <p>The probe roles the instance holds, as a <class>%List</class> of names exactly as stored. A look-up that fails
+/// throws, so it never reads as no roles.</p>
 ClassMethod Roles() As %List
 {
     Set tNames = ""
@@ -105,8 +106,10 @@ ClassMethod Roles() As %List
             If $ZConvert($Extract(tRS.Get("Name"), 1, $Length(..#ROLEPREFIX)), "L") = $ZConvert(..#ROLEPREFIX, "L") Set tNames = tNames _ $ListBuild(tRS.Get("Name"))
         }
         Set $NAMESPACE = tOrigNS
-    } Catch {
+        $$$ThrowOnError(tSC)
+    } Catch ex {
         Set $NAMESPACE = tOrigNS
+        Throw ex
     }
     Quit tNames
 }
@@ -115,9 +118,9 @@ ClassMethod Roles() As %List
 ClassMethod RemoveRoles() As %Status
 {
     Set tSC = $$$OK
-    Set tNames = ..Roles()
     Set tOrigNS = $NAMESPACE
     Try {
+        Set tNames = ..Roles()
         Set $NAMESPACE = "%SYS"
         For tI = 1:1:$ListLength(tNames) {
             Set tSC = $$$ADDSC(tSC, ##class(Security.Roles).Delete($List(tNames, tI)))
@@ -130,8 +133,8 @@ ClassMethod RemoveRoles() As %Status
     Quit tSC
 }
 
-/// <p>The probe applications, then the probe roles, then the probe resource are removed
-/// (<method>OcuPilot.Test.DocDbAppProbe.RemoveAll</method>).</p>
+/// <p>The probe applications and the probe resource are removed
+/// (<method>OcuPilot.Test.DocDbAppProbe.RemoveAll</method>), then the probe roles.</p>
 ClassMethod RemoveAll() As %Status
 {
     Set tSC = ##super()

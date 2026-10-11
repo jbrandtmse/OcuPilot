@@ -265,9 +265,8 @@ test('C2: create a probe application, change its description and delete it with 
 });
 
 // Mutation (Rule 19), each rebuilt and redeployed: send `Role` under another name in the tabs' `onAssignApplicationRole`
-// -> the first action assertion goes red; the tabs' `onApplied` without `refresh` -> no row appears and the wait times
-// out; the tabs' `ruleReason` answering `''` -> the own application's aria-disabled legs go red (its clicks then post,
-// refused 403 by the instance, so the own two are never written).
+// -> the first action assertion goes red; the tabs' `ruleReason` answering `''` -> the own application's aria-disabled
+// legs go red (its clicks then post, refused 403 by the instance, so the own two are never written).
 test("C2, C4, C5: the editor's tabs add and remove a role, a matching role and a routine; OcuPilot's own application's tab controls are aria-disabled", async () => {
   removeProbes();
   const tabsName = 'OcuProbe1831Tabs';
@@ -378,9 +377,9 @@ test("C2, C4, C5: the editor's tabs add and remove a role, a matching role and a
       assert.ok(controls.some((control) => control.action.startsWith('add-')), `${key} draws its Assign`);
       for (const control of controls) {
         assert.equal(control.disabled, 'true', `${key} ${control.action} is aria-disabled`);
-        assert.ok(control.described.includes('ocu-routine-app-members-refusal'), `${key} ${control.action} is described by the sentence`);
+        assert.ok(control.described.split(' ').includes(`ocu-routine-app-members-refusal-${key}`), `${key} ${control.action} is described by the sentence`);
       }
-      assert.equal(await page.$eval(`[data-tab-body="${key}"] #ocu-routine-app-members-refusal`, (node) => node.textContent.trim()), STRINGS.routineAppRefusalOcuPilot, `${key} says why`);
+      assert.equal(await page.$eval(`[data-tab-body="${key}"] #ocu-routine-app-members-refusal-${key}`, (node) => node.textContent.trim()), STRINGS.routineAppRefusalOcuPilot, `${key} says why`);
       await page.$$eval(`[data-tab-body="${key}"] button[data-action]`, (nodes) => nodes.forEach((node) => node.click()));
     }
     await page.waitForNetworkIdle({ idleTime: 500, timeout: config.navigationTimeoutMs });
