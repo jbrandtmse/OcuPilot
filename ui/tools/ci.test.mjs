@@ -122,14 +122,14 @@ export const DECLARED_GATES = [
   'sh scripts/ci-throwaway.sh data-check',
   'node tools/admin-spec.mjs --origin http://localhost:52776',
   'sudo sysctl -w net.ipv4.ip_local_reserved_ports=52776,52780,52781',
-  'node tools/ci-runner.mjs --container ocupilot-ci --shard ${{ matrix.shard }}/5 --record ${{ runner.temp }}/ci-records/objectscript-shard-${{ matrix.shard }}.json',
+  'node tools/ci-runner.mjs --container ocupilot-ci --shard ${{ matrix.shard }}/8 --record ${{ runner.temp }}/ci-records/objectscript-shard-${{ matrix.shard }}.json',
   'sh scripts/smoke.sh --container ocupilot-ci --user _SYSTEM --password SYS',
-  'npm run test:browser:shard -- --shard ${{ matrix.shard }}/3 --record ${{ runner.temp }}/ci-records/browser-shard-${{ matrix.shard }}.json',
+  'npm run test:browser:shard -- --shard ${{ matrix.shard }}/5 --record ${{ runner.temp }}/ci-records/browser-shard-${{ matrix.shard }}.json',
   'sh scripts/ci-throwaway.sh logs',
   'sh scripts/ci-throwaway.sh down',
   // instance and browser -- the roll-ups, one check each over their shard jobs' records.
-  'node tools/ci-shards.mjs check --suite objectscript --shards 5 --records ${{ runner.temp }}/ci-records --result ${{ needs.instance-shard.result }}',
-  'node tools/ci-shards.mjs check --suite browser --shards 3 --records ${{ runner.temp }}/ci-records --result ${{ needs.browser-shard.result }}',
+  'node tools/ci-shards.mjs check --suite objectscript --shards 8 --records ${{ runner.temp }}/ci-records --result ${{ needs.instance-shard.result }}',
+  'node tools/ci-shards.mjs check --suite browser --shards 5 --records ${{ runner.temp }}/ci-records --result ${{ needs.browser-shard.result }}',
   // browser-shard -- the same script fully parameterised onto a second throwaway, so the two
   // suites that dominated the old instance job run side by side instead of end to end.
   'npm ci',
@@ -2903,8 +2903,8 @@ test("Story 8.9: smoke.sh's default install namespace is container-start.sh's, c
  * the number of legs its matrix runs.
  */
 const SHARDED = [
-  { shard: 'instance-shard', rollUp: 'instance', suite: 'objectscript', command: 'node tools/ci-runner.mjs', legs: 5 },
-  { shard: 'browser-shard', rollUp: 'browser', suite: 'browser', command: 'npm run test:browser:shard', legs: 3 },
+  { shard: 'instance-shard', rollUp: 'instance', suite: 'objectscript', command: 'node tools/ci-runner.mjs', legs: 8 },
+  { shard: 'browser-shard', rollUp: 'browser', suite: 'browser', command: 'npm run test:browser:shard', legs: 5 },
 ];
 
 /** The setup minutes a shard job spends before its suite: checkout, build, bring-up, readiness. */
@@ -2938,7 +2938,7 @@ export function jobSteps(text, job) {
 
 // Mutation (Rule 19): delete the last leg from either shard matrix, or label a shard job's legs with
 // another count -> this goes red naming the job; set a roll-up's --shards to another count -> red.
-test("each suite's shard matrix is 1..legs (instance 5, browser 3), and every k/n and --shards n is its length (AC1, AC2, AC8)", () => {
+test("each suite's shard matrix is 1..legs (instance 8, browser 5), and every k/n and --shards n is its length (AC1, AC2, AC8)", () => {
   for (const { shard, rollUp, suite, command, legs } of SHARDED) {
     const matrix = shardMatrix(workflow, shard);
     const expected = Array.from({ length: legs }, (_, i) => i + 1);
