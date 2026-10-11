@@ -690,7 +690,7 @@ ClassMethod FingerprintMatches(pTool As %DynamicObject, ByRef pRow, Output pMatc
         ; AD-54: a create names its target as the caller typed it, so the vendor stores that
         ; spelling. The reference, the lock and the sibling cancel stay canonical (AD-13).
         If ##class(OcuPilot.Kernel.Proposal.Mint).CreatesOf(tClass) {
-            Set tTyped = ..ParsedObject($Get(pRow("arguments"))).%Get(tIdArgument)
+            Set tTyped = $ClassMethod(tClass, "TypedId", ..ParsedObject($Get(pRow("arguments"))))
             If (tTyped '= "") && '$IsObject(tTyped) && (##class(OcuPilot.Kernel.EntityRef).NormalizedId(tType, tTyped) = ##class(OcuPilot.Kernel.EntityRef).NormalizedId(tType, tId)) Set pIdValue = tTyped
         }
         If (pEndpoint = "") || (pIdParam = "") || (pIdValue = "") {

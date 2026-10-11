@@ -279,6 +279,8 @@ test('AD-13: the id-rule table is read from the kernel and is what the mirror em
     ['authentication-options', 'singleton'],
     // Story 18.25: a superserver is keyed by its port and bind address.
     ['superserver', 'portbind'],
+    // Story 18.30: a Doc DB application is keyed by `[Namespace, Name]`, and the instance resolves both in any case.
+    ['docdb-application', 'foldcase'],
   ]);
   assert.deepEqual(parseIdRuleNames(text), ['foldcase-striptrailingslash', 'foldcase', 'singleton', 'integer', 'foldcase-firstpart', 'integerset', 'directoryset', 'documentset', 'portbind']);
   // `null`, never `[]`, when the parameter is missing: an absent table and a table that declares

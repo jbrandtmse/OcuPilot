@@ -10585,6 +10585,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-08T08:48:06Z status=routed owner=23-5-the-range-end-cleanup-part-5 by=orchestrator note=Rule 30's derive-not-literal clause applied to the existing suite; roster pins (SurfaceCoverage, EndpointCoverage, FLOORONLY) stay literal by design
 - 2026-10-08T16:01:56Z occurrence=18-28-sql-column-and-admin-privileges
 - 2026-10-09T11:53:18Z occurrence=18-10-web-application-extras-and-spec-based-rest-services
+- 2026-10-10T16:26:03Z occurrence=18-30-doc-db-applications
 
 ### DW-2204: IRIS defect candidate: the admin API's Security.SQLPrivilege.Column LIST and REVOKE match the object's case exactly while GRANT accepts any case, so a revoke in another case answers 200 and removes nothing
 - source: spec-18-28-sql-column-and-admin-privileges.md | severity: low | fix-risk: high | footprint: out-of-footprint
@@ -10778,6 +10779,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-09T16:53:28Z occurrence=20-20-the-agent-creates-new-classes-and-routines-on-the-person-s-c by=lead note=recurred in CI run 37952814550 instance shard 2/5 (Pause 409 TASK.BACKGROUND.STATE)
 - 2026-10-09T18:05:07Z occurrence=20-20-the-agent-creates-new-classes-and-routines-on-the-person-s-c by=lead note=red again in run 37952814550 attempt 2 (shard 2/5, same Pause 409); the test's own 'runs again' leg admits Done, so a compact that finishes between Resume and Pause makes Pause unanswerable; fix: re-seed while the resumed compact reads Done (bounded), or a larger fill
 - 2026-10-09T19:19:59Z status=resolved-by:20-20-the-agent-creates-new-classes-and-routines-on-the-person-s-c by=lead note=6557da7e and 9d467e37: both BackgroundTasksLive compact tests branch on the observed state (an ended compact's Pause is the 409 state refusal, an ended held compact's confirm the target-changed refusal, each asserted) and re-seed at most three; mutations: PortalControl skipping Pause and dropping Hold redden them; green 8/8 on ocupilot-b-ci
+- 2026-10-10T17:58:49Z occurrence=18-30-doc-db-applications(run_38069670607_instance_shard_2/5;head_94ba7fa4;'and_the_row_re-reads_Paused')
 - 2026-10-10T16:42:52Z status=resolved-by:20-3-production-items by=lead note=31babb36: the live leg accepts an ended compact's state refusal per compact (no at-least-one-200), the 200 mapping pinned at the port by BackgroundTaskPortSeam through a fake vendor task; the hold model measured and rejected (a cross-process Pause blocks 30 s); named limit in spec-20-3
 
 ### DW-2239: The web-application tools can reach OcuPilot's own privileged routine applications (OcuPilotState, OcuPilotIdentity): no AD-10 arm refuses a delete or a MatchRoles :%All update, and the vendor's privileged-routine endpoint also writes any application type
@@ -10996,3 +10998,32 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-10T01:01:44Z status=routed owner=range-end-cleanup by=harvest note=same root cause as 23.6's 18.10-1; not absorbed (dispatch)
 - 2026-10-10T01:48:35Z status=routed owner=range-end-cleanup by=cr note=one shared fault helper for the ReadableId pass (Superserver, Mapping, ErrorDelete, WebAppPctAccess mints) would close this too
 - 2026-10-11T00:42:34Z status=routed owner=23-7-the-range-end-cleanup-part-6 by=load note=re-own from range-end-cleanup: kit 2026-10-10.1 owners are story keys or burndown
+
+### DW-2278: Rule 31: the Superserver, MFT and Doc DB slices each carry their own Save, Rules and form of one shape; one base would serve all three
+- source: spec-18-30-doc-db-applications.md | severity: med | fix-risk: med | footprint: in-epic
+- evidence: 18.30's code map copies the MFT slice's Rules/Save/form shape because one slice may not depend on another (stated reason); 18.25 Superserver and 18.26 MFT are the siblings
+- 2026-10-10T10:42:42Z status=routed owner=range-end-cleanup by=harvest note=unify behind a kernel base the slices extend; recorded at the 18.30 spec gate
+- 2026-10-10T12:49:19Z occurrence=18-30-doc-db-applications
+- 2026-10-11T01:02:21Z status=routed owner=23-7-the-range-end-cleanup-part-6 by=merge_gate note=re-own from range-end-cleanup at 18.30's merge (kit 2026-10-10.1 owner grammar)
+
+### DW-2279: MappingMint's empty-namespace refusal names a 'mapping' for the Doc DB application tools
+- source: spec-18-30-doc-db-applications.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: 18.30 reuses MappingMint unchanged because Epic 20's 20.3 is editing it (Rule 11)
+- 2026-10-10T10:42:42Z status=routed owner=18-31-privileged-routine-applications by=harvest note=once 20.3 is on feature, give MappingMint a per-tool noun parameter and set it for the Doc DB tools
+- 2026-10-10T12:49:19Z occurrence=18-30-doc-db-applications
+- 2026-10-10T18:27:02Z status=routed owner=18-33-privileged-routine-application-roles-and-routines by=spec_gate note=20.3_not_on_feature_at_18.31's_gate(MappingMint_unchanged);18.33_takes_it_once_20.3_has_merged
+
+### DW-2280: IRIS defect candidate: the admin API's DocDB PUT answers a Description over 256 characters with a logged 500 rather than a field refusal
+- source: spec-18-30-doc-db-applications.md | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: measured in 18.30's implement on ocupilot-ci; the vendor DocDB endpoint
+- 2026-10-10T12:49:19Z status=decision-pending owner=burndown by=harvest note=owner_hold: IRIS defect candidate, never reported upstream
+
+### DW-2283: IRIS defect candidate: the admin API's web-application DELETE deletes a privileged routine application
+- source: spec-18-31-privileged-routine-applications.md | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: measured at 18.31's plan on ocupilot-ci (OcuProbe1831Mixed): WebApp.App DELETE answers 200 and the routine application is gone; its list leaves routine apps out and a read answers web-app defaults
+- 2026-10-10T17:24:12Z status=decision-pending owner=burndown by=harvest note=owner_hold: IRIS defect candidate, never reported upstream; DW-2252 refuses it on OcuPilot's side
+
+### DW-2284: IRIS defect candidate: the privileged-routine PUT stores any unknown routine Type as Class and silently drops an empty entry
+- source: spec-18-31-privileged-routine-applications.md | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: measured at 18.31's plan on ocupilot-ci: Type other than Routine stored as Class; an empty member dropped; an omitted Type answers 400 #40301
+- 2026-10-10T17:24:12Z status=decision-pending owner=burndown by=harvest note=owner_hold: IRIS defect candidate, never reported upstream
