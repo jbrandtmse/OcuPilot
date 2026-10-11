@@ -10969,6 +10969,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: ui/tools/ci-runner.mjs:369 reads the direct Extends only, so ProviderStream and ProviderStreamFamilies (Extends StreamCase) are off the local floor; CI legs split the instance's list, so they still run
 - 2026-10-09T17:02:33Z status=routed owner=range-end-cleanup by=spec_gate note=23.6 plan filing candidate 4; its comment says widen the matcher once such a base exists
 - 2026-10-11T00:42:33Z status=routed owner=23-7-the-range-end-cleanup-part-6 by=load note=re-own from range-end-cleanup: kit 2026-10-10.1 owners are story keys or burndown
+- 2026-10-11T08:55:26Z occurrence=18-31-privileged-routine-applications
 
 ### DW-2260: USERS_PATH is declared twice in the client
 - source: spec-23-6-the-haiku-story-cleanup.md | severity: low | fix-risk: low | footprint: out-of-footprint
@@ -11131,7 +11132,19 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: 18.32's code map states the copy and its reason (Write.cls off-limits under Rule 11); ExplorerDocDbDelete.cls:57 is the sibling
 - 2026-10-11T05:02:16Z status=routed owner=23-7-the-range-end-cleanup-part-6 by=spec_gate note=lift StateDiff into Write.cls once Epic 20 has merged; both deletes then extend it
 - 2026-10-11T06:59:46Z status=routed owner=23-7-the-range-end-cleanup-part-6 by=spec_gate note=the REMOVALROWS StateDiff body already repeats in 13 delete tools; one Write.cls default serves all, so 23.7 lifts it once
+- 2026-10-11T08:55:17Z status=routed owner=burndown by=lead note=23.7 takes no new routings (orchestrator); lift StateDiff into Screen/Tool/Write.cls once Epic 20 has merged (Write.cls is Epic 20's until then), and the 13 deletes extend it
 ### DW-2300: A tool class's compile time is recorded a few milliseconds before its compiled code, so a ListTools build in that gap can cache the class's previous view until the next compile
 - source: spec-20-24-agent-tool-calls-stop-re-listing-the-tool-registry.md | severity: low | fix-risk: high | footprint: in-story
 - evidence: Measured on ocupilot-b-ci at code review: the CompiledClass row and TimeChanged lead %Extends and $Parameter by 1.6-4.2 ms (one 53 ms); the before/after check cannot see it; 20 batch-compile trials ended with 0 stale listings; a production build reads a class at least 38 ms after its signature read
 - 2026-10-11T05:10:03Z status=by-design owner=20-24-agent-tool-calls-stop-re-listing-the-tool-registry by=cr note=spec Named limit; AD-5's 'seen on the next call' has this ms gap; reopens only by a spec or AD-5 amendment
+
+### DW-2309: IRIS defect candidate: %Api.Mgmnt.v2.impl.DeleteApplication discards %REST.API.DeleteApplication's status and always answers 200
+- source: spec-18-32-spec-based-rest-services.md | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: irissys/%Api/Mgmnt/v2/impl.cls sets 200 without reading the status; a delete of an absent service answers 200 (measured, ocupilot-ci); MgmntPort relies on the read-back (AD-58)
+- 2026-10-11T08:55:17Z status=decision-pending owner=burndown by=harvest note=owner_hold: IRIS defect candidate, never reported upstream
+
+### DW-2310: ci-runner.mjs testClassesOnDisk floor misses a test class whose tests are all inherited from a project base (RoutineAppGate extends DocDbAppGate)
+- source: 18.31 fresh check (runner) | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: the matcher needs Extends ...TestCase and an own Test method; the instance's PrimarySuper list still offers RoutineAppGate and CI shards that list, so coverage holds
+- 2026-10-11T08:55:17Z status=routed owner=burndown by=lead note=orchestrator: owner burndown (18.35); widen the matcher to follow project bases or count inherited Test methods
+- 2026-10-11T08:55:25Z status=dropped owner=burndown by=lead note=duplicate of DW-2259 (same root cause, already in 23.7's held set); occurrence appended there
