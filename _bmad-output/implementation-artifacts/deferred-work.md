@@ -11105,6 +11105,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-11T06:02:59Z occurrence=18-31-privileged-routine-applications
 - 2026-10-11T11:11:25Z occurrence=18-34-the-person-s-rest-service-create
 - 2026-10-11T14:41:26Z occurrence=18-33-privileged-routine-application-roles-and-routines
+- 2026-10-11T17:41:40Z occurrence=18-34-the-person-s-rest-service-create
 
 ### DW-2279: MappingMint's empty-namespace refusal names a 'mapping' for the Doc DB application tools
 - source: spec-18-30-doc-db-applications.md | severity: low | fix-risk: low | footprint: in-epic
@@ -11231,3 +11232,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-33-privileged-routine-application-roles-and-routines.md | severity: low | fix-risk: low | footprint: in-epic
 - evidence: Classification.cls:61 'so neither tool admits them'; RoutineAppUpdate.SettableFields adds both lists; Classification.cls is a shared add-only file while Epic 20 runs, so the sentence was not replaced in place
 - 2026-10-11T14:41:38Z status=wontfix-accepted owner=18-33-privileged-routine-application-roles-and-routines by=cr note=reopen_if=a story edits Classification.cls in place after Epic 20 merges; replace the sentence then
+
+### DW-2325: A REST service create answered after its dialog was dismissed publishes no change event, so the list stays stale until next read
+- source: spec-18-34-the-person-s-rest-service-create.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: RestServiceCreateStore.create drops a result whose generation moved (reset() runs when the dialog is destroyed); docdb-create.store.ts (Story 19.17) has the same pattern
+- 2026-10-11T17:41:40Z status=open owner=18-34-the-person-s-rest-service-create by=harvest note=code review: fix-pack it in-story (publish the change event even when the dialog is gone) or close with a probe
