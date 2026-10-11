@@ -11093,6 +11093,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: irislib/EnsPortal/ProductionConfig.cls:952-1077 and :4240 (updateActions); Story 20.4's criteria name only abort, abort all, suspend and stop; IO-08's change class and copy are unbuilt
 - 2026-10-10T22:06:19Z status=routed owner=20-23-queue-and-job-actions by=lead note=20.23's plan carries them beside the queue and job actions or names the further story they need
 - 2026-10-11T00:42:34Z status=routed owner=23-7-the-range-end-cleanup-part-6 by=load note=re-own from range-end-cleanup: kit 2026-10-10.1 owners are story keys or burndown
+- 2026-10-11T09:31:48Z status=routed owner=20-23-queue-and-job-actions by=lead note=returned from 23-7 by orchestrator ruling: a 2f2e972f re-own trailer was copied under it by a later ledger merge; its owner was 20-23, never range-end-cleanup
+- 2026-10-11T09:33:14Z status=routed owner=20-25-item-runtime-and-configuration-actions by=spec_gate note=20.23 declines it (item operations, not queue or job actions); Story 20.25 chartered for it
 
 ### DW-2278: Rule 31: the Superserver, MFT and Doc DB slices each carry their own Save, Rules and form of one shape; one base would serve all three
 - source: spec-18-30-doc-db-applications.md | severity: med | fix-risk: med | footprint: in-epic
@@ -11161,3 +11163,42 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-32-spec-based-rest-services.md | severity: low | fix-risk: low | footprint: in-epic
 - evidence: 18.32 rework 1 added the second counterexample; a reword is not add-only while Epic 20 has uncommitted ToolEmit.cls edits (Rule 11)
 - 2026-10-11T11:25:21Z status=wontfix-accepted owner=18-32-spec-based-rest-services by=harvest note=reopen_if=the next story that edits ToolEmit's method after Epic 20 merges it, which rewords the sentence in passing
+### DW-2301: flake: a11y-structural-invariants.browser-spec.mjs AC5 recorded security/auditing/user-events (1280 light) as unsettled within 20 s in one local run, and one run failed before measuring (cause not captured)
+- source: spec-20-4-per-host-tabs-the-monitor-queues-and-jobs.md | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: local ocupilot-b-ci 2026-10-10: 2 of 4 runs red on untouched screens; 2026-10-11 after a full sweep: user-events read 8-13 ms, 2 of 2 runs green; six IRIS containers share the host (inference: CPU contention)
+- 2026-10-11T06:55:40Z status=routed owner=burndown by=runner note=flake; reproduce with timings logged per visit before changing SETTLE_TIMEOUT_MS or QUIET_MS
+
+### DW-2302: Jobs lists no job of Ens.MonitorService, Ens.Alarm or Ens.Alert, because EnumerateHostStatus, its host list, skips those three
+- source: spec-20-4-per-host-tabs-the-monitor-queues-and-jobs.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Ens/Util/Statistics.cls EnumerateHostStatus skips them; InteropPort.GatherJobs takes its hosts from it; the classic Jobs page lists them
+- 2026-10-11T08:12:54Z status=by-design owner=20-4-per-host-tabs-the-monitor-queues-and-jobs by=cr note=spec Tasks: Jobs is every host EnumerateHostStatus answers; reopens by a spec amendment
+
+### DW-2303: An item's Log and Messages tabs match the item's name in any production of the namespace, case-insensitively, while each row is stamped with the asked production
+- source: spec-20-4-per-host-tabs-the-monitor-queues-and-jobs.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: LOGSQL/MESSAGESQL filter ConfigName and Source/TargetConfigName only; Ens_Util.Log and Ens.MessageHeader carry no production; doc now says so
+- 2026-10-11T08:12:54Z status=by-design owner=20-4-per-host-tabs-the-monitor-queues-and-jobs by=cr note=the classic statements (EnsPortal.Utils:689, ProductionConfig:851) match by name alike; spec names them
+
+### DW-2304: A business process of pool size 0 reads no row on its Jobs tab, its work running on Ens.Actor jobs (inference, not measured)
+- source: spec-20-4-per-host-tabs-the-monitor-queues-and-jobs.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: ItemJobs calls EnumerateJobStatus(item name); a pool-size-0 process registers no job of its own name (inference)
+- 2026-10-11T08:12:54Z status=by-design owner=20-4-per-host-tabs-the-monitor-queues-and-jobs by=cr note=the classic per-host Jobs tab reads EnumerateJobStatus(host) too (ProductionConfig.cls:930); spec ItemJobs is that query
+
+### DW-2305: A Production monitor row links the Monitor role to an item's Status tab it is refused (403 naming %Ens_ProductionConfig:READ): row links are drawn whatever the target screen's pairs
+- source: spec-20-4-per-host-tabs-the-monitor-queues-and-jobs.md | severity: low | fix-risk: med | footprint: out-of-footprint
+- evidence: data-table.ts draws a rowTarget link from the full mirror (screenForRoute); InteropFloor pins the Monitor role's 403 on Status
+- 2026-10-11T08:13:07Z status=wontfix-accepted owner=20-4-per-host-tabs-the-monitor-queues-and-jobs by=cr note=reopen_if=a Monitor-role user reports the dead-end link, or the shell gains a per-screen access check for row links
+
+### DW-2306: The runtime reads' %ResultSet loops call Next() without its status, so a vendor Fetch that raised would end a list early with 200
+- source: spec-20-4-per-host-tabs-the-monitor-queues-and-jobs.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: %Library.ResultSet.Next catches a Fetch error and returns 0 with sc set; GatherHosts, GatherJobs, ListQueues and GatherQueueEntries pass no sc
+- 2026-10-11T08:13:07Z status=wontfix-theoretical owner=20-4-per-host-tabs-the-monitor-queues-and-jobs by=cr note=real if a vendor Fetch is seen failing on a global the gate's READ check does not cover; SqlRows checks its own
+
+### DW-2307: AC6's snapshot holds the operation's queue and job entry, not the whole ^Ens.Queue and job-status trees the spec names
+- source: spec-20-4-per-host-tabs-the-monitor-queues-and-jobs.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: InteropHostRead.Snapshot reads ^Ens.Queue(op) and EnsJobStatus of the op's jobs; the other hosts' entries change on their own, so a whole-tree snapshot would flake
+- 2026-10-11T08:13:07Z status=wontfix-accepted owner=20-4-per-host-tabs-the-monitor-queues-and-jobs by=cr note=reopen_if=a read is found writing another host's queue or job entry, or a 20.23 action shares a gatherer with these reads
+
+### DW-2308: InteropHostEdges is 615 lines against the roughly 500 a test class keeps to (QA's two legs and the review's lock leg went in rather than a new armed class)
+- source: spec-20-4-per-host-tabs-the-monitor-queues-and-jobs.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: wc -l src/OcuPilot/Test/InteropHostEdges.cls = 615; a split needs a new armed class, the arming roster in ci-throwaway.sh and ci.test.mjs
+- 2026-10-11T08:13:07Z status=wontfix-accepted owner=20-4-per-host-tabs-the-monitor-queues-and-jobs by=cr note=reopen_if=the class gains another leg; split it then, with its arming roster line

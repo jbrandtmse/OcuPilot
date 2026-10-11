@@ -12,6 +12,12 @@ export const INTEROP_ITEM_ADD_PATH = '/api/ocupilot/interop/items';
 /** The entity type the add's change event carries (AD-13, AD-14). */
 export const INTEROP_ITEM_ENTITY = 'production-item';
 
+/**
+ * The tool the add's change event names (AD-14): `production-item` is shown by more than one list since the
+ * Production monitor (Story 20.4), and the tool is what keeps the add's toast on Production items.
+ */
+export const INTEROP_ITEM_ADD_TOOL = 'interop.items.add';
+
 /** The members the add sends, named as the server names them. */
 export const INTEROP_ITEM_FIELDS = {
   production: 'Production',
@@ -215,6 +221,7 @@ export class InteropItemAddStore {
       id,
       action: 'created',
       readBack,
+      tool: INTEROP_ITEM_ADD_TOOL,
     });
     if (!current) return false;
     this.notify();

@@ -41,8 +41,16 @@ Parameter TEARNAME = "OcuPilotProbeTearOp";
 /// <p>The probe business rule class, a bare <code>Ens.Rule.Definition</code> subclass.</p>
 Parameter RULECLASS = "OcuPilotProbe.Interop.Rule";
 
+/// <p>The stored <code>HangSeconds</code> above which <method>Release</method> ends a job holding a message before a
+/// stop (Story 20.4).</p>
+Parameter RELEASEABOVE = 30;
+
 /// <p>The prefix of every configuration name the probe owns.</p>
 Parameter CONFIGPREFIX = "OcuPilotProbe";
+
+/// <p>The event-log line the probe operation writes for each message it takes, before it hangs, so each message
+/// leaves one row whose configuration name is the operation's (Story 20.4).</p>
+Parameter LOGTEXT = "OcuPilot probe message";
 
 /// <p>The class text of one probe class, <var>pName</var> without its package.</p>
 ClassMethod ClassText(pName As %String) As %String [ Private ]
@@ -60,6 +68,7 @@ ClassMethod ClassText(pName As %String) As %String [ Private ]
             "Method OnInit() As %Status" _ tNL _ "{" _ tNL _
             " If +..InitSeconds > 0 Hang ..InitSeconds" _ tNL _ " Quit $$$OK" _ tNL _ "}" _ tNL _
             "Method Hang(pRequest As Ens.Request, Output pResponse As Ens.Response) As %Status" _ tNL _ "{" _ tNL _
+            " $$$LOGINFO(""" _ ..#LOGTEXT _ """)" _ tNL _
             " If +..HangSeconds > 0 Hang ..HangSeconds" _ tNL _ " Quit $$$OK" _ tNL _ "}" _ tNL _
             "XData MessageMap" _ tNL _ "{" _ tNL _
             "<MapItems><MapItem MessageType=""Ens.Request""><Method>Hang</Method></MapItem></MapItems>" _ tNL _ "}" _ tNL _ "}" _ tNL
@@ -434,6 +443,7 @@ ClassMethod Settle() As %Status
             }
             Set tCurrent = ..Current(.tState)
             If tState = 1 {
+                Do ..Release()
                 Do ..AbortQueues()
                 If $$$ISERR(##class(Ens.Director).StopProduction(10, 0)) Do ##class(Ens.Director).StopProduction(10, 1)
             }
@@ -447,6 +457,50 @@ ClassMethod Settle() As %Status
         Set tSC = ex.AsStatus()
     }
     Quit tSC
+}
+
+/// <p>End the probe operation's jobs that hold a message while its stored <code>HangSeconds</code> is above
+/// <parameter>RELEASEABOVE</parameter>: a job hung that long outlasts any stop, and a forced stop puts its message back
+/// on the queue, which leaves the production Suspended and its next start hung again. It waits, fifteen seconds at
+/// most, until the vendor has marked each ended job dead and taken its message back (the job's own row leaves the host
+/// monitor), so the queues are aborted after. Called only inside <code>USER</code>, while the probe's own production is
+/// current.</p>
+ClassMethod Release() [ Private ]
+{
+    Set tProduction = ##class(Ens.Config.Production).%OpenId(..#PRODUCTION)
+    If '$IsObject(tProduction) Quit
+    Set tItem = ..OpItem(tProduction)
+    Set tHang = 0
+    If $IsObject(tItem) {
+        Set tSetting = tItem.FindSettingByName("HangSeconds", "Host")
+        If $IsObject(tSetting) Set tHang = +tSetting.Value
+    }
+    Set tSetting = "", tItem = "", tProduction = ""
+    If tHang <= ..#RELEASEABOVE Quit
+    Set tRS = ##class(%ResultSet).%New("Ens.Util.Statistics:EnumerateJobStatus")
+    Do tRS.Execute(..#OPNAME)
+    Kill tPids
+    While tRS.Next() {
+        If (tRS.GetData(9) '= "") && (+tRS.GetData(2) > 0) Set tPids(+tRS.GetData(2)) = ""
+    }
+    Set tPid = ""
+    For {
+        Set tPid = $Order(tPids(tPid))
+        If tPid = "" Quit
+        If tPid > 0 Do $System.Process.Terminate(tPid)
+    }
+    If '$Data(tPids) Quit
+    For tTry = 1:1:60 {
+        Hang 0.25
+        Set tHeld = 0
+        Set tRS = ##class(%ResultSet).%New("Ens.Util.Statistics:EnumerateJobStatus")
+        Do tRS.Execute(..#OPNAME)
+        While tRS.Next() {
+            If $Data(tPids(+tRS.GetData(2))) Set tHeld = 1
+        }
+        Do tRS.Close()
+        If 'tHeld Quit
+    }
 }
 
 /// <p>Abort the interoperability queues of <code>USER</code> that hold a message and are the scheduler's

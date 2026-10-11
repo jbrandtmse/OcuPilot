@@ -21,7 +21,7 @@ Method OnAfterOneTest() As %Status
     Quit $$$OK
 }
 
-/// <p>The descriptor declares what the spec names: a built, unlisted list under the Production items list, its
+/// <p>The descriptor declares what the spec names: a built, unlisted tab (a <code>detail</code>, the item group's second) under the Production items list, its
 /// four-part composite id, the Production items list's pairs, no primary action and Set and Reset as row actions,
 /// three prompts, no secret field (the port answers none), and the interop source's Settings endpoint with the item
 /// as its one criterion; and it passes the registry.</p>
@@ -32,7 +32,7 @@ Method TestTheDescriptorDeclaresTheItemSettingsList()
     Set tSC = $ClassMethod(..#DESCRIPTOR, "DeclarationJson", .tDeclaration)
     Do $$$AssertStatusOK(tSC, "the declaration reads")
     If '$IsObject($Get(tDeclaration)) Quit
-    Do $$$AssertEquals(tDeclaration.route _ "|" _ tDeclaration.area _ "|" _ tDeclaration.sideBarPosition _ "|" _ tDeclaration.archetype _ "|" _ tDeclaration.scope _ "|" _ tDeclaration.parentScope, "interoperability/productions/items/settings|interoperability|0|list|namespace|interoperability/productions/items", "an unlisted namespace-scoped list under the Production items list")
+    Do $$$AssertEquals(tDeclaration.route _ "|" _ tDeclaration.area _ "|" _ tDeclaration.sideBarPosition _ "|" _ tDeclaration.archetype _ "|" _ tDeclaration.scope _ "|" _ tDeclaration.parentScope, "interoperability/productions/items/settings|interoperability|0|detail|namespace|interoperability/productions/items", "an unlisted namespace-scoped tab under the Production items list (Story 20.4 made it the item group's second tab)")
     Do $$$AssertEquals(tDeclaration.entityType _ "|" _ tDeclaration.id.kind _ "|" _ tDeclaration.id.parts.%ToJSON(), "production-item-setting|composite|[""Production"",""Item"",""Target"",""Name""]", "the entity type and the composite [Production, Item, Target, Name]")
     Do $$$AssertEquals(tDeclaration.privileges.%ToJSON() _ "|" _ tDeclaration.ownPrivileges.%ToJSON(), "[{""resource"":""%Ens_Portal"",""permission"":""USE""},{""resource"":""%Ens_ProductionConfig"",""permission"":""READ""}]|[{""resource"":""%Ens_ProductionConfig"",""permission"":""READ""}]", "the Production items list's pairs, the classic page's resource as its own")
     Do $$$AssertEquals(tDeclaration.classicPage _ "|" _ tDeclaration.toolIdentifier _ "|" _ tDeclaration.primaryAction.id, "EnsPortal.ProductionConfig|interop.itemsettings|", "its classic page and tool identifier, and no primary action")

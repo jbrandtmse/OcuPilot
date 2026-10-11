@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { ApiService, type ApiRequestInit, type JsonResult } from '../../core/api';
 import { ChangeBus, type ChangeEvent } from '../../core/change-bus';
 import { STRINGS } from '../../core/strings';
-import { INTEROP_ITEM_ADD_PATH, InteropItemAddStore } from './interop-item-add.store';
+import { INTEROP_ITEM_ADD_PATH, INTEROP_ITEM_ADD_TOOL, InteropItemAddStore } from './interop-item-add.store';
 
 /**
  * Production items' add store (Story 20.3) over a stub of the Save: the body it posts and the namespace it scopes
@@ -65,6 +65,16 @@ describe('InteropItemAddStore', () => {
     ]);
     expect(events.map((event) => [event.kind, event.type, event.scope, event.id, event.action])).toEqual([['changed', 'production-item', 'USER', ID, 'created']]);
     expect(store.readBack()?.verdict).toBe('matches');
+  });
+
+  it('names the add tool on the event it publishes, so its toast opens Production items and not another list of the type', async () => {
+    const { store, events } = mount(() => ({ kind: 'ok', status: 201, body: { id: ID, target: { type: 'production-item', scope: 'USER', id: ID } } }));
+    store.set('name', 'ProbeNew');
+    store.set('className', 'Probe.Op');
+    expect(await store.add('USER', 'Probe.Production')).toBe(true);
+    // Mutation (Rule 19): drop `tool` from the published event -> the event carries none and this goes red.
+    expect(events.map((event) => event.tool)).toEqual([INTEROP_ITEM_ADD_TOOL]);
+    expect(INTEROP_ITEM_ADD_TOOL).toBe('interop.items.add');
   });
 
   it('sends only the fields typed, with the item disabled, and a pool size that is not a whole number as typed', async () => {

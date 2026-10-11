@@ -6,7 +6,7 @@ import { SCREENS } from '../../core/screens.generated';
 import { STRINGS } from '../../core/strings';
 import { rowFor } from '../../core/table-model';
 import { reasonForField } from '../../core/violations';
-import { ListPage } from '../../shell/list-page';
+import { DetailPage } from '../../shell/detail-page';
 import { ScreenActionHandler } from '../../shell/screen-action-handler';
 import { InteropItemSettingDialog } from './interop-item-setting-dialog';
 
@@ -35,7 +35,8 @@ function text(value: unknown): string {
 }
 
 /**
- * Interoperability's Item settings (Story 20.22, AD-5): the shared list page, over it the Set value dialog.
+ * Interoperability's Item settings (Story 20.22, AD-5): the item's second tab, the detail page over the shared list page
+ * (Story 20.4), over it the Set value dialog.
  *
  * **Set value is this page's own action**, registered on the descriptor after injecting the shell's handler,
  * whose construction registers the list's declared Reset to default. Opening reads the selected row: a setting
@@ -47,7 +48,7 @@ function text(value: unknown): string {
 @Component({
   selector: 'app-interop-item-setting-list-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ListPage, InteropItemSettingDialog],
+  imports: [DetailPage, InteropItemSettingDialog],
   // The height chain every page host carries, so the list's viewport keeps its height.
   styles: `
     :host {
@@ -57,7 +58,7 @@ function text(value: unknown): string {
       min-height: 0;
     }
   `,
-  template: `<app-list-page />
+  template: `<app-detail-page />
     @if (openTarget; as target) {
       <app-interop-item-setting-dialog
         [name]="target.name"

@@ -881,24 +881,31 @@ test('tabProblem and tabGroupProblem return every sentence OcuPilot.Test.TabCorp
     ['system-explorer/sql-procedures/document', 'system-explorer/sql-procedures/document', 1, 0],
     ['system-explorer/sql-tables/document', 'system-explorer/sql-tables/document', 1, 0],
     ['system-explorer/sql-views/document', 'system-explorer/sql-views/document', 1, 0],
+    // Story 20.4: a production item's six tabs, a parent-scoped group whose head is unlisted.
+    ['interoperability/productions/items/document', 'interoperability/productions/items/document', 1, 0],
     ['os-management/license-usage', 'os-management/license-usage', 1, 8],
     ['security/oauth', 'security/oauth', 1, 5],
     ['os-management/ecp-application-servers/ssl', 'os-management/ecp-application-servers', 2, 0],
     ['system-explorer/sql-tables/fields', 'system-explorer/sql-tables/document', 2, 0],
     ['system-explorer/sql-procedures/statements', 'system-explorer/sql-procedures/document', 2, 0],
     ['system-explorer/sql-views/fields', 'system-explorer/sql-views/document', 2, 0],
+    ['interoperability/productions/items/settings', 'interoperability/productions/items/document', 2, 0],
     ['os-management/license-usage/processes', 'os-management/license-usage', 2, 0],
     ['security/oauth/clients', 'security/oauth', 2, 0],
     ['system-explorer/sql-tables/indices', 'system-explorer/sql-tables/document', 3, 0],
     ['system-explorer/sql-views/statements', 'system-explorer/sql-views/document', 3, 0],
+    ['interoperability/productions/items/queue', 'interoperability/productions/items/document', 3, 0],
     ['os-management/license-usage/users', 'os-management/license-usage', 3, 0],
     ['security/oauth/resource-servers', 'security/oauth', 3, 0],
     ['system-explorer/sql-tables/partitions', 'system-explorer/sql-tables/document', 4, 0],
+    ['interoperability/productions/items/log', 'interoperability/productions/items/document', 4, 0],
     ['os-management/license-usage/distributed', 'os-management/license-usage', 4, 0],
     ['security/oauth/server', 'security/oauth', 4, 0],
     ['system-explorer/sql-tables/partition-mappings', 'system-explorer/sql-tables/document', 5, 0],
+    ['interoperability/productions/items/messages', 'interoperability/productions/items/document', 5, 0],
     ['security/oauth/server-clients', 'security/oauth', 5, 0],
     ['system-explorer/sql-tables/triggers', 'system-explorer/sql-tables/document', 6, 0],
+    ['interoperability/productions/items/jobs', 'interoperability/productions/items/document', 6, 0],
     ['system-explorer/sql-tables/constraints', 'system-explorer/sql-tables/document', 7, 0],
     ['system-explorer/sql-tables/cached-queries', 'system-explorer/sql-tables/document', 8, 0],
     ['system-explorer/sql-tables/statements', 'system-explorer/sql-tables/document', 9, 0],
@@ -1348,7 +1355,8 @@ test('criteriaProblem returns every sentence OcuPilot.Test.CriteriaCorpus declar
   // Story 18.7's two key file lists, whose two criteria are the key file's root and path.
   // Story 18.9's SQL privileges, whose two criteria are the grantee and the namespace. Story 18.10's percent-class
   // access list, whose one criterion is the application. Story 20.3's Production items, whose one criterion is
-  // the production the route id names.
+  // the production the route id names. Story 20.4's six item tabs, whose one criterion is the item the route id names,
+  // and Queue messages, whose one criterion is the queue.
   const withCriteria = emittedScreens.filter((screen) => (screen.read?.criteria ?? null) !== null);
   assert.deepEqual(
     withCriteria.map((screen) => screen.descriptor),
@@ -1383,8 +1391,14 @@ test('criteriaProblem returns every sentence OcuPilot.Test.CriteriaCorpus declar
       'OcuPilot.Screen.Descriptor.ExplorerSqlViewStatements',
       'OcuPilot.Screen.Descriptor.ExplorerSqlViews',
       'OcuPilot.Screen.Descriptor.GlobalMappingList',
+      'OcuPilot.Screen.Descriptor.InteropItemJobTab',
       'OcuPilot.Screen.Descriptor.InteropItemList',
+      'OcuPilot.Screen.Descriptor.InteropItemLogTab',
+      'OcuPilot.Screen.Descriptor.InteropItemMessageTab',
+      'OcuPilot.Screen.Descriptor.InteropItemQueueTab',
       'OcuPilot.Screen.Descriptor.InteropItemSettingList',
+      'OcuPilot.Screen.Descriptor.InteropItemStatusTab',
+      'OcuPilot.Screen.Descriptor.InteropQueueMessageList',
       'OcuPilot.Screen.Descriptor.JournalFileDatabaseList',
       'OcuPilot.Screen.Descriptor.JournalFileDetails',
       'OcuPilot.Screen.Descriptor.JournalRecordList',
@@ -2392,7 +2406,9 @@ test('ownPrivilegesProblem returns every sentence OwnPrivilegeCases declares, an
   // Story 19.17's Document databases owns %DocDB_Admin and %Service_DocDB beside System Explorer's
   // %Development. Story 20.2's four Interoperability lists own their classic page's resource beside the
   // area's %Ens_Portal. Story 20.3's Production items
-  // owns %Ens_ProductionConfig:READ the same way.
+  // owns %Ens_ProductionConfig:READ the same way. Story 20.4's nine screens own their classic page's resource: the
+  // item's six tabs %Ens_ProductionConfig:READ and each its tab's, Production monitor %Ens_Dashboard:USE, Queues and
+  // Queue messages %Ens_Queues:READ, and Jobs %Ens_Jobs:READ.
   assert.deepEqual(
     owners.sort(),
     [
@@ -2403,10 +2419,19 @@ test('ownPrivilegesProblem returns every sentence OwnPrivilegeCases declares, an
       'OcuPilot.Screen.Descriptor.EncryptionKeyFileAdminList',
       'OcuPilot.Screen.Descriptor.EncryptionKeyFileForm',
       'OcuPilot.Screen.Descriptor.ExplorerDocDbList',
+      'OcuPilot.Screen.Descriptor.InteropItemJobTab',
       'OcuPilot.Screen.Descriptor.InteropItemList',
+      'OcuPilot.Screen.Descriptor.InteropItemLogTab',
+      'OcuPilot.Screen.Descriptor.InteropItemMessageTab',
+      'OcuPilot.Screen.Descriptor.InteropItemQueueTab',
       'OcuPilot.Screen.Descriptor.InteropItemSettingList',
+      'OcuPilot.Screen.Descriptor.InteropItemStatusTab',
+      'OcuPilot.Screen.Descriptor.InteropJobList',
+      'OcuPilot.Screen.Descriptor.InteropMonitorList',
       'OcuPilot.Screen.Descriptor.InteropProcessList',
       'OcuPilot.Screen.Descriptor.InteropProductionList',
+      'OcuPilot.Screen.Descriptor.InteropQueueList',
+      'OcuPilot.Screen.Descriptor.InteropQueueMessageList',
       'OcuPilot.Screen.Descriptor.InteropRuleList',
       'OcuPilot.Screen.Descriptor.InteropTransformList',
       'OcuPilot.Screen.Descriptor.JournalSettings',

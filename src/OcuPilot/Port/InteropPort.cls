@@ -1,7 +1,8 @@
 /// <p>The port to the instance's interoperability runtime (AD-62, AD-29, AD-52, Stories 20.2 and 20.3): <b>the
 /// only product class that starts, stops, restarts, updates or recovers a production, or enables, disables,
 /// adds or removes one of its items</b>, and the only one that reads the interoperability configuration for
-/// a declared read (source kind <code>interop</code>). It calls the documented classes the classic pages call --
+/// a declared read (source kind <code>interop</code>); Story 20.4 adds the nine runtime reads (<parameter>ENDPOINTS</parameter>
+/// from <code>Monitor</code> on), which write nothing and never call a queue or job action. It calls the documented classes the classic pages call --
 /// <code>Ens.Director</code>, <code>Ens.Config.Production:ProductionStatus</code> and
 /// <code>%Dictionary.ClassDefinition:SubclassOf</code> -- in the caller's process, as the signed-in
 /// user. Nothing here issues an HTTP request, calls a <code>%Api.InteropEditors</code> class or calls
@@ -48,7 +49,7 @@ Parameter GATECLASS = "OcuPilot.Screen.Gate";
 /// <p>The endpoints this port serves, comma-separated: the namespace's productions, business
 /// processes, data transformations and business rules, and a production's items.
 /// <file>ui/tools/screen-mirror.mjs</file> reads this list.</p>
-Parameter ENDPOINTS = "Productions,Processes,Transforms,Rules,Items,Settings";
+Parameter ENDPOINTS = "Productions,Processes,Transforms,Rules,Items,Settings,Monitor,ItemStatus,Queues,QueueItems,ItemQueue,ItemLog,ItemMessages,Jobs,ItemJobs";
 
 Parameter ENDPOINTPRODUCTIONS = "Productions";
 
@@ -68,6 +69,32 @@ Parameter ENDPOINTITEMS = "Items";
 /// (<parameter>TARGETHOST</parameter>) or its adapter (<parameter>TARGETADAPTER</parameter>) declares.</p>
 Parameter ENDPOINTSETTINGS = "Settings";
 
+/// <p>The production monitor (Story 20.4): the hosts the namespace's running production configures, with the status the
+/// vendor's host monitor keeps. <code>LIST</code> only, like every endpoint from here to <parameter>ENDPOINTITEMJOBS</parameter>;
+/// none writes, and none calls a queue or job action.</p>
+Parameter ENDPOINTMONITOR = "Monitor";
+
+/// <p>One item's status (Story 20.4): its configuration facts and its host's monitor row. An item endpoint takes the
+/// item under <parameter>ITEMKEY</parameter>.</p>
+Parameter ENDPOINTITEMSTATUS = "ItemStatus";
+
+/// <p>The namespace's queues and the entries of one of them, named under <parameter>QUEUEKEY</parameter>.</p>
+Parameter ENDPOINTQUEUES = "Queues";
+
+Parameter ENDPOINTQUEUEITEMS = "QueueItems";
+
+/// <p>An item's queue, its event log rows and its message headers.</p>
+Parameter ENDPOINTITEMQUEUE = "ItemQueue";
+
+Parameter ENDPOINTITEMLOG = "ItemLog";
+
+Parameter ENDPOINTITEMMESSAGES = "ItemMessages";
+
+/// <p>The running production's jobs, and one item's.</p>
+Parameter ENDPOINTJOBS = "Jobs";
+
+Parameter ENDPOINTITEMJOBS = "ItemJobs";
+
 /// <p>The pairs the Productions endpoint requires: the classic Interoperability menu's
 /// <code>%Ens_Portal:USE</code> and <code>EnsPortal.Productions</code>'s own resource (AD-8,
 /// AD-29).</p>
@@ -77,6 +104,26 @@ Parameter PRODUCTIONPAIRS = "%Ens_Portal:USE,%Ens_ProductionConfig:READ";
 /// cannot express; <code>%Ens_Code:READ</code> is held by every shipped role that reaches them
 /// (AD-62's named limit).</p>
 Parameter CODEPAIRS = "%Ens_Portal:USE,%Ens_Code:READ";
+
+/// <p>The pairs the Monitor endpoint requires: the classic <code>EnsPortal.ProductionMonitor</code>'s resource
+/// (Story 20.4).</p>
+Parameter MONITORPAIRS = "%Ens_Portal:USE,%Ens_Dashboard:USE";
+
+/// <p>The pairs the Queues and QueueItems endpoints require: <code>EnsPortal.Queues</code>' resource.</p>
+Parameter QUEUEPAIRS = "%Ens_Portal:USE,%Ens_Queues:READ";
+
+/// <p>The pairs the Jobs endpoint requires: <code>EnsPortal.Jobs</code>' resource.</p>
+Parameter JOBPAIRS = "%Ens_Portal:USE,%Ens_Jobs:READ";
+
+/// <p>The pair each item tab adds to the Productions endpoint's pairs (the classic configuration page's
+/// <code>initSecurity</code>): the queue, the event log, the message headers and the jobs.</p>
+Parameter ITEMQUEUEPAIR = "%Ens_Queues:READ";
+
+Parameter ITEMLOGPAIR = "%Ens_EventLog:USE";
+
+Parameter ITEMMESSAGEPAIR = "%Ens_MessageHeader:USE";
+
+Parameter ITEMJOBPAIR = "%Ens_Jobs:READ";
 
 /// <p>The pair a write adds: the vendor's own run resource, the classic
 /// <code>EnsPortal.ProductionConfig</code> check (measured: start, stop and restart answer #940
@@ -152,6 +199,22 @@ Parameter TYPERESET = "RESET";
 /// <p>The query key naming the item a <code>Settings</code> list reads: its one criterion. Its value is the item's
 /// composite id <code>[Production, Name]</code> or the vendor's config name <code>Production||Name</code>.</p>
 Parameter ITEMKEY = "item";
+
+/// <p>The query key naming the queue a <code>QueueItems</code> list reads: its one criterion (Story 20.4).</p>
+Parameter QUEUEKEY = "queue";
+
+/// <p>The queue a business process of pool size 0 shares with every other such process; its entries are told apart by
+/// the header's target.</p>
+Parameter ACTORQUEUE = "Ens.Actor";
+
+/// <p>The state words a runtime read answers rows in: the namespace's current production, running or troubled
+/// (<method>ReadState</method>'s words).</p>
+Parameter LIVEWORDS = "Running,Troubled";
+
+/// <p>The most entries one queue read examines. A queue shared by many hosts (<parameter>ACTORQUEUE</parameter>) is
+/// walked entry by entry and each header opened; past this many the read stops, so an item whose entries lie further
+/// down the queue shows only those it reached.</p>
+Parameter QUEUESCANMAX = 10000;
 
 /// <p>What a setting refusal code begins with (<class>OcuPilot.Api.InteropError</class>).</p>
 Parameter SETTINGCODEPREFIX = "INTEROP.SETTING.";
@@ -235,6 +298,8 @@ Parameter REASONROUTINESUNKNOWN = "This instance cannot name the database that n
 
 Parameter REASONITEMIDREQUIRED = "Name the production and the item.";
 
+Parameter REASONQUEUEREQUIRED = "Name the queue.";
+
 Parameter REASONITEMBODY = "An item write names its fields in an object.";
 
 Parameter REASONSETTINGID = "Name the production, the item, the group (Core, Host or Adapter) and the setting.";
@@ -278,15 +343,43 @@ ClassMethod IsSettingWrite(pType As %String) As %Boolean
     Quit (pType = ..#TYPESET) || (pType = ..#TYPERESET)
 }
 
+/// <p>The endpoints Story 20.4 added, as a <class>%List</class>: the nine runtime reads, each <code>LIST</code> alone.</p>
+ClassMethod RuntimeEndpoints() As %List
+{
+    Quit $ListBuild(..#ENDPOINTMONITOR, ..#ENDPOINTITEMSTATUS, ..#ENDPOINTQUEUES, ..#ENDPOINTQUEUEITEMS, ..#ENDPOINTITEMQUEUE, ..#ENDPOINTITEMLOG, ..#ENDPOINTITEMMESSAGES, ..#ENDPOINTJOBS, ..#ENDPOINTITEMJOBS)
+}
+
+/// <p>The runtime reads that are about one item, named under <parameter>ITEMKEY</parameter>.</p>
+ClassMethod ItemEndpoints() As %List
+{
+    Quit $ListBuild(..#ENDPOINTITEMSTATUS, ..#ENDPOINTITEMQUEUE, ..#ENDPOINTITEMLOG, ..#ENDPOINTITEMMESSAGES, ..#ENDPOINTITEMJOBS)
+}
+
 /// <p>The pairs <var>pEndpoint</var> requires for <var>pType</var>, as the <code>%List</code> of
 /// two-element <code>%List</code>s the gate evaluates: the endpoint's own pairs, then
 /// <parameter>WRITEPAIRS</parameter> for a production write or <parameter>ITEMWRITEPAIRS</parameter> for an
-/// item write; <code>""</code> for an endpoint this port does not serve. The Items endpoint takes the
-/// Productions endpoint's pairs.</p>
+/// item write; <code>""</code> for an endpoint this port does not serve. The Items and Settings endpoints take the
+/// Productions endpoint's pairs, and so does ItemStatus. The other runtime reads take the pairs of the classic page
+/// they replace (Story 20.4): Monitor, Queues and QueueItems, Jobs; and each item tab the Productions pairs plus its
+/// own (queue, event log, message headers, jobs).</p>
 ClassMethod Pairs(pEndpoint As %String, pType As %String = "") As %List
 {
-    If (pEndpoint = ..#ENDPOINTPRODUCTIONS) || (pEndpoint = ..#ENDPOINTITEMS) || (pEndpoint = ..#ENDPOINTSETTINGS) {
+    If (pEndpoint = ..#ENDPOINTPRODUCTIONS) || (pEndpoint = ..#ENDPOINTITEMS) || (pEndpoint = ..#ENDPOINTSETTINGS) || (pEndpoint = ..#ENDPOINTITEMSTATUS) {
         Set tSpec = ..#PRODUCTIONPAIRS
+    } ElseIf pEndpoint = ..#ENDPOINTMONITOR {
+        Set tSpec = ..#MONITORPAIRS
+    } ElseIf (pEndpoint = ..#ENDPOINTQUEUES) || (pEndpoint = ..#ENDPOINTQUEUEITEMS) {
+        Set tSpec = ..#QUEUEPAIRS
+    } ElseIf pEndpoint = ..#ENDPOINTJOBS {
+        Set tSpec = ..#JOBPAIRS
+    } ElseIf pEndpoint = ..#ENDPOINTITEMQUEUE {
+        Set tSpec = ..#PRODUCTIONPAIRS _ "," _ ..#ITEMQUEUEPAIR
+    } ElseIf pEndpoint = ..#ENDPOINTITEMLOG {
+        Set tSpec = ..#PRODUCTIONPAIRS _ "," _ ..#ITEMLOGPAIR
+    } ElseIf pEndpoint = ..#ENDPOINTITEMMESSAGES {
+        Set tSpec = ..#PRODUCTIONPAIRS _ "," _ ..#ITEMMESSAGEPAIR
+    } ElseIf pEndpoint = ..#ENDPOINTITEMJOBS {
+        Set tSpec = ..#PRODUCTIONPAIRS _ "," _ ..#ITEMJOBPAIR
     } ElseIf $ListFind(..Endpoints(), pEndpoint) {
         Set tSpec = ..#CODEPAIRS
     } Else {
@@ -374,7 +467,7 @@ ClassMethod ReasonFor(pCode As %String) As %String
 /// array of <code>{Name, Modified}</code> (the document name <code>&lt;class&gt;.cls</code> and the
 /// class's last change as <code>YYYY-MM-DD HH:MM:SS</code>), cut at <parameter>MAXROWSKEY</parameter>;
 /// for <code>STATE</code> and after every write <code>{Name, Namespace, State, Current,
-/// NeedsUpdate}</code>.</p>
+/// NeedsUpdate}</code>; for the nine runtime reads an array of rows (<method>InvokeRuntime</method>).</p>
 /// <p>Otherwise an error status is returned, <var>pHttpStatus</var> is the status to answer with and
 /// <var>pFault</var> the wire fault: 403 <code>AUTH.NOPRIVILEGE</code> with
 /// <code>detail.failedPair</code>; 400 <code>PORT.VALIDATION</code> for a namespace, id or cap of the
@@ -411,6 +504,10 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
         }
         If pEndpoint = ..#ENDPOINTSETTINGS {
             Set tSC = ..InvokeSettings(tNamespace, pType, .pQuery, pBody, .pResult, .pHttpStatus, .pFault)
+            Quit
+        }
+        If $ListFind(..RuntimeEndpoints(), pEndpoint) {
+            Set tSC = ..InvokeRuntime(tNamespace, pEndpoint, .pQuery, .pResult, .pHttpStatus, .pFault)
             Quit
         }
 
@@ -1950,11 +2047,13 @@ ClassMethod Statused(pStatus As %Status, pMessage As %String, Output pHttpStatus
     Quit ..Fail(pMessage, pStatus, .pHttpStatus, .pFault)
 }
 
-/// <p>A vendor exception <var>pException</var> in this port's own words: <code>&lt;PROTECT&gt;</code>
+/// <p>A vendor exception <var>pException</var> in this port's own words: a lock the vendor could not take is 503
+/// <code>PORT.UNAVAILABLE</code>, unlogged, as <method>Statused</method> answers it; <code>&lt;PROTECT&gt;</code>
 /// is 403 <code>PORT.ACCESSDENIED</code>, anything else 500 <code>INTERNAL</code>, each logging the
 /// vendor's text under <var>pMessage</var>.</p>
 ClassMethod Mapped(pException As %Exception.AbstractException, pMessage As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
 {
+    If ..HasCode(pException.AsStatus(), ..#CODERUNTIMELOCK) Quit ..Unavailable(.pHttpStatus, .pFault)
     Set tProtect = 0
     Try {
         Set tProtect = (pException.Name [ "<PROTECT>")
@@ -2029,6 +2128,626 @@ ClassMethod Fail(pMessage As %String, pStatus As %Status, Output pHttpStatus As 
     Set pFault = ##class(OcuPilot.Kernel.Fault).Build(##class(OcuPilot.Api.Error).#SERVERERROR, ##class(OcuPilot.Api.Error).#INTERNAL, ##class(OcuPilot.Kernel.Fault).#DEFAULTREASON)
     Do ..LogFault(pMessage, pStatus, pFault.code)
     Quit $$$ERROR($$$GeneralError, pFault.code _ ": " _ pFault.reason)
+}
+
+/// <p>Serve one of the nine runtime reads (Story 20.4) after <method>Invoke</method>'s gate. Each answers an array of
+/// rows, at most <parameter>MAXROWSKEY</parameter> of them when that is above zero, and writes nothing: no queue or
+/// job action is called, and <code>Ens.Job:Enumerate</code>, whose <code>MarkDeadJobs</code> writes, never is.</p>
+/// <ul>
+/// <li>Monitor, Queues and Jobs take no criterion; QueueItems takes <parameter>QUEUEKEY</parameter>; every other
+/// endpoint takes the item under <parameter>ITEMKEY</parameter> (the composite id or <code>Production||Name</code>),
+/// resolved as an item read resolves it: 400 when it is not one, 404 for an unknown production or item, 409
+/// <code>INTEROP.ITEM.AMBIGUOUS</code> for a name the production holds more than once.</li>
+/// </ul>
+ClassMethod InvokeRuntime(pNamespace As %String, pEndpoint As %String, ByRef pQuery, Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Set pResult = ""
+    Try {
+        Set tMaxText = $Get(pQuery(..#MAXROWSKEY))
+        If (tMaxText '= "") && '$Match(tMaxText, "^[1-9][0-9]*$") {
+            Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONMAXROWS, .pHttpStatus, .pFault)
+            Quit
+        }
+        Set tMax = +tMaxText
+        If pEndpoint = ..#ENDPOINTMONITOR {
+            Set tSC = ..ListMonitor(pNamespace, tMax, .pResult, .pHttpStatus, .pFault)
+            Quit
+        }
+        If pEndpoint = ..#ENDPOINTQUEUES {
+            Set tSC = ..ListQueues(pNamespace, tMax, .pResult, .pHttpStatus, .pFault)
+            Quit
+        }
+        If pEndpoint = ..#ENDPOINTJOBS {
+            Set tSC = ..ListJobs(pNamespace, "", "", tMax, .pResult, .pHttpStatus, .pFault)
+            Quit
+        }
+        If pEndpoint = ..#ENDPOINTQUEUEITEMS {
+            Set tQueue = $Get(pQuery(..#QUEUEKEY))
+            If tQueue = "" {
+                Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONQUEUEREQUIRED, .pHttpStatus, .pFault)
+                Quit
+            }
+            Set tSC = ..ListQueueEntries(pNamespace, tQueue, "", "", "", tMax, .pResult, .pHttpStatus, .pFault)
+            Quit
+        }
+        If '..ItemParts($Get(pQuery(..#ITEMKEY)), .tProduction, .tItem) {
+            Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONITEMIDREQUIRED, .pHttpStatus, .pFault)
+            Quit
+        }
+        Set tSC = ..ResolveItem(pNamespace, tProduction, tItem, .tLine, .pHttpStatus, .pFault)
+        If $$$ISERR(tSC) Quit
+        Set tName = $List(tLine, 1)
+        If pEndpoint = ..#ENDPOINTITEMSTATUS {
+            Set tSC = ..ReadItemStatus(pNamespace, tProduction, tLine, .pResult, .pHttpStatus, .pFault)
+        } ElseIf pEndpoint = ..#ENDPOINTITEMQUEUE {
+            Set tSC = ..ItemQueueEntries(pNamespace, tProduction, tName, tMax, .pResult, .pHttpStatus, .pFault)
+        } ElseIf pEndpoint = ..#ENDPOINTITEMLOG {
+            Set tSC = ..ListItemLog(pNamespace, tProduction, tName, tMax, .pResult, .pHttpStatus, .pFault)
+        } ElseIf pEndpoint = ..#ENDPOINTITEMMESSAGES {
+            Set tSC = ..ListItemMessages(pNamespace, tProduction, tName, tMax, .pResult, .pHttpStatus, .pFault)
+        } Else {
+            Set tSC = ..ListJobs(pNamespace, tProduction, tName, tMax, .pResult, .pHttpStatus, .pFault)
+        }
+    } Catch ex {
+        Set pResult = ""
+        Set tSC = ..Fail(pEndpoint _ " failed inside the port", ex.AsStatus(), .pHttpStatus, .pFault)
+    }
+    Quit tSC
+}
+
+/// <p>The item <var>pItem</var> of <var>pProduction</var> in <var>pNamespace</var>, as <method>GatherItems</method>
+/// reads it, in <var>pLine</var> (its element), whose name is the item's own spelling. An unknown production or item is
+/// 404 <code>PORT.NOTFOUND</code>, unlogged; a name the production holds more than once is
+/// <code>INTEROP.ITEM.AMBIGUOUS</code>, the count rule an item read applies.</p>
+ClassMethod ResolveItem(pNamespace As %String, pProduction As %String, pItem As %String, Output pLine As %List, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pLine = ""
+    Set tSC = ..GatherItems(pNamespace, pProduction, pItem, 0, .tExists, .tFound, .tCount, .tCaught)
+    If $IsObject(tCaught) Quit ..Mapped(tCaught, "the item could not be read", .pHttpStatus, .pFault)
+    If 'tExists || (tCount = 0) Quit ..Absent(.pHttpStatus, .pFault)
+    If tCount > 1 Quit ..Conflict(##class(OcuPilot.Api.InteropError).#ITEMAMBIGUOUS, .pHttpStatus, .pFault)
+    Set pLine = tFound(1)
+    Quit $$$OK
+}
+
+/// <p>The namespace's current production when it is running or troubled (<parameter>LIVEWORDS</parameter>) and, when
+/// <var>pProduction</var> is given, is that production; <code>""</code> otherwise, so a stopped production answers
+/// nothing a stale host record could fill. Called while the production's namespace is switched; a fault is
+/// thrown.</p>
+ClassMethod LiveCurrent(pProduction As %String) As %String [ Private ]
+{
+    Set tSC = ##class(Ens.Director).GetProductionStatus(.tCurrent, .tState, 2)
+    If $$$ISERR(tSC) Throw ##class(%Exception.StatusException).CreateFromStatus(tSC)
+    Set tCurrent = $Get(tCurrent)
+    If tCurrent = "" Quit ""
+    If (pProduction '= "") && (pProduction '= tCurrent) Quit ""
+    Set tWord = ##class(Ens.Config.Production).ProductionStateToText(+$Get(tState), 0)
+    Quit $Select($ListFind($ListFromString(..#LIVEWORDS), tWord): tCurrent, 1: "")
+}
+
+/// <p>The host monitor's rows (<code>Ens.Util.Statistics:EnumerateHostStatus</code>) for the hosts the namespace's
+/// current production configures, and only while that production is running or troubled
+/// (<method>LiveCurrent</method>); <var>pCurrent</var> is that production, <code>""</code> when there are no rows to
+/// give. <var>pProduction</var> limits it to that production, and <var>pName</var> to the host of that name. The
+/// vendor's own hosts the production does not configure (<code>Ens.Actor</code>, <code>Ens.ScheduleHandler</code>) are
+/// left out. <var>pFound(n)</var> is <code>$ListBuild(Name, Type, Status, AdapterState, LastActivity, ElapsedTime,
+/// Queue, Count)</code>, at most <var>pMax</var> of them when that is above zero. A fault is <var>pCaught</var>, with
+/// the namespace restored. Only vendor classes and this class run while it is switched.</p>
+ClassMethod GatherHosts(pNamespace As %String, pProduction As %String, pName As %String, pMax As %Integer, Output pCurrent As %String, ByRef pFound, Output pCaught) As %Status [ Private ]
+{
+    Kill pFound
+    Set pFound = 0
+    Set pCurrent = ""
+    Set pCaught = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Set tCurrent = ..LiveCurrent(pProduction)
+        If tCurrent '= "" {
+            Set pCurrent = tCurrent
+            Kill tNames
+            Set tProduction = ##class(Ens.Config.Production).%OpenId(tCurrent)
+            If $IsObject(tProduction) {
+                For tI = 1:1:tProduction.Items.Count() {
+                    Set tItem = tProduction.Items.GetAt(tI)
+                    If $IsObject(tItem) Set tNames(tItem.Name) = ""
+                }
+            }
+            Set tItem = ""
+            Set tProduction = ""
+            Set tResult = ##class(%ResultSet).%New("Ens.Util.Statistics:EnumerateHostStatus")
+            Set tExecuteSC = tResult.Execute()
+            If $$$ISERR(tExecuteSC) Throw ##class(%Exception.StatusException).CreateFromStatus(tExecuteSC)
+            While tResult.Next() {
+                Set tHost = tResult.GetData(1)
+                If '$Data(tNames(tHost)) Continue
+                If (pName '= "") && (tHost '= pName) Continue
+                If (pMax > 0) && (pFound >= pMax) Quit
+                Set pFound($Increment(pFound)) = $ListBuild(tHost, tResult.GetData(2), tResult.GetData(3), tResult.GetData(4), tResult.GetData(5), tResult.GetData(6), tResult.GetData(7), tResult.GetData(8))
+            }
+            Do tResult.Close()
+            Set tResult = ""
+        }
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set pCaught = ex
+    }
+    Quit $$$OK
+}
+
+/// <p>The host monitor's row <var>pLine</var> (<method>GatherHosts</method>'s element) of production
+/// <var>pProduction</var> as the monitor answers it: <code>{Production, Item, Name, Type, Status, AdapterState,
+/// LastActivity, ElapsedTime, Queue, Count}</code>, <code>Item</code> the item's <code>Production||Name</code> and
+/// <code>LastActivity</code> the instance's local clock time as the log readers write it. Runs in the install
+/// namespace.</p>
+ClassMethod HostRow(pProduction As %String, pLine As %List) As %DynamicObject [ Private ]
+{
+    Set tRow = {}
+    Do tRow.%Set("Production", pProduction, "string")
+    Do tRow.%Set("Item", pProduction _ "||" _ $List(pLine, 1), "string")
+    Do tRow.%Set("Name", $List(pLine, 1) _ "", "string")
+    Do tRow.%Set("Type", $List(pLine, 2) _ "", "string")
+    Do tRow.%Set("Status", $List(pLine, 3) _ "", "string")
+    Do tRow.%Set("AdapterState", $List(pLine, 4) _ "", "string")
+    Do tRow.%Set("LastActivity", ##class(OcuPilot.Port.LogSourcePort).ClockStamp($List(pLine, 5)), "string")
+    Do tRow.%Set("ElapsedTime", +$List(pLine, 6), "number")
+    Do tRow.%Set("Queue", +$List(pLine, 7), "number")
+    Do tRow.%Set("Count", +$List(pLine, 8), "number")
+    Quit tRow
+}
+
+/// <p>The production monitor (Story 20.4): one row per host the namespace's running or troubled production configures
+/// (<method>GatherHosts</method>, <method>HostRow</method>), none while it is not running.</p>
+ClassMethod ListMonitor(pNamespace As %String, pMax As %Integer, Output pRows As %DynamicArray, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pRows = ""
+    Set tSC = ..GatherHosts(pNamespace, "", "", pMax, .tCurrent, .tFound, .tCaught)
+    If $IsObject(tCaught) Quit ..Mapped(tCaught, "the production monitor failed", .pHttpStatus, .pFault)
+    Set pRows = []
+    For tI = 1:1:tFound {
+        Do pRows.%Push(..HostRow(tCurrent, tFound(tI)))
+    }
+    Set pHttpStatus = 200
+    Quit $$$OK
+}
+
+/// <p>One item's status (Story 20.4): <code>{Production, Name, ClassName, Type, Enabled, Status, AdapterState,
+/// LastActivity}</code> as one row. The first five are the item's configuration (<var>pLine</var>,
+/// <method>GatherItems</method>'s element, as <method>ItemRow</method> gives them); the last three are its host
+/// monitor row's, and empty while the item's production is not the namespace's running or troubled one or the monitor
+/// holds no host of the name.</p>
+ClassMethod ReadItemStatus(pNamespace As %String, pProduction As %String, pLine As %List, Output pRows As %DynamicArray, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pRows = ""
+    Set tSC = ..GatherHosts(pNamespace, pProduction, $List(pLine, 1), 1, .tCurrent, .tFound, .tCaught)
+    If $IsObject(tCaught) Quit ..Mapped(tCaught, "the item status failed", .pHttpStatus, .pFault)
+    Set tRow = ..ItemRow(pProduction, pLine)
+    For tKey = "EnabledSource", "PoolSize", "Category", "Comment" {
+        Do tRow.%Remove(tKey)
+    }
+    Set tHost = $Select(tFound > 0: ..HostRow(pProduction, tFound(1)), 1: {})
+    For tKey = "Status", "AdapterState", "LastActivity" {
+        Do tRow.%Set(tKey, $Select(tHost.%IsDefined(tKey): tHost.%Get(tKey), 1: ""), "string")
+    }
+    Set pRows = [(tRow)]
+    Set pHttpStatus = 200
+    Quit $$$OK
+}
+
+/// <p>The job rows of the host <var>pHost</var>, or of every host <code>Ens.Util.Statistics:EnumerateHostStatus</code>
+/// answers when it is empty (the vendor's own hosts the production does not configure included, unlike
+/// <method>GatherHosts</method>), only while the namespace's production is running or troubled and, when
+/// <var>pProduction</var> is given, is that production: <var>pFound(n)</var> is <code>Ens.Util.Statistics:EnumerateJobStatus</code>'s row
+/// <code>$ListBuild(Name, Job, Status, AdapterState, LastActivity, Count, Method, Retry, ActiveMessage)</code>, at most
+/// <var>pMax</var> when that is above zero. <var>pCurrent</var> is the production they belong to, <code>""</code> when
+/// there are none to give. A fault is <var>pCaught</var>, with the namespace restored.</p>
+ClassMethod GatherJobs(pNamespace As %String, pProduction As %String, pHost As %String, pMax As %Integer, Output pCurrent As %String, ByRef pFound, Output pCaught) As %Status [ Private ]
+{
+    Kill pFound
+    Set pFound = 0
+    Set pCurrent = ""
+    Set pCaught = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Set tCurrent = ..LiveCurrent(pProduction)
+        If tCurrent '= "" {
+            Set pCurrent = tCurrent
+            Kill tHosts
+            If pHost '= "" {
+                Set tHosts(1) = pHost
+                Set tHosts = 1
+            } Else {
+                Set tHosts = 0
+                Set tHostResult = ##class(%ResultSet).%New("Ens.Util.Statistics:EnumerateHostStatus")
+                Set tHostSC = tHostResult.Execute()
+                If $$$ISERR(tHostSC) Throw ##class(%Exception.StatusException).CreateFromStatus(tHostSC)
+                While tHostResult.Next() {
+                    Set tHosts($Increment(tHosts)) = tHostResult.GetData(1)
+                }
+                Do tHostResult.Close()
+                Set tHostResult = ""
+            }
+            For tH = 1:1:tHosts {
+                If (pMax > 0) && (pFound >= pMax) Quit
+                Set tResult = ##class(%ResultSet).%New("Ens.Util.Statistics:EnumerateJobStatus")
+                Set tExecuteSC = tResult.Execute(tHosts(tH))
+                If $$$ISERR(tExecuteSC) Throw ##class(%Exception.StatusException).CreateFromStatus(tExecuteSC)
+                While tResult.Next() {
+                    If (pMax > 0) && (pFound >= pMax) Quit
+                    Set pFound($Increment(pFound)) = $ListBuild(tResult.GetData(1), tResult.GetData(2), tResult.GetData(3), tResult.GetData(4), tResult.GetData(5), tResult.GetData(6), tResult.GetData(7), tResult.GetData(8), tResult.GetData(9))
+                }
+                Do tResult.Close()
+                Set tResult = ""
+            }
+        }
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set pCaught = ex
+    }
+    Quit $$$OK
+}
+
+/// <p>The job row <var>pLine</var> (<method>GatherJobs</method>'s element) as the Jobs reads answer it: <code>{Job,
+/// Host, Status, AdapterState, LastActivity, Retry, ActiveMessage, Dead}</code>. <code>Dead</code> is true when no
+/// process holds the job (<code>^$JOB</code>), the vendor's ghost ids among them: such a row is answered and never
+/// repaired. With <var>pProduction</var> the row also carries <code>Production</code> and <code>Item</code>
+/// (<code>Production||Host</code>). Pure but for the process table.</p>
+ClassMethod JobRow(pLine As %List, pProduction As %String = "") As %DynamicObject
+{
+    Set tJob = $List(pLine, 2) _ ""
+    Set tRow = {}
+    If pProduction '= "" {
+        Do tRow.%Set("Production", pProduction, "string")
+        Do tRow.%Set("Item", pProduction _ "||" _ $List(pLine, 1), "string")
+    }
+    Do tRow.%Set("Job", tJob, "string")
+    Do tRow.%Set("Host", $List(pLine, 1) _ "", "string")
+    Do tRow.%Set("Status", $List(pLine, 3) _ "", "string")
+    Do tRow.%Set("AdapterState", $List(pLine, 4) _ "", "string")
+    Do tRow.%Set("LastActivity", ##class(OcuPilot.Port.LogSourcePort).ClockStamp($List(pLine, 5)), "string")
+    Do tRow.%Set("Retry", +$List(pLine, 8), "number")
+    Do tRow.%Set("ActiveMessage", $List(pLine, 9) _ "", "string")
+    Set tDead = 1
+    If tJob '= "" Set tDead = '$Data(^$JOB(tJob))
+    Do tRow.%Set("Dead", ''tDead, "boolean")
+    Quit tRow
+}
+
+/// <p>The running production's jobs (Story 20.4): every host's, or with <var>pHost</var> one item's of
+/// <var>pProduction</var>; none while the production is not running or troubled. A job no process holds is answered
+/// <code>Dead</code> (<method>JobRow</method>).</p>
+ClassMethod ListJobs(pNamespace As %String, pProduction As %String, pHost As %String, pMax As %Integer, Output pRows As %DynamicArray, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pRows = ""
+    Set tSC = ..GatherJobs(pNamespace, pProduction, pHost, pMax, .tCurrent, .tFound, .tCaught)
+    If $IsObject(tCaught) Quit ..Mapped(tCaught, "the job list failed", .pHttpStatus, .pFault)
+    Set pRows = []
+    For tI = 1:1:tFound {
+        Do pRows.%Push(..JobRow(tFound(tI), $Select(pHost '= "": tCurrent, 1: "")))
+    }
+    Set pHttpStatus = 200
+    Quit $$$OK
+}
+
+/// <p>The namespace's queues and the count of active messages in each (Story 20.4): <code>{Name, Count, Active,
+/// Created}</code> from <code>Ens.Queue:Enumerate</code>, <code>Active</code> the jobs of the host of that name that
+/// hold a message (<code>Ens.Util.Statistics:EnumerateJobStatus</code>), at most <var>pMax</var> when that is above
+/// zero. A queue of a stopped production still lists, as the vendor's query lists it.</p>
+ClassMethod ListQueues(pNamespace As %String, pMax As %Integer, Output pRows As %DynamicArray, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pRows = ""
+    Set tCaught = ""
+    Kill tFound
+    Set tFound = 0
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Set tResult = ##class(%ResultSet).%New("Ens.Queue:Enumerate")
+        Set tExecuteSC = tResult.Execute()
+        If $$$ISERR(tExecuteSC) Throw ##class(%Exception.StatusException).CreateFromStatus(tExecuteSC)
+        While tResult.Next() {
+            If (pMax > 0) && (tFound >= pMax) Quit
+            Set tName = tResult.GetData(1)
+            Set tActive = 0
+            Set tJobs = ##class(%ResultSet).%New("Ens.Util.Statistics:EnumerateJobStatus")
+            Set tJobSC = tJobs.Execute(tName)
+            If $$$ISERR(tJobSC) Throw ##class(%Exception.StatusException).CreateFromStatus(tJobSC)
+            While tJobs.Next() {
+                If tJobs.GetData(9) '= "" Set tActive = tActive + 1
+            }
+            Do tJobs.Close()
+            Set tJobs = ""
+            Set tFound($Increment(tFound)) = $ListBuild(tName, tResult.GetData(2), tActive, tResult.GetData(3))
+        }
+        Do tResult.Close()
+        Set tResult = ""
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tCaught = ex
+    }
+    If $IsObject(tCaught) Quit ..Mapped(tCaught, "the queue list failed", .pHttpStatus, .pFault)
+    Set pRows = []
+    For tI = 1:1:tFound {
+        Set tRow = {}
+        Do tRow.%Set("Name", $List(tFound(tI), 1) _ "", "string")
+        Do tRow.%Set("Count", +$List(tFound(tI), 2), "number")
+        Do tRow.%Set("Active", +$List(tFound(tI), 3), "number")
+        Do tRow.%Set("Created", ##class(OcuPilot.Port.LogSourcePort).ClockStamp($List(tFound(tI), 4)), "string")
+        Do pRows.%Push(tRow)
+    }
+    Set pHttpStatus = 200
+    Quit $$$OK
+}
+
+/// <p>The queue an item's messages wait in, and the target that tells them apart from the other messages of that
+/// queue (Story 20.4). A business process of pool size 0 shares <parameter>ACTORQUEUE</parameter> with the others of
+/// its kind, so its queue is that one and <var>pTarget</var> is the item's name; any other item's is
+/// <code>Ens.Config.Item.QueueName()</code> and <var>pTarget</var> is <code>""</code>. Called while the
+/// production's namespace is switched; only vendor classes run.</p>
+ClassMethod ItemQueueName(pItem As Ens.Config.Item, Output pTarget As %String) As %String
+{
+    Set pTarget = ""
+    If (pItem.BusinessType() = 2) && (+pItem.PoolSize = 0) {
+        Set pTarget = pItem.Name
+        Quit ..#ACTORQUEUE
+    }
+    Quit pItem.QueueName()
+}
+
+/// <p>The queue of the item <var>pItem</var> of <var>pProduction</var> (<method>ItemQueueName</method>) in
+/// <var>pQueue</var> and its target in <var>pTarget</var>; both <code>""</code> when the production or the item is not
+/// there. <var>pCurrent</var> is whether <var>pProduction</var> is the production the namespace has current (running,
+/// troubled or suspended), the only one whose queues the item reads, as the classic configuration page reads them. A fault
+/// is <var>pCaught</var>, with the namespace restored.</p>
+ClassMethod QueueOf(pNamespace As %String, pProduction As %String, pItem As %String, Output pQueue As %String, Output pTarget As %String, Output pCurrent As %Boolean, Output pCaught) As %Status [ Private ]
+{
+    Set pQueue = ""
+    Set pTarget = ""
+    Set pCurrent = 0
+    Set pCaught = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Set tProduction = ##class(Ens.Config.Production).%OpenId(pProduction)
+        If $IsObject(tProduction) {
+            Set tItem = ..ItemObject(tProduction, pItem)
+            If $IsObject(tItem) Set pQueue = ..ItemQueueName(tItem, .pTarget)
+        }
+        Set tItem = ""
+        Set tProduction = ""
+        Set tStatusSC = ##class(Ens.Director).GetProductionStatus(.tCurrent, .tState, 2)
+        If $$$ISERR(tStatusSC) Throw ##class(%Exception.StatusException).CreateFromStatus(tStatusSC)
+        Set pCurrent = ($Get(tCurrent) = pProduction)
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set pCaught = ex
+    }
+    Quit $$$OK
+}
+
+/// <p>The entries of the queue <var>pQueue</var> (<code>Ens.Queue:EnumerateItem</code>), each joined to its message
+/// header (<code>%OpenId</code>): <var>pFound(n)</var> is <code>$ListBuild(Priority, Index, MessageId, Source, Target,
+/// BodyClass, TimeCreated, Status)</code>, <code>Status</code> the display word. With <var>pTarget</var> an entry whose
+/// header names another target is left out; an entry whose header is gone is kept with empty fields. At most
+/// <var>pMax</var> are kept when that is above zero, and at most <parameter>QUEUESCANMAX</parameter> are examined. A
+/// fault is <var>pCaught</var>, with the namespace restored. Only vendor classes and this class run while it is
+/// switched.</p>
+ClassMethod GatherQueueEntries(pNamespace As %String, pQueue As %String, pTarget As %String, pMax As %Integer, ByRef pFound, Output pCaught) As %Status [ Private ]
+{
+    Kill pFound
+    Set pFound = 0
+    Set pCaught = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Set tResult = ##class(%ResultSet).%New("Ens.Queue:EnumerateItem")
+        Set tExecuteSC = tResult.Execute(pQueue)
+        If $$$ISERR(tExecuteSC) Throw ##class(%Exception.StatusException).CreateFromStatus(tExecuteSC)
+        Set tScanned = 0
+        While tResult.Next() {
+            Set tScanned = tScanned + 1
+            If tScanned > ..#QUEUESCANMAX Quit
+            Set tMessageId = tResult.GetData(3)
+            Set (tSource, tTarget, tBody, tCreated, tStatus) = ""
+            Set tHeader = ##class(Ens.MessageHeader).%OpenId(tMessageId)
+            If $IsObject(tHeader) {
+                Set tSource = tHeader.SourceConfigName
+                Set tTarget = tHeader.TargetConfigName
+                Set tBody = tHeader.MessageBodyClassName
+                Set tCreated = tHeader.TimeCreated
+                Set tStatus = ##class(Ens.DataType.MessageStatus).LogicalToDisplay(tHeader.Status)
+            }
+            Set tHeader = ""
+            If (pTarget '= "") && (tTarget '= "") && (tTarget '= pTarget) Continue
+            If (pMax > 0) && (pFound >= pMax) Quit
+            Set pFound($Increment(pFound)) = $ListBuild(tResult.GetData(1), tResult.GetData(2), tMessageId, tSource, tTarget, tBody, tCreated, tStatus)
+        }
+        Do tResult.Close()
+        Set tResult = ""
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set pCaught = ex
+    }
+    Quit $$$OK
+}
+
+/// <p>A UTC <code>YYYY-MM-DD HH:MM:SS[.fff]</code> as the instance's local clock time in the form the log readers
+/// write it (<method>OcuPilot.Port.LogSourcePort.LocalFromUtc</method>); <code>""</code> for a value that is not
+/// one. The vendor's own queries answer the local time, and a header's and a log row's stamps are UTC, so the
+/// Queue, Log and Messages tabs convert theirs. Runs in the install namespace.</p>
+ClassMethod LocalStamp(pUtc As %String) As %String [ Private ]
+{
+    Quit ##class(OcuPilot.Port.LogSourcePort).LocalFromUtc(pUtc)
+}
+
+/// <p>The queue entry <var>pLine</var> (<method>GatherQueueEntries</method>'s element) of queue <var>pQueue</var> as the
+/// queue reads answer it: <code>{Queue, Priority, Index, MessageId, Source, Target, BodyClass, TimeCreated,
+/// Status}</code>; with <var>pProduction</var> and <var>pItem</var> it also carries <code>Production</code> and
+/// <code>Item</code> (<code>Production||Item</code>). Runs in the install namespace.</p>
+ClassMethod QueueEntryRow(pQueue As %String, pLine As %List, pProduction As %String = "", pItem As %String = "") As %DynamicObject [ Private ]
+{
+    Set tRow = {}
+    If pProduction '= "" {
+        Do tRow.%Set("Production", pProduction, "string")
+        Do tRow.%Set("Item", pProduction _ "||" _ pItem, "string")
+    }
+    Do tRow.%Set("Queue", pQueue, "string")
+    Do tRow.%Set("Priority", +$List(pLine, 1), "number")
+    Do tRow.%Set("Index", +$List(pLine, 2), "number")
+    Do tRow.%Set("MessageId", $List(pLine, 3) _ "", "string")
+    Do tRow.%Set("Source", $List(pLine, 4) _ "", "string")
+    Do tRow.%Set("Target", $List(pLine, 5) _ "", "string")
+    Do tRow.%Set("BodyClass", $List(pLine, 6) _ "", "string")
+    Do tRow.%Set("TimeCreated", ..LocalStamp($List(pLine, 7)), "string")
+    Do tRow.%Set("Status", $List(pLine, 8) _ "", "string")
+    Quit tRow
+}
+
+/// <p>The entries of queue <var>pQueue</var> with their headers (Story 20.4): <method>GatherQueueEntries</method>'s,
+/// <method>QueueEntryRow</method>'s. With <var>pProduction</var> and <var>pItem</var> the rows carry that item as their
+/// parent.</p>
+ClassMethod ListQueueEntries(pNamespace As %String, pQueue As %String, pTarget As %String, pProduction As %String, pItem As %String, pMax As %Integer, Output pRows As %DynamicArray, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pRows = ""
+    Set tSC = ..GatherQueueEntries(pNamespace, pQueue, pTarget, pMax, .tFound, .tCaught)
+    If $IsObject(tCaught) Quit ..Mapped(tCaught, "the queue entries failed", .pHttpStatus, .pFault)
+    Set pRows = []
+    For tI = 1:1:tFound {
+        Do pRows.%Push(..QueueEntryRow(pQueue, tFound(tI), pProduction, pItem))
+    }
+    Set pHttpStatus = 200
+    Quit $$$OK
+}
+
+/// <p>An item's queue (Story 20.4): the entries of the queue <method>ItemQueueName</method> names for the item
+/// <var>pItem</var> of <var>pProduction</var>, with their headers; none when <var>pProduction</var> is not the namespace's
+/// current production, whose queue of that name is another item's.</p>
+ClassMethod ItemQueueEntries(pNamespace As %String, pProduction As %String, pItem As %String, pMax As %Integer, Output pRows As %DynamicArray, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pRows = ""
+    Set tSC = ..QueueOf(pNamespace, pProduction, pItem, .tQueue, .tTarget, .tCurrent, .tCaught)
+    If $IsObject(tCaught) Quit ..Mapped(tCaught, "the item's queue could not be named", .pHttpStatus, .pFault)
+    If tQueue = "" Quit ..Absent(.pHttpStatus, .pFault)
+    If 'tCurrent {
+        Set pRows = []
+        Set pHttpStatus = 200
+        Quit $$$OK
+    }
+    Quit ..ListQueueEntries(pNamespace, tQueue, tTarget, pProduction, pItem, pMax, .pRows, .pHttpStatus, .pFault)
+}
+
+/// <p>Run the statement <var>pSql</var> in <var>pNamespace</var> with the values <var>pArgs</var> bound, through
+/// <code>%SQL.Statement:%ExecDirectNoPriv</code>: the vendor's grants on the interoperability tables are not kept per
+/// namespace (a holder of every read resource was answered SQLCODE -99), so the port's gate is the whole gate and runs
+/// first (AD-29). <var>pFound(n)</var> is the row as a <code>%List</code> of its columns. A fault is
+/// <var>pCaught</var>, with the namespace restored.</p>
+ClassMethod SqlRows(pNamespace As %String, pSql As %String, ByRef pFound, Output pCaught, pArgs...) As %Status [ Private ]
+{
+    Kill pFound
+    Set pFound = 0
+    Set pCaught = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Set tStatement = ##class(%SQL.Statement).%New()
+        Set tResult = ##class(%SQL.Statement).%ExecDirectNoPriv(.tStatement, pSql, pArgs...)
+        If '$IsObject(tResult) Throw ##class(%Exception.StatusException).CreateFromStatus($$$ERROR($$$GeneralError, "the statement answered no result"))
+        If tResult.%SQLCODE < 0 Throw ##class(%Exception.StatusException).CreateFromStatus($$$ERROR($$$SQLCode, tResult.%SQLCODE, tResult.%Message))
+        Set tColumns = tResult.%ResultColumnCount
+        While tResult.%Next(.tNextSC) {
+            Set tLine = ""
+            For tC = 1:1:tColumns {
+                Set tLine = tLine _ $ListBuild(tResult.%GetData(tC))
+            }
+            Set pFound($Increment(pFound)) = tLine
+        }
+        If $$$ISERR($Get(tNextSC, $$$OK)) Throw ##class(%Exception.StatusException).CreateFromStatus(tNextSC)
+        Set tResult = ""
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set pCaught = ex
+    }
+    Quit $$$OK
+}
+
+/// <p>The rows of the Log tab's statement: the item's event log rows newest first, as the classic configuration page's
+/// own query reads them (<code>EnsPortal.Utils</code>), with the type as its display word. The stamp is read as stored, in
+/// UTC: <code>%EXTERNAL</code> would convert it to the reading process's zone, and <method>LocalStamp</method> does that
+/// once.</p>
+Parameter LOGSQL = "SELECT TOP ? ID, TimeLogged, %EXTERNAL(Type), Text, Job, SessionId FROM Ens_Util.Log WHERE ConfigName = ? ORDER BY ID DESC";
+
+/// <p>The rows of the Messages tab's statement: the newest headers sourced by the item and the newest targeted at it,
+/// newest first, as the classic configuration page's Messages tab reads them (<code>EnsPortal.ProductionConfig</code>). The
+/// stamp is read as stored, as the Log statement's is.</p>
+Parameter MESSAGESQL = "SELECT TOP ? ID, TimeCreated, %EXTERNAL(Status), SourceConfigName, TargetConfigName, MessageBodyClassName, SessionId FROM Ens.MessageHeader WHERE ID IN (SELECT TOP ? ID FROM Ens.MessageHeader WHERE SourceConfigName = ? ORDER BY ID DESC UNION SELECT TOP ? ID FROM Ens.MessageHeader WHERE TargetConfigName = ? ORDER BY ID DESC) ORDER BY ID DESC";
+
+/// <p>The most rows a statement of the Log or Messages tab asks for when the call gives no cap.</p>
+Parameter SQLMAX = 1000;
+
+/// <p>The item's event log (Story 20.4): <code>{Production, Item, ID, TimeLogged, Type, Text, Job, SessionId}</code>,
+/// newest first, at most <var>pMax</var> (<parameter>SQLMAX</parameter> when that is not above zero). The rows are the
+/// ones whose <code>ConfigName</code> is the item's name: the vendor keeps no production on a log row, so an item of a
+/// production that is not current reads the rows of any item of that name, as the classic page does. Every value is
+/// bound, and <code>TimeLogged</code> is the instance's local clock time (<method>LocalStamp</method>).</p>
+ClassMethod ListItemLog(pNamespace As %String, pProduction As %String, pItem As %String, pMax As %Integer, Output pRows As %DynamicArray, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pRows = ""
+    Set tTop = $Select(pMax > 0: pMax, 1: ..#SQLMAX)
+    Set tSC = ..SqlRows(pNamespace, ..#LOGSQL, .tFound, .tCaught, tTop, pItem)
+    If $IsObject(tCaught) Quit ..Mapped(tCaught, "the item's event log failed", .pHttpStatus, .pFault)
+    Set pRows = []
+    For tI = 1:1:tFound {
+        Set tLine = tFound(tI)
+        Set tRow = {}
+        Do tRow.%Set("Production", pProduction, "string")
+        Do tRow.%Set("Item", pProduction _ "||" _ pItem, "string")
+        Do tRow.%Set("ID", $List(tLine, 1) _ "", "string")
+        Do tRow.%Set("TimeLogged", ..LocalStamp($List(tLine, 2)), "string")
+        Do tRow.%Set("Type", $List(tLine, 3) _ "", "string")
+        Do tRow.%Set("Text", $List(tLine, 4) _ "", "string")
+        Do tRow.%Set("Job", $List(tLine, 5) _ "", "string")
+        Do tRow.%Set("SessionId", $List(tLine, 6) _ "", "string")
+        Do pRows.%Push(tRow)
+    }
+    Set pHttpStatus = 200
+    Quit $$$OK
+}
+
+/// <p>The item's message headers (Story 20.4): <code>{Production, Item, ID, TimeCreated, Status, Source, Target,
+/// BodyClass, SessionId}</code>, newest first, the headers sourced by the item's name and those targeted at it (a
+/// header names no production, as a log row does not), at most <var>pMax</var> (<parameter>SQLMAX</parameter> when that
+/// is not above zero). No body or contents are read. Every value is bound, and <code>TimeCreated</code> is the instance's local clock time (<method>LocalStamp</method>).</p>
+ClassMethod ListItemMessages(pNamespace As %String, pProduction As %String, pItem As %String, pMax As %Integer, Output pRows As %DynamicArray, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pRows = ""
+    Set tTop = $Select(pMax > 0: pMax, 1: ..#SQLMAX)
+    Set tSC = ..SqlRows(pNamespace, ..#MESSAGESQL, .tFound, .tCaught, tTop, tTop, pItem, tTop, pItem)
+    If $IsObject(tCaught) Quit ..Mapped(tCaught, "the item's messages failed", .pHttpStatus, .pFault)
+    Set pRows = []
+    For tI = 1:1:tFound {
+        Set tLine = tFound(tI)
+        Set tRow = {}
+        Do tRow.%Set("Production", pProduction, "string")
+        Do tRow.%Set("Item", pProduction _ "||" _ pItem, "string")
+        Do tRow.%Set("ID", $List(tLine, 1) _ "", "string")
+        Do tRow.%Set("TimeCreated", ..LocalStamp($List(tLine, 2)), "string")
+        Do tRow.%Set("Status", $List(tLine, 3) _ "", "string")
+        Do tRow.%Set("Source", $List(tLine, 4) _ "", "string")
+        Do tRow.%Set("Target", $List(tLine, 5) _ "", "string")
+        Do tRow.%Set("BodyClass", $List(tLine, 6) _ "", "string")
+        Do tRow.%Set("SessionId", $List(tLine, 7) _ "", "string")
+        Do pRows.%Push(tRow)
+    }
+    Set pHttpStatus = 200
+    Quit $$$OK
 }
 
 /// <p><code>objectscript</code> for each write this port carries; <code>""</code> for
