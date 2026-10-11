@@ -368,6 +368,10 @@ export const CONSEQUENCE_INTEROPRECOVER = 'INTEROP.RECOVER';
 /** Story 20.3: an item write's pending-update sentence, and a removal's. */
 export const CONSEQUENCE_INTEROPITEMPENDING = 'INTEROP.ITEM.PENDING';
 export const CONSEQUENCE_INTEROPITEMREMOVE = 'INTEROP.ITEM.REMOVE';
+/** Story 20.22: a set of a setting that is a location on the server (AD-21's ninth case). */
+export const CONSEQUENCE_INTEROPSETTINGLOCATION = 'INTEROP.SETTING.LOCATION';
+/** The field a setting set's diff names the value under. */
+const SETTING_VALUE_FIELD = 'Value';
 /**
  * The codes of a production stop that was applied but did not end the production Stopped (Story 20.3):
  * Suspended with messages still queued, and partly stopped with jobs still running. The action is refused with
@@ -396,6 +400,13 @@ export function journalSentence(view: Pick<ProposalCardView, 'consequence' | 'ch
   }
   if (view.consequence === CONSEQUENCE_JOURNALSWITCHDIRECTORY) return STRINGS.journalSwitchDirectoryConsequence;
   if (view.consequence === CONSEQUENCE_JOURNALINTEGRITY) return STRINGS.journalIntegrityConsequence.replace('<file>', () => view.name);
+  // Story 20.22: a setting set names the value it stores as a location on the server, from its diff row. A value
+  // cleared to nothing names no location, so the card states the pending-update sentence alone, as the dialog does.
+  if (view.consequence === CONSEQUENCE_INTEROPSETTINGLOCATION) {
+    const stored = view.changed.find((row) => row.field === SETTING_VALUE_FIELD)?.after ?? '';
+    if (stored === '') return STRINGS.interopItemPendingConsequence;
+    return STRINGS.interopSettingLocationConsequence.replace('<value>', () => stored);
+  }
   return '';
 }
 

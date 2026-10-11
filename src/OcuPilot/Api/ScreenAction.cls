@@ -512,7 +512,8 @@ ClassMethod Body(pToolClass As %String, pFresh As %DynamicObject, pArgs As %Dyna
 /// <p>Absent is sound only for an action that declares no required value. Otherwise it is an object
 /// of non-empty strings whose keys are names the action declares, every required one among them; a
 /// name the tool lists in <parameter>OcuPilot.Screen.Tool.Write.SCREENOPTIONAL</parameter> may be left
-/// out. A name the
+/// out, and one it lists in <parameter>OcuPilot.Screen.Tool.Write.SCREENEMPTY</parameter> may be the empty
+/// string. A name the
 /// descriptor declares secret and <var>pToolClass</var> itself sends as a secret
 /// (<method>OcuPilot.Screen.Tool.Registry.ChannelSecretNames</method>, AD-6) goes to
 /// <var>pSecrets</var> and nowhere else; one it declares secret that the tool does not send is
@@ -524,6 +525,7 @@ ClassMethod Values(pBody As %DynamicObject, pTool As %DynamicObject, pToolClass 
     Set pSecrets = {}
     Set tDeclared = $ClassMethod(pToolClass, "ScreenActionValueNames", pActionId)
     Set tOptional = $ClassMethod(pToolClass, "ScreenActionOptionalNames", pActionId)
+    Set tEmpty = $ClassMethod(pToolClass, "ScreenActionEmptyNames", pActionId)
     Set tRequired = ""
     For tI = 1:1:$ListLength(tDeclared) {
         If '$ListFind(tOptional, $List(tDeclared, tI)) Set tRequired = tRequired _ $ListBuild($List(tDeclared, tI))
@@ -544,7 +546,7 @@ ClassMethod Values(pBody As %DynamicObject, pTool As %DynamicObject, pToolClass 
     While tIterator.%GetNext(.tName, .tValue) {
         If '$ListFind(tDeclared, tName) Quit
         If tGiven.%GetTypeOf(tName) '= "string" Quit
-        If tValue = "" Quit
+        If (tValue = "") && '$ListFind(tEmpty, tName) Quit
         If '$ListFind(tSecretNames, tName) && $ListFind(tDeclaredSecrets, tName) {
             Set tRefused = tName
             Quit

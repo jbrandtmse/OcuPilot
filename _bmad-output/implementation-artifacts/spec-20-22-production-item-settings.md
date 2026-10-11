@@ -2,14 +2,23 @@
 title: 'Story 20.22: Production item settings'
 type: 'feature'
 created: '2026-10-10'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: '704f45ad5c37904cf34e1a93fd8274a3c7cc435c'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
   - '{project-root}/_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md'
   - '{project-root}/_bmad-output/planning-artifacts/ux-designs/ux-OcuPilot-2026-09-08/EXPERIENCE.md'
 warnings: [oversized]
-deferred: []
+deferred:
+  - summary: >-
+      `ScreenActionEmptyNames` and `ScreenActionOptionalNames` parse the same `SCREENOPTIONAL` grammar twice; the plan's one in-place unification of the older method is not done.
+    evidence: |-
+      Write.cls was under Epic 18's uncommitted edits (Rule 11), so this story only appended `SCREENEMPTY`, `ScreenActionNamesIn` and `ScreenActionEmptyNames` after `CLEARABLESECRETS`.
+      `ScreenActionOptionalNames` and `ScreenActionValueNames` are byte-identical to the base.
+    location: >-
+      src/OcuPilot/Screen/Tool/Write.cls
+    severity: low
 ---
 
 <intent-contract>
@@ -348,11 +357,73 @@ deferred: []
 - **AC8 (navigation):** Given a confirmed setting write, when its toast is opened, then Item settings opens on that item; and a Production items toast opens on its production.
 - **AC9 (path self-protection, integration):** Given a directory or file setting, or an inbound file adapter's `FilePath` and `SubdirectoryLevels`, when either caller proposes, confirms or acts on a set or reset that would leave the manager directory, a file directly in it, or the served directory or anything under it in force or within the descent, then it is refused with PathPort's code or `INTEROP.SETTING.DESCENT`. The refusal comes at the mint and again at the write, before any vendor write, and the stored configuration and the class are unchanged.
 
+### Review Findings
+
+Code review, 2026-10-10 (four layers, full-opus: Blind Hunter, Edge Case Hunter, Verification Gap, Acceptance Auditor). 35 rows: high 1, medium 5, low 26, false 3. Patched 9; ledgered 11 (nine entries, two occurrences); rejected 15.
+
+- [x] [Review][Patch] (high, AC3, AD-41) The agent loop's own step and refused-row writes read only the tool's declared secrets, so a credential-named setting's `Value` was stored in clear in the running step until the call finished, and for good on a stop, a budget refusal or a failed dispatch, ledger row included. `Loop.SecretNamesOf` and `RecordRefusedRow` now union `CallSecretNames` [src/OcuPilot/Kernel/Agent/Loop.cls:944]
+- [x] [Review][Patch] (med, AD-52) The set's confirm judged its value and path in the confirming request's namespace, so a confirm from another scope found no production, made the claim and was refused at the write, spending the proposal. A body-sending tool's stored arguments now carry the minted namespace, read by `InteropAction.ArgumentNamespace` for the set and the add [src/OcuPilot/Screen/Tool/InteropSettingSet.cls:95, src/OcuPilot/Screen/Tool/InteropItemMint.cls:33]
+- [x] [Review][Patch] (med, Rule 31) `InteropSettingGate` re-declared `InteropItemGate`'s `FailedPair`, `RowNames` and `LegText` byte for byte, and `InteropSettingRefusals` inlined the five holds `InteropSettingPaths.HoldTheWriterPairs` wraps; both now call the originals [src/OcuPilot/Test/InteropSettingGate.cls, src/OcuPilot/Test/InteropSettingRefusals.cls:193]
+- [x] [Review][Patch] (med, Rule 31) `InteropSettingAction` re-declared the `TargetName` it inherits, unchanged; removed [src/OcuPilot/Screen/Tool/InteropSettingAction.cls]
+- [x] [Review][Patch] (med, Rule 31) The page re-implemented core's `reasonForField` [ui/src/app/areas/interoperability/interop-item-setting-list.page.ts:160]
+- [x] [Review][Patch] (med, Rule 19, Rule 3) The browser AC3 leg asserted empty cells for a setting that held no value or default, so it could not fail; it now plants both and asserts neither reaches the screen [ui/browser/interop-item-settings.browser-spec.mjs]
+- [x] [Review][Patch] (low, verification-gap) No test read the sentence of a reset's path refusal, which `ConflictFor` supplies; the person's reset leg now asserts PathPort's sentence [src/OcuPilot/Test/InteropSettingPaths.cls:179]
+- [x] [Review][Patch] (low) `InteropSettingIdentity`'s `SECOND` claimed to catch a write that took the last item, which it cannot [src/OcuPilot/Test/InteropSettingIdentity.cls:33]
+- [x] [Review][Patch] (low) `screenForChange`'s doc still stated the old one-criterion rule after `routeIdFor` was generalized [ui/src/app/core/navigation.ts:592]
+- [x] [Review][Defer] (low) A reset of a server-path setting carries the pending-update sentence, not the location one — DW-2287, by-design (AC5 names the set)
+- [x] [Review][Defer] (low) A reset's confirm refused at the write after a path move spends the proposal, where a set's stays live — DW-2288, by-design (AD-34, DW-2138)
+- [x] [Review][Defer] (low) The Set value dialog keeps a field refusal while a new value is typed — DW-2289, wontfix-accepted
+- [x] [Review][Defer] (low, Rule 31) `InvokeSettings` and `ListSettings` copy the items endpoint's guards beyond the stated reason — DW-2290, wontfix-accepted
+- [x] [Review][Defer] (low, Rule 31) The settings browser spec copies six helpers from the items spec — DW-2291, wontfix-accepted
+- [x] [Review][Defer] (low) More subdirectory levels over a `FilePath` stored outside OcuPilot in the served directory are not refused — DW-2292, wontfix-accepted
+- [x] [Review][Defer] (low) AC2's "no job started or stopped" compares config names, not jobs — DW-2293, wontfix-accepted
+- [x] [Review][Defer] (low, Rule 30) The list leg's sources assume no wildcard system default in USER — DW-2294, wontfix-accepted
+- [x] [Review][Defer] (low) The spine's AD-51 20.22 clause splits a sentence and AD-62's tag is doubled — DW-2295, open for this story's adjudication (Rule 20)
+- [x] [Review][Defer] (low, Rule 31) `Write.cls` holds a third copy of the `SCREENOPTIONAL` parser (`ScreenActionValueNames`) — occurrence on DW-2281
+- [x] [Review][Defer] (low) The setting tools inherit pairs read from the confirming request's namespace — occurrence on DW-2253
+
+Rejected:
+
+- `false`: `InteropAction.PortQuery` now tests the marker's absence, not its type. A wrong-typed marker cannot reach it: `Dispatch.ValidateArguments` refuses an undeclared argument and a screen action admits only declared values.
+- `false`: `routeIdFor` regresses other lists. Of the twelve parent-scoped composite lists with one criterion, only Production items and Task history route differently, each now on its parent's id.
+- `false`: lowering the levels while a protected directory stays within reach is refused. AD-21's ninth case refuses a set that leaves one within the levels; the spec's "never refused" is the looser wording.
+- `low`: the set's `PRECONDITIONCODES` are not pinned statically. `InteropSettingRefusals` drives each code through the mint.
+- `low`: `InteropSettingPaths.UserDirectory` switches namespace without a Try. It is a test helper over `NormalizeDirectory`, which does not throw.
+- `low`: the violation-sentence loop in `InteropSettingSet.ArgumentProblem`. It is the project's idiom in 27 classes.
+- `low`: `ScreenActionDelta` matches `ScreenAccessAddPair`'s three lines. The share point would be the contended `Write.cls`.
+- `low`: `InteropSettingGate.ProbeAs` does not end a child past its budget. It follows `InteropItemGate`'s own, and no flake was seen.
+- `low`: `InteropSettingControl.Through` and `Reset` resemble `InteropItemControl`'s. `Through` asserts on its own test instance and already calls the item helpers; `Reset` differs.
+- `low`: `ProductionProbe.PutItemSetting` beside `SetSetting`. The spec makes the probe add-only, and `InteropItemRefusals.PutDefault` writes another shape.
+- `low`: the dialog's `fill` and the page's `text`. They are area-local, and the slice rule keeps another area's out.
+- `low`: duplicate setting elements of one name. They need a hand-edited XData, and the vendor takes the first too.
+- `low`: a non-empty path `%File` cannot normalize. No such value was shown, and the adapter could not use one either.
+- `low`: the copy-out script's `FindItemByConfigName`. `SaveToClass` does not compile, and a recompile gives new ids, so a stale runtime id opens nothing and the name lookup answers.
+- `low`: the gate snapshot and the bare-id identity leg cannot fail alone. Neither is a pinning assertion.
+
 ## Spec Change Log
 
 - 2026-10-10, runner, orchestrator ruling (feature dbaee68c): path settings keep PathPort's self-protection refusals (Always); status reset to draft for a re-plan that adds the refusals, their tests and the subdirectory-descent measurement.
 
 ## Review Triage Log
+
+### 2026-10-10 — Review pass
+
+- verdicts: 14 findings — high 0, medium 2, low 7, false 5, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` verification-gap: the unknown-setting SET leg's "nothing logged" row ran through the gate seam holding no pair, so the port refused 403 before the setting was looked up — the five writer pairs are now held and the 404 is asserted before `Logged() = 0`; `Absent` logging a fault reddens it.
+  - `[medium]` `[patch]` verification-gap: the Set value dialog's Escape test could not fail and Cancel, the scrim and the page's close were unpinned — the Escape test is replaced by Cancel and scrim legs on the dialog and a Cancel leg on the page; each reddens when `(closed)` or `(cancelled)` is dropped.
+  - `[low]` `[patch]` verification-gap: no test sent a foreign field for `production-item-setting` — `Prohibited.TestAProductionItemSettingChangeTouchesItsValueAndNothingElse` added; removing the branch reddens it.
+  - `[low]` `[patch]` an agent set that clears a location setting stated "<value> is a location..." with a blank — `journalSentence` falls back to the pending-update sentence for an empty stored value, as the dialog does; a card leg pins it.
+  - `[low]` `[reject]` the entity-count literal was deleted from `SuperserverDescriptor` and `MftConnectionDescriptor` instead of bumped — Rule 30 derives a count asserted outside its roster test, and `Descriptor.TestTheEntityTypeVocabularyIsClosed` still pins 65.
+  - `[low]` `[reject]` the task's `(inference until its leg reddens)` label on `routeIdFor` is stale — the fix is to edit this spec, and the leg reddened alone (Verification).
+  - `[low]` `[reject]` `ScreenActionNamesIn` duplicates the `SCREENOPTIONAL` parser — already the spec's one `deferred:` item (Write.cls was contended by Epic 18).
+  - `[false]` `[reject]` the agent's mint answers 400 `TOOL.ARGUMENTS` where the matrix lists 422/404/409 — the tool's mint grammar composes the port's violations into its problem sentence, as `InteropItemAdd` does; the matrix codes are the port's and the screen route's, asserted in `InteropSettingRefusals`.
+  - `[false]` `[reject]` the person's route has no mint-time path judgement — the screen route reaches the port's `SettingViolations` and `SettingStep`, the same two judgements as the agent's confirm; the write-moment legs call the port as the spec's Paths test prescribes.
+  - `[false]` `[reject]` a person can store an element equal to an inherited default and the agent cannot — the spec's `.SAME` is "the production already holds that value", which is the production's own element.
+  - `[low]` `[reject]` registry-supplied is covered at the decision level only — the probe cannot build a service registry entry; `SettingRefusalToken` source 4 and `SourceWord` 4 are pinned (the word row was added at the verify pass, mutation recorded).
+  - `[false]` `[reject]` descent is asserted textually, not by running the adapter — the spec's Paths tests set values only and the descent was measured at the plan (Design Notes).
+  - `[false]` `[reject]` the AD-35 guard gained an exemption — one named field of one descriptor (`Secret`, the flag AD-36's amendment requires); a column, filter or context field of that name stays an offender.
+  - `[low]` `[patch]` EXPERIENCE.md listed the Set value dialog among the warnings that precede a non-delete write and named no Reset to default warning — Set value is its own dialog item beside Add item, and the warnings list names the reset.
 
 ## Design Notes
 
@@ -529,18 +600,76 @@ deferred: []
 | AC9 | A reset judges the current value, not the `Default` | the reset-to-a-protected-default legs |
 | AC9 | `LocationKind` drops `fileSelector` | the `PATH.MANAGER` and file `PATH.SERVED` legs |
 
+**Implementation record (implement pass, `ocupilot-b-ci`).**
+
+- Task 0: a set of `InitSeconds` 7 on the running probe production read `ProductionNeedsUpdate` 1 ("new jobs for config item 'OcuPilotProbeOp' need to be started"), and `UpdateProduction(10,0)` applied it; a reset read 1 ("Job needs to be terminated") and the update applied it. `InteropSettingControl` asserts both.
+- Task 0: a principal holding `%Ens_Portal:U`, `%Ens_ProductionConfig:RW` and `%DB_USER:RW` lists, sets and resets, the audit call included (rows "setting set by OcuPilot", `Host:InitSeconds`). With `%DB_USER:R`, past the gate, the write is refused 403 `PORT.ACCESSDENIED` (the vendor's `<PROTECT>`) and nothing is stored (`InteropSettingGate`).
+- Task 0: an item of `EnsLib.File.PassthroughOperation` lists Adapter rows, `FilePath` with editor context `directorySelector`.
+- Task 0: `NormalizePage("EnsPortal.Dialog.ProductionItemSettings")` answers it as written.
+- Task 0: one HTTP confirm per new tool answers exactly one envelope (`InteropSettingControl` asserts `$Length(raw, "}{") = 1`).
+- Task 0: an item of `EnsLib.File.PassthroughService` lists `FilePath`, `ArchivePath`, `WorkPath` (`directorySelector`) and `SubdirectoryLevels` (`%Library.Integer`, MINVAL 0).
+- Task 0: the item-write principal is refused `PATH.SERVED` (422) for a served-directory value, not `<PROTECT>`.
+- Classes, each from `%UnitTest_Result` through `ci-runner.mjs`, one per call, all green on the final source: new `InteropSettingControl` 7, `InteropSettingRefusals` 7, `InteropSettingSecrets` 3, `InteropSettingPaths` 5, `InteropSettingDescent` 4, `InteropSettingGate` 3, `InteropSettingDescriptor` 12; existing `InteropControl` 11, `InteropDescriptor` 12, `InteropGate` 4, `InteropStopOutcome` 4, `InteropItemControl` 6, `InteropItemDescriptor` 9, `InteropItemGate` 5, `InteropItemGateSplit` 2, `InteropItemRefusals` 8, `InteropItemIdentity` 3, `MappingWrite` 11, `MappingWriteGate` 4, `MappingDescriptor` 6, `ScreenAccessRefusals` 5, `LedgerRedaction` 9, `ReadTool` 28, `ToolWrite` 34, `ToolEmit` 11, `ToolRoundTrip` 2, `ClassicPageGate` 8, `Navigation` 14, `Prohibited` 15, `Descriptor` 60, `InteropFloor` 7, `InteropFloorTurn` 1, `GovernanceBaseline` 3, `Governance` 14, `ToolDispatch` 18, `SurfaceCoverage` 4, `EndpointCoverage` 2, `SuperserverDescriptor` 7, `MftConnectionDescriptor` 8.
+- Browser specs (bundle rebuilt and redeployed): `interop-item-settings.browser-spec.mjs` 3 pass, `interop-items.browser-spec.mjs` 3 pass, `a11y-structural-invariants.browser-spec.mjs` 13 pass.
+- `cd ui && npm run test:tools` 1906 pass; `npm run test:components` 220 files, 2799 pass (after the review patches); `uv run scripts/check-objectscript.py` over the 44 changed or new classes, 0 problems; `uv run scripts/test_check_objectscript.py` OK.
+- Bundle initial total after `npm run build`: 3,221,660 bytes (main 3,016,189, styles 205,471; the base was 3,209,473), under the 3326 kB warning.
+- Left to the runner: the full ObjectScript sweep, `npm test` and `scripts/smoke.sh`.
+- mutation: `GatherSettings` skips `GetStaticSettings` -> `InteropSettingControl` (the Core list and set legs, 3 red)
+- mutation: `SettingStep` skips `SaveToClass` -> `InteropSettingControl` (4 red); a reset leaves the element -> `InteropSettingControl` (4 red); `SettingStep` calls `UpdateProduction` after the save -> `TestAWriteOnARunningProductionChangesNoJobAndTheUpdateAppliesIt`
+- mutation: `SettingViolations` also refuses an empty `Value` -> `InteropSettingControl.TestTheAgentsSetOfACoreSettingAndOfAnEmptyValueConfirm` and `TestThePersonsSetAndResetWriteTheSameWay`; `ScreenAction.Values` drops its `ScreenActionEmptyNames` test -> `TestThePersonsSetAndResetWriteTheSameWay`; it admits an empty value whatever the tool names -> `ScreenAccessRefusals.TestAnEmptyValueNoToolNamesIsStillRefused`
+- mutation: `SettingRow` stops blanking `Value` -> `InteropSettingSecrets.TestTheSecretAppearsInNoRowToolResultOrContext`; `Dispatch` drops the `CallSecretNames` union -> `InteropSettingSecrets.TestAValueTheAgentSentIsRedactedInTheLedgerRowAndTheStep` and `LedgerRedaction.TestAToolsCallSecretNamesAreRedactedInTheRowAndTheStep`; the tool drops its `SECRET` refusal, and separately the port drops its -> `InteropSettingSecrets.TestASetAndAResetOfItAreRefusedFromBothCallers`; `CallSecretNames` answers `Value` whatever the name -> `InteropSettingDescriptor.TestTheCallSecretNamesAreTheSettingToolsAlone`
+- mutation: `ValueAccepted` skips `<Name>IsValid` -> `InteropSettingRefusals.TestAValueTheClassRefusesIsRefusedByItsCode`; `SettingViolations` drops the trimmed-value test -> the same test, on its `ProbeFile` row (the integer rows were refused by their class anyway, so the row was added)
+- mutation: `SettingStep` drops `SAME` -> `TestASetOfTheHeldValueIsRefused`; `SettingRefusalToken` drops the Core arm of `SUPPLIED` -> `TestACoreSettingASystemDefaultDecidesIsRefused`; drops `DEFAULTED` -> `TestAResetThatHasNothingToResetIsRefused`; drops the count test -> `TestANameTwoItemsBearIsRefused`; drops `CORE`, or swaps `CORE` and `DEFAULTED` -> `InteropSettingDescriptor.TestTheSettingRefusalTokenMatrix`
+- mutation: `GatherSettings` lists `Enabled` -> `InteropSettingRefusals.TestASettingNobodyDeclaresIsNotFound`; `PerformItem` drops its `SourceControlled` refusal -> `TestASourceControlledNamespaceRefusesEverySettingWrite`; `ItemParts` accepts a vertical bar -> `InteropSettingDescriptor.TestTheItemCriterionTakesTwoSpellings`; `ReasonFor` drops `SETTINGDESCENT` -> `TestEverySettingCodeResolves`; the script renders the value without `Literal` -> `TestTheScriptForms`
+- mutation: `LocationKind` answers `""` -> `InteropSettingControl` (list and server-path legs); it drops `fileSelector` -> `InteropSettingDescriptor.TestTheLocationKinds` and `InteropSettingPaths` (4 red); `journalSentence` drops its location branch -> `proposal-card.spec.ts` AC5; the dialog's `consequence` drops its location arm and its `submit` skips an empty value -> `interop-item-setting-dialog.spec.ts`, one test each
+- mutation: `ITEMWRITEPAIRS` read instead of write, and separately `Pairs` drops `IsSettingWrite` -> `InteropSettingGate.TestEachMissingPairIsRefusedByNameThroughThePort`; dropping the write pair from both `Pairs` and `InteropAction.PrivilegePairs` -> that test and `TestEachMissingPairIsRefusedByNameOnTheScreenRoutes` (either gate alone leaves the screen leg green, as both refuse); `InteropAction.PrivilegePairs` alone -> `InteropItemGate.TestEachMissingPairIsRefusedByNameOnEachTool` and `...OnTheScreenRoutes`; `ROUTINESDATABASE` 0 on `InteropItemAction` -> `InteropItemGateSplit`; `Baseline` `interop.itemsettings.reset` false -> `InteropSettingDescriptor.TestTheToolShapes`
+- mutation: `PortQuery` restored on `InteropItemAction` with the marker `State` -> `InteropSettingDescriptor.TestTheSharedParentHoldsTheSixMethods` and `TestTheToolShapes`, and `InteropItemControl.TestEachToolsDraftRendersItsScript`; `PartArguments` answers the first argument only -> `TestTheMintHoldsEachLeadingPart`; `parentScope` changed -> `TestTheDescriptorDeclaresTheItemSettingsList`; `DefaultSource` dropped from `read.fields` -> `TestTheScreenAndTheToolsDescribeOneRow`
+- mutation: `routeIdFor` keeps the whole id -> `navigation.test.mjs`, "Story 20.22: a setting change opens Item settings on its item ..." (red alone); the browser spec stays green under it, since that function is the toast's route, so the browser spec's mutation is `childListFor` answering null for Production items -> its three tests red
+- mutation: `LocationProblem` answers `""` -> every `InteropSettingPaths` test (5); `SettingViolations` skips `ChangeProblem` (the mint) -> 3 red; `SettingStep` skips it (the write) -> 2 red, and with the mint's also skipped `InteropSettingDescent` 4 red; `SettingFacts` judges the raw value -> 2 red; `NormalizeLocation` resolves in the install namespace -> `InteropSettingPaths.TestTheWriteJudgesTheValueAgain` (the `../` spelling does not tell the namespaces apart: the install namespace's directory is also directly under the manager directory)
+- mutation: `DescentReaches` one level short -> `InteropSettingDescent` (4 red); it ignores the levels -> `TestTheLevelsThatDoNotReachAProtectedDirectoryAreAccepted`; a `SubdirectoryLevels` set is not judged -> 4 red; a reset judges the current value, not the `Default` -> `InteropSettingDescent.TestAResetThatLeavesADescentInForceIsRefused` and `InteropSettingPaths.TestAResetToAProtectedDefaultIsRefused`
+- mutation: `SourceWord` drops its `registry` arm -> `InteropSettingDescriptor.TestTheSettingRefusalTokenMatrix` (the source-word row added at the verify pass)
+- mutation (review pass): `Absent` logs a fault -> `InteropSettingRefusals.TestASettingNobodyDeclaresIsNotFound` (its set now holds every pair, so the call reaches the port)
+- mutation (review pass): the dialog drops `(closed)="onClosed()"` -> `interop-item-setting-dialog.spec.ts` Cancel and scrim legs and the page spec's Cancel leg; the page drops `(cancelled)="onClose()"` -> the page spec's Cancel leg
+- mutation (review pass): the `production-item-setting` branch of `Prohibits` removed -> `Prohibited.TestAProductionItemSettingChangeTouchesItsValueAndNothingElse`
+- mutation (review pass): `journalSentence` drops its empty-value guard -> `proposal-card.spec.ts` AC5, the cleared-location leg
+- mutation: `onOpen` returns at once -> browser AC2 and AC3 red; its secret test dropped -> browser AC3 and `interop-item-setting-list.page.spec.ts` red; the page does not register `set` -> 7 red; the `WARNING_CONSEQUENCES` entry removed -> browser AC2 red
+
+**QA pass** (all on `ocupilot-b-ci`, one class per call, each green on the final source: `InteropSettingIdentity` 3, `InteropSettingGate` 5, `InteropSettingDescent` 8, `InteropSettingControl` 7, `InteropSettingPaths` 5, `InteropSettingRefusals` 7, `InteropSettingSecrets` 3; `ci.test.mjs` and `ci-shards.test.mjs` 120 pass; `check-objectscript.py` 0 problems). Test files:
+
+- `src/OcuPilot/Test/InteropSettingIdentity.cls` (QA, new, armed in `scripts/ci-throwaway.sh`)
+- `src/OcuPilot/Test/InteropSettingDescent.cls` (QA, four methods added)
+- `src/OcuPilot/Test/InteropSettingGate.cls` (QA, two methods added)
+- `src/OcuPilot/Test/InteropSettingControl.cls` (QA, `Stored` and `InClass` take an optional item)
+
+- mutation (QA): the routines-database test in `Admit` drops `IsSettingWrite` -> `InteropSettingGate.TestASettingWriteNeedsTheRoutinesDatabaseToo`
+- mutation (QA): `%Ens_ProductionConfig:WRITE` dropped from both `InteropAction.PrivilegePairs` and `InteropPort.Pairs` -> `InteropSettingGate.TestEachMissingPairIsRefusedByNameOnTheResetRoute` (and the set route and port tests); the descriptor's `%Ens_Portal:USE` dropped -> `InteropItemGate.TestEachMissingPairIsRefusedByNameOnEachTool`, both setting tools; `ROUTINESDATABASE` 0 on `InteropSettingAction` -> `InteropItemGateSplit`, both setting tools
+- mutation (QA): `SettingStep` takes `pLocked.Items.GetAt(1)` -> `InteropSettingIdentity.TestAnAgentsSetMintedBeforeACompileReachesTheNamedItemAfterIt` and `TestAPersonsSetAndResetAfterACompileReachTheNamedItem`; `GatherSettings` takes the first item's name -> all three identity tests (the list test's row-ownership assertion was first written without parentheses around the `[` operand and passed under the mutation; fixed, then red)
+- mutation (QA): `InteropSettingAction.ConfirmProblem` answers no problem -> `InteropSettingDescent.TestTheAgentsConfirmOfALevelsSetIsRefusedWhenThePathMovesAfterTheMint`
+- mutation (QA): `SettingStep` skips `ChangeProblem` -> `InteropSettingDescent.TestTheAgentsConfirmOfAResetIsRefusedWhenThePathMovesAfterTheMint` (a reset's confirm passes the fingerprint and the claim, and the write refuses)
+- mutation (QA): `DescentReaches` tests the manager directory only -> `InteropSettingDescent.TestTheServedDirectoryIsReachedByDescentToo`; it ignores the levels -> the same test's served-directory-two-levels-down legs
+- mutation (QA): every `FilePath` judged with one level of descent -> `InteropSettingDescent.TestAnOutboundAdaptersFilePathIsJudgedAsADirectoryAlone`
+- spot checks (QA), each red on the existing test named: `SettingRow` stops blanking `Value`, and separately `Default` -> `InteropSettingSecrets.TestTheSecretAppearsInNoRowToolResultOrContext`; `Dispatch` drops the `CallSecretNames` union -> `TestAValueTheAgentSentIsRedactedInTheLedgerRowAndTheStep`; `InvokeSettings` drops its `SECRET` refusal -> `TestASetAndAResetOfItAreRefusedFromBothCallers`; `SettingViolations` skips `ChangeProblem` -> the mint legs of `InteropSettingPaths` (3 red, the port and screen legs stay green because the write refuses)
+
+**Code review pass** (on `ocupilot-b-ci`, one class per call, each green on the final source: `LedgerStep` 6, `InteropSettingDescent` 9, `InteropSettingPaths` 5, `InteropSettingGate` 5, `InteropSettingRefusals` 7, `InteropSettingControl` 7, `InteropSettingSecrets` 3, `InteropSettingDescriptor` 12, `InteropSettingIdentity` 3, `InteropItemIdentity` 3, `InteropItemRefusals` 8, `InteropItemControl` 6, `LedgerRedaction` 9, `Ledger` 11; `interop-item-settings` 3 and `interop-items` 3 on the rebuilt and redeployed bundle; the three touched component specs 85 pass; `test:tools` 1906 pass; bundle initial total 3,221,633 bytes; `check-objectscript.py` 0 problems):
+
+- mutation (code review): `Loop.SecretNamesOf` drops its `CallSecretNames` union -> `LedgerStep.TestEachPreDispatchWriteRedactsWhatACallNamesSecret`; `Loop.RecordRefusedRow` drops it -> the same test's budget and stop row legs
+- mutation (code review): `InteropSettingSet.ArgumentProblem` judges in `Kernel.Scope.Current()` -> `InteropSettingDescent.TestAConfirmFromAnotherScopeIsJudgedWhereTheSetWasMinted` (the claim is made and the proposal spent)
+- mutation (code review): `ReadSetting` answers a reset's path refusal with `Conflict` -> `InteropSettingPaths.TestAResetToAProtectedDefaultIsRefused`, its sentence leg
+- mutation (code review): `SettingRow` stops blanking `Value` -> `interop-item-settings.browser-spec.mjs` AC3 (the planted value reaches the row)
+
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
 
-**Plan only (the invocation halts after planning).** This pass re-plans for the orchestrator's ruling (feature dbaee68c). The first plan is kept: Q1, DW-2268 as `InteropAction`, its measured cells, and its split seam (not recommended).
+**Summary.** `InteropPort` gains a `Settings` endpoint (`LIST`, `SETTING`, `SET`, `RESET`); Item settings opens from a Production items row; set and reset are confirmed item writes that save the item and the production class. A secret-named setting is blanked by the port and refused on set and reset, and the value an agent sends is redacted per call in the ledger and the step (`CallSecretNames`). Server paths keep PathPort's self-protection through the `PathPortClass()` seam, at the mint and again under the write's open, with the measured descent refusal. `InteropAction` is the shared parent of the production, item and setting tools (DW-2268, AC7). `routeIdFor` opens a setting's toast on its item.
 
-- Added PathPort's self-protection refusals for location settings, at the mint and again at the write: Code Map › Paths, Tasks › Locations, the Path rows and AC9. PathPort's predicates, readers and codes are reused through a `PathPortClass` seam, and `PathPort.cls` is not edited.
-- Measured on `ocupilot-b-ci` (Design Notes › Measured at the re-plan):
-  - A parent `FilePath` with `SubdirectoryLevels` 1 took files directly in the manager directory and in the served directory, so the descent case is refused (`INTEROP.SETTING.DESCENT`, one new sentence).
-  - A relative value resolves against the item's namespace's database directory.
-  - A filename setting cannot leave its directory.
-  - Probe, markers and archive were removed, and `Gone()` read 1.
-- Tests: `InteropSettingPaths` and `InteropSettingSeam`, with ten planned AC9 mutations. One AD-21 sentence and one AD-62 clause are drafted for the spec gate.
-- No security-posture question remains (Design Notes › Rulings).
+**Files changed.** Port, errors, tools, descriptor, kernel rosters, client page, dialog, strings and generated mirror, EXPERIENCE.md, `ci-throwaway.sh`, eight new test classes (Control, Refusals, Secrets, Paths, Descent, Gate, Descriptor and the Seam helper; the probe gains `ApiToken`, `ProbeDirectory`, `ProbeFile` and `AddFileItem`), about twenty roster edits and one browser spec. The list is `git diff --stat` since `baseline_revision`.
+
+**Review.** One pass, 14 findings: 5 patched (2 medium, 3 low), 9 rejected with reasons (Review Triage Log). One item deferred in the frontmatter, `Write.cls`'s second parser (Epic 18 contention). `followup_review_recommended` is `false`: both medium patches added tests, each shown red under its mutation, and no product code changed beyond one sentence guard.
+
+**Verification** (all on `ocupilot-b-ci`, source reloaded fresh at the verify pass and again after the patches): every `(loop)` class listed under Verification green, one at a time; `test:tools` 1906 pass; `test:components` 220 files, 2799 pass; `check-objectscript.py` 0 problems; `lint-docs.sh` clean; the bundle's initial total 3,221,660 bytes against the 3326 kB warning; `interop-item-settings` 3, `interop-items` 3 and `a11y-structural-invariants` 13 pass on the rebuilt and redeployed bundle. Task 0's seven cells matched Design Notes › Measured. Every `mutation:` line is demonstrated and recorded under Verification, with four added by the review pass. The full ObjectScript sweep, `npm test` and `smoke.sh` are left to the runner.
+
+**Footprint extensions** (Rule 11), in place: `MappingMint.cls` (the `PARTARGUMENTS` hook), `Api/ScreenAction.cls` :547, `Kernel/Agent/Dispatch.cls` :221, `Screen/Tool/Registry.cls`, `ui/src/app/core/navigation.ts`, and Epic 20's own tools and port. `Write.cls` is add-only after `CLEARABLESECRETS`. `EntityType.cls`, `Prohibited.cls`, `Baseline.cls`, `strings.ts`, EXPERIENCE.md and `ci-throwaway.sh` are add-only. `ui/tools/screen-mirror.test.mjs` gained the one-field AD-35 exemption.
+
+**Residual risk.** Likely merge conflicts with Epic 18 in the entity-type, `Prohibited`, `Baseline`, strings and EXPERIENCE rows at the forward merge (Rule 22). The in-lock write leaves the item's namespace while holding the production oref to judge a server path; its lock is held by that reference (verified on the throwaway).

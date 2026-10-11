@@ -8119,6 +8119,8 @@ So that a production is editable rather than only observable.
 
 ### Story 20.4: Per-host tabs, the monitor, queues and jobs
 
+[AMENDED 2026-10-10, Story 20.4 spec gate (split), Rule 5] The reads ship here; the actions (abort one queued message, abort a queue, abort or suspend a job's message, stop a job) are this story's stated partial and ship in Story 20.23, chartered from 20.4's plan measurements.
+
 As an interoperability operator,
 I want each host's queue, log, messages, jobs and actions,
 So that diagnosing a production happens on one screen.
@@ -8577,6 +8579,59 @@ So that a host's configuration is changed where it is listed rather than in the 
 - **Then** the question is returned to the orchestrator for the owner, with options and a recommendation.
 
 - DW-2268: InteropItemAction copies InteropProductionAction's IdArgument, IdParam, SettableFields, Consequence, PortQuery and PrivilegePairs with only values changed; extend a shared parent when the settings tools join them (Rule 31) (ledger; routed by cr 2026-10-10)
+
+---
+
+### Story 20.23: Queue and job actions
+
+[AMENDED 2026-10-10, Story 20.4 spec gate (split), Rule 5] Chartered from Story 20.4's stated partial; consumes 20.4's Queues, Queue messages, Queue tab and Jobs reads and is ordered right after it. Its charter is 20.4's measured Design Notes › Split (`spec-20-4-per-host-tabs-the-monitor-queues-and-jobs.md`).
+
+As an interoperability operator,
+I want to abort, suspend and stop from the queue and job screens,
+So that a stuck production is unblocked where it is diagnosed.
+
+**Acceptance Criteria:**
+
+- **Given** a queued message, a whole queue, a job's active message or a job
+- **When** abort, abort all, abort or suspend the job's message, or stop is proposed and confirmed
+- **Then** each runs through the interoperability port as a confirmed action-style write over a fresh read, refused by name before any vendor call where the vendor would answer success on a target where it does nothing (a job not retrying its message; a pid that is no job of the running production).
+
+- **Given** the measured vendor behavior (no audit row for any action; stop forced past its timeout requeues the active message and leaves Update pending)
+- **When** each action is planned
+- **Then** its destructiveness, its governance key's default and its audit record are stated, with stop capped at AD-62's 15 s.
+
+- **Given** any further security-posture question its plan finds
+- **When** it is planned
+- **Then** the question is returned to the orchestrator, with options and a recommendation.
+
+- DW-2297: the queue and job actions are Story 20.4's stated partial; this story carries them (ledger; routed by lead 2026-10-10)
+- DW-2298: the classic per-host Actions tab's remaining item actions (temporary stop, start and restart of one item, change class, copy) have no story; carry them here or name the further story they need (ledger; routed by lead 2026-10-10)
+
+---
+
+### Story 20.24: Agent tool calls stop re-listing the tool registry
+
+[AMENDED 2026-10-10, owner decision on DW-2286 ("Fix it next on slot B", relayed by the Planner, logged at feature 21b9e337), Rule 5] Chartered by the orchestrator as slot B's next story after 20.22; ordered before 20.4 and 20.23. Contended with Epic 18's 18.12, which adds tools and touches the registry: registry and dispatch files are checked against Epic 18's diff before each edit, and only add-only edits proceed without asking.
+
+As a person working with the agent,
+I want each tool call to stop paying for two full listings of the tool registry,
+So that a multi-step plan does not spend about a second per step before any tool runs.
+
+**Acceptance Criteria:**
+
+- **Given** an agent tool call
+- **When** it passes its gate and dispatch
+- **Then** the tool registry's listing is built once and served from one cache to every caller (the gate's resolve, the wire resolve and dispatch), not one cache per caller (Rule 31).
+
+- **Given** the measured baseline of about 1.1 s per call (DW-2286's evidence)
+- **When** the same call is measured before and after the change on the throwaway
+- **Then** both numbers are recorded and the saving is shown per tool call.
+
+- **Given** a tool class compiled after the listing was cached (the in-place IPM upgrade case behind DW-2214)
+- **When** the next tool call arrives
+- **Then** the new tool appears in it, with no restart, and a test pins that.
+
+- DW-2286: every agent tool call lists the whole tool registry twice before its gate (ledger; routed by merge_gate 2026-10-10)
 
 ---
 

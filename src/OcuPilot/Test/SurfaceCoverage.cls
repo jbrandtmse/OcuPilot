@@ -221,6 +221,7 @@ XData Coverage
 <screen name="InteropTransformList" class="OcuPilot.Test.InteropDescriptor" method="TestTheFourDeclarationsRegister" corpus="one declaration test pins all four Story 20.2 Interoperability screens in one loop"/>
 <screen name="InteropRuleList" class="OcuPilot.Test.InteropDescriptor" method="TestTheFourDeclarationsRegister" corpus="one declaration test pins all four Story 20.2 Interoperability screens in one loop"/>
 <screen name="InteropItemList" class="OcuPilot.Test.InteropItemDescriptor" method="TestTheDescriptorDeclaresTheProductionItemsList"/>
+<screen name="InteropItemSettingList" class="OcuPilot.Test.InteropSettingDescriptor" method="TestTheDescriptorDeclaresTheItemSettingsList"/>
 <tool name="permissions.users.create" class="OcuPilot.Test.UserCreate" method="TestTheSchemaCarriesNoSecretAndThePermittedSetIsTheSets"/>
 <tool name="permissions.users.copy" class="OcuPilot.Test.UserCopy" method="TestTheCopyToolPinsItsInputSchemaAndSnippetForm"/>
 <tool name="permissions.roles.create" class="OcuPilot.Test.RoleCreate" method="TestTheSchemaCarriesNoEscalationOnlyAndThePermittedSetIsTheSets"/>
@@ -376,6 +377,8 @@ XData Coverage
 <tool name="interop.items.disable" class="OcuPilot.Test.InteropItemControl" method="TestTheAgentsDisableAndEnableConfirmOverHttp" corpus="the enable and the disable are asserted together in one test"/>
 <tool name="interop.items.add" class="OcuPilot.Test.InteropItemControl" method="TestTheAgentsAddAndRemoveConfirmOverHttp" corpus="the add and the remove are asserted together in one test"/>
 <tool name="interop.items.remove" class="OcuPilot.Test.InteropItemControl" method="TestTheAgentsAddAndRemoveConfirmOverHttp" corpus="the add and the remove are asserted together in one test"/>
+<tool name="interop.itemsettings.set" class="OcuPilot.Test.InteropSettingControl" method="TestTheAgentsSetAndResetOfAHostSettingConfirmOverHttp" corpus="the set and the reset are asserted together in one test"/>
+<tool name="interop.itemsettings.reset" class="OcuPilot.Test.InteropSettingControl" method="TestTheAgentsSetAndResetOfAHostSettingConfirmOverHttp" corpus="the set and the reset are asserted together in one test"/>
 <tool name="osmgmt.remotedatabases.create" class="OcuPilot.Test.RemoteDatabaseDescriptor" method="TestTheToolsDeclareTheirFieldsKindsAndPairs" corpus="the three remote database tools are asserted together in one loop"/>
 <tool name="osmgmt.remotedatabases.update" class="OcuPilot.Test.RemoteDatabaseDescriptor" method="TestTheToolsDeclareTheirFieldsKindsAndPairs" corpus="the three remote database tools are asserted together in one loop"/>
 <tool name="osmgmt.remotedatabases.delete" class="OcuPilot.Test.RemoteDatabaseDescriptor" method="TestTheToolsDeclareTheirFieldsKindsAndPairs" corpus="the three remote database tools are asserted together in one loop"/>

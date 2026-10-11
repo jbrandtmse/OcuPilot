@@ -37,6 +37,18 @@ ClassMethod ArgumentPairs(pDescriptor As %String = "", pArgs As %DynamicObject, 
     Quit $ListBuild($ListBuild("%DB_IRISSYS", "READ"))
 }
 
+/// <p>The <code>Value</code> that makes a call name its <code>Name</code> secret (<method>CallSecretNames</method>).</p>
+Parameter CALLSECRETMARK = "redact-the-name";
+
+/// <p>Per call: <code>Name</code> when the call's <code>Value</code> is <parameter>CALLSECRETMARK</parameter>, else none,
+/// so a test drives the per-call redaction (<method>OcuPilot.Screen.Tool.Registry.CallSecretNames</method>, AD-41) through
+/// the loop's own step and refusal writes.</p>
+ClassMethod CallSecretNames(pInput As %DynamicAbstractObject) As %List
+{
+    If $IsObject(pInput) && pInput.%IsA("%Library.DynamicObject") && (pInput.%Get("Value") = ..#CALLSECRETMARK) Quit $ListBuild("Name")
+    Quit ""
+}
+
 ClassMethod InputSchema(pDescriptor As %String = "") As %DynamicObject
 {
     Quit {"type": "object", "properties": {"Value": {"type": "string"}, "Name": {"type": "string"}}, "required": [], "additionalProperties": false}

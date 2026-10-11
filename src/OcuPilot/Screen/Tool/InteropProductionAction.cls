@@ -15,44 +15,27 @@
 /// <p><b>It declares <code>%Ens_ProductionRun:USE</code> and WRITE on the namespace's globals
 /// database</b> beyond the screen's pairs (AD-8, AD-62), each refused by name before any port call, then
 /// the custom resource of each <parameter>CLASSICPAGES</parameter> page (AD-44).</p>
-Class OcuPilot.Screen.Tool.InteropProductionAction Extends OcuPilot.Screen.Tool.Write [ Abstract ]
+Class OcuPilot.Screen.Tool.InteropProductionAction Extends OcuPilot.Screen.Tool.InteropAction [ Abstract ]
 {
 
 Parameter DESCRIPTORCLASS = "OcuPilot.Screen.Descriptor.InteropProductionList";
 
-/// <p>The port that reads and controls a production (AD-52).</p>
-Parameter PORTCLASS = "OcuPilot.Port.InteropPort";
-
 /// <p>The fresh read: one production's state in its namespace.</p>
 Parameter READTYPE = "STATE";
 
-/// <p>The fresh read is composed from the action it is read for (<method>PortQuery</method>), at the
-/// mint as at the confirm.</p>
-Parameter READSVALUES As BOOLEAN = 1;
-
 /// <p>What <parameter>READTYPE</parameter> answers.</p>
 Parameter READANSWERS = "Name,Namespace,State,Current,NeedsUpdate";
-
-Parameter SENDSBODY As BOOLEAN = 0;
-
-Parameter DESTRUCTIVE As BOOLEAN = 0;
 
 /// <p>The label the card's one state row carries.</p>
 Parameter STATEFIELD = "State";
 
 Parameter PRECONDITIONFIELD = "State";
 
-/// <p>The payload field naming the namespace the write runs in.</p>
-Parameter NAMESPACEFIELD = "Namespace";
-
 /// <p>The pair the write itself names, which the vendor checks before it starts, stops, restarts or
 /// updates a production.</p>
 Parameter WRITERESOURCE = "%Ens_ProductionRun";
 
 Parameter WRITEPERMISSION = "USE";
-
-/// <p>The permission required on the resource guarding the namespace's globals database.</p>
-Parameter DATABASEPERMISSION = "WRITE";
 
 /// <p>The classic pages whose operations these tools perform (AD-44).</p>
 Parameter CLASSICPAGES = "EnsPortal.ProductionConfig,EnsPortal.Dialog.UpdateProduction,EnsPortal.StartStopFrame";
@@ -61,30 +44,12 @@ Parameter CLASSICPAGES = "EnsPortal.ProductionConfig,EnsPortal.Dialog.UpdateProd
 /// <code>after</code>.</p>
 Parameter AFTERWORD;
 
-/// <p>The consequence code the proposal carries, or <code>""</code> for none. The client maps each to
-/// its published sentence.</p>
-Parameter CONSEQUENCECODE;
+/// <p>The state read the confirm's stored payload carries and a call's arguments do not.</p>
+Parameter STATEMARKER = "State";
 
 ClassMethod Endpoint() As %String
 {
     Quit ##class(OcuPilot.Port.InteropPort).#ENDPOINTPRODUCTIONS
-}
-
-/// <p>The production's class name, which the list's rows carry it under.</p>
-ClassMethod IdArgument() As %String
-{
-    Quit "Name"
-}
-
-ClassMethod IdParam() As %String
-{
-    Quit ##class(OcuPilot.Port.InteropPort).#IDKEY
-}
-
-/// <p>None: the write sends no body (AD-51).</p>
-ClassMethod SettableFields() As %List
-{
-    Quit ..AdmittedFields()
 }
 
 /// <p>The refusals the port's <code>STATE</code> read answers with when the action does not fit the
@@ -92,12 +57,6 @@ ClassMethod SettableFields() As %List
 ClassMethod PreconditionCodes() As %List
 {
     Quit ##class(OcuPilot.Port.InteropPort).PreconditionCodes()
-}
-
-/// <p><parameter>CONSEQUENCECODE</parameter>, for every payload.</p>
-ClassMethod Consequence(pPayload As %DynamicObject, pPrivileged As %Boolean = 0, pEffect As %String = "") As %String
-{
-    Quit ..#CONSEQUENCECODE
 }
 
 /// <p>The derived schema with the identifying property's description replaced: the target is one
@@ -111,43 +70,6 @@ ClassMethod InputSchema(pDescriptor As %String = "") As %DynamicObject
         Do tProperties.%Get(..IdArgument()).%Set("description", "The production, named exactly as this namespace's Productions list reports it (its class name, case included). A production the list does not report is refused.", "string")
     }
     Quit tSchema
-}
-
-/// <p>What the caller must hold: the screen's own pairs, then <parameter>WRITERESOURCE</parameter> and
-/// WRITE on the globals database of the namespace the request is scoped to, then the custom resource
-/// of each <parameter>CLASSICPAGES</parameter> page, each pair once (AD-8, AD-44, AD-62).
-/// <var>pResolved</var> is 0 when the namespace's globals database names no resource.</p>
-ClassMethod PrivilegePairs(pDescriptor As %String = "", Output pResolved As %Boolean) As %List
-{
-    Set tPairs = ##class(OcuPilot.Screen.Gate).RequiredPairs(..#DESCRIPTORCLASS, .pResolved)
-    If 'pResolved Quit ""
-    Set tOwn = $ListBuild(..#WRITERESOURCE, ..#WRITEPERMISSION)
-    If '$ListFind(tPairs, tOwn) Set tPairs = tPairs _ $ListBuild(tOwn)
-    Set tResource = ""
-    If '##class(OcuPilot.Kernel.Shell.Namespaces).GlobalDatabase(##class(OcuPilot.Kernel.Scope).Current(), .tResource, .tReadOnly) || (tResource = "") {
-        Set pResolved = 0
-        Quit ""
-    }
-    Set tDatabase = $ListBuild(tResource, ..#DATABASEPERMISSION)
-    If '$ListFind(tPairs, tDatabase) Set tPairs = tPairs _ $ListBuild(tDatabase)
-    Quit ##class(OcuPilot.Screen.Gate).WithClassicPages(tPairs, ..#CLASSICPAGES)
-}
-
-/// <p>Compose the port's <code>STATE</code> read (AD-52). Given the call's <b>arguments</b> -- the mint's
-/// and a screen action's, which carry no <code>State</code> -- the read is asked for this tool's action
-/// (<parameter>OcuPilot.Port.InteropPort.ACTIONKEY</parameter>), so a state the action does not fit is
-/// refused with its own code before anything is stored. Given the <b>stored payload</b> -- the confirm's
-/// re-read and read-back, which carry the reviewed <code>State</code> -- the read names only the
-/// namespace the payload (<parameter>NAMESPACEFIELD</parameter>) holds, or the request's scope when it
-/// holds none: the fingerprint is what refuses a state that moved, and a read-back after the write must
-/// read the state the write left.</p>
-ClassMethod PortQuery(pPayload As %DynamicObject, ByRef pQuery)
-{
-    If '$IsObject(pPayload) Quit
-    If pPayload.%GetTypeOf("State") '= "string" Set pQuery(##class(OcuPilot.Port.InteropPort).#ACTIONKEY) = ..#WRITETYPE
-    If (pPayload.%GetTypeOf(..#NAMESPACEFIELD) = "string") && (pPayload.%Get(..#NAMESPACEFIELD) '= "") {
-        Set pQuery(##class(OcuPilot.Port.InteropPort).#NAMESPACEKEY) = pPayload.%Get(..#NAMESPACEFIELD)
-    }
 }
 
 /// <p>The one row this proposal's card shows, from the fresh read <var>pFresh</var>: <code>State</code>

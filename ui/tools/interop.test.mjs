@@ -55,6 +55,14 @@ const SENTENCES = [
   ['REASONITEMSOURCECONTROL', 'interopItemRefusalSourceControl'],
   ['REASONITEMPENDING', 'interopItemPendingConsequence'],
   ['REASONITEMREMOVE', 'interopItemRemoveConsequence'],
+  ['REASONSETTINGSECRET', 'interopSettingRefusalSecret'],
+  ['REASONSETTINGSUPPLIED', 'interopSettingRefusalSupplied'],
+  ['REASONSETTINGSAME', 'interopSettingRefusalSame'],
+  ['REASONSETTINGDEFAULTED', 'interopSettingRefusalDefaulted'],
+  ['REASONSETTINGCORE', 'interopSettingRefusalCore'],
+  ['REASONSETTINGVALUE', 'interopSettingRefusalValue'],
+  ['REASONSETTINGDESCENT', 'interopSettingRefusalDescent'],
+  ['REASONSETTINGLOCATION', 'interopSettingLocationConsequence'],
 ];
 
 /** The value `key` holds in `strings.ts`, which may sit on the line after its key. */

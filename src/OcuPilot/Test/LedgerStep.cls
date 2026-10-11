@@ -28,6 +28,9 @@ Parameter PROBEUSER = "OcuPilotProbeTurnLedgerStep";
 /// <class>OcuPilot.Test.LedgerTool.Probe</class> declares and no name pattern matches.</p>
 Parameter SECRETVALUE = "s3cr3tstepvalue";
 
+/// <p>The value of an argument a call names secret for itself, which no name pattern matches.</p>
+Parameter CALLSECRETVALUE = "c4llsecretstepvalue";
+
 Method OnBeforeOneTest() As %Status
 {
     Do ..Clear()
@@ -129,6 +132,43 @@ Method TestEachPreDispatchStepWriteMarksASecretSentAsTheId()
         Do $$$AssertEquals($ListToString(tTargets), ##class(OcuPilot.Kernel.Audit.Log).#REDACTED, tProbe _ ": its one tool step's target is the redaction mark")
         Set tSteps = ##class(OcuPilot.Test.Ledger).StepText(tKey)
         Do $$$AssertEquals(tSteps [ ..#SECRETVALUE, 0, tProbe _ ": and the value is in no column: " _ tSteps)
+        Do ##class(OcuPilot.Kernel.State.Turn).GuardedFinish(tKey, tUser, "completed", "", "", "done", 0, ..#LIMITS)
+    }
+}
+
+/// <p>AC3 (Story 20.22): an argument a call names secret for itself
+/// (<method>OcuPilot.Screen.Tool.Registry.CallSecretNames</method>, as <code>interop.itemsettings.set</code> names its
+/// <code>Value</code> for a credential-named setting) is in no step and no ledger row that
+/// <method>OcuPilot.Kernel.Agent.Loop.AnswerTools</method> writes before the call is dispatched: the running append a
+/// refused dispatch keeps, and the reply-budget refusal and the boundary stop with their ledger rows. The fixture tool
+/// names its <code>Name</code> secret for a call whose <code>Value</code> is its mark.</p>
+/// <p>Mutation (Rule 19): drop the <code>CallSecretNames</code> union from
+/// <method>OcuPilot.Kernel.Agent.Loop.SecretNamesOf</method> -- every leg's step assertion goes red; drop it from
+/// <method>OcuPilot.Kernel.Agent.Loop.RecordRefusedRow</method> -- the budget and stop legs' row assertions go red.</p>
+Method TestEachPreDispatchWriteRedactsWhatACallNamesSecret()
+{
+    Set tUser = ..#PROBEUSER
+    For tCase = $ListBuild("OcuPilot.Test.LedgerRunningProbe", ..#LIMITS), $ListBuild("OcuPilot.Test.LedgerLoopProbe", $Parameter("OcuPilot.Test.Ledger", "BUDGET")), $ListBuild("OcuPilot.Test.LedgerLoopStopProbe", ..#LIMITS) {
+        Set tProbe = $List(tCase, 1)
+        Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Turn).GuardedReserve(tUser, "1", "TURN.ABANDONED.JOBLOST", ..#LIMITS, .tKey, .tBusy, .tSweep), tProbe _ ": a turn is reserved")
+        If $Get(tKey) = "" Continue
+        Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Turn).GuardedBegin(tKey, tUser, ..#LIMITS, .tBegun, .tStarted, "permissions/users"), tProbe _ ": and begun")
+        Set tBlock = {"id": "toolu_callsecret"}
+        Do tBlock.%Set("name", "probe_ledger_read", "string")
+        Set tInput = {}
+        Do tInput.%Set("Name", ..#CALLSECRETVALUE, "string")
+        Do tInput.%Set("Value", $Parameter("OcuPilot.Test.LedgerTool.Probe", "CALLSECRETMARK"), "string")
+        Do tBlock.%Set("input", tInput)
+        Set tUses = []
+        Do tUses.%Push(tBlock)
+        Set tLog = []
+        Set tMessages = 0
+        Do $ClassMethod(tProbe, "AnswerTools", tKey, tUser, "1", "", tUses, $List(tCase, 2), .tMessages, tLog, .tLastSeq, 0, "", 0, 0, .tState, .tCode, 0, "permissions/users")
+        Set tSteps = ##class(OcuPilot.Test.Ledger).StepText(tKey)
+        Do $$$AssertTrue(tSteps [ "probe.ledger.read", tProbe _ ": the tool step was written: " _ tSteps)
+        Do $$$AssertEquals(tSteps [ ..#CALLSECRETVALUE, 0, tProbe _ ": and carries the argument the call named secret in no column: " _ tSteps)
+        Set tRows = ##class(OcuPilot.Test.Ledger).RowText(tKey)
+        Do $$$AssertEquals(tRows [ ..#CALLSECRETVALUE, 0, tProbe _ ": nor does any ledger row: " _ tRows)
         Do ##class(OcuPilot.Kernel.State.Turn).GuardedFinish(tKey, tUser, "completed", "", "", "done", 0, ..#LIMITS)
     }
 }

@@ -27,7 +27,8 @@ Parameter RECORD = "OcuPilot.Test.MappingRecordPort";
 /// <code>{error}</code> when something raised. A step is one of <code>{kind: "create", mappingKind, body}</code>,
 /// <code>{kind: "update", mappingKind, id, body}</code>, <code>{kind: "action", screen, body}</code>,
 /// <code>{kind: "confirm", proposalId}</code> and <code>{kind: "dispatch", turnKey, tool,
-/// input}</code>; its answer is <code>{http, code, failedPair, continues, calls, types}</code>, where
+/// input}</code>, plus <code>{kind: "hang", seconds}</code>, which waits that long and answers like a step
+/// that did nothing; its answer is <code>{http, code, failedPair, continues, calls, types}</code>, where
 /// <code>calls</code> and <code>types</code> are what the recording port was asked during that step
 /// alone, reads included, <code>continues</code> is whether the answer said the write is still
 /// running, and a dispatch's <code>http</code> is 403 for a pair refusal, 400 for any other refused
@@ -43,7 +44,7 @@ ClassMethod Run(pParent As %Integer, pUsername As %String, pPlan As %String)
         Set tSteps = []
         Set tIterator = ##class(%DynamicArray).%FromJSON(pPlan).%GetIterator()
         While tIterator.%GetNext(.tIndex, .tStep) {
-            Set ^IRIS.Temp.OcuPilotProbeProgress(pParent) = "step " _ (tIndex + 1) _ " " _ tStep.%Get("tool")
+            Set ^IRIS.Temp.OcuPilotProbeProgress(pParent) = "step " _ (tIndex + 1) _ " " _ $Select(tStep.%Get("tool") '= "": tStep.%Get("tool"), 1: tStep.%Get("kind"))
             Do tSteps.%Push(..Step(tStep))
         }
         Set ^IRIS.Temp.OcuPilotProbeProgress(pParent) = "copies"
@@ -97,6 +98,9 @@ ClassMethod Step(pStep As %DynamicObject) As %DynamicObject
         Set tSC = $ClassMethod(..#ACTION, "Act", pStep.%Get("screen"), pStep.%Get("body"), .tBody, .tHttp)
     } ElseIf tKind = "dispatch" {
         Set tSC = ..Dispatch(pStep, .tHttp, .tCode, .tPair)
+    } ElseIf tKind = "hang" {
+        Hang +pStep.%Get("seconds")
+        Set tSC = $$$OK
     } Else {
         Set tSC = ..Handle(tKind, pStep.%Get("mappingKind"), pStep.%Get("id"), pStep.%Get("body"), .tBody, .tHttp)
     }

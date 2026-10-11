@@ -18,42 +18,25 @@
 /// routines databases beyond the screen's pairs (AD-8, AD-62), each refused by name before any port call,
 /// then the custom resource of each <parameter>CLASSICPAGES</parameter> page (AD-44). It does not declare
 /// <code>%Ens_ProductionRun:USE</code>: no item write touches a running job.</p>
-Class OcuPilot.Screen.Tool.InteropItemAction Extends OcuPilot.Screen.Tool.Write [ Abstract ]
+Class OcuPilot.Screen.Tool.InteropItemAction Extends OcuPilot.Screen.Tool.InteropAction [ Abstract ]
 {
 
 Parameter DESCRIPTORCLASS = "OcuPilot.Screen.Descriptor.InteropItemList";
 
-/// <p>The port that reads and writes a production item (AD-52).</p>
-Parameter PORTCLASS = "OcuPilot.Port.InteropPort";
-
 /// <p>The fresh read: one item, composed for the action.</p>
 Parameter READTYPE = "ITEM";
-
-/// <p>The fresh read is composed from the action it is read for (<method>PortQuery</method>), at the mint as
-/// at the confirm.</p>
-Parameter READSVALUES As BOOLEAN = 1;
 
 /// <p>What <parameter>READTYPE</parameter> answers.</p>
 Parameter READANSWERS = "Production,Name,ClassName,Type,Enabled,EnabledSource,PoolSize,Category,Comment,Namespace,Count";
 
-Parameter SENDSBODY As BOOLEAN = 0;
+/// <p>The routines database is written too: the production class is saved.</p>
+Parameter ROUTINESDATABASE As BOOLEAN = 1;
 
-Parameter DESTRUCTIVE As BOOLEAN = 0;
-
-/// <p>The payload field naming the namespace the write runs in.</p>
-Parameter NAMESPACEFIELD = "Namespace";
+/// <p>The item read the confirm's stored payload carries and a call's arguments do not.</p>
+Parameter STATEMARKER = "Enabled";
 
 /// <p>The argument naming the production the item belongs to.</p>
 Parameter PRODUCTIONARGUMENT = "Production";
-
-/// <p>The pair beyond the screen's own that every item write names.</p>
-Parameter WRITERESOURCE = "%Ens_ProductionConfig";
-
-Parameter WRITEPERMISSION = "WRITE";
-
-/// <p>The permission required on the resources guarding the namespace's globals and routines
-/// databases.</p>
-Parameter DATABASEPERMISSION = "WRITE";
 
 /// <p>The consequence code the proposal carries. The client maps it to its published sentence.</p>
 Parameter CONSEQUENCECODE = "INTEROP.ITEM.PENDING";
@@ -63,36 +46,13 @@ ClassMethod Endpoint() As %String
     Quit ##class(OcuPilot.Port.InteropPort).#ENDPOINTITEMS
 }
 
-/// <p>The item's name, which the list's rows carry it under.</p>
-ClassMethod IdArgument() As %String
-{
-    Quit "Name"
-}
-
-ClassMethod IdParam() As %String
-{
-    Quit ##class(OcuPilot.Port.InteropPort).#IDKEY
-}
-
 /// <p><class>OcuPilot.Screen.Tool.InteropItemMint</class>, which builds the composite id.</p>
 ClassMethod MintClass() As %String
 {
     Quit "OcuPilot.Screen.Tool.InteropItemMint"
 }
 
-/// <p>None here: an enable, a disable and a remove send no body (AD-51). The add names its own.</p>
-ClassMethod SettableFields() As %List
-{
-    Quit ..AdmittedFields()
-}
-
-/// <p><parameter>CONSEQUENCECODE</parameter>, for every payload.</p>
-ClassMethod Consequence(pPayload As %DynamicObject, pPrivileged As %Boolean = 0, pEffect As %String = "") As %String
-{
-    Quit ..#CONSEQUENCECODE
-}
-
-/// <p>The item's name, which the card titles the target by: the fresh read's, else the agent's own.</p>
+/// <p>The target's name, which the card titles it by: the fresh read's <code>Name</code>, else the agent's own.</p>
 ClassMethod TargetName(pFresh, pId As %String, pArgs) As %String
 {
     If $IsObject(pFresh) && (pFresh.%GetTypeOf("Name") = "string") Quit pFresh.%Get("Name")
@@ -119,47 +79,6 @@ ClassMethod InputSchema(pDescriptor As %String = "") As %DynamicObject
 ClassMethod NameDescription() As %String
 {
     Quit "The item, named exactly as this production's Production items list reports it. An item the list does not report is refused."
-}
-
-/// <p>What the caller must hold: the screen's own pairs, then <parameter>WRITERESOURCE</parameter>, then WRITE
-/// on the globals and routines databases of the namespace the request is scoped to, then the custom
-/// resource of each <parameter>CLASSICPAGES</parameter> page, each pair once (AD-8, AD-44, AD-62).
-/// <var>pResolved</var> is 0 when either database names no resource.</p>
-ClassMethod PrivilegePairs(pDescriptor As %String = "", Output pResolved As %Boolean) As %List
-{
-    Set tPairs = ##class(OcuPilot.Screen.Gate).RequiredPairs(..#DESCRIPTORCLASS, .pResolved)
-    If 'pResolved Quit ""
-    Set tOwn = $ListBuild(..#WRITERESOURCE, ..#WRITEPERMISSION)
-    If '$ListFind(tPairs, tOwn) Set tPairs = tPairs _ $ListBuild(tOwn)
-    Set tNamespace = ##class(OcuPilot.Kernel.Scope).Current()
-    Set tGlobals = ""
-    Set tRoutines = ""
-    If '##class(OcuPilot.Kernel.Shell.Namespaces).GlobalDatabase(tNamespace, .tGlobals, .tReadOnly) || (tGlobals = "") || '##class(OcuPilot.Kernel.Shell.Namespaces).RoutineDatabase(tNamespace, .tRoutines, .tReadOnly) || (tRoutines = "") {
-        Set pResolved = 0
-        Quit ""
-    }
-    For tResource = tGlobals, tRoutines {
-        Set tDatabase = $ListBuild(tResource, ..#DATABASEPERMISSION)
-        If '$ListFind(tPairs, tDatabase) Set tPairs = tPairs _ $ListBuild(tDatabase)
-    }
-    Quit ##class(OcuPilot.Screen.Gate).WithClassicPages(tPairs, ..#CLASSICPAGES)
-}
-
-/// <p>Compose the port's <code>ITEM</code> read (AD-52). Given the call's <b>arguments</b> -- the mint's and a
-/// screen action's, which carry no <code>Enabled</code> -- the read is asked for this tool's action
-/// (<parameter>OcuPilot.Port.InteropPort.ACTIONKEY</parameter>), so a state the action does not fit is
-/// refused with its own code before anything is stored. Given the <b>stored payload</b> -- the confirm's
-/// re-read and read-back, which carry the reviewed <code>Enabled</code> -- the read names only the namespace
-/// the payload (<parameter>NAMESPACEFIELD</parameter>) holds, or the request's scope when it holds none: the
-/// fingerprint is what refuses a state that moved, and a read-back after the write must read the state the
-/// write left.</p>
-ClassMethod PortQuery(pPayload As %DynamicObject, ByRef pQuery)
-{
-    If '$IsObject(pPayload) Quit
-    If pPayload.%GetTypeOf("Enabled") '= "boolean" Set pQuery(##class(OcuPilot.Port.InteropPort).#ACTIONKEY) = ..#WRITETYPE
-    If (pPayload.%GetTypeOf(..#NAMESPACEFIELD) = "string") && (pPayload.%Get(..#NAMESPACEFIELD) '= "") {
-        Set pQuery(##class(OcuPilot.Port.InteropPort).#NAMESPACEKEY) = pPayload.%Get(..#NAMESPACEFIELD)
-    }
 }
 
 /// <p>The one row an enable or a disable shows, from the fresh read <var>pFresh</var>: <code>Enabled</code>

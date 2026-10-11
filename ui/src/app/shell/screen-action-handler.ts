@@ -124,6 +124,8 @@ export const SCREEN_ACTION_DESCRIPTORS: readonly string[] = [
   // Story 20.3: Production items, whose Enable and Disable warn first, whose Remove types the item's name, and whose
   // Add its own page's dialog sends.
   'OcuPilot.Screen.Descriptor.InteropItemList',
+  // Story 20.22: Item settings, whose Reset to default warns first and whose Set value its own page's dialog sends.
+  'OcuPilot.Screen.Descriptor.InteropItemSettingList',
 ];
 
 /**
@@ -383,6 +385,8 @@ const UNDRAWN_ACTIONS: Readonly<Record<string, readonly string[]>> = {
   [ECP_DATA_SERVER_LIST]: [ECP_CHANGE_STATUS],
   // Screen permissions' page registers Change permissions itself, whose dialog sends Add and Remove (Story 20.15).
   [SCREEN_PERMISSIONS]: [SCREEN_PERMISSIONS_ADD, SCREEN_PERMISSIONS_REMOVE],
+  // Item settings' page registers Set value itself, whose dialog sends the value (Story 20.22).
+  'OcuPilot.Screen.Descriptor.InteropItemSettingList': ['set'],
 };
 
 /**
@@ -640,6 +644,8 @@ const WARNING_CONSEQUENCES: Readonly<Record<string, Readonly<Record<string, stri
     enable: STRINGS.interopItemPendingConsequence,
     disable: STRINGS.interopItemPendingConsequence,
   },
+  // Story 20.22: a reset changes the stored configuration, which a running production reads only at its next update.
+  'OcuPilot.Screen.Descriptor.InteropItemSettingList': { reset: STRINGS.interopItemPendingConsequence },
 };
 
 /**

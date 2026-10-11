@@ -125,8 +125,7 @@ ClassMethod CreatedId(pWritten) As %String
 ClassMethod ArgumentProblem(pIdValue As %String, pArgs As %DynamicObject, Output pProblem As %String) As %Status
 {
     Set pProblem = ""
-    Set tNamespace = ##class(OcuPilot.Kernel.Scope).Current()
-    If $IsObject(pArgs) && (pArgs.%GetTypeOf(..#NAMESPACEFIELD) = "string") && (pArgs.%Get(..#NAMESPACEFIELD) '= "") Set tNamespace = pArgs.%Get(..#NAMESPACEFIELD)
+    Set tNamespace = ..ArgumentNamespace(pArgs)
     Set tParts = ##class(OcuPilot.Kernel.EntityId).SplitComposite(pIdValue)
     If '$ClassMethod(..#PORTCLASS, "ProductionHeld", tNamespace, $ListGet(tParts, 1)) {
         Set pProblem = "'" _ ..#PRODUCTIONARGUMENT _ "' names no production of this namespace"

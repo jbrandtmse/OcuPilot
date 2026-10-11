@@ -219,6 +219,8 @@ ClassMethod AnswerOne(pKey As %String, pUser As %String, pDefinitionId As %Strin
         ; The tool's own secret-argument declaration, taken as soon as the tool resolves so every
         ; later refusal branch records its row with the same classification a success would (AD-3).
         Set tSecretNames = $ClassMethod(tRegistry, "SecretArguments", tTool, .tSecretDeclared)
+        ; A tool whose secrecy depends on the target a call names adds those argument names (AD-41, Story 20.22).
+        Set tSecretNames = tSecretNames _ $ClassMethod(tRegistry, "CallSecretNames", tTool, tInput)
         ; The step's argument summary is re-derived now that the declaration is known, so layer 1
         ; runs on it too. Set above from the name pattern alone, because a call refused before its
         ; tool resolved has no declaration to read; a pattern-only summary of a resolved call's

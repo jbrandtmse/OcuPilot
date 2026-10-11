@@ -36,7 +36,7 @@
 import type { ApiService } from './api';
 import type { ChangeBus, ChangeEvent } from './change-bus';
 import type { ConnectivityService } from './connectivity';
-import { decodeEntityId, encodeEntityId, splitCompositeId } from './entity-id.ts';
+import { decodeEntityId, encodeEntityId, joinCompositeId, splitCompositeId } from './entity-id.ts';
 import { INSTANCE_SCOPE, scopeFor } from './entity-ref.ts';
 import { AREAS, SCREENS, type AreaDeclaration, type ScreenDeclaration } from './screens.generated.ts';
 import { createSingleFlight } from './single-flight.ts';
@@ -589,9 +589,10 @@ export interface ChangeTarget {
  * `null` is not a fault. It is the "a type no built screen shows" row of this story's matrix: the
  * toast still says what changed, with no action to offer.
  *
- * **A parent-scoped list whose composite id opens with its one criterion is opened on that part**
- * (AD-36, Story 18.14): a mapping list's route id is the namespace it reads, not the mapping, so a
- * change to `[namespace, Name]` opens that namespace's list rather than reading for the joined id.
+ * **A parent-scoped composite list is opened on the leading parts of the id that form its parent
+ * screen's id** (AD-36, Stories 18.14 and 20.22; `routeIdFor`): a mapping list's route id is the
+ * namespace it reads, not the mapping, so a change to `[namespace, Name]` opens that namespace's list
+ * rather than reading for the joined id, and a setting change opens its item's list.
  */
 export function screenForChange(event: {
   readonly type: string;
@@ -617,11 +618,19 @@ function ownerListFor(type: string, tool: string): ScreenDeclaration | null {
   return owner;
 }
 
-/** The route id that opens `screen` on entity `id`: the id itself, or its parent part (above). */
+/**
+ * The route id that opens `screen` on entity `id`: the id itself, or, for a parent-scoped composite list, the leading
+ * parts of it that form its parent screen's id (Story 20.22) -- one for a parent keyed by a simple id, as many as the
+ * parent's composite id has otherwise. A mapping change opens its namespace's list, a setting change its item's, and an
+ * item change its production's.
+ */
 function routeIdFor(screen: ScreenDeclaration, id: string): string {
   const fields = screen.read?.criteria?.fields ?? [];
   if (screen.parentScope === '' || screen.id.kind !== 'composite' || fields.length !== 1) return id;
-  return screen.id.parts[0] === fields[0].param ? splitCompositeId(id)[0] : id;
+  const parent = screenForRoute(screen.parentScope);
+  const count = parent !== null && parent.id.kind === 'composite' ? parent.id.parts.length : 1;
+  const parts = splitCompositeId(id);
+  return count >= parts.length ? id : joinCompositeId(parts.slice(0, count));
 }
 
 /** Whether a screen is keyed by an id, and therefore carries an `/:id` route. */

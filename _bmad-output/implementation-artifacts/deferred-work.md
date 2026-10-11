@@ -10784,6 +10784,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-09T16:53:28Z occurrence=20-20-the-agent-creates-new-classes-and-routines-on-the-person-s-c by=lead note=recurred in CI run 37952814550 instance shard 2/5 (Pause 409 TASK.BACKGROUND.STATE)
 - 2026-10-09T18:05:07Z occurrence=20-20-the-agent-creates-new-classes-and-routines-on-the-person-s-c by=lead note=red again in run 37952814550 attempt 2 (shard 2/5, same Pause 409); the test's own 'runs again' leg admits Done, so a compact that finishes between Resume and Pause makes Pause unanswerable; fix: re-seed while the resumed compact reads Done (bounded), or a larger fill
 - 2026-10-09T19:19:59Z status=resolved-by:20-20-the-agent-creates-new-classes-and-routines-on-the-person-s-c by=lead note=6557da7e and 9d467e37: both BackgroundTasksLive compact tests branch on the observed state (an ended compact's Pause is the 409 state refusal, an ended held compact's confirm the target-changed refusal, each asserted) and re-seed at most three; mutations: PortalControl skipping Pause and dropping Hold redden them; green 8/8 on ocupilot-b-ci
+- 2026-10-10T16:05:46Z status=open owner=20-3-production-items by=lead note=reopened: run 38047135210 attempts 1 and 2 (9a8f2b2e) failed the Resume-Pause leg with all three seeded compacts reading Done before the screen's Pause; 6557da7e holds only where the compact outlives the Pause round trip. Suspending the portal job does not stop the work (measured). Fix shape asked of the orchestrator (hold model, session reuse, larger seed)
 - 2026-10-10T17:58:49Z occurrence=18-30-doc-db-applications(run_38069670607_instance_shard_2/5;head_94ba7fa4;'and_the_row_re-reads_Paused')
 - 2026-10-10T16:42:52Z status=resolved-by:20-3-production-items by=lead note=31babb36: the live leg accepts an ended compact's state refusal per compact (no at-least-one-200), the 200 mapping pinned at the port by BackgroundTaskPortSeam through a fake vendor task; the hold model measured and rejected (a cross-process Pause blocks 30 s); named limit in spec-20-3
 
@@ -10874,17 +10875,20 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-09T15:04:14Z status=escalated owner=burndown by=cr note=fix would store Namespace in their mint args and read it in ArgumentPairs, as 20.20 did for saves and creates
 - 2026-10-09T23:09:46Z status=routed owner=burndown by=orchestrator note=decided: false refusal only (the port checks WRITE on the target namespace itself, so nothing is wrongly allowed); fix as 20.20 did for saves and creates (store Namespace in the mint args, read it in ArgumentPairs) in Epic 20 close burn-down; not release-blocking
 - 2026-10-10T08:25:19Z occurrence=20-3-production-items
+- 2026-10-10T20:07:04Z occurrence=20-22-production-item-settings
 
 ### DW-2255: CI flake: ClassicPageGate.TestAnAssignedPageGatesEveryDeclaringToolOnTheAgentsCaller read its child process as not having run as the probe principal, so every later refusal assertion failed
 - source: cycle-log-epic-20.md (run 37952814550 attempt 1) | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: Red in instance shard 1/5 on 39ed66f1 ('OcuProbe1814PageLacking: the child process ran as the principal' then each explorer tool's refusal); green 8/8 on ocupilot-b-ci at the same tree (run 59); 20.20 adds tools but changes no page gate
 - 2026-10-09T16:53:29Z status=routed owner=23-5-the-range-end-cleanup-part-5 by=lead note=wait for the child's run record before asserting (NamespaceWriteGate.Ran); CI flake, Rule 27
 - 2026-10-09T21:07:51Z occurrence=20-20-the-agent-creates-new-classes-and-routines-on-the-person-s-c by=lead note=recurred in run 37981328129 shard 1/5 (6eaf65d4); not reproduced on ocupilot-b-ci in CI's exact shard-1 order on a fresh instance (11 classes, 0 failed); passed in 37952814550 attempt 2's rerun of the same shard; the failing assertion prints no actual value, so the child's answer (no answer, a job-start timeout or a login error) is unknown
+- 2026-10-10T20:21:23Z status=resolved-by:20-3-production-items owner=20-3-production-items by=lead note=re-owned from 23-5 because it blocked 20.3's boundary (orchestrator); cause was the child's fixed 180 s budget against a 70-step plan on slower runners (stop point moved: step 64 in attempt 1, 63 and 61 in attempt 2), not MFT; 1ba294cb scales the budget with the plan and ends a timed-out child; red first, green on a fresh ocupilot-b-ci
 ### DW-2254: CI flake: proposal-privilege.browser-spec.mjs (b) waits REVOKE_WINDOW_MS (5000 ms) for the privilege warning after a pair is revoked; under a loaded CI shard the card's poll can land after the window
 - source: cycle-log-epic-18.md (18.10 run 37944323086) | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: run 37944323086 browser shard 3/3: ui/browser/proposal-privilege.browser-spec.mjs:270 (b) Waiting failed 5000ms at :291; the same code green locally 3/3 on ocupilot-ci; 18.10 touches only the two routine-application names in Mint/Prohibited
 - 2026-10-09T15:20:57Z status=routed owner=23-5-the-range-end-cleanup-part-5 by=harvest note=size the window from the card's own poll interval plus one re-read, or wait on the card's answered signal
 - 2026-10-09T16:33:26Z status=wontfix-accepted by=adjudication note=host_contention(owner_report_via_orchestrator_2026-10-09:a_large_local_model_under_oMLX_slowed_the_containers);re-run_attempt_2_green;reopen_if=proposal-privilege_(b)_reds_again_on_an_uncontended_host
+- 2026-10-10T16:05:46Z status=routed owner=23-5-the-range-end-cleanup-part-5 by=lead note=reopened: proposal-privilege (b) 'Waiting failed: 5000ms exceeded' in run 38047135210 attempt 2 on a GitHub runner (uncontended by the owner's local load); the routed fix (window from the card's poll interval plus one re-read) stays in 23.5
 - 2026-10-10T16:42:53Z status=resolved-by:20-3-production-items owner=20-3-production-items by=lead note=re-owned from 23-5 because it blocked 20.3's boundary (orchestrator); 31babb36 sizes the revoke window from the card's 1 s poll plus one 15 s re-read; green locally on the merged bundle, so no product change
 
 ### DW-2267: Production items draws its Production criterion label and Comment column with systemInfoProduction and userFieldComment, because strings.ts values must be unique
@@ -10896,6 +10900,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-20-3-production-items.md | severity: med | fix-risk: med | footprint: in-epic
 - evidence: Screen/Tool/InteropItemAction.cls:61-185 against Screen/Tool/InteropProductionAction.cls:68-180; neither the spec's Code Map, Design Notes nor commit 4dffa796 gives a reason; a shared base needs 20.2's class
 - 2026-10-10T08:25:19Z status=routed owner=20-22-production-item-settings by=cr note=extract one abstract interop action base (state field and database list as parameters) when 20.22 adds its item tools
+- 2026-10-10T20:07:04Z status=resolved-by:20-22-production-item-settings by=cr note=InteropAction holds the six; neither leaf declares them (TestTheSharedParentHoldsTheSixMethods); 20.2 and 20.3 classes green
 
 ### DW-2269: Production items' Add store, dialog and page follow docdb-create's shape with only the fields changed, and no reason is stated (Rule 31)
 - source: spec-20-3-production-items.md | severity: low | fix-risk: high | footprint: out-of-footprint
@@ -11004,6 +11009,86 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Both call JoinComposite and neither names ReadableId (SuperserverMint, MappingMint and, since 23.6, WebAppPctAccessMint do); Mint.Mint writes the composite id into 'not present'; unverified: mint a background-task cancel for an absent id and read detail.problem
 - 2026-10-10T01:01:44Z status=routed owner=range-end-cleanup by=harvest note=same root cause as 23.6's 18.10-1; not absorbed (dispatch)
 - 2026-10-10T01:48:35Z status=routed owner=range-end-cleanup by=cr note=one shared fault helper for the ReadableId pass (Superserver, Mapping, ErrorDelete, WebAppPctAccess mints) would close this too
+- 2026-10-11T02:15:09Z owner=23-7-the-range-end-cleanup-part-6 by=load note=re-own from range-end-cleanup
+
+### DW-2281: Write.cls's ScreenActionEmptyNames and ScreenActionOptionalNames parse the same SCREENOPTIONAL grammar twice; 20.22's planned unification of the older method was not done
+- source: spec-20-22-production-item-settings.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: Write.cls carried Epic 18's uncommitted 18.30 edits (Rule 11), so 20.22 only appended SCREENEMPTY, ScreenActionNamesIn and ScreenActionEmptyNames
+- 2026-10-10T14:51:35Z status=wontfix-accepted owner=20-22-production-item-settings by=harvest note=reopen_if=a story edits ScreenActionOptionalNames while no other epic has Write.cls in flight; then have it call ScreenActionNamesIn (Rule 31)
+- 2026-10-10T20:07:04Z occurrence=20-22-production-item-settings
+
+### DW-2282: CI flake: impact.browser-spec AC1/AC6 (line 348) structural gate at 720px read app-tool-call-card>span.ocu-tool-call-spinner 3px past its containing block while the spinner was still showing
+- source: cycle-log-epic-20.md (run 38047135210 attempt 1) | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: Red in browser shard 2/3 on 9a8f2b2e; no change to _components.scss or tool-call-card.ts since 20.3's baseline; passed in attempt 2's rerun of the shard
+- 2026-10-10T16:05:47Z status=routed owner=23-5-the-range-end-cleanup-part-5 by=lead note=wait for the tool-call card to settle (spinner gone) before the structural walk, or exempt the transient spinner; CI flake, Rule 27
+
+### DW-2285: Sweep flake: Retention.TestADeletedUsersSettingsGoAndTheirTranscriptsStay's 'the deleted account's token is refused' fails in a long local sweep on a reused throwaway and passes alone
+- source: cycle-log-epic-20.md (20.22 runner-side sweep shard 22/30, run 189) | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: Red at run 189 on ocupilot-b-ci mid-sweep, green alone at once (run 196); also seen green-alone in 20.18's sweep (2026-10-08); not yet seen in CI
+- 2026-10-10T17:33:40Z status=routed owner=23-5-the-range-end-cleanup-part-5 by=lead note=likely a token or session cache the earlier classes warm; make the leg read the refusal after the cache's own expiry or clear it; flake class, Rule 27
+
+### DW-2286: Every agent tool call lists the whole tool registry twice before its gate: Dispatch.AnswerOne's ResolveWire and Governance.Gate.Decide (through Registry.Resolve) each run Registry.ListTools, 0.55 s apiece at 331 tools on a development host, so a call pays about 1.1 s before anything else and the cost grows with every tool
+- source: cycle-log-epic-20.md (DW-2255 diagnosis) | severity: med | fix-risk: med | footprint: out-of-footprint
+- evidence: ocupilot-b-ci at b340de34: Decide 0.576 s, ResolveWire 0.549 s, RequiredPairs 0.001 s, ValidateArguments 0.004 s for security.mftconnections.create; a 71-step dispatch plan 82 s (1.1-1.16 s every step, any tool)
+- 2026-10-10T18:47:04Z status=routed owner=burndown by=lead note=cache the listing per process or per registry generation, invalidated when a tool class compiles; contended with Epic 18 (both add tools); not release-blocking
+- 2026-10-11T02:16:39Z status=routed owner=20-24-agent-tool-calls-stop-re-listing-the-tool-registry by=merge_gate note=owner 2026-10-10 "Fix it next on slot B" (via Planner, feature 21b9e337): Story 20.24
+- 2026-10-11T05:12:54Z status=resolved-by:20-24-agent-tool-calls-stop-re-listing-the-tool-registry by=adjudication note=a1cb8b30+review: warm write Answer 1.18s->0.017s, Decide 0.58->0.003s; RegistryCache AC1/AC3 green
+
+### DW-2287: A reset of a server-path setting carries the pending-update consequence, not the location sentence, though the default it restores is a location
+- source: spec-20-22-production-item-settings.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: InteropSettingAction.Consequence reads the payload's Location, and a reset's payload is narrowed to FINGERPRINTSUBJECT (Value,Source,Default,Namespace); InteropSettingControl.TestAServerPathIsNamedALocationOnTheServer pins INTEROP.ITEM.PENDING for a reset of a path; the warning dialog uses the same sentence
+- 2026-10-10T20:06:44Z status=by-design owner=20-22-production-item-settings by=cr note=AC5 names the set's card and dialog only; reopens via a spec amendment naming the reset's default as a location
+
+### DW-2288: An agent's reset confirm that the write refuses after a path or descent move spends the proposal, while a set's confirm is refused before the claim and stays live
+- source: spec-20-22-production-item-settings.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: InteropSettingAction.ConfirmProblem asks only SECRET for a reset; the confirm re-reads the stored payload without the action key, so no ChangeProblem runs before the claim; SettingStep refuses after it (AD-34), as InteropSettingDescent.TestTheAgentsConfirmOfAResetIsRefusedWhenThePathMovesAfterTheMint pins
+- 2026-10-10T20:06:44Z status=by-design owner=20-22-production-item-settings by=cr note=nothing is stored either way; the after-claim refusal matches AD-34, the item tools and DW-2138; the spec prescribes the reset's rule
+
+### DW-2289: The Set value dialog keeps a field refusal and aria-invalid while a new value is typed, until the next send
+- source: spec-20-22-production-item-settings.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: interop-item-setting-dialog.ts onText sets only typed; the page clears violation and refusal only in onOpen, onSet and onClose; 20.3's add store clears a field's refusal on a new value
+- 2026-10-10T20:06:44Z status=wontfix-accepted owner=20-22-production-item-settings by=cr note=reopen_if=a person reports the stale sentence, or a shared one-value dialog store lands in ui/src/app/core
+
+### DW-2290: InvokeSettings and ListSettings copy InvokeItems' maxRows check, 501 action guard and source-control, absent, ambiguous order beyond the stated reason, which covers only the row shape (Rule 31)
+- source: spec-20-22-production-item-settings.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: InteropPort.cls InvokeSettings :1267 and ListSettings :1731 against InvokeItems :737 and ListItems; the maxRows check now has three copies (:421, :750, :1279); the spec's Rule 31 reason is 'another row shape and criterion'
+- 2026-10-10T20:06:52Z status=wontfix-accepted owner=20-22-production-item-settings by=cr note=reopen_if=a fourth InteropPort endpoint copies the guards; then extract one limit and action-guard helper
+
+### DW-2291: interop-item-settings.browser-spec.mjs copies probe, frames, structural, settingRow, rowPresent and rowAction from interop-items.browser-spec.mjs, two of them byte-identical (Rule 31)
+- source: spec-20-22-production-item-settings.md | severity: low | fix-risk: med | footprint: in-epic
+- evidence: ui/browser/interop-item-settings.browser-spec.mjs:50-160 against ui/browser/interop-items.browser-spec.mjs:50-160; rowAction and structural are identical; list-spec.mjs and structural-walk.mjs host the shared row and walk helpers; no reason stated
+- 2026-10-10T20:06:52Z status=wontfix-accepted owner=20-22-production-item-settings by=cr note=reopen_if=a third Interoperability browser spec needs rowAction or structural; extract them into list-spec.mjs then
+
+### DW-2292: An inbound adapter whose stored FilePath already is or lies under the served directory can be given more subdirectory levels: DescentReaches tests only protected directories strictly below the path
+- source: spec-20-22-production-item-settings.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: InteropPort.DescentReaches skips a protected directory equal to or above pDirectory; ChangeProblem judges a SubdirectoryLevels change by DescentReaches alone, as the spec prescribes; OcuPilot refuses such a FilePath itself, so it must have been stored outside OcuPilot
+- 2026-10-10T20:06:52Z status=wontfix-accepted owner=20-22-production-item-settings by=cr note=reopen_if=an instance is found with a FilePath in the manager or served directory, or AD-21's ninth case is amended to judge it
+
+### DW-2293: AC2's 'no job started or stopped' compares the probe's job config names (InteropItemControl.Jobs), so a write that restarted the item's job would still pass
+- source: spec-20-22-production-item-settings.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: InteropItemControl.Jobs answers the sorted ConfigNames of Ens.Job:Enumerate; InteropSettingControl.TestAWriteOnARunningProductionChangesNoJobAndTheUpdateAppliesIt and 20.3's item legs compare it before and after; only the pending flag pins UpdateProduction
+- 2026-10-10T20:07:00Z status=wontfix-accepted owner=20-22-production-item-settings by=cr note=reopen_if=a setting or item write path gains any call beyond the item save and SaveToClass that can stop or start a job
+
+### DW-2294: InteropSettingControl's list leg reads RetryInterval as classDefault and PoolSize as production, which a wildcard Ens_Config.DefaultSettings row in USER would change (Rule 30)
+- source: spec-20-22-production-item-settings.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: ProductionProbe.RemoveDefaults removes only the probe production's rows; no test or fixture creates a wildcard row and a fresh instance holds none, so the leg passes fresh and in either order
+- 2026-10-10T20:07:00Z status=wontfix-accepted owner=20-22-production-item-settings by=cr note=reopen_if=a test or fixture creates a wildcard (*) system default setting in USER
+
+### DW-2295: The spine's AD-51 Story 20.22 clause sits mid-sentence ahead of AD-51's bullets, and AD-62 carries its 20.22 AMENDED tag twice
+- source: spec-20-22-production-item-settings.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: ARCHITECTURE-SPINE.md:986 reads 'not an exception: Story 20.22: InteropPort reads ...' before the bullets that colon introduced; :1181 ends with two identical [AMENDED 2026-10-10, Story 20.22 spec gate, Rule 20] tags (spec-gate commit 8a40bf0e)
+- 2026-10-10T20:07:00Z status=open owner=20-22-production-item-settings by=cr note=the runner fixes it under Rule 20 at ledger_adjudicated: move the clause after the sentence it splits, drop the duplicate tag
+- 2026-10-10T20:21:23Z status=resolved-by:20-22-production-item-settings owner=20-22-production-item-settings by=lead note=Rule 20 at ledger_adjudicated: AD-51's sentence ends at its colon again and the 20.22 clause is its own case line after Story 18.26's; AD-62's duplicate AMENDED tag dropped; lint_spine one standing low
+
+### DW-2297: The queue and job actions (abort one queued message, abort a whole queue, abort or suspend a job's message, stop a job) are Story 20.4's stated partial
+- source: spec-20-4-per-host-tabs-the-monitor-queues-and-jobs.md | severity: med | fix-risk: med | footprint: in-epic
+- evidence: 20.4's second AC names the actions as custom endpoints and reads-first as a stated partial; measured on ocupilot-b-ci at 20.4's plan: each action is a vendor class method with its own check, writes no audit row, and AbortOperation, SuspendOperation and Stop answer OK on a target where they do nothing
+- 2026-10-10T22:06:19Z status=routed owner=20-23-queue-and-job-actions by=lead note=chartered as Story 20.23 at 20.4's spec gate; its charter is 20.4's Design Notes › Split
+
+### DW-2298: The classic per-host Actions tab's remaining item actions (temporary stop, start and restart of one item, change class, copy) have no story; enable, disable and remove are 20.3's row actions and Test is 20.6's
+- source: spec-20-4-per-host-tabs-the-monitor-queues-and-jobs.md | severity: med | fix-risk: med | footprint: in-epic
+- evidence: irislib/EnsPortal/ProductionConfig.cls:952-1077 and :4240 (updateActions); Story 20.4's criteria name only abort, abort all, suspend and stop; IO-08's change class and copy are unbuilt
+- 2026-10-10T22:06:19Z status=routed owner=20-23-queue-and-job-actions by=lead note=20.23's plan carries them beside the queue and job actions or names the further story they need
 - 2026-10-11T00:42:34Z status=routed owner=23-7-the-range-end-cleanup-part-6 by=load note=re-own from range-end-cleanup: kit 2026-10-10.1 owners are story keys or burndown
 
 ### DW-2278: Rule 31: the Superserver, MFT and Doc DB slices each carry their own Save, Rules and form of one shape; one base would serve all three
@@ -11045,3 +11130,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-32-spec-based-rest-services.md | severity: low | fix-risk: low | footprint: in-epic
 - evidence: 18.32's code map states the copy and its reason (Write.cls off-limits under Rule 11); ExplorerDocDbDelete.cls:57 is the sibling
 - 2026-10-11T05:02:16Z status=routed owner=23-7-the-range-end-cleanup-part-6 by=spec_gate note=lift StateDiff into Write.cls once Epic 20 has merged; both deletes then extend it
+### DW-2300: A tool class's compile time is recorded a few milliseconds before its compiled code, so a ListTools build in that gap can cache the class's previous view until the next compile
+- source: spec-20-24-agent-tool-calls-stop-re-listing-the-tool-registry.md | severity: low | fix-risk: high | footprint: in-story
+- evidence: Measured on ocupilot-b-ci at code review: the CompiledClass row and TimeChanged lead %Extends and $Parameter by 1.6-4.2 ms (one 53 ms); the before/after check cannot see it; 20 batch-compile trials ended with 0 stale listings; a production build reads a class at least 38 ms after its signature read
+- 2026-10-11T05:10:03Z status=by-design owner=20-24-agent-tool-calls-stop-re-listing-the-tool-registry by=cr note=spec Named limit; AD-5's 'seen on the next call' has this ms gap; reopens only by a spec or AD-5 amendment

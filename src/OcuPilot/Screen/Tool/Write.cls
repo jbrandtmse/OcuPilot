@@ -1011,4 +1011,46 @@ ClassMethod ReadBackTool() As %String
 /// its vendor type clears the secret on <code>""</code>, measured.</p>
 Parameter CLEARABLESECRETS = "";
 
+/// <p>The names among <parameter>SCREENVALUES</parameter> a screen action may send as an empty string, in the same
+/// <code>&lt;action&gt;=&lt;name&gt;[:&lt;name&gt;...]</code> grammar as <parameter>SCREENOPTIONAL</parameter>, or
+/// <code>""</code>: none, so every declared value is a non-empty string (AD-56 (ii) as amended by Story 20.22). A
+/// name listed here is still a declaration, and only this tool names it: a person clearing a setting is
+/// the one case an empty value is the request.</p>
+Parameter SCREENEMPTY = "";
+
+/// <p>The names <var>pSpec</var>, a <code>&lt;action&gt;=&lt;name&gt;[:&lt;name&gt;...]</code> list, holds for screen
+/// action <var>pActionId</var>, as a <class>%List</class>; <code>""</code> when it names none.</p>
+ClassMethod ScreenActionNamesIn(pSpec As %String, pActionId As %String) As %List
+{
+    Set tNames = ""
+    If pActionId = "" Quit tNames
+    For tI = 1:1:$Length(pSpec, ",") {
+        Set tEntry = $ZStrip($Piece(pSpec, ",", tI), "<>W")
+        If $Piece(tEntry, "=", 1) '= pActionId Continue
+        Set tList = $Piece(tEntry, "=", 2, *)
+        For tJ = 1:1:$Length(tList, ":") {
+            Set tName = $ZStrip($Piece(tList, ":", tJ), "<>W")
+            If (tName '= "") && '$ListFind(tNames, tName) Set tNames = tNames _ $ListBuild(tName)
+        }
+    }
+    Quit tNames
+}
+
+/// <p>The value names <parameter>SCREENEMPTY</parameter> lists for screen action <var>pActionId</var>, as a
+/// <class>%List</class>: the values <class>OcuPilot.Api.ScreenAction</class> admits as an empty string.</p>
+ClassMethod ScreenActionEmptyNames(pActionId As %String) As %List
+{
+    Quit ..ScreenActionNamesIn(..#SCREENEMPTY, pActionId)
+}
+
+/// <p>The argument names of the call <var>pInput</var>, beyond <method>SecretArguments</method>, whose values the
+/// ledger row and the step must redact for this call alone (AD-3 layer 1, AD-41, Story 20.22), as a
+/// <class>%List</class>. <code>""</code> here: a tool's secret arguments are the descriptor's declaration. A tool whose
+/// secrecy depends on the target a call names (an item setting whose name matches the credential pattern) answers it
+/// here; it reads nothing but <var>pInput</var> and never fails.</p>
+ClassMethod CallSecretNames(pInput As %DynamicAbstractObject) As %List
+{
+    Quit ""
+}
+
 }

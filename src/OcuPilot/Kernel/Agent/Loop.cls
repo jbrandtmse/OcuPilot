@@ -524,7 +524,7 @@ ClassMethod AnswerTools(pKey As %String, pUser As %String, pDefinitionId As %Str
                 Do $ClassMethod($ClassMethod(..DispatchClass(), "RegistryClass"), "ResolveWire", tStopWire, .tStopResolved)
                 If $IsObject(tStopResolved) Set tStopName = tStopResolved.%Get("name")
                 Set tStopInput = $Select($IsObject(tBlock): tBlock.%Get("input"), 1: "")
-                Set tStopSecretNames = ..SecretNamesOf($Get(tStopResolved))
+                Set tStopSecretNames = ..SecretNamesOf($Get(tStopResolved), tStopInput)
                 Set tStopTarget = $ClassMethod(..DispatchClass(), "StepTarget", tStopInput, tStopSecretNames)
                 Set tStopArgs = $ClassMethod(..DispatchClass(), "StepArguments", tStopInput, tStopSecretNames, pLimitsClass, .tStopArgsTruncated)
                 Set tStopSC = ##class(OcuPilot.Kernel.State.Step).GuardedAppend(pKey, "tool", tStopName, "stopped", "", "", "", pLimitsClass, .tStopSeq, .tStopStored, tStopTarget, tStopArgs, , , , tStopArgsTruncated)
@@ -542,7 +542,7 @@ ClassMethod AnswerTools(pKey As %String, pUser As %String, pDefinitionId As %Str
             Do $ClassMethod($ClassMethod(..DispatchClass(), "RegistryClass"), "ResolveWire", tName, .tResolvedTool)
             If $IsObject(tResolvedTool) Set tName = tResolvedTool.%Get("name")
             Set tBudgetInput = $Select($IsObject(tBlock): tBlock.%Get("input"), 1: "")
-            Set tBudgetSecretNames = ..SecretNamesOf($Get(tResolvedTool))
+            Set tBudgetSecretNames = ..SecretNamesOf($Get(tResolvedTool), tBudgetInput)
             Set tBudgetTarget = $ClassMethod(..DispatchClass(), "StepTarget", tBudgetInput, tBudgetSecretNames)
             Set tBudgetArgs = $ClassMethod(..DispatchClass(), "StepArguments", tBudgetInput, tBudgetSecretNames, pLimitsClass, .tBudgetArgsTruncated)
             Set tResult = {}
@@ -570,7 +570,7 @@ ClassMethod AnswerTools(pKey As %String, pUser As %String, pDefinitionId As %Str
         Do $ClassMethod($ClassMethod(..DispatchClass(), "RegistryClass"), "ResolveWire", tRunningName, .tRunningResolved)
         If $IsObject(tRunningResolved) Set tRunningName = tRunningResolved.%Get("name")
         Set tRunningInput = $Select($IsObject(tBlock): tBlock.%Get("input"), 1: "")
-        Set tRunningSecretNames = ..SecretNamesOf(tRunningResolved)
+        Set tRunningSecretNames = ..SecretNamesOf(tRunningResolved, tRunningInput)
         Set tRunningTarget = $ClassMethod(..DispatchClass(), "StepTarget", tRunningInput, tRunningSecretNames)
         Set tRunningArgs = $ClassMethod(..DispatchClass(), "StepArguments", tRunningInput, tRunningSecretNames, pLimitsClass, .tRunningArgsTruncated)
         Set tSC = ##class(OcuPilot.Kernel.State.Step).GuardedAppend(pKey, "tool", tRunningName, "running", "", "", "", pLimitsClass, .tSeq, .tStored, tRunningTarget, tRunningArgs, , , , tRunningArgsTruncated)
@@ -886,7 +886,8 @@ ClassMethod RecordProviderRow(pKey As %String, pUser As %String, pRoute As %Stri
 /// <class>OcuPilot.Kernel.Agent.Dispatch</class>, which records its own pairs -- so there is no
 /// failed pair to record here. An empty recorded requirement is withheld from a cross-user reader
 /// rather than released, so the row that can state nothing fails closed.</p>
-/// <p><b>The tool's secret-argument declaration is read the same way.</b> <var>pTool</var> is
+/// <p><b>The tool's secret-argument declaration is read the same way</b>, with the names the call
+/// adds (<code>CallSecretNames</code>, AD-41). <var>pTool</var> is
 /// whatever the refusal site's own <code>ResolveWire</code> answered, so layer 1 of the redaction
 /// runs for every call whose wire name resolved (AD-3): a name pattern cannot see a value in a
 /// field called <code>Value</code>. A wire name that resolved no tool classified nothing, and the
@@ -901,6 +902,7 @@ ClassMethod RecordRefusedRow(pKey As %String, pUser As %String, pRoute As %Strin
         If $IsObject(pTool) {
             Set tRegistry = $ClassMethod(..DispatchClass(), "RegistryClass")
             Set tSecretNames = $ClassMethod(tRegistry, "SecretArguments", pTool, .tSecretDeclared)
+            Set tSecretNames = tSecretNames _ $ClassMethod(tRegistry, "CallSecretNames", pTool, pInput)
             Set tClassified = ''tSecretDeclared
             Set tDeclaredPairs = $ClassMethod(tRegistry, "RequiredPairs", pTool, .tPairsResolved)
             If 'tPairsResolved Set tDeclaredPairs = ""
@@ -935,15 +937,18 @@ ClassMethod RecordClientRow(pKey As %String, pUser As %String, pRoute As %String
 }
 
 /// <p>The secret-argument declaration <var>pTool</var> answers
-/// (<method>OcuPilot.Screen.Tool.Base.SecretArguments</method>), or <code>""</code> when the wire
-/// name resolved no tool -- nothing was declared in that case, and there is nothing to read it
-/// off of.</p>
-ClassMethod SecretNamesOf(pTool As %DynamicObject = "") As %List [ Private ]
+/// (<method>OcuPilot.Screen.Tool.Base.SecretArguments</method>) and the names its call
+/// <var>pInput</var> adds (<method>OcuPilot.Screen.Tool.Registry.CallSecretNames</method>, AD-41),
+/// or <code>""</code> when the wire name resolved no tool -- nothing was declared in that case,
+/// and there is nothing to read it off of.</p>
+ClassMethod SecretNamesOf(pTool As %DynamicObject = "", pInput As %DynamicAbstractObject = "") As %List [ Private ]
 {
     Set tNames = ""
     Try {
         If '$IsObject(pTool) Quit
-        Set tNames = $ClassMethod($ClassMethod(..DispatchClass(), "RegistryClass"), "SecretArguments", pTool, .tDeclared)
+        Set tRegistry = $ClassMethod(..DispatchClass(), "RegistryClass")
+        Set tNames = $ClassMethod(tRegistry, "SecretArguments", pTool, .tDeclared)
+        Set tNames = tNames _ $ClassMethod(tRegistry, "CallSecretNames", pTool, pInput)
     } Catch ex {
         Set tNames = ""
     }

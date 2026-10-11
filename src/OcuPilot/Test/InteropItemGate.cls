@@ -53,7 +53,7 @@ Parameter PRINCIPALS = "OcuP203Exact:%Development:U,%Ens_Portal:U,%Ens_Productio
 Parameter LEGS = "Items|LIST,Items|ITEM,Items|DISABLE,Items|ENABLE,Items|ADD,Items|REMOVE";
 
 /// <p>The tools whose pairs the probe evaluates.</p>
-Parameter TOOLS = "InteropItemEnable,InteropItemDisable,InteropItemRemove,InteropItemAdd";
+Parameter TOOLS = "InteropItemEnable,InteropItemDisable,InteropItemRemove,InteropItemAdd,InteropSettingSet,InteropSettingReset";
 
 /// <p>What each principal's six port legs answer, <code>&lt;user&gt;=&lt;the pair a refused leg names, or
 /// empty when the leg is admitted&gt;</code> per leg in <parameter>LEGS</parameter> order, separated by
