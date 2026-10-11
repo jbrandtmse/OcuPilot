@@ -11130,6 +11130,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-32-spec-based-rest-services.md | severity: low | fix-risk: low | footprint: in-epic
 - evidence: 18.32's code map states the copy and its reason (Write.cls off-limits under Rule 11); ExplorerDocDbDelete.cls:57 is the sibling
 - 2026-10-11T05:02:16Z status=routed owner=23-7-the-range-end-cleanup-part-6 by=spec_gate note=lift StateDiff into Write.cls once Epic 20 has merged; both deletes then extend it
+- 2026-10-11T06:59:46Z status=routed owner=23-7-the-range-end-cleanup-part-6 by=spec_gate note=the REMOVALROWS StateDiff body already repeats in 13 delete tools; one Write.cls default serves all, so 23.7 lifts it once
 ### DW-2300: A tool class's compile time is recorded a few milliseconds before its compiled code, so a ListTools build in that gap can cache the class's previous view until the next compile
 - source: spec-20-24-agent-tool-calls-stop-re-listing-the-tool-registry.md | severity: low | fix-risk: high | footprint: in-story
 - evidence: Measured on ocupilot-b-ci at code review: the CompiledClass row and TimeChanged lead %Extends and $Parameter by 1.6-4.2 ms (one 53 ms); the before/after check cannot see it; 20 batch-compile trials ended with 0 stale listings; a production build reads a class at least 38 ms after its signature read
