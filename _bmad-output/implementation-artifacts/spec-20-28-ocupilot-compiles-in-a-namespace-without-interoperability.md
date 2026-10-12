@@ -418,6 +418,11 @@ Then run `Do $System.OBJ.LoadDir("/opt/ocupilot/src/OcuPilot","ck-d",.tErrors,1)
 - The patched counting session body, piped to `ocupilot-b-ci` in `HSCUSTOM`, printed all three markers: `COMPILED` 1989 current (756 shipped and 1233 test), `COMPILEDTEST` 1233, `INTEROP` 1.
 - After the final reload, every run reported `0 with probe leftovers`: `CompileWithoutInterop` 7, `Smoke` 43, `InteropHostRead` 7, `Provenance` 7, `GrantReadBack` 3 and `UninstallResidue` 4. `ipm-archive`, `ci`, `ci-leftovers` and `ci-shards` passed 153 of 153, with `ci.test.mjs` unedited. `check-objectscript` reported 0 problems and `lint-docs` was clean.
 
+**DW-2353 (folded into this story's head by the orchestrator, 2026-10-12, test-only).** `InteropQueueActions`' pool-size-0 abort test failed its entry read on two CI heads (18.39, 18.45; instance shard 6/8). Cause, measured on `ocupilot-b-ci`: `ProductionProbe.MakeTroubled` terminated `USER`'s `_Ensemble` jobs in one pass, and the `Ens.Actor` job the start launched late survived it, waiting in `Ens.Queue` for about twenty seconds, long enough to take the entry the test queues. `MakeTroubled` now repeats termination passes until two in a row find none, within thirty seconds, and errors past that.
+
+- mutation: the one-pass `MakeTroubled` restored, six Settle, Reset, AddItem(pool 0), MakeTroubled cycles -> a `_Ensemble` job left in `USER` after every cycle (6 of 6); with the fix, none left (6 of 6).
+- `InteropQueueActions` green 5 runs in a row, and green right after `InteropHostEdges`, `InteropLookupControl` and `InteropLookupEdges` (run 38284973172's leg order), each with 0 probe leftovers.
+
 ## Auto Run Result
 
 Status: done

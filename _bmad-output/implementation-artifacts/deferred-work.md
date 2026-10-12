@@ -11442,6 +11442,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: ci-run-38250559529 | severity: med | fix-risk: low | footprint: in-epic
 - evidence: run 38250559529 attempt 1 job 114815436456: failed at TestAnAbortFindsAMessageToAPoolSizeZeroProcessInTheActorQueue+12; leg ran Adapter..InteropItemGate, InteropItemGateSplit (runs 1-36) before it; a sibling's actor job or timing (inference)
 - 2026-10-12T13:29:12Z status=routed owner=burndown by=lead note=orchestrator 2026-10-12: diagnose when it fits; a wait-on-the-vendor race takes InteropJobStop's fix shape; a second red on another head makes it urgent
+- 2026-10-12T18:37:44Z status=resolved-by:20-28-ocupilot-compiles-in-a-namespace-without-interoperability by=lead note=MakeTroubled repeats termination passes until two find none; a late Ens.Actor job lingered 20 s; red twice (18.39, 18.45)
 
 ### DW-2355: No CI leg smokes an IPM archive install into an interoperability namespace once Story 20.28 moves the package job's install to a namespace without interoperability
 - source: spec-20-28-ocupilot-compiles-in-a-namespace-without-interoperability.md | severity: med | fix-risk: high | footprint: in-epic
