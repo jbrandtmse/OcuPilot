@@ -127,6 +127,7 @@ Under `src/OcuPilot/` at `266eee9d`. Epic 20's open diff touches none of these f
 - AD-31, proposed: "Provider tokens count a prompt's whole size as the provider reports it: Anthropic's input tokens plus its cache writes and reads." Owner question, not built on: should cache reads count at full weight? Task 0's per-call tokens say how many calls a turn makes before 500,000.
 - 262,144 is the plan's number; the gate may set another.
 - Task 0, measured on `ocupilot-ci` 2026-10-12 (AD-24's figures). Advertised: 368 tools, the 371 registered less AD-53's three (`explorer.sqldata.save`, `osmgmt.licensekey.activate`, `security.secrets.replacesymmetric`). The `tools` array is 525,377 characters before this story and 525,414 after (the marker, 37), of which descriptions 112,090 and input schemas 387,162; the built-in prompt is 3,288 characters before and 3,452 after. A scripted three-call turn sends 528,815, 529,120 and 529,425 characters before and 529,016, 529,358 and 529,663 after. The `tools` JSON is the same text across those calls, across a second turn and across separate processes, in name order. Live (the owner's Anthropic key, `claude-opus-5-5`, two one-call turns six seconds apart, streamed, markers on the last tool only because no screen context): call 1 `input_tokens` 1,118, `cache_creation_input_tokens` 189,627, `cache_read_input_tokens` 0, 7.00 s in the transport (8.13 s the whole turn); call 2 1,118, 0 and 189,627, 2.07 s (2.51 s). Each call is 190,745 tokens whichever side of the cache it falls, and the turn row records 190,745 for both. With reads at full weight against `MAXTOKENS` 500,000, a turn makes at most three provider calls (190,745, 381,490, then 572,235 stops the fourth at the boundary), as before this story, because uncached `input_tokens` counted the same prompt (inference). The tools array is 99.4 percent of each call's prompt, so the cost of a turn is the tools array, not history or results. The key was read from `.env.local` once, for these two turns.
+- Live tail marker, measured on `ocupilot-ci` 2026-10-12 (QA): a two-call turn (the owner's Anthropic key, `claude-opus-5-5`, the 368-tool registry, call 1 answering `shell_instance_read`) sent the moving marker on the call that carries the `tool_result` (two `cache_control` members in that request) and was answered HTTP 200 with `cache_read_input_tokens` 189,627 and `cache_creation_input_tokens` 1,345; the turn completed and its `InputTokens` read 381,730 over the two calls.
 - Declined: per-call tool selection (it needs AD-8's "full tool set" restated, the owner's call); in-place trimming (above); Anthropic's context-editing beta (`context-management-2025-06-27`), the sanctioned in-place route if earlier results are ever to be cleared.
 - Rule 11: no contended file. No vendor defect candidate.
 
@@ -153,9 +154,18 @@ Under `src/OcuPilot/` at `266eee9d`. Epic 20's open diff touches none of these f
 - mutation: `Anthropic.MapResponse` without `cache_read_input_tokens` -> `TurnBudget` (the markers test), `AdapterCache` (the token test) and `TurnStream` (the integration test) went red.
 - mutation: `Prompt.BUILTIN` without the `TOOL.RESULTTOOLARGE` sentence -> `ScreenGrounding` (the statements test) went red.
 - mutation: `Loop.Run` seeds the turn budget from `TOOLRESULTMAXLENGTH` -> `TurnBudget` (the budget test) went red on the retained-length assertion alone (run 683; green after the restore, run 684).
+- mutation: `Loop.AnswerTools` refuses under 255, not 256 -> `TurnBudget` (the floor test) went red on the 255 leg (QA, run 698).
+- mutation: `Loop.AnswerTools` starts the reply budget at the turn's remainder alone -> `TurnBudget` (the floor test) went red on the cap leg (QA, run 690).
+- mutation: `Loop.Spend` leaves the reply budget unlowered -> `TurnBudget` (the exact-edge test) went red on the second call of one reply (QA, run 691).
+- mutation: `Loop.AnswerTools` without the empty-budget guard -> `TurnBudget` (the no-budget test) went red on all three legs (QA, run 692).
+- mutation: `ToolDefAdapter.ToGemini` marks its last declaration -> `AdapterCache` (the other-families test) went red on the Gemini leg alone (QA, run 693).
+- mutation: `Anthropic.CallMessages` marks every tool -> `AdapterCache` (the marks test) and `TurnBudget` (the markers and context tests) went red (QA, runs 694 and 695).
+- mutation: `Anthropic.CallMessages` marks the last block of every message -> `AdapterCache` (the marks test) and `TurnBudget` (the markers, context and budget tests) went red (QA, runs 696 and 697).
 Each applied on `ocupilot-ci` to a copy of the class, the class and every descendant recompiled, then restored; the worktree was not written.
 
 **S0:** no probe definition, turn, conversation or stub node left by the new tests.
+
+(QA) No new test file. `Test/TurnBudget.cls` gains three methods (the turn budget's edges at a direct `AnswerTools` call, on run 699 six methods green); `Test/TurnToolsCase.cls` gains `NewDefinition`, taken out of `RunTurn` (`TurnTools` 13 green, run 700).
 
 ## Auto Run Result
 

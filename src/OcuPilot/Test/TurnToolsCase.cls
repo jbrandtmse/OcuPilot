@@ -63,19 +63,12 @@ Method OnAfterOneTest() As %Status
     Quit $$$OK
 }
 
-/// <p>Create an enabled probe definition on the stub transport, reserve, begin and run one turn as
-/// the suite's own account, finish it, and answer its key with the outcome in <var>pOutcome</var>.
-/// The turn's read-only snapshot is <var>pReadOnly</var>, or the instance's switch when that is
-/// <code>""</code>. <var>pContextRowCap</var> is the resolved row cap every dispatched call in
-/// this turn is answered under (AD-24), <code>0</code> falling back to
-/// <var>LOOP</var>'s own <code>TOOLROWS</code>, exactly as <method>OcuPilot.Kernel.Agent.Loop.Run</method>
-/// takes it. With <var>pStopFirst</var> the turn is asked to stop after it begins and before the
-/// loop runs; <var>pContext</var> and <var>pConvo</var> pass through to the loop unchanged.</p>
-Method RunTurn(Output pOutcome, pReadOnly As %String = "", pContextRowCap As %Integer = 0, pStopFirst As %Boolean = 0, pContext As %String = "", pConvo As OcuPilot.Kernel.State.Convo = "") As %String
+/// <p>Create an enabled probe definition on the stub transport and answer its id. The name is unique
+/// per call, so a test that creates more than one does not collide with itself before the next
+/// <method>OnBeforeOneTest</method> sweeps every probe definition.</p>
+Method NewDefinition() As %String
 {
     Set tRow = ##class(OcuPilot.Kernel.State.Agent).%New()
-    ; Unique per call, so a test that calls RunTurn more than once (Name carries a unique index)
-    ; does not collide with itself before the next OnBeforeOneTest sweeps every probe definition.
     Set tRow.Name = "OcuPilotProbeAgentTurnTools" _ $Increment(^||OcuPilotTurnToolsRunTurn)
     Set tRow.Provider = "probe-local"
     Set tRow.Model = "probe-local-model-1"
@@ -89,6 +82,20 @@ Method RunTurn(Output pOutcome, pReadOnly As %String = "", pContextRowCap As %In
     Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Agent).GuardedCreate(tRow), "a probe definition is created")
     Set tId = tRow.%Id()
     Set tRow = ""
+    Quit tId
+}
+
+/// <p>Create an enabled probe definition on the stub transport, reserve, begin and run one turn as
+/// the suite's own account, finish it, and answer its key with the outcome in <var>pOutcome</var>.
+/// The turn's read-only snapshot is <var>pReadOnly</var>, or the instance's switch when that is
+/// <code>""</code>. <var>pContextRowCap</var> is the resolved row cap every dispatched call in
+/// this turn is answered under (AD-24), <code>0</code> falling back to
+/// <var>LOOP</var>'s own <code>TOOLROWS</code>, exactly as <method>OcuPilot.Kernel.Agent.Loop.Run</method>
+/// takes it. With <var>pStopFirst</var> the turn is asked to stop after it begins and before the
+/// loop runs; <var>pContext</var> and <var>pConvo</var> pass through to the loop unchanged.</p>
+Method RunTurn(Output pOutcome, pReadOnly As %String = "", pContextRowCap As %Integer = 0, pStopFirst As %Boolean = 0, pContext As %String = "", pConvo As OcuPilot.Kernel.State.Convo = "") As %String
+{
+    Set tId = ..NewDefinition()
     Set tLimits = $ClassMethod(..#LOOP, "LimitsClass")
     Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Turn).GuardedReserve($Username, tId, "TURN.ABANDONED.JOBLOST", tLimits, .tKey, .tBusy, .tSweep), "the turn is reserved")
     If $Get(tKey) = "" Quit ""

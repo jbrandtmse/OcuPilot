@@ -5,8 +5,10 @@
 /// by a later call -- each observed on the requests <class>OcuPilot.Test.ProviderStub</class>
 /// recorded.</p>
 /// <p>Driven through <class>OcuPilot.Test.TurnLoopProbe</class> over the counting fixture tools, as
-/// <class>OcuPilot.Test.TurnTools</class> is. <b>Live-safe</b>: it spawns nothing and opens no
-/// socket, and removes every probe definition and turn it wrote after each method.</p>
+/// <class>OcuPilot.Test.TurnTools</class> is; the budget's edges call
+/// <method>OcuPilot.Kernel.Agent.Loop.AnswerTools</method> directly with a budget argument.
+/// <b>Live-safe</b>: it spawns nothing and opens no socket, and removes every probe definition and
+/// turn it wrote after each method.</p>
 Class OcuPilot.Test.TurnBudget Extends OcuPilot.Test.TurnToolsCase
 {
 
@@ -25,6 +27,19 @@ Parameter BUDGETLIMITS = "OcuPilot.Test.TurnLimitsBudget";
 Parameter BUDGETROWS = 33;
 
 Parameter BUDGETWIDTH = 150;
+
+/// <p>Rows and characters a row carries in the direct calls' middling result, a little over 1,000
+/// characters: far enough above the 256-character floor that a budget 100 short of it is still
+/// answered.</p>
+Parameter EDGEROWS = 10;
+
+Parameter EDGEWIDTH = 100;
+
+/// <p>Rows and characters a row carries in the direct calls' oversized result, about 83,000
+/// characters, more than the 65,536 one reply may carry.</p>
+Parameter BIGROWS = 200;
+
+Parameter BIGWIDTH = 400;
 
 /// <p><var>pBody</var>, a <method>OcuPilot.Test.TurnToolsCase.Reply</method> body, with the usage
 /// figures it reports set.</p>
@@ -79,6 +94,82 @@ ClassMethod ResultOf(pCall As %Integer, pMessage As %Integer, Output pIsError As
     Set tBlock = ..Sent(pCall).messages.%Get(pMessage).content.%Get(0)
     Set pIsError = +tBlock."is_error"
     Quit ##class(OcuPilot.Test.TurnWireFixture).Unwrapped(tBlock.content, .tWrapped)
+}
+
+/// <p>Begin a turn for the suite's own account under a new probe definition, for a direct call of
+/// <method>OcuPilot.Kernel.Agent.Loop.AnswerTools</method>: <var>pOpen</var> comes back subscripted
+/// <code>key</code>, <code>started</code>, <code>definition</code> and <code>limits</code>.
+/// <method>CloseTurn</method> ends it.</p>
+Method OpenTurn(Output pOpen)
+{
+    Kill pOpen
+    Set pOpen("limits") = $ClassMethod(..#LOOP, "LimitsClass")
+    Set pOpen("definition") = ..NewDefinition()
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Turn).GuardedReserve($Username, pOpen("definition"), "TURN.ABANDONED.JOBLOST", pOpen("limits"), .tKey, .tBusy, .tSweep), "the turn is reserved")
+    If $Get(tKey) = "" Quit
+    Set ..PreparedKeys(tKey) = ""
+    Set pOpen("key") = tKey
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Turn).GuardedBegin(tKey, $Username, pOpen("limits"), .tBegun, .tStarted), "the turn begins")
+    Set pOpen("started") = tStarted
+}
+
+/// <p>Finish the turn <method>OpenTurn</method> began, which frees the account's turn slot.</p>
+Method CloseTurn(ByRef pOpen)
+{
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Turn).GuardedFinish(pOpen("key"), $Username, "completed", "", "", "done", 0, pOpen("limits")), "the turn is finished")
+}
+
+/// <p>Result <var>pAt</var> of <var>pResults</var> as <code>error|truncated|rows|length</code>, rows
+/// being <code>-</code> for content that holds none and each of the first three <code>?</code> for
+/// content that does not parse, so a result that is not the JSON a test expects fails its
+/// assertion and does not raise out of the method.</p>
+ClassMethod Shape(ByRef pResults, pAt As %Integer) As %String
+{
+    Set tLength = $Length($Get(pResults(pAt)))
+    Set tShape = "?|?|?|" _ tLength
+    Try {
+        Set tContent = ##class(%DynamicAbstractObject).%FromJSON(pResults(pAt))
+        Set tRows = $Select($IsObject(tContent.rows): tContent.rows.%Size(), 1: "-")
+        Set tShape = pResults(pAt, "error") _ "|" _ +tContent.truncated _ "|" _ tRows _ "|" _ tLength
+    } Catch ex {
+        Set tShape = "?|?|?|" _ tLength
+    }
+    Quit tShape
+}
+
+/// <p>One reply of <var>pInputs</var>, an array of <code>probe_counter_read</code> inputs, answered
+/// by <method>OcuPilot.Kernel.Agent.Loop.AnswerTools</method> itself on the turn <var>pOpen</var>. With
+/// <var>pOmit</var> the call leaves the turn budget argument out; otherwise <var>pRemaining</var> is
+/// passed by reference and comes back as the call left it. <var>pResults</var> holds each answered
+/// block's content unframed, with its <code>is_error</code> beside it as <code>(n, "error")</code>.</p>
+Method Answer(ByRef pOpen, pInputs As %DynamicArray, ByRef pRemaining, Output pResults, pOmit As %Boolean = 0)
+{
+    Kill pResults
+    Set tUses = []
+    For tI = 0:1:pInputs.%Size() - 1 {
+        Set tUse = {}
+        Do tUse.%Set("id", "toolu_edge" _ tI, "string")
+        Do tUse.%Set("name", "probe_counter_read", "string")
+        Do tUse.%Set("input", ##class(%DynamicAbstractObject).%FromJSON(pInputs.%Get(tI).%ToJSON()))
+        Do tUses.%Push(tUse)
+    }
+    Set tMessages = 0
+    Set tLog = []
+    Set tResources = ##class(OcuPilot.Api.Router).#ADMINRESOURCES
+    If pOmit {
+        Set tSC = $ClassMethod(..#LOOP, "AnswerTools", pOpen("key"), $Username, pOpen("definition"), "", tUses, pOpen("limits"), .tMessages, tLog, .tLastSeq, 0, tResources, pOpen("started"), 0, .tState, .tCode)
+    } Else {
+        Set tSC = $ClassMethod(..#LOOP, "AnswerTools", pOpen("key"), $Username, pOpen("definition"), "", tUses, pOpen("limits"), .tMessages, tLog, .tLastSeq, 0, tResources, pOpen("started"), 0, .tState, .tCode, 0, "", "", "", .pRemaining)
+    }
+    Do $$$AssertStatusOK(tSC, "the reply is answered")
+    Do $$$AssertEquals(tState, "", "and the turn is not stopped")
+    If (tState '= "") || (tMessages < 1) Quit
+    Set tBlocks = ##class(%DynamicAbstractObject).%FromJSON(tMessages(tMessages, "blocks"))
+    Do $$$AssertEquals(tBlocks.%Size(), pInputs.%Size(), "with one result for each call")
+    For tI = 0:1:tBlocks.%Size() - 1 {
+        Set pResults(tI + 1) = ##class(OcuPilot.Test.TurnWireFixture).Unwrapped(tBlocks.%Get(tI).content, .tWrapped)
+        Set pResults(tI + 1, "error") = +tBlocks.%Get(tI)."is_error"
+    }
 }
 
 /// <p>Prompt cache and cached spend -- a two-call turn on the shipped limits, no screen context,
@@ -206,6 +297,117 @@ Method TestTheTurnBudgetCutsThenRefusesAndEarlierMessagesAreResentUnchanged()
         Do $$$AssertTrue(tSame, "call " _ (tCall + 1) _ " re-sends every message of call " _ tCall _ " unchanged but for the marker")
         Do $$$AssertEquals(..Marks(tAfter.%ToJSON()) _ "|" _ ..Marks(tAfter.%Get(tBefore.%Size() - 1).%ToJSON()), "1|0", "the one marker moved to call " _ (tCall + 1) _ "'s new tail")
     }
+}
+
+/// <p>Turn budget, matrix row 4 at its edges, on a reply answered directly: with room to spare the
+/// reply is whole and the budget comes back lowered by exactly its characters; a budget of exactly
+/// that many answers it whole and leaves 0; 100 characters fewer cuts it by whole rows; and in one
+/// reply the second call finds only what the first left.</p>
+/// <p>Mutation: <method>OcuPilot.Kernel.Agent.Loop.Spend</method> takes a result's characters off the
+/// turn budget only, not the reply budget -> the second call of one reply is dispatched whole and
+/// this goes red.</p>
+Method TestAReplyExactlyAtWhatTheTurnHasLeftIsWholeAndLessIsCutByRows()
+{
+    Do $ClassMethod(..#LOOP, "SetDispatchClass", ..#DISPATCH)
+    Do $ClassMethod(..#LOOP, "SetLimitsClass", "OcuPilot.Kernel.Agent.Limits")
+    Do ..OpenTurn(.tOpen)
+    If $Get(tOpen("key")) = "" Quit
+    Set tWhole = "0|0|" _ ..#EDGEROWS
+    Set tInputs = [{"rows": (..#EDGEROWS), "width": (..#EDGEWIDTH)}]
+
+    Set tRemaining = 100000
+    Do ..Answer(.tOpen, tInputs, .tRemaining, .tRoomy)
+    Set tLength = $Length($Get(tRoomy(1)))
+    Do $$$AssertEquals($Piece(..Shape(.tRoomy, 1), "|", 1, 3), tWhole, "with room to spare the reply is whole")
+    Do $$$AssertTrue(tLength > 1000, "and more than 1,000 characters, so a budget 100 short is above the floor: " _ tLength)
+    Do $$$AssertEquals(100000 - tRemaining, tLength, "the budget comes back lowered by exactly the characters the reply carried")
+
+    Set tRemaining = tLength
+    Do ..Answer(.tOpen, tInputs, .tRemaining, .tExact)
+    Do $$$AssertEquals(..Shape(.tExact, 1), tWhole _ "|" _ tLength, "a budget of exactly the reply's size answers it whole")
+    Do $$$AssertEquals(tRemaining, 0, "and leaves 0")
+
+    Set tRemaining = tLength - 100
+    Do ..Answer(.tOpen, tInputs, .tRemaining, .tShort)
+    Set tShape = ..Shape(.tShort, 1)
+    Do $$$AssertEquals($Piece(tShape, "|", 1, 2), "0|1", "100 characters fewer answers it, marked truncated")
+    Do $$$AssertTrue(($Piece(tShape, "|", 3) > 0) && ($Piece(tShape, "|", 3) < ..#EDGEROWS), "by whole rows: " _ $Piece(tShape, "|", 3) _ " of " _ ..#EDGEROWS)
+    Do $$$AssertTrue($Piece(tShape, "|", 4) <= (tLength - 100), "inside the budget: " _ $Piece(tShape, "|", 4))
+    Do $$$AssertEquals((tLength - 100) - tRemaining, $Piece(tShape, "|", 4), "and the budget comes back lowered by what was carried")
+
+    Set tCalls = ##class(OcuPilot.Test.DispatchTool.Counter).Calls("probe.counter.read")
+    Set tRemaining = tLength + 150
+    Do ..Answer(.tOpen, [{"rows": (..#EDGEROWS), "width": (..#EDGEWIDTH)}, {"rows": (..#EDGEROWS), "width": (..#EDGEWIDTH)}], .tRemaining, .tPair)
+    Do $$$AssertEquals(..Shape(.tPair, 1), tWhole _ "|" _ tLength, "in one reply the first call is answered whole")
+    Do $$$AssertEquals($Get(tPair(2, "error")) _ "|" _ $Get(tPair(2)), "1|{""code"":""TOOL.RESULTTOOLARGE""}", "and the second finds 150 characters left and is refused")
+    Do $$$AssertEquals(##class(OcuPilot.Test.DispatchTool.Counter).Calls("probe.counter.read") - tCalls, 1, "without the tool running a second time")
+    Do ..CloseTurn(.tOpen)
+}
+
+/// <p>Turn budget, matrix row 4 at the floor and at the cap: a turn with 256 characters left still
+/// dispatches a call, one with 255 refuses it <code>TOOL.RESULTTOOLARGE</code> without running the
+/// tool, and a reply never carries more than <parameter>TOOLRESULTMAXLENGTH</parameter> however much
+/// the turn has left.</p>
+/// <p>Mutations: <method>OcuPilot.Kernel.Agent.Loop.AnswerTools</method> refuses under 255, not 256
+/// -> the 255 leg goes red; its reply budget starts at the turn's alone -> the cap leg goes red.</p>
+Method TestTheFloorIs256CharactersAndAReplyNeverOutgrowsItsOwnBudget()
+{
+    Do $ClassMethod(..#LOOP, "SetDispatchClass", ..#DISPATCH)
+    Do $ClassMethod(..#LOOP, "SetLimitsClass", "OcuPilot.Kernel.Agent.Limits")
+    Do ..OpenTurn(.tOpen)
+    If $Get(tOpen("key")) = "" Quit
+    Set tSmall = [{"marker": "floor"}]
+    Set tCalls = "OcuPilot.Test.DispatchTool.Counter"
+
+    Set tRemaining = 256
+    Do ..Answer(.tOpen, tSmall, .tRemaining, .tAtFloor)
+    Do $$$AssertTrue(($Get(tAtFloor(1, "error")) = 0) && ($Get(tAtFloor(1)) [ """marker"":""floor"""), "256 characters left still answers a call")
+    Do $$$AssertEquals($ClassMethod(tCalls, "Calls", "probe.counter.read"), 1, "by dispatching it")
+
+    Set tRemaining = 255
+    Do ..Answer(.tOpen, tSmall, .tRemaining, .tBelow)
+    Do $$$AssertEquals($Get(tBelow(1, "error")) _ "|" _ $Get(tBelow(1)), "1|{""code"":""TOOL.RESULTTOOLARGE""}", "255 characters left refuses it")
+    Do $$$AssertEquals($ClassMethod(tCalls, "Calls", "probe.counter.read"), 1, "without dispatching it")
+
+    Set tRemaining = 500000
+    Do ..Answer(.tOpen, [{"rows": (..#BIGROWS), "width": (..#BIGWIDTH)}], .tRemaining, .tBig)
+    Set tShape = ..Shape(.tBig, 1)
+    Set tCap = $Parameter("OcuPilot.Kernel.Agent.Limits", "TOOLRESULTMAXLENGTH")
+    Do $$$AssertEquals($Piece(tShape, "|", 1, 2), "0|1", "a result over the reply budget is cut though the turn has 500,000 left")
+    Do $$$AssertTrue(($Piece(tShape, "|", 4) <= tCap) && ($Piece(tShape, "|", 4) > (tCap / 2)), "to inside " _ tCap _ " characters and not to nothing: " _ $Piece(tShape, "|", 4))
+    Do $$$AssertEquals(500000 - tRemaining, $Piece(tShape, "|", 4), "and the turn budget is lowered by what was carried")
+    Do ..CloseTurn(.tOpen)
+}
+
+/// <p>A caller that bounds no turn budget -- the Ledger probes' direct calls -- is answered as it was
+/// before the budget existed: the argument left out, or passed empty, leaves the reply budget at
+/// <parameter>TOOLRESULTMAXLENGTH</parameter>, refuses nothing and comes back empty.</p>
+/// <p>Mutation: <method>OcuPilot.Kernel.Agent.Loop.AnswerTools</method> drops the empty-budget guard
+/// from the reply budget's start -> an empty budget reads as 0, the call is refused and this goes
+/// red.</p>
+Method TestNoTurnBudgetLeavesADirectCallAsItWas()
+{
+    Do $ClassMethod(..#LOOP, "SetDispatchClass", ..#DISPATCH)
+    Do $ClassMethod(..#LOOP, "SetLimitsClass", "OcuPilot.Kernel.Agent.Limits")
+    Do ..OpenTurn(.tOpen)
+    If $Get(tOpen("key")) = "" Quit
+    Set tWhole = "0|0|" _ ..#EDGEROWS
+    Set tInputs = [{"rows": (..#EDGEROWS), "width": (..#EDGEWIDTH)}]
+
+    Do ..Answer(.tOpen, tInputs, , .tOmitted, 1)
+    Do $$$AssertEquals($Piece(..Shape(.tOmitted, 1), "|", 1, 3), tWhole, "with the argument left out the reply is whole")
+
+    Set tRemaining = ""
+    Do ..Answer(.tOpen, tInputs, .tRemaining, .tBlank)
+    Do $$$AssertEquals($Piece(..Shape(.tBlank, 1), "|", 1, 3), tWhole, "with the argument empty it is whole too")
+    Do $$$AssertEquals("[" _ tRemaining _ "]", "[]", "and the empty argument comes back empty, not 0")
+
+    Do ..Answer(.tOpen, [{"rows": (..#BIGROWS), "width": (..#BIGWIDTH)}], .tRemaining, .tBig)
+    Set tShape = ..Shape(.tBig, 1)
+    Set tCap = $Parameter("OcuPilot.Kernel.Agent.Limits", "TOOLRESULTMAXLENGTH")
+    Do $$$AssertEquals($Piece(tShape, "|", 1, 2), "0|1", "an oversized result is still cut")
+    Do $$$AssertTrue($Piece(tShape, "|", 4) <= tCap, "to the reply budget alone: " _ $Piece(tShape, "|", 4) _ " of " _ tCap)
+    Do ..CloseTurn(.tOpen)
 }
 
 }
