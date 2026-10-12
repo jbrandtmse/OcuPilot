@@ -9336,14 +9336,54 @@ Recorded in the ledger only: the create script's class check reads the undocumen
 
 ### Story 23.7: The range-end cleanup, part 6
 
-Chartered by the orchestrator on 2026-10-10 as the holder for the `range-end-cleanup` queue, so the 36 entries it held have a story key that the /epic-cycle kit's ledger tool accepts (Kit-Version 2026-10-10.1, installed on the owner's approval). It keeps the queue's meaning: batch (d) and the doc and test-gap hygiene filed since stay unscheduled, and an entry is fixed early only when a story next works in its area and takes it over. It is not in any dispatch order. It runs only on the owner's word, and its scope is the batch the owner then picks.
+Chartered by the orchestrator on 2026-10-10 as the holder for the `range-end-cleanup` queue, so its entries had a story key the /epic-cycle kit's ledger tool accepts. The owner released the 32 entries it held on 2026-10-12 ("Release Story 23.7": "Run the 32 held cleanup items (tests, comments, small tidy-ups) as about three cleanup stories in gaps."), and the orchestrator split them by priority into this story and Stories 23.8 and 23.9, twelve at most each (Rule 27). This part takes twelve medium-severity test-gap and contract entries in the kernel, the agent and the ports. A slot that would otherwise sit idle runs it.
 
 As a maintainer of OcuPilot,
-I want the deferred doc, comment and test-gap entries held under one story,
-So that none is lost, and each is fixed or declined when its turn comes.
+I want the medium-severity test gaps and contract mismatches in the kernel, the agent and the ports closed,
+So that the behavior they describe is pinned by a test that can fail.
 
 **Acceptance Criteria:**
 
-- **Given** an entry owned by this story
-- **When** a story that works in its area takes it over, or the owner schedules this story
-- **Then** the ledger tool records the new owner, or a disposition: `resolved-by` with the commit, or `wontfix-accepted` or `by-design` with a reason.
+- **Given** the entries re-owned to this story: DW-1170, DW-1191, DW-1211, DW-1233, DW-1234, DW-1255, DW-1258, DW-1306, DW-1308, DW-1377, DW-1783 and DW-2266
+- **When** this story completes
+- **Then** each has a disposition written by the ledger tool: `resolved-by` this story with the commit, or `wontfix-accepted` or `by-design` with a reason and, where a condition would reopen it, that condition.
+
+- **Given** a fix to code or a test
+- **When** it lands
+- **Then** a test reddens on the defect before the fix, or the entry says why none can, and the fixes land in batches grouped by area, each with CI green on its own head.
+
+### Story 23.8: The range-end cleanup, part 7
+
+Chartered by the orchestrator on 2026-10-12 from the 32 entries the owner released out of Story 23.7. This part takes the remaining seven medium-severity entries (the scripts, install and smoke checks, the client lint, the screen-open contract and the Rule 31 Save sharing) and five low-severity System Explorer save entries. A slot that would otherwise sit idle runs it, after Story 23.7.
+
+As a maintainer of OcuPilot,
+I want the remaining medium-severity entries and the System Explorer save tidy-ups resolved,
+So that the scripts, the install checks and the explorer's save path say and do the same thing.
+
+**Acceptance Criteria:**
+
+- **Given** the entries re-owned to this story: DW-216, DW-235, DW-432, DW-1188, DW-1462, DW-1762, DW-2278, DW-1267, DW-2256, DW-2257, DW-2258 and DW-2261
+- **When** this story completes
+- **Then** each has a disposition written by the ledger tool: `resolved-by` this story with the commit, or `wontfix-accepted` or `by-design` with a reason and, where a condition would reopen it, that condition.
+
+- **Given** a fix to code or a test
+- **When** it lands
+- **Then** a test reddens on the defect before the fix, or the entry says why none can, and the fixes land in batches grouped by area, each with CI green on its own head.
+
+### Story 23.9: The range-end cleanup, part 8
+
+Chartered by the orchestrator on 2026-10-12 from the 32 entries the owner released out of Story 23.7. This part takes the last eight low-severity entries: doc comments and CLAUDE.md lines that no longer match the code, two pair-validation edges, a duplicated client constant and the CI runner's test-class floor. A slot that would otherwise sit idle runs it, after Story 23.8. A CLAUDE.md line changes only through the Planner, with the owner's OK.
+
+As a maintainer of OcuPilot,
+I want the stale comments, duplicated constants and small validation edges fixed,
+So that the next reader is not misled by text the code no longer matches.
+
+**Acceptance Criteria:**
+
+- **Given** the entries re-owned to this story: DW-446, DW-1177, DW-1706, DW-1760, DW-1761, DW-2060, DW-2259 and DW-2260
+- **When** this story completes
+- **Then** each has a disposition written by the ledger tool: `resolved-by` this story with the commit, or `wontfix-accepted` or `by-design` with a reason and, where a condition would reopen it, that condition.
+
+- **Given** a fix to code or a test
+- **When** it lands
+- **Then** a test reddens on the defect before the fix, or the entry says why none can, and the fixes land in batches grouped by area, each with CI green on its own head.
