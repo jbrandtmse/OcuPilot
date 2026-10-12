@@ -7749,13 +7749,17 @@ So that monitoring is continuous rather than sampled. [AMENDED 2026-10-11, orche
 
 As a developer-administrator,
 I want each turn assembled within a budget,
-So that the doubled tool roster does not make every agent call larger and slower. [AMENDED 2026-10-11, orchestrator ruling on Story 18.12's plan: split from Story 18.12 for size, Rule 5; runs right after Story 18.12; any per-call selection, trimming or caching goes after Story 20.24's per-process tool listing, never inside it (AD-5, Rule 31); a Task 0 measures the per-call weight and AD-24 is amended at its spec gate]
+So that the doubled tool roster does not make every agent call larger and slower. [AMENDED 2026-10-11, orchestrator ruling on Story 18.12's plan: split from Story 18.12 for size, Rule 5; runs right after Story 18.12; any per-call selection, trimming or caching goes after Story 20.24's per-process tool listing, never inside it (AD-5, Rule 31); a Task 0 measures the per-call weight and AD-24 is amended at its spec gate] [AMENDED 2026-10-12, orchestrator ruling on Story 18.39's Task 0 (each call about 190,700 tokens, the tool array about 99% of it): split for scope, Rule 5 -- this story keeps caching, the turn's result budget and the token bound, which counts cached prompt tokens at their billed weight; making each call smaller moves to Story 18.45]
 
 **Acceptance Criteria:**
 
 - **Given** the tool roster roughly doubles here
 - **When** a turn is assembled
 - **Then** context-window management trims and budgets history, which nothing in the harvest provides and which this stage is the first to need.
+
+- **Given** a provider that reports the cached part of a prompt separately
+- **When** the turn counts its spend against its token limit
+- **Then** the cached part counts at the provider's billed weight (Anthropic cache reads at 0.1), and a provider with no separate cached figure counts at full weight.
 
 ### Story 18.40: Proxy and custom CA configuration
 
@@ -7816,6 +7820,24 @@ So that removing or checking OcuPilot never damages or hides what others set up.
 
 - DW-219: Uninstall's contract on an instance OcuPilot does not wholly own has three half-state paths (ledger; re-owned by lead 2026-10-12 at Story 18.13's spec gate). From source at `fe132688`: path 1 is open (the shell bundle directory is removed unconditionally); path 2 is open (an unreadable provenance record warns and continues); path 3 looks closed by the role loop (inference; a pinning test settles it).
 - DW-2172: DW-236's detection half - a SQL grant on OcuPilot's own schemas widened outside OcuPilot (another role or _PUBLIC holding it) is detected beside install's schema-grant read-back (ledger; re-owned by lead 2026-10-12 at Story 18.13's spec gate). The grantee source is a Task 0 measurement.
+
+### Story 18.45: The agent's tool roster scoped per turn
+
+As a developer-administrator,
+I want each agent call to carry only the tools the turn needs,
+So that the doubled tool roster does not make every call larger, cap a turn at a few calls, or overflow a smaller model's context window. [AMENDED 2026-10-12, orchestrator ruling on Story 18.39's Task 0: split from Story 18.39, Rule 5 -- 368 advertised tools serialize to 525,414 characters, about 190,700 tokens a call; runs right after Story 18.39]
+
+**Acceptance Criteria:**
+
+- **Given** the registry's whole listing, cached per process (Story 20.24)
+- **When** a turn assembles a provider call
+- **Then** the call carries a scoped tool set chosen after the listing and never inside it (AD-5, Rule 31), by the mechanism the spec gate chooses: provider-native deferred loading or tool search, or area-scoped advertising with a discovery tool.
+
+- **Given** a supported provider or model whose context window cannot hold the full roster
+- **When** Task 0 measures each supported family and model
+- **Then** each such one is named, and the scoped set fits it.
+
+- If the chosen mechanism changes what the agent can do in a turn (for example, a tool it reaches only after a discovery step), that is the owner's product-promise question, raised at the spec gate before anything is built.
 
 ## Epic 19: Stage 3 - System Explorer over the Atelier API
 

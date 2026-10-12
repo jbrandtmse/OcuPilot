@@ -2,7 +2,7 @@
 title: 'Story 18.39: The agent''s context budget'
 type: 'feature'
 created: '2026-10-11'
-status: 'done'
+status: 'in-progress'
 baseline_revision: '356bdf6381fa03961445b66fb5a191c8305a9e64'
 review_loop_iteration: 0
 followup_review_recommended: false
@@ -71,17 +71,27 @@ Under `src/OcuPilot/` at `266eee9d`. Epic 20's open diff touches none of these f
 11. [x] `Test/ScreenGrounding.cls` -- `Statement` 10 is Task 4's sentence; the test checks 1 to 10.
 12. [x] **Rule 30 sweep.** Grep `src/OcuPilot/Test` for exact Anthropic body or `tools` JSON, `cache_control`, `input_tokens`, the prompt's sentences and `AnswerTools` callers; update an old-shape assertion in place. Run, editing only if red: `Adapter`, `Provider`, `ProviderStream`, `ProviderStreamFamilies`, `TurnLoop`, `TurnTools`, `TurnSanitize`, `TurnNavigate`, `TurnCitations`, `AnthropicThinking`, `Governance`, `Sanitize`, `Ledger`, `LedgerStep`, `LedgerSense`, `LedgerClientRows`, `ToolDispatch` (Epic 20's file: run only), `TurnContext`, `TurnConversation`, `TurnGrounding`, `AgentConnection`, `AgentConnectionBound`.
 
+**Rework 1 (orchestrator ruling (A), 2026-10-12; AD-31 as corrected):**
+
+R1. [ ] Task 0 (d), `ocupilot-ci`: with the owner's OpenAI and Gemini keys from `.env.local` where present (read at the point of use, never printed, logged, ledgered or committed; on a probe definition created and removed), two calls seconds apart per family on the catalog's default model: record whether the response reports the cached subset separately (`usage.prompt_tokens_details.cached_tokens`, `usageMetadata.cachedContentTokenCount`) and its value on the second call; an absent key records "unmeasured" and the documented field stands. Read each family's cached-input rate for that model from the vendor's pricing page; record the rate, the URL and the read date under Design Notes "For the lead".
+R2. [ ] `Kernel/Provider/Response.cls`: a non-persistent `BoundTokens` property, the request tokens with the cached part at its billed weight, rounded up to a whole token. Each family's `MapResponse` sets it: Anthropic `input_tokens` + `cache_creation_input_tokens` + 0.1 x `cache_read_input_tokens` (writes stay at full weight; the ruling names reads); OpenAI and Gemini `prompt_tokens` (`promptTokenCount`) less the cached subset plus the rate x the subset, where R1 confirmed the field, else the whole count; compatible the whole count. Each rate is a parameter on its adapter class whose doc line names the source. An absent field counts 0.
+R3. [ ] `Kernel/Agent/Loop.cls`: `Boundary`'s token figure sums `BoundTokens` (the whole count when empty) and the response tokens; `RequestTokens`, the turn row's `InputTokens` and the ledger's `requestTokens` keep the provider's whole count. No schema change.
+R4. [ ] Tests, each with a `mutation:` line: `AdapterCache` (or a sibling under 500 lines) pins `BoundTokens` per family from a stubbed usage block (Anthropic 10, 200, 3000 gives 510; OpenAI and Gemini at their parameter; compatible the whole count; a missing cached field the whole count); `TurnBudget` pins C5 on a limits class where three scripted cached Anthropic calls pass `MAXTOKENS` at full weight but not at billed weight, and the turn row still records the whole count.
+
 **Acceptance Criteria:**
 
 - **C1 (cache).** Given an Anthropic definition, when a turn makes its first and a later provider call, then each request carries matrix rows 1-2's markers and no other, over the same `tools` array.
 - **C2 (other families).** Given an OpenAI, Gemini or compatible definition, when a turn calls its provider, then the body carries no caching field and reads as before.
 - **C3 (turn budget).** Given a turn whose tool results pass `TURNRESULTMAXLENGTH`, when later replies are answered, then matrix row 4 holds and every earlier message is re-sent unchanged but for the moved tail marker.
-- **C4 (tokens).** Given replies reporting cached usage, when the turn counts its spend, then the turn row's `InputTokens`, which AD-31's bound reads, includes cache writes and reads as matrix row 5 states.
+- **C4 (tokens).** Given replies reporting cached usage, when the turn counts its spend, then the turn row's `InputTokens` and the ledger's request tokens include cache writes and reads as matrix row 5 states.
+- **C5 (bound, Rework 1).** Given replies reporting cached prompt tokens, when `Boundary` checks the turn's spend against `MAXTOKENS`, then Anthropic's cache reads count at 0.1, OpenAI's and Gemini's separately reported cached subsets at their recorded rate, and any other count at full weight.
 - **Integration.** Given `ocupilot-ci` and the `turnprobe` row, when a streamed two-call turn runs through the turn job, then the recorded requests carry C1's markers and the turn row counts cached tokens (C4).
 
 ## Spec Change Log
 
 - 2026-10-12, lead, spec gate (orchestrator rulings): cache reads count at full weight against the 500,000-token turn limit; "trims history" is read as an entry budget, tier 1, because editing an earlier tool result in place breaks the echoed thinking blocks (a 400 on current models) and restarts every family's cache, and Anthropic's context-editing beta is the sanctioned route if earlier results are ever to be cleared; the turn budget is 262,144 characters with each reply's share capped at 65,536. AD-24 and AD-31 amended.
+
+- 2026-10-12, orchestrator ruling (A) on Task 0's figures, superseding full weight: the token bound counts cached prompt tokens at their billed weight (Rework 1, C5); `MAXTOKENS` stays 500,000; AD-31 corrected. Making each call smaller is Story 18.45, split from this story (Rule 5).
 
 ## Review Triage Log
 
@@ -101,7 +111,7 @@ Under `src/OcuPilot/` at `266eee9d`. Epic 20's open diff touches none of these f
   - `[low]` `[reject]` Row 4 is exercised on narrowed limits, the shipped limits only by the parameter's value -- the same code runs on both, and a 262,144-character turn needs four results of 65,536 characters.
   - `[false]` `[reject]` Row 5: no test drives the `MAXTOKENS` boundary with cache fields -- `TurnLimits` pins the boundary on the summed input and output tokens, and `TurnBudget` (a) and `TurnStream` pin the input sum that feeds it.
   - `[low]` `[reject]` The shipped 368-tool array appears only in the armed `TurnStream` test and Task 0 -- the Integration AC is that test by design, and Task 0 measured the shipped array identical across calls, a second turn and processes.
-  - `[low]` `[reject]` Live evidence covers the tool marker only, never the moving tail marker against the real provider -- Task 0 (c) is scoped to two one-call turns; recorded as a residual risk.
+  - `[low]` `[reject]` Live evidence covers the tool marker only, never the moving tail marker against the real provider -- Task 0 (c) is scoped to two one-call turns; closed by QA's live two-call turn (Design Notes).
   - `[false]` `[reject]` Out-of-matrix additions: the `TurnToolsCase` extraction, and AD-24's spine text still awaiting Task 0's figures -- the extraction follows the `StreamCase` precedent and keeps `TurnTools` green (run 672); the spine amendment is the lead's (Rule 20).
 
 ## Design Notes
@@ -186,4 +196,4 @@ Blocking condition: none
 
 **Verification.** On `ocupilot-ci` after a fresh load: `TurnBudget` 3 (run 684), `AdapterCache` 3 (678), `TurnStream` 7 (679), `Adapter` 25 (680), `ScreenGrounding` 16 (681), `TurnTools` 13 (672), `TurnLoop` 11 (673), `Provider` 20 (674), `Ledger` 11 (675), `ToolDispatch` 18 (676, run only), all green; the rest of Task 12's sweep ran green at runs 620-640, before the last test-only edits. `check-objectscript` 0 problems, `lint-docs` 0 issues, secrets scan 0. Seven mutations plus the patch's, each reddened its test and was restored.
 
-**Residual risks.** Task 0's figures are in Design Notes for the lead to close AD-24 and AD-31; at 190,745 tokens a call, a turn makes at most three provider calls under the 500,000-token limit (an owner question). A marker on a later `tool_result` tail is unchecked against the live API (inference: documented as valid). `TurnToolsCase`, `TurnBudget`, `AdapterCache` and `TurnLimitsBudget` are not yet in `ci-timings.json`.
+**Residual risks.** Task 0's figures are in Design Notes for the lead to close AD-24 and AD-31; the three-call consequence is ruled on (Spec Change Log, 2026-10-12, ruling (A)). `TurnToolsCase`, `TurnBudget`, `AdapterCache` and `TurnLimitsBudget` are not yet in `ci-timings.json`.
