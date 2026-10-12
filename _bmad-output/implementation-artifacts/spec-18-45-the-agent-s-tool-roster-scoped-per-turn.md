@@ -2,7 +2,7 @@
 title: 'Story 18.45: The agent''s tool roster scoped per turn'
 type: 'feature'
 created: '2026-10-12'
-status: 'blocked'
+status: 'draft'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -65,6 +65,8 @@ Under `src/OcuPilot/` at `6846375c`. The 18.39 rework is editing `Loop.cls`, `Pr
 - **C3.** Given an advertised tool outside the starting set, when the agent needs it in the turn, then it reaches it by the mechanism the owner accepts, and dispatch answers it exactly as today.
 
 ## Spec Change Log
+
+- 2026-10-12, owner (relayed by the Planner and the orchestrator, feature 3b01d9dd): "A: screen + search (Recommended)" -- the whole answer. As the owner saw it: "Current screen's tools, the general tools and a tool search; every other tool is reachable in the same turn after a search. One extra call when it reaches outside; works with every model, including local ones." Build A as this plan framed it.
 
 ## Review Triage Log
 
