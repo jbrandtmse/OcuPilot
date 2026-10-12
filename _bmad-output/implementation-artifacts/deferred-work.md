@@ -11522,3 +11522,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-20-29-screens-load-on-demand.md | severity: med | fix-risk: med | footprint: in-epic
 - evidence: 20.29 plan prototype on ocupilot-b-ci: initial 1,895,548 B after the change, of which 427,221 B are area stores and actions that register declared Creates before the first change-detection pass
 - 2026-10-12T21:15:28Z status=routed owner=burndown by=lead note=orchestrator 2026-10-12 Q2: no story chartered; the 44 percent smaller initial bundle is the owner's win
+
+### DW-2368: Two comments in ui/src/styles/_components.scss still say ngComponentOutlet renders the page host inside div.ocu-screen-outlet; the router outlet does since Story 20.29
+- source: spec-20-29-screens-load-on-demand.md | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: grep -n ngComponentOutlet ui/src/styles/_components.scss answers :724 and :6053; the file is one Epic 18 edits, and 20.29's Rule 11 authorization covers no edit there
+- 2026-10-12T22:20:03Z status=wontfix-accepted owner=20-29-screens-load-on-demand by=lead note=reopen_if=a story edits either selector's rule block in _components.scss; that story corrects the comment in the same edit
