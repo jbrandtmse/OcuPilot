@@ -667,6 +667,10 @@ services:
       # It also creates and removes the OCUPROBEECPR remote database configuration on an OCUPROBEECP*
       # ECP data server, configuration only and never contacted (Story 18.20).
       # classes: EcpDataServerWrite
+      # It also creates and removes the OCUPROBE2028D database, with its %DB_OCUPROBE2028D resource, its
+      # <mgr>ocuprobe2028d directory and the OCUPROBE2028N namespace, and compiles the shipped classes there
+      # (Story 20.28).
+      # classes: CompileWithoutInterop
       OCUPILOT_ALLOW_DATABASE_CONFIG: "1"
       # Switches this instance's journal file and journal directory through the shipped screen and
       # confirm paths, and seeds an alternate journal directory to switch into. Its own variable

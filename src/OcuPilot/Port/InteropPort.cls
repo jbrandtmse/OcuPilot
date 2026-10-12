@@ -1,5 +1,3 @@
-Include Ensemble
-
 /// <p>The port to the instance's interoperability runtime (AD-62, AD-29, AD-52, Stories 20.2, 20.3, 20.5, 20.6 and 20.23): <b>the
 /// only product class that starts, stops, restarts, updates or recovers a production, enables, disables,
 /// adds or removes one of its items, aborts a queued message, a queue's messages or a job's retried message,
@@ -1534,8 +1532,10 @@ ClassMethod ReadItem(pNamespace As %String, pProduction As %String, pName As %St
 }
 
 /// <p>The in-memory item of <var>pProduction</var> named exactly <var>pName</var>, or <code>""</code>.
+/// <var>pProduction</var> is an <code>Ens.Config.Production</code> and the item an <code>Ens.Config.Item</code>, typed
+/// <code>%RegisteredObject</code> so the class compiles where interoperability is not enabled (AD-62 item 12).
 /// Called while the production's namespace is switched; only vendor classes run.</p>
-ClassMethod ItemObject(pProduction As Ens.Config.Production, pName As %String) As Ens.Config.Item [ Private ]
+ClassMethod ItemObject(pProduction As %RegisteredObject, pName As %String) As %RegisteredObject [ Private ]
 {
     Set tFound = ""
     For tI = 1:1:pProduction.Items.Count() {
@@ -2297,7 +2297,7 @@ ClassMethod SettingViolations(pNamespace As %String, pProduction As %String, pIt
 /// (<code>SaveToClass</code>). <code>vendor</code>, <code>audit</code> and <code>save</code> are the three statuses;
 /// <code>after</code> and <code>afterCount</code> are the setting's line and its item count once saved.</li>
 /// </ul>
-ClassMethod SettingStep(pNamespace As %String, pType As %String, pProduction As %String, pItem As %String, pTarget As %String, pName As %String, pBody As %DynamicObject, pOrigNS As %String, pLocked As Ens.Config.Production, Output pStep) [ Private ]
+ClassMethod SettingStep(pNamespace As %String, pType As %String, pProduction As %String, pItem As %String, pTarget As %String, pName As %String, pBody As %DynamicObject, pOrigNS As %String, pLocked As %RegisteredObject, Output pStep) [ Private ]
 {
     Kill pStep
     Set pStep("absent") = 0
@@ -2860,9 +2860,10 @@ ClassMethod ListQueues(pNamespace As %String, pMax As %Integer, Output pRows As 
 /// <p>The queue an item's messages wait in, and the target that tells them apart from the other messages of that
 /// queue (Story 20.4). A business process of pool size 0 shares <parameter>ACTORQUEUE</parameter> with the others of
 /// its kind, so its queue is that one and <var>pTarget</var> is the item's name; any other item's is
-/// <code>Ens.Config.Item.QueueName()</code> and <var>pTarget</var> is <code>""</code>. Called while the
-/// production's namespace is switched; only vendor classes run.</p>
-ClassMethod ItemQueueName(pItem As Ens.Config.Item, Output pTarget As %String) As %String
+/// <code>Ens.Config.Item.QueueName()</code> and <var>pTarget</var> is <code>""</code>. <var>pItem</var> is an
+/// <code>Ens.Config.Item</code>, typed <code>%RegisteredObject</code> so the class compiles where interoperability is not
+/// enabled (AD-62 item 12). Called while the production's namespace is switched; only vendor classes run.</p>
+ClassMethod ItemQueueName(pItem As %RegisteredObject, Output pTarget As %String) As %String
 {
     Set pTarget = ""
     If (pItem.BusinessType() = 2) && (+pItem.PoolSize = 0) {
@@ -5303,7 +5304,9 @@ ClassMethod BuildTestRequestHere(pRequestClass As %String, ByRef pPlan, Output p
 /// <code>waiting</code>), then for an error its <code>error</code> text, for a response <code>responseClass</code> and either its
 /// text (<code>document</code>) or its fields (<code>field(n)</code>, <code>$ListBuild(path, value)</code>). A finished session's
 /// node is killed, as the classic dialog kills it once it has drawn the answer; a session still waiting is left for the vendor's
-/// own cleanup. Called while the production's namespace is switched, and inside the output capture.</p>
+/// own cleanup. It names the vendor's <code>^IRIS.Temp.EnsRuntimeAppData</code> node directly, because the include file that
+/// defines its macro does not exist where interoperability is not enabled (AD-62 item 12). Called while the production's
+/// namespace is switched, and inside the output capture.</p>
 ClassMethod AwaitTestHere(pSession As %String, Output pAnswer) [ Private ]
 {
     Kill pAnswer
@@ -5313,20 +5316,20 @@ ClassMethod AwaitTestHere(pSession As %String, Output pAnswer) [ Private ]
     Set tDeadline = $ZHorolog + ..TestWait()
     Set tAnswered = 0
     For {
-        If $Data($$$EnsRuntimeAppData(..#TESTSERVICE, pSession, "response")) Set tAnswered = 1 Quit
+        If $Data(^IRIS.Temp.EnsRuntimeAppData($Namespace, ..#TESTSERVICE, pSession, "response")) Set tAnswered = 1 Quit
         If $ZHorolog >= tDeadline Quit
         Hang ..#TESTPOLL
     }
-    Set tState = $Select(tAnswered: $Get($$$EnsRuntimeAppData(..#TESTSERVICE, pSession)), 1: "")
+    Set tState = $Select(tAnswered: $Get(^IRIS.Temp.EnsRuntimeAppData($Namespace, ..#TESTSERVICE, pSession)), 1: "")
     If tState = "Error" {
         Set pAnswer("status") = "error"
-        Set tError = $Get($$$EnsRuntimeAppData(..#TESTSERVICE, pSession, "error"))
+        Set tError = $Get(^IRIS.Temp.EnsRuntimeAppData($Namespace, ..#TESTSERVICE, pSession, "error"))
         Set pAnswer("error") = $Select(tError = "": "", 1: $System.Status.GetErrorText(tError))
     } ElseIf tState = "Done" {
         Set pAnswer("status") = "done"
-        Do ..CollectResponseHere($Get($$$EnsRuntimeAppData(..#TESTSERVICE, pSession, "response")), .pAnswer)
+        Do ..CollectResponseHere($Get(^IRIS.Temp.EnsRuntimeAppData($Namespace, ..#TESTSERVICE, pSession, "response")), .pAnswer)
     }
-    If (tState = "Done") || (tState = "Error") Kill $$$EnsRuntimeAppData(..#TESTSERVICE, pSession)
+    If (tState = "Done") || (tState = "Error") Kill ^IRIS.Temp.EnsRuntimeAppData($Namespace, ..#TESTSERVICE, pSession)
 }
 
 /// <p>Open the response <var>pSpec</var> names (<code>$ListBuild(class, id)</code>, the vendor's own record) and gather it into

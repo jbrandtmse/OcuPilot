@@ -12,6 +12,10 @@ Include %occErrors
 Class OcuPilot.Test.ProbeApps Extends %RegisteredObject
 {
 
+/// <p>The probe class that <class>OcuPilot.Test.CompileWithoutInterop</class> creates its namespace and
+/// database through.</p>
+Parameter COMPILEPROBE = "OcuPilot.Test.CompileWithoutInteropProbe";
+
 /// <p>Every probe application path the roster declares, as a <code>$List</code>, in the
 /// roster's own order, with <var>pRoles</var>(path) set to that application's probe matching
 /// role, or <code>""</code> when it declares none. A roster key that cannot be read or carries no
@@ -36,8 +40,9 @@ ClassMethod Paths(Output pRoles) As %List
     Quit tPaths
 }
 
-/// <p>The probe application paths that exist on this instance, space-separated, or
-/// <code>""</code>. A failed existence check, whether it raises or answers with any status other
+/// <p>The probe application paths that exist on this instance, space-separated, followed by the
+/// <code>OCUPROBE2028</code> objects <method>CompileProbeLeftovers</method> names, or <code>""</code>.
+/// A failed existence check, whether it raises or answers with any status other
 /// than "does not exist", is answered as <code>error: &lt;text&gt;</code>, never as
 /// <code>""</code>, so a caller cannot read "could not tell" as "none".</p>
 ClassMethod Existing() As %String
@@ -62,7 +67,38 @@ ClassMethod Existing() As %String
         Set $NAMESPACE = tOrigNS
         Set tExisting = "error: " _ ex.DisplayString()
     }
+    If $Extract(tExisting, 1, 6) '= "error:" {
+        Set tCompileProbe = ..CompileProbeLeftovers()
+        Set tExisting = $Select($Extract(tCompileProbe, 1, 6) = "error:": tCompileProbe, 1: tExisting _ tCompileProbe)
+    }
     Quit $ZStrip(tExisting, "<W")
+}
+
+/// <p>The namespace, database and directory of <parameter>COMPILEPROBE</parameter> that exist on this
+/// instance, each as a space-led token naming its kind (<code>namespace:&lt;name&gt;</code>,
+/// <code>database:&lt;name&gt;</code>, <code>directory:&lt;leaf&gt;</code>), or <code>""</code>. A failed
+/// check is answered <code>error: &lt;text&gt;</code>, never as <code>""</code>. Each is looked up by its
+/// exact name, so a surviving one reads as a probe leftover to the CI runner's after-class check.</p>
+ClassMethod CompileProbeLeftovers() As %String
+{
+    Set tProbe = ..#COMPILEPROBE
+    Set tNamespace = $Parameter(tProbe, "NAMESPACENAME")
+    Set tDatabase = $Parameter(tProbe, "LOCALNAME")
+    Set tLeaf = $Parameter(tProbe, "DIRPREFIX") _ $ZConvert($Extract(tDatabase, $Length($Parameter(tProbe, "PREFIX")) + 1, *), "L")
+    Set tDirectory = $ClassMethod(tProbe, "Manager") _ tLeaf _ "/"
+    Set tFound = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = "%SYS"
+        If ##class(Config.Namespaces).Exists(tNamespace) Set tFound = tFound _ " namespace:" _ tNamespace
+        If ##class(Config.Databases).Exists(tDatabase) Set tFound = tFound _ " database:" _ tDatabase
+        If ##class(%File).DirectoryExists(tDirectory) Set tFound = tFound _ " directory:" _ tLeaf
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tFound = "error: " _ ex.DisplayString()
+    }
+    Quit tFound
 }
 
 /// <p>Uninstall the probe profile, then remove every probe application the roster declares
