@@ -46,6 +46,10 @@ Parameter PROBEREADINESS As %String = "/api/probeocupilot/readiness";
 /// <p>The probe profile's shell path.</p>
 Parameter PROBESHELL As %String = "/probeocupilot";
 
+/// <p>The path of the application <method>TestUninstallKeepsAMatchingRoleAnotherApplicationCarries</method>
+/// creates to carry a probe role. <method>CleanProbe</method> removes it.</p>
+Parameter MATCHROLEAPP As %String = "/csp/ocuprobe1843";
+
 /// <p>A dispatch class that is not the one the roster declares for any OcuPilot application --
 /// what "somebody else's application" looks like. <class>%CSP.REST</class> itself, so the
 /// application this class creates is a real, loadable one rather than a broken stub.</p>
@@ -72,13 +76,15 @@ Method OnAfterOneTest() As %Status
 /// name here, and its record with it, by <method>OcuPilot.Test.ProbeApps.Remove</method>.</p>
 Method CleanProbe() As %Status
 {
+    If ..ApplicationDispatchClass(..#MATCHROLEAPP) '= "" Do ..DeleteApplication(..#MATCHROLEAPP)
     Quit ##class(OcuPilot.Test.ProbeApps).Remove()
 }
 
 /// <p>Create a web application at <var>pPath</var> dispatching to
 /// <parameter>FOREIGNCLASS</parameter> -- an application OcuPilot did not create and has no
-/// record of. Switches to <code>%SYS</code> and restores (AD-16).</p>
-Method CreateForeignApplication(pPath As %String) As %Status
+/// record of -- carrying <var>pMatchRoles</var> in its <code>MatchRoles</code> when given.
+/// Switches to <code>%SYS</code> and restores (AD-16).</p>
+Method CreateForeignApplication(pPath As %String, pMatchRoles As %String = "") As %Status
 {
     Set tSC = $$$OK
     Set tOrigNS = $NAMESPACE
@@ -92,6 +98,7 @@ Method CreateForeignApplication(pPath As %String) As %Status
         Set tCreate("NameSpace") = tOrigNS
         Set tCreate("Type") = 2
         Set tCreate("Description") = "Not OcuPilot's: a fixture standing in for another product's application"
+        If pMatchRoles '= "" Set tCreate("MatchRoles") = pMatchRoles
         Set tSC = ##class(Security.Applications).Create(pPath, .tCreate)
     } Catch ex {
         Set $NAMESPACE = tOrigNS
@@ -234,8 +241,7 @@ Method TestUninstallRemovesOnlyWhatInstallCreatedAndReportsTheRest()
 /// removing the role of an application this run deliberately kept would take that application's
 /// AD-21 privilege floor with it: an anonymous caller would then be refused 403 before the
 /// dispatch class runs (inference). "Left in place and reported" has to mean still working.</p>
-/// <p>Mutation (Rule 19): drop the compound guard
-/// <code>If '$Data(tRemovedKeys(tRKey)), ...Exists(...) Continue</code> from
+/// <p>Mutation (Rule 19): drop the <code>tInUse</code> guard from
 /// <method>OcuPilot.Install.Installer.Uninstall</method>'s role loop -> the kept application's
 /// <code>MatchRoles</code> comes back empty and this goes red.</p>
 Method TestUninstallLeavesAKeptApplicationsPrivilegeFloorIntact()
@@ -255,9 +261,9 @@ Method TestUninstallLeavesAKeptApplicationsPrivilegeFloorIntact()
 /// <p>The uninstall preview lists exactly the matching roles the confirmed run deletes: the role of
 /// an application that is gone, record and all, is listed, and the role of an application left in
 /// place is not.</p>
-/// <p>Mutation (Rule 19): restore the <code>'$Data(tRecorded(tUName))</code> filter on the preview's
-/// role list in <method>OcuPilot.Install.Installer.Uninstall</method> -> the absent application's
-/// role is left out of the preview and this goes red.</p>
+/// <p>Mutation (Rule 19): drop the <code>tInUse</code> guard from the preview's role list in
+/// <method>OcuPilot.Install.Installer.Uninstall</method> -> the kept application's role is listed
+/// and this goes red.</p>
 Method TestThePreviewListsTheRolesTheConfirmedRunDeletes()
 {
     Do $$$AssertStatusOK(##class(OcuPilot.Install.Installer).Install("probe"), "a probe install succeeds")
@@ -278,6 +284,85 @@ Method TestThePreviewListsTheRolesTheConfirmedRunDeletes()
     Do $$$AssertStatusOK(##class(OcuPilot.Install.Installer).Uninstall("probe", 1), "the confirmed uninstall succeeds")
     Do $$$AssertTrue('..RoleExists(tGoneRole), "and deletes the role the preview named")
     Do $$$AssertTrue(..RoleExists(tKeptRole), "and keeps the one it did not")
+}
+
+/// <p>The shell's bundle directory is what the shell application serves from, so uninstall keeps
+/// it, names it in the left-in-place warn and leaves it out of the preview while an application
+/// sits at the shell's path that uninstall keeps; while the application is recorded, the preview
+/// lists the directory and the confirmed run removes it. Removing the kept application by hand
+/// leaves the directory for the next uninstall or for
+/// <method>OcuPilot.Test.ProbeApps.Remove</method>.</p>
+/// <p>Mutation (Rule 19): make the directory removal in
+/// <method>OcuPilot.Install.Installer.Uninstall</method> unconditional -> the kept-directory
+/// assertions go red; make the preview list the directory always -> its preview leg goes red.</p>
+Method TestUninstallKeepsTheBundleDirectoryOfAKeptShellApplication()
+{
+    Do $$$AssertStatusOK(##class(OcuPilot.Install.Installer).Install("probe"), "a probe install succeeds")
+    Set tDir = ##class(OcuPilot.Test.ProbeApps).ShellDirectory()
+    Do $$$AssertTrue((tDir '= "") && ##class(%File).DirectoryExists(tDir), "the shell bundle directory exists after install: " _ tDir)
+
+    Set tPreview = $System.Status.GetErrorText(##class(OcuPilot.Install.Installer).Uninstall("probe", 0))
+    Do $$$AssertTrue(tPreview [ ("the shell bundle directory " _ tDir), "while the shell application is recorded the preview lists the directory: " _ tPreview)
+
+    ; Forget the shell's record, leaving the application: uninstall has no evidence it created it.
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.WebApp).DeleteByPath(..#PROBESHELL), "the shell record is removed, the application is not")
+    Set tPreview = $System.Status.GetErrorText(##class(OcuPilot.Install.Installer).Uninstall("probe", 0))
+    Do $$$AssertTrue((tPreview [ "would destroy") && '(tPreview [ "the shell bundle directory"), "with the shell application kept the preview still lists the rest and leaves the directory out: " _ tPreview)
+
+    Do ##class(OcuPilot.Test.InstallerProbe).Clear()
+    Set tSC = ##class(OcuPilot.Test.InstallerProbe).Uninstall("probe", 1)
+    Set tWarns = ##class(OcuPilot.Test.InstallerProbe).CapturedAllWithData("warn")
+    Do ##class(OcuPilot.Test.InstallerProbe).Clear()
+
+    Do $$$AssertStatusOK(tSC, "uninstall succeeds: " _ $System.Status.GetErrorText(tSC))
+    Do $$$AssertEquals(..ApplicationDispatchClass(..#PROBESHELL), "OcuPilot.Api.StaticHandler", "the unrecorded shell application is left in place")
+    Do $$$AssertTrue(##class(%File).DirectoryExists(tDir), "and so is the directory it serves from")
+    Do $$$AssertTrue(tWarns [ ("the shell bundle directory " _ tDir _ " in place"), "the left-in-place warn names the directory")
+    Do $$$AssertTrue(tWarns [ "delete the directory by hand", "and the remedy")
+
+    Do $$$AssertStatusOK(..CleanProbe(), "clean-up removes the application")
+    Do $$$AssertTrue('##class(%File).DirectoryExists(tDir), "and the directory with it")
+}
+
+/// <p>A roster matching role stays while a web application outside OcuPilot's roster carries it
+/// (deleting a role strips it from every application that matches it), and the warn names the
+/// role with that application and the remedy; once that application is gone a later uninstall
+/// removes the role. The recorded shell application and its bundle directory go as before.</p>
+/// <p>Mutation (Rule 19): restore the roster-path-only check in the role loop of
+/// <method>OcuPilot.Install.Installer.Uninstall</method> (keep a role only while an application
+/// sits at its own roster path) -> the role is deleted, the other application's
+/// <code>MatchRoles</code> comes back empty and this goes red.</p>
+Method TestUninstallKeepsAMatchingRoleAnotherApplicationCarries()
+{
+    Do $$$AssertStatusOK(##class(OcuPilot.Install.Installer).Install("probe"), "a probe install succeeds")
+    Set tRole = $Piece(..MatchRolesOf(..#PROBESHELL), ":", 2)
+    Do $$$AssertTrue(tRole '= "", "the shell application carries a matching role: " _ tRole)
+    Set tDir = ##class(OcuPilot.Test.ProbeApps).ShellDirectory()
+    If ..ApplicationDispatchClass(..#MATCHROLEAPP) '= "" Do ..DeleteApplication(..#MATCHROLEAPP)
+
+    Try {
+        Do $$$AssertStatusOK(..CreateForeignApplication(..#MATCHROLEAPP, ":" _ tRole), "an application outside OcuPilot's roster carries that role")
+        Do ##class(OcuPilot.Test.InstallerProbe).Clear()
+        Set tSC = ##class(OcuPilot.Test.InstallerProbe).Uninstall("probe", 1)
+        Set tWarns = ##class(OcuPilot.Test.InstallerProbe).CapturedAllWithData("warn")
+        Do ##class(OcuPilot.Test.InstallerProbe).Clear()
+
+        Do $$$AssertStatusOK(tSC, "uninstall succeeds: " _ $System.Status.GetErrorText(tSC))
+        Do $$$AssertEquals(..ApplicationDispatchClass(..#PROBESHELL), "", "the recorded shell application is removed")
+        Do $$$AssertTrue('##class(%File).DirectoryExists(tDir), "and so is its bundle directory")
+        Do $$$AssertTrue(..RoleExists(tRole), "the role stays")
+        Do $$$AssertEquals(..MatchRolesOf(..#MATCHROLEAPP), ":" _ tRole, "and the other application still carries it")
+        Do $$$AssertTrue((tWarns [ tRole) && (tWarns [ ..#MATCHROLEAPP), "the warn names the role and the application that carries it")
+        Do $$$AssertTrue(tWarns [ "then delete the role", "and the remedy")
+
+        Do $$$AssertStatusOK(..DeleteApplication(..#MATCHROLEAPP), "the application that carried the role is removed")
+        Do $$$AssertStatusOK(##class(OcuPilot.Install.Installer).Uninstall("probe", 1), "a later uninstall succeeds")
+        Do $$$AssertTrue('..RoleExists(tRole), "and removes the role nothing carries")
+    } Catch ex {
+        Do ..DeleteApplication(..#MATCHROLEAPP)
+        Throw ex
+    }
+    If ..ApplicationDispatchClass(..#MATCHROLEAPP) '= "" Do ..DeleteApplication(..#MATCHROLEAPP)
 }
 
 /// <p>Delete the web application at <var>pPath</var>. Switches to <code>%SYS</code> and restores

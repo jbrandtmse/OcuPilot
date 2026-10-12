@@ -214,7 +214,10 @@ class dictionary and reads every table's grant back, failing at `EnsureSqlPrivil
 not take. The grant is idempotent, so a repeat install changes nothing, but it does mean the
 installing account needs `GRANT` on that schema: install fails loudly rather than leaving the gate
 wedged. `Uninstall` issues no matching
-revoke — the grantee is the protected database's own role, which uninstall removes.
+revoke — the grantee is the protected database's own role, which uninstall removes. Install also
+reads the instance's SQL privilege catalog and warns, once, naming every other grantee (a role, a
+user or `_PUBLIC`) that holds a grant on OcuPilot's schema or tables; it never refuses or revokes
+one, and OcuPilot's own tools refuse to either, so revoke it with SQL `REVOKE` or the classic portal.
 
 Install does not wait for the demo task fixture (`OcuPilotDemo nightly purge`). It schedules the
 task and asks the Task Manager for one run, and the Task Manager runs it at its next once-a-minute
@@ -338,7 +341,10 @@ it dispatches to the class the roster declares. Anything else at one of those pa
 else's, and install refuses naming the path, the class the roster declares and the class it
 found, creating and repairing nothing. `Uninstall` is the other half: it removes only what the
 record says install created, and reports anything else it finds at those paths rather than
-deleting it.
+deleting it. It also keeps the shell's bundle directory while an application sits at the shell's
+path and a matching role while a surviving application's `MatchRoles` names it, naming each in a
+warn, and it refuses, removing nothing, when it cannot read the record while the profile's routine
+application exists (run `Install` with no profile, then `Uninstall` again).
 
 **Two things an API caller needs.** Read on that same database, or the framework's own
 `%CSP.REST.AccessCheck` refuses the request before any OcuPilot code runs and answers a bare `403`
@@ -598,7 +604,11 @@ Three things follow from that single entry point, and each is deliberate:
   release left with two can be upgraded or uninstalled from either. The manifest runs these
   checks in a guard `<Invoke>` after `Compile`, because IPM updates a module's web applications at
   the start of `Activate` and would otherwise re-point the live ones before the install's own
-  `<Invoke>` could refuse.
+  `<Invoke>` could refuse. A refused `zpm load` still leaves the module registered in that
+  namespace, and `zpm uninstall ocupilot` there would delete the live web applications and the
+  client files (IPM removes them in its `Clean` phase, ahead of any `<Invoke>`, so no guard can
+  intercept it; measured on IPM 0.10.5): remove the registration instead, in that namespace, with
+  `##class(%IPM.Storage.Module).NameDelete("ocupilot")`.
 - **An IPM install never unexpires an account.** The `<Invoke>` carries no `<Arg>`, so
   `Install()`'s `pUnexpire` keeps its `0` default. A fresh Community instance expires `_SYSTEM`
   on first login and the container start path clears that; on an instance reached through IPM an

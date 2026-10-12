@@ -3086,6 +3086,44 @@ ClassMethod RoleNamesIn(pMatchRoles As %String) As %List [ Private ]
     Quit tNames
 }
 
+/// <p>The roles every web application on the instance carries, except the applications named in
+/// <var>pExcept</var> (<code>pExcept(&lt;path&gt;)</code>): <var>pRoles</var>(&lt;role name,
+/// upper-cased&gt;) is the comma-separated applications whose <code>MatchRoles</code> mention it,
+/// in <method>RoleNamesIn</method>'s reading. <method>Uninstall</method> keeps a role this names,
+/// because deleting a role strips it from every application that matches it.</p>
+/// <p>Reads <code>MatchRoles</code> as <code>Security.Applications.Get</code> answers it, one
+/// application at a time: the <code>Detail</code> query splits the same property across two
+/// columns and leaves an unconditional entry (<code>:Role</code>) in <code>AddedRoles</code>.
+/// Answers the failing status when an application cannot be read, so "could not tell" is never
+/// read as "no application carries it".</p>
+/// <p><b>Caller contract:</b> <code>$NAMESPACE</code> must already be <code>%SYS</code>.</p>
+ClassMethod RolesInUse(ByRef pExcept, Output pRoles) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Kill pRoles
+    Try {
+        Set tRS = ##class(%ResultSet).%New("Security.Applications:List")
+        Set tSC = tRS.Execute("*", "", "")
+        If $$$ISERR(tSC) Quit
+        While tRS.Next() {
+            Set tApp = tRS.Get("Name")
+            If (tApp = "") || $Data(pExcept(tApp)) Continue
+            If '##class(Security.Applications).Exists(tApp, .tObj, .tExistSC) Continue
+            Set tSC = ##class(Security.Applications).Get(tApp, .tProps)
+            If $$$ISERR(tSC) Quit
+            Set tRoles = ..RoleNamesIn($Get(tProps("MatchRoles")))
+            For tI = 1:1:$ListLength(tRoles) {
+                Set tKey = $ZConvert($List(tRoles, tI), "U")
+                Set pRoles(tKey) = $Get(pRoles(tKey)) _ $Select($Data(pRoles(tKey)): ", ", 1: "") _ tApp
+            }
+        }
+        Do tRS.Close()
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
 /// <p>Ensure exactly one global mapping <code>&lt;prefix&gt;*</code> targeting the
 /// profile's database (AC3). Never a package or routine mapping -- OcuPilot's code stays
 /// in the install namespace's normal database (AD-9).</p>
@@ -3709,11 +3747,128 @@ ClassMethod EnsureSqlPrivileges(pInstallNs As %String, ByRef pReports) As %Statu
             If $$$ISERR(tSC) Quit
         }
         If $$$ISERR(tSC) Quit
+        Do ..ReportWidenedGrants(pInstallNs, .tTables, .pReports)
         Do ..Report(.pReports, "info", "Granted OcuPilot's protected schema to the escalation role and read every table's grant back", {"tables": (tHeld), "role": (tRole)})
     } Catch ex {
         Set tSC = ex.AsStatus()
     }
     Quit tSC
+}
+
+/// <p>Warn, once, naming every grant on OcuPilot's protected schemas that a grantee other than the
+/// escalation role (<parameter>OcuPilot.Kernel.State.Base.DBRESOURCE</parameter>) holds in
+/// <var>pInstallNs</var>: <code>{grantee, object, privileges}</code> for each. A grant there lets
+/// that grantee read or change OcuPilot's own tables through SQL, which AD-9 keeps to the escalation
+/// role. Install keeps every one: a refusal would leave OcuPilot stopped over someone else's grant,
+/// and a revoke would undo a grant OcuPilot did not make (AD-37, AD-38). OcuPilot's own tools refuse
+/// to revoke it too (<code>PROHIBITED.OCUPILOTSQLPRIVILEGE</code>), so the warn names the remedy: a
+/// SQL <code>REVOKE</code> or the classic portal. Reports nothing when no such grant exists.</p>
+/// <p>Reads <code>Security.SQLPrivileges:List</code> in one <code>%SYS</code> window (AD-16). The
+/// catalog lists a grant on the schema (<code>5,&lt;SCHEMA&gt;</code>), on a table
+/// (<code>1,&lt;schema&gt;.&lt;table&gt;</code>) and on one column of a table
+/// (<code>1,&lt;schema&gt;.&lt;table&gt;.&lt;column&gt;</code>), each by grantee and privilege
+/// letter; it does not list who holds a role or <code>%All</code>, so a user who holds a role that
+/// was granted the schema is reported as the role, and a holder of <code>%All</code> not at all.
+/// Names compare case-insensitively. A catalog that cannot be read is one warn. Always answers
+/// <code>$$$OK</code>: detection never fails install.</p>
+/// <p><b>Caller contract:</b> <code>$NAMESPACE</code> is the install namespace
+/// <var>pInstallNs</var>; <var>pTables</var> is <method>StateTables</method>' answer.</p>
+ClassMethod ReportWidenedGrants(pInstallNs As %String, ByRef pTables, ByRef pReports) As %Status [ Private ]
+{
+    Set tOrigNS = $NAMESPACE
+    Set tFailure = ""
+    Kill tGrants
+    Try {
+        ; Everything that needs an OcuPilot class is resolved before the switch: %SYS cannot see them.
+        Set tEscalation = $ZConvert(##class(OcuPilot.Kernel.State.Base).#DBRESOURCE, "U")
+        Set tNamespace = $ZConvert(pInstallNs, "U")
+        Set tQuery = ..SqlPrivilegeQuery()
+        Kill tSchemas, tTables
+        Set tSchema = ""
+        For {
+            Set tSchema = $Order(pTables(tSchema))
+            If tSchema = "" Quit
+            Set tSchemas($ZConvert(tSchema, "U")) = ""
+            Set tTable = ""
+            For {
+                Set tTable = $Order(pTables(tSchema, tTable))
+                If tTable = "" Quit
+                Set tTables($ZConvert(tTable, "U")) = ""
+            }
+        }
+        Set tSC = ##class(OcuPilot.Kernel.Utils).SwitchNamespace("%SYS", .tOrigNS)
+        If $$$ISERR(tSC) {
+            Set tFailure = $System.Status.GetErrorText(tSC)
+            Quit
+        }
+        Set tRS = ##class(%ResultSet).%New(tQuery)
+        Set tSC = tRS.Execute()
+        If $$$ISERR(tSC) {
+            Set tFailure = $System.Status.GetErrorText(tSC)
+            Quit
+        }
+        While tRS.Next() {
+            If $ZConvert(tRS.Get("Namespace"), "U") '= tNamespace Continue
+            Set tGrantee = tRS.Get("Grantee")
+            If $ZConvert(tGrantee, "U") = tEscalation Continue
+            Set tObject = tRS.Get("SQLObject")
+            Set tName = $ZConvert($Piece(tObject, ",", 2, *), "U")
+            Set tKind = ""
+            If $Piece(tObject, ",", 1) = 5 {
+                If $Data(tSchemas(tName)) Set tKind = "schema"
+            } ElseIf $Piece(tObject, ",", 1) = 1 {
+                If $Data(tTables(tName)) {
+                    Set tKind = "table"
+                } Else {
+                    ; A column's object is its table's name and the column: <schema>.<table>.<column>.
+                    Set tOwner = $Piece(tName, ".", 1, *-1)
+                    If $Data(tTables(tOwner)) Set tKind = "column"
+                }
+            }
+            If tKind = "" Continue
+            Set tGrants(tGrantee, tKind _ " " _ $Piece(tObject, ",", 2, *), tRS.Get("Privilege")) = ""
+        }
+        Do tRS.Close()
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tFailure = ex.DisplayString()
+    }
+    Set $NAMESPACE = tOrigNS
+    If tFailure '= "" {
+        Do ..Report(.pReports, "warn", "OcuPilot's protected schema could not be checked for grants held by other grantees (it could not read the SQL privilege catalog), so any such grant is not reported", {"reason": (tFailure)})
+        Quit $$$OK
+    }
+    Set tText = ""
+    Set tList = []
+    Set tGrantee = ""
+    For {
+        Set tGrantee = $Order(tGrants(tGrantee))
+        If tGrantee = "" Quit
+        Set tObject = ""
+        For {
+            Set tObject = $Order(tGrants(tGrantee, tObject))
+            If tObject = "" Quit
+            Set tPrivileges = ""
+            Set tLetter = ""
+            For {
+                Set tLetter = $Order(tGrants(tGrantee, tObject, tLetter))
+                If tLetter = "" Quit
+                Set tPrivileges = tPrivileges _ $Select(tPrivileges = "": "", 1: ",") _ $Case(tLetter, "s": "SELECT", "i": "INSERT", "u": "UPDATE", "d": "DELETE", : tLetter)
+            }
+            Set tText = tText _ $Select(tText = "": "", 1: "; ") _ tGrantee _ " " _ tPrivileges _ " on " _ tObject
+            Do tList.%Push({"grantee": (tGrantee), "object": (tObject), "privileges": (tPrivileges)})
+        }
+    }
+    If tText = "" Quit $$$OK
+    Do ..Report(.pReports, "warn", "Grants on OcuPilot's protected schema are held by a grantee other than its escalation role: " _ tText _ ". Install keeps them and never revokes a grant it did not make. Revoke each with SQL (REVOKE) or the classic portal; OcuPilot's own tools refuse it (PROHIBITED.OCUPILOTSQLPRIVILEGE).", {"grants": (tList)})
+    Quit $$$OK
+}
+
+/// <p>The class query <method>ReportWidenedGrants</method> reads the SQL privilege catalog through.
+/// A seam: <class>OcuPilot.Test.InstallerProbe</class> overrides it; production never does.</p>
+ClassMethod SqlPrivilegeQuery() As %String
+{
+    Quit "Security.SQLPrivileges:List"
 }
 
 /// <p>OcuPilot's protected tables, derived from <class>%Dictionary.CompiledClass</class>: every
@@ -4021,17 +4176,24 @@ ClassMethod AnyObjectExists(ByRef pNames, pInstallNs As %String) As %Boolean [ P
 /// <p>Remove every object <var>pProfile</var> owns: <b>first</b> the opt-in demo fixture
 /// set through <class>OcuPilot.Install.Fixture</class> (AD-25) -- read from this profile's
 /// <class>OcuPilot.Kernel.State.Demo</class> inventory while it and its escalation route
-/// still exist -- <b>then</b> the two web applications, the shell's matching role and its
-/// bundle directory, the mapping, the privileged routine application, the
-/// administrative role and resource, the database's guarding resource, the database
-/// itself (config entry, <code>IRIS.DAT</code> and directory), the audit event, and the
-/// outbound TLS configuration.
+/// still exist -- <b>then</b> the web applications install recorded, their matching roles
+/// and the shell's bundle directory (the three rules below), the mapping, the privileged
+/// routine application, the administrative role and resource, the database's guarding
+/// resource, the database itself (config entry, <code>IRIS.DAT</code> and directory), the
+/// audit event, and the outbound TLS configuration.
 /// <b>This order is load-bearing</b> (review finding, HIGH): fixture removal used to run
 /// last, by which point the mapping and database it needs to read
 /// <class>OcuPilot.Kernel.State.Demo</class> through were already gone, silently
 /// orphaning every production fixture. Absent objects are never an error; without
 /// <var>pConfirmDataLoss</var> the method changes nothing (including the fixtures) and
 /// names what it would have destroyed.</p>
+/// <p><b>It keeps what a surviving application still uses, and refuses when it cannot tell
+/// what install created (AD-37).</b> The shell bundle directory stays while an application
+/// sits at the shell's path. A roster matching role stays while a surviving application's
+/// <code>MatchRoles</code> names it, because deleting a role strips it from every
+/// application that matches it. Each object kept is named in a warn with its remedy. When
+/// the provenance record cannot be read while the profile's privileged routine application
+/// exists, the method removes nothing and returns an error.</p>
 /// <p><b>It stops before the database while any of this profile's fixture inventory rows
 /// remains (DW-65, the owner's decision, rework iteration 6).</b> Only this profile's rows
 /// are read: a production uninstall does not look at rows another profile left in the same
@@ -4157,24 +4319,44 @@ ClassMethod Uninstall(pProfile As %String = "", pConfirmDataLoss As %Boolean = 0
             Do ..LogWarn("Could not determine whether this profile's demo fixture inventory has any rows -- treating fixtures as present so Uninstall does not silently skip removal", {"profile": (pProfile), "error": ($System.Status.GetErrorText(tFixtureIdsSC))})
         }
 
-        ; DW-94: which of this profile's applications install actually created or recognised.
-        ; Read here, in the install namespace, for the same reason the fixture inventory above
-        ; is: OcuPilot.Kernel.State.WebApp is compiled only here. An unreadable record leaves
-        ; the set empty, which removes no application at all and reports each one instead --
-        ; the safe direction, since removing an application nobody recorded is the thing DW-94
-        ; exists to stop.
-        Kill tRecorded
-        Set tProvSC = ##class(OcuPilot.Kernel.State.WebApp).GuardedPathsForProfile(pProfile, .tRecorded)
-        If $$$ISERR(tProvSC) {
-            Do ..LogWarn("Could not read this profile's web-application provenance record -- no web application, and no matching role of an application still present, will be removed, and each application this profile's roster names is reported instead", {"profile": (pProfile), "error": ($System.Status.GetErrorText(tProvSC))})
-            Kill tRecorded
-        }
+        ; Which of this profile's applications install created or recognised. Read here, in the
+        ; install namespace, because OcuPilot.Kernel.State.WebApp is compiled only here. An
+        ; absent routine application answers an empty set; any other failure is refused below,
+        ; once the nothing-exists return has had its say.
+        Kill tRecorded, tProvReports
+        Set tProvSC = ..ReadApplicationProvenance(pProfile, .tNames, .tRecorded, .tProvReports)
+        If $$$ISERR(tProvSC) Kill tRecorded
 
         Set tSC = ##class(OcuPilot.Kernel.Utils).SwitchNamespace("%SYS", .tOrigNS)
         If $$$ISERR(tSC) Quit
 
         If '..AnyObjectExists(.tNames, tInstallNs) && 'tFixturesExist {
             Set $NAMESPACE = tOrigNS
+            Quit
+        }
+
+        ; Without the record, what install created cannot be told from what it did not.
+        If $$$ISERR(tProvSC) {
+            Set $NAMESPACE = tOrigNS
+            Do ..LogWarn("Uninstall refused: this profile's web-application provenance record could not be read, so nothing was removed", {"profile": (pProfile), "error": ($System.Status.GetErrorText(tProvSC))})
+            Set tSC = $$$ERROR($$$GeneralError, "Uninstall('" _ pProfile _ "') refused: this profile's web-application provenance record could not be read (" _ $System.Status.GetErrorText(tProvSC) _ "), so what install created cannot be told from what it did not. Nothing was removed. Repair the production profile's protected state (run Install with no profile) and run Uninstall again.")
+            Quit
+        }
+
+        ; The roster applications this run removes, and the roles every other application
+        ; still carries: a role one of those names is kept, and so is the shell directory
+        ; while an application stays at its path.
+        Kill tExcept
+        For tXI = 1:1:$Length(tNames("appKeys"), ",") {
+            Set tXName = $Get(tNames("appName", $Piece(tNames("appKeys"), ",", tXI)))
+            If (tXName '= "") && $Data(tRecorded(tXName)) Set tExcept(tXName) = ""
+        }
+        Set tShellApp = tNames("appName", tNames("bundleKey"))
+        Set tInUseSC = ..RolesInUse(.tExcept, .tInUse)
+        If $$$ISERR(tInUseSC) {
+            Set $NAMESPACE = tOrigNS
+            Do ..LogWarn("Uninstall refused: the web applications' roles could not be read, so nothing was removed", {"profile": (pProfile), "error": ($System.Status.GetErrorText(tInUseSC))})
+            Set tSC = $$$ERROR($$$GeneralError, "Uninstall('" _ pProfile _ "') refused: the web applications' matching roles could not be read (" _ $System.Status.GetErrorText(tInUseSC) _ "), so a role another application still carries cannot be told from one nothing carries. Nothing was removed.")
             Quit
         }
 
@@ -4185,18 +4367,18 @@ ClassMethod Uninstall(pProfile As %String = "", pConfirmDataLoss As %Boolean = 0
                 Set tUKey = $Piece(tNames("appKeys"), ",", tUI)
                 Set tUName = $Get(tNames("appName", tUKey))
                 If $Data(tRecorded(tUName)) Set tAppList = tAppList _ $Select(tAppList = "": "", 1: ", ") _ "'" _ tUName _ "'"
-                ; The role list mirrors the deletion loop below: an existing role is removed when
-                ; its application is recorded (and so removed) or no application sits at its
-                ; roster path, and kept while an application uninstall leaves in place still
-                ; matches it -- the AD-21 privilege floor that "left in place" means still working.
+                ; The role list mirrors the deletion loop below: an existing role is listed
+                ; unless a surviving application still names it.
                 Set tURole = $Get(tNames("appRole", tUKey))
                 If tURole = "" Continue
                 If '##class(Security.Roles).Exists(tURole, .tUEW1, .tUSW1) Continue
-                If '$Data(tRecorded(tUName)), ##class(Security.Applications).Exists(tUName, .tUEW2, .tUSW2) Continue
+                If $Data(tInUse($ZConvert(tURole, "U"))) Continue
                 Set tRoleList = tRoleList _ $Select(tRoleList = "": "", 1: ", ") _ "'" _ tURole _ "'"
             }
             If tAppList = "" Set tAppList = "(no web application carries a provenance record, so none would be removed)"
-            Set tSC = $$$ERROR($$$GeneralError, "Uninstall('" _ pProfile _ "') would destroy: database '" _ tNames("database") _ "' at " _ tNames("directory") _ ", resources '" _ tNames("dbResource") _ "' and '" _ tNames("adminResource") _ "', roles '" _ tNames("adminRole") _ "' and '" _ tNames("identityRole") _ "'" _ $Select(tRoleList = "": "", 1: " and " _ tRoleList) _ ", applications '" _ tNames("application") _ "', '" _ tNames("identityApplication") _ "' and " _ tAppList _ ", the shell bundle directory " _ tNames("shellDirectory") _ ", mapping '" _ tNames("mappingPattern") _ "', audit events '" _ ..EventList(.tNames) _ "', TLS configuration '" _ tNames("sslConfig") _ "'" _ $Select($Get(tNames("retentionTaskName")) = "": "", 1: ", the retention task '" _ tNames("retentionTaskName") _ "'") _ ", and any opt-in demo fixture objects this profile owns (AD-25). Pass pConfirmDataLoss=1 to proceed.")
+            ; Listed only when the loop below would remove it: no application stays at the shell's path.
+            Set tDirList = $Select($Data(tRecorded(tShellApp)) || '##class(Security.Applications).Exists(tShellApp, .tUEW2, .tUSW2): ", the shell bundle directory " _ tNames("shellDirectory"), 1: "")
+            Set tSC = $$$ERROR($$$GeneralError, "Uninstall('" _ pProfile _ "') would destroy: database '" _ tNames("database") _ "' at " _ tNames("directory") _ ", resources '" _ tNames("dbResource") _ "' and '" _ tNames("adminResource") _ "', roles '" _ tNames("adminRole") _ "' and '" _ tNames("identityRole") _ "'" _ $Select(tRoleList = "": "", 1: " and " _ tRoleList) _ ", applications '" _ tNames("application") _ "', '" _ tNames("identityApplication") _ "' and " _ tAppList _ tDirList _ ", mapping '" _ tNames("mappingPattern") _ "', audit events '" _ ..EventList(.tNames) _ "', TLS configuration '" _ tNames("sslConfig") _ "'" _ $Select($Get(tNames("retentionTaskName")) = "": "", 1: ", the retention task '" _ tNames("retentionTaskName") _ "'") _ ", and any opt-in demo fixture objects this profile owns (AD-25). Pass pConfirmDataLoss=1 to proceed.")
             Set $NAMESPACE = tOrigNS
             Quit
         }
@@ -4283,17 +4465,16 @@ ClassMethod Uninstall(pProfile As %String = "", pConfirmDataLoss As %Boolean = 0
         Set tSC = ##class(OcuPilot.Kernel.Utils).SwitchNamespace("%SYS", .tOrigNS)
         If $$$ISERR(tSC) Quit
 
-        ; Story 1.5's objects go first: every web application this profile's provenance record
-        ; says install created or recognised, then each application's matching role (an
-        ; application that still names a deleted role would be drift nothing removes), then the
-        ; bundle directory the shell application pointed at.
+        ; The web applications install created or recognised go first, then each roster
+        ; matching role no surviving application names (an application that still named a
+        ; deleted role would be drift nothing removes), then the shell bundle directory unless
+        ; an application stays at the shell's path.
         ;
-        ; DW-94: an application at one of the roster's paths with NO provenance row is left
-        ; exactly where it is and reported. It is somebody else's -- or one this instance has
-        ; no record of install putting there -- and uninstall removes only what install
-        ; created. tAdopted collects those for a report after the namespace restore, because
-        ; LogWarn reaches OcuPilot.Kernel.Audit.Log, which %SYS cannot see.
-        Kill tRemovedApps, tRemovedKeys
+        ; An application at one of the roster's paths with no provenance row is somebody
+        ; else's, or one this instance has no record of install putting there: it is left where
+        ; it is and reported. tAdopted collects those for the report after the namespace
+        ; restore, because LogWarn reaches OcuPilot.Kernel.Audit.Log, which %SYS cannot see.
+        Kill tRemovedApps
         Set tAdopted = ""
         For tDI = 1:1:$Length(tNames("appKeys"), ",") {
             Set tDKey = $Piece(tNames("appKeys"), ",", tDI)
@@ -4306,27 +4487,23 @@ ClassMethod Uninstall(pProfile As %String = "", pConfirmDataLoss As %Boolean = 0
             Set tSC = ##class(Security.Applications).Delete(tDName)
             If $$$ISERR(tSC) Quit
             Set tRemovedApps($Increment(tRemovedApps)) = tDName
-            Set tRemovedKeys(tDKey) = ""
         }
         If $$$ISERR(tSC) { Set $NAMESPACE = tOrigNS  Quit }
-        ; A roster-declared matching role is kept only while an application still sits at that
-        ; key's roster path, and removed otherwise. Two cases, and they are not the same:
-        ; DW-94 -- an application uninstall deliberately LEFT IN PLACE (present, no provenance
-        ; row) keeps its role, because deleting a role strips its name from every application
-        ; still matching it (verified on this build, and pinned by OcuPilot.Test.WebApp), which
-        ; would take that application's AD-21 privilege floor with it and leave an anonymous
-        ; application that refuses every anonymous request 403 before its dispatch class runs
-        ; (inference). "Left in place" has to mean still working. An application that is
-        ; ALREADY ABSENT -- removed this run, or by another hand before it
-        ; -- has no floor to preserve, so its role goes: no roster-declared role survives when
-        ; no application sits at its roster path (AD-21: the floor role is created and removed by
-        ; the installer).
+        ; A roster matching role goes unless a surviving application's MatchRoles names it
+        ; (tInUse, read before the first removal): deleting a role strips it from every
+        ; application that matches it, which would take that application's AD-21 privilege floor
+        ; and leave it refusing every anonymous request. A role no application carries is the
+        ; installer's own residue (AD-21) and is removed.
+        Kill tKeptRoles
         For tRI = 1:1:$Length(tNames("appKeys"), ",") {
             Set tRKey = $Piece(tNames("appKeys"), ",", tRI)
             Set tRRole = $Get(tNames("appRole", tRKey))
             If tRRole = "" Continue
-            If '$Data(tRemovedKeys(tRKey)), ##class(Security.Applications).Exists($Get(tNames("appName", tRKey)), .tEW2, .tSW2) Continue
             If '##class(Security.Roles).Exists(tRRole, .tEW3, .tSW3) Continue
+            If $Data(tInUse($ZConvert(tRRole, "U")), tCarriedBy) {
+                Set tKeptRoles(tRRole) = tCarriedBy
+                Continue
+            }
             Set tSC = ##class(Security.Roles).Delete(tRRole)
             If $$$ISERR(tSC) Quit
         }
@@ -4336,8 +4513,13 @@ ClassMethod Uninstall(pProfile As %String = "", pConfirmDataLoss As %Boolean = 0
         ; installed with nothing saying why. Reported after the namespace restore below,
         ; because LogWarn reaches OcuPilot.Kernel.Audit.Log, which %SYS cannot see.
         Set tShellDirLeft = 0
+        Set tShellDirKept = 0
         If ##class(%File).DirectoryExists(tNames("shellDirectory")) {
-            If '##class(%File).RemoveDirectoryTree(tNames("shellDirectory")) Set tShellDirLeft = 1
+            If ##class(Security.Applications).Exists(tShellApp, .tEW4, .tSW4) {
+                Set tShellDirKept = 1
+            } ElseIf '##class(%File).RemoveDirectoryTree(tNames("shellDirectory")) {
+                Set tShellDirLeft = 1
+            }
         }
 
         If ##class(Config.MapGlobals).Exists(tInstallNs, tNames("mappingPattern"), .tE1, .tS1) {
@@ -4405,12 +4587,33 @@ ClassMethod Uninstall(pProfile As %String = "", pConfirmDataLoss As %Boolean = 0
             Do ..LogWarn("Uninstall removed every named object, but the shell application's bundle directory could not be removed and is still on disk", {"directory": (tNames("shellDirectory"))})
         }
 
-        ; DW-94: report what was left behind, and forget what was removed. The report is a
-        ; report, not an error -- an application install never created is not a failure of
-        ; uninstall, it is the one thing uninstall is required not to touch.
+        ; Report what was left behind, and forget what was removed. The report is a report, not
+        ; an error: an object a surviving application still uses is not a failure of uninstall, it
+        ; is the one thing uninstall is required not to touch.
+        Set tLeftText = ""
+        Set tLeftData = {"profile": (pProfile)}
         If tAdopted '= "" {
-            Do ..LogWarn("Uninstall left a web application in place: it sits at one of OcuPilot's declared paths, and this instance has no record of install having created it, so uninstall removes only what install created", {"profile": (pProfile), "applications": (tAdopted)})
+            Set tLeftText = "Uninstall left a web application in place: it sits at one of OcuPilot's declared paths, and this instance has no record of install having created it, so uninstall removes only what install created; delete the application by hand if it is not wanted"
+            Set tLeftData.applications = tAdopted
         }
+        If tShellDirKept {
+            Set tLeftText = tLeftText _ $Select(tLeftText = "": "", 1: ". ") _ "Uninstall left the shell bundle directory " _ tNames("shellDirectory") _ " in place, because the application at the shell's path is still served from it; delete the directory by hand once that application is gone"
+            Set tLeftData.directory = tNames("shellDirectory")
+        }
+        If $Data(tKeptRoles) {
+            Set tKeptText = ""
+            Set tKeptList = []
+            Set tKeptRole = ""
+            For {
+                Set tKeptRole = $Order(tKeptRoles(tKeptRole))
+                If tKeptRole = "" Quit
+                Set tKeptText = tKeptText _ $Select(tKeptText = "": "", 1: ", ") _ "'" _ tKeptRole _ "' (carried by " _ tKeptRoles(tKeptRole) _ ")"
+                Do tKeptList.%Push({"role": (tKeptRole), "applications": (tKeptRoles(tKeptRole))})
+            }
+            Set tLeftText = tLeftText _ $Select(tLeftText = "": "", 1: ". ") _ "Uninstall left a matching role in place, because a web application that survives uninstall still carries it: " _ tKeptText _ "; remove the role from each of those applications, then delete the role"
+            Set tLeftData.roles = tKeptList
+        }
+        If tLeftText '= "" Do ..LogWarn(tLeftText, tLeftData)
         ; For a named profile only, exactly like the Stamp and Version purges below and for the
         ; identical reason (Fix Pack F-1): a production profile's provenance rows lived inside
         ; the protected database this method has just deleted, together with the privileged

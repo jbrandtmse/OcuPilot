@@ -96,6 +96,21 @@ ClassMethod CredentialsRungAvailable() As %Boolean
     Quit ##super()
 }
 
+/// <p>Make <method>OcuPilot.Install.Installer.SqlPrivilegeQuery</method> name a query that does not
+/// exist (1), so the SQL privilege catalog cannot be read, or the real one (0), until
+/// <method>Clear</method>.</p>
+ClassMethod SetPrivilegeCatalogUnreadable(pUnreadable As %Boolean)
+{
+    Set ^||OcuPilotInstallerProbe("privilegeCatalogUnreadable") = pUnreadable
+}
+
+/// <p>A query that does not exist when armed, else the real one.</p>
+ClassMethod SqlPrivilegeQuery() As %String
+{
+    If +$Get(^||OcuPilotInstallerProbe("privilegeCatalogUnreadable"), 0) Quit "Security.SQLPrivileges:NoSuchQuery"
+    Quit ##super()
+}
+
 /// <p>Read one captured field back. Returns <code>""</code> when nothing was captured.</p>
 /// @param pField One of "lastInfo", "lastInfoData", "lastWarn", "lastWarnData"
 ClassMethod Captured(pField As %String) As %String

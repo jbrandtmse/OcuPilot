@@ -374,6 +374,10 @@ refuses to install or uninstall it from another namespace, naming the first, and
 either namespace; the container start refuses the same way before it compiles anything. To move
 OcuPilot, first remove it from the first namespace with the installer's own uninstall (below). The
 namespace must also keep OcuPilot's code in its own routine database, not behind a package mapping.
+A refused `zpm load` still leaves the module registered in that second namespace, and
+`zpm "uninstall ocupilot"` there would delete OcuPilot's live web applications and client files:
+remove the registration in that namespace with `##class(%IPM.Storage.Module).NameDelete("ocupilot")`
+instead.
 
 If IPM answers that no repositories are configured, run `zpm "enable -community"` once, then
 install again.

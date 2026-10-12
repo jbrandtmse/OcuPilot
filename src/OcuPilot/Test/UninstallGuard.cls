@@ -55,11 +55,14 @@ Method OnBeforeOneTest() As %Status
     Quit ##class(OcuPilot.Install.Installer).Install("probe")
 }
 
+/// <p>Disarm both fault classes, then return the instance to "the probe profile is not installed",
+/// applications and shell directory included: a refusal leaves them, and an uninstall whose
+/// protected state is already gone removes none.</p>
 Method OnAfterOneTest() As %Status
 {
     Do ##class(OcuPilot.Test.FixtureFault).Disarm()
     Do ##class(OcuPilot.Test.UninstallFault).Disarm()
-    Quit ##class(OcuPilot.Install.Installer).Uninstall("probe", 1)
+    Quit ##class(OcuPilot.Test.ProbeApps).Remove()
 }
 
 /// <p>Hand-creates one fixture object -- a disposable SSL/TLS configuration -- and its
@@ -211,6 +214,89 @@ Method TestUninstallContinuesWhenTheInventoryIsGone()
         Do $$$AssertTrue(tWarns [ "Could not check the demo fixture inventory after fixture removal", "the skipped check is reported as a warn, never silently")
         Do $$$AssertStatusOK(..ProbeState("", .tDbAfter, .tDatAfter, .tMapAfter, .tSsl), "re-read the probe's objects after the run")
         Do $$$AssertTrue('tDbAfter && 'tDatAfter && 'tMapAfter, "the probe's database, IRIS.DAT and mapping were removed")
+    } Catch ex {
+        Do ##class(OcuPilot.Test.UninstallFault).Disarm()
+        Throw ex
+    }
+}
+
+/// <p>Uninstall cannot tell what install created without the web-application provenance record, so
+/// when that record cannot be read while the profile's privileged routine application exists it
+/// refuses, naming the record and the remedy, and removes nothing. Forced through
+/// <class>OcuPilot.Test.UninstallFault</class>'s
+/// <method>OcuPilot.Test.UninstallFault.ReadApplicationProvenance</method> override; the profile's
+/// own application is left alone, so the read genuinely fails against an application that exists.</p>
+/// <p>Mutation (Rule 19): restore the warn-and-continue read in
+/// <method>OcuPilot.Install.Installer.Uninstall</method> -- the call completes and the database,
+/// applications and directory are gone, so every assertion below goes red.</p>
+Method TestUninstallRefusesWhenTheProvenanceRecordCannotBeRead()
+{
+    Set tApps = ##class(OcuPilot.Test.ProbeApps).Existing()
+    Set tDir = ##class(OcuPilot.Test.ProbeApps).ShellDirectory()
+    Do $$$AssertTrue((tApps '= "") && ($Extract(tApps, 1, 6) '= "error:"), "precondition: the probe applications exist: " _ tApps)
+    Do $$$AssertTrue((tDir '= "") && ##class(%File).DirectoryExists(tDir), "and so does the shell bundle directory: " _ tDir)
+
+    Do ##class(OcuPilot.Test.UninstallFault).Disarm()
+    Try {
+        Do ##class(OcuPilot.Test.InstallerProbe).Clear()
+        Do ##class(OcuPilot.Test.UninstallFault).SetProvenanceReadFails(1)
+        Set tSC = ##class(OcuPilot.Test.UninstallFault).Uninstall("probe", 1)
+        Do ##class(OcuPilot.Test.UninstallFault).Disarm()
+
+        Do $$$AssertStatusNotOK(tSC, "Uninstall refuses when the provenance record cannot be read")
+        Set tText = $System.Status.GetErrorText(tSC)
+        Do $$$AssertTrue(tText [ "provenance record could not be read", "the refusal names the record: " _ tText)
+        Do $$$AssertTrue(tText [ "Nothing was removed", "and says nothing was removed: " _ tText)
+        Do $$$AssertTrue(tText [ "run Install with no profile", "and names the remedy: " _ tText)
+        Set tWarns = ##class(OcuPilot.Test.InstallerProbe).CapturedAll("warn")
+        Do $$$AssertTrue(tWarns [ "Uninstall refused: this profile's web-application provenance record could not be read", "the refusal is logged as a warn")
+        Do $$$AssertEquals(##class(OcuPilot.Test.ProbeApps).Existing(), tApps, "every probe application remains")
+        Do $$$AssertTrue(##class(%File).DirectoryExists(tDir), "and so does the shell bundle directory")
+        Do $$$AssertStatusOK(..ProbeState("", .tDb, .tDat, .tMap, .tSsl), "re-read the probe's objects after the refusal")
+        Do $$$AssertTrue(tDb && tDat && tMap, "the probe's database, IRIS.DAT and mapping remain")
+
+        ; The same refusal answers a call that asks only for the preview.
+        Do ##class(OcuPilot.Test.UninstallFault).SetProvenanceReadFails(1)
+        Set tPreviewSC = ##class(OcuPilot.Test.UninstallFault).Uninstall("probe", 0)
+        Do ##class(OcuPilot.Test.UninstallFault).Disarm()
+        Do $$$AssertTrue($System.Status.GetErrorText(tPreviewSC) [ "provenance record could not be read", "an unconfirmed call is refused the same way, not previewed")
+    } Catch ex {
+        Do ##class(OcuPilot.Test.UninstallFault).Disarm()
+        Throw ex
+    }
+}
+
+/// <p>Uninstall cannot tell a role another application carries from one nothing carries without
+/// reading the applications' roles, so when that read fails it refuses, naming the roles and
+/// saying nothing was removed. Forced through <class>OcuPilot.Test.UninstallFault</class>'s
+/// <method>OcuPilot.Test.UninstallFault.RolesInUse</method> override.</p>
+/// <p>Mutation (Rule 19): let <method>OcuPilot.Install.Installer.Uninstall</method> carry on past a
+/// failed roles read -- the call completes and the database, applications and directory are gone,
+/// so every assertion below goes red.</p>
+Method TestUninstallRefusesWhenTheApplicationRolesCannotBeRead()
+{
+    Set tApps = ##class(OcuPilot.Test.ProbeApps).Existing()
+    Set tDir = ##class(OcuPilot.Test.ProbeApps).ShellDirectory()
+    Do $$$AssertTrue((tApps '= "") && ($Extract(tApps, 1, 6) '= "error:"), "precondition: the probe applications exist: " _ tApps)
+    Do $$$AssertTrue((tDir '= "") && ##class(%File).DirectoryExists(tDir), "and so does the shell bundle directory: " _ tDir)
+
+    Do ##class(OcuPilot.Test.UninstallFault).Disarm()
+    Try {
+        Do ##class(OcuPilot.Test.InstallerProbe).Clear()
+        Do ##class(OcuPilot.Test.UninstallFault).SetRolesReadFails(1)
+        Set tSC = ##class(OcuPilot.Test.UninstallFault).Uninstall("probe", 1)
+        Do ##class(OcuPilot.Test.UninstallFault).Disarm()
+
+        Do $$$AssertStatusNotOK(tSC, "Uninstall refuses when the applications' roles cannot be read")
+        Set tText = $System.Status.GetErrorText(tSC)
+        Do $$$AssertTrue(tText [ "matching roles could not be read", "the refusal names the roles: " _ tText)
+        Do $$$AssertTrue(tText [ "Nothing was removed", "and says nothing was removed: " _ tText)
+        Set tWarns = ##class(OcuPilot.Test.InstallerProbe).CapturedAll("warn")
+        Do $$$AssertTrue(tWarns [ "Uninstall refused: the web applications' roles could not be read", "the refusal is logged as a warn")
+        Do $$$AssertEquals(##class(OcuPilot.Test.ProbeApps).Existing(), tApps, "every probe application remains")
+        Do $$$AssertTrue(##class(%File).DirectoryExists(tDir), "and so does the shell bundle directory")
+        Do $$$AssertStatusOK(..ProbeState("", .tDb, .tDat, .tMap, .tSsl), "re-read the probe's objects after the refusal")
+        Do $$$AssertTrue(tDb && tDat && tMap, "the probe's database, IRIS.DAT and mapping remain")
     } Catch ex {
         Do ##class(OcuPilot.Test.UninstallFault).Disarm()
         Throw ex
