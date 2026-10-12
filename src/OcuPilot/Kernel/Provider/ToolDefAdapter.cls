@@ -32,14 +32,16 @@
 /// <method>OcuPilot.Screen.Tool.Registry.WireName</method> can produce satisfies both grammars,
 /// because <parameter>OcuPilot.Screen.Tool.Registry.TOOLNAMEPATTERN</parameter> starts every
 /// segment with a lowercase letter.</p>
-/// <p><b>Gemini respells exactly one value: an empty <code>enum</code> member</b>, which its
-/// function-declaration validation refuses, becomes <parameter>GEMINIEMPTYENUM</parameter>. The
-/// member is not dropped, because an empty value can be a real choice (Home's route is
-/// <code>""</code>) and dropping it would make what the model can do depend on its family. The
-/// respelling is reversible and scoped: <method>GeminiEmptyEnumArgs</method> names each
-/// (tool, argument) pair a request respelled, and
-/// <class>OcuPilot.Kernel.Provider.MessageAdapter</class> decodes the value back to
-/// <code>""</code> on exactly those pairs in a reply, and encodes it again in replayed history --
+/// <p><b>Gemini respells exactly two kinds of <code>enum</code> member.</b> Its function-declaration
+/// validation refuses an empty member, which becomes <parameter>GEMINIEMPTYENUM</parameter>, and
+/// takes <code>enum</code> as strings only, so a numeric member of an <code>integer</code> or
+/// <code>number</code> property is written as its JSON text (<code>3072</code> as
+/// <code>"3072"</code>) while the property keeps its type. No member is dropped, because an empty
+/// value can be a real choice (Home's route is <code>""</code>) and dropping one would make what
+/// the model can do depend on its family. Both respellings are reversible and scoped:
+/// <method>GeminiEmptyEnumArgs</method> names each (tool, argument) pair a request respelled, and
+/// <class>OcuPilot.Kernel.Provider.MessageAdapter</class> decodes the value back, to <code>""</code>
+/// or to a number, on exactly those pairs in a reply, and encodes it again in replayed history --
 /// the same idea as the reversible dot-to-underscore name mapping.</p>
 Class OcuPilot.Kernel.Provider.ToolDefAdapter Extends %RegisteredObject
 {
@@ -145,9 +147,10 @@ ClassMethod SchemaOf(pSchema As %String) As %DynamicAbstractObject
 /// <parameter>GEMINIDROPPED</parameter> keyword removed, every <code>type</code> value translated
 /// through <parameter>GEMINITYPES</parameter>, <code>properties</code> and <code>items</code>
 /// rewritten the same way at every depth, every <code>enum</code> written as a copy whose
-/// <code>""</code> members read <parameter>GEMINIEMPTYENUM</parameter>, and every other keyword
-/// copied verbatim -- so no keyword inside the emitted subset leaves except the dropped one.
-/// Keeping a keyword <b>outside</b> that subset out is
+/// <code>""</code> members read <parameter>GEMINIEMPTYENUM</parameter> and, on an
+/// <code>integer</code> or <code>number</code> schema, whose numeric members are strings, and every
+/// other keyword copied verbatim -- so no keyword inside the emitted subset leaves except the
+/// dropped one. Keeping a keyword <b>outside</b> that subset out is
 /// <method>OcuPilot.Screen.Tool.Registry.EmitSchema</method>'s job and not this method's: an
 /// unrecognized keyword is copied through, never refused.</p>
 /// <p>A value this method does not rewrite -- a <code>required</code> list -- is set on the copy
@@ -171,7 +174,7 @@ ClassMethod GeminiSchema(pSchema As %DynamicAbstractObject) As %DynamicAbstractO
             Continue
         }
         If (tKey = "enum") && $IsObject(tValue) && tValue.%IsA("%Library.DynamicArray") {
-            Do tOut.%Set("enum", ..GeminiEnum(tValue))
+            Do tOut.%Set("enum", ..GeminiEnum(tValue, ..IsNumericType(pSchema.%Get("type"))))
             Continue
         }
         If tKey = "properties" {
@@ -191,14 +194,20 @@ ClassMethod GeminiSchema(pSchema As %DynamicAbstractObject) As %DynamicAbstractO
 }
 
 /// <p>A copy of the enum array <var>pEnum</var> with every <code>""</code> string member written as
-/// <parameter>GEMINIEMPTYENUM</parameter>, in the same order and at the same count.</p>
-ClassMethod GeminiEnum(pEnum As %DynamicArray) As %DynamicArray [ Private ]
+/// <parameter>GEMINIEMPTYENUM</parameter> and, when <var>pNumeric</var> is true, every numeric
+/// member written as its JSON text (<method>NumberText</method>), in the same order and at the same
+/// count.</p>
+ClassMethod GeminiEnum(pEnum As %DynamicArray, pNumeric As %Boolean = 0) As %DynamicArray [ Private ]
 {
     Set tOut = []
     Set tIterator = pEnum.%GetIterator()
     While tIterator.%GetNext(.tIndex, .tMember, .tType) {
         If (tType = "string") && (tMember = "") {
             Do tOut.%Push(..#GEMINIEMPTYENUM, "string")
+            Continue
+        }
+        If pNumeric && (tType = "number") {
+            Do tOut.%Push(..NumberText(tMember), "string")
             Continue
         }
         If $ListFind($ListBuild("string", "number", "boolean", "null"), tType) {
@@ -210,11 +219,25 @@ ClassMethod GeminiEnum(pEnum As %DynamicArray) As %DynamicArray [ Private ]
     Quit tOut
 }
 
+/// <p>The JSON text of the number <var>pNumber</var> -- <code>3072</code> as <code>3072</code> and
+/// one half as <code>0.5</code>, where ObjectScript's own string conversion would drop the leading
+/// zero. <class>OcuPilot.Kernel.Provider.MessageAdapter</class> uses it to write a replayed
+/// numeric argument as the member the declaration carried.</p>
+ClassMethod NumberText(pNumber As %Numeric) As %String
+{
+    Set tArray = []
+    Do tArray.%Push(pNumber, "number")
+    Set tText = tArray.%ToJSON()
+    Quit $Extract(tText, 2, $Length(tText) - 1)
+}
+
 /// <p>The (tool, argument) pairs in the canonical tool array <var>pTools</var> whose declaration
 /// <method>ToGemini</method> respells: <code>{&lt;wire name&gt;: {&lt;argument&gt;: kind}}</code>,
 /// for each top-level property whose <code>enum</code> holds <code>""</code> (kind
-/// <code>value</code>) or whose <code>items.enum</code> does (kind <code>items</code>). An empty
-/// object when no pair is respelled.</p>
+/// <code>value</code>), whose <code>items.enum</code> does (kind <code>items</code>), whose
+/// <code>enum</code> holds a numeric member on an <code>integer</code> or <code>number</code>
+/// property (kind <code>number</code>), or whose <code>items.enum</code> does (kind
+/// <code>numbers</code>). An empty object when no pair is respelled.</p>
 ClassMethod GeminiEmptyEnumArgs(ByRef pTools) As %DynamicObject
 {
     Set tMap = {}
@@ -231,10 +254,16 @@ ClassMethod GeminiEmptyEnumArgs(ByRef pTools) As %DynamicObject
                     Do tArgs.%Set(tName, "value", "string")
                     Continue
                 }
+                If ..HoldsNumericMember(tProperty) {
+                    Do tArgs.%Set(tName, "number", "string")
+                    Continue
+                }
                 Set tItems = tProperty.%Get("items")
                 If $IsObject(tItems) && tItems.%IsA("%Library.DynamicObject") && ..HoldsEmptyMember(tItems.%Get("enum")) {
                     Do tArgs.%Set(tName, "items", "string")
+                    Continue
                 }
+                If ..HoldsNumericMember(tItems) Do tArgs.%Set(tName, "numbers", "string")
             }
             If tArgs.%Size() > 0 Do tMap.%Set($Get(pTools(tI, "name")), tArgs)
         }
@@ -255,6 +284,32 @@ ClassMethod HoldsEmptyMember(pEnum As %RawString = "") As %Boolean [ Private ]
         If (tType = "string") && (tMember = "") Set tHolds = 1
     }
     Quit tHolds
+}
+
+/// <p>Whether <var>pSchema</var> is an <code>integer</code> or <code>number</code> schema whose
+/// <code>enum</code> array holds a numeric member -- the schemas <method>GeminiSchema</method>
+/// respells.</p>
+ClassMethod HoldsNumericMember(pSchema As %RawString = "") As %Boolean [ Private ]
+{
+    If '$IsObject(pSchema) Quit 0
+    If 'pSchema.%IsA("%Library.DynamicObject") Quit 0
+    If '..IsNumericType(pSchema.%Get("type")) Quit 0
+    Set tEnum = pSchema.%Get("enum")
+    If '$IsObject(tEnum) Quit 0
+    If 'tEnum.%IsA("%Library.DynamicArray") Quit 0
+    Set tHolds = 0
+    Set tIterator = tEnum.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tMember, .tType) {
+        If tType = "number" Set tHolds = 1
+    }
+    Quit tHolds
+}
+
+/// <p>Whether the canonical schema type <var>pType</var> is <code>integer</code> or
+/// <code>number</code>.</p>
+ClassMethod IsNumericType(pType As %String = "") As %Boolean [ Private ]
+{
+    Quit ''$ListFind($ListBuild("integer", "number"), pType)
 }
 
 /// <p>The Gemini <code>Schema.Type</code> literal for the canonical type <var>pType</var>, or
