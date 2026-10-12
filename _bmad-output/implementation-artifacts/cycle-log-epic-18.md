@@ -1400,3 +1400,6 @@ TAB-separated: `<UTC>\t<Story <id> | Epic <N>>\t<stage>\t<metadata>`
 2026-10-12T19:57:15Z	Story 18.13	ledger_adjudicated	owned=3 resolved=3(DW-423,DW-1333_installer_half,DW-2366) decision_pending=DW-2364(IPM_half,owner_hold) routed_out=DW-2365(18.43,epics_bullet_added,Task_0_e) model=claude-opus-5-5
 2026-10-12T19:57:15Z	Epic 18	spine_updated	ad=AD-38(two_invokes;DW-2366) reason=rule20(18.13_code_review) by=runner lint=ok(pre-existing_low) memlog=appended
 2026-10-12T19:57:15Z	Epic 18	deps_hash_rerecorded	reason=ledger_routed(DW-2365_bullet_under_18.43)
+2026-10-12T19:59:31Z	Story 18.13	fresh_check_started	throwaway=ocupilot-ci rebuilt(down+up,healthy 19:58:42Z;IPM_cleared) load=LOAD-OK,STARTPATH-OK offered=618 chunks=51
+2026-10-12T19:59:31Z	Story 18.13	stage_spawned	stage=full-sweep spawn_at=2026-10-12T19:59:31Z model=sonnet agent_name=18-13-sweep-1 prompt=carry-2026-10-10/epic-18-r/sweep-1813-prompt.md run_in_background=false
+2026-10-12T19:59:31Z	Story 18.46	stage_spawned	stage=plan spawn_at=2026-10-12T19:59:31Z model=opus agent_name=18-46-allowed-dirs-screen-plan-1 cycle_iteration=1 prompt=carry-2026-10-10/epic-18-r/plan-1846-prompt.md run_in_background=false throwaway=untouched(sweep_running)
