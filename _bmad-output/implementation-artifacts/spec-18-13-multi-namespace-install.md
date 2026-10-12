@@ -7,7 +7,7 @@ review_loop_iteration: 0
 followup_review_recommended: false
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-18-context.md'
-warnings: []
+warnings: ['oversized']
 deferred: []
 ---
 
@@ -56,7 +56,7 @@ Under `src/OcuPilot/` unless `scripts/`, `ui/` or root, at `fe132688`.
 
 ## Tasks & Acceptance
 
-**Task 0** (`ocupilot-ci`, after `LOAD-OK` and `STARTPATH-OK`; halt on a contradiction). Record S0. Create `%DB_OCUPROBE1813`, then database OCUPROBE1813 in a new directory `<mgr>/ocuprobe1813/` (never the manager directory), then namespace OCUPROBE1813 (routines: the install namespace's routine database; globals: OCUPROBE1813). From it: `Install("probe")`; read back the probe mapping, the probe applications' `NameSpace`, where probe Version and Stamp rows land, the SQL grant; install again and diff `StateFingerprint("probe")`; read `GetPackageDest`, `GetRoutineDest` and `Config.Namespaces:List` (is `%ALL` listed). `Uninstall("probe", 1)`, revoke the grant if the uninstall leaves it, remove namespace, database, directory and resource; confirm S0. Do not run a production install from it before Task 1 exists.
+**Task 0** (`ocupilot-ci`, after `LOAD-OK` and `STARTPATH-OK`; halt on a contradiction). Record S0. Create `%DB_OCUPROBE1813`, then database OCUPROBE1813 in a new directory `<mgr>/ocuprobe1813/` (never the manager directory), then namespace OCUPROBE1813 (routines: the install namespace's routine database; globals: OCUPROBE1813). From it: `Install("probe")`; read back the probe mapping, the probe applications' `NameSpace`, where probe Version and Stamp rows land, the SQL grant; install again and diff `StateFingerprint("probe")`; read `GetPackageDest`, `GetRoutineDest` and `Config.Namespaces:List` (is `%ALL` listed). `Uninstall("probe", 1)`, revoke the grant if the uninstall leaves it, remove namespace, database, directory and resource; confirm S0. Do not run a production install from it before Task 1 exists. Then settle AD-17's open IPM question (orchestrator, 2026-10-12): import IPM into `ocupilot-ci` the way `scripts/ci-ipm-archive.sh` does (S0 then includes IPM until the runner rebuilds the throwaway), `load` the module from the worktree in OCUPROBE1813 while production is installed in HSCUSTOM, and read whether `/ocupilot`'s and `/api/ocupilot`'s `NameSpace` changed before the installer refused. If it is real, fix it here when it fits (refuse before the applications change, through the `<Invoke>`'s phase in the roster that generates `module.xml`, or restore them on refusal) and pin it; if it does not fit, put it in `deferred:` as a MED for the Epic 18 burn-down. If it is not real, say so; the lead deletes the AD-17 sentence.
 
 **Execution:**
 
@@ -90,6 +90,7 @@ Under `src/OcuPilot/` unless `scripts/`, `ui/` or root, at `fe132688`.
 ## Spec Change Log
 
 - 2026-10-12, lead, spec gate: split for size (Rule 5); DW-219 and DW-2172 moved to Story 18.43. The AC is amended in `epics.md` to this plan's readings (one install namespace, the AD-9 package check, the rung reported). AD-17 and the Operational Envelope's Retention row are amended as proposed. The second-namespace production leg calls the guard rather than `Install("")`. Task 8's `ci-throwaway.sh` lines are add-only (slot rule), reported to the orchestrator.
+- 2026-10-12, orchestrator: split and order ratified (18.43 right after this story); the rung reported, not refused, accepted as a product call; the IPM re-point is not acceptable as a named limit, so Task 0 measures it and the story fixes it or defers it as a MED.
 
 ## Review Triage Log
 
