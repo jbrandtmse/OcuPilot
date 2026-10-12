@@ -11301,6 +11301,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-11-monitoring-extras-and-the-live-log-tail.md | severity: med | fix-risk: low | footprint: in-story
 - evidence: LabelsEnd reads a backslash as an escape, as the Prometheus format does; dir labels hold directories (/durable/iris/mgr/user/ here); the vendor's Sensors source is withheld and no Windows instance was read
 - 2026-10-11T22:33:47Z status=decision-pending owner=burndown by=cr note=human=GET /api/monitor/metrics on a Windows instance: are backslashes in dir labels doubled
+- 2026-10-12T04:18:25Z status=routed owner=burndown by=lead note=owner 2026-10-11: Handle both forms (single or doubled backslash; skip and count one unreadable line); no Windows read needed
 
 ### DW-2330: AD-36's Story 18.11 amendment says every parent-scoped read requires its criterion before any port call; the code covers bare-rows and VOLUMELIST reads, and TaskRunList answers {}
 - source: spec-18-11-monitoring-extras-and-the-live-log-tail.md | severity: low | fix-risk: low | footprint: in-story
