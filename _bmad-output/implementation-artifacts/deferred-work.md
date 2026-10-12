@@ -11416,3 +11416,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: 478a486a (DW-2354 review) | severity: low | fix-risk: low | footprint: in-epic
 - evidence: MessageAdapter/ToolDefAdapter/Gemini.cls after 478a486a: the map holds kinds number and numbers beside value and items
 - 2026-10-12T14:54:21Z status=wontfix-accepted owner=18-45-the-agent-s-tool-roster-scoped-per-turn by=cr note=reopen_if=a third respelling kind joins the map, or a reader misreads the map as empty-enum only in a review finding
+
+### DW-2358: A numeric enum nested below a top-level property or its items would be respelled in the Gemini declaration but not decoded back
+- source: 478a486a (DW-2354 review) | severity: low | fix-risk: low | footprint: in-epic
+- evidence: the respelling map names top-level arguments and items only; no registered tool nests a numeric enum deeper (six tools map, every numeric one top-level)
+- 2026-10-12T14:54:28Z status=wontfix-accepted owner=18-45-the-agent-s-tool-roster-scoped-per-turn by=cr note=reopen_if=GeminiNumericEnum.TestNoGeminiDeclarationCarriesANumericMember names an unmapped path, or a tool schema puts an integer or number enum deeper than a property or its items
