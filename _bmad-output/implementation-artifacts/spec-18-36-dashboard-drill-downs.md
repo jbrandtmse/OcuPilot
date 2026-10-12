@@ -2,7 +2,8 @@
 title: 'Story 18.36: Dashboard drill-downs'
 type: 'feature'
 created: '2026-10-11'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: '587fdb80f3793d66b0c725ee1234cb5fdf92c3ab'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -84,6 +85,26 @@ Under `src/OcuPilot/` unless `ui/`, at HEAD 03eca55f.
 
 ## Review Triage Log
 
+### 2026-10-11 - Review pass
+
+- verdicts: 15 findings - high 0, medium 1, low 9, false 2, maybe-false 3
+- findings:
+  - `[medium]` `[patch]` Labels of the two statistics screens pinned for 12 of 51 fields, the rest compared with the descriptor's own keys - `statistics.page.spec.ts` now asserts every field, label and value in declared order against a table written in the spec; swapping two ECP lock labels in the mirror reddens it.
+  - `[low]` `[patch]` The four `emptyStateKey` values were not pinned - one assertion per screen in `TestTheFourDeclarations`; `DashboardResources` set to another key reddens it.
+  - `[low]` `[patch]` Only the Ctrl-click branch of the drill-down link handler was tested - the test now dispatches Ctrl, Meta, Shift and a non-primary button.
+  - `[low]` `[patch]` Rule 19 lines missing for the element check, the empty-state pin and the label table - three `mutation:` lines added, each observed red and reverted.
+  - `[low]` `[reject]` Pinning-test legs beyond one per AC carry no recorded mutation (the exact-holder, `NoSys` and anonymous legs, the Globals, Resources and processes links, the DW-1337 leg) - Rule 19 asks one demonstrated mutation per AC, and each AC has one; not worth a per-leg demonstration.
+  - `[low]` `[reject]` `rows.%Size() <= 10` and the per-row `Process` loop pass for zero rows - the Matrix names exactly this bound, and the recorded busy-process mutation reddens it because the vendor pads the list; an empty list is a legitimate answer.
+  - `[low]` `[patch]` The browser spec's `every` over a group's values passes for none - it now asserts a value beside every label first.
+  - `[false]` `[reject]` The `built` flip on the shared `SCREENS` object leaks - it is restored in `finally` and vitest runs one file's tests in sequence.
+  - `[low]` `[reject]` The live legs need at least four resources and a readable process list - inherent to a live read; C1 asserts the instance's own answer.
+  - `[low]` `[patch]` The resources browser test said five headers and asserts six - title and header comment corrected.
+  - `[maybe-false]` `[reject]` The Matrix is worded at the wire while the fixture legs run `Screen.Read.Execute` (cap, shapes, 500, log count) - Task 6 names `ReadFixture`; the route and the tool share that one read (AD-36), the route is unchanged, and the gate class reads all four through the route; a defect would be low.
+  - `[maybe-false]` `[reject]` "No vendor call" on a refused principal is asserted nowhere - the refusal is the generic gate this story does not change; low and the fix is a new counter seam, and a defect there would be low.
+  - `[low]` `[patch]` The busy-process fixtures are already in Commands-descending order, so "vendor order" cannot fail - the second case now answers 6 before 5 (neither process nor commands order).
+  - `[maybe-false]` `[reject]` "Logged once" counts the fixture port's `LogFault`, not the production one - every AdminPort fault test counts there, and the production call site is the same line, and a defect would be low.
+  - `[false]` `[reject]` Drill-down links are filtered on `built`, never on the caller's pairs - the links draw only inside the Dashboard, which declares the same two pairs, so a caller refused them never sees the page.
+
 ## Design Notes
 
 **Read on `ocupilot` and in vendor source** (2026-10-11, read-only): `%Api.Admin.Endpoints.Monitor` declares `DASHBOARDECP` 10, `DASHBOARDGLOBALS` 11, `DASHBOARDMAIN` 12, `DASHBOARDRESOURCES` 13 behind `ResourcesOR()` `%Admin_Operate`, answering Task 2's members; `RunResources`' array honors `%request.Data` `maxRows`. The classic keys are compiled `%CSP.Util.AutoPage` classes. Labels follow `irissys/SYS/Stats/{Global,Routine,ECPAppSvr,ECPDataSvr}.cls`. Inferences: which route issues which type (Task 0 (a)); the classic dashboard draws busy processes; the new types read cumulative counters and keep no baseline, so AD-7 gains no shape.
@@ -118,9 +139,30 @@ Under `src/OcuPilot/` unless `ui/`, at HEAD 03eca55f.
 
 **Mutations (Rule 19)**, each `mutation:` recorded once observed (descendants recompiled or bundle redeployed): C1 `BARETYPES` without `DASHBOARDGLOBALS` (`DashboardDrillDown` live, 501); C2 `BUSYPROCESSES` keeping empty rows, then `RESOURCEROWS` answering the bare array (fixture legs); C3 `DashboardResources` without `%Admin_Operate:USE` (gate's `NoOperate` leg); C4 the ecp group without `drillDowns` (`dashboard.page.spec.ts`, browser spec); one flat list (`statistics.page.spec.ts`); Integration `COMPOSEDREADS` without `BUSYPROCESSES` (`ToolRoundTrip`).
 
+- mutation: `BARETYPES` without `DASHBOARDGLOBALS` -> `DashboardDrillDown` `TestTheFourReadsAnswerLive` (live, 501 `PORT.NOTIMPLEMENTED`) and `TestTheStatisticsScreensProjectOneRow`.
+- mutation: `BUSYPROCESSES` keeping empty rows -> `DashboardDrillDown` `TestBusyProcessesDropThePaddedRows` and `TestTheFourReadsAnswerLive`.
+- mutation: the composed answers returning the bare array -> `DashboardDrillDown` `TestResourcesAreCutAtTheCap`, `TestBusyProcessesDropThePaddedRows` and `TestTheFourReadsAnswerLive`.
+- mutation: `DashboardResources` without `%Admin_Operate:USE` -> `DashboardDrillDownGate` `TestEachMissingPairIsRefusedByName` (the `NoOperate` leg) and `DashboardDrillDown` `TestTheFourDeclarations`.
+- mutation: `COMPOSEDREADS` without `BUSYPROCESSES` -> `ToolRoundTrip` `TestEveryToolConformsToItsResultSchemaOrAnswersACode` (`osmgmt.activeprocesses.read`).
+- mutation: the ecp group without `drillDowns` -> `dashboard.page.spec.ts` (three tests) and `dashboard-drill-downs.browser-spec.mjs` (the ECP leg, bundle rebuilt and redeployed).
+- mutation: one flat list in `statistics.store.ts` -> `statistics.page.spec.ts` (four tests).
+- mutation: `DashboardResources` `emptyStateKey` set to `statisticsEmpty` -> `DashboardDrillDown` `TestTheFourDeclarations`.
+- mutation: the element check skipped in `AdminPort.ComposedAnswer` -> `DashboardDrillDown` `TestAnAnswerOfAnotherShapeFailsTheReadOnceLogged`.
+- mutation: `statsEcpLocksGranted` and `statsEcpLocksFailed` swapped in the mirror -> `statistics.page.spec.ts` (the every-field test).
+
 **S0:** no `OcuProbe1836*` user or role.
 
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
+
+Summary: four read-only drill-down screens reached from the Dashboard's groups. `AdminPort` gained three bare `Monitor` types and the `COMPOSEDREADS` parameter (`RESOURCEROWS`, `BUSYPROCESSES`; padded rows dropped, another shape a logged 500); four descriptors; a statistics page for the two counter screens; drill-down links on the Dashboard; 54 new strings; rosters unioned (`ReadTool` 360, `Navigation` 51, `SurfaceCoverage`, `Descriptor`, `navigation.test.mjs`, `Wire`, `WireSecurityRead`).
+
+Files: `src/OcuPilot/Port/AdminPort.cls`; `src/OcuPilot/Screen/Descriptor/Dashboard{Globals,Ecp,Resources,Processes}.cls`; `src/OcuPilot/Test/DashboardDrillDown{,Gate,Probe}.cls`; roster edits in `Test/{ReadTool,SurfaceCoverage,Descriptor,Navigation,Wire,WireSecurityRead,PortFixture}.cls` and `Test/ReadSource/Endpoint.cls`; `scripts/ci-throwaway.sh` (one arming line); `ui/src/app/areas/os-management/{statistics.page,statistics.store,dashboard.page,dashboard.store}.ts` with specs; `shell/screen-outlet.ts`; `core/strings.ts`; `core/screens.generated.ts` (regenerated); `ui/tools/{dashboard-store,navigation,side-bar-pins}.test.mjs`; `ui/browser/dashboard-drill-downs.browser-spec.mjs`, `dashboard-spec.mjs` (shared `atDashboard`), `dashboard.browser-spec.mjs`; EXPERIENCE.md :375 in place.
+
+Review: 15 findings; patches applied 7 (1 medium, 6 low), rejected 8 with the reasons in the log, deferred 0. Follow-up review recommended: false (no high patched, one medium).
+
+Verification: Task 0 passed on `ocupilot-ci`; `DashboardDrillDown` 6 tests (run 672) and `DashboardDrillDownGate` 3 tests (run 669) green, plus the Task 9 classes (runs 653-667); `test:tools` 1911, `test:components` 2895 in 231 files, `check-objectscript` 0 problems, `lint-docs` clean; browser `dashboard-drill-downs` 5 and `dashboard` 3 green on a rebuilt, redeployed bundle (3.35 MB initial, under the 3487 kB warning); Fixed strings 3214 spans, 3191 distinct (bound 3400); ten mutations observed red and reverted; S0 holds.
+
+Residual risks: ECP statistics draws its 33 fields in one column (cosmetic); on an idle instance Most active processes usually shows its empty state; `ReadTool`, `Navigation`, `strings.ts`, `screens.generated.ts`, `screen-outlet.ts`, EXPERIENCE.md and `ci-throwaway.sh` are also edited on Epic 20's branch and union at the merge.

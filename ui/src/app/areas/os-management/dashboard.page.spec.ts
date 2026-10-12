@@ -448,6 +448,73 @@ describe('DashboardPage', () => {
     expect(cpu?.getAttribute('title')).toBeNull();
   });
 
+  it("offers each group's drill-downs under its heading: Performance's two, ECP's one and System usage's one, each at its route in this namespace", async () => {
+    const { host } = await mount();
+    const linksUnder = (heading: string): string[][] => {
+      const group = Array.from(host.querySelectorAll('.ocu-dashboard-group')).find(
+        (candidate) => candidate.querySelector('.ocu-dashboard-heading')?.textContent?.trim() === heading
+      );
+      return Array.from(group?.querySelectorAll('nav.ocu-details-links a.ocu-details-link') ?? []).map((link) => [
+        link.textContent?.trim() ?? '',
+        link.getAttribute('href') ?? '',
+      ]);
+    };
+    const hrefs = (links: string[][]) => links.map((link) => link[1].replace(/^.*(?=\/os-management)/, ''));
+    const performance = linksUnder(STRINGS.performanceHeading);
+    expect(performance.map((link) => link[0])).toEqual([STRINGS.globalStatisticsLabel, STRINGS.resourceStatisticsLabel]);
+    expect(hrefs(performance)).toEqual(['/os-management/global-statistics?ns=HSCUSTOM', '/os-management/resource-statistics?ns=HSCUSTOM']);
+    const ecp = linksUnder(STRINGS.dashboardGroupEcp);
+    expect(ecp.map((link) => link[0])).toEqual([STRINGS.ecpStatisticsLabel]);
+    expect(hrefs(ecp)).toEqual(['/os-management/ecp-statistics?ns=HSCUSTOM']);
+    const usage = linksUnder(STRINGS.systemUsageLabel);
+    expect(usage.map((link) => link[0])).toEqual([STRINGS.activeProcessesLabel]);
+    expect(hrefs(usage)).toEqual(['/os-management/active-processes?ns=HSCUSTOM']);
+    for (const heading of [STRINGS.dashboardGroupStatus, STRINGS.dashboardGroupAlerts, STRINGS.dashboardGroupLicensing, STRINGS.dashboardGroupTasks]) {
+      expect(linksUnder(heading), heading).toEqual([]);
+    }
+    expect(host.querySelectorAll('nav.ocu-details-links')).toHaveLength(3);
+  });
+
+  it('opens a drill-down in this namespace on a plain click, and leaves a modified click to the browser', async () => {
+    const { host } = await mount();
+    const router = TestBed.inject(Router);
+    const link = host.querySelector('[data-drill-down="os-management/ecp-statistics"]') as HTMLAnchorElement;
+    expect(link).not.toBeNull();
+    // What the page left of each modified click, read after its handler and then cancelled, so jsdom does not navigate.
+    for (const modifier of [{ ctrlKey: true }, { metaKey: true }, { shiftKey: true }, { button: 1 }]) {
+      let leftToBrowser: boolean | null = null;
+      const observe = (event: Event) => {
+        leftToBrowser = !event.defaultPrevented;
+        event.preventDefault();
+      };
+      document.addEventListener('click', observe, { once: true });
+      link.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, ...modifier }));
+      document.removeEventListener('click', observe);
+      expect(leftToBrowser, JSON.stringify(modifier)).toBe(true);
+    }
+    expect(router.url).toBe('/os-management/dashboard?ns=HSCUSTOM');
+    const plain = new MouseEvent('click', { bubbles: true, cancelable: true });
+    link.dispatchEvent(plain);
+    expect(plain.defaultPrevented).toBe(true);
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(router.url).toBe('/os-management/ecp-statistics?ns=HSCUSTOM');
+  });
+
+  it('draws no link for a drill-down whose screen is not built', async () => {
+    const target = SCREENS.find((screen) => screen.route === 'os-management/resource-statistics') ?? null;
+    expect(target).not.toBeNull();
+    if (target === null) return;
+    const writable = target as { built: boolean };
+    writable.built = false;
+    try {
+      const { host } = await mount();
+      const routes = Array.from(host.querySelectorAll('a.ocu-details-link')).map((link) => link.getAttribute('data-drill-down'));
+      expect(routes).toEqual(['os-management/global-statistics', 'os-management/ecp-statistics', 'os-management/active-processes']);
+    } finally {
+      writable.built = true;
+    }
+  });
+
   it('offers Refresh and no other action', async () => {
     const { actions } = await mount();
     expect(actions.has(DESCRIPTOR, REFRESH_ACTION_ID)).toBe(true);

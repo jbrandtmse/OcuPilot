@@ -40,6 +40,15 @@ Parameter DASHBOARDMAIN As INTEGER = 12;
 /// <p><code>Monitor</code>'s unprefixed license-usage type number (Story 16.7).</p>
 Parameter LICENSEUSAGE As INTEGER = 16;
 
+/// <p><code>Monitor</code>'s unprefixed ECP statistics type number (Story 18.36).</p>
+Parameter DASHBOARDECP As INTEGER = 10;
+
+/// <p><code>Monitor</code>'s unprefixed global and routine statistics type number (Story 18.36).</p>
+Parameter DASHBOARDGLOBALS As INTEGER = 11;
+
+/// <p><code>Monitor</code>'s unprefixed system resource statistics type number (Story 18.36).</p>
+Parameter DASHBOARDRESOURCES As INTEGER = 13;
+
 Property Type As %Integer;
 
 Property ApiVersion As %Integer;

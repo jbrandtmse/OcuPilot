@@ -3853,6 +3853,114 @@ export const STRINGS = {
   dashboardPrompt2: 'How busy is the instance right now, and how much CPU is it using?',
   /** EXPERIENCE.md:375 */
   dashboardPrompt3: 'Have serious alerts or application errors been raised?',
+  /** EXPERIENCE.md:375 */
+  statsGlobalReferencesLocal: 'Local global references',
+  /** EXPERIENCE.md:375 */
+  statsGlobalUpdatesLocal: 'Local global updates',
+  /** EXPERIENCE.md:375 */
+  statsGlobalReferencesRemote: 'Remote global references',
+  /** EXPERIENCE.md:375 */
+  statsGlobalUpdatesRemote: 'Remote global updates',
+  /** EXPERIENCE.md:375 */
+  statsGlobalUpdatesPrivate: 'Private global updates',
+  /** EXPERIENCE.md:375 */
+  statsWriteImageJournalWrites: 'Write image journal writes',
+  /** EXPERIENCE.md:375 */
+  statsRoutineCallsLocal: 'Local routine calls',
+  /** EXPERIENCE.md:375 */
+  statsRoutineLoadsLocal: 'Local routine buffer loads and saves',
+  /** EXPERIENCE.md:375 */
+  statsRoutineCallsRemote: 'Remote routine calls',
+  /** EXPERIENCE.md:375 */
+  statsRoutineLoadsRemote: 'Remote routine buffer loads and saves',
+  /** EXPERIENCE.md:375 */
+  statsRoutineCommands: 'Routine commands',
+  /** EXPERIENCE.md:375 */
+  statsRoutinesNotCached: 'Routines not in memory',
+  /** EXPERIENCE.md:375 */
+  statsEcpActiveConnections: 'Active connections',
+  /** EXPERIENCE.md:375 */
+  statsEcpBytesSent: 'Bytes sent',
+  /** EXPERIENCE.md:375 */
+  statsEcpBytesReceived: 'Bytes received',
+  /** EXPERIENCE.md:375 */
+  statsEcpBlocksAdded: 'Blocks added to cache',
+  /** EXPERIENCE.md:375 */
+  statsEcpBlocksPurgedForBuffers: 'Blocks purged for buffers',
+  /** EXPERIENCE.md:375 */
+  statsEcpBlocksPurgedByDataServer: 'Blocks purged by the data server',
+  /** EXPERIENCE.md:375 */
+  statsEcpRequestsReceived: 'Requests received',
+  /** EXPERIENCE.md:375 */
+  statsEcpRequestBuffers: 'Request buffers',
+  /** EXPERIENCE.md:375 */
+  statsEcpBlocksSent: 'Blocks sent',
+  /** EXPERIENCE.md:375 */
+  statsEcpLocksGranted: 'Locks granted',
+  /** EXPERIENCE.md:375 */
+  statsEcpLocksFailed: 'Locks failed',
+  /** EXPERIENCE.md:375 */
+  statsEcpQueuedLocksGranted: 'Queued locks granted',
+  /** EXPERIENCE.md:375 */
+  statsEcpQueuedLocksFailed: 'Queued locks failed',
+  /** EXPERIENCE.md:375 */
+  statsEcpBlockPurgesRequested: 'Block purges requested',
+  /** EXPERIENCE.md:375 */
+  statsEcpRoutinePurgesSent: 'Routine purges sent',
+  /** EXPERIENCE.md:375 */
+  statsEcpBigKills: 'Big kills',
+  /** EXPERIENCE.md:375 */
+  statsEcpBigStrings: 'Big strings',
+  /** EXPERIENCE.md:375 */
+  resourceColumnSeizes: 'Seizes',
+  /** EXPERIENCE.md:375 */
+  resourceColumnNseizes: 'Nseizes',
+  /** EXPERIENCE.md:375 */
+  resourceColumnAseizes: 'Aseizes',
+  /** EXPERIENCE.md:375 */
+  resourceColumnBseizes: 'Bseizes',
+  /** EXPERIENCE.md:375 */
+  resourceColumnBusySets: 'Busy sets',
+  /** EXPERIENCE.md:375 */
+  statsGroupAppServer: 'Application server',
+  /** EXPERIENCE.md:375 */
+  globalStatisticsLabel: 'Global and routine statistics',
+  /** EXPERIENCE.md:375 */
+  ecpStatisticsLabel: 'ECP statistics',
+  /** EXPERIENCE.md:375 */
+  resourceStatisticsLabel: 'System resource statistics',
+  /** EXPERIENCE.md:375 */
+  activeProcessesLabel: 'Most active processes',
+  /** EXPERIENCE.md:375 */
+  statisticsEmpty: 'The instance answered no statistics.',
+  /** EXPERIENCE.md:375 */
+  resourceStatisticsEmpty: 'The instance reports no system resources.',
+  /** EXPERIENCE.md:375 */
+  activeProcessesEmpty: 'No process reports executed commands.',
+  /** EXPERIENCE.md:375 */
+  globalStatisticsPrompt1: 'Is this instance reading far more blocks from disk than it serves from memory?',
+  /** EXPERIENCE.md:375 */
+  globalStatisticsPrompt2: 'Are routines being loaded from disk more often than they are found in memory?',
+  /** EXPERIENCE.md:375 */
+  globalStatisticsPrompt3: 'How many global references and updates does this instance make, locally and remotely?',
+  /** EXPERIENCE.md:375 */
+  ecpStatisticsPrompt1: 'Are the ECP connections between this instance and its data servers active?',
+  /** EXPERIENCE.md:375 */
+  ecpStatisticsPrompt2: 'Is this ECP data server refusing locks that application servers request?',
+  /** EXPERIENCE.md:375 */
+  ecpStatisticsPrompt3: 'How much data do the ECP connections of this instance send and receive?',
+  /** EXPERIENCE.md:375 */
+  resourceStatisticsPrompt1: 'Which system resources are busy when a process tries to seize them?',
+  /** EXPERIENCE.md:375 */
+  resourceStatisticsPrompt2: 'Does any system resource make processes wait far more often than the rest?',
+  /** EXPERIENCE.md:375 */
+  resourceStatisticsPrompt3: 'Which system resources are seized most often?',
+  /** EXPERIENCE.md:375 */
+  activeProcessesPrompt1: 'Which processes have executed the most commands?',
+  /** EXPERIENCE.md:375 */
+  activeProcessesPrompt2: 'Is one process executing far more commands than the others?',
+  /** EXPERIENCE.md:375 */
+  activeProcessesPrompt3: 'How many processes are busy enough to report executed commands?',
   /** EXPERIENCE.md:377 */
   localDatabaseListLabel: 'Local databases',
   /** EXPERIENCE.md:377 */

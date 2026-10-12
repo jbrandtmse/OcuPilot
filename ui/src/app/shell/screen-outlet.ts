@@ -21,6 +21,7 @@ import { DatabasesPage } from '../areas/os-management/databases.page';
 import { ProcessDetailsPage } from '../areas/os-management/process-details.page';
 import { SystemUsagePage } from '../areas/os-management/system-usage.page';
 import { DashboardPage } from '../areas/os-management/dashboard.page';
+import { StatisticsPage } from '../areas/os-management/statistics.page';
 import { AuditingConfigPage } from '../areas/security/auditing-config.page';
 import { OAuthServerDescriptionFormPage } from '../areas/security/oauth-server-description-form.page';
 import { OAuthClientFormPage } from '../areas/security/oauth-client-form.page';
@@ -200,6 +201,10 @@ export const DESCRIPTOR_PAGES: Readonly<Record<string, Type<unknown>>> = {
   'OcuPilot.Screen.Descriptor.AgentLedger': LedgerPage,
   // Story 16.7: the Dashboard's seven meter groups; System usage keeps the meters archetype's page.
   'OcuPilot.Screen.Descriptor.Dashboard': DashboardPage,
+  // Story 18.36: the Dashboard's two statistics drill-downs, one page of grouped counters; its resource and
+  // process drill-downs are lists and keep the list archetype's page.
+  'OcuPilot.Screen.Descriptor.DashboardGlobals': StatisticsPage,
+  'OcuPilot.Screen.Descriptor.DashboardEcp': StatisticsPage,
   // Story 16.4: the Task schedule with its Export and Import dialogs.
   'OcuPilot.Screen.Descriptor.TaskScheduleList': TaskSchedulePage,
   // Story 16.25: the external language server editor, create and edit alike.

@@ -149,6 +149,10 @@ XData Coverage
 <screen name="LicenseUserTab" class="OcuPilot.Test.LicenseUsage" method="TestTheFourTabsDeclareTheirReadsAndFormOneGroup" corpus="the four License usage tabs are asserted together in one loop"/>
 <screen name="LicenseDistributedTab" class="OcuPilot.Test.LicenseUsage" method="TestTheFourTabsDeclareTheirReadsAndFormOneGroup" corpus="the four License usage tabs are asserted together in one loop"/>
 <screen name="Dashboard" class="OcuPilot.Test.Dashboard" method="TestTheDeclarationIsTheDashboardsThirtyFieldsOverTwoParts"/>
+<screen name="DashboardEcp" class="OcuPilot.Test.DashboardDrillDown" method="TestTheFourDeclarations" corpus="the four Dashboard drill-down declarations are asserted together in one loop"/>
+<screen name="DashboardGlobals" class="OcuPilot.Test.DashboardDrillDown" method="TestTheFourDeclarations" corpus="the four Dashboard drill-down declarations are asserted together in one loop"/>
+<screen name="DashboardProcesses" class="OcuPilot.Test.DashboardDrillDown" method="TestTheFourDeclarations" corpus="the four Dashboard drill-down declarations are asserted together in one loop"/>
+<screen name="DashboardResources" class="OcuPilot.Test.DashboardDrillDown" method="TestTheFourDeclarations" corpus="the four Dashboard drill-down declarations are asserted together in one loop"/>
 <screen name="LanguageServerList" class="OcuPilot.Test.LanguageServer" method="TestTheDescriptorsRegister" corpus="both External language servers screens are asserted in one test method"/>
 <screen name="LanguageServerActivity" class="OcuPilot.Test.LanguageServer" method="TestTheDescriptorsRegister" corpus="both External language servers screens are asserted in one test method"/>
 <screen name="LanguageServerForm" class="OcuPilot.Test.LanguageServerEditor" method="TestTheFormAndToolsRegister"/>

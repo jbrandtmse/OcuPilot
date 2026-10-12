@@ -32,6 +32,7 @@ const browserDir = join(dirname(fileURLToPath(import.meta.url)), '..', 'browser'
 const SIDE_BAR_SPECS = [
   'auth-options.browser-spec.mjs',
   'background-tasks.browser-spec.mjs',
+  'dashboard-drill-downs.browser-spec.mjs',
   'definitions.browser-spec.mjs',
   'docdb-applications.browser-spec.mjs',
   'ecp-application-servers.browser-spec.mjs',
