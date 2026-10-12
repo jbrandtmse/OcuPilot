@@ -974,6 +974,42 @@ So that monitoring is continuous rather than sampled. [AMENDED 2026-10-11, orche
 - **When** it is enabled on a text log
 - **Then** it long-polls with a heartbeat, and the Release 1 rule that log viewers load bounded pages is superseded **only** for the sources that opt into it.
 
+### Story 18.39: The agent's context budget
+
+As a developer-administrator,
+I want each turn assembled within a budget,
+So that the doubled tool roster does not make every agent call larger and slower. [AMENDED 2026-10-11, orchestrator ruling on Story 18.12's plan: split from Story 18.12 for size, Rule 5; runs right after Story 18.12; any per-call selection, trimming or caching goes after Story 20.24's per-process tool listing, never inside it (AD-5, Rule 31); a Task 0 measures the per-call weight and AD-24 is amended at its spec gate]
+
+**Acceptance Criteria:**
+
+- **Given** the tool roster roughly doubles here
+- **When** a turn is assembled
+- **Then** context-window management trims and budgets history, which nothing in the harvest provides and which this stage is the first to need.
+
+### Story 18.40: Proxy and custom CA configuration
+
+As a developer-administrator,
+I want the provider call's proxy and SSL configuration set as configuration,
+So that an operator behind a proxy or a custom CA can reach the provider. [AMENDED 2026-10-11, orchestrator ruling on Story 18.12's plan: split from Story 18.12 for size, Rule 5; a custom CA is a separately named SSL/TLS configuration (AD-10 refuses a CAFile change on OcuPilot's own), AD-32 amended at its spec gate; a CA-trust-scope choice is the owner's]
+
+**Acceptance Criteria:**
+
+- **Given** an operator behind a proxy or a custom CA
+- **When** the agent calls its provider
+- **Then** the proxy settings and SSL configuration are configuration rather than code.
+
+### Story 18.41: The wallet credential rung
+
+As a developer-administrator,
+I want the provider key held in the wallet,
+So that the credential ladder offers a wallet-backed rung. [AMENDED 2026-10-11, orchestrator ruling on Story 18.12's plan: split from Story 18.12 for size, Rule 5; AD-42, AD-35 and AD-7 amended at its spec gate, the vendor's per-use audit write labeled (inference) until its Task 0 measures it; a secret-exposure or new-vendor-audit-write choice is the owner's]
+
+**Acceptance Criteria:**
+
+- **Given** the wallet is already wired for the Release 1 secrets screen
+- **When** the credential ladder is extended
+- **Then** a wallet-backed rung joins the environment-variable and IRIS-credential rungs.
+
 ## Epic 19: Stage 3 - System Explorer over the Atelier API
 
 A developer gets classes and routines with source view, compile, delete, export, import and ETag-checked editing; search, compare and macro lookup; the SQL catalog with its query console behind a DML and DDL guard; and a data grid harvested from iris-table-editor with inline editing, staged saves and CSV export.
@@ -7356,25 +7392,13 @@ So that monitoring is continuous rather than sampled. [AMENDED 2026-10-11, orche
 
 As a developer-administrator,
 I want the agent to reach every screen this stage adds,
-So that the portal and the agent stay in step.
+So that the portal and the agent stay in step. [AMENDED 2026-10-11, orchestrator ruling on Story 18.12's plan: split for size, Rule 5; the context budget moved to Story 18.39, the proxy and custom CA to Story 18.40 and the wallet credential rung to Story 18.41; the key is kept so the ledger inbox stays]
 
 **Acceptance Criteria:**
 
 - **Given** every screen in this stage
 - **When** it is declared
-- **Then** it brings a read tool and a confirmed single-write tool from the same descriptor, with no hand-written tool code.
-
-- **Given** the tool roster roughly doubles here
-- **When** a turn is assembled
-- **Then** context-window management trims and budgets history, which nothing in the harvest provides and which this stage is the first to need.
-
-- **Given** an operator behind a proxy or a custom CA
-- **When** the agent calls its provider
-- **Then** the proxy settings and SSL configuration are configuration rather than code.
-
-- **Given** the wallet is already wired for the Release 1 secrets screen
-- **When** the credential ladder is extended
-- **Then** a wallet-backed rung joins the environment-variable and IRIS-credential rungs.
+- **Then** it brings a read tool and a confirmed single-write tool declared from the same descriptor, with no hand-written dispatch or field list. [AMENDED 2026-10-11, orchestrator ruling, tier 1 per AD-3: was "with no hand-written tool code", which every declarative write tool class contradicts]
 - DW-1756: Epic 16's Guardrails page lists the instance's limits without Story 14.6's turns-per-hour setting once the branches merge (ledger; routed by merge_gate 2026-10-06)
 - DW-1084: The built-in system prompt never asks the model to name rows in backticks or offer to select them, so AC6's offer half has no producer (ledger; routed by merge_gate 2026-10-10)
 - DW-2321: The agent's update tools take MatchRoles and Routines whole, but no read tool answers either list, so the agent cannot send the current list with one entry changed (ledger; routed by cr 2026-10-11)

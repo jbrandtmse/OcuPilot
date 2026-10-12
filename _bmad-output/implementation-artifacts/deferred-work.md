@@ -3375,6 +3375,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-30T03:32:46Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down decision sheet 2026-09-29: into Story 23.3 (after the following release)
 - 2026-10-11T00:42:30Z status=routed owner=23-7-the-range-end-cleanup-part-6 by=load note=re-own from range-end-cleanup: kit 2026-10-10.1 owners are story keys or burndown
 - 2026-10-11T02:03:07Z status=routed owner=18-12-the-agent-grows-with-the-stage by=merge_gate note=owner decision 2026-10-10 on 23.7, "Pull 5, hold rest (Recommended)", relayed by the Planner; placed by footprint: Kernel/Agent/Prompt.cls BUILTIN
+- 2026-10-12T00:14:39Z status=by-design owner=18-12-the-agent-grows-with-the-stage by=lead note=Prompt.cls BUILTIN (4.7): Name each row you report by its identifying value in backticks ... so do not offer to select rows.
+- 2026-10-12T00:14:39Z status=by-design owner=18-12-the-agent-grows-with-the-stage by=lead note=11.4 AC: the chips replace that plain-text-plus-offer (Release 1 named rows in plain text and offered to select them)
 
 ### DW-1085: ReplyNode carries no attribute beyond href/src/alt, so an ordered list's start and a link or image title are dropped against core/reply.ts's own "nothing is silently dropped" contract
 - source: spec-4-6-replies-render-safely-and-offline.md | severity: low | fix-risk: low | footprint: in-story
