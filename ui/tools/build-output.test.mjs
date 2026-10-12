@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { loadStrings } from './strings.mjs';
 import { harvestedNotices } from './licenses.mjs';
+import { staticImportsOf } from './bundle-imports.mjs';
 
 // Pins the ACs that reading source files cannot reach -- everything here is a
 // property of the *shipped artifact*, observed after a real `npm run build`,
@@ -102,14 +103,14 @@ test('npm run build succeeds and emits content-hashed bundle filenames', () => {
 // --- The emitted file set: initial and lazy (Story 20.29) --------------------------------------
 //
 // The initial set is every file `index.html` names (script, stylesheet, modulepreload) plus
-// everything those files reach through a static `import` or `export ... from` statement. A dynamic
+// everything those files reach through a static `import` or `export ... from` statement
+// (`bundle-imports.mjs`, which the browser tier's cold-open check reads too). A dynamic
 // `import(` is the lazy edge and is never followed. A lazy chunk is every other emitted `.js` or
 // `.css` file, so the two sets cover the output exactly. Chunk names carry `-` and `_`.
 
 const EMITTED_FILE_RE = /\.(js|css)$/;
 const ENTRY_RE = /^(main|styles)-[0-9A-Za-z]{6,}\.(js|css)$/;
 const CHUNK_RE = /^chunk-[0-9A-Za-z_-]+\.js$/;
-const STATIC_IMPORT_RE = /\b(?:import|export)\s*(?:[^;"'`()]*?\bfrom\s*)?["'`]\.\/([^"'`]+\.js)["'`]/g;
 
 let emittedSets = null;
 function emittedFileSets() {
@@ -131,10 +132,10 @@ function emittedFileSets() {
   while (queue.length > 0) {
     const file = queue.pop();
     assert.ok(emitted.includes(file), `${file} is reached from the initial set but the build did not emit it`);
-    for (const match of fileText(file).matchAll(STATIC_IMPORT_RE)) {
-      if (!initial.has(match[1])) {
-        initial.add(match[1]);
-        queue.push(match[1]);
+    for (const imported of staticImportsOf(fileText(file))) {
+      if (!initial.has(imported)) {
+        initial.add(imported);
+        queue.push(imported);
       }
     }
   }
@@ -366,7 +367,10 @@ test('Story 20.29, AD-5: every element app.ts\'s template names is defined in th
   const appTs = readFileSync(join(uiRoot, 'src', 'app', 'app.ts'), 'utf8');
   const template = /template:\s*`([\s\S]*?)`/.exec(appTs);
   assert.ok(template, 'expected app.ts to declare an inline template');
-  const elements = [...new Set([...template[1].matchAll(/<([a-z][a-z0-9]*-[a-z0-9-]+)/g)].map((match) => match[1]))];
+  // Angular's own `ng-container`, `ng-template` and `ng-content` are template syntax, not components.
+  const elements = [...new Set([...template[1].matchAll(/<([a-z][a-z0-9]*-[a-z0-9-]+)/g)].map((match) => match[1]))].filter(
+    (name) => !name.startsWith('ng-')
+  );
   assert.ok(elements.includes('app-rail') && elements.includes('router-outlet'), `expected the shell chrome in app.ts's template, got: ${JSON.stringify(elements)}`);
   const text = initialJsText();
   const absent = elements.filter((selector) => !definesSelector(text, selector));

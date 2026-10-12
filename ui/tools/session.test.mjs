@@ -2299,27 +2299,56 @@ function identityCalls(harness) {
 }
 
 // Mutation (Rule 19): make `recheckBuild` a no-op -> this and the single-flight test go red; drop its `settled` guard -> the
-// "before a verify" test; drop the generation check in `runRecheck` -> the "after a reset" test; let it replace `instanceName` too -> this one.
+// "before a verify" test; drop the generation check in `runRecheck` -> the "after a reset" test; let it copy any other field,
+// or settle the verdict again from the re-read's version -> this one.
 test('Story 20.29: recheckBuild reads /instance once, publishes the new build identity and moves nothing else', async () => {
-  let build = 'main-AAAA1111.js';
-  const harness = withInstance(() =>
-    response(200, identityBody(2, { buildIdentity: build, instanceName: build === 'main-AAAA1111.js' ? 'IRIS' : 'CHANGED' }))
-  );
+  // The re-read answers a different value for every field, and a version that would settle `version-mismatch`.
+  const reread = {
+    buildIdentity: 'main-BBBB2222.js',
+    instanceName: 'CHANGED',
+    instanceVersion: 'IRIS for UNIX 2027.1',
+    serverFlag: 'Production',
+    licensedTo: 'Someone Else',
+    serverName: 'ANOTHERHOST',
+  };
+  let answers = 0;
+  const harness = withInstance(() => {
+    answers += 1;
+    return answers === 1
+      ? response(200, identityBody(2, { buildIdentity: 'main-AAAA1111.js' }))
+      : response(200, identityBody(3, reread));
+  });
   await harness.ready();
   assert.equal(await harness.instance.verify(), 'ready');
+  const before = {
+    instanceName: harness.instance.instanceName(),
+    instanceVersion: harness.instance.instanceVersion(),
+    serverFlag: harness.instance.serverFlag(),
+    licensedTo: harness.instance.licensedTo(),
+    serverName: harness.instance.serverName(),
+  };
   assert.equal(harness.instance.buildIdentity(), 'main-AAAA1111.js');
 
   const heard = [];
   harness.instance.subscribe(() => heard.push(harness.instance.buildIdentity()));
-  build = 'main-BBBB2222.js';
   await harness.instance.recheckBuild();
 
   assert.equal(identityCalls(harness).length, 2, 'one request for the verify and one for the re-check');
   assert.equal(harness.instance.buildIdentity(), 'main-BBBB2222.js', 'the new identity is published');
   assert.deepEqual(heard, ['main-BBBB2222.js'], 'and listeners hear it once');
-  assert.equal(harness.instance.status(), 'ready', 'the status never moves');
-  assert.equal(harness.instance.instanceName(), 'IRIS', 'and no other field is replaced');
-  assert.equal(harness.instance.adminApiVersion(), 2);
+  assert.equal(harness.instance.status(), 'ready', 'the status never moves, though the re-read names another version');
+  assert.equal(harness.instance.adminApiVersion(), 2, 'and the version stays the verified one');
+  assert.deepEqual(
+    {
+      instanceName: harness.instance.instanceName(),
+      instanceVersion: harness.instance.instanceVersion(),
+      serverFlag: harness.instance.serverFlag(),
+      licensedTo: harness.instance.licensedTo(),
+      serverName: harness.instance.serverName(),
+    },
+    before,
+    'and no other field is replaced'
+  );
 });
 
 test('Story 20.29: recheckBuild is single-flight, and a refused or failed re-read changes nothing', async () => {

@@ -154,6 +154,40 @@ deferred:
   - **When** a person navigates there,
   - **Then** the screen and URL stay, and when the instance names another bundle the stale-bundle notice appears.
 
+### Review Findings
+
+Code review, 2026-10-12, four layers on the parent tier (`review_tier: full-opus`): 29 rows, 11 entries after grouping (high 0, medium 2, low 9), 15 rejected.
+
+- [x] [Review][Patch] The cold-open check in `lazy-screens` copied `build-output.test.mjs`'s static-import regex with no stated reason (Rule 2, medium). Both now read `staticImportsOf` from the new `ui/tools/bundle-imports.mjs` [ui/tools/bundle-imports.mjs:15]
+- [x] [Review][Patch] `openCold` copied the shared sign-in sequence (Rule 2, low). The shared `signedInAt` takes a `prepare` hook instead [ui/browser/panel-spec.mjs:64]
+- [x] [Review][Patch] The AC4 test inlined `lazy-screens`' rail and side-bar click (Rule 2, low). `openFromSideBar` is now shared from `panel-spec.mjs` [ui/browser/panel-spec.mjs:89]
+- [x] [Review][Patch] "Moves nothing else" could not see a re-check that copied any field but `instanceName`, or that settled the verdict again. The re-read now changes every field and answers a mismatching version [ui/tools/session.test.mjs:2304]
+- [x] [Review][Patch] The `lazy-screens` header said it writes nothing, and the `about-help-links` header listed four things and no navigation. Both corrected [ui/browser/lazy-screens.browser-spec.mjs:19]
+- [x] [Review][Patch] A mutation comment named `UserForm` where the observed red is the first built screen with an edit page [ui/src/app/app.routes.spec.ts:64]
+- [x] [Review][Patch] The fixture test's "no child" checks also passed for a route that was never built. Each route is now asserted to exist first [ui/src/app/app.routes.spec.ts:168]
+- [x] [Review][Patch] "Every loader resolves to a component" accepted any named class. It now requires `reflectComponentType` to answer a selector [ui/src/app/shell/screen-outlet.spec.ts:459]
+- [x] [Review][Patch] The chrome placement test would fail on Angular's own `ng-container`, `ng-template` or `ng-content` in `app.ts`. These are now excluded [ui/tools/build-output.test.mjs:372]
+- [x] [Review][Patch] The console clause of the `lazy-screens` tests had no demonstrated mutation (Rule 19, low). Now demonstrated; see `## Verification` [ui/browser/lazy-screens.browser-spec.mjs:206]
+- [x] [Review][Defer] The agent navigator reports a page chunk that cannot load as a refusal for unsaved changes (`NAV.REFUSEDUNSAVED`), because a failed load now rejects `navigateByUrl` [ui/src/app/shell/agent-navigator.ts:106]. Deferred: in-epic medium with medium fix-risk, since it needs a new outcome in `Api/Turn.cls`'s closed vocabulary. DW-2369, `routed owner=burndown`.
+
+**Rejected:**
+
+- **Silent click on a chunk failure with an unchanged bundle** (false/low): the re-check's own `/instance` read reports through `ApiService.onFault`, so a network drop raises the connectivity banner. The remaining case, a chunk failing while `/instance` answers the same bundle, is not reachable from the static handler. The router retries `loadComponent` on the next click.
+- **Unhandled `navigateByUrl` rejection in a stale tab** (low): console-only. The fix is router configuration in `main.ts`, outside the footprint.
+- **Three one-line chunk-path regexes** (low): there is no named divergence harm.
+- **Nothing bounds the total client size** (low): Design Notes decide that nothing reads the whole output directory. Page growth is the expected effect of adding pages, and a new total gate is more than a direct correction.
+- **Recorded counts in `## Auto Run Result` and the cycle log** (reject): the fix edits the spec's run record or the lead's log.
+- **DW-2368** (reject): adjudicated `wontfix-accepted` by the lead and orchestrator.
+- **A dirty form's flag is cleared before a failed load** (low): the person had already chosen to leave without saving. It needs a stale tab, a dirty form and an unvisited target together, and the fix adds state to `FormDirty`.
+- **A re-check during a reinstall answers `installing` and is not retried** (low): `Session` already surfaces the install, and the next failed click re-checks.
+- **No timeout on the re-check read** (theoretical): `verify` has the same exposure by design (`api.ts`: every caller but the probe waits). The browser's own timeout ends the call, and `reset()` clears the slot.
+- **The test's `fetch` of the renamed chunk can reject** (low): only when the throwaway is unreachable, where the test fails anyway.
+- **A URL-unsafe `config.username`** (low): no slot's browser config names one.
+- **No mutation for AC4's "URL and screen stay" or AC3's prebuild clause** (false): Rule 19 asks for one mutation per AC, and AC3 and AC4 each have demonstrated ones. The URL and screen assertion compares two reads taken in the same test.
+- **The triage row on the console clause misstates the record** (false): it records only the policy clause as demonstrated.
+- **The AC4 browser test does not pin the `index.html` answer** (reject): the client's contract is any answer that is not a module, and pinning the handler's answer would bind a client test to the server behavior Q1 left as it is.
+- **The Code Map places the notice inside `@if (frameShown)`, and Task 0's result is not recorded** (reject): both fixes edit the spec. Today's Task 0 re-run is empty: no Epic 18 commit beyond the merge base touches a file in this diff. The notice's re-read is inert while signed out, through `settled`.
+
 ## Spec Change Log
 
 ## Review Triage Log
@@ -512,6 +546,29 @@ chunk-DHotihUu2.js  | namespace-form-page                | 312 bytes |          
 - mutation: AC1 (review pass), `this.screen() === null ||` dropped from `ScreenOutlet.page` -> `screen-outlet.spec.ts` "an unknown URL renders no page" red alone (the test's wildcard now carries a child that would mount Home's page).
 - mutation: AC3 (review pass), `try { new Function('return 1')(); } catch {}` added to `ListPage`'s constructor, bundle rebuilt and redeployed -> `lazy-screens` red on "no content-security-policy violation fired" (`script-src eval`, twice), every earlier assertion green; the clean bundle (`main-N6R2BVZN.js`) was rebuilt and redeployed after.
 - mutation: AC4 (review pass), the `onDestroy` unsubscribe removed from `stale-bundle-notice.ts` -> `stale-bundle-notice.spec.ts` "stops listening to the router when it is destroyed" red, one of eight.
+
+**QA stage (2026-10-12).** No new file; two browser specs extended (QA):
+
+- `ui/browser/lazy-screens.browser-spec.mjs` (QA): two tests, a full page load at the Users list's URL and at the Users editor's id route (`/ocupilot/permissions/users/edit/<account>`). Each signs in on a fresh context with chunk and policy watchers attached before the first request, and asserts a chunk outside the initial set (the static-import closure of `index.html`, read from the instance) defines the page, every chunk is 200 / JavaScript / immutable, no `securitypolicyviolation`, and no console error about a file under `/ocupilot/`. The id route also asserts the edit page, not the base create form, is what renders. Shared assertions became `assertServedAsModules` and `assertDefinesPage`.
+- `ui/browser/about-help-links.browser-spec.mjs` (QA): the AC4 test now requests a renamed chunk (`chunk-RENAMEDBYREINSTALL.js`) and the page gets the instance's own answer for it, recorded and asserted not to be JavaScript, instead of a hand-built copy of the shell document; it also asserts the click did ask for a chunk.
+- Rows checked against a pinning test that can fail: cold deep link (new), in-app navigation (`lazy-screens`), denied or held (`screen-outlet.spec.ts`, `app.gate-outlet.wire.spec.ts`), unknown URL (`screen-outlet.spec.ts`, `app.routes.spec.ts`), stale tab (`about-help-links`, `session.test.mjs`, `stale-bundle-notice.spec.ts`), eager page and growth (`build-output.test.mjs`). The seven prebuild checkers pass run one by one (`screen-mirror` mirrored 185 descriptors).
+- mutation (QA): AC1/AC3 cold id route, every `:id` route given the base loader in `buildRoutes`, bundle rebuilt and redeployed -> `lazy-screens` id-route test red alone ("none of [...] defines app-user-editor-page"); the list tests stay green.
+- mutation (QA): AC3 cold list, the base-route push in `buildRoutes` loses `...page` -> the cold list test and the in-app test red (30 s timeout, no page mounts), the id-route test green.
+- mutation (QA): AC4 renamed chunk, `recheckBuild()` no longer called on `NavigationError` in `stale-bundle-notice.ts` -> the reworked `about-help-links` AC4 test red alone (`.ocu-stale-bundle` never appears).
+- mutation (QA): I/O "held", `this.shell.screenHeld()` dropped from `ScreenOutlet.page` -> `app.gate-outlet.wire.spec.ts` "holds the requested screen off the outlet" red (one read issued), `screen-outlet.spec.ts` green. I/O "denied", `this.allowed()` dropped -> "a denied screen renders the refusal in place of its page" red. I/O "map unanswered", `answered()` dropped -> two `screen-outlet.spec.ts` tests red.
+- After each client mutation the file was restored and the bundle rebuilt: `main-N6R2BVZN.js` again, redeployed to `ocupilot-b-ci`; `git status` shows only the two specs above and this spec.
+- Runs on the clean bundle: `lazy-screens` 3 of 3 (twice), `about-help-links` 6 of 6 with the stamp test skipped as the command above says, `npm run test:tools` 1947 of 1947.
+
+**Code review (2026-10-12).** Each mutation was applied, observed red and reverted. The working tree was confirmed identical afterwards.
+
+- mutation (review): AC3 console clause. `console.error('ocupilot console probe')` was added to `ListPage`'s constructor, and the bundle was rebuilt and redeployed (`main-N3XTLVUK.js`). Result: `lazy-screens`' in-app test and its cold list test went red on "nothing was logged as a console error from the shell", with the policy assertion before it green. The id-route test stayed green. The clean `main-N6R2BVZN.js` was rebuilt and redeployed afterwards.
+- mutation (review): AC4. `runRecheck` was made to also copy `serverFlag`, so "recheckBuild ... moves nothing else" went red on the field roster. A second mutation, `runRecheck` setting the status from the re-read's version, turned the same test red.
+- mutation (review): AC1. The SSL form's loader was made to resolve to its store class `SslForm`, so "every loader in the three maps resolves to a component" went red, naming `DESCRIPTOR_PAGES[OcuPilot.Screen.Descriptor.SslForm]`.
+- mutation (review): AC1. `buildRoutes` was made to skip a screen no loader names, so the fixture test went red on "a screen with no page still has its route".
+- Runs after the review patches:
+  - `npm run test:tools`: 1947 of 1947, and the build still emits `main-N6R2BVZN.js`.
+  - `screen-outlet.spec.ts` and `app.routes.spec.ts`: 34 of 34.
+  - On the clean bundle: `lazy-screens` 3 of 3, and `about-help-links` 6 of 6 with the stamp test skipped.
 
 ## Auto Run Result
 

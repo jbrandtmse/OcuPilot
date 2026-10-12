@@ -11527,3 +11527,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-20-29-screens-load-on-demand.md | severity: low | fix-risk: low | footprint: out-of-footprint
 - evidence: grep -n ngComponentOutlet ui/src/styles/_components.scss answers :724 and :6053; the file is one Epic 18 edits, and 20.29's Rule 11 authorization covers no edit there
 - 2026-10-12T22:20:03Z status=wontfix-accepted owner=20-29-screens-load-on-demand by=lead note=reopen_if=a story edits either selector's rule block in _components.scss; that story corrects the comment in the same edit
+
+### DW-2369: AgentNavigator reports a screen whose page code cannot load as a refusal for unsaved changes, since Story 20.29 made a failed page-chunk load reject navigateByUrl
+- source: spec-20-29-screens-load-on-demand.md | severity: med | fix-risk: med | footprint: in-epic
+- evidence: ui/src/app/shell/agent-navigator.ts:106 turns every navigateByUrl rejection into false (.catch(() => false)) and settles refused with NAV_REFUSED_UNSAVED_CODE; a lazy page chunk that cannot load (a stale tab after a reinstall) now rejects, so the agent tells the person a form is dirty when none is.
+- 2026-10-12T23:01:04Z status=routed owner=burndown by=cr note=needs a load-failure outcome in Api/Turn.cls's closed vocabulary plus the client branch; the stale-bundle notice still shows

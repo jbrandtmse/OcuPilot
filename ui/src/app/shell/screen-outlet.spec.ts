@@ -1,4 +1,4 @@
-import type { Type } from '@angular/core';
+import { reflectComponentType, type Type } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter, type Route } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
@@ -441,8 +441,9 @@ describe('the descriptor map (DW-369)', () => {
   // Every loader fetches a module that exports a component, so a mistyped path or export name is
   // a red test here and not a blank screen the first time a person opens it.
   //
-  // Mutation (Rule 19): make one loader resolve to nothing (`.then(() => undefined as never)`) ->
-  // this goes red naming the map and the key.
+  // Mutation (Rule 19): make one loader resolve to nothing (`.then(() => undefined as never)`), or to
+  // a class that is not a component (the SSL form's store class) -> this goes red naming the map and
+  // the key.
   it('every loader in the three maps resolves to a component', async () => {
     const maps: readonly (readonly [string, Readonly<Record<string, PageLoader>>])[] = [
       ['ARCHETYPE_PAGES', ARCHETYPE_LOADERS],
@@ -455,7 +456,7 @@ describe('the descriptor map (DW-369)', () => {
         const page = await loader();
         loaders += 1;
         expect(typeof page, `${name}[${key}]`).toBe('function');
-        expect(page.name, `${name}[${key}]`).not.toBe('');
+        expect(reflectComponentType(page)?.selector, `${name}[${key}] is a component with a selector`).toBeTruthy();
       }
     }
     expect(loaders).toBeGreaterThan(100);

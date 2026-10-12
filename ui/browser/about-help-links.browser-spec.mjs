@@ -2,7 +2,7 @@
  * About, per-screen help, the links panel and DW-3's stale-bundle prompt, in a real browser
  * against the throwaway instance (Story 15.3).
  *
- * **What only this tier can settle.** Four things:
+ * **What only this tier can settle.** Five things:
  *
  * - **The Integration AC (Rule 1).** The stale-bundle comparison has one artifact on both sides --
  *   the hashed `main-*.js` the installer recorded and the one the running document loaded -- and
@@ -20,10 +20,15 @@
  *   `classicPage`, rather than from a stub that was told the answer.
  * - **The links panel's three destinations as the instance answers them**, including the
  *   documentation address the degraded (no local DocBook) branch produces on this image.
+ * - **A screen whose code cannot load (Story 20.29, AC4).** A tab from before a reinstall asks for
+ *   a page chunk the instance no longer holds, and only a real browser refuses the instance's answer
+ *   as a module, so only here can the failed navigation be seen to leave the URL and the screen in
+ *   place while the stale-bundle notice explains it.
  *
- * Reads only. It signs in, opens a dialog and reads attributes; it writes nothing to the instance
- * and needs no teardown, so it is safe to run in any order beside the others. It still refuses the
- * live container, the way every spec here does.
+ * Reads only. It signs in, opens a dialog, reads attributes and asks for one screen whose code
+ * cannot load; it writes nothing to the instance beyond the reset every context makes and needs no
+ * teardown, so it is safe to run in any order beside the others. It still refuses the live
+ * container, the way every spec here does.
  *
  * Run: `npm run build`, then bring the throwaway up so the installer records the bundle it
  * deployed (`scripts/ci-throwaway.sh up ...` copies `ui/dist`), then
@@ -40,6 +45,7 @@ import puppeteer from 'puppeteer';
 
 import { LIVE_CONTAINER, READINESS_PATH, SHELL_PATH, browserConfig, launchOptions } from '../browser.config.mjs';
 import { loadStrings } from '../tools/strings.mjs';
+import { openFromSideBar } from './panel-spec.mjs';
 import { leaveFirstLoginGate } from './shell-entry.mjs';
 import { resetRememberedState } from './preferences-reset.mjs';
 
@@ -114,9 +120,10 @@ async function signedInAt(url, prepare = null) {
  *
  * With a `control` object the replacement waits for it: until `control.armed` is set the answer
  * names the document's own `main-*.js`, so nothing reads as stale, and once armed it names
- * `identity` and every `chunk-*.js` request is answered with the shell document as `text/html`,
- * which is what the static handler does for a file a reinstall removed (the browser refuses it as a
- * module).
+ * `identity` and every `chunk-*.js` request is made to a name the instance no longer holds, as a
+ * tab from before a reinstall does. The page gets the instance's own answer for that name, which the
+ * static handler gives as the shell document (the browser refuses it as a module); each answer's
+ * status and content type are recorded in `control.chunkAnswers`.
  */
 function rewriteBuildIdentity(identity, control = null) {
   return async (page) => {
@@ -125,8 +132,12 @@ function rewriteBuildIdentity(identity, control = null) {
       const url = new URL(request.url());
       if (control?.armed === true && url.pathname.startsWith(SHELL_PATH) && /\/chunk-[^/]+\.js$/.test(url.pathname)) {
         void (async () => {
-          const shell = await fetch(`${config.origin}${SHELL_PATH}`);
-          await request.respond({ status: 200, contentType: 'text/html', body: await shell.text() });
+          const renamed = new URL(url);
+          renamed.pathname = url.pathname.replace(/\/chunk-[^/]+\.js$/, '/chunk-RENAMEDBYREINSTALL.js');
+          const answer = await fetch(renamed);
+          const contentType = answer.headers.get('content-type') ?? '';
+          control.chunkAnswers.push({ status: answer.status, contentType });
+          await request.respond({ status: answer.status, contentType, body: Buffer.from(await answer.arrayBuffer()) });
         })();
         return;
       }
@@ -428,7 +439,7 @@ test('Integration AC (DW-3): an instance that reports no build identity raises n
 test('AC4 (Story 20.29): a screen whose code cannot load leaves the URL and the screen where they were, and the stale-bundle notice explains it', async () => {
   let session = null;
   try {
-    const control = { armed: false };
+    const control = { armed: false, chunkAnswers: [] };
     session = await signedInAt(HOME_URL, rewriteBuildIdentity('main-NOTTHISONE.js', control));
     const { page } = session;
     await page.waitForSelector('.ocu-screen-outlet router-outlet + *', { timeout: config.navigationTimeoutMs });
@@ -439,21 +450,15 @@ test('AC4 (Story 20.29): a screen whose code cannot load leaves the URL and the 
       page: document.querySelector('.ocu-screen-outlet router-outlet + *').localName,
     }));
 
-    // From here every page chunk comes back as the shell document, and the instance names another bundle.
+    // From here every page chunk is requested under a name the instance no longer holds, and the instance names another bundle.
     control.armed = true;
-    await page.click('#ocu-rail-item-permissions');
-    await page.waitForFunction(
-      (label) => [...document.querySelectorAll('.ocu-side-bar-item .ocu-side-bar-label')].some((node) => node.textContent.trim() === label),
-      { timeout: config.navigationTimeoutMs },
-      STRINGS.userListLabel
-    );
-    const index = await page.evaluate(
-      (label) => [...document.querySelectorAll('.ocu-side-bar-item')].findIndex((node) => node.querySelector('.ocu-side-bar-label').textContent.trim() === label),
-      STRINGS.userListLabel
-    );
-    await page.click(`.ocu-side-bar-item:nth-of-type(${index + 1})`);
+    await openFromSideBar(page, config, '#ocu-rail-item-permissions', STRINGS.userListLabel);
 
     await page.waitForSelector('.ocu-stale-bundle', { timeout: config.navigationTimeoutMs });
+    assert.ok(control.chunkAnswers.length > 0, 'the click asked for a page chunk the instance no longer holds');
+    for (const answer of control.chunkAnswers) {
+      assert.doesNotMatch(answer.contentType, /javascript/, `and the instance did not answer it with code (HTTP ${answer.status})`);
+    }
     const notice = await page.evaluate(() => document.querySelector('.ocu-stale-bundle .ocu-stale-bundle-text').textContent.trim());
     assert.equal(notice, STRINGS.staleBundleNotice, 'the existing stale-bundle sentence explains the click that did nothing');
 

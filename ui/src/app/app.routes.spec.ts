@@ -61,7 +61,7 @@ describe('the route table', () => {
   // has no page to load.
   //
   // Mutation (Rule 19): give each `:id` route the base loader in `buildRoutes` -> this goes red on
-  // `OcuPilot.Screen.Descriptor.UserForm`, whose id route has an edit page of its own.
+  // the first built screen whose id route has an edit page of its own.
   it('every shipped route but the wildcard has exactly one empty child loading the page the maps name for it', () => {
     const routeFor = (path: string) => routes.filter((route) => route.path === path);
     for (const screen of builtScreens()) {
@@ -149,7 +149,7 @@ describe('the route table', () => {
   //
   // Mutation (Rule 19): drop the `children` from the root push in `buildRoutes` -> the root
   // assertion goes red; give the `:id` route the base loader in place of the edit page -> the id
-  // assertion goes red.
+  // assertion goes red; skip the routes of a screen no loader names -> its route assertions go red.
   it('gives each route of a screen the maps name a page its loader, and a screen they name none no child', () => {
     const screen = (route: string, archetype: string, descriptor: string, kind: 'none' | 'single' = 'single'): ScreenDeclaration =>
       ({ route, archetype, descriptor, area: 'permissions', built: true, sideBarPosition: 1, id: { kind, parts: [] } }) as unknown as ScreenDeclaration;
@@ -165,8 +165,11 @@ describe('the route table', () => {
     expect(route('permissions/users/edit')?.children?.[0].loadComponent).toBe(DESCRIPTOR_PAGES[form]);
     expect(route('permissions/users/edit/:id')?.children?.[0].loadComponent).toBe(DESCRIPTOR_EDIT_PAGES[form]);
     expect(route('permissions/users/edit/:id')?.children?.[0].loadComponent).not.toBe(DESCRIPTOR_PAGES[form]);
+    expect(route('permissions/nothing'), 'a screen with no page still has its route').toBeDefined();
     expect(route('permissions/nothing')?.children).toBeUndefined();
+    expect(route('permissions/nothing/:id'), 'and its id route').toBeDefined();
     expect(route('permissions/nothing/:id')?.children).toBeUndefined();
+    expect(route('**'), 'the wildcard is built').toBeDefined();
     expect(route('**')?.children).toBeUndefined();
   });
 
