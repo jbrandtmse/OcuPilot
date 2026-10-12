@@ -584,3 +584,6 @@
 2026-10-12T20:24:52Z	Story 20.28	story_cycle	plan_to_commit_min=411 implement_passes=1 reviews=1 rework=0 first_ci=pending models=plan:opus,implement:sonnet,qa:sonnet,cr:opus
 2026-10-12T20:26:12Z	Epic 20	story_chartered	story=20.29 key=20-29-screens-load-on-demand by=runner(owner_decision_via_Planner_and_orchestrator) order=after_20.28 footprint=shell,routing,screen-outlet(contended_with_Epic_18;Rule_11_asks)
 2026-10-12T20:26:12Z	Epic 20	deps_hash_rerecorded	reason=story_chartered(20.29)
+2026-10-12T20:26:36Z	Epic 20	stage_spawned	stage=epic-context spawn_at=2026-10-12T20:26:36Z model=opus agent_name=20-context-recompile reason=planning_artifact_newer(AD-62_item_12,20.29_charter,feature_18.45)
+2026-10-12T20:30:53Z	Epic 20	epic_context_compiled	reason=planning_artifact_newer(AD-62_item_12,20.29_charter,feature_18.45) model=opus lines=142
+2026-10-12T20:30:53Z	Story 20.29	stage_spawned	stage=plan spawn_at=2026-10-12T20:30:53Z model=opus agent_name=20-29-plan-1 cycle_iteration=1 inbox=none
