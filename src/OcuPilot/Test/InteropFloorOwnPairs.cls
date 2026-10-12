@@ -26,7 +26,7 @@ Parameter NOCLASSIC = "no classic resource";
 /// <p>The closed roster of surfaces that declare no pair beyond the floor, as
 /// <code>kind:name=reason</code>, comma-separated, with <code>kind</code> one of
 /// <code>screen</code> (a descriptor's short name), <code>tool</code> (a tool name).</p>
-Parameter FLOORONLY = "screen:AgentGuardrails=no classic resource,screen:AgentLedger=owner-scoped,screen:AgentTranscript=owner-scoped,screen:AgentTranscripts=owner-scoped,screen:Home=no classic resource,tool:agent.transcripts.read=owner-scoped,tool:shell.instance.read=no classic resource,tool:shell.namespaces.read=no classic resource,tool:shell.privileges.read=no classic resource,tool:shell.screen.open=no classic resource";
+Parameter FLOORONLY = "screen:AgentGuardrails=no classic resource,screen:AgentLedger=owner-scoped,screen:AgentTranscript=owner-scoped,screen:AgentTranscripts=owner-scoped,screen:Home=no classic resource,tool:agent.transcripts.read=owner-scoped,tool:shell.instance.read=no classic resource,tool:shell.namespaces.read=no classic resource,tool:shell.privileges.read=no classic resource,tool:shell.screen.open=no classic resource,tool:shell.tools.find=no classic resource";
 
 /// <p>The package the screens are declared in.</p>
 Parameter DESCRIPTORPACKAGE = "OcuPilot.Screen.Descriptor.";

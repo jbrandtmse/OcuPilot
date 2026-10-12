@@ -63,11 +63,44 @@ Parameter GEMINIDROPPED = "additionalProperties";
 /// asserts, so decoding it back is unambiguous.</p>
 Parameter GEMINIEMPTYENUM = "(empty)";
 
+/// <p>The indexes of the tools of the canonical array <var>pTools</var> a request in a dialect that
+/// sends only the tools it is given carries, in the order it carries them, as a
+/// <class>%List</class>: every index in array order for an unscoped array; for a scoped one
+/// (<method>OcuPilot.Kernel.Provider.Base.Invoke</method> documents the members) the starting set in
+/// array order, then the tools found so far by the number they were found under.</p>
+ClassMethod Carried(ByRef pTools) As %List
+{
+    Set tCarried = ""
+    If '$Get(pTools("scoped")) {
+        For tI = 1:1:+$Get(pTools) Set tCarried = tCarried _ $ListBuild(tI)
+        Quit tCarried
+    }
+    Kill tFound
+    For tI = 1:1:+$Get(pTools) {
+        If $Get(pTools(tI, "start")) {
+            Set tCarried = tCarried _ $ListBuild(tI)
+            Continue
+        }
+        If +$Get(pTools(tI, "found")) > 0 Set tFound(pTools(tI, "found"), tI) = ""
+    }
+    Set tNumber = $Order(tFound(""))
+    While tNumber '= "" {
+        Set tAt = $Order(tFound(tNumber, ""))
+        While tAt '= "" {
+            Set tCarried = tCarried _ $ListBuild(tAt)
+            Set tAt = $Order(tFound(tNumber, tAt))
+        }
+        Set tNumber = $Order(tFound(tNumber))
+    }
+    Quit tCarried
+}
+
 /// <p>Translate the canonical tool array <var>pTools</var> --
 /// <code>pTools(n, "name")</code> / <code>("description")</code> / <code>("inputSchema")</code>
 /// with the count in <code>pTools</code>, the shape
 /// <method>OcuPilot.Kernel.Provider.Base.Invoke</method> documents -- into
-/// <var>pDeclarations</var>, the array an OpenAI request's <code>tools</code> carries.</p>
+/// <var>pDeclarations</var>, the array an OpenAI request's <code>tools</code> carries: the tools
+/// <method>Carried</method> names.</p>
 /// <p>The emitted schema reaches <code>function.parameters</code> unchanged. A schema that will
 /// not parse advertises that tool with no properties rather than failing the call, exactly as
 /// <method>OcuPilot.Kernel.Provider.Anthropic.SchemaOf</method> does.</p>
@@ -76,7 +109,9 @@ ClassMethod ToOpenAi(ByRef pTools, Output pDeclarations As %DynamicArray) As %St
     Set tSC = $$$OK
     Set pDeclarations = []
     Try {
-        For tI = 1:1:+$Get(pTools) {
+        Set tCarried = ..Carried(.pTools)
+        For tAt = 1:1:$ListLength(tCarried) {
+            Set tI = $List(tCarried, tAt)
             Set tFunction = {}
             Do tFunction.%Set("name", $Get(pTools(tI, "name")), "string")
             Do tFunction.%Set("description", $Get(pTools(tI, "description")), "string")
@@ -96,15 +131,18 @@ ClassMethod ToOpenAi(ByRef pTools, Output pDeclarations As %DynamicArray) As %St
 /// <p>Translate the same canonical tool array into <var>pDeclarations</var>, the array a Gemini
 /// request's <code>tools</code> carries: <b>one</b> entry holding every declaration under
 /// <code>functionDeclarations</code>, with each schema rewritten by
-/// <method>GeminiSchema</method>. An empty tool array answers an empty array, so a caller sends no
-/// <code>tools</code> at all rather than an empty declaration list.</p>
+/// <method>GeminiSchema</method>: the tools <method>Carried</method> names. An empty tool array
+/// answers an empty array, so a caller sends no <code>tools</code> at all rather than an empty
+/// declaration list.</p>
 ClassMethod ToGemini(ByRef pTools, Output pDeclarations As %DynamicArray) As %Status
 {
     Set tSC = $$$OK
     Set pDeclarations = []
     Try {
         Set tFunctions = []
-        For tI = 1:1:+$Get(pTools) {
+        Set tCarried = ..Carried(.pTools)
+        For tAt = 1:1:$ListLength(tCarried) {
+            Set tI = $List(tCarried, tAt)
             Set tDeclaration = {}
             Do tDeclaration.%Set("name", $Get(pTools(tI, "name")), "string")
             Do tDeclaration.%Set("description", $Get(pTools(tI, "description")), "string")
@@ -232,7 +270,7 @@ ClassMethod NumberText(pNumber As %Numeric) As %String
 }
 
 /// <p>The (tool, argument) pairs in the canonical tool array <var>pTools</var> whose declaration
-/// <method>ToGemini</method> respells: <code>{&lt;wire name&gt;: {&lt;argument&gt;: kind}}</code>,
+/// <method>ToGemini</method> respells, over the tools <method>Carried</method> names: <code>{&lt;wire name&gt;: {&lt;argument&gt;: kind}}</code>,
 /// for each top-level property whose <code>enum</code> holds <code>""</code> (kind
 /// <code>value</code>), whose <code>items.enum</code> does (kind <code>items</code>), whose
 /// <code>enum</code> holds a numeric member on an <code>integer</code> or <code>number</code>
@@ -242,7 +280,9 @@ ClassMethod GeminiEmptyEnumArgs(ByRef pTools) As %DynamicObject
 {
     Set tMap = {}
     Try {
-        For tI = 1:1:+$Get(pTools) {
+        Set tCarried = ..Carried(.pTools)
+        For tAt = 1:1:$ListLength(tCarried) {
+            Set tI = $List(tCarried, tAt)
             Set tSchema = ..SchemaOf($Get(pTools(tI, "inputSchema")))
             Set tProperties = tSchema.%Get("properties")
             If '$IsObject(tProperties) || 'tProperties.%IsA("%Library.DynamicObject") Continue

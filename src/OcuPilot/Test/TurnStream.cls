@@ -402,7 +402,7 @@ Method TestTheStreamStepKeepsItsCadenceAndCap()
 }
 
 /// <p>Integration (Story 18.39) -- a streamed two-call turn, each reply reporting cache figures: the
-/// recorded requests mark the last tool on both calls and the final message's last block on the
+/// recorded requests mark the last tool that is not deferred (Story 18.45) on both calls and the final message's last block on the
 /// second, over the same tool array, and the turn row's input tokens are every input figure of both
 /// replies summed.</p>
 /// <p>mutation: <method>OcuPilot.Kernel.Provider.Anthropic.MapResponse</method> leaves out
@@ -422,7 +422,9 @@ Method TestAStreamedTurnMarksItsRequestsAndCountsCachedTokens()
         Set tTools = ##class(%DynamicAbstractObject).%FromJSON(##class(OcuPilot.Test.TurnProvider).Recorded(..#TAG, tCall, "tools"))
         Set tMessages = ##class(OcuPilot.Test.TurnProvider).Recorded(..#TAG, tCall, "messages")
         Do $$$AssertEquals(##class(OcuPilot.Test.TurnProvider).Recorded(..#TAG, tCall, "stream"), 1, "call " _ tCall _ " asked for a stream")
-        Do $$$AssertEquals(##class(OcuPilot.Test.TurnBudget).MarkOf(tTools.%Get(tTools.%Size() - 1)), ##class(OcuPilot.Test.TurnBudget).#EPHEMERAL, "call " _ tCall _ ": the last tool carries the marker")
+        Set tMarked = -1
+        For tAt = 0:1:tTools.%Size() - 1 If '$IsObject(tTools.%Get(tAt)) || 'tTools.%Get(tAt)."defer_loading" Set tMarked = tAt
+        Do $$$AssertEquals(##class(OcuPilot.Test.TurnBudget).MarkOf(tTools.%Get(tMarked)), ##class(OcuPilot.Test.TurnBudget).#EPHEMERAL, "call " _ tCall _ ": the last tool that is not deferred carries the marker")
         Do $$$AssertEquals(##class(OcuPilot.Test.TurnBudget).Marks(tTools.%ToJSON()), 1, "call " _ tCall _ ": and no other tool does")
         Do $$$AssertEquals(##class(OcuPilot.Test.TurnBudget).Marks(tMessages), tCall - 1, "call " _ tCall _ ": its messages carry " _ (tCall - 1) _ " marker(s)")
     }
