@@ -11394,6 +11394,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-20-6-testing-hosts-and-transformations.md | severity: med | fix-risk: med | footprint: in-epic
 - evidence: Probed on ocupilot-b-ci HSSYSLOCALTEMP (no interoperability): #include Ensemble fails MPP5635 and an argument As Ens.Config.Item fails #5373 (both probes removed); README:365 admits an IPM install into any non-system namespace
 - 2026-10-12T08:23:20Z status=decision-pending owner=burndown by=cr note=product call: support a non-interop install namespace (drop include and Ens types) or say README needs one
+- 2026-10-12T12:33:19Z status=routed owner=20-28-ocupilot-compiles-in-a-namespace-without-interoperability by=lead note=orchestrator ruling 2026-10-12 chartered Story 20.28 (no Ensemble include, no Ens.Config argument types, a non-interop compile guard in CI)
 
 ### DW-2344: The Test dialog builds its form from the tab's capped rows, so past the row cap a class can be offered with fields missing, and the dialog does not say the list is cut
 - source: spec-20-6-testing-hosts-and-transformations.md | severity: low | fix-risk: low | footprint: in-story
@@ -11428,6 +11429,69 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-12T06:16:46Z status=open owner=18-12-the-agent-grows-with-the-stage by=harvest note=code review: a reverse check (a baseline of pre-Stage-2 screens) or a recorded reason it stays roster-only
 - 2026-10-12T06:55:56Z status=resolved-by:18-12-the-agent-grows-with-the-stage by=adjudication note=StageTwoTools holds roster plus Elsewhere equal to the registry both ways with a floor (runs 743-744)
 
+### DW-2347: The interoperability editor frame component first runs in a real browser in Story 20.7, so its host-filling style and its Renderer2 src set are observed by no browser test until then
+- source: spec-20-13-the-sign-in-hand-off-to-the-embedded-vendor-editors.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: interop-editor-frame.spec.ts runs in jsdom (no layout); the browser spec mounts a harness iframe from interopEditorSource, not the component (interop-editor-frame.ts:52)
+- 2026-10-12T12:33:20Z status=routed owner=20-7-the-three-embedded-vendor-editors by=lead note=harvested from 20.13 implement deferred; 20.7's browser spec re-runs interop-editor-spec.mjs against its real screens
+
+### DW-2348: A Cross-Origin-Opener-Policy header could stop an editor-opened tab inheriting a copy of the tab's storage, token pair included; measure it as a hardening candidate
+- source: spec-20-13-the-sign-in-hand-off-to-the-embedded-vendor-editors.md | severity: med | fix-risk: high | footprint: in-epic
+- evidence: 20.13 Q1: a tab an editor opens without noopener receives a copy of sessionStorage, the pair included (measured); sign-out revokes it (measured); a COOP header is untested here
+- 2026-10-12T12:33:20Z status=routed owner=burndown by=lead note=orchestrator ruling 2026-10-12 Q1 (A), option B not chartered; untested, and it may break the editors' own window.open flows
+
+### DW-2349: AD-28 still says the token pair is never within an embedded frame's reach and AD-47 that an embedded vendor page is inert, while AD-63's unsandboxed editor frame can read the pair, and AD-63 calls itself a named case of both
+- source: spec-20-13-the-sign-in-hand-off-to-the-embedded-vendor-editors.md | severity: med | fix-risk: low | footprint: in-story
+- evidence: ARCHITECTURE-SPINE.md AD-28 keeps 'never within an embedded frame's reach (AD-47)' in the sentence 20.13 amended; AD-47 keeps 'A vendor page OcuPilot embeds is inert'; AD-63's named consequence says the editor's script can read ocupilot.token-pair
+- 2026-10-12T13:24:08Z status=open owner=20-13-the-sign-in-hand-off-to-the-embedded-vendor-editors by=cr note=for the lead (runner writes the spine): carve AD-63 out of both, and name the Q1 ruling in the AD-28/AD-47 tags
+- 2026-10-12T13:28:26Z status=resolved-by:20-13-the-sign-in-hand-off-to-the-embedded-vendor-editors by=adjudication note=spine amended: AD-63 a named exception, AD-28 and AD-47 carve it out, Q1 tags credit the ruling
+
+### DW-2350: Changing an embedded editor's document re-sets src on the frame already drawn, which pushes a joint history entry so Back moves the frame and not the screen; drawing a new frame instead skips the editor's unsaved-changes alert
+- source: spec-20-13-the-sign-in-hand-off-to-the-embedded-vendor-editors.md | severity: med | fix-risk: med | footprint: in-epic
+- evidence: Measured on ocupilot-b-ci (pinned Chrome): a click-initiated src re-set on a loaded iframe took history.length 2 to 3 and Back reloaded the old page in the frame; a new iframe stayed at 2. All three bundles alert on beforeunload, which removing a frame never fires
+- 2026-10-12T13:24:17Z status=routed owner=20-7-the-three-embedded-vendor-editors by=cr note=20.7 chooses per its document switch: same frame (history entry) or new frame (no alert); scope move and sign-out too
+
+### DW-2351: A framed vendor editor can move away from what its screen shows, unseen by OcuPilot (AD-63 limit 3): its logo and Back to standard UI navigate the frame, DTL and BPL push history entries, and the rule editor's Settings switches its namespace
+- source: spec-20-13-the-sign-in-hand-off-to-the-embedded-vendor-editors.md | severity: med | fix-risk: med | footprint: in-epic
+- evidence: rule-editor main.*.js onSubmitSettingsForm calls dataService.setNamespace; 20.13's Design Notes measured the self-navigation and the DTL/BPL history entries and hand them to 20.7 only in that spec
+- 2026-10-12T13:24:18Z status=routed owner=20-7-the-three-embedded-vendor-editors by=cr note=20.7's screens decide what shows when the editor leaves its source or namespace; nothing in 20.7's block names it yet
+
+### DW-2352: The class reference re-sets src on the frame it already drew when the class changes, which likely pushes a joint history entry, so Back would move that frame rather than the viewer (inference)
+- source: spec-20-13-the-sign-in-hand-off-to-the-embedded-vendor-editors.md | severity: med | fix-risk: med | footprint: out-of-footprint
+- evidence: document-viewer.page.ts syncReference and loadReference set src on the same sandboxed frame; 20.13 measured that a click-initiated src re-set on a loaded iframe pushes an entry (history.length 2 to 3)
+- 2026-10-12T13:24:18Z status=routed owner=burndown by=cr note=unmeasured on the viewer: open Class reference, switch class from the explorer, press Back
+
+### DW-2353: CI flake: InteropQueueActions' pool-size-0 actor-queue abort test failed its entry read on 18.39's CI (instance shard 6/8, class run 37), so the queued entry was gone or changed before the read
+- source: ci-run-38250559529 | severity: med | fix-risk: low | footprint: in-epic
+- evidence: run 38250559529 attempt 1 job 114815436456: failed at TestAnAbortFindsAMessageToAPoolSizeZeroProcessInTheActorQueue+12; leg ran Adapter..InteropItemGate, InteropItemGateSplit (runs 1-36) before it; a sibling's actor job or timing (inference)
+- 2026-10-12T13:29:12Z status=routed owner=burndown by=lead note=orchestrator 2026-10-12: diagnose when it fits; a wait-on-the-vendor race takes InteropJobStop's fix shape; a second red on another head makes it urgent
+- 2026-10-12T18:37:44Z status=resolved-by:20-28-ocupilot-compiles-in-a-namespace-without-interoperability by=lead note=MakeTroubled repeats termination passes until two find none; a late Ens.Actor job lingered 20 s; red twice (18.39, 18.45)
+
+### DW-2355: No CI leg smokes an IPM archive install into an interoperability namespace once Story 20.28 moves the package job's install to a namespace without interoperability
+- source: spec-20-28-ocupilot-compiles-in-a-namespace-without-interoperability.md | severity: med | fix-risk: high | footprint: in-epic
+- evidence: 20.28 spec gate: ci-ipm-archive.sh installs into NOINTEROP instead of HSCUSTOM; HSCUSTOM stays covered by the build container's load -dev and every instance shard, not by an archive install with smoke
+- 2026-10-12T14:07:28Z status=routed owner=burndown by=lead note=orchestrator 2026-10-12, accepted for 1.0.12: restoring it needs a third container or alternating legs plus a ci.test.mjs edit; AD-17's one namespace per instance rules out both on one instance
+
+### DW-2356: A static check-objectscript rule refusing a compile-time interoperability dependency in a shipped class (Ensemble include, Ens macro, Ens type in a signature) was cut from Story 20.28
+- source: spec-20-28-ocupilot-compiles-in-a-namespace-without-interoperability.md | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: 20.28 spec gate seam: the guard is CompileWithoutInterop and the package job; the rule would refuse the regression at commit instead of in CI (plan measured the refused and admitted forms)
+- 2026-10-12T14:07:29Z status=routed owner=burndown by=lead note=orchestrator 2026-10-12: to the Epic 20 burn-down; landing it changes CLAUDE.md's rule count, which is the Planner's to edit with the owner's OK
+
+### DW-2361: The probe-namespace guard drives only InteropPort's nine criterion-free LIST reads and ProductionState, so a stray OcuPilot call in the item, setting, queue-item, job or write paths while switched stays green
+- source: spec-20-28-ocupilot-compiles-in-a-namespace-without-interoperability.md | severity: med | fix-risk: med | footprint: in-epic
+- evidence: CompileWithoutInterop.TestItServesAnInteroperabilityNamespace; GatherItems, GatherSettings, PerformItem, ListQueues/ListJobs row loops and AwaitTestHere run only against a production, and six of the nine reads return 0 rows in USER
+- 2026-10-12T17:14:15Z status=routed owner=burndown by=lead note=harvested from 20.28 implement; settled by a production fixture in USER driven from the probe namespace, or by DW-2356's static rule
+- 2026-10-12T18:08:24Z occurrence=20-28-ocupilot-compiles-in-a-namespace-without-interoperability note=cr: the fixture exists (Test.ProductionProbe seeds a USER production); the nine reads pin no row count, so no row loop is held
+
+### DW-2362: ci-runner's classifyLeftovers words every leftover token as a probe web application to remove with ProbeApps.Remove(), which misleads for the namespace, database and directory tokens ProbeApps.Existing() now reports
+- source: spec-20-28-ocupilot-compiles-in-a-namespace-without-interoperability.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: ui/tools/ci-runner.mjs:280; the OCUPROBE2028 objects are cleared by CompileWithoutInteropProbe.RemoveAll
+- 2026-10-12T17:14:16Z status=open owner=20-28-ocupilot-compiles-in-a-namespace-without-interoperability by=lead note=harvested from 20.28 implement; a two-way door for the code review if ci.test.mjs stays green unedited, else wontfix-accepted
+- 2026-10-12T18:08:23Z status=resolved-by:20-28-ocupilot-compiles-in-a-namespace-without-interoperability owner=20-28-ocupilot-compiles-in-a-namespace-without-interoperability by=cr note=kind:name tokens worded as compile probe objects with RemoveAll(); ci-leftovers.test.mjs; ci.test.mjs unedited, green
+
+### DW-2363: docs/DEVELOPMENT.md describes the package job as loading the archive on a second instance, not into a namespace created without interoperability, and omits the DW-2355 limit
+- source: spec-20-28-ocupilot-compiles-in-a-namespace-without-interoperability.md | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: docs/DEVELOPMENT.md:456 (CI table, package row) and :640-656 (Verifying an IPM install); scripts/ci-ipm-archive.sh now installs into NOINTEROP
+- 2026-10-12T18:08:24Z status=wontfix-accepted owner=20-28-ocupilot-compiles-in-a-namespace-without-interoperability by=cr note=incomplete, not false; reopen_if=docs/DEVELOPMENT.md's package job text is next edited, or a reader assumes it smokes an HSCUSTOM install
 ### DW-2354: Gemini refuses a tool declaration whose INTEGER property carries numeric enum members (HTTP 400), so every Gemini request carrying one of five tools fails
 - source: spec-18-45-the-agent-s-tool-roster-scoped-per-turn.md | severity: high | fix-risk: low | footprint: in-story
 - evidence: Task 0 on ocupilot-ci: countTokens of the full roster 400 at security_secrets_creatersa, createsymmetric, replacersa, security_ssl_create, security_ssl_update; generateContent with creatersa alone 400, 200 with the members as strings (ToolDefAdapter.GeminiSchema :233)
