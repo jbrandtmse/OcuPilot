@@ -2,7 +2,7 @@
 title: 'Story 18.45: The agent''s tool roster scoped per turn'
 type: 'feature'
 created: '2026-10-12'
-status: 'draft'
+status: 'ready-for-dev'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -41,89 +41,90 @@ Under option A, the recommendation (Design Notes).
 
 ## Code Map
 
-Under `src/OcuPilot/` at `6846375c`. The 18.39 rework is editing `Loop.cls`, `Provider/Response.cls` and the adapters' `MapResponse`; implement re-anchors after it lands.
+Under `src/OcuPilot/` at `0b5ef14df1dd1aaea66ea47b26ab0eb081bd6c1a`.
 
-- `Kernel/Agent/Loop.cls`: `Run` :138 reads the route once (`ContextRoute` :60, used :161), takes the array once through `Advertise` :215-216 and passes it to every `Invoke` :239; `AnswerTools` :488 echoes `ContentJson`.
-- `Kernel/Agent/Dispatch.cls`: `Advertise` :92 is `Registry.ProviderTools`; `AnswerOne` resolves any listed wire name (`ResolveWire` :208), so the selection changes no gate.
-- `Screen/Tool/Registry.cls` (read-only here): `ListTools` :114 (20.24's per-process cache), `IsAdvertised` :337, `ProviderTools` :354 (the `pTools(n, name|description|inputSchema)` shape every adapter reads).
-- `Screen/Context.cls` `ScreenTools` :178: a screen's read and write tools, advertised only, the source of the starting set.
-- Shell tools (`Kernel/Shell/ReadTool` subclasses, e.g. `InstanceRead.cls`, plus `Screen/Tool/Navigate.cls`): `shell.instance.read`, `shell.namespaces.read`, `shell.privileges.read`, `shell.screen.open`.
-- `Kernel/Provider/Anthropic.cls` `CallMessages` :64 (marks the last tool :103, the tail :92), `MapResponse` :158 (keeps `ContentJson` only on a reasoning block). `OpenAI.cls` `CallMessages` :58 (`ToolDefAdapter.ToOpenAi` :72; `Compatible` inherits it); `Gemini.cls` `CallMessages` :140 (`ToGemini` :99). `Catalog.cls` rows (OpenAI on `/v1/chat/completions`).
-- `Kernel/Agent/Prompt.cls` `BUILTIN` :21 ("Use only the tools you are offered..."); `Kernel/Agent/Sanitize.cls` `Results` (AD-60).
-- Tests on the old shape: `Test/AdapterCache.cls`, `TurnBudget.cls`, `Adapter.cls` `CANONICALBODY`, `TurnProvider.cls` `Recorded`, `TurnStream.cls`, `ScreenGrounding.cls`, `ReadTool.cls` (counts).
+- `Kernel/Agent/Loop.cls`: `ContextRoute` :65; `Run` :143 (`Advertise` :221-226, `Invoke` :245); `AnswerTools` :503 (dispatch :623, step content :646, `Spend` :656, `Sanitize.Results` :661).
+- `Kernel/Agent/Dispatch.cls` (not edited): `Advertise` :92 stays the whole listing; `Capped` :792 cuts `rows` whole.
+- `Screen/Tool/Registry.cls` (read-only): `ListTools` :114, `WireName` :310, `IsAdvertised` :337, `ProviderTools` :354, `DescriptionOf` :498.
+- `Api/Turn.cls` `BoundedContext` :534 sets the payload's `tools` (:543-545).
+- Shell tools: `Kernel/Shell/*Read`, `Screen/Tool/Navigate.cls` (seam :62); `Kernel/Agent/Sanitize.cls` `Results` :38; `Prompt.cls` `BUILTIN` :21.
+- `Kernel/Provider/Anthropic.cls` `CallMessages` :71 (tail :95-101, tools :103-114); `ToolDefAdapter.ToOpenAi` :72, `ToGemini` :99; `MessageAdapter.ResultText` :665; `Base.cls` :163 (`pTools`).
+- Harnesses: `TurnToolsCase`, `ToolDispatchProbe.SetRegistryClass`; other families: `AnthropicThinking` :198-214; turn job: `TurnProvider`, `ToolWire` :124, `TurnStream` :410-433.
 
 ## Tasks & Acceptance
 
-**Task 0** [ ] (`ocupilot-ci`, after `LOAD-OK` and `STARTPATH-OK`; keys from `/Users/jbrandt/git/OcuPilot/.env.local` read at the point of use, never printed, logged, ledgered or committed; halt on a contradiction). Record under Design Notes "For the lead": (a) each Anthropic catalog model's `max_input_tokens` (Models API) and the full roster request's `count_tokens`; (b) each Gemini catalog model's `inputTokenLimit` (`models.get`) and `countTokens` of the full request; (c) the OpenAI models' documented windows; (d) every family and model whose window cannot hold the full request plus the canonical 32,000 `max_tokens`, named; an absent key records "unmeasured". Parts (e) the scoped call's size against the full one and (f) one live scoped turn per family whose key exists are written with the Tasks.
+**Task 0** [ ] (`ocupilot-ci`, after `LOAD-OK` and `STARTPATH-OK`; keys from `/Users/jbrandt/git/OcuPilot/.env.local` read at the point of use, never printed, logged, ledgered or committed, on a probe definition created and removed; halt on a contradiction). Under "For the lead": (a) each Anthropic catalog model's `max_input_tokens`, and `count_tokens` of the full and the scoped first request (else a `max_tokens` 1 call's usage, on `claude-haiku-5-5` only); (b) Gemini's `inputTokenLimit` and `countTokens` likewise; (c) OpenAI's documented windows; (d) each model that cannot hold the full request plus 32,000 `max_tokens`, named (Haiku 4.5 and local compatible servers expected; no key or server: "unmeasured"); (e) the scoped first call's and the largest starting set's characters and tokens against the full call's, and an Anthropic second call's `cache_read_input_tokens`; (f) one live scoped turn per family with a key: call 1 searches, call 2 calls the found tool, each 200. Every live Anthropic call, (e)'s cache read included, uses `claude-haiku-5-5` (owner, 2026-10-12); another Anthropic model only for a check about that model, named with the reason. Record Haiku 5.5's figures beside 18.39's Opus ones, naming the model of each.
 
-**Execution:** written after the owner's answer (Auto Run Result).
+**Execution:**
+
+1. [ ] `Screen/Tool/ToolsFind.cls` (new, extends `Screen/Tool/Base` as `Navigate` does) -- `shell.tools.find`, read, no pairs, no secret arguments; input `query` (string, required, at most 200), `limit` (integer 1 to 20, default 8). Over `RegistryClass()`'s `ListTools` (a seam), every advertised tool but itself: a query word (lower case, alphanumeric runs of 2+, first 10) scores 2 when the canonical name contains it, else 1 when `DescriptionOf` does; 0 dropped; by score, then name; answers `{query, rows: [{name: wire name, description}], rowsAvailable, truncated}`. No word: `TOOL.ARGUMENTS`. Description: "Search the tools you were not given at the start of this turn by what they do; a tool found can be called from your next step."
+2. [ ] `Kernel/Agent/Loop.cls` -- (a) `ContextTools(pContextJson)`, sibling of `ContextRoute`: the payload's `tools`. (b) `Scope(ByRef pTools, pContextJson)`, once after `Advertise`: when the array holds the discovery tool, sets `pTools("scoped")` 1 and `pTools(n, "start")` 1 for each `shell_` wire name and each `ContextTools` name; else leaves it whole. (c) `AnswerTools` gains a trailing optional `ByRef pTools`: after `Spend`, a non-error discovery result on a scoped array gets `content` = one `{"type":"tool_reference","tool_name":<wire>}` per row in the array (an absent tool is a 400) and not `start`, in row order, each such tool given the next `pTools(n, "found")` once; with none, the content stays. (d) Header.
+3. [ ] `Kernel/Provider/Base.cls` -- `pTools` doc: `scoped`, `start`, `found`; absent means the whole array.
+4. [ ] `Kernel/Provider/Anthropic.cls` -- scoped: every tool sent, `defer_loading: true` without `start`, `cache_control` on the last `start` tool, never on a deferred one; unscoped unchanged.
+5. [ ] `Kernel/Provider/ToolDefAdapter.cls` -- `Carried(ByRef pTools)`: every index unscoped; scoped, `start` in array order then `found` by number. `ToOpenAi` and `ToGemini` iterate it.
+6. [ ] `Kernel/Provider/MessageAdapter.cls` -- `ResultText`: content of `tool_reference` blocks only reads `Found tools you can call from your next step: <names, comma-separated>.`
+7. [ ] `Kernel/Agent/Sanitize.cls` -- `Results`: a non-empty array of blocks each exactly `{type: tool_reference, tool_name}` matching `^[a-zA-Z0-9_-]{1,64}$` passes unchanged; anything else as today.
+8. [ ] `Kernel/Agent/Prompt.cls` -- statement 5, in place: "Your tools start with the shell's and this screen's; shell_tools_find finds any other tool by what it does, callable from your next step. Use only the tools you are offered or find, and when a search finds none that can do what was asked, say so rather than describe a capability you lack."
+
+**Tests** (under 500 lines each; `mutation:` lines when observed):
+
+9. [ ] Fixtures `Test/ScopeTool/`: `Registry` (extends `DispatchTool.Registry`, package `OcuPilot.Test.ScopeTool.`), `Find` (extends `ToolsFind` on it), `Reader` (`probe.found.read`), `Shell` (`shell.probe.read`), the last two extending `DispatchTool.Counter`.
+10. [ ] `Test/ToolsFind.cls`: "permissions users read" ranks `permissions_users_read` first; never itself or an unadvertised tool; `limit`, `rowsAvailable`; no word refused; no match `rows` []. mutation: no `IsAdvertised` check.
+11. [ ] `Test/TurnScope.cls` (`TurnToolsCase`, `ScopeTool`): (a, C1, C3) call 1 searches "found", call 2 calls `probe_found_read`, call 3 ends: the same `tools` text each call, only it deferred, the marker on the last non-deferred tool; call 2 carries its `tool_reference`; dispatched once, step ok. mutation: `Scope` marks all `start`. (b) a context naming it sends it undeferred. (c) `DispatchTool`, with no discovery tool, sends every tool undeferred, marker last. mutation: no discovery check. (d, C2) every built screen's starting set, as `ToOpenAi` carries it, is at most 65,536 characters; the largest recorded. mutation: `Carried` answers every index.
+12. [ ] `Test/TurnScopeFamilies.cls` (openai, gemini, compatible, as `AnthropicThinking` reaches them): call 1 carries the starting set only, call 2 adds `probe_found_read` after it, the tool message names it, dispatched once. mutation: no `found` set.
+13. [ ] `Test/AdapterScope.cls` (driven as `AdapterCache` is): tasks 4-6; unscoped unchanged. mutations: the marker on a deferred last tool; old `ResultText`.
+14. [ ] `Test/Sanitize.cls`, one method: task 7's pass, idempotent; a bad name, an extra member or a mixed array framed. mutation: pass any array.
+15. [ ] `Test/ToolWire.cls`, one method (Integration): call 1 searches "permissions users read", call 2 calls `permissions_users_read` `{maxRows: 5}`: the same `tools` text each call with it deferred, call 2's `tool_result` its `tool_reference`, both steps ok. mutation: no (c) replacement.
+16. [ ] `Test/ScreenGrounding.cls`: `Statement` 5 is task 8's. mutation: the old text.
+17. [ ] **Rule 30 sweep.** Rosters: `ReadTool` :94-95 (374, names), `DeveloperFloor.TOOLS` and its count message, `InteropFloor.BASETOOLS`, `InteropFloorOwnPairs.FLOORONLY` (`tool:shell.tools.find=no classic resource`), `ToolRoundTrip.REFUSEEMPTY` (`shell.tools.find:TOOL.ARGUMENTS`), `TurnStream` :425 (last non-deferred tool). Grep `src/OcuPilot/Test` for `shell.screen.open`, `"tools")`, `MarkOf(`, `373` and the old statement 5; run each class changed plus `AnthropicThinking`, `TurnTools`, `TurnBudget`, `AdapterCache`, `Adapter`, `LedgerWire`, `TurnNavigate`, `ToolSetFull`, `RegistryCache`, `InteropFloorTurn`, `DeveloperFloorTurn`, editing only if red.
 
 **Acceptance Criteria** (epics.md, Story 18.45):
 
 - **C1.** Given the registry's whole listing, cached per process (20.24), when a turn assembles a provider call, then the call carries a scoped tool set chosen after the listing and never inside it.
 - **C2.** Given a supported family or model whose window cannot hold the full roster, when Task 0 measures each, then each is named and the scoped set fits it.
 - **C3.** Given an advertised tool outside the starting set, when the agent needs it in the turn, then it reaches it by the mechanism the owner accepts, and dispatch answers it exactly as today.
+- **Integration.** Given `ocupilot-ci` and the `turnprobe` row, when a turn through the turn job searches and then calls the found tool, then both answer and the requests carry task 4's array and the `tool_reference`.
 
 ## Spec Change Log
 
+- 2026-10-12, lead, spec gate: A built as planned; AD-8 (with the owner's choice quoted), AD-24, AD-22, AD-53 and AD-60 amended as proposed. Owner, relayed the same morning: every live Anthropic check uses `claude-haiku-5-5` (Task 0 (a), (e), (f)). Rule 11: the `ReadTool` :94 count and `DeveloperFloor`'s count message need the orchestrator's pre-authorization as unions; the other roster edits are add-only.
 - 2026-10-12, owner (relayed by the Planner and the orchestrator, feature 3b01d9dd): "A: screen + search (Recommended)" -- the whole answer. As the owner saw it: "Current screen's tools, the general tools and a tool search; every other tool is reachable in the same turn after a search. One extra call when it reaches outside; works with every model, including local ones." Build A as this plan framed it.
 
 ## Review Triage Log
 
 ## Design Notes
 
-**Families** (vendor docs read 2026-10-12: Anthropic tool search (`platform.claude.com/docs/en/agents-and-tools/tool-use/tool-search-tool`), the `claude-api` skill's model table; OpenAI `developers.openai.com/api/docs/guides/tools-tool-search` and models compare; Gemini `ai.google.dev` function calling, models).
+**Families** (2026-10-12). Anthropic: a `defer_loading` tool is sent but kept out of context, no beta header, on all five catalog models; a custom tool may answer `tool_reference` blocks, which "the API expands"; `cache_control` on a deferred tool, an all-deferred array or a reference to an absent tool is a 400; an unreferenced deferred tool is outside the thinking-block check. OpenAI defers only on its Responses API; the others never.
 
-| Family | Native deferral | Call carries | Model reaches the rest | Fallback |
-|---|---|---|---|---|
-| Anthropic (all five catalog models listed as supported) | `defer_loading: true` plus server search (`tool_search_tool_regex_20251119`, `_bm25_20251119`) or a custom search tool answering `tool_reference` blocks; no beta header | every definition on every call; deferred ones stay out of the context window and the cached prefix | after a search; "the API automatically expands these references" | none needed |
-| OpenAI (`/v1/chat/completions`) | Responses API only ("In the Responses API, only `gpt-5.4` and later models support `tool_search`") | today: all | -- | OcuPilot's discovery tool; found definitions appended from the next call |
-| Gemini | none: `allowed_function_names` still sends every declaration | today: all | -- | the same |
-| Compatible (vLLM, Ollama, llama.cpp, LiteLLM) | none standard | today: all | -- | the same |
+**Choices.** One discovery tool, not Anthropic's server search: all four families, no new response block, a step card and ledger row per search (AD-33, AD-41); Anthropic's array never grows (`tool_set_changed`). The starting set is the `shell` area plus the context's `tools`, derived on the instance (AD-24). A listing without `shell.tools.find` is sent whole, so nothing becomes unreachable. It declares no pair: it answers only what the whole array gave every caller. The search reads `ListTools`' per-process cache as any tool does; only rows in the turn's one array are used. Results become canonical `tool_reference` blocks (AD-42).
 
-**Anthropic cannot grow its array.** Adding a plain tool mid-conversation invalidates every earlier thinking block (`tool_set_changed`, a 400 for accounts created on or after 2026-08-31 on Opus 5.5, Sonnet 5.5 and Fable 5.1) and restarts the cache; a `defer_loading` tool nothing has referenced is outside both comparisons (skill, `preserved-thinking-migration/causes.md`). So Anthropic declares the whole set up front, deferred, and a deferred tool may not carry `cache_control` (a 400): the marker moves to the last non-deferred tool. OpenAI with `reasoning_effort` `none`, Gemini and compatible servers bind no reasoning to the tool set (inference; Task 0 (f) confirms on Gemini 3's thought signatures).
+**Governing ADs:** AD-5, AD-8, AD-11, AD-22 (a read: no key), AD-24, AD-31, AD-35, AD-41, AD-42, AD-53, AD-60. **Rule 31:** `ToolsFind` follows `Navigate`; `ContextTools` extends `ContextRoute`; one `Carried`; no second cache. **Rule 11:** Epic 20's diff names no file here at plan; `Loop.cls` is on its list, so implement re-checks and stops if it appears. No Fixed string, no client change. **Consumes:** 20.24, 18.39, 18.12, 4.7. **Consumed-by:** 18.40, 18.41 (`Anthropic.cls`). **Ledger inbox:** empty.
 
-**Recommended mechanism (option A):** one OcuPilot discovery tool for all four families (`shell.tools.find`, a `Kernel/Shell/ReadTool` subclass searching `ListTools`' names and descriptions, no second cache), answered to Anthropic as `tool_reference` blocks (Anthropic's documented "custom tool search implementation") and to the others by appending the found definitions. Starting set: the four shell tools, `ScreenTools` of the turn's route, and the discovery tool. Declined: Anthropic's server search, which saves one call per discovery but adds two response block types (`server_tool_use`, `tool_search_tool_result`) the adapter, the stream reader and the echo must keep, and a second search the other families cannot share.
+**For the lead** (Rule 20; applied at the spec gate, 2026-10-12):
 
-**Size (inference from 18.39 Task 0's averages, 1,428 characters and about 520 tokens a tool):** a starting set of 5 to 15 tools is about 7,000 to 21,000 characters, 2,600 to 7,800 tokens, against 190,700. On Anthropic the request still carries all 525,414 characters of definitions, but the docs say "`defer_loading` controls what enters the context window, not what you send", and discovered definitions "count as input tokens like any other tool definition" (Task 0 (e) measures).
-
-**Windows** (the full request about 190,700 tokens on Opus 5.5's tokenizer, plus 32,000 `max_tokens`): `claude-opus-5-5`, `claude-opus-5`, `claude-sonnet-5`, `claude-fable-5-1` 1M; `claude-haiku-4-5` 200K with an older tokenizer (about 141,000 to 191,000 tokens for the roster (inference)), at or past its window; `gpt-5.6-terra`, `-sol`, `-luna` 1,050,000, `gemini-2.5-pro` 1,048,576 and `gemini-3.5-flash` 1,000,000 (Perplexity citing each vendor's page, not read directly; Task 0 confirms), `gemini-3.8-flash` unverified; compatible servers take their model's configured window (vLLM `max_model_len`, Ollama `num_ctx`), commonly 8K to 128K (inference), so none holds the roster.
-
-**Governing ADs:** AD-5 (20.24's listing; selection after it), AD-8, AD-11 (rule 1: `screen_context` never advertised), AD-22, AD-24 (as 18.39 amended), AD-31, AD-35 (Task 0's keys), AD-42, AD-53, AD-60. AD-22: no write key (a read tool).
-
-**Rule 31.** Extends `ScreenTools`, `ListTools`, `Kernel/Shell/ReadTool` and 18.39's `Anthropic.CallMessages` marker; no second cache. **Rule 11** (checked at plan): Epic 20's diff names none of `Loop.cls`, `Dispatch.cls`, `Registry.cls` or the adapters; the prompt lists `Loop.cls` and `Dispatch.cls` as Epic 20's, and option A changes `Loop.Run`'s advertise point in place, so implement re-checks and stops if Epic 20's diff names either. **Fixed strings:** 3,279 of 3,400 (counted from `strings.test.mjs`'s extractor); none expected. **Bundle:** no client change expected.
-
-**Integration ACs:** C3 is the integration AC (a turn through the turn job on `turnprobe`). **Consumes:** 20.24 (`ListTools`), 18.39 (caching, turn budget, billed-weight bound), 18.12 (the roster), 4.7 (navigation). **Consumed-by:** 18.40, 18.41 (rebase on `Anthropic.cls`). **Ledger inbox:** empty.
-
-**For the lead** (Rule 20), proposed wording under option A, made at the spec gate once the owner answers:
-
-- AD-8: "The full tool set is always advertised, save ..." becomes "The full tool set is always reachable within a turn, save ...: a call carries the turn's starting set, and every other advertised tool is reached through the discovery tool (AD-24)."
-- AD-24 (18.39's paragraph): "The tool array is the listing's whole set (AD-5, AD-8), built once per turn and byte-identical on every call" becomes "The tool set is chosen after the listing, never inside it (AD-5): the turn starts with the shell's tools, the starting screen's tools and the discovery tool. A family that defers (Anthropic) sends the listing's whole set on every call, byte-identical within the turn, every other tool `defer_loading`, a found tool reaching the model as a `tool_reference`; any other family sends the starting set and appends each found definition from the next call, its cache restarting at the tools." "marks its last tool" becomes "marks its last non-deferred tool".
-- AD-22: "while the tool stays advertised" becomes "while the tool stays reachable". AD-53: the discovery tool never finds an unadvertised tool. AD-60: a `tool_reference` block, a registry name with no instance data, passes unchanged.
+- AD-8 (the owner's answer): "The full tool set is always advertised, save ..." becomes "The full tool set is always reachable within a turn, save ...: a call carries the turn's starting set, every other advertised tool reached through the discovery tool (AD-24) (owner, 2026-10-12: 'every other tool is reachable in the same turn after a search')."
+- AD-24, 18.39's paragraph: "The tool array is the listing's whole set (AD-5, AD-8), built once per turn and byte-identical on every call" becomes "The tool set is chosen after the listing, taken once per turn, never inside it (AD-5): a turn starts with the shell area's tools, `shell.tools.find` among them, and the screen context's `tools`. Anthropic gets the whole set, byte-identical within the turn, the rest `defer_loading`, a found tool arriving as a `tool_reference`; other families get the starting set plus, from the next call, each found tool (their cache restarting at the tools (inference)), rendering a `tool_reference` as text. A listing without the discovery tool is sent whole." "its last tool" becomes "its last non-deferred tool".
+- AD-22: "while the tool stays advertised" becomes "while the tool stays reachable". AD-53: the discovery tool never finds an unadvertised tool. AD-60: a `tool_reference` block, a wire name with no instance data, passes unchanged.
 - No vendor defect candidate.
 
 ## Verification
 
-**Shared surfaces:** every provider body's `tools` (`CANONICALBODY`, `AdapterCache`'s last-tool marker, `TurnProvider.Recorded`), the built-in prompt's statements (`ScreenGrounding`), the read-tool roster and counts (`ReadTool`, `SurfaceCoverage`) if a discovery tool is added.
+**Shared surfaces:** a turn's provider `tools` (`TurnStream`, `ToolWire`), prompt statement 5 (`ScreenGrounding`), the tool roster and counts (`ReadTool`, `DeveloperFloor`, `InteropFloor`, `InteropFloorOwnPairs`, `ToolRoundTrip`).
 
 **Standing criterion:** every test added or changed passes on a fresh environment, in either order.
 
-**Commands** (each inside one 10-minute foreground call; the class list is written with the Tasks):
+**Commands** (each inside one 10-minute foreground call):
 
 - `(loop)` `sh /Users/jbrandt/git/OcuPilot/.worktrees/.coordination/carry-2026-10-08/epic-18-d8/load-ocupilot-ci.sh` -- expected `LOAD-OK` and `STARTPATH-OK`.
-- `(loop)` `cd ui && node tools/ci-runner.mjs --container ocupilot-ci --class OcuPilot.Test.<C>`, one at a time, totals from `%UnitTest_Result`.
-- `(loop)` `uv run scripts/check-objectscript.py`; `bash scripts/lint-docs.sh`.
-- Full ObjectScript sweep: the runner's (a Rule 30 sweep task); browser suite: CI's.
+- `(loop)` `cd ui && node tools/ci-runner.mjs --container ocupilot-ci --class OcuPilot.Test.<C>`, one at a time, totals from `%UnitTest_Result`: tasks 10-16's classes, `TurnStream`, and each class task 17 edits or runs.
+- `(loop)` `uv run scripts/check-objectscript.py`; `bash scripts/lint-docs.sh`. No client tier.
+- Full ObjectScript sweep: the runner's; browser suite: CI's.
+
+**S0:** the new tests leave no probe definition, turn or stub node.
 
 ## Auto Run Result
 
-Status: blocked
-Blocking condition: intent gap -- the owner's product-promise question for Story 18.45 (epics.md: "If the chosen mechanism changes what the agent can do in a turn ... that is the owner's product-promise question, raised at the spec gate before anything is built").
+Status: ready-for-dev
+Blocking condition: none
 
-**Question for the owner (relay unchanged):** Every agent call today sends all 368 tools, about 190,700 tokens on Claude Opus 5.5 and 99% of the call; Claude Haiku 4.5 and most OpenAI-compatible local servers cannot hold that at all. Making the call smaller means the agent starts each turn holding only some tools. Which do you want?
-
-- **A (recommended):** The agent starts each turn with the tools of the screen the user is on, the shell tools (instance, namespaces, privileges, navigation) and a tool search. Every other tool stays reachable in the same turn after the agent searches for it. Cost: one extra model call each time it needs a tool outside its starting set, and a tool the search does not surface is one it may not find. On Anthropic the full roster is still sent but held back until found, so caching keeps working; on OpenAI, Gemini and compatible servers the found tools join the next call.
-- **B:** The agent gets only the current screen's and the shell tools, with no search; to act on another screen it navigates there and the user sends the next message. Smallest call, but no work across screens in one turn.
-- **C:** Keep sending all 368 tools (18.39's caching keeps repeat calls fast on Anthropic) and name the models that cannot hold them as unsupported. Nothing changes for the agent.
-
-**Planned:** intent, Code Map, family comparison with sources, Task 0's measurements independent of the answer, the epics' ACs, and AD-8, AD-22, AD-24, AD-53 and AD-60 wording under option A. **Not written:** Tasks 1 onward, their tests and `mutation:` plans, which depend on the answer. No call was made to `ocupilot-ci` or `ocupilot`, and no live provider call.
+Re-planned on answer A. No call to `ocupilot-ci` or `ocupilot`, no live provider call.
