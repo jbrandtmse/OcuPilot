@@ -1394,3 +1394,4 @@ TAB-separated: `<UTC>\t<Story <id> | Epic <N>>\t<stage>\t<metadata>`
 2026-10-12T18:48:37Z	Epic 18	ledger_harvest	DW-2364(IPM_exporter_SystemRequirements,decision-pending,owner_hold) from=18.13_deferred
 2026-10-12T18:48:37Z	Story 18.13	adr_verifications_complete	tool=none result=none_required(AD-17_closed_with_Task_0;ACs_pinned) model=claude-opus-5-5
 2026-10-12T18:48:37Z	Story 18.13	stage_spawned	stage=qa spawn_at=2026-10-12T18:48:37Z model=sonnet agent_name=18-13-multi-ns-qa-1 cycle_iteration=1 prompt=carry-2026-10-10/epic-18-r/qa-1813-prompt.md run_in_background=false
+2026-10-12T19:18:04Z	Story 18.13	qa_complete	spawn_at=2026-10-12T18:48:37Z model=sonnet agent_name=18-13-multi-ns-qa-1 tests_added=ContainerStartNamespace(4),container-start-outcome.test.mjs(3) mutations_demonstrated=27(runs_688-738) closing_sections_present=true note=container_OTHER/OK_branches_now_executed_by_a_test;stale_container-start.sh_copy_in_throwaway_refreshed
