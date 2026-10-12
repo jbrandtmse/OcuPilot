@@ -360,7 +360,7 @@ test('AC8, AC9: the table is exported to this browser, deleted, and imported bac
     await page.click('[data-explorer-import-confirm]');
     await statusReads(page, STRINGS.interopLookupImportDone.replace('<file>', `${TABLE}.xml`));
     const sent = posts.at(-1);
-    assert.deepEqual([sent.action, sent.id, sent.values.fileName], ['import-local', 'import', `${TABLE}.xml`], 'one local import, named by the file');
+    assert.deepEqual([sent.action, sent.id, sent.values.fileName], ['import-local', TABLE, `${TABLE}.xml`], 'one local import, on the table the file names, so the write holds that table');
     assert.equal(sent.values.content, saved.text, 'carrying the file\'s text');
     assert.equal(await settled(TABLE, true), true, 'the table is back on the instance');
     assert.equal(digest(TABLE), before, 'with the same entries, the non-ASCII key included');

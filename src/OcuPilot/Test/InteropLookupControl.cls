@@ -126,10 +126,11 @@ Method TestTheSaveCreatesATableWithItsFirstEntry()
     Do $$$AssertEquals(tText, "201 ", "the Save answers 201: " _ $Select($IsObject(tAnswer): tAnswer.%ToJSON(), 1: tAnswer))
     Do $$$AssertEquals($Select($IsObject(tAnswer): $Translate(tAnswer.id, $Char(1), "~") _ "|" _ tAnswer.target.type _ "|" _ tAnswer.readBack.verdict, 1: ""), ..#TABLE _ "~first|lookup-entry|" _ ##class(OcuPilot.Kernel.Proposal.ReadBack).#MATCHES, "with the entry's id, its entity type and a matching read-back")
     Do $$$AssertEquals($ClassMethod(..#FIXTURE, "Entries", ..#TABLE), "first=" _ ..#VALUEMARKER, "the table was created with its first entry")
+    Do $$$AssertEquals(..Audited(tSince, "add", ..#TABLE, .tData), 1, "one audit row of OcuPilot's own for the add")
+    Do $$$AssertTrue((tData [ ..#TABLE) && (tData [ "first") && (tData '[ ..#VALUEMARKER), "which names the table and the entry and carries no value: " _ tData)
     Do $$$AssertEquals(..Save(..#TABLE, "second", $Char(0), .tAnswer), "201 ", "a second Save adds to the held table, with no value")
     Do $$$AssertEquals($ClassMethod(..#FIXTURE, "Entries", ..#TABLE), "first=" _ ..#VALUEMARKER _ ";second=", "an omitted value stores an empty one")
     Do $$$AssertEquals(..Audited(tSince, "add", ..#TABLE, .tData), 2, "one audit row of OcuPilot's own for each add")
-    Do $$$AssertTrue((tData [ ..#TABLE) && (tData '[ ..#VALUEMARKER), "which names the table and carries no value: " _ tData)
 }
 
 /// <p>AC2: <code>POST /interop/lookup-entries</code> answers over the wire as JSON: 201 with the entry's id, its target and its
@@ -155,7 +156,8 @@ Method TestTheSaveRouteAnswersJsonOverTheWire()
 /// Delete on the tables list removes a table and every entry in it; each is audited with no value, and none leaves a table
 /// behind.</p>
 /// <p>Mutation (Rule 19): make <code>REMOVEENTRY</code> in <method>OcuPilot.Port.InteropPort.PerformLookup</method> call
-/// <code>%ClearTable</code> -- the first remove leg goes red.</p>
+/// <code>%ClearTable</code> -- the first remove leg goes red; add the written value to the audit effects of a set -- the set row's
+/// leg goes red.</p>
 Method TestThePersonsRowActionsSetRemoveAndDeleteWriteAndAuditWithoutAValue()
 {
     Set tFixture = ..#FIXTURE
@@ -166,6 +168,8 @@ Method TestThePersonsRowActionsSetRemoveAndDeleteWriteAndAuditWithoutAValue()
     Do $$$AssertEquals(tText, "200 ", "Set value answers 200: " _ $Select($IsObject(tAnswer): tAnswer.%ToJSON(), 1: tAnswer))
     Do $$$AssertEquals($Select($IsObject(tAnswer): tAnswer.action _ "|" _ tAnswer.target.type _ "|" _ $Translate(tAnswer.target.id, $Char(1), "~"), 1: ""), "updated|lookup-entry|" _ ..#TABLE _ "~a", "publishing the updated event for the entry")
     Do $$$AssertEquals($ClassMethod(tFixture, "Entries", ..#TABLE), "a=" _ ..#VALUEMARKER _ ";b=two", "the value is stored")
+    Do $$$AssertEquals(..Audited(tSince, "set", ..#TABLE, .tData), 1, "one set row so far")
+    Do $$$AssertTrue((tData [ ..#TABLE) && (tData '[ ..#VALUEMARKER), "which names the table and carries no trace of the value it stored: " _ tData)
     Do $$$AssertEquals(..Act(..#ENTRYSCREEN, "set", ..Id(..#TABLE, "a"), "", .tAnswer), "200 ", "an empty value is accepted")
     Do $$$AssertEquals($ClassMethod(tFixture, "Entries", ..#TABLE), "a=;b=two", "and stored")
     Do $$$AssertEquals(..Act(..#ENTRYSCREEN, "set", ..Id(..#TABLE, "a"), $Char(0), .tAnswer), "400 TOOL.ARGUMENTS", "a set that sends no value is refused")
@@ -188,7 +192,6 @@ Method TestThePersonsRowActionsSetRemoveAndDeleteWriteAndAuditWithoutAValue()
     Do $$$AssertEquals(..Audited(tSince, "remove", ..#TABLE, .tData), 2, "two remove rows")
     Do $$$AssertEquals(..Audited(tSince, "delete", ..#TABLE, .tData), 1, "one delete row")
     Do $$$AssertTrue((tData [ ..#TABLE) && (tData [ """entries"":3"), "which counts the entries it took: " _ tData)
-    Do $$$AssertTrue(tData '[ ..#VALUEMARKER, "and no audit row carries a value")
 }
 
 /// <p>AC2: the agent's add of an entry, minted for the HTTP account and confirmed over HTTP, creates a table that did not exist,
@@ -260,13 +263,15 @@ Method TestTheAgentsRemoveConfirmsOverHttp()
     Set tSC = ##class(OcuPilot.Test.GovernanceFixture).Snapshot(.tPolicy)
     Do $$$AssertStatusOK(tSC, "the governance policy is read")
     Try {
+        ; The baseline alone decides, whatever a stored policy holds: it ships the remove off.
+        Do $$$AssertStatusOK(##class(OcuPilot.Test.GovernanceFixture).Clear(), "the stored policy is cleared")
         Set tSC = ..Mint("InteropLookupEntryRemove", ..ArgsFor(..#TABLE, "only"), .tProposal, .tFault, .tTurn)
         Do $$$AssertStatusOK(tSC, "the remove mints: " _ $Select($IsObject($Get(tFault)): tFault.%ToJSON(), 1: ""))
         If '$IsObject($Get(tProposal)) Quit
         Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).Field(tProposal.proposalId, "Consequence") _ "|" _ (##class(OcuPilot.Test.ProposalFixture).Field(tProposal.proposalId, "Destructive") + 0), "INTEROP.LOOKUP.REMOVE|1", "its consequence says the table goes with its last entry, and it is destructive")
         Do $$$AssertTrue((tProposal.changed.%ToJSON() [ """field"":""Key""") && (tProposal.changed.%ToJSON() [ "valueHeld") && (tProposal.changed.%ToJSON() [ """removed"":true"), "its card shows the key and value as removed rows: " _ tProposal.changed.%ToJSON())
         Set tStatus = ..Confirm(tProposal, .tAnswer, .tRaw)
-        Do $$$AssertNotEquals(tStatus, 200, "the confirm is refused while the tool's key is off: " _ $Extract($Get(tRaw), 1, 300))
+        Do $$$AssertEquals($Select($IsObject(tAnswer): tAnswer.%Get("code"), 1: tStatus), ##class(OcuPilot.Api.Error).#GOVERNANCEDISABLED, "the confirm is refused while the tool's key is off: " _ $Extract($Get(tRaw), 1, 300))
         Do $$$AssertEquals($ClassMethod(tFixture, "Entries", ..#TABLE), "only=valueHeld", "and the entry is still there")
         Kill tSettings
         Set tSettings("interop.lookupentries.remove") = "enabled"
@@ -287,7 +292,7 @@ Method TestTheAgentsRemoveConfirmsOverHttp()
         Do $$$AssertEquals(..LedgerCount(tTurn, "interop.lookupentries.remove"), 1, "ledgered once")
         Do $$$AssertEquals($ClassMethod(tFixture, "Exists", ..#TABLE), 0, "the last entry took the table with it")
         Do $$$AssertEquals(..Audited(tSince, "remove", ..#TABLE, .tData), 1, "one audit row of OcuPilot's own")
-        Do $$$AssertTrue(tData '[ "valueHeld", "carrying no value: " _ tData)
+        Do $$$AssertTrue((tData [ ..#TABLE) && (tData '[ "movedOutOfBand"), "naming the table and carrying no trace of the value the entry held: " _ tData)
     } Catch ex {
         Do $$$AssertStatusOK(ex.AsStatus(), "the remove leg raised")
     }

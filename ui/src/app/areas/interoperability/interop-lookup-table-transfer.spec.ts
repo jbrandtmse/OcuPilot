@@ -17,6 +17,8 @@ import {
   INTEROP_LOOKUP_TABLE_LIST,
   InteropLookupTableListPage,
   exportFileName,
+  fileTable,
+  fill,
 } from './interop-lookup-table-list.page';
 
 /**
@@ -134,13 +136,16 @@ describe('the Lookup tables page export and import', () => {
     expect(host.querySelector('[data-explorer-export-replaces]')?.textContent?.trim()).toBe(STRINGS.interopLookupExportReplaces);
   });
 
-  it('exports the selected table to a server file, pinned to the namespace the dialog opened in, and says where it went', async () => {
+  it('exports the table the dialog opened on to a server file, pinned to the namespace the dialog opened in, and says where it went', async () => {
     // Mutation (Rule 19): drop `scope` from the export's `sendFor` in `onExport` -> the request follows the shell and the scope assertion goes red.
     const { fixture, host, store, actions, calls, events } = mount();
     store.setSelection(['Probe.Table']);
     actions.run(INTEROP_LOOKUP_TABLE_LIST, INTEROP_LOOKUP_EXPORT_ACTION);
     await settle(fixture);
     await typePath(fixture, host, 'out/Probe.Table.xml');
+    // Mutation (Rule 19): send `store.selection()[0]` in `onExport` -> the selection cleared under the open dialog sends nothing and this goes red.
+    store.setSelection([]);
+    await settle(fixture);
     (host.querySelector('[data-explorer-export-confirm]') as HTMLButtonElement).click();
     await settle(fixture);
     expect(calls).toHaveLength(1);
@@ -240,6 +245,31 @@ describe('the Lookup tables page export and import', () => {
     calls[0].answer({ kind: 'ok', status: 200, body: { action: 'updated', target: { type: 'lookup-table', scope: 'USER', id: 'import' } } });
     await settle(fixture);
     expect(status(host)).toBe('Imported the lookup table in t.xml.');
+  });
+
+  it('fills the status line in one pass, so a table name holding a placeholder or a $ pattern is shown as it is', () => {
+    // Mutation (Rule 19): chain `.replace('<table>', ...).replace('<path>', ...)` in `fill` -> the path lands inside the name and this goes red.
+    expect(fill(STRINGS.interopLookupExportDone, { table: 'a<path>b$&', path: '/data/x.xml' })).toBe('Exported lookup table a<path>b$& to /data/x.xml.');
+  });
+
+  it('sends a local file on the table it names, so the write holds that table, and the unnamed import target otherwise', async () => {
+    // Mutation (Rule 19): send INTEROP_LOOKUP_IMPORT_TARGET for every import in `onImport` -> the first id assertion goes red.
+    const text = '<?xml version="1.0"?>\n<Export><Document name="Probe.Other &amp; Co.LUT"><lookupTable><entry table="Probe.Other &amp; Co" key="k">v</entry></lookupTable></Document></Export>\n';
+    const { fixture, host, actions, calls } = mount();
+    actions.run(INTEROP_LOOKUP_TABLE_LIST, TASK_IMPORT_ACTION_ID);
+    await settle(fixture);
+    const local = host.querySelector('input[data-explorer-import-source="local"]') as HTMLInputElement;
+    local.checked = true;
+    local.dispatchEvent(new Event('change'));
+    await settle(fixture);
+    const input = host.querySelector('input[data-explorer-import-file]') as HTMLInputElement;
+    Object.defineProperty(input, 'files', { value: [new File([text], 'other.xml')], configurable: true });
+    input.dispatchEvent(new Event('change'));
+    await settle(fixture);
+    (host.querySelector('[data-explorer-import-confirm]') as HTMLButtonElement).click();
+    await settle(fixture);
+    expect(calls[0].body.id).toBe('Probe.Other & Co');
+    expect([fileTable('<Export></Export>'), fileTable('not xml <'), fileTable('<Export><Document name="a.cls"/></Export>'), fileTable('<Export><Document name="A.LUT"/><Document name="B.LUT"/></Export>')]).toEqual(['', '', '', '']);
   });
 
   it('keeps the import dialog open with the instance\'s sentence when the file is not exactly one lookup table', async () => {

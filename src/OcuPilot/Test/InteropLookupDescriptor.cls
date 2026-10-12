@@ -25,8 +25,8 @@ Parameter TOOLS = "InteropLookupEntryAdd|interop.lookupentries.add|ADDENTRY||0|c
 /// page's resource as their own), actions, the entries list's one criterion and its parent, the tables list's secondary entity
 /// type, three prompts each, the read source and the classic page; the partner list is read-only and says what to do next; and
 /// each passes the registry.</p>
-/// <p>Mutation (Rule 19): remove <code>parentScope</code> from the entries list, or <code>secondaryEntityTypes</code> from the
-/// tables list -- this goes red.</p>
+/// <p>Mutation (Rule 19): remove <code>parentScope</code> from the entries list, or <code>secondaryEntityTypes</code> from either
+/// list -- this goes red.</p>
 Method TestTheThreeDeclarationsRegister()
 {
     Set tSC = ##class(OcuPilot.Screen.Registry).Descriptors(.tList)
@@ -52,6 +52,7 @@ Method TestTheThreeDeclarationsRegister()
     Set tPartners = ..Declaration("InteropBusinessPartnerList")
     Do $$$AssertEquals(tTables.primaryAction.id _ "|" _ tTables.rowActions.%Get(0).id _ "|" _ tTables.rowActions.%Size() _ "|" _ tTables.secondaryEntityTypes.%Get(0) _ "|" _ tTables.id.kind, "add|delete|5|lookup-entry|single", "the tables list adds a table, deletes one, exports, imports from the server and from this computer, and re-reads on an entry change")
     Do $$$AssertEquals(tEntries.primaryAction.id _ "|" _ tEntries.rowActions.%Get(0).id _ "," _ tEntries.rowActions.%Get(1).id _ "|" _ tEntries.parentScope _ "|" _ tEntries.id.kind _ "|" _ tEntries.id.parts.%Get(0) _ "," _ tEntries.id.parts.%Get(1), "add|set,remove|interoperability/lookup-tables|composite|Table,Key", "the entries list adds, sets and removes, under the tables list, by the composite [Table, Key]")
+    Do $$$AssertEquals(tEntries.secondaryEntityTypes.%Size() _ "|" _ tEntries.secondaryEntityTypes.%Get(0), "1|lookup-table", "and re-reads on a table's change, an import or a delete")
     Do $$$AssertEquals(tEntries.read.criteria.fields.%Size() _ "|" _ tEntries.read.criteria.fields.%Get(0).param _ "|" _ tEntries.read.criteria.fields.%Get(0).maxLength, "1|table|255", "its one criterion is the table")
     Do $$$AssertTrue(tEntries.read.criteria.fields.%Get(0).hint [ "interop.lookuptables.read", "whose hint names the tables read tool")
     Do $$$AssertEquals(tPartners.primaryAction.id _ "|" _ tPartners.rowActions.%Size() _ "|" _ (tPartners.table.emptyNextKey '= "") _ "|" _ (tPartners.table.emptyAgentKey = ""), "|0|1|1", "the partners list offers no action and says what to do next")
@@ -165,7 +166,8 @@ Method TestThePortDeclaresItsPairsAndServesWhatThePlanSays()
 }
 
 /// <p>The decision a lookup write is refused with, over the state matrix, and the violations' bounds at 255/256 characters of
-/// a table and a key and 32,000/32,001 of a value, a control character in a name, and an empty one.</p>
+/// a table and a key and 32,000/32,001 of a value, a table and a key too long together, a control character in a name, and an
+/// empty one.</p>
 /// <p>Mutation (Rule 19): drop the <code>SAME</code> test from <method>OcuPilot.Port.InteropPort.LookupWriteToken</method>,
 /// raise <code>VALUEMAX</code> to 32001, or lower <code>KEYMAX</code> to 100 -- this goes red.</p>
 Method TestTheWriteDecisionAndTheBoundsAreTheVendors()
@@ -187,8 +189,12 @@ Method TestTheWriteDecisionAndTheBoundsAreTheVendors()
     Set tE = ..#ERROR
     Set tAt = $Parameter(tE, "LOOKUPTABLENAME") _ "|" _ $Parameter(tE, "LOOKUPKEY") _ "|" _ $Parameter(tE, "LOOKUPVALUE")
     Do $$$AssertEquals(tAt, "INTEROP.LOOKUP.TABLENAME|INTEROP.LOOKUP.KEY|INTEROP.LOOKUP.VALUE", "the three violation codes")
-    Do $ClassMethod(tPort, "LookupViolations", $Justify("", 255), $Justify("", 255), $Justify("", 32000), .tViolations)
-    Do $$$AssertEquals(tViolations, 0, "255 characters of table and key and 32,000 of value are within the bounds")
+    Do $ClassMethod(tPort, "LookupViolations", $Justify("", 255), "k", $Justify("", 32000), .tViolations)
+    Set tAtBounds = tViolations
+    Do $ClassMethod(tPort, "LookupViolations", "t", $Justify("", 255), "", .tViolations)
+    Do $$$AssertEquals(tAtBounds _ "|" _ tViolations, "0|0", "a 255-character table, a 255-character key and a 32,000-character value are each within its bound")
+    Do $ClassMethod(tPort, "LookupViolations", $Justify("", 255), $Justify("", 255), "", .tViolations)
+    Do $$$AssertEquals(tViolations _ "|" _ $ListToString($Get(tViolations(1))), "1|Key,INTEROP.LOOKUP.KEY", "and a 255-character table with a 255-character key is too long to address: the key's violation")
     Do $ClassMethod(tPort, "LookupViolations", $Justify("", 256), $Justify("", 256), $Justify("", 32001), .tViolations)
     Do $$$AssertEquals($ListToString($ListBuild($List(tViolations(1), 1), $List(tViolations(2), 1), $List(tViolations(3), 1))) _ "|" _ tViolations, "Table,Key,Value|3", "256 characters of table and key and 32,001 of value each break their bound")
     Do $$$AssertEquals($List(tViolations(1), 2) _ "|" _ $List(tViolations(2), 2) _ "|" _ $List(tViolations(3), 2), tAt, "with the codes in that order")
@@ -206,7 +212,7 @@ Method TestTheCodesResolveAndTheSaveClassesHoldTheirSources()
 {
     Set tE = ..#ERROR
     Set tCodes = $ClassMethod(tE, "LookupCodes")
-    Do $$$AssertEquals($ListLength(tCodes), 12, "twelve lookup refusals and violations")
+    Do $$$AssertEquals($ListLength(tCodes), 13, "thirteen lookup refusals and violations")
     For tI = 1:1:$ListLength(tCodes) {
         Set tCode = $List(tCodes, tI)
         Do $$$AssertTrue($ClassMethod(tE, "ReasonFor", tCode) '= "", tCode _ " has a sentence")
@@ -293,7 +299,7 @@ Method TestEveryLookupWriteRendersItsScript()
     Set tTable = """T""""x""_$Char(9)_""y"""
     Set tDocument = """T""""x""_$Char(9)_""y.LUT"""
     Set tFileLiteral = """a""""b""_$Char(10)_""c.xml"""
-    For tCase = $ListBuild("IMPORT", 1, 5, "$System.OBJ.Load("), $ListBuild("EXPORT", 1, 3, "$System.OBJ.Export("), $ListBuild("EXPORT", 0, 3, "$System.OBJ.ExportToStream(") {
+    For tCase = $ListBuild("IMPORT", 1, 6, "$System.OBJ.Load("), $ListBuild("EXPORT", 1, 4, "$System.OBJ.Export(.tItems, "), $ListBuild("EXPORT", 0, 4, "$System.OBJ.ExportToStream(.tItems, ") {
         Set tType = $List(tCase, 1)
         Kill tQuery
         Set tQuery("namespace") = "USER"
@@ -314,6 +320,14 @@ Method TestEveryLookupWriteRendersItsScript()
         Set tLocked = (tText [ ("Lock +^Ens.LookupTable(" _ tTable _ "):3")) && (tText [ ("Lock -^Ens.LookupTable(" _ tTable _ ")"))
         Do $$$AssertEquals(tLocked, +(tType = "IMPORT"), tLabel _ ": only the import takes the vendor's table lock, and releases it")
     }
+    ; An import of a local file loads the stream the browser sent, whose text no script carries, and names no server file.
+    Kill tQuery
+    Set tQuery("namespace") = "USER"
+    Set tQuery("id") = "LocalTable"
+    Set tQuery("fileName") = "local.xml"
+    Set tSteps = $ClassMethod(tPort, "Snippet", "LookupTables", "IMPORT", .tQuery, "")
+    Set tText = $Select(tSteps.%Size() = 1: tSteps.%Get(0).text, 1: "")
+    Do $$$AssertTrue((tText [ "$System.OBJ.LoadStream(tStream, ") && (tText '[ "server file") && (tText '[ "$System.OBJ.Load("), "an import of a local file loads the browser's stream and names no server file: " _ tText)
     For tType = "LOOKUPTABLE", "LIST", "IMPORTTABLE" {
         Do $$$AssertEquals($ClassMethod(tPort, "SnippetForm", "LookupTables", tType), "", tType _ " has no script form")
         Set tSteps = $ClassMethod(tPort, "Snippet", "LookupTables", tType, .tQuery)

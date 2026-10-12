@@ -276,15 +276,16 @@ Parameter LOOKUPLOCKED = "INTEROP.LOOKUP.LOCKED";
 
 Parameter REASONLOOKUPLOCKED = "Someone else is changing this lookup table right now, so nothing was written. Try again in a moment.";
 
-/// <p>Violation codes (422): a table name, an entry key and an entry value the vendor's own limits refuse. The rules are
+/// <p>Violation codes (422): a table name, an entry key and an entry value the vendor's own limits refuse, and a table name and
+/// key too long together for the instance to address (the key's violation). The rules are
 /// <method>OcuPilot.Port.InteropPort.LookupViolations</method>'s.</p>
 Parameter LOOKUPTABLENAME = "INTEROP.LOOKUP.TABLENAME";
 
-Parameter REASONLOOKUPTABLENAME = "A lookup table name is 1 to 255 characters with no control character.";
+Parameter REASONLOOKUPTABLENAME = "A lookup table name is 1 to 255 characters with no control character, within the length the instance can store.";
 
 Parameter LOOKUPKEY = "INTEROP.LOOKUP.KEY";
 
-Parameter REASONLOOKUPKEY = "An entry key is 1 to 255 characters with no control character.";
+Parameter REASONLOOKUPKEY = "An entry key is 1 to 255 characters with no control character, and with its table's name within the length the instance can store.";
 
 Parameter LOOKUPVALUE = "INTEROP.LOOKUP.VALUE";
 
@@ -306,6 +307,12 @@ Parameter REASONLOOKUPIMPORTCHANGED = "The file or the table changed after the i
 Parameter LOOKUPTOOLARGE = "INTEROP.LOOKUP.TOOLARGE";
 
 Parameter REASONLOOKUPTOOLARGE = "A lookup table file holds at most 3,000,000 characters, and this one holds more.";
+
+/// <p>An export of a table whose name the vendor's export reads as a pattern, a path or a separator, so it cannot name the table's
+/// own document (<method>OcuPilot.Port.InteropPort.LookupAddressable</method>).</p>
+Parameter LOOKUPEXPORTNAME = "INTEROP.LOOKUP.EXPORTNAME";
+
+Parameter REASONLOOKUPEXPORTNAME = "This lookup table cannot be exported: its name holds a character the export reads as a pattern or a path (* ? / or ;) or begins with an apostrophe.";
 
 /// <p>The consequence code the import proposal carries.</p>
 Parameter LOOKUPIMPORT = "INTEROP.LOOKUP.IMPORT";
@@ -373,11 +380,11 @@ ClassMethod RuntimeCodes() As %List
 }
 
 /// <p>The lookup codes (Story 20.5), as a <class>%List</class>: the refusals a lookup read or write answers with, the three
-/// violations of an entry's table, key and value and the three refusals of an import file and an export. The three consequence
+/// violations of an entry's table, key and value and the four refusals of an import file and an export. The three consequence
 /// codes are <method>ConsequenceCodes</method>'s.</p>
 ClassMethod LookupCodes() As %List
 {
-    Quit $ListBuild(..#LOOKUPTAKEN, ..#LOOKUPTABLECASE, ..#LOOKUPSAME, ..#LOOKUPSECRET, ..#LOOKUPSOURCECONTROL, ..#LOOKUPLOCKED, ..#LOOKUPTABLENAME, ..#LOOKUPKEY, ..#LOOKUPVALUE, ..#LOOKUPIMPORTSHAPE, ..#LOOKUPIMPORTCHANGED, ..#LOOKUPTOOLARGE)
+    Quit $ListBuild(..#LOOKUPTAKEN, ..#LOOKUPTABLECASE, ..#LOOKUPSAME, ..#LOOKUPSECRET, ..#LOOKUPSOURCECONTROL, ..#LOOKUPLOCKED, ..#LOOKUPTABLENAME, ..#LOOKUPKEY, ..#LOOKUPVALUE, ..#LOOKUPIMPORTSHAPE, ..#LOOKUPIMPORTCHANGED, ..#LOOKUPTOOLARGE, ..#LOOKUPEXPORTNAME)
 }
 
 /// <p>The lookup refusals an entry tool's fresh read answers when the action does not fit the entry, as a
@@ -460,6 +467,7 @@ ClassMethod ReasonFor(pCode As %String) As %String
     If pCode = ..#LOOKUPIMPORTSHAPE Quit ..#REASONLOOKUPIMPORTSHAPE
     If pCode = ..#LOOKUPIMPORTCHANGED Quit ..#REASONLOOKUPIMPORTCHANGED
     If pCode = ..#LOOKUPTOOLARGE Quit ..#REASONLOOKUPTOOLARGE
+    If pCode = ..#LOOKUPEXPORTNAME Quit ..#REASONLOOKUPEXPORTNAME
     If pCode = ..#LOOKUPIMPORT Quit ..#REASONLOOKUPIMPORT
     Quit ""
 }

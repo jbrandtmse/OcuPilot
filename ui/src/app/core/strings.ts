@@ -6680,9 +6680,10 @@ export const STRINGS = {
   /** EXPERIENCE.md:604 */
   interopLookupRefusalLocked: 'Someone else is changing this lookup table right now, so nothing was written. Try again in a moment.',
   /** EXPERIENCE.md:604 */
-  interopLookupRefusalTableName: 'A lookup table name is 1 to 255 characters with no control character.',
+  interopLookupRefusalTableName: 'A lookup table name is 1 to 255 characters with no control character, within the length the instance can store.',
   /** EXPERIENCE.md:604 */
-  interopLookupRefusalKey: 'An entry key is 1 to 255 characters with no control character.',
+  interopLookupRefusalKey:
+    'An entry key is 1 to 255 characters with no control character, and with its table\'s name within the length the instance can store.',
   /** EXPERIENCE.md:604 */
   interopLookupRefusalValue: 'An entry value is at most 32,000 characters.',
   /** EXPERIENCE.md:604 */
@@ -6713,6 +6714,9 @@ export const STRINGS = {
     'The file or the table changed after the import was reviewed, so nothing was imported. Review the import again.',
   /** EXPERIENCE.md:604 */
   interopLookupRefusalTooLarge: 'A lookup table file holds at most 3,000,000 characters, and this one holds more.',
+  /** EXPERIENCE.md:604 */
+  interopLookupRefusalExportName:
+    'This lookup table cannot be exported: its name holds a character the export reads as a pattern or a path (* ? / or ;) or begins with an apostrophe.',
   /** EXPERIENCE.md:468 */
   sqlPrivilegesLabel: 'SQL privileges',
   /** EXPERIENCE.md:468 */

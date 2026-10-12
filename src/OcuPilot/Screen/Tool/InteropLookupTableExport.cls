@@ -18,7 +18,7 @@ Class OcuPilot.Screen.Tool.InteropLookupTableExport Extends OcuPilot.Screen.Tool
 
 Parameter TOOLNAME = "interop.lookuptables.export";
 
-Parameter DESCRIPTION = "Propose writing one lookup table to a new file on the server, in the instance's own lookup table export format, so another instance can import it. Name the table exactly as the Lookup tables list reports it in its Name column, letter case included. Name the file by `root`, an allowed directory exactly as the Allowed directories screen lists it, and `path`, a relative file name under it whose directory exists; an existing file at that name is replaced, so say so in the rationale. The file holds every key and value of the table, so say so in the rationale. A table the namespace does not hold is refused.";
+Parameter DESCRIPTION = "Propose writing one lookup table to a file on the server, in the instance's own lookup table export format, so another instance can import it. Name the table exactly as the Lookup tables list reports it in its Name column, letter case included. Name the file by `root`, an allowed directory exactly as the Allowed directories screen lists it, and `path`, a relative file name under it whose directory exists; an existing file at that name is replaced, so say so in the rationale. The file holds every key and value of the table, so say so in the rationale. A table the namespace does not hold is refused, and so is one whose name holds * ? / \ or ; or begins with an apostrophe, which the export cannot name.";
 
 Parameter DESCRIPTORCLASS = "OcuPilot.Screen.Descriptor.InteropLookupTableList";
 

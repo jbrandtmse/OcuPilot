@@ -431,6 +431,34 @@ deferred:
 - **AC8 (export, Part B):** Given a table, when it is exported to the browser or to a server file, then the file is the vendor's export of that one `.LUT` document, and a server file is named by a root and a relative name (AD-21's sixth case). Export, then delete, then import restores the same entries.
 - **AC9 (import, Part B):** Given an export file holding exactly one lookup table with entries, when it is imported from local text, from a server file, or by the agent's confirmed proposal, then that table is replaced or created with the file's entries. A file holding anything else is refused `IMPORTSHAPE` before any write, a file or table that changed since review is refused `IMPORTCHANGED`, and the key ships `false`.
 
+### Review Findings
+
+Code review 2026-10-12 (four layers, full-opus; 43 rows, 19 entries after grouping: high 0, medium 8, low 11; 9 rows rejected).
+
+- [x] [Review][Patch] (med) A table and key each within 255 but together past the subscript limit answered 500 from the Save, the mint and every read (QA). `LookupFits` tests the pair on a same-length process-private global; `LookupViolations` makes it the key's violation (the table's alone too), and reads, removes and deletes answer 404. `InteropError`'s table and key sentences say so. [InteropPort.cls]
+- [x] [Review][Patch] (med) The table name reached `$System.OBJ` as an item spec (QA): `*` exported every match, `,` a 500, `?` `/` `\` `;` an empty export, and a comma name's import loaded nothing yet answered 200. Export and import pass the array form; a name the export cannot address is `INTEROP.LOOKUP.EXPORTNAME` (new code, sentence in `strings.ts` and EXPERIENCE.md) at the port and the export mint; an import file naming one is `IMPORTSHAPE`, as is a load that loaded nothing. [InteropPort.cls, InteropLookupTableExportMint.cls]
+- [x] [Review][Patch] (med) `%ExistsTable(…,1)` doubles its work per caseless character (20 digits: 14 s, under the table lock) and misses a case-variant behind a numeric-named table (measured). `LookupFactsHere` walks the table names in upper case. [InteropPort.cls]
+- [x] [Review][Patch] (med) Audit no-value assertions could not fail: the set row was never read, the add's and remove's aimed at rows that never held the value. Each now reads its own row. [InteropLookupControl.cls]
+- [x] [Review][Patch] (med) The agent remove and import tests relied on the stored policy and accepted any refusal; they clear it and assert `GOVERNANCE.DISABLED`. [InteropLookupControl.cls, InteropLookupTransfer.cls]
+- [x] [Review][Patch] (med) A person's import held AD-34's lock on the literal `import`, not the table the file names. A local file is now sent on the table its `<Document>` names (`fileTable`); a server file, which the page never reads, keeps the literal, the remainder ledgered with DW-2337. [interop-lookup-table-list.page.ts]
+- [x] [Review][Defer] (med) The spine lacks the Part B decisions (Q1 ruled B): DW-2336, open for the lead (Rule 20) before smoke.
+- [x] [Review][Defer] (med) DW-2331: by-design. The export keeps `%Admin_FileSystemAccess:USE`, stricter than the classic page, whose export needs `%Ens_ViewFileSystem:USE` beyond the read pair (not "only the read pair"): the file carries every value, including those the screens blank under a credential-named key (AD-35).
+- [x] [Review][Defer] (low) DW-2332 wontfix-accepted; DW-2337 (delete has no in-lock re-check) wontfix-theoretical; DW-2338 (export past the vendor's 2 s shared lock is 500) and DW-2339 (two copied dialog flows, Rule 2) wontfix-accepted.
+- [x] [Review][Patch] (low) The entries list re-reads on a table's change (`secondaryEntityTypes` `lookup-table`); the export sends the row captured when its dialog opened; the import-local script loads the browser's stream; `fill` is pinned; stale text (`AuditRuntime`, the port header, the export description, a browser-spec comment, the Prohibited and import-tool comments) corrected; the three missing mutation lines are under Verification.
+- QA's observation that a confirm refused `LOCKED` after the claim reads `confirmed`: an occurrence on DW-2138 (by-design, AD-34).
+
+Rejected:
+
+- (false) The export takes no table lock: the vendor's `%Export`, reached through the `.LUT` document's `Load`, takes `Lock +^Ens.LookupTable(T)#"S":2`.
+- (low) READ or WRITE is checked on the default globals database, not a mapped one: the spec's gate, and the measured mapping; a mapped global's `<PROTECT>` is a 403.
+- (low) The person's import shows no target before it writes: the reused Explorer dialog and the spec's outcome line; a local file now targets its table.
+- (low) Export and import audit rows name no file: nothing requires it, and the sibling transfers audit nothing.
+- (low) A hand-edited file whose entry passes the vendor's limits answers 500: no export writes one, and the fix parses every entry.
+- (low) A table literally named `import`: the card shows the file's own table.
+- (low) The entries route with no table opens an empty Add dialog: reached only by editing the URL.
+- (low) EXPERIENCE.md :173 lists the two deletes as their own item: placement only.
+- (low) The table read answers `root` and `path`: the export's card uses them, and no fingerprint subject of the delete names them.
+
 ## Spec Change Log
 
 - 2026-10-11, spec gate (lead): rulings recorded under Design Notes › Gate rulings (Q1 asked, Q2 under DW-1166, Q3 (A), partners chartered as Story 20.26 / DW-2324); Part A spine drafts written.
@@ -682,6 +710,55 @@ deferred:
 | AC9 | `ReadImportTable`'s `TABLECASE` check dropped | `InteropLookupTransfer.TestAFileWhoseTableIsHeldInAnotherLetterCaseIsRefusedBeforeAnyLoad`, the agent's mint leg |
 | AC9 | `PerformImport`'s `TABLECASE` check under the lock dropped | the same test, the write leg, the nothing-loaded leg and the no-second-table leg |
 | AC1, AC2 | The arrange step removed from the entries test of `interop-lookup-tables.browser-spec.mjs` | that test run alone: it waits for the table row and times out |
+
+**QA stage (QA).** Test added: `src/OcuPilot/Test/InteropLookupEdges.cls` (10 tests; armed, so `scripts/ci-throwaway.sh`'s `# classes:` line for the lookup classes gains it). Each observed on `ocupilot-b-ci`, the port and its four descendants recompiled before and after, the tree byte-identical after each revert.
+
+| AC | Mutation | Red |
+|---|---|---|
+| AC6 | `ListPartners` skips a partner whose primary contact has no name | `InteropLookupEdges.TestAPartnerWithNoContactsListsWithEmptyContactFields` |
+| AC6 | the partners descriptor declares a `delete` row action | the same test, its remove-refused leg (500) |
+| AC2, AC4 | `TABLEMAX` 254 | `TestTheLargestPairTheVendorStoresIsAddedChangedReadAndRemovedThroughTheRoutes` |
+| AC1, AC2, AC3 | `InvokeLookup` decodes the `table` criterion a second time | `TestNamesAndValuesFullOfSpecialCharactersRoundTripThroughEveryRoute` |
+| AC8 | `EXPORTOVERWRITES` 0 (`PATH.EXISTS`) | `TestAnExportOverAFileThatStandsThereReplacesIt` |
+| AC7 | `ImportShape` loads in place of listing (list-only argument 0) | `TestNoImportReadOrExportChangesWhatTheVendorKeeps` |
+| AC2, AC4 | `LookupWriteToken` drops `TAKEN` | `TestAnAddMintedBeforeSomeoneTakesTheKeyIsRefusedAtTheConfirm` |
+| AC4 | `PerformLookup` skips `LockTable` | `TestAnAgentsSetConfirmedWhileTheVendorLockIsHeldIsRefusedLocked` |
+| AC4 | `ReadLookupTable` drops its `SourceControlled` test | `TestTheReadComposedForATableDeleteIsRefusedUnderSourceControl` |
+| AC2, AC4 | `InteropLookupEntryRemove.REFUSESSECRET` 1 | `TestAnEntryWhoseKeyHoldsACredentialIsRemovedFromBothCallersWithoutShowingItsValue` |
+| AC2, AC4 | `LookupFactsHere` looks a key up in lower case | `TestKeysThatDifferOnlyInLetterCaseAreSeparateEntries` |
+| AC4 | `InteropLookupEntryMint.Mint` drops the `SAME` check | `InteropLookupRefusals.TestSameAndAbsentAreRefusedFromBothCallers`, the agent's leg alone |
+| AC9 | `ReadImportTable` drops its `TABLECASE` check | `InteropLookupTransfer.TestAFileWhoseTableIsHeldInAnotherLetterCaseIsRefusedBeforeAnyLoad`, the agent's mint leg alone |
+| AC9 | `PerformImport` drops its `TABLECASE` check under the lock | the same test, the write, nothing-loaded and no-second-table legs |
+| AC1 | `LookupEntryRow` answers a credential key's value | `InteropLookupRead`: the secret, wire and entry legs |
+| AC6, AC7 | `ListPartners` ignores `pMax`; `LookupFactsHere` re-adds the first entry | `InteropLookupRead.TestThePartnersListHoldsBothContacts`; `TestNoReadChangesWhatTheVendorKeeps` |
+| AC2, AC3 | the entry audit call skipped; the delete subject without `Modified` | `InteropLookupControl`'s audit legs; `TestTheAgentsDeleteConfirmsOverHttp` |
+| AC5 | `LOOKUPWRITEPAIR` weakened to READ | `InteropLookupGate.TestEachMissingPairIsRefusedByNameThroughThePort`, the no-write principal's legs |
+| AC8 | the browser export's text gets a stray leading character | `InteropLookupTransfer.TestTheBrowserRoundTripRestoresTheSameEntries` |
+| roster | `InteropLookupEdges` dropped from the `# classes:` line | `ui/tools/ci.test.mjs`, the DW-1276 arming roster test |
+
+Open, not fixed (QA writes tests only), each reproduced on `ocupilot-b-ci` in `USER`:
+
+- A table and key each within their 255-character bound but together past 493 characters (255 and 239 fail; 255 and 238 store) answer `500 INTERNAL` from the Save and the agent's mint, because the port's own `$Data` on the pair raises `<SUBSCRIPT>`; `LookupViolations` bounds the fields singly.
+- `ExportTable` passes the table's name to `$System.OBJ.Export` and `ExportToStream` as an item spec: a name holding `,` answers `500`, one holding `*` exports every table the pattern matches, and one holding `?` or `/` answers `200` with an export that holds no entry.
+
+**Code review (CR).** Each observed on `ocupilot-b-ci` against the throwaway's copy of `src`, the port compiled with its subclasses, then the copy restored from the worktree (`diff -rq` identical) and reloaded; client mutations reverted to an identical checksum.
+
+| AC | Mutation | Red |
+|---|---|---|
+| AC4 | `LookupViolations` drops the pair test | `InteropLookupNames.TestAPairTooLongTogetherIsAViolationAndNeverAFault`: the rule, two-byte and Save legs (the Save answers 404 past the guard) |
+| AC8 | `ExportTable` drops its `LookupAddressable` test | `InteropLookupNames.TestATableTheExportCannotNameIsRefusedByName`: the port and screen legs of every name |
+| AC8 | The export mint drops its name check | the same test, the agent's mint leg and its sentence |
+| AC8 | `ExportToStream` takes the document as a string | `InteropLookupNames.TestACommaInANameExportsAndImportsThatTableAlone`, the export leg (500) |
+| AC9 | `LoadStream` selects the document as a string | the same test, the import leg (`IMPORTSHAPE`, nothing loaded) |
+| AC9 | `ImportFile` drops its `LookupAddressable` test | `InteropLookupNames.TestAnImportFileNamingATableTheExportCannotNameIsRefused`, the read legs |
+| AC4 | `LookupFactsHere` asks `%ExistsTable(…,1)` again | `InteropLookupNames.TestATableHeldInAnotherCaseIsFoundWhateverTheNamesAroundIt`: the numeric leg and the timing leg (39.6 s) |
+| AC2 | A set's audit effects carry the value written | `InteropLookupControl.TestThePersonsRowActionsSetRemoveAndDeleteWriteAndAuditWithoutAValue`, the set row's leg |
+| AC3 | The remove's and delete's baseline keys ship true | `InteropLookupControl.TestTheAgentsRemoveConfirmsOverHttp` (`GOVERNANCE.DISABLED`) and `InteropLookupDescriptor.TestTheFourWriteToolsAreDeclaredAsThePlanPlacesThem` |
+| AC3 | The delete's `REMOVALROWS` lose `Entries` | `InteropLookupControl.TestTheAgentsDeleteConfirmsOverHttp`, the card's count |
+| AC1, AC2 | The entries list's `secondaryEntityTypes` emptied | `InteropLookupDescriptor.TestTheThreeDeclarationsRegister` |
+| AC8 | `onExport` sends `store.selection()[0]` | `interop-lookup-table-transfer.spec.ts`, the server export with the selection cleared under the dialog |
+| AC9 | `onImport` sends the literal target for every import | the same spec, the local file sent on the table it names |
+| AC8 | `fill` replaces placeholders one after another | the same spec, the one-pass status line |
 
 ## Auto Run Result
 

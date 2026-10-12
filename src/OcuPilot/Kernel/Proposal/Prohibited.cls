@@ -1461,8 +1461,9 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
             Do ..Refuse(..#OCUPILOTROUTINEAPP, .pProhibits, .pCode)
             Quit
         }
-        ; Story 20.5: a lookup table import is named by a literal id no table answers, and AD-10 names no effect on a lookup
-        ; table, so the arm reads no target; the port refuses a file that is not exactly one lookup table before any load.
+        ; Story 20.5: a lookup table import names the table its file holds, or the literal import id for a server file the
+        ; browser never reads, and AD-10 names no effect on a lookup table, so the arm reads no target; the port refuses a file
+        ; that is not exactly one lookup table, or holds another table than the one named, before any load.
         If (tType = ..#TYPELOOKUPTABLE) && (..WriteTypeOf(..ToolClassNamed(pToolName)) = ..#LOOKUPIMPORTWRITETYPE) Quit
         Set tSC = ..Target(pToolName, tId, .tTarget, .tPresent, .tToolClass)
         If $$$ISERR(tSC) Quit

@@ -449,8 +449,11 @@ services:
       # class drives the entry and table writes from both callers and reads the audit rows each leaves, the refusals class holds
       # a vendor lock from this process so the requests wait it out, and the gate class signs in as probe principals each
       # missing one pair a lookup read or write requires. The transfer class exports a probe table to a probe file and to the
-      # browser, deletes it, imports it back, and mints and confirms both tools.
-      # classes: InteropLookupControl, InteropLookupGate, InteropLookupRead, InteropLookupRefusals, InteropLookupTransfer
+      # browser, deletes it, imports it back, and mints and confirms both tools. The edges class adds the largest pair a table
+      # and key can make, names full of reserved characters, a partner with no contacts, an export over a file that stands there,
+      # and an agent's confirm that meets a held vendor lock or a key someone else took. The names class adds pairs too long to
+      # address, names the export cannot name, a comma in a name and tables named by numbers, and removes those too.
+      # classes: InteropLookupControl, InteropLookupEdges, InteropLookupGate, InteropLookupNames, InteropLookupRead, InteropLookupRefusals, InteropLookupTransfer
       # classes: ExplorerSourceTurn
       # classes: ExplorerSaveTurn
       # classes: ExplorerCreateTurn

@@ -22,7 +22,7 @@ export const INTEROP_LOOKUP_TABLE_LIST = 'OcuPilot.Screen.Descriptor.InteropLook
 /** The declared primary action id: the command bar's New table, which opens the entry dialog for a new table. */
 export const INTEROP_LOOKUP_TABLE_ADD_ACTION = 'add';
 
-/** The declared row actions this page sends from its two dialogs, and the one target an import is sent on. */
+/** The declared row actions this page sends from its two dialogs, and the target a server file's import is sent on. */
 export const INTEROP_LOOKUP_EXPORT_ACTION = 'export';
 export const INTEROP_LOOKUP_EXPORT_BROWSER_ACTION = 'export-browser';
 export const INTEROP_LOOKUP_IMPORT_ACTION = 'import';
@@ -37,6 +37,9 @@ const PATH_VALUE = 'path';
 const EXPORT_FILE_TYPE = 'application/xml';
 const IMPORT_ACCEPT = '.xml';
 
+/** The extension of a lookup table's document inside an export file. */
+const LUT_EXTENSION = '.LUT';
+
 /** A request the page sends, whose refusal the open dialog draws rather than the list's banner (AD-39). */
 const DIALOG_SINK: ActionSink = { setRefusal: () => undefined };
 
@@ -44,7 +47,7 @@ const DIALOG_SINK: ActionSink = { setRefusal: () => undefined };
  * `template` with each `<placeholder>` of `values` replaced in one pass, so a value -- a table name that itself holds a
  * placeholder or a `$` pattern -- is inserted as it is.
  */
-function fill(template: string, values: Readonly<Record<string, string>>): string {
+export function fill(template: string, values: Readonly<Record<string, string>>): string {
   return template.replace(/<(\w+)>/g, (match: string, key: string) => (Object.hasOwn(values, key) ? values[key] : match));
 }
 
@@ -53,6 +56,19 @@ function linesOf(output: unknown): readonly string[] {
   if (output === null || typeof output !== 'object') return [];
   const lines = (output as Record<string, unknown>)['lines'];
   return Array.isArray(lines) ? lines.filter((line): line is string => typeof line === 'string') : [];
+}
+
+/**
+ * The table an export file's text names: the name of its one `<Document>`, less `.LUT`, or `''` when the text is not XML or holds
+ * no single such document. The port judges the file again and refuses one that holds another table than the one named.
+ */
+export function fileTable(text: string): string {
+  const parsed = new DOMParser().parseFromString(text, 'application/xml');
+  if (parsed.getElementsByTagName('parsererror').length > 0) return '';
+  const documents = parsed.getElementsByTagName('Document');
+  if (documents.length !== 1) return '';
+  const name = documents[0].getAttribute('name') ?? '';
+  return name.length > LUT_EXTENSION.length && name.endsWith(LUT_EXTENSION) ? name.slice(0, -LUT_EXTENSION.length) : '';
 }
 
 /** The file an export to this browser is saved as: the table's name, with each character a file name cannot hold made `_`. */
@@ -157,6 +173,9 @@ export class InteropLookupTableListPage {
   /** The table the open export dialog writes, and the namespace it was opened in. */
   private readonly exportTarget = signal<string>('');
 
+  /** The row key of the table the open export dialog names, captured when it opened, so a re-read under it changes nothing. */
+  private readonly exportKey = signal<string>('');
+
   private transferScope = '';
 
   /** A send is in flight. */
@@ -220,6 +239,7 @@ export class InteropLookupTableListPage {
     if (this.open() || !this.canOpen()) return;
     const selected = this.store?.selection()[0] ?? '';
     if (selected === '') return;
+    this.exportKey.set(selected);
     this.exportTarget.set(this.nameOf(selected));
     this.openTransfer('export');
   }
@@ -234,13 +254,14 @@ export class InteropLookupTableListPage {
   protected onCloseTransfer(): void {
     if (this.sending()) return;
     this.transfer.set(null);
+    this.exportKey.set('');
     this.exportTarget.set('');
   }
 
-  /** Export the selected table to the chosen destination; an export to this browser saves the answered lines. */
+  /** Export the table the dialog opened on to the chosen destination; an export to this browser saves the answered lines. */
   protected async onExport(choice: ExportChoice): Promise<void> {
     const screen = this.screen;
-    const key = this.store?.selection()[0] ?? '';
+    const key = this.exportKey();
     const table = this.exportTarget();
     if (screen === null || key === '' || this.sending()) return;
     const scope = this.transferScope;
@@ -261,7 +282,11 @@ export class InteropLookupTableListPage {
     this.endSend(false, '');
   }
 
-  /** Import the chosen file, which names the table it holds, into the namespace the dialog opened in. */
+  /**
+   * Import the chosen file, which names the table it holds, into the namespace the dialog opened in. A file this browser read is
+   * sent on the table it names, so the write holds that table (AD-34); a server file, which this browser never reads, is sent on
+   * the one import target, as is a local file that names no single table.
+   */
   protected async onImport(choice: ImportChoice): Promise<void> {
     const screen = this.screen;
     if (screen === null || this.sending()) return;
@@ -269,8 +294,9 @@ export class InteropLookupTableListPage {
     const server = choice.source === 'server';
     const values: Readonly<Record<string, string>> = choice.source === 'server' ? { [ROOT_VALUE]: choice.root, [PATH_VALUE]: choice.path } : { fileName: choice.fileName, content: choice.content };
     const file = choice.source === 'server' ? `${choice.root}${choice.path}` : choice.fileName;
+    const target = (choice.source === 'server' ? '' : fileTable(choice.content)) || INTEROP_LOOKUP_IMPORT_TARGET;
     this.beginSend();
-    const sent = await this.handler.sendFor(screen.descriptor, server ? INTEROP_LOOKUP_IMPORT_ACTION : INTEROP_LOOKUP_IMPORT_LOCAL_ACTION, INTEROP_LOOKUP_IMPORT_TARGET, values, DIALOG_SINK, scope);
+    const sent = await this.handler.sendFor(screen.descriptor, server ? INTEROP_LOOKUP_IMPORT_ACTION : INTEROP_LOOKUP_IMPORT_LOCAL_ACTION, target, values, DIALOG_SINK, scope);
     this.endSend(sent, sent ? fill(STRINGS.interopLookupImportDone, { file }) : '');
   }
 
@@ -300,6 +326,7 @@ export class InteropLookupTableListPage {
     this.sending.set(false);
     if (applied) {
       this.transfer.set(null);
+      this.exportKey.set('');
       this.exportTarget.set('');
       this.outcome.set(line);
       return;

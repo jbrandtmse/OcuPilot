@@ -3,9 +3,10 @@
 /// <code>import</code>, from a server file named by its <code>root</code> and <code>path</code> values, and <code>import-local</code>,
 /// from a file on the person's computer sent as its <code>fileName</code> and <code>content</code> values; and the agent's proposal and
 /// confirmation, which names a server file only.</p>
-/// <p><b>The target is the table the file names.</b> The person's call names it by the literal
-/// <parameter>OcuPilot.Port.InteropPort.IMPORTID</parameter>; the agent names the table it expects the file to hold in <code>Name</code>,
-/// and the port refuses a file that holds another (<code>INTEROP.LOOKUP.IMPORTSHAPE</code>). A file that is not exactly one lookup table
+/// <p><b>The target is the table the file names.</b> The person's import of a local file names it as the page reads it from the
+/// file, and of a server file, which the page never reads, by the literal <parameter>OcuPilot.Port.InteropPort.IMPORTID</parameter>;
+/// the agent names the table it expects the file to hold in <code>Name</code>; and the port refuses a file that holds another
+/// (<code>INTEROP.LOOKUP.IMPORTSHAPE</code>). A file that is not exactly one lookup table
 /// with at least one entry and nothing else is refused by that code before any load: no class, routine or other document in a file is
 /// ever loaded, and the legacy form is refused too. A file whose table is absent under exactly that name but held in another letter case is
 /// refused <code>INTEROP.LOOKUP.TABLECASE</code>, since the import would create a second table. A local file's name and text are screen

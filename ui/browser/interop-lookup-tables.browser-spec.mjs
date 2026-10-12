@@ -393,7 +393,7 @@ test('AC2, AC3: removing the last entry removes the table; Delete types the tabl
     await openTables(page);
     await rowPresent(page, OTHER);
     await rowPresent(page, TABLE, false);
-    // A table to delete: two entries, so the confirmation states a count.
+    // A table to delete, with two entries, every one of which the delete takes.
     const made = probe('LKMADE', `$System.Status.IsOK(##class(${FIXTURE}).Put("${TABLE}","a","1"))_$System.Status.IsOK(##class(${FIXTURE}).Put("${TABLE}","b","2"))`);
     assert.equal(made.value, '11', `the table to delete is arranged: ${made.output}`);
     await page.reload();

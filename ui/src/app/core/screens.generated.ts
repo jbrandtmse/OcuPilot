@@ -12503,7 +12503,9 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       }
     ],
     "entityType": "lookup-entry",
-    "secondaryEntityTypes": [],
+    "secondaryEntityTypes": [
+      "lookup-table"
+    ],
     "scope": "namespace",
     "parentScope": "interoperability/lookup-tables",
     "id": {

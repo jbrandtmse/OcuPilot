@@ -16,7 +16,8 @@
 /// <code>Lookup()</code> reads the table with no cache. Remove types the entry's key; removing a table's last entry removes the
 /// table. Add and Set value open dialogs.</p>
 /// <p><b>Its pairs</b> are the Lookup tables list's; the three tools add <code>%Ens_LookupTables:WRITE</code> and WRITE on the
-/// namespace's globals database (AD-8, AD-62). It does not refresh (AD-43).</p>
+/// namespace's globals database (AD-8, AD-62). It does not refresh (AD-43); a table's change event (an import or a delete)
+/// re-reads it, through <code>secondaryEntityTypes</code> (AD-14).</p>
 Class OcuPilot.Screen.Descriptor.InteropLookupEntryList Extends OcuPilot.Screen.Descriptor.Base
 {
 
@@ -34,7 +35,7 @@ XData Declaration
   "privileges": [{"resource": "%Ens_Portal", "permission": "USE"}, {"resource": "%Ens_LookupTables", "permission": "READ"}],
   "ownPrivileges": [{"resource": "%Ens_LookupTables", "permission": "READ"}],
   "entityType": "lookup-entry",
-  "secondaryEntityTypes": [],
+  "secondaryEntityTypes": ["lookup-table"],
   "scope": "namespace",
   "parentScope": "interoperability/lookup-tables",
   "id": {"kind": "composite", "parts": ["Table", "Key"]},

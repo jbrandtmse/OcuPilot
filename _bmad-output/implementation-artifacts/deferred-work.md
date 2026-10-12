@@ -10234,6 +10234,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-24-rsa-and-symmetric-key-wallet-secrets.md | severity: low | fix-risk: med | footprint: in-story
 - evidence: Confirm claims (AD-34) before Operation.ApplyAt; WalletPort.PutKey refuses after it, as every port refusal does. Refusing before the claim needs the channel closed (400 CLOSEDCHANNEL), not the spec's 422 code.
 - 2026-10-07T02:42:42Z status=by-design owner=18-24-rsa-and-symmetric-key-wallet-secrets by=cr note=the matrix names WALLETKEY.SOURCE.BOTH from the port; only a hand-built confirm carries material
+- 2026-10-12T01:05:20Z occurrence=20-5-lookup-tables-and-business-partners
 
 ### DW-2139: IRIS defect candidate: the admin API's Security.WebAuth GET then PUT round trip is not idempotent: re-sending AutheKB true sets all seven Kerberos bits, adding AutheK5KeyTab, which a stock instance leaves off (the classic page's Save does the same)
 - source: spec-18-8-superservers-authentication-options-and-managed-file-transfe.md | severity: low | fix-risk: high | footprint: out-of-footprint
@@ -11274,8 +11275,31 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-20-5-lookup-tables-and-business-partners.md | severity: med | fix-risk: med | footprint: in-story
 - evidence: InteropFloor's invariant (stock roles hold no write-kind tool) reddens with the export left at the read pair; the spec's export gate and the floor cannot both hold
 - 2026-10-11T23:29:55Z status=open owner=20-5-lookup-tables-and-business-partners by=harvest note=posture stricter than the classic page; review settles it (keep the pair, a pairless browser action, or a read-kind export)
+- 2026-10-12T01:05:20Z status=by-design owner=20-5-lookup-tables-and-business-partners by=cr note=kept: export carries values the screens blank (AD-35), classic export needs %Ens_ViewFileSystem; floor holds
 
 ### DW-2332: After a table's last entry is removed, the entries page keeps the removed row until the person leaves the screen, because the re-read of a table that no longer exists answers 404
 - source: spec-20-5-lookup-tables-and-business-partners.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: disclosed in the implement pass; interop-lookup-tables.browser-spec.mjs navigates away instead of waiting for the row to go
 - 2026-10-11T23:29:55Z status=open owner=20-5-lookup-tables-and-business-partners by=harvest note=two-way door: the page could treat the 404 re-read as an empty table
+- 2026-10-12T01:05:20Z status=wontfix-accepted owner=20-5-lookup-tables-and-business-partners by=cr note=reopen_if=a person acts on a stale row after a last-entry Remove and reports the 404 as a fault
+
+### DW-2336: The spine lacks Story 20.5's Part B decisions: the lookup import and export in AD-62, AD-21's sixth-case consumers, AD-44's import page and AD-8's audiences
+- source: spec-20-5-lookup-tables-and-business-partners.md | severity: med | fix-risk: low | footprint: in-story
+- evidence: Q1 ruled B at 2026-10-11T17:30Z (cycle log gate_rulings) and no Part B spine_updated follows; ARCHITECTURE-SPINE.md is unchanged in 24c7a2b8..HEAD; the drafts are in the spec's Design Notes > Spine drafts
+- 2026-10-12T01:05:20Z status=open owner=20-5-lookup-tables-and-business-partners by=cr note=lead writes the Part B drafts (Rule 20) with the export's %Admin_FileSystemAccess pair (DW-2331) before smoke
+- 2026-10-12T01:12:38Z status=resolved-by:20-5-lookup-tables-and-business-partners by=adjudication note=Part B spine cases written: AD-62 item 10, AD-21, AD-44, AD-8 (export's file pair)
+
+### DW-2337: A table delete does not re-check the reviewed entry count and stamp under the vendor lock, so a write between its confirm's re-read and its lock is deleted unreviewed
+- source: spec-20-5-lookup-tables-and-business-partners.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: PerformLookup's DELETETABLE judges only presence under the lock; the import re-checks digest, count and stamp in-lock. Writers in that window: a classic save, or a person's server-file import, which holds the literal import target (AD-34)
+- 2026-10-12T01:05:20Z status=wontfix-theoretical owner=20-5-lookup-tables-and-business-partners by=cr note=real if writes to one table land in the milliseconds between a delete confirm's re-read and its lock
+
+### DW-2338: An export that waits past 2 s for the vendor's shared table lock answers 500 INTERNAL instead of INTEROP.LOOKUP.LOCKED
+- source: spec-20-5-lookup-tables-and-business-partners.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Ens.Util.LookupTable.%Export (reached through the .LUT document's Load) takes Lock +^Ens.LookupTable(T)#"S":2 and answers LockFailedToAcquireRead; ExportTable passes it to Statused, a 500. Holders: an import or a classic save of that table
+- 2026-10-12T01:05:21Z status=wontfix-accepted owner=20-5-lookup-tables-and-business-partners by=cr note=reopen_if=an export answers 500 with LockFailedToAcquireRead in the error log
+
+### DW-2339: Two pages copy a sibling's dialog glue: the entries page's Set value flow (interop-item-setting-list.page.ts) and the tables page's transfer flow (code-list.page.ts)
+- source: spec-20-5-lookup-tables-and-business-partners.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: onOpenSet and onSet repeat the setting list's send-and-refusal body; onExport, onImport and endSend repeat code-list.page.ts's; each binds page-local signals and no reason is stated (Rule 2)
+- 2026-10-12T01:05:21Z status=wontfix-accepted owner=20-5-lookup-tables-and-business-partners by=cr note=reopen_if=a third page copies the Set value or the transfer dialog glue

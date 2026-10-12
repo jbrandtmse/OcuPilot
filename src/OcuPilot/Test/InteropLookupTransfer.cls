@@ -442,7 +442,7 @@ Method TestTheAgentsImportConfirmsOverHttp()
     Do $$$AssertTrue((tCard [ "agent.xml") && (tCard [ ..#TABLE) && (tCard [ """Entries"""), "its card names the file, the table and the counts: " _ tCard)
     Do $$$AssertTrue($Get(tCard) '[ "with space", "and holds no entry of the file")
     Set tStatus = $ClassMethod(tControl, "Confirm", tProposal, .tAnswer, .tRaw)
-    Do $$$AssertNotEquals(tStatus, 200, "the confirm is refused while the import's key is off: " _ $Extract($Get(tRaw), 1, 200))
+    Do $$$AssertEquals($Select($IsObject($Get(tAnswer)): tAnswer.%Get("code"), 1: tStatus), ##class(OcuPilot.Api.Error).#GOVERNANCEDISABLED, "the confirm is refused while the import's key is off: " _ $Extract($Get(tRaw), 1, 200))
     Kill tSettings
     Set tSettings(..#IMPORTKEY) = "enabled"
     Do $$$AssertStatusOK(##class(OcuPilot.Test.GovernanceFixture).Apply("", .tSettings), "the key is turned on")

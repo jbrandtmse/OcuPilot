@@ -89,6 +89,7 @@ const SENTENCES = [
   ['REASONLOOKUPIMPORTSHAPE', 'interopLookupRefusalImportShape'],
   ['REASONLOOKUPIMPORTCHANGED', 'interopLookupRefusalImportChanged'],
   ['REASONLOOKUPTOOLARGE', 'interopLookupRefusalTooLarge'],
+  ['REASONLOOKUPEXPORTNAME', 'interopLookupRefusalExportName'],
   ['REASONLOOKUPIMPORT', 'interopLookupImportConsequence'],
 ];
 
