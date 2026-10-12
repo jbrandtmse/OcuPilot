@@ -94,6 +94,8 @@ import { SqlQueryPage } from '../areas/system-explorer/sql-query.page';
 import { DataBrowserPage } from '../areas/system-explorer/data-browser.page';
 import { InteropItemListPage } from '../areas/interoperability/interop-item-list.page';
 import { InteropItemSettingListPage } from '../areas/interoperability/interop-item-setting-list.page';
+import { InteropLookupEntryListPage } from '../areas/interoperability/interop-lookup-entry-list.page';
+import { InteropLookupTableListPage } from '../areas/interoperability/interop-lookup-table-list.page';
 import { DocDbListPage } from '../areas/system-explorer/docdb-list.page';
 import { decodeEntityId } from '../core/entity-id';
 import { NavigationService, screenForUrl } from '../core/navigation';
@@ -281,6 +283,9 @@ export const DESCRIPTOR_PAGES: Readonly<Record<string, Type<unknown>>> = {
   'OcuPilot.Screen.Descriptor.InteropItemList': InteropItemListPage,
   // Story 20.22: Item settings, the list with its Set value dialog.
   'OcuPilot.Screen.Descriptor.InteropItemSettingList': InteropItemSettingListPage,
+  // Story 20.5: Lookup tables, the list with its New table dialog, and a table's entries with their Add entry and Set value dialogs.
+  'OcuPilot.Screen.Descriptor.InteropLookupTableList': InteropLookupTableListPage,
+  'OcuPilot.Screen.Descriptor.InteropLookupEntryList': InteropLookupEntryListPage,
 };
 
 /**

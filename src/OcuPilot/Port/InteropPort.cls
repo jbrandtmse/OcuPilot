@@ -1,7 +1,8 @@
-/// <p>The port to the instance's interoperability runtime (AD-62, AD-29, AD-52, Stories 20.2, 20.3 and 20.23): <b>the
+/// <p>The port to the instance's interoperability runtime (AD-62, AD-29, AD-52, Stories 20.2, 20.3, 20.5 and 20.23): <b>the
 /// only product class that starts, stops, restarts, updates or recovers a production, enables, disables,
-/// adds or removes one of its items, or aborts a queued message, a queue's messages or a job's retried message,
-/// suspends that message or stops a job</b>, and the only one that reads the interoperability configuration for
+/// adds or removes one of its items, aborts a queued message, a queue's messages or a job's retried message,
+/// suspends that message or stops a job, adds, changes or removes a lookup table's entry, or deletes, imports or exports a lookup
+/// table</b>, and the only one that reads the interoperability configuration for
 /// a declared read (source kind <code>interop</code>); Story 20.4 adds the nine runtime reads (<parameter>ENDPOINTS</parameter>
 /// from <code>Monitor</code> on), which write nothing. It calls the documented classes the classic pages call --
 /// <code>Ens.Director</code>, <code>Ens.Queue</code>, <code>Ens.Job</code>, <code>Ens.Config.Production:ProductionStatus</code> and
@@ -44,10 +45,14 @@
 /// vendor records none for them.</p>
 /// <p><b>Every refusal is a written reason</b> (AD-39): the vendor's text goes to
 /// <method>LogFault</method> and nowhere else, and a read answered 404 is not logged (AD-2).</p>
+/// <p><b>The lookup writes</b> (Story 20.5) take the vendor's own table lock (<method>LockTable</method>) as the classic page's save
+/// takes it, refuse by name what the vendor would answer as a silent success, and record OcuPilot's own audit row
+/// (<method>AuditRuntime</method>), because the vendor records none. The vendor's lookup and partner calls check no privilege
+/// either (measured), so the gate is the whole gate.</p>
 /// <p>Seams a test subclass overrides: <method>GateClass</method>, <method>LogFault</method>,
 /// <method>StopSeconds</method>, <method>RoutineResource</method>, <method>SourceControlled</method>,
-/// <method>VendorAbortItem</method> and <method>VendorJob</method>, and the parameter <parameter>ABORTMAX</parameter>.
-/// Production overrides none.</p>
+/// <method>VendorAbortItem</method>, <method>VendorJob</method> and <method>LockTable</method>, and the parameter
+/// <parameter>ABORTMAX</parameter>. Production overrides none.</p>
 Class OcuPilot.Port.InteropPort Extends %RegisteredObject
 {
 
@@ -57,7 +62,7 @@ Parameter GATECLASS = "OcuPilot.Screen.Gate";
 /// <p>The endpoints this port serves, comma-separated: the namespace's productions, business
 /// processes, data transformations and business rules, and a production's items.
 /// <file>ui/tools/screen-mirror.mjs</file> reads this list.</p>
-Parameter ENDPOINTS = "Productions,Processes,Transforms,Rules,Items,Settings,Monitor,ItemStatus,Queues,QueueItems,ItemQueue,ItemLog,ItemMessages,Jobs,ItemJobs";
+Parameter ENDPOINTS = "Productions,Processes,Transforms,Rules,Items,Settings,Monitor,ItemStatus,Queues,QueueItems,ItemQueue,ItemLog,ItemMessages,Jobs,ItemJobs,LookupTables,LookupEntries,BusinessPartners";
 
 Parameter ENDPOINTPRODUCTIONS = "Productions";
 
@@ -103,6 +108,17 @@ Parameter ENDPOINTJOBS = "Jobs";
 
 Parameter ENDPOINTITEMJOBS = "ItemJobs";
 
+/// <p>The namespace's lookup tables (Story 20.5): <code>LIST</code>, one table (<code>LOOKUPTABLE</code>) and the table
+/// delete. A table is created by adding its first entry, and removing its last entry removes it.</p>
+Parameter ENDPOINTLOOKUPTABLES = "LookupTables";
+
+/// <p>The entries of the table <parameter>TABLEKEY</parameter> names (Story 20.5): <code>LIST</code>, one entry
+/// (<code>LOOKUPENTRY</code>) and the three entry writes.</p>
+Parameter ENDPOINTLOOKUPENTRIES = "LookupEntries";
+
+/// <p>The namespace's business partners (Story 20.5): <code>LIST</code> only.</p>
+Parameter ENDPOINTBUSINESSPARTNERS = "BusinessPartners";
+
 /// <p>The pairs the Productions endpoint requires: the classic Interoperability menu's
 /// <code>%Ens_Portal:USE</code> and <code>EnsPortal.Productions</code>'s own resource (AD-8,
 /// AD-29).</p>
@@ -122,6 +138,18 @@ Parameter QUEUEPAIRS = "%Ens_Portal:USE,%Ens_Queues:READ";
 
 /// <p>The pairs the Jobs endpoint requires: <code>EnsPortal.Jobs</code>' resource.</p>
 Parameter JOBPAIRS = "%Ens_Portal:USE,%Ens_Jobs:READ";
+
+/// <p>The pairs the two lookup endpoints require: the classic Interoperability menu's <code>%Ens_Portal:USE</code> and
+/// <code>EnsPortal.LookupSettings</code>' own resource (Story 20.5). The vendor's lookup calls check no privilege
+/// (measured), so these are the whole gate for a read.</p>
+Parameter LOOKUPPAIRS = "%Ens_Portal:USE,%Ens_LookupTables:READ";
+
+/// <p>The pair a lookup write adds: the classic page's <code>EDITRESOURCE</code>.</p>
+Parameter LOOKUPWRITEPAIR = "%Ens_LookupTables:WRITE";
+
+/// <p>The endpoint and type pairs that send no body and take their arguments through the query (AD-51 as amended by Story 12.3): the
+/// lookup table export and import (Story 20.5), whose files and reviewed counts the port reads from its query.</p>
+Parameter COMPOSEDTYPES = "LookupTables/EXPORT,LookupTables/IMPORT";
 
 /// <p>The pair each item tab adds to the Productions endpoint's pairs (the classic configuration page's
 /// <code>initSecurity</code>): the queue, the event log, the message headers and the jobs.</p>
@@ -248,6 +276,107 @@ Parameter TYPESUSPENDJOB = "SUSPENDJOB";
 
 /// <p>Stop one job of the running production, forcing it if it does not stop within the wait.</p>
 Parameter TYPESTOPJOB = "STOPJOB";
+
+/// <p>One lookup table (Story 20.5): <code>{Name, Entries, Modified, Namespace}</code>, the table delete's fresh read. The id
+/// is the table's name. With <parameter>ACTIONKEY</parameter> in the query it refuses what that action would be refused
+/// (<method>ReadLookupTable</method>).</p>
+Parameter TYPELOOKUPTABLE = "LOOKUPTABLE";
+
+/// <p>One lookup entry (Story 20.5): <code>{Table, Key, Value, Secret, Namespace}</code>, the entry tools' fresh read. The id is
+/// the composite <code>[Table, Key]</code>. It carries no count, so another entry's change never moves a fingerprint.</p>
+Parameter TYPELOOKUPENTRY = "LOOKUPENTRY";
+
+/// <p>Add an entry, creating its table when it is absent. The body names the value in <code>Value</code>.</p>
+Parameter TYPEADDENTRY = "ADDENTRY";
+
+/// <p>Store a new value for an entry the table holds.</p>
+Parameter TYPESETENTRY = "SETENTRY";
+
+/// <p>Remove an entry; removing a table's last entry removes the table (measured).</p>
+Parameter TYPEREMOVEENTRY = "REMOVEENTRY";
+
+/// <p>Remove a table and every entry in it.</p>
+Parameter TYPEDELETETABLE = "DELETETABLE";
+
+/// <p>The query key naming the table an entries list reads: its one criterion.</p>
+Parameter TABLEKEY = "table";
+
+/// <p>One lookup table read for an import (Story 20.5): <code>{Table, FileEntries, Digest, Present, Entries, Modified, Namespace,
+/// root, path, fileName}</code>, composed from the values the query carries -- the file's text, from a server file
+/// (<parameter>ROOTKEY</parameter> and <parameter>PATHKEY</parameter>) or a local one (<parameter>FILENAMEKEY</parameter> and
+/// <parameter>CONTENTKEY</parameter>) -- and the table the file names, as it stands (<code>Present</code>, <code>Entries</code> and
+/// <code>Modified</code>). The id is the table the file must hold, or <parameter>IMPORTID</parameter> for the table the file names.</p>
+Parameter TYPEIMPORTTABLE = "IMPORTTABLE";
+
+/// <p>Replace, or create, the one table a file holds with the file's entries; keys the file lacks are removed. The write names the
+/// reviewed <parameter>DIGESTKEY</parameter>, <parameter>ENTRIESKEY</parameter> and <parameter>MODIFIEDKEY</parameter>.</p>
+Parameter TYPEIMPORT = "IMPORT";
+
+/// <p>Export a table's <code>.LUT</code> document, to a server file named by <parameter>ROOTKEY</parameter> and
+/// <parameter>PATHKEY</parameter> or, with neither, as lines for the browser.</p>
+Parameter TYPEEXPORT = "EXPORT";
+
+/// <p>The query keys carrying a server file (an allowed directory and a relative name under it, AD-21's sixth case) and a local
+/// file (its name, which names no directory, and its text).</p>
+Parameter ROOTKEY = "root";
+
+Parameter PATHKEY = "path";
+
+Parameter FILENAMEKEY = "fileName";
+
+Parameter CONTENTKEY = "content";
+
+/// <p>The query keys carrying the reviewed entry count and stamp an import's write compares (<parameter>DIGESTKEY</parameter>
+/// carries the reviewed digest).</p>
+Parameter ENTRIESKEY = "entries";
+
+Parameter MODIFIEDKEY = "modified";
+
+/// <p>The id an import takes for the table its file names.</p>
+Parameter IMPORTID = "import";
+
+/// <p>Whether an export replaces a file already at its name: declared by the export itself, never a caller value (AD-21).</p>
+Parameter EXPORTOVERWRITES As BOOLEAN = 1;
+
+/// <p>The extension of a lookup table's document.</p>
+Parameter LUTEXTENSION = ".LUT";
+
+/// <p>The most characters the vendor stores for a table name, an entry key and an entry value (measured: a 256-character key
+/// and a 32,001-character value are refused #7201). A table and a key each within its bound can still be too long together
+/// (<method>LookupFits</method>).</p>
+Parameter TABLEMAX = 255;
+
+Parameter KEYMAX = 255;
+
+Parameter VALUEMAX = 32000;
+
+/// <p>How long a lookup write waits for the vendor's own table lock, in seconds: the classic page's save waits as long.</p>
+Parameter LOCKSECONDS = 3;
+
+/// <p>What every lookup refusal code begins with (<class>OcuPilot.Api.InteropError</class>).</p>
+Parameter LOOKUPCODEPREFIX = "INTEROP.LOOKUP.";
+
+/// <p>The characters <code>$System.OBJ</code> reads in a document name as a pattern (<code>*</code>, <code>?</code>), a path
+/// (<code>/</code>, <code>\</code>) or a separator (<code>;</code>), so the export of a table whose name holds one cannot name its
+/// own <code>.LUT</code> document (<method>LookupAddressable</method>).</p>
+Parameter UNADDRESSABLE = "*?/\;";
+
+/// <p>The entity types and verbs the audit row of a lookup write names (<method>AuditRuntime</method>, Story 20.5).</p>
+Parameter ENTITYLOOKUPTABLE = "lookup-table";
+
+Parameter ENTITYLOOKUPENTRY = "lookup-entry";
+
+Parameter VERBADD = "add";
+
+Parameter VERBSET = "set";
+
+Parameter VERBREMOVE = "remove";
+
+Parameter VERBDELETE = "delete";
+
+Parameter VERBIMPORT = "import";
+
+Parameter VERBEXPORT = "export";
 
 /// <p>The query key naming the item a <code>Settings</code> list reads: its one criterion. Its value is the item's
 /// composite id <code>[Production, Name]</code> or the vendor's config name <code>Production||Name</code>.</p>
@@ -391,6 +520,16 @@ Parameter REASONITEMBODY = "An item write names its fields in an object.";
 
 Parameter REASONSETTINGID = "Name the production, the item, the group (Core, Host or Adapter) and the setting.";
 
+Parameter REASONTABLEREQUIRED = "Name the lookup table.";
+
+Parameter REASONENTRYID = "Name the lookup table and the entry's key.";
+
+Parameter REASONENTRYBODY = "An entry write names its value in an object.";
+
+Parameter REASONIMPORTSOURCE = "Name one file: a server file by its allowed directory and name, or a local file by its name and text.";
+
+Parameter REASONIMPORTFILENAME = "A local file's name is 1 to 255 characters and holds no slash, no backslash and no control character.";
+
 /// <p>The class the pair sets are evaluated through. Overridable so a fixture can drive a denial in
 /// process; production never overrides it.</p>
 ClassMethod GateClass() As %String
@@ -462,8 +601,10 @@ ClassMethod ItemEndpoints() As %List
 /// own (queue, event log, message headers, jobs).</p>
 ClassMethod Pairs(pEndpoint As %String, pType As %String = "") As %List
 {
-    If (pEndpoint = ..#ENDPOINTPRODUCTIONS) || (pEndpoint = ..#ENDPOINTITEMS) || (pEndpoint = ..#ENDPOINTSETTINGS) || (pEndpoint = ..#ENDPOINTITEMSTATUS) {
+    If (pEndpoint = ..#ENDPOINTPRODUCTIONS) || (pEndpoint = ..#ENDPOINTITEMS) || (pEndpoint = ..#ENDPOINTSETTINGS) || (pEndpoint = ..#ENDPOINTITEMSTATUS) || (pEndpoint = ..#ENDPOINTBUSINESSPARTNERS) {
         Set tSpec = ..#PRODUCTIONPAIRS
+    } ElseIf (pEndpoint = ..#ENDPOINTLOOKUPTABLES) || (pEndpoint = ..#ENDPOINTLOOKUPENTRIES) {
+        Set tSpec = ..#LOOKUPPAIRS
     } ElseIf pEndpoint = ..#ENDPOINTMONITOR {
         Set tSpec = ..#MONITORPAIRS
     } ElseIf (pEndpoint = ..#ENDPOINTQUEUES) || (pEndpoint = ..#ENDPOINTQUEUEITEMS) {
@@ -488,6 +629,7 @@ ClassMethod Pairs(pEndpoint As %String, pType As %String = "") As %List
     If (pType = ..#TYPEABORTQUEUE) || (pType = ..#TYPEABORTMESSAGE) Set tSpec = tSpec _ "," _ ..#QUEUEWRITEPAIR
     If (pType = ..#TYPEABORTJOB) || (pType = ..#TYPESTOPJOB) Set tSpec = tSpec _ "," _ ..#JOBWRITEPAIR
     If pType = ..#TYPESUSPENDJOB Set tSpec = tSpec _ "," _ ..#SUSPENDPAIR
+    If ..IsLookupWrite(pType) Set tSpec = tSpec _ "," _ ..#LOOKUPWRITEPAIR
     Quit ##class(OcuPilot.Screen.Gate).ParsePairSpec(tSpec)
 }
 
@@ -504,6 +646,8 @@ ClassMethod Serves(pEndpoint As %String, pType As %String) As %Boolean
     If pEndpoint = ..#ENDPOINTQUEUES Quit (pType = ..#TYPEQUEUE) || (pType = ..#TYPEABORTQUEUE)
     If pEndpoint = ..#ENDPOINTQUEUEITEMS Quit (pType = ..#TYPEENTRY) || (pType = ..#TYPEABORTMESSAGE)
     If pEndpoint = ..#ENDPOINTJOBS Quit (pType = ..#TYPEJOB) || (pType = ..#TYPEABORTJOB) || (pType = ..#TYPESUSPENDJOB) || (pType = ..#TYPESTOPJOB)
+    If pEndpoint = ..#ENDPOINTLOOKUPTABLES Quit (pType = ..#TYPELOOKUPTABLE) || (pType = ..#TYPEDELETETABLE) || (pType = ..#TYPEIMPORTTABLE) || (pType = ..#TYPEIMPORT) || (pType = ..#TYPEEXPORT)
+    If pEndpoint = ..#ENDPOINTLOOKUPENTRIES Quit (pType = ..#TYPELOOKUPENTRY) || (pType = ..#TYPEADDENTRY) || (pType = ..#TYPESETENTRY) || (pType = ..#TYPEREMOVEENTRY)
     If pEndpoint '= ..#ENDPOINTPRODUCTIONS Quit 0
     Quit (pType = ..#TYPESTATE) || ..IsWrite(pType)
 }
@@ -600,7 +744,7 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
             Set tSC = ..Refuse(501, ##class(OcuPilot.Api.Error).#NOTIMPLEMENTED, ##class(OcuPilot.Api.Error).#PORTNOTIMPLEMENTED, ..#REASONNOTIMPLEMENTED, .pHttpStatus, .pFault)
             Quit
         }
-        Set tWrite = ..IsWrite(pType) || ..IsItemWrite(pType) || ..IsSettingWrite(pType) || ..IsRuntimeWrite(pType)
+        Set tWrite = ..IsWrite(pType) || ..IsItemWrite(pType) || ..IsSettingWrite(pType) || ..IsRuntimeWrite(pType) || ..IsLookupWrite(pType)
         Set tNamespace = $Get(pQuery(..#NAMESPACEKEY))
         If tNamespace = "" Set tNamespace = ##class(OcuPilot.Kernel.Scope).Current()
         Set tSC = ..Admit(pEndpoint, pType, tNamespace, .pHttpStatus, .pFault)
@@ -618,6 +762,10 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
             Set tSC = ..InvokeRuntime(tNamespace, pEndpoint, pType, .pQuery, .pResult, .pHttpStatus, .pFault)
             Quit
         }
+        If (pEndpoint = ..#ENDPOINTLOOKUPTABLES) || (pEndpoint = ..#ENDPOINTLOOKUPENTRIES) {
+            Set tSC = ..InvokeLookup(tNamespace, pEndpoint, pType, .pQuery, pBody, .pResult, .pHttpStatus, .pFault)
+            Quit
+        }
 
         If pType = ..#TYPELIST {
             Set tMax = 0
@@ -629,6 +777,8 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
             Set tMax = +tMaxText
             If pEndpoint = ..#ENDPOINTPRODUCTIONS {
                 Set tSC = ..ListProductions(tNamespace, tMax, .pResult, .pHttpStatus, .pFault)
+            } ElseIf pEndpoint = ..#ENDPOINTBUSINESSPARTNERS {
+                Set tSC = ..ListPartners(tNamespace, tMax, .pResult, .pHttpStatus, .pFault)
             } Else {
                 Set tSC = ..ListClasses(tNamespace, pEndpoint, tMax, .pResult, .pHttpStatus, .pFault)
             }
@@ -676,7 +826,7 @@ ClassMethod Admit(pEndpoint As %String, pType As %String, pNamespace As %String,
 {
     Set pHttpStatus = 0
     Set pFault = ""
-    Set tWrite = ..IsWrite(pType) || ..IsItemWrite(pType) || ..IsSettingWrite(pType) || ..IsRuntimeWrite(pType)
+    Set tWrite = ..IsWrite(pType) || ..IsItemWrite(pType) || ..IsSettingWrite(pType) || ..IsRuntimeWrite(pType) || ..IsLookupWrite(pType)
     Set tFailedPair = ""
     ; EvaluateRequired, not EvaluatePairs: a pair list mis-edited to empty fails closed.
     If '$ClassMethod(..GateClass(), "EvaluateRequired", ..Pairs(pEndpoint, pType), .tFailedPair) Quit ..Deny(tFailedPair, .pHttpStatus, .pFault)
@@ -3231,17 +3381,18 @@ ClassMethod PerformJobAction(pNamespace As %String, pType As %String, pPid As %S
     Quit $$$OK
 }
 
-/// <p>Record OcuPilot's own <code>ConfigChange</code> row for one queue or job write that read OK (AD-15, Story 20.23), from
-/// whichever caller made it: the vendor records none. <var>pVerb</var> is one of the <code>VERB</code> parameters,
-/// <var>pType</var> the entity type of the target and <var>pId</var> its id; <var>pEffects</var> names the namespace and,
-/// as the action has them, the queue, the counts or the host, and never a message's content. It never fails the write.
+/// <p>Record OcuPilot's own <code>ConfigChange</code> row for one queue, job or lookup write, or a lookup export, that read OK
+/// (AD-15, Stories 20.23 and 20.5), from whichever caller made it: the vendor records none. <var>pVerb</var> is one of the
+/// <code>VERB</code> parameters, <var>pType</var> the entity type of the target and <var>pId</var> its id; <var>pEffects</var>
+/// names the namespace and, as the action has them, the queue, the table, the counts or the host, and never a message's content
+/// or an entry's value. It never fails the write.
 /// Called after the namespace is restored. A seam a test reads through the audit database.</p>
 ClassMethod AuditRuntime(pVerb As %String, pType As %String, pId As %String, pEffects As %DynamicObject)
 {
     Try {
         Do ##class(OcuPilot.Kernel.Audit.Event).Record(pVerb, pType, pId, {}, 0, pEffects)
     } Catch ex {
-        Do ..LogFault("the queue or job action could not be audited", ex.AsStatus())
+        Do ..LogFault("the interoperability write could not be audited", ex.AsStatus())
     }
 }
 
@@ -3253,6 +3404,7 @@ ClassMethod SnippetForm(pEndpoint As %String, pType As %String) As %String
     If (pEndpoint = ..#ENDPOINTITEMS) && ..IsItemWrite(pType) Quit "objectscript"
     If (pEndpoint = ..#ENDPOINTSETTINGS) && ..IsSettingWrite(pType) Quit "objectscript"
     If ..IsRuntimeWrite(pType) && ..Serves(pEndpoint, pType) Quit "objectscript"
+    If (..IsLookupWrite(pType) || (pType = ..#TYPEEXPORT)) && ..Serves(pEndpoint, pType) Quit "objectscript"
     If pEndpoint '= ..#ENDPOINTPRODUCTIONS Quit ""
     If ..IsWrite(pType) Quit "objectscript"
     Quit ""
@@ -3278,6 +3430,10 @@ ClassMethod Snippet(pEndpoint As %String, pType As %String, ByRef pQuery, pBody 
         Set tText = tText _ ..SettingSnippet(pType, $Get(pQuery(..#IDKEY)), pBody)
     } ElseIf ..IsRuntimeWrite(pType) {
         Set tText = tText _ ..RuntimeSnippet(pType, $Get(pQuery(..#IDKEY)), pContext)
+    } ElseIf (pType = ..#TYPEIMPORT) || (pType = ..#TYPEEXPORT) {
+        Set tText = tText _ ..TransferSnippet(pType, $Get(pQuery(..#IDKEY)), .pQuery)
+    } ElseIf ..IsLookupWrite(pType) {
+        Set tText = tText _ ..LookupSnippet(pType, $Get(pQuery(..#IDKEY)), pBody)
     } ElseIf pType = ..#TYPESTART {
         Set tText = tText _ $Char(10) _ " Set tSC = ##class(Ens.Director).StartProduction(" _ ..Literal($Get(pQuery(..#IDKEY))) _ ")"
     } ElseIf pType = ..#TYPERECOVER {
@@ -3407,6 +3563,986 @@ ClassMethod SettingSnippet(pType As %String, pId As %String, pBody As %DynamicAb
     ; The production was opened with its exclusive lock, which lasts while a reference to it does.
     Set tText = tText _ tNL _ " Kill tSetting, tItem, tProduction"
     Quit tText
+}
+
+/// <p>Whether <var>pType</var> is one of the lookup writes this port carries (Story 20.5): an entry's add, set or remove, a
+/// table's delete, or an import. Each needs WRITE on the namespace's globals database and no routines database. An export reads
+/// the table and is not one.</p>
+ClassMethod IsLookupWrite(pType As %String) As %Boolean
+{
+    Quit (pType = ..#TYPEADDENTRY) || (pType = ..#TYPESETENTRY) || (pType = ..#TYPEREMOVEENTRY) || (pType = ..#TYPEDELETETABLE) || (pType = ..#TYPEIMPORT)
+}
+
+/// <p>Take the vendor's own lock on lookup table <var>pTable</var> in the current namespace, as the classic page's save takes it,
+/// waiting at most <parameter>LOCKSECONDS</parameter>; 1 when it is held. Called while the table's namespace is switched.
+/// Overridable so a fixture can answer 0; production never overrides it.</p>
+ClassMethod LockTable(pTable As %String) As %Boolean
+{
+    Set tWait = ..#LOCKSECONDS
+    Lock +^Ens.LookupTable(pTable):tWait
+    Quit $Test
+}
+
+/// <p>Release <method>LockTable</method>'s lock. Called while the table's namespace is switched.</p>
+ClassMethod UnlockTable(pTable As %String)
+{
+    Lock -^Ens.LookupTable(pTable)
+}
+
+/// <p>Whether the instance can address <code>^Ens.LookupTable</code> by the table <var>pTable</var> and, when it is not empty, the
+/// key <var>pKey</var> (Story 20.5). A reference past the instance's limit raises <code>&lt;SUBSCRIPT&gt;</code>, and the limit counts
+/// encoded bytes over the global's name and both subscripts, so a table and a key each within its own bound can pass it together,
+/// sooner when they hold characters outside ASCII (measured: a 255-character table takes a key of at most 238 characters). The test
+/// reads a process-private global whose name is as long as the vendor's, which nothing writes. Pure; it names no other class, so it
+/// runs while a namespace is switched.</p>
+ClassMethod LookupFits(pTable As %String, pKey As %String = "") As %Boolean
+{
+    Set tFits = 1
+    Try {
+        If pKey = "" {
+            Set tProbe = $Data(^||Ens.LookupTable(pTable))
+        } Else {
+            Set tProbe = $Data(^||Ens.LookupTable(pTable, pKey))
+        }
+    } Catch {
+        Set tFits = 0
+    }
+    Quit tFits
+}
+
+/// <p>Whether <code>$System.OBJ</code>'s export names the table <var>pTable</var>'s <code>.LUT</code> document exactly, in the array
+/// form <method>ExportTable</method> passes it (Story 20.5): a name holding a character of <parameter>UNADDRESSABLE</parameter>, or
+/// beginning with an apostrophe (an exclusion), exports other documents, none, or one with no entry (measured). No export writes such
+/// a table, so <method>ImportFile</method> refuses one too. Pure.</p>
+ClassMethod LookupAddressable(pTable As %String) As %Boolean
+{
+    Quit ($Translate(pTable, ..#UNADDRESSABLE) = pTable) && ($Extract(pTable) '= "'")
+}
+
+/// <p>The 422 violations of an entry's fields, in <var>pViolations</var> as <code>pViolations(n) = $ListBuild(field, code)</code>
+/// with the count in <code>pViolations</code> (Story 20.5): <code>Table</code> and <code>Key</code> are 1 to 255 characters with
+/// no control character, the table alone and the two together within what the instance can address (<method>LookupFits</method>;
+/// a pair past it is the key's violation, since a key is what either dialog lets a person shorten), and <code>Value</code> is at
+/// most 32,000 characters. They are the vendor's own limits (measured), and the vendor would refuse each with an error that names
+/// none of them. Pure.</p>
+ClassMethod LookupViolations(pTable As %String, pKey As %String, pValue As %String, Output pViolations) As %Status
+{
+    Kill pViolations
+    Set pViolations = 0
+    Set tTableShaped = (pTable '= "") && ($Length(pTable) <= ..#TABLEMAX) && ($ZStrip(pTable, "*C") = pTable) && ..LookupFits(pTable)
+    Set tKeyShaped = (pKey '= "") && ($Length(pKey) <= ..#KEYMAX) && ($ZStrip(pKey, "*C") = pKey)
+    If 'tTableShaped Set pViolations($Increment(pViolations)) = $ListBuild("Table", ##class(OcuPilot.Api.InteropError).#LOOKUPTABLENAME)
+    If 'tKeyShaped || (tTableShaped && '..LookupFits(pTable, pKey)) Set pViolations($Increment(pViolations)) = $ListBuild("Key", ##class(OcuPilot.Api.InteropError).#LOOKUPKEY)
+    If $Length(pValue) > ..#VALUEMAX Set pViolations($Increment(pViolations)) = $ListBuild("Value", ##class(OcuPilot.Api.InteropError).#LOOKUPVALUE)
+    Quit $$$OK
+}
+
+/// <p>The decision a lookup write <var>pType</var> is refused with, as the last segment of its code (<code>TAKEN</code>,
+/// <code>TABLECASE</code>, <code>SAME</code>) or <code>ABSENT</code> for a target that is not there, else <code>""</code>
+/// (Story 20.5): whatever the vendor would answer as a silent success, or get wrong, is refused here by its own name.
+/// <var>pExists</var> is whether the table is held under exactly that name, <var>pMatch</var> the spelling it is held under in
+/// another letter case (<code>""</code> when none), <var>pKeyExists</var> and <var>pHeld</var> whether the entry is there and what
+/// it holds, and <var>pValue</var> the value being written. It names no other class, so it runs while the table's namespace is
+/// switched. Pure.</p>
+/// <ul>
+/// <li>Add: <code>TAKEN</code> when the key is held, <code>TABLECASE</code> when the table is absent but held in another
+/// letter case.</li>
+/// <li>Set: <code>ABSENT</code> unless the entry is held, then <code>SAME</code> when it holds the value.</li>
+/// <li>Remove: <code>ABSENT</code> unless the entry is held. Delete: <code>ABSENT</code> unless the table is held.</li>
+/// </ul>
+ClassMethod LookupWriteToken(pType As %String, pExists As %Boolean, pMatch As %String, pKeyExists As %Boolean, pHeld As %String, pValue As %String) As %String
+{
+    If pType = ..#TYPEADDENTRY {
+        If pKeyExists Quit "TAKEN"
+        If 'pExists && (pMatch '= "") Quit "TABLECASE"
+        Quit ""
+    }
+    If pType = ..#TYPESETENTRY {
+        If 'pExists || 'pKeyExists Quit "ABSENT"
+        If pHeld = pValue Quit "SAME"
+        Quit ""
+    }
+    If pType = ..#TYPEREMOVEENTRY {
+        If 'pExists || 'pKeyExists Quit "ABSENT"
+        Quit ""
+    }
+    If 'pExists Quit "ABSENT"
+    Quit ""
+}
+
+/// <p>Serve the LookupTables and LookupEntries endpoints (Story 20.5) after <method>Invoke</method>'s gate. A <code>LIST</code>
+/// of entries names its table under <parameter>TABLEKEY</parameter>; a table is named under <parameter>IDKEY</parameter> by its
+/// name, and an entry by the composite <code>[Table, Key]</code>, each part kept exactly (AD-13). An <parameter>ACTIONKEY</parameter>
+/// names the write a single-object read is composed for: <method>ReadLookupTable</method> and <method>ReadLookupEntry</method>
+/// then refuse what that write would be refused.</p>
+ClassMethod InvokeLookup(pNamespace As %String, pEndpoint As %String, pType As %String, ByRef pQuery, pBody As %DynamicAbstractObject, Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Set pResult = ""
+    Try {
+        If pType = ..#TYPELIST {
+            Set tMaxText = $Get(pQuery(..#MAXROWSKEY))
+            If (tMaxText '= "") && '$Match(tMaxText, "^[1-9][0-9]*$") {
+                Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONMAXROWS, .pHttpStatus, .pFault)
+                Quit
+            }
+            If pEndpoint = ..#ENDPOINTLOOKUPTABLES {
+                Set tSC = ..ListLookupTables(pNamespace, +tMaxText, .pResult, .pHttpStatus, .pFault)
+                Quit
+            }
+            Set tTable = $Get(pQuery(..#TABLEKEY))
+            If tTable = "" {
+                Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONTABLEREQUIRED, .pHttpStatus, .pFault)
+                Quit
+            }
+            Set tSC = ..ListLookupEntries(pNamespace, tTable, +tMaxText, .pResult, .pHttpStatus, .pFault)
+            Quit
+        }
+        Set tId = $Get(pQuery(..#IDKEY))
+        Set tAction = $Select(..IsLookupWrite(pType): pType, 1: $Get(pQuery(..#ACTIONKEY)))
+        If (tAction '= "") && '((..IsLookupWrite(tAction) || (tAction = ..#TYPEEXPORT)) && ..Serves(pEndpoint, tAction)) {
+            Set tSC = ..Refuse(501, ##class(OcuPilot.Api.Error).#NOTIMPLEMENTED, ##class(OcuPilot.Api.Error).#PORTNOTIMPLEMENTED, ..#REASONNOTIMPLEMENTED, .pHttpStatus, .pFault)
+            Quit
+        }
+        If pEndpoint = ..#ENDPOINTLOOKUPTABLES {
+            If tId = "" {
+                Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONTABLEREQUIRED, .pHttpStatus, .pFault)
+                Quit
+            }
+            If pType = ..#TYPEEXPORT {
+                Set tSC = ..ExportTable(pNamespace, tId, .pQuery, .pResult, .pHttpStatus, .pFault)
+            } ElseIf pType = ..#TYPEIMPORTTABLE {
+                Set tSC = ..ReadImportTable(pNamespace, tId, tAction, .pQuery, .pResult, .pHttpStatus, .pFault)
+            } ElseIf pType = ..#TYPEIMPORT {
+                Set tSC = ..PerformImport(pNamespace, tId, .pQuery, .pResult, .pHttpStatus, .pFault)
+            } ElseIf ..IsLookupWrite(pType) {
+                Set tSC = ..PerformLookup(pNamespace, pType, tId, "", pBody, .pResult, .pHttpStatus, .pFault)
+            } Else {
+                Set tSC = ..ReadLookupTable(pNamespace, tId, tAction, $Get(pQuery(..#ROOTKEY)), $Get(pQuery(..#PATHKEY)), .pResult, .pHttpStatus, .pFault)
+            }
+            Quit
+        }
+        Set tParts = ##class(OcuPilot.Kernel.EntityId).SplitComposite(tId)
+        If ($ListLength(tParts) '= 2) || ($List(tParts, 1) = "") || ($List(tParts, 2) = "") {
+            Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONENTRYID, .pHttpStatus, .pFault)
+            Quit
+        }
+        If ..IsLookupWrite(pType) {
+            Set tSC = ..PerformLookup(pNamespace, pType, $List(tParts, 1), $List(tParts, 2), pBody, .pResult, .pHttpStatus, .pFault)
+        } Else {
+            Set tSC = ..ReadLookupEntry(pNamespace, $List(tParts, 1), $List(tParts, 2), tAction, .pResult, .pHttpStatus, .pFault)
+        }
+    } Catch ex {
+        Set pResult = ""
+        Set tSC = ..Fail("the lookup call failed inside the port", ex.AsStatus(), .pHttpStatus, .pFault)
+    }
+    Quit tSC
+}
+
+/// <p>The facts about lookup table <var>pTable</var> and, when <var>pKey</var> is not empty, its entry, read in
+/// <var>pNamespace</var> and kept in <var>pFacts</var>: <code>exists</code> (the table is held under exactly that name),
+/// <code>match</code> (the spelling it is held under in another letter case, else <code>""</code>, found by comparing every table's
+/// name in upper case, so the work is bounded by the table count), <code>keyExists</code> and
+/// <code>value</code> (the entry), <code>stamp</code> (the vendor's <code>$ZTIMESTAMP</code> stamp of the table), and, when
+/// <var>pCount</var> is true, <code>entries</code> (how many entries it holds). Nothing is written. A fault is
+/// <var>pCaught</var>, with the namespace restored.</p>
+ClassMethod LookupFacts(pNamespace As %String, pTable As %String, pKey As %String, pCount As %Boolean, Output pFacts, Output pCaught) As %Status [ Private ]
+{
+    Kill pFacts
+    Set pCaught = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Do ..LookupFactsHere(pTable, pKey, pCount, .pFacts)
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set pCaught = ex
+    }
+    Quit $$$OK
+}
+
+/// <p><method>LookupFacts</method>'s reads, in the current namespace, which the caller has already switched. Only vendor
+/// classes and globals run. A table or an entry the instance cannot address (<method>LookupFits</method>) is not held.</p>
+ClassMethod LookupFactsHere(pTable As %String, pKey As %String, pCount As %Boolean, ByRef pFacts) [ Private ]
+{
+    Kill pFacts
+    Set tFits = ..LookupFits(pTable)
+    Set pFacts("exists") = (tFits && ($Data(^Ens.LookupTable(pTable)) > 0))
+    Set pFacts("match") = ""
+    Set pFacts("keyExists") = 0
+    Set pFacts("value") = ""
+    Set pFacts("entries") = 0
+    Set pFacts("stamp") = ""
+    If 'pFacts("exists") {
+        If 'tFits Quit
+        Set tUpper = $ZConvert(pTable, "U")
+        Set tName = ""
+        For {
+            Set tName = $Order(^Ens.LookupTable(tName))
+            If tName = "" Quit
+            If $ZConvert(tName, "U") = tUpper {
+                Set pFacts("match") = tName
+                Quit
+            }
+        }
+        Quit
+    }
+    Set pFacts("stamp") = ##class(Ens.Util.LookupTable).getTimestamp(pTable)
+    If (pKey '= "") && ..LookupFits(pTable, pKey) && ($Data(^Ens.LookupTable(pTable, pKey)) # 2) {
+        Set pFacts("keyExists") = 1
+        Set pFacts("value") = ^Ens.LookupTable(pTable, pKey)
+    }
+    If pCount {
+        Set tKey = ""
+        For {
+            Set tKey = $Order(^Ens.LookupTable(pTable, tKey))
+            If tKey = "" Quit
+            Set pFacts("entries") = pFacts("entries") + 1
+        }
+    }
+}
+
+/// <p>The vendor's table stamp <var>pStamp</var> (<code>$ZTIMESTAMP</code>, UTC) as the instance's local clock time in the form
+/// the log readers write it (<method>LocalStamp</method>); <code>""</code> for a table with none. Runs in the install
+/// namespace.</p>
+ClassMethod LookupModified(pStamp As %String) As %String [ Private ]
+{
+    If '$Match(pStamp, "^[0-9]+,[0-9]+(\.[0-9]+)?$") Quit ""
+    Set tUtc = ""
+    Try {
+        Set tUtc = $ZDateTime(pStamp, 3, , 3)
+    } Catch {
+        Set tUtc = ""
+    }
+    Quit ..LocalStamp(tUtc)
+}
+
+/// <p>The table row a list and the table read answer: <code>{Name, Modified}</code>, and, with <var>pNamespace</var> (the table
+/// read), <code>Entries</code> and <code>Namespace</code> too. Runs in the install namespace.</p>
+ClassMethod LookupTableRow(pName As %String, pStamp As %String, pNamespace As %String = "", pEntries As %Integer = 0) As %DynamicObject [ Private ]
+{
+    Set tRow = {}
+    Do tRow.%Set("Name", pName, "string")
+    If pNamespace '= "" Do tRow.%Set("Entries", +pEntries, "number")
+    Do tRow.%Set("Modified", ..LookupModified(pStamp), "string")
+    If pNamespace '= "" Do tRow.%Set("Namespace", pNamespace, "string")
+    Quit tRow
+}
+
+/// <p>The entry row a list and the entry read answer: <code>{Table, Key, Value, Secret}</code>, and with <var>pNamespace</var>
+/// also <code>Namespace</code>. An entry whose key matches the credential pattern
+/// (<method>OcuPilot.Kernel.Audit.Log.IsCredentialName</method>) is answered with an empty <code>Value</code> and
+/// <code>Secret</code> true (AD-35), so its value never reaches a screen, the context, a read tool or the ledger. Runs in the
+/// install namespace.</p>
+ClassMethod LookupEntryRow(pTable As %String, pKey As %String, pValue As %String, pNamespace As %String = "") As %DynamicObject [ Private ]
+{
+    Set tSecret = ''##class(OcuPilot.Kernel.Audit.Log).IsCredentialName(pKey)
+    Set tRow = {}
+    Do tRow.%Set("Table", pTable, "string")
+    Do tRow.%Set("Key", pKey, "string")
+    Do tRow.%Set("Value", $Select(tSecret: "", 1: pValue), "string")
+    Do tRow.%Set("Secret", tSecret, "boolean")
+    If pNamespace '= "" Do tRow.%Set("Namespace", pNamespace, "string")
+    Quit tRow
+}
+
+/// <p>The namespace's lookup tables, one row per table in the vendor's order, <code>{Name, Modified}</code>, at most
+/// <var>pMax</var> when it is above zero (Story 20.5). The vendor's own query lists the names
+/// (<code>Ens.Util.LookupTable:Enumerate</code>) and nothing is written.</p>
+ClassMethod ListLookupTables(pNamespace As %String, pMax As %Integer, Output pRows As %DynamicArray, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pRows = ""
+    Set tCaught = ""
+    Set tStatusSC = $$$OK
+    Kill tFound
+    Set tFound = 0
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Set tResultSet = ##class(%ResultSet).%New("Ens.Util.LookupTable:Enumerate")
+        Set tStatusSC = tResultSet.Execute()
+        If $$$ISOK(tStatusSC) {
+            While tResultSet.Next() {
+                If (pMax > 0) && (tFound >= pMax) Quit
+                Set tName = tResultSet.GetData(1)
+                Set tFound = tFound + 1
+                Set tFound(tFound) = $ListBuild(tName, ##class(Ens.Util.LookupTable).getTimestamp(tName))
+            }
+            Do tResultSet.Close()
+        }
+        Set tResultSet = ""
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tCaught = ex
+    }
+    If $IsObject(tCaught) Quit ..Mapped(tCaught, "the lookup table list failed", .pHttpStatus, .pFault)
+    If $$$ISERR(tStatusSC) Quit ..Statused(tStatusSC, "the lookup table list failed", .pHttpStatus, .pFault)
+    Set pRows = []
+    For tI = 1:1:tFound {
+        Do pRows.%Push(..LookupTableRow($List(tFound(tI), 1), $List(tFound(tI), 2)))
+    }
+    Set pHttpStatus = 200
+    Quit $$$OK
+}
+
+/// <p>The entries of table <var>pTable</var>, one row per entry in the vendor's subscript order, <code>{Table, Key, Value,
+/// Secret}</code>, at most <var>pMax</var> when it is above zero (Story 20.5). A table that is not held under exactly that
+/// name is 404 <code>PORT.NOTFOUND</code>, unlogged.</p>
+ClassMethod ListLookupEntries(pNamespace As %String, pTable As %String, pMax As %Integer, Output pRows As %DynamicArray, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pRows = ""
+    Set tCaught = ""
+    Set tExists = 0
+    Kill tFound
+    Set tFound = 0
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Set tExists = (..LookupFits(pTable) && ($Data(^Ens.LookupTable(pTable)) > 0))
+        If tExists {
+            Set tKey = ""
+            For {
+                Set tKey = $Order(^Ens.LookupTable(pTable, tKey))
+                If tKey = "" Quit
+                If (pMax > 0) && (tFound >= pMax) Quit
+                Set tFound = tFound + 1
+                Set tFound(tFound) = $ListBuild(tKey, $Get(^Ens.LookupTable(pTable, tKey)))
+            }
+        }
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tCaught = ex
+    }
+    If $IsObject(tCaught) Quit ..Mapped(tCaught, "the lookup entry list failed", .pHttpStatus, .pFault)
+    If 'tExists Quit ..Absent(.pHttpStatus, .pFault)
+    Set pRows = []
+    For tI = 1:1:tFound {
+        Do pRows.%Push(..LookupEntryRow(pTable, $List(tFound(tI), 1), $List(tFound(tI), 2)))
+    }
+    Set pHttpStatus = 200
+    Quit $$$OK
+}
+
+/// <p>One lookup table, fresh (Story 20.5): <code>{Name, Entries, Modified, Namespace}</code>. A table that is not held under
+/// exactly that name is 404 <code>PORT.NOTFOUND</code>, unlogged. With a lookup write as <var>pAction</var> (the table delete) a
+/// namespace under source control is <code>INTEROP.LOOKUP.SOURCECONTROL</code> first. An export names a file by <var>pRoot</var> and
+/// <var>pPath</var>, which the row always carries (empty when none), so the export's card shows the file and its fingerprint covers it.</p>
+ClassMethod ReadLookupTable(pNamespace As %String, pName As %String, pAction As %String, pRoot As %String, pPath As %String, Output pRow As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pRow = ""
+    If ..IsLookupWrite(pAction) && ..SourceControlled(pNamespace) Quit ..Conflict(##class(OcuPilot.Api.InteropError).#LOOKUPSOURCECONTROL, .pHttpStatus, .pFault)
+    Set tSC = ..LookupFacts(pNamespace, pName, "", 1, .tFacts, .tCaught)
+    If $IsObject(tCaught) Quit ..Mapped(tCaught, "the lookup table read failed", .pHttpStatus, .pFault)
+    If 'tFacts("exists") Quit ..Absent(.pHttpStatus, .pFault)
+    Set pRow = ..LookupTableRow(pName, tFacts("stamp"), pNamespace, tFacts("entries"))
+    Do pRow.%Set(..#ROOTKEY, pRoot, "string")
+    Do pRow.%Set(..#PATHKEY, pPath, "string")
+    Set pHttpStatus = 200
+    Quit $$$OK
+}
+
+/// <p>One lookup entry, fresh (Story 20.5): <code>{Table, Key, Value, Secret, Namespace}</code>, with no count. An entry the
+/// table does not hold, or a table not held under exactly that name, is 404 <code>PORT.NOTFOUND</code>, unlogged. With
+/// <var>pAction</var> it refuses what that write would be refused, in this order: <code>SOURCECONTROL</code> for any write; for
+/// an add (AD-54, which inverts the read) <code>TAKEN</code> when the key is held, <code>TABLECASE</code> when the table is
+/// absent but held in another letter case, <code>SECRET</code> for a key that matches the credential pattern, and otherwise
+/// the 404 a create expects; for a set <code>SECRET</code> first.</p>
+ClassMethod ReadLookupEntry(pNamespace As %String, pTable As %String, pKey As %String, pAction As %String, Output pRow As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pRow = ""
+    If (pAction '= "") && ..SourceControlled(pNamespace) Quit ..Conflict(##class(OcuPilot.Api.InteropError).#LOOKUPSOURCECONTROL, .pHttpStatus, .pFault)
+    Set tSecret = ''##class(OcuPilot.Kernel.Audit.Log).IsCredentialName(pKey)
+    If (pAction = ..#TYPESETENTRY) && tSecret Quit ..Conflict(##class(OcuPilot.Api.InteropError).#LOOKUPSECRET, .pHttpStatus, .pFault)
+    Set tSC = ..LookupFacts(pNamespace, pTable, pKey, 0, .tFacts, .tCaught)
+    If $IsObject(tCaught) Quit ..Mapped(tCaught, "the lookup entry read failed", .pHttpStatus, .pFault)
+    If pAction = ..#TYPEADDENTRY {
+        Set tToken = ..LookupWriteToken(pAction, tFacts("exists"), tFacts("match"), tFacts("keyExists"), tFacts("value"), "")
+        If tToken '= "" Quit ..Conflict(..#LOOKUPCODEPREFIX _ tToken, .pHttpStatus, .pFault)
+        If tSecret Quit ..Conflict(##class(OcuPilot.Api.InteropError).#LOOKUPSECRET, .pHttpStatus, .pFault)
+        Quit ..Absent(.pHttpStatus, .pFault)
+    }
+    If 'tFacts("exists") || 'tFacts("keyExists") Quit ..Absent(.pHttpStatus, .pFault)
+    Set pRow = ..LookupEntryRow(pTable, pKey, tFacts("value"), pNamespace)
+    Set pHttpStatus = 200
+    Quit $$$OK
+}
+
+/// <p>Run lookup write <var>pType</var> on the table <var>pTable</var> (and the entry <var>pKey</var>) in <var>pNamespace</var>
+/// and answer what it leaves (Story 20.5). The sequence:</p>
+/// <ol>
+/// <li>A namespace under source control is <code>INTEROP.LOOKUP.SOURCECONTROL</code>, before anything is read.</li>
+/// <li>An add's or set's fields are judged by <method>LookupViolations</method> (422), then a key that matches the credential
+/// pattern is <code>INTEROP.LOOKUP.SECRET</code>; a remove's entry or a delete's table the instance cannot address
+/// (<method>LookupFits</method>) is 404.</li>
+/// <li>The vendor's own table lock is taken, as the classic page's save takes it; a lock not got in
+/// <parameter>LOCKSECONDS</parameter> is <code>INTEROP.LOOKUP.LOCKED</code>, with nothing written.</li>
+/// <li>Under the lock the target is read again and judged by <method>LookupWriteToken</method>, so a state that moved since the
+/// review is refused by its own code with no vendor call; then <code>%UpdateValue</code>, <code>%RemoveValue</code> or
+/// <code>%ClearTable</code> runs.</li>
+/// <li>The lock is released and the namespace restored, then OcuPilot's own audit row is recorded
+/// (<method>AuditRuntime</method>), because the vendor records none. It never carries a value.</li>
+/// </ol>
+/// <p>The answer is the entry's row read again; after a remove <code>{Table, Key, Namespace}</code>, because a table's last entry
+/// takes the table with it; after a delete <code>{Name, Namespace, Entries}</code> with <code>Entries</code> 0.</p>
+ClassMethod PerformLookup(pNamespace As %String, pType As %String, pTable As %String, pKey As %String, pBody As %DynamicAbstractObject, Output pResult As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pResult = ""
+    If ..SourceControlled(pNamespace) Quit ..Conflict(##class(OcuPilot.Api.InteropError).#LOOKUPSOURCECONTROL, .pHttpStatus, .pFault)
+    Set tValue = ""
+    If (pType = ..#TYPEADDENTRY) || (pType = ..#TYPESETENTRY) {
+        Set tViolations = 0
+        If '$IsObject(pBody) || 'pBody.%IsA("%Library.DynamicObject") Set pBody = {}
+        Set tValueType = pBody.%GetTypeOf("Value")
+        If tValueType = "string" {
+            Set tValue = pBody.%Get("Value")
+        } ElseIf (tValueType '= "unassigned") || (pType = ..#TYPESETENTRY) {
+            Set tViolations($Increment(tViolations)) = $ListBuild("Value", ##class(OcuPilot.Api.Error).#PORTFIELDSHAPE)
+        }
+        Set tSC = ..LookupViolations(pTable, pKey, tValue, .tFieldViolations)
+        If $$$ISERR(tSC) Quit tSC
+        For tI = 1:1:tFieldViolations {
+            Set tViolations($Increment(tViolations)) = tFieldViolations(tI)
+        }
+        If tViolations Quit ..Violations(.tViolations, .pHttpStatus, .pFault)
+        If ##class(OcuPilot.Kernel.Audit.Log).IsCredentialName(pKey) Quit ..Conflict(##class(OcuPilot.Api.InteropError).#LOOKUPSECRET, .pHttpStatus, .pFault)
+    }
+    ; A remove's entry or a delete's table the instance cannot address is not held: the lock would raise <SUBSCRIPT>.
+    If '..LookupFits(pTable, pKey) Quit ..Absent(.pHttpStatus, .pFault)
+    Set tToken = ""
+    Set tCaught = ""
+    Set tVendorSC = $$$OK
+    Set tEntries = 0
+    Set tLocked = 0
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Set tLocked = ..LockTable(pTable)
+        If 'tLocked {
+            Set tToken = "LOCKED"
+        } Else {
+            Do ..LookupFactsHere(pTable, pKey, (pType = ..#TYPEDELETETABLE), .tFacts)
+            Set tEntries = tFacts("entries")
+            Set tToken = ..LookupWriteToken(pType, tFacts("exists"), tFacts("match"), tFacts("keyExists"), tFacts("value"), tValue)
+            If tToken = "" {
+                If pType = ..#TYPEADDENTRY {
+                    Set tVendorSC = ##class(Ens.Util.LookupTable).%UpdateValue(pTable, pKey, tValue, 1)
+                } ElseIf pType = ..#TYPESETENTRY {
+                    Set tVendorSC = ##class(Ens.Util.LookupTable).%UpdateValue(pTable, pKey, tValue, 0)
+                } ElseIf pType = ..#TYPEREMOVEENTRY {
+                    Set tVendorSC = ##class(Ens.Util.LookupTable).%RemoveValue(pTable, pKey)
+                } Else {
+                    Do ##class(Ens.Util.LookupTable).%ClearTable(pTable)
+                }
+            }
+            Do ..UnlockTable(pTable)
+        }
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tCaught = ex
+        If tLocked {
+            Try {
+                Set $NAMESPACE = pNamespace
+                Do ..UnlockTable(pTable)
+            } Catch {
+            }
+            Set $NAMESPACE = tOrigNS
+        }
+    }
+    If $IsObject(tCaught) Quit ..Mapped(tCaught, "the lookup write failed", .pHttpStatus, .pFault)
+    If tToken = "ABSENT" Quit ..Absent(.pHttpStatus, .pFault)
+    If tToken '= "" Quit ..Conflict(..#LOOKUPCODEPREFIX _ tToken, .pHttpStatus, .pFault)
+    If $$$ISERR(tVendorSC) Quit ..Statused(tVendorSC, "the lookup write failed", .pHttpStatus, .pFault)
+    Set tEffects = {}
+    Do tEffects.%Set("namespace", pNamespace, "string")
+    Do tEffects.%Set("table", pTable, "string")
+    If pType = ..#TYPEDELETETABLE {
+        Do tEffects.%Set("entries", tEntries, "number")
+        Do ..AuditRuntime(..#VERBDELETE, ..#ENTITYLOOKUPTABLE, pTable, tEffects)
+        Set pResult = {}
+        Do pResult.%Set("Name", pTable, "string")
+        Do pResult.%Set("Namespace", pNamespace, "string")
+        Do pResult.%Set("Entries", 0, "number")
+        Set pHttpStatus = 200
+        Quit $$$OK
+    }
+    ; Named entry, not key: the audit writer redacts a member whose name matches the credential pattern.
+    Do tEffects.%Set("entry", pKey, "string")
+    Do ..AuditRuntime($Case(pType, ..#TYPEADDENTRY: ..#VERBADD, ..#TYPESETENTRY: ..#VERBSET, : ..#VERBREMOVE), ..#ENTITYLOOKUPENTRY, ##class(OcuPilot.Kernel.EntityId).JoinComposite($ListBuild(pTable, pKey)), tEffects)
+    If pType = ..#TYPEREMOVEENTRY {
+        Set pResult = {}
+        Do pResult.%Set("Table", pTable, "string")
+        Do pResult.%Set("Key", pKey, "string")
+        Do pResult.%Set("Namespace", pNamespace, "string")
+        Set pHttpStatus = 200
+        Quit $$$OK
+    }
+    Set tSC = ..LookupFacts(pNamespace, pTable, pKey, 0, .tAfter, .tAfterCaught)
+    Set pResult = ..LookupEntryRow(pTable, pKey, $Select($IsObject(tAfterCaught): tValue, 1: tAfter("value")), pNamespace)
+    Set pHttpStatus = 200
+    Quit $$$OK
+}
+
+/// <p>The text of the file an import names in <var>pQuery</var>, in <var>pText</var>, with <var>pLabel</var> the name it is known by
+/// (Story 20.5): the server file <parameter>ROOTKEY</parameter> and <parameter>PATHKEY</parameter> name, resolved through
+/// <class>OcuPilot.Port.PathPort</class> as a <code>source</code> and read as UTF-8 text
+/// (<method>OcuPilot.Port.AtelierPort.ReadText</method>), or the local file <parameter>FILENAMEKEY</parameter> and
+/// <parameter>CONTENTKEY</parameter> send. Refused before any vendor call: 400 <code>PORT.VALIDATION</code> when both files or neither
+/// is named, or a local file's name is longer than 255 characters or holds <code>/</code>, <code>\</code> or a control character; the
+/// resolve's own refusal on its field; and 409 <code>INTEROP.LOOKUP.TOOLARGE</code> for text longer than
+/// <parameter>OcuPilot.Port.AtelierPort.MAXIMPORTCHARACTERS</parameter>.</p>
+ClassMethod ImportText(ByRef pQuery, Output pText As %String, Output pLabel As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pText = ""
+    Set pLabel = ""
+    Set tRoot = $Get(pQuery(..#ROOTKEY))
+    Set tPath = $Get(pQuery(..#PATHKEY))
+    Set tFileName = $Get(pQuery(..#FILENAMEKEY))
+    Set tContent = $Get(pQuery(..#CONTENTKEY))
+    Set tServer = (tRoot '= "") || (tPath '= "")
+    Set tLocal = (tFileName '= "") || (tContent '= "")
+    If tServer = tLocal Quit ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONIMPORTSOURCE, .pHttpStatus, .pFault)
+    Set tMax = ##class(OcuPilot.Port.AtelierPort).#MAXIMPORTCHARACTERS
+    If tLocal {
+        If (tFileName = "") || ($Length(tFileName) > ##class(OcuPilot.Port.AtelierPort).#MAXFILENAME) || (tFileName [ "/") || (tFileName [ "\") || ($ZStrip(tFileName, "*C") '= tFileName) {
+            Quit ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONIMPORTFILENAME, .pHttpStatus, .pFault)
+        }
+        If $Length(tContent) > tMax Quit ..Conflict(##class(OcuPilot.Api.InteropError).#LOOKUPTOOLARGE, .pHttpStatus, .pFault)
+        Set pLabel = tFileName
+        Set pText = tContent
+        Quit $$$OK
+    }
+    Set tPathPort = ..PathPortClass()
+    Set tSC = $ClassMethod(tPathPort, "Resolve", tRoot, tPath, $Parameter(tPathPort, "KINDSOURCE"), ..#ROOTKEY, ..#PATHKEY, .tResolved, .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) Quit tSC
+    Set pLabel = tPath
+    Set tSC = ##class(OcuPilot.Port.AtelierPort).ReadText(tResolved, .pText, .tTooLarge)
+    If $$$ISERR(tSC) Quit ..Fail("the import's file could not be read", tSC, .pHttpStatus, .pFault)
+    If tTooLarge {
+        Set pText = ""
+        Quit ..Conflict(##class(OcuPilot.Api.InteropError).#LOOKUPTOOLARGE, .pHttpStatus, .pFault)
+    }
+    Quit $$$OK
+}
+
+/// <p>What <var>pText</var> is as an import file (Story 20.5): <var>pTable</var> the one lookup table its one
+/// <code>.LUT</code> document holds, <code>""</code> when the text is anything else; <var>pFileEntries</var> how many entries that
+/// document carries; <var>pDigest</var> its SHA-256 as lower-case hex. The vendor lists the file's documents without loading
+/// them (<code>$System.OBJ.LoadStream</code> with list-only), so a file that also holds a class or a routine, one that holds two tables,
+/// and the legacy form that holds no document (which the lister rejects) are each no table. A fault is <var>pCaught</var>, with
+/// the namespace restored.</p>
+ClassMethod ImportShape(pNamespace As %String, pText As %String, Output pTable As %String, Output pFileEntries As %Integer, Output pDigest As %String, Output pCaught) As %Status [ Private ]
+{
+    Set pTable = ""
+    Set pFileEntries = 0
+    Set pCaught = ""
+    Set pDigest = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set tBytes = ##class(%Stream.GlobalBinary).%New()
+        Set tLength = $Length(pText)
+        For tAt = 1:30000:tLength {
+            Do tBytes.Write($ZConvert($Extract(pText, tAt, tAt + 29999), "O", "UTF8"))
+        }
+        Do tBytes.Rewind()
+        Set tHash = $System.Encryption.SHAHashStream(256, tBytes, .tHashSC)
+        If $$$ISERR(tHashSC) Quit
+        Set pDigest = $ZConvert(##class(%xsd.hexBinary).LogicalToXSD(tHash), "L")
+        Set tStream = ##class(%Stream.GlobalCharacter).%New()
+        Do tStream.Write(pText)
+        Do tStream.Rewind()
+        Set $NAMESPACE = pNamespace
+        Kill tLoaded
+        Set tListSC = $System.OBJ.LoadStream(tStream, "-d", .tErrorLog, .tLoaded, 1)
+        Set $NAMESPACE = tOrigNS
+        If $$$ISERR(tListSC) Quit
+        Set tItem = $Order(tLoaded(""))
+        If (tItem = "") || ($Order(tLoaded(tItem)) '= "") Quit
+        Set tSuffix = ..#LUTEXTENSION
+        Set tStem = $Length(tItem) - $Length(tSuffix)
+        If (tStem < 1) || ($Extract(tItem, tStem + 1, $Length(tItem)) '= tSuffix) Quit
+        Set tTable = $Extract(tItem, 1, tStem)
+        Do tBytes.Rewind()
+        Set tCount = 0
+        Set tSC = ##class(%XML.TextReader).ParseStream(tBytes, .tReader)
+        If $$$ISERR(tSC) Quit
+        While tReader.Read() {
+            If (tReader.NodeType = "element") && (tReader.Name = "entry") Set tCount = tCount + 1
+        }
+        If tCount < 1 Quit
+        Set pTable = tTable
+        Set pFileEntries = tCount
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set pCaught = ex
+        Set pTable = ""
+    }
+    Quit $$$OK
+}
+
+/// <p>The import file a query names, examined (Story 20.5): its text and label (<method>ImportText</method>), then its shape
+/// (<method>ImportShape</method>). <var>pId</var>, unless it is <parameter>IMPORTID</parameter>, names the table the file must hold.
+/// 409 <code>INTEROP.LOOKUP.IMPORTSHAPE</code> when the file is not exactly one lookup table with at least one entry, holds another
+/// table than <var>pId</var> names, or holds a table whose name the export cannot name (<method>LookupAddressable</method>) or the
+/// instance cannot address (<method>LookupFits</method>), which no export writes.</p>
+ClassMethod ImportFile(pNamespace As %String, pId As %String, ByRef pQuery, Output pText As %String, Output pTable As %String, Output pFileEntries As %Integer, Output pDigest As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pTable = ""
+    Set pFileEntries = 0
+    Set pDigest = ""
+    Set tSC = ..ImportText(.pQuery, .pText, .tLabel, .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) Quit tSC
+    Set tSC = ..ImportShape(pNamespace, pText, .pTable, .pFileEntries, .pDigest, .tCaught)
+    If $IsObject(tCaught) Quit ..Mapped(tCaught, "the import file could not be examined", .pHttpStatus, .pFault)
+    If (pTable = "") || '..LookupAddressable(pTable) || '..LookupFits(pTable) || ((pId '= ..#IMPORTID) && (pId '= pTable)) Quit ..Conflict(##class(OcuPilot.Api.InteropError).#LOOKUPIMPORTSHAPE, .pHttpStatus, .pFault)
+    Quit $$$OK
+}
+
+/// <p>The import row (Story 20.5): <code>{Table, FileEntries, Digest, Present, Entries, Modified, Namespace, root, path,
+/// fileName, content}</code> for the file <var>pQuery</var> names and the table it holds as it stands, with <code>root</code>,
+/// <code>path</code> and <code>fileName</code> as the query carried them and <code>content</code> always empty: the row names the
+/// property a local file's text is set on, and never holds the text. With <var>pAction</var> a namespace
+/// under source control is <code>INTEROP.LOOKUP.SOURCECONTROL</code> first, and a file's table that is absent under exactly that
+/// name but held in another letter case is <code>INTEROP.LOOKUP.TABLECASE</code>, since the import would create a second table.</p>
+ClassMethod ReadImportTable(pNamespace As %String, pId As %String, pAction As %String, ByRef pQuery, Output pRow As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pRow = ""
+    If (pAction '= "") && ..SourceControlled(pNamespace) Quit ..Conflict(##class(OcuPilot.Api.InteropError).#LOOKUPSOURCECONTROL, .pHttpStatus, .pFault)
+    Set tSC = ..ImportFile(pNamespace, pId, .pQuery, .tText, .tTable, .tFileEntries, .tDigest, .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) Quit tSC
+    Set tSC = ..LookupFacts(pNamespace, tTable, "", 1, .tFacts, .tCaught)
+    If $IsObject(tCaught) Quit ..Mapped(tCaught, "the lookup table read failed", .pHttpStatus, .pFault)
+    If (pAction '= "") && 'tFacts("exists") && (tFacts("match") '= "") Quit ..Conflict(##class(OcuPilot.Api.InteropError).#LOOKUPTABLECASE, .pHttpStatus, .pFault)
+    Set pRow = {}
+    Do pRow.%Set("Table", tTable, "string")
+    Do pRow.%Set("FileEntries", tFileEntries, "number")
+    Do pRow.%Set("Digest", tDigest, "string")
+    Do pRow.%Set("Present", tFacts("exists"), "boolean")
+    Do pRow.%Set("Entries", +tFacts("entries"), "number")
+    Do pRow.%Set("Modified", ..LookupModified(tFacts("stamp")), "string")
+    Do pRow.%Set("Namespace", pNamespace, "string")
+    Do pRow.%Set(..#ROOTKEY, $Get(pQuery(..#ROOTKEY)), "string")
+    Do pRow.%Set(..#PATHKEY, $Get(pQuery(..#PATHKEY)), "string")
+    Do pRow.%Set(..#FILENAMEKEY, $Get(pQuery(..#FILENAMEKEY)), "string")
+    Do pRow.%Set(..#CONTENTKEY, "", "string")
+    Set pHttpStatus = 200
+    Quit $$$OK
+}
+
+/// <p>Replace, or create, the table the import file holds with the file's entries (Story 20.5). The sequence:</p>
+/// <ol>
+/// <li>A namespace under source control is <code>INTEROP.LOOKUP.SOURCECONTROL</code>, before anything is read.</li>
+/// <li>The file is examined (<method>ImportFile</method>) and the table it holds read as it stands; unless the file's digest, the
+/// table's entry count and its stamp are the reviewed <parameter>DIGESTKEY</parameter>, <parameter>ENTRIESKEY</parameter> and
+/// <parameter>MODIFIEDKEY</parameter> of the query, the write is <code>INTEROP.LOOKUP.IMPORTCHANGED</code>, with nothing loaded.</li>
+/// <li>The vendor's table lock is taken (<code>LOCKED</code> past <parameter>LOCKSECONDS</parameter>); under it a table absent
+/// under exactly that name but held in another letter case is <code>INTEROP.LOOKUP.TABLECASE</code>, the table's entry count and
+/// stamp are checked again, and the file's one <code>.LUT</code> document is loaded by name
+/// (<code>$System.OBJ.LoadStream</code> with a selected array), which replaces the table: a key the file lacks is removed. A load
+/// that answers OK without loading that document is <code>INTEROP.LOOKUP.IMPORTSHAPE</code>.</li>
+/// <li>OcuPilot's own audit row is recorded after the lock is released, with counts and never a value.</li>
+/// </ol>
+/// <p>The answer is the table read again, <code>{Name, Entries, Modified, Namespace}</code>.</p>
+ClassMethod PerformImport(pNamespace As %String, pId As %String, ByRef pQuery, Output pResult As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pResult = ""
+    If ..SourceControlled(pNamespace) Quit ..Conflict(##class(OcuPilot.Api.InteropError).#LOOKUPSOURCECONTROL, .pHttpStatus, .pFault)
+    Set tSC = ..ImportFile(pNamespace, pId, .pQuery, .tText, .tTable, .tFileEntries, .tDigest, .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) Quit tSC
+    Set tSC = ..LookupFacts(pNamespace, tTable, "", 1, .tPre, .tCaught)
+    If $IsObject(tCaught) Quit ..Mapped(tCaught, "the lookup table read failed", .pHttpStatus, .pFault)
+    If '$Data(pQuery(..#DIGESTKEY)) || '$Data(pQuery(..#ENTRIESKEY)) || '$Data(pQuery(..#MODIFIEDKEY)) || (pQuery(..#DIGESTKEY) '= tDigest) || (pQuery(..#ENTRIESKEY) '= +tPre("entries")) || (pQuery(..#MODIFIEDKEY) '= ..LookupModified(tPre("stamp"))) {
+        Quit ..Conflict(##class(OcuPilot.Api.InteropError).#LOOKUPIMPORTCHANGED, .pHttpStatus, .pFault)
+    }
+    Set tToken = ""
+    Set tCaught = ""
+    Set tVendorSC = $$$OK
+    Set tLocked = 0
+    Set tAfterEntries = 0
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set tStream = ##class(%Stream.GlobalCharacter).%New()
+        Do tStream.Write(tText)
+        Do tStream.Rewind()
+        Set $NAMESPACE = pNamespace
+        Set tLocked = ..LockTable(tTable)
+        If 'tLocked {
+            Set tToken = "LOCKED"
+        } Else {
+            Do ..LookupFactsHere(tTable, "", 1, .tNow)
+            If 'tNow("exists") && (tNow("match") '= "") {
+                Set tToken = "TABLECASE"
+            } ElseIf (tNow("stamp") '= tPre("stamp")) || (tNow("entries") '= tPre("entries")) {
+                Set tToken = "IMPORTCHANGED"
+            } Else {
+                Kill tLoaded, tSelected
+                Set tSelected(tTable _ ..#LUTEXTENSION) = ""
+                Set tVendorSC = $System.OBJ.LoadStream(tStream, "-d", .tErrorLog, .tLoaded, 0, .tSelected)
+                If $$$ISOK(tVendorSC) && '$Data(tLoaded(tTable _ ..#LUTEXTENSION)) Set tToken = "IMPORTSHAPE"
+                Do ..LookupFactsHere(tTable, "", 1, .tAfter)
+                Set tAfterEntries = tAfter("entries")
+            }
+            Do ..UnlockTable(tTable)
+        }
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tCaught = ex
+        If tLocked {
+            Try {
+                Set $NAMESPACE = pNamespace
+                Do ..UnlockTable(tTable)
+            } Catch {
+            }
+            Set $NAMESPACE = tOrigNS
+        }
+    }
+    If $IsObject(tCaught) Quit ..Mapped(tCaught, "the lookup import failed", .pHttpStatus, .pFault)
+    If tToken '= "" Quit ..Conflict(..#LOOKUPCODEPREFIX _ tToken, .pHttpStatus, .pFault)
+    If $$$ISERR(tVendorSC) Quit ..Statused(tVendorSC, "the lookup import failed", .pHttpStatus, .pFault)
+    Set tEffects = {}
+    Do tEffects.%Set("namespace", pNamespace, "string")
+    Do tEffects.%Set("table", tTable, "string")
+    Do tEffects.%Set("entries", tAfterEntries, "number")
+    Do tEffects.%Set("fileEntries", tFileEntries, "number")
+    Do ..AuditRuntime(..#VERBIMPORT, ..#ENTITYLOOKUPTABLE, tTable, tEffects)
+    Set tSC = ..LookupFacts(pNamespace, tTable, "", 1, .tPost, .tPostCaught)
+    Set pResult = ..LookupTableRow(tTable, $Select($IsObject(tPostCaught): "", 1: tPost("stamp")), pNamespace, $Select($IsObject(tPostCaught): tAfterEntries, 1: tPost("entries")))
+    Set pHttpStatus = 200
+    Quit $$$OK
+}
+
+/// <p>The export's file for <var>pRoot</var> and <var>pPath</var>, resolved through <method>PathPortClass</method> as a
+/// <code>file</code> with <parameter>EXPORTOVERWRITES</parameter>, each refusal on its field, then
+/// <code>EXPLORER.EXPORT.DIRECTORY</code> when the resolved name's directory does not exist; a directory is never created. On success
+/// <var>pResolved</var> is the path.</p>
+ClassMethod ExportFile(pRoot As %String, pPath As %String, Output pResolved As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pResolved = ""
+    Set tPathPort = ..PathPortClass()
+    Set tSC = $ClassMethod(tPathPort, "Resolve", pRoot, pPath, $Parameter(tPathPort, "KINDFILE"), ..#ROOTKEY, ..#PATHKEY, .pResolved, .pHttpStatus, .pFault, ..#EXPORTOVERWRITES)
+    If $$$ISERR(tSC) {
+        Set pResolved = ""
+        Quit tSC
+    }
+    If '##class(%File).DirectoryExists(##class(%File).GetDirectory(pResolved)) {
+        Set pResolved = ""
+        Quit ..ConflictFor(##class(OcuPilot.Api.AtelierError).#EXPORTDIRECTORY, .pHttpStatus, .pFault)
+    }
+    Quit $$$OK
+}
+
+/// <p>The export's file for <var>pRoot</var> and <var>pPath</var>, resolved and checked exactly as <method>ExportTable</method> checks
+/// it before its vendor call, for a mint that must refuse what the write would (Story 20.5): the endpoint's pairs, then
+/// <method>ExportFile</method>. Nothing is written.</p>
+ClassMethod CheckExport(pRoot As %String, pPath As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status
+{
+    Set tSC = $$$OK
+    Set pHttpStatus = 0
+    Set pFault = ""
+    Try {
+        Set tFailedPair = ""
+        If '$ClassMethod(..GateClass(), "EvaluateRequired", ..Pairs(..#ENDPOINTLOOKUPTABLES, ..#TYPEEXPORT), .tFailedPair) {
+            Set tSC = ..Deny(tFailedPair, .pHttpStatus, .pFault)
+            Quit
+        }
+        Set tSC = ..ExportFile(pRoot, pPath, .tResolved, .pHttpStatus, .pFault)
+    } Catch ex {
+        Set tSC = ..Fail("the export's file could not be checked", ex.AsStatus(), .pHttpStatus, .pFault)
+    }
+    Quit tSC
+}
+
+/// <p>Export table <var>pTable</var>'s <code>.LUT</code> document, the vendor's own (Story 20.5): to the server file
+/// <parameter>ROOTKEY</parameter> and <parameter>PATHKEY</parameter> name, resolved and checked by <method>ExportFile</method> before
+/// the call (<code>$System.OBJ.Export</code>), the answer <code>{Name, Namespace, root, path}</code>; or, naming neither, as lines for the
+/// browser (<code>$System.OBJ.ExportToStream</code>), the answer <code>{Name, Namespace, lines}</code>, 409
+/// <code>INTEROP.LOOKUP.TOOLARGE</code> past <parameter>OcuPilot.Port.AtelierPort.MAXIMPORTCHARACTERS</parameter> characters. A table that is
+/// not held under exactly that name is 404, and one whose name the vendor's export cannot address exactly
+/// (<method>LookupAddressable</method>) is 409 <code>INTEROP.LOOKUP.EXPORTNAME</code>, before the file is resolved. The document is
+/// passed in the array form, so a comma in the name is not a separator. It writes nothing but the file, and records OcuPilot's own
+/// audit row.</p>
+ClassMethod ExportTable(pNamespace As %String, pTable As %String, ByRef pQuery, Output pResult As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pResult = ""
+    Set tRoot = $Get(pQuery(..#ROOTKEY))
+    Set tPath = $Get(pQuery(..#PATHKEY))
+    Set tToFile = (tRoot '= "") || (tPath '= "")
+    Set tSC = ..LookupFacts(pNamespace, pTable, "", 1, .tFacts, .tCaught)
+    If $IsObject(tCaught) Quit ..Mapped(tCaught, "the lookup table read failed", .pHttpStatus, .pFault)
+    If 'tFacts("exists") Quit ..Absent(.pHttpStatus, .pFault)
+    If '..LookupAddressable(pTable) Quit ..Conflict(##class(OcuPilot.Api.InteropError).#LOOKUPEXPORTNAME, .pHttpStatus, .pFault)
+    Set tResolved = ""
+    If tToFile {
+        Set tSC = ..ExportFile(tRoot, tPath, .tResolved, .pHttpStatus, .pFault)
+        If $$$ISERR(tSC) Quit tSC
+    }
+    Kill tItems
+    Set tItems(pTable _ ..#LUTEXTENSION) = ""
+    Set tCaught = ""
+    Set tVendorSC = $$$OK
+    Set tText = ""
+    Set tTooLarge = 0
+    Set tMax = ##class(OcuPilot.Port.AtelierPort).#MAXIMPORTCHARACTERS
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        If tToFile {
+            Set tVendorSC = $System.OBJ.Export(.tItems, tResolved, "-d")
+        } Else {
+            Set tStream = ##class(%Stream.GlobalCharacter).%New()
+            Set tVendorSC = $System.OBJ.ExportToStream(.tItems, .tStream, "-d")
+            If $$$ISOK(tVendorSC) {
+                If tStream.Size > tMax {
+                    Set tTooLarge = 1
+                } Else {
+                    Do tStream.Rewind()
+                    Set tText = tStream.Read(tMax)
+                }
+            }
+        }
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tCaught = ex
+    }
+    If $IsObject(tCaught) Quit ..Mapped(tCaught, "the lookup export failed", .pHttpStatus, .pFault)
+    If tTooLarge Quit ..Conflict(##class(OcuPilot.Api.InteropError).#LOOKUPTOOLARGE, .pHttpStatus, .pFault)
+    If $$$ISERR(tVendorSC) Quit ..Statused(tVendorSC, "the lookup export failed", .pHttpStatus, .pFault)
+    Set tEffects = {}
+    Do tEffects.%Set("namespace", pNamespace, "string")
+    Do tEffects.%Set("table", pTable, "string")
+    Do tEffects.%Set("entries", +tFacts("entries"), "number")
+    Do tEffects.%Set("toFile", ''tToFile, "boolean")
+    Do ..AuditRuntime(..#VERBEXPORT, ..#ENTITYLOOKUPTABLE, pTable, tEffects)
+    Set pResult = {}
+    Do pResult.%Set("Name", pTable, "string")
+    Do pResult.%Set("Namespace", pNamespace, "string")
+    If tToFile {
+        Do pResult.%Set(..#ROOTKEY, tRoot, "string")
+        Do pResult.%Set(..#PATHKEY, tPath, "string")
+    } Else {
+        Set tLines = []
+        Set tLength = $Length(tText, $Char(10))
+        For tI = 1:1:tLength {
+            Set tLine = $Piece(tText, $Char(10), tI)
+            If (tI = tLength) && (tLine = "") Quit
+            Do tLines.%Push(tLine, "string")
+        }
+        Do pResult.%Set("lines", tLines)
+    }
+    Set pHttpStatus = 200
+    Quit $$$OK
+}
+
+/// <p>The lines <method>Snippet</method> adds for an import or an export of the table <var>pTable</var> (Story 20.5): the vendor's own
+/// call on the table's one <code>.LUT</code> document, named in the array form the port passes, in the lock the import takes. A
+/// server file is named by its allowed directory and relative name in a comment, since the directory is resolved when the write
+/// runs; a local file's text is never in a script, so its import loads a stream the comment says it holds.</p>
+ClassMethod TransferSnippet(pType As %String, pTable As %String, ByRef pQuery) As %String [ Private ]
+{
+    Set tNL = $Char(10)
+    Set tItems = tNL _ " Set tItems(" _ ..Literal(pTable _ ..#LUTEXTENSION) _ ") = """""
+    Set tPath = $Get(pQuery(..#PATHKEY))
+    Set tFile = ..Literal(tPath)
+    Set tSource = tNL _ " ; The server file is the allowed directory " _ $Translate($Get(pQuery(..#ROOTKEY)), $Char(10) _ $Char(13), "  ") _ " and the name " _ $Translate(tPath, $Char(10) _ $Char(13), "  ")
+    If pType = ..#TYPEEXPORT {
+        If tPath = "" Quit tItems _ tNL _ " Set tStream = ##class(%Stream.GlobalCharacter).%New()" _ tNL _ " Set tSC = $System.OBJ.ExportToStream(.tItems, .tStream, ""-d"")"
+        Quit tSource _ tItems _ tNL _ " Set tSC = $System.OBJ.Export(.tItems, " _ tFile _ ", ""-d"")"
+    }
+    Set tLoad = "$System.OBJ.Load(" _ tFile _ ", ""-d"", .tErrorLog, .tLoaded, 0, .tItems)"
+    If tPath = "" {
+        Set tSource = tNL _ " ; tStream holds the text of the file this browser sent, which no script carries"
+        Set tLoad = "$System.OBJ.LoadStream(tStream, ""-d"", .tErrorLog, .tLoaded, 0, .tItems)"
+    }
+    Quit tSource _ tItems _ tNL _ " Lock +^Ens.LookupTable(" _ ..Literal(pTable) _ "):" _ ..#LOCKSECONDS _ tNL _ " If $Test { Set tSC = " _ tLoad _ " } Else { Set tSC = $System.Status.Error(5001, ""the lookup table lock is held"") }" _ tNL _ " Lock -^Ens.LookupTable(" _ ..Literal(pTable) _ ")"
+}
+
+/// <p>The namespace's business partners, one row per partner, at most <var>pMax</var> when it is above zero (Story 20.5):
+/// <code>{Name, Description}</code> and, for each of the two contacts, its name, title, email, phone, mobile and notes
+/// (<code>PrimaryContact</code>, <code>PrimaryTitle</code>, <code>PrimaryEmail</code>, <code>PrimaryPhone</code>,
+/// <code>PrimaryMobile</code>, <code>PrimaryNotes</code> and the same six after <code>Alternative</code>). The vendor's own query
+/// lists the partners (<code>Ens.Config.BusinessPartner:List</code>) and each surviving row is opened for its contacts. Nothing
+/// is written.</p>
+ClassMethod ListPartners(pNamespace As %String, pMax As %Integer, Output pRows As %DynamicArray, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pRows = ""
+    Set tCaught = ""
+    Set tStatusSC = $$$OK
+    Kill tFound
+    Set tFound = 0
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Set tResultSet = ##class(%ResultSet).%New("Ens.Config.BusinessPartner:List")
+        Set tStatusSC = tResultSet.Execute()
+        If $$$ISOK(tStatusSC) {
+            While tResultSet.Next() {
+                If (pMax > 0) && (tFound >= pMax) Quit
+                Set tName = tResultSet.GetData(1)
+                Set tLine = $ListBuild(tName, tResultSet.GetData(2))
+                Set tPartner = ##class(Ens.Config.BusinessPartner).%OpenId(tName)
+                For tContact = "PrimaryContact", "AlternativeContact" {
+                    Set tObject = $Select($IsObject(tPartner): $Property(tPartner, tContact), 1: "")
+                    If $IsObject(tObject) {
+                        Set tLine = tLine _ $ListBuild(tObject.Name, tObject.Title, tObject.Email, tObject.PhoneNumber, tObject.MobileNumber, tObject.Notes)
+                    } Else {
+                        Set tLine = tLine _ $ListBuild("", "", "", "", "", "")
+                    }
+                    Set tObject = ""
+                }
+                Set tPartner = ""
+                Set tFound = tFound + 1
+                Set tFound(tFound) = tLine
+            }
+            Do tResultSet.Close()
+        }
+        Set tResultSet = ""
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tCaught = ex
+    }
+    If $IsObject(tCaught) Quit ..Mapped(tCaught, "the business partner list failed", .pHttpStatus, .pFault)
+    If $$$ISERR(tStatusSC) Quit ..Statused(tStatusSC, "the business partner list failed", .pHttpStatus, .pFault)
+    Set tNames = $ListBuild("Name", "Description", "PrimaryContact", "PrimaryTitle", "PrimaryEmail", "PrimaryPhone", "PrimaryMobile", "PrimaryNotes", "AlternativeContact", "AlternativeTitle", "AlternativeEmail", "AlternativePhone", "AlternativeMobile", "AlternativeNotes")
+    Set pRows = []
+    For tI = 1:1:tFound {
+        Set tRow = {}
+        For tJ = 1:1:$ListLength(tNames) {
+            Do tRow.%Set($List(tNames, tJ), $List(tFound(tI), tJ) _ "", "string")
+        }
+        Do pRows.%Push(tRow)
+    }
+    Set pHttpStatus = 200
+    Quit $$$OK
+}
+
+/// <p>The lines <method>Snippet</method> adds for the lookup write <var>pType</var> of the table or entry the id <var>pId</var>
+/// names (Story 20.5): the vendor's table lock, the call and the unlock, with the add's or set's value from the body
+/// <var>pBody</var>. Names and values are string literals.</p>
+ClassMethod LookupSnippet(pType As %String, pId As %String, pBody As %DynamicAbstractObject) As %String [ Private ]
+{
+    Set tNL = $Char(10)
+    If pType = ..#TYPEDELETETABLE {
+        Set tTable = ..Literal(pId)
+        Set tCall = "##class(Ens.Util.LookupTable).%ClearTable(" _ tTable _ ")"
+        Quit tNL _ " Lock +^Ens.LookupTable(" _ tTable _ "):" _ ..#LOCKSECONDS _ tNL _ " If $Test { Do " _ tCall _ " } Else { Set tSC = $System.Status.Error(5001, ""the lookup table lock is held"") }" _ tNL _ " Lock -^Ens.LookupTable(" _ tTable _ ")"
+    }
+    Set tParts = ##class(OcuPilot.Kernel.EntityId).SplitComposite(pId)
+    Set tTable = ..Literal($ListGet(tParts, 1))
+    Set tKey = ..Literal($ListGet(tParts, 2))
+    Set tValue = ""
+    If $IsObject(pBody) && (pBody.%GetTypeOf("Value") = "string") Set tValue = pBody.%Get("Value")
+    If pType = ..#TYPEREMOVEENTRY {
+        Set tCall = "##class(Ens.Util.LookupTable).%RemoveValue(" _ tTable _ ", " _ tKey _ ")"
+    } Else {
+        Set tCall = "##class(Ens.Util.LookupTable).%UpdateValue(" _ tTable _ ", " _ tKey _ ", " _ ..Literal(tValue) _ ", " _ (pType = ..#TYPEADDENTRY) _ ")"
+    }
+    Quit tNL _ " Lock +^Ens.LookupTable(" _ tTable _ "):" _ ..#LOCKSECONDS _ tNL _ " If $Test { Set tSC = " _ tCall _ " } Else { Set tSC = $System.Status.Error(5001, ""the lookup table lock is held"") }" _ tNL _ " Lock -^Ens.LookupTable(" _ tTable _ ")"
 }
 
 /// <p><var>pValue</var> as an ObjectScript string literal, a control character spelled as a

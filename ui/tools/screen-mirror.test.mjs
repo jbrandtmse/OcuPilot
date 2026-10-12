@@ -1358,7 +1358,7 @@ test('criteriaProblem returns every sentence OcuPilot.Test.CriteriaCorpus declar
   // Story 18.9's SQL privileges, whose two criteria are the grantee and the namespace. Story 18.10's percent-class
   // access list, whose one criterion is the application. Story 20.3's Production items, whose one criterion is
   // the production the route id names. Story 20.4's six item tabs, whose one criterion is the item the route id names,
-  // and Queue messages, whose one criterion is the queue.
+  // and Queue messages, whose one criterion is the queue. Story 20.5's lookup table entries, whose one criterion is the table.
   const withCriteria = emittedScreens.filter((screen) => (screen.read?.criteria ?? null) !== null);
   assert.deepEqual(
     withCriteria.map((screen) => screen.descriptor),
@@ -1400,6 +1400,7 @@ test('criteriaProblem returns every sentence OcuPilot.Test.CriteriaCorpus declar
       'OcuPilot.Screen.Descriptor.InteropItemQueueTab',
       'OcuPilot.Screen.Descriptor.InteropItemSettingList',
       'OcuPilot.Screen.Descriptor.InteropItemStatusTab',
+      'OcuPilot.Screen.Descriptor.InteropLookupEntryList',
       'OcuPilot.Screen.Descriptor.InteropQueueMessageList',
       'OcuPilot.Screen.Descriptor.JournalFileDatabaseList',
       'OcuPilot.Screen.Descriptor.JournalFileDetails',
@@ -1558,14 +1559,26 @@ test('every declared banner severity has a .ocu-banner- rule in the stylesheet, 
 // agent context carries (AD-24) and nothing constrains it to `read.fields`; `context.secretFields`
 // is not, because naming key material there is what it is for.
 //
-// **One named flag is exempt.** Item settings' rows carry `Secret`, a boolean the port sets true for a setting whose
-// name matches the credential pattern (Story 20.22, AD-36); the flag holds no credential, and the row's value and
-// default are empty when it is true. The exemption is this one descriptor's one read field, so a column, a filter or
-// a context field of that name, or the field on any other screen, is still an offender.
+// **Two descriptors' named fields are exempt.** Item settings' rows carry `Secret`, a boolean the port sets true for a
+// setting whose name matches the credential pattern (Story 20.22, AD-36); the flag holds no credential, and the row's
+// value and default are empty when it is true. A lookup table's entries (Story 20.5) carry `Key`, the entry's lookup
+// key, which is not key material, and the same `Secret` flag, set for a key that matches the pattern, with an empty
+// value. Each exemption names the descriptor and the surface it is declared on, so the field on any other screen or
+// surface is still an offender.
 //
 // Mutation (Rule 19): rename a production column field to `ApiKey` -> this goes red naming the
 // descriptor and the field.
-const CREDENTIAL_FLAG_FIELDS = new Set(['InteropItemSettingList.cls read.fields: Secret']);
+const CREDENTIAL_FLAG_FIELDS = new Set([
+  'InteropItemSettingList.cls read.fields: Secret',
+  'InteropLookupEntryList.cls read.fields: Key',
+  'InteropLookupEntryList.cls read.fields: Secret',
+  'InteropLookupEntryList.cls read.filter: Key',
+  'InteropLookupEntryList.cls read.sort.fields: Key',
+  'InteropLookupEntryList.cls table.columns: Key',
+  'InteropLookupEntryList.cls table.columns: Secret',
+  'InteropLookupEntryList.cls context.fields: Key',
+  'InteropLookupEntryList.cls context.fields: Secret',
+]);
 
 test('AD-35: no production descriptor names a read, filter, sort, column or context field matching the credential pattern', () => {
   const { screens } = readSources();
@@ -2410,7 +2423,8 @@ test('ownPrivilegesProblem returns every sentence OwnPrivilegeCases declares, an
   // area's %Ens_Portal. Story 20.3's Production items
   // owns %Ens_ProductionConfig:READ the same way. Story 20.4's nine screens own their classic page's resource: the
   // item's six tabs %Ens_ProductionConfig:READ and each its tab's, Production monitor %Ens_Dashboard:USE, Queues and
-  // Queue messages %Ens_Queues:READ, and Jobs %Ens_Jobs:READ.
+  // Queue messages %Ens_Queues:READ, and Jobs %Ens_Jobs:READ. Story 20.5's Lookup tables and a table's entries own
+  // %Ens_LookupTables:READ, and Business partners %Ens_ProductionConfig:READ.
   assert.deepEqual(
     owners.sort(),
     [
@@ -2421,6 +2435,7 @@ test('ownPrivilegesProblem returns every sentence OwnPrivilegeCases declares, an
       'OcuPilot.Screen.Descriptor.EncryptionKeyFileAdminList',
       'OcuPilot.Screen.Descriptor.EncryptionKeyFileForm',
       'OcuPilot.Screen.Descriptor.ExplorerDocDbList',
+      'OcuPilot.Screen.Descriptor.InteropBusinessPartnerList',
       'OcuPilot.Screen.Descriptor.InteropItemJobTab',
       'OcuPilot.Screen.Descriptor.InteropItemList',
       'OcuPilot.Screen.Descriptor.InteropItemLogTab',
@@ -2429,6 +2444,8 @@ test('ownPrivilegesProblem returns every sentence OwnPrivilegeCases declares, an
       'OcuPilot.Screen.Descriptor.InteropItemSettingList',
       'OcuPilot.Screen.Descriptor.InteropItemStatusTab',
       'OcuPilot.Screen.Descriptor.InteropJobList',
+      'OcuPilot.Screen.Descriptor.InteropLookupEntryList',
+      'OcuPilot.Screen.Descriptor.InteropLookupTableList',
       'OcuPilot.Screen.Descriptor.InteropMonitorList',
       'OcuPilot.Screen.Descriptor.InteropProcessList',
       'OcuPilot.Screen.Descriptor.InteropProductionList',

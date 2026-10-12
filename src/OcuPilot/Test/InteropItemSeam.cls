@@ -28,6 +28,7 @@ ClassMethod Disarm()
     Kill ^||OcuPilotInteropItemSent
     Kill ^||OcuPilotInteropItemJobCode
     Kill ^||OcuPilotInteropItemAbortMode
+    Kill ^||OcuPilotInteropItemMove
 }
 
 /// <p>Answer the next job writes with a vendor status carrying code <var>pCode</var> instead of calling the vendor (Story 20.23), so a
@@ -90,6 +91,27 @@ ClassMethod VendorAbortItem(pNamespace As %String, pQueue As %String, pPriority 
         If $$$ISOK($ClassMethod("OcuPilot.Test.ProductionProbe", "Send")) Set ^||OcuPilotInteropItemSent = 1
     }
     Quit tSC
+}
+
+/// <p>Store <var>pValue</var> for <var>pKey</var> of lookup table <var>pTable</var>, creating the entry, just before the next
+/// <method>LockTable</method> of that table (Story 20.5), so the table moves between a write's first read and its lock.
+/// <method>Disarm</method> clears it.</p>
+ClassMethod MoveTableBeforeLock(pTable As %String, pKey As %String, pValue As %String)
+{
+    Set ^||OcuPilotInteropItemMove = $ListBuild(pTable, pKey, pValue)
+}
+
+/// <p>The shipped lock, after the one move <method>MoveTableBeforeLock</method> armed for this table.</p>
+ClassMethod LockTable(pTable As %String) As %Boolean
+{
+    If $Data(^||OcuPilotInteropItemMove) {
+        Set tMove = ^||OcuPilotInteropItemMove
+        If $List(tMove, 1) = pTable {
+            Kill ^||OcuPilotInteropItemMove
+            Do ##class(Ens.Util.LookupTable).%UpdateValue(pTable, $List(tMove, 2), $List(tMove, 3), 1)
+        }
+    }
+    Quit ##super(pTable)
 }
 
 ClassMethod RoutineResource(pNamespace As %String, Output pResource As %String) As %Boolean

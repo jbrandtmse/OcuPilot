@@ -231,7 +231,13 @@ XData Keys [ MimeType = application/json ]
   "interop.queues.abort": false,
   "interop.jobs.abort": false,
   "interop.jobs.suspend": true,
-  "interop.jobs.stop": true
+  "interop.jobs.stop": true,
+  "interop.lookupentries.add": true,
+  "interop.lookupentries.set": true,
+  "interop.lookupentries.remove": false,
+  "interop.lookuptables.delete": false,
+  "interop.lookuptables.export": true,
+  "interop.lookuptables.import": false
 }
 }
 

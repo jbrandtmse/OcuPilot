@@ -262,6 +262,7 @@ XData UrlMap [ XMLNamespace = "http://www.intersystems.com/urlmap" ]
   <Route Url="/routine-application" Method="POST" Call="RoutineAppCreate"/>
   <Route Url="/explorer/docdb" Method="POST" Call="ExplorerDocDbCreate"/>
   <Route Url="/interop/items" Method="POST" Call="InteropItemCreate"/>
+  <Route Url="/interop/lookup-entries" Method="POST" Call="InteropLookupEntryCreate"/>
   <Route Url="/rest-service" Method="POST" Call="RestServiceCreate"/>
 </Routes>
 }
@@ -1866,6 +1867,13 @@ ClassMethod ExplorerDocDbCreate() As %Status
 ClassMethod InteropItemCreate() As %Status
 {
     Quit ##class(OcuPilot.Area.Interop.ItemSave).HandleCreate()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /interop/lookup-entries</code> (Story 20.5): Lookup tables' New table and the
+/// entries list's Add, resolved through the one tool the agent's confirm uses (AD-55).</p>
+ClassMethod InteropLookupEntryCreate() As %Status
+{
+    Quit ##class(OcuPilot.Area.Interop.LookupEntrySave).HandleCreate()
 }
 
 /// <p>Thin <code>Call=</code> target for <code>GET /authentication-options/form</code> (Story 18.8): the

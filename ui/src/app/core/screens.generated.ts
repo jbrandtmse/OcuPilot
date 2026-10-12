@@ -10,7 +10,7 @@
  * declarations disagree.
  */
 
-export type EntityTypeKey = 'web-application' | 'rest-service' | 'user' | 'role' | 'resource' | 'service' | 'ssl-configuration' | 'x509-credential' | 'ldap-configuration' | 'wallet-collection' | 'wallet-secret' | 'oauth2-client-configuration' | 'oauth2-server-definition' | 'oauth2-resource-server' | 'oauth2-server' | 'oauth2-server-client' | 'audit-event' | 'audit-user-event' | 'auditing-configuration' | 'task' | 'task-history-entry' | 'process' | 'lock' | 'database' | 'device' | 'audit-record' | 'application-error' | 'log-entry' | 'agent-definition' | 'agent-switch' | 'agent-policy' | 'allowed-directory' | 'screen-permission' | 'namespace' | 'web-session' | 'background-task' | 'global-mapping' | 'routine-mapping' | 'package-mapping' | 'database-configuration' | 'language-server' | 'class' | 'routine' | 'journal-file' | 'journal-file-database' | 'journal-settings' | 'journal-record' | 'license-key' | 'license-server' | 'ecp-data-server' | 'ecp-settings' | 'ecp-ssl-connection' | 'encryption-key-file' | 'database-encryption-keys' | 'data-element-encryption-keys' | 'encryption-startup' | 'docdb-database' | 'sql-statement' | 'authentication-options' | 'superserver' | 'mft-connection' | 'production' | 'pct-class-access' | 'docdb-application' | 'routine-application' | 'production-item' | 'production-item-setting' | 'interop-queue' | 'interop-message' | 'interop-job';
+export type EntityTypeKey = 'web-application' | 'rest-service' | 'user' | 'role' | 'resource' | 'service' | 'ssl-configuration' | 'x509-credential' | 'ldap-configuration' | 'wallet-collection' | 'wallet-secret' | 'oauth2-client-configuration' | 'oauth2-server-definition' | 'oauth2-resource-server' | 'oauth2-server' | 'oauth2-server-client' | 'audit-event' | 'audit-user-event' | 'auditing-configuration' | 'task' | 'task-history-entry' | 'process' | 'lock' | 'database' | 'device' | 'audit-record' | 'application-error' | 'log-entry' | 'agent-definition' | 'agent-switch' | 'agent-policy' | 'allowed-directory' | 'screen-permission' | 'namespace' | 'web-session' | 'background-task' | 'global-mapping' | 'routine-mapping' | 'package-mapping' | 'database-configuration' | 'language-server' | 'class' | 'routine' | 'journal-file' | 'journal-file-database' | 'journal-settings' | 'journal-record' | 'license-key' | 'license-server' | 'ecp-data-server' | 'ecp-settings' | 'ecp-ssl-connection' | 'encryption-key-file' | 'database-encryption-keys' | 'data-element-encryption-keys' | 'encryption-startup' | 'docdb-database' | 'sql-statement' | 'authentication-options' | 'superserver' | 'mft-connection' | 'production' | 'pct-class-access' | 'docdb-application' | 'routine-application' | 'production-item' | 'production-item-setting' | 'interop-queue' | 'interop-message' | 'interop-job' | 'lookup-table' | 'lookup-entry' | 'business-partner';
 
 /**
  * The closed archetype vocabulary, mirrored from OcuPilot.Screen.Archetype. A screen's
@@ -539,7 +539,10 @@ export const ENTITY_TYPES: readonly EntityTypeKey[] = [
   "production-item-setting",
   "interop-queue",
   "interop-message",
-  "interop-job"
+  "interop-job",
+  "lookup-table",
+  "lookup-entry",
+  "business-partner"
 ];
 
 /**
@@ -11765,6 +11768,160 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "entityLabelKey": ""
   },
   {
+    "descriptor": "OcuPilot.Screen.Descriptor.InteropBusinessPartnerList",
+    "route": "interoperability/business-partners",
+    "area": "interoperability",
+    "labelKey": "interopBusinessPartnersLabel",
+    "sideBarPosition": 9,
+    "archetype": "list",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Ens_Portal",
+        "permission": "USE"
+      },
+      {
+        "resource": "%Ens_ProductionConfig",
+        "permission": "READ"
+      }
+    ],
+    "ownPrivileges": [
+      {
+        "resource": "%Ens_ProductionConfig",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "business-partner",
+    "secondaryEntityTypes": [],
+    "scope": "namespace",
+    "parentScope": "",
+    "id": {
+      "kind": "single",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "Name",
+        "Description",
+        "PrimaryContact",
+        "PrimaryEmail",
+        "PrimaryPhone"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "interopBusinessPartnersEmpty",
+    "commandAliases": [
+      "business partners",
+      "business partner"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "interopBusinessPartnersPrompt1"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "interopBusinessPartnersPrompt2"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "interopBusinessPartnersPrompt3"
+      }
+    ],
+    "classicPage": "EnsPortal.BusinessPartners",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "interop",
+        "endpoint": "BusinessPartners",
+        "type": "LIST"
+      },
+      "fields": [
+        "Name",
+        "Description",
+        "PrimaryContact",
+        "PrimaryTitle",
+        "PrimaryEmail",
+        "PrimaryPhone",
+        "PrimaryMobile",
+        "PrimaryNotes",
+        "AlternativeContact",
+        "AlternativeTitle",
+        "AlternativeEmail",
+        "AlternativePhone",
+        "AlternativeMobile",
+        "AlternativeNotes"
+      ],
+      "filter": [
+        "Name",
+        "Description",
+        "PrimaryContact"
+      ],
+      "sort": {
+        "fields": [
+          "Name",
+          "Description",
+          "PrimaryContact"
+        ],
+        "default": "Name",
+        "direction": "asc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Name",
+          "labelKey": "tableColumnName",
+          "kind": "name"
+        },
+        {
+          "field": "Description",
+          "labelKey": "tableColumnDescription",
+          "kind": "text"
+        },
+        {
+          "field": "PrimaryContact",
+          "labelKey": "interopPartnerColumnContact",
+          "kind": "text"
+        },
+        {
+          "field": "PrimaryPhone",
+          "labelKey": "interopPartnerColumnPhone",
+          "kind": "text"
+        },
+        {
+          "field": "PrimaryEmail",
+          "labelKey": "userFieldEmail",
+          "kind": "text"
+        }
+      ],
+      "emptyNextKey": "interopBusinessPartnersEmptyNext",
+      "emptyAgentKey": ""
+    },
+    "toolIdentifier": "interop.businesspartners",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
     "descriptor": "OcuPilot.Screen.Descriptor.InteropItemJobTab",
     "route": "interoperability/productions/items/jobs",
     "area": "interoperability",
@@ -13233,6 +13390,303 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "refreshDefault": 0,
     "banner": null,
     "tab": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.InteropLookupEntryList",
+    "route": "interoperability/lookup-tables/entries",
+    "area": "interoperability",
+    "labelKey": "interopLookupEntriesLabel",
+    "sideBarPosition": 0,
+    "archetype": "list",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Ens_Portal",
+        "permission": "USE"
+      },
+      {
+        "resource": "%Ens_LookupTables",
+        "permission": "READ"
+      }
+    ],
+    "ownPrivileges": [
+      {
+        "resource": "%Ens_LookupTables",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "lookup-entry",
+    "secondaryEntityTypes": [
+      "lookup-table"
+    ],
+    "scope": "namespace",
+    "parentScope": "interoperability/lookup-tables",
+    "id": {
+      "kind": "composite",
+      "parts": [
+        "Table",
+        "Key"
+      ]
+    },
+    "primaryAction": {
+      "id": "add",
+      "selfProtection": ""
+    },
+    "rowActions": [
+      {
+        "id": "set",
+        "selfProtection": ""
+      },
+      {
+        "id": "remove",
+        "selfProtection": ""
+      }
+    ],
+    "context": {
+      "fields": [
+        "Table",
+        "Key",
+        "Value",
+        "Secret"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "interopLookupEntriesEmpty",
+    "commandAliases": [],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "interopLookupEntriesPrompt1"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "interopLookupEntriesPrompt2"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "interopLookupEntriesPrompt3"
+      }
+    ],
+    "classicPage": "EnsPortal.LookupSettings",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "interop",
+        "endpoint": "LookupEntries",
+        "type": "LIST"
+      },
+      "fields": [
+        "Table",
+        "Key",
+        "Value",
+        "Secret"
+      ],
+      "filter": [
+        "Key",
+        "Value"
+      ],
+      "sort": {
+        "fields": [
+          "Key",
+          "Value"
+        ],
+        "default": "Key",
+        "direction": "asc"
+      },
+      "paging": "cap",
+      "criteria": {
+        "fields": [
+          {
+            "param": "table",
+            "labelKey": "interopLookupEntriesCriterionTable",
+            "kind": "text",
+            "maxLength": 255,
+            "hint": "One lookup table, spelled as interop.lookuptables.read answers its Name."
+          }
+        ]
+      }
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Key",
+          "labelKey": "interopLookupColumnKey",
+          "kind": "name"
+        },
+        {
+          "field": "Value",
+          "labelKey": "errorLogColumnValue",
+          "kind": "text"
+        },
+        {
+          "field": "Secret",
+          "labelKey": "interopLookupColumnSecret",
+          "kind": "status"
+        }
+      ],
+      "emptyNextKey": "",
+      "emptyAgentKey": "interopLookupEntriesEmptyAgent"
+    },
+    "toolIdentifier": "interop.lookupentries",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.InteropLookupTableList",
+    "route": "interoperability/lookup-tables",
+    "area": "interoperability",
+    "labelKey": "interopLookupTablesLabel",
+    "sideBarPosition": 8,
+    "archetype": "list",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Ens_Portal",
+        "permission": "USE"
+      },
+      {
+        "resource": "%Ens_LookupTables",
+        "permission": "READ"
+      }
+    ],
+    "ownPrivileges": [
+      {
+        "resource": "%Ens_LookupTables",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "lookup-table",
+    "secondaryEntityTypes": [
+      "lookup-entry"
+    ],
+    "scope": "namespace",
+    "parentScope": "",
+    "id": {
+      "kind": "single",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "add",
+      "selfProtection": ""
+    },
+    "rowActions": [
+      {
+        "id": "delete",
+        "selfProtection": ""
+      },
+      {
+        "id": "export",
+        "selfProtection": ""
+      },
+      {
+        "id": "export-browser",
+        "selfProtection": ""
+      },
+      {
+        "id": "import",
+        "selfProtection": ""
+      },
+      {
+        "id": "import-local",
+        "selfProtection": ""
+      }
+    ],
+    "context": {
+      "fields": [
+        "Name",
+        "Modified"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "interopLookupTablesEmpty",
+    "commandAliases": [
+      "lookup tables",
+      "lookup table"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "interopLookupTablesPrompt1"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "interopLookupTablesPrompt2"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "interopLookupTablesPrompt3"
+      }
+    ],
+    "classicPage": "EnsPortal.LookupSettings",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "interop",
+        "endpoint": "LookupTables",
+        "type": "LIST"
+      },
+      "fields": [
+        "Name",
+        "Modified"
+      ],
+      "filter": [
+        "Name"
+      ],
+      "sort": {
+        "fields": [
+          "Name",
+          "Modified"
+        ],
+        "default": "Name",
+        "direction": "asc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Name",
+          "labelKey": "tableColumnName",
+          "kind": "name"
+        },
+        {
+          "field": "Modified",
+          "labelKey": "explorerColumnModified",
+          "kind": "text"
+        }
+      ],
+      "emptyNextKey": "",
+      "emptyAgentKey": "interopLookupTablesEmptyAgent"
+    },
+    "toolIdentifier": "interop.lookuptables",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
     "multiSelect": null,
     "secretArguments": [],
     "fingerprintExcludes": [],

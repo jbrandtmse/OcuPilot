@@ -16,7 +16,9 @@
 /// is a namespace-scoped create over a single name field, and this one adds a composite id, a body of
 /// optional fields and its own rule set, so a shared base would couple two unrelated areas.</p>
 /// <p>Seams a subclass may override: <method>PortClass</method> and <method>ProhibitedClass</method>.
-/// Production overrides neither.</p>
+/// Production overrides neither. A Save of another parent-scoped create (Story 20.5's lookup entry) extends this class and
+/// overrides <method>ParentHeld</method>, <method>Violations</method> and the parameters above; the order of the Save does
+/// not change.</p>
 Class OcuPilot.Area.Interop.ItemSave Extends %RegisteredObject
 {
 
@@ -32,6 +34,17 @@ Parameter PRODUCTIONMEMBER = "Production";
 
 Parameter NAMEMEMBER = "Name";
 
+/// <p>The violation codes an empty parent or an empty name earns (422), and the refusal a taken name earns (409) with its
+/// sentence. A subclass whose members are another kind (Story 20.5's lookup entry) names its own. Each is
+/// pinned equal to its source in <class>OcuPilot.Api.InteropError</class> by a test.</p>
+Parameter PARENTEMPTYCODE = "PORT.FIELD.SHAPE";
+
+Parameter NAMEEMPTYCODE = "INTEROP.ITEM.NAME";
+
+Parameter TAKENCODE = "INTEROP.ITEM.TAKEN";
+
+Parameter TAKENREASON = "This production already holds an item of that name.";
+
 /// <p>The port the write goes through, which is the tool's own declaration (AD-52). Overridable so a
 /// fixture can observe what was sent; production never overrides it.</p>
 ClassMethod PortClass() As %String
@@ -44,6 +57,21 @@ ClassMethod PortClass() As %String
 ClassMethod ProhibitedClass() As %String
 {
     Quit "OcuPilot.Kernel.Proposal.Prohibited"
+}
+
+/// <p>Whether <var>pNamespace</var> holds the parent <var>pParent</var> the new member belongs to: the production, here.
+/// Overridable.</p>
+ClassMethod ParentHeld(pNamespace As %String, pParent As %String) As %Boolean
+{
+    Quit $ClassMethod(..PortClass(), "ProductionHeld", pNamespace, pParent)
+}
+
+/// <p>The rules over the member <var>pName</var> and its fields <var>pFields</var>, in <var>pViolations</var> (<code>pViolations(n) =
+/// $ListBuild(field, code)</code>, count in <code>pViolations</code>): the port's
+/// <method>OcuPilot.Port.InteropPort.AddViolations</method> here. Overridable.</p>
+ClassMethod Violations(pNamespace As %String, pParent As %String, pName As %String, pFields As %DynamicObject, Output pViolations) As %Status
+{
+    Quit $ClassMethod(..PortClass(), "AddViolations", pNamespace, pName, pFields, .pViolations)
 }
 
 /// <p>Answer <code>POST /interop/items</code>: add the item the body's <code>Production</code> and
@@ -116,21 +144,21 @@ ClassMethod Create(pProduction As %String, pName As %String, pFields As %Dynamic
         If $$$ISERR(tSC) Quit
         Set tNamespace = ##class(OcuPilot.Kernel.Scope).Current()
         If (pProduction = "") || (pName = "") {
-            If pProduction = "" Set pViolations($Increment(pViolations)) = $ListBuild(..#PRODUCTIONMEMBER, ##class(OcuPilot.Api.Error).#PORTFIELDSHAPE)
-            If pName = "" Set pViolations($Increment(pViolations)) = $ListBuild(..#NAMEMEMBER, ##class(OcuPilot.Api.InteropError).#ITEMNAME)
+            If pProduction = "" Set pViolations($Increment(pViolations)) = $ListBuild(..#PRODUCTIONMEMBER, ..#PARENTEMPTYCODE)
+            If pName = "" Set pViolations($Increment(pViolations)) = $ListBuild(..#NAMEMEMBER, ..#NAMEEMPTYCODE)
             Quit
         }
-        If '$ClassMethod(..PortClass(), "ProductionHeld", tNamespace, pProduction) {
+        If '..ParentHeld(tNamespace, pProduction) {
             Do ##class(OcuPilot.Kernel.Fault).Outcome(404, $$$OK, .pFault, .tDetail)
             Set pHttpStatus = 404
             Set tSC = $$$ERROR($$$GeneralError, ##class(OcuPilot.Api.Error).#PORTNOTFOUND)
             Quit
         }
-        Set tSC = $ClassMethod(..PortClass(), "AddViolations", tNamespace, pName, pFields, .pViolations)
+        Set tSC = ..Violations(tNamespace, pProduction, pName, pFields, .pViolations)
         If $$$ISERR(tSC) || (pViolations > 0) Quit
         Set tId = ..IdOf(pProduction, pName)
         If tId = "" {
-            Set pViolations($Increment(pViolations)) = $ListBuild(..#NAMEMEMBER, ##class(OcuPilot.Api.InteropError).#ITEMNAME)
+            Set pViolations($Increment(pViolations)) = $ListBuild(..#NAMEMEMBER, ..#NAMEEMPTYCODE)
             Quit
         }
         ; AD-54: the absence read. A name the production holds is the port's own 409, and so is a namespace
@@ -178,8 +206,8 @@ ClassMethod Absent(pToolClass As %String, pId As %String, pFields As %DynamicObj
         Quit tSC
     }
     Set pHttpStatus = 409
-    Set pFault = ##class(OcuPilot.Kernel.Fault).Build(##class(OcuPilot.Api.Error).#CONFLICT, ##class(OcuPilot.Api.InteropError).#ITEMTAKEN, ##class(OcuPilot.Api.InteropError).#REASONITEMTAKEN)
-    Quit $$$ERROR($$$GeneralError, ##class(OcuPilot.Api.InteropError).#ITEMTAKEN)
+    Set pFault = ##class(OcuPilot.Kernel.Fault).Build(##class(OcuPilot.Api.Error).#CONFLICT, ..#TAKENCODE, ..#TAKENREASON)
+    Quit $$$ERROR($$$GeneralError, ..#TAKENCODE)
 }
 
 /// <p>Refuse 400 <parameter>OcuPilot.Api.Error.PORTFIELDUNEXPECTED</parameter> when <var>pArgs</var> carries a

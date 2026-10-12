@@ -377,6 +377,11 @@ export const CONSEQUENCE_INTEROPQUEUEABORT = 'INTEROP.QUEUE.ABORT';
 export const CONSEQUENCE_INTEROPJOBABORT = 'INTEROP.JOB.ABORT';
 export const CONSEQUENCE_INTEROPJOBSUSPEND = 'INTEROP.JOB.SUSPEND';
 export const CONSEQUENCE_INTEROPJOBSTOP = 'INTEROP.JOB.STOP';
+/** Story 20.5: a lookup table entry's removal and a lookup table's deletion. */
+export const CONSEQUENCE_INTEROPLOOKUPREMOVE = 'INTEROP.LOOKUP.REMOVE';
+export const CONSEQUENCE_INTEROPLOOKUPDELETE = 'INTEROP.LOOKUP.DELETE';
+/** Story 20.5: a lookup table's import. */
+export const CONSEQUENCE_INTEROPLOOKUPIMPORT = 'INTEROP.LOOKUP.IMPORT';
 /** Story 20.22: a set of a setting that is a location on the server (AD-21's ninth case). */
 export const CONSEQUENCE_INTEROPSETTINGLOCATION = 'INTEROP.SETTING.LOCATION';
 /** The field a setting set's diff names the value under. */
@@ -522,6 +527,10 @@ export function consequenceSentence(code: string | undefined): string {
   if (code === CONSEQUENCE_INTEROPJOBABORT) return STRINGS.interopJobAbortConsequence;
   if (code === CONSEQUENCE_INTEROPJOBSUSPEND) return STRINGS.interopJobSuspendConsequence;
   if (code === CONSEQUENCE_INTEROPJOBSTOP) return STRINGS.interopJobStopConsequence;
+  // Story 20.5: a lookup table entry's removal and a lookup table's deletion, each published once.
+  if (code === CONSEQUENCE_INTEROPLOOKUPREMOVE) return STRINGS.interopLookupRemoveConsequence;
+  if (code === CONSEQUENCE_INTEROPLOOKUPDELETE) return STRINGS.interopLookupDeleteConsequence;
+  if (code === CONSEQUENCE_INTEROPLOOKUPIMPORT) return STRINGS.interopLookupImportConsequence;
   return '';
 }
 

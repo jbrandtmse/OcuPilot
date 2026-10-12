@@ -1,10 +1,9 @@
 import { Injectable, Injector, inject } from '@angular/core';
 
-import { ApiService, type JsonResult } from '../../core/api';
-import { ChangeBus } from '../../core/change-bus';
-import { NAMESPACE_SCOPE, scopeFor } from '../../core/entity-ref';
-import { readBackOf, type ReadBack } from '../../core/read-back';
+import type { JsonResult } from '../../core/api';
+import type { ReadBack } from '../../core/read-back';
 import { reasonForField, type Violation, violationsOf } from '../../core/violations';
+import { postInteropCreate } from './interop-create';
 
 /** The route the Add dialog posts to (AD-55): the same tool the agent's add resolves. */
 export const INTEROP_ITEM_ADD_PATH = '/api/ocupilot/interop/items';
@@ -190,40 +189,21 @@ export class InteropItemAddStore {
     this.envelopeReason = '';
     this.readBackValue = null;
     this.notify();
-    const result = await this.injector.get(ApiService).requestJson<unknown>(INTEROP_ITEM_ADD_PATH, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-      scope: namespace,
-    });
     // A dialog dismissed while the add was in flight keeps none of its answer, but an item the instance added
     // is still announced, so the list re-reads.
-    const current = generation === this.generation;
-    if (result.kind !== 'ok') {
-      if (current) {
+    let current = false as boolean;
+    const outcome = await postInteropCreate(
+      this.injector,
+      { path: INTEROP_ITEM_ADD_PATH, namespace, body, type: INTEROP_ITEM_ENTITY, tool: INTEROP_ITEM_ADD_TOOL },
+      (landed) => {
+        current = generation === this.generation;
+        if (!current) return;
         this.savingValue = false;
-        this.refuse(result);
+        if (landed.accepted) this.readBackValue = landed.readBack;
+        else this.refuse(landed.result);
       }
-      return false;
-    }
-    const answer = result.body !== null && typeof result.body === 'object' ? (result.body as Record<string, unknown>) : {};
-    const readBack = readBackOf(answer['readBack']);
-    const target = answer['target'] !== null && typeof answer['target'] === 'object' ? (answer['target'] as Record<string, unknown>) : {};
-    const id = typeof target['id'] === 'string' && target['id'] !== '' ? target['id'] : typeof answer['id'] === 'string' ? answer['id'] : '';
-    if (current) {
-      this.savingValue = false;
-      this.readBackValue = readBack;
-    }
-    this.injector.get(ChangeBus).publish({
-      kind: 'changed',
-      type: INTEROP_ITEM_ENTITY,
-      scope: scopeFor(NAMESPACE_SCOPE, namespace),
-      id,
-      action: 'created',
-      readBack,
-      tool: INTEROP_ITEM_ADD_TOOL,
-    });
-    if (!current) return false;
+    );
+    if (!outcome.accepted || !current) return false;
     this.notify();
     return true;
   }

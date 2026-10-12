@@ -15,6 +15,9 @@ export type ExportChoice = { readonly destination: 'server'; readonly root: stri
  * file already at the name is replaced, or this browser -- and a primary Export beside Cancel. Export
  * is `aria-disabled` while the server file lacks a root or a name, and while a send is in flight.
  *
+ * **Its wording is the page's to set** (Story 20.5): `title` replaces the count-based heading and `replaces` the sentence about a file
+ * already at the name, so another screen's export, of one table, reuses the dialog with its own words.
+ *
  * **It checks nothing itself.** The instance resolves the file at the write; its refusal on the root
  * or the name arrives as `rootReason` or `pathReason` and the picker draws it on that field, and any
  * other refusal, the version one included, arrives as `refusal`, shown here as an alert.
@@ -44,7 +47,7 @@ export type ExportChoice = { readonly destination: 'server'; readonly root: stri
         [pathReason]="pathReason()"
         (changed)="onChanged($event)"
       />
-      <p class="ocu-task-transfer-note" data-explorer-export-replaces>{{ STRINGS.taskExportReplaces }}</p>
+      <p class="ocu-task-transfer-note" data-explorer-export-replaces>{{ note }}</p>
     }
     @if (hasRefusal) {
       <p class="ocu-task-transfer-refusal" role="alert" data-explorer-transfer-refusal>{{ refusal() }}</p>
@@ -63,7 +66,13 @@ export type ExportChoice = { readonly destination: 'server'; readonly root: stri
 })
 export class ExplorerExportDialog {
   /** How many documents the export writes: the checked rows. */
-  readonly count = input.required<number>();
+  readonly count = input(1);
+
+  /** The heading, when the page words it itself; `''` titles the dialog by `count`. */
+  readonly title = input('');
+
+  /** The sentence about a file already at the name, when the page words it itself; `''` is the shared one. */
+  readonly replaces = input('');
 
   /** The allowed directories the picker offers, loaded by the page when the dialog opens. */
   readonly store = input.required<AllowedDirectoriesStore>();
@@ -94,8 +103,13 @@ export class ExplorerExportDialog {
   protected readonly path = signal('');
 
   protected get heading(): string {
+    if (this.title() !== '') return this.title();
     const count = this.count();
     return count === 1 ? STRINGS.explorerExportTitleOne : fillPlaceholders(STRINGS.explorerExportTitle, { n: count });
+  }
+
+  protected get note(): string {
+    return this.replaces() !== '' ? this.replaces() : STRINGS.taskExportReplaces;
   }
 
   protected get onServer(): boolean {

@@ -129,6 +129,10 @@ export const SCREEN_ACTION_DESCRIPTORS: readonly string[] = [
   'OcuPilot.Screen.Descriptor.InteropItemList',
   // Story 20.22: Item settings, whose Reset to default warns first and whose Set value its own page's dialog sends.
   'OcuPilot.Screen.Descriptor.InteropItemSettingList',
+  // Story 20.5: Lookup tables, whose Delete types the table's name and whose New table its own page's dialog sends, and a table's
+  // entries, whose Remove types the key and whose Add entry and Set value its own page's dialogs send.
+  'OcuPilot.Screen.Descriptor.InteropLookupTableList',
+  'OcuPilot.Screen.Descriptor.InteropLookupEntryList',
   // Story 20.23: Queues, whose Abort all types the queue's name; Queue messages and an item's Queue tab, whose Abort types the
   // message id; and Jobs and an item's Jobs tab, whose Abort message types the job's process id and whose Suspend message and
   // Stop job warn first.
@@ -407,6 +411,11 @@ const UNDRAWN_ACTIONS: Readonly<Record<string, readonly string[]>> = {
   [SCREEN_PERMISSIONS]: [SCREEN_PERMISSIONS_ADD, SCREEN_PERMISSIONS_REMOVE],
   // Item settings' page registers Set value itself, whose dialog sends the value (Story 20.22).
   'OcuPilot.Screen.Descriptor.InteropItemSettingList': ['set'],
+  // The Lookup tables' page registers Export itself and draws Import as a screen-level action, whose dialogs send the four transfer
+  // actions (Story 20.5).
+  'OcuPilot.Screen.Descriptor.InteropLookupTableList': ['export', 'export-browser', 'import', 'import-local'],
+  // A table's entries' page registers Set value itself, whose dialog sends the value (Story 20.5).
+  'OcuPilot.Screen.Descriptor.InteropLookupEntryList': ['set'],
 };
 
 /**
@@ -551,6 +560,9 @@ const DESTRUCTIVE_CONSEQUENCES: Readonly<Record<string, Readonly<Record<string, 
   'OcuPilot.Screen.Descriptor.ExplorerDocDbList': { delete: STRINGS.explorerDocDbDropConsequence },
   // Story 20.3: a production item's Remove types its name and deletes the settings it holds.
   'OcuPilot.Screen.Descriptor.InteropItemList': { remove: STRINGS.interopItemRemoveConsequence },
+  // Story 20.5: a lookup table's Delete removes every entry in it, and an entry's Remove removes the table too when it is the last.
+  'OcuPilot.Screen.Descriptor.InteropLookupTableList': { delete: STRINGS.interopLookupDeleteConsequence },
+  'OcuPilot.Screen.Descriptor.InteropLookupEntryList': { remove: STRINGS.interopLookupRemoveConsequence },
   // Story 20.23: an abort never delivers the messages it takes: all of a queue's, one waiting message, or the message a job keeps retrying.
   [INTEROP_QUEUE_LIST]: { abort: STRINGS.interopQueueAbortConsequence },
   [INTEROP_QUEUE_MESSAGE_LIST]: { abort: STRINGS.interopMessageAbortConsequence },
@@ -625,6 +637,10 @@ const TYPED_NAME_ROWS: Readonly<
   // Story 20.3: a production item is keyed by `[Production, Name]`, whose separator no one can type, so its Remove types
   // the item's name and sends the row key.
   'OcuPilot.Screen.Descriptor.InteropItemList': { name: 'Name', field: '', equals: '', advisory: '' },
+  // Story 20.5: a lookup table's Delete types its name, and an entry, keyed by `[Table, Key]` whose separator no one can type,
+  // is removed by typing its key and sending the row key.
+  'OcuPilot.Screen.Descriptor.InteropLookupTableList': { name: 'Name', field: '', equals: '', advisory: '' },
+  'OcuPilot.Screen.Descriptor.InteropLookupEntryList': { name: 'Key', field: '', equals: '', advisory: '' },
   // Story 20.23: an abort types the queue's name, the message's id or the job's process id, which each list's name column shows.
   [INTEROP_QUEUE_LIST]: { name: 'Name', field: '', equals: '', advisory: '' },
   [INTEROP_QUEUE_MESSAGE_LIST]: { name: 'MessageId', field: '', equals: '', advisory: '' },

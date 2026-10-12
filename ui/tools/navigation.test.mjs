@@ -368,6 +368,8 @@ test('a side bar lists only built screens, in side-bar order', () => {
       'interoperability/productions/items/queue',
       'interoperability/productions/items/settings',
       'interoperability/productions/items/document',
+      // Story 20.5: a lookup table's entries, unlisted and reached from a Lookup tables name cell, among the unlisted ones.
+      'interoperability/lookup-tables/entries',
       'interoperability/queues/messages',
       // Story 20.2: Interoperability's four lists, in the classic List menu's order.
       'interoperability/productions',
@@ -378,6 +380,9 @@ test('a side bar lists only built screens, in side-bar order', () => {
       'interoperability/monitor',
       'interoperability/queues',
       'interoperability/jobs',
+      // Story 20.5: Lookup tables and Business partners, listed after them.
+      'interoperability/lookup-tables',
+      'interoperability/business-partners',
       'agent/definitions/edit',
       'agent/transcripts/details',
       'agent/definitions',
