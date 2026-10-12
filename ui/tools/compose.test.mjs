@@ -526,6 +526,89 @@ test('the start hook\'s refusal list is held equal to the installer\'s (DW-195)'
   );
 });
 
+// --- One install namespace per instance: a second namespace is refused before anything compiles (Story 18.13, AD-17) ---
+//
+// The resolution session lists the instance's namespaces and, when the resolved one does not hold the
+// `OcuPilot*` globals mapping onto `OCUPILOT` and another does, answers `OTHER:<holder>:<target>`; the `case`
+// below refuses it and exits 1, naming both namespaces, before `$System.OBJ.LoadDir` compiles
+// OcuPilot into the namespace the start resolved. `Installer.GuardOneInstallNamespace` refuses the
+// same case once StartPath runs, by which point the compile has already happened.
+//
+// Mutations (Rule 19): delete the `OTHER:*)` branch from the `case "$NS_RESULT"` -> the first
+// assertion goes red; change either literal in the session without changing the class
+// parameter -> the equality assertion goes red; move the listing after LoadDir -> the ordering
+// assertion goes red.
+test('a second install namespace is refused in the resolution session, before LoadDir (Story 18.13)', () => {
+  const load = startHook.indexOf('$System.OBJ.LoadDir(');
+  const listing = startHook.indexOf('Config.Namespaces:List');
+  assert.ok(load > 0, 'container-start.sh must call $System.OBJ.LoadDir to compile src/OcuPilot/');
+  assert.ok(listing > 0, 'the resolution session must list the instance\'s namespaces');
+  assert.ok(listing < load, 'and must do so before the compile, not after it');
+
+  const outcome = /Set tNsOutcome=\$Select\([^\n]*"OTHER:"_tOther_":"_tNS[^\n]*\)/.exec(startHook);
+  assert.ok(outcome, 'the namespace outcome names the holder and the namespace this start resolved');
+  assert.ok(
+    /Set tUsable=\$Select\(tIsSystem:0,\$Length\(tOther\)>0:0,1:tExists\)/.test(startHook),
+    'and a start that finds another holder is not usable, so the pre-recompile mark never runs in it'
+  );
+
+  const block = startHook.slice(startHook.indexOf('case "$NS_RESULT" in'));
+  const body = block.slice(0, block.indexOf('\nesac\n'));
+  const otherStart = body.indexOf('OTHER:*)');
+  assert.ok(otherStart > 0, 'container-start.sh must branch on the second-namespace outcome');
+  const branch = body.slice(otherStart, body.indexOf(';;', otherStart));
+  assert.match(branch, /exit 1/, 'and fail the start');
+  assert.match(branch, /refusing before anything is compiled into/, 'saying that nothing was compiled');
+  assert.match(branch, /\$\{OTHER_REST%%:\*\}/, 'naming the namespace that holds the install');
+  assert.match(branch, /\$\{OTHER_REST#\*:\}/, 'and the namespace this start resolved');
+});
+
+test('the second-namespace scan finds no other holder for a namespace holding the mapping itself, skips %ALL, holds only a mapping onto the database, and is checked first (Story 18.13)', () => {
+  // A scan that counted another holder beside a namespace holding the mapping itself would refuse
+  // every restart of an installed container, and every start of one an earlier release left with two
+  // holders; one that answered OK before OTHER would compile into the wrong namespace.
+  //
+  // Mutation (Rule 19): delete the `tSelfHolds:""` clause from the scan -- the first assertion goes
+  // red; put the `tExists: "OK:"` arm ahead of the `OTHER:` arm -- the last does.
+  const scan = /While tOtherRS\.Next\(\) \{[^\n]*\}/.exec(startHook);
+  assert.ok(scan, 'the resolution session scans the namespaces the instance lists');
+  assert.match(scan[0], /tExists=0:"",tSelfHolds:""/, 'a namespace holding the mapping itself finds no other holder');
+  assert.match(
+    startHook,
+    /\nSet tSelfHolds=\$Select\(tIsSystem:0,tExists=0:0,##class\(Config\.MapGlobals\)\.Exists\(tUpper,"[^"]*",\.tSelfMap\)=0:0,1:tSelfMap\.Database="[^"]*"\)\nSet tOther=""\n/,
+    'and holding it means the resolved namespace\'s own mapping targets the database, read before the scan'
+  );
+  assert.match(scan[0], /tOtherRS\.Get\("Namespace"\)="%ALL":""/, 'nor does %ALL');
+  assert.match(scan[0], /tOtherMap\.Database="[^"]*":tOtherRS\.Get\("Namespace"\)/, 'a namespace holds the install only when its mapping targets the database');
+  const outcome = /Set tNsOutcome=\$Select\([^\n]*\)/.exec(startHook);
+  assert.ok(outcome, 'the namespace outcome is one $Select');
+  assert.ok(outcome[0].indexOf('"OTHER:"') > 0 && outcome[0].indexOf('"OTHER:"') < outcome[0].indexOf('"OK:"'), 'and it answers OTHER before OK');
+});
+
+test('the start hook\'s second-namespace literals are held equal to the state class\'s (Story 18.13)', () => {
+  // The session runs in %SYS before the install namespace is chosen, and OcuPilot's code is mapped
+  // only into the install namespace, so it cannot ask OcuPilot.Kernel.State.Base for its own
+  // parameters. A literal is a second declaration, and this keeps it from drifting.
+  //
+  // Mutation (Rule 19): change MAPPINGPATTERN or DATABASENAME in Base.cls without changing the
+  // session -> red naming both spellings.
+  const base = readFileSync(join(repoRoot, 'src', 'OcuPilot', 'Kernel', 'State', 'Base.cls'), 'utf8');
+  const pattern = /Parameter MAPPINGPATTERN As %String = "([^"]*)"/.exec(base);
+  const database = /Parameter DATABASENAME As %String = "([^"]*)"/.exec(base);
+  assert.ok(pattern && database, 'Base.cls declares MAPPINGPATTERN and DATABASENAME');
+  const mapping = /Exists\(tOtherRS\.Get\("Namespace"\),"([^"]*)",\.tOtherMap\)/.exec(startHook);
+  const target = /tOtherMap\.Database="([^"]*)"/.exec(startHook);
+  assert.ok(mapping && target, 'the resolution session reads a mapping pattern and a database');
+  assert.equal(mapping[1], pattern[1], 'the hook\'s mapping pattern is the state class\'s own');
+  assert.equal(target[1], database[1], 'and so is its database name');
+  const selfMapping = /Exists\(tUpper,"([^"]*)",\.tSelfMap\)/.exec(startHook);
+  const selfTarget = /tSelfMap\.Database="([^"]*)"/.exec(startHook);
+  assert.ok(selfMapping && selfTarget, 'the resolution session reads the resolved namespace\'s own mapping');
+  assert.equal(selfMapping[1], pattern[1], 'by the state class\'s pattern');
+  assert.equal(selfTarget[1], database[1], 'onto the state class\'s database');
+  assert.ok(!startHook.includes('$Parameter("OcuPilot.Kernel.State.Base"'), 'the hook does not pretend to read the parameter from a session that cannot see it');
+});
+
 // --- Readiness and the health check read the same gate ladder (Story 1.17, AD-45) -------------
 //
 // AD-45 calls the smoke path "also the health check", and the two must not be able to disagree

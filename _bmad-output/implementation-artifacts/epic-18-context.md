@@ -55,7 +55,7 @@ An operator reaches System Administration and System Operation parity on the exp
 
 - **One install namespace per instance (AD-17).** It is the namespace holding the profile's `OcuPilot*` globals mapping. Install validates the target each path names: it refuses `%SYS` and system namespaces, a missing namespace, an IRIS below the roster's floor, a namespace whose `OcuPilot` package resolves from another database (AD-9), and any namespace but the one already holding the mapping. Uninstall and the container start refuse a second namespace the same way; a refusal changes nothing in either namespace.
 - **Code and data (AD-9, AD-21).** Code lives in the install namespace's own routine database; only OcuPilot's globals sit behind its protected resource. A definition whose `creds` rung the namespace cannot reach is reported, never refused.
-- **Open at Task 0.** Whether IPM activates a module's `<WebApplication>` elements before its `<Invoke>`, re-pointing the live applications before the installer refuses (inference). If it does, 18.13 refuses first or restores them.
+- **Closed by Story 18.13.** IPM re-points the live applications at the start of `Activate`, so a guard invoke after `Compile` (`Installer.GuardTarget`) refuses a second namespace before IPM touches an application.
 
 **18.43, uninstall and grants on a shared instance (ready for dev)**
 

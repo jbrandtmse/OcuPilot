@@ -6,6 +6,11 @@
 Class OcuPilot.Kernel.State.Stamp Extends OcuPilot.Kernel.State.Base
 {
 
+/// <p>How many of a profile's newest stamps the retention sweep keeps (<method>GuardedSweep</method>).
+/// A stamp is write-only history -- the one row each install run appends, read by tests alone --
+/// so a count bound is all the sweep needs to keep every row a reader uses.</p>
+Parameter KEEPRUNS As %Integer = 100;
+
 /// <p>ISO-8601 UTC, e.g. <code>2026-09-09T10:30:45Z</code> (Consistency Conventions:
 /// Dates -- <code>$ZTimeStamp</code>, never <code>$Horolog</code> or raw
 /// <code>$ZDateTime</code>).</p>
@@ -107,6 +112,49 @@ ClassMethod DeleteByProfile(pProfile As %String) As %Status
     ; Base. The escalation is unaffected -- the method still executes in Base's own
     ; routine, which is the one the privileged application's Routines allow-list names.
     Quit ..GuardedExecuteOneParam("DELETE FROM OcuPilot_Kernel_State.Stamp WHERE Profile = ?", pProfile)
+}
+
+/// <p>Delete every stamp but each profile's newest <parameter>KEEPRUNS</parameter>, through the
+/// escalated frame: the newest are the highest ids, and the production profile's rows (stored as
+/// SQL <code>NULL</code>, see <property>Profile</property>) are one group beside each named
+/// profile's. A profile holding no more than <parameter>KEEPRUNS</parameter> rows is left alone,
+/// and so is every other profile's. The retention task runs it
+/// (<method>OcuPilot.Kernel.Retention.Sweep</method>).</p>
+/// <p>A failure in one profile's group is remembered, the other groups are still swept, and the
+/// first failure is the answer.</p>
+ClassMethod GuardedSweep() As %Status
+{
+    Set tFirst = $$$OK
+    Set tSC = ..GuardedRowsNoParam("SELECT Profile, COUNT(*) FROM OcuPilot_Kernel_State.Stamp GROUP BY Profile", .tGroups)
+    If $$$ISERR(tSC) Quit tSC
+    For tI = 1:1:+$Get(tGroups) {
+        If +tGroups(tI, 2) <= ..#KEEPRUNS Continue
+        Set tProfile = tGroups(tI, 1)
+        If tProfile = $Char(0) Set tProfile = ""
+        Kill tNewest, tParams
+        If tProfile = "" {
+            Set tSC = ..GuardedIdsBounded("SELECT TOP ? ID FROM OcuPilot_Kernel_State.Stamp", "Profile IS NULL", "ORDER BY ID DESC", ..#KEEPRUNS, .tParams, .tNewest)
+        } Else {
+            Set tParams = ##class(%DynamicArray).%New()
+            Do tParams.%Push(tProfile)
+            Set tSC = ..GuardedIdsBounded("SELECT TOP ? ID FROM OcuPilot_Kernel_State.Stamp", "Profile = ?", "ORDER BY ID DESC", ..#KEEPRUNS, .tParams, .tNewest)
+        }
+        If $$$ISOK(tSC) && ($Get(tNewest) < ..#KEEPRUNS) Set tSC = $$$ERROR($$$GeneralError, "the newest " _ ..#KEEPRUNS _ " stamps of a profile holding more could not be read")
+        If $$$ISOK(tSC) {
+            ; The oldest id still kept: every older row of this profile goes.
+            Set tCutoff = +tNewest(tNewest)
+            If tProfile = "" {
+                Set tSC = ..GuardedExecuteOneParam("DELETE FROM OcuPilot_Kernel_State.Stamp WHERE Profile IS NULL AND ID < ?", tCutoff)
+            } Else {
+                Set tParams = ##class(%DynamicArray).%New()
+                Do tParams.%Push(tProfile)
+                Do tParams.%Push(tCutoff)
+                Set tSC = ..GuardedExecuteRows("DELETE FROM OcuPilot_Kernel_State.Stamp WHERE Profile = ? AND ID < ?", .tParams, .tDeleted)
+            }
+        }
+        If $$$ISERR(tSC) && $$$ISOK(tFirst) Set tFirst = tSC
+    }
+    Quit tFirst
 }
 
 }

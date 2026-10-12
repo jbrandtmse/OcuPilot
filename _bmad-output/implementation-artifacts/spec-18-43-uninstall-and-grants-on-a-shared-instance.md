@@ -60,6 +60,8 @@ Under `src/OcuPilot/` at `59a6d1ca` (`Installer.cls` unchanged since `fe132688`)
 - (c) Create `/csp/ocuprobe1843` (`%CSP.REST`) carrying the probe shell's role, uninstall: record the role and that application's `MatchRoles` (today: stripped), and the shape, rows and time of one `%SYS` read of every application's `MatchRoles`.
 - (d) Role `OcuProbe1843Grantee` granted SELECT on the schema, one table and one column, and `_PUBLIC` SELECT on the schema: record each catalog row's `SQLObject`, `Privilege`, `Grantee`, `Grantor`. A form the catalog does not answer (the column, inference) is a named limit.
 
+- (e) DW-2365 (routed in by Story 18.13's code review): with production installed in HSCUSTOM and IPM imported (as `scripts/ci-ipm-archive.sh` does), a refused `zpm load` from a second namespace, then `zpm list` and `zpm uninstall` there: record what IPM leaves in that namespace and whether the live `/ocupilot`, `/api/ocupilot` and `csp/ocupilot/` survive. If the uninstall deletes them, restore with `StartPath(1,"")` and `docker cp` of the built bundle, then fix it here (an uninstall-phase guard invoke) if it fits, or document the cleanup and defer a MED.
+
 Remove what (a)-(d) created; confirm S0.
 
 **Execution:**
@@ -97,6 +99,7 @@ Remove what (a)-(d) created; confirm S0.
 ## Spec Change Log
 
 - 2026-10-12, lead, spec gate: DW-219's three semantics (keep the directory and a carried role, refuse on an unreadable record, path 3 pinned) and DW-2172's warn-only detection accepted; Task 0 (b) struck (it changes a grant the probe did not create); AD-37 and AD-38 amended as proposed. Story 18.13 lands first, so the implement stage re-anchors the Code Map by method name.
+- 2026-10-12, lead: DW-2365 routed in by Story 18.13's code review (unverified, MED); Task 0 (e) measures it first. Story 18.13 has landed: re-anchor the Code Map by method name (`GuardOneInstallNamespace` now accepts a namespace that holds the mapping itself).
 
 ## Review Triage Log
 

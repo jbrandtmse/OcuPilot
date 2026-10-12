@@ -67,6 +67,12 @@ function sampleRoster(overrides = {}) {
         installer: ['MatchRoles', 'NameSpace', 'Path'],
       },
     ],
+    guard: {
+      class: 'OcuPilot.Install.Installer',
+      method: 'GuardTarget',
+      phase: 'Compile',
+      when: 'After',
+    },
     invoke: {
       class: 'OcuPilot.Install.Installer',
       method: 'Install',
@@ -231,12 +237,15 @@ test('a structurally incomplete roster is refused, naming what is missing', () =
     [{ resources: [] }, /no non-empty "resources" array/],
     [{ applications: [] }, /no non-empty "applications" array/],
     [{ invoke: undefined }, /carries no "invoke" object/],
+    [{ guard: undefined }, /carries no "guard" object/],
+    [{ guard: { class: 'OcuPilot.Install.Installer', method: '', phase: 'Compile', when: 'After' } }, /guard\.method is missing or empty/],
     [{ bundle: undefined }, /carries no "bundle" object/],
   ];
   for (const [override, pattern] of cases) {
     const roster = sampleRoster();
     if (override.module === undefined && 'module' in override) delete roster.module;
     if (override.invoke === undefined && 'invoke' in override) delete roster.invoke;
+    if (override.guard === undefined && 'guard' in override) delete roster.guard;
     if (override.bundle === undefined && 'bundle' in override) delete roster.bundle;
     for (const [key, value] of Object.entries(override)) {
       if (value !== undefined) roster[key] = value;
@@ -444,6 +453,27 @@ test('the generated <Invoke> carries no <Arg>, so pUnexpire keeps its default (D
   // Phase is stated because its default is Configure, which is not in the activate chain: a
   // bare <Invoke> would be accepted by IPM and never run.
   assert.match(generated, /Phase="Activate"/);
+});
+
+test('the guard <Invoke> runs after Compile, before the web applications are updated (Story 18.13, AD-17)', () => {
+  // IPM updates a module's web applications at the start of Activate, before any Activate
+  // invoke, so the refusal of a second install namespace has to run in an earlier phase or it
+  // arrives after the live applications have been re-pointed (measured on a throwaway).
+  // After Compile the installer class exists, and no application has been touched.
+  //
+  // Mutation (Rule 19): give the fixture roster's guard `phase: 'Activate'` -- this goes red. Give
+  // the real roster's guard that phase -- `--check` reports the drift and
+  // `OcuPilot.Test.Manifest.TestGuardDeclarationRunsBeforeIpmUpdatesTheWebApplications` goes red.
+  const generated = buildManifest(sampleRoster());
+  const guard = generated.indexOf('<Invoke Class="OcuPilot.Install.Installer" Method="GuardTarget" Phase="Compile" When="After"/>');
+  const install = generated.indexOf('<Invoke Class="OcuPilot.Install.Installer" Method="Install" Phase="Activate" When="After"/>');
+  assert.ok(guard > 0, 'the guard invoke is generated, in the Compile phase');
+  assert.ok(install > guard, 'and precedes the install invoke');
+  assert.equal([...generated.matchAll(/<Invoke /g)].length, 2, 'the manifest carries exactly these two invokes');
+  assert.doesNotMatch(generated, /<Arg/, 'neither takes an argument');
+
+  const committed = readFileSync(MANIFEST_PATH, 'utf8');
+  assert.match(committed, /<Invoke Class="OcuPilot\.Install\.Installer" Method="GuardTarget" Phase="Compile" When="After"\/>/, 'the committed manifest carries the guard');
 });
 
 test('the generated manifest names no CSPApplication and no Health requirement', () => {
