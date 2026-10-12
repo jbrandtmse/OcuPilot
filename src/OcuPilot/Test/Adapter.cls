@@ -782,9 +782,9 @@ Method TestTheClampAnswersItsBoundaryCases()
     Do $$$AssertEquals($ClassMethod(..#RETRY, "EffectiveAttempts", 5, 0), 5, "a zero timeout bounds nothing, because such an attempt waits not at all")
 }
 
-/// <p>AC5 -- the canonical family is a passthrough: the body a call built before this story is the
-/// body it builds now, byte for byte, and none of the other dialects' field names appears in
-/// it.</p>
+/// <p>AC5 -- the canonical family is a passthrough: the body a call builds is
+/// <parameter>CANONICALBODY</parameter>, byte for byte, and none of the other dialects' field names
+/// appears in it.</p>
 /// <p>Mutation: route <method>OcuPilot.Kernel.Provider.Anthropic.CallMessages</method> through
 /// <method>OcuPilot.Kernel.Provider.MessageAdapter.CanonicalToOpenAi</method> -- this goes red on
 /// the body.</p>
@@ -802,7 +802,7 @@ Method TestTheCanonicalFamilyIsAByteIdenticalPassthrough()
     Set tAdapter = ""
     Do $$$AssertStatusOK(tSC, "the call returns $$$OK")
     Set tBody = $ZConvert(##class(OcuPilot.Test.ProviderStub).Recorded("body", 1), "I", "UTF8")
-    Do $$$AssertEquals(tBody, ..#CANONICALBODY, "the canonical body is byte-identical to the one these inputs produced before the translators existed")
+    Do $$$AssertEquals(tBody, ..#CANONICALBODY, "the canonical body is byte-identical to the pinned one")
     For tForeign = "tool_calls", "tool_call_id", "contents", "functionCall", "functionResponse", "systemInstruction", "parameters", "functionDeclarations" {
         Do $$$AssertEquals(tBody [ tForeign, 0, "and carries no field of another dialect: " _ tForeign)
     }
@@ -834,8 +834,10 @@ Method TestAnthropicKeepsAReasoningReplysContentVerbatim()
 
 /// <p>The canonical outbound body <method>TestTheCanonicalFamilyIsAByteIdenticalPassthrough</method>
 /// pins, read from the request the shipped Anthropic adapter actually built on the development
-/// instance for <method>Canonical</method>'s history and <method>Tools</method>'s array.</p>
-Parameter CANONICALBODY = "{""model"":""probe-model-1"",""max_tokens"":4000,""system"":""you are a probe"",""messages"":[{""role"":""user"",""content"":""what is on this screen""},{""role"":""assistant"",""content"":[{""type"":""text"",""text"":""checking""},{""type"":""tool_use"",""id"":""call1"",""name"":""logs_errors_read"",""input"":{""maxRows"":5}},{""type"":""tool_use"",""id"":""call2"",""name"":""logs_errors_read"",""input"":{""maxRows"":9}}]},{""role"":""user"",""content"":[{""type"":""tool_result"",""tool_use_id"":""call1"",""content"":""first""},{""type"":""tool_result"",""tool_use_id"":""call2"",""content"":""second""},{""type"":""text"",""text"":""and now""}]}],""tools"":[{""name"":""logs_errors_read"",""description"":""read the error log"",""input_schema"":{""type"":""object"",""properties"":{""name"":{""type"":""string"",""description"":""the name"",""enum"":[""a"",""b""]},""count"":{""type"":""integer"",""description"":""how many"",""minimum"":1,""maximum"":10},""tags"":{""type"":""array"",""description"":""labels"",""items"":{""type"":""string"",""description"":""one label""},""minItems"":1,""maxItems"":5}},""required"":[""name""],""additionalProperties"":false}}]}";
+/// instance for <method>Canonical</method>'s history and <method>Tools</method>'s array, with the
+/// two <code>cache_control</code> markers the adapter adds: on the last tool and on the final
+/// message's last block.</p>
+Parameter CANONICALBODY = "{""model"":""probe-model-1"",""max_tokens"":4000,""system"":""you are a probe"",""messages"":[{""role"":""user"",""content"":""what is on this screen""},{""role"":""assistant"",""content"":[{""type"":""text"",""text"":""checking""},{""type"":""tool_use"",""id"":""call1"",""name"":""logs_errors_read"",""input"":{""maxRows"":5}},{""type"":""tool_use"",""id"":""call2"",""name"":""logs_errors_read"",""input"":{""maxRows"":9}}]},{""role"":""user"",""content"":[{""type"":""tool_result"",""tool_use_id"":""call1"",""content"":""first""},{""type"":""tool_result"",""tool_use_id"":""call2"",""content"":""second""},{""type"":""text"",""text"":""and now"",""cache_control"":{""type"":""ephemeral""}}]}],""tools"":[{""name"":""logs_errors_read"",""description"":""read the error log"",""input_schema"":{""type"":""object"",""properties"":{""name"":{""type"":""string"",""description"":""the name"",""enum"":[""a"",""b""]},""count"":{""type"":""integer"",""description"":""how many"",""minimum"":1,""maximum"":10},""tags"":{""type"":""array"",""description"":""labels"",""items"":{""type"":""string"",""description"":""one label""},""minItems"":1,""maxItems"":5}},""required"":[""name""],""additionalProperties"":false},""cache_control"":{""type"":""ephemeral""}}]}";
 
 /// <p>AC2 -- a family that exists only as a probe catalog row plus one adapter class: a caller
 /// drives <method>OcuPilot.Port.ProviderPort.Invoke</method> through it, the call completes, and

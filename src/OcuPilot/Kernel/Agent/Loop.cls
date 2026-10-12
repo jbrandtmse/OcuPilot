@@ -5,12 +5,20 @@
 /// tool call through <method>DispatchTools</method>, writes progress steps as it goes, and stops at
 /// the first step boundary that says so. The system prompt is the built-in one or the definition's
 /// override, whole; no tool result is ever joined to it (AD-11).</p>
+/// <p><b>History within a turn is append-only</b> (AD-24): a message already sent is never changed,
+/// reordered or removed, and the tool array is taken once, so every request of a turn opens with the
+/// same prefix.</p>
 /// <p><b>The boundary</b> runs before every provider call and before every tool call (AD-30: between
 /// every step), in this order: the stop flag, the sign-out flag, the kill switch
 /// (<class>OcuPilot.Kernel.Restraint</class>, whose code is recorded as given), enforced read-only
 /// against the snapshot the turn started with, the user's current grants over the resource list the
 /// handler passed, the poll lease, the wall clock and the token spend. Every one of them is a live
 /// read; nothing is cached for the length of the turn.</p>
+/// <p><b>The token spend</b> is each reply's output tokens plus its prompt with the cached part at
+/// its adapter's weight (<property>OcuPilot.Kernel.Provider.Response.BoundTokens</property>, the
+/// whole count where an adapter set none), against <parameter>OcuPilot.Kernel.Agent.Limits.MAXTOKENS</parameter>
+/// (AD-31). The turn row and the ledger record the whole count
+/// (<property>OcuPilot.Kernel.Provider.Response.RequestTokens</property>).</p>
 /// <p><b>Caller contract:</b> the caller is the turn's job, has begun the turn
 /// (<method>OcuPilot.Kernel.State.Turn.GuardedBegin</method>), and finishes it with the outcome this
 /// answers. Not called from an escalated frame (AD-9).</p>
@@ -205,7 +213,9 @@ ClassMethod Run(pKey As %String, pUser As %String, pDefinitionId As %String, pMe
         }
         Set tIterations = 0
         Set tInput = 0
+        Set tBound = 0
         Set tOutput = 0
+        Set tTurnBudget = +$Parameter(tLimits, "TURNRESULTMAXLENGTH")
         Set tToolLog = []
         Set tCandidates = []
         Kill tTools
@@ -215,7 +225,7 @@ ClassMethod Run(pKey As %String, pUser As %String, pDefinitionId As %String, pMe
             Quit
         }
         For {
-            If ..Boundary(pKey, pUser, pReadOnly, pResources, pStartedSeconds, tInput + tOutput, .tState, .tCode) {
+            If ..Boundary(pKey, pUser, pReadOnly, pResources, pStartedSeconds, tBound + tOutput, .tState, .tCode) {
                 If tCode = ##class(OcuPilot.Api.Error).#TURNSTOPPED {
                     Set tStopSC = ##class(OcuPilot.Kernel.State.Step).GuardedAppend(pKey, "model", ..#MODELSTEP, "stopped", "", "", "", tLimits, .tStopSeq, .tStopStored)
                     If $$$ISOK(tStopSC) Set tLastSeq = tStopSeq
@@ -238,6 +248,7 @@ ClassMethod Run(pKey As %String, pUser As %String, pDefinitionId As %String, pMe
             Set pOutcome("egress") = tKept
             If $IsObject($Get(tResponse)) {
                 Set tInput = tInput + tResponse.RequestTokens
+                Set tBound = tBound + ..PromptBound(tResponse)
                 Set tOutput = tOutput + tResponse.ResponseTokens
             }
             ; A refusal is the provider declining (AD-39, DW-1181): the turn fails with a banner and
@@ -272,7 +283,7 @@ ClassMethod Run(pKey As %String, pUser As %String, pDefinitionId As %String, pMe
                 Set pOutcome("citations") = ##class(OcuPilot.Kernel.Agent.Citations).Cite(tResponse.Text, tCandidates).%ToJSON()
                 Quit
             }
-            Set tSC = ..AnswerTools(pKey, pUser, pDefinitionId, tResponse.Text, tToolUses, tLimits, .tMessages, tToolLog, .tLastSeq, pReadOnly, pResources, pStartedSeconds, tInput + tOutput, .tState, .tCode, pContextRowCap, tContextRoute, tResponse.ContentJson, tCandidates)
+            Set tSC = ..AnswerTools(pKey, pUser, pDefinitionId, tResponse.Text, tToolUses, tLimits, .tMessages, tToolLog, .tLastSeq, pReadOnly, pResources, pStartedSeconds, tBound + tOutput, .tState, .tCode, pContextRowCap, tContextRoute, tResponse.ContentJson, tCandidates, .tTurnBudget)
             If $$$ISERR(tSC) Quit
             If tState '= "" {
                 Set pOutcome("state") = tState
@@ -328,6 +339,14 @@ ClassMethod KeepEgress(pKept As %String, pEgress, pContextSent As %Boolean) As %
     If tKeptLeaves = "" Quit tFact.%ToJSON()
     If 'tKeptLeaves && tFact.%Get("leavesInstance") Quit tFact.%ToJSON()
     Quit pKept
+}
+
+/// <p>What <var>pResponse</var>'s prompt counts against the turn's token limit:
+/// <property>OcuPilot.Kernel.Provider.Response.BoundTokens</property>, or the whole
+/// <property>OcuPilot.Kernel.Provider.Response.RequestTokens</property> when the adapter set none.</p>
+ClassMethod PromptBound(pResponse As OcuPilot.Kernel.Provider.Response) As %Integer
+{
+    Quit $Select(pResponse.BoundTokens '= "": +pResponse.BoundTokens, 1: +pResponse.RequestTokens)
 }
 
 /// <p>Whether the turn stops here, and if so in which state and with which code. See this class's
@@ -468,6 +487,11 @@ ClassMethod ToolUses(pJson As %String) As %DynamicArray
 /// error step. <var>pContextRowCap</var> is the row cap every dispatched call in this turn is
 /// answered under (<code>0</code> falls back to <var>pLimitsClass</var>'s own
 /// <code>TOOLROWS</code>).</p>
+/// <p><b>The turn budget</b> (AD-24): <var>pTurnBudget</var> is the characters the turn's tool results
+/// may still carry, <code>""</code> for a caller that bounds none. The reply budget above starts at
+/// the lesser of <parameter>OcuPilot.Kernel.Agent.Limits.TOOLRESULTMAXLENGTH</parameter> and
+/// <var>pTurnBudget</var>, and every character a result carries is taken off both, neither going
+/// below 0; it comes back lowered by what this reply carried.</p>
 /// <p><var>pContentJson</var> is <property>OcuPilot.Kernel.Provider.Response.ContentJson</property>:
 /// when it parses to a non-empty array, that array is the echo, unchanged and in order, because a
 /// reply's reasoning blocks must go back to the provider as it sent them. Otherwise the echo is
@@ -476,7 +500,7 @@ ClassMethod ToolUses(pJson As %String) As %DynamicArray
 /// to a descriptor-backed read tool answered here (<method>OcuPilot.Kernel.Agent.Citations.Candidates</method>),
 /// read from the bounded content before <method>OcuPilot.Kernel.Agent.Sanitize.Results</method>
 /// frames the model's copy.</p>
-ClassMethod AnswerTools(pKey As %String, pUser As %String, pDefinitionId As %String, pText As %String, pToolUses As %DynamicArray, pLimitsClass As %String, ByRef pMessages, pToolLog As %DynamicArray, ByRef pLastSeq As %Integer, pReadOnly As %Boolean, pResources As %String, pStartedSeconds As %Integer, pTokens As %Integer, Output pState As %String, Output pCode As %String, pContextRowCap As %Integer = 0, pRoute As %String = "", pContentJson As %String = "", pCandidates As %DynamicArray = "") As %Status
+ClassMethod AnswerTools(pKey As %String, pUser As %String, pDefinitionId As %String, pText As %String, pToolUses As %DynamicArray, pLimitsClass As %String, ByRef pMessages, pToolLog As %DynamicArray, ByRef pLastSeq As %Integer, pReadOnly As %Boolean, pResources As %String, pStartedSeconds As %Integer, pTokens As %Integer, Output pState As %String, Output pCode As %String, pContextRowCap As %Integer = 0, pRoute As %String = "", pContentJson As %String = "", pCandidates As %DynamicArray = "", ByRef pTurnBudget As %Integer = "") As %Status
 {
     Set pState = ""
     Set pCode = ""
@@ -509,6 +533,7 @@ ClassMethod AnswerTools(pKey As %String, pUser As %String, pDefinitionId As %Str
     Set tSC = $$$OK
     Set tAnswered = []
     Set tBudget = +$Parameter(pLimitsClass, "TOOLRESULTMAXLENGTH")
+    If (pTurnBudget '= "") && (pTurnBudget < tBudget) Set tBudget = pTurnBudget
     For tI = 0:1:pToolUses.%Size() - 1 {
         Set tBlock = pToolUses.%Get(tI)
         If ..Boundary(pKey, pUser, pReadOnly, pResources, pStartedSeconds, pTokens, .tStopState, .tStopCode) {
@@ -591,8 +616,7 @@ ClassMethod AnswerTools(pKey As %String, pUser As %String, pDefinitionId As %Str
             Do tEntry.%Set("code", tCode, "string")
             Do pToolLog.%Push(tEntry)
             Do tAnswered.%Push(tResult)
-            Set tBudget = tBudget - $Length($Select($IsObject(tResult): tResult.%Get("content"), 1: ""))
-            If tBudget < 0 Set tBudget = 0
+            Do ..Spend(tResult, .tBudget, .pTurnBudget)
         } Else {
             Set tCall = []
             Do tCall.%Push(tBlock)
@@ -629,8 +653,7 @@ ClassMethod AnswerTools(pKey As %String, pUser As %String, pDefinitionId As %Str
             Do tEntry.%Set("code", tCode, "string")
             Do pToolLog.%Push(tEntry)
             Do tAnswered.%Push(tResult)
-            Set tBudget = tBudget - $Length($Select($IsObject(tResult): tResult.%Get("content"), 1: ""))
-            If tBudget < 0 Set tBudget = 0
+            Do ..Spend(tResult, .tBudget, .pTurnBudget)
         }
     }
     If $$$ISERR(tSC) Quit tSC
@@ -640,6 +663,19 @@ ClassMethod AnswerTools(pKey As %String, pUser As %String, pDefinitionId As %Str
     Set pMessages(pMessages, "role") = "user"
     Set pMessages(pMessages, "blocks") = tAnswered.%ToJSON()
     Quit $$$OK
+}
+
+/// <p>Take the characters <var>pResult</var>'s content carries off the reply budget
+/// <var>pBudget</var> and, when it bounds one, the turn budget <var>pTurnBudget</var>, neither going
+/// below 0.</p>
+ClassMethod Spend(pResult As %DynamicObject, ByRef pBudget As %Integer, ByRef pTurnBudget As %Integer) [ Private ]
+{
+    Set tUsed = $Length($Select($IsObject(pResult): pResult.%Get("content"), 1: ""))
+    Set pBudget = pBudget - tUsed
+    If pBudget < 0 Set pBudget = 0
+    If pTurnBudget = "" Quit
+    Set pTurnBudget = pTurnBudget - tUsed
+    If pTurnBudget < 0 Set pTurnBudget = 0
 }
 
 /// <p>Whether the resolved tool <var>pTool</var> is one whose rows a citation may name: a read-kind,

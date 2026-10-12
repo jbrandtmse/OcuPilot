@@ -287,7 +287,7 @@ development_status:
   18-10-web-application-extras-and-spec-based-rest-services: done
   18-11-monitoring-extras-and-the-live-log-tail: done
   18-12-the-agent-grows-with-the-stage: done
-  18-13-multi-namespace-install: backlog
+  18-13-multi-namespace-install: ready-for-dev
   18-14-namespace-mappings-and-copy-mappings: done
   18-15-enable-interoperability-on-a-namespace: done
   18-16-remote-databases: done
@@ -312,10 +312,12 @@ development_status:
   18-36-dashboard-drill-downs: done
   18-37-interoperability-usage: backlog
   18-38-the-live-log-tail: backlog
-  18-39-the-agent-s-context-budget: ready-for-dev
+  18-39-the-agent-s-context-budget: done
   18-40-proxy-and-custom-ca-configuration: backlog
   18-41-the-wallet-credential-rung: backlog
   18-42-allowed-directories-a-person-s-write: backlog
+  18-43-uninstall-and-grants-on-a-shared-instance: backlog
+  18-45-the-agent-s-tool-roster-scoped-per-turn: backlog
   epic-18-retrospective: optional
 
   epic-19: done

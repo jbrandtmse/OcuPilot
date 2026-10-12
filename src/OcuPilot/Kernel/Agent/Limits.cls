@@ -16,7 +16,9 @@ Parameter WALLCLOCKSECONDS As %Integer = 600;
 /// its definition's own <property>OcuPilot.Kernel.State.Agent.MaxIterationsPerTurn</property>.</p>
 Parameter MAXITERATIONS As %Integer = 100;
 
-/// <p>Provider tokens, input plus output, one turn may spend.</p>
+/// <p>Provider tokens one turn may spend: each reply's output plus its prompt, with Anthropic's cache
+/// reads, or the cached subset OpenAI or Gemini reports, at its adapter's weight and every other
+/// token, cache writes included, whole (AD-31).</p>
 Parameter MAXTOKENS As %Integer = 500000;
 
 /// <p>Seconds a running turn survives without an authenticated poll by its owner.</p>
@@ -64,6 +66,12 @@ Parameter TOOLROWS As %Integer = 200;
 /// <p>Characters one serialized tool result carries at most (AD-24). Trailing rows are dropped until
 /// it fits; a result that cannot fit is refused <code>TOOL.RESULTTOOLARGE</code>.</p>
 Parameter TOOLRESULTMAXLENGTH As %Integer = 65536;
+
+/// <p>Characters one turn's tool results carry at most, together (AD-24). A reply's share of it is
+/// the lesser of <parameter>TOOLRESULTMAXLENGTH</parameter> and what the turn has left, so a result
+/// is cut by whole rows to what remains and a call finding less than 256 left is refused
+/// <code>TOOL.RESULTTOOLARGE</code>. Screen context is bounded separately.</p>
+Parameter TURNRESULTMAXLENGTH As %Integer = 262144;
 
 /// <p>Characters one field's string value carries at most, when the descriptor declares no
 /// <code>context.maxLength</code> for that field (AD-24, DW-281). A value cut to this bound loses

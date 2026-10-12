@@ -2,8 +2,8 @@
 /// loop runs in process with no socket: the port is <class>OcuPilot.Test.ProviderPortProbe</class>,
 /// the limits are <class>OcuPilot.Test.TurnLimits</class> unless a test names others, the dispatcher
 /// is the shipped one unless a test names another, the restraint verdict is the real one unless
-/// a test forces the kill switch on -- from the start, or once a number of tool calls have been
-/// answered -- enforced read-only on, or the read to fail, and a logged failure is recorded here
+/// a test forces it clear, the kill switch on -- from the start, or once a number of tool calls have
+/// been answered -- enforced read-only on, or the read to fail, and a logged failure is recorded here
 /// instead of written. No
 /// method of the loop itself is replaced.</p>
 Class OcuPilot.Test.TurnLoopProbe Extends OcuPilot.Kernel.Agent.Loop
@@ -26,6 +26,14 @@ ClassMethod ForceKillSwitch(pCode As %String)
 ClassMethod ForceKillSwitchAfterCalls(pCalls As %Integer, pCode As %String)
 {
     Set ^||OcuPilotTurnLoopProbe("killAfter") = $ListBuild(pCalls, pCode)
+}
+
+/// <p>Answer the kill switch and enforced read-only off from now on, whatever the instance's switch
+/// row and holds say, so a test that runs a turn relies on neither; a switch a test forces on after
+/// it still applies.</p>
+ClassMethod ForceRestraintClear()
+{
+    Set ^||OcuPilotTurnLoopProbe("clear") = 1
 }
 
 /// <p>Answer enforced read-only on from now on.</p>
@@ -113,8 +121,8 @@ ClassMethod PortClass() As %String
     Quit "OcuPilot.Test.ProviderPortProbe"
 }
 
-/// <p>The real verdict, with the kill switch or read-only forced on, or the read failed, when a test
-/// asked for it.</p>
+/// <p>The real verdict, forced clear, with the kill switch or read-only forced on, or the read failed,
+/// when a test asked for it.</p>
 ClassMethod Restraint(pUser As %String, pDefinitionId As %String, Output pVerdict) As %Status
 {
     If $Get(^||OcuPilotTurnLoopProbe("restraintError")) {
@@ -125,6 +133,10 @@ ClassMethod Restraint(pUser As %String, pDefinitionId As %String, Output pVerdic
         Quit $$$ERROR($$$GeneralError, "the probe answered the switches as unreadable")
     }
     Set tSC = ##super(pUser, pDefinitionId, .pVerdict)
+    If $Get(^||OcuPilotTurnLoopProbe("clear")) {
+        Set pVerdict("killSwitch") = 0
+        Set pVerdict("enforcedReadOnly") = 0
+    }
     If $Get(^||OcuPilotTurnLoopProbe("readOnly")) Set pVerdict("enforcedReadOnly") = 1
     If $Get(^||OcuPilotTurnLoopProbe("killSwitch")) '= "" {
         Set pVerdict("killSwitch") = 1

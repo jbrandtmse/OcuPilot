@@ -7329,13 +7329,13 @@ So that the portal and the agent stay in step. [AMENDED 2026-10-11, orchestrator
 
 As an operator with several namespaces,
 I want to install OcuPilot into a namespace I choose,
-So that it is not confined to the one the installer picks.
+So that it is not confined to the one the installer picks. [AMENDED 2026-10-12, lead at the spec gate: split for size, Rule 5 - DW-219 and DW-2172 moved to Story 18.43; "maps the package" read under AD-9 (code stays in the install namespace's own routine database, so install maps OcuPilot's globals and confirms the package resolves there); one install namespace per instance (AD-17); a credential rung the namespace cannot reach is reported, never refused, since a definition's save already refuses it]
 
 **Acceptance Criteria:**
 
 - **Given** a target namespace
 - **When** install validates it
-- **Then** it refuses `%SYS`, confirms the namespace exists, confirms interoperability-enablement where a chosen credential rung needs it, and maps the package.
+- **Then** it refuses `%SYS`, a namespace that does not exist, an IRIS below the roster's version floor, and any namespace other than the one OcuPilot is already installed in; maps OcuPilot's globals into it and confirms the `OcuPilot` package resolves from its own routine database (AD-9); and names each stored definition whose credential rung needs interoperability the namespace does not have.
 
 - **Given** install runs twice into the same namespace
 - **When** the second run completes
@@ -7347,10 +7347,9 @@ So that it is not confined to the one the installer picks.
 
 **Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
 
-- DW-219: Uninstall's contract on an instance OcuPilot does not wholly own has three half-state paths (ledger; routed by merge_gate 2026-09-13)
 - DW-423: OcuPilot.Kernel.State.Stamp records one row per install run with no retention policy, and the live instance already holds 3306 of them (ledger; routed by merge_gate 2026-10-06)
 - DW-1333: IPM's exporter drops <SystemRequirements>, so the distributable archive carries no IRIS or IPM version floor (ledger; routed by merge_gate 2026-10-06)
-- DW-2172: DW-236's detection half - a SQL grant on OcuPilot's own schemas widened outside OcuPilot (another role or _PUBLIC holding it) is detected beside install's schema-grant read-back (ledger; routed by the orchestrator 2026-10-07)
+- DW-219 and DW-2172 moved to Story 18.43 [AMENDED 2026-10-12, lead at the spec gate: split for size, Rule 5].
 
 ### Story 18.14: Namespace mappings and copy-mappings
 
@@ -7750,13 +7749,17 @@ So that monitoring is continuous rather than sampled. [AMENDED 2026-10-11, orche
 
 As a developer-administrator,
 I want each turn assembled within a budget,
-So that the doubled tool roster does not make every agent call larger and slower. [AMENDED 2026-10-11, orchestrator ruling on Story 18.12's plan: split from Story 18.12 for size, Rule 5; runs right after Story 18.12; any per-call selection, trimming or caching goes after Story 20.24's per-process tool listing, never inside it (AD-5, Rule 31); a Task 0 measures the per-call weight and AD-24 is amended at its spec gate]
+So that the doubled tool roster does not make every agent call larger and slower. [AMENDED 2026-10-11, orchestrator ruling on Story 18.12's plan: split from Story 18.12 for size, Rule 5; runs right after Story 18.12; any per-call selection, trimming or caching goes after Story 20.24's per-process tool listing, never inside it (AD-5, Rule 31); a Task 0 measures the per-call weight and AD-24 is amended at its spec gate] [AMENDED 2026-10-12, orchestrator ruling on Story 18.39's Task 0 (each call about 190,700 tokens, the tool array about 99% of it): split for scope, Rule 5 -- this story keeps caching, the turn's result budget and the token bound, which counts cached prompt tokens at their billed weight; making each call smaller moves to Story 18.45]
 
 **Acceptance Criteria:**
 
 - **Given** the tool roster roughly doubles here
 - **When** a turn is assembled
 - **Then** context-window management trims and budgets history, which nothing in the harvest provides and which this stage is the first to need.
+
+- **Given** a provider that reports the cached part of a prompt separately
+- **When** the turn counts its spend against its token limit
+- **Then** the cached part counts at the provider's billed weight (Anthropic cache reads at 0.1), and a provider with no separate cached figure counts at full weight.
 
 ### Story 18.40: Proxy and custom CA configuration
 
@@ -7798,6 +7801,43 @@ So that the fence around server-path fields is set on its screen, never by the a
 - **When** it proposes any change to the allow-list
 - **Then** the kernel refuses it for the agent caller as self-protection in the AD-10 and AD-21 family, not only by leaving out a tool; no agent write at all, narrowing included (a reason for an agent narrowing found at the spec gate is the owner's question).
 - DW-2334: The admin API can write the directory allow-list but OcuPilot offers no surface for it (ledger; re-owned by lead 2026-10-11 on the owner's decision)
+
+### Story 18.43: Uninstall and grants on a shared instance
+
+As an operator whose instance OcuPilot does not wholly own,
+I want uninstall to leave nothing half-removed and install to notice a grant someone widened,
+So that removing or checking OcuPilot never damages or hides what others set up. [AMENDED 2026-10-12, lead at Story 18.13's spec gate: split from 18.13 for size, Rule 5]
+
+**Acceptance Criteria:**
+
+- **Given** an instance where an application, a role or a provenance record OcuPilot names is not wholly OcuPilot's
+- **When** uninstall runs
+- **Then** it removes only what OcuPilot created and still owns, and none of DW-219's three paths leaves a half-removed state.
+
+- **Given** a SQL grant on OcuPilot's own schemas held by another role or `_PUBLIC`
+- **When** install reads its schema grants back
+- **Then** it detects and names the widened grant (the refusal half is DW-236's, already shipped).
+
+- DW-219: Uninstall's contract on an instance OcuPilot does not wholly own has three half-state paths (ledger; re-owned by lead 2026-10-12 at Story 18.13's spec gate). From source at `fe132688`: path 1 is open (the shell bundle directory is removed unconditionally); path 2 is open (an unreadable provenance record warns and continues); path 3 looks closed by the role loop (inference; a pinning test settles it).
+- DW-2172: DW-236's detection half - a SQL grant on OcuPilot's own schemas widened outside OcuPilot (another role or _PUBLIC holding it) is detected beside install's schema-grant read-back (ledger; re-owned by lead 2026-10-12 at Story 18.13's spec gate). The grantee source is a Task 0 measurement.
+
+### Story 18.45: The agent's tool roster scoped per turn
+
+As a developer-administrator,
+I want each agent call to carry only the tools the turn needs,
+So that the doubled tool roster does not make every call larger, cap a turn at a few calls, or overflow a smaller model's context window. [AMENDED 2026-10-12, orchestrator ruling on Story 18.39's Task 0: split from Story 18.39, Rule 5 -- 368 advertised tools serialize to 525,414 characters, about 190,700 tokens a call; runs right after Story 18.39]
+
+**Acceptance Criteria:**
+
+- **Given** the registry's whole listing, cached per process (Story 20.24)
+- **When** a turn assembles a provider call
+- **Then** the call carries a scoped tool set chosen after the listing and never inside it (AD-5, Rule 31), by the mechanism the spec gate chooses: provider-native deferred loading or tool search, or area-scoped advertising with a discovery tool.
+
+- **Given** a supported provider or model whose context window cannot hold the full roster
+- **When** Task 0 measures each supported family and model
+- **Then** each such one is named, and the scoped set fits it.
+
+- If the chosen mechanism changes what the agent can do in a turn (for example, a tool it reaches only after a discovery step), that is the owner's product-promise question, raised at the spec gate before anything is built.
 
 ## Epic 19: Stage 3 - System Explorer over the Atelier API
 
