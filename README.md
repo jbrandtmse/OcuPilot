@@ -507,8 +507,8 @@ token and hidden values left as placeholders.
 - **Continuous integration on every push:** GitHub Actions builds and tests the client on each
   supported Node release, runs the full ObjectScript suite against fresh IRIS containers, drives the
   portal in headless Chrome, compiles and smoke-tests on both IRIS Community and IRIS for Health
-  Community, and builds and loads the IPM package offline. The ObjectScript suite runs across five
-  containers at once and the browser specs across three, so a full run takes about an hour.
+  Community, and builds and loads the IPM package offline. The ObjectScript suite runs across eight
+  containers at once and the browser specs across five, so a full run takes about 30 minutes.
 - **Tests:** 481 `%UnitTest` classes run inside IRIS; 105 Node test files and 195 Angular component
   specs cover the client; 163 browser specs exercise the running portal.
 - **A smoke test you can run:** `bash scripts/smoke.sh --container ocupilot --user _SYSTEM
