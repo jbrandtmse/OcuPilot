@@ -11178,6 +11178,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-20-4-per-host-tabs-the-monitor-queues-and-jobs.md | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: local ocupilot-b-ci 2026-10-10: 2 of 4 runs red on untouched screens; 2026-10-11 after a full sweep: user-events read 8-13 ms, 2 of 2 runs green; six IRIS containers share the host (inference: CPU contention)
 - 2026-10-11T06:55:40Z status=routed owner=burndown by=runner note=flake; reproduce with timings logged per visit before changing SETTLE_TIMEOUT_MS or QUIET_MS
+- 2026-10-12T03:29:02Z occurrence=20-5-lookup-tables-and-business-partners
+- 2026-10-12T03:29:02Z status=routed owner=burndown by=runner note=second form caught: headless Chrome dropped its connection mid-run (frame detached, Connection closed); green on unchanged rerun
 
 ### DW-2302: Jobs lists no job of Ens.MonitorService, Ens.Alarm or Ens.Alert, because EnumerateHostStatus, its host list, skips those three
 - source: spec-20-4-per-host-tabs-the-monitor-queues-and-jobs.md | severity: low | fix-risk: low | footprint: in-story
