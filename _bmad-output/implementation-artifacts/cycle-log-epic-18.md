@@ -1374,3 +1374,7 @@ TAB-separated: `<UTC>\t<Story <id> | Epic <N>>\t<stage>\t<metadata>`
 2026-10-12T15:56:49Z	Epic 18	spine_updated	ad=AD-21(DW-2334_sentence_restated:no_write_drops_a_root_the_person_did_not_name) reason=rule5/rule20(18.42_spec_gate) by=runner lint=ok(pre-existing_low) memlog=appended
 2026-10-12T15:56:49Z	Epic 18	ledger_push	sha=20a08e3e(on_478a486a,skip_ci,deferred-work_only) temp_worktree=removed
 2026-10-12T15:56:49Z	Epic 18	deps_hash_rerecorded	reason=split_inserted(18.46);rule5_amendment(18.42_AC)
+2026-10-12T15:59:55Z	Epic 18	integrate_forward	feature=16cd7c72(DW-2354_merged) remote_ledger=20a08e3e head=2000cd8a conflicts=0
+2026-10-12T15:59:55Z	Story 18.45	fresh_check_started	throwaway=ocupilot-ci rebuilt(down+up,healthy 15:59:19Z) load=LOAD-OK,STARTPATH-OK offered=615 chunks=51 includes=DW-2160_fix(cccf7a79),DW-2354_merge
+2026-10-12T15:59:55Z	Story 18.45	stage_spawned	stage=full-sweep spawn_at=2026-10-12T15:59:55Z model=sonnet agent_name=18-45-sweep-1 prompt=carry-2026-10-10/epic-18-r/sweep-1845-prompt.md run_in_background=false
+2026-10-12T15:59:55Z	Story 18.42	stage_spawned	stage=plan(re-plan_after_gate) spawn_at=2026-10-12T15:59:55Z model=opus agent_name=18-42-allowed-dirs-plan-2 cycle_iteration=2 prompt=carry-2026-10-10/epic-18-r/plan-1842-rw1-prompt.md run_in_background=false throwaway=untouched(sweep_running)
