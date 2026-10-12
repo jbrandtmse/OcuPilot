@@ -1267,3 +1267,8 @@ TAB-separated: `<UTC>\t<Story <id> | Epic <N>>\t<stage>\t<metadata>`
 2026-10-12T04:18:25Z	Epic 18	ledger_orchestrator_changes	DW-2329=routed_burndown(owner:handle_both_forms;18.12_spec_at_16KB_cannot_take_it) by=lead
 2026-10-12T04:19:25Z	Epic 18	stories_chartered	by=owner_decision(DW-2334;orchestrator_relay_5018b802) new=18-42-allowed-directories-a-person-s-write order=18.36,18.12,18.39,18.13,18.42,18.37,18.38,18.40,18.41,burn-down(18.43) amendments=epics.md:18.42 deps_hash_rerecorded=bb40aca5 DW-2334=routed_18-42
 2026-10-12T04:19:25Z	Epic 18	spine_updated	ad=AD-21(allow-list_a_person_s_to_widen,never_the_agent_s;owner_quote) reason=decision_sheet(owner_DW-2334) by=runner story=18-42 lint=ok(pre-existing_low) memlog=appended
+2026-10-12T04:21:53Z	Story 18.36	smoke_complete	method=api+browser+full_sweep result=pass iterations=1 defects_caught=0 evidence=sweep36_593_classes;dashboard+drill-downs_8/8_together,reversed;smoke_passed model=claude-opus-5-5
+2026-10-12T04:21:53Z	Story 18.36	fresh_check	env=recipe(ci-throwaway.sh_down+up_02:44Z;loader;bundle_redeployed) tests=593_forward(full_sweep)+8_reverse(160_tests) result=pass browser=8/8_together,5/5+3/3_reversed order=forward,reverse
+2026-10-12T04:21:53Z	Epic 18	integrate_forward	feature=72fd66b8 head=6067f58e conflicts=0 content=docs_and_bookkeeping
+2026-10-12T04:21:53Z	Story 18.36	committed	sha=6067f58e(merge_feature_72fd66b8) code=5e9a5ee9+7e77171c+6067f58e ci=pending run=38203447285 head_confirmed_by=headSha pushed=code_head_alone bundle=3.35MB amendments=none
+2026-10-12T04:21:53Z	Story 18.36	story_cycle	plan_to_commit_min=~610(18:39Z_plan_to_04:21Z) implement_passes=1 reviews=1 rework=0 first_ci=pending models=plan:opus,implement:sonnet,qa:sonnet,cr:opus
