@@ -11517,3 +11517,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-45-the-agent-s-tool-roster-scoped-per-turn.md | severity: low | fix-risk: med | footprint: in-story
 - evidence: Sanitize.cls IsToolReferences (exactly type and tool_name, wire-name pattern) and MessageAdapter.cls ReferencedNames (any tool_name) walk the same shape; every array ResultText sees has passed the stricter gate.
 - 2026-10-12T15:19:30Z status=wontfix-accepted owner=18-45-the-agent-s-tool-roster-scoped-per-turn by=cr note=reopen_if=a content Sanitize passes unchanged renders as JSON, not the Found sentence, in OpenAI's tool message
+
+### DW-2367: The area stores and actions app.ts constructs before the first render (427,221 bytes) stay in the initial bundle after Story 20.29 moves every page to a lazy chunk
+- source: spec-20-29-screens-load-on-demand.md | severity: med | fix-risk: med | footprint: in-epic
+- evidence: 20.29 plan prototype on ocupilot-b-ci: initial 1,895,548 B after the change, of which 427,221 B are area stores and actions that register declared Creates before the first change-detection pass
+- 2026-10-12T21:15:28Z status=routed owner=burndown by=lead note=orchestrator 2026-10-12 Q2: no story chartered; the 44 percent smaller initial bundle is the owner's win

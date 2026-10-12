@@ -230,7 +230,12 @@ Consequence: an Epic 18 branch that adds a statically imported page conflicts at
 - DW-1371 (owner `23-5-…`) is in the same component; this story neither settles nor worsens it.
 - DW-1166's policy is applied.
 
-**Gate (lead, 2026-10-12).** AD-5's amendment below is applied to the spine as written. The Rule 11 asks and Q1/Q2 went to the orchestrator; implement starts only once the Rule 11 asks are answered, and its prompt carries the answers.
+**Gate rulings (lead and orchestrator, 2026-10-12).** AD-5's amendment below is applied to the spine as written.
+
+- **Rule 11: all four asks are pre-authorized** (screen-outlet.ts loaders with one line per page; app.routes.ts's three `push` lines gain `children` plus one import; `angular.json`'s `maximumWarning` and its `angular-json.test.mjs` pin, re-measured at every forward merge as the initial total plus 5%, never taken from either side; the screen-outlet.spec.ts and app.routes.spec.ts assertions). A conflict resolves as a union under Rule 22: a new Epic 18 page becomes a loader entry. All four are footprint extensions.
+- **Q1: (A).** The missing chunk keeps its `index.html` answer. The failed navigation must surface as the existing stale-bundle notice after re-reading `/instance`, never as a blank screen, pinned by a browser test that requests a renamed chunk.
+- **Q2:** the eagerly built area stores and actions (427,221 bytes) are ledgered as DW-2367, a MED for the Epic 20 burn-down; no story is chartered.
+- **The per-lazy-chunk cap** in `build-output.test.mjs` names the chunk and the cap in its failure message.
 
 **Spine, Rule 20.** AD-5 text, as applied at the spec gate:
 
