@@ -18,6 +18,7 @@ import { classifyFault, type Fault } from '../../core/fault';
 import type { RefreshRead, RefreshReadResult } from '../../core/refresh';
 import { screenReadPath, type ScreenReadCriteria } from '../../core/screen-read';
 import type { ScreenDeclaration } from '../../core/screens.generated';
+import { CLASS_NAME, NAMESPACE_NAME } from '../../core/vendor-frame';
 
 /** The views a viewer offers, in their order on screen; a routine's offers every one but `reference`. */
 export type SourceViewKey = 'source' | 'xml' | 'int' | 'structure' | 'documentation' | 'reference';
@@ -32,12 +33,6 @@ export const NOT_FOUND_CODE = 'PORT.NOTFOUND';
 
 /** The instance's own class reference page (Story 19.9): a fixed same-origin path. */
 export const CLASS_REFERENCE_PATH = '/csp/documatic/%25CSP.Documatic.cls';
-
-/** A class name the class reference is asked for: dotted identifiers, the first optionally `%`-led. */
-const CLASS_NAME = /^%?[A-Za-z][A-Za-z0-9]*(\.[A-Za-z][A-Za-z0-9]*)*$/;
-
-/** A namespace name the class reference is asked for. */
-const NAMESPACE_NAME = /^%?[A-Za-z0-9_-]{1,64}$/;
 
 /** The class a viewer id names: the id with a trailing `.cls` removed, ignoring case. */
 export function referenceClassName(name: string): string {

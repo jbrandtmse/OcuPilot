@@ -710,6 +710,14 @@ const FORBIDDEN = [
     why: 'a storage listener is a cross-tab channel by another name (AD-47)',
   },
   { pattern: /\.postMessage\s*\(/, why: 'a token is never posted into a frame (AD-28, AD-35)' },
+  { pattern: /\bcontent(Window|Document)\b/, why: 'OcuPilot reaches nothing inside a frame (AD-63)' },
+  { pattern: /\bwindow\s*\.\s*frames\b/, why: 'OcuPilot reaches nothing inside a frame (AD-63)' },
+  {
+    pattern: /addEventListener\s*\(\s*['"]message(error)?['"]|\bwindow:message\b|\bonmessage\b/,
+    why: 'OcuPilot hears no message from a frame (AD-63)',
+  },
+  { pattern: /\bVSCODE\b/, why: 'an embedded editor loads in normal mode only (AD-63)' },
+  { pattern: /_Editor-|\bvscodeMode\b/, why: 'no vendor editor storage key is written or read (AD-63)' },
 ];
 
 const SCAN_EXTENSIONS = new Set(['.ts', '.html', '.scss', '.json', '.js', '.mjs']);
@@ -762,14 +770,26 @@ test('the localStorage ban has no exempted path, and every forbidden shape still
     'new BroadcastChannel("ocupilot");',
     "window.addEventListener('storage', handler);",
     'frame.postMessage(token, "*");',
+    'const inner = frame.contentWindow;',
+    'const body = frame.contentDocument.body;',
+    'const first = window.frames[0];',
+    "const source = base + '?VSCODE=1';",
+    "const held = tabStorage.getItem('Rule_Editor-0-accessToken');",
+    "const mode = tabStorage.getItem('vscodeMode');",
+    "window.addEventListener('message', handler);",
+    "@HostListener('window:message', ['$event']) heard(event: MessageEvent) {}",
   ];
   const caught = [];
+  const ruleHits = FORBIDDEN.map(() => 0);
   hostile.forEach((line, idx) => {
-    for (const { pattern } of FORBIDDEN) {
-      if (pattern.test(line)) caught.push(idx + 1);
-    }
+    FORBIDDEN.forEach(({ pattern }, rule) => {
+      if (!pattern.test(line)) return;
+      caught.push(idx + 1);
+      ruleHits[rule] += 1;
+    });
   });
-  assert.deepEqual(caught, [1, 2, 3, 4, 5], 'every forbidden shape is caught, localStorage included');
+  assert.deepEqual(caught, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13], 'every forbidden shape is caught, localStorage included, each line by one rule');
+  assert.ok(ruleHits.every((hits) => hits > 0), `and every rule has a hostile line: ${JSON.stringify(ruleHits)}`);
   assert.equal(
     existsSync(corePath('preferences.ts')),
     false,
@@ -779,13 +799,21 @@ test('the localStorage ban has no exempted path, and every forbidden shape still
 
 test('the scan itself catches each forbidden shape on a fixture, and ignores a comment that names one', () => {
   const fixture = [
-    "// we never touch document.cookie or localStorage here",
+    "// we never touch document.cookie, localStorage, contentWindow, a message listener or VSCODE here",
     '/* BroadcastChannel is forbidden */',
     'document.cookie = "x=1";',
     'localStorage.setItem("k", "v");',
     'new BroadcastChannel("ocupilot");',
     "window.addEventListener('storage', handler);",
     'frame.postMessage(token, "*");',
+    'const inner = frame.contentWindow;',
+    'const body = frame.contentDocument.body;',
+    'const first = window.frames[0];',
+    "const source = base + '?VSCODE=1';",
+    "const held = tabStorage.getItem('Rule_Editor-0-accessToken');",
+    "const mode = tabStorage.getItem('vscodeMode');",
+    "window.addEventListener('message', handler);",
+    "@HostListener('window:message', ['$event']) heard(event: MessageEvent) {}",
     'const fine = sessionStorage.getItem("k");',
   ].join('\n');
 
@@ -796,7 +824,7 @@ test('the scan itself catches each forbidden shape on a fixture, and ignores a c
       if (pattern.test(line)) hits.push(idx + 1);
     }
   });
-  assert.deepEqual(hits, [3, 4, 5, 6, 7], 'five real violations, and neither comment nor sessionStorage');
+  assert.deepEqual(hits, [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15], 'thirteen real violations, and neither comment nor sessionStorage');
 });
 
 test('the one place a cookie travels is the token endpoints, and only as credentials:include', async () => {

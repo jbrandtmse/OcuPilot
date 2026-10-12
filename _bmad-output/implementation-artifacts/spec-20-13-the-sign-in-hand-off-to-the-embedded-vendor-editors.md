@@ -2,14 +2,22 @@
 title: 'Story 20.13: The sign-in hand-off to the embedded vendor editors'
 type: 'feature'
 created: '2026-10-12'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: '6e02c22f6d768b0ca9e3eb6a02bad1448c746162'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
   - '{project-root}/_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md'
   - '{project-root}/_bmad-output/planning-artifacts/ux-designs/ux-OcuPilot-2026-09-08/EXPERIENCE.md'
 warnings: [oversized]
-deferred: []
+deferred:
+  - summary: >-
+      The Angular component app-interop-editor-frame first runs in a real browser in Story 20.7, so its host-filling style and its Renderer2 src set are observed by no browser test until then.
+    evidence: |-
+      interop-editor-frame.spec.ts runs in jsdom, which computes no layout, and the browser spec mounts a harness iframe built from the shipped interopEditorSource, not the component. The intent excludes any screen or route here, so the component has no real-browser host before Story 20.7, whose browser spec re-runs interop-editor-spec.mjs against its real screens.
+    location: >-
+      ui/src/app/areas/interoperability/interop-editor-frame.ts:52
+    severity: low
 ---
 
 <intent-contract>
@@ -199,6 +207,26 @@ deferred: []
 
 ## Review Triage Log
 
+### 2026-10-12 - Review pass
+
+- verdicts: 15 findings - high 0, medium 2, low 11, false 2, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` verification-gap: AD-63 limit 3's "hears no message, puts no listener on the frame" was pinned by nothing - no `FORBIDDEN` rule matched a message listener and the attribute test is blind to listeners (a `(load)` binding or a `window:message` host listener passed every gate). Patched: `api.test.mjs` bans `addEventListener('message')`, `window:message` and `onmessage` with a hostile and a scan fixture line each; `interop-editor-frame.spec.ts` gains a listener-spy test with positive controls for a frame and a window listener; both mutations (`(load)`, `@HostListener('window:message')`) observed red and reverted.
+  - `[low]` `[patch]` verification-gap: AC3's access-token and refresh-token 401 clauses and "no frame remains" were never reached by the recorded mutation, which failed at the first clause. Patched: `assertSignOutEndsEditors` reads all three statuses and asserts them together; the `credentials: 'omit'` mutation now shows login, access and refresh each answering 200, and mounting the harness frame outside the outlet reddens "no frame remains"; both reverted.
+  - `[low]` `[patch]` verification-gap: AC1/AC2 sub-clauses have no mutation line of their own. Rule 19 asks one mutation per AC (AC1 and AC2 each have one or more recorded), so the sub-clauses stand; the one assertion that could be vacuous, the content-security-policy watcher with no positive control, is patched with a `fetch` the policy refuses, which the watcher is shown to report.
+  - `[low]` `[defer]` verification-gap: the component's host-filling style and `Renderer2` src set are observed by no browser test; the intent excludes any screen or route, so the first real-browser host is Story 20.7 (frontmatter `deferred:`).
+  - `[low]` `[reject]` verification-gap (other): `after.pair === before.pair` can meet a renewal if a test outlasts about 50 s - each editor test finishes in about 2.5 s and a failure names the clause; not worth a guard.
+  - `[low]` `[reject]` verification-gap (other): the document read's status is not asserted - AC1 asks that the editor requests the read, and the login (200) and the rendered user name already show the sign-in worked.
+  - `[low]` `[reject]` verification-gap (other): the policy comparison parses `Test/Static.cls` text - AC2 names that string as the comparand, and a reformatted line fails loudly on the pinned-policy match.
+  - `[low]` `[reject]` verification-gap (other): the moved-shapes check is a source-text check - the shapes' behavior stays pinned by the existing `classReferenceUrl` cases, and the text check is what pins the move (Rule 2).
+  - `[low]` `[defer]` intent-alignment: the browser spec's frame is the harness's element, not the component's (reading R2); same root cause as the deferred item above.
+  - `[false]` `[reject]` intent-alignment: only a DTL frame goes through the sign-out test - AC3 is stated for a DTL frame, and the mechanism it exercises, the shell gate plus the Bearer-and-cookie logout, does not depend on the editor.
+  - `[low]` `[reject]` intent-alignment: no run opens a present class (200) - the spec's Tasks name a document the test never creates, and the 200 is cited as measured at the plan; the request clause is what AC1 pins.
+  - `[medium]` `[patch]` intent-alignment: no scan exists for "listens for a frame's messages" - same root cause as the first row, closed by the same patch.
+  - `[low]` `[reject]` intent-alignment: the frames and vendor-key bans match literals only - the spec's Tasks fix those patterns, and a bare `frames` cannot be banned (`shell/code-block.ts` holds `this.frames`).
+  - `[low]` `[reject]` intent-alignment: the namespace-switch row's `pagehide` clearing has no test of its own - it is the vendor's behavior, measured at the plan, and the sign-out test's "no `_Editor-` key" clause shows the keys cleared when the frame unloads.
+  - `[false]` `[reject]` intent-alignment: `api.test.mjs` is rewritten rather than extended on a contended file - `git diff` of the merge base against `origin/OCU-1-epic18` touches none of `api.test.mjs`, `document-viewer.store.ts` or `strings.ts`; the loop's rule counter is a strengthening the spec's "extend both fixture tests" allows.
+
 ## Design Notes
 
 **Governing ADs:**
@@ -349,9 +377,55 @@ No screen, rail, roster, descriptor, entity type, governance key or ObjectScript
 | AC4 | the component builds its own `/ui/interop/…` address | `vendor-frame.test.mjs`'s one-source scan |
 | AC4 | the component draws while its namespace differs from the scope's | `interop-editor-frame.spec.ts` |
 
+**Applied mutations (Rule 19).** Each was reverted byte-identical (`git status --short`, `git diff --stat` and file checksums equal before and after). A client mutation that a browser run reads was rebuilt and redeployed to `ocupilot-b-ci`, and the clean bundle was redeployed after.
+
+- mutation: `interopEditorSource` appends `&VSCODE=1` -> `vendor-frame.test.mjs` red (exact sources, encoding, no-extension row, refused documents, no-VSCODE row); `api.test.mjs` source scan red (`\bVSCODE\b`); the browser spec red in all four tests (the editor posts no login and stores no token).
+- mutation: `Session.adopt` writes `Rule_Editor-0-accessToken` into sessionStorage -> `api.test.mjs` source scan red (`_Editor-`); the browser spec's three AC1/AC2 subtests red on the before-mount keys, and the AC3 test red on a key left after sign-out.
+- mutation: `StaticHandler.ContentSecurityPolicy` gains `frame-src *` (rsync copy, mutated, `$System.OBJ.Load` of that one class in the throwaway) -> `OcuPilot.Test.Static` red (`TestShellRootServesTheDocumentWithItsPolicyAndCacheHeaders`, 1 of 17); the browser spec's three AC1/AC2 subtests red on the policy equality. Reverted by re-sync and reload; `Static` green again (run 653).
+- mutation: the component reads `frame.contentWindow` -> `api.test.mjs` source scan red.
+- mutation: `Session.signOut()` posts `/logout` with `credentials: 'omit'` -> the browser spec's AC3 test red; the empty-body editors login, the held access token's v7 call and the held refresh token's refresh each answer 200, so each of the three 401 clauses is load-bearing.
+- mutation: the harness mounts the frame in `document.body`, outside the shell's gate -> the browser spec's AC3 test red on "no frame remains".
+- mutation: the template gains `(load)="drawn"` -> `interop-editor-frame.spec.ts` listener test red (a `load` listener on the frame); the component gains `@HostListener('window:message')` -> the same test red (a `message` listener) and `api.test.mjs` source scan red.
+- control: the browser spec's policy watcher is shown to fire (a `fetch` the shell's policy refuses is reported to it), so "no content-security-policy violation" can fail.
+- mutation: the template gains `sandbox=""` -> `interop-editor-frame.spec.ts` attributes test red.
+- mutation: the document shape check is removed from `interopEditorSource` -> `vendor-frame.test.mjs` refused-documents and no-VSCODE rows red.
+- mutation: the component sets its own `/ui/interop/${editor}/index.html` address -> `vendor-frame.test.mjs` one-source scan red.
+- mutation: the component draws while its namespace differs from the scope's -> `interop-editor-frame.spec.ts` namespace test red.
+- mutation: the title binding is removed -> `interop-editor-frame.spec.ts` red (two tests: the attributes test and the editor-change test).
+- mutation: the `window.frames` ban, or the `vscodeMode` alternative, is removed from `FORBIDDEN` -> `api.test.mjs` fixture tests red (hostile list and scan fixture).
+- mutation: `interopRuleEditorTitle` is changed to `Rule Editor` -> `strings.test.mjs` red (table literal, authorized-values and line-reference tests).
+- mutation: `document-viewer.store.ts` keeps its own `NAMESPACE_NAME` -> `vendor-frame.test.mjs` moved-shapes row red.
+- mutation: the component writes a sessionStorage key after setting `src` -> `interop-editor-frame.spec.ts` storage test red.
+
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
 
-**Plan summary.** The vendor editors' bundles were read. The frame, its sign-in, its storage, its messages, its document parameters and sign-out were measured inside the signed-in shell on `ocupilot-b-ci`, and the token revocations over the wire. The plan builds the AD-63 frame and pins it, with no change to sign-in, sign-out or the origin's policy. Q1 is a non-blocking gate question.
+**Implemented change.** AD-63's frame, with no change to sign-in, sign-out, the token store, the content-security policy, `index.html` or any header. `core/vendor-frame.ts` (framework-free) holds `interopEditorSource`, the closed `INTEROP_EDITORS` vocabulary (`rule`, `DTL`, `BP`) and the two shapes moved out of the class reference's store. `app-interop-editor-frame` draws one unsandboxed `<iframe>` only while its namespace is the one on screen and the builder answers, sets `src` with `Renderer2`, and reaches nothing in the frame. Three frame-title strings are in `strings.ts` and the EXPERIENCE.md:604 row.
+
+**Files changed.**
+
+- `ui/src/app/core/vendor-frame.ts` (new): the builder, vocabulary and shapes.
+- `ui/src/app/areas/interoperability/interop-editor-frame.ts` (new): the component.
+- `ui/src/app/areas/system-explorer/document-viewer.store.ts`: imports the two shapes instead of holding copies.
+- `ui/src/app/core/strings.ts`, `EXPERIENCE.md`: the three titles (add-only; no new EXPERIENCE.md line).
+- `ui/tools/api.test.mjs`: five new bans (frame reads, `window.frames`, message listeners, `VSCODE`, vendor storage keys), each with hostile and scan fixture lines and a check that every rule has a hostile line.
+- `ui/tools/vendor-frame.test.mjs` (new): exact sources, encoding, refused shapes, moved shapes, the one-source scan.
+- `ui/src/app/areas/interoperability/interop-editor-frame.spec.ts` (new): attributes, refusals, scope gate, re-set `src`, storage, listeners.
+- `ui/browser/interop-editor-spec.mjs`, `ui/browser/interop-editor-frame.browser-spec.mjs` (new): the shared editor assertions and the real-editor spec on `ocupilot-b-ci`.
+
+**Review.** Two layers, 15 findings: 2 medium, 11 low, 2 false. Patched: the message-listener gap (one root cause, two rows), AC3's three-clause assertion and the policy watcher's positive control. Deferred: 1 (the component's first real-browser run is Story 20.7). Rejected with reasons: 9 (see the Review Triage Log). The 14 recorded pinning mutations and the three added this pass are in `## Verification`; each was reverted byte-identical, and the throwaway holds the clean bundle (`main-XIZQM6QR.js`).
+
+**Follow-up review:** not recommended (`false`): one medium entry patched and no high.
+
+**Verification (this pass, final tree).**
+
+- `npm run test:tools`: 1928 passed.
+- `npm run test:components`: 2971 passed in 239 files.
+- Browser, one file per call on `ocupilot-b-ci`: `interop-editor-frame` 5 passed, `system-explorer-documatic` 4 passed, `account-and-filter` 4 passed.
+- `ci-runner` on `OcuPilot.Test.Static`: 17 tests, 0 failed (run 655).
+- `scripts/lint-docs.sh`: clean.
+- The build's initial total is 3,405,631 B, under `maximumWarning` 3527 kB. Runner-owned and not run here: the full ObjectScript sweep, `npm test && npm run build` as the gate, the smoke and Rule 30's fresh check.
+
+**Residual risk.** The component itself first runs in a browser in Story 20.7; until then its element is pinned in jsdom and the real editors are proved through a harness frame built from the shipped builder. Q1 (tabs an editor opens with `window.open`) stays with the orchestrator and changes no code here.
