@@ -7964,6 +7964,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-28T01:18:58Z status=routed owner=range-end-cleanup by=merge_gate note=16-22 is done; add turnsPerHour to the Guardrails page
 - 2026-09-30T06:34:06Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down plan 2026-09-29 (23.1 closed; its slice re-sorted): queued for the standing cleanup after the next release (Story 23.3 or later), priority p4
 - 2026-10-05T18:41:40Z status=routed owner=18-12-the-agent-grows-with-the-stage by=merge_gate note=owner-approved burn-down scope 2026-10-05: feature-sized, re-routed from the cleanup queue to the agent-limits story
+- 2026-10-12T06:55:55Z status=resolved-by:18-12-the-agent-grows-with-the-stage by=adjudication note=Guardrails.Read answers limits.turnsPerHour; Guardrails.TestTheTurnsAnHourFollowTheSwitch and TestNoSwitchRowReadsAsNoTurnsLimit pin it
 
 ### DW-1757: Smoke's two turn reserves record start records against the operator, counting toward that account's turns an hour
 - source: spec-14-6 code review | severity: low | fix-risk: low | footprint: out-of-footprint
@@ -11267,6 +11268,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-33-privileged-routine-application-roles-and-routines.md | severity: med | fix-risk: med | footprint: in-epic
 - evidence: webapp.routineapps.read and webapp.list.read declare Name, Enabled, Resource, Description (and their web fields) only; RoutineAppUpdate's DESCRIPTION says an entry left out is removed; only the screen-only form read carries the lists
 - 2026-10-11T14:41:33Z status=routed owner=18-12-the-agent-grows-with-the-stage by=cr note=expose the lists to the agent (a read field or a detail read) for both web and routine applications
+- 2026-10-12T06:55:55Z status=resolved-by:18-12-the-agent-grows-with-the-stage by=adjudication note=webapp.routineapproles.read and routineapproutines.read answer one row per entry; RoutineAppListsRead round-trips a two-entry list
 
 ### DW-2322: Clearing a privileged routine application's Resource, or enabling it, while it grants a privileged role is not treated as a grant
 - source: spec-18-33-privileged-routine-application-roles-and-routines.md | severity: med | fix-risk: med | footprint: in-epic
@@ -11332,6 +11334,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-11-monitoring-extras-and-the-live-log-tail.md | severity: med | fix-risk: med | footprint: out-of-footprint
 - evidence: table-model.ts rowKey keys a non-composite id by its name column and data-table.ts activeIndex is lastKeys.indexOf(active); a live read on ocupilot-ci answered 942 rows over 115 metric names; the log viewers key by time
 - 2026-10-11T22:33:47Z status=routed owner=burndown by=cr note=fix the shell (a row-unique key for id kind none) or declare MetricsList's id composite [Metric, Labels]
+- 2026-10-12T06:54:07Z occurrence=18-12-the-agent-grows-with-the-stage
+- 2026-10-12T06:54:07Z status=routed owner=burndown by=cr note=also an empty key: RoutineAppRoleList's Every caller row keys '' (MatchRole empty), so ArrowDown sticks on it
 
 ### DW-2329: MonitorPort.Samples would fail the whole metrics table on an instance whose label value ends in an unescaped backslash (a Windows dir); unverified
 - source: spec-18-11-monitoring-extras-and-the-live-log-tail.md | severity: med | fix-risk: low | footprint: in-story
@@ -11386,3 +11390,15 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: dashboard.page.ts linksFor filters on built alone, while side-bar.ts and home.page.ts gate on screenVerdict with aria-disabled and the Requires reason; following such a link shows the outlet's Requires page
 - 2026-10-12T02:40:03Z status=wontfix-accepted owner=18-36-dashboard-drill-downs by=cr note=reopen_if=a refused drill-down's link draws ungated (AD-44 classic-page resource or AD-64 adjustment)
 - 2026-10-12T02:44:39Z status=routed owner=burndown by=lead note=orchestrator: EXPERIENCE.md :214-216 is a contract, not optional; fix at the Epic 18 burn-down
+
+### DW-2341: The routine-application roles read sorts the empty Every-caller MatchRoles entry first while the vendor lists it last, so an update echoing the list as read reports a change
+- source: spec-18-12-the-agent-grows-with-the-stage.md | severity: med | fix-risk: low | footprint: in-story
+- evidence: probed on ocupilot-ci: echoing MatchRoles as read differs in order only; the integration test uses one entry, so it misses this
+- 2026-10-12T06:16:45Z status=open owner=18-12-the-agent-grows-with-the-stage by=harvest note=code review: read in the vendor's order, or compare without order in this story's code (Write.cls is Epic 20's)
+- 2026-10-12T06:55:55Z status=resolved-by:18-12-the-agent-grows-with-the-stage by=adjudication note=RoutineAppUpdate.MergeUpdate compares the sent list without order (ReadBack.Same); RoutineAppListsRead red without it (run 735)
+
+### DW-2342: StageTwoTools checks only its declared roster, so a later Stage 2 screen is skipped unless its author adds a row
+- source: spec-18-12-the-agent-grows-with-the-stage.md | severity: med | fix-risk: low | footprint: in-story
+- evidence: the roster is a literal list; no Stage 2 marker or baseline of earlier screens exists
+- 2026-10-12T06:16:46Z status=open owner=18-12-the-agent-grows-with-the-stage by=harvest note=code review: a reverse check (a baseline of pre-Stage-2 screens) or a recorded reason it stays roster-only
+- 2026-10-12T06:55:56Z status=resolved-by:18-12-the-agent-grows-with-the-stage by=adjudication note=StageTwoTools holds roster plus Elsewhere equal to the registry both ways with a floor (runs 743-744)

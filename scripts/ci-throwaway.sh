@@ -397,6 +397,10 @@ services:
       # OcuProbe1833Role, through the editor's six row actions and the agent's complete lists, and judge the grants they
       # make (Story 18.33).
       # classes: RoutineAppGrant, RoutineAppMembers
+      # The routine application list read class creates probe applications named OcuProbe1831, reads their roles and
+      # routines by the screens' routes and the agent's reads, and confirms an update built from those reads
+      # (Story 18.12).
+      # classes: RoutineAppListsRead
       # The REST service classes create and delete probe services named OcuProbe1832, and the gate class writes them as
       # principals holding the REST API explorer's pairs and each without one (Story 18.32).
       # classes: RestServiceGate, RestServiceWrite

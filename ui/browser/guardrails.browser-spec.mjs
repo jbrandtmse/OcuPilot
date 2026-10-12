@@ -8,6 +8,9 @@
  *    on" and the kill-switch line of the caller's verdict, lists `permissions.users.delete` under the
  *    Users label, `permissions.users.password: Password` under "Never sent to the agent" with both
  *    sentences, and the limits line with 150, 65,536 and 1,000.
+ * 3. **Story 18.12**: the last section is headed "Limits" and, with no turns-an-hour limit set, reads that
+ *    turns are not limited (AC1); with turns an hour set to 7 on Switches, the line beneath the limits
+ *    line names 7.
  *
  * **It refuses the live container**: it writes the instance's switches, and restores them through
  * the shipped route in `after` and at the end of the leg that changed them.
@@ -75,6 +78,7 @@ async function restoreSwitches() {
     enforcedReadOnly: false,
     shareContextByDefault: true,
     contextRowCap: 200,
+    turnsPerHour: 0,
   });
 }
 
@@ -133,6 +137,9 @@ test('AC1: opened from the side bar after Switches, the page lists every refused
     assert.deepEqual(codes, answer.prohibited.map((row) => row.code), 'one item per code, in the answer\'s order');
     assert.deepEqual(reasons, answer.prohibited.map((row) => row.reason), 'each with that row\'s sentence');
     assert.equal(await page.$('app-guardrails-page .ocu-guardrails-fault'), null, 'and no fault line');
+    const headings = await textsOf(page, 'app-guardrails-page h2');
+    assert.equal(headings.at(-1), STRINGS.agentGuardrailsLimitsHeading, 'the last section is headed Limits');
+    assert.deepEqual(await textsOf(page, 'app-guardrails-page .ocu-guardrails-turns'), [STRINGS.agentGuardrailsTurnsNone], 'and with no turns-an-hour limit set it reads that turns are not limited');
   } finally {
     await context.close();
   }
@@ -175,6 +182,31 @@ test('AC2: with enforced read-only on and a row cap of 150, the page reads both,
       await context.close();
     }
   } finally {
+    await restoreSwitches();
+  }
+});
+
+test('Story 18.12: with turns an hour set to 7 on Switches, the Limits section names 7 beneath the limits line', async () => {
+  await restoreSwitches();
+  // The limit is set after sign-in: `signedInAt` clears a turns-an-hour limit already set, which would refuse other specs' Sends.
+  const { context, page } = await signedInAt(SWITCHES_URL);
+  try {
+    await setSwitches({ turnsPerHour: 7 });
+    const answer = await guardrailsAnswer();
+    assert.equal(answer.limits.turnsPerHour, 7, 'the route reads turns an hour 7');
+    await openFromSideBar(page);
+    assert.deepEqual(
+      await textsOf(page, 'app-guardrails-page .ocu-guardrails-turns'),
+      [STRINGS.agentGuardrailsTurnsLimit.replace('<n>', '7')],
+      'the turns line names 7'
+    );
+    assert.equal(
+      await page.$eval('app-guardrails-page .ocu-guardrails-limits + .ocu-guardrails-turns', (node) => node.tagName),
+      'P',
+      'directly beneath the limits line'
+    );
+  } finally {
+    await context.close();
     await restoreSwitches();
   }
 });

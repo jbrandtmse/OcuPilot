@@ -14,6 +14,9 @@
  *    Routines and classes tabs add and remove a role, a matching role and a routine, each row appearing and going and
  *    the instance holding the change; a privileged role states its effect and a routine added under it does too; and
  *    OcuPilot's own application draws every tab control `aria-disabled`, which a click leaves as it was.
+ * 4. **The two lists the agent reads** (Story 18.12): on a probe holding two entries in each list, the roles and
+ *    the routines lists open at their routes with the application's name, show one row per entry once the table has
+ *    answered (the application roles under "Every caller"), and the locator's screen segment leads back to the list.
  *
  * **It refuses the live and development containers.** It touches only probe applications named `OcuProbe1831...` and
  * probe roles named `OcuProbe1833Role...`: `before` and `after` remove them by exact name with
@@ -49,6 +52,9 @@ const LIST_URL = '/ocupilot/web-applications/routine-applications?ns=HSCUSTOM';
 const FORM_ROUTE = 'web-applications/routine-applications/edit';
 const SAVE_PATH = '/api/ocupilot/routine-application';
 const ACTION_PATH = '/api/ocupilot/screens/webapp.routineapps/action';
+const LISTS_NAME = 'OcuProbe1831Lists';
+const ROLES_ROUTE = 'web-applications/routine-applications/roles';
+const ROUTINES_ROUTE = 'web-applications/routine-applications/routines';
 
 let browser = null;
 
@@ -385,6 +391,52 @@ test("C2, C4, C5: the editor's tabs add and remove a role, a matching role and a
     await page.waitForNetworkIdle({ idleTime: 500, timeout: config.navigationTimeoutMs });
     assert.equal(actions.length, sent, 'and a click on any of them sends nothing');
     assert.equal(own(), ownBefore, "OcuPilot's own applications read as before");
+  } finally {
+    await context.close();
+    removeProbes();
+  }
+});
+
+// Mutation (Rule 19), rebuilt and redeployed: drop the roles list's `emptyKey` and the application roles read as "(none)"
+// -> the first roles row goes red.
+test('Story 18.12: the roles and routines lists open at their routes, show one row per entry, and the locator leads back to the list', async () => {
+  removeProbes();
+  iris([
+    `Do ##class(${PROBE}).Seed("","${LISTS_NAME}",{"Description":"lists","Enabled":true,"Resource":"","MatchRoles":[{"MatchRole":"","TargetRoles":["%DB_HSCUSTOM"]},{"MatchRole":"%Developer","TargetRoles":["%Manager","%Operator"]}],"Routines":[{"RoutineOrClass":"OcuProbe1831.First","Db":"HSCUSTOM","Type":"Class"},{"RoutineOrClass":"OcuProbe1831Second","Db":"HSCUSTOM","Type":"Routine"}]})`,
+  ]);
+  const lists = [
+    {
+      route: ROLES_ROUTE,
+      label: STRINGS.routineAppRolesLabel,
+      rows: [
+        [STRINGS.routineAppRolesEveryCaller, '%DB_HSCUSTOM'],
+        ['%Developer', '%Manager, %Operator'],
+      ],
+    },
+    {
+      route: ROUTINES_ROUTE,
+      label: STRINGS.routineAppTabRoutines,
+      rows: [
+        ['OcuProbe1831.First', 'HSCUSTOM', 'Class'],
+        ['OcuProbe1831Second', 'HSCUSTOM', 'Routine'],
+      ],
+    },
+  ];
+  const cellsOf = (page) =>
+    page.$$eval(ROW_SELECTOR, (rows) =>
+      rows.map((row) => Array.from(row.querySelectorAll('[role="gridcell"]')).map((cell) => cell.textContent.replace(/\s+/g, ' ').trim()).filter((text) => text !== ''))
+    );
+  const { context, page } = await signedInAt(browser, config, `/ocupilot/${ROLES_ROUTE}/${encodeURIComponent(LISTS_NAME)}?ns=HSCUSTOM`);
+  try {
+    for (const [index, list] of lists.entries()) {
+      if (index > 0) await page.goto(`${config.origin}/ocupilot/${list.route}/${encodeURIComponent(LISTS_NAME)}?ns=HSCUSTOM`, { waitUntil: 'networkidle2' });
+      await page.waitForFunction((selector, count) => document.querySelectorAll(selector).length === count, { timeout: config.navigationTimeoutMs }, ROW_SELECTOR, list.rows.length);
+      assert.deepEqual(await cellsOf(page), list.rows, `${list.route} shows one row per entry the instance holds`);
+      assert.equal(await page.$eval('#ocu-locator-screen', (heading) => heading.textContent.trim()), list.label, `the locator names ${list.label}`);
+      await page.click('#ocu-locator-screen button.ocu-locator-link');
+      await page.waitForFunction(() => new URL(window.location.href).pathname.endsWith('/web-applications/routine-applications'), { timeout: config.navigationTimeoutMs });
+      await waitForListAnswered(page);
+    }
   } finally {
     await context.close();
     removeProbes();

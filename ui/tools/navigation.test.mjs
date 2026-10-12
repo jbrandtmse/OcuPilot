@@ -262,6 +262,9 @@ test('a side bar lists only built screens, in side-bar order', () => {
       'web-applications/rest-apis/document',
       // Story 18.31: the unlisted privileged routine application editor, reached from Privileged routine applications.
       'web-applications/routine-applications/edit',
+      // Story 18.12: the unlisted roles and routines lists of one privileged routine application, by descriptor class name.
+      'web-applications/routine-applications/roles',
+      'web-applications/routine-applications/routines',
       'web-applications/list/edit',
       // Story 18.10: the percent-class access list, unlisted, the editor's fifth tab.
       'web-applications/list/class-access',

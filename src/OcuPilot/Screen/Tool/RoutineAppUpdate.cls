@@ -20,7 +20,7 @@ Parameter TOOLNAME = "webapp.routineapps.update";
 
 Parameter DESCRIPTORCLASS = "OcuPilot.Screen.Descriptor.RoutineAppList";
 
-Parameter DESCRIPTION = "Propose a change to one privileged routine application. It changes nothing by itself: it answers a proposal the user reviews and confirms. Name the application exactly as the privileged routine applications list reports it and send only what to change: the description, whether it is enabled, the service, system or application resource that controls it, its roles (MatchRoles) or its routines and classes (Routines). MatchRoles and Routines are each the complete list after the change, so an entry left out is removed. Granting %All or a role that carries an administrative privilege, or adding a routine while such a role is granted, is proposable and is confirmed as a delete is. The application's name cannot be changed. Changes to OcuPilot's own two privileged routine applications are refused.";
+Parameter DESCRIPTION = "Propose a change to one privileged routine application. It changes nothing by itself: it answers a proposal the user reviews and confirms. Name the application exactly as the privileged routine applications list reports it and send only what to change: the description, whether it is enabled, the service, system or application resource that controls it, its roles (MatchRoles) or its routines and classes (Routines). MatchRoles and Routines are each the complete list after the change, so an entry left out is removed. Read the current lists first with webapp.routineapproles.read and webapp.routineapproutines.read, and send each list whole with only your change. Granting %All or a role that carries an administrative privilege, or adding a routine while such a role is granted, is proposable and is confirmed as a delete is. The application's name cannot be changed. Changes to OcuPilot's own two privileged routine applications are refused.";
 
 Parameter PORTCLASS = "OcuPilot.Port.AdminPort";
 
@@ -54,6 +54,26 @@ ClassMethod Endpoint() As %String
 ClassMethod MintClass() As %String
 {
     Quit "OcuPilot.Kernel.Proposal.Mint"
+}
+
+/// <p>The merge of <class>OcuPilot.Screen.Tool.DocDbAppUpdate</class>, with a sent <code>MatchRoles</code> or
+/// <code>Routines</code> that holds the fresh read's entries in another order taken as the fresh read's list. The
+/// vendor keeps each list in an order of its own (matching roles by name with the application roles last, routines by
+/// name), while the lists' reads sort theirs, so a list sent back as read changes nothing. Entries are compared as
+/// <method>OcuPilot.Kernel.Proposal.ReadBack.Same</method> compares an <code>unordered</code> list. The caller's
+/// arguments are not changed.</p>
+ClassMethod MergeUpdate(pFresh As %DynamicObject, pArgs As %DynamicObject, pIdArgument As %String, pSettable As %List, Output pPayload As %DynamicObject, Output pDiff As %DynamicArray, Output pUnchanged As %Integer, Output pProblem As %String) As %Status
+{
+    Set tArgs = pArgs
+    If $IsObject(pArgs) && $IsObject(pFresh) {
+        For tList = "MatchRoles", "Routines" {
+            If (pArgs.%GetTypeOf(tList) '= "array") || (pFresh.%GetTypeOf(tList) '= "array") Continue
+            If '##class(OcuPilot.Kernel.Proposal.ReadBack).Same(pArgs.%Get(tList), "array", pFresh.%Get(tList), "array", "unordered") Continue
+            If tArgs = pArgs Set tArgs = ##class(%DynamicAbstractObject).%FromJSON(pArgs.%ToJSON())
+            Do tArgs.%Set(tList, ##class(%DynamicAbstractObject).%FromJSON(pFresh.%Get(tList).%ToJSON()))
+        }
+    }
+    Quit ##super(pFresh, tArgs, pIdArgument, pSettable, .pPayload, .pDiff, .pUnchanged, .pProblem)
 }
 
 /// <p>The three settings and the two lists, which only the agent's update sends whole and a screen action changes by a

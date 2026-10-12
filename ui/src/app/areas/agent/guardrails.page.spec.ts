@@ -45,7 +45,7 @@ describe('GuardrailsPage', () => {
       STRINGS.agentSwitchesLabel,
       STRINGS.agentGuardrailsConfirmHeading,
       STRINGS.agentGuardrailsNeverHeading,
-      STRINGS.transcriptScreenContext,
+      STRINGS.agentGuardrailsLimitsHeading,
     ]);
     expect(root.querySelector('.ocu-guardrails-fault')).toBeNull();
     expect(root.querySelector('.ocu-guardrails')?.getAttribute('aria-busy')).toBe('false');
@@ -132,12 +132,28 @@ describe('GuardrailsPage', () => {
 
   it('prints the limits line with each number grouped', async () => {
     const body = guardrailsBody();
-    body['limits'] = { contextRowCap: 150, totalMaxLength: 65536, fieldMaxLength: 1000 };
+    body['limits'] = { contextRowCap: 150, totalMaxLength: 65536, fieldMaxLength: 1000, turnsPerHour: 0 };
     const { root } = await mount(stubGuardrails({ body }));
     const [line] = texts(root, '.ocu-guardrails-limits');
     expect(line).toContain('150');
     expect(line).toContain('65,536');
     expect(line).toContain('1,000');
+  });
+
+  it('names the turns an hour in force below the limits line, and no limit at 0', async () => {
+    // Mutation (Rule 19): remove the page's `.ocu-guardrails-turns` line -> both legs go red.
+    for (const [turnsPerHour, line] of [
+      [0, STRINGS.agentGuardrailsTurnsNone],
+      [7, STRINGS.agentGuardrailsTurnsLimit.replace('<n>', '7')],
+      [1200, STRINGS.agentGuardrailsTurnsLimit.replace('<n>', '1,200')],
+    ] as const) {
+      const body = guardrailsBody();
+      body['limits'] = { contextRowCap: 200, totalMaxLength: 65536, fieldMaxLength: 1000, turnsPerHour };
+      const { root } = await mount(stubGuardrails({ body }));
+      expect(texts(root, '.ocu-guardrails-turns')).toEqual([line]);
+      const section = root.querySelector('.ocu-guardrails-limits')?.parentElement;
+      expect(section?.querySelector('.ocu-guardrails-limits + .ocu-guardrails-turns') ?? null).not.toBeNull();
+    }
   });
 
   it('shows the fault line and no section when the read fails', async () => {

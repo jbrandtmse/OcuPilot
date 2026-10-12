@@ -6,6 +6,8 @@
 // - `readOnlyLine` answers the off line whatever `enforcedReadOnly` reads -> "the read-only line
 //   follows enforcedReadOnly" goes red.
 // - `limitsLine` prints a constant 200 for `<rows>` -> "the limits line groups each number" goes red.
+// - `turnsLine` answers the none sentence always -> "the turns line reads no limit at 0 and the limit,
+//   grouped, above it" goes red.
 // - `reset()` bumps neither `generation` nor `request` -> "a read in flight across reset() never
 //   lands" goes red.
 
@@ -17,7 +19,7 @@ import { dirname, join } from 'node:path';
 const uiRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 const core = (name) => join(uiRoot, 'src', 'app', 'core', name);
 
-const { Guardrails, GUARDRAILS_PATH, narrowGuardrails, confirmGroups, killSwitchLine, readOnlyLine, limitsLine } =
+const { Guardrails, GUARDRAILS_PATH, narrowGuardrails, confirmGroups, killSwitchLine, readOnlyLine, limitsLine, turnsLine } =
   await import(core('guardrails.ts'));
 const { STRINGS } = await import(core('strings.ts'));
 
@@ -30,7 +32,7 @@ function body(overrides = {}) {
     switches: { killSwitch: false, killSwitchAudience: '', enforcedReadOnly: false },
     confirmTools: [{ name: 'a.b.c', descriptor: 'D1' }],
     secrets: [{ tool: 'a.b.c', fields: ['Password'] }],
-    limits: { contextRowCap: 200, totalMaxLength: 65536, fieldMaxLength: 1000 },
+    limits: { contextRowCap: 200, totalMaxLength: 65536, fieldMaxLength: 1000, turnsPerHour: 0 },
     ...overrides,
   };
 }
@@ -87,7 +89,10 @@ test('a malformed answer counts as a failed read', async () => {
     body({ switches: { killSwitch: 'false', killSwitchAudience: '', enforcedReadOnly: false } }),
     body({ confirmTools: [{ name: 'x' }] }),
     body({ secrets: [{ tool: 'x', fields: [1] }] }),
-    body({ limits: { contextRowCap: '200', totalMaxLength: 1, fieldMaxLength: 1 } }),
+    body({ limits: { contextRowCap: '200', totalMaxLength: 1, fieldMaxLength: 1, turnsPerHour: 0 } }),
+    body({ limits: { contextRowCap: 200, totalMaxLength: 1, fieldMaxLength: 1 } }),
+    body({ limits: { contextRowCap: 200, totalMaxLength: 1, fieldMaxLength: 1, turnsPerHour: '7' } }),
+    body({ limits: { contextRowCap: 200, totalMaxLength: 1, fieldMaxLength: 1, turnsPerHour: -1 } }),
     body({ limits: undefined }),
   ]) {
     assert.equal(narrowGuardrails(bad), null, JSON.stringify(bad));
@@ -164,10 +169,19 @@ test('the read-only line follows enforcedReadOnly', () => {
 });
 
 test('the limits line groups each number en-US', () => {
-  const line = limitsLine({ contextRowCap: 150, totalMaxLength: 65536, fieldMaxLength: 1000 });
+  const line = limitsLine({ contextRowCap: 150, totalMaxLength: 65536, fieldMaxLength: 1000, turnsPerHour: 0 });
   assert.equal(
     line,
     STRINGS.agentGuardrailsContextLimits.replace('<rows>', '150').replace('<total>', '65,536').replace('<field>', '1,000')
   );
   assert.ok(!line.includes('<'), 'no placeholder survives');
+});
+
+test('the turns line reads no limit at 0 and the limit, grouped, above it', () => {
+  const limits = { contextRowCap: 200, totalMaxLength: 65536, fieldMaxLength: 1000 };
+  assert.equal(turnsLine({ ...limits, turnsPerHour: 0 }), STRINGS.agentGuardrailsTurnsNone);
+  assert.equal(turnsLine({ ...limits, turnsPerHour: 1 }), STRINGS.agentGuardrailsTurnsLimit.replace('<n>', '1'));
+  const grouped = turnsLine({ ...limits, turnsPerHour: 1200 });
+  assert.equal(grouped, STRINGS.agentGuardrailsTurnsLimit.replace('<n>', '1,200'));
+  assert.ok(!grouped.includes('<'), 'no placeholder survives');
 });

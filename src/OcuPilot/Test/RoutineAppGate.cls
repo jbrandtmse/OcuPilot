@@ -3,7 +3,8 @@
 /// the form, creates, changes and deletes a probe application over the wire, and confirms the agent's change in a process of
 /// its own; without <code>%Admin_Secure:USE</code> both reads, every write and the confirm are refused naming it and the
 /// screen is unavailable; and without <code>%DB_IRISSYS:READ</code> every write and the confirm are refused naming it.
-/// Every refusal leaves the application list as it found it.</p>
+/// Every refusal leaves the application list as it found it. Without <code>%Admin_Secure:USE</code> the roles and routines
+/// lists' reads (Story 18.12) are refused naming it too.</p>
 /// <p>The legs are <class>OcuPilot.Test.DocDbAppGate</class>'s, over the privileged routine applications' screen, tools
 /// and Save route, an application named by its name alone. The agent's confirm runs in a child process logged in as the
 /// principal (<method>OcuPilot.Test.RoutineAppProbe.RunAs</method>), which reaches the real port.</p>
@@ -58,6 +59,19 @@ Method TestWithoutAPairTheRoleAndRoutineActionsAreRefusedByName()
         Do $$$AssertEquals(..Wire("POST", tPath, {"action": "add-routine", "id": (..Id(..Name("A"))), "values": {"RoutineOrClass": "OcuProbe1833.Gate", "Db": "HSCUSTOM", "Type": "Class"}}, tUser), "403 " _ $List(tCase, 2), tUser _ ": and a routine")
     }
     Do $$$AssertEquals($ClassMethod(..#PROBE, "Facts"), ..PreparedSeeded, "nothing was written")
+}
+
+/// <p>Story 18.12: the roles list's read and the routines list's are each refused 403 naming
+/// <code>%Admin_Secure:USE</code> without it, and accepted for the holder of the area's two pairs.</p>
+/// <p>Mutation (Rule 19): drop <code>%Admin_Secure</code> from the pairs of
+/// <class>OcuPilot.Screen.Descriptor.RoutineAppRoleList</class> -- the outsider's roles leg goes red.</p>
+Method TestWithoutTheAreasResourceBothListReadsAreRefusedByName()
+{
+    For tScreen = "webapp.routineapproles", "webapp.routineapproutines" {
+        Set tPath = "/screens/" _ tScreen _ "/read?name=" _ ..Name("A")
+        Do $$$AssertEquals(..Wire("GET", tPath, "", ..User(1)), "200 ", tScreen _ ": the holder's read is accepted")
+        Do $$$AssertEquals(..Wire("GET", tPath, "", ..User(2)), "403 %Admin_Secure:USE", tScreen _ ": the read is refused naming the pair")
+    }
 }
 
 }
