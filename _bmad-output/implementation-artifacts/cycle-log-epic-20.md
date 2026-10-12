@@ -553,3 +553,6 @@
 2026-10-12T13:29:25Z	Epic 20	ledger_filed	DW-2353 CI_flake InteropQueueActions(run_38250559529_attempt1_shard6/8_class_run_37) routed=burndown by=lead(orchestrator)
 2026-10-12T13:29:25Z	Epic 20	orchestrator_ruling	1.0.12_cut_gated_on_20.28+18.39; plan_and_gate_20.28_now; implement_after_20.13_code_head_pushed; push_20.28_after_20.13_green; guard_same_shape_as_upgrade_check(IPM_into_non-interop_namespace)
 2026-10-12T13:29:25Z	Epic 20	deps_hash_rerecorded	reason=ledger_routed(20.7_DW_lines)+rule5_amendment(20.28_AC3)
+2026-10-12T13:30:43Z	Epic 20	stage_spawned	stage=epic-context spawn_at=2026-10-12T13:30:43Z model=opus agent_name=20-context-recompile reason=planning_artifact_newer(20.13_spine_AD-63/28/47,20.28_charter)
+2026-10-12T13:33:38Z	Epic 20	epic_context_compiled	reason=planning_artifact_newer(20.13_spine,20.28_charter) model=opus lines=146
+2026-10-12T13:33:38Z	Story 20.28	stage_spawned	stage=plan spawn_at=2026-10-12T13:33:38Z model=opus agent_name=20-28-plan-1 cycle_iteration=1 inbox=DW-2343
