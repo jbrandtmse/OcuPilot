@@ -238,6 +238,7 @@ XData Coverage
 <screen name="InteropItemLogTab" class="OcuPilot.Test.InteropHostDescriptor" method="TestTheNineDeclarationsRegister" corpus="one declaration test pins all nine Story 20.4 runtime screens in one loop"/>
 <screen name="InteropItemMessageTab" class="OcuPilot.Test.InteropHostDescriptor" method="TestTheNineDeclarationsRegister" corpus="one declaration test pins all nine Story 20.4 runtime screens in one loop"/>
 <screen name="InteropItemJobTab" class="OcuPilot.Test.InteropHostDescriptor" method="TestTheNineDeclarationsRegister" corpus="one declaration test pins all nine Story 20.4 runtime screens in one loop"/>
+<screen name="InteropItemTestTab" class="OcuPilot.Test.InteropTestDescriptor" method="TestTheTabIsDeclaredAsTheSpecPlacesIt"/>
 <screen name="InteropLookupTableList" class="OcuPilot.Test.InteropLookupDescriptor" method="TestTheThreeDeclarationsRegister" corpus="one declaration test pins all three Story 20.5 screens in one loop"/>
 <screen name="InteropLookupEntryList" class="OcuPilot.Test.InteropLookupDescriptor" method="TestTheThreeDeclarationsRegister" corpus="one declaration test pins all three Story 20.5 screens in one loop"/>
 <screen name="InteropBusinessPartnerList" class="OcuPilot.Test.InteropLookupDescriptor" method="TestTheThreeDeclarationsRegister" corpus="one declaration test pins all three Story 20.5 screens in one loop"/>
@@ -409,6 +410,7 @@ XData Coverage
 <tool name="interop.lookuptables.delete" class="OcuPilot.Test.InteropLookupControl" method="TestTheAgentsDeleteConfirmsOverHttp"/>
 <tool name="interop.lookuptables.export" class="OcuPilot.Test.InteropLookupTransfer" method="TestTheAgentsExportConfirmsOverHttp"/>
 <tool name="interop.lookuptables.import" class="OcuPilot.Test.InteropLookupTransfer" method="TestTheAgentsImportConfirmsOverHttp"/>
+<tool name="interop.itemtest.send" class="OcuPilot.Test.InteropHostTest" method="TestTheAgentsSendConfirmsOverHttp"/>
 <tool name="osmgmt.remotedatabases.create" class="OcuPilot.Test.RemoteDatabaseDescriptor" method="TestTheToolsDeclareTheirFieldsKindsAndPairs" corpus="the three remote database tools are asserted together in one loop"/>
 <tool name="osmgmt.remotedatabases.update" class="OcuPilot.Test.RemoteDatabaseDescriptor" method="TestTheToolsDeclareTheirFieldsKindsAndPairs" corpus="the three remote database tools are asserted together in one loop"/>
 <tool name="osmgmt.remotedatabases.delete" class="OcuPilot.Test.RemoteDatabaseDescriptor" method="TestTheToolsDeclareTheirFieldsKindsAndPairs" corpus="the three remote database tools are asserted together in one loop"/>

@@ -174,6 +174,7 @@ XData Elsewhere
 <screen name="InteropItemQueueTab"/>
 <screen name="InteropItemSettingList"/>
 <screen name="InteropItemStatusTab"/>
+<screen name="InteropItemTestTab"/>
 <screen name="InteropJobList"/>
 <screen name="InteropLookupEntryList"/>
 <screen name="InteropLookupTableList"/>

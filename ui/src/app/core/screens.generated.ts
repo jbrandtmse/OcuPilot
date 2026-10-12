@@ -13209,6 +13209,186 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "entityLabelKey": ""
   },
   {
+    "descriptor": "OcuPilot.Screen.Descriptor.InteropItemTestTab",
+    "route": "interoperability/productions/items/test",
+    "area": "interoperability",
+    "labelKey": "interopItemTestLabel",
+    "sideBarPosition": 0,
+    "archetype": "detail",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Ens_Portal",
+        "permission": "USE"
+      },
+      {
+        "resource": "%Ens_TestingService",
+        "permission": "USE"
+      }
+    ],
+    "ownPrivileges": [
+      {
+        "resource": "%Ens_TestingService",
+        "permission": "USE"
+      }
+    ],
+    "entityType": "production-item",
+    "secondaryEntityTypes": [],
+    "scope": "namespace",
+    "parentScope": "interoperability/productions/items",
+    "id": {
+      "kind": "composite",
+      "parts": [
+        "RequestClass",
+        "Field"
+      ]
+    },
+    "primaryAction": {
+      "id": "test",
+      "selfProtection": ""
+    },
+    "rowActions": [
+      {
+        "id": "test",
+        "selfProtection": ""
+      }
+    ],
+    "context": {
+      "fields": [
+        "RequestClass",
+        "Kind",
+        "Field",
+        "Type",
+        "Required",
+        "Secret"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "interopItemTestEmpty",
+    "commandAliases": [],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "interopItemTestPrompt1"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "interopItemTestPrompt2"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "interopItemTestPrompt3"
+      }
+    ],
+    "classicPage": "EnsPortal.TestingService",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "interop",
+        "endpoint": "ItemTest",
+        "type": "LIST"
+      },
+      "fields": [
+        "Production",
+        "Item",
+        "RequestClass",
+        "Kind",
+        "Field",
+        "Type",
+        "Required",
+        "MaxLength",
+        "Values",
+        "Secret"
+      ],
+      "filter": [
+        "RequestClass",
+        "Field",
+        "Type"
+      ],
+      "sort": {
+        "fields": [
+          "RequestClass",
+          "Field"
+        ],
+        "default": "RequestClass",
+        "direction": "asc"
+      },
+      "paging": "cap",
+      "criteria": {
+        "fields": [
+          {
+            "param": "item",
+            "labelKey": "interopItemSettingsCriterionItem",
+            "kind": "text",
+            "maxLength": 352,
+            "hint": "One item, spelled as interop.items.read answers its Production, then two vertical bars and its Name."
+          }
+        ]
+      }
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "RequestClass",
+          "labelKey": "interopTestColumnRequestClass",
+          "kind": "identifier"
+        },
+        {
+          "field": "Field",
+          "labelKey": "explorerSqlColumnField",
+          "kind": "name"
+        },
+        {
+          "field": "Type",
+          "labelKey": "tableColumnType",
+          "kind": "text"
+        },
+        {
+          "field": "Required",
+          "labelKey": "openApiRequired",
+          "kind": "status"
+        },
+        {
+          "field": "MaxLength",
+          "labelKey": "explorerSqlColumnMaxLength",
+          "kind": "number"
+        },
+        {
+          "field": "Values",
+          "labelKey": "interopTestColumnValues",
+          "kind": "text"
+        },
+        {
+          "field": "Secret",
+          "labelKey": "interopTestColumnSecret",
+          "kind": "status"
+        }
+      ],
+      "emptyNextKey": "",
+      "emptyAgentKey": "interopItemTestEmptyAgent"
+    },
+    "tab": {
+      "group": "interoperability/productions/items/document",
+      "position": 7,
+      "labelKey": "serverFlagTest"
+    },
+    "toolIdentifier": "interop.itemtest",
+    "refreshDefault": 0,
+    "banner": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
     "descriptor": "OcuPilot.Screen.Descriptor.InteropJobList",
     "route": "interoperability/jobs",
     "area": "interoperability",

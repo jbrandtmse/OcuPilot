@@ -909,6 +909,7 @@ test('tabProblem and tabGroupProblem return every sentence OcuPilot.Test.TabCorp
     ['system-explorer/sql-tables/triggers', 'system-explorer/sql-tables/document', 6, 0],
     ['interoperability/productions/items/jobs', 'interoperability/productions/items/document', 6, 0],
     ['system-explorer/sql-tables/constraints', 'system-explorer/sql-tables/document', 7, 0],
+    ['interoperability/productions/items/test', 'interoperability/productions/items/document', 7, 0],
     ['system-explorer/sql-tables/cached-queries', 'system-explorer/sql-tables/document', 8, 0],
     ['system-explorer/sql-tables/statements', 'system-explorer/sql-tables/document', 9, 0],
   ]);
@@ -1401,6 +1402,7 @@ test('criteriaProblem returns every sentence OcuPilot.Test.CriteriaCorpus declar
       'OcuPilot.Screen.Descriptor.InteropItemQueueTab',
       'OcuPilot.Screen.Descriptor.InteropItemSettingList',
       'OcuPilot.Screen.Descriptor.InteropItemStatusTab',
+      'OcuPilot.Screen.Descriptor.InteropItemTestTab',
       'OcuPilot.Screen.Descriptor.InteropLookupEntryList',
       'OcuPilot.Screen.Descriptor.InteropQueueMessageList',
       'OcuPilot.Screen.Descriptor.JournalFileDatabaseList',
@@ -1567,12 +1569,16 @@ test('every declared banner severity has a .ocu-banner- rule in the stylesheet, 
 // value and default are empty when it is true. A lookup table's entries (Story 20.5) carry `Key`, the entry's lookup
 // key, which is not key material, and the same `Secret` flag, set for a key that matches the pattern, with an empty
 // value. Each exemption names the descriptor and the surface it is declared on, so the field on any other screen or
-// surface is still an offender.
+// surface is still an offender. An item's Test tab (Story 20.6) lists each field of a request class with a `Secret` flag, set
+// true for a field the port finds named like a credential, which a test sends no value for; the flag holds no credential.
 //
 // Mutation (Rule 19): rename a production column field to `ApiKey` -> this goes red naming the
 // descriptor and the field.
 const CREDENTIAL_FLAG_FIELDS = new Set([
   'InteropItemSettingList.cls read.fields: Secret',
+  'InteropItemTestTab.cls read.fields: Secret',
+  'InteropItemTestTab.cls table.columns: Secret',
+  'InteropItemTestTab.cls context.fields: Secret',
   'InteropLookupEntryList.cls read.fields: Key',
   'InteropLookupEntryList.cls read.fields: Secret',
   'InteropLookupEntryList.cls read.filter: Key',
@@ -2427,7 +2433,8 @@ test('ownPrivilegesProblem returns every sentence OwnPrivilegeCases declares, an
   // owns %Ens_ProductionConfig:READ the same way. Story 20.4's nine screens own their classic page's resource: the
   // item's six tabs %Ens_ProductionConfig:READ and each its tab's, Production monitor %Ens_Dashboard:USE, Queues and
   // Queue messages %Ens_Queues:READ, and Jobs %Ens_Jobs:READ. Story 20.5's Lookup tables and a table's entries own
-  // %Ens_LookupTables:READ, and Business partners %Ens_ProductionConfig:READ.
+  // %Ens_LookupTables:READ, and Business partners %Ens_ProductionConfig:READ. Story 20.6's item Test tab owns
+  // %Ens_TestingService:USE.
   assert.deepEqual(
     owners.sort(),
     [
@@ -2446,6 +2453,7 @@ test('ownPrivilegesProblem returns every sentence OwnPrivilegeCases declares, an
       'OcuPilot.Screen.Descriptor.InteropItemQueueTab',
       'OcuPilot.Screen.Descriptor.InteropItemSettingList',
       'OcuPilot.Screen.Descriptor.InteropItemStatusTab',
+      'OcuPilot.Screen.Descriptor.InteropItemTestTab',
       'OcuPilot.Screen.Descriptor.InteropJobList',
       'OcuPilot.Screen.Descriptor.InteropLookupEntryList',
       'OcuPilot.Screen.Descriptor.InteropLookupTableList',

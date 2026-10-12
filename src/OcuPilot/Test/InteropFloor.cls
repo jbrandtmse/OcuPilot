@@ -56,11 +56,13 @@ Parameter OPERATORSCREENS = "InteropBusinessPartnerList,InteropItemJobTab,Intero
 Parameter OPERATORTOOLS = "interop.businesspartners.read,interop.itemjobs.read,interop.itemlog.read,interop.itemmessages.read,interop.itemqueue.read,interop.items.read,interop.itemsettings.read,interop.itemstatus.read,interop.jobs.read,interop.lookupentries.read,interop.lookuptables.read,interop.productions.read,interop.queuemessages.read,interop.queues.read,logs.eventlog.read";
 
 /// <p>What the Administrator role adds beside the Operator's: the three code lists, each through its
-/// own <code>%Ens_Code:READ</code>.</p>
-Parameter ADMINISTRATORSCREENS = "InteropProcessList,InteropRuleList,InteropTransformList";
+/// own <code>%Ens_Code:READ</code>, and an item's Test tab (Story 20.6) through the <code>%Ens_TestingService:USE</code> the
+/// role holds (measured at that story's plan: <code>%EnsRole_Administrator</code> holds <code>%Ens_TestingService:U</code>, the
+/// Operator and Monitor roles do not).</p>
+Parameter ADMINISTRATORSCREENS = "InteropItemTestTab,InteropProcessList,InteropRuleList,InteropTransformList";
 
 /// <p>See <parameter>ADMINISTRATORSCREENS</parameter>.</p>
-Parameter ADMINISTRATORTOOLS = "interop.processes.read,interop.rules.read,interop.transforms.read";
+Parameter ADMINISTRATORTOOLS = "interop.itemtest.read,interop.processes.read,interop.rules.read,interop.transforms.read";
 
 /// <p>The principals' password for this run.</p>
 Property PreparedPassword As %String;

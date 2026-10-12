@@ -11368,6 +11368,26 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: 18.12's re-plan survey of descriptors against read tools; C1 checks write fields only
 - 2026-10-12T01:03:05Z status=routed owner=burndown by=spec_gate note=the Epic 18 burn-down decides: widen the reads or record why each field stays form-only
 
+### DW-2343: InteropPort cannot compile in an install namespace without interoperability: Story 20.6's Include Ensemble and Story 20.3's Ens.Config-typed method arguments both need ENSLIB
+- source: spec-20-6-testing-hosts-and-transformations.md | severity: med | fix-risk: med | footprint: in-epic
+- evidence: Probed on ocupilot-b-ci HSSYSLOCALTEMP (no interoperability): #include Ensemble fails MPP5635 and an argument As Ens.Config.Item fails #5373 (both probes removed); README:365 admits an IPM install into any non-system namespace
+- 2026-10-12T08:23:20Z status=decision-pending owner=burndown by=cr note=product call: support a non-interop install namespace (drop include and Ens types) or say README needs one
+
+### DW-2344: The Test dialog builds its form from the tab's capped rows, so past the row cap a class can be offered with fields missing, and the dialog does not say the list is cut
+- source: spec-20-6-testing-hosts-and-transformations.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: interop-item-test.page.ts rows reads store.data() (paging cap) and never truncated(); InteropPort.GatherTestFields cuts mid-class at the cap; a router lists every message class (the spec's named limit)
+- 2026-10-12T08:23:29Z status=wontfix-accepted owner=20-6-testing-hosts-and-transformations by=cr note=named limit; reopen_if=a router's Test dialog lacks a class or field the classic Testing Service form shows
+
+### DW-2345: InteropPort.EndTestCapture is a third copy of the capture-end loop AtelierPort and MgmntPort each inline, though the spec asked for the capture to be called rather than copied
+- source: spec-20-6-testing-hosts-and-transformations.md | severity: low | fix-risk: med | footprint: out-of-footprint
+- evidence: InteropPort.cls EndTestCapture against AtelierPort.cls:3058-3075 and MgmntPort.cls:782-791: the same EndCapture-and-join loop under a ceiling; one shared helper means editing two other epics' ports
+- 2026-10-12T08:23:29Z status=wontfix-accepted owner=20-6-testing-hosts-and-transformations by=cr note=reopen_if=a fourth port copies the loop, or the copies diverge on the ceiling or the nested-capture refusal
+
+### DW-2346: AD-36's Story 20.6 case says the Test tab is read from the class dictionary, but the item's own request classes come from the host class's GetMessageList (AD-62 item 11's named limit)
+- source: spec-20-6-testing-hosts-and-transformations.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: ARCHITECTURE-SPINE.md:782 against InteropPort.OwnRequestTypesHere, which calls the host class's GetMessageList; the three code doc comments saying the same were corrected in review; the spine is the runner's (Rule 20)
+- 2026-10-12T08:23:29Z status=open owner=20-6-testing-hosts-and-transformations by=cr note=lead rewords AD-36 :782 (own classes from GetMessageList; subclasses, fields from the dictionary) before smoke
+- 2026-10-12T08:25:32Z status=resolved-by:20-6-testing-hosts-and-transformations by=adjudication note=AD-36 corrected at origin: GetMessageList lists the classes, the class dictionary the fields
 ### DW-2340: The Dashboard's drill-down links draw live for a screen the caller is refused (AD-44 classic-page resource or AD-64 adjustment), not gated with the reason as EXPERIENCE.md :214-216 asks
 - source: spec-18-36-dashboard-drill-downs.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: dashboard.page.ts linksFor filters on built alone, while side-bar.ts and home.page.ts gate on screenVerdict with aria-disabled and the Requires reason; following such a link shows the outlet's Requires page

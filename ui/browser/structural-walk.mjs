@@ -113,6 +113,8 @@ export const SKIP = {
   'interoperability/productions/items/log': 'HSCUSTOM holds no production, so the Productions list opens with no row to open',
   'interoperability/productions/items/messages': 'HSCUSTOM holds no production, so the Productions list opens with no row to open',
   'interoperability/productions/items/jobs': 'HSCUSTOM holds no production, so the Productions list opens with no row to open',
+  // Story 20.6: the item's Test tab is reached from the same row; interop-item-test.browser-spec.mjs walks it on the probe production.
+  'interoperability/productions/items/test': 'HSCUSTOM holds no production, so the Productions list opens with no row to open',
   'interoperability/queues/messages': 'HSCUSTOM runs no production, so the Queues list opens with no row to open',
   // Story 20.5: a table's entries are reached from a Lookup tables name cell and need that table's name as their id, which the
   // walk does not create; interop-lookup-tables.browser-spec.mjs walks them on the probe table it creates.

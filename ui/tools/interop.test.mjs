@@ -91,6 +91,15 @@ const SENTENCES = [
   ['REASONLOOKUPTOOLARGE', 'interopLookupRefusalTooLarge'],
   ['REASONLOOKUPEXPORTNAME', 'interopLookupRefusalExportName'],
   ['REASONLOOKUPIMPORT', 'interopLookupImportConsequence'],
+  ['REASONTESTDISABLED', 'interopTestRefusalDisabled'],
+  ['REASONTESTTARGETTYPE', 'interopTestRefusalTargetType'],
+  ['REASONTESTTARGETDISABLED', 'interopTestRefusalTargetDisabled'],
+  ['REASONTESTREQUESTTYPE', 'interopTestRefusalRequestType'],
+  ['REASONTESTSECRET', 'interopTestRefusalSecret'],
+  ['REASONTESTFIELD', 'interopTestRefusalField'],
+  ['REASONTESTVALUE', 'interopTestRefusalValue'],
+  ['REASONTESTREQUEST', 'interopTestRefusalRequest'],
+  ['REASONTESTSENDS', 'interopTestSendsConsequence'],
 ];
 
 /** The value `key` holds in `strings.ts`, which may sit on the line after its key. */

@@ -2,9 +2,11 @@
 title: 'Story 20.6: Testing hosts and transformations'
 type: 'feature'
 created: '2026-10-11'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: '73f084ec7c8884bcc9022d1b89a01222d9b6e76f'
+baseline_commit: '73f084ec7c8884bcc9022d1b89a01222d9b6e76f'
 review_loop_iteration: 0
-followup_review_recommended: false
+followup_review_recommended: true
 context:
   - '{project-root}/_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md'
   - '{project-root}/_bmad-output/planning-artifacts/ux-designs/ux-OcuPilot-2026-09-08/EXPERIENCE.md'
@@ -18,7 +20,7 @@ deferred: []
 
 **Problem:** A production's hosts and transformations can still be tested only in the classic portal: the Testing Service page (`EnsPortal.TestingService` and its dialog) sends a request built from the target's message classes, and the Test Transform dialog (`EnsPortal.Dialog.TestTransform`) runs a transformation on pasted input. Nothing in OcuPilot tests either one, so a change cannot be checked here before it is deployed.
 
-**Approach:** Extend `Port/InteropPort` (AD-62) with a host test and a transformation test, each a confirmed proposal for the agent and a person's own action on the screen (AD-53). Part A, the host test, adds a per-host Test tab. Its read lists the request classes the target takes and their fields, and its Send action builds the request from them and sends it through `EnsLib.Testing.Service`. It then shows the session, the status and the response. Part B adds a Test row action to Data transformations: the pasted input is parsed into the transformation's source class, the transformation runs once in process, and the target renders as text. Neither result ever reaches the model (AD-39).
+**Approach (narrowed to Part A at the spec gate; the transformation test is Story 20.27):** Extend `Port/InteropPort` (AD-62) with a host test and a transformation test, each a confirmed proposal for the agent and a person's own action on the screen (AD-53). Part A, the host test, adds a per-host Test tab. Its read lists the request classes the target takes and their fields, and its Send action builds the request from them and sends it through `EnsLib.Testing.Service`. It then shows the session, the status and the response. Part B adds a Test row action to Data transformations: the pasted input is parsed into the transformation's source class, the transformation runs once in process, and the target renders as text. Neither result ever reaches the model (AD-39).
 
 ## Boundaries & Constraints
 
@@ -241,7 +243,7 @@ Unchanged: `EntityType` (73), `EndpointCoverage`, `SaveHoldCoverage`, `DraftRegi
     - `PRECONDITIONCODES` the six refusals, `CONSEQUENCECODE` `INTEROP.TEST.SENDS`, `DESTRUCTIVE` 0
     - `CLASSICPAGES` `EnsPortal.Dialog.TestingService`, `CHANGEACTION` `updated`
   - Agent arguments are `Production`, `Name`, `RequestClass` and `Fields`, an object of strings whose JSON is at most `ExplorerSave.#CHANGEMAXLENGTH` characters (`ArgumentProblem`). The screen's `fields` text is at most `AtelierPort.#MAXIMPORTCHARACTERS` (`ScreenActionDelta`, as `ExplorerSqlRun`'s parameters).
-  - `StateDiff` rows are `RequestClass` and `Fields` only, so `PermittedChangeFields("production-item")` gains them (add-only, `Prohibited.cls`).
+  - `StateDiff` rows are `RequestClass` and `Fields` only; both are in the tool's `FINGERPRINTSUBJECT`, which the sweep skips, so `PermittedChangeFields("production-item")` does not gain them (adding them fails `TestNoWriteToolAdmitsAnAlwaysProhibitedField`).
   - `CallSecretNames` names `Fields` when any member is credential-named.
   - `WriteOutput` answers `{status, sessionId, responseClass, lines, errors}`, never `outcome`.
 - [ ] `src/OcuPilot/Screen/Descriptor/InteropItemTestTab.cls` (new), copying `InteropItemJobTab`'s shape:
@@ -293,6 +295,8 @@ Unchanged: `EntityType` (73), `EndpointCoverage`, `SaveHoldCoverage`, `DraftRegi
   3. A credential field is drawn disabled.
 
 **Part B: the transformation test.**
+
+**[MOVED to Story 20.27 by the orchestrator's Q1 (A) ruling, 2026-10-12. Not this story's work; kept as 20.27's starting charter.]**
 
 - [ ] `InteropPort.cls` (extend):
   - **Types and pair.** `Transforms` serves `TRANSFORM` (read, composed) and `TRANSFORMTEST` (write). The pair `DTLTESTPAIR` `%Ens_DTLTest:USE` is added to `CODEPAIRS` for both. `IsTestWrite` gains `TRANSFORMTEST`, and `COMPOSEDTYPES` gains `Transforms/TRANSFORMTEST`.
@@ -358,21 +362,75 @@ Unchanged: `EntityType` (73), `EndpointCoverage`, `SaveHoldCoverage`, `DraftRegi
   - a `ConfigChange` row records the test with no field value
 - **AC3 (host refusals):** Given each host refusal and violation of the matrix, when either caller attempts it, then it is refused by its code before any vendor call and no message header is added.
 - **AC4 (bounded wait):** Given a target that does not answer within `TESTWAIT`, when it is tested, then the request answers `waiting` with the session id within the cap.
-- **AC5 (transformation test, both callers):** Given a probe transformation and pasted XML or HL7, when a person runs the test, and when the agent proposes it and the person confirms, then:
+- [MOVED to Story 20.27] **AC5 (transformation test, both callers):** Given a probe transformation and pasted XML or HL7, when a person runs the test, and when the agent proposes it and the person confirms, then:
   - the transformation runs once in the caller's process, and its target renders as text in the dialog and on the card
   - the card shows the input and the consequence before Confirm
   - nothing the test parsed or produced is left stored
   - the key ships `true`
-- **AC6 (transformation outcomes):** Given input that does not parse, a transformation that fails, or one that writes to the device, when it is tested, then the status and lines say so, and the HTTP answer stays a JSON envelope.
+- [MOVED to Story 20.27] **AC6 (transformation outcomes):** Given input that does not parse, a transformation that fails, or one that writes to the device, when it is tested, then the status and lines say so, and the HTTP answer stays a JSON envelope.
 - **AC7 (gates):** Given a principal missing one declared pair of a new surface, or holding READ only on the globals database, when it reads, sends or runs, then it is refused naming that pair before any vendor call. A principal holding exactly the pairs succeeds (the vendor checks nothing, measured).
 - **AC8 (results are screen data only):** Given a host result and a transformation's output, when either is shown, then it renders as text, never markup. It reaches no turn's model messages, ledger row, audit payload, log line or screen context.
 - **AC9 (reads change nothing):** Given the Test tab read and the composed `TESTTARGET` and `TRANSFORM` reads, when they run, then the stored production, the message store and `^EnsHL7.Segment` are unchanged.
 
+### Review Findings
+
+Code review 2026-10-12, four layers on the Opus tier: 40 rows, 19 entries after grouping (high 0, medium 10, low 9), 9 more rejected. Each entry gives severity and fix-risk.
+
+- [x] [Review][Patch] The send polled the answer's top node, which the vendor sets before `response`, so a poll between the two read "answered nothing" and killed the node before the vendor's last sets [InteropPort.cls AwaitTestHere]. Fixed: it waits on `response`, as the classic dialog's `CheckStatus` does (med, low).
+- [x] [Review][Patch] The agent's card drew no consequence for `INTEROP.TEST.SENDS` [proposal-view.ts consequenceSentence]. Fixed, with a proposal-card spec (med, low).
+- [x] [Review][Patch] A request that could not be built (422 `REQUEST`, named on `RequestClass`) showed nothing in the dialog [interop-item-test.page.ts onSend]. Fixed: a refusal on a field the dialog does not draw shows above the fields (med, low).
+- [x] [Review][Patch] Free text for a `%Boolean` (`true` became 0) or a display-listed field (an unknown value became empty) was sent silently [InteropPort.cls ReadTestTarget, CollectFieldsHere]. Fixed: a `%Boolean` lists `0` and `1`, and a value outside a field's `Values` is 422 `VALUE` (med, low).
+- [x] [Review][Patch] Only `Text` of a sent request was asserted [InteropHostTest]. Fixed: both callers' saved request is read back (med, low).
+- [x] [Review][Patch] The display-to-logical write-back was untested where the two differ. Fixed: the fixture's `Level` (`DISPLAYLIST`) reads back as `H` (med, low).
+- [x] [Review][Patch] The port's any-segment credential refusal of a request field was unpinned. Fixed: the fixture's `Credential.Value`, its `Secret` row and a 409 `SECRET` leg (med, low).
+- [x] [Review][Patch] A response value under an ordinary embedded object was never asserted. Fixed: `TestReply.Box` (med, low).
+- [x] [Review][Patch] AC2's one test per action was unpinned. Fixed: the testing service's sends are counted in both callers' tests (med, low).
+- [x] [Review][Patch] The script form called `<Prop>DisplayToLogical` for a type that has none (`%Status`) [InteropPort.cls TestSnippet]. Fixed: it converts only where the send does (low, low).
+- [x] [Review][Patch] `CallSecretNames` read `Fields` only as an object, so agent JSON text kept a credential in the ledger row [InteropItemTestSend.cls]. Fixed (low, low).
+- [x] [Review][Patch] `FIELDSBOUND` copied `ExplorerSave.CHANGEMAXLENGTH` as a literal (Rule 2). Fixed: the sibling's parameter is read (low, low).
+- [x] [Review][Patch] Three doc comments said the request classes come from the class dictionary [InteropPort.cls header and ListTestFields, InteropItemTestTab.cls]. Fixed; the spine's AD-36 wording at :782 is DW-2346, the lead's (low, low).
+- [x] [Review][Patch] `TestADocumentRequestIsSentAsItsText` stored `tCounts` and never asserted it. Fixed (low, low).
+- [x] [Review][Patch] `InteropHostTestEdges` asserted that a session one million past the real one has no messages, which cannot fail. Removed (low, low).
+- [x] [Review][Patch] A stale "five tabs" mutation comment in `interop-host-tabs.browser-spec.mjs`. Fixed (low, low).
+- [x] [Review][Defer] OcuPilot cannot compile into an install namespace without interoperability: this story's `Include Ensemble`, and Story 20.3's `Ens.Config` argument types before it. Deferred: DW-2343 `decision-pending`, a product call (med, med, in-epic).
+- [x] [Review][Defer] The dialog builds its form from the capped rows and does not say the list is cut. DW-2344 `wontfix-accepted`, the spec's named limit (low).
+- [x] [Review][Defer] `EndTestCapture` is a third copy of the ports' capture-end loop (Rule 2). DW-2345 `wontfix-accepted`: unifying it edits two other epics' ports (low, med).
+
+Rejected (low, unlikely in everyday use, and the fix is more than a direct correction): a response read that throws after the send (500, no audit row); testing disabled or the production stopped between the read and the send (a race; the request stays saved, as the classic dialog leaves it); a response class over 100 fields cut without a mark; the tab drawing classes in name order (the port's order still sets the cap and the dialog's select); the target-type banner on a process or operation that lists no row, or a click before the read answers; the tab label reusing `serverFlagTest`; the service-type filter unpinned (QA disclosed it); the exact class list assuming a fresh `USER` (armed for throwaways only).
+
+Weighed and not findings: the `[Internal]` `GetMessageList` call (AD-62 item 11's named limit, with its reason in Auto Run Result); `check-objectscript.py`'s allow-list (nothing inside the capture window reaches another port); `PermittedChangeFields` (Auto Run Result gives the reason; the Tasks line is the lead's to edit).
+
 ## Spec Change Log
+
+- 2026-10-12, spec gate (lead): narrowed to Part A under the orchestrator's Q1 (A) ruling; Part B, AC5, AC6 and the transformation halves of AC7 to AC9 moved to Story 20.27 (marked in place).
 
 - 2026-10-12, spec gate (lead): rulings under Design Notes › Gate rulings (Q1 asked, `GetMessageList` documented-first); spine drafts written.
 
 ## Review Triage Log
+
+### 2026-10-12 — Review pass
+
+- verdicts: 19 findings -- high 0, medium 8, low 9, false 2, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` The send gate's subclass branch (`IsRequestClassHere`) is unpinned: the tab lists a subclass that no test sends — fixed: `InteropHostTest.TestASubclassTheTabListsIsSentLikeTheClassItDescendsFrom`, mutation run.
+  - `[medium]` `[patch]` A credential-named response field reading blank, a document response and a serial response path were never exercised — fixed: the fixture's reply operation and three `InteropHostTest` tests, each mutation run.
+  - `[medium]` `[patch]` The tab's row cap, the response value cut and the request member count were unpinned — fixed: a cap leg, `TestALongResponseValueIsCutAndMarked` and `TestARequestNamingTooManyFieldsIsRefusedAsMalformed`. The 1,000,000-character total and the 100-field-per-class bounds stay unpinned: each needs a response or a class of that size for arithmetic one line long, and no user reaches it by accident.
+  - `[low]` `[patch]` `TESTWAIT` 15 was read by no test — fixed: pinned in `InteropTestDescriptor`.
+  - `[medium]` `[patch]` `CallSecretNames` tested the last path segment while the port refuses any segment, so `Credential.Value` was refused but left unredacted in the step and ledger row — fixed: the tool asks the port's `SecretPath`, now public, and a `Credential.Value` leg pins it.
+  - `[medium]` `[patch]` AC7's "exactly the pairs succeeds" was verified only to the production-not-running refusal — fixed: `InteropTestGate.TestAPrincipalHoldingExactlyThePairsCompletesASend` starts the probe and lets the principal send.
+  - `[medium]` `[patch]` The agent leg's "no answer in the stored proposal" asserted on the object the mint returned, which the confirm cannot change — fixed: it reads back the stored proposal, steps and turn after the confirm, with the request text as the liveness control.
+  - `[low]` `[reject]` The mapping of the vendor's not-running and quiescent statuses and the unmapped fall-through are unpinned. It is a race the composed read already closes, and a seam variant for each is more than a direct correction.
+  - `[low]` `[patch]` The dialog's `!view.secret` guard was unreachable from the drawn form and its spec could not tell it from absent — fixed: a spec sets the state directly, and the browser spec's title no longer claims a send it does not make.
+  - `[low]` `[patch]` Test docstrings claimed mutations the spec's list did not record, and one (`ROUTINESDATABASE` on the tool, seen from `USER`) could not redden — fixed: every claim now run; the false one replaced by a descriptor assertion and a `DATABASEPERMISSION` mutation.
+  - `[low]` `[reject]` AC3's `NOTRUNNING`, `TARGETTYPE`, `REQUESTTYPE`, `FIELD`, `VALUE`, `REQUEST` and the no-write principal carry no mutation of their own. Rule 19 asks one mutation for each AC, and AC3 has seven.
+  - `[low]` `[patch]` The waiting test's `< 3` bound sat close to a loaded CI leg — fixed: `< 4.5` against the 5 s hang.
+  - `[false]` `[reject]` The error, no-response, document and waiting legs are driven by one caller or at the port. The matrix asks both callers only for the answered send and the refusals, and both are covered.
+  - `[low]` `[patch]` The agent mint's invalid field and value were asserted only as a 4xx — fixed: asserted as `422` with the same code on the same field.
+  - `[medium]` `[patch]` Expectations with no driving test: response secrecy and `TESTWAIT` (rows above), and the empty-`Field` row of a class with no settable field — fixed: a plain-operation leg. Not patched: the real vendor's device write, which the testing-disabled test, the seam test and Task 0 pin together, and a required field inside an embedded object, which the spec does not define.
+  - `[medium]` `[patch]` The port's credential predicate and the tool's differ (any segment against the last) — same root as the `CallSecretNames` row, fixed there.
+  - `[low]` `[reject]` Surfaces beyond the intent's list: the `TESTTARGET` type and `TestSnippet` are in the Code Map; `InteropJobEnd.StartUpdated` public, the capture allow-list in `check-objectscript.py` and the `InteropHostRead.Projected` array copy are what the story's tests and rules needed, listed under Auto Run Result.
+  - `[low]` `[reject]` `PermittedChangeFields("production-item")` does not gain `RequestClass` and `Fields`, as the Tasks line says. Both names are in the tool's fingerprint subject, which the sweep skips, and adding them fails `TestNoWriteToolAdmitsAnAlwaysProhibitedField`. The fix is a spec edit, so it is recorded for the lead.
+  - `[false]` `[reject]` `test-answer.ts` reads only `done`, `waiting` and `error`: Story 20.27 extends it for the transformation statuses, as Design Notes say.
 
 ## Design Notes
 
@@ -433,7 +491,7 @@ Checked and not engaged: AD-26 and AD-27 (no admin API, no 202 path), AD-57 (no 
 
 **Gate rulings (lead, 2026-10-12):**
 
-- Q1: asked of the orchestrator. Until it rules, this spec stays one story: Part A first, then Part B. If the handoff or the review finds the story oversized, HALT `blocked` with `split: Part B` so the lead charters it.
+- **Q1 ruled (A) by the orchestrator, 2026-10-12: this story is Part A only, the host Test tab.** Part B, the transformation test, is Story 20.27 ("Transformations tested"), which consumes this story's shared helper (`IsTestWrite`, the test code family, `test-answer.ts`) and the AD-39 seventh exception. Out of this story: the whole block under Tasks & Acceptance › Part B, AC5, AC6, the transformation halves of AC7 to AC9, the I/O matrix's four `Transform` rows, the `TRANSFORM`/`TRANSFORMTEST` port types, `interop.transforms.test`, the `InteropTransformList` row action, `OcuPilotProbe.Interop.Dtl`, `InteropTransformTest` and `interop-transform-test.browser-spec.mjs`, and the roster moves that belong only to the transformation tool. Build only Part A; the shared helper is introduced here as Part A needs it.
 - `GetMessageList`: prefer listing the target's request classes from documented class metadata (the class dictionary), as AD-62 item 1 asks. Call the dialog's `[Internal]` `GetMessageList` only if that proves infeasible, and say why in Auto Run Result; AD-62 item 11 names that call as a limit.
 - The spine drafts are written: AD-62 item 11, AD-51, AD-39's seventh exception, AD-36, AD-44, AD-8, AD-15 and AD-7.
 - Bundle: no re-base expected. If the build crosses `maximumWarning` (3527kB), re-base under DW-1166 as Story 20.5 did.
@@ -549,9 +607,82 @@ This story's edits to `Prohibited.cls` (`PermittedChangeFields` entries), `Basel
 | AC8 | The dialog renders lines through `innerHTML` | the browser spec's text-only assertion |
 | AC9 | `LIST` calls `%New()` on a request class | `InteropHostTest`'s snapshot leg (the probe class's `%OnNew` marker global) |
 
+**Task 0 (Part A, measured on `ocupilot-b-ci`, 2026-10-12; Part B's three items moved with it to Story 20.27):**
+
+- Task 0: `NormalizePage` spells `EnsPortal.TestingService`, `EnsPortal.Dialog.TestingService` and `EnsPortal.Dialog.TestTransform` as written.
+- Task 0: The testing-registered read is `Ens.Util.Statistics:EnumerateHostStatus` listing `EnsLib.Testing.Service`; a production started with `TestingEnabled` 0 reads not registered (`InteropHostTestRefusals`), so `$$$DispatchNameToConfigName` is not used. A vendor `EnsErrBusinessDispatchNameNotRegistered` naming the service also maps to `INTEROP.TEST.DISABLED` (pinned through the seam).
+- Task 0: Under the capture, `SendTestRequest` leaves the HTTP answer intact JSON when it succeeds (the person's and the agent's sends over HTTP in `InteropHostTest`) and when it fails with `DisplayError` (with the testing-registered check dropped, the person's send was still answered as the JSON `409 INTEROP.TEST.DISABLED`). The port keeps the one vendor call under the capture, so the three-call alternative was not needed.
+
+**Mutations run (Rule 19, 2026-10-12, `ocupilot-b-ci`):** each was reverted byte-identical (sha256) and the tree reloaded, or the bundle rebuilt and redeployed, before the next.
+
+- mutation: `RequestClassesHere` lists no subclass -> `InteropHostTest` rows test red. The probe had no subclass, so the fixture gained `TestRequestSub` first; without it the order leg could not redden.
+- mutation: `CollectFieldsHere` skips the serial expansion -> `InteropHostTest` rows test red, and the person's send (`Address.City` is then an unknown field).
+- mutation: `TestFieldRow` answers `Secret` false -> `InteropHostTest` rows test red (the `Password` signature).
+- mutation: `CallSecretNames` answers none -> `InteropTestDescriptor` redaction test red.
+- mutation: `AwaitTestHere` skips the response read -> `InteropHostTest` person, agent and document tests red.
+- mutation: `PerformTest` drops `AuditRuntime` -> `InteropHostTest` person and agent audit legs red.
+- mutation: `AwaitTestHere` does not kill the AppData node -> `InteropHostTest` node-gone leg red.
+- mutation: `ReadTestTarget` drops the `TARGETDISABLED` check -> `InteropHostTestRefusals` refusals test red (the send reaches a disabled item and answers; the mint, the footprint and the audit legs follow).
+- mutation: `ReadTestTarget` drops the `SECRET` check -> the same test red for both credential cases, from both callers.
+- mutation: `ReadTestTarget` drops the testing-registered check -> `InteropHostTestRefusals` testing-disabled test red. The person is still answered `409 INTEROP.TEST.DISABLED` (the vendor's refusal, mapped), but the mint and the footprint legs go red: the request was saved first.
+- mutation: `AwaitTestHere` waits 600 seconds -> `InteropHostTest` waiting test red (answer `done` after 5.14 s).
+- mutation: `TESTPAIRS` drops `%Ens_TestingService:USE` -> `InteropTestGate` port legs and `InteropTestDescriptor` pairs test red. The route legs stay green, because the descriptor's own pairs still refuse; dropping the descriptor's pair alone leaves the whole gate class green, because the port refuses; dropping both reddens the route legs too.
+- mutation: `WriteOutput` adds `outcome` -> `InteropTestDescriptor` outcome test red.
+- mutation: `ClassFieldsHere` creates the class it lists -> `InteropHostTest` marker legs red in three tests.
+- mutation: the dialog draws the lines through `innerHTML` -> the dialog's component spec and the browser spec's text-only assertion red (bundle rebuilt and redeployed for the second).
+- mutation: `outputLinesOf` drops the test branch, `testAnswerOf` accepts any status, the dialog sends a credential field's value, and the page does not register `test` -> `test-answer.test.mjs`, the dialog spec and the page spec red.
+- mutation: `IsRequestClassHere` refuses every class the host does not name itself -> `InteropHostTest` subclass-send test red alone (409 `REQUESTTYPE` for a class the tab lists).
+- mutation: `TestLines` stops blanking a credential-named response value -> `InteropHostTest` credential-response test red alone. Skipping the value cut -> the long-value test red alone. `CollectResponseHere` without its document branch -> the document-response test red alone.
+- mutation: `GatherTestFields` lifts the row cap -> `InteropHostTest` rows test red (the cap leg).
+- mutation: `GatherTestFields` drops the empty-field row of a class with no settable field -> `InteropHostTest` rows test red (the plain operation's leg).
+- mutation: `Confirm` records the confirmed output as the proposal's read-back -> `InteropHostTest` agent test red on the stored-text leg. Adding `lines` to the audit effects -> the audit legs of the agent and person tests red.
+- mutation: `CollectResponseHere` throws for a response that is empty -> `InteropHostTest` answers-nothing test red.
+- mutation: `BuildTestRequestHere` builds a document with `%New` -> `InteropHostTest` document-request test red alone. `WriteOutput` answers `""` -> every `InteropHostTest` leg that reads `output` red.
+- mutation: `ParseTestFields` drops its member count -> `InteropHostTestRefusals` too-many-fields test red alone. `ConvertPlanHere` accepts a refused value -> the invalid-request test red. `FINGERPRINTSUBJECT` drops `Enabled` -> the changed-target test red (409 `TARGETDISABLED` for `TARGETCHANGED`). The vendor's device text left out of the log, or put in the answer -> the vendor-refusal test red on its log and answer legs. `Admit` drops the `INTEROP.NAMESPACE` refusal -> the namespace test red alone.
+- mutation: `AwaitTestHere` skips its `Error` branch -> `InteropHostTest` failed-target test red alone.
+- mutation: `Admit` also asks the routines database for a test write -> `InteropTestGate` routines-database test red alone. `PerformTest` writes a node of `^%SYS` -> the exact-principal send test red alone. `DATABASEPERMISSION` READ on the tool -> the tool and screen-route legs red.
+- mutation: `CallSecretNames` tests the last segment only, `TESTWAIT` 600, and `TestSnippet` without `Literal` -> `InteropTestDescriptor` credential-argument, wait and script tests red. `ROUTINESDATABASE` 1 on the tool, the baseline key `false`, and `TestCodes` without `SECRET` -> its declaration, key and code tests red. The tab at position 6 -> its strip leg red. The routines mutation is invisible to `InteropTestGate` on `USER`, which keeps both databases behind one resource.
+- mutation: the dialog's `submit` sends a credential whose value reached its state -> the dialog spec's credential test red alone (the control is drawn disabled, so the state is set directly).
+- not applied: `PermittedChangeFields("production-item")` gaining `RequestClass` and `Fields` -> `Prohibited.TestNoWriteToolAdmitsAnAlwaysProhibitedField` red, so the spec's instruction was not followed (Auto Run Result).
+
+**QA (Rule 19, 2026-10-12, `ocupilot-b-ci`):** each mutation was reverted byte-identical (sha256 and `git status`) and the tree reloaded, or the bundle rebuilt and redeployed, before the next.
+
+- (QA) `src/OcuPilot/Test/InteropHostTestEdges.cls` (new, 5 tests, armed by a `# classes:` line in `scripts/ci-throwaway.sh`)
+- (QA) `ui/browser/interop-item-test.browser-spec.mjs` (+1 test: a business service's Test tab)
+- (QA) `ui/src/app/shell/panel.spec.ts` (+1 test: a confirmed host test's card)
+- (QA) `src/OcuPilot/Test/InteropHostTestRefusals.cls` (changed: the invalid-request test deletes the ledger row its refused confirm leaves; before the change 21 rows of the send tool had piled up on the throwaway, after it three class runs left none)
+- mutation: `ReadTestTarget` asks whether any production runs, not this one -> `InteropHostTestEdges` other-production test red (a test from the other production's tab reached the running production's operation and answered `done`).
+- mutation: `AwaitTestHere` kills the node of a session still waiting -> `InteropHostTestEdges` waiting test red alone.
+- mutation: the error's text added to the audit effects in `PerformTest` -> `InteropHostTestEdges` failed-test audit test red alone.
+- mutation: `PerformTest` answers a session other than the one it sent under -> `InteropHostTestEdges` agent session test red (and the two audit legs that look the session up).
+- mutation: `CallSecretNames` tests the last segment only -> `InteropHostTestEdges` credential redaction test red alone (the `Credential.Value` ledger row and step carry the value).
+- mutation: `InteropItemTestPage.onOpen` opens the dialog on an item that lists no row -> the browser spec's business-service test red (the banner wait times out).
+- mutation: `outputLinesOf` drops the test branch -> the `panel.spec.ts` host-test card test red alone.
+- not red, so not claimed: `ListTestFields` listing a business service. `RequestClassesHere` gives a service no class, so the type filter is a second guard.
+- One fresh mutation per AC:
+  - AC1 `TestFieldRow` answers `Secret` false -> `InteropHostTest` rows test.
+  - AC2 `AwaitTestHere` skips the response read -> 7 `InteropHostTest` tests.
+  - AC3 `ReadTestTarget` drops the `TARGETDISABLED` check -> `InteropHostTestRefusals` refusals test.
+  - AC4 `AwaitTestHere` ignores its deadline -> `InteropHostTest` waiting test (5.11 s).
+  - AC7 `TESTPAIRS` drops `%Ens_TestingService:USE` -> `InteropTestGate` port test (the missing-service principal's three legs).
+  - AC8 `TestLines` stops blanking a credential-named value -> `InteropHostTest` credential-response test.
+  - AC9 `ClassFieldsHere` instantiates the class it lists -> `InteropHostTest` marker legs (3 tests).
+- `InteropTestGate` was the first class run of this pass (run 807, 5 tests): its OnBeforeAllTests removes and creates the probe, the fixture and the five principals, and its one production start waits on `InteropJobEnd.StartUpdated` and the testing service's registration. It reads no state a sibling leaves.
+- Left unpinned: a log line carrying a result (AD-39; no seam reads the real log), and the 1,000,000-character total (above).
+
+**Code review (Rule 19, 2026-10-12, `ocupilot-b-ci`):** each mutation was applied to the throwaway's copy of `src` only, with the class and its subclasses recompiled. That copy was then synced back from the worktree, which stayed byte-identical (`git status` and `git diff --stat` compared).
+
+- mutation: `TestSnippet` converts every value through `DisplayToLogical` -> `InteropTestDescriptor` script test red (the `ErrorStatus` leg). `CallSecretNames` reads object `Fields` only -> its arguments test red (the JSON-text legs). Run 838.
+- mutation: `ReadTestTarget` drops the listed-values check -> `InteropHostTestRefusals` invalid-request test red (`Flag` `true`, `Level` `H`). Its secret check reads the last segment only -> the each-refusal test red, and the `Credential.Value` value was sent. Run 839.
+- mutation: `BuildTestRequestHere` sets only the plan's first field -> `InteropHostTest` person and agent stored-request legs red. `CollectResponseHere` blanks a value under an embedded object -> the credential-response test red (`Box.Value`). Run 840.
+- mutation: `PerformTest` sends twice -> `InteropHostTest` person and agent one-send legs red (run 841). `ConvertPlanHere` drops the logical write-back -> the person's send test red alone, 422 `REQUEST` (run 842).
+- mutation: `consequenceSentence` drops `INTEROP.TEST.SENDS` -> the proposal-card spec's Story 20.6 test red alone. `onSend` drops the reason of a field the dialog does not draw -> the page spec's new test red alone.
+- not pinned: waiting on `response` rather than the top node closes a race between two vendor sets made microseconds apart, which no test reproduces.
+- After the review: `InteropTestDescriptor` 7, `InteropHostTest` 12, `InteropHostTestRefusals` 7, `InteropHostTestEdges` 5 and `InteropTestGate` 5 green, each class's latest run on the restored code. `interop-item-test.browser-spec.mjs` 4 green on the rebuilt bundle; `npm run test:tools` 1,916 and `ng test` 2,955 green; `check-objectscript.py` clean.
+
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
 
 **Plan summary.** The vendor's host-test and transformation-test paths were read, and measured on `ocupilot-b-ci`: USER, a probe production with testing enabled, two DTLs and a principal holding neither test resource, all removed afterwards.
@@ -560,4 +691,26 @@ Blocking condition: none
 - A disabled target's test waits forever, and a stopped production's test writes `DisplayError` to the device.
 - An XML parse persists nothing, and an HL7 parse leaves one vendor segment-counter node per process.
 
-The plan extends `InteropPort` with a per-host Test tab and a send (Part A), and a Data transformations Test action (Part B). Both are confirmed writes that are not destructive, with keys `true`, and their results reach the screen and card only, under a new AD-39 exception. The spec is flagged `oversized` and `multiple-goals`. The split question (Q1) and the spine drafts are in Design Notes.
+The plan extends `InteropPort` with a per-host Test tab and a send (Part A), and a Data transformations Test action (Part B). Both are confirmed writes that are not destructive, with keys `true`, and their results reach the screen and card only, under a new AD-39 exception. The spec is flagged `oversized` and `multiple-goals`. The spec gate ruled Part B out of this story (Story 20.27).
+
+**Implementation (Part A, the host Test tab).**
+
+- `InteropPort` gains the `ItemTest` endpoint (`LIST`, composed `TESTTARGET`, `SENDTEST`), the seams `TestWait` and `VendorSendTest`, `AuditRuntime` verb `test` and the script form; `SecretPath` is public, the one credential-path rule the port, the tab and the send tool share.
+- `InteropError` gains the eight test codes and the sending consequence. `InteropItemTestSend` (`interop.itemtest.send`, baseline key `true`) and `InteropItemTestTab` are new.
+- Client: the page, the dialog, `core/test-answer.ts`, the `outputLinesOf` branch, the handler and label maps, 27 strings and the regenerated mirror. EXPERIENCE.md gains the tab order, the dialog and the Fixed-strings literals.
+- Tests: `InteropTestFixture` (a request class with a subclass and an embedded object, an echo operation that fails on `fail`, and a reply operation answering a credential-named field, a long value and a document) and the four armed classes `InteropHostTest`, `InteropHostTestRefusals`, `InteropTestDescriptor` and `InteropTestGate`; their arming line in `ci-throwaway.sh`; two client specs and a browser spec; the roster rows.
+- Beyond the Code Map: `check-objectscript.py` and its harness let `InteropPort` open the output capture; `InteropHostRead.Projected` copies array-valued members; `InteropJobEnd.StartUpdated` is public; `InteropItemSeam` and the `ReadTool` and `ToolWrite` count pins moved.
+
+**Request classes: the dictionary and the classic dialog's `[Internal]` `GetMessageList`, each for what it can answer.** The item's own classes come from `GetMessageList`, as `EnsPortal.Dialog.TestingService` reads them, because the class dictionary does not carry them for every host. A router's list, for one, is computed by its own code generator (measured on `HSCUSTOM`: 24 of 199 concrete host classes answer a request class that neither their message map nor the signature of their `OnMessage` or `OnRequest` names). Subclasses and every field come from the class dictionary alone (AutoFormGenerator's rule), so no request class's code runs on a read.
+
+**Deviation.** `PermittedChangeFields("production-item")` does not gain `RequestClass` and `Fields`. Both names are in the tool's `FINGERPRINTSUBJECT`, so `Prohibited.SkippedFields` already leaves them out of the sweep, and adding them fails the standing `TestNoWriteToolAdmitsAnAlwaysProhibitedField`, which wants every reviewed field advertised by a body-sending sibling. The Tasks line is moot.
+
+**Review (one pass, two layers).** 19 findings: 8 medium and 9 low and 2 false; 13 patched, 4 rejected with reasons in the triage log, 2 false; none deferred. The patches: a fixture reply operation and tests for response secrecy, the value cut and a document response; a subclass send; a failed-target send; a namespace refusal and a member-count refusal; an exact-principal send on a running production; a stored-text read after the agent's confirm; the send tool asking the port's credential rule; `TESTWAIT` pinned; the dialog's credential guard pinned; the agent mint's violations asserted by code and field. Every `Mutation (Rule 19)` docstring in the four classes was run and the false claim (`ROUTINESDATABASE` seen from `USER`) replaced; the results are in Verification.
+
+**Follow-up review recommended: true.** Eight medium patches landed after the layers ran. The risk to check: `InteropTestGate` now starts the probe production and sends as a principal holding only the declared pairs, so a leg that depends on a limited principal's rights over the vendor's globals is new and has been run only on the slot B throwaway. Rule 30's fresh-instance check covers it.
+
+**Verified.** On `ocupilot-b-ci`, one class per call: `InteropTestDescriptor` 7, `InteropHostTest` 12, `InteropHostTestRefusals` 7 and `InteropTestGate` 5 tests, and 17 consuming classes (226 tests), all green. `npm run test:tools` 1,916 and `npm run test:components` 2,952 green; `npm run build` clean (initial total 3.38 MB, main 3,169,648 bytes, under the 3,527 kB warning, no re-base). The new browser spec, `interop-host-tabs` (its strip now reads seven tabs) and `a11y-structural-invariants` green. `check-objectscript.py` and its harness, and `lint-docs.sh`, clean.
+
+**Not done here (runner-owned).** The full ObjectScript sweep, `npm test`, `smoke.sh`, Rule 30's fresh-instance check and CI's browser suite.
+
+**Risks.** A test of a business process or operation sends a real message through the running production, as the classic page does; its messages stay in the store. The tab's rows come from the class dictionary of the production's namespace, so a request class that is not compiled there is not listed.

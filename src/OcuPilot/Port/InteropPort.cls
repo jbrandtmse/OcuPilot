@@ -1,8 +1,10 @@
-/// <p>The port to the instance's interoperability runtime (AD-62, AD-29, AD-52, Stories 20.2, 20.3, 20.5 and 20.23): <b>the
+Include Ensemble
+
+/// <p>The port to the instance's interoperability runtime (AD-62, AD-29, AD-52, Stories 20.2, 20.3, 20.5, 20.6 and 20.23): <b>the
 /// only product class that starts, stops, restarts, updates or recovers a production, enables, disables,
 /// adds or removes one of its items, aborts a queued message, a queue's messages or a job's retried message,
-/// suspends that message or stops a job, adds, changes or removes a lookup table's entry, or deletes, imports or exports a lookup
-/// table</b>, and the only one that reads the interoperability configuration for
+/// suspends that message or stops a job, adds, changes or removes a lookup table's entry, deletes, imports or exports a lookup
+/// table, or sends a test request to an item</b>, and the only one that reads the interoperability configuration for
 /// a declared read (source kind <code>interop</code>); Story 20.4 adds the nine runtime reads (<parameter>ENDPOINTS</parameter>
 /// from <code>Monitor</code> on), which write nothing. It calls the documented classes the classic pages call --
 /// <code>Ens.Director</code>, <code>Ens.Queue</code>, <code>Ens.Job</code>, <code>Ens.Config.Production:ProductionStatus</code> and
@@ -49,10 +51,19 @@
 /// takes it, refuse by name what the vendor would answer as a silent success, and record OcuPilot's own audit row
 /// (<method>AuditRuntime</method>), because the vendor records none. The vendor's lookup and partner calls check no privilege
 /// either (measured), so the gate is the whole gate.</p>
+/// <p><b>The host test</b> (Story 20.6, the <code>ItemTest</code> endpoint) lists the request classes an item takes (the host class's
+/// own <code>GetMessageList</code>, as the classic dialog reads it, then their subclasses from the class dictionary) and their
+/// settable fields from the class dictionary, and sends one test request through <code>EnsLib.Testing.Service</code> as the
+/// classic Testing Service dialog does, asynchronously. It refuses by name, before any vendor call, whatever the vendor would
+/// answer as a silent success or write to the device about: the production not running, testing not enabled, a target that is
+/// not an enabled process or operation, a request class the target does not take, and a value for a credential-named field.
+/// Every vendor call that can write to the device runs inside the output capture, so the answer stays JSON, and what a test
+/// answered reaches the screen and the proposal card only (AD-39's seventh exception). The vendor audits no test, so the port
+/// records OcuPilot's own row (<method>AuditRuntime</method>).</p>
 /// <p>Seams a test subclass overrides: <method>GateClass</method>, <method>LogFault</method>,
 /// <method>StopSeconds</method>, <method>RoutineResource</method>, <method>SourceControlled</method>,
-/// <method>VendorAbortItem</method>, <method>VendorJob</method> and <method>LockTable</method>, and the parameter
-/// <parameter>ABORTMAX</parameter>. Production overrides none.</p>
+/// <method>VendorAbortItem</method>, <method>VendorJob</method>, <method>LockTable</method>, <method>VendorSendTest</method>
+/// and <method>TestWait</method>, and the parameter <parameter>ABORTMAX</parameter>. Production overrides none.</p>
 Class OcuPilot.Port.InteropPort Extends %RegisteredObject
 {
 
@@ -62,7 +73,7 @@ Parameter GATECLASS = "OcuPilot.Screen.Gate";
 /// <p>The endpoints this port serves, comma-separated: the namespace's productions, business
 /// processes, data transformations and business rules, and a production's items.
 /// <file>ui/tools/screen-mirror.mjs</file> reads this list.</p>
-Parameter ENDPOINTS = "Productions,Processes,Transforms,Rules,Items,Settings,Monitor,ItemStatus,Queues,QueueItems,ItemQueue,ItemLog,ItemMessages,Jobs,ItemJobs,LookupTables,LookupEntries,BusinessPartners";
+Parameter ENDPOINTS = "Productions,Processes,Transforms,Rules,Items,Settings,Monitor,ItemStatus,Queues,QueueItems,ItemQueue,ItemLog,ItemMessages,Jobs,ItemJobs,LookupTables,LookupEntries,BusinessPartners,ItemTest";
 
 Parameter ENDPOINTPRODUCTIONS = "Productions";
 
@@ -119,6 +130,11 @@ Parameter ENDPOINTLOOKUPENTRIES = "LookupEntries";
 /// <p>The namespace's business partners (Story 20.5): <code>LIST</code> only.</p>
 Parameter ENDPOINTBUSINESSPARTNERS = "BusinessPartners";
 
+/// <p>An item's host test (Story 20.6): <code>LIST</code> for the item <parameter>ITEMKEY</parameter> names (one row for each
+/// settable field of each request class it takes), <code>TESTTARGET</code> (the composed fresh read of the test about to be
+/// sent) and the write <code>SENDTEST</code>.</p>
+Parameter ENDPOINTITEMTEST = "ItemTest";
+
 /// <p>The pairs the Productions endpoint requires: the classic Interoperability menu's
 /// <code>%Ens_Portal:USE</code> and <code>EnsPortal.Productions</code>'s own resource (AD-8,
 /// AD-29).</p>
@@ -147,9 +163,15 @@ Parameter LOOKUPPAIRS = "%Ens_Portal:USE,%Ens_LookupTables:READ";
 /// <p>The pair a lookup write adds: the classic page's <code>EDITRESOURCE</code>.</p>
 Parameter LOOKUPWRITEPAIR = "%Ens_LookupTables:WRITE";
 
+/// <p>The pairs the ItemTest endpoint requires: the classic Interoperability menu's <code>%Ens_Portal:USE</code> and
+/// <code>EnsPortal.TestingService</code>'s own resource (Story 20.6). The vendor's <code>SendTestRequest</code> checks no
+/// privilege (measured), so these, and WRITE on the namespace's globals database for a send, are the whole gate.</p>
+Parameter TESTPAIRS = "%Ens_Portal:USE,%Ens_TestingService:USE";
+
 /// <p>The endpoint and type pairs that send no body and take their arguments through the query (AD-51 as amended by Story 12.3): the
-/// lookup table export and import (Story 20.5), whose files and reviewed counts the port reads from its query.</p>
-Parameter COMPOSEDTYPES = "LookupTables/EXPORT,LookupTables/IMPORT";
+/// lookup table export and import (Story 20.5), whose files and reviewed counts the port reads from its query, and the host test's
+/// send (Story 20.6), whose request class and field values it reads from its query.</p>
+Parameter COMPOSEDTYPES = "LookupTables/EXPORT,LookupTables/IMPORT,ItemTest/SENDTEST";
 
 /// <p>The pair each item tab adds to the Productions endpoint's pairs (the classic configuration page's
 /// <code>initSecurity</code>): the queue, the event log, the message headers and the jobs.</p>
@@ -315,6 +337,66 @@ Parameter TYPEIMPORT = "IMPORT";
 /// <p>Export a table's <code>.LUT</code> document, to a server file named by <parameter>ROOTKEY</parameter> and
 /// <parameter>PATHKEY</parameter> or, with neither, as lines for the browser.</p>
 Parameter TYPEEXPORT = "EXPORT";
+
+/// <p>One item's test, composed (Story 20.6): <code>{Namespace, Production, Name, Type, Enabled, State, Testing, RequestClass, Kind,
+/// Fields, RequestValid}</code>, the host test tool's fresh read. <code>Testing</code> is whether the running production has
+/// registered the testing service, <code>Kind</code> is <code>object</code> or <code>document</code> for a request class the
+/// item takes, and <code>Fields</code> is the supplied values as canonical JSON text. The id is the item's composite
+/// <code>[Production, Name]</code>. With <parameter>ACTIONKEY</parameter> in the query it refuses what the send would be refused
+/// (<method>ReadTestTarget</method>).</p>
+Parameter TYPETESTTARGET = "TESTTARGET";
+
+/// <p>Send one test request to the item, asynchronously, and answer what it answered within <method>TestWait</method> seconds.</p>
+Parameter TYPESENDTEST = "SENDTEST";
+
+/// <p>The query keys carrying the request class a test is sent as and its field values, as JSON object text.</p>
+Parameter REQUESTCLASSKEY = "requestClass";
+
+Parameter FIELDSKEY = "fields";
+
+/// <p>The most seconds a test waits for the target's answer before it answers <code>waiting</code>, and the pause between two reads
+/// of the test's answer node (Story 20.6). The cap is AD-62 item 6's.</p>
+Parameter TESTWAIT = 15;
+
+Parameter TESTPOLL = 0.25;
+
+/// <p>The most properties examined at each level of a request class, and the most fields one class lists: the classic form's own
+/// bound (<code>%CSP.Util.AutoFormGenerator.MAXPROPERTIES</code>).</p>
+Parameter TESTFIELDMAX = 100;
+
+/// <p>The most fields a test request names, so a request cannot outgrow the class it is for.</p>
+Parameter TESTINPUTMAX = 200;
+
+/// <p>The most characters one response field shows, and the most all the lines of a result hold.</p>
+Parameter TESTVALUEMAX = 1000;
+
+Parameter TESTOUTPUTMAX = 1000000;
+
+/// <p>The text a cut value or a cut result ends with.</p>
+Parameter TESTCUT = " ... [cut]";
+
+/// <p>The testing service, the class a request class must descend from to be a virtual document, and the one member a document
+/// request is made of.</p>
+Parameter TESTSERVICE = "EnsLib.Testing.Service";
+
+Parameter DOCUMENTBASE = "EnsLib.EDI.Document";
+
+Parameter DOCUMENTFIELD = "content";
+
+/// <p>What every test refusal code begins with (<class>OcuPilot.Api.InteropError</class>).</p>
+Parameter TESTCODEPREFIX = "INTEROP.TEST.";
+
+/// <p>The entity type and verb the audit row of a test names (<method>AuditRuntime</method>, Story 20.6).</p>
+Parameter ENTITYITEM = "production-item";
+
+Parameter VERBTEST = "test";
+
+/// <p>The vendor's status codes the test maps to its own words.</p>
+Parameter CODENOTREGISTERED = "<Ens>ErrBusinessDispatchNameNotRegistered";
+
+Parameter CODEPRODUCTIONNOTRUNNING = "<Ens>ErrProductionNotRunning";
+
+Parameter CODEPRODUCTIONQUIESCENT = "<Ens>ErrProductionQuiescent";
 
 /// <p>The query keys carrying a server file (an allowed directory and a relative name under it, AD-21's sixth case) and a local
 /// file (its name, which names no directory, and its text).</p>
@@ -530,6 +612,8 @@ Parameter REASONIMPORTSOURCE = "Name one file: a server file by its allowed dire
 
 Parameter REASONIMPORTFILENAME = "A local file's name is 1 to 255 characters and holds no slash, no backslash and no control character.";
 
+Parameter REASONTESTFIELDS = "Name the request's fields as a JSON object of text values, at most 200 of them.";
+
 /// <p>The class the pair sets are evaluated through. Overridable so a fixture can drive a denial in
 /// process; production never overrides it.</p>
 ClassMethod GateClass() As %String
@@ -577,6 +661,19 @@ ClassMethod IsRuntimeWrite(pType As %String) As %Boolean
     Quit (pType = ..#TYPEABORTQUEUE) || (pType = ..#TYPEABORTMESSAGE) || (pType = ..#TYPEABORTJOB) || (pType = ..#TYPESUSPENDJOB) || (pType = ..#TYPESTOPJOB)
 }
 
+/// <p>Whether <var>pType</var> is the host test's send (Story 20.6): an action-style write over a port-composed read, needing WRITE on
+/// the namespace's globals database and no routines database.</p>
+ClassMethod IsTestWrite(pType As %String) As %Boolean
+{
+    Quit pType = ..#TYPESENDTEST
+}
+
+/// <p>Whether <var>pType</var> is any write this port carries, whichever family declares it.</p>
+ClassMethod IsAnyWrite(pType As %String) As %Boolean
+{
+    Quit ..IsWrite(pType) || ..IsItemWrite(pType) || ..IsSettingWrite(pType) || ..IsRuntimeWrite(pType) || ..IsLookupWrite(pType) || ..IsTestWrite(pType)
+}
+
 /// <p>The endpoints Story 20.4 added, as a <class>%List</class>: the nine runtime reads. Each serves <code>LIST</code>; Queues,
 /// QueueItems and Jobs also serve the typed reads and writes of Story 20.23 (<method>Serves</method>).</p>
 ClassMethod RuntimeEndpoints() As %List
@@ -605,6 +702,8 @@ ClassMethod Pairs(pEndpoint As %String, pType As %String = "") As %List
         Set tSpec = ..#PRODUCTIONPAIRS
     } ElseIf (pEndpoint = ..#ENDPOINTLOOKUPTABLES) || (pEndpoint = ..#ENDPOINTLOOKUPENTRIES) {
         Set tSpec = ..#LOOKUPPAIRS
+    } ElseIf pEndpoint = ..#ENDPOINTITEMTEST {
+        Set tSpec = ..#TESTPAIRS
     } ElseIf pEndpoint = ..#ENDPOINTMONITOR {
         Set tSpec = ..#MONITORPAIRS
     } ElseIf (pEndpoint = ..#ENDPOINTQUEUES) || (pEndpoint = ..#ENDPOINTQUEUEITEMS) {
@@ -648,6 +747,7 @@ ClassMethod Serves(pEndpoint As %String, pType As %String) As %Boolean
     If pEndpoint = ..#ENDPOINTJOBS Quit (pType = ..#TYPEJOB) || (pType = ..#TYPEABORTJOB) || (pType = ..#TYPESUSPENDJOB) || (pType = ..#TYPESTOPJOB)
     If pEndpoint = ..#ENDPOINTLOOKUPTABLES Quit (pType = ..#TYPELOOKUPTABLE) || (pType = ..#TYPEDELETETABLE) || (pType = ..#TYPEIMPORTTABLE) || (pType = ..#TYPEIMPORT) || (pType = ..#TYPEEXPORT)
     If pEndpoint = ..#ENDPOINTLOOKUPENTRIES Quit (pType = ..#TYPELOOKUPENTRY) || (pType = ..#TYPEADDENTRY) || (pType = ..#TYPESETENTRY) || (pType = ..#TYPEREMOVEENTRY)
+    If pEndpoint = ..#ENDPOINTITEMTEST Quit (pType = ..#TYPETESTTARGET) || (pType = ..#TYPESENDTEST)
     If pEndpoint '= ..#ENDPOINTPRODUCTIONS Quit 0
     Quit (pType = ..#TYPESTATE) || ..IsWrite(pType)
 }
@@ -744,7 +844,7 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
             Set tSC = ..Refuse(501, ##class(OcuPilot.Api.Error).#NOTIMPLEMENTED, ##class(OcuPilot.Api.Error).#PORTNOTIMPLEMENTED, ..#REASONNOTIMPLEMENTED, .pHttpStatus, .pFault)
             Quit
         }
-        Set tWrite = ..IsWrite(pType) || ..IsItemWrite(pType) || ..IsSettingWrite(pType) || ..IsRuntimeWrite(pType) || ..IsLookupWrite(pType)
+        Set tWrite = ..IsAnyWrite(pType)
         Set tNamespace = $Get(pQuery(..#NAMESPACEKEY))
         If tNamespace = "" Set tNamespace = ##class(OcuPilot.Kernel.Scope).Current()
         Set tSC = ..Admit(pEndpoint, pType, tNamespace, .pHttpStatus, .pFault)
@@ -756,6 +856,10 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
         }
         If pEndpoint = ..#ENDPOINTSETTINGS {
             Set tSC = ..InvokeSettings(tNamespace, pType, .pQuery, pBody, .pResult, .pHttpStatus, .pFault)
+            Quit
+        }
+        If pEndpoint = ..#ENDPOINTITEMTEST {
+            Set tSC = ..InvokeItemTest(tNamespace, pType, .pQuery, .pResult, .pHttpStatus, .pFault)
             Quit
         }
         If $ListFind(..RuntimeEndpoints(), pEndpoint) {
@@ -826,7 +930,7 @@ ClassMethod Admit(pEndpoint As %String, pType As %String, pNamespace As %String,
 {
     Set pHttpStatus = 0
     Set pFault = ""
-    Set tWrite = ..IsWrite(pType) || ..IsItemWrite(pType) || ..IsSettingWrite(pType) || ..IsRuntimeWrite(pType) || ..IsLookupWrite(pType)
+    Set tWrite = ..IsAnyWrite(pType)
     Set tFailedPair = ""
     ; EvaluateRequired, not EvaluatePairs: a pair list mis-edited to empty fails closed.
     If '$ClassMethod(..GateClass(), "EvaluateRequired", ..Pairs(pEndpoint, pType), .tFailedPair) Quit ..Deny(tFailedPair, .pHttpStatus, .pFault)
@@ -3381,8 +3485,8 @@ ClassMethod PerformJobAction(pNamespace As %String, pType As %String, pPid As %S
     Quit $$$OK
 }
 
-/// <p>Record OcuPilot's own <code>ConfigChange</code> row for one queue, job or lookup write, or a lookup export, that read OK
-/// (AD-15, Stories 20.23 and 20.5), from whichever caller made it: the vendor records none. <var>pVerb</var> is one of the
+/// <p>Record OcuPilot's own <code>ConfigChange</code> row for one queue, job or lookup write, a lookup export or a host test, that read OK
+/// (AD-15, Stories 20.23, 20.5 and 20.6), from whichever caller made it: the vendor records none. <var>pVerb</var> is one of the
 /// <code>VERB</code> parameters, <var>pType</var> the entity type of the target and <var>pId</var> its id; <var>pEffects</var>
 /// names the namespace and, as the action has them, the queue, the table, the counts or the host, and never a message's content
 /// or an entry's value. It never fails the write.
@@ -3405,6 +3509,7 @@ ClassMethod SnippetForm(pEndpoint As %String, pType As %String) As %String
     If (pEndpoint = ..#ENDPOINTSETTINGS) && ..IsSettingWrite(pType) Quit "objectscript"
     If ..IsRuntimeWrite(pType) && ..Serves(pEndpoint, pType) Quit "objectscript"
     If (..IsLookupWrite(pType) || (pType = ..#TYPEEXPORT)) && ..Serves(pEndpoint, pType) Quit "objectscript"
+    If (pEndpoint = ..#ENDPOINTITEMTEST) && ..IsTestWrite(pType) Quit "objectscript"
     If pEndpoint '= ..#ENDPOINTPRODUCTIONS Quit ""
     If ..IsWrite(pType) Quit "objectscript"
     Quit ""
@@ -3428,6 +3533,8 @@ ClassMethod Snippet(pEndpoint As %String, pType As %String, ByRef pQuery, pBody 
         Set tText = tText _ ..ItemSnippet(pType, $Get(pQuery(..#IDKEY)), pBody)
     } ElseIf pEndpoint = ..#ENDPOINTSETTINGS {
         Set tText = tText _ ..SettingSnippet(pType, $Get(pQuery(..#IDKEY)), pBody)
+    } ElseIf pEndpoint = ..#ENDPOINTITEMTEST {
+        Set tText = tText _ ..TestSnippet($Get(pQuery(..#IDKEY)), .pQuery)
     } ElseIf ..IsRuntimeWrite(pType) {
         Set tText = tText _ ..RuntimeSnippet(pType, $Get(pQuery(..#IDKEY)), pContext)
     } ElseIf (pType = ..#TYPEIMPORT) || (pType = ..#TYPEEXPORT) {
@@ -4543,6 +4650,937 @@ ClassMethod LookupSnippet(pType As %String, pId As %String, pBody As %DynamicAbs
         Set tCall = "##class(Ens.Util.LookupTable).%UpdateValue(" _ tTable _ ", " _ tKey _ ", " _ ..Literal(tValue) _ ", " _ (pType = ..#TYPEADDENTRY) _ ")"
     }
     Quit tNL _ " Lock +^Ens.LookupTable(" _ tTable _ "):" _ ..#LOCKSECONDS _ tNL _ " If $Test { Set tSC = " _ tCall _ " } Else { Set tSC = $System.Status.Error(5001, ""the lookup table lock is held"") }" _ tNL _ " Lock -^Ens.LookupTable(" _ tTable _ ")"
+}
+
+/// <p>The most seconds a test waits for its target's answer before it answers <code>waiting</code> (Story 20.6).
+/// Overridable so a test can shorten the wait and observe that answer; production never overrides it.</p>
+ClassMethod TestWait() As %Numeric
+{
+    Quit ..#TESTWAIT
+}
+
+/// <p>Send <var>pRequest</var> to the host <var>pTarget</var> through <code>EnsLib.Testing.Service</code>, asynchronously, as the
+/// classic Testing Service dialog sends it, and answer the session in <var>pSession</var>. Called inside the production's
+/// namespace and inside the output capture, because the vendor writes its refusal to the current device
+/// (<code>DisplayError</code>). Overridable so a fixture can fail it and write to the device; production never overrides it.</p>
+ClassMethod VendorSendTest(pNamespace As %String, pTarget As %String, pRequest As %RegisteredObject, Output pSession As %String) As %Status [ Private ]
+{
+    Set pSession = ""
+    Quit ##class(EnsLib.Testing.Service).SendTestRequest(pTarget, pRequest, , .pSession)
+}
+
+/// <p>Serve the ItemTest endpoint (Story 20.6) after <method>Invoke</method>'s gate. A <code>LIST</code> names its item under
+/// <parameter>ITEMKEY</parameter>; the typed read and the send name it under <parameter>IDKEY</parameter>, as the composite
+/// <code>[Production, Name]</code> or the vendor's <code>Production||Name</code>. The request class and the field values travel
+/// under <parameter>REQUESTCLASSKEY</parameter> and <parameter>FIELDSKEY</parameter>.</p>
+ClassMethod InvokeItemTest(pNamespace As %String, pType As %String, ByRef pQuery, Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Set pResult = ""
+    Try {
+        If pType = ..#TYPELIST {
+            If '..ItemParts($Get(pQuery(..#ITEMKEY)), .tProduction, .tItem) {
+                Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONITEMIDREQUIRED, .pHttpStatus, .pFault)
+                Quit
+            }
+            Set tMaxText = $Get(pQuery(..#MAXROWSKEY))
+            If (tMaxText '= "") && '$Match(tMaxText, "^[1-9][0-9]*$") {
+                Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONMAXROWS, .pHttpStatus, .pFault)
+                Quit
+            }
+            Set tSC = ..ListTestFields(pNamespace, tProduction, tItem, +tMaxText, .pResult, .pHttpStatus, .pFault)
+            Quit
+        }
+        If '..ItemParts($Get(pQuery(..#IDKEY)), .tProduction, .tItem) {
+            Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONITEMIDREQUIRED, .pHttpStatus, .pFault)
+            Quit
+        }
+        Set tAction = $Select(..IsTestWrite(pType): pType, 1: $Get(pQuery(..#ACTIONKEY)))
+        If (tAction '= "") && '..IsTestWrite(tAction) {
+            Set tSC = ..Refuse(501, ##class(OcuPilot.Api.Error).#NOTIMPLEMENTED, ##class(OcuPilot.Api.Error).#PORTNOTIMPLEMENTED, ..#REASONNOTIMPLEMENTED, .pHttpStatus, .pFault)
+            Quit
+        }
+        If ..IsTestWrite(pType) {
+            Set tSC = ..PerformTest(pNamespace, tProduction, tItem, .pQuery, .pResult, .pHttpStatus, .pFault)
+            Quit
+        }
+        Set tSC = ..ReadTestTarget(pNamespace, tProduction, tItem, tAction, $Get(pQuery(..#REQUESTCLASSKEY)), $Get(pQuery(..#FIELDSKEY)), .pResult, .tPlan, .pHttpStatus, .pFault)
+    } Catch ex {
+        Set pResult = ""
+        Set tSC = ..Fail("the host test call failed inside the port", ex.AsStatus(), .pHttpStatus, .pFault)
+    }
+    Quit tSC
+}
+
+/// <p>Whether <var>pClass</var> is a virtual document request: a class that descends from
+/// <parameter>DOCUMENTBASE</parameter>, whose request is made of its text alone. Called while the production's namespace is
+/// switched.</p>
+ClassMethod IsDocumentClassHere(pClass As %String) As %Boolean [ Private ]
+{
+    Quit ''$ClassMethod(pClass, "%Extends", ..#DOCUMENTBASE)
+}
+
+/// <p>The request classes the host class <var>pHostClass</var> names itself, in <var>pOwn</var> (the subscripts): the list its
+/// own <code>GetMessageList</code> answers, as the classic Testing Service dialog reads it. The dictionary does not carry that
+/// list for every host: a router's, for one, is computed by its own code generator at compile time (measured on
+/// <code>HSCUSTOM</code>: 24 of 199 concrete host classes answer a request class that neither their message map nor the signature
+/// of their <code>OnMessage</code> or <code>OnRequest</code> names), so the vendor's method is the source. A class the namespace does not hold is left out. Called while the production's namespace is switched.</p>
+ClassMethod OwnRequestTypesHere(pHostClass As %String, Output pOwn) [ Private ]
+{
+    Kill pOwn
+    If '$Match(pHostClass, "^%?[A-Za-z][A-Za-z0-9]*(\.[A-Za-z][A-Za-z0-9]*)*$") Quit
+    If '##class(%Dictionary.CompiledClass).%ExistsId(pHostClass) Quit
+    If '##class(%Dictionary.CompiledMethod).%ExistsId(pHostClass _ "||GetMessageList") Quit
+    Set tList = $ClassMethod(pHostClass, "GetMessageList")
+    For tI = 1:1:$ListLength(tList) {
+        Set tName = $ListGet(tList, tI)
+        If (tName '= "") && ##class(%Dictionary.CompiledClass).%ExistsId(tName) Set pOwn(tName) = ""
+    }
+}
+
+/// <p>The request classes an item of the host class <var>pHostClass</var> takes, as the classic dialog builds the list: each
+/// class the host names itself (<method>OwnRequestTypesHere</method>) that is not abstract, and every subclass of one that is
+/// not abstract and extends <code>Ens.Util.MessageBodyMethods</code>. <var>pClasses</var><code>(0, name)</code> holds the
+/// host's own and <var>pClasses</var><code>(1, name)</code> the subclasses, each in name order. Called while the production's
+/// namespace is switched; nothing is instantiated.</p>
+ClassMethod RequestClassesHere(pHostClass As %String, Output pClasses) [ Private ]
+{
+    Kill pClasses
+    Do ..OwnRequestTypesHere(pHostClass, .tOwn)
+    Set tName = ""
+    For {
+        Set tName = $Order(tOwn(tName))
+        If tName = "" Quit
+        If '$$$comClassKeyGet(tName, $$$cCLASSabstract) Set pClasses(0, tName) = ""
+    }
+    Set tResult = ##class(%ResultSet).%New("%Dictionary.ClassDefinition:SubclassOf")
+    Set tName = ""
+    For {
+        Set tName = $Order(tOwn(tName))
+        If tName = "" Quit
+        Set tStatus = tResult.Execute(tName)
+        If $$$ISERR(tStatus) Throw ##class(%Exception.StatusException).CreateFromStatus(tStatus)
+        While tResult.Next() {
+            Set tSub = tResult.GetData(1)
+            If (tSub = "") || $Data(pClasses(0, tSub)) Continue
+            If '##class(%Dictionary.CompiledClass).%ExistsId(tSub) Continue
+            If $$$comClassKeyGet(tSub, $$$cCLASSabstract) Continue
+            If '$ClassMethod(tSub, "%Extends", "Ens.Util.MessageBodyMethods") Continue
+            Set pClasses(1, tSub) = ""
+        }
+        Do tResult.Close()
+    }
+}
+
+/// <p>Whether <var>pClass</var> is a request class an item of the host class <var>pHostClass</var> takes
+/// (<method>RequestClassesHere</method>), decided without listing the namespace's classes: a class the host names itself that is
+/// not abstract, or a class that is not abstract, extends <code>Ens.Util.MessageBodyMethods</code> and descends from one the
+/// host names. <var>pClass</var> reaches no class method until the namespace is known to hold it. Called while the production's
+/// namespace is switched.</p>
+ClassMethod IsRequestClassHere(pHostClass As %String, pClass As %String) As %Boolean [ Private ]
+{
+    If '$Match(pClass, "^%?[A-Za-z][A-Za-z0-9]*(\.[A-Za-z][A-Za-z0-9]*)*$") Quit 0
+    If '##class(%Dictionary.CompiledClass).%ExistsId(pClass) Quit 0
+    If $$$comClassKeyGet(pClass, $$$cCLASSabstract) Quit 0
+    Do ..OwnRequestTypesHere(pHostClass, .tOwn)
+    If $Data(tOwn(pClass)) Quit 1
+    If '$ClassMethod(pClass, "%Extends", "Ens.Util.MessageBodyMethods") Quit 0
+    Set tName = ""
+    For {
+        Set tName = $Order(tOwn(tName))
+        If tName = "" Quit
+        If $ClassMethod(pClass, "%Extends", tName) Quit
+    }
+    Quit (tName '= "")
+}
+
+/// <p>The fields a test request of class <var>pClass</var> is made of, as <var>pFields</var> records, from the class dictionary
+/// alone (nothing is instantiated and no class code runs): a virtual document is one <code>content</code> field of kind
+/// <code>document</code>; any other class lists the properties the classic form lets a person set, in its order -- a datatype,
+/// and an embedded serial object expanded to its own fields under a dotted path -- but not an object reference, a
+/// collection, a stream, or a property that is internal, private, multidimensional, read-only or calculated. At most
+/// <parameter>TESTFIELDMAX</parameter> properties are examined at a level and that many fields listed (the classic form's own
+/// bound). <var>pFields</var> is the count, and <var>pFields</var><code>(n)</code> is <code>$ListBuild(kind, path, leaf, type,
+/// required, maxLength, values, owner, chain)</code>: <code>values</code> is a closed list's display values (else its values), or
+/// <code>0</code> and <code>1</code> for a <code>%Library.Boolean</code>; <code>owner</code> is the class declaring the property and
+/// <code>chain</code> the serial classes along the path. Called while the production's namespace is switched.</p>
+ClassMethod ClassFieldsHere(pClass As %String, Output pFields) [ Private ]
+{
+    Kill pFields
+    Set pFields = 0
+    If '$Match(pClass, "^%?[A-Za-z][A-Za-z0-9]*(\.[A-Za-z][A-Za-z0-9]*)*$") Quit
+    If '##class(%Dictionary.CompiledClass).%ExistsId(pClass) Quit
+    If ..IsDocumentClassHere(pClass) {
+        Set pFields = 1
+        Set pFields(1) = $ListBuild("document", ..#DOCUMENTFIELD, ..#DOCUMENTFIELD, "%Library.String", 1, "", "", pClass, "")
+        Quit
+    }
+    Do ..CollectFieldsHere(pClass, "", "", 0, .pFields)
+}
+
+/// <p>The datatype properties of <var>pOwner</var>, and of the serial classes embedded in it, that
+/// <method>ClassFieldsHere</method> lists, appended to <var>pFields</var>. <var>pPrefix</var> is the dotted path to
+/// <var>pOwner</var>, <var>pChain</var> the serial classes along it.</p>
+ClassMethod CollectFieldsHere(pOwner As %String, pPrefix As %String, pChain As %List, pDepth As %Integer, ByRef pFields) [ Private ]
+{
+    If pDepth > 6 Quit
+    Set tClass = ##class(%Dictionary.CompiledClass).%OpenId(pOwner)
+    If '$IsObject(tClass) Quit
+    Kill tOrder
+    For tI = 1:1:tClass.Properties.Count() {
+        Set tProperty = tClass.Properties.GetAt(tI)
+        If '$IsObject(tProperty) Continue
+        Set tSort = (tProperty.Origin = pOwner) _ ":" _ $Translate($Justify(+tProperty.SequenceNumber, 8), " ", "0") _ ":" _ tProperty.Name
+        Set tOrder(tSort) = tI
+    }
+    Set tExamined = 0
+    Set tSort = ""
+    For {
+        Set tSort = $Order(tOrder(tSort), 1, tIndex)
+        If tSort = "" Quit
+        Set tExamined = tExamined + 1
+        If (tExamined > ..#TESTFIELDMAX) || (pFields >= ..#TESTFIELDMAX) Quit
+        Set tProperty = tClass.Properties.GetAt(tIndex)
+        If tProperty.Collection '= "" Continue
+        If tProperty.Internal || tProperty.Private || tProperty.MultiDimensional || tProperty.ReadOnly || tProperty.Calculated Continue
+        Set tType = $$$NormalizeClassname(tProperty.Type)
+        Set tClassType = $$$comClassKeyGet(tType, $$$cCLASSclasstype)
+        Set tPath = pPrefix _ $Select(pPrefix = "": "", 1: ".") _ tProperty.Name
+        If tClassType = "datatype" {
+            Set tValueText = tProperty.Parameters.GetAt("DISPLAYLIST")
+            If tValueText = "" Set tValueText = tProperty.Parameters.GetAt("VALUELIST")
+            Set tValues = ""
+            If tValueText '= "" {
+                Set tDelimiter = $Extract(tValueText, 1)
+                For tJ = 2:1:$Length(tValueText, tDelimiter) {
+                    Set tValues = tValues _ $ListBuild($Piece(tValueText, tDelimiter, tJ))
+                }
+            }
+            If (tValues = "") && (tType = "%Library.Boolean") Set tValues = $ListBuild("0", "1")
+            Set tMaxLength = tProperty.Parameters.GetAt("MAXLEN")
+            Set pFields($Increment(pFields)) = $ListBuild("object", tPath, tProperty.Name, tType, ''tProperty.Required, $Select($IsValidNum(tMaxLength): +tMaxLength, 1: ""), tValues, pOwner, pChain)
+        } ElseIf tClassType = "serial" {
+            Do ..CollectFieldsHere(tType, tPath, pChain _ $ListBuild(tType), pDepth + 1, .pFields)
+        }
+    }
+}
+
+/// <p>Whether a field of the dotted path <var>pPath</var> is credential-named (AD-35): any segment of it matches
+/// <method>OcuPilot.Kernel.Audit.Log.IsCredentialName</method>. The port's refusal, the tab's <code>Secret</code> column and the
+/// send tool's redaction all ask this one question. Not called while a namespace is switched.</p>
+ClassMethod SecretPath(pPath As %String) As %Boolean
+{
+    Set tSecret = 0
+    For tI = 1:1:$Length(pPath, ".") {
+        If ##class(OcuPilot.Kernel.Audit.Log).IsCredentialName($Piece(pPath, ".", tI)) {
+            Set tSecret = 1
+            Quit
+        }
+    }
+    Quit tSecret
+}
+
+/// <p>The Test tab's fields for the item <var>pItem</var> of <var>pProduction</var>, at most <var>pMax</var> rows when it is
+/// above zero: one row for each field of each request class an item of a process or an operation takes
+/// (<method>RequestClassesHere</method>), the host's own classes first and then their subclasses, each in name order; a business
+/// service, which takes no test request, gives none. Only the host class's own <code>GetMessageList</code> runs; the subclasses
+/// and fields come from the class dictionary, and no request class's code runs. An unknown production or item is 404 <code>PORT.NOTFOUND</code>, unlogged; a name the production holds
+/// more than once is <code>INTEROP.ITEM.AMBIGUOUS</code>.</p>
+ClassMethod ListTestFields(pNamespace As %String, pProduction As %String, pItem As %String, pMax As %Integer, Output pRows As %DynamicArray, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pRows = ""
+    Set tSC = ..ResolveItem(pNamespace, pProduction, pItem, .tLine, .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) Quit tSC
+    Kill tFound
+    Set tFound = 0
+    If $ListFind($ListBuild(2, 3), $List(tLine, 3)) {
+        Set tSC = ..GatherTestFields(pNamespace, $List(tLine, 2), pMax, .tFound, .tCaught)
+        If $IsObject(tCaught) Quit ..Mapped(tCaught, "the test fields could not be read", .pHttpStatus, .pFault)
+    }
+    Set pRows = []
+    For tI = 1:1:tFound {
+        Do pRows.%Push(..TestFieldRow(pProduction, $List(tLine, 1), tFound(tI)))
+    }
+    Set pHttpStatus = 200
+    Quit $$$OK
+}
+
+/// <p>The fields of the request classes the host class <var>pHostClass</var> takes, in <var>pFound</var>, at most
+/// <var>pMax</var> of them when it is above zero: each element is <code>$ListBuild(class)</code> followed by one
+/// <method>ClassFieldsHere</method> record, and a class with no field gives one element of kind <code>object</code> with an
+/// empty path. A fault is <var>pCaught</var>, with the namespace restored. Only vendor classes and this class run while the
+/// namespace is switched.</p>
+ClassMethod GatherTestFields(pNamespace As %String, pHostClass As %String, pMax As %Integer, ByRef pFound, Output pCaught) As %Status [ Private ]
+{
+    Kill pFound
+    Set pFound = 0
+    Set pCaught = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Do ..RequestClassesHere(pHostClass, .tClasses)
+        For tRank = 0, 1 {
+            Set tClass = ""
+            For {
+                Set tClass = $Order(tClasses(tRank, tClass))
+                If tClass = "" Quit
+                If (pMax > 0) && (pFound >= pMax) Quit
+                Do ..ClassFieldsHere(tClass, .tFields)
+                If 'tFields {
+                    Set pFound($Increment(pFound)) = $ListBuild(tClass, "object", "", "", "", 0, "", "", tClass, "")
+                    Continue
+                }
+                For tI = 1:1:tFields {
+                    If (pMax > 0) && (pFound >= pMax) Quit
+                    Set pFound($Increment(pFound)) = $ListBuild(tClass) _ tFields(tI)
+                }
+            }
+        }
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set pCaught = ex
+    }
+    Quit $$$OK
+}
+
+/// <p>The Test tab's row for the element <var>pLine</var> (<method>GatherTestFields</method>'s) of the item <var>pItemName</var>
+/// of <var>pProduction</var>: <code>{Production, Item, RequestClass, Kind, Field, Type, Required, MaxLength, Values, Secret}</code>,
+/// <code>Item</code> the item's <code>Production||Name</code>, <code>MaxLength</code> null where the field has none and
+/// <code>Values</code> the values a field of a closed list takes, as a person types them. A credential-named field is
+/// <code>Secret</code> (AD-35). A document's <code>content</code> is bounded by the longest text the screen sends.</p>
+ClassMethod TestFieldRow(pProduction As %String, pItemName As %String, pLine As %List) As %DynamicObject [ Private ]
+{
+    Set tKind = $List(pLine, 2)
+    Set tPath = $List(pLine, 3)
+    Set tRow = {}
+    Do tRow.%Set("Production", pProduction, "string")
+    Do tRow.%Set("Item", pProduction _ "||" _ pItemName, "string")
+    Do tRow.%Set("RequestClass", $List(pLine, 1), "string")
+    Do tRow.%Set("Kind", tKind, "string")
+    Do tRow.%Set("Field", tPath, "string")
+    Do tRow.%Set("Type", $List(pLine, 5), "string")
+    Do tRow.%Set("Required", ''$List(pLine, 6), "boolean")
+    If tKind = "document" {
+        Do tRow.%Set("MaxLength", ##class(OcuPilot.Port.AtelierPort).#MAXIMPORTCHARACTERS, "number")
+    } ElseIf $List(pLine, 7) = "" {
+        Do tRow.%Set("MaxLength", "", "null")
+    } Else {
+        Do tRow.%Set("MaxLength", $List(pLine, 7), "number")
+    }
+    Set tValues = []
+    Set tList = $List(pLine, 8)
+    For tI = 1:1:$ListLength(tList) {
+        Do tValues.%Push($List(tList, tI), "string")
+    }
+    Do tRow.%Set("Values", tValues)
+    Do tRow.%Set("Secret", $Select(tPath = "": 0, 1: ''..SecretPath(tPath)), "boolean")
+    Quit tRow
+}
+
+/// <p>The request fields <var>pText</var>, JSON object text, as <var>pInput</var>: each member that is text keyed by its name
+/// (a name over 200 characters is cut, and an empty one reads <code>(empty name)</code>), <var>pInput</var> the count; each
+/// member that is not text is <var>pBad</var>, keyed the same way. <code>""</code> is no fields. 0 when the text is not an
+/// object, or names more than <parameter>TESTINPUTMAX</parameter> members. Pure.</p>
+ClassMethod ParseTestFields(pText As %String, Output pInput, Output pBad) As %Boolean [ Private ]
+{
+    Kill pInput, pBad
+    Set pInput = 0
+    If pText = "" Quit 1
+    Set tObject = ""
+    Try {
+        Set tObject = ##class(%DynamicAbstractObject).%FromJSON(pText)
+    } Catch {
+        Set tObject = ""
+    }
+    If '$IsObject(tObject) || 'tObject.%IsA("%Library.DynamicObject") Quit 0
+    If tObject.%Size() > ..#TESTINPUTMAX Quit 0
+    Set tIterator = tObject.%GetIterator()
+    While tIterator.%GetNext(.tKey, .tValue, .tType) {
+        Set tName = $Select(tKey = "": "(empty name)", 1: $Extract(tKey, 1, 200))
+        If tType = "string" {
+            Set pInput(tName) = tValue
+            Set pInput = pInput + 1
+        } Else {
+            Set pBad(tName) = ""
+        }
+    }
+    Quit 1
+}
+
+/// <p>The text members of <var>pInput</var> (<method>ParseTestFields</method>) that are not empty, as canonical JSON text: one
+/// object whose members are in name order. It is the value <code>Fields</code> reads and the fingerprint covers, so one request
+/// reads one text. Pure.</p>
+ClassMethod CanonicalFields(ByRef pInput) As %String [ Private ]
+{
+    Set tObject = {}
+    Set tKey = ""
+    For {
+        Set tKey = $Order(pInput(tKey), 1, tValue)
+        If tKey = "" Quit
+        If tValue '= "" Do tObject.%Set(tKey, tValue, "string")
+    }
+    Quit tObject.%ToJSON()
+}
+
+/// <p>The vendor's facts a test is judged by, read in the production's namespace (which the caller has switched to) into
+/// <var>pFacts</var>: <code>testing</code>, whether the testing service is registered, from the host monitor's own query
+/// (<code>Ens.Util.Statistics:EnumerateHostStatus</code> lists the service, and reads it <code>Disabled</code> once the running
+/// production has unregistered it), asked only while the production runs (<var>pRunning</var>); and, for an item that takes a
+/// test (<var>pTakesTests</var>) and a non-empty <var>pRequestClass</var>, <code>allowed</code>, whether the host takes that
+/// class, then <code>kind</code> and the class's fields, <code>meta</code> their count and <code>meta(n)</code> their
+/// <method>ClassFieldsHere</method> records.</p>
+ClassMethod TestFactsHere(pHostClass As %String, pRunning As %Boolean, pTakesTests As %Boolean, pRequestClass As %String, Output pFacts) [ Private ]
+{
+    Kill pFacts
+    Set pFacts("testing") = 0
+    Set pFacts("allowed") = 0
+    Set pFacts("kind") = ""
+    Set pFacts("meta") = 0
+    If pRunning {
+        Set tResult = ##class(%ResultSet).%New("Ens.Util.Statistics:EnumerateHostStatus")
+        Set tStatus = tResult.Execute()
+        If $$$ISERR(tStatus) Throw ##class(%Exception.StatusException).CreateFromStatus(tStatus)
+        While tResult.Next() {
+            If (tResult.GetData(1) = ..#TESTSERVICE) && (tResult.GetData(3) '= "Disabled") {
+                Set pFacts("testing") = 1
+                Quit
+            }
+        }
+        Do tResult.Close()
+    }
+    If 'pTakesTests || (pRequestClass = "") Quit
+    If '..IsRequestClassHere(pHostClass, pRequestClass) Quit
+    Set pFacts("allowed") = 1
+    Set pFacts("kind") = $Select(..IsDocumentClassHere(pRequestClass): "document", 1: "object")
+    Do ..ClassFieldsHere(pRequestClass, .tMeta)
+    Set pFacts("meta") = tMeta
+    For tI = 1:1:tMeta {
+        Set pFacts("meta", tI) = tMeta(tI)
+    }
+}
+
+/// <p>Convert each field of the plan <var>pPlan</var> to its logical value and judge it, as the classic form does: the
+/// declaring class's <code>&lt;Property&gt;DisplayToLogical</code> and then <code>&lt;Property&gt;IsValid</code>. A value
+/// they refuse is <var>pViolations</var><code>(n)</code>, <code>$ListBuild(path, "VALUE")</code>; one they accept is the
+/// plan element's sixth member. A property whose class carries neither method is taken as typed. Called while the production's
+/// namespace is switched.</p>
+ClassMethod ConvertPlanHere(ByRef pPlan, Output pViolations) [ Private ]
+{
+    Kill pViolations
+    Set pViolations = 0
+    For tI = 1:1:+$Get(pPlan) {
+        Set tRecord = pPlan(tI)
+        Set tOwner = $List(tRecord, 3)
+        Set tLeaf = $List(tRecord, 2)
+        Set tLogical = $List(tRecord, 5)
+        If ##class(%Dictionary.CompiledMethod).%ExistsId(tOwner _ "||" _ tLeaf _ "DisplayToLogical") {
+            Set tLogical = $ClassMethod(tOwner, tLeaf _ "DisplayToLogical", tLogical)
+        }
+        Set tStatus = $$$OK
+        If ##class(%Dictionary.CompiledMethod).%ExistsId(tOwner _ "||" _ tLeaf _ "IsValid") {
+            Set tStatus = $ClassMethod(tOwner, tLeaf _ "IsValid", tLogical)
+        }
+        If $$$ISERR(tStatus) {
+            Set pViolations($Increment(pViolations)) = $ListBuild($List(tRecord, 1), "VALUE")
+        } Else {
+            Set $List(pPlan(tI), 6) = tLogical
+        }
+    }
+}
+
+/// <p>One item's test, read fresh (Story 20.6): <code>{Namespace, Production, Name, Type, Enabled, State, Testing, RequestClass,
+/// Kind, Fields, RequestValid}</code>. An unknown production or item is 404 <code>PORT.NOTFOUND</code>, unlogged; a name the
+/// production holds more than once is <code>INTEROP.ITEM.AMBIGUOUS</code>. <var>pRequestClass</var> and <var>pFieldsText</var>
+/// are the request being tested, echoed as typed and, for <code>Fields</code>, as canonical JSON text; a <var>pFieldsText</var>
+/// that is not a JSON object of at most <parameter>TESTINPUTMAX</parameter> members is 400 <code>PORT.VALIDATION</code>.</p>
+/// <p>With <var>pAction</var> the send, it refuses what the send would be refused, in this order, each before any request is
+/// built and each 409: the production is not running (<code>INTEROP.PRODUCTION.NOTRUNNING</code>, also when the one running is
+/// another); <code>DISABLED</code>, the testing service is not registered; <code>TARGETTYPE</code>, the item is not a process
+/// or an operation; <code>TARGETDISABLED</code>; <code>REQUESTTYPE</code>, the class is not one the item takes; and
+/// <code>SECRET</code>, a value for a credential-named field. Then the fields are judged, 422: <code>FIELD</code> for a name that
+/// is not a field of the class, <code>VALUE</code> for a value its class refuses, a value outside the field's listed
+/// <code>Values</code>, a required field left empty or a member that is not text. A document is one member, <code>content</code>, 1 to
+/// <parameter>OcuPilot.Port.AtelierPort.MAXIMPORTCHARACTERS</parameter> characters.</p>
+/// <p><var>pPlan</var> answers what the send builds from: <code>pPlan("kind")</code>, <code>pPlan("name")</code>, then for a
+/// document <code>pPlan("content")</code>, else <code>pPlan</code> fields and <code>pPlan(n)</code>
+/// <code>$ListBuild(path, leaf, owner, chain, typed, logical)</code> in the class's order, only for a field given a value.
+/// Neither the read nor the plan instantiates a request class.</p>
+ClassMethod ReadTestTarget(pNamespace As %String, pProduction As %String, pItem As %String, pAction As %String, pRequestClass As %String, pFieldsText As %String, Output pRow As %DynamicObject, ByRef pPlan, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pRow = ""
+    Kill pPlan
+    Set pPlan = 0
+    Set tSC = ..ResolveItem(pNamespace, pProduction, pItem, .tLine, .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) Quit tSC
+    Set tSC = ..ReadState(pNamespace, pProduction, .tFacts, .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) Quit tSC
+    If '..ParseTestFields(pFieldsText, .tInput, .tBad) Quit ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONTESTFIELDS, .pHttpStatus, .pFault)
+    Set tName = $List(tLine, 1)
+    Set tBusiness = $List(tLine, 3)
+    Set tTakesTests = (tBusiness = 2) || (tBusiness = 3)
+    Set tRunning = (tFacts("word") = "Running")
+    Set tCaught = ""
+    Kill tTest
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Do ..TestFactsHere($List(tLine, 2), tRunning, tTakesTests, pRequestClass, .tTest)
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tCaught = ex
+    }
+    If $IsObject(tCaught) Quit ..Mapped(tCaught, "the test target could not be read", .pHttpStatus, .pFault)
+    Set tKind = tTest("kind")
+    Set tValid = 0
+    If pAction '= "" {
+        If 'tRunning Quit ..Conflict(##class(OcuPilot.Api.InteropError).#NOTRUNNING, .pHttpStatus, .pFault)
+        If 'tTest("testing") Quit ..Conflict(##class(OcuPilot.Api.InteropError).#TESTDISABLED, .pHttpStatus, .pFault)
+        If 'tTakesTests Quit ..Conflict(##class(OcuPilot.Api.InteropError).#TESTTARGETTYPE, .pHttpStatus, .pFault)
+        If '$List(tLine, 4) Quit ..Conflict(##class(OcuPilot.Api.InteropError).#TESTTARGETDISABLED, .pHttpStatus, .pFault)
+        If 'tTest("allowed") Quit ..Conflict(##class(OcuPilot.Api.InteropError).#TESTREQUESTTYPE, .pHttpStatus, .pFault)
+        Set tSecret = 0
+        For tI = 1:1:tTest("meta") {
+            Set tPath = $List(tTest("meta", tI), 2)
+            If (tKind = "object") && ($Get(tInput(tPath)) '= "") && ..SecretPath(tPath) {
+                Set tSecret = 1
+                Quit
+            }
+        }
+        If tSecret Quit ..Conflict(##class(OcuPilot.Api.InteropError).#TESTSECRET, .pHttpStatus, .pFault)
+    }
+    Kill tViolations
+    Set tViolations = 0
+    If tTest("allowed") {
+        For tI = 1:1:tTest("meta") {
+            Set tPaths($List(tTest("meta", tI), 2)) = tI
+        }
+        Set tKey = ""
+        For {
+            Set tKey = $Order(tInput(tKey))
+            If tKey = "" Quit
+            If '$Data(tPaths(tKey)) Set tViolations($Increment(tViolations)) = $ListBuild(tKey, ##class(OcuPilot.Api.InteropError).#TESTFIELD)
+        }
+        Set tKey = ""
+        For {
+            Set tKey = $Order(tBad(tKey))
+            If tKey = "" Quit
+            Set tViolations($Increment(tViolations)) = $ListBuild(tKey, ##class(OcuPilot.Api.InteropError).#TESTVALUE)
+        }
+        Set pPlan("kind") = tKind
+        Set pPlan("name") = tName
+        If tKind = "document" {
+            Set tContent = $Get(tInput(..#DOCUMENTFIELD))
+            Set pPlan("content") = tContent
+            If ($Length(tContent) < 1) || ($Length(tContent) > ##class(OcuPilot.Port.AtelierPort).#MAXIMPORTCHARACTERS) Set tViolations($Increment(tViolations)) = $ListBuild(..#DOCUMENTFIELD, ##class(OcuPilot.Api.InteropError).#TESTVALUE)
+        } Else {
+            For tI = 1:1:tTest("meta") {
+                Set tRecord = tTest("meta", tI)
+                Set tPath = $List(tRecord, 2)
+                Set tTyped = $Get(tInput(tPath))
+                If tTyped = "" {
+                    If $List(tRecord, 5) && ..ParentGiven(tPath, .tInput) Set tViolations($Increment(tViolations)) = $ListBuild(tPath, ##class(OcuPilot.Api.InteropError).#TESTVALUE)
+                    Continue
+                }
+                If ($List(tRecord, 7) '= "") && '$ListFind($List(tRecord, 7), tTyped) {
+                    Set tViolations($Increment(tViolations)) = $ListBuild(tPath, ##class(OcuPilot.Api.InteropError).#TESTVALUE)
+                    Continue
+                }
+                Set pPlan($Increment(pPlan)) = $ListBuild(tPath, $List(tRecord, 3), $List(tRecord, 8), $List(tRecord, 9), tTyped, tTyped)
+            }
+        }
+        If (pAction '= "") && (tKind = "object") && pPlan {
+            Set tCaught = ""
+            Kill tConverted
+            Set tOrigNS = $NAMESPACE
+            Try {
+                Set $NAMESPACE = pNamespace
+                Do ..ConvertPlanHere(.pPlan, .tConverted)
+                Set $NAMESPACE = tOrigNS
+            } Catch ex {
+                Set $NAMESPACE = tOrigNS
+                Set tCaught = ex
+            }
+            If $IsObject(tCaught) Quit ..Mapped(tCaught, "the test values could not be judged", .pHttpStatus, .pFault)
+            For tI = 1:1:tConverted {
+                Set tViolations($Increment(tViolations)) = $ListBuild($List(tConverted(tI), 1), ##class(OcuPilot.Api.InteropError).#TESTVALUE)
+            }
+        }
+        Set tValid = ('tViolations)
+    }
+    If (pAction '= "") && tViolations Quit ..Violations(.tViolations, .pHttpStatus, .pFault)
+    Set pRow = {}
+    Do pRow.%Set("Namespace", pNamespace, "string")
+    Do pRow.%Set("Production", pProduction, "string")
+    Do pRow.%Set("Name", tName, "string")
+    Do pRow.%Set("Type", $Case(tBusiness, 1: "service", 2: "process", 3: "operation", : "unknown"), "string")
+    Do pRow.%Set("Enabled", ''$List(tLine, 4), "boolean")
+    Do pRow.%Set("State", tFacts("word"), "string")
+    Do pRow.%Set("Testing", ''tTest("testing"), "boolean")
+    Do pRow.%Set("RequestClass", pRequestClass, "string")
+    Do pRow.%Set("Kind", tKind, "string")
+    Do pRow.%Set("Fields", ..CanonicalFields(.tInput), "string")
+    Do pRow.%Set("RequestValid", ''tValid, "boolean")
+    Set pHttpStatus = 200
+    Quit $$$OK
+}
+
+/// <p>Whether a field of the dotted path <var>pPath</var> sits under a serial object some other field of <var>pInput</var>
+/// gives a value, so a required field of an embedded object is asked for only when the object is in use. A field with no parent
+/// is always asked for. Pure.</p>
+ClassMethod ParentGiven(pPath As %String, ByRef pInput) As %Boolean [ Private ]
+{
+    If pPath '[ "." Quit 1
+    Set tPrefix = $Piece(pPath, ".", 1, $Length(pPath, ".") - 1) _ "."
+    Set tKey = ""
+    For {
+        Set tKey = $Order(pInput(tKey), 1, tValue)
+        If tKey = "" Quit
+        If (tValue '= "") && ($Extract(tKey, 1, $Length(tPrefix)) = tPrefix) Quit
+    }
+    Quit (tKey '= "")
+}
+
+/// <p>Build the request the plan <var>pPlan</var> (<method>ReadTestTarget</method>) describes, as an instance of
+/// <var>pRequestClass</var>, in <var>pRequest</var>, and save it as the classic dialog does: a virtual document is
+/// <code>ImportFromString</code> of its text, any other class a new instance with each field set, along its path, to its logical
+/// value, then <code>%ValidateObject</code>; either is then <code>%Save</code>d when it is persistent. A request the vendor cannot
+/// build or save is the error status, and <var>pField</var> the field to name it on. Called while the production's namespace is
+/// switched, and only with a class <method>IsRequestClassHere</method> has accepted.</p>
+ClassMethod BuildTestRequestHere(pRequestClass As %String, ByRef pPlan, Output pRequest, Output pField As %String) As %Status [ Private ]
+{
+    Set pRequest = ""
+    Set pField = "RequestClass"
+    Set tSC = $$$OK
+    If pPlan("kind") = "document" {
+        Set pField = ..#DOCUMENTFIELD
+        Set tImport = $$$OK
+        Set tObject = $ClassMethod(pRequestClass, "ImportFromString", pPlan("content"), .tImport)
+        If $$$ISERR(tImport) Quit tImport
+        If '$IsObject(tObject) Quit $$$ERROR($$$GeneralError, "the text did not give a " _ pRequestClass)
+    } Else {
+        Set tObject = $ClassMethod(pRequestClass, "%New")
+        If '$IsObject(tObject) Quit $$$ERROR($$$GeneralError, "a " _ pRequestClass _ " could not be created")
+        Set tFailed = ""
+        For tI = 1:1:+$Get(pPlan) {
+            If tFailed '= "" Quit
+            Set tRecord = pPlan(tI)
+            Set tChain = $List(tRecord, 4)
+            Set tCurrent = tObject
+            For tJ = 1:1:$Length($List(tRecord, 1), ".") - 1 {
+                Set tSegment = $Piece($List(tRecord, 1), ".", tJ)
+                Set tNext = $Property(tCurrent, tSegment)
+                If '$IsObject(tNext) {
+                    Set tNext = $ClassMethod($List(tChain, tJ), "%New")
+                    If '$IsObject(tNext) {
+                        Set tFailed = "an embedded " _ $List(tChain, tJ) _ " could not be created"
+                        Quit
+                    }
+                    Set $Property(tCurrent, tSegment) = tNext
+                }
+                Set tCurrent = tNext
+            }
+            If tFailed '= "" Quit
+            Set $Property(tCurrent, $List(tRecord, 2)) = $List(tRecord, 6)
+        }
+        If tFailed '= "" Quit $$$ERROR($$$GeneralError, tFailed)
+        Set tSC = tObject.%ValidateObject()
+        If $$$ISERR(tSC) Quit tSC
+    }
+    If tObject.%Extends("%Library.Persistent") {
+        Set tSC = tObject.%Save()
+        If $$$ISERR(tSC) Quit tSC
+    }
+    Set pRequest = tObject
+    Quit $$$OK
+}
+
+/// <p>Wait, at most <method>TestWait</method> seconds, for the test session <var>pSession</var>'s answer, reading every
+/// <parameter>TESTPOLL</parameter> seconds whether the vendor has recorded its <code>response</code> node, the last one it writes
+/// for a finished session (after the top node reads <code>Done</code> or <code>Error</code>), as the classic dialog waits on it;
+/// then gather what the vendor kept in <var>pAnswer</var>: <code>status</code> (<code>done</code>, <code>error</code> or
+/// <code>waiting</code>), then for an error its <code>error</code> text, for a response <code>responseClass</code> and either its
+/// text (<code>document</code>) or its fields (<code>field(n)</code>, <code>$ListBuild(path, value)</code>). A finished session's
+/// node is killed, as the classic dialog kills it once it has drawn the answer; a session still waiting is left for the vendor's
+/// own cleanup. Called while the production's namespace is switched, and inside the output capture.</p>
+ClassMethod AwaitTestHere(pSession As %String, Output pAnswer) [ Private ]
+{
+    Kill pAnswer
+    Set pAnswer("status") = "waiting"
+    Set pAnswer("responseClass") = ""
+    Set pAnswer("fields") = 0
+    Set tDeadline = $ZHorolog + ..TestWait()
+    Set tAnswered = 0
+    For {
+        If $Data($$$EnsRuntimeAppData(..#TESTSERVICE, pSession, "response")) Set tAnswered = 1 Quit
+        If $ZHorolog >= tDeadline Quit
+        Hang ..#TESTPOLL
+    }
+    Set tState = $Select(tAnswered: $Get($$$EnsRuntimeAppData(..#TESTSERVICE, pSession)), 1: "")
+    If tState = "Error" {
+        Set pAnswer("status") = "error"
+        Set tError = $Get($$$EnsRuntimeAppData(..#TESTSERVICE, pSession, "error"))
+        Set pAnswer("error") = $Select(tError = "": "", 1: $System.Status.GetErrorText(tError))
+    } ElseIf tState = "Done" {
+        Set pAnswer("status") = "done"
+        Do ..CollectResponseHere($Get($$$EnsRuntimeAppData(..#TESTSERVICE, pSession, "response")), .pAnswer)
+    }
+    If (tState = "Done") || (tState = "Error") Kill $$$EnsRuntimeAppData(..#TESTSERVICE, pSession)
+}
+
+/// <p>Open the response <var>pSpec</var> names (<code>$ListBuild(class, id)</code>, the vendor's own record) and gather it into
+/// <var>pAnswer</var> as <method>AwaitTestHere</method> describes. A response the namespace no longer holds, or that is not a
+/// persistent class, gathers nothing. Called while the production's namespace is switched.</p>
+ClassMethod CollectResponseHere(pSpec As %String, ByRef pAnswer) [ Private ]
+{
+    Set tClass = $Select(pSpec = "": "", 1: $ListGet(pSpec, 1))
+    Set tId = $Select(pSpec = "": "", 1: $ListGet(pSpec, 2))
+    If (tClass = "") || '$Match(tClass, "^%?[A-Za-z][A-Za-z0-9]*(\.[A-Za-z][A-Za-z0-9]*)*$") Quit
+    If '##class(%Dictionary.CompiledClass).%ExistsId(tClass) Quit
+    If '$ClassMethod(tClass, "%Extends", "%Library.Persistent") Quit
+    Set tObject = $ClassMethod(tClass, "%OpenId", tId)
+    If '$IsObject(tObject) Quit
+    Set pAnswer("responseClass") = tClass
+    If ..IsDocumentClassHere(tClass) {
+        Set tText = ""
+        Try {
+            Set tText = tObject.OutputToString()
+        } Catch {
+            Set tText = ""
+        }
+        Set pAnswer("document") = tText
+        Quit
+    }
+    Do ..ClassFieldsHere(tClass, .tMeta)
+    For tI = 1:1:tMeta {
+        If $List(tMeta(tI), 1) '= "object" Continue
+        Set tPath = $List(tMeta(tI), 2)
+        Set tCurrent = tObject
+        For tJ = 1:1:$Length(tPath, ".") - 1 {
+            Set tCurrent = $Property(tCurrent, $Piece(tPath, ".", tJ))
+            If '$IsObject(tCurrent) Quit
+        }
+        Set tValue = ""
+        If $IsObject(tCurrent) {
+            Set tValue = $Property(tCurrent, $List(tMeta(tI), 3))
+            Set tOwner = $List(tMeta(tI), 8)
+            If ##class(%Dictionary.CompiledMethod).%ExistsId(tOwner _ "||" _ $List(tMeta(tI), 3) _ "LogicalToDisplay") {
+                Set tValue = $ClassMethod(tOwner, $List(tMeta(tI), 3) _ "LogicalToDisplay", tValue)
+            }
+        }
+        Set pAnswer("fields") = pAnswer("fields") + 1
+        Set pAnswer("field", pAnswer("fields")) = $ListBuild(tPath, tValue)
+    }
+}
+
+/// <p>End the output capture <var>pCookie</var> opened for a test and answer what the vendor wrote to the device, as one text
+/// at most <parameter>TESTOUTPUTMAX</parameter> characters long. Nothing it wrote reaches the answer: the caller logs it.</p>
+ClassMethod EndTestCapture(pCookie As %String) As %String [ Private ]
+{
+    Set tText = ""
+    Try {
+        Kill tLines
+        Set tEndSC = $$EndCapture^%SYS.Capture(pCookie, .tLines)
+        If $IsObject($Get(tLines)) {
+            Set tIterator = tLines.%GetIterator()
+            While tIterator.%GetNext(.tIndex, .tLine) {
+                If ($Length(tText) + $Length(tLine)) >= ..#TESTOUTPUTMAX Quit
+                Set tText = tText _ tLine
+            }
+        }
+    } Catch {
+        Set tText = ""
+    }
+    Quit tText
+}
+
+/// <p>The lines <var>pText</var> is made of, split at a line feed, a carriage return or both, in <var>pLines</var> (a
+/// <class>%DynamicArray</class>) after the ones already in it, a trailing empty line left out. <var>pChars</var> counts the
+/// characters so far and is not allowed past <parameter>TESTOUTPUTMAX</parameter>: the line that would pass it is cut and
+/// marked, and <var>pCut</var> is 1. Pure.</p>
+ClassMethod AddTestLines(pText As %String, pLines As %DynamicArray, ByRef pChars As %Integer, ByRef pCut As %Boolean) [ Private ]
+{
+    Set tText = $Translate($Replace(pText, $Char(13, 10), $Char(10)), $Char(13), $Char(10))
+    Set tCount = $Length(tText, $Char(10))
+    For tI = 1:1:tCount {
+        If pCut Quit
+        Set tLine = $Piece(tText, $Char(10), tI)
+        If (tI = tCount) && (tLine = "") Quit
+        If (pChars + $Length(tLine)) > ..#TESTOUTPUTMAX {
+            Set tLine = $Extract(tLine, 1, ..#TESTOUTPUTMAX - pChars) _ ..#TESTCUT
+            Set pCut = 1
+        }
+        Set pChars = pChars + $Length(tLine)
+        Do pLines.%Push(tLine, "string")
+    }
+}
+
+/// <p>The lines a test answer shows: an error's text, a document response's text, or one <code>Path: value</code> line for each
+/// response field, a value cut at <parameter>TESTVALUEMAX</parameter> characters and marked, and a credential-named field
+/// blank. The lines of one result hold at most <parameter>TESTOUTPUTMAX</parameter> characters in all, the last marked. Not
+/// called while a namespace is switched.</p>
+ClassMethod TestLines(ByRef pAnswer) As %DynamicArray [ Private ]
+{
+    Set tLines = []
+    Set tChars = 0
+    Set tCut = 0
+    If pAnswer("status") = "error" {
+        Do ..AddTestLines($Get(pAnswer("error")), tLines, .tChars, .tCut)
+        Quit tLines
+    }
+    If $Data(pAnswer("document")) {
+        Do ..AddTestLines(pAnswer("document"), tLines, .tChars, .tCut)
+        Quit tLines
+    }
+    For tI = 1:1:pAnswer("fields") {
+        If tCut Quit
+        Set tPath = $List(pAnswer("field", tI), 1)
+        Set tValue = $List(pAnswer("field", tI), 2)
+        If ..SecretPath(tPath) Set tValue = ""
+        If $Length(tValue) > ..#TESTVALUEMAX Set tValue = $Extract(tValue, 1, ..#TESTVALUEMAX) _ ..#TESTCUT
+        Set tValue = $Translate(tValue, $Char(13, 10), "  ")
+        Do ..AddTestLines(tPath _ ": " _ tValue, tLines, .tChars, .tCut)
+    }
+    Quit tLines
+}
+
+/// <p>Send the test <var>pQuery</var> carries to the item <var>pItem</var> of <var>pProduction</var> (Story 20.6). The composed
+/// read (<method>ReadTestTarget</method>) refuses first, with the send's action, so nothing is built that would be refused;
+/// then, inside the output capture and the production's namespace, the request is built and saved
+/// (<method>BuildTestRequestHere</method>), sent asynchronously through <method>VendorSendTest</method> and its answer waited
+/// for (<method>AwaitTestHere</method>) for at most <method>TestWait</method> seconds.</p>
+/// <p>The answer is <code>{status, sessionId, responseClass, lines, errors}</code>: <code>done</code> with the response's fields
+/// (or its text) as <code>lines</code>, or no line for a target that answers nothing; <code>error</code> with the error's text;
+/// or <code>waiting</code> with the session, nothing more yet. A request the vendor cannot build or save is 422
+/// <code>INTEROP.TEST.REQUEST</code> on the field, its vendor text in the log only; a vendor refusal is mapped to the
+/// published code that says it (the testing service not registered is <code>DISABLED</code>), and the text the vendor wrote to
+/// the device is logged and never answered. OcuPilot's own audit row records the test, never a field value, an input or an
+/// answer (<method>AuditRuntime</method>).</p>
+ClassMethod PerformTest(pNamespace As %String, pProduction As %String, pItem As %String, ByRef pQuery, Output pResult As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pResult = ""
+    Set tClass = $Get(pQuery(..#REQUESTCLASSKEY))
+    Set tSC = ..ReadTestTarget(pNamespace, pProduction, pItem, ..#TYPESENDTEST, tClass, $Get(pQuery(..#FIELDSKEY)), .tRow, .tPlan, .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) Quit tSC
+    Set tTarget = tRow.%Get("Name")
+    Set tCaught = ""
+    Set tBuildSC = $$$OK
+    Set tSendSC = $$$OK
+    Set tSession = ""
+    Set tField = "RequestClass"
+    Kill tAnswer
+    Set tAnswer("status") = "waiting"
+    Set tOrigNS = $NAMESPACE
+    Set tCaptureSC = $$BeginCapture^%SYS.Capture(.tCookie)
+    If $$$ISERR(tCaptureSC) Quit ..Fail("the test could not capture the vendor's output", tCaptureSC, .pHttpStatus, .pFault)
+    Try {
+        Set $NAMESPACE = pNamespace
+        Set tBuildSC = ..BuildTestRequestHere(tClass, .tPlan, .tRequest, .tField)
+        If $$$ISOK(tBuildSC) {
+            Set tSendSC = ..VendorSendTest(pNamespace, tTarget, tRequest, .tSession)
+            Set tRequest = ""
+            If $$$ISOK(tSendSC) Do ..AwaitTestHere(tSession, .tAnswer)
+        }
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        If $NAMESPACE '= tOrigNS Set $NAMESPACE = tOrigNS
+        Set tCaught = ex
+    }
+    Set tWritten = ..EndTestCapture(tCookie)
+    If $IsObject(tCaught) Quit ..Mapped(tCaught, "the test could not be sent", .pHttpStatus, .pFault)
+    If $$$ISERR(tBuildSC) {
+        Do ..LogFault("the test request could not be built", tBuildSC)
+        Set tViolations = 1
+        Set tViolations(1) = $ListBuild(tField, ##class(OcuPilot.Api.InteropError).#TESTREQUEST)
+        Quit ..Violations(.tViolations, .pHttpStatus, .pFault)
+    }
+    If $$$ISERR(tSendSC) {
+        Do ..LogFault("the test request could not be sent" _ $Select(tWritten = "": "", 1: "; the vendor wrote: " _ $Extract(tWritten, 1, 1000)), tSendSC)
+        If ..HasCode(tSendSC, ..#CODENOTREGISTERED) && ($System.Status.GetErrorText(tSendSC) [ ..#TESTSERVICE) Quit ..Conflict(##class(OcuPilot.Api.InteropError).#TESTDISABLED, .pHttpStatus, .pFault)
+        If ..HasCode(tSendSC, ..#CODEPRODUCTIONNOTRUNNING) || ..HasCode(tSendSC, ..#CODEPRODUCTIONQUIESCENT) Quit ..Conflict(##class(OcuPilot.Api.InteropError).#NOTRUNNING, .pHttpStatus, .pFault)
+        Quit ..Statused(tSendSC, "the test request could not be sent", .pHttpStatus, .pFault)
+    }
+    Set tStatus = tAnswer("status")
+    Set pResult = {}
+    Do pResult.%Set("status", tStatus, "string")
+    Do pResult.%Set("sessionId", tSession _ "", "string")
+    Do pResult.%Set("responseClass", $Get(tAnswer("responseClass")), "string")
+    Do pResult.%Set("lines", ..TestLines(.tAnswer))
+    Do pResult.%Set("errors", (tStatus = "error"), "boolean")
+    Set tEffects = {}
+    Do tEffects.%Set("namespace", pNamespace, "string")
+    Do tEffects.%Set("production", pProduction, "string")
+    Do tEffects.%Set("item", tTarget, "string")
+    Do tEffects.%Set("requestClass", tClass, "string")
+    Do tEffects.%Set("sessionId", tSession _ "", "string")
+    Do tEffects.%Set("status", tStatus, "string")
+    Do ..AuditRuntime(..#VERBTEST, ..#ENTITYITEM, ##class(OcuPilot.Kernel.EntityId).JoinComposite($ListBuild(pProduction, tTarget)), tEffects)
+    Set pHttpStatus = 200
+    Quit $$$OK
+}
+
+/// <p>The lines <method>Snippet</method> adds for the host test of the item the composite id <var>pId</var> names (Story 20.6),
+/// from the request class and the field values <var>pQuery</var> carries: the request created and each given field set along its
+/// path to the logical value its class's <code>&lt;Property&gt;DisplayToLogical</code> makes of the typed one (the typed one where the
+/// class has no such method, as the send takes it), a serial object
+/// created where the path passes one, the request validated and saved, and the call of <code>EnsLib.Testing.Service</code>. A
+/// virtual document is <code>ImportFromString</code> of its text. The class's fields are read in the namespace
+/// <parameter>NAMESPACEKEY</parameter> names, and a class they cannot be read for gives the lines without a field. Every
+/// name and value is a string literal, so nothing the query carries runs as code, and every line closes any block it opens.</p>
+ClassMethod TestSnippet(pId As %String, ByRef pQuery) As %String [ Private ]
+{
+    Set tNL = $Char(10)
+    Set tParts = ##class(OcuPilot.Kernel.EntityId).SplitComposite(pId)
+    Set tClass = $Get(pQuery(..#REQUESTCLASSKEY))
+    Set tClassLiteral = ..Literal(tClass)
+    If '..ParseTestFields($Get(pQuery(..#FIELDSKEY)), .tInput, .tBad) Kill tInput
+    Set tMeta = 0
+    Kill tConvert
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = $Get(pQuery(..#NAMESPACEKEY))
+        Do ..ClassFieldsHere(tClass, .tMeta)
+        For tI = 1:1:tMeta {
+            Set tConvert(tI) = ##class(%Dictionary.CompiledMethod).%ExistsId($List(tMeta(tI), 8) _ "||" _ $List(tMeta(tI), 3) _ "DisplayToLogical")
+        }
+        Set $NAMESPACE = tOrigNS
+    } Catch {
+        Set $NAMESPACE = tOrigNS
+        Kill tMeta, tConvert
+        Set tMeta = 0
+    }
+    Set tText = ""
+    If $Get(tMeta(1)) '= "" && ($List(tMeta(1), 1) = "document") {
+        Set tText = tNL _ " Set tRequest = $ClassMethod(" _ tClassLiteral _ ", ""ImportFromString"", " _ ..Literal($Get(tInput(..#DOCUMENTFIELD))) _ ", .tSC)"
+        Set tText = tText _ tNL _ " If $System.Status.IsOK(tSC) Set tSC = tRequest.%Save()"
+    } Else {
+        Set tText = tNL _ " Set tRequest = $ClassMethod(" _ tClassLiteral _ ", ""%New"")"
+        Kill tVariable
+        Set tVariables = 0
+        For tI = 1:1:tMeta {
+            Set tRecord = tMeta(tI)
+            Set tPath = $List(tRecord, 2)
+            If $Get(tInput(tPath)) = "" Continue
+            Set tCurrent = "tRequest"
+            Set tSegments = $Length(tPath, ".")
+            For tJ = 1:1:tSegments - 1 {
+                Set tPrefix = $Piece(tPath, ".", 1, tJ)
+                If '$Data(tVariable(tPrefix)) {
+                    Set tVariable(tPrefix) = "tPart" _ $Increment(tVariables)
+                    Set tText = tText _ tNL _ " Set " _ tVariable(tPrefix) _ " = $Property(" _ tCurrent _ ", " _ ..Literal($Piece(tPath, ".", tJ)) _ ")"
+                    Set tText = tText _ tNL _ " If '$IsObject(" _ tVariable(tPrefix) _ ") Set " _ tVariable(tPrefix) _ " = $ClassMethod(" _ ..Literal($List($List(tRecord, 9), tJ)) _ ", ""%New""), $Property(" _ tCurrent _ ", " _ ..Literal($Piece(tPath, ".", tJ)) _ ") = " _ tVariable(tPrefix)
+                }
+                Set tCurrent = tVariable(tPrefix)
+            }
+            Set tValue = ..Literal(tInput(tPath))
+            If $Get(tConvert(tI)) Set tValue = "$ClassMethod(" _ ..Literal($List(tRecord, 8)) _ ", " _ ..Literal($List(tRecord, 3) _ "DisplayToLogical") _ ", " _ tValue _ ")"
+            Set tText = tText _ tNL _ " Set $Property(" _ tCurrent _ ", " _ ..Literal($List(tRecord, 3)) _ ") = " _ tValue
+        }
+        Set tText = tText _ tNL _ " Set tSC = tRequest.%ValidateObject()"
+        Set tText = tText _ tNL _ " If $System.Status.IsOK(tSC) Set tSC = tRequest.%Save()"
+    }
+    Quit tText _ tNL _ " If $System.Status.IsOK(tSC) Set tSC = ##class(" _ ..#TESTSERVICE _ ").SendTestRequest(" _ ..Literal($ListGet(tParts, 2)) _ ", tRequest, , .tSession)"
 }
 
 /// <p><var>pValue</var> as an ObjectScript string literal, a control character spelled as a

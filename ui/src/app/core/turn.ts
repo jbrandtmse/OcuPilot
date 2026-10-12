@@ -42,6 +42,7 @@ import { impactOf, type Impact } from './impact.ts';
 import { PRODUCTION_STATE_MOVED } from './proposal-view.ts';
 import { readBackOf, type ReadBack } from './read-back.ts';
 import { sqlOutcomeLines } from './sql-answer.ts';
+import { testAnswerOf, testOutcomeLines } from './test-answer.ts';
 import type { ScreenContextPayload } from './screen-context';
 import type { NavigationKind, TokenStorage } from './token-store';
 import { type DraftOutcome, requestDraft } from './draft.ts';
@@ -492,11 +493,14 @@ function boolAt(source: Record<string, unknown>, key: string): boolean {
 /**
  * The lines a confirm's `output` shows: the string `lines` of a compile or an import (Story 19.2), or
  * for a confirmed SQL run, which answers an `outcome`, its status line and an error's message
- * (Story 19.11, AD-39's sixth exception); `[]` for any other shape.
+ * (Story 19.11, AD-39's sixth exception), or for a confirmed host test, which answers a `status` with its
+ * session and lines, its status sentence and then its lines (Story 20.6, AD-39's seventh exception); `[]` for
+ * any other shape.
  */
 export function outputLinesOf(output: unknown): readonly string[] {
   if (output === null || typeof output !== 'object') return [];
   if (typeof (output as Record<string, unknown>)['outcome'] === 'string') return sqlOutcomeLines(output);
+  if (testAnswerOf(output) !== null) return testOutcomeLines(output);
   const lines = (output as Record<string, unknown>)['lines'];
   return Array.isArray(lines) ? lines.filter((line): line is string => typeof line === 'string') : [];
 }

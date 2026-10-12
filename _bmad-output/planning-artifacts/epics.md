@@ -8280,9 +8280,7 @@ So that a change can be checked before it is deployed.
 - **When** it is tested
 - **Then** the request is built from the target's own schema and the result is shown.
 
-- **Given** a transformation and a pasted input
-- **When** it is tested
-- **Then** the output renders, and the test is a confirmed write because it executes code on the instance.
+- [AMENDED 2026-10-12, Story 20.6 spec gate, orchestrator ruling Q1 (A), Rule 5] The transformation test moved to Story 20.27: this story is the host test.
 
 ### Story 20.7: The three embedded vendor editors
 
@@ -8805,6 +8803,22 @@ So that the partner records a production's settings name are managed without the
 - **Then** the posture is returned to the orchestrator with options and a recommendation (Story 20.5's plan recommends `%Ens_ProductionConfig:WRITE`).
 
 - DW-2324: business partners' save and remove are Story 20.5's stated partial (ledger; routed by spec_gate 2026-10-11)
+
+---
+
+### Story 20.27: Transformations tested
+
+[AMENDED 2026-10-12, Story 20.6 spec gate (split), orchestrator ruling Q1 (A), Rule 5] Split from Story 20.6, whose spec keeps the measured charter as its Part B block. Consumes Story 20.6's shared test helper and its AD-39 seventh exception, and Data transformations' list. Ordered after Story 20.13.
+
+As an interoperability developer,
+I want to test a transformation from the portal,
+So that a change can be checked before it is deployed.
+
+**Acceptance Criteria:**
+
+- **Given** a transformation and a pasted input
+- **When** it is tested
+- **Then** the output renders, and the test is a confirmed write because it executes code on the instance.
 
 ---
 

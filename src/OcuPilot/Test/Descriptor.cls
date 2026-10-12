@@ -205,6 +205,7 @@ XData ReadShapes
 <screen name="InteropItemLogTab" filter="Type,Text,Job,SessionId" sort="TimeLogged,Type,Job" kinds="ID:name,TimeLogged:text,Type:status,Text:text,Job:identifier,SessionId:identifier"/>
 <screen name="InteropItemMessageTab" filter="Status,Source,Target,BodyClass,SessionId" sort="TimeCreated,Status,Source,Target" kinds="ID:name,TimeCreated:text,Status:status,Source:text,Target:text,BodyClass:identifier,SessionId:identifier"/>
 <screen name="InteropItemJobTab" filter="Job,Status,ActiveMessage" sort="Job,Status,LastActivity,Retry" kinds="Job:name,Status:status,AdapterState:text,LastActivity:text,Retry:number,ActiveMessage:identifier,Dead:status"/>
+<screen name="InteropItemTestTab" filter="RequestClass,Field,Type" sort="RequestClass,Field" kinds="RequestClass:identifier,Field:name,Type:text,Required:status,MaxLength:number,Values:text,Secret:status"/>
 <screen name="InteropLookupTableList" filter="Name" sort="Name,Modified" kinds="Name:name,Modified:text"/>
 <screen name="InteropLookupEntryList" filter="Key,Value" sort="Key,Value" kinds="Key:name,Value:text,Secret:status"/>
 <screen name="InteropBusinessPartnerList" filter="Name,Description,PrimaryContact" sort="Name,Description,PrimaryContact" kinds="Name:name,Description:text,PrimaryContact:text,PrimaryPhone:text,PrimaryEmail:text"/>

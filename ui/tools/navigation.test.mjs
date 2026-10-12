@@ -371,6 +371,8 @@ test('a side bar lists only built screens, in side-bar order', () => {
       'interoperability/productions/items/queue',
       'interoperability/productions/items/settings',
       'interoperability/productions/items/document',
+      // Story 20.6: an item's Test tab, unlisted, the strip's seventh.
+      'interoperability/productions/items/test',
       // Story 20.5: a lookup table's entries, unlisted and reached from a Lookup tables name cell, among the unlisted ones.
       'interoperability/lookup-tables/entries',
       'interoperability/queues/messages',
@@ -775,8 +777,9 @@ test('Story 20.4: the Status tab is what an item row opens, from Production item
       'interoperability/productions/items/log',
       'interoperability/productions/items/messages',
       'interoperability/productions/items/jobs',
+      'interoperability/productions/items/test',
     ],
-    'the strip reads Status, Settings, Queue, Log, Messages, Jobs'
+    'the strip reads Status, Settings, Queue, Log, Messages, Jobs, Test'
   );
   assert.equal(
     screenForChange({ type: 'production-item-setting', id: `P.Prod${sep}Item${sep}Host${sep}InitSeconds` })?.route,

@@ -1,4 +1,4 @@
-/// <p>The interoperability codes and sentences (AD-29, AD-39, AD-62, Stories 20.2 and 20.5): every
+/// <p>The interoperability codes and sentences (AD-29, AD-39, AD-62, Stories 20.2, 20.5 and 20.6): every
 /// <code>INTEROP.*</code> code <class>OcuPilot.Port.InteropPort</class> answers with, the four
 /// consequence codes the production tools' proposals carry, and the sentence each carries. Each sentence
 /// is published once in EXPERIENCE.md's Fixed strings and pinned equal to its
@@ -329,17 +329,57 @@ Parameter LOOKUPDELETE = "INTEROP.LOOKUP.DELETE";
 
 Parameter REASONLOOKUPDELETE = "Deleting this lookup table removes every entry in it. Rules and transformations that read it then get their default value.";
 
+/// <p>The host test's refusals and violations (Story 20.6). The first five refuse a test before a request is built, each 409 on the
+/// <parameter>OcuPilot.Api.Error.CONFLICT</parameter> slug, and the last three are the 422 violations of a request's fields.
+/// <code>INTEROP.PRODUCTION.NOTRUNNING</code> is the production-not-running refusal, reused.</p>
+Parameter TESTDISABLED = "INTEROP.TEST.DISABLED";
+
+Parameter REASONTESTDISABLED = "Testing is not enabled for this production. Turn on Testing Enabled in the classic production settings, then update the production.";
+
+Parameter TESTTARGETTYPE = "INTEROP.TEST.TARGETTYPE";
+
+Parameter REASONTESTTARGETTYPE = "Only a business process or a business operation takes a test request.";
+
+Parameter TESTTARGETDISABLED = "INTEROP.TEST.TARGETDISABLED";
+
+Parameter REASONTESTTARGETDISABLED = "This item is disabled, so a test request would wait in its queue with no answer. Enable it first.";
+
+Parameter TESTREQUESTTYPE = "INTEROP.TEST.REQUESTTYPE";
+
+Parameter REASONTESTREQUESTTYPE = "This host does not take that request class. Its Test tab lists the ones it takes.";
+
+Parameter TESTSECRET = "INTEROP.TEST.SECRET";
+
+Parameter REASONTESTSECRET = "This field names a credential, so OcuPilot sends no value for it. Leave it empty, or test in the classic Testing Service page.";
+
+Parameter TESTFIELD = "INTEROP.TEST.FIELD";
+
+Parameter REASONTESTFIELD = "The request class has no such field that a test can set.";
+
+Parameter TESTVALUE = "INTEROP.TEST.VALUE";
+
+Parameter REASONTESTVALUE = "This value does not fit the field, or the field is required.";
+
+Parameter TESTREQUEST = "INTEROP.TEST.REQUEST";
+
+Parameter REASONTESTREQUEST = "The request could not be built from these values.";
+
+/// <p>The consequence code the host test's proposal carries. The client maps it to its published sentence.</p>
+Parameter TESTSENDS = "INTEROP.TEST.SENDS";
+
+Parameter REASONTESTSENDS = "A test sends a real message through the running production. The target runs it, and anything it sends on, to another host or outside this instance, is sent too. The test's messages stay in the message store.";
+
 /// <p>The refusals the port answers with, as a <class>%List</class>: every code that is not a
 /// consequence.</p>
 ClassMethod Codes() As %List
 {
-    Quit $ListBuild(..#NAMESPACE, ..#RUNNING, ..#OTHER, ..#TROUBLED, ..#NOTRUNNING, ..#UPTODATE, ..#NOTTROUBLED, ..#BUSY, ..#STATE, ..#SUSPENDED, ..#PARTSTOPPED) _ ..ItemCodes() _ ..SettingCodes() _ ..RuntimeCodes() _ ..LookupCodes()
+    Quit $ListBuild(..#NAMESPACE, ..#RUNNING, ..#OTHER, ..#TROUBLED, ..#NOTRUNNING, ..#UPTODATE, ..#NOTTROUBLED, ..#BUSY, ..#STATE, ..#SUSPENDED, ..#PARTSTOPPED) _ ..ItemCodes() _ ..SettingCodes() _ ..RuntimeCodes() _ ..LookupCodes() _ ..TestCodes()
 }
 
 /// <p>The consequence codes, as a <class>%List</class>.</p>
 ClassMethod ConsequenceCodes() As %List
 {
-    Quit $ListBuild(..#STOP, ..#RESTART, ..#UPDATE, ..#RECOVER, ..#ITEMPENDING, ..#ITEMREMOVE, ..#SETTINGLOCATION, ..#MESSAGEABORT, ..#QUEUEABORT, ..#JOBABORT, ..#JOBSUSPEND, ..#JOBSTOP, ..#LOOKUPREMOVE, ..#LOOKUPDELETE, ..#LOOKUPIMPORT)
+    Quit $ListBuild(..#STOP, ..#RESTART, ..#UPDATE, ..#RECOVER, ..#ITEMPENDING, ..#ITEMREMOVE, ..#SETTINGLOCATION, ..#MESSAGEABORT, ..#QUEUEABORT, ..#JOBABORT, ..#JOBSUSPEND, ..#JOBSTOP, ..#LOOKUPREMOVE, ..#LOOKUPDELETE, ..#LOOKUPIMPORT, ..#TESTSENDS)
 }
 
 /// <p>The item codes, as a <class>%List</class>: the refusals an item read or write answers with.</p>
@@ -393,6 +433,22 @@ ClassMethod LookupCodes() As %List
 ClassMethod LookupPreconditionCodes() As %List
 {
     Quit $ListBuild(..#LOOKUPTAKEN, ..#LOOKUPTABLECASE, ..#LOOKUPSECRET, ..#LOOKUPSOURCECONTROL)
+}
+
+/// <p>The host test's codes (Story 20.6), as a <class>%List</class>: the five refusals a test is refused with before a request is
+/// built and the three violations of its fields. The consequence code is <method>ConsequenceCodes</method>'s.</p>
+ClassMethod TestCodes() As %List
+{
+    Quit $ListBuild(..#TESTDISABLED, ..#TESTTARGETTYPE, ..#TESTTARGETDISABLED, ..#TESTREQUESTTYPE, ..#TESTSECRET, ..#TESTFIELD, ..#TESTVALUE, ..#TESTREQUEST)
+}
+
+/// <p>The test refusals the host test tool's fresh read answers when the test does not fit the item, as a <class>%List</class>:
+/// the production-not-running refusal and the four that follow it in the read's order, then the credential refusal. The
+/// violations (<parameter>TESTFIELD</parameter>, <parameter>TESTVALUE</parameter> and <parameter>TESTREQUEST</parameter>) are the
+/// request's and are not among them.</p>
+ClassMethod TestPreconditionCodes() As %List
+{
+    Quit $ListBuild(..#NOTRUNNING, ..#TESTDISABLED, ..#TESTTARGETTYPE, ..#TESTTARGETDISABLED, ..#TESTREQUESTTYPE, ..#TESTSECRET)
 }
 
 /// <p>The codes a production tool's fresh read refuses with when the action's precondition does not
@@ -469,6 +525,15 @@ ClassMethod ReasonFor(pCode As %String) As %String
     If pCode = ..#LOOKUPTOOLARGE Quit ..#REASONLOOKUPTOOLARGE
     If pCode = ..#LOOKUPEXPORTNAME Quit ..#REASONLOOKUPEXPORTNAME
     If pCode = ..#LOOKUPIMPORT Quit ..#REASONLOOKUPIMPORT
+    If pCode = ..#TESTDISABLED Quit ..#REASONTESTDISABLED
+    If pCode = ..#TESTTARGETTYPE Quit ..#REASONTESTTARGETTYPE
+    If pCode = ..#TESTTARGETDISABLED Quit ..#REASONTESTTARGETDISABLED
+    If pCode = ..#TESTREQUESTTYPE Quit ..#REASONTESTREQUESTTYPE
+    If pCode = ..#TESTSECRET Quit ..#REASONTESTSECRET
+    If pCode = ..#TESTFIELD Quit ..#REASONTESTFIELD
+    If pCode = ..#TESTVALUE Quit ..#REASONTESTVALUE
+    If pCode = ..#TESTREQUEST Quit ..#REASONTESTREQUEST
+    If pCode = ..#TESTSENDS Quit ..#REASONTESTSENDS
     Quit ""
 }
 

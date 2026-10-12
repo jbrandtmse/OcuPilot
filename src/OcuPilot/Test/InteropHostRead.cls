@@ -422,7 +422,7 @@ ClassMethod Projected(pRows As %DynamicArray, pClass As %String) As %DynamicArra
         Set tCopy = {}
         Set tFields = tDeclaration.read.fields.%GetIterator()
         While tFields.%GetNext(.tAt, .tField) {
-            If tRow.%IsDefined(tField) Do tCopy.%Set(tField, tRow.%Get(tField), tRow.%GetTypeOf(tField))
+            If tRow.%IsDefined(tField) Do tCopy.%Set(tField, tRow.%Get(tField), $Select(tRow.%GetTypeOf(tField) = "array": "", tRow.%GetTypeOf(tField) = "object": "", 1: tRow.%GetTypeOf(tField)))
         }
         Do tOut.%Push(tCopy)
     }
