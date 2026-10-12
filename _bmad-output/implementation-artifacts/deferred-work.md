@@ -11318,6 +11318,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-12-the-agent-grows-with-the-stage.md | severity: med | fix-risk: med | footprint: out-of-footprint
 - evidence: Story 18.1 scoped the allow-list read-only; a write widens the server-path roots AD-21 allows
 - 2026-10-12T01:03:05Z status=decision-pending owner=burndown by=spec_gate note=human=owner: whether OcuPilot may widen the allow-list (security posture)
+- 2026-10-12T04:19:01Z status=routed owner=18-42-allowed-directories-a-person-s-write by=lead note=owner 2026-10-11: I agree with your recommendation regarding allowed folders (person writes, key off; agent never)
 
 ### DW-2335: Several Stage 2 editor forms show fields no read tool answers (superservers 14, local databases 10, user copy 12), so the agent cannot read what the person sees
 - source: spec-18-12-the-agent-grows-with-the-stage.md | severity: med | fix-risk: med | footprint: in-epic
