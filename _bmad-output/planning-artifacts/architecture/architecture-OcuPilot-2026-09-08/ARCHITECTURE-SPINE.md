@@ -695,7 +695,7 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
 
   **A background SQL run checks once** [AMENDED 2026-10-03, Story 19.15 spec gate, Rule 20]: its one step is its statement, so the job evaluates the console's gates before it prepares and not again; a privilege withdrawn during the run is not seen until the run ends, which `SqlPort`'s alarm bounds. Nobody's polls keep it alive, so it has no lease.
 
-  **A provider's token figure counts the prompt's whole size** [AMENDED 2026-10-12, Story 18.39 spec gate, Rule 20]: Anthropic's `input_tokens` plus its `cache_creation_input_tokens` and `cache_read_input_tokens`, so prompt caching (AD-24) leaves the turn's token limit meaning what it meant; OpenAI's `prompt_tokens` and Gemini's `promptTokenCount` already include their cached tokens. Whether cache reads should count at full weight is an open question for the owner, not built on.
+  **A provider's token figure counts the prompt's whole size** [AMENDED 2026-10-12, Story 18.39 spec gate, Rule 20]: Anthropic's `input_tokens` plus its `cache_creation_input_tokens` and `cache_read_input_tokens`, so prompt caching (AD-24) leaves the turn's token limit meaning what it meant; OpenAI's `prompt_tokens` and Gemini's `promptTokenCount` already include their cached tokens. Cache reads count at full weight (orchestrator ruling under the standing grant, 2026-10-12, sent to the owner as an FYI).
 
 ### AD-32 — Outbound TLS is configured at install, never defaulted
 

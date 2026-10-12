@@ -80,6 +80,8 @@ Under `src/OcuPilot/` at `266eee9d`. Epic 20's open diff touches none of these f
 
 ## Spec Change Log
 
+- 2026-10-12, lead, spec gate (orchestrator rulings): cache reads count at full weight against the 500,000-token turn limit; "trims history" is read as an entry budget, tier 1, because editing an earlier tool result in place breaks the echoed thinking blocks (a 400 on current models) and restarts every family's cache, and Anthropic's context-editing beta is the sanctioned route if earlier results are ever to be cleared; the turn budget is 262,144 characters with each reply's share capped at 65,536. AD-24 and AD-31 amended.
+
 ## Review Triage Log
 
 ## Design Notes
