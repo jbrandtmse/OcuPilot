@@ -10388,6 +10388,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: cycle-log-epic-18.md (Story 18.25 CI run 37646809169) | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: run 37646809169 head 44e8f5b3 instance shard 2/5: AssertMasked+7 and +9 red on the wire read while logs.audit.read passed moments later; the class ran 4/4 green on ocupilot-ci (run 1172) over the same source; OAuthAuthorizationServerSecret and OAuthRegisteredClientSecret read once the same way (inference)
 - 2026-10-07T17:30:11Z status=routed owner=burndown by=lead note=apply 23.4's READSECONDS poll (16313a0e) to AuditVendorSecrets.AssertMasked and to any sibling that reads a vendor row once
+- 2026-10-12T15:24:19Z occurrence=run 38266021964 attempt 1 head 478a486a instance shard 4/8: OAuthAuthorizationServerSecret.TestTheAuditReadsMaskThePassword AssertMasked+7 and +15 (ServerPassword reads the mask); second CI hit; fix pulled forward into 18.45 (orchestrator)
 
 ### DW-2164: The sign-out reset of the MFT connection form store (app.ts calls mftConnectionForm.reset()) has no test; 18.25's superserver form store has the same gap
 - source: spec-18-26-managed-file-transfer-connections.md | severity: low | fix-risk: low | footprint: in-story
