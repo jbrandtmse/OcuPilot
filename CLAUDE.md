@@ -212,17 +212,14 @@ sentence a reviewer can file a finding against is surface area; keep the surface
 
 ## Container
 
-**The running `ocupilot` container predates Story 1.4. Do not run `docker compose up` or `down` against it.**
-It was created from the old compose file: the rolling `latest-cd` image, `unless-stopped`, no start
-hook, no health check, no source mounts, no `OCUPILOT_DEMO` (`docker inspect ocupilot`, 2026-09-11).
-Compose therefore sees a changed configuration, and any `docker compose up` — with or without
-`--wait` — **recreates** it: the new start hook then compiles and installs OcuPilot, demo fixtures
-included, against the live `./iris-data` volume, a path so far verified only on fresh throwaway
-containers. `docker compose down` removes it, and only a recreating `up` brings it back. Recreating,
-removing or restarting it is the owner's call. `docker compose ps` and `logs` change nothing; `exec`
-runs whatever you give it inside the live container.
+**Starting, stopping, recreating or removing the `ocupilot` container is the owner's call.** It runs
+this compose file (recreated 2026-10-11 on the pinned `2026.2` image, with the start hook, health check,
+source mounts and `OCUPILOT_DEMO`). Every start recompiles and reinstalls OcuPilot from the working
+tree, demo fixtures included, against the live `./iris-data` volume, and `docker compose down` removes
+the container. `docker compose ps` and `logs` change nothing; `exec` runs whatever you give it inside
+the live container.
 
-On a clone with no container yet, or once the owner has recreated this one:
+On a clone with no container yet, or when the owner asks for a refresh:
 
 ```bash
 docker compose up -d --wait   # start, and block until the health check reports OcuPilot installed
