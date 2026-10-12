@@ -523,7 +523,7 @@ Method TestThePayloadCarriesEveryAreaWithAVerdict()
         }
     }
 
-    ; Interoperability (Story 20.2, Story 20.3, Story 20.4, Story 20.5): its nine listed screens are the area's side bar, in the
+    ; Interoperability (Story 20.2, Story 20.3, Story 20.4, Story 20.5, Story 20.6): its nine listed screens are the area's side bar, in the
     ; classic List menu's order and then Production monitor, Queues, Jobs, Lookup tables and Business partners, and the roster
     ; also carries the unlisted Production items list, the item's tabs, a table's entries and Queue messages, which sort first at
     ; position 0, by class name; an added Interoperability
@@ -531,8 +531,8 @@ Method TestThePayloadCarriesEveryAreaWithAVerdict()
     Set tInterop = ##class(OcuPilot.Test.Descriptor).AreaEntry(tObject.areas, "interoperability")
     Do $$$AssertTrue($IsObject(tInterop), "the payload carries the interoperability area")
     If $IsObject(tInterop) {
-        Do $$$AssertEquals(tInterop.screens.%Size(), 18, "which carries its eighteen built screens -- an added Interoperability screen updates this count and the order below with it")
-        Set tOrder = $ListBuild("interoperability/productions/items/jobs|interopItemJobsLabel", "interoperability/productions/items|interopItemsLabel", "interoperability/productions/items/log|interopItemLogLabel", "interoperability/productions/items/messages|interopItemMessagesLabel", "interoperability/productions/items/queue|interopItemQueueLabel", "interoperability/productions/items/settings|interopItemSettingsLabel", "interoperability/productions/items/document|interopItemStatusLabel", "interoperability/lookup-tables/entries|interopLookupEntriesLabel", "interoperability/queues/messages|interopQueueMessagesLabel", "interoperability/productions|interopProductionsLabel", "interoperability/processes|interopProcessesLabel", "interoperability/transforms|interopTransformsLabel", "interoperability/rules|interopRulesLabel", "interoperability/monitor|interopMonitorLabel", "interoperability/queues|interopQueuesLabel", "interoperability/jobs|interopJobsLabel", "interoperability/lookup-tables|interopLookupTablesLabel", "interoperability/business-partners|interopBusinessPartnersLabel")
+        Do $$$AssertEquals(tInterop.screens.%Size(), 19, "which carries its nineteen built screens -- an added Interoperability screen updates this count and the order below with it")
+        Set tOrder = $ListBuild("interoperability/productions/items/jobs|interopItemJobsLabel", "interoperability/productions/items|interopItemsLabel", "interoperability/productions/items/log|interopItemLogLabel", "interoperability/productions/items/messages|interopItemMessagesLabel", "interoperability/productions/items/queue|interopItemQueueLabel", "interoperability/productions/items/settings|interopItemSettingsLabel", "interoperability/productions/items/document|interopItemStatusLabel", "interoperability/productions/items/test|interopItemTestLabel", "interoperability/lookup-tables/entries|interopLookupEntriesLabel", "interoperability/queues/messages|interopQueueMessagesLabel", "interoperability/productions|interopProductionsLabel", "interoperability/processes|interopProcessesLabel", "interoperability/transforms|interopTransformsLabel", "interoperability/rules|interopRulesLabel", "interoperability/monitor|interopMonitorLabel", "interoperability/queues|interopQueuesLabel", "interoperability/jobs|interopJobsLabel", "interoperability/lookup-tables|interopLookupTablesLabel", "interoperability/business-partners|interopBusinessPartnersLabel")
         For tAt = 1:1:$ListLength(tOrder) {
             Set tScreen = tInterop.screens.%Get(tAt - 1)
             Do $$$AssertEquals($Select($IsObject(tScreen): tScreen.route _ "|" _ tScreen.labelKey, 1: ""), $List(tOrder, tAt), "interoperability position " _ tAt _ " is its declared screen, under its own label key")

@@ -62,8 +62,8 @@ ClassMethod Terminated(pHost As %String, Output pWhy As %String, pAfterTerminate
 /// <code>is up-to-date.</code> or <code>updated.</code> for it in <code>USER</code>'s event log after the <code>started.</code> line,
 /// and when it runs after a job has died it removes the dead row. Waits twenty seconds at most; 1 at once when no production is
 /// current, none was logged as started, or it reads Troubled (<method>LiveJob</method> names that). 0, with <var>pWhy</var>, when the
-/// update was not logged.</p>
-ClassMethod StartUpdated(Output pWhy As %String) As %Boolean [ Private ]
+/// update was not logged. Story 20.6's host test waits on it before it sends.</p>
+ClassMethod StartUpdated(Output pWhy As %String) As %Boolean
 {
     Set pWhy = ""
     Set tCurrent = $ClassMethod(..#PROBE, "Current", .tState)

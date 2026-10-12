@@ -6880,6 +6880,60 @@ export const STRINGS = {
   accessRefusalPairsTooMany: 'A screen requires at most 8 permissions.',
   /** EXPERIENCE.md:604 */
   screenPermissionsRefusalOcuPilot: 'This is OcuPilot\'s own screen. Its permissions cannot be changed.',
+  /** EXPERIENCE.md:604 */
+  interopItemTestLabel: 'Item test',
+  /** EXPERIENCE.md:604 */
+  interopItemTestEmpty: 'This item takes no test request.',
+  /** EXPERIENCE.md:604 */
+  interopItemTestEmptyAgent: 'Ask the agent which items of this production take a test request.',
+  /** EXPERIENCE.md:604 */
+  interopItemTestPrompt1: 'Which request classes does this item take?',
+  /** EXPERIENCE.md:604 */
+  interopItemTestPrompt2: 'What would a sound test request for this item look like?',
+  /** EXPERIENCE.md:604 */
+  interopItemTestPrompt3: 'Why does a test of this item wait with no answer?',
+  /** EXPERIENCE.md:604 */
+  interopTestColumnRequestClass: 'Request class',
+  /** EXPERIENCE.md:604 */
+  interopTestColumnValues: 'Values',
+  /** EXPERIENCE.md:604 */
+  interopTestColumnSecret: 'Credential',
+  /** EXPERIENCE.md:604 */
+  interopItemTestAction: 'Send test',
+  /** EXPERIENCE.md:604 */
+  interopTestDialogTitle: 'Test <item>',
+  /** EXPERIENCE.md:604 */
+  interopTestNoFields: 'This request class has no field to set. It is sent as it is.',
+  /** EXPERIENCE.md:604 */
+  interopTestDocumentLabel: 'Message text',
+  /** EXPERIENCE.md:604 */
+  interopTestMaxLength: 'At most <n> characters.',
+  /** EXPERIENCE.md:604 */
+  interopTestDone: 'The target answered in session <session> with <class>.',
+  /** EXPERIENCE.md:604 */
+  interopTestDoneNoResponse: 'The target answered nothing in session <session>.',
+  /** EXPERIENCE.md:604 */
+  interopTestWaiting: 'The target has not answered yet. The request is in session <session>, and the item\'s Messages tab lists its messages.',
+  /** EXPERIENCE.md:604 */
+  interopTestFailed: 'The test failed in session <session>.',
+  /** EXPERIENCE.md:604 */
+  interopTestSendsConsequence: 'A test sends a real message through the running production. The target runs it, and anything it sends on, to another host or outside this instance, is sent too. The test\'s messages stay in the message store.',
+  /** EXPERIENCE.md:604 */
+  interopTestRefusalDisabled: 'Testing is not enabled for this production. Turn on Testing Enabled in the classic production settings, then update the production.',
+  /** EXPERIENCE.md:604 */
+  interopTestRefusalTargetType: 'Only a business process or a business operation takes a test request.',
+  /** EXPERIENCE.md:604 */
+  interopTestRefusalTargetDisabled: 'This item is disabled, so a test request would wait in its queue with no answer. Enable it first.',
+  /** EXPERIENCE.md:604 */
+  interopTestRefusalRequestType: 'This host does not take that request class. Its Test tab lists the ones it takes.',
+  /** EXPERIENCE.md:604 */
+  interopTestRefusalSecret: 'This field names a credential, so OcuPilot sends no value for it. Leave it empty, or test in the classic Testing Service page.',
+  /** EXPERIENCE.md:604 */
+  interopTestRefusalField: 'The request class has no such field that a test can set.',
+  /** EXPERIENCE.md:604 */
+  interopTestRefusalValue: 'This value does not fit the field, or the field is required.',
+  /** EXPERIENCE.md:604 */
+  interopTestRefusalRequest: 'The request could not be built from these values.',
 } as const;
 
 /**

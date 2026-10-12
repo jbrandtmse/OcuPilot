@@ -237,7 +237,8 @@ XData Keys [ MimeType = application/json ]
   "interop.lookupentries.remove": false,
   "interop.lookuptables.delete": false,
   "interop.lookuptables.export": true,
-  "interop.lookuptables.import": false
+  "interop.lookuptables.import": false,
+  "interop.itemtest.send": true
 }
 }
 

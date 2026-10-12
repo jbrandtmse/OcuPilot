@@ -1,10 +1,13 @@
+Include Ensemble
+
 /// <p><class>OcuPilot.Port.InteropPort</class> with its pair sets evaluated through
 /// <class>OcuPilot.Test.ScreenGate</class> (<class>OcuPilot.Test.InteropGateSeam</class>), and with the three
 /// facts a throwaway cannot arrange named by a test (Story 20.3): the resource guarding the routines
 /// database, which in <code>USER</code> is the globals database's and so cannot be withheld alone;
 /// whether the namespace is under source control; and the lines the port logs. Each is armed by
-/// <method>Arm</method> and cleared by <method>Disarm</method>. Nothing else differs from the shipped
-/// port.</p>
+/// <method>Arm</method> and cleared by <method>Disarm</method>. Story 20.6 adds two more: how long a host test waits for
+/// its answer (<method>ShortenTestWait</method>) and a send the vendor refuses after writing to the device
+/// (<method>FailSendWithDeviceText</method>). Nothing else differs from the shipped port.</p>
 /// <p><b>Not a <class>%UnitTest.TestCase</class></b>: it holds no assertions and runs no tests.</p>
 Class OcuPilot.Test.InteropItemSeam Extends OcuPilot.Test.InteropGateSeam
 {
@@ -29,6 +32,8 @@ ClassMethod Disarm()
     Kill ^||OcuPilotInteropItemJobCode
     Kill ^||OcuPilotInteropItemAbortMode
     Kill ^||OcuPilotInteropItemMove
+    Kill ^||OcuPilotInteropItemTestWait
+    Kill ^||OcuPilotInteropItemSendFail
 }
 
 /// <p>Answer the next job writes with a vendor status carrying code <var>pCode</var> instead of calling the vendor (Story 20.23), so a
@@ -112,6 +117,37 @@ ClassMethod LockTable(pTable As %String) As %Boolean
         }
     }
     Quit ##super(pTable)
+}
+
+/// <p>Wait <var>pSeconds</var> for a host test's answer, in place of the shipped cap (Story 20.6), until
+/// <method>Disarm</method>.</p>
+ClassMethod ShortenTestWait(pSeconds As %Numeric)
+{
+    Set ^||OcuPilotInteropItemTestWait = pSeconds
+}
+
+ClassMethod TestWait() As %Numeric
+{
+    Quit $Get(^||OcuPilotInteropItemTestWait, ##super())
+}
+
+/// <p>Make the next host test sends write <var>pText</var> to the current device and answer the vendor's refusal of an
+/// unregistered testing service (Story 20.6), as a stopped production's send does, without calling the vendor.
+/// <method>Disarm</method> clears it.</p>
+ClassMethod FailSendWithDeviceText(pText As %String)
+{
+    Set ^||OcuPilotInteropItemSendFail = pText
+}
+
+ClassMethod VendorSendTest(pNamespace As %String, pTarget As %String, pRequest As %RegisteredObject, Output pSession As %String) As %Status [ Private ]
+{
+    If $Get(^||OcuPilotInteropItemSendFail) '= "" {
+        Set pSession = ""
+        Set tWritten = {"text": (^||OcuPilotInteropItemSendFail)}
+        Do tWritten.%ToJSON()
+        Quit $$$EnsError($$$EnsErrBusinessDispatchNameNotRegistered, ..#TESTSERVICE)
+    }
+    Quit ##super(pNamespace, pTarget, pRequest, .pSession)
 }
 
 ClassMethod RoutineResource(pNamespace As %String, Output pResource As %String) As %Boolean

@@ -460,6 +460,12 @@ services:
       # and an agent's confirm that meets a held vendor lock or a key someone else took. The names class adds pairs too long to
       # address, names the export cannot name, a comma in a name and tables named by numbers, and removes those too.
       # classes: InteropLookupControl, InteropLookupEdges, InteropLookupGate, InteropLookupNames, InteropLookupRead, InteropLookupRefusals, InteropLookupTransfer
+      # The host test classes compile and run the same probe production in USER, with a request class of their own and an
+      # operation that echoes it (Story 20.6): the test class reads an item's Test tab and sends a request from both callers,
+      # the refusals class meets every refusal and violation, a production started without testing and a disabled item, and
+      # the gate class signs in as probe principals each missing one pair the tab or the send requires. The descriptor class
+      # compiles the request class to read its fields for the script form.
+      # classes: InteropHostTest, InteropHostTestRefusals, InteropTestDescriptor, InteropTestGate
       # classes: ExplorerSourceTurn
       # classes: ExplorerSaveTurn
       # classes: ExplorerCreateTurn

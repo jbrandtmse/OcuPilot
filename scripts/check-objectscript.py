@@ -916,11 +916,17 @@ API_REACH_PREFIXES = ("src/OcuPilot/Kernel/Shell/", "src/OcuPilot/Screen/Tool/")
 SHELL_API_REACH_RE = re.compile(r"OcuPilot\.Api\.(?!Error\b)\w+(?:\.\w+)*")
 CAPTURE_RE = re.compile(r"BeginCapture|%SYS\.Capture", re.IGNORECASE)
 # The port classes that may open an output capture. Story 4.2 wrote this rule when AdminPort was
-# the only port that captured; Epic 6's MgmntPort captures the same way, and Story 19.1's
-# AtelierPort is the third. The rule still refuses a capture anywhere else, which is what keeps one
-# from opening inside another (DW-1173 asks whether these can nest).
+# the only port that captured; Epic 6's MgmntPort captures the same way, Story 19.1's AtelierPort
+# is the third, and Story 20.6's InteropPort the fourth, around the host test's send. The rule still
+# refuses a capture anywhere else, which is what keeps one from opening inside another (DW-1173
+# asks whether these can nest).
 CAPTURE_ALLOWED = frozenset(
-    {"src/OcuPilot/Port/AdminPort.cls", "src/OcuPilot/Port/MgmntPort.cls", "src/OcuPilot/Port/AtelierPort.cls"}
+    {
+        "src/OcuPilot/Port/AdminPort.cls",
+        "src/OcuPilot/Port/MgmntPort.cls",
+        "src/OcuPilot/Port/AtelierPort.cls",
+        "src/OcuPilot/Port/InteropPort.cls",
+    }
 )
 
 

@@ -18,9 +18,9 @@ Parameter ITEMS = "interoperability/productions/items";
 Parameter SCREENS = "InteropMonitorList|interoperability/monitor|5|list|production-item|Monitor|interop.monitor|EnsPortal.ProductionMonitor|1|0|;InteropQueueList|interoperability/queues|6|list|interop-queue|Queues|interop.queues|EnsPortal.Queues|1|0|abort;InteropQueueMessageList|interoperability/queues/messages|0|list|interop-message|QueueItems|interop.queuemessages|EnsPortal.Queues|0|0|abort;InteropJobList|interoperability/jobs|7|list|interop-job|Jobs|interop.jobs|EnsPortal.Jobs|1|0|abort,suspend,stop;InteropItemStatusTab|interoperability/productions/items/document|0|detail|production-item|ItemStatus|interop.itemstatus|EnsPortal.ProductionConfig|0|1|;InteropItemQueueTab|interoperability/productions/items/queue|0|detail|interop-message|ItemQueue|interop.itemqueue|EnsPortal.ProductionConfig|0|3|abort;InteropItemLogTab|interoperability/productions/items/log|0|detail|log-entry|ItemLog|interop.itemlog|EnsPortal.ProductionConfig|0|4|;InteropItemMessageTab|interoperability/productions/items/messages|0|detail|interop-message|ItemMessages|interop.itemmessages|EnsPortal.ProductionConfig|0|5|;InteropItemJobTab|interoperability/productions/items/jobs|0|detail|interop-job|ItemJobs|interop.itemjobs|EnsPortal.ProductionConfig|0|6|abort,suspend,stop";
 
 /// <p>The endpoint roster the port declares (AD-62): the four Story 20.2 endpoints, Items and Settings, the nine
-/// runtime reads, then Story 20.5's LookupTables, LookupEntries and BusinessPartners. Pinned as a literal, because a roster
-/// that derives both sides proves nothing.</p>
-Parameter ENDPOINTS = "Productions,Processes,Transforms,Rules,Items,Settings,Monitor,ItemStatus,Queues,QueueItems,ItemQueue,ItemLog,ItemMessages,Jobs,ItemJobs,LookupTables,LookupEntries,BusinessPartners";
+/// runtime reads, then Story 20.5's LookupTables, LookupEntries and BusinessPartners and Story 20.6's ItemTest. Pinned as a literal,
+/// because a roster that derives both sides proves nothing.</p>
+Parameter ENDPOINTS = "Productions,Processes,Transforms,Rules,Items,Settings,Monitor,ItemStatus,Queues,QueueItems,ItemQueue,ItemLog,ItemMessages,Jobs,ItemJobs,LookupTables,LookupEntries,BusinessPartners,ItemTest";
 
 /// <p>The pairs each runtime endpoint requires, <code>&lt;endpoint&gt;=&lt;pairs&gt;</code>, separated by <code>;</code>: its classic
 /// page's resource beside the Interoperability menu's, and each item tab's beside Productions' (AD-8, AD-29).</p>
@@ -128,8 +128,8 @@ Method TestTheLinksBetweenTheScreensAreDeclared()
     Do $$$AssertEquals(tMessages.parentScope _ "|" _ tMessages.read.criteria.fields.%Size() _ "|" _ tMessages.read.criteria.fields.%Get(0).param _ "|" _ tMessages.read.criteria.fields.%Get(0).kind _ "|" _ tMessages.read.criteria.fields.%Get(0).maxLength, "interoperability/queues|1|queue|text|256", "Queue messages is the Queues list's sub-resource, keyed by one queue criterion")
 }
 
-/// <p>The item's six tabs form one parent-scoped group whose head is <code>interoperability/productions/items/document</code>:
-/// Status, Settings, Queue, Log, Messages and Jobs in that order, each a <code>detail</code> with side-bar position 0 under
+/// <p>The item's seven tabs form one parent-scoped group whose head is <code>interoperability/productions/items/document</code>:
+/// Status, Settings, Queue, Log, Messages, Jobs and Test in that order, each a <code>detail</code> with side-bar position 0 under
 /// Production items and the same one <code>item</code> criterion; Item settings keeps its route, tool and archetype
 /// change.</p>
 /// <p>Mutation (Rule 19): give Item settings the position 4 -- the order leg goes red; change the head's criterion
@@ -152,7 +152,8 @@ Method TestTheItemTabsFormOneGroupInOrder()
     Do $$$AssertEquals($Get(tByPosition(4)), $Replace(tHead, ..#GROUP, ..#ITEMS _ "/log", , 1), "position 4 is Log")
     Do $$$AssertEquals($Get(tByPosition(5)), $Replace(tHead, ..#GROUP, ..#ITEMS _ "/messages", , 1), "position 5 is Messages")
     Do $$$AssertEquals($Get(tByPosition(6)), $Replace(tHead, ..#GROUP, ..#ITEMS _ "/jobs", , 1), "position 6 is Jobs")
-    Do $$$AssertEquals($Order(tByPosition(""), -1), 6, "and the group has six members")
+    Do $$$AssertEquals($Get(tByPosition(7)), $Replace(tHead, ..#GROUP, ..#ITEMS _ "/test", , 1), "position 7 is Test")
+    Do $$$AssertEquals($Order(tByPosition(""), -1), 7, "and the group has seven members")
     Set tSC = $ClassMethod("OcuPilot.Screen.Descriptor.InteropItemSettingList", "DeclarationJson", .tSettings)
     Do $$$AssertEquals(tSettings.toolIdentifier _ "|" _ tSettings.tab.labelKey _ "|" _ tSettings.rowActions.%Size(), "interop.itemsettings|interopItemTabSettings|2", "Item settings keeps its tool and its two row actions, and labels its tab Settings")
 }

@@ -49,6 +49,8 @@ const TABS = [
   { route: `${ITEMS}/log`, label: STRINGS.interopItemTabLog },
   { route: `${ITEMS}/messages`, label: STRINGS.interopItemTabMessages },
   { route: `${ITEMS}/jobs`, label: STRINGS.interopJobsLabel },
+  // Story 20.6: the seventh tab, which interop-item-test.browser-spec.mjs opens and sends from.
+  { route: `${ITEMS}/test`, label: STRINGS.serverFlagTest },
 ];
 const PRODUCTIONS_URL = '/ocupilot/interoperability/productions?ns=USER';
 const MONITOR_URL = '/ocupilot/interoperability/monitor?ns=USER';
@@ -224,11 +226,11 @@ after(async () => {
 // AC1, AC3, AC7. Mutation (Rule 19): drop `InteropItemQueueTab`'s `tab` -> the strip reads five tabs and the labels leg
 // goes red; keep `<app-list-page />` in `InteropItemSettingListPage`, rebuild and redeploy -> the strip is missing on the
 // Settings tab and the second leg goes red.
-test('AC1, AC3, AC7: the operation opens on its Status tab, the strip reads the six tabs, and each tab shows its rows', async () => {
+test('AC1, AC3, AC7: the operation opens on its Status tab, the strip reads the seven tabs, and each tab shows its rows', async () => {
   const { context, page } = await signedInAt(browser, config, PRODUCTIONS_URL, VIEWPORTS.wide, REDUCED_MOTION);
   try {
     await openOperation(page);
-    assert.deepEqual(await stripLabels(page), TABS.map((tab) => tab.label), 'the strip reads Status, Settings, Queue, Log, Messages and Jobs');
+    assert.deepEqual(await stripLabels(page), TABS.map((tab) => tab.label), 'the strip reads Status, Settings, Queue, Log, Messages, Jobs and Test');
     const status = await rowNamed(page, OPERATION);
     assert.deepEqual(
       [status[0], status[1], status[2], status[3], status[4]],
