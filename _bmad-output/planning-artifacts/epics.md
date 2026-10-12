@@ -8795,7 +8795,7 @@ So that an install into such a namespace succeeds and simply shows no Interopera
 
 - **Given** InteropPort
 - **When** it is compiled
-- **Then** it has no compile-time dependency on interoperability: no `Ensemble` include, and where an `Ens.Config` type was named it takes `%RegisteredObject` or `%String` and reaches the class through `$ClassMethod` or `$Method`, with behavior unchanged where interoperability exists.
+- **Then** it has no compile-time dependency on interoperability: no `Ensemble` include, and where an `Ens.Config` type was named it takes `%RegisteredObject` or `%String` and reaches the class only at run time (a method call on the object, or `##class(Ens.…)` in a method body, each measured to compile without interoperability), with behavior unchanged where interoperability exists [AMENDED 2026-10-12, Story 20.28 spec gate, Rule 5].
 
 - **Given** a namespace without interoperability
 - **When** OcuPilot is installed there
