@@ -15,7 +15,8 @@
 /// <li><code>secrets</code> -- for each of those tools declaring at least one secret argument,
 /// its names (AD-3, AD-35);</li>
 /// <li><code>limits</code> -- the context row cap in force and the two character caps
-/// (AD-24).</li>
+/// (AD-24), and <code>turnsPerHour</code>, the turns one user may start in an hour as set on
+/// Switches, <code>0</code> for no limit (AD-41).</li>
 /// </ul>
 /// <p><b>It fails closed.</b> A part that cannot be read fails the whole answer, and a tool whose
 /// secret arguments could not be read is such a part rather than a tool with none.</p>
@@ -106,6 +107,7 @@ ClassMethod Read(Output pAnswer As %DynamicObject) As %Status
         Do tLimits.%Set("contextRowCap", +tSwitchValues("contextRowCap"), "number")
         Do tLimits.%Set("totalMaxLength", +##class(OcuPilot.Kernel.Agent.Limits).#TOOLRESULTMAXLENGTH, "number")
         Do tLimits.%Set("fieldMaxLength", +##class(OcuPilot.Kernel.Agent.Limits).#FIELDMAXLENGTH, "number")
+        Do tLimits.%Set("turnsPerHour", +tSwitchValues("turnsPerHour"), "number")
         Do tAnswer.%Set("limits", tLimits)
 
         Set pAnswer = tAnswer

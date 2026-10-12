@@ -3344,6 +3344,12 @@ export const STRINGS = {
   /** EXPERIENCE.md:583 */
   agentGuardrailsContextLimits: 'Each turn carries at most <rows> rows of the screen you are on, <total> characters in all and <field> characters a field.',
   /** EXPERIENCE.md:583 */
+  agentGuardrailsLimitsHeading: 'Limits',
+  /** EXPERIENCE.md:583 */
+  agentGuardrailsTurnsLimit: 'Each user may start at most <n> agent turns an hour.',
+  /** EXPERIENCE.md:583 */
+  agentGuardrailsTurnsNone: 'Agent turns an hour are not limited.',
+  /** EXPERIENCE.md:583 */
   agentGuardrailsPrompt1: 'Which of your tools can change this instance?',
   /** EXPERIENCE.md:583 */
   agentGuardrailsPrompt2: 'Are you read-only on this instance right now?',
@@ -6372,6 +6378,24 @@ export const STRINGS = {
   routineAppFieldRoutine: 'Routine or class',
   /** EXPERIENCE.md:357 */
   routineAppRoutineHint: 'A routine name, or Package.Name for a class.',
+  /** EXPERIENCE.md:357 */
+  routineAppRolesLabel: 'Application and matching roles',
+  /** EXPERIENCE.md:357 */
+  routineAppRolesEmpty: 'This application grants no roles.',
+  /** EXPERIENCE.md:357 */
+  routineAppRolesEveryCaller: 'Every caller',
+  /** EXPERIENCE.md:357 */
+  routineAppRolesPrompt1: 'Which roles does this application grant, and to whom?',
+  /** EXPERIENCE.md:357 */
+  routineAppRolesPrompt2: 'Does this application grant an administrative role?',
+  /** EXPERIENCE.md:357 */
+  routineAppRolesPrompt3: 'Remove one role from this application and keep the rest.',
+  /** EXPERIENCE.md:357 */
+  routineAppRoutinesPrompt1: 'Which routines and classes does this application list?',
+  /** EXPERIENCE.md:357 */
+  routineAppRoutinesPrompt2: 'Which database does each routine or class of this application live in?',
+  /** EXPERIENCE.md:357 */
+  routineAppRoutinesPrompt3: 'Remove one routine from this application and keep the rest.',
   /** EXPERIENCE.md:357 */
   restServiceCreateEffect: 'Confirming compiles the service\'s specification, dispatch and implementation classes in this namespace. An implementation class already there keeps its code.',
   /** EXPERIENCE.md:357 */

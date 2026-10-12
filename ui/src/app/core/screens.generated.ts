@@ -22460,6 +22460,269 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "fingerprintExcludes": []
   },
   {
+    "descriptor": "OcuPilot.Screen.Descriptor.RoutineAppRoleList",
+    "route": "web-applications/routine-applications/roles",
+    "area": "web-applications",
+    "labelKey": "routineAppRolesLabel",
+    "sideBarPosition": 0,
+    "archetype": "list",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Secure",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "web-applications/routine-applications",
+    "id": {
+      "kind": "composite",
+      "parts": [
+        "MatchRole"
+      ]
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "MatchRole",
+        "TargetRoles"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "routineAppRolesEmpty",
+    "commandAliases": [],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "routineAppRolesPrompt1"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "routineAppRolesPrompt2"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "routineAppRolesPrompt3"
+      }
+    ],
+    "classicPage": "%CSP.UI.Portal.Applications.PrivRoutine",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "admin",
+        "endpoint": "Security.PrivilegedRoutine",
+        "type": "GET",
+        "rows": "MatchRoles"
+      },
+      "fields": [
+        "MatchRole",
+        "TargetRoles"
+      ],
+      "filter": [
+        "MatchRole"
+      ],
+      "sort": {
+        "fields": [
+          "MatchRole"
+        ],
+        "default": "MatchRole",
+        "direction": "asc"
+      },
+      "paging": "cap",
+      "criteria": {
+        "fields": [
+          {
+            "param": "name",
+            "labelKey": "tableColumnName",
+            "kind": "text",
+            "maxLength": 64,
+            "hint": "One privileged routine application, spelled as webapp.routineapps.read answers its Name."
+          }
+        ]
+      }
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "MatchRole",
+          "labelKey": "webAppFieldMatchRole",
+          "kind": "name",
+          "emptyKey": "routineAppRolesEveryCaller"
+        },
+        {
+          "field": "TargetRoles",
+          "labelKey": "userColumnRoles",
+          "kind": "identifier"
+        }
+      ],
+      "emptyNextKey": "tableReadOnlyEmptyNext",
+      "emptyAgentKey": ""
+    },
+    "toolIdentifier": "webapp.routineapproles",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.RoutineAppRoutineList",
+    "route": "web-applications/routine-applications/routines",
+    "area": "web-applications",
+    "labelKey": "routineAppTabRoutines",
+    "sideBarPosition": 0,
+    "archetype": "list",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Secure",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "web-applications/routine-applications",
+    "id": {
+      "kind": "composite",
+      "parts": [
+        "RoutineOrClass",
+        "Type",
+        "Db"
+      ]
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "RoutineOrClass",
+        "Db",
+        "Type"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "routineAppRoutinesEmpty",
+    "commandAliases": [],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "routineAppRoutinesPrompt1"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "routineAppRoutinesPrompt2"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "routineAppRoutinesPrompt3"
+      }
+    ],
+    "classicPage": "%CSP.UI.Portal.Applications.PrivRoutine",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "admin",
+        "endpoint": "Security.PrivilegedRoutine",
+        "type": "GET",
+        "rows": "Routines"
+      },
+      "fields": [
+        "RoutineOrClass",
+        "Db",
+        "Type"
+      ],
+      "filter": [
+        "RoutineOrClass",
+        "Db"
+      ],
+      "sort": {
+        "fields": [
+          "RoutineOrClass",
+          "Db",
+          "Type"
+        ],
+        "default": "RoutineOrClass",
+        "direction": "asc"
+      },
+      "paging": "cap",
+      "criteria": {
+        "fields": [
+          {
+            "param": "name",
+            "labelKey": "tableColumnName",
+            "kind": "text",
+            "maxLength": 64,
+            "hint": "One privileged routine application, spelled as webapp.routineapps.read answers its Name."
+          }
+        ]
+      }
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "RoutineOrClass",
+          "labelKey": "routineAppFieldRoutine",
+          "kind": "name"
+        },
+        {
+          "field": "Db",
+          "labelKey": "systemInfoDatabase",
+          "kind": "identifier"
+        },
+        {
+          "field": "Type",
+          "labelKey": "tableColumnType",
+          "kind": "text"
+        }
+      ],
+      "emptyNextKey": "tableReadOnlyEmptyNext",
+      "emptyAgentKey": ""
+    },
+    "toolIdentifier": "webapp.routineapproutines",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
     "descriptor": "OcuPilot.Screen.Descriptor.RoutineMappingForm",
     "route": "os-management/namespaces/routine-mappings/edit",
     "area": "os-management",
