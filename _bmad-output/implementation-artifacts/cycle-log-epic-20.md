@@ -530,3 +530,6 @@
 2026-10-12T11:05:20Z	Story 20.6	story_cycle	plan_to_commit_min=448 implement_passes=1 reviews=1 rework=0 first_ci=pending models=plan:opus,implement:sonnet,qa:sonnet,cr:opus
 2026-10-12T11:09:43Z	Epic 20	epic_context_compiled	reason=planning_artifact_newer(20.6_spine_cases,20.27_charter,feature_18.12) model=opus lines=130
 2026-10-12T11:09:43Z	Story 20.13	stage_spawned	stage=plan spawn_at=2026-10-12T11:09:43Z model=opus agent_name=20-13-plan-1 cycle_iteration=1 inbox=DW-2141
+2026-10-12T11:40:53Z	Story 20.13	story_created	spawn_at=(see_stage_spawned) model=opus agent_name=20-13-plan-1 path=_bmad-output/implementation-artifacts/spec-20-13-the-sign-in-hand-off-to-the-embedded-vendor-editors.md build_status=ready-for-dev spec_kb=30.9(oversized) epic_context=reused
+2026-10-12T11:40:53Z	Story 20.13	spine_updated	ad=AD-63(builder,sign-out_measured,editor_Logout) reason=clarification(plan_drafts) by=runner story=20-13 lint=ok(preexisting_low) pending=opened-tab_sentence(Q1)
+2026-10-12T11:40:53Z	Story 20.13	spec_validated	service_introducing=true(vendor-frame_builder_and_frame_component) integration_ac=declared-none(first_consumer_20.7;harness_proves_the_real_editors) adr_constrained_acs=AD-63,AD-28,AD-47 decision_dependency=none sections_created=none owned_ledger=DW-2141 addressed=1 declined=0 mutates_shared_runtime=false gate=Q1_asked(non-blocking)
