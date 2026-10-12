@@ -88,8 +88,9 @@ ClassMethod SetCannedPollRefusal(pHttp As %Integer, pText As %String)
 /// <p>A recorded value: <code>name</code> (the endpoint's <code>Name</code> when
 /// <code>Run()</code> was about to start), <code>taskName</code> (the last real poll's
 /// <code>TaskName</code>), <code>forgot</code> (the GUID last passed to
-/// <method>ForgetTask</method>), <code>polls</code> (how many polls ran) or <code>endpoint</code>
-/// (the endpoint name last asked of the port, before any vendor endpoint is constructed).
+/// <method>ForgetTask</method>), <code>polls</code> (how many polls ran), <code>endpoint</code>
+/// (the endpoint name last asked of the port, before any vendor endpoint is constructed) or
+/// <code>logCalls</code> (how many lines <method>LogFault</method> wrote).
 /// <code>""</code> when never recorded.</p>
 ClassMethod Recorded(pKey As %String) As %String
 {
@@ -188,6 +189,7 @@ ClassMethod ForgetTask(pGuid As %String)
 
 ClassMethod LogFault(pMessage As %String, pStatus As %Status, pCode As %String = "")
 {
+    Set ^||OcuPilotPortFixture("recorded", "logCalls") = $Get(^||OcuPilotPortFixture("recorded", "logCalls"), 0) + 1
     Do ##class(OcuPilot.Test.FaultProbe).LogRaw("adminport", pMessage, pStatus, pCode)
 }
 

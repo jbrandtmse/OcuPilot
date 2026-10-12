@@ -1012,7 +1012,23 @@ Parameter QUERYPAIRS = "Process/LIST=%Admin_Manage:USE|%DB_IRISSYS:WRITE";
 /// through that bare parameter on the endpoint's class, without widening
 /// <parameter>TYPESUFFIXES</parameter>; every other suffix still resolves through the
 /// <code>TYPE</code>-prefixed parameter.</p>
-Parameter BARETYPES = "Monitor/SYSTEMUSAGE,Monitor/SYSTEMUSAGESHM,Monitor/DASHBOARDMAIN,Monitor/LICENSEUSAGE";
+Parameter BARETYPES = "Monitor/SYSTEMUSAGE,Monitor/SYSTEMUSAGESHM,Monitor/DASHBOARDMAIN,Monitor/LICENSEUSAGE,Monitor/DASHBOARDGLOBALS,Monitor/DASHBOARDECP,Monitor/DASHBOARDRESOURCES";
+
+/// <p>The composed read types this port answers, as comma-separated
+/// <code>&lt;endpoint&gt;/&lt;composed type&gt;=&lt;bare type&gt;</code> entries (AD-36, Story 18.36).
+/// <method>Invoke</method> issues the bare type, which <parameter>BARETYPES</parameter> must list for
+/// the endpoint, and answers one object holding the one row array a screen reads over
+/// (<code>source.rows</code>), so the read grammar needs no member of its own:</p>
+/// <ul>
+/// <li><code>Monitor/RESOURCEROWS</code>: <code>DASHBOARDRESOURCES</code>' array, answered as
+/// <code>{"Resources": [...]}</code>.</li>
+/// <li><code>Monitor/BUSYPROCESSES</code>: <code>DASHBOARDMAIN</code>'s
+/// <code>SystemUsage.BusyProcesses</code> without the rows whose <code>Process</code> is empty, which
+/// the vendor pads the list with, answered as <code>{"BusyProcesses": [...]}</code> in the vendor's order.</li>
+/// </ul>
+/// <p>A vendor answer of any other shape is a 500 <code>INTERNAL</code> fault, logged once, and no
+/// rows.</p>
+Parameter COMPOSEDREADS = "Monitor/RESOURCEROWS=DASHBOARDRESOURCES,Monitor/BUSYPROCESSES=DASHBOARDMAIN";
 
 /// <p>The body-template method names, in the order <method>TemplateMethod</method> resolves them
 /// (AD-3): the first one an endpoint class defines itself is its template.</p>
@@ -1213,6 +1229,8 @@ ClassMethod VerifyInstance(Output pVersion As %Integer, Output pDetail As %Strin
 /// the vendor is not called (AD-27, AD-51).</p>
 /// <p><b>A <parameter>SPLITQUERIES</parameter> key is split before the query is seeded</b>, and a
 /// malformed one is 404 <code>PORT.NOTFOUND</code> with no vendor call.</p>
+/// <p><b>A <parameter>COMPOSEDREADS</parameter> type is issued as its bare type</b> and answers its row
+/// array in an object (<method>ComposedAnswer</method>).</p>
 /// <p>Must not be called from an escalated frame (AD-9). The caller's namespace,
 /// <code>%request</code>, <code>%response</code> and <code>%session</code> are unchanged on
 /// return.</p>
@@ -1278,6 +1296,14 @@ ClassMethod InvokeLocated(pEndpoint As %String, pType As %String, ByRef pQuery, 
         If (pEndpoint = ..#WEBAPPENDPOINT) && ((pType = "PUT") || (pType = "DELETE")) {
             Set tSC = ..PrivilegedRoutineGuard(pType, $Get(pQuery("name")), .pHttpStatus, .pFault, 1)
             If $$$ISERR(tSC) Quit
+        }
+
+        ; Story 18.36 (AD-36): a composed read type is issued as the bare type it names; its answer is shaped below.
+        Set tComposed = ""
+        Set tBareType = ..PairValue(..#COMPOSEDREADS, pEndpoint _ "/" _ pType)
+        If tBareType '= "" {
+            Set tComposed = pType
+            Set pType = tBareType
         }
 
         Set tClass = ..EndpointClass(pEndpoint)
@@ -1422,6 +1448,11 @@ ClassMethod InvokeLocated(pEndpoint As %String, pType As %String, ByRef pQuery, 
                 Set tSC = ..VerifyApplied(pEndpoint, .pQuery, pBody, .pHttpStatus, .pFault)
                 If $$$ISERR(tSC) Quit
             }
+            If tComposed '= "" {
+                Set tSC = ..ComposedAnswer(pEndpoint, tComposed, $Get(tAnswer), .tShaped, .pHttpStatus, .pFault)
+                If $$$ISERR(tSC) Quit
+                Set tAnswer = tShaped
+            }
             Set pResult = tAnswer
             Set pHttpStatus = tHttp
             Set pLocation = $Get(tLocation)
@@ -1467,6 +1498,47 @@ ClassMethod InvokeLocated(pEndpoint As %String, pType As %String, ByRef pQuery, 
         Set tSC = $$$ERROR($$$GeneralError, pFault.code _ ": " _ pFault.reason)
     }
     Quit tSC
+}
+
+/// <p>The answer of the composed read <var>pType</var> (<parameter>COMPOSEDREADS</parameter>) over the
+/// vendor's bare answer <var>pAnswer</var>, in <var>pShaped</var>: one object holding the one row array,
+/// every element an object. <code>BUSYPROCESSES</code> keeps the vendor's order and drops each row whose
+/// <code>Process</code> is empty. An answer of any other shape is a 500 <code>INTERNAL</code> fault,
+/// logged once, with <var>pShaped</var> empty.</p>
+ClassMethod ComposedAnswer(pEndpoint As %String, pType As %String, pAnswer, Output pShaped, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pShaped = ""
+    Set tMember = $Case(pType, "RESOURCEROWS": "Resources", "BUSYPROCESSES": "BusyProcesses", : "")
+    Set tRows = ""
+    If pType = "RESOURCEROWS" {
+        Set tRows = pAnswer
+    } ElseIf pType = "BUSYPROCESSES" {
+        Set tUsage = $Select($IsObject(pAnswer) && pAnswer.%IsA("%Library.DynamicObject") && (pAnswer.%GetTypeOf("SystemUsage") = "object"): pAnswer.%Get("SystemUsage"), 1: "")
+        If $IsObject(tUsage) && (tUsage.%GetTypeOf("BusyProcesses") = "array") Set tRows = tUsage.%Get("BusyProcesses")
+    }
+    Set tShape = $IsObject(tRows) && tRows.%IsA("%Library.DynamicArray")
+    If tShape {
+        Set tIterator = tRows.%GetIterator()
+        While tIterator.%GetNext(.tIndex, .tRow, .tRowType) {
+            If tRowType '= "object" Set tShape = 0 Quit
+        }
+    }
+    If 'tShape {
+        Set tSC = ..Refuse(500, ##class(OcuPilot.Api.Error).#SERVERERROR, ##class(OcuPilot.Api.Error).#INTERNAL, ##class(OcuPilot.Kernel.Fault).#DEFAULTREASON, .pHttpStatus, .pFault)
+        Do ..LogFault(pEndpoint _ " " _ pType _ " was given a vendor answer without " _ tMember _ " as an array of objects", $$$ERROR($$$GeneralError, "the composed read's vendor answer has another shape"), pFault.code)
+        Quit tSC
+    }
+    If pType = "BUSYPROCESSES" {
+        Set tKept = []
+        Set tIterator = tRows.%GetIterator()
+        While tIterator.%GetNext(.tIndex, .tRow) {
+            If tRow.%Get("Process") '= "" Do tKept.%Push(tRow)
+        }
+        Set tRows = tKept
+    }
+    Set pShaped = {}
+    Do pShaped.%Set(tMember, tRows)
+    Quit $$$OK
 }
 
 /// <p>The fully qualified endpoint class for a package-relative name, or <code>""</code> when

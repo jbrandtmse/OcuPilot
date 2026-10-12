@@ -21,13 +21,11 @@ import puppeteer from 'puppeteer';
 
 import { browserConfig, launchOptions } from '../browser.config.mjs';
 import { loadStrings } from '../tools/strings.mjs';
-import { signedInAt } from './panel-spec.mjs';
+import { DASHBOARD_ROUTE as ROUTE, atDashboard as openDashboard } from './dashboard-spec.mjs';
 import { INVARIANTS, VIEWPORTS, assertThrowaway, collapse, compare, componentMinimums, detectScreen, readBaseline } from './structural-walk.mjs';
 
 const config = browserConfig();
 const STRINGS = loadStrings();
-const ROUTE = 'os-management/dashboard';
-const PAGE_URL = `/ocupilot/${ROUTE}?ns=HSCUSTOM`;
 
 let browser = null;
 
@@ -61,25 +59,9 @@ async function structural(page) {
   return compare(collapse(found), readBaseline()?.entries ?? []).fresh.map((entry) => `${entry.key}: ${entry.measured}`);
 }
 
-/** Reduced motion, as the baseline's own walk runs, so nothing is measured mid-transition. */
-const REDUCED_MOTION = [{ name: 'prefers-reduced-motion', value: 'reduce' }];
-
 /** Signed in at the Dashboard, with its first read landed and the Task manager group settled. */
-async function atDashboard() {
-  const { context, page } = await signedInAt(browser, config, PAGE_URL, VIEWPORTS.wide, REDUCED_MOTION);
-  await page.waitForFunction(
-    (label) => {
-      const meter = Array.from(document.querySelectorAll('app-meter')).find((node) => node.querySelector('.ocu-meter-label')?.textContent.trim() === label);
-      return meter !== undefined && meter.querySelector('.ocu-meter-word') !== null;
-    },
-    { timeout: config.navigationTimeoutMs },
-    STRINGS.dashboardCpu
-  );
-  await page.waitForFunction(
-    () => document.querySelector('.ocu-dashboard-tasks-table, .ocu-dashboard-tasks-empty, .ocu-dashboard-tasks-gated, .ocu-dashboard-tasks-refused') !== null,
-    { timeout: config.navigationTimeoutMs }
-  );
-  return { context, page };
+function atDashboard() {
+  return openDashboard(browser, config);
 }
 
 /** The meter labelled `label`: its readout, word, and fill and word classes. */

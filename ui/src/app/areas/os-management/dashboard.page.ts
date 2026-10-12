@@ -1,8 +1,9 @@
+import { LocationStrategy } from '@angular/common';
 import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 
 import { ApiService } from '../../core/api';
-import { NavigationService, formatRequires, screenForRoute } from '../../core/navigation';
+import { NavigationService, formatRequires, screenForRoute, withQuery } from '../../core/navigation';
 import { RefreshService, type RefreshRead } from '../../core/refresh';
 import { ScopeService } from '../../core/scope';
 import { REFRESH_ACTION_ID, ScreenActions } from '../../core/screen-actions';
@@ -12,7 +13,7 @@ import type { ScreenDeclaration } from '../../core/screens.generated';
 import { STRINGS, stringFor } from '../../core/strings';
 import { cellView, fieldOf } from '../../core/table-model';
 import { Meter } from '../../shell/meter';
-import { DASHBOARD_GROUPS, TASK_MANAGER_GROUP, dashboardMeterView, type DashboardMeterView } from './dashboard.store';
+import { DASHBOARD_GROUPS, TASK_MANAGER_GROUP, dashboardMeterView, type DashboardGroup, type DashboardMeterView } from './dashboard.store';
 
 /** The screen this page renders and the store its one row lives in. */
 interface DashboardView {
@@ -20,12 +21,21 @@ interface DashboardView {
   readonly store: ScreenStore;
 }
 
-/** One rendered group: its heading and its meters, or the Task manager group's marker. */
+/** One rendered drill-down link: the built screen it opens, its label and its address. */
+interface DrillDownLink {
+  readonly route: string;
+  readonly label: string;
+  readonly href: string;
+}
+
+/** One rendered group: its heading, its drill-down links and its meters, or the Task manager group's marker. */
 interface GroupView {
   readonly key: string;
   readonly heading: string;
   readonly headingId: string;
   readonly tasks: boolean;
+  readonly hasLinks: boolean;
+  readonly links: readonly DrillDownLink[];
   readonly meters: readonly DashboardMeterView[];
 }
 
@@ -81,6 +91,10 @@ const TASKS_STORE_SUFFIX = '#tasks';
  * late answer never replaces a newer one. A caller that screen refuses sees "Requires <pair>" and
  * nothing is read; no rows show that screen's own empty text.
  *
+ * **A group may offer drill-downs** (Story 18.36): under its heading, one `ocu-details-link` per target the
+ * store declares for it whose screen is built, at that screen's route in this namespace. A modified click is left
+ * to the browser, as Journal file details' View records link leaves it.
+ *
  * Every control-flow condition is a paren-free member reference, for the reason `sign-in.ts`
  * records.
  */
@@ -92,6 +106,15 @@ const TASKS_STORE_SUFFIX = '#tasks';
     @for (group of groupViews; track group.key) {
       <section class="ocu-dashboard-group" [attr.aria-labelledby]="group.headingId">
         <h2 class="ocu-details-heading ocu-dashboard-heading" [id]="group.headingId">{{ group.heading }}</h2>
+        @if (group.hasLinks) {
+          <nav class="ocu-details-links" [attr.aria-labelledby]="group.headingId">
+            @for (link of group.links; track link.route) {
+              <a class="ocu-details-link" [href]="link.href" [attr.data-drill-down]="link.route" (click)="onDrillDown($event, link)">{{
+                link.label
+              }}</a>
+            }
+          </nav>
+        }
         @if (group.tasks) {
           <div class="ocu-dashboard-tasks" [attr.aria-busy]="showTasksSkeleton">
             @if (showTasksGated) {
@@ -161,6 +184,7 @@ export class DashboardPage {
   private readonly api = inject(ApiService);
   private readonly scope = inject(ScopeService);
   private readonly actions = inject(ScreenActions);
+  private readonly locationStrategy = inject(LocationStrategy);
 
   protected readonly STRINGS = STRINGS;
 
@@ -287,13 +311,36 @@ export class DashboardPage {
     if (this.view === null) return [];
     const row = this.row;
     const faultText = this.faultText;
-    return DASHBOARD_GROUPS.map((group) => ({
-      key: group.key,
-      heading: stringFor(group.headingKey),
-      headingId: `ocu-dashboard-heading-${group.key}`,
-      tasks: group.key === TASK_MANAGER_GROUP,
-      meters: group.meters.map((meter) => dashboardMeterView(meter, row, faultText)),
-    }));
+    return DASHBOARD_GROUPS.map((group) => {
+      const links = this.linksFor(group);
+      return {
+        key: group.key,
+        heading: stringFor(group.headingKey),
+        headingId: `ocu-dashboard-heading-${group.key}`,
+        tasks: group.key === TASK_MANAGER_GROUP,
+        hasLinks: links.length > 0,
+        links,
+        meters: group.meters.map((meter) => dashboardMeterView(meter, row, faultText)),
+      };
+    });
+  }
+
+  /** The links a group offers: one per drill-down whose screen is built, each at its route in this namespace. */
+  private linksFor(group: DashboardGroup): readonly DrillDownLink[] {
+    return (group.drillDowns ?? [])
+      .filter((drillDown) => screenForRoute(drillDown.route)?.built === true)
+      .map((drillDown) => ({
+        route: drillDown.route,
+        label: stringFor(drillDown.labelKey),
+        href: this.locationStrategy.prepareExternalUrl(withQuery(drillDown.route, this.router.url)),
+      }));
+  }
+
+  /** Open a drill-down. A modified click is left to the browser, whose new page reads the same screen. */
+  protected onDrillDown(event: MouseEvent, link: DrillDownLink): void {
+    if (event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+    event.preventDefault();
+    void this.router.navigateByUrl(withQuery(link.route, this.router.url));
   }
 
   /** Whether the caller holds Upcoming tasks' pairs, as the navigation map answers them. */
