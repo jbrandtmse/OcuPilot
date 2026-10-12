@@ -7789,13 +7789,13 @@ So that the credential ladder offers a wallet-backed rung. [AMENDED 2026-10-11, 
 
 As a developer-administrator,
 I want to add, change and remove the instance's allowed directories myself,
-So that the fence around server-path fields is set on its screen, never by the agent. [AMENDED 2026-10-11, owner decision on DW-2334 relayed by the orchestrator: "I agree with your recommendation regarding allowed folders" - a person edits the list after a confirmation with the action off by default; the agent never widens it (AD-21, AD-53's precedent)]
+So that the fence around server-path fields is set on its screen, never by the agent. [AMENDED 2026-10-11, owner decision on DW-2334 relayed by the orchestrator: "I agree with your recommendation regarding allowed folders" - a person edits the list after a confirmation with the action off by default; the agent never widens it (AD-21, AD-53's precedent)] [AMENDED 2026-10-12, lead at its spec gate, Rule 5: split for size -- this story keeps the person's route, the write, the port and the kernel refusal; the screen's dialog moved to Story 18.46; "the roots OcuPilot needs to run" restated, since its plan found OcuPilot itself needs no allow-list root (the installer, the start hook, sign-in, serving and turns resolve none)]
 
 **Acceptance Criteria:**
 
-- **Given** the Allowed directories screen
+- **Given** the Allowed directories screen's route
 - **When** a person adds, changes or removes an entry (`Path`, `Purpose`)
-- **Then** it is a confirmed write through the admin API's `FSAccess` endpoints, its governance key disabled by default, and the roots OcuPilot needs to run cannot be dropped.
+- **Then** it is a confirmed write through the admin API's `FSAccess` endpoints, its governance key disabled by default, and no write drops a root the person did not name: the unrestricted fallback row cannot be changed or removed, and a remove may empty the list.
 
 - **Given** the agent
 - **When** it proposes any change to the allow-list
@@ -7838,6 +7838,22 @@ So that the doubled tool roster does not make every call larger, cap a turn at a
 - **Then** each such one is named, and the scoped set fits it.
 
 - If the chosen mechanism changes what the agent can do in a turn (for example, a tool it reaches only after a discovery step), that is the owner's product-promise question, raised at the spec gate before anything is built.
+
+### Story 18.46: Allowed directories: the screen's add, change and remove
+
+As a developer-administrator,
+I want the Allowed directories screen to add, change and remove entries,
+So that the person's write Story 18.42 adds is reachable where the list is shown. [AMENDED 2026-10-12, lead at Story 18.42's spec gate: split from 18.42 for size, Rule 5; runs right after 18.42]
+
+**Acceptance Criteria:**
+
+- **Given** the Allowed directories screen with the write's governance key enabled
+- **When** a person adds, changes or removes an entry
+- **Then** the screen's dialog sends it through Story 18.42's route after a confirmation and the list re-reads with the change.
+
+- **Given** the key disabled (as shipped)
+- **When** the screen is shown
+- **Then** the actions are shown off with the reason, and nothing is written.
 
 ## Epic 19: Stage 3 - System Explorer over the Atelier API
 
