@@ -1305,3 +1305,4 @@
 2026-10-12T05:35:38Z	Story 18.36	ci_green_verified	run=38206367208 attempt=1 head=a78cdbc8 conclusion=success jobs=21/21 by=orchestrator
 2026-10-12T05:35:38Z	Story 18.36	merged	feature=06c58dfd mode=code_equal_merge(feature_ahead_by_log-only_752da32b) code_diff_vs_a78cdbc8=empty ledger=1800_entries,0_problems,dups_none,lost_none;23-7=32 tracker=valid epics_hash=matches upgrade_triggers=none new_keys=none(read-only_drill-downs)
 2026-10-12T05:35:38Z	ci	timings_refreshed	rule=29 run=38206367208 test_tools=ℹ_pass_1912_ℹ_fail_0_
+2026-10-12T06:17:05Z	Story 18.12	orchestrator_ruling	rule11=ratified_Test/ReadTool.cls_tWithCriteria_57->59(count_union;60_with_20.x,recounted_on_the_merged_tree) DW-2342=steer:derive_Stage_2_screens_from_compiled_descriptors_and_hold_the_roster_equal_both_ways(objectscript-testing.md_completeness_rule),in-story_if_it_fits
