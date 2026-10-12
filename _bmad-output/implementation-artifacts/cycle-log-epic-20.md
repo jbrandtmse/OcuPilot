@@ -542,3 +542,14 @@
 2026-10-12T12:35:03Z	Story 20.13	spine_updated	ad=AD-63(opened-tab_sentence),AD-28,AD-47 reason=orchestrator_ruling(Q1_A) by=runner story=20-13 lint=ok(preexisting_low)
 2026-10-12T12:35:03Z	Epic 20	story_chartered	story=20.28 key=20-28-ocupilot-compiles-in-a-namespace-without-interoperability by=runner(orchestrator_ruling_DW-2343) order=after_20.13 ledger=DW-2343_routed_by_lead
 2026-10-12T12:35:03Z	Epic 20	deps_hash_rerecorded	reason=story_chartered(20.28)
+2026-10-12T12:36:00Z	Story 20.13	stage_spawned	stage=qa spawn_at=2026-10-12T12:36:00Z model=sonnet agent_name=20-13-qa-1 cycle_iteration=1
+2026-10-12T12:58:02Z	Epic 20	orchestrator_ruling	owner_decision=live_Anthropic_checks_use_claude-haiku-5-5(other_model_only_for_model-specific_checks,stated_in_spec_or_ledger) applies_to=every_stage_prompt_naming_a_live_model
+2026-10-12T12:58:02Z	Story 20.13	qa_complete	spawn_at=(see_stage_spawned) model=sonnet agent_name=20-13-qa-1 tests=vendor-frame.test.mjs(+3),interop-editor-frame.spec.ts(+1),browser_interop-editor-frame(5->8) tests_added=7 mutations_demonstrated=7 first_run_failures=0 clarifications=0 closing_sections_present=true fixes=none(product_unchanged)
+2026-10-12T12:58:11Z	Story 20.13	stage_spawned	stage=code-review spawn_at=2026-10-12T12:58:11Z model=opus agent_name=20-13-code-review-1 cycle_iteration=1
+2026-10-12T13:29:25Z	Story 20.13	cr_complete	spawn_at=(see_stage_spawned) model=opus agent_name=20-13-code-review-1 resolved=7 fixed_at_source=7 routed=3(DW-2350,DW-2351_to_20-7;DW-2352_burndown) open_for_lead=1(DW-2349_spine) dismissed=19 high=0 med=6 low=6 rows=36 unresolved_high_med=4 review_tier=full-opus status=done new_file=ui/tools/source-scan.mjs
+2026-10-12T13:29:25Z	Story 20.13	spine_updated	ad=AD-63(named_exception),AD-28,AD-47(carve-out,Q1_tags) reason=rule5(DW-2349) by=runner story=20-13 lint=ok(preexisting_low)
+2026-10-12T13:29:25Z	Story 20.13	ledger_adjudicated	owned=1 resolved=1(DW-2349) reowned=0 terminal=0 epics_dw_lines=20.7(DW-2347,DW-2350,DW-2351),20.28(DW-2343)
+2026-10-12T13:29:25Z	Epic 20	spec_amended	story=20.28 AC3=shipped_classes_through_IPM(OcuPilot.Test_test-scoped_in_module.xml_out_of_scope) reason=cr_20.13_note+orchestrator(guard_same_shape_as_upgrade_check)
+2026-10-12T13:29:25Z	Epic 20	ledger_filed	DW-2353 CI_flake InteropQueueActions(run_38250559529_attempt1_shard6/8_class_run_37) routed=burndown by=lead(orchestrator)
+2026-10-12T13:29:25Z	Epic 20	orchestrator_ruling	1.0.12_cut_gated_on_20.28+18.39; plan_and_gate_20.28_now; implement_after_20.13_code_head_pushed; push_20.28_after_20.13_green; guard_same_shape_as_upgrade_check(IPM_into_non-interop_namespace)
+2026-10-12T13:29:25Z	Epic 20	deps_hash_rerecorded	reason=ledger_routed(20.7_DW_lines)+rule5_amendment(20.28_AC3)

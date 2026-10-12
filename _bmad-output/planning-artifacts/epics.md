@@ -8259,6 +8259,9 @@ So that the editors InterSystems already built are reused rather than rebuilt.
 - **Given** the editors' own messages - saved, compiled, invalid
 - **When** they are exchanged
 - **Then** the contract is established against a live editor, because it was never exercised.
+- DW-2347: The interoperability editor frame component first runs in a real browser here; re-run interop-editor-spec.mjs against the real screens (ledger; routed by lead 2026-10-12)
+- DW-2350: Changing an embedded editor's document re-sets src on the drawn frame, which pushes a joint history entry so Back moves the frame and not the screen; a new frame instead skips the editor's unsaved-changes alert; choose per the document switch (ledger; routed by cr 2026-10-12)
+- DW-2351: A framed vendor editor can move away from what its screen shows, unseen by OcuPilot: its logo and Back to standard UI navigate the frame, DTL and BPL push history entries, and the rule editor's Settings switches its namespace (ledger; routed by cr 2026-10-12)
 
 ### Story 20.8: The schema viewers and the production configuration diagram
 
@@ -8800,7 +8803,8 @@ So that an install into such a namespace succeeds and simply shows no Interopera
 
 - **Given** a namespace created without interoperability on the throwaway
 - **When** the guard runs
-- **Then** all of `src/OcuPilot` compiles there, and the guard runs in CI.
+- **Then** every class OcuPilot ships compiles there, installed the way the release's upgrade check installs it (through IPM), and the guard runs in CI; the `OcuPilot.Test` classes, a test-scoped resource in `module.xml` that an install does not load, are out of its scope.
+- DW-2343: InteropPort cannot compile in an install namespace without interoperability: Story 20.6's Include Ensemble and Story 20.3's Ens.Config-typed method arguments both need ENSLIB (ledger; routed by lead 2026-10-12, orchestrator ruling)
 
 ---
 

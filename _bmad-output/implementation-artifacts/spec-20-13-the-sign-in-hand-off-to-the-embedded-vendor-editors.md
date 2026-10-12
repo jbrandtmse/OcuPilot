@@ -202,6 +202,58 @@ deferred:
   - the component draws one frame with that `src` and its title, carrying no `sandbox`, `allow`, `srcdoc` or `credentialless`, and only while the namespace is the one on screen;
   - it writes nothing to sessionStorage.
 
+### Review Findings
+
+Code review, 2026-10-12. The tier was full-opus, with four layers: blind-hunter, edge-case-hunter, verification-gap and acceptance-auditor.
+
+- **Counts:** 36 rows grouped into 12 entries (0 high, 6 medium, 6 low); 19 rejected.
+- **Patched:** 7, all applied in this pass.
+- **Deferred:** 4, to DW-2349 through DW-2352.
+
+- [x] [Review][Patch] The message-listener ban checked one line at a time and only `addEventListener('message')`, so a wrapped call, `Renderer2.listen(…, 'message', …)` or `fromEvent(…, 'message')` passed it [ui/tools/api.test.mjs:721]. Every rule now matches across the whole blanked file, and both fixture tests gain those three forms.
+- [x] [Review][Patch] Rule 2: `vendor-frame.test.mjs` copied `api.test.mjs`'s walker and comment blanker [ui/tools/vendor-frame.test.mjs:161]. Both files now import `ui/tools/source-scan.mjs`.
+- [x] [Review][Patch] The listener test could not see a handler property such as `frame.onload =`, which jsdom registers below the spies [ui/src/app/areas/interoperability/interop-editor-frame.spec.ts:203]. It now reads the frame's handler properties, with a positive control.
+- [x] [Review][Patch] The browser spec's two attribute assertions read back what the harness itself wrote [ui/browser/interop-editor-frame.browser-spec.mjs:141]. They are now labeled harness preconditions.
+- [x] [Review][Patch] The message and policy controls accepted extra entries, so a message arriving after the no-message check passed [ui/browser/interop-editor-frame.browser-spec.mjs:151]. Both controls are now exact, to the end of each subtest.
+- [x] [Review][Patch] The component's named consequence omitted "script the shell" and the opened-tab copy that AD-63 now records [ui/src/app/areas/interoperability/interop-editor-frame.ts:40].
+- [x] [Review][Patch] `vendor-frame.ts` said the address never carries `VSCODE` or `READONLY`, but a namespace or document with either name is accepted as a value [ui/src/app/core/vendor-frame.ts:14]. It now says no such parameter.
+- [x] [Review][Defer] AD-28 still says the pair is never within an embedded frame's reach, and AD-47 says an embedded vendor page is inert; AD-63's frame contradicts both [ARCHITECTURE-SPINE.md AD-28, AD-47]. The AD-28 and AD-47 tags also name the spec gate rather than the Q1 ruling.
+  - Deferred to DW-2349, open on this story for the lead's spine edit.
+  - Graded medium, not high: the code follows AD-63, the owner's decision, and the fix is spine text.
+- [x] [Review][Defer] A document change re-sets `src` on the same frame, which pushes a joint history entry (measured). Drawing a new frame instead skips the editors' `beforeunload` alert [ui/src/app/areas/interoperability/interop-editor-frame.ts:133]. Deferred to DW-2350, routed to 20.7, which owns the document switch.
+- [x] [Review][Defer] The editor can leave its source or namespace without OcuPilot seeing it: self-navigation, the DTL and BPL history entries, and the rule editor's Settings namespace [ui/src/app/areas/interoperability/interop-editor-frame.ts:25]. Deferred to DW-2351, routed to 20.7. The component's limit-1 sentence was corrected in this pass.
+- [x] [Review][Defer] The class reference likely pushes the same history entry (inference) [ui/src/app/areas/system-explorer/document-viewer.page.ts:513]. Deferred to DW-2352, burn-down. To settle it: switch class with Class reference open, then press Back.
+
+**Final tree, this pass:**
+
+- `npm run test:tools`: 1931 passed.
+- `npm run test:components`: 2972 passed in 239 files.
+- `interop-editor-frame.browser-spec.mjs`: 8 passed on `ocupilot-b-ci`, whose deployed `main-XIZQM6QR.js` is byte-identical to this tree's build.
+- `npm run build`: green.
+
+**Rejected:**
+
+- **False:**
+  - `followup_review_recommended` misstates the medium count. The two medium rows are one root cause with one patch.
+  - A consumer cannot restore the source after the editor navigates itself. Redrawing the component draws a new frame, which `syncSource` sets.
+  - Only the DTL frame meets AC3. AC3 is stated for a DTL frame, and the mechanism does not depend on the editor.
+- **Spec edits:** the Q1 text, the change log and the Verification counts are stale. These are the lead's; the final-tree counts are above.
+- **Out of scope:** Story 20.28's AC3 also meets `Test/InteropItemSeam` (`Include Ensemble`) and `Test/ProductionProbe.OpItem` (`Ens.Config` types). Passed to the lead.
+- **Low, not worth fixing:**
+  - The helper's `password`, `VSCODE` and `READONLY` substring checks could false-red a later story's document name. They follow AC1's wording, and such a red is loud.
+  - Unlikely cases, or diagnostics on a path that already fails:
+    - a `setProperty` second write;
+    - a re-export from `vendor-frame.ts`;
+    - two editor instances' keys;
+    - an aborted request's status;
+    - the menu label checked after the click;
+    - a `%`-led document segment;
+    - the controls' fixed namespace.
+  - An editor refresh-token rotation before the AC3 check. The `credentials: 'omit'` mutation shows the held refresh token still answers 200 at that point.
+  - No output for a refused source. This is spec-bound, and a consumer can call the exported builder.
+  - The harness frame's `style` attribute. It only sets the size, and is now labeled a precondition.
+  - The browser helper's `until` repeats the private one in `system-explorer-documatic.browser-spec.mjs`. That sibling is in Epic 19's spec file.
+
 ## Spec Change Log
 
 - 2026-10-12, spec gate (lead): AD-63 amendments written (builder, sign-out re-measured, editor Logout); the opened-tab sentence waits on Q1.
@@ -397,6 +449,22 @@ No screen, rail, roster, descriptor, entity type, governance key or ObjectScript
 - mutation: `interopRuleEditorTitle` is changed to `Rule Editor` -> `strings.test.mjs` red (table literal, authorized-values and line-reference tests).
 - mutation: `document-viewer.store.ts` keeps its own `NAMESPACE_NAME` -> `vendor-frame.test.mjs` moved-shapes row red.
 - mutation: the component writes a sessionStorage key after setting `src` -> `interop-editor-frame.spec.ts` storage test red.
+
+**QA stage (2026-10-12).** Tests extended, no file added (QA): `ui/tools/vendor-frame.test.mjs`, `ui/src/app/areas/interoperability/interop-editor-frame.spec.ts`, `ui/browser/interop-editor-frame.browser-spec.mjs`, `ui/browser/interop-editor-spec.mjs`. Each mutation below was reverted byte-identical (file checksums equal, `git status` unchanged). The first two survived the whole tools sweep (1928), `client-lint` and the component spec before the new tests.
+
+- mutation: `core/vendor-frame.ts` imports `@angular/core` -> `vendor-frame.test.mjs` framework-free test red (QA).
+- mutation: the component binds `[src]` through `DomSanitizer.bypassSecurityTrustResourceUrl` instead of `Renderer2` -> `vendor-frame.test.mjs` Renderer2 test red (QA); `frame.src = source` -> the same test red.
+- mutation: the component writes `src` twice for one draw -> `interop-editor-frame.spec.ts` once-per-address test red, alone (QA).
+- mutation: the browser spec's interceptor answers the editor's document read 403 -> `interop-editor-frame.browser-spec.mjs` 404 clause red in all three editors, every earlier clause holding (QA).
+- mutation: `watchEditorTraffic` records only the editors' two applications -> the stray-request control red (QA).
+- mutation: `interopEditorSource` appends `&VSCODE=1` (re-run over the QA tree) -> all six editor frames, empty and with a document, and the sign-out test red; the builder is read from source by the spec, so the deployed bundle is unchanged.
+- survivor, left as is: dropping the `Renderer2` guard and running the sync after every render changes no write, because the effect re-runs only when the frame or the address changes.
+
+**Code review (2026-10-12).** Each mutation was reverted byte-identical (`shasum` equal).
+
+- mutation: the message rule loses its `listen` and `fromEvent` forms -> `api.test.mjs` hostile-list and scan-fixture tests red; the scan goes back to line by line -> the scan-fixture test red on the wrapped listener.
+- mutation: the component sets the frame's `onload` property -> `interop-editor-frame.spec.ts` listener test red ("no handler property on the frame").
+- mutation: the frame posts its host a message after the controls -> the browser spec's six AC1/AC2 subtests red ("no message arrived after the controls").
 
 ## Auto Run Result
 
