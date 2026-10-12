@@ -257,7 +257,8 @@ export function classifyGovernance(className, aside, back) {
 }
 
 /**
- * The problem a class's leftover probe applications make, or `null` (DW-242). A probe application
+ * The problem a class's leftover probe applications and compile probe objects make, or `null`
+ * (DW-242). A probe application
  * that survives a class's teardown is inherited by every later class, and one whose provenance row
  * a test deleted can never be uninstalled, so any leftover fails the run. `before` (the answer
  * taken before the class ran) decides the blame: a path the class added is its leak; a path
@@ -274,14 +275,19 @@ export function classifyLeftovers(className, probeApps, before = null) {
   const known = before !== null && before.error === null;
   const inherited = known ? probeApps.paths.filter((path) => before.paths.includes(path)) : [];
   const added = probeApps.paths.filter((path) => !inherited.includes(path));
+  // `kind:name` tokens are the compile probe's namespace, database and directory (Story 20.28).
+  const addedApps = added.filter((token) => !token.includes(':'));
+  const addedObjects = added.filter((token) => token.includes(':'));
+  const unknown = known ? '' : '; whether they were present before the class ran is unknown';
   const parts = [];
-  if (added.length > 0) {
-    parts.push(
-      `probe web application(s) survived the class's teardown -- ${added.join(', ')}. Remove them with OcuPilot.Test.ProbeApps.Remove() in the class's teardown (DW-242)${known ? '' : '; whether they were present before the class ran is unknown'}`
-    );
+  if (addedApps.length > 0) {
+    parts.push(`probe web application(s) survived the class's teardown -- ${addedApps.join(', ')}. Remove them with OcuPilot.Test.ProbeApps.Remove() in the class's teardown (DW-242)${unknown}`);
+  }
+  if (addedObjects.length > 0) {
+    parts.push(`compile probe object(s) survived the class's teardown -- ${addedObjects.join(', ')}. Remove them with OcuPilot.Test.CompileWithoutInteropProbe.RemoveAll() in the class's teardown${unknown}`);
   }
   if (inherited.length > 0) {
-    parts.push(`probe web application(s) already present before the class ran are still present -- ${inherited.join(', ')}; an earlier class or run left them`);
+    parts.push(`probe leftover(s) already present before the class ran are still present -- ${inherited.join(', ')}; an earlier class or run left them`);
   }
   return `${className}: ${parts.join('; and ')}`;
 }

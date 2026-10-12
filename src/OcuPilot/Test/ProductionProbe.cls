@@ -420,7 +420,10 @@ ClassMethod SetHang(pSeconds As %Integer) As %Status
 
 /// <p>Leave the probe production reading Troubled: start it, terminate its <code>_Ensemble</code> jobs
 /// in <code>USER</code> and kill <code>^%SYS("Ensemble","RunningNamespace","USER")</code> (measured to
-/// read Troubled).</p>
+/// read Troubled). No <code>_Ensemble</code> job is left in <code>USER</code> on success, so nothing
+/// takes an <code>Ens.Actor</code> entry a caller queues afterwards: a job the start launched after one
+/// termination pass lingers for about twenty seconds in <code>Ens.Queue</code> (measured), so passes
+/// repeat until two in a row find none, for at most thirty seconds, and an error is returned past that.</p>
 ClassMethod MakeTroubled() As %Status
 {
     Set tSC = ..CheckOwn()
@@ -431,11 +434,19 @@ ClassMethod MakeTroubled() As %Status
         Set tCurrent = ..Current(.tState)
         If tState '= 1 Set tSC = ##class(Ens.Director).StartProduction(..#PRODUCTION)
         If $$$ISOK(tSC) {
-            Set tRS = ##class(%SQL.Statement).%ExecDirect(, "SELECT Pid FROM %SYS.ProcessQuery WHERE UserName = '_Ensemble' AND NameSpace = ?", ..#NAMESPACE)
-            While tRS.%Next() {
-                Do $System.Process.Terminate(tRS.%GetData(1))
+            Set tQuiet = 0
+            Set tDeadline = $ZHorolog + 30
+            While (tQuiet < 2) && ($ZHorolog < tDeadline) {
+                Set tFound = 0
+                Set tRS = ##class(%SQL.Statement).%ExecDirect(, "SELECT Pid FROM %SYS.ProcessQuery WHERE UserName = '_Ensemble' AND NameSpace = ?", ..#NAMESPACE)
+                While tRS.%Next() {
+                    Set tFound = 1
+                    Do $System.Process.Terminate(tRS.%GetData(1))
+                }
+                Set tQuiet = $Select(tFound: 0, 1: tQuiet + 1)
+                Hang 0.5
             }
-            Hang 1
+            If tQuiet < 2 Set tSC = $$$ERROR($$$GeneralError, "an _Ensemble job in " _ ..#NAMESPACE _ " outlived thirty seconds of termination passes")
             Kill ^%SYS("Ensemble", "RunningNamespace", ..#NAMESPACE)
         }
         Set $NAMESPACE = tOrigNS

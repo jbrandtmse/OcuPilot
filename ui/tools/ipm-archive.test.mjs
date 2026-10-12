@@ -787,3 +787,143 @@ test('_SYSTEM is unexpired by name, in %SYS, strictly after the archive install 
   );
   assert.ok(smokeAt > unexpireAt, 'and strictly before smoke.sh runs, or every HTTP check would read 401');
 });
+
+// --- The archive is installed into a namespace created without interoperability (Story 20.28) ---
+
+/**
+ * Every session the script opens on the install instance, as `{namespace, body}`: the `-U` argument
+ * exactly as written, and the here-doc lines that session is fed. Read off the comment-free script,
+ * so a pin on what a session does is a pin on the session that does it rather than on the first
+ * `-U` the script happens to name.
+ */
+export function installSessions(text) {
+  const lines = text.split('\n');
+  const sessions = [];
+  for (let i = 0; i < lines.length; i += 1) {
+    const match = /docker exec -i "\$INSTALL_NAME" iris session iris -U (\S+)/.exec(lines[i]);
+    if (match === null) continue;
+    const body = [];
+    for (let j = i + 1; j < lines.length && lines[j] !== 'EOF'; j += 1) body.push(lines[j]);
+    sessions.push({ namespace: match[1], body: body.join('\n') });
+  }
+  return sessions;
+}
+
+const CREATED_NAMESPACE = '"$NOINTEROP_NS"';
+
+test('_SYSTEM is unexpired by a session opened in %SYS, not by the namespace-creating one', () => {
+  // Once the script opens a second `-U %SYS` session (the one that creates the namespace), the lazy
+  // `-U %SYS ... UnExpireUserPasswords` match above can be satisfied across the two. So the session
+  // that unexpires is read as a session.
+  //
+  // Mutation (Rule 19): open the unexpire session with `-U HSCUSTOM` -> this goes red, while the
+  // regex above still matches through the namespace-creating session.
+  const unexpire = installSessions(code).filter((session) => session.body.includes('UnExpireUserPasswords'));
+  assert.equal(unexpire.length, 1, 'one session unexpires _SYSTEM');
+  assert.equal(unexpire[0].namespace, '%SYS', 'and it is opened in %SYS');
+});
+
+test('load and list run in the namespace the script creates, and no session on the install instance opens HSCUSTOM', () => {
+  // Mutation (Rule 19): point the `load` session's -U back at HSCUSTOM -> the first assertion goes
+  // red; the same for the `list` session -> the second; and any `HSCUSTOM` on an install-instance
+  // session, or a `import_ipm`/`assert_no_repositories` call on it that omits the namespace
+  // argument (which would default to HSCUSTOM) -> the last two.
+  const sessions = installSessions(code);
+  const load = sessions.find((session) => session.body.includes('Shell("load /opt/ocupilot-archive/'));
+  const list = sessions.find((session) => session.body.includes('Shell("list"'));
+  assert.ok(load, 'the archive is loaded in a session on the install instance');
+  assert.ok(list, 'and listed in one');
+  assert.equal(load.namespace, CREATED_NAMESPACE, 'the archive is loaded in the namespace the script created');
+  assert.equal(list.namespace, CREATED_NAMESPACE, 'and listed there');
+  for (const session of sessions) {
+    assert.doesNotMatch(session.namespace, /HSCUSTOM/, `a session on the install instance opens HSCUSTOM: ${session.namespace}`);
+  }
+  for (const line of code.split('\n')) {
+    if (/^\s*(import_ipm|assert_no_repositories) "\$INSTALL_NAME"/.test(line)) {
+      assert.ok(line.includes(CREATED_NAMESPACE), `a call on the install instance omits the namespace and so defaults to HSCUSTOM: ${line.trim()}`);
+    }
+  }
+});
+
+test('the namespace is created with no EnableNamespace, and its interoperability is read back and required to be 0', () => {
+  // Mutation (Rule 19): add `Do ##class(%EnsembleMgr).EnableNamespace(tNs)` to the creating session ->
+  // the first assertion goes red. Delete the read-back `Write` from that session -> the second.
+  // Delete the `!= "0"` check that follows it -> the third. Move `import_ipm "$INSTALL_NAME"` above
+  // the check -> the last.
+  assert.doesNotMatch(code, /EnableNamespace/, 'the namespace is created without interoperability being enabled on it');
+  const creating = installSessions(code).filter((session) => session.body.includes('Config.Namespaces).Create('));
+  assert.equal(creating.length, 1, 'one session creates the namespace');
+  assert.equal(creating[0].namespace, '%SYS', 'in %SYS');
+  assert.match(creating[0].body, /Write "OCUPILOT-"_"INTEROP-START:"_##class\(%Library\.EnsembleMgr\)\.IsEnsembleNamespace\(tNs\)/, 'and reads its interoperability back');
+  assert.match(code, /marker "\$NAMESPACE_RAW" "INTEROP"\)" != "0" \]/, 'and requires it to read 0');
+  const createdAt = code.indexOf('Config.Namespaces).Create(');
+  const readBackAt = code.indexOf('marker "$NAMESPACE_RAW" "INTEROP"');
+  const importAt = code.indexOf('import_ipm "$INSTALL_NAME"');
+  assert.ok(createdAt > 0 && readBackAt > createdAt, 'the read-back follows the creation');
+  assert.ok(importAt > readBackAt, 'and IPM is imported only once the namespace has read back clean');
+});
+
+test('the namespace gets a database in a directory of its own under the manager directory, never in the manager directory itself', () => {
+  // Mutation (Rule 19): build `tDir` without its `_$ZConvert(tNs,"L")_"/"` leaf, so the database would
+  // be created in the manager directory itself -> the first assertion goes red. Create the database
+  // anywhere but `tDir` -> the second. Create it before the directory is made -> the third.
+  const creating = installSessions(code).filter((session) => session.body.includes('Config.Namespaces).Create('));
+  assert.equal(creating.length, 1, 'one session creates the namespace');
+  const { body } = creating[0];
+  assert.match(
+    body,
+    /^Set tDir = ##class\(%File\)\.NormalizeDirectory\(\\\$System\.Util\.ManagerDirectory\(\)\)_\\\$ZConvert\(tNs,"L"\)_"\/"$/m,
+    'the database directory is a leaf named for the namespace under the manager directory',
+  );
+  assert.match(body, /SYS\.Database\)\.CreateDatabase\(tDir,/, 'and the database is created in that directory');
+  const directoryAt = body.indexOf('CreateDirectoryChain(tDir)');
+  const databaseAt = body.indexOf('CreateDatabase(tDir,');
+  assert.ok(directoryAt > 0 && databaseAt > directoryAt, 'after the directory is made');
+});
+
+test('IPM is imported into the created namespace, before load', () => {
+  // Mutation (Rule 19): drop the namespace argument from the `import_ipm` call on the install
+  // instance -> red (it would import into HSCUSTOM). Move the call below the `load` session -> red.
+  const imports = code.split('\n').filter((line) => /^\s*import_ipm "/.test(line));
+  assert.equal(imports.length, 2, `the script imports IPM twice, once per container: ${JSON.stringify(imports)}`);
+  const onInstall = imports.filter((line) => line.includes('"$INSTALL_NAME"'));
+  assert.equal(onInstall.length, 1, 'one import is on the install instance');
+  assert.ok(onInstall[0].includes(CREATED_NAMESPACE), `and it names the created namespace: ${onInstall[0].trim()}`);
+  assert.ok(imports.filter((line) => line.includes('"$BUILD_NAME"')).every((line) => !line.includes('NOINTEROP_NS')), 'the build container keeps HSCUSTOM');
+  const importAt = code.indexOf('import_ipm "$INSTALL_NAME"');
+  const loadAt = code.indexOf('Shell("load /opt/ocupilot-archive/');
+  assert.ok(importAt > 0 && loadAt > importAt, 'IPM is imported into the namespace before the archive is loaded there');
+});
+
+test('the compiled OcuPilot class count in the created namespace is required to equal the archive\'s, with no test class', () => {
+  // Mutation (Rule 19): delete the `!= "$CLASS_COUNT"` check -> the second assertion goes red.
+  // Delete the `COMPILED_TEST` check -> the third. Count in HSCUSTOM -> the first. Count every
+  // dictionary row instead of each current compile -> the IsUpToDate assertion.
+  const counting = installSessions(code).filter((session) => session.body.includes('%Dictionary.CompiledClass'));
+  assert.equal(counting.length, 1, 'one session counts the compiled classes');
+  assert.equal(counting[0].namespace, CREATED_NAMESPACE, 'in the created namespace');
+  assert.match(counting[0].body, /'OcuPilot\.'/, 'the OcuPilot classes');
+  assert.match(counting[0].body, /'OcuPilot\.Test\.'/, 'and, separately, the test classes');
+  assert.match(counting[0].body, /\+ ''\$System\.OBJ\.IsUpToDate\(tRS\.%GetData\(1\)\)/, 'counting only a current compile, since a failed one keeps its dictionary row');
+  assert.match(counting[0].body, /'OcuPilot\.' AND \(GeneratedBy IS NULL OR GeneratedBy = ''\)/, 'and no class another generated, which the archive does not carry');
+  assert.match(code, /\[ "\$COMPILED" != "\$CLASS_COUNT" \]/, 'the compiled count is required to equal the archive\'s class count');
+  assert.match(code, /\[ "\$COMPILED_TEST" != "0" \]/, 'and the test count to be zero');
+  const countAt = code.indexOf('COMPILED_RAW=$(');
+  assert.ok(countAt > code.indexOf('Shell("load /opt/ocupilot-archive/'), 'the count follows the install');
+  assert.ok(countAt < code.indexOf('UnExpireUserPasswords'), 'and precedes smoke');
+});
+
+test('smoke runs in the created namespace', () => {
+  // Mutation (Rule 19): drop `--namespace "$NOINTEROP_NS"` from the smoke line -> red, since smoke
+  // would then choose HSCUSTOM itself.
+  const [line] = code.split('\n').filter((candidate) => candidate.includes('smoke.sh'));
+  assert.ok(line.includes('--namespace "$NOINTEROP_NS"'), `the smoke line does not name the created namespace: ${line.trim()}`);
+});
+
+test('the created namespace still reports no interoperability once the archive is installed', () => {
+  // Mutation (Rule 19): delete the `INTEROP` read from the counting session -> the first assertion
+  // goes red; delete the `!= "0"` check on it -> the second.
+  const [counting] = installSessions(code).filter((session) => session.body.includes('%Dictionary.CompiledClass'));
+  assert.match(counting.body, /"INTEROP-START:"_##class\(%Library\.EnsembleMgr\)\.IsEnsembleNamespace\(\$Namespace\)/, 'the session after the install reads the namespace\'s interoperability');
+  assert.match(code, /marker "\$COMPILED_RAW" "INTEROP"\)" != "0" \]/, 'and requires it to read 0');
+});

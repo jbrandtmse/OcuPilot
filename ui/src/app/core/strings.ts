@@ -7066,6 +7066,12 @@ export const STRINGS = {
   interopTestRefusalValue: 'This value does not fit the field, or the field is required.',
   /** EXPERIENCE.md:604 */
   interopTestRefusalRequest: 'The request could not be built from these values.',
+  /** EXPERIENCE.md:604 */
+  interopRuleEditorTitle: 'Rule editor',
+  /** EXPERIENCE.md:604 */
+  interopDtlEditorTitle: 'DTL editor',
+  /** EXPERIENCE.md:604 */
+  interopBplEditorTitle: 'BPL editor',
 } as const;
 
 /**
