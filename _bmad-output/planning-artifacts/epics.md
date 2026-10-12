@@ -7782,6 +7782,23 @@ So that the credential ladder offers a wallet-backed rung. [AMENDED 2026-10-11, 
 - **When** the credential ladder is extended
 - **Then** a wallet-backed rung joins the environment-variable and IRIS-credential rungs.
 
+### Story 18.42: Allowed directories: a person's write
+
+As a developer-administrator,
+I want to add, change and remove the instance's allowed directories myself,
+So that the fence around server-path fields is set on its screen, never by the agent. [AMENDED 2026-10-11, owner decision on DW-2334 relayed by the orchestrator: "I agree with your recommendation regarding allowed folders" - a person edits the list after a confirmation with the action off by default; the agent never widens it (AD-21, AD-53's precedent)]
+
+**Acceptance Criteria:**
+
+- **Given** the Allowed directories screen
+- **When** a person adds, changes or removes an entry (`Path`, `Purpose`)
+- **Then** it is a confirmed write through the admin API's `FSAccess` endpoints, its governance key disabled by default, and the roots OcuPilot needs to run cannot be dropped.
+
+- **Given** the agent
+- **When** it proposes any change to the allow-list
+- **Then** the kernel refuses it for the agent caller as self-protection in the AD-10 and AD-21 family, not only by leaving out a tool; no agent write at all, narrowing included (a reason for an agent narrowing found at the spec gate is the owner's question).
+- DW-2334: The admin API can write the directory allow-list but OcuPilot offers no surface for it (ledger; re-owned by lead 2026-10-11 on the owner's decision)
+
 ## Epic 19: Stage 3 - System Explorer over the Atelier API
 
 A developer gets classes and routines with source view, compile, delete, export, import and ETag-checked editing; search, compare and macro lookup; the SQL catalog with its query console behind a DML and DDL guard; and a data grid harvested from iris-table-editor with inline editing, staged saves and CSV export.

@@ -178,7 +178,7 @@ export interface ReadSource {
    * `VOLUMELIST` reads a database's own volume files as rows; a bare admin type is read with
    * `rows` (Story 16.7).
    */
-  readonly type: 'LIST' | 'GET' | 'UPCOMING' | 'HISTORY' | 'VOLUMELIST' | 'DATAELEMENTLIST' | 'ACTIVITY' | 'LICENSEUSAGE';
+  readonly type: 'LIST' | 'GET' | 'UPCOMING' | 'HISTORY' | 'VOLUMELIST' | 'DATAELEMENTLIST' | 'ACTIVITY' | 'BUSYPROCESSES' | 'LICENSEUSAGE' | 'RESOURCEROWS';
   /** The one member of a bare admin type's one-object answer this read lists (AD-36, Story 16.7). */
   readonly rows?: string | null;
   readonly rowGet?: ReadRowGet | null;
@@ -3185,6 +3185,925 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "emptyAgentKey": ""
     },
     "toolIdentifier": "osmgmt.dashboard",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.DashboardEcp",
+    "route": "os-management/ecp-statistics",
+    "area": "os-management",
+    "labelKey": "ecpStatisticsLabel",
+    "sideBarPosition": 0,
+    "archetype": "detail",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Operate",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "none",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "Ecp.AppServer.MaxConn",
+        "Ecp.AppServer.ActConn",
+        "Ecp.AppServer.GloRef",
+        "Ecp.AppServer.ByteSent",
+        "Ecp.AppServer.ByteRcvd",
+        "Ecp.AppServer.BlockAdd",
+        "Ecp.AppServer.BlockBuffPurge",
+        "Ecp.AppServer.BlockSvrPurge",
+        "Ecp.AppServer.GloRefLocal",
+        "Ecp.AppServer.GloRefRemote",
+        "Ecp.AppServer.GloUpdateLocal",
+        "Ecp.AppServer.GloUpdateRemote",
+        "Ecp.AppServer.RoutineCallLocal",
+        "Ecp.AppServer.RoutineCallRemote",
+        "Ecp.AppServer.RoutineBuffLocal",
+        "Ecp.AppServer.RoutineBuffRemote",
+        "Ecp.DataServer.MaxConn",
+        "Ecp.DataServer.ActConn",
+        "Ecp.DataServer.GloRef",
+        "Ecp.DataServer.ByteSent",
+        "Ecp.DataServer.ByteRcvd",
+        "Ecp.DataServer.GloUpdate",
+        "Ecp.DataServer.ReqRcvd",
+        "Ecp.DataServer.ReqBuff",
+        "Ecp.DataServer.BlockSent",
+        "Ecp.DataServer.LockGrant",
+        "Ecp.DataServer.LockFail",
+        "Ecp.DataServer.LockQueGrant",
+        "Ecp.DataServer.LockQueFail",
+        "Ecp.DataServer.SvrBlockPurge",
+        "Ecp.DataServer.RoutinePurge",
+        "Ecp.DataServer.BigKill",
+        "Ecp.DataServer.BigString"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "statisticsEmpty",
+    "commandAliases": [],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "ecpStatisticsPrompt1"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "ecpStatisticsPrompt2"
+      },
+      {
+        "groupKey": "promptGroupCapacity",
+        "textKey": "ecpStatisticsPrompt3"
+      }
+    ],
+    "classicPage": "%cspapp.op.utilsysstatisticsecp",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "admin",
+        "endpoint": "Monitor",
+        "type": "GET",
+        "parts": [
+          {
+            "type": "DASHBOARDECP",
+            "as": "Ecp"
+          }
+        ]
+      },
+      "fields": [
+        "Ecp.AppServer.MaxConn",
+        "Ecp.AppServer.ActConn",
+        "Ecp.AppServer.GloRef",
+        "Ecp.AppServer.ByteSent",
+        "Ecp.AppServer.ByteRcvd",
+        "Ecp.AppServer.BlockAdd",
+        "Ecp.AppServer.BlockBuffPurge",
+        "Ecp.AppServer.BlockSvrPurge",
+        "Ecp.AppServer.GloRefLocal",
+        "Ecp.AppServer.GloRefRemote",
+        "Ecp.AppServer.GloUpdateLocal",
+        "Ecp.AppServer.GloUpdateRemote",
+        "Ecp.AppServer.RoutineCallLocal",
+        "Ecp.AppServer.RoutineCallRemote",
+        "Ecp.AppServer.RoutineBuffLocal",
+        "Ecp.AppServer.RoutineBuffRemote",
+        "Ecp.DataServer.MaxConn",
+        "Ecp.DataServer.ActConn",
+        "Ecp.DataServer.GloRef",
+        "Ecp.DataServer.ByteSent",
+        "Ecp.DataServer.ByteRcvd",
+        "Ecp.DataServer.GloUpdate",
+        "Ecp.DataServer.ReqRcvd",
+        "Ecp.DataServer.ReqBuff",
+        "Ecp.DataServer.BlockSent",
+        "Ecp.DataServer.LockGrant",
+        "Ecp.DataServer.LockFail",
+        "Ecp.DataServer.LockQueGrant",
+        "Ecp.DataServer.LockQueFail",
+        "Ecp.DataServer.SvrBlockPurge",
+        "Ecp.DataServer.RoutinePurge",
+        "Ecp.DataServer.BigKill",
+        "Ecp.DataServer.BigString"
+      ],
+      "filter": [
+        "Ecp.AppServer.MaxConn",
+        "Ecp.AppServer.ActConn",
+        "Ecp.AppServer.GloRef",
+        "Ecp.AppServer.ByteSent",
+        "Ecp.AppServer.ByteRcvd",
+        "Ecp.AppServer.BlockAdd",
+        "Ecp.AppServer.BlockBuffPurge",
+        "Ecp.AppServer.BlockSvrPurge",
+        "Ecp.AppServer.GloRefLocal",
+        "Ecp.AppServer.GloRefRemote",
+        "Ecp.AppServer.GloUpdateLocal",
+        "Ecp.AppServer.GloUpdateRemote",
+        "Ecp.AppServer.RoutineCallLocal",
+        "Ecp.AppServer.RoutineCallRemote",
+        "Ecp.AppServer.RoutineBuffLocal",
+        "Ecp.AppServer.RoutineBuffRemote",
+        "Ecp.DataServer.MaxConn",
+        "Ecp.DataServer.ActConn",
+        "Ecp.DataServer.GloRef",
+        "Ecp.DataServer.ByteSent",
+        "Ecp.DataServer.ByteRcvd",
+        "Ecp.DataServer.GloUpdate",
+        "Ecp.DataServer.ReqRcvd",
+        "Ecp.DataServer.ReqBuff",
+        "Ecp.DataServer.BlockSent",
+        "Ecp.DataServer.LockGrant",
+        "Ecp.DataServer.LockFail",
+        "Ecp.DataServer.LockQueGrant",
+        "Ecp.DataServer.LockQueFail",
+        "Ecp.DataServer.SvrBlockPurge",
+        "Ecp.DataServer.RoutinePurge",
+        "Ecp.DataServer.BigKill",
+        "Ecp.DataServer.BigString"
+      ],
+      "sort": {
+        "fields": [
+          "Ecp.AppServer.MaxConn",
+          "Ecp.AppServer.ActConn",
+          "Ecp.AppServer.GloRef",
+          "Ecp.AppServer.ByteSent",
+          "Ecp.AppServer.ByteRcvd",
+          "Ecp.AppServer.BlockAdd",
+          "Ecp.AppServer.BlockBuffPurge",
+          "Ecp.AppServer.BlockSvrPurge",
+          "Ecp.AppServer.GloRefLocal",
+          "Ecp.AppServer.GloRefRemote",
+          "Ecp.AppServer.GloUpdateLocal",
+          "Ecp.AppServer.GloUpdateRemote",
+          "Ecp.AppServer.RoutineCallLocal",
+          "Ecp.AppServer.RoutineCallRemote",
+          "Ecp.AppServer.RoutineBuffLocal",
+          "Ecp.AppServer.RoutineBuffRemote",
+          "Ecp.DataServer.MaxConn",
+          "Ecp.DataServer.ActConn",
+          "Ecp.DataServer.GloRef",
+          "Ecp.DataServer.ByteSent",
+          "Ecp.DataServer.ByteRcvd",
+          "Ecp.DataServer.GloUpdate",
+          "Ecp.DataServer.ReqRcvd",
+          "Ecp.DataServer.ReqBuff",
+          "Ecp.DataServer.BlockSent",
+          "Ecp.DataServer.LockGrant",
+          "Ecp.DataServer.LockFail",
+          "Ecp.DataServer.LockQueGrant",
+          "Ecp.DataServer.LockQueFail",
+          "Ecp.DataServer.SvrBlockPurge",
+          "Ecp.DataServer.RoutinePurge",
+          "Ecp.DataServer.BigKill",
+          "Ecp.DataServer.BigString"
+        ],
+        "default": "Ecp.AppServer.MaxConn",
+        "direction": "asc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Ecp.AppServer.MaxConn",
+          "labelKey": "licenseUsageMaxConnections",
+          "kind": "name"
+        },
+        {
+          "field": "Ecp.AppServer.ActConn",
+          "labelKey": "statsEcpActiveConnections",
+          "kind": "number"
+        },
+        {
+          "field": "Ecp.AppServer.GloRef",
+          "labelKey": "processDetailsGlobalReferences",
+          "kind": "number"
+        },
+        {
+          "field": "Ecp.AppServer.ByteSent",
+          "labelKey": "statsEcpBytesSent",
+          "kind": "number"
+        },
+        {
+          "field": "Ecp.AppServer.ByteRcvd",
+          "labelKey": "statsEcpBytesReceived",
+          "kind": "number"
+        },
+        {
+          "field": "Ecp.AppServer.BlockAdd",
+          "labelKey": "statsEcpBlocksAdded",
+          "kind": "number"
+        },
+        {
+          "field": "Ecp.AppServer.BlockBuffPurge",
+          "labelKey": "statsEcpBlocksPurgedForBuffers",
+          "kind": "number"
+        },
+        {
+          "field": "Ecp.AppServer.BlockSvrPurge",
+          "labelKey": "statsEcpBlocksPurgedByDataServer",
+          "kind": "number"
+        },
+        {
+          "field": "Ecp.AppServer.GloRefLocal",
+          "labelKey": "statsGlobalReferencesLocal",
+          "kind": "number"
+        },
+        {
+          "field": "Ecp.AppServer.GloRefRemote",
+          "labelKey": "statsGlobalReferencesRemote",
+          "kind": "number"
+        },
+        {
+          "field": "Ecp.AppServer.GloUpdateLocal",
+          "labelKey": "statsGlobalUpdatesLocal",
+          "kind": "number"
+        },
+        {
+          "field": "Ecp.AppServer.GloUpdateRemote",
+          "labelKey": "statsGlobalUpdatesRemote",
+          "kind": "number"
+        },
+        {
+          "field": "Ecp.AppServer.RoutineCallLocal",
+          "labelKey": "statsRoutineCallsLocal",
+          "kind": "number"
+        },
+        {
+          "field": "Ecp.AppServer.RoutineCallRemote",
+          "labelKey": "statsRoutineCallsRemote",
+          "kind": "number"
+        },
+        {
+          "field": "Ecp.AppServer.RoutineBuffLocal",
+          "labelKey": "statsRoutineLoadsLocal",
+          "kind": "number"
+        },
+        {
+          "field": "Ecp.AppServer.RoutineBuffRemote",
+          "labelKey": "statsRoutineLoadsRemote",
+          "kind": "number"
+        },
+        {
+          "field": "Ecp.DataServer.MaxConn",
+          "labelKey": "licenseUsageMaxConnections",
+          "kind": "number"
+        },
+        {
+          "field": "Ecp.DataServer.ActConn",
+          "labelKey": "statsEcpActiveConnections",
+          "kind": "number"
+        },
+        {
+          "field": "Ecp.DataServer.GloRef",
+          "labelKey": "processDetailsGlobalReferences",
+          "kind": "number"
+        },
+        {
+          "field": "Ecp.DataServer.ByteSent",
+          "labelKey": "statsEcpBytesSent",
+          "kind": "number"
+        },
+        {
+          "field": "Ecp.DataServer.ByteRcvd",
+          "labelKey": "statsEcpBytesReceived",
+          "kind": "number"
+        },
+        {
+          "field": "Ecp.DataServer.GloUpdate",
+          "labelKey": "systemUsageGlobalUpdates",
+          "kind": "number"
+        },
+        {
+          "field": "Ecp.DataServer.ReqRcvd",
+          "labelKey": "statsEcpRequestsReceived",
+          "kind": "number"
+        },
+        {
+          "field": "Ecp.DataServer.ReqBuff",
+          "labelKey": "statsEcpRequestBuffers",
+          "kind": "number"
+        },
+        {
+          "field": "Ecp.DataServer.BlockSent",
+          "labelKey": "statsEcpBlocksSent",
+          "kind": "number"
+        },
+        {
+          "field": "Ecp.DataServer.LockGrant",
+          "labelKey": "statsEcpLocksGranted",
+          "kind": "number"
+        },
+        {
+          "field": "Ecp.DataServer.LockFail",
+          "labelKey": "statsEcpLocksFailed",
+          "kind": "number"
+        },
+        {
+          "field": "Ecp.DataServer.LockQueGrant",
+          "labelKey": "statsEcpQueuedLocksGranted",
+          "kind": "number"
+        },
+        {
+          "field": "Ecp.DataServer.LockQueFail",
+          "labelKey": "statsEcpQueuedLocksFailed",
+          "kind": "number"
+        },
+        {
+          "field": "Ecp.DataServer.SvrBlockPurge",
+          "labelKey": "statsEcpBlockPurgesRequested",
+          "kind": "number"
+        },
+        {
+          "field": "Ecp.DataServer.RoutinePurge",
+          "labelKey": "statsEcpRoutinePurgesSent",
+          "kind": "number"
+        },
+        {
+          "field": "Ecp.DataServer.BigKill",
+          "labelKey": "statsEcpBigKills",
+          "kind": "number"
+        },
+        {
+          "field": "Ecp.DataServer.BigString",
+          "labelKey": "statsEcpBigStrings",
+          "kind": "number"
+        }
+      ],
+      "emptyNextKey": "tableReadOnlyEmptyNext",
+      "emptyAgentKey": ""
+    },
+    "toolIdentifier": "osmgmt.ecpstatistics",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.DashboardGlobals",
+    "route": "os-management/global-statistics",
+    "area": "os-management",
+    "labelKey": "globalStatisticsLabel",
+    "sideBarPosition": 0,
+    "archetype": "detail",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Operate",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "none",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "Statistics.Globals.RefLocal",
+        "Statistics.Globals.RefUpdateLocal",
+        "Statistics.Globals.RefRemote",
+        "Statistics.Globals.RefUpdateRemote",
+        "Statistics.Globals.RefPrivate",
+        "Statistics.Globals.RefUpdatePrivate",
+        "Statistics.Globals.LogicalBlocks",
+        "Statistics.Globals.PhysBlockReads",
+        "Statistics.Globals.PhysBlockWrites",
+        "Statistics.Globals.WIJWrites",
+        "Statistics.Globals.JrnEntries",
+        "Statistics.Globals.JrnBlocks",
+        "Statistics.Routines.RtnCallsLocal",
+        "Statistics.Routines.RtnFetchLocal",
+        "Statistics.Routines.RtnCallsRemote",
+        "Statistics.Routines.RtnFetchRemote",
+        "Statistics.Routines.RtnCommands",
+        "Statistics.Routines.RtnNotCached"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "statisticsEmpty",
+    "commandAliases": [],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "globalStatisticsPrompt1"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "globalStatisticsPrompt2"
+      },
+      {
+        "groupKey": "promptGroupCapacity",
+        "textKey": "globalStatisticsPrompt3"
+      }
+    ],
+    "classicPage": "%cspapp.op.utilsysstatisticsglobal",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "admin",
+        "endpoint": "Monitor",
+        "type": "GET",
+        "parts": [
+          {
+            "type": "DASHBOARDGLOBALS",
+            "as": "Statistics"
+          }
+        ]
+      },
+      "fields": [
+        "Statistics.Globals.RefLocal",
+        "Statistics.Globals.RefUpdateLocal",
+        "Statistics.Globals.RefRemote",
+        "Statistics.Globals.RefUpdateRemote",
+        "Statistics.Globals.RefPrivate",
+        "Statistics.Globals.RefUpdatePrivate",
+        "Statistics.Globals.LogicalBlocks",
+        "Statistics.Globals.PhysBlockReads",
+        "Statistics.Globals.PhysBlockWrites",
+        "Statistics.Globals.WIJWrites",
+        "Statistics.Globals.JrnEntries",
+        "Statistics.Globals.JrnBlocks",
+        "Statistics.Routines.RtnCallsLocal",
+        "Statistics.Routines.RtnFetchLocal",
+        "Statistics.Routines.RtnCallsRemote",
+        "Statistics.Routines.RtnFetchRemote",
+        "Statistics.Routines.RtnCommands",
+        "Statistics.Routines.RtnNotCached"
+      ],
+      "filter": [
+        "Statistics.Globals.RefLocal",
+        "Statistics.Globals.RefUpdateLocal",
+        "Statistics.Globals.RefRemote",
+        "Statistics.Globals.RefUpdateRemote",
+        "Statistics.Globals.RefPrivate",
+        "Statistics.Globals.RefUpdatePrivate",
+        "Statistics.Globals.LogicalBlocks",
+        "Statistics.Globals.PhysBlockReads",
+        "Statistics.Globals.PhysBlockWrites",
+        "Statistics.Globals.WIJWrites",
+        "Statistics.Globals.JrnEntries",
+        "Statistics.Globals.JrnBlocks",
+        "Statistics.Routines.RtnCallsLocal",
+        "Statistics.Routines.RtnFetchLocal",
+        "Statistics.Routines.RtnCallsRemote",
+        "Statistics.Routines.RtnFetchRemote",
+        "Statistics.Routines.RtnCommands",
+        "Statistics.Routines.RtnNotCached"
+      ],
+      "sort": {
+        "fields": [
+          "Statistics.Globals.RefLocal",
+          "Statistics.Globals.RefUpdateLocal",
+          "Statistics.Globals.RefRemote",
+          "Statistics.Globals.RefUpdateRemote",
+          "Statistics.Globals.RefPrivate",
+          "Statistics.Globals.RefUpdatePrivate",
+          "Statistics.Globals.LogicalBlocks",
+          "Statistics.Globals.PhysBlockReads",
+          "Statistics.Globals.PhysBlockWrites",
+          "Statistics.Globals.WIJWrites",
+          "Statistics.Globals.JrnEntries",
+          "Statistics.Globals.JrnBlocks",
+          "Statistics.Routines.RtnCallsLocal",
+          "Statistics.Routines.RtnFetchLocal",
+          "Statistics.Routines.RtnCallsRemote",
+          "Statistics.Routines.RtnFetchRemote",
+          "Statistics.Routines.RtnCommands",
+          "Statistics.Routines.RtnNotCached"
+        ],
+        "default": "Statistics.Globals.RefLocal",
+        "direction": "asc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Statistics.Globals.RefLocal",
+          "labelKey": "statsGlobalReferencesLocal",
+          "kind": "name"
+        },
+        {
+          "field": "Statistics.Globals.RefUpdateLocal",
+          "labelKey": "statsGlobalUpdatesLocal",
+          "kind": "number"
+        },
+        {
+          "field": "Statistics.Globals.RefRemote",
+          "labelKey": "statsGlobalReferencesRemote",
+          "kind": "number"
+        },
+        {
+          "field": "Statistics.Globals.RefUpdateRemote",
+          "labelKey": "statsGlobalUpdatesRemote",
+          "kind": "number"
+        },
+        {
+          "field": "Statistics.Globals.RefPrivate",
+          "labelKey": "processDetailsPrivateGlobalReferences",
+          "kind": "number"
+        },
+        {
+          "field": "Statistics.Globals.RefUpdatePrivate",
+          "labelKey": "statsGlobalUpdatesPrivate",
+          "kind": "number"
+        },
+        {
+          "field": "Statistics.Globals.LogicalBlocks",
+          "labelKey": "systemUsageLogicalBlockRequests",
+          "kind": "number"
+        },
+        {
+          "field": "Statistics.Globals.PhysBlockReads",
+          "labelKey": "systemUsageBlockReads",
+          "kind": "number"
+        },
+        {
+          "field": "Statistics.Globals.PhysBlockWrites",
+          "labelKey": "systemUsageBlockWrites",
+          "kind": "number"
+        },
+        {
+          "field": "Statistics.Globals.WIJWrites",
+          "labelKey": "statsWriteImageJournalWrites",
+          "kind": "number"
+        },
+        {
+          "field": "Statistics.Globals.JrnEntries",
+          "labelKey": "systemUsageJournalEntries",
+          "kind": "number"
+        },
+        {
+          "field": "Statistics.Globals.JrnBlocks",
+          "labelKey": "systemUsageJournalBlockWrites",
+          "kind": "number"
+        },
+        {
+          "field": "Statistics.Routines.RtnCallsLocal",
+          "labelKey": "statsRoutineCallsLocal",
+          "kind": "number"
+        },
+        {
+          "field": "Statistics.Routines.RtnFetchLocal",
+          "labelKey": "statsRoutineLoadsLocal",
+          "kind": "number"
+        },
+        {
+          "field": "Statistics.Routines.RtnCallsRemote",
+          "labelKey": "statsRoutineCallsRemote",
+          "kind": "number"
+        },
+        {
+          "field": "Statistics.Routines.RtnFetchRemote",
+          "labelKey": "statsRoutineLoadsRemote",
+          "kind": "number"
+        },
+        {
+          "field": "Statistics.Routines.RtnCommands",
+          "labelKey": "statsRoutineCommands",
+          "kind": "number"
+        },
+        {
+          "field": "Statistics.Routines.RtnNotCached",
+          "labelKey": "statsRoutinesNotCached",
+          "kind": "number"
+        }
+      ],
+      "emptyNextKey": "tableReadOnlyEmptyNext",
+      "emptyAgentKey": ""
+    },
+    "toolIdentifier": "osmgmt.globalstatistics",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.DashboardProcesses",
+    "route": "os-management/active-processes",
+    "area": "os-management",
+    "labelKey": "activeProcessesLabel",
+    "sideBarPosition": 0,
+    "archetype": "list",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Operate",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "none",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "Process",
+        "Commands"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "activeProcessesEmpty",
+    "commandAliases": [],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "activeProcessesPrompt1"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "activeProcessesPrompt2"
+      },
+      {
+        "groupKey": "promptGroupCapacity",
+        "textKey": "activeProcessesPrompt3"
+      }
+    ],
+    "classicPage": "%cspapp.op.utildashboard",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "admin",
+        "endpoint": "Monitor",
+        "type": "BUSYPROCESSES",
+        "rows": "BusyProcesses"
+      },
+      "fields": [
+        "Process",
+        "Commands"
+      ],
+      "filter": [
+        "Process"
+      ],
+      "sort": {
+        "fields": [
+          "Process",
+          "Commands"
+        ],
+        "default": "Commands",
+        "direction": "desc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Process",
+          "labelKey": "processColumnPid",
+          "kind": "name"
+        },
+        {
+          "field": "Commands",
+          "labelKey": "processColumnCommands",
+          "kind": "number"
+        }
+      ],
+      "emptyNextKey": "tableReadOnlyEmptyNext",
+      "emptyAgentKey": ""
+    },
+    "toolIdentifier": "osmgmt.activeprocesses",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.DashboardResources",
+    "route": "os-management/resource-statistics",
+    "area": "os-management",
+    "labelKey": "resourceStatisticsLabel",
+    "sideBarPosition": 0,
+    "archetype": "list",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Operate",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "none",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "Name",
+        "Seize",
+        "Nseize",
+        "Aseize",
+        "Bseize",
+        "BusySet"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "resourceStatisticsEmpty",
+    "commandAliases": [],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "resourceStatisticsPrompt1"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "resourceStatisticsPrompt2"
+      },
+      {
+        "groupKey": "promptGroupCapacity",
+        "textKey": "resourceStatisticsPrompt3"
+      }
+    ],
+    "classicPage": "%cspapp.op.utilsysstatisticsresource",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "admin",
+        "endpoint": "Monitor",
+        "type": "RESOURCEROWS",
+        "rows": "Resources"
+      },
+      "fields": [
+        "Name",
+        "Seize",
+        "Nseize",
+        "Aseize",
+        "Bseize",
+        "BusySet"
+      ],
+      "filter": [
+        "Name"
+      ],
+      "sort": {
+        "fields": [
+          "Name",
+          "Seize",
+          "Nseize",
+          "Aseize",
+          "Bseize",
+          "BusySet"
+        ],
+        "default": "Seize",
+        "direction": "desc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Name",
+          "labelKey": "tableColumnName",
+          "kind": "name"
+        },
+        {
+          "field": "Seize",
+          "labelKey": "resourceColumnSeizes",
+          "kind": "number"
+        },
+        {
+          "field": "Nseize",
+          "labelKey": "resourceColumnNseizes",
+          "kind": "number"
+        },
+        {
+          "field": "Aseize",
+          "labelKey": "resourceColumnAseizes",
+          "kind": "number"
+        },
+        {
+          "field": "Bseize",
+          "labelKey": "resourceColumnBseizes",
+          "kind": "number"
+        },
+        {
+          "field": "BusySet",
+          "labelKey": "resourceColumnBusySets",
+          "kind": "number"
+        }
+      ],
+      "emptyNextKey": "tableReadOnlyEmptyNext",
+      "emptyAgentKey": ""
+    },
+    "toolIdentifier": "osmgmt.resourcestatistics",
     "refreshDefault": 0,
     "banner": null,
     "tab": null,

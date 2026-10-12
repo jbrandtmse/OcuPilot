@@ -46,6 +46,27 @@ test('the seven groups are the classic page\'s, in its order, with the Task mana
   assert.deepEqual(store.DASHBOARD_GROUPS.at(-1).meters, [], 'the Task manager group draws Upcoming tasks\' rows, not meters');
 });
 
+test('the Performance, ECP and System usage groups offer the four drill-downs (Story 18.36), each an unlisted built screen labelled by the key its link shows', () => {
+  const offered = store.DASHBOARD_GROUPS.map((group) => [group.key, (group.drillDowns ?? []).map((drillDown) => drillDown.route)]).filter(
+    ([, routes]) => routes.length > 0
+  );
+  assert.deepEqual(offered, [
+    ['performance', ['os-management/global-statistics', 'os-management/resource-statistics']],
+    ['ecp', ['os-management/ecp-statistics']],
+    ['usage', ['os-management/active-processes']],
+  ]);
+  for (const group of store.DASHBOARD_GROUPS) {
+    for (const drillDown of group.drillDowns ?? []) {
+      const screen = SCREENS.find((candidate) => candidate.route === drillDown.route);
+      assert.ok(screen !== undefined, `${drillDown.route} is a declared screen`);
+      assert.equal(screen.built, true, `${drillDown.route} is built`);
+      assert.equal(screen.sideBarPosition, 0, `${drillDown.route} is unlisted`);
+      assert.equal(screen.labelKey, drillDown.labelKey, `${drillDown.route}'s link is labelled by the screen's own title`);
+      assert.notEqual(STRINGS[drillDown.labelKey], undefined, `${drillDown.labelKey} is a string the source holds`);
+    }
+  }
+});
+
 test('the meters read the descriptor\'s thirty fields, in the declared order, each with a label the string source holds', () => {
   const declaration = SCREENS.find((screen) => screen.descriptor === DESCRIPTOR);
   assert.ok(declaration !== undefined, 'the Dashboard is declared');

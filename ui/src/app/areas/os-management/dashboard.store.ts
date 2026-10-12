@@ -46,11 +46,21 @@ export interface DashboardMeter {
   readonly format: DashboardFormat;
 }
 
-/** One group: its heading's key and its meters in order. The Task manager group carries none. */
+/** One drill-down a group offers (Story 18.36): the route of the screen it opens and the key of its link's label. */
+export interface DashboardDrillDown {
+  readonly route: string;
+  readonly labelKey: string;
+}
+
+/**
+ * One group: its heading's key and its meters in order, and the screens it offers a link to under the heading,
+ * each drawn only while that screen is built. The Task manager group carries no meters.
+ */
 export interface DashboardGroup {
   readonly key: string;
   readonly headingKey: string;
   readonly meters: readonly DashboardMeter[];
+  readonly drillDowns?: readonly DashboardDrillDown[];
 }
 
 /** The key of the one group drawn from Upcoming tasks' own read rather than from meters. */
@@ -85,6 +95,10 @@ export const DASHBOARD_GROUPS: readonly DashboardGroup[] = [
       value('Dashboard.Performance.DiskWrites', 'performanceDiskWrites', 'whole'),
       value('Dashboard.Performance.CacheEfficiency', 'systemUsageCacheEfficiency', 'decimal', STRINGS.performanceCacheUnit),
     ],
+    drillDowns: [
+      { route: 'os-management/global-statistics', labelKey: 'globalStatisticsLabel' },
+      { route: 'os-management/resource-statistics', labelKey: 'resourceStatisticsLabel' },
+    ],
   },
   {
     key: 'ecp',
@@ -97,6 +111,7 @@ export const DASHBOARD_GROUPS: readonly DashboardGroup[] = [
       status('Dashboard.ECP.ShadowConnections', 'dashboardShadowSource'),
       status('Dashboard.ECP.Shadows', 'dashboardShadowServer'),
     ],
+    drillDowns: [{ route: 'os-management/ecp-statistics', labelKey: 'ecpStatisticsLabel' }],
   },
   {
     key: 'status',
@@ -116,6 +131,7 @@ export const DASHBOARD_GROUPS: readonly DashboardGroup[] = [
       value('Dashboard.SystemUsage.Processes', 'processListLabel', 'whole'),
       value('Dashboard.SystemUsage.CSPSessions', 'webSessionListLabel', 'whole'),
     ],
+    drillDowns: [{ route: 'os-management/active-processes', labelKey: 'activeProcessesLabel' }],
   },
   {
     key: 'alerts',

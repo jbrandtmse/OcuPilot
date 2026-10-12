@@ -418,6 +418,9 @@ services:
       # The metrics gate class signs in as probe principals each missing one pair the monitor port requires, and
       # reads the Prometheus metrics list as them and as a principal holding both (Story 18.11).
       # classes: MetricsGate
+      # The Dashboard drill-downs' gate class signs in as probe principals each missing one pair the four screens
+      # require, and reads the four as them and as a principal holding both (Story 18.36).
+      # classes: DashboardDrillDownGate
       # The interoperability control class compiles and runs a probe production in USER and starts,
       # stops, restarts, updates and recovers it; its descriptor class compiles the probe classes in USER;
       # its gate class signs in as probe principals each

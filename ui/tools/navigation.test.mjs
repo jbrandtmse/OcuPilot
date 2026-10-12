@@ -153,6 +153,11 @@ test('a side bar lists only built screens, in side-bar order', () => {
       'logs/analytics',
       // Story 16.9: the unified log hub, position 11.
       'logs/hub',
+      // Story 18.36: the Dashboard's four unlisted drill-downs, by descriptor class name.
+      'os-management/ecp-statistics',
+      'os-management/global-statistics',
+      'os-management/active-processes',
+      'os-management/resource-statistics',
       'os-management/databases/details',
       'os-management/database-free-space',
       'os-management/databases/integrity',

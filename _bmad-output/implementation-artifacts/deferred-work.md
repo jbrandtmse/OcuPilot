@@ -10597,6 +10597,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-08T16:01:56Z occurrence=18-28-sql-column-and-admin-privileges
 - 2026-10-09T11:53:18Z occurrence=18-10-web-application-extras-and-spec-based-rest-services
 - 2026-10-10T16:26:03Z occurrence=18-30-doc-db-applications
+- 2026-10-12T02:40:03Z occurrence=18-36-dashboard-drill-downs
 
 ### DW-2204: IRIS defect candidate: the admin API's Security.SQLPrivilege.Column LIST and REVOKE match the object's case exactly while GRANT accepts any case, so a revoke in another case answers 200 and removes nothing
 - source: spec-18-28-sql-column-and-admin-privileges.md | severity: low | fix-risk: high | footprint: out-of-footprint
@@ -11336,6 +11337,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-11-monitoring-extras-and-the-live-log-tail.md | severity: med | fix-risk: low | footprint: in-story
 - evidence: LabelsEnd reads a backslash as an escape, as the Prometheus format does; dir labels hold directories (/durable/iris/mgr/user/ here); the vendor's Sensors source is withheld and no Windows instance was read
 - 2026-10-11T22:33:47Z status=decision-pending owner=burndown by=cr note=human=GET /api/monitor/metrics on a Windows instance: are backslashes in dir labels doubled
+- 2026-10-12T04:18:25Z status=routed owner=burndown by=lead note=owner 2026-10-11: Handle both forms (single or doubled backslash; skip and count one unreadable line); no Windows read needed
 
 ### DW-2330: AD-36's Story 18.11 amendment says every parent-scoped read requires its criterion before any port call; the code covers bare-rows and VOLUMELIST reads, and TaskRunList answers {}
 - source: spec-18-11-monitoring-extras-and-the-live-log-tail.md | severity: low | fix-risk: low | footprint: in-story
@@ -11352,8 +11354,15 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-12-the-agent-grows-with-the-stage.md | severity: med | fix-risk: med | footprint: out-of-footprint
 - evidence: Story 18.1 scoped the allow-list read-only; a write widens the server-path roots AD-21 allows
 - 2026-10-12T01:03:05Z status=decision-pending owner=burndown by=spec_gate note=human=owner: whether OcuPilot may widen the allow-list (security posture)
+- 2026-10-12T04:19:01Z status=routed owner=18-42-allowed-directories-a-person-s-write by=lead note=owner 2026-10-11: I agree with your recommendation regarding allowed folders (person writes, key off; agent never)
 
 ### DW-2335: Several Stage 2 editor forms show fields no read tool answers (superservers 14, local databases 10, user copy 12), so the agent cannot read what the person sees
 - source: spec-18-12-the-agent-grows-with-the-stage.md | severity: med | fix-risk: med | footprint: in-epic
 - evidence: 18.12's re-plan survey of descriptors against read tools; C1 checks write fields only
 - 2026-10-12T01:03:05Z status=routed owner=burndown by=spec_gate note=the Epic 18 burn-down decides: widen the reads or record why each field stays form-only
+
+### DW-2340: The Dashboard's drill-down links draw live for a screen the caller is refused (AD-44 classic-page resource or AD-64 adjustment), not gated with the reason as EXPERIENCE.md :214-216 asks
+- source: spec-18-36-dashboard-drill-downs.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: dashboard.page.ts linksFor filters on built alone, while side-bar.ts and home.page.ts gate on screenVerdict with aria-disabled and the Requires reason; following such a link shows the outlet's Requires page
+- 2026-10-12T02:40:03Z status=wontfix-accepted owner=18-36-dashboard-drill-downs by=cr note=reopen_if=a refused drill-down's link draws ungated (AD-44 classic-page resource or AD-64 adjustment)
+- 2026-10-12T02:44:39Z status=routed owner=burndown by=lead note=orchestrator: EXPERIENCE.md :214-216 is a contract, not optional; fix at the Epic 18 burn-down
