@@ -11434,3 +11434,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-45-the-agent-s-tool-roster-scoped-per-turn.md | severity: low | fix-risk: med | footprint: in-story
 - evidence: Sanitize.cls IsToolReferences (exactly type and tool_name, wire-name pattern) and MessageAdapter.cls ReferencedNames (any tool_name) walk the same shape; every array ResultText sees has passed the stricter gate.
 - 2026-10-12T15:19:30Z status=wontfix-accepted owner=18-45-the-agent-s-tool-roster-scoped-per-turn by=cr note=reopen_if=a content Sanitize passes unchanged renders as JSON, not the Found sentence, in OpenAI's tool message
+
+### DW-2364: IPM's exporter drops <SystemRequirements> from the archive's module.xml, so the archive carries no IRIS version floor (DW-1333's IPM half; a tool-defect candidate)
+- source: spec-18-13-multi-namespace-install.md | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: Story 13.3 on IPM 0.10.5 (scripts/ci-ipm-archive.sh): the exported manifest has no <SystemRequirements> though module.xml :28 declares Version >=2026.2; 18.13 enforces the floor in Installer.GuardVersionFloor
+- 2026-10-12T18:48:37Z status=decision-pending owner=burndown by=lead note=owner_hold: vendor tool-defect candidate, never reported upstream; DW-1333's installer half resolved in 18.13

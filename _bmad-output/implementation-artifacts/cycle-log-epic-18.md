@@ -1391,3 +1391,6 @@ TAB-separated: `<UTC>\t<Story <id> | Epic <N>>\t<stage>\t<metadata>`
 2026-10-12T18:47:57Z	Story 18.45	merged	by=orchestrator feature=80023468(code-equal_857dd298,run_38284973172_attempt_2_21/21)+c3ff7330 attempt1_reds=DW-2353(Epic_20),DW-2240(occurrence_added)
 2026-10-12T18:47:57Z	Epic 18	spine_updated	ad=AD-17(IPM_sentence_closed:guard_Invoke_after_Compile) reason=rule20(18.13_dev_complete;orchestrator_ruling) by=runner lint=ok(pre-existing_low) memlog=appended
 2026-10-12T18:47:57Z	Story 18.42	spec_amended	C2b=emptied_list_meaning_measured_and_pinned(orchestrator) bytes=17123(oversized)
+2026-10-12T18:48:37Z	Epic 18	ledger_harvest	DW-2364(IPM_exporter_SystemRequirements,decision-pending,owner_hold) from=18.13_deferred
+2026-10-12T18:48:37Z	Story 18.13	adr_verifications_complete	tool=none result=none_required(AD-17_closed_with_Task_0;ACs_pinned) model=claude-opus-5-5
+2026-10-12T18:48:37Z	Story 18.13	stage_spawned	stage=qa spawn_at=2026-10-12T18:48:37Z model=sonnet agent_name=18-13-multi-ns-qa-1 cycle_iteration=1 prompt=carry-2026-10-10/epic-18-r/qa-1813-prompt.md run_in_background=false
