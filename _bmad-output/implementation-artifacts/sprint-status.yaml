@@ -29,7 +29,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 09-09-2026 07:49
-last_updated: '10-12-2026 13:02'
+last_updated: '10-12-2026 14:00'
 project: OcuPilot
 project_key: NOKEY
 tracking_system: file-system
@@ -317,7 +317,7 @@ development_status:
   18-41-the-wallet-credential-rung: backlog
   18-42-allowed-directories-a-person-s-write: backlog
   18-43-uninstall-and-grants-on-a-shared-instance: ready-for-dev
-  18-45-the-agent-s-tool-roster-scoped-per-turn: in-progress
+  18-45-the-agent-s-tool-roster-scoped-per-turn: review
   epic-18-retrospective: optional
 
   epic-19: done

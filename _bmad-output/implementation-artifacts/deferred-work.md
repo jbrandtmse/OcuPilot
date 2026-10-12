@@ -11405,3 +11405,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: the roster is a literal list; no Stage 2 marker or baseline of earlier screens exists
 - 2026-10-12T06:16:46Z status=open owner=18-12-the-agent-grows-with-the-stage by=harvest note=code review: a reverse check (a baseline of pre-Stage-2 screens) or a recorded reason it stays roster-only
 - 2026-10-12T06:55:56Z status=resolved-by:18-12-the-agent-grows-with-the-stage by=adjudication note=StageTwoTools holds roster plus Elsewhere equal to the registry both ways with a floor (runs 743-744)
+
+### DW-2354: Gemini refuses a tool declaration whose INTEGER property carries numeric enum members (HTTP 400), so every Gemini request carrying one of five tools fails
+- source: spec-18-45-the-agent-s-tool-roster-scoped-per-turn.md | severity: high | fix-risk: low | footprint: in-story
+- evidence: Task 0 on ocupilot-ci: countTokens of the full roster 400 at security_secrets_creatersa, createsymmetric, replacersa, security_ssl_create, security_ssl_update; generateContent with creatersa alone 400, 200 with the members as strings (ToolDefAdapter.GeminiSchema :233)
+- 2026-10-12T13:59:54Z status=routed owner=18-45-the-agent-s-tool-roster-scoped-per-turn by=lead note=harvested from 18.45's deferred list; pre-existing since SslCreate (in release 1.0.11), so a full-roster Gemini agent turn has failed on every call (inference); fix at 18.45's code review in ToolDefAdapter, which this story edits, as the empty-enum respelling does
