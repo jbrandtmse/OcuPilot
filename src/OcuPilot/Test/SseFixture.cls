@@ -46,7 +46,9 @@ ClassMethod Copy(pObject As %DynamicAbstractObject) As %DynamicAbstractObject
 /// <p>The Anthropic Messages stream of the non-streamed body <var>pBody</var>: text, thinking with
 /// its signature, <code>tool_use</code> with its input split across <code>input_json_delta</code>
 /// fragments, any other block whole, and the stop reason -- a refusal among them -- in
-/// <code>message_delta</code>.</p>
+/// <code>message_delta</code>. The body's <code>cache_creation_input_tokens</code> and
+/// <code>cache_read_input_tokens</code>, when it carries them, ride in <code>message_start</code>'s
+/// usage with <code>input_tokens</code>.</p>
 ClassMethod Anthropic(pBody As %String, pPiece As %Integer = 5, pCrLf As %Boolean = 0) As %String
 {
     Set tBody = ##class(%DynamicAbstractObject).%FromJSON(pBody)
@@ -57,6 +59,9 @@ ClassMethod Anthropic(pBody As %String, pPiece As %Integer = 5, pCrLf As %Boolea
     Set tUsage = {}
     Do tUsage.%Set("input_tokens", $Select($IsObject(tBody.usage): +tBody.usage."input_tokens", 1: 0), "number")
     Do tUsage.%Set("output_tokens", 1, "number")
+    For tCacheField = "cache_creation_input_tokens", "cache_read_input_tokens" {
+        If $IsObject(tBody.usage) && tBody.usage.%IsDefined(tCacheField) Do tUsage.%Set(tCacheField, +tBody.usage.%Get(tCacheField), "number")
+    }
     Do tMessage.%Set("usage", tUsage)
     Set tStart = {"type": "message_start"}
     Do tStart.%Set("message", tMessage)

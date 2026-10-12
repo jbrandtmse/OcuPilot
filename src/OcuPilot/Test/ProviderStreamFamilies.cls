@@ -107,4 +107,30 @@ Method TestABrokenStreamFailsEachFamilyOnce()
     }
 }
 
+/// <p>A streamed reply whose usage reports a cached prompt subset keeps it: the whole prompt reads as
+/// <code>RequestTokens</code> and the family's billed figure as <code>BoundTokens</code> (OpenAI and
+/// Gemini 3,000 of 3,210 cached at 0.1 gives 510; compatible counts the whole prompt), the figures
+/// the plain call answers.</p>
+/// <p>mutation: <method>OcuPilot.Kernel.Provider.StreamAdapter.TakeOpenAi</method> keeps only the
+/// prompt and completion counts of the streamed usage -- the openai leg goes red; the same in
+/// <method>OcuPilot.Kernel.Provider.StreamAdapter.TakeGemini</method> -- the gemini leg goes red.</p>
+Method TestAStreamedReplyKeepsItsCachedSubset()
+{
+    For tI = 1:1:$Length(..#FAMILIES, ",") {
+        Set tFamily = $Piece(..#FAMILIES, ",", tI)
+        Set tBody = $Parameter("OcuPilot.Test.AdapterCache", $Case(tFamily, "gemini": "GEMINICACHED", : "OPENAICACHED"))
+        Set tExpected = "3210|" _ $Case(tFamily, "compatible": 3210, : 510)
+        Do ##class(OcuPilot.Test.ProviderStub).Reset()
+        Do ##class(OcuPilot.Test.ProviderStub).QueueAnswer(200, tBody)
+        Do $$$AssertStatusOK(..CallDirect(tFamily, "", 1, .tPlain, .tPlainFault), tFamily _ ": the plain call returns $$$OK")
+        Do $$$AssertEquals(tPlain.RequestTokens _ "|" _ tPlain.BoundTokens, tExpected, tFamily _ ": the plain call reports whole|billed " _ tExpected)
+        Do ##class(OcuPilot.Test.ProviderStub).Reset()
+        Do ##class(OcuPilot.Test.StreamSinkProbe).Reset()
+        Do ##class(OcuPilot.Test.ProviderStub).QueueStream(200, ..Sse(tFamily, tBody, 5, 0), 7)
+        Do $$$AssertStatusOK(..CallDirect(tFamily, ##class(OcuPilot.Test.StreamSinkProbe).%New(), 1, .tStreamed, .tStreamedFault), tFamily _ ": the streamed call returns $$$OK")
+        Do $$$AssertEquals(##class(OcuPilot.Test.ProviderStub).Recorded("streamReader", 1), 1, tFamily _ ": the streamed call read through a chunk reader")
+        Do $$$AssertEquals(tStreamed.RequestTokens _ "|" _ tStreamed.BoundTokens, tExpected, tFamily _ ": the streamed call reports whole|billed " _ tExpected)
+    }
+}
+
 }

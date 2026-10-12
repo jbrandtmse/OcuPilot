@@ -1475,6 +1475,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Three, same root cause. (1) the bundle directory is removed unconditionally, so an adopted /ocupilot that uninstall deliberately KEEPS is left answering 503 STATIC.NOBUNDLE. (2) an unreadable provenance record logs a warn and continues, removing database, mapping, admin role, admin resource, audit event and bundle while every web application survives pointing at a deleted code database. (3) a declared matching role whose application was already gone is now never removed, so AnyObjectExists keeps answering 1 for that profile.
 - 2026-09-13T15:54:21Z status=escalated owner=burndown by=cr note=each has two defensible semantics (keep vs remove, refuse vs continue); DW-94's own HIGH came from guessing one
 - 2026-09-13T21:00:47Z status=routed owner=18-13-multi-namespace-install by=merge_gate note=owner-delegated decision: resolve Uninstall's three half-state paths on an instance OcuPilot does not wholly own. 18-13 is the story where OcuPilot shares an instance with other installs
+- 2026-10-12T08:41:33Z status=routed owner=18-43-uninstall-and-grants-on-a-shared-instance by=lead note=re-owned at Story 18.13's spec gate: split for size (Rule 5); paths 1 and 2 open, path 3 looks closed (inference), from source at fe132688
 
 ### DW-220: The DW-94 acceptance criterion and its I-O matrix row state a contract the installer deliberately does not have
 - source: spec-1-17-the-smoke-script-the-readiness-endpoint-and-ci.md (cr) | severity: med | fix-risk: low | footprint: in-epic
@@ -10438,6 +10439,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: 18.9 plan on ocupilot-ci: detection needs every grantee on the schema enumerated; refusal half stays with 18.9's new AD-10 arm (orchestrator ruling 2026-10-07)
 - 2026-10-08T00:50:05Z status=routed owner=18-13-multi-namespace-install by=spec_gate note=orchestrator: detection half to 18.13, beside install's schema-grant read-back (AD-38)
 - 2026-10-09T02:27:03Z occurrence=18-29-role-members-admin-option-user-copy-from-and-password-valida note=a user copy (Security.Users.Copy) reproduces a source's SQL grant on OcuPilot's schemas made outside OcuPilot; by-design under AD-8's 18.29 amendment
+- 2026-10-12T08:41:33Z status=routed owner=18-43-uninstall-and-grants-on-a-shared-instance by=lead note=re-owned at Story 18.13's spec gate: split for size (Rule 5); the grantee source is that story's Task 0 measurement
 
 ### DW-2173: IRIS defect candidate: the admin API's Security.SQLPrivilege.Column grant the SQL layer refuses answers 200 and stores nothing
 - source: spec-18-9-sql-privileges-and-the-permission-extras.md (split) | severity: med | fix-risk: high | footprint: out-of-footprint
@@ -10980,6 +10982,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-11T00:42:33Z status=routed owner=23-7-the-range-end-cleanup-part-6 by=load note=re-own from range-end-cleanup: kit 2026-10-10.1 owners are story keys or burndown
 - 2026-10-11T08:55:26Z occurrence=18-31-privileged-routine-applications
 - 2026-10-11T09:52:03Z occurrence=18-32-spec-based-rest-services
+- 2026-10-12T10:58:27Z occurrence=18-39-the-agent-s-context-budget
 
 ### DW-2260: USERS_PATH is declared twice in the client
 - source: spec-23-6-the-haiku-story-cleanup.md | severity: low | fix-risk: low | footprint: out-of-footprint

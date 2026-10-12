@@ -31,6 +31,12 @@ Parameter AUTHSCHEME = "Bearer ";
 /// <p>The body's media type.</p>
 Parameter CONTENTTYPE = "application/json";
 
+/// <p>What one cached prompt token counts against a turn's token limit, as a share of an input
+/// token: 0.1, the share AD-31 takes from this vendor's cached-input price against its input price
+/// (<code>developers.openai.com/api/docs/pricing</code>, read 2026-10-12: $0.20 against $2.00 per
+/// million tokens). <class>OcuPilot.Kernel.Provider.Compatible</class> overrides it.</p>
+Parameter CACHEDINPUTWEIGHT = 0.1;
+
 /// <p>This family, and <class>OcuPilot.Kernel.Provider.Compatible</class> through it, streams when
 /// the caller passes a sink (AD-42); 0 turns it off.</p>
 Parameter STREAMS As %Boolean = 1;
@@ -111,10 +117,12 @@ Method IsApiKeyShapeValid() As %Boolean
 
 /// <p>Read a successful reply into <var>pResponse</var> through the message translator, which is
 /// where this dialect's <code>choices</code>, <code>tool_calls</code>, <code>finish_reason</code>
-/// and usage field names are read.</p>
+/// and usage field names are read, with the cached part of the prompt counted at
+/// <parameter>CACHEDINPUTWEIGHT</parameter> toward
+/// <property>OcuPilot.Kernel.Provider.Response.BoundTokens</property>.</p>
 Method MapResponse(pBody As %String, pResponse As OcuPilot.Kernel.Provider.Response) As %Status
 {
-    Quit ##class(OcuPilot.Kernel.Provider.MessageAdapter).OpenAiToCanonical(pBody, pResponse)
+    Quit ##class(OcuPilot.Kernel.Provider.MessageAdapter).OpenAiToCanonical(pBody, pResponse, ..#CACHEDINPUTWEIGHT)
 }
 
 }
