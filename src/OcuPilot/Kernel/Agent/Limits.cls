@@ -16,8 +16,9 @@ Parameter WALLCLOCKSECONDS As %Integer = 600;
 /// its definition's own <property>OcuPilot.Kernel.State.Agent.MaxIterationsPerTurn</property>.</p>
 Parameter MAXITERATIONS As %Integer = 100;
 
-/// <p>Provider tokens one turn may spend: each reply's output plus its prompt, a cached part of which
-/// counts at the weight the provider bills it (AD-31).</p>
+/// <p>Provider tokens one turn may spend: each reply's output plus its prompt, with Anthropic's cache
+/// reads, or the cached subset OpenAI or Gemini reports, at its adapter's weight and every other
+/// token, cache writes included, whole (AD-31).</p>
 Parameter MAXTOKENS As %Integer = 500000;
 
 /// <p>Seconds a running turn survives without an authenticated poll by its owner.</p>

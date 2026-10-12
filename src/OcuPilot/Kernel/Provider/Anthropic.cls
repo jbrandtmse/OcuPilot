@@ -10,9 +10,9 @@
 /// <code>x-api-key</code>, <code>anthropic-version</code> and <code>content-type</code>; body
 /// <code>{model, max_tokens, system?, messages, tools?}</code>; reply
 /// <code>{content, stop_reason, usage}</code>; error body
-/// <code>{type, error: {type, message}}</code>. <b>Prompt caching</b>: the request marks two places
-/// <code>cache_control</code> <code>{"type":"ephemeral"}</code> -- the last tool and the last block of
-/// the final message -- and nothing else. <b>No sampling parameter is ever sent</b> --
+/// <code>{type, error: {type, message}}</code>. <b>Prompt caching</b>: the request marks at most two
+/// places <code>cache_control</code> <code>{"type":"ephemeral"}</code> -- the last tool, and the last
+/// block of the final message when that message is blocks -- and nothing else. <b>No sampling parameter is ever sent</b> --
 /// <code>temperature</code>, <code>top_p</code> and <code>top_k</code> are absent whatever the
 /// definition holds, because this family's current models refuse them; the catalog row's
 /// <code>acceptsTemperature</code> says the same to the form.</p>

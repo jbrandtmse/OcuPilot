@@ -10982,6 +10982,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-11T00:42:33Z status=routed owner=23-7-the-range-end-cleanup-part-6 by=load note=re-own from range-end-cleanup: kit 2026-10-10.1 owners are story keys or burndown
 - 2026-10-11T08:55:26Z occurrence=18-31-privileged-routine-applications
 - 2026-10-11T09:52:03Z occurrence=18-32-spec-based-rest-services
+- 2026-10-12T10:58:27Z occurrence=18-39-the-agent-s-context-budget
 
 ### DW-2260: USERS_PATH is declared twice in the client
 - source: spec-23-6-the-haiku-story-cleanup.md | severity: low | fix-risk: low | footprint: out-of-footprint

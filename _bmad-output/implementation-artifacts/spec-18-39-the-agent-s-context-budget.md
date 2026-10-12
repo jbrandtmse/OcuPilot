@@ -87,6 +87,37 @@ R4. [x] Tests, each with a `mutation:` line: `AdapterCache` (or a sibling under 
 - **C5 (bound, Rework 1).** Given replies reporting cached prompt tokens, when `Boundary` checks the turn's spend against `MAXTOKENS`, then Anthropic's cache reads count at 0.1, OpenAI's and Gemini's separately reported cached subsets at their recorded rate, and any other count at full weight.
 - **Integration.** Given `ocupilot-ci` and the `turnprobe` row, when a streamed two-call turn runs through the turn job, then the recorded requests carry C1's markers and the turn row counts cached tokens (C4).
 
+### Review Findings
+
+Code review 2026-10-12 over `356bdf63..HEAD` (`review_tier: full-opus`; blind-hunter, edge-case-hunter, verification-gap and acceptance-auditor). 29 layer rows, 23 entries: high 0, medium 2, low 19, false 2. Patched 5, deferred 1, rejected 17.
+
+- [x] [Review][Patch] (medium; fix-risk low; in-story; clear) C5's output half had no pinning test: every scripted reply reported 3 output tokens, so `Loop.Run` passing `tBound` alone changed no leg. The billed-weight test gains a fourth leg whose second reply reports 80 (3,203 against 3,200) [src/OcuPilot/Test/TurnBudget.cls:446]
+- [x] [Review][Patch] (medium, Rule 30; fix-risk low; in-story harness; clear) `TurnBudget` and `TurnTools` relied on the instance's kill switch, read-only switch and holds being off. `TurnLoopProbe.ForceRestraintClear`, beside its force switches, is set by `TurnToolsCase.OnBeforeOneTest`, and `RunTurn`'s snapshot follows it. With both switches on, both classes stayed green (runs 769, 770); without the call, `TurnBudget` went 7 of 8 red (run 771) [src/OcuPilot/Test/TurnToolsCase.cls:40]
+- [x] [Review][Patch] (low; fix-risk low; in-story; clear) The shared harness left each turn's ledger rows behind (`Turn.GuardedDelete` does not cascade to them). `TurnToolsCase.OnAfterOneTest` now deletes and counts them per turn key; the billed-weight test's own delete goes (run 775 added no orphan row) [src/OcuPilot/Test/TurnToolsCase.cls:57]
+- [x] [Review][Patch] (low; fix-risk low; in-story; clear) Four doc comments said the bound counts a cached part "at the weight the provider bills it", which cache writes (billed 1.25, counted 1), compatible and the 0.05-rate models contradict; reworded to what the code counts [src/OcuPilot/Kernel/Agent/Limits.cls:19]
+- [x] [Review][Patch] (low; fix-risk low; in-story; clear) `Anthropic`'s class header said the request "marks two places"; a first call without screen context marks one. Now "at most two", as `CallMessages` says [src/OcuPilot/Kernel/Provider/Anthropic.cls:13]
+- [x] [Review][Defer] (low; fix-risk low; out-of-footprint) `TurnToolsCase`'s name carries no `TestCase`, so `testClassesOnDisk` leaves `TurnTools` (on the floor before) and `TurnBudget` off the on-disk floor; CI legs still run the instance's list [ui/tools/ci-runner.mjs:381] -- deferred: DW-2259, routed to 23-7, occurrence appended
+
+Rejected:
+
+- [low] The `TOOL.RESULTTOOLARGE` sentence says the turn can carry no more results, also when a reply's budget or one unboundable result raised it: Task 4's text, pinned verbatim; by-design.
+- [low] The step card's reason for a budget refusal reads as though a result existed: the Fixed string is the reply-budget refusal's, and the spec forbids changing one; by-design.
+- [low] Once the turn budget is spent, a navigation or proposal call is refused too: AD-24 as amended refuses any call under 256; by-design.
+- [low] A screen-context turn answered in one call pays the cache-write premium on its tail: matrix row 1 marks it; by-design.
+- [low] OpenAI's and Gemini's flat 0.1 under-counts an off-catalog model with a higher cached rate: R2 sets one rate per adapter, and every suggested model bills 0.1; by-design.
+- [low] A model that keeps calling tools after the budget is spent wastes calls: the prompt tells it to stop, and the iteration, wall-clock and token bounds end the turn; wontfix-theoretical, real only for a model that ignores the refusal sentence.
+- [low] A reply of ten or more tool calls can move the tail past Anthropic's lookback: the tool breakpoint, about 99% of each prompt (Task 0), is unaffected, and a third breakpoint is new surface.
+- [low] The counted figure behind `TURN.LIMIT.TOKENS` is recorded nowhere: R3 names what the records keep, and a cached turn reaches the bound only after about 25 calls.
+- [low] `AdapterCache`'s C4 and C5 methods overlap: each pins its own AC with its own recorded mutations.
+- [low] The 256 floor is a literal in `Loop` while `Limits` documents it: the literal predates the story, and the doc describes the behavior.
+- [low] Refused results and the sanitizer's frame are not taken off the budget: the budget is under 256 by then, and the frame lies outside AD-24's content bound by AD-60's design.
+- [low] Rule 2: `TurnBudget.Sent` repeats `AnthropicThinking.Sent`, and `TurnBudget.Used` resembles `TurnStream.Cached`: one- to four-line helpers, and sharing them would couple unrelated test classes (Rule 31).
+- [low] The triage log's line saying `TurnLimits` pins the output half is wrong: a spec edit; the fourth leg above now pins it.
+- [low] The Auto Run Result names `TurnLimitsBilled` (no tests) as missing from `ci-timings.json`, where `TurnBudget` and `AdapterCache` are: a spec edit; untimed classes weigh at the median until the merge-gate refresh.
+- [low] AD-41 still says "total provider tokens", and AD-31's "billed weight" leaves cache writes (billed 1.25, counted 1) unsaid: spine wording, for the lead (Rule 20).
+- [false] No streamed Anthropic test of the weighted figure: `TurnStream`'s armed integration test pins the cache fields through the stream, and the weighted figure is computed from those fields in the same `MapResponse`.
+- [false] The weight parameter has two names and `Base` declares neither: `Response.WeightedTokens` is the one computation, `PromptBound` already counts a family that sets nothing as whole, and Anthropic's parameter weights a different field.
+
 ## Spec Change Log
 
 - 2026-10-12, lead, spec gate (orchestrator rulings): cache reads count at full weight against the 500,000-token turn limit; "trims history" is read as an entry budget, tier 1, because editing an earlier tool result in place breaks the echoed thinking blocks (a 400 on current models) and restarts every family's cache, and Anthropic's context-editing beta is the sanctioned route if earlier results are ever to be cleared; the turn budget is 262,144 characters with each reply's share capped at 65,536. AD-24 and AD-31 amended.
@@ -109,7 +140,7 @@ R4. [x] Tests, each with a `mutation:` line: `AdapterCache` (or a sibling under 
   - `[low]` `[reject]` The new prompt sentence says the turn can carry no more results, while `TOOL.RESULTTOOLARGE` also answers one result too large for its reply budget -- the sentence is Task 4's text, pinned verbatim by `ScreenGrounding`; its second clause (ask the user to narrow the request) fits both cases, and the fix is a spec edit.
   - `[low]` `[reject]` Row 3, "body as today": the system prompt every family sends grew by one sentence (3,288 to 3,452 characters) -- Task 4 puts it in the shared prompt because the turn budget and its refusal apply to every family; the contract's row pins no caching field in their bodies, which `AdapterCache` asserts.
   - `[low]` `[reject]` Row 4 is exercised on narrowed limits, the shipped limits only by the parameter's value -- the same code runs on both, and a 262,144-character turn needs four results of 65,536 characters.
-  - `[false]` `[reject]` Row 5: no test drives the `MAXTOKENS` boundary with cache fields -- `TurnLimits` pins the boundary on the summed input and output tokens, and `TurnBudget` (a) and `TurnStream` pin the input sum that feeds it.
+  - `[false]` `[reject]` Row 5: no test drives the `MAXTOKENS` boundary with cache fields -- `TurnBudget`'s billed-weight test drives the boundary, its fourth leg on the output half, and `TurnBudget` (a) and `TurnStream` pin the input sum that feeds it.
   - `[low]` `[reject]` The shipped 368-tool array appears only in the armed `TurnStream` test and Task 0 -- the Integration AC is that test by design, and Task 0 measured the shipped array identical across calls, a second turn and processes.
   - `[low]` `[reject]` Live evidence covers the tool marker only, never the moving tail marker against the real provider -- Task 0 (c) is scoped to two one-call turns; closed by QA's live two-call turn (Design Notes).
   - `[false]` `[reject]` Out-of-matrix additions: the `TurnToolsCase` extraction, and AD-24's spine text still awaiting Task 0's figures -- the extraction follows the `StreamCase` precedent and keeps `TurnTools` green (run 672); the spine amendment is the lead's (Rule 20).
@@ -196,6 +227,7 @@ R4. [x] Tests, each with a `mutation:` line: `AdapterCache` (or a sibling under 
 - mutation: `Response.WeightedTokens` leaves the cached part unclamped -> `AdapterCache` (the weighted-count test) went red on the clamp legs (run 718).
 - mutation: `StreamAdapter.TakeOpenAi` keeps only the prompt and completion counts of the streamed usage -> `ProviderStreamFamilies` (the streamed cached-subset test) went red on the openai leg alone (run 761).
 - mutation: `StreamAdapter.TakeGemini` keeps only the prompt and candidate counts of the streamed usage metadata -> `ProviderStreamFamilies` (the streamed cached-subset test) went red on the gemini leg alone (run 762).
+- mutation: `Loop.Run` leaves the output tokens out of the bound (`tBound` alone at both sites) -> `TurnBudget` (the billed-weight test) went red on the fourth leg alone (code review, run 765; green after the restore, run 766).
 Each applied on `ocupilot-ci` to a copy of the class, the class and every descendant recompiled, then restored; the worktree was not written.
 
 **S0:** no probe definition, turn, conversation or stub node left by the new tests.
@@ -219,4 +251,4 @@ Blocking condition: none
 
 **Verification.** On `ocupilot-ci` after a fresh load: `AdapterCache` 5 (734), `TurnBudget` 8 (757), `ProviderStreamFamilies` 5 (763), `Provider` 20, `Adapter` 25, `TurnLoop` 11, `Ledger` 11, `TurnStream` 7, `TurnTools` 13, `ScreenGrounding` 16, `OpenAIAdapter` 6, `GeminiAdapter` 4, `CompatibleAdapter` 6, `ProviderStream` 11, `AnthropicThinking` 4, `GeminiEmptyEnum` 6, `AgentConnection` 20, `AgentConnectionBound` 15, `AgentRules` 20, `AgentWire` 18 (runs 736-754), `LedgerWire` 6 (731), all green. `check-objectscript` 0 problems, `lint-docs` 0 issues. Each of this pass's 14 `mutation:` lines reddened its test and was restored; the lead's own spot check of the `Loop.Run` sum mutation reddened `TurnBudget` (run 756).
 
-**Residual risks.** Anthropic's pricing page bills cache reads at 0.05 on Opus 5.5 and Sonnet 5.5 and 0.025 on Fable 5.1 and Mythos 5.1, so the ruled 0.1 counts them above cost (AD-31's wording is the lead's). `TurnLimitsBilled` is not yet in `ci-timings.json`.
+**Residual risks.** Anthropic's pricing page bills cache reads at 0.05 on Opus 5.5 and Sonnet 5.5 and 0.025 on Fable 5.1 and Mythos 5.1, and 0.1 is a deliberate upper bound (orchestrator, 2026-10-12: a flat weight errs conservative and needs no table that ages with each model release). `TurnBudget` and `AdapterCache` are not yet in `ci-timings.json`.

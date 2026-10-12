@@ -39,7 +39,8 @@ Property ContentJson As %String(MAXLEN = "");
 Property RequestTokens As %Integer [ InitialExpression = 0 ];
 
 /// <p>How many tokens the request counts against a turn's token limit (AD-31): the prompt's size with
-/// its cached part at the weight the provider bills it, rounded up to a whole token, as
+/// its cached part -- Anthropic's cache reads, or the subset OpenAI or Gemini reports cached -- at the
+/// adapter's weight and cache writes whole, rounded up to a whole token, as
 /// <method>WeightedTokens</method> computes it. <code>""</code> when the adapter set none, which a
 /// reader takes as <property>RequestTokens</property>. Never what the turn row or the ledger
 /// records: they keep <property>RequestTokens</property>.</p>

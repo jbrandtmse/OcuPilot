@@ -14,9 +14,9 @@
 /// against the snapshot the turn started with, the user's current grants over the resource list the
 /// handler passed, the poll lease, the wall clock and the token spend. Every one of them is a live
 /// read; nothing is cached for the length of the turn.</p>
-/// <p><b>The token spend</b> is each reply's output tokens plus its prompt at the weight the provider
-/// bills it (<property>OcuPilot.Kernel.Provider.Response.BoundTokens</property>, the whole count
-/// where an adapter set none), against <parameter>OcuPilot.Kernel.Agent.Limits.MAXTOKENS</parameter>
+/// <p><b>The token spend</b> is each reply's output tokens plus its prompt with the cached part at
+/// its adapter's weight (<property>OcuPilot.Kernel.Provider.Response.BoundTokens</property>, the
+/// whole count where an adapter set none), against <parameter>OcuPilot.Kernel.Agent.Limits.MAXTOKENS</parameter>
 /// (AD-31). The turn row and the ledger record the whole count
 /// (<property>OcuPilot.Kernel.Provider.Response.RequestTokens</property>).</p>
 /// <p><b>Caller contract:</b> the caller is the turn's job, has begun the turn

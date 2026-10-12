@@ -2,8 +2,9 @@
 /// the in-process turn harness -- <class>OcuPilot.Test.TurnLoopProbe</class> over
 /// <class>OcuPilot.Test.ProviderPortProbe</class> and <class>OcuPilot.Test.ProviderStub</class> --
 /// with <method>RunTurn</method> to run one turn as the suite's own account, <method>Reply</method> to
-/// script a provider answer, and the setup and teardown that leave no probe definition, turn, slot or
-/// stub node behind. It declares no test of its own.</p>
+/// script a provider answer, and the setup and teardown that leave no probe definition, turn, ledger
+/// row, slot or stub node behind. Setup forces the loop's restraint verdict clear, so the instance's
+/// kill switch, read-only switch and holds do not reach a test. It declares no test of its own.</p>
 /// <p>Spawns nothing and opens no socket.</p>
 Class OcuPilot.Test.TurnToolsCase Extends %UnitTest.TestCase [ Abstract ]
 {
@@ -36,6 +37,7 @@ Method OnBeforeOneTest() As %Status
     Do $ClassMethod(..#PORT, "SetSslState", "present")
     Do ##class(OcuPilot.Test.SecretProbe).SetValue(..#PROBEKEY)
     Do $ClassMethod(..#LOOP, "Reset")
+    Do $ClassMethod(..#LOOP, "ForceRestraintClear")
     Do $ClassMethod(..#DISPATCH, "Reset")
     Do ##class(OcuPilot.Test.DispatchTool.Counter).Clear()
     Kill ..PreparedKeys
@@ -52,6 +54,9 @@ Method OnAfterOneTest() As %Status
     For {
         Set tKey = $Order(..PreparedKeys(tKey))
         If tKey = "" Quit
+        Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Ledger).GuardedDeleteForTurn(tKey), "turn " _ tKey _ "'s ledger rows are removed")
+        Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Ledger).GuardedCountForTurn(tKey, .tLedgerRows), "and counted")
+        Do $$$AssertEquals(tLedgerRows, 0, "and none survives")
         Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Turn).GuardedDelete(tKey), "turn " _ tKey _ " is removed")
         Do $$$AssertEquals(##class(OcuPilot.Test.TurnFixture).Field(tKey, "State"), "", "and no row of it survives")
         Do $$$AssertEquals($Data(^OcuPilotTurnSignal(tKey)), 0, "nor any signal")
@@ -87,9 +92,9 @@ Method NewDefinition() As %String
 
 /// <p>Create an enabled probe definition on the stub transport, reserve, begin and run one turn as
 /// the suite's own account, finish it, and answer its key with the outcome in <var>pOutcome</var>.
-/// The turn's read-only snapshot is <var>pReadOnly</var>, or the instance's switch when that is
-/// <code>""</code>. <var>pContextRowCap</var> is the resolved row cap every dispatched call in
-/// this turn is answered under (AD-24), <code>0</code> falling back to
+/// The turn's read-only snapshot is <var>pReadOnly</var>, <code>""</code> reading as 0 as the
+/// verdict setup forced clear does. <var>pContextRowCap</var> is the resolved row cap every
+/// dispatched call in this turn is answered under (AD-24), <code>0</code> falling back to
 /// <var>LOOP</var>'s own <code>TOOLROWS</code>, exactly as <method>OcuPilot.Kernel.Agent.Loop.Run</method>
 /// takes it. With <var>pStopFirst</var> the turn is asked to stop after it begins and before the
 /// loop runs; <var>pContext</var> and <var>pConvo</var> pass through to the loop unchanged.</p>
@@ -100,9 +105,8 @@ Method RunTurn(Output pOutcome, pReadOnly As %String = "", pContextRowCap As %In
     Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Turn).GuardedReserve($Username, tId, "TURN.ABANDONED.JOBLOST", tLimits, .tKey, .tBusy, .tSweep), "the turn is reserved")
     If $Get(tKey) = "" Quit ""
     Set ..PreparedKeys(tKey) = ""
-    Do ##class(OcuPilot.Kernel.State.Switch).Resolve(.tSwitches)
     Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Turn).GuardedBegin(tKey, $Username, tLimits, .tBegun, .tStarted), "the turn begins")
-    Set tReadOnly = $Select(pReadOnly '= "": ''pReadOnly, 1: ''$Get(tSwitches("enforcedReadOnly")))
+    Set tReadOnly = ''pReadOnly
     If pStopFirst Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Turn).GuardedRequestStop(tKey, $Username, .tFound), "a stop is requested")
     Set tSC = $ClassMethod(..#LOOP, "Run", tKey, $Username, tId, "what is on this instance", tReadOnly, ##class(OcuPilot.Api.Router).#ADMINRESOURCES, tStarted, .pOutcome, pContext, pContextRowCap, pConvo)
     Do $$$AssertStatusOK(tSC, "the loop returns")

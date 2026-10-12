@@ -3,7 +3,7 @@
 /// leaves <code>system</code> a string, and reads a prompt's whole size from its usage; the OpenAI,
 /// Gemini and compatible adapters send no caching field and read the prompt figure they always
 /// have, whatever cached-token detail the reply carries. Each family also reports the prompt with its
-/// cached part at the weight the family bills it, which is what a turn's token bound counts.</p>
+/// cached part at the family's weight, which is what a turn's token bound counts.</p>
 /// <p>Anthropic is driven through <class>OcuPilot.Test.ProviderStub</class> as
 /// <class>OcuPilot.Test.Provider</class> drives it; the other three through the stub of their shipped
 /// row, on an adapter instance directly, as <class>OcuPilot.Test.OpenAIAdapter</class>,

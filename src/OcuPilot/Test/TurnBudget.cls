@@ -8,8 +8,8 @@
 /// <p>Driven through <class>OcuPilot.Test.TurnLoopProbe</class> over the counting fixture tools, as
 /// <class>OcuPilot.Test.TurnTools</class> is; the budget's edges call
 /// <method>OcuPilot.Kernel.Agent.Loop.AnswerTools</method> directly with a budget argument.
-/// <b>Live-safe</b>: it spawns nothing and opens no socket, and removes every probe definition and
-/// turn it wrote after each method.</p>
+/// <b>Live-safe</b>: it spawns nothing and opens no socket, and removes every probe definition,
+/// turn and ledger row it wrote after each method.</p>
 Class OcuPilot.Test.TurnBudget Extends OcuPilot.Test.TurnToolsCase
 {
 
@@ -47,13 +47,13 @@ Parameter BIGWIDTH = 400;
 
 /// <p><var>pBody</var>, a <method>OcuPilot.Test.TurnToolsCase.Reply</method> body, with the usage
 /// figures it reports set.</p>
-ClassMethod Used(pBody As %String, pInput As %Integer, pCreation As %Integer, pRead As %Integer) As %String
+ClassMethod Used(pBody As %String, pInput As %Integer, pCreation As %Integer, pRead As %Integer, pOutput As %Integer = 3) As %String
 {
     Set tBody = ##class(%DynamicAbstractObject).%FromJSON(pBody)
     Do tBody.usage.%Set("input_tokens", pInput, "number")
     Do tBody.usage.%Set("cache_creation_input_tokens", pCreation, "number")
     Do tBody.usage.%Set("cache_read_input_tokens", pRead, "number")
-    Do tBody.usage.%Set("output_tokens", 3, "number")
+    Do tBody.usage.%Set("output_tokens", pOutput, "number")
     Quit tBody.%ToJSON()
 }
 
@@ -431,14 +431,16 @@ Method TestNoTurnBudgetLeavesADirectCallAsItWas()
 /// the ledger keep the whole count. Three scripted Anthropic turns on <parameter>BILLEDLIMITS</parameter>
 /// (3,200 tokens), each opening with a call that writes a 3,000-token cache: a second call reading
 /// 1,000 tokens spends 4,026 whole and 3,126 billed, so the turn completes; one reading 3,000 spends
-/// 3,326 billed, so the turn is abandoned for tokens; and one writing 1,000 spends 4,026 at full
-/// weight, so it is abandoned too.</p>
+/// 3,326 billed, so the turn is abandoned for tokens; one writing 1,000 spends 4,026 at full
+/// weight, so it is abandoned too; and one reading 1,000 whose second reply also reports 80 output
+/// tokens spends 3,203 billed with its output, so it is abandoned where the first leg completes.</p>
 /// <p>Mutations: <method>OcuPilot.Kernel.Agent.Loop.Run</method> sums
 /// <property>OcuPilot.Kernel.Provider.Response.RequestTokens</property> into the bound -> the first
 /// leg goes red; <method>OcuPilot.Kernel.Provider.Anthropic.MapResponse</method> counts cache writes
 /// at 0 -> the second and third legs go red; <parameter>OcuPilot.Kernel.Provider.Anthropic.CACHEREADWEIGHT</parameter>
 /// 0 -> the second goes red, 0.5 -> the first; <method>OcuPilot.Kernel.Agent.Loop.Run</method>
-/// records the bound as the turn row's input, or
+/// leaves the output tokens out of the bound -> the fourth leg goes red;
+/// <method>OcuPilot.Kernel.Agent.Loop.Run</method> records the bound as the turn row's input, or
 /// <method>OcuPilot.Kernel.Agent.Loop.RecordProviderRow</method> as the ledger's -> the whole-count
 /// assertions go red.</p>
 Method TestTheTokenBoundCountsCachedReadsAtTheirBilledWeight()
@@ -446,20 +448,20 @@ Method TestTheTokenBoundCountsCachedReadsAtTheirBilledWeight()
     Do $ClassMethod(..#LOOP, "SetDispatchClass", ..#DISPATCH)
     Do $ClassMethod(..#LOOP, "SetLimitsClass", ..#BILLEDLIMITS)
     Do $$$AssertEquals($Parameter(..#BILLEDLIMITS, "MAXTOKENS"), 3200, "the token limit is 3,200")
-    Set tLegs = $ListBuild($ListBuild("reads billed", 0, 1000, "completed||done", 3, 5030, "3010;1010;1010"), $ListBuild("heavier reads", 0, 3000, "abandoned|TURN.LIMIT.TOKENS|", 2, 6020, "3010;3010"), $ListBuild("cache writes", 1000, 0, "abandoned|TURN.LIMIT.TOKENS|", 2, 4020, "3010;1010"))
+    Set tLegs = $ListBuild($ListBuild("reads billed", 0, 1000, "completed||done", 3, 5030, "3010;1010;1010"), $ListBuild("heavier reads", 0, 3000, "abandoned|TURN.LIMIT.TOKENS|", 2, 6020, "3010;3010"), $ListBuild("cache writes", 1000, 0, "abandoned|TURN.LIMIT.TOKENS|", 2, 4020, "3010;1010"), $ListBuild("output counted", 0, 1000, "abandoned|TURN.LIMIT.TOKENS|", 2, 4020, "3010;1010", 80))
     Set tPointer = 0
     While $ListNext(tLegs, tPointer, tLeg) {
         Set tName = $List(tLeg, 1)
+        Set tOutput = $ListGet(tLeg, 8, 3)
         Do $ClassMethod(..#STUB, "Reset")
         Do $ClassMethod(..#STUB, "QueueAnswer", 200, ..Used(..Reply("", [{"id": "toolu_1", "name": "probe_counter_read", "input": {"marker": "m1"}}]), 10, 3000, 0))
-        Do $ClassMethod(..#STUB, "QueueAnswer", 200, ..Used(..Reply("", [{"id": "toolu_2", "name": "probe_counter_read", "input": {"marker": "m2"}}]), 10, $List(tLeg, 2), $List(tLeg, 3)))
-        Do $ClassMethod(..#STUB, "QueueAnswer", 200, ..Used(..Reply("done"), 10, $List(tLeg, 2), $List(tLeg, 3)))
+        Do $ClassMethod(..#STUB, "QueueAnswer", 200, ..Used(..Reply("", [{"id": "toolu_2", "name": "probe_counter_read", "input": {"marker": "m2"}}]), 10, $List(tLeg, 2), $List(tLeg, 3), tOutput))
+        Do $ClassMethod(..#STUB, "QueueAnswer", 200, ..Used(..Reply("done"), 10, $List(tLeg, 2), $List(tLeg, 3), tOutput))
         Set tKey = ..RunTurn(.tOutcome)
         Do $$$AssertEquals(tOutcome("state") _ "|" _ tOutcome("code") _ "|" _ tOutcome("reply"), $List(tLeg, 4), tName _ ": the turn ends as the billed weight says")
         Do $$$AssertEquals($ClassMethod(..#STUB, "Calls"), $List(tLeg, 5), tName _ ": after " _ $List(tLeg, 5) _ " provider calls")
         Do $$$AssertEquals(##class(OcuPilot.Test.TurnFixture).Field(tKey, "InputTokens"), $List(tLeg, 6), tName _ ": the turn row keeps the whole count")
         Do $$$AssertEquals(..LedgerTokens(tKey), $List(tLeg, 7), tName _ ": and so does each ledger row")
-        Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Ledger).GuardedDeleteForTurn(tKey), tName _ ": the ledger rows are removed")
     }
 }
 
