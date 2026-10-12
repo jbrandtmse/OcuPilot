@@ -174,6 +174,17 @@ Under `src/OcuPilot/` at `0b5ef14df1dd1aaea66ea47b26ab0eb081bd6c1a`.
 - mutation: `Loop.Found` numbers from 0 on every search -> `TurnScopeFamilies` (the second-search test) went red (run 761).
 Each applied on `ocupilot-ci` to a copy of the class, the class and every descendant recompiled, then restored; the worktree was not written.
 
+- (QA) tests added to existing classes: `TurnScope` (the nothing-found test and the dispatch-whether-found-or-not test) and `TurnScopeFamilies` (the adds-nothing test); no new class.
+- mutation (QA): `ToolsFind.View` keeps a tool that scores 0 -> `ToolsFind` (the no-match test, with two others) went red (run 768).
+- mutation (QA): `Loop.Found` replaces the content though it names no tool -> `TurnScope` (the nothing-found test, run 769) and `TurnScopeFamilies` (the adds-nothing test, run 770) went red.
+- mutation (QA): `Loop.Found` references a tool of the starting set -> `TurnScope` (the screen test, run 771) and `TurnScopeFamilies` (the adds-nothing test, run 772) went red.
+- mutation (QA): `Loop.AnswerTools` refuses a call to a tool neither in the starting set nor found -> `TurnScope` (the dispatch test, run 773) went red.
+- mutation (QA): `Loop.Found` forgets what earlier searches found -> `TurnScopeFamilies` (the adds-nothing and second-search tests, run 774) went red.
+- mutation (QA): `ToolsFind` abstract, so out of the listing -> `ReadTool`, `DeveloperFloor`, `InteropFloor` and `InteropFloorOwnPairs` went red (runs 781-784); `ToolRoundTrip` and `TurnStream` stayed green, the first because its row names a tool the listing no longer holds.
+- mutation (QA): the `shell.tools.find` row removed from `ToolRoundTrip.REFUSEEMPTY` -> `ToolRoundTrip` went red (run 787).
+- mutation (QA): `Anthropic.MarkedTool` answers the last tool -> `TurnStream` (the streamed turn test) went red (run 788).
+The QA mutations were applied to the worktree file, loaded into `ocupilot-ci`, restored byte-identical (checked by hash) and reloaded.
+
 **S0:** the new tests leave no probe definition, turn or stub node.
 
 ## Auto Run Result

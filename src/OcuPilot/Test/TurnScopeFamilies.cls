@@ -2,7 +2,9 @@
 /// (OpenAI, Gemini and the OpenAI-compatible family; AD-24, AD-42): the first request carries the
 /// turn's starting set, the request after a search adds each tool the search found, after the starting
 /// set, and the search's own result reads as the names it found, never as a
-/// <code>tool_reference</code> block. The found tool is then called and dispatched once.</p>
+/// <code>tool_reference</code> block. The found tool is then called and dispatched once. A search that
+/// finds nothing new -- no tool, or only a tool of the starting set -- changes no later request and
+/// reads as its own text.</p>
 /// <p>Driven through <class>OcuPilot.Test.TurnLoopProbe</class> over
 /// <class>OcuPilot.Test.ScopeTool.Registry</class>, with each family's shipped catalog row re-adapted to
 /// its stub by <class>OcuPilot.Test.CatalogProbeShipped</class>, as
@@ -192,6 +194,39 @@ Method TestASecondSearchAppendsAfterWhatTheFirstFound()
     Do $$$AssertEquals(..Declared("openai", 4), ..Declared("openai", 3), "and call 4 keeps both")
     Do $$$AssertEquals(##class(OcuPilot.Test.DispatchTool.Counter).Calls("probe.found.read"), 1, "the found tool was dispatched once")
     Do $$$AssertEquals(##class(OcuPilot.Test.TurnScope).Steps(tKey), "model:provider:ok;tool:shell.tools.find:ok;model:provider:ok;tool:shell.tools.find:ok;model:provider:ok;tool:probe.found.read:ok;model:provider:ok;", "every step is ok")
+}
+
+/// <p>A search that adds nothing -- OpenAI's tool list never shrinks and never repeats a tool: search
+/// 1 ("late") finds <code>zprobe_late_read</code>; search 2 names no tool (the only tool carrying its
+/// words is not advertised); search 3 ("shell") names only <code>shell_probe_read</code>, which is in
+/// the starting set. Calls 3 and 4 carry exactly call 2's list, and the results of searches 2 and 3 read
+/// as their own text, not as a list of tools found.</p>
+/// <p>Mutations: <method>OcuPilot.Kernel.Agent.Loop.Found</method> replaces the content even when it
+/// names no tool -> this goes red on call 3's result; <method>OcuPilot.Kernel.Agent.Loop.Found</method>
+/// references a tool of the starting set -> this goes red on call 4's result;
+/// <method>OcuPilot.Kernel.Agent.Loop.Found</method> forgets what earlier searches found -> this goes
+/// red on call 3's tool list.</p>
+Method TestASearchThatAddsNothingNeverChangesTheArray()
+{
+    Set tDefinition = ..PrepareFamily("openai", "probe-openai-model", "")
+    Do $ClassMethod(..#STUB, "QueueAnswer", 200, ..OpenAiCall("call_late", "shell_tools_find", "{""query"":""late""}"))
+    Do $ClassMethod(..#STUB, "QueueAnswer", 200, ..OpenAiCall("call_none", "shell_tools_find", "{""query"":""hidden advertised""}"))
+    Do $ClassMethod(..#STUB, "QueueAnswer", 200, ..OpenAiCall("call_start", "shell_tools_find", "{""query"":""shell""}"))
+    Do $ClassMethod(..#STUB, "QueueAnswer", 200, ..OpenAiText("done"))
+    Set tKey = ..RunTurn(.tOutcome, "", 0, 0, "", "", tDefinition)
+    Do $$$AssertEquals(tOutcome("state") _ "|" _ tOutcome("reply"), "completed|done", "the turn completes: " _ tOutcome("state") _ " " _ tOutcome("code"))
+    Do $$$AssertEquals($ClassMethod(..#STUB, "Calls"), 4, "after four provider calls")
+    Set tStart = "shell_probe_read,shell_tools_find"
+    Do $$$AssertEquals(..Declared("openai", 1), tStart, "call 1 carries the starting set alone")
+    Do $$$AssertEquals(..Declared("openai", 2), tStart _ ",zprobe_late_read", "call 2 adds the tool search 1 found")
+    Do $$$AssertEquals(..ResultOf("openai", 2), "Found tools you can call from your next step: zprobe_late_read.", "and names it, so the later legs are not vacuous")
+    Do $$$AssertEquals(..Declared("openai", 3), ..Declared("openai", 2), "call 3, after a search that found nothing, carries the same list")
+    Do $$$AssertEquals(..Declared("openai", 4), ..Declared("openai", 2), "call 4, after a search that found a tool already carried, carries it still")
+    Set tNone = ..ResultOf("openai", 3)
+    Do $$$AssertTrue((tNone [ """rows"":[]") && (tNone '[ "Found tools"), "search 2's result is its own empty answer: " _ tNone)
+    Set tOwn = ..ResultOf("openai", 4)
+    Do $$$AssertTrue((tOwn [ "shell_probe_read") && (tOwn '[ "Found tools"), "search 3's result is its own answer, not a list of tools found: " _ tOwn)
+    Do $$$AssertEquals(##class(OcuPilot.Test.TurnScope).Steps(tKey), "model:provider:ok;tool:shell.tools.find:ok;model:provider:ok;tool:shell.tools.find:ok;model:provider:ok;tool:shell.tools.find:ok;model:provider:ok;", "every step is ok")
 }
 
 /// <p>Gemini -- the <code>generateContent</code> request carries the starting set, then the found

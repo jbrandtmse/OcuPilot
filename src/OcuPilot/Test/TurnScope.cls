@@ -2,9 +2,10 @@
 /// AD-24, AD-53): a turn whose registry holds the discovery tool sends every advertised tool,
 /// byte-identical on every call, with each tool outside the starting set deferred and the cache
 /// marker on the last tool that is not; a tool the model finds is answered as a
-/// <code>tool_reference</code> and is called on the next step; the screen context's own tools start
-/// undeferred; a registry without the discovery tool is sent whole; and every built screen's starting
-/// set fits the size the other dialects carry.</p>
+/// <code>tool_reference</code> and is called on the next step; a search that finds nothing keeps its
+/// answer and the array; any advertised tool dispatches whether or not it was found; the screen
+/// context's own tools start undeferred; a registry without the discovery tool is sent whole; and
+/// every built screen's starting set fits the size the other dialects carry.</p>
 /// <p>Driven through <class>OcuPilot.Test.TurnLoopProbe</class> and
 /// <class>OcuPilot.Test.ToolDispatchProbe</class> over <class>OcuPilot.Test.ScopeTool.Registry</class>
 /// (or <class>OcuPilot.Test.DispatchTool.Registry</class>, which holds no discovery tool), on
@@ -94,6 +95,52 @@ Method TestASearchedToolIsCalledOnTheNextStepOverAnUnchangedArray()
     Do $$$AssertEquals(tCalled."tool_use_id" _ "|" _ tCalled."is_error", "toolu_found|0", "call 3 carries the found tool's own result")
     Do $$$AssertEquals(##class(OcuPilot.Test.DispatchTool.Counter).Calls("probe.found.read"), 1, "the found tool was dispatched once")
     Do $$$AssertEquals(..Steps(tKey), "model:provider:ok;tool:shell.tools.find:ok;model:provider:ok;tool:probe.found.read:ok;model:provider:ok;", "and both tool steps are ok")
+}
+
+/// <p>A search that finds nothing is an ordinary answer (matrix, "no match") -- the query's words
+/// are carried only by the unadvertised fixture tool, so nothing is found: both calls carry the same
+/// <code>tools</code> text, and the search's result is its own text, an empty row list, not a
+/// <code>tool_reference</code> block.</p>
+/// <p>Mutation: <method>OcuPilot.Kernel.Agent.Loop.Found</method> replaces the content even when it
+/// names no tool -> this goes red.</p>
+Method TestASearchThatFindsNothingKeepsItsAnswerAndTheArray()
+{
+    Do ..UseScopeTools()
+    Do $ClassMethod(..#STUB, "QueueAnswer", 200, ..Reply("", [{"id": "toolu_find", "name": "shell_tools_find", "input": {"query": "hidden advertised"}}]))
+    Do $ClassMethod(..#STUB, "QueueAnswer", 200, ..Reply("done"))
+    Set tKey = ..RunTurn(.tOutcome)
+    Do $$$AssertEquals(tOutcome("state") _ "|" _ tOutcome("reply"), "completed|done", "the turn completes")
+    Do $$$AssertEquals($ClassMethod(..#STUB, "Calls"), 2, "after two provider calls")
+    Do $$$AssertEquals(##class(OcuPilot.Test.TurnBudget).Sent(2).tools.%ToJSON(), ##class(OcuPilot.Test.TurnBudget).Sent(1).tools.%ToJSON(), "the array is the same text on both calls")
+    Set tResult = ##class(OcuPilot.Test.TurnBudget).Sent(2).messages.%Get(2).content.%Get(0)
+    Do $$$AssertEquals(tResult."is_error" _ "|" _ tResult.%GetTypeOf("content"), "0|string", "the search's result is ordinary text")
+    Set tAnswer = ##class(%DynamicAbstractObject).%FromJSON(##class(OcuPilot.Test.TurnWireFixture).Unwrapped(tResult.content))
+    Do $$$AssertEquals(tAnswer.rows.%ToJSON() _ "|" _ tAnswer.rowsAvailable, "[]|0", "naming no tool: the hidden tool is not advertised, so it is not found")
+    Do $$$AssertEquals(..Steps(tKey), "model:provider:ok;tool:shell.tools.find:ok;model:provider:ok;", "and the search step is ok")
+}
+
+/// <p>Dispatch is not scoped (AD-8, C3) -- the model calls <code>probe_found_read</code>, which a
+/// search found, and <code>zprobe_late_read</code>, which nothing found, in one reply: both run once,
+/// both steps are ok and the two results are the same answer, so a tool outside the starting set is
+/// answered as it was before this story whether or not it was reached through the search.</p>
+/// <p>Mutation: <method>OcuPilot.Kernel.Agent.Loop.AnswerTools</method> refuses a call to a tool that
+/// is neither in the starting set nor found -> this goes red.</p>
+Method TestAnAdvertisedToolDispatchesWhetherOrNotASearchFoundIt()
+{
+    Do ..UseScopeTools()
+    Do $ClassMethod(..#STUB, "QueueAnswer", 200, ..Reply("", [{"id": "toolu_find", "name": "shell_tools_find", "input": {"query": "found"}}]))
+    Do $ClassMethod(..#STUB, "QueueAnswer", 200, ..Reply("", [{"id": "toolu_found", "name": "probe_found_read", "input": {"marker": "m1"}}, {"id": "toolu_late", "name": "zprobe_late_read", "input": {"marker": "m1"}}]))
+    Do $ClassMethod(..#STUB, "QueueAnswer", 200, ..Reply("done"))
+    Set tKey = ..RunTurn(.tOutcome)
+    Do $$$AssertEquals(tOutcome("state") _ "|" _ tOutcome("reply"), "completed|done", "the turn completes")
+    Set tResults = ##class(OcuPilot.Test.TurnBudget).Sent(3).messages.%Get(4).content
+    Do $$$AssertEquals(tResults.%Size(), 2, "call 3 carries both results")
+    Set tFound = tResults.%Get(0)
+    Set tLate = tResults.%Get(1)
+    Do $$$AssertEquals(tFound."tool_use_id" _ "|" _ tFound."is_error" _ "|" _ tLate."tool_use_id" _ "|" _ tLate."is_error", "toolu_found|0|toolu_late|0", "neither call is refused")
+    Do $$$AssertEquals(##class(OcuPilot.Test.TurnWireFixture).Unwrapped(tLate.content), ##class(OcuPilot.Test.TurnWireFixture).Unwrapped(tFound.content), "and the tool nothing found answers as the tool the search found")
+    Do $$$AssertEquals(##class(OcuPilot.Test.DispatchTool.Counter).Calls("probe.found.read") _ "|" _ ##class(OcuPilot.Test.DispatchTool.Counter).Calls("zprobe.late.read"), "1|1", "each ran once")
+    Do $$$AssertEquals(..Steps(tKey), "model:provider:ok;tool:shell.tools.find:ok;model:provider:ok;tool:probe.found.read:ok;tool:zprobe.late.read:ok;model:provider:ok;", "and both tool steps are ok")
 }
 
 /// <p>A tool the screen context names starts undeferred (C1): the same turn with a context whose
