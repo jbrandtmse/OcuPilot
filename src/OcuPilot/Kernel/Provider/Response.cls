@@ -38,6 +38,13 @@ Property ContentJson As %String(MAXLEN = "");
 /// size with any cached part included (AD-31); <code>0</code> when the provider reported none.</p>
 Property RequestTokens As %Integer [ InitialExpression = 0 ];
 
+/// <p>How many tokens the request counts against a turn's token limit (AD-31): the prompt's size with
+/// its cached part at the weight the provider bills it, rounded up to a whole token, as
+/// <method>WeightedTokens</method> computes it. <code>""</code> when the adapter set none, which a
+/// reader takes as <property>RequestTokens</property>. Never what the turn row or the ledger
+/// records: they keep <property>RequestTokens</property>.</p>
+Property BoundTokens As %Integer;
+
 /// <p>How many tokens the reply consumed.</p>
 Property ResponseTokens As %Integer [ InitialExpression = 0 ];
 
@@ -48,5 +55,18 @@ Property LatencyMs As %Integer [ InitialExpression = 0 ];
 /// <p>The HTTP status the last attempt read, or <code>0</code> when no call was made at all --
 /// which is what an unresolved credential and a failed key-shape gate both answer.</p>
 Property HttpStatus As %Integer [ InitialExpression = 0 ];
+
+/// <p>A prompt of <var>pWhole</var> tokens, <var>pCached</var> of them cached, with the cached part
+/// counted at <var>pWeight</var> of a token each: the whole count less the cached part plus
+/// <var>pWeight</var> times it, rounded up to a whole token. A cached part outside 0 to
+/// <var>pWhole</var> is clamped into it, so a malformed usage block never counts below 0 or above the
+/// whole count, and a weight of 1 answers the whole count.</p>
+ClassMethod WeightedTokens(pWhole As %Integer, pCached As %Integer, pWeight As %Numeric) As %Integer
+{
+    Set tWhole = $Select(+pWhole > 0: +pWhole, 1: 0)
+    Set tCached = $Select(+pCached > tWhole: tWhole, +pCached > 0: +pCached, 1: 0)
+    Set tCount = tWhole - tCached + (+pWeight * tCached)
+    Quit $Select(tCount = (tCount \ 1): tCount, 1: (tCount \ 1) + 1)
+}
 
 }

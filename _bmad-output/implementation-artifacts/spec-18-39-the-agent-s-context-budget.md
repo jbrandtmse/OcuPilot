@@ -2,8 +2,8 @@
 title: 'Story 18.39: The agent''s context budget'
 type: 'feature'
 created: '2026-10-11'
-status: 'in-progress'
-baseline_revision: '356bdf6381fa03961445b66fb5a191c8305a9e64'
+status: 'done'
+baseline_revision: '6846375c3cb35e2a870391ce1821ce62b3b8609c'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -73,10 +73,10 @@ Under `src/OcuPilot/` at `266eee9d`. Epic 20's open diff touches none of these f
 
 **Rework 1 (orchestrator ruling (A), 2026-10-12; AD-31 as corrected):**
 
-R1. [ ] Task 0 (d), `ocupilot-ci`: with the owner's OpenAI and Gemini keys from `.env.local` where present (read at the point of use, never printed, logged, ledgered or committed; on a probe definition created and removed), two calls seconds apart per family on the catalog's default model: record whether the response reports the cached subset separately (`usage.prompt_tokens_details.cached_tokens`, `usageMetadata.cachedContentTokenCount`) and its value on the second call; an absent key records "unmeasured" and the documented field stands. Read each family's cached-input rate for that model from the vendor's pricing page; record the rate, the URL and the read date under Design Notes "For the lead".
-R2. [ ] `Kernel/Provider/Response.cls`: a non-persistent `BoundTokens` property, the request tokens with the cached part at its billed weight, rounded up to a whole token. Each family's `MapResponse` sets it: Anthropic `input_tokens` + `cache_creation_input_tokens` + 0.1 x `cache_read_input_tokens` (writes stay at full weight; the ruling names reads); OpenAI and Gemini `prompt_tokens` (`promptTokenCount`) less the cached subset plus the rate x the subset, where R1 confirmed the field, else the whole count; compatible the whole count. Each rate is a parameter on its adapter class whose doc line names the source. An absent field counts 0.
-R3. [ ] `Kernel/Agent/Loop.cls`: `Boundary`'s token figure sums `BoundTokens` (the whole count when empty) and the response tokens; `RequestTokens`, the turn row's `InputTokens` and the ledger's `requestTokens` keep the provider's whole count. No schema change.
-R4. [ ] Tests, each with a `mutation:` line: `AdapterCache` (or a sibling under 500 lines) pins `BoundTokens` per family from a stubbed usage block (Anthropic 10, 200, 3000 gives 510; OpenAI and Gemini at their parameter; compatible the whole count; a missing cached field the whole count); `TurnBudget` pins C5 on a limits class where three scripted cached Anthropic calls pass `MAXTOKENS` at full weight but not at billed weight, and the turn row still records the whole count.
+R1. [x] Task 0 (d), `ocupilot-ci`: with the owner's OpenAI and Gemini keys from `.env.local` where present (read at the point of use, never printed, logged, ledgered or committed; on a probe definition created and removed), two calls seconds apart per family on the catalog's default model: record whether the response reports the cached subset separately (`usage.prompt_tokens_details.cached_tokens`, `usageMetadata.cachedContentTokenCount`) and its value on the second call; an absent key records "unmeasured" and the documented field stands. Read each family's cached-input rate for that model from the vendor's pricing page; record the rate, the URL and the read date under Design Notes "For the lead".
+R2. [x] `Kernel/Provider/Response.cls`: a non-persistent `BoundTokens` property, the request tokens with the cached part at its billed weight, rounded up to a whole token. Each family's `MapResponse` sets it: Anthropic `input_tokens` + `cache_creation_input_tokens` + 0.1 x `cache_read_input_tokens` (writes stay at full weight; the ruling names reads); OpenAI and Gemini `prompt_tokens` (`promptTokenCount`) less the cached subset plus the rate x the subset, where R1 confirmed the field, else the whole count; compatible the whole count. Each rate is a parameter on its adapter class whose doc line names the source. An absent field counts 0.
+R3. [x] `Kernel/Agent/Loop.cls`: `Boundary`'s token figure sums `BoundTokens` (the whole count when empty) and the response tokens; `RequestTokens`, the turn row's `InputTokens` and the ledger's `requestTokens` keep the provider's whole count. No schema change.
+R4. [x] Tests, each with a `mutation:` line: `AdapterCache` (or a sibling under 500 lines) pins `BoundTokens` per family from a stubbed usage block (Anthropic 10, 200, 3000 gives 510; OpenAI and Gemini at their parameter; compatible the whole count; a missing cached field the whole count); `TurnBudget` pins C5 on a limits class where three scripted cached Anthropic calls pass `MAXTOKENS` at full weight but not at billed weight, and the turn row still records the whole count.
 
 **Acceptance Criteria:**
 
@@ -114,6 +114,19 @@ R4. [ ] Tests, each with a `mutation:` line: `AdapterCache` (or a sibling under 
   - `[low]` `[reject]` Live evidence covers the tool marker only, never the moving tail marker against the real provider -- Task 0 (c) is scoped to two one-call turns; closed by QA's live two-call turn (Design Notes).
   - `[false]` `[reject]` Out-of-matrix additions: the `TurnToolsCase` extraction, and AD-24's spine text still awaiting Task 0's figures -- the extraction follows the `StreamCase` precedent and keeps `TurnTools` green (run 672); the spine amendment is the lead's (Rule 20).
 
+### 2026-10-12 -- Review pass (Rework 1)
+
+- verdicts: 8 findings -- high 0, medium 1, low 7, false 0, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` A streamed OpenAI or Gemini reply's cached subset reaching `BoundTokens` has no test, and the streamed form is the production path -- patched: `ProviderStreamFamilies.TestAStreamedReplyKeepsItsCachedSubset` (plain and streamed legs for openai, gemini and compatible), with a `StreamAdapter` usage-pruning mutation recorded per family under Verification.
+  - `[low]` `[reject]` `Anthropic.CACHEREADWEIGHT`'s doc line cites the vendor page's per-model cache-read rates with no record in the spec -- the page was read directly on 2026-10-12 and the line matches it; the spec's fix would be an edit to this build's spec, and the rates reach the lead under Auto Run Result.
+  - `[low]` `[patch]` `Limits.MAXTOKENS` still read "input plus output" -- corrected to the billed-weight wording.
+  - `[low]` `[reject]` The shipped `MAXTOKENS` of 500,000 is not driven with cached usage at real scale -- the same code runs on the narrowed 3,200, and a 500,000-token turn needs about sixteen 190,000-token calls.
+  - `[low]` `[reject]` OpenAI, Gemini and compatible are not scripted through the loop -- `PromptBound` is family-agnostic and pinned directly, and each adapter's figure is pinned at the mapping and the stream level.
+  - `[low]` `[reject]` R1's live measurement was non-streamed and tool-free while production streams the tool array -- the Design Notes label the stream's wire form an inference, and the new streamed test pins the pass-through of the shape the vendors document.
+  - `[low]` `[reject]` Anthropic's flat 0.1 over-counts Opus 5.5 and Sonnet 5.5 (billed 0.05) and Fable 5.1 (0.025) -- the ruling names 0.1 and the over-count is the safe side; for the lead's AD-31.
+  - `[low]` `[reject]` Design Notes still carry the full-weight "at most three provider calls" line and the first AD-31 proposal -- the Change Log records ruling (A), the spec is `oversized`, and those lines are the lead's.
+
 ## Design Notes
 
 **Families** (`Provider/Catalog.cls` rows; vendor docs and the `claude-api` skill, read 2026-10-11):
@@ -138,6 +151,7 @@ R4. [ ] Tests, each with a `mutation:` line: `AdapterCache` (or a sibling under 
 - 262,144 is the plan's number; the gate may set another.
 - Task 0, measured on `ocupilot-ci` 2026-10-12 (AD-24's figures). Advertised: 368 tools, the 371 registered less AD-53's three (`explorer.sqldata.save`, `osmgmt.licensekey.activate`, `security.secrets.replacesymmetric`). The `tools` array is 525,377 characters before this story and 525,414 after (the marker, 37), of which descriptions 112,090 and input schemas 387,162; the built-in prompt is 3,288 characters before and 3,452 after. A scripted three-call turn sends 528,815, 529,120 and 529,425 characters before and 529,016, 529,358 and 529,663 after. The `tools` JSON is the same text across those calls, across a second turn and across separate processes, in name order. Live (the owner's Anthropic key, `claude-opus-5-5`, two one-call turns six seconds apart, streamed, markers on the last tool only because no screen context): call 1 `input_tokens` 1,118, `cache_creation_input_tokens` 189,627, `cache_read_input_tokens` 0, 7.00 s in the transport (8.13 s the whole turn); call 2 1,118, 0 and 189,627, 2.07 s (2.51 s). Each call is 190,745 tokens whichever side of the cache it falls, and the turn row records 190,745 for both. With reads at full weight against `MAXTOKENS` 500,000, a turn makes at most three provider calls (190,745, 381,490, then 572,235 stops the fourth at the boundary), as before this story, because uncached `input_tokens` counted the same prompt (inference). The tools array is 99.4 percent of each call's prompt, so the cost of a turn is the tools array, not history or results. The key was read from `.env.local` once, for these two turns.
 - Live tail marker, measured on `ocupilot-ci` 2026-10-12 (QA): a two-call turn (the owner's Anthropic key, `claude-opus-5-5`, the 368-tool registry, call 1 answering `shell_instance_read`) sent the moving marker on the call that carries the `tool_result` (two `cache_control` members in that request) and was answered HTTP 200 with `cache_read_input_tokens` 189,627 and `cache_creation_input_tokens` 1,345; the turn completed and its `InputTokens` read 381,730 over the two calls.
+- R1, measured on `ocupilot-ci` 2026-10-12 (the owner's OpenAI and Gemini keys, read once each from `.env.local`; one non-streamed two-call attempt per family through the shipped port and adapter, an 89,438-character prompt, six seconds apart, no tools). OpenAI `gpt-5.6-terra` reports `usage.prompt_tokens_details.cached_tokens` separately, inside `prompt_tokens`: call 1 `prompt_tokens` 20,887, `cached_tokens` 0, `cache_write_tokens` 20,884; call 2 20,887, 20,884 and 0. Gemini `gemini-3.8-flash` omits `usageMetadata.cachedContentTokenCount` on call 1 and reports 22,721 inside `promptTokenCount` 24,769 on call 2. Rates, read 2026-10-12: OpenAI cached input $0.20 against input $2.00 per 1M tokens, cache writes $2.50, short context (long context $0.40 against $4.00), `https://developers.openai.com/api/docs/pricing.md`; Gemini context caching $0.075 against input $0.75 through 2026-12-31 and $0.15 against $1.50 from 2027-01-01, `https://ai.google.dev/gemini-api/docs/pricing`. Every cached rate is 0.1 of its input rate. `StreamAdapter` keeps the streamed `usage` and `usageMetadata` objects whole, so a streamed body carries the same fields (inference: the wire form of the stream's last chunk was not measured). Cache writes bill at 1.25 times input on Anthropic and OpenAI and count at full weight here.
 - Declined: per-call tool selection (it needs AD-8's "full tool set" restated, the owner's call); in-place trimming (above); Anthropic's context-editing beta (`context-management-2025-06-27`), the sanctioned in-place route if earlier results are ever to be cleared.
 - Rule 11: no contended file. No vendor defect candidate.
 
@@ -171,6 +185,20 @@ R4. [ ] Tests, each with a `mutation:` line: `AdapterCache` (or a sibling under 
 - mutation: `ToolDefAdapter.ToGemini` marks its last declaration -> `AdapterCache` (the other-families test) went red on the Gemini leg alone (QA, run 693).
 - mutation: `Anthropic.CallMessages` marks every tool -> `AdapterCache` (the marks test) and `TurnBudget` (the markers and context tests) went red (QA, runs 694 and 695).
 - mutation: `Anthropic.CallMessages` marks the last block of every message -> `AdapterCache` (the marks test) and `TurnBudget` (the markers, context and budget tests) went red (QA, runs 696 and 697).
+- mutation: `Anthropic.MapResponse` weights cache reads at 1 -> `AdapterCache` (the bound test) and `TurnBudget` (the billed-weight test) went red (Rework 1, runs 703 and 704).
+- mutation: `Anthropic.MapResponse` leaves cache writes out of the bound -> `TurnBudget` (the billed-weight test, the second and third legs) and `AdapterCache` (the bound test) went red (runs 705 and 706).
+- mutation: `Anthropic.CACHEREADWEIGHT` 0 -> `TurnBudget` (the billed-weight test, the second leg) and `AdapterCache` (the bound test) went red (runs 707 and 708); 0.5 -> the first leg (run 709).
+- mutation: `Loop.Run` sums `RequestTokens` into the bound -> `TurnBudget` (the billed-weight test, the first leg) went red (run 710).
+- mutation: `Loop.Run` records the bound as the turn row's input -> `TurnBudget` (the billed-weight test, the whole-count assertion, and the markers test) went red (run 711).
+- mutation: `Loop.RecordProviderRow` records the bound as the ledger's request tokens -> `TurnBudget` (the billed-weight test, the ledger assertion) went red (run 712).
+- mutation: `Loop.PromptBound` answers 0 for an empty figure -> `TurnBudget` (the fallback test) went red alone (run 713).
+- mutation: `OpenAI.MapResponse` leaves out its weight -> `AdapterCache` (the bound test) went red on the OpenAI cached leg alone (run 714).
+- mutation: `Compatible.CACHEDINPUTWEIGHT` removed, so it inherits OpenAI's 0.1 -> `AdapterCache` (the bound test) went red on the rates line and the compatible cached leg (run 715).
+- mutation: `MessageAdapter.GeminiUsage` leaves out the cached count -> `AdapterCache` (the bound test) went red on the Gemini cached leg alone (run 716).
+- mutation: `Response.WeightedTokens` rounds down -> `AdapterCache` (the bound test and the weighted-count test) went red on the fraction legs (run 717).
+- mutation: `Response.WeightedTokens` leaves the cached part unclamped -> `AdapterCache` (the weighted-count test) went red on the clamp legs (run 718).
+- mutation: `StreamAdapter.TakeOpenAi` keeps only the prompt and completion counts of the streamed usage -> `ProviderStreamFamilies` (the streamed cached-subset test) went red on the openai leg alone (run 761).
+- mutation: `StreamAdapter.TakeGemini` keeps only the prompt and candidate counts of the streamed usage metadata -> `ProviderStreamFamilies` (the streamed cached-subset test) went red on the gemini leg alone (run 762).
 Each applied on `ocupilot-ci` to a copy of the class, the class and every descendant recompiled, then restored; the worktree was not written.
 
 **S0:** no probe definition, turn, conversation or stub node left by the new tests.
@@ -182,18 +210,16 @@ Each applied on `ocupilot-ci` to a copy of the class, the class and every descen
 Status: done
 Blocking condition: none
 
-**Summary.** The Anthropic adapter marks the last tool and the final message's last block `cache_control` ephemeral, and `RequestTokens` sums input, cache writes and cache reads; `Limits.TURNRESULTMAXLENGTH` (262,144) is a turn budget that `Run` seeds and `AnswerTools` spends beside the reply budget, so later results are cut by whole rows and then refused `TOOL.RESULTTOOLARGE`; the built-in prompt gained the refusal's sentence. The other families' bodies are unchanged but for that sentence.
+**Summary (Rework 1).** The turn's token bound now counts a cached prompt part at its billed weight: `Response.BoundTokens` (new, non-persistent) is set by each family's `MapResponse` (Anthropic reads at 0.1 and writes whole, OpenAI and Gemini cached subsets at 0.1, compatible whole), and `Loop.Run` feeds `Boundary` that figure plus the output; `RequestTokens`, the turn row's `InputTokens` and the ledger keep the whole count. R1: the OpenAI and Gemini fields and rates are in Design Notes.
 
 **Files.**
 
-- `Kernel/Agent/Limits.cls`: `TURNRESULTMAXLENGTH`.
-- `Kernel/Agent/Loop.cls`: turn budget in `Run`, trailing `pTurnBudget` on `AnswerTools`, private `Spend`, append-only header.
-- `Kernel/Provider/Anthropic.cls`: markers and the summed usage. `Kernel/Provider/Response.cls`: doc clause only.
-- `Kernel/Agent/Prompt.cls`: the `TOOL.RESULTTOOLARGE` sentence.
-- Tests: new `TurnBudget`, `AdapterCache`, `TurnLimitsBudget`, `TurnToolsCase` (the in-process turn harness lifted out of `TurnTools`, which now extends it); changed `TurnTools`, `Adapter` (`CANONICALBODY`), `SseFixture`, `TurnStream` (one Integration method), `ScreenGrounding` (statement 10).
+- `Kernel/Provider/Response.cls`: `BoundTokens`, `WeightedTokens`. `Anthropic.cls`, `OpenAI.cls`, `Gemini.cls`, `Compatible.cls`: the weight parameters and their sources. `MessageAdapter.cls`: the OpenAI and Gemini readers take a trailing weight.
+- `Kernel/Agent/Loop.cls`: `PromptBound`, the bound accumulator. `Limits.cls`: `MAXTOKENS` doc only.
+- Tests: `AdapterCache` and `TurnBudget` gain two methods each; new `TurnLimitsBilled`; `ProviderStreamFamilies` gains the streamed cached-subset method.
 
-**Review.** One pass, 14 findings: 1 patch applied (medium, the budget's lower bound in `TurnBudget` (b)), 13 rejected with reasons in the triage log, none deferred. Follow-up review recommended: false.
+**Review.** One pass, 8 findings: 2 patched (1 medium, 1 low), 6 low rejected with reasons in the triage log, none deferred. Follow-up review recommended: false.
 
-**Verification.** On `ocupilot-ci` after a fresh load: `TurnBudget` 3 (run 684), `AdapterCache` 3 (678), `TurnStream` 7 (679), `Adapter` 25 (680), `ScreenGrounding` 16 (681), `TurnTools` 13 (672), `TurnLoop` 11 (673), `Provider` 20 (674), `Ledger` 11 (675), `ToolDispatch` 18 (676, run only), all green; the rest of Task 12's sweep ran green at runs 620-640, before the last test-only edits. `check-objectscript` 0 problems, `lint-docs` 0 issues, secrets scan 0. Seven mutations plus the patch's, each reddened its test and was restored.
+**Verification.** On `ocupilot-ci` after a fresh load: `AdapterCache` 5 (734), `TurnBudget` 8 (757), `ProviderStreamFamilies` 5 (763), `Provider` 20, `Adapter` 25, `TurnLoop` 11, `Ledger` 11, `TurnStream` 7, `TurnTools` 13, `ScreenGrounding` 16, `OpenAIAdapter` 6, `GeminiAdapter` 4, `CompatibleAdapter` 6, `ProviderStream` 11, `AnthropicThinking` 4, `GeminiEmptyEnum` 6, `AgentConnection` 20, `AgentConnectionBound` 15, `AgentRules` 20, `AgentWire` 18 (runs 736-754), `LedgerWire` 6 (731), all green. `check-objectscript` 0 problems, `lint-docs` 0 issues. Each of this pass's 14 `mutation:` lines reddened its test and was restored; the lead's own spot check of the `Loop.Run` sum mutation reddened `TurnBudget` (run 756).
 
-**Residual risks.** Task 0's figures are in Design Notes for the lead to close AD-24 and AD-31; the three-call consequence is ruled on (Spec Change Log, 2026-10-12, ruling (A)). `TurnToolsCase`, `TurnBudget`, `AdapterCache` and `TurnLimitsBudget` are not yet in `ci-timings.json`.
+**Residual risks.** Anthropic's pricing page bills cache reads at 0.05 on Opus 5.5 and Sonnet 5.5 and 0.025 on Fable 5.1 and Mythos 5.1, so the ruled 0.1 counts them above cost (AD-31's wording is the lead's). `TurnLimitsBilled` is not yet in `ci-timings.json`.

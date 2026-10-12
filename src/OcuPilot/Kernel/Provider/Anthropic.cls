@@ -33,6 +33,13 @@ Parameter CONTENTTYPE = "application/json";
 /// <p>The <code>type</code> of the <code>cache_control</code> member that marks a cache breakpoint.</p>
 Parameter CACHEBREAKPOINT = "ephemeral";
 
+/// <p>What one cache-read token counts against a turn's token limit, as a share of an input token:
+/// 0.1, the standard cache-read multiplier on the vendor's pricing page
+/// (<code>platform.claude.com/docs/en/about-claude/pricing</code>, read 2026-10-12). The page bills
+/// Opus 5.5 and Sonnet 5.5 reads at 0.05 and Fable 5.1 and Mythos 5.1 at 0.025, so the bound counts
+/// those reads above what they cost, which is the safe side. Cache writes count at 1.</p>
+Parameter CACHEREADWEIGHT = 0.1;
+
 /// <p>This family streams when the caller passes a sink (AD-42); 0 turns it off.</p>
 Parameter STREAMS As %Boolean = 1;
 
@@ -145,7 +152,8 @@ Method IsApiKeyShapeValid() As %Boolean
 /// figures. <b><property>OcuPilot.Kernel.Provider.Response.RequestTokens</property> is the prompt's
 /// whole size</b> (AD-31): <code>input_tokens</code>, which this family reports without the cached
 /// part, plus <code>cache_creation_input_tokens</code> and <code>cache_read_input_tokens</code>; a
-/// figure the reply does not carry counts 0.</p>
+/// figure the reply does not carry counts 0. <property>OcuPilot.Kernel.Provider.Response.BoundTokens</property>
+/// is the same figure with the cache reads at <parameter>CACHEREADWEIGHT</parameter>.</p>
 /// <p><b>A reply carrying a <code>thinking</code> or <code>redacted_thinking</code> block also
 /// sets <property>OcuPilot.Kernel.Provider.Response.ContentJson</property></b> to its whole
 /// <code>content</code> array, verbatim: the provider requires those blocks back unchanged and in
@@ -189,7 +197,9 @@ Method MapResponse(pBody As %String, pResponse As OcuPilot.Kernel.Provider.Respo
         If tReasoning Set pResponse.ContentJson = tParsed.content.%ToJSON()
         Set pResponse.StopReason = $Select(tParsed."stop_reason" = "": "end_turn", 1: tParsed."stop_reason")
         If $IsObject(tParsed.usage) {
-            Set pResponse.RequestTokens = +tParsed.usage."input_tokens" + +tParsed.usage."cache_creation_input_tokens" + +tParsed.usage."cache_read_input_tokens"
+            Set tRead = +tParsed.usage."cache_read_input_tokens"
+            Set pResponse.RequestTokens = +tParsed.usage."input_tokens" + +tParsed.usage."cache_creation_input_tokens" + tRead
+            Set pResponse.BoundTokens = ##class(OcuPilot.Kernel.Provider.Response).WeightedTokens(pResponse.RequestTokens, tRead, ..#CACHEREADWEIGHT)
             Set pResponse.ResponseTokens = +tParsed.usage."output_tokens"
         }
     } Catch ex {

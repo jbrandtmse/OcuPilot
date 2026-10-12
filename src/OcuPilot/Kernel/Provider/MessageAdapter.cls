@@ -208,7 +208,10 @@ ClassMethod CanonicalToOpenAi(ByRef pMessages, pSystemPrompt As %String = "", Ou
 /// <code>function.arguments</code> string parsed into an <code>input</code> object, the
 /// <code>finish_reason</code> mapped into the canonical vocabulary, and
 /// <code>usage.prompt_tokens</code> / <code>usage.completion_tokens</code> into the two token
-/// counts.</p>
+/// counts. <property>OcuPilot.Kernel.Provider.Response.BoundTokens</property> is
+/// <code>prompt_tokens</code> with the <code>prompt_tokens_details.cached_tokens</code> subset it
+/// contains counted at <var>pCachedWeight</var> of a token each; a weight of 1, the default, makes
+/// it the whole count.</p>
 /// <p>Answers an error <class>%Status</class> for a body that is not a JSON object, a body with no
 /// <code>choices</code> array, a first choice carrying no <code>message</code>, and an
 /// <code>arguments</code> value that is not a JSON object -- never a silent empty reply, which is
@@ -216,7 +219,7 @@ ClassMethod CanonicalToOpenAi(ByRef pMessages, pSystemPrompt As %String = "", Ou
 /// <p>A tool call carrying no <code>id</code>, or naming no function, is an error too: a canonical
 /// block the next request could not correlate a result with would refuse <b>every</b> later request
 /// in that conversation, so it is refused here rather than stored.</p>
-ClassMethod OpenAiToCanonical(pBody As %String, pResponse As OcuPilot.Kernel.Provider.Response) As %Status
+ClassMethod OpenAiToCanonical(pBody As %String, pResponse As OcuPilot.Kernel.Provider.Response, pCachedWeight As %Numeric = 1) As %Status
 {
     Set tSC = $$$OK
     Try {
@@ -279,6 +282,8 @@ ClassMethod OpenAiToCanonical(pBody As %String, pResponse As OcuPilot.Kernel.Pro
         Set pResponse.StopReason = $Select(tRefusal '= "": ..#REFUSALSTOPREASON, 1: ..StopReason(..#OPENAISTOPREASONS, tChoice."finish_reason", tToolCalls.%Size()))
         If $IsObject(tParsed.usage) {
             Set pResponse.RequestTokens = +tParsed.usage."prompt_tokens"
+            Set tCached = $Select($IsObject(tParsed.usage."prompt_tokens_details"): +tParsed.usage."prompt_tokens_details"."cached_tokens", 1: 0)
+            Set pResponse.BoundTokens = ##class(OcuPilot.Kernel.Provider.Response).WeightedTokens(pResponse.RequestTokens, tCached, pCachedWeight)
             Set pResponse.ResponseTokens = +tParsed.usage."completion_tokens"
         }
     } Catch ex {
@@ -399,7 +404,10 @@ ClassMethod CanonicalToGemini(ByRef pMessages, pSystemPrompt As %String = "", Ou
 /// and a synthesized one where it did not (DW-1180), the <code>finishReason</code> mapped
 /// into the canonical vocabulary, and
 /// <code>usageMetadata.promptTokenCount</code> / <code>candidatesTokenCount</code> into the two
-/// token counts. A <code>functionCall</code> part's sibling <code>thoughtSignature</code> is kept
+/// token counts, and <property>OcuPilot.Kernel.Provider.Response.BoundTokens</property> as the first
+/// with the <code>cachedContentTokenCount</code> subset it contains counted at
+/// <var>pCachedWeight</var> of a token each (1, the default, makes it the whole count). A
+/// <code>functionCall</code> part's sibling <code>thoughtSignature</code> is kept
 /// verbatim as the canonical block's own <code>thoughtSignature</code> member, which
 /// <method>CanonicalToGemini</method> writes back beside the replayed call.</p>
 /// <p><var>pEmptyEnums</var> is the same map <method>CanonicalToGemini</method> takes. On a
@@ -411,7 +419,7 @@ ClassMethod CanonicalToGemini(ByRef pMessages, pSystemPrompt As %String = "", Ou
 /// <code>candidates</code> array, and for a <code>functionCall</code> part naming no function,
 /// which no later request could answer. A candidate that carried no parts is an empty reply and
 /// not an error: the model answered, with nothing in it.</p>
-ClassMethod GeminiToCanonical(pBody As %String, pResponse As OcuPilot.Kernel.Provider.Response, pEmptyEnums As %String = "") As %Status
+ClassMethod GeminiToCanonical(pBody As %String, pResponse As OcuPilot.Kernel.Provider.Response, pEmptyEnums As %String = "", pCachedWeight As %Numeric = 1) As %Status
 {
     Set tSC = $$$OK
     Try {
@@ -429,7 +437,7 @@ ClassMethod GeminiToCanonical(pBody As %String, pResponse As OcuPilot.Kernel.Pro
             }
             Set pResponse.Text = tBlocked
             Set pResponse.StopReason = ..#REFUSALSTOPREASON
-            Do ..GeminiUsage(tParsed, pResponse)
+            Do ..GeminiUsage(tParsed, pResponse, pCachedWeight)
             Quit
         }
         Set tCandidate = tParsed.candidates.%Get(0)
@@ -469,7 +477,7 @@ ClassMethod GeminiToCanonical(pBody As %String, pResponse As OcuPilot.Kernel.Pro
         Set pResponse.Text = tText
         If tToolCalls.%Size() > 0 Set pResponse.ToolCallsJson = tToolCalls.%ToJSON()
         Set pResponse.StopReason = ..StopReason(..#GEMINISTOPREASONS, tCandidate.finishReason, tToolCalls.%Size())
-        Do ..GeminiUsage(tParsed, pResponse)
+        Do ..GeminiUsage(tParsed, pResponse, pCachedWeight)
     } Catch ex {
         Set tSC = ex.AsStatus()
     }
@@ -489,10 +497,11 @@ ClassMethod PromptBlockReason(pParsed As %DynamicObject) As %String [ Private ]
 
 /// <p>Copy <var>pParsed</var>'s <code>usageMetadata</code> token counts onto <var>pResponse</var>,
 /// so both exits of <method>GeminiToCanonical</method> report what the call cost.</p>
-ClassMethod GeminiUsage(pParsed As %DynamicObject, pResponse As OcuPilot.Kernel.Provider.Response) [ Private ]
+ClassMethod GeminiUsage(pParsed As %DynamicObject, pResponse As OcuPilot.Kernel.Provider.Response, pCachedWeight As %Numeric = 1) [ Private ]
 {
     If '$IsObject(pParsed.usageMetadata) Quit
     Set pResponse.RequestTokens = +pParsed.usageMetadata.promptTokenCount
+    Set pResponse.BoundTokens = ##class(OcuPilot.Kernel.Provider.Response).WeightedTokens(pResponse.RequestTokens, +pParsed.usageMetadata.cachedContentTokenCount, pCachedWeight)
     Set pResponse.ResponseTokens = +pParsed.usageMetadata.candidatesTokenCount
 }
 

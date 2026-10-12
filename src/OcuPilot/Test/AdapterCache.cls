@@ -2,7 +2,8 @@
 /// the last tool and the final message's last block <code>cache_control</code> and nothing else,
 /// leaves <code>system</code> a string, and reads a prompt's whole size from its usage; the OpenAI,
 /// Gemini and compatible adapters send no caching field and read the prompt figure they always
-/// have, whatever cached-token detail the reply carries.</p>
+/// have, whatever cached-token detail the reply carries. Each family also reports the prompt with its
+/// cached part at the weight the family bills it, which is what a turn's token bound counts.</p>
 /// <p>Anthropic is driven through <class>OcuPilot.Test.ProviderStub</class> as
 /// <class>OcuPilot.Test.Provider</class> drives it; the other three through the stub of their shipped
 /// row, on an adapter instance directly, as <class>OcuPilot.Test.OpenAIAdapter</class>,
@@ -181,6 +182,58 @@ Method TestTheTokenFigureCountsEachFamilysPromptWhole()
         Do ##class(OcuPilot.Test.ProviderStub).Reset()
         Do ..FamilyCall(tFamily, .tTools, $Case(tFamily, "gemini": ..#GEMINICACHED, : ..#OPENAICACHED), .tFamilyResponse)
         Do $$$AssertEquals(tFamilyResponse.RequestTokens _ "|" _ tFamilyResponse.ResponseTokens, "3210|7", tFamily _ ": the prompt figure is read as before, its cached detail not added")
+    }
+}
+
+/// <p>C5 -- each family reports the prompt with its cached part at that family's weight
+/// (<code>BoundTokens</code>), beside the whole count (<code>RequestTokens</code>): Anthropic
+/// weights its cache reads at 0.1 and counts its writes whole, a fraction of a token rounds up, and
+/// a figure the reply does not carry counts 0; OpenAI and Gemini weight the cached subset their prompt
+/// count contains at 0.1; compatible counts the whole prompt whatever it reports.</p>
+/// <p>Mutations: <method>OcuPilot.Kernel.Provider.Anthropic.MapResponse</method> weights cache reads
+/// at 1 -> the Anthropic legs go red; <method>OcuPilot.Kernel.Provider.OpenAI.MapResponse</method>
+/// leaves out its weight -> the OpenAI leg goes red;
+/// <method>OcuPilot.Kernel.Provider.MessageAdapter.GeminiUsage</method> leaves out the cached count
+/// -> the Gemini legs go red; <parameter>OcuPilot.Kernel.Provider.Compatible.CACHEDINPUTWEIGHT</parameter>
+/// removed -> the compatible leg goes red.</p>
+Method TestTheBoundFigureWeighsEachFamilysCachedPrompt()
+{
+    Do ##class(OcuPilot.Test.Provider).Messages(.tMessages)
+    Do ..Tools(.tTools)
+    Do $$$AssertEquals(+$Parameter("OcuPilot.Kernel.Provider.Anthropic", "CACHEREADWEIGHT") _ "|" _ +$Parameter("OcuPilot.Kernel.Provider.OpenAI", "CACHEDINPUTWEIGHT") _ "|" _ +$Parameter("OcuPilot.Kernel.Provider.Gemini", "CACHEDINPUTWEIGHT") _ "|" _ +$Parameter("OcuPilot.Kernel.Provider.Compatible", "CACHEDINPUTWEIGHT"), ".1|.1|.1|1", "the rates: 0.1 for Anthropic, OpenAI and Gemini, 1 for compatible")
+
+    Do ..AnthropicCall(.tMessages, .tTools, ..#CACHEDREPLY, .tResponse)
+    Do $$$AssertEquals(tResponse.RequestTokens _ "|" _ tResponse.BoundTokens, "3210|510", "anthropic, through the call: 10 + 200 + 3,000 whole, 10 + 200 + 0.1 x 3,000 billed")
+
+    Set tAdapter = ##class(OcuPilot.Kernel.Provider.Anthropic).%New()
+    For tCase = $ListBuild("{""input_tokens"":10,""cache_read_input_tokens"":3000}", "3010|310"), $ListBuild("{""input_tokens"":10,""cache_creation_input_tokens"":200}", "210|210"), $ListBuild("{""cache_read_input_tokens"":3000}", "3000|300"), $ListBuild("{""cache_creation_input_tokens"":200,""cache_read_input_tokens"":3000}", "3200|500"), $ListBuild("{""input_tokens"":10,""cache_read_input_tokens"":null}", "10|10"), $ListBuild("{""input_tokens"":5,""cache_read_input_tokens"":1}", "6|6"), $ListBuild("{""cache_read_input_tokens"":15}", "15|2"), $ListBuild("{}", "0|0") {
+        Set tResponse = ##class(OcuPilot.Kernel.Provider.Response).%New()
+        Do $$$AssertStatusOK(tAdapter.MapResponse("{""content"":[{""type"":""text"",""text"":""x""}],""usage"":" _ $List(tCase, 1) _ "}", tResponse), "usage " _ $List(tCase, 1) _ " reads")
+        Do $$$AssertEquals(tResponse.RequestTokens _ "|" _ +tResponse.BoundTokens, $List(tCase, 2), "usage " _ $List(tCase, 1) _ " counts " _ $List(tCase, 2) _ " whole|billed")
+    }
+    Set tAdapter = ""
+
+    Set tOpenAiPlain = $Replace(..#OPENAICACHED, ",""prompt_tokens_details"":{""cached_tokens"":3000}", "")
+    Set tOpenAiNull = $Replace(..#OPENAICACHED, "{""cached_tokens"":3000}", "null")
+    Set tGeminiPlain = $Replace(..#GEMINICACHED, """cachedContentTokenCount"":3000,", "")
+    Do $$$AssertTrue((tOpenAiPlain '[ "cached_tokens") && (tOpenAiNull [ "null") && (tGeminiPlain '[ "cachedContentTokenCount"), "the uncached replies are the cached ones without their detail")
+    For tCase = $ListBuild("openai", ..#OPENAICACHED, "3210|510", "3,000 cached"), $ListBuild("openai", tOpenAiPlain, "3210|3210", "no cached detail"), $ListBuild("openai", tOpenAiNull, "3210|3210", "a null detail"), $ListBuild("gemini", ..#GEMINICACHED, "3210|510", "3,000 cached"), $ListBuild("gemini", tGeminiPlain, "3210|3210", "no cached count"), $ListBuild("compatible", ..#OPENAICACHED, "3210|3210", "3,000 cached"), $ListBuild("compatible", tOpenAiPlain, "3210|3210", "no cached detail") {
+        Do ##class(OcuPilot.Test.ProviderStub).Reset()
+        Do ..FamilyCall($List(tCase, 1), .tTools, $List(tCase, 2), .tFamilyResponse)
+        Do $$$AssertEquals(tFamilyResponse.RequestTokens _ "|" _ tFamilyResponse.BoundTokens, $List(tCase, 3), $List(tCase, 1) _ ", " _ $List(tCase, 4) _ ": whole|billed " _ $List(tCase, 3))
+    }
+}
+
+/// <p>The weighted count is the whole count less the cached part plus the weight times it, rounded up
+/// to a whole token; a cached part outside 0 to the whole count is clamped into it, and a weight of
+/// 1 is the whole count.</p>
+/// <p>Mutations: <method>OcuPilot.Kernel.Provider.Response.WeightedTokens</method> rounds down -> the
+/// fraction legs go red; leaves the cached part unclamped -> the clamp legs go red.</p>
+Method TestTheWeightedCountRoundsUpAndClampsTheCachedPart()
+{
+    For tCase = $ListBuild(3210, 3000, .1, 510), $ListBuild(6, 1, .1, 6), $ListBuild(15, 15, .1, 2), $ListBuild(10, 10, .01, 1), $ListBuild(100, 500, .1, 10), $ListBuild(100, -5, .1, 100), $ListBuild(100, 50, 1, 100), $ListBuild(100, 50, 0, 50), $ListBuild(0, 0, .1, 0), $ListBuild(-4, 3, .1, 0) {
+        Set tCount = ##class(OcuPilot.Kernel.Provider.Response).WeightedTokens($List(tCase, 1), $List(tCase, 2), $List(tCase, 3))
+        Do $$$AssertEquals(tCount, $List(tCase, 4), $List(tCase, 1) _ " tokens, " _ $List(tCase, 2) _ " cached, weight " _ $List(tCase, 3) _ " counts " _ $List(tCase, 4))
     }
 }
 

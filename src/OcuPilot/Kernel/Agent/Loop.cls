@@ -14,6 +14,11 @@
 /// against the snapshot the turn started with, the user's current grants over the resource list the
 /// handler passed, the poll lease, the wall clock and the token spend. Every one of them is a live
 /// read; nothing is cached for the length of the turn.</p>
+/// <p><b>The token spend</b> is each reply's output tokens plus its prompt at the weight the provider
+/// bills it (<property>OcuPilot.Kernel.Provider.Response.BoundTokens</property>, the whole count
+/// where an adapter set none), against <parameter>OcuPilot.Kernel.Agent.Limits.MAXTOKENS</parameter>
+/// (AD-31). The turn row and the ledger record the whole count
+/// (<property>OcuPilot.Kernel.Provider.Response.RequestTokens</property>).</p>
 /// <p><b>Caller contract:</b> the caller is the turn's job, has begun the turn
 /// (<method>OcuPilot.Kernel.State.Turn.GuardedBegin</method>), and finishes it with the outcome this
 /// answers. Not called from an escalated frame (AD-9).</p>
@@ -208,6 +213,7 @@ ClassMethod Run(pKey As %String, pUser As %String, pDefinitionId As %String, pMe
         }
         Set tIterations = 0
         Set tInput = 0
+        Set tBound = 0
         Set tOutput = 0
         Set tTurnBudget = +$Parameter(tLimits, "TURNRESULTMAXLENGTH")
         Set tToolLog = []
@@ -219,7 +225,7 @@ ClassMethod Run(pKey As %String, pUser As %String, pDefinitionId As %String, pMe
             Quit
         }
         For {
-            If ..Boundary(pKey, pUser, pReadOnly, pResources, pStartedSeconds, tInput + tOutput, .tState, .tCode) {
+            If ..Boundary(pKey, pUser, pReadOnly, pResources, pStartedSeconds, tBound + tOutput, .tState, .tCode) {
                 If tCode = ##class(OcuPilot.Api.Error).#TURNSTOPPED {
                     Set tStopSC = ##class(OcuPilot.Kernel.State.Step).GuardedAppend(pKey, "model", ..#MODELSTEP, "stopped", "", "", "", tLimits, .tStopSeq, .tStopStored)
                     If $$$ISOK(tStopSC) Set tLastSeq = tStopSeq
@@ -242,6 +248,7 @@ ClassMethod Run(pKey As %String, pUser As %String, pDefinitionId As %String, pMe
             Set pOutcome("egress") = tKept
             If $IsObject($Get(tResponse)) {
                 Set tInput = tInput + tResponse.RequestTokens
+                Set tBound = tBound + ..PromptBound(tResponse)
                 Set tOutput = tOutput + tResponse.ResponseTokens
             }
             ; A refusal is the provider declining (AD-39, DW-1181): the turn fails with a banner and
@@ -276,7 +283,7 @@ ClassMethod Run(pKey As %String, pUser As %String, pDefinitionId As %String, pMe
                 Set pOutcome("citations") = ##class(OcuPilot.Kernel.Agent.Citations).Cite(tResponse.Text, tCandidates).%ToJSON()
                 Quit
             }
-            Set tSC = ..AnswerTools(pKey, pUser, pDefinitionId, tResponse.Text, tToolUses, tLimits, .tMessages, tToolLog, .tLastSeq, pReadOnly, pResources, pStartedSeconds, tInput + tOutput, .tState, .tCode, pContextRowCap, tContextRoute, tResponse.ContentJson, tCandidates, .tTurnBudget)
+            Set tSC = ..AnswerTools(pKey, pUser, pDefinitionId, tResponse.Text, tToolUses, tLimits, .tMessages, tToolLog, .tLastSeq, pReadOnly, pResources, pStartedSeconds, tBound + tOutput, .tState, .tCode, pContextRowCap, tContextRoute, tResponse.ContentJson, tCandidates, .tTurnBudget)
             If $$$ISERR(tSC) Quit
             If tState '= "" {
                 Set pOutcome("state") = tState
@@ -332,6 +339,14 @@ ClassMethod KeepEgress(pKept As %String, pEgress, pContextSent As %Boolean) As %
     If tKeptLeaves = "" Quit tFact.%ToJSON()
     If 'tKeptLeaves && tFact.%Get("leavesInstance") Quit tFact.%ToJSON()
     Quit pKept
+}
+
+/// <p>What <var>pResponse</var>'s prompt counts against the turn's token limit:
+/// <property>OcuPilot.Kernel.Provider.Response.BoundTokens</property>, or the whole
+/// <property>OcuPilot.Kernel.Provider.Response.RequestTokens</property> when the adapter set none.</p>
+ClassMethod PromptBound(pResponse As OcuPilot.Kernel.Provider.Response) As %Integer
+{
+    Quit $Select(pResponse.BoundTokens '= "": +pResponse.BoundTokens, 1: +pResponse.RequestTokens)
 }
 
 /// <p>Whether the turn stops here, and if so in which state and with which code. See this class's

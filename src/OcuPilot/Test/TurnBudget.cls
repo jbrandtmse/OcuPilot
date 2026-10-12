@@ -3,7 +3,8 @@
 /// call of a turn over the same tool array, the turn row counts cached tokens as spend, a turn's
 /// tool results share one budget that cuts and then refuses, and no message already sent is changed
 /// by a later call -- each observed on the requests <class>OcuPilot.Test.ProviderStub</class>
-/// recorded.</p>
+/// recorded -- and the turn's token bound counts a cached prompt at its billed weight while the turn
+/// row and the ledger keep the whole count.</p>
 /// <p>Driven through <class>OcuPilot.Test.TurnLoopProbe</class> over the counting fixture tools, as
 /// <class>OcuPilot.Test.TurnTools</class> is; the budget's edges call
 /// <method>OcuPilot.Kernel.Agent.Loop.AnswerTools</method> directly with a budget argument.
@@ -21,6 +22,9 @@ Parameter EPHEMERAL = "{""type"":""ephemeral""}";
 /// <p>The limits that make three replies of about 5,500 characters meet a 9,000-character turn
 /// budget.</p>
 Parameter BUDGETLIMITS = "OcuPilot.Test.TurnLimitsBudget";
+
+/// <p>The limits that bound a turn at 3,200 tokens.</p>
+Parameter BILLEDLIMITS = "OcuPilot.Test.TurnLimitsBilled";
 
 /// <p>Rows and characters a row carries in the budget turn's tool calls: a result of about 5,500
 /// characters, inside the 6,000-character reply budget and over what the turn budget leaves after it.</p>
@@ -51,6 +55,19 @@ ClassMethod Used(pBody As %String, pInput As %Integer, pCreation As %Integer, pR
     Do tBody.usage.%Set("cache_read_input_tokens", pRead, "number")
     Do tBody.usage.%Set("output_tokens", 3, "number")
     Quit tBody.%ToJSON()
+}
+
+/// <p>The prompt tokens of turn <var>pTurnKey</var>'s provider-call ledger rows, in order, joined by
+/// semicolons.</p>
+ClassMethod LedgerTokens(pTurnKey As %String) As %String
+{
+    Set tOut = ""
+    Set tRS = ##class(%SQL.Statement).%ExecDirect(, "SELECT RequestTokens FROM OcuPilot_Kernel_State.Ledger WHERE %EXACT(TurnKey) = ? AND %EXACT(Kind) = ? ORDER BY Seq", pTurnKey, $Parameter("OcuPilot.Kernel.State.Ledger", "KINDLLM"))
+    If tRS.%SQLCODE < 0 Quit "(unreadable)"
+    While tRS.%Next() {
+        Set tOut = tOut _ $Select(tOut = "": "", 1: ";") _ tRS.%GetData(1)
+    }
+    Quit tOut
 }
 
 /// <p>How many times <var>pText</var> carries the cache member.</p>
@@ -408,6 +425,57 @@ Method TestNoTurnBudgetLeavesADirectCallAsItWas()
     Do $$$AssertEquals($Piece(tShape, "|", 1, 2), "0|1", "an oversized result is still cut")
     Do $$$AssertTrue($Piece(tShape, "|", 4) <= tCap, "to the reply budget alone: " _ $Piece(tShape, "|", 4) _ " of " _ tCap)
     Do ..CloseTurn(.tOpen)
+}
+
+/// <p>C5 -- the turn's token bound counts a cached prompt at its billed weight, and the turn row and
+/// the ledger keep the whole count. Three scripted Anthropic turns on <parameter>BILLEDLIMITS</parameter>
+/// (3,200 tokens), each opening with a call that writes a 3,000-token cache: a second call reading
+/// 1,000 tokens spends 4,026 whole and 3,126 billed, so the turn completes; one reading 3,000 spends
+/// 3,326 billed, so the turn is abandoned for tokens; and one writing 1,000 spends 4,026 at full
+/// weight, so it is abandoned too.</p>
+/// <p>Mutations: <method>OcuPilot.Kernel.Agent.Loop.Run</method> sums
+/// <property>OcuPilot.Kernel.Provider.Response.RequestTokens</property> into the bound -> the first
+/// leg goes red; <method>OcuPilot.Kernel.Provider.Anthropic.MapResponse</method> counts cache writes
+/// at 0 -> the second and third legs go red; <parameter>OcuPilot.Kernel.Provider.Anthropic.CACHEREADWEIGHT</parameter>
+/// 0 -> the second goes red, 0.5 -> the first; <method>OcuPilot.Kernel.Agent.Loop.Run</method>
+/// records the bound as the turn row's input, or
+/// <method>OcuPilot.Kernel.Agent.Loop.RecordProviderRow</method> as the ledger's -> the whole-count
+/// assertions go red.</p>
+Method TestTheTokenBoundCountsCachedReadsAtTheirBilledWeight()
+{
+    Do $ClassMethod(..#LOOP, "SetDispatchClass", ..#DISPATCH)
+    Do $ClassMethod(..#LOOP, "SetLimitsClass", ..#BILLEDLIMITS)
+    Do $$$AssertEquals($Parameter(..#BILLEDLIMITS, "MAXTOKENS"), 3200, "the token limit is 3,200")
+    Set tLegs = $ListBuild($ListBuild("reads billed", 0, 1000, "completed||done", 3, 5030, "3010;1010;1010"), $ListBuild("heavier reads", 0, 3000, "abandoned|TURN.LIMIT.TOKENS|", 2, 6020, "3010;3010"), $ListBuild("cache writes", 1000, 0, "abandoned|TURN.LIMIT.TOKENS|", 2, 4020, "3010;1010"))
+    Set tPointer = 0
+    While $ListNext(tLegs, tPointer, tLeg) {
+        Set tName = $List(tLeg, 1)
+        Do $ClassMethod(..#STUB, "Reset")
+        Do $ClassMethod(..#STUB, "QueueAnswer", 200, ..Used(..Reply("", [{"id": "toolu_1", "name": "probe_counter_read", "input": {"marker": "m1"}}]), 10, 3000, 0))
+        Do $ClassMethod(..#STUB, "QueueAnswer", 200, ..Used(..Reply("", [{"id": "toolu_2", "name": "probe_counter_read", "input": {"marker": "m2"}}]), 10, $List(tLeg, 2), $List(tLeg, 3)))
+        Do $ClassMethod(..#STUB, "QueueAnswer", 200, ..Used(..Reply("done"), 10, $List(tLeg, 2), $List(tLeg, 3)))
+        Set tKey = ..RunTurn(.tOutcome)
+        Do $$$AssertEquals(tOutcome("state") _ "|" _ tOutcome("code") _ "|" _ tOutcome("reply"), $List(tLeg, 4), tName _ ": the turn ends as the billed weight says")
+        Do $$$AssertEquals($ClassMethod(..#STUB, "Calls"), $List(tLeg, 5), tName _ ": after " _ $List(tLeg, 5) _ " provider calls")
+        Do $$$AssertEquals(##class(OcuPilot.Test.TurnFixture).Field(tKey, "InputTokens"), $List(tLeg, 6), tName _ ": the turn row keeps the whole count")
+        Do $$$AssertEquals(..LedgerTokens(tKey), $List(tLeg, 7), tName _ ": and so does each ledger row")
+        Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Ledger).GuardedDeleteForTurn(tKey), tName _ ": the ledger rows are removed")
+    }
+}
+
+/// <p>A reply whose adapter set no billed figure counts its whole prompt toward the bound, and a billed
+/// figure of 0 is a figure.</p>
+/// <p>Mutation: <method>OcuPilot.Kernel.Agent.Loop.PromptBound</method> answers 0 for an empty figure
+/// -> this goes red.</p>
+Method TestAnEmptyBoundFigureFallsBackToTheWholePrompt()
+{
+    Set tResponse = ##class(OcuPilot.Kernel.Provider.Response).%New()
+    Set tResponse.RequestTokens = 7
+    Do $$$AssertEquals($ClassMethod(..#LOOP, "PromptBound", tResponse), 7, "with no billed figure the whole prompt counts")
+    Set tResponse.BoundTokens = 3
+    Do $$$AssertEquals($ClassMethod(..#LOOP, "PromptBound", tResponse), 3, "with one, the billed figure")
+    Set tResponse.BoundTokens = 0
+    Do $$$AssertEquals($ClassMethod(..#LOOP, "PromptBound", tResponse), 0, "a billed figure of 0 is not an empty one")
 }
 
 }
