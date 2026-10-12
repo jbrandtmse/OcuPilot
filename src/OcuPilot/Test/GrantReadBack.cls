@@ -5,8 +5,9 @@
 /// <p>Needs the production profile installed (primed in <method>OnBeforeOneTest</method>, a
 /// no-op on an installed instance) and installs and removes the disposable <code>"probe"</code>
 /// profile. A grant that did not take is armed through <class>OcuPilot.Test.GrantFault</class>;
-/// the widened-grant test creates a role and two grants of its own and revokes them in
-/// <method>DropProbeGrants</method>.</p>
+/// the widened-grant tests create a role and grants of their own and revoke them in
+/// <method>DropProbeGrants</method>, and one creates an account that cannot enter
+/// <code>%SYS</code> (<method>LimitedPrincipal</method>) and removes it.</p>
 /// <p><b>It runs OcuPilot's production install, so it runs on a throwaway container only</b>
 /// (<file>scripts/ci-throwaway.sh</file>, <code>ocupilot-ci</code>), and
 /// <method>OnBeforeAllTests</method> refuses anywhere <parameter>ARMINGVARIABLE</parameter> does
@@ -42,12 +43,23 @@ Method OnBeforeOneTest() As %Status
 Method OnAfterOneTest() As %Status
 {
     Do ##class(OcuPilot.Test.GrantFault).Disarm()
+    Do ##class(OcuPilot.Test.InstallerProbe).Clear()
     Do ..DropProbeGrants()
+    Do ..LimitedPrincipal(0)
     Quit ##class(OcuPilot.Install.Installer).Uninstall("probe", 1)
 }
 
 /// <p>The role <method>TestAWidenedGrantIsNamedAndKept</method> grants the schema to.</p>
 Parameter GRANTEE As %String = "OcuProbe1843Grantee";
+
+/// <p>The account and role <method>TestAnAccountThatCannotEnterSysGetsOneWarnNamingTheSwitch</method>
+/// creates; the role reads the install namespace's databases and nothing else.</p>
+Parameter LIMITEDUSER As %String = "OcuProbe1843Limited";
+
+Parameter LIMITEDROLE As %String = "OcuProbe1843LimitedRole";
+
+/// <p>A schema that is not OcuPilot's, granted on in the install namespace by the filter test.</p>
+Parameter OTHERSCHEMA As %String = "OcuProbe1843Other";
 
 /// <p>The text every widened-grant warn starts with, which an install with only the escalation
 /// role's grant never emits.</p>
@@ -223,6 +235,168 @@ Method TestAnUnreadablePrivilegeCatalogIsOneWarn()
     }
 }
 
+/// <p>A catalog query that exists but answers a failing status when executed is one warn carrying
+/// that status, and the check still answers OK.</p>
+/// <p>Mutation (Rule 19): drop the status check after <code>tRS.Execute()</code> in
+/// <method>OcuPilot.Install.Installer.ReportWidenedGrants</method> -- the failed read is no longer
+/// reported as the query's status and this goes red.</p>
+Method TestACatalogQueryThatFailsToExecuteIsOneWarn()
+{
+    Try {
+        Do ##class(OcuPilot.Test.InstallerProbe).Clear()
+        Do ##class(OcuPilot.Test.InstallerProbe).SetPrivilegeCatalogExecuteFails(1)
+        Set tWarns = ##class(OcuPilot.Test.InstallerProbe).WidenedGrantWarns($NAMESPACE, .tSC, 1)
+        Do ##class(OcuPilot.Test.InstallerProbe).Clear()
+        Do $$$AssertStatusOK(tSC, "the check answers OK when the catalog read fails: " _ $System.Status.GetErrorText(tSC))
+        Do $$$AssertEquals($Length(tWarns, ..#UNREADABLEWARN) - 1, 1, "one warn says the catalog could not be read: " _ tWarns)
+        Do $$$AssertTrue(tWarns [ "DirectoryList", "and carries the status the query answered: " _ tWarns)
+        Do $$$AssertTrue('(tWarns [ ..#WIDENEDWARN), "and none names a widened grant")
+    } Catch ex {
+        Do ##class(OcuPilot.Test.InstallerProbe).Clear()
+        Throw ex
+    }
+}
+
+/// <p>Only a grant in the install namespace on OcuPilot's own schema is reported: the grantee's grant
+/// on a same-named schema in another namespace, and on another schema here, are not; its grant on
+/// OcuPilot's schema here is, once.</p>
+/// <p>Mutations (Rule 19): drop the namespace comparison in
+/// <method>OcuPilot.Install.Installer.ReportWidenedGrants</method>, or its object classification
+/// (<code>If tKind = "" Continue</code>) -- the "neither grant is reported" leg goes red.</p>
+Method TestOnlyAGrantOnOcuPilotsSchemaInTheInstallNamespaceIsReported()
+{
+    Set tGrantee = ..#GRANTEE
+    Set tHere = $NAMESPACE
+    Do $$$AssertStatusOK(##class(OcuPilot.Install.Installer).StateTables(.tTables), "the tables are derived")
+    Set tSchema = $Order(tTables(""))
+    Do ..DropProbeGrants()
+    Do $$$AssertStatusOK(..ProbeRole("create"), "the probe grantee role is created")
+    Do $$$AssertEquals(..SqlIn("%SYS", "GRANT SELECT ON SCHEMA " _ tSchema _ " TO " _ tGrantee), 0, "the role is granted OcuPilot's schema name in another namespace")
+    Do $$$AssertEquals(..SqlIn(tHere, "GRANT SELECT ON SCHEMA " _ ..#OTHERSCHEMA _ " TO " _ tGrantee), 0, "and a schema that is not OcuPilot's here")
+    Do $$$AssertTrue('(##class(OcuPilot.Test.InstallerProbe).WidenedGrantWarns(tHere) [ tGrantee), "neither grant is reported")
+    Do $$$AssertEquals(..SqlIn(tHere, "GRANT SELECT ON SCHEMA " _ tSchema _ " TO " _ tGrantee), 0, "the role is granted OcuPilot's schema here")
+    Set tWarns = ##class(OcuPilot.Test.InstallerProbe).WidenedGrantWarns(tHere)
+    Do $$$AssertEquals($Length(tWarns, tGrantee) - 1, 1, "and is named once: " _ tWarns)
+    Do $$$AssertTrue('(tWarns [ ..#OTHERSCHEMA), "without the other schema")
+}
+
+/// <p>An account that cannot enter <code>%SYS</code> turns the check into one warn naming the refused
+/// switch, restores its namespace and answers OK.</p>
+/// <p>Mutation (Rule 19): drop the failure branch after the namespace switch in
+/// <method>OcuPilot.Install.Installer.ReportWidenedGrants</method> -- the warn stops naming it.</p>
+Method TestAnAccountThatCannotEnterSysGetsOneWarnNamingTheSwitch()
+{
+    Do $$$AssertStatusOK(..LimitedPrincipal(1), "the account is created")
+    Do $$$AssertStatusOK(##class(OcuPilot.Install.Installer).StateTables(.tTables), "the tables are derived")
+    Set tSchema = $Order(tTables(""))
+    Set tOut = ..RunAsLimited(tSchema, $Order(tTables(tSchema, "")))
+    Do $$$AssertEquals(tOut.%Get("error"), "", "the child ran: " _ tOut.%ToJSON())
+    Do $$$AssertEquals(tOut.%Get("username"), ..#LIMITEDUSER, "as the limited account")
+    Do $$$AssertEquals(tOut.%Get("status"), "OK", "and the check answers OK")
+    Set tWarns = tOut.%Get("warns")
+    Do $$$AssertEquals($Length(tWarns, ..#UNREADABLEWARN) - 1, 1, "one warn says the catalog could not be read: " _ tWarns)
+    Do $$$AssertTrue(tWarns [ "PROTECT", "and names the switch the account was refused: " _ tWarns)
+    Do $$$AssertEquals(tOut.%Get("namespace"), $NAMESPACE, "and the namespace is restored")
+}
+
+/// <p>Run <var>pStatement</var> in namespace <var>pNamespace</var>, restore the namespace, and answer
+/// the SQLCODE (<code>-1000</code> when it raised).</p>
+ClassMethod SqlIn(pNamespace As %String, pStatement As %String) As %Integer
+{
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Set tCode = ##class(%SQL.Statement).%ExecDirect(, pStatement).%SQLCODE
+    } Catch ex {
+        Set tCode = -1000
+    }
+    Set $NAMESPACE = tOrigNS
+    Quit tCode
+}
+
+/// <p>Create (<var>pCreate</var> 1) or delete (0) the account <parameter>LIMITEDUSER</parameter> and
+/// its role <parameter>LIMITEDROLE</parameter>, which holds read on the install namespace's databases
+/// and nothing else, so the account cannot enter <code>%SYS</code>. Switches and restores (AD-16).</p>
+ClassMethod LimitedPrincipal(pCreate As %Boolean) As %Status
+{
+    Set tSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set tInstallNs = ##class(OcuPilot.Install.Installer).ResolveNamespace()
+        Set tSC = ##class(OcuPilot.Kernel.Utils).SwitchNamespace("%SYS", .tOrigNS)
+        If $$$ISERR(tSC) Quit
+        Set tNamespace = ##class(Config.Namespaces).Open(tInstallNs)
+        If ##class(Security.Users).Exists(..#LIMITEDUSER) Do ##class(Security.Users).Delete(..#LIMITEDUSER)
+        If ##class(Security.Roles).Exists(..#LIMITEDROLE) Do ##class(Security.Roles).Delete(..#LIMITEDROLE)
+        If 'pCreate Quit
+        Set tResources = ""
+        For tName = tNamespace.Globals, tNamespace.Routines {
+            Set tResource = ##class(SYS.Database).%OpenId(##class(Config.Databases).Open(tName).Directory).ResourceName _ ":R"
+            If tResources '[ tResource Set tResources = tResources _ $Select(tResources = "": "", 1: ",") _ tResource
+        }
+        Set tSC = ##class(Security.Roles).Create(..#LIMITEDROLE, "OcuPilot.Test.GrantReadBack disposable role", tResources, "")
+        If $$$ISERR(tSC) Quit
+        Set tPassword = "OcuPilotGrb" _ $Translate($System.Encryption.Base64Encode($System.Encryption.GenCryptRand(18), 1), "+/=", "") _ "!Aa9"
+        Set tSC = ##class(Security.Users).Create(..#LIMITEDUSER, ..#LIMITEDROLE, tPassword, "OcuPilot.Test.GrantReadBack disposable account", "", "", "", 0, 1, "Created by OcuPilot.Test.GrantReadBack; deleted by it")
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tSC = ex.AsStatus()
+    }
+    Set $NAMESPACE = tOrigNS
+    Quit tSC
+}
+
+/// <p>Run <method>Limited</method> over table <var>pTable</var> of schema <var>pSchema</var> (derived by
+/// the caller; the account holds no SQL privilege to derive them) in a child process and answer what
+/// it signalled, or an object carrying <code>error</code>.</p>
+ClassMethod RunAsLimited(pSchema As %String, pTable As %String) As %DynamicObject
+{
+    Set tOut = {}
+    Try {
+        Do $System.Event.Clear($Job)
+        Job ##class(OcuPilot.Test.GrantReadBack).Limited($Job, ..#LIMITEDUSER, $NAMESPACE, pSchema, pTable)::10
+        If '$Test {
+            Do tOut.%Set("error", "the child process did not start")
+            Quit
+        }
+        Set tMessage = $System.Event.WaitMsg("", 60)
+        If $ListGet(tMessage, 1) '= 1 {
+            Do tOut.%Set("error", "the child process signalled nothing within 60 seconds")
+            Quit
+        }
+        Set tOut = ##class(%DynamicObject).%FromJSON($ListGet(tMessage, 2))
+    } Catch ex {
+        Set tOut = {}
+        Do tOut.%Set("error", ex.DisplayString())
+    }
+    Quit tOut
+}
+
+/// <p>The child: log in as <var>pUser</var>, run <method>OcuPilot.Test.InstallerProbe.DriveReportWidenedGrants</method>
+/// for <var>pInstallNs</var> over table <var>pTable</var> of schema <var>pSchema</var> and signal
+/// <code>{error, username, status, warns, namespace}</code> to process <var>pParent</var>.</p>
+/// <p><b>Caller contract:</b> <code>JOB</code>ed by <method>RunAsLimited</method> and by nothing else;
+/// <code>$System.Security.Login</code> switches this process's own user context.</p>
+ClassMethod Limited(pParent As %Integer, pUser As %String, pInstallNs As %String, pSchema As %String, pTable As %String)
+{
+    Set tOut = {"error": ""}
+    Try {
+        If '$SYSTEM.Security.Login(pUser) {
+            Do tOut.%Set("error", "the login as " _ pUser _ " failed")
+            Quit
+        }
+        Do tOut.%Set("username", $Username, "string")
+        Set tTables(pSchema, pTable) = ""
+        Set tSC = ##class(OcuPilot.Test.InstallerProbe).DriveReportWidenedGrants(pInstallNs, .tTables)
+        Do tOut.%Set("status", $Select($$$ISOK(tSC): "OK", 1: $System.Status.GetErrorText(tSC)), "string")
+        Do tOut.%Set("warns", ##class(OcuPilot.Test.InstallerProbe).CapturedAllWithData("warn"), "string")
+        Do tOut.%Set("namespace", $Namespace, "string")
+    } Catch ex {
+        Do tOut.%Set("error", ex.DisplayString())
+    }
+    Do $System.Event.Signal(pParent, tOut.%ToJSON())
+}
+
 /// <p>The name of a column of <var>pTable</var> (<code>&lt;schema&gt;.&lt;table&gt;</code>) other than
 /// its id, read from the class dictionary's SQL catalog; <code>""</code> when it has none.</p>
 ClassMethod ProbeColumn(pTable As %String) As %String
@@ -278,6 +452,8 @@ Method DropProbeGrants()
             Do ##class(%SQL.Statement).%ExecDirect(, "REVOKE SELECT,INSERT,UPDATE,DELETE ON SCHEMA " _ tSchema _ " FROM " _ ..#GRANTEE)
             If tColumn '= "" Do ##class(%SQL.Statement).%ExecDirect(, "REVOKE SELECT (" _ tColumn _ ") ON " _ tTable _ " FROM " _ ..#GRANTEE)
             Do ##class(%SQL.Statement).%ExecDirect(, "REVOKE SELECT ON " _ tTable _ " FROM _PUBLIC")
+            Do ..SqlIn("%SYS", "REVOKE SELECT ON SCHEMA " _ tSchema _ " FROM " _ ..#GRANTEE)
+            Do ..SqlIn($NAMESPACE, "REVOKE SELECT ON SCHEMA " _ ..#OTHERSCHEMA _ " FROM " _ ..#GRANTEE)
         }
         Do ..ProbeRole("delete")
     } Catch ex {

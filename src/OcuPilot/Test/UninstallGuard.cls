@@ -15,6 +15,10 @@
 /// inventory rows survive with it. The production case, where the rows live in the very
 /// database the refusal protects, was observed on a throwaway container (this story's
 /// spec, <code>## Verification</code>).</p>
+/// <p>It also pins which roles uninstall keeps: the read of the roles web applications carry names
+/// a role in every form <code>MatchRoles</code> stores it, and a roster role no present application
+/// carries is removed. Those tests create web applications of their own under
+/// <parameter>ROLEAPPPREFIX</parameter> and remove them in every exit path.</p>
 /// <p><b>It runs OcuPilot's production install, so it runs on a throwaway container only</b>
 /// (<file>scripts/ci-throwaway.sh</file>, <code>ocupilot-ci</code>), and
 /// <method>OnBeforeAllTests</method> refuses anywhere <parameter>ARMINGVARIABLE</parameter> does
@@ -26,6 +30,13 @@ Class OcuPilot.Test.UninstallGuard Extends %UnitTest.TestCase
 /// <code>1</code>. Only <file>scripts/ci-throwaway.sh</file> sets it, so the install this class
 /// runs happens on the container that script builds and nowhere else.</p>
 Parameter ARMINGVARIABLE = "OCUPILOT_ALLOW_PRODUCTION_INSTALL";
+
+/// <p>The path prefix of the web applications the role tests create, one letter of
+/// <parameter>ROLEAPPSUFFIXES</parameter> each.</p>
+Parameter ROLEAPPPREFIX As %String = "/csp/ocuprobe1843";
+
+/// <p>The path suffixes <parameter>ROLEAPPPREFIX</parameter> takes.</p>
+Parameter ROLEAPPSUFFIXES As %String = "abcd";
 
 /// <p>Refuse to run at all unless this instance is armed for a production install.</p>
 /// <p><b>A doc comment does not keep a class that installs from installing.</b> Test classes are
@@ -62,6 +73,7 @@ Method OnAfterOneTest() As %Status
 {
     Do ##class(OcuPilot.Test.FixtureFault).Disarm()
     Do ##class(OcuPilot.Test.UninstallFault).Disarm()
+    Do ..RemoveRoleApps()
     Quit ##class(OcuPilot.Test.ProbeApps).Remove()
 }
 
@@ -300,6 +312,92 @@ Method TestUninstallRefusesWhenTheApplicationRolesCannotBeRead()
     } Catch ex {
         Do ##class(OcuPilot.Test.UninstallFault).Disarm()
         Throw ex
+    }
+}
+
+/// <p>The read of which roles web applications carry names a role in every form
+/// <code>MatchRoles</code> stores it -- an unconditional entry (<code>:Role</code>) and a conditional
+/// one (<code>Held:Role</code>), on either side of the colon -- keyed by the upper-cased role and
+/// listing every application that names it. It never lists an application that names only other roles
+/// or none, and leaves out an application the caller excepts.</p>
+/// <p>Mutations (Rule 19): read only each entry's target role in
+/// <method>OcuPilot.Install.Installer.RoleNamesIn</method> -- the held-role legs go red. Drop the
+/// <var>pExcept</var> skip from <method>OcuPilot.Install.Installer.RolesInUse</method> -- the excepted
+/// leg goes red.</p>
+Method TestRolesInUseNamesARoleInEveryFormAnApplicationCarriesIt()
+{
+    Set tA = ..#ROLEAPPPREFIX _ "a"
+    Set tB = ..#ROLEAPPPREFIX _ "b"
+    Set tC = ..#ROLEAPPPREFIX _ "c"
+    Set tD = ..#ROLEAPPPREFIX _ "d"
+    Do ..RemoveRoleApps()
+    Try {
+        Do $$$AssertStatusOK(##class(OcuPilot.Test.Provenance).CreateForeignApplication(tA, ":%Operator"), "an application carries %Operator unconditionally")
+        Do $$$AssertStatusOK(##class(OcuPilot.Test.Provenance).CreateForeignApplication(tB, "%Manager:%Operator"), "one carries %Operator when its user holds %Manager")
+        Do $$$AssertStatusOK(##class(OcuPilot.Test.Provenance).CreateForeignApplication(tC, "%Developer:%Manager"), "one carries %Manager when its user holds %Developer")
+        Do $$$AssertStatusOK(##class(OcuPilot.Test.Provenance).CreateForeignApplication(tD), "and one carries no role")
+
+        Do $$$AssertStatusOK(##class(OcuPilot.Test.InstallerProbe).DriveRolesInUse(.tNone, .tRoles), "the read succeeds")
+        Set tOperator = $Get(tRoles("%OPERATOR"))
+        Do $$$AssertTrue(..Names(tOperator, tA) && ..Names(tOperator, tB), "%Operator is named by the unconditional and the conditional entry: " _ tOperator)
+        Do $$$AssertTrue('..Names(tOperator, tC) && '..Names(tOperator, tD), "and by no application that carries only other roles or none")
+        Set tManager = $Get(tRoles("%MANAGER"))
+        Do $$$AssertTrue(..Names(tManager, tB) && ..Names(tManager, tC), "%Manager is named where it is held and where it is carried: " _ tManager)
+        Do $$$AssertTrue('..Names(tManager, tA) && '..Names(tManager, tD), "and not by an application that names neither")
+        Set tDeveloper = $Get(tRoles("%DEVELOPER"))
+        Do $$$AssertTrue(..Names(tDeveloper, tC) && '..Names(tDeveloper, tA) && '..Names(tDeveloper, tB) && '..Names(tDeveloper, tD), "%Developer is named by the one entry that holds it: " _ tDeveloper)
+
+        Set tExcept(tA) = ""
+        Do $$$AssertStatusOK(##class(OcuPilot.Test.InstallerProbe).DriveRolesInUse(.tExcept, .tRoles), "the read succeeds with an application excepted")
+        Do $$$AssertTrue('..Names($Get(tRoles("%OPERATOR")), tA) && ..Names($Get(tRoles("%OPERATOR")), tB), "an excepted application is left out and the others stay")
+    } Catch ex {
+        Do ..RemoveRoleApps()
+        Throw ex
+    }
+    Do ..RemoveRoleApps()
+}
+
+/// <p>A roster matching role goes with uninstall when the web applications present on the instance
+/// carry only other roles: the present application keeps its own roles and no role is reported kept.</p>
+/// <p>Mutation (Rule 19): let the role loop of <method>OcuPilot.Install.Installer.Uninstall</method>
+/// keep every roster role whenever any application carries any role (<code>$Data(tInUse)</code>) -- the
+/// role survives and this goes red.</p>
+Method TestUninstallRemovesAMatchingRoleThatAPresentApplicationDoesNotCarry()
+{
+    Set tRole = $Piece(##class(OcuPilot.Test.Provenance).MatchRolesOf(##class(OcuPilot.Test.Provenance).#PROBESHELL), ":", 2)
+    Do $$$AssertTrue(tRole '= "", "the shell application carries a matching role: " _ tRole)
+    Set tApp = ..#ROLEAPPPREFIX _ "a"
+    Do ..RemoveRoleApps()
+    Try {
+        Do $$$AssertStatusOK(##class(OcuPilot.Test.Provenance).CreateForeignApplication(tApp, ":%Operator"), "a present application carries another role")
+        Do ##class(OcuPilot.Test.InstallerProbe).Clear()
+        Set tSC = ##class(OcuPilot.Test.InstallerProbe).Uninstall("probe", 1)
+        Set tWarns = ##class(OcuPilot.Test.InstallerProbe).CapturedAll("warn")
+        Do ##class(OcuPilot.Test.InstallerProbe).Clear()
+
+        Do $$$AssertStatusOK(tSC, "uninstall succeeds: " _ $System.Status.GetErrorText(tSC))
+        Do $$$AssertTrue('##class(OcuPilot.Test.Provenance).RoleExists(tRole), "the matching role is removed")
+        Do $$$AssertEquals(##class(OcuPilot.Test.Provenance).MatchRolesOf(tApp), ":%Operator", "the present application keeps its own role")
+        Do $$$AssertTrue('(tWarns [ "left a matching role in place"), "and no role is reported kept: " _ tWarns)
+    } Catch ex {
+        Do ..RemoveRoleApps()
+        Throw ex
+    }
+    Do ..RemoveRoleApps()
+}
+
+/// <p>Whether <var>pPath</var> is one of the comma-separated applications in <var>pList</var>.</p>
+ClassMethod Names(pList As %String, pPath As %String) As %Boolean
+{
+    Quit ($ListFind($ListFromString(pList, ", "), pPath) > 0)
+}
+
+/// <p>Delete every web application the role tests create that still exists.</p>
+ClassMethod RemoveRoleApps()
+{
+    For tI = 1:1:$Length(..#ROLEAPPSUFFIXES) {
+        Set tPath = ..#ROLEAPPPREFIX _ $Extract(..#ROLEAPPSUFFIXES, tI)
+        If ##class(OcuPilot.Test.Provenance).ApplicationDispatchClass(tPath) '= "" Do ##class(OcuPilot.Test.Provenance).DeleteApplication(tPath)
     }
 }
 

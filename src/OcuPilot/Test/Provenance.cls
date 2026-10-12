@@ -84,7 +84,7 @@ Method CleanProbe() As %Status
 /// <parameter>FOREIGNCLASS</parameter> -- an application OcuPilot did not create and has no
 /// record of -- carrying <var>pMatchRoles</var> in its <code>MatchRoles</code> when given.
 /// Switches to <code>%SYS</code> and restores (AD-16).</p>
-Method CreateForeignApplication(pPath As %String, pMatchRoles As %String = "") As %Status
+ClassMethod CreateForeignApplication(pPath As %String, pMatchRoles As %String = "") As %Status
 {
     Set tSC = $$$OK
     Set tOrigNS = $NAMESPACE
@@ -109,7 +109,7 @@ Method CreateForeignApplication(pPath As %String, pMatchRoles As %String = "") A
 }
 
 /// <p>Whether a web application exists at <var>pPath</var>, and its live dispatch class.</p>
-Method ApplicationDispatchClass(pPath As %String) As %String
+ClassMethod ApplicationDispatchClass(pPath As %String) As %String
 {
     Set tClass = ""
     Set tOrigNS = $NAMESPACE
@@ -367,7 +367,7 @@ Method TestUninstallKeepsAMatchingRoleAnotherApplicationCarries()
 
 /// <p>Delete the web application at <var>pPath</var>. Switches to <code>%SYS</code> and restores
 /// (AD-16).</p>
-Method DeleteApplication(pPath As %String) As %Status
+ClassMethod DeleteApplication(pPath As %String) As %Status
 {
     Set tSC = $$$OK
     Set tOrigNS = $NAMESPACE
@@ -384,7 +384,7 @@ Method DeleteApplication(pPath As %String) As %Status
 
 /// <p>The live <code>MatchRoles</code> of the application at <var>pPath</var>, or
 /// <code>""</code>. Switches to <code>%SYS</code> and restores (AD-16).</p>
-Method MatchRolesOf(pPath As %String) As %String
+ClassMethod MatchRolesOf(pPath As %String) As %String
 {
     Set tRoles = ""
     Set tOrigNS = $NAMESPACE
@@ -456,7 +456,7 @@ Method TestTheLeftoverCheckSeesEveryRecordedProbeApplication()
 
 /// <p>Whether the role <var>pRole</var> exists. Switches to <code>%SYS</code> and restores
 /// (AD-16).</p>
-Method RoleExists(pRole As %String) As %Boolean
+ClassMethod RoleExists(pRole As %String) As %Boolean
 {
     Set tExists = 0
     Set tOrigNS = $NAMESPACE
