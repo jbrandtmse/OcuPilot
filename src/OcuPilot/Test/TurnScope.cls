@@ -173,13 +173,15 @@ Method TestARegistryWithoutTheSearchIsSentWhole()
 {
     Do $ClassMethod(..#LOOP, "SetDispatchClass", ..#DISPATCH)
     Do $ClassMethod(..#LOOP, "SetLimitsClass", "OcuPilot.Kernel.Agent.Limits")
+    Do $$$AssertStatusOK(##class(OcuPilot.Test.DispatchTool.Registry).ProviderTools(.tAdvertised), "the counting registry advertises")
+    Do $$$AssertTrue(+$Get(tAdvertised) > 1, "more than one counting tool, so the last is told from the rest: " _ +$Get(tAdvertised))
     Do $ClassMethod(..#STUB, "QueueAnswer", 200, ..Reply("done"))
     Set tKey = ..RunTurn(.tOutcome)
     Do $$$AssertEquals(tOutcome("state"), "completed", "the turn completes")
     Set tTools = ##class(OcuPilot.Test.TurnBudget).Sent(1).tools
-    Do $$$AssertEquals(tTools.%Size(), 2, "both counting tools are sent")
+    Do $$$AssertEquals(tTools.%Size(), +$Get(tAdvertised), "every counting tool is sent")
     Do $$$AssertEquals(..Deferred(tTools, 1), "", "none is deferred")
-    Do $$$AssertEquals(##class(OcuPilot.Test.TurnBudget).Marks(tTools.%ToJSON()) _ "|" _ ##class(OcuPilot.Test.TurnBudget).MarkOf(tTools.%Get(1)), "1|" _ ##class(OcuPilot.Test.TurnBudget).#EPHEMERAL, "and the marker is on the last tool alone")
+    Do $$$AssertEquals(##class(OcuPilot.Test.TurnBudget).Marks(tTools.%ToJSON()) _ "|" _ ##class(OcuPilot.Test.TurnBudget).MarkOf(tTools.%Get(tTools.%Size() - 1)), "1|" _ ##class(OcuPilot.Test.TurnBudget).#EPHEMERAL, "and the marker is on the last tool alone")
 }
 
 /// <p>An unadvertised tool is never sent or dispatched (AD-53): the hidden fixture tool is in the
@@ -201,33 +203,45 @@ Method TestAnUnadvertisedToolIsNeitherSentNorDispatched()
 }
 
 /// <p>The size of a starting set (C2) -- for every built screen, the production roster scoped by the
-/// tools that screen names, carried as <method>OcuPilot.Kernel.Provider.ToolDefAdapter.ToOpenAi</method>
-/// carries it, is at most <parameter>STARTINGSETMAX</parameter> characters, while the whole roster is
-/// more. The largest set is named in the assertion text.</p>
-/// <p>Mutation: <method>OcuPilot.Kernel.Provider.ToolDefAdapter.Carried</method> answers every index
-/// -> this goes red.</p>
+/// tools that screen names (<method>OcuPilot.Screen.Context.ScreenTools</method>, the list a turn's
+/// context carries), carried as <method>OcuPilot.Kernel.Provider.ToolDefAdapter.ToOpenAi</method>
+/// carries it, holds every tool the screen names and is at most <parameter>STARTINGSETMAX</parameter>
+/// characters, while the whole roster is more; the largest set holds more tools than the shell's own.
+/// The largest set is named in the assertion text.</p>
+/// <p>Mutations: <method>OcuPilot.Kernel.Provider.ToolDefAdapter.Carried</method> answers every index
+/// -> this goes red; <method>OcuPilot.Kernel.Agent.Loop.ContextTools</method> answers no names -> this
+/// goes red on the screens' tools.</p>
 Method TestEveryBuiltScreensStartingSetFitsTheLimit()
 {
     Do $$$AssertStatusOK(##class(OcuPilot.Screen.Tool.Registry).ProviderTools(.tAll), "the production registry advertises")
     Do $$$AssertStatusOK(##class(OcuPilot.Screen.Registry).Descriptors(.tDescriptors), "the screen registry lists its screens")
     Do $$$AssertStatusOK(##class(OcuPilot.Kernel.Provider.ToolDefAdapter).ToOpenAi(.tAll, .tWhole), "the whole roster is declared")
     Set tWholeLength = $Length(tWhole.%ToJSON())
+    Kill tShellOnly
+    Merge tShellOnly = tAll
+    Do ##class(OcuPilot.Kernel.Agent.Loop).Scope(.tShellOnly, "")
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.Provider.ToolDefAdapter).ToOpenAi(.tShellOnly, .tShellDeclarations), "the starting set of a turn with no screen is declared")
+    Set tShellTools = tShellDeclarations.%Size()
     Set tBuilt = 0
     Set tLargest = 0
     Set tLargestRoute = ""
     Set tLargestTools = 0
     Set tOver = ""
+    Set tMissing = ""
     For tI = 1:1:$ListLength(tDescriptors) {
         Set tDescriptor = $List(tDescriptors, tI)
         If '$ClassMethod(tDescriptor, "IsBuilt") Continue
         Set tBuilt = tBuilt + 1
         Kill tScoped
         Merge tScoped = tAll
-        Do ##class(OcuPilot.Screen.Context).ScreenTools(tDescriptor, .tNames)
+        Do $$$AssertStatusOK(##class(OcuPilot.Screen.Context).ScreenTools(tDescriptor, .tNames), tDescriptor _ ": the screen's tools are listed")
         Set tContext = {}
         Do tContext.%Set("tools", tNames)
         Do ##class(OcuPilot.Kernel.Agent.Loop).Scope(.tScoped, tContext.%ToJSON())
-        Do ##class(OcuPilot.Kernel.Provider.ToolDefAdapter).ToOpenAi(.tScoped, .tDeclarations)
+        Do $$$AssertStatusOK(##class(OcuPilot.Kernel.Provider.ToolDefAdapter).ToOpenAi(.tScoped, .tDeclarations), tDescriptor _ ": its starting set is declared")
+        Set tCarried = ","
+        For tJ = 0:1:tDeclarations.%Size() - 1 Set tCarried = tCarried _ tDeclarations.%Get(tJ)."function".name _ ","
+        For tJ = 0:1:tNames.%Size() - 1 If tCarried '[ ("," _ tNames.%Get(tJ) _ ",") Set tMissing = tMissing _ " " _ $ClassMethod(tDescriptor, "Route") _ ":" _ tNames.%Get(tJ)
         Set tLength = $Length(tDeclarations.%ToJSON())
         If tLength > tLargest {
             Set tLargest = tLength
@@ -237,7 +251,8 @@ Method TestEveryBuiltScreensStartingSetFitsTheLimit()
         If tLength > ..#STARTINGSETMAX Set tOver = tOver _ " " _ $ClassMethod(tDescriptor, "Route") _ "=" _ tLength
     }
     Do $$$AssertTrue(tBuilt > 0, tBuilt _ " screens are built")
-    Do $$$AssertTrue(tLargestTools > 0, "and the largest starting set names tools: " _ tLargestTools)
+    Do $$$AssertEquals(tMissing, "", "every built screen's starting set carries every tool the screen names")
+    Do $$$AssertTrue(tLargestTools > tShellTools, "and the largest starting set holds more than the shell's own " _ tShellTools _ " tools: " _ tLargestTools)
     Do $$$AssertEquals(tOver, "", "no built screen's starting set passes " _ ..#STARTINGSETMAX _ " characters; the largest is " _ tLargestRoute _ " at " _ tLargest _ " characters in " _ tLargestTools _ " tools, against " _ tWholeLength _ " for the whole roster")
     Do $$$AssertTrue(tWholeLength > ..#STARTINGSETMAX, "the whole roster does not fit it: " _ tWholeLength)
 }

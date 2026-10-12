@@ -1,13 +1,14 @@
 /// <p>The bounded provider loop a turn job runs (AD-7, AD-30, AD-31, AD-41). Before the first call it
 /// takes the tool array from <method>DispatchClass</method>'s <code>Advertise</code> once, and every
-/// provider request carries it; a turn whose tools cannot be advertised ends <code>failed</code>
+/// provider request is built from it; a turn whose tools cannot be advertised ends <code>failed</code>
 /// with no provider call. It calls the provider through <method>PortClass</method>, answers each
 /// tool call through <method>DispatchTools</method>, writes progress steps as it goes, and stops at
 /// the first step boundary that says so. The system prompt is the built-in one or the definition's
 /// override, whole; no tool result is ever joined to it (AD-11).</p>
 /// <p><b>History within a turn is append-only</b> (AD-24): a message already sent is never changed,
-/// reordered or removed, and the tool array is taken once, so every request of a turn opens with the
-/// same prefix.</p>
+/// reordered or removed, and the tool array is taken once. An Anthropic request therefore opens with
+/// the same prefix on every call of a turn; the other families' tool list grows after a search finds
+/// a tool, so their prefix changes there.</p>
 /// <p><b>The tool set is chosen after the listing, once per turn</b> (AD-5, AD-24):
 /// <method>Scope</method> marks the starting set -- the shell area's tools, the discovery tool among
 /// them, and the screen context's own -- on the array <method>Advertise</method> answered, and every

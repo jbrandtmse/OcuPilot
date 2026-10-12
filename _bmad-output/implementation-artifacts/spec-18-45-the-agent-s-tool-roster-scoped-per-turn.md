@@ -94,6 +94,34 @@ Under `src/OcuPilot/` at `0b5ef14df1dd1aaea66ea47b26ab0eb081bd6c1a`.
 - **C3.** Given an advertised tool outside the starting set, when the agent needs it in the turn, then it reaches it by the mechanism the owner accepts, and dispatch answers it exactly as today.
 - **Integration.** Given `ocupilot-ci` and the `turnprobe` row, when a turn through the turn job searches and then calls the found tool, then both answer and the requests carry task 4's array and the `tool_reference`.
 
+### Review Findings
+
+Code review, 2026-10-12, over `c6e305f9..0b7ec65f`. Layers: blind-hunter, edge-case-hunter and verification-gap; the acceptance-auditor's findings were discarded (it wrote, then deleted, a file at the shared scratchpad root), and the reviewer's own AD-5, 8, 22, 24, 31, 53 and 60 check found no mismatch.
+
+- [x] [Review][Patch] (med) C2's size test passed with no screen tool in any starting set: the shell's five met its floor, and the `ScreenTools` and `ToOpenAi` statuses went unchecked. It now asserts both statuses, that each built screen's set carries every tool the screen names, and that the largest set exceeds the shell's own [src/OcuPilot/Test/TurnScope.cls:214]
+- [x] [Review][Patch] (med) No test pinned `Found` numbering one answer's new tools in row order. "late counts" ranks two new tools against listing order, which is enough to tell them apart, so the triage log's "no tool order" note is wrong. Added `TurnScopeFamilies.TestOneSearchAddsItsToolsInTheOrderItRankedThem` [src/OcuPilot/Test/TurnScopeFamilies.cls:205]
+- [x] [Review][Patch] (med, Rule 30) `TestARegistryWithoutTheSearchIsSentWhole` asserted the shared `DispatchTool.Registry` count as the literal 2; it now derives it from `ProviderTools` [src/OcuPilot/Test/TurnScope.cls:172]
+- [x] [Review][Patch] (low) `Loop`'s header said every request opens with the same prefix; this holds for Anthropic only [src/OcuPilot/Kernel/Agent/Loop.cls:8]
+- [x] [Review][Patch] (low) `ReadTool`'s roster message: the class tools of their own number 198, not 197 [src/OcuPilot/Test/ReadTool.cls:94]
+- [x] [Review][Patch] (low) `TurnToolsCase`'s header named two of its four subclasses [src/OcuPilot/Test/TurnToolsCase.cls:1]
+- [x] [Review][Patch] (low) `ToolWire.Teardown` ignored whether the new ledger delete worked; a surviving ledger row is now a leftover [src/OcuPilot/Test/ToolWire.cls:87]
+- [x] [Review][Patch] (low) `ToolsFind`'s self-exclusion leg passed when the search answered nothing [src/OcuPilot/Test/ToolsFind.cls:79]
+- [x] [Review][Defer] (low) `Dispatch.Advertise`'s doc still says every provider request carries the whole array [src/OcuPilot/Kernel/Agent/Dispatch.cls:89] — deferred: DW-2359 `wontfix-accepted` (Epic 20 contends the file; add-only edits there)
+- [x] [Review][Defer] (low) `MessageAdapter.ReferencedNames` redefines the `tool_reference` shape that `Sanitize.IsToolReferences` gates, more loosely [src/OcuPilot/Kernel/Provider/MessageAdapter.cls:719] — deferred: DW-2360 `wontfix-accepted` (Provider never calls Agent, and every array it sees has already passed the stricter check)
+
+Rejected:
+
+- `false`: the override prompt drops statement 5 without warning the model (the tool's own description says what the search is for).
+- `false`: no cap on the tools OpenAI, Gemini or compatible servers carry (the carried set is a subset of the array every call carried before; 478a486a's `countTokens` accepted all 370 Gemini declarations).
+- `low`, spec-bound (Task 1): the search ranks starting-set tools too, which the description does not say.
+- `low`, spec-bound (Task 1): no stop words.
+- `low`, spec-bound (Tasks 2c and 6): references drop `rowsAvailable` and `truncated`.
+- `low`, theoretical: no switch to turn scoping off for a gateway that refuses `defer_loading` (owner's choice A; Task 0 (f) passed).
+- `low`, theoretical: `Found`'s catch logs `TOOL.UNAVAILABLE` (nothing in it throws on a dispatched answer).
+- `low`: `Spend` charges the search's JSON before the references replace it (a conservative over-count of a few thousand characters).
+- `low`, by design: a definition capped at two iterations cannot search and then answer (the owner accepted the extra call).
+- `low`: `TurnScopeFamilies` borrows `TurnScope.Steps` (the suite already borrows `TurnBudget`'s helpers the same way).
+
 ## Spec Change Log
 
 - 2026-10-12, lead, spec gate: A built as planned; AD-8 (with the owner's choice quoted), AD-24, AD-22, AD-53 and AD-60 amended as proposed. Owner, relayed the same morning: every live Anthropic check uses `claude-haiku-5-5` (Task 0 (a), (e), (f)). Rule 11: the `ReadTool` :94 count and `DeveloperFloor`'s count message need the orchestrator's pre-authorization as unions; the other roster edits are add-only.
@@ -184,6 +212,9 @@ Each applied on `ocupilot-ci` to a copy of the class, the class and every descen
 - mutation (QA): the `shell.tools.find` row removed from `ToolRoundTrip.REFUSEEMPTY` -> `ToolRoundTrip` went red (run 787).
 - mutation (QA): `Anthropic.MarkedTool` answers the last tool -> `TurnStream` (the streamed turn test) went red (run 788).
 The QA mutations were applied to the worktree file, loaded into `ocupilot-ci`, restored byte-identical (checked by hash) and reloaded.
+- mutation (review): `Loop.ContextTools` reads no names -> `TurnScope` (the starting-set-size test, on its screen-tools and larger-than-the-shell assertions, with the screen test) went red (run 39).
+- mutation (review): `Loop.Found` gives every tool one answer finds the same number -> `TurnScopeFamilies` (the ranked-order test, alone) went red (run 40).
+The review mutations were applied the same way, then the class's latest run read green on the restored source (runs 41 and 42).
 
 **S0:** the new tests leave no probe definition, turn or stub node.
 

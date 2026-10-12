@@ -11421,3 +11421,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: 478a486a (DW-2354 review) | severity: low | fix-risk: low | footprint: in-epic
 - evidence: the respelling map names top-level arguments and items only; no registered tool nests a numeric enum deeper (six tools map, every numeric one top-level)
 - 2026-10-12T14:54:28Z status=wontfix-accepted owner=18-45-the-agent-s-tool-roster-scoped-per-turn by=cr note=reopen_if=GeminiNumericEnum.TestNoGeminiDeclarationCarriesANumericMember names an unmapped path, or a tool schema puts an integer or number enum deeper than a property or its items
+
+### DW-2359: Dispatch.Advertise's doc still calls its answer the tool array every provider request of a turn carries, untrue for the scoped OpenAI, Gemini and compatible requests
+- source: spec-18-45-the-agent-s-tool-roster-scoped-per-turn.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: Dispatch.cls:89-91 reads 'The tool array every provider request of a turn carries: every registered tool'; since 18.45 Loop.Scope and ToolDefAdapter.Carried pick each call's set on those dialects.
+- 2026-10-12T15:19:30Z status=wontfix-accepted owner=18-45-the-agent-s-tool-roster-scoped-per-turn by=cr note=reopen_if=a story edits Dispatch.cls while Advertise's doc still says every request carries the array (contended at review)
+
+### DW-2360: MessageAdapter.ReferencedNames re-defines the tool_reference content shape that Sanitize.IsToolReferences gates, looser and with no stated reason
+- source: spec-18-45-the-agent-s-tool-roster-scoped-per-turn.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: Sanitize.cls IsToolReferences (exactly type and tool_name, wire-name pattern) and MessageAdapter.cls ReferencedNames (any tool_name) walk the same shape; every array ResultText sees has passed the stricter gate.
+- 2026-10-12T15:19:30Z status=wontfix-accepted owner=18-45-the-agent-s-tool-roster-scoped-per-turn by=cr note=reopen_if=a content Sanitize passes unchanged renders as JSON, not the Found sentence, in OpenAI's tool message

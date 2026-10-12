@@ -196,6 +196,27 @@ Method TestASecondSearchAppendsAfterWhatTheFirstFound()
     Do $$$AssertEquals(##class(OcuPilot.Test.TurnScope).Steps(tKey), "model:provider:ok;tool:shell.tools.find:ok;model:provider:ok;tool:shell.tools.find:ok;model:provider:ok;tool:probe.found.read:ok;model:provider:ok;", "every step is ok")
 }
 
+/// <p>One search that finds two tools -- OpenAI's tool list adds them in the order the search ranked
+/// them: "late counts" ranks <code>zprobe_late_read</code> first and <code>probe_found_read</code>
+/// second, although the listing orders them the other way, so call 2 carries them in the search's
+/// order and the search's result names them in it.</p>
+/// <p>Mutation: <method>OcuPilot.Kernel.Agent.Loop.Found</method> gives every tool one answer finds
+/// the same number -> this goes red on call 2's tool list.</p>
+Method TestOneSearchAddsItsToolsInTheOrderItRankedThem()
+{
+    Set tDefinition = ..PrepareFamily("openai", "probe-openai-model", "")
+    Do $ClassMethod(..#STUB, "QueueAnswer", 200, ..OpenAiCall("call_two", "shell_tools_find", "{""query"":""late counts""}"))
+    Do $ClassMethod(..#STUB, "QueueAnswer", 200, ..OpenAiText("done"))
+    Set tKey = ..RunTurn(.tOutcome, "", 0, 0, "", "", tDefinition)
+    Do $$$AssertEquals(tOutcome("state") _ "|" _ tOutcome("reply"), "completed|done", "the turn completes: " _ tOutcome("state") _ " " _ tOutcome("code"))
+    Do $$$AssertEquals($ClassMethod(..#STUB, "Calls"), 2, "after two provider calls")
+    Set tStart = "shell_probe_read,shell_tools_find"
+    Do $$$AssertEquals(..Declared("openai", 1), tStart, "call 1 carries the starting set alone")
+    Do $$$AssertEquals(..Declared("openai", 2), tStart _ ",zprobe_late_read,probe_found_read", "call 2 adds both tools the search found, in the order it ranked them")
+    Do $$$AssertEquals(..ResultOf("openai", 2), "Found tools you can call from your next step: zprobe_late_read, probe_found_read.", "and the search's result names them in that order")
+    Do $$$AssertEquals(##class(OcuPilot.Test.TurnScope).Steps(tKey), "model:provider:ok;tool:shell.tools.find:ok;model:provider:ok;", "every step is ok")
+}
+
 /// <p>A search that adds nothing -- OpenAI's tool list never shrinks and never repeats a tool: search
 /// 1 ("late") finds <code>zprobe_late_read</code>; search 2 names no tool (the only tool carrying its
 /// words is not advertised); search 3 ("shell") names only <code>shell_probe_read</code>, which is in

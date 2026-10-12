@@ -6,8 +6,8 @@
 /// recorded and on the turn's progress.</p>
 /// <p><b>It creates an IRIS user and two roles and spawns turn jobs, so
 /// <method>OnBeforeAllTests</method> refuses to run unless both <parameter>ARMINGVARIABLE</parameter>
-/// and <parameter>PROVIDERVARIABLE</parameter> read 1.</b> After every method no probe job, turn, slot,
-/// stub node, principal, role or probe definition remains.</p>
+/// and <parameter>PROVIDERVARIABLE</parameter> read 1.</b> After every method no probe job, turn, ledger
+/// row, slot, stub node, principal, role or probe definition remains.</p>
 Class OcuPilot.Test.ToolWire Extends %UnitTest.TestCase
 {
 
@@ -61,7 +61,7 @@ Method OnBeforeOneTest() As %Status
 Method OnAfterOneTest() As %Status
 {
     Set tLeft = ..Teardown()
-    Do $$$AssertEquals(tLeft, "", "no probe job, turn, slot, stub node, principal, role or probe definition survives the method")
+    Do $$$AssertEquals(tLeft, "", "no probe job, turn, ledger row, slot, stub node, principal, role or probe definition survives the method")
     Quit $$$OK
 }
 
@@ -83,6 +83,8 @@ Method Teardown() As %String
         }
         If (tPid '= "") && $Data(^$JOB(tPid)) Set tLeft = tLeft _ " job " _ tPid
         Do ##class(OcuPilot.Kernel.State.Ledger).GuardedDeleteForTurn(tKey)
+        Set tLedgerRows = ""
+        If $$$ISERR(##class(OcuPilot.Kernel.State.Ledger).GuardedCountForTurn(tKey, .tLedgerRows)) || tLedgerRows Set tLeft = tLeft _ " ledger rows of " _ tKey
         Do ##class(OcuPilot.Kernel.State.Turn).GuardedDelete(tKey)
         If (##class(OcuPilot.Test.TurnFixture).Field(tKey, "State") '= "") || ##class(OcuPilot.Test.TurnFixture).StepCount(tKey) || $Data(^OcuPilotTurnSignal(tKey)) Set tLeft = tLeft _ " turn " _ tKey
     }

@@ -1,4 +1,5 @@
-/// <p>What <class>OcuPilot.Test.TurnTools</class> and <class>OcuPilot.Test.TurnBudget</class> share:
+/// <p>What <class>OcuPilot.Test.TurnTools</class>, <class>OcuPilot.Test.TurnBudget</class>,
+/// <class>OcuPilot.Test.TurnScope</class> and <class>OcuPilot.Test.TurnScopeFamilies</class> share:
 /// the in-process turn harness -- <class>OcuPilot.Test.TurnLoopProbe</class> over
 /// <class>OcuPilot.Test.ProviderPortProbe</class> and <class>OcuPilot.Test.ProviderStub</class> --
 /// with <method>RunTurn</method> to run one turn as the suite's own account, <method>Reply</method> to

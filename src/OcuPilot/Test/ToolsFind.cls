@@ -76,6 +76,7 @@ Method TestAQueryRanksTheMatchingToolFirst()
     }
     Do $$$AssertEquals(tDuplicates, 0, "no tool is named twice")
     Set tSelf = ..Find(..#TOOL, "{""query"":""shell tools find search""}", .tSC, .tHttp, .tFault)
+    Do $$$AssertTrue($IsObject(tSelf) && (tSelf.rows.%Size() > 0), "a query that matches the tool itself answers the other tools it matches: " _ ..Names(tSelf))
     Do $$$AssertTrue((","_..Names(tSelf)_",") '[ ",shell_tools_find,", "a query that matches the tool itself never names it: " _ ..Names(tSelf))
 }
 
