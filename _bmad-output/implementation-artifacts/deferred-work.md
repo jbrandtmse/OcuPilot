@@ -10813,6 +10813,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: cycle-log-epic-18.md (18.29 run 37877773715) | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: run 37877773715 browser shard 2/3: ui/browser/sql-activity.browser-spec.mjs:287 Waiting failed 30000ms at :295; same code green locally 7/7 on ocupilot-ci; 18.29 touches no SQL activity file
 - 2026-10-09T04:37:13Z status=routed owner=23-5-the-range-end-cleanup-part-5 by=harvest note=assert on the probe's own row's absence, or filter the table to the probe's marker, rather than on the empty-state sentence
+- 2026-10-12T18:47:18Z occurrence=run 38284973172 attempt 1 head 857dd298 browser shard 4/5: sql-activity.browser-spec.mjs test 7 (Nothing running) waiting for the empty state; green on attempt 2
 
 ### DW-2246: explorer.class.read refuses a large class's view as TOOL.RESULTTOOLARGE: OcuPilot.Port.AdminPort.cls (247,939 bytes after 18.10) now answers over the 65,536-character tool-result cap, so the agent cannot read a large class's view at all
 - source: cycle-log-epic-18.md (18.10 runner sweep) | severity: med | fix-risk: med | footprint: out-of-footprint

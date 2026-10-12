@@ -97,6 +97,7 @@ Under `src/OcuPilot/`, `5890fe4d`.
 
 - **C1.** Given the key enabled, when a person posts an add, change or remove to `POST /allowed-directories`, then `FSAccess` holds it and the port's next read answers it; with the shipped `false`, nothing is written.
 - **C2.** Given an unrestricted instance, when a person adds a directory, then the Allowed directories read answers the manager directory and the new one.
+- **C2b (orchestrator, 2026-10-12).** Given a list a remove has emptied, when a server-path consumer resolves a path, then it answers what Task 0 measured an emptied `%GUIFileSelector` list means to IRIS (nothing allowed, or the fallback only), stated in Design Notes, and never everything allowed; test 9 pins it with a `mutation:` line.
 - **C3.** Given any tool the agent can reach that writes the allow-list, when it reaches Confirm or the route, then it is refused `PROHIBITED.ALLOWLISTAGENT`.
 - **Integration.** Given a directory a person added, when `PathPort.Resolve` (every server-path consumer's resolver) is asked for a file under it, then it resolves; after the remove, it answers `PATH.ROOT`.
 
@@ -104,6 +105,7 @@ Under `src/OcuPilot/`, `5890fe4d`.
 
 - 2026-10-12, lead, spec gate: (1) the roots question takes reading A as this plan built it -- no write drops a root the person did not name, the unrestricted fallback row cannot be changed or removed, a remove may empty the list; `epics.md` 18.42's AC and AD-21's DW-2334 sentence are restated to match. (2) Split for size (Rule 5): this story keeps Task 0, tasks 1-6, task 10's refusal sentences, tests 11-13 and the sweep's ObjectScript rosters, with C1 at the route, C2, C3 and Integration; Story 18.46 takes the screen (tasks 7-9, the rest of task 10, tests 14-15, the client greps, C1 on the screen). Re-plan in place to this story's part.
 - 2026-10-12, lead, spec gate (after the re-plan): ready; the For-the-lead wording for AD-22, AD-21, AD-10, AD-13, AD-15, AD-53 and AD-51 applied to the spine as proposed (appended to each AD). Rule 11: the `Prohibited.cls` clause and task 11's literal changes sent to the orchestrator for pre-authorization as unions.
+- 2026-10-12, orchestrator: reading A accepted as a tier-1 restatement; say what an emptied list means to IRIS (Task 0 measures it after the remove: `%SYS.FileSystemAccess` and `PathPort.Resolve` on a probe path) and pin it (C2b), so "a remove may empty the list" never silently means "everything allowed". Task 11's literals and the `Prohibited.cls` clause are pre-authorized as unions under Rule 22; recount each literal on the merged tree at every forward merge.
 
 ## Review Triage Log
 
