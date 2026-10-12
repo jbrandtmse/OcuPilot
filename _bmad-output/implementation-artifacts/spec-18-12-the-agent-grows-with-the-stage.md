@@ -2,13 +2,28 @@
 title: 'Story 18.12: The agent grows with the stage'
 type: 'feature'
 created: '2026-10-11'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: 'ea3b7abe6aa36292b55a7704184d7625d6639996'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-18-context.md'
 warnings: ['oversized']
-deferred: []
+deferred:
+  - summary: >-
+      StageTwoTools reads only its declared roster, so a Stage 2 screen or write tool added later is never visited unless its author adds a row.
+    evidence: |-
+      Both loops walk the roster or the registry through the roster filter; nothing compares the roster to the registered descriptors. A reverse check needs a Stage 2 marker on descriptors or a baseline of the earlier screens, neither of which exists, and Descriptor/Base is Epic 20 contended.
+    location: >-
+      src/OcuPilot/Test/StageTwoTools.cls Roster
+    severity: medium
+  - summary: >-
+      The roles read lists "Every caller" first while the vendor stores it last, so an update that echoes MatchRoles as read reports it changed, in order alone.
+    evidence: |-
+      Probed on ocupilot-ci: Security.PrivilegedRoutine GET answers named roles ascending then the empty-matching entry; webapp.routineapproles.read sorts MatchRole ascending and answers it first; minting webapp.routineapps.update with MatchRoles as read lists MatchRoles under changed, before and after differing in order only. Fix is an order-insensitive list compare in the shared mint (Write.cls, contended) or a read in the vendor's order.
+    location: >-
+      src/OcuPilot/Screen/Descriptor/RoutineAppRoleList.cls read.sort
+    severity: medium
 ---
 
 <intent-contract>
@@ -99,6 +114,30 @@ Paths under `src/OcuPilot/` unless `ui/`, at `785cdd9d`.
 
 ## Review Triage Log
 
+### 2026-10-11 - Review pass
+
+- verdicts: 19 findings - high 0, medium 5, low 12, false 2, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` verification-gap: the empty-list and absent-name legs counted rows only, so a 404 read as "no rows" - the legs now assert 200 on the route and the tool; mutation recorded.
+  - `[medium]` `[patch]` verification-gap: the 17 `<tool>` roster rows were never checked to name a tool - the fields test asserts each is listed; mutation recorded.
+  - `[low]` `[patch]` verification-gap: the primary-action leg passed when two tools claimed the id - it asserts at most one claimant; mutation recorded.
+  - `[medium]` `[defer]` verification-gap: the roster is the only input to C1, with no reverse check against the registry - fix needs a Stage 2 marker or a baseline of earlier screens (Descriptor, contended); deferred.
+  - `[low]` `[patch]` verification-gap: `guardrails.page.spec.ts` adjacency line passed on `undefined` - coalesced to null.
+  - `[low]` `[patch]` verification-gap: `TestTheTurnsAnHourFollowTheSwitch` reset the switch row only as its last statement - `OnAfterOneTest` resets it too.
+  - `[low]` `[patch]` verification-gap: three doc comments named mutations the spec did not record - aligned to the recorded ones.
+  - `[low]` `[reject]` verification-gap: `RoutineAppGate` refuses only the `%Admin_Secure:USE` principal - Task 7 prescribes that leg; the other pair is pinned by the `WireSecurityRead` screens roster this story edited.
+  - `[low]` `[reject]` verification-gap: "at most 1 agent turns an hour" - the sentence is fixed by Task 3; cosmetic.
+  - `[low]` `[reject]` intent-alignment: C1 asserts registry facts and invokes no tool, proposal or confirm per screen - Task 6 and the AD-3 restatement define it so; the confirmed write is the Integration AC's.
+  - `[false]` `[reject]` intent-alignment: "declared from the same descriptor" is met by the tool class's `DESCRIPTORCLASS` - that is how AD-3 binds a tool; nothing diverges.
+  - `[low]` `[reject]` intent-alignment: the fields test passes any settable name on a non-admin port - Task 6 states that clause (AD-51, AD-52).
+  - `[medium]` `[defer]` intent-alignment: no reverse assertion that every registered Epic 18 descriptor is on the roster - same root cause as the roster-only finding above.
+  - `[false]` `[reject]` intent-alignment: `StageTwoTools` is referenced nowhere - `ci-shards.mjs` offers every class on disk and weighs an unrecorded one at the median, so no registration exists to miss.
+  - `[low]` `[reject]` intent-alignment: two routes and ten strings ship that the intent does not name - tools exist only as screens (Task 1).
+  - `[low]` `[reject]` intent-alignment: the reads are tested in process, not through the model, and the `DESCRIPTION` sentence is untested prompt text - the Integration AC is stated at that surface.
+  - `[low]` `[reject]` intent-alignment: refusal by name is tested at the route, not the tool as an outsider - Task 7 prescribes the route leg; the registry's gate point is shared.
+  - `[low]` `[reject]` intent-alignment: DW-1756 lands on the page, which the agent cannot read - the matrix row is the Guardrails section; the heading rename is Task 5's.
+  - `[medium]` `[defer]` stage lead, from the implement report, probe-verified on `ocupilot-ci`: the roles read lists "Every caller" first while the vendor stores it last, so an update that echoes `MatchRoles` as read reports it changed, in order alone - fix is in the shared mint or the read's order, both outside this story; deferred.
+
 ## Design Notes
 
 **Ledger.** DW-2321: Tasks 1, 2, 7, 9 (privileged routine applications, as the intent names). DW-1756: Tasks 3 to 5, 8. Declined DW-1084: closed `by-design` by the lead.
@@ -137,9 +176,36 @@ Paths under `src/OcuPilot/` unless `ui/`, at `785cdd9d`.
 - DW-2321: the roles read's `rows` `Routines`; its pairs without `%Admin_Secure:USE`. Integration: `SettableFields` without `Routines`.
 - DW-1756: `Guardrails.Read` without `turnsPerHour`; `turnsLine` constant; the page's turns line removed.
 
+Recorded (each applied on `ocupilot-ci`, the mutated class and its descendants recompiled or the bundle rebuilt and redeployed, red observed, reverted; the tree hash was identical after):
+
+- mutation: `JournalFileDatabaseList` `built` false -> `StageTwoTools.TestEachScreenIsItsRowsKind` red ("JournalFileDatabaseList is built").
+- mutation: `RoutineAppDelete` `SCREENACTIONS` "" -> `StageTwoTools.TestEachDeclaredActionResolvesToExactlyOneWriteTool` red ("RoutineAppList:delete resolves to exactly one write tool").
+- mutation: `RoutineAppUpdate.SettableFields` plus `Bogus` -> `StageTwoTools.TestEverySettableNameComesFromTheGeneratedFieldList` red (`webapp.routineapps.update:Bogus`).
+- mutation: `LocalDatabaseCreate` `PORTCLASS` the admin port -> the same test red, naming `osmgmt.localdatabases.create:` root, path, Size, GlobalJournalState and ResourceName.
+- mutation: the roles read's `rows` `Routines` -> `RoutineAppListsRead` red in both methods (the roles legs).
+- mutation: the roles list's pairs without `%Admin_Secure:USE` -> `RoutineAppGate.TestWithoutTheAreasResourceBothListReadsAreRefusedByName` red (the roles leg alone).
+- mutation: `RoutineAppUpdate.SettableFields` without `Routines` -> `RoutineAppListsRead.TestAnAgentSendsTheRoutinesItReadLessOneEntry` red (the mint answers "nothing would change").
+- mutation: `Guardrails.Read` without `turnsPerHour` -> `Guardrails.TestTheLimitsAreTheKernelsOwn`, `Guardrails.TestTheTurnsAnHourFollowTheSwitch` and `GuardrailsWire.TestALeastPrivilegedPrincipalReadsTheWholeAnswer` red.
+- mutation: `turnsLine` answering the none sentence always -> `guardrails.test.mjs` "the turns line reads no limit at 0 and the limit, grouped, above it" and `guardrails.page.spec.ts` "names the turns an hour in force" red.
+- mutation: the page's `.ocu-guardrails-turns` line removed -> `guardrails.page.spec.ts` red and, rebuilt and redeployed, `guardrails.browser-spec.mjs` AC1 and the Story 18.12 leg red.
+- mutation: the roles list's `emptyKey` removed (mirror regenerated, rebuilt, redeployed) -> `routine-applications.browser-spec.mjs` Story 18.12 leg red ("(none)" where "Every caller" is expected).
+- mutation: `Read.cls` absence mapping off (`tObjectGone` 0) -> `RoutineAppListsRead.TestBothListsAnswerOneRowPerEntryByRouteAndTool` red on the empty and absent legs, which assert 200 where a bare row count stayed green.
+- mutation: a `<tool>` roster row misspelled (`permissions.users.grantsqlx`) -> `StageTwoTools.TestEverySettableNameComesFromTheGeneratedFieldList` red ("is a listed write tool").
+- mutation: `RoutineAppUpdate` and `RoutineAppDelete` both declare `create` in `SCREENACTIONS` -> `StageTwoTools.TestEachDeclaredActionResolvesToExactlyOneWriteTool` red ("RoutineAppList:create is claimed by at most one write tool").
+
 **S0:** no `OcuProbe1831*` application or `OcuProbe1833Role*` role; switches as Task 0 recorded.
 
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
+
+**Change.** C1 `Test/StageTwoTools.cls` (kinds, actions, fields over 54 screens and 17 tool rows; no gap found). DW-2321: `RoutineAppRoleList` and `RoutineAppRoutineList` declare `webapp.routineapproles.read` and `webapp.routineapproutines.read`; `RoutineAppUpdate` `DESCRIPTION` says to read them first. DW-1756: `Guardrails.Read` answers `limits.turnsPerHour`; the client narrows it, adds `turnsLine`, and the last section is headed Limits with the turns line under the limits line. Twelve strings added (3268 to 3279 fixed strings), EXPERIENCE.md rows 357 and 583 edited in place, mirror regenerated.
+
+**Files.** New: the two descriptors, `Test/StageTwoTools.cls`, `Test/RoutineAppListsRead.cls`. Changed: `Kernel/Shell/Guardrails.cls`, `Screen/Tool/RoutineAppUpdate.cls`, `Test/{Guardrails,GuardrailsWire,RoutineAppGate,Descriptor,SurfaceCoverage,ReadTool,ToolRoundTrip,Wire,WireSecurityRead}.cls`, `scripts/ci-throwaway.sh` (arming-roster comment), `core/guardrails.ts`, `guardrails.page.ts`, `core/strings.ts`, `core/screens.generated.ts`, `testing/guardrails.ts`, five client specs, `guardrails.browser-spec.mjs`, `routine-applications.browser-spec.mjs`, EXPERIENCE.md.
+
+**Review.** 19 findings: 6 patched (three assertion strengthenings with recorded mutations, the page spec line, the Guardrails reset and the comment alignment), 2 deferred (roster-only completeness; roles read order against the vendor's), the rest rejected with reasons in the log. Follow-up review: false, since the two patched mediums are test assertions each shown red by a recorded mutation and green after.
+
+**Verification.** `OcuPilot.Test` on `ocupilot-ci`: 19 classes green in runs 694 to 712; after the review patches StageTwoTools 725 (3), RoutineAppListsRead 726 (2), Guardrails 721 (11), RoutineAppRead 727 (4), RoutineAppGate 715 (6). `npm run test:tools` 1913 of 1913; components 2945 (236 files), the Guardrails page spec re-run after its patch; browser specs guardrails 3 of 3, routine-applications 4 of 4, a11y-structural 13 of 13. Initial bundle 3,388,876 bytes against 3527kB. `check-objectscript`, `lint-docs` clean; secrets scan 0.
+
+**Residual risks.** `ReadTool` `tWithCriteria` (57 to 59) is an Epic 20 file edit beyond the :93/:94 pre-authorization, the same count union; at the merge it becomes 60 with Epic 20's 58. `ReadTool` :93 reads 371 here. S0 holds: no `OcuProbe1831*` or `OcuProbe1833*` object, and the switch row is absent where Task 0 found one with default values.

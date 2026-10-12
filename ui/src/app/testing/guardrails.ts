@@ -28,7 +28,7 @@ export function guardrailsBody(): Record<string, unknown> {
       { name: 'permissions.users.password', descriptor: 'OcuPilot.Screen.Descriptor.UserList' },
     ],
     secrets: [{ tool: 'permissions.users.password', fields: ['Password'] }],
-    limits: { contextRowCap: 200, totalMaxLength: 65536, fieldMaxLength: 1000 },
+    limits: { contextRowCap: 200, totalMaxLength: 65536, fieldMaxLength: 1000, turnsPerHour: 0 },
   };
 }
 

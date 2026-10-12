@@ -8,6 +8,7 @@ import {
   killSwitchLine,
   limitsLine,
   readOnlyLine,
+  turnsLine,
   type GuardrailsAnswer,
   type ProhibitedRow,
 } from '../../core/guardrails';
@@ -40,7 +41,7 @@ function screenLabel(descriptor: string): string | null {
 /**
  * The Guardrails screen (Story 16.22): what the agent refuses outright, the switches in force for
  * the caller, the tools that always need a Confirm, what never reaches the agent, and the
- * screen-context limits.
+ * limits: the screen-context caps and the turns an hour.
  *
  * **It renders the instance's answer and decides nothing** (AD-10, AD-30). Every refusal sentence,
  * code, tool name and field name comes from `GET /ui/guardrails` and is rendered as text (AD-11);
@@ -111,8 +112,9 @@ function screenLabel(descriptor: string): string | null {
       </section>
 
       <section class="ocu-guardrails-section" aria-labelledby="ocu-guardrails-context">
-        <h2 class="ocu-guardrails-heading" id="ocu-guardrails-context">{{ STRINGS.transcriptScreenContext }}</h2>
+        <h2 class="ocu-guardrails-heading" id="ocu-guardrails-context">{{ STRINGS.agentGuardrailsLimitsHeading }}</h2>
         <p class="ocu-guardrails-line ocu-guardrails-limits">{{ limits }}</p>
+        <p class="ocu-guardrails-line ocu-guardrails-turns">{{ turns }}</p>
       </section>
     }
   </section>`,
@@ -188,5 +190,10 @@ export class GuardrailsPage {
   protected get limits(): string {
     const answer = this.answer();
     return answer === null ? '' : limitsLine(answer.limits);
+  }
+
+  protected get turns(): string {
+    const answer = this.answer();
+    return answer === null ? '' : turnsLine(answer.limits);
   }
 }

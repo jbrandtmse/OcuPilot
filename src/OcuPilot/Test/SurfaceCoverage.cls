@@ -216,6 +216,8 @@ XData Coverage
 <screen name="DocDbAppForm" class="OcuPilot.Test.DocDbAppDescriptor" method="TestTheEditorIsAnUnlistedFormPage"/>
 <screen name="RoutineAppList" class="OcuPilot.Test.RoutineAppDescriptor" method="TestTheListIsDeclaredAsTheSpecPlacesIt"/>
 <screen name="RoutineAppForm" class="OcuPilot.Test.RoutineAppDescriptor" method="TestTheEditorIsAnUnlistedFormPage"/>
+<screen name="RoutineAppRoleList" class="OcuPilot.Test.RoutineAppListsRead" method="TestBothListsAnswerOneRowPerEntryByRouteAndTool" corpus="one test method pins both lists Story 18.12 adds, the roles and the routines, in one loop"/>
+<screen name="RoutineAppRoutineList" class="OcuPilot.Test.RoutineAppListsRead" method="TestBothListsAnswerOneRowPerEntryByRouteAndTool" corpus="one test method pins both lists Story 18.12 adds, the roles and the routines, in one loop"/>
 <screen name="SqlPrivilegeList" class="OcuPilot.Test.SqlPrivilegeDescriptor" method="TestTheScreenIsDeclaredAsTheSpecPlacesIt"/>
 <screen name="SqlColumnPrivilegeList" class="OcuPilot.Test.SqlPrivilegeDescriptor" method="TestTheColumnAndAdminScreensAreDeclared" corpus="one declaration test pins both Story 18.28 sub-resource screens in one loop"/>
 <screen name="SqlAdminPrivilegeList" class="OcuPilot.Test.SqlPrivilegeDescriptor" method="TestTheColumnAndAdminScreensAreDeclared" corpus="one declaration test pins both Story 18.28 sub-resource screens in one loop"/>

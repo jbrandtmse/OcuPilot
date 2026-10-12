@@ -1359,6 +1359,7 @@ test('criteriaProblem returns every sentence OcuPilot.Test.CriteriaCorpus declar
   // access list, whose one criterion is the application. Story 20.3's Production items, whose one criterion is
   // the production the route id names. Story 20.4's six item tabs, whose one criterion is the item the route id names,
   // and Queue messages, whose one criterion is the queue. Story 20.5's lookup table entries, whose one criterion is the table.
+  // Story 18.12's privileged routine application roles and routines lists, whose one criterion is the application the route id names.
   const withCriteria = emittedScreens.filter((screen) => (screen.read?.criteria ?? null) !== null);
   assert.deepEqual(
     withCriteria.map((screen) => screen.descriptor),
@@ -1410,6 +1411,8 @@ test('criteriaProblem returns every sentence OcuPilot.Test.CriteriaCorpus declar
       'OcuPilot.Screen.Descriptor.OpenApiViewer',
       'OcuPilot.Screen.Descriptor.PackageMappingList',
       'OcuPilot.Screen.Descriptor.ProcessDetails',
+      'OcuPilot.Screen.Descriptor.RoutineAppRoleList',
+      'OcuPilot.Screen.Descriptor.RoutineAppRoutineList',
       'OcuPilot.Screen.Descriptor.RoutineMappingList',
       'OcuPilot.Screen.Descriptor.SqlAdminPrivilegeList',
       'OcuPilot.Screen.Descriptor.SqlColumnPrivilegeList',
