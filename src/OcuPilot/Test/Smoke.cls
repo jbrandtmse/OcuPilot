@@ -451,6 +451,23 @@ Method TestTheNavigationCheckJudgesTheMap()
     Do $$$AssertTrue(tProblem [ "could not be read", "a body that is not JSON fails as unreadable: " _ tProblem)
 }
 
+/// <p>Story 20.28 AC2 -- the <code>navigation</code> check fails a served map whose <code>interoperability</code>
+/// area disagrees with the namespace this suite executes in, and the run does not pass. The navigation read is
+/// answered through <class>OcuPilot.Test.SmokeListFault</class> with the opposite <code>applies</code>.</p>
+/// <p>Mutation (Rule 19): remove the <code>NavigationProblem</code> call from
+/// <method>OcuPilot.Install.Smoke.CheckApiReads</method> -- the check passes the map and this goes red.</p>
+Method TestTheNavigationCheckFailsADisagreeingMap()
+{
+    Set tHere = ''##class(%Library.EnsembleMgr).IsEnsembleNamespace($NAMESPACE)
+    Do ##class(OcuPilot.Test.SmokeListFault).ArmNavigation(200, ..MapWith("interoperability", 'tHere, "boolean"))
+    Set tOk = ##class(OcuPilot.Test.SmokeListFault).Run(##class(OcuPilot.Test.Http).GetTestUsername(), ##class(OcuPilot.Test.Http).GetTestPassword(), "0", .tReport, .tCounts)
+    Do ##class(OcuPilot.Test.SmokeListFault).DisarmNavigation()
+    Set tLine = ..Line(tReport, "navigation")
+    Do $$$AssertTrue(tReport [ ("  fail     navigation"), "a map that disagrees with " _ $NAMESPACE _ " fails the navigation check: " _ tLine)
+    Do $$$AssertTrue(tLine [ ("which reports " _ tHere), "naming what the namespace reports: " _ tLine)
+    Do $$$AssertEquals(tOk, 0, "and the run does not pass")
+}
+
 /// <p>A navigation map as JSON: a <code>home</code> area, and the area keyed <var>pKey</var> carrying
 /// <code>applies</code> <var>pApplies</var> of JSON type <var>pType</var>.</p>
 ClassMethod MapWith(pKey As %String, pApplies, pType As %String) As %String [ Private ]

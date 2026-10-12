@@ -11457,8 +11457,15 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-20-28-ocupilot-compiles-in-a-namespace-without-interoperability.md | severity: med | fix-risk: med | footprint: in-epic
 - evidence: CompileWithoutInterop.TestItServesAnInteroperabilityNamespace; GatherItems, GatherSettings, PerformItem, ListQueues/ListJobs row loops and AwaitTestHere run only against a production, and six of the nine reads return 0 rows in USER
 - 2026-10-12T17:14:15Z status=routed owner=burndown by=lead note=harvested from 20.28 implement; settled by a production fixture in USER driven from the probe namespace, or by DW-2356's static rule
+- 2026-10-12T18:08:24Z occurrence=20-28-ocupilot-compiles-in-a-namespace-without-interoperability note=cr: the fixture exists (Test.ProductionProbe seeds a USER production); the nine reads pin no row count, so no row loop is held
 
 ### DW-2362: ci-runner's classifyLeftovers words every leftover token as a probe web application to remove with ProbeApps.Remove(), which misleads for the namespace, database and directory tokens ProbeApps.Existing() now reports
 - source: spec-20-28-ocupilot-compiles-in-a-namespace-without-interoperability.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: ui/tools/ci-runner.mjs:280; the OCUPROBE2028 objects are cleared by CompileWithoutInteropProbe.RemoveAll
 - 2026-10-12T17:14:16Z status=open owner=20-28-ocupilot-compiles-in-a-namespace-without-interoperability by=lead note=harvested from 20.28 implement; a two-way door for the code review if ci.test.mjs stays green unedited, else wontfix-accepted
+- 2026-10-12T18:08:23Z status=resolved-by:20-28-ocupilot-compiles-in-a-namespace-without-interoperability owner=20-28-ocupilot-compiles-in-a-namespace-without-interoperability by=cr note=kind:name tokens worded as compile probe objects with RemoveAll(); ci-leftovers.test.mjs; ci.test.mjs unedited, green
+
+### DW-2363: docs/DEVELOPMENT.md describes the package job as loading the archive on a second instance, not into a namespace created without interoperability, and omits the DW-2355 limit
+- source: spec-20-28-ocupilot-compiles-in-a-namespace-without-interoperability.md | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: docs/DEVELOPMENT.md:456 (CI table, package row) and :640-656 (Verifying an IPM install); scripts/ci-ipm-archive.sh now installs into NOINTEROP
+- 2026-10-12T18:08:24Z status=wontfix-accepted owner=20-28-ocupilot-compiles-in-a-namespace-without-interoperability by=cr note=incomplete, not false; reopen_if=docs/DEVELOPMENT.md's package job text is next edited, or a reader assumes it smokes an HSCUSTOM install

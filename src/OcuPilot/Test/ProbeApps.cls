@@ -8,7 +8,8 @@ Include %occErrors
 /// deletes a probe row while the probe profile is installed leaves an application and its role
 /// that no later uninstall can remove. <method>Remove</method> removes both, and
 /// <method>Existing</method> is what <file>scripts/ci-unit-test.sh</file> reads before and after
-/// every class.</p>
+/// every class. <method>Existing</method> also names the namespace, database and directory
+/// <class>OcuPilot.Test.CompileWithoutInterop</class> creates, while they exist.</p>
 Class OcuPilot.Test.ProbeApps Extends %RegisteredObject
 {
 
@@ -81,14 +82,14 @@ ClassMethod Existing() As %String
 /// exact name, so a surviving one reads as a probe leftover to the CI runner's after-class check.</p>
 ClassMethod CompileProbeLeftovers() As %String
 {
-    Set tProbe = ..#COMPILEPROBE
-    Set tNamespace = $Parameter(tProbe, "NAMESPACENAME")
-    Set tDatabase = $Parameter(tProbe, "LOCALNAME")
-    Set tLeaf = $Parameter(tProbe, "DIRPREFIX") _ $ZConvert($Extract(tDatabase, $Length($Parameter(tProbe, "PREFIX")) + 1, *), "L")
-    Set tDirectory = $ClassMethod(tProbe, "Manager") _ tLeaf _ "/"
     Set tFound = ""
     Set tOrigNS = $NAMESPACE
     Try {
+        Set tProbe = ..#COMPILEPROBE
+        Set tNamespace = $Parameter(tProbe, "NAMESPACENAME")
+        Set tDatabase = $Parameter(tProbe, "LOCALNAME")
+        Set tDirectory = $ClassMethod(tProbe, "DirectoryFor", $Extract(tDatabase, $Length($Parameter(tProbe, "PREFIX")) + 1, *))
+        Set tLeaf = $Extract(tDirectory, $Length($ClassMethod(tProbe, "Manager")) + 1, *-1)
         Set $NAMESPACE = "%SYS"
         If ##class(Config.Namespaces).Exists(tNamespace) Set tFound = tFound _ " namespace:" _ tNamespace
         If ##class(Config.Databases).Exists(tDatabase) Set tFound = tFound _ " database:" _ tDatabase

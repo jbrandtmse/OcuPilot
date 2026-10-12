@@ -133,7 +133,7 @@ deferred:
      - Refuse if the namespace reports interoperability.
      - Copy every shipped class definition from the install namespace into it, leaving out any `GeneratedBy` class.
      - Compile there with `ck`, and store the outcome.
-     - On its own failure, remove what it made, because `%UnitTest` skips `OnAfterAllTests` then.
+     - On its own failure, remove what it made.
    - **`TestEveryShippedClassCompilesThere`:** no compiler error, and the compiled set equals the copied set (more than 0), naming any missing class.
    - **`TestInteroperabilityIsHiddenThere`:** in the probe namespace, its own `Navigation.Payload` keeps `interoperability` with `applies` false.
    - **`TestItServesAnInteroperabilityNamespace`:**
@@ -184,6 +184,35 @@ deferred:
   - **Given** a shipped class that regains an `Ensemble` include, a `$$$Ens…` macro or an interoperability class as a declared type
   - **When** `CompileWithoutInterop` or the `package` job runs
   - **Then** it fails, naming the class.
+
+### Review Findings
+
+Code review 2026-10-12, tier `full-opus`: four layers (blind-hunter, edge-case-hunter, verification-gap and acceptance-auditor) returned 28 findings, which grouped into 13 entries: high 0, medium 4, low 9. Eight items were rejected (see the appendix below). No AD mismatch was found against AD-62 (items 3 and 12), AD-17 or AD-44.
+
+- [x] [Review][Patch] **The package job's class count would not see a failed compile.** It counted dictionary rows, and a failed compile keeps its row, so AC4's package-job half rested on `load` alone. The comment claimed otherwise. It now counts only current compiles of classes no other class generated. Med, fix-risk med: the job runs only in CI, so the session body was run on `ocupilot-b-ci` instead. [scripts/ci-ipm-archive.sh:478]
+- [x] [Review][Patch] **Smoke's `navigation` wiring had no test of its failing path.** Removing the `NavigationProblem` call left every test green. `SmokeListFault.ArmNavigation` and `Test.Smoke.TestTheNavigationCheckFailsADisagreeingMap` were added. Med, fix-risk low. [src/OcuPilot/Install/Smoke.cls:606]
+- [x] [Review][Patch] **The package job never re-read `NOINTEROP`'s interoperability after the install.** An install that turned it on would leave smoke judging agreement in an interoperability namespace. It is now read after the install and required to be 0. Med, fix-risk low. [scripts/ci-ipm-archive.sh:478]
+- [x] [Review][Patch] **Generated classes were treated inconsistently.** The copied set left them out, but `PrepareProbe` and the package job counted them on the compiled side. Both now filter on `GeneratedBy`. None exist today. Low. [src/OcuPilot/Test/CompileWithoutInterop.cls:113]
+- [x] [Review][Patch] **`ProbeApps.CompileProbeLeftovers` evaluated its probe lookups before its `Try`.** So `Existing()` could raise instead of answering `error:`. Low. [src/OcuPilot/Test/ProbeApps.cls:84-91]
+- [x] [Review][Patch] **`CompileProbeLeftovers` re-derived `RemoteDatabaseProbe.DirectoryFor`'s rule instead of calling it** (Rule 2). Low. [src/OcuPilot/Test/ProbeApps.cls:91]
+- [x] [Review][Patch] **The setup-failure comment was wrong.** It said `%UnitTest` skips `OnAfterAllTests` after a failed `OnBeforeAllTests`, but this build calls it (`irislib/%UnitTest/Manager.cls:1298-1306`). The comment now states the contract, and its mutation line under Verification is corrected. Task 4 makes the same claim. Low. [src/OcuPilot/Test/CompileWithoutInterop.cls:68]
+- [x] [Review][Patch] **The `USER` precondition was too narrow.** `TestItServesAnInteroperabilityNamespace` required only that `USER` lacks InteropPort, but the guard depends on `USER` holding no OcuPilot class at all. It now requires a count of 0 under `OcuPilot.` there. Low. [src/OcuPilot/Test/CompileWithoutInterop.cls:313]
+- [x] [Review][Patch] **`UninstallResidue` and the `ProbeApps` header still said `Existing()` reads applications only.** Low. [src/OcuPilot/Test/UninstallResidue.cls:96]
+- [x] [Review][Patch] **DW-2362: `classifyLeftovers` worded the compile probe's tokens as web applications to remove with `ProbeApps.Remove()`.** They are now named as compile probe objects, with `CompileWithoutInteropProbe.RemoveAll()` as the remedy, and `ui/tools/ci-leftovers.test.mjs` pins it. `ci.test.mjs` is unedited and green, and DW-2362 is resolved by this story. Low. [ui/tools/ci-runner.mjs:267]
+- [x] [Review][Patch] **The class header said "Three things are pinned" and then listed more.** Low. [src/OcuPilot/Test/CompileWithoutInterop.cls:8]
+- [x] [Review][Defer] **DW-2361 was found again.** `Test.ProductionProbe` already seeds a `USER` production, and the nine reads pin no row count, so no row loop is held. [src/OcuPilot/Test/CompileWithoutInterop.cls:308] Deferred: the lead routed it to the burn-down before this review (`routed owner=burndown`); an occurrence is appended.
+- [x] [Review][Defer] **`docs/DEVELOPMENT.md` is out of date on the package job.** It does not say the job installs into a namespace created without interoperability, and does not name the DW-2355 limit. [docs/DEVELOPMENT.md:456] Deferred: an out-of-footprint low, filed as DW-2363 `wontfix-accepted` with a `reopen_if`.
+
+**Rejected:**
+
+- `false`: smoke judges `/navigation` against another namespace than the one the application serves. Smoke runs in the install namespace (AD-17), the request names no route namespace, and `Kernel.Scope.Current` falls back to that same `$Namespace`.
+- `false`: a test-scope roster resource that is not `.PKG` copies test classes silently. `TestNoTestScopeClassIsCopied` requires classes under each prefix here, so a malformed prefix goes red.
+- `false`: a surviving `%DB_OCUPROBE2028D` resource is invisible. `RemoveAll`'s `Remaining()` counts it, and `OnAfterAllTests` fails the class.
+- `false`: an `OCUPROBE2028*` object under another name escapes the leftover check. Only `SeedNamespace`'s exact names are ever created.
+- `low`: `installSessions` stops only at `EOF`. Every install-instance session uses `EOF`, so a delimiter parser would guard a case that does not exist.
+- `low`: an `OCUPROBE2028` leftover turns `Provenance` and `GrantReadBack` red with a message worded for applications. That needs a failed teardown in the same leg, the runner already labels the class that left it LEAKED or INHERITED, and the fix would add a filter.
+- `reject`: the Auto Run Result's counts are stale (the current counts are 7 tests, 7 new pins and 118 of 118). The fix edits the spec. The QA record carries the current counts.
+- `reject`: Design Notes and the implement record call the package job's IPM leg a first run, and **Never** forbids running `ci-ipm-archive.sh` locally. The fix edits the spec. The lead's `runner_check` (cycle log, 17:17:44Z) records the local run.
 
 ## Spec Change Log
 
@@ -281,7 +310,7 @@ deferred:
 
 `origin/OCU-1-epic18` had changed none of these, nor `Install/Smoke.cls`, at plan time.
 
-**Residual risk:** CI's `package` job is the first run of three steps: IPM import in a namespace without interoperability, OcuPilot's `<Invoke>` there, and smoke there. IPM compiles without interoperability, since it is routinely installed in `%SYS` (inference). A red result re-opens the story as any red CI does. If smoke fails there for a reason unrelated to interoperability, the implement stage records it and halts to the lead rather than widening this story.
+**Residual risk:** CI's `package` job is the first CI run of three steps (the lead ran the script locally once, green): IPM import in a namespace without interoperability, OcuPilot's `<Invoke>` there, and smoke there. IPM compiles without interoperability, since it is routinely installed in `%SYS` (inference). A red result re-opens the story as any red CI does. If smoke fails there for a reason unrelated to interoperability, the implement stage records it and halts to the lead rather than widening this story.
 
 **Gate rulings (lead, 2026-10-12):**
 
@@ -324,7 +353,7 @@ Then run `Do $System.OBJ.LoadDir("/opt/ocupilot/src/OcuPilot","ck-d",.tErrors,1)
 - `cd ui && node tools/ci-runner.mjs --container ocupilot-b-ci --class OcuPilot.Test.InteropHostTest --class OcuPilot.Test.InteropHostTestEdges` (loop) -- expected: green and unmodified.
 - `bash scripts/lint-docs.sh` (loop) -- expected: clean.
 - **Runner (lead-owned):** the full ObjectScript sweep, the smoke on `ocupilot-b-ci`, and Rule 30's fresh check.
-- **Left to CI:** the `package` job (the first run of the IPM leg), the full browser suite, and the instance shards.
+- **Left to CI:** the `package` job (the first CI run of the IPM leg), the full browser suite, and the instance shards.
 
 **Mutations to demonstrate** (implement stage; revert each, and confirm `git status --short` and `git diff --stat` are unchanged):
 
@@ -362,12 +391,32 @@ Then run `Do $System.OBJ.LoadDir("/opt/ocupilot/src/OcuPilot","ck-d",.tErrors,1)
 - mutation: `NamespaceFeatures.Reports` answers 0 for `interoperability` -> `OcuPilot.Test.Smoke.TestTheNavigationCheckAgreesWithTheNamespace` red alone: `fail navigation -- the navigation map says interoperability applies=0 in HSCUSTOM, which reports 1`. The spec's `OcuPilot.Test.Smoke` held no assertion on the `navigation` check, so that test is added here.
 - mutation: `Smoke.NavigationProblem` skips the `applies` comparison -> `TestTheNavigationCheckJudgesTheMap` red on the opposite-value leg.
 - mutation: `OnAfterAllTests` skips `RemoveAll` -> the class is reported `1 with probe leftovers`, naming `namespace:OCUPROBE2028N`, `database:OCUPROBE2028D` and `directory:ocuprobe2028d`, with the class-level `OnAfterAllTests` error. The leftovers were removed by `RemoveAll`, and the reverted class re-ran to `0 with probe leftovers`.
-- mutation: the namespace-reports-interoperability guard forced true -> `EMPTY`, `OnBeforeAllTests raised: the probe namespace OCUPROBE2028N reports interoperability, so compiling in it would prove nothing`, and `0 with probe leftovers`: the failed setup removed what it made.
+- mutation: the namespace-reports-interoperability guard forced true -> `EMPTY`, `OnBeforeAllTests raised: the probe namespace OCUPROBE2028N reports interoperability, so compiling in it would prove nothing`, and `0 with probe leftovers`. Both the setup's own removal and the `OnAfterAllTests` call that `%UnitTest` makes after a failed setup (`irislib/%UnitTest/Manager.cls:1298`) remove the probe objects by name, so this run does not show which of the two did.
 - mutation: the `# classes: CompileWithoutInterop` line removed from `ci-throwaway.sh` -> `ci.test.mjs` red on the arming-roster test, naming `CompileWithoutInterop`.
 - mutation (the `ipm-archive.test.mjs` pins, 14 variants of `ci-ipm-archive.sh`, each red on the pin named, the baseline green after restore): the unexpire session in `HSCUSTOM` -> `_SYSTEM is unexpired by a session opened in %SYS` (the older lazy regex stays green through the namespace-creating session, which is why that pin was added); the `load`, `list` or class-count session in `HSCUSTOM`, or `assert_no_repositories` without the namespace -> `load and list run in the namespace the script creates`; `EnableNamespace` added, the read-back `Write` deleted, the `!= "0"` check deleted, or `import_ipm` moved above the read-back -> `the namespace is created with no EnableNamespace ...`; `import_ipm` without the namespace, or after `load` -> `IPM is imported into the created namespace, before load`; the `$CLASS_COUNT` or `COMPILED_TEST` check deleted -> `the compiled OcuPilot class count ...`; `--namespace` dropped from the smoke line -> `smoke runs in the created namespace`.
 - mutation (review patches): `Smoke.NavigationProblem` without its boolean-type test -> `Test.Smoke.TestTheNavigationCheckJudgesTheMap` red alone (string leg); without its areas-array test -> the same test red alone (non-array leg).
 - mutation: `InteropPort.Invoke`'s `Reports("interoperability", pNamespace)` refusal replaced by `If 0` -> `CompileWithoutInterop.TestItRefusesItsOwnNamespace` red alone.
 - mutation: `ProbeApps.CompileProbeLeftovers` answering `""` -> `CompileWithoutInterop.TestTheLeftoverCheckSeesTheProbeObjects` red alone. After each of the four, the file was restored from a copy (checksums and `git status` equal), the throwaway reloaded, and `CompileWithoutInterop` (5), `Smoke` (42) and `InteropHostRead` (7) re-ran green with 0 probe leftovers.
+
+**QA-stage record (slot B, `ocupilot-b-ci`):**
+
+- (QA) `src/OcuPilot/Test/CompileWithoutInterop.cls` (modified, now 7 tests): `TestTheCopyIsEveryClassOfEveryShippedPackage` and `TestNoTestScopeClassIsCopied`, with `RosterPrefixes` (the roster read `ShippedClasses` now shares) and `DefinitionsIn`. The gap: the compiled set was compared with a copied set that `ShippedClasses` itself derives, so a copy that left classes out stayed green. Measured before the change: leaving `OcuPilot.Area.` (81 classes) out of the copy kept all 5 tests green; copying only `Port`, or leaving out `Screen`, reddened four tests, and leaving out `Api` one, only through compile dependencies on the missing classes. The new test counts each roster `packages` entry that is not test scope in this namespace and in the probe namespace.
+- (QA) `ui/tools/ipm-archive.test.mjs` (modified, now 31 tests): one pin that the created database lives in a directory of its own under the manager directory, made before the database.
+- mutation: `ShippedClasses` leaving `OcuPilot.Area.` out -> `CompileWithoutInterop.TestTheCopyIsEveryClassOfEveryShippedPackage` red alone, `OcuPilot.Area. is copied whole: 81 here, 0 in OCUPROBE2028N` (AC3, "every class").
+- mutation: `ShippedClasses` not leaving out the test-scope prefixes -> `TestNoTestScopeClassIsCopied` red, `OCUPROBE2028N holds none under OcuPilot.Test.`, with `TestEveryShippedClassCompilesThere` and the package test red beside it.
+- mutation: `tDir` without its `_$ZConvert(tNs,"L")_"/"` leaf in `ci-ipm-archive.sh`, then `CreateDatabase(tRes,1` in place of `CreateDatabase(tDir,1` -> the directory pin red each time. Each mutation was reverted from a copy (checksums and `git diff --stat` equal) and the throwaway reloaded.
+- Re-run after the final reload, every class `0 with probe leftovers`: `CompileWithoutInterop` 7, `NamespaceFeatures` 5, `Smoke` 42, `InteropHostDescriptor` 8, `InteropHostRead` 7, `InteropHostTest` 12, `InteropHostTestEdges` 5, `Provenance` 7, `GrantReadBack` 3, `InteropItemControl` 6, `InteropItemIdentity` 3, `InteropSettingControl` 7, `InteropSettingIdentity` 3, `InteropSettingDescent` 9, `InteropSettingPaths` 5, `InteropQueueActions` 10; `ipm-archive.test.mjs` with `ci.test.mjs` 118 of 118; `check-objectscript` 0 problems.
+- Not a gap: matrix row 7 (the namespace reports interoperability) has no unit test of its setup message, since it needs a namespace that reports interoperability; the invariant itself is held by `TestInteroperabilityIsHiddenThere` (`applies` false in the probe namespace) and the recorded mutation.
+
+**Code-review record (slot B, `ocupilot-b-ci`).** Each mutation was applied to the throwaway's source copy, or to a saved copy for client files. Each was reverted from the worktree or the copy (sources identical, `git status` unchanged) and reloaded.
+
+- mutation: the `NavigationProblem` call removed from `Smoke.CheckApiReads` -> `Test.Smoke.TestTheNavigationCheckFailsADisagreeingMap` red alone (`pass navigation`, run 729); `TestTheNavigationCheckAgreesWithTheNamespace` stayed green (AC2, the wiring).
+- mutation: `Include Ensemble` back at `InteropPort.cls` :1, after `PrepareProbe`'s compiled-side query gained the `GeneratedBy` filter -> `CompileWithoutInterop.TestEveryShippedClassCompilesThere` red alone, naming InteropPort and `MPP5635` (run 728) (AC3, AC4).
+- mutation: the package job's count adds 1 per row instead of `IsUpToDate` -> `ipm-archive.test.mjs` `the compiled OcuPilot class count ...` red alone (AC4, package job).
+- mutation: the post-install `INTEROP` read deleted, then its `!= "0"` check disabled -> `the created namespace still reports no interoperability once the archive is installed` red each time (AC2, package job).
+- mutation: `classifyLeftovers` words every added token as a web application -> `ci-leftovers.test.mjs` red (DW-2362).
+- The patched counting session body, piped to `ocupilot-b-ci` in `HSCUSTOM`, printed all three markers: `COMPILED` 1989 current (756 shipped and 1233 test), `COMPILEDTEST` 1233, `INTEROP` 1.
+- After the final reload, every run reported `0 with probe leftovers`: `CompileWithoutInterop` 7, `Smoke` 43, `InteropHostRead` 7, `Provenance` 7, `GrantReadBack` 3 and `UninstallResidue` 4. `ipm-archive`, `ci`, `ci-leftovers` and `ci-shards` passed 153 of 153, with `ci.test.mjs` unedited. `check-objectscript` reported 0 problems and `lint-docs` was clean.
 
 ## Auto Run Result
 
@@ -378,7 +427,7 @@ Blocking condition: none
 
 - `InteropPort` no longer includes `Ensemble` or names an `Ens.Config` class as a type: `ItemObject`, `SettingStep` and `ItemQueueName` take or return `%RegisteredObject`, and the five `$$$EnsRuntimeAppData` uses are the literal `^IRIS.Temp.EnsRuntimeAppData($Namespace, ...)`.
 - `Smoke`'s `navigation` check also requires the `interoperability` area's `applies` to equal the namespace's own report.
-- New `CompileWithoutInterop` (5 tests) and `CompileWithoutInteropProbe` compile every shipped class in a namespace created without interoperability and drive the probe copy against `USER`.
+- New `CompileWithoutInterop` (5 tests at implement; 7 after QA) and `CompileWithoutInteropProbe` compile every shipped class in a namespace created without interoperability and drive the probe copy against `USER`.
 - `ProbeApps.Existing()` reports surviving `OCUPROBE2028` objects.
 - `ci-throwaway.sh` carries the roster line.
 - `ci-ipm-archive.sh` installs into a created `NOINTEROP` namespace (six new `ipm-archive.test.mjs` pins).
@@ -404,5 +453,5 @@ Blocking condition: none
 
 **Residual risks.**
 
-- The `package` job's IPM leg (import into `NOINTEROP`, `<Invoke>` there, smoke there) is its first run in CI.
+- The `package` job's IPM leg (import into `NOINTEROP`, `<Invoke>` there, smoke there) is its first run in CI; the lead's local run of the script passed.
 - No CI leg smokes an archive installed into an interoperability namespace (gate-accepted).

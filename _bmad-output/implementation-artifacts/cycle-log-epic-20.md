@@ -571,3 +571,9 @@
 2026-10-12T17:14:24Z	Story 20.13	ci_green_verified	run=38272302931 head=9104d78f boundary=rides_with_20.28(orchestrator:feature_moved_to_16cd7c72)
 2026-10-12T17:14:24Z	Story 20.28	dev_complete	spawn_at=(see_stage_spawned) model=sonnet agent_name=20-28-implement-1 build_sha=0f38f1c5 baseline_revision=3572e063 review_loop_iteration=0 followup_review_recommended=false deferred=2(DW-2361_med_burndown,DW-2362_low_open_for_cr)
 2026-10-12T17:14:24Z	Story 20.28	adr_verifications_complete	tool=none acs= result=none_required evidence= mutations=none model=claude-opus-5-5
+2026-10-12T17:17:44Z	Story 20.28	runner_check	check=ci-ipm-archive.sh_local(containers_ocu-b-ipm-build/install,removed) result=pass secs=182 evidence=756_classes_installed_into_NOINTEROP_smoke_43/43_executed_7_skipped_by_design navigation=pass
+2026-10-12T17:17:44Z	Story 20.28	stage_spawned	stage=qa spawn_at=2026-10-12T17:17:44Z model=sonnet agent_name=20-28-qa-1 cycle_iteration=1
+2026-10-12T17:36:39Z	Story 20.28	qa_complete	spawn_at=(see_stage_spawned) model=sonnet agent_name=20-28-qa-1 tests=CompileWithoutInterop(+2),ipm-archive.test.mjs(+1) tests_added=3 mutations_demonstrated=6 first_run_failures=0 clarifications=0 closing_sections_present=true fixes=none(gap:copy_set_derived_from_itself)
+2026-10-12T17:36:39Z	Story 20.28	stage_spawned	stage=code-review spawn_at=2026-10-12T17:36:39Z model=opus agent_name=20-28-code-review-1 cycle_iteration=1
+2026-10-12T18:10:30Z	Story 20.28	cr_complete	spawn_at=(see_stage_spawned) model=opus agent_name=20-28-code-review-1 resolved=11 fixed_at_source=11 resolved_ledger=DW-2362 occurrence=DW-2361 wontfix_accepted=1(DW-2363) dismissed=8 high=0 med=4 low=9 rows=28 unresolved_high_med=1(DW-2361_burndown) review_tier=full-opus status=done new_file=ui/tools/ci-leftovers.test.mjs
+2026-10-12T18:11:25Z	Story 20.28	ledger_adjudicated	owned=1 resolved=1(DW-2362_at_cr) reowned=0 terminal=1(DW-2363_wontfix-accepted_at_cr) note=DW-2361_burndown_occurrence

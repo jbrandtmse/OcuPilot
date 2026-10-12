@@ -863,6 +863,24 @@ test('the namespace is created with no EnableNamespace, and its interoperability
   assert.ok(importAt > readBackAt, 'and IPM is imported only once the namespace has read back clean');
 });
 
+test('the namespace gets a database in a directory of its own under the manager directory, never in the manager directory itself', () => {
+  // Mutation (Rule 19): build `tDir` without its `_$ZConvert(tNs,"L")_"/"` leaf, so the database would
+  // be created in the manager directory itself -> the first assertion goes red. Create the database
+  // anywhere but `tDir` -> the second. Create it before the directory is made -> the third.
+  const creating = installSessions(code).filter((session) => session.body.includes('Config.Namespaces).Create('));
+  assert.equal(creating.length, 1, 'one session creates the namespace');
+  const { body } = creating[0];
+  assert.match(
+    body,
+    /^Set tDir = ##class\(%File\)\.NormalizeDirectory\(\\\$System\.Util\.ManagerDirectory\(\)\)_\\\$ZConvert\(tNs,"L"\)_"\/"$/m,
+    'the database directory is a leaf named for the namespace under the manager directory',
+  );
+  assert.match(body, /SYS\.Database\)\.CreateDatabase\(tDir,/, 'and the database is created in that directory');
+  const directoryAt = body.indexOf('CreateDirectoryChain(tDir)');
+  const databaseAt = body.indexOf('CreateDatabase(tDir,');
+  assert.ok(directoryAt > 0 && databaseAt > directoryAt, 'after the directory is made');
+});
+
 test('IPM is imported into the created namespace, before load', () => {
   // Mutation (Rule 19): drop the namespace argument from the `import_ipm` call on the install
   // instance -> red (it would import into HSCUSTOM). Move the call below the `load` session -> red.
@@ -879,12 +897,15 @@ test('IPM is imported into the created namespace, before load', () => {
 
 test('the compiled OcuPilot class count in the created namespace is required to equal the archive\'s, with no test class', () => {
   // Mutation (Rule 19): delete the `!= "$CLASS_COUNT"` check -> the second assertion goes red.
-  // Delete the `COMPILED_TEST` check -> the third. Count in HSCUSTOM -> the first.
+  // Delete the `COMPILED_TEST` check -> the third. Count in HSCUSTOM -> the first. Count every
+  // dictionary row instead of each current compile -> the IsUpToDate assertion.
   const counting = installSessions(code).filter((session) => session.body.includes('%Dictionary.CompiledClass'));
   assert.equal(counting.length, 1, 'one session counts the compiled classes');
   assert.equal(counting[0].namespace, CREATED_NAMESPACE, 'in the created namespace');
   assert.match(counting[0].body, /'OcuPilot\.'/, 'the OcuPilot classes');
   assert.match(counting[0].body, /'OcuPilot\.Test\.'/, 'and, separately, the test classes');
+  assert.match(counting[0].body, /\+ ''\$System\.OBJ\.IsUpToDate\(tRS\.%GetData\(1\)\)/, 'counting only a current compile, since a failed one keeps its dictionary row');
+  assert.match(counting[0].body, /'OcuPilot\.' AND \(GeneratedBy IS NULL OR GeneratedBy = ''\)/, 'and no class another generated, which the archive does not carry');
   assert.match(code, /\[ "\$COMPILED" != "\$CLASS_COUNT" \]/, 'the compiled count is required to equal the archive\'s class count');
   assert.match(code, /\[ "\$COMPILED_TEST" != "0" \]/, 'and the test count to be zero');
   const countAt = code.indexOf('COMPILED_RAW=$(');
@@ -897,4 +918,12 @@ test('smoke runs in the created namespace', () => {
   // would then choose HSCUSTOM itself.
   const [line] = code.split('\n').filter((candidate) => candidate.includes('smoke.sh'));
   assert.ok(line.includes('--namespace "$NOINTEROP_NS"'), `the smoke line does not name the created namespace: ${line.trim()}`);
+});
+
+test('the created namespace still reports no interoperability once the archive is installed', () => {
+  // Mutation (Rule 19): delete the `INTEROP` read from the counting session -> the first assertion
+  // goes red; delete the `!= "0"` check on it -> the second.
+  const [counting] = installSessions(code).filter((session) => session.body.includes('%Dictionary.CompiledClass'));
+  assert.match(counting.body, /"INTEROP-START:"_##class\(%Library\.EnsembleMgr\)\.IsEnsembleNamespace\(\$Namespace\)/, 'the session after the install reads the namespace\'s interoperability');
+  assert.match(code, /marker "\$COMPILED_RAW" "INTEROP"\)" != "0" \]/, 'and requires it to read 0');
 });
