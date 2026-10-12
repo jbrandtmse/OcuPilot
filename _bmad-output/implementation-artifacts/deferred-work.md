@@ -10388,6 +10388,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: cycle-log-epic-18.md (Story 18.25 CI run 37646809169) | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: run 37646809169 head 44e8f5b3 instance shard 2/5: AssertMasked+7 and +9 red on the wire read while logs.audit.read passed moments later; the class ran 4/4 green on ocupilot-ci (run 1172) over the same source; OAuthAuthorizationServerSecret and OAuthRegisteredClientSecret read once the same way (inference)
 - 2026-10-07T17:30:11Z status=routed owner=burndown by=lead note=apply 23.4's READSECONDS poll (16313a0e) to AuditVendorSecrets.AssertMasked and to any sibling that reads a vendor row once
+- 2026-10-12T15:24:19Z occurrence=run 38266021964 attempt 1 head 478a486a instance shard 4/8: OAuthAuthorizationServerSecret.TestTheAuditReadsMaskThePassword AssertMasked+7 and +15 (ServerPassword reads the mask); second CI hit; fix pulled forward into 18.45 (orchestrator)
 
 ### DW-2164: The sign-out reset of the MFT connection form store (app.ts calls mftConnectionForm.reset()) has no test; 18.25's superserver form store has the same gap
 - source: spec-18-26-managed-file-transfer-connections.md | severity: low | fix-risk: low | footprint: in-story
@@ -11405,3 +11406,29 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: the roster is a literal list; no Stage 2 marker or baseline of earlier screens exists
 - 2026-10-12T06:16:46Z status=open owner=18-12-the-agent-grows-with-the-stage by=harvest note=code review: a reverse check (a baseline of pre-Stage-2 screens) or a recorded reason it stays roster-only
 - 2026-10-12T06:55:56Z status=resolved-by:18-12-the-agent-grows-with-the-stage by=adjudication note=StageTwoTools holds roster plus Elsewhere equal to the registry both ways with a floor (runs 743-744)
+
+### DW-2354: Gemini refuses a tool declaration whose INTEGER property carries numeric enum members (HTTP 400), so every Gemini request carrying one of five tools fails
+- source: spec-18-45-the-agent-s-tool-roster-scoped-per-turn.md | severity: high | fix-risk: low | footprint: in-story
+- evidence: Task 0 on ocupilot-ci: countTokens of the full roster 400 at security_secrets_creatersa, createsymmetric, replacersa, security_ssl_create, security_ssl_update; generateContent with creatersa alone 400, 200 with the members as strings (ToolDefAdapter.GeminiSchema :233)
+- 2026-10-12T13:59:54Z status=routed owner=18-45-the-agent-s-tool-roster-scoped-per-turn by=lead note=harvested from 18.45's deferred list; pre-existing since SslCreate (in release 1.0.11), so a full-roster Gemini agent turn has failed on every call (inference); fix at 18.45's code review in ToolDefAdapter, which this story edits, as the empty-enum respelling does
+- 2026-10-12T14:54:21Z status=resolved-by:478a486a owner=18-45-the-agent-s-tool-roster-scoped-per-turn by=adjudication note=shipped as its own code head on the orchestrator's ruling (taken over early from 18.45, which edits ToolDefAdapter); live countTokens over 370 declarations on gemini-3.8-flash 400 before, 200 after; GeminiNumericEnum pins it (mutations runs 2-8, review 37-40); release 1.0.11 has the same code path for security.ssl.create and .update (SslCreate integer enums), the WalletKey tools are absent there
+
+### DW-2357: The Gemini respelling map's names (GeminiEmptyEnumArgs, Gemini.EmptyEnumArgs, EmptyEnumMap, pEmptyEnums) still say empty-enum though the map now carries numeric kinds too
+- source: 478a486a (DW-2354 review) | severity: low | fix-risk: low | footprint: in-epic
+- evidence: MessageAdapter/ToolDefAdapter/Gemini.cls after 478a486a: the map holds kinds number and numbers beside value and items
+- 2026-10-12T14:54:21Z status=wontfix-accepted owner=18-45-the-agent-s-tool-roster-scoped-per-turn by=cr note=reopen_if=a third respelling kind joins the map, or a reader misreads the map as empty-enum only in a review finding
+
+### DW-2358: A numeric enum nested below a top-level property or its items would be respelled in the Gemini declaration but not decoded back
+- source: 478a486a (DW-2354 review) | severity: low | fix-risk: low | footprint: in-epic
+- evidence: the respelling map names top-level arguments and items only; no registered tool nests a numeric enum deeper (six tools map, every numeric one top-level)
+- 2026-10-12T14:54:28Z status=wontfix-accepted owner=18-45-the-agent-s-tool-roster-scoped-per-turn by=cr note=reopen_if=GeminiNumericEnum.TestNoGeminiDeclarationCarriesANumericMember names an unmapped path, or a tool schema puts an integer or number enum deeper than a property or its items
+
+### DW-2359: Dispatch.Advertise's doc still calls its answer the tool array every provider request of a turn carries, untrue for the scoped OpenAI, Gemini and compatible requests
+- source: spec-18-45-the-agent-s-tool-roster-scoped-per-turn.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: Dispatch.cls:89-91 reads 'The tool array every provider request of a turn carries: every registered tool'; since 18.45 Loop.Scope and ToolDefAdapter.Carried pick each call's set on those dialects.
+- 2026-10-12T15:19:30Z status=wontfix-accepted owner=18-45-the-agent-s-tool-roster-scoped-per-turn by=cr note=reopen_if=a story edits Dispatch.cls while Advertise's doc still says every request carries the array (contended at review)
+
+### DW-2360: MessageAdapter.ReferencedNames re-defines the tool_reference content shape that Sanitize.IsToolReferences gates, looser and with no stated reason
+- source: spec-18-45-the-agent-s-tool-roster-scoped-per-turn.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: Sanitize.cls IsToolReferences (exactly type and tool_name, wire-name pattern) and MessageAdapter.cls ReferencedNames (any tool_name) walk the same shape; every array ResultText sees has passed the stricter gate.
+- 2026-10-12T15:19:30Z status=wontfix-accepted owner=18-45-the-agent-s-tool-roster-scoped-per-turn by=cr note=reopen_if=a content Sanitize passes unchanged renders as JSON, not the Found sentence, in OpenAI's tool message
