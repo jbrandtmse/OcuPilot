@@ -275,6 +275,7 @@ XData Probes
 <probe class="Api.Router" method="POST" url="/explorer/docdb" path="/api/ocupilot/explorer/docdb" disposition="envelope" refusal="1"/>
 <probe class="Api.Router" method="POST" url="/interop/items" path="/api/ocupilot/interop/items" disposition="envelope" refusal="1"/>
 <probe class="Api.Router" method="POST" url="/interop/lookup-entries" path="/api/ocupilot/interop/lookup-entries" disposition="envelope" refusal="1"/>
+<probe class="Api.Router" method="POST" url="/rest-service" path="/api/ocupilot/rest-service" disposition="envelope" refusal="1"/>
 <probe class="Api.Readiness" method="GET" url="/" path="/api/ocupilot/readiness/" disposition="envelope"/>
 <probe class="Api.StaticHandler" method="GET" url="/(.*)" path="/ocupilot/index.html" disposition="bytes"/>
 <probe class="Api.StaticHandler" method="HEAD" url="/(.*)" path="/ocupilot/index.html" disposition="bytes"/>

@@ -263,6 +263,7 @@ XData UrlMap [ XMLNamespace = "http://www.intersystems.com/urlmap" ]
   <Route Url="/explorer/docdb" Method="POST" Call="ExplorerDocDbCreate"/>
   <Route Url="/interop/items" Method="POST" Call="InteropItemCreate"/>
   <Route Url="/interop/lookup-entries" Method="POST" Call="InteropLookupEntryCreate"/>
+  <Route Url="/rest-service" Method="POST" Call="RestServiceCreate"/>
 </Routes>
 }
 
@@ -1976,6 +1977,13 @@ ClassMethod RoutineAppUpdate(pId As %String) As %Status
 ClassMethod RoutineAppCreate() As %Status
 {
     Quit ##class(OcuPilot.Area.WebApp.RoutineAppSave).HandleCreate()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /rest-service</code> (Story 18.34): the REST API explorer's create,
+/// resolved through the one tool the agent's confirm uses (AD-55).</p>
+ClassMethod RestServiceCreate() As %Status
+{
+    Quit ##class(OcuPilot.Area.WebApp.RestServiceSave).HandleCreate()
 }
 
 }

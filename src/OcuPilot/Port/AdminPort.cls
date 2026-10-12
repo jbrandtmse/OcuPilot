@@ -3368,7 +3368,8 @@ ClassMethod Sequence(pName As %String, pEndpoint As %RegisteredObject, pBody As 
 /// row to <method>ForgetTask</method>, which leaves a row the caller cannot delete for
 /// <method>SweepOwnTasks</method>. No terminal state
 /// within the bound is <code>PORT.TIMEOUT</code>, and the row is left to the worker that still
-/// owns it.</p>
+/// owns it. The bound is logged unless the pair is a <parameter>QUEUEDWRITES</parameter> one, whose
+/// caller answers it started (AD-26).</p>
 /// <p>For a <parameter>CONSOLEDTYPES</parameter> pair (<var>pEndpoint</var>'s request type
 /// <var>pType</var>) the answer is <method>Consoled</method>'s.</p>
 ClassMethod AwaitTask(pEndpoint As %String, pGuid As %String, Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, pType As %String = "") As %Status [ Private ]
@@ -3408,7 +3409,8 @@ ClassMethod AwaitTask(pEndpoint As %String, pGuid As %String, Output pResult, Ou
         }
         If ($ZHorolog - tStart) >= tBound {
             Set tSC = ..Refuse(503, ##class(OcuPilot.Api.Error).#UNAVAILABLE, ##class(OcuPilot.Api.Error).#PORTTIMEOUT, "The instance did not finish that operation in time", .pHttpStatus, .pFault)
-            Do ..LogFault(pEndpoint _ " task " _ pGuid _ " left " _ tAnswer.State _ " at the bound", tSC, pFault.code)
+            ; A QUEUEDWRITES pair past the bound has started: its caller answers that, so nothing is logged.
+            If '..IsQueuedWrite(pEndpoint, pType) Do ..LogFault(pEndpoint _ " task " _ pGuid _ " left " _ tAnswer.State _ " at the bound", tSC, pFault.code)
             Quit
         }
         Hang ..#POLLINTERVAL

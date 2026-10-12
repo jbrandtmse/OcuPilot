@@ -400,6 +400,9 @@ services:
       # The REST service classes create and delete probe services named OcuProbe1832, and the gate class writes them as
       # principals holding the REST API explorer's pairs and each without one (Story 18.32).
       # classes: RestServiceGate, RestServiceWrite
+      # The REST service Save class builds and deletes probe services named OcuProbe1832 through the explorer's create
+      # Save, in USER and in %SYS (Story 18.34).
+      # classes: RestServiceSave
       # The SQL object privilege classes create and remove a probe user and role named OcuSqlPrivProbe and a probe
       # schema's objects in USER, set up privileges as the running account, and the gate class writes them as
       # principals holding Security's pairs and each without one (Story 18.9).
@@ -412,6 +415,9 @@ services:
       # activity port requires, or holding READ on USER's database and %Development, and reads
       # another account's running probe statement as them (Story 19.10).
       # classes: SqlActivityGate, SqlActivityProbe
+      # The metrics gate class signs in as probe principals each missing one pair the monitor port requires, and
+      # reads the Prometheus metrics list as them and as a principal holding both (Story 18.11).
+      # classes: MetricsGate
       # The interoperability control class compiles and runs a probe production in USER and starts,
       # stops, restarts, updates and recovers it; its descriptor class compiles the probe classes in USER;
       # its gate class signs in as probe principals each

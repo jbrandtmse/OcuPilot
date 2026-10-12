@@ -10,6 +10,13 @@
  * 2. **The refusal after the click** (C3): a probe service a probe web application dispatches to is listed under the web
  *    application's path; its Delete, typed with that path, is sent, the instance refuses it, the page draws the
  *    instance's sentence, and nothing is deleted.
+ * 3. **The create** (Story 18.34, Integration): the command bar's Create opens the dialog; a package and an OpenAPI 2.0
+ *    text create a probe service, with one `POST /api/ocupilot/rest-service` carrying `{Name, Document}`; the dialog
+ *    closes, the row appears, and the instance lists the service with its three classes.
+ * 4. **The refusal on the Document field** (Story 18.34): a `{"swagger": "3.0"}` text keeps the dialog open with the
+ *    Document field marked and the instance's sentence under it, and nothing is built.
+ * 5. **Load from file** (Story 18.34): a formatted document file handed to the dialog's file picker fills the Document
+ *    field with its text, and Create sends that text as it stands and builds the service from it.
  *
  * **It refuses the live and development containers.** It touches only probe services named `OcuProbe1832...` and a probe
  * web application under `/api/ocuprobe1832`: `before` and `after` remove them with
@@ -24,6 +31,8 @@
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import puppeteer from 'puppeteer';
@@ -43,6 +52,17 @@ const NAME = 'OcuProbe1832Browser';
 const APPLICATION = '/api/ocuprobe1832browser';
 const LIST_URL = `/ocupilot/web-applications/rest-apis?ns=${NAMESPACE}`;
 const ACTION_PATH = '/api/ocupilot/screens/webapp.restapis/action';
+const SAVE_PATH = '/api/ocupilot/rest-service';
+const DIALOG_NAME = 'OcuProbe1832Dialog';
+const REFUSED_NAME = 'OcuProbe1832Refused';
+const FILE_NAME = 'OcuProbe1832File';
+const DOCUMENT_TEXT = JSON.stringify({ swagger: '2.0', info: { title: 'dialog', version: '1' }, basePath: '/probe', paths: { '/ping': { get: { operationId: 'ping', responses: { 200: { description: 'ok' } } } } } });
+const NAME_FIELD = 'input[data-rest-service-create-name]';
+const FILE_INPUT = 'input[data-rest-service-create-file]';
+const DOCUMENT_FIELD = 'textarea[data-rest-service-create-document]';
+const DOCUMENT_VIOLATION = '[data-rest-service-create-document-violation]';
+const CONFIRM = '[data-rest-service-create-confirm]';
+const PRIMARY = '.ocu-command-bar button.ocu-command-bar-primary';
 const EMPTY_SELECTOR = '.ocu-data-table-empty';
 const REFUSAL_SELECTOR = 'p.ocu-list-page-banner[role="alert"] .ocu-banner-message';
 
@@ -178,6 +198,115 @@ test('C3: a service a web application dispatches to is refused by the instance a
     assert.equal(read('AFTER', `##class(${PROBE}).Classes("${NAMESPACE}","${NAME}")`), '111', 'nothing was deleted');
   } finally {
     await context.close();
+    removeProbes();
+  }
+});
+
+/** Open the create dialog from the command bar's Create. */
+async function openCreate(page) {
+  const create = await page.waitForSelector(PRIMARY, { visible: true, timeout: config.navigationTimeoutMs });
+  assert.equal(await create.evaluate((node) => node.textContent.trim()), STRINGS.actionCreate, 'the command bar offers Create');
+  await create.click();
+  await page.waitForSelector(NAME_FIELD, { visible: true, timeout: config.navigationTimeoutMs });
+  assert.equal(await page.$eval('[role="dialog"] .ocu-dialog-title', (node) => node.textContent.trim()), STRINGS.restServiceCreateTitle);
+}
+
+/** Open the create dialog and fill both fields: the package typed, the document text set as a paste does. */
+async function fillCreate(page, name, text) {
+  await openCreate(page);
+  await page.type(NAME_FIELD, name);
+  await page.$eval(
+    DOCUMENT_FIELD,
+    (node, value) => {
+      node.value = value;
+      node.dispatchEvent(new Event('input', { bubbles: true }));
+    },
+    text
+  );
+}
+
+/** Record the creates the page sends. */
+function recordSaves(page) {
+  const saves = [];
+  page.on('request', (request) => {
+    const url = new URL(request.url());
+    if (request.method() === 'POST' && url.pathname === SAVE_PATH) saves.push({ ns: url.searchParams.get('ns'), body: JSON.parse(request.postData() ?? '{}') });
+  });
+  return saves;
+}
+
+// Mutation (Rule 19): drop the `actions.register` of `create` from `RestApiListPage`, rebuild and redeploy -> the command bar
+// draws no Create and the first assertion goes red.
+test('Integration: the explorer\u2019s Create builds a probe service from a pasted document and its row appears', async () => {
+  removeProbes();
+  const { context, page } = await signedInAt(browser, config, LIST_URL);
+  const saves = recordSaves(page);
+  try {
+    await waitForListAnswered(page);
+    await fillCreate(page, DIALOG_NAME, DOCUMENT_TEXT);
+    await page.click(CONFIRM);
+    await page.waitForFunction(() => document.querySelector('[role="dialog"]') === null, { timeout: 90000 });
+    assert.deepEqual(saves, [{ ns: NAMESPACE, body: { Name: DIALOG_NAME, Document: DOCUMENT_TEXT } }], 'one create was sent, carrying the package and the text as typed');
+    await page.waitForFunction((selector, wanted) => Array.from(document.querySelectorAll(selector)).some((row) => row.textContent.includes(wanted)), { timeout: 90000 }, ROW_SELECTOR, DIALOG_NAME);
+    assert.equal(read('LISTED', `##class(${PROBE}).Listed("${NAMESPACE}","${DIALOG_NAME}")`), '1', 'the instance lists the service');
+    assert.equal(read('BUILT', `##class(${PROBE}).Classes("${NAMESPACE}","${DIALOG_NAME}")`), '111', 'with its three classes');
+  } finally {
+    await context.close();
+    removeProbes();
+  }
+});
+
+// Mutation (Rule 19): drop the document violation paragraph from the dialog's template, rebuild and redeploy -> no
+// sentence is drawn under the field and the sentence assertion goes red.
+test('a document whose swagger is 3.0 is refused on the Document field with the instance\u2019s sentence, and nothing is built', async () => {
+  removeProbes();
+  const sentence = read('SENTENCE', '##class(OcuPilot.Api.RestServiceError).#REASONDOCUMENT');
+  const { context, page } = await signedInAt(browser, config, LIST_URL);
+  const saves = recordSaves(page);
+  try {
+    await waitForListAnswered(page);
+    const text = JSON.stringify({ swagger: '3.0' });
+    await fillCreate(page, REFUSED_NAME, text);
+    await page.click(CONFIRM);
+    await page.waitForFunction((selector) => (document.querySelector(selector)?.textContent ?? '').trim() !== '', { timeout: 90000 }, DOCUMENT_VIOLATION);
+    assert.equal(await page.$eval(DOCUMENT_VIOLATION, (node) => node.textContent.trim()), sentence, 'the instance\u2019s sentence is drawn under the field');
+    assert.equal(await page.$eval(DOCUMENT_FIELD, (node) => node.getAttribute('aria-invalid')), 'true', 'the Document field is marked');
+    assert.notEqual(await page.$('[role="dialog"]'), null, 'and the dialog stays open');
+    assert.deepEqual(saves, [{ ns: NAMESPACE, body: { Name: REFUSED_NAME, Document: text } }], 'one create was sent');
+    assert.equal(read('BUILT', `##class(${PROBE}).Classes("${NAMESPACE}","${REFUSED_NAME}")`), '000', 'and nothing is built');
+  } finally {
+    await context.close();
+    removeProbes();
+  }
+});
+
+// Mutation (Rule 19): make `RestServiceCreateDialog.onFile` put an empty text in the document field, rebuild and redeploy -> the
+// field never holds the file's text and the first assertion goes red.
+test('Load from file fills the Document field with the file\u2019s text, and Create builds the service from it', async () => {
+  removeProbes();
+  const directory = mkdtempSync(join(tmpdir(), 'ocupilot-1834-browser-'));
+  const fileText = JSON.stringify(JSON.parse(DOCUMENT_TEXT), null, 2);
+  const file = join(directory, 'probe.json');
+  writeFileSync(file, fileText);
+  const { context, page } = await signedInAt(browser, config, LIST_URL);
+  const saves = recordSaves(page);
+  try {
+    await waitForListAnswered(page);
+    await openCreate(page);
+    await page.type(NAME_FIELD, FILE_NAME);
+    const picker = await page.waitForSelector(FILE_INPUT, { timeout: config.navigationTimeoutMs });
+    assert.equal(await picker.evaluate((node) => node.type + ' ' + node.accept), 'file .json', 'the dialog offers a file input that takes JSON');
+    await picker.uploadFile(file);
+    await page.waitForFunction((selector, wanted) => document.querySelector(selector)?.value === wanted, { timeout: 30000 }, DOCUMENT_FIELD, fileText);
+    assert.deepEqual(saves, [], 'loading the file sends nothing');
+    await page.click(CONFIRM);
+    await page.waitForFunction(() => document.querySelector('[role="dialog"]') === null, { timeout: 90000 });
+    assert.deepEqual(saves, [{ ns: NAMESPACE, body: { Name: FILE_NAME, Document: fileText } }], 'one create was sent, carrying the file\u2019s text as it stands');
+    await page.waitForFunction((selector, wanted) => Array.from(document.querySelectorAll(selector)).some((row) => row.textContent.includes(wanted)), { timeout: 90000 }, ROW_SELECTOR, FILE_NAME);
+    assert.equal(read('BUILT', `##class(${PROBE}).Classes("${NAMESPACE}","${FILE_NAME}")`), '111', 'the instance built the service with its three classes');
+  } finally {
+    await context.close();
+    rmSync(directory, { recursive: true, force: true });
     removeProbes();
   }
 });

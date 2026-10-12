@@ -17,11 +17,13 @@
 /// web-applications area's own set, which the port evaluates again before any vendor call
 /// (AD-8, AD-29).</p>
 /// <p>No classic page: the explorer has no classic equivalent, so it declares
-/// <code>classicPage</code> empty and links out to nothing (AD-44). It declares no primary action, and
-/// does not refresh (AD-43). Its one row action, Delete, is the screen's caller of
-/// <class>OcuPilot.Screen.Tool.RestServiceDelete</class> (AD-53); it is offered on every row, and a row that is a web
-/// application, or a service a web application dispatches to, is refused by the instance after the click. The
-/// agent's create is <class>OcuPilot.Screen.Tool.RestServiceCreate</class>; the person's own is Story 18.34's.</p>
+/// <code>classicPage</code> empty and links out to nothing (AD-44). It does not refresh (AD-43). Its primary action,
+/// Create, opens the page's create dialog, which posts <code>POST /rest-service</code>
+/// (<class>OcuPilot.Area.WebApp.RestServiceSave</class>), the screen's caller of
+/// <class>OcuPilot.Screen.Tool.RestServiceCreate</class> beside the agent's (AD-55). Its one row action, Delete, is the
+/// screen's caller of <class>OcuPilot.Screen.Tool.RestServiceDelete</class> (AD-53); it is offered on every row, and a
+/// row that is a web application, or a service a web application dispatches to, is refused by the instance after the
+/// click.</p>
 Class OcuPilot.Screen.Descriptor.RestApiList Extends OcuPilot.Screen.Descriptor.Base
 {
 
@@ -42,7 +44,7 @@ XData Declaration
   "scope": "namespace",
   "parentScope": "",
   "id": {"kind": "single", "parts": []},
-  "primaryAction": {"id": "", "selfProtection": ""},
+  "primaryAction": {"id": "create", "selfProtection": ""},
   "rowActions": [{"id": "delete", "selfProtection": ""}],
   "context": {"fields": ["Name", "Namespace", "DispatchClass", "SpecBased", "Enabled"], "secretFields": []},
   "emptyStateKey": "restApiListEmpty",

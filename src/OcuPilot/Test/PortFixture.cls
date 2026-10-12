@@ -88,8 +88,9 @@ ClassMethod SetCannedPollRefusal(pHttp As %Integer, pText As %String)
 /// <p>A recorded value: <code>name</code> (the endpoint's <code>Name</code> when
 /// <code>Run()</code> was about to start), <code>taskName</code> (the last real poll's
 /// <code>TaskName</code>), <code>forgot</code> (the GUID last passed to
-/// <method>ForgetTask</method>) or <code>polls</code> (how many polls ran). <code>""</code> when
-/// never recorded.</p>
+/// <method>ForgetTask</method>), <code>polls</code> (how many polls ran) or <code>endpoint</code>
+/// (the endpoint name last asked of the port, before any vendor endpoint is constructed).
+/// <code>""</code> when never recorded.</p>
 ClassMethod Recorded(pKey As %String) As %String
 {
     Quit $Get(^||OcuPilotPortFixture("recorded", pKey), "")
@@ -117,6 +118,7 @@ ClassMethod ProbeEndpointClass() As %String
 
 ClassMethod EndpointClass(pEndpoint As %String) As %String
 {
+    Set ^||OcuPilotPortFixture("recorded", "endpoint") = pEndpoint
     Set tForced = $Get(^||OcuPilotPortFixture("endpoint"), "")
     If tForced '= "" Quit tForced
     Quit ##super(pEndpoint)
@@ -276,6 +278,15 @@ ClassMethod TaskGlobalsCarry(pText As %String) As %Boolean
         Set tCarries = 1
     }
     Quit tCarries
+}
+
+
+/// <p>Poll the task a canned answer stands for to its end, as <method>OcuPilot.Port.AdminPort.AwaitTask</method>
+/// does for <var>pEndpoint</var>'s request type <var>pType</var> (the suffix form), under
+/// <method>AsyncTimeout</method>. <var>pHttpStatus</var> and <var>pFault</var> are the poll's answer.</p>
+ClassMethod Await(pEndpoint As %String, pType As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status
+{
+    Quit ..AwaitTask(pEndpoint, ##class(OcuPilot.Test.EndpointFixture).#TASKGUID, .tResult, .pHttpStatus, .pFault, pType)
 }
 
 }

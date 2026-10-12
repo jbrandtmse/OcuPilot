@@ -35,8 +35,9 @@
 /// <code>atelier</code>, the source-code API, through <method>AtelierPortClass</method> (AD-61);
 /// <code>encryption</code> through <method>EncryptionPortClass</method>; <code>docdb</code> through
 /// <method>DocDbPortClass</method>; <code>sqlactivity</code>, the instance's running SQL
-/// statements, through <method>SqlActivityPortClass</method>; and <code>interop</code>, the namespace's
-/// productions and interoperability classes, through <method>InteropPortClass</method>
+/// statements, through <method>SqlActivityPortClass</method>; <code>monitor</code>, the instance's
+/// Prometheus metrics, through <method>MonitorPortClass</method>; and <code>interop</code>, the
+/// namespace's productions and interoperability classes, through <method>InteropPortClass</method>
 /// (AD-62). <code>port: "state"</code> is
 /// OcuPilot's own protected state (AD-9), resolved against a kernel store's guarded list through
 /// <method>StateRows</method>. The second changes where the rows come from and nothing else: the
@@ -291,6 +292,11 @@ ClassMethod SqlActivityPortClass() As %String
     Quit "OcuPilot.Port.SqlActivityPort"
 }
 
+/// <p>The <code>read.source.port</code> value naming the instance's Prometheus metrics, read through
+/// <method>MonitorPortClass</method> behind that port's own gate, with no namespace and no criteria
+/// (AD-29, AD-36, Story 18.11).</p>
+Parameter SOURCEMONITOR = "monitor";
+
 /// <p>The <code>read.source.port</code> value naming the namespace's productions and its business
 /// process, data transformation and business rule classes, read through
 /// <method>InteropPortClass</method> behind that port's own gate, which is handed the route's scope as
@@ -419,7 +425,7 @@ ClassMethod Execute(pDescriptor As %String, pMaxRows As %String = "", Output pRe
         ; AD-36 as amended (Story 16.7): a bare admin type read as a list over one member.
         Set tRowsMember = $Select($IsObject(tSource) && (tSource.%GetTypeOf("rows") = "string"): tSource.%Get("rows"), 1: "")
         Set tBareRows = (tRowsMember '= "") && (tSource.%Get("port") = ..#SOURCEADMIN) && $Match(tSourceType, ..#BARETYPEPATTERN)
-        If '$IsObject(tSource) || '$ListFind($ListBuild(..#SOURCEADMIN, ..#SOURCESTATE, ..#SOURCEMGMNT, ..#SOURCELOGSOURCE, ..#SOURCEPATH, ..#SOURCETIMELINE, ..#SOURCEBACKGROUND, ..#SOURCEATELIER, ..#SOURCEENCRYPTION, ..#SOURCEDOCDB, ..#SOURCESQLACTIVITY, ..#SOURCEINTEROP, ..#SOURCEACCESS), tSource.%Get("port")) || ('tBareRows && (tSourceType '= ..#READTYPE) && (((tSourceType '= ..#OBJECTTYPE) && (tSourceType '= ..#UPCOMINGTYPE) && (tSourceType '= ..#HISTORYTYPE) && (tSourceType '= ..#VOLUMELISTTYPE) && (tSourceType '= ..#DATAELEMENTLISTTYPE)) || (tSource.%Get("port") '= ..#SOURCEADMIN))) {
+        If '$IsObject(tSource) || '$ListFind($ListBuild(..#SOURCEADMIN, ..#SOURCESTATE, ..#SOURCEMGMNT, ..#SOURCELOGSOURCE, ..#SOURCEPATH, ..#SOURCETIMELINE, ..#SOURCEBACKGROUND, ..#SOURCEATELIER, ..#SOURCEENCRYPTION, ..#SOURCEDOCDB, ..#SOURCESQLACTIVITY, ..#SOURCEINTEROP, ..#SOURCEACCESS, ..#SOURCEMONITOR), tSource.%Get("port")) || ('tBareRows && (tSourceType '= ..#READTYPE) && (((tSourceType '= ..#OBJECTTYPE) && (tSourceType '= ..#UPCOMINGTYPE) && (tSourceType '= ..#HISTORYTYPE) && (tSourceType '= ..#VOLUMELISTTYPE) && (tSourceType '= ..#DATAELEMENTLISTTYPE)) || (tSource.%Get("port") '= ..#SOURCEADMIN))) {
             Set tSC = ..Internal(pDescriptor _ " declares no read this executor can issue", .pHttpStatus, .pFault)
             Quit
         }
@@ -588,6 +594,16 @@ ClassMethod Execute(pDescriptor As %String, pMaxRows As %String = "", Output pRe
                 Set tSC = tPortSC
                 Quit
             }
+        } ElseIf tSource.%Get("port") = ..#SOURCEMONITOR {
+            ; The instance's Prometheus metrics (Story 18.11): no namespace and no criteria, so the cap
+            ; is the whole ask; the port's gate runs before any collection is taken.
+            Kill tQuery
+            Set tQuery("maxRows") = tMax + 1
+            Set tPortSC = $ClassMethod(..MonitorPortClass(), "Invoke", tSource.%Get("endpoint"), ..#READTYPE, .tQuery, "", .tAnswer, .pHttpStatus, .pFault)
+            If $$$ISERR(tPortSC) {
+                Set tSC = tPortSC
+                Quit
+            }
         } ElseIf (tSourceType = ..#OBJECTTYPE) && (tRowsMember = "") {
             ; AD-36: one named object read as the one row. An object that does not exist is a read
             ; with no rows rather than a fault, because a singleton the instance has not configured
@@ -673,8 +689,10 @@ ClassMethod Execute(pDescriptor As %String, pMaxRows As %String = "", Output pRe
             }
             ; A parent-scoped list over one member (Story 16.10's Activity log) reads for its route
             ; id, so its one criterion is required, as a single-object read's route-id criterion is.
+            ; A parent-scoped VOLUMELIST is required the same way (AD-36), so the vendor's own 400 for
+            ; a missing directory is never reached or logged.
             Set tRouteParam = ""
-            If tBareRows && ($ClassMethod(pDescriptor, "ParentScope") '= "") Set tRouteParam = ..ObjectCriterionParam(tRead)
+            If (tBareRows || (tSourceType = ..#VOLUMELISTTYPE)) && ($ClassMethod(pDescriptor, "ParentScope") '= "") Set tRouteParam = ..ObjectCriterionParam(tRead)
             If (tRouteParam '= "") && ($Get(pCriteria(tRouteParam)) = "") {
                 Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#READCRITERION, tRouteParam _ " is required", .pHttpStatus, .pFault)
                 Quit

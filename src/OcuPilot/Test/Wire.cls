@@ -737,6 +737,11 @@ Method TestTheProcessesListIsDeniedToAPrincipalWithoutAdminManage()
     ; unlisted SSL/TLS authorizations tab sorts between the ECP data server editor and the global
     ; mapping editor, each denied on %Admin_Manage:USE; each is asserted here and taken out, so the
     ; roster below stays the one before it.
+    ; Story 18.11 lists Prometheus metrics last, after SQL activity, denied on %DB_IRISSYS:READ, the
+    ; second of its pairs; it is asserted here and taken off the end.
+    Set tMetrics = ",{""route"":""os-management/metrics"",""labelKey"":""metricsLabel"",""sideBarPosition"":21,""allowed"":false,""failedPair"":""%DB_IRISSYS:READ""}]"
+    Do $$$AssertEquals($Extract(tScreens, *-$Length(tMetrics)+1, *), tMetrics, "Prometheus metrics is listed last, after SQL activity, denied on %DB_IRISSYS:READ")
+    Set tScreens = $Extract(tScreens, 1, *-$Length(tMetrics)) _ "]"
     ; Story 19.10 lists SQL activity last, after ECP application servers, denied on %DB_IRISSYS:READ,
     ; the second of its pairs; it is asserted here and taken off the end.
     Set tSqlActivity = ",{""route"":""os-management/sql-activity"",""labelKey"":""sqlActivityLabel"",""sideBarPosition"":20,""allowed"":false,""failedPair"":""%DB_IRISSYS:READ""}]"

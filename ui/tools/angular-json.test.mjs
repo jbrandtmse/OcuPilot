@@ -533,8 +533,10 @@ test('the harness build configuration has its own entry, document, tsconfig and 
 // Story 20.1 raised it to 3165kB, 5% above a measured 3,013,646 bytes (namespace category gating), under the 4000kB hard stop.
 // Story 20.17's forward merge of Story 18.28 raised it to 3326kB, 5% above a measured 3,167,529 bytes (the agent
 // panel's collapsing blocks and the SQL column and admin privilege tab together), under the 4000kB hard stop (DW-1166).
-// Story 20.5 raised it to 3515kB, 5% above a measured 3,346,956 bytes (Interoperability's Lookup tables, a table's entries and
-// Business partners, their dialogs and published strings, and the table export and import), under the 4000kB hard stop (DW-1166).
+// Story 18.34 raised it to 3487kB, 5% above a measured 3,320,521 bytes (the REST service Create dialog, page and store,
+// on top of Stories 18.31 to 18.33's editors), under the 4000kB hard stop (DW-1166).
+// Story 20.5's forward merge of Story 18.34 re-based it to 3527kB, 5% above the merged tree's measured 3,358,630 bytes
+// (both stories' client code together), under the 4000kB hard stop (DW-1166, the orchestrator's re-measure rule).
 //
 // Mutations (Rule 19):
 // - loosen `maximumWarning` to a much larger, unmeasured figure (e.g. "3MB") -> the
@@ -547,7 +549,7 @@ test('DW-371: exactly one initial budget, maximumWarning under maximumError, and
   assert.equal(budgets.length, 1, 'expected exactly one budget entry');
   const [budget] = budgets;
   assert.equal(budget.type, 'initial');
-  assert.equal(budget.maximumWarning, '3515kB', 'Story 20.5: 5% above the measured 3,346,956 bytes, under the 4000kB hard stop; a change to this figure must be a reviewed diff, not a silent edit');
+  assert.equal(budget.maximumWarning, '3527kB', 'Story 20.5 with Story 18.34: 5% above the merged tree\'s measured 3,358,630 bytes, under the 4000kB hard stop; a change to this figure must be a reviewed diff, not a silent edit');
   assert.equal(budget.maximumError, '4000kB');
 
   // Both budgets are written in the units `@angular/build` prints, where a kB is 1000 bytes and

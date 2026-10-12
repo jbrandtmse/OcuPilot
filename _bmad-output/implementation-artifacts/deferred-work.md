@@ -3375,6 +3375,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-30T03:32:46Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down decision sheet 2026-09-29: into Story 23.3 (after the following release)
 - 2026-10-11T00:42:30Z status=routed owner=23-7-the-range-end-cleanup-part-6 by=load note=re-own from range-end-cleanup: kit 2026-10-10.1 owners are story keys or burndown
 - 2026-10-11T02:03:07Z status=routed owner=18-12-the-agent-grows-with-the-stage by=merge_gate note=owner decision 2026-10-10 on 23.7, "Pull 5, hold rest (Recommended)", relayed by the Planner; placed by footprint: Kernel/Agent/Prompt.cls BUILTIN
+- 2026-10-12T00:14:39Z status=by-design owner=18-12-the-agent-grows-with-the-stage by=lead note=Prompt.cls BUILTIN (4.7): Name each row you report by its identifying value in backticks ... so do not offer to select rows.
+- 2026-10-12T00:14:39Z status=by-design owner=18-12-the-agent-grows-with-the-stage by=lead note=11.4 AC: the chips replace that plain-text-plus-offer (Release 1 named rows in plain text and offered to select them)
 
 ### DW-1085: ReplyNode carries no attribute beyond href/src/alt, so an ordered list's start and a link or image title are dropped against core/reply.ts's own "nothing is silently dropped" contract
 - source: spec-4-6-replies-render-safely-and-offline.md | severity: low | fix-risk: low | footprint: in-story
@@ -8730,6 +8732,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-30T17:16:05Z status=routed owner=range-end-cleanup by=orchestrator note=queued for the standing cleanup after the next release, priority p4: refuse a missing dir before the admin call, as the sibling reads do
 - 2026-10-11T00:42:32Z status=routed owner=23-7-the-range-end-cleanup-part-6 by=load note=re-own from range-end-cleanup: kit 2026-10-10.1 owners are story keys or burndown
 - 2026-10-11T02:03:07Z status=routed owner=18-11-monitoring-extras-and-the-live-log-tail by=merge_gate note=owner decision 2026-10-10 on 23.7, "Pull 5, hold rest (Recommended)", relayed by the Planner; placed by footprint: monitor state raised by OcuPilot logging
+- 2026-10-11T22:35:16Z status=resolved-by:18-11-monitoring-extras-and-the-live-log-tail by=adjudication note=Read.cls requires dir for a parent-scoped VOLUMELIST read before any port call; VolumeListCriterion pins it (QA run 673 mutation)
 
 ### DW-1875: A Windows clone made with core.autocrlf=true before the *.sh eol=lf rule keeps its CRLF scripts after pulling the rule (git status reads clean), so compose up still fails until its scripts are checked out again
 - source: spec-23-2-the-range-end-cleanup-part-2.md | severity: med | fix-risk: low | footprint: out-of-footprint
@@ -8878,6 +8881,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-04T06:51:59Z occurrence=18-20-ecp-data-servers
 - 2026-10-11T00:42:33Z status=routed owner=23-7-the-range-end-cleanup-part-6 by=load note=re-own from range-end-cleanup: kit 2026-10-10.1 owners are story keys or burndown
 - 2026-10-11T02:03:07Z status=routed owner=18-11-monitoring-extras-and-the-live-log-tail by=merge_gate note=owner decision 2026-10-10 on 23.7, "Pull 5, hold rest (Recommended)", relayed by the Planner; placed by footprint: monitor state raised by AdminPort.AwaitTask logging
+- 2026-10-11T22:35:16Z status=resolved-by:18-11-monitoring-extras-and-the-live-log-tail by=adjudication note=AwaitTask logs no bound for a queued-write pair; AdminPortFault iterates all twelve QUEUEDWRITES pairs (runs 669-670)
 
 ### DW-1899: A gate-probe child that runs a screen action later fails an AsyncResult call with <FUNCTION>BeginCapture+4^%SYS.Capture, three alerts per run
 - source: spec-18-15-enable-interoperability-on-a-namespace.md | severity: low | fix-risk: low | footprint: out-of-footprint
@@ -11108,6 +11112,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-11T06:02:59Z occurrence=18-31-privileged-routine-applications
 - 2026-10-11T11:11:25Z occurrence=18-34-the-person-s-rest-service-create
 - 2026-10-11T14:41:26Z occurrence=18-33-privileged-routine-application-roles-and-routines
+- 2026-10-11T17:41:40Z occurrence=18-34-the-person-s-rest-service-create
 
 ### DW-2279: MappingMint's empty-namespace refusal names a 'mapping' for the Doc DB application tools
 - source: spec-18-30-doc-db-applications.md | severity: low | fix-risk: low | footprint: in-epic
@@ -11303,3 +11308,50 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-20-5-lookup-tables-and-business-partners.md | severity: low | fix-risk: med | footprint: in-story
 - evidence: onOpenSet and onSet repeat the setting list's send-and-refusal body; onExport, onImport and endSend repeat code-list.page.ts's; each binds page-local signals and no reason is stated (Rule 2)
 - 2026-10-12T01:05:21Z status=wontfix-accepted owner=20-5-lookup-tables-and-business-partners by=cr note=reopen_if=a third page copies the Set value or the transfer dialog glue
+### DW-2325: A REST service create answered after its dialog was dismissed publishes no change event, so the list stays stale until next read
+- source: spec-18-34-the-person-s-rest-service-create.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: RestServiceCreateStore.create drops a result whose generation moved (reset() runs when the dialog is destroyed); docdb-create.store.ts (Story 19.17) has the same pattern
+- 2026-10-11T17:41:40Z status=open owner=18-34-the-person-s-rest-service-create by=harvest note=code review: fix-pack it in-story (publish the change event even when the dialog is gone) or close with a probe
+- 2026-10-11T18:27:53Z status=resolved-by:18-34-the-person-s-rest-service-create by=cr note=the store publishes created even after the dialog is gone; pinned in rest-service-create.store.spec, mutation observed
+
+### DW-2326: Rule 31: the twelve test record ports each carry their own ^|| call log; a recorder mixin beside each port subclass would serve all
+- source: spec-18-34-the-person-s-rest-service-create.md | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: RestServiceRecordPort (18.34 QA) repeats the call-log bookkeeping of MappingRecordPort and OAuthClientRecordPort with no stated reason; each must subclass its own port, the log half need not
+- 2026-10-11T18:27:53Z status=wontfix-accepted owner=18-34-the-person-s-rest-service-create by=cr note=reopen_if=a recorder fix lands in one record port while a sibling keeps the defect
+
+### DW-2327: Area Saves and Rules iterate request bodies with a two-argument %GetNext: a value past the longest string or largest number raises and answers 500, not the field refusal
+- source: spec-18-34-the-person-s-rest-service-create.md | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: Measured on ocupilot-ci 2026-10-11: a 4 MB string or 1e999 raises MAXSTRING/MAXNUMBER in %Iterator.Object.%GetNext without its type; RestServiceSave.UnexpectedKey fixed in 18.34, 48 Area files keep the form
+- 2026-10-11T18:27:53Z status=wontfix-accepted owner=18-34-the-person-s-rest-service-create by=cr note=reopen_if=a Save whose UI can send a field over 3.6 MB, or an out-of-range number, answers 500
+- 2026-10-11T21:38:31Z status=routed owner=burndown by=lead note=orchestrator: audit the 48 two-argument %GetNext sites at the Epic 18 burn-down; fix any that read caller-controlled JSON (the same 500) or charter a sweep if many
+
+### DW-2328: Rows of an id-none list share one key when its name column repeats: MetricsList's 942 rows hold 115 Metric values, so a click selects every row of a metric and the arrow keys stop at a group's first row
+- source: spec-18-11-monitoring-extras-and-the-live-log-tail.md | severity: med | fix-risk: med | footprint: out-of-footprint
+- evidence: table-model.ts rowKey keys a non-composite id by its name column and data-table.ts activeIndex is lastKeys.indexOf(active); a live read on ocupilot-ci answered 942 rows over 115 metric names; the log viewers key by time
+- 2026-10-11T22:33:47Z status=routed owner=burndown by=cr note=fix the shell (a row-unique key for id kind none) or declare MetricsList's id composite [Metric, Labels]
+
+### DW-2329: MonitorPort.Samples would fail the whole metrics table on an instance whose label value ends in an unescaped backslash (a Windows dir); unverified
+- source: spec-18-11-monitoring-extras-and-the-live-log-tail.md | severity: med | fix-risk: low | footprint: in-story
+- evidence: LabelsEnd reads a backslash as an escape, as the Prometheus format does; dir labels hold directories (/durable/iris/mgr/user/ here); the vendor's Sensors source is withheld and no Windows instance was read
+- 2026-10-11T22:33:47Z status=decision-pending owner=burndown by=cr note=human=GET /api/monitor/metrics on a Windows instance: are backslashes in dir labels doubled
+
+### DW-2330: AD-36's Story 18.11 amendment says every parent-scoped read requires its criterion before any port call; the code covers bare-rows and VOLUMELIST reads, and TaskRunList answers {}
+- source: spec-18-11-monitoring-extras-and-the-live-log-tail.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: ARCHITECTURE-SPINE.md:775 headline; Read.Execute's route-criterion guard tests tBareRows or VOLUMELISTTYPE; TaskRunList (parent-scoped HISTORY) is not in ToolRoundTrip's REFUSEEMPTY
+- 2026-10-11T22:33:47Z status=open owner=18-11-monitoring-extras-and-the-live-log-tail by=cr note=the lead narrows the headline to the VOLUMELIST and bare-rows cases (Rule 20)
+- 2026-10-11T22:35:17Z status=resolved-by:18-11-monitoring-extras-and-the-live-log-tail by=adjudication note=AD-36 sentence narrowed to bare-rows and VOLUMELIST reads at origin
+
+### DW-2333: webapp.list.update takes a web application's MatchRoles whole, and no read tool answers that list, so the agent cannot send it with one entry changed
+- source: spec-18-12-the-agent-grows-with-the-stage.md | severity: med | fix-risk: low | footprint: in-epic
+- evidence: DW-2321's web-application half: 18.12's re-plan builds the privileged routine application reads only (orchestrator guidance scoped it so)
+- 2026-10-12T01:03:05Z status=routed owner=burndown by=spec_gate note=split from DW-2321; a detail read over the web application's MatchRoles, as 18.12 builds for routine applications
+
+### DW-2334: The admin API can write the directory allow-list (FSAccess.Path, FSAccess.Purpose) but OcuPilot offers no surface for it; Allowed directories stays read-only
+- source: spec-18-12-the-agent-grows-with-the-stage.md | severity: med | fix-risk: med | footprint: out-of-footprint
+- evidence: Story 18.1 scoped the allow-list read-only; a write widens the server-path roots AD-21 allows
+- 2026-10-12T01:03:05Z status=decision-pending owner=burndown by=spec_gate note=human=owner: whether OcuPilot may widen the allow-list (security posture)
+
+### DW-2335: Several Stage 2 editor forms show fields no read tool answers (superservers 14, local databases 10, user copy 12), so the agent cannot read what the person sees
+- source: spec-18-12-the-agent-grows-with-the-stage.md | severity: med | fix-risk: med | footprint: in-epic
+- evidence: 18.12's re-plan survey of descriptors against read tools; C1 checks write fields only
+- 2026-10-12T01:03:05Z status=routed owner=burndown by=spec_gate note=the Epic 18 burn-down decides: widen the reads or record why each field stays form-only

@@ -49,6 +49,7 @@ const SIDE_BAR_SPECS = [
   'oauth.browser-spec.mjs',
   'permissions-effective.browser-spec.mjs',
   'permissions.browser-spec.mjs',
+  'prometheus-metrics.browser-spec.mjs',
   'remote-databases.browser-spec.mjs',
   'routine-applications.browser-spec.mjs',
   'security.browser-spec.mjs',

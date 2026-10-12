@@ -5985,6 +5985,22 @@ export const STRINGS = {
   sqlActivityPrompt2: 'Who is running SQL right now, and in which namespace?',
   /** EXPERIENCE.md:603 */
   sqlActivityPrompt3: 'Is any statement running inside an open transaction?',
+  /** EXPERIENCE.md:603 */
+  metricsLabel: 'Prometheus metrics',
+  /** EXPERIENCE.md:603 */
+  metricsColumnMetric: 'Metric',
+  /** EXPERIENCE.md:603 */
+  metricsColumnLabels: 'Labels',
+  /** EXPERIENCE.md:603 */
+  metricsEmpty: 'The instance answered no metrics.',
+  /** EXPERIENCE.md:603 */
+  metricsNote: 'Each read takes a new sensor collection, which shortens the per-second intervals an external Prometheus scraper reports.',
+  /** EXPERIENCE.md:603 */
+  metricsPrompt1: 'Which databases are the largest, by their size metrics?',
+  /** EXPERIENCE.md:603 */
+  metricsPrompt2: 'How busy is the instance right now: CPU, cache efficiency and global references?',
+  /** EXPERIENCE.md:603 */
+  metricsPrompt3: 'What do the Web Gateway metrics read?',
   /** EXPERIENCE.md:604 */
   agentPickerLabel: 'Agent definition: <name>',
   /** EXPERIENCE.md:604 */
@@ -6254,6 +6270,14 @@ export const STRINGS = {
   restServiceDeleteConsequence: 'The service is removed: its specification and dispatch classes are deleted. Its implementation class is kept.',
   /** EXPERIENCE.md:357 */
   restApiListEmptyAgent: 'create a REST service from an OpenAPI 2.0 document',
+  /** EXPERIENCE.md:357 */
+  restServiceCreateTitle: 'Create REST service',
+  /** EXPERIENCE.md:357 */
+  restServiceNameHint: 'The package, such as My.Api: it creates My.Api.spec, My.Api.disp and My.Api.impl.',
+  /** EXPERIENCE.md:357 */
+  restServiceDocumentLabel: 'OpenAPI 2.0 document',
+  /** EXPERIENCE.md:357 */
+  restServiceDocumentHint: 'The whole document as JSON, pasted or loaded from a file. Nothing is fetched.',
   /** EXPERIENCE.md:604 */
   interopProductionsLabel: 'Productions',
   /** EXPERIENCE.md:604 */
