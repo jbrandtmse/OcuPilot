@@ -11439,3 +11439,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: ci-run-38250559529 | severity: med | fix-risk: low | footprint: in-epic
 - evidence: run 38250559529 attempt 1 job 114815436456: failed at TestAnAbortFindsAMessageToAPoolSizeZeroProcessInTheActorQueue+12; leg ran Adapter..InteropItemGate, InteropItemGateSplit (runs 1-36) before it; a sibling's actor job or timing (inference)
 - 2026-10-12T13:29:12Z status=routed owner=burndown by=lead note=orchestrator 2026-10-12: diagnose when it fits; a wait-on-the-vendor race takes InteropJobStop's fix shape; a second red on another head makes it urgent
+
+### DW-2355: No CI leg smokes an IPM archive install into an interoperability namespace once Story 20.28 moves the package job's install to a namespace without interoperability
+- source: spec-20-28-ocupilot-compiles-in-a-namespace-without-interoperability.md | severity: med | fix-risk: high | footprint: in-epic
+- evidence: 20.28 spec gate: ci-ipm-archive.sh installs into NOINTEROP instead of HSCUSTOM; HSCUSTOM stays covered by the build container's load -dev and every instance shard, not by an archive install with smoke
+- 2026-10-12T14:07:28Z status=routed owner=burndown by=lead note=orchestrator 2026-10-12, accepted for 1.0.12: restoring it needs a third container or alternating legs plus a ci.test.mjs edit; AD-17's one namespace per instance rules out both on one instance
+
+### DW-2356: A static check-objectscript rule refusing a compile-time interoperability dependency in a shipped class (Ensemble include, Ens macro, Ens type in a signature) was cut from Story 20.28
+- source: spec-20-28-ocupilot-compiles-in-a-namespace-without-interoperability.md | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: 20.28 spec gate seam: the guard is CompileWithoutInterop and the package job; the rule would refuse the regression at commit instead of in CI (plan measured the refused and admitted forms)
+- 2026-10-12T14:07:29Z status=routed owner=burndown by=lead note=orchestrator 2026-10-12: to the Epic 20 burn-down; landing it changes CLAUDE.md's rule count, which is the Planner's to edit with the owner's OK

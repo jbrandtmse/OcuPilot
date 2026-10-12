@@ -125,6 +125,7 @@ deferred: []
      - `SystemInfo.ProductionState` for `USER` returns without throwing.
    - **`OnAfterAllTests`:** clear `Kernel.Scope`, call `RemoveAll`, and fail when anything remains.
    - The header says what the class pins and needs: armed, a stock IRIS for Health throwaway, about ten seconds.
+4b. `src/OcuPilot/Test/ProbeApps.cls` -- `Existing()` also lists a surviving `OCUPROBE2028` namespace, database or directory, named so the runner's leftover line says which (see Gate rulings: teardown and the leftover check). Add-only; `Paths()` and `Remove()` are unchanged.
 5. `scripts/ci-throwaway.sh` -- under `OCUPILOT_ALLOW_DATABASE_CONFIG`, add the comment lines and `# classes: CompileWithoutInterop`. The new comment says the class creates and removes the `OCUPROBE2028D` database, with its `%DB_OCUPROBE2028D` resource, its `<mgr>ocuprobe2028d` directory and the `OCUPROBE2028N` namespace, and compiles the shipped classes there (Story 20.28).
 6. `src/OcuPilot/Install/Smoke.cls` -- in `CheckApiReads`, the `navigation` check also parses the body. It fails unless the area keyed `interoperability` has `applies` equal to `%Library.EnsembleMgr.IsEnsembleNamespace` for the namespace the smoke runs in. The check name stays the same. Add one sentence to the doc comment. AC2.
 7. `scripts/ci-ipm-archive.sh` -- Phase 2 installs into a namespace it creates without interoperability, instead of `HSCUSTOM` (AC2, AC3). In order:
@@ -256,6 +257,7 @@ deferred: []
 - **AC1's dispatch.** The measured forms stand: the retyped arguments keep `oref.Method()` calls and the bodies keep `##class(Ens.…)`, each resolved at run time. No `$Method` rewrite. `epics.md`'s AC1 is amended to say so (Rule 5).
 - **The CI leg goes "instead".** Accepted with its named limit (no CI smoke of an archive install into an interoperability namespace); the build container's `load -dev` and every instance shard still install into `HSCUSTOM`.
 - **AD-62 item 12** is applied to the spine as proposed below, without the checker-rule clause.
+- **Teardown and the leftover check (orchestrator, 2026-10-12).** `CompileWithoutInterop` removes the namespace, its databases, their resources and their directories on every path, its own setup failure included, and `OnAfterAllTests` fails when any of them remains. The CI runner's after-class leftover check must see them: `OcuPilot.Test.ProbeApps.Existing()`, which `scripts/ci-unit-test.sh` reads before and after every class, also reports a surviving `OCUPROBE2028` namespace, database or directory (add-only; `ui/tools/ci-runner.mjs` and `ci.test.mjs` are not edited), so a skipped teardown counts as `1 with probe leftovers` and a clean sweep keeps reporting `0 with probe leftovers`. Mutation: skip the teardown's `RemoveAll` and run the class through `ci-runner.mjs` -- expected: the class is reported with a probe leftover; revert and re-run to `0`.
 
 **AD-62 item 12, as applied at the spec gate (Rule 20; the checker-rule clause dropped):**
 
