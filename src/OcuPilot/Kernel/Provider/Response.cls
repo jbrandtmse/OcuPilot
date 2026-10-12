@@ -34,8 +34,8 @@ Property ToolCallsJson As %String(MAXLEN = "");
 /// place of the text and tool-use blocks it would otherwise rebuild.</p>
 Property ContentJson As %String(MAXLEN = "");
 
-/// <p>How many tokens the request consumed, from the body's own usage figures; <code>0</code> when
-/// the provider reported none.</p>
+/// <p>How many tokens the request consumed, from the body's own usage figures, the prompt's whole
+/// size with any cached part included (AD-31); <code>0</code> when the provider reported none.</p>
 Property RequestTokens As %Integer [ InitialExpression = 0 ];
 
 /// <p>How many tokens the reply consumed.</p>

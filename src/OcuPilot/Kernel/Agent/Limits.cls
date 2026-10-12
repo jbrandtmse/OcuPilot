@@ -65,6 +65,12 @@ Parameter TOOLROWS As %Integer = 200;
 /// it fits; a result that cannot fit is refused <code>TOOL.RESULTTOOLARGE</code>.</p>
 Parameter TOOLRESULTMAXLENGTH As %Integer = 65536;
 
+/// <p>Characters one turn's tool results carry at most, together (AD-24). A reply's share of it is
+/// the lesser of <parameter>TOOLRESULTMAXLENGTH</parameter> and what the turn has left, so a result
+/// is cut by whole rows to what remains and a call finding less than 256 left is refused
+/// <code>TOOL.RESULTTOOLARGE</code>. Screen context is bounded separately.</p>
+Parameter TURNRESULTMAXLENGTH As %Integer = 262144;
+
 /// <p>Characters one field's string value carries at most, when the descriptor declares no
 /// <code>context.maxLength</code> for that field (AD-24, DW-281). A value cut to this bound loses
 /// one character to the trailing U+2026 mark, so the kept text is this many characters minus

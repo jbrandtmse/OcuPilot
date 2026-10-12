@@ -10,7 +10,9 @@
 /// <code>x-api-key</code>, <code>anthropic-version</code> and <code>content-type</code>; body
 /// <code>{model, max_tokens, system?, messages, tools?}</code>; reply
 /// <code>{content, stop_reason, usage}</code>; error body
-/// <code>{type, error: {type, message}}</code>. <b>No sampling parameter is ever sent</b> --
+/// <code>{type, error: {type, message}}</code>. <b>Prompt caching</b>: the request marks two places
+/// <code>cache_control</code> <code>{"type":"ephemeral"}</code> -- the last tool and the last block of
+/// the final message -- and nothing else. <b>No sampling parameter is ever sent</b> --
 /// <code>temperature</code>, <code>top_p</code> and <code>top_k</code> are absent whatever the
 /// definition holds, because this family's current models refuse them; the catalog row's
 /// <code>acceptsTemperature</code> says the same to the form.</p>
@@ -27,6 +29,9 @@ Parameter VERSIONHEADER = "anthropic-version";
 
 /// <p>The body's media type.</p>
 Parameter CONTENTTYPE = "application/json";
+
+/// <p>The <code>type</code> of the <code>cache_control</code> member that marks a cache breakpoint.</p>
+Parameter CACHEBREAKPOINT = "ephemeral";
 
 /// <p>This family streams when the caller passes a sink (AD-42); 0 turns it off.</p>
 Parameter STREAMS As %Boolean = 1;
@@ -47,6 +52,11 @@ Method ProviderName() As %String
 /// <p>A message whose <code>pMessages(n, "blocks")</code> holds a JSON array is sent with that
 /// array as its <code>content</code> -- the shape a tool call's echo and its results take; any
 /// other message sends its <code>content</code> string.</p>
+/// <p><b>Prompt caching.</b> The last tool gains <code>cache_control</code>, and so does the last block
+/// of the final message when that message is blocks; no other tool, block or the <code>system</code>
+/// string is marked. The cached prefix -- <code>tools</code>, <code>system</code> and the messages
+/// already sent -- is the request's own bytes and never changes within a turn; only the two markers
+/// move, the second to each call's new tail.</p>
 /// <p>A streamed call (<property>Streaming</property>) also carries <code>"stream": true</code>.</p>
 /// <p><b>The body is written as UTF-8 bytes.</b> The media type carries no charset, so
 /// <class>%Net.HttpRequest</class> sends the entity body untranslated, and a character above 255
@@ -75,6 +85,13 @@ Method CallMessages(pRequest As %Net.HttpRequest, ByRef pValues, ByRef pMessages
             }
             Do tMessageArray.%Push(tMessage)
         }
+        If tMessageArray.%Size() > 0 {
+            Set tTail = tMessageArray.%Get(tMessageArray.%Size() - 1).content
+            If $IsObject(tTail) && (tTail.%Size() > 0) {
+                Set tTailBlock = tTail.%Get(tTail.%Size() - 1)
+                If $IsObject(tTailBlock) Do tTailBlock.%Set("cache_control", ..CacheMarker())
+            }
+        }
         Do tBody.%Set("messages", tMessageArray)
         If +$Get(pTools) > 0 {
             Set tToolArray = []
@@ -83,6 +100,7 @@ Method CallMessages(pRequest As %Net.HttpRequest, ByRef pValues, ByRef pMessages
                 Do tTool.%Set("name", $Get(pTools(tI, "name")))
                 Do tTool.%Set("description", $Get(pTools(tI, "description")))
                 Do tTool.%Set("input_schema", ..SchemaOf($Get(pTools(tI, "inputSchema"))))
+                If tI = +$Get(pTools) Do tTool.%Set("cache_control", ..CacheMarker())
                 Do tToolArray.%Push(tTool)
             }
             Do tBody.%Set("tools", tToolArray)
@@ -124,7 +142,10 @@ Method IsApiKeyShapeValid() As %Boolean
 
 /// <p>Read a successful reply into <var>pResponse</var>: the text blocks concatenated in order,
 /// every tool-use block kept verbatim as a JSON array, the stop reason, and the two usage
-/// figures.</p>
+/// figures. <b><property>OcuPilot.Kernel.Provider.Response.RequestTokens</property> is the prompt's
+/// whole size</b> (AD-31): <code>input_tokens</code>, which this family reports without the cached
+/// part, plus <code>cache_creation_input_tokens</code> and <code>cache_read_input_tokens</code>; a
+/// figure the reply does not carry counts 0.</p>
 /// <p><b>A reply carrying a <code>thinking</code> or <code>redacted_thinking</code> block also
 /// sets <property>OcuPilot.Kernel.Provider.Response.ContentJson</property></b> to its whole
 /// <code>content</code> array, verbatim: the provider requires those blocks back unchanged and in
@@ -168,13 +189,22 @@ Method MapResponse(pBody As %String, pResponse As OcuPilot.Kernel.Provider.Respo
         If tReasoning Set pResponse.ContentJson = tParsed.content.%ToJSON()
         Set pResponse.StopReason = $Select(tParsed."stop_reason" = "": "end_turn", 1: tParsed."stop_reason")
         If $IsObject(tParsed.usage) {
-            Set pResponse.RequestTokens = +tParsed.usage."input_tokens"
+            Set pResponse.RequestTokens = +tParsed.usage."input_tokens" + +tParsed.usage."cache_creation_input_tokens" + +tParsed.usage."cache_read_input_tokens"
             Set pResponse.ResponseTokens = +tParsed.usage."output_tokens"
         }
     } Catch ex {
         Set tSC = ex.AsStatus()
     }
     Quit tSC
+}
+
+/// <p>A new <code>cache_control</code> value, <code>{"type":"ephemeral"}</code>: one object per
+/// mark, never shared between two places in a body.</p>
+Method CacheMarker() As %DynamicObject [ Private ]
+{
+    Set tMarker = {}
+    Do tMarker.%Set("type", ..#CACHEBREAKPOINT, "string")
+    Quit tMarker
 }
 
 /// <p><var>pSchema</var> -- a tool's JSON-schema text -- as the object the body carries, or an
