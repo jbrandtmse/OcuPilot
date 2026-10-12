@@ -661,12 +661,36 @@ ClassMethod ArgumentsObject(pArguments As %RawString = "", Output pSC As %Status
 }
 
 /// <p>A canonical <code>tool_result</code> block's content as the string OpenAI's
-/// <code>tool</code> message carries.</p>
+/// <code>tool</code> message carries. Content that is a non-empty array of nothing but
+/// <code>tool_reference</code> blocks (the discovery tool's answer, AD-24) reads
+/// <code>Found tools you can call from your next step: &lt;names, comma-separated&gt;.</code>, because
+/// these dialects learn a found tool's definition from the next request's tool array; any other array
+/// reads as its JSON.</p>
 ClassMethod ResultText(pBlock As %DynamicObject) As %String [ Private ]
 {
     Set tContent = pBlock.%Get("content")
-    If $IsObject(tContent) Quit tContent.%ToJSON()
-    Quit tContent
+    If '$IsObject(tContent) Quit tContent
+    Set tNames = ..ReferencedNames(tContent)
+    If tNames '= "" Quit "Found tools you can call from your next step: " _ tNames _ "."
+    Quit tContent.%ToJSON()
+}
+
+/// <p>The <code>tool_name</code>s of <var>pContent</var>, comma-separated, when it is a non-empty
+/// array of nothing but <code>tool_reference</code> blocks that each name a tool; <code>""</code>
+/// for any other content.</p>
+ClassMethod ReferencedNames(pContent As %DynamicAbstractObject) As %String [ Private ]
+{
+    If '$IsObject(pContent) || 'pContent.%IsA("%Library.DynamicArray") || (pContent.%Size() = 0) Quit ""
+    Set tNames = ""
+    Set tIterator = pContent.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tBlock) {
+        If '$IsObject(tBlock) || 'tBlock.%IsA("%Library.DynamicObject") Quit
+        If (tBlock.%Get("type") '= "tool_reference") || (tBlock.%GetTypeOf("tool_name") '= "string") || (tBlock.%Get("tool_name") = "") Quit
+        Set tNames = tNames _ $Select(tNames = "": "", 1: ", ") _ tBlock.%Get("tool_name")
+        Set tSeen = $Get(tSeen) + 1
+    }
+    If $Get(tSeen) '= pContent.%Size() Quit ""
+    Quit tNames
 }
 
 /// <p>The same content as the object Gemini's <code>functionResponse.response</code> requires,

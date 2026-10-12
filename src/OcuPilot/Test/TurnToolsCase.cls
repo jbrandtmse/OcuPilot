@@ -70,16 +70,23 @@ Method OnAfterOneTest() As %Status
 
 /// <p>Create an enabled probe definition on the stub transport and answer its id. The name is unique
 /// per call, so a test that creates more than one does not collide with itself before the next
-/// <method>OnBeforeOneTest</method> sweeps every probe definition.</p>
-Method NewDefinition() As %String
+/// <method>OnBeforeOneTest</method> sweeps every probe definition. The provider, model, endpoint and
+/// key variable are the canonical probe family's unless a test names another family's, and
+/// <var>pLocal</var> marks the endpoint local and its plain http acknowledged, as a keyed definition
+/// on an operator's own network needs.</p>
+Method NewDefinition(pProvider As %String = "probe-local", pModel As %String = "probe-local-model-1", pEndpoint As %String = "https://api.anthropic.com/v1/messages", pEnvVarName As %String = "OCUPILOT_PROBE_LOCAL_KEY", pLocal As %Boolean = 0) As %String
 {
     Set tRow = ##class(OcuPilot.Kernel.State.Agent).%New()
     Set tRow.Name = "OcuPilotProbeAgentTurnTools" _ $Increment(^||OcuPilotTurnToolsRunTurn)
-    Set tRow.Provider = "probe-local"
-    Set tRow.Model = "probe-local-model-1"
-    Set tRow.EndpointUrl = "https://api.anthropic.com/v1/messages"
+    Set tRow.Provider = pProvider
+    Set tRow.Model = pModel
+    Set tRow.EndpointUrl = pEndpoint
     Set tRow.CredType = "env"
-    Set tRow.EnvVarName = "OCUPILOT_PROBE_LOCAL_KEY"
+    Set tRow.EnvVarName = pEnvVarName
+    If pLocal {
+        Set tRow.MarkedLocal = 1
+        Set tRow.HttpAcknowledged = 1
+    }
     Set tRow.MaxTokens = 4000
     Set tRow.MaxIterationsPerTurn = 10
     Set tRow.Enabled = 1
@@ -97,10 +104,12 @@ Method NewDefinition() As %String
 /// dispatched call in this turn is answered under (AD-24), <code>0</code> falling back to
 /// <var>LOOP</var>'s own <code>TOOLROWS</code>, exactly as <method>OcuPilot.Kernel.Agent.Loop.Run</method>
 /// takes it. With <var>pStopFirst</var> the turn is asked to stop after it begins and before the
-/// loop runs; <var>pContext</var> and <var>pConvo</var> pass through to the loop unchanged.</p>
-Method RunTurn(Output pOutcome, pReadOnly As %String = "", pContextRowCap As %Integer = 0, pStopFirst As %Boolean = 0, pContext As %String = "", pConvo As OcuPilot.Kernel.State.Convo = "") As %String
+/// loop runs; <var>pContext</var> and <var>pConvo</var> pass through to the loop unchanged. A turn
+/// runs under the definition <var>pDefinitionId</var> when a test made one with
+/// <method>NewDefinition</method>, else under a new canonical-family one.</p>
+Method RunTurn(Output pOutcome, pReadOnly As %String = "", pContextRowCap As %Integer = 0, pStopFirst As %Boolean = 0, pContext As %String = "", pConvo As OcuPilot.Kernel.State.Convo = "", pDefinitionId As %String = "") As %String
 {
-    Set tId = ..NewDefinition()
+    Set tId = $Select(pDefinitionId '= "": pDefinitionId, 1: ..NewDefinition())
     Set tLimits = $ClassMethod(..#LOOP, "LimitsClass")
     Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Turn).GuardedReserve($Username, tId, "TURN.ABANDONED.JOBLOST", tLimits, .tKey, .tBusy, .tSweep), "the turn is reserved")
     If $Get(tKey) = "" Quit ""

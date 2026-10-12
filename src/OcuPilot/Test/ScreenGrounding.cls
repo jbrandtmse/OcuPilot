@@ -1,4 +1,4 @@
-/// <p>Stories 11.9, 11.10, 11.1, 11.2, 18.39 and 20.18 in process: the built-in prompt's ten screen statements, the tools each
+/// <p>Stories 11.9, 11.10, 11.1, 11.2, 18.39, 18.45 and 20.18 in process: the built-in prompt's ten screen statements, the tools each
 /// kind of screen names (<method>OcuPilot.Screen.Context.ScreenTools</method>), the refusal of a
 /// request that supplies a derived member (<method>OcuPilot.Api.Turn.ContextViolation</method>),
 /// Home's empty route, the error read tool's input schema, the four members <method>OcuPilot.Api.Turn.BoundedContext</method> adds on both payload
@@ -24,7 +24,7 @@ ClassMethod Statement(pIndex As %Integer) As %String
         2: "When that context holds what was asked, answer from it without calling a tool; call a read tool when it does not, or when its rows were cut.",
         3: "A change confirmed through one of the screen's tools refreshes that screen and marks the changed row.",
         4: "When you are read-only, say so, and describe the change you would make instead of proposing it.",
-        5: "Use only the tools you are offered, and when none of them can do what was asked, say so rather than describe a capability you lack.",
+        5: "Your tools start with the shell's and this screen's; shell_tools_find finds any other tool by what it does, callable from your next step. Use only the tools you are offered or find, and when a search finds none that can do what was asked, say so rather than describe a capability you lack.",
         6: "When the user asks about something a screen shows, or asks to change it, and the screen_context does not show them on that screen, open that screen with the navigation tool first, before you answer or propose the change, so they see what you are discussing and the change when it lands; when they are already on it, do not navigate.",
         7: "When the user asks you to explain this screen, say what the screen is for, what data it shows and what actions its tools offer, name the read tool in tools that its data comes from, or say that it has none, and propose no change.",
         8: "When the user asks you to explain the selected entry, screen_context marks the entry they chose: selected is its index in rows, the first row being 0, or focus holds it when rows does not; that marker, not entity, names the entry, and the other rows are the rest of the screen, context for that entry. Explain that one entry: what it records, what likely caused it and what to check next, and propose no change.",
@@ -54,7 +54,7 @@ Method TestThePromptCarriesTheScreenStatements()
     Do $$$AssertTrue(tPrompt [ ..Statement(2), "the answer-from-context statement")
     Do $$$AssertTrue(tPrompt [ ..Statement(3), "the refresh-and-mark statement")
     Do $$$AssertTrue(tPrompt [ ..Statement(4), "the read-only statement")
-    Do $$$AssertTrue(tPrompt [ ..Statement(5), "the only-the-tools-offered statement")
+    Do $$$AssertTrue(tPrompt [ ..Statement(5), "the starting-tools, search and only-the-tools-offered-or-found statement")
     Do $$$AssertTrue(tPrompt [ ..Statement(6), "the open-the-screen-first statement")
     Do $$$AssertTrue(tPrompt [ ..Statement(7), "the explain statement")
     Do $$$AssertTrue(tPrompt [ ..Statement(8), "the explain-entry statement, which says what the marker means")

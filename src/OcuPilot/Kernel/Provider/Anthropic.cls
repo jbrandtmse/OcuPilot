@@ -11,8 +11,9 @@
 /// <code>{model, max_tokens, system?, messages, tools?}</code>; reply
 /// <code>{content, stop_reason, usage}</code>; error body
 /// <code>{type, error: {type, message}}</code>. <b>Prompt caching</b>: the request marks at most two
-/// places <code>cache_control</code> <code>{"type":"ephemeral"}</code> -- the last tool, and the last
-/// block of the final message when that message is blocks -- and nothing else. <b>No sampling parameter is ever sent</b> --
+/// places <code>cache_control</code> <code>{"type":"ephemeral"}</code> -- the last tool that is not
+/// deferred, and the last block of the final message when that message is blocks -- and nothing else.
+/// <b>No sampling parameter is ever sent</b> --
 /// <code>temperature</code>, <code>top_p</code> and <code>top_k</code> are absent whatever the
 /// definition holds, because this family's current models refuse them; the catalog row's
 /// <code>acceptsTemperature</code> says the same to the form.</p>
@@ -59,11 +60,17 @@ Method ProviderName() As %String
 /// <p>A message whose <code>pMessages(n, "blocks")</code> holds a JSON array is sent with that
 /// array as its <code>content</code> -- the shape a tool call's echo and its results take; any
 /// other message sends its <code>content</code> string.</p>
-/// <p><b>Prompt caching.</b> The last tool gains <code>cache_control</code>, and so does the last block
-/// of the final message when that message is blocks; no other tool, block or the <code>system</code>
-/// string is marked. The cached prefix -- <code>tools</code>, <code>system</code> and the messages
-/// already sent -- is the request's own bytes and never changes within a turn; only the two markers
-/// move, the second to each call's new tail.</p>
+/// <p><b>Prompt caching.</b> The last tool that is not deferred gains <code>cache_control</code>, and
+/// so does the last block of the final message when that message is blocks; no other tool, block or
+/// the <code>system</code> string is marked. The cached prefix -- <code>tools</code>,
+/// <code>system</code> and the messages already sent -- is the request's own bytes and never changes
+/// within a turn; only the two markers move, the second to each call's new tail.</p>
+/// <p><b>A scoped tool array</b> (<class>OcuPilot.Kernel.Provider.Base</class>'s <var>pTools</var>) is
+/// sent whole: every tool is in <code>tools</code>, and each one outside the starting set carries
+/// <code>"defer_loading": true</code>, which keeps its definition out of the model's context until a
+/// <code>tool_reference</code> block names it. The array is the same bytes on every call of a turn,
+/// because what the turn found never changes it, and a deferred tool never carries
+/// <code>cache_control</code>, which the API refuses. An unscoped array is sent as it always was.</p>
 /// <p>A streamed call (<property>Streaming</property>) also carries <code>"stream": true</code>.</p>
 /// <p><b>The body is written as UTF-8 bytes.</b> The media type carries no charset, so
 /// <class>%Net.HttpRequest</class> sends the entity body untranslated, and a character above 255
@@ -101,13 +108,16 @@ Method CallMessages(pRequest As %Net.HttpRequest, ByRef pValues, ByRef pMessages
         }
         Do tBody.%Set("messages", tMessageArray)
         If +$Get(pTools) > 0 {
+            Set tScoped = +$Get(pTools("scoped"))
+            Set tMarked = ..MarkedTool(.pTools)
             Set tToolArray = []
             For tI = 1:1:+$Get(pTools) {
                 Set tTool = {}
                 Do tTool.%Set("name", $Get(pTools(tI, "name")))
                 Do tTool.%Set("description", $Get(pTools(tI, "description")))
                 Do tTool.%Set("input_schema", ..SchemaOf($Get(pTools(tI, "inputSchema"))))
-                If tI = +$Get(pTools) Do tTool.%Set("cache_control", ..CacheMarker())
+                If tScoped && '$Get(pTools(tI, "start")) Do tTool.%Set("defer_loading", 1, "boolean")
+                If tI = tMarked Do tTool.%Set("cache_control", ..CacheMarker())
                 Do tToolArray.%Push(tTool)
             }
             Do tBody.%Set("tools", tToolArray)
@@ -206,6 +216,21 @@ Method MapResponse(pBody As %String, pResponse As OcuPilot.Kernel.Provider.Respo
         Set tSC = ex.AsStatus()
     }
     Quit tSC
+}
+
+/// <p>The index of the tool of <var>pTools</var> that carries the cache marker: the last one, or on a
+/// scoped array the last one in the starting set, because a deferred tool cannot carry it. 0 when
+/// there is none.</p>
+Method MarkedTool(ByRef pTools) As %Integer [ Private ]
+{
+    Set tMarked = 0
+    For tI = +$Get(pTools):-1:1 {
+        If '$Get(pTools("scoped")) || $Get(pTools(tI, "start")) {
+            Set tMarked = tI
+            Quit
+        }
+    }
+    Quit tMarked
 }
 
 /// <p>A new <code>cache_control</code> value, <code>{"type":"ephemeral"}</code>: one object per
