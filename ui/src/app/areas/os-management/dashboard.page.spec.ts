@@ -481,7 +481,7 @@ describe('DashboardPage', () => {
     const link = host.querySelector('[data-drill-down="os-management/ecp-statistics"]') as HTMLAnchorElement;
     expect(link).not.toBeNull();
     // What the page left of each modified click, read after its handler and then cancelled, so jsdom does not navigate.
-    for (const modifier of [{ ctrlKey: true }, { metaKey: true }, { shiftKey: true }, { button: 1 }]) {
+    for (const modifier of [{ ctrlKey: true }, { metaKey: true }, { shiftKey: true }, { altKey: true }, { button: 1 }]) {
       let leftToBrowser: boolean | null = null;
       const observe = (event: Event) => {
         leftToBrowser = !event.defaultPrevented;

@@ -14,7 +14,7 @@ Parameter PACKAGE = "OcuPilot.Screen.Descriptor.";
 /// <p>The four screens as <code>descriptor:route:tool:archetype:classicPage:promptStem</code>.</p>
 Parameter SCREENS = "DashboardGlobals:os-management/global-statistics:osmgmt.globalstatistics:detail:%cspapp.op.utilsysstatisticsglobal:globalStatistics,DashboardEcp:os-management/ecp-statistics:osmgmt.ecpstatistics:detail:%cspapp.op.utilsysstatisticsecp:ecpStatistics,DashboardResources:os-management/resource-statistics:osmgmt.resourcestatistics:list:%cspapp.op.utilsysstatisticsresource:resourceStatistics,DashboardProcesses:os-management/active-processes:osmgmt.activeprocesses:list:%cspapp.op.utildashboard:activeProcesses";
 
-/// <p>Global and routine statistics' eighteen fields, in the vendor's order.</p>
+/// <p>Global and routine statistics' eighteen fields, in declared order.</p>
 Parameter GLOBALFIELDS = "Statistics.Globals.RefLocal,Statistics.Globals.RefUpdateLocal,Statistics.Globals.RefRemote,Statistics.Globals.RefUpdateRemote,Statistics.Globals.RefPrivate,Statistics.Globals.RefUpdatePrivate,Statistics.Globals.LogicalBlocks,Statistics.Globals.PhysBlockReads,Statistics.Globals.PhysBlockWrites,Statistics.Globals.WIJWrites,Statistics.Globals.JrnEntries,Statistics.Globals.JrnBlocks,Statistics.Routines.RtnCallsLocal,Statistics.Routines.RtnFetchLocal,Statistics.Routines.RtnCallsRemote,Statistics.Routines.RtnFetchRemote,Statistics.Routines.RtnCommands,Statistics.Routines.RtnNotCached";
 
 /// <p>ECP statistics' thirty-three fields: the application server's sixteen, then the data server's seventeen.</p>
@@ -68,24 +68,7 @@ ClassMethod FieldsOf(pIndex As %Integer) As %String
 /// <p>The members of the array <var>pArray</var>, comma-separated.</p>
 ClassMethod Joined(pArray As %DynamicArray) As %String
 {
-    Set tText = ""
-    Set tIterator = pArray.%GetIterator()
-    While tIterator.%GetNext(.tIndex, .tValue) {
-        Set tText = tText _ $Select(tText = "": "", 1: ",") _ tValue
-    }
-    Quit tText
-}
-
-/// <p>The pairs <var>pPairs</var> (a <class>%List</class> of <code>$ListBuild(resource, permission)</code>) as
-/// <code>resource:permission</code> text, comma-separated in order.</p>
-ClassMethod PairsText(pPairs As %List) As %String
-{
-    Set tText = ""
-    For tI = 1:1:$ListLength(pPairs) {
-        Set tPair = $List(pPairs, tI)
-        Set tText = tText _ $Select(tText = "": "", 1: ",") _ $List(tPair, 1) _ ":" _ $List(tPair, 2)
-    }
-    Quit tText
+    Quit ##class(OcuPilot.Test.JournalDescriptor).Joined(pArray)
 }
 
 /// <p>The vendor's answer for screen <var>pIndex</var>'s statistics type: one object per group, one number per
@@ -150,7 +133,7 @@ Method TestTheFourDeclarations()
         Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).DescriptorForRoute(..Screen(tI, 2)), tClass, tWhere _ "its route resolves to it")
         Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).DescriptorForTool(..Screen(tI, 3)), tClass, tWhere _ "and so does its tool identifier")
         Do $$$AssertEquals($ClassMethod(tClass, "SideBarPosition") _ "|" _ $ClassMethod(tClass, "IsBuilt") _ "|" _ $ClassMethod(tClass, "AreaKey") _ "|" _ $ClassMethod(tClass, "Archetype"), "0|1|os-management|" _ ..Screen(tI, 4), tWhere _ "unlisted, built, in OS management, on its archetype")
-        Do $$$AssertEquals(..PairsText($ClassMethod(tClass, "PrivilegePairs")) _ "|" _ $ListLength($ClassMethod(tClass, "OwnPrivilegePairs")), "%Admin_Operate:USE,%DB_IRISSYS:READ|0", tWhere _ "the Dashboard's two pairs, none its own")
+        Do $$$AssertEquals(##class(OcuPilot.Test.LicenseUsage).PairsText($ClassMethod(tClass, "PrivilegePairs")) _ "|" _ $ListLength($ClassMethod(tClass, "OwnPrivilegePairs")), "%Admin_Operate:USE,%DB_IRISSYS:READ|0", tWhere _ "the Dashboard's two pairs, none its own")
         Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).AreaCoverageProblem("os-management", $ClassMethod(tClass, "PrivilegePairs")), "", tWhere _ "which the area covers")
         Do $$$AssertEquals($ClassMethod(tClass, "PrimaryEntityType") _ "|" _ $ClassMethod(tClass, "Scope") _ "|" _ $ClassMethod(tClass, "IdKind") _ "|" _ $ListLength($ClassMethod(tClass, "RowActionIds")) _ "|" _ $ClassMethod(tClass, "PrimaryActionId"), "|instance|none|0|", tWhere _ "no entity type, instance scope, no id, no action")
         Do $$$AssertEquals($ClassMethod(tClass, "Refreshes") _ "|" _ $ListLength($ClassMethod(tClass, "RefreshRates")) _ "|" _ $ListLength($ClassMethod(tClass, "CommandAliases")) _ "|" _ $ListLength($ClassMethod(tClass, "ContextSecretFields")), "0|0|0|0", tWhere _ "no refresh, alias or secret field")

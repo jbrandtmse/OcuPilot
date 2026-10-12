@@ -3960,7 +3960,7 @@ export const STRINGS = {
   /** EXPERIENCE.md:375 */
   activeProcessesPrompt2: 'Is one process executing far more commands than the others?',
   /** EXPERIENCE.md:375 */
-  activeProcessesPrompt3: 'How many processes are busy enough to report executed commands?',
+  activeProcessesPrompt3: 'How many commands have the most active processes executed between them?',
   /** EXPERIENCE.md:377 */
   localDatabaseListLabel: 'Local databases',
   /** EXPERIENCE.md:377 */

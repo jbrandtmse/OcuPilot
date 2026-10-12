@@ -57,9 +57,12 @@ function atDashboard() {
   return openDashboard(browser, config);
 }
 
-/** Follow the Dashboard link to `target` and wait for its address. */
+/** Follow the Dashboard link to `target` and wait for its address; the link's own address, which a modified click opens, is the same. */
 async function follow(page, target) {
-  await page.click(`a.ocu-details-link[data-drill-down="${target.route}"]`);
+  const selector = `a.ocu-details-link[data-drill-down="${target.route}"]`;
+  const href = await page.$eval(selector, (link) => new URL(link.href).pathname);
+  assert.equal(href, `/ocupilot/${target.route}`, `${target.label}'s link addresses its screen under the application's base`);
+  await page.click(selector);
   await page.waitForFunction((path) => window.location.pathname === path, { timeout: config.navigationTimeoutMs }, `/ocupilot/${target.route}`);
 }
 
@@ -109,8 +112,8 @@ async function assertSideBarListsNone(page) {
   }
 }
 
-// C4. Mutation (Rule 19): drop the ECP group's `drillDowns` from `dashboard.store.ts`, rebuild and
-// redeploy -> the link wait goes red; declare `DashboardGlobals` page-less in `DESCRIPTOR_PAGES` -> the
+// C4. Mutation (Rule 19): drop the Performance group's `drillDowns` from `dashboard.store.ts`, rebuild and
+// redeploy -> the links assertion goes red; declare `DashboardGlobals` page-less in `DESCRIPTOR_PAGES` -> the
 // groups wait goes red.
 test('C4: the Performance group links Global and routine statistics, whose page answers with a Globals group of twelve and a Routines group of six', async () => {
   const { context, page } = await atDashboard();
@@ -126,7 +129,7 @@ test('C4: the Performance group links Global and routine statistics, whose page 
       assert.equal(group.values.length, group.labels.length, `${group.heading} shows a value beside every label`);
       assert.ok(group.values.every((value) => /^\d+$/.test(value)), `${group.heading} reads whole numbers: ${JSON.stringify(group.values)}`);
     }
-    assert.equal(groups[0].labels[0], STRINGS.statsGlobalReferencesLocal, 'in the vendor\'s order');
+    assert.equal(groups[0].labels[0], STRINGS.statsGlobalReferencesLocal, 'in declared order');
     await assertSideBarListsNone(page);
   } finally {
     await context.close();

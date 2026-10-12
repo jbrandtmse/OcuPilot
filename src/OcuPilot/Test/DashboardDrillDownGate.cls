@@ -55,17 +55,21 @@ Method OnAfterAllTests() As %Status
 }
 
 /// <p>The holder of exactly the two pairs reads all four screens: the statistics screens one row of their fields,
-/// System resource statistics cut at the cap, and Most active processes at most ten rows.</p>
-/// <p>Mutation (Rule 19): make <method>OcuPilot.Screen.Gate.Evaluate</method> refuse every caller -- all four legs go
-/// red.</p>
+/// and Most active processes no row whose <code>Process</code> is empty.</p>
+/// <p>Mutation (Rule 19): keep the empty rows in <method>OcuPilot.Port.AdminPort.ComposedAnswer</method> -- the
+/// processes leg goes red while the instance pads its busy-process list.</p>
 Method TestTheExactPairsReadAllFour()
 {
     For tI = 1:1:$Length(..#TOOLS, ",") {
         Set tTool = $Piece(..#TOOLS, ",", tI)
         Do $$$AssertEquals(..Wire(tTool, "OcuProbe1836Exact", .tAnswer), "200 ", tTool _ ": the principal holding exactly the two pairs reads")
-        If '$IsObject(tAnswer) Continue
+        If '$IsObject(tAnswer) || (tAnswer.%GetTypeOf("rows") '= "array") Continue
         If tI <= 2 Do $$$AssertEquals(tAnswer.rows.%Size(), 1, tTool _ ": one row of the screen's fields")
-        If tI = 4 Do $$$AssertTrue(tAnswer.rows.%Size() <= 10, tTool _ ": at most ten rows")
+        If tI '= 4 Continue
+        Set tIterator = tAnswer.rows.%GetIterator()
+        While tIterator.%GetNext(.tIndex, .tRow) {
+            Do $$$AssertNotEquals(tRow.%Get("Process"), "", tTool _ ": row " _ (tIndex + 1) _ " names its process")
+        }
     }
 }
 

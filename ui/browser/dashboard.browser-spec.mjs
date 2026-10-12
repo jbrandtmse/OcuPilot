@@ -21,12 +21,11 @@ import puppeteer from 'puppeteer';
 
 import { browserConfig, launchOptions } from '../browser.config.mjs';
 import { loadStrings } from '../tools/strings.mjs';
-import { atDashboard as openDashboard } from './dashboard-spec.mjs';
+import { DASHBOARD_ROUTE as ROUTE, atDashboard as openDashboard } from './dashboard-spec.mjs';
 import { INVARIANTS, VIEWPORTS, assertThrowaway, collapse, compare, componentMinimums, detectScreen, readBaseline } from './structural-walk.mjs';
 
 const config = browserConfig();
 const STRINGS = loadStrings();
-const ROUTE = 'os-management/dashboard';
 
 let browser = null;
 

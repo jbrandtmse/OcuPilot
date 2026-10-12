@@ -338,7 +338,7 @@ export class DashboardPage {
 
   /** Open a drill-down. A modified click is left to the browser, whose new page reads the same screen. */
   protected onDrillDown(event: MouseEvent, link: DrillDownLink): void {
-    if (event.ctrlKey || event.metaKey || event.shiftKey || event.button !== 0) return;
+    if (event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
     event.preventDefault();
     void this.router.navigateByUrl(withQuery(link.route, this.router.url));
   }
