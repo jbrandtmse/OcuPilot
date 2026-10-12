@@ -55,6 +55,19 @@
 /// <class>OcuPilot.Test.Installer</class>), but calling it a second time from inside the
 /// namespace it would be restoring <b>out of</b> is exactly the failure mode above.</li>
 /// </ol>
+/// <p><b>One install namespace per instance (AD-17).</b> It is the namespace holding the
+/// profile's global mapping. Each entry point names its own target -- the container's
+/// <parameter>NAMESPACEOVERRIDEVAR</parameter>, else <code>HSCUSTOM</code> then <code>USER</code>;
+/// under IPM the namespace <code>zpm</code> runs in; by hand the session's -- and
+/// <method>Install</method> validates it before changing anything:
+/// <method>GuardInstallNamespace</method> (not a system or missing namespace),
+/// <method>GuardVersionFloor</method> (the roster's IRIS floor),
+/// <method>GuardPackageHome</method> (the <code>OcuPilot</code> package resolves from the
+/// namespace's own routine database, AD-9) and <method>GuardOneInstallNamespace</method> (the
+/// namespace holds the mapping, or no other does). <method>Uninstall</method> runs the first and the last, and the IPM
+/// manifest's guard <code>&lt;Invoke&gt;</code> (<method>GuardTarget</method>) runs all four before
+/// IPM touches a web application. A refusal changes nothing in either namespace and writes no
+/// version row.</p>
 /// <p>This class never <code>Write</code>s.</p>
 /// <p>All internal calls use <code>..</code> self-dispatch rather than a hardcoded
 /// <code>##class(OcuPilot.Install.Installer)</code>, so a probe subclass's overrides
@@ -476,6 +489,162 @@ ClassMethod GuardInstallNamespace(pWhat As %String, Output pInstallNs As %String
     Quit $$$OK
 }
 
+/// <p>The running instance's version as <code>major.minor</code>, which
+/// <method>GuardVersionFloor</method> compares against the roster's floor. A seam:
+/// <class>OcuPilot.Test.InstallerProbe</class> overrides it; production never does.</p>
+ClassMethod InstanceVersion() As %String
+{
+    Quit $System.Version.GetMajor() _ "." _ $System.Version.GetMinor()
+}
+
+/// <p>Whether dotted version <var>pVersion</var> is below dotted version <var>pFloor</var>,
+/// compared piece by piece as numbers (<code>2026.10</code> is above <code>2026.2</code>).</p>
+ClassMethod VersionBelow(pVersion As %String, pFloor As %String) As %Boolean [ Private ]
+{
+    Set tPieces = $Length(pFloor, ".")
+    If $Length(pVersion, ".") > tPieces Set tPieces = $Length(pVersion, ".")
+    For tI = 1:1:tPieces {
+        Set tHave = +$Piece(pVersion, ".", tI)
+        Set tNeed = +$Piece(pFloor, ".", tI)
+        If tHave < tNeed Return 1
+        If tHave > tNeed Return 0
+    }
+    Return 0
+}
+
+/// <p>Refuse, naming both versions, when the instance runs an IRIS older than the roster's
+/// <code>systemRequirements.version</code> (DW-1333). IPM's exporter drops
+/// <code>&lt;SystemRequirements&gt;</code> from the archive, so the installer enforces the floor
+/// itself. A roster that cannot be read, or whose floor is not <code>&gt;=</code> followed by a
+/// dotted version, is refused too: a floor that cannot be read is not one to wave through.
+/// <method>Install</method> calls it; <method>Uninstall</method> does not, since removing
+/// OcuPilot from an older instance is always allowed. Changes nothing.</p>
+ClassMethod GuardVersionFloor(pWhat As %String) As %Status
+{
+    Set tSC = $$$OK
+    Try {
+        Set tRosterSC = ##class(OcuPilot.Install.Roster).Get(.tRoster)
+        Set tSpec = ""
+        If $$$ISOK(tRosterSC) {
+            Set tRequirements = tRoster.systemRequirements
+            If $IsObject(tRequirements) Set tSpec = tRequirements.version
+        }
+        If '$Match(tSpec, "^>=[0-9]+(\.[0-9]+)*$") {
+            Set tSC = $$$ERROR($$$GeneralError, pWhat _ " refused: the roster's IRIS version floor could not be read (" _ $Select($$$ISERR(tRosterSC): $System.Status.GetErrorText(tRosterSC), 1: "systemRequirements.version is '" _ tSpec _ "', not '>=' followed by a dotted version") _ "), so it cannot be enforced. Nothing was changed.")
+            Quit
+        }
+        Set tFloor = $Extract(tSpec, 3, *)
+        Set tVersion = ..InstanceVersion()
+        If '$Match(tVersion, "^[0-9]+(\.[0-9]+)*$") || ..VersionBelow(tVersion, tFloor) {
+            Set tSC = $$$ERROR($$$GeneralError, pWhat _ " refused: this instance runs IRIS " _ $Select(tVersion = "": "(version unreadable)", 1: tVersion) _ ", below the " _ tFloor _ " floor the roster declares. Nothing was changed.")
+        }
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>The destination, as <code>%SYS.Namespace.GetPackageDest</code> spells it, the
+/// <code>OcuPilot</code> package resolves from in <var>pNamespace</var>. A seam:
+/// <class>OcuPilot.Test.InstallerProbe</class> overrides it; production never does.</p>
+ClassMethod PackageDestination(pNamespace As %String) As %String
+{
+    Quit ##class(%SYS.Namespace).GetPackageDest(pNamespace, "OcuPilot")
+}
+
+/// <p>Refuse, naming both destinations, unless the <code>OcuPilot</code> package resolves from
+/// <var>pInstallNs</var>'s own routine database (AD-9: code lives in the install namespace's
+/// normal database, never behind a package mapping). A destination that cannot be read is
+/// refused. <method>Install</method> calls it beside <method>GuardVersionFloor</method>. Changes
+/// nothing.</p>
+ClassMethod GuardPackageHome(pWhat As %String, pInstallNs As %String) As %Status
+{
+    Set tSC = $$$OK
+    Try {
+        Set tPackage = ..PackageDestination(pInstallNs)
+        Set tHome = ##class(%SYS.Namespace).GetRoutineDest(pInstallNs)
+        If (tPackage = "") || (tHome = "") || (tPackage '= tHome) {
+            Set tSC = $$$ERROR($$$GeneralError, pWhat _ " refused: in namespace '" _ pInstallNs _ "' the OcuPilot package resolves from '" _ tPackage _ "', not from the namespace's own routine database '" _ tHome _ "'. OcuPilot's code lives in the install namespace's own database (AD-9); remove the package mapping or run this in a namespace without one. Nothing was changed.")
+        }
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>Refuse, naming the namespace and the remedy, when <var>pInstallNs</var> does not hold the
+/// profile's global mapping (<code>pNames("mappingPattern")</code> onto <code>pNames("database")</code>)
+/// and another namespace does: an instance has one install namespace, and installing or uninstalling
+/// from a second one would move or half-remove the first's. A namespace that holds the mapping
+/// itself is an install namespace whatever another holds, so an instance an earlier release left
+/// with two can still be upgraded or uninstalled from either. <code>%ALL</code> is not asked. The
+/// namespaces are read in one <code>%SYS</code> window (AD-16) restored before the answer; a list
+/// that cannot be read is refused. Both <method>Install</method> and <method>Uninstall</method>
+/// call it after their lock and before they read anything. Changes nothing.</p>
+/// <p>Caller contract: <var>pNames</var> is <method>Names</method>' answer, resolved in the install
+/// namespace.</p>
+ClassMethod GuardOneInstallNamespace(pWhat As %String, ByRef pNames, pInstallNs As %String) As %Status
+{
+    Set tSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Set tPattern = pNames("mappingPattern")
+    Set tDatabase = pNames("database")
+    Set tHolder = ""
+    Try {
+        Set tSC = ##class(OcuPilot.Kernel.Utils).SwitchNamespace("%SYS", .tOrigNS)
+        If $$$ISERR(tSC) Quit
+        If ##class(Config.MapGlobals).Exists(pInstallNs, tPattern, .tOwn) && (tOwn.Database = tDatabase) {
+            Set tOwn = ""
+            Quit
+        }
+        Set tRS = ##class(%ResultSet).%New("Config.Namespaces:List")
+        Set tSC = tRS.Execute()
+        If $$$ISERR(tSC) Quit
+        While tRS.Next() {
+            Set tCandidate = tRS.Get("Namespace")
+            If ($ZConvert(tCandidate, "U") = $ZConvert(pInstallNs, "U")) || ($ZConvert(tCandidate, "U") = "%ALL") Continue
+            If '##class(Config.MapGlobals).Exists(tCandidate, tPattern, .tMapping) Continue
+            If tMapping.Database = tDatabase {
+                Set tHolder = tCandidate
+                Quit
+            }
+        }
+        Set tRS = ""
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tSC = ex.AsStatus()
+    }
+    Set $NAMESPACE = tOrigNS
+    If $$$ISERR(tSC) {
+        Quit $$$ERROR($$$GeneralError, pWhat _ " refused: could not establish whether another namespace already holds OcuPilot's '" _ tPattern _ "' mapping (" _ $System.Status.GetErrorText(tSC) _ "). Nothing was changed.")
+    }
+    If tHolder '= "" {
+        Quit $$$ERROR($$$GeneralError, pWhat _ " refused: OcuPilot is already installed in namespace '" _ tHolder _ "' (its '" _ tPattern _ "' mapping there targets database " _ tDatabase _ "), and an instance has one install namespace. Run it in '" _ tHolder _ "', or uninstall OcuPilot there first with ##class(OcuPilot.Install.Installer).Uninstall("""", 1), which removes that mapping. Nothing was changed in either namespace.")
+    }
+    Quit $$$OK
+}
+
+/// <p>The IPM manifest's guard <code>&lt;Invoke&gt;</code>
+/// (<class>OcuPilot.Install.Roster</class>'s <code>guard</code>): every refusal
+/// <method>Install</method> makes about its target, for the production profile and without a lock,
+/// changing nothing. IPM runs it after <code>Compile</code>, before it updates the module's web
+/// applications at the start of <code>Activate</code> -- which is what lets an install run in a
+/// second namespace be refused before it re-points the live applications there. It takes no
+/// argument, as the install <code>&lt;Invoke&gt;</code> takes none. <method>Install</method> asks
+/// every question again under its lock.</p>
+ClassMethod GuardTarget() As %Status
+{
+    Set tSC = ..GuardInstallNamespace("Install", .tInstallNs)
+    If $$$ISERR(tSC) Quit tSC
+    Set tSC = ..GuardVersionFloor("Install")
+    If $$$ISERR(tSC) Quit tSC
+    Set tSC = ..GuardPackageHome("Install", tInstallNs)
+    If $$$ISERR(tSC) Quit tSC
+    Set tSC = ..Names("", .tNames)
+    If $$$ISERR(tSC) Quit tSC
+    Quit ..GuardOneInstallNamespace("Install", .tNames, tInstallNs)
+}
+
 /// <p>The name of the lock that serializes install work on one profile (DW-47, DW-84):
 /// <method>Install</method> holds it from the moment its profile is validated until its
 /// version row records the outcome, <method>StartPath</method> holds it for the production
@@ -676,9 +845,10 @@ ClassMethod LogWarn(pMessage As %String, pData As %DynamicObject = "")
 /// <p><b>AC13's namespace guard is the first act</b>, before any object is created and
 /// before any <code>%SYS</code> switch -- refuses immediately when called from anywhere
 /// but the resolved install namespace, closing the <code>reopen_if</code> Story 1.3 left
-/// on this exact gap. <b>AC6's downgrade refusal runs second</b>, for the identical
-/// reason: reading the stored schema version needs no escalation and must settle
-/// "changes nothing" before anything is touched.</p>
+/// on this exact gap. The target's own validity follows (<method>GuardVersionFloor</method>,
+/// <method>GuardPackageHome</method>, then <method>GuardOneInstallNamespace</method> under the
+/// lock), and <b>AC6's downgrade refusal</b> after it, for the identical reason: each needs no
+/// escalation and must settle "changes nothing" before anything is touched.</p>
 /// <p>The version row is written <b>last</b> (AD-38), after the <code>Try</code>/
 /// <code>Catch</code> below, because it must run from the install namespace -- guaranteed
 /// restored at every exit above -- and because a step's failure must still be recorded
@@ -734,6 +904,13 @@ ClassMethod Install(pProfile As %String = "", pUnexpire As %Boolean = 0, pBundle
         ; class's own parameters.
         Set tSC = ..GuardInstallNamespace("Install", .tInstallNs)
         If $$$ISERR(tSC) Quit
+        ; The target's own validity, still before anything is read or written: the roster's IRIS
+        ; floor, then where the OcuPilot package resolves from. Neither names a failing step, so a
+        ; refusal writes no version row.
+        Set tSC = ..GuardVersionFloor("Install")
+        If $$$ISERR(tSC) Quit
+        Set tSC = ..GuardPackageHome("Install", tInstallNs)
+        If $$$ISERR(tSC) Quit
 
         ; No failing step is named for Names() (code review round 3): it refuses a profile
         ; that does not exist, and naming the step made the block after the Try/Catch
@@ -752,6 +929,11 @@ ClassMethod Install(pProfile As %String = "", pUnexpire As %Boolean = 0, pBundle
             Quit
         }
         Set tLocked = 1
+
+        ; One install namespace per instance: asked under the lock, so a second namespace's
+        ; install cannot pass it while the first's is mid-run, and before the first read.
+        Set tSC = ..GuardOneInstallNamespace("Install", .tNames, tInstallNs)
+        If $$$ISERR(tSC) Quit
 
         ; Read the stored version row BEFORE switching to %SYS -- Kernel.State.Version is
         ; an OcuPilot class, mapped only into the install namespace (this class's own
@@ -945,6 +1127,10 @@ ClassMethod Install(pProfile As %String = "", pUnexpire As %Boolean = 0, pBundle
         ; (AD-15): a banner that could not be refreshed is a stale fact, and the fact makes no
         ; positive claim -- nothing anywhere says marking is working.
         Do ..RecordAuditMarking($Get(tMarkingObserved, 1), .tReports)
+
+        ; Definitions stored on the credentials rung this namespace cannot reach are reported by
+        ; name, never refused: the install succeeds either way.
+        Do ..ReportCredentialsRung(.tReports)
 
         ; Never fails install (AD-27's fallback) -- ReportGatewayGap always returns OK. Moved
         ; out of the %SYS window in Story 1.17: it reads the provenance record, which is an
@@ -3290,6 +3476,64 @@ ClassMethod RecordAuditMarking(pMarked As %Boolean, ByRef pReports) [ Private ]
     }
 }
 
+/// <p>Whether the <code>creds</code> credential rung is reachable from the install namespace
+/// (<method>OcuPilot.Kernel.Secret.Ladder.CredentialsRungAvailable</method>, which asks the
+/// calling namespace). A seam: <class>OcuPilot.Test.InstallerProbe</class> overrides it;
+/// production never does.</p>
+ClassMethod CredentialsRungAvailable() As %Boolean
+{
+    Quit ##class(OcuPilot.Kernel.Secret.Ladder).CredentialsRungAvailable()
+}
+
+/// <p>The names of the stored agent definitions whose credential type is <code>creds</code>, as a
+/// <code>$ListBuild</code> list in <var>pNames</var>, or the failing <code>%Status</code> of the
+/// read. A seam: <class>OcuPilot.Test.InstallerProbe</class> overrides it; production never
+/// does.</p>
+ClassMethod CredsDefinitionNames(Output pNames As %List) As %Status
+{
+    Set pNames = ""
+    Set tSC = ##class(OcuPilot.Kernel.State.Agent).GuardedList(.tIds)
+    If $$$ISERR(tSC) Quit tSC
+    For tI = 1:1:+$Get(tIds) {
+        Set tOpenSC = ##class(OcuPilot.Kernel.State.Agent).GuardedOpenId(tIds(tI), .tRow)
+        If $$$ISERR(tOpenSC) || '$IsObject(tRow) Continue
+        Set tType = tRow.CredType
+        Set tName = tRow.Name
+        Set tRow = ""
+        If tType '= "creds" Continue
+        If tName = $Char(0) Set tName = ""
+        Set pNames = pNames _ $ListBuild(tName)
+    }
+    Quit $$$OK
+}
+
+/// <p>When the install namespace cannot reach the <code>creds</code> rung
+/// (<method>CredentialsRungAvailable</method>), warn once for each stored agent definition whose
+/// credential type is <code>creds</code> (<method>CredsDefinitionNames</method>), naming it: such a
+/// definition cannot read its key here. Install is never refused over it (a refusal would stop every
+/// definition for one key, and the definition's own save already refuses the rung where it is
+/// unavailable). A store that cannot be read is a warn too. Reports nothing when the rung is
+/// reachable.</p>
+/// <p><b>Caller contract:</b> <code>$NAMESPACE</code> is the install namespace and the profile's
+/// state exists, as after <method>RecordAuditMarking</method>. Never fails install.</p>
+ClassMethod ReportCredentialsRung(ByRef pReports) [ Private ]
+{
+    Try {
+        If ..CredentialsRungAvailable() Quit
+        Set tSC = ..CredsDefinitionNames(.tNames)
+        If $$$ISERR(tSC) {
+            Do ..Report(.pReports, "warn", "The credentials rung is unavailable in this namespace and the stored agent definitions could not be read, so definitions that use it are not named", {"reason": ($System.Status.GetErrorText(tSC))})
+            Quit
+        }
+        For tI = 1:1:$ListLength(tNames) {
+            Set tName = $List(tNames, tI)
+            Do ..Report(.pReports, "warn", "Agent definition '" _ tName _ "' reads its key from the credentials rung, which this namespace cannot reach (it is not interoperability-enabled, or the instance has no interoperability license); the definition will not find its key here", {"definition": (tName), "credType": "creds"})
+        }
+    } Catch ex {
+        Do ..Report(.pReports, "warn", "The credentials rung could not be checked against the stored agent definitions", {"reason": (ex.DisplayString())})
+    }
+}
+
 /// <p>Ensure the administrative role is granted (AC9, DW-16), using the process's own
 /// <code>$Username</code> as the candidate by default. Takes the candidate username as
 /// an explicit parameter (rather than reading <code>$Username</code> only internally) so
@@ -3879,6 +4123,11 @@ ClassMethod Uninstall(pProfile As %String = "", pConfirmDataLoss As %Boolean = 0
             Quit
         }
         Set tLocked = 1
+
+        ; One install namespace per instance: removing from a second namespace would delete the
+        ; first one's objects while leaving its mapping and data, so it is refused before any read.
+        Set tSC = ..GuardOneInstallNamespace("Uninstall", .tNames, tInstallNs)
+        If $$$ISERR(tSC) Quit
 
         ; Review finding (build-auto review, 2026-09-10): AnyObjectExists below checked
         ; only the core installer-managed objects (database, resources, role,

@@ -53,6 +53,7 @@
                       ServeFiles="0"
       />
       <FileCopy Name="ui/dist/ocupilot-ui/browser/" Target="${dataDir}csp/ocupilot/"/>
+      <Invoke Class="OcuPilot.Install.Installer" Method="GuardTarget" Phase="Compile" When="After"/>
       <Invoke Class="OcuPilot.Install.Installer" Method="Install" Phase="Activate" When="After"/>
     </Module>
   </Document>

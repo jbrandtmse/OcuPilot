@@ -480,6 +480,7 @@ services:
       # classes: ExplorerSourceTurn
       # classes: ExplorerSaveTurn
       # classes: ExplorerCreateTurn
+      # classes: StampRetention
       OCUPILOT_ALLOW_PRINCIPALS: "1"
       # Writes an application error to a namespace's own ^ERRORS. Same reasoning again, and one
       # degree worse: an application error cannot be un-logged, so a runner pointed elsewhere
@@ -513,6 +514,8 @@ services:
       # classes: UninstallGuard, UninstallResidue, UninstallSurvival, WebApp
       # classes: AuditEvent, AuditMarker, ConfigGate, State, Token, UnexpireScope, Version, Wire
       # classes: RetentionTask
+      # classes: InstallTarget
+      # classes: ContainerStartNamespace
       OCUPILOT_ALLOW_PRODUCTION_INSTALL: "1"
       # Runs the installer's EnsureSslConfiguration step under the probe profile and so creates
       # -- and leaves -- a TLS configuration in the instance's own security database. Same

@@ -5,7 +5,9 @@
 /// every user's turn start records past the turns-an-hour window
 /// (<method>OcuPilot.Kernel.State.Turn.GuardedSweepStarts</method>), whether or not the account
 /// still exists; background SQL runs that ended past their retention, after lost runs are ended
-/// (<method>OcuPilot.Kernel.State.SqlRun.GuardedSweep</method>);
+/// (<method>OcuPilot.Kernel.State.SqlRun.GuardedSweep</method>); every profile's install stamps past its
+/// newest <parameter>OcuPilot.Kernel.State.Stamp.KEEPRUNS</parameter>
+/// (<method>OcuPilot.Kernel.State.Stamp.GuardedSweep</method>);
 /// every conversation entry older than its own definition's
 /// <property>OcuPilot.Kernel.State.Agent.RetentionDays</property>, then every conversation left with
 /// no entry once it is older than the longest retention; every ledger row older than the longest
@@ -61,6 +63,14 @@ ClassMethod Sweep(pLimitsClass As %String = "OcuPilot.Kernel.Agent.Limits") As %
         Set tSC = ex.AsStatus()
     }
     Set tSC = ..Step("background SQL runs past retention could not be swept", tSC)
+    If $$$ISERR(tSC) && $$$ISOK(tFirst) Set tFirst = tSC
+
+    Try {
+        Set tSC = ##class(OcuPilot.Kernel.State.Stamp).GuardedSweep()
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Set tSC = ..Step("install stamps past the kept runs could not be swept", tSC)
     If $$$ISERR(tSC) && $$$ISOK(tFirst) Set tFirst = tSC
 
     Kill tById

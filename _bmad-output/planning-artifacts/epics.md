@@ -7820,6 +7820,7 @@ So that removing or checking OcuPilot never damages or hides what others set up.
 
 - DW-219: Uninstall's contract on an instance OcuPilot does not wholly own has three half-state paths (ledger; re-owned by lead 2026-10-12 at Story 18.13's spec gate). From source at `fe132688`: path 1 is open (the shell bundle directory is removed unconditionally); path 2 is open (an unreadable provenance record warns and continues); path 3 looks closed by the role loop (inference; a pinning test settles it).
 - DW-2172: DW-236's detection half - a SQL grant on OcuPilot's own schemas widened outside OcuPilot (another role or _PUBLIC holding it) is detected beside install's schema-grant read-back (ledger; re-owned by lead 2026-10-12 at Story 18.13's spec gate). The grantee source is a Task 0 measurement.
+- DW-2365: A refused IPM install in a second namespace may leave IPM's own state there, and a `zpm uninstall` run there may delete the live install's web applications and bundle (inference; ledger; routed by Story 18.13's code review 2026-10-12): measure first, then fix by an uninstall-phase guard invoke or document the cleanup.
 
 ### Story 18.45: The agent's tool roster scoped per turn
 

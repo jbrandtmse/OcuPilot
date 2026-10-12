@@ -10,6 +10,13 @@
 /// <class>OcuPilot.Screen.Area</class> uses), <file>ui/tools/ipm-manifest.mjs</file>, which
 /// generates and drift-checks <file>module.xml</file> from it, and
 /// <file>scripts/check-objectscript.py</file>, which takes its fixed-package set from it.</p>
+/// <p><b><code>guard</code> and <code>invoke</code> are the manifest's two
+/// <code>&lt;Invoke&gt;</code> elements.</b> IPM activates a module's web applications at the start
+/// of the <code>Activate</code> phase, before any <code>Activate</code> invoke runs, so an install
+/// run in a second namespace would re-point the live applications before
+/// <method>OcuPilot.Install.Installer.Install</method> could refuse it. <code>guard</code> runs the
+/// install namespace's validation (<method>OcuPilot.Install.Installer.GuardTarget</method>) after
+/// <code>Compile</code>, changing nothing, and <code>invoke</code> is the install itself.</p>
 /// <p><b>The <code>manifest</code>/<code>installer</code> split is the contract.</b>
 /// <code>manifest</code> holds instance-independent values, emitted verbatim as
 /// <code>&lt;WebApplication&gt;</code> attributes. <code>installer</code> names the
@@ -151,6 +158,12 @@ XData Manifest
       "installer": ["MatchRoles", "NameSpace"]
     }
   ],
+  "guard": {
+    "class": "OcuPilot.Install.Installer",
+    "method": "GuardTarget",
+    "phase": "Compile",
+    "when": "After"
+  },
   "invoke": {
     "class": "OcuPilot.Install.Installer",
     "method": "Install",
