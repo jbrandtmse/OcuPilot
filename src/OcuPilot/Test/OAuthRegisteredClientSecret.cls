@@ -28,14 +28,12 @@ Parameter PROBE = "OcuPilot.Test.OAuthRegisteredClientProbe";
 
 Parameter HELPER = "OcuPilot.Test.OAuthServerProbe";
 
-/// <p>The audit mask's own test, whose read helpers take any row.</p>
+/// <p>The audit mask's own test, whose read and poll helpers take any row.</p>
 Parameter AUDIT = "OcuPilot.Test.AuditVendorSecrets";
 
 Parameter ENDPOINT = "Security.OAuth2.ServerClients";
 
 Parameter FORMPATH = "/oauth/server-client/form";
-
-Parameter AUDITPATH = "/screens/logs.audit/read";
 
 Method OnBeforeAllTests() As %Status
 {
@@ -233,19 +231,14 @@ Method TestTheAuditReadsMaskTheRegistrationToken()
 /// reads the mask, and that no answered row carries <var>pToken</var>.</p>
 Method AssertMasked(pSince As %String, pPrefix As %String, pToken As %String)
 {
-    Set tPath = ..#AUDITPATH _ "?events=OAuth2&maxRows=200&beginDateTime=" _ $ZConvert(pSince, "O", "URL")
-    Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("GET", $Parameter("OcuPilot.Test.Http", "BASEPATH") _ tPath, ##class(OcuPilot.Test.Http).GetTestUsername(), ##class(OcuPilot.Test.Http).GetTestPassword(), .tStatus, .tRaw, .tHeaders)
+    Set tPrefixes = $ListBuild(pPrefix)
+    Set tSC = $ClassMethod(..#AUDIT, "ReadScreen", "OAuth2", pSince, "", tPrefixes, .tStatus, .tRaw, .tScreen)
     Do $$$AssertEquals(tStatus, 200, pPrefix _ ": the audit screen's read answers: " _ $Extract(tRaw, 1, 200))
-    Set tScreen = ""
-    Try { Set tScreen = ##class(%DynamicObject).%FromJSON(tRaw).%Get("rows") } Catch { Set tScreen = "" }
     Do $$$AssertEquals(tRaw [ pToken, 0, pPrefix _ ": the screen's read carries no token")
     Do $$$AssertTrue($ClassMethod(..#AUDIT, "MaskedRows", $Get(tScreen), "", pPrefix, "registration_access_token") > 0, pPrefix _ ": where it was, the token reads the mask")
     Set tSC = ##class(OcuPilot.Screen.Tool.Registry).Resolve("logs.audit.read", .tTool)
-    Set tArgs = {"events": "OAuth2", "maxRows": 200}
-    Do tArgs.%Set("beginDateTime", pSince, "string")
-    Set tSC = ##class(OcuPilot.Screen.Tool.Registry).InvokeTool(tTool, tArgs, 200, .tResult, .tHttp, .tFault)
+    Set tSC = $ClassMethod(..#AUDIT, "ReadTool", tTool, "OAuth2", pSince, "", tPrefixes, .tResult, .tRows)
     Do $$$AssertStatusOK(tSC, pPrefix _ ": logs.audit.read answers")
-    Set tRows = $Select($IsObject($Get(tResult)): tResult.%Get("rows"), 1: "")
     Do $$$AssertEquals($Select($IsObject($Get(tResult)): tResult.%ToJSON(), 1: "") [ pToken, 0, pPrefix _ ": logs.audit.read carries no token")
     Do $$$AssertTrue($ClassMethod(..#AUDIT, "MaskedRows", tRows, "", pPrefix, "registration_access_token") > 0, pPrefix _ ": where it was, the token reads the mask")
 }
