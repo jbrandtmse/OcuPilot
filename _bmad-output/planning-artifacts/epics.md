@@ -932,85 +932,7 @@ An operator reaches System Administration and System Operation parity on the hid
 
 **Implementation notes:** Row groups from `extract-stages.md`: SH-24; CP-35, CP-39, CP-41; WA-10 to WA-14; PM-19 to PM-22; SS-28 to SS-35; OS-16 to OS-22, OS-30; LG-11; SA-03 to SA-22; SO-01 to SO-08; PK-25. Gated by admin-v2 write payloads being observed, the `/async-result` polling pattern, SH-24's directory allow-list landing before any server-path picker, and the admin API's final form in IRIS 2027.1 - against which this stage re-derives the endpoint inventory before deepening the dependency. The agent's growth step here is confirmed single writes over the whole remainder, plus wallet-backed keys, context-window management as the tool roster roughly doubles, and proxy and custom-CA support. Epic 14's governance policy must cover this stage's new destructive actions as default-disabled.
 
-#### Story 18.36: Dashboard drill-downs
-
-As a production administrator,
-I want the dashboard's drill-down statistics,
-So that a figure on the dashboard leads to its detail. [AMENDED 2026-10-11, orchestrator ruling on Story 18.11's plan: split from Story 18.11 for size, Rule 5; read-only, with a Task 0 that reads the request types]
-
-**Acceptance Criteria:**
-
-- **Given** the dashboard's globals-and-routines, ECP and system-resources drill-downs
-- **When** each renders
-- **Then** it reads through its own port with its own resource gate - the monitoring API's anonymous reachability never becoming OcuPilot's.
-
-**Admin API behavior to design for.** [AMENDED 2026-09-28, owner: warnings from the DC article
-[20 places where the SysAdmin API specification and IRIS disagree](https://community.intersystems.com/post/20-places-where-sysadmin-api-specification-and-iris-disagree);
-"checked" means seen on slot A that day, "reported" means the article's word only]
-
-- `SystemUsage.BusyProcesses` in `GET /v2/monitor/dashboard/main` always has ten rows; unused ones are `{"Process": "", "Commands": 0}` (checked: 8 of 10 on slot A). Drop them before showing a top ten.
-
-### Story 18.37: Interoperability usage
-
-As a production administrator,
-I want the interoperability usage view,
-So that interface use is visible beside the instance's other monitoring. [AMENDED 2026-10-11, orchestrator ruling on Story 18.11's plan: split from Story 18.11 for size, Rule 5; at its spec gate prefer the source that keeps AD-8 as written (the classic page's query, if it checks the caller, over the deprecated metrics API that escalates unchecked); an option that needs AD-8 relaxed is the owner's call]
-
-**Acceptance Criteria:**
-
-- **Given** the interoperability usage view
-- **When** it renders
-- **Then** it reads through its own port with its own resource gate - the monitoring API's anonymous reachability never becoming OcuPilot's.
-
-### Story 18.38: The live log tail
-
-As a production administrator,
-I want a live tail on a text log,
-So that monitoring is continuous rather than sampled. [AMENDED 2026-10-11, orchestrator ruling on Story 18.11's plan: split from Story 18.11 for size, Rule 5; the AD-12 heartbeat carve-out, the AD-43 amendment and EXPERIENCE.md's "live tail is P2" lines are tier-1 amendments at its spec gate, and the "nothing streams" pins are re-scoped to the sources that do not opt in]
-
-**Acceptance Criteria:**
-
-- **Given** the live tail
-- **When** it is enabled on a text log
-- **Then** it long-polls with a heartbeat, and the Release 1 rule that log viewers load bounded pages is superseded **only** for the sources that opt into it.
-
-### Story 18.39: The agent's context budget
-
-As a developer-administrator,
-I want each turn assembled within a budget,
-So that the doubled tool roster does not make every agent call larger and slower. [AMENDED 2026-10-11, orchestrator ruling on Story 18.12's plan: split from Story 18.12 for size, Rule 5; runs right after Story 18.12; any per-call selection, trimming or caching goes after Story 20.24's per-process tool listing, never inside it (AD-5, Rule 31); a Task 0 measures the per-call weight and AD-24 is amended at its spec gate]
-
-**Acceptance Criteria:**
-
-- **Given** the tool roster roughly doubles here
-- **When** a turn is assembled
-- **Then** context-window management trims and budgets history, which nothing in the harvest provides and which this stage is the first to need.
-
-### Story 18.40: Proxy and custom CA configuration
-
-As a developer-administrator,
-I want the provider call's proxy and SSL configuration set as configuration,
-So that an operator behind a proxy or a custom CA can reach the provider. [AMENDED 2026-10-11, orchestrator ruling on Story 18.12's plan: split from Story 18.12 for size, Rule 5; a custom CA is a separately named SSL/TLS configuration (AD-10 refuses a CAFile change on OcuPilot's own), AD-32 amended at its spec gate; a CA-trust-scope choice is the owner's]
-
-**Acceptance Criteria:**
-
-- **Given** an operator behind a proxy or a custom CA
-- **When** the agent calls its provider
-- **Then** the proxy settings and SSL configuration are configuration rather than code.
-
-### Story 18.41: The wallet credential rung
-
-As a developer-administrator,
-I want the provider key held in the wallet,
-So that the credential ladder offers a wallet-backed rung. [AMENDED 2026-10-11, orchestrator ruling on Story 18.12's plan: split from Story 18.12 for size, Rule 5; AD-42, AD-35 and AD-7 amended at its spec gate, the vendor's per-use audit write labeled (inference) until its Task 0 measures it; a secret-exposure or new-vendor-audit-write choice is the owner's]
-
-**Acceptance Criteria:**
-
-- **Given** the wallet is already wired for the Release 1 secrets screen
-- **When** the credential ladder is extended
-- **Then** a wallet-backed rung joins the environment-variable and IRIS-credential rungs.
-
-## Epic 19: Stage 3 - System Explorer over the Atelier API
+### Epic 19: Stage 3 - System Explorer over the Atelier API
 
 A developer gets classes and routines with source view, compile, delete, export, import and ETag-checked editing; search, compare and macro lookup; the SQL catalog with its query console behind a DML and DDL guard; and a data grid harvested from iris-table-editor with inline editing, staged saves and CSV export.
 
@@ -7781,6 +7703,84 @@ So that the REST services screen's create is not agent-only. [AMENDED 2026-10-10
 - **Given** the REST services screen's Create dialog
 - **When** a person submits an OpenAPI document
 - **Then** it round-trips through the management API by Story 18.32's port, under the same rules the agent's create meets, its Save taking the per-target hold.
+
+### Story 18.36: Dashboard drill-downs
+
+As a production administrator,
+I want the dashboard's drill-down statistics,
+So that a figure on the dashboard leads to its detail. [AMENDED 2026-10-11, orchestrator ruling on Story 18.11's plan: split from Story 18.11 for size, Rule 5; read-only, with a Task 0 that reads the request types]
+
+**Acceptance Criteria:**
+
+- **Given** the dashboard's globals-and-routines, ECP and system-resources drill-downs
+- **When** each renders
+- **Then** it reads through its own port with its own resource gate - the monitoring API's anonymous reachability never becoming OcuPilot's.
+
+**Admin API behavior to design for.** [AMENDED 2026-09-28, owner: warnings from the DC article
+[20 places where the SysAdmin API specification and IRIS disagree](https://community.intersystems.com/post/20-places-where-sysadmin-api-specification-and-iris-disagree);
+"checked" means seen on slot A that day, "reported" means the article's word only]
+
+- `SystemUsage.BusyProcesses` in `GET /v2/monitor/dashboard/main` always has ten rows; unused ones are `{"Process": "", "Commands": 0}` (checked: 8 of 10 on slot A). Drop them before showing a top ten.
+
+### Story 18.37: Interoperability usage
+
+As a production administrator,
+I want the interoperability usage view,
+So that interface use is visible beside the instance's other monitoring. [AMENDED 2026-10-11, orchestrator ruling on Story 18.11's plan: split from Story 18.11 for size, Rule 5; at its spec gate prefer the source that keeps AD-8 as written (the classic page's query, if it checks the caller, over the deprecated metrics API that escalates unchecked); an option that needs AD-8 relaxed is the owner's call]
+
+**Acceptance Criteria:**
+
+- **Given** the interoperability usage view
+- **When** it renders
+- **Then** it reads through its own port with its own resource gate - the monitoring API's anonymous reachability never becoming OcuPilot's.
+
+### Story 18.38: The live log tail
+
+As a production administrator,
+I want a live tail on a text log,
+So that monitoring is continuous rather than sampled. [AMENDED 2026-10-11, orchestrator ruling on Story 18.11's plan: split from Story 18.11 for size, Rule 5; the AD-12 heartbeat carve-out, the AD-43 amendment and EXPERIENCE.md's "live tail is P2" lines are tier-1 amendments at its spec gate, and the "nothing streams" pins are re-scoped to the sources that do not opt in]
+
+**Acceptance Criteria:**
+
+- **Given** the live tail
+- **When** it is enabled on a text log
+- **Then** it long-polls with a heartbeat, and the Release 1 rule that log viewers load bounded pages is superseded **only** for the sources that opt into it.
+
+### Story 18.39: The agent's context budget
+
+As a developer-administrator,
+I want each turn assembled within a budget,
+So that the doubled tool roster does not make every agent call larger and slower. [AMENDED 2026-10-11, orchestrator ruling on Story 18.12's plan: split from Story 18.12 for size, Rule 5; runs right after Story 18.12; any per-call selection, trimming or caching goes after Story 20.24's per-process tool listing, never inside it (AD-5, Rule 31); a Task 0 measures the per-call weight and AD-24 is amended at its spec gate]
+
+**Acceptance Criteria:**
+
+- **Given** the tool roster roughly doubles here
+- **When** a turn is assembled
+- **Then** context-window management trims and budgets history, which nothing in the harvest provides and which this stage is the first to need.
+
+### Story 18.40: Proxy and custom CA configuration
+
+As a developer-administrator,
+I want the provider call's proxy and SSL configuration set as configuration,
+So that an operator behind a proxy or a custom CA can reach the provider. [AMENDED 2026-10-11, orchestrator ruling on Story 18.12's plan: split from Story 18.12 for size, Rule 5; a custom CA is a separately named SSL/TLS configuration (AD-10 refuses a CAFile change on OcuPilot's own), AD-32 amended at its spec gate; a CA-trust-scope choice is the owner's]
+
+**Acceptance Criteria:**
+
+- **Given** an operator behind a proxy or a custom CA
+- **When** the agent calls its provider
+- **Then** the proxy settings and SSL configuration are configuration rather than code.
+
+### Story 18.41: The wallet credential rung
+
+As a developer-administrator,
+I want the provider key held in the wallet,
+So that the credential ladder offers a wallet-backed rung. [AMENDED 2026-10-11, orchestrator ruling on Story 18.12's plan: split from Story 18.12 for size, Rule 5; AD-42, AD-35 and AD-7 amended at its spec gate, the vendor's per-use audit write labeled (inference) until its Task 0 measures it; a secret-exposure or new-vendor-audit-write choice is the owner's]
+
+**Acceptance Criteria:**
+
+- **Given** the wallet is already wired for the Release 1 secrets screen
+- **When** the credential ladder is extended
+- **Then** a wallet-backed rung joins the environment-variable and IRIS-credential rungs.
 
 ## Epic 19: Stage 3 - System Explorer over the Atelier API
 
