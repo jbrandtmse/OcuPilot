@@ -1,13 +1,15 @@
 /// <p>The probe classes and items of Story 20.6's host test, added to <class>OcuPilot.Test.ProductionProbe</class>'s probe production in
 /// <code>USER</code> on a throwaway container: a request class that has every kind of field the Test tab lists
-/// (<parameter>REQUESTCLASS</parameter>, with <parameter>ADDRESSCLASS</parameter> embedded in it), an operation that answers an echo of
+/// (<parameter>REQUESTCLASS</parameter>, with <parameter>ADDRESSCLASS</parameter> embedded in it, a boolean, a field whose display
+/// values differ from its stored ones, and <parameter>BOXCLASS</parameter> embedded under a credential's name), an operation that answers an echo of
 /// what it is sent, and an error for the text <code>fail</code> (<parameter>ECHOCLASS</parameter>), the operation as an enabled item (<parameter>ECHONAME</parameter>) and as a
 /// disabled one (<parameter>OFFNAME</parameter>), and the production's stored <code>TestingEnabled</code>. Everything is created in the
 /// probe's own package and configuration-name prefix, so <method>OcuPilot.Test.ProductionProbe.Remove</method> removes the classes, the
 /// items and the messages; <method>Remove</method> also removes the request rows, the creation marker and the test answers the
 /// vendor keeps.</p>
 /// <p>A second operation, <parameter>REPLYNAME</parameter> (<parameter>REPLYOPCLASS</parameter>), answers what the echo does not: a
-/// response class with a credential-named field and an embedded object named like one (<parameter>REPLYCLASS</parameter>), a value
+/// response class with a credential-named field, an embedded object named like one and an ordinary one
+/// (<parameter>REPLYCLASS</parameter>), a value
 /// longer than a result shows, and a virtual document.</p>
 /// <p><b>The request class counts its creations</b>: its <code>%OnNew</code> adds one to <code>^OcuPilotProbeInteropNew</code> in
 /// <code>USER</code>, so a read that instantiated it, and a send that did not, are both visible (<method>Marker</method>).</p>
@@ -78,6 +80,9 @@ ClassMethod ClassText(pName As %String) As %String [ Private ]
             "Property Kind As %String(VALUELIST = "",alpha,beta,gamma"");" _ tNL _
             "Property Password As %String;" _ tNL _
             "Property Address As " _ ..#ADDRESSCLASS _ ";" _ tNL _
+            "Property Flag As %Boolean;" _ tNL _
+            "Property Level As %String(DISPLAYLIST = "",Low,High"", VALUELIST = "",L,H"");" _ tNL _
+            "Property Credential As " _ ..#BOXCLASS _ ";" _ tNL _
             "Method %OnNew(initvalue As %String = """") As %Status" _ tNL _ "{" _ tNL _
             " Set " _ ..#MARKER _ " = $Get(" _ ..#MARKER _ ") + 1" _ tNL _ " Quit $$$OK" _ tNL _ "}" _ tNL _ "}" _ tNL
     }
@@ -88,7 +93,8 @@ ClassMethod ClassText(pName As %String) As %String [ Private ]
         Quit "Class " _ ..#REPLYCLASS _ " Extends Ens.Response" _ tNL _ "{" _ tNL _
             "Property Text As %String(MAXLEN = """");" _ tNL _
             "Property Password As %String;" _ tNL _
-            "Property Credential As " _ ..#BOXCLASS _ ";" _ tNL _ "}" _ tNL
+            "Property Credential As " _ ..#BOXCLASS _ ";" _ tNL _
+            "Property Box As " _ ..#BOXCLASS _ ";" _ tNL _ "}" _ tNL
     }
     If pName = "ReplyOp" {
         Quit "Class " _ ..#REPLYOPCLASS _ " Extends Ens.BusinessOperation" _ tNL _ "{" _ tNL _
@@ -98,7 +104,9 @@ ClassMethod ClassText(pName As %String) As %String [ Private ]
             " Set pResponse.Text = $Select(pRequest.StringValue = ""long"": $Translate($Justify("""", 1500), "" "", ""x""), 1: ""reply:"" _ pRequest.StringValue)" _ tNL _
             " Set pResponse.Password = ""s3cret-pw""" _ tNL _
             " Set pResponse.Credential = ##class(" _ ..#BOXCLASS _ ").%New()" _ tNL _
-            " Set pResponse.Credential.Value = ""s3cret-cred""" _ tNL _ " Quit $$$OK" _ tNL _ "}" _ tNL _
+            " Set pResponse.Credential.Value = ""s3cret-cred""" _ tNL _
+            " Set pResponse.Box = ##class(" _ ..#BOXCLASS _ ").%New()" _ tNL _
+            " Set pResponse.Box.Value = ""boxed""" _ tNL _ " Quit $$$OK" _ tNL _ "}" _ tNL _
             "Method ReplyDocument(pRequest As " _ ..#DOCUMENTCLASS _ ", Output pResponse As " _ ..#DOCUMENTCLASS _ ") As %Status" _ tNL _ "{" _ tNL _
             " Set pResponse = ##class(" _ ..#DOCUMENTCLASS _ ").ImportFromString(""" _ ..#REPLYDOCUMENT _ """)" _ tNL _ " Quit $$$OK" _ tNL _ "}" _ tNL _
             "XData MessageMap" _ tNL _ "{" _ tNL _
@@ -250,6 +258,44 @@ ClassMethod Counts() As %String
         Set $NAMESPACE = tOrigNS
     }
     Quit tRequests _ "/" _ tHeaders
+}
+
+/// <p>The newest saved request's <code>Text</code>, <code>Count</code>, <code>Kind</code>, <code>Flag</code>, <code>Level</code> and
+/// <code>Address.City</code>, as stored, joined by <code>|</code>; <code>""</code> when there is none.</p>
+ClassMethod LastRequest() As %String
+{
+    Set tOrigNS = $NAMESPACE
+    Set tText = ""
+    Try {
+        Set $NAMESPACE = ..#NAMESPACE
+        Set tRS = ##class(%SQL.Statement).%ExecDirect(, "SELECT MAX(ID) FROM OcuPilotProbe_Interop.TestRequest")
+        Set tId = $Select(tRS.%Next(): tRS.%GetData(1), 1: "")
+        Set tRequest = $Select(tId = "": "", 1: $ClassMethod(..#REQUESTCLASS, "%OpenId", tId))
+        If $IsObject(tRequest) {
+            Set tText = tRequest.Text _ "|" _ tRequest.Count _ "|" _ tRequest.Kind _ "|" _ tRequest.Flag _ "|" _ tRequest.Level _ "|" _ $Select($IsObject(tRequest.Address): tRequest.Address.City, 1: "")
+        }
+        Set tRequest = ""
+        Set $NAMESPACE = tOrigNS
+    } Catch {
+        Set $NAMESPACE = tOrigNS
+    }
+    Quit tText
+}
+
+/// <p>How many messages the testing service has sent in <code>USER</code>: one for each test it was given.</p>
+ClassMethod TestSends() As %Integer
+{
+    Set tOrigNS = $NAMESPACE
+    Set tCount = -1
+    Try {
+        Set $NAMESPACE = ..#NAMESPACE
+        Set tRS = ##class(%SQL.Statement).%ExecDirect(, "SELECT COUNT(*) FROM Ens.MessageHeader WHERE SourceConfigName = ?", ..#TESTSERVICE)
+        If tRS.%Next() Set tCount = tRS.%GetData(1)
+        Set $NAMESPACE = tOrigNS
+    } Catch {
+        Set $NAMESPACE = tOrigNS
+    }
+    Quit tCount
 }
 
 /// <p>Remove the request rows, the creation marker and the answers of the testing service the vendor keeps for <code>USER</code>,

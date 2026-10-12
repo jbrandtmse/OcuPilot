@@ -954,6 +954,15 @@ describe('the proposal card', () => {
     }
   });
 
+  // Mutation (Rule 19): drop the INTEROP.TEST.SENDS code from `consequenceSentence` -> this goes red.
+  it('Story 20.6: a host test states that it sends a real message, and is not drawn destructive', () => {
+    const { card } = mount(liveView({ consequence: 'INTEROP.TEST.SENDS', destructive: false, maskedFields: [] }), { phase: 'live' });
+    expect(card.classList.contains('ocu-proposal-card-destructive')).toBe(false);
+    const lines = card.querySelectorAll('[data-slot="consequence"]');
+    expect(lines.length).toBe(1);
+    expect(lines[0].textContent).toContain(STRINGS.interopTestSendsConsequence);
+  });
+
   it('AD-10, Story 9.5: a change turning an SSL/TLS configuration\'s peer verification off is drawn destructive and states its effect', () => {
     // Mutation (Rule 19): drop the NOPEERCHECK code from `consequenceSentence` -> this goes red.
     const { card } = mount(liveView({ consequence: 'SSL.NOPEERCHECK', destructive: true, maskedFields: [] }), { phase: 'live' });

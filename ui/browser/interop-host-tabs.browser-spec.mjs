@@ -223,7 +223,7 @@ after(async () => {
   }
 });
 
-// AC1, AC3, AC7. Mutation (Rule 19): drop `InteropItemQueueTab`'s `tab` -> the strip reads five tabs and the labels leg
+// AC1, AC3, AC7. Mutation (Rule 19): drop `InteropItemQueueTab`'s `tab` -> the strip reads six tabs and the labels leg
 // goes red; keep `<app-list-page />` in `InteropItemSettingListPage`, rebuild and redeploy -> the strip is missing on the
 // Settings tab and the second leg goes red.
 test('AC1, AC3, AC7: the operation opens on its Status tab, the strip reads the seven tabs, and each tab shows its rows', async () => {

@@ -197,6 +197,25 @@ describe('the item Test tab page', () => {
     expect(events).toEqual([]);
   });
 
+  // Mutation (Rule 19): drop the `elsewhere` reason from `onSend` -> the dialog shows nothing and this goes red.
+  it('says why above the fields when the instance names a refusal on a field the dialog does not draw, such as the class itself', async () => {
+    const built: JsonResult<unknown> = {
+      kind: 'error',
+      status: 422,
+      code: 'AGENT.VALIDATION',
+      reason: 'One or more values were refused.',
+      detail: { violations: [{ field: 'RequestClass', code: 'INTEROP.TEST.REQUEST', reason: STRINGS.interopTestRefusalRequest }] },
+    } as unknown as JsonResult<unknown>;
+    const { fixture, host, actions } = mount([built]);
+    await open(fixture, actions);
+    type(fixture, host, 'Text', 'x');
+    send(host);
+    await settle(fixture);
+    expect(host.querySelector('[data-interop-test-reason]')?.textContent?.trim()).toBe(STRINGS.interopTestRefusalRequest);
+    expect(host.querySelector('[data-interop-test-violation]')).toBeNull();
+    expect(host.querySelector('[data-interop-test-result]')).toBeNull();
+  });
+
   // Mutation (Rule 19): drop `(cancelled)="onClose()"` from the page's template -> the dialog stays and this goes red.
   it('closes on Cancel, sending nothing and publishing nothing, and opens clean again', async () => {
     const { fixture, host, actions, calls, events } = mount([SENT]);

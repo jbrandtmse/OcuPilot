@@ -466,6 +466,10 @@ services:
       # the gate class signs in as probe principals each missing one pair the tab or the send requires. The descriptor class
       # compiles the request class to read its fields for the script form.
       # classes: InteropHostTest, InteropHostTestRefusals, InteropTestDescriptor, InteropTestGate
+      # The host test edges class runs the same probe production in USER (Story 20.6): it tests an item of a production that is not
+      # the running one, leaves a waiting test's answer node, audits a failed test, follows the agent's session into the item's
+      # Messages tab, and dispatches calls whose fields name a credential through the agent's tool loop.
+      # classes: InteropHostTestEdges
       # classes: ExplorerSourceTurn
       # classes: ExplorerSaveTurn
       # classes: ExplorerCreateTurn

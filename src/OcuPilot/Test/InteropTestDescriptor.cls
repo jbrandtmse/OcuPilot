@@ -177,7 +177,7 @@ Method TestEveryTestCodeResolves()
 /// a quote doubled and a control character spelled as <code>$Char</code>, so nothing the query carries runs as code, and no line opens
 /// a block it does not close. A document class is its text imported.</p>
 /// <p>Mutation (Rule 19): drop the <code>Literal</code> from the value in <method>OcuPilot.Port.InteropPort.TestSnippet</method> --
-/// the quote leg goes red.</p>
+/// the quote leg goes red; convert every value through <code>DisplayToLogical</code> -- the <code>ErrorStatus</code> leg goes red.</p>
 Method TestTheScriptKeepsEveryValueInsideItsLiteral()
 {
     Kill tQuery
@@ -197,6 +197,10 @@ Method TestTheScriptKeepsEveryValueInsideItsLiteral()
         If $Extract($ZStrip($Piece(tText, $Char(10), tLine), "<>W"), *) = "{" Set tOpens = tOpens + 1
     }
     Do $$$AssertEquals(tOpens, 0, "no line opens a block it does not close")
+    Set tQuery("requestClass") = "Ens.MessageHeader"
+    Set tQuery("fields") = {"ErrorStatus": "1"}.%ToJSON()
+    Set tText = $ClassMethod(..#PORT, "Snippet", "ItemTest", "SENDTEST", .tQuery).%Get(0).text
+    Do $$$AssertTrue((tText [ "Set $Property(tRequest, ""ErrorStatus"") = ""1""") && (tText '[ "ErrorStatusDisplayToLogical"), "a field whose class has no DisplayToLogical is set to the typed value, as the send sets it: " _ tText)
     Set tQuery("requestClass") = $Parameter(..#FIXTURE, "DOCUMENTCLASS")
     Set tQuery("fields") = {"content": ("MSH|^~\&|A" _ $Char(13) _ "PID|1")}.%ToJSON()
     Set tText = $ClassMethod(..#PORT, "Snippet", "ItemTest", "SENDTEST", .tQuery).%Get(0).text
@@ -210,11 +214,11 @@ Method TestTheScriptKeepsEveryValueInsideItsLiteral()
 /// JSON bound, and a screen's fields are JSON text of an object within the import bound; the card shows the class and the fields; and
 /// a call naming a member like a credential has its <code>Fields</code> redacted, whatever the member's path.</p>
 /// <p>Mutation (Rule 19): make <method>OcuPilot.Screen.Tool.InteropItemTestSend.CallSecretNames</method> test the last segment of a
-/// member's path alone -- the <code>Credential.Value</code> leg goes red.</p>
+/// member's path alone -- the <code>Credential.Value</code> leg goes red; read only object fields -- the JSON text legs go red.</p>
 Method TestTheArgumentsAreBoundedAndACredentialMemberIsRedacted()
 {
     Set tTool = ..#TOOL
-    Set tBound = $Parameter(tTool, "FIELDSBOUND")
+    Set tBound = $Parameter("OcuPilot.Screen.Tool.ExplorerSave", "CHANGEMAXLENGTH")
     Set tOk = {"RequestClass": "A.B", "Fields": {"Text": "x"}}
     Do $ClassMethod(tTool, "ArgumentProblem", "", tOk, .tProblem)
     Do $$$AssertEquals(tProblem, "", "a class and text fields are sound")
@@ -236,6 +240,9 @@ Method TestTheArgumentsAreBoundedAndACredentialMemberIsRedacted()
     Do $$$AssertEquals($ListToString($ClassMethod(tTool, "CallSecretNames", {"Fields": {"Credential.Value": "p"}})), "Fields", "and one under an embedded object that is named like a credential, as the port refuses it")
     Do $$$AssertEquals($ListToString($ClassMethod(tTool, "CallSecretNames", {"Fields": {"Address.City": "Berlin"}})), "", "while an embedded object's ordinary member redacts nothing")
     Do $$$AssertEquals($ListToString($ClassMethod(tTool, "CallSecretNames", "text")), "", "an input that is not an object redacts nothing")
+    Do $$$AssertEquals($ListToString($ClassMethod(tTool, "CallSecretNames", {"Fields": "{\"Password\":\"p\"}"})), "Fields", "fields sent as JSON text are read the same way")
+    Do $$$AssertEquals($ListToString($ClassMethod(tTool, "CallSecretNames", {"Fields": "{\"Text\":\"x\"}"})), "", "and redact nothing when no member names a credential")
+    Do $$$AssertEquals($ListToString($ClassMethod(tTool, "CallSecretNames", {"Fields": "Password=p"})), "Fields", "while text that is not a JSON object is redacted whole")
     Set tFresh = {"RequestClass": "A.B", "Kind": "object"}
     Do tFresh.%Set("Fields", "{""Text"":""x""}")
     Set tSC = $ClassMethod(tTool, "StateDiff", tFresh, .tRows, .tDiffProblem)

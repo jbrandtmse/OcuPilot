@@ -209,7 +209,7 @@ Method TestTheTabRowsAgreeThroughThePortTheScreenAndTheReadTool()
     Do $$$AssertEquals(tHttp, 200, "the port lists the echo item's fields: " _ $Select($IsObject(tFault): tFault.%ToJSON(), 1: ""))
     If '$IsObject(tRows) Quit
     Set tRequest = $Parameter(..#FIXTURE, "REQUESTCLASS")
-    Do $$$AssertEquals(..Signature(tRows, tRequest), "Text:1:50::0;Count:0:::0;Kind:0:50:alpha/beta/gamma:0;Password:0:50::1;Address.Street:0:50::0;Address.City:0:30::0", "the request class's fields, in its order, with their bounds, values and secrecy")
+    Do $$$AssertEquals(..Signature(tRows, tRequest), "Text:1:50::0;Count:0:::0;Kind:0:50:alpha/beta/gamma:0;Password:0:50::1;Address.Street:0:50::0;Address.City:0:30::0;Flag:0::0/1:0;Level:0:50:Low/High:0;Credential.Value:0:50::1", "the request class's fields, in its order, with their bounds, values (a boolean's 0 and 1, a display list's display values) and secrecy (a field under a credential-named object included)")
     Do $$$AssertEquals(..Signature(tRows, "Ens.StringRequest"), "StringValue:0:::0", "the vendor's string request has its one field")
     Set tDocument = $ClassMethod(..#READ, "RowWhere", tRows, "RequestClass", $Parameter(..#FIXTURE, "DOCUMENTCLASS"))
     Do $$$AssertTrue($IsObject(tDocument) && (tDocument.Kind _ "|" _ tDocument.Field _ "|" _ tDocument.Required = "document|content|1"), "a virtual document is one required content field")
@@ -297,13 +297,19 @@ Method Through(pFields As %DynamicObject, Output pOutput, Output pSession As %St
 /// and no answer.</p>
 /// <p>Mutation (Rule 19): skip the response read in <method>OcuPilot.Port.InteropPort.AwaitTestHere</method> -- the lines leg goes red;
 /// drop the <code>AuditRuntime</code> call from <method>OcuPilot.Port.InteropPort.PerformTest</method> -- the audit leg goes red; drop
-/// the <code>Kill</code> of the answer node -- the node leg goes red.</p>
+/// the <code>Kill</code> of the answer node -- the node leg goes red; set only the plan's first field in
+/// <method>OcuPilot.Port.InteropPort.BuildTestRequestHere</method>, or drop the logical value's write-back in
+/// <method>OcuPilot.Port.InteropPort.ConvertPlanHere</method> -- the stored-request leg goes red; send twice in
+/// <method>OcuPilot.Port.InteropPort.PerformTest</method> -- the one-send leg goes red.</p>
 Method TestThePersonsSendShowsTheResponseAndItsSession()
 {
-    Set tFields = {"Text": "hello <b>x</b>", "Count": "5", "Kind": "beta", "Address.City": "Berlin"}
+    Set tFields = {"Text": "hello <b>x</b>", "Count": "5", "Kind": "beta", "Flag": "1", "Level": "High", "Address.City": "Berlin"}
     Set tSavedBefore = $Piece($ClassMethod(..#FIXTURE, "Counts"), "/", 1)
+    Set tSendsBefore = $ClassMethod(..#FIXTURE, "TestSends")
     Do ..Through(tFields, .tOutput, .tSession, .tData, .tText)
     If '$IsObject(tOutput) Quit
+    Do $$$AssertEquals($ClassMethod(..#FIXTURE, "LastRequest"), "hello <b>x</b>|5|beta|1|H|Berlin", "the saved request holds every field sent, a display value stored as its logical one")
+    Do $$$AssertEquals($ClassMethod(..#FIXTURE, "TestSends") - tSendsBefore, 1, "and the testing service sent one test")
     Do $$$AssertEquals(tOutput.status _ "|" _ tOutput.responseClass _ "|" _ tOutput.errors, "done|Ens.StringResponse|0", "the test is done and names the response's class")
     Do $$$AssertEquals(tOutput.lines.%ToJSON(), "[""StringValue: echo:hello <b>x</b>""]", "the response's field is one line of text, markup and all")
     Do $$$AssertTrue(tSession > 0, "with the session the testing service gave it: " _ tSession)
@@ -330,6 +336,7 @@ Method TestTheAgentsSendConfirmsOverHttp()
     Do $$$AssertStatusOK(..Arm(), "the probe production runs with the testing service registered")
     Set tSince = ##class(OcuPilot.Test.AuditEvent).Now()
     Set tFields = {"Text": "agent text", "Count": "7"}
+    Set tSendsBefore = $ClassMethod(..#FIXTURE, "TestSends")
     Set tSC = $ClassMethod(..#CONTROL, "MintAs", ..#TOOL, ..ArgsFor(tName, $Parameter(..#FIXTURE, "REQUESTCLASS"), tFields), ##class(OcuPilot.Test.Http).GetTestUsername(), .tProposal, .tMintHttp, .tFault, .tTurn)
     Do $$$AssertStatusOK(tSC, "the call mints: " _ $Select($IsObject($Get(tFault)): tFault.%ToJSON(), 1: ""))
     If '$IsObject($Get(tProposal)) Quit
@@ -347,6 +354,8 @@ Method TestTheAgentsSendConfirmsOverHttp()
     Set tOutput = tAnswer.output
     Do $$$AssertEquals($Select($IsObject(tOutput): tOutput.status _ "|" _ tOutput.lines.%ToJSON() _ "|" _ tOutput.errors, 1: ""), "done|[""StringValue: echo:agent text""]|0", "the output is the response as text")
     Do $$$AssertEquals($ClassMethod(..#FIXTURE, "Marker"), 1, "one request was created, by the confirm")
+    Do $$$AssertEquals($Piece($ClassMethod(..#FIXTURE, "LastRequest"), "|", 1, 2), "agent text|7", "holding the fields the agent sent")
+    Do $$$AssertEquals($ClassMethod(..#FIXTURE, "TestSends") - tSendsBefore, 1, "and the testing service sent one test")
     Do $$$AssertEquals($ClassMethod(..#CONTROL, "LedgerCount", tTurn, "interop.itemtest.send"), 1, "the confirmed write is in the ledger once")
     Set tRows = ##class(%SQL.Statement).%ExecDirect(, "SELECT Arguments, Fields, Target, Code, Status FROM OcuPilot_Kernel_State.Ledger WHERE %EXACT(TurnKey) = ?", tTurn)
     Set tLedger = ""
@@ -446,6 +455,7 @@ Method TestADocumentRequestIsSentAsItsText()
     Set tText = ..Send(tName, tClass, {"content": "this is not a message"}, .tRefused)
     Do $$$AssertEquals(tText, "422 INTEROP.TEST.REQUEST", "text that is not a message is refused on the field: " _ $Select($IsObject(tRefused): tRefused.%ToJSON(), 1: ""))
     Do $$$AssertEquals($Select($IsObject(tRefused): tRefused.detail.violations.%Get(0).field, 1: ""), "content", "naming content")
+    Do $$$AssertEquals($ClassMethod(..#FIXTURE, "Counts"), tCounts, "with nothing saved or sent")
 }
 
 /// <p>The probe's reply operation's answer to a string request carrying <var>pText</var>: the test output, from the person's route.</p>
@@ -457,7 +467,8 @@ Method ReplyTo(pText As %String, Output pOutput)
 }
 
 /// <p>AC8, AD-35: a response field named like a credential, or inside an embedded object named like one, reads blank in the lines the
-/// person and the card show, while its neighbours show their values and the answer's class is named.</p>
+/// person and the card show, while its neighbours, a field inside an ordinary embedded object among them, show their values and the
+/// answer's class is named.</p>
 /// <p>Mutation (Rule 19): drop the blanking of a credential-named value from <method>OcuPilot.Port.InteropPort.TestLines</method> --
 /// this goes red and the answer carries the credential.</p>
 Method TestAResponseFieldNamedLikeACredentialReadsBlank()
@@ -466,7 +477,7 @@ Method TestAResponseFieldNamedLikeACredentialReadsBlank()
     Do ..ReplyTo("hi", .tOutput)
     If '$IsObject(tOutput) Quit
     Do $$$AssertEquals(tOutput.responseClass, $Parameter(..#FIXTURE, "REPLYCLASS"), "the response's class is named")
-    Do $$$AssertEquals(tOutput.lines.%ToJSON(), "[""Text: reply:hi"",""Password: "",""Credential.Value: ""]", "the credential-named fields read blank and the other shows its value")
+    Do $$$AssertEquals(tOutput.lines.%ToJSON(), "[""Text: reply:hi"",""Password: "",""Credential.Value: "",""Box.Value: boxed""]", "the credential-named fields read blank and the others show their values")
     Do $$$AssertTrue(tOutput.%ToJSON() '[ "s3cret", "and no credential is anywhere in the answer")
 }
 

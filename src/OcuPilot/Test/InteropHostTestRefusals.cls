@@ -103,16 +103,18 @@ ClassMethod Footprint() As %String
 /// <p>AC3: each host refusal, in the order the read checks them, is answered 409 by its own code and sentence from the person's Test
 /// and refused the same at the agent's mint with nothing minted; no request is created, saved or sent, and OcuPilot records no test.
 /// A production that is not running is the first; a business service, a disabled item, a class the item does not take (a
-/// superclass and one that does not exist) and a credential-named field with a value follow.</p>
+/// superclass and one that does not exist), a credential-named field with a value and a value for a field under a credential-named
+/// object follow.</p>
 /// <p>Mutation (Rule 19): drop the <code>TARGETDISABLED</code> check from <method>OcuPilot.Port.InteropPort.ReadTestTarget</method> --
-/// the disabled leg goes red; drop the <code>SECRET</code> check -- the credential legs go red.</p>
+/// the disabled leg goes red; drop the <code>SECRET</code> check -- the credential legs go red; test only the field's last segment in
+/// that check -- the embedded credential leg goes red.</p>
 Method TestEachRefusalIsAnsweredByItsCodeFromBothCallers()
 {
     Set tEcho = $Parameter(..#FIXTURE, "ECHONAME")
     Set tClass = $Parameter(..#FIXTURE, "REQUESTCLASS")
     Set tSince = ##class(OcuPilot.Test.AuditEvent).Now()
     ; a $List serializes an object, so each case carries its fields as JSON text
-    For tI = 1:1:7 {
+    For tI = 1:1:8 {
         If tI = 2 Do $$$AssertStatusOK($ClassMethod(..#HOST, "Arm"), "the probe production runs with the testing service registered")
         If tI = 1 Set tCase = $ListBuild(tEcho, tClass, "{""Text"":""x""}", "NOTRUNNING", "the production is not running")
         If tI = 2 Set tCase = $ListBuild($Parameter(..#PROBE, "SVCNAME"), tClass, "{""Text"":""x""}", "TESTTARGETTYPE", "a business service takes no test")
@@ -121,6 +123,7 @@ Method TestEachRefusalIsAnsweredByItsCodeFromBothCallers()
         If tI = 5 Set tCase = $ListBuild(tEcho, "OcuPilotProbe.No.Such.Class", "{}", "TESTREQUESTTYPE", "a class that does not exist")
         If tI = 6 Set tCase = $ListBuild(tEcho, tClass, "{""Text"":""x"",""Password"":""hunter2-secret""}", "TESTSECRET", "a credential-named field with a value")
         If tI = 7 Set tCase = $ListBuild(tEcho, tClass, "{""Text"":""x"",""Address.Street"":""s"",""Password"":""hunter2-secret""}", "TESTSECRET", "a credential among other fields")
+        If tI = 8 Set tCase = $ListBuild(tEcho, tClass, "{""Text"":""x"",""Credential.Value"":""hunter2-secret""}", "TESTSECRET", "a field under a credential-named object")
         Set tFields = ##class(%DynamicObject).%FromJSON($List(tCase, 3))
         Set tCode = $Parameter(..#ERROR, $List(tCase, 4))
         If tI = 1 Set tCode = $Parameter(..#ERROR, "NOTRUNNING")
@@ -169,12 +172,14 @@ Method TestATestWithTestingNotEnabledIsRefusedBeforeAnythingIsBuilt()
 }
 
 /// <p>AC3: a request the item's class cannot take is 422 on the field, from both callers, before anything is saved: an unknown
-/// field and a second member of a document are <code>INTEROP.TEST.FIELD</code>, a value its class refuses, a required field left
-/// out, a value over the field's length and a document with no text are <code>INTEROP.TEST.VALUE</code>, and text that is not a
+/// field and a second member of a document are <code>INTEROP.TEST.FIELD</code>, a value its class refuses, a value outside a
+/// field's listed values (a boolean's <code>true</code>, a display list's stored value), a required field left out, a value over the
+/// field's length and a document with no text are <code>INTEROP.TEST.VALUE</code>, and text that is not a
 /// message of the document class is <code>INTEROP.TEST.REQUEST</code> on <code>content</code>. The agent's mint is refused the same
 /// way, with the same code on the same field, except the last, which only the send can tell.</p>
 /// <p>Mutation (Rule 19): make <method>OcuPilot.Port.InteropPort.ConvertPlanHere</method> accept a value whose class refuses it --
-/// the value legs go red.</p>
+/// the value legs go red; drop the listed-values check from <method>OcuPilot.Port.InteropPort.ReadTestTarget</method> -- the
+/// <code>Flag</code> and <code>Level</code> legs go red.</p>
 Method TestAnInvalidRequestIsRefusedOnItsFieldFromBothCallers()
 {
     Do $$$AssertStatusOK($ClassMethod(..#HOST, "Arm"), "the probe production runs with the testing service registered")
@@ -185,7 +190,7 @@ Method TestAnInvalidRequestIsRefusedOnItsFieldFromBothCallers()
     Set tValue = ##class(OcuPilot.Api.InteropError).#TESTVALUE
     Set tRequest = ##class(OcuPilot.Api.InteropError).#TESTREQUEST
     ; each case is its class, its fields as JSON text, and the first violation expected: field and code
-    For tCase = $ListBuild(tClass, "{""Text"":""x"",""Nope"":""y""}", "Nope " _ tField), $ListBuild(tClass, "{""Text"":""x"",""Count"":""abc""}", "Count " _ tValue), $ListBuild(tClass, "{""Text"":""x"",""Kind"":""delta""}", "Kind " _ tValue),
+    For tCase = $ListBuild(tClass, "{""Text"":""x"",""Nope"":""y""}", "Nope " _ tField), $ListBuild(tClass, "{""Text"":""x"",""Count"":""abc""}", "Count " _ tValue), $ListBuild(tClass, "{""Text"":""x"",""Kind"":""delta""}", "Kind " _ tValue), $ListBuild(tClass, "{""Text"":""x"",""Flag"":""true""}", "Flag " _ tValue), $ListBuild(tClass, "{""Text"":""x"",""Level"":""H""}", "Level " _ tValue),
         $ListBuild(tClass, "{""Count"":""5""}", "Text " _ tValue), $ListBuild(tClass, "{""Text"":""" _ $Translate($Justify("", 51), " ", "x") _ """}", "Text " _ tValue), $ListBuild(tClass, "{""Text"":""x"",""Address.Nope"":""y""}", "Address.Nope " _ tField),
         $ListBuild(tDocument, "{""content"":""x"",""other"":""y""}", "other " _ tField), $ListBuild(tDocument, "{""content"":""""}", "content " _ tValue), $ListBuild(tDocument, "{""content"":""this is not a message""}", "content " _ tRequest) {
         Set tFields = ##class(%DynamicObject).%FromJSON($List(tCase, 2))
@@ -194,7 +199,7 @@ Method TestAnInvalidRequestIsRefusedOnItsFieldFromBothCallers()
         Set tText = $ClassMethod(..#HOST, "Send", tEcho, $List(tCase, 1), tFields, .tAnswer)
         Do $$$AssertEquals(tText _ "|" _ ..First(tAnswer), "422 " _ $Piece($List(tCase, 3), " ", 2) _ "|" _ $List(tCase, 3), "the person's Test of " _ tWhat _ " is 422 on its first violation")
         Do $$$AssertEquals(..Footprint(), tBefore, "nothing was saved, added or created")
-        Set tMint = ..Mint(tEcho, $List(tCase, 1), tFields, .tProposal, .tFault)
+        Set tMint = ..Mint(tEcho, $List(tCase, 1), tFields, .tProposal, .tFault, .tTurn)
         If $Piece($List(tCase, 3), " ", 2) = tRequest {
             ; whether text is a message of its class is known only by building it, which the send does and the read does not
             Do $$$AssertTrue($IsObject($Get(tProposal)), "the agent's mint of " _ tWhat _ " reads the text as a field value and mints: " _ tMint)
@@ -202,6 +207,8 @@ Method TestAnInvalidRequestIsRefusedOnItsFieldFromBothCallers()
             Set tSC = $ClassMethod(..#CONTROL, "ConfirmHttp", tProposal.proposalId, .tStatus, .tRaw, .tConfirm)
             Do $$$AssertEquals(tStatus _ " " _ $Select($IsObject(tConfirm): tConfirm.%Get("code"), 1: ""), "422 " _ tRequest, "and its confirm is refused with the request code: " _ $Extract($Get(tRaw), 1, 300))
             Do $$$AssertEquals(..Footprint(), tBefore, "nothing was saved, added or created")
+            ; the refused confirm is ledgered as an error, which this test does not assert on
+            Do ##class(OcuPilot.Kernel.State.Ledger).GuardedDeleteForTurn(tTurn)
         } Else {
             Do $$$AssertEquals(tMint _ "|" _ ..First($Get(tFault)), "422 " _ $Piece($List(tCase, 3), " ", 2) _ "|" _ $List(tCase, 3), "the agent's mint of " _ tWhat _ " is refused with the same code on the same field")
             Do $$$AssertTrue('$IsObject($Get(tProposal)), "and mints nothing")

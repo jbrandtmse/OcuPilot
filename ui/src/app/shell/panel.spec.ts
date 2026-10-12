@@ -3511,6 +3511,38 @@ describe('Story 5.3: confirming, cancelling and re-proposing a card', () => {
     expect(block?.querySelector('b')).toBeNull();
   });
 
+  /**
+   * Story 20.6 AC2, AC8: a confirmed host test's card shows the instance's answer as text in its output block -- the status sentence
+   * naming the session and the response's class, then a line for each field of the response, its markup left as the text it is --
+   * and a test that failed adds no compile outcome to the card.
+   *
+   * mutation: drop the test branch from `outputLinesOf` (`core/turn.ts`) -> the status sentence is missing and this goes red.
+   */
+  it('Story 20.6 AC2, AC8: the card of a confirmed host test carries its status sentence and response lines as text', async () => {
+    const answer = { status: 'done', sessionId: '41', responseClass: 'Ens.StringResponse', lines: ['StringValue: echo:<b>x</b>'], errors: false };
+    const { host, fixture } = await mountDecidable(
+      {
+        [proposalConfirmPath('p1')]: [
+          {
+            kind: 'ok',
+            status: 200,
+            body: { proposalId: 'p1', state: 'confirmed', closedReason: '', confirmedAt: '2026-10-12T10:31:04Z', auditMarked: true, output: answer },
+          },
+        ],
+      },
+      [wireProposal({ tool: 'interop.itemtest.send', target: { type: 'production-item', scope: 'USER', id: 'P.Prod\u0001Op' } })]
+    );
+    expect(host.querySelector('.ocu-proposal-card [data-slot="output"]')).toBeNull();
+    (host.querySelector('.ocu-proposal-card-confirm') as HTMLButtonElement).click();
+    await turnSettle();
+    fixture.detectChanges();
+
+    const block = host.querySelector('.ocu-proposal-card [data-slot="output"] pre');
+    expect(block?.textContent).toBe([STRINGS.interopTestDone.replace('<session>', '41').replace('<class>', 'Ens.StringResponse'), 'StringValue: echo:<b>x</b>'].join('\n'));
+    expect(block?.querySelector('b')).toBeNull();
+    expect(host.querySelector('.ocu-proposal-card-summary-outcome')).toBeNull();
+  });
+
   /** A confirm answer carrying `output` as the instance writes it: ten console lines and `errors`. */
   const confirmedWithOutput = (errors: boolean) => ({
     [proposalConfirmPath('p1')]: [

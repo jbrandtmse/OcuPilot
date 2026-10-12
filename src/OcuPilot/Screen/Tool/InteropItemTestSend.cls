@@ -74,9 +74,6 @@ Parameter CLASSARGUMENT = "RequestClass";
 
 Parameter FIELDSARGUMENT = "Fields";
 
-/// <p>The longest the agent's fields may be as JSON text: the agent's bound for a card-sized argument.</p>
-Parameter FIELDSBOUND = 30000;
-
 /// <p>The longest a request class name may be.</p>
 Parameter CLASSBOUND = 255;
 
@@ -193,8 +190,9 @@ ClassMethod PortQuery(pPayload As %DynamicObject, ByRef pQuery)
 }
 
 /// <p>What is wrong with the call's own arguments, as one sentence, or <code>""</code>: the request class is 1 to
-/// <parameter>CLASSBOUND</parameter> characters, and the fields are an object of text values whose JSON is at most
-/// <parameter>FIELDSBOUND</parameter> characters. The port judges the rest, from the instance.</p>
+/// <parameter>CLASSBOUND</parameter> characters, and the fields are an object of text values whose JSON is at most the agent's
+/// bound for a card-sized argument (<parameter>OcuPilot.Screen.Tool.ExplorerSave.CHANGEMAXLENGTH</parameter>). The port judges the
+/// rest, from the instance.</p>
 ClassMethod ArgumentProblem(pIdValue As %String, pArgs As %DynamicObject, Output pProblem As %String) As %Status
 {
     Set pProblem = ""
@@ -209,8 +207,9 @@ ClassMethod ArgumentProblem(pIdValue As %String, pArgs As %DynamicObject, Output
         Quit $$$OK
     }
     Set tFields = pArgs.%Get(..#FIELDSARGUMENT)
-    If $Length(tFields.%ToJSON()) > ..#FIELDSBOUND {
-        Set pProblem = "'" _ ..#FIELDSARGUMENT _ "' is at most " _ ..#FIELDSBOUND _ " characters of JSON"
+    Set tBound = ##class(OcuPilot.Screen.Tool.ExplorerSave).#CHANGEMAXLENGTH
+    If $Length(tFields.%ToJSON()) > tBound {
+        Set pProblem = "'" _ ..#FIELDSARGUMENT _ "' is at most " _ tBound _ " characters of JSON"
         Quit $$$OK
     }
     Set tIterator = tFields.%GetIterator()
@@ -233,13 +232,25 @@ ClassMethod ConfirmProblem(pIdValue As %String, pArgs As %DynamicObject, Output 
 /// <p><code>Fields</code> when any member of the call's fields is named like a credential
 /// (<method>OcuPilot.Port.InteropPort.SecretPath</method>, the rule the port refuses it by), else none: its ledger row and step show the redaction mark in
 /// place of whatever the agent sent (AD-3 layer 1, AD-41). The port refuses such a value before it is stored, so this redacts
-/// the call that was refused.</p>
+/// the call that was refused. Fields sent as JSON text, which <method>ArgumentProblem</method> refuses, are read the same way,
+/// and text that is not a JSON object is redacted whole.</p>
 ClassMethod CallSecretNames(pInput As %DynamicAbstractObject) As %List
 {
     If '$IsObject(pInput) || 'pInput.%IsA("%Library.DynamicObject") Quit ""
-    If pInput.%GetTypeOf(..#FIELDSARGUMENT) '= "object" Quit ""
+    Set tType = pInput.%GetTypeOf(..#FIELDSARGUMENT)
+    Set tFields = ""
+    If tType = "object" Set tFields = pInput.%Get(..#FIELDSARGUMENT)
+    If tType = "string" {
+        Try {
+            Set tFields = ##class(%DynamicAbstractObject).%FromJSON(pInput.%Get(..#FIELDSARGUMENT))
+        } Catch {
+            Set tFields = ""
+        }
+        If '$IsObject(tFields) || 'tFields.%IsA("%Library.DynamicObject") Quit $ListBuild(..#FIELDSARGUMENT)
+    }
+    If '$IsObject(tFields) Quit ""
     Set tSecret = 0
-    Set tIterator = pInput.%Get(..#FIELDSARGUMENT).%GetIterator()
+    Set tIterator = tFields.%GetIterator()
     While tIterator.%GetNext(.tKey, .tValue) {
         If ##class(OcuPilot.Port.InteropPort).SecretPath(tKey) {
             Set tSecret = 1

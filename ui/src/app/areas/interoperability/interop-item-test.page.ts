@@ -11,7 +11,7 @@ import { type TestAnswer, testAnswerOf } from '../../core/test-answer';
 import type { Violation } from '../../core/violations';
 import { DetailPage } from '../../shell/detail-page';
 import { ScreenActionHandler } from '../../shell/screen-action-handler';
-import { InteropItemTestDialog, type TestRequest } from './interop-item-test-dialog';
+import { InteropItemTestDialog, type TestRequest, testRowsOf } from './interop-item-test-dialog';
 
 /** The Test tab's descriptor (Story 20.6). */
 export const INTEROP_ITEM_TEST = 'OcuPilot.Screen.Descriptor.InteropItemTestTab';
@@ -31,8 +31,9 @@ export const TEST_FIELDS_VALUE = 'fields';
  * bar's one primary action, with no row selected: the dialog builds the request from every row the tab lists. Opening it on an
  * item that lists no row, a business service, puts the instance's own sentence on the list's banner instead. The request is sent
  * through the handler's `sendFor` with the item's route id as its target and the class and the fields, as JSON text, as its
- * values. A refusal stays in the dialog, on the field where the instance names one; a test that was sent leaves its answer in
- * the dialog, read from the handler's `lastOutput`, as text.
+ * values. A refusal stays in the dialog, on the field where the instance names one the dialog draws, else above the fields (a
+ * request that could not be built is named on its class); a test that was sent leaves its answer in the dialog, read from the
+ * handler's `lastOutput`, as text.
  */
 @Component({
   selector: 'app-interop-item-test-page',
@@ -154,7 +155,9 @@ export class InteropItemTestPage {
     this.answer.set(null);
     const refused = this.handler.lastRefusal();
     const fields = refused?.violations ?? [];
+    const drawn = new Set(testRowsOf(this.rows).map((entry) => entry.field));
+    const elsewhere = fields.find((violation) => !drawn.has(violation.field));
     this.violations.set(fields);
-    this.refusal.set(fields.length > 0 ? '' : (refused?.reason ?? ''));
+    this.refusal.set(elsewhere !== undefined ? elsewhere.reason : fields.length > 0 ? '' : (refused?.reason ?? ''));
   }
 }

@@ -1,5 +1,6 @@
 /// <p>Interoperability's Test tab of a production item (Story 20.6): the request classes the item takes and the fields of each that
-/// a test can set, read through <class>OcuPilot.Port.InteropPort</class> from the class dictionary and rendered by the shared page
+/// a test can set, read through <class>OcuPilot.Port.InteropPort</class> (the host class's own message list, and the class dictionary
+/// for the subclasses and fields) and rendered by the shared page
 /// under the item's tab strip, with the Test action that sends one request built from them (AD-5, AD-29, AD-36, AD-62).</p>
 /// <p><b>It is one tab of the item group</b> <code>interoperability/productions/items/document</code>, parent-scoped under Production
 /// items: its one criterion, <code>item</code>, is the route id, the item's composite id <code>[Production, Name]</code> or the

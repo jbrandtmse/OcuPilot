@@ -6,7 +6,8 @@
  * own, the operation's name cell on Production items opens its tabs and the Test tab lists the request classes the operation takes
  * and the fields of each; Send test builds one request from the fields typed in the dialog and shows the status sentence, the
  * session and the response's line, and a value that is markup (`<b>x</b>`) is drawn as the text it is, with no element made of it;
- * a field that names a credential is drawn disabled with its sentence; and the tab passes the structural and contrast checks at 1280
+ * a field that names a credential is drawn disabled with its sentence; a business service's tab lists no row, says so, and Send test
+ * opens no dialog and says why on the list; and the tab passes the structural and contrast checks at 1280
  * light, 720 light and 1280 dark, with no entry beyond the baseline (DW-1337).
  *
  * **It compiles, starts and writes a probe production in `USER`** through `OcuPilot.Test.ProductionProbe` and
@@ -36,6 +37,7 @@ const PROBE = 'OcuPilot.Test.ProductionProbe';
 const FIXTURE = 'OcuPilot.Test.InteropTestFixture';
 const PRODUCTION = 'OcuPilotProbe.Interop.Production';
 const ECHO = 'OcuPilotProbeEchoOp';
+const SERVICE = 'OcuPilotProbeSvc';
 const REQUEST = 'OcuPilotProbe.Interop.TestRequest';
 const ITEMS = 'interoperability/productions/items';
 const GROUP = `${ITEMS}/document`;
@@ -119,19 +121,27 @@ async function answered(page) {
   await waitForRows(page, config.navigationTimeoutMs);
 }
 
-/** Open the echo operation from the Productions list's name cell and Production items' name cell, then its Test tab. */
-async function openTestTab(page) {
+/**
+ * Open `item` (the echo operation unless another is named) from the Productions list's name cell and Production items' name cell,
+ * then its Test tab. An item that takes no test request lists no row, so the tab is drawn once its empty state is (`rows` false).
+ */
+async function openTestTab(page, item = ECHO, rows = true) {
   await answered(page);
   await clickRowCentre(page, { text: PRODUCTION, link: true });
   await pathHolds(page, `/${ITEMS}/`);
   await answered(page);
-  await rowNamed(page, ECHO);
-  await clickRowCentre(page, { text: ECHO, link: true });
+  await rowNamed(page, item);
+  await clickRowCentre(page, { text: item, link: true });
   await pathHolds(page, `/${GROUP}/`);
   await answered(page);
   await (await page.waitForSelector(`button.ocu-detail-tab[data-route="${TEST_ROUTE}"]`, { visible: true, timeout: config.navigationTimeoutMs })).click();
   await pathHolds(page, `/${TEST_ROUTE}/`);
-  await answered(page);
+  if (rows) {
+    await answered(page);
+  } else {
+    await waitForMapAnswered(page, config.navigationTimeoutMs);
+    await page.waitForSelector('.ocu-data-table-empty', { visible: true, timeout: config.navigationTimeoutMs });
+  }
 }
 
 /** Open the Send test dialog from the command bar and wait for it. */
@@ -174,7 +184,7 @@ test('AC1: the Test tab lists the request classes the echo operation takes and t
     const classes = [...new Set(rows.map((row) => row[0]))];
     assert.deepEqual(classes, ['Ens.StringRequest', 'EnsLib.HL7.Message', REQUEST, `${REQUEST}Sub`], 'the operation\'s own request classes, in name order, then a subclass of them');
     const fields = rows.filter((row) => row[0] === REQUEST).map((row) => row[1]);
-    assert.deepEqual(fields, ['Text', 'Count', 'Kind', 'Password', 'Address.Street', 'Address.City'], 'the request class\'s fields, an embedded object\'s under a dotted path');
+    assert.deepEqual(fields, ['Text', 'Count', 'Kind', 'Password', 'Address.Street', 'Address.City', 'Flag', 'Level', 'Credential.Value'], 'the request class\'s fields, an embedded object\'s under a dotted path');
     assert.deepEqual(await structural(page, TEST_ROUTE), [], 'Test: no violation beyond the baseline\'s entries');
   } finally {
     await context.close();
@@ -220,6 +230,25 @@ test('AD-35: a field that names a credential is drawn disabled with its sentence
     }), field);
     assert.equal(drawn.disabled, true, 'the credential field is disabled');
     assert.equal(drawn.caption, STRINGS.interopTestRefusalSecret, 'and states why');
+  } finally {
+    await context.close();
+  }
+});
+
+// AC1. Mutation (Rule 19): let `InteropItemTestPage.onOpen` open the dialog on an item that lists no row -> the banner wait goes red.
+test('AC1: a business service\'s Test tab lists no row and says so, and Send test opens no dialog and says why', async () => {
+  const { context, page } = await signedInAt(browser, config, PRODUCTIONS_URL, VIEWPORTS.wide, REDUCED_MOTION);
+  try {
+    await openTestTab(page, SERVICE, false);
+    const drawn = await page.evaluate((rowSelector) => ({
+      rows: document.querySelectorAll(rowSelector).length,
+      title: document.querySelector('.ocu-data-table-empty-title')?.textContent?.trim() ?? '',
+    }), ROW_SELECTOR);
+    assert.equal(drawn.rows, 0, 'a business service takes no test request, so the tab lists no row');
+    assert.equal(drawn.title, STRINGS.interopItemTestEmpty, 'and says so');
+    await (await page.waitForSelector('.ocu-data-table-empty-action', { visible: true, timeout: config.navigationTimeoutMs })).click();
+    await page.waitForFunction((sentence) => (document.querySelector('.ocu-banner-message')?.textContent ?? '').trim() === sentence, { timeout: config.navigationTimeoutMs }, STRINGS.interopTestRefusalTargetType);
+    assert.equal(await page.evaluate(() => document.querySelectorAll('[role="dialog"]').length), 0, 'Send test says why on the list and opens no dialog');
   } finally {
     await context.close();
   }
