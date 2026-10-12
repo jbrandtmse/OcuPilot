@@ -11369,6 +11369,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-20-6-testing-hosts-and-transformations.md | severity: med | fix-risk: med | footprint: in-epic
 - evidence: Probed on ocupilot-b-ci HSSYSLOCALTEMP (no interoperability): #include Ensemble fails MPP5635 and an argument As Ens.Config.Item fails #5373 (both probes removed); README:365 admits an IPM install into any non-system namespace
 - 2026-10-12T08:23:20Z status=decision-pending owner=burndown by=cr note=product call: support a non-interop install namespace (drop include and Ens types) or say README needs one
+- 2026-10-12T12:33:19Z status=routed owner=20-28-ocupilot-compiles-in-a-namespace-without-interoperability by=lead note=orchestrator ruling 2026-10-12 chartered Story 20.28 (no Ensemble include, no Ens.Config argument types, a non-interop compile guard in CI)
 
 ### DW-2344: The Test dialog builds its form from the tab's capped rows, so past the row cap a class can be offered with fields missing, and the dialog does not say the list is cut
 - source: spec-20-6-testing-hosts-and-transformations.md | severity: low | fix-risk: low | footprint: in-story
@@ -11402,3 +11403,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: the roster is a literal list; no Stage 2 marker or baseline of earlier screens exists
 - 2026-10-12T06:16:46Z status=open owner=18-12-the-agent-grows-with-the-stage by=harvest note=code review: a reverse check (a baseline of pre-Stage-2 screens) or a recorded reason it stays roster-only
 - 2026-10-12T06:55:56Z status=resolved-by:18-12-the-agent-grows-with-the-stage by=adjudication note=StageTwoTools holds roster plus Elsewhere equal to the registry both ways with a floor (runs 743-744)
+
+### DW-2347: The interoperability editor frame component first runs in a real browser in Story 20.7, so its host-filling style and its Renderer2 src set are observed by no browser test until then
+- source: spec-20-13-the-sign-in-hand-off-to-the-embedded-vendor-editors.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: interop-editor-frame.spec.ts runs in jsdom (no layout); the browser spec mounts a harness iframe from interopEditorSource, not the component (interop-editor-frame.ts:52)
+- 2026-10-12T12:33:20Z status=routed owner=20-7-the-three-embedded-vendor-editors by=lead note=harvested from 20.13 implement deferred; 20.7's browser spec re-runs interop-editor-spec.mjs against its real screens
+
+### DW-2348: A Cross-Origin-Opener-Policy header could stop an editor-opened tab inheriting a copy of the tab's storage, token pair included; measure it as a hardening candidate
+- source: spec-20-13-the-sign-in-hand-off-to-the-embedded-vendor-editors.md | severity: med | fix-risk: high | footprint: in-epic
+- evidence: 20.13 Q1: a tab an editor opens without noopener receives a copy of sessionStorage, the pair included (measured); sign-out revokes it (measured); a COOP header is untested here
+- 2026-10-12T12:33:20Z status=routed owner=burndown by=lead note=orchestrator ruling 2026-10-12 Q1 (A), option B not chartered; untested, and it may break the editors' own window.open flows

@@ -536,3 +536,9 @@
 2026-10-12T11:41:03Z	Story 20.6	ci_resolved	story=20.6 run=38240369145 result=success head=5b3044bb resolved_at=next_implement
 2026-10-12T11:41:03Z	Story 20.6	ci_green_verified	run=38240369145 head=5b3044bb boundary=reported_to_main
 2026-10-12T11:41:22Z	Story 20.13	stage_spawned	stage=implement spawn_at=2026-10-12T11:41:22Z model=sonnet agent_name=20-13-implement-1 cycle_iteration=1 ci_prior=success_38240369145(20.6_5b3044bb)
+2026-10-12T12:35:03Z	Story 20.13	dev_complete	spawn_at=(see_stage_spawned) model=sonnet agent_name=20-13-implement-1 build_sha=5c3bce09 baseline_revision=6e02c22f review_loop_iteration=0 followup_review_recommended=false deferred=1(DW-2347_routed_20-7) bundle=3405631B
+2026-10-12T12:35:03Z	Story 20.13	adr_verifications_complete	tool=none acs= result=none_required evidence= mutations=none model=claude-opus-5-5
+2026-10-12T12:35:03Z	Story 20.13	orchestrator_ruling	Q1=A(AD-63_named_consequence_records_the_noopener_storage_copy;AD-28_and_AD-47_per-tab_sentences_corrected_at_origin;COOP_header_ledgered_DW-2348_burndown_not_chartered)
+2026-10-12T12:35:03Z	Story 20.13	spine_updated	ad=AD-63(opened-tab_sentence),AD-28,AD-47 reason=orchestrator_ruling(Q1_A) by=runner story=20-13 lint=ok(preexisting_low)
+2026-10-12T12:35:03Z	Epic 20	story_chartered	story=20.28 key=20-28-ocupilot-compiles-in-a-namespace-without-interoperability by=runner(orchestrator_ruling_DW-2343) order=after_20.13 ledger=DW-2343_routed_by_lead
+2026-10-12T12:35:03Z	Epic 20	deps_hash_rerecorded	reason=story_chartered(20.28)

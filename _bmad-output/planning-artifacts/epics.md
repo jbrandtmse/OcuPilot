@@ -8780,6 +8780,28 @@ So that a change can be checked before it is deployed.
 - **When** it is tested
 - **Then** the output renders, and the test is a confirmed write because it executes code on the instance.
 
+### Story 20.28: OcuPilot compiles in a namespace without interoperability
+
+[AMENDED 2026-10-12, orchestrator ruling on DW-2343, Rule 5] Chartered from DW-2343, which Story 20.6's review found: InteropPort includes `Ensemble` and names `Ens.Config` types in method arguments, so OcuPilot cannot compile in an install namespace without interoperability, which an IPM install allows. Ordered after Story 20.13.
+
+As an administrator installing OcuPilot,
+I want it to compile in a namespace that has no interoperability,
+So that an install into such a namespace succeeds and simply shows no Interoperability category.
+
+**Acceptance Criteria:**
+
+- **Given** InteropPort
+- **When** it is compiled
+- **Then** it has no compile-time dependency on interoperability: no `Ensemble` include, and where an `Ens.Config` type was named it takes `%RegisteredObject` or `%String` and reaches the class through `$ClassMethod` or `$Method`, with behavior unchanged where interoperability exists.
+
+- **Given** a namespace without interoperability
+- **When** OcuPilot is installed there
+- **Then** the Interoperability category stays hidden (Story 20.1).
+
+- **Given** a namespace created without interoperability on the throwaway
+- **When** the guard runs
+- **Then** all of `src/OcuPilot` compiles there, and the guard runs in CI.
+
 ---
 
 ## Epic 21: Stage 5 - custom-REST parity from the MCP suite's handlers
