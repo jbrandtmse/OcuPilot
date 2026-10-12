@@ -11452,3 +11452,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-20-28-ocupilot-compiles-in-a-namespace-without-interoperability.md | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: 20.28 spec gate seam: the guard is CompileWithoutInterop and the package job; the rule would refuse the regression at commit instead of in CI (plan measured the refused and admitted forms)
 - 2026-10-12T14:07:29Z status=routed owner=burndown by=lead note=orchestrator 2026-10-12: to the Epic 20 burn-down; landing it changes CLAUDE.md's rule count, which is the Planner's to edit with the owner's OK
+
+### DW-2361: The probe-namespace guard drives only InteropPort's nine criterion-free LIST reads and ProductionState, so a stray OcuPilot call in the item, setting, queue-item, job or write paths while switched stays green
+- source: spec-20-28-ocupilot-compiles-in-a-namespace-without-interoperability.md | severity: med | fix-risk: med | footprint: in-epic
+- evidence: CompileWithoutInterop.TestItServesAnInteroperabilityNamespace; GatherItems, GatherSettings, PerformItem, ListQueues/ListJobs row loops and AwaitTestHere run only against a production, and six of the nine reads return 0 rows in USER
+- 2026-10-12T17:14:15Z status=routed owner=burndown by=lead note=harvested from 20.28 implement; settled by a production fixture in USER driven from the probe namespace, or by DW-2356's static rule
+
+### DW-2362: ci-runner's classifyLeftovers words every leftover token as a probe web application to remove with ProbeApps.Remove(), which misleads for the namespace, database and directory tokens ProbeApps.Existing() now reports
+- source: spec-20-28-ocupilot-compiles-in-a-namespace-without-interoperability.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: ui/tools/ci-runner.mjs:280; the OCUPROBE2028 objects are cleared by CompileWithoutInteropProbe.RemoveAll
+- 2026-10-12T17:14:16Z status=open owner=20-28-ocupilot-compiles-in-a-namespace-without-interoperability by=lead note=harvested from 20.28 implement; a two-way door for the code review if ci.test.mjs stays green unedited, else wontfix-accepted

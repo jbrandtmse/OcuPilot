@@ -567,3 +567,7 @@
 2026-10-12T15:43:49Z	Story 20.13	committed	sha=9104d78f submodules= ci=pending run=38272302931 amendments=spine_AD-63(named_exception,opened-tab_copy),AD-28,AD-47;epics.md:20.7_DW_lines,20.28_charter footprint_extensions=ui/src/app/areas/system-explorer/document-viewer.store.ts,ui/tools/source-scan.mjs(new_shared_helper)
 2026-10-12T15:43:49Z	Story 20.13	story_cycle	plan_to_commit_min=274 implement_passes=1 reviews=1 rework=0 first_ci=pending models=plan:opus,implement:sonnet,qa:sonnet,cr:opus
 2026-10-12T15:43:49Z	Story 20.28	stage_spawned	stage=implement spawn_at=2026-10-12T15:43:49Z model=sonnet agent_name=20-28-implement-1 cycle_iteration=1 ci_prior=pending_38272302931(20.13_9104d78f)
+2026-10-12T17:14:24Z	Story 20.13	ci_resolved	story=20.13 run=38272302931 result=success head=9104d78f resolved_at=next_implement
+2026-10-12T17:14:24Z	Story 20.13	ci_green_verified	run=38272302931 head=9104d78f boundary=rides_with_20.28(orchestrator:feature_moved_to_16cd7c72)
+2026-10-12T17:14:24Z	Story 20.28	dev_complete	spawn_at=(see_stage_spawned) model=sonnet agent_name=20-28-implement-1 build_sha=0f38f1c5 baseline_revision=3572e063 review_loop_iteration=0 followup_review_recommended=false deferred=2(DW-2361_med_burndown,DW-2362_low_open_for_cr)
+2026-10-12T17:14:24Z	Story 20.28	adr_verifications_complete	tool=none acs= result=none_required evidence= mutations=none model=claude-opus-5-5
