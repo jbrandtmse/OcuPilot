@@ -1403,3 +1403,6 @@ TAB-separated: `<UTC>\t<Story <id> | Epic <N>>\t<stage>\t<metadata>`
 2026-10-12T19:59:31Z	Story 18.13	fresh_check_started	throwaway=ocupilot-ci rebuilt(down+up,healthy 19:58:42Z;IPM_cleared) load=LOAD-OK,STARTPATH-OK offered=618 chunks=51
 2026-10-12T19:59:31Z	Story 18.13	stage_spawned	stage=full-sweep spawn_at=2026-10-12T19:59:31Z model=sonnet agent_name=18-13-sweep-1 prompt=carry-2026-10-10/epic-18-r/sweep-1813-prompt.md run_in_background=false
 2026-10-12T19:59:31Z	Story 18.46	stage_spawned	stage=plan spawn_at=2026-10-12T19:59:31Z model=opus agent_name=18-46-allowed-dirs-screen-plan-1 cycle_iteration=1 prompt=carry-2026-10-10/epic-18-r/plan-1846-prompt.md run_in_background=false throwaway=untouched(sweep_running)
+2026-10-12T21:50:01Z	Story 18.13	full_sweep_complete	spawn_at=2026-10-12T19:59:31Z model=sonnet agent_name=18-13-sweep-1 classes=618 tests=4818 failed=0 chunks=51 leftovers=0 window=19:59:39Z-21:28:30Z
+2026-10-12T21:50:01Z	Story 18.13	fresh_check_complete	reverse=14_classes_122_tests_0_failed smoke=PASSED test:tools=1925 ipm-manifest=up_to_date
+2026-10-12T21:50:01Z	Epic 18	integrate_forward	feature=9fb3e072(20.13,20.28) head=a631543a conflicts=bookkeeping_only merged_area=10_classes_114_tests_fwd_and_rev_green ci-ipm-archive=PASSED(NOINTEROP_install_with_the_18.13_guard,43_smoke_checks;own_container_names)
