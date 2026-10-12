@@ -3,7 +3,7 @@
 /// routine or class, the database it lives in and its type. The agent reads the list whole before it sends
 /// <code>webapp.routineapps.update</code>, which replaces it.</p>
 /// <p><b>It is a sub-resource of <class>OcuPilot.Screen.Descriptor.RoutineAppList</class> and never listed</b>
-/// (<code>sideBarPosition</code> 0), and takes its criterion, refusals, pairs and classic page from
+/// (<code>sideBarPosition</code> 0), and declares the same criterion, refusals, pairs and classic page as
 /// <class>OcuPilot.Screen.Descriptor.RoutineAppRoleList</class>. A row is keyed by the routine, its type and its
 /// database.</p>
 Class OcuPilot.Screen.Descriptor.RoutineAppRoutineList Extends OcuPilot.Screen.Descriptor.Base

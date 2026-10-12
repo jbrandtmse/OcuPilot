@@ -109,6 +109,29 @@ Paths under `src/OcuPilot/` unless `ui/`, at `785cdd9d`.
 - **Integration.** Given the routines `webapp.routineapproutines.read` answered, when the agent sends `webapp.routineapps.update` with one entry removed, then the confirmed write removes that entry alone.
 - **DW-1756.** Given turns an hour of 7 on Switches, when Guardrails opens, then its Limits section reads `agentGuardrailsTurnsLimit` with 7, and `agentGuardrailsTurnsNone` at 0.
 
+### Review Findings
+
+Code review 2026-10-12 (four layers, full-opus): 27 rows, 10 entries (0 high, 3 med, 7 low), 6 rejected.
+
+- [x] [Review][Patch] DW-2341: an update echoing `MatchRoles` as read reported it changed, in order alone (med, fix-risk low). The vendor answers named matching roles ascending with the application roles last, and the read sorts the application roles first. Routines already match the vendor's name order (probed on `ocupilot-ci`). `RoutineAppUpdate.MergeUpdate` now takes a sent list holding the fresh read's entries in another order as the fresh list (`ReadBack.Same`, `unordered`). The integration test seeds two role entries [src/OcuPilot/Screen/Tool/RoutineAppUpdate.cls, src/OcuPilot/Test/RoutineAppListsRead.cls]
+- [x] [Review][Patch] DW-2342: `StageTwoTools` checked only its own roster (med, fix-risk low). A new `Elsewhere` block names the 130 other registered screens. `TestTheRosterAndElsewhereAreEveryRegisteredScreen` holds roster plus Elsewhere equal to the registry, both ways, with a floor. The `<tool>` rows stay one-way: `wontfix-theoretical`, real only if a later Epic 18 story binds a new write tool to a screen off the roster [src/OcuPilot/Test/StageTwoTools.cls]
+- [x] [Review][Defer] The "Every caller" row keys `''`, so ArrowDown sticks on it and it never shows active (med, fix-risk med) [src/OcuPilot/Screen/Descriptor/RoutineAppRoleList.cls:31]. Deferred: a two-part id would break `shell.screen.open`'s one-part rule, and the shell fix belongs to DW-2328, so this is an occurrence there, routed to burndown.
+- [x] [Review][Patch] The `Test/Guardrails` header said "writes nothing", and the turns test left `Resolve`'s status unasserted (low) [src/OcuPilot/Test/Guardrails.cls]
+- [x] [Review][Patch] The kinds test's `form` branch never checked a form's actions (low) [src/OcuPilot/Test/StageTwoTools.cls]
+- [x] [Review][Patch] The `RoutineAppRoutineList` header said it "takes" its criterion and pairs from the roles list, but it declares its own (low) [src/OcuPilot/Screen/Descriptor/RoutineAppRoutineList.cls]
+- `by-design`, low: "send each list whole" says nothing about a filtered or truncated read. Task 2 fixes the sentence, and the confirm shows each list's before and after.
+- `by-design`, low: "at most 1 agent turns an hour". Task 3 fixes the sentence.
+- `by-design`, low: the roles filter is `MatchRole` alone. Task 1 declares it, and the unfiltered read answers every row.
+- `by-design`, low: an absent application reads as an empty list. This is AD-36 as amended at 18.5, and the matrix row.
+
+Rejected:
+
+- false: "dropping `%DB_IRISSYS:READ` leaves every test green". `WireSecurityRead.TestAdminSecureAloneIsDeniedOnTheSystemDatabaseRead` pins both routes' `failedPair` from the same declaration.
+- false: "the Routines order risks the same echo". The vendor sorts `Routines` by name, which is the read's order (probe on `ocupilot-ci`).
+- false: "sub-assertions lack `mutation:` lines". Rule 19 asks for one per AC, and every AC has one.
+- spec edit: Task 3's string count, and the Auto Run Result's S0 sentence.
+- low: `StageTwoTools.Attribute` copies `SurfaceCoverage`'s private helper, as three other test classes do. The only public copy is `ConfigGate`'s, an unrelated gate.
+
 ## Spec Change Log
 
 - 2026-10-11, lead: narrowed on the orchestrator's split ruling (feature 5b86e803, Rule 5): 18.12 keeps C1 (restated per AD-3), DW-2321 and DW-1756; C2 to C4 moved to Stories 18.39, 18.40 and 18.41 (their anchors stay in this Code Map, to be compressed to pointers at the re-plan). DW-1084 closed by-design. Intent narrowed, Proposed Split removed, status reset to draft for a re-plan in place.
@@ -193,6 +216,14 @@ Recorded (each applied on `ocupilot-ci`, the mutated class and its descendants r
 - mutation: `Read.cls` absence mapping off (`tObjectGone` 0) -> `RoutineAppListsRead.TestBothListsAnswerOneRowPerEntryByRouteAndTool` red on the empty and absent legs, which assert 200 where a bare row count stayed green.
 - mutation: a `<tool>` roster row misspelled (`permissions.users.grantsqlx`) -> `StageTwoTools.TestEverySettableNameComesFromTheGeneratedFieldList` red ("is a listed write tool").
 - mutation: `RoutineAppUpdate` and `RoutineAppDelete` both declare `create` in `SCREENACTIONS` -> `StageTwoTools.TestEachDeclaredActionResolvesToExactlyOneWriteTool` red ("RoutineAppList:create is claimed by at most one write tool").
+- (QA) `src/OcuPilot/Test/Guardrails.cls` gains `TestNoSwitchRowReadsAsNoTurnsLimit`: with no switch row, the answer names `turnsPerHour` as the number 0 (run 728, 12 of 12).
+- mutation (QA): `Switch.DEFAULTTURNSPERHOUR` 1 -> `Guardrails.TestNoSwitchRowReadsAsNoTurnsLimit` red alone (run 729; `TestTheLimitsAreTheKernelsOwn` stays green, as it compares the answer to `Resolve`).
+- mutation (QA): `StageTwoTools` roster rows `RoutineAppRoleList` read-only -> writes, `RoutineAppForm` form -> writes, `JournalList` writes -> read-only -> `TestEachScreenIsItsRowsKind` red on the kind branches themselves ("RoutineAppRoleList binds a write tool", "RoutineAppForm reads", "JournalList declares no row action"; run 730).
+- mutation (QA): `RoutineAppCreate` `CREATES` 0 -> `TestEachDeclaredActionResolvesToExactlyOneWriteTool` red ("RoutineAppList:create resolves to no tool by id and so to the one bound tool that creates"; run 730).
+- mutation (QA): `RoutineAppUpdate.SettableFields` without `##super()` -> `TestEverySettableNameComesFromTheGeneratedFieldList` red ("webapp.routineapps.update:Description/Enabled/Resource is admitted from the generated list and is settable"; run 730).
+- mutation (QA): the routines read's `rows` `MatchRoles` -> `RoutineAppListsRead` both methods red (run 733).
+- mutation (review): `RoutineAppUpdate.MergeUpdate` absent, the code as implemented -> `RoutineAppListsRead.TestAnAgentSendsTheRoutinesItReadLessOneEntry` red alone ("the proposal changes Routines alone", run 735); green with it (run 736).
+- mutation (review): the `RoutineAppRoleList` roster row deleted -> `StageTwoTools.TestTheRosterAndElsewhereAreEveryRegisteredScreen` red alone (run 743); reverted with an identical hash, green (run 744).
 
 **S0:** no `OcuProbe1831*` application or `OcuProbe1833Role*` role; switches as Task 0 recorded.
 

@@ -128,19 +128,24 @@ Method TestBothListsAnswerOneRowPerEntryByRouteAndTool()
 }
 
 /// <p>Integration: the routines read through the tool, sent back less one entry with the roles as read, change
-/// <code>Routines</code> alone. The proposal's changed fields name it alone, the confirm is accepted, and the instance
-/// keeps the entry that was not removed and the roles it held.</p>
+/// <code>Routines</code> alone. The roles read lists the application roles first where the vendor lists them last, so
+/// the two role entries go back in another order and still change nothing. The proposal's changed fields name
+/// <code>Routines</code> alone, the confirm is accepted, and the instance keeps the entry that was not removed and the
+/// roles it held.</p>
 /// <p>Mutation (Rule 19): drop <code>Routines</code> from
 /// <method>OcuPilot.Screen.Tool.RoutineAppUpdate.SettableFields</method> -- the mint refuses the routines and this goes
-/// red.</p>
+/// red; remove <method>OcuPilot.Screen.Tool.RoutineAppUpdate.MergeUpdate</method> -- the proposal also changes
+/// <code>MatchRoles</code>, in order alone, and this goes red.</p>
 Method TestAnAgentSendsTheRoutinesItReadLessOneEntry()
 {
-    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "Seed", "", ..#APP, ..Both(1)), "a probe application holding two routines and one role entry")
-    Set tTargets = $ClassMethod(..#PROBE, "Targets", ..#APP, "")
+    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "Seed", "", ..#APP, ..Both()), "a probe application holding two routines and two role entries")
+    Set tTargets = $ClassMethod(..#PROBE, "Targets", ..#APP, "") _ ";" _ $ClassMethod(..#PROBE, "Targets", ..#APP, "%Developer")
     Set tRoutineRows = ..ToolRows(..#ROUTINES, {"name": (..#APP)})
     Set tRoleRows = ..ToolRows(..#ROLES, {"name": (..#APP)})
-    Do $$$AssertEquals(tRoutineRows.%Size() _ " " _ tRoleRows.%Size(), "2 1", "the tools answer both routines and the one role entry")
-    If tRoutineRows.%Size() '= 2 Quit
+    Do $$$AssertEquals(tRoutineRows.%Size() _ " " _ tRoleRows.%Size(), "2 2", "the tools answer both routines and both role entries")
+    If (tRoutineRows.%Size() '= 2) || (tRoleRows.%Size() '= 2) Quit
+    Set tStored = $ClassMethod(..#PROBE, "Stored", "", ..#APP)
+    Do $$$AssertEquals(tRoleRows.%Get(0).%Get("MatchRole") _ "|" _ tStored.%Get("MatchRoles").%Get(0).%Get("MatchRole"), "|%Developer", "the roles read lists the application roles first, where the vendor lists them last")
     Set tKept = tRoutineRows.%Get(0)
     Set tRemoved = tRoutineRows.%Get(1)
     Set tSent = ##class(%DynamicArray).%FromJSON("[" _ tKept.%ToJSON() _ "]")
@@ -158,15 +163,13 @@ Method TestAnAgentSendsTheRoutinesItReadLessOneEntry()
     Do $$$AssertEquals(tChanged, "Routines", "the proposal changes Routines alone")
     Do $$$AssertEquals($ClassMethod(..#AGENT, "Confirm", tProposal, .tResult), "200 ", "and is confirmed")
     Do $$$AssertEquals($ClassMethod(..#PROBE, "Entries", ..#APP), tKept.%Get("RoutineOrClass") _ ":" _ tKept.%Get("Db") _ ":" _ tKept.%Get("Type"), "the instance keeps the entry that was sent, and " _ tRemoved.%Get("RoutineOrClass") _ " is gone")
-    Do $$$AssertEquals($ClassMethod(..#PROBE, "Targets", ..#APP, ""), tTargets, "and the roles are as they were")
+    Do $$$AssertEquals($ClassMethod(..#PROBE, "Targets", ..#APP, "") _ ";" _ $ClassMethod(..#PROBE, "Targets", ..#APP, "%Developer"), tTargets, "and the roles are as they were")
 }
 
-/// <p>A body for a probe application: two entries in each list, or, with <var>pOneRole</var>, one role entry holding two
-/// target roles. The roles are ones every instance defines.</p>
-ClassMethod Both(pOneRole As %Boolean = 0) As %DynamicObject
+/// <p>A body for a probe application: two entries in each list. The roles are ones every instance defines.</p>
+ClassMethod Both() As %DynamicObject
 {
-    Set tRoles = [{"MatchRole": "", "TargetRoles": ["%DB_HSCUSTOM", "%Developer"]}]
-    If 'pOneRole Set tRoles = [{"MatchRole": "", "TargetRoles": ["%DB_HSCUSTOM"]}, {"MatchRole": "%Developer", "TargetRoles": ["%Manager", "%Operator"]}]
+    Set tRoles = [{"MatchRole": "", "TargetRoles": ["%DB_HSCUSTOM"]}, {"MatchRole": "%Developer", "TargetRoles": ["%Manager", "%Operator"]}]
     Quit {"Description": "lists", "Enabled": true, "Resource": "", "MatchRoles": (tRoles), "Routines": [{"RoutineOrClass": "OcuProbe1831.First", "Db": "HSCUSTOM", "Type": "Class"}, {"RoutineOrClass": "OcuProbe1831Second", "Db": "HSCUSTOM", "Type": "Routine"}]}
 }
 

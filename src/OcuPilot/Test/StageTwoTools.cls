@@ -1,7 +1,10 @@
 /// <p>Story 18.12's completeness test over Epic 18's screens and write tools: every Stage 2 screen reaches the agent
 /// through its descriptor alone, with no hand-written dispatch or field list (AD-3, AD-5, AD-53).</p>
-/// <p><b>Screens.</b> The <code>Roster</code> names one row per screen Epic 18 added, by kind. A <code>form</code>
-/// declares no read and binds no write tool, and its <code>list</code> reads and binds one. A <code>read-only</code>
+/// <p><b>Screens.</b> The <code>Roster</code> names one row per screen Epic 18 added, by kind, and the
+/// <code>Elsewhere</code> block every other screen the registry holds: the two together are every registered screen,
+/// each once, so a screen added later reddens this class until it takes a roster row (an Epic 18 screen) or an
+/// <code>Elsewhere</code> row (any other). A <code>form</code> declares no read, no action and binds no write tool, and
+/// its <code>list</code> reads and binds one. A <code>read-only</code>
 /// screen reads and declares no action and binds no tool, and carries the reason. A <code>writes</code> screen reads and
 /// binds at least one write tool. A reading screen's <code>&lt;toolIdentifier&gt;.read</code> is listed and bound to it.</p>
 /// <p><b>Actions.</b> Each row action of a <code>writes</code> screen resolves, by the rule
@@ -12,8 +15,7 @@
 /// screen): the registry lists it as a write of its own class, every field its generated list admits is settable, and
 /// every other settable name but the id argument is the first path segment of its generated entry, or the tool's port is
 /// not the admin port (AD-51, AD-52). A failure names <code>tool:name</code>.</p>
-/// <p>A Stage 2 screen added after this class adds its roster row in the same pass. Needs a compiled instance; makes no
-/// request and writes nothing.</p>
+/// <p>Needs a compiled instance; makes no request and writes nothing.</p>
 Class OcuPilot.Test.StageTwoTools Extends %UnitTest.TestCase
 {
 
@@ -107,6 +109,144 @@ XData Roster
 </roster>
 }
 
+/// <p>Every registered screen another epic added, one row each: with the roster's screens, every screen the registry
+/// holds (<method>TestTheRosterAndElsewhereAreEveryRegisteredScreen</method>).</p>
+XData Elsewhere
+{
+<elsewhere>
+<screen name="AgentDefinitionForm"/>
+<screen name="AgentDefinitionList"/>
+<screen name="AgentGovernance"/>
+<screen name="AgentGuardrails"/>
+<screen name="AgentLedger"/>
+<screen name="AgentScreenPermissions"/>
+<screen name="AgentSwitches"/>
+<screen name="AgentTranscript"/>
+<screen name="AgentTranscripts"/>
+<screen name="AuditList"/>
+<screen name="AuditSystemEventList"/>
+<screen name="AuditUserEventList"/>
+<screen name="AuditingConfig"/>
+<screen name="BackgroundTaskList"/>
+<screen name="Dashboard"/>
+<screen name="DatabaseDetails"/>
+<screen name="DatabaseFreeSpace"/>
+<screen name="DatabaseList"/>
+<screen name="DatabaseVolumeList"/>
+<screen name="DeviceForm"/>
+<screen name="DeviceList"/>
+<screen name="ExplorerClassDocument"/>
+<screen name="ExplorerClassEditor"/>
+<screen name="ExplorerClassList"/>
+<screen name="ExplorerCompare"/>
+<screen name="ExplorerDocDbList"/>
+<screen name="ExplorerMacro"/>
+<screen name="ExplorerRoutineDocument"/>
+<screen name="ExplorerRoutineEditor"/>
+<screen name="ExplorerRoutineList"/>
+<screen name="ExplorerSearch"/>
+<screen name="ExplorerSqlCachedQueries"/>
+<screen name="ExplorerSqlConstraints"/>
+<screen name="ExplorerSqlData"/>
+<screen name="ExplorerSqlFields"/>
+<screen name="ExplorerSqlIndices"/>
+<screen name="ExplorerSqlPartitionMappings"/>
+<screen name="ExplorerSqlPartitions"/>
+<screen name="ExplorerSqlProcedure"/>
+<screen name="ExplorerSqlProcedureStatements"/>
+<screen name="ExplorerSqlProcedures"/>
+<screen name="ExplorerSqlQuery"/>
+<screen name="ExplorerSqlSchemas"/>
+<screen name="ExplorerSqlTable"/>
+<screen name="ExplorerSqlTableStatements"/>
+<screen name="ExplorerSqlTables"/>
+<screen name="ExplorerSqlTriggers"/>
+<screen name="ExplorerSqlView"/>
+<screen name="ExplorerSqlViewFields"/>
+<screen name="ExplorerSqlViewStatements"/>
+<screen name="ExplorerSqlViews"/>
+<screen name="Home"/>
+<screen name="InteropBusinessPartnerList"/>
+<screen name="InteropItemJobTab"/>
+<screen name="InteropItemList"/>
+<screen name="InteropItemLogTab"/>
+<screen name="InteropItemMessageTab"/>
+<screen name="InteropItemQueueTab"/>
+<screen name="InteropItemSettingList"/>
+<screen name="InteropItemStatusTab"/>
+<screen name="InteropJobList"/>
+<screen name="InteropLookupEntryList"/>
+<screen name="InteropLookupTableList"/>
+<screen name="InteropMonitorList"/>
+<screen name="InteropProcessList"/>
+<screen name="InteropProductionList"/>
+<screen name="InteropQueueList"/>
+<screen name="InteropQueueMessageList"/>
+<screen name="InteropRuleList"/>
+<screen name="InteropTransformList"/>
+<screen name="LanguageServerActivity"/>
+<screen name="LanguageServerForm"/>
+<screen name="LanguageServerList"/>
+<screen name="LdapConfigForm"/>
+<screen name="LdapConfigList"/>
+<screen name="LicenseDistributedTab"/>
+<screen name="LicenseProcessTab"/>
+<screen name="LicenseSummaryTab"/>
+<screen name="LicenseUserTab"/>
+<screen name="LockList"/>
+<screen name="LogAlertViewer"/>
+<screen name="LogAnalyticsViewer"/>
+<screen name="LogErrorList"/>
+<screen name="LogEventViewer"/>
+<screen name="LogHub"/>
+<screen name="LogMessageViewer"/>
+<screen name="LogSqlDiagnosticsViewer"/>
+<screen name="LogSystemMonitorViewer"/>
+<screen name="LogTaskErrorViewer"/>
+<screen name="LogXdbcViewer"/>
+<screen name="OAuthClientForm"/>
+<screen name="OAuthClientTab"/>
+<screen name="OAuthResourceServerForm"/>
+<screen name="OAuthResourceServerTab"/>
+<screen name="OAuthServerClientForm"/>
+<screen name="OAuthServerClientTab"/>
+<screen name="OAuthServerDescriptionForm"/>
+<screen name="OAuthServerDescriptionTab"/>
+<screen name="OAuthServerForm"/>
+<screen name="OAuthServerTab"/>
+<screen name="OpenApiViewer"/>
+<screen name="ProcessDetails"/>
+<screen name="ProcessList"/>
+<screen name="ResourceList"/>
+<screen name="RestApiList"/>
+<screen name="RoleForm"/>
+<screen name="RoleList"/>
+<screen name="ServiceForm"/>
+<screen name="ServiceList"/>
+<screen name="SqlActivityList"/>
+<screen name="SslConfigList"/>
+<screen name="SslForm"/>
+<screen name="SystemUsage"/>
+<screen name="TaskDetails"/>
+<screen name="TaskForm"/>
+<screen name="TaskHistoryList"/>
+<screen name="TaskOnDemandList"/>
+<screen name="TaskRunList"/>
+<screen name="TaskScheduleList"/>
+<screen name="TaskUpcomingList"/>
+<screen name="UserForm"/>
+<screen name="UserList"/>
+<screen name="WalletCollectionList"/>
+<screen name="WalletSecretForm"/>
+<screen name="WalletSecretList"/>
+<screen name="WebAppForm"/>
+<screen name="WebAppList"/>
+<screen name="WebSessionList"/>
+<screen name="X509CredentialList"/>
+<screen name="X509Form"/>
+</elsewhere>
+}
+
 /// <p>Each roster screen is registered, built and its row's kind; every reading screen's read tool is listed and bound to
 /// it.</p>
 /// <p>Mutation (Rule 19): declare <code>"built": false</code> in
@@ -130,6 +270,8 @@ Method TestEachScreenIsItsRowsKind()
         Set tBoundCount = ..Count(.tBound, tClass)
         If tKind = "form" {
             Do $$$AssertEquals(tReading, 0, tName _ " declares no read")
+            Do $$$AssertEquals($ClassMethod(tClass, "PrimaryActionId"), "", tName _ " declares no primary action")
+            Do $$$AssertEquals($ListLength($ClassMethod(tClass, "RowActionIds")), 0, tName _ " declares no row action")
             Do $$$AssertEquals(tBoundCount, 0, tName _ " binds no write tool")
             Set tList = ..#DESCRIPTORPACKAGE _ $List(tScreens(tName), 2)
             Do $$$AssertTrue(($ListFind(tRegistered, tList) > 0), tName _ "'s list is registered")
@@ -243,6 +385,44 @@ Method TestEverySettableNameComesFromTheGeneratedFieldList()
     Do $$$AssertTrue(tChecked > 0, "the roster binds write tools")
 }
 
+/// <p>The roster's screens and the <code>Elsewhere</code> rows are every screen the registry holds, each once: a
+/// registered screen on neither list, a screen on both, and a row naming no registered screen each go red naming it.</p>
+/// <p>Mutation (Rule 19): delete the <code>RoutineAppRoleList</code> roster row -- it goes red as a registered screen on
+/// neither list.</p>
+Method TestTheRosterAndElsewhereAreEveryRegisteredScreen()
+{
+    Set tSC = ..Load(.tScreens, .tOrder, .tToolRows, .tWrites, .tReads, .tBound)
+    Do $$$AssertStatusOK(tSC, "the roster and the registries are read")
+    If $$$ISERR(tSC) Quit
+    Set tSC = ..Elsewhere(.tElsewhere)
+    Do $$$AssertStatusOK(tSC, "the Elsewhere rows are read")
+    If $$$ISERR(tSC) Quit
+    Set tSC = ##class(OcuPilot.Test.SurfaceCoverage).DeriveScreens(.tRegistered)
+    Do $$$AssertStatusOK(tSC, "the registered screens derive from the screen registry")
+    If $$$ISERR(tSC) Quit
+    Set tCount = 0
+    Set tName = ""
+    For {
+        Set tName = $Order(tRegistered(tName))
+        If tName = "" Quit
+        Set tCount = tCount + 1
+        Do $$$AssertTrue($Data(tScreens(tName)) || $Data(tElsewhere(tName)), tName _ " is registered, so it takes a roster row (a screen Epic 18 added) or an Elsewhere row (any other)")
+    }
+    Do $$$AssertTrue(tCount > 0, "the registry holds screens; a run over none would pass having checked nothing")
+    Set tName = ""
+    For {
+        Set tName = $Order(tScreens(tName))
+        If tName = "" Quit
+        Do $$$AssertTrue('$Data(tElsewhere(tName)), tName _ " is on the roster and not also Elsewhere")
+    }
+    Set tName = ""
+    For {
+        Set tName = $Order(tElsewhere(tName))
+        If tName = "" Quit
+        Do $$$AssertTrue($Data(tRegistered(tName)) > 0, tName _ " has an Elsewhere row, so it names a registered screen")
+    }
+}
+
 /// <p>The roster, the tool listing and the bound-tool index. <var>pScreens</var>(name) is
 /// <code>$ListBuild(kind, list, reason)</code> and <var>pOrder</var> the names in roster order; <var>pToolRows</var>
 /// holds the <code>&lt;tool/&gt;</code> names; <var>pWrites</var>(name) is a write tool's listing entry and
@@ -297,6 +477,35 @@ ClassMethod Load(Output pScreens, Output pOrder, Output pToolRows, Output pWrite
             Set tDescriptor = $Parameter(tTool.class, "DESCRIPTORCLASS")
             If tDescriptor '= "" Set pBound(tDescriptor, tTool.name) = tTool.class
         }
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>The <code>Elsewhere</code> rows as <var>pNames</var>(name). A row with no name, or a name twice, is an error.</p>
+ClassMethod Elsewhere(Output pNames) As %Status
+{
+    Set tSC = $$$OK
+    Kill pNames
+    Try {
+        Set tXData = ##class(%Dictionary.XDataDefinition).IDKEYOpen($ClassName(), "Elsewhere", , .tOpenSC)
+        If '$IsObject(tXData) {
+            Set tSC = $$$ERROR($$$GeneralError, "the Elsewhere XData block could not be opened")
+            Quit
+        }
+        Do tXData.Data.Rewind()
+        While 'tXData.Data.AtEnd {
+            Set tLine = tXData.Data.ReadLine()
+            If tLine '[ "<screen " Continue
+            Set tName = ..Attribute(tLine, "name")
+            If (tName = "") || $Data(pNames(tName)) {
+                Set tSC = $$$ERROR($$$GeneralError, "an Elsewhere row is malformed or repeated: " _ tLine)
+                Quit
+            }
+            Set pNames(tName) = ""
+        }
+        Set tXData = ""
     } Catch ex {
         Set tSC = ex.AsStatus()
     }

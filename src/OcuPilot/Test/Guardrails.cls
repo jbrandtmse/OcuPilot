@@ -5,7 +5,8 @@
 /// a listed, ungated Agent co-pilot screen with no read.</p>
 /// <p>Sentences are compared against <method>OcuPilot.Kernel.Proposal.Prohibited.ReasonFor</method>,
 /// never written here (<class>OcuPilot.Test.Prohibited</class> refuses a second copy). Needs a
-/// compiled instance; makes no request and writes nothing.</p>
+/// compiled instance and makes no request. It writes the switch row, and after each test removes it
+/// and every hold (<method>OcuPilot.Test.SwitchFixture.Reset</method>).</p>
 Class OcuPilot.Test.Guardrails Extends %UnitTest.TestCase
 {
 
@@ -177,6 +178,7 @@ Method TestTheTurnsAnHourFollowTheSwitch()
         Set tSC = ##class(OcuPilot.Kernel.State.Switch).SetGuarded(.tValues)
         Do $$$AssertStatusOK(tSC, "turns an hour " _ tTurns _ " is set")
         Set tSC = ##class(OcuPilot.Kernel.State.Switch).Resolve(.tRead)
+        Do $$$AssertStatusOK(tSC, "the switches are read back at " _ tTurns)
         Do $$$AssertEquals(+$Get(tRead("turnsPerHour")), tTurns, "and reads back as " _ tTurns)
         Set tSC = $ClassMethod(..#SHIPPED, "Read", .tAnswer)
         Do $$$AssertStatusOK(tSC, "the answer is composed at " _ tTurns)
@@ -186,6 +188,20 @@ Method TestTheTurnsAnHourFollowTheSwitch()
     }
     Set tSC = ##class(OcuPilot.Test.SwitchFixture).Reset(.tRemaining)
     Do $$$AssertStatusOK(tSC, "the switch row is removed")
+}
+
+/// <p>(e) With no switch row held, no turns-an-hour limit is set: the answer names 0, as a number, which the page reads as
+/// no limit.</p>
+/// <p>Mutation: <code>DEFAULTTURNSPERHOUR = 1</code> in <class>OcuPilot.Kernel.State.Switch</class> -&gt; this goes red.</p>
+Method TestNoSwitchRowReadsAsNoTurnsLimit()
+{
+    Set tSC = ##class(OcuPilot.Test.SwitchFixture).Reset(.tRemaining)
+    Do $$$AssertStatusOK(tSC, "no switch row is held")
+    Set tSC = $ClassMethod(..#SHIPPED, "Read", .tAnswer)
+    Do $$$AssertStatusOK(tSC, "the answer is composed with no switch row")
+    If '$IsObject(tAnswer) Quit
+    Set tLimits = tAnswer.%Get("limits")
+    Do $$$AssertEquals(tLimits.%GetTypeOf("turnsPerHour") _ " " _ tLimits.%Get("turnsPerHour"), "number 0", "no limit set reads 0, a number")
 }
 
 /// <p>(f) The switches are the caller's verdict: a kill switch held for the caller with enforced
