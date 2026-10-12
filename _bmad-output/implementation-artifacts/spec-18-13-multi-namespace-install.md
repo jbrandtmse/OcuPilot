@@ -2,13 +2,21 @@
 title: 'Story 18.13: Multi-namespace install'
 type: 'feature'
 created: '2026-10-12'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: 'c3f331c662ef211e2a06e39dba1340d63f713b0d'
 review_loop_iteration: 0
-followup_review_recommended: false
+followup_review_recommended: true
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-18-context.md'
 warnings: ['oversized']
-deferred: []
+deferred:
+  - summary: >-
+      IPM's exporter drops <SystemRequirements> from the archive's module.xml, so the archive carries no IRIS version floor and only the installer enforces it (DW-1333's IPM half).
+    evidence: |-
+      Measured at Story 13.3 on IPM 0.10.5 (scripts/ci-ipm-archive.sh): the exported manifest has no <SystemRequirements>, though the committed module.xml declares Version ">=2026.2". 18.13 enforces the floor in Installer.GuardVersionFloor and leaves IPM's own version unchecked (AD-18). Owner hold: decision-pending, never reported upstream.
+    location: >-
+      module.xml :28 and the IPM exporter
+    severity: low
 ---
 
 <intent-contract>
@@ -94,6 +102,31 @@ Under `src/OcuPilot/` unless `scripts/`, `ui/` or root, at `fe132688`.
 
 ## Review Triage Log
 
+### 2026-10-12 -- Review pass
+
+- verdicts: 20 findings -- high 0, medium 4, low 12, false 4, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` The container's second-namespace refusal is pinned only as source text -- `compose.test.mjs` now also pins the scan's clauses (skips the target and `%ALL`, matches on the database) and the `OTHER` arm ahead of `OK`; both mutations red. No executing test added: it needs a live two-namespace container; the session was run by hand (Verification). Same root cause as the intent auditor's container-hook divergence.
+  - `[medium]` `[patch]` `GuardTarget`'s version-floor and package-home calls had no test -- probe-seam legs added to the floor and package tests; mutation red (681).
+  - `[low]` `[reject]` Nothing runs IPM to show the guard fires before the applications change -- measured once on `ocupilot-ci`; the declared phase is pinned (roster, generated and committed manifest, `Test/Manifest`). A second-namespace load needs an interoperability-enabled namespace in `ci-ipm-archive.sh`, which Epic 20 is reworking. reopen_if=an IPM release updates web applications before Compile, or the package job gains a second-namespace leg.
+  - `[low]` `[patch]` The installer's rung predicate was never observed unarmed -- `TestTheInstallersRungPredicateIsTheLaddersOwn` compares it with the ladder in both namespaces; mutation red (681).
+  - `[low]` `[patch]` The `creds`-only filter was unpinned -- an `env` definition is stored beside and must not be named; mutation red (681).
+  - `[low]` `[patch]` Empty version and empty package destination (the seam-testable fail-closed branches) had no assertion -- legs added; covered by the guards-answer-OK mutation (657) by reading, not re-run.
+  - `[low]` `[reject]` Roster-unreadable, namespace-list-unreadable and `%ALL` branches untested -- no seam, theoretical, and `%ALL` is not listed on the throwaway; guards would add a seam per branch.
+  - `[low]` `[reject]` The stamp sweep's failure isolation is unverified -- needs a fault-injection seam no sibling step has; the step loop's isolation is pinned by `Retention`'s failing-step test. reopen_if=a stamp-table fault stops the later retention steps.
+  - `[medium]` `[patch]` `StampRetention` asserted unfiltered counts for profile `probe`, state an earlier class could leave -- unique profile names and an `OnBeforeOneTest` clean.
+  - `[medium]` `[patch]` `InstallTarget` assumed no earlier probe install -- `OnBeforeOneTest` now removes one from both namespaces.
+  - `[low]` `[reject]` AC1's "applications run in T" half has no mutation of its own -- Rule 19 asks one mutation per AC, and AC1's is recorded (654).
+  - `[low]` `[reject]` The container hook is exercised as text only (intent auditor) -- grouped with the first row.
+  - `[low]` `[patch]` README and DEVELOPMENT said an IPM-path refusal "changes nothing", but IPM has compiled the package before the guard runs -- both now say the installer changes nothing in either namespace.
+  - `[low]` `[reject]` Package-home and floor refusals come after the compile on the container path -- the Matrix, Task 3 and AC3 put only the second-namespace refusal before it; the image is pinned to 2026.2 and AD-9 rules out a package mapping; a pre-compile probe adds a second copy of both checks.
+  - `[false]` `[reject]` The guard adds a second `<Invoke>` -- the install `<Invoke>` is unchanged (class, method, phase, when, no `<Arg>`); the orchestrator's Task 0(d) ruling sanctions a fix through the manifest's phase.
+  - `[false]` `[reject]` The refusal is per profile mapping, not per instance -- the intent defines the target as the namespace "holding the profile's global mapping".
+  - `[low]` `[reject]` Package, floor and rung legs arm seams -- Task 6 specifies seams; the unarmed rung predicate is now observed (row 4).
+  - `[low]` `[reject]` Stamp seeding cannot tell ID order from Timestamp order, no stamp-step failure is induced, and the production-group test trims real production stamps -- Task 2 keeps the newest by ID; failure isolation is row 8; the trimmed rows are write-only history on an armed throwaway.
+  - `[false]` `[reject]` The AD-17 and Retention-row replacements live in the spec, not the spine -- Task 0 hands the sentence to the lead, who edits the spine; the replacement text is under "For the lead".
+  - `[false]` `[reject]` The README sentence on IPM's version check was rewritten -- Task 5 requires it; DW-1333 made the old sentence false.
+
 ## Design Notes
 
 **Ledger.** DW-1333: Task 1's floor (and Task 5). DW-423: Tasks 2 and 7; Stamp is write-only history, so a count bound keeps every row a reader uses. DW-219, DW-2172: proposed for a sibling story (Auto Run Result). DW-1788 stays `wontfix-theoretical`: the second-namespace refusal keeps OcuPilot's applications in one namespace.
@@ -112,7 +145,7 @@ Under `src/OcuPilot/` unless `scripts/`, `ui/` or root, at `fe132688`.
 
 **For the lead** (Rule 20):
 
-- **AD-17** and the Operational Envelope's **Retention** row: applied at the gate (Spec Change Log).
+- **AD-17** and the Operational Envelope's **Retention** row: applied at the gate (Spec Change Log). **AD-17's open IPM sentence is real and fixed** (Task 0, measured on `ocupilot-ci` with production in HSCUSTOM): `zpm`'s `load -dev` run from an interoperability-enabled second namespace re-pointed `/ocupilot`, `/api/ocupilot` and `/api/ocupilot/readiness` to that namespace before the installer refused (IPM's web application processor updates them in `OnBeforePhase` of `Activate`, ahead of any `Activate` invoke), and the shell answered 401 until `StartPath` repaired them. The roster now declares a `guard` invoke (`Installer.GuardTarget`, `Phase="Compile" When="After"`): the same load fails in Compile with the installer's refusal, the three applications stay in HSCUSTOM and the shell answers 200; a load in HSCUSTOM passes the guard and completes. Replace the sentence "Open, and measured at Story 18.13's Task 0: ..." with: "IPM updates a module's web applications at the start of `Activate`, before any `Activate` invoke, so the manifest carries a guard `<Invoke>` after `Compile` (`Installer.GuardTarget`) that makes the install's refusals before IPM touches an application." In a namespace without interoperability the load fails earlier, in Compile, until Story 20.28 lands.
 - **AD-9 reading** above; the package-mapping alternative restates AD-9, AD-21 and AD-10's database arm, the owner's call.
 - **DW-1333:** IPM's exporter dropping `<SystemRequirements>` is an IPM tool-defect candidate (Story 13.3), never reported upstream; IPM's version stays unchecked (AD-18).
 - **Pre-authorization (Rule 11):** Task 8's add-only lines in `ci-throwaway.sh` (Epic 20's).
@@ -131,17 +164,33 @@ Under `src/OcuPilot/` unless `scripts/`, `ui/` or root, at `fe132688`.
 - Full ObjectScript sweep: the runner's; browser suite: CI's (no spec touched).
 - Upgrade from 1.0.11: install changed 24 lines since `72db8709`, none in the mapping or namespace steps, so a 1.0.11 instance meets one mapping in its install namespace (inference); the next cut's upgrade check executes it.
 
-**Mutations (Rule 19),** each recorded as `mutation:`, reverted byte-identical, descendants recompiled:
+**Mutations (Rule 19),** each reverted byte-identical (`cmp` against a copy taken first) and every descendant recompiled by the loader, run on `ocupilot-ci` 2026-10-12:
 
-- Chosen namespace: `Install` skips `EnsureMapping` -> `InstallTarget` chosen leg red. Second run: `EnsureWebApplication` stamps `$ZTimeStamp` into the shell's `Description` -> the fingerprint leg red.
-- Second namespace: `GuardOneInstallNamespace` answers OK -> refusal leg red; the container `OTHER:` branch removed -> `compose.test.mjs` red.
-- Validation: the package and floor guards answer OK -> their legs red.
-- Rung: `ReportCredentialsRung` skipped -> rung leg red.
-- Stamp: the sweep step removed -> `StampRetention` red.
+- mutation: `Install` skips `EnsureMapping` -> `InstallTarget`'s chosen-namespace and second-namespace legs red (run 654). `EnsureWebApplication` stamps `$ZTimeStamp` into `Description` -> "leaves the state fingerprint unchanged" red (655).
+- mutation: `GuardOneInstallNamespace` answers OK -> the install, uninstall, production and IPM-guard refusal assertions red (656). The container `OTHER:` branch removed -> `compose.test.mjs` red; the session's mapping literal changed -> its literal-equality test red.
+- mutation: `GuardPackageHome` and `GuardVersionFloor` answer OK -> `TestAPackageResolvedFromAnotherDatabaseIsRefused` and `TestAnInstanceBelowTheFloorIsRefused` red (657).
+- mutation: the `ReportCredentialsRung` call removed from `Install` -> `TestACredsDefinitionIsReportedWhereTheRungIsUnavailable` red (658).
+- mutation: the stamp step removed from `Retention.Sweep` -> both `StampRetention` tests red (659). The empty-profile group skipped -> the production-group test red (660). One bound on the whole table -> both red (661).
+- mutation: the guard `<Invoke>` phase `Activate` -> the fixture roster: `ipm-manifest.test.mjs` red; the real roster: `ipm-manifest.mjs --check` reports the drift and `Test/Manifest` red (662).
+- mutation: `GuardTarget` without its `GuardVersionFloor` and `GuardPackageHome` calls -> the two "IPM guard invoke refuses ..." legs of `InstallTarget` red; `CredentialsRungAvailable` answering 1 -> `TestTheInstallersRungPredicateIsTheLaddersOwn` red in OCUPROBE1813; the `creds` filter removed from `CredsDefinitionNames` -> "none names the definition on the env rung" red (all one run, 681; reverted `cmp`-identical, reloaded, green at 682).
+- mutation: the `$ZConvert(...)=tUpper:""` clause deleted from the container scan -> `compose.test.mjs` "the second-namespace scan skips the target ..." red; the `tExists: "OK:"` arm moved ahead of `OTHER:` -> the same test red (reverted `cmp`-identical).
+- manual check (no executing test exists): the container resolution session, run on `ocupilot-ci` up to its outcome line with `OCUPILOT_NAMESPACE` unset and `HSCUSTOM` answered `OK:HSCUSTOM`, `USER` answered `OTHER:HSCUSTOM:USER`, `%SYS` answered `SYSTEM:%SYS`, `NOSUCH` answered `MISSING:NOSUCH`; the mark step was left out so the throwaway stayed installed.
 
 **S0:** no OCUPROBE1813 namespace, database, directory or resource; no `ProbeOcuPilotState*` mapping; no `OcuProbe1813Creds` definition.
 
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
+
+**Change.** One install namespace per instance: `Install` refuses a system or missing namespace, an IRIS below the roster's floor (`GuardVersionFloor`, DW-1333), a package that resolves from another database (`GuardPackageHome`, AD-9) and a second namespace (`GuardOneInstallNamespace`, also in `Uninstall`); a `creds` definition on an unreachable rung is reported, never refused; the retention sweep keeps each profile's newest 100 stamps (DW-423). The container start refuses a second namespace before `LoadDir`. AD-17's IPM re-point was real: IPM updates the web applications at the start of `Activate`, so the roster now declares a `guard` invoke (`GuardTarget`, `Compile`, After) that refuses first.
+
+**Files.** `Install/Installer.cls` (guards, rung report, seams), `Install/Roster.cls`, `module.xml`, `ui/tools/ipm-manifest.mjs` (the guard invoke), `Kernel/State/Stamp.cls`, `Kernel/Retention.cls` (the sweep), `scripts/container-start.sh` (`OTHER:` outcome), `scripts/ci-throwaway.sh` (two add-only `# classes:` lines), `README.md`, `docs/DEVELOPMENT.md`; tests `Test/InstallTarget.cls` and `Test/StampRetention.cls` (new, 499 and 140 lines), `Test/InstallerProbe.cls`, `Test/Manifest.cls`, `ui/tools/compose.test.mjs`, `ui/tools/ipm-manifest.test.mjs`.
+
+**Review.** Patched: 4 mediums and 4 lows (log above). Deferred: the IPM exporter's dropped `<SystemRequirements>` (owner hold). Rejected: 4 false and 8 low, each with its reason in the log. Follow-up review recommended: the container `OTHER` outcome is pinned by source text and one by-hand run, and the review patches were checked by one combined mutation run rather than one run each.
+
+**Verification (`ocupilot-ci`).** `LOAD-OK` and `STARTPATH-OK`; `InstallTarget` 6 tests (run 682), `StampRetention` 2 (680), `Manifest` 10 (668); the Rule 30 classes `Installer` 27, `InstallNamespaceSource` 3, `Version` 19, `UninstallGuard` 3, `Retention` 10, `RetentionTask` 4, `GrantReadBack` 3, `InstallLock` 6, `State` 12, `ToolEmit` 11 (runs 669-678), 0 failed each; `npm run test:tools` 1922/1922; `check-objectscript.py` 0 problems; `lint-docs.sh` 0 problems; `ipm-manifest.mjs --check` up to date. Throwaway at S0 plus IPM imported in HSCUSTOM with a dev-loaded `ocupilot` module registered there (unregistering it would delete the web applications; the runner's rebuild clears it).
+
+**Upgrade from 1.0.11.** Not run against 1.0.11 itself. The live `ocupilot` holds the `OcuPilot*` mapping in HSCUSTOM only, and the resolution session answers `OK:HSCUSTOM` there; repeated in-place `StartPath` runs on the throwaway stayed idempotent. A 1.0.11 instance with a stale mapping in a second namespace would now be refused at its next start, which is the intended rule.
+
+**Residual.** Epic 20's 20.28 package job installs into a created `NOINTEROP` namespace on a fresh instance; the new guard only refuses where another namespace on that instance holds the mapping, which that job does not create.

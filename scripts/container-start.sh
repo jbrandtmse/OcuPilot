@@ -182,9 +182,13 @@ Set tExists=$Select(tNS="":0,1:##class(%SYS.Namespace).Exists(tNS))
 Set tRefusedList="ENSLIB,DOCBOOK,HSLIB,HSSYS,HSSYSLOCALTEMP,IRISAUDIT,IRISLIB,IRISLOCALDATA,IRISSYS,IRISTEMP"
 Set tUpper=$ZConvert(tNS,"U")
 Set tIsSystem=$Select(tUpper="":1,$Extract(tUpper)="%":1,1:(","_tRefusedList_",")[(","_tUpper_","))
-Set tNsOutcome=$Select(tIsSystem&&($Length(tNS)>0): "SYSTEM:"_tNS, tExists: "OK:"_tNS, 1: $Case(tOverride,"":"NONE",:"MISSING:"_tOverride))
+Set tOther=""
+Set tOtherRS=##class(%ResultSet).%New("Config.Namespaces:List")
+Do tOtherRS.Execute()
+While tOtherRS.Next() { Set tOther=$Select($Length(tOther)>0:tOther,tIsSystem:"",tExists=0:"",$ZConvert(tOtherRS.Get("Namespace"),"U")=tUpper:"",tOtherRS.Get("Namespace")="%ALL":"",##class(Config.MapGlobals).Exists(tOtherRS.Get("Namespace"),"OcuPilot*",.tOtherMap)=0:"",tOtherMap.Database="OCUPILOT":tOtherRS.Get("Namespace"),1:"") }
+Set tNsOutcome=$Select(tIsSystem&&($Length(tNS)>0): "SYSTEM:"_tNS, tExists&&($Length(tOther)>0): "OTHER:"_tOther_":"_tNS, tExists: "OK:"_tNS, 1: $Case(tOverride,"":"NONE",:"MISSING:"_tOverride))
 Write "OCUPILOT-"_"NS-START:"_tNsOutcome_":OCUPILOT-"_"NS-END",!
-Set tUsable=$Select(tIsSystem:0,1:tExists)
+Set tUsable=$Select(tIsSystem:0,$Length(tOther)>0:0,1:tExists)
 Set $NAMESPACE=$Select(tUsable: tNS, 1: $NAMESPACE)
 Set tHaveClass=$Select(tUsable:##class(%Dictionary.CompiledClass).%ExistsId("OcuPilot.Install.Installer"),1:0)
 Set tHaveMark=$Select(tHaveClass:##class(%Dictionary.CompiledMethod).%ExistsId("OcuPilot.Install.Installer||MarkInstalling"),1:0)
@@ -210,6 +214,14 @@ case "$NS_RESULT" in
         # only once StartPath runs -- by which point the sessions below have already compiled
         # OcuPilot's code into the namespace named here.
         echo "container-start: OCUPILOT_NAMESPACE names ${NS_RESULT#SYSTEM:}, which is a namespace OcuPilot refuses to install into; refusing before anything is compiled into it. Name an ordinary namespace, or leave the variable unset to use the HSCUSTOM-then-USER default"
+        exit 1
+        ;;
+    OTHER:*)
+        # One install namespace per instance (AD-17): another namespace already holds the
+        # OcuPilot* globals mapping onto OCUPILOT. Refused HERE, before $System.OBJ.LoadDir, for
+        # the reason SYSTEM is: the load below compiles OcuPilot into the namespace named here.
+        OTHER_REST="${NS_RESULT#OTHER:}"
+        echo "container-start: OcuPilot is already installed in the namespace ${OTHER_REST%%:*} (its OcuPilot* globals mapping there targets the OCUPILOT database), and an instance has one install namespace; refusing before anything is compiled into ${OTHER_REST#*:}. Start this container against ${OTHER_REST%%:*} (set OCUPILOT_NAMESPACE to it, or leave the variable unset when it is the HSCUSTOM-then-USER default), or uninstall OcuPilot there first"
         exit 1
         ;;
     NONE)

@@ -277,7 +277,7 @@ Method TestBundleDestinationIsTheHandlersOwnAnswer()
 }
 
 /// <p>The roster's <code>invoke</code> declaration -- what the generator turns into
-/// <file>module.xml</file>'s single <code>&lt;Invoke&gt;</code> -- names the one install entry
+/// <file>module.xml</file>'s install <code>&lt;Invoke&gt;</code> -- names the one install entry
 /// point, in the one phase that runs. <code>Phase</code> is load-bearing: its IPM default is
 /// <code>Configure</code>, which is not in the <code>activate</code> chain, so a declaration
 /// that omitted it would be accepted and never run.</p>
@@ -292,6 +292,27 @@ Method TestInvokeDeclarationNamesTheOneInstallEntryPoint()
     Do $$$AssertEquals(tRoster.invoke.when, "After", "after it, so the FileCopy that runs at the phase's start has already placed the bundle")
 
     Do $$$AssertTrue(##class(%Dictionary.CompiledMethod).%ExistsId(tRoster.invoke.class _ "||" _ tRoster.invoke.method), "the class and method the manifest names are compiled on this instance")
+}
+
+/// <p>The roster's <code>guard</code> declaration -- the manifest's first <code>&lt;Invoke&gt;</code>
+/// -- names the installer's pre-flight validation and runs it after <code>Compile</code>: IPM updates
+/// a module's web applications at the start of <code>Activate</code>, before any <code>Activate</code>
+/// invoke, so a refusal declared there would arrive after the live applications were re-pointed.
+/// The method must be compiled here and take no required argument, as the install invoke takes
+/// none.</p>
+/// <p>Mutation (Rule 19): change <code>guard.phase</code> to <code>Activate</code>, or
+/// <code>guard.method</code> to a method that does not exist -- red.</p>
+Method TestGuardDeclarationRunsBeforeIpmUpdatesTheWebApplications()
+{
+    Do $$$AssertStatusOK(##class(OcuPilot.Install.Roster).Get(.tRoster), "the roster reads")
+    Do $$$AssertEquals(tRoster.guard.class, "OcuPilot.Install.Installer", "the guard is the installer's own")
+    Do $$$AssertEquals(tRoster.guard.method, "GuardTarget", "and its pre-flight validation")
+    Do $$$AssertEquals(tRoster.guard.phase, "Compile", "run after Compile, the last phase before IPM updates a web application")
+    Do $$$AssertEquals(tRoster.guard.when, "After", "once the installer class is compiled")
+    Set tMethod = tRoster.guard.class _ "||" _ tRoster.guard.method
+    Do $$$AssertTrue(##class(%Dictionary.CompiledMethod).%ExistsId(tMethod), "the class and method the manifest names are compiled on this instance")
+    Set tFormal = ##class(%Dictionary.CompiledMethod).%OpenId(tMethod)
+    Do $$$AssertEquals($IsObject(tFormal) && (tFormal.FormalSpec = ""), 1, "and it takes no argument")
 }
 
 /// <p>The module's shipped identity: a name and a semantic version the manifest can carry, and
@@ -374,7 +395,7 @@ Method TestTheCommittedManifestParsesAsXml()
     Do $$$AssertEquals($Get(tCounts("WebApplication"), 0), tRoster.applications.%Size(), "one <WebApplication> per application the roster declares")
     Do $$$AssertEquals($Get(tCounts("Resource"), 0), tRoster.resources.%Size(), "one <Resource> per resource it declares")
     Do $$$AssertEquals($Get(tCounts("Module"), 0), 1, "exactly one <Module>")
-    Do $$$AssertEquals($Get(tCounts("Invoke"), 0), 1, "and exactly one <Invoke>")
+    Do $$$AssertEquals($Get(tCounts("Invoke"), 0), 2, "and exactly two <Invoke> elements, the roster's guard and its install")
     Do $$$AssertEquals($Get(tCounts("FileCopy"), 0), 1, "and one <FileCopy> for the client bundle")
 }
 

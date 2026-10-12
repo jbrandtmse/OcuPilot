@@ -31,10 +31,69 @@ ClassMethod LogWarn(pMessage As %String, pData As %DynamicObject = "")
     Set ^||OcuPilotInstallerProbe("lastWarnData") = $Select($IsObject(pData): pData.%ToJSON(), 1: "")
 }
 
-/// <p>Discard anything a previous capture left behind.</p>
+/// <p>Discard anything a previous capture left behind, and disarm every seam below.</p>
 ClassMethod Clear()
 {
     Kill ^||OcuPilotInstallerProbe
+}
+
+/// <p>Arm <method>OcuPilot.Install.Installer.InstanceVersion</method> to answer
+/// <var>pVersion</var> until <method>Clear</method>.</p>
+ClassMethod SetInstanceVersion(pVersion As %String)
+{
+    Set ^||OcuPilotInstallerProbe("instanceVersion") = pVersion
+}
+
+/// <p>The armed version, else the instance's own.</p>
+ClassMethod InstanceVersion() As %String
+{
+    If $Data(^||OcuPilotInstallerProbe("instanceVersion")) Quit ^||OcuPilotInstallerProbe("instanceVersion")
+    Quit ##super()
+}
+
+/// <p>Arm <method>OcuPilot.Install.Installer.PackageDestination</method> to answer
+/// <var>pDestination</var> until <method>Clear</method>.</p>
+ClassMethod SetPackageDestination(pDestination As %String)
+{
+    Set ^||OcuPilotInstallerProbe("packageDestination") = pDestination
+}
+
+/// <p>The armed destination, else the namespace's own answer.</p>
+ClassMethod PackageDestination(pNamespace As %String) As %String
+{
+    If $Data(^||OcuPilotInstallerProbe("packageDestination")) Quit ^||OcuPilotInstallerProbe("packageDestination")
+    Quit ##super(pNamespace)
+}
+
+/// <p>Make <method>OcuPilot.Install.Installer.CredsDefinitionNames</method> fail (1) or read the
+/// store (0) until <method>Clear</method>.</p>
+ClassMethod SetDefinitionsUnreadable(pUnreadable As %Boolean)
+{
+    Set ^||OcuPilotInstallerProbe("definitionsUnreadable") = pUnreadable
+}
+
+/// <p>An induced read failure when armed, else the real read.</p>
+ClassMethod CredsDefinitionNames(Output pNames As %List) As %Status
+{
+    If +$Get(^||OcuPilotInstallerProbe("definitionsUnreadable"), 0) {
+        Set pNames = ""
+        Quit $$$ERROR($$$GeneralError, "OcuPilot.Test.InstallerProbe: induced definition-store read failure")
+    }
+    Quit ##super(.pNames)
+}
+
+/// <p>Arm <method>OcuPilot.Install.Installer.CredentialsRungAvailable</method> to answer
+/// <var>pAvailable</var> (1 or 0) until <method>Clear</method>.</p>
+ClassMethod SetRungAvailable(pAvailable As %Boolean)
+{
+    Set ^||OcuPilotInstallerProbe("rungAvailable") = pAvailable
+}
+
+/// <p>The armed answer, else the install namespace's own.</p>
+ClassMethod CredentialsRungAvailable() As %Boolean
+{
+    If $Data(^||OcuPilotInstallerProbe("rungAvailable")) Quit ^||OcuPilotInstallerProbe("rungAvailable")
+    Quit ##super()
 }
 
 /// <p>Read one captured field back. Returns <code>""</code> when nothing was captured.</p>

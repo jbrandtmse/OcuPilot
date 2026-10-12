@@ -359,8 +359,8 @@ settings you already made are kept.
 > Docker quick start already uses 2026.2. If you install with IPM, check your instance first:
 > the `intersystemsdc/iris-community:latest` and `intersystemsdc/irishealth-community:latest` images
 > are currently 2026.1, so use their `2026.2` tags instead (for example
-> `intersystemsdc/irishealth-community:2026.2-zpm`). IPM refuses to install OcuPilot on an older
-> version.
+> `intersystemsdc/irishealth-community:2026.2-zpm`). OcuPilot's installer, not IPM, refuses to
+> install on an older version.
 
 OcuPilot is also one IPM package. In the namespace you want it in (not `%SYS` or another system
 namespace):
@@ -368,6 +368,12 @@ namespace):
 ```objectscript
 zpm "install ocupilot"
 ```
+
+An instance has one OcuPilot install namespace. Once OcuPilot is installed in one, installing or
+uninstalling it from another namespace is refused, naming the first, and the installer changes
+nothing in either namespace; the container start refuses the same way before it compiles anything.
+The namespace must also keep OcuPilot's code in its own routine database, not behind a package
+mapping.
 
 If IPM answers that no repositories are configured, run `zpm "enable -community"` once, then
 install again.
