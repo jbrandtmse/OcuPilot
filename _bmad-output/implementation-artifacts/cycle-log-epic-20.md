@@ -511,3 +511,8 @@
 2026-10-12T04:22:09Z	Story 20.6	spec_validated	service_introducing=false(extends_InteropPort) integration_ac=present adr_constrained_acs=AD-62,AD-39,AD-51,AD-8,AD-44,AD-36,AD-15,AD-7,AD-47,AD-22,AD-53 decision_dependency=none sections_created=none owned_ledger=none mutates_shared_runtime=true(ocupilot-b-ci_named) posture=equal_or_stricter_than_classic(no_halt) gate=Q1_asked(default_one_story),GetMessageList_documented-first
 2026-10-12T04:22:21Z	Story 20.5	ci_resolved	story=20.5 run=38200078493 result=success head=37441be9 resolved_at=next_implement
 2026-10-12T04:22:21Z	Story 20.5	ci_green_verified	run=38200078493 head=37441be9 boundary=reported_to_main
+2026-10-12T04:27:11Z	Story 20.6	orchestrator_ruling	Q1=A(Part_B_to_Story_20.27_Transformations_tested;order_20.6,20.13,20.27,20.7) gate_ruling_agreed=documented_class_metadata_first
+2026-10-12T04:27:11Z	Epic 20	story_chartered	story=20.27 key=20-27-transformations-tested by=runner(orchestrator_ruling_Q1_A) consumes=20.6_shared_test_helper+AD-39_seventh_exception
+2026-10-12T04:27:11Z	Epic 20	deps_hash_rerecorded	reason=story_chartered(20.27)+20.6_AC_moved
+2026-10-12T04:27:11Z	Story 20.6	spec_narrowed	scope=Part_A_host_Test_tab moved=Part_B_block,AC5,AC6,transform_halves_of_AC7-9(marked_in_place) spine=AD-62_item_11,AD-39,AD-8,AD-7_attribution
+2026-10-12T04:27:11Z	Story 20.6	stage_spawned	stage=implement spawn_at=2026-10-12T04:27:11Z model=sonnet agent_name=20-6-implement-1 cycle_iteration=1 ci_prior=success_38200078493(20.5_37441be9)

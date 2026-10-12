@@ -18,7 +18,7 @@ deferred: []
 
 **Problem:** A production's hosts and transformations can still be tested only in the classic portal: the Testing Service page (`EnsPortal.TestingService` and its dialog) sends a request built from the target's message classes, and the Test Transform dialog (`EnsPortal.Dialog.TestTransform`) runs a transformation on pasted input. Nothing in OcuPilot tests either one, so a change cannot be checked here before it is deployed.
 
-**Approach:** Extend `Port/InteropPort` (AD-62) with a host test and a transformation test, each a confirmed proposal for the agent and a person's own action on the screen (AD-53). Part A, the host test, adds a per-host Test tab. Its read lists the request classes the target takes and their fields, and its Send action builds the request from them and sends it through `EnsLib.Testing.Service`. It then shows the session, the status and the response. Part B adds a Test row action to Data transformations: the pasted input is parsed into the transformation's source class, the transformation runs once in process, and the target renders as text. Neither result ever reaches the model (AD-39).
+**Approach (narrowed to Part A at the spec gate; the transformation test is Story 20.27):** Extend `Port/InteropPort` (AD-62) with a host test and a transformation test, each a confirmed proposal for the agent and a person's own action on the screen (AD-53). Part A, the host test, adds a per-host Test tab. Its read lists the request classes the target takes and their fields, and its Send action builds the request from them and sends it through `EnsLib.Testing.Service`. It then shows the session, the status and the response. Part B adds a Test row action to Data transformations: the pasted input is parsed into the transformation's source class, the transformation runs once in process, and the target renders as text. Neither result ever reaches the model (AD-39).
 
 ## Boundaries & Constraints
 
@@ -294,6 +294,8 @@ Unchanged: `EntityType` (73), `EndpointCoverage`, `SaveHoldCoverage`, `DraftRegi
 
 **Part B: the transformation test.**
 
+**[MOVED to Story 20.27 by the orchestrator's Q1 (A) ruling, 2026-10-12. Not this story's work; kept as 20.27's starting charter.]**
+
 - [ ] `InteropPort.cls` (extend):
   - **Types and pair.** `Transforms` serves `TRANSFORM` (read, composed) and `TRANSFORMTEST` (write). The pair `DTLTESTPAIR` `%Ens_DTLTest:USE` is added to `CODEPAIRS` for both. `IsTestWrite` gains `TRANSFORMTEST`, and `COMPOSEDTYPES` gains `Transforms/TRANSFORMTEST`.
   - **`TRANSFORM`** answers `{Namespace, Name, SourceClass, SourceDocType, TargetClass, TargetDocType, Create, Source, content}` for a class `ListClasses` lists (else 404), through the classic dialog's four calls. `Source` is `document` (an `EnsLib.EDI.Document`) or `xml` (an `%XML.Adaptor`).
@@ -358,17 +360,19 @@ Unchanged: `EntityType` (73), `EndpointCoverage`, `SaveHoldCoverage`, `DraftRegi
   - a `ConfigChange` row records the test with no field value
 - **AC3 (host refusals):** Given each host refusal and violation of the matrix, when either caller attempts it, then it is refused by its code before any vendor call and no message header is added.
 - **AC4 (bounded wait):** Given a target that does not answer within `TESTWAIT`, when it is tested, then the request answers `waiting` with the session id within the cap.
-- **AC5 (transformation test, both callers):** Given a probe transformation and pasted XML or HL7, when a person runs the test, and when the agent proposes it and the person confirms, then:
+- [MOVED to Story 20.27] **AC5 (transformation test, both callers):** Given a probe transformation and pasted XML or HL7, when a person runs the test, and when the agent proposes it and the person confirms, then:
   - the transformation runs once in the caller's process, and its target renders as text in the dialog and on the card
   - the card shows the input and the consequence before Confirm
   - nothing the test parsed or produced is left stored
   - the key ships `true`
-- **AC6 (transformation outcomes):** Given input that does not parse, a transformation that fails, or one that writes to the device, when it is tested, then the status and lines say so, and the HTTP answer stays a JSON envelope.
+- [MOVED to Story 20.27] **AC6 (transformation outcomes):** Given input that does not parse, a transformation that fails, or one that writes to the device, when it is tested, then the status and lines say so, and the HTTP answer stays a JSON envelope.
 - **AC7 (gates):** Given a principal missing one declared pair of a new surface, or holding READ only on the globals database, when it reads, sends or runs, then it is refused naming that pair before any vendor call. A principal holding exactly the pairs succeeds (the vendor checks nothing, measured).
 - **AC8 (results are screen data only):** Given a host result and a transformation's output, when either is shown, then it renders as text, never markup. It reaches no turn's model messages, ledger row, audit payload, log line or screen context.
 - **AC9 (reads change nothing):** Given the Test tab read and the composed `TESTTARGET` and `TRANSFORM` reads, when they run, then the stored production, the message store and `^EnsHL7.Segment` are unchanged.
 
 ## Spec Change Log
+
+- 2026-10-12, spec gate (lead): narrowed to Part A under the orchestrator's Q1 (A) ruling; Part B, AC5, AC6 and the transformation halves of AC7 to AC9 moved to Story 20.27 (marked in place).
 
 - 2026-10-12, spec gate (lead): rulings under Design Notes › Gate rulings (Q1 asked, `GetMessageList` documented-first); spine drafts written.
 
@@ -433,7 +437,7 @@ Checked and not engaged: AD-26 and AD-27 (no admin API, no 202 path), AD-57 (no 
 
 **Gate rulings (lead, 2026-10-12):**
 
-- Q1: asked of the orchestrator. Until it rules, this spec stays one story: Part A first, then Part B. If the handoff or the review finds the story oversized, HALT `blocked` with `split: Part B` so the lead charters it.
+- **Q1 ruled (A) by the orchestrator, 2026-10-12: this story is Part A only, the host Test tab.** Part B, the transformation test, is Story 20.27 ("Transformations tested"), which consumes this story's shared helper (`IsTestWrite`, the test code family, `test-answer.ts`) and the AD-39 seventh exception. Out of this story: the whole block under Tasks & Acceptance › Part B, AC5, AC6, the transformation halves of AC7 to AC9, the I/O matrix's four `Transform` rows, the `TRANSFORM`/`TRANSFORMTEST` port types, `interop.transforms.test`, the `InteropTransformList` row action, `OcuPilotProbe.Interop.Dtl`, `InteropTransformTest` and `interop-transform-test.browser-spec.mjs`, and the roster moves that belong only to the transformation tool. Build only Part A; the shared helper is introduced here as Part A needs it.
 - `GetMessageList`: prefer listing the target's request classes from documented class metadata (the class dictionary), as AD-62 item 1 asks. Call the dialog's `[Internal]` `GetMessageList` only if that proves infeasible, and say why in Auto Run Result; AD-62 item 11 names that call as a limit.
 - The spine drafts are written: AD-62 item 11, AD-51, AD-39's seventh exception, AD-36, AD-44, AD-8, AD-15 and AD-7.
 - Bundle: no re-base expected. If the build crosses `maximumWarning` (3527kB), re-base under DW-1166 as Story 20.5 did.
