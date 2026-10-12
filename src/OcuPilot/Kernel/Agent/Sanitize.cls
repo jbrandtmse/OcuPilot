@@ -16,6 +16,12 @@
 /// to AD-11's five rules; nothing reads its output as the defense.</p>
 /// <p>Only the model's copy passes here: the step card, citations and screens keep the bounded
 /// instance data. No storage.</p>
+/// <p><b>One content passes unchanged:</b> a non-empty array of blocks each exactly
+/// <code>{type: "tool_reference", tool_name}</code>, <code>tool_name</code> a wire name
+/// (<parameter>REFERENCENAME</parameter>). It is the discovery tool's answer
+/// (<method>OcuPilot.Kernel.Agent.Loop.AnswerTools</method>, AD-24) and carries no instance data -- a
+/// wire name of a registered tool -- so there is nothing to clean, and wrapping it would turn it into
+/// text the provider no longer expands.</p>
 Class OcuPilot.Kernel.Agent.Sanitize Extends %RegisteredObject
 {
 
@@ -28,6 +34,11 @@ Parameter OPENTAG = "<ocupilot-data>";
 
 /// <p>The line that closes every wrapped content.</p>
 Parameter CLOSETAG = "</ocupilot-data>";
+
+/// <p>What a <code>tool_reference</code> block's <code>tool_name</code> must match to pass
+/// unchanged: a provider tool name, the grammar of
+/// <parameter>OcuPilot.Screen.Tool.Registry.WIRENAMEPATTERN</parameter>.</p>
+Parameter REFERENCENAME = "^[a-zA-Z0-9_-]{1,64}$";
 
 /// <p>The opening line of a body the backstop cut.</p>
 Parameter CUTOPENTAG = "<ocupilot-data truncated=""true"">";
@@ -42,10 +53,29 @@ ClassMethod Results(pBlocks As %DynamicArray)
         Set tBlock = pBlocks.%Get(tI)
         If '$IsObject(tBlock) || 'tBlock.%IsA("%Library.DynamicObject") Continue
         If tBlock.%Get("type") '= "tool_result" Continue
+        If ..IsToolReferences(tBlock.%Get("content")) Continue
         Set tClean = ..Content(tBlock.%Get("content"), .tFaulted)
         Do tBlock.%Set("content", tClean, "string")
         If tFaulted Do tBlock.%Set("is_error", 1, "boolean")
     }
+}
+
+/// <p>Whether <var>pContent</var> is a non-empty array of blocks each exactly
+/// <code>{type: "tool_reference", tool_name}</code> with a <code>tool_name</code> matching
+/// <parameter>REFERENCENAME</parameter>. A block with another member, another type or another name
+/// shape makes the whole content something else.</p>
+ClassMethod IsToolReferences(pContent) As %Boolean
+{
+    If '$IsObject(pContent) || 'pContent.%IsA("%Library.DynamicArray") || (pContent.%Size() = 0) Quit 0
+    Set tIterator = pContent.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tBlock) {
+        If '$IsObject(tBlock) || 'tBlock.%IsA("%Library.DynamicObject") Quit
+        If tBlock.%Size() '= 2 Quit
+        If (tBlock.%GetTypeOf("type") '= "string") || (tBlock.%Get("type") '= "tool_reference") Quit
+        If (tBlock.%GetTypeOf("tool_name") '= "string") || '$Match(tBlock.%Get("tool_name"), ..#REFERENCENAME) Quit
+        Set tOk = $Get(tOk) + 1
+    }
+    Quit ($Get(tOk) = pContent.%Size())
 }
 
 /// <p>The wrapped, sanitized form of <var>pContent</var> (a string, or a dynamic object or array,

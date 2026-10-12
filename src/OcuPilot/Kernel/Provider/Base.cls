@@ -164,6 +164,12 @@ Method ResolvedSecretClass() As %String [ Private ]
 /// <code>("description")</code> / <code>("inputSchema")</code>, the schema a JSON string, with
 /// <code>pTools</code> the count. Either may be absent, which means none.
 /// <var>pSystemPrompt</var> is sent only when non-empty.</p>
+/// <p><b>A scoped tool array</b> (AD-24) also carries <code>pTools("scoped")</code> 1,
+/// <code>pTools(n, "start")</code> 1 on each tool of the turn's starting set and
+/// <code>pTools(n, "found")</code> on each other tool the turn has found, a whole number in the order
+/// found. An adapter that sends every tool marks the others deferred; an adapter that sends only the
+/// tools it is given sends the starting set, then the found ones by number. Without
+/// <code>"scoped"</code> the whole array is the set.</p>
 /// <p><var>pSettings</var> is <method>OcuPilot.Kernel.State.Egress.Resolve</method>'s array. The
 /// caller resolves it, so the timeout, the attempt bound, the proxy and the TLS configuration name
 /// are the instance's stored configuration and never a parameter of this class (AD-32).</p>

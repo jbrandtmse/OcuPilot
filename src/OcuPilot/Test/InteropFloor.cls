@@ -35,7 +35,7 @@ Parameter BASESCREENS = "AgentGuardrails,AgentLedger,AgentTranscript,AgentTransc
 Parameter BASEAREAS = "agent,analytics,home,logs";
 
 /// <p>See <parameter>BASESCREENS</parameter>.</p>
-Parameter BASETOOLS = "agent.transcripts.read,logs.analytics.read,shell.instance.read,shell.namespaces.read,shell.privileges.read,shell.screen.open";
+Parameter BASETOOLS = "agent.transcripts.read,logs.analytics.read,shell.instance.read,shell.namespaces.read,shell.privileges.read,shell.screen.open,shell.tools.find";
 
 /// <p>What the Monitor role adds: the Production monitor, through the <code>%Ens_Dashboard:USE</code> the role holds (Story
 /// 20.4). The Operator and Administrator roles hold it too.</p>

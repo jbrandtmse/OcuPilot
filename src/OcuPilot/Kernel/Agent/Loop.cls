@@ -1,13 +1,21 @@
 /// <p>The bounded provider loop a turn job runs (AD-7, AD-30, AD-31, AD-41). Before the first call it
 /// takes the tool array from <method>DispatchClass</method>'s <code>Advertise</code> once, and every
-/// provider request carries it; a turn whose tools cannot be advertised ends <code>failed</code>
+/// provider request is built from it; a turn whose tools cannot be advertised ends <code>failed</code>
 /// with no provider call. It calls the provider through <method>PortClass</method>, answers each
 /// tool call through <method>DispatchTools</method>, writes progress steps as it goes, and stops at
 /// the first step boundary that says so. The system prompt is the built-in one or the definition's
 /// override, whole; no tool result is ever joined to it (AD-11).</p>
 /// <p><b>History within a turn is append-only</b> (AD-24): a message already sent is never changed,
-/// reordered or removed, and the tool array is taken once, so every request of a turn opens with the
-/// same prefix.</p>
+/// reordered or removed, and the tool array is taken once. An Anthropic request therefore opens with
+/// the same prefix on every call of a turn; the other families' tool list grows after a search finds
+/// a tool, so their prefix changes there.</p>
+/// <p><b>The tool set is chosen after the listing, once per turn</b> (AD-5, AD-24):
+/// <method>Scope</method> marks the starting set -- the shell area's tools, the discovery tool among
+/// them, and the screen context's own -- on the array <method>Advertise</method> answered, and every
+/// other advertised tool is reached through the discovery tool, which
+/// <method>AnswerTools</method> turns into <code>tool_reference</code> blocks and the
+/// provider adapters read. An array without the discovery tool is sent whole. Dispatch is not
+/// scoped: any listed, advertised tool still dispatches by its wire name (AD-8).</p>
 /// <p><b>The boundary</b> runs before every provider call and before every tool call (AD-30: between
 /// every step), in this order: the stop flag, the sign-out flag, the kill switch
 /// (<class>OcuPilot.Kernel.Restraint</class>, whose code is recorded as given), enforced read-only
@@ -30,6 +38,12 @@ Class OcuPilot.Kernel.Agent.Loop Extends %RegisteredObject
 
 /// <p>The step name every provider call is recorded under.</p>
 Parameter MODELSTEP = "provider";
+
+/// <p>The wire name of the discovery tool (<class>OcuPilot.Screen.Tool.ToolsFind</class>).</p>
+Parameter DISCOVERYTOOL = "shell_tools_find";
+
+/// <p>The prefix of the wire names of the shell area's tools, which every turn starts with.</p>
+Parameter SHELLPREFIX = "shell_";
 
 /// <p>The class every limit is read from.</p>
 ClassMethod LimitsClass() As %String
@@ -73,6 +87,54 @@ ClassMethod ContextRoute(pContextJson As %String) As %String
         Set tRoute = ""
     }
     Quit tRoute
+}
+
+/// <p>The wire names of the tools <var>pContextJson</var> names (its <code>tools</code> member), as a
+/// <class>%List</class>, or <code>""</code> for a turn that carried no context or a payload without
+/// them. Like <method>ContextRoute</method> it reads the payload
+/// <method>OcuPilot.Screen.Context.Build</method> already produced and resolves nothing.</p>
+ClassMethod ContextTools(pContextJson As %String) As %List
+{
+    Set tTools = ""
+    Try {
+        If pContextJson = "" Quit
+        Set tParsed = ##class(%DynamicAbstractObject).%FromJSON(pContextJson)
+        If '$IsObject(tParsed) || (tParsed.%GetTypeOf("tools") '= "array") Quit
+        Set tIterator = tParsed.tools.%GetIterator()
+        While tIterator.%GetNext(.tIndex, .tName, .tType) {
+            If (tType = "string") && (tName '= "") Set tTools = tTools _ $ListBuild(tName)
+        }
+    } Catch ex {
+        Set tTools = ""
+    }
+    Quit tTools
+}
+
+/// <p>Scope the tool array <var>pTools</var> (<method>OcuPilot.Kernel.Agent.Dispatch.Advertise</method>'s
+/// shape) to the turn's starting set, in place. When the array holds the discovery tool
+/// (<parameter>DISCOVERYTOOL</parameter>), <code>pTools("scoped")</code> becomes 1 and
+/// <code>pTools(n, "start")</code> becomes 1 for each tool whose wire name starts with
+/// <parameter>SHELLPREFIX</parameter> and for each name <method>ContextTools</method> reads from
+/// <var>pContextJson</var>; every other tool is left for the discovery tool to find. An array without
+/// the discovery tool is left whole, so no advertised tool becomes unreachable. A pure function of
+/// the array and the context: it reads no registry.</p>
+ClassMethod Scope(ByRef pTools, pContextJson As %String = "")
+{
+    Kill pTools("scoped")
+    Set tHasDiscovery = 0
+    For tI = 1:1:+$Get(pTools) {
+        If $Get(pTools(tI, "name")) = ..#DISCOVERYTOOL {
+            Set tHasDiscovery = 1
+            Quit
+        }
+    }
+    If 'tHasDiscovery Quit
+    Set tContextTools = ..ContextTools(pContextJson)
+    Set pTools("scoped") = 1
+    For tI = 1:1:+pTools {
+        Set tName = $Get(pTools(tI, "name"))
+        If ($Extract(tName, 1, $Length(..#SHELLPREFIX)) = ..#SHELLPREFIX) || $ListFind(tContextTools, tName) Set pTools(tI, "start") = 1
+    }
 }
 
 /// <p>Log a loop failure with the code the turn ends with.</p>
@@ -224,6 +286,7 @@ ClassMethod Run(pKey As %String, pUser As %String, pDefinitionId As %String, pMe
             Do ..LogFault("the turn's tools could not be advertised", tAdvertiseSC, pOutcome("code"))
             Quit
         }
+        Do ..Scope(.tTools, pContext)
         For {
             If ..Boundary(pKey, pUser, pReadOnly, pResources, pStartedSeconds, tBound + tOutput, .tState, .tCode) {
                 If tCode = ##class(OcuPilot.Api.Error).#TURNSTOPPED {
@@ -283,7 +346,7 @@ ClassMethod Run(pKey As %String, pUser As %String, pDefinitionId As %String, pMe
                 Set pOutcome("citations") = ##class(OcuPilot.Kernel.Agent.Citations).Cite(tResponse.Text, tCandidates).%ToJSON()
                 Quit
             }
-            Set tSC = ..AnswerTools(pKey, pUser, pDefinitionId, tResponse.Text, tToolUses, tLimits, .tMessages, tToolLog, .tLastSeq, pReadOnly, pResources, pStartedSeconds, tBound + tOutput, .tState, .tCode, pContextRowCap, tContextRoute, tResponse.ContentJson, tCandidates, .tTurnBudget)
+            Set tSC = ..AnswerTools(pKey, pUser, pDefinitionId, tResponse.Text, tToolUses, tLimits, .tMessages, tToolLog, .tLastSeq, pReadOnly, pResources, pStartedSeconds, tBound + tOutput, .tState, .tCode, pContextRowCap, tContextRoute, tResponse.ContentJson, tCandidates, .tTurnBudget, .tTools)
             If $$$ISERR(tSC) Quit
             If tState '= "" {
                 Set pOutcome("state") = tState
@@ -492,6 +555,14 @@ ClassMethod ToolUses(pJson As %String) As %DynamicArray
 /// the lesser of <parameter>OcuPilot.Kernel.Agent.Limits.TOOLRESULTMAXLENGTH</parameter> and
 /// <var>pTurnBudget</var>, and every character a result carries is taken off both, neither going
 /// below 0; it comes back lowered by what this reply carried.</p>
+/// <p><b>The discovery tool</b> (AD-5, AD-24): <var>pTools</var> is the turn's tool array, scoped by
+/// <method>Scope</method>, or <code>""</code> for a caller whose turn is not scoped. After a
+/// non-error answer of <parameter>DISCOVERYTOOL</parameter> on a scoped array, <var>pTools</var> gains
+/// <code>pTools(n, "found")</code> -- the next whole number, once per tool -- for each advertised tool
+/// the answer's rows name that is in the array and not in the starting set, and the result block's
+/// <code>content</code> becomes one <code>tool_reference</code> block for each, in row order. An
+/// answer that names no such tool keeps its content. The array only gains <code>found</code>
+/// members; no member already sent changes.</p>
 /// <p><var>pContentJson</var> is <property>OcuPilot.Kernel.Provider.Response.ContentJson</property>:
 /// when it parses to a non-empty array, that array is the echo, unchanged and in order, because a
 /// reply's reasoning blocks must go back to the provider as it sent them. Otherwise the echo is
@@ -500,7 +571,7 @@ ClassMethod ToolUses(pJson As %String) As %DynamicArray
 /// to a descriptor-backed read tool answered here (<method>OcuPilot.Kernel.Agent.Citations.Candidates</method>),
 /// read from the bounded content before <method>OcuPilot.Kernel.Agent.Sanitize.Results</method>
 /// frames the model's copy.</p>
-ClassMethod AnswerTools(pKey As %String, pUser As %String, pDefinitionId As %String, pText As %String, pToolUses As %DynamicArray, pLimitsClass As %String, ByRef pMessages, pToolLog As %DynamicArray, ByRef pLastSeq As %Integer, pReadOnly As %Boolean, pResources As %String, pStartedSeconds As %Integer, pTokens As %Integer, Output pState As %String, Output pCode As %String, pContextRowCap As %Integer = 0, pRoute As %String = "", pContentJson As %String = "", pCandidates As %DynamicArray = "", ByRef pTurnBudget As %Integer = "") As %Status
+ClassMethod AnswerTools(pKey As %String, pUser As %String, pDefinitionId As %String, pText As %String, pToolUses As %DynamicArray, pLimitsClass As %String, ByRef pMessages, pToolLog As %DynamicArray, ByRef pLastSeq As %Integer, pReadOnly As %Boolean, pResources As %String, pStartedSeconds As %Integer, pTokens As %Integer, Output pState As %String, Output pCode As %String, pContextRowCap As %Integer = 0, pRoute As %String = "", pContentJson As %String = "", pCandidates As %DynamicArray = "", ByRef pTurnBudget As %Integer = "", ByRef pTools = "") As %Status
 {
     Set pState = ""
     Set pCode = ""
@@ -654,6 +725,7 @@ ClassMethod AnswerTools(pKey As %String, pUser As %String, pDefinitionId As %Str
             Do pToolLog.%Push(tEntry)
             Do tAnswered.%Push(tResult)
             Do ..Spend(tResult, .tBudget, .pTurnBudget)
+            If $Get(pTools("scoped")) && 'tIsError && $IsObject(tBlock) && (tBlock.%Get("name") = ..#DISCOVERYTOOL) Do ..Found(tResult, .pTools)
         }
     }
     If $$$ISERR(tSC) Quit tSC
@@ -676,6 +748,47 @@ ClassMethod Spend(pResult As %DynamicObject, ByRef pBudget As %Integer, ByRef pT
     If pTurnBudget = "" Quit
     Set pTurnBudget = pTurnBudget - tUsed
     If pTurnBudget < 0 Set pTurnBudget = 0
+}
+
+/// <p>Make the tools the discovery answer <var>pResult</var> names reachable (<method>AnswerTools</method>
+/// describes the contract): each row's <code>name</code> that is in <var>pTools</var> and not in its
+/// starting set becomes a <code>tool_reference</code> block of <var>pResult</var>'s <code>content</code>,
+/// in row order, and is numbered in <code>pTools(n, "found")</code> unless it already is. Reads the
+/// array, never the registry, so a name the turn's array does not hold is never referenced. A content
+/// that is not the discovery answer's JSON, or names no such tool, is left as it is.</p>
+ClassMethod Found(pResult As %DynamicObject, ByRef pTools) [ Private ]
+{
+    Try {
+        Set tAnswer = ##class(%DynamicAbstractObject).%FromJSON(pResult.%Get("content"))
+        If '$IsObject(tAnswer) || (tAnswer.%GetTypeOf("rows") '= "array") Quit
+        Kill tIndexOf
+        Set tNext = 0
+        For tI = 1:1:+$Get(pTools) {
+            If $Get(pTools(tI, "name")) '= "" Set tIndexOf(pTools(tI, "name")) = tI
+            If +$Get(pTools(tI, "found")) > tNext Set tNext = pTools(tI, "found")
+        }
+        Set tReferences = []
+        Set tIterator = tAnswer.rows.%GetIterator()
+        While tIterator.%GetNext(.tAt, .tRow) {
+            If '$IsObject(tRow) || (tRow.%GetTypeOf("name") '= "string") Continue
+            Set tName = tRow.%Get("name")
+            If (tName = "") || '$Data(tIndexOf(tName)) Continue
+            Set tTool = tIndexOf(tName)
+            If $Get(pTools(tTool, "start")) || $Data(tReferenced(tName)) Continue
+            Set tReferenced(tName) = ""
+            If '$Data(pTools(tTool, "found")) {
+                Set tNext = tNext + 1
+                Set pTools(tTool, "found") = tNext
+            }
+            Set tReference = {}
+            Do tReference.%Set("type", "tool_reference", "string")
+            Do tReference.%Set("tool_name", tName, "string")
+            Do tReferences.%Push(tReference)
+        }
+        If tReferences.%Size() > 0 Do pResult.%Set("content", tReferences)
+    } Catch ex {
+        Do ..LogFault("a discovery answer could not be applied to the turn's tools", ex.AsStatus(), ##class(OcuPilot.Api.Error).#TOOLUNAVAILABLE)
+    }
 }
 
 /// <p>Whether the resolved tool <var>pTool</var> is one whose rows a citation may name: a read-kind,

@@ -1,13 +1,13 @@
 /// <p>Tools in a real turn job, over the wire (AD-1, AD-8, AD-11, AD-31): a turn posted as the suite's
 /// account advertises every tool and answers the shell instance read and the users read with their
-/// results; and a principal whose role carrying <code>%Admin_Secure:USE</code> is removed while its
+/// results; a tool the turn searches for is deferred, found and then called (Story 18.45); and a principal whose role carrying <code>%Admin_Secure:USE</code> is removed while its
 /// turn runs is refused that pair from its current grants, although the job's <code>$ROLES</code>
 /// still names the role -- observed on the requests <class>OcuPilot.Test.TurnProvider</class>
 /// recorded and on the turn's progress.</p>
 /// <p><b>It creates an IRIS user and two roles and spawns turn jobs, so
 /// <method>OnBeforeAllTests</method> refuses to run unless both <parameter>ARMINGVARIABLE</parameter>
-/// and <parameter>PROVIDERVARIABLE</parameter> read 1.</b> After every method no probe job, turn, slot,
-/// stub node, principal, role or probe definition remains.</p>
+/// and <parameter>PROVIDERVARIABLE</parameter> read 1.</b> After every method no probe job, turn, ledger
+/// row, slot, stub node, principal, role or probe definition remains.</p>
 Class OcuPilot.Test.ToolWire Extends %UnitTest.TestCase
 {
 
@@ -61,7 +61,7 @@ Method OnBeforeOneTest() As %Status
 Method OnAfterOneTest() As %Status
 {
     Set tLeft = ..Teardown()
-    Do $$$AssertEquals(tLeft, "", "no probe job, turn, slot, stub node, principal, role or probe definition survives the method")
+    Do $$$AssertEquals(tLeft, "", "no probe job, turn, ledger row, slot, stub node, principal, role or probe definition survives the method")
     Quit $$$OK
 }
 
@@ -82,6 +82,9 @@ Method Teardown() As %String
             Hang 0.25
         }
         If (tPid '= "") && $Data(^$JOB(tPid)) Set tLeft = tLeft _ " job " _ tPid
+        Do ##class(OcuPilot.Kernel.State.Ledger).GuardedDeleteForTurn(tKey)
+        Set tLedgerRows = ""
+        If $$$ISERR(##class(OcuPilot.Kernel.State.Ledger).GuardedCountForTurn(tKey, .tLedgerRows)) || tLedgerRows Set tLeft = tLeft _ " ledger rows of " _ tKey
         Do ##class(OcuPilot.Kernel.State.Turn).GuardedDelete(tKey)
         If (##class(OcuPilot.Test.TurnFixture).Field(tKey, "State") '= "") || ##class(OcuPilot.Test.TurnFixture).StepCount(tKey) || $Data(^OcuPilotTurnSignal(tKey)) Set tLeft = tLeft _ " turn " _ tKey
     }
@@ -231,6 +234,73 @@ Method TestANavigationTargetTheCallerCannotOpenIsRefusedBeforeAnyAnnouncement()
     Do $$$AssertTrue(tWrapped, "the refusal arrives framed as data: " _ tResult.content)
     Do $$$AssertEquals(tResult."is_error" _ "|" _ tBody, "1|{""code"":""AUTH.NOPRIVILEGE"",""detail"":{""failedPair"":""%Admin_Secure:USE""}}", "the navigation call is refused naming the pair")
     Do $$$AssertEquals(..Steps(tView), "model:provider:ok:;tool:shell.screen.open:error:AUTH.NOPRIVILEGE;model:provider:ok:;", "the tool step itself is the refusal -- no announce step is ever recorded")
+}
+
+/// <p>Integration (Story 18.45) -- a turn posted as the suite's account searches and then calls the
+/// tool it found: call 1 asks <code>shell_tools_find</code> for "permissions users read", call 2 calls
+/// <code>permissions_users_read</code> with <code>maxRows</code> 5 and call 3 ends. Every request
+/// carries the same <code>tools</code> text, holding the whole advertised roster, with the users read
+/// deferred, only the shell's tools undeferred and the cache marker on the last of those; call 2's
+/// result for the search is a list of <code>tool_reference</code> blocks naming the users read first;
+/// call 3 carries the users read's own answer; and both tool steps are ok.</p>
+/// <p>Mutation: <method>OcuPilot.Kernel.Agent.Loop.AnswerTools</method> keeps the search's content as
+/// the text it was answered with, not the references -> this goes red.</p>
+Method TestASearchedToolIsCalledOverAnUnchangedArray()
+{
+    Set tUser = ##class(OcuPilot.Test.Http).GetTestUsername()
+    Set tFind = [{"id": "toolu_find", "name": "shell_tools_find", "input": {"query": "permissions users read"}}]
+    Set tUsers = [{"id": "toolu_users", "name": "permissions_users_read", "input": {"maxRows": 5}}]
+    Do ##class(OcuPilot.Test.TurnProvider).Script(..#TAG, 0, ##class(OcuPilot.Test.TurnProvider).ToolUseReply(tFind))
+    Do ##class(OcuPilot.Test.TurnProvider).Script(..#TAG, 0, ##class(OcuPilot.Test.TurnProvider).ToolUseReply(tUsers))
+    Do ##class(OcuPilot.Test.TurnProvider).Script(..#TAG, 0, ##class(OcuPilot.Test.TurnProvider).TextReply("done"))
+    Set tId = ..Start(tUser, ##class(OcuPilot.Test.Http).GetTestPassword(), "which tool lists users", .tStatus, .tText)
+    Do $$$AssertEquals(tStatus, 202, "the start is accepted: " _ tText)
+    If tId = "" Quit
+    Set ..PreparedKeys(tId) = ""
+    Do $$$AssertEquals($ClassMethod(..#FIXTURE, "AwaitEnd", tId, tUser, ##class(OcuPilot.Test.Http).GetTestPassword(), 60, .tView), "completed", "the turn completes")
+    Do $$$AssertEquals(##class(OcuPilot.Test.TurnProvider).Calls(..#TAG), 3, "after three provider calls")
+
+    Set tFirst = ##class(OcuPilot.Test.TurnProvider).Recorded(..#TAG, 1, "tools")
+    Do $$$AssertEquals(tFirst, ##class(OcuPilot.Test.TurnProvider).Recorded(..#TAG, 2, "tools"), "call 2 carries call 1's tools, byte for byte")
+    Do $$$AssertEquals(tFirst, ##class(OcuPilot.Test.TurnProvider).Recorded(..#TAG, 3, "tools"), "and so does call 3")
+    Do $$$AssertStatusOK(##class(OcuPilot.Screen.Tool.Registry).ProviderTools(.tAdvertised), "the registry advertises")
+    Set tTools = ##class(%DynamicArray).%FromJSON(tFirst)
+    Do $$$AssertEquals(tTools.%Size(), +$Get(tAdvertised), "every advertised tool is sent")
+    Set tDeferredUsers = 0
+    Set tUndeferred = ""
+    Set tLast = -1
+    For tI = 0:1:tTools.%Size() - 1 {
+        Set tTool = tTools.%Get(tI)
+        If tTool.name = "permissions_users_read" Set tDeferredUsers = ''tTool."defer_loading"
+        If tTool."defer_loading" Continue
+        Set tUndeferred = tUndeferred _ $Select(tUndeferred = "": "", 1: ",") _ tTool.name
+        Set tLast = tI
+    }
+    Do $$$AssertEquals(tDeferredUsers, 1, "the users read is deferred")
+    Do $$$AssertTrue($Length(tUndeferred, ",") >= 2, "the shell's tools are not: " _ tUndeferred)
+    Set tOutside = 0
+    For tI = 1:1:$Length(tUndeferred, ",") If $Extract($Piece(tUndeferred, ",", tI), 1, 6) '= "shell_" Set tOutside = tOutside + 1
+    Do $$$AssertEquals(tOutside, 0, "and are the only ones, with no screen context: " _ tUndeferred)
+    Do $$$AssertTrue(("," _ tUndeferred _ ",") [ ",shell_tools_find,", "shell_tools_find is among them")
+    Do $$$AssertEquals(##class(OcuPilot.Test.TurnBudget).Marks(tFirst), 1, "one tool carries the cache marker")
+    If tLast >= 0 Do $$$AssertEquals(##class(OcuPilot.Test.TurnBudget).MarkOf(tTools.%Get(tLast)), ##class(OcuPilot.Test.TurnBudget).#EPHEMERAL, "the last tool that is not deferred, " _ tTools.%Get(tLast).name)
+
+    Set tSecond = ##class(%DynamicArray).%FromJSON(##class(OcuPilot.Test.TurnProvider).Recorded(..#TAG, 2, "messages"))
+    Set tSearch = tSecond.%Get(2).content.%Get(0)
+    Do $$$AssertEquals(tSearch."tool_use_id" _ "|" _ tSearch."is_error" _ "|" _ tSearch.%GetTypeOf("content"), "toolu_find|0|array", "call 2's result for the search is a list, not text")
+    If tSearch.%GetTypeOf("content") = "array" {
+        Do $$$AssertEquals(tSearch.content.%Get(0).%ToJSON(), "{""type"":""tool_reference"",""tool_name"":""permissions_users_read""}", "naming the users read first")
+        Set tNotReferences = 0
+        For tI = 0:1:tSearch.content.%Size() - 1 If (tSearch.content.%Get(tI).type '= "tool_reference") || (tSearch.content.%Get(tI).%Size() '= 2) Set tNotReferences = tNotReferences + 1
+        Do $$$AssertEquals(tNotReferences, 0, "and every entry is exactly a reference")
+    }
+    Set tThird = ##class(%DynamicArray).%FromJSON(##class(OcuPilot.Test.TurnProvider).Recorded(..#TAG, 3, "messages"))
+    Set tAnswer = tThird.%Get(4).content.%Get(0)
+    Do $$$AssertEquals(tAnswer."tool_use_id" _ "|" _ tAnswer."is_error", "toolu_users|0", "call 3 carries the users read's answer: " _ $Extract(tAnswer.content, 1, 200))
+    Set tBody = ##class(OcuPilot.Test.TurnWireFixture).Unwrapped(tAnswer.content, .tWrapped)
+    Do $$$AssertTrue(tWrapped, "framed as data")
+    If 'tAnswer."is_error" Do $$$AssertTrue(##class(%DynamicObject).%FromJSON(tBody).rows.%Size() > 0, "with user rows")
+    Do $$$AssertEquals(..Steps(tView), "model:provider:ok:;tool:shell.tools.find:ok:;model:provider:ok:;tool:permissions.users.read:ok:;model:provider:ok:;", "both tool steps are ok")
 }
 
 }

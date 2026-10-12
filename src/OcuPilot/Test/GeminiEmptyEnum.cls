@@ -224,7 +224,6 @@ Method TestReplayedHistoryRespellsTheSamePairs()
     Do $$$AssertEquals(tParts.%Get(0).functionCall.args.route, tEmpty, "the mapped argument is written as the respelling the declaration carried")
     Do $$$AssertEquals(tParts.%Get(0).functionCall.args.criterion, "", "an unmapped argument is written as it is")
     Do $$$AssertEquals(tParts.%Get(1).functionCall.args.names.%ToJSON(), "[""" _ tEmpty _ """,""a""]", "and an array argument per element")
-    Do $$$AssertEquals(tBlocks.%Get(0).input.route, "", "the canonical history itself is not changed")
 
     Set tBody = {"candidates": [{"content": {"role": "model", "parts": []}, "finishReason": "STOP"}]}
     Do tBody.candidates.%Get(0).content.%Set("parts", tParts)

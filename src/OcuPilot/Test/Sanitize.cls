@@ -1,8 +1,8 @@
 /// <p>Pins <class>OcuPilot.Kernel.Agent.Sanitize</class> in process (AD-60): the frame, each of the
 /// five secret shapes, the stripped and kept characters, the near-misses left alone, the neutralized
 /// tag name, idempotence, no lengthening, an AD-24-bounded payload passing byte for byte, the
-/// backstop cut above AD-24's total, and the fail-closed answer
-/// (<class>OcuPilot.Test.SanitizeFault</class>).</p>
+/// backstop cut above AD-24's total, the discovery tool's <code>tool_reference</code> result passing
+/// unchanged, and the fail-closed answer (<class>OcuPilot.Test.SanitizeFault</class>).</p>
 /// <p>Needs nothing from the environment: no arming, no principal, no turn. Every secret-shaped
 /// probe is synthetic and those a repository scan would match are assembled at runtime.</p>
 Class OcuPilot.Test.Sanitize Extends %UnitTest.TestCase
@@ -256,6 +256,36 @@ Method TestAFaultFailsClosed()
     Set tPlain = ##class(OcuPilot.Test.SanitizeFault).Content("not json", .tFaulted)
     Do $$$AssertEquals(tFaulted, 1, "plain content fails closed the same way")
     Do $$$AssertTrue(tPlain [ "TOOL.UNAVAILABLE", "with the same answer")
+}
+
+/// <p>The discovery tool's result (Story 18.45, AD-24): a non-empty array of blocks each exactly
+/// <code>{type: "tool_reference", tool_name}</code> with a wire-name <code>tool_name</code> passes
+/// unchanged, and a second pass changes nothing; a name outside the wire-name grammar, a block with
+/// another member, another type or a non-string name, and an array that mixes in any other block, are
+/// each framed as any other content is. The name grammar is the registry's.</p>
+/// <p>Mutation: <method>OcuPilot.Kernel.Agent.Sanitize.IsToolReferences</method> answers 1 for any
+/// array -> this goes red on the framed legs.</p>
+Method TestAToolReferenceResultPassesUnchangedAndNothingElseDoes()
+{
+    Do $$$AssertEquals($Parameter(..#SANITIZE, "REFERENCENAME"), $Parameter("OcuPilot.Screen.Tool.Registry", "WIRENAMEPATTERN"), "the name grammar is the registry's wire-name grammar")
+    Set tOpen = $Parameter(..#SANITIZE, "OPENTAG")
+    Set tReferences = [{"type": "tool_reference", "tool_name": "probe_found_read"}, {"type": "tool_reference", "tool_name": "Abc-9_x"}]
+    Set tBlocks = [{"type": "tool_result", "tool_use_id": "a", "is_error": false}]
+    Do tBlocks.%Get(0).%Set("content", ##class(%DynamicAbstractObject).%FromJSON(tReferences.%ToJSON()))
+    Do $ClassMethod(..#SANITIZE, "Results", tBlocks)
+    Do $$$AssertEquals(tBlocks.%Get(0).content.%ToJSON(), tReferences.%ToJSON(), "a list of references passes as the array it is")
+    Set tOnce = tBlocks.%ToJSON()
+    Do $ClassMethod(..#SANITIZE, "Results", tBlocks)
+    Do $$$AssertEquals(tBlocks.%ToJSON(), tOnce, "and a second pass changes nothing")
+    Do $$$AssertEquals(tBlocks.%Get(0).%GetTypeOf("content"), "array", "it is still an array, never wrapped")
+
+    For tCase = "[{""type"":""tool_reference"",""tool_name"":""has.dot""}]", "[{""type"":""tool_reference"",""tool_name"":""""}]", "[{""type"":""tool_reference"",""tool_name"":""" _ $Translate($Justify("", 65), " ", "a") _ """}]", "[{""type"":""tool_reference"",""tool_name"":""a"",""cache_control"":{""type"":""ephemeral""}}]", "[{""type"":""tool_reference""}]", "[{""type"":""tool_reference"",""tool_name"":5}]", "[{""type"":""text"",""tool_name"":""a""}]", "[{""type"":""tool_reference"",""tool_name"":""a""},{""type"":""text"",""text"":""x""}]", "[{""type"":""tool_reference"",""tool_name"":""a""},""b""]", "[]" {
+        Set tBad = [{"type": "tool_result", "tool_use_id": "a", "is_error": false}]
+        Do tBad.%Get(0).%Set("content", ##class(%DynamicAbstractObject).%FromJSON(tCase))
+        Do $ClassMethod(..#SANITIZE, "Results", tBad)
+        Do $$$AssertEquals(tBad.%Get(0).%GetTypeOf("content"), "string", $Extract(tCase, 1, 70) _ " is not passed")
+        Do $$$AssertEquals($Extract(tBad.%Get(0).content, 1, $Length(tOpen)), tOpen, $Extract(tCase, 1, 70) _ " is framed")
+    }
 }
 
 }
