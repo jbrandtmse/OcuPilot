@@ -377,6 +377,10 @@ Method TestEveryLiveToolRequiresItsScreensPairs()
             Set tExpected = ""
             Set tExpectedAdded = ##class(OcuPilot.Screen.Gate).RequiredPairs("OcuPilot.Screen.Descriptor.Home", .tExpectedAddedResolved)
             Do $$$AssertEquals(tExpectedAddedResolved, 1, tTool.name _ ": Home's own pairs resolve")
+        } ElseIf tTool.class = "OcuPilot.Screen.Tool.ToolsFind" {
+            ; Story 18.45: the discovery tool searches the listing and reads no instance object, so it
+            ; declares no pair and its arguments add none (AD-8).
+            Set tExpected = ""
         } Else {
             Do $$$AssertTrue(0, tTool.name _ ": a live tool of a source this test does not know, " _ tTool.class)
             Continue
