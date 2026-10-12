@@ -1,4 +1,3 @@
-import { NgComponentOutlet } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -9,114 +8,33 @@ import {
   signal,
 } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, RouterOutlet } from '@angular/router';
 
-import { DefinitionFormPage } from '../areas/agent/definition-form.page';
-import { SwitchesPage } from '../areas/agent/switches.page';
-import { GuardrailsPage } from '../areas/agent/guardrails.page';
-import { TranscriptPage } from '../areas/agent/transcript.page';
-import { LedgerPage } from '../areas/agent/ledger.page';
-import { DatabaseDetailsPage } from '../areas/os-management/database-details.page';
-import { DatabasesPage } from '../areas/os-management/databases.page';
-import { ProcessDetailsPage } from '../areas/os-management/process-details.page';
-import { SystemUsagePage } from '../areas/os-management/system-usage.page';
-import { DashboardPage } from '../areas/os-management/dashboard.page';
-import { StatisticsPage } from '../areas/os-management/statistics.page';
-import { AuditingConfigPage } from '../areas/security/auditing-config.page';
-import { OAuthServerDescriptionFormPage } from '../areas/security/oauth-server-description-form.page';
-import { OAuthClientFormPage } from '../areas/security/oauth-client-form.page';
-import { OAuthResourceServerFormPage } from '../areas/security/oauth-resource-server-form.page';
-import { OAuthServerFormPage } from '../areas/security/oauth-server-form.page';
-import { OAuthRegisteredClientFormPage } from '../areas/security/oauth-registered-client-form.page';
-import { TaskDetailsPage } from '../areas/tasks/details.page';
-import { HistoryPage } from '../areas/tasks/history.page';
-import { UpcomingPage } from '../areas/tasks/upcoming.page';
-import { HomePage } from '../areas/home/home.page';
-import { AuditPage } from '../areas/logs/audit.page';
-import { ErrorLogPage } from '../areas/logs/error-log.page';
-import { LogHubPage } from '../areas/logs/log-hub.page';
-import { LogViewerPage } from '../areas/logs/log-viewer.page';
-import { UserCreateFormPage } from '../areas/permissions/user-create-form.page';
-import { RoleEditorPage } from '../areas/permissions/role-editor.page';
-import { UserEditorPage } from '../areas/permissions/user-editor.page';
-import { RoleCreateFormPage } from '../areas/permissions/role-create-form.page';
-import { ResourceListPage } from '../areas/permissions/resource-list.page';
-import { ServiceEditorPage } from '../areas/permissions/service-editor.page';
-import { AuditUserEventListPage } from '../areas/security/audit-user-event-list.page';
-import { WalletSecretFormPage } from '../areas/security/wallet-secret-form.page';
-import { X509FormPage } from '../areas/security/x509-form.page';
-import { SslFormPage } from '../areas/security/ssl-form.page';
-import { LdapEditorPage } from '../areas/security/ldap-editor.page';
-import { TaskEditorPage } from '../areas/tasks/task-editor.page';
-import { TaskWizardPage } from '../areas/tasks/task-wizard.page';
-import { DeviceFormPage } from '../areas/os-management/device-form.page';
-import { NamespaceFormPage } from '../areas/os-management/namespace-form.page';
-import { LanguageServerFormPage } from '../areas/os-management/language-server-form.page';
-import { NamespaceListPage } from '../areas/os-management/namespace-list.page';
-import { LockListPage } from '../areas/os-management/lock-list.page';
-import { TaskSchedulePage } from '../areas/tasks/task-schedule.page';
-import { MappingFormPage } from '../areas/os-management/mapping-form.page';
-import { DatabaseWizardPage } from '../areas/os-management/database-wizard.page';
-import { DatabaseEditorPage } from '../areas/os-management/database-editor.page';
-import { DatabaseIntegrityPage } from '../areas/os-management/database-integrity.page';
-import { RemoteDatabaseFormPage } from '../areas/os-management/remote-database-form.page';
-import { JournalListPage } from '../areas/os-management/journal-list.page';
-import { JournalFileDetailsPage } from '../areas/os-management/journal-file-details.page';
-import { JournalSettingsPage } from '../areas/os-management/journal-settings.page';
-import { JournalRecordsPage } from '../areas/os-management/journal-records.page';
-import { LicenseKeyPage } from '../areas/os-management/license-key.page';
-import { LicenseServerFormPage } from '../areas/os-management/license-server-form.page';
-import { EcpDataServerListPage } from '../areas/os-management/ecp-data-server-list.page';
-import { ScreenPermissionsPage } from '../areas/agent/screen-permissions.page';
-import { EcpDataServerFormPage } from '../areas/os-management/ecp-data-server-form.page';
-import { EcpSettingsPage } from '../areas/os-management/ecp-settings.page';
-import { EncryptionKeyFilePage } from '../areas/security/encryption-key-file.page';
-import { EncryptionKeyFileFormPage } from '../areas/security/encryption-key-file-form.page';
-import { EncryptionKeysPage } from '../areas/security/encryption-keys.page';
-import { EncryptionStartupPage } from '../areas/security/encryption-startup.page';
-import { AuthOptionsPage } from '../areas/security/auth-options.page';
-import { SuperserverFormPage } from '../areas/security/superserver-form.page';
-import { MftConnectionFormPage } from '../areas/security/mft-connection-form.page';
-import { DocDbAppFormPage } from '../areas/web-applications/docdb-app-form.page';
-import { RoutineAppFormPage } from '../areas/web-applications/routine-app-form.page';
-import { WebAppCreateFormPage } from '../areas/web-applications/create-form.page';
-import { WebAppEditorPage } from '../areas/web-applications/web-app-editor.page';
-import { OpenApiViewerPage } from '../areas/web-applications/openapi-viewer.page';
-import { RestApiListPage } from '../areas/web-applications/rest-api-list.page';
-import { GovernancePage } from '../areas/agent/governance.page';
-import { CodeListPage } from '../areas/system-explorer/code-list.page';
-import { SourceViewerPage } from '../areas/system-explorer/document-viewer.page';
-import { SourceEditorPage } from '../areas/system-explorer/source-editor.page';
-import { CodeSearchPage } from '../areas/system-explorer/code-search.page';
-import { CodeComparePage } from '../areas/system-explorer/code-compare.page';
-import { MacroLookupPage } from '../areas/system-explorer/macro-lookup.page';
-import { SqlQueryPage } from '../areas/system-explorer/sql-query.page';
-import { DataBrowserPage } from '../areas/system-explorer/data-browser.page';
-import { InteropItemListPage } from '../areas/interoperability/interop-item-list.page';
-import { InteropItemSettingListPage } from '../areas/interoperability/interop-item-setting-list.page';
-import { InteropItemTestPage } from '../areas/interoperability/interop-item-test.page';
-import { InteropLookupEntryListPage } from '../areas/interoperability/interop-lookup-entry-list.page';
-import { InteropLookupTableListPage } from '../areas/interoperability/interop-lookup-table-list.page';
-import { DocDbListPage } from '../areas/system-explorer/docdb-list.page';
 import { decodeEntityId } from '../core/entity-id';
 import { NavigationService, screenForUrl } from '../core/navigation';
 import type { ArchetypeKey, BuiltArchetypeKey } from '../core/screens.generated';
 import { ShellState } from '../core/shell-state';
 import { STRINGS, stringFor } from '../core/strings';
-import { DetailPage } from './detail-page';
-import { ListPage } from './list-page';
 import { ScreenDenied } from './screen-denied';
 
 /**
- * Archetype to page component (AD-5).
+ * Fetches one page's code and answers its component. Every page is a lazily loaded chunk: no
+ * module of the initial bundle imports a page module statically, and `app.routes.ts` hands each
+ * screen route's child `loadComponent` the loader these maps name for it (AD-5).
+ */
+export type PageLoader = () => Promise<Type<unknown>>;
+
+/**
+ * Archetype to page loader (AD-5).
  *
  * **This is what keeps "adding a screen" from meaning "editing a router".** A descriptor
  * declares an archetype; the route table is generated from the mirror and points every route at
- * this one component; and the page that renders is looked up by that declared archetype, or by the
+ * this one component; and the page that loads is looked up by that declared archetype, or by the
  * descriptor itself where `DESCRIPTOR_PAGES` names one -- never by a route-table entry naming a
  * component, and never by a per-screen `@if`. A slice adding the first screen of a new archetype
  * registers it in this map and nothing else changes; a slice adding a screen of an archetype
- * already here changes nothing at all unless that archetype's page is not its own.
+ * already here changes nothing at all unless that archetype's page is not its own. A new page is
+ * one loader line, `() => import('<path>').then((m) => m.<Page>)`.
  *
  * **A built archetype must have a page.** Every `BuiltArchetypeKey` -- the archetype of a
  * `built: true` descriptor, emitted by the mirror -- is a required key here, so a descriptor
@@ -124,22 +42,22 @@ import { ScreenDenied } from './screen-denied';
  * archetype. Any other archetype is optional, and one with no entry renders nothing. Exported so
  * `screen-outlet.spec.ts` can assert that refusal against this map's own type.
  */
-type ArchetypePages = { readonly [K in BuiltArchetypeKey]: Type<unknown> } & {
-  readonly [K in Exclude<ArchetypeKey, BuiltArchetypeKey>]?: Type<unknown>;
+type ArchetypePages = { readonly [K in BuiltArchetypeKey]: PageLoader } & {
+  readonly [K in Exclude<ArchetypeKey, BuiltArchetypeKey>]?: PageLoader;
 };
 
 export const ARCHETYPE_PAGES: ArchetypePages = {
-  home: HomePage,
-  list: ListPage,
-  'list (two views)': DatabasesPage,
-  'list (server criteria)': AuditPage,
-  'drill-down': ErrorLogPage,
-  'log-viewer': LogViewerPage,
-  'form-page': DefinitionFormPage,
-  'viewer (OpenAPI)': OpenApiViewerPage,
-  'viewer (source)': SourceViewerPage,
-  detail: DetailPage,
-  meters: SystemUsagePage,
+  home: () => import('../areas/home/home.page').then((m) => m.HomePage),
+  list: () => import('./list-page').then((m) => m.ListPage),
+  'list (two views)': () => import('../areas/os-management/databases.page').then((m) => m.DatabasesPage),
+  'list (server criteria)': () => import('../areas/logs/audit.page').then((m) => m.AuditPage),
+  'drill-down': () => import('../areas/logs/error-log.page').then((m) => m.ErrorLogPage),
+  'log-viewer': () => import('../areas/logs/log-viewer.page').then((m) => m.LogViewerPage),
+  'form-page': () => import('../areas/agent/definition-form.page').then((m) => m.DefinitionFormPage),
+  'viewer (OpenAPI)': () => import('../areas/web-applications/openapi-viewer.page').then((m) => m.OpenApiViewerPage),
+  'viewer (source)': () => import('../areas/system-explorer/document-viewer.page').then((m) => m.SourceViewerPage),
+  detail: () => import('./detail-page').then((m) => m.DetailPage),
+  meters: () => import('../areas/os-management/system-usage.page').then((m) => m.SystemUsagePage),
 };
 
 /**
@@ -158,137 +76,137 @@ export const ARCHETYPE_PAGES: ArchetypePages = {
  * A descriptor with no entry falls through to its archetype's page, which is every screen but the
  * ones named here.
  */
-export const DESCRIPTOR_PAGES: Readonly<Record<string, Type<unknown>>> = {
-  'OcuPilot.Screen.Descriptor.AgentSwitches': SwitchesPage,
-  'OcuPilot.Screen.Descriptor.AgentGuardrails': GuardrailsPage,
-  'OcuPilot.Screen.Descriptor.AgentTranscript': TranscriptPage,
-  'OcuPilot.Screen.Descriptor.AuditingConfig': AuditingConfigPage,
-  'OcuPilot.Screen.Descriptor.TaskUpcomingList': UpcomingPage,
-  'OcuPilot.Screen.Descriptor.TaskHistoryList': HistoryPage,
-  'OcuPilot.Screen.Descriptor.TaskDetails': TaskDetailsPage,
-  'OcuPilot.Screen.Descriptor.ProcessDetails': ProcessDetailsPage,
-  'OcuPilot.Screen.Descriptor.DatabaseFreeSpace': DatabasesPage,
-  'OcuPilot.Screen.Descriptor.DatabaseDetails': DatabaseDetailsPage,
-  'OcuPilot.Screen.Descriptor.WebAppForm': WebAppCreateFormPage,
-  'OcuPilot.Screen.Descriptor.UserForm': UserCreateFormPage,
-  'OcuPilot.Screen.Descriptor.RoleForm': RoleCreateFormPage,
-  'OcuPilot.Screen.Descriptor.ResourceList': ResourceListPage,
-  'OcuPilot.Screen.Descriptor.X509Form': X509FormPage,
-  'OcuPilot.Screen.Descriptor.OAuthServerDescriptionForm': OAuthServerDescriptionFormPage,
-  'OcuPilot.Screen.Descriptor.OAuthClientForm': OAuthClientFormPage,
-  'OcuPilot.Screen.Descriptor.OAuthResourceServerForm': OAuthResourceServerFormPage,
-  'OcuPilot.Screen.Descriptor.OAuthServerForm': OAuthServerFormPage,
-  'OcuPilot.Screen.Descriptor.OAuthServerClientForm': OAuthRegisteredClientFormPage,
-  'OcuPilot.Screen.Descriptor.WalletSecretForm': WalletSecretFormPage,
-  'OcuPilot.Screen.Descriptor.DeviceForm': DeviceFormPage,
-  'OcuPilot.Screen.Descriptor.NamespaceForm': NamespaceFormPage,
+export const DESCRIPTOR_PAGES: Readonly<Record<string, PageLoader>> = {
+  'OcuPilot.Screen.Descriptor.AgentSwitches': () => import('../areas/agent/switches.page').then((m) => m.SwitchesPage),
+  'OcuPilot.Screen.Descriptor.AgentGuardrails': () => import('../areas/agent/guardrails.page').then((m) => m.GuardrailsPage),
+  'OcuPilot.Screen.Descriptor.AgentTranscript': () => import('../areas/agent/transcript.page').then((m) => m.TranscriptPage),
+  'OcuPilot.Screen.Descriptor.AuditingConfig': () => import('../areas/security/auditing-config.page').then((m) => m.AuditingConfigPage),
+  'OcuPilot.Screen.Descriptor.TaskUpcomingList': () => import('../areas/tasks/upcoming.page').then((m) => m.UpcomingPage),
+  'OcuPilot.Screen.Descriptor.TaskHistoryList': () => import('../areas/tasks/history.page').then((m) => m.HistoryPage),
+  'OcuPilot.Screen.Descriptor.TaskDetails': () => import('../areas/tasks/details.page').then((m) => m.TaskDetailsPage),
+  'OcuPilot.Screen.Descriptor.ProcessDetails': () => import('../areas/os-management/process-details.page').then((m) => m.ProcessDetailsPage),
+  'OcuPilot.Screen.Descriptor.DatabaseFreeSpace': () => import('../areas/os-management/databases.page').then((m) => m.DatabasesPage),
+  'OcuPilot.Screen.Descriptor.DatabaseDetails': () => import('../areas/os-management/database-details.page').then((m) => m.DatabaseDetailsPage),
+  'OcuPilot.Screen.Descriptor.WebAppForm': () => import('../areas/web-applications/create-form.page').then((m) => m.WebAppCreateFormPage),
+  'OcuPilot.Screen.Descriptor.UserForm': () => import('../areas/permissions/user-create-form.page').then((m) => m.UserCreateFormPage),
+  'OcuPilot.Screen.Descriptor.RoleForm': () => import('../areas/permissions/role-create-form.page').then((m) => m.RoleCreateFormPage),
+  'OcuPilot.Screen.Descriptor.ResourceList': () => import('../areas/permissions/resource-list.page').then((m) => m.ResourceListPage),
+  'OcuPilot.Screen.Descriptor.X509Form': () => import('../areas/security/x509-form.page').then((m) => m.X509FormPage),
+  'OcuPilot.Screen.Descriptor.OAuthServerDescriptionForm': () => import('../areas/security/oauth-server-description-form.page').then((m) => m.OAuthServerDescriptionFormPage),
+  'OcuPilot.Screen.Descriptor.OAuthClientForm': () => import('../areas/security/oauth-client-form.page').then((m) => m.OAuthClientFormPage),
+  'OcuPilot.Screen.Descriptor.OAuthResourceServerForm': () => import('../areas/security/oauth-resource-server-form.page').then((m) => m.OAuthResourceServerFormPage),
+  'OcuPilot.Screen.Descriptor.OAuthServerForm': () => import('../areas/security/oauth-server-form.page').then((m) => m.OAuthServerFormPage),
+  'OcuPilot.Screen.Descriptor.OAuthServerClientForm': () => import('../areas/security/oauth-registered-client-form.page').then((m) => m.OAuthRegisteredClientFormPage),
+  'OcuPilot.Screen.Descriptor.WalletSecretForm': () => import('../areas/security/wallet-secret-form.page').then((m) => m.WalletSecretFormPage),
+  'OcuPilot.Screen.Descriptor.DeviceForm': () => import('../areas/os-management/device-form.page').then((m) => m.DeviceFormPage),
+  'OcuPilot.Screen.Descriptor.NamespaceForm': () => import('../areas/os-management/namespace-form.page').then((m) => m.NamespaceFormPage),
   // Story 18.14: the Namespaces list with its Copy mappings, and the one page serving the three
   // mapping forms, which takes the kind from the route.
-  'OcuPilot.Screen.Descriptor.NamespaceList': NamespaceListPage,
-  'OcuPilot.Screen.Descriptor.GlobalMappingForm': MappingFormPage,
-  'OcuPilot.Screen.Descriptor.RoutineMappingForm': MappingFormPage,
-  'OcuPilot.Screen.Descriptor.PackageMappingForm': MappingFormPage,
+  'OcuPilot.Screen.Descriptor.NamespaceList': () => import('../areas/os-management/namespace-list.page').then((m) => m.NamespaceListPage),
+  'OcuPilot.Screen.Descriptor.GlobalMappingForm': () => import('../areas/os-management/mapping-form.page').then((m) => m.MappingFormPage),
+  'OcuPilot.Screen.Descriptor.RoutineMappingForm': () => import('../areas/os-management/mapping-form.page').then((m) => m.MappingFormPage),
+  'OcuPilot.Screen.Descriptor.PackageMappingForm': () => import('../areas/os-management/mapping-form.page').then((m) => m.MappingFormPage),
   // Story 18.3: the local database form's bare route is the create wizard.
-  'OcuPilot.Screen.Descriptor.LocalDatabaseForm': DatabaseWizardPage,
+  'OcuPilot.Screen.Descriptor.LocalDatabaseForm': () => import('../areas/os-management/database-wizard.page').then((m) => m.DatabaseWizardPage),
   // Story 18.4: the Check integrity flow, a stepped form page of its own.
-  'OcuPilot.Screen.Descriptor.DatabaseIntegrity': DatabaseIntegrityPage,
-  'OcuPilot.Screen.Descriptor.SslForm': SslFormPage,
-  'OcuPilot.Screen.Descriptor.TaskForm': TaskWizardPage,
+  'OcuPilot.Screen.Descriptor.DatabaseIntegrity': () => import('../areas/os-management/database-integrity.page').then((m) => m.DatabaseIntegrityPage),
+  'OcuPilot.Screen.Descriptor.SslForm': () => import('../areas/security/ssl-form.page').then((m) => m.SslFormPage),
+  'OcuPilot.Screen.Descriptor.TaskForm': () => import('../areas/tasks/task-wizard.page').then((m) => m.TaskWizardPage),
   // Story 16.13: the service editor serves its bare route and its id route.
-  'OcuPilot.Screen.Descriptor.ServiceForm': ServiceEditorPage,
+  'OcuPilot.Screen.Descriptor.ServiceForm': () => import('../areas/permissions/service-editor.page').then((m) => m.ServiceEditorPage),
   // Story 16.14: the LDAP and Kerberos editor creates at its bare route and edits at its id route.
-  'OcuPilot.Screen.Descriptor.LdapConfigForm': LdapEditorPage,
-  'OcuPilot.Screen.Descriptor.AuditUserEventList': AuditUserEventListPage,
-  'OcuPilot.Screen.Descriptor.AgentGovernance': GovernancePage,
-  'OcuPilot.Screen.Descriptor.LogHub': LogHubPage,
-  'OcuPilot.Screen.Descriptor.AgentLedger': LedgerPage,
+  'OcuPilot.Screen.Descriptor.LdapConfigForm': () => import('../areas/security/ldap-editor.page').then((m) => m.LdapEditorPage),
+  'OcuPilot.Screen.Descriptor.AuditUserEventList': () => import('../areas/security/audit-user-event-list.page').then((m) => m.AuditUserEventListPage),
+  'OcuPilot.Screen.Descriptor.AgentGovernance': () => import('../areas/agent/governance.page').then((m) => m.GovernancePage),
+  'OcuPilot.Screen.Descriptor.LogHub': () => import('../areas/logs/log-hub.page').then((m) => m.LogHubPage),
+  'OcuPilot.Screen.Descriptor.AgentLedger': () => import('../areas/agent/ledger.page').then((m) => m.LedgerPage),
   // Story 16.7: the Dashboard's seven meter groups; System usage keeps the meters archetype's page.
-  'OcuPilot.Screen.Descriptor.Dashboard': DashboardPage,
+  'OcuPilot.Screen.Descriptor.Dashboard': () => import('../areas/os-management/dashboard.page').then((m) => m.DashboardPage),
   // Story 18.36: the Dashboard's two statistics drill-downs, one page of grouped counters; its resource and
   // process drill-downs are lists and keep the list archetype's page.
-  'OcuPilot.Screen.Descriptor.DashboardGlobals': StatisticsPage,
-  'OcuPilot.Screen.Descriptor.DashboardEcp': StatisticsPage,
+  'OcuPilot.Screen.Descriptor.DashboardGlobals': () => import('../areas/os-management/statistics.page').then((m) => m.StatisticsPage),
+  'OcuPilot.Screen.Descriptor.DashboardEcp': () => import('../areas/os-management/statistics.page').then((m) => m.StatisticsPage),
   // Story 16.4: the Task schedule with its Export and Import dialogs.
-  'OcuPilot.Screen.Descriptor.TaskScheduleList': TaskSchedulePage,
+  'OcuPilot.Screen.Descriptor.TaskScheduleList': () => import('../areas/tasks/task-schedule.page').then((m) => m.TaskSchedulePage),
   // Story 16.25: the external language server editor, create and edit alike.
-  'OcuPilot.Screen.Descriptor.LanguageServerForm': LanguageServerFormPage,
+  'OcuPilot.Screen.Descriptor.LanguageServerForm': () => import('../areas/os-management/language-server-form.page').then((m) => m.LanguageServerFormPage),
   // Story 16.12: the Locks list with its Remove locks dialog.
-  'OcuPilot.Screen.Descriptor.LockList': LockListPage,
+  'OcuPilot.Screen.Descriptor.LockList': () => import('../areas/os-management/lock-list.page').then((m) => m.LockListPage),
   // Story 18.16: the remote database form, create and re-point alike.
-  'OcuPilot.Screen.Descriptor.RemoteDatabaseForm': RemoteDatabaseFormPage,
+  'OcuPilot.Screen.Descriptor.RemoteDatabaseForm': () => import('../areas/os-management/remote-database-form.page').then((m) => m.RemoteDatabaseFormPage),
   // Story 18.5: Journals with its two switches and the integrity check's line, and Journal file
   // details with the file's databases.
-  'OcuPilot.Screen.Descriptor.JournalList': JournalListPage,
-  'OcuPilot.Screen.Descriptor.JournalFileDetails': JournalFileDetailsPage,
+  'OcuPilot.Screen.Descriptor.JournalList': () => import('../areas/os-management/journal-list.page').then((m) => m.JournalListPage),
+  'OcuPilot.Screen.Descriptor.JournalFileDetails': () => import('../areas/os-management/journal-file-details.page').then((m) => m.JournalFileDetailsPage),
   // Story 18.18: Journal settings, a form over the screen's own declared read.
-  'OcuPilot.Screen.Descriptor.JournalSettings': JournalSettingsPage,
+  'OcuPilot.Screen.Descriptor.JournalSettings': () => import('../areas/os-management/journal-settings.page').then((m) => m.JournalSettingsPage),
   // Story 18.19: Journal records, the record list a journal file opens, with its record dialog.
-  'OcuPilot.Screen.Descriptor.JournalRecordList': JournalRecordsPage,
+  'OcuPilot.Screen.Descriptor.JournalRecordList': () => import('../areas/os-management/journal-records.page').then((m) => m.JournalRecordsPage),
   // Story 18.6: License key with its activate dialog and Print, and the license server form, create
   // and edit alike.
-  'OcuPilot.Screen.Descriptor.LicenseKey': LicenseKeyPage,
-  'OcuPilot.Screen.Descriptor.LicenseServerForm': LicenseServerFormPage,
+  'OcuPilot.Screen.Descriptor.LicenseKey': () => import('../areas/os-management/license-key.page').then((m) => m.LicenseKeyPage),
+  'OcuPilot.Screen.Descriptor.LicenseServerForm': () => import('../areas/os-management/license-server-form.page').then((m) => m.LicenseServerFormPage),
   // Story 18.20: ECP data servers with its status line and Change status dialog, and the data server
   // form, create and edit alike.
-  'OcuPilot.Screen.Descriptor.EcpDataServerList': EcpDataServerListPage,
+  'OcuPilot.Screen.Descriptor.EcpDataServerList': () => import('../areas/os-management/ecp-data-server-list.page').then((m) => m.EcpDataServerListPage),
   // Story 20.15: Screen permissions, whose Change permissions dialog opens over the shared list page.
-  'OcuPilot.Screen.Descriptor.AgentScreenPermissions': ScreenPermissionsPage,
-  'OcuPilot.Screen.Descriptor.EcpDataServerForm': EcpDataServerFormPage,
+  'OcuPilot.Screen.Descriptor.AgentScreenPermissions': () => import('../areas/agent/screen-permissions.page').then((m) => m.ScreenPermissionsPage),
+  'OcuPilot.Screen.Descriptor.EcpDataServerForm': () => import('../areas/os-management/ecp-data-server-form.page').then((m) => m.EcpDataServerFormPage),
   // Story 18.21: ECP settings, a form over the screen's own declared read; ECP application servers'
   // two tabs take the detail page's strip.
-  'OcuPilot.Screen.Descriptor.EcpSettings': EcpSettingsPage,
+  'OcuPilot.Screen.Descriptor.EcpSettings': () => import('../areas/os-management/ecp-settings.page').then((m) => m.EcpSettingsPage),
   // Story 18.7: Encryption key files, one page over a key file's keys and its administrators, and the
   // key file create form.
-  'OcuPilot.Screen.Descriptor.EncryptionKeyFile': EncryptionKeyFilePage,
-  'OcuPilot.Screen.Descriptor.EncryptionKeyFileAdminList': EncryptionKeyFilePage,
-  'OcuPilot.Screen.Descriptor.EncryptionKeyFileForm': EncryptionKeyFileFormPage,
+  'OcuPilot.Screen.Descriptor.EncryptionKeyFile': () => import('../areas/security/encryption-key-file.page').then((m) => m.EncryptionKeyFilePage),
+  'OcuPilot.Screen.Descriptor.EncryptionKeyFileAdminList': () => import('../areas/security/encryption-key-file.page').then((m) => m.EncryptionKeyFilePage),
+  'OcuPilot.Screen.Descriptor.EncryptionKeyFileForm': () => import('../areas/security/encryption-key-file-form.page').then((m) => m.EncryptionKeyFileFormPage),
   // Story 18.22: Database encryption and Data element encryption, one page over each list of active keys.
-  'OcuPilot.Screen.Descriptor.DatabaseEncryption': EncryptionKeysPage,
-  'OcuPilot.Screen.Descriptor.DataElementEncryption': EncryptionKeysPage,
+  'OcuPilot.Screen.Descriptor.DatabaseEncryption': () => import('../areas/security/encryption-keys.page').then((m) => m.EncryptionKeysPage),
+  'OcuPilot.Screen.Descriptor.DataElementEncryption': () => import('../areas/security/encryption-keys.page').then((m) => m.EncryptionKeysPage),
   // Story 18.23: the encryption startup settings form, reached from Database encryption.
-  'OcuPilot.Screen.Descriptor.EncryptionStartup': EncryptionStartupPage,
+  'OcuPilot.Screen.Descriptor.EncryptionStartup': () => import('../areas/security/encryption-startup.page').then((m) => m.EncryptionStartupPage),
   // Story 18.8: Authentication options, a form over the screen's own declared read.
-  'OcuPilot.Screen.Descriptor.AuthOptions': AuthOptionsPage,
+  'OcuPilot.Screen.Descriptor.AuthOptions': () => import('../areas/security/auth-options.page').then((m) => m.AuthOptionsPage),
   // Story 18.25: the superserver editor; the list is the shared list page.
-  'OcuPilot.Screen.Descriptor.SuperserverForm': SuperserverFormPage,
+  'OcuPilot.Screen.Descriptor.SuperserverForm': () => import('../areas/security/superserver-form.page').then((m) => m.SuperserverFormPage),
   // Story 18.26: the managed file transfer connection editor; the list is the shared list page.
-  'OcuPilot.Screen.Descriptor.MftConnectionForm': MftConnectionFormPage,
+  'OcuPilot.Screen.Descriptor.MftConnectionForm': () => import('../areas/security/mft-connection-form.page').then((m) => m.MftConnectionFormPage),
   // Story 18.30: the Doc DB application editor; the list is the shared list page.
-  'OcuPilot.Screen.Descriptor.DocDbAppForm': DocDbAppFormPage,
+  'OcuPilot.Screen.Descriptor.DocDbAppForm': () => import('../areas/web-applications/docdb-app-form.page').then((m) => m.DocDbAppFormPage),
   // Story 18.31: the privileged routine application editor; the list is the shared list page.
-  'OcuPilot.Screen.Descriptor.RoutineAppForm': RoutineAppFormPage,
+  'OcuPilot.Screen.Descriptor.RoutineAppForm': () => import('../areas/web-applications/routine-app-form.page').then((m) => m.RoutineAppFormPage),
   // Story 19.1: System Explorer's two lists, each a criteria form drawn from its declared criteria.
-  'OcuPilot.Screen.Descriptor.ExplorerClassList': CodeListPage,
-  'OcuPilot.Screen.Descriptor.ExplorerRoutineList': CodeListPage,
+  'OcuPilot.Screen.Descriptor.ExplorerClassList': () => import('../areas/system-explorer/code-list.page').then((m) => m.CodeListPage),
+  'OcuPilot.Screen.Descriptor.ExplorerRoutineList': () => import('../areas/system-explorer/code-list.page').then((m) => m.CodeListPage),
   // Story 19.3: the class and routine editors, one page serving both.
-  'OcuPilot.Screen.Descriptor.ExplorerClassEditor': SourceEditorPage,
-  'OcuPilot.Screen.Descriptor.ExplorerRoutineEditor': SourceEditorPage,
+  'OcuPilot.Screen.Descriptor.ExplorerClassEditor': () => import('../areas/system-explorer/source-editor.page').then((m) => m.SourceEditorPage),
+  'OcuPilot.Screen.Descriptor.ExplorerRoutineEditor': () => import('../areas/system-explorer/source-editor.page').then((m) => m.SourceEditorPage),
   // Story 19.4: Search, Compare and Macros, each a page of its own.
-  'OcuPilot.Screen.Descriptor.ExplorerSearch': CodeSearchPage,
-  'OcuPilot.Screen.Descriptor.ExplorerCompare': CodeComparePage,
-  'OcuPilot.Screen.Descriptor.ExplorerMacro': MacroLookupPage,
+  'OcuPilot.Screen.Descriptor.ExplorerSearch': () => import('../areas/system-explorer/code-search.page').then((m) => m.CodeSearchPage),
+  'OcuPilot.Screen.Descriptor.ExplorerCompare': () => import('../areas/system-explorer/code-compare.page').then((m) => m.CodeComparePage),
+  'OcuPilot.Screen.Descriptor.ExplorerMacro': () => import('../areas/system-explorer/macro-lookup.page').then((m) => m.MacroLookupPage),
   // Story 19.5: the SQL catalog's four lists, each a criteria form drawn from its declared criteria.
-  'OcuPilot.Screen.Descriptor.ExplorerSqlSchemas': CodeListPage,
-  'OcuPilot.Screen.Descriptor.ExplorerSqlTables': CodeListPage,
-  'OcuPilot.Screen.Descriptor.ExplorerSqlViews': CodeListPage,
-  'OcuPilot.Screen.Descriptor.ExplorerSqlProcedures': CodeListPage,
+  'OcuPilot.Screen.Descriptor.ExplorerSqlSchemas': () => import('../areas/system-explorer/code-list.page').then((m) => m.CodeListPage),
+  'OcuPilot.Screen.Descriptor.ExplorerSqlTables': () => import('../areas/system-explorer/code-list.page').then((m) => m.CodeListPage),
+  'OcuPilot.Screen.Descriptor.ExplorerSqlViews': () => import('../areas/system-explorer/code-list.page').then((m) => m.CodeListPage),
+  'OcuPilot.Screen.Descriptor.ExplorerSqlProcedures': () => import('../areas/system-explorer/code-list.page').then((m) => m.CodeListPage),
   // Story 19.6: SQL query, the console with its guard's confirmation.
-  'OcuPilot.Screen.Descriptor.ExplorerSqlQuery': SqlQueryPage,
+  'OcuPilot.Screen.Descriptor.ExplorerSqlQuery': () => import('../areas/system-explorer/sql-query.page').then((m) => m.SqlQueryPage),
   // Story 19.7: Data browser, the schema tree beside one table's or view's paged grid.
-  'OcuPilot.Screen.Descriptor.ExplorerSqlData': DataBrowserPage,
+  'OcuPilot.Screen.Descriptor.ExplorerSqlData': () => import('../areas/system-explorer/data-browser.page').then((m) => m.DataBrowserPage),
   // Story 19.17: Document databases, the list with its create dialog and the disabled-service strip.
-  'OcuPilot.Screen.Descriptor.ExplorerDocDbList': DocDbListPage,
+  'OcuPilot.Screen.Descriptor.ExplorerDocDbList': () => import('../areas/system-explorer/docdb-list.page').then((m) => m.DocDbListPage),
   // Story 18.34: the REST API explorer, the list with its create dialog.
-  'OcuPilot.Screen.Descriptor.RestApiList': RestApiListPage,
+  'OcuPilot.Screen.Descriptor.RestApiList': () => import('../areas/web-applications/rest-api-list.page').then((m) => m.RestApiListPage),
   // Story 20.3: Production items, the list with its add dialog.
-  'OcuPilot.Screen.Descriptor.InteropItemList': InteropItemListPage,
+  'OcuPilot.Screen.Descriptor.InteropItemList': () => import('../areas/interoperability/interop-item-list.page').then((m) => m.InteropItemListPage),
   // Story 20.22: Item settings, the list with its Set value dialog.
-  'OcuPilot.Screen.Descriptor.InteropItemSettingList': InteropItemSettingListPage,
+  'OcuPilot.Screen.Descriptor.InteropItemSettingList': () => import('../areas/interoperability/interop-item-setting-list.page').then((m) => m.InteropItemSettingListPage),
   // Story 20.6: an item's Test tab, the detail page with its Send test dialog.
-  'OcuPilot.Screen.Descriptor.InteropItemTestTab': InteropItemTestPage,
+  'OcuPilot.Screen.Descriptor.InteropItemTestTab': () => import('../areas/interoperability/interop-item-test.page').then((m) => m.InteropItemTestPage),
   // Story 20.5: Lookup tables, the list with its New table dialog, and a table's entries with their Add entry and Set value dialogs.
-  'OcuPilot.Screen.Descriptor.InteropLookupTableList': InteropLookupTableListPage,
-  'OcuPilot.Screen.Descriptor.InteropLookupEntryList': InteropLookupEntryListPage,
+  'OcuPilot.Screen.Descriptor.InteropLookupTableList': () => import('../areas/interoperability/interop-lookup-table-list.page').then((m) => m.InteropLookupTableListPage),
+  'OcuPilot.Screen.Descriptor.InteropLookupEntryList': () => import('../areas/interoperability/interop-lookup-entry-list.page').then((m) => m.InteropLookupEntryListPage),
 };
 
 /**
@@ -301,17 +219,17 @@ export const DESCRIPTOR_PAGES: Readonly<Record<string, Type<unknown>>> = {
  * the role editor beside Story 8.3's, and Edit task beside the New Task wizard (Story 9.8) -- it is
  * registered here, and the bare route keeps the create page.
  */
-export const DESCRIPTOR_EDIT_PAGES: Readonly<Record<string, Type<unknown>>> = {
-  'OcuPilot.Screen.Descriptor.UserForm': UserEditorPage,
-  'OcuPilot.Screen.Descriptor.WebAppForm': WebAppEditorPage,
-  'OcuPilot.Screen.Descriptor.RoleForm': RoleEditorPage,
-  'OcuPilot.Screen.Descriptor.TaskForm': TaskEditorPage,
+export const DESCRIPTOR_EDIT_PAGES: Readonly<Record<string, PageLoader>> = {
+  'OcuPilot.Screen.Descriptor.UserForm': () => import('../areas/permissions/user-editor.page').then((m) => m.UserEditorPage),
+  'OcuPilot.Screen.Descriptor.WebAppForm': () => import('../areas/web-applications/web-app-editor.page').then((m) => m.WebAppEditorPage),
+  'OcuPilot.Screen.Descriptor.RoleForm': () => import('../areas/permissions/role-editor.page').then((m) => m.RoleEditorPage),
+  'OcuPilot.Screen.Descriptor.TaskForm': () => import('../areas/tasks/task-editor.page').then((m) => m.TaskEditorPage),
   // Story 16.13's service editor serves its bare route (one sentence back to the list) and its id
   // route from the one page, and Story 16.14's LDAP editor its create and its edit.
-  'OcuPilot.Screen.Descriptor.ServiceForm': ServiceEditorPage,
-  'OcuPilot.Screen.Descriptor.LdapConfigForm': LdapEditorPage,
+  'OcuPilot.Screen.Descriptor.ServiceForm': () => import('../areas/permissions/service-editor.page').then((m) => m.ServiceEditorPage),
+  'OcuPilot.Screen.Descriptor.LdapConfigForm': () => import('../areas/security/ldap-editor.page').then((m) => m.LdapEditorPage),
   // Story 18.3: the local database form's id route is the properties editor beside the wizard.
-  'OcuPilot.Screen.Descriptor.LocalDatabaseForm': DatabaseEditorPage,
+  'OcuPilot.Screen.Descriptor.LocalDatabaseForm': () => import('../areas/os-management/database-editor.page').then((m) => m.DatabaseEditorPage),
 };
 
 /**
@@ -324,15 +242,12 @@ export const DESCRIPTOR_EDIT_PAGES: Readonly<Record<string, Type<unknown>>> = {
  * index (`pages[archetype] ?? null`) safe: `ARCHETYPE_PAGES` is a partial map over that set, and
  * a bare index resolves `constructor`, `toString`, or any other inherited `Object.prototype`
  * member to that member's function -- which is not `null` or `undefined`, so it survives the
- * `??` fallback and reaches `ngComponentOutlet` as a non-component. The parameter stays `string`
+ * `??` fallback and reaches the router as a loader that is not one. The parameter stays `string`
  * for the same reason the function is exported: it is pinned against a fixture map, with values
  * the closed vocabulary does not contain. `Object.hasOwn` accepts only a key the map declares --
  * and a descriptor class name is caller-supplied data too, so it passes the same guard.
  */
-export function resolveArchetypePage(
-  pages: Readonly<Record<string, Type<unknown>>>,
-  archetype: string
-): Type<unknown> | null {
+export function resolveArchetypePage<T>(pages: Readonly<Record<string, T>>, archetype: string): T | null {
   return Object.hasOwn(pages, archetype) ? pages[archetype] : null;
 }
 
@@ -340,12 +255,12 @@ export function resolveArchetypePage(
  * The page for one screen: its descriptor's own, where it declares one, and its archetype's
  * otherwise (DW-369). Both lookups go through `resolveArchetypePage`'s guard.
  */
-export function resolveScreenPage(
-  descriptorPages: Readonly<Record<string, Type<unknown>>>,
-  archetypePages: Readonly<Record<string, Type<unknown>>>,
+export function resolveScreenPage<T>(
+  descriptorPages: Readonly<Record<string, T>>,
+  archetypePages: Readonly<Record<string, T>>,
   descriptor: string,
   archetype: string
-): Type<unknown> | null {
+): T | null {
   return (
     resolveArchetypePage(descriptorPages, descriptor) ??
     resolveArchetypePage(archetypePages, archetype)
@@ -360,9 +275,12 @@ export function resolveScreenPage(
  * 1. **Resolves the route to a descriptor** through the mirror, and tells `ShellState` which
  *    area is active, which is what puts `aria-current="page"` on a rail item and fills the side
  *    bar on a cold deep link.
- * 2. **Renders the screen the descriptor's archetype names** when the navigation map allows it,
- *    the refusal when it denies it (EXPERIENCE.md "Deep link to a gated route"), and the not-found screen when the URL
- *    names no declared screen at all. A built screen's archetype always has a page, because
+ * 2. **Decides whether the screen's page mounts** when the navigation map allows it, shows the
+ *    refusal when it denies it (EXPERIENCE.md "Deep link to a gated route"), and the not-found
+ *    screen when the URL names no declared screen at all. The page itself is the route's child,
+ *    loaded on demand by the loader `app.routes.ts` takes from the maps above and placed in this
+ *    component's `<router-outlet />`; a page that is not mounted issues no read, though its code
+ *    may already have downloaded. A built screen's archetype always has a page, because
  *    `ARCHETYPE_PAGES` requires one.
  * 3. **Decodes the entity id exactly once.** The id arrives from the router already decoded
  *    once -- Angular's `DefaultUrlSerializer` percent-decodes each segment as it parses the URL
@@ -385,7 +303,7 @@ export function resolveScreenPage(
 @Component({
   selector: 'app-screen-outlet',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [NgComponentOutlet, ScreenDenied],
+  imports: [RouterOutlet, ScreenDenied],
   template: `<div
     class="ocu-screen-outlet"
     [attr.data-area]="area()"
@@ -403,7 +321,7 @@ export function resolveScreenPage(
       <app-screen-denied [title]="title()" [failedPair]="failedPair()" />
     }
     @if (page) {
-      <ng-container [ngComponentOutlet]="page" />
+      <router-outlet />
     }
   </div>`,
 })
@@ -488,9 +406,9 @@ export class ScreenOutlet {
   }
 
   /**
-   * The page for an allowed screen, resolved through the archetype map above -- `null` for a
-   * denied screen, an unknown URL, an archetype no page is registered for, and any screen before
-   * the navigation map has answered, so a page the map then refuses never mounts and never reads.
+   * Whether the routed page mounts: `false` for a denied screen, an unknown URL, and any screen
+   * before the navigation map has answered, so a page the map then refuses never mounts and never
+   * reads.
    *
    * `screenHeld()` is the same rule asked of the other decision that can move this browser: while
    * the first-login gate is still deciding (FR-28), no page mounts, so the screen the gate is
@@ -498,16 +416,10 @@ export class ScreenOutlet {
    * `ShellState` which area it belongs to, because the requested route is the route until the
    * gate actually moves off it.
    */
-  protected get page(): Type<unknown> | null {
+  protected get page(): boolean {
     this.mapGeneration();
     this.shellGeneration();
-    const screen = this.screen();
-    if (screen === null || this.shell.screenHeld()) return null;
-    if (!this.navigation.answered() || !this.allowed()) return null;
-    if (this.entityId() !== '') {
-      const editor = resolveArchetypePage(DESCRIPTOR_EDIT_PAGES, screen.descriptor);
-      if (editor !== null) return editor;
-    }
-    return resolveScreenPage(DESCRIPTOR_PAGES, ARCHETYPE_PAGES, screen.descriptor, screen.archetype);
+    if (this.screen() === null || this.shell.screenHeld()) return false;
+    return this.navigation.answered() && this.allowed();
   }
 }

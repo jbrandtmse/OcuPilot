@@ -2,13 +2,21 @@
 title: 'Story 20.29: Screens load on demand'
 type: 'feature'
 created: '2026-10-12'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: '21fe71330033007e50b891982d63d841d9ff75a0'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
   - '{project-root}/_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md'
 warnings: [oversized]
-deferred: []
+deferred:
+  - summary: >-
+      Two comments in ui/src/styles/_components.scss still say ngComponentOutlet renders the page host inside div.ocu-screen-outlet; the router outlet does since Story 20.29.
+    evidence: |-
+      grep -n ngComponentOutlet ui/src/styles/_components.scss answers lines 724 and 6053. The file is one Epic 18 stories edit often, and the gate rulings authorize no non-add-only edit to such a file beyond the four named.
+    location: >-
+      ui/src/styles/_components.scss:724, :6053
+    severity: low
 ---
 
 <intent-contract>
@@ -148,6 +156,32 @@ deferred: []
 ## Spec Change Log
 
 ## Review Triage Log
+
+### 2026-10-12 - Review pass
+
+- verdicts: 20 findings - high 0, medium 3, low 10, false 7, maybe-false 0
+- findings:
+  - `[low]` `[patch]` `lazy-screens` asserted `homeFetched >= fetched`, true for any array that is only pushed to - deleted with the unused `fetched`.
+  - `[false]` `[reject]` the return-visit assertion cannot tell a router that re-runs `loadComponent` from one that does not - the claim it pins is the network one (no new chunk request on a revisit), and it goes red on a URL or cache-header regression; router caching is not a claim of the story.
+  - `[low]` `[patch]` the policy and console clauses of the AC3 test had no recorded mutation - a policy-violating `new Function` in `ListPage` demonstrated the policy clause red with the page still rendering; recorded under `## Verification`.
+  - `[medium]` `[patch]` the page-placement gate examined only pages written as `import(...).then((m) => m.X)`, so a hand-merged `Promise.resolve(NewPage)` over a static import shipped in `main` with every test green - the eager half now reads every `*.page.ts` selector (plus `list-page.ts`, `detail-page.ts`) from disk; mutation recorded.
+  - `[medium]` `[patch]` "an unknown URL renders no page" could not fail, since the harness wildcard had no child - the wildcard now carries a child that would mount Home's page; deleting the `screen() === null` guard reddens it alone.
+  - `[low]` `[patch]` `initial.size + lazy.length === emitted.length` is true by construction - deleted; the unclassified-file and emitted-file assertions are the real guards.
+  - `[low]` `[reject]` `trackRequests` hardening has no check of its own - Task 9 records it as hardening whose check is the walk's green run, and a deterministic check needs a fake-page harness for a timing-only behavior.
+  - `[low]` `[defer]` two comments in `_components.scss` still say `ngComponentOutlet` renders the page host - the file is one Epic 18 edits and the gate rulings authorize no other non-add-only edit to such a file; in the spec's `deferred:` list.
+  - `[low]` `[patch]` the "stops listening to the router when it is destroyed" test had no mutation line - unsubscribe removed, test red alone; recorded in the spec's header and under `## Verification`.
+  - `[low]` `[reject]` a cold deep link's chunk requests are not recorded while signed out - the observable half (the page renders after sign-in) is pinned by `users`, `gate` and `shell`, and asserting when the router fetches would pin its internals.
+  - `[low]` `[reject]` the command box and agent paths are not driven by `lazy-screens` - they go through the same router navigation; `navigate` drives the agent path and is green.
+  - `[false]` `[reject]` the chunk bodies are re-fetched with Node `fetch` rather than read from the page - chunk names are content hashes, so the bytes are the ones the page ran.
+  - `[false]` `[reject]` page identity now comes from the route table while `ScreenOutlet.screen()` reads the mirror - both read the mirror, and the unchanged "no declared route is swallowed" test holds the agreement.
+  - `[low]` `[reject]` the stale tab is simulated by interception rather than a real reinstall - the simulation reproduces the measured `index.html` answer, and a reinstall test is heavier than the Q1 ruling asks.
+  - `[false]` `[reject]` the recheck fires on any `NavigationError`, wider than a chunk failure - Task 8 specifies it, and the recheck is single-flight, read-only and moves only the build identity.
+  - `[low]` `[reject]` no request-level assertion for an unknown URL's missing chunk - the wildcard has no child (`app.routes.spec.ts`) and the outlet renders no page.
+  - `[false]` `[reject]` the per-chunk ceiling is a test constant, not an `angular.json` budget - Design Notes record the decision (`anyScript` would also bound `main`).
+  - `[medium]` `[patch]` the loader pattern is the only way the placement gate finds pages (same root cause as the page-placement row above) - fixed by that patch.
+  - `[false]` `[reject]` AUDITING_FOCUS_ENABLE's move, the `readInstance()` refactor, the walk hardening and the awaited loaders are outside the contract's list - each is a numbered Task in this spec.
+  - `[false]` `[reject]` the initial total is recorded, not asserted - the DW-371 test measures the emitted initial set against `maximumWarning`.
+
 
 ## Design Notes
 
@@ -289,7 +323,221 @@ Consequence: an Epic 18 branch that adds a statically imported page conflicts at
   - The `NavigationError` subscription removed → the new `about-help-links` test red.
   - `recheckBuild` made a no-op → the `session.test.mjs` test red.
 
+**Measured (implement stage, throwaway slot B, `npm run build -- --verbose`):**
+
+- Before: initial 3,405,631 bytes in 2 files (`main-XIZQM6QR.js` 3,200,160 plus `styles-GGTH2IYI.css` 205,471); no lazy chunk.
+- After: initial 1,896,272 bytes in 20 files (`main-N6R2BVZN.js` 784,236, `styles-GGTH2IYI.css` 205,471 and 18 shared chunks); lazy 127 chunks, 1,662,065 bytes, the largest `chunk-CEWNV5ZR.js` at 83,326 (the data browser page). All files together 3,558,337 bytes, 4.5% above before.
+- `maximumWarning` 1992kB: 1,896,272 plus 5% is 1,991,086, rounded up to the next kB. `LAZYCHUNKMAX` 88 kB (88,000 bytes): 83,326 plus 5% is 87,493, rounded up to the next kB. `maximumError` stays 4000kB.
+- The builder keeps a small re-export chunk (712 bytes in the probe) for a dynamic `import()` of a module that is also imported statically, so a page made eager still fetches one stub on navigation. The browser spec therefore asserts that a fetched chunk defines the page, not only that a chunk arrived.
+
+Full chunk table, from the final clean build:
+
+```text
+Initial chunk files | Names                              |  Raw size | Estimated transfer size
+main-N6R2BVZN.js    | main                               | 784.24 kB |               153.43 kB
+chunk-CajYbjv5.js   | -                                  | 755.87 kB |               125.11 kB
+styles-GGTH2IYI.css | styles                             | 205.47 kB |                18.40 kB
+chunk-COd95_cQ.js   | -                                  |  88.92 kB |                22.47 kB
+chunk-CM4fNkGs.js   | -                                  |  10.73 kB |                 3.15 kB
+chunk-AQyPyEDI.js   | -                                  |   9.59 kB |                 2.90 kB
+chunk-u2iImbTr.js   | -                                  |   7.65 kB |                 2.17 kB
+chunk-DOZc5T1E.js   | -                                  |   6.41 kB |                 1.67 kB
+chunk-e64gN7-t.js   | -                                  |   4.54 kB |                 1.55 kB
+chunk-BnIeTlaC.js   | -                                  |   4.01 kB |                 1.14 kB
+chunk-Cn5eO2__.js   | -                                  |   3.46 kB |                 1.47 kB
+chunk-DrQy8MkQ.js   | -                                  |   3.42 kB |                 1.25 kB
+chunk-B2v5NvMw.js   | -                                  |   2.83 kB |                 1.13 kB
+chunk-D_awn-uk.js   | -                                  |   2.52 kB |               944 bytes
+chunk-D3xd2-jK.js   | -                                  |   2.30 kB |                 1.06 kB
+chunk-Cn3xwvnx.js   | -                                  |   1.50 kB |               620 bytes
+chunk-C3ajTZbZ.js   | -                                  |   1.02 kB |                 1.02 kB
+chunk-5rPYG65F.js   | -                                  | 798 bytes |               798 bytes
+chunk-mjGv2hh2.js   | -                                  | 518 bytes |               518 bytes
+chunk-CiRvTzrI.js   | -                                  | 491 bytes |               491 bytes
+
+                    | Initial total                      |   1.90 MB |               341.28 kB
+
+Lazy chunk files    | Names                              |  Raw size | Estimated transfer size
+chunk-CEWNV5ZR.js   | data-browser-page                  |  83.33 kB |                20.26 kB
+chunk-DOrfYN2d.js   | -                                  |  57.89 kB |                13.45 kB
+chunk-CEvDnyJf.js   | -                                  |  44.11 kB |                10.07 kB
+chunk-CMl3NI7H.js   | -                                  |  38.72 kB |                10.37 kB
+chunk-CtIhvciL2.js  | ldap-editor-page                   |  36.18 kB |                 7.60 kB
+chunk-DWTutLs02.js  | web-app-editor-page                |  36.01 kB |                 8.21 kB
+chunk-DH-e50eD.js   | ssl-form-page                      |  30.52 kB |                 6.61 kB
+chunk-DFxK4q-C2.js  | user-editor-page                   |  30.50 kB |                 6.60 kB
+chunk-BIRnABky2.js  | routine-app-form-page              |  30.02 kB |                 6.63 kB
+chunk-CHyCfxY32.js  | openapi-viewer-page                |  28.30 kB |                 8.45 kB
+chunk-H0p20JlZ.js   | wallet-secret-form-page            |  27.82 kB |                 6.20 kB
+chunk-BcV9m9y9.js   | definition-form-page               |  26.84 kB |                 5.51 kB
+chunk-BQ2fXQK02.js  | service-editor-page                |  26.64 kB |                 7.02 kB
+chunk-C6dgezKQ2.js  | -                                  |  26.58 kB |                 5.80 kB
+chunk-QR7XP_un.js   | oauth-registered-client-form-page  |  26.02 kB |                 6.50 kB
+chunk-5V5bfGAZ.js   | -                                  |  25.82 kB |                 6.86 kB
+chunk-BkjtXska2.js  | oauth-server-form-page             |  25.39 kB |                 6.25 kB
+chunk-8xhMopm5.js   | oauth-resource-server-form-page    |  25.03 kB |                 6.46 kB
+chunk-BCFqigU7.js   | role-editor-page                   |  23.99 kB |                 5.91 kB
+chunk-DXhHNn912.js  | home-page                          |  23.71 kB |                 6.30 kB
+chunk-BfAOzNIF.js   | oauth-client-form-page             |  23.54 kB |                 6.02 kB
+chunk-GPnatEUa.js   | auditing-config-page               |  22.61 kB |                 6.17 kB
+chunk-Caq1lHQ0.js   | -                                  |  20.85 kB |                 5.05 kB
+chunk-DQE3FhCF2.js  | error-log-page                     |  19.86 kB |                 5.52 kB
+chunk-BDFqUgnL2.js  | switches-page                      |  19.43 kB |                 4.74 kB
+chunk-BaO2Wx_D.js   | superserver-form-page              |  19.40 kB |                 4.46 kB
+chunk-C9Za4S8S2.js  | encryption-key-file-page           |  19.19 kB |                 4.29 kB
+chunk-XFAyHFLC2.js  | database-editor-page               |  19.13 kB |                 4.95 kB
+chunk-B8kFtQBs2.js  | oauth-server-description-form-page |  19.10 kB |                 4.87 kB
+chunk-H3EswGsv.js   | create-form-page                   |  18.95 kB |                 4.13 kB
+chunk-CNCXb-AD2.js  | encryption-startup-page            |  18.84 kB |                 4.73 kB
+chunk-CPilPIMY2.js  | -                                  |  18.51 kB |                 4.46 kB
+chunk-DKD6a45R2.js  | log-hub-page                       |  16.98 kB |                 4.63 kB
+chunk-C1goaWUZ.js   | x509-form-page                     |  16.63 kB |                 3.98 kB
+chunk-D5nUYrX5.js   | auth-options-page                  |  16.55 kB |                 4.11 kB
+chunk-DGefTT42.js   | code-list-page                     |  16.39 kB |                 4.71 kB
+chunk-C_7LwYRF.js   | log-viewer-page                    |  15.99 kB |                 4.62 kB
+chunk-De7Ew__A2.js  | language-server-form-page          |  15.66 kB |                 4.17 kB
+chunk-UX6lFPdp.js   | user-create-form-page              |  15.60 kB |                 3.84 kB
+chunk-CO7lVpUH2.js  | device-form-page                   |  15.29 kB |                 3.71 kB
+chunk-WvOMmh-n.js   | database-details-page              |  15.25 kB |                 4.19 kB
+chunk-DbP7R3L72.js  | -                                  |  14.51 kB |                 4.04 kB
+chunk-BO5YtEkH2.js  | journal-settings-page              |  13.89 kB |                 3.69 kB
+chunk-OKaaGmtx.js   | document-viewer-page               |  13.82 kB |                 3.85 kB
+chunk-BUGvoe0y.js   | mft-connection-form-page           |  13.58 kB |                 3.53 kB
+chunk-LCrTFqRf2.js  | ledger-page                        |  13.21 kB |                 3.55 kB
+chunk-DDzkCACu2.js  | license-key-page                   |  13.19 kB |                 4.01 kB
+chunk-CRdnQx0y2.js  | interop-item-list-page             |  13.07 kB |                 3.41 kB
+chunk-C9iJjkuA2.js  | docdb-app-form-page                |  12.57 kB |                 3.41 kB
+chunk-CksvS5yv.js   | sql-query-page                     |  12.23 kB |                 3.31 kB
+chunk-B2RGJ3Lf.js   | remote-database-form-page          |  12.22 kB |                 3.38 kB
+chunk-CP3Oiy1e.js   | role-create-form-page              |  12.20 kB |                 3.33 kB
+chunk-BtNiNJYx.js   | dashboard-page                     |  12.06 kB |                 3.73 kB
+chunk-CNQ1jSKi2.js  | interop-item-test-page             |  12.04 kB |                 3.76 kB
+chunk-C0qrULZj2.js  | encryption-keys-page               |  11.73 kB |                 3.47 kB
+chunk-BpgPsFba.js   | encryption-key-file-form-page      |  11.65 kB |                 3.30 kB
+chunk-C9R6OCzG.js   | journal-records-page               |  11.53 kB |                 3.71 kB
+chunk-DtDthUln2.js  | -                                  |  11.47 kB |                 3.54 kB
+chunk-CdaWH5yW.js   | governance-page                    |  11.20 kB |                 3.54 kB
+chunk-B0YN9sMX2.js  | mapping-form-page                  |  10.99 kB |                 3.27 kB
+chunk-rBC9bAlF2.js  | ecp-data-server-form-page          |  10.91 kB |                 3.21 kB
+chunk-BDD3dfBh.js   | resource-list-page                 |  10.66 kB |                 3.24 kB
+chunk-C3isy05-.js   | database-integrity-page            |  10.62 kB |                 2.99 kB
+chunk-DS3qhPXJ2.js  | ecp-settings-page                  |  10.57 kB |                 3.09 kB
+chunk-BIy4IuuZ.js   | license-server-form-page           |  10.08 kB |                 2.95 kB
+chunk-Cj4fNLgi2.js  | rest-api-list-page                 |   9.44 kB |                 3.01 kB
+chunk-CRjoI6bj2.js  | task-schedule-page                 |   9.39 kB |                 2.60 kB
+chunk-DHBsJzg5.js   | screen-permissions-page            |   9.23 kB |                 3.02 kB
+chunk-D80p_RPq2.js  | -                                  |   9.16 kB |                 2.78 kB
+chunk-BixChdcl.js   | audit-user-event-list-page         |   9.15 kB |                 2.99 kB
+chunk-DtQnnyJw2.js  | code-search-page                   |   8.90 kB |                 2.83 kB
+chunk-BfPXmff-.js   | lock-list-page                     |   8.87 kB |                 3.10 kB
+chunk-Dy56EG0a.js   | history-page                       |   8.74 kB |                 2.86 kB
+chunk-BZJ9XnnG.js   | ecp-data-server-list-page          |   8.58 kB |                 3.09 kB
+chunk-BjM8qbTz2.js  | -                                  |   8.53 kB |                 2.13 kB
+chunk-6YvMF68i.js   | journal-file-details-page          |   8.52 kB |                 2.68 kB
+chunk-BsXmv2lJ2.js  | audit-page                         |   8.29 kB |                 2.69 kB
+chunk-CvBq-spm.js   | task-editor-page                   |   7.86 kB |                 2.73 kB
+chunk-CSlNH6UH.js   | process-details-page               |   7.81 kB |                 2.69 kB
+chunk-CEeSn9Vg2.js  | interop-lookup-table-list-page     |   7.79 kB |                 2.55 kB
+chunk-BTB1vSqP.js   | -                                  |   7.78 kB |                 2.33 kB
+chunk-Bh-5gYyV.js   | -                                  |   7.74 kB |                 2.35 kB
+chunk-Bm7cCO0p.js   | docdb-list-page                    |   7.53 kB |                 2.62 kB
+chunk-CKhdVxdV.js   | source-editor-page                 |   7.39 kB |                 2.37 kB
+chunk-ByygOlrc.js   | details-page                       |   7.36 kB |                 2.40 kB
+chunk-PEnfNVrh2.js  | code-compare-page                  |   7.24 kB |                 2.51 kB
+chunk-K4WicjpD.js   | macro-lookup-page                  |   7.21 kB |                 2.37 kB
+chunk-DJHyutgU.js   | transcript-page                    |   7.05 kB |                 2.55 kB
+chunk-CzJEqHbu2.js  | namespace-list-page                |   7.03 kB |                 2.43 kB
+chunk-BGugQ-0Y.js   | -                                  |   7.00 kB |                 2.00 kB
+chunk-Dvc1OgBX2.js  | -                                  |   6.77 kB |                 2.28 kB
+chunk-938okQbI.js   | -                                  |   6.11 kB |                 1.90 kB
+chunk-Cqykk1KF2.js  | -                                  |   5.63 kB |                 2.03 kB
+chunk-D41Q742a2.js  | -                                  |   5.49 kB |                 1.97 kB
+chunk-DFMabAFe.js   | guardrails-page                    |   5.38 kB |                 1.57 kB
+chunk-DPF5Mdoa.js   | upcoming-page                      |   5.33 kB |                 2.02 kB
+chunk-aQ9CUbYz.js   | -                                  |   5.32 kB |                 1.54 kB
+chunk-D62cgApE2.js  | statistics-page                    |   4.79 kB |                 1.82 kB
+chunk-BTP-d4RS.js   | interop-lookup-entry-list-page     |   4.45 kB |                 1.65 kB
+chunk-BgeK9NeB.js   | -                                  |   4.16 kB |                 1.31 kB
+chunk-DC9OWDOJ2.js  | databases-page                     |   3.94 kB |                 1.57 kB
+chunk-VivL8kX4.js   | -                                  |   3.90 kB |                 1.49 kB
+chunk--KJS5JFr.js   | -                                  |   3.90 kB |                 1.24 kB
+chunk-a-8-tYbQ2.js  | system-usage-page                  |   3.86 kB |                 1.51 kB
+chunk-D1yd10Oa.js   | -                                  |   3.79 kB |                 1.45 kB
+chunk-IzlYZB_g.js   | interop-item-setting-list-page     |   3.54 kB |                 1.41 kB
+chunk-BjlGjMN-.js   | -                                  |   3.52 kB |                 1.23 kB
+chunk-i5H3JECK2.js  | -                                  |   3.40 kB |                 1.45 kB
+chunk-cTASlCha2.js  | journal-list-page                  |   3.35 kB |                 1.39 kB
+chunk-ML4hoQKd.js   | -                                  |   3.02 kB |                 1.17 kB
+chunk-kRZMzViD.js   | -                                  |   2.92 kB |                 1.27 kB
+chunk-B4gXiKcw.js   | -                                  |   2.74 kB |                 1.21 kB
+chunk-CVj-RnxC.js   | -                                  |   2.24 kB |               834 bytes
+chunk-CEx_vTaT2.js  | -                                  |   2.23 kB |               871 bytes
+chunk-DpLatsBk.js   | -                                  |   2.19 kB |               778 bytes
+chunk-Cxl7vbeb.js   | -                                  |   1.79 kB |               710 bytes
+chunk-Bos_o6J0.js   | -                                  |   1.62 kB |               575 bytes
+chunk-CzXcRE1Z.js   | -                                  |   1.19 kB |               599 bytes
+chunk-BvnNVIkq.js   | -                                  | 774 bytes |               774 bytes
+chunk-9mhWIi6Y2.js  | detail-page                        | 709 bytes |               709 bytes
+chunk-D5ng8cxb.js   | list-page                          | 657 bytes |               657 bytes
+chunk-DpxR9KBn.js   | -                                  | 564 bytes |               564 bytes
+chunk-mCMvf1_o.js   | -                                  | 471 bytes |               471 bytes
+chunk-CaeAZQRC2.js  | database-wizard-page               | 470 bytes |               470 bytes
+chunk-DJyeq0-y.js   | task-wizard-page                   | 413 bytes |               413 bytes
+chunk-B8NmImio.js   | -                                  | 368 bytes |               368 bytes
+chunk-DHotihUu2.js  | namespace-form-page                | 312 bytes |               312 bytes
+```
+
+**Results:**
+
+- `npm run build -- --verbose`: the seven-checker prebuild chain green, then the table above.
+- `npm run test:tools`: 1947 of 1947. `npm run test:components`: 239 files, 2978 tests, all green.
+- Browser, one file per call on `ocupilot-b-ci` with the clean bundle: `lazy-screens` 1 of 1; `about-help-links` 6 of 6 with the stamp test skipped as the command above says; `shell` 6; `rail` 2; `gate` 6; `switches` 4; `users` 4; `screen-height` 15; `navigate` 6; `a11y-structural-invariants` 13 (the screen walk 335.8 s).
+
+**Mutations observed** (each applied, red observed, reverted with the tree byte-identical by a diff-plus-untracked checksum; the client ones on a rebuilt and redeployed bundle, and the clean bundle rebuilt and redeployed after):
+
+- mutation: AC1, `MacroLookupPage` imported in `shell/panel.ts` and used -> `build-output.test.mjs` page placement red, naming `app-macro-lookup-page` defined in the initial `main-4VRBITYV.js`.
+- mutation: AC1, `<app-toast-host />` wrapped in `@defer` in `app.ts` -> chrome placement red, naming `app-toast-host`.
+- mutation: AC1, every `:id` route given the base loader -> `app.routes.spec.ts` two tests red (the shipped-route test on `LocalDatabaseForm`, the first screen with an edit page, and the fixture test on `UserForm`).
+- mutation: AC1, the root push without `children` -> four tests red across `app.routes.spec.ts` and `screen-outlet.spec.ts`.
+- mutation: AC1, one loader made to resolve to nothing -> `screen-outlet.spec.ts` "every loader in the three maps resolves to a component" red, naming `DESCRIPTOR_PAGES[OcuPilot.Screen.Descriptor.SslForm]`.
+- mutation: AC2, `maximumWarning` 1895kB -> `build-output.test.mjs` DW-371 red (1,896,272 bytes against 1,895,000).
+- mutation: AC2, `LAZYCHUNKMAX` 80,000 -> the lazy-chunk test red, naming `chunk-CEWNV5ZR.js is 83326 bytes` and the cap.
+- mutation: AC2, the literal changed in `angular.json` alone (1895kB) -> `angular-json.test.mjs` red (`'1895kB' !== '1992kB'`).
+- mutation: AC3, `ListPage` imported in `shell/panel.ts` and used, bundle rebuilt and redeployed -> `lazy-screens` red: the click fetched only the 712-byte stub `chunk-DMl14oHr2.js`, which defines no page. The first version of the spec, asserting only that a chunk arrived, stayed green here, so the page-definition assertion was added.
+- mutation: AC4, the `NavigationError` subscription removed from `stale-bundle-notice.ts` -> `stale-bundle-notice.spec.ts` two of eight red, and with the bundle rebuilt and redeployed the new `about-help-links` test red (timed out waiting for the notice).
+- mutation: AC4, `recheckBuild` made a no-op -> `session.test.mjs` two tests red; its `settled` guard dropped -> the "before a verify" test red; its single-flight dropped -> the single-flight test red; its generation check dropped -> the "after a reset" test red; `instanceName` replaced as well -> the "moves nothing else" test red.
+- mutation: AC4, the `stale` getter returning `false` -> `stale-bundle-notice.spec.ts` four of eight red; `chooseReload` a no-op -> one red.
+- mutation: AC1 (review pass), `ExplorerMacro`'s loader written as `() => Promise.resolve(MacroLookupPage)` over a static import in `screen-outlet.ts` -> `build-output.test.mjs` page placement red, found through the page module on disk (the loader line no longer matches the loader pattern).
+- mutation: AC1 (review pass), `this.screen() === null ||` dropped from `ScreenOutlet.page` -> `screen-outlet.spec.ts` "an unknown URL renders no page" red alone (the test's wildcard now carries a child that would mount Home's page).
+- mutation: AC3 (review pass), `try { new Function('return 1')(); } catch {}` added to `ListPage`'s constructor, bundle rebuilt and redeployed -> `lazy-screens` red on "no content-security-policy violation fired" (`script-src eval`, twice), every earlier assertion green; the clean bundle (`main-N6R2BVZN.js`) was rebuilt and redeployed after.
+- mutation: AC4 (review pass), the `onDestroy` unsubscribe removed from `stale-bundle-notice.ts` -> `stale-bundle-notice.spec.ts` "stops listening to the router when it is destroyed" red, one of eight.
+
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
+
+**Summary.** Every screen's page now loads on demand. `ScreenOutlet`'s three maps hold loaders, each screen route and `:id` route has one `''` child whose `loadComponent` is the loader the maps name (the edit page first on an `:id` route), and the outlet renders `<router-outlet />` under the same mount decision. A signed-in tab whose navigation fails re-reads `/instance` through the new `InstanceService.recheckBuild()`, so the existing stale-bundle notice explains it.
+
+**Measured.** Initial 3,405,631 bytes in 2 files before; 1,896,272 bytes in 20 files after. Lazy: 127 chunks, 1,662,065 bytes, largest 83,326 (`chunk-CEWNV5ZR.js`, the data browser page). `maximumWarning` 1992kB, `LAZYCHUNKMAX` 88 kB, `maximumError` 4000kB. The full chunk table is under `## Verification`.
+
+**Files changed.**
+
+- `ui/src/app/shell/screen-outlet.ts`: loaders in place of 89 page imports; the page slot is a router outlet.
+- `ui/src/app/app.routes.ts`: the page child on every screen route.
+- `ui/src/app/core/instance.ts`, `ui/src/app/shell/stale-bundle-notice.ts`: `recheckBuild()` and its `NavigationError` cue.
+- `ui/src/app/areas/security/auditing-config.store.ts`, `auditing-config.page.ts`, `shell/panel.ts`: `AUDITING_FOCUS_ENABLE` moved to the store so the panel imports no page.
+- `ui/angular.json`, `ui/tools/angular-json.test.mjs`: `maximumWarning` re-based to 1992kB.
+- `ui/tools/build-output.test.mjs`: initial and lazy sets, the lazy ceiling, page placement, chrome placement.
+- `ui/tools/session.test.mjs`, `stale-bundle-notice.spec.ts`, `screen-outlet.spec.ts`, `app.routes.spec.ts`, four map-comparing specs: the matching tests.
+- `ui/browser/lazy-screens.browser-spec.mjs` (new), `about-help-links.browser-spec.mjs`, `structural-walk.mjs`: the browser evidence.
+
+**Review.** Two layers ran (verification-gap, intent-alignment; the project turns the other two off): 20 findings, none high. Patched: 2 medium entries (the page-placement blind spot, now found through the page modules on disk, with the loader-pattern finding grouped into it; the unfalsifiable unknown-URL test) and 4 lows (a tautological assertion, a coverage assertion true by construction, two missing mutation lines). Deferred: 1 low (`_components.scss` comments). Rejected: 12, each with its reason in the triage log. Follow-up review recommended: false; the patches are test-only and each was exercised by a demonstrated mutation.
+
+**Verification.** `npm run build -- --verbose` green with the seven-checker prebuild chain. `npm run test:tools` 1947 of 1947 and `npm run test:components` 239 files, 2978 tests, after the review patches. Browser, one file per call on `ocupilot-b-ci`: `lazy-screens` 1, `about-help-links` 6 (stamp test skipped as specified), `shell` 6, `rail` 2, `gate` 6, `switches` 4, `users` 4, `screen-height` 15, `navigate` 6, `a11y-structural-invariants` 13. The throwaway serves the clean bundle `main-N6R2BVZN.js`. Mutations are under `## Verification`.
+
+**Residual risks.**
+
+- A failed navigation also rejects `navigateByUrl` unhandled, as the router does by default, so a stale tab logs a console error beside the notice.
+- The area stores and actions `app.ts` constructs (427,221 bytes) stay in the initial bundle (DW-2367).
+- The page-placement gate treats every `*.page.ts` as a routed page; a future non-routed component in such a file would redden it, and the failure message says which selector.

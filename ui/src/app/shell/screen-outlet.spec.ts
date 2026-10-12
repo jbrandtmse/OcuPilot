@@ -1,6 +1,6 @@
 import type { Type } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
+import { provideRouter, type Route } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 import { beforeEach, describe, expect, it } from 'vitest';
 
@@ -27,6 +27,7 @@ import {
   ARCHETYPE_PAGES,
   DESCRIPTOR_EDIT_PAGES,
   DESCRIPTOR_PAGES,
+  type PageLoader,
   ScreenOutlet,
   resolveArchetypePage,
   resolveScreenPage,
@@ -59,6 +60,13 @@ import { stubFindings, stubFixFinding } from '../testing/findings';
  */
 
 const ALLOWED: Verdict = { allowed: true, failedPair: '' };
+
+/** The application root's route as `app.routes.ts` ships it: the outlet, and the child that loads Home. */
+function shippedRoot(): Route {
+  const root = routes.find((route) => route.path === '' && route.pathMatch === 'full');
+  if (root === undefined) throw new Error('the route table has no application root');
+  return root;
+}
 
 function memoryStorage() {
   const map = new Map<string, string>();
@@ -171,9 +179,12 @@ describe('the routed screen outlet', () => {
         { provide: HelpLinks, useValue: stubHelpLinks() },
         { provide: AccountPreferences, useValue: stubAccountPreferences() },
         provideRouter([
-          { path: '', pathMatch: 'full', component: ScreenOutlet },
+          // The shipped root route, so the child that loads Home's page is the one that ships.
+          shippedRoot(),
           { path: 'probe/:id', component: ScreenOutlet },
-          { path: '**', component: ScreenOutlet },
+          // A wildcard that carries a child, so the outlet's own refusal is what leaves an unknown
+          // URL without a page. The shipped wildcard has no child (`app.routes.spec.ts`).
+          { path: '**', component: ScreenOutlet, children: [{ path: '', loadComponent: ARCHETYPE_PAGES.home }] },
         ]),
         { provide: NavigationService, useValue: navigation as unknown as NavigationService },
         { provide: ShellState, useValue: shell },
@@ -212,10 +223,12 @@ describe('the routed screen outlet', () => {
     expect(page?.querySelector('.ocu-instance-line')).not.toBeNull();
 
     // And the route that reached it names this outlet, never a page component: adding a screen
-    // is adding a descriptor (AD-5).
+    // is adding a descriptor (AD-5). The page is the route's one child, loaded on demand.
     const declared = routes.filter((route) => route.path === '' && route.pathMatch === 'full');
     expect(declared).toHaveLength(1);
     expect(declared[0].component).toBe(ScreenOutlet);
+    expect(declared[0].children).toHaveLength(1);
+    expect(declared[0].children?.[0].loadComponent).toBe(ARCHETYPE_PAGES.home);
   });
 
   it('before the navigation map has answered, a screen mounts no page, so it issues no read the map may refuse', async () => {
@@ -258,7 +271,9 @@ describe('the routed screen outlet', () => {
     expect(root.querySelector('app-home-page')).toBeNull();
   });
 
-  it('an unknown URL renders no page: it names no archetype to resolve one from', async () => {
+  // Mutation (Rule 19): drop `this.screen() === null ||` from `ScreenOutlet.page` -> the wildcard's
+  // child mounts Home's page and this goes red.
+  it('an unknown URL renders no page: it names no screen to mount one for', async () => {
     const harness = await RouterTestingHarness.create('/nope/nope');
     const root: HTMLElement = harness.routeNativeElement as HTMLElement;
 
@@ -365,13 +380,13 @@ describe('the archetype map guard (Object.hasOwn, not a bare index)', () => {
 
     // The bug this guards against: `pages['constructor'] ?? null` does not fall back, because
     // the prototype chain answers with `Object` -- a defined, non-null value that would reach
-    // `ngComponentOutlet` as a non-component.
+    // the router as a loader that is not one.
     expect(resolveArchetypePage(pages, 'constructor')).toBeNull();
     expect(resolveArchetypePage(pages, 'toString')).toBeNull();
     expect(resolveArchetypePage(pages, 'hasOwnProperty')).toBeNull();
   });
 
-  it('refuses, at compile time, a map with no page for a built archetype', () => {
+  it('refuses, at compile time, a map with no page for a built archetype', async () => {
     // `ng test` type-checks this file, so an unused directive fails the run: the map's type must
     // keep requiring every `BuiltArchetypeKey`, and `home` is one.
     // @ts-expect-error a map with no page for the built `home` archetype does not type-check
@@ -379,19 +394,30 @@ describe('the archetype map guard (Object.hasOwn, not a bare index)', () => {
     // And the required keys are exactly `BuiltArchetypeKey`, so a type that names `home` by hand
     // stops compiling here the first time another archetype is built.
     const requiredAreBuilt: Equals<RequiredKeys<typeof ARCHETYPE_PAGES>, BuiltArchetypeKey> = true;
-    expect(ARCHETYPE_PAGES.home).toBe(HomePage);
+    expect(await ARCHETYPE_PAGES.home()).toBe(HomePage);
   });
 
-  it('registers the list page for the list archetype, so a built list screen needs no router edit', () => {
-    expect(resolveArchetypePage(ARCHETYPE_PAGES as Readonly<Record<string, Type<unknown>>>, 'list')).toBe(ListPage);
+  it('registers the list page for the list archetype, so a built list screen needs no router edit', async () => {
+    expect(await resolveArchetypePage(ARCHETYPE_PAGES as Readonly<Record<string, PageLoader>>, 'list')?.()).toBe(ListPage);
   });
 
-  it('registers the OpenAPI document viewer page for the viewer (OpenAPI) archetype', () => {
-    expect(resolveArchetypePage(ARCHETYPE_PAGES as Readonly<Record<string, Type<unknown>>>, 'viewer (OpenAPI)')).toBe(
+  it('registers the OpenAPI document viewer page for the viewer (OpenAPI) archetype', async () => {
+    expect(await resolveArchetypePage(ARCHETYPE_PAGES as Readonly<Record<string, PageLoader>>, 'viewer (OpenAPI)')?.()).toBe(
       OpenApiViewerPage
     );
   });
 });
+
+/**
+ * The component a loader answers, or `null` where the map names none.
+ */
+async function pageOf(loader: PageLoader | null | undefined): Promise<Type<unknown> | null> {
+  return loader === null || loader === undefined ? null : loader();
+}
+
+const DESCRIPTOR_LOADERS = DESCRIPTOR_PAGES as Readonly<Record<string, PageLoader>>;
+const EDIT_LOADERS = DESCRIPTOR_EDIT_PAGES as Readonly<Record<string, PageLoader>>;
+const ARCHETYPE_LOADERS = ARCHETYPE_PAGES as Readonly<Record<string, PageLoader>>;
 
 /**
  * DW-369: one archetype, two screens. `form-page` is served by the Definition form and by
@@ -412,80 +438,78 @@ describe('the descriptor map (DW-369)', () => {
     expect(resolveScreenPage(byDescriptor, byArchetype, 'constructor', 'toString')).toBeNull();
   });
 
-  it('Story 9.7: the New Task wizard\'s descriptor resolves to its own stepped page, not the generic form page', () => {
-    const descriptorPages = DESCRIPTOR_PAGES as Readonly<Record<string, Type<unknown>>>;
-    const archetypePages = ARCHETYPE_PAGES as Readonly<Record<string, Type<unknown>>>;
-    const wizard = resolveScreenPage(descriptorPages, archetypePages, 'OcuPilot.Screen.Descriptor.TaskForm', 'form-page');
-    expect(wizard).toBe(TaskWizardPage);
-    expect(wizard).not.toBe(ARCHETYPE_PAGES['form-page']);
+  // Every loader fetches a module that exports a component, so a mistyped path or export name is
+  // a red test here and not a blank screen the first time a person opens it.
+  //
+  // Mutation (Rule 19): make one loader resolve to nothing (`.then(() => undefined as never)`) ->
+  // this goes red naming the map and the key.
+  it('every loader in the three maps resolves to a component', async () => {
+    const maps: readonly (readonly [string, Readonly<Record<string, PageLoader>>])[] = [
+      ['ARCHETYPE_PAGES', ARCHETYPE_LOADERS],
+      ['DESCRIPTOR_PAGES', DESCRIPTOR_LOADERS],
+      ['DESCRIPTOR_EDIT_PAGES', EDIT_LOADERS],
+    ];
+    let loaders = 0;
+    for (const [name, map] of maps) {
+      for (const [key, loader] of Object.entries(map)) {
+        const page = await loader();
+        loaders += 1;
+        expect(typeof page, `${name}[${key}]`).toBe('function');
+        expect(page.name, `${name}[${key}]`).not.toBe('');
+      }
+    }
+    expect(loaders).toBeGreaterThan(100);
   });
 
-  it('Story 9.8: the task form\'s id route resolves to Edit task, while its bare route keeps the wizard', () => {
+  it('Story 9.7: the New Task wizard\'s descriptor resolves to its own stepped page, not the generic form page', async () => {
+    const wizard = await pageOf(resolveScreenPage(DESCRIPTOR_LOADERS, ARCHETYPE_LOADERS, 'OcuPilot.Screen.Descriptor.TaskForm', 'form-page'));
+    expect(wizard).toBe(TaskWizardPage);
+    expect(wizard).not.toBe(await ARCHETYPE_PAGES['form-page']());
+  });
+
+  it('Story 9.8: the task form\'s id route resolves to Edit task, while its bare route keeps the wizard', async () => {
     // Mutation (Rule 19): drop TaskForm from `DESCRIPTOR_EDIT_PAGES` -> the id route falls to the
     // wizard and this goes red.
-    const editPages = DESCRIPTOR_EDIT_PAGES as Readonly<Record<string, Type<unknown>>>;
-    const descriptorPages = DESCRIPTOR_PAGES as Readonly<Record<string, Type<unknown>>>;
-    const archetypePages = ARCHETYPE_PAGES as Readonly<Record<string, Type<unknown>>>;
-    expect(resolveScreenPage(editPages, descriptorPages, 'OcuPilot.Screen.Descriptor.TaskForm', 'form-page')).toBe(TaskEditorPage);
-    expect(resolveScreenPage(descriptorPages, archetypePages, 'OcuPilot.Screen.Descriptor.TaskForm', 'form-page')).toBe(TaskWizardPage);
+    expect(await pageOf(resolveScreenPage(EDIT_LOADERS, DESCRIPTOR_LOADERS, 'OcuPilot.Screen.Descriptor.TaskForm', 'form-page'))).toBe(TaskEditorPage);
+    expect(await pageOf(resolveScreenPage(DESCRIPTOR_LOADERS, ARCHETYPE_LOADERS, 'OcuPilot.Screen.Descriptor.TaskForm', 'form-page'))).toBe(TaskWizardPage);
   });
 
-  it('Story 16.14: the LDAP form resolves to the LDAP editor at its id route and at its bare route', () => {
+  it('Story 16.14: the LDAP form resolves to the LDAP editor at its id route and at its bare route', async () => {
     // Mutation (Rule 19): drop LdapConfigForm from `DESCRIPTOR_EDIT_PAGES` -> the id-route leg goes red.
-    const editPages = DESCRIPTOR_EDIT_PAGES as Readonly<Record<string, Type<unknown>>>;
-    const descriptorPages = DESCRIPTOR_PAGES as Readonly<Record<string, Type<unknown>>>;
-    expect(resolveArchetypePage(editPages, 'OcuPilot.Screen.Descriptor.LdapConfigForm')).toBe(LdapEditorPage);
-    expect(resolveArchetypePage(descriptorPages, 'OcuPilot.Screen.Descriptor.LdapConfigForm')).toBe(LdapEditorPage);
+    expect(await pageOf(resolveArchetypePage(EDIT_LOADERS, 'OcuPilot.Screen.Descriptor.LdapConfigForm'))).toBe(LdapEditorPage);
+    expect(await pageOf(resolveArchetypePage(DESCRIPTOR_LOADERS, 'OcuPilot.Screen.Descriptor.LdapConfigForm'))).toBe(LdapEditorPage);
   });
 
-  it('Story 16.13: the service form resolves to the service editor at its id route and at its bare route', () => {
+  it('Story 16.13: the service form resolves to the service editor at its id route and at its bare route', async () => {
     // Mutation (Rule 19): register ServiceForm to `LdapEditorPage` in `DESCRIPTOR_EDIT_PAGES` -> the
     // id-route leg goes red.
-    const editPages = DESCRIPTOR_EDIT_PAGES as Readonly<Record<string, Type<unknown>>>;
-    const descriptorPages = DESCRIPTOR_PAGES as Readonly<Record<string, Type<unknown>>>;
-    expect(resolveArchetypePage(editPages, 'OcuPilot.Screen.Descriptor.ServiceForm')).toBe(ServiceEditorPage);
-    expect(resolveArchetypePage(descriptorPages, 'OcuPilot.Screen.Descriptor.ServiceForm')).toBe(ServiceEditorPage);
+    expect(await pageOf(resolveArchetypePage(EDIT_LOADERS, 'OcuPilot.Screen.Descriptor.ServiceForm'))).toBe(ServiceEditorPage);
+    expect(await pageOf(resolveArchetypePage(DESCRIPTOR_LOADERS, 'OcuPilot.Screen.Descriptor.ServiceForm'))).toBe(ServiceEditorPage);
   });
 
-  it('Story 18.14: the three mapping forms share one page, Namespaces takes its own, and the mapping lists stay the list page', () => {
+  it('Story 18.14: the three mapping forms share one page, Namespaces takes its own, and the mapping lists stay the list page', async () => {
     // Mutation (Rule 19): drop NamespaceList from `DESCRIPTOR_PAGES` -> the Namespaces leg reads the
     // list page, and Copy mappings would have no page to open its dialog.
-    const descriptorPages = DESCRIPTOR_PAGES as Readonly<Record<string, Type<unknown>>>;
-    const archetypePages = ARCHETYPE_PAGES as Readonly<Record<string, Type<unknown>>>;
     for (const kind of ['Global', 'Routine', 'Package']) {
-      expect(resolveScreenPage(descriptorPages, archetypePages, `OcuPilot.Screen.Descriptor.${kind}MappingForm`, 'form-page')).toBe(MappingFormPage);
-      expect(resolveScreenPage(descriptorPages, archetypePages, `OcuPilot.Screen.Descriptor.${kind}MappingList`, 'list')).toBe(ListPage);
+      expect(await pageOf(resolveScreenPage(DESCRIPTOR_LOADERS, ARCHETYPE_LOADERS, `OcuPilot.Screen.Descriptor.${kind}MappingForm`, 'form-page'))).toBe(MappingFormPage);
+      expect(await pageOf(resolveScreenPage(DESCRIPTOR_LOADERS, ARCHETYPE_LOADERS, `OcuPilot.Screen.Descriptor.${kind}MappingList`, 'list'))).toBe(ListPage);
     }
-    expect(resolveScreenPage(descriptorPages, archetypePages, 'OcuPilot.Screen.Descriptor.NamespaceList', 'list')).toBe(NamespaceListPage);
+    expect(await pageOf(resolveScreenPage(DESCRIPTOR_LOADERS, ARCHETYPE_LOADERS, 'OcuPilot.Screen.Descriptor.NamespaceList', 'list'))).toBe(NamespaceListPage);
   });
 
-  it('Story 19.5: the four SQL catalog lists resolve to the criteria-form list page', () => {
+  it('Story 19.5: the four SQL catalog lists resolve to the criteria-form list page', async () => {
     // Mutation (Rule 19): drop ExplorerSqlViews from `DESCRIPTOR_PAGES` -> it falls to the audit page
     // and this goes red.
-    const descriptorPages = DESCRIPTOR_PAGES as Readonly<Record<string, Type<unknown>>>;
-    const archetypePages = ARCHETYPE_PAGES as Readonly<Record<string, Type<unknown>>>;
     for (const list of ['Schemas', 'Tables', 'Views', 'Procedures']) {
-      expect(resolveScreenPage(descriptorPages, archetypePages, `OcuPilot.Screen.Descriptor.ExplorerSql${list}`, 'list (server criteria)')).toBe(CodeListPage);
+      expect(await pageOf(resolveScreenPage(DESCRIPTOR_LOADERS, ARCHETYPE_LOADERS, `OcuPilot.Screen.Descriptor.ExplorerSql${list}`, 'list (server criteria)'))).toBe(CodeListPage);
     }
   });
 
-  it('the two form-page screens resolve to two different pages, which is what DW-369 asked for', () => {
-    const descriptorPages = DESCRIPTOR_PAGES as Readonly<Record<string, Type<unknown>>>;
-    const archetypePages = ARCHETYPE_PAGES as Readonly<Record<string, Type<unknown>>>;
-    const switches = resolveScreenPage(
-      descriptorPages,
-      archetypePages,
-      'OcuPilot.Screen.Descriptor.AgentSwitches',
-      'form-page'
-    );
-    const definitionForm = resolveScreenPage(
-      descriptorPages,
-      archetypePages,
-      'OcuPilot.Screen.Descriptor.AgentDefinitionForm',
-      'form-page'
-    );
+  it('the two form-page screens resolve to two different pages, which is what DW-369 asked for', async () => {
+    const switches = await pageOf(resolveScreenPage(DESCRIPTOR_LOADERS, ARCHETYPE_LOADERS, 'OcuPilot.Screen.Descriptor.AgentSwitches', 'form-page'));
+    const definitionForm = await pageOf(resolveScreenPage(DESCRIPTOR_LOADERS, ARCHETYPE_LOADERS, 'OcuPilot.Screen.Descriptor.AgentDefinitionForm', 'form-page'));
     expect(switches).not.toBeNull();
-    expect(definitionForm).toBe(ARCHETYPE_PAGES['form-page']);
+    expect(definitionForm).toBe(await ARCHETYPE_PAGES['form-page']());
     expect(switches).not.toBe(definitionForm);
   });
 });

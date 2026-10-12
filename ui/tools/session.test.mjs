@@ -2291,6 +2291,98 @@ test('AC4: an identity answer that arrives after a reset settles nothing', async
   assert.equal(harness.instance.adminApiVersion(), 0, 'and none of its fields are kept');
 });
 
+// --- Re-checking which bundle the instance has installed (Story 20.29) ---------------------
+
+/** The identity calls a harness has seen. */
+function identityCalls(harness) {
+  return harness.calls.filter((c) => c.path === INSTANCE_PATH);
+}
+
+// Mutation (Rule 19): make `recheckBuild` a no-op -> this and the single-flight test go red; drop its `settled` guard -> the
+// "before a verify" test; drop the generation check in `runRecheck` -> the "after a reset" test; let it replace `instanceName` too -> this one.
+test('Story 20.29: recheckBuild reads /instance once, publishes the new build identity and moves nothing else', async () => {
+  let build = 'main-AAAA1111.js';
+  const harness = withInstance(() =>
+    response(200, identityBody(2, { buildIdentity: build, instanceName: build === 'main-AAAA1111.js' ? 'IRIS' : 'CHANGED' }))
+  );
+  await harness.ready();
+  assert.equal(await harness.instance.verify(), 'ready');
+  assert.equal(harness.instance.buildIdentity(), 'main-AAAA1111.js');
+
+  const heard = [];
+  harness.instance.subscribe(() => heard.push(harness.instance.buildIdentity()));
+  build = 'main-BBBB2222.js';
+  await harness.instance.recheckBuild();
+
+  assert.equal(identityCalls(harness).length, 2, 'one request for the verify and one for the re-check');
+  assert.equal(harness.instance.buildIdentity(), 'main-BBBB2222.js', 'the new identity is published');
+  assert.deepEqual(heard, ['main-BBBB2222.js'], 'and listeners hear it once');
+  assert.equal(harness.instance.status(), 'ready', 'the status never moves');
+  assert.equal(harness.instance.instanceName(), 'IRIS', 'and no other field is replaced');
+  assert.equal(harness.instance.adminApiVersion(), 2);
+});
+
+test('Story 20.29: recheckBuild is single-flight, and a refused or failed re-read changes nothing', async () => {
+  let answers = 0;
+  const harness = withInstance(() => {
+    answers += 1;
+    if (answers === 1) return response(200, identityBody(2, { buildIdentity: 'main-AAAA1111.js' }));
+    if (answers === 2) return response(500, JSON.stringify({ code: 'SOMETHING.UNEXPECTED' }));
+    return response(200, identityBody(2, { buildIdentity: 'main-BBBB2222.js' }));
+  });
+  await harness.ready();
+  await harness.instance.verify();
+
+  await Promise.all([harness.instance.recheckBuild(), harness.instance.recheckBuild()]);
+  assert.equal(identityCalls(harness).length, 2, 'concurrent callers share one request');
+  assert.equal(harness.instance.buildIdentity(), 'main-AAAA1111.js', 'a failed re-read keeps the identity it had');
+  assert.equal(harness.instance.status(), 'ready', 'and never unsettles the verdict');
+
+  await harness.instance.recheckBuild();
+  assert.equal(identityCalls(harness).length, 3, 'a finished re-check does not block the next one');
+  assert.equal(harness.instance.buildIdentity(), 'main-BBBB2222.js');
+});
+
+test('Story 20.29: recheckBuild asks nothing before a verify has settled, or after a reset', async () => {
+  const harness = withInstance(() => response(200, identityBody(2, { buildIdentity: 'main-AAAA1111.js' })));
+  await harness.ready();
+
+  await harness.instance.recheckBuild();
+  assert.equal(identityCalls(harness).length, 0, 'before any verify there is no principal to ask on behalf of');
+
+  await harness.instance.verify();
+  assert.equal(identityCalls(harness).length, 1);
+
+  harness.instance.reset();
+  await harness.instance.recheckBuild();
+  assert.equal(identityCalls(harness).length, 1, 'after a reset the verdict is another principal\'s to make');
+  assert.equal(harness.instance.buildIdentity(), '', 'and the identity stays forgotten');
+});
+
+test('Story 20.29: a re-check answer that arrives after a reset is discarded', async () => {
+  let release;
+  const gate = new Promise((resolve) => {
+    release = resolve;
+  });
+  let answers = 0;
+  const harness = withInstance(async () => {
+    answers += 1;
+    if (answers === 1) return response(200, identityBody(2, { buildIdentity: 'main-AAAA1111.js' }));
+    await gate;
+    return response(200, identityBody(2, { buildIdentity: 'main-BBBB2222.js' }));
+  });
+  await harness.ready();
+  await harness.instance.verify();
+
+  const inFlight = harness.instance.recheckBuild();
+  harness.instance.reset();
+  release();
+  await inFlight;
+
+  assert.equal(harness.instance.buildIdentity(), '', 'the previous principal\'s late answer lands on nobody');
+  assert.equal(harness.instance.status(), 'checking');
+});
+
 // --- The Angular layer's wiring, read out of its own source --------------------------------
 //
 // `app.ts` and `main.ts` have no component runner until Story 1.9 (DW-93), and both carry

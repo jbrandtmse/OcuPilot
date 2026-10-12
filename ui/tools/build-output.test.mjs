@@ -20,6 +20,11 @@ import { harvestedNotices } from './licenses.mjs';
 // - "Integration (Rule 1)": the emitted JS bundle carries STRINGS.productName's
 //   exact value, and the emitted CSS bundle carries the shell token
 //   declaration.
+// - Story 20.29, pages load on demand: the emitted files split into the initial set (what a cold
+//   open downloads before the sign-in card shows) and lazy chunks, and this file holds the
+//   initial total under angular.json's warning, every lazy chunk under LAZYCHUNKMAX, every page
+//   the outlet's loaders name in a lazy chunk and in no initial file, and every element
+//   app.ts's template names in the initial set.
 //
 // The build runs exactly once, at module scope, before any test() body --
 // reusing the one build the suite already runs instead of adding a second
@@ -94,10 +99,66 @@ test('npm run build succeeds and emits content-hashed bundle filenames', () => {
   );
 });
 
-function jsBundlePath() {
-  const files = readdirSync(distBrowserDir);
-  const name = files.find((f) => /^main-[0-9A-Za-z]{6,}\.js$/.test(f));
-  return name && join(distBrowserDir, name);
+// --- The emitted file set: initial and lazy (Story 20.29) --------------------------------------
+//
+// The initial set is every file `index.html` names (script, stylesheet, modulepreload) plus
+// everything those files reach through a static `import` or `export ... from` statement. A dynamic
+// `import(` is the lazy edge and is never followed. A lazy chunk is every other emitted `.js` or
+// `.css` file, so the two sets cover the output exactly. Chunk names carry `-` and `_`.
+
+const EMITTED_FILE_RE = /\.(js|css)$/;
+const ENTRY_RE = /^(main|styles)-[0-9A-Za-z]{6,}\.(js|css)$/;
+const CHUNK_RE = /^chunk-[0-9A-Za-z_-]+\.js$/;
+const STATIC_IMPORT_RE = /\b(?:import|export)\s*(?:[^;"'`()]*?\bfrom\s*)?["'`]\.\/([^"'`]+\.js)["'`]/g;
+
+let emittedSets = null;
+function emittedFileSets() {
+  if (emittedSets) return emittedSets;
+  const emitted = readdirSync(distBrowserDir).filter((f) => EMITTED_FILE_RE.test(f));
+  const unclassified = emitted.filter((f) => !ENTRY_RE.test(f) && !CHUNK_RE.test(f));
+  assert.deepEqual(
+    unclassified,
+    [],
+    `the build emitted JS/CSS this gate cannot classify: ${JSON.stringify(unclassified)} -- ` +
+      'name the new file shape (an entry or a chunk) in build-output.test.mjs'
+  );
+  const html = readFileSync(join(distBrowserDir, 'index.html'), 'utf8');
+  const initial = new Set();
+  for (const re of [/<script\b[^>]*\bsrc=["']([^"']+)["']/gi, /<link\b[^>]*\bhref=["']([^"']+)["']/gi]) {
+    for (const match of html.matchAll(re)) if (EMITTED_FILE_RE.test(match[1])) initial.add(match[1]);
+  }
+  const queue = [...initial].filter((f) => f.endsWith('.js'));
+  while (queue.length > 0) {
+    const file = queue.pop();
+    assert.ok(emitted.includes(file), `${file} is reached from the initial set but the build did not emit it`);
+    for (const match of fileText(file).matchAll(STATIC_IMPORT_RE)) {
+      if (!initial.has(match[1])) {
+        initial.add(match[1]);
+        queue.push(match[1]);
+      }
+    }
+  }
+  for (const file of initial) assert.ok(emitted.includes(file), `${file} is in the initial set but the build did not emit it`);
+  const lazy = emitted.filter((f) => !initial.has(f));
+  emittedSets = { initial: [...initial], lazy };
+  return emittedSets;
+}
+
+const fileTexts = new Map();
+function fileText(file) {
+  if (!fileTexts.has(file)) fileTexts.set(file, readFileSync(join(distBrowserDir, file), 'utf8'));
+  return fileTexts.get(file);
+}
+
+function fileBytes(file) {
+  return readFileSync(join(distBrowserDir, file)).length;
+}
+
+function initialJsText() {
+  return emittedFileSets()
+    .initial.filter((f) => f.endsWith('.js'))
+    .map(fileText)
+    .join('\n');
 }
 
 function cssBundlePath() {
@@ -164,9 +225,10 @@ test('the served licence notices name all four vendored reply-rendering packages
 });
 
 // DW-371 (Story 4.6, AC9): the bundle-size gate. `angular-json.test.mjs` pins the budget
-// literal; this file measures the ACTUAL emitted initial total -- the same set `@angular/build`'s
-// own `type: "initial"` budget sums, JS and CSS, raw bytes -- against it, so a real regression
-// fails here even if the configuration were left untouched.
+// literal; this file measures the ACTUAL emitted initial total -- the set `@angular/build`'s own
+// `type: "initial"` budget sums, JS and CSS, raw bytes: the files `index.html` loads and everything
+// they import statically -- against it, so a real regression fails here even if the configuration
+// were left untouched. The lazy chunks are outside that total, and have a ceiling of their own.
 //
 // Mutation (Rule 19): lower `maximumWarning` in `ui/angular.json` by 1 kB below the measured
 // total -> this goes red naming both the measured bytes and the (now exceeded) budget.
@@ -180,29 +242,135 @@ test('DW-371: the emitted initial total (JS + CSS) stays at or below angular.jso
   // node_modules/@angular/build/src/utils/bundle-calculator.js).
   const maximumWarningBytes = Number(String(initialBudget.maximumWarning).replace(/kB$/, '')) * 1000;
 
-  const emitted = readdirSync(distBrowserDir).filter((f) => /\.(js|css)$/.test(f));
-  const files = emitted.filter((f) => /^(main|styles)-[0-9A-Za-z]{6,}\.(js|css)$/.test(f));
-  assert.ok(files.length >= 2, `expected at least one hashed main-*.js and one styles-*.css, got: ${JSON.stringify(files)}`);
-  // The measured set must BE the emitted set. The app has no lazy route today, so `main-*.js` +
-  // `styles-*.css` is the whole `type: "initial"` total -- but the moment the builder emits a
-  // further initial chunk under any other name (`polyfills-*.js`, a shared `chunk-*.js`), an
-  // unguarded name filter would silently undercount and stay green while the real budget was
-  // exceeded. This reddens instead, naming the file to classify.
-  const unmeasured = emitted.filter((f) => !files.includes(f));
-  assert.deepEqual(
-    unmeasured,
-    [],
-    `the build emitted JS/CSS this gate does not measure: ${JSON.stringify(unmeasured)} -- ` +
-      'classify each as initial (add it to the measured set) or lazy (exclude it deliberately)'
+  const { initial } = emittedFileSets();
+  assert.ok(
+    initial.some((f) => /^main-/.test(f)) && initial.some((f) => /^styles-/.test(f)),
+    `expected the initial set to hold a hashed main-*.js and styles-*.css, got: ${JSON.stringify(initial)}`
   );
   let totalBytes = 0;
-  for (const file of files) totalBytes += readFileSync(join(distBrowserDir, file)).length;
+  for (const file of initial) totalBytes += fileBytes(file);
 
   assert.ok(
     totalBytes <= maximumWarningBytes,
-    `emitted initial total is ${totalBytes} bytes, which exceeds angular.json's maximumWarning of ${maximumWarningBytes} bytes (${initialBudget.maximumWarning}) -- ` +
+    `emitted initial total is ${totalBytes} bytes in ${initial.length} files, which exceeds angular.json's maximumWarning of ${maximumWarningBytes} bytes (${initialBudget.maximumWarning}) -- ` +
       'edit ui/angular.json\'s budget and ui/tools/angular-json.test.mjs\'s pinned literal together'
   );
+});
+
+// Story 20.29: the ceiling for any one lazy chunk. `type: "anyScript"` in angular.json would also
+// bound `main` (about 800 kB), so it would hold no lazy chunk; this does. It is set the way
+// `maximumWarning` is (DW-1166): the largest measured lazy chunk plus 5%, rounded up to the next
+// kB, in the builder's units where a kB is 1,000 bytes. Raise it in the story that grows a page
+// past it, with the measurement in that story's spec. Named limit: a small chunk can grow up to
+// the ceiling unflagged.
+const LAZYCHUNKMAX = 88 * 1000;
+
+// Mutation (Rule 19): lower LAZYCHUNKMAX below the largest lazy chunk (the data browser page) ->
+// this goes red naming that chunk, its bytes and the cap.
+test('Story 20.29: every lazy chunk stays at or below LAZYCHUNKMAX', () => {
+  assertBuildSucceeded();
+  const { lazy } = emittedFileSets();
+  assert.ok(lazy.length > 0, 'the build emitted no lazy chunk, so no page loads on demand');
+  const over = lazy
+    .map((file) => ({ file, bytes: fileBytes(file) }))
+    .filter(({ bytes }) => bytes > LAZYCHUNKMAX)
+    .map(({ file, bytes }) => `${file} is ${bytes} bytes`);
+  assert.deepEqual(
+    over,
+    [],
+    `a lazy chunk is over the per-chunk cap LAZYCHUNKMAX of ${LAZYCHUNKMAX} bytes -- raise the cap with the measurement in the story's spec, or split the page`
+  );
+});
+
+// Story 20.29, AD-5: the loaders `screen-outlet.ts` names are the only way a page enters the
+// bundle. Each loader's page component is defined in a lazy chunk and in no initial file, and every
+// element `app.ts`'s template names (the shell chrome) is defined in the initial set. A component
+// definition compiles to `selectors:[["<selector>"]]`; the builder writes the inner quotes as
+// backticks, so any quote character is accepted.
+function escapeRegExp(text) {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function definesSelector(text, selector) {
+  return new RegExp(`selectors:\\[\\[["'\`]${escapeRegExp(selector)}["'\`]`).test(text);
+}
+
+/** Every distinct `import('<specifier>').then((m) => m.<Class>)` loader in `screen-outlet.ts`, with its page's selector. */
+function pageLoaders() {
+  const shellDir = join(uiRoot, 'src', 'app', 'shell');
+  const source = readFileSync(join(shellDir, 'screen-outlet.ts'), 'utf8');
+  const loaders = new Map();
+  for (const match of source.matchAll(/import\('([^']+)'\)\.then\(\(m\) => m\.(\w+)\)/g)) {
+    loaders.set(`${match[1]}#${match[2]}`, { specifier: match[1], className: match[2] });
+  }
+  assert.ok(loaders.size > 80, `expected screen-outlet.ts to name its pages as loaders, found ${loaders.size}`);
+  return [...loaders.values()].map(({ specifier, className }) => {
+    const pageSource = readFileSync(join(shellDir, `${specifier}.ts`), 'utf8');
+    const at = pageSource.indexOf(`export class ${className}`);
+    assert.notEqual(at, -1, `${specifier}.ts does not export ${className}`);
+    const selectors = [...pageSource.slice(0, at).matchAll(/selector:\s*(['"`])([^'"`]+)\1/g)];
+    assert.ok(selectors.length > 0, `${className} in ${specifier}.ts declares no selector`);
+    return { specifier, className, selector: selectors[selectors.length - 1][2] };
+  });
+}
+
+/**
+ * Every component selector declared by a page module: each `*.page.ts` under `src/app`, plus the
+ * two shared pages in `shell/`. Read from the files, not from the loaders, so a page registered in
+ * any other shape than the loader line, or imported statically by other code, is still held to the
+ * rule.
+ */
+function pageModuleSelectors() {
+  const appDir = join(uiRoot, 'src', 'app');
+  const modules = [];
+  const walk = (dir) => {
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      const path = join(dir, entry.name);
+      if (entry.isDirectory()) walk(path);
+      else if (/\.page\.ts$/.test(entry.name) || /[\\/]shell[\\/](list|detail)-page\.ts$/.test(path)) modules.push(path);
+    }
+  };
+  walk(appDir);
+  assert.ok(modules.length > 80, `expected the page modules under src/app, found ${modules.length}`);
+  return modules.flatMap((path) =>
+    [...readFileSync(path, 'utf8').matchAll(/selector:\s*(['"`])([^'"`]+)\1/g)].map((match) => ({ selector: match[2], module: path.slice(appDir.length + 1) }))
+  );
+}
+
+// Mutation (Rule 19): import one page statically from eager code (for example `MacroLookupPage`
+// in `shell/panel.ts`, used) -> this goes red naming `app-macro-lookup-page`. A loader written in
+// another shape (`() => Promise.resolve(MacroLookupPage)` over a static import) is found through the
+// page module itself, so it goes red too.
+test('Story 20.29, AD-5: every page a loader names is defined in a lazy chunk and in no initial file', () => {
+  assertBuildSucceeded();
+  const { initial, lazy } = emittedFileSets();
+  const initialJs = initial.filter((f) => f.endsWith('.js'));
+  const lazyJs = lazy.filter((f) => f.endsWith('.js'));
+  const eager = [];
+  const missing = [];
+  for (const { selector, module } of pageModuleSelectors()) {
+    const inInitial = initialJs.filter((f) => definesSelector(fileText(f), selector));
+    if (inInitial.length > 0) eager.push(`${selector} (${module}) is defined in the initial file ${inInitial.join(', ')}`);
+  }
+  for (const { specifier, className, selector } of pageLoaders()) {
+    if (!lazyJs.some((f) => definesSelector(fileText(f), selector))) {
+      missing.push(`${selector} (${className}, loaded from ${specifier})`);
+    }
+  }
+  assert.deepEqual(eager, [], 'a page is bundled with the shell: no module of the initial set may import a page module statically');
+  assert.deepEqual(missing, [], 'a page is defined in no lazy chunk, so its loader reaches nothing');
+});
+
+test('Story 20.29, AD-5: every element app.ts\'s template names is defined in the initial set', () => {
+  assertBuildSucceeded();
+  const appTs = readFileSync(join(uiRoot, 'src', 'app', 'app.ts'), 'utf8');
+  const template = /template:\s*`([\s\S]*?)`/.exec(appTs);
+  assert.ok(template, 'expected app.ts to declare an inline template');
+  const elements = [...new Set([...template[1].matchAll(/<([a-z][a-z0-9]*-[a-z0-9-]+)/g)].map((match) => match[1]))];
+  assert.ok(elements.includes('app-rail') && elements.includes('router-outlet'), `expected the shell chrome in app.ts's template, got: ${JSON.stringify(elements)}`);
+  const text = initialJsText();
+  const absent = elements.filter((selector) => !definesSelector(text, selector));
+  assert.deepEqual(absent, [], 'the shell chrome app.ts renders must ship with the shell, not load on demand');
 });
 
 // Story 2.4: the data table's browser harness ships nowhere. Its hooks and its probe declaration are
@@ -333,9 +501,8 @@ function appTemplateBinding() {
 
 test('Integration (Rule 1): the emitted JS bundle carries the STRINGS key app.ts actually renders', () => {
   assertBuildSucceeded();
-  const jsPath = jsBundlePath();
-  assert.ok(jsPath, 'expected a hashed main-<HASH>.js to inspect');
-  const jsText = readFileSync(jsPath, 'utf8');
+  const jsText = initialJsText();
+  assert.ok(jsText.length > 0, 'expected the initial set to hold JavaScript to inspect');
   const strings = loadStrings();
   const { key } = appTemplateBinding();
 
@@ -343,11 +510,11 @@ test('Integration (Rule 1): the emitted JS bundle carries the STRINGS key app.ts
   // because app.ts renders it, unlike the value, which ships either way.
   assert.ok(
     new RegExp(`\\.${key}\\b`).test(jsText),
-    `expected the emitted JS bundle to reference the rendered key .${key}; app.ts's consumer relationship is not observable in the artifact`
+    `expected the emitted initial JS to reference the rendered key .${key}; app.ts's consumer relationship is not observable in the artifact`
   );
   assert.ok(
     jsText.includes(strings[key]),
-    `expected the emitted JS bundle to contain STRINGS.${key}'s value (${JSON.stringify(strings[key])})`
+    `expected the emitted initial JS to contain STRINGS.${key}'s value (${JSON.stringify(strings[key])})`
   );
 });
 

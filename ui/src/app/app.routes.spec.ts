@@ -2,7 +2,14 @@ import { describe, expect, it } from 'vitest';
 
 import { DIALOG_EDITORS, builtScreens, hasIdRoute } from './core/navigation';
 import type { ScreenDeclaration } from './core/screens.generated';
-import { ScreenOutlet } from './shell/screen-outlet';
+import {
+  ARCHETYPE_PAGES,
+  DESCRIPTOR_EDIT_PAGES,
+  DESCRIPTOR_PAGES,
+  ScreenOutlet,
+  resolveArchetypePage,
+  resolveScreenPage,
+} from './shell/screen-outlet';
 import { buildRoutes, leaveFormGuard, routes } from './app.routes';
 
 /**
@@ -47,6 +54,35 @@ describe('the route table', () => {
     for (const route of routes) {
       expect(route.component).toBe(ScreenOutlet);
     }
+  });
+
+  // AD-5: a screen's page is its route's one `''` child, whose `loadComponent` is the loader the
+  // outlet's maps name for the descriptor -- the edit page first on an `:id` route. The wildcard
+  // has no page to load.
+  //
+  // Mutation (Rule 19): give each `:id` route the base loader in `buildRoutes` -> this goes red on
+  // `OcuPilot.Screen.Descriptor.UserForm`, whose id route has an edit page of its own.
+  it('every shipped route but the wildcard has exactly one empty child loading the page the maps name for it', () => {
+    const routeFor = (path: string) => routes.filter((route) => route.path === path);
+    for (const screen of builtScreens()) {
+      const base = resolveScreenPage(DESCRIPTOR_PAGES, ARCHETYPE_PAGES, screen.descriptor, screen.archetype);
+      expect(base, `${screen.descriptor}: a built screen has a page`).not.toBeNull();
+
+      const [own, ...extra] = routeFor(screen.route);
+      expect(extra, `${screen.descriptor}: one route at ${screen.route}`).toEqual([]);
+      expect(own?.children?.map((child) => child.path), `${screen.descriptor}: its one child`).toEqual(['']);
+      expect(own?.children?.[0].loadComponent, `${screen.descriptor}: its page loader`).toBe(base);
+
+      if (screen.route === '' || !hasIdRoute(screen)) continue;
+      const edit = resolveArchetypePage(DESCRIPTOR_EDIT_PAGES, screen.descriptor);
+      const [withId] = routeFor(`${screen.route}/:id`);
+      expect(withId?.children?.map((child) => child.path), `${screen.descriptor}: its id route's one child`).toEqual(['']);
+      expect(withId?.children?.[0].loadComponent, `${screen.descriptor}: its id route's page loader`).toBe(edit ?? base);
+    }
+    const wildcard = routes[routes.length - 1];
+    expect(wildcard.path).toBe('**');
+    expect(wildcard.children).toBeUndefined();
+    expect(wildcard.loadComponent).toBeUndefined();
   });
 
   it('no declared route is swallowed by an earlier one, so every screen keeps its own guard', () => {
@@ -106,6 +142,32 @@ describe('the route table', () => {
     expect(paths[paths.length - 1]).toBe('**');
     for (const route of built) expect(route.component).toBe(ScreenOutlet);
     expect(built.some((route) => route.pathMatch === 'full')).toBe(false);
+  });
+
+  // The page children, driven over a roster chosen here: a paired form whose id route has its own
+  // page, a screen the maps name no page for, and the root.
+  //
+  // Mutation (Rule 19): drop the `children` from the root push in `buildRoutes` -> the root
+  // assertion goes red; give the `:id` route the base loader in place of the edit page -> the id
+  // assertion goes red.
+  it('gives each route of a screen the maps name a page its loader, and a screen they name none no child', () => {
+    const screen = (route: string, archetype: string, descriptor: string, kind: 'none' | 'single' = 'single'): ScreenDeclaration =>
+      ({ route, archetype, descriptor, area: 'permissions', built: true, sideBarPosition: 1, id: { kind, parts: [] } }) as unknown as ScreenDeclaration;
+    const form = 'OcuPilot.Screen.Descriptor.UserForm';
+    const built = buildRoutes([
+      screen('', 'home', 'OcuPilot.Screen.Descriptor.Home', 'none'),
+      screen('permissions/users/edit', 'form-page', form),
+      screen('permissions/nothing', 'no-such-archetype', 'Probe.Unregistered'),
+    ]);
+    const route = (path: string) => built.find((candidate) => candidate.path === path);
+
+    expect(route('')?.children?.[0].loadComponent).toBe(ARCHETYPE_PAGES.home);
+    expect(route('permissions/users/edit')?.children?.[0].loadComponent).toBe(DESCRIPTOR_PAGES[form]);
+    expect(route('permissions/users/edit/:id')?.children?.[0].loadComponent).toBe(DESCRIPTOR_EDIT_PAGES[form]);
+    expect(route('permissions/users/edit/:id')?.children?.[0].loadComponent).not.toBe(DESCRIPTOR_PAGES[form]);
+    expect(route('permissions/nothing')?.children).toBeUndefined();
+    expect(route('permissions/nothing/:id')?.children).toBeUndefined();
+    expect(route('**')?.children).toBeUndefined();
   });
 
   // Story 8.4, AC7: a screen whose editor is a dialog over it asks before any navigation leaves it,

@@ -261,7 +261,8 @@ afterEach(() => {
 
 describe('Data browser', () => {
   it("is the screen's own page; the tree lists the schemas holding a table or a view, and the empty state invites a pick", async () => {
-    expect(resolveScreenPage(DESCRIPTOR_PAGES, ARCHETYPE_PAGES, SCREEN.descriptor, SCREEN.archetype)).toBe(DataBrowserPage);
+    const loader = resolveScreenPage(DESCRIPTOR_PAGES, ARCHETYPE_PAGES, SCREEN.descriptor, SCREEN.archetype);
+    expect(await loader?.()).toBe(DataBrowserPage);
     const { host, requests } = await mount();
     expect(requests[0].path).toBe(SCHEMAS_PATH);
     expect(texts(host, 'tree-schema')).toEqual(['\u25b8OcuProbe197', '\u25b8OnlyViews']);

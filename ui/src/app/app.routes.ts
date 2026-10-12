@@ -1,10 +1,18 @@
 import { inject } from '@angular/core';
-import { type CanDeactivateFn, Routes } from '@angular/router';
+import { type CanDeactivateFn, type Route, Routes } from '@angular/router';
 
 import { FormDirty } from './core/form-dirty';
 import { DIALOG_EDITORS, builtScreens, hasIdRoute } from './core/navigation';
 import type { ScreenDeclaration } from './core/screens.generated';
-import { ScreenOutlet } from './shell/screen-outlet';
+import {
+  ARCHETYPE_PAGES,
+  DESCRIPTOR_EDIT_PAGES,
+  DESCRIPTOR_PAGES,
+  type PageLoader,
+  ScreenOutlet,
+  resolveArchetypePage,
+  resolveScreenPage,
+} from './shell/screen-outlet';
 
 /**
  * The unsaved-changes guard, on every `form-page` route (AC2, AD-11 rule 3).
@@ -45,6 +53,12 @@ const GUARDED_ARCHETYPE = 'form-page';
  * Every `form-page` route carries the unsaved-changes guard above, and so does every route of a
  * screen whose editor is a dialog over it (`DIALOG_EDITORS`).
  *
+ * **Every screen route has one child, `''`, whose `loadComponent` fetches the screen's page** --
+ * the loader `ScreenOutlet`'s maps name for the descriptor, the edit page first on an `:id` route
+ * (AD-5). The page's code downloads on the first navigation to it and never with the shell.
+ * `ScreenOutlet` still decides whether the page mounts, so a refused screen may have downloaded a
+ * page it never shows. A route with no loader, the wildcard, has no child.
+ *
  * Home's declared route is the empty string, which is the application root: it is reached from
  * the rail's Home item, the logo lockup and straight after sign-in, all three of which mean
  * `/ocupilot/`. `pathMatch: 'full'` is what keeps it from swallowing every other route.
@@ -66,22 +80,34 @@ export function buildRoutes(screens: readonly ScreenDeclaration[]): Routes {
   const built: Routes = [];
   const ids: Routes = [];
   for (const screen of screens) {
+    const page = withPage(resolveScreenPage(DESCRIPTOR_PAGES, ARCHETYPE_PAGES, screen.descriptor, screen.archetype));
     if (screen.route === '') {
       // The root screen administers no entity -- Home's descriptor declares `id.kind` `none` --
       // so it takes no id route. One at the root would be `/:id`, which would swallow every
       // other single-segment route in the table.
-      built.push({ path: '', pathMatch: 'full', component: ScreenOutlet });
+      built.push({ path: '', pathMatch: 'full', component: ScreenOutlet, ...page });
       continue;
     }
     const guarded =
       screen.archetype === GUARDED_ARCHETYPE || DIALOG_EDITORS.has(screen.descriptor)
         ? { canDeactivate: [leaveFormGuard] }
         : {};
-    built.push({ path: screen.route, component: ScreenOutlet, ...guarded });
+    built.push({ path: screen.route, component: ScreenOutlet, ...guarded, ...page });
     if (hasIdRoute(screen)) {
-      ids.push({ path: `${screen.route}/:id`, component: ScreenOutlet, ...guarded });
+      const editor = resolveArchetypePage(DESCRIPTOR_EDIT_PAGES, screen.descriptor);
+      ids.push({
+        path: `${screen.route}/:id`,
+        component: ScreenOutlet,
+        ...guarded,
+        ...(editor === null ? page : withPage(editor)),
+      });
     }
   }
   built.push(...ids, { path: '**', component: ScreenOutlet });
   return built;
+}
+
+/** The `children` that load a page, or nothing for a screen no loader names. */
+function withPage(loader: PageLoader | null): Pick<Route, 'children'> {
+  return loader === null ? {} : { children: [{ path: '', loadComponent: loader }] };
 }

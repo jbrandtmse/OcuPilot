@@ -21,7 +21,7 @@ import {
   readOnlyFooterLine,
   restraintSentence,
 } from '../core/agent-status';
-import { AUDITING_FOCUS_ENABLE } from '../areas/security/auditing-config.page';
+import { AUDITING_FOCUS_ENABLE } from '../areas/security/auditing-config.store';
 import { type Citation, formatCitationAbsent } from '../core/citations';
 import type { ProposalDraft } from '../core/draft';
 import { egressLine, type EgressLine } from '../core/egress-line';
