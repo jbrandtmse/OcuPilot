@@ -378,6 +378,8 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
   **Removing a mirror together with its databases** [AMENDED 2026-10-09, owner decision for Story 21.2, relayed by the Planner, Rule 20]: removing a mirror's configuration with its databases deleted (`SYS.Mirror.RemoveMirrorConfiguration` with `DeleteDB`, `RemoveOneMirrorSet` with `DeleteDBs`) is refused from either caller; its code is named at Story 21.2's spec gate. It is the one backup or mirroring action in the set beyond the self-protection arms above, which reach OcuPilot's own and the protected databases through these paths too, by effect. Every other backup and mirroring write, the same removal keeping its databases included, is a confirmed proposal whose destructive key defaults to disabled (FR-72; owner 2026-09-23, developer tool first). Writes are never frozen without a bound: every external freeze OcuPilot issues, from either caller, carries a bounded suspend limit; the bound, its mechanism, and how it holds where `Backup.General` ignores `WDSuspendLimit` (a clustered system) are measured in Story 21.2.
   **Lookup tables are covered** [AMENDED 2026-10-11, Story 20.5 spec gate, Rule 20]: `lookup-table` and `lookup-entry` are covered types, `ReviewedFewOnly`; no self-protection target exists among them.
 
+  **The allow-list, through any tool the agent can reach** [AMENDED 2026-10-12, Story 18.42 spec gate, Rule 20]: an `allowed-directory` write whose tool resolves among the advertised tools, or whose resolve fails, is refused `PROHIBITED.ALLOWLISTAGENT` at Confirm and on the route.
+
 ### AD-11 — Untrusted content never becomes instruction
 
 - **Binds:** NFR-6, FR-13, FR-15; screen context, tool results, log text, audit entries, entity names and comments
@@ -460,6 +462,8 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
   **A `routine-application` id is its name** [AMENDED 2026-10-10, Story 18.31 spec gate, Rule 20], `foldcase`, since the instance resolves the name in any case and stores it as typed.
   **Story 20.5's ids** [AMENDED 2026-10-11, Story 20.5 spec gate, Rule 20]: `lookup-table` (the table's name), `lookup-entry` (`[Table, Key]`) and `business-partner` (the partner's name), each kept exactly.
 
+  **The allow-list is one target** [AMENDED 2026-10-12, Story 18.42 spec gate, Rule 20]: `allowed-directory`, instance scope, id `%GUIFileSelector` kept exactly, so AD-34's lock orders its writes.
+
 ### AD-14 — A confirmed write emits one change event; screens re-fetch, never patch
 
 - **Binds:** FR-14; every list and detail screen
@@ -479,6 +483,8 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
 - **Named case 2026-10-11 (Story 20.23).** The queue and job actions, which the vendor does not audit, record OcuPilot's own `ConfigChange` from either caller, beside the marker for an agent write [AMENDED 2026-10-11, Story 20.23 spec gate, Rule 20].
 - **Named case 2026-10-11 (Story 20.5).** Lookup-table writes, which the vendor does not audit, record OcuPilot's own `ConfigChange` from either caller [AMENDED 2026-10-11, Story 20.5 spec gate, Rule 20].
 - **Named case 2026-10-12 (Story 20.6).** Host and transformation tests, which the vendor does not audit, record OcuPilot's own `ConfigChange` from either caller [AMENDED 2026-10-12, Story 20.6 spec gate, Rule 20].
+
+  **An allow-list write records OcuPilot's own `SecurityChange`** [AMENDED 2026-10-12, Story 18.42 spec gate, Rule 20], roots before and after, since the vendor's `FSAccess` endpoints write no audit event (inference until Story 18.42's Task 0 measures it; a vendor candidate, never reported).
 
 ### AD-16 — Namespace is switched by explicit save and restore
 
@@ -555,6 +561,8 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
 
   **The allow-list itself is a person's to widen, never the agent's** [AMENDED 2026-10-11, owner decision on DW-2334, Rule 20]: "I agree with your recommendation regarding allowed folders" (owner, 2026-10-11, relayed by the Planner). A person adds, changes and removes `FSAccess` entries on the Allowed directories screen as a confirmed write whose governance key ships disabled, and no write drops a root the person did not name: the unrestricted fallback row cannot be changed or removed, and a remove may empty the list (Stories 18.42 and 18.46) [AMENDED 2026-10-12, Story 18.42 spec gate, Rule 20: was "the roots OcuPilot needs to run cannot be dropped"; its plan found OcuPilot itself needs no allow-list root]. The agent never writes the list: the kernel refuses any agent write to it, narrowing included, because the list is the fence around the agent's own file access and an agent that could move it would widen its own reach (AD-10's self-protection; AD-53's precedent that the agent is fenced where a person is not).
 
+  **The tenth case is the allow-list itself** [AMENDED 2026-10-12, Story 18.42 spec gate, Rule 20]: on `POST /allowed-directories` alone a person names one whole absolute directory (at most 1,024 characters, compared normalized, else `ALLOWLIST.PATH`), written to `%GUIFileSelector` alone; an unrestricted add stores the manager directory before it restricts, so no write drops a root the person did not name.
+
 ### AD-22 — Governance is polish-week work, and its shape is fixed now so Release 1 does not preclude it
 
 - **Binds:** FR-72 and the polish-week governance; every tool added after the Release 1 freeze
@@ -567,6 +575,8 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
   When it ships, policy keys are `tool` or `tool:action`; the baseline holds every write key Release 1 shipped, enabled, and a story that ships a new write key adds it in the same change, enabled unless that story's criteria set it disabled; a key absent from the baseline is disabled by default when it mutates; the baseline grows only by those additions and is never regenerated [AMENDED 2026-09-26, owner: new write keys join the baseline through the voting week; was "a frozen baseline captured at the Release 1 freeze ... is never regenerated to grow"] [AMENDED 2026-10-04, owner: the same rule continues after the voting week; was "through 2026-10-04 ... after 2026-10-04 the owner decides how new keys enter it"]; layers resolve with a null-coalescing cascade so an explicit `false` at any layer is honored; the read-only preset blocks anything it cannot classify; a denied call returns a structured result while the tool stays reachable [AMENDED 2026-10-12, Story 18.45 spec gate, Rule 20]; and the audit ledger is configuration, not a governed tool.
 
   **As shipped (Story 14.2)** [AMENDED 2026-09-27, Story 14.2 spec gate, Rule 20]: the layers are the stored per-key setting, then the preset (read-only or full), then the baseline, resolved null-coalescing so the first layer that holds a value decides and an explicit `false` there is honored; there is no environment layer. The baseline is the checked-in `Kernel/Governance/Baseline.cls`, and a test fails naming any registered write key missing from it. A `tool:action` key applies only to a tool that declares its governance action argument. The gate is asked at the dispatch gate point and again at Confirm, inside AD-34's transition (AD-40), so a key disabled after a proposal was minted refuses its confirm; it is never asked for a person's own screen write (AD-53, AD-55) or for a copy-out draft (AD-59), which runs no write. The agent's task import (`tasks.schedule.import`, Story 16.4) ships disabled; DW-1827's review of `TaskClass` and `RunAsUser` on an import proposal landed in Story 23.4, and re-enabling the key is the owner's decision [AMENDED 2026-09-29, merge gate, DW-1827] [AMENDED 2026-10-06, Story 23.4, DW-1827, Rule 20].
+
+  **One person's write asks its key** [AMENDED 2026-10-12, Story 18.42 spec gate, Rule 20]: `POST /allowed-directories` asks `security.alloweddirectories.update`, shipped `false`, before any read, refusing 403 `ALLOWLIST.OFF`, because the owner decided it ships "with the action switched off by default" (DW-2334). No other person's write is asked.
 
 ### AD-23 — Harvested handler bodies keep their call sites
 
@@ -1076,6 +1086,8 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
   **The queue and job actions read port-composed types** [AMENDED 2026-10-11, Story 20.23 spec gate, Rule 20]: `InteropPort` answers the five actions' fresh reads through port-composed `QUEUE`, `ENTRY` and `JOB` types, and the queue abort's write takes its reviewed digest from the stored payload.
   **Story 20.6's case** [AMENDED 2026-10-12, Story 20.6 spec gate, Rule 20]: `InteropPort` builds a host test's request from the tool's declared `RequestClass` and `Fields`, and a transformation test's source from its declared `content`, and answers their fresh reads through port-composed `TESTTARGET` and `TRANSFORM` types.
 
+  **The `AllowListPort` case** [AMENDED 2026-10-12, Story 18.42 spec gate, Rule 20]: it composes the `AllowList` `PUT` from `Action`, `Directory` and `NewDirectory` as `FSAccess.Path` `PUT`/`DELETE` and `FSAccess.Purpose` `PUT` over a fresh `PathPort.Roots` read, and reads back through a port-composed `AllowList` `GET`.
+
 ### AD-52 — A write tool declares the port it reaches its target through
 
 - **Binds:** every write tool; Story 5.13 (application-error deletes) and every later write whose target is not an admin API endpoint; AD-2, AD-6, AD-29, AD-34, AD-40, AD-48
@@ -1135,6 +1147,8 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
   **A prohibited-set predicate is stated over the effect, never over the payload's shape.** Story 7.1 found the concrete failure: `Prohibited.WebApplication` gated the serving-path arm on `pServes && +$Get(pChanged)`, so a bodyless delete -- which carries no changed fields -- passed straight through the arm meant to protect the application that serves OcuPilot. That is AD-10's own diagnosis ("defined by effect, not by verb") reappearing as "defined by the payload, not by the effect", and it is the same family as DW-1486. A predicate that reads the diff must answer for the write kinds that have no diff.
 
   **Story 19.6** [AMENDED 2026-10-03, Story 19.6 spec gate, Rule 20]: `explorer.sqlquery.run`'s screen caller, a person's own confirmed run, is never asked of governance (AD-22, as 19.3's save), and its key ships disabled [AMENDED 2026-10-05, Story 19.11 spec gate, Rule 20]. **Story 19.8** [AMENDED 2026-10-04, Story 19.8 spec gate, Rule 20]: `explorer.sqldata.save` is unadvertised: only a person's Save writes rows, because a row's values never reach the model (AD-36); its key ships disabled, and Story 19.11 kept it unadvertised [AMENDED 2026-10-05, Story 19.11 spec gate, Rule 20]. Named gap fifteen (after Story 18.6's fourteenth): SQL console runs (no vendor event with the stock event set; every `%System/%SQL` event and `%SMPExplorer/ExecuteQuery` disabled, measured). Named gap eighteen [AMENDED 2026-10-05, Story 19.17 spec gate, Rule 20: was "sixteen"]: Data browser saves (no vendor event with the stock event set, measured) [AMENDED 2026-10-04, Story 19.8 spec gate, Rule 20]. **Story 19.17** [AMENDED 2026-10-05, Story 19.17 spec gate, Rule 20]: named gap nineteen: Document databases' Create and Drop, for the same reason as AD-15's sixteenth. Named gap twenty: Productions' Update and Recover (Story 20.2), for the same reason as AD-15's nineteenth [AMENDED 2026-10-07, Story 20.2 ship, Rule 20]. Named gap twenty-one: REST services' Delete (Story 18.32), for the same reason as AD-15's twenty-first [AMENDED 2026-10-11, Story 18.32 spec gate, Rule 20]. Named gap twenty-two: REST services' Create from the screen (Story 18.34), for the same reason [AMENDED 2026-10-11, Story 18.34 spec gate, Rule 20].
+
+  **A fourth unadvertised tool** [AMENDED 2026-10-12, Story 18.42 spec gate, Rule 20]: `security.alloweddirectories.update` is never the agent's (AD-21), its key ships disabled, and its one caller is `POST /allowed-directories`, so it declares no `SCREENACTIONS`; its `SecurityChange` row leaves no named gap.
 
 ### AD-54 - A create write inverts what the fresh read must find, and fingerprints the target's absence
 
