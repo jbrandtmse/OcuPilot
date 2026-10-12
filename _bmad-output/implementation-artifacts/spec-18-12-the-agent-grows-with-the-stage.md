@@ -2,12 +2,12 @@
 title: 'Story 18.12: The agent grows with the stage'
 type: 'feature'
 created: '2026-10-11'
-status: 'blocked'
+status: 'draft'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-18-context.md'
-warnings: ['multiple-goals', 'oversized']
+warnings: []
 deferred: []
 ---
 
@@ -15,22 +15,15 @@ deferred: []
 
 ## Intent
 
-**Problem:** The agent has to keep pace with Stage 2. Every new screen must reach it through its descriptor. The roughly doubled tool roster needs history kept within a budget. An operator behind a proxy or a custom CA needs provider egress they can configure. The credential ladder lacks a wallet rung.
+**Problem:** The agent has to keep pace with Stage 2: every new screen must reach it through its descriptor, and two gaps remain (no read tool answers a privileged routine application's `MatchRoles` or `Routines`, DW-2321; Guardrails omits the turns-per-hour limit, DW-1756).
 
-**Approach (as epics.md states it):** There are four criteria:
-
-- every Stage 2 screen's read and confirmed write tools come from its descriptor (C1);
-- turn history is trimmed and budgeted (C2);
-- proxy and SSL settings for the provider call are configuration, not code (C3);
-- a wallet-backed rung joins the `env` and `creds` rungs (C4).
-
-The ledger inbox holds DW-1756, DW-1084 and DW-2321.
+**Approach:** C1 as a completeness test over Epic 18's descriptors: every Stage 2 screen brings a read tool and a confirmed single-write tool declared from the same descriptor, with no hand-written dispatch or field list (the orchestrator's tier-1 restatement per AD-3). Plus DW-2321 and DW-1756. Split on the orchestrator's ruling (2026-10-11, Rule 5): the context budget is Story 18.39's, proxy and custom CA Story 18.40's, the wallet rung Story 18.41's. DW-1084 is closed `by-design` with its evidence (the live prompt's backtick line, Story 11.4's criterion).
 
 ## Boundaries & Constraints
 
-**Always:** No secret reaches a status, an error or a surface OcuPilot displays (AD-35, AD-42). The tool listing stays 20.24's per-process cache (AD-5). Rule 31 forbids a second cache.
+**Always:** The tool listing stays 20.24's per-process cache (AD-5); Rule 31 forbids a second cache.
 
-**Never:** Build on a `decision-pending` entry. Use the owner's provider keys outside the implement stage's live check on a throwaway.
+**Never:** Build on a `decision-pending` entry. Build the context budget, proxy or CA configuration, or the wallet rung (Stories 18.39 to 18.41).
 
 ## I/O & Edge-Case Matrix
 
@@ -41,42 +34,6 @@ The ledger inbox holds DW-1756, DW-1084 and DW-2321.
 
 </intent-contract>
 
-## Proposed Split
-
-The planned scope does not fit one implement pass or a 16 KB spec. Each of C2, C3 and C4 is the size of a story in this epic. C1 with DW-2321 is a fourth. Narrowing 18.12's criteria and adding stories is Rule 5's ask-first tier, so this plan halts here. The lead (or orchestrator) amends `epics.md`, and 18.12 is planned again.
-
-Keep the key `18-12-the-agent-grows-with-the-stage`, so the ledger inbox needs no re-own; retitling it is the lead's call. Number the three new stories after 18.38 (18.39 to 18.41). The burn-down then takes the next number at its gate (Rule 17 (3)). The rulings the epic context lists under "18.39" go with the burn-down story, not with the number.
-
-1. **18.12: the agent reaches every Stage 2 screen (C1), DW-2321 and DW-1756.**
-   - **C1, read as AD-3 and the epic preamble.** A read tool is derived from each descriptor that declares a read. Each write tool's field list is derived from the endpoint's template. Only the semantic half (description, required, enum) is hand-written per tool. The literal "no hand-written tool code" contradicts AD-3, because every write tool is a declarative class (Rule 5's restate-to-measurable tier). C1 lands as one completeness test over Epic 18's descriptors. A declared read names its read tool. Every action names an advertised write tool whose `DESCRIPTORCLASS` is that descriptor or its list. Every settable field is a row of the tool's `ToolFields` entry or an argument the tool authors (`MATCHROLESARGUMENT`).
-   - **DW-2321.** Read tools for a web application's `MatchRoles` and a privileged routine application's `MatchRoles` and `Routines`. Each is a detail read with one row per entry, over the existing `GET` through `source.rows` (Story 18.5) or an `AdminPort` composed type (Story 18.36's `RESOURCEROWS`). The agent then sends the current list with one entry changed.
-   - **DW-1756.** Guardrails' limits gain `turnsPerHour`.
-   - **No spine amendment** unless a composed type is chosen: that would be an AD-36 row at the spec gate.
-2. **New 18.39: the context budget (C2).**
-   - **The problem today.** Every provider call carries the whole advertised tool array. Within a turn, every earlier tool result stays in the message array, and nothing trims it.
-   - **The work.** Measure first: Task 0 on a throwaway, the advertised array's characters and one stub turn's request size per iteration. Then budget history against what the tools and the system prompt leave. History means prior turns and, within a turn, earlier tool results replaced by a marked stub.
-   - **Spine.** It needs an AD-24 amendment ("earlier tool results ... are never replayed" covers prior turns only), and possibly a provider-specific context bound (AD-42).
-   - **Contention.** It edits `Kernel/Agent/Loop.cls`, which the spawn prompt names as contended.
-3. **New 18.40: provider proxy and custom CA settings (C3).**
-   - **What exists.** The settings already live in OcuPilot's protected state, but no route reads or writes them.
-   - **The work.** An OcuPilot administrator's surface: GET/PUT beside Switches, a section on an Agent co-pilot page, and strings. Each write is judged as a destination (AD-42) and audited as a security change.
-   - **Custom CA.** A custom CA can only be another SSL/TLS configuration named here. AD-10's `PROHIBITED.OCUPILOTSSL` refuses `CAFile` on `OcuPilotProvider`. The named configuration must be a client with `VerifyPeer` on (AD-32); today only its existence is checked.
-   - **Spine.** It needs an AD-32 amendment.
-4. **New 18.41: the wallet credential rung (C4).**
-   - **The work.** A third `CredType` naming a key-value secret, the definition editor's choice of rung, Test connection, and a ladder arm.
-   - **Two vendor paths:**
-     - `%Net.HttpRequest.UseSecret` sets the key as a header and never returns it (inference: closer to AD-35 than reading the value).
-     - `%Wallet.KeyValue.GetSecretValue` returns the value.
-   - **What both share.** Each needs the secret's usage flag, or `%Admin_Wallet:USE` for a value read, and the collection's resource. The vendor also writes a `WalletSecretUse` audit row per use.
-   - **Spine.** That per-call row is likely a seventh AD-7 vendor-write shape (inference), so the AD-42 ladder, AD-35 and AD-7 are amended at its gate.
-   - **Task 0.** Run as a least-privileged principal on a throwaway.
-   - It needs no interoperability, unlike `creds` (18.13's validation reads that).
-
-**Why the scope is too big (evidence):**
-
-- 18.36, with four reads and no amendment, reached 16.3 KB at plan. Slice 1 is that size (inference).
-- Slices 2, 3 and 4 each need a spine amendment at the spec gate. Slices 2 and 4 each need a Task 0 measurement this stage could not run. `ocupilot-ci` is running 18.11's sweep, and the dev instance is stale (see Design Notes).
-- Slices 3 and 4 each add an operator surface: a route, a page section, strings and a browser spec.
 
 ## Code Map
 
@@ -171,3 +128,7 @@ Not planned. The re-plan writes it, with its `Shared surfaces:` line and the sta
 
 Status: blocked
 Blocking condition: The scope exceeds one implement pass and the 16 KB spec cap. It holds four story-sized criteria: Stage 2 tools from descriptors (C1), the context budget (C2), proxy and custom-CA configuration (C3) and the wallet credential rung (C4). It also holds DW-2321 and DW-1756, and DW-1084 is declined as already met. The proposed split is in ## Proposed Split. 18.12 keeps C1, DW-2321 and DW-1756, and three new stories (18.39 to 18.41) take C2, C3 and C4. Narrowing 18.12's criteria and adding stories is Rule 5's ask-first tier, the lead's or orchestrator's call.
+
+## Spec Change Log
+
+- 2026-10-11, lead: narrowed on the orchestrator's split ruling (feature 5b86e803, Rule 5): 18.12 keeps C1 (restated per AD-3), DW-2321 and DW-1756; C2 to C4 moved to Stories 18.39, 18.40 and 18.41 (their anchors stay in this Code Map, to be compressed to pointers at the re-plan). DW-1084 closed by-design. Intent narrowed, Proposed Split removed, status reset to draft for a re-plan in place.
