@@ -516,3 +516,6 @@
 2026-10-12T04:27:11Z	Epic 20	deps_hash_rerecorded	reason=story_chartered(20.27)+20.6_AC_moved
 2026-10-12T04:27:11Z	Story 20.6	spec_narrowed	scope=Part_A_host_Test_tab moved=Part_B_block,AC5,AC6,transform_halves_of_AC7-9(marked_in_place) spine=AD-62_item_11,AD-39,AD-8,AD-7_attribution
 2026-10-12T04:27:11Z	Story 20.6	stage_spawned	stage=implement spawn_at=2026-10-12T04:27:11Z model=sonnet agent_name=20-6-implement-1 cycle_iteration=1 ci_prior=success_38200078493(20.5_37441be9)
+2026-10-12T07:11:16Z	Story 20.6	dev_complete	spawn_at=(see_stage_spawned) model=sonnet agent_name=20-6-implement-1 build_sha=371d18b0 baseline_revision=73f084ec review_loop_iteration=0 followup_review_recommended=true(InteropTestGate_starts_the_probe_as_a_declared-pairs_principal) deferred=0 files=49 loc_added=5037 loc_removed=67 scope=Part_A GetMessageList=called(class_dictionary_misses_24_of_199_host_classes;named_limit) bundle=3.38MB(<3527kB) footprint_extensions=scripts/check-objectscript.py+harness(InteropPort_capture_allow-list),Test/InteropHostRead.Projected,Test/InteropJobEnd.StartUpdated_public
+2026-10-12T07:11:16Z	Story 20.6	adr_verifications_complete	tool=none acs= result=none_required evidence= mutations=none model=claude-opus-5-5
+2026-10-12T07:11:16Z	Story 20.6	stage_spawned	stage=qa spawn_at=2026-10-12T07:11:16Z model=sonnet agent_name=20-6-qa-1 cycle_iteration=1
