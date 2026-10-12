@@ -1,8 +1,10 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readdirSync, readFileSync, statSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join, relative, sep } from 'node:path';
+
+import { blankComments, walkSource } from './source-scan.mjs';
 
 // Pins AD-63 (the vendor's interoperability editors load in a same-origin frame, in normal mode,
 // and OcuPilot never reaches into it) at the one place the frame's address is built:
@@ -16,6 +18,9 @@ import { dirname, join, relative, sep } from 'node:path';
 // - `interopEditorSource` accepts a document holding `&` (its shape check removed) -> the refused
 //   documents go red.
 // - `app-interop-editor-frame` builds its own `/ui/interop/...` address -> the one-source scan goes red.
+// - `core/vendor-frame.ts` imports `@angular/core` -> the framework-free test goes red.
+// - `app-interop-editor-frame` binds `[src]` through a `DomSanitizer` bypass, or writes `frame.src`
+//   itself -> the Renderer2 test goes red.
 
 const uiRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 const corePath = (name) => join(uiRoot, 'src', 'app', 'core', name);
@@ -154,35 +159,12 @@ test('the shapes moved out of the class reference still accept what its address 
 });
 
 // --- The one-source scan --------------------------------------------------------------------------
-
-const SCAN_EXTENSIONS = new Set(['.ts', '.html', '.scss', '.json', '.js', '.mjs']);
-const PRUNE = new Set(['node_modules', 'dist', '.angular']);
-
-// Comments are prose and may name the path they explain; only code builds an address. The same
-// blanker `api.test.mjs` applies.
-const COMMENT_RE = /\/\*[\s\S]*?\*\/|(?:^|(?<=[\s;{}(]))\/\/[^\n]*/g;
-
-function blankComments(text) {
-  return text.replace(COMMENT_RE, (m) => m.replace(/[^\n]/g, ' '));
-}
-
-function walk(dir, onFile) {
-  for (const entry of readdirSync(dir)) {
-    if (PRUNE.has(entry)) continue;
-    const full = join(dir, entry);
-    if (statSync(full).isDirectory()) {
-      walk(full, onFile);
-      continue;
-    }
-    if (!SCAN_EXTENSIONS.has(entry.slice(entry.lastIndexOf('.')))) continue;
-    onFile(full, readFileSync(full, 'utf8'));
-  }
-}
+// Comments are prose and may name the path they explain; only code builds an address.
 
 test('the builder is the frame\'s one source: non-spec code under ui/src names /ui/interop only in core/vendor-frame.ts', () => {
   const holders = [];
   let scanned = 0;
-  walk(join(uiRoot, 'src'), (fullPath, text) => {
+  walkSource(join(uiRoot, 'src'), (fullPath, text) => {
     const relativePath = relative(uiRoot, fullPath).split(sep).join('/');
     if (relativePath.endsWith('.spec.ts')) return;
     scanned += 1;
@@ -203,4 +185,54 @@ test('the scan itself catches a code line that builds the address, and ignores a
     .map((line, idx) => (line.includes('/ui/interop') ? idx + 1 : 0))
     .filter((line) => line > 0);
   assert.deepEqual(lines, [3], 'one real line, and neither comment');
+});
+
+// --- The builder is plain code; the component writes the frame's address only through Renderer2 ----
+
+/** Whether `text`, comments blanked, holds an `import` statement or a dynamic load. */
+function loadsAnything(text) {
+  return /^\s*import\b|\bimport\s*\(|\brequire\s*\(|@angular/m.test(blankComments(text));
+}
+
+test('the builder is framework-free: core/vendor-frame.ts loads nothing, so node and a browser spec run it as plain code', () => {
+  assert.equal(loadsAnything(readFileSync(corePath('vendor-frame.ts'), 'utf8')), false);
+  // The check sees what it is asked about, and a comment that names a framework is not a load.
+  assert.equal(loadsAnything("import { signal } from '@angular/core';"), true);
+  assert.equal(loadsAnything("const mod = await import('@angular/core');"), true);
+  assert.equal(loadsAnything("const mod = require('node:fs');"), true);
+  assert.equal(loadsAnything('/** imports nothing from @angular/core */\n// import x from "y"\nexport const a = 1;'), false);
+});
+
+const COMPONENT_PATH = join(uiRoot, 'src', 'app', 'areas', 'interoperability', 'interop-editor-frame.ts');
+
+/** The ways code can hand a frame an address other than a `Renderer2` write, or pass one a sanitizer. */
+const BYPASS = /bypassSecurityTrust|\bDomSanitizer\b/;
+const ADDRESS_WRITE = /\[(?:attr\.)?src\]|\bbind-(?:attr\.)?src\b|\.src\s*=(?!=)|\bsrc\s*=\s*["'{]|(?<!renderer)\.setAttribute\s*\(/;
+
+test('the component writes the frame\'s address only through Renderer2: no sanitizer bypass, no src binding, no direct write', () => {
+  const code = blankComments(readFileSync(COMPONENT_PATH, 'utf8'));
+  assert.ok(code.includes('interop-editor-frame') && code.includes('<iframe'), 'the scan read the component that draws the frame');
+  assert.equal(BYPASS.test(code), false, 'no sanitizer bypass, so a trusted-URL binding cannot replace the checked builder');
+  assert.equal(ADDRESS_WRITE.test(code), false, 'no src binding or attribute, and no write to the frame that is not the renderer\'s');
+  assert.match(code, /\binject\(Renderer2\)/, 'the component injects Renderer2');
+  assert.deepEqual(
+    code.match(/\brenderer\.setAttribute\s*\([^)]*\)/g),
+    ["renderer.setAttribute(frame, 'src', source)"],
+    'and its one attribute write is the address, through it'
+  );
+});
+
+test('the address-write scan catches each way around Renderer2, and ignores the renderer\'s own write', () => {
+  const caught = [
+    '<iframe [src]="trusted"></iframe>',
+    '<iframe [attr.src]="address"></iframe>',
+    '<iframe src="/ui/interop/x"></iframe>',
+    'frame.src = source;',
+    "frame.setAttribute('src', source);",
+    'this.sanitizer.bypassSecurityTrustResourceUrl(source);',
+    'private readonly sanitizer = inject(DomSanitizer);',
+  ];
+  for (const line of caught) assert.equal(BYPASS.test(line) || ADDRESS_WRITE.test(line), true, line);
+  const allowed = "this.renderer.setAttribute(frame, 'src', source);";
+  assert.equal(BYPASS.test(allowed) || ADDRESS_WRITE.test(allowed), false, allowed);
 });

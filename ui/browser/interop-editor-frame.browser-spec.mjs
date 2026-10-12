@@ -11,9 +11,10 @@
  * style object, so the editor lays out as it does on a screen. The Angular component that will draw
  * it is pinned by `interop-editor-frame.spec.ts`; it first runs in a browser in Story 20.7.
  *
- * **Each frame names a document the test never creates** (`OcuPilotProbe.EditorFrame<Editor>`), so
- * the editor's read of it is observable without depending on a class this spec made. The editor
- * answers 404 for it, which is the document's absence and not a sign-in failure.
+ * **Each editor is framed empty and with a document the test never creates**
+ * (`OcuPilotProbe.EditorFrame<Editor>`), so the editor's read of it is observable without depending
+ * on a class this spec made. The editor answers 404 for it, which is the document's absence and not
+ * a sign-in failure: a refusal reddens the test.
  *
  * Each test signs in in its own context and writes nothing to the instance beyond the reset every
  * context makes. `before` refuses the live container and an instance that is not installed.
@@ -61,6 +62,12 @@ const EDITORS = [
   { editor: 'dtl-editor', documentName: 'OcuPilotProbe.EditorFrameDtl', title: STRINGS.interopDtlEditorTitle },
   { editor: 'bpl-editor', documentName: 'OcuPilotProbe.EditorFrameBpl', title: STRINGS.interopBplEditorTitle },
 ];
+
+/** Each editor framed with its document and framed empty, the I/O matrix's two editor rows. */
+const FRAMES = EDITORS.flatMap((entry) => [
+  { ...entry, label: `${entry.editor}, with a document` },
+  { ...entry, documentName: '', label: `${entry.editor}, empty` },
+]);
 
 let browser = null;
 
@@ -118,27 +125,47 @@ async function mountEditorFrame(page, editor, documentName, title) {
 // skips its login and sets `vscodeMode`, so the login wait and the normal-mode assertions go red.
 // Mutation (Rule 19): `Session` writes `Rule_Editor-0-accessToken` to sessionStorage after sign-in -> the
 // before-mount keys assertion goes red.
+// Mutation (Rule 19): the editor's document read is refused (a request interceptor answers it 403) -> every
+// earlier clause holds and the 404 clause alone goes red.
+// Mutation (Rule 19): `watchEditorTraffic` records only the editors' two applications -> the stray-request
+// control goes red.
 test('AC1, AC2: each editor signs itself in from the browser-level login, in normal mode, reading and storing nothing of OcuPilot\'s', async (t) => {
-  for (const { editor, documentName, title } of EDITORS) {
-    await t.test(editor, async () => {
+  for (const { editor, documentName, title, label } of FRAMES) {
+    await t.test(label, async () => {
       const { context, page, before, traffic, violations, messages } = await shellWithObservers();
       try {
         const source = await mountEditorFrame(page, editor, documentName, title);
-        assert.equal(await page.$eval(DEFAULT_FRAME_SELECTOR, (node) => node.getAttribute('src')), source, 'the frame carries the builder\'s address');
-        assert.deepEqual(await page.$$eval(DEFAULT_FRAME_SELECTOR, (nodes) => nodes[0].getAttributeNames().sort()), ['src', 'style', 'title'], 'and no attribute that loosens it');
+        // Harness preconditions, not product checks: the harness wrote these attributes itself, so the
+        // editors below are judged in the frame AD-63 describes. The component's own attributes are
+        // pinned by interop-editor-frame.spec.ts.
+        assert.equal(await page.$eval(DEFAULT_FRAME_SELECTOR, (node) => node.getAttribute('src')), source, 'harness precondition: the frame carries the builder\'s address');
+        assert.deepEqual(await page.$$eval(DEFAULT_FRAME_SELECTOR, (nodes) => nodes[0].getAttributeNames().sort()), ['src', 'style', 'title'], 'harness precondition: and only its address, size and title');
 
-        await assertSignedInSilently({ page, config, editor, namespace: NAMESPACE, documentName, traffic, messages, violations, before });
+        await assertSignedInSilently({ page, config, editor, namespace: NAMESPACE, documentName, traffic, messages, violations, before, documentStatus: 404 });
 
         // The counter counts: a message to the shell and one to the frame are both recorded.
         const frame = await (await page.$(DEFAULT_FRAME_SELECTOR)).contentFrame();
         await frame.evaluate(() => window.postMessage('control', '*'));
         await page.evaluate(() => window.postMessage('control', '*'));
         const seen = await until(() => messages.seen(), (list) => list.length >= 2, 'the message counters record a message in each window', config.navigationTimeoutMs);
+        assert.deepEqual(seen.map((entry) => entry.kind), ['string', 'string'], 'exactly the two control messages, so none arrived after the no-message check');
         assert.equal(new Set(seen.map((entry) => entry.in)).size, 2, 'in two different windows');
+
+        // The traffic watcher reaches past the editor's own two applications: a frame's request to any
+        // other path is recorded too, so the clause on what a request carries covers all of them.
+        await frame.evaluate(() => fetch('/ocupilot-stray-control').catch(() => null));
+        await until(
+          () => traffic.filter((entry) => entry.path === '/ocupilot-stray-control'),
+          (entries) => entries.length > 0 && entries.every((entry) => entry.status !== null),
+          'the traffic watcher records and answers a frame request outside the editors\' applications',
+          config.navigationTimeoutMs
+        );
 
         // The policy watcher counts too: a request the shell's policy refuses is reported to it.
         await page.evaluate(() => fetch('https://policy-control.invalid/').catch(() => null));
         await until(() => violations.length, (count) => count >= 1, 'the policy watcher reports a request the policy refuses', config.navigationTimeoutMs);
+        assert.ok(violations.every((text) => text.includes('policy-control.invalid')), `every reported violation is the control's: ${JSON.stringify(violations)}`);
+        assert.equal((await messages.seen()).length, 2, 'and no message arrived after the controls, to the end of the test');
       } finally {
         await context.close();
       }

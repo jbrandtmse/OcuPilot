@@ -26,7 +26,8 @@ import { INTEROP_EDITORS, interopEditorSource, type InteropEditor } from '../../
  *    set with `Renderer2` and never through a binding or a sanitizer bypass. Where that answers
  *    `null`, no frame is drawn and nothing is requested. `namespace` is the namespace the
  *    consumer's own read answered in, and the frame is drawn only while it equals the namespace on
- *    screen, so another namespace's document never loads under this one.
+ *    screen, so the editor never starts in another namespace. Its own settings can still move it to
+ *    another, which OcuPilot does not see (limit 3).
  * 2. Normal mode only. The source carries no mode flag, so the editor signs itself in from the
  *    browser-level login; no password or token is written to or read from its storage.
  * 3. OcuPilot reaches nothing in the frame: it reads no window or document of it, posts and hears
@@ -37,11 +38,12 @@ import { INTEROP_EDITORS, interopEditorSource, type InteropEditor } from '../../
  *    `credentialless` attribute.
  *
  * **Named consequence.** The frame runs on the shell's origin, so the editor's script can read the
- * tab's storage, as any application IRIS serves on this origin can (AD-47). The editor's own Logout
- * ends the browser-level login and OcuPilot's pair with it, so the session-ended card shows at
- * OcuPilot's next request, and until then the editor may show its own sign-in form, which OcuPilot
- * never fills or reads. A source set again after the editor navigated its own frame is the
- * consumer's to arrange.
+ * tab's storage, OcuPilot's token pair included, and script the shell, as any application IRIS
+ * serves on this origin can (AD-47). A tab the editor opens without `noopener` starts with a copy
+ * of that storage, which sign-out revokes. The editor's own Logout ends the browser-level login and
+ * OcuPilot's pair with it, so the session-ended card shows at OcuPilot's next request, and until
+ * then the editor may show its own sign-in form, which OcuPilot never fills or reads. A source set
+ * again after the editor navigated its own frame is the consumer's to arrange.
  *
  * Every control-flow condition is a paren-free member reference, for the reason `sign-in.ts`
  * records.

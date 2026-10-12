@@ -11,7 +11,8 @@ import { InteropEditorFrame } from './interop-editor-frame';
  * is the builder's answer and whose name is the editor's own string, carrying no `sandbox`, `allow`,
  * `srcdoc` or `credentialless` and no attribute beyond its class, marker, title and source; drawn only
  * while its namespace is the one on screen and the builder answers; set again when the namespace or
- * the document moves; touching no tab storage; and adding no listener to the frame or for a message. jsdom loads no frame, so only the element is
+ * the document moves, and written once per distinct address so nothing else reloads the editor; touching no tab storage; and adding
+ * no listener to the frame or for a message. jsdom loads no frame, so only the element is
  * pinned here; `browser/interop-editor-frame.browser-spec.mjs` loads the real editors.
  */
 
@@ -161,9 +162,51 @@ describe('app-interop-editor-frame', () => {
     expect(frame(), 'a document outside its shape withdraws the frame').toBeNull();
   });
 
+  it('Story 20.13 AC4: writes the address once per distinct address, so nothing that leaves it as it was reloads the editor', async () => {
+    // Mutation (Rule 19): the address is written twice for one draw (a second `setAttribute` of `src`) -> red.
+    const writes: string[] = [];
+    const original = Element.prototype.setAttribute;
+    const spy = vi.spyOn(Element.prototype, 'setAttribute').mockImplementation(function (this: Element, name: string, value: string) {
+      if (this instanceof HTMLIFrameElement && name === 'src') writes.push(value);
+      return original.call(this, name, value);
+    });
+    try {
+      const { fixture, frame, scopeTo, set } = await mount({ editor: 'dtl-editor', namespace: 'HSCUSTOM', document: 'Demo.One' });
+      const one = interopEditorSource('dtl-editor', 'HSCUSTOM', 'Demo.One') as string;
+      expect(writes, 'the first draw writes the address once').toEqual([one]);
+
+      // A render, a scope notice and inputs that restate what the component already has: the editor must not reload.
+      fixture.detectChanges();
+      await settle(fixture);
+      await scopeTo('HSCUSTOM');
+      await set('document', 'Demo.One');
+      await set('editor', 'dtl-editor');
+      await set('namespace', 'HSCUSTOM');
+      expect(writes, 'none of them writes it again').toEqual([one]);
+
+      await set('document', 'Demo.Two');
+      const two = interopEditorSource('dtl-editor', 'HSCUSTOM', 'Demo.Two') as string;
+      expect(writes, 'a new address is one more write').toEqual([one, two]);
+
+      // Withdrawn and drawn again is a new frame, and a new frame needs its address.
+      const first = frame();
+      await set('document', 'a b');
+      expect(frame()).toBeNull();
+      await set('document', 'Demo.Two');
+      expect(frame(), 'a new element').not.toBe(first);
+      expect(writes, 'with the address written on it').toEqual([one, two, two]);
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
   it('Story 20.13 AC4: adds no listener to the frame and none for a message, through a mount, a change and a destroy', async () => {
     // Mutation (Rule 19): the template gains `(load)="x()"`, or the component gains a `window:message` host listener -> red.
+    // Mutation (Rule 19): the component sets the frame's `onload` handler property -> red.
     const added: Array<{ target: EventTarget; type: string }> = [];
+    // jsdom registers a handler property below these spies, so the frame's handler properties are read back.
+    const handlerProperties = (element: HTMLIFrameElement | null) =>
+      ['onload', 'onerror', 'onabort'].filter((name) => element !== null && (element as unknown as Record<string, unknown>)[name] !== null);
     const spies = [EventTarget.prototype, window].map((target) => {
       const original = target.addEventListener;
       return vi.spyOn(target, 'addEventListener').mockImplementation(function (
@@ -179,7 +222,9 @@ describe('app-interop-editor-frame', () => {
     try {
       const { fixture, frame, set, scopeTo } = await mount({ editor: 'dtl-editor', namespace: 'HSCUSTOM', document: 'Demo.Probe.Thing' });
       expect(frame(), 'the frame is drawn while the spies are armed').not.toBeNull();
+      expect(handlerProperties(frame()), 'no handler property on the frame').toEqual([]);
       await set('document', 'Demo.Other');
+      expect(handlerProperties(frame()), 'nor after its address changes').toEqual([]);
       await scopeTo('USER');
       await scopeTo('HSCUSTOM');
       fixture.destroy();
@@ -194,6 +239,8 @@ describe('app-interop-editor-frame', () => {
       const seen = added.slice(lifecycle.length);
       expect(seen.some((entry) => entry.target === control && entry.type === 'load'), 'a listener on a frame is recorded').toBe(true);
       expect(seen.some((entry) => entry.target === window && entry.type === 'resize'), 'and one on the window').toBe(true);
+      control.onload = noop;
+      expect(handlerProperties(control), 'and the handler read sees a handler property').toEqual(['onload']);
 
       expect(
         lifecycle.filter((entry) => entry.target instanceof HTMLIFrameElement).map((entry) => entry.type),

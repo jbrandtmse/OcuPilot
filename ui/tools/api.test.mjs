@@ -1,8 +1,10 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join, relative, sep } from 'node:path';
+
+import { blankComments, walkSource } from './source-scan.mjs';
 
 // Pins AD-20 (every API path absolute, refused by the one service) and the credential half
 // of AD-28 and AD-47: a Bearer from per-tab storage is the only thing on the wire, and no
@@ -713,49 +715,38 @@ const FORBIDDEN = [
   { pattern: /\bcontent(Window|Document)\b/, why: 'OcuPilot reaches nothing inside a frame (AD-63)' },
   { pattern: /\bwindow\s*\.\s*frames\b/, why: 'OcuPilot reaches nothing inside a frame (AD-63)' },
   {
-    pattern: /addEventListener\s*\(\s*['"]message(error)?['"]|\bwindow:message\b|\bonmessage\b/,
+    // A listener for `message` in any of the forms a client adds one: the DOM call, `Renderer2.listen`,
+    // rxjs `fromEvent`, a host listener or a handler property. Matched over the whole file, so a call
+    // a formatter wraps across lines is caught too.
+    pattern:
+      /addEventListener\s*\(\s*['"`]message(error)?['"`]|\.listen\s*\([^,;]*,\s*['"`]message(error)?['"`]|\bfromEvent\s*\([^,;]*,\s*['"`]message(error)?['"`]|\bwindow:message\b|\bonmessage\b/,
     why: 'OcuPilot hears no message from a frame (AD-63)',
   },
   { pattern: /\bVSCODE\b/, why: 'an embedded editor loads in normal mode only (AD-63)' },
   { pattern: /_Editor-|\bvscodeMode\b/, why: 'no vendor editor storage key is written or read (AD-63)' },
 ];
 
-const SCAN_EXTENSIONS = new Set(['.ts', '.html', '.scss', '.json', '.js', '.mjs']);
-const PRUNE = new Set(['node_modules', 'dist', '.angular']);
-
-function walk(dir, onFile) {
-  for (const entry of readdirSync(dir)) {
-    if (PRUNE.has(entry)) continue;
-    const full = join(dir, entry);
-    if (statSync(full).isDirectory()) {
-      walk(full, onFile);
-      continue;
+/**
+ * Every forbidden shape in `code` (comments already blanked), each with the line it starts on. Each
+ * rule is matched over the whole text, not line by line, so a shape split across lines still counts.
+ */
+function forbiddenHits(code) {
+  const hits = [];
+  for (const { pattern, why } of FORBIDDEN) {
+    for (const match of code.matchAll(new RegExp(pattern.source, `${pattern.flags}g`))) {
+      hits.push({ line: code.slice(0, match.index).split('\n').length, text: match[0].replace(/\s+/g, ' '), why });
     }
-    if (!SCAN_EXTENSIONS.has(entry.slice(entry.lastIndexOf('.')))) continue;
-    onFile(full, readFileSync(full, 'utf8'));
   }
-}
-
-// Comments are prose: this file's own rule list and token-store.ts's header both NAME the
-// forbidden APIs in order to explain why they are forbidden, and failing the build on an
-// explanation would leave no way to write one. Same treatment client-lint.mjs applies.
-const COMMENT_RE = /\/\*[\s\S]*?\*\/|(?:^|(?<=[\s;{}(]))\/\/[^\n]*/g;
-
-function blankComments(text) {
-  return text.replace(COMMENT_RE, (m) => m.replace(/[^\n]/g, ' '));
+  return hits.sort((a, b) => a.line - b.line);
 }
 
 test('no code under ui/src writes a cookie, persistent storage, a cross-tab channel or a frame message', () => {
   const offenders = [];
-  walk(join(uiRoot, 'src'), (fullPath, text) => {
+  walkSource(join(uiRoot, 'src'), (fullPath, text) => {
     const relativePath = relative(uiRoot, fullPath).split(sep).join('/');
-    const code = blankComments(text);
-    code.split('\n').forEach((line, idx) => {
-      for (const { pattern, why } of FORBIDDEN) {
-        if (!pattern.test(line)) continue;
-        offenders.push(`${relativePath}:${idx + 1}: ${line.trim()} -- ${why}`);
-      }
-    });
+    for (const { line, text: found, why } of forbiddenHits(blankComments(text))) {
+      offenders.push(`${relativePath}:${line}: ${found} -- ${why}`);
+    }
   });
   assert.deepEqual(offenders, [], `forbidden credential channels found:\n${offenders.join('\n')}`);
 });
@@ -778,6 +769,9 @@ test('the localStorage ban has no exempted path, and every forbidden shape still
     "const mode = tabStorage.getItem('vscodeMode');",
     "window.addEventListener('message', handler);",
     "@HostListener('window:message', ['$event']) heard(event: MessageEvent) {}",
+    "this.renderer.listen('window', 'message', (event) => event);",
+    "const heard = fromEvent(window, 'message');",
+    "window.addEventListener(\n  'message',\n  handler,\n);",
   ];
   const caught = [];
   const ruleHits = FORBIDDEN.map(() => 0);
@@ -788,7 +782,7 @@ test('the localStorage ban has no exempted path, and every forbidden shape still
       ruleHits[rule] += 1;
     });
   });
-  assert.deepEqual(caught, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13], 'every forbidden shape is caught, localStorage included, each line by one rule');
+  assert.deepEqual(caught, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16], 'every forbidden shape is caught, localStorage included, each line by one rule');
   assert.ok(ruleHits.every((hits) => hits > 0), `and every rule has a hostile line: ${JSON.stringify(ruleHits)}`);
   assert.equal(
     existsSync(corePath('preferences.ts')),
@@ -814,17 +808,21 @@ test('the scan itself catches each forbidden shape on a fixture, and ignores a c
     "const mode = tabStorage.getItem('vscodeMode');",
     "window.addEventListener('message', handler);",
     "@HostListener('window:message', ['$event']) heard(event: MessageEvent) {}",
+    "this.renderer.listen('window', 'message', (event) => event);",
+    "const heard = fromEvent(window, 'message');",
+    'window.addEventListener(',
+    "  'message',",
+    '  handler,',
+    ');',
     'const fine = sessionStorage.getItem("k");',
   ].join('\n');
 
-  const code = blankComments(fixture);
-  const hits = [];
-  code.split('\n').forEach((line, idx) => {
-    for (const { pattern } of FORBIDDEN) {
-      if (pattern.test(line)) hits.push(idx + 1);
-    }
-  });
-  assert.deepEqual(hits, [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15], 'thirteen real violations, and neither comment nor sessionStorage');
+  const hits = forbiddenHits(blankComments(fixture)).map((hit) => hit.line);
+  assert.deepEqual(
+    hits,
+    [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18],
+    'sixteen real violations, the wrapped listener at the line its call starts, and neither comment nor sessionStorage'
+  );
 });
 
 test('the one place a cookie travels is the token endpoints, and only as credentials:include', async () => {

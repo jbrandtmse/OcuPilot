@@ -11,9 +11,9 @@
  * percent-encoded, and a value outside its shape answers `null`, so no path, host or parameter a
  * person typed can reach a frame (AD-21).
  *
- * **Normal mode only.** The address never carries `VSCODE` or `READONLY`, so the editor signs
- * itself in from the browser-level login and listens for no message. No token, password or other
- * credential is ever part of it (AD-28, AD-47).
+ * **Normal mode only.** The address never carries a `VSCODE` or `READONLY` parameter, so the editor
+ * signs itself in from the browser-level login and listens for no message. No token, password or
+ * other credential is ever part of it (AD-28, AD-47).
  *
  * **Contract for a consumer.** `namespace` is the namespace the consumer's own read answered in,
  * drawn only while it equals the namespace on screen; `document` is a name that read returned. The

@@ -81,15 +81,21 @@ export function tabSnapshot(page) {
 
 /**
  * Record every request to `/ui/interop/` and `/api/interop-editors/` that `page` or a frame in it
- * makes: its method, path, query, post body (`null` when it has none), Authorization header (`''`
- * when it has none) and status (`null` until answered). The returned list grows as requests arrive.
+ * makes, and every http(s) request a frame in it makes to anywhere else on the instance, so the
+ * clauses about what a request carries cover all that an editor sends and not only its own two
+ * applications: its method, path, query, post body (`null` when it has none), Authorization header
+ * (`''` when it has none) and status (`null` until answered). The returned list grows as requests
+ * arrive.
  */
 export function watchEditorTraffic(page) {
   const entries = [];
   const byRequest = new Map();
   page.on('request', (request) => {
     const url = new URL(request.url());
-    if (!url.pathname.startsWith('/ui/interop/') && !url.pathname.startsWith(EDITOR_API)) return;
+    const owned = url.pathname.startsWith('/ui/interop/') || url.pathname.startsWith(EDITOR_API);
+    const frame = request.frame();
+    const fromFrame = frame !== null && frame !== page.mainFrame() && /^https?:$/.test(url.protocol);
+    if (!owned && !fromFrame) return;
     const entry = {
       method: request.method(),
       path: url.pathname,
@@ -190,10 +196,13 @@ function namesParameter(text, name) {
 /**
  * AC1 and AC2, for one editor frame that has loaded (or is loading) in `page`.
  *
- * `expected` names `config`, the `editor`, the `namespace` and `documentName` the frame was given,
- * the `traffic`, `messages` and `violations` observers armed before it loaded, and `before`, the
- * `tabSnapshot` taken before it was mounted. Waits for the editor to sign in and to ask for its
- * document, then asserts every clause; any `frameSelector` may name the frame.
+ * `expected` names `config`, the `editor`, the `namespace` and `documentName` the frame was given
+ * (`''` for an editor framed empty, which asks for no document), the `traffic`, `messages` and
+ * `violations` observers armed before it loaded, and `before`, the `tabSnapshot` taken before it
+ * was mounted. Waits for the editor to sign in and, when it was given a document, to ask for it,
+ * then asserts every clause; any `frameSelector` may name the frame. A caller that knows the status
+ * the document's read must answer (404 for a name nothing holds, 200 for a present one) passes it
+ * as `documentStatus`; without it the read need only be answered.
  */
 export async function assertSignedInSilently({
   page,
@@ -206,6 +215,7 @@ export async function assertSignedInSilently({
   violations,
   before,
   frameSelector = DEFAULT_FRAME_SELECTOR,
+  documentStatus = null,
 }) {
   const timeoutMs = config.navigationTimeoutMs;
   const frameOf = async () => (await (await page.$(frameSelector)).contentFrame());
@@ -238,14 +248,23 @@ export async function assertSignedInSilently({
   assert.equal(await frame.$('input[type="password"]'), null, 'the frame holds no password field');
   assert.equal(await frame.$('input[autocomplete="current-password"]'), null, 'and no current-password field');
 
-  // AC1: it asked for the document its own parameter names.
-  const documentRead = `${EDITOR_API}v7/${encodeURIComponent(namespace)}/${EDITOR_APPS[editor].segment}/${documentName}`;
-  await until(
-    () => traffic.filter((entry) => entry.method === 'GET' && entry.path === documentRead),
-    (entries) => entries.length > 0 && entries.every((entry) => entry.status !== null),
-    `the editor requests ${documentRead} and it is answered`,
-    timeoutMs
-  );
+  // AC1: it asked for the document its own parameter names (an editor framed with no document asks for none).
+  if (documentName !== '') {
+    const documentRead = `${EDITOR_API}v7/${encodeURIComponent(namespace)}/${EDITOR_APPS[editor].segment}/${documentName}`;
+    const reads = await until(
+      () => traffic.filter((entry) => entry.method === 'GET' && entry.path === documentRead),
+      (entries) => entries.length > 0 && entries.every((entry) => entry.status !== null),
+      `the editor requests ${documentRead} and it is answered`,
+      timeoutMs
+    );
+    if (documentStatus !== null) {
+      assert.deepEqual(
+        reads.map((entry) => entry.status),
+        reads.map(() => documentStatus),
+        `the read of ${documentName} is answered ${documentStatus}, as the person the editor signed in as, and not refused`
+      );
+    }
+  }
 
   // AC1: no request carried a password, either OcuPilot token or a mode flag.
   for (const entry of traffic) {
