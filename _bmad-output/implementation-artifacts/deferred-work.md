@@ -11366,3 +11366,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: dashboard.page.ts linksFor filters on built alone, while side-bar.ts and home.page.ts gate on screenVerdict with aria-disabled and the Requires reason; following such a link shows the outlet's Requires page
 - 2026-10-12T02:40:03Z status=wontfix-accepted owner=18-36-dashboard-drill-downs by=cr note=reopen_if=a refused drill-down's link draws ungated (AD-44 classic-page resource or AD-64 adjustment)
 - 2026-10-12T02:44:39Z status=routed owner=burndown by=lead note=orchestrator: EXPERIENCE.md :214-216 is a contract, not optional; fix at the Epic 18 burn-down
+
+### DW-2341: The routine-application roles read sorts the empty Every-caller MatchRoles entry first while the vendor lists it last, so an update echoing the list as read reports a change
+- source: spec-18-12-the-agent-grows-with-the-stage.md | severity: med | fix-risk: low | footprint: in-story
+- evidence: probed on ocupilot-ci: echoing MatchRoles as read differs in order only; the integration test uses one entry, so it misses this
+- 2026-10-12T06:16:45Z status=open owner=18-12-the-agent-grows-with-the-stage by=harvest note=code review: read in the vendor's order, or compare without order in this story's code (Write.cls is Epic 20's)
+
+### DW-2342: StageTwoTools checks only its declared roster, so a later Stage 2 screen is skipped unless its author adds a row
+- source: spec-18-12-the-agent-grows-with-the-stage.md | severity: med | fix-risk: low | footprint: in-story
+- evidence: the roster is a literal list; no Stage 2 marker or baseline of earlier screens exists
+- 2026-10-12T06:16:46Z status=open owner=18-12-the-agent-grows-with-the-stage by=harvest note=code review: a reverse check (a baseline of pre-Stage-2 screens) or a recorded reason it stays roster-only
