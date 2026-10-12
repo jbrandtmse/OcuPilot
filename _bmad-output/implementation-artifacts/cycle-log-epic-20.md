@@ -533,3 +533,6 @@
 2026-10-12T11:40:53Z	Story 20.13	story_created	spawn_at=(see_stage_spawned) model=opus agent_name=20-13-plan-1 path=_bmad-output/implementation-artifacts/spec-20-13-the-sign-in-hand-off-to-the-embedded-vendor-editors.md build_status=ready-for-dev spec_kb=30.9(oversized) epic_context=reused
 2026-10-12T11:40:53Z	Story 20.13	spine_updated	ad=AD-63(builder,sign-out_measured,editor_Logout) reason=clarification(plan_drafts) by=runner story=20-13 lint=ok(preexisting_low) pending=opened-tab_sentence(Q1)
 2026-10-12T11:40:53Z	Story 20.13	spec_validated	service_introducing=true(vendor-frame_builder_and_frame_component) integration_ac=declared-none(first_consumer_20.7;harness_proves_the_real_editors) adr_constrained_acs=AD-63,AD-28,AD-47 decision_dependency=none sections_created=none owned_ledger=DW-2141 addressed=1 declined=0 mutates_shared_runtime=false gate=Q1_asked(non-blocking)
+2026-10-12T11:41:03Z	Story 20.6	ci_resolved	story=20.6 run=38240369145 result=success head=5b3044bb resolved_at=next_implement
+2026-10-12T11:41:03Z	Story 20.6	ci_green_verified	run=38240369145 head=5b3044bb boundary=reported_to_main
+2026-10-12T11:41:22Z	Story 20.13	stage_spawned	stage=implement spawn_at=2026-10-12T11:41:22Z model=sonnet agent_name=20-13-implement-1 cycle_iteration=1 ci_prior=success_38240369145(20.6_5b3044bb)
