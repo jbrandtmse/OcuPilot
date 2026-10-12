@@ -6,8 +6,8 @@
 /// for a genuinely authenticated HTTP request, so each account is created with a password this
 /// class keeps for the length of the run and sends as Basic credentials. One holds
 /// <code>%Admin_Operate:USE</code> and <b>not</b> OcuPilot's administrative resource -- the
-/// account AC1 is observed for; the other holds no <code>%Admin_*</code> resource and not
-/// <code>%Development</code>, which is AC4's floor. Both hold read on the install namespace's code database, without which IRIS could
+/// account AC1 is observed for; the other holds no <code>%Admin_*</code> resource, not
+/// <code>%Development</code> and not <code>%Ens_Portal</code>, which is AC4's floor. Both hold read on the install namespace's code database, without which IRIS could
 /// not load the dispatch class and the framework would answer a bare 403 with no envelope -- a
 /// status-only assertion would pass while pinning nothing.</p>
 /// <p><b>Why a real principal is the only thing that proves this.</b>
@@ -382,7 +382,7 @@ Method TestEveryConfigurationRouteRefusesAPrincipalWithoutTheAdministrativeResou
 }
 
 /// <p>AC4's floor -- <b>every route the map declares</b>, configuration or not, refuses a principal
-/// holding neither a <code>%Admin_*</code> resource nor <code>%Development</code> with <code>AUTH.NOADMIN</code> and the FR-3 sentence.
+/// holding no <code>%Admin_*</code> resource, no <code>%Development</code> and no <code>%Ens_Portal</code> with <code>AUTH.NOADMIN</code> and the FR-3 sentence.
 /// The refusal is on the dispatcher, so a route added later inherits it rather than declaring its
 /// own.</p>
 /// <p>Mutation (Rule 19): delete the administrative floor from

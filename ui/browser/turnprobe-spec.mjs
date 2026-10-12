@@ -35,6 +35,7 @@
 
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
+import { randomBytes } from 'node:crypto';
 
 /**
  * `{container, marker}`: `container` is the throwaway container name (`browserConfig().container`);
@@ -63,6 +64,19 @@ export function runIris(container, lines) {
   return `${result.stdout ?? ''}${result.stderr ?? ''}`;
 }
 
+/**
+ * Remove the stored governance policy, so the baseline alone decides again, and assert it. A spec
+ * that found no stored policy before it ran calls this at the end: its resets save a default
+ * policy row, which is a row where none existed.
+ */
+export function clearGovernancePolicy(container) {
+  const output = runIris(container, [
+    'Set sc=##class(OcuPilot.Test.GovernanceFixture).Clear()',
+    'Write "OCU-GOVCLEAR-START:"_$System.Status.IsOK(sc)_":OCU-GOVCLEAR-END",!',
+  ]);
+  assert.equal(markerValue(output, 'GOVCLEAR'), '1', `the stored governance policy was cleared: ${output}`);
+}
+
 /** Point a marker-wrapped one-liner's answer out of `runIris`'s combined output. */
 export function markerValue(output, marker) {
   const re = new RegExp(`OCU-${marker}-START:(.*?):OCU-${marker}-END`);
@@ -83,14 +97,26 @@ export function resultPayload(block) {
 
 const tagCounters = new Map();
 
-/** One `turnprobe` tag per test, so a stale script from an earlier test cannot answer a later one.
- * Counted per `options.marker`, so two files (two processes, two module instances in practice)
- * never share a counter, and two distinctly-named callers within one file do not collide either. */
+/** Four random bytes, drawn once per process: no two runs of one file issue the same tag. */
+const RUN = randomBytes(4).toString('hex');
+
+/** Every tag this process has issued, so teardown forgets them all in one call. */
+const issuedTags = new Set();
+
+/**
+ * One `turnprobe` tag per test, so a stale script from an earlier test cannot answer a later one.
+ * The tag is `<marker><run>n<count>`: the count restarts with every process, and a turn's last
+ * provider call can land after its test forgot the tag, so a count alone let an earlier run's
+ * record sit under the name a later run issued. `<run>` makes the name this process's own. The count
+ * is per `options.marker`, so two distinctly-named callers within one file do not collide.
+ */
 export function nextTag(options) {
   const prefix = options.marker;
   const count = (tagCounters.get(prefix) ?? 0) + 1;
   tagCounters.set(prefix, count);
-  return `${prefix}${count}`;
+  const tag = `${prefix}${RUN}n${count}`;
+  issuedTags.add(tag);
+  return tag;
 }
 
 /**
@@ -174,22 +200,52 @@ export function forgetTag(options, tag) {
   runIris(options.container, [`Do ##class(OcuPilot.Test.TurnProvider).Forget("${escapeOs(tag)}")`]);
 }
 
+/** The state mark `armProbeDefinition` took, which `disarmProbeDefinition` sweeps back to. */
+let armedMark = null;
+
 /**
  * Arm a fresh default `turnprobe` definition for this file's run: clear anything a crashed prior
- * run left (`EnsureDefinition` inserts, never upserts), record the default marker to restore, and
- * create the definition tagged with a first probe tag. Answers `{prior, preparedId}`; the caller
- * passes `prior` back to `disarmProbeDefinition` at teardown.
+ * run left (`EnsureDefinition` inserts, never upserts), record the default marker to restore, take
+ * the high-water mark of the conversation, turn and ledger rows, and create the definition tagged
+ * with a first probe tag. Answers `{prior, preparedId}`; the caller passes `prior` back to
+ * `disarmProbeDefinition` at teardown.
  */
 export function armProbeDefinition(options) {
   removeDefinition(options, '');
   const prior = markedDefault(options);
+  const name = `${options.marker}-MARK`;
+  const output = runIris(options.container, [
+    `Write "OCU-${name}-START:"_##class(OcuPilot.Test.TurnWireFixture).StateMark()_":OCU-${name}-END",!`,
+  ]);
+  const mark = markerValue(output, name);
+  assert.match(String(mark), /^\d+$/, `StateMark answered: ${output}`);
+  armedMark = Number(mark);
   const preparedId = ensureDefinition(options, nextTag(options));
   return { prior, preparedId };
 }
 
-/** The teardown half of `armProbeDefinition`: remove the probe definition and restore `prior`. */
+/**
+ * The teardown half of `armProbeDefinition`: end and remove what this run's turns left (their
+ * conversations, turns, steps and ledger rows above the armed mark), remove the probe definition and
+ * restore `prior`, and forget every tag this process issued. Asserts that nothing was left.
+ */
 export function disarmProbeDefinition(options, prior) {
+  let left = '';
+  if (armedMark !== null) {
+    const name = `${options.marker}-SWEEP`;
+    const output = runIris(options.container, [
+      `Write "OCU-${name}-START:"_##class(OcuPilot.Test.TurnWireFixture).SweepSince(${armedMark},"${escapeOs(options.username ?? '')}")_":OCU-${name}-END",!`,
+    ]);
+    const value = markerValue(output, name);
+    left = value === null ? `no answer: ${output}` : value.trim();
+    armedMark = null;
+  }
   removeDefinition(options, prior);
+  if (issuedTags.size > 0) {
+    runIris(options.container, [...issuedTags].map((tag) => `Do ##class(OcuPilot.Test.TurnProvider).Forget("${escapeOs(tag)}")`));
+    issuedTags.clear();
+  }
+  assert.equal(left, '', `this run's turn state was swept: ${left}`);
 }
 
 /** How long a turn left running by an earlier spec is given to end. */

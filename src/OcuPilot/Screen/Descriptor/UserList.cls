@@ -39,6 +39,11 @@
 /// <class>OcuPilot.Screen.Tool.UserTokenRevoke</class>: every OAuth 2.0 access token this instance
 /// issued under the account's stored name is revoked, behind the typed-name dialog. It declares no self-protection
 /// rule, because the prohibited set refuses none of it (AD-10).</p>
+/// <p><b>Its ninth and tenth row actions are <code>grant-sql</code> and <code>revoke-sql</code></b> (Story 18.9),
+/// carried out by <class>OcuPilot.Screen.Tool.UserSqlGrant</class> and
+/// <class>OcuPilot.Screen.Tool.UserSqlRevoke</class>: the editor's SQL privileges tab sends a namespace, an object
+/// type, an object and an action, and a grant its grant option. A grant or revoke on one of OcuPilot's own schemas
+/// or for one of its own roles is refused (AD-10). No menu draws either.</p>
 Class OcuPilot.Screen.Descriptor.UserList Extends OcuPilot.Screen.Descriptor.Base
 {
 
@@ -69,6 +74,8 @@ XData Declaration
     {"id": "require-password-change", "selfProtection": "service-account-sign-in"},
     {"id": "delete", "selfProtection": "protected-account"}
     , {"id": "revoke-tokens", "selfProtection": ""}
+    , {"id": "grant-sql", "selfProtection": ""}
+    , {"id": "revoke-sql", "selfProtection": ""}
   ],
   "context": {"fields": ["Name", "FullName", "Enabled", "Type", "Roles", "ExpirationDate", "Expired"], "secretFields": []},
   "secretArguments": ["Password"],

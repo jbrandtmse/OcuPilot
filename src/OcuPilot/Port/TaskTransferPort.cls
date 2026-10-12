@@ -64,6 +64,12 @@ Parameter PATHPARAM = "path";
 
 Parameter TASKSPARAM = "tasks";
 
+/// <p>The preview's distinct <code>RunAsUser</code> accounts of the tasks an import would create,
+/// joined by <parameter>RUNASSEPARATOR</parameter>; blank accounts are left out.</p>
+Parameter RUNASPARAM = "runAs";
+
+Parameter RUNASSEPARATOR = "|";
+
 /// <p>Whether the export replaces a file already at its name: declared by the export itself, never a
 /// caller value (AD-21).</p>
 Parameter EXPORTOVERWRITES As BOOLEAN = 1;
@@ -82,18 +88,18 @@ Parameter TASKELEMENT = "Task";
 /// <p>The vendor's own qualifiers: no display output.</p>
 Parameter QSPEC = "-d";
 
-/// <p>The resource running a task as another account needs, as the vendor's own check reads it.</p>
-Parameter SECURERESOURCE = "%Admin_Secure";
-
 /// <p>The separator between two tasks in the reviewed summary.</p>
 Parameter SUMMARYSEPARATOR = "; ";
+
+/// <p>What a task with no <code>RunAsUser</code> reads as in the summary.</p>
+Parameter NOACCOUNT = "(importing user)";
 
 /// <p>The admin port's call, except for <parameter>ENDPOINT</parameter>:
 /// <parameter>TASKTYPE</parameter> answers the task port's <code>Task.CRUD</code> <code>GET</code> for
 /// <parameter>IDPARAM</parameter> with <code>root</code> and <code>path</code> added empty;
-/// <parameter>SCHEDULETYPE</parameter> answers <code>{root, path, tasks}</code> empty for
+/// <parameter>SCHEDULETYPE</parameter> answers <code>{root, path, tasks, runAs}</code> empty for
 /// <parameter>IMPORTID</parameter> and 404 for any other id; <parameter>PREVIEWTYPE</parameter> answers
-/// <code>{tasks, count, present}</code> for the file <code>root</code> and <code>path</code> name;
+/// <code>{tasks, runAs, count, present}</code> for the file <code>root</code> and <code>path</code> name;
 /// <parameter>EXPORTTYPE</parameter> and <parameter>IMPORTTYPE</parameter> are
 /// <method>Export</method> and <method>Import</method>.</p>
 /// <p><b>Caller contract:</b> the arguments and outputs are
@@ -133,6 +139,7 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
             Do pResult.%Set(..#ROOTPARAM, "", "string")
             Do pResult.%Set(..#PATHPARAM, "", "string")
             Do pResult.%Set(..#TASKSPARAM, "", "string")
+            Do pResult.%Set(..#RUNASPARAM, "", "string")
             Set pHttpStatus = 200
             Quit
         }
@@ -143,6 +150,7 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
             If $$$ISERR(tSC) Quit
             Set pResult = {}
             Do pResult.%Set(..#TASKSPARAM, tExamined.%Get("summary"), "string")
+            Do pResult.%Set(..#RUNASPARAM, tExamined.%Get("runAs"), "string")
             Do pResult.%Set("count", tExamined.%Get("count"), "number")
             Do pResult.%Set("present", tExamined.%Get("present"), "number")
             Set pHttpStatus = 200
@@ -336,9 +344,11 @@ ClassMethod Import(pRoot As %String, pPath As %String, pReviewed As %String, Out
 }
 
 /// <p>What the task export at <var>pFile</var> would do, in <var>pExamined</var>:
-/// <code>{summary, count, present, absent}</code> -- the reviewed summary, <code>Name (NAMESPACE)</code>
-/// of each task the import would create in file order joined by
-/// <parameter>SUMMARYSEPARATOR</parameter>; the file's task count; how many the vendor will skip as
+/// <code>{summary, runAs, count, present, absent}</code> -- the reviewed summary,
+/// <code>Name (NAMESPACE) TaskClass as RunAsUser</code> of each task the import would create in file
+/// order joined by <parameter>SUMMARYSEPARATOR</parameter> (a blank account reads
+/// <parameter>NOACCOUNT</parameter>); the distinct non-blank <code>RunAsUser</code> accounts of those
+/// tasks (<parameter>RUNASPARAM</parameter>); the file's task count; how many the vendor will skip as
 /// already present by <code>JobGUID</code>, on this instance or earlier in the file; and the
 /// <code>JobGUID</code> of each task it would create.</p>
 /// <p>Refused, before any vendor write: 422 <code>TASK.IMPORT.FILE</code> for a file
@@ -361,6 +371,8 @@ ClassMethod Examine(pFile As %String, Output pExamined As %DynamicObject, Output
     Set tSummary = ""
     Set tPresent = 0
     Set tAbsent = []
+    Kill tAccounts
+    Set tRunAs = ""
     Set tIterator = tTasks.%GetIterator()
     While tIterator.%GetNext(.tIndex, .tTask) {
         Set tGuid = tTask.%Get("JobGUID")
@@ -379,7 +391,12 @@ ClassMethod Examine(pFile As %String, Output pExamined As %DynamicObject, Output
         Set tNames($ZConvert(tTask.%Get("Name"), "U")) = ""
         If tGuid '= "" Set tGuids(tGuid) = ""
         Do tAbsent.%Push(tGuid, "string")
-        Set tSummary = tSummary _ $Select(tSummary = "": "", 1: ..#SUMMARYSEPARATOR) _ tTask.%Get("Name") _ " (" _ tTask.%Get("NameSpace") _ ")"
+        Set tAccount = tTask.%Get("RunAsUser")
+        If (tAccount '= "") && '$Data(tAccounts($ZConvert(tAccount, "U"))) {
+            Set tAccounts($ZConvert(tAccount, "U")) = ""
+            Set tRunAs = tRunAs _ $Select(tRunAs = "": "", 1: ..#RUNASSEPARATOR) _ tAccount
+        }
+        Set tSummary = tSummary _ $Select(tSummary = "": "", 1: ..#SUMMARYSEPARATOR) _ tTask.%Get("Name") _ " (" _ tTask.%Get("NameSpace") _ ") " _ tTask.%Get("TaskClass") _ " as " _ $Select(tAccount = "": ..#NOACCOUNT, 1: tAccount)
     }
     If $Get(tCode) '= "" {
         Quit ..Refuse(422, ##class(OcuPilot.Api.Error).#VALIDATIONFAILED, tCode, ##class(OcuPilot.Api.Error).ReasonForTask(tCode), .pHttpStatus, .pFault, tDetail)
@@ -389,6 +406,7 @@ ClassMethod Examine(pFile As %String, Output pExamined As %DynamicObject, Output
     }
     Set pExamined = {}
     Do pExamined.%Set("summary", tSummary, "string")
+    Do pExamined.%Set("runAs", tRunAs, "string")
     Do pExamined.%Set("count", tTasks.%Size(), "number")
     Do pExamined.%Set("present", tPresent, "number")
     Do pExamined.%Set("absent", tAbsent)
@@ -485,11 +503,12 @@ ClassMethod Held(Output pGuids, Output pNames) As %Status [ Private ]
 }
 
 /// <p>The code of the first rule task <var>pTask</var> breaks, or <code>""</code>: the vendor's own
-/// refusals, then OcuPilot's task-name rule. Its namespace is not one the caller can read (<method>Readable</method>); its
+/// refusals, then OcuPilot's task-name shape. Its namespace is not one the caller can read (<method>Readable</method>); its
 /// class is not a task type there (<method>IsTaskType</method>); the caller lacks the privilege the
-/// type declares (<code>CheckPermission</code>); it runs as another account and the caller lacks
-/// <parameter>SECURERESOURCE</parameter>:USE, or as an account that is unknown or disabled; its name
-/// is one <var>pNames</var> holds, compared without regard to case.</p>
+/// type declares (<code>CheckPermission</code>); it runs as an account
+/// <method>OcuPilot.Area.Task.TaskRules.RunAsProblem</method> refuses; its name breaks
+/// <method>OcuPilot.Area.Task.TaskRules.NameProblem</method>, or is one <var>pNames</var> holds,
+/// compared without regard to case.</p>
 ClassMethod TaskProblem(pTask As %DynamicObject, ByRef pNames) As %String [ Private ]
 {
     Set tNamespace = pTask.%Get("NameSpace")
@@ -503,7 +522,9 @@ ClassMethod TaskProblem(pTask As %DynamicObject, ByRef pNames) As %String [ Priv
         Set tPermitted = 0
     }
     If 'tPermitted Quit ##class(OcuPilot.Api.Error).#TASKTASKCLASSPERMISSION
-    Set tCode = ..RunAsProblem(pTask.%Get("RunAsUser"))
+    Set tCode = ##class(OcuPilot.Area.Task.TaskRules).RunAsProblem(pTask.%Get("RunAsUser"))
+    If tCode '= "" Quit tCode
+    Set tCode = ##class(OcuPilot.Area.Task.TaskRules).NameProblem(pTask.%Get("Name"))
     If tCode '= "" Quit tCode
     If $Data(pNames($ZConvert(pTask.%Get("Name"), "U"))) Quit ##class(OcuPilot.Api.Error).#TASKNAMETAKEN
     Quit ""
@@ -548,31 +569,6 @@ ClassMethod IsTaskType(pClass As %String, pNamespace As %String) As %Boolean [ P
         Set tKnown = 0
     }
     Quit tKnown
-}
-
-/// <p>The <code>RunAsUser</code> rule's code for <var>pUser</var>, or <code>""</code>: blank or the
-/// caller's own name passes; any other name needs <parameter>SECURERESOURCE</parameter>:USE before it
-/// is read, and must name an existing, enabled account, read in <code>%SYS</code> (AD-16).</p>
-ClassMethod RunAsProblem(pUser As %String) As %String [ Private ]
-{
-    If (pUser = "") || ($ZConvert(pUser, "U") = $ZConvert($Username, "U")) Quit ""
-    If '$System.Security.Check(..#SECURERESOURCE, "USE") Quit ##class(OcuPilot.Api.Error).#TASKRUNASUSERSECURE
-    Set tExists = 0
-    Set tEnabled = 0
-    Set tOrigNS = $NAMESPACE
-    Try {
-        Set $NAMESPACE = "%SYS"
-        Set tExists = ##class(Security.Users).Exists(pUser, .tAccount)
-        If tExists && $IsObject($Get(tAccount)) Set tEnabled = ''tAccount.Enabled
-        Set tAccount = ""
-        Set $NAMESPACE = tOrigNS
-    } Catch {
-        Set $NAMESPACE = tOrigNS
-        Set tExists = 0
-    }
-    If 'tExists Quit ##class(OcuPilot.Api.Error).#TASKRUNASUSERUNKNOWN
-    If 'tEnabled Quit ##class(OcuPilot.Api.Error).#TASKRUNASUSERDISABLED
-    Quit ""
 }
 
 /// <p>The vendor's export of the tasks <var>pIds</var> names to <var>pFile</var>, in

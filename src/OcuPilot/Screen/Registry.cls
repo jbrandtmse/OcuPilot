@@ -133,6 +133,25 @@ ClassMethod Descriptors(Output pList As %List) As %Status
     Quit tSC
 }
 
+/// <p>The first area in <var>pAreas</var> whose <code>appliesWhen</code> is outside
+/// <code>OcuPilot.Kernel.Shell.NamespaceFeatures.FEATURES</code>, named, or <code>""</code> when
+/// every area is sound. An absent or empty <code>appliesWhen</code> declares no dependency.</p>
+ClassMethod AreaProblem(pAreas As %DynamicArray) As %String
+{
+    Set tProblem = ""
+    If '$IsObject(pAreas) Quit tProblem
+    Set tFeatures = ","_##class(OcuPilot.Kernel.Shell.NamespaceFeatures).#FEATURES_","
+    Set tIterator = pAreas.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tArea) {
+        Set tWhen = tArea.appliesWhen
+        If (tWhen '= "") && (tFeatures '[ (","_tWhen_",")) {
+            Set tProblem = "area '" _ tArea.key _ "' appliesWhen '" _ tWhen _ "' is not in OcuPilot.Kernel.Shell.NamespaceFeatures.FEATURES"
+            Quit
+        }
+    }
+    Quit tProblem
+}
+
 /// <p>Refuse every descriptor the declaration contract does not admit. <var>pProblem</var>
 /// names the first offending class and what is wrong with it, and is <code>""</code> exactly
 /// when the roster is sound.</p>
@@ -141,6 +160,10 @@ ClassMethod Validate(Output pProblem As %String) As %Status
     Set tSC = $$$OK
     Set pProblem = ""
     Try {
+        Set tSC = ##class(OcuPilot.Screen.Area).List(.tDeclaredAreas)
+        If $$$ISERR(tSC) Quit
+        Set pProblem = ..AreaProblem(tDeclaredAreas)
+        If pProblem '= "" Quit
         Set tSC = ..Descriptors(.tList)
         If $$$ISERR(tSC) Quit
         Set tRoutes = ""
@@ -1074,7 +1097,7 @@ Parameter READTOOLIDENTIFIERPATTERN = "^[a-z][a-z0-9]*\.[a-z][a-z0-9]*$";
 /// <code>rowGet</code> or <code>forEach</code> either. A source's optional
 /// <code>forEach</code> lists a parent endpoint first (<method>ForEachProblem</method>), and its
 /// optional <code>query</code> fixes parameters no caller can change
-/// (<method>SourceQueryProblem</method>). The eleven source ports are
+/// (<method>SourceQueryProblem</method>). The fourteen source ports are
 /// <code>admin</code>, an instance endpoint reached through the port, with a
 /// dotted endpoint name and an optional <code>rowGet</code> (<method>RowGetProblem</method>);
 /// <code>mgmnt</code>, the management API reached through its own port, which declares no
@@ -1083,10 +1106,11 @@ Parameter READTOOLIDENTIFIERPATTERN = "^[a-z][a-z0-9]*\.[a-z][a-z0-9]*$";
 /// <code>state</code>, one of OcuPilot's own kernel stores (AD-9) named without a package, which
 /// declares neither a <code>rowGet</code> nor <code>criteria</code>; <code>logsource</code>, a log
 /// file's bounded tail, which declares no <code>rowGet</code>; <code>encryption</code>, a key file's
-/// lists; <code>path</code>, <code>background</code>, <code>docdb</code> and
-/// <code>sqlactivity</code>, each a <code>LIST</code> of its port's own endpoint (the path port's of
-/// one of its sources) that declares no <code>rowGet</code>, <code>forEach</code>, <code>query</code>
-/// or <code>parts</code>; or <code>timeline</code>, an area's listed screens' reads composed, whose
+/// lists; <code>path</code>, <code>background</code>, <code>docdb</code>, <code>sqlactivity</code>,
+/// <code>monitor</code> and <code>interop</code>, each a <code>LIST</code> of its port's own endpoint
+/// (the path port's of one of its sources) that declares no <code>rowGet</code>, <code>forEach</code>,
+/// <code>query</code> or <code>parts</code>; <code>access</code>, the screens' required permissions, a <code>LIST</code> on
+/// <code>Screens</code> that declares none of those and no <code>read.criteria</code>; or <code>timeline</code>, an area's listed screens' reads composed, whose
 /// shape is fixed (<method>TimelineProblem</method>);
 /// A source may instead declare <code>rows</code>, a bare admin type's one-object answer read as a
 /// list over one member (<method>RowsProblem</method>, Story 16.7);
@@ -1103,9 +1127,9 @@ Parameter READTOOLIDENTIFIERPATTERN = "^[a-z][a-z0-9]*\.[a-z][a-z0-9]*$";
 /// no secret field. A read-declaring declaration also declares its <code>table</code>, whose
 /// shape <method>TableProblem</method> checks, unless it is a <code>form-page</code> that declares none
 /// (<method>RendersNoTable</method>); a <code>table</code> with no read is refused here.
-/// Last of all, a read on the <code>admin</code> or <code>path</code> port whose
-/// <code>privileges</code> omit <code>%DB_IRISSYS:READ</code> is refused, because the admin port
-/// runs every endpoint in <code>%SYS</code> -- a <code>state</code> read runs in the install namespace and needs no such
+/// Last of all, a read on the <code>admin</code>, <code>path</code> or <code>monitor</code> port whose
+/// <code>privileges</code> omit <code>%DB_IRISSYS:READ</code> is refused, because each of those
+/// ports does its work in <code>%SYS</code> -- a <code>state</code> read runs in the install namespace and needs no such
 /// pair, so the rule is on the source kind rather than on every read. <file>ui/tools/screen-mirror.mjs</file>'s <code>readProblem</code> refuses the
 /// same shapes before the mirror is emitted, and
 /// <class>OcuPilot.Test.AdminPairCorpus</class> is the corpus both engines run.</p>
@@ -1140,8 +1164,8 @@ ClassMethod ReadProblem(pDeclaration As %DynamicObject) As %String
         Set tProblem = ..UnknownKeyProblem(tSource, "read.source", $ListBuild("port", "endpoint", "type", "rowGet", "forEach", "query", "parts", "rows"))
         If tProblem '= "" Quit
         Set tPort = tSource.%Get("port")
-        If (tSource.%GetTypeOf("port") '= "string") || '$ListFind($ListBuild(##class(OcuPilot.Screen.Read).#SOURCEADMIN, ##class(OcuPilot.Screen.Read).#SOURCESTATE, ##class(OcuPilot.Screen.Read).#SOURCEMGMNT, ##class(OcuPilot.Screen.Read).#SOURCELOGSOURCE, ##class(OcuPilot.Screen.Read).#SOURCEPATH, ##class(OcuPilot.Screen.Read).#SOURCETIMELINE, ##class(OcuPilot.Screen.Read).#SOURCEBACKGROUND, ##class(OcuPilot.Screen.Read).#SOURCEATELIER, ##class(OcuPilot.Screen.Read).#SOURCEENCRYPTION, ##class(OcuPilot.Screen.Read).#SOURCEDOCDB, ##class(OcuPilot.Screen.Read).#SOURCESQLACTIVITY), tPort) {
-            Set tProblem = "read.source.port '" _ tPort _ "' is not one of '" _ ##class(OcuPilot.Screen.Read).#SOURCEADMIN _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCESTATE _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCEMGMNT _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCELOGSOURCE _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCEPATH _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCETIMELINE _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCEBACKGROUND _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCEATELIER _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCEENCRYPTION _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCEDOCDB _ "' or '" _ ##class(OcuPilot.Screen.Read).#SOURCESQLACTIVITY _ "', the eleven sources a declared read names (AD-36)"
+        If (tSource.%GetTypeOf("port") '= "string") || '$ListFind($ListBuild(##class(OcuPilot.Screen.Read).#SOURCEADMIN, ##class(OcuPilot.Screen.Read).#SOURCESTATE, ##class(OcuPilot.Screen.Read).#SOURCEMGMNT, ##class(OcuPilot.Screen.Read).#SOURCELOGSOURCE, ##class(OcuPilot.Screen.Read).#SOURCEPATH, ##class(OcuPilot.Screen.Read).#SOURCETIMELINE, ##class(OcuPilot.Screen.Read).#SOURCEBACKGROUND, ##class(OcuPilot.Screen.Read).#SOURCEATELIER, ##class(OcuPilot.Screen.Read).#SOURCEENCRYPTION, ##class(OcuPilot.Screen.Read).#SOURCEDOCDB, ##class(OcuPilot.Screen.Read).#SOURCESQLACTIVITY, ##class(OcuPilot.Screen.Read).#SOURCEINTEROP, ##class(OcuPilot.Screen.Read).#SOURCEACCESS, ##class(OcuPilot.Screen.Read).#SOURCEMONITOR), tPort) {
+            Set tProblem = "read.source.port '" _ tPort _ "' is not one of '" _ ##class(OcuPilot.Screen.Read).#SOURCEADMIN _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCESTATE _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCEMGMNT _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCELOGSOURCE _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCEPATH _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCETIMELINE _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCEBACKGROUND _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCEATELIER _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCEENCRYPTION _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCEDOCDB _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCESQLACTIVITY _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCEINTEROP _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCEACCESS _ "' or '" _ ##class(OcuPilot.Screen.Read).#SOURCEMONITOR _ "', the fourteen sources a declared read names (AD-36)"
             Quit
         }
         If (tSource.%GetTypeOf("endpoint") '= "string") || '$Match(tSource.%Get("endpoint"), "^[A-Za-z][A-Za-z0-9]*(\.[A-Za-z][A-Za-z0-9]*)*$") {
@@ -1250,6 +1274,74 @@ ClassMethod ReadProblem(pDeclaration As %DynamicObject) As %String
                 Quit
             }
             If tProblem '= "" Quit
+        }
+        ; A monitor source lists the instance's Prometheus metrics through OcuPilot.Port.MonitorPort,
+        ; which answers every sample of one collection whole behind its own gate (AD-29, AD-36, Story
+        ; 18.11): the port's own endpoint, a LIST, and nothing the port would have to issue per row,
+        ; per parent, under a fixed query or in parts.
+        If tPort = ##class(OcuPilot.Screen.Read).#SOURCEMONITOR {
+            Set tMonitorEndpoint = ##class(OcuPilot.Port.MonitorPort).#ENDPOINT
+            If tSource.%Get("endpoint") '= tMonitorEndpoint {
+                Set tProblem = "read.source.endpoint '" _ tSource.%Get("endpoint") _ "' is not the monitor port's endpoint ('" _ tMonitorEndpoint _ "') (AD-29)"
+                Quit
+            }
+            If tSource.%Get("type") '= ##class(OcuPilot.Port.MonitorPort).#TYPELIST {
+                Set tProblem = "read.source.type '" _ tSource.%Get("type") _ "' is declared on a monitor source, which lists the instance's Prometheus metrics (AD-36)"
+                Quit
+            }
+            For tKey = "rowGet", "forEach", "query", "parts" {
+                Set tKeyType = tSource.%GetTypeOf(tKey)
+                If (tKeyType = "unassigned") || (tKeyType = "null") Continue
+                Set tProblem = "read.source." _ tKey _ " is declared on a monitor source, which answers the metrics whole (AD-36)"
+                Quit
+            }
+            If tProblem '= "" Quit
+        }
+        ; An interop source lists the namespace's productions or interoperability classes through
+        ; OcuPilot.Port.InteropPort, which answers each endpoint whole behind its own gate (AD-62,
+        ; AD-36, Story 20.2): one of the port's four endpoints, a LIST, and nothing the port would
+        ; have to issue per row, per parent, under a fixed query or in parts.
+        If tPort = ##class(OcuPilot.Screen.Read).#SOURCEINTEROP {
+            If '$ListFind(##class(OcuPilot.Port.InteropPort).Endpoints(), tSource.%Get("endpoint")) {
+                Set tProblem = "read.source.endpoint '" _ tSource.%Get("endpoint") _ "' is not one of the interop port's endpoints ('" _ $ListToString(##class(OcuPilot.Port.InteropPort).Endpoints(), "', '") _ "') (AD-62)"
+                Quit
+            }
+            If tSource.%Get("type") '= ##class(OcuPilot.Port.InteropPort).#TYPELIST {
+                Set tProblem = "read.source.type '" _ tSource.%Get("type") _ "' is declared on an interop source, which lists the namespace's productions and classes (AD-36)"
+                Quit
+            }
+            For tKey = "rowGet", "forEach", "query", "parts" {
+                Set tKeyType = tSource.%GetTypeOf(tKey)
+                If (tKeyType = "unassigned") || (tKeyType = "null") Continue
+                Set tProblem = "read.source." _ tKey _ " is declared on an interop source, which answers its list whole (AD-36)"
+                Quit
+            }
+            If tProblem '= "" Quit
+        }
+        ; An access source lists the screens' required permissions, composed by OcuPilot.Screen.Access
+        ; in the caller's process (AD-64, AD-36, Story 20.15): its one endpoint, a LIST, and nothing
+        ; a composition would have to issue per row, per parent, under a fixed query, in parts or by
+        ; criteria.
+        If tPort = ##class(OcuPilot.Screen.Read).#SOURCEACCESS {
+            If tSource.%Get("endpoint") '= ##class(OcuPilot.Screen.Read).#ACCESSENDPOINT {
+                Set tProblem = "read.source.endpoint '" _ tSource.%Get("endpoint") _ "' is not the access source's endpoint ('" _ ##class(OcuPilot.Screen.Read).#ACCESSENDPOINT _ "') (AD-64)"
+                Quit
+            }
+            If tSource.%Get("type") '= ##class(OcuPilot.Screen.Read).#ACCESSTYPE {
+                Set tProblem = "read.source.type '" _ tSource.%Get("type") _ "' is declared on an access source, which lists the screens' required permissions (AD-36)"
+                Quit
+            }
+            For tKey = "rowGet", "forEach", "query", "parts" {
+                Set tKeyType = tSource.%GetTypeOf(tKey)
+                If (tKeyType = "unassigned") || (tKeyType = "null") Continue
+                Set tProblem = "read.source." _ tKey _ " is declared on an access source, which answers its list whole (AD-36)"
+                Quit
+            }
+            If tProblem '= "" Quit
+            If tRead.%GetTypeOf("criteria") '= "unassigned" {
+                Set tProblem = "read.criteria is declared on an access source, which takes no criteria (AD-36)"
+                Quit
+            }
         }
         ; AD-36 as amended (Story 16.9): a timeline composes its area's listed screens' own reads,
         ; so its shape is fixed rather than declared piecemeal.
@@ -1493,9 +1585,10 @@ ClassMethod ReadProblem(pDeclaration As %DynamicObject) As %String
         ; no predicate on the endpoint, and IRIS requires READ on a namespace's default globals
         ; database -- IRISSYS, resource %DB_IRISSYS -- to make it current. Without the pair the
         ; vendor endpoint fails inside %SYS and the port answers 500 where the gate would have
-        ; named the missing privilege (AD-2, AD-8). A logsource read is outside the rule: it reads
-        ; a file off disk and never enters %SYS.
-        If (tPort = ##class(OcuPilot.Screen.Read).#SOURCEADMIN) || (tPort = ##class(OcuPilot.Screen.Read).#SOURCEPATH) {
+        ; named the missing privilege (AD-2, AD-8). A monitor read's port gate names the pair itself,
+        ; so for it the rule keeps the side bar's verdict equal to the port's (AD-29). A logsource
+        ; read is outside the rule: it reads a file off disk and never enters %SYS.
+        If (tPort = ##class(OcuPilot.Screen.Read).#SOURCEADMIN) || (tPort = ##class(OcuPilot.Screen.Read).#SOURCEPATH) || (tPort = ##class(OcuPilot.Screen.Read).#SOURCEMONITOR) {
             Set tHasSystemRead = 0
             Set tDeclaredPairs = pDeclaration.%Get("privileges")
             If $IsObject(tDeclaredPairs) {
@@ -1507,6 +1600,7 @@ ClassMethod ReadProblem(pDeclaration As %DynamicObject) As %String
             }
             If 'tHasSystemRead && (tPort = ##class(OcuPilot.Screen.Read).#SOURCEADMIN) Set tProblem = "read.source.port 'admin' requires the declared privileges to include %DB_IRISSYS:READ, because the port runs every endpoint in %SYS (AD-2, AD-8)"
             If 'tHasSystemRead && (tPort = ##class(OcuPilot.Screen.Read).#SOURCEPATH) Set tProblem = "read.source.port 'path' requires the declared privileges to include %DB_IRISSYS:READ, because the port reads the allow-list through the admin API in %SYS (AD-2, AD-8, AD-21)"
+            If 'tHasSystemRead && (tPort = ##class(OcuPilot.Screen.Read).#SOURCEMONITOR) Set tProblem = "read.source.port 'monitor' requires the declared privileges to include %DB_IRISSYS:READ, because the port takes its collection in %SYS (AD-29)"
         }
     } Catch ex {
         Set tProblem = "the read declaration could not be read: " _ ex.DisplayString()
@@ -1610,7 +1704,8 @@ ClassMethod CriteriaProblem(pDeclaration As %DynamicObject) As %String
 
         Set tPort = ""
         If tRead.%GetTypeOf("source") = "object" Set tPort = tRead.%Get("source").%Get("port")
-        If (tPort '= "admin") && (tPort '= "mgmnt") && (tPort '= ##class(OcuPilot.Screen.Read).#SOURCEATELIER) && (tPort '= ##class(OcuPilot.Screen.Read).#SOURCETIMELINE) && (tPort '= ##class(OcuPilot.Screen.Read).#SOURCEENCRYPTION) {
+        ; AD-36 as amended (Story 20.3): an interop read takes criteria only as its parent's route id, on a parent-scoped list.
+        If (tPort '= "admin") && (tPort '= "mgmnt") && (tPort '= ##class(OcuPilot.Screen.Read).#SOURCEATELIER) && (tPort '= ##class(OcuPilot.Screen.Read).#SOURCETIMELINE) && (tPort '= ##class(OcuPilot.Screen.Read).#SOURCEENCRYPTION) && ((tPort '= ##class(OcuPilot.Screen.Read).#SOURCEINTEROP) || 'tParented) {
             Set tProblem = "read.criteria is declared on a '" _ tPort _ "' source, and server criteria travel on the admin, mgmnt, atelier, timeline and encryption ports alone (AD-21)"
             Quit
         }
@@ -2885,13 +2980,20 @@ ClassMethod FingerprintSubjectProblem(pToolClass As %String) As %String
 /// running in (Story 16.2), explained by
 /// <parameter>OcuPilot.Kernel.Proposal.Prohibited.OCUPILOTSESSIONREASON</parameter> and refused by
 /// the kernel whatever the caller.</p>
+/// <p><code>system-pct-access</code> is a web application's percent-class access entry the instance owns (Story 18.10):
+/// a row whose <code>System</code> reads true, explained by <class>OcuPilot.Api.PctAccessError</class>'s
+/// <code>REASONSYSTEM</code> and refused by the entry's delete tool before the vendor.</p>
 /// <p><code>ecp-ssl-pending</code> and <code>ecp-ssl-authorized</code> are the ECP SSL/TLS
 /// authorization ones (Story 18.21): a row whose <code>Status</code> does not read
 /// <code>Pending</code>, for Authorize and Reject, or <code>Authorized</code>, for Delete, explained by
 /// <parameter>OcuPilot.Api.EcpError.REASONSSLNOTPENDING</parameter> and
 /// <parameter>OcuPilot.Api.EcpError.REASONSSLNOTAUTHORIZED</parameter> and refused by each tool's
 /// <code>StateDiff</code>.</p>
-Parameter SELFPROTECTIONRULES = "serves-ocupilot,protected-account,service-account-sign-in,ocupilot-application-roles,system-role,system-resource,ocupilot-ssl,ocupilot-session,ecp-ssl-pending,ecp-ssl-authorized";
+/// <p><code>ocupilot-routine-application</code> is one of OcuPilot's own two privileged routine applications (Story 18.31):
+/// a <code>Name</code> of <code>OcuPilotState</code> or <code>OcuPilotIdentity</code> in any case, explained by the
+/// <code>routineAppRefusalOcuPilot</code> sentence and refused for every write by
+/// <parameter>OcuPilot.Kernel.Proposal.Prohibited.OCUPILOTROUTINEAPP</parameter>.</p>
+Parameter SELFPROTECTIONRULES = "serves-ocupilot,protected-account,service-account-sign-in,ocupilot-application-roles,system-role,system-resource,ocupilot-ssl,ocupilot-session,ecp-ssl-pending,ecp-ssl-authorized,system-pct-access,ocupilot-routine-application";
 
 /// <p>The fewest suggested prompts a declaration that declares any may carry (Story 11.3).</p>
 Parameter SUGGESTEDPROMPTSMIN As INTEGER = 3;
@@ -3644,6 +3746,7 @@ ClassMethod Roster(Output pRoster As %DynamicArray) As %Status
                 Do tEntry.%Set("labelKey", tArea.labelKey)
                 Do tEntry.%Set("navigates", ''tArea.navigates, "boolean")
                 Do tEntry.%Set("pinBottom", ''tArea.pinBottom, "boolean")
+                Do tEntry.%Set("appliesWhen", tArea.appliesWhen)
                 Set tScreens = []
                 Set tSubSC = ..ScreensForArea(tArea.key, 1, .tClasses)
                 If $$$ISERR(tSubSC) {

@@ -39,9 +39,10 @@ export const CREDENTIAL_EXACT_NAMES = ['key', 'credentialname'];
  * The names the pattern matches that are not credentials, lower-cased, held equal by
  * `credential-lists.test.mjs` to `OcuPilot.Kernel.Audit.Log.CREDENTIALEXCEPTIONS` and to the spine's
  * Conventions › Secrets row: `ReturnRefreshToken`, the authorization server's refresh-token policy
- * (one of `""`, `a`, `c`, `f`), which Story 12.7's tools show and set.
+ * (one of `""`, `a`, `c`, `f`), which Story 12.7's tools show and set, and `AutheLoginToken`, the
+ * system-wide "Allow creation of Login Cookies" flag, which Story 18.8's tools show and set.
  */
-export const CREDENTIAL_EXCEPTIONS = ['returnrefreshtoken'];
+export const CREDENTIAL_EXCEPTIONS = ['returnrefreshtoken', 'authelogintoken'];
 
 /** The credential pattern, matched against a path's last segment. */
 export const CREDENTIAL_RE = new RegExp(

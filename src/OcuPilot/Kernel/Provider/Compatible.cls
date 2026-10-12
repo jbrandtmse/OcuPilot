@@ -26,6 +26,11 @@ Class OcuPilot.Kernel.Provider.Compatible Extends OcuPilot.Kernel.Provider.OpenA
 /// that does not already end in it.</p>
 Parameter COMPLETIONSPATH = "/chat/completions";
 
+/// <p>A cached part of the prompt counts at 1: a server of this family reports a cached subset only
+/// where it has one, and the rate it bills that at is not known here, so the bound takes the whole
+/// count.</p>
+Parameter CACHEDINPUTWEIGHT = 1;
+
 /// <p>The provider key whose catalog row points at this class.</p>
 Method ProviderName() As %String
 {

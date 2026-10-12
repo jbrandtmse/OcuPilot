@@ -24,6 +24,8 @@
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { randomBytes } from 'node:crypto';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import puppeteer from 'puppeteer';
 
 import { LIVE_CONTAINER, READINESS_PATH, browserConfig, launchOptions } from '../browser.config.mjs';
@@ -43,6 +45,11 @@ import {
 } from './turnprobe-spec.mjs';
 import { resetRememberedState } from './preferences-reset.mjs';
 
+const uiRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
+const { stringFor } = await import(join(uiRoot, 'src', 'app', 'core', 'strings.ts'));
+const { formatDeniedScreen } = await import(join(uiRoot, 'src', 'app', 'core', 'navigation.ts'));
+const { SCREENS } = await import(join(uiRoot, 'src', 'app', 'core', 'screens.generated.ts'));
+
 const config = browserConfig();
 const STRINGS = loadStrings();
 const probe = { container: config.container, marker: 'REFUSED' };
@@ -55,6 +62,9 @@ const TURN_PATH = '/api/ocupilot/turn';
 /** The tool the principal may not call, and the pair the instance refuses it at. */
 const REFUSED_TOOL = 'webapp_restapis_read';
 const REFUSED_PAIR = '%Admin_Secure:USE';
+
+/** The tool's screen, which the pair also closes, so the refusal names it (Story 20.18, AD-8). */
+const REFUSED_SCREEN = 'webapp.restapis';
 
 const password = `OcuPilotRefused${randomBytes(12).toString('hex')}Aa9`;
 let browser = null;
@@ -166,10 +176,16 @@ test('AC2: a tool the principal may not call renders a card naming the pair, and
       name: document.querySelector('.ocu-tool-call-name')?.textContent?.trim() ?? '',
     }));
 
+    // Mutation (Rule 19): make `Registry.ScreenRequirement` answer "" -> the card reads the pair alone and
+    // this goes red.
+    const screen = SCREENS.find((entry) => entry.toolIdentifier === REFUSED_SCREEN);
+    assert.ok(screen, `the mirror knows ${REFUSED_SCREEN}`);
     assert.equal(
       seen.status,
-      STRINGS.toolCallStatusFailed.split('<reason>').join(REFUSED_PAIR),
-      'the card names the pair the caller has to be granted'
+      STRINGS.toolCallStatusFailed
+        .split('<reason>')
+        .join(formatDeniedScreen(STRINGS.privilegeDeniedScreen, REFUSED_PAIR, stringFor(screen.labelKey))),
+      'the card names the pair the caller has to be granted and the screen it opens'
     );
     assert.ok(seen.status.includes(REFUSED_PAIR), `the pair itself is on screen: ${seen.status}`);
     assert.equal(seen.cards, 1, 'one card for one refused call');

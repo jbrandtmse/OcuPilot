@@ -401,8 +401,26 @@ ClassMethod RestraintBody(pUser As %String, Output pBody As %DynamicObject) As %
     ; Not part of the verdict: marking is not a restraint (AD-30), so Kernel.Restraint does not
     ; answer it and the agent is not blocked by it. It rides this route because the panel
     ; already reads it on every load, and because the banner it feeds is shown to every user.
-    Do pBody.%Set("writesMarked", $Select(##class(OcuPilot.Kernel.Audit.Event).WritesMarked(): 1, 1: 0), "boolean")
+    Set tMarked = ##class(OcuPilot.Kernel.Audit.Event).WritesMarked()
+    If 'tMarked {
+        ; The stored fact reads not-marked: look again with the caller's own privileges, so an
+        ; auditing re-enable made outside OcuPilot clears the banner. A caller who cannot read the
+        ; flag, or a read that fails, leaves the stored fact as it is.
+        Set tObserveSC = ##class(OcuPilot.Kernel.Audit.Event).ObserveMarking(..MarkingPortClass(), .tObserved)
+        If $$$ISOK(tObserveSC) && tObserved {
+            Do ##class(OcuPilot.Kernel.Audit.Event).RecordMarking(1)
+            Set tMarked = 1
+        }
+    }
+    Do pBody.%Set("writesMarked", $Select(tMarked: 1, 1: 0), "boolean")
     Quit $$$OK
+}
+
+/// <p>The port <method>RestraintBody</method> observes the marking flags through; a test subclass
+/// overrides it with a port that answers armed values.</p>
+ClassMethod MarkingPortClass() As %String [ Private ]
+{
+    Quit "OcuPilot.Port.AdminPort"
 }
 
 /// <p>Refuse with 422 <parameter>OcuPilot.Api.Error.AGENTRESTRAINTBODY</parameter>; nothing is

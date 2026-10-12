@@ -88,6 +88,7 @@ ClassMethod HandleForm() As %Status
 ClassMethod HandleUpdate() As %Status
 {
     Set tSC = $$$OK
+    Set tHoldKey = ""
     Set tBody = ""
     Try {
         Set tGateSC = ..Gate(.tRefused)
@@ -107,6 +108,11 @@ ClassMethod HandleUpdate() As %Status
             Set tSC = ##class(OcuPilot.Kernel.Denial).Envelope(tFailedPair)
             Quit
         }
+        Set tHoldSC = ##class(OcuPilot.Kernel.Proposal.Operation).HoldTool(..#UPDATETOOL, ..TargetId(), .tHeld, .tHoldKey)
+        If $$$ISERR(tHoldSC) || 'tHeld {
+            Set tSC = ##class(OcuPilot.Api.Error).RenderTargetBusy(tHoldSC)
+            Quit
+        }
         Set tPerformSC = ..Update(tBody, .tHttp, .tFault, .tReadBack, .tConsequence)
         Set tBody = ""
         Set tSC = ..Answer(tPerformSC, $Get(tHttp), $Get(tFault), $Get(tReadBack), $Get(tConsequence))
@@ -114,6 +120,7 @@ ClassMethod HandleUpdate() As %Status
         Set tBody = ""
         Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ex)
     }
+    Do ##class(OcuPilot.Kernel.Proposal.Operation).Release(tHoldKey)
     Quit tSC
 }
 

@@ -137,6 +137,26 @@ Method TestTheMintAnswersOneStateRowFromTheInfoRead()
     Do $$$AssertEquals(tRows.%Size(), 0, "and the unchanged-field disclosure is empty, so the caption's count and the rows behind it are one population")
 }
 
+/// <p>The mint records the task's name for the card's title (DW-1465): the state-only
+/// <code>INFO</code> read answers none, so the tool reads it with a second <code>GET</code>, and a task
+/// that read cannot find records <code>""</code> so the card falls back to the id. The name read goes
+/// through the tool's own port, never the fixture's.</p>
+/// <p>Mutation (Rule 19): make <method>OcuPilot.Screen.Tool.TaskResume.TargetName</method> answer
+/// <code>""</code> -- the named leg goes red.</p>
+Method TestTheMintRecordsTheTasksNameForTheCard()
+{
+    Do ##class(OcuPilot.Test.ProposalFixture).Arm(..#FRESHSUSPENDED)
+    Set tSC = ..MintFor(..PreparedTaskId, .tProposal, .tHttp, .tFault)
+    Do $$$AssertStatusOK(tSC, "the proposal mints: " _ $System.Status.GetErrorText(tSC))
+    If $$$ISERR(tSC) Quit
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).Field(tProposal.%Get("proposalId"), "TargetName"), ..#PROBETASKNAME, "the stored row names the task")
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).LastType(), "INFO", "and the fresh read stays the tool's own INFO")
+    Set tSC = ..MintFor("99999987", .tAbsent, .tHttp, .tFault)
+    Do $$$AssertStatusOK(tSC, "a task the name read cannot find still mints: " _ $System.Status.GetErrorText(tSC))
+    If $$$ISERR(tSC) Quit
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).Field(tAbsent.%Get("proposalId"), "TargetName"), "", "and records no name, so the card falls back to the id")
+}
+
 /// <p>AC5 -- a task the instance reports as not suspended is refused at the mint, so the vendor's
 /// own "this returns ok even if it is not suspended" is never reached.</p>
 /// <p>Mutation (Rule 19): remove the not-suspended arm from

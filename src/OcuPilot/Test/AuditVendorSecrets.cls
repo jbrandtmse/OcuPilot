@@ -26,6 +26,10 @@ Parameter TOOLNAME = "logs.audit.read";
 
 Parameter PROBE = "OcuPilot.Test.OAuthClientProbe";
 
+/// <p>How long <method>ReadScreen</method> and <method>ReadTool</method> repeat a read until the rows
+/// their caller expects are there.</p>
+Parameter READSECONDS = 15;
+
 Method OnBeforeAllTests() As %Status
 {
     If $System.Util.GetEnviron(..#ARMINGVARIABLE) '= 1 {
@@ -152,26 +156,21 @@ Method TestTheMaskReadsTheDeclarationAlone()
 /// <var>pKey</var> reads the mask, and that no answered row carries <var>pToken</var>.</p>
 Method AssertMasked(pSince As %String, pName As %String, pToken As %String, pPrefix As %String, pKey As %String)
 {
-    ; The vendor writes its rows before the call returns; the audit read queues its own task.
-    Set tPath = ..#READPATH _ "?events=OAuth2&maxRows=200&beginDateTime=" _ $ZConvert(pSince, "O", "URL")
-    Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("GET", $Parameter("OcuPilot.Test.Http", "BASEPATH") _ tPath, ##class(OcuPilot.Test.Http).GetTestUsername(), ##class(OcuPilot.Test.Http).GetTestPassword(), .tStatus, .tRaw, .tHeaders)
+    Set tPrefixes = $ListBuild(pPrefix)
+    Set tSC = ..ReadScreen("OAuth2", pSince, pName, tPrefixes, .tStatus, .tRaw, .tScreen)
     Do $$$AssertEquals(tStatus, 200, "the audit screen's read answers: " _ $Extract(tRaw, 1, 200))
-    Set tScreen = ""
-    Try { Set tScreen = ##class(%DynamicObject).%FromJSON(tRaw).%Get("rows") } Catch { Set tScreen = "" }
     Do $$$AssertTrue(..Named($Get(tScreen), pName, pPrefix), "the screen's read answers the row naming " _ pName)
     Do $$$AssertEquals(tRaw [ pToken, 0, "and carries no token")
     Do $$$AssertTrue(..MaskedRows($Get(tScreen), pName, pPrefix, pKey) > 0, "where the token was, " _ pKey _ " reads the mask")
 
     Set tSC = ##class(OcuPilot.Screen.Tool.Registry).Resolve(..#TOOLNAME, .tTool)
     Do $$$AssertStatusOK(tSC, "the read tool resolves")
-    Set tArgs = {"events": "OAuth2", "maxRows": 200}
-    Do tArgs.%Set("beginDateTime", pSince, "string")
-    Set tSC = ##class(OcuPilot.Screen.Tool.Registry).InvokeTool(tTool, tArgs, 200, .tResult, .tHttp, .tFault)
+    Set tSC = ..ReadTool(tTool, "OAuth2", pSince, pName, tPrefixes, .tResult, .tRows)
     Do $$$AssertStatusOK(tSC, "logs.audit.read answers")
     Set tText = $Select($IsObject($Get(tResult)): tResult.%ToJSON(), 1: "")
-    Do $$$AssertTrue(..Named($Select($IsObject($Get(tResult)): tResult.%Get("rows"), 1: ""), pName, pPrefix), "logs.audit.read answers the row naming " _ pName)
+    Do $$$AssertTrue(..Named(tRows, pName, pPrefix), "logs.audit.read answers the row naming " _ pName)
     Do $$$AssertEquals(tText [ pToken, 0, "and carries no token")
-    Do $$$AssertTrue(..MaskedRows($Select($IsObject($Get(tResult)): tResult.%Get("rows"), 1: ""), pName, pPrefix, pKey) > 0, "where the token was, " _ pKey _ " reads the mask")
+    Do $$$AssertTrue(..MaskedRows(tRows, pName, pPrefix, pKey) > 0, "where the token was, " _ pKey _ " reads the mask")
 }
 
 /// <p>How many rows of <var>pRows</var> whose <code>Description</code> begins <var>pPrefix</var> and
@@ -216,6 +215,56 @@ ClassMethod Named(pRows, pName As %String, pPrefix As %String) As %Boolean
         If ($Extract(tDescription, 1, $Length(pPrefix)) = pPrefix) && (tDescription [ pName) Set tFound = 1
     }
     Quit tFound
+}
+
+/// <p>Whether <var>pRows</var> holds, for every description prefix in the list <var>pPrefixes</var>, a
+/// row whose <code>Description</code> begins with it and names <var>pName</var>.</p>
+ClassMethod Present(pRows, pName As %String, pPrefixes As %List) As %Boolean
+{
+    Set tPresent = 1
+    Set tPosition = 0
+    While $ListNext(pPrefixes, tPosition, tPrefix) {
+        If '..Named(pRows, pName, tPrefix) Set tPresent = 0
+    }
+    Quit tPresent
+}
+
+/// <p>Read the audit screen over the wire for <var>pEvents</var> since <var>pSince</var>, repeating the
+/// read for up to <parameter>READSECONDS</parameter> until <method>Present</method> finds the rows
+/// naming <var>pName</var> under every prefix of <var>pPrefixes</var>. The vendor writes its rows before
+/// its own call returns, but its audit index refresh gives up when its lock is held, so the newest rows
+/// can be missing from one read. The poll waits for the rows to be there and judges nothing about them:
+/// the last answer comes back in <var>pStatus</var>, <var>pRaw</var> and <var>pRows</var> (the decoded
+/// <code>rows</code>, or <code>""</code>) for the caller's assertions.</p>
+ClassMethod ReadScreen(pEvents As %String, pSince As %String, pName As %String, pPrefixes As %List, Output pStatus As %Integer, Output pRaw As %String, Output pRows) As %Status
+{
+    Set tPath = ..#READPATH _ "?events=" _ pEvents _ "&maxRows=200&beginDateTime=" _ $ZConvert(pSince, "O", "URL")
+    Set tDeadline = $ZHorolog + ..#READSECONDS
+    For {
+        Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("GET", $Parameter("OcuPilot.Test.Http", "BASEPATH") _ tPath, ##class(OcuPilot.Test.Http).GetTestUsername(), ##class(OcuPilot.Test.Http).GetTestPassword(), .pStatus, .pRaw, .tHeaders)
+        Set pRows = ""
+        Try { Set pRows = ##class(%DynamicObject).%FromJSON(pRaw).%Get("rows") } Catch { Set pRows = "" }
+        If ..Present(pRows, pName, pPrefixes) || ($ZHorolog > tDeadline) Quit
+        Hang 0.5
+    }
+    Quit tSC
+}
+
+/// <p>The same poll over the read tool <var>pTool</var> (resolved by the caller from
+/// <parameter>TOOLNAME</parameter>): <method>ReadScreen</method>'s wait, with the last answer in
+/// <var>pResult</var> and its <code>rows</code> in <var>pRows</var>.</p>
+ClassMethod ReadTool(pTool As %DynamicObject, pEvents As %String, pSince As %String, pName As %String, pPrefixes As %List, Output pResult, Output pRows) As %Status
+{
+    Set tDeadline = $ZHorolog + ..#READSECONDS
+    For {
+        Set tArgs = {"events": (pEvents), "maxRows": 200}
+        Do tArgs.%Set("beginDateTime", pSince, "string")
+        Set tSC = ##class(OcuPilot.Screen.Tool.Registry).InvokeTool(pTool, tArgs, 200, .pResult, .tHttp, .tFault)
+        Set pRows = $Select($IsObject($Get(pResult)): pResult.%Get("rows"), 1: "")
+        If ..Present(pRows, pName, pPrefixes) || ($ZHorolog > tDeadline) Quit
+        Hang 0.5
+    }
+    Quit tSC
 }
 
 /// <p>How many of the vendor's own OAuth 2.0 rows since <var>pSince</var> (UTC) carry <var>pToken</var>

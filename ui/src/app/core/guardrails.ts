@@ -53,6 +53,8 @@ export interface GuardrailsLimits {
   readonly contextRowCap: number;
   readonly totalMaxLength: number;
   readonly fieldMaxLength: number;
+  /** The agent turns one user may start in an hour; `0` is no limit. */
+  readonly turnsPerHour: number;
 }
 
 export interface GuardrailsAnswer {
@@ -138,9 +140,16 @@ export function narrowGuardrails(body: unknown): GuardrailsAnswer | null {
   const contextRowCap = wholeNumber(limitsRow['contextRowCap']);
   const totalMaxLength = wholeNumber(limitsRow['totalMaxLength']);
   const fieldMaxLength = wholeNumber(limitsRow['fieldMaxLength']);
-  if (contextRowCap === null || totalMaxLength === null || fieldMaxLength === null) return null;
+  const turnsPerHour = wholeNumber(limitsRow['turnsPerHour']);
+  if (contextRowCap === null || totalMaxLength === null || fieldMaxLength === null || turnsPerHour === null) return null;
 
-  return { prohibited, switches, confirmTools, secrets, limits: { contextRowCap, totalMaxLength, fieldMaxLength } };
+  return {
+    prohibited,
+    switches,
+    confirmTools,
+    secrets,
+    limits: { contextRowCap, totalMaxLength, fieldMaxLength, turnsPerHour },
+  };
 }
 
 /**
@@ -196,6 +205,12 @@ export function limitsLine(limits: GuardrailsLimits): string {
     .join(GROUPED.format(limits.totalMaxLength))
     .split('<field>')
     .join(GROUPED.format(limits.fieldMaxLength));
+}
+
+/** The turns-an-hour line: the sentence for no limit at `0`, else the limit, grouped en-US. */
+export function turnsLine(limits: GuardrailsLimits): string {
+  if (limits.turnsPerHour === 0) return STRINGS.agentGuardrailsTurnsNone;
+  return STRINGS.agentGuardrailsTurnsLimit.split('<n>').join(GROUPED.format(limits.turnsPerHour));
 }
 
 export interface GuardrailsOptions {

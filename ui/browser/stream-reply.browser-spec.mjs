@@ -175,7 +175,8 @@ function finalReplyHtml(page) {
     const replies = [...document.querySelectorAll('.ocu-panel-message-agent:not(.ocu-panel-message-streamed)')].filter(
       (node) => node.querySelector('app-reply') !== null
     );
-    return replies.length === 0 ? '' : replies[replies.length - 1].outerHTML;
+    // The wrapper's region id carries the conversation id, which differs between runs (Story 20.17).
+    return replies.length === 0 ? '' : replies[replies.length - 1].outerHTML.replace(/ocu-long-block-[^"_]*_t/g, 'ocu-long-block-CONVERSATION_t');
   });
 }
 
@@ -347,7 +348,8 @@ test('(e) a streamed write proposal renders the card a plain one does', async ()
       await waitTurnEnd(page, 'card');
       await waitTurnEnd(page, 'reply');
       const html = await page.evaluate(() => document.querySelector('app-proposal-card').outerHTML);
-      cards.push(html.replace(/\d+:\d\d/g, 'M:SS'));
+      // The region ids carry the proposal id (Story 20.17), which differs between runs.
+      cards.push(html.replace(/\d+:\d\d/g, 'M:SS').replace(/ocu-long-block-p_[^"]*?_(diff|rationale|impact|reverse|output)"/g, 'ocu-long-block-p_ID_$1"'));
     } finally {
       await context.close();
       forgetTag(probe, tag);

@@ -1,0 +1,541 @@
+---
+title: 'Story 20.1: Namespace category gating'
+type: 'feature'
+created: '2026-10-06'
+status: 'done'
+baseline_revision: '698c3c0eee9b609411d03f3752555b77e915f24d'
+baseline_commit: '698c3c0eee9b609411d03f3752555b77e915f24d'
+review_loop_iteration: 0
+followup_review_recommended: false
+context:
+  - '{project-root}/_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md'
+  - '{project-root}/_bmad-output/planning-artifacts/ux-designs/ux-OcuPilot-2026-09-08/EXPERIENCE.md'
+warnings: [oversized]
+deferred: []
+---
+
+<intent-contract>
+
+## Intent
+
+**Problem:** Stage 4 adds two rail categories, Interoperability and Analytics, that belong only in namespaces whose own features support them. Today the rail has neither category and nothing reads a namespace's features. The Interoperability event log also admits a holder of `%Ens_EventLog:USE` whom the classic page refuses for lacking `%Ens_Portal:USE` (DW-1921).
+
+**Approach:** Declare the two areas with a closed `appliesWhen` feature. On every navigation read, ask the vendor whether the route's namespace reports that feature, and carry the answer as `applies` on every area of the map. Draw no surface of a category that does not apply. The sign-in hand-off is not this story's: the orchestrator's merge gate split it into Story 20.13 on 2026-10-07, and its design awaits the owner (DW-2141).
+
+## Boundaries & Constraints
+
+**Always:**
+
+- Applicability is not a privilege gate. A category that applies but that the caller cannot open stays drawn, unavailable, naming its pair (AD-8; EXPERIENCE.md "Gated controls are never hidden" still holds).
+- The map is never partial: every area carries `applies` and its verdict.
+- Fail closed: a category declaring `appliesWhen` is not drawn until the map read for the current namespace answers `applies: true`. A vendor check that throws, or a feature outside the vocabulary, answers `false`.
+- Feature reads pass the namespace as an argument. They switch no namespace and escalate nothing (AD-16, AD-9). `%SYS` and implied (`^`) namespaces never apply to analytics.
+- Edits to files Epic 18 is changing are add-only, except those named under Design Notes, which the orchestrator cleared at its merge gate on 2026-10-07; whichever epic merges second takes the union and regenerates `screens.generated.ts` with `ui/tools/screen-mirror.mjs`.
+- The API floor stays as it is (DW-2140 is with the owner). An Interoperability or Analytics surface declares its classic page's gate (for example `%Ens_Portal:USE`) as its own pair from the start, so a later floor change touches only pre-existing surfaces (orchestrator ruling 2026-10-07).
+
+**Never:**
+
+- No vendor frame, link or window in the buildable half.
+- No `postMessage`, no vendor storage key written.
+- No change to the token store, the shell's CSP, or cross-tab behavior (AD-28, AD-47).
+- No change to the API floor (`Screen.Gate` `ADMINRESOURCES`/`FloorResources`).
+- No new port, write tool, governance key or error code.
+- No applicability computed in the client, and no category hidden for lack of a privilege.
+
+## I/O & Edge-Case Matrix
+
+| Scenario | Input / State | Expected Output / Behavior | Error Handling |
+|----------|--------------|---------------------------|----------------|
+| Interop-only namespace | `?ns=HSCUSTOM` on `ocupilot-b-ci` (interop 1, analytics 0, measured) | Interoperability drawn on the rail, Home tile and command box. Analytics drawn nowhere. | No error expected |
+| Neither feature | `?ns=%SYS` | Neither category drawn. Every other area unchanged. | No error expected |
+| Both features | a namespace both report (HSSYS or HSLIB on IRIS for Health, measured) | Both drawn. | No error expected |
+| Before the map answers | first paint, or a switch in flight | Neither category drawn. Other areas drawn ungated, as today. | No error expected |
+| Namespace switch | HSCUSTOM → %SYS while the side bar shows Interoperability | Map re-read. Interoperability leaves the rail, Home, command box, locator and side bar, and the open side bar closes. | No error expected |
+| Applies, privilege lacking | HSCUSTOM, caller without `%Ens_Portal:USE` | Interoperability drawn, unavailable, naming `%Ens_Portal:USE`. | No error expected |
+| Interop enabled meanwhile | Story 18.15's Enable interoperability confirmed on the current namespace | Its `namespace` change event re-reads the map, and the category appears without a reload. | No error expected |
+| Vendor check fails | `%IsDeepSeeEnabled` or `IsEnsembleNamespace` throws, or `appliesWhen` holds an unknown value | `applies: false`. | Logged once; never a 500, never a missing area |
+| Agent's map | `shell.privileges.read` | Each area carries the same `applies` the route answers. | Closed schema refuses a missing `applies` |
+| DW-1921: one pair | holder of `%Ens_EventLog:USE` and the namespace database READ, without `%Ens_Portal:USE` | Event log screen refused, naming `%Ens_Portal:USE`. The hub lists the source not shown with that pair. | 403 per AD-8 |
+| DW-1921: both pairs | holder of `%Ens_EventLog:USE` and `%Ens_Portal:USE` | Reads as before. | No error expected |
+| DW-1921: neither pair | caller lacking both | Still named `%Ens_EventLog:USE` (listed first). | 403 per AD-8 |
+
+</intent-contract>
+
+## Code Map
+
+### Server
+
+- `src/OcuPilot/Screen/Area.cls:72-84`: XData `Areas`, nine entries. The doc comment says "nine" (`:1`, `:69`), and `:36-38` names the event log's own pair. Template: Story 19.1's commit `cbf70b07`, which added System Explorer.
+- `src/OcuPilot/Screen/Gate.cls`:
+  - `:45` `ADMINRESOURCES` and `:305` `FloorResources()`. This story does not change them.
+  - `:119-155` `EvaluateArea`: an area that lists no screen is answered by its declared set alone (`:132-135`).
+- `src/OcuPilot/Screen/Registry.cls`:
+  - `:139` `Validate`: checks descriptors only. Nothing validates the area list today.
+  - `:3619-3660` `Roster`: copies each area's fields.
+- `src/OcuPilot/Kernel/Shell/Navigation.cls:20-58` `Payload`: reads no scope today. The "never a partial list" contract is at `:13-15`.
+- `src/OcuPilot/Kernel/Scope.cls:36` `Current()`. Two callers set the scope before any read:
+  - the router stashes the canonical `?ns=` (`Api/Router.cls:1424-1445`);
+  - the turn job sets its own scope (`Kernel/Agent/Job.cls:94`).
+- `src/OcuPilot/Kernel/Shell/PrivilegesRead.cls:18-60`: `shell.privileges.read`'s schema. Each area sets `additionalProperties: false` (`:52-53`).
+- Precedents for calling `IsEnsembleNamespace` directly:
+  - `src/OcuPilot/Kernel/Shell/SystemInfo.cls:237-240`, a shell read;
+  - `Port/LogSourcePort.cls:1434`.
+- `src/OcuPilot/Kernel/Audit/Log.cls:22` `Warn(subsystem, message, data)`. Error severity would raise the instance's alert state (AD-2), so a failed feature check logs at Warn.
+
+### Vendor (read only)
+
+- `irislib/%Library/EnsembleMgr.cls:79-90` `IsEnsembleNamespace(pNamespace)`: answers 0 for the raw string `%SYS`, and 0 on any error, an unreadable `^oddCOM` included.
+- `irislib/%DeepSee/Utils.cls:11052-11079` `%IsDeepSeeEnabled(pNamespace)`:
+  - It reads the Analytics flag of the namespace's default application.
+  - Its `%SYS` guard tests the raw argument, so `"%sys"`, and an omitted argument in `%SYS`, answer 1 (measured).
+- The classic menus in `irissys/%CSP/Portal/Home.cls`:
+  - `:948-965` Analytics: not `%SYS`, `DOCBOOK` or `^^`, plus `%IsDeepSeeEnabled`. It is enabled when any branch of `%DeepSee.UI.Application.GetDeepSeeArray` opens. The User Portal branch checks `%DeepSee_Portal` or `%DeepSee_PortalEdit` at USE.
+  - `:970-995` Interoperability: `CheckSecurity("%Ens_Portal")`, `IsEnsembleNamespace`, then `EnsPortal.Application.CheckPrivileges`.
+
+### Client
+
+- `ui/src/app/core/navigation.ts`:
+  - `:87-110`: the module-level registry functions read the generated mirror.
+  - `:829-860`: the seams `areas()`, `screensForArea()` and `builtScreens()`. Production never overrides them, and component specs stub them.
+  - `:874-880`: a missing verdict falls back to `UNGATED`.
+  - `:23-27`: nothing is gated before the map answers.
+  - `:930-939` `reset()`.
+  - `:951-1000` `runLoad`: reads verdicts only. A failed read fails open (DW-135).
+- `ui/src/app/app.routes.ts:56`: the route table is built from the module function `builtScreens()`, not the service seam, so filtering the seam leaves routing alone.
+- Surfaces:
+  - `rail.ts:149` and `home.page.ts:554-571` read `areas()`.
+  - `side-bar.ts:153-185` reads `screensForArea()` and draws its eyebrow from the visible area. `showing` is at `:186-194`.
+  - `command-box.ts:464` reads `builtScreens()`, screens only, never areas.
+  - `locator-bar.ts:298-320` uses the module function `areaByKey` for its area segment.
+- `ui/src/app/core/shell-state.ts:258` `collapse()`: closes the bar without writing the preference (DW-144).
+- `ui/src/main.ts`:
+  - `:117-121` builds the navigation service before the bus (`:126`).
+  - `:141-145`: `onScopeChange` calls `navigation.reload()`.
+- `ui/src/app/core/scope.ts`:
+  - `:40` `NAMESPACE_ENTITY`.
+  - `:339-344`: the model for a bus subscriber.
+- `ui/tools/screen-mirror.mjs`:
+  - `:465-469` copies `Area.cls`'s areas verbatim.
+  - `:3329-3341`: the `AreaDeclaration` interface.
+  - `:3761` is a stale "eight areas" comment.
+  - `:454-457` (`parseScopeWords`): the model for reading a parameter off a `.cls`.
+- `ui/src/app/core/screens.generated.ts:580`: `AREAS` (regenerated).
+- `ui/src/app/core/strings.ts:321-337`: the `navArea*` keys. Each carries `/** EXPERIENCE.md:310 */`, which `strings.test.mjs:822-866` resolves by line, so EXPERIENCE.md gets no inserted line.
+- `ui/src/app/shell/rail-icons.ts:32-117` is pinned by `ui/tools/rail-icons.test.mjs` to two sources:
+  - both frames of `_bmad-output/planning-artifacts/ux-designs/ux-OcuPilot-2026-09-08/mockups/key-home.html`;
+  - DESIGN.md's `rail` paragraph (`DESIGN.md:975`, which says "Nine `rail-item`s" and "the same seven areas").
+
+### EXPERIENCE.md
+
+- `:66` the rail line. It also calls Agent co-pilot "the eighth area", which is stale.
+- `:214` "Gated controls are never hidden". Unchanged.
+- `:310` the area-names row, pinned by `ui/tools/strings.test.mjs:446-460`.
+
+### DW-1921
+
+- `src/OcuPilot/Screen/Descriptor/LogEventViewer.cls:25-26`: `privileges` and `ownPrivileges`.
+- `src/OcuPilot/Port/LogSourcePort.cls`:
+  - `:239` `EVENTLOGPAIRS`, a comma-separated spec (`ParsePairs:544`).
+  - `PairsFor` (`:480-498`) appends the namespace database READ.
+- `irislib/EnsPortal/Application.cls:234-247` `CheckPrivileges`: `%Ens_Portal:USE` plus READ on the namespace's database resource.
+- Pins:
+  - `Test/LogPairs.cls`: the row at `:40`. Its 4th `=` field declares an extra pair (`:95-118`).
+  - `Test/Descriptor.cls:1156`.
+  - `Test/LogSource.cls:867,877`.
+  - `Test/LogSecondary.cls`: `:25` names the first failed pair and stays unchanged; `HoldAll` is at `:76-84`.
+  - `Test/LogSourceDenial.cls:69-72,85,148,157`.
+  - `Test/LogHubWire.cls:208-222`: its `%Manager` principal lacks both pairs and stays `%Ens_EventLog:USE`.
+
+### Area roster pins
+
+- Server tests:
+  - `Test/Descriptor.cls:1878-1906`
+  - `Test/ExplorerDescriptor.cls:36-38`, where Agent co-pilot is at 9
+  - `Test/Navigation.cls:224,237,431,437`
+  - `Test/Wire.cls:380-420`
+  - `Test/WireAreaAnyScreen.cls:269-317`
+  - `Test/DeveloperFloor.cls:25`
+- Client tools tests:
+  - `ui/tools/navigation.test.mjs:98-110`
+  - `ui/tools/screen-mirror.test.mjs:113`
+  - `ui/tools/strings.test.mjs:446-460`
+  - `ui/tools/navigation-wire.test.mjs:46-674`, the captured payload, which `rail-wire.spec.ts:725` carries a second time
+- Component specs:
+  - `rail.spec.ts:82-95,187,267`
+  - `home.page.spec.ts:390,415,1475`
+  - `app.spec.ts:114-117`, `side-bar.spec.ts:44` and `locator-bar.spec.ts:42` (their stubs)
+- Browser specs: `ui/browser/rail-icons.browser-spec.mjs:63-64,198-219,376-378` iterate every `AREAS` entry.
+
+### Reuse
+
+- `Test/DeveloperFloorFixture` `EnsurePrincipal`/`RemovePrincipals`, called the way `ui/browser/developer-floor.browser-spec.mjs:44-80` calls it. `%Developer` lacks `%Ens_Portal` (measured).
+- `Test/ScreenGate.cls:89` holds only the pairs a test names; it models no public permission.
+
+### Measured on `ocupilot-b-ci`, 2026-10-06
+
+- Features by namespace (interoperability / analytics):
+
+  | Namespace | Interoperability | Analytics |
+  |---|---|---|
+  | `%SYS` | 0 | 0 |
+  | `HSCUSTOM` | 1 | 0 |
+  | `HSLIB` | 1 | 1 |
+  | `HSSYS` | 1 | 1 |
+  | `HSSYSLOCALTEMP` | 0 | 0 |
+  | `USER` | 1 | 0 |
+
+- Public permissions: `%Ens_Portal` and `%Ens_EventLog` have none; `%DeepSee_Portal` is public `U`.
+- Roles:
+  - `%Developer`, `%Operator` and `%Manager` hold neither Ens resource.
+  - `%EnsRole_Operator` holds both.
+
+## Tasks & Acceptance
+
+**Execution:**
+
+- `src/OcuPilot/Kernel/Shell/NamespaceFeatures.cls` (new, no storage):
+  - `Parameter FEATURES = "interoperability,analytics";` is the closed vocabulary. The registry and the mirror both read it.
+  - `Reports(pFeature, pNamespace) As %Boolean`, with the namespace upper-cased first:
+    - It answers 0 for an empty namespace or one beginning with `^`.
+    - interoperability: `##class(%Library.EnsembleMgr).IsEnsembleNamespace(ns)`.
+    - analytics: 0 for `%SYS`, otherwise `##class(%DeepSee.Utils).%IsDeepSeeEnabled(ns)`.
+    - A feature outside `FEATURES`, or a throw, answers 0 and writes one `Log.Warn` line for that check.
+  - `Applies(pFeature, pNamespace)`: 1 when `pFeature` is empty, otherwise `Reports`.
+- `src/OcuPilot/Screen/Area.cls`:
+  - Add `interoperability`: railPosition 9, `navAreaInteroperability`, `appliesWhen: "interoperability"`, privileges `[%Ens_Portal:USE]`.
+  - Add `analytics`: railPosition 10, `navAreaAnalytics`, `appliesWhen: "analytics"`, privileges `[%DeepSee_Portal:USE]`.
+  - Move `agent` to 11.
+  - Fix the doc comment: the counts, a paragraph on what each new set names (Design Notes), and `:36-38` for DW-1921.
+- `src/OcuPilot/Screen/Registry.cls`:
+  - `Roster` carries `appliesWhen`, `""` when undeclared.
+  - Add `AreaProblem(pAreas)`, which names an area whose `appliesWhen` is outside `NamespaceFeatures.FEATURES`.
+  - `Validate` calls it first, on `Area.List`.
+- `src/OcuPilot/Kernel/Shell/Navigation.cls`: each area entry gains `"applies"`. It is a boolean, always present, equal to `NamespaceFeatures.Applies(appliesWhen, Scope.Current())`, and computed on every call. Update the doc comment.
+- `src/OcuPilot/Kernel/Shell/PrivilegesRead.cls`: add `applies` (boolean) to the area properties and to `required`.
+- `ui/tools/screen-mirror.mjs`:
+  - Read `FEATURES` off `NamespaceFeatures.cls`.
+  - Emit `export type NamespaceFeature = ...`, and add `readonly appliesWhen?: NamespaceFeature` to `AreaDeclaration`. The key is emitted only where it is declared, so the stubs' fixtures stay valid.
+  - Throw naming the area for a value outside the vocabulary.
+  - Fix the stale comment, then regenerate `screens.generated.ts` whole.
+- `ui/src/app/core/navigation.ts`:
+  - Export the pure `areasThatApply(areas, applies)` and `screensThatApply(screens, applies)`.
+  - `NavigationService` keeps `applies` per area and the namespace key its map was read under.
+  - `applies(areaKey)` is true for an area with no `appliesWhen`. Otherwise it is true only when the stored key equals `namespace()` and that area's wire `applies === true`.
+  - `areas()`, `screensForArea()` and `builtScreens()` return only what applies.
+  - `reset()` clears the stored answer.
+  - A failed read leaves the stored answer as it was.
+  - New option `bus?: ChangeBus`: on a `changed` event of type `namespace` whose id equals `namespace()` (case-insensitively), call `reload()`.
+- `ui/src/main.ts`: build the `ChangeBus` before the navigation service and pass it in.
+- `ui/src/app/shell/side-bar.ts`: when the visible area is no longer in `navigation.areas()`, it is not shown. If it was open, it closes through `shell.collapse()`. Focus inside it moves to Home's rail item first.
+- `ui/src/app/shell/locator-bar.ts`: draw no area segment for an area missing from `navigation.areas()`.
+- No change expected to `rail.ts`, `home.page.ts` or `command-box.ts`: they read the filtered seams. No surface calls `applies()`.
+- Strings and icons:
+  - `ui/src/app/core/strings.ts` (add-only): `navAreaInteroperability: 'Interoperability'` and `navAreaAnalytics: 'Analytics'`, each `/** EXPERIENCE.md:310 */`. Fixed strings go from 2,754 to 2,756, under the 2,800 bound.
+  - `ui/src/app/shell/rail-icons.ts` and both frames of `mockups/key-home.html`: a 20px rail icon and a 24px tile icon for each new area, in the module's stroke style.
+  - `DESIGN.md:975`, edited in place: eleven rail items, the nine tile areas, and that the two appear only in a namespace that reports the feature.
+- `EXPERIENCE.md`, edited in place with no line inserted, because `strings.ts`'s line references would shift:
+  - `:66` lists Interoperability · Analytics before the divider and drops the stale ordinal. It also says: "Interoperability and Analytics appear only in a namespace that reports the feature (`IsEnsembleNamespace`, `%IsDeepSeeEnabled`); a category that does not apply is not drawn at all, which is applicability, not a privilege gate."
+  - `:310` adds the two names in rail order.
+- **DW-1921:**
+  - Add `%Ens_Portal:USE` after `%Ens_EventLog:USE`:
+    - in `LogEventViewer.cls` `privileges` and `ownPrivileges`;
+    - in `LogSourcePort.cls:239` `EVENTLOGPAIRS`, which becomes `%Ens_EventLog:USE,%Ens_Portal:USE`.
+  - Pins:
+    - `Test/LogPairs.cls`: the row gains `=%Ens_Portal:USE`.
+    - `Test/Descriptor.cls:1156`: the event log row.
+    - `Test/LogSource.cls:867,877`: the pair strings, in `PairsToString` order.
+    - `Test/LogSecondary.cls` `HoldAll`: also holds `%Ens_Portal:USE`.
+  - `Test/LogSourceDenial.cls`:
+    - The event-log principal holds both pairs.
+    - A new leg uses a principal holding `%Ens_EventLog:U`, the code read and `%Admin_Secure:U`, without `%Ens_Portal:U`. Its route and read tool are each refused 403 naming `%Ens_Portal:USE`.
+  - `Test/LogHubWire.cls`: a new leg with a `%Manager`, `%DB_HSCUSTOM:R` and `%Ens_EventLog:U` principal. The hub answers the event log `0|%Ens_Portal:USE`.
+- `src/OcuPilot/Test/NamespaceFeatures.cls` (new; reads only, arms nothing):
+  - For every namespace `Config.Namespaces:List` returns, `Reports` equals the vendor's own answer for that namespace upper-cased.
+  - `%SYS` applies to neither feature.
+  - `%sys`, a `^` namespace and an unknown feature each answer 0.
+  - At least one namespace reports each feature, and at least one does not.
+  - `AreaProblem` refuses a synthetic `appliesWhen: "bogus"`, naming the area.
+  - `Navigation.Payload` with `Scope.Set("%SYS")` answers `applies` false for both new areas and true for every other area. With `Scope.Set("HSCUSTOM")`, it answers the measured values.
+  - Clear the scope afterwards.
+  - The agent's half is pinned by `ToolShell:39`, which validates `shell.privileges.read`'s result against its closed schema.
+- Area roster pins listed in the Code Map, updated for 11 areas and the `applies` field:
+  - `Test/Descriptor.cls`'s area vocabulary test also asserts each area's `appliesWhen`: empty for the nine, and its own feature for each new area.
+  - `Test/Wire.cls` keeps "nothing is hidden by privilege". For its `%Admin_Operate`-only principal in HSCUSTOM, it adds interoperability `allowed false`, `failedPair %Ens_Portal:USE`, `applies true`, and analytics `allowed true`, `applies false`.
+  - `Test/DeveloperFloor.cls` `AREAS` becomes `home,logs,system-explorer,analytics,agent`, because `%DeepSee_Portal` is public `U`.
+  - `Test/Navigation.cls`: with nothing held, the new areas name `%Ens_Portal:USE` and `%DeepSee_Portal:USE`.
+  - `Test/ExplorerDescriptor.cls:38`: Agent co-pilot is at 11.
+  - The captured payload (`navigation-wire.test.mjs`, `rail-wire.spec.ts`), moved together.
+- Client tests:
+  - `ui/tools/navigation.test.mjs`. The `applies` legs:
+    - before an answer;
+    - an answer of true, of false, and with `applies` missing or non-boolean;
+    - a namespace moved after the read;
+    - a failed read;
+    - `reset()`;
+    - the two pure filters over a synthetic interoperability screen;
+    - a bus `namespace` event for the current namespace re-reads the map, and one for another namespace does not.
+  - `ui/tools/screen-mirror.test.mjs`: 11 areas, plus a synthetic area source with a bad `appliesWhen` that throws.
+  - `ui/tools/strings.test.mjs:446-460`: the eleven keys.
+  - `rail-icons.test.mjs`: passes once the mockup and module carry the two icons.
+  - `side-bar.spec.ts`: the bar closes, unpersisted, when `areas()` drops the visible area.
+  - `locator-bar.spec.ts`: the stub gains `areas()`, and no area segment is drawn for an area it omits.
+  - `rail.spec.ts` and `home.page.spec.ts`: update their rosters and counts. `app.spec.ts` changes only if it reddens, because its three-area fixture stays valid with an optional `appliesWhen`.
+- `ui/browser/rail-icons.browser-spec.mjs`:
+  - It opens the shell in a namespace that reports both features. It finds that namespace by reading `/api/ocupilot/navigation?ns=` for each namespace `/api/ocupilot/namespaces` lists.
+  - Its rail and tile rosters are the `AREAS` that apply there.
+- `ui/browser/namespace-categories.browser-spec.mjs` (new). It never reads `.ocu-side-bar-label`, so `side-bar-pins.test.mjs` is untouched. Each namespace's role is read from the instance as above. It covers:
+  - the rail and Home tiles in `%SYS`, in an interop-only namespace, and in one that reports both;
+  - the pre-answer state, with `/api/ocupilot/navigation` held through request interception: neither category is drawn while Logs is;
+  - opening Interoperability's side bar, then switching to `%SYS`: the rail item and the bar are gone, and switching back restores the rail item;
+  - the `DeveloperFloorFixture` principal, created in `before` and removed in `after` on `ocupilot-b-ci` only. In the interop-only namespace it sees Interoperability drawn `aria-disabled`, naming `%Ens_Portal:USE`.
+
+- [x] [Halt] Re-base the initial bundle budget under DW-1166 (runner-authorized 2026-10-07; the spawn prompt's re-base clause, so `ui/angular.json` and `ui/tools/angular-json.test.mjs` are cleared for this edit): `maximumWarning` `3012kB` -> `3165kB`, 5% above the measured 3,013,646-byte initial total, in `ui/angular.json` and in the DW-371 test's pinned literal and its comment (one line `// Story 20.1 raised it to 3165kB, 5% above a measured 3,013,646 bytes (namespace category gating), under the 4000kB hard stop.`). `maximumError` stays `4000kB`. Epic 18's own re-base (3191kB) meets this at the merge; the second epic to merge takes the larger figure. Then finish what the halt left: the tools tier, the full ObjectScript sweep, the review layers and finalize.
+
+- [x] [CI] browser shard 1/3 (run 37598485448, head 1dbbc20d): `ui/browser/home-performance.browser-spec.mjs:349` (AC3) asserts 7 Home tiles, but since this story HSCUSTOM draws 8 because Interoperability applies there. Expect the tile count the namespace's reported features give (`ui/browser/namespace-features.mjs`), read once the navigation map has answered, never a literal.
+- [x] [CI] browser shard 1/3 (same run): `ui/browser/rail-icons.browser-spec.mjs` test (a) counted 9 rail items where 11 apply. It counts after `networkidle2`, which can return before the navigation map answers, and applicability fails closed (inference: the map had not answered). Wait for the map's answer before counting.
+- [x] [CI] latent (same run, passed by timing): `ui/browser/system-explorer.browser-spec.mjs:125` asserts nine rail items in HSCUSTOM, which reads ten once the map answers. Apply the same fix, keeping its System Explorer position assertions.
+- [x] [CI] sweep: every browser spec that counts or indexes rail items or Home tiles, or asserts which areas are drawn, waits for the map's answer and expects what the namespace reports. Give the specs one deterministic wait: a DOM signal the shell sets once the map for the current namespace has answered (for example a data attribute on `app-rail`), pinned by a component or tools test, and used by every such spec. Run each touched spec against a rebuilt and redeployed bundle on `ocupilot-b-ci`.
+
+**Acceptance Criteria:**
+
+- **AC1:** given a namespace that does not report interoperability or analytics, when the rail renders, then that category does not appear on the rail, Home tile, side bar, command box or locator, gated by the namespace's own reported features (`IsEnsembleNamespace`, `%IsDeepSeeEnabled`).
+- **AC2 (integration):** given the map read with `?ns=X` on `ocupilot-b-ci`, when the rail renders, then it reads each area's `applies` and draws exactly the categories X reports, while every other area keeps its privilege verdict; and `shell.privileges.read` answers the same `applies`.
+- **AC3 (DW-1921):** given a holder of `%Ens_EventLog:USE` without `%Ens_Portal:USE`, when they open the Interoperability event log, then it is refused naming `%Ens_Portal:USE`, as the classic `EnsPortal.EventLog` page refuses them.
+
+### Review Findings
+
+Code review 2026-10-07 (tier `full-opus`; layers blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor). Severity, fix-risk, footprint per Rule 15.
+
+- [x] [Review][Patch] MED, fix-risk med (one notify plus a side-bar guard), in-story: a namespace switch kept the previous namespace's categories drawn until the re-read answered, and while it failed, against the matrix row "a switch in flight"; notifying earlier would have closed an open category's bar on every switch between two namespaces that both report it [ui/src/app/core/navigation.ts:975, ui/src/app/shell/side-bar.ts:334]
+- [x] [Review][Patch] MED, fix-risk low, in-story: the rail's roving tab stop is a raw index, so a namespace with a shorter rail can leave no item in the Tab order [ui/src/app/shell/rail.ts:144]
+- [x] [Review][Patch] MED, fix-risk low, in-story: the "Vendor check fails" row had no pinning test; the unknown-feature legs stay green with the warn branch deleted. The throw half is `wontfix-theoretical`: both vendor methods catch their own errors (read in `irislib/`); real only if a vendor check propagates one [src/OcuPilot/Kernel/Shell/NamespaceFeatures.cls:38]
+- [x] [Review][Patch] MED, fix-risk low, in-story: `main.ts` handing the bus to `NavigationService` is unpinned, so the "Interop enabled meanwhile" row holds only in a hand-built service [ui/src/main.ts:124]
+- [x] [Review][Patch] LOW: `screensForArea('analytics')` deep-equals `[]` whatever the filter does, because no screen declares that area [ui/tools/navigation.test.mjs:1437]
+- [x] [Review][Patch] LOW: doc comments the diff made false: the seams "add nothing", "Every built screen", the bus comment's place in `main.ts`, the event log's single pair, `LogHubWire`'s "creates an IRIS user" [ui/src/app/core/navigation.ts:885]
+- [x] [Review][Patch] LOW: DESIGN.md still says "Home's seven areas" [_bmad-output/planning-artifacts/ux-designs/ux-OcuPilot-2026-09-08/DESIGN.md:1103]
+- [x] [Review][Patch] LOW: `shell.privileges.read`'s description does not say what `applies` means [src/OcuPilot/Kernel/Shell/PrivilegesRead.cls:9]
+- [x] [Review][Patch] LOW: `Test.NamespaceFeatures`' header says it reads only, while its unknown-feature legs write WARN lines [src/OcuPilot/Test/NamespaceFeatures.cls:4]
+- [x] [Review][Patch] LOW: `Test.NamespaceFeatures.Namespaces()`' Catch does not restore the namespace first (AD-16) [src/OcuPilot/Test/NamespaceFeatures.cls:27]
+- [x] [Review][Patch] LOW: `runLoad`'s loop `key` shadows the namespace key stored right after the loop [ui/src/app/core/navigation.ts:1046]
+- [x] [Review][Patch] LOW: the captured payload's provenance note does not record the hand-added `applies` and category entries [ui/tools/navigation-wire.test.mjs:13]
+- [x] [Review][Patch] LOW: browser nits: the helper hard-codes HSCUSTOM and concatenates the vendor returns uncoerced; the spec shadows `before`, names a `hold` option and garbles its header [ui/browser/namespace-features.mjs:19]
+- [x] [Review][Defer] LOW: EXPERIENCE.md's rail row ("nine rail-items") and area-tile row ("Seven tiles") now understate a namespace that reports either feature [_bmad-output/planning-artifacts/ux-designs/ux-OcuPilot-2026-09-08/EXPERIENCE.md:612] — deferred: an in-place edit to a file Epic 18 is changing, and the tile row is quoted as an anchor in `home.page.ts`; routed to 20.2 (ledger)
+
+Rejected:
+
+- `by-design` The bundle budget's 5% headroom: the `[Halt]` task fixes 3165kB under DW-1166.
+- `by-design` The service's `screensForArea`/`builtScreens` filters have no subject until a screen declares a category; Design Notes (Client shape) assign their pins to 20.2.
+- `false` A category hidden for lack of a privilege: measured on `ocupilot-b-ci`, a `%Developer` principal and an administrator without `%All` both read `applies` 1 for both features in HSLIB; a namespace a caller cannot read is refused `NS.DENIED` first.
+- `false` Interoperability looser than the classic menu's `GetPortalApp`: measured, every namespace reporting either feature has its portal application; AC1 and AD-44 name the two checks.
+- `false` The implied-namespace leg and the `%SYS` guard cannot fail: the vendor answers 0 for real implied paths too (measured), so the leg pins the observable; `%sys` reddens without the upper-casing.
+- `false` AC3's side-bar entry unpinned: the descriptor-only mutation reddens `Descriptor`, and `LogHubWire` pins the hub.
+- `false` The helper's "same answers" claim: the rail legs compare what `applies` draws against the vendor's answers.
+- `false` The DW-1921 ledger entry still routed: the lead's `ledger_adjudicated` gate closes it.
+- `false` AD-8's `%Developer` list omits the Analytics area: the list names screens, and the area holds none.
+- `low` Ctrl+B on a bar whose area no longer applies writes the preference with nothing drawn: Home's bar behaves the same today, and a fix adds a branch.
+- `low` Home's rail item takes focus without moving the rail's index: the same as `yieldFocusToRail`; a fix adds a focus handler.
+- `low` The mockup's HSCUSTOM frames draw Analytics, with captions naming Logs screens: illustrative, and replacement captions are a design call.
+- `low` The mirror's default `features` list, its trim and an empty `appliesWhen`: test callers only, and the server's `Validate` or `tsc` refuses a divergence loudly.
+- `low` The browser specs read the vendor rather than `/api/ocupilot/navigation` as the Tasks say: an oracle independent of the code under test; the fix is a spec edit.
+- `low` `rail-icons` has no fallback without a both-features namespace: CI's throwaways are IRIS for Health.
+- `low` The English "Requires" literal and the unasserted Home tile in the `%Developer` leg: a copy change fails loudly, and the rail pins the shared verdict.
+- `low` `LogSourcePort` and `SystemInfo` call `IsEnsembleNamespace` directly: canonical names, existing callers.
+- `low` A web application's DeepSee change does not re-read the map: rare, and Analytics holds no screen yet.
+- `low` A feature added to `FEATURES` without a branch in `Reports`: the vendor-equality test lists the features by hand.
+- `low` The spec's stale 2993 kB and Tasks wording: the fix edits the spec under review.
+
+Code review 2026-10-07, CI rework 1 re-review (tier `full-opus`; diff `698c3c0e..5875eafb`). The four `[CI]` items hold. The sweep was re-checked by grep over `ui/browser/*.mjs`, and `namespace-categories` was the one spec missing.
+
+- [x] [Review][Patch] MED, fix-risk low, in-story: an answer read before the namespace list arrived counted as the route namespace's. At sign-in the rail drew the install namespace's categories with `data-map-answered="true"`. Shown on `ocupilot-b-ci`: at `?ns=%SYS`, with the list held 4 s, the rail drew 10 items including Interoperability [ui/src/app/core/navigation.ts:879]
+- [x] [Review][Patch] MED, fix-risk low, in-story: `namespace-categories` asserted its `%SYS` rosters before `%SYS` answered, because that roster equals the fail-closed one. Both legs now wait for the map's answer [ui/browser/namespace-categories.browser-spec.mjs:193]
+- [x] [Review][Patch] LOW: the attribute names no namespace, so after an in-shell switch it can read the previous namespace's `true` until the rail re-renders. The caller contract is now documented [ui/browser/namespace-features.mjs:62]
+
+Rejected (CI rework 1 re-review):
+
+- `low` The triage log's "five browser specs" (four used the wait), the Verification line "count nothing" (`shell` clicks item 1), the 7-of-20 sweep list, the Auto Run Result's dropped pass-1 record, the stale 2993 kB and loop list, and the oversized spec growing: each fix edits the spec under review. The other 13 specs address areas by label or id (grep in this review).
+- `low` `rail-icons` builds its roster inline rather than through the new helpers: duplication only, and both read `AREAS`.
+- `low` `rail.ts:49,56` still say "nine areas" and "eight tab stops": outside the rework range, so they were added to DW-2148 (20.2) beside EXPERIENCE.md's rows.
+- `false` No lint-docs result for this pass: run in this review, clean.
+- `false` `system-explorer`'s `tileIndex` can be -1: it is computed from `AREAS`, which declares `system-explorer`.
+- `false` The AC3 principal may read different features than the superuser's oracle: `home-performance` AC3 is green with the derived count, in this review.
+- `low` An undefined `HSCUSTOM` read, or a failed map read, fails with a TypeError or a timeout rather than a named assertion: both are loud, and the residual-risk line records the second.
+- `low` An `appliesWhen` the helper does not read makes the specs expect the area absent: the vocabulary is closed, and the helper reads both features.
+- `low` Use `aria-busy` rather than a test-only attribute: a design alternative, not a defect.
+
+## Spec Change Log
+
+- 2026-10-07, runner: rework iteration 1, trigger `ci` (run 37598485448 red on browser shard 1/3, the first red after this story). The `[CI]` items above are the whole scope.
+
+- 2026-10-07, runner: implement pass 1 halted `implementation verification failed` on the DW-371 bundle budget (3,013,646 B against 3012kB). The runner authorized the re-base above under DW-1166 and reset the spec to `in-progress`; the pass-1 implementation stays in the working tree and inside the next diff.
+- 2026-10-07, runner: split by the orchestrator's merge gate (Q2). The hand-off criteria and their analysis moved to Story 20.13 (DW-2141; this spec at `9faa902f`); the contended edits named under Design Notes were cleared (Q3); the floor stays and new surfaces declare their classic gate as an own pair. Retitled to the new key `20-1-namespace-category-gating`; status reset to `draft` for a gating-only re-plan.
+
+## Review Triage Log
+
+### 2026-10-07 - Review pass
+
+- verdicts: 11 findings - high 0, medium 0, low 5, false 6, maybe-false 0
+- findings:
+  - `[low]` `[patch]` Home, command box and locator have no recorded mutation - locator and Home mutations run and recorded under Verification; the command box has no subject screen until 20.2, noted there.
+  - `[low]` `[reject]` `Registry.Validate` calling `AreaProblem` is not pinned - the build-time mirror check refuses the same mistake first; a guard test would need a seam on `Validate` for no user-reachable case.
+  - `[low]` `[patch]` `AreaProblem` and mirror vocabulary mutations described but unrecorded - both run, red observed, reverted, recorded.
+  - `[low]` `[patch]` The descriptor-only AC3 mutation named no catching test - run; `Descriptor` goes red (8 of 60), recorded.
+  - `[low]` `[reject]` Side-bar retirement path has one test and no focus assertion - the recorded `offered()` mutation reddens that test; a persistence or focus mutation is more than a direct fix for a cosmetic gap.
+  - `[false]` `[reject]` Header of `NamespaceFeatures` may be stale on analytics - the test ran green on `ocupilot-b-ci` (HSSYS and HSLIB report analytics, measured), so the assertion holds.
+  - `[false]` `[reject]` Stale Auto Run Result block - rewritten at finalize.
+  - `[false]` `[reject]` Intent-alignment: Home and command box change no file - they read the filtered seams by design (spec Client shape); covered through `areas()`.
+  - `[false]` `[reject]` Intent-alignment: no publisher of the `namespace` change event in the client - Story 18.15 owns it; this story subscribes (spec Consumes).
+  - `[false]` `[reject]` Intent-alignment: "logged once" is one Warn per failed check - the matrix says logged once per failed check, and no per-process dedupe is specified.
+  - `[false]` `[reject]` Intent-alignment: category disappears on re-read until the map answers - the matrix requires neither drawn before the map answers.
+
+### 2026-10-07 - Review pass (CI rework 1)
+
+- verdicts: 8 findings - high 0, medium 0, low 6, false 2, maybe-false 0
+- findings:
+  - `[low]` `[reject]` The shared browser helpers `appliedAreas` and `tileAreasOf` have no tools-tier test - small filters the browser specs exercise end to end; a tools test is more than a direct fix for a cosmetic gap.
+  - `[low]` `[reject]` `namespace-categories` computes the applying set inline instead of through the helpers - duplication only, and that spec already waits on its own rail signal.
+  - `[low]` `[reject]` The real `NavigationService` namespace-switch path of `data-map-answered` is not pinned by the rail test - `navigation.test.mjs` pins `appliesAnswered()` itself; the rail test pins the binding.
+  - `[low]` `[reject]` The browser-spec waits carry no browser-tier mutation - a skipped wait fails by timing, not deterministically; the attribute binding has its component mutation line.
+  - `[low]` `[reject]` The `developer-floor` wait cannot fail on its own - it removes a timing dependency by design.
+  - `[low]` `[reject]` The selector in `waitForMapAnswered` and the attribute in `rail.ts` are not tied by a tools test - a rename fails the five browser specs that use it, in CI.
+  - `[false]` `[reject]` Intent-alignment: specs that only address a rail item by id or an early index still race - the swept specs (`shell` indexes item 1) address items drawn before the map answers.
+  - `[false]` `[reject]` Intent-alignment: `system-explorer` keeps a literal position - the spec keeps its System Explorer position assertion deliberately.
+
+## Design Notes
+
+**Governing ADs:**
+
+- AD-5: the area declaration is the one source, and the mirror is generated.
+- AD-8: area verdicts, own pairs, never hidden for privilege, and the floor left unchanged.
+- AD-9 and AD-16: no escalation and no namespace switch in the feature reads.
+- AD-14: the map is re-read on a `namespace` change event.
+- AD-19: navigation state stays in the framework-free service.
+- AD-29: the event log's port gate.
+- AD-36: the hub names the pair of a member it leaves out.
+- AD-39: vendor text is logged, never sent.
+- AD-44: the namespace is data scope, and a screen's pairs union what its classic page enforces.
+- Conventions › Screens that take no side-bar position.
+
+**Spine decisions for the runner (Rule 20), proposed text:**
+
+1. Amend AD-44: "A rail area may declare the namespace feature it applies to (`appliesWhen`, from the closed vocabulary `Kernel/Shell/NamespaceFeatures.FEATURES`):
+   - `interoperability` is `%Library.EnsembleMgr.IsEnsembleNamespace`.
+   - `analytics` is `%DeepSee.Utils.%IsDeepSeeEnabled`, never `%SYS` or an implied namespace.
+
+   Each is read in the caller's process for the route's namespace on every navigation read, and answered on the map as `applies`. A non-applying area is drawn nowhere and stays on the wire with its verdict. This is applicability, not a privilege gate, and AD-8's 'never hidden' is unchanged."
+2. In AD-8's own-pair paragraph, "Story 16.8's interoperability event log declares `%Ens_EventLog:USE`" becomes "declares `%Ens_EventLog:USE` and `%Ens_Portal:USE` (`EnsPortal.Application.CheckPrivileges`, DW-1921)".
+3. The Capability map's Stage 4 row adds AD-44.
+
+**Each new area's declared pair set (the floor ruling):**
+
+- **Interoperability: `%Ens_Portal:USE`.** The classic Interoperability menu checks it with `CheckSecurity("%Ens_Portal")`. Its other check, READ on the namespace's database (`CheckPrivileges`), depends on the namespace, so each 20.2+ screen and port resolves it at call time, as System Explorer's area does.
+- **Analytics: `%DeepSee_Portal:USE`.** The classic User Portal branch checks it, and that check enables the classic Analytics menu. It is public `U` on a stock instance (measured), so the area opens for every caller past the floor, as the classic menu does. Each 20.11 screen declares its classic page's own resource as its own pair (DW-1853).
+- The floor is unchanged (DW-2140), and neither set touches `ADMINRESOURCES`.
+
+**Client shape:**
+
+- One predicate in `NavigationService`. Every surface reads the filtered seams it already reads, so no component computes applicability. The only component stub that needs a new method is `locator-bar.spec.ts`'s, which gains `areas()`.
+- Verdicts fail open (DW-135), because the server gates every read. Applicability fails closed: a category that does not apply has nothing behind it for a server gate to protect, so drawing it on an unanswered question would be wrong.
+- The command box lists screens, and the locator names the area of the routed screen. 20.1 builds no screen in either category, so neither leg has a subject yet. The shared filters are pinned by the tools tier now, and 20.2's browser spec pins those two surfaces (Consumed-by).
+
+**Integration ACs, Consumed-by and Consumes:**
+
+- In-story consumers: the rail, Home, side bar, command box and locator read the map's `applies` (AC2).
+- Consumed-by:
+  - 20.2: the first Interoperability screens inherit the area's applicability on route and on namespace switch.
+  - 20.11: the Analytics screens and their pair set under `AreaCoverageProblem`.
+  - 20.12: the agent's navigation into these categories reads `shell.privileges.read`'s `applies`.
+- Consumes:
+  - Story 18.15's enable-interop change event (`type namespace`, `action updated`).
+  - Story 16.8's event log descriptor and port (DW-1921).
+  - Story 19.12's `DeveloperFloorFixture`.
+- Rule 17: DW-1921 is addressed by the DW-1921 task and AC3.
+
+**FR-80.** This story adds no screen and no port. The feature reads are shell chrome, shaped like `SystemInfo.ProductionEnabled`.
+
+**Contended files (Rule 11), re-checked against `.worktrees/epic-18` on 2026-10-06:**
+
+- Cleared by the orchestrator on 2026-10-07: EXPERIENCE.md `:66` and `:310`; `Test/Descriptor.cls`; `Test/Wire.cls`; `Test/WireAreaAnyScreen.cls`; `ui/tools/navigation.test.mjs`; `screen-mirror.test.mjs`; `area-verdict.spec.ts`, only if it reddens; and `screens.generated.ts`, regenerated whole.
+- Epic 18 also has these files changing in its tree:
+  - `strings.ts`: this story adds to it only.
+  - `ReadTool.cls`, `ToolRoundTrip.cls` and `WireSecurityRead.cls`: run, never edited. `WireSecurityRead` is expected unchanged because `%Ens_EventLog:USE` stays first (inference). If any of the three reddens, stop and ask the runner.
+- No other file on Epic 18's list is touched.
+- Story 18.13 (per-namespace state) overlaps `navigation.ts`. The second epic to merge rebases.
+- Editing EXPERIENCE.md, DESIGN.md and `key-home.html` makes `epic-20-context.md` stale, so the runner re-runs the pre-warm before 20.2's plan.
+
+## Verification
+
+**Setup (slot B):**
+
+- Load the changed classes into `ocupilot-b-ci` without a restart, and never through the MCP loader: its profile reaches the dev instance.
+- Every principal-creating step runs on `ocupilot-b-ci` only. Where a class's header asks for it, arm the call with `docker exec -e OCUPILOT_ALLOW_PRINCIPALS=1`; `LogHubWire` also asks for its seed variable.
+- Run stateful ObjectScript test classes one class per call. Send the next only once the previous run has landed in `%UnitTest_Result`, and never re-submit after a client timeout.
+- Before any browser run:
+  - `cd ui && npm run build && docker cp dist/ocupilot-ui/browser/. ocupilot-b-ci:/durable/iris/csp/ocupilot/`
+  - export `OCUPILOT_BROWSER_ORIGIN=http://localhost:52777` and `OCUPILOT_BROWSER_CONTAINER=ocupilot-b-ci`
+
+**Commands:**
+
+- `(loop)` `cd ui && node tools/ci-runner.mjs --container ocupilot-b-ci --class OcuPilot.Test.<C>`, one class per call. Expected: 0 failures, with the totals checked in `%UnitTest_Result`. Classes:
+  - `NamespaceFeatures`, `Navigation`, `Descriptor`, `ExplorerDescriptor`, `Wire`, `WireAreaAnyScreen`, `DeveloperFloor`, `Gate`
+  - `ToolShell`, `ReadTool`, `ToolRoundTrip`
+  - `LogPairs`, `LogSource`, `LogSecondary`, `LogSourceDenial`, `LogHub`, `LogHubWire`, `WireSecurityRead`
+- `(loop)` `cd ui && node --test --test-concurrency=1 browser/namespace-categories.browser-spec.mjs browser/rail-icons.browser-spec.mjs browser/rail.browser-spec.mjs browser/log-hub.browser-spec.mjs browser/developer-floor.browser-spec.mjs browser/a11y-structural-invariants.browser-spec.mjs`. Expected: pass, with the DW-1337 structural gate holding in both themes.
+- `(loop)` Expected clean:
+  - `cd ui && npm run test:tools && npm run test:components`
+  - `uv run scripts/check-objectscript.py <changed .cls>`
+  - `bash scripts/lint-docs.sh`
+- `(once, before dev_complete)` The full ObjectScript sweep, `cd ui && node tools/ci-runner.mjs --container ocupilot-b-ci`, one class at a time. Then:
+  - `cd ui && npm test && npm run build`: the bundle stays under `maximumWarning` 2993 kB; stop and ask above 3800 kB.
+  - `bash scripts/smoke.sh --container ocupilot-b-ci --user _SYSTEM --password SYS`
+- `(CI)` The full browser suite runs only in CI's browser shards (Rule 29).
+
+**Planned pinning mutations (Rule 19).** Apply each on the throwaway, observe red, then revert byte-identical.
+
+- AC1, server: make `NamespaceFeatures.Reports` answer 1 always. Expected red: `NamespaceFeatures`' `%SYS` legs, and the browser spec's `%SYS` rail.
+- AC1, client fail-closed: make `applies()` treat a missing answer as true. Expected red: the pre-answer legs in `navigation.test.mjs` and the browser spec.
+- AC1, side bar: make `side-bar.ts` ignore membership in `areas()`. Expected red: `side-bar.spec.ts`, and the browser spec's switch leg.
+- AC2: make `areas()` filter by `areaVerdict().allowed` instead of `applies()`. Expected red: the browser spec's developer leg.
+- AC2, agent: make `Navigation.Payload` omit `applies` on one area. Expected red: `NamespaceFeatures`' payload leg, and `ToolShell`, through the closed schema.
+- Matrix, interop enabled meanwhile: drop the bus subscription. Expected red: the bus leg in `navigation.test.mjs`.
+- AC3: make `EVENTLOGPAIRS` drop `%Ens_Portal:USE`. Expected red: `LogPairs`, `LogSourceDenial`'s new leg, and `LogHubWire`'s new leg.
+
+**Rule 19 results (ocupilot-b-ci, 2026-10-07; each reverted byte-identical).**
+
+- mutation: AC1 server, `NamespaceFeatures.Reports` answers 1 always -> red: `NamespaceFeatures` (3 of 4 methods) and all four `namespace-categories` browser tests (the rail never settles on the expected roster).
+- mutation: AC1 client fail-closed, `applies()` answers true before any answer -> red: three `navigation.test.mjs` legs and the browser pre-answer test.
+- mutation: AC1 side bar, `offered()` answers true -> red: the `side-bar.spec.ts` leg and the browser switch test.
+- mutation: AC2, `areas()` filters by `areaVerdict().allowed` -> red: four `navigation.test.mjs` legs and all four browser tests, the developer leg included.
+- mutation: AC2 agent, `Navigation.Payload` omits `applies` on the agent area -> red: `NamespaceFeatures` payload leg and `ToolShell`.
+- mutation: matrix bus row, drop the bus subscription -> red: the bus leg of `navigation.test.mjs`.
+- mutation: AC3, `EVENTLOGPAIRS` without `%Ens_Portal:USE` -> red: `LogPairs` and `LogSourceDenial`'s new leg; `LogHubWire`'s new leg stays green, because the hub gates on the descriptor's `privileges`, so it reddens only when `LogEventViewer`'s `privileges` drop the pair too (then red; the descriptor mutation alone is green on `LogHubWire` and `LogSourceDenial`).
+- mutation: AC1 locator, drop `&& offered` in `locator-bar.ts` -> red: the `locator-bar.spec.ts` "draws no area segment" leg (35 of 36 green otherwise).
+- mutation: AD-44 mirror, the `features.includes` test in `screen-mirror.mjs` made always pass -> red: the `screen-mirror.test.mjs` bad-`appliesWhen` leg.
+- mutation: AD-44 registry, `AreaProblem`'s vocabulary test made `0 &&` -> red: `NamespaceFeatures.TestAnAreaWithAnUnknownFeatureIsRefused` (1 of 4).
+- mutation: AC3 descriptor only, `LogEventViewer` `privileges` without `%Ens_Portal:USE` -> red: `Descriptor` (8 of 60, `TestTheSixSecondaryLogViewersDeclareTheirSourceAndPair` among them).
+- Command box and Home read the filtered seams unchanged; the `areas()` mutation above reddens the Home leg of the browser spec, and the command box lists screens only, of which neither new category has any yet (20.2 pins it).
+- mutation: code review, `reload()` without its moved-namespace `notify()` -> red: the `navigation.test.mjs` leg "a re-read for a namespace the shell has moved to stops drawing a category at once".
+- mutation: code review, `retireUnofferedArea` collapsing without `appliesAnswered()` -> red: the `side-bar.spec.ts` leg "hides, without closing, while the map has not answered".
+- mutation: code review, `Rail.resolved` without the tab-stop clamp -> red: the `rail.spec.ts` leg "keeps its one Tab stop when the namespace shortens the rail".
+- mutation: code review, `main.ts` without `bus,` in `new NavigationService({...})` -> red: the `navigation.test.mjs` leg "main.ts hands the change bus to the navigation service".
+- mutation: code review, `Reports`' unknown-feature branch without its `Log.Warn` -> red: `NamespaceFeatures.TestAnUnknownFeatureIsLoggedOnce` (1 of 5, run 528).
+- mutation: CI rework, `Rail`'s `data-map-answered` bound to a constant `true` -> red: the `rail.spec.ts` leg "sets data-map-answered on the nav only while the map has answered for the namespace" (1 of 2,557).
+- CI rework browser specs (bundle rebuilt and redeployed to `ocupilot-b-ci`, each spec file run alone with `node --test --test-concurrency=1`): `home-performance` 4 of 4, `rail-icons` 3 of 3, `system-explorer` 4 of 4, `developer-floor` 1 of 1, `namespace-categories` 4 of 4. Swept and left unchanged because they address rail items by label or id and count nothing: `shell`, `theme`, `panel`, `context-chip`, `gate`, `switches`, `rail`.
+- CI rework tiers: `npm run test:tools` 1,876 of 1,876; `npm run test:components` 2,557 of 2,557 (`app.spec.ts`'s stub gained `appliesAnswered()`).
+- mutation: CI rework re-review, `appliesAnswered()` without its `''` clause -> red: the `navigation.test.mjs` leg "the cold sign-in read, sent before the namespace list arrives, draws no category and is not the answer" (1 of 51).
+- CI rework re-review (bundle rebuilt and redeployed to `ocupilot-b-ci`, each spec file run alone):
+  - Browser specs: `namespace-categories` 4 of 4, `rail-icons` 3 of 3, `home-performance` 4 of 4, `system-explorer` 4 of 4, `developer-floor` 1 of 1, `rail` 2 of 2.
+  - Client tiers: `npm run test:tools` 1,877 of 1,877; `npm run test:components` 2,557 of 2,557.
+  - Probe at `?ns=%SYS`, with `/api/ocupilot/namespaces` held 4 s: before the patch, the rail drew Interoperability and `data-map-answered` read `true`. After it, the rail drew 9 items, and the attribute read `false` until `%SYS` answered.
+
+## Auto Run Result
+
+Status: done
+Blocking condition: none
+
+Rework 1 (CI run 37598485448): `app-rail`'s nav carries `data-map-answered`, true once `NavigationService.appliesAnswered()` holds for the current namespace; `ui/browser/namespace-features.mjs` gains `waitForMapAnswered`, `appliedAreas`, `tileAreasOf`; `home-performance`, `rail-icons`, `system-explorer` and `developer-floor` wait for it and derive counts from the namespace's reported features. `rail.spec.ts` pins the attribute (mutation line under Verification); `app.spec.ts` stub gained `appliesAnswered()`.
+
+Review: 8 findings, 0 patched, 0 deferred, 8 rejected (6 low, 2 false; reasons in the triage log). Follow-up review recommended: false (patched high 0, medium 0).
+
+Verification (ocupilot-b-ci, rebuilt and redeployed bundle, 3.01 MB): `home-performance` 4 of 4, `rail-icons` 3 of 3, `system-explorer` 4 of 4, `developer-floor` 1 of 1, `namespace-categories` 4 of 4; `npm run test:tools` 1,876 of 1,876; `npm run test:components` 2,557 of 2,557. The full browser suite is CI's (Rule 29).
+
+Residual risk: Epic 18's budget re-base (3191kB) meets 3165kB at the merge; a map read that fails leaves the attribute false, so a spec on such an instance times out on the wait.

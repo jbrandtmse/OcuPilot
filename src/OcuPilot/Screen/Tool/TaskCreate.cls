@@ -37,6 +37,10 @@ Parameter WRITETYPE = "POST";
 /// answer.</p>
 Parameter PORTCLASS = "OcuPilot.Port.TaskPort";
 
+/// <p>The read-back re-reads the created task by its allocated id through the edit tool's read
+/// (AD-58).</p>
+Parameter READBACKTOOL = "OcuPilot.Screen.Tool.TaskUpdate";
+
 /// <p>The absence read: the list, filtered by name, holding the one row whose <code>Name</code>
 /// equals the argument (AD-51 as amended, the audit-event reset's form).</p>
 Parameter READTYPE = "LIST";
@@ -216,6 +220,13 @@ ClassMethod CreatedId(pWritten) As %String
     If '$IsObject(pWritten) || 'pWritten.%IsA("%Library.DynamicObject") Quit ""
     If pWritten.%GetTypeOf("Id") '= "number" Quit ""
     Quit "" _ pWritten.%Get("Id")
+}
+
+/// <p>The name as the caller typed it, which the card titles the new task by; the target's own id is
+/// the case-folded key (AD-13).</p>
+ClassMethod TargetName(pFresh, pId As %String, pArgs) As %String
+{
+    Quit ##class(OcuPilot.Area.Task.TaskRules).NameIn(pArgs)
 }
 
 /// <p><parameter>CONSEQUENCERUNSASOTHER</parameter> when the write runs the task as another account

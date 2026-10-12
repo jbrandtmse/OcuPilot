@@ -248,7 +248,7 @@ test('formatNamed resolves the <name> placeholder, and a template without one is
 // - make `loaded()` return `answeredValue` -> "a write's answer is not a read's" goes red, and a
 //   dismissal the user made before the first read settled would be undone by the next write.
 
-const { VIEW_KIND, REFRESH_KIND, SHELL_KIND, SHELL_SIDE_BAR_OPEN, SHELL_PANEL_WIDTH } = await import(
+const { VIEW_KIND, REFRESH_KIND, SHELL_KIND, SHELL_SIDE_BAR_OPEN, SHELL_PANEL_WIDTH, SHELL_THEME } = await import(
   join(uiRoot, 'src', 'app', 'core', 'account-preferences.ts')
 );
 
@@ -343,14 +343,48 @@ test('a refusal records the instance\'s own sentence and leaves the lists standi
   ]);
   const store = new AccountPreferences({ api });
   await store.load();
-  assert.equal(store.fault(), '', 'nothing has been refused yet');
+  assert.equal(store.fault('background'), '', 'nothing has been refused yet');
 
   await store.add(FAVORITE_KIND, 'permissions/users');
-  assert.equal(store.fault(), 'This account already holds as many favorites as the instance keeps.');
+  assert.equal(store.fault('background'), 'This account already holds as many favorites as the instance keeps.');
   assert.deepEqual(store.favorites(), ['logs/alerts'], 'and the list the instance last answered still stands');
 
   store.clearFault();
-  assert.equal(store.fault(), '', 'a surface that has announced it drops it');
+  assert.equal(store.fault('background'), '', 'a surface that has announced it drops it');
+});
+
+// DW-1414: a refusal belongs to the surface that made the write. A background write (a theme, a
+// panel width) refused while Home's gesture has nothing standing leaves Home's slot empty, and a
+// background success does not clear a gesture's refusal.
+//
+// Mutation (Rule 19): make `fault()` and `settle` ignore the origin (one slot) -> both legs go red.
+test('a refused background write fills the background slot only (DW-1414)', async () => {
+  const reason = 'That preference takes one of a fixed set of values.';
+  const api = stubApi([
+    ok(wholeBody({})),
+    { kind: 'error', status: 422, code: 'PREFERENCES.VALUE', reason, detail: null },
+  ]);
+  const store = new AccountPreferences({ api });
+  await store.load();
+
+  await store.setValue(SHELL_KIND, SHELL_THEME, 'dark');
+  assert.equal(store.fault('home'), '', 'Home\'s own line stays silent');
+  assert.equal(store.fault('background'), reason, 'the background slot carries the refusal');
+
+  store.clearFault('home');
+  assert.equal(store.fault('background'), reason, 'clearing one origin leaves the other standing');
+  store.clearFault();
+  assert.equal(store.fault('background'), '', 'no argument clears every origin');
+});
+
+test('a success from one origin does not clear another origin\'s refusal (DW-1414)', async () => {
+  const refusal = { kind: 'error', status: 422, code: 'PREFERENCES.ROUTE', reason: 'refused', detail: null };
+  const api = stubApi([refusal, ok(wholeBody({}))]);
+  const store = new AccountPreferences({ api });
+  await store.add(FAVORITE_KIND, 'logs/alerts', 'favorite');
+  assert.equal(store.fault('favorite'), 'refused');
+  await store.setValue(SHELL_KIND, SHELL_THEME, 'dark');
+  assert.equal(store.fault('favorite'), 'refused', 'a background success leaves the gesture\'s refusal');
 });
 
 test('a transport failure records no sentence, because it has none to record', async () => {
@@ -361,7 +395,7 @@ test('a transport failure records no sentence, because it has none to record', a
   const store = new AccountPreferences({ api });
   await store.load();
   await store.add(FAVORITE_KIND, 'permissions/users');
-  assert.equal(store.fault(), '', 'the connectivity banner is already saying this');
+  assert.equal(store.fault('background'), '', 'the connectivity banner is already saying this');
   assert.deepEqual(store.favorites(), ['logs/alerts']);
 });
 
@@ -442,11 +476,11 @@ test('a refusal overtaken by a later write is still announced (DW-1326)', async 
 
   const refused = store.add(FAVORITE_KIND, 'permissions/users');
   await store.setValue(SHELL_KIND, SHELL_SIDE_BAR_OPEN, '1');
-  assert.equal(store.fault(), '', 'the later write succeeded, so nothing is standing yet');
+  assert.equal(store.fault('background'), '', 'the later write succeeded, so nothing is standing yet');
 
   resolveRefused();
   await refused;
-  assert.equal(store.fault(), 'the instance refused it', 'the overtaken refusal is still announced');
+  assert.equal(store.fault('background'), 'the instance refused it', 'the overtaken refusal is still announced');
   assert.equal(store.shell().get(SHELL_SIDE_BAR_OPEN), '1', 'and the later write\'s body is not rolled back');
 });
 
@@ -458,14 +492,14 @@ test('reset drops the value maps and the standing refusal as well as the lists',
   const store = new AccountPreferences({ api });
   await store.load();
   await store.setValue(SHELL_KIND, 'sideBarOpen', '1');
-  assert.equal(store.fault(), 'refused');
+  assert.equal(store.fault('background'), 'refused');
 
   store.reset();
   assert.deepEqual(store.favorites(), []);
   assert.equal(store.shell().size, 0);
   assert.equal(store.views().size, 0);
   assert.equal(store.refreshRates().size, 0);
-  assert.equal(store.fault(), '');
+  assert.equal(store.fault('background'), '');
   assert.equal(store.loaded(), false);
   assert.equal(store.answered(), false);
 });

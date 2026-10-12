@@ -263,6 +263,13 @@ Method TestClassDescription()
     Do ..ReadSource("h", "what does this class do?")
 }
 
+/// <p>Source (p), Story 20.19 AC6: the same probe class, whose source text carries the seed, read through
+/// <code>explorer.class.source</code>'s <code>text</code>.</p>
+Method TestClassSourceText()
+{
+    Do ..ReadSource("p", "what does this class's source say?")
+}
+
 /// <p>Source (i): a probe class in <code>USER</code> one of whose comment lines carries the seed, read
 /// through <code>explorer.search.read</code>'s <code>Text</code> in a turn running in
 /// <code>USER</code>.</p>

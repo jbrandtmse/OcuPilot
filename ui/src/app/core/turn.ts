@@ -39,8 +39,10 @@ import type { ApiService, JsonResult } from './api';
 import { CHANGE_ACTIONS, type ChangeAction, type ChangeBus } from './change-bus.ts';
 import { parseCitations, type Citation } from './citations.ts';
 import { impactOf, type Impact } from './impact.ts';
+import { PRODUCTION_STATE_MOVED } from './proposal-view.ts';
 import { readBackOf, type ReadBack } from './read-back.ts';
 import { sqlOutcomeLines } from './sql-answer.ts';
+import { testAnswerOf, testOutcomeLines } from './test-answer.ts';
 import type { ScreenContextPayload } from './screen-context';
 import type { NavigationKind, TokenStorage } from './token-store';
 import { type DraftOutcome, requestDraft } from './draft.ts';
@@ -137,6 +139,8 @@ export interface TurnStep {
   readonly result: TurnStepResult | null;
   readonly reason: string;
   readonly failedPair: string;
+  /** The `toolIdentifier` of the screen a privilege refusal names (`detail.screen`), when it names one. */
+  readonly failedScreen?: string;
   /**
    * A confirmed write's own marker outcome (AD-15), or `null` for every step the instance sent.
    *
@@ -199,6 +203,13 @@ export interface TurnProposalDiffRow {
    * `serviceAllowedUnrestricted`. Present only where the instance sent a non-empty key.
    */
   readonly emptyKey?: string;
+  /**
+   * The row's shape, as the tool declares it. Present only where the instance sent one; `"lines"` is a
+   * changed-lines hunk of a document's text (Story 20.21), whose `line` is the number of its first line.
+   */
+  readonly kind?: string;
+  /** The line number of a `kind` `"lines"` row's first `before` line, as the instance computed it. */
+  readonly line?: number;
 }
 
 /**
@@ -225,6 +236,11 @@ export interface TurnProposalUnchangedRow {
 export interface TurnProposal {
   readonly proposalId: string;
   readonly target: TurnProposalTarget;
+  /**
+   * The name the card titles the target by where its id is not a name (a task's numeric id), or
+   * `''` where the instance read none: the card then titles the target by its id.
+   */
+  readonly targetName?: string;
   readonly expiresAt: number;
   readonly tool: string;
   readonly changed: readonly TurnProposalDiffRow[];
@@ -275,6 +291,11 @@ export interface TurnProposal {
    * Optional so a literal built before it existed still compiles.
    */
   readonly output?: readonly string[];
+  /**
+   * Whether the confirmed compile reported errors, off the confirm's own `output.errors`
+   * (Story 20.17), or `null` when the answer carried no boolean. Held in memory only.
+   */
+  readonly outputErrors?: boolean | null;
   /**
    * The impact of the removal this proposal carries (AD-8), as the instance read it at the mint, or
    * `null` for a write with none. Optional so a literal built before it existed still compiles.
@@ -434,6 +455,8 @@ export interface ProposalOutcome {
    * existed still compiles.
    */
   readonly output?: readonly string[];
+  /** Whether the confirmed compile reported errors (Story 20.17); `null` where the answer carried none. */
+  readonly outputErrors?: boolean | null;
 }
 
 /**
@@ -470,13 +493,26 @@ function boolAt(source: Record<string, unknown>, key: string): boolean {
 /**
  * The lines a confirm's `output` shows: the string `lines` of a compile or an import (Story 19.2), or
  * for a confirmed SQL run, which answers an `outcome`, its status line and an error's message
- * (Story 19.11, AD-39's sixth exception); `[]` for any other shape.
+ * (Story 19.11, AD-39's sixth exception), or for a confirmed host test, which answers a `status` with its
+ * session and lines, its status sentence and then its lines (Story 20.6, AD-39's seventh exception); `[]` for
+ * any other shape.
  */
 export function outputLinesOf(output: unknown): readonly string[] {
   if (output === null || typeof output !== 'object') return [];
   if (typeof (output as Record<string, unknown>)['outcome'] === 'string') return sqlOutcomeLines(output);
+  if (testAnswerOf(output) !== null) return testOutcomeLines(output);
   const lines = (output as Record<string, unknown>)['lines'];
   return Array.isArray(lines) ? lines.filter((line): line is string => typeof line === 'string') : [];
+}
+
+/**
+ * Whether a confirm's `output` reports compile errors: its `errors` flag when `lines` is an array
+ * and `errors` is a boolean (Story 20.17), `null` for any other shape.
+ */
+export function outputErrorsOf(output: unknown): boolean | null {
+  if (output === null || typeof output !== 'object') return null;
+  const record = output as Record<string, unknown>;
+  return Array.isArray(record['lines']) && typeof record['errors'] === 'boolean' ? record['errors'] : null;
 }
 
 /**
@@ -539,6 +575,7 @@ export function parseStep(value: unknown): TurnStep | null {
     result: parseStepResult(row['result']),
     reason: textAt(row, 'reason'),
     failedPair: textAt(row, 'failedPair'),
+    failedScreen: textAt(row, 'failedScreen'),
     // The progress payload carries no marker outcome: a marker belongs to a confirmed write, which
     // is a foreground request and not a step of the turn.
     auditMarked: null,
@@ -608,6 +645,8 @@ function parseProposalDiff(value: unknown): TurnProposalDiffRow[] {
       removed: boolAt(row, 'removed'),
       ...(boolAt(row, 'optional') ? { optional: true } : {}),
       ...(textAt(row, 'emptyKey') !== '' ? { emptyKey: textAt(row, 'emptyKey') } : {}),
+      ...(textAt(row, 'kind') !== '' ? { kind: textAt(row, 'kind') } : {}),
+      ...(typeof row['line'] === 'number' && Number.isFinite(row['line']) ? { line: row['line'] } : {}),
     });
   }
   return rows;
@@ -645,6 +684,7 @@ function parseProposal(value: unknown): TurnProposal | null {
   return {
     proposalId,
     target,
+    targetName: textAt(row, 'targetName'),
     expiresAt: Number.isFinite(expiresAt) ? expiresAt : 0,
     tool: textAt(row, 'tool'),
     changed: parseProposalDiff(row['changed']),
@@ -1354,7 +1394,8 @@ export class TurnStore {
    * The order is `proposal-closed` then `changed`: `recordProposalState` republishes first, so the
    * AD-43 pause has lifted by the time the re-fetch the change event asks for is issued. A
    * refusal, a cancel and a confirm whose row did not reach `confirmed` publish nothing -- the
-   * instance did not change.
+   * instance did not change -- except a stop refused with a `PRODUCTION_STATE_MOVED` code, which
+   * did apply and so publishes `changed` for its production.
    */
   private async decideProposal(
     path: string,
@@ -1389,6 +1430,7 @@ export class TurnStore {
         continues: boolAt(result.body, 'continues'),
         readBack: readBackOf(result.body?.['readBack']),
         output: outputLinesOf(result.body?.['output']),
+        outputErrors: outputErrorsOf(result.body?.['output']),
       };
       const target = this.targetOf(id);
       this.recordProposalState(id, outcome);
@@ -1410,6 +1452,7 @@ export class TurnStore {
           action: confirmedAction(result.body),
           proposalId: id,
           readBack: outcome.readBack,
+          tool: this.everyProposal().find((proposal) => proposal.proposalId === id)?.tool ?? '',
         });
       }
       return outcome;
@@ -1435,6 +1478,22 @@ export class TurnStore {
       output: [],
     };
     if (outcome.state !== '') this.recordProposalState(id, outcome);
+    // A stop that left the production Suspended or partly stopped was applied and moved it (Story 20.3), so
+    // the screens showing it are told, as the row action's refusal tells them.
+    const moved = PRODUCTION_STATE_MOVED.includes(outcome.code)
+      ? this.everyProposal().find((proposal) => proposal.proposalId === id)
+      : undefined;
+    if (moved !== undefined) {
+      this.bus?.publish({
+        kind: 'changed',
+        type: moved.target.type,
+        scope: moved.target.scope,
+        id: moved.target.id,
+        action: 'updated',
+        proposalId: id,
+        tool: moved.tool,
+      });
+    }
     // DW-1348: a refusal that left the row live closes nothing and so records no state, and until
     // now left the caller nothing to render -- the card went back to offering Confirm as though
     // the press had not happened. The envelope's own written reason is published here, per
@@ -1465,6 +1524,7 @@ export class TurnStore {
                   confirmedAt: outcome.confirmedAt,
                   ...(outcome.readBack === null ? {} : { readBack: outcome.readBack }),
                   ...((outcome.output ?? []).length === 0 ? {} : { output: outcome.output }),
+                  ...((outcome.outputErrors ?? null) === null ? {} : { outputErrors: outcome.outputErrors }),
                 }
               : proposal
           )

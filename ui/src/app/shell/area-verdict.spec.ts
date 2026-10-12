@@ -188,6 +188,8 @@ describe('an area opens when any screen it lists is allowed (AD-8, DW-1768)', ()
       manage,
       // Story 19.10: SQL activity, the twentieth, open on Operate and the system database's read.
       open,
+      // Story 18.11: Prometheus metrics, the twenty-first, open on the same two pairs.
+      open,
     ]);
   });
 });
@@ -224,6 +226,9 @@ const AUTHORIZATION_SERVER_MAP = {
         { route: 'security/encryption-key-file', allowed: false, failedPair: '%Admin_Secure:USE' },
         { route: 'security/database-encryption', allowed: false, failedPair: '%Admin_Secure:USE' },
         { route: 'security/data-element-encryption', allowed: false, failedPair: '%Admin_Secure:USE' },
+        { route: 'security/authentication', allowed: false, failedPair: '%Admin_Secure:USE' },
+        { route: 'security/superservers', allowed: false, failedPair: '%Admin_Secure:USE' },
+        { route: 'security/mft-connections', allowed: false, failedPair: '%Admin_Secure:USE' },
       ],
     },
     { key: 'agent', allowed: true, screens: [] },
@@ -288,6 +293,9 @@ describe('a tab group opens its area and its entry through any of its tabs (AD-8
       { label: STRINGS.encryptionKeyFileLabel, gated: 'true', reason: requires('%Admin_Secure:USE') },
       { label: STRINGS.databaseEncryptionLabel, gated: 'true', reason: requires('%Admin_Secure:USE') },
       { label: STRINGS.dataElementEncryptionLabel, gated: 'true', reason: requires('%Admin_Secure:USE') },
+      { label: STRINGS.authOptionsLabel, gated: 'true', reason: requires('%Admin_Secure:USE') },
+      { label: STRINGS.superserverListLabel, gated: 'true', reason: requires('%Admin_Secure:USE') },
+      { label: STRINGS.mftConnectionListLabel, gated: 'true', reason: requires('%Admin_Secure:USE') },
     ]);
 
     items[4].click();

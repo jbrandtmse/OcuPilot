@@ -91,7 +91,9 @@ Method TestAnAgentCopyStillRunningAtTheBoundIsAppliedAndMarked()
     Do $$$AssertEquals($Select($IsObject($Get(tResult)) && (tResult.%GetTypeOf("readBack") = "object"): tResult.%Get("readBack").%Get("verdict") _ "/" _ tResult.%Get("readBack").%Get("reason"), 1: ""), "unchecked/running", "a copy still running is not read back (AD-58)")
     Do $$$AssertEquals(##class(OcuPilot.Test.AuditMarker).MarkerRows(tSince, """proposalId"":""" _ tProposalId _ """", .tData), 1, "the audit database carries one agent-write marker naming this proposal (AD-15)")
     Do $$$AssertEquals(##class(OcuPilot.Test.AuditMarker).WriteRow(tTurnKey, .tRow), 1, "one write-kind ledger row on the proposal's turn")
-    Do $$$AssertEquals($Get(tRow("Status")) _ " " _ $Get(tRow("AuditMarked")), "ok " _ $Parameter("OcuPilot.Kernel.State.Ledger", "MARKEDYES"), "finalized applied and marked, not error (AD-41)")
+    Do $$$AssertEquals($Get(tRow("Status")) _ " " _ $Get(tRow("Code")) _ " " _ $Get(tRow("AuditMarked")), "ok " _ ##class(OcuPilot.Api.PortError).#STARTED _ " " _ $Parameter("OcuPilot.Kernel.State.Ledger", "MARKEDYES"), "finalized applied, started and marked, not error (AD-41)")
+    Do $$$AssertEquals(##class(OcuPilot.Api.PortError).ReasonFor(##class(OcuPilot.Api.PortError).#STARTED), ##class(OcuPilot.Api.PortError).#REASONSTARTED, "the declared code carries its sentence")
+    Do $$$AssertEquals($ListFind(##class(OcuPilot.Api.PortError).Codes(), ##class(OcuPilot.Api.PortError).#STARTED) > 0, 1, "the declared code is listed")
     Do ..AssertTheWorkerFinishes(tBefore)
     Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Ledger).GuardedDeleteForTurn(tTurnKey), "this class removes the ledger rows it wrote")
 }
@@ -100,12 +102,15 @@ Method TestAnAgentCopyStillRunningAtTheBoundIsAppliedAndMarked()
 /// <code>updated</code> on the auditing configuration with <code>continues</code>, and emits no
 /// agent-write marker.</p>
 /// <p>Mutation (Rule 19): drop the <code>continues</code> line from
-/// <method>OcuPilot.Api.ScreenAction.Run</method> -> this goes red.</p>
+/// <method>OcuPilot.Api.ScreenAction.Run</method> -> this goes red; drop the
+/// <method>OcuPilot.Port.AdminPort.IsQueuedWrite</method> test from
+/// <method>OcuPilot.Port.AdminPort.AwaitTask</method> -> the log leg goes red.</p>
 Method TestTheScreenRouteAnswersThatACopyStillRunningContinues()
 {
     Set tSince = ##class(OcuPilot.Test.AuditEvent).Now()
     Set tBefore = $ClassMethod(..#COPY, "Count", "%SYS")
     Do $$$AssertTrue(tBefore > 0, "the instance's audit database holds records to copy (" _ tBefore _ ")")
+    Do ##class(OcuPilot.Test.LogProbe).Clear()
     Set tSC = ##class(OcuPilot.Test.AuditStartedAction).Copy(..#TARGETNS, .tAnswer, .tStatus)
     Do $$$AssertStatusOK(tSC, "the screen route runs")
     Set tBody = ""
@@ -114,6 +119,7 @@ Method TestTheScreenRouteAnswersThatACopyStillRunningContinues()
     Do $$$AssertEquals($Select($IsObject(tBody) && (tBody.%GetTypeOf("target") = "object"): tBody.%Get("action") _ " " _ tBody.%Get("target").%Get("type") _ " " _ tBody.%Get("continues"), 1: ""), "updated auditing-configuration 1", "publishing updated, and continuing on the instance")
     Do $$$AssertEquals($Select($IsObject(tBody): tBody.%GetTypeOf("continues"), 1: ""), "boolean", "continues reaches the wire as JSON true, which the client reads")
     Do $$$AssertEquals($Select($IsObject(tBody) && (tBody.%GetTypeOf("readBack") = "object"): tBody.%Get("readBack").%Get("verdict") _ "/" _ tBody.%Get("readBack").%Get("reason"), 1: ""), "unchecked/running", "a copy still running is not read back (AD-58)")
+    Do $$$AssertEquals(##class(OcuPilot.Test.LogProbe).Captured("message"), "", "and the bound it passed logs nothing (AD-26)")
     Do $$$AssertEquals(##class(OcuPilot.Test.AuditMarker).MarkerRows(tSince, ..#TOOL, .tData), 0, "the screen path emits no agent-write marker (AD-53)")
     Do ..AssertTheWorkerFinishes(tBefore)
 }

@@ -6,7 +6,8 @@
 /// parameter, property and method. The read's answer also carries <code>document</code>, the class's
 /// source, XML export or generated intermediate code, which the row cap never cuts, the read tool
 /// never sees (<method>OcuPilot.Screen.Tool.Read.View</method> keeps only the rows) and screen
-/// context never carries; screen context carries each row's kind, name, type and flags.</p>
+/// context never carries; screen context carries each row's kind, name, type and flags. The agent's
+/// source read, <code>explorer.class.source</code>, answers that text as whole lines (Story 20.19).</p>
 /// <p><b>It is reached from the Classes list's name cell and never listed</b>
 /// (<code>sideBarPosition</code> 0). Its id is the list row's <code>Name</code>, which the page sends
 /// as the read's <code>name</code> criterion; <code>form</code> chooses the text.</p>

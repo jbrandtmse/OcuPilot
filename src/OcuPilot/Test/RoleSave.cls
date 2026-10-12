@@ -8,6 +8,9 @@
 /// <code>%Admin_Secure</code>, and <parameter>ARMINGVARIABLE</parameter> reading <code>1</code>,
 /// because it creates and deletes three roles, a resource and three accounts by exact name.
 /// <method>OnBeforeAllTests</method> refuses anywhere it does not.</p>
+/// <p>Mutation (Rule 19), Story 18.29: hard-code <code>AdminOption</code> to <code>0</code> in
+/// <method>OcuPilot.Area.Permissions.RoleCreateRules.Members</method> -- the member granted WITH ADMIN OPTION reads
+/// false and this class reddens.</p>
 Class OcuPilot.Test.RoleSave Extends %UnitTest.TestCase
 {
 
@@ -145,6 +148,24 @@ Method TestTheSaveAndTheFormReadAnswerOneEnvelopeOverTheWire()
     Do $$$AssertTrue($ListFind(tSeen, ..#MEMBERROLE _ "/Role") > 0, "and the role member")
     Do $$$AssertTrue($ListFind(tSeen, ..#MEMBERUSER _ "/User (escalation)") > 0, "the account holding it both ways is listed both ways")
     Do $$$AssertTrue($ListFind(tSeen, ..#ESCALATIONUSER _ "/User (escalation)") > 0, "and the escalation-only holder once")
+    ; AdminOption (Story 18.29): every member row carries it as a boolean, and the escalation holder reads false.
+    Set tAdminTyped = 1
+    Set tEscalationAdmin = 1
+    Set tMemberAdmin = ""
+    Set tRoleAdmin = ""
+    If $IsObject(tMembers) {
+        Set tIterator = tMembers.%GetIterator()
+        While tIterator.%GetNext(.tIndex, .tRow) {
+            If tRow.%GetTypeOf("AdminOption") '= "boolean" Set tAdminTyped = 0
+            If (tRow.%Get("Name") = ..#ESCALATIONUSER) && (tRow.%Get("AdminOption") '= 0) Set tEscalationAdmin = 0
+            If (tRow.%Get("Name") = ..#MEMBERUSER) && (tRow.%Get("Type") = "User") Set tMemberAdmin = tRow.%Get("AdminOption")
+            If tRow.%Get("Name") = ..#MEMBERROLE Set tRoleAdmin = tRow.%Get("AdminOption")
+        }
+    }
+    Do $$$AssertTrue(tAdminTyped, "every member carries AdminOption as a boolean")
+    Do $$$AssertTrue(tEscalationAdmin, "the escalation-only holder's AdminOption reads false")
+    Do $$$AssertEquals(tMemberAdmin, 1, "the member granted WITH ADMIN OPTION reads AdminOption true")
+    Do $$$AssertEquals(tRoleAdmin, 0, "and the role member's AdminOption reads false")
     Do $$$AssertEquals($Select($IsObject($Get(tBody)): tBody.%Get("holders"), 1: ""), 2, "and holders counts the two distinct accounts, an escalation holder among them")
 
     For tPath = ..Path("OcuPilotNoSuchRoleSave"), ..#FORMPATH _ "?name=OcuPilotNoSuchRoleSave" {
@@ -468,6 +489,15 @@ Method EnsureProbes() As %Status
             Kill tEscalation
             Set tEscalation("EscalationRoles") = ..#PROBEROLE
             Set tSC = ##class(Security.Users).Modify(tUser, .tEscalation)
+        }
+        ; AdminOption (Story 18.29): the member also holds the role WITH ADMIN OPTION, so its own row reads true.
+        If $$$ISOK(tSC) {
+            Set tStatement = ##class(%SQL.Statement).%New()
+            Set tSC = tStatement.%Prepare("GRANT " _ ..#PROBEROLE _ " TO " _ ..#MEMBERUSER _ " WITH ADMIN OPTION")
+            If $$$ISOK(tSC) {
+                Set tGrant = tStatement.%Execute()
+                If tGrant.%SQLCODE < 0 Set tSC = $$$ERROR($$$GeneralError, "the probe role could not be granted WITH ADMIN OPTION: " _ tGrant.%Message)
+            }
         }
         Set $NAMESPACE = tOrigNS
     } Catch ex {

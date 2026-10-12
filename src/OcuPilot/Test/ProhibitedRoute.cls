@@ -93,8 +93,8 @@ Parameter PROCESSFLOORADMIN = "%Admin_Manage";
 
 /// <p>An administrative resource that is <b>not</b> <code>%Admin_Secure</code>, granted to the
 /// principal of <method>TestAnAccountShortOfTheAuditingPairIsRefusedTheNamedPair</method>.
-/// <method>OcuPilot.Api.Router.HoldsAdminResource</method> refuses a caller holding neither a
-/// <code>%Admin_*</code> resource nor <code>%Development</code> with <code>AUTH.NOADMIN</code> before any route runs, so
+/// <method>OcuPilot.Api.Router.HoldsAdminResource</method> refuses a caller holding no
+/// <code>%Admin_*</code> resource, no <code>%Development</code> and no <code>%Ens_Portal</code> with <code>AUTH.NOADMIN</code> before any route runs, so
 /// without this the leg would measure the router's floor instead of the screen's own pair
 /// set.</p>
 Parameter NONSECUREADMIN = "%Admin_Operate";
@@ -1407,7 +1407,7 @@ Method TestTheUserWriteVerbsAreRosteredAndALiveSystemDisableOrDeleteIsRefused()
     Do $$$AssertStatusOK(tSC, "the tool registry lists its tools")
     Set tIdentifier = $ClassMethod(..#USERSCREEN, "ToolIdentifier")
     Do $$$AssertNotEquals(tIdentifier, "", "the users screen declares a tool identifier")
-    Set tRoster = $ListBuild(..#USERTOOL, $Parameter("OcuPilot.Screen.Tool.UserCreate", "TOOLNAME"), "permissions.users.delete", "permissions.users.password", "permissions.users.revoketokens")
+    Set tRoster = $ListBuild(..#USERTOOL, $Parameter("OcuPilot.Screen.Tool.UserCreate", "TOOLNAME"), $Parameter("OcuPilot.Screen.Tool.UserCopy", "TOOLNAME"), "permissions.users.delete", "permissions.users.password", "permissions.users.revoketokens", "permissions.users.grantsql", "permissions.users.revokesql")
     Set tSeen = 0
     Set tWrites = 0
     Set tIterator = tTools.%GetIterator()
@@ -1419,7 +1419,7 @@ Method TestTheUserWriteVerbsAreRosteredAndALiveSystemDisableOrDeleteIsRefused()
         Do $$$AssertTrue($ListFind(tRoster, tTool.%Get("name")) > 0, "every write verb on " _ tIdentifier _ " is a rostered one, not '" _ tTool.%Get("name") _ "'")
     }
     Do $$$AssertTrue(tSeen > 0, "the registry carries tools on " _ tIdentifier _ " at all, so this assertion ran over something")
-    Do $$$AssertEquals(tWrites, $ListLength(tRoster), "and exactly the rostered five are write-kind")
+    Do $$$AssertEquals(tWrites, $ListLength(tRoster), "and exactly the rostered eight are write-kind")
 
     Kill tQuery
     Set tQuery("name") = ..#SYSTEMACCOUNT

@@ -78,6 +78,7 @@ ClassMethod ProhibitedClass() As %String
 ClassMethod HandleCreate() As %Status
 {
     Set tSC = $$$OK
+    Set tHoldKey = ""
     Set (tSecrets, tToken) = ""
     Try {
         Set tGateSC = ..Gate(.tRefused)
@@ -96,6 +97,11 @@ ClassMethod HandleCreate() As %Status
         Set tSecrets = ..TakeSecrets(tBody)
         Set tToken = ..TakeText(tBody, ..#TOKENFIELD)
         Set tName = $ClassMethod(..#RULES, "Text", tBody, ..#IDARGUMENT)
+        Set tHoldSC = ##class(OcuPilot.Kernel.Proposal.Operation).HoldTool(..#CREATETOOL, tName, .tHeld, .tHoldKey)
+        If $$$ISERR(tHoldSC) || 'tHeld {
+            Set tSC = ##class(OcuPilot.Api.Error).RenderTargetBusy(tHoldSC)
+            Quit
+        }
         Set tPerformSC = ..Create(tName, tBody, .tHttp, .tFault, .tViolations, .tAnswer, .tWrite)
         Set (tSecretsReason, tTokenReason, tReadBack, tStored) = ""
         If $$$ISOK(tPerformSC) && '$Get(tViolations) {
@@ -111,6 +117,7 @@ ClassMethod HandleCreate() As %Status
         Set (tSecrets, tToken) = ""
         Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ex)
     }
+    Do ##class(OcuPilot.Kernel.Proposal.Operation).Release(tHoldKey)
     Quit tSC
 }
 
@@ -125,6 +132,7 @@ ClassMethod HandleCreate() As %Status
 ClassMethod HandleUpdate(pId As %String) As %Status
 {
     Set tSC = $$$OK
+    Set tHoldKey = ""
     Set (tSecrets, tToken) = ""
     Try {
         Set tGateSC = ..Gate(.tRefused)
@@ -143,6 +151,11 @@ ClassMethod HandleUpdate(pId As %String) As %Status
         Set tSecrets = ..TakeSecrets(tBody)
         Set tToken = ..TakeText(tBody, ..#TOKENFIELD)
         Set tName = ##class(OcuPilot.Kernel.EntityId).Decode(pId)
+        Set tHoldSC = ##class(OcuPilot.Kernel.Proposal.Operation).HoldTool(..#UPDATETOOL, tName, .tHeld, .tHoldKey)
+        If $$$ISERR(tHoldSC) || 'tHeld {
+            Set tSC = ##class(OcuPilot.Api.Error).RenderTargetBusy(tHoldSC)
+            Quit
+        }
         Set tPerformSC = ..Update(tName, tBody, .tHttp, .tFault, .tViolations, .tAnswer, .tServer, .tWrite)
         If $$$ISERR(tPerformSC) && (+$Get(tHttp) = 404) && '$Get(tViolations) {
             Set (tSecrets, tToken) = ""
@@ -163,6 +176,7 @@ ClassMethod HandleUpdate(pId As %String) As %Status
         Set (tSecrets, tToken) = ""
         Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ex)
     }
+    Do ##class(OcuPilot.Kernel.Proposal.Operation).Release(tHoldKey)
     Quit tSC
 }
 
@@ -246,12 +260,8 @@ ClassMethod Update(pName As %String, pArgs As %DynamicObject, Output pHttpStatus
         Set tSC = $ClassMethod(tRules, "Validate", pName, pArgs, .pViolations, "update", 1, tFresh)
         If $$$ISERR(tSC) || (pViolations > 0) Quit
 
-        ; The members the form changed, applied over the fresh read's: the tool's Metadata argument is
-        ; the whole metadata the configuration will hold.
-        Set tArgs = ..Copy(pArgs)
-        If tArgs.%GetTypeOf("Metadata") = "object" Do tArgs.%Set("Metadata", ..MergedMetadata(tFresh, tArgs.%Get("Metadata")))
-
-        Set tSC = ##class(OcuPilot.Kernel.Proposal.Mint).Merge(tFresh, tArgs, "", $ClassMethod(tClass, "SettableFields"), .tPayload, .tDiff, .tUnchanged, .tProblem)
+        ; The members the form changed are applied over the fresh read's by the tool's own merge.
+        Set tSC = $ClassMethod(tClass, "MergeUpdate", tFresh, pArgs, "", $ClassMethod(tClass, "SettableFields"), .tPayload, .tDiff, .tUnchanged, .tProblem)
         If $$$ISERR(tSC) Quit
         If tProblem '= "" {
             Set tSC = $$$ERROR($$$GeneralError, "the edit's payload could not be merged after its rules passed: " _ tProblem)
@@ -273,27 +283,6 @@ ClassMethod Update(pName As %String, pArgs As %DynamicObject, Output pHttpStatus
         Set tSC = ex.AsStatus()
     }
     Quit tSC
-}
-
-/// <p>The metadata <var>pFresh</var> holds with each member <var>pChanges</var> names applied: a
-/// member set to <code>""</code> or <code>[]</code> is removed, which the expansion then sends empty;
-/// any other value replaces the stored one. The caller has held <var>pChanges</var> to the rules.</p>
-ClassMethod MergedMetadata(pFresh As %DynamicObject, pChanges As %DynamicObject) As %DynamicObject
-{
-    Set tMerged = {}
-    If $IsObject(pFresh) && (pFresh.%GetTypeOf("Metadata") = "object") Set tMerged = ..Copy(pFresh.%Get("Metadata"))
-    Set tIterator = pChanges.%GetIterator()
-    While tIterator.%GetNext(.tMember, .tValue) {
-        Set tType = pChanges.%GetTypeOf(tMember)
-        If (tType = "null") || ((tType = "string") && (tValue = "")) || ((tType = "array") && (tValue.%Size() = 0)) {
-            Do tMerged.%Remove(tMember)
-        } ElseIf (tType = "array") || (tType = "object") {
-            Do tMerged.%Set(tMember, ..Copy(tValue))
-        } Else {
-            Do tMerged.%Set(tMember, tValue, tType)
-        }
-    }
-    Quit tMerged
 }
 
 /// <p>Store <var>pSecrets</var> -- the client's own declared secrets, each non-empty -- for

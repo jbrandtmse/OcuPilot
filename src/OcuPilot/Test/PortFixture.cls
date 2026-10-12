@@ -18,7 +18,7 @@ Class OcuPilot.Test.PortFixture Extends OcuPilot.Port.AdminPort
 /// surface has no place in it. <class>OcuPilot.Test.ToolWrite</class> reads
 /// <class>OcuPilot.Port.AdminPort</class>'s own copy, so this override cannot satisfy that
 /// roster.</p>
-Parameter MUTATINGTYPES = "WebApp.App/PUT,Security.User/PUT,Security.Audit.Enabled/PUT,Task.CRUD/RESUME,Process/SUSPEND,Process/RESUME,OcuPilotProbeAsyncWrite/PUT,Security.User/POST,Security.Role/PUT,Security.Role/DELETE,Security.Resource/PUT,Security.Resource/DELETE,Security.X509Credential/POST,Security.X509Credential/PUT,Security.X509Credential/DELETE,Wallet.Secret/PUT,Device.Standard/PUT,Device.Standard/DELETE,WebApp.App/DELETE,Security.OAuth2.Client.ClientConfiguration/DELETE,Security.OAuth2.ServerClients/DELETE,Security.User/DELETE,Security.User/CHANGEPWD,Task.CRUD/RUN,Task.CRUD/SUSPEND,Task.CRUD/DELETE,Process/TERMINATE,Security.Audit.Event/PUT,Security.Audit.Event/DELETE,Security.Audit.Event/CLEARCOUNT,Security.SSLConfig/PUT,Security.SSLConfig/DELETE,Wallet.Secret/DELETE,Task.CRUD/POST,Task.CRUD/PUT,Security.Service/PUT,Security.LDAP/PUT,Security.OAuth2.Server/REVOKE,Security.Audit.Record/COPY,Security.Audit.Record/PURGE,Security.OAuth2.Client.ServerDefinition/POST,Security.OAuth2.Client.ServerDefinition/PUT,Security.OAuth2.Client.ServerDefinition/DELETE,Security.OAuth2.Client.ServerDefinition/TOKEN,Security.OAuth2.Client.ServerDefinition/REFRESHJWKS,Security.OAuth2.Client.ClientConfiguration/PUT,Security.OAuth2.Client.ClientConfiguration/CHANGESECRET,Security.OAuth2.Client.ClientConfiguration/ROTATEKEYS,Security.OAuth2.Client.ClientConfiguration/REGISTERCLIENT,Security.OAuth2.ResourceServer/PUT,Security.OAuth2.ResourceServer/CHANGESECRET,Security.OAuth2.ResourceServer/DELETE,Security.OAuth2.ResourceServer/ADDMAPPING,Security.OAuth2.ResourceServer/REMOVEMAPPING,Security.OAuth2.ResourceServerMapping/PUT,Security.OAuth2.ResourceServerMapping/DELETE,Security.OAuth2.Server/PUT,Security.OAuth2.Server/DELETE,Security.OAuth2.Server/CHANGEPWD,Security.OAuth2.Server/ROTATEKEYS,Security.OAuth2.ServerClients/POST,Security.OAuth2.ServerClients/PUT,Security.OAuth2.ServerClients/SECRET,Security.OAuth2.ServerClients/REFRESHJWKS,Namespace.Namespace/PUT,Namespace.Namespace/DELETE,WebSession/DELETE,AsyncResult/CANCEL,AsyncResult/PAUSE,AsyncResult/RESUME,BackgroundTask/CANCEL,BackgroundTask/PAUSE,BackgroundTask/RESUME,Namespace.GlobalMappings/PUT,Namespace.GlobalMappings/DELETE,Namespace.RoutineMappings/PUT,Namespace.RoutineMappings/DELETE,Namespace.PackageMappings/PUT,Namespace.PackageMappings/DELETE,Namespace.Namespace/MAPPINGS,Process/BROADCAST,Database.SysCRUD/POST,Database.SysCRUD/PUT,Database.SysCRUD/DELETE,Database.ConfigCRUD/PUT,Database.ConfigCRUD/DELETE,Database.Actions/MOUNT,Database.Actions/DISMOUNT,Database.Actions/TRUNCATE,Database.Actions/COMPACT,Database.Actions/DEFRAGMENT,Database.Actions/EXPANDVOL,Database.Actions/MODIFYSIZE,Database.Actions/INTEGRITYCHECK,TaskTransfer/EXPORT,TaskTransfer/IMPORT,LanguageServer/START,LanguageServer/STOP,LanguageServer/PUT,LanguageServer/DELETE,Task.Manager/SUSPEND,Task.Manager/RESUME,Task.Manager/RUN,Lock/REMOVE,Lock/REMOVEOWNER,Lock/DELETE,Security.LDAP/CHANGEPWD,Security.LDAP/DELETE,Namespace.Namespace/INTEROP,Journal.Settings/SWITCHFILE,Journal.Settings/SWITCHDIR,Journal.File/INTEGRITYCHECK,Journal.Settings/PUT,License.Key/PUT,License.Server/PUT,License.Server/DELETE,ECP.DataServer/PUT,ECP.DataServer/DELETE,ECP.DataServer/SERVERACTION,ECP.Settings/PUT,ECP.AppServerSSLConnection/AUTHORIZE,ECP.AppServerSSLConnection/REJECT,ECP.AppServerSSLConnection/DELETE,Security.Encryption.File/POST,Security.Encryption.File/ACTIVATE,Security.Encryption.Key/DEACTIVATE,Security.Encryption.AdminInFile/POST,Security.Encryption.AdminInFile/DELETE,Security.Encryption.KeyInFile/POST,Security.Encryption.KeyInFile/DELETE,Security.Encryption.Settings/PUT";
+Parameter MUTATINGTYPES = "WebApp.App/PUT,WebApp.PctClassAccess/PUT,WebApp.PctClassAccess/DELETE,Security.User/PUT,Security.Audit.Enabled/PUT,Task.CRUD/RESUME,Process/SUSPEND,Process/RESUME,OcuPilotProbeAsyncWrite/PUT,Security.User/POST,Security.Role/PUT,Security.Role/DELETE,Security.Resource/PUT,Security.Resource/DELETE,Security.X509Credential/POST,Security.X509Credential/PUT,Security.X509Credential/DELETE,Wallet.Secret/PUT,Device.Standard/PUT,Device.Standard/DELETE,WebApp.App/DELETE,Security.OAuth2.Client.ClientConfiguration/DELETE,Security.OAuth2.ServerClients/DELETE,Security.User/DELETE,Security.User/CHANGEPWD,Security.User/COPY,Task.CRUD/RUN,Task.CRUD/SUSPEND,Task.CRUD/DELETE,Process/TERMINATE,Security.Audit.Event/PUT,Security.Audit.Event/DELETE,Security.Audit.Event/CLEARCOUNT,Security.SSLConfig/PUT,Security.SSLConfig/DELETE,Wallet.Secret/DELETE,Task.CRUD/POST,Task.CRUD/PUT,Security.Service/PUT,Security.LDAP/PUT,Security.OAuth2.Server/REVOKE,Security.Audit.Record/COPY,Security.Audit.Record/PURGE,Security.OAuth2.Client.ServerDefinition/POST,Security.OAuth2.Client.ServerDefinition/PUT,Security.OAuth2.Client.ServerDefinition/DELETE,Security.OAuth2.Client.ServerDefinition/TOKEN,Security.OAuth2.Client.ServerDefinition/REFRESHJWKS,Security.OAuth2.Client.ClientConfiguration/PUT,Security.OAuth2.Client.ClientConfiguration/CHANGESECRET,Security.OAuth2.Client.ClientConfiguration/ROTATEKEYS,Security.OAuth2.Client.ClientConfiguration/REGISTERCLIENT,Security.OAuth2.ResourceServer/PUT,Security.OAuth2.ResourceServer/CHANGESECRET,Security.OAuth2.ResourceServer/DELETE,Security.OAuth2.ResourceServer/ADDMAPPING,Security.OAuth2.ResourceServer/REMOVEMAPPING,Security.OAuth2.ResourceServerMapping/PUT,Security.OAuth2.ResourceServerMapping/DELETE,Security.OAuth2.Server/PUT,Security.OAuth2.Server/DELETE,Security.OAuth2.Server/CHANGEPWD,Security.OAuth2.Server/ROTATEKEYS,Security.OAuth2.ServerClients/POST,Security.OAuth2.ServerClients/PUT,Security.OAuth2.ServerClients/SECRET,Security.OAuth2.ServerClients/REFRESHJWKS,Namespace.Namespace/PUT,Namespace.Namespace/DELETE,WebSession/DELETE,AsyncResult/CANCEL,AsyncResult/PAUSE,AsyncResult/RESUME,BackgroundTask/CANCEL,BackgroundTask/PAUSE,BackgroundTask/RESUME,Namespace.GlobalMappings/PUT,Namespace.GlobalMappings/DELETE,Namespace.RoutineMappings/PUT,Namespace.RoutineMappings/DELETE,Namespace.PackageMappings/PUT,Namespace.PackageMappings/DELETE,Namespace.Namespace/MAPPINGS,Process/BROADCAST,Database.SysCRUD/POST,Database.SysCRUD/PUT,Database.SysCRUD/DELETE,Database.ConfigCRUD/PUT,Database.ConfigCRUD/DELETE,Database.Actions/MOUNT,Database.Actions/DISMOUNT,Database.Actions/TRUNCATE,Database.Actions/COMPACT,Database.Actions/DEFRAGMENT,Database.Actions/EXPANDVOL,Database.Actions/MODIFYSIZE,Database.Actions/INTEGRITYCHECK,TaskTransfer/EXPORT,TaskTransfer/IMPORT,LanguageServer/START,LanguageServer/STOP,LanguageServer/PUT,LanguageServer/DELETE,Task.Manager/SUSPEND,Task.Manager/RESUME,Task.Manager/RUN,Lock/REMOVE,Lock/REMOVEOWNER,Lock/DELETE,Security.LDAP/CHANGEPWD,Security.LDAP/DELETE,Namespace.Namespace/INTEROP,Journal.Settings/SWITCHFILE,Journal.Settings/SWITCHDIR,Journal.File/INTEGRITYCHECK,Journal.Settings/PUT,License.Key/PUT,License.Server/PUT,License.Server/DELETE,ECP.DataServer/PUT,ECP.DataServer/DELETE,ECP.DataServer/SERVERACTION,ECP.Settings/PUT,ECP.AppServerSSLConnection/AUTHORIZE,ECP.AppServerSSLConnection/REJECT,ECP.AppServerSSLConnection/DELETE,Security.Encryption.File/POST,Security.Encryption.File/ACTIVATE,Security.Encryption.Key/DEACTIVATE,Security.Encryption.AdminInFile/POST,Security.Encryption.AdminInFile/DELETE,Security.Encryption.KeyInFile/POST,Security.Encryption.KeyInFile/DELETE,Security.Encryption.Settings/PUT,Security.WebAuth/PUT,Security.WebAuth/CHANGESMTPPWD,Security.Superserver/PUT,Security.Superserver/DELETE,Security.MFT/PUT,Security.MFT/DELETE,Security.MFT/REVOKE,Security.SQLPrivilege.Standard/GRANT,Security.SQLPrivilege.Standard/REVOKE,Security.SQLPrivilege.Column/GRANT,Security.SQLPrivilege.Column/REVOKE,Security.SQLPrivilege.Admin/GRANT,Security.SQLPrivilege.Admin/REVOKE,DocDB/PUT,DocDB/DELETE,Security.PrivilegedRoutine/PUT,Security.PrivilegedRoutine/DELETE";
 
 /// <p>Point the derivation at <var>pClass</var> instead of the vendor's routing class.
 /// <code>""</code> restores the production value.</p>
@@ -88,8 +88,10 @@ ClassMethod SetCannedPollRefusal(pHttp As %Integer, pText As %String)
 /// <p>A recorded value: <code>name</code> (the endpoint's <code>Name</code> when
 /// <code>Run()</code> was about to start), <code>taskName</code> (the last real poll's
 /// <code>TaskName</code>), <code>forgot</code> (the GUID last passed to
-/// <method>ForgetTask</method>) or <code>polls</code> (how many polls ran). <code>""</code> when
-/// never recorded.</p>
+/// <method>ForgetTask</method>), <code>polls</code> (how many polls ran), <code>endpoint</code>
+/// (the endpoint name last asked of the port, before any vendor endpoint is constructed) or
+/// <code>logCalls</code> (how many lines <method>LogFault</method> wrote).
+/// <code>""</code> when never recorded.</p>
 ClassMethod Recorded(pKey As %String) As %String
 {
     Quit $Get(^||OcuPilotPortFixture("recorded", pKey), "")
@@ -117,6 +119,7 @@ ClassMethod ProbeEndpointClass() As %String
 
 ClassMethod EndpointClass(pEndpoint As %String) As %String
 {
+    Set ^||OcuPilotPortFixture("recorded", "endpoint") = pEndpoint
     Set tForced = $Get(^||OcuPilotPortFixture("endpoint"), "")
     If tForced '= "" Quit tForced
     Quit ##super(pEndpoint)
@@ -186,6 +189,7 @@ ClassMethod ForgetTask(pGuid As %String)
 
 ClassMethod LogFault(pMessage As %String, pStatus As %Status, pCode As %String = "")
 {
+    Set ^||OcuPilotPortFixture("recorded", "logCalls") = $Get(^||OcuPilotPortFixture("recorded", "logCalls"), 0) + 1
     Do ##class(OcuPilot.Test.FaultProbe).LogRaw("adminport", pMessage, pStatus, pCode)
 }
 
@@ -276,6 +280,15 @@ ClassMethod TaskGlobalsCarry(pText As %String) As %Boolean
         Set tCarries = 1
     }
     Quit tCarries
+}
+
+
+/// <p>Poll the task a canned answer stands for to its end, as <method>OcuPilot.Port.AdminPort.AwaitTask</method>
+/// does for <var>pEndpoint</var>'s request type <var>pType</var> (the suffix form), under
+/// <method>AsyncTimeout</method>. <var>pHttpStatus</var> and <var>pFault</var> are the poll's answer.</p>
+ClassMethod Await(pEndpoint As %String, pType As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status
+{
+    Quit ..AwaitTask(pEndpoint, ##class(OcuPilot.Test.EndpointFixture).#TASKGUID, .tResult, .pHttpStatus, .pFault, pType)
 }
 
 }

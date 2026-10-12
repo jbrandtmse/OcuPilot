@@ -94,7 +94,7 @@ ClassMethod Described(pSchema As %DynamicObject, pCreates As %Boolean) As %Dynam
     If pCreates {
         Set tText = "The authorization server's metadata, as its discovery document names it. authorization_endpoint and token_endpoint are required."
     } Else {
-        Set tText = "The description's whole metadata. It replaces the stored metadata: a member left out is cleared, so send every member to keep, authorization_endpoint and token_endpoint included. Omit it to leave the metadata as it is."
+        Set tText = "The metadata members to change, as the discovery document names them. Send only those: every member left out keeps its stored value, and an empty string or an empty list clears one. authorization_endpoint and token_endpoint cannot be cleared. Omit it to leave the metadata as it is."
     }
     Set tMetadata = ##class(OcuPilot.Area.Security.OAuthServerRules).MetadataSchema(tText)
     If $IsObject(tMetadata) Do tProperties.%Set(..#METADATAFIELD, tMetadata)
@@ -119,8 +119,21 @@ ClassMethod ArgumentProblem(pIdValue As %String, pArgs As %DynamicObject, Output
 ClassMethod RuleProblem(pIdValue As %String, pArgs As %DynamicObject, pMode As %String, pFresh As %DynamicObject, Output pProblem As %String) As %Status
 {
     Set pProblem = ""
-    Set tSC = ##class(OcuPilot.Area.Security.OAuthServerRules).Validate(pIdValue, pArgs, .tViolations, pMode, 0, pFresh)
-    If $$$ISERR(tSC) Quit tSC
+    Set tRules = "OcuPilot.Area.Security.OAuthServerRules"
+    Set tArgs = pArgs
+    Set tPartial = 0
+    ; An edit names the members it changes: they are held to their names and shapes as sent, and the
+    ; rules then judge the metadata the description will hold.
+    If (pMode = "update") && $IsObject(pArgs) && (pArgs.%GetTypeOf("Metadata") = "object") {
+        Set tSC = $ClassMethod(tRules, "MemberViolations", pArgs.%Get("Metadata"), .tViolations)
+        If $$$ISERR(tSC) Quit tSC
+        Set tPartial = +$Get(tViolations)
+        Set tArgs = $ClassMethod(tRules, "MergedArguments", pFresh, pArgs)
+    }
+    If 'tPartial {
+        Set tSC = $ClassMethod(tRules, "Validate", pIdValue, tArgs, .tViolations, pMode, 0, pFresh)
+        If $$$ISERR(tSC) Quit tSC
+    }
     For tI = 1:1:$Get(tViolations) {
         Set tReason = ##class(OcuPilot.Api.Error).ReasonForViolation($List(tViolations(tI), 2))
         Set pProblem = pProblem _ $Select(pProblem = "": "", 1: " ") _ "'" _ $List(tViolations(tI), 1) _ "': " _ tReason

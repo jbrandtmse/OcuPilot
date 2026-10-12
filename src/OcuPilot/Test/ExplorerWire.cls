@@ -190,7 +190,7 @@ Method TestTheReadToolsAnswerRowsAndNeverTheDocument()
     Do $$$AssertStatusOK(tSC, "a probe turn is seeded")
     If $$$ISERR(tSC) Quit
     Try {
-        For tCase = $ListBuild("explorer.classes.read", "{}", "Name", "{""pattern"":""*"",""system"":""no"",""generated"":""no"",""mapped"":""yes"",""from"":"""",""to"":""""}"), $ListBuild("explorer.routines.read", "{}", "Name", "{""pattern"":""*.mac"",""system"":""no"",""generated"":""yes"",""mapped"":""yes"",""from"":"""",""to"":""""}"), $ListBuild("explorer.class.read", "{""name"":""OcuPilot.Port.AdminPort.cls""}", "Description", "{""name"":""OcuPilot.Port.AdminPort.cls"",""form"":""udl""}"), $ListBuild("explorer.routine.read", "{""name"":""HS.HC.Info.mac""}", "Type", "{""name"":""HS.HC.Info.mac"",""form"":""udl""}") {
+        For tCase = $ListBuild("explorer.classes.read", "{}", "Name", "{""pattern"":""*"",""system"":""no"",""generated"":""no"",""mapped"":""yes"",""from"":"""",""to"":""""}"), $ListBuild("explorer.routines.read", "{}", "Name", "{""pattern"":""*.mac"",""system"":""no"",""generated"":""yes"",""mapped"":""yes"",""from"":"""",""to"":""""}"), $ListBuild("explorer.class.read", "{""name"":""OcuPilot.Kernel.Agent.Limits.cls""}", "Description", "{""name"":""OcuPilot.Kernel.Agent.Limits.cls"",""form"":""udl""}"), $ListBuild("explorer.routine.read", "{""name"":""HS.HC.Info.mac""}", "Type", "{""name"":""HS.HC.Info.mac"",""form"":""udl""}") {
             Set tUse = {"type": "tool_use", "id": "toolu_explorer"}
             Do tUse.%Set("name", ##class(OcuPilot.Screen.Tool.Registry).WireName($List(tCase, 1)), "string")
             Do tUse.%Set("input", ##class(%DynamicObject).%FromJSON($List(tCase, 2)))

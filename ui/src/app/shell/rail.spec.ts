@@ -79,7 +79,7 @@ function area(key: string, labelKey: string, position: number, extra: Partial<Ar
   } as AreaDeclaration;
 }
 
-/** The nine areas the mirror declares, in the order the rail renders them. */
+/** The eleven areas the mirror declares, in the order the rail renders them. */
 const AREAS: readonly AreaDeclaration[] = [
   area('home', 'navAreaHome', 1, { navigates: true }),
   area('logs', 'navAreaLogs', 2),
@@ -89,7 +89,9 @@ const AREAS: readonly AreaDeclaration[] = [
   area('web-applications', 'navAreaWebApplications', 6),
   area('security', 'navAreaSecurity', 7),
   area('system-explorer', 'navAreaSystemExplorer', 8),
-  area('agent', 'navAreaAgent', 9, { pinBottom: true }),
+  area('interoperability', 'navAreaInteroperability', 9),
+  area('analytics', 'navAreaAnalytics', 10),
+  area('agent', 'navAreaAgent', 11, { pinBottom: true }),
 ];
 
 class StubNavigation {
@@ -107,8 +109,18 @@ class StubNavigation {
     return true;
   }
 
+  /** Whether the stubbed map has answered for the current namespace. */
+  answeredFlag = true;
+
+  appliesAnswered(): boolean {
+    return this.answeredFlag;
+  }
+
+  /** Areas the rail no longer offers, because their category does not apply in this namespace. */
+  readonly unoffered = new Set<string>();
+
   areas(): readonly AreaDeclaration[] {
-    return AREAS;
+    return AREAS.filter((area) => !this.unoffered.has(area.key));
   }
 
   screensForArea(): readonly ScreenDeclaration[] {
@@ -184,7 +196,7 @@ describe('the activity rail', () => {
     expect(nav.getAttribute('aria-label')).toBe(STRINGS.navRailLandmark);
 
     const rendered = items();
-    expect(rendered).toHaveLength(9);
+    expect(rendered).toHaveLength(11);
     expect(rendered.map((item) => item.getAttribute('aria-label'))).toEqual([
       STRINGS.navAreaHome,
       STRINGS.navAreaLogs,
@@ -194,6 +206,8 @@ describe('the activity rail', () => {
       STRINGS.navAreaWebApplications,
       STRINGS.navAreaSecurity,
       STRINGS.navAreaSystemExplorer,
+      STRINGS.navAreaInteroperability,
+      STRINGS.navAreaAnalytics,
       STRINGS.navAreaAgent,
     ]);
 
@@ -243,10 +257,41 @@ describe('the activity rail', () => {
     fixture.detectChanges();
     expect(document.activeElement).toBe(items()[0]);
 
-    // Up from the first wraps to the last, so the ninth item is reachable in one key.
+    // Up from the first wraps to the last, so the last item is reachable in one key.
     items()[0].dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp', bubbles: true }));
     fixture.detectChanges();
-    expect(document.activeElement).toBe(items()[8]);
+    expect(document.activeElement).toBe(items()[10]);
+  });
+
+  it('Story 20.1: keeps its one Tab stop when the namespace shortens the rail under it', () => {
+    // Mutation (Rule 19): drop the clamp from `Rail.resolved` -> no item is tabindex 0 here.
+    items()[0].dispatchEvent(new KeyboardEvent('keydown', { key: 'End', bubbles: true }));
+    fixture.detectChanges();
+    expect(items()[10].tabIndex).toBe(0);
+
+    navigation.unoffered.add('interoperability');
+    navigation.unoffered.add('analytics');
+    navigation.notify();
+    fixture.detectChanges();
+    expect(items()).toHaveLength(9);
+    expect(items().filter((item) => item.tabIndex === 0)).toHaveLength(1);
+    expect(items()[8].tabIndex).toBe(0);
+  });
+
+  it('sets data-map-answered on the nav only while the map has answered for the namespace', () => {
+    // Mutation (Rule 19): bind the attribute to a constant `true` -> the second assertion reddens.
+    const nav: HTMLElement = fixture.nativeElement.querySelector('nav');
+    expect(nav.getAttribute('data-map-answered')).toBe('true');
+
+    navigation.answeredFlag = false;
+    navigation.notify();
+    fixture.detectChanges();
+    expect(nav.getAttribute('data-map-answered')).toBe('false');
+
+    navigation.answeredFlag = true;
+    navigation.notify();
+    fixture.detectChanges();
+    expect(nav.getAttribute('data-map-answered')).toBe('true');
   });
 
   it('marks the active area aria-current="page" and nothing else', () => {
@@ -264,7 +309,7 @@ describe('the activity rail', () => {
     fixture.detectChanges();
 
     const rendered = items();
-    expect(rendered).toHaveLength(9);
+    expect(rendered).toHaveLength(11);
 
     const gated = rendered[4];
     expect(gated.getAttribute('aria-label')).toBe(STRINGS.navAreaPermissions);

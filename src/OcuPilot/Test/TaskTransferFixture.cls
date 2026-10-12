@@ -137,7 +137,8 @@ ClassMethod FileText(pFile As %String) As %String
 }
 
 /// <p>A task export file's text holding one <code>Task</code> element per entry of <var>pTasks</var>,
-/// each <code>{Name, NameSpace, TaskClass, RunAsUser, JobGUID}</code>, run on demand from tomorrow.</p>
+/// each <code>{Name, NameSpace, TaskClass, RunAsUser, JobGUID}</code>, run on demand from tomorrow. A
+/// member the entry does not define writes no element.</p>
 ClassMethod ExportText(pTasks As %DynamicArray) As %String
 {
     Set tText = "<?xml version=""1.0"" encoding=""UTF-8""?>" _ $Char(10) _ "<Tasks>"
@@ -145,6 +146,7 @@ ClassMethod ExportText(pTasks As %DynamicArray) As %String
     While tIterator.%GetNext(.tIndex, .tTask) {
         Set tText = tText _ "<Task>"
         For tField = "Name", "RunAsUser", "TaskClass", "NameSpace" {
+            If 'tTask.%IsDefined(tField) Continue
             Set tText = tText _ "<" _ tField _ ">" _ $ZConvert(tTask.%Get(tField), "O", "XML") _ "</" _ tField _ ">"
         }
         Set tText = tText _ "<TimePeriod>5</TimePeriod><JobGUID>" _ tTask.%Get("JobGUID") _ "</JobGUID><StartDate>" _ $ZDate($Horolog + 1, 3) _ "</StartDate><Description>" _ ..#DESCRIPTION _ "</Description></Task>"

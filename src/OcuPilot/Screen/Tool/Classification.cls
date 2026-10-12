@@ -13,8 +13,8 @@
 /// may not collide with a derived path. An optional <code>compare</code> object maps a top-level
 /// row of the list to how the read-back compares a field the instance normalizes on save (AD-58):
 /// <code>unordered</code> (an array, as a multiset), <code>unslashed</code>, <code>words</code>,
-/// <code>letters</code>, <code>members</code> (an object, on the members sent) or
-/// <code>written</code> (never read back); a mode on a <code>secret</code> path is refused. The
+/// <code>letters</code>, <code>members</code> (an object, on the members sent), <code>caller</code> (a
+/// blank value stored as the writing account) or <code>written</code> (never read back); a mode on a <code>secret</code> path is refused. The
 /// declarations are measured: user <code>Roles</code>, role <code>GrantedRoles</code> and
 /// <code>Resources</code> read back sorted, a resource's <code>PublicPermission</code>
 /// <code>"WR"</code> reads back <code>"RW"</code>, the OAuth 2.0 <code>Metadata</code> objects merge
@@ -38,6 +38,35 @@ Class OcuPilot.Screen.Tool.Classification Extends %RegisteredObject
 /// tool authors <code>LDAPSearchPassword</code> as <code>secret</code>: its write sends that declared
 /// secret and nothing else, under the vendor's own <code>CHANGEPWD</code> key (AD-56), and the
 /// template never shows it. <code>LDAPCACertFile</code> is ordinary and no tool admits it (AD-21).</p>
+/// <p><b><code>security.authoptions.update</code></b> and <b><code>security.authoptions.smtppassword</code></b>
+/// (Story 18.8) classify <code>Security.WebAuth</code>'s twenty-one rows <code>ordinary</code>:
+/// <code>AutheLoginToken</code> is a boolean flag the credential pattern's <code>token</code> suffix
+/// matches, held an exception by Conventions &#8250; Secrets. The password tool authors
+/// <code>SMTPPassword</code> as <code>secret</code>: its write sends that declared secret and nothing else,
+/// under the vendor's own <code>CHANGESMTPPWD</code> key (AD-56), and the template never shows it.</p>
+/// <p><b><code>security.superservers.create</code></b> and <b><code>security.superservers.update</code></b>
+/// (Story 18.25) classify <code>Security.Superserver</code>'s sixteen rows <code>ordinary</code>.
+/// <code>SystemDefault</code> is ordinary and neither tool admits it: it is shown and never set (AD-4), and each
+/// tool's positive list decides that.</p>
+/// <p><b><code>security.mftconnections.create</code></b> and <b><code>security.mftconnections.update</code></b>
+/// (Story 18.26) classify <code>Security.MFT</code>'s five rows <code>ordinary</code>: a connection holds no
+/// secret, its authorization being a token the classic page obtains and no read returns. The update tool's
+/// positive list leaves out <code>Service</code>, which only a create sets.</p>
+/// <p><b><code>webapp.docdbapps.create</code></b> and <b><code>webapp.docdbapps.update</code></b> (Story 18.30) classify
+/// <code>DocDB</code>'s three rows <code>ordinary</code>: a Doc DB application record holds no secret. Both tools admit
+/// all three.</p>
+/// <p><b><code>webapp.routineapps.create</code></b> and <b><code>webapp.routineapps.update</code></b> (Story 18.31)
+/// classify <code>Security.PrivilegedRoutine</code>'s <code>Description</code>, <code>Enabled</code> and
+/// <code>Resource</code> <code>ordinary</code> and leave <code>MatchRoles</code> and <code>Routines</code> unnamed, as
+/// <code>webapp.list.update</code> leaves its role lists: they emit <code>secret</code>, so neither tool admits them,
+/// and the update still sends the lists its fresh read answered (AD-4).</p>
+/// <p><b><code>security.secrets.creatersa</code></b>, <b>.createsymmetric</b>, <b>.replacersa</b> and
+/// <b>.replacesymmetric</b> (Story 18.24) classify their type's list: <code>Length</code>,
+/// <code>HasPrivateKey</code>, <code>HasCertificate</code> and <code>KeyId</code> are <code>ordinary</code>
+/// metadata, and every key material member -- <code>Certificate</code>, <code>PublicKey</code>,
+/// <code>PrivateKey</code>, <code>Password</code>, <code>Secret</code> and <code>Secret64</code> -- is
+/// <code>secret</code>, public halves included. The three <code>*File</code> members are
+/// <code>ordinary</code> and no tool admits them: key material is content, never a path (AD-21).</p>
 /// <p><b><code>osmgmt.languageservers.create</code></b> and <b><code>osmgmt.languageservers.update</code></b>
 /// (Story 16.25) classify the untyped <code>LanguageServer</code> list's literals
 /// <code>ordinary</code> and its member-less <code>Custom</code> <code>opaque</code>, compared by the
@@ -238,6 +267,61 @@ XData Entries
       "AdminPassword": "secret"
     }
   },
+  "security.authoptions.update": {
+    "fieldList": "Security.WebAuth",
+    "classification": {
+      "AutheUnauthenticated": "ordinary",
+      "AutheOS": "ordinary",
+      "AutheOSDelegated": "ordinary",
+      "AutheOSLDAP": "ordinary",
+      "AutheCache": "ordinary",
+      "AutheDelegated": "ordinary",
+      "AutheAlwaysTryDelegated": "ordinary",
+      "AutheKB": "ordinary",
+      "AutheLDAP": "ordinary",
+      "AutheLDAPCache": "ordinary",
+      "AutheOAuth2": "ordinary",
+      "AutheLoginToken": "ordinary",
+      "AutheTwoFactorSMS": "ordinary",
+      "AutheTwoFactorPW": "ordinary",
+      "LoginCookieTimeout": "ordinary",
+      "SMTPServer": "ordinary",
+      "SMTPUsername": "ordinary",
+      "TwoFactorFrom": "ordinary",
+      "TwoFactorTimeout": "ordinary",
+      "JWTIssuer": "ordinary",
+      "JWTSigAlg": "ordinary"
+    }
+  },
+  "security.authoptions.smtppassword": {
+    "fieldList": "Security.WebAuth",
+    "classification": {
+      "AutheUnauthenticated": "ordinary",
+      "AutheOS": "ordinary",
+      "AutheOSDelegated": "ordinary",
+      "AutheOSLDAP": "ordinary",
+      "AutheCache": "ordinary",
+      "AutheDelegated": "ordinary",
+      "AutheAlwaysTryDelegated": "ordinary",
+      "AutheKB": "ordinary",
+      "AutheLDAP": "ordinary",
+      "AutheLDAPCache": "ordinary",
+      "AutheOAuth2": "ordinary",
+      "AutheLoginToken": "ordinary",
+      "AutheTwoFactorSMS": "ordinary",
+      "AutheTwoFactorPW": "ordinary",
+      "LoginCookieTimeout": "ordinary",
+      "SMTPServer": "ordinary",
+      "SMTPUsername": "ordinary",
+      "TwoFactorFrom": "ordinary",
+      "TwoFactorTimeout": "ordinary",
+      "JWTIssuer": "ordinary",
+      "JWTSigAlg": "ordinary"
+    },
+    "authored": {
+      "SMTPPassword": "secret"
+    }
+  },
   "security.auditsystemevents.update": {
     "fieldList": "Security.Audit.Event:Security.Events",
     "classification": {
@@ -263,6 +347,12 @@ XData Entries
     "fieldList": "Security.Audit.Enabled",
     "classification": {
       "Enabled": "ordinary"
+    }
+  },
+  "webapp.pctaccess.create": {
+    "fieldList": "WebApp.PctClassAccess",
+    "classification": {
+      "AllowAccess": "ordinary"
     }
   },
   "webapp.list.create": {
@@ -366,6 +456,31 @@ XData Entries
     }
   },
   "permissions.users.create": {
+    "fieldList": "Security.User",
+    "compare": {"Roles": "unordered"},
+    "classification": {
+      "AccountNeverExpires": "ordinary",
+      "AutheEnabled": "ordinary",
+      "ChangePassword": "ordinary",
+      "Comment": "ordinary",
+      "EmailAddress": "ordinary",
+      "Enabled": "ordinary",
+      "ExpirationDate": "ordinary",
+      "FullName": "ordinary",
+      "HOTPKeyDisplay": "ordinary",
+      "NameSpace": "ordinary",
+      "PasswordNeverExpires": "ordinary",
+      "PhoneNumber": "ordinary",
+      "PhoneProvider": "ordinary",
+      "Roles": "opaque",
+      "EscalationRoles": "opaque",
+      "Routine": "ordinary"
+    },
+    "authored": {
+      "Password": "secret"
+    }
+  },
+  "permissions.users.copy": {
     "fieldList": "Security.User",
     "compare": {"Roles": "unordered"},
     "classification": {
@@ -510,6 +625,100 @@ XData Entries
       "PrivateKeyPassword": "secret"
     }
   },
+  "security.superservers.create": {
+    "fieldList": "Security.Superserver",
+    "classification": {
+      "Description": "ordinary",
+      "EnableCacheDirect": "ordinary",
+      "EnableClients": "ordinary",
+      "EnableCSP": "ordinary",
+      "EnableDataCheck": "ordinary",
+      "EnableECP": "ordinary",
+      "EnableMirror": "ordinary",
+      "EnableNodeJS": "ordinary",
+      "EnableShadows": "ordinary",
+      "EnableSharding": "ordinary",
+      "EnableSNMP": "ordinary",
+      "EnableWebLink": "ordinary",
+      "Enabled": "ordinary",
+      "SSLConfig": "ordinary",
+      "SSLSupportLevel": "ordinary",
+      "SystemDefault": "ordinary"
+    }
+  },
+  "security.superservers.update": {
+    "fieldList": "Security.Superserver",
+    "classification": {
+      "Description": "ordinary",
+      "EnableCacheDirect": "ordinary",
+      "EnableClients": "ordinary",
+      "EnableCSP": "ordinary",
+      "EnableDataCheck": "ordinary",
+      "EnableECP": "ordinary",
+      "EnableMirror": "ordinary",
+      "EnableNodeJS": "ordinary",
+      "EnableShadows": "ordinary",
+      "EnableSharding": "ordinary",
+      "EnableSNMP": "ordinary",
+      "EnableWebLink": "ordinary",
+      "Enabled": "ordinary",
+      "SSLConfig": "ordinary",
+      "SSLSupportLevel": "ordinary",
+      "SystemDefault": "ordinary"
+    }
+  },
+  "security.mftconnections.create": {
+    "fieldList": "Security.MFT",
+    "classification": {
+      "Service": "ordinary",
+      "URL": "ordinary",
+      "SSLConfiguration": "ordinary",
+      "Username": "ordinary",
+      "ApplicationName": "ordinary"
+    }
+  },
+  "security.mftconnections.update": {
+    "fieldList": "Security.MFT",
+    "classification": {
+      "Service": "ordinary",
+      "URL": "ordinary",
+      "SSLConfiguration": "ordinary",
+      "Username": "ordinary",
+      "ApplicationName": "ordinary"
+    }
+  },
+  "webapp.docdbapps.create": {
+    "fieldList": "DocDB",
+    "classification": {
+      "Description": "ordinary",
+      "Enabled": "ordinary",
+      "Resource": "ordinary"
+    }
+  },
+  "webapp.docdbapps.update": {
+    "fieldList": "DocDB",
+    "classification": {
+      "Description": "ordinary",
+      "Enabled": "ordinary",
+      "Resource": "ordinary"
+    }
+  },
+  "webapp.routineapps.create": {
+    "fieldList": "Security.PrivilegedRoutine",
+    "classification": {
+      "Description": "ordinary",
+      "Enabled": "ordinary",
+      "Resource": "ordinary"
+    }
+  },
+  "webapp.routineapps.update": {
+    "fieldList": "Security.PrivilegedRoutine",
+    "classification": {
+      "Description": "ordinary",
+      "Enabled": "ordinary",
+      "Resource": "ordinary"
+    }
+  },
   "security.secrets.create": {
     "fieldList": "Wallet.Secret:%Wallet.KeyValue",
     "classification": {
@@ -528,6 +737,58 @@ XData Entries
       "Secret": "secret",
       "Secret64": "secret",
       "Usage": "ordinary"
+    }
+  },
+  "security.secrets.creatersa": {
+    "fieldList": "Wallet.Secret:%Wallet.RSA",
+    "classification": {
+      "Certificate": "secret",
+      "CertificateFile": "ordinary",
+      "HasCertificate": "ordinary",
+      "HasPrivateKey": "ordinary",
+      "Length": "ordinary",
+      "Password": "secret",
+      "PrivateKey": "secret",
+      "PrivateKeyFile": "ordinary",
+      "PublicKey": "secret",
+      "PublicKeyFile": "ordinary",
+      "Secret": "secret",
+      "Secret64": "secret"
+    }
+  },
+  "security.secrets.createsymmetric": {
+    "fieldList": "Wallet.Secret:%Wallet.SymmetricKey",
+    "classification": {
+      "KeyId": "ordinary",
+      "Length": "ordinary",
+      "Secret": "secret",
+      "Secret64": "secret"
+    }
+  },
+  "security.secrets.replacersa": {
+    "fieldList": "Wallet.Secret:%Wallet.RSA",
+    "classification": {
+      "Certificate": "secret",
+      "CertificateFile": "ordinary",
+      "HasCertificate": "ordinary",
+      "HasPrivateKey": "ordinary",
+      "Length": "ordinary",
+      "Password": "secret",
+      "PrivateKey": "secret",
+      "PrivateKeyFile": "ordinary",
+      "PublicKey": "secret",
+      "PublicKeyFile": "ordinary",
+      "Secret": "secret",
+      "Secret64": "secret"
+    }
+  },
+  "security.secrets.replacesymmetric": {
+    "fieldList": "Wallet.Secret:%Wallet.SymmetricKey",
+    "classification": {
+      "KeyId": "ordinary",
+      "Length": "ordinary",
+      "Secret": "secret",
+      "Secret64": "secret"
     }
   },
   "osmgmt.devices.create": {
@@ -1098,7 +1359,7 @@ XData Entries
   },
   "tasks.schedule.create": {
     "fieldList": "Task.CRUD",
-    "compare": {"Settings": "written"},
+    "compare": {"Settings": "written", "RunAsUser": "caller"},
     "classification": {
       "Name": "ordinary",
       "RunAsUser": "ordinary",

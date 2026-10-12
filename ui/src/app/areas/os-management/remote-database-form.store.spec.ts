@@ -5,10 +5,12 @@ import { ApiService, type ApiRequestInit, type JsonResult } from '../../core/api
 import { ChangeBus, type ChangeEvent } from '../../core/change-bus';
 import { encodeEntityId } from '../../core/entity-id';
 import { FormDirty } from '../../core/form-dirty';
+import { screenForToolName } from '../../core/navigation';
 import {
   REMOTE_DATABASE_DIRECTORIES_PATH,
   REMOTE_DATABASE_FORM_PATH,
   REMOTE_DATABASE_PATH,
+  REMOTE_DATABASE_TOOL,
   RemoteDatabaseForm,
 } from './remote-database-form.store';
 
@@ -113,8 +115,8 @@ function mount(saveAnswer: unknown = { kind: 'ok', status: 201, body: { name: 'P
 
 /** The five fields a change event carries about the write, the bus's own bookkeeping aside. */
 function shape(event: ChangeEvent): Record<string, unknown> {
-  const { kind, type, scope, id, action } = event as unknown as Record<string, unknown>;
-  return { kind, type, scope, id, action };
+  const { kind, type, scope, id, action, tool } = event as unknown as Record<string, unknown>;
+  return { kind, type, scope, id, action, tool };
 }
 
 function writes(calls: readonly Call[]): Call[] {
@@ -126,6 +128,11 @@ afterEach(() => {
 });
 
 describe('the remote database form store', () => {
+  it("names the tool identifier the Remote databases list declares, so its change toast opens that list", () => {
+    // Mutation (Rule 19): misspell REMOTE_DATABASE_TOOL -> no screen owns it, and the toast falls back to Local databases.
+    expect(screenForToolName(REMOTE_DATABASE_TOOL)?.descriptor).toBe('OcuPilot.Screen.Descriptor.RemoteDatabaseList');
+  });
+
   it('a create opens with the bound and the data servers the form read answered, and lists nothing', async () => {
     const { store, calls } = mount();
     await store.open('');
@@ -217,7 +224,7 @@ describe('the remote database form store', () => {
     expect(JSON.parse(write?.body ?? '{}')).toEqual({ Name: 'PROBEREMOTE', Server: 'DATASRV', Directory: '/data/two/' });
     // Mutation (Rule 19): drop `this.publish(...)` from `save()` -> no event and this goes red.
     expect(events.map(shape)).toEqual([
-      { kind: 'changed', type: 'database-configuration', scope: 'instance', id: 'PROBEREMOTE', action: 'created' },
+      { kind: 'changed', type: 'database-configuration', scope: 'instance', id: 'PROBEREMOTE', action: 'created', tool: 'osmgmt.remotedatabases' },
     ]);
     expect(store.running()).toBeNull();
     expect(store.createdId()).toBe('PROBEREMOTE');
@@ -250,7 +257,7 @@ describe('the remote database form store', () => {
     expect(write?.method).toBe('PUT');
     expect(JSON.parse(write?.body ?? '{}')).toEqual({ Directory: '/data/two/' });
     expect(events.map(shape)).toEqual([
-      { kind: 'changed', type: 'database-configuration', scope: 'instance', id: 'PROBEREMOTE', action: 'updated' },
+      { kind: 'changed', type: 'database-configuration', scope: 'instance', id: 'PROBEREMOTE', action: 'updated', tool: 'osmgmt.remotedatabases' },
     ]);
   });
 

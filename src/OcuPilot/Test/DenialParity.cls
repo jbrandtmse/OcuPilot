@@ -2,7 +2,7 @@
 /// <b>same missing pair</b> on the <b>same descriptor</b>, reached once as a screen read over the
 /// wire and once as a tool call through the shipped dispatcher, carries the same
 /// <code>AUTH.NOPRIVILEGE</code> code, the same written sentence and the same
-/// <code>detail.failedPair</code>.</p>
+/// <code>detail.failedPair</code> and <code>detail.screen</code>.</p>
 /// <p><b>Two real refusals, not one constructor asked twice.</b> The screen half is a real HTTP
 /// request by a principal the instance really refuses, evaluated by the real
 /// <code>$System.Security.Check</code>; the tool half runs the shipped dispatch chain with that one
@@ -161,7 +161,7 @@ Method OnAfterOneTest() As %Status
 }
 
 /// <p>The screen half: the denied principal's own read of
-/// <parameter>SCREENTOOL</parameter>, as <code>&lt;status&gt;|&lt;code&gt;|&lt;failedPair&gt;</code>
+/// <parameter>SCREENTOOL</parameter>, as <code>&lt;status&gt;|&lt;code&gt;|&lt;failedPair&gt;|&lt;screen&gt;</code>
 /// with the written sentence in <var>pReason</var>.</p>
 Method ScreenRefusal(Output pReason As %String) As %String
 {
@@ -176,8 +176,12 @@ Method ScreenRefusal(Output pReason As %String) As %String
     If '$IsObject(tAnswer) Quit tStatus _ "|unparseable|"
     Set pReason = tAnswer.%Get("reason")
     Set tPair = ""
-    If $IsObject(tAnswer.%Get("detail")) Set tPair = tAnswer.detail.%Get("failedPair")
-    Quit tStatus _ "|" _ tAnswer.%Get("code") _ "|" _ tPair
+    Set tScreen = ""
+    If $IsObject(tAnswer.%Get("detail")) {
+        Set tPair = tAnswer.detail.%Get("failedPair")
+        Set tScreen = tAnswer.detail.%Get("screen")
+    }
+    Quit tStatus _ "|" _ tAnswer.%Get("code") _ "|" _ tPair _ "|" _ tScreen
 }
 
 /// <p>The wire name of <parameter>SCREENTOOL</parameter>'s read tool, resolved from the shipped
@@ -202,7 +206,7 @@ ClassMethod ReadToolWire() As %String
 
 /// <p>The tool half: one call to <var>pWire</var> through the shipped dispatch chain with
 /// <parameter>MISSINGPAIR</parameter> denied, as
-/// <code>&lt;isError&gt;|&lt;code&gt;|&lt;failedPair&gt;</code> with the step's written sentence in
+/// <code>&lt;isError&gt;|&lt;code&gt;|&lt;failedPair&gt;|&lt;screen&gt;</code> with the step's written sentence in
 /// <var>pReason</var>.</p>
 Method ToolRefusal(pWire As %String, Output pReason As %String) As %String
 {
@@ -218,9 +222,13 @@ Method ToolRefusal(pWire As %String, Output pReason As %String) As %String
     Set tResult = tResults.%Get(0)
     Set tContent = ##class(%DynamicObject).%FromJSON(tResult.%Get("content"))
     Set tPair = ""
-    If $IsObject(tContent.%Get("detail")) Set tPair = tContent.detail.%Get("failedPair")
+    Set tScreen = ""
+    If $IsObject(tContent.%Get("detail")) {
+        Set tPair = tContent.detail.%Get("failedPair")
+        Set tScreen = tContent.detail.%Get("screen")
+    }
     If $IsObject($Get(tDetails)) && (tDetails.%Size() = 1) Set pReason = tDetails.%Get(0).%Get("reason")
-    Quit tResult.%Get("is_error") _ "|" _ tContent.%Get("code") _ "|" _ tPair
+    Quit tResult.%Get("is_error") _ "|" _ tContent.%Get("code") _ "|" _ tPair _ "|" _ tScreen
 }
 
 /// <p><b>AC2</b> -- the screen and the tool refuse identically: same code, same written sentence,
@@ -237,12 +245,12 @@ Method TestTheScreenAndTheToolRefuseIdentically()
     If tWire = "" Quit
 
     Set tScreen = ..ScreenRefusal(.tScreenReason)
-    Do $$$AssertEquals(tScreen, "403|" _ ##class(OcuPilot.Kernel.Denial).Code() _ "|" _ ..#MISSINGPAIR, "the screen read is refused 403 AUTH.NOPRIVILEGE naming the pair")
+    Do $$$AssertEquals(tScreen, "403|" _ ##class(OcuPilot.Kernel.Denial).Code() _ "|" _ ..#MISSINGPAIR _ "|" _ ..#SCREENTOOL, "the screen read is refused 403 AUTH.NOPRIVILEGE naming the pair and the screen")
 
     Do $ClassMethod(..#PROBE, "SetRegistryClass", ..#REGISTRY)
     Do $ClassMethod(..#PROBE, "DenyPair", $Piece(..#MISSINGPAIR, ":", 1), $Piece(..#MISSINGPAIR, ":", 2))
     Set tTool = ..ToolRefusal(tWire, .tToolReason)
-    Do $$$AssertEquals(tTool, "1|" _ ##class(OcuPilot.Kernel.Denial).Code() _ "|" _ ..#MISSINGPAIR, "the tool call is refused with the same code, naming the same pair")
+    Do $$$AssertEquals(tTool, "1|" _ ##class(OcuPilot.Kernel.Denial).Code() _ "|" _ ..#MISSINGPAIR _ "|" _ ..#SCREENTOOL, "the tool call is refused with the same code, naming the same pair and screen")
 
     Do $$$AssertEquals(tToolReason, tScreenReason, "and both carry the same written sentence: screen '" _ tScreenReason _ "', tool '" _ tToolReason _ "'")
     Do $$$AssertEquals(tScreenReason, ##class(OcuPilot.Kernel.Denial).Reason(), "which is the one sentence OcuPilot.Kernel.Denial owns")
@@ -264,7 +272,7 @@ Method TestTheRefusalNamesTheFailedPair()
 
     Set tFirst = ..ToolRefusal(tWire, .tFirstReason)
     Set tSecond = ..ToolRefusal(tWire, .tSecondReason)
-    Do $$$AssertEquals(tFirst, "1|" _ ##class(OcuPilot.Kernel.Denial).Code() _ "|" _ ..#MISSINGPAIR, "the refusal names the pair that failed")
+    Do $$$AssertEquals(tFirst, "1|" _ ##class(OcuPilot.Kernel.Denial).Code() _ "|" _ ..#MISSINGPAIR _ "|" _ ..#SCREENTOOL, "the refusal names the pair that failed and the screen")
     Do $$$AssertEquals(tSecond, tFirst, "and a second call refuses identically -- reported, never retried by another path")
     Do $$$AssertEquals(tSecondReason, tFirstReason, "with the same sentence")
 

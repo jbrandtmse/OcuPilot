@@ -4,8 +4,9 @@
 /// half fails the turn <code>PROVIDER.TRANSPORT</code> after one call with the step text cleared and
 /// no reply; the same write proposal is minted streamed and plain; a refusal fails the turn
 /// <code>PROVIDER.DECLINED</code> either way, and a failed tool call
-/// <code>PROVIDER.TOOLCALLFAILED</code> either way; and <class>OcuPilot.Kernel.Agent.StreamStep</class>
-/// writes at most once per interval and never past the cap.</p>
+/// <code>PROVIDER.TOOLCALLFAILED</code> either way; <class>OcuPilot.Kernel.Agent.StreamStep</class>
+/// writes at most once per interval and never past the cap; and a streamed two-call turn marks its
+/// requests for the prompt cache and counts the cached tokens its replies report (Story 18.39).</p>
 /// <p><b>It creates an IRIS user and a role and spawns turn jobs, so
 /// <method>OnBeforeAllTests</method> refuses to run unless both</b>
 /// <parameter>ARMINGVARIABLE</parameter> <b>and</b> <parameter>PROVIDERVARIABLE</parameter>
@@ -398,6 +399,51 @@ Method TestTheStreamStepKeepsItsCadenceAndCap()
     Do $$$AssertEquals(..StepText(tKey), "final", "a snapshot after the outcome changes nothing")
     Do $$$AssertEquals(..StepTruncated(tKey), 0, "and a snapshot cut at the cap leaves no truncation mark behind the outcome")
     Do ##class(OcuPilot.Kernel.State.Turn).GuardedFinish(tKey, tUser, "completed", "", "", "final", 0, tLimits)
+}
+
+/// <p>Integration (Story 18.39) -- a streamed two-call turn, each reply reporting cache figures: the
+/// recorded requests mark the last tool that is not deferred (Story 18.45) on both calls and the final message's last block on the
+/// second, over the same tool array, and the turn row's input tokens are every input figure of both
+/// replies summed.</p>
+/// <p>mutation: <method>OcuPilot.Kernel.Provider.Anthropic.MapResponse</method> leaves out
+/// <code>cache_read_input_tokens</code> -- the input-token assertion goes red.</p>
+Method TestAStreamedTurnMarksItsRequestsAndCountsCachedTokens()
+{
+    Set tUse = ..Cached(##class(OcuPilot.Test.TurnProvider).ToolUseReply("probe_nosuch_read", 10, 4), 200, 0)
+    Set tDone = ..Cached(##class(OcuPilot.Test.TurnProvider).TextReply("done", 20, 6), 0, 3000)
+    Do $$$AssertStatusOK(##class(OcuPilot.Test.TurnProvider).ScriptStream(..#TAG, 0, tUse), "the tool call is scripted as a stream")
+    Do $$$AssertStatusOK(##class(OcuPilot.Test.TurnProvider).ScriptStream(..#TAG, 0, tDone), "and so is the answer")
+    Set tId = ..Start()
+    If tId = "" Quit
+    Set tView = ..AwaitView(tId)
+    Do $$$AssertEquals($Select($IsObject(tView): tView.state _ "|" _ tView.reply, 1: ""), "completed|done", "the turn completes")
+    Do $$$AssertEquals(##class(OcuPilot.Test.TurnProvider).Calls(..#TAG), 2, "after two provider calls")
+    For tCall = 1, 2 {
+        Set tTools = ##class(%DynamicAbstractObject).%FromJSON(##class(OcuPilot.Test.TurnProvider).Recorded(..#TAG, tCall, "tools"))
+        Set tMessages = ##class(OcuPilot.Test.TurnProvider).Recorded(..#TAG, tCall, "messages")
+        Do $$$AssertEquals(##class(OcuPilot.Test.TurnProvider).Recorded(..#TAG, tCall, "stream"), 1, "call " _ tCall _ " asked for a stream")
+        Set tMarked = -1
+        For tAt = 0:1:tTools.%Size() - 1 If '$IsObject(tTools.%Get(tAt)) || 'tTools.%Get(tAt)."defer_loading" Set tMarked = tAt
+        Do $$$AssertEquals(##class(OcuPilot.Test.TurnBudget).MarkOf(tTools.%Get(tMarked)), ##class(OcuPilot.Test.TurnBudget).#EPHEMERAL, "call " _ tCall _ ": the last tool that is not deferred carries the marker")
+        Do $$$AssertEquals(##class(OcuPilot.Test.TurnBudget).Marks(tTools.%ToJSON()), 1, "call " _ tCall _ ": and no other tool does")
+        Do $$$AssertEquals(##class(OcuPilot.Test.TurnBudget).Marks(tMessages), tCall - 1, "call " _ tCall _ ": its messages carry " _ (tCall - 1) _ " marker(s)")
+    }
+    Do $$$AssertEquals(##class(OcuPilot.Test.TurnProvider).Recorded(..#TAG, 1, "tools"), ##class(OcuPilot.Test.TurnProvider).Recorded(..#TAG, 2, "tools"), "the tool array is the same text on both calls")
+    Set tLastBlocks = ##class(%DynamicAbstractObject).%FromJSON(##class(OcuPilot.Test.TurnProvider).Recorded(..#TAG, 2, "messages"))
+    Set tLastBlocks = tLastBlocks.%Get(tLastBlocks.%Size() - 1).content
+    Do $$$AssertEquals(##class(OcuPilot.Test.TurnBudget).MarkOf(tLastBlocks.%Get(tLastBlocks.%Size() - 1)), ##class(OcuPilot.Test.TurnBudget).#EPHEMERAL, "call 2: the marker is on the final message's last block")
+    Do $$$AssertEquals(##class(OcuPilot.Test.TurnFixture).Field(tId, "InputTokens"), 3230, "the turn row counts 10 + 200 + 20 + 3,000 input tokens")
+    Do $$$AssertEquals(##class(OcuPilot.Test.TurnFixture).Field(tId, "OutputTokens"), 10, "and 4 + 6 output tokens")
+}
+
+/// <p><var>pBody</var>, a <class>OcuPilot.Test.TurnProvider</class> reply body, with the cache figures
+/// its usage reports.</p>
+ClassMethod Cached(pBody As %String, pCreation As %Integer, pRead As %Integer) As %String
+{
+    Set tBody = ##class(%DynamicAbstractObject).%FromJSON(pBody)
+    Do tBody.usage.%Set("cache_creation_input_tokens", pCreation, "number")
+    Do tBody.usage.%Set("cache_read_input_tokens", pRead, "number")
+    Quit tBody.%ToJSON()
 }
 
 /// <p>The text of turn <var>pKey</var>'s first step.</p>

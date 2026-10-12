@@ -87,10 +87,6 @@ before(async () => {
   assert.equal(ready.state, 'installed', `the throwaway must be installed, not ${JSON.stringify(ready)}`);
   await requireFreeSlot(config);
   browser = await puppeteer.launch(launchOptions(config));
-  // A crashed prior run leaves its scripted replies behind, and `nextTag`'s counter is per
-  // process: the next run's first turn would be answered by the previous run's reply, naming a
-  // process that no longer exists. Forget the whole range this file can reach before arming.
-  for (let n = 1; n <= 12; n += 1) sharedForgetTag(probe, `${probe.marker}${n}`);
   const armed = armProbeDefinition(probe);
   priorDefault = armed.prior;
   preparedId = armed.preparedId;

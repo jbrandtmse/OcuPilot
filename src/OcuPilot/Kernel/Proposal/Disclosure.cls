@@ -28,7 +28,8 @@ Parameter MASKWIDTH As %Integer = 8;
 
 /// <p>The disclosure's rows (DW-1223, FR-17): one <code>{field, value}</code> per top-level
 /// property of the stored payload <var>pDiff</var> does not name, in the payload's own order, for
-/// the write tool <var>pToolName</var>.</p>
+/// the write tool <var>pToolName</var>. A row on one member of a property (<code>Metadata.scopes</code>)
+/// names that property.</p>
 /// <p><b>A projection of data already in hand, not a second read.</b> The payload and the diff both
 /// come from the one row read <class>OcuPilot.Kernel.State.Propose</class> already makes, and the
 /// stored <code>UnchangedCount</code> is untouched -- the invariant the suite pins is that this
@@ -58,7 +59,7 @@ ClassMethod Rows(pToolName As %String, pPayload As %String, pDiff As %String) As
         Set tDiffIterator = tDiff.%GetIterator()
         While tDiffIterator.%GetNext(.tDiffIndex, .tDiffRow) {
             If '$IsObject(tDiffRow) Continue
-            Set tChanged(tDiffRow.%Get("field")) = 1
+            Set tChanged($Piece(tDiffRow.%Get("field"), ".")) = 1
         }
         Set tReadable = ..OrdinaryPaths(pToolName, .tOrdinary)
         Do ..EmptyKeysOf(pToolName, .tEmptyKeys)
@@ -102,7 +103,7 @@ ClassMethod Privilege(pRequired As %String, pUser As %String, pHolderClass As %S
         Set tRequires = []
         For tI = 1:1:$ListLength(tPairs) {
             Set tPair = $List(tPairs, tI)
-            Do tRequires.%Push($List(tPair, 1) _ ":" _ $List(tPair, 2), "string")
+            Do tRequires.%Push(##class(OcuPilot.Screen.Gate).SpellPair($List(tPair, 1), $List(tPair, 2)), "string")
         }
         Set tPrivilege = {}
         Do tPrivilege.%Set("requires", tRequires)

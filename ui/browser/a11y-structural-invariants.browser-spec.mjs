@@ -203,6 +203,25 @@ test("detector liveness: the resize handle's overflow allowance covers its own o
   assert.ok(reported(entries, 'overflow', 'div.ocu-panel-resize-handle.ocu-probe-handle-beyond'), `reported: ${JSON.stringify(entries)}`);
 });
 
+// Mutation (Rule 19): drop the `[role="tooltip"]` skip from `detectInPage`'s overflow loop -> the
+// tooltip is reported and this goes red.
+test('detector liveness: a tooltip wider than its slot is not reported under overflow, and the same box without the role is', async () => {
+  const entries = await detectPlanted(() => {
+    for (const [name, role] of [['ocu-probe-tooltip', 'tooltip'], ['ocu-probe-untipped', null]]) {
+      const parent = document.createElement('div');
+      parent.style.cssText = 'width: 100px; height: 8px; overflow: visible;';
+      const child = document.createElement('div');
+      child.className = name;
+      if (role !== null) child.setAttribute('role', role);
+      child.style.cssText = 'width: 150px; height: 4px;';
+      parent.appendChild(child);
+      document.querySelector('main').appendChild(parent);
+    }
+  });
+  assert.ok(!reported(entries, 'overflow', 'div.ocu-probe-tooltip[role=tooltip]'), `not reported: ${JSON.stringify(entries)}`);
+  assert.ok(reported(entries, 'overflow', 'div.ocu-probe-untipped'), `reported: ${JSON.stringify(entries)}`);
+});
+
 test('detector liveness: an inline svg wider than its non-clipping parent is reported under overflow', async () => {
   const entries = await detectPlanted(() => {
     const parent = document.createElement('div');

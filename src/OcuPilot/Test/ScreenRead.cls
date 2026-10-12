@@ -215,7 +215,13 @@ Method TestEveryDeclaredReadFieldIsAKeyOfTheLiveRow()
         ; Story 18.22: no instance here holds an active key and no test activates one; the vendor's
         ; RunList answers exactly Database encryption's three fields (read in its source, measured at
         ; the story's Task 0).
-        If $ListFind($ListBuild("OcuPilot.Screen.Descriptor.OAuthServerDescriptionTab", "OcuPilot.Screen.Descriptor.OAuthClientTab", "OcuPilot.Screen.Descriptor.OAuthResourceServerTab", "OcuPilot.Screen.Descriptor.OAuthServerTab", "OcuPilot.Screen.Descriptor.OAuthServerClientTab", "OcuPilot.Screen.Descriptor.WebSessionList", "OcuPilot.Screen.Descriptor.RemoteDatabaseList", "OcuPilot.Screen.Descriptor.JournalRecordList", "OcuPilot.Screen.Descriptor.EcpDataServerList", "OcuPilot.Screen.Descriptor.EcpAppServerTab", "OcuPilot.Screen.Descriptor.EcpSslConnectionTab", "OcuPilot.Screen.Descriptor.DatabaseEncryption"), tClass) Continue
+        ; Story 18.26: a fresh instance holds no MFT connection; MftConnectionRead holds the list's
+        ; fields to a seeded probe connection.
+        ; Story 18.30: a fresh instance holds no Doc DB application record; DocDbAppRead holds the list's
+        ; fields to seeded probe records.
+        ; Story 18.9: the SQL privileges read needs a grantee and a namespace the vendor reads in;
+        ; SqlPrivilegeRead holds the list's fields to a probe user's rows.
+        If $ListFind($ListBuild("OcuPilot.Screen.Descriptor.OAuthServerDescriptionTab", "OcuPilot.Screen.Descriptor.OAuthClientTab", "OcuPilot.Screen.Descriptor.OAuthResourceServerTab", "OcuPilot.Screen.Descriptor.OAuthServerTab", "OcuPilot.Screen.Descriptor.OAuthServerClientTab", "OcuPilot.Screen.Descriptor.WebSessionList", "OcuPilot.Screen.Descriptor.RemoteDatabaseList", "OcuPilot.Screen.Descriptor.JournalRecordList", "OcuPilot.Screen.Descriptor.EcpDataServerList", "OcuPilot.Screen.Descriptor.EcpAppServerTab", "OcuPilot.Screen.Descriptor.EcpSslConnectionTab", "OcuPilot.Screen.Descriptor.DatabaseEncryption", "OcuPilot.Screen.Descriptor.MftConnectionList", "OcuPilot.Screen.Descriptor.DocDbAppList", "OcuPilot.Screen.Descriptor.SqlPrivilegeList", "OcuPilot.Screen.Descriptor.SqlColumnPrivilegeList", "OcuPilot.Screen.Descriptor.SqlAdminPrivilegeList"), tClass) Continue
         Set tChecked = tChecked + 1
         If tRowsMember '= "" Set tRowsChecked = tRowsChecked _ $ListBuild($Piece(tClass, ".", *))
         Kill tQuery

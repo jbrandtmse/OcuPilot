@@ -147,10 +147,10 @@ test('a refused theme write surfaces through the store fault and leaves the chos
   const account = await settledAccountPreferences({ writeAnswer: 'refused', refusalReason: 'That preference takes one of a fixed set of values.' });
   const root = fakeRoot();
   const theme = new ThemeState({ account, root });
-  assert.equal(account.fault(), '');
+  assert.equal(account.fault('background'), '');
   theme.toggle();
   await flush();
-  assert.equal(account.fault(), 'That preference takes one of a fixed set of values.', "the instance's sentence reaches fault()");
+  assert.equal(account.fault('background'), 'That preference takes one of a fixed set of values.', "the instance's sentence reaches fault()");
   assert.equal(theme.theme(), THEME_DARK, 'the refusal does not undo the choice');
   assert.equal(root.classes.has(THEME_DARK_CLASS), true);
 });

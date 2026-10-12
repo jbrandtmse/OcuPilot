@@ -214,6 +214,8 @@ test('AC1: two checked probes are exported to a server file, deleted, and import
     await page.click('app-typed-name-dialog .ocu-button-destructive');
     await statusReads(page, STRINGS.explorerDeleteSummary.replace('<done>', '2').replace('<n>', '2'));
     assert.equal(exists(ALPHA), '0', 'Alpha is deleted');
+    // The status line is set before the list re-reads; the re-read replaces the rows, so the walk waits for it.
+    await rowsRead(page, []);
     await commandBar(page, STRINGS.actionImport);
     await page.waitForSelector('app-explorer-import-dialog .ocu-dialog-title', { timeout: config.navigationTimeoutMs });
     assert.equal(await page.$eval('input[data-explorer-import-compile]', (box) => box.checked), true, 'the compile box opens checked');

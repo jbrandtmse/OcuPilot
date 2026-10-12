@@ -143,6 +143,9 @@ Method TestALeastPrivilegedPrincipalReadsTheWholeAnswer()
         Set tLimits = tAnswer.%Get("limits")
         Do $$$AssertTrue(tLimits.%Get("contextRowCap") >= 1, "the row cap is read")
         Do $$$AssertEquals(tLimits.%Get("totalMaxLength") _ " " _ tLimits.%Get("fieldMaxLength"), ##class(OcuPilot.Kernel.Agent.Limits).#TOOLRESULTMAXLENGTH _ " " _ ##class(OcuPilot.Kernel.Agent.Limits).#FIELDMAXLENGTH, "and the character caps")
+        Set tSwitchSC = ##class(OcuPilot.Kernel.State.Switch).Resolve(.tSwitchValues)
+        Do $$$AssertStatusOK(tSwitchSC, "the switches are read")
+        Do $$$AssertEquals(tLimits.%GetTypeOf("turnsPerHour") _ " " _ tLimits.%Get("turnsPerHour"), "number " _ +$Get(tSwitchValues("turnsPerHour")), "and the turns an hour in force, a number")
     }
 }
 

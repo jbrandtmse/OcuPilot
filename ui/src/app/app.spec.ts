@@ -39,6 +39,10 @@ import { EncryptionKeyFileStore } from './areas/security/encryption-key-file.sto
 import { EncryptionKeyFileForm } from './areas/security/encryption-key-file-form.store';
 import { EncryptionKeysStore } from './areas/security/encryption-keys.store';
 import { EncryptionStartupForm } from './areas/security/encryption-startup.store';
+import { SuperserverForm } from './areas/security/superserver-form.store';
+import { MftConnectionForm } from './areas/security/mft-connection-form.store';
+import { DocDbAppForm } from './areas/web-applications/docdb-app-form.store';
+import { RoutineAppForm } from './areas/web-applications/routine-app-form.store';
 import { UserCreateForm } from './areas/permissions/user-create-form.store';
 import { AuditSearch } from './areas/logs/audit.store';
 import { LedgerSearch } from './areas/agent/ledger.store';
@@ -63,6 +67,7 @@ import type { AreaDeclaration, ScreenDeclaration } from './core/screens.generate
 import { SCREENS } from './core/screens.generated';
 import { Session, type SessionState } from './core/session';
 import { PanelState } from './core/panel-layout';
+import { LongBlocks } from './core/long-blocks';
 import { TurnStore } from './core/turn';
 import { ShellState } from './core/shell-state';
 import { ThemeState } from './core/theme';
@@ -73,8 +78,17 @@ import { stubAgentStatus } from './testing/agent-status';
 import { stubSuggestedView } from './testing/suggested-view';
 import { stubTurnStore } from './testing/turn';
 import { screenDeclaration } from './testing/screen-declaration';
-import { AccountPreferences, FIRST_SIGN_IN_RECORDED, SHELL_FIRST_SIGN_IN } from './core/account-preferences';
+import {
+  AccountPreferences,
+  FAVORITE_KIND,
+  FIRST_SIGN_IN_RECORDED,
+  SHELL_FIRST_SIGN_IN,
+  SHELL_KIND,
+  SHELL_THEME,
+  THEME_DARK,
+} from './core/account-preferences';
 import { type StubbedAccountPreferences, lastRemembered, stubAccountPreferences } from './testing/account-preferences';
+import { HomePage } from './areas/home/home.page';
 import { About } from './core/about';
 import { SystemInfo } from './core/system-info';
 import { HelpLinks } from './core/help';
@@ -230,6 +244,11 @@ class StubNavigation {
 
   /** True even for a read that failed, exactly as the live service answers it. */
   answered(): boolean {
+    return true;
+  }
+
+  /** Whether the map has answered for the namespace; the rail's `data-map-answered` reads it. */
+  appliesAnswered(): boolean {
     return true;
   }
 
@@ -415,6 +434,7 @@ describe('the shell frame', () => {
   let overlays: OverlayStack;
   let panelState: PanelState;
   let shellState: ShellState;
+  let longBlocks: LongBlocks;
   let turn: TurnStore;
   let turnStorage: Map<string, string>;
   const planted: HTMLElement[] = [];
@@ -475,6 +495,7 @@ describe('the shell frame', () => {
     overlays = new OverlayStack();
     const shellPreferences = stubAccountPreferences();
     shellState = new ShellState({ account: shellPreferences });
+    longBlocks = new LongBlocks();
     panelState = new PanelState({ account: shellPreferences, shell: shellState });
     // A reload-adopted id, so the sign-out test below can observe `App` dropping it -- the same
     // shape the real `readNavigationKind`/`readSessionStorage` pair produces in `main.ts`.
@@ -513,6 +534,7 @@ describe('the shell frame', () => {
         { provide: AgentContext, useValue: agentContext },
         { provide: SuggestedView, useValue: suggested },
         { provide: ShellState, useValue: shellState },
+        { provide: LongBlocks, useValue: longBlocks },
         { provide: ThemeState, useValue: new ThemeState({ account: shellPreferences, root: document.createElement('div') }) },
         { provide: PanelState, useValue: panelState },
         { provide: TurnStore, useValue: turn },
@@ -794,7 +816,7 @@ describe('the shell frame', () => {
     document.body.appendChild(fixture.nativeElement);
     planted.push(fixture.nativeElement);
     const shell = TestBed.inject(ShellState);
-    shell.activateArea('permissions', false);
+    shell.activateArea('logs', false);
     fixture.detectChanges();
     expect(overlays.top()).toBe('side-bar');
 
@@ -829,6 +851,8 @@ describe('the shell frame', () => {
     // observable rather than a no-op.
     shellState.toggleOpen();
     expect(shellState.open()).toBe(false);
+    longBlocks.setOpen('convo-1:t0:reply', true);
+    expect(longBlocks.isOpen('convo-1:t0:reply')).toBe(true);
     expect(turn.conversationId()).toBe('convo-1');
 
     // The context chip's sharing choice is this principal's own (Story 4.11); loaded here so the
@@ -883,6 +907,9 @@ describe('the shell frame', () => {
     // collapsed side bar, indefinitely if their own read never settles (AD-8). The width's half of
     // this reset was pinned above; the side bar's was pinned only on `ShellState` itself.
     expect(shellState.open()).toBe(true);
+    // Mutation (Rule 19): delete `this.longBlocks?.endSession()` from the same branch -> this goes red,
+    // and the next principal would see the departed principal's opened blocks.
+    expect(longBlocks.isOpen('convo-1:t0:reply')).toBe(false);
     // Mutation (Rule 19): delete `this.turn.endSession()` from the same branch -> this goes red,
     // and the next principal to sign in on this tab would adopt a departed principal's
     // conversation (AD-8).
@@ -1103,6 +1130,62 @@ describe('the shell frame', () => {
     expect(accountPreferences.recents()).toEqual(['permissions/users']);
   });
 
+  it("DW-1414: a refused Clear on Home is announced by one alert, not by Home's line and the locator bar's both", async () => {
+    // Mutation (Rule 19): make `AccountPreferences.fault()` ignore its origin -> this goes red,
+    // because the locator bar's alert then repeats the refusal Home already carries.
+    const reason = 'That is not a screen this instance serves, so it cannot be remembered.';
+    await accountPreferences.add(FAVORITE_KIND, 'permissions/users');
+    const router = TestBed.inject(Router);
+    router.resetConfig([{ path: '', component: HomePage }, { path: 'permissions/users', children: [] }]);
+    const refused = { kind: 'error', status: 422, code: 'PREFERENCES.ROUTE', reason, detail: null };
+    const wire = accountPreferences as unknown as { api: { requestJson: (path: string, init?: { method?: string }) => Promise<unknown> } };
+    const answered = wire.api.requestJson.bind(wire.api);
+    wire.api.requestJson = async (path, init) => ((init?.method ?? 'GET') === 'POST' ? refused : answered(path, init));
+    await router.navigateByUrl('/');
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const clear = fixture.nativeElement.querySelector('.ocu-home-block-clear') as HTMLButtonElement | null;
+    expect(clear).not.toBeNull();
+    clear?.click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const alerts = Array.from(fixture.nativeElement.querySelectorAll('[role="alert"]') as NodeListOf<HTMLElement>);
+    const reading = alerts.filter((alert) => alert.textContent?.trim() === reason);
+    expect(reading.length).toBe(1);
+    expect(reading[0].classList.contains('ocu-home-status')).toBe(true);
+  });
+
+  it("DW-1414: a background write refused while Home is open is announced by the locator bar alone", async () => {
+    // Mutation (Rule 19): have Home's `refusal` read `fault('home') || fault('background')` -> this goes
+    // red, because Home's line then repeats the refusal the locator bar carries.
+    const reason = 'That is not a piece of shell state this instance keeps.';
+    const router = TestBed.inject(Router);
+    router.resetConfig([{ path: '', component: HomePage }]);
+    const refused = { kind: 'error', status: 422, code: 'PREFERENCES.NAME', reason, detail: null };
+    const wire = accountPreferences as unknown as { api: { requestJson: (path: string, init?: { method?: string }) => Promise<unknown> } };
+    const answered = wire.api.requestJson.bind(wire.api);
+    wire.api.requestJson = async (path, init) => ((init?.method ?? 'GET') === 'POST' ? refused : answered(path, init));
+    await router.navigateByUrl('/');
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    await accountPreferences.setValue(SHELL_KIND, SHELL_THEME, THEME_DARK);
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const alerts = Array.from(fixture.nativeElement.querySelectorAll('[role="alert"]') as NodeListOf<HTMLElement>);
+    const reading = alerts.filter((alert) => alert.textContent?.trim() === reason);
+    expect(reading.length).toBe(1);
+    expect(reading[0].classList.contains('ocu-home-status')).toBe(false);
+    const home = fixture.nativeElement.querySelector('.ocu-home-status[role="alert"]') as HTMLElement | null;
+    expect(home).not.toBeNull();
+    expect(home?.textContent?.trim()).toBe('');
+  });
+
   it('AD-8: leaving the signed-in state drops this principal\'s namespace list', async () => {
     // The list says which namespaces THIS user may enter, and `ApiService` scopes every call to
     // the answer. Sign-out clears the tab in place, so a list kept across it would scope the
@@ -1284,6 +1367,22 @@ describe('the shell frame', () => {
     const remoteDatabaseForm = TestBed.inject(RemoteDatabaseForm);
     remoteDatabaseForm.setValue('Name', 'AREMOTEDATABASETHISPRINCIPALTYPED');
     expect(remoteDatabaseForm.value('Name')).not.toBe('');
+    // And the superserver form (Story 18.25) and the MFT connection form (Story 18.26): a name THIS
+    // principal typed for a new one.
+    const superserverForm = TestBed.inject(SuperserverForm);
+    superserverForm.setValue('BindAddress', '10.9.8.7');
+    expect(superserverForm.value('BindAddress')).not.toBe('');
+    const mftConnectionForm = TestBed.inject(MftConnectionForm);
+    mftConnectionForm.setValue('Name', 'AMFTCONNECTIONTHISPRINCIPALTYPED');
+    expect(mftConnectionForm.value('Name')).not.toBe('');
+    // And the Doc DB application form (Story 18.30): a name THIS principal typed for a new record.
+    const docDbAppForm = TestBed.inject(DocDbAppForm);
+    docDbAppForm.setValue('Name', 'ADOCDBAPPTHISPRINCIPALTYPED');
+    expect(docDbAppForm.value('Name')).not.toBe('');
+    // And the privileged routine application form (Story 18.31): a name THIS principal typed for a new application.
+    const routineAppForm = TestBed.inject(RoutineAppForm);
+    routineAppForm.setValue('Name', 'AROUTINEAPPTHISPRINCIPALTYPED');
+    expect(routineAppForm.value('Name')).not.toBe('');
     // And the license server and ECP data server forms (Stories 18.6 and 18.20): a name THIS principal
     // typed for a new server. A create takes input before its form read is made.
     const licenseServerForm = TestBed.inject(LicenseServerForm);
@@ -1466,6 +1565,17 @@ describe('the shell frame', () => {
     // Mutation (Rule 19): delete `this.remoteDatabaseForm.reset()` from `App.verifyWhenSignedIn` -> this
     // goes red, and the next principal's remote database form holds the previous one's typed name.
     expect(remoteDatabaseForm.value('Name')).toBe('');
+    // Mutation (Rule 19): delete `this.superserverForm.reset()` or `this.mftConnectionForm.reset()` from
+    // `App.verifyWhenSignedIn` -> that line goes red, and the next principal's form holds the previous
+    // one's typed name.
+    expect(superserverForm.value('BindAddress')).toBe('');
+    expect(mftConnectionForm.value('Name')).toBe('');
+    // Mutation (Rule 19): delete `this.docDbAppForm.reset()` from `App.verifyWhenSignedIn` -> this goes red, and
+    // the next principal's Doc DB application form holds the previous one's typed name.
+    expect(docDbAppForm.value('Name')).toBe('');
+    // Mutation (Rule 19): delete `this.routineAppForm.reset()` from `App.verifyWhenSignedIn` -> this goes red, and
+    // the next principal's routine application form holds the previous one's typed name.
+    expect(routineAppForm.value('Name')).toBe('');
     // Mutation (Rule 19): delete `this.licenseServerForm.reset()` or `this.ecpDataServerForm.reset()`
     // from `App.verifyWhenSignedIn` -> that line goes red, and the next principal's form holds the
     // previous one's typed name.

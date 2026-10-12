@@ -34,7 +34,7 @@ Parameter LIMITS = "OcuPilot.Kernel.Agent.Limits";
 /// <p>Synthetic values for subject fields whose stored shape is structured, as
 /// <code>&lt;field&gt;=&lt;JSON&gt;</code> entries separated by <code>;</code>. Every other synthetic
 /// field is a string probe.</p>
-Parameter STRUCTUREDFIELDS = "entries=[{""date"":""2026-09-26"",""errorNumber"":1}];Mappings=[];Held={};PurgeBefore=""2026-09-01""";
+Parameter STRUCTUREDFIELDS = "entries=[{""date"":""2026-09-26"",""errorNumber"":1}];Mappings=[];Held={};PurgeBefore=""2026-09-01"";Document={""swagger"":""2.0""}";
 
 /// <p>The synthetic target id: three parts, so an endpoint that reads a composite key finds each
 /// part.</p>
@@ -43,18 +43,21 @@ Parameter TARGETID = "OcuPilotDraftSource/OcuPilotDraftType/OcuPilotDraftName";
 /// <p>The entity types whose port splits the target id into its composite parts, comma-separated
 /// (Story 18.14's mappings, keyed <code>[namespace, Name]</code>): their synthetic id is
 /// <parameter>SPLITTARGETID</parameter>, since a port answers no step for an id it cannot split.</p>
-Parameter SPLITTARGETS = "global-mapping,routine-mapping,package-mapping";
+Parameter SPLITTARGETS = "global-mapping,routine-mapping,package-mapping,docdb-application";
 
 /// <p>The parts of the synthetic id a <parameter>SPLITTARGETS</parameter> type is given, joined as
 /// a composite.</p>
 Parameter SPLITTARGETID = "OcuPilotDraftNamespace,OcuPilotDraftName";
 
+/// <p>The three parts of the percent-class access entry whose composite id the probe builds (Story 18.10).</p>
+Parameter PCTTARGETID = "all-applications,AllowClass,%Utility.Example";
+
 /// <p>The synthetic target id of an entity type whose port reads the id as more than a name, as
 /// <code>&lt;type&gt;=&lt;id&gt;</code> entries separated by <code>;</code>: a <code>process</code>
 /// id is a pid set, which the broadcast's port refuses to compose from anything else (Story
 /// 16.6); a <code>lock</code> id is a <code>DeleteID</code>, whose third piece names its owner (Story
-/// 16.12).</p>
-Parameter TYPEDTARGETIDS = "process=812,907;lock=313131008,13,P905,";
+/// 16.12); a <code>superserver</code> id is a port whose bind address reads as every interface (Story 18.25); a <code>rest-service</code> id is a package name with no slash, which the port's create accepts (Story 18.32).</p>
+Parameter TYPEDTARGETIDS = "process=812,907;lock=313131008,13,P905,;superserver=21825;rest-service=OcuDraftRest";
 /// <p>The fields a tool's declared port adds to its fresh read, which its stored payload therefore
 /// carries, as <code>tool=field</code> entries, comma-separated (Story 18.3's file edit: the database
 /// port answers the configuration's directory for a file read by name, and the script addresses
@@ -292,6 +295,7 @@ ClassMethod SecretProblem(pTool As %DynamicObject) As %String
     Set tDescriptor = $Parameter(tClass, "DESCRIPTORCLASS")
     Set tType = $ClassMethod(tDescriptor, "PrimaryEntityType")
     Set tTargetId = $Select($ListFind($ListFromString(..#SPLITTARGETS), tType): ##class(OcuPilot.Kernel.EntityId).JoinComposite($ListFromString(..#SPLITTARGETID)), 1: ..#TARGETID)
+    If tType = "pct-class-access" Set tTargetId = ##class(OcuPilot.Kernel.EntityId).JoinComposite($ListFromString(..#PCTTARGETID))
     For tI = 1:1:$Length(..#TYPEDTARGETIDS, ";") {
         If $Piece($Piece(..#TYPEDTARGETIDS, ";", tI), "=", 1) = tType Set tTargetId = $Piece($Piece(..#TYPEDTARGETIDS, ";", tI), "=", 2, *)
     }

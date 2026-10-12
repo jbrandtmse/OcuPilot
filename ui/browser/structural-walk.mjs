@@ -42,6 +42,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 import { LIVE_CONTAINER, READINESS_PATH, browserConfig, launchOptions } from '../browser.config.mjs';
+import { retryOnce } from './protocol-retry.mjs';
 import { signedInAt } from './panel-spec.mjs';
 import { escapeOs, markerValue, runIris } from './turnprobe-spec.mjs';
 
@@ -99,6 +100,25 @@ export const SKIP = {
   'system-explorer/sql-views/document': 'HSCUSTOM holds no view outside the system schemas, so the SQL views list opens with no row to open',
   'system-explorer/sql-views/fields': 'HSCUSTOM holds no view outside the system schemas, so the SQL views list opens with no row to open',
   'system-explorer/sql-views/statements': 'HSCUSTOM holds no view outside the system schemas, so the SQL views list opens with no row to open',
+  // Story 20.3: HSCUSTOM holds no production, so the Productions list opens with no row to open; the walk is
+  // interop-items.browser-spec.mjs's, on the probe production it creates.
+  'interoperability/productions/items': 'HSCUSTOM holds no production, so the Productions list opens with no row to open',
+  // Story 20.22: Item settings is reached from a Production items row; the walk is interop-item-settings.browser-spec.mjs's,
+  // on the probe production it creates.
+  'interoperability/productions/items/settings': 'HSCUSTOM holds no production, so the Productions list opens with no row to open',
+  // Story 20.4: the item's other five tabs are reached from the same row, and Queue messages from a Queues row, which
+  // HSCUSTOM, running no production, lists none of; interop-host-tabs.browser-spec.mjs walks them on the probe production.
+  'interoperability/productions/items/document': 'HSCUSTOM holds no production, so the Productions list opens with no row to open',
+  'interoperability/productions/items/queue': 'HSCUSTOM holds no production, so the Productions list opens with no row to open',
+  'interoperability/productions/items/log': 'HSCUSTOM holds no production, so the Productions list opens with no row to open',
+  'interoperability/productions/items/messages': 'HSCUSTOM holds no production, so the Productions list opens with no row to open',
+  'interoperability/productions/items/jobs': 'HSCUSTOM holds no production, so the Productions list opens with no row to open',
+  // Story 20.6: the item's Test tab is reached from the same row; interop-item-test.browser-spec.mjs walks it on the probe production.
+  'interoperability/productions/items/test': 'HSCUSTOM holds no production, so the Productions list opens with no row to open',
+  'interoperability/queues/messages': 'HSCUSTOM runs no production, so the Queues list opens with no row to open',
+  // Story 20.5: a table's entries are reached from a Lookup tables name cell and need that table's name as their id, which the
+  // walk does not create; interop-lookup-tables.browser-spec.mjs walks them on the probe table it creates.
+  'interoperability/lookup-tables/entries': 'the entries route needs a lookup table to open, and the walk creates none',
 };
 
 /** The limits class the seeded entry is capped by, as the turn's own append is. */
@@ -389,6 +409,9 @@ function detectInPage(options) {
       if (el === document.body) continue;
       const cs = style(el);
       if (cs.position === 'fixed') continue;
+      // A tooltip revealed by the pointer resting on its trigger is transient, positioned against the
+      // trigger and not its slot; the page-scroll check above still applies to it.
+      if (el.closest('[role="tooltip"]') !== null) continue;
       const block = containingBlock(el);
       if (block === null || block === root) continue;
       let clipped = false;
@@ -708,7 +731,8 @@ async function walkPass(page, requests, config, { viewport, theme, checks, minim
 /**
  * The whole walk: 1280 px in light (every invariant), then 1280 px in dark (contrast) after the
  * account menu's own toggle, switched back at the end; then 720 px in light (every structural
- * invariant), all with one conversation seeded (`seedConversation`) and removed on every exit
+ * invariant). Each of the two passes is run once more in a fresh context when it fails on a
+ * DevTools-protocol timeout. All of it runs with one conversation seeded (`seedConversation`) and removed on every exit
  * path. Answers `{entries, report}`; `report` counts walked, skipped, not built,
  * unresolved (an id-requiring screen neither walked nor skipped), unsettled and unmeasurable.
  */
@@ -726,27 +750,50 @@ export async function walk(browser, config) {
   const entries = [];
   const reducedMotion = [{ name: 'prefers-reduced-motion', value: 'reduce' }];
 
+  // A pass that fails on a protocol timeout is run once more in a fresh signed-in context, which
+  // starts light: `signedInAt` clears the account's remembered shell state, the theme with it. Its
+  // entries join the walk only when it completes, and the report is put back as it was first.
+  const withRetry = async (body) => {
+    const saved = {
+      walked: new Set(report.walked),
+      skipped: new Set(report.skipped),
+      unresolved: new Set(report.unresolved),
+      unsettled: new Set(report.unsettled),
+      unmeasurable: report.unmeasurable,
+    };
+    const run = async () => {
+      const found = [];
+      await body(found);
+      return found;
+    };
+    entries.push(...(await retryOnce(run, () => Object.assign(report, saved))));
+  };
+
   const seeded = seedConversation(config);
   try {
-    const wide = await signedInAt(browser, config, '/ocupilot/', VIEWPORTS.wide, reducedMotion);
-    try {
-      const requests = trackRequests(wide.page);
-      entries.push(...(await walkPass(wide.page, requests, config, { viewport: VIEWPORTS.wide.width, theme: 'light', checks: INVARIANTS, minimums, report })));
-      await toggleThemeThroughMenu(wide.page, requests, config.navigationTimeoutMs);
-      entries.push(...(await walkPass(wide.page, requests, config, { viewport: VIEWPORTS.wide.width, theme: 'dark', checks: ['contrast'], minimums, report })));
-      await goInApp(wide.page, requests, `/ocupilot/${NAMESPACE_QUERY}`, config.navigationTimeoutMs);
-      await toggleThemeThroughMenu(wide.page, requests, config.navigationTimeoutMs);
-    } finally {
-      await wide.context.close();
-    }
+    await withRetry(async (found) => {
+      const wide = await signedInAt(browser, config, '/ocupilot/', VIEWPORTS.wide, reducedMotion);
+      try {
+        const requests = trackRequests(wide.page);
+        found.push(...(await walkPass(wide.page, requests, config, { viewport: VIEWPORTS.wide.width, theme: 'light', checks: INVARIANTS, minimums, report })));
+        await toggleThemeThroughMenu(wide.page, requests, config.navigationTimeoutMs);
+        found.push(...(await walkPass(wide.page, requests, config, { viewport: VIEWPORTS.wide.width, theme: 'dark', checks: ['contrast'], minimums, report })));
+        await goInApp(wide.page, requests, `/ocupilot/${NAMESPACE_QUERY}`, config.navigationTimeoutMs);
+        await toggleThemeThroughMenu(wide.page, requests, config.navigationTimeoutMs);
+      } finally {
+        await wide.context.close();
+      }
+    });
 
-    const narrow = await signedInAt(browser, config, '/ocupilot/', VIEWPORTS.narrow, reducedMotion);
-    try {
-      const requests = trackRequests(narrow.page);
-      entries.push(...(await walkPass(narrow.page, requests, config, { viewport: VIEWPORTS.narrow.width, theme: 'light', checks: ['name', 'min-width', 'overflow'], minimums, report })));
-    } finally {
-      await narrow.context.close();
-    }
+    await withRetry(async (found) => {
+      const narrow = await signedInAt(browser, config, '/ocupilot/', VIEWPORTS.narrow, reducedMotion);
+      try {
+        const requests = trackRequests(narrow.page);
+        found.push(...(await walkPass(narrow.page, requests, config, { viewport: VIEWPORTS.narrow.width, theme: 'light', checks: ['name', 'min-width', 'overflow'], minimums, report })));
+      } finally {
+        await narrow.context.close();
+      }
+    });
   } finally {
     removeConversation(config, seeded);
   }

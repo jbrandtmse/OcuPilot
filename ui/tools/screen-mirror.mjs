@@ -50,6 +50,7 @@ export const DESCRIPTOR_DIR = join(REPO_ROOT, 'src', 'OcuPilot', 'Screen', 'Desc
 export const ENTITY_TYPE_SOURCE = join(REPO_ROOT, 'src', 'OcuPilot', 'Kernel', 'EntityType.cls');
 export const ENTITY_REF_SOURCE = join(REPO_ROOT, 'src', 'OcuPilot', 'Kernel', 'EntityRef.cls');
 export const SCOPE_SOURCE = join(REPO_ROOT, 'src', 'OcuPilot', 'Kernel', 'Scope.cls');
+export const NAMESPACE_FEATURES_SOURCE = join(REPO_ROOT, 'src', 'OcuPilot', 'Kernel', 'Shell', 'NamespaceFeatures.cls');
 export const MIRROR_PATH = join(REPO_ROOT, 'ui', 'src', 'app', 'core', 'screens.generated.ts');
 export const TOOL_FIELDS_SOURCE = join(REPO_ROOT, 'src', 'OcuPilot', 'Screen', 'Tool', 'ToolFields.cls');
 export const SCREEN_REGISTRY_SOURCE = join(REPO_ROOT, 'src', 'OcuPilot', 'Screen', 'Registry.cls');
@@ -66,6 +67,7 @@ const IDRULENAMES_PARAM_RE = /^Parameter\s+IDRULENAMES\s*=\s*"([^"]*)"\s*;/m;
 const SINGLETONID_PARAM_RE = /^Parameter\s+RULESINGLETONID\s*=\s*"([^"]*)"\s*;/m;
 const DECLAREDNAMEKINDS_PARAM_RE = /^Parameter\s+DECLAREDNAMEKINDS\s*=\s*"([^"]*)"\s*;/m;
 const SELFPROTECTIONRULES_PARAM_RE = /^Parameter\s+SELFPROTECTIONRULES\s*=\s*"([^"]*)"\s*;/m;
+const FEATURES_PARAM_RE = /^Parameter\s+FEATURES\s*=\s*"([^"]*)"\s*;/m;
 const SCOPE_PARAM_RE = /^Parameter\s+(SCOPEINSTANCE|SCOPENAMESPACE)\s*=\s*"([^"]*)"\s*;/gm;
 
 /**
@@ -159,7 +161,7 @@ export function parseEntityTypes(text) {
  * `prebuild`, naming the rule, rather than being mirrored into a key builder that does nothing
  * with it (AD-5, AD-13 as amended by DW-1359).
  */
-export const IMPLEMENTED_ID_RULES = ['foldcase-striptrailingslash', 'foldcase', 'singleton', 'integer', 'foldcase-firstpart', 'integerset', 'directoryset', 'documentset'];
+export const IMPLEMENTED_ID_RULES = ['foldcase-striptrailingslash', 'foldcase', 'singleton', 'integer', 'foldcase-firstpart', 'integerset', 'directoryset', 'documentset', 'portbind'];
 
 /**
  * The per-type canonical id rules, from the kernel's own `IDRULES` parameter: `[[type, rule],
@@ -310,7 +312,7 @@ function oneActionProblem(action, where, rules) {
  * no explanation, which is the divergence `checkedDeclaredNameKinds` exists to prevent for its own
  * vocabulary (AD-5, AD-53).
  */
-export const IMPLEMENTED_SELF_PROTECTION_RULES = ['serves-ocupilot', 'protected-account', 'service-account-sign-in', 'ocupilot-application-roles', 'system-role', 'system-resource', 'ocupilot-ssl', 'ocupilot-session', 'ecp-ssl-pending', 'ecp-ssl-authorized'];
+export const IMPLEMENTED_SELF_PROTECTION_RULES = ['serves-ocupilot', 'protected-account', 'service-account-sign-in', 'ocupilot-application-roles', 'system-role', 'system-resource', 'ocupilot-ssl', 'ocupilot-session', 'ecp-ssl-pending', 'ecp-ssl-authorized', 'system-pct-access', 'ocupilot-routine-application'];
 
 /**
  * The projection names this module's `declaredNames` fills, for the roster check against
@@ -361,6 +363,19 @@ export function parseScopeWords(text) {
   }
   if (found.SCOPEINSTANCE === undefined || found.SCOPENAMESPACE === undefined) return null;
   return [found.SCOPEINSTANCE, found.SCOPENAMESPACE];
+}
+
+/**
+ * The closed namespace-feature vocabulary an area's `appliesWhen` may name -- `OcuPilot.Kernel.Shell.
+ * NamespaceFeatures`' own `FEATURES` parameter, read rather than duplicated. `null` when the
+ * parameter is missing or empty, so an absent vocabulary is reported rather than read as one that
+ * admits nothing.
+ */
+export function parseNamespaceFeatures(text) {
+  const match = FEATURES_PARAM_RE.exec(text);
+  if (match === null) return null;
+  const features = match[1].split(',').map((value) => value.trim()).filter((value) => value !== '');
+  return features.length === 0 ? null : features;
 }
 
 /**
@@ -456,6 +471,11 @@ export function readSources({ descriptorDir = DESCRIPTOR_DIR, areaSource = AREA_
     throw new Error(`${SCOPE_SOURCE} declares no 'Parameter SCOPEINSTANCE'/'SCOPENAMESPACE' pair`);
   }
 
+  const features = parseNamespaceFeatures(readFileSync(NAMESPACE_FEATURES_SOURCE, 'utf8'));
+  if (features === null) {
+    throw new Error(`${NAMESPACE_FEATURES_SOURCE} declares no non-empty 'Parameter FEATURES'`);
+  }
+
   const archetypes = parseArchetypes(readFileSync(ARCHETYPE_SOURCE, 'utf8'));
   if (archetypes === null) {
     throw new Error(`${ARCHETYPE_SOURCE} carries no readable 'XData Archetypes' block`);
@@ -495,7 +515,7 @@ export function readSources({ descriptorDir = DESCRIPTOR_DIR, areaSource = AREA_
   if (toolFieldsBody === null) throw new Error(`${TOOL_FIELDS_SOURCE} carries no 'XData Tools' block`);
   const toolFields = parseXDataJson(toolFieldsBody, TOOL_FIELDS_SOURCE, 'Tools');
 
-  return { entityTypes, idRules, idRuleNames, refSeparator, singletonId, declaredNameKinds, selfProtectionRules, scopeWords, archetypes, areas, screens, toolFields };
+  return { entityTypes, idRules, idRuleNames, refSeparator, singletonId, declaredNameKinds, selfProtectionRules, scopeWords, features, archetypes, areas, screens, toolFields };
 }
 
 /**
@@ -951,7 +971,16 @@ export const SOURCE_DOCDB = 'docdb';
 
 /** The instance's running SQL statements read through `OcuPilot.Port.SqlActivityPort` (AD-29, Story 19.10). */
 export const SOURCE_SQLACTIVITY = 'sqlactivity';
-export const READ_SOURCE_PORTS = [SOURCE_ADMIN, SOURCE_STATE, SOURCE_MGMNT, SOURCE_LOGSOURCE, SOURCE_PATH, SOURCE_TIMELINE, SOURCE_BACKGROUND, SOURCE_ATELIER, SOURCE_ENCRYPTION, SOURCE_DOCDB, SOURCE_SQLACTIVITY];
+/** The namespace's productions and interoperability classes read through `OcuPilot.Port.InteropPort` (AD-62, Story 20.2). */
+export const SOURCE_INTEROP = 'interop';
+/** The screens' required permissions composed by `OcuPilot.Screen.Access` (AD-64, AD-36, Story 20.15). */
+export const SOURCE_ACCESS = 'access';
+/** The one endpoint and request type an `access` source declares (`OcuPilot.Screen.Read`). */
+export const ACCESS_ENDPOINT = 'Screens';
+export const ACCESS_READ_TYPE = 'LIST';
+/** The instance's Prometheus metrics read through `OcuPilot.Port.MonitorPort` (AD-29, Story 18.11). */
+export const SOURCE_MONITOR = 'monitor';
+export const READ_SOURCE_PORTS = [SOURCE_ADMIN, SOURCE_STATE, SOURCE_MGMNT, SOURCE_LOGSOURCE, SOURCE_PATH, SOURCE_TIMELINE, SOURCE_BACKGROUND, SOURCE_ATELIER, SOURCE_ENCRYPTION, SOURCE_DOCDB, SOURCE_SQLACTIVITY, SOURCE_INTEROP, SOURCE_ACCESS, SOURCE_MONITOR];
 
 /** Where `OcuPilot.Port.PathPort` declares the source keys a `path` read may name. */
 export const PATH_PORT_SOURCE = join(REPO_ROOT, 'src', 'OcuPilot', 'Port', 'PathPort.cls');
@@ -1050,6 +1079,49 @@ export function sqlActivityEndpoint() {
 
 /** The one request type a `sqlactivity` source declares. */
 export const SQLACTIVITY_READ_TYPE = 'LIST';
+
+/** Where `OcuPilot.Port.MonitorPort` declares the one endpoint a `monitor` read names. */
+export const MONITOR_PORT_SOURCE = join(REPO_ROOT, 'src', 'OcuPilot', 'Port', 'MonitorPort.cls');
+
+let monitorEndpointCache;
+
+/**
+ * The endpoint `OcuPilot.Port.MonitorPort`'s `ENDPOINT` parameter declares, read from its own class as
+ * the background port's is, or `null` when the parameter is missing.
+ */
+export function monitorEndpoint() {
+  if (monitorEndpointCache === undefined) {
+    monitorEndpointCache = parseBackgroundEndpoint(readFileSync(MONITOR_PORT_SOURCE, 'utf8'));
+  }
+  return monitorEndpointCache;
+}
+
+/** The one request type a `monitor` source declares. */
+export const MONITOR_READ_TYPE = 'LIST';
+
+/** Where `OcuPilot.Port.InteropPort` declares the four endpoints an `interop` read names. */
+export const INTEROP_PORT_SOURCE = join(REPO_ROOT, 'src', 'OcuPilot', 'Port', 'InteropPort.cls');
+
+const INTEROP_ENDPOINTS_PARAM_RE = /^Parameter\s+ENDPOINTS\s*=\s*"([^"]*)"\s*;/m;
+
+/** The endpoints `InteropPort`'s `ENDPOINTS` parameter declares in `text`, or `null` when it is missing. */
+export function parseInteropEndpoints(text) {
+  const match = INTEROP_ENDPOINTS_PARAM_RE.exec(text);
+  return match === null ? null : match[1].split(',').filter((name) => name !== '');
+}
+
+let interopEndpointsCache;
+
+/** `parseInteropEndpoints` over the class on disk, read once. */
+export function interopEndpoints() {
+  if (interopEndpointsCache === undefined) {
+    interopEndpointsCache = parseInteropEndpoints(readFileSync(INTEROP_PORT_SOURCE, 'utf8'));
+  }
+  return interopEndpointsCache;
+}
+
+/** The one request type an `interop` source declares. */
+export const INTEROP_READ_TYPE = 'LIST';
 
 /** The package a `state` source's `endpoint` names a store inside, trailing dot included. */
 export const STATE_PACKAGE = 'OcuPilot.Kernel.State.';
@@ -1254,8 +1326,8 @@ export function readProblem(declaration) {
   if (!READ_SOURCE_PORTS.includes(source.port)) {
     return (
       `read.source.port '${shown(source.port)}' is not one of '${SOURCE_ADMIN}', '${SOURCE_STATE}', ` +
-      `'${SOURCE_MGMNT}', '${SOURCE_LOGSOURCE}', '${SOURCE_PATH}', '${SOURCE_TIMELINE}', '${SOURCE_BACKGROUND}', '${SOURCE_ATELIER}', '${SOURCE_ENCRYPTION}', '${SOURCE_DOCDB}' or '${SOURCE_SQLACTIVITY}', ` +
-      'the eleven sources a declared read names (AD-36)'
+      `'${SOURCE_MGMNT}', '${SOURCE_LOGSOURCE}', '${SOURCE_PATH}', '${SOURCE_TIMELINE}', '${SOURCE_BACKGROUND}', '${SOURCE_ATELIER}', '${SOURCE_ENCRYPTION}', '${SOURCE_DOCDB}', '${SOURCE_SQLACTIVITY}', '${SOURCE_INTEROP}', '${SOURCE_ACCESS}' or '${SOURCE_MONITOR}', ` +
+      'the fourteen sources a declared read names (AD-36)'
     );
   }
   if (typeof source.endpoint !== 'string' || !ENDPOINT_RE.test(source.endpoint)) {
@@ -1345,6 +1417,60 @@ export function readProblem(declaration) {
     const declared = PATH_REFUSED_SOURCE_KEYS.find((key) => source[key] !== undefined && source[key] !== null);
     if (declared !== undefined) {
       return `read.source.${declared} is declared on a sqlactivity source, which answers the running statements whole (AD-36)`;
+    }
+  }
+  // A monitor source lists the instance's Prometheus metrics through `OcuPilot.Port.MonitorPort`, which
+  // answers every sample of one collection whole behind its own gate (AD-29, AD-36, Story 18.11): the
+  // port's own endpoint, a LIST, and nothing the port would have to issue per row, per parent, under a
+  // fixed query or in parts.
+  if (source.port === SOURCE_MONITOR) {
+    const endpoint = monitorEndpoint();
+    if (endpoint === null) return `${MONITOR_PORT_SOURCE} declares no 'Parameter ENDPOINT'`;
+    if (source.endpoint !== endpoint) {
+      return `read.source.endpoint '${source.endpoint}' is not the monitor port's endpoint ('${endpoint}') (AD-29)`;
+    }
+    if (source.type !== MONITOR_READ_TYPE) {
+      return `read.source.type '${source.type}' is declared on a monitor source, which lists the instance's Prometheus metrics (AD-36)`;
+    }
+    const declared = PATH_REFUSED_SOURCE_KEYS.find((key) => source[key] !== undefined && source[key] !== null);
+    if (declared !== undefined) {
+      return `read.source.${declared} is declared on a monitor source, which answers the metrics whole (AD-36)`;
+    }
+  }
+  // An interop source lists the namespace's productions or interoperability classes through
+  // `OcuPilot.Port.InteropPort`, which answers each endpoint whole behind its own gate (AD-62, AD-36,
+  // Story 20.2): one of the port's four endpoints, a LIST, and nothing the port would have to issue
+  // per row, per parent, under a fixed query or in parts.
+  if (source.port === SOURCE_INTEROP) {
+    const endpoints = interopEndpoints();
+    if (endpoints === null) return `${INTEROP_PORT_SOURCE} declares no 'Parameter ENDPOINTS'`;
+    if (!endpoints.includes(source.endpoint)) {
+      return `read.source.endpoint '${source.endpoint}' is not one of the interop port's endpoints ('${endpoints.join("', '")}') (AD-62)`;
+    }
+    if (source.type !== INTEROP_READ_TYPE) {
+      return `read.source.type '${source.type}' is declared on an interop source, which lists the namespace's productions and classes (AD-36)`;
+    }
+    const declared = PATH_REFUSED_SOURCE_KEYS.find((key) => source[key] !== undefined && source[key] !== null);
+    if (declared !== undefined) {
+      return `read.source.${declared} is declared on an interop source, which answers its list whole (AD-36)`;
+    }
+  }
+  // An access source lists the screens' required permissions, composed by `OcuPilot.Screen.Access` in
+  // the caller's process (AD-64, AD-36, Story 20.15): its one endpoint, a LIST, and nothing a composition
+  // would have to issue per row, per parent, under a fixed query, in parts or by criteria.
+  if (source.port === SOURCE_ACCESS) {
+    if (source.endpoint !== ACCESS_ENDPOINT) {
+      return `read.source.endpoint '${source.endpoint}' is not the access source's endpoint ('${ACCESS_ENDPOINT}') (AD-64)`;
+    }
+    if (source.type !== ACCESS_READ_TYPE) {
+      return `read.source.type '${source.type}' is declared on an access source, which lists the screens' required permissions (AD-36)`;
+    }
+    const declared = PATH_REFUSED_SOURCE_KEYS.find((key) => source[key] !== undefined && source[key] !== null);
+    if (declared !== undefined) {
+      return `read.source.${declared} is declared on an access source, which answers its list whole (AD-36)`;
+    }
+    if (read.criteria !== undefined) {
+      return 'read.criteria is declared on an access source, which takes no criteria (AD-36)';
     }
   }
   // AD-36 as amended (Story 16.9): a timeline composes its area's listed screens' own reads, so its
@@ -1561,6 +1687,12 @@ export function readProblem(declaration) {
     return (
       "read.source.port 'path' requires the declared privileges to include %DB_IRISSYS:READ, " +
       'because the port reads the allow-list through the admin API in %SYS (AD-2, AD-8, AD-21)'
+    );
+  }
+  if (source.port === SOURCE_MONITOR && !declaresSystemRead(declaration.privileges)) {
+    return (
+      "read.source.port 'monitor' requires the declared privileges to include %DB_IRISSYS:READ, " +
+      'because the port takes its collection in %SYS (AD-29)'
     );
   }
   return null;
@@ -1795,7 +1927,8 @@ export function criteriaProblem(declaration) {
   if (keysFault !== null) return keysFault;
 
   const port = isObject(read.source) ? read.source.port : undefined;
-  if (port !== SOURCE_ADMIN && port !== SOURCE_MGMNT && port !== SOURCE_ATELIER && port !== SOURCE_TIMELINE && port !== SOURCE_ENCRYPTION) {
+  // AD-36 as amended (Story 20.3): an interop read takes criteria only as its parent's route id, on a parent-scoped list.
+  if (port !== SOURCE_ADMIN && port !== SOURCE_MGMNT && port !== SOURCE_ATELIER && port !== SOURCE_TIMELINE && port !== SOURCE_ENCRYPTION && (port !== SOURCE_INTEROP || !parented)) {
     return `read.criteria is declared on a '${shown(port)}' source, and server criteria travel on the admin, mgmnt, atelier, timeline and encryption ports alone (AD-21)`;
   }
 
@@ -3067,6 +3200,7 @@ export function buildMirror({
   declaredNameKinds = IMPLEMENTED_DECLARED_NAME_KINDS,
   selfProtectionRules = IMPLEMENTED_SELF_PROTECTION_RULES,
   scopeWords,
+  features = ['interoperability', 'analytics'],
   archetypes,
   areas,
   screens,
@@ -3094,6 +3228,13 @@ export function buildMirror({
   const archetypeKeys = (archetypes ?? []).map((archetype) => archetype.key);
   const knownArchetypes = new Set(archetypeKeys);
   for (const area of areas) {
+    if (area.appliesWhen !== undefined && area.appliesWhen !== '' && !features.includes(area.appliesWhen)) {
+      throw new Error(
+        `${AREA_SOURCE}: area "${area.key}" appliesWhen "${area.appliesWhen}", which is not in ` +
+          `OcuPilot.Kernel.Shell.NamespaceFeatures.FEATURES (${features.join(', ')}); the server ` +
+          `answers false for it and the area would never be drawn (AD-44)`
+      );
+    }
     const bad = malformedPair(area.privileges);
     if (bad !== null) {
       throw new Error(
@@ -3326,12 +3467,20 @@ export interface PrivilegePair {
   readonly permission: string;
 }
 
+/** The closed namespace-feature vocabulary, mirrored from OcuPilot.Kernel.Shell.NamespaceFeatures. */
+export type NamespaceFeature = ${features.map((value) => `'${value}'`).join(' | ')};
+
 export interface AreaDeclaration {
   readonly key: string;
   readonly railPosition: number;
   readonly labelKey: string;
   readonly navigates: boolean;
   readonly pinBottom: boolean;
+  /**
+   * The namespace feature the area applies to (AD-44). Declared only where there is one; the
+   * navigation map's \`applies\` answers it, and an area that does not apply is drawn nowhere.
+   */
+  readonly appliesWhen?: NamespaceFeature;
   /**
    * Empty for an area that never gates. Otherwise the area opens when any screen it lists, or any tab
    * of a tab group it lists, is allowed, and when none is it names the first of these the caller
@@ -3758,7 +3907,7 @@ export const ENTITY_ID_RULES: Readonly<Partial<Record<EntityTypeKey, string>>> =
  */
 export const ENTITY_SINGLETON_ID = ${JSON.stringify(singletonId)};
 
-/** The eight areas, in rail order. */
+/** The areas, in rail order. */
 export const AREAS: readonly AreaDeclaration[] = ${JSON.stringify(areas, null, 2)};
 
 /** Every declared screen, by descriptor class name. */

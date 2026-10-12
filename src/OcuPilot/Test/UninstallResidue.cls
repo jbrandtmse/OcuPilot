@@ -93,8 +93,8 @@ Method CleanProbe() As %Status
 
 /// <p>Delete every probe matching role the roster declares that is still on the instance --
 /// the leftover a regressed role loop produces, which
-/// <method>OcuPilot.Test.ProbeApps.Existing</method> cannot see because it reads applications
-/// only.</p>
+/// <method>OcuPilot.Test.ProbeApps.Existing</method> cannot see because it reads no
+/// roles.</p>
 Method RemoveProbeRoles()
 {
     Set tOrigNS = $NAMESPACE

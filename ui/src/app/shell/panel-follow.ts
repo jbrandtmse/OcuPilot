@@ -105,6 +105,15 @@ export class TranscriptFollow {
     return true;
   }
 
+  /**
+   * After a render the person caused by opening or closing a long block (Story 20.17): take its
+   * height as the transcript's own, without scrolling, so the toggle leaves the position where it
+   * was and the next render that grows the transcript is still told apart.
+   */
+  rebase(box: ScrollBox): void {
+    this.lastNewest = newestTop(box);
+  }
+
   /** Turn following on and scroll to the newest entry: an accepted send, New conversation, Jump to latest. */
   follow(box: ScrollBox | null): void {
     this.followingNow = true;

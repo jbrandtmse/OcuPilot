@@ -32,6 +32,12 @@ Parameter KEYHEADER = "x-goog-api-key";
 /// <p>The body's media type.</p>
 Parameter CONTENTTYPE = "application/json";
 
+/// <p>What one cached prompt token counts against a turn's token limit, as a share of an input
+/// token: 0.1, the share AD-31 takes from this vendor's context-caching price against its input
+/// price (<code>ai.google.dev/gemini-api/docs/pricing</code>, read 2026-10-12: $0.075 against $0.75
+/// per million tokens, and $0.15 against $1.50 from 2027-01-01).</p>
+Parameter CACHEDINPUTWEIGHT = 0.1;
+
 /// <p>This family streams when the caller passes a sink (AD-42); 0 turns it off.</p>
 Parameter STREAMS As %Boolean = 1;
 
@@ -57,9 +63,10 @@ Parameter MODELPLACEHOLDER = "{model}";
 /// <code>models/</code> segment.</p>
 Parameter MODELPATTERN = "^[A-Za-z0-9._-]+$";
 
-/// <p>The (tool, argument) pairs this call's declarations respelled an empty <code>enum</code>
-/// member on, as <method>OcuPilot.Kernel.Provider.ToolDefAdapter.GeminiEmptyEnumArgs</method>'s
-/// map in JSON text. Set by <method>CallMessages</method> and read by <method>MapResponse</method>
+/// <p>The (tool, argument) pairs this call's declarations respelled an empty or numeric
+/// <code>enum</code> member on, as
+/// <method>OcuPilot.Kernel.Provider.ToolDefAdapter.GeminiEmptyEnumArgs</method>'s map in JSON text.
+/// Set by <method>CallMessages</method> and read by <method>MapResponse</method>
 /// on the same instance, which lives for one call.</p>
 Property EmptyEnumArgs As %String(MAXLEN = "");
 
@@ -190,10 +197,13 @@ Method IsApiKeyShapeValid() As %Boolean
 /// <p>Read a successful reply into <var>pResponse</var> through the message translator, which is
 /// where this dialect's <code>candidates</code>, <code>functionCall</code>,
 /// <code>finishReason</code> and usage field names are read, and where an argument this call's
-/// declarations respelled (<property>EmptyEnumArgs</property>) is read back as <code>""</code>.</p>
+/// declarations respelled (<property>EmptyEnumArgs</property>) is read back as its canonical
+/// <code>""</code> or number. The cached part of the prompt counts at
+/// <parameter>CACHEDINPUTWEIGHT</parameter> toward
+/// <property>OcuPilot.Kernel.Provider.Response.BoundTokens</property>.</p>
 Method MapResponse(pBody As %String, pResponse As OcuPilot.Kernel.Provider.Response) As %Status
 {
-    Quit ##class(OcuPilot.Kernel.Provider.MessageAdapter).GeminiToCanonical(pBody, pResponse, ..EmptyEnumArgs)
+    Quit ##class(OcuPilot.Kernel.Provider.MessageAdapter).GeminiToCanonical(pBody, pResponse, ..EmptyEnumArgs, ..#CACHEDINPUTWEIGHT)
 }
 
 }

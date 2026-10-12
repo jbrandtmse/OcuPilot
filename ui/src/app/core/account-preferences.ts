@@ -106,6 +106,14 @@ export type PreferenceKind = (typeof PREFERENCE_MEMBERSHIP_KINDS)[number];
 /** The value kinds, as a type. Derived from the roster, so the two cannot drift. */
 export type PreferenceValueKind = (typeof PREFERENCE_VALUE_KINDS)[number];
 
+/**
+ * Which surface a preference write is made for, and so whose slot its refusal lands in and whose
+ * success clears it. A gesture names its own surface; every write nobody is watching -- a theme, a
+ * panel width, a recorded visit, the read itself -- is `background`, which the locator bar, present
+ * on every screen, announces.
+ */
+export type FaultOrigin = 'home' | 'favorite' | 'agent-pick' | 'background';
+
 /** The placeholder the two `*RemoveNamed` strings leave for the screen a row removes. */
 export const NAME_PLACEHOLDER = '<name>';
 
@@ -249,13 +257,14 @@ export class AccountPreferences {
    * user's, and collapsing a burst to its latest value makes a typed filter one request rather
    * than one per character.
    */
-  private readonly pendingValues = new Map<string, string>();
+  private readonly pendingValues = new Map<string, { readonly value: string; readonly origin: FaultOrigin }>();
 
   private readonly writingKeys = new Set<string>();
 
   /**
-   * The published reason the instance last refused a preference write with, `''` for none
-   * (DW-1326).
+   * The published reason the instance last refused a preference write with, per origin, `''` for
+   * none (DW-1326). Each origin has its own slot, so one surface's refusal is neither announced by
+   * another surface nor cleared by a write the first never made.
    *
    * **Server text, never client copy** (AD-39): the envelope's own `reason`, which the two
    * surfaces that write preferences announce as `role="alert"` rather than as the polite
@@ -263,7 +272,7 @@ export class AccountPreferences {
    * carries no reason -- an instance that did not answer at all -- records none, because the
    * connectivity banner is already saying that and a second, wordless alert says nothing.
    */
-  private faultValue = '';
+  private readonly faults = new Map<FaultOrigin, string>();
 
   /**
    * Bumped by `reset()`, read across the await. An answer about the account a departed principal
@@ -340,15 +349,20 @@ export class AccountPreferences {
     return this.setValue(SHELL_KIND, SHELL_FIRST_SIGN_IN, FIRST_SIGN_IN_RECORDED);
   }
 
-  /** The instance's own sentence for the last refused write, `''` for none (DW-1326). */
-  fault(): string {
-    return this.faultValue;
+  /** The instance's own sentence for the last write `origin` had refused, `''` for none (DW-1326). */
+  fault(origin: FaultOrigin): string {
+    return this.faults.get(origin) ?? '';
   }
 
-  /** Drop the standing refusal, so a surface that has announced one does not announce it twice. */
-  clearFault(): void {
-    if (this.faultValue === '') return;
-    this.faultValue = '';
+  /**
+   * Drop the standing refusal of `origin`, or of every origin when none is named, so a surface that
+   * has announced one does not announce it twice.
+   */
+  clearFault(origin?: FaultOrigin): void {
+    const held = origin === undefined ? this.faults.size > 0 : this.fault(origin) !== '';
+    if (!held) return;
+    if (origin === undefined) this.faults.clear();
+    else this.faults.delete(origin);
     this.notify();
   }
 
@@ -367,22 +381,22 @@ export class AccountPreferences {
   /** Read both lists. A read that does not answer leaves the previous ones standing. */
   load(): Promise<void> {
     this.readIssued = true;
-    return this.settle(this.api.requestJson<unknown>(ACCOUNT_PREFERENCES_PATH));
+    return this.settle(this.api.requestJson<unknown>(ACCOUNT_PREFERENCES_PATH), 'background');
   }
 
   /** Pin `route`. A refusal -- an unknown route, or the cap -- leaves the lists as they were. */
-  add(kind: PreferenceKind, route: string): Promise<void> {
-    return this.settle(this.write(kind, 'add', route));
+  add(kind: PreferenceKind, route: string, origin: FaultOrigin = 'background'): Promise<void> {
+    return this.settle(this.write(kind, 'add', route), origin);
   }
 
   /** Unpin `route`, or drop it from the recents list. */
-  remove(kind: PreferenceKind, route: string): Promise<void> {
-    return this.settle(this.write(kind, 'remove', route));
+  remove(kind: PreferenceKind, route: string, origin: FaultOrigin = 'background'): Promise<void> {
+    return this.settle(this.write(kind, 'remove', route), origin);
   }
 
   /** Empty one list. */
-  clear(kind: PreferenceKind): Promise<void> {
-    return this.settle(this.write(kind, 'clear', null));
+  clear(kind: PreferenceKind, origin: FaultOrigin = 'background'): Promise<void> {
+    return this.settle(this.write(kind, 'clear', null), origin);
   }
 
   /**
@@ -392,10 +406,10 @@ export class AccountPreferences {
    * An empty value is never sent: the instance refuses one (an empty `%String` stores as SQL
    * `NULL`), so a caller with nothing to remember is a caller with nothing to write.
    */
-  setValue(kind: PreferenceValueKind, key: string, value: string): Promise<void> {
+  setValue(kind: PreferenceValueKind, key: string, value: string, origin: FaultOrigin = 'background'): Promise<void> {
     if (key === '' || value === '') return Promise.resolve();
     const slot = `${kind}\u0000${key}`;
-    this.pendingValues.set(slot, value);
+    this.pendingValues.set(slot, { value, origin });
     // A call that joins a write already in flight resolves when it is queued, not when it lands:
     // every caller here is fire and forget, and what it is promised is that the instance ends up
     // holding this value, which `drain` is what guarantees.
@@ -408,7 +422,7 @@ export class AccountPreferences {
   private async drain(kind: PreferenceValueKind, key: string, slot: string): Promise<void> {
     try {
       while (this.pendingValues.has(slot)) {
-        const value = this.pendingValues.get(slot) ?? '';
+        const { value, origin } = this.pendingValues.get(slot) ?? { value: '', origin: 'background' as const };
         this.pendingValues.delete(slot);
         const body: Record<string, string> = { kind, action: 'set' };
         body[keyMemberFor(kind)] = key;
@@ -417,7 +431,8 @@ export class AccountPreferences {
           this.api.requestJson<unknown>(ACCOUNT_PREFERENCES_PATH, {
             method: 'POST',
             body: JSON.stringify(body),
-          })
+          }),
+          origin
         );
       }
     } finally {
@@ -449,7 +464,7 @@ export class AccountPreferences {
     this.viewsValue = new Map();
     this.refreshRatesValue = new Map();
     this.shellValue = new Map();
-    this.faultValue = '';
+    this.faults.clear();
     this.answeredValue = false;
     this.loadedValue = false;
     this.readIssued = false;
@@ -466,7 +481,7 @@ export class AccountPreferences {
     });
   }
 
-  private async settle(pending: Promise<JsonResult<unknown>>): Promise<void> {
+  private async settle(pending: Promise<JsonResult<unknown>>, origin: FaultOrigin): Promise<void> {
     const generation = this.generation;
     const request = (this.request += 1);
     const result = await pending;
@@ -484,8 +499,9 @@ export class AccountPreferences {
     // guard threw exactly the refusals DW-1326 exists to announce.
     if (result.kind !== 'ok') {
       const reason = result.kind === 'error' && typeof result.reason === 'string' ? result.reason : '';
-      if (reason !== this.faultValue) {
-        this.faultValue = reason;
+      if (reason !== this.fault(origin)) {
+        if (reason === '') this.faults.delete(origin);
+        else this.faults.set(origin, reason);
         this.notify();
       }
       return;
@@ -503,7 +519,7 @@ export class AccountPreferences {
     const moved =
       !this.answeredValue ||
       settlesTheRead ||
-      this.faultValue !== '' ||
+      this.fault(origin) !== '' ||
       !same(this.favoritesValue, favorites) ||
       !same(this.recentsValue, recents) ||
       !sameMap(this.viewsValue, views) ||
@@ -514,7 +530,7 @@ export class AccountPreferences {
     this.viewsValue = views;
     this.refreshRatesValue = refreshRates;
     this.shellValue = shell;
-    this.faultValue = '';
+    this.faults.delete(origin);
     this.answeredValue = true;
     if (this.readIssued) this.loadedValue = true;
     if (moved) this.notify();

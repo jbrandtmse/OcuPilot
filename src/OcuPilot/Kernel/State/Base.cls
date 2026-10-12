@@ -404,6 +404,34 @@ ClassMethod GuardedExistsId(pId As %String, Output pExists As %Boolean) As %Stat
     Quit tSC
 }
 
+/// <p>Whether a row with unique key <var>pKey</var> exists and, when it does, the stored value of scalar
+/// property <var>pProperty</var>, read in one escalated frame by two global reads -- the unique index's
+/// generated <code>Exists</code> method named by <var>pExistsMethod</var>, then the property's generated
+/// <code>GetStored</code> -- and never through SQL. Invoke as
+/// <code>##class(&lt;ConcreteSubclass&gt;).GuardedStoredValue(...)</code>. <var>pExistsMethod</var> and
+/// <var>pProperty</var> are literals the subclass names, never a caller's text.</p>
+ClassMethod GuardedStoredValue(pExistsMethod As %String, pKey As %String, pProperty As %String, Output pValue As %String, Output pFound As %Boolean) As %Status
+{
+    Set tSC = $$$OK
+    Set pValue = ""
+    Set pFound = 0
+    New $ROLES
+    Try {
+        Set tSC = $SYSTEM.Security.AddRoles(..#APPLICATION)
+        If $$$ISERR(tSC) Quit
+        Set tClass = ..%ClassName(1)
+        Set tId = ""
+        If '$ClassMethod(tClass, pExistsMethod, pKey, .tId) Quit
+        Set pFound = 1
+        Set pValue = $ClassMethod(tClass, pProperty _ "GetStored", tId)
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+        Set pValue = ""
+        Set pFound = 0
+    }
+    Quit tSC
+}
+
 /// <p>Set one subscript of the fixed probe global <code>^OcuPilotKernelStateProbe</code>
 /// through the escalated frame. This gives <class>OcuPilot.Test.State</class> a
 /// global-side proof of AD-9 alongside <method>GuardedSave</method>'s table-side proof

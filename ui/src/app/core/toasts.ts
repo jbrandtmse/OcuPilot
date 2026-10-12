@@ -69,6 +69,8 @@ export interface ToastEntry {
   readonly entityId: string;
   /** The route "Open in <screen>" opens, or `''` when no built screen shows this entity type. */
   readonly route: string;
+  /** The descriptor of the screen `route` opens, or `''` when there is none. */
+  readonly descriptor: string;
   /** When it leaves, in epoch milliseconds. Shifted forward while the stack is held. */
   readonly expiresAt: number;
 }
@@ -202,6 +204,7 @@ export class ToastStore {
       entityLabel: target === null ? '' : stringFor(target.screen.entityLabelKey),
       entityId: event.id,
       route: target === null ? '' : target.route,
+      descriptor: target === null ? '' : target.screen.descriptor,
       expiresAt: this.nowMs() + lifetime,
     };
     // Newest on top, oldest dropped -- a column that grew would cover the screen it is reporting on.

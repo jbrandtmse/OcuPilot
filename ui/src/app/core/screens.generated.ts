@@ -10,7 +10,7 @@
  * declarations disagree.
  */
 
-export type EntityTypeKey = 'web-application' | 'rest-service' | 'user' | 'role' | 'resource' | 'service' | 'ssl-configuration' | 'x509-credential' | 'ldap-configuration' | 'wallet-collection' | 'wallet-secret' | 'oauth2-client-configuration' | 'oauth2-server-definition' | 'oauth2-resource-server' | 'oauth2-server' | 'oauth2-server-client' | 'audit-event' | 'audit-user-event' | 'auditing-configuration' | 'task' | 'task-history-entry' | 'process' | 'lock' | 'database' | 'device' | 'audit-record' | 'application-error' | 'log-entry' | 'agent-definition' | 'agent-switch' | 'agent-policy' | 'allowed-directory' | 'namespace' | 'web-session' | 'background-task' | 'global-mapping' | 'routine-mapping' | 'package-mapping' | 'database-configuration' | 'language-server' | 'class' | 'routine' | 'journal-file' | 'journal-file-database' | 'journal-settings' | 'journal-record' | 'license-key' | 'license-server' | 'ecp-data-server' | 'ecp-settings' | 'ecp-ssl-connection' | 'encryption-key-file' | 'database-encryption-keys' | 'data-element-encryption-keys' | 'encryption-startup' | 'docdb-database' | 'sql-statement';
+export type EntityTypeKey = 'web-application' | 'rest-service' | 'user' | 'role' | 'resource' | 'service' | 'ssl-configuration' | 'x509-credential' | 'ldap-configuration' | 'wallet-collection' | 'wallet-secret' | 'oauth2-client-configuration' | 'oauth2-server-definition' | 'oauth2-resource-server' | 'oauth2-server' | 'oauth2-server-client' | 'audit-event' | 'audit-user-event' | 'auditing-configuration' | 'task' | 'task-history-entry' | 'process' | 'lock' | 'database' | 'device' | 'audit-record' | 'application-error' | 'log-entry' | 'agent-definition' | 'agent-switch' | 'agent-policy' | 'allowed-directory' | 'screen-permission' | 'namespace' | 'web-session' | 'background-task' | 'global-mapping' | 'routine-mapping' | 'package-mapping' | 'database-configuration' | 'language-server' | 'class' | 'routine' | 'journal-file' | 'journal-file-database' | 'journal-settings' | 'journal-record' | 'license-key' | 'license-server' | 'ecp-data-server' | 'ecp-settings' | 'ecp-ssl-connection' | 'encryption-key-file' | 'database-encryption-keys' | 'data-element-encryption-keys' | 'encryption-startup' | 'docdb-database' | 'sql-statement' | 'authentication-options' | 'superserver' | 'mft-connection' | 'production' | 'pct-class-access' | 'docdb-application' | 'routine-application' | 'production-item' | 'production-item-setting' | 'interop-queue' | 'interop-message' | 'interop-job' | 'lookup-table' | 'lookup-entry' | 'business-partner';
 
 /**
  * The closed archetype vocabulary, mirrored from OcuPilot.Screen.Archetype. A screen's
@@ -59,12 +59,20 @@ export interface PrivilegePair {
   readonly permission: string;
 }
 
+/** The closed namespace-feature vocabulary, mirrored from OcuPilot.Kernel.Shell.NamespaceFeatures. */
+export type NamespaceFeature = 'interoperability' | 'analytics';
+
 export interface AreaDeclaration {
   readonly key: string;
   readonly railPosition: number;
   readonly labelKey: string;
   readonly navigates: boolean;
   readonly pinBottom: boolean;
+  /**
+   * The namespace feature the area applies to (AD-44). Declared only where there is one; the
+   * navigation map's `applies` answers it, and an area that does not apply is drawn nowhere.
+   */
+  readonly appliesWhen?: NamespaceFeature;
   /**
    * Empty for an area that never gates. Otherwise the area opens when any screen it lists, or any tab
    * of a tab group it lists, is allowed, and when none is it names the first of these the caller
@@ -162,7 +170,7 @@ export interface ReadSourcePart {
  * `timeline` source's fields and criterion are fixed.
  */
 export interface ReadSource {
-  readonly port: 'admin' | 'state' | 'mgmnt' | 'logsource' | 'path' | 'timeline' | 'background' | 'atelier' | 'encryption' | 'docdb' | 'sqlactivity';
+  readonly port: 'admin' | 'state' | 'mgmnt' | 'logsource' | 'path' | 'timeline' | 'background' | 'atelier' | 'encryption' | 'docdb' | 'sqlactivity' | 'interop' | 'access' | 'monitor';
   readonly endpoint: string;
   /**
    * `LIST` reads rows; `GET` reads one object as the one row, and a 404 reads as none;
@@ -170,7 +178,7 @@ export interface ReadSource {
    * `VOLUMELIST` reads a database's own volume files as rows; a bare admin type is read with
    * `rows` (Story 16.7).
    */
-  readonly type: 'LIST' | 'GET' | 'UPCOMING' | 'HISTORY' | 'VOLUMELIST' | 'DATAELEMENTLIST' | 'ACTIVITY' | 'LICENSEUSAGE';
+  readonly type: 'LIST' | 'GET' | 'UPCOMING' | 'HISTORY' | 'VOLUMELIST' | 'DATAELEMENTLIST' | 'ACTIVITY' | 'BUSYPROCESSES' | 'LICENSEUSAGE' | 'RESOURCEROWS';
   /** The one member of a bare admin type's one-object answer this read lists (AD-36, Story 16.7). */
   readonly rows?: string | null;
   readonly rowGet?: ReadRowGet | null;
@@ -494,6 +502,7 @@ export const ENTITY_TYPES: readonly EntityTypeKey[] = [
   "agent-switch",
   "agent-policy",
   "allowed-directory",
+  "screen-permission",
   "namespace",
   "web-session",
   "background-task",
@@ -518,7 +527,22 @@ export const ENTITY_TYPES: readonly EntityTypeKey[] = [
   "data-element-encryption-keys",
   "encryption-startup",
   "docdb-database",
-  "sql-statement"
+  "sql-statement",
+  "authentication-options",
+  "superserver",
+  "mft-connection",
+  "production",
+  "pct-class-access",
+  "docdb-application",
+  "routine-application",
+  "production-item",
+  "production-item-setting",
+  "interop-queue",
+  "interop-message",
+  "interop-job",
+  "lookup-table",
+  "lookup-entry",
+  "business-partner"
 ];
 
 /**
@@ -552,6 +576,7 @@ export const ENTITY_ID_RULES: Readonly<Partial<Record<EntityTypeKey, string>>> =
   "oauth2-server": "singleton",
   "namespace": "foldcase",
   "global-mapping": "foldcase-firstpart",
+  "pct-class-access": "foldcase-firstpart",
   "routine-mapping": "foldcase-firstpart",
   "package-mapping": "foldcase-firstpart",
   "database-configuration": "foldcase",
@@ -566,7 +591,11 @@ export const ENTITY_ID_RULES: Readonly<Partial<Record<EntityTypeKey, string>>> =
   "database-encryption-keys": "singleton",
   "data-element-encryption-keys": "singleton",
   "encryption-startup": "singleton",
-  "docdb-database": "foldcase"
+  "docdb-database": "foldcase",
+  "authentication-options": "singleton",
+  "superserver": "portbind",
+  "docdb-application": "foldcase",
+  "routine-application": "foldcase"
 };
 
 /**
@@ -576,7 +605,7 @@ export const ENTITY_ID_RULES: Readonly<Partial<Record<EntityTypeKey, string>>> =
  */
 export const ENTITY_SINGLETON_ID = "SYSTEM";
 
-/** The eight areas, in rail order. */
+/** The areas, in rail order. */
 export const AREAS: readonly AreaDeclaration[] = [
   {
     "key": "home",
@@ -710,8 +739,36 @@ export const AREAS: readonly AreaDeclaration[] = [
     ]
   },
   {
-    "key": "agent",
+    "key": "interoperability",
     "railPosition": 9,
+    "labelKey": "navAreaInteroperability",
+    "navigates": false,
+    "pinBottom": false,
+    "appliesWhen": "interoperability",
+    "privileges": [
+      {
+        "resource": "%Ens_Portal",
+        "permission": "USE"
+      }
+    ]
+  },
+  {
+    "key": "analytics",
+    "railPosition": 10,
+    "labelKey": "navAreaAnalytics",
+    "navigates": false,
+    "pinBottom": false,
+    "appliesWhen": "analytics",
+    "privileges": [
+      {
+        "resource": "%DeepSee_Portal",
+        "permission": "USE"
+      }
+    ]
+  },
+  {
+    "key": "agent",
+    "railPosition": 11,
     "labelKey": "navAreaAgent",
     "navigates": false,
     "pinBottom": true,
@@ -1143,6 +1200,166 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "refreshDefault": 0,
     "read": null,
     "table": null,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.AgentScreenPermissions",
+    "route": "agent/screenpermissions",
+    "area": "agent",
+    "labelKey": "agentScreenPermissionsLabel",
+    "sideBarPosition": 7,
+    "archetype": "list",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Development",
+        "permission": "USE"
+      }
+    ],
+    "entityType": "screen-permission",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "composite",
+      "parts": [
+        "Screen"
+      ]
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [
+      {
+        "id": "add-pair",
+        "selfProtection": ""
+      },
+      {
+        "id": "remove-pair",
+        "selfProtection": ""
+      },
+      {
+        "id": "reset",
+        "selfProtection": ""
+      }
+    ],
+    "context": {
+      "fields": [
+        "Screen",
+        "Area",
+        "Declared",
+        "Adjustment",
+        "Effective",
+        "Holds",
+        "FailedPair",
+        "Adjustable"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "screenPermissionsEmpty",
+    "commandAliases": [
+      "screen permissions",
+      "permissions per screen",
+      "who can open"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "userPromptGroupAccess",
+        "textKey": "screenPermissionsPrompt1"
+      },
+      {
+        "groupKey": "userPromptGroupAccess",
+        "textKey": "screenPermissionsPrompt2"
+      },
+      {
+        "groupKey": "userPromptGroupAccess",
+        "textKey": "screenPermissionsPrompt3"
+      }
+    ],
+    "classicPage": "",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "access",
+        "endpoint": "Screens",
+        "type": "LIST"
+      },
+      "fields": [
+        "Screen",
+        "Area",
+        "Declared",
+        "Adjustment",
+        "ClassicResource",
+        "Effective",
+        "Holds",
+        "FailedPair",
+        "Adjustable"
+      ],
+      "filter": [
+        "Screen",
+        "Area"
+      ],
+      "sort": {
+        "fields": [
+          "Area",
+          "Screen"
+        ],
+        "default": "Area",
+        "direction": "asc"
+      },
+      "paging": "cap",
+      "note": {
+        "key": "screenPermissionsNote",
+        "text": "Changing a screen's permissions changes who OcuPilot lets open it; the instance still checks every read and write."
+      }
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Screen",
+          "labelKey": "agentLedgerColumnScreen",
+          "kind": "name"
+        },
+        {
+          "field": "Area",
+          "labelKey": "screenPermissionsColumnArea",
+          "kind": "text"
+        },
+        {
+          "field": "Effective",
+          "labelKey": "screenPermissionsColumnEffective",
+          "kind": "text"
+        },
+        {
+          "field": "Adjustment",
+          "labelKey": "screenPermissionsColumnAdjustment",
+          "kind": "text"
+        },
+        {
+          "field": "Holds",
+          "labelKey": "screenPermissionsColumnHolds",
+          "kind": "status"
+        }
+      ],
+      "emptyNextKey": "",
+      "emptyAgentKey": "screenPermissionsEmptyAgent"
+    },
+    "toolIdentifier": "agent.screenpermissions",
+    "refreshDefault": 0,
     "banner": null,
     "tab": null,
     "rowTarget": null,
@@ -2271,6 +2488,145 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "fingerprintExcludes": []
   },
   {
+    "descriptor": "OcuPilot.Screen.Descriptor.AuthOptions",
+    "route": "security/authentication",
+    "area": "security",
+    "labelKey": "authOptionsLabel",
+    "sideBarPosition": 11,
+    "archetype": "form-page",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Secure",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "authentication-options",
+    "entityLabelKey": "authOptionsLabel",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "single",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "AutheUnauthenticated",
+        "AutheOS",
+        "AutheOSDelegated",
+        "AutheOSLDAP",
+        "AutheCache",
+        "AutheDelegated",
+        "AutheAlwaysTryDelegated",
+        "AutheKB",
+        "AutheLDAP",
+        "AutheLDAPCache",
+        "AutheOAuth2",
+        "AutheLoginToken",
+        "AutheTwoFactorSMS",
+        "AutheTwoFactorPW",
+        "LoginCookieTimeout",
+        "SMTPServer",
+        "SMTPUsername",
+        "TwoFactorFrom",
+        "TwoFactorTimeout",
+        "JWTIssuer",
+        "JWTSigAlg"
+      ],
+      "secretFields": []
+    },
+    "secretArguments": [
+      "SMTPPassword"
+    ],
+    "emptyStateKey": "",
+    "commandAliases": [
+      "authentication",
+      "authentication options"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "authOptionsPrompt1"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "authOptionsPrompt2"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "authOptionsPrompt3"
+      }
+    ],
+    "classicPage": "%CSP.UI.Portal.Authentication",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "admin",
+        "endpoint": "Security.WebAuth",
+        "type": "GET"
+      },
+      "fields": [
+        "AutheUnauthenticated",
+        "AutheOS",
+        "AutheOSDelegated",
+        "AutheOSLDAP",
+        "AutheCache",
+        "AutheDelegated",
+        "AutheAlwaysTryDelegated",
+        "AutheKB",
+        "AutheLDAP",
+        "AutheLDAPCache",
+        "AutheOAuth2",
+        "AutheLoginToken",
+        "AutheTwoFactorSMS",
+        "AutheTwoFactorPW",
+        "LoginCookieTimeout",
+        "SMTPServer",
+        "SMTPUsername",
+        "TwoFactorFrom",
+        "TwoFactorTimeout",
+        "JWTIssuer",
+        "JWTSigAlg"
+      ],
+      "filter": [
+        "JWTSigAlg"
+      ],
+      "sort": {
+        "fields": [
+          "JWTSigAlg"
+        ],
+        "default": "JWTSigAlg",
+        "direction": "asc"
+      },
+      "paging": "cap"
+    },
+    "toolIdentifier": "security.authoptions",
+    "refreshDefault": 0,
+    "table": null,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "fingerprintExcludes": []
+  },
+  {
     "descriptor": "OcuPilot.Screen.Descriptor.BackgroundTaskList",
     "route": "tasks/background",
     "area": "tasks",
@@ -2829,6 +3185,925 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "emptyAgentKey": ""
     },
     "toolIdentifier": "osmgmt.dashboard",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.DashboardEcp",
+    "route": "os-management/ecp-statistics",
+    "area": "os-management",
+    "labelKey": "ecpStatisticsLabel",
+    "sideBarPosition": 0,
+    "archetype": "detail",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Operate",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "none",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "Ecp.AppServer.MaxConn",
+        "Ecp.AppServer.ActConn",
+        "Ecp.AppServer.GloRef",
+        "Ecp.AppServer.ByteSent",
+        "Ecp.AppServer.ByteRcvd",
+        "Ecp.AppServer.BlockAdd",
+        "Ecp.AppServer.BlockBuffPurge",
+        "Ecp.AppServer.BlockSvrPurge",
+        "Ecp.AppServer.GloRefLocal",
+        "Ecp.AppServer.GloRefRemote",
+        "Ecp.AppServer.GloUpdateLocal",
+        "Ecp.AppServer.GloUpdateRemote",
+        "Ecp.AppServer.RoutineCallLocal",
+        "Ecp.AppServer.RoutineCallRemote",
+        "Ecp.AppServer.RoutineBuffLocal",
+        "Ecp.AppServer.RoutineBuffRemote",
+        "Ecp.DataServer.MaxConn",
+        "Ecp.DataServer.ActConn",
+        "Ecp.DataServer.GloRef",
+        "Ecp.DataServer.ByteSent",
+        "Ecp.DataServer.ByteRcvd",
+        "Ecp.DataServer.GloUpdate",
+        "Ecp.DataServer.ReqRcvd",
+        "Ecp.DataServer.ReqBuff",
+        "Ecp.DataServer.BlockSent",
+        "Ecp.DataServer.LockGrant",
+        "Ecp.DataServer.LockFail",
+        "Ecp.DataServer.LockQueGrant",
+        "Ecp.DataServer.LockQueFail",
+        "Ecp.DataServer.SvrBlockPurge",
+        "Ecp.DataServer.RoutinePurge",
+        "Ecp.DataServer.BigKill",
+        "Ecp.DataServer.BigString"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "statisticsEmpty",
+    "commandAliases": [],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "ecpStatisticsPrompt1"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "ecpStatisticsPrompt2"
+      },
+      {
+        "groupKey": "promptGroupCapacity",
+        "textKey": "ecpStatisticsPrompt3"
+      }
+    ],
+    "classicPage": "%cspapp.op.utilsysstatisticsecp",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "admin",
+        "endpoint": "Monitor",
+        "type": "GET",
+        "parts": [
+          {
+            "type": "DASHBOARDECP",
+            "as": "Ecp"
+          }
+        ]
+      },
+      "fields": [
+        "Ecp.AppServer.MaxConn",
+        "Ecp.AppServer.ActConn",
+        "Ecp.AppServer.GloRef",
+        "Ecp.AppServer.ByteSent",
+        "Ecp.AppServer.ByteRcvd",
+        "Ecp.AppServer.BlockAdd",
+        "Ecp.AppServer.BlockBuffPurge",
+        "Ecp.AppServer.BlockSvrPurge",
+        "Ecp.AppServer.GloRefLocal",
+        "Ecp.AppServer.GloRefRemote",
+        "Ecp.AppServer.GloUpdateLocal",
+        "Ecp.AppServer.GloUpdateRemote",
+        "Ecp.AppServer.RoutineCallLocal",
+        "Ecp.AppServer.RoutineCallRemote",
+        "Ecp.AppServer.RoutineBuffLocal",
+        "Ecp.AppServer.RoutineBuffRemote",
+        "Ecp.DataServer.MaxConn",
+        "Ecp.DataServer.ActConn",
+        "Ecp.DataServer.GloRef",
+        "Ecp.DataServer.ByteSent",
+        "Ecp.DataServer.ByteRcvd",
+        "Ecp.DataServer.GloUpdate",
+        "Ecp.DataServer.ReqRcvd",
+        "Ecp.DataServer.ReqBuff",
+        "Ecp.DataServer.BlockSent",
+        "Ecp.DataServer.LockGrant",
+        "Ecp.DataServer.LockFail",
+        "Ecp.DataServer.LockQueGrant",
+        "Ecp.DataServer.LockQueFail",
+        "Ecp.DataServer.SvrBlockPurge",
+        "Ecp.DataServer.RoutinePurge",
+        "Ecp.DataServer.BigKill",
+        "Ecp.DataServer.BigString"
+      ],
+      "filter": [
+        "Ecp.AppServer.MaxConn",
+        "Ecp.AppServer.ActConn",
+        "Ecp.AppServer.GloRef",
+        "Ecp.AppServer.ByteSent",
+        "Ecp.AppServer.ByteRcvd",
+        "Ecp.AppServer.BlockAdd",
+        "Ecp.AppServer.BlockBuffPurge",
+        "Ecp.AppServer.BlockSvrPurge",
+        "Ecp.AppServer.GloRefLocal",
+        "Ecp.AppServer.GloRefRemote",
+        "Ecp.AppServer.GloUpdateLocal",
+        "Ecp.AppServer.GloUpdateRemote",
+        "Ecp.AppServer.RoutineCallLocal",
+        "Ecp.AppServer.RoutineCallRemote",
+        "Ecp.AppServer.RoutineBuffLocal",
+        "Ecp.AppServer.RoutineBuffRemote",
+        "Ecp.DataServer.MaxConn",
+        "Ecp.DataServer.ActConn",
+        "Ecp.DataServer.GloRef",
+        "Ecp.DataServer.ByteSent",
+        "Ecp.DataServer.ByteRcvd",
+        "Ecp.DataServer.GloUpdate",
+        "Ecp.DataServer.ReqRcvd",
+        "Ecp.DataServer.ReqBuff",
+        "Ecp.DataServer.BlockSent",
+        "Ecp.DataServer.LockGrant",
+        "Ecp.DataServer.LockFail",
+        "Ecp.DataServer.LockQueGrant",
+        "Ecp.DataServer.LockQueFail",
+        "Ecp.DataServer.SvrBlockPurge",
+        "Ecp.DataServer.RoutinePurge",
+        "Ecp.DataServer.BigKill",
+        "Ecp.DataServer.BigString"
+      ],
+      "sort": {
+        "fields": [
+          "Ecp.AppServer.MaxConn",
+          "Ecp.AppServer.ActConn",
+          "Ecp.AppServer.GloRef",
+          "Ecp.AppServer.ByteSent",
+          "Ecp.AppServer.ByteRcvd",
+          "Ecp.AppServer.BlockAdd",
+          "Ecp.AppServer.BlockBuffPurge",
+          "Ecp.AppServer.BlockSvrPurge",
+          "Ecp.AppServer.GloRefLocal",
+          "Ecp.AppServer.GloRefRemote",
+          "Ecp.AppServer.GloUpdateLocal",
+          "Ecp.AppServer.GloUpdateRemote",
+          "Ecp.AppServer.RoutineCallLocal",
+          "Ecp.AppServer.RoutineCallRemote",
+          "Ecp.AppServer.RoutineBuffLocal",
+          "Ecp.AppServer.RoutineBuffRemote",
+          "Ecp.DataServer.MaxConn",
+          "Ecp.DataServer.ActConn",
+          "Ecp.DataServer.GloRef",
+          "Ecp.DataServer.ByteSent",
+          "Ecp.DataServer.ByteRcvd",
+          "Ecp.DataServer.GloUpdate",
+          "Ecp.DataServer.ReqRcvd",
+          "Ecp.DataServer.ReqBuff",
+          "Ecp.DataServer.BlockSent",
+          "Ecp.DataServer.LockGrant",
+          "Ecp.DataServer.LockFail",
+          "Ecp.DataServer.LockQueGrant",
+          "Ecp.DataServer.LockQueFail",
+          "Ecp.DataServer.SvrBlockPurge",
+          "Ecp.DataServer.RoutinePurge",
+          "Ecp.DataServer.BigKill",
+          "Ecp.DataServer.BigString"
+        ],
+        "default": "Ecp.AppServer.MaxConn",
+        "direction": "asc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Ecp.AppServer.MaxConn",
+          "labelKey": "licenseUsageMaxConnections",
+          "kind": "name"
+        },
+        {
+          "field": "Ecp.AppServer.ActConn",
+          "labelKey": "statsEcpActiveConnections",
+          "kind": "number"
+        },
+        {
+          "field": "Ecp.AppServer.GloRef",
+          "labelKey": "processDetailsGlobalReferences",
+          "kind": "number"
+        },
+        {
+          "field": "Ecp.AppServer.ByteSent",
+          "labelKey": "statsEcpBytesSent",
+          "kind": "number"
+        },
+        {
+          "field": "Ecp.AppServer.ByteRcvd",
+          "labelKey": "statsEcpBytesReceived",
+          "kind": "number"
+        },
+        {
+          "field": "Ecp.AppServer.BlockAdd",
+          "labelKey": "statsEcpBlocksAdded",
+          "kind": "number"
+        },
+        {
+          "field": "Ecp.AppServer.BlockBuffPurge",
+          "labelKey": "statsEcpBlocksPurgedForBuffers",
+          "kind": "number"
+        },
+        {
+          "field": "Ecp.AppServer.BlockSvrPurge",
+          "labelKey": "statsEcpBlocksPurgedByDataServer",
+          "kind": "number"
+        },
+        {
+          "field": "Ecp.AppServer.GloRefLocal",
+          "labelKey": "statsGlobalReferencesLocal",
+          "kind": "number"
+        },
+        {
+          "field": "Ecp.AppServer.GloRefRemote",
+          "labelKey": "statsGlobalReferencesRemote",
+          "kind": "number"
+        },
+        {
+          "field": "Ecp.AppServer.GloUpdateLocal",
+          "labelKey": "statsGlobalUpdatesLocal",
+          "kind": "number"
+        },
+        {
+          "field": "Ecp.AppServer.GloUpdateRemote",
+          "labelKey": "statsGlobalUpdatesRemote",
+          "kind": "number"
+        },
+        {
+          "field": "Ecp.AppServer.RoutineCallLocal",
+          "labelKey": "statsRoutineCallsLocal",
+          "kind": "number"
+        },
+        {
+          "field": "Ecp.AppServer.RoutineCallRemote",
+          "labelKey": "statsRoutineCallsRemote",
+          "kind": "number"
+        },
+        {
+          "field": "Ecp.AppServer.RoutineBuffLocal",
+          "labelKey": "statsRoutineLoadsLocal",
+          "kind": "number"
+        },
+        {
+          "field": "Ecp.AppServer.RoutineBuffRemote",
+          "labelKey": "statsRoutineLoadsRemote",
+          "kind": "number"
+        },
+        {
+          "field": "Ecp.DataServer.MaxConn",
+          "labelKey": "licenseUsageMaxConnections",
+          "kind": "number"
+        },
+        {
+          "field": "Ecp.DataServer.ActConn",
+          "labelKey": "statsEcpActiveConnections",
+          "kind": "number"
+        },
+        {
+          "field": "Ecp.DataServer.GloRef",
+          "labelKey": "processDetailsGlobalReferences",
+          "kind": "number"
+        },
+        {
+          "field": "Ecp.DataServer.ByteSent",
+          "labelKey": "statsEcpBytesSent",
+          "kind": "number"
+        },
+        {
+          "field": "Ecp.DataServer.ByteRcvd",
+          "labelKey": "statsEcpBytesReceived",
+          "kind": "number"
+        },
+        {
+          "field": "Ecp.DataServer.GloUpdate",
+          "labelKey": "systemUsageGlobalUpdates",
+          "kind": "number"
+        },
+        {
+          "field": "Ecp.DataServer.ReqRcvd",
+          "labelKey": "statsEcpRequestsReceived",
+          "kind": "number"
+        },
+        {
+          "field": "Ecp.DataServer.ReqBuff",
+          "labelKey": "statsEcpRequestBuffers",
+          "kind": "number"
+        },
+        {
+          "field": "Ecp.DataServer.BlockSent",
+          "labelKey": "statsEcpBlocksSent",
+          "kind": "number"
+        },
+        {
+          "field": "Ecp.DataServer.LockGrant",
+          "labelKey": "statsEcpLocksGranted",
+          "kind": "number"
+        },
+        {
+          "field": "Ecp.DataServer.LockFail",
+          "labelKey": "statsEcpLocksFailed",
+          "kind": "number"
+        },
+        {
+          "field": "Ecp.DataServer.LockQueGrant",
+          "labelKey": "statsEcpQueuedLocksGranted",
+          "kind": "number"
+        },
+        {
+          "field": "Ecp.DataServer.LockQueFail",
+          "labelKey": "statsEcpQueuedLocksFailed",
+          "kind": "number"
+        },
+        {
+          "field": "Ecp.DataServer.SvrBlockPurge",
+          "labelKey": "statsEcpBlockPurgesRequested",
+          "kind": "number"
+        },
+        {
+          "field": "Ecp.DataServer.RoutinePurge",
+          "labelKey": "statsEcpRoutinePurgesSent",
+          "kind": "number"
+        },
+        {
+          "field": "Ecp.DataServer.BigKill",
+          "labelKey": "statsEcpBigKills",
+          "kind": "number"
+        },
+        {
+          "field": "Ecp.DataServer.BigString",
+          "labelKey": "statsEcpBigStrings",
+          "kind": "number"
+        }
+      ],
+      "emptyNextKey": "tableReadOnlyEmptyNext",
+      "emptyAgentKey": ""
+    },
+    "toolIdentifier": "osmgmt.ecpstatistics",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.DashboardGlobals",
+    "route": "os-management/global-statistics",
+    "area": "os-management",
+    "labelKey": "globalStatisticsLabel",
+    "sideBarPosition": 0,
+    "archetype": "detail",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Operate",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "none",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "Statistics.Globals.RefLocal",
+        "Statistics.Globals.RefUpdateLocal",
+        "Statistics.Globals.RefRemote",
+        "Statistics.Globals.RefUpdateRemote",
+        "Statistics.Globals.RefPrivate",
+        "Statistics.Globals.RefUpdatePrivate",
+        "Statistics.Globals.LogicalBlocks",
+        "Statistics.Globals.PhysBlockReads",
+        "Statistics.Globals.PhysBlockWrites",
+        "Statistics.Globals.WIJWrites",
+        "Statistics.Globals.JrnEntries",
+        "Statistics.Globals.JrnBlocks",
+        "Statistics.Routines.RtnCallsLocal",
+        "Statistics.Routines.RtnFetchLocal",
+        "Statistics.Routines.RtnCallsRemote",
+        "Statistics.Routines.RtnFetchRemote",
+        "Statistics.Routines.RtnCommands",
+        "Statistics.Routines.RtnNotCached"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "statisticsEmpty",
+    "commandAliases": [],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "globalStatisticsPrompt1"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "globalStatisticsPrompt2"
+      },
+      {
+        "groupKey": "promptGroupCapacity",
+        "textKey": "globalStatisticsPrompt3"
+      }
+    ],
+    "classicPage": "%cspapp.op.utilsysstatisticsglobal",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "admin",
+        "endpoint": "Monitor",
+        "type": "GET",
+        "parts": [
+          {
+            "type": "DASHBOARDGLOBALS",
+            "as": "Statistics"
+          }
+        ]
+      },
+      "fields": [
+        "Statistics.Globals.RefLocal",
+        "Statistics.Globals.RefUpdateLocal",
+        "Statistics.Globals.RefRemote",
+        "Statistics.Globals.RefUpdateRemote",
+        "Statistics.Globals.RefPrivate",
+        "Statistics.Globals.RefUpdatePrivate",
+        "Statistics.Globals.LogicalBlocks",
+        "Statistics.Globals.PhysBlockReads",
+        "Statistics.Globals.PhysBlockWrites",
+        "Statistics.Globals.WIJWrites",
+        "Statistics.Globals.JrnEntries",
+        "Statistics.Globals.JrnBlocks",
+        "Statistics.Routines.RtnCallsLocal",
+        "Statistics.Routines.RtnFetchLocal",
+        "Statistics.Routines.RtnCallsRemote",
+        "Statistics.Routines.RtnFetchRemote",
+        "Statistics.Routines.RtnCommands",
+        "Statistics.Routines.RtnNotCached"
+      ],
+      "filter": [
+        "Statistics.Globals.RefLocal",
+        "Statistics.Globals.RefUpdateLocal",
+        "Statistics.Globals.RefRemote",
+        "Statistics.Globals.RefUpdateRemote",
+        "Statistics.Globals.RefPrivate",
+        "Statistics.Globals.RefUpdatePrivate",
+        "Statistics.Globals.LogicalBlocks",
+        "Statistics.Globals.PhysBlockReads",
+        "Statistics.Globals.PhysBlockWrites",
+        "Statistics.Globals.WIJWrites",
+        "Statistics.Globals.JrnEntries",
+        "Statistics.Globals.JrnBlocks",
+        "Statistics.Routines.RtnCallsLocal",
+        "Statistics.Routines.RtnFetchLocal",
+        "Statistics.Routines.RtnCallsRemote",
+        "Statistics.Routines.RtnFetchRemote",
+        "Statistics.Routines.RtnCommands",
+        "Statistics.Routines.RtnNotCached"
+      ],
+      "sort": {
+        "fields": [
+          "Statistics.Globals.RefLocal",
+          "Statistics.Globals.RefUpdateLocal",
+          "Statistics.Globals.RefRemote",
+          "Statistics.Globals.RefUpdateRemote",
+          "Statistics.Globals.RefPrivate",
+          "Statistics.Globals.RefUpdatePrivate",
+          "Statistics.Globals.LogicalBlocks",
+          "Statistics.Globals.PhysBlockReads",
+          "Statistics.Globals.PhysBlockWrites",
+          "Statistics.Globals.WIJWrites",
+          "Statistics.Globals.JrnEntries",
+          "Statistics.Globals.JrnBlocks",
+          "Statistics.Routines.RtnCallsLocal",
+          "Statistics.Routines.RtnFetchLocal",
+          "Statistics.Routines.RtnCallsRemote",
+          "Statistics.Routines.RtnFetchRemote",
+          "Statistics.Routines.RtnCommands",
+          "Statistics.Routines.RtnNotCached"
+        ],
+        "default": "Statistics.Globals.RefLocal",
+        "direction": "asc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Statistics.Globals.RefLocal",
+          "labelKey": "statsGlobalReferencesLocal",
+          "kind": "name"
+        },
+        {
+          "field": "Statistics.Globals.RefUpdateLocal",
+          "labelKey": "statsGlobalUpdatesLocal",
+          "kind": "number"
+        },
+        {
+          "field": "Statistics.Globals.RefRemote",
+          "labelKey": "statsGlobalReferencesRemote",
+          "kind": "number"
+        },
+        {
+          "field": "Statistics.Globals.RefUpdateRemote",
+          "labelKey": "statsGlobalUpdatesRemote",
+          "kind": "number"
+        },
+        {
+          "field": "Statistics.Globals.RefPrivate",
+          "labelKey": "processDetailsPrivateGlobalReferences",
+          "kind": "number"
+        },
+        {
+          "field": "Statistics.Globals.RefUpdatePrivate",
+          "labelKey": "statsGlobalUpdatesPrivate",
+          "kind": "number"
+        },
+        {
+          "field": "Statistics.Globals.LogicalBlocks",
+          "labelKey": "systemUsageLogicalBlockRequests",
+          "kind": "number"
+        },
+        {
+          "field": "Statistics.Globals.PhysBlockReads",
+          "labelKey": "systemUsageBlockReads",
+          "kind": "number"
+        },
+        {
+          "field": "Statistics.Globals.PhysBlockWrites",
+          "labelKey": "systemUsageBlockWrites",
+          "kind": "number"
+        },
+        {
+          "field": "Statistics.Globals.WIJWrites",
+          "labelKey": "statsWriteImageJournalWrites",
+          "kind": "number"
+        },
+        {
+          "field": "Statistics.Globals.JrnEntries",
+          "labelKey": "systemUsageJournalEntries",
+          "kind": "number"
+        },
+        {
+          "field": "Statistics.Globals.JrnBlocks",
+          "labelKey": "systemUsageJournalBlockWrites",
+          "kind": "number"
+        },
+        {
+          "field": "Statistics.Routines.RtnCallsLocal",
+          "labelKey": "statsRoutineCallsLocal",
+          "kind": "number"
+        },
+        {
+          "field": "Statistics.Routines.RtnFetchLocal",
+          "labelKey": "statsRoutineLoadsLocal",
+          "kind": "number"
+        },
+        {
+          "field": "Statistics.Routines.RtnCallsRemote",
+          "labelKey": "statsRoutineCallsRemote",
+          "kind": "number"
+        },
+        {
+          "field": "Statistics.Routines.RtnFetchRemote",
+          "labelKey": "statsRoutineLoadsRemote",
+          "kind": "number"
+        },
+        {
+          "field": "Statistics.Routines.RtnCommands",
+          "labelKey": "statsRoutineCommands",
+          "kind": "number"
+        },
+        {
+          "field": "Statistics.Routines.RtnNotCached",
+          "labelKey": "statsRoutinesNotCached",
+          "kind": "number"
+        }
+      ],
+      "emptyNextKey": "tableReadOnlyEmptyNext",
+      "emptyAgentKey": ""
+    },
+    "toolIdentifier": "osmgmt.globalstatistics",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.DashboardProcesses",
+    "route": "os-management/active-processes",
+    "area": "os-management",
+    "labelKey": "activeProcessesLabel",
+    "sideBarPosition": 0,
+    "archetype": "list",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Operate",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "none",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "Process",
+        "Commands"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "activeProcessesEmpty",
+    "commandAliases": [],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "activeProcessesPrompt1"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "activeProcessesPrompt2"
+      },
+      {
+        "groupKey": "promptGroupCapacity",
+        "textKey": "activeProcessesPrompt3"
+      }
+    ],
+    "classicPage": "%cspapp.op.utildashboard",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "admin",
+        "endpoint": "Monitor",
+        "type": "BUSYPROCESSES",
+        "rows": "BusyProcesses"
+      },
+      "fields": [
+        "Process",
+        "Commands"
+      ],
+      "filter": [
+        "Process"
+      ],
+      "sort": {
+        "fields": [
+          "Process",
+          "Commands"
+        ],
+        "default": "Commands",
+        "direction": "desc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Process",
+          "labelKey": "processColumnPid",
+          "kind": "name"
+        },
+        {
+          "field": "Commands",
+          "labelKey": "processColumnCommands",
+          "kind": "number"
+        }
+      ],
+      "emptyNextKey": "tableReadOnlyEmptyNext",
+      "emptyAgentKey": ""
+    },
+    "toolIdentifier": "osmgmt.activeprocesses",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.DashboardResources",
+    "route": "os-management/resource-statistics",
+    "area": "os-management",
+    "labelKey": "resourceStatisticsLabel",
+    "sideBarPosition": 0,
+    "archetype": "list",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Operate",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "none",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "Name",
+        "Seize",
+        "Nseize",
+        "Aseize",
+        "Bseize",
+        "BusySet"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "resourceStatisticsEmpty",
+    "commandAliases": [],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "resourceStatisticsPrompt1"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "resourceStatisticsPrompt2"
+      },
+      {
+        "groupKey": "promptGroupCapacity",
+        "textKey": "resourceStatisticsPrompt3"
+      }
+    ],
+    "classicPage": "%cspapp.op.utilsysstatisticsresource",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "admin",
+        "endpoint": "Monitor",
+        "type": "RESOURCEROWS",
+        "rows": "Resources"
+      },
+      "fields": [
+        "Name",
+        "Seize",
+        "Nseize",
+        "Aseize",
+        "Bseize",
+        "BusySet"
+      ],
+      "filter": [
+        "Name"
+      ],
+      "sort": {
+        "fields": [
+          "Name",
+          "Seize",
+          "Nseize",
+          "Aseize",
+          "Bseize",
+          "BusySet"
+        ],
+        "default": "Seize",
+        "direction": "desc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Name",
+          "labelKey": "tableColumnName",
+          "kind": "name"
+        },
+        {
+          "field": "Seize",
+          "labelKey": "resourceColumnSeizes",
+          "kind": "number"
+        },
+        {
+          "field": "Nseize",
+          "labelKey": "resourceColumnNseizes",
+          "kind": "number"
+        },
+        {
+          "field": "Aseize",
+          "labelKey": "resourceColumnAseizes",
+          "kind": "number"
+        },
+        {
+          "field": "Bseize",
+          "labelKey": "resourceColumnBseizes",
+          "kind": "number"
+        },
+        {
+          "field": "BusySet",
+          "labelKey": "resourceColumnBusySets",
+          "kind": "number"
+        }
+      ],
+      "emptyNextKey": "tableReadOnlyEmptyNext",
+      "emptyAgentKey": ""
+    },
+    "toolIdentifier": "osmgmt.resourcestatistics",
     "refreshDefault": 0,
     "banner": null,
     "tab": null,
@@ -4270,6 +5545,231 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "secretArguments": [],
     "fingerprintExcludes": [],
     "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.DocDbAppForm",
+    "route": "web-applications/docdb-applications/edit",
+    "area": "web-applications",
+    "labelKey": "aboutDocDbApplication",
+    "sideBarPosition": 0,
+    "archetype": "form-page",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Secure",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "docdb-application",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "composite",
+      "parts": [
+        "Namespace",
+        "Name"
+      ]
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [],
+      "secretFields": []
+    },
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "emptyStateKey": "",
+    "commandAliases": [],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "docDbAppFormPrompt1"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "docDbAppFormPrompt2"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "docDbAppFormPrompt3"
+      }
+    ],
+    "classicPage": "%CSP.UI.Portal.Applications.DocDB",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "toolIdentifier": "webapp.docdbappform",
+    "refreshDefault": 0,
+    "read": null,
+    "table": null,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.DocDbAppList",
+    "route": "web-applications/docdb-applications",
+    "area": "web-applications",
+    "labelKey": "docDbAppListLabel",
+    "sideBarPosition": 4,
+    "archetype": "list",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Secure",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "docdb-application",
+    "entityLabelKey": "aboutDocDbApplication",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "composite",
+      "parts": [
+        "Namespace",
+        "Name"
+      ]
+    },
+    "primaryAction": {
+      "id": "create",
+      "selfProtection": ""
+    },
+    "rowActions": [
+      {
+        "id": "delete",
+        "selfProtection": ""
+      }
+    ],
+    "context": {
+      "fields": [
+        "Name",
+        "Namespace",
+        "Enabled",
+        "Resource",
+        "Description"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "docDbAppListEmpty",
+    "commandAliases": [
+      "doc db applications",
+      "create doc db application"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "docDbAppListPrompt1"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "docDbAppListPrompt2"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "docDbAppListPrompt3"
+      }
+    ],
+    "classicPage": "%CSP.UI.Portal.Applications.DocDBList",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "admin",
+        "endpoint": "DocDB",
+        "type": "LIST"
+      },
+      "fields": [
+        "Name",
+        "Namespace",
+        "Enabled",
+        "Resource",
+        "Description"
+      ],
+      "filter": [
+        "Name",
+        "Namespace",
+        "Resource",
+        "Description"
+      ],
+      "sort": {
+        "fields": [
+          "Name",
+          "Namespace",
+          "Enabled",
+          "Resource",
+          "Description"
+        ],
+        "default": "Name",
+        "direction": "asc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Name",
+          "labelKey": "tableColumnName",
+          "kind": "name"
+        },
+        {
+          "field": "Namespace",
+          "labelKey": "headerNamespaceLabel",
+          "kind": "identifier"
+        },
+        {
+          "field": "Enabled",
+          "labelKey": "tableColumnEnabled",
+          "kind": "status"
+        },
+        {
+          "field": "Resource",
+          "labelKey": "webAppColumnResource",
+          "kind": "identifier"
+        },
+        {
+          "field": "Description",
+          "labelKey": "tableColumnDescription",
+          "kind": "text"
+        }
+      ],
+      "emptyNextKey": "",
+      "emptyAgentKey": "docDbAppListEmptyAgent"
+    },
+    "toolIdentifier": "webapp.docdbapps",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": []
   },
   {
     "descriptor": "OcuPilot.Screen.Descriptor.EcpAppServerTab",
@@ -10268,6 +11768,3143 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "entityLabelKey": ""
   },
   {
+    "descriptor": "OcuPilot.Screen.Descriptor.InteropBusinessPartnerList",
+    "route": "interoperability/business-partners",
+    "area": "interoperability",
+    "labelKey": "interopBusinessPartnersLabel",
+    "sideBarPosition": 9,
+    "archetype": "list",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Ens_Portal",
+        "permission": "USE"
+      },
+      {
+        "resource": "%Ens_ProductionConfig",
+        "permission": "READ"
+      }
+    ],
+    "ownPrivileges": [
+      {
+        "resource": "%Ens_ProductionConfig",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "business-partner",
+    "secondaryEntityTypes": [],
+    "scope": "namespace",
+    "parentScope": "",
+    "id": {
+      "kind": "single",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "Name",
+        "Description",
+        "PrimaryContact",
+        "PrimaryEmail",
+        "PrimaryPhone"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "interopBusinessPartnersEmpty",
+    "commandAliases": [
+      "business partners",
+      "business partner"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "interopBusinessPartnersPrompt1"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "interopBusinessPartnersPrompt2"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "interopBusinessPartnersPrompt3"
+      }
+    ],
+    "classicPage": "EnsPortal.BusinessPartners",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "interop",
+        "endpoint": "BusinessPartners",
+        "type": "LIST"
+      },
+      "fields": [
+        "Name",
+        "Description",
+        "PrimaryContact",
+        "PrimaryTitle",
+        "PrimaryEmail",
+        "PrimaryPhone",
+        "PrimaryMobile",
+        "PrimaryNotes",
+        "AlternativeContact",
+        "AlternativeTitle",
+        "AlternativeEmail",
+        "AlternativePhone",
+        "AlternativeMobile",
+        "AlternativeNotes"
+      ],
+      "filter": [
+        "Name",
+        "Description",
+        "PrimaryContact"
+      ],
+      "sort": {
+        "fields": [
+          "Name",
+          "Description",
+          "PrimaryContact"
+        ],
+        "default": "Name",
+        "direction": "asc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Name",
+          "labelKey": "tableColumnName",
+          "kind": "name"
+        },
+        {
+          "field": "Description",
+          "labelKey": "tableColumnDescription",
+          "kind": "text"
+        },
+        {
+          "field": "PrimaryContact",
+          "labelKey": "interopPartnerColumnContact",
+          "kind": "text"
+        },
+        {
+          "field": "PrimaryPhone",
+          "labelKey": "interopPartnerColumnPhone",
+          "kind": "text"
+        },
+        {
+          "field": "PrimaryEmail",
+          "labelKey": "userFieldEmail",
+          "kind": "text"
+        }
+      ],
+      "emptyNextKey": "interopBusinessPartnersEmptyNext",
+      "emptyAgentKey": ""
+    },
+    "toolIdentifier": "interop.businesspartners",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.InteropItemJobTab",
+    "route": "interoperability/productions/items/jobs",
+    "area": "interoperability",
+    "labelKey": "interopItemJobsLabel",
+    "sideBarPosition": 0,
+    "archetype": "detail",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Ens_Portal",
+        "permission": "USE"
+      },
+      {
+        "resource": "%Ens_ProductionConfig",
+        "permission": "READ"
+      },
+      {
+        "resource": "%Ens_Jobs",
+        "permission": "READ"
+      }
+    ],
+    "ownPrivileges": [
+      {
+        "resource": "%Ens_ProductionConfig",
+        "permission": "READ"
+      },
+      {
+        "resource": "%Ens_Jobs",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "interop-job",
+    "secondaryEntityTypes": [],
+    "scope": "namespace",
+    "parentScope": "interoperability/productions/items",
+    "id": {
+      "kind": "single",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [
+      {
+        "id": "abort",
+        "selfProtection": ""
+      },
+      {
+        "id": "suspend",
+        "selfProtection": ""
+      },
+      {
+        "id": "stop",
+        "selfProtection": ""
+      }
+    ],
+    "context": {
+      "fields": [
+        "Job",
+        "Status",
+        "AdapterState",
+        "LastActivity",
+        "ActiveMessage",
+        "Dead"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "interopItemJobsEmpty",
+    "commandAliases": [],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "interopItemJobsPrompt1"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "interopItemJobsPrompt2"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "interopItemJobsPrompt3"
+      }
+    ],
+    "classicPage": "EnsPortal.ProductionConfig",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "interop",
+        "endpoint": "ItemJobs",
+        "type": "LIST"
+      },
+      "fields": [
+        "Production",
+        "Item",
+        "Job",
+        "Host",
+        "Status",
+        "AdapterState",
+        "LastActivity",
+        "Retry",
+        "ActiveMessage",
+        "Dead"
+      ],
+      "filter": [
+        "Job",
+        "Status",
+        "ActiveMessage"
+      ],
+      "sort": {
+        "fields": [
+          "Job",
+          "Status",
+          "LastActivity",
+          "Retry"
+        ],
+        "default": "Job",
+        "direction": "asc"
+      },
+      "paging": "cap",
+      "criteria": {
+        "fields": [
+          {
+            "param": "item",
+            "labelKey": "interopItemSettingsCriterionItem",
+            "kind": "text",
+            "maxLength": 352,
+            "hint": "One item, spelled as interop.items.read answers its Production, then two vertical bars and its Name."
+          }
+        ]
+      }
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Job",
+          "labelKey": "interopColumnJob",
+          "kind": "name"
+        },
+        {
+          "field": "Status",
+          "labelKey": "taskHistoryColumnStatus",
+          "kind": "status"
+        },
+        {
+          "field": "AdapterState",
+          "labelKey": "interopColumnAdapterState",
+          "kind": "text"
+        },
+        {
+          "field": "LastActivity",
+          "labelKey": "agentTranscriptsColumnLastActivity",
+          "kind": "text"
+        },
+        {
+          "field": "Retry",
+          "labelKey": "actionRetry",
+          "kind": "number"
+        },
+        {
+          "field": "ActiveMessage",
+          "labelKey": "interopColumnActiveMessage",
+          "kind": "identifier"
+        },
+        {
+          "field": "Dead",
+          "labelKey": "interopColumnDead",
+          "kind": "status"
+        }
+      ],
+      "emptyNextKey": "",
+      "emptyAgentKey": "interopJobsEmptyAgent"
+    },
+    "tab": {
+      "group": "interoperability/productions/items/document",
+      "position": 6,
+      "labelKey": "interopJobsLabel"
+    },
+    "toolIdentifier": "interop.itemjobs",
+    "refreshDefault": 0,
+    "banner": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.InteropItemList",
+    "route": "interoperability/productions/items",
+    "area": "interoperability",
+    "labelKey": "interopItemsLabel",
+    "sideBarPosition": 0,
+    "archetype": "list",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Ens_Portal",
+        "permission": "USE"
+      },
+      {
+        "resource": "%Ens_ProductionConfig",
+        "permission": "READ"
+      }
+    ],
+    "ownPrivileges": [
+      {
+        "resource": "%Ens_ProductionConfig",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "production-item",
+    "secondaryEntityTypes": [],
+    "scope": "namespace",
+    "parentScope": "interoperability/productions",
+    "id": {
+      "kind": "composite",
+      "parts": [
+        "Production",
+        "Name"
+      ]
+    },
+    "primaryAction": {
+      "id": "add",
+      "selfProtection": ""
+    },
+    "rowActions": [
+      {
+        "id": "enable",
+        "selfProtection": ""
+      },
+      {
+        "id": "disable",
+        "selfProtection": ""
+      },
+      {
+        "id": "remove",
+        "selfProtection": ""
+      }
+    ],
+    "context": {
+      "fields": [
+        "Name",
+        "ClassName",
+        "Type",
+        "Enabled",
+        "PoolSize"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "interopItemsEmpty",
+    "commandAliases": [],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "interopItemsPrompt1"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "interopItemsPrompt2"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "interopItemsPrompt3"
+      }
+    ],
+    "classicPage": "EnsPortal.ProductionConfig",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "interop",
+        "endpoint": "Items",
+        "type": "LIST"
+      },
+      "fields": [
+        "Production",
+        "Name",
+        "ClassName",
+        "Type",
+        "Enabled",
+        "EnabledSource",
+        "PoolSize",
+        "Category",
+        "Comment"
+      ],
+      "filter": [
+        "Name",
+        "ClassName",
+        "Type"
+      ],
+      "sort": {
+        "fields": [
+          "Name",
+          "ClassName",
+          "Type",
+          "Enabled",
+          "PoolSize"
+        ],
+        "default": "Name",
+        "direction": "asc"
+      },
+      "paging": "cap",
+      "criteria": {
+        "fields": [
+          {
+            "param": "production",
+            "labelKey": "systemInfoProduction",
+            "kind": "text",
+            "maxLength": 128,
+            "hint": "One production, spelled as interop.productions.read answers its Name."
+          }
+        ]
+      }
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Name",
+          "labelKey": "tableColumnName",
+          "kind": "name"
+        },
+        {
+          "field": "ClassName",
+          "labelKey": "interopItemColumnClass",
+          "kind": "identifier"
+        },
+        {
+          "field": "Type",
+          "labelKey": "tableColumnType",
+          "kind": "text"
+        },
+        {
+          "field": "Enabled",
+          "labelKey": "tableColumnEnabled",
+          "kind": "status"
+        },
+        {
+          "field": "PoolSize",
+          "labelKey": "interopItemColumnPoolSize",
+          "kind": "number"
+        },
+        {
+          "field": "Category",
+          "labelKey": "interopItemColumnCategory",
+          "kind": "text"
+        },
+        {
+          "field": "Comment",
+          "labelKey": "userFieldComment",
+          "kind": "text"
+        }
+      ],
+      "emptyNextKey": "",
+      "emptyAgentKey": "interopItemsEmptyAgent"
+    },
+    "toolIdentifier": "interop.items",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.InteropItemLogTab",
+    "route": "interoperability/productions/items/log",
+    "area": "interoperability",
+    "labelKey": "interopItemLogLabel",
+    "sideBarPosition": 0,
+    "archetype": "detail",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Ens_Portal",
+        "permission": "USE"
+      },
+      {
+        "resource": "%Ens_ProductionConfig",
+        "permission": "READ"
+      },
+      {
+        "resource": "%Ens_EventLog",
+        "permission": "USE"
+      }
+    ],
+    "ownPrivileges": [
+      {
+        "resource": "%Ens_ProductionConfig",
+        "permission": "READ"
+      },
+      {
+        "resource": "%Ens_EventLog",
+        "permission": "USE"
+      }
+    ],
+    "entityType": "log-entry",
+    "secondaryEntityTypes": [],
+    "scope": "namespace",
+    "parentScope": "interoperability/productions/items",
+    "id": {
+      "kind": "single",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "ID",
+        "TimeLogged",
+        "Type",
+        "Text",
+        "Job"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "interopItemLogEmpty",
+    "commandAliases": [],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "interopItemLogPrompt1"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "interopItemLogPrompt2"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "interopItemLogPrompt3"
+      }
+    ],
+    "classicPage": "EnsPortal.ProductionConfig",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "interop",
+        "endpoint": "ItemLog",
+        "type": "LIST"
+      },
+      "fields": [
+        "Production",
+        "Item",
+        "ID",
+        "TimeLogged",
+        "Type",
+        "Text",
+        "Job",
+        "SessionId"
+      ],
+      "filter": [
+        "Type",
+        "Text",
+        "Job",
+        "SessionId"
+      ],
+      "sort": {
+        "fields": [
+          "TimeLogged",
+          "Type",
+          "Job"
+        ],
+        "default": "TimeLogged",
+        "direction": "desc"
+      },
+      "paging": "cap",
+      "criteria": {
+        "fields": [
+          {
+            "param": "item",
+            "labelKey": "interopItemSettingsCriterionItem",
+            "kind": "text",
+            "maxLength": 352,
+            "hint": "One item, spelled as interop.items.read answers its Production, then two vertical bars and its Name."
+          }
+        ]
+      }
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "ID",
+          "labelKey": "interopColumnId",
+          "kind": "name"
+        },
+        {
+          "field": "TimeLogged",
+          "labelKey": "auditColumnTime",
+          "kind": "text"
+        },
+        {
+          "field": "Type",
+          "labelKey": "tableColumnType",
+          "kind": "status"
+        },
+        {
+          "field": "Text",
+          "labelKey": "logViewerColumnMessage",
+          "kind": "text"
+        },
+        {
+          "field": "Job",
+          "labelKey": "interopColumnJob",
+          "kind": "identifier"
+        },
+        {
+          "field": "SessionId",
+          "labelKey": "webSessionColumnSession",
+          "kind": "identifier"
+        }
+      ],
+      "emptyNextKey": "tableReadOnlyEmptyNext",
+      "emptyAgentKey": ""
+    },
+    "tab": {
+      "group": "interoperability/productions/items/document",
+      "position": 4,
+      "labelKey": "interopItemTabLog"
+    },
+    "toolIdentifier": "interop.itemlog",
+    "refreshDefault": 0,
+    "banner": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.InteropItemMessageTab",
+    "route": "interoperability/productions/items/messages",
+    "area": "interoperability",
+    "labelKey": "interopItemMessagesLabel",
+    "sideBarPosition": 0,
+    "archetype": "detail",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Ens_Portal",
+        "permission": "USE"
+      },
+      {
+        "resource": "%Ens_ProductionConfig",
+        "permission": "READ"
+      },
+      {
+        "resource": "%Ens_MessageHeader",
+        "permission": "USE"
+      }
+    ],
+    "ownPrivileges": [
+      {
+        "resource": "%Ens_ProductionConfig",
+        "permission": "READ"
+      },
+      {
+        "resource": "%Ens_MessageHeader",
+        "permission": "USE"
+      }
+    ],
+    "entityType": "interop-message",
+    "secondaryEntityTypes": [],
+    "scope": "namespace",
+    "parentScope": "interoperability/productions/items",
+    "id": {
+      "kind": "single",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "ID",
+        "TimeCreated",
+        "Status",
+        "Source",
+        "Target",
+        "BodyClass"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "interopItemMessagesEmpty",
+    "commandAliases": [],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "interopItemMessagesPrompt1"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "interopItemMessagesPrompt2"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "interopItemMessagesPrompt3"
+      }
+    ],
+    "classicPage": "EnsPortal.ProductionConfig",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "interop",
+        "endpoint": "ItemMessages",
+        "type": "LIST"
+      },
+      "fields": [
+        "Production",
+        "Item",
+        "ID",
+        "TimeCreated",
+        "Status",
+        "Source",
+        "Target",
+        "BodyClass",
+        "SessionId"
+      ],
+      "filter": [
+        "Status",
+        "Source",
+        "Target",
+        "BodyClass",
+        "SessionId"
+      ],
+      "sort": {
+        "fields": [
+          "TimeCreated",
+          "Status",
+          "Source",
+          "Target"
+        ],
+        "default": "TimeCreated",
+        "direction": "desc"
+      },
+      "paging": "cap",
+      "criteria": {
+        "fields": [
+          {
+            "param": "item",
+            "labelKey": "interopItemSettingsCriterionItem",
+            "kind": "text",
+            "maxLength": 352,
+            "hint": "One item, spelled as interop.items.read answers its Production, then two vertical bars and its Name."
+          }
+        ]
+      }
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "ID",
+          "labelKey": "interopColumnId",
+          "kind": "name"
+        },
+        {
+          "field": "TimeCreated",
+          "labelKey": "journalColumnCreated",
+          "kind": "text"
+        },
+        {
+          "field": "Status",
+          "labelKey": "taskHistoryColumnStatus",
+          "kind": "status"
+        },
+        {
+          "field": "Source",
+          "labelKey": "auditEventFieldSource",
+          "kind": "text"
+        },
+        {
+          "field": "Target",
+          "labelKey": "agentLedgerColumnTarget",
+          "kind": "text"
+        },
+        {
+          "field": "BodyClass",
+          "labelKey": "interopColumnBodyClass",
+          "kind": "identifier"
+        },
+        {
+          "field": "SessionId",
+          "labelKey": "webSessionColumnSession",
+          "kind": "identifier"
+        }
+      ],
+      "emptyNextKey": "tableReadOnlyEmptyNext",
+      "emptyAgentKey": ""
+    },
+    "tab": {
+      "group": "interoperability/productions/items/document",
+      "position": 5,
+      "labelKey": "interopItemTabMessages"
+    },
+    "toolIdentifier": "interop.itemmessages",
+    "refreshDefault": 0,
+    "banner": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.InteropItemQueueTab",
+    "route": "interoperability/productions/items/queue",
+    "area": "interoperability",
+    "labelKey": "interopItemQueueLabel",
+    "sideBarPosition": 0,
+    "archetype": "detail",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Ens_Portal",
+        "permission": "USE"
+      },
+      {
+        "resource": "%Ens_ProductionConfig",
+        "permission": "READ"
+      },
+      {
+        "resource": "%Ens_Queues",
+        "permission": "READ"
+      }
+    ],
+    "ownPrivileges": [
+      {
+        "resource": "%Ens_ProductionConfig",
+        "permission": "READ"
+      },
+      {
+        "resource": "%Ens_Queues",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "interop-message",
+    "secondaryEntityTypes": [],
+    "scope": "namespace",
+    "parentScope": "interoperability/productions/items",
+    "id": {
+      "kind": "single",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [
+      {
+        "id": "abort",
+        "selfProtection": ""
+      }
+    ],
+    "context": {
+      "fields": [
+        "MessageId",
+        "Source",
+        "Target",
+        "BodyClass",
+        "TimeCreated",
+        "Status"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "interopItemQueueEmpty",
+    "commandAliases": [],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "interopItemQueuePrompt1"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "interopItemQueuePrompt2"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "interopItemQueuePrompt3"
+      }
+    ],
+    "classicPage": "EnsPortal.ProductionConfig",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "interop",
+        "endpoint": "ItemQueue",
+        "type": "LIST"
+      },
+      "fields": [
+        "Production",
+        "Item",
+        "Queue",
+        "Priority",
+        "Index",
+        "MessageId",
+        "Source",
+        "Target",
+        "BodyClass",
+        "TimeCreated",
+        "Status"
+      ],
+      "filter": [
+        "MessageId",
+        "Source",
+        "Target",
+        "BodyClass",
+        "Status"
+      ],
+      "sort": {
+        "fields": [
+          "Priority",
+          "Index",
+          "MessageId",
+          "Source",
+          "Target",
+          "TimeCreated",
+          "Status"
+        ],
+        "default": "Index",
+        "direction": "asc"
+      },
+      "paging": "cap",
+      "criteria": {
+        "fields": [
+          {
+            "param": "item",
+            "labelKey": "interopItemSettingsCriterionItem",
+            "kind": "text",
+            "maxLength": 352,
+            "hint": "One item, spelled as interop.items.read answers its Production, then two vertical bars and its Name."
+          }
+        ]
+      }
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "MessageId",
+          "labelKey": "interopColumnMessageId",
+          "kind": "name"
+        },
+        {
+          "field": "Priority",
+          "labelKey": "taskDetailsPriority",
+          "kind": "number"
+        },
+        {
+          "field": "Index",
+          "labelKey": "explorerSqlColumnIndex",
+          "kind": "number"
+        },
+        {
+          "field": "Source",
+          "labelKey": "auditEventFieldSource",
+          "kind": "text"
+        },
+        {
+          "field": "Target",
+          "labelKey": "agentLedgerColumnTarget",
+          "kind": "text"
+        },
+        {
+          "field": "BodyClass",
+          "labelKey": "interopColumnBodyClass",
+          "kind": "identifier"
+        },
+        {
+          "field": "TimeCreated",
+          "labelKey": "journalColumnCreated",
+          "kind": "text"
+        },
+        {
+          "field": "Status",
+          "labelKey": "taskHistoryColumnStatus",
+          "kind": "status"
+        }
+      ],
+      "emptyNextKey": "",
+      "emptyAgentKey": "interopQueueMessagesEmptyAgent"
+    },
+    "tab": {
+      "group": "interoperability/productions/items/document",
+      "position": 3,
+      "labelKey": "interopColumnQueue"
+    },
+    "toolIdentifier": "interop.itemqueue",
+    "refreshDefault": 0,
+    "banner": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.InteropItemSettingList",
+    "route": "interoperability/productions/items/settings",
+    "area": "interoperability",
+    "labelKey": "interopItemSettingsLabel",
+    "sideBarPosition": 0,
+    "archetype": "detail",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Ens_Portal",
+        "permission": "USE"
+      },
+      {
+        "resource": "%Ens_ProductionConfig",
+        "permission": "READ"
+      }
+    ],
+    "ownPrivileges": [
+      {
+        "resource": "%Ens_ProductionConfig",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "production-item-setting",
+    "secondaryEntityTypes": [],
+    "scope": "namespace",
+    "parentScope": "interoperability/productions/items",
+    "id": {
+      "kind": "composite",
+      "parts": [
+        "Production",
+        "Item",
+        "Target",
+        "Name"
+      ]
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [
+      {
+        "id": "set",
+        "selfProtection": ""
+      },
+      {
+        "id": "reset",
+        "selfProtection": ""
+      }
+    ],
+    "context": {
+      "fields": [
+        "Target",
+        "Name",
+        "Value",
+        "Source"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "interopItemSettingsEmpty",
+    "commandAliases": [],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "interopItemSettingsPrompt1"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "interopItemSettingsPrompt2"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "interopItemSettingsPrompt3"
+      }
+    ],
+    "classicPage": "EnsPortal.ProductionConfig",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "interop",
+        "endpoint": "Settings",
+        "type": "LIST"
+      },
+      "fields": [
+        "Production",
+        "Item",
+        "Target",
+        "Name",
+        "Value",
+        "Source",
+        "Default",
+        "DefaultSource",
+        "Type",
+        "Category",
+        "Location",
+        "Secret"
+      ],
+      "filter": [
+        "Name",
+        "Target",
+        "Source"
+      ],
+      "sort": {
+        "fields": [
+          "Name",
+          "Target",
+          "Value",
+          "Source"
+        ],
+        "default": "Name",
+        "direction": "asc"
+      },
+      "paging": "cap",
+      "criteria": {
+        "fields": [
+          {
+            "param": "item",
+            "labelKey": "interopItemSettingsCriterionItem",
+            "kind": "text",
+            "maxLength": 352,
+            "hint": "One item, spelled as interop.items.read answers its Production, then two vertical bars and its Name."
+          }
+        ]
+      }
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Name",
+          "labelKey": "tableColumnName",
+          "kind": "name"
+        },
+        {
+          "field": "Target",
+          "labelKey": "agentLedgerColumnTarget",
+          "kind": "text"
+        },
+        {
+          "field": "Value",
+          "labelKey": "errorLogColumnValue",
+          "kind": "text"
+        },
+        {
+          "field": "Source",
+          "labelKey": "auditEventFieldSource",
+          "kind": "text"
+        },
+        {
+          "field": "Default",
+          "labelKey": "tableColumnDefault",
+          "kind": "text"
+        }
+      ],
+      "emptyNextKey": "",
+      "emptyAgentKey": "interopItemSettingsEmptyAgent"
+    },
+    "tab": {
+      "group": "interoperability/productions/items/document",
+      "position": 2,
+      "labelKey": "interopItemTabSettings"
+    },
+    "toolIdentifier": "interop.itemsettings",
+    "refreshDefault": 0,
+    "banner": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.InteropItemStatusTab",
+    "route": "interoperability/productions/items/document",
+    "area": "interoperability",
+    "labelKey": "interopItemStatusLabel",
+    "sideBarPosition": 0,
+    "archetype": "detail",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Ens_Portal",
+        "permission": "USE"
+      },
+      {
+        "resource": "%Ens_ProductionConfig",
+        "permission": "READ"
+      }
+    ],
+    "ownPrivileges": [
+      {
+        "resource": "%Ens_ProductionConfig",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "production-item",
+    "secondaryEntityTypes": [],
+    "scope": "namespace",
+    "parentScope": "interoperability/productions/items",
+    "id": {
+      "kind": "composite",
+      "parts": [
+        "Production",
+        "Name"
+      ]
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "Name",
+        "ClassName",
+        "Type",
+        "Enabled",
+        "Status",
+        "AdapterState",
+        "LastActivity"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "interopItemStatusEmpty",
+    "commandAliases": [],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "interopItemStatusPrompt1"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "interopItemStatusPrompt2"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "interopItemStatusPrompt3"
+      }
+    ],
+    "classicPage": "EnsPortal.ProductionConfig",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "interop",
+        "endpoint": "ItemStatus",
+        "type": "LIST"
+      },
+      "fields": [
+        "Production",
+        "Name",
+        "ClassName",
+        "Type",
+        "Enabled",
+        "Status",
+        "AdapterState",
+        "LastActivity"
+      ],
+      "filter": [
+        "Name",
+        "ClassName",
+        "Type",
+        "Status"
+      ],
+      "sort": {
+        "fields": [
+          "Name"
+        ],
+        "default": "Name",
+        "direction": "asc"
+      },
+      "paging": "cap",
+      "criteria": {
+        "fields": [
+          {
+            "param": "item",
+            "labelKey": "interopItemSettingsCriterionItem",
+            "kind": "text",
+            "maxLength": 352,
+            "hint": "One item, spelled as interop.items.read answers its Production, then two vertical bars and its Name."
+          }
+        ]
+      }
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Name",
+          "labelKey": "tableColumnName",
+          "kind": "name"
+        },
+        {
+          "field": "ClassName",
+          "labelKey": "interopItemColumnClass",
+          "kind": "identifier"
+        },
+        {
+          "field": "Type",
+          "labelKey": "tableColumnType",
+          "kind": "text"
+        },
+        {
+          "field": "Enabled",
+          "labelKey": "tableColumnEnabled",
+          "kind": "status"
+        },
+        {
+          "field": "Status",
+          "labelKey": "taskHistoryColumnStatus",
+          "kind": "status"
+        },
+        {
+          "field": "AdapterState",
+          "labelKey": "interopColumnAdapterState",
+          "kind": "text"
+        },
+        {
+          "field": "LastActivity",
+          "labelKey": "agentTranscriptsColumnLastActivity",
+          "kind": "text"
+        }
+      ],
+      "emptyNextKey": "tableReadOnlyEmptyNext",
+      "emptyAgentKey": ""
+    },
+    "tab": {
+      "group": "interoperability/productions/items/document",
+      "position": 1,
+      "labelKey": "taskHistoryColumnStatus"
+    },
+    "toolIdentifier": "interop.itemstatus",
+    "refreshDefault": 0,
+    "banner": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.InteropItemTestTab",
+    "route": "interoperability/productions/items/test",
+    "area": "interoperability",
+    "labelKey": "interopItemTestLabel",
+    "sideBarPosition": 0,
+    "archetype": "detail",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Ens_Portal",
+        "permission": "USE"
+      },
+      {
+        "resource": "%Ens_TestingService",
+        "permission": "USE"
+      }
+    ],
+    "ownPrivileges": [
+      {
+        "resource": "%Ens_TestingService",
+        "permission": "USE"
+      }
+    ],
+    "entityType": "production-item",
+    "secondaryEntityTypes": [],
+    "scope": "namespace",
+    "parentScope": "interoperability/productions/items",
+    "id": {
+      "kind": "composite",
+      "parts": [
+        "RequestClass",
+        "Field"
+      ]
+    },
+    "primaryAction": {
+      "id": "test",
+      "selfProtection": ""
+    },
+    "rowActions": [
+      {
+        "id": "test",
+        "selfProtection": ""
+      }
+    ],
+    "context": {
+      "fields": [
+        "RequestClass",
+        "Kind",
+        "Field",
+        "Type",
+        "Required",
+        "Secret"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "interopItemTestEmpty",
+    "commandAliases": [],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "interopItemTestPrompt1"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "interopItemTestPrompt2"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "interopItemTestPrompt3"
+      }
+    ],
+    "classicPage": "EnsPortal.TestingService",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "interop",
+        "endpoint": "ItemTest",
+        "type": "LIST"
+      },
+      "fields": [
+        "Production",
+        "Item",
+        "RequestClass",
+        "Kind",
+        "Field",
+        "Type",
+        "Required",
+        "MaxLength",
+        "Values",
+        "Secret"
+      ],
+      "filter": [
+        "RequestClass",
+        "Field",
+        "Type"
+      ],
+      "sort": {
+        "fields": [
+          "RequestClass",
+          "Field"
+        ],
+        "default": "RequestClass",
+        "direction": "asc"
+      },
+      "paging": "cap",
+      "criteria": {
+        "fields": [
+          {
+            "param": "item",
+            "labelKey": "interopItemSettingsCriterionItem",
+            "kind": "text",
+            "maxLength": 352,
+            "hint": "One item, spelled as interop.items.read answers its Production, then two vertical bars and its Name."
+          }
+        ]
+      }
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "RequestClass",
+          "labelKey": "interopTestColumnRequestClass",
+          "kind": "identifier"
+        },
+        {
+          "field": "Field",
+          "labelKey": "explorerSqlColumnField",
+          "kind": "name"
+        },
+        {
+          "field": "Type",
+          "labelKey": "tableColumnType",
+          "kind": "text"
+        },
+        {
+          "field": "Required",
+          "labelKey": "openApiRequired",
+          "kind": "status"
+        },
+        {
+          "field": "MaxLength",
+          "labelKey": "explorerSqlColumnMaxLength",
+          "kind": "number"
+        },
+        {
+          "field": "Values",
+          "labelKey": "interopTestColumnValues",
+          "kind": "text"
+        },
+        {
+          "field": "Secret",
+          "labelKey": "interopTestColumnSecret",
+          "kind": "status"
+        }
+      ],
+      "emptyNextKey": "",
+      "emptyAgentKey": "interopItemTestEmptyAgent"
+    },
+    "tab": {
+      "group": "interoperability/productions/items/document",
+      "position": 7,
+      "labelKey": "serverFlagTest"
+    },
+    "toolIdentifier": "interop.itemtest",
+    "refreshDefault": 0,
+    "banner": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.InteropJobList",
+    "route": "interoperability/jobs",
+    "area": "interoperability",
+    "labelKey": "interopJobsLabel",
+    "sideBarPosition": 7,
+    "archetype": "list",
+    "built": true,
+    "refreshes": true,
+    "refreshRates": [
+      5,
+      10,
+      30,
+      60
+    ],
+    "privileges": [
+      {
+        "resource": "%Ens_Portal",
+        "permission": "USE"
+      },
+      {
+        "resource": "%Ens_Jobs",
+        "permission": "READ"
+      }
+    ],
+    "ownPrivileges": [
+      {
+        "resource": "%Ens_Jobs",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "interop-job",
+    "secondaryEntityTypes": [],
+    "scope": "namespace",
+    "parentScope": "",
+    "id": {
+      "kind": "single",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [
+      {
+        "id": "abort",
+        "selfProtection": ""
+      },
+      {
+        "id": "suspend",
+        "selfProtection": ""
+      },
+      {
+        "id": "stop",
+        "selfProtection": ""
+      }
+    ],
+    "context": {
+      "fields": [
+        "Job",
+        "Host",
+        "Status",
+        "AdapterState",
+        "LastActivity",
+        "ActiveMessage",
+        "Dead"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "interopJobsEmpty",
+    "commandAliases": [],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "interopJobsPrompt1"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "interopJobsPrompt2"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "interopJobsPrompt3"
+      }
+    ],
+    "classicPage": "EnsPortal.Jobs",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "interop",
+        "endpoint": "Jobs",
+        "type": "LIST"
+      },
+      "fields": [
+        "Job",
+        "Host",
+        "Status",
+        "AdapterState",
+        "LastActivity",
+        "Retry",
+        "ActiveMessage",
+        "Dead"
+      ],
+      "filter": [
+        "Job",
+        "Host",
+        "Status",
+        "ActiveMessage"
+      ],
+      "sort": {
+        "fields": [
+          "Job",
+          "Host",
+          "Status",
+          "LastActivity",
+          "Retry"
+        ],
+        "default": "Host",
+        "direction": "asc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Job",
+          "labelKey": "interopColumnJob",
+          "kind": "name"
+        },
+        {
+          "field": "Host",
+          "labelKey": "sslTestHost",
+          "kind": "text"
+        },
+        {
+          "field": "Status",
+          "labelKey": "taskHistoryColumnStatus",
+          "kind": "status"
+        },
+        {
+          "field": "AdapterState",
+          "labelKey": "interopColumnAdapterState",
+          "kind": "text"
+        },
+        {
+          "field": "LastActivity",
+          "labelKey": "agentTranscriptsColumnLastActivity",
+          "kind": "text"
+        },
+        {
+          "field": "Retry",
+          "labelKey": "actionRetry",
+          "kind": "number"
+        },
+        {
+          "field": "ActiveMessage",
+          "labelKey": "interopColumnActiveMessage",
+          "kind": "identifier"
+        },
+        {
+          "field": "Dead",
+          "labelKey": "interopColumnDead",
+          "kind": "status"
+        }
+      ],
+      "emptyNextKey": "",
+      "emptyAgentKey": "interopJobsEmptyAgent"
+    },
+    "rowTarget": {
+      "route": "os-management/processes/details",
+      "field": "Job",
+      "unless": "Dead"
+    },
+    "toolIdentifier": "interop.jobs",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.InteropLookupEntryList",
+    "route": "interoperability/lookup-tables/entries",
+    "area": "interoperability",
+    "labelKey": "interopLookupEntriesLabel",
+    "sideBarPosition": 0,
+    "archetype": "list",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Ens_Portal",
+        "permission": "USE"
+      },
+      {
+        "resource": "%Ens_LookupTables",
+        "permission": "READ"
+      }
+    ],
+    "ownPrivileges": [
+      {
+        "resource": "%Ens_LookupTables",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "lookup-entry",
+    "secondaryEntityTypes": [
+      "lookup-table"
+    ],
+    "scope": "namespace",
+    "parentScope": "interoperability/lookup-tables",
+    "id": {
+      "kind": "composite",
+      "parts": [
+        "Table",
+        "Key"
+      ]
+    },
+    "primaryAction": {
+      "id": "add",
+      "selfProtection": ""
+    },
+    "rowActions": [
+      {
+        "id": "set",
+        "selfProtection": ""
+      },
+      {
+        "id": "remove",
+        "selfProtection": ""
+      }
+    ],
+    "context": {
+      "fields": [
+        "Table",
+        "Key",
+        "Value",
+        "Secret"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "interopLookupEntriesEmpty",
+    "commandAliases": [],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "interopLookupEntriesPrompt1"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "interopLookupEntriesPrompt2"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "interopLookupEntriesPrompt3"
+      }
+    ],
+    "classicPage": "EnsPortal.LookupSettings",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "interop",
+        "endpoint": "LookupEntries",
+        "type": "LIST"
+      },
+      "fields": [
+        "Table",
+        "Key",
+        "Value",
+        "Secret"
+      ],
+      "filter": [
+        "Key",
+        "Value"
+      ],
+      "sort": {
+        "fields": [
+          "Key",
+          "Value"
+        ],
+        "default": "Key",
+        "direction": "asc"
+      },
+      "paging": "cap",
+      "criteria": {
+        "fields": [
+          {
+            "param": "table",
+            "labelKey": "interopLookupEntriesCriterionTable",
+            "kind": "text",
+            "maxLength": 255,
+            "hint": "One lookup table, spelled as interop.lookuptables.read answers its Name."
+          }
+        ]
+      }
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Key",
+          "labelKey": "interopLookupColumnKey",
+          "kind": "name"
+        },
+        {
+          "field": "Value",
+          "labelKey": "errorLogColumnValue",
+          "kind": "text"
+        },
+        {
+          "field": "Secret",
+          "labelKey": "interopLookupColumnSecret",
+          "kind": "status"
+        }
+      ],
+      "emptyNextKey": "",
+      "emptyAgentKey": "interopLookupEntriesEmptyAgent"
+    },
+    "toolIdentifier": "interop.lookupentries",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.InteropLookupTableList",
+    "route": "interoperability/lookup-tables",
+    "area": "interoperability",
+    "labelKey": "interopLookupTablesLabel",
+    "sideBarPosition": 8,
+    "archetype": "list",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Ens_Portal",
+        "permission": "USE"
+      },
+      {
+        "resource": "%Ens_LookupTables",
+        "permission": "READ"
+      }
+    ],
+    "ownPrivileges": [
+      {
+        "resource": "%Ens_LookupTables",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "lookup-table",
+    "secondaryEntityTypes": [
+      "lookup-entry"
+    ],
+    "scope": "namespace",
+    "parentScope": "",
+    "id": {
+      "kind": "single",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "add",
+      "selfProtection": ""
+    },
+    "rowActions": [
+      {
+        "id": "delete",
+        "selfProtection": ""
+      },
+      {
+        "id": "export",
+        "selfProtection": ""
+      },
+      {
+        "id": "export-browser",
+        "selfProtection": ""
+      },
+      {
+        "id": "import",
+        "selfProtection": ""
+      },
+      {
+        "id": "import-local",
+        "selfProtection": ""
+      }
+    ],
+    "context": {
+      "fields": [
+        "Name",
+        "Modified"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "interopLookupTablesEmpty",
+    "commandAliases": [
+      "lookup tables",
+      "lookup table"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "interopLookupTablesPrompt1"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "interopLookupTablesPrompt2"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "interopLookupTablesPrompt3"
+      }
+    ],
+    "classicPage": "EnsPortal.LookupSettings",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "interop",
+        "endpoint": "LookupTables",
+        "type": "LIST"
+      },
+      "fields": [
+        "Name",
+        "Modified"
+      ],
+      "filter": [
+        "Name"
+      ],
+      "sort": {
+        "fields": [
+          "Name",
+          "Modified"
+        ],
+        "default": "Name",
+        "direction": "asc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Name",
+          "labelKey": "tableColumnName",
+          "kind": "name"
+        },
+        {
+          "field": "Modified",
+          "labelKey": "explorerColumnModified",
+          "kind": "text"
+        }
+      ],
+      "emptyNextKey": "",
+      "emptyAgentKey": "interopLookupTablesEmptyAgent"
+    },
+    "toolIdentifier": "interop.lookuptables",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.InteropMonitorList",
+    "route": "interoperability/monitor",
+    "area": "interoperability",
+    "labelKey": "interopMonitorLabel",
+    "sideBarPosition": 5,
+    "archetype": "list",
+    "built": true,
+    "refreshes": true,
+    "refreshRates": [
+      5,
+      10,
+      30,
+      60
+    ],
+    "privileges": [
+      {
+        "resource": "%Ens_Portal",
+        "permission": "USE"
+      },
+      {
+        "resource": "%Ens_Dashboard",
+        "permission": "USE"
+      }
+    ],
+    "ownPrivileges": [
+      {
+        "resource": "%Ens_Dashboard",
+        "permission": "USE"
+      }
+    ],
+    "entityType": "production-item",
+    "secondaryEntityTypes": [],
+    "scope": "namespace",
+    "parentScope": "",
+    "id": {
+      "kind": "composite",
+      "parts": [
+        "Production",
+        "Name"
+      ]
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "Name",
+        "Type",
+        "Status",
+        "AdapterState",
+        "LastActivity",
+        "Queue",
+        "Count"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "interopMonitorEmpty",
+    "commandAliases": [],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "interopMonitorPrompt1"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "interopMonitorPrompt2"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "interopMonitorPrompt3"
+      }
+    ],
+    "classicPage": "EnsPortal.ProductionMonitor",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "interop",
+        "endpoint": "Monitor",
+        "type": "LIST"
+      },
+      "fields": [
+        "Production",
+        "Item",
+        "Name",
+        "Type",
+        "Status",
+        "AdapterState",
+        "LastActivity",
+        "ElapsedTime",
+        "Queue",
+        "Count"
+      ],
+      "filter": [
+        "Name",
+        "Type",
+        "Status"
+      ],
+      "sort": {
+        "fields": [
+          "Name",
+          "Type",
+          "Status",
+          "LastActivity",
+          "ElapsedTime",
+          "Queue",
+          "Count"
+        ],
+        "default": "Name",
+        "direction": "asc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Name",
+          "labelKey": "tableColumnName",
+          "kind": "name"
+        },
+        {
+          "field": "Type",
+          "labelKey": "tableColumnType",
+          "kind": "text"
+        },
+        {
+          "field": "Status",
+          "labelKey": "taskHistoryColumnStatus",
+          "kind": "status"
+        },
+        {
+          "field": "AdapterState",
+          "labelKey": "interopColumnAdapterState",
+          "kind": "text"
+        },
+        {
+          "field": "LastActivity",
+          "labelKey": "agentTranscriptsColumnLastActivity",
+          "kind": "text"
+        },
+        {
+          "field": "ElapsedTime",
+          "labelKey": "sqlActivityColumnElapsed",
+          "kind": "number"
+        },
+        {
+          "field": "Queue",
+          "labelKey": "interopColumnQueue",
+          "kind": "number"
+        },
+        {
+          "field": "Count",
+          "labelKey": "interopColumnCount",
+          "kind": "number"
+        }
+      ],
+      "emptyNextKey": "tableReadOnlyEmptyNext",
+      "emptyAgentKey": ""
+    },
+    "rowTarget": {
+      "route": "interoperability/productions/items/document",
+      "field": "Item"
+    },
+    "toolIdentifier": "interop.monitor",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.InteropProcessList",
+    "route": "interoperability/processes",
+    "area": "interoperability",
+    "labelKey": "interopProcessesLabel",
+    "sideBarPosition": 2,
+    "archetype": "list",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Ens_Portal",
+        "permission": "USE"
+      },
+      {
+        "resource": "%Ens_Code",
+        "permission": "READ"
+      }
+    ],
+    "ownPrivileges": [
+      {
+        "resource": "%Ens_Code",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "class",
+    "secondaryEntityTypes": [],
+    "scope": "namespace",
+    "parentScope": "",
+    "id": {
+      "kind": "single",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "Name",
+        "Modified"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "interopProcessesEmpty",
+    "commandAliases": [
+      "business processes",
+      "processes"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "interopProcessesPrompt1"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "interopProcessesPrompt2"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "interopProcessesPrompt3"
+      }
+    ],
+    "classicPage": "EnsPortal.BusinessProcesses",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "interop",
+        "endpoint": "Processes",
+        "type": "LIST"
+      },
+      "fields": [
+        "Name",
+        "Modified"
+      ],
+      "filter": [
+        "Name"
+      ],
+      "sort": {
+        "fields": [
+          "Name",
+          "Modified"
+        ],
+        "default": "Name",
+        "direction": "asc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Name",
+          "labelKey": "tableColumnName",
+          "kind": "name"
+        },
+        {
+          "field": "Modified",
+          "labelKey": "explorerColumnModified",
+          "kind": "text"
+        }
+      ],
+      "emptyNextKey": "tableReadOnlyEmptyNext",
+      "emptyAgentKey": ""
+    },
+    "toolIdentifier": "interop.processes",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.InteropProductionList",
+    "route": "interoperability/productions",
+    "area": "interoperability",
+    "labelKey": "interopProductionsLabel",
+    "sideBarPosition": 1,
+    "archetype": "list",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Ens_Portal",
+        "permission": "USE"
+      },
+      {
+        "resource": "%Ens_ProductionConfig",
+        "permission": "READ"
+      }
+    ],
+    "ownPrivileges": [
+      {
+        "resource": "%Ens_ProductionConfig",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "production",
+    "secondaryEntityTypes": [],
+    "scope": "namespace",
+    "parentScope": "",
+    "id": {
+      "kind": "single",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [
+      {
+        "id": "start",
+        "selfProtection": ""
+      },
+      {
+        "id": "stop",
+        "selfProtection": ""
+      },
+      {
+        "id": "restart",
+        "selfProtection": ""
+      },
+      {
+        "id": "update",
+        "selfProtection": ""
+      },
+      {
+        "id": "recover",
+        "selfProtection": ""
+      }
+    ],
+    "context": {
+      "fields": [
+        "Name",
+        "Status",
+        "LastStartTime",
+        "LastStopTime"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "interopProductionsEmpty",
+    "commandAliases": [
+      "productions",
+      "production control",
+      "start production",
+      "stop production"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "interopProductionsPrompt1"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "interopProductionsPrompt2"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "interopProductionsPrompt3"
+      }
+    ],
+    "classicPage": "EnsPortal.Productions",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "interop",
+        "endpoint": "Productions",
+        "type": "LIST"
+      },
+      "fields": [
+        "Name",
+        "Status",
+        "LastStartTime",
+        "LastStopTime"
+      ],
+      "filter": [
+        "Name",
+        "Status"
+      ],
+      "sort": {
+        "fields": [
+          "Name",
+          "Status",
+          "LastStartTime",
+          "LastStopTime"
+        ],
+        "default": "Name",
+        "direction": "asc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Name",
+          "labelKey": "tableColumnName",
+          "kind": "name"
+        },
+        {
+          "field": "Status",
+          "labelKey": "taskHistoryColumnStatus",
+          "kind": "status"
+        },
+        {
+          "field": "LastStartTime",
+          "labelKey": "interopProductionColumnLastStarted",
+          "kind": "text"
+        },
+        {
+          "field": "LastStopTime",
+          "labelKey": "interopProductionColumnLastStopped",
+          "kind": "text"
+        }
+      ],
+      "emptyNextKey": "",
+      "emptyAgentKey": "interopProductionsEmptyAgent"
+    },
+    "toolIdentifier": "interop.productions",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.InteropQueueList",
+    "route": "interoperability/queues",
+    "area": "interoperability",
+    "labelKey": "interopQueuesLabel",
+    "sideBarPosition": 6,
+    "archetype": "list",
+    "built": true,
+    "refreshes": true,
+    "refreshRates": [
+      5,
+      10,
+      30,
+      60
+    ],
+    "privileges": [
+      {
+        "resource": "%Ens_Portal",
+        "permission": "USE"
+      },
+      {
+        "resource": "%Ens_Queues",
+        "permission": "READ"
+      }
+    ],
+    "ownPrivileges": [
+      {
+        "resource": "%Ens_Queues",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "interop-queue",
+    "secondaryEntityTypes": [],
+    "scope": "namespace",
+    "parentScope": "",
+    "id": {
+      "kind": "single",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [
+      {
+        "id": "abort",
+        "selfProtection": ""
+      }
+    ],
+    "context": {
+      "fields": [
+        "Name",
+        "Count",
+        "Active"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "interopQueuesEmpty",
+    "commandAliases": [],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "interopQueuesPrompt1"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "interopQueuesPrompt2"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "interopQueuesPrompt3"
+      }
+    ],
+    "classicPage": "EnsPortal.Queues",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "interop",
+        "endpoint": "Queues",
+        "type": "LIST"
+      },
+      "fields": [
+        "Name",
+        "Count",
+        "Active",
+        "Created"
+      ],
+      "filter": [
+        "Name"
+      ],
+      "sort": {
+        "fields": [
+          "Name",
+          "Count",
+          "Active",
+          "Created"
+        ],
+        "default": "Name",
+        "direction": "asc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Name",
+          "labelKey": "tableColumnName",
+          "kind": "name"
+        },
+        {
+          "field": "Count",
+          "labelKey": "interopColumnCount",
+          "kind": "number"
+        },
+        {
+          "field": "Active",
+          "labelKey": "interopColumnActive",
+          "kind": "number"
+        },
+        {
+          "field": "Created",
+          "labelKey": "journalColumnCreated",
+          "kind": "text"
+        }
+      ],
+      "emptyNextKey": "",
+      "emptyAgentKey": "interopQueuesEmptyAgent"
+    },
+    "toolIdentifier": "interop.queues",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.InteropQueueMessageList",
+    "route": "interoperability/queues/messages",
+    "area": "interoperability",
+    "labelKey": "interopQueueMessagesLabel",
+    "sideBarPosition": 0,
+    "archetype": "list",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Ens_Portal",
+        "permission": "USE"
+      },
+      {
+        "resource": "%Ens_Queues",
+        "permission": "READ"
+      }
+    ],
+    "ownPrivileges": [
+      {
+        "resource": "%Ens_Queues",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "interop-message",
+    "secondaryEntityTypes": [],
+    "scope": "namespace",
+    "parentScope": "interoperability/queues",
+    "id": {
+      "kind": "single",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [
+      {
+        "id": "abort",
+        "selfProtection": ""
+      }
+    ],
+    "context": {
+      "fields": [
+        "MessageId",
+        "Source",
+        "Target",
+        "BodyClass",
+        "TimeCreated",
+        "Status"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "interopQueueMessagesEmpty",
+    "commandAliases": [],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "interopQueueMessagesPrompt1"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "interopQueueMessagesPrompt2"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "interopQueueMessagesPrompt3"
+      }
+    ],
+    "classicPage": "EnsPortal.Queues",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "interop",
+        "endpoint": "QueueItems",
+        "type": "LIST"
+      },
+      "fields": [
+        "Queue",
+        "Priority",
+        "Index",
+        "MessageId",
+        "Source",
+        "Target",
+        "BodyClass",
+        "TimeCreated",
+        "Status"
+      ],
+      "filter": [
+        "MessageId",
+        "Source",
+        "Target",
+        "BodyClass",
+        "Status"
+      ],
+      "sort": {
+        "fields": [
+          "Priority",
+          "Index",
+          "MessageId",
+          "Source",
+          "Target",
+          "TimeCreated",
+          "Status"
+        ],
+        "default": "Index",
+        "direction": "asc"
+      },
+      "paging": "cap",
+      "criteria": {
+        "fields": [
+          {
+            "param": "queue",
+            "labelKey": "interopColumnQueue",
+            "kind": "text",
+            "maxLength": 256,
+            "hint": "One queue, spelled as interop.queues.read answers its Name."
+          }
+        ]
+      }
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "MessageId",
+          "labelKey": "interopColumnMessageId",
+          "kind": "name"
+        },
+        {
+          "field": "Priority",
+          "labelKey": "taskDetailsPriority",
+          "kind": "number"
+        },
+        {
+          "field": "Index",
+          "labelKey": "explorerSqlColumnIndex",
+          "kind": "number"
+        },
+        {
+          "field": "Source",
+          "labelKey": "auditEventFieldSource",
+          "kind": "text"
+        },
+        {
+          "field": "Target",
+          "labelKey": "agentLedgerColumnTarget",
+          "kind": "text"
+        },
+        {
+          "field": "BodyClass",
+          "labelKey": "interopColumnBodyClass",
+          "kind": "identifier"
+        },
+        {
+          "field": "TimeCreated",
+          "labelKey": "journalColumnCreated",
+          "kind": "text"
+        },
+        {
+          "field": "Status",
+          "labelKey": "taskHistoryColumnStatus",
+          "kind": "status"
+        }
+      ],
+      "emptyNextKey": "",
+      "emptyAgentKey": "interopQueueMessagesEmptyAgent"
+    },
+    "toolIdentifier": "interop.queuemessages",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.InteropRuleList",
+    "route": "interoperability/rules",
+    "area": "interoperability",
+    "labelKey": "interopRulesLabel",
+    "sideBarPosition": 4,
+    "archetype": "list",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Ens_Portal",
+        "permission": "USE"
+      },
+      {
+        "resource": "%Ens_Code",
+        "permission": "READ"
+      }
+    ],
+    "ownPrivileges": [
+      {
+        "resource": "%Ens_Code",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "class",
+    "secondaryEntityTypes": [],
+    "scope": "namespace",
+    "parentScope": "",
+    "id": {
+      "kind": "single",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "Name",
+        "Modified"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "interopRulesEmpty",
+    "commandAliases": [
+      "business rules",
+      "rules",
+      "routing rules"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "interopRulesPrompt1"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "interopRulesPrompt2"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "interopRulesPrompt3"
+      }
+    ],
+    "classicPage": "EnsPortal.Rules",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "interop",
+        "endpoint": "Rules",
+        "type": "LIST"
+      },
+      "fields": [
+        "Name",
+        "Modified"
+      ],
+      "filter": [
+        "Name"
+      ],
+      "sort": {
+        "fields": [
+          "Name",
+          "Modified"
+        ],
+        "default": "Name",
+        "direction": "asc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Name",
+          "labelKey": "tableColumnName",
+          "kind": "name"
+        },
+        {
+          "field": "Modified",
+          "labelKey": "explorerColumnModified",
+          "kind": "text"
+        }
+      ],
+      "emptyNextKey": "tableReadOnlyEmptyNext",
+      "emptyAgentKey": ""
+    },
+    "toolIdentifier": "interop.rules",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.InteropTransformList",
+    "route": "interoperability/transforms",
+    "area": "interoperability",
+    "labelKey": "interopTransformsLabel",
+    "sideBarPosition": 3,
+    "archetype": "list",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Ens_Portal",
+        "permission": "USE"
+      },
+      {
+        "resource": "%Ens_Code",
+        "permission": "READ"
+      }
+    ],
+    "ownPrivileges": [
+      {
+        "resource": "%Ens_Code",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "class",
+    "secondaryEntityTypes": [],
+    "scope": "namespace",
+    "parentScope": "",
+    "id": {
+      "kind": "single",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "Name",
+        "Modified"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "interopTransformsEmpty",
+    "commandAliases": [
+      "data transformations",
+      "transformations",
+      "dtl"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "interopTransformsPrompt1"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "interopTransformsPrompt2"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "interopTransformsPrompt3"
+      }
+    ],
+    "classicPage": "EnsPortal.DataTransformations",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "interop",
+        "endpoint": "Transforms",
+        "type": "LIST"
+      },
+      "fields": [
+        "Name",
+        "Modified"
+      ],
+      "filter": [
+        "Name"
+      ],
+      "sort": {
+        "fields": [
+          "Name",
+          "Modified"
+        ],
+        "default": "Name",
+        "direction": "asc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Name",
+          "labelKey": "tableColumnName",
+          "kind": "name"
+        },
+        {
+          "field": "Modified",
+          "labelKey": "explorerColumnModified",
+          "kind": "text"
+        }
+      ],
+      "emptyNextKey": "tableReadOnlyEmptyNext",
+      "emptyAgentKey": ""
+    },
+    "toolIdentifier": "interop.transforms",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
     "descriptor": "OcuPilot.Screen.Descriptor.JournalFileDatabaseList",
     "route": "os-management/journals/databases",
     "area": "os-management",
@@ -13461,11 +18098,19 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       {
         "resource": "%Ens_EventLog",
         "permission": "USE"
+      },
+      {
+        "resource": "%Ens_Portal",
+        "permission": "USE"
       }
     ],
     "ownPrivileges": [
       {
         "resource": "%Ens_EventLog",
+        "permission": "USE"
+      },
+      {
+        "resource": "%Ens_Portal",
         "permission": "USE"
       }
     ],
@@ -14316,6 +18961,347 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "secretArguments": [],
     "fingerprintExcludes": [],
     "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.MetricsList",
+    "route": "os-management/metrics",
+    "area": "os-management",
+    "labelKey": "metricsLabel",
+    "sideBarPosition": 21,
+    "archetype": "list",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Operate",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "none",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "Metric",
+        "Labels",
+        "Value",
+        "Help"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "metricsEmpty",
+    "commandAliases": [
+      "prometheus metrics",
+      "metrics",
+      "sensors"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupCapacity",
+        "textKey": "metricsPrompt1"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "metricsPrompt2"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "metricsPrompt3"
+      }
+    ],
+    "classicPage": "",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "monitor",
+        "endpoint": "Metrics",
+        "type": "LIST"
+      },
+      "fields": [
+        "Metric",
+        "Labels",
+        "Value",
+        "Help"
+      ],
+      "filter": [
+        "Metric",
+        "Labels",
+        "Help"
+      ],
+      "sort": {
+        "fields": [
+          "Metric",
+          "Value"
+        ],
+        "default": "Metric",
+        "direction": "asc"
+      },
+      "paging": "cap",
+      "note": {
+        "key": "metricsNote",
+        "text": "Each read takes a new sensor collection, which shortens the per-second intervals an external Prometheus scraper reports."
+      }
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Metric",
+          "labelKey": "metricsColumnMetric",
+          "kind": "name"
+        },
+        {
+          "field": "Labels",
+          "labelKey": "metricsColumnLabels",
+          "kind": "identifier"
+        },
+        {
+          "field": "Value",
+          "labelKey": "errorLogColumnValue",
+          "kind": "number"
+        },
+        {
+          "field": "Help",
+          "labelKey": "tableColumnDescription",
+          "kind": "text"
+        }
+      ],
+      "emptyNextKey": "tableReadOnlyEmptyNext",
+      "emptyAgentKey": ""
+    },
+    "toolIdentifier": "osmgmt.metrics",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.MftConnectionForm",
+    "route": "security/mft-connections/edit",
+    "area": "security",
+    "labelKey": "aboutMftConnection",
+    "sideBarPosition": 0,
+    "archetype": "form-page",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Secure",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "mft-connection",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "single",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [],
+      "secretFields": []
+    },
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "emptyStateKey": "",
+    "commandAliases": [],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "mftConnectionFormPrompt1"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "mftConnectionFormPrompt2"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "mftConnectionFormPrompt3"
+      }
+    ],
+    "classicPage": "%CSP.UI.Portal.MFT.Connection",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "toolIdentifier": "security.mftconnectionform",
+    "refreshDefault": 0,
+    "read": null,
+    "table": null,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.MftConnectionList",
+    "route": "security/mft-connections",
+    "area": "security",
+    "labelKey": "mftConnectionListLabel",
+    "sideBarPosition": 13,
+    "archetype": "list",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Secure",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "mft-connection",
+    "entityLabelKey": "aboutMftConnection",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "single",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "create",
+      "selfProtection": ""
+    },
+    "rowActions": [
+      {
+        "id": "delete",
+        "selfProtection": ""
+      },
+      {
+        "id": "revoke-token",
+        "selfProtection": ""
+      }
+    ],
+    "context": {
+      "fields": [
+        "Name",
+        "Service",
+        "IsAuthorized"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "mftConnectionListEmpty",
+    "commandAliases": [
+      "managed file transfer",
+      "create mft connection"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "mftConnectionListPrompt1"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "mftConnectionListPrompt2"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "mftConnectionListPrompt3"
+      }
+    ],
+    "classicPage": "%CSP.UI.Portal.MFT.ConnectionList",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "admin",
+        "endpoint": "Security.MFT",
+        "type": "LIST"
+      },
+      "fields": [
+        "Name",
+        "Service",
+        "IsAuthorized"
+      ],
+      "filter": [
+        "Name",
+        "Service"
+      ],
+      "sort": {
+        "fields": [
+          "Name",
+          "Service",
+          "IsAuthorized"
+        ],
+        "default": "Name",
+        "direction": "asc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Name",
+          "labelKey": "tableColumnName",
+          "kind": "name"
+        },
+        {
+          "field": "Service",
+          "labelKey": "mftConnectionService",
+          "kind": "text"
+        },
+        {
+          "field": "IsAuthorized",
+          "labelKey": "mftConnectionAuthorization",
+          "kind": "text"
+        }
+      ],
+      "emptyNextKey": "",
+      "emptyAgentKey": "mftConnectionListEmptyAgent"
+    },
+    "toolIdentifier": "security.mftconnections",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": []
   },
   {
     "descriptor": "OcuPilot.Screen.Descriptor.NamespaceForm",
@@ -17063,10 +22049,15 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "parts": []
     },
     "primaryAction": {
-      "id": "",
+      "id": "create",
       "selfProtection": ""
     },
-    "rowActions": [],
+    "rowActions": [
+      {
+        "id": "delete",
+        "selfProtection": ""
+      }
+    ],
     "context": {
       "fields": [
         "Name",
@@ -17160,8 +22151,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
           "kind": "status"
         }
       ],
-      "emptyNextKey": "tableReadOnlyEmptyNext",
-      "emptyAgentKey": ""
+      "emptyNextKey": "",
+      "emptyAgentKey": "restApiListEmptyAgent"
     },
     "toolIdentifier": "webapp.restapis",
     "refreshDefault": 0,
@@ -17297,6 +22288,14 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       {
         "id": "remove-resource-grant",
         "selfProtection": ""
+      },
+      {
+        "id": "grant-sql",
+        "selfProtection": ""
+      },
+      {
+        "id": "revoke-sql",
+        "selfProtection": ""
       }
     ],
     "context": {
@@ -17388,6 +22387,512 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "emptyAgentKey": "roleListEmptyAgent"
     },
     "toolIdentifier": "permissions.roles",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.RoutineAppForm",
+    "route": "web-applications/routine-applications/edit",
+    "area": "web-applications",
+    "labelKey": "aboutRoutineApplication",
+    "sideBarPosition": 0,
+    "archetype": "form-page",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Secure",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "routine-application",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "single",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [],
+      "secretFields": []
+    },
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "emptyStateKey": "",
+    "commandAliases": [],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "routineAppFormPrompt1"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "routineAppFormPrompt2"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "routineAppFormPrompt3"
+      }
+    ],
+    "classicPage": "%CSP.UI.Portal.Applications.PrivRoutine",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "toolIdentifier": "webapp.routineappform",
+    "refreshDefault": 0,
+    "read": null,
+    "table": null,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.RoutineAppList",
+    "route": "web-applications/routine-applications",
+    "area": "web-applications",
+    "labelKey": "routineAppListLabel",
+    "sideBarPosition": 5,
+    "archetype": "list",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Secure",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "routine-application",
+    "entityLabelKey": "aboutRoutineApplication",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "single",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "create",
+      "selfProtection": ""
+    },
+    "rowActions": [
+      {
+        "id": "add-application-role",
+        "selfProtection": "ocupilot-routine-application"
+      },
+      {
+        "id": "remove-application-role",
+        "selfProtection": "ocupilot-routine-application"
+      },
+      {
+        "id": "add-matching-role",
+        "selfProtection": "ocupilot-routine-application"
+      },
+      {
+        "id": "remove-matching-role",
+        "selfProtection": "ocupilot-routine-application"
+      },
+      {
+        "id": "add-routine",
+        "selfProtection": "ocupilot-routine-application"
+      },
+      {
+        "id": "remove-routine",
+        "selfProtection": "ocupilot-routine-application"
+      },
+      {
+        "id": "delete",
+        "selfProtection": "ocupilot-routine-application"
+      }
+    ],
+    "context": {
+      "fields": [
+        "Name",
+        "Enabled",
+        "Resource",
+        "Description"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "routineAppListEmpty",
+    "commandAliases": [
+      "privileged routine applications",
+      "create privileged routine application"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "routineAppListPrompt1"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "routineAppListPrompt2"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "routineAppListPrompt3"
+      }
+    ],
+    "classicPage": "%CSP.UI.Portal.Applications.PrivRoutineList",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "admin",
+        "endpoint": "Security.PrivilegedRoutine",
+        "type": "LIST",
+        "rowGet": {
+          "key": "Name",
+          "param": "name",
+          "fields": [
+            "Enabled",
+            "Description"
+          ],
+          "derived": []
+        }
+      },
+      "fields": [
+        "Name",
+        "Enabled",
+        "Resource",
+        "Description"
+      ],
+      "filter": [
+        "Name",
+        "Resource",
+        "Description"
+      ],
+      "sort": {
+        "fields": [
+          "Name",
+          "Enabled",
+          "Resource",
+          "Description"
+        ],
+        "default": "Name",
+        "direction": "asc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Name",
+          "labelKey": "tableColumnName",
+          "kind": "name"
+        },
+        {
+          "field": "Enabled",
+          "labelKey": "tableColumnEnabled",
+          "kind": "status"
+        },
+        {
+          "field": "Resource",
+          "labelKey": "webAppColumnResource",
+          "kind": "identifier"
+        },
+        {
+          "field": "Description",
+          "labelKey": "tableColumnDescription",
+          "kind": "text"
+        }
+      ],
+      "emptyNextKey": "",
+      "emptyAgentKey": "routineAppListEmptyAgent"
+    },
+    "toolIdentifier": "webapp.routineapps",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": []
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.RoutineAppRoleList",
+    "route": "web-applications/routine-applications/roles",
+    "area": "web-applications",
+    "labelKey": "routineAppRolesLabel",
+    "sideBarPosition": 0,
+    "archetype": "list",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Secure",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "web-applications/routine-applications",
+    "id": {
+      "kind": "composite",
+      "parts": [
+        "MatchRole"
+      ]
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "MatchRole",
+        "TargetRoles"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "routineAppRolesEmpty",
+    "commandAliases": [],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "routineAppRolesPrompt1"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "routineAppRolesPrompt2"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "routineAppRolesPrompt3"
+      }
+    ],
+    "classicPage": "%CSP.UI.Portal.Applications.PrivRoutine",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "admin",
+        "endpoint": "Security.PrivilegedRoutine",
+        "type": "GET",
+        "rows": "MatchRoles"
+      },
+      "fields": [
+        "MatchRole",
+        "TargetRoles"
+      ],
+      "filter": [
+        "MatchRole"
+      ],
+      "sort": {
+        "fields": [
+          "MatchRole"
+        ],
+        "default": "MatchRole",
+        "direction": "asc"
+      },
+      "paging": "cap",
+      "criteria": {
+        "fields": [
+          {
+            "param": "name",
+            "labelKey": "tableColumnName",
+            "kind": "text",
+            "maxLength": 64,
+            "hint": "One privileged routine application, spelled as webapp.routineapps.read answers its Name."
+          }
+        ]
+      }
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "MatchRole",
+          "labelKey": "webAppFieldMatchRole",
+          "kind": "name",
+          "emptyKey": "routineAppRolesEveryCaller"
+        },
+        {
+          "field": "TargetRoles",
+          "labelKey": "userColumnRoles",
+          "kind": "identifier"
+        }
+      ],
+      "emptyNextKey": "tableReadOnlyEmptyNext",
+      "emptyAgentKey": ""
+    },
+    "toolIdentifier": "webapp.routineapproles",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.RoutineAppRoutineList",
+    "route": "web-applications/routine-applications/routines",
+    "area": "web-applications",
+    "labelKey": "routineAppTabRoutines",
+    "sideBarPosition": 0,
+    "archetype": "list",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Secure",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "web-applications/routine-applications",
+    "id": {
+      "kind": "composite",
+      "parts": [
+        "RoutineOrClass",
+        "Type",
+        "Db"
+      ]
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "RoutineOrClass",
+        "Db",
+        "Type"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "routineAppRoutinesEmpty",
+    "commandAliases": [],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "routineAppRoutinesPrompt1"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "routineAppRoutinesPrompt2"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "routineAppRoutinesPrompt3"
+      }
+    ],
+    "classicPage": "%CSP.UI.Portal.Applications.PrivRoutine",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "admin",
+        "endpoint": "Security.PrivilegedRoutine",
+        "type": "GET",
+        "rows": "Routines"
+      },
+      "fields": [
+        "RoutineOrClass",
+        "Db",
+        "Type"
+      ],
+      "filter": [
+        "RoutineOrClass",
+        "Db"
+      ],
+      "sort": {
+        "fields": [
+          "RoutineOrClass",
+          "Db",
+          "Type"
+        ],
+        "default": "RoutineOrClass",
+        "direction": "asc"
+      },
+      "paging": "cap",
+      "criteria": {
+        "fields": [
+          {
+            "param": "name",
+            "labelKey": "tableColumnName",
+            "kind": "text",
+            "maxLength": 64,
+            "hint": "One privileged routine application, spelled as webapp.routineapps.read answers its Name."
+          }
+        ]
+      }
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "RoutineOrClass",
+          "labelKey": "routineAppFieldRoutine",
+          "kind": "name"
+        },
+        {
+          "field": "Db",
+          "labelKey": "systemInfoDatabase",
+          "kind": "identifier"
+        },
+        {
+          "field": "Type",
+          "labelKey": "tableColumnType",
+          "kind": "text"
+        }
+      ],
+      "emptyNextKey": "tableReadOnlyEmptyNext",
+      "emptyAgentKey": ""
+    },
+    "toolIdentifier": "webapp.routineapproutines",
     "refreshDefault": 0,
     "banner": null,
     "tab": null,
@@ -17790,7 +23295,11 @@ export const SCREENS: readonly ScreenDeclaration[] = [
         "default": "Name",
         "direction": "asc"
       },
-      "paging": "cap"
+      "paging": "cap",
+      "note": {
+        "key": "serviceListNote",
+        "text": "An empty Allowed IP addresses list (AllowedConnections) means any address may connect."
+      }
     },
     "table": {
       "columns": [
@@ -18034,6 +23543,503 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "entityLabelKey": ""
   },
   {
+    "descriptor": "OcuPilot.Screen.Descriptor.SqlAdminPrivilegeList",
+    "route": "permissions/sql-admin-privileges",
+    "area": "permissions",
+    "labelKey": "sqlAdminPrivilegesLabel",
+    "sideBarPosition": 0,
+    "archetype": "list (server criteria)",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Secure",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "composite",
+      "parts": [
+        "Privilege",
+        "GrantedVia"
+      ]
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "Privilege",
+        "GrantOption",
+        "GrantedVia"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "sqlAdminPrivilegesEmpty",
+    "commandAliases": [
+      "sql admin privileges",
+      "admin privileges"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "userPromptGroupAccess",
+        "textKey": "sqlAdminPrivilegesPrompt1"
+      },
+      {
+        "groupKey": "userPromptGroupAccess",
+        "textKey": "sqlAdminPrivilegesPrompt2"
+      },
+      {
+        "groupKey": "userPromptGroupAccess",
+        "textKey": "sqlAdminPrivilegesPrompt3"
+      }
+    ],
+    "classicPage": "%CSP.UI.Portal.User",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "admin",
+        "endpoint": "Security.SQLPrivilege.Admin",
+        "type": "LIST"
+      },
+      "fields": [
+        "Privilege",
+        "GrantOption",
+        "GrantedVia"
+      ],
+      "filter": [
+        "Privilege",
+        "GrantedVia"
+      ],
+      "sort": {
+        "fields": [
+          "Privilege",
+          "GrantedVia"
+        ],
+        "default": "Privilege",
+        "direction": "asc"
+      },
+      "paging": "cap",
+      "criteria": {
+        "fields": [
+          {
+            "param": "grantee",
+            "labelKey": "sqlPrivilegeCriterionGrantee",
+            "kind": "text",
+            "maxLength": 160,
+            "hint": "One user or role, exactly as the Users or Roles list reports it. A list or a wildcard is refused."
+          },
+          {
+            "param": "namespace",
+            "labelKey": "headerNamespaceLabel",
+            "kind": "text",
+            "maxLength": 64,
+            "hint": "One namespace this instance defines, exactly as its namespace list reports it."
+          }
+        ]
+      }
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Privilege",
+          "labelKey": "sqlPrivilegeColumnPrivilege",
+          "kind": "name"
+        },
+        {
+          "field": "GrantOption",
+          "labelKey": "sqlPrivilegeColumnGrantOption",
+          "kind": "text"
+        },
+        {
+          "field": "GrantedVia",
+          "labelKey": "sqlPrivilegeColumnGrantedVia",
+          "kind": "text"
+        }
+      ],
+      "emptyNextKey": "tableReadOnlyEmptyNext",
+      "emptyAgentKey": ""
+    },
+    "toolIdentifier": "permissions.sqladminprivileges",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.SqlColumnPrivilegeList",
+    "route": "permissions/sql-column-privileges",
+    "area": "permissions",
+    "labelKey": "sqlColumnPrivilegesLabel",
+    "sideBarPosition": 0,
+    "archetype": "list (server criteria)",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Secure",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "composite",
+      "parts": [
+        "Column",
+        "Action",
+        "GrantedVia",
+        "GrantedBy"
+      ]
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "Column",
+        "Action",
+        "GrantedBy",
+        "GrantOption",
+        "GrantedVia"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "sqlColumnPrivilegesEmpty",
+    "commandAliases": [
+      "sql column privileges",
+      "column privileges"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "userPromptGroupAccess",
+        "textKey": "sqlColumnPrivilegesPrompt1"
+      },
+      {
+        "groupKey": "userPromptGroupAccess",
+        "textKey": "sqlColumnPrivilegesPrompt2"
+      },
+      {
+        "groupKey": "userPromptGroupAccess",
+        "textKey": "sqlColumnPrivilegesPrompt3"
+      }
+    ],
+    "classicPage": "%CSP.UI.Portal.Dialog.ColumnPriv",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "admin",
+        "endpoint": "Security.SQLPrivilege.Column",
+        "type": "LIST",
+        "query": {
+          "includeSystem": "1"
+        }
+      },
+      "fields": [
+        "Column",
+        "Action",
+        "GrantedBy",
+        "GrantOption",
+        "GrantedVia"
+      ],
+      "filter": [
+        "Column",
+        "Action",
+        "GrantedBy",
+        "GrantedVia"
+      ],
+      "sort": {
+        "fields": [
+          "Column",
+          "Action",
+          "GrantedBy",
+          "GrantedVia"
+        ],
+        "default": "Column",
+        "direction": "asc"
+      },
+      "paging": "cap",
+      "criteria": {
+        "fields": [
+          {
+            "param": "grantee",
+            "labelKey": "sqlPrivilegeCriterionGrantee",
+            "kind": "text",
+            "maxLength": 160,
+            "hint": "One user or role, exactly as the Users or Roles list reports it. A list or a wildcard is refused."
+          },
+          {
+            "param": "namespace",
+            "labelKey": "headerNamespaceLabel",
+            "kind": "text",
+            "maxLength": 64,
+            "hint": "One namespace this instance defines, exactly as its namespace list reports it."
+          },
+          {
+            "param": "object",
+            "labelKey": "sqlPrivilegeColumnObject",
+            "kind": "text",
+            "maxLength": 257,
+            "hint": "One table or view as schema.name, spelled exactly as the SQL privileges read lists it. Another letter case lists no rows."
+          }
+        ]
+      }
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Column",
+          "labelKey": "explorerSqlColumnNumber",
+          "kind": "name"
+        },
+        {
+          "field": "Action",
+          "labelKey": "sqlPrivilegeColumnAction",
+          "kind": "text"
+        },
+        {
+          "field": "GrantedBy",
+          "labelKey": "sqlPrivilegeColumnGrantedBy",
+          "kind": "text"
+        },
+        {
+          "field": "GrantOption",
+          "labelKey": "sqlPrivilegeColumnGrantOption",
+          "kind": "text"
+        },
+        {
+          "field": "GrantedVia",
+          "labelKey": "sqlPrivilegeColumnGrantedVia",
+          "kind": "text"
+        }
+      ],
+      "emptyNextKey": "tableReadOnlyEmptyNext",
+      "emptyAgentKey": ""
+    },
+    "toolIdentifier": "permissions.sqlcolumnprivileges",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.SqlPrivilegeList",
+    "route": "permissions/sql-privileges",
+    "area": "permissions",
+    "labelKey": "sqlPrivilegesLabel",
+    "sideBarPosition": 0,
+    "archetype": "list (server criteria)",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Secure",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "composite",
+      "parts": [
+        "Type",
+        "Object",
+        "Action",
+        "GrantedVia",
+        "GrantedBy"
+      ]
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "Type",
+        "Object",
+        "Action",
+        "GrantedBy",
+        "GrantOption",
+        "GrantedVia",
+        "HasColumnPriv"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "sqlPrivilegesEmpty",
+    "commandAliases": [
+      "sql privileges",
+      "table privileges"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "userPromptGroupAccess",
+        "textKey": "sqlPrivilegesPrompt1"
+      },
+      {
+        "groupKey": "userPromptGroupAccess",
+        "textKey": "sqlPrivilegesPrompt2"
+      },
+      {
+        "groupKey": "userPromptGroupAccess",
+        "textKey": "sqlPrivilegesPrompt3"
+      }
+    ],
+    "classicPage": "%CSP.UI.Portal.User",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "admin",
+        "endpoint": "Security.SQLPrivilege.Standard",
+        "type": "LIST",
+        "query": {
+          "includeSystem": "0"
+        }
+      },
+      "fields": [
+        "Type",
+        "Object",
+        "Action",
+        "GrantedBy",
+        "GrantOption",
+        "GrantedVia",
+        "HasColumnPriv"
+      ],
+      "filter": [
+        "Type",
+        "Object",
+        "Action",
+        "GrantedBy",
+        "GrantedVia"
+      ],
+      "sort": {
+        "fields": [
+          "Object",
+          "Type",
+          "Action",
+          "GrantedBy",
+          "GrantedVia"
+        ],
+        "default": "Object",
+        "direction": "asc"
+      },
+      "paging": "cap",
+      "criteria": {
+        "fields": [
+          {
+            "param": "grantee",
+            "labelKey": "sqlPrivilegeCriterionGrantee",
+            "kind": "text",
+            "maxLength": 160,
+            "hint": "One user or role, exactly as the Users or Roles list reports it. A list or a wildcard is refused."
+          },
+          {
+            "param": "namespace",
+            "labelKey": "headerNamespaceLabel",
+            "kind": "text",
+            "maxLength": 64,
+            "hint": "One namespace this instance defines, exactly as its namespace list reports it."
+          }
+        ]
+      }
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Object",
+          "labelKey": "sqlPrivilegeColumnObject",
+          "kind": "name"
+        },
+        {
+          "field": "Type",
+          "labelKey": "tableColumnType",
+          "kind": "text"
+        },
+        {
+          "field": "Action",
+          "labelKey": "sqlPrivilegeColumnAction",
+          "kind": "text"
+        },
+        {
+          "field": "GrantedBy",
+          "labelKey": "sqlPrivilegeColumnGrantedBy",
+          "kind": "text"
+        },
+        {
+          "field": "GrantOption",
+          "labelKey": "sqlPrivilegeColumnGrantOption",
+          "kind": "text"
+        },
+        {
+          "field": "GrantedVia",
+          "labelKey": "sqlPrivilegeColumnGrantedVia",
+          "kind": "text"
+        }
+      ],
+      "emptyNextKey": "tableReadOnlyEmptyNext",
+      "emptyAgentKey": ""
+    },
+    "toolIdentifier": "permissions.sqlprivileges",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
     "descriptor": "OcuPilot.Screen.Descriptor.SslConfigList",
     "route": "security/ssl",
     "area": "security",
@@ -18244,6 +24250,221 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "rowTarget": null,
     "multiSelect": null,
     "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.SuperserverForm",
+    "route": "security/superservers/edit",
+    "area": "security",
+    "labelKey": "aboutSuperserver",
+    "sideBarPosition": 0,
+    "archetype": "form-page",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Secure",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "superserver",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "composite",
+      "parts": [
+        "Port",
+        "BindAddress"
+      ]
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [],
+      "secretFields": []
+    },
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "emptyStateKey": "",
+    "commandAliases": [],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "superserverFormPrompt1"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "superserverFormPrompt2"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "superserverFormPrompt3"
+      }
+    ],
+    "classicPage": "%CSP.UI.Portal.Server",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "toolIdentifier": "security.superserverform",
+    "refreshDefault": 0,
+    "read": null,
+    "table": null,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.SuperserverList",
+    "route": "security/superservers",
+    "area": "security",
+    "labelKey": "superserverListLabel",
+    "sideBarPosition": 12,
+    "archetype": "list",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Secure",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "superserver",
+    "entityLabelKey": "aboutSuperserver",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "composite",
+      "parts": [
+        "Port",
+        "BindAddress"
+      ]
+    },
+    "primaryAction": {
+      "id": "create",
+      "selfProtection": ""
+    },
+    "rowActions": [
+      {
+        "id": "delete",
+        "selfProtection": ""
+      }
+    ],
+    "context": {
+      "fields": [
+        "Port",
+        "BindAddress",
+        "Enabled",
+        "SystemDefault"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "superserverListEmpty",
+    "commandAliases": [
+      "superservers",
+      "create superserver"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "superserverListPrompt1"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "superserverListPrompt2"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "superserverListPrompt3"
+      }
+    ],
+    "classicPage": "%CSP.UI.Portal.Servers",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "admin",
+        "endpoint": "Security.Superserver",
+        "type": "LIST"
+      },
+      "fields": [
+        "Port",
+        "BindAddress",
+        "Enabled",
+        "SystemDefault"
+      ],
+      "filter": [
+        "Port",
+        "BindAddress"
+      ],
+      "sort": {
+        "fields": [
+          "Port",
+          "BindAddress",
+          "Enabled",
+          "SystemDefault"
+        ],
+        "default": "Port",
+        "direction": "asc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Port",
+          "labelKey": "sslTestPort",
+          "kind": "name"
+        },
+        {
+          "field": "BindAddress",
+          "labelKey": "languageServerFieldBindAddress",
+          "kind": "identifier"
+        },
+        {
+          "field": "Enabled",
+          "labelKey": "tableColumnEnabled",
+          "kind": "status"
+        },
+        {
+          "field": "SystemDefault",
+          "labelKey": "superserverSystemDefault",
+          "kind": "status"
+        }
+      ],
+      "emptyNextKey": "",
+      "emptyAgentKey": "superserverListEmptyAgent"
+    },
+    "toolIdentifier": "security.superservers",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": []
   },
   {
     "descriptor": "OcuPilot.Screen.Descriptor.SystemUsage",
@@ -19959,6 +26180,14 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       {
         "id": "revoke-tokens",
         "selfProtection": ""
+      },
+      {
+        "id": "grant-sql",
+        "selfProtection": ""
+      },
+      {
+        "id": "revoke-sql",
+        "selfProtection": ""
       }
     ],
     "context": {
@@ -20266,7 +26495,12 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "context": {
       "fields": [],
       "secretFields": [
-        "Secret"
+        "Secret",
+        "Certificate",
+        "PublicKey",
+        "PrivateKey",
+        "Password",
+        "Secret64"
       ]
     },
     "secretArguments": [],
@@ -20356,7 +26590,12 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "secretFields": []
     },
     "secretArguments": [
-      "Secret"
+      "Secret",
+      "Certificate",
+      "PublicKey",
+      "PrivateKey",
+      "Password",
+      "Secret64"
     ],
     "emptyStateKey": "walletSecretListEmpty",
     "commandAliases": [],
@@ -20685,6 +26924,168 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "emptyAgentKey": "webAppListEmptyAgent"
     },
     "toolIdentifier": "webapp.list",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.WebAppPctAccessList",
+    "route": "web-applications/list/class-access",
+    "area": "web-applications",
+    "labelKey": "webAppPctAccessListLabel",
+    "sideBarPosition": 0,
+    "archetype": "list (server criteria)",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Secure",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "pct-class-access",
+    "entityLabelKey": "pctAccessEntityLabel",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "composite",
+      "parts": [
+        "Name",
+        "AllowType",
+        "Class"
+      ]
+    },
+    "primaryAction": {
+      "id": "create",
+      "selfProtection": ""
+    },
+    "rowActions": [
+      {
+        "id": "delete",
+        "selfProtection": "system-pct-access"
+      }
+    ],
+    "context": {
+      "fields": [
+        "Name",
+        "AllowType",
+        "Class",
+        "AllowAccess",
+        "System"
+      ],
+      "secretFields": []
+    },
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "emptyStateKey": "webAppPctAccessListEmpty",
+    "commandAliases": [
+      "class access",
+      "percent class access"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "userPromptGroupAccess",
+        "textKey": "webAppPctAccessListPrompt1"
+      },
+      {
+        "groupKey": "userPromptGroupAccess",
+        "textKey": "webAppPctAccessListPrompt2"
+      },
+      {
+        "groupKey": "webAppPromptGroupCode",
+        "textKey": "webAppPctAccessListPrompt3"
+      }
+    ],
+    "classicPage": "%CSP.UI.Portal.Applications.Web",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "admin",
+        "endpoint": "WebApp.PctClassAccess",
+        "type": "LIST"
+      },
+      "fields": [
+        "Name",
+        "AllowType",
+        "Class",
+        "AllowAccess",
+        "System"
+      ],
+      "filter": [
+        "Name",
+        "AllowType",
+        "Class"
+      ],
+      "sort": {
+        "fields": [
+          "Name",
+          "AllowType",
+          "Class",
+          "AllowAccess",
+          "System"
+        ],
+        "default": "Name",
+        "direction": "asc"
+      },
+      "paging": "cap",
+      "criteria": {
+        "fields": [
+          {
+            "param": "application",
+            "labelKey": "webAppPctAccessApplication",
+            "kind": "text",
+            "maxLength": 256,
+            "vendorParam": "names",
+            "hint": "The web application whose entries to list, with all-applications for the entries that cover every application."
+          }
+        ]
+      }
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Name",
+          "labelKey": "tableColumnName",
+          "kind": "name"
+        },
+        {
+          "field": "AllowType",
+          "labelKey": "webAppPctAccessColumnAllowType",
+          "kind": "text"
+        },
+        {
+          "field": "Class",
+          "labelKey": "webAppPctAccessColumnClass",
+          "kind": "identifier"
+        },
+        {
+          "field": "AllowAccess",
+          "labelKey": "webAppPctAccessColumnAllowAccess",
+          "kind": "status"
+        },
+        {
+          "field": "System",
+          "labelKey": "webAppPctAccessColumnSystem",
+          "kind": "status"
+        }
+      ],
+      "emptyNextKey": "",
+      "emptyAgentKey": "webAppPctAccessListEmptyAgent"
+    },
+    "toolIdentifier": "webapp.pctaccess",
     "refreshDefault": 0,
     "banner": null,
     "tab": null,

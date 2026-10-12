@@ -73,18 +73,50 @@
 /// object whose every id reads as the singleton (AD-13, Story 18.22).</p>
 /// <p><code>encryption-startup</code> is the instance's encryption startup settings, a singleton (AD-13,
 /// Story 18.23).</p>
+/// <p><code>authentication-options</code> is the instance's authentication and web session options, a
+/// singleton (AD-13, Story 18.8).</p>
+/// <p><code>superserver</code> is one superserver the instance listens on, keyed by the composite of its port and
+/// bind address (AD-13, Story 18.25).</p>
+/// <p><code>mft-connection</code> is one managed file transfer connection, keyed by its name, which the instance
+/// matches exactly and so is kept exactly (AD-13, Story 18.26).</p>
+/// <p><code>docdb-application</code> is one Doc DB application record (<code>Security.DocDBs</code>), keyed by the composite of its
+/// namespace and name, which the instance resolves in any case (AD-13, Story 18.30).</p>
+/// <p><code>routine-application</code> is one privileged routine application (<code>Security.Applications</code> of the
+/// routine type), keyed by its name, which the instance resolves in any case (AD-13, Story 18.31).</p>
 /// <p><code>docdb-database</code> is one document database of a namespace, keyed by its name, which the
 /// instance resolves in any case (AD-13, Story 19.17).</p>
 /// <p><code>sql-statement</code> is one SQL statement running on the instance, keyed by the vendor's
 /// composite of its server, process and statement hash; it names no write target (AD-13, Story
 /// 19.10).</p>
+/// <p><code>screen-permission</code> is one screen's adjustable permission set, keyed by the screen's
+/// <code>toolIdentifier</code>, kept exactly (AD-13, AD-64, Story 20.15). It is instance-scoped.</p>
+/// <p><code>pct-class-access</code> is one web application's percent-class access entry, keyed by the composite of its
+/// application, allow type and class (AD-13, Story 18.10).</p>
+/// <p><code>production</code> is one interoperability production of a namespace, keyed by its production
+/// class name, kept exactly (AD-13, AD-62, Story 20.2). It is namespace-scoped: the route's namespace
+/// is the entity's scope.</p>
+/// <p><code>production-item</code> is one item of a production, keyed by the composite
+/// <code>[Production, Name]</code>, each part kept exactly (AD-13, AD-62, Story 20.3). It is
+/// namespace-scoped, has no <code>IDRULES</code> row, and is never identified by the vendor's integer id,
+/// which a recompile renumbers.</p>
+/// <p><code>production-item-setting</code> is one setting of a production item, keyed by the composite
+/// <code>[Production, Item, Target, Name]</code>, each part kept exactly (AD-13, AD-62, Story 20.22). It is
+/// namespace-scoped and has no <code>IDRULES</code> row.</p>
+/// <p><code>interop-queue</code> is one interoperability queue of a namespace, keyed by its name, kept exactly (AD-13,
+/// Story 20.4). <code>interop-message</code> is one message header of a namespace, keyed by the header's id, kept exactly.
+/// <code>interop-job</code> is one job of the running production, keyed by its pid, kept exactly. Each is
+/// namespace-scoped and has no <code>IDRULES</code> row.</p>
+/// <p><code>lookup-table</code> is one lookup table of a namespace, keyed by its name, kept exactly (AD-13, AD-62, Story 20.5).
+/// <code>lookup-entry</code> is one entry of a lookup table, keyed by the composite <code>[Table, Key]</code>, each part kept
+/// exactly. <code>business-partner</code> is one business partner of a namespace, keyed by its name, kept exactly. Each is
+/// namespace-scoped and has no <code>IDRULES</code> row.</p>
 Class OcuPilot.Kernel.EntityType Extends %RegisteredObject
 {
 
 /// <p>The vocabulary, comma-separated and in no significant order. Lower-case with hyphens,
 /// the same spelling shape route and area keys use, so a key is never confused with a class
 /// name.</p>
-Parameter TYPES = "web-application,rest-service,user,role,resource,service,ssl-configuration,x509-credential,ldap-configuration,wallet-collection,wallet-secret,oauth2-client-configuration,oauth2-server-definition,oauth2-resource-server,oauth2-server,oauth2-server-client,audit-event,audit-user-event,auditing-configuration,task,task-history-entry,process,lock,database,device,audit-record,application-error,log-entry,agent-definition,agent-switch,agent-policy,allowed-directory,namespace,web-session,background-task,global-mapping,routine-mapping,package-mapping,database-configuration,language-server,class,routine,journal-file,journal-file-database,journal-settings,journal-record,license-key,license-server,ecp-data-server,ecp-settings,ecp-ssl-connection,encryption-key-file,database-encryption-keys,data-element-encryption-keys,encryption-startup,docdb-database,sql-statement";
+Parameter TYPES = "web-application,rest-service,user,role,resource,service,ssl-configuration,x509-credential,ldap-configuration,wallet-collection,wallet-secret,oauth2-client-configuration,oauth2-server-definition,oauth2-resource-server,oauth2-server,oauth2-server-client,audit-event,audit-user-event,auditing-configuration,task,task-history-entry,process,lock,database,device,audit-record,application-error,log-entry,agent-definition,agent-switch,agent-policy,allowed-directory,screen-permission,namespace,web-session,background-task,global-mapping,routine-mapping,package-mapping,database-configuration,language-server,class,routine,journal-file,journal-file-database,journal-settings,journal-record,license-key,license-server,ecp-data-server,ecp-settings,ecp-ssl-connection,encryption-key-file,database-encryption-keys,data-element-encryption-keys,encryption-startup,docdb-database,sql-statement,authentication-options,superserver,mft-connection,production,pct-class-access,docdb-application,routine-application,production-item,production-item-setting,interop-queue,interop-message,interop-job,lookup-table,lookup-entry,business-partner";
 
 /// <p>Whether <var>pType</var> is one of the declared values. An empty string is <b>not</b>
 /// known: a screen with no entity type declares the empty string and its descriptor is

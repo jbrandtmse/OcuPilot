@@ -21,6 +21,7 @@ import { DatabasesPage } from '../areas/os-management/databases.page';
 import { ProcessDetailsPage } from '../areas/os-management/process-details.page';
 import { SystemUsagePage } from '../areas/os-management/system-usage.page';
 import { DashboardPage } from '../areas/os-management/dashboard.page';
+import { StatisticsPage } from '../areas/os-management/statistics.page';
 import { AuditingConfigPage } from '../areas/security/auditing-config.page';
 import { OAuthServerDescriptionFormPage } from '../areas/security/oauth-server-description-form.page';
 import { OAuthClientFormPage } from '../areas/security/oauth-client-form.page';
@@ -66,15 +67,22 @@ import { JournalRecordsPage } from '../areas/os-management/journal-records.page'
 import { LicenseKeyPage } from '../areas/os-management/license-key.page';
 import { LicenseServerFormPage } from '../areas/os-management/license-server-form.page';
 import { EcpDataServerListPage } from '../areas/os-management/ecp-data-server-list.page';
+import { ScreenPermissionsPage } from '../areas/agent/screen-permissions.page';
 import { EcpDataServerFormPage } from '../areas/os-management/ecp-data-server-form.page';
 import { EcpSettingsPage } from '../areas/os-management/ecp-settings.page';
 import { EncryptionKeyFilePage } from '../areas/security/encryption-key-file.page';
 import { EncryptionKeyFileFormPage } from '../areas/security/encryption-key-file-form.page';
 import { EncryptionKeysPage } from '../areas/security/encryption-keys.page';
 import { EncryptionStartupPage } from '../areas/security/encryption-startup.page';
+import { AuthOptionsPage } from '../areas/security/auth-options.page';
+import { SuperserverFormPage } from '../areas/security/superserver-form.page';
+import { MftConnectionFormPage } from '../areas/security/mft-connection-form.page';
+import { DocDbAppFormPage } from '../areas/web-applications/docdb-app-form.page';
+import { RoutineAppFormPage } from '../areas/web-applications/routine-app-form.page';
 import { WebAppCreateFormPage } from '../areas/web-applications/create-form.page';
 import { WebAppEditorPage } from '../areas/web-applications/web-app-editor.page';
 import { OpenApiViewerPage } from '../areas/web-applications/openapi-viewer.page';
+import { RestApiListPage } from '../areas/web-applications/rest-api-list.page';
 import { GovernancePage } from '../areas/agent/governance.page';
 import { CodeListPage } from '../areas/system-explorer/code-list.page';
 import { SourceViewerPage } from '../areas/system-explorer/document-viewer.page';
@@ -84,6 +92,11 @@ import { CodeComparePage } from '../areas/system-explorer/code-compare.page';
 import { MacroLookupPage } from '../areas/system-explorer/macro-lookup.page';
 import { SqlQueryPage } from '../areas/system-explorer/sql-query.page';
 import { DataBrowserPage } from '../areas/system-explorer/data-browser.page';
+import { InteropItemListPage } from '../areas/interoperability/interop-item-list.page';
+import { InteropItemSettingListPage } from '../areas/interoperability/interop-item-setting-list.page';
+import { InteropItemTestPage } from '../areas/interoperability/interop-item-test.page';
+import { InteropLookupEntryListPage } from '../areas/interoperability/interop-lookup-entry-list.page';
+import { InteropLookupTableListPage } from '../areas/interoperability/interop-lookup-table-list.page';
 import { DocDbListPage } from '../areas/system-explorer/docdb-list.page';
 import { decodeEntityId } from '../core/entity-id';
 import { NavigationService, screenForUrl } from '../core/navigation';
@@ -191,6 +204,10 @@ export const DESCRIPTOR_PAGES: Readonly<Record<string, Type<unknown>>> = {
   'OcuPilot.Screen.Descriptor.AgentLedger': LedgerPage,
   // Story 16.7: the Dashboard's seven meter groups; System usage keeps the meters archetype's page.
   'OcuPilot.Screen.Descriptor.Dashboard': DashboardPage,
+  // Story 18.36: the Dashboard's two statistics drill-downs, one page of grouped counters; its resource and
+  // process drill-downs are lists and keep the list archetype's page.
+  'OcuPilot.Screen.Descriptor.DashboardGlobals': StatisticsPage,
+  'OcuPilot.Screen.Descriptor.DashboardEcp': StatisticsPage,
   // Story 16.4: the Task schedule with its Export and Import dialogs.
   'OcuPilot.Screen.Descriptor.TaskScheduleList': TaskSchedulePage,
   // Story 16.25: the external language server editor, create and edit alike.
@@ -214,6 +231,8 @@ export const DESCRIPTOR_PAGES: Readonly<Record<string, Type<unknown>>> = {
   // Story 18.20: ECP data servers with its status line and Change status dialog, and the data server
   // form, create and edit alike.
   'OcuPilot.Screen.Descriptor.EcpDataServerList': EcpDataServerListPage,
+  // Story 20.15: Screen permissions, whose Change permissions dialog opens over the shared list page.
+  'OcuPilot.Screen.Descriptor.AgentScreenPermissions': ScreenPermissionsPage,
   'OcuPilot.Screen.Descriptor.EcpDataServerForm': EcpDataServerFormPage,
   // Story 18.21: ECP settings, a form over the screen's own declared read; ECP application servers'
   // two tabs take the detail page's strip.
@@ -228,6 +247,16 @@ export const DESCRIPTOR_PAGES: Readonly<Record<string, Type<unknown>>> = {
   'OcuPilot.Screen.Descriptor.DataElementEncryption': EncryptionKeysPage,
   // Story 18.23: the encryption startup settings form, reached from Database encryption.
   'OcuPilot.Screen.Descriptor.EncryptionStartup': EncryptionStartupPage,
+  // Story 18.8: Authentication options, a form over the screen's own declared read.
+  'OcuPilot.Screen.Descriptor.AuthOptions': AuthOptionsPage,
+  // Story 18.25: the superserver editor; the list is the shared list page.
+  'OcuPilot.Screen.Descriptor.SuperserverForm': SuperserverFormPage,
+  // Story 18.26: the managed file transfer connection editor; the list is the shared list page.
+  'OcuPilot.Screen.Descriptor.MftConnectionForm': MftConnectionFormPage,
+  // Story 18.30: the Doc DB application editor; the list is the shared list page.
+  'OcuPilot.Screen.Descriptor.DocDbAppForm': DocDbAppFormPage,
+  // Story 18.31: the privileged routine application editor; the list is the shared list page.
+  'OcuPilot.Screen.Descriptor.RoutineAppForm': RoutineAppFormPage,
   // Story 19.1: System Explorer's two lists, each a criteria form drawn from its declared criteria.
   'OcuPilot.Screen.Descriptor.ExplorerClassList': CodeListPage,
   'OcuPilot.Screen.Descriptor.ExplorerRoutineList': CodeListPage,
@@ -249,6 +278,17 @@ export const DESCRIPTOR_PAGES: Readonly<Record<string, Type<unknown>>> = {
   'OcuPilot.Screen.Descriptor.ExplorerSqlData': DataBrowserPage,
   // Story 19.17: Document databases, the list with its create dialog and the disabled-service strip.
   'OcuPilot.Screen.Descriptor.ExplorerDocDbList': DocDbListPage,
+  // Story 18.34: the REST API explorer, the list with its create dialog.
+  'OcuPilot.Screen.Descriptor.RestApiList': RestApiListPage,
+  // Story 20.3: Production items, the list with its add dialog.
+  'OcuPilot.Screen.Descriptor.InteropItemList': InteropItemListPage,
+  // Story 20.22: Item settings, the list with its Set value dialog.
+  'OcuPilot.Screen.Descriptor.InteropItemSettingList': InteropItemSettingListPage,
+  // Story 20.6: an item's Test tab, the detail page with its Send test dialog.
+  'OcuPilot.Screen.Descriptor.InteropItemTestTab': InteropItemTestPage,
+  // Story 20.5: Lookup tables, the list with its New table dialog, and a table's entries with their Add entry and Set value dialogs.
+  'OcuPilot.Screen.Descriptor.InteropLookupTableList': InteropLookupTableListPage,
+  'OcuPilot.Screen.Descriptor.InteropLookupEntryList': InteropLookupEntryListPage,
 };
 
 /**

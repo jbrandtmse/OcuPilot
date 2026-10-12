@@ -152,6 +152,11 @@ Method TestAGateDenialReachesNothingAndTheToolStaysAdvertised()
 /// 19.13's document deletes and imports
 /// (<parameter>OcuPilot.Test.Governance.EXPLORERDISABLED</parameter>), and Story 18.6's license key
 /// activation and license server delete (<parameter>OcuPilot.Test.Governance.LICENSEDISABLED</parameter>),
+/// and Story 18.24's two wallet key replaces (<parameter>OcuPilot.Test.Governance.WALLETKEYDISABLED</parameter>),
+/// and Story 18.25's superserver delete (<parameter>OcuPilot.Test.Governance.SUPERSERVERDELETE</parameter>),
+/// Story 20.3's item remove (<parameter>OcuPilot.Test.Governance.INTEROPITEMREMOVE</parameter>),
+/// Story 20.23's two queue aborts and job abort (<parameter>OcuPilot.Test.Governance.INTEROPRUNTIMEDISABLED</parameter>),
+/// and Story 18.26's connection delete and token revoke (<parameter>OcuPilot.Test.Governance.MFTDISABLED</parameter>),
 /// which their baseline lines disable (AD-10, AD-22). It reads the stored policy, so it first asserts that no policy is
 /// stored.</p>
 /// <p>Mutation: <method>OcuPilot.Kernel.Governance.Gate.Decide</method> answers 0 -> this goes red.</p>
@@ -166,11 +171,17 @@ Method TestTheShippedGateAllowsEveryLiveToolButTheBaselineDisabled()
     While tIterator.%GetNext(.tIndex, .tTool) {
         Kill tDecision
         Do $$$AssertStatusOK(##class(OcuPilot.Kernel.Governance.Gate).Decide(tTool.name, tTool.kind, $Username, {}, .tDecision), tTool.name _ ": the gate decides")
-        Set tExpected = $Select((tTool.name = "security.auditing.purge") || (tTool.name = "osmgmt.namespaces.delete") || (tTool.name = "osmgmt.localdatabases.delete") || (tTool.name = "tasks.schedule.import") || (tTool.name = $Parameter("OcuPilot.Test.Governance", "ENABLEINTEROP")) || $ListFind($ListFromString($Parameter("OcuPilot.Test.Governance", "DISKOPERATIONS")), tTool.name) || $ListFind($ListFromString($Parameter("OcuPilot.Test.Governance", "EXPLORERDISABLED")), tTool.name): "0|" _ ##class(OcuPilot.Api.Error).#GOVERNANCEDISABLED, 1: "1|")
+        Set tExpected = $Select((tTool.name = "security.auditing.purge") || (tTool.name = "osmgmt.namespaces.delete") || (tTool.name = "osmgmt.localdatabases.delete") || (tTool.name = "tasks.schedule.import") || (tTool.name = $Parameter("OcuPilot.Test.Governance", "ENABLEINTEROP")) || (tTool.name = $Parameter("OcuPilot.Test.Governance", "PCTACCESSDELETE")) || (tTool.name = $Parameter("OcuPilot.Test.Governance", "DOCDBAPPDELETE")) || (tTool.name = $Parameter("OcuPilot.Test.Governance", "ROUTINEAPPDELETE")) || (tTool.name = $Parameter("OcuPilot.Test.Governance", "RESTAPIDELETE")) || $ListFind($ListFromString($Parameter("OcuPilot.Test.Governance", "DISKOPERATIONS")), tTool.name) || $ListFind($ListFromString($Parameter("OcuPilot.Test.Governance", "EXPLORERDISABLED")), tTool.name): "0|" _ ##class(OcuPilot.Api.Error).#GOVERNANCEDISABLED, 1: "1|")
         If tTool.name = $Parameter("OcuPilot.Test.Governance", "REMOTEDATABASEDELETE") Set tExpected = "0|" _ ##class(OcuPilot.Api.Error).#GOVERNANCEDISABLED
         If $ListFind($ListFromString($Parameter("OcuPilot.Test.Governance", "LICENSEDISABLED")), tTool.name) Set tExpected = "0|" _ ##class(OcuPilot.Api.Error).#GOVERNANCEDISABLED
         If $ListFind($ListFromString($Parameter("OcuPilot.Test.Governance", "ECPDISABLED")), tTool.name) Set tExpected = "0|" _ ##class(OcuPilot.Api.Error).#GOVERNANCEDISABLED
         If $ListFind($ListFromString($Parameter("OcuPilot.Test.Governance", "ENCRYPTIONDISABLED")), tTool.name) Set tExpected = "0|" _ ##class(OcuPilot.Api.Error).#GOVERNANCEDISABLED
+        If $ListFind($ListFromString($Parameter("OcuPilot.Test.Governance", "WALLETKEYDISABLED")), tTool.name) Set tExpected = "0|" _ ##class(OcuPilot.Api.Error).#GOVERNANCEDISABLED
+        If tTool.name = $Parameter("OcuPilot.Test.Governance", "SUPERSERVERDELETE") Set tExpected = "0|" _ ##class(OcuPilot.Api.Error).#GOVERNANCEDISABLED
+        If tTool.name = $Parameter("OcuPilot.Test.Governance", "INTEROPITEMREMOVE") Set tExpected = "0|" _ ##class(OcuPilot.Api.Error).#GOVERNANCEDISABLED
+        If $ListFind($ListFromString($Parameter("OcuPilot.Test.Governance", "INTEROPRUNTIMEDISABLED")), tTool.name) Set tExpected = "0|" _ ##class(OcuPilot.Api.Error).#GOVERNANCEDISABLED
+        If $ListFind($ListFromString($Parameter("OcuPilot.Test.Governance", "INTEROPLOOKUPDISABLED")), tTool.name) Set tExpected = "0|" _ ##class(OcuPilot.Api.Error).#GOVERNANCEDISABLED
+        If $ListFind($ListFromString($Parameter("OcuPilot.Test.Governance", "MFTDISABLED")), tTool.name) Set tExpected = "0|" _ ##class(OcuPilot.Api.Error).#GOVERNANCEDISABLED
         Do $$$AssertEquals($Get(tDecision("allowed")) _ "|" _ $Get(tDecision("code")), tExpected, tTool.name _ ": " _ tExpected)
     }
 }

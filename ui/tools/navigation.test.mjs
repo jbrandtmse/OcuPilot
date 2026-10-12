@@ -1,5 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
@@ -28,6 +29,8 @@ const corePath = (name) => join(uiRoot, 'src', 'app', 'core', name);
 const {
   NavigationService,
   NAVIGATION_PATH,
+  areasThatApply,
+  screensThatApply,
   UNGATED,
   orderedAreas,
   areaByKey,
@@ -70,6 +73,7 @@ const { AREAS, SCREENS } = await import(corePath('screens.generated.ts'));
 const { ApiService } = await import(corePath('api.ts'));
 const { STRINGS, stringFor } = await import(corePath('strings.ts'));
 const { encodeEntityId } = await import(corePath('entity-id.ts'));
+const { ChangeBus } = await import(corePath('change-bus.ts'));
 
 /** A map answer shaped the way `GET /api/ocupilot/navigation` shapes one. */
 function mapBody(areas) {
@@ -95,12 +99,12 @@ function ok(body) {
 
 // --- The registry over the mirror ---------------------------------------------------------
 
-test('the mirror carries the nine areas in rail order, with Agent co-pilot pinned bottom', () => {
+test('the mirror carries the eleven areas in rail order, with Agent co-pilot pinned bottom', () => {
   const areas = orderedAreas();
-  assert.equal(areas.length, 9);
+  assert.equal(areas.length, 11);
   assert.deepEqual(
     areas.map((area) => area.key),
-    ['home', 'logs', 'os-management', 'tasks', 'permissions', 'web-applications', 'security', 'system-explorer', 'agent']
+    ['home', 'logs', 'os-management', 'tasks', 'permissions', 'web-applications', 'security', 'system-explorer', 'interoperability', 'analytics', 'agent']
   );
   areas.forEach((area, index) => assert.equal(area.railPosition, index + 1));
   assert.equal(areas.filter((area) => area.pinBottom).length, 1);
@@ -149,6 +153,11 @@ test('a side bar lists only built screens, in side-bar order', () => {
       'logs/analytics',
       // Story 16.9: the unified log hub, position 11.
       'logs/hub',
+      // Story 18.36: the Dashboard's four unlisted drill-downs, by descriptor class name.
+      'os-management/ecp-statistics',
+      'os-management/global-statistics',
+      'os-management/active-processes',
+      'os-management/resource-statistics',
       'os-management/databases/details',
       'os-management/database-free-space',
       'os-management/databases/integrity',
@@ -223,6 +232,8 @@ test('a side bar lists only built screens, in side-bar order', () => {
       'os-management/ecp-application-servers',
       // Story 19.10: SQL activity, the twentieth.
       'os-management/sql-activity',
+      // Story 18.11: Prometheus metrics, the twenty-first.
+      'os-management/metrics',
       'tasks/schedule/details',
       // Story 9.7: the unlisted New Task wizard, reached from the Task schedule's Create.
       'tasks/schedule/edit',
@@ -236,17 +247,35 @@ test('a side bar lists only built screens, in side-bar order', () => {
       'permissions/roles/edit',
       // Story 9.9: the unlisted reduced service form, reached from the Services list's name cell.
       'permissions/services/edit',
+      // Story 18.9: the unlisted SQL privileges read, shared by the user and role editors' tabs; Story 18.28:
+      // the column and admin privileges reads, shown in the same tabs (they sort before it).
+      'permissions/sql-admin-privileges',
+      'permissions/sql-column-privileges',
+      'permissions/sql-privileges',
       'permissions/users/edit',
       'permissions/users',
       'permissions/roles',
       'permissions/resources',
       'permissions/services',
+      // Story 18.30: the unlisted Doc DB application editor, reached from Doc DB applications.
+      'web-applications/docdb-applications/edit',
       'web-applications/rest-apis/document',
+      // Story 18.31: the unlisted privileged routine application editor, reached from Privileged routine applications.
+      'web-applications/routine-applications/edit',
+      // Story 18.12: the unlisted roles and routines lists of one privileged routine application, by descriptor class name.
+      'web-applications/routine-applications/roles',
+      'web-applications/routine-applications/routines',
       'web-applications/list/edit',
+      // Story 18.10: the percent-class access list, unlisted, the editor's fifth tab.
+      'web-applications/list/class-access',
       'web-applications/list',
       'web-applications/rest-apis',
       // Story 16.2: Web sessions, the third Web applications entry.
       'web-applications/sessions',
+      // Story 18.30: Doc DB applications, the fourth Web applications entry.
+      'web-applications/docdb-applications',
+      // Story 18.31: Privileged routine applications, the fifth Web applications entry.
+      'web-applications/routine-applications',
       // Story 7.4: the two unlisted audit event lists, then Auditing configuration at position 6.
       'security/auditing/system-events',
       'security/auditing/user-events',
@@ -256,6 +285,8 @@ test('a side bar lists only built screens, in side-bar order', () => {
       'security/database-encryption/startup',
       // Story 16.14: the unlisted LDAP editor, reached from the LDAP / Kerberos list.
       'security/ldap/edit',
+      // Story 18.26: the unlisted managed file transfer connection editor, reached from Managed file transfer.
+      'security/mft-connections/edit',
       'security/oauth/clients/edit',
       'security/oauth/clients',
       'security/oauth/resource-servers/edit',
@@ -267,6 +298,8 @@ test('a side bar lists only built screens, in side-bar order', () => {
       'security/oauth/server',
       // Story 9.5: the unlisted SSL/TLS configuration form, reached from the SSL/TLS list.
       'security/ssl/edit',
+      // Story 18.25: the unlisted superserver editor, reached from Superservers.
+      'security/superservers/edit',
       'security/wallet/secrets/edit',
       'security/wallet/secrets',
       'security/x509/edit',
@@ -282,6 +315,13 @@ test('a side bar lists only built screens, in side-bar order', () => {
       // Story 18.22: Database encryption and Data element encryption, the ninth and tenth entries.
       'security/database-encryption',
       'security/data-element-encryption',
+      // Story 18.8: Authentication options, the eleventh Security and secrets entry.
+      'security/authentication',
+      // Story 18.25: Superservers, the twelfth Security and secrets entry.
+      'security/superservers',
+      // Story 18.26: Managed file transfer, the thirteenth Security and secrets entry. Mutation (Rule 19): drop
+      // this line from the expectation -> this test goes red on the route the mirror lists at position 13.
+      'security/mft-connections',
       // Story 19.1: System Explorer's two unlisted viewers, then Classes and Routines.
       'system-explorer/classes/document',
       // Story 19.3: each unlisted editor sorts after its viewer, by descriptor class name.
@@ -321,6 +361,33 @@ test('a side bar lists only built screens, in side-bar order', () => {
       'system-explorer/sql-data',
       // Story 19.17: Document databases, after Data browser.
       'system-explorer/docdb',
+      // Story 20.3: the unlisted Production items list, reached from a Productions row, ahead of its area's listed lists.
+      // Story 20.4: the item's tabs around it -- Jobs, Log, Messages, Queue, Item settings (Story 20.22) and the Status
+      // head -- and Queue messages after them, all unlisted, in the descriptors' class order.
+      'interoperability/productions/items/jobs',
+      'interoperability/productions/items',
+      'interoperability/productions/items/log',
+      'interoperability/productions/items/messages',
+      'interoperability/productions/items/queue',
+      'interoperability/productions/items/settings',
+      'interoperability/productions/items/document',
+      // Story 20.6: an item's Test tab, unlisted, the strip's seventh.
+      'interoperability/productions/items/test',
+      // Story 20.5: a lookup table's entries, unlisted and reached from a Lookup tables name cell, among the unlisted ones.
+      'interoperability/lookup-tables/entries',
+      'interoperability/queues/messages',
+      // Story 20.2: Interoperability's four lists, in the classic List menu's order.
+      'interoperability/productions',
+      'interoperability/processes',
+      'interoperability/transforms',
+      'interoperability/rules',
+      // Story 20.4: Production monitor, Queues and Jobs, listed after them.
+      'interoperability/monitor',
+      'interoperability/queues',
+      'interoperability/jobs',
+      // Story 20.5: Lookup tables and Business partners, listed after them.
+      'interoperability/lookup-tables',
+      'interoperability/business-partners',
       'agent/definitions/edit',
       'agent/transcripts/details',
       'agent/definitions',
@@ -329,8 +396,9 @@ test('a side bar lists only built screens, in side-bar order', () => {
       'agent/governance',
       'agent/ledger',
       'agent/transcripts',
+      'agent/screenpermissions',
     ],
-    'the built screens are Home, at the application root, then the alerts.log viewer, the application error log and the audit database, the unlisted Database details, Free-space view, Check integrity flow, Volume files, device editor, the global mapping form and list, the unlisted Journal file databases, Journal file details and Journal records, the unlisted language server Activity log and editor, the three unlisted License usage tabs, the license server form, the local database form, the namespace editor, the package mapping form and list, process details, the remote database form, the routine mapping form and list, processes, Locks, System usage, Databases, Integrity log, Devices, Namespaces, License usage, Dashboard, External language servers, Local databases, Remote databases, Journals, License key, License servers, the unlisted task details, New Task wizard and per-task history, task schedule, on-demand tasks, upcoming tasks, task history, Background tasks, the unlisted user form and service form, users, roles, resources, services, OpenAPI document viewer, the unlisted web-application form, web applications, REST API explorer, Web sessions, the unlisted LDAP configuration form, the four unlisted OAuth 2.0 tabs with the unlisted client configuration, resource server, server client description, server description and authorization server editors among them, the unlisted SSL/TLS configuration form, the unlisted wallet secret form, Secrets, the unlisted X.509 credential form, SSL/TLS, X.509, LDAP / Kerberos, Wallet and OAuth 2.0 screens, Auditing configuration and Allowed directories, System Explorer\'s two unlisted viewers, Classes and Routines, its SQL query and Data browser, and the Agent co-pilot area\'s Definition form, unlisted transcript page, Definitions list, Switches, Guardrails, Governance policy, Agent audit ledger and Transcripts list, in area rail order'
+    'the built screens are Home, at the application root, then the alerts.log viewer, the application error log and the audit database, the unlisted Database details, Free-space view, Check integrity flow, Volume files, device editor, the global mapping form and list, the unlisted Journal file databases, Journal file details and Journal records, the unlisted language server Activity log and editor, the three unlisted License usage tabs, the license server form, the local database form, the namespace editor, the package mapping form and list, process details, the remote database form, the routine mapping form and list, processes, Locks, System usage, Databases, Integrity log, Devices, Namespaces, License usage, Dashboard, External language servers, Local databases, Remote databases, Journals, License key, License servers, the unlisted task details, New Task wizard and per-task history, task schedule, on-demand tasks, upcoming tasks, task history, Background tasks, the unlisted user form and service form, users, roles, resources, services, OpenAPI document viewer, the unlisted web-application form, web applications, REST API explorer, Web sessions, the unlisted LDAP configuration form, the four unlisted OAuth 2.0 tabs with the unlisted client configuration, resource server, server client description, server description and authorization server editors among them, the unlisted SSL/TLS configuration form, the unlisted wallet secret form, Secrets, the unlisted X.509 credential form, SSL/TLS, X.509, LDAP / Kerberos, Wallet and OAuth 2.0 screens, Auditing configuration and Allowed directories, System Explorer\'s two unlisted viewers, Classes and Routines, its SQL query and Data browser, and the Agent co-pilot area\'s Definition form, unlisted transcript page, Definitions list, Switches, Guardrails, Governance policy, Agent audit ledger, Transcripts list and Screen permissions list, in area rail order'
   );
 });
 
@@ -379,6 +447,8 @@ test('OS management lists Processes, Locks, System usage, Databases, Integrity l
       'os-management/ecp-application-servers',
       // Story 19.10: the twentieth.
       'os-management/sql-activity',
+      // Story 18.11: the twenty-first.
+      'os-management/metrics',
     ]
   );
   // Story 18.18: Journal settings follows Journals, a listed form page of its own.
@@ -436,6 +506,12 @@ test('OS management lists Processes, Locks, System usage, Databases, Integrity l
   assert.equal(stringFor(sqlActivity.labelKey), STRINGS.sqlActivityLabel);
   assert.equal(sqlActivity.sideBarPosition, 20);
   assert.deepEqual(sqlActivity.rowTarget, { route: 'os-management/processes/details', field: 'ProcessID', unless: 'Remote' });
+  // Story 18.11: Prometheus metrics is the twenty-first entry, a list that opens nothing and never refreshes.
+  const metrics = screenForRoute('os-management/metrics');
+  assert.equal(stringFor(metrics.labelKey), STRINGS.metricsLabel);
+  assert.equal(metrics.sideBarPosition, 21);
+  assert.equal(metrics.rowTarget, null);
+  assert.equal(metrics.refreshes, false);
 });
 
 // Story 3.5. `sideBarPosition` 0 is the sentinel for routable-but-unlisted: the route table reads
@@ -445,17 +521,17 @@ test('OS management lists Processes, Locks, System usage, Databases, Integrity l
 // the listed-roster assertion below goes red at two entries where one is expected, and the
 // `builtScreens()` roster leg above stays green -- which is what proves the filter is on listing
 // and not on routing.
-test('an unlisted screen is routable and never advertised: the agent area lists six screens and builds eight', () => {
+test('an unlisted screen is routable and never advertised: the agent area lists seven screens and builds nine', () => {
   const built = builtScreensForArea('agent');
   assert.deepEqual(
     built.map((screen) => screen.route),
-    ['agent/definitions/edit', 'agent/transcripts/details', 'agent/definitions', 'agent/switches', 'agent/guardrails', 'agent/governance', 'agent/ledger', 'agent/transcripts'],
-    'all eight agent screens are built, the form and the transcript page first because they take position 0'
+    ['agent/definitions/edit', 'agent/transcripts/details', 'agent/definitions', 'agent/switches', 'agent/guardrails', 'agent/governance', 'agent/ledger', 'agent/transcripts', 'agent/screenpermissions'],
+    'all nine agent screens are built, the form and the transcript page first because they take position 0'
   );
   assert.deepEqual(
     listedScreensForArea('agent').map((screen) => screen.route),
-    ['agent/definitions', 'agent/switches', 'agent/guardrails', 'agent/governance', 'agent/ledger', 'agent/transcripts'],
-    'the side bar lists Definitions, Switches, Guardrails, Governance policy, Agent audit ledger then Transcripts -- the form and the transcript page take no position'
+    ['agent/definitions', 'agent/switches', 'agent/guardrails', 'agent/governance', 'agent/ledger', 'agent/transcripts', 'agent/screenpermissions'],
+    'the side bar lists Definitions, Switches, Guardrails, Governance policy, Agent audit ledger, Transcripts then Screen permissions -- the form and the transcript page take no position'
   );
   assert.equal(
     isListedScreen(built.find((screen) => screen.route === 'agent/definitions/edit')),
@@ -566,8 +642,8 @@ test('documentScreenFor resolves the REST API explorer to its unlisted, id-keyed
   assert.equal(editorScreenFor(roles)?.route, 'permissions/roles/edit', 'and a row name opens the role editor at its id route');
   assert.deepEqual(
     listedScreensForArea('web-applications').map((screen) => screen.route),
-    ['web-applications/list', 'web-applications/rest-apis', 'web-applications/sessions'],
-    'the side bar lists Web applications, the REST API explorer and Web sessions (Story 16.2) -- the viewer takes no position'
+    ['web-applications/list', 'web-applications/rest-apis', 'web-applications/sessions', 'web-applications/docdb-applications', 'web-applications/routine-applications'],
+    'the side bar lists Web applications, the REST API explorer, Web sessions (Story 16.2), Doc DB applications (Story 18.30) and Privileged routine applications (Story 18.31) -- the viewer takes no position'
   );
   assert.equal(isListedScreen(screenForRoute('web-applications/rest-apis/document')), false, 'the viewer is the unlisted one');
 });
@@ -598,8 +674,8 @@ test('childListFor pairs the Wallet list with its Secrets list, parentListFor in
   assert.equal(isListedScreen(secrets), false, 'the Secrets list is never listed');
   assert.deepEqual(
     listedScreensForArea('security').map((screen) => screen.route),
-    ['security/ssl', 'security/x509', 'security/ldap', 'security/wallet', 'security/oauth', 'security/auditing', 'security/allowed-directories', 'security/encryption-key-file', 'security/database-encryption', 'security/data-element-encryption'],
-    'the Security side bar lists SSL/TLS, X.509, LDAP / Kerberos, Wallet, OAuth 2.0, Auditing configuration, Allowed directories, Encryption key files, Database encryption and Data element encryption'
+    ['security/ssl', 'security/x509', 'security/ldap', 'security/wallet', 'security/oauth', 'security/auditing', 'security/allowed-directories', 'security/encryption-key-file', 'security/database-encryption', 'security/data-element-encryption', 'security/authentication', 'security/superservers', 'security/mft-connections'],
+    'the Security side bar lists SSL/TLS, X.509, LDAP / Kerberos, Wallet, OAuth 2.0, Auditing configuration, Allowed directories, Encryption key files, Database encryption, Data element encryption, Authentication options, Superservers and Managed file transfer'
   );
 
   assert.equal(screenForUrl('/security/wallet/secrets/OcuPilotDemo?ns=HSCUSTOM')?.route, 'security/wallet/secrets', 'a secrets URL with a collection id resolves to the Secrets list');
@@ -651,6 +727,74 @@ test('Story 18.14: a mapping change opens the list of the namespace its composit
     screenForChange({ type: 'task-history-entry', id: '12\u00012026-09-28 10:00:00\u0001Completed' })?.route,
     `tasks/history/${encodeEntityId('12\u00012026-09-28 10:00:00\u0001Completed')}`,
     'while a list with no parent keeps the whole id'
+  );
+});
+
+// Story 20.22: a parent-scoped composite list opens on the leading parts of the id that form its parent screen's id,
+// as many as that id has -- one for a Productions row, two for a Production items row.
+//
+// Mutation (Rule 19): make `routeIdFor` keep the whole id -> the setting and the item legs go red, reading the
+// whole composite as the route id.
+test("Story 20.22: a setting change opens Item settings on its item, and an item change opens Production items on its production", () => {
+  const sep = '\u0001';
+  assert.equal(
+    screenForChange({ type: 'production-item-setting', id: `P.Prod${sep}Item${sep}Host${sep}InitSeconds` })?.route,
+    `interoperability/productions/items/settings/${encodeEntityId(`P.Prod${sep}Item`)}`,
+    'the production and the item, which are the Production items list\'s own id, are the route id'
+  );
+  assert.equal(
+    screenForChange({ type: 'production-item', id: `P.Prod${sep}Item`, tool: 'interop.items.add' })?.route,
+    `interoperability/productions/items/${encodeEntityId('P.Prod')}`,
+    'an item change that names its tool opens its production\'s list, whose parent is keyed by a simple id'
+  );
+});
+
+// Story 20.4: the item's tabs. The Production items name cell and a Production monitor row open the Status tab, the
+// head of the group Item settings joins; a setting change still opens Item settings on its item; and an item change
+// that names its tool still opens Production items, where one that names none opens the Production monitor, the earlier
+// of the two lists in the side bar.
+//
+// Mutation (Rule 19): move InteropItemStatusTab off `interoperability/productions/items/document` -> the name-cell leg
+// goes red. Drop the monitor's `rowTarget` -> the monitor leg goes red. Drop `tool` from the add store's event -> the
+// item-change leg (and the add store's own spec) goes red.
+test('Story 20.4: the Status tab is what an item row opens, from Production items and from the monitor', () => {
+  const sep = '\u0001';
+  const items = screenForRoute('interoperability/productions/items');
+  assert.ok(items, 'Production items is declared');
+  assert.equal(documentScreenFor(items)?.route, 'interoperability/productions/items/document', 'the Production items name cell opens the Status tab');
+  assert.equal(childListFor(items), null, 'and Item settings, a detail tab now, is no longer its child list');
+  const monitor = screenForRoute('interoperability/monitor');
+  assert.ok(monitor, 'the Production monitor is declared');
+  assert.deepEqual(monitor.rowTarget, { route: 'interoperability/productions/items/document', field: 'Item' }, 'a monitor row opens the Status tab by the item\'s Production||Name');
+  assert.equal(screenForRoute(monitor.rowTarget.route)?.built, true, 'a built screen');
+  assert.equal(hasIdRoute(screenForRoute(monitor.rowTarget.route)), true, 'keyed by an id');
+  assert.deepEqual(
+    tabMembersFor(screenForRoute('interoperability/productions/items/document')).map((tab) => tab.route),
+    [
+      'interoperability/productions/items/document',
+      'interoperability/productions/items/settings',
+      'interoperability/productions/items/queue',
+      'interoperability/productions/items/log',
+      'interoperability/productions/items/messages',
+      'interoperability/productions/items/jobs',
+      'interoperability/productions/items/test',
+    ],
+    'the strip reads Status, Settings, Queue, Log, Messages, Jobs, Test'
+  );
+  assert.equal(
+    screenForChange({ type: 'production-item-setting', id: `P.Prod${sep}Item${sep}Host${sep}InitSeconds` })?.route,
+    `interoperability/productions/items/settings/${encodeEntityId(`P.Prod${sep}Item`)}`,
+    'a setting change still opens Item settings on its item'
+  );
+  assert.equal(
+    screenForChange({ type: 'production-item', id: `P.Prod${sep}Item`, tool: 'interop.items.add' })?.screen.route,
+    'interoperability/productions/items',
+    'an item change that names its tool opens Production items'
+  );
+  assert.equal(
+    screenForChange({ type: 'production-item', id: `P.Prod${sep}Item` })?.screen.route,
+    'interoperability/monitor',
+    'and one that names none opens the earlier listed list of the type, the Production monitor'
   );
 });
 
@@ -1122,7 +1266,11 @@ test('reset forgets the map, so the next principal in this tab is asked about af
 
 test('the listing seams delegate to the mirror, so a component test can substitute a roster', () => {
   const service = new NavigationService({ api: stubApi([ok(mapBody([]))]) });
-  assert.deepEqual(service.areas(), orderedAreas());
+  assert.deepEqual(
+    service.areas(),
+    orderedAreas().filter((area) => area.appliesWhen === undefined),
+    'before an answer the categories that depend on a feature are not offered'
+  );
   assert.deepEqual(service.screensForArea('home'), builtScreensForArea('home'));
   assert.equal(areaByKey('security')?.labelKey, 'navAreaSecurity');
   assert.equal(areaByKey('no-such-area'), null);
@@ -1304,6 +1452,17 @@ test('screenShowsEntity answers the type half and the scope half, and both have 
   );
 });
 
+// DW-1939: a change names its tool, and a built list of the same entity type that owns the tool wins.
+// Mutation (Rule 19): drop the tool branch in `screenForChange` -> the remote leg answers Local databases.
+test('screenForChange opens the list that owns the change\'s tool, and falls back to the type\'s first list', () => {
+  const remote = screenForChange({ type: 'database-configuration', id: 'REMX', tool: 'osmgmt.remotedatabases.create' });
+  assert.equal(remote?.route, `os-management/remote-databases/${encodeEntityId('REMX')}`);
+  const local = screenForChange({ type: 'database-configuration', id: 'REMX' });
+  assert.equal(local?.screen.route, 'os-management/local-databases', 'no tool: the lowest side-bar position');
+  const wrongType = screenForChange({ type: 'task', id: '12', tool: 'osmgmt.remotedatabases.create' });
+  assert.equal(wrongType?.screen.route, 'tasks/schedule', 'a tool whose screen shows another type is ignored');
+});
+
 // The toast's action. Mutation (Rule 19): build the route without `encodeEntityId` -> the
 // encoded-segment assertion goes red for the id carrying a slash, and the toast would open a URL
 // the route table does not hold.
@@ -1362,4 +1521,202 @@ test('screenForToolName resolves a write tool to its own screen', () => {
   assert.ok(webApp !== null && webApp.toolIdentifier === 'webapp.list', 'a built screen resolves the same way');
   assert.equal(screenForToolName('nosuch.screen.update'), null, 'a tool no screen owns resolves to nothing');
   assert.equal(screenForToolName('single'), null, 'and so does a name with no screen segment');
+});
+
+// --- Namespace categories (Story 20.1, AD-44) ---------------------------------------------
+
+// Mutations (Rule 19):
+// - make `applies()` treat a missing answer as true -> the pre-answer, missing and non-boolean rows
+//   go red.
+// - drop the bus subscription from the constructor -> the bus row goes red.
+
+/** A map answering every declared area, with `applies` per feature the namespace reports. */
+function featureMap(features, overrides = {}) {
+  return mapBody(
+    AREAS.map((area) => ({
+      key: area.key,
+      allowed: true,
+      screens: [],
+      applies: area.appliesWhen === undefined ? true : features.includes(area.appliesWhen),
+      ...overrides[area.key],
+    }))
+  );
+}
+
+const keysOf = (areas) => areas.map((area) => area.key);
+
+test('areasThatApply and screensThatApply keep what the predicate admits, in order', () => {
+  const kept = areasThatApply(AREAS, (key) => key !== 'logs');
+  assert.deepEqual(keysOf(kept), keysOf(AREAS).filter((key) => key !== 'logs'));
+  const interopScreen = { area: 'interoperability', route: 'interoperability/synthetic' };
+  const logsScreen = { area: 'logs', route: 'logs/alerts' };
+  assert.deepEqual(
+    screensThatApply([interopScreen, logsScreen], (key) => key !== 'interoperability'),
+    [logsScreen],
+    'a screen of an area that does not apply is dropped'
+  );
+});
+
+test('a category is not offered before the map answers, and areas without appliesWhen always are', () => {
+  const service = new NavigationService({ api: stubApi([ok(mapBody([]))]), namespace: () => 'HSCUSTOM' });
+  assert.equal(service.applies('interoperability'), false);
+  assert.equal(service.applies('analytics'), false);
+  assert.equal(service.applies('logs'), true);
+  assert.equal(service.applies('no-such-area'), true, 'an area that declares no feature always applies');
+  assert.equal(keysOf(service.areas()).includes('interoperability'), false);
+  assert.equal(keysOf(service.areas()).includes('logs'), true, 'the other areas are drawn ungated, as before');
+});
+
+test('the map answers applies, and each surface seam draws exactly what applies', async () => {
+  const api = stubApi([ok(featureMap(['interoperability']))]);
+  const service = new NavigationService({ api, namespace: () => 'HSCUSTOM' });
+  await service.load();
+  assert.equal(service.applies('interoperability'), true);
+  assert.equal(service.applies('analytics'), false);
+  assert.deepEqual(keysOf(service.areas()).filter((key) => key === 'interoperability' || key === 'analytics'), ['interoperability']);
+  assert.equal(service.areaVerdict('analytics').allowed, true, 'a verdict is not applicability');
+});
+
+test('an answer of false, a missing applies and a non-boolean applies all leave the category undrawn', async () => {
+  for (const applies of [false, undefined, 'true', 1, null]) {
+    const body = featureMap(['interoperability', 'analytics']);
+    for (const area of body.areas) {
+      if (area.key === 'interoperability') {
+        if (applies === undefined) delete area.applies;
+        else area.applies = applies;
+      }
+    }
+    const service = new NavigationService({ api: stubApi([ok(body)]), namespace: () => 'HSCUSTOM' });
+    await service.load();
+    assert.equal(service.applies('interoperability'), false, `applies ${String(applies)} is not true`);
+    assert.equal(service.applies('analytics'), true, 'the other category is judged on its own answer');
+  }
+});
+
+test('an answer read under another namespace is not carried to the one the shell has moved to', async () => {
+  let namespace = 'HSSYS';
+  const service = new NavigationService({ api: stubApi([ok(featureMap(['interoperability', 'analytics']))]), namespace: () => namespace });
+  await service.load();
+  assert.equal(service.applies('interoperability'), true);
+  namespace = '%SYS';
+  assert.equal(service.applies('interoperability'), false, 'fail closed until the map is read for the new namespace');
+  assert.equal(service.applies('analytics'), false);
+  assert.equal(keysOf(service.areas()).includes('analytics'), false);
+});
+
+test('a re-read for a namespace the shell has moved to stops drawing a category at once, before it answers', async () => {
+  // Mutation (Rule 19): drop the `notify()` from `reload()` -> the surfaces are not told and the
+  // count below stays 0.
+  let namespace = 'HSCUSTOM';
+  let answer = () => {};
+  const held = new Promise((resolve) => {
+    answer = resolve;
+  });
+  const service = new NavigationService({
+    api: stubApi([ok(featureMap(['interoperability'])), ok(featureMap(['interoperability'])), held]),
+    namespace: () => namespace,
+  });
+  await service.load();
+  let told = 0;
+  service.subscribe(() => {
+    told += 1;
+  });
+  assert.equal(service.appliesAnswered(), true);
+
+  service.reload();
+  assert.equal(told, 0, 'a re-read in the same namespace waits for its answer');
+  await service.load();
+  told = 0;
+
+  namespace = 'USER';
+  service.reload();
+  assert.equal(told, 1, 'a moved namespace tells the surfaces before the re-read answers');
+  assert.equal(service.appliesAnswered(), false, 'which has not answered for USER yet');
+  assert.equal(keysOf(service.areas()).includes('interoperability'), false, 'so the category is not drawn');
+
+  answer(ok(featureMap(['interoperability'])));
+  await service.load();
+  assert.equal(service.appliesAnswered(), true);
+  assert.equal(keysOf(service.areas()).includes('interoperability'), true, "and USER's own answer draws it again");
+});
+
+test('the cold sign-in read, sent before the namespace list arrives, draws no category and is not the answer', async () => {
+  // Mutation (Rule 19): drop the `appliesKey !== ''` clause from `appliesAnswered()` -> the first two
+  // assertions go red: the instance's own namespace's answer is drawn under the route's.
+  let namespace = '';
+  const api = stubApi([ok(featureMap(['interoperability'])), ok(featureMap([]))]);
+  const service = new NavigationService({ api, namespace: () => namespace });
+  await service.load();
+  assert.equal(service.appliesAnswered(), false, 'an answer read with no namespace is not the route namespace\'s');
+  assert.equal(keysOf(service.areas()).includes('interoperability'), false, 'so a category it reports is not drawn');
+
+  namespace = '%SYS';
+  service.reload();
+  await service.load();
+  assert.equal(service.appliesAnswered(), true, 'the read scoped to the resolved namespace is the answer');
+  assert.equal(keysOf(service.areas()).includes('interoperability'), false, 'and it draws what that namespace reports');
+});
+
+test('main.ts hands the change bus to the navigation service it builds', () => {
+  // The bus row below builds its own service, so it stays green with the hand-off deleted while the
+  // shipped shell never re-reads the map on a namespace change event.
+  // Mutation (Rule 19): drop `bus,` from main.ts's `new NavigationService({...})` -> this goes red.
+  const source = readFileSync(join(uiRoot, 'src', 'main.ts'), 'utf8');
+  const call = /new NavigationService\(\{([^}]*)\}\)/.exec(source);
+  assert.ok(call !== null, 'main.ts builds the navigation service');
+  assert.match(call[1], /^\s*bus\s*,?\s*$/m, 'and passes it the bus');
+  assert.ok(
+    source.indexOf('const bus = new ChangeBus()') < source.indexOf('new NavigationService('),
+    'which exists before the service does'
+  );
+});
+
+test('a failed read leaves the stored answer as it was, and reset() clears it', async () => {
+  const api = stubApi([ok(featureMap(['interoperability'])), { kind: 'error', status: 500, body: null }]);
+  const service = new NavigationService({ api, namespace: () => 'HSCUSTOM' });
+  await service.load();
+  assert.equal(service.applies('interoperability'), true);
+  await service.load();
+  assert.equal(service.applies('interoperability'), true, 'a failed re-read does not hide what was answered');
+  service.reset();
+  assert.equal(service.applies('interoperability'), false, 'reset forgets the answer');
+});
+
+test('a namespace change event for the current namespace re-reads the map, and one for another does not', async () => {
+  const bus = new ChangeBus();
+  const api = stubApi([ok(featureMap([])), ok(featureMap(['interoperability']))]);
+  const service = new NavigationService({ api, namespace: () => 'HSCUSTOM', bus });
+  await service.load();
+  assert.equal(api.calls.length, 1);
+  assert.equal(service.applies('interoperability'), false);
+
+  bus.publish({ kind: 'changed', type: 'namespace', scope: 'instance', id: 'USER', action: 'updated' });
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  assert.equal(api.calls.length, 1, 'another namespace is not a re-read');
+
+  bus.publish({ kind: 'changed', type: 'namespace', scope: 'instance', id: 'hscustom', action: 'updated' });
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  assert.equal(api.calls.length, 2, 'the current namespace is, whatever its case');
+  assert.equal(service.applies('interoperability'), true, 'and the category appears without a reload');
+});
+
+test('Story 20.15: a screen-permission change event of any action re-reads the map, whichever screen it names', async () => {
+  // Mutation (Rule 19): make onChange ignore 'screen-permission' -> the first two legs go red.
+  const bus = new ChangeBus();
+  const api = stubApi([ok(featureMap([])), ok(featureMap([])), ok(featureMap([])), ok(featureMap([]))]);
+  const service = new NavigationService({ api, namespace: () => 'HSCUSTOM', bus });
+  await service.load();
+  assert.equal(api.calls.length, 1);
+
+  bus.publish({ kind: 'changed', type: 'screen-permission', scope: 'instance', id: 'explorer.classes', action: 'updated' });
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  assert.equal(api.calls.length, 2, 'an adjustment re-reads the verdicts');
+
+  bus.publish({ kind: 'changed', type: 'screen-permission', scope: 'instance', id: 'osmgmt.locks', action: 'deleted' });
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  assert.equal(api.calls.length, 3, 'and so does a reset');
+
+  bus.publish({ kind: 'changed', type: 'role', scope: 'instance', id: 'ProbeRole', action: 'updated' });
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  assert.equal(api.calls.length, 3, 'an unrelated entity is not a re-read');
 });

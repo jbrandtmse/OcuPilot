@@ -502,7 +502,7 @@ Method TestTheProhibitedBranchPermitsEnabledAndRefusesEveryOtherField()
 {
     Set tType = $ClassMethod(..#SCREEN, "PrimaryEntityType")
     Do $$$AssertTrue($ListFind(##class(OcuPilot.Kernel.Proposal.Prohibited).CoveredTypes(), tType) > 0, "the set covers this entity type")
-    Do $$$AssertEquals($ListLength(##class(OcuPilot.Kernel.Proposal.Prohibited).Codes()), 28, "the set declares twenty-eight codes, and this write earned none of them: Story 5.10 added no code, Story 5.12's two are a process's, Story 5.14's is an account's, Story 8.3's is a role's, Story 8.4's is a resource's, Story 9.1's is an account's, Story 9.5's is an SSL/TLS configuration's, Story 9.9's is a service's, Story 16.2's two are a web session's, Story 18.2's is a namespace's, Story 18.14's is a mapping's, Story 18.3's is a database's, Story 16.12's is a lock's, Story 19.2's is a document's, Story 19.6's is a SQL statement's, Story 18.7's is a key's and Story 18.23's is the encryption startup settings'")
+    Do $$$AssertEquals($ListLength(##class(OcuPilot.Kernel.Proposal.Prohibited).Codes()), 34, "the set declares thirty-four codes, and this write earned none of them: Story 5.10 added no code, Story 5.12's two are a process's, Story 5.14's is an account's, Story 8.3's is a role's, Story 8.4's is a resource's, Story 9.1's is an account's, Story 9.5's is an SSL/TLS configuration's, Story 9.9's is a service's, Story 16.2's two are a web session's, Story 18.2's is a namespace's, Story 18.14's is a mapping's, Story 18.3's is a database's, Story 16.12's is a lock's, Story 19.2's is a document's, Story 19.6's is a SQL statement's, Story 18.7's is a key's and Story 18.23's is the encryption startup settings' and Story 18.8's two are the authentication options' and Story 18.25's is a superserver's and Story 18.9's is a SQL privilege's")
 
     ; The SHIPPED set, so its target is re-read through the shipped port from the real endpoint --
     ; no fixture stands in for the object the predicate judges.
@@ -537,8 +537,11 @@ ClassMethod Diff(pField As %String) As %String
 /// <p>AC2, AC5 (Story 7.4): the Auditing configuration screen's own actions, over
 /// <code>POST /screens/security.auditing/action</code> as the test account. The disable answers
 /// 200 with the change triple, turns auditing off and records the fact the panel banner reads,
-/// through <code>GET /agent/restraint</code>; the enable turns it back on and clears the fact. The
-/// screen caller mints nothing, writes no ledger row and emits no OcuPilot marker (AD-53).</p>
+/// through <code>GET /agent/restraint</code>; the enable turns it back on, after which the read
+/// answers marked. The screen caller mints nothing, writes no ledger row and emits no OcuPilot
+/// marker (AD-53). Only the disable direction is pinned here: the read re-observes the flags itself
+/// while the fact reads not-marked, so the clear after an enable does not depend on this action
+/// (<class>OcuPilot.Test.MarkingRestraint</class>).</p>
 Method TestTheScreenActionTurnsAuditingOffAndOnAndMovesTheBanner()
 {
     Do $$$AssertEquals(..AuditEnabled(), 1, "the instance starts audited, so the disable has something to change")

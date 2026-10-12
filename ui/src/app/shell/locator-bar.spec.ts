@@ -5,12 +5,18 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { NavigationService, screenForRoute, type Verdict } from '../core/navigation';
 import { COMPOSITE_DISPLAY_SEPARATOR, encodeEntityId } from '../core/entity-id';
 import { ScreenStores } from '../core/screen-store';
-import type { ScreenDeclaration } from '../core/screens.generated';
+import { AREAS, type AreaDeclaration, type ScreenDeclaration } from '../core/screens.generated';
 import { ShellState } from '../core/shell-state';
 import { STRINGS } from '../core/strings';
 import { screenDeclaration } from '../testing/screen-declaration';
 import { LocatorBar } from './locator-bar';
-import { AccountPreferences } from '../core/account-preferences';
+import {
+  AccountPreferences,
+  SHELL_AGENT_DEFINITION,
+  SHELL_KIND,
+  SHELL_THEME,
+  THEME_DARK,
+} from '../core/account-preferences';
 import { stubAccountPreferences } from '../testing/account-preferences';
 import { HelpLinks } from '../core/help';
 import { stubHelpLinks, type StubbedHelpLinks } from '../testing/about';
@@ -37,6 +43,13 @@ class StubNavigation {
   readonly verdicts = new Map<string, Verdict>();
   readonly areaVerdicts = new Map<string, Verdict>();
   private readonly listeners = new Set<() => void>();
+
+  /** Areas the rail no longer offers, because their category does not apply in this namespace. */
+  readonly unoffered = new Set<string>();
+
+  areas(): readonly AreaDeclaration[] {
+    return AREAS.filter((area) => !this.unoffered.has(area.key));
+  }
 
   /** The verdict the area segment refuses on -- the rail's own gate, not the screen's (DW-143). */
   areaVerdict(key: string): Verdict {
@@ -76,6 +89,10 @@ class StubNavigation {
   subscribe(listener: () => void): () => void {
     this.listeners.add(listener);
     return () => this.listeners.delete(listener);
+  }
+
+  notify(): void {
+    for (const listener of this.listeners) listener();
   }
 }
 
@@ -179,6 +196,16 @@ describe('the locator bar', () => {
     expect(current.tagName).toBe('SPAN');
     expect(current.getAttribute('aria-current')).toBe('page');
     expect(current.classList.contains('ocu-locator-current')).toBe(true);
+  });
+
+  it('Story 20.1: draws no area segment for an area the rail no longer offers', async () => {
+    await go('/permissions/users');
+    expect(texts()[0]).toBe(STRINGS.navAreaPermissions);
+    navigation.unoffered.add('permissions');
+    navigation.notify();
+    fixture.detectChanges();
+    expect(texts()).not.toContain(STRINGS.navAreaPermissions);
+    expect(segments().length).toBeGreaterThan(0);
   });
 
   it('the separators are aria-hidden, one fewer than the segments', async () => {
@@ -629,6 +656,48 @@ describe('the locator bar', () => {
     expect(polite?.textContent?.trim()).toBe('');
     expect(preferences.favorites()).toEqual([]);
     expect(toggle()?.getAttribute('aria-pressed')).toBe('false');
+  });
+
+  it('a background write refused while a screen is open is announced once, by the locator bar', async () => {
+    // Mutation (Rule 19): drop `|| this.preferences.fault('background')` from `favoriteRefusal` ->
+    // this goes red, and a refused background write is announced nowhere.
+    TestBed.resetTestingModule();
+    preferences = stubAccountPreferences({
+      writeAnswer: 'refused',
+      refusalReason: 'The instance refused that preference.',
+    });
+    build();
+
+    await go('/permissions/users');
+    await preferences.setValue(SHELL_KIND, SHELL_THEME, THEME_DARK);
+    fixture.detectChanges();
+
+    const alerts: HTMLElement[] = Array.from(
+      fixture.nativeElement.querySelectorAll('[role="alert"]')
+    );
+    expect(alerts.map((alert) => alert.textContent?.trim())).toEqual([
+      'The instance refused that preference.',
+    ]);
+  });
+
+  it("an agent pick the instance refuses is announced once, by the locator bar", async () => {
+    // Mutation (Rule 19): drop `|| this.preferences.fault('agent-pick')` from `favoriteRefusal` ->
+    // this goes red, and the panel's refused pick is announced nowhere.
+    TestBed.resetTestingModule();
+    preferences = stubAccountPreferences({
+      writeAnswer: 'refused',
+      refusalReason: 'That agent definition is not enabled.',
+    });
+    build();
+
+    await go('/permissions/users');
+    await preferences.setValue(SHELL_KIND, SHELL_AGENT_DEFINITION, 'def-1', 'agent-pick');
+    fixture.detectChanges();
+
+    const alerts: HTMLElement[] = Array.from(
+      fixture.nativeElement.querySelectorAll('[role="alert"]')
+    );
+    expect(alerts.map((alert) => alert.textContent?.trim())).toEqual(['That agent definition is not enabled.']);
   });
 
   it('Story 15.2: the toggle reads pressed on return to a screen pinned elsewhere', async () => {

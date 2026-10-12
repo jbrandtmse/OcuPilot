@@ -39,6 +39,10 @@ export interface ProposalDiffRow {
   readonly removed?: boolean;
   /** The `STRINGS` key an empty value of this field reads as, the tool's own declaration (DW-1016). */
   readonly emptyKey?: string;
+  /** The row's shape: `"lines"` is a changed-lines hunk of a document's text (Story 20.21). */
+  readonly kind?: string;
+  /** The line number of a `"lines"` row's first `before` line. */
+  readonly line?: number;
 }
 
 /**
@@ -70,6 +74,11 @@ export interface ProposalCardView {
   readonly targetType?: string;
   /** The target's own name, as the instance stores it ("/csp/myapp"). */
   readonly name: string;
+  /**
+   * The name the title reads where `name` is an id rather than a name (a task's numeric id), or
+   * `''`; `cardTitleName` answers the one the title shows.
+   */
+  readonly targetName?: string;
   /** The changed fields, first in the card and one `diff-row` each. */
   readonly changed: readonly ProposalDiffRow[];
   /** How many fields the payload also sends unchanged (AD-4), for the collapsed caption. */
@@ -195,6 +204,9 @@ export const CONSEQUENCE_PURGEMARKERS = 'AUDIT.PURGEMARKERS';
 /** Story 18.14: a global mapping whose name begins with `%`, which shadows a system global (AD-10). */
 export const CONSEQUENCE_SYSTEMGLOBAL = 'MAPPING.SYSTEMGLOBAL';
 
+/** Story 20.18: an agent change to a screen's permissions that drops a pair the screen required (AD-64). */
+export const CONSEQUENCE_SCREENACCESSLOWERED = 'SCREENACCESS.LOWERED';
+
 /** Story 18.14: a copy of mappings, which replaces the destination's same-named mappings. */
 export const CONSEQUENCE_COPYMAPPINGS = 'NAMESPACE.COPYMAPPINGS';
 
@@ -206,6 +218,12 @@ export const CONSEQUENCE_EXPLOREREXPORTREPLACES = 'EXPLORER.EXPORT.REPLACES';
 
 /** Story 19.13: a System Explorer import, which replaces each document of the same name. */
 export const CONSEQUENCE_EXPLORERIMPORTREPLACES = 'EXPLORER.IMPORT.REPLACES';
+
+/** Story 20.21: an agent's class or routine save, which compiles the saved text on Confirm, as the user. */
+export const CONSEQUENCE_EXPLORERSAVECOMPILES = 'EXPLORER.SAVE.COMPILES';
+
+/** Story 18.32: an agent's REST service create, which compiles the service's three classes on Confirm. */
+export const CONSEQUENCE_RESTSERVICECREATE = 'RESTSERVICE.CREATE.COMPILES';
 
 /**
  * Story 19.11: an agent-proposed SQL statement, by the kind the instance classified it, each stated as the
@@ -312,6 +330,13 @@ export const CONSEQUENCE_ENCRYPTIONNEWKEY = 'ENCRYPTION.KEYFILE.NEWKEY';
 export const CONSEQUENCE_ENCRYPTIONREMOVEKEY = 'ENCRYPTION.KEYFILE.REMOVEKEY';
 
 /**
+ * Story 18.24: replacing an RSA key pair, and a symmetric key, each stated as the Secret form's
+ * typed-name dialog states it.
+ */
+export const CONSEQUENCE_WALLETKEYREPLACERSA = 'WALLETKEY.REPLACE.RSA';
+export const CONSEQUENCE_WALLETKEYREPLACESYMMETRIC = 'WALLETKEY.REPLACE.SYMMETRIC';
+
+/**
  * Story 18.22: activating a key file's keys and deactivating one key, for database keys and for
  * data-element keys, each stated as its screen states it.
  */
@@ -333,6 +358,47 @@ export const CONSEQUENCE_ENCRYPTIONSTARTUPRESTART = 'ENCRYPTION.STARTUP.RESTART'
 export const CONSEQUENCE_ENCRYPTIONSTARTUPJOURNAL = 'ENCRYPTION.STARTUP.JOURNAL';
 export const CONSEQUENCE_AUDITENCRYPTIONCHANGE = 'AUDIT.ENCRYPTIONCHANGE';
 
+/** Story 18.8: a change to the JWT issuer or signature algorithm, which ends every token session. */
+export const CONSEQUENCE_WEBAUTHSIGNOUT = 'WEBAUTH.SIGNOUT';
+
+/** The consequence of an SSL/TLS change to the superserver the web gateway connects through (Story 18.25). */
+export const CONSEQUENCE_SUPERSERVERSERVES = 'SUPERSERVER.SERVESOCUPILOT';
+/** Story 20.2: the production actions that wait or recover (AD-62); each is one published sentence. */
+export const CONSEQUENCE_INTEROPSTOP = 'INTEROP.STOP';
+export const CONSEQUENCE_INTEROPRESTART = 'INTEROP.RESTART';
+export const CONSEQUENCE_INTEROPUPDATE = 'INTEROP.UPDATE';
+export const CONSEQUENCE_INTEROPRECOVER = 'INTEROP.RECOVER';
+/** Story 20.3: an item write's pending-update sentence, and a removal's. */
+export const CONSEQUENCE_INTEROPITEMPENDING = 'INTEROP.ITEM.PENDING';
+export const CONSEQUENCE_INTEROPITEMREMOVE = 'INTEROP.ITEM.REMOVE';
+/** Story 20.23: the queue and job actions' consequence sentences (AD-62); each is one published sentence. */
+export const CONSEQUENCE_INTEROPMESSAGEABORT = 'INTEROP.MESSAGE.ABORT';
+export const CONSEQUENCE_INTEROPQUEUEABORT = 'INTEROP.QUEUE.ABORT';
+export const CONSEQUENCE_INTEROPJOBABORT = 'INTEROP.JOB.ABORT';
+export const CONSEQUENCE_INTEROPJOBSUSPEND = 'INTEROP.JOB.SUSPEND';
+export const CONSEQUENCE_INTEROPJOBSTOP = 'INTEROP.JOB.STOP';
+/** Story 20.5: a lookup table entry's removal and a lookup table's deletion. */
+export const CONSEQUENCE_INTEROPLOOKUPREMOVE = 'INTEROP.LOOKUP.REMOVE';
+export const CONSEQUENCE_INTEROPLOOKUPDELETE = 'INTEROP.LOOKUP.DELETE';
+/** Story 20.5: a lookup table's import. */
+export const CONSEQUENCE_INTEROPLOOKUPIMPORT = 'INTEROP.LOOKUP.IMPORT';
+/** Story 20.6: a host test, which sends a real message through the running production. */
+export const CONSEQUENCE_INTEROPTESTSENDS = 'INTEROP.TEST.SENDS';
+/** Story 20.22: a set of a setting that is a location on the server (AD-21's ninth case). */
+export const CONSEQUENCE_INTEROPSETTINGLOCATION = 'INTEROP.SETTING.LOCATION';
+/** The field a setting set's diff names the value under. */
+const SETTING_VALUE_FIELD = 'Value';
+/**
+ * The codes of a production stop that was applied but did not end the production Stopped (Story 20.3):
+ * Suspended with messages still queued, and partly stopped with jobs still running. The action is refused with
+ * its own sentence, and the Productions list re-reads the state the production was left in.
+ */
+export const PRODUCTION_STATE_MOVED: readonly string[] = ['INTEROP.PRODUCTION.SUSPENDED', 'INTEROP.PRODUCTION.PARTSTOPPED'];
+
+/** The consequences of a managed file transfer connection's delete and token revoke (Story 18.26). */
+export const CONSEQUENCE_MFTDELETE = 'MFT.DELETE';
+export const CONSEQUENCE_MFTREVOKE = 'MFT.REVOKE';
+
 /** The field a switch file proposal's diff names the file the instance writes now in. */
 const JOURNAL_CURRENT_FIELD = 'CurrentFile';
 
@@ -350,6 +416,13 @@ export function journalSentence(view: Pick<ProposalCardView, 'consequence' | 'ch
   }
   if (view.consequence === CONSEQUENCE_JOURNALSWITCHDIRECTORY) return STRINGS.journalSwitchDirectoryConsequence;
   if (view.consequence === CONSEQUENCE_JOURNALINTEGRITY) return STRINGS.journalIntegrityConsequence.replace('<file>', () => view.name);
+  // Story 20.22: a setting set names the value it stores as a location on the server, from its diff row. A value
+  // cleared to nothing names no location, so the card states the pending-update sentence alone, as the dialog does.
+  if (view.consequence === CONSEQUENCE_INTEROPSETTINGLOCATION) {
+    const stored = view.changed.find((row) => row.field === SETTING_VALUE_FIELD)?.after ?? '';
+    if (stored === '') return STRINGS.interopItemPendingConsequence;
+    return STRINGS.interopSettingLocationConsequence.replace('<value>', () => stored);
+  }
   return '';
 }
 
@@ -379,6 +452,7 @@ export function consequenceSentence(code: string | undefined): string {
   if (code === CONSEQUENCE_SERVERCLIENTSECRETCHANGE) return STRINGS.oauthRegisteredClientSecretEffect;
   if (code === CONSEQUENCE_PURGEMARKERS) return STRINGS.auditPurgeMarkersEffect;
   if (code === CONSEQUENCE_SYSTEMGLOBAL) return STRINGS.mappingSystemGlobalConsequence;
+  if (code === CONSEQUENCE_SCREENACCESSLOWERED) return STRINGS.screenPermissionsLowerConsequence;
   // The copy dialog's own consequence sentence, published once.
   if (code === CONSEQUENCE_COPYMAPPINGS) return STRINGS.namespaceCopyMappingsConsequence;
   // The export dialog's own replace line, published once.
@@ -387,6 +461,10 @@ export function consequenceSentence(code: string | undefined): string {
   if (code === CONSEQUENCE_EXPLOREREXPORTREPLACES) return STRINGS.taskExportReplaces;
   // The import dialog's own consequence line, published once.
   if (code === CONSEQUENCE_EXPLORERIMPORTREPLACES) return STRINGS.explorerImportReplaces;
+  // Story 20.21: an agent's class or routine save states that Confirm compiles the saved text, published once.
+  if (code === CONSEQUENCE_EXPLORERSAVECOMPILES) return STRINGS.explorerSaveCompilesOnConfirm;
+  // Story 18.32: an agent's REST service create states that Confirm compiles the service's classes, published once.
+  if (code === CONSEQUENCE_RESTSERVICECREATE) return STRINGS.restServiceCreateEffect;
   // Story 19.11: an agent-proposed SQL statement's own confirmation sentences, published once; the DML
   // sentence names the statement's tables, so the card states it through `sqlConsequenceSentence`.
   if (code === CONSEQUENCE_SQLCHANGESSCHEMA) return STRINGS.explorerSqlConfirmDdl;
@@ -414,6 +492,9 @@ export function consequenceSentence(code: string | undefined): string {
   // Story 18.7: the new key's and the key removal's sentences, each published once.
   if (code === CONSEQUENCE_ENCRYPTIONNEWKEY) return STRINGS.encryptionKeyFileNewKeyConsequence;
   if (code === CONSEQUENCE_ENCRYPTIONREMOVEKEY) return STRINGS.encryptionKeyFileRemoveKeyLoss;
+  // Story 18.24: the two key replaces' sentences, each published once.
+  if (code === CONSEQUENCE_WALLETKEYREPLACERSA) return STRINGS.walletKeyReplaceRsaConsequence;
+  if (code === CONSEQUENCE_WALLETKEYREPLACESYMMETRIC) return STRINGS.walletKeyReplaceSymmetricConsequence;
   // Story 18.22: the two activations' and the two deactivations' sentences, each published once.
   if (code === CONSEQUENCE_ENCRYPTIONKEYACTIVATE) return STRINGS.encryptionKeyActivateConsequence;
   if (code === CONSEQUENCE_ENCRYPTIONKEYDEACTIVATE) return STRINGS.encryptionKeyDeactivateConsequence;
@@ -427,6 +508,33 @@ export function consequenceSentence(code: string | undefined): string {
   if (code === CONSEQUENCE_ENCRYPTIONSTARTUPRESTART) return STRINGS.encryptionStartupRestart;
   if (code === CONSEQUENCE_ENCRYPTIONSTARTUPJOURNAL) return STRINGS.encryptionStartupJournalConsequence;
   if (code === CONSEQUENCE_AUDITENCRYPTIONCHANGE) return STRINGS.encryptionStartupAuditConsequence;
+  // Story 18.8: the sign-out sentence, published once.
+  if (code === CONSEQUENCE_WEBAUTHSIGNOUT) return STRINGS.authOptionsSignOutConsequence;
+  // Story 18.25: the serving superserver's SSL/TLS sentence, published once.
+  if (code === CONSEQUENCE_SUPERSERVERSERVES) return STRINGS.superserverServesConsequence;
+  // Story 18.26: the connection delete's and token revoke's sentences, each published once.
+  if (code === CONSEQUENCE_MFTDELETE) return STRINGS.mftDeleteConsequence;
+  if (code === CONSEQUENCE_MFTREVOKE) return STRINGS.mftRevokeConsequence;
+  // Story 20.2: the four production consequences, each published once.
+  if (code === CONSEQUENCE_INTEROPSTOP) return STRINGS.interopStopConsequence;
+  if (code === CONSEQUENCE_INTEROPRESTART) return STRINGS.interopRestartConsequence;
+  if (code === CONSEQUENCE_INTEROPUPDATE) return STRINGS.interopUpdateConsequence;
+  if (code === CONSEQUENCE_INTEROPRECOVER) return STRINGS.interopRecoverConsequence;
+  // Story 20.3: an item write's pending-update sentence and a removal's, each published once.
+  if (code === CONSEQUENCE_INTEROPITEMPENDING) return STRINGS.interopItemPendingConsequence;
+  if (code === CONSEQUENCE_INTEROPITEMREMOVE) return STRINGS.interopItemRemoveConsequence;
+  // Story 20.23: the queue and job actions' sentences, each published once.
+  if (code === CONSEQUENCE_INTEROPMESSAGEABORT) return STRINGS.interopMessageAbortConsequence;
+  if (code === CONSEQUENCE_INTEROPQUEUEABORT) return STRINGS.interopQueueAbortConsequence;
+  if (code === CONSEQUENCE_INTEROPJOBABORT) return STRINGS.interopJobAbortConsequence;
+  if (code === CONSEQUENCE_INTEROPJOBSUSPEND) return STRINGS.interopJobSuspendConsequence;
+  if (code === CONSEQUENCE_INTEROPJOBSTOP) return STRINGS.interopJobStopConsequence;
+  // Story 20.5: a lookup table entry's removal and a lookup table's deletion, each published once.
+  if (code === CONSEQUENCE_INTEROPLOOKUPREMOVE) return STRINGS.interopLookupRemoveConsequence;
+  if (code === CONSEQUENCE_INTEROPLOOKUPDELETE) return STRINGS.interopLookupDeleteConsequence;
+  if (code === CONSEQUENCE_INTEROPLOOKUPIMPORT) return STRINGS.interopLookupImportConsequence;
+  // Story 20.6: a host test's sentence, the one its own dialog shows.
+  if (code === CONSEQUENCE_INTEROPTESTSENDS) return STRINGS.interopTestSendsConsequence;
   return '';
 }
 
@@ -664,6 +772,7 @@ export function toCardView(
     entityType: entityLabel,
     targetType: proposal.target.type,
     name: proposal.target.id,
+    targetName: proposal.targetName ?? '',
     changed: proposal.changed.map((row) => (secrets.has(row.field) ? maskedRow(row) : row)),
     unchangedCount: proposal.unchangedCount,
     unchanged: proposal.unchanged,
@@ -680,6 +789,12 @@ export function toCardView(
     impact: proposal.impact ?? null,
     refusalReason,
   };
+}
+
+/** The name the card's title shows: the instance's `targetName`, else the target's id. */
+export function cardTitleName(view: Pick<ProposalCardView, 'name' | 'targetName'>): string {
+  const named = view.targetName ?? '';
+  return named !== '' ? named : view.name;
 }
 
 /**

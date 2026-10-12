@@ -869,6 +869,7 @@ test('Failed tool: a failed step carries its reason and failedPair through resto
                 code: 'AUTH.NOPRIVILEGE',
                 reason: 'no privilege',
                 failedPair: '%Admin_Secure:USE',
+                failedScreen: 'webapp.list',
               }),
             ],
             stepsDropped: 0,
@@ -881,6 +882,7 @@ test('Failed tool: a failed step carries its reason and failedPair through resto
   await turn.restore();
   const entry = turn.entries()[0];
   assert.equal(entry.steps[0].failedPair, '%Admin_Secure:USE');
+  assert.equal(entry.steps[0].failedScreen, 'webapp.list');
   assert.equal(entry.steps[0].reason, 'no privilege');
 });
 
@@ -1539,6 +1541,8 @@ test("the published action is the instance's own, and an unknown word reads as t
     const event = bus.events.find((candidate) => candidate.kind === 'changed');
     assert.ok(event, `a confirm answering ${JSON.stringify(answered)} publishes a change`);
     assert.equal(event.action, published, `answered ${JSON.stringify(answered)}`);
+    // Mutation (Rule 19): drop `tool` from the confirm's publish in `turn.ts` -> this goes red.
+    assert.equal(event.tool, 'webapp.list.update', 'the change names the proposal\'s tool');
   }
 });
 
@@ -1775,6 +1779,52 @@ test('a confirm the instance refused publishes no change, and neither does a can
     bus.events.some((event) => event.kind === 'proposal-closed'),
     'the pause still lifts, because the row is no longer live'
   );
+});
+
+test('a stop refused as Suspended or partly stopped publishes the production change, and any other refusal does not (Story 20.3)', async () => {
+  // Mutation (Rule 19): drop the `PRODUCTION_STATE_MOVED` branch from the error path of `decideProposal`
+  // -> both state legs go red, and the Productions list keeps the state it held before the stop.
+  const production = { type: 'production', scope: 'USER', id: 'OcuPilotProbe' };
+  for (const [code, detail, published] of [
+    ['INTEROP.PRODUCTION.SUSPENDED', { state: 'confirmed', closedReason: '' }, true],
+    ['INTEROP.PRODUCTION.PARTSTOPPED', { state: 'confirmed', closedReason: '' }, true],
+    ['INTEROP.PRODUCTION.NOTRUNNING', null, false],
+  ]) {
+    const bus = recordingBus();
+    const proposal = wireProposal({ target: production, tool: 'interop.production.stop' });
+    const api = fakeApi({
+      [conversationReadPath('c1')]: [ok({ turns: [{ seq: 1, message: 'stop it', state: 'completed', proposals: [proposal] }] })],
+      [turnProgressPath('turn-1')]: [
+        ok({ state: 'completed', steps: [], stepsDropped: 0, reply: 'done', error: null, proposals: [proposal] }),
+      ],
+      [TURN_PATH]: [ok({ turnId: 'turn-1' }, 202)],
+      [CONVERSATION_PATH]: [ok({ conversationId: 'c1' }, 201)],
+      [proposalConfirmPath('p1')]: [err(409, code, 'refused', detail)],
+    });
+    const { schedule, scheduled } = fakeSchedule();
+    const turn = new TurnStore({ api, storage: memoryStorage(), navigationType: freshTab(), schedule, now: () => NOW_MS, bus });
+    await turn.send('stop it');
+    await settle();
+    scheduled.shift()?.run();
+    await settle();
+
+    await turn.confirmProposal('p1');
+    const changed = bus.events.filter((event) => event.kind === 'changed');
+    if (!published) {
+      assert.deepEqual(changed, [], `${code} changed nothing`);
+      continue;
+    }
+    assert.equal(changed.length, 1, `${code} publishes the one change`);
+    assert.deepEqual(
+      [changed[0].type, changed[0].scope, changed[0].id, changed[0].action, changed[0].tool, changed[0].proposalId],
+      ['production', 'USER', 'OcuPilotProbe', 'updated', 'interop.production.stop', 'p1'],
+      `${code} names the proposal's own production and tool`
+    );
+    assert.ok(
+      bus.events.findIndex((event) => event.kind === 'proposal-closed') < bus.events.findIndex((event) => event.kind === 'changed'),
+      `${code} lifts the pause before the re-fetch it asks for`
+    );
+  }
 });
 
 test('a live row past its own expiresAt opens no pause (DW-1209)', async () => {
@@ -2231,6 +2281,53 @@ test('a diff row and an unchanged row keep the emptyKey the instance sent, and a
   assert.equal('emptyKey' in proposal.changed[1], false, 'an empty key is not carried');
   assert.equal(proposal.unchanged[0].emptyKey, 'serviceAllowedUnrestricted', 'the unchanged row keeps its key');
   assert.equal('emptyKey' in proposal.unchanged[1], false, 'and a row with none carries none');
+});
+
+// Story 20.21: a changed-lines row carries the `kind` and the `line` the instance sent; a row sent with
+// neither carries neither key, so a field diff keeps its shape.
+//
+// Mutation (Rule 19): drop the `kind` spread from `parseProposalDiff` -> the first leg goes red.
+
+test('a changed-lines row keeps the kind and line the instance sent, and a field row carries neither', () => {
+  const [proposal] = parsePrivilegeProposals([
+    wireProposal({
+      target: { type: 'ExplorerSave', scope: 'USER', id: 'OcuProbe2021.Demo.cls' },
+      tool: 'explorer.classes.save',
+      changed: [
+        { field: 'Text', before: 'Quit 1\n', after: 'Quit 2\n', kind: 'lines', line: 12 },
+        { field: 'Enabled', before: 'false', after: 'true' },
+      ],
+    }),
+  ]);
+  assert.equal(proposal.changed[0].kind, 'lines', 'the changed row keeps its kind');
+  assert.equal(proposal.changed[0].line, 12, 'and its line');
+  assert.equal('kind' in proposal.changed[1], false, 'a row sent without a kind carries none');
+  assert.equal('line' in proposal.changed[1], false, 'and carries no line');
+});
+
+// Story 20.21 (QA): a `kind` or `line` of the wrong type is dropped rather than carried, so a card never
+// reads a lines row from a value the instance did not mean as one.
+//
+// Mutation (Rule 19): accept a numeric string for `line` in `parseProposalDiff` -> the string leg goes red.
+
+test('a changed row carries a kind only if it is a non-empty string and a line only if it is a finite number', () => {
+  const [proposal] = parsePrivilegeProposals([
+    wireProposal({
+      target: { type: 'ExplorerSave', scope: 'USER', id: 'OcuProbe2021.Demo.cls' },
+      tool: 'explorer.classes.save',
+      changed: [
+        { field: 'Text', before: 'a\n', after: 'b\n', kind: 'lines', line: '12' },
+        { field: 'Text', before: 'a\n', after: 'b\n', kind: '', line: null },
+        { field: 'Text', before: 'a\n', after: 'b\n', kind: 7, line: 1.5 },
+      ],
+    }),
+  ]);
+  assert.equal(proposal.changed[0].kind, 'lines', 'a string kind is kept');
+  assert.equal('line' in proposal.changed[0], false, 'a numeric string is not a line');
+  assert.equal('kind' in proposal.changed[1], false, 'an empty kind is dropped');
+  assert.equal('line' in proposal.changed[1], false, 'a null line is dropped');
+  assert.equal('kind' in proposal.changed[2], false, 'a numeric kind is dropped');
+  assert.equal(proposal.changed[2].line, 1.5, 'and a finite number is a line as sent');
 });
 
 // Story 19.11: a confirmed SQL run answers an `outcome`, not `lines`; the card shows its status line and, for

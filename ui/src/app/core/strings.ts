@@ -179,6 +179,24 @@ export const STRINGS = {
   proposalDraftCaption: 'Nothing was changed. Fill in each value in angle brackets before you run this.',
   /** EXPERIENCE.md:276 */
   proposalUnchangedFieldsDisclosure: 'N unchanged fields',
+  /** EXPERIENCE.md:604 */
+  longBlockShowMore: 'Show more',
+  /** EXPERIENCE.md:604 */
+  longBlockShowLess: 'Show less',
+  /** EXPERIENCE.md:604 */
+  proposalSummaryFields: '<name>: <n> changed fields',
+  /** EXPERIENCE.md:604 */
+  proposalSummaryField: '<name>: 1 changed field',
+  /** EXPERIENCE.md:604 */
+  proposalSummaryCompiled: 'Compiled without errors.',
+  /** EXPERIENCE.md:604 */
+  proposalSummaryCompileErrors: 'Compiled with errors.',
+  /** EXPERIENCE.md:604 */
+  proposalSummaryLines: '<name>: lines changed, <removed> removed and <added> added',
+  /** EXPERIENCE.md:604 */
+  explorerSaveCompilesOnConfirm: 'Confirming saves this text and then compiles it as you. The compile\'s outcome shows here once it has run.',
+  /** EXPERIENCE.md:604 */
+  explorerSaveNotCompiled: 'Saved, but it did not compile. The saved text is what is now on the instance.',
   /** EXPERIENCE.md:277 */
   proposalExampleCardTitle: 'Example \u2014 this is what a proposal looks like',
   /** EXPERIENCE.md:278 */
@@ -334,6 +352,10 @@ export const STRINGS = {
   /** EXPERIENCE.md:310 */
   navAreaSystemExplorer: 'System Explorer',
   /** EXPERIENCE.md:310 */
+  navAreaInteroperability: 'Interoperability',
+  /** EXPERIENCE.md:310 */
+  navAreaAnalytics: 'Analytics',
+  /** EXPERIENCE.md:310 */
   navAreaAgent: 'Agent co-pilot',
   /** EXPERIENCE.md:311 */
   navRailItemTooltip: '<Area> \u00b7 Ctrl+B toggles the side bar',
@@ -369,6 +391,42 @@ export const STRINGS = {
   webAppColumnResource: 'Resource',
   /** EXPERIENCE.md:316 */
   webAppListEmpty: 'No web applications in <NAMESPACE>.',
+  /** EXPERIENCE.md:471 */
+  webAppPctAccessListLabel: 'Percent class access',
+  /** EXPERIENCE.md:471 */
+  pctAccessEntityLabel: 'Class access entry',
+  /** EXPERIENCE.md:471 */
+  webAppPctAccessListEmpty: 'No percent class access entries for this application.',
+  /** EXPERIENCE.md:471 */
+  webAppPctAccessListEmptyAgent: 'give a web application access to a percent class',
+  /** EXPERIENCE.md:471 */
+  webAppPctAccessListPrompt1: 'Which percent classes can this application reach?',
+  /** EXPERIENCE.md:471 */
+  webAppPctAccessListPrompt2: 'Give this application access to a package of percent classes',
+  /** EXPERIENCE.md:471 */
+  webAppPctAccessListPrompt3: 'Remove an access entry this application no longer needs',
+  /** EXPERIENCE.md:471 */
+  webAppPctAccessApplication: 'Application of this entry',
+  /** EXPERIENCE.md:471 */
+  webAppPctAccessColumnAllowType: 'Allow type',
+  /** EXPERIENCE.md:471 */
+  webAppPctAccessColumnClass: 'Class or package',
+  /** EXPERIENCE.md:471 */
+  webAppPctAccessColumnAllowAccess: 'Allow access',
+  /** EXPERIENCE.md:471 */
+  webAppPctAccessColumnSystem: 'Instance entry',
+  /** EXPERIENCE.md:475 */
+  pctAccessRefusalSystem: 'This entry belongs to the instance and goes only with its application, so it cannot be deleted on its own.',
+  /** EXPERIENCE.md:475 */
+  routineAppRefusalOcuPilot: 'OcuPilot reads its own protected state through this privileged routine application, so it cannot be deleted, disabled or changed.',
+  /** EXPERIENCE.md:471 */
+  webAppPctAccessDialogTitle: 'Add a percent class access entry',
+  /** EXPERIENCE.md:471 */
+  webAppPctAccessClassField: 'Class or package name',
+  /** EXPERIENCE.md:471 */
+  webAppPctAccessAllApplications: 'Apply to all applications',
+  /** EXPERIENCE.md:471 */
+  webAppPctAccessAdd: 'Add entry',
   /** EXPERIENCE.md:316 */
   tableReadOnlyEmptyNext: 'Open another screen from the command box.',
   /** EXPERIENCE.md:317 */
@@ -784,6 +842,8 @@ export const STRINGS = {
   serviceAllowedUnrestricted: 'Unrestricted',
   /** EXPERIENCE.md:361 */
   serviceListEmpty: 'No services on this instance.',
+  /** EXPERIENCE.md:361 */
+  serviceListNote: 'An empty Allowed IP addresses list (AllowedConnections) means any address may connect.',
   /** EXPERIENCE.md:362 */
   x509ListLabel: 'X.509',
   /** EXPERIENCE.md:362 */
@@ -1612,7 +1672,8 @@ export const STRINGS = {
   proposalSecretOptional: 'optional',
 
   // Story 8.6: the Secrets list's agent invitation, the wallet secret form's title, labels, uses and
-  // helpers, and what its read-only view says of a secret type it does not edit.
+  // helpers, and what its read-only view says of a secret type it does not edit. Story 18.24 adds the
+  // key types' labels and helpers, the instance's own key sentences and the two replace consequences.
   /** EXPERIENCE.md:413 */
   walletSecretListEmptyAgent: 'store a secret',
   /** EXPERIENCE.md:414 */
@@ -1625,12 +1686,50 @@ export const STRINGS = {
   walletUsageSql: 'SQL gateway',
   walletUsageSoap: 'SOAP',
   walletUsageCustom: 'Custom',
+  walletTypeKeyValue: 'Key-value',
+  walletTypeRsa: 'RSA key',
+  walletTypeSymmetric: 'Symmetric key',
+  walletSourceGenerate: 'Generate a new key',
+  walletSourceImport: 'Import a key',
+  walletFieldKeyLength: 'Key length',
+  walletKeyBits2048: '2048 bits',
+  walletKeyBits3072: '3072 bits',
+  walletKeyBits4096: '4096 bits',
+  walletKeyBytes16: '16 bytes (AES-128)',
+  walletKeyBytes24: '24 bytes (AES-192)',
+  walletKeyBytes32: '32 bytes (AES-256)',
+  walletFieldPublicKey: 'Public key',
+  walletFieldKeyBase64: 'Key (base64)',
+  walletFieldHasCertificate: 'Certificate present',
+  walletReplaceKey: 'Replace the key',
   /** EXPERIENCE.md:415 */
   walletValueHelp: 'Stored as typed. For HTTP, SOAP or SQL use, enter a JSON object with user and password members.',
   walletHostsHelp: 'Comma-separated. Applies only when TLS is required.',
+  walletGenerateHelp: 'The instance generates the key. No read returns it.',
+  walletKeyWriteOnly: 'Key material is write-only: no read returns it, here or to the agent.',
   /** EXPERIENCE.md:416 */
-  walletTypeReadOnly: 'Only key-value secrets are edited here.',
-  walletTypeElsewhere: 'Manage RSA and symmetric-key secrets through the %Wallet classes. The classic portal has no wallet page.',
+  walletKeyValidation: 'The key was refused.',
+  walletKeySourceRequired: 'Choose a length to generate a key, or enter a key to import.',
+  walletKeySourceBoth: 'Generate a key or import one, not both.',
+  walletKeyLengthRsa: 'An RSA key is 2048, 3072 or 4096 bits long.',
+  walletKeyLengthSymmetric: 'A symmetric key is 16, 24 or 32 bytes long.',
+  walletKeyPublicRequired: 'An imported RSA key needs its certificate or its public key.',
+  walletKeyCertificateShape: 'Paste one PEM certificate.',
+  walletKeyPublicKeyShape: 'Paste one PEM RSA public key.',
+  walletKeyPrivateKeyShape: 'Paste one PEM private key.',
+  walletKeyCertificateInvalid: 'This certificate is not valid now: it has expired or is not yet valid.',
+  walletKeyPrivateKeyMismatch:
+    'This private key does not belong to the certificate or public key, or is not an RSA key.',
+  walletKeyPasswordRequired: 'This private key is encrypted. Enter its password.',
+  walletKeyPasswordWrong: 'This password does not open the private key.',
+  walletKeyPasswordWithoutKey: 'A password is used only with an encrypted private key.',
+  walletKeySecret64Shape: 'Enter the key as base64 that decodes to 16, 24 or 32 bytes.',
+  walletKeyTypeMismatch: 'This secret holds another type of key, and a secret\'s type cannot change.',
+  walletKeyReplaceRsaConsequence:
+    'Replaces the whole key pair. The old private key is discarded, so data encrypted to the old public key can no longer be decrypted with this secret. An import without a private key leaves the secret with none.',
+  walletKeyReplaceSymmetricConsequence:
+    'Replaces the key. Data encrypted with the old key can no longer be decrypted with this secret.',
+  walletTypeNotKeyValue: 'This secret is not a key-value secret.',
 
   // Story 8.8: the Devices list's agent invitation, the device editor's title, the labels of the
   // fields the list does not carry, and its type and prompt choices.
@@ -1953,6 +2052,14 @@ export const STRINGS = {
   roleMemberTypeEscalation: 'Account (escalation)',
   /** EXPERIENCE.md:478 */
   roleMembersEmpty: 'No account or role holds this role.',
+  /** EXPERIENCE.md:478 */
+  roleMemberAdminOption: 'Admin option',
+  /** EXPERIENCE.md:398 */
+  userCopyFrom: 'Copy from',
+  /** EXPERIENCE.md:398 */
+  userCopyEscalationRoles: 'Escalation roles',
+  /** EXPERIENCE.md:398 */
+  userCopyPrivilegedEffect: 'This copy grants %All or an administrative privilege through the source account\'s roles. Whoever holds the new account can administer this instance.',
   /** EXPERIENCE.md:478 */
   roleAssignedToEmpty: 'This role carries no other role.',
   /** EXPERIENCE.md:479 */
@@ -3237,6 +3344,12 @@ export const STRINGS = {
   /** EXPERIENCE.md:583 */
   agentGuardrailsContextLimits: 'Each turn carries at most <rows> rows of the screen you are on, <total> characters in all and <field> characters a field.',
   /** EXPERIENCE.md:583 */
+  agentGuardrailsLimitsHeading: 'Limits',
+  /** EXPERIENCE.md:583 */
+  agentGuardrailsTurnsLimit: 'Each user may start at most <n> agent turns an hour.',
+  /** EXPERIENCE.md:583 */
+  agentGuardrailsTurnsNone: 'Agent turns an hour are not limited.',
+  /** EXPERIENCE.md:583 */
   agentGuardrailsPrompt1: 'Which of your tools can change this instance?',
   /** EXPERIENCE.md:583 */
   agentGuardrailsPrompt2: 'Are you read-only on this instance right now?',
@@ -3746,6 +3859,114 @@ export const STRINGS = {
   dashboardPrompt2: 'How busy is the instance right now, and how much CPU is it using?',
   /** EXPERIENCE.md:375 */
   dashboardPrompt3: 'Have serious alerts or application errors been raised?',
+  /** EXPERIENCE.md:375 */
+  statsGlobalReferencesLocal: 'Local global references',
+  /** EXPERIENCE.md:375 */
+  statsGlobalUpdatesLocal: 'Local global updates',
+  /** EXPERIENCE.md:375 */
+  statsGlobalReferencesRemote: 'Remote global references',
+  /** EXPERIENCE.md:375 */
+  statsGlobalUpdatesRemote: 'Remote global updates',
+  /** EXPERIENCE.md:375 */
+  statsGlobalUpdatesPrivate: 'Private global updates',
+  /** EXPERIENCE.md:375 */
+  statsWriteImageJournalWrites: 'Write image journal writes',
+  /** EXPERIENCE.md:375 */
+  statsRoutineCallsLocal: 'Local routine calls',
+  /** EXPERIENCE.md:375 */
+  statsRoutineLoadsLocal: 'Local routine buffer loads and saves',
+  /** EXPERIENCE.md:375 */
+  statsRoutineCallsRemote: 'Remote routine calls',
+  /** EXPERIENCE.md:375 */
+  statsRoutineLoadsRemote: 'Remote routine buffer loads and saves',
+  /** EXPERIENCE.md:375 */
+  statsRoutineCommands: 'Routine commands',
+  /** EXPERIENCE.md:375 */
+  statsRoutinesNotCached: 'Routines not in memory',
+  /** EXPERIENCE.md:375 */
+  statsEcpActiveConnections: 'Active connections',
+  /** EXPERIENCE.md:375 */
+  statsEcpBytesSent: 'Bytes sent',
+  /** EXPERIENCE.md:375 */
+  statsEcpBytesReceived: 'Bytes received',
+  /** EXPERIENCE.md:375 */
+  statsEcpBlocksAdded: 'Blocks added to cache',
+  /** EXPERIENCE.md:375 */
+  statsEcpBlocksPurgedForBuffers: 'Blocks purged for buffers',
+  /** EXPERIENCE.md:375 */
+  statsEcpBlocksPurgedByDataServer: 'Blocks purged by the data server',
+  /** EXPERIENCE.md:375 */
+  statsEcpRequestsReceived: 'Requests received',
+  /** EXPERIENCE.md:375 */
+  statsEcpRequestBuffers: 'Request buffers',
+  /** EXPERIENCE.md:375 */
+  statsEcpBlocksSent: 'Blocks sent',
+  /** EXPERIENCE.md:375 */
+  statsEcpLocksGranted: 'Locks granted',
+  /** EXPERIENCE.md:375 */
+  statsEcpLocksFailed: 'Locks failed',
+  /** EXPERIENCE.md:375 */
+  statsEcpQueuedLocksGranted: 'Queued locks granted',
+  /** EXPERIENCE.md:375 */
+  statsEcpQueuedLocksFailed: 'Queued locks failed',
+  /** EXPERIENCE.md:375 */
+  statsEcpBlockPurgesRequested: 'Block purges requested',
+  /** EXPERIENCE.md:375 */
+  statsEcpRoutinePurgesSent: 'Routine purges sent',
+  /** EXPERIENCE.md:375 */
+  statsEcpBigKills: 'Big kills',
+  /** EXPERIENCE.md:375 */
+  statsEcpBigStrings: 'Big strings',
+  /** EXPERIENCE.md:375 */
+  resourceColumnSeizes: 'Seizes',
+  /** EXPERIENCE.md:375 */
+  resourceColumnNseizes: 'Nseizes',
+  /** EXPERIENCE.md:375 */
+  resourceColumnAseizes: 'Aseizes',
+  /** EXPERIENCE.md:375 */
+  resourceColumnBseizes: 'Bseizes',
+  /** EXPERIENCE.md:375 */
+  resourceColumnBusySets: 'Busy sets',
+  /** EXPERIENCE.md:375 */
+  statsGroupAppServer: 'Application server',
+  /** EXPERIENCE.md:375 */
+  globalStatisticsLabel: 'Global and routine statistics',
+  /** EXPERIENCE.md:375 */
+  ecpStatisticsLabel: 'ECP statistics',
+  /** EXPERIENCE.md:375 */
+  resourceStatisticsLabel: 'System resource statistics',
+  /** EXPERIENCE.md:375 */
+  activeProcessesLabel: 'Most active processes',
+  /** EXPERIENCE.md:375 */
+  statisticsEmpty: 'The instance answered no statistics.',
+  /** EXPERIENCE.md:375 */
+  resourceStatisticsEmpty: 'The instance reports no system resources.',
+  /** EXPERIENCE.md:375 */
+  activeProcessesEmpty: 'No process reports executed commands.',
+  /** EXPERIENCE.md:375 */
+  globalStatisticsPrompt1: 'Is this instance reading far more blocks from disk than it serves from memory?',
+  /** EXPERIENCE.md:375 */
+  globalStatisticsPrompt2: 'Are routines being loaded from disk more often than they are found in memory?',
+  /** EXPERIENCE.md:375 */
+  globalStatisticsPrompt3: 'How many global references and updates does this instance make, locally and remotely?',
+  /** EXPERIENCE.md:375 */
+  ecpStatisticsPrompt1: 'Are the ECP connections between this instance and its data servers active?',
+  /** EXPERIENCE.md:375 */
+  ecpStatisticsPrompt2: 'Is this ECP data server refusing locks that application servers request?',
+  /** EXPERIENCE.md:375 */
+  ecpStatisticsPrompt3: 'How much data do the ECP connections of this instance send and receive?',
+  /** EXPERIENCE.md:375 */
+  resourceStatisticsPrompt1: 'Which system resources are busy when a process tries to seize them?',
+  /** EXPERIENCE.md:375 */
+  resourceStatisticsPrompt2: 'Does any system resource make processes wait far more often than the rest?',
+  /** EXPERIENCE.md:375 */
+  resourceStatisticsPrompt3: 'Which system resources are seized most often?',
+  /** EXPERIENCE.md:375 */
+  activeProcessesPrompt1: 'Which processes have executed the most commands?',
+  /** EXPERIENCE.md:375 */
+  activeProcessesPrompt2: 'Is one process executing far more commands than the others?',
+  /** EXPERIENCE.md:375 */
+  activeProcessesPrompt3: 'How many commands have the most active processes executed between them?',
   /** EXPERIENCE.md:377 */
   localDatabaseListLabel: 'Local databases',
   /** EXPERIENCE.md:377 */
@@ -5878,6 +6099,22 @@ export const STRINGS = {
   sqlActivityPrompt2: 'Who is running SQL right now, and in which namespace?',
   /** EXPERIENCE.md:603 */
   sqlActivityPrompt3: 'Is any statement running inside an open transaction?',
+  /** EXPERIENCE.md:603 */
+  metricsLabel: 'Prometheus metrics',
+  /** EXPERIENCE.md:603 */
+  metricsColumnMetric: 'Metric',
+  /** EXPERIENCE.md:603 */
+  metricsColumnLabels: 'Labels',
+  /** EXPERIENCE.md:603 */
+  metricsEmpty: 'The instance answered no metrics.',
+  /** EXPERIENCE.md:603 */
+  metricsNote: 'Each read takes a new sensor collection, which shortens the per-second intervals an external Prometheus scraper reports.',
+  /** EXPERIENCE.md:603 */
+  metricsPrompt1: 'Which databases are the largest, by their size metrics?',
+  /** EXPERIENCE.md:603 */
+  metricsPrompt2: 'How busy is the instance right now: CPU, cache efficiency and global references?',
+  /** EXPERIENCE.md:603 */
+  metricsPrompt3: 'What do the Web Gateway metrics read?',
   /** EXPERIENCE.md:604 */
   agentPickerLabel: 'Agent definition: <name>',
   /** EXPERIENCE.md:604 */
@@ -5888,6 +6125,953 @@ export const STRINGS = {
   explorerSqlAgentCodeReason: 'A statement that creates a function, method, procedure, query, trigger or aggregate, or a COMPUTECODE field, carries code, which a person writes and runs on SQL query.',
   /** EXPERIENCE.md:604 */
   explorerSqlNotPreparedReason: 'The instance did not prepare this statement, so it is not proposed; its SQLCODE says why.',
+  /** EXPERIENCE.md:364 */
+  authOptionsLabel: 'Authentication options',
+  /** EXPERIENCE.md:364 */
+  authOptionsLoginCookiesLegend: 'Login cookies',
+  /** EXPERIENCE.md:364 */
+  authOptionsUnauthenticated: 'Allow Unauthenticated access',
+  /** EXPERIENCE.md:364 */
+  authOptionsOs: 'Allow O/S authentication',
+  /** EXPERIENCE.md:364 */
+  authOptionsOsDelegated: 'Allow O/S authentication with Delegated authorization',
+  /** EXPERIENCE.md:364 */
+  authOptionsOsLdap: 'Allow O/S authentication with LDAP authorization',
+  /** EXPERIENCE.md:364 */
+  authOptionsPassword: 'Allow Password authentication',
+  /** EXPERIENCE.md:364 */
+  authOptionsDelegated: 'Allow Delegated authentication',
+  /** EXPERIENCE.md:364 */
+  authOptionsAlwaysTryDelegated: 'Always try Delegated authentication',
+  /** EXPERIENCE.md:364 */
+  authOptionsKerberos: 'Allow Kerberos authentication',
+  /** EXPERIENCE.md:364 */
+  authOptionsLdap: 'Allow LDAP authentication',
+  /** EXPERIENCE.md:364 */
+  authOptionsLdapCache: 'Allow LDAP cache credentials authentication',
+  /** EXPERIENCE.md:364 */
+  authOptionsOAuth2: 'Allow OAuth2 authentication',
+  /** EXPERIENCE.md:364 */
+  authOptionsLoginToken: 'Allow creation of Login Cookies',
+  /** EXPERIENCE.md:364 */
+  authOptionsCookieTimeout: 'Login Cookie expire time (seconds)',
+  /** EXPERIENCE.md:364 */
+  authOptionsTwoFactorPw: 'Allow Two-factor Time-based One-time Password authentication',
+  /** EXPERIENCE.md:364 */
+  authOptionsTwoFactorSms: 'Allow Two-factor SMS text authentication',
+  /** EXPERIENCE.md:364 */
+  authOptionsTwoFactorTimeout: 'Two-factor timeout (seconds)',
+  /** EXPERIENCE.md:364 */
+  authOptionsSmtpServer: 'DNS name of SMTP server',
+  /** EXPERIENCE.md:364 */
+  authOptionsTwoFactorFrom: 'From (address)',
+  /** EXPERIENCE.md:364 */
+  authOptionsSmtpUsername: 'SMTP username',
+  /** EXPERIENCE.md:364 */
+  authOptionsSmtpPassword: 'SMTP password',
+  /** EXPERIENCE.md:364 */
+  authOptionsSmtpPasswordHint: 'Leave empty to keep the stored password.',
+  /** EXPERIENCE.md:364 */
+  authOptionsSmtpPasswordClear: 'Clear the stored SMTP password',
+  /** EXPERIENCE.md:364 */
+  authOptionsJwtIssuer: 'JWT issuer',
+  /** EXPERIENCE.md:364 */
+  authOptionsJwtSigAlg: 'JWT signature algorithm',
+  /** EXPERIENCE.md:364 */
+  authOptionsRefusedAction: 'change the authentication options',
+  /** EXPERIENCE.md:364 */
+  authOptionsRefusalSignIn: 
+    'One of OcuPilot\'s own web applications, or the web gateway that serves them, signs in only through this method. Turning it off for the whole instance would cut off every user, including you.',
+  /** EXPERIENCE.md:364 */
+  authOptionsRefusalStart: 
+    'OcuPilot\'s own container signs in through the operating system at every start, so turning this off would leave the instance unable to start. If this instance does not run in OcuPilot\'s container, change it on the classic Authentication page.',
+  /** EXPERIENCE.md:364 */
+  authOptionsSignOutConsequence: 
+    'Every session signed in with a token ends, every OcuPilot tab included, and each must sign in again. A new signature algorithm also replaces the instance\'s signing keys.',
+  /** EXPERIENCE.md:364 */
+  authOptionsPrompt1: 'What do the authentication options on this instance control?',
+  /** EXPERIENCE.md:364 */
+  authOptionsPrompt2: 'Which authentication methods does OcuPilot\'s own sign-in rely on?',
+  /** EXPERIENCE.md:364 */
+  authOptionsPrompt3: 'What happens to signed-in users when the JWT signature algorithm changes?',
+  /** EXPERIENCE.md:364 */
+  superserverListLabel: 'Superservers',
+  /** EXPERIENCE.md:364 */
+  aboutSuperserver: 'Superserver',
+  /** EXPERIENCE.md:364 */
+  superserverSystemDefault: 'System default',
+  /** EXPERIENCE.md:364 */
+  superserverSystemDefaultHint: 'Shown here and never changed here. The classic Memory and Startup page sets the system default superserver.',
+  /** EXPERIENCE.md:364 */
+  superserverListEmpty: 'No superserver is defined on this instance.',
+  /** EXPERIENCE.md:364 */
+  superserverListEmptyAgent: 'create a superserver on a free port',
+  /** EXPERIENCE.md:364 */
+  superserverListPrompt1: 'What does each superserver on this instance listen for?',
+  /** EXPERIENCE.md:364 */
+  superserverListPrompt2: 'Which superserver does the web gateway connect through?',
+  /** EXPERIENCE.md:364 */
+  superserverListPrompt3: 'Create a superserver on port 21825 that allows web connections.',
+  /** EXPERIENCE.md:364 */
+  superserverFormPrompt1: 'What do the connection settings of this superserver control?',
+  /** EXPERIENCE.md:364 */
+  superserverFormPrompt2: 'Which SSL/TLS configuration can this superserver use?',
+  /** EXPERIENCE.md:364 */
+  superserverFormPrompt3: 'What happens when I change SSL/TLS on the superserver the web gateway uses?',
+  /** EXPERIENCE.md:364 */
+  superserverGroupClients: 'Client connections',
+  /** EXPERIENCE.md:364 */
+  superserverGroupSystem: 'System connections',
+  /** EXPERIENCE.md:364 */
+  superserverGroupOther: 'Other connections',
+  /** EXPERIENCE.md:364 */
+  superserverEnableClients: 'Allow Clients',
+  /** EXPERIENCE.md:364 */
+  superserverEnableCsp: 'Allow CSP and REST',
+  /** EXPERIENCE.md:364 */
+  superserverEnableDataCheck: 'Allow DataCheck',
+  /** EXPERIENCE.md:364 */
+  superserverEnableCacheDirect: 'Allow Cache Direct (legacy)',
+  /** EXPERIENCE.md:364 */
+  superserverEnableShadows: 'Allow Shadows (legacy)',
+  /** EXPERIENCE.md:364 */
+  superserverEnableEcp: 'Allow ECP',
+  /** EXPERIENCE.md:364 */
+  superserverEnableMirror: 'Allow Mirroring',
+  /** EXPERIENCE.md:364 */
+  superserverEnableSharding: 'Allow Sharding',
+  /** EXPERIENCE.md:364 */
+  superserverEnableSnmp: 'Allow SNMP',
+  /** EXPERIENCE.md:364 */
+  superserverEnableWebLink: 'Allow WebLink (legacy)',
+  /** EXPERIENCE.md:364 */
+  superserverEnableNodeJs: 'Allow Node.js (legacy)',
+  /** EXPERIENCE.md:364 */
+  superserverSslLevel: 'SSL/TLS support level',
+  /** EXPERIENCE.md:364 */
+  superserverSystemOnlyHint: 'Only the system default superserver takes ECP, mirroring and sharding connections.',
+  /** EXPERIENCE.md:364 */
+  superserverSnmpHint: 'SNMP is available on Windows only.',
+  /** EXPERIENCE.md:364 */
+  superserverPortHint: 'A whole number from 100 to 65535. It cannot change once the superserver exists.',
+  /** EXPERIENCE.md:364 */
+  superserverBindHint: 'Leave empty to listen on every interface. It cannot change once the superserver exists.',
+  /** EXPERIENCE.md:364 */
+  superserverSslNoServer: 'This instance has no server SSL/TLS configuration to choose.',
+  /** EXPERIENCE.md:364 */
+  superserverRefusedAction: 'change the superserver',
+  /** EXPERIENCE.md:364 */
+  superserverRefusalServing: 'The web gateway reaches this instance through this superserver, and OcuPilot is served through it. Deleting it, disabling it, turning off its web connections or requiring SSL/TLS would cut off every user, including you.',
+  /** EXPERIENCE.md:364 */
+  superserverServesConsequence: 'OcuPilot is served through this superserver. An SSL/TLS change can stop the web gateway connecting through it, which would cut off every user, including you.',
+  /** EXPERIENCE.md:364 */
+  superserverDeleteConsequence: 'Clients can no longer connect through this port, and the superserver stops listening at once.',
+  /** EXPERIENCE.md:364 */
+  mftConnectionListLabel: 'Managed file transfer',
+  /** EXPERIENCE.md:364 */
+  aboutMftConnection: 'Managed file transfer connection',
+  /** EXPERIENCE.md:364 */
+  mftConnectionService: 'File service',
+  /** EXPERIENCE.md:364 */
+  mftConnectionAuthorization: 'Authorization',
+  /** EXPERIENCE.md:364 */
+  mftConnectionListEmpty: 'No managed file transfer connection is defined on this instance.',
+  /** EXPERIENCE.md:364 */
+  mftConnectionListEmptyAgent: 'create a managed file transfer connection',
+  /** EXPERIENCE.md:364 */
+  mftConnectionListPrompt1: 'Which managed file transfer connections does this instance define, and are they authorized?',
+  /** EXPERIENCE.md:364 */
+  mftConnectionListPrompt2: 'Which OAuth 2.0 client configuration does each connection use?',
+  /** EXPERIENCE.md:364 */
+  mftConnectionListPrompt3: 'Create a managed file transfer connection to Box.',
+  /** EXPERIENCE.md:364 */
+  mftConnectionFormPrompt1: 'What does each field of this connection mean?',
+  /** EXPERIENCE.md:364 */
+  mftConnectionFormPrompt2: 'Which OAuth 2.0 client configuration can this connection use?',
+  /** EXPERIENCE.md:364 */
+  mftConnectionFormPrompt3: 'How do I authorize this connection after saving it?',
+  /** EXPERIENCE.md:364 */
+  mftConnectionUrl: 'URL',
+  /** EXPERIENCE.md:364 */
+  mftConnectionUrlHint: 'The address of the file service. It ends in /.',
+  /** EXPERIENCE.md:364 */
+  mftConnectionApplicationName: 'OAuth 2.0 client configuration',
+  /** EXPERIENCE.md:364 */
+  mftConnectionApplicationHint: 'The name of a client configuration on the OAuth 2.0 screen\'s Client configurations tab. This connection names it and never creates it.',
+  /** EXPERIENCE.md:364 */
+  mftConnectionAuthorizeHint: 'Authorizing a connection is done on the classic Managed File Transfer Connections page.',
+  /** EXPERIENCE.md:364 */
+  mftConnectionCreateOnlyHint: 'It cannot change once the connection exists.',
+  /** EXPERIENCE.md:364 */
+  mftConnectionSslNoClient: 'This instance has no client SSL/TLS configuration to choose.',
+  /** EXPERIENCE.md:364 */
+  mftConnectionRefusedAction: 'change the connection',
+  /** EXPERIENCE.md:364 */
+  mftConnectionRevokeAction: 'Revoke token',
+  /** EXPERIENCE.md:364 */
+  mftDeleteConsequence: 'The connection is removed. Its OAuth 2.0 client configuration is deleted with it unless another connection names it, and so is that client\'s server description when no other client uses it.',
+  /** EXPERIENCE.md:364 */
+  mftRevokeConsequence: 'The connection\'s access token is removed and the file service is asked to revoke it. The connection cannot transfer files until it is authorized again on the classic Managed File Transfer Connections page.',
+  /** EXPERIENCE.md:357 */
+  docDbAppListLabel: 'Doc DB applications',
+  /** EXPERIENCE.md:357 */
+  aboutDocDbApplication: 'Doc DB application',
+  /** EXPERIENCE.md:357 */
+  docDbAppListEmpty: 'No Doc DB application is defined on this instance.',
+  /** EXPERIENCE.md:357 */
+  docDbAppListEmptyAgent: 'create a Doc DB application',
+  /** EXPERIENCE.md:357 */
+  docDbAppListPrompt1: 'Which Doc DB applications does this instance define, and in which namespaces?',
+  /** EXPERIENCE.md:357 */
+  docDbAppListPrompt2: 'Which Doc DB applications are disabled or controlled by a resource?',
+  /** EXPERIENCE.md:357 */
+  docDbAppListPrompt3: 'Create a Doc DB application named My.Docs in the USER namespace.',
+  /** EXPERIENCE.md:357 */
+  docDbAppFormPrompt1: 'What does each field of this Doc DB application mean?',
+  /** EXPERIENCE.md:357 */
+  docDbAppFormPrompt2: 'Which resources can control this Doc DB application?',
+  /** EXPERIENCE.md:357 */
+  docDbAppFormPrompt3: 'What does deleting this record do to the document database?',
+  /** EXPERIENCE.md:357 */
+  docDbAppNameHint: 'A class name such as My.Docs, kept exactly as written. It cannot change once the record exists.',
+  /** EXPERIENCE.md:357 */
+  docDbAppCreateOnlyHint: 'It cannot change once the record exists.',
+  /** EXPERIENCE.md:357 */
+  docDbAppResourceHint: 'The service, system or application resource that controls the document database. Choose none to leave it uncontrolled.',
+  /** EXPERIENCE.md:357 */
+  docDbAppRefusedAction: 'change the Doc DB application',
+  /** EXPERIENCE.md:357 */
+  docDbAppDeleteConsequence: 'The record is removed. A document database of the same name is not dropped.',
+  /** EXPERIENCE.md:357 */
+  routineAppListLabel: 'Privileged routine applications',
+  /** EXPERIENCE.md:357 */
+  aboutRoutineApplication: 'Privileged routine application',
+  /** EXPERIENCE.md:357 */
+  routineAppListEmpty: 'No privileged routine application is defined on this instance.',
+  /** EXPERIENCE.md:357 */
+  routineAppListEmptyAgent: 'create a privileged routine application',
+  /** EXPERIENCE.md:357 */
+  routineAppListPrompt1: 'Which privileged routine applications does this instance define, and which are enabled?',
+  /** EXPERIENCE.md:357 */
+  routineAppListPrompt2: 'Which privileged routine applications are controlled by a resource?',
+  /** EXPERIENCE.md:357 */
+  routineAppListPrompt3: 'Create a privileged routine application named MyRoutines.',
+  /** EXPERIENCE.md:357 */
+  routineAppFormPrompt1: 'What does each field of this privileged routine application mean?',
+  /** EXPERIENCE.md:357 */
+  routineAppFormPrompt2: 'Which resources can control this privileged routine application?',
+  /** EXPERIENCE.md:357 */
+  routineAppFormPrompt3: 'What does deleting this privileged routine application do?',
+  /** EXPERIENCE.md:357 */
+  routineAppNameHint: 'At most 64 characters, kept exactly as written. It cannot change once the application exists.',
+  /** EXPERIENCE.md:357 */
+  routineAppResourceHint: 'The service, system or application resource that controls the application. Choose none to leave it uncontrolled.',
+  /** EXPERIENCE.md:357 */
+  routineAppRefusedAction: 'change the privileged routine application',
+  /** EXPERIENCE.md:357 */
+  routineAppDeleteConsequence: 'The application is removed, with the roles and routines it holds. No code is deleted.',
+  /** EXPERIENCE.md:357 */
+  routineAppTabRoutines: 'Routines and classes',
+  /** EXPERIENCE.md:357 */
+  routineAppRoutinesEmpty: 'This application lists no routines or classes.',
+  /** EXPERIENCE.md:357 */
+  routineAppFieldRoutine: 'Routine or class',
+  /** EXPERIENCE.md:357 */
+  routineAppRoutineHint: 'A routine name, or Package.Name for a class.',
+  /** EXPERIENCE.md:357 */
+  routineAppRolesLabel: 'Application and matching roles',
+  /** EXPERIENCE.md:357 */
+  routineAppRolesEmpty: 'This application grants no roles.',
+  /** EXPERIENCE.md:357 */
+  routineAppRolesEveryCaller: 'Every caller',
+  /** EXPERIENCE.md:357 */
+  routineAppRolesPrompt1: 'Which roles does this application grant, and to whom?',
+  /** EXPERIENCE.md:357 */
+  routineAppRolesPrompt2: 'Does this application grant an administrative role?',
+  /** EXPERIENCE.md:357 */
+  routineAppRolesPrompt3: 'Remove one role from this application and keep the rest.',
+  /** EXPERIENCE.md:357 */
+  routineAppRoutinesPrompt1: 'Which routines and classes does this application list?',
+  /** EXPERIENCE.md:357 */
+  routineAppRoutinesPrompt2: 'Which database does each routine or class of this application live in?',
+  /** EXPERIENCE.md:357 */
+  routineAppRoutinesPrompt3: 'Remove one routine from this application and keep the rest.',
+  /** EXPERIENCE.md:357 */
+  restServiceCreateEffect: 'Confirming compiles the service\'s specification, dispatch and implementation classes in this namespace. An implementation class already there keeps its code.',
+  /** EXPERIENCE.md:357 */
+  restServiceDeleteConsequence: 'The service is removed: its specification and dispatch classes are deleted. Its implementation class is kept.',
+  /** EXPERIENCE.md:357 */
+  restApiListEmptyAgent: 'create a REST service from an OpenAPI 2.0 document',
+  /** EXPERIENCE.md:357 */
+  restServiceCreateTitle: 'Create REST service',
+  /** EXPERIENCE.md:357 */
+  restServiceNameHint: 'The package, such as My.Api: it creates My.Api.spec, My.Api.disp and My.Api.impl.',
+  /** EXPERIENCE.md:357 */
+  restServiceDocumentLabel: 'OpenAPI 2.0 document',
+  /** EXPERIENCE.md:357 */
+  restServiceDocumentHint: 'The whole document as JSON, pasted or loaded from a file. Nothing is fetched.',
+  /** EXPERIENCE.md:604 */
+  interopProductionsLabel: 'Productions',
+  /** EXPERIENCE.md:604 */
+  interopProcessesLabel: 'Business processes',
+  /** EXPERIENCE.md:604 */
+  interopTransformsLabel: 'Data transformations',
+  /** EXPERIENCE.md:604 */
+  interopRulesLabel: 'Business rules',
+  /** EXPERIENCE.md:604 */
+  interopProductionColumnLastStarted: 'Last started',
+  /** EXPERIENCE.md:604 */
+  interopProductionColumnLastStopped: 'Last stopped',
+  /** EXPERIENCE.md:604 */
+  interopProductionsEmpty: 'No productions in this namespace.',
+  /** EXPERIENCE.md:604 */
+  interopProcessesEmpty: 'No business processes in this namespace.',
+  /** EXPERIENCE.md:604 */
+  interopTransformsEmpty: 'No data transformations in this namespace.',
+  /** EXPERIENCE.md:604 */
+  interopRulesEmpty: 'No business rules in this namespace.',
+  /** EXPERIENCE.md:604 */
+  interopProductionsEmptyAgent: 'Ask the agent why no production is listed here.',
+  /** EXPERIENCE.md:604 */
+  interopProductionsPrompt1: 'Is any production here troubled or stopped?',
+  /** EXPERIENCE.md:604 */
+  interopProductionsPrompt2: 'When did each production here last start and stop?',
+  /** EXPERIENCE.md:604 */
+  interopProductionsPrompt3: 'Which production is running, and does it need an update?',
+  /** EXPERIENCE.md:604 */
+  interopProcessesPrompt1: 'Which business processes does this namespace hold?',
+  /** EXPERIENCE.md:604 */
+  interopProcessesPrompt2: 'Which business processes changed most recently?',
+  /** EXPERIENCE.md:604 */
+  interopProcessesPrompt3: 'How many business processes does this namespace hold?',
+  /** EXPERIENCE.md:604 */
+  interopTransformsPrompt1: 'Which data transformations does this namespace hold?',
+  /** EXPERIENCE.md:604 */
+  interopTransformsPrompt2: 'Which data transformations changed most recently?',
+  /** EXPERIENCE.md:604 */
+  interopTransformsPrompt3: 'How many data transformations does this namespace hold?',
+  /** EXPERIENCE.md:604 */
+  interopRulesPrompt1: 'Which business rules does this namespace hold?',
+  /** EXPERIENCE.md:604 */
+  interopRulesPrompt2: 'Which business rules changed most recently?',
+  /** EXPERIENCE.md:604 */
+  interopRulesPrompt3: 'How many business rules does this namespace hold?',
+  /** EXPERIENCE.md:604 */
+  actionRestart: 'Restart',
+  /** EXPERIENCE.md:604 */
+  actionUpdate: 'Update',
+  /** EXPERIENCE.md:604 */
+  actionRecover: 'Recover',
+  /** EXPERIENCE.md:604 */
+  interopStopConsequence: 
+    'Stopping this production waits up to 15 seconds for its work in progress to finish. If it takes longer, nothing is stopped; if a job then takes longer than 15 seconds to stop, the production is left partly stopped.',
+  /** EXPERIENCE.md:604 */
+  interopRestartConsequence: 
+    'Restarting this production stops it and starts it again. If its work in progress takes longer than 15 seconds to finish, nothing is stopped; if a job then takes longer than 15 seconds to stop, the production is left partly stopped.',
+  /** EXPERIENCE.md:604 */
+  interopUpdateConsequence: 
+    'Updating this production restarts only the items whose settings changed, and starts or stops the items enabled or disabled since it started. If an item takes longer than 15 seconds to finish its work, the update is refused and the production keeps running.',
+  /** EXPERIENCE.md:604 */
+  interopRecoverConsequence: 
+    'Recover is the first response to a troubled production: it returns it to Suspended so it can be started again, marking messages it cannot keep queued as Discarded or Suspended and deleting none. Clean, which deletes queued messages, is a last resort OcuPilot does not offer.',
+  /** EXPERIENCE.md:604 */
+  interopRefusalNoProductions: 'This namespace does not run interoperability productions.',
+  /** EXPERIENCE.md:604 */
+  interopRefusalRunning: 'This production is already running.',
+  /** EXPERIENCE.md:604 */
+  interopRefusalOther: 
+    'Another production is running, suspended or troubled in this namespace, and a namespace runs one production at a time.',
+  /** EXPERIENCE.md:604 */
+  interopRefusalTroubled: 
+    'This production did not shut down cleanly. Recover it first; once it reads Suspended it can be started.',
+  /** EXPERIENCE.md:604 */
+  interopRefusalNotRunning: 'This production is not running.',
+  /** EXPERIENCE.md:604 */
+  interopRefusalUpToDate: 'This production is up to date, so there is nothing to update.',
+  /** EXPERIENCE.md:604 */
+  interopRefusalNotTroubled: 'Only a troubled production can be recovered.',
+  /** EXPERIENCE.md:604 */
+  interopRefusalBusy: 
+    'The production\'s work in progress did not finish within 15 seconds, so it was left as it was.',
+  /** EXPERIENCE.md:604 */
+  interopRefusalState: 'This production\'s state does not allow that action here.',
+  /** EXPERIENCE.md:604 */
+  interopItemsLabel: 'Production items',
+  /** EXPERIENCE.md:604 */
+  interopItemColumnClass: 'Host class',
+  /** EXPERIENCE.md:604 */
+  interopItemColumnPoolSize: 'Pool size',
+  /** EXPERIENCE.md:604 */
+  interopItemColumnCategory: 'Category',
+  /** EXPERIENCE.md:604 */
+  interopItemsEmpty: 'This production holds no items.',
+  /** EXPERIENCE.md:604 */
+  interopItemsEmptyAgent: 'Ask the agent which item this production should hold.',
+  /** EXPERIENCE.md:604 */
+  interopItemsPrompt1: 'Which items of this production are disabled?',
+  /** EXPERIENCE.md:604 */
+  interopItemsPrompt2: 'Which items of this production run in the shared actor pool?',
+  /** EXPERIENCE.md:604 */
+  interopItemsPrompt3: 'What does each item of this production do?',
+  /** EXPERIENCE.md:604 */
+  interopItemAddTitle: 'Add item',
+  /** EXPERIENCE.md:604 */
+  interopItemAddNameHint: 'It is 1 to 128 characters with no control character and no space at either end. It cannot contain a vertical bar, a semicolon, a comma or an opening bracket, begin with a hyphen or an underscore, end with a hyphen, an exclamation mark or a dollar sign, or be an asterisk.',
+  /** EXPERIENCE.md:604 */
+  interopItemAddClassHint: 'The business service, business process or business operation class that runs the item. It must be compiled in this namespace.',
+  /** EXPERIENCE.md:604 */
+  interopItemAddPoolHint: 'Leave it empty for the class\'s own default.',
+  /** EXPERIENCE.md:604 */
+  interopItemAddEnabledHint: 'Leave it unchecked to add the item disabled.',
+  /** EXPERIENCE.md:604 */
+  interopItemPendingConsequence: 'The change takes effect when this production next starts or, while it runs, when it is updated on Productions.',
+  /** EXPERIENCE.md:604 */
+  interopItemRemoveConsequence: 'Removing this item deletes it and every setting it holds from the production.',
+  /** EXPERIENCE.md:604 */
+  interopRefusalSuspended: 'The production stopped, but messages still queued left it Suspended rather than Stopped. Start it to process them.',
+  /** EXPERIENCE.md:604 */
+  interopRefusalPartStopped: 'Some of the production\'s jobs did not stop within 15 seconds, so it is left partly stopped and still reads Running. Stop it again to finish, or update it to start its jobs again.',
+  /** EXPERIENCE.md:604 */
+  interopItemRefusalEnabled: 'This item is already enabled.',
+  /** EXPERIENCE.md:604 */
+  interopItemRefusalDisabled: 'This item is already disabled.',
+  /** EXPERIENCE.md:604 */
+  interopItemRefusalDefaultSetting: 'A system default setting decides whether this item is enabled, so change it in System Default Settings.',
+  /** EXPERIENCE.md:604 */
+  interopItemRefusalPoolZero: 'This business process runs in the production\'s shared actor pool, so it cannot be disabled.',
+  /** EXPERIENCE.md:604 */
+  interopItemRefusalTaken: 'This production already holds an item of that name.',
+  /** EXPERIENCE.md:604 */
+  interopItemRefusalAmbiguous: 'This production holds more than one item of that name, so change it in the classic production configuration page.',
+  /** EXPERIENCE.md:604 */
+  interopItemRefusalClass: 'Name a business service, business process or business operation class compiled in this namespace.',
+  /** EXPERIENCE.md:604 */
+  interopItemRefusalName: 'An item name is 1 to 128 characters with no control character and no space at either end. It cannot contain a vertical bar, a semicolon, a comma or an opening bracket, begin with a hyphen or an underscore, end with a hyphen, an exclamation mark or a dollar sign, or be an asterisk.',
+  /** EXPERIENCE.md:604 */
+  interopItemRefusalValue: 'A production item does not accept this value for that field.',
+  /** EXPERIENCE.md:604 */
+  interopItemRefusalEnabledRemove: 'Disable this item before removing it.',
+  /** EXPERIENCE.md:604 */
+  interopItemRefusalSourceControl: 'This namespace uses source control, so change this production\'s items in the classic production configuration page.',
+  /** EXPERIENCE.md:604 */
+  interopItemSettingsLabel: 'Item settings',
+  /** EXPERIENCE.md:604 */
+  interopItemSettingsCriterionItem: 'Item',
+  /** EXPERIENCE.md:604 */
+  interopItemSettingsEmpty: 'This item declares no settings.',
+  /** EXPERIENCE.md:604 */
+  interopItemSettingsEmptyAgent: 'Ask the agent which settings this item could have.',
+  /** EXPERIENCE.md:604 */
+  interopItemSettingsPrompt1: 'Which settings of this item differ from their defaults?',
+  /** EXPERIENCE.md:604 */
+  interopItemSettingsPrompt2: 'Which settings of this item point at a location on the server?',
+  /** EXPERIENCE.md:604 */
+  interopItemSettingsPrompt3: 'What does each setting of this item do?',
+  /** EXPERIENCE.md:604 */
+  interopItemSettingSetAction: 'Set value',
+  /** EXPERIENCE.md:604 */
+  interopItemSettingResetAction: 'Reset to default',
+  /** EXPERIENCE.md:604 */
+  interopSettingSetTitle: 'Set value of <name>',
+  /** EXPERIENCE.md:604 */
+  interopSettingCurrentLine: 'Current value: <value>',
+  /** EXPERIENCE.md:604 */
+  interopSettingDefaultLine: 'Default: <value>',
+  /** EXPERIENCE.md:604 */
+  interopSettingBooleanHint: 'Checked stores 1 and unchecked stores 0.',
+  /** EXPERIENCE.md:604 */
+  interopSettingEmptyHint: 'Leave it empty to clear the value.',
+  /** EXPERIENCE.md:604 */
+  interopSettingLocationConsequence: '<value> is a location on this server that the item reads or writes when it runs. The change takes effect when this production next starts or, while it runs, when it is updated on Productions.',
+  /** EXPERIENCE.md:604 */
+  interopSettingRefusalSecret: 'This setting holds a secret, so OcuPilot neither shows nor sets it. Set it in the classic production configuration page, or point the item at a credentials entry.',
+  /** EXPERIENCE.md:604 */
+  interopSettingRefusalSupplied: 'A system default setting or a service registry entry decides this setting\'s value, so change it there.',
+  /** EXPERIENCE.md:604 */
+  interopSettingRefusalSame: 'This setting already holds that value.',
+  /** EXPERIENCE.md:604 */
+  interopSettingRefusalDefaulted: 'This setting already takes its default value, so there is nothing to reset.',
+  /** EXPERIENCE.md:604 */
+  interopSettingRefusalCore: 'This is one of the item\'s own properties, which has no default to return to, so set the value you want instead.',
+  /** EXPERIENCE.md:604 */
+  interopSettingRefusalValue: 'The item\'s class does not accept this value for this setting.',
+  /** EXPERIENCE.md:604 */
+  interopSettingRefusalDescent: 'This item also reads the directories below its file path, as many levels down as its subdirectory levels, and that would reach the manager directory or the directory OcuPilot serves its files from. Choose another file path or fewer subdirectory levels.',
+  /** EXPERIENCE.md:604 */
+  interopMonitorLabel: 'Production monitor',
+  /** EXPERIENCE.md:604 */
+  interopQueuesLabel: 'Queues',
+  /** EXPERIENCE.md:604 */
+  interopQueueMessagesLabel: 'Queue messages',
+  /** EXPERIENCE.md:604 */
+  interopJobsLabel: 'Jobs',
+  /** EXPERIENCE.md:604 */
+  interopItemStatusLabel: 'Item status',
+  /** EXPERIENCE.md:604 */
+  interopItemQueueLabel: 'Item queue',
+  /** EXPERIENCE.md:604 */
+  interopItemLogLabel: 'Item log',
+  /** EXPERIENCE.md:604 */
+  interopItemMessagesLabel: 'Item messages',
+  /** EXPERIENCE.md:604 */
+  interopItemJobsLabel: 'Item jobs',
+  /** EXPERIENCE.md:604 */
+  interopItemTabSettings: 'Settings',
+  /** EXPERIENCE.md:604 */
+  interopItemTabLog: 'Log',
+  /** EXPERIENCE.md:604 */
+  interopItemTabMessages: 'Messages',
+  /** EXPERIENCE.md:604 */
+  interopColumnAdapterState: 'Adapter state',
+  /** EXPERIENCE.md:604 */
+  interopColumnQueue: 'Queue',
+  /** EXPERIENCE.md:604 */
+  interopColumnCount: 'Count',
+  /** EXPERIENCE.md:604 */
+  interopColumnActive: 'Active',
+  /** EXPERIENCE.md:604 */
+  interopColumnMessageId: 'Message ID',
+  /** EXPERIENCE.md:604 */
+  interopColumnBodyClass: 'Body class',
+  /** EXPERIENCE.md:604 */
+  interopColumnJob: 'Job',
+  /** EXPERIENCE.md:604 */
+  interopColumnActiveMessage: 'Active message',
+  /** EXPERIENCE.md:604 */
+  interopColumnDead: 'Dead',
+  /** EXPERIENCE.md:604 */
+  interopColumnId: 'ID',
+  /** EXPERIENCE.md:604 */
+  interopMonitorEmpty: 'No production is running in this namespace.',
+  /** EXPERIENCE.md:604 */
+  interopQueuesEmpty: 'This namespace holds no queues.',
+  /** EXPERIENCE.md:604 */
+  interopQueueMessagesEmpty: 'This queue holds no messages.',
+  /** EXPERIENCE.md:604 */
+  interopJobsEmpty: 'No production is running here, so no jobs are listed.',
+  /** EXPERIENCE.md:604 */
+  interopItemStatusEmpty: 'This item has no status to show.',
+  /** EXPERIENCE.md:604 */
+  interopItemQueueEmpty: 'No messages are waiting in this item\'s queue.',
+  /** EXPERIENCE.md:604 */
+  interopItemLogEmpty: 'The event log holds no entries for this item.',
+  /** EXPERIENCE.md:604 */
+  interopItemMessagesEmpty: 'No messages came from or went to this item.',
+  /** EXPERIENCE.md:604 */
+  interopItemJobsEmpty: 'This item has no running jobs.',
+  /** EXPERIENCE.md:604 */
+  interopMonitorPrompt1: 'Which items of the running production are in error?',
+  /** EXPERIENCE.md:604 */
+  interopMonitorPrompt2: 'Which items have messages waiting in their queues?',
+  /** EXPERIENCE.md:604 */
+  interopMonitorPrompt3: 'Which items have been idle the longest?',
+  /** EXPERIENCE.md:604 */
+  interopQueuesPrompt1: 'Which queues hold the most messages?',
+  /** EXPERIENCE.md:604 */
+  interopQueuesPrompt2: 'Which queues hold messages that no job is working on?',
+  /** EXPERIENCE.md:604 */
+  interopQueuesPrompt3: 'How many messages are waiting in all queues together?',
+  /** EXPERIENCE.md:604 */
+  interopQueueMessagesPrompt1: 'Which messages in this queue have waited the longest?',
+  /** EXPERIENCE.md:604 */
+  interopQueueMessagesPrompt2: 'Which hosts sent the messages waiting in this queue?',
+  /** EXPERIENCE.md:604 */
+  interopQueueMessagesPrompt3: 'What kinds of messages are waiting in this queue?',
+  /** EXPERIENCE.md:604 */
+  interopJobsPrompt1: 'Which jobs are working on a message right now?',
+  /** EXPERIENCE.md:604 */
+  interopJobsPrompt2: 'Is any job dead or retrying a message?',
+  /** EXPERIENCE.md:604 */
+  interopJobsPrompt3: 'Which host runs the most jobs?',
+  /** EXPERIENCE.md:604 */
+  interopItemStatusPrompt1: 'Is this item running, and is its adapter connected?',
+  /** EXPERIENCE.md:604 */
+  interopItemStatusPrompt2: 'When was this item last active?',
+  /** EXPERIENCE.md:604 */
+  interopItemStatusPrompt3: 'Why is this item not processing messages?',
+  /** EXPERIENCE.md:604 */
+  interopItemQueuePrompt1: 'How many messages wait in this item\'s queue?',
+  /** EXPERIENCE.md:604 */
+  interopItemQueuePrompt2: 'What has the oldest message waiting for this item been waiting for?',
+  /** EXPERIENCE.md:604 */
+  interopItemQueuePrompt3: 'Which hosts sent the messages waiting for this item?',
+  /** EXPERIENCE.md:604 */
+  interopItemLogPrompt1: 'What errors has this item logged recently?',
+  /** EXPERIENCE.md:604 */
+  interopItemLogPrompt2: 'Summarize this item\'s latest event log entries.',
+  /** EXPERIENCE.md:604 */
+  interopItemLogPrompt3: 'Has this item logged a warning since it last started?',
+  /** EXPERIENCE.md:604 */
+  interopItemMessagesPrompt1: 'What did this item receive and send most recently?',
+  /** EXPERIENCE.md:604 */
+  interopItemMessagesPrompt2: 'Which messages of this item ended in an error?',
+  /** EXPERIENCE.md:604 */
+  interopItemMessagesPrompt3: 'Which hosts exchange messages with this item?',
+  /** EXPERIENCE.md:604 */
+  interopItemJobsPrompt1: 'Which job of this item is working on a message?',
+  /** EXPERIENCE.md:604 */
+  interopItemJobsPrompt2: 'Is any job of this item dead or retrying a message?',
+  /** EXPERIENCE.md:604 */
+  interopItemJobsPrompt3: 'How many jobs does this item run?',
+  /** EXPERIENCE.md:604 */
+  interopQueuesEmptyAgent: 'Ask the agent why no queue is listed here.',
+  /** EXPERIENCE.md:604 */
+  interopQueueMessagesEmptyAgent: 'Ask the agent why no message is waiting in this queue.',
+  /** EXPERIENCE.md:604 */
+  interopJobsEmptyAgent: 'Ask the agent why no job is listed here.',
+  /** EXPERIENCE.md:604 */
+  actionAbort: 'Abort',
+  /** EXPERIENCE.md:604 */
+  interopQueuesAbortAllAction: 'Abort all',
+  /** EXPERIENCE.md:604 */
+  interopJobsAbortAction: 'Abort message',
+  /** EXPERIENCE.md:604 */
+  interopJobsSuspendAction: 'Suspend message',
+  /** EXPERIENCE.md:604 */
+  interopJobsStopAction: 'Stop job',
+  /** EXPERIENCE.md:604 */
+  interopMessageAbortConsequence: 
+    'Aborting this message takes it off its queue and marks it Aborted, so it is never delivered, and a caller waiting for its reply receives an error instead. It cannot be undone.',
+  /** EXPERIENCE.md:604 */
+  interopQueueAbortConsequence: 
+    'Aborting all messages takes the messages waiting in this queue now, up to the first 10,000, off it and marks each Aborted, so none is delivered. A message that arrives later stays, and so does one a job is already working on. It cannot be undone.',
+  /** EXPERIENCE.md:604 */
+  interopJobAbortConsequence: 
+    'Aborting this job\'s message marks the message it keeps retrying Aborted when its current retry wait ends, so it is never delivered, and the job moves on to its next message. It cannot be undone.',
+  /** EXPERIENCE.md:604 */
+  interopJobSuspendConsequence: 
+    'Suspending this job\'s message sets the message it keeps retrying aside as Suspended when its current retry wait ends, and the job moves on to its next message. A suspended message can be resent later.',
+  /** EXPERIENCE.md:604 */
+  interopJobStopConsequence: 
+    'Stopping this job asks it to finish its current message within 15 seconds, or sooner when the production\'s update timeout is shorter. A job that does not is ended, and its message goes back on its queue. The item runs a job short until the production is updated on Productions.',
+  /** EXPERIENCE.md:604 */
+  interopRefusalQueueEmpty: 'This queue holds no messages, so there is nothing to abort.',
+  /** EXPERIENCE.md:604 */
+  interopRefusalQueueChanged: 
+    'The messages in this queue changed after they were reviewed, so nothing was aborted. Review the queue again.',
+  /** EXPERIENCE.md:604 */
+  interopRefusalJobDead: 
+    'This job\'s process has already ended, so there is nothing to act on. Update the production on Productions to start its jobs again.',
+  /** EXPERIENCE.md:604 */
+  interopRefusalJobNotRetrying: 
+    'This job is not retrying a message now, so there is no message to abort or suspend. Its message can be aborted or suspended only while the job waits to retry it.',
+  /** EXPERIENCE.md:604 */
+  interopRefusalJobNotStopped: 
+    'The job did not stop within the wait, even after it was ended. Look at Jobs again, and update the production on Productions to start its jobs again.',
+  /** EXPERIENCE.md:604 */
+  interopLookupTablesLabel: 'Lookup tables',
+  /** EXPERIENCE.md:604 */
+  interopLookupEntriesLabel: 'Lookup table entries',
+  /** EXPERIENCE.md:604 */
+  interopBusinessPartnersLabel: 'Business partners',
+  /** EXPERIENCE.md:604 */
+  interopLookupTablesEmpty: 'This namespace holds no lookup tables.',
+  /** EXPERIENCE.md:604 */
+  interopLookupEntriesEmpty: 'This lookup table holds no entries.',
+  /** EXPERIENCE.md:604 */
+  interopBusinessPartnersEmpty: 'This namespace holds no business partners.',
+  /** EXPERIENCE.md:604 */
+  interopBusinessPartnersEmptyNext: 'Business partners are added and changed in the classic Business Partners page.',
+  /** EXPERIENCE.md:604 */
+  interopLookupTablesEmptyAgent: 'Ask the agent to create a lookup table here.',
+  /** EXPERIENCE.md:604 */
+  interopLookupEntriesEmptyAgent: 'Ask the agent to add an entry to this lookup table.',
+  /** EXPERIENCE.md:604 */
+  interopLookupTablesPrompt1: 'Which lookup tables does this namespace hold?',
+  /** EXPERIENCE.md:604 */
+  interopLookupTablesPrompt2: 'Which lookup table was changed most recently?',
+  /** EXPERIENCE.md:604 */
+  interopLookupTablesPrompt3: 'How does a rule or a transformation read a lookup table?',
+  /** EXPERIENCE.md:604 */
+  interopLookupEntriesPrompt1: 'What does this lookup table map?',
+  /** EXPERIENCE.md:604 */
+  interopLookupEntriesPrompt2: 'Which entries of this lookup table hold an empty value?',
+  /** EXPERIENCE.md:604 */
+  interopLookupEntriesPrompt3: 'Which rules or transformations might read this lookup table?',
+  /** EXPERIENCE.md:604 */
+  interopBusinessPartnersPrompt1: 'Which business partners does this namespace list?',
+  /** EXPERIENCE.md:604 */
+  interopBusinessPartnersPrompt2: 'Who is the primary contact of each business partner?',
+  /** EXPERIENCE.md:604 */
+  interopBusinessPartnersPrompt3: 'What are business partners used for in a production?',
+  /** EXPERIENCE.md:604 */
+  interopLookupColumnKey: 'Entry key',
+  /** EXPERIENCE.md:604 */
+  interopLookupColumnSecret: 'Secret entry',
+  /** EXPERIENCE.md:604 */
+  interopPartnerColumnContact: 'Primary contact',
+  /** EXPERIENCE.md:604 */
+  interopPartnerColumnPhone: 'Phone',
+  /** EXPERIENCE.md:604 */
+  interopLookupEntriesCriterionTable: 'Lookup table',
+  /** EXPERIENCE.md:604 */
+  interopLookupTableAddAction: 'New table',
+  /** EXPERIENCE.md:604 */
+  interopLookupEntryAddAction: 'Add lookup entry',
+  /** EXPERIENCE.md:604 */
+  interopLookupEntrySetAction: 'Set entry value',
+  /** EXPERIENCE.md:604 */
+  interopLookupTableDialogTitle: 'New lookup table',
+  /** EXPERIENCE.md:604 */
+  interopLookupEntryDialogTitle: 'Add an entry',
+  /** EXPERIENCE.md:604 */
+  interopLookupSetDialogTitle: 'Set the value of this entry',
+  /** EXPERIENCE.md:604 */
+  interopLookupFieldTable: 'Table name',
+  /** EXPERIENCE.md:604 */
+  interopLookupNewTableHelp: 'A table is created by its first entry, so give the new table its first key and value.',
+  /** EXPERIENCE.md:604 */
+  interopLookupEntryHelp: 'The entry is in effect at once: rules and transformations that call Lookup() see it on their next call.',
+  /** EXPERIENCE.md:604 */
+  interopLookupRefusalTaken: 'This lookup table already holds an entry with that key.',
+  /** EXPERIENCE.md:604 */
+  interopLookupRefusalTableCase: 
+    'A lookup table whose name differs from this one only in letter case already exists. Use its spelling, or choose another name.',
+  /** EXPERIENCE.md:604 */
+  interopLookupRefusalSame: 'This entry already holds that value.',
+  /** EXPERIENCE.md:604 */
+  interopLookupRefusalSecret: 'This key names a credential, so OcuPilot neither shows nor sets its value. Set it in the classic Lookup Tables page.',
+  /** EXPERIENCE.md:604 */
+  interopLookupRefusalSourceControl: 'This namespace uses source control, so change lookup tables in the classic Lookup Tables page.',
+  /** EXPERIENCE.md:604 */
+  interopLookupRefusalLocked: 'Someone else is changing this lookup table right now, so nothing was written. Try again in a moment.',
+  /** EXPERIENCE.md:604 */
+  interopLookupRefusalTableName: 'A lookup table name is 1 to 255 characters with no control character, within the length the instance can store.',
+  /** EXPERIENCE.md:604 */
+  interopLookupRefusalKey:
+    'An entry key is 1 to 255 characters with no control character, and with its table\'s name within the length the instance can store.',
+  /** EXPERIENCE.md:604 */
+  interopLookupRefusalValue: 'An entry value is at most 32,000 characters.',
+  /** EXPERIENCE.md:604 */
+  interopLookupRemoveConsequence: 'Removing this entry cannot be undone from OcuPilot. When it is the table\'s last entry, the table is removed too.',
+  /** EXPERIENCE.md:604 */
+  interopLookupDeleteConsequence: 
+    'Deleting this lookup table removes every entry in it. Rules and transformations that read it then get their default value.',
+  /** EXPERIENCE.md:604 */
+  interopLookupExportTitle: 'Export lookup table <table>',
+  /** EXPERIENCE.md:604 */
+  interopLookupExportReplaces: 'A file already at this name is replaced. The file holds every key and value of the table.',
+  /** EXPERIENCE.md:604 */
+  interopLookupImportTitle: 'Import a lookup table',
+  /** EXPERIENCE.md:604 */
+  interopLookupImportConsequence:
+    'Importing replaces the table\'s entries with the file\'s, and entries the file does not hold are removed.',
+  /** EXPERIENCE.md:604 */
+  interopLookupExportDone: 'Exported lookup table <table> to <path>.',
+  /** EXPERIENCE.md:604 */
+  interopLookupExportSaved: 'Saved lookup table <table> as <file>.',
+  /** EXPERIENCE.md:604 */
+  interopLookupImportDone: 'Imported the lookup table in <file>.',
+  /** EXPERIENCE.md:604 */
+  interopLookupRefusalImportShape:
+    'An import file must hold exactly one lookup table with at least one entry and nothing else, in the form the Export action writes.',
+  /** EXPERIENCE.md:604 */
+  interopLookupRefusalImportChanged:
+    'The file or the table changed after the import was reviewed, so nothing was imported. Review the import again.',
+  /** EXPERIENCE.md:604 */
+  interopLookupRefusalTooLarge: 'A lookup table file holds at most 3,000,000 characters, and this one holds more.',
+  /** EXPERIENCE.md:604 */
+  interopLookupRefusalExportName:
+    'This lookup table cannot be exported: its name holds a character the export reads as a pattern or a path (* ? / or ;) or begins with an apostrophe.',
+  /** EXPERIENCE.md:468 */
+  sqlPrivilegesLabel: 'SQL privileges',
+  /** EXPERIENCE.md:468 */
+  sqlPrivilegeColumnObject: 'Object',
+  /** EXPERIENCE.md:468 */
+  sqlPrivilegeColumnAction: 'Action',
+  /** EXPERIENCE.md:468 */
+  sqlPrivilegeColumnGrantedBy: 'Granted by',
+  /** EXPERIENCE.md:468 */
+  sqlPrivilegeColumnGrantOption: 'Grant option',
+  /** EXPERIENCE.md:468 */
+  sqlPrivilegeColumnGrantedVia: 'Granted via',
+  /** EXPERIENCE.md:468 */
+  sqlPrivilegeCriterionGrantee: 'User or role',
+  /** EXPERIENCE.md:468 */
+  sqlPrivilegesEmpty: 'No SQL privileges in this namespace.',
+  /** EXPERIENCE.md:468 */
+  sqlPrivilegesPrompt1: 'Which SQL privileges does this account hold in this namespace?',
+  /** EXPERIENCE.md:468 */
+  sqlPrivilegesPrompt2: 'Which of its SQL privileges come through a role?',
+  /** EXPERIENCE.md:468 */
+  sqlPrivilegesPrompt3: 'Can this account grant its SQL privileges on to others?',
+  /** EXPERIENCE.md:468 */
+  sqlPrivilegeGrant: 'Grant',
+  /** EXPERIENCE.md:468 */
+  sqlPrivilegeRevoke: 'Revoke',
+  /** EXPERIENCE.md:468 */
+  sqlPrivilegeGrantOrRevoke: 'Grant or revoke\u2026',
+  /** EXPERIENCE.md:468 */
+  sqlPrivilegeViaRole: 'Held through the role <role>.',
+  /** EXPERIENCE.md:468 */
+  sqlPrivilegeViaSchema: 'Held through its schema.',
+  /** EXPERIENCE.md:468 */
+  sqlPrivilegeViaOwner: 'Held as the owner of the object.',
+  /** EXPERIENCE.md:468 */
+  sqlPrivilegeDialogTitle: 'Grant or revoke an SQL privilege',
+  /** EXPERIENCE.md:468 */
+  sqlPrivilegeWithGrant: 'With grant option',
+  /** EXPERIENCE.md:468 */
+  sqlPrivilegeObjectHint: 'schema.name for a table, view, stored procedure or foreign server; one name for a schema or ML configuration.',
+  /** EXPERIENCE.md:468 */
+  sqlPrivilegeGrantAction: 'Grant SQL privilege',
+  /** EXPERIENCE.md:468 */
+  sqlPrivilegeRevokeAction: 'Revoke SQL privilege',
+  /** EXPERIENCE.md:468 */
+  sqlPrivilegeRefusalOcuPilot: 'OcuPilot\'s own SQL tables keep the privileges its installer grants, so a grant or revoke on them is not offered.',
+  /** EXPERIENCE.md:468 */
+  sqlColumnPrivilegesLabel: 'SQL column privileges',
+  /** EXPERIENCE.md:468 */
+  sqlAdminPrivilegesLabel: 'SQL admin privileges',
+  /** EXPERIENCE.md:468 */
+  sqlColumnPrivilegesEmpty: 'No column privileges on this object in this namespace.',
+  /** EXPERIENCE.md:468 */
+  sqlAdminPrivilegesEmpty: 'No SQL admin privileges in this namespace.',
+  /** EXPERIENCE.md:468 */
+  sqlColumnPrivilegesPrompt1: 'Which column privileges does this account hold on this table or view?',
+  /** EXPERIENCE.md:468 */
+  sqlColumnPrivilegesPrompt2: 'Which of its column privileges come through a role?',
+  /** EXPERIENCE.md:468 */
+  sqlColumnPrivilegesPrompt3: 'Can this account grant its column privileges on to others?',
+  /** EXPERIENCE.md:468 */
+  sqlAdminPrivilegesPrompt1: 'Which SQL admin privileges does this account hold in this namespace?',
+  /** EXPERIENCE.md:468 */
+  sqlAdminPrivilegesPrompt2: 'Which of its SQL admin privileges come through a role?',
+  /** EXPERIENCE.md:468 */
+  sqlAdminPrivilegesPrompt3: 'Can this account grant its SQL admin privileges on to others?',
+  /** EXPERIENCE.md:468 */
+  sqlPrivilegeColumnPrivilege: 'Privilege',
+  /** EXPERIENCE.md:468 */
+  sqlAdminPrivilegesHeading: 'Admin privileges',
+  /** EXPERIENCE.md:468 */
+  sqlColumnPrivilegesHeading: 'Column privileges on <object>',
+  /** EXPERIENCE.md:468 */
+  sqlPrivilegeColumnHint: 'One column of the table or view; leave it empty for the whole object.',
+  /** EXPERIENCE.md:604 */
+  agentScreenPermissionsLabel: 'Screen permissions',
+  /** EXPERIENCE.md:604 */
+  screenPermissionsColumnArea: 'Area',
+  /** EXPERIENCE.md:604 */
+  screenPermissionsColumnEffective: 'Required permissions',
+  /** EXPERIENCE.md:604 */
+  screenPermissionsColumnAdjustment: 'Adjusted to',
+  /** EXPERIENCE.md:604 */
+  screenPermissionsColumnHolds: 'You hold these',
+  /** EXPERIENCE.md:604 */
+  screenPermissionsEmpty: 'No screens are listed.',
+  /** EXPERIENCE.md:604 */
+  screenPermissionsEmptyAgent: 'Ask the agent which screens this instance offers.',
+  /** EXPERIENCE.md:604 */
+  screenPermissionsNote: 
+    'Changing a screen\'s permissions changes who OcuPilot lets open it; the instance still checks every read and write.',
+  /** EXPERIENCE.md:604 */
+  screenPermissionsPrompt1: 'Which permissions does the Web applications screen require?',
+  /** EXPERIENCE.md:604 */
+  screenPermissionsPrompt2: 'Which screens can\'t I open, and which permission is missing?',
+  /** EXPERIENCE.md:604 */
+  screenPermissionsPrompt3: 'Which screens have adjusted permissions?',
+  /** EXPERIENCE.md:604 */
+  screenPermissionsChangeAction: 'Change permissions',
+  /** EXPERIENCE.md:604 */
+  screenPermissionsResetAction: 'Reset permissions',
+  /** EXPERIENCE.md:604 */
+  screenPermissionsResetConsequence: 'This screen will require its declared permissions again.',
+  /** EXPERIENCE.md:604 */
+  screenPermissionsDialogTitle: 'Change the permissions of <screen>',
+  /** EXPERIENCE.md:604 */
+  screenPermissionsClassicLine: 
+    'The classic portal also requires <pair> here, and only the classic portal changes it.',
+  /** EXPERIENCE.md:604 */
+  screenPermissionsFixed: 'This screen\'s permissions are fixed.',
+  /** EXPERIENCE.md:604 */
+  screenPermissionsAddLegend: 'Add a permission',
+  /** EXPERIENCE.md:604 */
+  screenPermissionsAddButton: 'Add',
+  /** EXPERIENCE.md:604 */
+  screenPermissionsLowerConsequence: 
+    'More accounts may open this screen. The instance still checks what they do there.',
+  /** EXPERIENCE.md:604 */
+  screenPermissionsRemovePair: 'Remove <pair>',
+  /** EXPERIENCE.md:604 */
+  accessRefusalScreenUnknown: 'No screen has that identifier.',
+  /** EXPERIENCE.md:604 */
+  accessRefusalNotAdjusted: 
+    'This screen already requires its declared permissions, so there is nothing to reset.',
+  /** EXPERIENCE.md:604 */
+  accessRefusalPairsEmpty: 'A screen keeps at least one required permission.',
+  /** EXPERIENCE.md:604 */
+  accessRefusalResourceUnknown: 'This instance defines no resource of that name.',
+  /** EXPERIENCE.md:604 */
+  accessRefusalPairMalformed: 
+    'Name a resource and a permission, written resource:permission, where the permission is READ, WRITE or USE.',
+  /** EXPERIENCE.md:604 */
+  accessRefusalPairAbsent: 'This screen\'s required permissions do not include that pair.',
+  /** EXPERIENCE.md:604 */
+  accessRefusalPairPresent: 'This screen\'s required permissions already include that pair.',
+  /** EXPERIENCE.md:604 */
+  accessRefusalPairsTooMany: 'A screen requires at most 8 permissions.',
+  /** EXPERIENCE.md:604 */
+  screenPermissionsRefusalOcuPilot: 'This is OcuPilot\'s own screen. Its permissions cannot be changed.',
+  /** EXPERIENCE.md:604 */
+  interopItemTestLabel: 'Item test',
+  /** EXPERIENCE.md:604 */
+  interopItemTestEmpty: 'This item takes no test request.',
+  /** EXPERIENCE.md:604 */
+  interopItemTestEmptyAgent: 'Ask the agent which items of this production take a test request.',
+  /** EXPERIENCE.md:604 */
+  interopItemTestPrompt1: 'Which request classes does this item take?',
+  /** EXPERIENCE.md:604 */
+  interopItemTestPrompt2: 'What would a sound test request for this item look like?',
+  /** EXPERIENCE.md:604 */
+  interopItemTestPrompt3: 'Why does a test of this item wait with no answer?',
+  /** EXPERIENCE.md:604 */
+  interopTestColumnRequestClass: 'Request class',
+  /** EXPERIENCE.md:604 */
+  interopTestColumnValues: 'Values',
+  /** EXPERIENCE.md:604 */
+  interopTestColumnSecret: 'Credential',
+  /** EXPERIENCE.md:604 */
+  interopItemTestAction: 'Send test',
+  /** EXPERIENCE.md:604 */
+  interopTestDialogTitle: 'Test <item>',
+  /** EXPERIENCE.md:604 */
+  interopTestNoFields: 'This request class has no field to set. It is sent as it is.',
+  /** EXPERIENCE.md:604 */
+  interopTestDocumentLabel: 'Message text',
+  /** EXPERIENCE.md:604 */
+  interopTestMaxLength: 'At most <n> characters.',
+  /** EXPERIENCE.md:604 */
+  interopTestDone: 'The target answered in session <session> with <class>.',
+  /** EXPERIENCE.md:604 */
+  interopTestDoneNoResponse: 'The target answered nothing in session <session>.',
+  /** EXPERIENCE.md:604 */
+  interopTestWaiting: 'The target has not answered yet. The request is in session <session>, and the item\'s Messages tab lists its messages.',
+  /** EXPERIENCE.md:604 */
+  interopTestFailed: 'The test failed in session <session>.',
+  /** EXPERIENCE.md:604 */
+  interopTestSendsConsequence: 'A test sends a real message through the running production. The target runs it, and anything it sends on, to another host or outside this instance, is sent too. The test\'s messages stay in the message store.',
+  /** EXPERIENCE.md:604 */
+  interopTestRefusalDisabled: 'Testing is not enabled for this production. Turn on Testing Enabled in the classic production settings, then update the production.',
+  /** EXPERIENCE.md:604 */
+  interopTestRefusalTargetType: 'Only a business process or a business operation takes a test request.',
+  /** EXPERIENCE.md:604 */
+  interopTestRefusalTargetDisabled: 'This item is disabled, so a test request would wait in its queue with no answer. Enable it first.',
+  /** EXPERIENCE.md:604 */
+  interopTestRefusalRequestType: 'This host does not take that request class. Its Test tab lists the ones it takes.',
+  /** EXPERIENCE.md:604 */
+  interopTestRefusalSecret: 'This field names a credential, so OcuPilot sends no value for it. Leave it empty, or test in the classic Testing Service page.',
+  /** EXPERIENCE.md:604 */
+  interopTestRefusalField: 'The request class has no such field that a test can set.',
+  /** EXPERIENCE.md:604 */
+  interopTestRefusalValue: 'This value does not fit the field, or the field is required.',
+  /** EXPERIENCE.md:604 */
+  interopTestRefusalRequest: 'The request could not be built from these values.',
+  /** EXPERIENCE.md:604 */
+  interopRuleEditorTitle: 'Rule editor',
+  /** EXPERIENCE.md:604 */
+  interopDtlEditorTitle: 'DTL editor',
+  /** EXPERIENCE.md:604 */
+  interopBplEditorTitle: 'BPL editor',
 } as const;
 
 /**

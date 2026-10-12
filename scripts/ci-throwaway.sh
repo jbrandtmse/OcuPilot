@@ -24,13 +24,17 @@
 #   sh scripts/ci-throwaway.sh logs  [--dir DIR]
 #   sh scripts/ci-throwaway.sh product-check [--dir DIR]
 #   sh scripts/ci-throwaway.sh product-reuse [--dir DIR]
+#   sh scripts/ci-throwaway.sh data-check [--dir DIR]
 #   sh scripts/ci-throwaway.sh down  [--dir DIR] [--project NAME]
+#
+# Without --dir or OCUPILOT_THROWAWAY_DIR the directory is $HOME/.ocupilot-throwaways/<project> on
+# macOS, whose /tmp cleaner prunes files left untouched for days, and /tmp/ocupilot-ci elsewhere.
 set -e
 
 ACTION="${1:-}"
 shift 2>/dev/null || true
 
-DIR="${OCUPILOT_THROWAWAY_DIR:-/tmp/ocupilot-ci}"
+DIR="${OCUPILOT_THROWAWAY_DIR:-}"
 PROJECT="ocupilot-ci"
 WEB_PORT="52776"
 SUPER_PORT="1975"
@@ -50,6 +54,25 @@ while [ $# -gt 0 ]; do
         *) echo "ci-throwaway: unknown argument $1"; exit 2 ;;
     esac
 done
+
+# The local root a macOS default lands in, and the one the scratch-root guard below admits. Trailing
+# slashes come off HOME, and a HOME that is not absolute gives no root, so a relative HOME cannot
+# admit a relative --dir.
+HOME_ROOT="${HOME:-}"
+while [ "$HOME_ROOT" != "${HOME_ROOT%/}" ]; do
+    HOME_ROOT="${HOME_ROOT%/}"
+done
+case "$HOME_ROOT" in
+    /?*) ;;
+    *) HOME_ROOT="" ;;
+esac
+
+if [ -z "$DIR" ]; then
+    DIR="/tmp/ocupilot-ci"
+    if [ "$(uname -s)" = "Darwin" ] && [ -n "$HOME_ROOT" ]; then
+        DIR="$HOME_ROOT/.ocupilot-throwaways/$PROJECT"
+    fi
+fi
 
 # The live instance's own ports, refused outright. This script writes a compose file and starts
 # a container from it; publishing the live ports would either collide with a running instance or,
@@ -87,8 +110,8 @@ case "$DIR" in
     *..*) echo "ci-throwaway: '$DIR' contains '..', which walks out of any root this could check; a throwaway's directory is removed recursively, so it must name its scratch root directly"; exit 2 ;;
 esac
 case "$DIR" in
-    /tmp/?*|/private/tmp/?*|"${TMPDIR:-/nonexistent-tmpdir}"?*) ;;
-    *) echo "ci-throwaway: '$DIR' is not under a scratch root; a throwaway's directory is removed recursively, so it must be under /tmp, /private/tmp or \$TMPDIR"; exit 2 ;;
+    /tmp/?*|/private/tmp/?*|"${TMPDIR:-/nonexistent-tmpdir}"?*|"${HOME_ROOT:-/nonexistent-home}/.ocupilot-throwaways"/?*) ;;
+    *) echo "ci-throwaway: '$DIR' is not under a scratch root; a throwaway's directory is removed recursively, so it must be under /tmp, /private/tmp, \$TMPDIR or \$HOME/.ocupilot-throwaways"; exit 2 ;;
 esac
 
 COMPOSE_FILE="$DIR/compose.yml"
@@ -237,8 +260,10 @@ services:
       # classes: AgentPickTurn, SqlAgentRead
       # classes: TurnStream
       # classes: WebAppWire
-      # classes: UserCreateWire, RoleWire, ResourceWire, X509Wire, WalletWire, DeviceWire, DeviceWriteGate
+      # classes: UserCreateWire, RoleWire, ResourceWire, X509Wire, WalletWire, WalletKeyWire, DeviceWire, DeviceWriteGate
+      # classes: UserCopyTestCase, UserCopyRefusals, PasswordPolicy
       # classes: UserSave, UserSignIn, WebAppSave, WebAppWeakening
+      # classes: OwnRoutineApplication, OwnRoutineApplicationWire, PctAccessSaveWire, WebAppPctAccess
       # classes: TurnWireFixture, UnexpireScope, UserUpdate, Version, Wire, WireOAuthRead, WireSecurityRead
       # classes: RoleSave, RoleUpdate, ReadBackRoute
       # classes: ImpactRoute
@@ -260,8 +285,9 @@ services:
       # classes: DatabaseActionsGate, DatabaseIntegrity
       # classes: WebSessionsLive
       # The Background tasks classes also create a scratch database and pause, resume and cancel a
-      # compact of it; AdminPortForget runs the whole retention sweep.
-      # classes: AdminPortForget, BackgroundSeed, BackgroundTasksLive
+      # compact of it, and the port seam class maps the test package into %SYS for its run;
+      # AdminPortForget runs the whole retention sweep.
+      # classes: AdminPortForget, BackgroundSeed, BackgroundTaskPortSeam, BackgroundTasksLive
       # The 404 class creates and deletes a probe role through the real port and reads messages.log.
       # classes: AdminPortAbsence
       # The broadcast's live class also starts terminal sessions of its own and broadcasts to them.
@@ -287,6 +313,14 @@ services:
       # The developer floor classes sign in as purpose-built principals: a %Developer, one below the
       # floor, an administrator without %All, and a %Development holder that runs a turn.
       # classes: DeveloperFloor, DeveloperFloorFixture, DeveloperFloorRoutes, DeveloperFloorTurn
+      # The Interoperability floor classes sign in as purpose-built principals holding %Ens_Portal alone
+      # or a stock %EnsRole_Monitor, _Operator or _Administrator, and a %Ens_Portal holder runs a turn.
+      # classes: InteropFloor, InteropFloorFixture, InteropFloorRoutes, InteropFloorTurn
+      # The Screen permissions classes sign in as Dev (a %Developer), Sec (%Admin_Secure without
+      # %Development) and Op (an operator holding neither) and adjust screens' required pairs (Story 20.15).
+      # classes: ScreenAccessFixture, ScreenAccessWire, ScreenAccessRefusals
+      # The screen-refusal turn class runs a turn as TurnWireFixture's USERA against a raised screen (Story 20.18).
+      # classes: ScreenAccessTurn
       # The System Explorer write gate class signs in as principals holding READ, READ and WRITE,
       # and the %Developer role on a namespace's code database, and compiles and deletes probes.
       # classes: AtelierPortWriteDenial
@@ -339,10 +373,113 @@ services:
       # The document database gate class signs in as probe principals each missing one pair the DocDB
       # port requires, and lists, creates and drops a probe database as them (Story 19.17).
       # classes: DocDbGate
+      # The authentication options gate class signs in as probe principals holding Security's pairs, and
+      # each without one, and saves the options as them through a seam port that sends nothing (Story 18.8).
+      # classes: AuthOptionsGate
+      # The superserver gate class signs in as probe principals holding Security's pairs, and each
+      # without one, and writes probe superservers as them through a seam port that sends nothing
+      # (Story 18.25).
+      # classes: SuperserverGate
+      # The managed file transfer connection classes create and delete probe connections named OcuMftProbe,
+      # the OAuth 2.0 client configurations and descriptions they name, and probe principals, and the gate
+      # class writes them as principals holding Security's pairs and each without one (Story 18.26).
+      # classes: MftConnectionGate, MftConnectionRead, MftConnectionWrite
+      # The Doc DB application classes create and delete probe records named OcuProbe1830, and the gate class
+      # writes them as principals holding the Web applications area's pairs and each without one (Story 18.30).
+      # classes: DocDbAppGate, DocDbAppRead, DocDbAppWrite
+      # The privileged routine application classes create and delete probe applications named OcuProbe1831, and the gate
+      # class writes them as principals holding the Web applications area's pairs and each without one (Story 18.31).
+      # classes: RoutineAppGate, RoutineAppRead, RoutineAppWrite
+      # The web application guard class creates a probe application named OcuProbe1831 and writes it through the web
+      # application editor's Save, the list's Delete and the agent's web application tools (Story 18.31).
+      # classes: RoutineAppWebAppGuard
+      # The routine application member classes change probe applications named OcuProbe1831 and create probe roles named
+      # OcuProbe1833Role, through the editor's six row actions and the agent's complete lists, and judge the grants they
+      # make (Story 18.33).
+      # classes: RoutineAppGrant, RoutineAppMembers
+      # The routine application list read class creates probe applications named OcuProbe1831, reads their roles and
+      # routines by the screens' routes and the agent's reads, and confirms an update built from those reads
+      # (Story 18.12).
+      # classes: RoutineAppListsRead
+      # The REST service classes create and delete probe services named OcuProbe1832, and the gate class writes them as
+      # principals holding the REST API explorer's pairs and each without one (Story 18.32).
+      # classes: RestServiceGate, RestServiceWrite
+      # The REST service Save class builds and deletes probe services named OcuProbe1832 through the explorer's create
+      # Save, in USER and in %SYS (Story 18.34).
+      # classes: RestServiceSave
+      # The SQL object privilege classes create and remove a probe user and role named OcuSqlPrivProbe and a probe
+      # schema's objects in USER, set up privileges as the running account, and the gate class writes them as
+      # principals holding Security's pairs and each without one (Story 18.9).
+      # classes: SqlPrivilegeGate, SqlPrivilegeRead, SqlPrivilegeWrite
+      # The SQL column and admin privilege classes create and remove the same probe user, role and schema
+      # and a probe principal, and grant and revoke column and admin privileges for them as the running
+      # account and as that principal (Story 18.28).
+      # classes: SqlAdminPrivilegeWrite, SqlColumnPrivilegeWrite
       # The SQL activity gate class signs in as probe principals each missing one pair the SQL
       # activity port requires, or holding READ on USER's database and %Development, and reads
       # another account's running probe statement as them (Story 19.10).
       # classes: SqlActivityGate, SqlActivityProbe
+      # The metrics gate class signs in as probe principals each missing one pair the monitor port requires, and
+      # reads the Prometheus metrics list as them and as a principal holding both (Story 18.11).
+      # classes: MetricsGate
+      # The Dashboard drill-downs' gate class signs in as probe principals each missing one pair the four screens
+      # require, and reads the four as them and as a principal holding both (Story 18.36).
+      # classes: DashboardDrillDownGate
+      # The interoperability control class compiles and runs a probe production in USER and starts,
+      # stops, restarts, updates and recovers it; its descriptor class compiles the probe classes in USER;
+      # its gate class signs in as probe principals each
+      # missing one pair the interoperability port requires and reads and controls the probe as them
+      # (Story 20.2).
+      # classes: InteropControl, InteropDescriptor, InteropGate
+      # The Production items classes compile and run the same probe production in USER, writing its items
+      # (Story 20.3): the control, refusals and stop-outcome classes drive the item writes and the stop
+      # outcomes, the descriptor class compiles the probe classes, and the gate class signs in as probe
+      # principals each missing one pair an item write requires.
+      # classes: InteropItemControl, InteropItemDescriptor, InteropItemGate, InteropItemRefusals, InteropStopOutcome
+      # The item identity class compiles the probe production's class between an agent's mint and its confirm,
+      # and the split gate class creates and deletes a namespace configuration over two existing databases
+      # (Story 20.3).
+      # classes: InteropItemGateSplit, InteropItemIdentity
+      # The Item settings classes compile and run the same probe production in USER, writing its settings
+      # (Story 20.22): the control, refusals, secrets, paths and descent classes drive the setting writes and every
+      # refusal of them, the identity class writes a second item after a compile renumbered the production's items, and
+      # the gate class signs in as probe principals each missing one pair a setting write requires.
+      # classes: InteropSettingControl, InteropSettingDescent, InteropSettingGate, InteropSettingIdentity, InteropSettingPaths, InteropSettingRefusals, InteropSettingSecrets
+      # The production monitor classes compile and run the same probe production in USER, hang its operation and send it
+      # messages (Story 20.4): the read class reads the runtime state of that production through the port, the screens and
+      # the read tools, the edges class reads it Troubled, with a pool-size-0 item's actor-queue entries, under a row cap and
+      # from a session in another time zone, and the gate class signs in as probe principals each missing one pair a runtime
+      # read requires and as principals holding exactly one read's pairs.
+      # classes: InteropHostEdges, InteropHostGate, InteropHostRead
+      # The queue and job action classes compile and run the same probe production in USER, a retrying operation among its
+      # items (Story 20.23): the queue and job classes abort, suspend and stop on it and read the audit rows each leaves, the
+      # job stop class forces a hung job and terminates another, and the gate class signs in as probe principals each missing
+      # one pair an action requires and as principals holding exactly one action's pairs. The bounds class lowers the queue
+      # abort's limit to one through a seam, forces a hung job's stop against a wider cap, and mints each refusal.
+      # classes: InteropJobActions, InteropJobStop, InteropQueueActions, InteropRuntimeBounds, InteropRuntimeGate
+      # The lookup table classes write probe lookup tables and a probe business partner in USER and remove them (Story 20.5): the
+      # read class reads them through the port, the screens and the read tools and snapshots the vendor's globals, the control
+      # class drives the entry and table writes from both callers and reads the audit rows each leaves, the refusals class holds
+      # a vendor lock from this process so the requests wait it out, and the gate class signs in as probe principals each
+      # missing one pair a lookup read or write requires. The transfer class exports a probe table to a probe file and to the
+      # browser, deletes it, imports it back, and mints and confirms both tools. The edges class adds the largest pair a table
+      # and key can make, names full of reserved characters, a partner with no contacts, an export over a file that stands there,
+      # and an agent's confirm that meets a held vendor lock or a key someone else took. The names class adds pairs too long to
+      # address, names the export cannot name, a comma in a name and tables named by numbers, and removes those too.
+      # classes: InteropLookupControl, InteropLookupEdges, InteropLookupGate, InteropLookupNames, InteropLookupRead, InteropLookupRefusals, InteropLookupTransfer
+      # The host test classes compile and run the same probe production in USER, with a request class of their own and an
+      # operation that echoes it (Story 20.6): the test class reads an item's Test tab and sends a request from both callers,
+      # the refusals class meets every refusal and violation, a production started without testing and a disabled item, and
+      # the gate class signs in as probe principals each missing one pair the tab or the send requires. The descriptor class
+      # compiles the request class to read its fields for the script form.
+      # classes: InteropHostTest, InteropHostTestRefusals, InteropTestDescriptor, InteropTestGate
+      # The host test edges class runs the same probe production in USER (Story 20.6): it tests an item of a production that is not
+      # the running one, leaves a waiting test's answer node, audits a failed test, follows the agent's session into the item's
+      # Messages tab, and dispatches calls whose fields name a credential through the agent's tool loop.
+      # classes: InteropHostTestEdges
+      # classes: ExplorerSourceTurn
+      # classes: ExplorerSaveTurn
+      # classes: ExplorerCreateTurn
       OCUPILOT_ALLOW_PRINCIPALS: "1"
       # Writes an application error to a namespace's own ^ERRORS. Same reasoning again, and one
       # degree worse: an application error cannot be un-logged, so a runner pointed elsewhere
@@ -448,6 +585,15 @@ services:
       # keeps disabled, and put it back as they found it after every test; they create and drop probe
       # databases named OcuProbe1917* in USER and remove each by name.
       # classes: DocDbProbe, DocDbPort, DocDbGate, DocDbWrite
+      # Since Story 18.8 the authentication options class saves and confirms the instance's authentication
+      # and web session options -- a login cookie timeout and an unchanged Kerberos flag sent for real, and the
+      # SMTP password set and cleared -- and restores every value it read first. Every sign-in, start or token
+      # change goes only to a seam port that records it and never sends it.
+      # classes: AuthOptionsWrite
+      # Since Story 18.25 the superserver class creates, changes and deletes probe superservers on 21825 to
+      # 21829 only, each removed by exact port, and sets the governance policy it restores. The system
+      # default superserver is never written: any other port goes only to a seam that refuses it.
+      # classes: SuperserverWrite
       OCUPILOT_ALLOW_SERVICE_CONFIG: "1"
       # Arms the turnprobe provider row OcuPilot.Kernel.Provider.Catalog resolves only under it,
       # and with it the classes that spawn turn jobs or Test connection children against that row's
@@ -463,7 +609,12 @@ services:
       # classes: SanitizeAuditMask
       # classes: EgressLine
       # classes: DeveloperFloorTurn
+      # classes: InteropFloorTurn
+      # classes: ScreenAccessTurn
       # classes: AgentPickTurn, SqlAgentRead
+      # classes: ExplorerSourceTurn
+      # classes: ExplorerSaveTurn
+      # classes: ExplorerCreateTurn
       OCUPILOT_ALLOW_TEST_PROVIDER: "1"
       # Purges the instance's own audit database through the shipped screen route: every record
       # dated before today is removed, the agent's audit markers among them, and nothing puts one
@@ -516,6 +667,10 @@ services:
       # It also creates and removes the OCUPROBEECPR remote database configuration on an OCUPROBEECP*
       # ECP data server, configuration only and never contacted (Story 18.20).
       # classes: EcpDataServerWrite
+      # It also creates and removes the OCUPROBE2028D database, with its %DB_OCUPROBE2028D resource, its
+      # <mgr>ocuprobe2028d directory and the OCUPROBE2028N namespace, and compiles the shipped classes there
+      # (Story 20.28).
+      # classes: CompileWithoutInterop
       OCUPILOT_ALLOW_DATABASE_CONFIG: "1"
       # Switches this instance's journal file and journal directory through the shipped screen and
       # confirm paths, and seeds an alternate journal directory to switch into. Its own variable
@@ -748,17 +903,69 @@ EOF
         fi
         echo "ci-throwaway: the start over the reused volume deleted the two test classes compiled before it"
         ;;
+    data-check)
+        # Every mounted local database directory still holds its IRIS.DAT. A host cleaner that
+        # prunes the data directory leaves the instance running against files that are gone, and
+        # nothing else says so. One %SYS session reads SYS.Database:List; a row counts when its
+        # status starts with "Mounted" and its directory is a local path. No databases listed is
+        # a failure, since an empty list proves nothing.
+        if [ ! -f "$COMPOSE_FILE" ]; then
+            echo "ci-throwaway: no compose file at $COMPOSE_FILE; nothing was brought up to check"
+            exit 1
+        fi
+        RAW=$(docker compose -f "$COMPOSE_FILE" exec -T iris iris session iris -U %SYS 2>&1 <<'EOF'
+Set tRS=##class(%ResultSet).%New("SYS.Database:List")
+Set tSC=tRS.Execute("*")
+Set tN=0,tMissing=""
+If tSC { While tRS.Next() { Set tDir=tRS.GetData(1),tStatus=tRS.GetData(4) If ($Extract(tStatus,1,7)="Mounted")&&($Extract(tDir,1)="/") { Set tN=tN+1,tFile=##class(%File).NormalizeDirectory(tDir)_"IRIS.DAT" If ##class(%File).Exists(tFile)=0 Set tMissing=tMissing_$Select(tMissing="":"",1:";")_tDir } } }
+Write "OCUPILOT-"_"DATCHECK-START:"_tN_":"_tMissing_":OCUPILOT-"_"DATCHECK-END",!
+Halt
+EOF
+) || { echo "ci-throwaway: could not open a session in the throwaway's iris service"; printf '%s\n' "$RAW" | tail -n 20; exit 1; }
+        DATA=$(printf '%s' "$RAW" | tr '\r\n' '  ' | grep -o 'OCUPILOT-DATCHECK-START:.*:OCUPILOT-DATCHECK-END' | sed -e 's/^OCUPILOT-DATCHECK-START://' -e 's/:OCUPILOT-DATCHECK-END$//')
+        COUNT=$(printf '%s' "$DATA" | cut -d: -f1)
+        MISSING=$(printf '%s' "$DATA" | cut -d: -f2-)
+        case "$COUNT" in
+            ""|*[!0-9]*)
+                echo "ci-throwaway: the throwaway did not answer which of its databases hold an IRIS.DAT"
+                printf '%s\n' "$RAW" | tail -n 20
+                exit 1
+                ;;
+        esac
+        if [ "$COUNT" -lt 1 ]; then
+            echo "ci-throwaway: the throwaway listed no mounted local database, so a check of their files proves nothing"
+            exit 1
+        fi
+        if [ -n "$MISSING" ]; then
+            echo "ci-throwaway: a mounted database has no IRIS.DAT in: $MISSING"
+            exit 1
+        fi
+        echo "ci-throwaway: all $COUNT mounted local database(s) hold their IRIS.DAT"
+        ;;
     down)
         if [ -f "$COMPOSE_FILE" ]; then
             docker compose -f "$COMPOSE_FILE" logs --no-color iris | tail -n 80 || true
             docker compose -f "$COMPOSE_FILE" down -v
+        else
+            # compose.yml is gone (a host cleaner pruned it) but the container may still be up.
+            # Compose is asked to remove the project only when it lists this project from this
+            # directory's own compose file; any other listing is someone else's throwaway.
+            listed=$(docker compose ls -a --format json 2>/dev/null | tr -d '\n' | grep -o "{[^}]*\"Name\":\"$PROJECT\"[^}]*}" || true)
+            if [ -n "$listed" ] && printf '%s' "$listed" | grep -q "\"ConfigFiles\":\"$COMPOSE_FILE\""; then
+                # From /, so Compose loads no compose file from the working directory or above it.
+                (cd / && docker compose -p "$PROJECT" down -v --remove-orphans)
+            elif [ -n "$listed" ]; then
+                echo "ci-throwaway: no compose file at $COMPOSE_FILE and Compose lists '$PROJECT' from a different config file; no Compose call made"
+            else
+                echo "ci-throwaway: no compose file at $COMPOSE_FILE and Compose does not list '$PROJECT'; no Compose call made"
+            fi
         fi
         scrub_data
         rm -rf "$DIR"
         echo "ci-throwaway: removed $DIR"
         ;;
     *)
-        echo "ci-throwaway: usage: ci-throwaway.sh up|logs|product-check|product-reuse|down [options]"
+        echo "ci-throwaway: usage: ci-throwaway.sh up|logs|product-check|product-reuse|data-check|down [options]"
         exit 2
         ;;
 esac

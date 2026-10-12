@@ -75,6 +75,7 @@ ClassMethod ProhibitedClass() As %String
 ClassMethod HandleCreate() As %Status
 {
     Set tSC = $$$OK
+    Set tHoldKey = ""
     Set tToken = ""
     Try {
         Set tGateSC = ..Gate(.tRefused)
@@ -92,6 +93,11 @@ ClassMethod HandleCreate() As %Status
         }
         Set tToken = ..TakeSecret(tBody)
         Set tIssuer = ##class(OcuPilot.Area.Security.OAuthServerRules).Text(tBody, ..#IDARGUMENT)
+        Set tHoldSC = ##class(OcuPilot.Kernel.Proposal.Operation).HoldTool(..#CREATETOOL, tIssuer, .tHeld, .tHoldKey)
+        If $$$ISERR(tHoldSC) || 'tHeld {
+            Set tSC = ##class(OcuPilot.Api.Error).RenderTargetBusy(tHoldSC)
+            Quit
+        }
         Set tPerformSC = ..Create(tIssuer, tBody, .tHttp, .tFault, .tViolations, .tWrite)
         Set (tTokenReason, tReadBack, tStored) = ""
         If $$$ISOK(tPerformSC) && '$Get(tViolations) && (tToken '= "") Set tTokenReason = ..StoreToken(tIssuer, tToken)
@@ -104,6 +110,7 @@ ClassMethod HandleCreate() As %Status
         Set tToken = ""
         Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ex)
     }
+    Do ##class(OcuPilot.Kernel.Proposal.Operation).Release(tHoldKey)
     Quit tSC
 }
 
@@ -114,11 +121,12 @@ ClassMethod HandleCreate() As %Status
 /// description the instance does not hold is 404
 /// <parameter>OcuPilot.Api.Error.OAUTHISSUERENDPOINTABSENT</parameter> and nothing is sent.</p>
 /// <p>The body's <code>Metadata</code> carries only the members the form changes, a cleared one as
-/// <code>""</code> or <code>[]</code>; the route applies them over the fresh read's members, so the
-/// tool's argument is the whole metadata the description will hold.</p>
+/// <code>""</code> or <code>[]</code>; the tool applies them over the fresh read's members
+/// (<method>OcuPilot.Screen.Tool.OAuthServerDescriptionUpdate.MergeUpdate</method>).</p>
 ClassMethod HandleUpdate(pId As %String) As %Status
 {
     Set tSC = $$$OK
+    Set tHoldKey = ""
     Set tToken = ""
     Try {
         Set tGateSC = ..Gate(.tRefused)
@@ -136,6 +144,11 @@ ClassMethod HandleUpdate(pId As %String) As %Status
         }
         Set tToken = ..TakeSecret(tBody)
         Set tIssuer = ##class(OcuPilot.Kernel.EntityId).Decode(pId)
+        Set tHoldSC = ##class(OcuPilot.Kernel.Proposal.Operation).HoldTool(..#UPDATETOOL, tIssuer, .tHeld, .tHoldKey)
+        If $$$ISERR(tHoldSC) || 'tHeld {
+            Set tSC = ##class(OcuPilot.Api.Error).RenderTargetBusy(tHoldSC)
+            Quit
+        }
         Set tPerformSC = ..Update(tIssuer, tBody, .tNewIssuer, .tHttp, .tFault, .tViolations, .tWrite)
         If $$$ISERR(tPerformSC) && (+$Get(tHttp) = 404) && '$Get(tViolations) {
             Set tToken = ""
@@ -153,6 +166,7 @@ ClassMethod HandleUpdate(pId As %String) As %Status
         Set tToken = ""
         Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ex)
     }
+    Do ##class(OcuPilot.Kernel.Proposal.Operation).Release(tHoldKey)
     Quit tSC
 }
 
@@ -282,18 +296,17 @@ ClassMethod Update(pIssuer As %String, pArgs As %DynamicObject, Output pNewIssue
         ; own, and an empty PUT would only record one more vendor save of the definition.
         If pArgs.%Size() = 0 Quit
 
-        ; The members the form changed, held to their names and shapes, then applied over the fresh
-        ; read's: the tool's Metadata argument is the whole metadata the description will hold.
+        ; The members the form changed, held to their names and shapes, then the rules over the
+        ; metadata the description will hold once they are applied over the fresh read's.
         Set tArgs = ..Copy(pArgs)
         If tArgs.%GetTypeOf("Metadata") = "object" {
             Set tSC = $ClassMethod(tRules, "MemberViolations", tArgs.%Get("Metadata"), .pViolations)
             If $$$ISERR(tSC) || (pViolations > 0) Quit
-            Do tArgs.%Set("Metadata", ..MergedMetadata(tFresh, tArgs.%Get("Metadata")))
         }
-        Set tSC = $ClassMethod(tRules, "Validate", pIssuer, tArgs, .pViolations, "update", 1, tFresh)
+        Set tSC = $ClassMethod(tRules, "Validate", pIssuer, $ClassMethod(tRules, "MergedArguments", tFresh, tArgs), .pViolations, "update", 1, tFresh)
         If $$$ISERR(tSC) || (pViolations > 0) Quit
 
-        Set tSC = ##class(OcuPilot.Kernel.Proposal.Mint).Merge(tFresh, tArgs, "", $ClassMethod(tClass, "SettableFields"), .tPayload, .tDiff, .tUnchanged, .tProblem)
+        Set tSC = $ClassMethod(tClass, "MergeUpdate", tFresh, tArgs, "", $ClassMethod(tClass, "SettableFields"), .tPayload, .tDiff, .tUnchanged, .tProblem)
         If $$$ISERR(tSC) Quit
         If tProblem '= "" {
             Set tSC = $$$ERROR($$$GeneralError, "the edit's payload could not be merged after its rules passed: " _ tProblem)
@@ -313,29 +326,6 @@ ClassMethod Update(pIssuer As %String, pArgs As %DynamicObject, Output pNewIssue
         Set tSC = ex.AsStatus()
     }
     Quit tSC
-}
-
-/// <p>The metadata <var>pFresh</var> holds with each member <var>pChanges</var> names applied: a
-/// member set to <code>""</code> or <code>[]</code> is removed, which the expansion then sends empty;
-/// any other value replaces the stored one. The caller has held <var>pChanges</var> to
-/// <method>OcuPilot.Area.Security.OAuthServerRules.MemberViolations</method>, which refuses
-/// <code>null</code>.</p>
-ClassMethod MergedMetadata(pFresh As %DynamicObject, pChanges As %DynamicObject) As %DynamicObject
-{
-    Set tMerged = {}
-    If $IsObject(pFresh) && (pFresh.%GetTypeOf("Metadata") = "object") Set tMerged = ..Copy(pFresh.%Get("Metadata"))
-    Set tIterator = pChanges.%GetIterator()
-    While tIterator.%GetNext(.tMember, .tValue) {
-        Set tType = pChanges.%GetTypeOf(tMember)
-        If (tType = "null") || ((tType = "string") && (tValue = "")) || ((tType = "array") && (tValue.%Size() = 0)) {
-            Do tMerged.%Remove(tMember)
-        } ElseIf (tType = "array") || (tType = "object") {
-            Do tMerged.%Set(tMember, ..Copy(tValue))
-        } Else {
-            Do tMerged.%Set(tMember, tValue, tType)
-        }
-    }
-    Quit tMerged
 }
 
 /// <p>Store <var>pToken</var> as description <var>pIssuer</var>'s registration access token through

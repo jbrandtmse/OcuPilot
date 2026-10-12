@@ -13,8 +13,8 @@
  * and adopting it writes nothing: the store is written only when the user chooses.
  *
  * **It is a self-service account action** (AD-49): the user's own write, with no proposal, no
- * marker and no tool. A refused write surfaces through `AccountPreferences.fault()` like every
- * other preference write (DW-1326); the class has already flipped, and the instance's answer
+ * marker and no tool. A refused write lands in `AccountPreferences.fault('background')`, which the
+ * locator bar announces (DW-1326); the class has already flipped, and the instance's answer
  * decides nothing about what is on screen.
  *
  * Framework-free, like the rest of `core/` (AD-19), so `ui/tools/theme.test.mjs` executes it under

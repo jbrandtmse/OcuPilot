@@ -101,11 +101,26 @@ const ID_RULES: Readonly<Record<string, (id: string) => string>> = {
   // A namespace mapping is keyed by the composite `[namespace, Name]` (Story 18.14): the instance
   // resolves the namespace without case, while a global's or routine's name is case-sensitive. So
   // only the text before the first `COMPOSITE_SEPARATOR` is folded, and an id with no separator is
-  // folded whole -- what `OcuPilot.Kernel.EntityRef.NormalizedId` answers for the same rule.
+  // folded whole -- what `OcuPilot.Kernel.EntityRef.NormalizedId` answers for the same rule. A
+  // percent-class access entry, keyed by `[application, AllowType, Class]` (Story 18.10), takes it too.
   'foldcase-firstpart': (id) => {
     const at = id.indexOf(COMPOSITE_SEPARATOR);
     if (at < 0) return id.toLowerCase();
     return id.slice(0, at).toLowerCase() + id.slice(at);
+  },
+  // A superserver is keyed by the composite `[Port, BindAddress]` (Story 18.25): the port in its plain
+  // decimal spelling (folded to lower case when it is no integer), an empty bind address as `0.0.0.0`,
+  // and the bind address in lower case. An id with no separator reads as `[id, '']` -- what
+  // `OcuPilot.Kernel.EntityRef.NormalizedId` answers for `portbind`.
+  portbind: (id) => {
+    const at = id.indexOf(COMPOSITE_SEPARATOR);
+    const portPart = at < 0 ? id : id.slice(0, at);
+    const bindPart = at < 0 ? '' : id.slice(at + 1);
+    return (
+      (plainInteger(portPart) ?? portPart.toLowerCase()) +
+      COMPOSITE_SEPARATOR +
+      (bindPart === '' ? '0.0.0.0' : bindPart.toLowerCase())
+    );
   },
   // A database is addressed by its directory, kept exactly, or by a set of directories -- the
   // integrity check's target (Story 18.4): a value beginning `[` that is a JSON array of non-empty

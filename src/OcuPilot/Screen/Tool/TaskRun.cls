@@ -181,4 +181,11 @@ ClassMethod StateDiff(pFresh As %DynamicObject, Output pRows As %DynamicArray, O
     Quit tSC
 }
 
+/// <p>The task's name, which the state-only <code>INFO</code> read does not answer: a second
+/// <code>GET</code> through this tool's own port, and <code>""</code> when it fails.</p>
+ClassMethod TargetName(pFresh, pId As %String, pArgs) As %String
+{
+    Quit ##class(OcuPilot.Area.Task.TaskRules).NameOfId(..PortClass(), pId)
+}
+
 }

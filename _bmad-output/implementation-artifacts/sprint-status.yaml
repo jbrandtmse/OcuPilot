@@ -29,7 +29,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 09-09-2026 07:49
-last_updated: '10-06-2026 05:56'
+last_updated: '10-12-2026 20:25'
 project: OcuPilot
 project_key: NOKEY
 tracking_system: file-system
@@ -282,12 +282,12 @@ development_status:
   18-5-journals: done
   18-6-licensing-and-ecp: done
   18-7-encryption: done
-  18-8-superservers-authentication-options-and-managed-file-transfe: backlog
-  18-9-sql-privileges-and-the-permission-extras: backlog
-  18-10-web-application-extras-and-spec-based-rest-services: backlog
-  18-11-monitoring-extras-and-the-live-log-tail: backlog
-  18-12-the-agent-grows-with-the-stage: backlog
-  18-13-multi-namespace-install: backlog
+  18-8-superservers-authentication-options-and-managed-file-transfe: done
+  18-9-sql-object-privileges: done
+  18-10-web-application-extras-and-spec-based-rest-services: done
+  18-11-monitoring-extras-and-the-live-log-tail: done
+  18-12-the-agent-grows-with-the-stage: done
+  18-13-multi-namespace-install: in-progress
   18-14-namespace-mappings-and-copy-mappings: done
   18-15-enable-interoperability-on-a-namespace: done
   18-16-remote-databases: done
@@ -298,10 +298,30 @@ development_status:
   18-21-ecp-settings-and-application-servers: done
   18-22-database-and-data-element-encryption-keys: done
   18-23-encryption-startup-settings: done
-  18-24-rsa-and-symmetric-key-wallet-secrets: backlog
+  18-24-rsa-and-symmetric-key-wallet-secrets: done
+  18-25-superservers: done
+  18-26-managed-file-transfer-connections: done
+  18-27-the-operator-s-read-only-ldap-view: done
+  18-28-sql-column-and-admin-privileges: done
+  18-29-role-members-admin-option-user-copy-from-and-password-valida: done
+  18-30-doc-db-applications: done
+  18-31-privileged-routine-applications: done
+  18-32-spec-based-rest-services: done
+  18-33-privileged-routine-application-roles-and-routines: done
+  18-34-the-person-s-rest-service-create: done
+  18-36-dashboard-drill-downs: done
+  18-37-interoperability-usage: backlog
+  18-38-the-live-log-tail: backlog
+  18-39-the-agent-s-context-budget: done
+  18-40-proxy-and-custom-ca-configuration: backlog
+  18-41-the-wallet-credential-rung: backlog
+  18-42-allowed-directories-a-person-s-write: backlog
+  18-43-uninstall-and-grants-on-a-shared-instance: ready-for-dev
+  18-45-the-agent-s-tool-roster-scoped-per-turn: done
+  18-46-allowed-directories-the-screen-s-add-change-and-remove: backlog
   epic-18-retrospective: optional
 
-  epic-19: in-progress
+  epic-19: done
   19-1-classes-and-routines-listed-and-viewed: done
   19-2-compile-delete-export-and-import: done
   19-3-the-source-editor-with-etag-conflict-detection: done
@@ -322,19 +342,36 @@ development_status:
   19-18-epic-19-burn-down: done
   epic-19-retrospective: optional
 
-  epic-20: backlog
-  20-1-the-sign-in-hand-off-and-namespace-category-gating: backlog
-  20-2-productions-listed-and-controlled: backlog
-  20-3-production-items: backlog
-  20-4-per-host-tabs-the-monitor-queues-and-jobs: backlog
-  20-5-lookup-tables-and-business-partners: backlog
-  20-6-testing-hosts-and-transformations: backlog
+  epic-20: in-progress
+  20-1-namespace-category-gating: done
+  20-2-productions-listed-and-controlled: done
+  20-3-production-items: done
+  20-4-per-host-tabs-the-monitor-queues-and-jobs: done
+  20-5-lookup-tables-and-business-partners: done
+  20-6-testing-hosts-and-transformations: done
   20-7-the-three-embedded-vendor-editors: backlog
   20-8-the-schema-viewers-and-the-production-configuration-diagram: backlog
   20-9-messages-search-view-resend-and-trace: backlog
   20-10-source-control-hooks: backlog
   20-11-the-analytics-rider: backlog
   20-12-the-agent-gains-guided-workflows-and-investigate: backlog
+  20-13-the-sign-in-hand-off-to-the-embedded-vendor-editors: done
+  20-14-interoperability-holders-reach-ocupilot: done
+  20-15-per-screen-permissions-seen-and-adjusted: done
+  20-16-the-agent-edits-rule-dtl-and-bpl-content-behind-the-embedded: backlog
+  20-17-long-blocks-in-the-agent-panel-start-collapsed: done
+  20-18-the-agent-proposes-permission-changes-and-refuses-on-a-scree: done
+  20-19-the-agent-reads-class-and-routine-source: done
+  20-20-the-agent-creates-new-classes-and-routines-on-the-person-s-c: done
+  20-21-the-agent-saves-edits-to-existing-classes-and-routines: done
+  20-22-production-item-settings: done
+  20-23-queue-and-job-actions: done
+  20-24-agent-tool-calls-stop-re-listing-the-tool-registry: done
+  20-25-item-runtime-and-configuration-actions: backlog
+  20-26-business-partners-saved-and-removed: backlog
+  20-27-transformations-tested: backlog
+  20-28-ocupilot-compiles-in-a-namespace-without-interoperability: done
+  20-29-screens-load-on-demand: backlog
   epic-20-retrospective: optional
 
   epic-21: backlog
@@ -360,7 +397,12 @@ development_status:
   23-1-the-range-end-cleanup: done
   23-2-the-range-end-cleanup-part-2: done
   23-3-the-range-end-cleanup-part-3: done
-  23-4-the-range-end-cleanup-part-4: backlog
+  23-4-the-range-end-cleanup-part-4: done
+  23-5-the-range-end-cleanup-part-5: backlog
+  23-6-the-haiku-story-cleanup: done
+  23-7-the-range-end-cleanup-part-6: backlog
+  23-8-the-range-end-cleanup-part-7: backlog
+  23-9-the-range-end-cleanup-part-8: backlog
   epic-23-retrospective: optional
 action_items:
   - id: "epic-4-retro-item-1-run-an-architecture-update-intent-on-the"

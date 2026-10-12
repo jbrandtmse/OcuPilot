@@ -43,6 +43,8 @@ const {
   CONSEQUENCE_TASKEXPORTREPLACES,
   CONSEQUENCE_EXPLOREREXPORTREPLACES,
   CONSEQUENCE_EXPLORERIMPORTREPLACES,
+  CONSEQUENCE_EXPLORERSAVECOMPILES,
+  CONSEQUENCE_RESTSERVICECREATE,
   CONSEQUENCE_SQLCHANGESROWS,
   CONSEQUENCE_SQLCHANGESSCHEMA,
   CONSEQUENCE_SQLRUNSPROCEDURE,
@@ -52,6 +54,7 @@ const {
   CONSEQUENCE_LOCKINTRANSACTION,
   CONSEQUENCE_NAMESPACEINTEROP,
   CONSEQUENCE_SYSTEMGLOBAL,
+  CONSEQUENCE_SCREENACCESSLOWERED,
   CONSEQUENCE_RUNSASOTHER,
   CONSEQUENCE_SERVESOCUPILOT,
   CONSEQUENCE_SERVICEUNAUTHENTICATED,
@@ -67,6 +70,8 @@ const {
   CONSEQUENCE_ECPSETTINGSRESTART,
   CONSEQUENCE_ECPSSLAUTHORIZE,
   CONSEQUENCE_ECPSSLREJECT,
+  CONSEQUENCE_WALLETKEYREPLACERSA,
+  CONSEQUENCE_WALLETKEYREPLACESYMMETRIC,
   CONSEQUENCE_ENCRYPTIONNEWKEY,
   CONSEQUENCE_ENCRYPTIONREMOVEKEY,
   CONSEQUENCE_ENCRYPTIONKEYACTIVATE,
@@ -79,6 +84,10 @@ const {
   CONSEQUENCE_ENCRYPTIONSTARTUPKMIP,
   CONSEQUENCE_ENCRYPTIONSTARTUPRESTART,
   CONSEQUENCE_ENCRYPTIONSTARTUPJOURNAL,
+  CONSEQUENCE_WEBAUTHSIGNOUT,
+  CONSEQUENCE_SUPERSERVERSERVES,
+  CONSEQUENCE_MFTDELETE,
+  CONSEQUENCE_MFTREVOKE,
   CONSEQUENCE_AUDITENCRYPTIONCHANGE,
   COUNTDOWN_PLACEHOLDER,
   COUNTDOWN_WARNING_MS,
@@ -100,7 +109,9 @@ const {
   phaseForState,
   statusLineFor,
   toCardView,
+  cardTitleName,
 } = await import(corePath('proposal-view.ts'));
+const { formatProposalTitle } = await import(join(uiRoot, 'src', 'app', 'shell', 'example-proposal.ts'));
 const { PROPOSAL_EXPIRED_STATE, PROPOSAL_LIVE_STATE, parseProposals, restoredProposals } =
   await import(corePath('turn.ts'));
 const { STRINGS } = await import(corePath('strings.ts'));
@@ -168,6 +179,28 @@ test('toCardView takes the noun from the screen and everything else from the pro
     { field: 'Enabled', before: 'false', after: 'true', removed: false },
     { field: 'Password', before: 'old', after: 'new', removed: false },
   ]);
+});
+
+// DW-1465. Mutation (Rule 19): have `cardTitleName` answer `view.name` -> the named leg goes red, and a
+// task card is titled by its numeric id.
+test('a task card is titled by the name the instance read, and by its id where it read none (DW-1465)', () => {
+  const task = (overrides) =>
+    toCardView(
+      parsedProposal({ target: { type: 'task', scope: 'instance', id: '42' }, ...overrides }),
+      'Task'
+    );
+  const named = task({ targetName: 'Nightly purge' });
+  assert.equal(named.name, '42', 'the id stays the id');
+  assert.equal(
+    formatProposalTitle(STRINGS.proposalCardTitle, named.entityType, cardTitleName(named)),
+    'Proposal \u00b7 Task Nightly purge'
+  );
+  for (const unread of [task({ targetName: '' }), task({})]) {
+    assert.equal(
+      formatProposalTitle(STRINGS.proposalCardTitle, unread.entityType, cardTitleName(unread)),
+      'Proposal \u00b7 Task 42'
+    );
+  }
 });
 
 test('a removal row travels off the wire, and a row with an after-state is not one (DW-1228)', () => {
@@ -274,6 +307,18 @@ test("the system-global mapping's and the mapping copy's consequence codes resol
   assert.equal(consequenceSentence(CONSEQUENCE_COPYMAPPINGS), STRINGS.namespaceCopyMappingsConsequence);
 });
 
+// Story 20.18, AD-64: an agent change to a screen's permissions that drops a pair is destructive with the
+// lowering dialog's sentence, published once.
+//
+// Mutation (Rule 19): drop the SCREENACCESS.LOWERED branch from `consequenceSentence` -> this goes red.
+test("the screen-permission lowering's consequence code resolves to its published sentence", () => {
+  const prohibited = readFileSync(join(uiRoot, '..', 'src', 'OcuPilot', 'Kernel', 'Proposal', 'Prohibited.cls'), 'utf8');
+  const declared = /^Parameter EFFECTSCREENLOWERED = "([^"]+)";/m.exec(prohibited);
+  assert.ok(declared, 'Prohibited.cls declares the lowering effect');
+  assert.equal(CONSEQUENCE_SCREENACCESSLOWERED, declared[1]);
+  assert.equal(consequenceSentence(CONSEQUENCE_SCREENACCESSLOWERED), STRINGS.screenPermissionsLowerConsequence);
+});
+
 // Story 18.15: an enable of interoperability is destructive with its own consequence, the typed-name
 // dialog's sentence published once.
 //
@@ -293,14 +338,18 @@ test("the task export's consequence code resolves to the export dialog's replace
 });
 
 // Story 19.13: a System Explorer export to a server file replaces a file already at its name, and an
-// import each document of the same name. Each code is the tool's own, read from its class rather
-// than restated, and its card states the published line.
+// import each document of the same name. Story 20.21: an agent's class or routine save compiles on
+// Confirm. Story 18.32: so does an agent's REST service create. Each code is the tool's own, read from its
+// class rather than restated, and its card states the published line.
 //
-// Mutation (Rule 19): drop the EXPLORER.IMPORT.REPLACES branch from `consequenceSentence` -> this goes red.
+// Mutation (Rule 19): drop the EXPLORER.IMPORT.REPLACES branch from `consequenceSentence` -> this goes red;
+// drop the RESTSERVICE.CREATE.COMPILES branch -> the REST service leg goes red.
 test("the System Explorer export's and import's consequence codes are the tools' own and resolve to their lines", () => {
   for (const [file, constant, sentence] of [
     ['ExplorerExport.cls', CONSEQUENCE_EXPLOREREXPORTREPLACES, STRINGS.taskExportReplaces],
     ['ExplorerImport.cls', CONSEQUENCE_EXPLORERIMPORTREPLACES, STRINGS.explorerImportReplaces],
+    ['ExplorerSave.cls', CONSEQUENCE_EXPLORERSAVECOMPILES, STRINGS.explorerSaveCompilesOnConfirm],
+    ['RestServiceCreate.cls', CONSEQUENCE_RESTSERVICECREATE, STRINGS.restServiceCreateEffect],
   ]) {
     const source = readFileSync(join(uiRoot, '..', 'src', 'OcuPilot', 'Screen', 'Tool', file), 'utf8');
     const declared = /^Parameter CONSEQUENCE = "([^"]+)";/m.exec(source);
@@ -991,4 +1040,71 @@ test('Story 18.23: an encryption startup settings write states its consequence o
   assert.equal(/Parameter JOURNALCONSEQUENCE = "([^"]+)";/.exec(tool)?.[1], CONSEQUENCE_ENCRYPTIONSTARTUPJOURNAL, 'the tool declares the journal code');
   const prohibited = readFileSync(join(uiRoot, '..', 'src', 'OcuPilot', 'Kernel', 'Proposal', 'Prohibited.cls'), 'utf8');
   assert.equal(/Parameter EFFECTAUDITENCRYPTION = "([^"]+)";/.exec(prohibited)?.[1], CONSEQUENCE_AUDITENCRYPTIONCHANGE, 'the kernel declares the audit effect the card reads');
+});
+
+// Story 18.24: the two wallet key replaces state their consequence on the card under the code their
+// tools declare, and every `WALLETKEY.*` sentence the instance writes is a published string, so the
+// instance's wording and the document's are one.
+//
+// Mutation (Rule 19): delete the `CONSEQUENCE_WALLETKEYREPLACERSA` line from `consequenceSentence` -> the
+// first assertion goes red on ''; change one word of a `REASON*` parameter in WalletKeyError.cls -> the
+// last loop goes red naming it.
+test('Story 18.24: the wallet key replaces state their consequence, and every key sentence is published', () => {
+  assert.equal(consequenceSentence(CONSEQUENCE_WALLETKEYREPLACERSA), STRINGS.walletKeyReplaceRsaConsequence);
+  assert.equal(consequenceSentence(CONSEQUENCE_WALLETKEYREPLACESYMMETRIC), STRINGS.walletKeyReplaceSymmetricConsequence);
+  const root = join(uiRoot, '..', 'src', 'OcuPilot');
+  const tool = (name) => readFileSync(join(root, 'Screen', 'Tool', `${name}.cls`), 'utf8');
+  assert.equal(/Parameter CONSEQUENCE = "([^"]+)";/.exec(tool('WalletKeyReplaceRsa'))?.[1], CONSEQUENCE_WALLETKEYREPLACERSA);
+  assert.equal(/Parameter CONSEQUENCE = "([^"]+)";/.exec(tool('WalletKeyReplaceSymmetric'))?.[1], CONSEQUENCE_WALLETKEYREPLACESYMMETRIC);
+  const error = readFileSync(join(root, 'Api', 'WalletKeyError.cls'), 'utf8');
+  const reasons = [...error.matchAll(/Parameter (REASON[A-Z0-9]+) = "([^"]*)";/g)];
+  assert.equal(reasons.length, 18, 'WalletKeyError.cls declares eighteen sentences');
+  const published = new Set(Object.values(STRINGS));
+  for (const [, name, sentence] of reasons) {
+    assert.ok(published.has(sentence), `${name} is a published string: ${sentence}`);
+  }
+});
+
+// Story 18.8: a change to the JWT issuer or signature algorithm states the sign-out consequence, under the
+// code its tool and the kernel declare.
+//
+// Mutation (Rule 19): delete the `CONSEQUENCE_WEBAUTHSIGNOUT` line from `consequenceSentence` -> this goes
+// red on ''.
+test('Story 18.8: an authentication options write that changes a token setting states its consequence on the card', () => {
+  assert.equal(consequenceSentence(CONSEQUENCE_WEBAUTHSIGNOUT), STRINGS.authOptionsSignOutConsequence, 'the sign-out reads its published sentence');
+  const errors = readFileSync(join(uiRoot, '..', 'src', 'OcuPilot', 'Api', 'WebAuthError.cls'), 'utf8');
+  assert.equal(/Parameter SIGNOUT = "([^"]+)";/.exec(errors)?.[1], CONSEQUENCE_WEBAUTHSIGNOUT, 'the error class declares the code the card reads');
+  const prohibited = readFileSync(join(uiRoot, '..', 'src', 'OcuPilot', 'Kernel', 'Proposal', 'Prohibited.cls'), 'utf8');
+  assert.equal(/Parameter EFFECTTOKENSIGNOUT = "([^"]+)";/.exec(prohibited)?.[1], CONSEQUENCE_WEBAUTHSIGNOUT, 'the kernel declares the effect the card reads');
+});
+
+// Story 18.25: an SSL/TLS change to the superserver the web gateway connects through states its consequence,
+// under the code its error class and the kernel declare.
+//
+// Mutation (Rule 19): delete the `CONSEQUENCE_SUPERSERVERSERVES` line from `consequenceSentence` -> this goes
+// red on ''.
+test('Story 18.25: a serving superserver\'s SSL/TLS change states its consequence on the card', () => {
+  assert.equal(consequenceSentence(CONSEQUENCE_SUPERSERVERSERVES), STRINGS.superserverServesConsequence, 'the consequence reads its published sentence');
+  const errors = readFileSync(join(uiRoot, '..', 'src', 'OcuPilot', 'Api', 'SuperserverError.cls'), 'utf8');
+  assert.equal(/Parameter SERVESOCUPILOT = "([^"]+)";/.exec(errors)?.[1], CONSEQUENCE_SUPERSERVERSERVES, 'the error class declares the code the card reads');
+  const prohibited = readFileSync(join(uiRoot, '..', 'src', 'OcuPilot', 'Kernel', 'Proposal', 'Prohibited.cls'), 'utf8');
+  assert.equal(/Parameter EFFECTSERVINGSUPERSERVER = "([^"]+)";/.exec(prohibited)?.[1], CONSEQUENCE_SUPERSERVERSERVES, 'the kernel declares the effect the card reads');
+});
+
+// Story 18.26: a managed file transfer connection's delete and token revoke state their consequence on the
+// card under the code their tool declares.
+//
+// Mutation (Rule 19): delete the `CONSEQUENCE_MFTDELETE` line from `consequenceSentence` -> the first assertion
+// goes red on ''; shorten `mftDeleteConsequence` to its first sentence -> the client-configuration assertion goes red.
+test('Story 18.26: a connection delete and a token revoke state their consequence on the card', () => {
+  assert.equal(consequenceSentence(CONSEQUENCE_MFTDELETE), STRINGS.mftDeleteConsequence);
+  assert.equal(consequenceSentence(CONSEQUENCE_MFTREVOKE), STRINGS.mftRevokeConsequence);
+  // The sentences carry what the delete and the revoke do, not only that a sentence exists.
+  assert.match(STRINGS.mftDeleteConsequence, /OAuth 2\.0 client configuration is deleted with it/, 'the delete says the client configuration goes with it');
+  assert.match(STRINGS.mftDeleteConsequence, /server description/, 'and the client\u2019s server description');
+  assert.match(STRINGS.mftRevokeConsequence, /access token is removed and the file service is asked to revoke it/, 'the revoke says the token is removed and the service asked');
+  assert.match(STRINGS.mftRevokeConsequence, /authorized again on the classic Managed File Transfer Connections page/, 'and where it is authorized again');
+  const tool = (name) => readFileSync(join(uiRoot, '..', 'src', 'OcuPilot', 'Screen', 'Tool', `${name}.cls`), 'utf8');
+  assert.equal(/Parameter CONSEQUENCECODE = "([^"]+)";/.exec(tool('MftConnectionDelete'))?.[1], CONSEQUENCE_MFTDELETE, 'MftConnectionDelete.cls declares the delete code the card reads');
+  assert.equal(/Parameter CONSEQUENCECODE = "([^"]+)";/.exec(tool('MftConnectionRevoke'))?.[1], CONSEQUENCE_MFTREVOKE, 'MftConnectionRevoke.cls declares the revoke code the card reads');
 });

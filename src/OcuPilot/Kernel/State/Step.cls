@@ -61,6 +61,10 @@ Property Reason As %String(MAXLEN = "");
 /// <code>resource:permission</code>, when the failure carries one. Empty otherwise.</p>
 Property FailedPair As %String(MAXLEN = 128);
 
+/// <p>A failed tool step's <code>detail.screen</code> (AD-8): the <code>toolIdentifier</code> of the
+/// screen the caller cannot open, when the refusal names one. Empty otherwise.</p>
+Property FailedScreen As %String(MAXLEN = 128);
+
 Index TurnSeqIdx On (TurnKey, Seq) [ Unique ];
 
 /// <p>Append a step to turn <var>pKey</var>. <var>pSeq</var> is its position whether or not it was
@@ -73,7 +77,7 @@ Index TurnSeqIdx On (TurnKey, Seq) [ Unique ];
 /// (<method>OcuPilot.Kernel.Agent.Dispatch.RedactedArguments</method>), so this does not re-cap it
 /// a second time. <var>pArgumentsTruncated</var> is the caller's own answer to whether that cap cut
 /// it, and sets <property>Truncated</property> when true, the same as a cut name or summary does.</p>
-ClassMethod GuardedAppend(pKey As %String, pKind As %String, pName As %String, pStatus As %String, pSummary As %String, pText As %String, pCode As %String, pLimitsClass As %String, Output pSeq As %Integer, Output pStored As %Boolean, pTarget As %String = "", pArguments As %String = "", pResult As %String = "", pReason As %String = "", pFailedPair As %String = "", pArgumentsTruncated As %Boolean = 0) As %Status
+ClassMethod GuardedAppend(pKey As %String, pKind As %String, pName As %String, pStatus As %String, pSummary As %String, pText As %String, pCode As %String, pLimitsClass As %String, Output pSeq As %Integer, Output pStored As %Boolean, pTarget As %String = "", pArguments As %String = "", pResult As %String = "", pReason As %String = "", pFailedPair As %String = "", pArgumentsTruncated As %Boolean = 0, pFailedScreen As %String = "") As %Status
 {
     Set pSeq = 0
     Set pStored = 0
@@ -101,6 +105,7 @@ ClassMethod GuardedAppend(pKey As %String, pKind As %String, pName As %String, p
         Set tRow.Result = pResult
         Set tRow.Reason = pReason
         Set tRow.FailedPair = pFailedPair
+        Set tRow.FailedScreen = pFailedScreen
         Do ..ApplyContent(tRow, pName, pSummary, pText, pLimitsClass)
         If pArgumentsTruncated || $Get(tTargetCut) Set tRow.Truncated = 1
         Set tSC = ..GuardedSaveIfCurrent(tRow, 0)
@@ -163,7 +168,7 @@ ClassMethod GuardedSnapshotText(pKey As %String, pSeq As %Integer, pText As %Str
 /// value ending in U+2026 and the step marked <property>Truncated</property> (AD-33). It is
 /// untrusted content (AD-11) and trailing, so a caller with nothing to record calls this unchanged
 /// and the step reads <code>""</code>.</p>
-ClassMethod GuardedFinishTool(pKey As %String, pSeq As %Integer, pName As %String, pStatus As %String, pCode As %String, pLimitsClass As %String, pTarget As %String = "", pArguments As %String = "", pResult As %String = "", pReason As %String = "", pFailedPair As %String = "", pArgumentsTruncated As %Boolean = 0, pText As %String = "") As %Status
+ClassMethod GuardedFinishTool(pKey As %String, pSeq As %Integer, pName As %String, pStatus As %String, pCode As %String, pLimitsClass As %String, pTarget As %String = "", pArguments As %String = "", pResult As %String = "", pReason As %String = "", pFailedPair As %String = "", pArgumentsTruncated As %Boolean = 0, pText As %String = "", pFailedScreen As %String = "") As %Status
 {
     Set tSC = ..GuardedOpenOneWhereTwoParam("SELECT ID FROM OcuPilot_Kernel_State.Step WHERE %EXACT(TurnKey) = ? AND Seq = ?", pKey, pSeq, .tRow)
     If $$$ISERR(tSC) || '$IsObject(tRow) Quit tSC
@@ -174,6 +179,7 @@ ClassMethod GuardedFinishTool(pKey As %String, pSeq As %Integer, pName As %Strin
     Set tRow.Result = pResult
     Set tRow.Reason = pReason
     Set tRow.FailedPair = pFailedPair
+    Set tRow.FailedScreen = pFailedScreen
     Set tText = pText
     Set tTextMax = +$Parameter(pLimitsClass, "TOOLSTEPTEXTMAXLENGTH")
     If $Length(tText) > tTextMax {
@@ -188,7 +194,7 @@ ClassMethod GuardedFinishTool(pKey As %String, pSeq As %Integer, pName As %Strin
 
 /// <p>Every stored step of turn <var>pKey</var>, in sequence order, as
 /// <code>{seq, kind, name, status, summary, text, code, truncated, target, arguments, result,
-/// reason, failedPair}</code> (Story 4.5). <code>result</code> is the parsed <code>{rowsReturned,
+/// reason, failedPair, failedScreen}</code> (Story 4.5). <code>result</code> is the parsed <code>{rowsReturned,
 /// rowsSent, truncated}</code> object when the step recorded one, else JSON null; every other new
 /// field is the empty string when the step carries none.</p>
 ClassMethod GuardedRows(pKey As %String, Output pRows As %DynamicArray) As %Status
@@ -226,6 +232,7 @@ ClassMethod GuardedRows(pKey As %String, Output pRows As %DynamicArray) As %Stat
         }
         Do tOut.%Set("reason", ..Text(tRow.Reason), "string")
         Do tOut.%Set("failedPair", ..Text(tRow.FailedPair), "string")
+        Do tOut.%Set("failedScreen", ..Text(tRow.FailedScreen), "string")
         Set tRow = ""
         Do pRows.%Push(tOut)
     }

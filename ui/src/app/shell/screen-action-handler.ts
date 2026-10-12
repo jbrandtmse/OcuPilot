@@ -6,9 +6,12 @@ import { ChangeBus, type ChangeAction } from '../core/change-bus';
 import { splitCompositeId } from '../core/entity-id';
 import { impactLine, impactOf } from '../core/impact';
 import { checkedSetReason, checkedSetTarget, isCheckedSetAction } from '../core/multi-select';
+import { PRODUCTION_STATE_MOVED } from '../core/proposal-view';
 import { readBackOf, type ReadBack } from '../core/read-back';
 import { ScreenActions, actionLabel } from '../core/screen-actions';
 import { SCREEN_READ_PATH_PREFIX } from '../core/screen-read';
+import { NAMESPACE_SCOPE, scopeFor } from '../core/entity-ref';
+import { ScopeService } from '../core/scope';
 import { ScreenStores } from '../core/screen-store';
 import { SCREENS, type ScreenDeclaration } from '../core/screens.generated';
 import { selfProtectionReason } from '../core/self-protection';
@@ -107,6 +110,39 @@ export const SCREEN_ACTION_DESCRIPTORS: readonly string[] = [
   'OcuPilot.Screen.Descriptor.EcpSslConnectionTab',
   // Story 19.17: Document databases, whose Drop types the database's name.
   'OcuPilot.Screen.Descriptor.ExplorerDocDbList',
+  'OcuPilot.Screen.Descriptor.SuperserverList',
+  // Story 18.26: managed file transfer connections, whose Delete and Revoke token each type the connection's name.
+  'OcuPilot.Screen.Descriptor.MftConnectionList',
+  // Story 18.30: Doc DB applications, whose Delete types the record's name.
+  'OcuPilot.Screen.Descriptor.DocDbAppList',
+  // Story 18.31: privileged routine applications, whose Delete types the application's name.
+  'OcuPilot.Screen.Descriptor.RoutineAppList',
+  // Story 18.32: the REST API explorer, whose Delete types the service's package; a web application's row is refused
+  // by the instance after the click.
+  'OcuPilot.Screen.Descriptor.RestApiList',
+  // Story 20.2: Productions, whose Start is sent at once and whose Stop, Restart, Update and Recover warn first.
+  'OcuPilot.Screen.Descriptor.InteropProductionList',
+  // Story 20.15: Screen permissions, whose Reset warns first and whose Add and Remove its own page's dialog sends.
+  'OcuPilot.Screen.Descriptor.AgentScreenPermissions',
+  // Story 20.3: Production items, whose Enable and Disable warn first, whose Remove types the item's name, and whose
+  // Add its own page's dialog sends.
+  'OcuPilot.Screen.Descriptor.InteropItemList',
+  // Story 20.22: Item settings, whose Reset to default warns first and whose Set value its own page's dialog sends.
+  'OcuPilot.Screen.Descriptor.InteropItemSettingList',
+  // Story 20.5: Lookup tables, whose Delete types the table's name and whose New table its own page's dialog sends, and a table's
+  // entries, whose Remove types the key and whose Add entry and Set value its own page's dialogs send.
+  'OcuPilot.Screen.Descriptor.InteropLookupTableList',
+  'OcuPilot.Screen.Descriptor.InteropLookupEntryList',
+  // Story 20.23: Queues, whose Abort all types the queue's name; Queue messages and an item's Queue tab, whose Abort types the
+  // message id; and Jobs and an item's Jobs tab, whose Abort message types the job's process id and whose Suspend message and
+  // Stop job warn first.
+  'OcuPilot.Screen.Descriptor.InteropQueueList',
+  'OcuPilot.Screen.Descriptor.InteropQueueMessageList',
+  'OcuPilot.Screen.Descriptor.InteropItemQueueTab',
+  'OcuPilot.Screen.Descriptor.InteropJobList',
+  'OcuPilot.Screen.Descriptor.InteropItemJobTab',
+  // Story 20.6: an item's Test tab, whose Send test its own page's dialog sends.
+  'OcuPilot.Screen.Descriptor.InteropItemTestTab',
 ];
 
 /**
@@ -143,6 +179,13 @@ export const ADD_APPLICATION_ROLE = 'add-application-role';
 export const REMOVE_APPLICATION_ROLE = 'remove-application-role';
 export const ADD_MATCHING_ROLE = 'add-matching-role';
 export const REMOVE_MATCHING_ROLE = 'remove-matching-role';
+
+/** The privileged routine applications list's descriptor, whose six role and routine actions its editor's tabs send (Story 18.33). */
+const ROUTINE_APP_LIST = 'OcuPilot.Screen.Descriptor.RoutineAppList';
+
+/** The privileged routine application's two routine actions, beside the four role ones (AD-56 (ii)). */
+export const ADD_ROUTINE = 'add-routine';
+export const REMOVE_ROUTINE = 'remove-routine';
 
 /** The Roles list's descriptor, whose four value actions the role editor sends (Story 9.3). */
 export const ROLE_LIST = 'OcuPilot.Screen.Descriptor.RoleList';
@@ -186,6 +229,16 @@ export const REMOTE_DATABASE_LIST = 'OcuPilot.Screen.Descriptor.RemoteDatabaseLi
  */
 export const ECP_DATA_SERVER_LIST = 'OcuPilot.Screen.Descriptor.EcpDataServerList';
 export const ECP_CHANGE_STATUS = 'changestatus';
+
+/**
+ * Screen permissions (Story 20.15, AD-64): its page opens the Change permissions dialog for Add, and
+ * the dialog sends `add-pair` and `remove-pair` through this handler, each with the one pair as the
+ * value `Pair`. Its Reset is a row action the handler draws, after a warning.
+ */
+export const SCREEN_PERMISSIONS = 'OcuPilot.Screen.Descriptor.AgentScreenPermissions';
+export const SCREEN_PERMISSIONS_ADD = 'add-pair';
+export const SCREEN_PERMISSIONS_REMOVE = 'remove-pair';
+export const SCREEN_PERMISSIONS_RESET = 'reset';
 
 /**
  * ECP application servers' SSL/TLS authorizations tab (Story 18.21), whose Authorize and Reject each
@@ -232,6 +285,12 @@ export const EXPAND_VOLUME = 'expand';
 const GLOBAL_MAPPING_LIST = 'OcuPilot.Screen.Descriptor.GlobalMappingList';
 const ROUTINE_MAPPING_LIST = 'OcuPilot.Screen.Descriptor.RoutineMappingList';
 const PACKAGE_MAPPING_LIST = 'OcuPilot.Screen.Descriptor.PackageMappingList';
+
+/** The Superservers list (Story 18.25), keyed by `[Port, BindAddress]`, whose Delete types the port. */
+const SUPERSERVER_LIST = 'OcuPilot.Screen.Descriptor.SuperserverList';
+
+/** The managed file transfer connections list (Story 18.26), whose Delete and Revoke token type the connection's name. */
+const MFT_CONNECTION_LIST = 'OcuPilot.Screen.Descriptor.MftConnectionList';
 
 /** The role value actions, and the values each sends (AD-56 (ii)). */
 export const ADD_GRANTED_ROLE = 'add-granted-role';
@@ -305,6 +364,13 @@ export const REMOVE_ROLE = 'remove-role';
 const ROLE_VALUE = 'Role';
 
 /**
+ * The two SQL privilege actions of the Users and Roles lists (Story 18.9). Only the editors' SQL
+ * privileges tab sends them, with the values it has chosen (`startFor` with `values`), so no menu draws them.
+ */
+export const GRANT_SQL = 'grant-sql';
+export const REVOKE_SQL = 'revoke-sql';
+
+/**
  * The form read whose `roles` an add offers, each marked `privileged` by the server's own
  * classifier (AD-10): the Add role dialog states the grant's consequence from it (DW-1523).
  */
@@ -320,13 +386,16 @@ const VALUE_ACTIONS: Readonly<Record<string, Readonly<Record<string, 'set-passwo
 
 /** The declared actions no surface draws, keyed by descriptor (DW-389). */
 const UNDRAWN_ACTIONS: Readonly<Record<string, readonly string[]>> = {
-  [USER_LIST]: [REQUIRE_PASSWORD_CHANGE],
+  // The SQL privileges tab of the user editor and the role editor sends the two SQL privilege actions (Story 18.9).
+  [USER_LIST]: [REQUIRE_PASSWORD_CHANGE, GRANT_SQL, REVOKE_SQL],
   // The web application editor draws these beside each roles tab's pickers, which supply the values.
   [WEB_APP_LIST]: [ADD_APPLICATION_ROLE, REMOVE_APPLICATION_ROLE, ADD_MATCHING_ROLE, REMOVE_MATCHING_ROLE],
+  // The privileged routine application editor draws these beside its three member tabs' pickers, which supply the values.
+  [ROUTINE_APP_LIST]: [ADD_APPLICATION_ROLE, REMOVE_APPLICATION_ROLE, ADD_MATCHING_ROLE, REMOVE_MATCHING_ROLE, ADD_ROUTINE, REMOVE_ROUTINE],
   [PROCESS_LIST]: [TERMINATE_WITH_ERROR],
   [PROCESS_DETAILS]: [TERMINATE_WITH_ERROR],
   // The role editor draws these beside its grants, members and assigned roles, which supply the values.
-  [ROLE_LIST]: [ADD_GRANTED_ROLE, REMOVE_GRANTED_ROLE, SET_RESOURCE_GRANT, REMOVE_RESOURCE_GRANT],
+  [ROLE_LIST]: [ADD_GRANTED_ROLE, REMOVE_GRANTED_ROLE, SET_RESOURCE_GRANT, REMOVE_RESOURCE_GRANT, GRANT_SQL, REVOKE_SQL],
   // The Namespaces list's page registers Copy mappings itself, after this handler, so its dialog opens.
   [NAMESPACE_LIST]: [COPY_MAPPINGS, ENABLE_INTEROP],
   // The database editor draws Add a volume beside its volume files, for the database it shows.
@@ -340,6 +409,17 @@ const UNDRAWN_ACTIONS: Readonly<Record<string, readonly string[]>> = {
   [JOURNAL_LIST]: [JOURNAL_SWITCH_FILE, JOURNAL_SWITCH_DIRECTORY],
   // ECP data servers' page registers Change status itself, whose dialog sends the status (Story 18.20).
   [ECP_DATA_SERVER_LIST]: [ECP_CHANGE_STATUS],
+  // Screen permissions' page registers Change permissions itself, whose dialog sends Add and Remove (Story 20.15).
+  [SCREEN_PERMISSIONS]: [SCREEN_PERMISSIONS_ADD, SCREEN_PERMISSIONS_REMOVE],
+  // Item settings' page registers Set value itself, whose dialog sends the value (Story 20.22).
+  'OcuPilot.Screen.Descriptor.InteropItemSettingList': ['set'],
+  // The Lookup tables' page registers Export itself and draws Import as a screen-level action, whose dialogs send the four transfer
+  // actions (Story 20.5).
+  'OcuPilot.Screen.Descriptor.InteropLookupTableList': ['export', 'export-browser', 'import', 'import-local'],
+  // A table's entries' page registers Set value itself, whose dialog sends the value (Story 20.5).
+  'OcuPilot.Screen.Descriptor.InteropLookupEntryList': ['set'],
+  // An item's Test tab's page registers Send test itself, whose dialog sends the request class and its fields (Story 20.6).
+  'OcuPilot.Screen.Descriptor.InteropItemTestTab': ['test'],
 };
 
 /**
@@ -372,12 +452,26 @@ interface DialogFlag {
 }
 
 /**
+ * Interoperability's Queues, Queue messages and Jobs lists (Story 20.23), whose row actions abort a queue's messages, one
+ * message or a job's retried message, suspend that message and stop a job, and the item Queue and Jobs tabs that act on the
+ * same messages and jobs and post to those lists' routes.
+ */
+const INTEROP_QUEUE_LIST = 'OcuPilot.Screen.Descriptor.InteropQueueList';
+const INTEROP_QUEUE_MESSAGE_LIST = 'OcuPilot.Screen.Descriptor.InteropQueueMessageList';
+const INTEROP_ITEM_QUEUE_TAB = 'OcuPilot.Screen.Descriptor.InteropItemQueueTab';
+const INTEROP_JOB_LIST = 'OcuPilot.Screen.Descriptor.InteropJobList';
+const INTEROP_ITEM_JOB_TAB = 'OcuPilot.Screen.Descriptor.InteropItemJobTab';
+
+/**
  * The screen whose action route a descriptor's row actions are sent to, where it is not the
  * descriptor's own: Process details acts on the pid it shows through the processes list's write
- * tools, which name that list (AD-53).
+ * tools, which name that list (AD-53), and an item's Queue and Jobs tabs act on a message and a job
+ * through the tools of the Queue messages and Jobs lists (Story 20.23).
  */
 const ACTION_ADDRESS: Readonly<Record<string, string>> = {
   [PROCESS_DETAILS]: PROCESS_LIST,
+  [INTEROP_ITEM_QUEUE_TAB]: INTEROP_QUEUE_MESSAGE_LIST,
+  [INTEROP_ITEM_JOB_TAB]: INTEROP_JOB_LIST,
 };
 
 /**
@@ -388,7 +482,7 @@ const ACTION_ADDRESS: Readonly<Record<string, string>> = {
  * `DESTRUCTIVE` declaration. This is EXPERIENCE.md's `confirm-dialog` rule -- a delete carries the
  * typed-name field and a `button-destructive` -- applied to the verb that deletes.
  */
-const DESTRUCTIVE_ACTIONS: readonly string[] = ['delete', 'terminate', 'revoke-tokens', 'end', ENCRYPTION_REMOVE_ADMIN, ENCRYPTION_REMOVE_KEY, ENCRYPTION_DEACTIVATE];
+const DESTRUCTIVE_ACTIONS: readonly string[] = ['delete', 'terminate', 'revoke-tokens', 'revoke-token', 'end', ENCRYPTION_REMOVE_ADMIN, ENCRYPTION_REMOVE_KEY, ENCRYPTION_DEACTIVATE, 'remove', 'abort'];
 
 /**
  * The destructive actions whose typed-name dialog states the removal's impact as its advisory,
@@ -440,6 +534,15 @@ const DESTRUCTIVE_CONSEQUENCES: Readonly<Record<string, Readonly<Record<string, 
   [GLOBAL_MAPPING_LIST]: { delete: STRINGS.globalMappingDeleteConsequence },
   [ROUTINE_MAPPING_LIST]: { delete: STRINGS.routineMappingDeleteConsequence },
   [PACKAGE_MAPPING_LIST]: { delete: STRINGS.packageMappingDeleteConsequence },
+  [SUPERSERVER_LIST]: { delete: STRINGS.superserverDeleteConsequence },
+  // Story 18.26: a connection's Delete and Revoke token each type its name.
+  [MFT_CONNECTION_LIST]: { delete: STRINGS.mftDeleteConsequence, 'revoke-token': STRINGS.mftRevokeConsequence },
+  // Story 18.30: a Doc DB application's Delete types its name.
+  'OcuPilot.Screen.Descriptor.DocDbAppList': { delete: STRINGS.docDbAppDeleteConsequence },
+  // Story 18.31: a privileged routine application's Delete types its name.
+  'OcuPilot.Screen.Descriptor.RoutineAppList': { delete: STRINGS.routineAppDeleteConsequence },
+  // Story 18.32: a REST service's Delete types its package, and keeps the implementation class.
+  'OcuPilot.Screen.Descriptor.RestApiList': { delete: STRINGS.restServiceDeleteConsequence },
   [LOCAL_DATABASE_LIST]: { delete: STRINGS.localDatabaseDeleteConsequence },
   // Story 16.25: the language server's Delete types the server's name.
   'OcuPilot.Screen.Descriptor.LanguageServerList': { delete: STRINGS.languageServerDeleteConsequence },
@@ -459,6 +562,17 @@ const DESTRUCTIVE_CONSEQUENCES: Readonly<Record<string, Readonly<Record<string, 
   [DATA_ELEMENT_ENCRYPTION_KEYS]: { [ENCRYPTION_DEACTIVATE]: STRINGS.encryptionKeyDeactivateDataElementConsequence },
   // Story 19.17: a document database's Drop types its name.
   'OcuPilot.Screen.Descriptor.ExplorerDocDbList': { delete: STRINGS.explorerDocDbDropConsequence },
+  // Story 20.3: a production item's Remove types its name and deletes the settings it holds.
+  'OcuPilot.Screen.Descriptor.InteropItemList': { remove: STRINGS.interopItemRemoveConsequence },
+  // Story 20.5: a lookup table's Delete removes every entry in it, and an entry's Remove removes the table too when it is the last.
+  'OcuPilot.Screen.Descriptor.InteropLookupTableList': { delete: STRINGS.interopLookupDeleteConsequence },
+  'OcuPilot.Screen.Descriptor.InteropLookupEntryList': { remove: STRINGS.interopLookupRemoveConsequence },
+  // Story 20.23: an abort never delivers the messages it takes: all of a queue's, one waiting message, or the message a job keeps retrying.
+  [INTEROP_QUEUE_LIST]: { abort: STRINGS.interopQueueAbortConsequence },
+  [INTEROP_QUEUE_MESSAGE_LIST]: { abort: STRINGS.interopMessageAbortConsequence },
+  [INTEROP_ITEM_QUEUE_TAB]: { abort: STRINGS.interopMessageAbortConsequence },
+  [INTEROP_JOB_LIST]: { abort: STRINGS.interopJobAbortConsequence },
+  [INTEROP_ITEM_JOB_TAB]: { abort: STRINGS.interopJobAbortConsequence },
 };
 
 /**
@@ -501,11 +615,17 @@ const TYPED_NAME_ROWS: Readonly<
   [AUDIT_USER_EVENT_LIST]: { name: 'EventName', field: 'EventName', equals: AGENT_WRITE_EVENT, advisory: STRINGS.proposalAuditWarning },
   // An X.509 credential is typed by its alias, which is also its row key; it carries no advisory.
   'OcuPilot.Screen.Descriptor.X509CredentialList': { name: 'Alias', field: '', equals: '', advisory: '' },
+  // Story 18.10: a percent-class access entry is keyed by its composite id, which no one types, so its Delete types the
+  // entry's class as the row shows it.
+  'OcuPilot.Screen.Descriptor.WebAppPctAccessList': { name: 'Class', field: '', equals: '', advisory: '' },
   // A mapping is keyed by `[namespace, Name]`, whose separator no one can type, so its Delete types
   // the mapping's name and sends the row key.
   [GLOBAL_MAPPING_LIST]: { name: 'Name', field: '', equals: '', advisory: '' },
   [ROUTINE_MAPPING_LIST]: { name: 'Name', field: '', equals: '', advisory: '' },
   [PACKAGE_MAPPING_LIST]: { name: 'Name', field: '', equals: '', advisory: '' },
+  // Story 18.25: a superserver is keyed by `[Port, BindAddress]`, whose separator no one can type, so its
+  // Delete types the port and sends the row key.
+  [SUPERSERVER_LIST]: { name: 'Port', field: '', equals: '', advisory: '' },
   // Story 18.7: a key file's rows are an administrator's `Name` and a key's `Id`, and the write is
   // sent with the key file's composite id, which no one types.
   [ENCRYPTION_KEY_FILE_ADMINS]: { name: 'Name', field: '', equals: '', advisory: '' },
@@ -513,6 +633,24 @@ const TYPED_NAME_ROWS: Readonly<
   // Story 18.22: an active key's row is its `Id`, and the write targets the singleton, which no one types.
   [DATABASE_ENCRYPTION_KEYS]: { name: 'Id', field: '', equals: '', advisory: '' },
   [DATA_ELEMENT_ENCRYPTION_KEYS]: { name: 'Id', field: '', equals: '', advisory: '' },
+  // Story 18.30: a Doc DB application is keyed by `[Namespace, Name]`, whose separator no one can type, so its Delete
+  // types the record's name and sends the row key.
+  'OcuPilot.Screen.Descriptor.DocDbAppList': { name: 'Name', field: '', equals: '', advisory: '' },
+  // Story 18.31: a privileged routine application is keyed by its name, which its Delete types.
+  'OcuPilot.Screen.Descriptor.RoutineAppList': { name: 'Name', field: '', equals: '', advisory: '' },
+  // Story 20.3: a production item is keyed by `[Production, Name]`, whose separator no one can type, so its Remove types
+  // the item's name and sends the row key.
+  'OcuPilot.Screen.Descriptor.InteropItemList': { name: 'Name', field: '', equals: '', advisory: '' },
+  // Story 20.5: a lookup table's Delete types its name, and an entry, keyed by `[Table, Key]` whose separator no one can type,
+  // is removed by typing its key and sending the row key.
+  'OcuPilot.Screen.Descriptor.InteropLookupTableList': { name: 'Name', field: '', equals: '', advisory: '' },
+  'OcuPilot.Screen.Descriptor.InteropLookupEntryList': { name: 'Key', field: '', equals: '', advisory: '' },
+  // Story 20.23: an abort types the queue's name, the message's id or the job's process id, which each list's name column shows.
+  [INTEROP_QUEUE_LIST]: { name: 'Name', field: '', equals: '', advisory: '' },
+  [INTEROP_QUEUE_MESSAGE_LIST]: { name: 'MessageId', field: '', equals: '', advisory: '' },
+  [INTEROP_ITEM_QUEUE_TAB]: { name: 'MessageId', field: '', equals: '', advisory: '' },
+  [INTEROP_JOB_LIST]: { name: 'Job', field: '', equals: '', advisory: '' },
+  [INTEROP_ITEM_JOB_TAB]: { name: 'Job', field: '', equals: '', advisory: '' },
 };
 
 /**
@@ -559,6 +697,26 @@ const WARNING_CONSEQUENCES: Readonly<Record<string, Readonly<Record<string, stri
   // Story 18.21: an authorize lets an application server connect, and a reject refuses it; neither
   // removes anything, so each warns.
   [ECP_SSL_CONNECTION_TAB]: { authorize: STRINGS.ecpSslAuthorizeConsequence, reject: STRINGS.ecpSslRejectConsequence },
+  // Story 20.15: a reset puts a screen back to the permissions its descriptor declares.
+  [SCREEN_PERMISSIONS]: { [SCREEN_PERMISSIONS_RESET]: STRINGS.screenPermissionsResetConsequence },
+  // Story 20.2: each production action but Start states the wait it makes, or what Recover does.
+  'OcuPilot.Screen.Descriptor.InteropProductionList': {
+    stop: STRINGS.interopStopConsequence,
+    restart: STRINGS.interopRestartConsequence,
+    update: STRINGS.interopUpdateConsequence,
+    recover: STRINGS.interopRecoverConsequence,
+  },
+  // Story 20.3: an item's Enable and Disable change the stored configuration, and a running production
+  // reads them only at its next update.
+  'OcuPilot.Screen.Descriptor.InteropItemList': {
+    enable: STRINGS.interopItemPendingConsequence,
+    disable: STRINGS.interopItemPendingConsequence,
+  },
+  // Story 20.22: a reset changes the stored configuration, which a running production reads only at its next update.
+  'OcuPilot.Screen.Descriptor.InteropItemSettingList': { reset: STRINGS.interopItemPendingConsequence },
+  // Story 20.23: a suspend sets the retried message aside, and a stop ends the job within a wait the production's update starts again.
+  [INTEROP_JOB_LIST]: { suspend: STRINGS.interopJobSuspendConsequence, stop: STRINGS.interopJobStopConsequence },
+  [INTEROP_ITEM_JOB_TAB]: { suspend: STRINGS.interopJobSuspendConsequence, stop: STRINGS.interopJobStopConsequence },
 };
 
 /**
@@ -635,6 +793,9 @@ const PUBLISHED_PROBLEMS: readonly string[] = [
   STRINGS.encryptionKeyAllActive,
   STRINGS.encryptionKeyDefault,
 ];
+
+/** The entity type of a production, which the re-read event names (AD-14). */
+const PRODUCTION_ENTITY = 'production';
 
 /** The sentence a refused action shows: a published state refusal, else the envelope's own reason. */
 function refusalReason(result: { readonly reason: string | null; readonly detail: Record<string, unknown> | null }): string {
@@ -1021,7 +1182,9 @@ export class ScreenActionHandler {
     // The row's own name and advisory, where the screen declares them; the row key otherwise.
     const read = TYPED_NAME_ROWS[descriptor];
     const row = read === undefined ? null : rowFields;
-    const name = row?.[read?.name ?? ''];
+    const rowName = row?.[read?.name ?? ''];
+    // A numeric field, a superserver's port, is typed as its digits (Story 18.25).
+    const name = typeof rowName === 'number' ? String(rowName) : rowName;
     this.open(
       'typed-name',
       descriptor,
@@ -1262,8 +1425,19 @@ export class ScreenActionHandler {
         : null;
     if (result.kind !== 'ok') {
       // The envelope's own sentence (AD-39), or a published state refusal. A refused write changed
-      // nothing, so nothing is published and no row is marked.
+      // nothing, so nothing is published and no row is marked -- except a stop that left the production
+      // Suspended or partly stopped, which moved it (Story 20.3): its list re-reads the state it was left in.
       store.setRefusal(result.kind === 'error' ? refusalReason(result) : '');
+      if (result.kind === 'error' && PRODUCTION_STATE_MOVED.includes(result.code ?? '')) {
+        this.injector.get(ChangeBus).publish({
+          kind: 'changed',
+          type: PRODUCTION_ENTITY,
+          scope: scopeFor(NAMESPACE_SCOPE, scope ?? this.injector.get(ScopeService).namespace()),
+          id: target,
+          action: 'updated',
+          tool: addressed.toolIdentifier,
+        });
+      }
       return false;
     }
     const answer = result.body;
@@ -1280,6 +1454,7 @@ export class ScreenActionHandler {
       action: (answer?.action ?? '') as ChangeAction,
       // AD-58: the instance's verdict rides beside the mark; the client compares nothing.
       readBack: readBackOf(answer?.readBack),
+      tool: addressed.toolIdentifier,
     });
     return true;
   }

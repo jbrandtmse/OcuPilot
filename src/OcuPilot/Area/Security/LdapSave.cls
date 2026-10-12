@@ -66,6 +66,7 @@ ClassMethod ProhibitedClass() As %String
 ClassMethod HandleUpdate(pId As %String) As %Status
 {
     Set tSC = $$$OK
+    Set tHoldKey = ""
     Set (tPassword, tBody) = ""
     Try {
         Set tGateSC = ..Gate(..#UPDATETOOL, .tRefused)
@@ -79,6 +80,11 @@ ClassMethod HandleUpdate(pId As %String) As %Status
         }
         Set tHasPassword = ..TakePassword(tBody, .tPassword, .tShaped)
         Set tName = ##class(OcuPilot.Kernel.EntityId).Decode(pId)
+        Set tHoldSC = ##class(OcuPilot.Kernel.Proposal.Operation).HoldTool(..#UPDATETOOL, tName, .tHeld, .tHoldKey)
+        If $$$ISERR(tHoldSC) || 'tHeld {
+            Set tSC = ##class(OcuPilot.Api.Error).RenderTargetBusy(tHoldSC)
+            Quit
+        }
         Set tPerformSC = ..Update(tName, tBody, .tHttp, .tFault, .tViolations, .tWrite, tShaped)
         Set tBody = ""
         If $$$ISERR(tPerformSC) && (+$Get(tHttp) = 404) && ($Get(tViolations) = 0) {
@@ -105,6 +111,7 @@ ClassMethod HandleUpdate(pId As %String) As %Status
         Set (tPassword, tBody) = ""
         Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ex)
     }
+    Do ##class(OcuPilot.Kernel.Proposal.Operation).Release(tHoldKey)
     Quit tSC
 }
 
@@ -116,6 +123,7 @@ ClassMethod HandleUpdate(pId As %String) As %Status
 ClassMethod HandleCreate() As %Status
 {
     Set tSC = $$$OK
+    Set tHoldKey = ""
     Set (tPassword, tBody) = ""
     Try {
         Set tGateSC = ..Gate(..#CREATETOOL, .tRefused)
@@ -131,6 +139,11 @@ ClassMethod HandleCreate() As %Status
         Set tName = ""
         If tBody.%GetTypeOf(..#IDARGUMENT) = "string" Set tName = tBody.%Get(..#IDARGUMENT)
         Do tBody.%Remove(..#IDARGUMENT)
+        Set tHoldSC = ##class(OcuPilot.Kernel.Proposal.Operation).HoldTool(..#CREATETOOL, tName, .tHeld, .tHoldKey)
+        If $$$ISERR(tHoldSC) || 'tHeld {
+            Set tSC = ##class(OcuPilot.Api.Error).RenderTargetBusy(tHoldSC)
+            Quit
+        }
         Set tPerformSC = ..Create(tName, tBody, .tHttp, .tFault, .tViolations, .tWrite, tShaped)
         Set tBody = ""
         Set (tSecretsReason, tReadBack) = ""
@@ -148,6 +161,7 @@ ClassMethod HandleCreate() As %Status
         Set (tPassword, tBody) = ""
         Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ex)
     }
+    Do ##class(OcuPilot.Kernel.Proposal.Operation).Release(tHoldKey)
     Quit tSC
 }
 

@@ -145,6 +145,14 @@ afterEach(() => {
 });
 
 describe('the user editor (Story 9.1)', () => {
+  it('draws the SQL privileges tab only once it is selected', async () => {
+    const { fixture, host } = await mount();
+    expect(host.querySelector('[data-ocu-sqlpriv="tab"]')).toBeNull();
+    tabs(host)[3].click();
+    await settle(fixture);
+    expect(host.querySelector('[data-ocu-sqlpriv="tab"]')).not.toBeNull();
+  });
+
   it('opens an account on the General, Roles and Effective privileges tabs, its settings in the classic editor\u2019s order', async () => {
     // Mutation (Rule 19): move the Comment block below the email field -> the order assertion goes red.
     const { host } = await mount();
@@ -152,6 +160,7 @@ describe('the user editor (Story 9.1)', () => {
       STRINGS.processDetailsGroupGeneral,
       STRINGS.userColumnRoles,
       STRINGS.userEffectiveTab,
+      STRINGS.sqlPrivilegesLabel,
     ]);
     const general = host.querySelector('.ocu-form-fields') as HTMLElement;
     const names = [...general.querySelectorAll('.ocu-field-label, .ocu-field-checkbox > span')].map((node) => node.textContent?.trim());

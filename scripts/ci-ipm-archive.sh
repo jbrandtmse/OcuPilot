@@ -16,6 +16,15 @@
 # The three IPM verbs it issues are `load`, `package` and `list`, and `ui/tools/ipm-archive.test.mjs`
 # holds that set equal to its declared allow-list in both directions.
 #
+# **The archive is installed into a namespace created without interoperability** (Story 20.28; AD-62
+# item 12), not into HSCUSTOM: the install instance gets a namespace `NOINTEROP` over its own database,
+# with no `EnableNamespace`, and its interoperability is read back and required to be 0. IPM is
+# imported into it, `load` and `list` run in it, the compiled OcuPilot class count there must equal
+# the archive's, with no OcuPilot.Test class among them, and smoke runs with `--namespace NOINTEROP`.
+# The build instance still loads the module into HSCUSTOM, where its full lifecycle (the `<Invoke>`
+# included) runs. Named limit: no leg here runs smoke on an archive installed into an
+# interoperability namespace.
+#
 # Measured on the pinned image (IPM 0.10.5), not recalled:
 #   - `package <module> -path X` writes `X.tgz`, a sibling of the directory `X` it also creates.
 #   - It prints no line naming that file. So the artifact is READ BACK from the container's own
@@ -156,9 +165,10 @@ EOF
 # IPM, imported from the offline copy the image already carries, and the repository table read
 # back. AD-18: a stock instance carries no %IPM class at all, so this is the import that makes the
 # two verbs below exist -- and it creates no repository row, which the marker proves rather than
-# assumes.
+# assumes. The third argument is the namespace to import into (HSCUSTOM when omitted); IPM 0.10 maps
+# %IPM into that one namespace only.
 import_ipm() {
-    RAW=$(docker exec -i "$1" iris session iris -U HSCUSTOM 2>&1 <<'EOF'
+    RAW=$(docker exec -i "$1" iris session iris -U "${3:-HSCUSTOM}" 2>&1 <<'EOF'
 Set tSC = $System.OBJ.Load("/usr/irissys/dist/install/misc/zpm.xml","ck")
 Write "OCUPILOT-"_"IPM-START:"_$Select($System.Status.IsOK(tSC):"OK",1:"FAILED")_":OCUPILOT-"_"IPM-END",!
 Set tRS = ##class(%SQL.Statement).%ExecDirect(,"SELECT COUNT(*) FROM %IPM_Repo.Definition")
@@ -181,9 +191,9 @@ EOF
 # The same count, read again after a verb has run. Taken only once, at import, the zero would
 # describe the instance BEFORE the phases it is offered as evidence about; every verb that installs
 # anything is followed by this, so no row created while a module was being brought in can appear
-# and go unread.
+# and go unread. The fourth argument is the namespace to read in (HSCUSTOM when omitted).
 assert_no_repositories() {
-    RAW=$(docker exec -i "$1" iris session iris -U HSCUSTOM 2>&1 <<'EOF'
+    RAW=$(docker exec -i "$1" iris session iris -U "${4:-HSCUSTOM}" 2>&1 <<'EOF'
 Set tRS = ##class(%SQL.Statement).%ExecDirect(,"SELECT COUNT(*) FROM %IPM_Repo.Definition")
 Write "OCUPILOT-"_"REPOSITORIES-START:"_$Select(tRS.%Next():tRS.%GetData(1),1:"unread")_":OCUPILOT-"_"REPOSITORIES-END",!
 Halt
@@ -388,14 +398,48 @@ echo "ci-ipm-archive: the archive's manifest declares the same $DECLARED item(s)
 
 # --- Phase 2: the local installation on a second, fresh instance --------------------------------
 
+# The namespace the archive installs into. It is created here, over its own database, with no
+# `EnableNamespace` call, so it does not report interoperability (AD-62 item 12).
+NOINTEROP_NS="NOINTEROP"
+
 echo "ci-ipm-archive: starting $INSTALL_NAME from $IMAGE (no network, no port mapping, no durable volume)"
 docker rm -f "$INSTALL_NAME" >/dev/null 2>&1 || true
 docker run -d --network none --name "$INSTALL_NAME" -v "$DIR/artifact:/opt/ocupilot-archive:ro" "$IMAGE" >/dev/null
 wait_for_session "$INSTALL_NAME"
-import_ipm "$INSTALL_NAME" "local-install"
 
-echo "ci-ipm-archive: loading /opt/ocupilot-archive/$ARTIFACT_NAME on $INSTALL_NAME"
-INSTALL_RAW=$(docker exec -i "$INSTALL_NAME" iris session iris -U HSCUSTOM 2>&1 <<EOF
+# The resource, then the directory under the manager directory (never the manager directory itself),
+# the database, its configuration and the namespace. `iris session` runs each piped line as its own
+# command, so every statement is one line. The namespace's interoperability is read back by marker and
+# must be 0: an install into one that reported it would prove nothing.
+echo "ci-ipm-archive: creating the namespace $NOINTEROP_NS on $INSTALL_NAME, without interoperability"
+NAMESPACE_RAW=$(docker exec -i "$INSTALL_NAME" iris session iris -U %SYS 2>&1 <<EOF
+Set tNs = "$NOINTEROP_NS"
+Set tDir = ##class(%File).NormalizeDirectory(\$System.Util.ManagerDirectory())_\$ZConvert(tNs,"L")_"/"
+Set tRes = "%DB_"_tNs
+Set tSC = ##class(Security.Resources).Create(tRes,"OcuPilot package job: install target database (throwaway)","")
+If \$System.Status.IsOK(tSC) Set tSC = \$Select(##class(%File).CreateDirectoryChain(tDir):1,1:\$System.Status.Error(5001,"the directory could not be created"))
+If \$System.Status.IsOK(tSC) Set tSC = ##class(SYS.Database).CreateDatabase(tDir,1,,,tRes)
+If \$System.Status.IsOK(tSC) Kill tDb Set tDb("Directory") = tDir Set tSC = ##class(Config.Databases).Create(tNs,.tDb)
+If \$System.Status.IsOK(tSC) Kill tSpace Set tSpace("Globals") = tNs Set tSpace("Routines") = tNs Set tSC = ##class(Config.Namespaces).Create(tNs,.tSpace)
+Write "OCUPILOT-"_"NAMESPACE-START:"_\$Select(\$System.Status.IsOK(tSC):"OK",1:"FAILED "_\$System.Status.GetErrorText(tSC))_":OCUPILOT-"_"NAMESPACE-END",!
+Write "OCUPILOT-"_"INTEROP-START:"_##class(%Library.EnsembleMgr).IsEnsembleNamespace(tNs)_":OCUPILOT-"_"INTEROP-END",!
+Halt
+EOF
+)
+if [ "$(marker "$NAMESPACE_RAW" "NAMESPACE")" != "OK" ]; then
+    printf '%s\n' "$NAMESPACE_RAW" | tail -n 30
+    fail "local-install" "the namespace $NOINTEROP_NS could not be created on $INSTALL_NAME"
+fi
+if [ "$(marker "$NAMESPACE_RAW" "INTEROP")" != "0" ]; then
+    printf '%s\n' "$NAMESPACE_RAW" | tail -n 30
+    fail "local-install" "the namespace $NOINTEROP_NS does not read back as one without interoperability on $INSTALL_NAME, so an install into it would prove nothing"
+fi
+echo "ci-ipm-archive: $NOINTEROP_NS exists on $INSTALL_NAME and reports no interoperability"
+
+import_ipm "$INSTALL_NAME" "local-install" "$NOINTEROP_NS"
+
+echo "ci-ipm-archive: loading /opt/ocupilot-archive/$ARTIFACT_NAME into $NOINTEROP_NS on $INSTALL_NAME"
+INSTALL_RAW=$(docker exec -i "$INSTALL_NAME" iris session iris -U "$NOINTEROP_NS" 2>&1 <<EOF
 Set tSC = ##class(%IPM.Main).Shell("load /opt/ocupilot-archive/$ARTIFACT_NAME",1,0)
 Write "OCUPILOT-"_"INSTALLED-START:"_\$Select(\$System.Status.IsOK(tSC):"OK",1:"FAILED")_":OCUPILOT-"_"INSTALLED-END",!
 Halt
@@ -403,14 +447,14 @@ EOF
 )
 if [ "$(marker "$INSTALL_RAW" "INSTALLED")" != "OK" ]; then
     printf '%s\n' "$INSTALL_RAW" | tail -n 40
-    fail "local-install" "the archive did not load on $INSTALL_NAME"
+    fail "local-install" "the archive did not load into $NOINTEROP_NS on $INSTALL_NAME"
 fi
 
-assert_no_repositories "$INSTALL_NAME" "local-install" "the archive install"
+assert_no_repositories "$INSTALL_NAME" "local-install" "the archive install" "$NOINTEROP_NS"
 
 # What the instance itself now says it carries, in its own words. The module name is required in
 # that answer: an archive that loaded and left nothing behind would otherwise read as a success.
-LIST_RAW=$(docker exec -i "$INSTALL_NAME" iris session iris -U HSCUSTOM 2>&1 <<'EOF'
+LIST_RAW=$(docker exec -i "$INSTALL_NAME" iris session iris -U "$NOINTEROP_NS" 2>&1 <<'EOF'
 Set tSC = ##class(%IPM.Main).Shell("list",1,0)
 Write "OCUPILOT-"_"LISTED-START:"_$Select($System.Status.IsOK(tSC):"OK",1:"FAILED")_":OCUPILOT-"_"LISTED-END",!
 Halt
@@ -425,6 +469,36 @@ if [ "$(marker "$LIST_RAW" "LISTED")" != "OK" ] || [ -z "$LISTED" ]; then
     fail "local-install" "$INSTALL_NAME does not name the ocupilot module among the modules it carries"
 fi
 echo "ci-ipm-archive: $INSTALL_NAME reports: $LISTED"
+
+# The classes the install compiled in the namespace without interoperability, counted by the dictionary
+# there: every class the archive carries with a current compile, none generated by another class, and
+# none of the test scope. A class whose compile failed keeps its dictionary row, so only a current
+# compile counts. The namespace's interoperability is read again: an install that turned it on would
+# leave smoke judging an interoperability namespace.
+COMPILED_RAW=$(docker exec -i "$INSTALL_NAME" iris session iris -U "$NOINTEROP_NS" 2>&1 <<'EOF'
+Set tRS = ##class(%SQL.Statement).%ExecDirect(,"SELECT Name FROM %Dictionary.CompiledClass WHERE Name %STARTSWITH 'OcuPilot.' AND (GeneratedBy IS NULL OR GeneratedBy = '')") Set tN = 0 For  Quit:'tRS.%Next()  Set tN = tN + ''$System.OBJ.IsUpToDate(tRS.%GetData(1))
+Write "OCUPILOT-"_"COMPILED-START:"_tN_":OCUPILOT-"_"COMPILED-END",!
+Set tRS = ##class(%SQL.Statement).%ExecDirect(,"SELECT COUNT(*) FROM %Dictionary.CompiledClass WHERE Name %STARTSWITH 'OcuPilot.Test.'")
+Write "OCUPILOT-"_"COMPILEDTEST-START:"_$Select(tRS.%Next():tRS.%GetData(1),1:"unread")_":OCUPILOT-"_"COMPILEDTEST-END",!
+Write "OCUPILOT-"_"INTEROP-START:"_##class(%Library.EnsembleMgr).IsEnsembleNamespace($Namespace)_":OCUPILOT-"_"INTEROP-END",!
+Halt
+EOF
+)
+if [ "$(marker "$COMPILED_RAW" "INTEROP")" != "0" ]; then
+    printf '%s\n' "$COMPILED_RAW" | tail -n 20
+    fail "local-install" "$NOINTEROP_NS reports interoperability once the archive is installed, so smoke there would not judge a namespace without it"
+fi
+COMPILED=$(marker "$COMPILED_RAW" "COMPILED")
+COMPILED_TEST=$(marker "$COMPILED_RAW" "COMPILEDTEST")
+if [ "$COMPILED" != "$CLASS_COUNT" ]; then
+    printf '%s\n' "$COMPILED_RAW" | tail -n 20
+    fail "local-install" "$NOINTEROP_NS holds '$COMPILED' compiled OcuPilot class(es) against the $CLASS_COUNT the archive carries; every shipped class must compile in a namespace without interoperability"
+fi
+if [ "$COMPILED_TEST" != "0" ]; then
+    printf '%s\n' "$COMPILED_RAW" | tail -n 20
+    fail "local-install" "$NOINTEROP_NS holds '$COMPILED_TEST' compiled OcuPilot.Test class(es); the archive carries none"
+fi
+echo "ci-ipm-archive: $NOINTEROP_NS holds $COMPILED compiled OcuPilot class(es), the archive's $CLASS_COUNT, and no OcuPilot.Test class, and still reports no interoperability"
 
 # A fresh Community instance expires _SYSTEM on first login, and the manifest's <Invoke> carries no
 # <Arg>, so Install()'s pUnexpire keeps its 0 default and an IPM installation deliberately leaves
@@ -443,18 +517,18 @@ if [ "$(marker "$UNEXPIRE_RAW" "UNEXPIRED")" != "OK" ]; then
 fi
 echo "ci-ipm-archive: _SYSTEM unexpired on $INSTALL_NAME by name -- the operator act an IPM installation leaves to the operator (AD-17)"
 
-# The one smoke path (AD-45), asked of the instance the archive built. Its status is read from the
-# command itself; a pipeline would report the last stage's status instead, so the output goes to a
-# file and is printed afterwards.
+# The one smoke path (AD-45), asked of the instance the archive built, in the namespace it was
+# installed into. Its status is read from the command itself; a pipeline would report the last
+# stage's status instead, so the output goes to a file and is printed afterwards.
 SMOKE_STATUS=0
-sh "$REPO_ROOT/scripts/smoke.sh" --container "$INSTALL_NAME" --user _SYSTEM --password SYS > "$DIR/smoke.log" 2>&1 || SMOKE_STATUS=$?
+sh "$REPO_ROOT/scripts/smoke.sh" --container "$INSTALL_NAME" --user _SYSTEM --password SYS --namespace "$NOINTEROP_NS" > "$DIR/smoke.log" 2>&1 || SMOKE_STATUS=$?
 cat "$DIR/smoke.log"
 EXECUTED=$(sed -n 's/.*executed=\([0-9][0-9]*\).*/\1/p' "$DIR/smoke.log" | tail -n 1)
 if [ "$SMOKE_STATUS" -ne 0 ]; then
-    fail "local-install" "smoke reported a verdict other than PASS on $INSTALL_NAME (exit $SMOKE_STATUS)"
+    fail "local-install" "smoke reported a verdict other than PASS on $INSTALL_NAME in $NOINTEROP_NS (exit $SMOKE_STATUS)"
 fi
 if [ "${EXECUTED:-0}" -lt 1 ]; then
     fail "local-install" "smoke executed ${EXECUTED:-0} check(s) on $INSTALL_NAME; zero executed checks is a failure, never a pass"
 fi
 
-echo "ci-ipm-archive: $ARTIFACT_NAME ($ARCHIVE_BYTES bytes, $CLASS_COUNT class(es), $BUNDLE_COUNT bundle member(s)) installed on a second fresh instance and smoke PASSED with $EXECUTED check(s) executed; no package registry was reachable from either container."
+echo "ci-ipm-archive: $ARTIFACT_NAME ($ARCHIVE_BYTES bytes, $CLASS_COUNT class(es), $BUNDLE_COUNT bundle member(s)) installed into $NOINTEROP_NS, a namespace without interoperability, on a second fresh instance and smoke PASSED with $EXECUTED check(s) executed; no package registry was reachable from either container."

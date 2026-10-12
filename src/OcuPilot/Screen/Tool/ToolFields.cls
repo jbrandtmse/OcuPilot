@@ -212,6 +212,25 @@ XData Tools
   {"path":"Description","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
   {"path":"Enabled","shape":"literal","templateType":"string","itemType":"","class":"ordinary"}
 ]},
+"permissions.users.copy": {"fieldList":"Security.User","fields":[
+  {"path":"AccountNeverExpires","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"},
+  {"path":"AutheEnabled","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"ChangePassword","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"},
+  {"path":"Comment","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"EmailAddress","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"Enabled","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"},
+  {"path":"ExpirationDate","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"FullName","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"HOTPKeyDisplay","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"},
+  {"path":"NameSpace","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"PasswordNeverExpires","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"},
+  {"path":"PhoneNumber","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"PhoneProvider","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"Roles","shape":"array","templateType":"array","itemType":"","class":"opaque","compare":"unordered"},
+  {"path":"EscalationRoles","shape":"array","templateType":"array","itemType":"","class":"opaque"},
+  {"path":"Routine","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"Password","shape":"literal","templateType":"string","class":"secret","authored":true}
+]},
 "permissions.users.create": {"fieldList":"Security.User","fields":[
   {"path":"AccountNeverExpires","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"},
   {"path":"AutheEnabled","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
@@ -282,6 +301,53 @@ XData Tools
 "security.audituserevents.update": {"fieldList":"Security.Audit.Event:Security.Events","fields":[
   {"path":"Description","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
   {"path":"Enabled","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"}
+]},
+"security.authoptions.smtppassword": {"fieldList":"Security.WebAuth","fields":[
+  {"path":"AutheUnauthenticated","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"},
+  {"path":"AutheOS","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"},
+  {"path":"AutheOSDelegated","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"},
+  {"path":"AutheOSLDAP","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"},
+  {"path":"AutheCache","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"},
+  {"path":"AutheDelegated","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"},
+  {"path":"AutheAlwaysTryDelegated","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"},
+  {"path":"AutheKB","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"},
+  {"path":"AutheLDAP","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"},
+  {"path":"AutheLDAPCache","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"},
+  {"path":"AutheOAuth2","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"},
+  {"path":"AutheLoginToken","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"},
+  {"path":"AutheTwoFactorSMS","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"},
+  {"path":"AutheTwoFactorPW","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"},
+  {"path":"LoginCookieTimeout","shape":"literal","templateType":"number","itemType":"","class":"ordinary"},
+  {"path":"SMTPServer","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"SMTPUsername","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"TwoFactorFrom","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"TwoFactorTimeout","shape":"literal","templateType":"number","itemType":"","class":"ordinary"},
+  {"path":"JWTIssuer","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"JWTSigAlg","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"SMTPPassword","shape":"literal","templateType":"string","class":"secret","authored":true}
+]},
+"security.authoptions.update": {"fieldList":"Security.WebAuth","fields":[
+  {"path":"AutheUnauthenticated","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"},
+  {"path":"AutheOS","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"},
+  {"path":"AutheOSDelegated","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"},
+  {"path":"AutheOSLDAP","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"},
+  {"path":"AutheCache","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"},
+  {"path":"AutheDelegated","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"},
+  {"path":"AutheAlwaysTryDelegated","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"},
+  {"path":"AutheKB","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"},
+  {"path":"AutheLDAP","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"},
+  {"path":"AutheLDAPCache","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"},
+  {"path":"AutheOAuth2","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"},
+  {"path":"AutheLoginToken","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"},
+  {"path":"AutheTwoFactorSMS","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"},
+  {"path":"AutheTwoFactorPW","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"},
+  {"path":"LoginCookieTimeout","shape":"literal","templateType":"number","itemType":"","class":"ordinary"},
+  {"path":"SMTPServer","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"SMTPUsername","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"TwoFactorFrom","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"TwoFactorTimeout","shape":"literal","templateType":"number","itemType":"","class":"ordinary"},
+  {"path":"JWTIssuer","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"JWTSigAlg","shape":"literal","templateType":"string","itemType":"","class":"ordinary"}
 ]},
 "security.databaseencryption.activate": {"fieldList":"Security.Encryption.File","fields":[
   {"path":"AdminPassword","shape":"literal","templateType":"string","class":"secret","authored":true}
@@ -408,6 +474,20 @@ XData Tools
   {"path":"LDAPSearchUsername","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
   {"path":"LDAPServerTimeout","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
   {"path":"LDAPUniqueDNIdentifier","shape":"literal","templateType":"string","itemType":"","class":"ordinary"}
+]},
+"security.mftconnections.create": {"fieldList":"Security.MFT","fields":[
+  {"path":"Service","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"URL","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"SSLConfiguration","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"Username","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"ApplicationName","shape":"literal","templateType":"string","itemType":"","class":"ordinary"}
+]},
+"security.mftconnections.update": {"fieldList":"Security.MFT","fields":[
+  {"path":"Service","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"URL","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"SSLConfiguration","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"Username","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"ApplicationName","shape":"literal","templateType":"string","itemType":"","class":"ordinary"}
 ]},
 "security.oauthclients.create": {"fieldList":"Security.OAuth2.Client.ClientConfiguration","fields":[
   {"path":"ServerDefinition","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
@@ -651,6 +731,46 @@ XData Tools
   {"path":"Secret64","shape":"literal","templateType":"string","itemType":"","class":"secret"},
   {"path":"Usage","shape":"literal","templateType":"number","itemType":"","class":"ordinary"}
 ]},
+"security.secrets.creatersa": {"fieldList":"Wallet.Secret:%Wallet.RSA","fields":[
+  {"path":"Certificate","shape":"literal","templateType":"string","itemType":"","class":"secret"},
+  {"path":"CertificateFile","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"HasCertificate","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"},
+  {"path":"HasPrivateKey","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"},
+  {"path":"Length","shape":"literal","templateType":"number","itemType":"","class":"ordinary"},
+  {"path":"Password","shape":"literal","templateType":"string","itemType":"","class":"secret"},
+  {"path":"PrivateKey","shape":"literal","templateType":"string","itemType":"","class":"secret"},
+  {"path":"PrivateKeyFile","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"PublicKey","shape":"literal","templateType":"string","itemType":"","class":"secret"},
+  {"path":"PublicKeyFile","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"Secret","shape":"literal","templateType":"string","itemType":"","class":"secret"},
+  {"path":"Secret64","shape":"literal","templateType":"string","itemType":"","class":"secret"}
+]},
+"security.secrets.createsymmetric": {"fieldList":"Wallet.Secret:%Wallet.SymmetricKey","fields":[
+  {"path":"KeyId","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"Length","shape":"literal","templateType":"number","itemType":"","class":"ordinary"},
+  {"path":"Secret","shape":"literal","templateType":"string","itemType":"","class":"secret"},
+  {"path":"Secret64","shape":"literal","templateType":"string","itemType":"","class":"secret"}
+]},
+"security.secrets.replacersa": {"fieldList":"Wallet.Secret:%Wallet.RSA","fields":[
+  {"path":"Certificate","shape":"literal","templateType":"string","itemType":"","class":"secret"},
+  {"path":"CertificateFile","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"HasCertificate","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"},
+  {"path":"HasPrivateKey","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"},
+  {"path":"Length","shape":"literal","templateType":"number","itemType":"","class":"ordinary"},
+  {"path":"Password","shape":"literal","templateType":"string","itemType":"","class":"secret"},
+  {"path":"PrivateKey","shape":"literal","templateType":"string","itemType":"","class":"secret"},
+  {"path":"PrivateKeyFile","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"PublicKey","shape":"literal","templateType":"string","itemType":"","class":"secret"},
+  {"path":"PublicKeyFile","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"Secret","shape":"literal","templateType":"string","itemType":"","class":"secret"},
+  {"path":"Secret64","shape":"literal","templateType":"string","itemType":"","class":"secret"}
+]},
+"security.secrets.replacesymmetric": {"fieldList":"Wallet.Secret:%Wallet.SymmetricKey","fields":[
+  {"path":"KeyId","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"Length","shape":"literal","templateType":"number","itemType":"","class":"ordinary"},
+  {"path":"Secret","shape":"literal","templateType":"string","itemType":"","class":"secret"},
+  {"path":"Secret64","shape":"literal","templateType":"string","itemType":"","class":"secret"}
+]},
 "security.secrets.update": {"fieldList":"Wallet.Secret:%Wallet.KeyValue","fields":[
   {"path":"AllowedHosts","shape":"array","templateType":"array","itemType":"","class":"opaque"},
   {"path":"RequireTLS","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"},
@@ -706,6 +826,42 @@ XData Tools
   {"path":"VerifyPeer","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
   {"path":"PrivateKeyPassword","shape":"literal","templateType":"string","itemType":"","class":"secret"}
 ]},
+"security.superservers.create": {"fieldList":"Security.Superserver","fields":[
+  {"path":"Description","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"EnableCacheDirect","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"},
+  {"path":"EnableClients","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"},
+  {"path":"EnableCSP","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"},
+  {"path":"EnableDataCheck","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"},
+  {"path":"EnableECP","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"},
+  {"path":"EnableMirror","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"},
+  {"path":"EnableNodeJS","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"},
+  {"path":"EnableShadows","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"},
+  {"path":"EnableSharding","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"},
+  {"path":"EnableSNMP","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"},
+  {"path":"EnableWebLink","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"},
+  {"path":"Enabled","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"},
+  {"path":"SSLConfig","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"SSLSupportLevel","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"SystemDefault","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"}
+]},
+"security.superservers.update": {"fieldList":"Security.Superserver","fields":[
+  {"path":"Description","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"EnableCacheDirect","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"},
+  {"path":"EnableClients","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"},
+  {"path":"EnableCSP","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"},
+  {"path":"EnableDataCheck","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"},
+  {"path":"EnableECP","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"},
+  {"path":"EnableMirror","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"},
+  {"path":"EnableNodeJS","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"},
+  {"path":"EnableShadows","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"},
+  {"path":"EnableSharding","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"},
+  {"path":"EnableSNMP","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"},
+  {"path":"EnableWebLink","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"},
+  {"path":"Enabled","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"},
+  {"path":"SSLConfig","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"SSLSupportLevel","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"SystemDefault","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"}
+]},
 "security.x509.import": {"fieldList":"Security.X509Credential","fields":[
   {"path":"Alias","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
   {"path":"OwnerList[]","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
@@ -728,7 +884,7 @@ XData Tools
 ]},
 "tasks.schedule.create": {"fieldList":"Task.CRUD","fields":[
   {"path":"Name","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
-  {"path":"RunAsUser","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"RunAsUser","shape":"literal","templateType":"string","itemType":"","class":"ordinary","compare":"caller"},
   {"path":"EmailOnCompletion[]","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
   {"path":"EmailOnError[]","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
   {"path":"EmailOnExpiration[]","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
@@ -799,6 +955,16 @@ XData Tools
   {"path":"RescheduleOnStart","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
   {"path":"Description","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
   {"path":"Settings","shape":"object","templateType":"object","itemType":"","class":"opaque","compare":"written"}
+]},
+"webapp.docdbapps.create": {"fieldList":"DocDB","fields":[
+  {"path":"Description","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"Enabled","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"Resource","shape":"literal","templateType":"string","itemType":"","class":"ordinary"}
+]},
+"webapp.docdbapps.update": {"fieldList":"DocDB","fields":[
+  {"path":"Description","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"Enabled","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"Resource","shape":"literal","templateType":"string","itemType":"","class":"ordinary"}
 ]},
 "webapp.list.create": {"fieldList":"WebApp.App","fields":[
   {"path":"AutheEnabled","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
@@ -897,6 +1063,29 @@ XData Tools
   {"path":"WSGICallable","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
   {"path":"WSGIDebug","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"},
   {"path":"WSGIType","shape":"literal","templateType":"string","itemType":"","class":"ordinary"}
+]},
+"webapp.pctaccess.create": {"fieldList":"WebApp.PctClassAccess","fields":[
+  {"path":"AllowAccess","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"}
+]},
+"webapp.routineapps.create": {"fieldList":"Security.PrivilegedRoutine","fields":[
+  {"path":"Routines[].Db","shape":"literal","templateType":"string","itemType":"","class":"secret"},
+  {"path":"Routines[].RoutineOrClass","shape":"literal","templateType":"string","itemType":"","class":"secret"},
+  {"path":"Routines[].Type","shape":"literal","templateType":"string","itemType":"","class":"secret"},
+  {"path":"Description","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"Enabled","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"},
+  {"path":"Resource","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"MatchRoles[].MatchRole","shape":"literal","templateType":"string","itemType":"","class":"secret"},
+  {"path":"MatchRoles[].TargetRoles[]","shape":"literal","templateType":"string","itemType":"","class":"secret"}
+]},
+"webapp.routineapps.update": {"fieldList":"Security.PrivilegedRoutine","fields":[
+  {"path":"Routines[].Db","shape":"literal","templateType":"string","itemType":"","class":"secret"},
+  {"path":"Routines[].RoutineOrClass","shape":"literal","templateType":"string","itemType":"","class":"secret"},
+  {"path":"Routines[].Type","shape":"literal","templateType":"string","itemType":"","class":"secret"},
+  {"path":"Description","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"Enabled","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"},
+  {"path":"Resource","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"MatchRoles[].MatchRole","shape":"literal","templateType":"string","itemType":"","class":"secret"},
+  {"path":"MatchRoles[].TargetRoles[]","shape":"literal","templateType":"string","itemType":"","class":"secret"}
 ]}
 }
 }

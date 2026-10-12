@@ -26,6 +26,13 @@ ClassMethod PollTask(pGuid As %String, Output pAnswer As %DynamicObject, Output 
     Quit tSC
 }
 
+/// <p>Route the log line to <class>OcuPilot.Test.FaultProbe</class>, so a test reads what the port
+/// logged and nothing reaches <file>messages.log</file>.</p>
+ClassMethod LogFault(pMessage As %String, pStatus As %Status, pCode As %String = "")
+{
+    Do ##class(OcuPilot.Test.FaultProbe).LogRaw("adminport", pMessage, pStatus, pCode)
+}
+
 /// <p>The id of the task polled last in this process, or <code>""</code>.</p>
 ClassMethod LastTask() As %String
 {

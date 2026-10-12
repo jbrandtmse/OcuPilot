@@ -391,6 +391,8 @@ function runnerTree() {
     '      ;;',
     '  esac',
     'fi',
+    'printf \'%s\\n\' "OCUPILOT-GOVASIDE-START:ok:OCUPILOT-GOVASIDE-END"',
+    'printf \'%s\\n\' "OCUPILOT-GOVBACK-START:ok:OCUPILOT-GOVBACK-END"',
     'printf \'%s\\n\' "OCUPILOT-PROBEAPPS-BEFORE-START::OCUPILOT-PROBEAPPS-BEFORE-END"',
     'printf \'%s\\n\' "OCUPILOT-RUN-START:$n:${OCUPILOT_STUB_TOTAL:-3}:$failed:1:1:OCUPILOT-RUN-END"',
     'printf \'%s\\n\' "OCUPILOT-FAILS-START:$fails:OCUPILOT-FAILS-END"',

@@ -6,8 +6,9 @@
 /// <p>The sources are <code>a</code> an audit user name (a failed login), <code>b</code> a
 /// messages.log line, <code>c</code> an application error's text in <parameter>ERRORNAMESPACE</parameter>,
 /// <code>d</code> a probe task's description, <code>e</code> the probe role's description,
-/// <code>f</code> a probe user's name, <code>h</code> a probe class's doc comment, <code>i</code>
-/// a comment line of a probe class in <parameter>SEARCHNAMESPACE</parameter>, which a code search
+/// <code>f</code> a probe user's name, <code>h</code> a probe class's doc comment, <code>p</code> the
+/// same class's source text, read by the agent's class source tool (Story 20.19), <code>i</code> a
+/// comment line of a probe class in <parameter>SEARCHNAMESPACE</parameter>, which a code search
 /// matches, <code>j</code> a comment line of a probe table's trigger code in
 /// <parameter>TRIGGERNAMESPACE</parameter>, and, in <parameter>CATALOGNAMESPACE</parameter>,
 /// <code>k</code> a probe view's text, <code>l</code> a probe SQL procedure's description and
@@ -159,10 +160,10 @@ ClassMethod Armed(pVariable As %String) As %Status
 }
 
 /// <p>Plant <var>pSeed</var> in source <var>pSource</var> (<code>a</code> to <code>f</code>, and
-/// <code>h</code> to <code>o</code>). <var>pRef</var> is what <method>Remove</method> removes by:
+/// <code>h</code> to <code>p</code>). <var>pRef</var> is what <method>Remove</method> removes by:
 /// <code>""</code> for the append-only <code>a</code> and <code>b</code>, <code>date|number</code>
 /// for <code>c</code>, the task id for <code>d</code>, the role name for <code>e</code>, the user
-/// name for <code>f</code>, the class name for <code>h</code> and <code>i</code>, the table for
+/// name for <code>f</code>, the class name for <code>h</code>, <code>p</code> and <code>i</code>, the table for
 /// <code>j</code> and <code>m</code>, the view for <code>k</code>, the procedure for <code>l</code>
 /// the probe job's pid for <code>n</code> and the table for <code>o</code>.</p>
 ClassMethod Plant(pSource As %String, pSeed As %String, Output pRef As %String) As %Status
@@ -195,7 +196,7 @@ ClassMethod Plant(pSource As %String, pSeed As %String, Output pRef As %String) 
         } ElseIf pSource = "f" {
             Set tSC = ..CreateUser(..#USERPREFIX _ pSeed)
             If $$$ISOK(tSC) Set pRef = ..#USERPREFIX _ pSeed
-        } ElseIf pSource = "h" {
+        } ElseIf (pSource = "h") || (pSource = "p") {
             Set tSC = ..CreateProbeClass(pSeed)
             If $$$ISOK(tSC) Set pRef = ..#PROBECLASS
         } ElseIf pSource = "i" {
@@ -241,7 +242,7 @@ ClassMethod Remove(pSource As %String, pRef As %String) As %Status
             Set tSC = ..RemoveTarget()
         } ElseIf pSource = "f" {
             Set tSC = ..DeleteUser(pRef)
-        } ElseIf pSource = "h" {
+        } ElseIf (pSource = "h") || (pSource = "p") {
             Set tSC = ..DeleteProbeClass()
         } ElseIf pSource = "i" {
             Set tSC = ..DeleteSearchClass()
@@ -639,6 +640,9 @@ ClassMethod ReadCall(pSource As %String, pRef As %String = "", pCached As %Boole
         Do tCall.%Set("name", "permissions_roles_read", "string")
     } ElseIf pSource = "h" {
         Do tCall.%Set("name", "explorer_class_read", "string")
+        Do tCall.input.%Set("name", pRef _ ".cls", "string")
+    } ElseIf pSource = "p" {
+        Do tCall.%Set("name", "explorer_class_source", "string")
         Do tCall.input.%Set("name", pRef _ ".cls", "string")
     } ElseIf pSource = "i" {
         Do tCall.%Set("name", "explorer_search_read", "string")

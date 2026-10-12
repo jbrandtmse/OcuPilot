@@ -24,6 +24,7 @@ import { LIVE_CONTAINER, READINESS_PATH, browserConfig, launchOptions } from '..
 import { loadStrings } from '../tools/strings.mjs';
 import { parseMarkers } from './iris-session.mjs';
 import { viewCount, waitForRows } from './list-spec.mjs';
+import { waitForMapAnswered } from './namespace-features.mjs';
 import { resetRememberedState } from './preferences-reset.mjs';
 
 const config = browserConfig();
@@ -99,6 +100,7 @@ test('DW-1903: a %Developer principal signs in, reads the System Explorer Classe
     const notice = await page.evaluate((selector) => document.querySelector(selector)?.textContent.trim() ?? null, NOTICE_MESSAGE);
     assert.equal(notice, null, 'the frame, not the no-privileges notice');
     await waitForRows(page, config.navigationTimeoutMs);
+    await waitForMapAnswered(page, config.navigationTimeoutMs);
 
     const seen = await page.evaluate(() => {
       const explorer = document.querySelector('#ocu-rail-item-system-explorer');

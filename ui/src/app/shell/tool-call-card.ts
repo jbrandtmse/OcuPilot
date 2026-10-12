@@ -1,7 +1,10 @@
 import { ChangeDetectionStrategy, Component, input, signal } from '@angular/core';
 
-import { STRINGS } from '../core/strings';
+import { estimateLines } from '../core/long-blocks';
+import { formatDeniedScreen, screenForToolIdentifier } from '../core/navigation';
+import { STRINGS, stringFor } from '../core/strings';
 import { type TurnStep, stepLabel } from '../core/turn';
+import { LongBlock } from './long-block';
 
 /**
  * One tool-call card (Story 4.5, EXPERIENCE.md `tool-call-card`): an ordered-disclosure over one
@@ -28,6 +31,7 @@ import { type TurnStep, stepLabel } from '../core/turn';
 @Component({
   selector: 'app-tool-call-card',
   changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [LongBlock],
   template: `@if (stopped) {
       <p class="ocu-tool-call-card ocu-tool-call-card-stopped" role="status">
         {{ stoppedText }}
@@ -53,10 +57,14 @@ import { type TurnStep, stepLabel } from '../core/turn';
         @if (expanded) {
           <div class="ocu-tool-call-body">
             @if (hasArguments) {
-              <p class="ocu-tool-call-arguments">{{ argumentsText }}</p>
+              <app-long-block [key]="argumentsKey" [lines]="argumentsLines">
+                <p class="ocu-tool-call-arguments">{{ argumentsText }}</p>
+              </app-long-block>
             }
             @if (hasText) {
-              <pre class="ocu-tool-call-result">{{ resultText }}</pre>
+              <app-long-block [key]="resultKey" [lines]="resultLines">
+                <pre class="ocu-tool-call-result">{{ resultText }}</pre>
+              </app-long-block>
             }
             @if (hasRowsLine) {
               <p class="ocu-tool-call-rows">{{ rowsLine }}</p>
@@ -69,6 +77,12 @@ import { type TurnStep, stepLabel } from '../core/turn';
 export class ToolCallCard {
   /** One step of `Convo`'s or `Turn`'s progress array. Required: a card with no step is not a state. */
   readonly step = input.required<TurnStep>();
+
+  /**
+   * The turn's long-block key (`<conversation id>:t<index>`), or `''` for a card given none: its
+   * blocks then keep their open state in the component only (Story 20.17).
+   */
+  readonly turnKey = input<string>('');
 
   protected readonly STRINGS = STRINGS;
 
@@ -112,7 +126,12 @@ export class ToolCallCard {
       // AD-8: a privilege refusal names the pair that failed. The generic reason says a
       // privilege is missing; the pair says which one, which is what the user has to be
       // granted. Every other failure keeps the reason it already carried.
-      const detail = step.failedPair !== '' ? step.failedPair : step.reason;
+      let detail = step.failedPair !== '' ? step.failedPair : step.reason;
+      // A refusal that also names the screen the user cannot open says so (Story 20.18).
+      const screen = step.failedScreen ? screenForToolIdentifier(step.failedScreen) : null;
+      if (screen !== null && step.failedPair !== '') {
+        detail = formatDeniedScreen(STRINGS.privilegeDeniedScreen, step.failedPair, stringFor(screen.labelKey));
+      }
       return STRINGS.toolCallStatusFailed.split('<reason>').join(detail);
     }
     // A confirmed write's card says what became of its marker; every other card, whose step
@@ -139,6 +158,27 @@ export class ToolCallCard {
 
   protected get argumentsText(): string {
     return this.step().arguments;
+  }
+
+  protected get argumentsKey(): string {
+    return this.blockKey('arguments');
+  }
+
+  protected get resultKey(): string {
+    return this.blockKey('result');
+  }
+
+  protected get argumentsLines(): number {
+    return estimateLines(this.step().arguments);
+  }
+
+  protected get resultLines(): number {
+    return estimateLines(this.step().text);
+  }
+
+  private blockKey(part: string): string {
+    const turnKey = this.turnKey();
+    return turnKey === '' ? '' : `${turnKey}:s${this.step().seq}:${part}`;
   }
 
   protected get hasText(): boolean {

@@ -46,14 +46,14 @@ export function railItemDomId(areaKey: string): string {
 }
 
 /**
- * The activity rail: the nine areas in daily-use order, Agent co-pilot pinned to the bottom
+ * The activity rail: Home and the areas that apply in daily-use order, Agent co-pilot pinned to the bottom
  * (EXPERIENCE.md "**The rail, top to bottom (daily-use order):**", "`{spacing.rail-width}` icon"; DESIGN.md `:972-1003`).
  *
  * **One Tab stop, arrows within it.** Exactly one item is in the tab order at a time -- the
  * first until an arrow key or an activation moves it -- and Up/Down move between items, Home and
  * End jump to the ends.
  * Enter and Space activate, which a real `<button>` does natively. That is a roving tabindex,
- * not eight tab stops.
+ * not one tab stop per item.
  *
  * **A click opens an area's side bar without navigating.** Clicking the item whose list is
  * already showing collapses it. Home is the exception: it has no screen list, so its item
@@ -93,7 +93,7 @@ export function railItemDomId(areaKey: string): string {
   selector: 'app-rail',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [AreaIcon],
-  template: `<nav class="ocu-rail" [attr.aria-label]="railLandmark">
+  template: `<nav class="ocu-rail" [attr.aria-label]="railLandmark" [attr.data-map-answered]="mapAnswered">
     @for (item of items; track item.key) {
       <span class="ocu-rail-slot" [class.ocu-rail-slot-bottom]="item.pinBottom">
         <button
@@ -143,10 +143,12 @@ export class Rail {
 
   private readonly resolved = computed<readonly RailItem[]>(() => {
     this.generation();
-    const focused = this.focusedIndex();
+    const areas = this.navigation.areas();
+    // The roster moves with the namespace (AD-44), so the one tab stop is kept inside it.
+    const focused = Math.min(this.focusedIndex(), Math.max(0, areas.length - 1));
     const active = this.shell.activeArea();
     const attention = this.attentionReason();
-    return this.navigation.areas().map((area, index) => {
+    return areas.map((area, index) => {
       const label = stringFor(area.labelKey);
       const verdict = this.navigation.areaVerdict(area.key);
       const isActive = area.key === active;
@@ -219,6 +221,16 @@ export class Rail {
   }
 
   /**
+   * Whether the navigation map has answered for the namespace the shell is scoped to. It is the
+   * nav element's `data-map-answered`, so a browser spec waits for it before it counts items:
+   * a category that declares `appliesWhen` is not drawn until this is true.
+   */
+  protected get mapAnswered(): boolean {
+    this.generation();
+    return this.navigation.appliesAnswered();
+  }
+
+  /**
    * Open the area's side bar, or -- for Home alone -- navigate to it and collapse. A gated item
    * does nothing: it is `aria-disabled`, which carries no behaviour of its own, so the refusal
    * has to be here.
@@ -261,7 +273,7 @@ export class Rail {
   protected onKeydown(event: KeyboardEvent): void {
     const count = this.resolved().length;
     if (count === 0) return;
-    const current = this.focusedIndex();
+    const current = Math.min(this.focusedIndex(), count - 1);
     let next = current;
     if (event.key === 'ArrowDown') next = (current + 1) % count;
     else if (event.key === 'ArrowUp') next = (current - 1 + count) % count;

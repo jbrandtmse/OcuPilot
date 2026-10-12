@@ -72,6 +72,13 @@ export interface ChangeEvent {
    * row mark, never row data (AD-14).
    */
   readonly readBack?: ReadBack;
+  /**
+   * The write tool that made the change, when the publisher knows it: its canonical name, or its
+   * screen's two-part tool identifier, whose first two parts are all that is read. It picks which of
+   * several lists of one entity type the change toast opens; absent where the publisher has no tool,
+   * which opens the type's first-listed screen.
+   */
+  readonly tool?: string;
 }
 
 /** What a publisher supplies. Everything the bus can work out for itself is optional. */
@@ -86,6 +93,8 @@ export interface ChangeEventInput {
   readonly expiresAt?: number;
   /** The write's read-back, on `changed` only; refused on the two proposal kinds. */
   readonly readBack?: ReadBack | null;
+  /** The write tool, on `changed` only; see `ChangeEvent.tool`. */
+  readonly tool?: string;
 }
 
 export interface ChangeBusOptions {
@@ -154,6 +163,7 @@ export class ChangeBus {
     }
     const expiresAt = input.kind === 'proposal-open' ? this.expiryFor(input.expiresAt) : 0;
     const readBack = input.kind === 'changed' ? (input.readBack ?? null) : null;
+    const tool = input.kind === 'changed' ? (input.tool ?? '') : '';
     const event: ChangeEvent = {
       kind: input.kind,
       type: input.type,
@@ -164,6 +174,7 @@ export class ChangeBus {
       proposalId,
       expiresAt,
       ...(readBack === null ? {} : { readBack }),
+      ...(tool === '' ? {} : { tool }),
     };
     // A copy, so a subscriber that unsubscribes from inside its own handler -- a screen being
     // torn down by the very re-fetch it was told about -- does not mutate the set being walked.

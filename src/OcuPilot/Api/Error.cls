@@ -89,14 +89,14 @@ Parameter STATICBADPATH = "STATIC.BADPATH";
 /// <code>warn</code> and completes regardless.</p>
 Parameter STATICNOBUNDLE = "STATIC.NOBUNDLE";
 
-/// <p>Machine code (AD-12, AD-39): the caller is authenticated but holds neither a
-/// <code>%Admin_*</code> resource nor <code>%Development</code> at <code>USE</code>, so
+/// <p>Machine code (AD-12, AD-39): the caller is authenticated but holds no
+/// <code>%Admin_*</code> resource, no <code>%Development</code> and no <code>%Ens_Portal</code> at <code>USE</code>, so
 /// <class>OcuPilot.Api.Router</class>'s administrative gate refuses before any route
 /// runs. Rendered on the <parameter>FORBIDDEN</parameter> slug.</p>
 Parameter AUTHNOADMIN = "AUTH.NOADMIN";
 
-/// <p>Machine code (AD-12, AD-39): the caller holds a <code>%Admin_*</code> resource or
-/// <code>%Development</code> and so cleared
+/// <p>Machine code (AD-12, AD-39): the caller holds a <code>%Admin_*</code> resource,
+/// <code>%Development</code> or <code>%Ens_Portal</code> and so cleared
 /// <class>OcuPilot.Api.Router</class>'s instance-level gate, but does not hold one screen's own
 /// <code>(resource, permission)</code> pair set (AD-8). Rendered on the
 /// <parameter>FORBIDDEN</parameter> slug, with the failed pair as the envelope's
@@ -1225,7 +1225,19 @@ ClassMethod ReasonForToolCode(pCode As %String) As %String
     If $Extract(pCode, 1, 8) = "LICENSE." Set tReason = ##class(OcuPilot.Api.LicenseError).ReasonFor(pCode)
     If $Extract(pCode, 1, 4) = "ECP." Set tReason = ##class(OcuPilot.Api.EcpError).ReasonFor(pCode)
     If $Extract(pCode, 1, 11) = "ENCRYPTION." Set tReason = ##class(OcuPilot.Api.EncryptionError).ReasonFor(pCode)
+    If $Extract(pCode, 1, 10) = "WALLETKEY." Set tReason = ##class(OcuPilot.Api.WalletKeyError).ReasonFor(pCode)
+    If $Extract(pCode, 1, 8) = "WEBAUTH." Set tReason = ##class(OcuPilot.Api.WebAuthError).ReasonFor(pCode)
+    If $Extract(pCode, 1, 12) = "SUPERSERVER." Set tReason = ##class(OcuPilot.Api.SuperserverError).ReasonFor(pCode)
+    If $Extract(pCode, 1, 4) = "MFT." Set tReason = ##class(OcuPilot.Api.MftConnectionError).ReasonFor(pCode)
+    If $Extract(pCode, 1, 9) = "DOCDBAPP." Set tReason = ##class(OcuPilot.Api.DocDbAppError).ReasonFor(pCode)
+    If $Extract(pCode, 1, 8) = "SQLPRIV." Set tReason = ##class(OcuPilot.Api.SqlPrivilegeError).ReasonFor(pCode)
     If $Extract(pCode, 1, 6) = "DOCDB." Set tReason = ##class(OcuPilot.Api.DocDbError).ReasonFor(pCode)
+    If $Extract(pCode, 1, 8) = "INTEROP." Set tReason = ##class(OcuPilot.Api.InteropError).ReasonFor(pCode)
+    If $Extract(pCode, 1, 7) = "ACCESS." Set tReason = ##class(OcuPilot.Api.AccessError).ReasonFor(pCode)
+    If $Extract(pCode, 1, 9) = "USERCOPY." Set tReason = ##class(OcuPilot.Api.UserCopyError).ReasonFor(pCode)
+    If $Extract(pCode, 1, 10) = "PCTACCESS." Set tReason = ##class(OcuPilot.Api.PctAccessError).ReasonFor(pCode)
+    If $Extract(pCode, 1, 12) = "PRIVROUTINE." Set tReason = ##class(OcuPilot.Api.RoutineAppError).ReasonFor(pCode)
+    If $Extract(pCode, 1, 12) = "RESTSERVICE." Set tReason = ##class(OcuPilot.Api.RestServiceError).ReasonFor(pCode)
     If tReason '= "" Quit tReason
     Quit ..#REASONTOOLUNAVAILABLE
 }
@@ -1426,6 +1438,18 @@ ClassMethod ReasonForViolation(pCode As %String) As %String
     If $Extract(pCode, 1, 8) = "LICENSE." Quit ##class(OcuPilot.Api.LicenseError).ReasonFor(pCode)
     If $Extract(pCode, 1, 4) = "ECP." Quit ##class(OcuPilot.Api.EcpError).ReasonFor(pCode)
     If $Extract(pCode, 1, 11) = "ENCRYPTION." Quit ##class(OcuPilot.Api.EncryptionError).ReasonFor(pCode)
+    If $Extract(pCode, 1, 10) = "WALLETKEY." Quit ##class(OcuPilot.Api.WalletKeyError).ReasonFor(pCode)
+    If $Extract(pCode, 1, 8) = "WEBAUTH." Quit ##class(OcuPilot.Api.WebAuthError).ReasonFor(pCode)
+    If $Extract(pCode, 1, 12) = "SUPERSERVER." Quit ##class(OcuPilot.Api.SuperserverError).ReasonFor(pCode)
+    If $Extract(pCode, 1, 4) = "MFT." Quit ##class(OcuPilot.Api.MftConnectionError).ReasonFor(pCode)
+    If $Extract(pCode, 1, 9) = "DOCDBAPP." Quit ##class(OcuPilot.Api.DocDbAppError).ReasonFor(pCode)
+    If $Extract(pCode, 1, 8) = "SQLPRIV." Quit ##class(OcuPilot.Api.SqlPrivilegeError).ReasonFor(pCode)
+    If $Extract(pCode, 1, 8) = "INTEROP." Quit ##class(OcuPilot.Api.InteropError).ReasonFor(pCode)
+    If $Extract(pCode, 1, 7) = "ACCESS." Quit ##class(OcuPilot.Api.AccessError).ReasonFor(pCode)
+    If $Extract(pCode, 1, 9) = "USERCOPY." Quit ##class(OcuPilot.Api.UserCopyError).ReasonFor(pCode)
+    If $Extract(pCode, 1, 10) = "PCTACCESS." Quit ##class(OcuPilot.Api.PctAccessError).ReasonFor(pCode)
+    If $Extract(pCode, 1, 12) = "PRIVROUTINE." Quit ##class(OcuPilot.Api.RoutineAppError).ReasonFor(pCode)
+    If $Extract(pCode, 1, 12) = "RESTSERVICE." Quit ##class(OcuPilot.Api.RestServiceError).ReasonFor(pCode)
     Quit ""
 }
 
@@ -1817,6 +1841,16 @@ Parameter REASONPREFERENCESNAME = "That is not a piece of shell state this insta
 /// <class>OcuPilot.Test.Envelope</class> can assert the rule the writer enforces instead of a
 /// second copy of it.</p>
 Parameter CODEPATTERN = "^[A-Z][A-Z0-9]*(\.[A-Z][A-Z0-9]*)*$";
+
+/// <p>The answer to a write that could not take its target's hold (AD-34, AD-53): 409
+/// <parameter>WRITETARGETBUSY</parameter> with its published reason when <var>pHoldSC</var> is
+/// clean, which is the hold timing out, and the internal-error envelope when it is an error. A screen
+/// action and every screen Save answer a busy target through this one method.</p>
+ClassMethod RenderTargetBusy(pHoldSC As %Status = 1) As %Status
+{
+    If $$$ISERR(pHoldSC) Quit ..RenderInternal("An internal error occurred", ##class(%Exception.StatusException).CreateFromStatus(pHoldSC))
+    Quit ..Render(409, ..#CONFLICT, ..#REASONWRITETARGETBUSY, ..#WRITETARGETBUSY)
+}
 
 /// <p>The single entry point for every error response.</p>
 /// <p>Sets the HTTP status and writes exactly one JSON envelope
@@ -2510,7 +2544,7 @@ Parameter REASONWALLETALLOWEDHOSTSSHAPE = "Each allowed host is a name or addres
 /// not change.</p>
 Parameter WALLETTYPEUNSUPPORTED = "WALLET.TYPE.UNSUPPORTED";
 
-Parameter REASONWALLETTYPEUNSUPPORTED = "Only key-value secrets are edited here.";
+Parameter REASONWALLETTYPEUNSUPPORTED = "This secret is not a key-value secret.";
 
 /// <p>Envelope code (AD-39): a device's create or edit broke one or more of the rules
 /// <class>OcuPilot.Area.OsMgmt.DeviceRules</class> applies before the port is touched, or the

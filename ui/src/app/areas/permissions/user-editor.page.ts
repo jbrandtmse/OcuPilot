@@ -28,6 +28,7 @@ import { PermissionCheck } from '../../shell/permission-check';
 import { ScreenActionDialogs } from '../../shell/screen-action-dialogs';
 import { ADD_ROLE, type ActionSink, REMOVE_ROLE, SET_PASSWORD, ScreenActionHandler } from '../../shell/screen-action-handler';
 import { grantLine } from './role-grant-dialog';
+import { SqlPrivilegesTab } from './sql-privileges-tab';
 import {
   AUTHE_FIELD,
   EFFECTIVE_TAB,
@@ -35,6 +36,7 @@ import {
   GENERAL_TAB,
   ROLES_FIELD,
   ROLES_TAB,
+  SQL_PRIVILEGES_TAB,
   USER_ENTITY,
   USER_FIELD_TABS,
   UserEditor,
@@ -134,7 +136,7 @@ interface ActionView {
 @Component({
   selector: 'app-user-editor-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [Dialog, FormTabs, FormTabBody, ScreenActionDialogs],
+  imports: [Dialog, FormTabs, FormTabBody, ScreenActionDialogs, SqlPrivilegesTab],
   template: `<section class="ocu-form-page">
     @if (hasSummary) {
       <div #summary class="ocu-banner ocu-form-summary" role="alert" tabindex="-1">
@@ -586,6 +588,11 @@ interface ActionView {
           </div>
         }
       </ng-template>
+      <ng-template ocuFormTab="sql-privileges">
+        @if (sqlTabSelected) {
+          <app-sql-privileges-tab [grantee]="accountName" [descriptor]="userList" entity="user" />
+        }
+      </ng-template>
     </app-form-tabs>
 
     <div class="ocu-form-bar">
@@ -632,6 +639,10 @@ export class UserEditorPage {
   protected readonly STRINGS = STRINGS;
 
   protected readonly userList = USER_LIST;
+
+  protected get sqlTabSelected(): boolean {
+    return this.selectedTab() === SQL_PRIVILEGES_TAB;
+  }
 
   protected readonly nameId = 'ocu-user-edit-Name';
 
@@ -721,6 +732,7 @@ export class UserEditorPage {
       { key: GENERAL_TAB, label: STRINGS.processDetailsGroupGeneral, count: counts[GENERAL_TAB] ?? 0 },
       { key: ROLES_TAB, label: STRINGS.userColumnRoles, count: counts[ROLES_TAB] ?? 0 },
       { key: EFFECTIVE_TAB, label: STRINGS.userEffectiveTab, count: 0 },
+      { key: SQL_PRIVILEGES_TAB, label: STRINGS.sqlPrivilegesLabel, count: 0 },
     ];
   }
 

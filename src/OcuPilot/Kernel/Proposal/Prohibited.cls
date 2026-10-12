@@ -145,6 +145,15 @@ Parameter PRIVILEGEGRANT = "PROHIBITED.PRIVILEGEGRANT";
 /// <code>webAppPrivilegeGrantRefusal</code> (AD-53).</p>
 Parameter PRIVILEGEGRANTREASON = "OcuPilot's own web applications carry only the roles its installer gives them. A role set there would run every OcuPilot request with it.";
 
+/// <p>Any write to one of OcuPilot's own privileged routine applications, <code>OcuPilotState</code> or
+/// <code>OcuPilotIdentity</code> (<method>OwnRoutineApplication</method>): a delete, a disable, a change to any field.
+/// OcuPilot reads its own protected state through them (AD-9, AD-10, DW-2239, Story 18.10).</p>
+Parameter OCUPILOTROUTINEAPP = "PROHIBITED.OCUPILOTROUTINEAPP";
+
+/// <p>The one sentence <parameter>OCUPILOTROUTINEAPP</parameter> carries, caller-neutral, published in EXPERIENCE.md's
+/// Fixed strings and pinned equal to <code>routineAppRefusalOcuPilot</code> by <file>ui/tools/self-protection.test.mjs</file>.</p>
+Parameter OCUPILOTROUTINEAPPREASON = "OcuPilot reads its own protected state through this privileged routine application, so it cannot be deleted, disabled or changed.";
+
 /// <p>The write would remove the account the caller is signed in as, or its administration
 /// (<method>RemovesAdministration</method>).</p>
 Parameter CURRENTUSER = "PROHIBITED.CURRENTUSER";
@@ -247,7 +256,7 @@ Parameter WRITETOOLBASE = "OcuPilot.Screen.Tool.Write";
 /// <p>The entity types this release evaluates predicates for, comma-separated
 /// (<class>OcuPilot.Kernel.EntityType</class>'s spelling). A type outside this list is
 /// <parameter>UNCOVERED</parameter>.</p>
-Parameter COVEREDTYPES = "web-application,user,auditing-configuration,task,process,application-error,role,resource,x509-credential,wallet-secret,device,oauth2-client-configuration,oauth2-server-client,audit-event,audit-user-event,ssl-configuration,service,ldap-configuration,oauth2-server-definition,oauth2-resource-server,oauth2-server,namespace,web-session,background-task,global-mapping,routine-mapping,package-mapping,database-configuration,database,language-server,lock,class,routine,journal-file,journal-settings,license-key,license-server,ecp-data-server,ecp-settings,ecp-ssl-connection,encryption-key-file,database-encryption-keys,data-element-encryption-keys,encryption-startup,docdb-database";
+Parameter COVEREDTYPES = "screen-permission,web-application,user,auditing-configuration,task,process,application-error,role,resource,x509-credential,wallet-secret,device,oauth2-client-configuration,oauth2-server-client,audit-event,audit-user-event,ssl-configuration,service,ldap-configuration,oauth2-server-definition,oauth2-resource-server,oauth2-server,namespace,web-session,background-task,global-mapping,routine-mapping,package-mapping,database-configuration,database,language-server,lock,class,routine,journal-file,journal-settings,license-key,license-server,ecp-data-server,ecp-settings,ecp-ssl-connection,encryption-key-file,database-encryption-keys,data-element-encryption-keys,encryption-startup,docdb-database,authentication-options,superserver,mft-connection,production,pct-class-access,docdb-application,routine-application,production-item,production-item-setting,interop-queue,interop-message,interop-job,rest-service,lookup-table,lookup-entry";
 
 /// <p>The covered types, each named once so the dispatch and the list cannot drift apart.</p>
 Parameter TYPEWEBAPPLICATION = "web-application";
@@ -273,6 +282,15 @@ Parameter TYPEPROCESS = "process";
 /// <p>The process write the process arm is not evaluated for: a broadcast (AD-10 as amended,
 /// Story 16.6), keyed on the tool's declared write type.</p>
 Parameter BROADCASTWRITETYPE = "BROADCAST";
+
+/// <p>The user write whose payload <method>Copied</method> checks, keyed on the tool's declared write type: a
+/// copy of an existing account (AD-10).</p>
+Parameter COPYWRITETYPE = "COPY";
+
+/// <p>The only fields a user copy's payload names, comma-separated: the source, the full name, and the roles
+/// and escalation roles taken from the source. <method>Copied</method> refuses any other, and
+/// <class>OcuPilot.Screen.Tool.UserCopy</class> composes exactly these (AD-3, AD-10).</p>
+Parameter COPYFIELDS = "CopyFrom,FullName,Roles,EscalationRoles";
 
 Parameter TYPEAPPLICATIONERROR = "application-error";
 
@@ -503,6 +521,120 @@ Parameter STARTUPMODEFIELD = "DBEncStartMode";
 
 Parameter STARTUPREQUIREDFLAGS = "AuditEncrypt,DBEncIRISSecurity,DBEncIRISTemp";
 
+/// <p>The instance's authentication and web session options (Story 18.8), a singleton whose one merge
+/// write <method>AuthOptions</method> judges: a change that leaves one of OcuPilot's own web applications
+/// or the web gateway with no authentication method is refused <parameter>OCUPILOTSIGNIN</parameter>,
+/// turning O/S authentication off is refused <parameter>OCUPILOTSTART</parameter>, and every other change
+/// passes the reviewed-few sweep.</p>
+Parameter TYPEAUTHOPTIONS = "authentication-options";
+
+/// <p>The write would leave one of OcuPilot's own web applications, or <parameter>SERVINGSERVICENAME</parameter>,
+/// with no authentication method enabled for the instance (AD-10 as amended 2026-10-07, Story 18.8):
+/// every request to OcuPilot then fails to sign in (measured: password authentication off answered the
+/// sign-in 401, unauthenticated access off answered the shell and readiness 401). Judged over the
+/// payload's flags applied to the target's, against each application's and the service's own mask, read
+/// at the write; a read that fails refuses.</p>
+Parameter OCUPILOTSIGNIN = "PROHIBITED.OCUPILOTSIGNIN";
+
+/// <p>The one sentence <parameter>OCUPILOTSIGNIN</parameter> carries, caller-neutral, published in
+/// EXPERIENCE.md's Fixed strings and pinned equal to <code>authOptionsRefusalSignIn</code> by
+/// <file>ui/tools/self-protection.test.mjs</file>.</p>
+Parameter OCUPILOTSIGNINREASON = "One of OcuPilot's own web applications, or the web gateway that serves them, signs in only through this method. Turning it off for the whole instance would cut off every user, including you.";
+
+/// <p>The write turns O/S authentication off (AD-10 as amended 2026-10-07, Story 18.8): OcuPilot's own
+/// container start hook and health check sign in through <code>iris session</code>, so the instance then
+/// fails to start (measured). Refused on every instance, because the install origin cannot be read from
+/// inside IRIS.</p>
+Parameter OCUPILOTSTART = "PROHIBITED.OCUPILOTSTART";
+
+/// <p>The one sentence <parameter>OCUPILOTSTART</parameter> carries, published and pinned as
+/// <parameter>OCUPILOTSIGNINREASON</parameter> is, against <code>authOptionsRefusalStart</code>.</p>
+Parameter OCUPILOTSTARTREASON = "OcuPilot's own container signs in through the operating system at every start, so turning this off would leave the instance unable to start. If this instance does not run in OcuPilot's container, change it on the classic Authentication page.";
+
+/// <p>The effect <method>WeakensByEffect</method> answers for a change to <code>JWTIssuer</code> or
+/// <code>JWTSigAlg</code>: permitted, destructive, and named on the card (AD-10 as amended 2026-10-07).
+/// Every token session ends. It is also the proposal's consequence code.</p>
+Parameter EFFECTTOKENSIGNOUT = "WEBAUTH.SIGNOUT";
+
+/// <p>The two fields whose change ends every token session.</p>
+Parameter AUTHETOKENFIELDS = "JWTIssuer,JWTSigAlg";
+
+/// <p>The flag whose turning off <parameter>OCUPILOTSTART</parameter> refuses.</p>
+Parameter AUTHEOSFIELD = "AutheOS";
+
+/// <p>The write type of the SMTP password tool, which sets no flag.</p>
+Parameter AUTHEPASSWORDWRITETYPE = "CHANGESMTPPWD";
+
+/// <p>Each flag of <code>Security.WebAuth</code> and the bits of the instance's <code>AutheEnabled</code> it
+/// sets, as the vendor's own <code>PUT</code> maps them: <code>AutheKB</code> sets seven (the K5 cache,
+/// prompt, API and key-tab bits, the Kerberos, encryption and integrity bits).</p>
+Parameter AUTHEBITS = "AutheUnauthenticated:64,AutheOS:16,AutheOSDelegated:65536,AutheOSLDAP:131072,AutheCache:32,AutheDelegated:8192,AutheAlwaysTryDelegated:16777216,AutheKB:911,AutheLDAP:2048,AutheLDAPCache:4096,AutheOAuth2:67108864,AutheLoginToken:16384,AutheTwoFactorSMS:1048576,AutheTwoFactorPW:2097152";
+
+/// <p>The bits an application's or a service's <code>AutheEnabled</code> may carry that are no sign-in method
+/// of their own, so a mask holding one beside its last method is still cut: Login Cookie (16384), LDAP cache
+/// (4096), the two two-factor bits (1048576, 2097152) and Always try Delegated (16777216). The vendor's
+/// <code>AutheTwoFactorRequired</code> names the methods two-factor needs beside it (<file>%sySecurity.inc</file>).</p>
+Parameter AUTHEMODIFIERS = 19943424;
+
+/// <p>One superserver the instance listens on (Story 18.25), keyed by the composite of its port and bind
+/// address. <method>Superserver</method> judges its writes: on the superserver the web gateway connects
+/// through, a delete, <code>Enabled</code> or <code>EnableCSP</code> turned off, and the SSL/TLS support level
+/// raised to 2 are refused <parameter>SERVINGSUPERSERVER</parameter>; every other change passes the
+/// reviewed-few sweep.</p>
+Parameter TYPESUPERSERVER = "superserver";
+
+/// <p>One screen's adjustable permission set (Story 20.15, AD-64), keyed by the screen's
+/// <code>toolIdentifier</code>. <method>ScreenPermission</method> judges it by that identifier alone.</p>
+Parameter TYPESCREENPERMISSION = "screen-permission";
+
+/// <p>A managed file transfer connection (Story 18.26), whose create, change, delete and token revoke the
+/// reviewed-few sweep alone judges (<method>MftConnectionFields</method>): AD-10 names no effect on one.</p>
+Parameter TYPEMFTCONNECTION = "mft-connection";
+
+/// <p>A Doc DB application record (Story 18.30), whose create, change and delete the reviewed-few sweep alone judges
+/// (<method>DocDbApplicationFields</method>): AD-10 names no effect on one, and OcuPilot owns none.</p>
+Parameter TYPEDOCDBAPPLICATION = "docdb-application";
+
+/// <p>A privileged routine application (Story 18.31), whose create, change and delete the reviewed-few sweep judges
+/// after the own-application arm (<method>OwnRoutineApplication</method>): AD-10 names no other effect on one.</p>
+Parameter TYPEROUTINEAPPLICATION = "routine-application";
+
+/// <p>A web application's percent-class access entry (Story 18.10): its one settable field is the access it grants.</p>
+Parameter TYPEPCTACCESS = "pct-class-access";
+
+Parameter PCTACCESSFIELD = "AllowAccess";
+
+/// <p>The write would cut off the superserver the web gateway connects through (AD-10 as amended 2026-10-07,
+/// Story 18.25): it deletes it, turns off <code>Enabled</code> or <code>EnableCSP</code>, or requires SSL/TLS of
+/// it. A superserver is serving when its fresh read's <code>SystemDefault</code> is true, which the instance's own
+/// gateway configuration names, or when its port is the one the serving request arrived through
+/// (<method>ServingSuperserverPort</method>). A target read that fails refuses.</p>
+Parameter SERVINGSUPERSERVER = "PROHIBITED.SERVINGSUPERSERVER";
+
+/// <p>The one sentence <parameter>SERVINGSUPERSERVER</parameter> carries, caller-neutral, published in
+/// EXPERIENCE.md's Fixed strings and pinned equal to <code>superserverRefusalServing</code> by
+/// <file>ui/tools/self-protection.test.mjs</file>.</p>
+Parameter SERVINGSUPERSERVERREASON = "The web gateway reaches this instance through this superserver, and OcuPilot is served through it. Deleting it, disabling it, turning off its web connections or requiring SSL/TLS would cut off every user, including you.";
+
+/// <p>The effect <method>WeakensByEffect</method> answers for any other change to the SSL/TLS support level or
+/// configuration of a serving superserver: permitted, destructive, and named on the card. It is also the
+/// proposal's consequence code.</p>
+Parameter EFFECTSERVINGSUPERSERVER = "SUPERSERVER.SERVESOCUPILOT";
+
+/// <p>The superserver members the arm reads.</p>
+Parameter SUPERSERVERDEFAULTFIELD = "SystemDefault";
+
+Parameter SUPERSERVERENABLEDFIELD = "Enabled";
+
+Parameter SUPERSERVERCSPFIELD = "EnableCSP";
+
+Parameter SUPERSERVERLEVELFIELD = "SSLSupportLevel";
+
+Parameter SUPERSERVERCONFIGFIELD = "SSLConfig";
+
+/// <p>The SSL/TLS support level that requires it.</p>
+Parameter SUPERSERVERREQUIRED = 2;
+
 /// <p>The effect <method>WeakensByEffect</method> answers for a startup settings write that changes the
 /// audit log's encryption (AD-10 as amended 2026-10-05): permitted, destructive, and named on the card. It
 /// is also the proposal's consequence code.</p>
@@ -512,6 +644,41 @@ Parameter EFFECTAUDITENCRYPTION = "AUDIT.ENCRYPTIONCHANGE";
 /// (<method>OcuPilot.Port.DocDbPort.ClassNameOf</method>) under the code arm (<method>Code</method>).</p>
 Parameter TYPEDOCDBDATABASE = "docdb-database";
 
+/// <p>A spec-based REST service of a namespace (Story 18.32), keyed by its package, whose create and delete are judged
+/// by the package alone under the code arm (<method>Code</method>): a package beginning with OcuPilot is OcuPilot's
+/// own code in any letter case.</p>
+Parameter TYPERESTSERVICE = "rest-service";
+
+/// <p>An interoperability production of a namespace (AD-62, Story 20.2). AD-10 names no effect on one,
+/// so its writes pass the reviewed-few sweep and nothing else.</p>
+Parameter TYPEPRODUCTION = "production";
+
+/// <p>One item of a production (AD-62, Story 20.3). AD-10 names no effect on one: OcuPilot runs no
+/// production of its own, so no item is self-protection and a write passes the reviewed-few sweep
+/// and nothing else.</p>
+Parameter TYPEPRODUCTIONITEM = "production-item";
+
+/// <p>One setting of a production item (AD-62, Story 20.22). AD-10 names no effect on one beyond the server paths
+/// <class>OcuPilot.Port.InteropPort</class> refuses, so a change passes the reviewed-few sweep -- its one field is
+/// <code>Value</code> -- and nothing else.</p>
+Parameter TYPEPRODUCTIONITEMSETTING = "production-item-setting";
+
+/// <p>An interoperability queue, one waiting message and one job of the running production (AD-62, Story 20.23). AD-10 names
+/// no effect on any of them: OcuPilot runs no production, and a job a write reaches is the running production's, never
+/// OcuPilot's own process or a system process. A write passes the reviewed-few sweep and nothing else.</p>
+Parameter TYPEINTEROPQUEUE = "interop-queue";
+
+Parameter TYPEINTEROPMESSAGE = "interop-message";
+
+Parameter TYPEINTEROPJOB = "interop-job";
+
+/// <p>A lookup table of a namespace and one entry of it (AD-62, Story 20.5). AD-10 names no effect on either: OcuPilot stores
+/// nothing in <code>^Ens.LookupTable</code>, so no entry is self-protection. A write passes the reviewed-few sweep -- an
+/// entry's one changeable field is <code>Value</code> -- and nothing else.</p>
+Parameter TYPELOOKUPTABLE = "lookup-table";
+
+Parameter TYPELOOKUPENTRY = "lookup-entry";
+
 /// <p>The two objects an ECP settings write carries, whose <code>&lt;Object&gt;.&lt;member&gt;</code>
 /// diff rows are judged as their object, as <parameter>CUSTOMFIELD</parameter>'s are (Story 18.21).</p>
 Parameter ECPSETTINGSGROUPS = "AppServerSettings,DataServerSettings";
@@ -519,6 +686,9 @@ Parameter ECPSETTINGSGROUPS = "AppServerSettings,DataServerSettings";
 /// <p>The write type of a class or routine export (Story 19.13), which only reads and which the code
 /// arm does not judge.</p>
 Parameter EXPORTWRITETYPE = "EXPORT";
+
+/// <p>The write type of a tool that imports a file whose one lookup table replaces the table of that name (Story 20.5).</p>
+Parameter LOOKUPIMPORTWRITETYPE = "IMPORT";
 
 /// <p>The one target a class or routine import takes (Story 19.13), compared without regard to case;
 /// its documents are the stored payload's <parameter>IMPORTDOCUMENTS</parameter>.</p>
@@ -537,6 +707,17 @@ Parameter OCUPILOTCODE = "PROHIBITED.OCUPILOTCODE";
 /// <file>ui/tools/self-protection.test.mjs</file>.</p>
 Parameter OCUPILOTCODEREASON = "This is OcuPilot's own code. It cannot be compiled, deleted or replaced from OcuPilot.";
 
+/// <p>The write would adjust the permissions of one of OcuPilot's own screens, one whose area declares no
+/// pair (Home and Agent co-pilot: the kill switch, definitions, governance and Screen permissions itself),
+/// which <method>OcuPilot.Screen.Gate.Adjustable</method> refuses (AD-64, Story 20.15). Refused whatever the
+/// caller.</p>
+Parameter OCUPILOTSCREEN = "PROHIBITED.OCUPILOTSCREEN";
+
+/// <p>The one sentence <parameter>OCUPILOTSCREEN</parameter> carries, caller-neutral, published in
+/// EXPERIENCE.md's Fixed strings and pinned equal to <code>screenPermissionsRefusalOcuPilot</code> by
+/// <file>ui/tools/self-protection.test.mjs</file>.</p>
+Parameter OCUPILOTSCREENREASON = "This is OcuPilot's own screen. Its permissions cannot be changed.";
+
 /// <p>The write type of the SQL console's confirmed run (Story 19.6), which the class arm judges by
 /// <method>SqlStatement</method> rather than by document name.</p>
 Parameter SQLRUNWRITETYPE = "RUN";
@@ -550,6 +731,16 @@ Parameter OCUPILOTSQL = "PROHIBITED.OCUPILOTSQL";
 /// EXPERIENCE.md's Fixed strings and pinned equal to <code>explorerSqlRefusalOcuPilot</code> by
 /// <file>ui/tools/self-protection.test.mjs</file>.</p>
 Parameter OCUPILOTSQLREASON = "This statement reads or changes OcuPilot's own tables or code, which OcuPilot does not offer.";
+
+/// <p>A SQL privilege grant or revoke on an object of one of OcuPilot's own schemas, in any namespace, by either
+/// caller (AD-10 as amended 2026-10-07, Story 18.9, DW-236): a grant widens the tables AD-9 protects, and a revoke
+/// of the installer's schema grant leaves OcuPilot <code>unreadable</code> (AD-38). A grant or revoke for one of
+/// OcuPilot's own roles, or for <code>%DB_OCUPILOT</code>, is refused under <parameter>OCUPILOTROLE</parameter>.</p>
+Parameter OCUPILOTSQLPRIVILEGE = "PROHIBITED.OCUPILOTSQLPRIVILEGE";
+
+/// <p>The one sentence <parameter>OCUPILOTSQLPRIVILEGE</parameter> carries, caller-neutral, published in
+/// EXPERIENCE.md's Fixed strings and pinned by <file>ui/tools/self-protection.test.mjs</file>.</p>
+Parameter OCUPILOTSQLPRIVILEGEREASON = "OcuPilot's own SQL tables keep the privileges its installer grants, so a grant or revoke on them is not offered.";
 
 /// <p>The write would remove from a key file a key that encrypts OcuPilot's own database, the install
 /// namespace's globals or routines database, one of <parameter>SYSTEMDATABASES</parameter>, or the
@@ -627,7 +818,8 @@ Parameter ALLNAMESPACE = "%ALL";
 /// maps and SQL projections. Measured on this build by walking the routine database's globals for
 /// subscripts, at the first or second level, beginning with an <method>OwnNameStems</method> stem in
 /// any case (Story 18.14's spec,
-/// Design Notes); <class>OcuPilot.Test.MappingCodeGlobals</class> holds it equal to that walk. A global
+/// Design Notes); <class>OcuPilot.Test.MappingCodeGlobals</class> holds every member to that walk, and accepts
+/// another global the walk finds only when a non-<code>%</code> class's storage owns it. A global
 /// mapping of one, whole or over a range reaching OcuPilot's names, moves where OcuPilot's code is
 /// read from (<method>CoversCodeGlobal</method>).</p>
 Parameter CODEGLOBALS = "ROUTINE,oddCOM,oddDEF,oddDEP,oddEXT,oddEXTR,oddMAP,oddPROC,oddSQL,rINDEX,rINDEXCLASS,rINDEXEXT,rINDEXSQL,rMAC,rMAP,rOBJ";
@@ -644,6 +836,11 @@ Parameter NESTEDCODEGLOBALS = "oddDEP,rINDEXEXT,rINDEXSQL";
 /// <p>A name whose global part begins with <code>:</code> (an empty low end, read as <code>%</code>)
 /// or <code>*</code> reaches the <code>%</code> globals too, and answers this effect as well.</p>
 Parameter EFFECTSYSTEMGLOBAL = "MAPPING.SYSTEMGLOBAL";
+
+/// <p>The effect <method>WeakensByEffect</method> answers for a screen-permission change whose resulting
+/// set lacks a pair the stored set holds, compared without regard to case (AD-64). It is also the
+/// proposal's consequence code.</p>
+Parameter EFFECTSCREENLOWERED = "SCREENACCESS.LOWERED";
 
 /// <p>The request type a copy of mappings is issued with, which the namespace predicate branches on
 /// (<method>Namespace</method>).</p>
@@ -790,10 +987,11 @@ Parameter READTYPE = "GET";
 /// <method>Namespace</method> adds, the two <method>WebSession</method> adds, the one
 /// <method>Mapping</method> adds, the one <method>Database</method> adds, and the one
 /// <method>Lock</method> adds, and the one <method>Code</method> adds, and the one
-/// <method>SqlStatement</method> adds last -- twenty-six in all.</p>
+/// <method>SqlStatement</method> adds, the key arm's and the encryption start arm's, and the two
+/// <method>AuthOptions</method> adds, and the one <method>Superserver</method> adds, and the SQL privilege arm's, and the one <method>ScreenPermission</method> adds last, and the one <method>OwnRoutineApplication</method> arm adds after it -- thirty-four in all.</p>
 ClassMethod Codes() As %List
 {
-    Quit $ListBuild(..#SERVINGPATH, ..#UNAUTHENTICATED, ..#AUTHORIZATION, ..#DISPATCH, ..#SYSTEMACCOUNT, ..#SERVICEACCOUNT, ..#CURRENTUSER, ..#LASTALLHOLDER, ..#PRIVILEGEGRANT, ..#OCUPILOTPROCESS, ..#SYSTEMPROCESS, ..#UNCOVEREDFIELD, ..#UNCOVERED, ..#OCUPILOTROLE, ..#OCUPILOTRESOURCE, ..#SERVICEACCOUNTSIGNIN, ..#OCUPILOTSSL, ..#SERVINGSERVICE, ..#OCUPILOTNAMESPACE, ..#OCUPILOTSESSION, ..#PRESERVEDSESSION, ..#OCUPILOTMAPPING, ..#OCUPILOTDATABASE, ..#OCUPILOTLOCK, ..#OCUPILOTCODE, ..#OCUPILOTSQL, ..#OCUPILOTKEY, ..#STARTUPINTERACTIVE)
+    Quit $ListBuild(..#SERVINGPATH, ..#UNAUTHENTICATED, ..#AUTHORIZATION, ..#DISPATCH, ..#SYSTEMACCOUNT, ..#SERVICEACCOUNT, ..#CURRENTUSER, ..#LASTALLHOLDER, ..#PRIVILEGEGRANT, ..#OCUPILOTPROCESS, ..#SYSTEMPROCESS, ..#UNCOVEREDFIELD, ..#UNCOVERED, ..#OCUPILOTROLE, ..#OCUPILOTRESOURCE, ..#SERVICEACCOUNTSIGNIN, ..#OCUPILOTSSL, ..#SERVINGSERVICE, ..#OCUPILOTNAMESPACE, ..#OCUPILOTSESSION, ..#PRESERVEDSESSION, ..#OCUPILOTMAPPING, ..#OCUPILOTDATABASE, ..#OCUPILOTLOCK, ..#OCUPILOTCODE, ..#OCUPILOTSQL, ..#OCUPILOTKEY, ..#STARTUPINTERACTIVE, ..#OCUPILOTSIGNIN, ..#OCUPILOTSTART, ..#SERVINGSUPERSERVER, ..#OCUPILOTSQLPRIVILEGE, ..#OCUPILOTSCREEN, ..#OCUPILOTROUTINEAPP)
 }
 
 /// <p>The written sentence a <code>PROHIBITED.*</code> code carries, or <code>""</code> for any
@@ -833,6 +1031,12 @@ ClassMethod ReasonFor(pCode As %String) As %String
     If pCode = ..#OCUPILOTSQL Quit ..#OCUPILOTSQLREASON
     If pCode = ..#OCUPILOTKEY Quit ..#OCUPILOTKEYREASON
     If pCode = ..#STARTUPINTERACTIVE Quit ..#STARTUPINTERACTIVEREASON
+    If pCode = ..#OCUPILOTSIGNIN Quit ..#OCUPILOTSIGNINREASON
+    If pCode = ..#OCUPILOTSTART Quit ..#OCUPILOTSTARTREASON
+    If pCode = ..#SERVINGSUPERSERVER Quit ..#SERVINGSUPERSERVERREASON
+    If pCode = ..#OCUPILOTSQLPRIVILEGE Quit ..#OCUPILOTSQLPRIVILEGEREASON
+    If pCode = ..#OCUPILOTSCREEN Quit ..#OCUPILOTSCREENREASON
+    If pCode = ..#OCUPILOTROUTINEAPP Quit ..#OCUPILOTROUTINEAPPREASON
     Quit ""
 }
 
@@ -908,6 +1112,7 @@ ClassMethod CoveredTypes() As %List
 /// 2026-09-21). Every other property of that object -- the audit-database location, encryption --
 /// is refused by the reviewed-few rule.</p>
 /// <p>A task's thirty-two are <method>TaskChangeFields</method>'s.</p>
+/// <p>A privileged routine application's five are <method>RoutineApplicationChangeFields</method>'s.</p>
 /// <p>A write tool advertises no field outside this list, which is the other half of AD-10; the
 /// tool states its own admitted names and a test asserts the two agree, so the tool layer never
 /// reads the kernel.</p>
@@ -921,10 +1126,13 @@ ClassMethod PermittedChangeFields(pType As %String) As %List
     If pType = ..#TYPEAUDITEVENT Quit $ListBuild(..#FIELDENABLED)
     If pType = ..#TYPEAUDITUSEREVENT Quit $ListBuild("Description", ..#FIELDENABLED)
     If pType = ..#TYPEWEBAPPLICATION Quit ..WebApplicationSettingFields() _ $ListFromString(..#APPLICATIONROLEFIELDS)
+    If pType = ..#TYPEPCTACCESS Quit $ListBuild(..#PCTACCESSFIELD)
     If pType = ..#TYPEUSER Quit $ListBuild(..#FIELDENABLED, ..#FIELDROLES, ..#FIELDCHANGEPASSWORD) _ ..UserSettingFields()
     If pType = ..#TYPEAUDITING Quit $ListBuild(..#FIELDENABLED)
 
     If pType = ..#TYPERESOURCE Quit $ListBuild("Description", ..#FIELDPUBLICPERMISSION)
+    If pType = ..#TYPEPRODUCTIONITEMSETTING Quit $ListBuild("Value")
+    If pType = ..#TYPELOOKUPENTRY Quit $ListBuild("Value")
     If pType = ..#TYPEROLE Quit $ListBuild("Description", ..#FIELDESCALATIONONLY, ..#FIELDGRANTEDROLES, ..#FIELDRESOURCES)
     If pType = ..#TYPEX509 Quit $ListBuild("OwnerList", "PeerNames")
     If pType = ..#TYPEWALLETSECRET Quit $ListBuild("Usage", "RequireTLS", "AllowedHosts", "Secret")
@@ -951,6 +1159,11 @@ ClassMethod PermittedChangeFields(pType As %String) As %List
     If pType = ..#TYPEENCRYPTIONKEYFILE Quit ..EncryptionKeyFileFields("change")
     If (pType = ..#TYPEDATABASEKEYS) || (pType = ..#TYPEDATAELEMENTKEYS) Quit ..EncryptionKeyFields()
     If pType = ..#TYPEENCRYPTIONSTARTUP Quit ..EncryptionStartupFields()
+    If pType = ..#TYPEAUTHOPTIONS Quit ..AuthOptionsFields()
+    If pType = ..#TYPESUPERSERVER Quit ..SuperserverFields()
+    If pType = ..#TYPEMFTCONNECTION Quit ..MftConnectionFields(0)
+    If pType = ..#TYPEROUTINEAPPLICATION Quit ..RoutineApplicationChangeFields()
+    If (pType = ..#TYPEDOCDBAPPLICATION) || (pType = ..#TYPEROUTINEAPPLICATION) Quit ..DocDbApplicationFields()
     Quit ""
 }
 
@@ -1049,6 +1262,7 @@ ClassMethod PermittedCreateFields(pType As %String) As %List
     If pType = ..#TYPEOAUTHRESOURCESERVER Quit ..OAuthResourceServerFields()
     If pType = ..#TYPEOAUTHAUTHSERVER Quit ..OAuthAuthorizationServerFields()
     If pType = ..#TYPEOAUTHSERVERCLIENT Quit ..OAuthRegisteredClientFields()
+    If pType = ..#TYPEPCTACCESS Quit $ListBuild(..#PCTACCESSFIELD)
     If pType = ..#TYPEWEBAPPLICATION Quit $ListBuild("AutheEnabled", "Description", "DispatchClass", "Enabled", "MatchRoles", "NameSpace", "Recurse", "Resource", "WSGIAppLocation", "WSGIAppName", "WSGICallable", "WSGIType")
     If pType = ..#TYPEUSER Quit $ListBuild("ExpirationDate", "FullName", "NameSpace", "Routine", ..#FIELDROLES)
     If pType = ..#TYPEROLE Quit $ListBuild("Description", ..#FIELDGRANTEDROLES, ..#FIELDRESOURCES)
@@ -1067,8 +1281,17 @@ ClassMethod PermittedCreateFields(pType As %String) As %List
     If pType = ..#TYPELICENSESERVER Quit ..LicenseServerFields()
     If pType = ..#TYPEECPDATASERVER Quit ..EcpDataServerFields()
     If pType = ..#TYPEENCRYPTIONKEYFILE Quit ..EncryptionKeyFileFields("create")
+    If pType = ..#TYPESUPERSERVER Quit ..SuperserverFields()
+    If pType = ..#TYPEMFTCONNECTION Quit ..MftConnectionFields(1)
+    If (pType = ..#TYPEDOCDBAPPLICATION) || (pType = ..#TYPEROUTINEAPPLICATION) Quit ..DocDbApplicationFields()
     ; Story 19.17: a document database create sets its name, which the docdb arm judges by the class it creates.
     If pType = ..#TYPEDOCDBDATABASE Quit $ListBuild("Name")
+    ; Story 18.32: a REST service create sets its package and its document, which the rest-service arm judges by the package.
+    If pType = ..#TYPERESTSERVICE Quit $ListBuild("Name", "Document")
+    ; Story 20.3: an item add sets these six; its production is the id's and its namespace the payload's.
+    If pType = ..#TYPEPRODUCTIONITEM Quit $ListBuild("Name", "ClassName", "PoolSize", "Enabled", "Category", "Comment")
+    ; Story 20.5: an entry add sets its key and its value; its table is the id's and its namespace the payload's.
+    If pType = ..#TYPELOOKUPENTRY Quit $ListBuild("Key", "Value")
     Quit ""
 }
 
@@ -1149,9 +1372,16 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
             Do ..Refuse(..#UNCOVERED, .pProhibits, .pCode)
             Quit
         }
-        If (tType '= ..#TYPEWEBAPPLICATION) && (tType '= ..#TYPEUSER) && (tType '= ..#TYPEAUDITING) && (tType '= ..#TYPETASK) && (tType '= ..#TYPEPROCESS) && (tType '= ..#TYPEAPPLICATIONERROR) && (tType '= ..#TYPEROLE) && (tType '= ..#TYPERESOURCE) && (tType '= ..#TYPEX509) && (tType '= ..#TYPEWALLETSECRET) && (tType '= ..#TYPEDEVICE) && (tType '= ..#TYPEOAUTHCLIENT) && (tType '= ..#TYPEOAUTHSERVERCLIENT) && (tType '= ..#TYPEAUDITEVENT) && (tType '= ..#TYPEAUDITUSEREVENT) && (tType '= ..#TYPESSL) && (tType '= ..#TYPESERVICE) && (tType '= ..#TYPELDAP) && (tType '= ..#TYPEOAUTHSERVERDEF) && (tType '= ..#TYPEOAUTHRESOURCESERVER) && (tType '= ..#TYPEOAUTHAUTHSERVER) && (tType '= ..#TYPENAMESPACE) && (tType '= ..#TYPEWEBSESSION) && (tType '= ..#TYPEBACKGROUNDTASK) && (tType '= ..#TYPEDATABASECONFIG) && (tType '= ..#TYPEDATABASE) && '..IsMappingType(tType) && (tType '= ..#TYPELANGUAGESERVER) && (tType '= ..#TYPELOCK) && (tType '= ..#TYPECLASS) && (tType '= ..#TYPEROUTINE) && (tType '= ..#TYPEJOURNALFILE) && (tType '= ..#TYPEJOURNALSETTINGS) && (tType '= ..#TYPELICENSEKEY) && (tType '= ..#TYPELICENSESERVER) && (tType '= ..#TYPEECPDATASERVER) && (tType '= ..#TYPEECPSETTINGS) && (tType '= ..#TYPEECPSSLCONNECTION) && (tType '= ..#TYPEENCRYPTIONKEYFILE) && (tType '= ..#TYPEDATABASEKEYS) && (tType '= ..#TYPEDATAELEMENTKEYS) && (tType '= ..#TYPEENCRYPTIONSTARTUP) && (tType '= ..#TYPEDOCDBDATABASE) {
+        If (tType '= ..#TYPESCREENPERMISSION) && (tType '= ..#TYPEWEBAPPLICATION) && (tType '= ..#TYPEUSER) && (tType '= ..#TYPEAUDITING) && (tType '= ..#TYPETASK) && (tType '= ..#TYPEPROCESS) && (tType '= ..#TYPEAPPLICATIONERROR) && (tType '= ..#TYPEROLE) && (tType '= ..#TYPERESOURCE) && (tType '= ..#TYPEX509) && (tType '= ..#TYPEWALLETSECRET) && (tType '= ..#TYPEDEVICE) && (tType '= ..#TYPEOAUTHCLIENT) && (tType '= ..#TYPEOAUTHSERVERCLIENT) && (tType '= ..#TYPEAUDITEVENT) && (tType '= ..#TYPEAUDITUSEREVENT) && (tType '= ..#TYPESSL) && (tType '= ..#TYPESERVICE) && (tType '= ..#TYPELDAP) && (tType '= ..#TYPEOAUTHSERVERDEF) && (tType '= ..#TYPEOAUTHRESOURCESERVER) && (tType '= ..#TYPEOAUTHAUTHSERVER) && (tType '= ..#TYPENAMESPACE) && (tType '= ..#TYPEWEBSESSION) && (tType '= ..#TYPEBACKGROUNDTASK) && (tType '= ..#TYPEDATABASECONFIG) && (tType '= ..#TYPEDATABASE) && '..IsMappingType(tType) && (tType '= ..#TYPELANGUAGESERVER) && (tType '= ..#TYPELOCK) && (tType '= ..#TYPECLASS) && (tType '= ..#TYPEROUTINE) && (tType '= ..#TYPEJOURNALFILE) && (tType '= ..#TYPEJOURNALSETTINGS) && (tType '= ..#TYPELICENSEKEY) && (tType '= ..#TYPELICENSESERVER) && (tType '= ..#TYPEECPDATASERVER) && (tType '= ..#TYPEECPSETTINGS) && (tType '= ..#TYPEECPSSLCONNECTION) && (tType '= ..#TYPEENCRYPTIONKEYFILE) && (tType '= ..#TYPEDATABASEKEYS) && (tType '= ..#TYPEDATAELEMENTKEYS) && (tType '= ..#TYPEENCRYPTIONSTARTUP) && (tType '= ..#TYPEAUTHOPTIONS) && (tType '= ..#TYPESUPERSERVER) && (tType '= ..#TYPEMFTCONNECTION) && (tType '= ..#TYPEDOCDBDATABASE) && (tType '= ..#TYPEPRODUCTION) && (tType '= ..#TYPEPRODUCTIONITEM) && (tType '= ..#TYPEPRODUCTIONITEMSETTING) && (tType '= ..#TYPEPCTACCESS) && (tType '= ..#TYPEDOCDBAPPLICATION) && (tType '= ..#TYPEROUTINEAPPLICATION) && (tType '= ..#TYPEINTEROPQUEUE) && (tType '= ..#TYPEINTEROPMESSAGE) && (tType '= ..#TYPEINTEROPJOB) && (tType '= ..#TYPERESTSERVICE) && (tType '= ..#TYPELOOKUPTABLE) && (tType '= ..#TYPELOOKUPENTRY) {
             ; A type COVEREDTYPES lists and no branch evaluates. Fail closed rather than write.
             Do ..Refuse(..#UNCOVERED, .pProhibits, .pCode)
+            Quit
+        }
+
+        ; Story 20.15: a screen's permissions are judged by the screen's identifier alone, so the arm
+        ; reads no target. A screen that cannot be adjusted is OcuPilot's own.
+        If tType = ..#TYPESCREENPERMISSION {
+            Do ..ScreenPermission(tId, .pProhibits, .pCode)
             Quit
         }
 
@@ -1159,6 +1389,9 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
         ; stubs %session while it runs (AD-2).
         Set tOwnSession = ""
         If tType = ..#TYPEWEBSESSION Set tOwnSession = ..ServingSessionId()
+        ; Likewise the port the serving request arrived through, read before any port call.
+        Set tServingPort = ""
+        If tType = ..#TYPESUPERSERVER Set tServingPort = ..ServingSuperserverPort()
 
         Set tServes = 0
         If tType = ..#TYPEWEBAPPLICATION {
@@ -1174,6 +1407,13 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
         ; recipient for both callers. Asked before the target read: a broadcast's target is a pid
         ; set, which the process predicates do not read.
         If (tType = ..#TYPEPROCESS) && (..WriteTypeOf(..ToolClassNamed(pToolName)) = ..#BROADCASTWRITETYPE) Quit
+
+        ; Story 18.9: a SQL privilege grant or revoke for a user or a role is judged by its grantee and
+        ; its stored object alone, so the arm reads no target.
+        If ((tType = ..#TYPEUSER) || (tType = ..#TYPEROLE)) && ..IsSqlPrivilegeTool(..ToolClassNamed(pToolName)) {
+            Set tSC = ..SqlPrivilege(tId, pPayload, .pProhibits, .pCode)
+            Quit
+        }
 
         ; Story 19.2: a document set is judged by its own names, so the arm reads no target. Story
         ; 19.13: an export only reads and is not judged, and an import is judged by the documents its
@@ -1202,6 +1442,29 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
             Quit
         }
 
+        ; Story 18.32: a spec-based REST service is judged by its package, the target id for a create and a delete alike,
+        ; so the arm reads no target.
+        If tType = ..#TYPERESTSERVICE {
+            Set tSC = ..Code(tId, .pProhibits, .pCode)
+            Quit
+        }
+
+        ; Story 18.10 (DW-2239): every write to one of OcuPilot's own privileged routine applications -- a create, a delete,
+        ; a change to any field -- is refused over the application, as the last arm of WebApplication is for OcuPilot's own
+        ; web applications, so it reads no target and lists no field.
+        If (tType = ..#TYPEWEBAPPLICATION) && ..OwnRoutineApplication(tId) {
+            Do ..Refuse(..#OCUPILOTROUTINEAPP, .pProhibits, .pCode)
+            Quit
+        }
+        ; Story 18.31: the same refusal for the routine applications' own type, whose tools name an application by its name.
+        If (tType = ..#TYPEROUTINEAPPLICATION) && ..OwnRoutineApplication(tId) {
+            Do ..Refuse(..#OCUPILOTROUTINEAPP, .pProhibits, .pCode)
+            Quit
+        }
+        ; Story 20.5: a lookup table import names the table its file holds, or the literal import id for a server file the
+        ; browser never reads, and AD-10 names no effect on a lookup table, so the arm reads no target; the port refuses a file
+        ; that is not exactly one lookup table, or holds another table than the one named, before any load.
+        If (tType = ..#TYPELOOKUPTABLE) && (..WriteTypeOf(..ToolClassNamed(pToolName)) = ..#LOOKUPIMPORTWRITETYPE) Quit
         Set tSC = ..Target(pToolName, tId, .tTarget, .tPresent, .tToolClass)
         If $$$ISERR(tSC) Quit
         ; AD-54. A create's target is CORRECTLY absent, so the early-out below -- which reasons that
@@ -1210,9 +1473,34 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
         ; behind this set would refuse the write. The create predicates are evaluated instead, over
         ; the fields the caller actually supplied.
         If ..CreatesOf($Get(tToolClass)) {
+            ; Story 18.24: a wallet key create is judged by the fields of its own key type.
+            If (tType = ..#TYPEWALLETSECRET) && (..KeyTypeOf($Get(tToolClass)) '= "") {
+                Set tSC = ..WalletKey(..KeyTypeOf($Get(tToolClass)), 1, ..ParsedObject(pPayload), .pProhibits, .pCode)
+                Quit
+            }
             If 'tServes && (tType = ..#TYPEWEBAPPLICATION) {
                 Set tSC = ..UnderOcuPilot(tId, .tServes)
                 If $$$ISERR(tSC) Quit
+            }
+            ; Story 18.29: a copy's payload is the four fields its composition sets, and no other.
+            If (tType = ..#TYPEUSER) && (..WriteTypeOf(..ToolClassNamed(pToolName)) = ..#COPYWRITETYPE) {
+                Set tSC = ..Copied(..ParsedObject(pPayload), .pProhibits, .pCode)
+                Quit
+            }
+            ; Story 20.3: an item add carries the namespace it was composed in beside its fields. It is where the
+            ; item is added, not a field the caller sets.
+            If tType = ..#TYPEPRODUCTIONITEM {
+                Set tItemPayload = ..ParsedObject(pPayload)
+                If tItemPayload.%GetTypeOf("Namespace") '= "unassigned" Do tItemPayload.%Remove("Namespace")
+                Set tSC = ..Created(tType, 0, tItemPayload, .pProhibits, .pCode, tId)
+                Quit
+            }
+            ; Story 20.5: an entry add carries the namespace it was composed in beside its fields, as an item add does.
+            If tType = ..#TYPELOOKUPENTRY {
+                Set tEntryPayload = ..ParsedObject(pPayload)
+                If tEntryPayload.%GetTypeOf("Namespace") '= "unassigned" Do tEntryPayload.%Remove("Namespace")
+                Set tSC = ..Created(tType, 0, tEntryPayload, .pProhibits, .pCode, tId)
+                Quit
             }
             Set tSC = ..Created(tType, tServes, ..ParsedObject(pPayload), .pProhibits, .pCode, tId)
             Quit
@@ -1245,6 +1533,11 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
             ; A DELETE sends no body and its card rows are the fingerprint subject, so it reaches
             ; the sweep with nothing changed, as X509() reasons.
             If ..WriteTypeOf($Get(tToolClass)) = "DELETE" Kill tChanged
+            ; Story 18.24: a wallet key replace is judged by the fields of its own key type.
+            If ..KeyTypeOf($Get(tToolClass)) '= "" {
+                Set tSC = ..WalletKeyChanged(..KeyTypeOf($Get(tToolClass)), .tChanged, .pProhibits, .pCode)
+                Quit
+            }
             Set tSC = ..ReviewedFewOnly(..#TYPEWALLETSECRET, .tChanged, .pProhibits, .pCode)
             Quit
         }
@@ -1370,6 +1663,80 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
         ; The encryption startup settings (Story 18.23): a start that cannot finish is not chosen.
         If tType = ..#TYPEENCRYPTIONSTARTUP {
             Set tSC = ..EncryptionStartup($Get(tToolClass), tPayloadObject, tTarget, .tChanged, .pProhibits, .pCode)
+            Quit
+        }
+        ; A production (Story 20.2): AD-10 names no effect on one -- its five actions send no body, and
+        ; their card row is the state -- so a write passes the reviewed-few sweep and nothing else.
+        If tType = ..#TYPEPRODUCTION {
+            Set tSC = ..ReviewedFewOnly(..#TYPEPRODUCTION, .tChanged, .pProhibits, .pCode)
+            Quit
+        }
+        ; A production item (Story 20.3): AD-10 names no effect on one, so a change passes the reviewed-few sweep and
+        ; nothing else.
+        If tType = ..#TYPEPRODUCTIONITEM {
+            Set tSC = ..ReviewedFewOnly(..#TYPEPRODUCTIONITEM, .tChanged, .pProhibits, .pCode)
+            Quit
+        }
+        ; A production item's setting (Story 20.22): its one field, Value, passes the reviewed-few sweep and nothing
+        ; else; a server path it names was judged by the port at the mint and is judged again at the write.
+        If tType = ..#TYPEPRODUCTIONITEMSETTING {
+            Set tSC = ..ReviewedFewOnly(..#TYPEPRODUCTIONITEMSETTING, .tChanged, .pProhibits, .pCode)
+            Quit
+        }
+        ; A queue, a waiting message and a job (Story 20.23): AD-10 names no effect on any of them -- the target of a job
+        ; write is a job of the running production, never OcuPilot's own process or a system process -- so a write passes the
+        ; reviewed-few sweep and nothing else.
+        If tType = ..#TYPEINTEROPQUEUE {
+            Set tSC = ..ReviewedFewOnly(..#TYPEINTEROPQUEUE, .tChanged, .pProhibits, .pCode)
+            Quit
+        }
+        If tType = ..#TYPEINTEROPMESSAGE {
+            Set tSC = ..ReviewedFewOnly(..#TYPEINTEROPMESSAGE, .tChanged, .pProhibits, .pCode)
+            Quit
+        }
+        If tType = ..#TYPEINTEROPJOB {
+            Set tSC = ..ReviewedFewOnly(..#TYPEINTEROPJOB, .tChanged, .pProhibits, .pCode)
+            Quit
+        }
+        ; A lookup table and one of its entries (Story 20.5): AD-10 names no effect on either -- OcuPilot stores nothing in the
+        ; vendor's lookup global -- so a write passes the reviewed-few sweep and nothing else.
+        If tType = ..#TYPELOOKUPTABLE {
+            Set tSC = ..ReviewedFewOnly(..#TYPELOOKUPTABLE, .tChanged, .pProhibits, .pCode)
+            Quit
+        }
+        If tType = ..#TYPELOOKUPENTRY {
+            Set tSC = ..ReviewedFewOnly(..#TYPELOOKUPENTRY, .tChanged, .pProhibits, .pCode)
+            Quit
+        }
+        ; The authentication and web session options (Story 18.8): OcuPilot's own sign-in and start are not cut.
+        If tType = ..#TYPEAUTHOPTIONS {
+            Set tSC = ..AuthOptions($Get(tToolClass), tPayloadObject, tTarget, .tChanged, .pProhibits, .pCode)
+            Quit
+        }
+        ; A managed file transfer connection (Story 18.26): AD-10 names no effect on one.
+        If tType = ..#TYPEMFTCONNECTION {
+            Set tSC = ..ReviewedFewOnly(tType, .tChanged, .pProhibits, .pCode)
+            Quit
+        }
+        ; A Doc DB application record (Story 18.30): AD-10 names no effect on one.
+        If tType = ..#TYPEDOCDBAPPLICATION {
+            Set tSC = ..ReviewedFewOnly(tType, .tChanged, .pProhibits, .pCode)
+            Quit
+        }
+        ; A privileged routine application (Story 18.31): its own two are refused above, and AD-10 names no other effect.
+        If tType = ..#TYPEROUTINEAPPLICATION {
+            Set tSC = ..ReviewedFewOnly(tType, .tChanged, .pProhibits, .pCode)
+            Quit
+        }
+        ; A percent-class access entry (Story 18.10): AD-10 names no effect on one, so its one field passes the reviewed-few
+        ; sweep and nothing else.
+        If tType = ..#TYPEPCTACCESS {
+            Set tSC = ..ReviewedFewOnly(..#TYPEPCTACCESS, .tChanged, .pProhibits, .pCode)
+            Quit
+        }
+        ; A superserver (Story 18.25): the one the web gateway connects through is not cut off.
+        If tType = ..#TYPESUPERSERVER {
+            Set tSC = ..Superserver(tId, $Get(tToolClass), tPayloadObject, tTarget, tServingPort, .tChanged, .pProhibits, .pCode)
             Quit
         }
         Set tSC = ..WebApplication(tPayloadObject, tTarget, tServes, .tChanged, .pProhibits, .pCode)
@@ -1592,6 +1959,30 @@ ClassMethod WebApplication(pPayload As %DynamicObject, pTarget As %DynamicObject
     Quit tSC
 }
 
+/// <p>Whether the screen-permission read <var>pTarget</var> (<code>{Pairs, Result}</code>) leaves a set
+/// that lacks a pair <code>Pairs</code> holds, compared upper-cased. A read missing either answers 0.</p>
+ClassMethod LowersScreenPermission(pTarget As %DynamicObject) As %Boolean
+{
+    If '$IsObject(pTarget) Quit 0
+    Set tPairs = pTarget.%Get("Pairs")
+    Set tResult = pTarget.%Get("Result")
+    If '$IsObject(tPairs) || '$IsObject(tResult) Quit 0
+    Set tKept = ""
+    Set tIterator = tResult.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tPair) {
+        Set tKept = tKept _ $ListBuild($ZConvert(tPair, "U"))
+    }
+    Set tLowers = 0
+    Set tIterator = tPairs.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tPair) {
+        If '$ListFind(tKept, $ZConvert(tPair, "U")) {
+            Set tLowers = 1
+            Quit
+        }
+    }
+    Quit tLowers
+}
+
 /// <p>Whether a write of entity type <var>pType</var> carrying payload <var>pPayload</var> weakens
 /// or repoints the target <var>pTarget</var> holds now, in <var>pEffect</var>: for a web
 /// application, the first of <parameter>EFFECTUNAUTHENTICATED</parameter> (it adds the
@@ -1618,11 +2009,17 @@ ClassMethod WebApplication(pPayload As %DynamicObject, pTarget As %DynamicObject
 /// The mint asks it for a create of this type too, and no request field can suppress it.</p>
 /// <p>A global mapping whose global part begins with <code>:</code> (an empty low end, read as
 /// <code>%</code>) or <code>*</code> reaches the <code>%</code> globals too, and answers the same effect.</p>
+/// <p>For a screen permission, <parameter>EFFECTSCREENLOWERED</parameter> when <method>LowersScreenPermission</method>
+/// answers true over <var>pTarget</var>.</p>
 ClassMethod WeakensByEffect(pType As %String, pPayload As %DynamicObject, pTarget As %DynamicObject, Output pEffect As %String, pId As %String = "", pRemoves As %Boolean = 0) As %Status
 {
     Set pEffect = ""
     Set tSC = $$$OK
     Try {
+        If pType = ..#TYPESCREENPERMISSION {
+            If ..LowersScreenPermission(pTarget) Set pEffect = ..#EFFECTSCREENLOWERED
+            Quit
+        }
         If pType = ..#TYPEGLOBALMAPPING {
             If 'pRemoves && ..IsSystemGlobalMapping(pId) Set pEffect = ..#EFFECTSYSTEMGLOBAL
             Quit
@@ -1633,6 +2030,14 @@ ClassMethod WeakensByEffect(pType As %String, pPayload As %DynamicObject, pTarge
         }
         If pType = ..#TYPEENCRYPTIONSTARTUP {
             If ..ChangesAuditEncryption(pPayload, pTarget) Set pEffect = ..#EFFECTAUDITENCRYPTION
+            Quit
+        }
+        If pType = ..#TYPEAUTHOPTIONS {
+            If ..ChangesTokenFields(pPayload, pTarget) Set pEffect = ..#EFFECTTOKENSIGNOUT
+            Quit
+        }
+        If pType = ..#TYPESUPERSERVER {
+            If ..ChangesSuperserverSsl(pPayload, pTarget) && ..IsServingSuperserver(pId, pTarget, ..ServingSuperserverPort()) Set pEffect = ..#EFFECTSERVINGSUPERSERVER
             Quit
         }
         If pType = ..#TYPESERVICE {
@@ -2126,6 +2531,18 @@ ClassMethod IsOcuPilotLock(pReference As %String) As %Boolean
     Quit ($Extract(..GlobalName(pReference), 1, $Length(..#OWNGLOBALPREFIX)) = ..#OWNGLOBALPREFIX)
 }
 
+/// <p>The screen permission arm (AD-10, AD-64): a screen that cannot be adjusted
+/// (<method>OcuPilot.Screen.Gate.Adjustable</method>) is refused <parameter>OCUPILOTSCREEN</parameter>. An
+/// identifier no screen carries is permitted here: the port refuses it, naming nothing of the set.</p>
+ClassMethod ScreenPermission(pId As %String, Output pProhibits As %Boolean, Output pCode As %String) [ Private ]
+{
+    Set pProhibits = 0
+    Set pCode = ""
+    Set tDescriptor = ##class(OcuPilot.Screen.Registry).DescriptorForTool(pId)
+    If tDescriptor = "" Quit
+    If '##class(OcuPilot.Screen.Gate).Adjustable(tDescriptor) Do ..Refuse(..#OCUPILOTSCREEN, .pProhibits, .pCode)
+}
+
 /// <p>The code arm (AD-10 as amended 2026-10-02): a compile, delete or import of the documents
 /// <var>pId</var> names, comma-separated, is refused <parameter>OCUPILOTCODE</parameter> when any of
 /// them is one of OcuPilot's own documents (<method>IsOcuPilotCode</method>), and is otherwise
@@ -2251,6 +2668,49 @@ ClassMethod ImportedNames(pPayload As %String) As %String [ Private ]
         If tName '= "" Set tNames = tNames _ $Select(tNames = "": "", 1: ",") _ tName
     }
     Quit tNames
+}
+
+/// <p>A SQL privilege grant or revoke (Story 18.9, AD-10): refused with <parameter>OCUPILOTROLE</parameter> when the
+/// grantee <var>pId</var> is one of OcuPilot's own roles (<method>OcuPilotRoles</method>) or
+/// <code>%DB_OCUPILOT</code>, then with <parameter>OCUPILOTSQLPRIVILEGE</parameter> when the stored payload's
+/// <code>Object</code> is one of OcuPilot's own (<method>IsOcuPilotCode</method>), in any namespace. The roster
+/// that cannot be read is an error status, never a permission.</p>
+ClassMethod SqlPrivilege(pId As %String, pPayload As %String, Output pProhibits As %Boolean, Output pCode As %String) As %Status [ Private ]
+{
+    Set pProhibits = 0
+    Set pCode = ""
+    Set tSC = $$$OK
+    Try {
+        Set tSC = ..OcuPilotRoles(.tOwn)
+        If $$$ISERR(tSC) Quit
+        Set tGrantee = ..NormalizedRole(pId)
+        If $ListFind(tOwn, tGrantee) || (tGrantee = ..NormalizedRole(##class(OcuPilot.Kernel.State.Base).#DBRESOURCE)) {
+            Do ..Refuse(..#OCUPILOTROLE, .pProhibits, .pCode)
+            Quit
+        }
+        Set tPayload = ..ParsedObject(pPayload)
+        Set tObject = $Select($IsObject(tPayload) && (tPayload.%GetTypeOf("Object") = "string"): tPayload.%Get("Object"), 1: "")
+        If ..IsOcuPilotCode(tObject) Do ..Refuse(..#OCUPILOTSQLPRIVILEGE, .pProhibits, .pCode)
+    } Catch ex {
+        Set pProhibits = 0
+        Set pCode = ""
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>Whether <var>pToolClass</var> is one of the SQL privilege grant or revoke tools: its port is
+/// <class>OcuPilot.Port.SqlPrivilegePort</class>. Another tool that shares a write type with them
+/// (a token revoke) is not.</p>
+ClassMethod IsSqlPrivilegeTool(pToolClass As %String) As %Boolean [ Private ]
+{
+    Set tIs = 0
+    Try {
+        If pToolClass '= "" Set tIs = ($Parameter(pToolClass, "PORTCLASS") = "OcuPilot.Port.SqlPrivilegePort")
+    } Catch {
+        Set tIs = 0
+    }
+    Quit tIs
 }
 
 /// <p>Whether document <var>pName</var> is one of OcuPilot's own: its name begins, ignoring case,
@@ -2642,6 +3102,301 @@ ClassMethod StartupSetting(pPayload As %DynamicObject, pTarget As %DynamicObject
     Quit ..Rendered(tFrom, pName)
 }
 
+/// <p>The superservers' reviewed few (Story 18.25): the fifteen settings the classic editor sets. Its
+/// <code>SystemDefault</code> is shown and never set, so it is no member.</p>
+ClassMethod SuperserverFields() As %List [ Private ]
+{
+    Quit $ListBuild("Description", "EnableCacheDirect", "EnableClients", "EnableCSP", "EnableDataCheck", "EnableECP", "EnableMirror", "EnableNodeJS", "EnableShadows", "EnableSharding", "EnableSNMP", "EnableWebLink", "Enabled", "SSLConfig", "SSLSupportLevel")
+}
+
+/// <p>The local port of the device this process was started on when it is a TCP connection,
+/// <code>|TCP|&lt;port&gt;|&lt;pid&gt;</code>, which for a request served through the web gateway is the port of
+/// the superserver it connected through (measured: <code>|TCP|1972|10543</code>); <code>""</code> for any other
+/// device, which is every background job, so a turn's mint has none. Read before any port call
+/// (<method>ServingSessionId</method> is the precedent).</p>
+ClassMethod ServingSuperserverPort() As %String
+{
+    Set tPort = ""
+    Try {
+        Set tPort = ..ServingPortOf($Principal)
+    } Catch {
+        Set tPort = ""
+    }
+    Quit tPort
+}
+
+/// <p>The port <var>pPrincipal</var> names when it reads <code>|TCP|&lt;digits&gt;|...</code>, else
+/// <code>""</code>.</p>
+ClassMethod ServingPortOf(pPrincipal As %String) As %String
+{
+    If $Piece(pPrincipal, "|", 1, 2) '= "|TCP" Quit ""
+    Set tPort = $Piece(pPrincipal, "|", 3)
+    If '$Match(tPort, "[0-9]{1,5}") Quit ""
+    Quit +tPort
+}
+
+/// <p>Whether the superserver <var>pId</var>, a composite <code>[Port, BindAddress]</code>, is one the web
+/// gateway connects through: its fresh read <var>pTarget</var> says <code>SystemDefault</code> true, or its
+/// port is <var>pServingPort</var>, whatever its bind address. A target that is not an object, a create's
+/// absent one, is never serving.</p>
+ClassMethod IsServingSuperserver(pId As %String, pTarget As %DynamicObject, pServingPort As %String) As %Boolean
+{
+    If '$IsObject(pTarget) Quit 0
+    If ..Rendered(pTarget, ..#SUPERSERVERDEFAULTFIELD) = "true" Quit 1
+    If pServingPort = "" Quit 0
+    Set tPort = $ZStrip($Piece(pId, $Char(##class(OcuPilot.Kernel.EntityId).#COMPOSITESEPARATOR), 1), "<>W")
+    If '$Match(tPort, "[0-9]{1,5}") Quit 0
+    Quit (+tPort = +pServingPort)
+}
+
+/// <p>The fields of <var>pTarget</var> whose change is refused <parameter>SERVINGSUPERSERVER</parameter>, in
+/// <var>pFields</var> as a <class>%DynamicArray</class>: <code>Enabled</code> and <code>EnableCSP</code> when the
+/// superserver is serving (<method>IsServingSuperserver</method>, over this request's port), none otherwise. It
+/// is the form's <code>locked</code> list and answers what the arm asks.</p>
+ClassMethod SuperserverLocks(pId As %String, pTarget As %DynamicObject, Output pFields As %DynamicArray)
+{
+    Set pFields = []
+    If '..IsServingSuperserver(pId, pTarget, ..ServingSuperserverPort()) Quit
+    Do pFields.%Push(..#SUPERSERVERENABLEDFIELD)
+    Do pFields.%Push(..#SUPERSERVERCSPFIELD)
+}
+
+/// <p>A superserver write's verdict (AD-10 as amended 2026-10-07, Story 18.25), from either caller. On a serving
+/// superserver (<method>IsServingSuperserver</method> over <var>pTarget</var> and <var>pServingPort</var>) a
+/// delete, <code>Enabled</code> or <code>EnableCSP</code> turned off, and the support level raised to
+/// <parameter>SUPERSERVERREQUIRED</parameter> are refused <parameter>SERVINGSUPERSERVER</parameter>; every write
+/// then passes the reviewed-few sweep. A create has no target and is judged by the sweep alone.</p>
+ClassMethod Superserver(pId As %String, pToolClass As %String, pPayload As %DynamicObject, pTarget As %DynamicObject, pServingPort As %String, ByRef pChanged, Output pProhibits As %Boolean, Output pCode As %String) As %Status [ Private ]
+{
+    Set pProhibits = 0
+    Set pCode = ""
+    Set tSC = $$$OK
+    Try {
+        If ..IsServingSuperserver(pId, pTarget, pServingPort) {
+            If ..WriteTypeOf(pToolClass) = "DELETE" {
+                Do ..Refuse(..#SERVINGSUPERSERVER, .pProhibits, .pCode)
+                Quit
+            }
+            If ..TurnsFlagOff(pPayload, pTarget, ..#SUPERSERVERENABLEDFIELD) || ..TurnsFlagOff(pPayload, pTarget, ..#SUPERSERVERCSPFIELD) || ..RaisesToRequired(pPayload, pTarget) {
+                Do ..Refuse(..#SERVINGSUPERSERVER, .pProhibits, .pCode)
+                Quit
+            }
+        }
+        Set tSC = ..ReviewedFewOnly(..#TYPESUPERSERVER, .pChanged, .pProhibits, .pCode)
+    } Catch ex {
+        Set pProhibits = 0
+        Set pCode = ""
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>Whether the payload carries a support level of <parameter>SUPERSERVERREQUIRED</parameter> where
+/// <var>pTarget</var> holds another.</p>
+ClassMethod RaisesToRequired(pPayload As %DynamicObject, pTarget As %DynamicObject) As %Boolean [ Private ]
+{
+    If '$IsObject(pPayload) || (pPayload.%GetTypeOf(..#SUPERSERVERLEVELFIELD) = "unassigned") Quit 0
+    Quit (..Rendered(pPayload, ..#SUPERSERVERLEVELFIELD) = ..#SUPERSERVERREQUIRED) && (..Rendered(pTarget, ..#SUPERSERVERLEVELFIELD) '= ..#SUPERSERVERREQUIRED)
+}
+
+/// <p>Whether the payload carries an SSL/TLS support level or configuration other than <var>pTarget</var>'s.</p>
+ClassMethod ChangesSuperserverSsl(pPayload As %DynamicObject, pTarget As %DynamicObject) As %Boolean [ Private ]
+{
+    If '$IsObject(pPayload) Quit 0
+    Set tChanges = 0
+    For tField = ..#SUPERSERVERLEVELFIELD, ..#SUPERSERVERCONFIGFIELD {
+        If pPayload.%GetTypeOf(tField) = "unassigned" Continue
+        If ..Rendered(pPayload, tField) '= ..Rendered(pTarget, tField) Set tChanges = 1
+    }
+    Quit tChanges
+}
+
+/// <p>The authentication options' reviewed few (Story 18.8): the fourteen method flags, the cookie, two-factor
+/// and SMTP settings and the two JWT settings. The SMTP password is never one: it travels only through
+/// its own tool (AD-56).</p>
+ClassMethod AuthOptionsFields() As %List [ Private ]
+{
+    Quit $ListBuild("AutheUnauthenticated", "AutheOS", "AutheOSDelegated", "AutheOSLDAP", "AutheCache", "AutheDelegated", "AutheAlwaysTryDelegated", "AutheKB", "AutheLDAP", "AutheLDAPCache", "AutheOAuth2", "AutheLoginToken", "AutheTwoFactorSMS", "AutheTwoFactorPW", "LoginCookieTimeout", "SMTPServer", "SMTPUsername", "TwoFactorFrom", "TwoFactorTimeout", "JWTIssuer", "JWTSigAlg")
+}
+
+/// <p>The authentication options write's verdict (AD-10 as amended 2026-10-07, Story 18.8). The SMTP password
+/// tool sets no flag and passes the reviewed-few sweep alone. Any other write is refused
+/// <parameter>OCUPILOTSIGNIN</parameter> when it turns a method off so that one of OcuPilot's own web
+/// applications or the serving service has none left (<method>CutsOffSignIn</method>), and
+/// <parameter>OCUPILOTSTART</parameter> when it turns <parameter>AUTHEOSFIELD</parameter> off, each judged
+/// over the payload's flags against the target's, from either caller. The application and service masks are
+/// read through <var>pToolClass</var>'s port as the caller, only for a write that turns a method off; a read
+/// that fails refuses.</p>
+ClassMethod AuthOptions(pToolClass As %String, pPayload As %DynamicObject, pTarget As %DynamicObject, ByRef pChanged, Output pProhibits As %Boolean, Output pCode As %String) As %Status [ Private ]
+{
+    Set pProhibits = 0
+    Set pCode = ""
+    Set tSC = $$$OK
+    Try {
+        If ..WriteTypeOf(pToolClass) '= ..#AUTHEPASSWORDWRITETYPE {
+            If ..TurnsFlagOff(pPayload, pTarget, ..#AUTHEOSFIELD) {
+                Do ..Refuse(..#OCUPILOTSTART, .pProhibits, .pCode)
+                Quit
+            }
+            Set tOld = ..AuthFlags(pTarget, "")
+            Set tNew = ..AuthFlags(pTarget, pPayload)
+            If +$ZBoolean(tOld, tNew, 2) {
+                If ..CutsOffSignIn(..PortClassOf(pToolClass), tOld, tNew) {
+                    Do ..Refuse(..#OCUPILOTSIGNIN, .pProhibits, .pCode)
+                    Quit
+                }
+            }
+        }
+        Set tSC = ..ReviewedFewOnly(..#TYPEAUTHOPTIONS, .pChanged, .pProhibits, .pCode)
+    } Catch ex {
+        Set pProhibits = 0
+        Set pCode = ""
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>The bits of the instance's <code>AutheEnabled</code> the flags <var>pTarget</var> reads as on set,
+/// each flag as <parameter>AUTHEBITS</parameter> maps it, with <var>pOverlay</var>'s flags in place of the
+/// target's wherever it carries one: the methods the write leaves.</p>
+ClassMethod AuthFlags(pTarget As %DynamicObject, pOverlay As %DynamicObject) As %Integer
+{
+    Set tMask = 0
+    For tI = 1:1:$Length(..#AUTHEBITS, ",") {
+        Set tEntry = $Piece(..#AUTHEBITS, ",", tI)
+        Set tName = $Piece(tEntry, ":", 1)
+        Set tFrom = $Select($IsObject(pOverlay) && (pOverlay.%GetTypeOf(tName) '= "unassigned"): pOverlay, 1: pTarget)
+        If '$IsObject(tFrom) Continue
+        If ..Rendered(tFrom, tName) = "true" Set tMask = $ZBoolean(tMask, +$Piece(tEntry, ":", 2), 7)
+    }
+    Quit tMask
+}
+
+/// <p>Whether the payload carries <var>pField</var> as off where <var>pTarget</var> reads it on.</p>
+ClassMethod TurnsFlagOff(pPayload As %DynamicObject, pTarget As %DynamicObject, pField As %String) As %Boolean [ Private ]
+{
+    If '$IsObject(pPayload) || (pPayload.%GetTypeOf(pField) = "unassigned") Quit 0
+    Quit (..Rendered(pPayload, pField) '= "true") && (..Rendered(pTarget, pField) = "true")
+}
+
+/// <p>Whether changing the flags from the bits <var>pOld</var> to <var>pNew</var> leaves one of the masks
+/// <method>SignInMasks</method> answers with no method it held before: <code>pMask AND pOld</code> not 0 and
+/// <code>pMask AND pNew</code> 0, each mask less <parameter>AUTHEMODIFIERS</parameter>. Masks read through
+/// <var>pPort</var>; a read that fails answers 1.</p>
+ClassMethod CutsOffSignIn(pPort As %String, pOld As %Integer, pNew As %Integer) As %Boolean
+{
+    Set tSC = ..SignInMasks(pPort, .tMasks)
+    If $$$ISERR(tSC) Quit 1
+    Set tCuts = 0
+    For tI = 1:1:$ListLength(tMasks) {
+        Set tMask = $ZBoolean(+$List(tMasks, tI), ..#AUTHEMODIFIERS, 2)
+        If +$ZBoolean(tMask, pOld, 1) && '+$ZBoolean(tMask, pNew, 1) Set tCuts = 1
+    }
+    Quit tCuts
+}
+
+/// <p>The <code>AutheEnabled</code> mask of each of OcuPilot's own web applications
+/// (<class>OcuPilot.Install.Roster</class>, read through <code>WebApp.App</code> <code>GET</code>) and of
+/// <parameter>SERVINGSERVICENAME</parameter> (<code>Security.Service</code> <code>GET</code>), as a
+/// <class>%List</class> of numbers in <var>pMasks</var>, each read through <var>pPort</var> as the caller. A
+/// roster that cannot be read, a read that fails and a read that answers no number are an error status.</p>
+ClassMethod SignInMasks(pPort As %String, Output pMasks As %List) As %Status
+{
+    Set pMasks = ""
+    Set tSC = $$$OK
+    Try {
+        Set tKeys = ##class(OcuPilot.Install.Roster).Keys()
+        If tKeys = "" {
+            Set tSC = $$$ERROR($$$GeneralError, "the install roster's application keys could not be read, so which applications serve OcuPilot is unknown")
+            Quit
+        }
+        For tI = 1:1:$Length(tKeys, ",") {
+            Set tSC = ##class(OcuPilot.Install.Roster).Application($Piece(tKeys, ",", tI), .tApp)
+            If $$$ISERR(tSC) Quit
+            Set tSC = ..MaskOf(pPort, "WebApp.App", tApp.path, .tMask)
+            If $$$ISERR(tSC) Quit
+            Set pMasks = pMasks _ $ListBuild(tMask)
+        }
+        If $$$ISERR(tSC) Quit
+        Set tSC = ..MaskOf(pPort, "Security.Service", ..#SERVINGSERVICENAME, .tMask)
+        If $$$ISERR(tSC) Quit
+        Set pMasks = pMasks _ $ListBuild(tMask)
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    If $$$ISERR(tSC) Set pMasks = ""
+    Quit tSC
+}
+
+/// <p>The <code>AutheEnabled</code> of <var>pEndpoint</var>'s <code>GET</code> for <var>pName</var>.</p>
+ClassMethod MaskOf(pPort As %String, pEndpoint As %String, pName As %String, Output pMask As %Integer) As %Status [ Private ]
+{
+    Set pMask = 0
+    Kill tQuery
+    Set tQuery("name") = pName
+    Set tSC = $ClassMethod(pPort, "Invoke", pEndpoint, "GET", .tQuery, "", .tRead, .tHttp, .tFault)
+    If $$$ISERR(tSC) Quit tSC
+    If '$IsObject($Get(tRead)) || 'tRead.%IsA("%Library.DynamicObject") || (tRead.%GetTypeOf("AutheEnabled") '= "number") {
+        Quit $$$ERROR($$$GeneralError, "the authentication methods of an application OcuPilot is served through could not be read")
+    }
+    Set pMask = +tRead.%Get("AutheEnabled")
+    Quit $$$OK
+}
+
+/// <p>The flags whose turning off alone would be refused <parameter>OCUPILOTSIGNIN</parameter> on this
+/// instance now, in <var>pFields</var> as a <class>%DynamicArray</class> of names: each flag
+/// <var>pPort</var>'s <code>Security.WebAuth</code> <code>GET</code> reads on whose bits, removed from the
+/// others', leave a mask <method>SignInMasks</method> answers with none. An error status when a read fails.
+/// It is the form's <code>locked</code> list and answers the same question the arm asks.</p>
+ClassMethod SignInLocks(pPort As %String, Output pFields As %DynamicArray) As %Status
+{
+    Set pFields = []
+    Set tSC = $$$OK
+    Try {
+        Kill tQuery
+        Set tSC = $ClassMethod(pPort, "Invoke", "Security.WebAuth", "GET", .tQuery, "", .tRead, .tHttp, .tFault)
+        If $$$ISERR(tSC) Quit
+        If '$IsObject($Get(tRead)) || 'tRead.%IsA("%Library.DynamicObject") {
+            Set tSC = $$$ERROR($$$GeneralError, "the authentication options read answered no object")
+            Quit
+        }
+        Set tSC = ..SignInMasks(pPort, .tMasks)
+        If $$$ISERR(tSC) Quit
+        Set tOld = ..AuthFlags(tRead, "")
+        For tI = 1:1:$Length(..#AUTHEBITS, ",") {
+            Set tEntry = $Piece(..#AUTHEBITS, ",", tI)
+            Set tName = $Piece(tEntry, ":", 1)
+            If ..Rendered(tRead, tName) '= "true" Continue
+            Set tNew = $ZBoolean(tOld, +$Piece(tEntry, ":", 2), 2)
+            For tJ = 1:1:$ListLength(tMasks) {
+                Set tMask = $ZBoolean(+$List(tMasks, tJ), ..#AUTHEMODIFIERS, 2)
+                If +$ZBoolean(tMask, tOld, 1) && '+$ZBoolean(tMask, tNew, 1) {
+                    Do pFields.%Push(tName)
+                    Quit
+                }
+            }
+        }
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    If $$$ISERR(tSC) Set pFields = []
+    Quit tSC
+}
+
+/// <p>Whether <var>pPayload</var> carries a <code>JWTIssuer</code> or <code>JWTSigAlg</code> other than
+/// <var>pTarget</var>'s.</p>
+ClassMethod ChangesTokenFields(pPayload As %DynamicObject, pTarget As %DynamicObject) As %Boolean [ Private ]
+{
+    If '$IsObject(pPayload) Quit 0
+    Set tChanges = 0
+    For tI = 1:1:$Length(..#AUTHETOKENFIELDS, ",") {
+        Set tField = $Piece(..#AUTHETOKENFIELDS, ",", tI)
+        If pPayload.%GetTypeOf(tField) = "unassigned" Continue
+        If ..Rendered(pPayload, tField) '= ..Rendered(pTarget, tField) Set tChanges = 1
+    }
+    Quit tChanges
+}
+
 /// <p>A key file write's verdict (AD-10 as amended 2026-10-04, Story 18.7): a key removal whose key
 /// encrypts one of the databases OcuPilot or the instance depends on, or the journal, is refused
 /// <parameter>OCUPILOTKEY</parameter>, and so is one whose state cannot be read; every write then passes
@@ -2752,6 +3507,15 @@ ClassMethod RowNeedsKey(pRow As %DynamicObject, pKey As %String) As %Boolean
     Set tType = pRow.%GetTypeOf("Encrypted")
     If ((tType = "boolean") || (tType = "number")) && ('pRow.%Get("Encrypted")) Quit 0
     Quit 1
+}
+
+/// <p>A managed file transfer connection's fields (Story 18.26): the five a create sets, or with
+/// <var>pCreate</var> 0 the four a change may set, which leave out <code>Service</code>. The name is the id and
+/// never a body field.</p>
+ClassMethod MftConnectionFields(pCreate As %Boolean) As %List [ Private ]
+{
+    If pCreate Quit $ListBuild("Service", "URL", "SSLConfiguration", "Username", "ApplicationName")
+    Quit $ListBuild("URL", "SSLConfiguration", "Username", "ApplicationName")
 }
 
 /// <p>An ECP data server's fields a create or a change may set (Story 18.20): the classic dialog's
@@ -3352,6 +4116,77 @@ ClassMethod IsOcuPilotProcess(pTarget As %DynamicObject) As %Boolean
     Quit ''tTurnJob
 }
 
+/// <p>The fields a wallet key write of key type <var>pType</var> may carry (Story 18.24), as a
+/// <class>%List</class>: an RSA key's <code>Length</code>, <code>Certificate</code>,
+/// <code>PublicKey</code>, <code>PrivateKey</code> and <code>Password</code>; a symmetric key's
+/// <code>Length</code> and <code>Secret64</code> on a create (<var>pCreates</var> 1) and
+/// <code>Secret64</code> alone on a replace. The key-value lists of
+/// <method>PermittedChangeFields</method> and <method>PermittedCreateFields</method> are unchanged.</p>
+ClassMethod WalletKeyFields(pType As %String, pCreates As %Boolean) As %List
+{
+    If pType = "%Wallet.RSA" Quit $ListBuild("Length", "Certificate", "PublicKey", "PrivateKey", "Password")
+    If pType = "%Wallet.SymmetricKey" Quit $Select(pCreates: $ListBuild("Length", "Secret64"), 1: $ListBuild("Secret64"))
+    Quit ""
+}
+
+/// <p>The wallet key type <var>pToolClass</var> declares through its <code>SECRETTYPE</code>
+/// parameter, or <code>""</code> for any other tool and for a class that cannot be asked.</p>
+ClassMethod KeyTypeOf(pToolClass As %String) As %String [ Private ]
+{
+    Set tType = ""
+    Try {
+        If pToolClass '= "" Set tType = $Parameter(pToolClass, "SECRETTYPE")
+    } Catch {
+        Set tType = ""
+    }
+    If (tType = "%Wallet.RSA") || (tType = "%Wallet.SymmetricKey") Quit tType
+    Quit ""
+}
+
+/// <p>A wallet key create over <var>pPayload</var>: every member of the payload must be one
+/// <method>WalletKeyFields</method> lists for the type, or the write is refused
+/// <parameter>UNCOVEREDFIELD</parameter>.</p>
+ClassMethod WalletKey(pType As %String, pCreates As %Boolean, pPayload As %DynamicObject, Output pProhibits As %Boolean, Output pCode As %String) As %Status [ Private ]
+{
+    Set pProhibits = 0
+    Set pCode = ""
+    Set tSC = $$$OK
+    Try {
+        Set tPermitted = ..WalletKeyFields(pType, pCreates)
+        Set tIterator = pPayload.%GetIterator()
+        While tIterator.%GetNext(.tKey, .tValue) {
+            If '$ListFind(tPermitted, tKey) {
+                Do ..Refuse(..#UNCOVEREDFIELD, .pProhibits, .pCode)
+                Quit
+            }
+        }
+    } Catch ex {
+        Set pProhibits = 0
+        Set pCode = ""
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>A wallet key replace: every field <var>pChanged</var> names must be one
+/// <method>WalletKeyFields</method> lists for the type's replace.</p>
+ClassMethod WalletKeyChanged(pType As %String, ByRef pChanged, Output pProhibits As %Boolean, Output pCode As %String) As %Status [ Private ]
+{
+    Set pProhibits = 0
+    Set pCode = ""
+    Set tPermitted = ..WalletKeyFields(pType, 0)
+    Set tField = ""
+    For {
+        Set tField = $Order(pChanged(tField))
+        If tField = "" Quit
+        If '$ListFind(tPermitted, tField) {
+            Do ..Refuse(..#UNCOVEREDFIELD, .pProhibits, .pCode)
+            Quit
+        }
+    }
+    Quit $$$OK
+}
+
 /// <p>The reviewed-few sweep for entity type <var>pType</var>: every field <var>pChanged</var>
 /// names that <method>PermittedChangeFields</method> does not is refused
 /// <parameter>UNCOVEREDFIELD</parameter>.</p>
@@ -3682,9 +4517,12 @@ ClassMethod ResourceNames(pObject As %DynamicObject, Output pNames) [ Private ]
 /// letter (<method>AddsPublicLetter</method>) on a resource
 /// <method>ResourceGrantsAdministrativePrivilege</method> names -- <var>pId</var>, the target's id,
 /// is what names it. A task's <code>RunAsUser</code> naming an account other than the caller's,
-/// compared without regard to case, grants that account's privileges to the task. The authorization
+/// compared without regard to case, grants that account's privileges to the task; so does an
+/// import's <code>runAs</code>, the accounts of the tasks it creates, when any is another account. The authorization
 /// server configuration's <code>CustomizationRoles</code> grants privilege when it adds a privileged
 /// role (<method>AddsPrivilegedCustomizationRole</method>). Any other type grants nothing here.</p>
+/// <p>A privileged routine application's <code>MatchRoles</code> is judged as a web application's, and a routine it
+/// adds while a target role escalates is a grant too (<method>AddsRoutineUnderPrivilege</method>, Story 18.33).</p>
 ClassMethod GrantsPrivilegeByEffect(pType As %String, pPayload As %DynamicObject, pTarget As %DynamicObject, Output pGrants As %Boolean, pId As %String = "") As %Status
 {
     Set pGrants = 0
@@ -3694,6 +4532,9 @@ ClassMethod GrantsPrivilegeByEffect(pType As %String, pPayload As %DynamicObject
         Set tTarget = $Select($IsObject(pTarget): pTarget, 1: {})
         If pType = ..#TYPEUSER {
             Set tSC = ..GrantsPrivilege(pPayload, tTarget, .pGrants)
+            ; Story 18.29, AD-10: an escalation role confers the ability to become that role, so it counts.
+            ; It is asked only after the roles answered, so an error there is never overwritten.
+            If $$$ISOK(tSC) && 'pGrants Set tSC = ..GrantsPrivilege(pPayload, tTarget, .pGrants, "EscalationRoles")
             Quit
         }
         If pType = ..#TYPERESOURCE {
@@ -3720,12 +4561,33 @@ ClassMethod GrantsPrivilegeByEffect(pType As %String, pPayload As %DynamicObject
             ; A task that runs as another account runs with that account's privileges (Story 9.7).
             ; An edit that keeps the account the live target already runs as grants nothing new
             ; (Story 9.8); a create's target holds none.
+            ; An import lists the accounts of every task it creates in runAs, separated by the
+            ; port's RUNASSEPARATOR; any that is not the caller's makes it a grant.
+            If pPayload.%GetTypeOf("runAs") = "string" {
+                Set tSeparator = $Parameter("OcuPilot.Port.TaskTransferPort", "RUNASSEPARATOR")
+                Set tAccounts = $ListFromString(pPayload.%Get("runAs"), tSeparator)
+                For tI = 1:1:$ListLength(tAccounts) {
+                    Set tAccount = $List(tAccounts, tI)
+                    If (tAccount '= "") && ($ZConvert(tAccount, "U") '= $ZConvert($Username, "U")) {
+                        Set pGrants = 1
+                        Quit
+                    }
+                }
+                If pGrants Quit
+            }
             Set tRunAs = ""
             If pPayload.%GetTypeOf("RunAsUser") = "string" Set tRunAs = pPayload.%Get("RunAsUser")
             Set tHeld = ""
             If tTarget.%GetTypeOf("RunAsUser") = "string" Set tHeld = tTarget.%Get("RunAsUser")
             If (tHeld '= "") && ($ZConvert(tRunAs, "U") = $ZConvert(tHeld, "U")) Quit
             Set pGrants = ((tRunAs '= "") && ($ZConvert(tRunAs, "U") '= $ZConvert($Username, "U")))
+            Quit
+        }
+        If pType = ..#TYPEROUTINEAPPLICATION {
+            ; Story 18.33: a role added to MatchRoles is judged as a web application's is, and a routine added while a
+            ; target role in MatchRoles escalates is a grant too.
+            Set tSC = ..GrantsPrivilegeByEffect(..#TYPEWEBAPPLICATION, pPayload, tTarget, .pGrants, pId)
+            If $$$ISOK(tSC) && 'pGrants Set tSC = ..AddsRoutineUnderPrivilege(pPayload, tTarget, .pGrants)
             Quit
         }
         If pType = ..#TYPEWEBAPPLICATION {
@@ -3801,6 +4663,44 @@ ClassMethod IsPrivilegedRole(pRole As %String) As %Boolean [ Private ]
     If tName = "" Quit 0
     If tName = $ZConvert(..#ALLROLE, "U") Quit 1
     Quit $Extract(tName, 1, $Length(..#ADMINROLEPREFIX)) = $ZConvert(..#ADMINROLEPREFIX, "U")
+}
+
+/// <p>Whether <var>pPath</var> names one of OcuPilot's own privileged routine applications (<class>OcuPilot.Kernel.State.Base</class>'s
+/// <parameter>APPLICATION</parameter> and <parameter>IDENTITYAPPLICATION</parameter>), compared through
+/// <method>NormalizedPath</method> so that a re-cased or slash-suffixed spelling earns the same verdict. Every write to
+/// one is refused <parameter>OCUPILOTROUTINEAPP</parameter>, whatever its type or field.</p>
+ClassMethod OwnRoutineApplication(pPath As %String) As %Boolean
+{
+    Set tPath = ..NormalizedPath(pPath)
+    If tPath = "" Quit 0
+    Quit (tPath = ..NormalizedPath(##class(OcuPilot.Kernel.State.Base).#APPLICATION)) || (tPath = ..NormalizedPath(##class(OcuPilot.Kernel.State.Base).#IDENTITYAPPLICATION))
+}
+
+/// <p>The early refusal of a write to one of OcuPilot's own privileged routine applications, answered before a write tool's
+/// precondition is read (<method>OwnRoutineApplication</method>): <var>pCode</var> is the code and the function answers 1, or
+/// the function answers 0 and <var>pCode</var> is empty. The code's sentence is <method>ReasonFor</method>'s alone.</p>
+/// <p><b>Caller contract:</b> <var>pIdValue</var> is the target's id argument as the caller holds it; the answer does not
+/// depend on the write's type or fields.</p>
+ClassMethod RefusesBeforeState(pIdValue As %String, Output pCode As %String) As %Boolean
+{
+    Set pCode = ""
+    If ..OwnRoutineApplication(pIdValue) {
+        Set pCode = ..#OCUPILOTROUTINEAPP
+        Quit 1
+    }
+    Quit 0
+}
+
+/// <p>Whether a call to the privileged routine endpoint (<parameter>PRIVROUTINEENDPOINT</parameter> in
+/// <class>OcuPilot.Port.AdminPort</class>) is refused by the routine arm (AD-10, Story 18.10): any call but a
+/// <code>GET</code> that names one of OcuPilot's own routine applications (<method>OwnRoutineApplication</method>), whatever
+/// its body. A <code>GET</code> reads and is never refused here.</p>
+ClassMethod RoutineEndpointRefused(pType As %String, pName As %String, Output pCode As %String) As %Boolean
+{
+    Set pCode = ""
+    If (pType = "GET") || (pName = "") || '..OwnRoutineApplication(pName) Quit 0
+    Set pCode = ..#OCUPILOTROUTINEAPP
+    Quit 1
 }
 
 /// <p>Whether this proposal disables the target by effect: the diff names <code>Enabled</code> and
@@ -4926,6 +5826,89 @@ ClassMethod ServingSessionId() As %String
         Set tId = ""
     }
     Quit tId
+}
+
+
+/// <p>Whether a user copy's payload names only the fields its composition sets: <code>CopyFrom</code>,
+/// <code>FullName</code>, <code>Roles</code> and <code>EscalationRoles</code>. Any other field is refused
+/// <parameter>UNCOVEREDFIELD</parameter>, because the copy admits no other setting (Story 18.29).</p>
+ClassMethod Copied(pPayload As %DynamicObject, Output pProhibits As %Boolean, Output pCode As %String) As %Status [ Private ]
+{
+    Set pProhibits = 0
+    Set pCode = ""
+    If '$IsObject(pPayload) Quit $$$OK
+    Set tPermitted = $ListFromString(..#COPYFIELDS)
+    Set tIterator = pPayload.%GetIterator()
+    While tIterator.%GetNext(.tKey, .tValue) {
+        If '$ListFind(tPermitted, tKey) {
+            Do ..Refuse(..#UNCOVEREDFIELD, .pProhibits, .pCode)
+            Quit
+        }
+    }
+    Quit $$$OK
+}
+
+/// <p>A Doc DB application record's fields (Story 18.30): the three settings a create or a change may set. The
+/// namespace and the name are the id and never a body field.</p>
+ClassMethod DocDbApplicationFields() As %List [ Private ]
+{
+    Quit $ListBuild("Description", "Enabled", "Resource")
+}
+
+/// <p>A privileged routine application's change fields (Story 18.33): <method>DocDbApplicationFields</method>'s three
+/// settings and its two lists, <code>MatchRoles</code> and <code>Routines</code>. A create sets the three alone
+/// (<method>PermittedCreateFields</method>).</p>
+ClassMethod RoutineApplicationChangeFields() As %List [ Private ]
+{
+    Quit ..DocDbApplicationFields() _ $ListBuild("MatchRoles", "Routines")
+}
+
+/// <p>Whether <var>pPayload</var>'s <code>Routines</code> adds an entry <var>pTarget</var>'s does not hold while a
+/// target role of the application's <code>MatchRoles</code> escalates (<method>RoleEscalates</method>), in
+/// <var>pGrants</var> (Story 18.33, AD-10). The application's roles are <var>pPayload</var>'s when it sends them and
+/// <var>pTarget</var>'s otherwise. An entry is held when its name and type match and its database matches without
+/// regard to case. Removing an entry, or adding one under unprivileged roles, grants nothing.</p>
+ClassMethod AddsRoutineUnderPrivilege(pPayload As %DynamicObject, pTarget As %DynamicObject, Output pGrants As %Boolean) As %Status [ Private ]
+{
+    Set pGrants = 0
+    Set tSC = $$$OK
+    Try {
+        If pPayload.%GetTypeOf("Routines") '= "array" Quit
+        Kill tHeldRoutines
+        If pTarget.%GetTypeOf("Routines") = "array" {
+            Set tIterator = pTarget.%Get("Routines").%GetIterator()
+            While tIterator.%GetNext(.tIndex, .tEntry) {
+                If $IsObject(tEntry) && tEntry.%IsA("%Library.DynamicObject") Set tHeldRoutines(tEntry.%Get("RoutineOrClass") _ $Char(1) _ $ZConvert(tEntry.%Get("Db"), "U") _ $Char(1) _ tEntry.%Get("Type")) = ""
+            }
+        }
+        Set tAdds = 0
+        Set tIterator = pPayload.%Get("Routines").%GetIterator()
+        While tIterator.%GetNext(.tIndex, .tEntry) {
+            If '$IsObject(tEntry) || 'tEntry.%IsA("%Library.DynamicObject") Continue
+            If '$Data(tHeldRoutines(tEntry.%Get("RoutineOrClass") _ $Char(1) _ $ZConvert(tEntry.%Get("Db"), "U") _ $Char(1) _ tEntry.%Get("Type"))) {
+                Set tAdds = 1
+                Quit
+            }
+        }
+        If 'tAdds Quit
+        Do ..ApplicationRoleNames($Select(pPayload.%GetTypeOf("MatchRoles") = "array": pPayload, 1: pTarget), .tRoles)
+        Set tKey = ""
+        For {
+            Set tKey = $Order(tRoles(tKey))
+            If tKey = "" Quit
+            Set tSC = ..RoleEscalates(tRoles(tKey), .tEscalates)
+            If $$$ISERR(tSC) Quit
+            If tEscalates {
+                Set pGrants = 1
+                Quit
+            }
+        }
+    } Catch ex {
+        Set pGrants = 0
+        Set tSC = ex.AsStatus()
+    }
+    If $$$ISERR(tSC) Set pGrants = 0
+    Quit tSC
 }
 
 }

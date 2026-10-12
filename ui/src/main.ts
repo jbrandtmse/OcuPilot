@@ -22,6 +22,7 @@ import { transportFault } from './app/core/fault';
 import { InstanceService } from './app/core/instance';
 import { NavigationService } from './app/core/navigation';
 import { OverlayStack } from './app/core/overlay-stack';
+import { LongBlocks } from './app/core/long-blocks';
 import { PanelState } from './app/core/panel-layout';
 import { RefreshService } from './app/core/refresh';
 import { ScopeService, onScopeChange } from './app/core/scope';
@@ -110,6 +111,13 @@ const api: ApiService = new ApiService({
 // its read failed and nothing was scheduled to ask again (DW-119, DW-135). The re-ask is parked
 // there, and the probe's next response is what runs it -- once per reader, not once per tick.
 const instance = new InstanceService({ api, connectivity });
+// Story 1.14's one client bus (AD-14), built before every service that publishes onto it or reads
+// it: the navigation map first, which re-reads itself when a `namespace` change event names the
+// namespace the shell is on (Story 20.1); then the namespace list, which re-reads itself when a
+// namespace is created or deleted so the switch offers the new one and drops the deleted one
+// without a reload (Story 18.2); then the turn store, which publishes onto it (Story 5.1), and the
+// refresh framework below.
+const bus = new ChangeBus();
 // `namespace` is the map read's single-flight key (DW-157): a read already in flight answers a
 // second caller in the same namespace and answers nobody after a switch. Lazy for the reason
 // `api: () => api` above is -- `scope` is declared just below and the arrow is not called
@@ -118,12 +126,8 @@ const navigation = new NavigationService({
   api,
   connectivity,
   namespace: () => scope.namespace(),
+  bus,
 });
-// Story 1.14's one client bus (AD-14), built before every service that publishes onto it or reads
-// it: the namespace list first, which re-reads itself when a namespace is created or deleted so the
-// switch offers the new one and drops the deleted one without a reload (Story 18.2), then the turn
-// store, which publishes onto it (Story 5.1), and the refresh framework below.
-const bus = new ChangeBus();
 const scope: ScopeService = new ScopeService({ api, connectivity, bus });
 
 // AD-44's "switching re-fetches rather than re-routing", wired once: the scope's consumer in
@@ -161,6 +165,10 @@ const theme = new ThemeState({ account: accountPreferences, root: document.docum
 // full screen and the yield order, over the same account store and the same shell. `App` feeds it
 // the viewport width; the side bar, the rail and the panel read the layout it resolves.
 const panel = new PanelState({ account: accountPreferences, shell });
+
+// The agent panel's opened long blocks (Story 20.17, AD-19): which blocks a person expanded, for
+// the conversation's life; `App` clears it on sign-out.
+const longBlocks = new LongBlocks();
 
 // The turn store (Story 4.5): send, poll, stop, restore and New conversation, over the same API
 // service and the same per-tab `sessionStorage` the token pair uses (a second, independent read
@@ -270,6 +278,7 @@ bootstrapApplication(App, {
     { provide: ShellState, useValue: shell },
     { provide: ThemeState, useValue: theme },
     { provide: PanelState, useValue: panel },
+    { provide: LongBlocks, useValue: longBlocks },
     { provide: TurnStore, useValue: turn },
     { provide: OverlayStack, useValue: overlays },
     { provide: ChangeBus, useValue: bus },

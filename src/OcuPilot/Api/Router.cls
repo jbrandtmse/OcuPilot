@@ -36,7 +36,7 @@ Parameter CONTENTTYPE = "application/json";
 Parameter HandleCorsRequest = 0;
 
 /// <p>The closed list of IRIS administrative resources, comma-separated: the
-/// <code>%Admin_*</code> half of <parameter>FLOORRESOURCES</parameter>.</p>
+/// <code>%Admin_*</code> members of <parameter>FLOORRESOURCES</parameter>.</p>
 /// <p><b>Derived, not held.</b> The list's one home is
 /// <parameter>OcuPilot.Screen.Gate.ADMINRESOURCES</parameter>; this parameter is that value at
 /// compile time, so no second copy exists to drift. <class>OcuPilot.Test.PortGate</class>
@@ -44,7 +44,7 @@ Parameter HandleCorsRequest = 0;
 Parameter ADMINRESOURCES As %String = {##class(OcuPilot.Screen.Gate).#ADMINRESOURCES};
 
 /// <p>The floor's members <method>HoldsAdminResource</method> tests, comma-separated: every
-/// <parameter>ADMINRESOURCES</parameter> member and <code>%Development</code>. Holding <b>any
+/// <parameter>ADMINRESOURCES</parameter> member, <code>%Development</code> and <code>%Ens_Portal</code>. Holding <b>any
 /// one</b> of them at <code>USE</code> is what the FR-65 gate requires of a caller; holding none
 /// of them is a 403, whatever else the caller holds. A turn's step boundary reads the same list
 /// (<class>OcuPilot.Api.Turn</class>, AD-31).</p>
@@ -98,10 +98,13 @@ XData UrlMap [ XMLNamespace = "http://www.intersystems.com/urlmap" ]
   <Route Url="/web-applications/name" Method="GET" Call="WebAppNameCheck"/>
   <Route Url="/web-applications/:id" Method="PUT" Call="WebAppUpdate"/>
   <Route Url="/web-applications" Method="POST" Call="WebAppCreate"/>
+  <Route Url="/web-app/pct-access" Method="POST" Call="WebAppPctAccessSave"/>
   <Route Url="/users/form" Method="GET" Call="UserFormRules"/>
   <Route Url="/users/name" Method="GET" Call="UserNameCheck"/>
   <Route Url="/users/effective" Method="GET" Call="UserEffective"/>
   <Route Url="/users/:id" Method="PUT" Call="UserUpdate"/>
+  <Route Url="/users/copy" Method="POST" Call="UserCopy"/>
+  <Route Url="/users/password-check" Method="POST" Call="UserPasswordCheck"/>
   <Route Url="/users" Method="POST" Call="UserCreate"/>
   <Route Url="/roles/form" Method="GET" Call="RoleFormRules"/>
   <Route Url="/roles/name" Method="GET" Call="RoleNameCheck"/>
@@ -243,7 +246,24 @@ XData UrlMap [ XMLNamespace = "http://www.intersystems.com/urlmap" ]
   <Route Url="/encryption-key-file" Method="POST" Call="EncryptionKeyFileCreate"/>
   <Route Url="/encryption-startup/form" Method="GET" Call="EncryptionStartupFormRead"/>
   <Route Url="/encryption-startup" Method="PUT" Call="EncryptionStartupUpdate"/>
+  <Route Url="/authentication-options/form" Method="GET" Call="AuthOptionsFormRead"/>
+  <Route Url="/authentication-options" Method="PUT" Call="AuthOptionsUpdate"/>
+  <Route Url="/superserver/form" Method="GET" Call="SuperserverFormRead"/>
+  <Route Url="/superserver/:id" Method="PUT" Call="SuperserverUpdate"/>
+  <Route Url="/superserver" Method="POST" Call="SuperserverCreate"/>
+  <Route Url="/mft-connection/form" Method="GET" Call="MftConnectionFormRead"/>
+  <Route Url="/mft-connection/:id" Method="PUT" Call="MftConnectionUpdate"/>
+  <Route Url="/mft-connection" Method="POST" Call="MftConnectionCreate"/>
+  <Route Url="/docdb-application/form" Method="GET" Call="DocDbAppFormRead"/>
+  <Route Url="/docdb-application/:id" Method="PUT" Call="DocDbAppUpdate"/>
+  <Route Url="/docdb-application" Method="POST" Call="DocDbAppCreate"/>
+  <Route Url="/routine-application/form" Method="GET" Call="RoutineAppFormRead"/>
+  <Route Url="/routine-application/:id" Method="PUT" Call="RoutineAppUpdate"/>
+  <Route Url="/routine-application" Method="POST" Call="RoutineAppCreate"/>
   <Route Url="/explorer/docdb" Method="POST" Call="ExplorerDocDbCreate"/>
+  <Route Url="/interop/items" Method="POST" Call="InteropItemCreate"/>
+  <Route Url="/interop/lookup-entries" Method="POST" Call="InteropLookupEntryCreate"/>
+  <Route Url="/rest-service" Method="POST" Call="RestServiceCreate"/>
 </Routes>
 }
 
@@ -399,6 +419,13 @@ ClassMethod AgentProviders() As %Status
     Quit ##class(OcuPilot.Api.Definitions).HandleProviders()
 }
 
+/// <p>Thin <code>Call=</code> target for <code>POST /web-app/pct-access</code> (Story 18.10): a class access entry's
+/// create, delegating to <class>OcuPilot.Area.WebApp.PctAccessSave</class>.</p>
+ClassMethod WebAppPctAccessSave() As %Status
+{
+    Quit ##class(OcuPilot.Area.WebApp.PctAccessSave).HandleCreate()
+}
+
 /// <p>Thin <code>Call=</code> target for <code>GET /web-applications/form</code> (Story 8.1):
 /// delegates to <class>OcuPilot.Area.WebApp.FormRules</class> and carries no logic of its own.</p>
 /// <p>The three web-application routes are declared sub-resource first, per the second ordering
@@ -438,7 +465,7 @@ ClassMethod WebAppUpdate(pId As %String) As %Status
 
 /// <p>Thin <code>Call=</code> target for <code>GET /users/form</code> (Story 8.2): delegates to
 /// <class>OcuPilot.Area.Permissions.UserCreateRules</class> and carries no logic of its own. The
-/// three sub-resources precede <code>POST /users</code>, the order the REST convention requires.</p>
+/// five sub-resources precede <code>POST /users</code>, the order the REST convention requires.</p>
 ClassMethod UserFormRules() As %Status
 {
     Quit ##class(OcuPilot.Area.Permissions.UserCreateRules).HandleForm()
@@ -481,6 +508,20 @@ ClassMethod UserUpdate(pId As %String) As %Status
 ClassMethod UserCreate() As %Status
 {
     Quit ##class(OcuPilot.Area.Permissions.UserCreate).HandleCreate()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /users/copy</code> (Story 18.29): the create's flow over the
+/// copy tool, in <class>OcuPilot.Area.Permissions.UserCopy</class>.</p>
+ClassMethod UserCopy() As %Status
+{
+    Quit ##class(OcuPilot.Area.Permissions.UserCopy).HandleCreate()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /users/password-check</code> (Story 18.29): the password's
+/// verdict, in <class>OcuPilot.Area.Permissions.UserCreateRules</class>.</p>
+ClassMethod UserPasswordCheck() As %Status
+{
+    Quit ##class(OcuPilot.Area.Permissions.UserCreateRules).HandlePasswordCheck()
 }
 
 /// <p>Thin <code>Call=</code> target for <code>GET /roles/form</code> (Story 8.3): delegates to
@@ -1314,8 +1355,8 @@ ClassMethod CanonicalNamespace(pNamespace As %String) As %String
 /// <method>OcuPilot.Kernel.State.Base.GuardedUserEnabled</method>, which owns the switch and
 /// the restore; nothing is switched in this method's own frame.</li>
 /// <li><b>Administrative privilege (FR-65).</b> The caller must hold at least one
-/// <code>%Admin_*</code> resource, or <code>%Development</code>, at <code>USE</code>
-/// (<method>HoldsAdminResource</method>, against the closed
+/// <code>%Admin_*</code> resource, <code>%Development</code> or <code>%Ens_Portal</code>, at
+/// <code>USE</code> (<method>HoldsAdminResource</method>, against the closed
 /// <parameter>FLOORRESOURCES</parameter> list); otherwise 403 with the machine code
 /// <code>AUTH.NOADMIN</code>. <b>A caller who lacks read on the install namespace's
 /// database never reaches this method at all</b>: the framework's own
@@ -1416,7 +1457,7 @@ ClassMethod OnPreDispatch(pUrl As %String, pMethod As %String, ByRef pContinue A
 
         If '..HoldsAdminResource() {
             Set pContinue = 0
-            Do ##class(OcuPilot.Api.Error).Render(403, ##class(OcuPilot.Api.Error).#FORBIDDEN, "This account holds neither an InterSystems IRIS administrative privilege nor %Development; OcuPilot requires USE on at least one %Admin_ resource or on %Development", ##class(OcuPilot.Api.Error).#AUTHNOADMIN)
+            Do ##class(OcuPilot.Api.Error).Render(403, ##class(OcuPilot.Api.Error).#FORBIDDEN, "This account holds no InterSystems IRIS administrative privilege, %Development or %Ens_Portal; OcuPilot requires USE on at least one %Admin_ resource, on %Development or on %Ens_Portal", ##class(OcuPilot.Api.Error).#AUTHNOADMIN)
             Quit
         }
 
@@ -1819,6 +1860,130 @@ ClassMethod EncryptionStartupUpdate() As %Status
 ClassMethod ExplorerDocDbCreate() As %Status
 {
     Quit ##class(OcuPilot.Area.Explorer.DocDbSave).HandleCreate()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /interop/items</code> (Story 20.3): Production items'
+/// Add, resolved through the one tool the agent's confirm uses (AD-55).</p>
+ClassMethod InteropItemCreate() As %Status
+{
+    Quit ##class(OcuPilot.Area.Interop.ItemSave).HandleCreate()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /interop/lookup-entries</code> (Story 20.5): Lookup tables' New table and the
+/// entries list's Add, resolved through the one tool the agent's confirm uses (AD-55).</p>
+ClassMethod InteropLookupEntryCreate() As %Status
+{
+    Quit ##class(OcuPilot.Area.Interop.LookupEntrySave).HandleCreate()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /authentication-options/form</code> (Story 18.8): the
+/// authentication options' form read, delegating to <class>OcuPilot.Area.Security.AuthOptionsRules</class>.
+/// It precedes <code>/authentication-options</code>.</p>
+ClassMethod AuthOptionsFormRead() As %Status
+{
+    Quit ##class(OcuPilot.Area.Security.AuthOptionsRules).HandleForm()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>PUT /authentication-options</code> (Story 18.8): the
+/// authentication options' Save, resolved through the one tool the agent's confirm uses (AD-55).</p>
+ClassMethod AuthOptionsUpdate() As %Status
+{
+    Quit ##class(OcuPilot.Area.Security.AuthOptionsSave).HandleUpdate()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /superserver/form</code> (Story 18.25): the superserver
+/// editor's form read, delegating to <class>OcuPilot.Area.Security.SuperserverRules</class>. It precedes
+/// <code>/superserver/:id</code>.</p>
+ClassMethod SuperserverFormRead() As %Status
+{
+    Quit ##class(OcuPilot.Area.Security.SuperserverRules).HandleForm()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>PUT /superserver/:id</code>: the form's edit, resolved through
+/// the one tool the agent's confirm uses (AD-55).</p>
+ClassMethod SuperserverUpdate(pId As %String) As %Status
+{
+    Quit ##class(OcuPilot.Area.Security.SuperserverSave).HandleUpdate(pId)
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /superserver</code>: the form's create, resolved through
+/// the one tool the agent's confirm uses (AD-55).</p>
+ClassMethod SuperserverCreate() As %Status
+{
+    Quit ##class(OcuPilot.Area.Security.SuperserverSave).HandleCreate()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /mft-connection/form</code> (Story 18.26): the connection
+/// editor's form read, delegating to <class>OcuPilot.Area.Security.MftConnectionRules</class>. It precedes
+/// <code>/mft-connection/:id</code>.</p>
+ClassMethod MftConnectionFormRead() As %Status
+{
+    Quit ##class(OcuPilot.Area.Security.MftConnectionRules).HandleForm()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>PUT /mft-connection/:id</code>: the form's edit, resolved through
+/// the one tool the agent's confirm uses (AD-55).</p>
+ClassMethod MftConnectionUpdate(pId As %String) As %Status
+{
+    Quit ##class(OcuPilot.Area.Security.MftConnectionSave).HandleUpdate(pId)
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /mft-connection</code>: the form's create, resolved through
+/// the one tool the agent's confirm uses (AD-55).</p>
+ClassMethod MftConnectionCreate() As %Status
+{
+    Quit ##class(OcuPilot.Area.Security.MftConnectionSave).HandleCreate()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /docdb-application/form</code> (Story 18.30): the Doc DB
+/// application editor's form read, delegating to <class>OcuPilot.Area.WebApp.DocDbAppRules</class>. It precedes
+/// <code>/docdb-application/:id</code>.</p>
+ClassMethod DocDbAppFormRead() As %Status
+{
+    Quit ##class(OcuPilot.Area.WebApp.DocDbAppRules).HandleForm()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>PUT /docdb-application/:id</code>: the form's edit, resolved through
+/// the one tool the agent's confirm uses (AD-55).</p>
+ClassMethod DocDbAppUpdate(pId As %String) As %Status
+{
+    Quit ##class(OcuPilot.Area.WebApp.DocDbAppSave).HandleUpdate(pId)
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /docdb-application</code>: the form's create, resolved through
+/// the one tool the agent's confirm uses (AD-55).</p>
+ClassMethod DocDbAppCreate() As %Status
+{
+    Quit ##class(OcuPilot.Area.WebApp.DocDbAppSave).HandleCreate()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /routine-application/form</code> (Story 18.31): the privileged
+/// routine application editor's form read, delegating to <class>OcuPilot.Area.WebApp.RoutineAppRules</class>. It
+/// precedes <code>/routine-application/:id</code>.</p>
+ClassMethod RoutineAppFormRead() As %Status
+{
+    Quit ##class(OcuPilot.Area.WebApp.RoutineAppRules).HandleForm()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>PUT /routine-application/:id</code>: the form's edit, resolved through
+/// the one tool the agent's confirm uses (AD-55).</p>
+ClassMethod RoutineAppUpdate(pId As %String) As %Status
+{
+    Quit ##class(OcuPilot.Area.WebApp.RoutineAppSave).HandleUpdate(pId)
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /routine-application</code>: the form's create, resolved through
+/// the one tool the agent's confirm uses (AD-55).</p>
+ClassMethod RoutineAppCreate() As %Status
+{
+    Quit ##class(OcuPilot.Area.WebApp.RoutineAppSave).HandleCreate()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /rest-service</code> (Story 18.34): the REST API explorer's create,
+/// resolved through the one tool the agent's confirm uses (AD-55).</p>
+ClassMethod RestServiceCreate() As %Status
+{
+    Quit ##class(OcuPilot.Area.WebApp.RestServiceSave).HandleCreate()
 }
 
 }

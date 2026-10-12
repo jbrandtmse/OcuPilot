@@ -119,6 +119,49 @@ ClassMethod Decide(pTool As %String, pKind As %String, pUser As %String, pArgs A
     Quit $$$ERROR($$$GeneralError, "the governance fixture's gate could not decide")
 }
 
+/// <p>Move the stored policy rows to the holding global <code>^OcuPilotTestGovernanceAside</code>
+/// and remove them, so the baseline alone decides while a class runs, and answer <code>ok</code> or
+/// the error text. A holding global an earlier run left is put back first, and that put-back's
+/// refusal is this method's. <method>PutBack</method> ends the pair.</p>
+ClassMethod SetAside() As %String
+{
+    Try {
+        If $Data(^OcuPilotTestGovernanceAside) {
+            Set tAnswer = ..PutBack()
+            If tAnswer '= "ok" Quit
+        }
+        Set tSC = ..Snapshot(.tRows)
+        If $$$ISERR(tSC) Set tAnswer = $System.Status.GetErrorText(tSC) Quit
+        Kill ^OcuPilotTestGovernanceAside
+        Merge ^OcuPilotTestGovernanceAside("rows") = tRows
+        Set ^OcuPilotTestGovernanceAside = 1
+        Set tSC = ..Clear()
+        Set tAnswer = $Select($$$ISOK(tSC): "ok", 1: $System.Status.GetErrorText(tSC))
+    } Catch ex {
+        Set tAnswer = ex.DisplayString()
+    }
+    Quit tAnswer
+}
+
+/// <p>Put back what <method>SetAside</method> moved: the rows the class left are removed, the held
+/// rows stored again and read back equal, and the holding global removed. Answers <code>ok</code>,
+/// or the error text with the holding global kept. Nothing held is <code>ok</code>.</p>
+ClassMethod PutBack() As %String
+{
+    Try {
+        If '$Data(^OcuPilotTestGovernanceAside) Set tAnswer = "ok" Quit
+        Merge tRows = ^OcuPilotTestGovernanceAside("rows")
+        Set tSC = ..Restore(.tRows)
+        If $$$ISERR(tSC) Set tAnswer = $System.Status.GetErrorText(tSC) Quit
+        If '..Matches(.tRows) Set tAnswer = "the stored policy does not read back equal to the rows set aside" Quit
+        Kill ^OcuPilotTestGovernanceAside
+        Set tAnswer = "ok"
+    } Catch ex {
+        Set tAnswer = ex.DisplayString()
+    }
+    Quit tAnswer
+}
+
 /// <p>Remove every stored row, so the baseline alone decides.</p>
 ClassMethod Clear() As %Status
 {

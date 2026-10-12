@@ -32,6 +32,12 @@ Parameter MANAGERUSER = "OcuPilotHubManager";
 /// <p>The principal's roles.</p>
 Parameter MANAGERROLES = "%Manager,%DB_HSCUSTOM";
 
+/// <p>The principal that holds <code>%Ens_EventLog:USE</code> but not <code>%Ens_Portal:USE</code>.</p>
+Parameter EVENTONLYUSER = "OcuPilotHubEventOnly";
+
+/// <p>The role granting <parameter>EVENTONLYUSER</parameter> its one Ensemble resource.</p>
+Parameter EVENTONLYROLE = "OcuPilotHubEventOnlyRole";
+
 /// <p>The principal's password for this run, generated in <method>OnBeforeAllTests</method>.</p>
 Property PreparedPassword As %String;
 
@@ -54,7 +60,7 @@ Method %OnNew(initvalue As %String = "") As %Status
 Method OnBeforeAllTests() As %Status
 {
     If $System.Util.GetEnviron(..#ARMINGVARIABLE) '= 1 {
-        Quit $$$ERROR($$$GeneralError, "OcuPilot.Test.LogHubWire writes an interoperability event and creates an IRIS user on this instance and runs on a throwaway container only. " _ ..#ARMINGVARIABLE _ " does not read 1 here, so nothing was written. Bring one up with scripts/ci-throwaway.sh, which sets it.")
+        Quit $$$ERROR($$$GeneralError, "OcuPilot.Test.LogHubWire writes an interoperability event and creates IRIS users and a role on this instance and runs on a throwaway container only. " _ ..#ARMINGVARIABLE _ " does not read 1 here, so nothing was written. Bring one up with scripts/ci-throwaway.sh, which sets it.")
     }
     If $System.Util.GetEnviron(..#SEEDVARIABLE) '= 1 {
         Quit $$$ERROR($$$GeneralError, "OcuPilot.Test.LogHubWire writes an interoperability event on this instance and runs on a throwaway container only. " _ ..#SEEDVARIABLE _ " does not read 1 here, so nothing was written. Bring one up with scripts/ci-throwaway.sh, which sets it.")
@@ -76,6 +82,12 @@ Method OnBeforeAllTests() As %Status
         Set $NAMESPACE = "%SYS"
         If ##class(Security.Users).Exists(..#MANAGERUSER, .tUser, .tUserSC) Do ##class(Security.Users).Delete(..#MANAGERUSER)
         Set tSC = ##class(Security.Users).Create(..#MANAGERUSER, ..#MANAGERROLES, ..PreparedPassword, "OcuPilot log hub test principal (throwaway)", "", "", "", 0, 1, "Created by OcuPilot.Test.LogHubWire; deleted in OnAfterAllTests")
+        If $$$ISERR(tSC) Quit
+        If ##class(Security.Users).Exists(..#EVENTONLYUSER, .tUser3, .tUserSC3) Do ##class(Security.Users).Delete(..#EVENTONLYUSER)
+        If ##class(Security.Roles).Exists(..#EVENTONLYROLE, .tRole, .tRoleSC) Do ##class(Security.Roles).Delete(..#EVENTONLYROLE)
+        Set tSC = ##class(Security.Roles).Create(..#EVENTONLYROLE, "OcuPilot test: log hub event-log-only role (throwaway)", "%Ens_EventLog:U", "")
+        If $$$ISERR(tSC) Quit
+        Set tSC = ##class(Security.Users).Create(..#EVENTONLYUSER, ..#MANAGERROLES _ "," _ ..#EVENTONLYROLE, ..PreparedPassword, "OcuPilot log hub test principal (throwaway)", "", "", "", 0, 1, "Created by OcuPilot.Test.LogHubWire; deleted in OnAfterAllTests")
         Set $NAMESPACE = tOrigNS
     } Catch ex {
         Set $NAMESPACE = tOrigNS
@@ -109,6 +121,10 @@ Method OnAfterAllTests() As %Status
         Set $NAMESPACE = "%SYS"
         If ##class(Security.Users).Exists(..#MANAGERUSER, .tUser, .tUserSC) Do ##class(Security.Users).Delete(..#MANAGERUSER)
         If ##class(Security.Users).Exists(..#MANAGERUSER, .tUser2, .tUserSC2) Set tLeft = tLeft _ $Select(tLeft = "": "", 1: ", ") _ "user " _ ..#MANAGERUSER
+        If ##class(Security.Users).Exists(..#EVENTONLYUSER, .tUser3, .tUserSC3) Do ##class(Security.Users).Delete(..#EVENTONLYUSER)
+        If ##class(Security.Users).Exists(..#EVENTONLYUSER, .tUser4, .tUserSC4) Set tLeft = tLeft _ $Select(tLeft = "": "", 1: ", ") _ "user " _ ..#EVENTONLYUSER
+        If ##class(Security.Roles).Exists(..#EVENTONLYROLE, .tRole, .tRoleSC) Do ##class(Security.Roles).Delete(..#EVENTONLYROLE)
+        If ##class(Security.Roles).Exists(..#EVENTONLYROLE, .tRole2, .tRoleSC2) Set tLeft = tLeft _ $Select(tLeft = "": "", 1: ", ") _ "role " _ ..#EVENTONLYROLE
         Set $NAMESPACE = tOrigNS
         If tLeft '= "" Set tSC = $$$ERROR($$$GeneralError, "OcuPilot.Test.LogHubWire left on the instance: " _ tLeft)
     } Catch ex {
@@ -159,14 +175,25 @@ ClassMethod Source(pAnswer As %DynamicObject, pRoute As %String) As %DynamicObje
     Quit tFound
 }
 
-/// <p>AC10 -- the route and the <code>logs.hub.read</code> tool answer the same seeded entry, the
-/// same summary of which sources are shown, and the same count and last entry for the event log,
-/// whose store only this class writes to during the run.</p>
+/// <p>AC10 -- the route and the <code>logs.hub.read</code> tool answer the same seeded entry and the
+/// same summary of which sources are shown. Their event-log summaries come from reads taken one
+/// after the other, not from one: the merged answer is cut to the newest 200 rows and a read adds
+/// audit entries newer than every event-log row, so a later read counts at most as many event-log
+/// rows as an earlier one, whatever else wrote to the event log before this class ran. A route
+/// read, the tool's view and a second route read therefore show newest events that do not fall.
+/// An event-log row written during the reads becomes the newest event and can raise a later count,
+/// so the counts, which must not rise, and the whole newest entry, which must be the route's, are
+/// compared only when both route reads show the same newest event time.</p>
 /// <p>Mutation (Rule 19): drop <code>sources</code> from
-/// <method>OcuPilot.Screen.Tool.Read.View</method> -&gt; this goes red.</p>
+/// <method>OcuPilot.Screen.Tool.Read.View</method> -&gt; this goes red; give the view's event-log
+/// summary a count of 9999, or 50 fewer -&gt; the upper or the lower count bound goes red; change its
+/// newest entry's text -&gt; the whole-entry leg goes red; a newest event in year 9999, or in 1970
+/// -&gt; a time bound goes red; leave <method>OcuPilot.Screen.Timeline.Compose</method>'s counts at
+/// 0 -&gt; the two "at least 1" legs go red.</p>
 Method TestTheRouteAndTheToolAnswerTheSameEntriesAndSources()
 {
-    Set tSC = ..Fetch("/api/ocupilot/screens/logs.hub/read?maxRows=200", .tStatus, .tBody)
+    Set tPath = "/api/ocupilot/screens/logs.hub/read?maxRows=200"
+    Set tSC = ..Fetch(tPath, .tStatus, .tBody)
     Do $$$AssertStatusOK(tSC, "the route request completes")
     Do $$$AssertEquals(tStatus, 200, "the route answers 200")
     Do $$$AssertEquals((tBody [ "}{"), 0, "in exactly one envelope")
@@ -181,12 +208,28 @@ Method TestTheRouteAndTheToolAnswerTheSameEntriesAndSources()
     Do $$$AssertTrue(tSeeded '= "", "the route's timeline holds the seeded event")
     Do $$$AssertEquals(..SeededRow(tView), tSeeded, "and the tool's the same row")
     Do $$$AssertEquals(..Shown(tView), ..Shown(tRoute), "the same sources are shown")
+    Set tSC = ..Fetch(tPath, .tAfterStatus, .tAfterBody)
+    Do $$$AssertStatusOK(tSC, "a second route request, taken after the tool's view, completes")
+    Do $$$AssertEquals(tAfterStatus, 200, "and answers 200")
+    If tAfterStatus '= 200 Quit
+    Set tAfter = ##class(%DynamicObject).%FromJSON(tAfterBody)
     Set tRouteEvent = ..Source(tRoute, "logs/eventlog")
     Set tViewEvent = ..Source(tView, "logs/eventlog")
-    Do $$$AssertTrue($IsObject(tRouteEvent) && $IsObject(tViewEvent), "both summarize the event log")
-    If $IsObject(tRouteEvent) && $IsObject(tViewEvent) {
-        Do $$$AssertEquals(tViewEvent.count _ "|" _ tViewEvent.last.%ToJSON(), tRouteEvent.count _ "|" _ tRouteEvent.last.%ToJSON(), "with the same count and last entry")
-        Do $$$AssertTrue(tRouteEvent.count >= 1, "counting the seeded event")
+    Set tAfterEvent = ..Source(tAfter, "logs/eventlog")
+    Do $$$AssertTrue($IsObject(tRouteEvent) && $IsObject(tViewEvent) && $IsObject(tAfterEvent), "all three summarize the event log")
+    If $IsObject(tRouteEvent) && $IsObject(tViewEvent) && $IsObject(tAfterEvent) {
+        Do $$$AssertTrue(tRouteEvent.count >= 1, "the route counts the seeded event")
+        Do $$$AssertTrue(tViewEvent.count >= 1, "and so does the tool")
+        Set tRouteLast = $Select($IsObject(tRouteEvent.last): tRouteEvent.last.time, 1: "")
+        Set tViewLast = $Select($IsObject(tViewEvent.last): tViewEvent.last.time, 1: "")
+        Set tAfterLast = $Select($IsObject(tAfterEvent.last): tAfterEvent.last.time, 1: "")
+        Do $$$AssertTrue((tRouteLast '= "") && (tViewLast '= "") && '(tRouteLast ] tViewLast), "the tool's newest event is not older than the route's read before it: " _ tViewLast _ " against " _ tRouteLast)
+        Do $$$AssertTrue((tViewLast '= "") && (tAfterLast '= "") && '(tViewLast ] tAfterLast), "and not newer than a route read taken after it: " _ tViewLast _ " against " _ tAfterLast)
+        If (tRouteLast '= "") && (tAfterLast = tRouteLast) {
+            Do $$$AssertTrue(tViewEvent.count <= tRouteEvent.count, "the tool, read after the route, counts no more event-log rows than the route did: " _ tViewEvent.count _ " against " _ tRouteEvent.count)
+            Do $$$AssertTrue(tAfterEvent.count <= tViewEvent.count, "and no fewer than a route read taken after it: " _ tViewEvent.count _ " against " _ tAfterEvent.count)
+            Do $$$AssertEquals($Select($IsObject(tViewEvent.last): tViewEvent.last.%ToJSON(), 1: ""), tRouteEvent.last.%ToJSON(), "and its newest event is the route's, whole")
+        }
     }
 }
 
@@ -238,6 +281,26 @@ Method TestAManagerPrincipalIsServedTheHubWithoutTheEventLog()
         }
     }
     Do $$$AssertEquals(tVerdict, "true", "the Logs area reads allowed")
+}
+
+/// <p>DW-1921 -- a principal holding <code>%Ens_EventLog:USE</code> and read on HSCUSTOM's database
+/// without <code>%Ens_Portal:USE</code> is served the hub with the event log not shown, naming
+/// <code>%Ens_Portal:USE</code>, the pair the classic event log page also requires.</p>
+/// <p>Mutation (Rule 19): drop <code>%Ens_Portal:USE</code> from both
+/// <parameter>OcuPilot.Port.LogSourcePort.EVENTLOGPAIRS</parameter> and
+/// <class>OcuPilot.Screen.Descriptor.LogEventViewer</class>'s <code>privileges</code>, the two places
+/// the hub's gate reads it from -&gt; the event log is shown and this goes red; dropping only one
+/// leaves it green.</p>
+Method TestAHolderOfTheEventLogResourceAloneIsToldThePortalPair()
+{
+    Do $$$AssertEquals($SYSTEM.Security.CheckUserPermission(..#EVENTONLYUSER, "%Ens_EventLog", "USE"), 1, ..#EVENTONLYUSER _ " holds %Ens_EventLog:USE")
+    Do $$$AssertNotEquals($SYSTEM.Security.CheckUserPermission(..#EVENTONLYUSER, "%Ens_Portal", "USE"), 1, "and not %Ens_Portal:USE")
+    Set tSC = ..Fetch("/api/ocupilot/screens/logs.hub/read?maxRows=200", .tStatus, .tBody, ..#EVENTONLYUSER)
+    Do $$$AssertStatusOK(tSC, "the hub request completes")
+    Do $$$AssertEquals(tStatus, 200, "the hub answers 200: " _ $Extract(tBody, 1, 200))
+    If tStatus '= 200 Quit
+    Set tEvent = ..Source(##class(%DynamicObject).%FromJSON(tBody), "logs/eventlog")
+    Do $$$AssertEquals($Select($IsObject(tEvent): tEvent.shown _ "|" _ tEvent.requires, 1: ""), "0|%Ens_Portal:USE", "the event log is left out, naming the portal pair")
 }
 
 }

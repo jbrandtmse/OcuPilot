@@ -236,7 +236,7 @@ The shell can verify, on every load, that the admin API is present at version 2 
 **Consequences (testable):**
 
 - When the admin API reports a version other than 2, or is absent, the shell shows a blocking notice naming the mismatch and linking to the classic portal, and no area screen loads.
-- A signed-in user who holds neither an `%Admin_*` resource nor `%Development` [AMENDED 2026-10-02, Story 19.12, owner decision on DW-1903: was "holds no `%Admin_*` resource"] receives the admin API's 403 on that same call; the shell renders it as "no administrative privileges on this instance" with a sign-out link, not as a version mismatch.
+- A signed-in user who holds no `%Admin_*` resource, no `%Development` and no `%Ens_Portal` [AMENDED 2026-10-02, Story 19.12, owner decision on DW-1903: was "holds no `%Admin_*` resource"] [AMENDED 2026-10-07, Story 20.14 spec gate, owner decision on DW-2140: was "holds neither an `%Admin_*` resource nor `%Development`"] receives the admin API's 403 on that same call; the shell renders it as "no administrative privileges on this instance" with a sign-out link, not as a version mismatch.
 - The instance name and version shown in the header come from the same call.
 - The generated OpenAPI document for the admin API is kept under an automated test that fails when a route OcuPilot uses disappears.
 
@@ -909,7 +909,7 @@ Install creates the static shell application and the OcuPilot API application wi
 
 - The shell application serves the bundle unauthenticated with a non-root base href and a deep-link fallback so that any client route reloads correctly.
 - The OcuPilot API application is password-authenticated with JWT enabled, no server session, and membership in the vendor's portal group, and accepts the same Bearer token as the admin API.
-- The OcuPilot API carries no application roles and no matching roles, and the installer asserts this; it carries a resource gate, and the turn endpoint refuses users holding neither an `%Admin_*` resource nor `%Development` with the FR-3 message [AMENDED 2026-10-02, Story 19.12, owner decision on DW-1903].
+- The OcuPilot API carries no application roles and no matching roles, and the installer asserts this; it carries a resource gate, and the turn endpoint refuses users holding no `%Admin_*` resource, no `%Development` and no `%Ens_Portal` with the FR-3 message [AMENDED 2026-10-02, Story 19.12, owner decision on DW-1903] [AMENDED 2026-10-07, Story 20.14 spec gate, owner decision on DW-2140].
 
 #### FR-66: Idempotent installer and name isolation
 
@@ -1061,7 +1061,7 @@ OcuPilot grows toward classic-portal parity in versioned increments, and every s
 - A stage's scope is the set of catalog rows `extract-stages.md` assigns it. Its acceptance is the contract above plus each row's own backing route or class; anything finer is authored when a row is picked up, not invented in advance, because no source specifies these rows at feature level.
 - Every destructive action a later stage adds is absent from the governance baseline and therefore defaults to disabled (FR-72).
 - The agent grows with each stage rather than after it: a read tool and a confirmed write tool arrive with the screen, from the same descriptor, with no hand-written tool code.
-- A stage may add to the Release 1 prohibited set (FR-18) when it exposes an action that must never be reachable — deleting backups, for instance — and does so in the one place that set is declared, never in a policy file.
+- A stage may add to the Release 1 prohibited set (FR-18) when it exposes an action that must never be reachable — removing a mirror together with its databases, for instance — and does so in the one place that set is declared, never in a policy file. [AMENDED 2026-10-09, Story 21.2 owner decision, Rule 5 tier-1: was "deleting backups"; backup and mirroring writes are confirmed proposals whose destructive keys default to disabled]
 
 ## 6. Cross-Cutting Non-Functional Requirements
 

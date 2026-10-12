@@ -337,4 +337,41 @@ Method TestACallerSentMarkerIsRedactedAndNotReportedAsRedacted()
     Do ##class(OcuPilot.Test.LogProbe).Clear()
 }
 
+/// <p>AC3, AD-3, AD-41 (Story 20.22): the names a tool answers for one call
+/// (<method>OcuPilot.Screen.Tool.Write.CallSecretNames</method>) join its declared secrets before the row and the step
+/// are written, so the argument they name reads as the redaction mark in both; a tool that answers none adds nothing,
+/// and an argument it does not name is kept. The call is dispatched through
+/// <method>OcuPilot.Kernel.Agent.Dispatch.Answer</method> to the setting set, whose declaration names no secret, so the
+/// redaction is the call's own.</p>
+/// <p>Mutation (Rule 19): drop the <code>CallSecretNames</code> union from
+/// <method>OcuPilot.Kernel.Agent.Dispatch.AnswerOne</method> -- the credential-named leg goes red.</p>
+Method TestAToolsCallSecretNamesAreRedactedInTheRowAndTheStep()
+{
+    Set tWire = ##class(OcuPilot.Screen.Tool.Registry).WireName("interop.itemsettings.set")
+    For tCase = $ListBuild("ApiToken", ..#SECRETVALUE, 1), $ListBuild("InitSeconds", "bad" _ ..#SECRETVALUE, 0) {
+        Set tKey = ##class(OcuPilot.Test.Ledger).NewTurnKey()
+        Set tUse = {"id": "toolu_callsecret"}
+        Do tUse.%Set("name", tWire, "string")
+        Set tInput = {"Production": "P", "Item": "I", "Target": "Host"}
+        Do tInput.%Set("Name", $List(tCase, 1), "string")
+        Do tInput.%Set("Value", $List(tCase, 2), "string")
+        Do tUse.%Set("input", tInput)
+        Set tUses = []
+        Do tUses.%Push(tUse)
+        Do $$$AssertStatusOK($ClassMethod("OcuPilot.Kernel.Agent.Dispatch", "Answer", tKey, $Username, "1", tUses, ..#LIMITS, .tResults, .tNames, , , .tDetails, "interoperability/productions/items/settings"), $List(tCase, 1) _ ": the dispatcher answers the call")
+        Set tText = ##class(OcuPilot.Test.Ledger).RowText(tKey)
+        Set tStepArgs = $Select(tDetails.%Size() = 1: tDetails.%Get(0).arguments, 1: "")
+        Do $$$AssertTrue(tText '= "", $List(tCase, 1) _ ": the row was stored")
+        If $List(tCase, 3) {
+            Do $$$AssertEquals((tText [ $List(tCase, 2)) _ "|" _ (tStepArgs [ $List(tCase, 2)), "0|0", "the tool's per-call name keeps the value out of the row and the step: " _ tText)
+            Do $$$AssertTrue((tText [ "[redacted]") && (tStepArgs [ "[redacted]"), "which read as redacted")
+        } Else {
+            Do $$$AssertEquals((tText [ $List(tCase, 2)) _ "|" _ (tStepArgs [ $List(tCase, 2)), "1|1", "an argument the tool does not name is kept in both")
+        }
+        Do $ClassMethod(..#STORE, "GuardedDeleteForTurn", tKey)
+    }
+    Set tTool = {"class": "OcuPilot.Screen.Tool.InteropItemEnable"}
+    Do $$$AssertEquals($ListLength(##class(OcuPilot.Screen.Tool.Registry).CallSecretNames(tTool, {"Name": "ApiToken"})), 0, "a tool that answers none adds none")
+}
+
 }

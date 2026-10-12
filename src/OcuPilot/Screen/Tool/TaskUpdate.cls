@@ -274,4 +274,10 @@ ClassMethod PrivilegePairs(pDescriptor As %String = "", Output pResolved As %Boo
     Quit tPairs _ $ListBuild(tOwn)
 }
 
+/// <p>The task's own name from the fresh read, which the card titles the task by.</p>
+ClassMethod TargetName(pFresh, pId As %String, pArgs) As %String
+{
+    Quit ##class(OcuPilot.Area.Task.TaskRules).NameIn(pFresh)
+}
+
 }

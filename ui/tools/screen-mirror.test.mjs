@@ -18,6 +18,7 @@ import {
   confirmChannelProblem,
   declaredNames,
   parseDeclaredNameKinds,
+  parseNamespaceFeatures,
   IMPLEMENTED_DECLARED_NAME_KINDS,
   criteriaProblem,
   entityTypesIn,
@@ -55,6 +56,7 @@ import {
 } from './screen-mirror.mjs';
 import { loadStrings } from './strings.mjs';
 import { CREDENTIAL_RE } from './field-lists.mjs';
+import { isCredentialName } from './credential-pattern.mjs';
 
 const toolsDir = dirname(fileURLToPath(import.meta.url));
 
@@ -110,7 +112,7 @@ test('the checked-in mirror is exactly what the descriptor declarations produce'
 test('the mirror carries the kernel vocabulary, the areas and every descriptor', () => {
   const { entityTypes, areas, screens } = readSources();
   assert.ok(entityTypes.length >= 20, `expected the closed vocabulary, read ${entityTypes.length}`);
-  assert.equal(areas.length, 9);
+  assert.equal(areas.length, 11);
   assert.ok(screens.length >= 1, 'at least Home is declared');
   for (const screen of screens) {
     assert.ok(screen.className.startsWith('OcuPilot.Screen.Descriptor.'), screen.file);
@@ -195,15 +197,21 @@ test('every read note\'s text is the string its key names, and the three SQL sta
   assert.deepEqual(
     noted.map((screen) => screen.className).sort(),
     [
+      // Story 20.15: Screen permissions states that a change moves who OcuPilot lets open a screen.
+      'OcuPilot.Screen.Descriptor.AgentScreenPermissions',
       // Story 18.21: ECP application servers' Connections tab states when its statuses were read.
       'OcuPilot.Screen.Descriptor.EcpAppServerTab',
       'OcuPilot.Screen.Descriptor.ExplorerSqlProcedureStatements',
       'OcuPilot.Screen.Descriptor.ExplorerSqlTableStatements',
       'OcuPilot.Screen.Descriptor.ExplorerSqlViewStatements',
+      // Story 18.11: Prometheus metrics states that each read shortens an external scraper's intervals.
+      'OcuPilot.Screen.Descriptor.MetricsList',
+      // Story 23.4: the Services list states what an empty Allowed IP addresses list means.
+      'OcuPilot.Screen.Descriptor.ServiceList',
       // Story 19.10: SQL activity states whose statement text it shows.
       'OcuPilot.Screen.Descriptor.SqlActivityList',
     ],
-    'the three SQL statements reads, the ECP Connections tab and SQL activity declare a note'
+    'the three SQL statements reads, the ECP Connections tab, Services, SQL activity and Prometheus metrics declare a note'
   );
   for (const screen of noted) {
     const { key, text } = screen.declaration.read.note;
@@ -243,6 +251,8 @@ test('AD-13: the id-rule table is read from the kernel and is what the mirror em
     ['namespace', 'foldcase'],
     // Story 18.14: a mapping is keyed by `[namespace, Name]`; only the namespace part folds.
     ['global-mapping', 'foldcase-firstpart'],
+    // Story 18.10: a percent-class access entry is keyed by `[application, AllowType, Class]`; only the application folds.
+    ['pct-class-access', 'foldcase-firstpart'],
     ['routine-mapping', 'foldcase-firstpart'],
     ['package-mapping', 'foldcase-firstpart'],
     // Story 18.3: a database configuration name resolves without case and is stored upper case.
@@ -267,8 +277,16 @@ test('AD-13: the id-rule table is read from the kernel and is what the mirror em
     ['encryption-startup', 'singleton'],
     // Story 19.17: a document database's name resolves without case.
     ['docdb-database', 'foldcase'],
+    // Story 18.8: the instance's authentication options are one object.
+    ['authentication-options', 'singleton'],
+    // Story 18.25: a superserver is keyed by its port and bind address.
+    ['superserver', 'portbind'],
+    // Story 18.30: a Doc DB application is keyed by `[Namespace, Name]`, and the instance resolves both in any case.
+    ['docdb-application', 'foldcase'],
+    // Story 18.31: a privileged routine application is keyed by its name, which the instance resolves in any case.
+    ['routine-application', 'foldcase'],
   ]);
-  assert.deepEqual(parseIdRuleNames(text), ['foldcase-striptrailingslash', 'foldcase', 'singleton', 'integer', 'foldcase-firstpart', 'integerset', 'directoryset', 'documentset']);
+  assert.deepEqual(parseIdRuleNames(text), ['foldcase-striptrailingslash', 'foldcase', 'singleton', 'integer', 'foldcase-firstpart', 'integerset', 'directoryset', 'documentset', 'portbind']);
   // `null`, never `[]`, when the parameter is missing: an absent table and a table that declares
   // nothing are different facts, and only one of them is a source to build from.
   assert.equal(parseIdRules('Class X { }'), null);
@@ -299,6 +317,21 @@ test('DW-1403: the reference separator is read from the kernel and emitted, neve
     () => buildMirror({ ...readSources(), refSeparator: 0 }),
     /REFSEPARATOR must be a whole number above zero/,
     'and a separator no key could be built from fails the build'
+  );
+});
+
+test('AD-44: an area\'s appliesWhen is read against NamespaceFeatures.FEATURES, and a value outside it fails the build', () => {
+  // Mutation (Rule 19): drop the vocabulary check from `buildMirror` -> the throw below goes red.
+  const sources = readSources();
+  assert.deepEqual(sources.features, ['interoperability', 'analytics'], 'the vocabulary is read off the class');
+  assert.equal(parseNamespaceFeatures('Class X { }'), null, 'reported, never read as an empty vocabulary');
+  assert.equal(parseNamespaceFeatures('Parameter FEATURES = "";'), null);
+  assert.match(generate(), /export type NamespaceFeature = 'interoperability' \| 'analytics';/);
+  const areas = sources.areas.map((area) => (area.key === 'analytics' ? { ...area, appliesWhen: 'bogus' } : area));
+  assert.throws(
+    () => buildMirror({ ...sources, areas }),
+    /area "analytics" appliesWhen "bogus"/,
+    'the build names the area and the value'
   );
 });
 
@@ -367,7 +400,7 @@ test('AD-13: the generator refuses an id rule no reader can apply, naming the ru
 
   // The roster the third refusal is judged against is the one `entity-ref.ts` is pinned equal to
   // by `ui/tools/entity-ref.test.mjs`, so neither side can grow a rule alone.
-  assert.deepEqual(IMPLEMENTED_ID_RULES, ['foldcase-striptrailingslash', 'foldcase', 'singleton', 'integer', 'foldcase-firstpart', 'integerset', 'directoryset', 'documentset']);
+  assert.deepEqual(IMPLEMENTED_ID_RULES, ['foldcase-striptrailingslash', 'foldcase', 'singleton', 'integer', 'foldcase-firstpart', 'integerset', 'directoryset', 'documentset', 'portbind']);
 });
 
 test('AD-14: the generator refuses an entity type the kernel enum does not hold, naming both', () => {
@@ -850,25 +883,33 @@ test('tabProblem and tabGroupProblem return every sentence OcuPilot.Test.TabCorp
     ['system-explorer/sql-procedures/document', 'system-explorer/sql-procedures/document', 1, 0],
     ['system-explorer/sql-tables/document', 'system-explorer/sql-tables/document', 1, 0],
     ['system-explorer/sql-views/document', 'system-explorer/sql-views/document', 1, 0],
+    // Story 20.4: a production item's six tabs, a parent-scoped group whose head is unlisted.
+    ['interoperability/productions/items/document', 'interoperability/productions/items/document', 1, 0],
     ['os-management/license-usage', 'os-management/license-usage', 1, 8],
     ['security/oauth', 'security/oauth', 1, 5],
     ['os-management/ecp-application-servers/ssl', 'os-management/ecp-application-servers', 2, 0],
     ['system-explorer/sql-tables/fields', 'system-explorer/sql-tables/document', 2, 0],
     ['system-explorer/sql-procedures/statements', 'system-explorer/sql-procedures/document', 2, 0],
     ['system-explorer/sql-views/fields', 'system-explorer/sql-views/document', 2, 0],
+    ['interoperability/productions/items/settings', 'interoperability/productions/items/document', 2, 0],
     ['os-management/license-usage/processes', 'os-management/license-usage', 2, 0],
     ['security/oauth/clients', 'security/oauth', 2, 0],
     ['system-explorer/sql-tables/indices', 'system-explorer/sql-tables/document', 3, 0],
     ['system-explorer/sql-views/statements', 'system-explorer/sql-views/document', 3, 0],
+    ['interoperability/productions/items/queue', 'interoperability/productions/items/document', 3, 0],
     ['os-management/license-usage/users', 'os-management/license-usage', 3, 0],
     ['security/oauth/resource-servers', 'security/oauth', 3, 0],
     ['system-explorer/sql-tables/partitions', 'system-explorer/sql-tables/document', 4, 0],
+    ['interoperability/productions/items/log', 'interoperability/productions/items/document', 4, 0],
     ['os-management/license-usage/distributed', 'os-management/license-usage', 4, 0],
     ['security/oauth/server', 'security/oauth', 4, 0],
     ['system-explorer/sql-tables/partition-mappings', 'system-explorer/sql-tables/document', 5, 0],
+    ['interoperability/productions/items/messages', 'interoperability/productions/items/document', 5, 0],
     ['security/oauth/server-clients', 'security/oauth', 5, 0],
     ['system-explorer/sql-tables/triggers', 'system-explorer/sql-tables/document', 6, 0],
+    ['interoperability/productions/items/jobs', 'interoperability/productions/items/document', 6, 0],
     ['system-explorer/sql-tables/constraints', 'system-explorer/sql-tables/document', 7, 0],
+    ['interoperability/productions/items/test', 'interoperability/productions/items/document', 7, 0],
     ['system-explorer/sql-tables/cached-queries', 'system-explorer/sql-tables/document', 8, 0],
     ['system-explorer/sql-tables/statements', 'system-explorer/sql-tables/document', 9, 0],
   ]);
@@ -1315,6 +1356,11 @@ test('criteriaProblem returns every sentence OcuPilot.Test.CriteriaCorpus declar
   // Story 19.14's nine further tabs, whose one criterion is the table, view or procedure the route id names.
   // Story 18.19's Journal records, whose six criteria are the classic record browser's search.
   // Story 18.7's two key file lists, whose two criteria are the key file's root and path.
+  // Story 18.9's SQL privileges, whose two criteria are the grantee and the namespace. Story 18.10's percent-class
+  // access list, whose one criterion is the application. Story 20.3's Production items, whose one criterion is
+  // the production the route id names. Story 20.4's six item tabs, whose one criterion is the item the route id names,
+  // and Queue messages, whose one criterion is the queue. Story 20.5's lookup table entries, whose one criterion is the table.
+  // Story 18.12's privileged routine application roles and routines lists, whose one criterion is the application the route id names.
   const withCriteria = emittedScreens.filter((screen) => (screen.read?.criteria ?? null) !== null);
   assert.deepEqual(
     withCriteria.map((screen) => screen.descriptor),
@@ -1349,6 +1395,16 @@ test('criteriaProblem returns every sentence OcuPilot.Test.CriteriaCorpus declar
       'OcuPilot.Screen.Descriptor.ExplorerSqlViewStatements',
       'OcuPilot.Screen.Descriptor.ExplorerSqlViews',
       'OcuPilot.Screen.Descriptor.GlobalMappingList',
+      'OcuPilot.Screen.Descriptor.InteropItemJobTab',
+      'OcuPilot.Screen.Descriptor.InteropItemList',
+      'OcuPilot.Screen.Descriptor.InteropItemLogTab',
+      'OcuPilot.Screen.Descriptor.InteropItemMessageTab',
+      'OcuPilot.Screen.Descriptor.InteropItemQueueTab',
+      'OcuPilot.Screen.Descriptor.InteropItemSettingList',
+      'OcuPilot.Screen.Descriptor.InteropItemStatusTab',
+      'OcuPilot.Screen.Descriptor.InteropItemTestTab',
+      'OcuPilot.Screen.Descriptor.InteropLookupEntryList',
+      'OcuPilot.Screen.Descriptor.InteropQueueMessageList',
       'OcuPilot.Screen.Descriptor.JournalFileDatabaseList',
       'OcuPilot.Screen.Descriptor.JournalFileDetails',
       'OcuPilot.Screen.Descriptor.JournalRecordList',
@@ -1357,12 +1413,18 @@ test('criteriaProblem returns every sentence OcuPilot.Test.CriteriaCorpus declar
       'OcuPilot.Screen.Descriptor.OpenApiViewer',
       'OcuPilot.Screen.Descriptor.PackageMappingList',
       'OcuPilot.Screen.Descriptor.ProcessDetails',
+      'OcuPilot.Screen.Descriptor.RoutineAppRoleList',
+      'OcuPilot.Screen.Descriptor.RoutineAppRoutineList',
       'OcuPilot.Screen.Descriptor.RoutineMappingList',
+      'OcuPilot.Screen.Descriptor.SqlAdminPrivilegeList',
+      'OcuPilot.Screen.Descriptor.SqlColumnPrivilegeList',
+      'OcuPilot.Screen.Descriptor.SqlPrivilegeList',
       'OcuPilot.Screen.Descriptor.TaskDetails',
       'OcuPilot.Screen.Descriptor.TaskHistoryList',
       'OcuPilot.Screen.Descriptor.TaskRunList',
       'OcuPilot.Screen.Descriptor.TaskUpcomingList',
       'OcuPilot.Screen.Descriptor.WalletSecretList',
+      'OcuPilot.Screen.Descriptor.WebAppPctAccessList',
     ]
   );
   for (const descriptor of ['GlobalMappingList', 'RoutineMappingList', 'PackageMappingList']) {
@@ -1502,8 +1564,31 @@ test('every declared banner severity has a .ocu-banner- rule in the stylesheet, 
 // agent context carries (AD-24) and nothing constrains it to `read.fields`; `context.secretFields`
 // is not, because naming key material there is what it is for.
 //
+// **Two descriptors' named fields are exempt.** Item settings' rows carry `Secret`, a boolean the port sets true for a
+// setting whose name matches the credential pattern (Story 20.22, AD-36); the flag holds no credential, and the row's
+// value and default are empty when it is true. A lookup table's entries (Story 20.5) carry `Key`, the entry's lookup
+// key, which is not key material, and the same `Secret` flag, set for a key that matches the pattern, with an empty
+// value. Each exemption names the descriptor and the surface it is declared on, so the field on any other screen or
+// surface is still an offender. An item's Test tab (Story 20.6) lists each field of a request class with a `Secret` flag, set
+// true for a field the port finds named like a credential, which a test sends no value for; the flag holds no credential.
+//
 // Mutation (Rule 19): rename a production column field to `ApiKey` -> this goes red naming the
 // descriptor and the field.
+const CREDENTIAL_FLAG_FIELDS = new Set([
+  'InteropItemSettingList.cls read.fields: Secret',
+  'InteropItemTestTab.cls read.fields: Secret',
+  'InteropItemTestTab.cls table.columns: Secret',
+  'InteropItemTestTab.cls context.fields: Secret',
+  'InteropLookupEntryList.cls read.fields: Key',
+  'InteropLookupEntryList.cls read.fields: Secret',
+  'InteropLookupEntryList.cls read.filter: Key',
+  'InteropLookupEntryList.cls read.sort.fields: Key',
+  'InteropLookupEntryList.cls table.columns: Key',
+  'InteropLookupEntryList.cls table.columns: Secret',
+  'InteropLookupEntryList.cls context.fields: Key',
+  'InteropLookupEntryList.cls context.fields: Secret',
+]);
+
 test('AD-35: no production descriptor names a read, filter, sort, column or context field matching the credential pattern', () => {
   const { screens } = readSources();
   const offenders = [];
@@ -1520,7 +1605,7 @@ test('AD-35: no production descriptor names a read, filter, sort, column or cont
       ...(context?.fields ?? []).map((field) => ['context.fields', field]),
     ];
     for (const [where, field] of named) {
-      if (typeof field === 'string' && CREDENTIAL_RE.test(field)) offenders.push(`${screen.file} ${where}: ${field}`);
+      if (typeof field === 'string' && isCredentialName(field) && !CREDENTIAL_FLAG_FIELDS.has(`${screen.file} ${where}: ${field}`)) offenders.push(`${screen.file} ${where}: ${field}`);
     }
   }
   assert.ok(checked > 0, `at least one shipped descriptor declares a read: ${checked}`);
@@ -2343,7 +2428,13 @@ test('ownPrivilegesProblem returns every sentence OwnPrivilegeCases declares, an
   // beside OS management's set, and Story 18.21's ECP settings owns %Admin_Secure the same way.
   // Story 18.7's three key file screens own %Admin_FileSystemAccess beside Security's two pairs.
   // Story 19.17's Document databases owns %DocDB_Admin and %Service_DocDB beside System Explorer's
-  // %Development.
+  // %Development. Story 20.2's four Interoperability lists own their classic page's resource beside the
+  // area's %Ens_Portal. Story 20.3's Production items
+  // owns %Ens_ProductionConfig:READ the same way. Story 20.4's nine screens own their classic page's resource: the
+  // item's six tabs %Ens_ProductionConfig:READ and each its tab's, Production monitor %Ens_Dashboard:USE, Queues and
+  // Queue messages %Ens_Queues:READ, and Jobs %Ens_Jobs:READ. Story 20.5's Lookup tables and a table's entries own
+  // %Ens_LookupTables:READ, and Business partners %Ens_ProductionConfig:READ. Story 20.6's item Test tab owns
+  // %Ens_TestingService:USE.
   assert.deepEqual(
     owners.sort(),
     [
@@ -2354,6 +2445,25 @@ test('ownPrivilegesProblem returns every sentence OwnPrivilegeCases declares, an
       'OcuPilot.Screen.Descriptor.EncryptionKeyFileAdminList',
       'OcuPilot.Screen.Descriptor.EncryptionKeyFileForm',
       'OcuPilot.Screen.Descriptor.ExplorerDocDbList',
+      'OcuPilot.Screen.Descriptor.InteropBusinessPartnerList',
+      'OcuPilot.Screen.Descriptor.InteropItemJobTab',
+      'OcuPilot.Screen.Descriptor.InteropItemList',
+      'OcuPilot.Screen.Descriptor.InteropItemLogTab',
+      'OcuPilot.Screen.Descriptor.InteropItemMessageTab',
+      'OcuPilot.Screen.Descriptor.InteropItemQueueTab',
+      'OcuPilot.Screen.Descriptor.InteropItemSettingList',
+      'OcuPilot.Screen.Descriptor.InteropItemStatusTab',
+      'OcuPilot.Screen.Descriptor.InteropItemTestTab',
+      'OcuPilot.Screen.Descriptor.InteropJobList',
+      'OcuPilot.Screen.Descriptor.InteropLookupEntryList',
+      'OcuPilot.Screen.Descriptor.InteropLookupTableList',
+      'OcuPilot.Screen.Descriptor.InteropMonitorList',
+      'OcuPilot.Screen.Descriptor.InteropProcessList',
+      'OcuPilot.Screen.Descriptor.InteropProductionList',
+      'OcuPilot.Screen.Descriptor.InteropQueueList',
+      'OcuPilot.Screen.Descriptor.InteropQueueMessageList',
+      'OcuPilot.Screen.Descriptor.InteropRuleList',
+      'OcuPilot.Screen.Descriptor.InteropTransformList',
       'OcuPilot.Screen.Descriptor.JournalSettings',
       'OcuPilot.Screen.Descriptor.LanguageServerActivity',
       'OcuPilot.Screen.Descriptor.LanguageServerForm',
@@ -2699,7 +2809,7 @@ test('timelineMemberProblem refuses a timeline member that declares a timeline i
 // Mutation (Rule 19): drop SOURCE_BACKGROUND from READ_SOURCE_PORTS -> the roster pin goes red and
 // the list's read is refused.
 test('Story 16.5: the Background tasks list reads through the background port, the seventh read source', () => {
-  assert.deepEqual(READ_SOURCE_PORTS, ['admin', 'state', 'mgmnt', 'logsource', 'path', 'timeline', 'background', 'atelier', 'encryption', 'docdb', 'sqlactivity']);
+  assert.deepEqual(READ_SOURCE_PORTS, ['admin', 'state', 'mgmnt', 'logsource', 'path', 'timeline', 'background', 'atelier', 'encryption', 'docdb', 'sqlactivity', 'interop', 'access', 'monitor']);
   const { screens } = readSources();
   const background = screens.find((candidate) => candidate.className === 'OcuPilot.Screen.Descriptor.BackgroundTaskList');
   assert.ok(background !== undefined, 'the Background tasks list is declared');
@@ -2833,4 +2943,96 @@ test('Story 19.10: SQL activity reads through the sqlactivity port, the eleventh
   assert.equal(readProblem(screen.declaration), null, 'its read passes');
   assert.equal(screen.declaration.ownPrivileges, undefined, 'it declares no own pair');
   assert.deepEqual(screen.declaration.refreshRates, [5, 10, 30, 60]);
+});
+
+// Story 18.11: Prometheus metrics reads through the monitor port, the fourteenth read source, which both
+// engines admit as one LIST of `Metrics` with no criteria, per-row call, parent list, query, parts or rows,
+// under the port's two pairs. Every case in `OcuPilot.Test.MetricsDescriptor`'s corpus gets its exact
+// sentence, or none, here as the instance's registry gives it there.
+// Mutation (Rule 19): drop the monitor arm from `readProblem` -> the endpoint, type and key cases go red;
+// drop `SOURCE_MONITOR` from the system database rule -> the privileges case goes red.
+test('Story 18.11: Prometheus metrics reads through the monitor port, the fourteenth read source, and the corpus agrees', () => {
+  assert.ok(READ_SOURCE_PORTS.includes('monitor'), 'the monitor port is a read source');
+  const corpus = testCorpus(['Test', 'MetricsDescriptor.cls'], 'Cases');
+  let refusals = 0;
+  for (const testCase of corpus.cases) {
+    const declaration = structuredClone(corpus.declaration);
+    declaration.read.source = structuredClone(testCase.source);
+    if (testCase.criteria !== undefined) declaration.read.criteria = structuredClone(testCase.criteria);
+    if (testCase.privileges !== undefined) declaration.privileges = structuredClone(testCase.privileges);
+    const problem = testCase.check === 'criteria' ? criteriaProblem(declaration) : readProblem(declaration);
+    assert.equal(problem, testCase.expected, testCase.name);
+    if (testCase.expected !== null) refusals += 1;
+  }
+  assert.ok(refusals >= 10, `the corpus refuses its shapes (${refusals})`);
+  const { screens } = readSources();
+  const screen = screens.find((candidate) => candidate.className === 'OcuPilot.Screen.Descriptor.MetricsList');
+  assert.ok(screen !== undefined, 'Prometheus metrics is declared');
+  assert.deepEqual(screen.declaration.read.source, { port: 'monitor', endpoint: 'Metrics', type: 'LIST' });
+  assert.equal(readProblem(screen.declaration), null, 'its read passes');
+  assert.equal(screen.declaration.ownPrivileges, undefined, 'it declares no own pair');
+  assert.equal(screen.declaration.refreshes, false, 'it never refreshes');
+  assert.equal(screen.declaration.sideBarPosition, 21, 'OS management lists it at position 21');
+});
+
+// Story 20.2: the four Interoperability lists read through the interop port, the twelfth read source,
+// which both engines admit as one LIST of the port's four endpoints with no criteria, per-row call,
+// parent list, query or parts. Every case in `OcuPilot.Test.InteropDescriptor`'s corpus gets its exact
+// sentence, or none, here as the instance's registry gives it there.
+// Mutation (Rule 19): drop the interop arm from `readProblem` -> the endpoint, type and key cases go red.
+test('Story 20.2: the Interoperability lists read through the interop port, the twelfth read source, and the corpus agrees', () => {
+  assert.ok(READ_SOURCE_PORTS.includes('interop'), 'the interop port is a read source');
+  const corpus = testCorpus(['Test', 'InteropDescriptor.cls'], 'Cases');
+  let refusals = 0;
+  for (const testCase of corpus.cases) {
+    const declaration = structuredClone(corpus.declaration);
+    declaration.read.source = structuredClone(testCase.source);
+    if (testCase.criteria !== undefined) declaration.read.criteria = structuredClone(testCase.criteria);
+    const problem = testCase.check === 'criteria' ? criteriaProblem(declaration) : readProblem(declaration);
+    assert.equal(problem, testCase.expected, testCase.name);
+    if (testCase.expected !== null) refusals += 1;
+  }
+  assert.ok(refusals >= 8, `the corpus refuses its shapes (${refusals})`);
+  const { screens } = readSources();
+  const expected = [
+    ['InteropProductionList', 'Productions'],
+    ['InteropProcessList', 'Processes'],
+    ['InteropTransformList', 'Transforms'],
+    ['InteropRuleList', 'Rules'],
+  ];
+  for (const [name, endpoint] of expected) {
+    const screen = screens.find((candidate) => candidate.className === `OcuPilot.Screen.Descriptor.${name}`);
+    assert.ok(screen !== undefined, `${name} is declared`);
+    assert.deepEqual(screen.declaration.read.source, { port: 'interop', endpoint, type: 'LIST' });
+    assert.equal(readProblem(screen.declaration), null, `${name}'s read passes`);
+    assert.equal(screen.declaration.area, 'interoperability', `${name} lives in the interoperability area`);
+    assert.equal(screen.declaration.ownPrivileges.length, 1, `${name} declares its classic page's resource as its own pair`);
+  }
+});
+
+// Story 20.15: Screen permissions reads through the access source, the thirteenth, which both engines
+// admit as one LIST of `Screens` with no criteria, per-row call, parent list, query, parts or rows. Every
+// case in `OcuPilot.Test.ScreenAccessDescriptor`'s corpus gets its exact sentence, or none, here as the
+// instance's registry gives it there.
+// Mutation (Rule 19): drop the access arm from `readProblem` -> the endpoint, type, key and criteria cases
+// go red.
+test('Story 20.15: Screen permissions reads through the access source, the thirteenth read source, and the corpus agrees', () => {
+  assert.ok(READ_SOURCE_PORTS.includes('access'), 'the access source is a read source');
+  const corpus = testCorpus(['Test', 'ScreenAccessDescriptor.cls'], 'Cases');
+  let refusals = 0;
+  for (const testCase of corpus.cases) {
+    const declaration = structuredClone(corpus.declaration);
+    declaration.read.source = structuredClone(testCase.source);
+    if (testCase.criteria !== undefined) declaration.read.criteria = structuredClone(testCase.criteria);
+    assert.equal(readProblem(declaration), testCase.expected, testCase.name);
+    if (testCase.expected !== null) refusals += 1;
+  }
+  assert.ok(refusals >= 7, `the corpus refuses its shapes (${refusals})`);
+  const { screens } = readSources();
+  const screen = screens.find((candidate) => candidate.className === 'OcuPilot.Screen.Descriptor.AgentScreenPermissions');
+  assert.ok(screen !== undefined, 'Screen permissions is declared');
+  assert.deepEqual(screen.declaration.read.source, { port: 'access', endpoint: 'Screens', type: 'LIST' });
+  assert.equal(readProblem(screen.declaration), null, "its read passes");
+  assert.deepEqual(screen.declaration.privileges, [{ resource: '%Development', permission: 'USE' }]);
+  assert.equal(screen.declaration.classicPage, '', 'and it replaces no classic page');
 });

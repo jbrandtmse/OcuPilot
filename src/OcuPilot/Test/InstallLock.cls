@@ -415,7 +415,9 @@ Method TestLockIsHeldUntilTheInstallFinishes()
 /// <p>While a second process holds the probe profile's install lock, an install of that
 /// profile waits the bounded time and refuses, naming the profile, and a mark of it does the
 /// same; neither writes anything. Once the lock is free, the same install runs.</p>
-/// <p>Mutations (Rule 19): <method>OcuPilot.Install.Installer.Install</method> stops taking the
+/// <p>Mutations (Rule 19): <method>OcuPilot.Install.Installer.InstallLockHolder</method> reads the
+/// lock table without <code>|"%SYS"|</code> -- the refusal names no process, red;
+/// <method>OcuPilot.Install.Installer.Install</method> stops taking the
 /// lock -- the install runs over the held lock and adds a stamp row, red; so does
 /// <method>OcuPilot.Install.Installer.MarkInstalling</method>, which then marks the row, red.</p>
 Method TestSecondInstallAndMarkRefuseWhileTheLockIsHeld()
@@ -448,6 +450,7 @@ Method TestSecondInstallAndMarkRefuseWhileTheLockIsHeld()
         Do $$$AssertStatusNotOK(tSC, "a second install of the profile refuses while another process holds its lock")
         Set tText = $System.Status.GetErrorText(tSC)
         Do $$$AssertTrue((tText [ "'probe'") && (tText [ "install lock"), "the refusal names the profile and the lock: " _ tText)
+        Do $$$AssertTrue(tText [ ("process " _ tChild), "and names the process holding the lock: " _ tText)
         Do $$$AssertTrue(tWaited >= (tWait - 1), "it waited the bounded time before refusing (" _ $FNumber(tWaited, "", 1) _ "s of " _ tWait _ "s)")
         Do $$$AssertEquals(..ProbeWriteSnapshot(), tBefore, "the refused install wrote nothing: no version-row write and no install stamp")
 

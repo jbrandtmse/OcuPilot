@@ -111,10 +111,9 @@ ClassMethod Validate(pMode As %String, pArgs As %DynamicObject, Output pViolatio
 
         ; Name.
         Set tName = ..Text(tArgs, "Name", .tNameOk)
-        If 'tNameOk || (tName = "") {
-            Do ..Add(.pViolations, "Name", ##class(OcuPilot.Api.Error).#TASKNAMEREQUIRED)
-        } ElseIf ($Length(tName) > ..#NAMEMAXLENGTH) || '$Match(tName, "^[A-Za-z].*") {
-            Do ..Add(.pViolations, "Name", ##class(OcuPilot.Api.Error).#TASKNAMESHAPE)
+        Set tNameCode = $Select(tNameOk: ..NameProblem(tName), 1: ##class(OcuPilot.Api.Error).#TASKNAMEREQUIRED)
+        If tNameCode '= "" {
+            Do ..Add(.pViolations, "Name", tNameCode)
         } ElseIf (pMode = "create") && pCheckTaken {
             Set tSC = ..NameTaken(tName, .tTaken)
             If $$$ISERR(tSC) Quit
@@ -507,9 +506,8 @@ ClassMethod DailyViolations(pArgs As %DynamicObject, pDefaults As %DynamicObject
     }
 }
 
-/// <p>The <code>RunAsUser</code> rules: blank or the caller's own name passes; any other name needs
-/// <parameter>SECURERESOURCE</parameter>:USE before it is read, and must name an existing, enabled
-/// account.</p>
+/// <p>The <code>RunAsUser</code> rules over <var>pArgs</var>: a non-string value is
+/// <code>TASK.FIELD.SHAPE</code>, anything else is <method>RunAsProblem</method>'s.</p>
 ClassMethod RunAsViolations(pArgs As %DynamicObject, ByRef pViolations) [ Private ]
 {
     Set tUser = ..Text(pArgs, "RunAsUser", .tOk)
@@ -517,17 +515,33 @@ ClassMethod RunAsViolations(pArgs As %DynamicObject, ByRef pViolations) [ Privat
         Do ..Add(.pViolations, "RunAsUser", ##class(OcuPilot.Api.Error).#TASKFIELDSHAPE)
         Quit
     }
-    If (tUser = "") || ($ZConvert(tUser, "U") = $ZConvert($Username, "U")) Quit
-    If '$System.Security.Check(..#SECURERESOURCE, "USE") {
-        Do ..Add(.pViolations, "RunAsUser", ##class(OcuPilot.Api.Error).#TASKRUNASUSERSECURE)
-        Quit
-    }
+    Set tCode = ..RunAsProblem(tUser)
+    If tCode '= "" Do ..Add(.pViolations, "RunAsUser", tCode)
+}
+
+/// <p>The code of the first task-name rule <var>pName</var> breaks, or <code>""</code>: an empty name
+/// is <code>TASK.NAME.REQUIRED</code>; one over <parameter>NAMEMAXLENGTH</parameter> characters or not
+/// starting with a letter is <code>TASK.NAME.SHAPE</code>. Whether the name is taken is not asked.</p>
+ClassMethod NameProblem(pName As %String) As %String
+{
+    If pName = "" Quit ##class(OcuPilot.Api.Error).#TASKNAMEREQUIRED
+    If ($Length(pName) > ..#NAMEMAXLENGTH) || '$Match(pName, "^[A-Za-z].*") Quit ##class(OcuPilot.Api.Error).#TASKNAMESHAPE
+    Quit ""
+}
+
+/// <p>The <code>RunAsUser</code> rule's code for <var>pUser</var>, or <code>""</code>: blank or the
+/// caller's own name passes; any other name needs <parameter>SECURERESOURCE</parameter>:USE before it
+/// is read, and must name an existing, enabled account, read in <code>%SYS</code> (AD-16).</p>
+ClassMethod RunAsProblem(pUser As %String) As %String
+{
+    If (pUser = "") || ($ZConvert(pUser, "U") = $ZConvert($Username, "U")) Quit ""
+    If '$System.Security.Check(..#SECURERESOURCE, "USE") Quit ##class(OcuPilot.Api.Error).#TASKRUNASUSERSECURE
     Set tExists = 0
     Set tEnabled = 0
     Set tOrigNS = $NAMESPACE
     Try {
         Set $NAMESPACE = "%SYS"
-        Set tExists = ##class(Security.Users).Exists(tUser, .tAccount)
+        Set tExists = ##class(Security.Users).Exists(pUser, .tAccount)
         If tExists && $IsObject($Get(tAccount)) Set tEnabled = ''tAccount.Enabled
         Set tAccount = ""
         Set $NAMESPACE = tOrigNS
@@ -535,11 +549,9 @@ ClassMethod RunAsViolations(pArgs As %DynamicObject, ByRef pViolations) [ Privat
         Set $NAMESPACE = tOrigNS
         Set tExists = 0
     }
-    If 'tExists {
-        Do ..Add(.pViolations, "RunAsUser", ##class(OcuPilot.Api.Error).#TASKRUNASUSERUNKNOWN)
-    } ElseIf 'tEnabled {
-        Do ..Add(.pViolations, "RunAsUser", ##class(OcuPilot.Api.Error).#TASKRUNASUSERDISABLED)
-    }
+    If 'tExists Quit ##class(OcuPilot.Api.Error).#TASKRUNASUSERUNKNOWN
+    If 'tEnabled Quit ##class(OcuPilot.Api.Error).#TASKRUNASUSERDISABLED
+    Quit ""
 }
 
 /// <p>The rules over the settings <var>pSupplied</var> for task type <var>pClass</var> in
@@ -1025,6 +1037,35 @@ ClassMethod TargetProblem(pId As %String, Output pProblem As %String) As %Status
         Set tSC = ex.AsStatus()
     }
     Quit tSC
+}
+
+/// <p>The name a card titles a task by, read from <var>pTask</var> (a task's own read, or a create's
+/// arguments), or <code>""</code> where it carries none.</p>
+ClassMethod NameIn(pTask As %DynamicObject) As %String
+{
+    If '$IsObject(pTask) || 'pTask.%IsA("%Library.DynamicObject") Quit ""
+    Set tName = ..Text(pTask, "Name", .tOk)
+    If 'tOk Quit ""
+    Quit tName
+}
+
+/// <p>The name of task <var>pId</var>, read with <code>Task.CRUD</code>'s <code>GET</code> through
+/// <var>pPortClass</var> with the caller's own privileges, or <code>""</code>. A tool whose own read
+/// does not answer the name (the state-only <code>INFO</code>) takes it from here. A refused, absent or
+/// unreadable task answers <code>""</code> and raises nothing: the card then titles the task by its
+/// id.</p>
+ClassMethod NameOfId(pPortClass As %String, pId As %String) As %String
+{
+    Set tName = ""
+    Try {
+        Kill tQuery
+        Set tQuery("id") = pId
+        Set tSC = $ClassMethod(pPortClass, "Invoke", "Task.CRUD", "GET", .tQuery, "", .tTask, .tHttp, .tFault)
+        If $$$ISOK(tSC) Set tName = ..NameIn($Get(tTask))
+    } Catch {
+        Set tName = ""
+    }
+    Quit tName
 }
 
 /// <p>Why the caller may not create a task of the type the create arguments <var>pArgs</var> name, or

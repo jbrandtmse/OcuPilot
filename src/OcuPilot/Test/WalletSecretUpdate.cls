@@ -77,9 +77,13 @@ Method TestTheEditIsAMergeWriteOverTheThreeSettings()
 }
 
 /// <p>AC1 on the card: an edit's proposal carries a masked value row, both sides empty and marked
-/// optional, beside the one setting it changes.</p>
+/// optional, beside the one setting it changes; its confirm channel admits the value alone, not the key
+/// material the list also declares (AD-6).</p>
+/// <p>Mutation (Rule 19): delete <method>OcuPilot.Screen.Tool.WalletSecretUpdate.ChannelSecretNames</method>
+/// -> the channel leg goes red.</p>
 Method TestTheCardOffersAnOptionalValue()
 {
+    Do $$$AssertEquals($ListToString($ClassMethod(..#TOOL, "ChannelSecretNames")), "Secret", "the confirm channel admits the value alone")
     Set tSC = ..Mint(..Name("EditKv"), {"Usage": 2}, .tProposal, .tHttp, .tFault)
     Do $$$AssertStatusOK(tSC, "the edit is minted")
     If $$$ISERR(tSC) Quit
@@ -171,15 +175,16 @@ Method TestADeletedSecretIsRefusedAndNotRecreated()
     Do $$$AssertEquals($ClassMethod(..#PROBE, "Holds", tGone), 0, "and the secret is not re-created")
 }
 
-/// <p>The Another type row: a symmetric key is not changed by either caller -- the screen answers 422
-/// on its own code with nothing sent, and the agent's mint is refused at 400.</p>
+/// <p>The Another type row: a key-value setting is not applied to a symmetric key by either caller --
+/// the screen answers 400 on the member a key does not take with nothing sent (a symmetric key is replaced,
+/// by Story 18.24's own tools), and the agent's mint is refused at 400.</p>
 Method TestAnotherTypeIsLeftAlone()
 {
     Set tSym = ..Name("EditSym")
     Do $$$AssertStatusOK($ClassMethod(..#PROBE, "AddSymmetricKey", tSym), "a symmetric key is stored")
     Set tSC = $ClassMethod(..#SCREEN, "Update", tSym, {"Usage": 1}, .tHttp, .tFault, .tViolations)
-    Do $$$AssertEquals(tHttp, 422, "the screen refuses its edit at 422")
-    Do $$$AssertEquals($Select($IsObject($Get(tFault)): tFault.%Get("code"), 1: ""), ##class(OcuPilot.Api.Error).#WALLETTYPEUNSUPPORTED, "on the unsupported-type code")
+    Do $$$AssertEquals(tHttp, 400, "the screen refuses its edit at 400")
+    Do $$$AssertEquals($Select($IsObject($Get(tFault)): tFault.%Get("code"), 1: ""), ##class(OcuPilot.Api.Error).#PORTFIELDUNEXPECTED, "on the unexpected-member code")
     Do $$$AssertEquals($ClassMethod(..#RECORD, "WriteCount"), 0, "and sends nothing")
     Set tSC = ..Mint(tSym, {}, .tProposal, .tHttp, .tFault)
     Do $$$AssertEquals(tHttp, 400, "the agent's mint of a settings-free edit is refused at 400")

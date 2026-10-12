@@ -102,7 +102,7 @@ The MCP-server rule above and the container detail below this block are the oper
 
 - Read
   `_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md`
-  in full before writing code — all 61 ADs, not the ones that look relevant. It is a contract:
+  in full before writing code — all 64 ADs, not the ones that look relevant. It is a contract:
   change an AD there rather than working around it in a slice. Read it once and keep it: re-read
   only a region that changed since (Rule 26 in `_bmad/custom/skill-rules.md`).
 - Epics and stories: `_bmad-output/planning-artifacts/epics.md` (22 epics). PRD, UX and research sit
@@ -140,11 +140,12 @@ The MCP-server rule above and the container detail below this block are the oper
   a pass.
 - **CI runs all of the above on every push** (`.github/workflows/ci.yml`, seven jobs: `gates`,
   `instance-shard`, `instance`, `browser-shard`, `browser`, `images`, `package`). The ObjectScript
-  suite runs as four shard legs and the browser specs as three, every leg on its own fresh throwaway and
+  suite runs as eight shard legs and the browser specs as five, every leg on its own fresh throwaway and
   still one class or spec file at a time; the `instance` and `browser` roll-ups fail unless every
   class and spec ran in exactly one leg. Shares come longest-first from `ui/tools/ci-timings.json`;
-  refresh it from a green run with `cd ui && node tools/ci-shards.mjs refresh --run <id>`. A run
-  takes about 39 minutes (run 36923461500). A test that needs something a sibling test left, or an
+  refresh it from a green run with `cd ui && node tools/ci-shards.mjs refresh --run <id>` (the
+  `/epic-cycle` merge gate does this at every merge). A run takes about 30 minutes (run 38119364148
+  took 27.4). A test that needs something a sibling test left, or an
   instance older than a few minutes, fails in whichever leg it lands in. `gates` runs **once per Node band `engines.node` declares, at each
   band's floor** (22.22.3 / 24.15.0 / 26.0.0) — `ui/tools/ci.test.mjs` holds that list and
   `engines.node` equal in both directions, so a declared band with no leg is red. A single-version
@@ -211,17 +212,14 @@ sentence a reviewer can file a finding against is surface area; keep the surface
 
 ## Container
 
-**The running `ocupilot` container predates Story 1.4. Do not run `docker compose up` or `down` against it.**
-It was created from the old compose file: the rolling `latest-cd` image, `unless-stopped`, no start
-hook, no health check, no source mounts, no `OCUPILOT_DEMO` (`docker inspect ocupilot`, 2026-09-11).
-Compose therefore sees a changed configuration, and any `docker compose up` — with or without
-`--wait` — **recreates** it: the new start hook then compiles and installs OcuPilot, demo fixtures
-included, against the live `./iris-data` volume, a path so far verified only on fresh throwaway
-containers. `docker compose down` removes it, and only a recreating `up` brings it back. Recreating,
-removing or restarting it is the owner's call. `docker compose ps` and `logs` change nothing; `exec`
-runs whatever you give it inside the live container.
+**Starting, stopping, recreating or removing the `ocupilot` container is the owner's call.** It runs
+this compose file (recreated 2026-10-11 on the pinned `2026.2` image, with the start hook, health check,
+source mounts and `OCUPILOT_DEMO`). Every start recompiles and reinstalls OcuPilot from the working
+tree, demo fixtures included, against the live `./iris-data` volume, and `docker compose down` removes
+the container. `docker compose ps` and `logs` change nothing; `exec` runs whatever you give it inside
+the live container.
 
-On a clone with no container yet, or once the owner has recreated this one:
+On a clone with no container yet, or when the owner asks for a refresh:
 
 ```bash
 docker compose up -d --wait   # start, and block until the health check reports OcuPilot installed

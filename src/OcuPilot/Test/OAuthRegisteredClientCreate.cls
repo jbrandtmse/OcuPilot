@@ -154,6 +154,9 @@ Method TestACreateThroughTheRouteStoresEveryValue()
     Set tId = ""
     Try { Set tId = ##class(%DynamicObject).%FromJSON(tRaw).%Get("clientId") } Catch { Set tId = "" }
     Do $$$AssertEquals(tId, $ClassMethod(..#PROBE, "IdOf", tName), "naming the client id the instance generated")
+    Set tReadBack = ""
+    Try { Set tReadBack = ##class(%DynamicObject).%FromJSON(tRaw).%Get("readBack") } Catch { Set tReadBack = "" }
+    Do $$$AssertEquals($Select($IsObject(tReadBack): tReadBack.%Get("verdict"), 1: ""), "matches", "and the create's read-back by that id holds every sent key: " _ $Select($IsObject(tReadBack): tReadBack.%ToJSON(), 1: ""))
     Set tStored = $ClassMethod(..#PROBE, "Stored", tId)
     Do $$$AssertTrue($IsObject(tStored), "the instance holds the client")
     If '$IsObject(tStored) Quit

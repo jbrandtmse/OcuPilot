@@ -86,7 +86,7 @@ Method TestEveryLiveToolIsAdvertisedInTheSubset()
     Do $$$AssertStatusOK($ClassMethod(..#REGISTRY, "ProviderTools", .tAdvertised), "the tools are advertised")
     Do $$$AssertStatusOK($ClassMethod(..#REGISTRY, "ListTools", .tListed), "the live tools list")
     If '$IsObject(tListed) Quit
-    ; AD-53: an unadvertised tool (the saves, the license key's activation, the data browser's save) is listed and never advertised.
+    ; AD-53: an unadvertised tool (the license key's activation, for one) is listed and never advertised.
     Set tTools = []
     Set tListIterator = tListed.%GetIterator()
     While tListIterator.%GetNext(.tListIndex, .tListedTool) { If $ClassMethod(..#REGISTRY, "IsAdvertised", tListedTool) Do tTools.%Push(tListedTool) }
@@ -197,6 +197,13 @@ Method TestEveryLiveToolRequiresItsScreensPairs()
                 Set tOtherAdded = $ClassMethod(..#REGISTRY, "ArgumentPairs", tTool, {"namespace": (tOther)}, .tOtherResolved)
                 Do $$$AssertTrue(tOtherResolved && $ListFind(tOtherAdded, $ListBuild(tOtherResource, "WRITE")) && '$ListFind(tOtherAdded, $ListBuild(tResource, "WRITE")), tTool.name _ ": another namespace resolves that namespace's resource and not this one's")
             }
+        } ElseIf $ClassMethod(tTool.class, "%Extends", "OcuPilot.Screen.Tool.ExplorerSave") || $ClassMethod(tTool.class, "%Extends", "OcuPilot.Screen.Tool.ExplorerCreate") {
+            ; Story 20.20 (DW-2242): a save or a create declares its screen's pairs alone, and WRITE on
+            ; the routines database of the namespace its proposal stored is an argument pair, which
+            ; with no namespace argument is the request's scope (AD-8).
+            Set tExpected = ##class(OcuPilot.Screen.Gate).RequiredPairs($Parameter(tTool.class, "DESCRIPTORCLASS"), .tExpectedResolved)
+            Do $$$AssertTrue($ListLength(tExpected) > 0, tTool.name _ ": its screen declares pairs")
+            Set tExpectedAdded = ##class(OcuPilot.Screen.Tool.ExplorerSave).CodeWritePairs({}, .tExpectedAddedResolved)
         } ElseIf $ClassMethod(tTool.class, "%Extends", "OcuPilot.Screen.Tool.ExplorerWrite") {
             ; Story 19.2: System Explorer's compile, delete and import declare WRITE on the routines
             ; database of the request's namespace, here this one's, after their screen's pairs (AD-8
@@ -216,6 +223,48 @@ Method TestEveryLiveToolRequiresItsScreensPairs()
                 Set tWritePair = $ListBuild(tResource, "WRITE")
                 If '$ListFind(tExpected, tWritePair) Set tExpected = tExpected _ $ListBuild(tWritePair)
             }
+        } ElseIf tTool.class = "OcuPilot.Screen.Tool.InteropItemTestSend" {
+            ; Story 20.6: the host test's send declares %Ens_TestingService:USE and WRITE on the globals database of the request's
+            ; namespace, here this one's, after its screen's pairs, each once; it writes no code, so no routines database (AD-8, AD-62).
+            Set tExpected = ##class(OcuPilot.Screen.Gate).RequiredPairs($Parameter(tTool.class, "DESCRIPTORCLASS"), .tExpectedResolved)
+            Do $$$AssertTrue($ListLength(tExpected) > 0, tTool.name _ ": its screen declares pairs")
+            Do $$$AssertTrue(##class(OcuPilot.Kernel.Shell.Namespaces).GlobalDatabase($Namespace, .tGlobalResource, .tReadOnly), tTool.name _ ": this namespace's globals database resolves")
+            For tWritePair = $ListBuild("%Ens_TestingService", "USE"), $ListBuild(tGlobalResource, "WRITE") {
+                If '$ListFind(tExpected, tWritePair) Set tExpected = tExpected _ $ListBuild(tWritePair)
+            }
+        } ElseIf $ClassMethod(tTool.class, "%Extends", "OcuPilot.Screen.Tool.InteropItemAction") {
+            ; Story 20.3: the item writes declare %Ens_ProductionConfig:WRITE, then WRITE on the globals and
+            ; the routines database of the request's namespace, here this one's, after their screen's pairs,
+            ; each once (AD-8, AD-62).
+            Set tExpected = ##class(OcuPilot.Screen.Gate).RequiredPairs($Parameter(tTool.class, "DESCRIPTORCLASS"), .tExpectedResolved)
+            Do $$$AssertTrue($ListLength(tExpected) > 0, tTool.name _ ": its screen declares pairs")
+            Do $$$AssertTrue(##class(OcuPilot.Kernel.Shell.Namespaces).GlobalDatabase($Namespace, .tGlobalResource, .tReadOnly), tTool.name _ ": this namespace's globals database resolves")
+            Do $$$AssertTrue(##class(OcuPilot.Kernel.Shell.Namespaces).RoutineDatabase($Namespace, .tRoutineResource, .tReadOnly), tTool.name _ ": this namespace's routines database resolves")
+            For tWritePair = $ListBuild("%Ens_ProductionConfig", "WRITE"), $ListBuild(tGlobalResource, "WRITE"), $ListBuild(tRoutineResource, "WRITE") {
+                If '$ListFind(tExpected, tWritePair) Set tExpected = tExpected _ $ListBuild(tWritePair)
+            }
+        } ElseIf $ClassMethod(tTool.class, "%Extends", "OcuPilot.Screen.Tool.InteropProductionAction") || $ClassMethod(tTool.class, "%Extends", "OcuPilot.Screen.Tool.InteropJobAction") || (tTool.class = "OcuPilot.Screen.Tool.InteropQueueAbort") || (tTool.class = "OcuPilot.Screen.Tool.InteropQueueMessageAbort") {
+            ; Story 20.2: the production actions declare %Ens_ProductionRun:USE and WRITE on the globals
+            ; database of the request's namespace, here this one's, after their screen's pairs, each
+            ; once (AD-8, AD-62). Story 20.23: the queue and job writes declare the vendor's own check
+            ; (%Ens_Queues:WRITE, %Ens_Jobs:WRITE or %Ens_MessageSuspend:USE) in its place.
+            Set tExpected = ##class(OcuPilot.Screen.Gate).RequiredPairs($Parameter(tTool.class, "DESCRIPTORCLASS"), .tExpectedResolved)
+            Do $$$AssertTrue($ListLength(tExpected) > 0, tTool.name _ ": its screen declares pairs")
+            Do $$$AssertTrue(##class(OcuPilot.Kernel.Shell.Namespaces).GlobalDatabase($Namespace, .tGlobalResource, .tReadOnly), tTool.name _ ": this namespace's globals database resolves")
+            Set tRunPair = $ListBuild($Parameter(tTool.class, "WRITERESOURCE"), $Parameter(tTool.class, "WRITEPERMISSION"))
+            Set tWritePair = $ListBuild(tGlobalResource, "WRITE")
+            If '$ListFind(tExpected, tRunPair) Set tExpected = tExpected _ $ListBuild(tRunPair)
+            If '$ListFind(tExpected, tWritePair) Set tExpected = tExpected _ $ListBuild(tWritePair)
+        } ElseIf $ClassMethod(tTool.class, "%Extends", "OcuPilot.Screen.Tool.InteropAction") && ($Parameter(tTool.class, "DESCRIPTORCLASS") [ "OcuPilot.Screen.Descriptor.InteropLookup") {
+            ; Story 20.5: the lookup writes declare their own resource at its permission, then WRITE or READ on the globals database
+            ; of the request's namespace, here this one's, after their screen's pairs, each once (AD-8, AD-62); the export's own
+            ; pair is the file system's, since it writes a file.
+            Set tExpected = ##class(OcuPilot.Screen.Gate).RequiredPairs($Parameter(tTool.class, "DESCRIPTORCLASS"), .tExpectedResolved)
+            Do $$$AssertTrue($ListLength(tExpected) > 0, tTool.name _ ": its screen declares pairs")
+            Do $$$AssertTrue(##class(OcuPilot.Kernel.Shell.Namespaces).GlobalDatabase($Namespace, .tGlobalResource, .tReadOnly), tTool.name _ ": this namespace's globals database resolves")
+            For tOwnPair = $ListBuild($Parameter(tTool.class, "WRITERESOURCE"), $Parameter(tTool.class, "WRITEPERMISSION")), $ListBuild(tGlobalResource, $Parameter(tTool.class, "DATABASEPERMISSION")) {
+                If '$ListFind(tExpected, tOwnPair) Set tExpected = tExpected _ $ListBuild(tOwnPair)
+            }
         } ElseIf $ClassMethod(tTool.class, "%Extends", "OcuPilot.Screen.Tool.Write") {
             ; Story 5.1: a write tool is a class of its own, so its pairs are its descriptor's
             ; together with the pair the write itself names (AD-8). DW-1208: that pair is the one
@@ -224,6 +273,13 @@ Method TestEveryLiveToolRequiresItsScreensPairs()
             ; (AD-34, AD-40), never a privilege delta.
             Set tExpected = ##class(OcuPilot.Screen.Gate).RequiredPairs($Parameter(tTool.class, "DESCRIPTORCLASS"), .tExpectedResolved)
             Do $$$AssertTrue($ListLength(tExpected) > 0, tTool.name _ ": its screen declares pairs")
+            ; Story 18.32: the spec-based REST service writes declare %Development:USE as their own pair, and
+            ; as an argument pair WRITE on the routines database of the namespace their proposal stored, which
+            ; with no namespace argument is the request's scope, as System Explorer's save and create do (AD-8).
+            If $ClassMethod(tTool.class, "%Extends", "OcuPilot.Screen.Tool.RestServiceWrite") {
+                Set tExpectedAdded = ##class(OcuPilot.Screen.Tool.ExplorerSave).CodeWritePairs({}, .tExpectedAddedResolved)
+                Do $$$AssertTrue($ListLength(tExpectedAdded) > 0, tTool.name _ ": the expected argument pair, WRITE on the scope's routines database, resolves")
+            }
             ; Story 18.15: the enable of interoperability declares %All:USE first, before the poll's
             ; pair, and names no write pair of its own (AD-8 as amended 2026-10-01).
             If tTool.name = "osmgmt.namespaces.enableinterop" Set tExpected = tExpected _ $ListBuild($ListBuild("%All", "USE"))
@@ -255,6 +311,9 @@ Method TestEveryLiveToolRequiresItsScreensPairs()
             ; Story 18.20: the ECP data server status change declares its screen's set and its poll's
             ; %Admin_Operate:USE, and no write pair of its own (AD-8, measured at the story's Task 0).
             If tTool.name = "osmgmt.ecpdataservers.changestatus" Set tExpected = ##class(OcuPilot.Screen.Gate).RequiredPairs($Parameter(tTool.class, "DESCRIPTORCLASS"), .tExpectedResolved) _ $ListBuild($ListBuild("%Admin_Operate", "USE"))
+            ; Story 20.15: Screen permissions' three writes declare their screen's fixed pair and no write pair
+            ; of their own (AD-64): the screen is in an area that declares no set, so it is never adjusted.
+            If $Extract(tTool.name, 1, 24) = "agent.screenpermissions." Set tExpected = ##class(OcuPilot.Screen.Gate).RequiredPairs($Parameter(tTool.class, "DESCRIPTORCLASS"), .tExpectedResolved)
             ; Story 16.25: the language server writes declare %Admin_Manage:USE after the write's own,
             ; which the vendor answered #921 without (AD-8 as amended 2026-09-29).
             If $Parameter(tTool.class, "MANAGERESOURCE") '= "" Set tExpected = tExpected _ $ListBuild($ListBuild($Parameter(tTool.class, "MANAGERESOURCE"), $Parameter(tTool.class, "MANAGEPERMISSION")))
@@ -264,6 +323,9 @@ Method TestEveryLiveToolRequiresItsScreensPairs()
             ; Story 19.8: so does the data browser's save, each statement's SQL privileges being checked
             ; at its prepare (AD-8).
             If tTool.name = "explorer.sqldata.save" Set tExpected = ##class(OcuPilot.Screen.Gate).RequiredPairs($Parameter(tTool.class, "DESCRIPTORCLASS"), .tExpectedResolved)
+            ; Story 18.9: the SQL privilege grants and revokes declare their screen's set and no write pair of
+            ; their own, the namespace's database pairs being added by argument (AD-8).
+            If $ClassMethod(tTool.class, "%Extends", "OcuPilot.Screen.Tool.SqlPrivilegeWrite") Set tExpected = ##class(OcuPilot.Screen.Gate).RequiredPairs($Parameter(tTool.class, "DESCRIPTORCLASS"), .tExpectedResolved)
             ; Story 18.3: the database create declares the resource pair and the path pair after the
             ; write's own, and the two edits add pairs by argument (AD-8 as amended 2026-09-29).
             If tTool.name = "osmgmt.localdatabases.create" Set tExpected = tExpected _ $ListBuild($ListBuild("%Admin_Secure", "USE"), $ListBuild("%Admin_FileSystemAccess", "USE"))
@@ -298,6 +360,10 @@ Method TestEveryLiveToolRequiresItsScreensPairs()
             ; privileges and the namespace's database pairs are the port's to check at its prepare.
             Set tExpected = ##class(OcuPilot.Screen.Gate).RequiredPairs($Parameter(tTool.class, "DESCRIPTORCLASS"), .tExpectedResolved)
             Do $$$AssertTrue($ListLength(tExpected) > 0, tTool.name _ ": its screen declares pairs")
+        } ElseIf $ClassMethod(tTool.class, "%Extends", "OcuPilot.Screen.Tool.ExplorerSourceRead") {
+            ; Story 20.19: a source read of a viewer, gated as the viewer is.
+            Set tExpected = ##class(OcuPilot.Screen.Gate).RequiredPairs($Parameter(tTool.class, "DESCRIPTORCLASS"), .tExpectedResolved)
+            Do $$$AssertTrue($ListLength(tExpected) > 0, tTool.name _ ": its viewer declares pairs")
         } ElseIf tTool.class = "OcuPilot.Kernel.Shell.PermissionCheck" {
             ; Story 16.3: a read with a class of its own, gated as the Users list is; its arguments
             ; add no pair, and a role check asks the Roles list's set inside the operation.
@@ -311,6 +377,10 @@ Method TestEveryLiveToolRequiresItsScreensPairs()
             Set tExpected = ""
             Set tExpectedAdded = ##class(OcuPilot.Screen.Gate).RequiredPairs("OcuPilot.Screen.Descriptor.Home", .tExpectedAddedResolved)
             Do $$$AssertEquals(tExpectedAddedResolved, 1, tTool.name _ ": Home's own pairs resolve")
+        } ElseIf tTool.class = "OcuPilot.Screen.Tool.ToolsFind" {
+            ; Story 18.45: the discovery tool searches the listing and reads no instance object, so it
+            ; declares no pair and its arguments add none (AD-8).
+            Set tExpected = ""
         } Else {
             Do $$$AssertTrue(0, tTool.name _ ": a live tool of a source this test does not know, " _ tTool.class)
             Continue

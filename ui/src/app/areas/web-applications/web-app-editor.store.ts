@@ -28,6 +28,9 @@ export const MATCHING_ROLES_TAB = 'matching-roles';
 
 export const CORS_TAB = 'cors';
 
+/** The percent-class access tab (Story 18.10): the entries the application holds, read through the list's declared read. */
+export const CLASS_ACCESS_TAB = 'class-access';
+
 /** The text settings, as the server names them. */
 export const TEXT_FIELDS = [
   'Description',

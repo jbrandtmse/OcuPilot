@@ -7231,11 +7231,11 @@ So that key management is not a reason to keep the classic portal open. [AMENDED
 
 As an operator,
 I want the remaining security configuration pages,
-So that the Security area reaches parity.
+So that the Security area reaches parity. [AMENDED 2026-10-07, orchestrator merge gate: split for size, Rule 5 -- 18.8 keeps the authentication and web-session options and the sign-in protection; superservers moved to Story 18.25, MFT connections to Story 18.26, and the read-only LDAP view with DW-1896 to Story 18.27]
 
 **Acceptance Criteria:**
 
-- **Given** superservers, the authentication and web-session options, MFT connections, and the read-only LDAP view
+- **Given** the authentication and web-session options [AMENDED 2026-10-07, orchestrator merge gate: split for size, Rule 5]
 - **When** each runs
 - **Then** it round-trips through the admin API.
 
@@ -7243,106 +7243,99 @@ So that the Security area reaches parity.
 - **When** a change is proposed
 - **Then** the card states that consequence, and a change that would break OcuPilot's own sign-in is refused on the instance under the same rule that protects the application and the service behind it.
 
-### Story 18.9: SQL privileges and the permission extras
+### Story 18.9: SQL object privileges
 
 As an operator,
-I want schema, table, view, procedure, column and admin SQL grants,
-So that the Permissions area reaches parity.
+I want a user's or role's SQL privileges on tables, views, procedures, schemas, ML configurations and foreign servers,
+So that the Permissions area reaches parity for SQL objects. [AMENDED 2026-10-07, orchestrator decision on the plan's split, Rule 5: split for size -- column and admin privileges moved to Story 18.28, and role members' admin option, user Copy from and password validation with DW-1662 to Story 18.29; the grant criterion is aligned with AD-10 as amended 2026-09-23]
 
 **Acceptance Criteria:**
 
-- **Given** SQL privileges across the three route families - schema and object, column, and admin
-- **When** they are listed, granted and revoked
-- **Then** each round-trips through the admin API.
+- **Given** a user or a role and a namespace
+- **When** its SQL object privileges are listed, granted and revoked from its editor and by a confirmed agent proposal
+- **Then** each round-trips through the admin API's standard SQL privilege routes and is read back.
 
-- **Given** role owners, user copy-from and password validation
-- **When** each runs
-- **Then** it round-trips, password validation being a custom wrapper over the instance's own validator.
+- **Given** a privilege another account granted
+- **When** it is revoked
+- **Then** the revoke names that grantor, and a row held through a role, a schema or ownership is shown and offers no revoke on this grantee.
+
+- **Given** a grant the instance's grantor rule refuses, or a vendor answer that changed nothing
+- **When** either caller sends it
+- **Then** it is answered as refused by name, never as applied.
+
+- **Given** an object, action or grantee carrying a wildcard or a list, or an unknown namespace
+- **When** either caller sends it
+- **Then** it is refused before any vendor call.
 
 - **Given** any grant
 - **When** it is proposed by the agent
-- **Then** the Release 1 prohibition on privilege escalation still applies - a grant that would confer `%All` or an `%Admin_*` role remains refused.
+- **Then** AD-10's prohibited set applies (application roles on OcuPilot's own web applications, OcuPilot's own roles and resources, SQL privileges on OcuPilot's own schemas), and a grant conferring `%All` or an `%Admin_*` role, as a copied user's roles can, is confirmed at the destructive treatment, naming the privilege. [AMENDED 2026-10-07, orchestrator decision, Rule 5: replaces "remains refused", which AD-10's 2026-09-23 owner amendment superseded]
 
 **Admin API behavior to design for.** [AMENDED 2026-09-28, owner: warnings from the DC article
 [20 places where the SysAdmin API specification and IRIS disagree](https://community.intersystems.com/post/20-places-where-sysadmin-api-specification-and-iris-disagree);
 "checked" means seen on slot A that day, "reported" means the article's word only]
 
 - `GET /v2/security/sql-privileges` names a row's object and action `Object` and `Action`, not the schema's `Name` and `Privilege` (checked); a revoke is built from those.
-- A role owner's `AdminOption` arrives as the string `"0"` or `"1"`, not a boolean (reported). `"0"` is truthy in TypeScript, so compare the value.
+- DW-236: A widened SQL grant on OcuPilot_Kernel_State - another role or _PUBLIC holding it - is neither detected nor refused (ledger; routed by merge_gate 2026-10-06) Its refusal half is this story's; the detection half is DW-2172, Story 18.13's.
 
 ### Story 18.10: Web application extras and spec-based REST services
 
 As a developer-administrator,
-I want the remaining web application surfaces,
-So that the first area reaches parity.
+I want the `%`-class access list on the web application editor, with OcuPilot's own privileged routine applications protected,
+So that the first area moves toward parity without exposing OcuPilot's own applications. [AMENDED 2026-10-09, orchestrator ruling on Story 18.10's plan: narrowed for size and the Fixed-strings bound, Rule 5; Doc DB applications, privileged routine applications and spec-based REST services split to Stories 18.30, 18.31 and 18.32; DW-2239 added as its own criterion]
 
 **Acceptance Criteria:**
 
-- **Given** the `%`-class access list, Doc DB applications and privileged routine applications
-- **When** each runs
+- **Given** a web application's `%`-class access list
+- **When** it is read and changed
 - **Then** it round-trips through the admin API.
 
-- **Given** create and delete of a spec-based REST service from an OpenAPI document
-- **When** each runs
-- **Then** it round-trips through the management API, whose route is already wired for the Release 1 explorer.
+- **Given** OcuPilot's own privileged routine applications, `OcuPilotState` and `OcuPilotIdentity`
+- **When** any path proposes deleting one or changing its `MatchRoles` or `Roles`, through the web application tools or the vendor's privileged-routine endpoint
+- **Then** an AD-10 arm refuses it, in the family of the existing arms for OcuPilot's own web applications, and the privileged-routine endpoint's port checks its target's type.
+
+- DW-2239: The web-application tools can reach OcuPilot's own privileged routine applications, and no AD-10 arm refuses a delete or a `MatchRoles` `:%All` update (ledger; routed by orchestrator 2026-10-09)
 
 ### Story 18.11: Monitoring extras and the live log tail
 
 As a production administrator,
-I want the raw metrics, the dashboard drill-downs, interoperability usage and a live log tail,
-So that monitoring is continuous rather than sampled.
+I want the raw Prometheus metrics as a table,
+So that monitoring is continuous rather than sampled. [AMENDED 2026-10-11, orchestrator ruling on Story 18.11's plan: split for size, Rule 5; the dashboard drill-downs moved to Story 18.36, interoperability usage to Story 18.37 and the live log tail to Story 18.38; the key is kept so the ledger inbox stays]
 
 **Acceptance Criteria:**
 
-- **Given** the Prometheus metrics table, the dashboard drill-down statistics and the interoperability usage view
-- **When** each renders
+- **Given** the Prometheus metrics table
+- **When** it renders
 - **Then** it reads through its own port with its own resource gate - the monitoring API's anonymous reachability never becoming OcuPilot's.
-
-- **Given** the live tail
-- **When** it is enabled on a text log
-- **Then** it long-polls with a heartbeat, and the Release 1 rule that log viewers load bounded pages is superseded **only** for the sources that opt into it.
-
-**Admin API behavior to design for.** [AMENDED 2026-09-28, owner: warnings from the DC article
-[20 places where the SysAdmin API specification and IRIS disagree](https://community.intersystems.com/post/20-places-where-sysadmin-api-specification-and-iris-disagree);
-"checked" means seen on slot A that day, "reported" means the article's word only]
-
-- `SystemUsage.BusyProcesses` in `GET /v2/monitor/dashboard/main` always has ten rows; unused ones are `{"Process": "", "Commands": 0}` (checked: 8 of 10 on slot A). Drop them before showing a top ten.
+- DW-1872: GET /screens/osmgmt.databasevolumes/read without its dir parameter reaches the admin API, which answers 400, and OcuPilot logs it at severity 2, raising the instance monitor state (ledger; routed by merge_gate 2026-10-10)
+- DW-1898: NamespaceInterop's started legs raise the instance alert state: AdminPort.AwaitTask logs the bound before NamespacePort answers the queued write as started (ledger; routed by merge_gate 2026-10-10)
 
 ### Story 18.12: The agent grows with the stage
 
 As a developer-administrator,
 I want the agent to reach every screen this stage adds,
-So that the portal and the agent stay in step.
+So that the portal and the agent stay in step. [AMENDED 2026-10-11, orchestrator ruling on Story 18.12's plan: split for size, Rule 5; the context budget moved to Story 18.39, the proxy and custom CA to Story 18.40 and the wallet credential rung to Story 18.41; the key is kept so the ledger inbox stays]
 
 **Acceptance Criteria:**
 
 - **Given** every screen in this stage
 - **When** it is declared
-- **Then** it brings a read tool and a confirmed single-write tool from the same descriptor, with no hand-written tool code.
-
-- **Given** the tool roster roughly doubles here
-- **When** a turn is assembled
-- **Then** context-window management trims and budgets history, which nothing in the harvest provides and which this stage is the first to need.
-
-- **Given** an operator behind a proxy or a custom CA
-- **When** the agent calls its provider
-- **Then** the proxy settings and SSL configuration are configuration rather than code.
-
-- **Given** the wallet is already wired for the Release 1 secrets screen
-- **When** the credential ladder is extended
-- **Then** a wallet-backed rung joins the environment-variable and IRIS-credential rungs.
+- **Then** it brings a read tool and a confirmed single-write tool declared from the same descriptor, with no hand-written dispatch or field list. [AMENDED 2026-10-11, orchestrator ruling, tier 1 per AD-3: was "with no hand-written tool code", which every declarative write tool class contradicts]
+- DW-1756: Epic 16's Guardrails page lists the instance's limits without Story 14.6's turns-per-hour setting once the branches merge (ledger; routed by merge_gate 2026-10-06)
+- DW-1084: The built-in system prompt never asks the model to name rows in backticks or offer to select them, so AC6's offer half has no producer (ledger; routed by merge_gate 2026-10-10)
+- DW-2321: The agent's update tools take MatchRoles and Routines whole, but no read tool answers either list, so the agent cannot send the current list with one entry changed (ledger; routed by cr 2026-10-11)
 
 ### Story 18.13: Multi-namespace install
 
 As an operator with several namespaces,
 I want to install OcuPilot into a namespace I choose,
-So that it is not confined to the one the installer picks.
+So that it is not confined to the one the installer picks. [AMENDED 2026-10-12, lead at the spec gate: split for size, Rule 5 - DW-219 and DW-2172 moved to Story 18.43; "maps the package" read under AD-9 (code stays in the install namespace's own routine database, so install maps OcuPilot's globals and confirms the package resolves there); one install namespace per instance (AD-17); a credential rung the namespace cannot reach is reported, never refused, since a definition's save already refuses it]
 
 **Acceptance Criteria:**
 
 - **Given** a target namespace
 - **When** install validates it
-- **Then** it refuses `%SYS`, confirms the namespace exists, confirms interoperability-enablement where a chosen credential rung needs it, and maps the package.
+- **Then** it refuses `%SYS`, a namespace that does not exist, an IRIS below the roster's version floor, and any namespace other than the one OcuPilot is already installed in; maps OcuPilot's globals into it and confirms the `OcuPilot` package resolves from its own routine database (AD-9); and names each stored definition whose credential rung needs interoperability the namespace does not have.
 
 - **Given** install runs twice into the same namespace
 - **When** the second run completes
@@ -7354,7 +7347,9 @@ So that it is not confined to the one the installer picks.
 
 **Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
 
-- DW-219: Uninstall's contract on an instance OcuPilot does not wholly own has three half-state paths (ledger; routed by merge_gate 2026-09-13)
+- DW-423: OcuPilot.Kernel.State.Stamp records one row per install run with no retention policy, and the live instance already holds 3306 of them (ledger; routed by merge_gate 2026-10-06)
+- DW-1333: IPM's exporter drops <SystemRequirements>, so the distributable archive carries no IRIS or IPM version floor (ledger; routed by merge_gate 2026-10-06)
+- DW-219 and DW-2172 moved to Story 18.43 [AMENDED 2026-10-12, lead at the spec gate: split for size, Rule 5].
 
 ### Story 18.14: Namespace mappings and copy-mappings
 
@@ -7548,6 +7543,318 @@ So that key management is not a reason to keep the classic portal open. [AMENDED
 
 - DW-1555: Creating and editing RSA and symmetric-key wallet secrets (the key-material design); Story 8.6 ships key-value secrets and shows the other types read-only (ledger; routed by merge_gate 2026-09-29)
 
+### Story 18.25: Superservers
+
+As an operator,
+I want to list, create, edit and delete superservers,
+So that the Security area reaches parity for them. [AMENDED 2026-10-07, orchestrator merge gate: split for size, Rule 5: split from 18.8; outlined as Part B of `spec-18-8-superservers-authentication-options-and-managed-file-transfe.md`; after Story 18.8, whose serving-path reading it reuses]
+
+**Acceptance Criteria:**
+
+- **Given** the superservers
+- **When** each is listed, created, edited or deleted
+- **Then** it round-trips through the admin API.
+
+- **Given** the superserver the Web Gateway connects through
+- **When** a change would disable it, delete it or stop it serving the gateway
+- **Then** the change is refused on the instance under the same rule that protects the application and the service behind it.
+
+### Story 18.26: Managed file transfer connections
+
+As an operator,
+I want to list, create, edit and delete managed file transfer connections and revoke their tokens,
+So that the Security area reaches parity for them. [AMENDED 2026-10-07, orchestrator merge gate: split for size, Rule 5: split from 18.8; outlined as Part C of `spec-18-8-superservers-authentication-options-and-managed-file-transfe.md`; independent]
+
+**Acceptance Criteria:**
+
+- **Given** the managed file transfer connections
+- **When** each is listed, created, edited, deleted or has its token revoked
+- **Then** it round-trips through the admin API, and the OAuth 2.0 client configuration a connection names is handled as the story's plan decides.
+
+### Story 18.27: The operator's read-only LDAP view
+
+As an operator holding the operations resource,
+I want to read the LDAP configurations without the security resource,
+So that the classic portal's read-only LDAP pages are not a reason to keep it open. [AMENDED 2026-10-07, orchestrator merge gate: split for size, Rule 5: split from 18.8; outlined as Part D of `spec-18-8-superservers-authentication-options-and-managed-file-transfe.md`; independent]
+
+**Acceptance Criteria:**
+
+- **Given** an operator who holds `%Admin_Operate` but not `%Admin_Secure`
+- **When** they open the LDAP configurations list and a configuration's detail
+- **Then** each reads through the admin API, and every write is refused.
+
+**Closed unbuilt** [AMENDED 2026-10-07, orchestrator decision on the plan's intent gap, Rule 5]: on this build an LDAP configuration's read requires `%Admin_Secure:USE` and `%DB_IRISSYS:READ`. `Security.LDAP`'s gate admits `%Admin_Operate`, but `Security.LDAPConfigs` refuses that caller (#822), and the classic read-only pages fail for it (AD-8). Reopen when a build's admin API serves LDAP `LIST` and `GET` to a caller holding `%Admin_Operate` without `%Admin_Secure`. DW-1896 moved to the Epic 18 burn-down.
+
+### Story 18.28: SQL column and admin privileges
+
+As an operator,
+I want a user's or role's SQL column privileges and SQL admin privileges,
+So that the Permissions area reaches parity for SQL. [AMENDED 2026-10-07, orchestrator decision on Story 18.9's plan: split from 18.9 for size, Rule 5; after Story 18.9, whose list, tools and refusals it extends]
+
+**Acceptance Criteria:**
+
+- **Given** a user or a role, a namespace and a table
+- **When** its column privileges are listed, granted and revoked by either caller
+- **Then** each round-trips through the admin API's column privilege routes, and a grant the instance answers without storing reads as refused.
+
+- **Given** a user or a role and a namespace
+- **When** its SQL admin privileges are listed, granted (with or without the admin option) and revoked by either caller
+- **Then** each round-trips through the admin API's admin privilege routes; a privilege outside the vendor's list is refused before any call, and the instance's grantor refusal is a named refusal.
+
+- **Given** a column grant naming a wildcard, a list, or one of OcuPilot's own schemas
+- **When** either caller sends it
+- **Then** Story 18.9's input refusals and AD-10's schema arm hold.
+
+### Story 18.29: Role members' admin option, user Copy from and password validation
+
+As an operator,
+I want to see which role members hold the admin option, create a user from an existing one, and check a password against the instance's rules before I save it,
+So that the Permissions area reaches parity with the classic user and role pages. [AMENDED 2026-10-07, orchestrator decision on Story 18.9's plan: split from 18.9 for size, Rule 5; after Story 18.28]
+
+**Acceptance Criteria:**
+
+- **Given** a role
+- **When** its Members tab is read
+- **Then** each member shows whether it holds the admin option, compared by value, and an escalation holder reads as one.
+
+- **Given** an existing user
+- **When** a new user is created from it by either caller
+- **Then** the new account holds what the classic page's copy gives it, through an AD-27 named case for `Security.Users.Copy` if Task 0 measures on the throwaway that it runs under the caller's own `%Admin_Secure` with no added privilege; otherwise it copies roles and fields through the admin API and says it is narrower than the classic page. A copy conferring `%All` or an `%Admin_*` role is confirmed at the destructive treatment, naming the privilege.
+
+- **Given** a candidate password on the create form and the set-password dialog
+- **When** it is checked
+- **Then** the instance's own validator answers, and no reason carries the password.
+
+**Admin API behavior to design for** (moved from Story 18.9):
+
+- A role owner's `AdminOption` arrives as the string `"0"` or `"1"`, not a boolean (reported). `"0"` is truthy in TypeScript, so compare the value.
+- DW-1662: A principal holding only the authorization server tab's two pairs cannot create a configuration: a create admits only readable roles, and the editor pre-checks the default roles it then refuses (ledger; routed by merge_gate 2026-10-06)
+
+### Story 18.30: Doc DB applications
+
+As a developer-administrator,
+I want the Doc DB applications list and editor,
+So that the first area reaches parity for document database applications. [AMENDED 2026-10-09, orchestrator ruling on Story 18.10's plan: split from Story 18.10 for size, Rule 5; after Story 18.10]
+
+**Acceptance Criteria:**
+
+- **Given** the Doc DB applications
+- **When** each is created, changed or deleted
+- **Then** it round-trips through the admin API, managing `Security.DocDBs` records only and leaving Story 19.17's document database create and drop unchanged.
+
+### Story 18.31: Privileged routine applications
+
+As a developer-administrator,
+I want the privileged routine applications list and editor's General tab,
+So that the first area reaches parity for privileged routine applications. [AMENDED 2026-10-09, orchestrator ruling on Story 18.10's plan: split from Story 18.10 for size, Rule 5; after Story 18.30, building on Story 18.10's AD-10 arm and target-type check] [AMENDED 2026-10-10, orchestrator ruling on Story 18.31's plan: split for size, Rule 5; the Application roles, Matching roles and Routines tabs, the database list and the `%All` grant check moved to Story 18.33]
+
+**Acceptance Criteria:**
+
+- **Given** the privileged routine applications
+- **When** each is created, changed or deleted over its `Description`, `Enabled` and `Resource`, through its list, its editor's General tab and its three tools
+- **Then** it round-trips through the admin API, the update resending the freshly read roles and routines, a target that is not a privileged routine application is refused, and OcuPilot's own two are refused under Story 18.10's AD-10 arm.
+
+- DW-2252: A web-application write naming a privileged routine application reaches WebApp.App PUT, which refuses #799 at 500 INTERNAL and logs at severity 2; only OcuPilot's own two are refused before it (ledger; routed by cr 2026-10-09)
+- DW-2262: PRIVROUTINE.TYPE lives in PctAccessError rather than a privileged-routine home (ledger; routed by orchestrator 2026-10-10)
+
+### Story 18.32: Spec-based REST services
+
+As a developer-administrator,
+I want the agent to create, and either caller to delete, a spec-based REST service from an OpenAPI document,
+So that the first area reaches parity for REST services. [AMENDED 2026-10-09, orchestrator ruling on Story 18.10's plan: split from Story 18.10, Rule 5; waits until Story 20.21 is merged into feature and reuses its namespace-routines-database check; if reached first, Stories 18.11 to 18.13 run ahead of it; AD-53 is amended at its spec gate under ruling Q2 (B)] [AMENDED 2026-10-10, orchestrator ruling on Story 18.32's plan: split for size, Rule 5; the person's Create dialog moved to Story 18.34, so the create is agent-only until it lands]
+
+**Acceptance Criteria:**
+
+- **Given** an agent-proposed create, or a delete from either caller, of a spec-based REST service from an OpenAPI document
+- **When** each runs
+- **Then** it round-trips through the management API, whose route is already wired for the Release 1 explorer.
+
+- **Given** the agent proposes a create
+- **When** it is minted and again at Confirm
+- **Then** the generated classes land only in the namespace's own routines database, never in `%SYS`, under a `%` name or as `OcuPilot*`; the create's key ships enabled and the delete's, destructive, ships disabled (AD-22).
+
+### Story 18.33: Privileged routine application roles and routines
+
+As a developer-administrator,
+I want a privileged routine application's roles, matching roles and routines,
+So that the privileged routine application editor reaches parity with the classic page. [AMENDED 2026-10-10, orchestrator ruling on Story 18.31's plan: split from Story 18.31 for size, Rule 5; after Story 18.31]
+
+**Acceptance Criteria:**
+
+- **Given** a privileged routine application's Application roles, Matching roles and Routines tabs
+- **When** a role, a matching role or a routine is added or removed, through the editor and its tools
+- **Then** it round-trips through the admin API, the update sending the complete roles and routines sets, with the database list the Routines tab offers, and OcuPilot's own two refused under Story 18.10's AD-10 arm.
+
+- **Given** a change that would grant `%All` or an `%Admin_*` privilege through a role, a matching role or a routine
+- **When** it is proposed
+- **Then** it is confirmed at the destructive treatment naming the privilege (AD-10 as amended 2026-09-23).
+
+- DW-2279: MappingMint's empty-namespace refusal names a 'mapping' for the Doc DB application tools (ledger; re-owned by spec_gate 2026-10-10: 20.3 not yet on feature at 18.31's gate)
+
+### Story 18.34: The person's REST service create
+
+As a developer-administrator,
+I want to create a spec-based REST service from an OpenAPI document myself,
+So that the REST services screen's create is not agent-only. [AMENDED 2026-10-10, orchestrator ruling on Story 18.32's plan: split from Story 18.32 for size, Rule 5; after Story 18.32]
+
+**Acceptance Criteria:**
+
+- **Given** the REST services screen's Create dialog
+- **When** a person submits an OpenAPI document
+- **Then** it round-trips through the management API by Story 18.32's port, under the same rules the agent's create meets, its Save taking the per-target hold.
+
+### Story 18.36: Dashboard drill-downs
+
+As a production administrator,
+I want the dashboard's drill-down statistics,
+So that a figure on the dashboard leads to its detail. [AMENDED 2026-10-11, orchestrator ruling on Story 18.11's plan: split from Story 18.11 for size, Rule 5; read-only, with a Task 0 that reads the request types]
+
+**Acceptance Criteria:**
+
+- **Given** the dashboard's globals-and-routines, ECP and system-resources drill-downs
+- **When** each renders
+- **Then** it reads through its own port with its own resource gate - the monitoring API's anonymous reachability never becoming OcuPilot's.
+
+**Admin API behavior to design for.** [AMENDED 2026-09-28, owner: warnings from the DC article
+[20 places where the SysAdmin API specification and IRIS disagree](https://community.intersystems.com/post/20-places-where-sysadmin-api-specification-and-iris-disagree);
+"checked" means seen on slot A that day, "reported" means the article's word only]
+
+- `SystemUsage.BusyProcesses` in `GET /v2/monitor/dashboard/main` always has ten rows; unused ones are `{"Process": "", "Commands": 0}` (checked: 8 of 10 on slot A). Drop them before showing a top ten.
+
+### Story 18.37: Interoperability usage
+
+As a production administrator,
+I want the interoperability usage view,
+So that interface use is visible beside the instance's other monitoring. [AMENDED 2026-10-11, orchestrator ruling on Story 18.11's plan: split from Story 18.11 for size, Rule 5; at its spec gate prefer the source that keeps AD-8 as written (the classic page's query, if it checks the caller, over the deprecated metrics API that escalates unchecked); an option that needs AD-8 relaxed is the owner's call]
+
+**Acceptance Criteria:**
+
+- **Given** the interoperability usage view
+- **When** it renders
+- **Then** it reads through its own port with its own resource gate - the monitoring API's anonymous reachability never becoming OcuPilot's.
+
+### Story 18.38: The live log tail
+
+As a production administrator,
+I want a live tail on a text log,
+So that monitoring is continuous rather than sampled. [AMENDED 2026-10-11, orchestrator ruling on Story 18.11's plan: split from Story 18.11 for size, Rule 5; the AD-12 heartbeat carve-out, the AD-43 amendment and EXPERIENCE.md's "live tail is P2" lines are tier-1 amendments at its spec gate, and the "nothing streams" pins are re-scoped to the sources that do not opt in]
+
+**Acceptance Criteria:**
+
+- **Given** the live tail
+- **When** it is enabled on a text log
+- **Then** it long-polls with a heartbeat, and the Release 1 rule that log viewers load bounded pages is superseded **only** for the sources that opt into it.
+
+### Story 18.39: The agent's context budget
+
+As a developer-administrator,
+I want each turn assembled within a budget,
+So that the doubled tool roster does not make every agent call larger and slower. [AMENDED 2026-10-11, orchestrator ruling on Story 18.12's plan: split from Story 18.12 for size, Rule 5; runs right after Story 18.12; any per-call selection, trimming or caching goes after Story 20.24's per-process tool listing, never inside it (AD-5, Rule 31); a Task 0 measures the per-call weight and AD-24 is amended at its spec gate] [AMENDED 2026-10-12, orchestrator ruling on Story 18.39's Task 0 (each call about 190,700 tokens, the tool array about 99% of it): split for scope, Rule 5 -- this story keeps caching, the turn's result budget and the token bound, which counts cached prompt tokens at their billed weight; making each call smaller moves to Story 18.45]
+
+**Acceptance Criteria:**
+
+- **Given** the tool roster roughly doubles here
+- **When** a turn is assembled
+- **Then** context-window management trims and budgets history, which nothing in the harvest provides and which this stage is the first to need.
+
+- **Given** a provider that reports the cached part of a prompt separately
+- **When** the turn counts its spend against its token limit
+- **Then** the cached part counts at the provider's billed weight (Anthropic cache reads at 0.1), and a provider with no separate cached figure counts at full weight.
+
+### Story 18.40: Proxy and custom CA configuration
+
+As a developer-administrator,
+I want the provider call's proxy and SSL configuration set as configuration,
+So that an operator behind a proxy or a custom CA can reach the provider. [AMENDED 2026-10-11, orchestrator ruling on Story 18.12's plan: split from Story 18.12 for size, Rule 5; a custom CA is a separately named SSL/TLS configuration (AD-10 refuses a CAFile change on OcuPilot's own), AD-32 amended at its spec gate; a CA-trust-scope choice is the owner's]
+
+**Acceptance Criteria:**
+
+- **Given** an operator behind a proxy or a custom CA
+- **When** the agent calls its provider
+- **Then** the proxy settings and SSL configuration are configuration rather than code.
+
+### Story 18.41: The wallet credential rung
+
+As a developer-administrator,
+I want the provider key held in the wallet,
+So that the credential ladder offers a wallet-backed rung. [AMENDED 2026-10-11, orchestrator ruling on Story 18.12's plan: split from Story 18.12 for size, Rule 5; AD-42, AD-35 and AD-7 amended at its spec gate, the vendor's per-use audit write labeled (inference) until its Task 0 measures it; a secret-exposure or new-vendor-audit-write choice is the owner's]
+
+**Acceptance Criteria:**
+
+- **Given** the wallet is already wired for the Release 1 secrets screen
+- **When** the credential ladder is extended
+- **Then** a wallet-backed rung joins the environment-variable and IRIS-credential rungs.
+
+### Story 18.42: Allowed directories: a person's write
+
+As a developer-administrator,
+I want to add, change and remove the instance's allowed directories myself,
+So that the fence around server-path fields is set on its screen, never by the agent. [AMENDED 2026-10-11, owner decision on DW-2334 relayed by the orchestrator: "I agree with your recommendation regarding allowed folders" - a person edits the list after a confirmation with the action off by default; the agent never widens it (AD-21, AD-53's precedent)] [AMENDED 2026-10-12, lead at its spec gate, Rule 5: split for size -- this story keeps the person's route, the write, the port and the kernel refusal; the screen's dialog moved to Story 18.46; "the roots OcuPilot needs to run" restated, since its plan found OcuPilot itself needs no allow-list root (the installer, the start hook, sign-in, serving and turns resolve none)]
+
+**Acceptance Criteria:**
+
+- **Given** the Allowed directories screen's route
+- **When** a person adds, changes or removes an entry (`Path`, `Purpose`)
+- **Then** it is a confirmed write through the admin API's `FSAccess` endpoints, its governance key disabled by default, and no write drops a root the person did not name: the unrestricted fallback row cannot be changed or removed, and a remove may empty the list.
+
+- **Given** the agent
+- **When** it proposes any change to the allow-list
+- **Then** the kernel refuses it for the agent caller as self-protection in the AD-10 and AD-21 family, not only by leaving out a tool; no agent write at all, narrowing included (a reason for an agent narrowing found at the spec gate is the owner's question).
+- DW-2334: The admin API can write the directory allow-list but OcuPilot offers no surface for it (ledger; re-owned by lead 2026-10-11 on the owner's decision)
+
+### Story 18.43: Uninstall and grants on a shared instance
+
+As an operator whose instance OcuPilot does not wholly own,
+I want uninstall to leave nothing half-removed and install to notice a grant someone widened,
+So that removing or checking OcuPilot never damages or hides what others set up. [AMENDED 2026-10-12, lead at Story 18.13's spec gate: split from 18.13 for size, Rule 5]
+
+**Acceptance Criteria:**
+
+- **Given** an instance where an application, a role or a provenance record OcuPilot names is not wholly OcuPilot's
+- **When** uninstall runs
+- **Then** it removes only what OcuPilot created and still owns, and none of DW-219's three paths leaves a half-removed state.
+
+- **Given** a SQL grant on OcuPilot's own schemas held by another role or `_PUBLIC`
+- **When** install reads its schema grants back
+- **Then** it detects and names the widened grant (the refusal half is DW-236's, already shipped).
+
+- DW-219: Uninstall's contract on an instance OcuPilot does not wholly own has three half-state paths (ledger; re-owned by lead 2026-10-12 at Story 18.13's spec gate). From source at `fe132688`: path 1 is open (the shell bundle directory is removed unconditionally); path 2 is open (an unreadable provenance record warns and continues); path 3 looks closed by the role loop (inference; a pinning test settles it).
+- DW-2172: DW-236's detection half - a SQL grant on OcuPilot's own schemas widened outside OcuPilot (another role or _PUBLIC holding it) is detected beside install's schema-grant read-back (ledger; re-owned by lead 2026-10-12 at Story 18.13's spec gate). The grantee source is a Task 0 measurement.
+
+### Story 18.45: The agent's tool roster scoped per turn
+
+As a developer-administrator,
+I want each agent call to carry only the tools the turn needs,
+So that the doubled tool roster does not make every call larger, cap a turn at a few calls, or overflow a smaller model's context window. [AMENDED 2026-10-12, orchestrator ruling on Story 18.39's Task 0: split from Story 18.39, Rule 5 -- 368 advertised tools serialize to 525,414 characters, about 190,700 tokens a call; runs right after Story 18.39]
+
+**Acceptance Criteria:**
+
+- **Given** the registry's whole listing, cached per process (Story 20.24)
+- **When** a turn assembles a provider call
+- **Then** the call carries a scoped tool set chosen after the listing and never inside it (AD-5, Rule 31), by the mechanism the spec gate chooses: provider-native deferred loading or tool search, or area-scoped advertising with a discovery tool.
+
+- **Given** a supported provider or model whose context window cannot hold the full roster
+- **When** Task 0 measures each supported family and model
+- **Then** each such one is named, and the scoped set fits it.
+
+- If the chosen mechanism changes what the agent can do in a turn (for example, a tool it reaches only after a discovery step), that is the owner's product-promise question, raised at the spec gate before anything is built.
+
+### Story 18.46: Allowed directories: the screen's add, change and remove
+
+As a developer-administrator,
+I want the Allowed directories screen to add, change and remove entries,
+So that the person's write Story 18.42 adds is reachable where the list is shown. [AMENDED 2026-10-12, lead at Story 18.42's spec gate: split from 18.42 for size, Rule 5; runs right after 18.42]
+
+**Acceptance Criteria:**
+
+- **Given** the Allowed directories screen with the write's governance key enabled
+- **When** a person adds, changes or removes an entry
+- **Then** the screen's dialog sends it through Story 18.42's route after a confirmation and the list re-reads with the change.
+
+- **Given** the key disabled (as shipped)
+- **When** the screen is shown
+- **Then** the actions are shown off with the reason, and nothing is written.
+
 ## Epic 19: Stage 3 - System Explorer over the Atelier API
 
 A developer gets classes and routines with source view, compile, delete, export, import and ETag-checked editing; search, compare and macro lookup; the SQL catalog with its query console behind a DML and DDL guard; and a data grid harvested from iris-table-editor with inline editing, staged saves and CSV export.
@@ -7609,6 +7916,8 @@ So that a small correction does not need a separate IDE.
 - **Given** the classic portal has no editor at all and links out to Studio or VS Code
 - **When** this ships
 - **Then** it is new capability rather than parity.
+
+[AMENDED 2026-10-07, owner decision relayed by the Planner: the agent may now propose class and routine source edits on the person's confirmation, reversing this story's person-only save; Story 20.21 builds it [AMENDED 2026-10-08, orchestrator, Rule 5], and this story's own Save stays as shipped.]
 
 ### Story 19.4: Search, compare and macro lookup
 
@@ -7889,25 +8198,20 @@ The Interoperability category appears for namespaces that support it: production
 
 **What gates the stage.** The sign-in hand-off to `/ui/interop` is the gate for every embed and is the stage's real risk: the `postMessage` contract has **no origin check**, the safer pre-written-`sessionStorage` alternative is untested, and the origin may not be weakened to make either work. Namespace category gating must land before the category appears. The production-update action vocabulary was never read. The Analytics rider needs a DeepSee-enabled namespace for anything beyond its links.
 
-### Story 20.1: The sign-in hand-off and namespace category gating
+### Story 20.1: Namespace category gating
+
+[AMENDED 2026-10-07, orchestrator merge gate: split, Rule 5; hand-off design awaits the owner] The sign-in hand-off criteria moved verbatim to Story 20.13; this story keeps the category gating and DW-1921.
 
 As a developer-administrator,
-I want the vendor's editors to open already signed in, and the category to appear only where it applies,
-So that embedding is seamless and irrelevant menus do not appear.
+I want the Interoperability and Analytics categories to appear only where they apply,
+So that irrelevant menus do not appear.
 
 **Acceptance Criteria:**
-
-- **Given** an embedded vendor editor
-- **When** it loads
-- **Then** it signs in from the browser-level login **without a password crossing into the frame**, and the `postMessage` auth path carrying a password is **not used**.
-
-- **Given** the origin
-- **When** the hand-off is implemented
-- **Then** it is **not weakened** to make embedding work - the static origin stays hostile ground, and per-tab token storage with no cross-tab broadcast is unchanged.
 
 - **Given** a namespace that does not support interoperability or analytics
 - **When** the rail renders
 - **Then** the category does not appear for it, gated by the namespace's own reported features.
+- DW-1921: The interoperability event log screen lacks %Ens_Portal:USE, which the classic EnsPortal.EventLog page requires (ledger; routed by merge_gate 2026-10-06)
 
 ### Story 20.2: Productions, listed and controlled
 
@@ -7928,8 +8232,11 @@ So that the largest deferred area becomes usable.
 - **Given** the update action vocabulary was never read from the vendor
 - **When** this story is picked up
 - **Then** the vocabulary is established against the instance first, and this is the story's first task rather than a discovery mid-build.
+- DW-2148: EXPERIENCE.md's rail row (:612 nine rail-items) and area-tile row (:653 Seven tiles) understate a namespace that reports interoperability or analytics (ledger; routed by cr 2026-10-07)
 
 ### Story 20.3: Production items
+
+[AMENDED 2026-10-09, orchestrator rulings on Story 20.3's plan (split; Q2 A; Q3 cleared), by=merge_gate, Rule 5] Item settings (set, reset, the setting entity type, and how secret- and path-valued settings are handled) move to Story 20.22, ordered right after this story. An item write changes the stored configuration and the production class only; a running production then reads update pending and 20.2's confirmed Update applies it; a remove is refused while the item is enabled.
 
 As an interoperability developer,
 I want to add, remove, enable, disable and configure the hosts in a production,
@@ -7937,11 +8244,15 @@ So that a production is editable rather than only observable.
 
 **Acceptance Criteria:**
 
-- **Given** enable, disable, add, remove and settings edit
+- **Given** enable, disable, add and remove
 - **When** each runs
-- **Then** it round-trips through the interoperability port as a confirmed write.
+- **Then** it round-trips through the interoperability port as a confirmed write, and saves the production class as well as its stored configuration.
+- DW-2157: A production stop from Running can leave it reading Suspended while the tool answers success and the card promised Stopped (ledger; routed by merge_gate 2026-10-07)
+- DW-2162: A stop or restart whose jobs outlast the cap after quiescing answers a logged 500 with the production half-stopped, while the stop card says nothing is stopped (ledger; routed by merge_gate 2026-10-07)
 
 ### Story 20.4: Per-host tabs, the monitor, queues and jobs
+
+[AMENDED 2026-10-10, Story 20.4 spec gate (split), Rule 5] The reads ship here; the actions (abort one queued message, abort a queue, abort or suspend a job's message, stop a job) are this story's stated partial and ship in Story 20.23, chartered from 20.4's plan measurements.
 
 As an interoperability operator,
 I want each host's queue, log, messages, jobs and actions,
@@ -7985,11 +8296,11 @@ So that a change can be checked before it is deployed.
 - **When** it is tested
 - **Then** the request is built from the target's own schema and the result is shown.
 
-- **Given** a transformation and a pasted input
-- **When** it is tested
-- **Then** the output renders, and the test is a confirmed write because it executes code on the instance.
+- [AMENDED 2026-10-12, Story 20.6 spec gate, orchestrator ruling Q1 (A), Rule 5] The transformation test moved to Story 20.27: this story is the host test.
 
 ### Story 20.7: The three embedded vendor editors
+
+[AMENDED 2026-10-07, owner decision relayed by the Planner, Rule 5] Under AD-63 the editors run in normal mode, where the vendor sends its saved, compiled and invalid messages only in `?VSCODE=1` mode, so this story re-scopes its messages criterion at its own spec gate.
 
 As an interoperability developer,
 I want the rule, BPL and DTL editors in place,
@@ -8004,6 +8315,9 @@ So that the editors InterSystems already built are reused rather than rebuilt.
 - **Given** the editors' own messages - saved, compiled, invalid
 - **When** they are exchanged
 - **Then** the contract is established against a live editor, because it was never exercised.
+- DW-2347: The interoperability editor frame component first runs in a real browser here; re-run interop-editor-spec.mjs against the real screens (ledger; routed by lead 2026-10-12)
+- DW-2350: Changing an embedded editor's document re-sets src on the drawn frame, which pushes a joint history entry so Back moves the frame and not the screen; a new frame instead skips the editor's unsaved-changes alert; choose per the document switch (ledger; routed by cr 2026-10-12)
+- DW-2351: A framed vendor editor can move away from what its screen shows, unseen by OcuPilot: its logo and Back to standard UI navigate the frame, DTL and BPL push history entries, and the rule editor's Settings switches its namespace (ledger; routed by cr 2026-10-12)
 
 ### Story 20.8: The schema viewers and the production configuration diagram
 
@@ -8101,6 +8415,479 @@ So that recovery follows a rehearsed path.
 - **When** it reaches a write
 - **Then** the prohibited set, both switches and the governance policy are all still evaluated at the write.
 
+### Story 20.13: The sign-in hand-off to the embedded vendor editors
+
+[AMENDED 2026-10-07, orchestrator merge gate: split, Rule 5] Split from Story 20.1, its criteria moved verbatim. Ordered before Story 20.7, whose embeds it gates with 20.8 and 20.10. Owner decision 2026-10-07: option A, AD-63 (DW-2141); the measurements and candidates are in Story 20.1's blocked spec at commit `9faa902f`.
+
+As a developer-administrator,
+I want the vendor's editors to open already signed in,
+So that embedding is seamless.
+
+**Acceptance Criteria:**
+
+- **Given** an embedded vendor editor
+- **When** it loads
+- **Then** it signs in from the browser-level login **without a password crossing into the frame**, and the `postMessage` auth path carrying a password is **not used**.
+
+- **Given** the origin
+- **When** the hand-off is implemented
+- **Then** it is **not weakened** to make embedding work - the static origin stays hostile ground, and per-tab token storage with no cross-tab broadcast is unchanged.
+- DW-2141: The embedded vendor editors' sign-in hand-off needs an AD-28/AD-47 named case: no in-place design keeps both ADs as written (ledger; routed by owner 2026-10-07: option A, AD-63)
+
+### Story 20.14: Interoperability holders reach OcuPilot
+
+[AMENDED 2026-10-07, owner decision relayed by the Planner, Rule 5] The owner's decision on DW-2140: "Admit anyone with the classic Interoperability pages and every screen would first get its own permission check." Ordered right after Story 20.2, whose screens already declare their own pairs.
+
+As an interoperability operator who uses the classic Interoperability pages,
+I want to reach OcuPilot with the same privileges,
+So that the classic portal's Interoperability audience is not refused at the door.
+
+**Acceptance Criteria:**
+
+- **Given** every screen, route and tool that relied on the API's administrative floor alone
+- **When** this story lands
+- **Then** each declares its own pair matching its classic page's check first (Story 19.12's pattern), so a caller past the widened floor opens nothing the classic portal would refuse them.
+
+- **Given** a caller holding `%Ens_Portal:USE` and no `%Admin_*` or `%Development:USE` resource
+- **When** they sign in and use OcuPilot
+- **Then** the API admits them, and they reach exactly the surfaces whose own pairs they hold, each other one refused by its named pair.
+- DW-2140: The API administrative floor refuses interoperability-only accounts (%EnsRole_Operator, _Administrator, _Monitor) before any route runs (ledger; routed by owner 2026-10-07)
+
+### Story 20.15: Per-screen permissions, seen and adjusted
+
+[AMENDED 2026-10-07, owner decision relayed by the Planner, Rule 5] The owner's requirement: "We need a way to see/adjust what permission is used per screen." Ordered after Story 20.14.
+
+[AMENDED 2026-10-07, owner decision relayed by the Planner] The owner's answers: "Developer and Admin accounts plus any account with %All can change a screen's permissions; Yes it can go below the classic pages requirements, the agent can propose such changes (which brings up another topc, the agent should be aware if the user holds a permission needed for a screen before making a proposal, and refuse to propose if they can't access the screen); The functionality starts switched on for those that can access the ability to change it; the change is audited with a custom audit if nothing else fts;"
+
+As an OcuPilot administrator,
+I want to see and adjust which permission (resource:permission pair) each screen uses,
+So that access to each screen can be fitted to the instance.
+
+**Acceptance Criteria:**
+
+- **Given** any screen
+- **When** its permissions are viewed
+- **Then** the pairs it requires are shown as the instance evaluates them, as a read.
+
+- **Given** a change to a screen's pair
+- **When** it is made
+- **Then** it is a confirmed write with an audit record, like every other write.
+
+- **Given** who may change a screen's pair
+- **When** a change is made
+- **Then** Developer accounts, Admin accounts and any `%All` holder may make it; the plan proposes the exact pairs (the Planner suggests `%Development:USE` and `%Admin_Secure:USE`) and returns a one-line confirm only where the owner's words are genuinely ambiguous.
+- [AMENDED 2026-10-08, owner decision relayed by the Planner, Rule 5] The owner answered "Yes" to "Should a security administrator who holds %Admin_Secure but not %Development be able to change which permission each screen requires?": Screen permissions, its read and its three write tools admit `%Development:USE` or `%Admin_Secure:USE`, either one (AD-64, AD-8's one either-of check); a caller holding neither is refused naming both.
+
+- **Given** a change that sets a screen's pair below its classic page's own requirement
+- **When** it is made
+- **Then** it is allowed.
+
+- **Given** the agent
+- **When** a user asks it to change a screen's pair
+- **Then** it may propose the change, as a confirmed proposal; and the change's governance key ships enabled for everyone who can reach the ability to change it.
+
+- **Given** a pair change
+- **When** it is written
+- **Then** it is audited by an existing vendor or OcuPilot audit event that fits, otherwise by a custom OcuPilot event registered at install (`Security.Events.Create`, guarded by `Exists`).
+
+- **Given** a screen whose effective pair the user does not hold, an adjustment made through this story included
+- **When** the agent would propose a change on that screen
+- **Then** it knows this before proposing and refuses to propose, saying the user cannot access that screen; the plan first reads what already exists (Story 11.8's privilege line, and how the agent treats the demo's operator account) and builds on it.
+
+
+### Story 20.16: The agent edits rule, DTL and BPL content behind the embedded editors
+
+[AMENDED 2026-10-07, owner decision relayed by the Planner, Rule 5] The owner's flow: "Warn the user that the editor must be saved if needed and then the agent reads current content and proposes the edit in the background and refreshes the page." Ordered right after Story 20.7, and built on Story 20.21's agent source edits. On the owner's decision this narrows Story 19.3's "a source save is a person's action" for these three content types, which the owner then reversed for classes and routines too (Story 20.21, AD-53). On "Agent starts switched on", its governance key ships enabled.
+
+As an interoperability developer,
+I want the agent to edit a rule, a DTL or a BPL I have open in its embedded editor,
+So that a change the agent proposes lands in the content the editor shows.
+
+**Acceptance Criteria:**
+
+- **Given** an embedded editor open on a rule, DTL or BPL
+- **When** the agent is asked to change it
+- **Then** the user is first warned to save the editor if needed, because under AD-63 OcuPilot cannot read the frame's unsaved state; the agent then reads the stored content and proposes the edit.
+
+- **Given** the proposal
+- **When** it is confirmed
+- **Then** it is a confirmed proposal with the diff and the agent marker, and it is refused when the stored content changed after the mint (a fingerprint or ETag, as Epic 19's source save).
+
+- **Given** a confirmed write
+- **When** it completes
+- **Then** the embedded editor reloads and shows the new content.
+
+- **Given** the governance key and the confirmation
+- **When** this story ships
+- **Then** the key is enabled and confirmation is the standard confirmed proposal; the plan raises a stronger (typed-name) confirmation for DTL or BPL code actions only if it finds a concrete reason.
+
+### Story 20.17: Long blocks in the agent panel start collapsed
+
+[AMENDED 2026-10-08, orchestrator merge gate: three-way split of the original Story 20.17, Rule 5] The original story's criteria now sit in 20.17 (the panel collapse, ordered first), 20.19 (the agent's edits of existing classes and routines) and 20.20 (the agent's creates). Order: 20.17, 20.19, 20.21, 20.20, then 20.3-20.6 (20.21 split from 20.19 on 2026-10-08).
+
+[AMENDED 2026-10-07, owner decision relayed by the Planner] The owner's words: "Long content inn the plan should be collapsable in the agent panel with "shore more/show less" staring collapsed if more than a few lines." It is built into this story because this story puts the first long source on a proposal card, so the collapse ships before the agent can propose source, and it applies panel-wide. The threshold, the summary wording and the layout are plan details; EXPERIENCE.md gets its Rule 20 amendment at this story's spec gate. If the story grows too big, its plan may recommend a split, the panel collapse as its own story ordered first.
+
+As a developer working with the agent,
+I want long replies, tool results and proposal content to start collapsed,
+So that the panel stays readable and nothing I must review is hidden behind an expansion.
+
+**Acceptance Criteria:**
+
+- **Given** any long block in the agent panel - an agent reply, a tool result, a proposal card's diff, a whole new document, compile output
+- **When** it renders
+- **Then** a block over about eight lines starts collapsed with a "Show more" / "Show less" control that is keyboard operable and announces its state to screen readers, a block the user expanded stays expanded across re-renders, and the strings are in EXPERIENCE.md's Fixed strings and `strings.ts`.
+
+- **Given** a collapsed proposal card
+- **When** it is shown
+- **Then** a summary line always names what changes, where and how big (for example "AcmeApp.Orders.cls: +42 / -3 lines"), plus the compile outcome where there is one, so nobody confirms blind; Confirm never requires expanding.
+
+### Story 20.18: The agent proposes permission changes and refuses on a screen the user cannot open
+
+[AMENDED 2026-10-07, orchestrator merge gate: split of Story 20.15, Rule 5] The agent half of Story 20.15 moved here. 20.15 ships the view, the store, the gate and a person's changes, with its three tools unadvertised and every dispatch and confirm gate reading `Screen.Gate.RequiredPairs`, so no window exists in which the agent proposes against an adjusted pair unchecked. Ordered after Story 20.15 and before Story 20.17, which relies on the refusal. The owner's words are 20.15's: "the agent can propose such changes (which brings up another topc, the agent should be aware if the user holds a permission needed for a screen before making a proposal, and refuse to propose if they can't access the screen)".
+
+As an OcuPilot administrator,
+I want the agent to propose screen permission changes, and to refuse to propose on a screen I cannot open,
+So that a change I ask for in conversation lands as a confirmed proposal, and the agent never offers what I cannot reach.
+
+**Acceptance Criteria:**
+
+- **Given** the three screen permission tools
+- **When** this story ships
+- **Then** they are advertised, the agent proposes a change as a confirmed proposal whose card shows the pairs before and after and the "requires" line, a lowering is confirmed as a delete is (the destructive treatment, with no typed name, AD-10's privilege-grant precedent), and confirming writes the agent marker and the `SecurityChange` audit record.
+
+- **Given** a write tool whose screen's effective pairs the user does not hold, an adjustment included
+- **When** the agent would propose with it
+- **Then** dispatch refuses before any mint, naming the screen and the failed pair, and the agent says the user cannot access that screen and proposes nothing; the demo operator's refusal names the screen too.
+
+- **Given** a turn
+- **When** its screen context is built
+- **Then** it carries the current screen's own verdict, derived on the instance, and marks which of its tools the user cannot use.
+
+- **Given** a turn run as a principal lacking an adjusted screen's pair
+- **When** it asks the agent to change that screen
+- **Then** the turn is refused at that screen, no proposal row is created, and the turn completes.
+- DW-2181: The agent propose-and-confirm path of the three Screen permissions tools is declared but never run end to end (ledger; routed by harvest 2026-10-08)
+
+### Story 20.19: The agent reads class and routine source
+
+[AMENDED 2026-10-08, orchestrator ruling on Story 20.19's plan (Q3 split), by=merge_gate, Rule 5] This story is the source read only. The saves - the advertised Saves, the diff card, the version check, the compile report and the refusals at the mint and at Confirm - moved to Story 20.21, ordered after this story and before 20.20. The owner kept Q2 on 2026-10-08: "Yes it should send the code." There is no on/off switch for the source read.
+
+[AMENDED 2026-10-08, orchestrator merge gate: three-way split of the original Story 20.17, Rule 5] The original story's criteria now sit in 20.17 (the panel collapse, ordered first), 20.19 (the agent's edits of existing classes and routines) and 20.20 (the agent's creates). Order: 20.17, 20.19, 20.21, 20.20, then 20.3-20.6 (20.21 split from 20.19 on 2026-10-08).
+
+[AMENDED 2026-10-07, owner decision relayed by the Planner, Rule 5] The owner's words: "Agent starts switched on; and we want to loosen the rule and allow the agent to edit source code (including classes and routines) on user confirmation." This reverses Story 19.3's person-only save; the spine's AD-53 is amended (feature `a191c34b`), and Story 19.3's block carries the pointer note. Ordered right after Story 20.15, whose check that the agent refuses where the user cannot access the screen it uses.
+
+[AMENDED 2026-10-08, orchestrator rulings on Story 20.17's plan, by=merge_gate] Q2: the model reads a document's source through a read tool capped at about 60,000 characters, passed through AD-60's sanitizer and reporting truncation, planned as its own task (the owner may reverse it before this story's implement). Q3: every `%` name is refused to the agent, for saves and creates; a person's Save is unchanged. Q4: the compile outcome shows after Confirm; before it the card says the compile runs on Confirm, and a confirmed card says plainly when the document saved but failed to compile and that the saved text is what is now on the instance.
+
+As a developer,
+I want the agent to read a class's or routine's source when I ask about it,
+So that its answers and its later edits start from the text that is on the instance.
+
+**Acceptance Criteria:**
+
+- **Given** a class or routine the agent is asked about
+- **When** it reads the document
+- **Then** it reads the source through a read tool capped at about 60,000 characters, cut at whole lines, passed through AD-60's sanitizer, and reporting truncation (Q2); the text goes to the configured model provider, as the owner ruled.
+
+- **Given** the two new read tools
+- **When** this story ships
+- **Then** their names follow the spine's tool-naming convention for the classes and routines screens, or the spec says why they do not, and every existing save, delete and import key is unchanged.
+
+- **Given** any further security-posture question its plan finds
+- **When** it is planned
+- **Then** the question is returned to the orchestrator for the owner, with options and a recommendation.
+
+### Story 20.20: The agent creates new classes and routines, on the person's confirmation
+
+[AMENDED 2026-10-08, orchestrator merge gate: three-way split of the original Story 20.17, Rule 5] The original story's criteria now sit in 20.17 (the panel collapse, ordered first), 20.19 (the agent's edits of existing classes and routines) and 20.20 (the agent's creates). Order: 20.17, 20.19, 20.21, 20.20, then 20.3-20.6 (20.21 split from 20.19 on 2026-10-08).
+
+[AMENDED 2026-10-07, owner decision relayed by the Planner] The owner's words: "A note... Agent should be able to propose new classes and routines." This story therefore covers creating new classes and routines as well as editing existing ones (AD-53, feature `a9de13c9`). The create criteria below are the Planner's reading, for the plan to confirm; a genuine posture question goes back to the orchestrator.
+
+[AMENDED 2026-10-08, orchestrator rulings on Story 20.17's plan, by=merge_gate] Q2: the model reads a document's source through a read tool capped at about 60,000 characters, passed through AD-60's sanitizer and reporting truncation, planned as its own task (the owner may reverse it before this story's implement). Q3: every `%` name is refused to the agent, for saves and creates; a person's Save is unchanged. Q4: the compile outcome shows after Confirm; before it the card says the compile runs on Confirm, and a confirmed card says plainly when the document saved but failed to compile and that the saved text is what is now on the instance.
+
+As a developer,
+I want the agent to propose a new class or routine that I confirm,
+So that a document I ask for in conversation is created on the instance.
+
+**Acceptance Criteria:**
+
+- DW-2241 (first criterion, release-blocking) [AMENDED 2026-10-09, orchestrator, HIGH under Rule 6 / AD-59]: Take as script on an agent's class or routine save renders the text as the placeholder "<content>", so the script is not the reviewed change (AD-59); render the stored text, header-aware and bounded, for saves and creates (ledger; routed by cr 2026-10-09)
+
+- **Given** a request to create a new class or routine
+- **When** the agent proposes it
+- **Then** it is a confirmed proposal whose card shows the whole new document and its compile outcome.
+
+- **Given** a create proposal
+- **When** it is confirmed
+- **Then** it fingerprints the name's absence (AD-54) and is refused if a document of that name appeared after the mint, so it never silently overwrites.
+
+- **Given** a new name under OcuPilot's own packages, a system or `%` name, or a read-only system database
+- **When** a create is proposed
+- **Then** it is refused, AD-10's own-package refusal covering new names.
+
+- **Given** a create
+- **When** it is proposed
+- **Then** it targets the user's current namespace and requires write access to that namespace's code database, settled against the screen's effective pairs from Story 20.15; it uses this story's key, enabled, or a key of its own that also ships enabled.
+
+- **Given** any further security-posture question its plan finds
+- **When** it is planned
+- **Then** the question is returned to the orchestrator for the owner, with options and a recommendation.
+
+- DW-2242: an agent code write's Confirm gates WRITE on the request's namespace's routines database, not the proposal's stored Namespace; declare the pair from the stored Namespace for saves and creates (ledger; routed by cr 2026-10-09)
+
+### Story 20.21: The agent saves edits to existing classes and routines
+
+[AMENDED 2026-10-08, orchestrator ruling on Story 20.19's plan (Q3 split), by=merge_gate, Rule 5] Chartered from Story 20.19's saves (its plan's Part B). Order: 20.17, 20.19, 20.21, 20.20, then 20.3-20.6. Story 20.19's source read is in place before this story starts.
+
+[AMENDED 2026-10-07, owner decision relayed by the Planner, Rule 5, carried from Story 20.19] The owner's words: "Agent starts switched on; and we want to loosen the rule and allow the agent to edit source code (including classes and routines) on user confirmation." This reverses Story 19.3's person-only save; the spine's AD-53 is amended (feature `a191c34b`).
+
+[AMENDED 2026-10-08, orchestrator rulings on Story 20.17's plan, by=merge_gate, carried from Story 20.19] Q3: every `%` name is refused to the agent; a person's Save is unchanged. Q4: the compile outcome shows after Confirm; before it the card says the compile runs on Confirm, and a confirmed card says plainly when the document saved but failed to compile and that the saved text is what is now on the instance.
+
+[AMENDED 2026-10-08, orchestrator ruling on Story 20.19's plan (Q1), by=merge_gate] The owner's 2026-10-07 decision keeps system and `%` classes refused to the agent (AD-53). Because `%SYS`'s non-`%` system code sits in IRISSYS, mounted read-write, the agent saves only a document stored in its namespace's own routines database, and never in `%SYS`, checked at the mint and again at Confirm, before anything is written. Packages mapped from another database stay a person's Save, and the agent's refusal says so plainly: where the document lives, and that the person can save it from the editor. A person's Save is unchanged.
+
+As a developer,
+I want the agent to propose a class or routine edit that I confirm,
+So that a change I ask for in conversation lands in the source.
+
+**Acceptance Criteria:**
+
+- **Given** `explorer.classes.save` and `explorer.routines.save`
+- **When** this story ships
+- **Then** both are advertised, agent-offered, confirmed writes, and their governance keys are enabled.
+
+- **Given** a proposed source edit
+- **When** its card is shown
+- **Then** it shows the whole change as a diff and says the compile runs on Confirm, because confirmed code runs as the user.
+
+- **Given** a document that changed after the mint
+- **When** the proposal is confirmed
+- **Then** the confirm is refused (ETag or fingerprint).
+
+- **Given** a confirmed source edit
+- **When** it completes
+- **Then** its compile results are reported, a saved-but-not-compiled document is said plainly, and the agent marker is written.
+
+- **Given** AD-10's refusal of OcuPilot's own packages, the read-only system databases (`%` and system classes), and `explorer.sqldata.save`
+- **When** this story ships
+- **Then** each is unchanged and pinned: OcuPilot's own code and the system classes stay refused, and `explorer.sqldata.save` stays person-only and unadvertised.
+
+- **Given** a proposed edit of a document under OcuPilot's own packages, a `%` name, a document in `%SYS`, or a document not stored in its namespace's own routines database
+- **When** the agent would mint it, or the person confirms it
+- **Then** it is refused at the mint and again at Confirm, before anything is written (AD-10, AD-53, Q1, Q3), and a mapped document's refusal names where it lives and that the person can save it from the editor.
+
+- **Given** any further security-posture question its plan finds
+- **When** it is planned
+- **Then** the question is returned to the orchestrator for the owner, with options and a recommendation.
+
+- DW-2228: the model's copy of a source read passes AD-60, so an `Old` it copies can differ from the stored text; the mint matches each `Old` exactly against the instance text and refuses otherwise, and says so to the model (ledger; routed by cr 2026-10-09)
+
+### Story 20.22: Production item settings
+
+[AMENDED 2026-10-09, orchestrator ruling on Story 20.3's plan (split), by=merge_gate, Rule 5] Chartered from Story 20.3's item settings; consumes 20.3 and is ordered right after it. Its first plan is Story 20.3's first plan (`git show 6def26fa:_bmad-output/implementation-artifacts/spec-20-3-production-items.md`).
+
+[AMENDED 2026-10-09, owner decision relayed by the orchestrator, by=merge_gate] The owner's words: "A: hide secrets, allow paths (Recommended)". A setting whose name matches the spine's Secrets pattern is never returned (to the screen, a tool, the context or the ledger) and never set through OcuPilot. Every other setting is shown, reaches the model through AD-60, and is settable by both callers, validated by its class. A host's own server-path setting is allowed as its validated value, a new AD-21 named case written at this story's spec gate quoting the owner. Named limit, in AD-36: a secret stored under a name that does not match the pattern is not caught.
+
+As an interoperability developer,
+I want to see and edit the settings of a production's hosts,
+So that a host's configuration is changed where it is listed rather than in the classic page.
+
+**Acceptance Criteria:**
+
+- **Given** a production item
+- **When** its settings are listed
+- **Then** they read through the interoperability port, with their source (production, system default or class default), and a secret-named setting's value and default are never returned.
+
+- **Given** set and reset of an item's setting
+- **When** each runs
+- **Then** it round-trips through the port as a confirmed write, validated by the host or adapter class, and saves the production class; a running production then reads update pending.
+
+- **Given** a secret-named setting, or a value the host class refuses
+- **When** a set or reset is proposed
+- **Then** it is refused by code before any vendor call, from both callers.
+
+- **Given** a host's own server-path setting
+- **When** it is set
+- **Then** it is accepted as the host's validated value under AD-21's new named case, and the diff row names it.
+
+- **Given** any further security-posture question its plan finds
+- **When** it is planned
+- **Then** the question is returned to the orchestrator for the owner, with options and a recommendation.
+
+- DW-2268: InteropItemAction copies InteropProductionAction's IdArgument, IdParam, SettableFields, Consequence, PortQuery and PrivilegePairs with only values changed; extend a shared parent when the settings tools join them (Rule 31) (ledger; routed by cr 2026-10-10)
+
+---
+
+### Story 20.23: Queue and job actions
+
+[AMENDED 2026-10-10, Story 20.4 spec gate (split), Rule 5] Chartered from Story 20.4's stated partial; consumes 20.4's Queues, Queue messages, Queue tab and Jobs reads and is ordered right after it. Its charter is 20.4's measured Design Notes › Split (`spec-20-4-per-host-tabs-the-monitor-queues-and-jobs.md`).
+
+As an interoperability operator,
+I want to abort, suspend and stop from the queue and job screens,
+So that a stuck production is unblocked where it is diagnosed.
+
+**Acceptance Criteria:**
+
+- **Given** a queued message, a whole queue, a job's active message or a job
+- **When** abort, abort all, abort or suspend the job's message, or stop is proposed and confirmed
+- **Then** each runs through the interoperability port as a confirmed action-style write over a fresh read, refused by name before any vendor call where the vendor would answer success on a target where it does nothing (a job not retrying its message; a pid that is no job of the running production).
+
+- **Given** the measured vendor behavior (no audit row for any action; stop forced past its timeout requeues the active message and leaves Update pending)
+- **When** each action is planned
+- **Then** its destructiveness, its governance key's default and its audit record are stated, with stop capped at AD-62's 15 s.
+
+- **Given** any further security-posture question its plan finds
+- **When** it is planned
+- **Then** the question is returned to the orchestrator, with options and a recommendation.
+
+- DW-2297: the queue and job actions are Story 20.4's stated partial; this story carries them (ledger; routed by lead 2026-10-10)
+- DW-2298: the classic per-host Actions tab's remaining item actions (temporary stop, start and restart of one item, change class, copy) have no story; carry them here or name the further story they need (ledger; routed by lead 2026-10-10)
+
+---
+
+### Story 20.24: Agent tool calls stop re-listing the tool registry
+
+[AMENDED 2026-10-10, owner decision on DW-2286 ("Fix it next on slot B", relayed by the Planner, logged at feature 21b9e337), Rule 5] Chartered by the orchestrator as slot B's next story after 20.22; ordered before 20.4 and 20.23. Contended with Epic 18's 18.12, which adds tools and touches the registry: registry and dispatch files are checked against Epic 18's diff before each edit, and only add-only edits proceed without asking.
+
+As a person working with the agent,
+I want each tool call to stop paying for two full listings of the tool registry,
+So that a multi-step plan does not spend about a second per step before any tool runs.
+
+**Acceptance Criteria:**
+
+- **Given** an agent tool call
+- **When** it passes its gate and dispatch
+- **Then** the tool registry's listing is built once and served from one cache to every caller (the gate's resolve, the wire resolve and dispatch), not one cache per caller (Rule 31).
+
+- **Given** the measured baseline of about 1.1 s per call (DW-2286's evidence)
+- **When** the same call is measured before and after the change on the throwaway
+- **Then** both numbers are recorded and the saving is shown per tool call.
+
+- **Given** a tool class compiled after the listing was cached (the in-place IPM upgrade case behind DW-2214)
+- **When** the next tool call arrives
+- **Then** the new tool appears in it, with no restart, and a test pins that.
+
+- DW-2286: every agent tool call lists the whole tool registry twice before its gate (ledger; routed by merge_gate 2026-10-10)
+
+---
+
+### Story 20.25: Item runtime and configuration actions
+
+[AMENDED 2026-10-11, Story 20.23 spec gate (DW-2298), Rule 5] Chartered from Story 20.23's plan, which declined the classic per-host Actions tab's remaining item actions as item operations, not queue or job actions; that spec's Design Notes › Ledger inbox carries the charter as read in the vendor source. Consumes Story 20.3's Production items and Story 20.4's per-host tabs. Its place in the order is the orchestrator's.
+
+As an interoperability operator,
+I want to temporarily stop, start and restart one item, copy an item and change its class from the item's screens,
+So that the classic per-host Actions tab is not needed for them.
+
+**Acceptance Criteria:**
+
+- **Given** an item of the running production
+- **When** a temporary stop, a start or a restart is proposed and confirmed
+- **Then** each runs through the interoperability port as a confirmed write over a fresh read, followed by the production update the vendor requires, and is refused by name before any vendor call where the vendor would answer success while doing nothing (a stopped production, a disabled item).
+
+- **Given** an item
+- **When** a copy or a change of class is proposed and confirmed
+- **Then** each runs through the port as the classic page does, and the vendor's own audit records it.
+
+- **Given** the vendor behavior measured at its plan
+- **When** each action is planned
+- **Then** its destructiveness, its governance key's default and its audit record are stated (AD-22).
+
+- DW-2298: the classic per-host Actions tab's remaining item actions (temporary stop, start and restart of one item, change class, copy) have no story (ledger; routed by spec_gate 2026-10-11)
+
+---
+
+### Story 20.26: Business partners saved and removed
+
+[AMENDED 2026-10-11, Story 20.5 spec gate (the stated partial), Rule 5] Chartered from Story 20.5, whose AC ships business partners read-only first and leaves save and remove to custom endpoints; that spec's Design Notes carry the charter as read in the vendor source. Consumes Story 20.5's Business partners screen and read. Its place in the order is the orchestrator's.
+
+As an interoperability developer,
+I want to create, edit and remove business partners,
+So that the partner records a production's settings name are managed without the classic page.
+
+**Acceptance Criteria:**
+
+- **Given** a business partner
+- **When** a create, an update or a remove is proposed and confirmed
+- **Then** each runs through the interoperability port on `Ens.Config.BusinessPartner` as a confirmed write over a fresh read, and records OcuPilot's own audit row, since the vendor records none.
+
+- **Given** a rename, which the vendor performs as a delete and a create with no transaction
+- **When** it is proposed
+- **Then** it is refused, or performed in one transaction, as the plan decides and states.
+
+- **Given** a remove of a partner that a production item's `BusinessPartner` setting names
+- **When** it is proposed
+- **Then** the port reads those items first and refuses or warns, as the plan decides and states.
+
+- **Given** the classic page declares no edit resource, so any `%Ens_ProductionConfig:READ` holder saves and removes there (inference from source)
+- **When** the writes' pairs are planned
+- **Then** the posture is returned to the orchestrator with options and a recommendation (Story 20.5's plan recommends `%Ens_ProductionConfig:WRITE`).
+
+- DW-2324: business partners' save and remove are Story 20.5's stated partial (ledger; routed by spec_gate 2026-10-11)
+
+---
+
+### Story 20.27: Transformations tested
+
+[AMENDED 2026-10-12, Story 20.6 spec gate (split), orchestrator ruling Q1 (A), Rule 5] Split from Story 20.6, whose spec keeps the measured charter as its Part B block. Consumes Story 20.6's shared test helper and its AD-39 seventh exception, and Data transformations' list. Ordered after Story 20.13.
+
+As an interoperability developer,
+I want to test a transformation from the portal,
+So that a change can be checked before it is deployed.
+
+**Acceptance Criteria:**
+
+- **Given** a transformation and a pasted input
+- **When** it is tested
+- **Then** the output renders, and the test is a confirmed write because it executes code on the instance.
+
+### Story 20.28: OcuPilot compiles in a namespace without interoperability
+
+[AMENDED 2026-10-12, orchestrator ruling on DW-2343, Rule 5] Chartered from DW-2343, which Story 20.6's review found: InteropPort includes `Ensemble` and names `Ens.Config` types in method arguments, so OcuPilot cannot compile in an install namespace without interoperability, which an IPM install allows. Ordered after Story 20.13.
+
+As an administrator installing OcuPilot,
+I want it to compile in a namespace that has no interoperability,
+So that an install into such a namespace succeeds and simply shows no Interoperability category.
+
+**Acceptance Criteria:**
+
+- **Given** InteropPort
+- **When** it is compiled
+- **Then** it has no compile-time dependency on interoperability: no `Ensemble` include, and where an `Ens.Config` type was named it takes `%RegisteredObject` or `%String` and reaches the class only at run time (a method call on the object, or `##class(Ens.…)` in a method body, each measured to compile without interoperability), with behavior unchanged where interoperability exists [AMENDED 2026-10-12, Story 20.28 spec gate, Rule 5].
+
+- **Given** a namespace without interoperability
+- **When** OcuPilot is installed there
+- **Then** the Interoperability category stays hidden (Story 20.1).
+
+- **Given** a namespace created without interoperability on the throwaway
+- **When** the guard runs
+- **Then** every class OcuPilot ships compiles there, installed the way the release's upgrade check installs it (through IPM), and the guard runs in CI; the `OcuPilot.Test` classes, a test-scoped resource in `module.xml` that an install does not load, are out of its scope.
+- DW-2343: InteropPort cannot compile in an install namespace without interoperability: Story 20.6's Include Ensemble and Story 20.3's Ens.Config-typed method arguments both need ENSLIB (ledger; routed by lead 2026-10-12, orchestrator ruling)
+
+### Story 20.29: Screens load on demand
+
+[AMENDED 2026-10-12, owner decision relayed by the Planner and the orchestrator, Rule 5] Chartered on the owner's choice "Screens load on demand (Recommended)": queued on slot B after Stories 20.13 and 20.28, before the bundle reaches the 4 MB CI limit, and so OcuPilot opens faster.
+
+As an administrator opening OcuPilot,
+I want only the shell to load at first, with each area's screens fetched when I open them,
+So that OcuPilot opens faster and the bundle stays under its limit as screens are added.
+
+**Acceptance Criteria:**
+
+- **Given** the client build
+- **When** it is built
+- **Then** each area's screens are lazily loaded route chunks (Angular `loadComponent` or `loadChildren`), and the shell, sign-in and the always-visible chrome stay in the initial bundle.
+
+- **Given** the build before and after the change
+- **When** it is measured
+- **Then** the initial bundle total and each chunk's size from `npm run build` are recorded in the commit, `angular.json`'s budgets are re-based on the initial-load size under DW-1166's rule (5% above the measured total), and a lazy-chunk budget keeps any chunk from silently regrowing.
+
+- **Given** the browser suite and the prebuild checkers
+- **When** they run
+- **Then** the browser suite loads lazy screens the way a person does, and `screen-mirror`, `classic-links`, `field-lists` and `browser-reset` still see every screen; `screens.generated.ts` stays generated by `screen-mirror.mjs`.
+
+- **Given** the shell, routing and screen outlet, which Epic 18 keeps adding screens to
+- **When** this story edits them
+- **Then** each edit that is not add-only goes to the orchestrator as a Rule 11 ask before it lands.
+
 ---
 
 ## Epic 21: Stage 5 - custom-REST parity from the MCP suite's handlers
@@ -8147,7 +8934,7 @@ So that the highest-consequence operations are reachable.
 
 - **Given** these are the most destructive operations OcuPilot has ever exposed
 - **When** the prohibited set is revisited
-- **Then** deleting backups and comparable actions are added **there**, in the kernel, rather than to a policy file - and the set grows by effect, as it always has.
+- **Then** every backup and mirroring write is a confirmed proposal whose destructive key defaults to disabled, for an administrator to switch on; only removing a mirror together with its databases joins the prohibited set, in the kernel (AD-10), beside the self-protection cases it already holds; and every freeze OcuPilot issues carries a bounded suspend limit, so writes never stay frozen indefinitely [AMENDED 2026-10-09, owner decision "I agree with your recommendations", relayed by the Planner, Rule 5].
 
 ### Story 21.3: Startup, memory and compatibility settings
 
@@ -8272,6 +9059,9 @@ So that no area has a remaining gap.
 - **Given** any leaf whose backing class was never inventoried
 - **When** it is picked up
 - **Then** the class is identified against the instance first, and that is the story's first task.
+- DW-1562: The Devices-list Delete row action with its typed-name confirmation (Story 8.8 AC2's screen delete) (ledger; routed by merge_gate 2026-10-06)
+- DW-1850: Operate-only dismount (parity with the classic Database details page): the self-protection check needs a Manage-free read of the protected set (OcuPilot's, the install namespace's and the seven system databases' directories), as an AD-27 named case, so dismount can drop %Admin_Manage:USE (ledger; routed by merge_gate 2026-10-06)
+- DW-1856: External language server editor: set JavaHome, PythonPath, LogFile and FilePath through PathPort's sixth case (directories, a source, a vendor-written file) instead of showing them only; ClassPath stays shown-only (a separator-joined list PathPort refuses) (ledger; routed by merge_gate 2026-10-06)
 
 ### Story 21.11: The agent gains the harvested tools and undo
 
@@ -8436,7 +9226,7 @@ So that later stories stop paying for flakes and lost throwaways, and no known u
 
 **Acceptance Criteria:**
 
-- **Given** the entries re-owned to this story: batch (a) DW-2034, DW-2026, DW-2058, DW-1925, DW-1935, DW-1915, DW-1937, DW-1983, DW-1984, DW-1873, DW-1916, DW-1917, DW-1929, DW-1936, DW-1938, DW-2027, DW-1297, DW-1086 and DW-2102; batch (b) DW-1827, DW-1869, DW-1882, DW-1641, DW-1013, DW-1864, DW-1939, DW-1449, DW-1414, DW-1637, DW-1710 and DW-1465
+- **Given** the entries re-owned to this story: batch (a) DW-2034, DW-2026, DW-2058, DW-1925, DW-1935, DW-1915, DW-1937, DW-1983, DW-1984, DW-1873, DW-1916, DW-1917, DW-1929, DW-1936, DW-1938, DW-2027, DW-1297, DW-1086 and DW-2102; batch (b) DW-1827, DW-1869, DW-1882, DW-1641, DW-1013, DW-1864, DW-1939, DW-1449, DW-1414, DW-1637, DW-1710, DW-1465 and DW-2096
 - **When** this story completes
 - **Then** each has a disposition written by the ledger tool: `resolved-by` this story with the commit, or `wontfix-accepted` or `by-design` with a reason and, where a condition would reopen it, that condition.
 
@@ -8456,10 +9246,170 @@ So that later stories stop paying for flakes and lost throwaways, and no known u
 - **When** each is fixed
 - **Then** a test reddens on the defect before the fix and passes after it.
 
+- **Given** DW-2096 (a credential typed as a literal in SQL statement text, as in `IDENTIFIED BY 'pw'`, shows on SQL activity and the statements tabs and reaches the agent through `explorer.sqlquery.read`)
+- **When** it is fixed
+- **Then** the value after `IDENTIFIED BY` or `PASSWORD` is masked in every displayed and agent-bound statement text, reusing `SqlPort.PASSWORDPATTERN`, and a test plants such a statement and finds the literal in no screen answer and no tool result. [AMENDED 2026-10-06, owner decision relayed by the Planner: DW-2096 added to batch (b)]
+
 - **Given** the ledger's duplicated ids (DW-1223, DW-1864, DW-1925 and DW-2027 each have two entries)
 - **When** they are deduplicated
-- **Then** each id has one entry carrying the union of both copies' trailers in time order, and `ledger.sh load` counts each id once.
+- **Then** each id has one entry carrying the union of both copies' trailers in time order, and `ledger.sh load` counts each id once. DW-1223's two copies are two different findings under one id: the proposal-card finding keeps DW-1223 and its own trailers, and the error-log navigation timeouts are filed under a new id with their own history, without the trailer a merge copied onto them. [AMENDED 2026-10-06, Epic 23 runner at Story 23.4's plan: DW-1223 is an id collision, not a duplicated block, so a union of its trailers would merge two findings]
 
 - **Given** the fixes
 - **When** they land
 - **Then** batch (a) and batch (b) each land with CI green on their own head and merge on their own, so a failing batch is reopened alone and never holds the other back.
+
+### Story 23.5: The range-end cleanup, part 5
+
+Chartered by the orchestrator on 2026-10-07 on the owner's approval of batch (c), visible polish, of the drafted burn-down scope (relayed by the Planner, 2026-10-06). It takes batch (c)'s 15 entries from the `range-end-cleanup` queue, plus two visible-polish entries filed since, which the orchestrator added under the owner's standing grant: DW-2101 (more count copy without singular forms, beside DW-1985) and DW-2107 (the agent picker's label cut short in the panel header). Batch (d), doc and test-gap hygiene, stays in the backlog, to be fixed when its areas are next worked on. The orchestrator schedules it after Epic 18's remainder on slot A.
+
+As a person using OcuPilot every day,
+I want the known visual and copy defects fixed, or declined with a reason,
+So that the screens read cleanly at every common width and say what they mean.
+
+**Acceptance Criteria:**
+
+- **Given** the entries re-owned to this story: DW-1985, DW-2101, DW-1951, DW-1978, DW-1976, DW-1401, DW-1392, DW-1148, DW-458, DW-460, DW-1371, DW-1372, DW-1368, DW-1436, DW-1341, DW-1342 and DW-2107
+- **When** this story completes
+- **Then** each has a disposition written by the ledger tool: `resolved-by` this story with the commit, or `wontfix-accepted` or `by-design` with a reason and, where a condition would reopen it, that condition.
+
+- **Given** a layout or copy entry
+- **When** it is fixed
+- **Then** a test reddens on the defect before the fix: a component spec for copy and state, or a browser spec for anything about geometry, run against a rebuilt and redeployed bundle in both themes.
+
+- **Given** the count copy entries (DW-1985, DW-2101)
+- **When** they are fixed
+- **Then** every count the client renders reads in the singular for one, through one shared rule rather than per-screen fixes.
+
+- **Given** the fixes
+- **When** they land
+- **Then** they land in batches grouped by area, each with CI green on its own head, so a failing batch is reopened alone.
+
+### Story 23.6: The Haiku-story cleanup
+
+Chartered by the orchestrator on 2026-10-09 on the owner's decision "One cleanup story" (relayed by the Planner), after the Planner's read-only quality review of the three merged stories built during the Haiku trial: keep each, with targeted cleanup. It runs on slot A after Stories 18.10 and 20.20 merge and before Epic 18's next story, with implement on Sonnet. Line references are at the merged heads: 20.21 `d94d922a`, 20.19 `ac551bcf`, 18.29 `866790f4`.
+
+As a maintainer of OcuPilot,
+I want the review's findings on Stories 20.19, 20.21 and 18.29 fixed or declined with a reason,
+So that their code reads like the rest of the codebase and their comments and tests say what the code does.
+
+**Acceptance Criteria:**
+
+- **Given** each item below
+- **When** this story plans
+- **Then** the item is first verified at the current head, as a reviewer's finding rather than a fact, and the spec records it confirmed, refuted or already fixed.
+
+- **Given** the one correctness item (20.21, item 2)
+- **When** it is fixed
+- **Then** a test reddens on the old behavior before the fix (Rule 19).
+
+- **Given** a refactor or comment item
+- **When** it lands
+- **Then** behavior is unchanged: the affected classes and specs pass before and after, and Rule 30's fresh check passes.
+
+- **Given** the items
+- **When** this story completes
+- **Then** each is fixed, or declined with a reason, in the spec's Review Triage Log.
+
+**Story 20.21:**
+
+1. `ExplorerSaveRules.cls:96`: the header-rename test matches only "name"; match "change the document's name".
+2. `ExplorerSave.cls:210-211`: `ConfirmProblem` lets a confirm through when the stored arguments do not parse; it refuses instead.
+3. `ExplorerSaveAgent.cls:51-54`: `ClassText` is unused; delete it.
+4. `proposal-card.ts`: `:762` `linesRows` is documented "Whether the card holds…" but returns rows; the `:767` `summaryFields` comment omits the lines-changed form.
+5. `ExplorerSaveMint.cls`: `:14` "stored text" is ambiguous between the new text and the instance's; `:241` has stray `p` and `s` names.
+6. `ExplorerSaveAgentProbe.cls:14-15`: the `Wide` comment does not match what the code writes.
+7. `ExplorerSave.cls:87`: a literal 20 beside `ExplorerSaveMint.MAXEDITS`; reference the parameter.
+8. Optional: fold `ExplorerSaveAgent`'s duplicate tests into `ExplorerSaveFlow`.
+
+**Story 20.19:**
+
+1. `ExplorerDescriptor.cls:132`: a 192-character doc line narrating "Story 20.19 adds…"; re-wrap it and drop the narration.
+2. `Escaped`, `Fetch` and `ArmDocument` are duplicated in `ExplorerSource.cls:49-89` and `ExplorerSourceEdges.cls:66-110`, and production has a third, private `Escaped` (`ExplorerSourceRead.cls:184`); make one shared helper.
+3. `ExplorerSourceRead.cls:118-120`: an object-only routine answers `REASONNOTFOUND`, which is untrue; give it its own reason.
+4. `ExplorerSourceTurn.cls:133` and `:161` discard `RemoveKeyed()`'s status.
+
+**Story 18.29:**
+
+1. `Area/Permissions/UserCopy.cls:29-103` duplicates about 60 of `UserCreate.Perform`'s 70 lines (`UserCreate.cls:111-179`); add a compose hook in the parent.
+2. Comments that do not match the code: `UserCopy.cls:22` and `:61` ("require the source"); `Test/UserCopy.cls:751-753` says two principals but creates three accounts and four roles.
+3. `Test/UserCopy.cls` is 825 lines with a test method after the helpers (`:814`); split it into two or three classes around a shared probe fixture.
+4. Prose: `Test/UserCopy.cls:461` narrates "run 78"; `Screen/Tool/UserCopy.cls:64-65` carries a Rule 19 mutation note in a product class.
+5. `Port/UserCopyPort.cls:21`: `Parameter USEREndpoint` becomes all capitals, with its references.
+6. Duplicated logic and literals: `UserCopyPort.cls:237-261` duplicates the 422 body `AdminPort.PasswordGuard` (`:3893`) builds; the copy fields are written twice (`Prohibited.cls:5622`, `Screen/Tool/UserCopy.cls:119`); "COPY" is a literal at `Prohibited.cls:1383`; "USERCOPY.SOURCE" is a literal at `Screen/Tool/UserCopy.cls:80` and `:98` instead of `UserCopyError.#SOURCE`.
+7. Client: `set-password-dialog.ts:18` redefines the path `user-create-form.store.ts:22` already exports; `user-create-form.page.ts:182-263` is not indented inside `@if (!copying)`.
+
+Not in scope: `text-diff.ts` duplicating Compare (a later story can move Compare onto the shared component), and DW-2241 (Story 20.20 fixes it).
+
+**18.10 and 20.20 items (addendum).** [AMENDED 2026-10-09, orchestrator relay of the Planner's read-only reviews of 18.10 at `357985c0` and 20.20 at `39ed66f1`, under the owner's "One cleanup story" decision; Rule 5 tier-1] Each is verified at the current head before it is fixed, as above. Line references are at those heads.
+
+**Story 18.10:**
+
+1. Correctness, red-first (Rule 19): `WebAppPctAccessMint.Mint` passes the superclass's `detail.problem` through unchanged, and `Mint` builds "already present" and "not present" from the composite id, so the text carries a raw U+0001. Clean it with `ErrorDeleteMint.ReadableId`, as `MappingMint` and `SuperserverMint` do, with a test leg.
+2. `AdminPort.cls:470`: `PRIVROUTINEENDPOINT` sits between `MUTATINGTYPES`' doc block and `MUTATINGTYPES`. Move it, with its own one-line doc, and add a short paragraph on `WebApp.PctClassAccess` `PUT` and `DELETE` to `MUTATINGTYPES`' doc.
+3. `strings.ts:394-406` and `:409-411`: 16 keys lack their `/** EXPERIENCE.md:NNN */` cites (rows 471 and 475).
+4. Cosmetic: `PRIVROUTINE.TYPE` lives in `PctAccessError.cls` (may wait for Story 18.31, noted in the triage log); `AdminPort.cls:1971` names its bit test `(+tKept \ 4) # 2`; `web-app-class-access-dialog.ts:80/82` uses fixed ids, not `Math.random`; the Add button gets its own string key instead of `screenPermissionsAddButton`; `WebAppDelete.cls:118` and `WebAppUpdate.cls:237` class-qualify their `OCUPILOTROUTINEAPP` cites; `web-app-editor.page.ts:671` reads the new tab's count as its siblings do.
+
+**Story 20.20:**
+
+1. `AtelierPort.SaveSet`'s doc is stale for `pCreate`, which it does not document.
+2. `AtelierPort.SavedLines` and `ExplorerSaveMint.SaveLines` are identical and must stay so; one delegates to the other.
+3. Not this story's: Epic 20 corrects its own spec.
+4. Optional: `ExplorerCreateFlow.Dispatch` and `CodeOf`, and `ExplorerCreateRules.ProblemOf`, copy `ExplorerSaveFlow`'s.
+5. One-line fixes: `ExplorerCreateFlow` and `ExplorerCreateRules` say "serving over HTTP" but run in process; `agent-code-create.browser-spec.mjs:264` names a mutation of a branch that does not exist; `AtelierPort`'s taking rule says "(measured)" for every routine type, where only `.mac` and `.int` were measured, so `bas`, `mvi` and `mvb` read "(inference)".
+6. Optional: `ExplorerCreateMint` stores `Compile: true`, which nothing reads.
+
+Recorded in the ledger only: the create script's class check reads the undocumented `^rINDEXCLASS`, to re-measure when IRIS 2027.1 lands; and a save line of roughly 300,000 control characters might overflow while `Literal` escapes it (inference).
+
+### Story 23.7: The range-end cleanup, part 6
+
+Chartered by the orchestrator on 2026-10-10 as the holder for the `range-end-cleanup` queue, so its entries had a story key the /epic-cycle kit's ledger tool accepts. The owner released the 32 entries it held on 2026-10-12 ("Release Story 23.7": "Run the 32 held cleanup items (tests, comments, small tidy-ups) as about three cleanup stories in gaps."), and the orchestrator split them by priority into this story and Stories 23.8 and 23.9, twelve at most each (Rule 27). This part takes twelve medium-severity test-gap and contract entries in the kernel, the agent and the ports. A slot that would otherwise sit idle runs it.
+
+As a maintainer of OcuPilot,
+I want the medium-severity test gaps and contract mismatches in the kernel, the agent and the ports closed,
+So that the behavior they describe is pinned by a test that can fail.
+
+**Acceptance Criteria:**
+
+- **Given** the entries re-owned to this story: DW-1170, DW-1191, DW-1211, DW-1233, DW-1234, DW-1255, DW-1258, DW-1306, DW-1308, DW-1377, DW-1783 and DW-2266
+- **When** this story completes
+- **Then** each has a disposition written by the ledger tool: `resolved-by` this story with the commit, or `wontfix-accepted` or `by-design` with a reason and, where a condition would reopen it, that condition.
+
+- **Given** a fix to code or a test
+- **When** it lands
+- **Then** a test reddens on the defect before the fix, or the entry says why none can, and the fixes land in batches grouped by area, each with CI green on its own head.
+
+### Story 23.8: The range-end cleanup, part 7
+
+Chartered by the orchestrator on 2026-10-12 from the 32 entries the owner released out of Story 23.7. This part takes the remaining seven medium-severity entries (the scripts, install and smoke checks, the client lint, the screen-open contract and the Rule 31 Save sharing) and five low-severity System Explorer save entries. A slot that would otherwise sit idle runs it, after Story 23.7.
+
+As a maintainer of OcuPilot,
+I want the remaining medium-severity entries and the System Explorer save tidy-ups resolved,
+So that the scripts, the install checks and the explorer's save path say and do the same thing.
+
+**Acceptance Criteria:**
+
+- **Given** the entries re-owned to this story: DW-216, DW-235, DW-432, DW-1188, DW-1462, DW-1762, DW-2278, DW-1267, DW-2256, DW-2257, DW-2258 and DW-2261
+- **When** this story completes
+- **Then** each has a disposition written by the ledger tool: `resolved-by` this story with the commit, or `wontfix-accepted` or `by-design` with a reason and, where a condition would reopen it, that condition.
+
+- **Given** a fix to code or a test
+- **When** it lands
+- **Then** a test reddens on the defect before the fix, or the entry says why none can, and the fixes land in batches grouped by area, each with CI green on its own head.
+
+### Story 23.9: The range-end cleanup, part 8
+
+Chartered by the orchestrator on 2026-10-12 from the 32 entries the owner released out of Story 23.7. This part takes the last eight low-severity entries: doc comments and CLAUDE.md lines that no longer match the code, two pair-validation edges, a duplicated client constant and the CI runner's test-class floor. A slot that would otherwise sit idle runs it, after Story 23.8. A CLAUDE.md line changes only through the Planner, with the owner's OK.
+
+As a maintainer of OcuPilot,
+I want the stale comments, duplicated constants and small validation edges fixed,
+So that the next reader is not misled by text the code no longer matches.
+
+**Acceptance Criteria:**
+
+- **Given** the entries re-owned to this story: DW-446, DW-1177, DW-1706, DW-1760, DW-1761, DW-2060, DW-2259 and DW-2260
+- **When** this story completes
+- **Then** each has a disposition written by the ledger tool: `resolved-by` this story with the commit, or `wontfix-accepted` or `by-design` with a reason and, where a condition would reopen it, that condition.
+
+- **Given** a fix to code or a test
+- **When** it lands
+- **Then** a test reddens on the defect before the fix, or the entry says why none can, and the fixes land in batches grouped by area, each with CI green on its own head.

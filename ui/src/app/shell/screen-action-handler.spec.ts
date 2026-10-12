@@ -3,7 +3,8 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 import { ApiService, type ApiRequestInit, type JsonResult } from '../core/api';
 import { ChangeBus, type ChangeEvent } from '../core/change-bus';
-import { ScreenActions } from '../core/screen-actions';
+import { ScopeService } from '../core/scope';
+import { actionLabel, ScreenActions } from '../core/screen-actions';
 import { ScreenStores } from '../core/screen-store';
 import { ENTITY_SINGLETON_ID, SCREENS } from '../core/screens.generated';
 import { STRINGS } from '../core/strings';
@@ -15,10 +16,12 @@ import {
   ADD_GRANTED_ROLE,
   ADD_MATCHING_ROLE,
   ADD_ROLE,
+  ADD_ROUTINE,
   COPY_MAPPINGS,
   ENABLE_INTEROP,
   DATABASE_DETAILS,
   EXPAND_VOLUME,
+  GRANT_SQL,
   LOCAL_DATABASE_LIST,
   LOCK_LIST,
   LOCK_REMOVE,
@@ -30,8 +33,10 @@ import {
   REMOVE_MATCHING_ROLE,
   REMOVE_RESOURCE_GRANT,
   REMOVE_ROLE,
+  REMOVE_ROUTINE,
   REQUIRE_PASSWORD_CHANGE,
   RESOURCE_LIST,
+  REVOKE_SQL,
   ROLE_LIST,
   SCREEN_ACTION_DESCRIPTORS,
   SET_PASSWORD,
@@ -78,6 +83,7 @@ function mount(answer: JsonResult<unknown> = { kind: 'ok', status: 200, body: {}
       { provide: ChangeBus, useValue: bus },
       { provide: ScreenStores, useValue: stores },
       { provide: ScreenActions, useValue: new ScreenActions() },
+      { provide: ScopeService, useValue: { namespace: () => 'USER' } as unknown as ScopeService },
     ],
   });
   const actions = TestBed.inject(ScreenActions);
@@ -108,6 +114,17 @@ describe('the generic screen-action handler', () => {
       expect(actions.has(WEB_APPS.descriptor, action.id)).toBe(!undrawn.includes(action.id));
     }
     expect(actions.has(WEB_APPS.descriptor, 'terminate')).toBe(false);
+  });
+
+  it('registers Delete alone for the privileged routine applications list: its six role and routine actions are the editor\u2019s tabs\u2019, drawn by no list surface', () => {
+    // Mutation (Rule 19): drop the list's entry from `UNDRAWN_ACTIONS` -> the six register against the descriptor and
+    // this goes red (Story 18.33).
+    const list = 'OcuPilot.Screen.Descriptor.RoutineAppList';
+    const { actions } = mount(undefined, list);
+    for (const id of [ADD_APPLICATION_ROLE, REMOVE_APPLICATION_ROLE, ADD_MATCHING_ROLE, REMOVE_MATCHING_ROLE, ADD_ROUTINE, REMOVE_ROUTINE]) {
+      expect(actions.has(list, id), id).toBe(false);
+    }
+    expect(actions.has(list, 'delete')).toBe(true);
   });
 
   it('sends the selected row through the screen-action route and publishes what the instance answered', async () => {
@@ -361,14 +378,15 @@ const UPDATED: JsonResult<unknown> = {
 };
 
 describe('the Users list row actions (Story 7.2)', () => {
-  it('registers every declared action but the undrawn change-on-login flag', () => {
+  it('registers every declared action but the undrawn change-on-login flag and the SQL privileges tab\'s two', () => {
     // Mutation (Rule 19): drop the Users list from `SCREEN_ACTION_DESCRIPTORS` -> nothing registers
     // and this goes red on every id, so no surface draws a Users row action (AC1).
     const { actions } = mountUsers([]);
-    const drawn = USERS.rowActions.map((action) => action.id).filter((id) => id !== REQUIRE_PASSWORD_CHANGE);
+    const undrawn = [REQUIRE_PASSWORD_CHANGE, GRANT_SQL, REVOKE_SQL];
+    const drawn = USERS.rowActions.map((action) => action.id).filter((id) => !undrawn.includes(id));
     expect(drawn).toEqual(['enable', 'disable', SET_PASSWORD, ADD_ROLE, REMOVE_ROLE, 'delete', 'revoke-tokens']);
     for (const id of drawn) expect(actions.has(USERS.descriptor, id)).toBe(true);
-    expect(actions.has(USERS.descriptor, REQUIRE_PASSWORD_CHANGE)).toBe(false);
+    for (const id of undrawn) expect(actions.has(USERS.descriptor, id)).toBe(false);
   });
 
   it('opens delete with its own consequence and a protected account with its published refusal', async () => {
@@ -1292,8 +1310,9 @@ describe('the Namespaces list\u2019s Delete (Story 18.2)', () => {
     expect(calls[1].path).toBe(`/api/ocupilot/screens/${NAMESPACES.toolIdentifier}/action`);
     expect(calls[1].method).toBe('POST');
     expect(JSON.parse(calls[1].body)).toEqual({ action: 'delete', id: 'OCUPROBE182BD' });
-    expect(events.map(({ kind, type, scope, id, action }) => ({ kind, type, scope, id, action }))).toEqual([
-      { kind: 'changed', type: 'namespace', scope: 'instance', id: 'OCUPROBE182BD', action: 'deleted' },
+    // Mutation (Rule 19): drop `tool` from the handler's publish -> the tool member goes red.
+    expect(events.map(({ kind, type, scope, id, action, tool }) => ({ kind, type, scope, id, action, tool }))).toEqual([
+      { kind: 'changed', type: 'namespace', scope: 'instance', id: 'OCUPROBE182BD', action: 'deleted', tool: NAMESPACES.toolIdentifier },
     ]);
   });
 
@@ -1598,6 +1617,197 @@ describe('the mapping lists\u2019 Delete and the Namespaces list\u2019s Copy map
     expect(actions.has(TASK_SCHEDULE, 'delete')).toBe(true);
     expect(actions.has(TASK_SCHEDULE, TASK_EXPORT)).toBe(false);
     expect(actions.has(TASK_SCHEDULE, TASK_IMPORT)).toBe(false);
+  });
+});
+
+/**
+ * Story 18.25: the Superservers list's Delete types the port -- the row key is `[Port, BindAddress]`, whose
+ * separator no one can type, and the row's port is a number -- states its consequence, and sends the whole row
+ * key.
+ */
+describe('the Superservers list\u2019s Delete (Story 18.25)', () => {
+  const descriptor = 'OcuPilot.Screen.Descriptor.SuperserverList';
+  const target = '21825\u00010.0.0.0';
+
+  it('registers Delete, typing the port under the published consequence', () => {
+    // Mutation (Rule 19): drop the list's `TYPED_NAME_ROWS` entry -> the name assertion goes red, the dialog
+    // asking for the joined row key; drop its `DESTRUCTIVE_CONSEQUENCES` entry -> the registration goes red.
+    const { actions, handler, store, calls } = mount(undefined, descriptor);
+    expect(actions.has(descriptor, 'delete')).toBe(true);
+    handler.startFor(descriptor, 'delete', target, { Port: 21825, BindAddress: '0.0.0.0', Enabled: true, SystemDefault: false }, store);
+    expect(handler.pending()?.kind).toBe('typed-name');
+    expect(handler.pending()?.name).toBe('21825');
+    expect(handler.pending()?.target).toBe(target);
+    expect(handler.pending()?.consequence).toBe(STRINGS.superserverDeleteConsequence);
+    expect(handler.pending()?.advisory).toBe('');
+    expect(calls).toHaveLength(0);
+  });
+
+  it('sends a confirmed Delete with the whole row key', async () => {
+    const screen = SCREENS.find((entry) => entry.descriptor === descriptor)!;
+    const { handler, store, calls } = mount({ kind: 'ok', status: 200, body: { action: 'deleted', target: { type: 'superserver', scope: 'instance', id: target } } }, descriptor);
+    handler.startFor(descriptor, 'delete', target, { Port: 21825, BindAddress: '0.0.0.0' }, store);
+    handler.confirmPending();
+    await settle();
+    expect(calls).toHaveLength(1);
+    expect(calls[0].path).toBe(`/api/ocupilot/screens/${screen.toolIdentifier}/action`);
+    expect(JSON.parse(calls[0].body)).toEqual({ action: 'delete', id: target });
+  });
+});
+
+/**
+ * Story 18.26: the Managed file transfer list's Delete and Revoke token each type the connection's name -- the
+ * row key itself -- under their published consequence, and send the name with no other argument.
+ */
+describe('the Managed file transfer list\u2019s Delete and Revoke token (Story 18.26)', () => {
+  const descriptor = 'OcuPilot.Screen.Descriptor.MftConnectionList';
+  const target = 'OcuMftProbeA';
+
+  it('registers both, each typing the connection\u2019s name under its published consequence', () => {
+    // Mutation (Rule 19): remove `revoke-token` from `DESTRUCTIVE_ACTIONS` -> the revoke sends at once, the
+    // pending dialog is absent and this goes red; drop the list's `DESTRUCTIVE_CONSEQUENCES` entry -> the
+    // registration goes red.
+    const { actions, handler, store, calls } = mount(undefined, descriptor);
+    expect([actions.has(descriptor, 'delete'), actions.has(descriptor, 'revoke-token')]).toEqual([true, true]);
+    handler.startFor(descriptor, 'delete', target, { Name: target, Service: 'Box', IsAuthorized: 'Not Authorized' }, store);
+    expect([handler.pending()?.kind, handler.pending()?.name, handler.pending()?.consequence]).toEqual(['typed-name', target, STRINGS.mftDeleteConsequence]);
+    handler.startFor(descriptor, 'revoke-token', target, { Name: target, Service: 'Box', IsAuthorized: 'Authorized' }, store);
+    expect([handler.pending()?.kind, handler.pending()?.name, handler.pending()?.consequence]).toEqual(['typed-name', target, STRINGS.mftRevokeConsequence]);
+    expect(calls).toHaveLength(0);
+  });
+
+  it('sends a confirmed Revoke token with the name and no argument', async () => {
+    const screen = SCREENS.find((entry) => entry.descriptor === descriptor)!;
+    const { handler, store, calls } = mount({ kind: 'ok', status: 200, body: { action: 'revoke-token', target: { type: 'mft-connection', scope: 'instance', id: target } } }, descriptor);
+    handler.startFor(descriptor, 'revoke-token', target, { Name: target }, store);
+    handler.confirmPending();
+    await settle();
+    expect(calls).toHaveLength(1);
+    expect(calls[0].path).toBe(`/api/ocupilot/screens/${screen.toolIdentifier}/action`);
+    expect(JSON.parse(calls[0].body)).toEqual({ action: 'revoke-token', id: target });
+  });
+});
+
+/**
+ * Story 18.30: the Doc DB applications list's Delete types the record's name -- the row key is `[Namespace, Name]`,
+ * whose separator no one can type -- under its published consequence, and sends the whole row key.
+ */
+describe('the Doc DB applications list\u2019s Delete (Story 18.30)', () => {
+  const descriptor = 'OcuPilot.Screen.Descriptor.DocDbAppList';
+  const target = 'USER\u0001OcuProbe1830A';
+
+  it('registers Delete, typing the record\u2019s name under the published consequence', () => {
+    // Mutation (Rule 19): drop the list's `DESTRUCTIVE_CONSEQUENCES` entry -> the registration goes red and the
+    // list draws no Delete; drop its `TYPED_NAME_ROWS` entry -> the name assertion goes red, the dialog asking for
+    // the joined row key.
+    const { actions, handler, store, calls } = mount(undefined, descriptor);
+    expect(actions.has(descriptor, 'delete')).toBe(true);
+    handler.startFor(descriptor, 'delete', target, { Name: 'OcuProbe1830A', Namespace: 'USER', Enabled: true, Resource: '', Description: '' }, store);
+    expect([handler.pending()?.kind, handler.pending()?.name, handler.pending()?.target, handler.pending()?.consequence]).toEqual(['typed-name', 'OcuProbe1830A', target, STRINGS.docDbAppDeleteConsequence]);
+    expect(calls).toHaveLength(0);
+  });
+
+  it('sends a confirmed Delete with the whole row key', async () => {
+    const screen = SCREENS.find((entry) => entry.descriptor === descriptor)!;
+    const { handler, store, calls } = mount({ kind: 'ok', status: 200, body: { action: 'deleted', target: { type: 'docdb-application', scope: 'instance', id: target } } }, descriptor);
+    handler.startFor(descriptor, 'delete', target, { Name: 'OcuProbe1830A', Namespace: 'USER' }, store);
+    handler.confirmPending();
+    await settle();
+    expect(calls).toHaveLength(1);
+    expect(calls[0].path).toBe(`/api/ocupilot/screens/${screen.toolIdentifier}/action`);
+    expect(JSON.parse(calls[0].body)).toEqual({ action: 'delete', id: target });
+  });
+});
+
+/**
+ * Story 18.31: the privileged routine applications list's Delete types the application's name under its published
+ * consequence and sends the row key; OcuPilot's own two applications are refused at the click with the rule's sentence,
+ * in any case, and nothing is sent.
+ */
+describe('the privileged routine applications list\u2019s Delete (Story 18.31)', () => {
+  const descriptor = 'OcuPilot.Screen.Descriptor.RoutineAppList';
+  const target = 'OcuProbe1831A';
+
+  it('registers Delete, typing the application\u2019s name under the published consequence', () => {
+    // Mutation (Rule 19): drop the list's `DESTRUCTIVE_CONSEQUENCES` entry -> the registration goes red and the
+    // list draws no Delete. The list's `TYPED_NAME_ROWS` entry names the typed field outright; the row key is the name,
+    // so dropping it changes nothing a test can see.
+    const { actions, handler, store, calls } = mount(undefined, descriptor);
+    expect(actions.has(descriptor, 'delete')).toBe(true);
+    handler.startFor(descriptor, 'delete', target, { Name: target, Enabled: true, Resource: '', Description: '' }, store);
+    expect([handler.pending()?.kind, handler.pending()?.name, handler.pending()?.target, handler.pending()?.consequence]).toEqual(['typed-name', target, target, STRINGS.routineAppDeleteConsequence]);
+    expect(calls).toHaveLength(0);
+  });
+
+  it('sends a confirmed Delete with the row key', async () => {
+    const screen = SCREENS.find((entry) => entry.descriptor === descriptor)!;
+    const { handler, store, calls } = mount({ kind: 'ok', status: 200, body: { action: 'deleted', target: { type: 'routine-application', scope: 'instance', id: target } } }, descriptor);
+    handler.startFor(descriptor, 'delete', target, { Name: target }, store);
+    handler.confirmPending();
+    await settle();
+    expect(calls).toHaveLength(1);
+    expect(calls[0].path).toBe(`/api/ocupilot/screens/${screen.toolIdentifier}/action`);
+    expect(JSON.parse(calls[0].body)).toEqual({ action: 'delete', id: target });
+  });
+
+  it('refuses OcuPilot\u2019s own two applications at the click, in any case, with the rule\u2019s sentence and sends nothing', async () => {
+    // Mutation (Rule 19): drop the `ocupilot-routine-application` branch from `selfProtectionReason` -> each leg opens
+    // the typed-name dialog instead and goes red.
+    for (const own of ['OcuPilotState', 'OcuPilotIdentity', 'ocupilotstate', 'OCUPILOTIDENTITY']) {
+      const { handler, store, calls } = mount(undefined, descriptor);
+      handler.startFor(descriptor, 'delete', own, { Name: own, Enabled: true, Resource: '', Description: '' }, store);
+      expect(handler.pending()).toBeNull();
+      expect(store.refusal()).toBe(STRINGS.routineAppRefusalOcuPilot);
+      await settle();
+      expect(calls).toHaveLength(0);
+      TestBed.resetTestingModule();
+    }
+  });
+});
+
+/**
+ * Story 18.32: the REST API explorer's Delete types the service's package under its published consequence and sends the
+ * row key. A web application's row, and a service a web application dispatches to, are offered the action like any
+ * other row: the instance refuses them after the click, and the handler draws its sentence and publishes nothing.
+ */
+describe('the REST API explorer\u2019s Delete (Story 18.32)', () => {
+  const descriptor = 'OcuPilot.Screen.Descriptor.RestApiList';
+  const target = 'OcuProbe1832A';
+  const row = { Name: target, Namespace: 'USER', DispatchClass: `${target}.disp`, SpecBased: true, Enabled: null };
+
+  it('registers Delete, typing the service\u2019s package under the published consequence', () => {
+    // Mutation (Rule 19): drop the explorer's `DESTRUCTIVE_CONSEQUENCES` entry -> the registration goes red and the
+    // list draws no Delete. The explorer's id is the package, so it needs no `TYPED_NAME_ROWS` entry.
+    const { actions, handler, store, calls } = mount(undefined, descriptor);
+    expect(actions.has(descriptor, 'delete')).toBe(true);
+    handler.startFor(descriptor, 'delete', target, row, store);
+    expect([handler.pending()?.kind, handler.pending()?.name, handler.pending()?.target, handler.pending()?.consequence]).toEqual(['typed-name', target, target, STRINGS.restServiceDeleteConsequence]);
+    expect(calls).toHaveLength(0);
+  });
+
+  it('sends a confirmed Delete with the row key', async () => {
+    const screen = SCREENS.find((entry) => entry.descriptor === descriptor)!;
+    const { handler, store, calls } = mount({ kind: 'ok', status: 200, body: { action: 'deleted', target: { type: 'rest-service', scope: 'USER', id: target } } }, descriptor);
+    handler.startFor(descriptor, 'delete', target, row, store);
+    handler.confirmPending();
+    await settle();
+    expect(calls).toHaveLength(1);
+    expect(calls[0].path).toBe(`/api/ocupilot/screens/${screen.toolIdentifier}/action`);
+    expect(JSON.parse(calls[0].body)).toEqual({ action: 'delete', id: target });
+  });
+
+  it('draws the instance\u2019s refusal of a deployed service, or of a web application\u2019s row, and publishes nothing', async () => {
+    const reason = 'A web application dispatches to this service, so it is not deleted here.';
+    for (const id of [target, '/api/probe']) {
+      const refused = { kind: 'error', status: 409, code: 'RESTSERVICE.DEPLOYED', reason, detail: null } as unknown as JsonResult<unknown>;
+      const { handler, store, events } = mount(refused, descriptor);
+      handler.startFor(descriptor, 'delete', id, { ...row, Name: id }, store);
+      handler.confirmPending();
+      await settle();
+      expect(store.refusal(), id).toBe(reason);
+      expect(events, id).toEqual([]);
+      TestBed.resetTestingModule();
+    }
   });
 });
 
@@ -2068,6 +2278,275 @@ describe('the ECP SSL/TLS authorizations tab\u2019s Authorize, Reject and Delete
       expect(calls).toHaveLength(1);
       expect(store.refusal()).toBe(problem);
       expect(events).toEqual([]);
+      TestBed.resetTestingModule();
+    }
+  });
+});
+
+/**
+ * Story 20.2: Productions' Start, sent at once, and its Stop, Restart, Update and Recover, each of which
+ * warns first with its own published sentence; a refused action shows the server's published sentence.
+ */
+describe('Productions\u2019 row actions (Story 20.2)', () => {
+  const PRODUCTIONS = 'OcuPilot.Screen.Descriptor.InteropProductionList';
+  const NAME = 'Probe.Production';
+  const ROW = { Name: NAME, Status: 'Running', LastStartTime: '', LastStopTime: '' };
+  const TARGET = { type: 'production', scope: 'USER', id: NAME };
+
+  it('sends Start at once, with no dialog, keyed by the production\u2019s name, and publishes the updated event', async () => {
+    const { actions, handler, store, calls, events } = mount({ kind: 'ok', status: 200, body: { action: 'updated', target: TARGET } }, PRODUCTIONS);
+    expect(actions.has(PRODUCTIONS, 'start')).toBe(true);
+    handler.startFor(PRODUCTIONS, 'start', NAME, ROW, store);
+    expect(handler.pending()).toBeNull();
+    await settle();
+    expect(calls.map((call) => JSON.parse(call.body))).toEqual([{ action: 'start', id: NAME }]);
+    expect(events.map((event) => `${event.action} ${event.type} ${event.id}`)).toEqual([`updated production ${NAME}`]);
+  });
+
+  it('opens the warning before Stop, Restart, Update and Recover with their own consequence, and sends once past Proceed', async () => {
+    // Mutation (Rule 19): remove the InteropProductionList entry from WARNING_CONSEQUENCES -> each
+    // action is sent at once and the warning assertions go red.
+    for (const [action, verb, consequence] of [
+      ['stop', STRINGS.actionStop, STRINGS.interopStopConsequence],
+      ['restart', STRINGS.actionRestart, STRINGS.interopRestartConsequence],
+      ['update', STRINGS.actionUpdate, STRINGS.interopUpdateConsequence],
+      ['recover', STRINGS.actionRecover, STRINGS.interopRecoverConsequence],
+    ] as const) {
+      const { handler, store, calls } = mount({ kind: 'ok', status: 200, body: { action: 'updated', target: TARGET } }, PRODUCTIONS);
+      handler.startFor(PRODUCTIONS, action, NAME, ROW, store);
+      const pending = handler.pending();
+      expect(pending?.kind).toBe('warning');
+      expect(pending?.verb).toBe(verb);
+      expect(pending?.consequence).toBe(consequence);
+      handler.cancelPending();
+      await settle();
+      expect(calls).toHaveLength(0);
+      handler.startFor(PRODUCTIONS, action, NAME, ROW, store);
+      handler.confirmPending();
+      await settle();
+      expect(calls.map((call) => JSON.parse(call.body))).toEqual([{ action, id: NAME }]);
+      TestBed.resetTestingModule();
+    }
+  });
+
+  it('shows a state refusal\u2019s published sentence from the envelope', async () => {
+    const refused = { kind: 'error', status: 409, code: 'INTEROP.PRODUCTION.NOTRUNNING', reason: STRINGS.interopRefusalNotRunning, detail: null } as unknown as JsonResult<unknown>;
+    const { handler, store, events } = mount(refused, PRODUCTIONS);
+    handler.startFor(PRODUCTIONS, 'start', NAME, { ...ROW, Status: 'Stopped' }, store);
+    await settle();
+    expect(store.refusal()).toBe(STRINGS.interopRefusalNotRunning);
+    expect(events).toEqual([]);
+  });
+});
+
+/**
+ * Story 20.3: Production items' Enable and Disable, which warn first that a running production reads the change
+ * only at its next update, and its Remove, which types the item's name and sends the whole row key; and a stop
+ * that left the production Suspended or partly stopped, which re-reads the Productions list.
+ */
+describe('Production items\u2019 row actions (Story 20.3)', () => {
+  const ITEMS = 'OcuPilot.Screen.Descriptor.InteropItemList';
+  const PRODUCTIONS = 'OcuPilot.Screen.Descriptor.InteropProductionList';
+  const PRODUCTION = 'Probe.Production';
+  const NAME = 'ProbeOp';
+  const TARGET_ID = `${PRODUCTION}\u0001${NAME}`;
+  const ROW = { Production: PRODUCTION, Name: NAME, ClassName: 'Probe.Op', Type: 'operation', Enabled: true, PoolSize: 1 };
+  const TARGET = { type: 'production-item', scope: 'USER', id: TARGET_ID };
+
+  it('registers the three declared row actions, and leaves Add for the page\u2019s own dialog', () => {
+    // Mutation (Rule 19): drop the list from SCREEN_ACTION_DESCRIPTORS -> nothing registers and this goes red.
+    const { actions } = mount(undefined, ITEMS);
+    for (const id of ['enable', 'disable', 'remove']) expect(actions.has(ITEMS, id), id).toBe(true);
+    expect(actions.has(ITEMS, 'add')).toBe(false);
+  });
+
+  it('warns before Enable and Disable with the pending-update sentence, and sends once past Proceed with the row key', async () => {
+    // Mutation (Rule 19): remove the list's entry from WARNING_CONSEQUENCES -> each action is sent at once.
+    for (const action of ['enable', 'disable'] as const) {
+      const { handler, store, calls, events } = mount({ kind: 'ok', status: 200, body: { action: 'updated', target: TARGET } }, ITEMS);
+      handler.startFor(ITEMS, action, TARGET_ID, ROW, store);
+      expect(handler.pending()?.kind).toBe('warning');
+      expect(handler.pending()?.consequence).toBe(STRINGS.interopItemPendingConsequence);
+      handler.cancelPending();
+      await settle();
+      expect(calls).toHaveLength(0);
+      handler.startFor(ITEMS, action, TARGET_ID, ROW, store);
+      handler.confirmPending();
+      await settle();
+      expect(calls.map((call) => JSON.parse(call.body))).toEqual([{ action, id: TARGET_ID }]);
+      expect(events.map((event) => `${event.action} ${event.type} ${event.id}`)).toEqual([`updated production-item ${TARGET_ID}`]);
+      TestBed.resetTestingModule();
+    }
+  });
+
+  it('types the item\u2019s name before Remove, states what it deletes, and sends the whole row key', async () => {
+    // Mutation (Rule 19): drop the list's TYPED_NAME_ROWS entry -> the dialog asks for the joined row key and the
+    // name assertion goes red; drop its DESTRUCTIVE_CONSEQUENCES entry -> the consequence assertion goes red.
+    const screen = SCREENS.find((entry) => entry.descriptor === ITEMS)!;
+    const { handler, store, calls, events } = mount({ kind: 'ok', status: 200, body: { action: 'deleted', target: TARGET } }, ITEMS);
+    handler.startFor(ITEMS, 'remove', TARGET_ID, ROW, store);
+    expect(handler.pending()?.kind).toBe('typed-name');
+    expect(handler.pending()?.name).toBe(NAME);
+    expect(handler.pending()?.target).toBe(TARGET_ID);
+    expect(handler.pending()?.consequence).toBe(STRINGS.interopItemRemoveConsequence);
+    expect(calls).toHaveLength(0);
+    handler.confirmPending();
+    await settle();
+    expect(calls).toHaveLength(1);
+    expect(calls[0].path).toBe(`/api/ocupilot/screens/${screen.toolIdentifier}/action`);
+    expect(JSON.parse(calls[0].body)).toEqual({ action: 'remove', id: TARGET_ID });
+    expect(events.map((event) => `${event.action} ${event.type} ${event.id}`)).toEqual([`deleted production-item ${TARGET_ID}`]);
+  });
+
+  it('shows an item refusal\u2019s published sentence from the envelope and publishes nothing', async () => {
+    const refused = { kind: 'error', status: 409, code: 'INTEROP.ITEM.ENABLED', reason: STRINGS.interopItemRefusalEnabled, detail: null } as unknown as JsonResult<unknown>;
+    const { handler, store, events } = mount(refused, ITEMS);
+    handler.startFor(ITEMS, 'enable', TARGET_ID, ROW, store);
+    handler.confirmPending();
+    await settle();
+    expect(store.refusal()).toBe(STRINGS.interopItemRefusalEnabled);
+    expect(events).toEqual([]);
+  });
+
+  it('re-reads the Productions list after a stop that ended Suspended or partly stopped, and shows the sentence', async () => {
+    // Mutation (Rule 19): drop the PRODUCTION_STATE_MOVED branch -> nothing is published and this goes red.
+    for (const [code, reason] of [
+      ['INTEROP.PRODUCTION.SUSPENDED', STRINGS.interopRefusalSuspended],
+      ['INTEROP.PRODUCTION.PARTSTOPPED', STRINGS.interopRefusalPartStopped],
+    ] as const) {
+      const refused = { kind: 'error', status: 409, code, reason, detail: null } as unknown as JsonResult<unknown>;
+      const { handler, store, events } = mount(refused, PRODUCTIONS);
+      handler.startFor(PRODUCTIONS, 'stop', PRODUCTION, { Name: PRODUCTION, Status: 'Running', LastStartTime: '', LastStopTime: '' }, store);
+      handler.confirmPending();
+      await settle();
+      expect(store.refusal(), code).toBe(reason);
+      expect(events.map((event) => `${event.action} ${event.type} ${event.scope} ${event.id}`), code).toEqual([`updated production USER ${PRODUCTION}`]);
+      TestBed.resetTestingModule();
+    }
+  });
+});
+
+/**
+ * Story 20.23: Queues' Abort all, Queue messages' and an item's Queue tab's Abort, and Jobs' and an item's Jobs tab's Abort
+ * message, Suspend message and Stop job. An abort types the id the list shows and states what it takes; a suspend and a stop
+ * warn first; an item tab posts to the list whose tools it acts through.
+ */
+describe('Queue and job row actions (Story 20.23)', () => {
+  const QUEUES = 'OcuPilot.Screen.Descriptor.InteropQueueList';
+  const MESSAGES = 'OcuPilot.Screen.Descriptor.InteropQueueMessageList';
+  const QUEUE_TAB = 'OcuPilot.Screen.Descriptor.InteropItemQueueTab';
+  const JOBS = 'OcuPilot.Screen.Descriptor.InteropJobList';
+  const JOB_TAB = 'OcuPilot.Screen.Descriptor.InteropItemJobTab';
+  const TARGET = { type: 'interop-job', scope: 'USER', id: '4242' };
+
+  // Each row key differs from the name its row shows, so the dialog asking for the name proves it reads the named field.
+  const ABORTS = [
+    { descriptor: QUEUES, routeOf: QUEUES, id: 'queue-key', row: { Name: 'Probe.Op', Count: 2, Jobs: 1 }, name: 'Probe.Op', consequence: STRINGS.interopQueueAbortConsequence },
+    { descriptor: MESSAGES, routeOf: MESSAGES, id: 'message-key', row: { MessageId: '17', Queue: 'Probe.Op', Priority: 3, Index: 1 }, name: '17', consequence: STRINGS.interopMessageAbortConsequence },
+    { descriptor: QUEUE_TAB, routeOf: MESSAGES, id: 'message-key', row: { MessageId: '17', Queue: 'Probe.Op', Priority: 3, Index: 1 }, name: '17', consequence: STRINGS.interopMessageAbortConsequence },
+    { descriptor: JOBS, routeOf: JOBS, id: 'job-key', row: { Job: '4242', Host: 'Probe.Op', Dead: false }, name: '4242', consequence: STRINGS.interopJobAbortConsequence },
+    { descriptor: JOB_TAB, routeOf: JOBS, id: 'job-key', row: { Job: '4242', Host: 'Probe.Op', Dead: false }, name: '4242', consequence: STRINGS.interopJobAbortConsequence },
+  ] as const;
+
+  it('labels each screen\u2019s actions with its published copy', () => {
+    // Mutation (Rule 19): drop the Jobs tab's entry, or the Suspend entry of the Jobs list, from DESCRIPTOR_ACTION_LABELS -> the label
+    // falls back to the shared map and its row of this table goes red.
+    for (const [descriptor, actionId, label] of [
+      [QUEUES, 'abort', STRINGS.interopQueuesAbortAllAction],
+      [MESSAGES, 'abort', STRINGS.actionAbort],
+      [QUEUE_TAB, 'abort', STRINGS.actionAbort],
+      [JOBS, 'abort', STRINGS.interopJobsAbortAction],
+      [JOBS, 'suspend', STRINGS.interopJobsSuspendAction],
+      [JOBS, 'stop', STRINGS.interopJobsStopAction],
+      [JOB_TAB, 'abort', STRINGS.interopJobsAbortAction],
+      [JOB_TAB, 'suspend', STRINGS.interopJobsSuspendAction],
+      [JOB_TAB, 'stop', STRINGS.interopJobsStopAction],
+    ] as const) {
+      expect(actionLabel(descriptor, actionId), `${descriptor} ${actionId}`).toBe(label);
+    }
+    // The Jobs labels differ from the shared map's, so a fall back to it cannot pass for them.
+    expect(actionLabel(JOBS, 'suspend')).not.toBe(actionLabel('OcuPilot.Screen.Descriptor.Unknown', 'suspend'));
+  });
+
+  it('registers each screen\u2019s declared actions', () => {
+    // Mutation (Rule 19): drop a descriptor from SCREEN_ACTION_DESCRIPTORS -> its row of this table goes red.
+    for (const [descriptor, ids] of [
+      [QUEUES, ['abort']],
+      [MESSAGES, ['abort']],
+      [QUEUE_TAB, ['abort']],
+      [JOBS, ['abort', 'suspend', 'stop']],
+      [JOB_TAB, ['abort', 'suspend', 'stop']],
+    ] as const) {
+      const { actions } = mount(undefined, descriptor);
+      for (const id of ids) expect(actions.has(descriptor, id), `${descriptor} ${id}`).toBe(true);
+      TestBed.resetTestingModule();
+    }
+  });
+
+  it('types the id before an abort, states what it takes, and posts to the list whose tool acts', async () => {
+    // Mutation (Rule 19): drop 'abort' from DESTRUCTIVE_ACTIONS -> the dialog is a warning and the kind assertion goes red;
+    // drop a screen's TYPED_NAME_ROWS entry -> its name assertion goes red; drop an ACTION_ADDRESS entry -> an item tab
+    // posts to its own route and the path assertion goes red.
+    for (const abort of ABORTS) {
+      const route = SCREENS.find((entry) => entry.descriptor === abort.routeOf)!;
+      const { handler, store, calls, events } = mount({ kind: 'ok', status: 200, body: { action: 'updated', target: TARGET } }, abort.descriptor);
+      handler.startFor(abort.descriptor, 'abort', abort.id, abort.row, store);
+      expect(handler.pending()?.kind, abort.descriptor).toBe('typed-name');
+      expect(handler.pending()?.name, abort.descriptor).toBe(abort.name);
+      expect(handler.pending()?.consequence, abort.descriptor).toBe(abort.consequence);
+      expect(calls, abort.descriptor).toHaveLength(0);
+      handler.confirmPending();
+      await settle();
+      expect(calls, abort.descriptor).toHaveLength(1);
+      expect(calls[0].path, abort.descriptor).toBe(`/api/ocupilot/screens/${route.toolIdentifier}/action`);
+      expect(JSON.parse(calls[0].body), abort.descriptor).toEqual({ action: 'abort', id: abort.id });
+      expect(events.map((event) => `${event.action} ${event.type} ${event.id}`), abort.descriptor).toEqual([`updated interop-job 4242`]);
+      TestBed.resetTestingModule();
+    }
+  });
+
+  it('warns before Suspend message and Stop job with their own consequence, and sends once past Proceed', async () => {
+    // Mutation (Rule 19): drop the Jobs entry from WARNING_CONSEQUENCES -> each is sent at once and the warning assertions
+    // go red; swap the two sentences -> the consequence assertion goes red.
+    for (const descriptor of [JOBS, JOB_TAB]) {
+      const route = SCREENS.find((entry) => entry.descriptor === JOBS)!;
+      for (const [action, consequence] of [
+        ['suspend', STRINGS.interopJobSuspendConsequence],
+        ['stop', STRINGS.interopJobStopConsequence],
+      ] as const) {
+        const { handler, store, calls } = mount({ kind: 'ok', status: 200, body: { action: 'updated', target: TARGET } }, descriptor);
+        handler.startFor(descriptor, action, '4242', { Job: '4242', Host: 'Probe.Op', Dead: false }, store);
+        expect(handler.pending()?.kind, `${descriptor} ${action}`).toBe('warning');
+        expect(handler.pending()?.consequence, `${descriptor} ${action}`).toBe(consequence);
+        handler.cancelPending();
+        await settle();
+        expect(calls, `${descriptor} ${action}`).toHaveLength(0);
+        handler.startFor(descriptor, action, '4242', { Job: '4242', Host: 'Probe.Op', Dead: false }, store);
+        handler.confirmPending();
+        await settle();
+        expect(calls, `${descriptor} ${action}`).toHaveLength(1);
+        expect(calls[0].path).toBe(`/api/ocupilot/screens/${route.toolIdentifier}/action`);
+        expect(JSON.parse(calls[0].body)).toEqual({ action, id: '4242' });
+        TestBed.resetTestingModule();
+      }
+    }
+  });
+
+  it('shows a refusal\u2019s published sentence from the envelope and publishes nothing', async () => {
+    for (const [code, reason, descriptor, action] of [
+      ['INTEROP.QUEUE.CHANGED', STRINGS.interopRefusalQueueChanged, QUEUES, 'abort'],
+      ['INTEROP.QUEUE.EMPTY', STRINGS.interopRefusalQueueEmpty, QUEUES, 'abort'],
+      ['INTEROP.JOB.DEAD', STRINGS.interopRefusalJobDead, JOBS, 'stop'],
+      ['INTEROP.JOB.NOTRETRYING', STRINGS.interopRefusalJobNotRetrying, JOBS, 'abort'],
+      ['INTEROP.JOB.NOTSTOPPED', STRINGS.interopRefusalJobNotStopped, JOB_TAB, 'stop'],
+    ] as const) {
+      const refused = { kind: 'error', status: 409, code, reason, detail: null } as unknown as JsonResult<unknown>;
+      const { handler, store, events } = mount(refused, descriptor);
+      handler.startFor(descriptor, action, 'Probe.Op', { Name: 'Probe.Op', Job: '4242', Dead: false }, store);
+      handler.confirmPending();
+      await settle();
+      expect(store.refusal(), code).toBe(reason);
+      expect(events, code).toEqual([]);
       TestBed.resetTestingModule();
     }
   });

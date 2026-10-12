@@ -44,6 +44,7 @@ ClassMethod ProhibitedClass() As %String
 ClassMethod HandleCreate() As %Status
 {
     Set tSC = $$$OK
+    Set tHoldKey = ""
     Set tBody = ""
     Try {
         Set tGateSC = ..Gate(.tRefused)
@@ -55,6 +56,11 @@ ClassMethod HandleCreate() As %Status
         If $$$ISERR(tReadSC) || '$IsObject(tBody) || 'tBody.%IsA("%Library.DynamicObject") {
             Set tBody = ""
             Set tSC = ##class(OcuPilot.Api.Error).Render(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#REASONAGENTBADBODY, ##class(OcuPilot.Api.Error).#AGENTBADBODY)
+            Quit
+        }
+        Set tHoldSC = ##class(OcuPilot.Kernel.Proposal.Operation).HoldTool(..#CREATETOOL, ..CreateId(tBody), .tHeld, .tHoldKey)
+        If $$$ISERR(tHoldSC) || 'tHeld {
+            Set tSC = ##class(OcuPilot.Api.Error).RenderTargetBusy(tHoldSC)
             Quit
         }
         Set tPerformSC = ..Create(tBody, .tHttp, .tFault, .tViolations, .tKeyId, .tReadBack)
@@ -80,7 +86,19 @@ ClassMethod HandleCreate() As %Status
         Set tBody = ""
         Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ex)
     }
+    Do ##class(OcuPilot.Kernel.Proposal.Operation).Release(tHoldKey)
     Quit tSC
+}
+
+/// <p>The key file a create body names, as the composite <code>[root, path]</code> its tool's mint
+/// holds (<class>OcuPilot.Screen.Tool.EncryptionKeyFileMint</class>), or <code>""</code> when either
+/// part is not text or is empty.</p>
+ClassMethod CreateId(pBody As %DynamicObject) As %String
+{
+    If '$IsObject(pBody) Quit ""
+    If (pBody.%GetTypeOf("root") '= "string") || (pBody.%GetTypeOf("path") '= "string") Quit ""
+    If (pBody.%Get("root") = "") || (pBody.%Get("path") = "") Quit ""
+    Quit ##class(OcuPilot.Kernel.EntityId).JoinComposite($ListBuild(pBody.%Get("root"), pBody.%Get("path")))
 }
 
 /// <p>Create the key file <var>pBody</var> names.</p>

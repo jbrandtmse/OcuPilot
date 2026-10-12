@@ -78,6 +78,7 @@ ClassMethod ProhibitedClass() As %String
 ClassMethod HandleCreate() As %Status
 {
     Set tSC = $$$OK
+    Set tHoldKey = ""
     Set tSecret = ""
     Try {
         Set tGateSC = ..Gate(.tRefused)
@@ -97,6 +98,11 @@ ClassMethod HandleCreate() As %Status
         Set tAdded = ..TakeList(tBody, ..#ADDEDFIELD)
         Set tRemoved = ..TakeList(tBody, ..#REMOVEDFIELD)
         Set tName = $ClassMethod(..#RULES, "Text", tBody, ..#IDARGUMENT)
+        Set tHoldSC = ##class(OcuPilot.Kernel.Proposal.Operation).HoldTool(..#CREATETOOL, tName, .tHeld, .tHoldKey)
+        If $$$ISERR(tHoldSC) || 'tHeld {
+            Set tSC = ##class(OcuPilot.Api.Error).RenderTargetBusy(tHoldSC)
+            Quit
+        }
         Set tPerformSC = ..Create(tName, tBody, tAdded, tRemoved, .tHttp, .tFault, .tViolations, .tWrite)
         Set (tSecretReason, tMappingsCount, tMappingsReason, tReadBack, tStored) = ""
         If $$$ISOK(tPerformSC) && '$Get(tViolations) {
@@ -112,6 +118,7 @@ ClassMethod HandleCreate() As %Status
         Set tSecret = ""
         Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ex)
     }
+    Do ##class(OcuPilot.Kernel.Proposal.Operation).Release(tHoldKey)
     Quit tSC
 }
 
@@ -123,6 +130,7 @@ ClassMethod HandleCreate() As %Status
 ClassMethod HandleUpdate(pId As %String) As %Status
 {
     Set tSC = $$$OK
+    Set tHoldKey = ""
     Set tSecret = ""
     Try {
         Set tGateSC = ..Gate(.tRefused)
@@ -142,6 +150,11 @@ ClassMethod HandleUpdate(pId As %String) As %Status
         Set tAdded = ..TakeList(tBody, ..#ADDEDFIELD)
         Set tRemoved = ..TakeList(tBody, ..#REMOVEDFIELD)
         Set tName = ##class(OcuPilot.Kernel.EntityId).Decode(pId)
+        Set tHoldSC = ##class(OcuPilot.Kernel.Proposal.Operation).HoldTool(..#UPDATETOOL, tName, .tHeld, .tHoldKey)
+        If $$$ISERR(tHoldSC) || 'tHeld {
+            Set tSC = ##class(OcuPilot.Api.Error).RenderTargetBusy(tHoldSC)
+            Quit
+        }
         Set tPerformSC = ..Update(tName, tBody, tAdded, tRemoved, .tHttp, .tFault, .tViolations, .tWrite)
         If $$$ISERR(tPerformSC) && (+$Get(tHttp) = 404) && '$Get(tViolations) {
             Set tSecret = ""
@@ -162,6 +175,7 @@ ClassMethod HandleUpdate(pId As %String) As %Status
         Set tSecret = ""
         Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ex)
     }
+    Do ##class(OcuPilot.Kernel.Proposal.Operation).Release(tHoldKey)
     Quit tSC
 }
 

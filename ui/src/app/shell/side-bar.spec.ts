@@ -7,7 +7,7 @@ import { OverlayStack } from '../core/overlay-stack';
 import { PanelState } from '../core/panel-layout';
 import { ShellState } from '../core/shell-state';
 import { STRINGS } from '../core/strings';
-import type { AreaDeclaration, ScreenDeclaration } from '../core/screens.generated';
+import { AREAS, type AreaDeclaration, type ScreenDeclaration } from '../core/screens.generated';
 import { screenDeclaration } from '../testing/screen-declaration';
 import { railItemDomId } from './rail';
 import { SIDE_BAR_OVERLAY_ID, SideBar } from './side-bar';
@@ -39,15 +39,6 @@ function screen(route: string, labelKey: string, position: number): ScreenDeclar
   });
 }
 
-const HOME_AREA = {
-  key: 'home',
-  railPosition: 1,
-  labelKey: 'navAreaHome',
-  navigates: true,
-  pinBottom: false,
-  privileges: [],
-} as AreaDeclaration;
-
 class StubNavigation {
   readonly verdicts = new Map<string, Verdict>();
   screens: readonly ScreenDeclaration[] = [
@@ -56,8 +47,18 @@ class StubNavigation {
   ];
   private readonly listeners = new Set<() => void>();
 
+  /** Areas the rail no longer offers, because their category does not apply in this namespace. */
+  readonly unoffered = new Set<string>();
+
+  /** Whether the map has answered for the namespace the shell is on; false while a re-read is out. */
+  answeredHere = true;
+
+  appliesAnswered(): boolean {
+    return this.answeredHere;
+  }
+
   areas(): readonly AreaDeclaration[] {
-    return [HOME_AREA];
+    return AREAS.filter((area) => !this.unoffered.has(area.key));
   }
 
   screensForArea(areaKey: string): readonly ScreenDeclaration[] {
@@ -171,6 +172,43 @@ describe('the primary side bar', () => {
     shell.activateArea('permissions', false);
     fixture.detectChanges();
     expect(fixture.nativeElement.querySelector('nav')).toBeNull();
+  });
+
+  it('Story 20.1: closes, unpersisted, when the navigation service stops offering the visible area', async () => {
+    shell.activateArea('permissions', false);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('nav')).not.toBeNull();
+    await settled();
+    expect(lastRemembered(account.calls, SHELL_SIDE_BAR_OPEN)).toBe('1');
+
+    navigation.unoffered.add('permissions');
+    navigation.notify();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('nav')).toBeNull();
+    expect(shell.open()).toBe(false);
+    await settled();
+    expect(lastRemembered(account.calls, SHELL_SIDE_BAR_OPEN)).toBe('1');
+  });
+
+  it('Story 20.1: hides, without closing, while the map has not answered for the new namespace', async () => {
+    // Mutation (Rule 19): drop the `appliesAnswered()` test from `retireUnofferedArea` -> the bar
+    // closes before the answer and `shell.open()` reads false here.
+    shell.activateArea('permissions', false);
+    fixture.detectChanges();
+    await settled();
+
+    navigation.answeredHere = false;
+    navigation.unoffered.add('permissions');
+    navigation.notify();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('nav')).toBeNull();
+    expect(shell.open()).toBe(true);
+
+    navigation.answeredHere = true;
+    navigation.unoffered.delete('permissions');
+    navigation.notify();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('nav')).not.toBeNull();
   });
 
   it('lists nothing for an area whose screens are not built yet, without disappearing', () => {

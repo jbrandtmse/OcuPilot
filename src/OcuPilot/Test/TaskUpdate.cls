@@ -109,6 +109,7 @@ Method TestTheMintAnswersOneRowPerChange()
     If $$$ISERR(tSC) Quit
     Set tTarget = tProposal.%Get("target")
     Do $$$AssertEquals(tTarget.%Get("type") _ ":" _ tTarget.%Get("scope") _ ":" _ tTarget.%Get("id"), "task:instance:" _ tId, "the target is the task's id")
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).Field(tProposal.%Get("proposalId"), "TargetName"), "OcuP98Mint", "the stored row names the task, for the card's title")
     Do $$$AssertEquals(tProposal.%Get("changed").%ToJSON(), "[{""field"":""Description"",""before"":""OcuPilot edit probe"",""after"":""changed""},{""field"":""Settings.KeepDays"",""before"":""30"",""after"":""45""}]", "one row per change, the setting named, the held time none")
     Set tSC = ##class(OcuPilot.Kernel.State.Propose).GuardedByKey(tProposal.%Get("proposalId"), .tFound, .tValues)
     Set tPayload = ##class(%DynamicAbstractObject).%FromJSON($Get(tValues("payload"), "{}"))

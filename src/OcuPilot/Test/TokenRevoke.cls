@@ -328,6 +328,19 @@ Method TestTheProhibitedSetPermitsTheCallerAndTheSystemAccount()
     }
 }
 
+/// <p>The SQL privilege arm of the prohibited set (Story 18.9) judges only the SQL grant and revoke
+/// tools: a token revoke for an account named like an OcuPilot role is not read as one.</p>
+/// <p>Mutation (Rule 19): key the arm on the write type alone -> this reads
+/// <code>PROHIBITED.OCUPILOTROLE</code> and goes red.</p>
+Method TestTheSqlPrivilegeArmDoesNotJudgeATokenRevoke()
+{
+    Set tRef = ""
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.EntityRef).Key("user", "instance", "OcuPilotAdmin", .tRef), "a reference key builds")
+    Set tSC = ##class(OcuPilot.Kernel.Proposal.Prohibited).Prohibits(..#TOOL, tRef, "{}", "[]", .tProhibits, .tCode)
+    Do $$$AssertStatusOK(tSC, "the set answers: " _ $System.Status.GetErrorText(tSC))
+    Do $$$AssertTrue(tCode '= "PROHIBITED.OCUPILOTROLE", "the token revoke is not refused as an OcuPilot role's SQL grantee: " _ tCode)
+}
+
 /// <p>AC3, AD-8: a principal holding the list's two pairs and not
 /// <parameter>REGISTRATIONPAIR</parameter> is refused by name on both callers: the principal lacks
 /// exactly that pair, the shipped dispatch chain refuses the call naming it, and the screen route

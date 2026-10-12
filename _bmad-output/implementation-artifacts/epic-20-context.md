@@ -1,0 +1,146 @@
+# Epic 20 Context: Stage 4 - Interoperability, with the Analytics rider
+
+<!-- Generated from planning artifacts. Regenerate with compile-epic-context if planning docs change. -->
+
+## Goal
+
+Bring the classic portal's Interoperability work into OcuPilot for namespaces that support it, with Analytics riding along, so the largest area the classic portal still owns is usable here. Shipped so far: category gating, production control, items and their settings, per-host tabs, the monitor, queue and job reads and actions, lookup tables, read-only business partners, the host Test tab, the interoperability floor, per-screen permissions, the panel collapse, the agent's source reads, saves and creates, the shared tool-listing cache, and the sign-in hand-off every embedded vendor editor needs. Next is 20.28, which lets OcuPilot compile and install in a namespace without interoperability. Still to come after it: the rule, BPL and DTL editors in place and the agent's edits behind them, the schema viewers and configuration diagram, source-control hooks, message search, resend and trace, item runtime actions, partner writes, the transformation test, the Analytics rider, and guided workflows with Investigate.
+
+## Stories
+
+- Story 20.1: Namespace category gating
+- Story 20.2: Productions, listed and controlled
+- Story 20.3: Production items
+- Story 20.4: Per-host tabs, the monitor, queues and jobs
+- Story 20.5: Lookup tables and business partners
+- Story 20.6: Testing hosts and transformations
+- Story 20.7: The three embedded vendor editors
+- Story 20.8: The schema viewers and the production configuration diagram
+- Story 20.9: Messages - search, view, resend and trace
+- Story 20.10: Source-control hooks
+- Story 20.11: The Analytics rider
+- Story 20.12: The agent gains guided workflows and Investigate
+- Story 20.13: The sign-in hand-off to the embedded vendor editors
+- Story 20.14: Interoperability holders reach OcuPilot
+- Story 20.15: Per-screen permissions, seen and adjusted
+- Story 20.16: The agent edits rule, DTL and BPL content behind the embedded editors
+- Story 20.17: Long blocks in the agent panel start collapsed
+- Story 20.18: The agent proposes permission changes and refuses on a screen the user cannot open
+- Story 20.19: The agent reads class and routine source
+- Story 20.20: The agent creates new classes and routines, on the person's confirmation
+- Story 20.21: The agent saves edits to existing classes and routines
+- Story 20.22: Production item settings
+- Story 20.23: Queue and job actions
+- Story 20.24: Agent tool calls stop re-listing the tool registry
+- Story 20.25: Item runtime and configuration actions
+- Story 20.26: Business partners saved and removed
+- Story 20.27: Transformations tested
+- Story 20.28: OcuPilot compiles in a namespace without interoperability
+
+## Requirements & Constraints
+
+- **Every write** is a server-minted proposal with a diff the instance computes, an explicit Confirm and an agent marker. A new write key joins the checked-in governance baseline in the same change, and a destructive key ships `false`. Each new action's plan states its destructiveness, its key's default and its audit record.
+- **No compile-time dependency on interoperability (20.28).** An IPM install admits any non-system namespace, so OcuPilot must compile and install where interoperability is absent. That means no `Ensemble` include and no interoperability class named as a type (today, `Ens.Config` argument types). Such an argument takes `%RegisteredObject` or `%String` and reaches the vendor class through `$ClassMethod` or `$Method`, with behavior unchanged where interoperability exists. In such a namespace the Interoperability category simply stays hidden.
+- **The guard.** A CI guard installs every shipped class through IPM into a non-interoperability namespace on the throwaway, the same shape as the release's upgrade check, so every later interoperability class is held to the same rule. The `OcuPilot.Test` classes are a test-scoped resource in `module.xml` and are out of its scope.
+- **Vendor bundles are never copied or redistributed.** They load in place from the instance.
+- **Embeds.** 20.7 re-scopes its "saved, compiled, invalid" criterion at its spec gate, because the editors send none of those messages in normal mode. Each embed story's first task establishes its vendor contract on the instance: the schema browsers' document-selection parameter for 20.8, and the source-control hook exchange for 20.10.
+- **Rule, DTL and BPL edits (20.16)** run in five steps, and the key ships enabled:
+  1. Warn the user to save the editor, because OcuPilot cannot read the frame's unsaved state.
+  2. Read the stored content.
+  3. Propose the edit with its diff and the agent marker.
+  4. Refuse if the stored content changed after the mint.
+  5. Reload the editor.
+- **Transformation test (20.27).** It runs a transformation on pasted input and renders the output. It is a confirmed write because it executes code, and it is not destructive.
+- **Messages (20.9).**
+  - Search and the viewer read through the port, with saved searches where the API offers them.
+  - Resend and edit-and-resend take a dry run, then a Confirm, with a bounded cap per action.
+  - A session trace renders visually, with a generated sequence diagram as the alternative.
+  - The message-contents renderer is the custom half.
+- **Item runtime actions (20.25).** A temporary stop, start or restart of one item is followed by the production update the vendor requires. Each is refused by name where the vendor would answer success while doing nothing: a stopped production, a disabled item. Copy and change of class run as the classic page does, and the vendor audits them.
+- **Partner writes (20.26)** on `Ens.Config.BusinessPartner`:
+  - Each is confirmed over a fresh read and records OcuPilot's own audit row.
+  - The vendor renames by deleting and then creating, with no transaction, so a rename is refused or done in one transaction.
+  - Before removing a partner that an item's `BusinessPartner` setting names, the port reads those items, then refuses or warns.
+  - The pair posture goes to the orchestrator. 20.5's plan recommends `%Ens_ProductionConfig:WRITE`.
+- **Analytics (20.11).** Cube build, synchronize and repair are the only analytics writes. MDX results render with drill-through and cancel. Architect, Analyzer and the User Portal are linked, not rebuilt. Anything beyond those links needs a DeepSee-enabled namespace.
+- **Workflows and Investigate (20.12).** A workflow is a sequence of individually confirmed proposals, never a batch approval. Each write still evaluates the prohibited set, both agent switches and governance. Investigate starts from an alert or a log entry and returns a recap and ranked hypotheses that cite the rows used. Harvested prompts take OcuPilot's names.
+- **Secrets and paths.** A Secrets-pattern setting answers an empty value and default, with `Secret` true. Setting it is refused before any vendor call, from both callers. A secret under a non-matching name is a named limit. No endpoint accepts a path outside a case AD-21 names, and pasted content is never a path.
+- **Posture questions** go to the orchestrator, with options and a recommendation.
+
+## Technical Decisions
+
+- **Embedded editors (AD-63).** This is a named exception to two rules: that tokens are never within an embedded frame's reach, and that an embedded vendor page is inert.
+  - **The source.** Only `interopEditorSource` (`ui/src/app/core/vendor-frame.ts`) builds it: `/ui/interop/<editor>/index.html` on the instance's origin.
+    - **Vocabulary.** It is closed: `rule-editor` takes `rule`, `dtl-editor` takes `DTL`, `bpl-editor` takes `BP`, and the namespace goes in `$NAMESPACE`.
+    - **Values.** They come from OcuPilot's own reads and are percent-encoded. Anything else answers `null`, and no frame is drawn.
+    - **New apps.** A new `/ui/interop` app (20.8) joins the vocabulary once its parameter is read on the instance.
+  - **The frame.** `app-interop-editor-frame` draws one unsandboxed `<iframe>`, because a sandboxed frame never signs in.
+    - `src` is set through `Renderer2`, never through a binding or a sanitizer bypass.
+    - The frame takes no `sandbox`, `allow`, `srcdoc` or `credentialless` attribute.
+    - Its per-editor title is its accessible name.
+  - **Normal mode only.** Never use `?VSCODE=1`, whose message sign-in takes a password from any sender, and never pre-write tokens.
+  - **Nothing crosses.** OcuPilot posts nothing into the frame and reads nothing from it: not `contentWindow`, `contentDocument` or `frames`, not its messages, and not the vendor's storage keys. So 20.16's reload cannot be a message (inference). Unchanged: the token store, sign-in and sign-out, the content-security policy, `index.html` and the response headers. CORS stays off.
+  - **Sign-in and sign-out.** The editor signs itself in from the browser-level login. OcuPilot's sign-out ends that sign-in and revokes each editor's own pair. The shell withholds every screen, and so every frame, while signed out.
+  - **Named consequences.**
+    - The frame can read the tab's `ocupilot.token-pair` and script the shell, which is no more than any same-origin code gets.
+    - The editor's own Logout ends OcuPilot's pair too. OcuPilot shows its session-ended card at the next request, and never fills or reads the editor's own sign-in form.
+    - A tab the editor opens without `noopener` gets a copy of the tab's storage, and sign-out revokes it.
+- **Interoperability port (`Port/InteropPort`).** It is the only class that starts, stops, restarts, updates or recovers a production, and the only source of declared interoperability reads. It calls the documented vendor classes the classic pages call, in the caller's process as the signed-in user, and never calls `%Api.InteropEditors.*`. A new read or write extends this port and names its case in AD-62 at its spec gate, and in AD-36 too for a read.
+- **Gate first.** The vendor's production, lookup, partner and test calls check no privilege (measured), so the port's gate is the whole gate.
+  - **Order.** The endpoint's pairs come first, then READ on the namespace's globals database, or WRITE for a write. A refusal names the failed pair.
+  - **Settling pairs.** Start from the classic page's check, then run a least-privileged principal on a throwaway. An extra pair is declared only where measured, refused by name before any port call, and pinned by a test that removes it.
+  - **The floor.** The API floor admits `%Ens_Portal:USE`, so every new surface declares its own pair, and the `InteropFloor*` rosters pin it.
+  - **Adjustment.** `Screen.Gate.RequiredPairs` is the one reader of a screen's requirement. A port's pairs and the vendor's are never adjustable.
+- **Namespace and elevation.**
+  - `appliesWhen` (`IsEnsembleNamespace`, and `%IsDeepSeeEnabled` for Analytics) decides whether a surface applies, not who can open it.
+  - The port switches namespace by explicit save and restore, and calls no `OcuPilot.*` class while switched.
+  - OcuPilot adds no elevation of its own.
+  - A namespace under source control refuses item and lookup writes.
+- **Write shape.**
+  - **Action-style.** Each write declares its request type, sends no body or a port-built one, and fingerprints a port-composed fresh read. Before any vendor call it refuses, by name, whatever the vendor would answer as a silent success. A create fingerprints the target's absence.
+  - **Two callers, one operation.** A screen action and the agent's write share the fresh read, the prohibited set inside the per-target lock, the gate, the change event and the read-back. Only the agent's caller mints, writes the marker and is gated by the agent switches.
+  - **Its own request.** Each write finishes in its own request, capped at 15 s, with no spawn site. A troubled production gets Recover, never Clean.
+  - **After OK.** The write re-reads its target (`readBack`). Every port that defines `Invoke` also defines a pure `Snippet` that mirrors each branch, with secrets as placeholders.
+- **Audit.** Item and setting changes go through `Ens.Util.Auditing.AuditModifyProductionConfig`, never with a value. Writes the vendor does not audit record OcuPilot's own `ConfigChange` from either caller. A new unaudited vendor operation is either named in AD-15 or audited by the port.
+- **Transformation test (20.27).** `Transforms` gains `TRANSFORM` and `TRANSFORMTEST`.
+  - **Parsing.** Pasted text is parsed with a virtual document's `ImportFromString` or `Ens.Util.XML.Reader.ObjectFromString`, never with the `[Hidden]` serialized reader.
+  - **Running.** It runs `Transform` in process, with empty `process` and `context`, refused by name before any vendor call, and makes its vendor calls inside the output capture.
+  - **Pairs and pages.** It needs `%Ens_DTLTest:USE`, WRITE on the globals database and `%Ens_Code:READ`. Its `CLASSICPAGES` entry is `EnsPortal.Dialog.TestTransform`.
+  - **Named limits.** The HL7 parse writes the per-process `^EnsHL7.Segment` node, and a transformation's own code has no cap beyond the gateway timeout.
+- **AD-39's seventh exception.** A test's response, output, error and console lines reach the screen and the proposal card only, as text. They never reach the model, a tool result, a ledger row, an audit payload, a log line or screen context.
+- **Reads and ids.**
+  - Reads use source kind `interop`. A parent-scoped list takes its parent's route id as its one criterion and answers the parent key on each row.
+  - Every read has a row cap and reports when it truncates.
+  - An id keeps every part exactly, never uses the vendor's integer id, and is percent-encoded in one path segment; `production-item` is `[Production, Name]`.
+- **Tools.**
+  - Each tool declares its `CLASSICPAGES`, and each new write type is reviewed against AD-10's prohibited set.
+  - `InteropAction` is the parent of `InteropProductionAction` and `InteropItemAction`. A new interoperability tool extends that hierarchy rather than copying a sibling, and tools are named `<area>.<screen>.<verb>`.
+- **Untrusted content.** Message bodies, log text, names, settings, lookup values, test inputs and outputs, and rule, DTL or BPL content reach the model only through the one sanitizer. No gate or test relies on the sanitizer as its defense.
+- **Measure on the instance**, and amend the spine at the spec gate rather than working around it.
+
+## UX & Interaction Patterns
+
+- **Rail and tabs.** Interoperability and Analytics follow System Explorer, and appear only where the namespace reports the feature. A screen joins the side bar only once it has shipped. An item opens on these tabs: Status, Settings, Queue, Log, Messages, Jobs, Test.
+- **Embeds and viewers.** The editors render in place inside the shell. The configuration diagram renders in place, and its sibling editors open in new tabs. The HL7, X12 and ASTM schema browsers are read-only.
+- **Gated controls are never hidden.** They stay focusable and `aria-disabled`, and name the failed pair.
+- **Strings.**
+  - Each list has a title, an empty state and three suggested prompts. A write-capable list's empty state adds the line inviting the agent.
+  - Every new string, frame titles included, goes into EXPERIENCE.md's Fixed strings and into `strings.ts`, whose values are unique.
+  - A refusal sentence lives once, on the server, pinned equal to its fixed string.
+- **Dialogs.** A dialog exists only where EXPERIENCE.md's dialog list names one, and a new dialog or pre-write warning amends that list at the spec gate. Dialogs never stack. A destructive screen action uses the typed-name confirm.
+- **Auto-refresh** is opt-in per screen, off by default, and declared in the screen's descriptor and in EXPERIENCE.md's roster.
+- **Cards.** Proposal cards follow the standard lifecycle. Production cards carry the guidance to recover before cleaning. An agent's destructive proposal carries no typed name. A block over about eight lines starts collapsed with a summary line, and Confirm never requires expanding it.
+
+## Cross-Story Dependencies
+
+- **Done:** 20.1 to 20.6, 20.13 to 20.15, and 20.17 to 20.24.
+- **20.28 is next**, and it is on the 1.0.12 release's critical path: the cut waits for 20.28 and Epic 18's 18.39. Plan and gate it now. Implement it once 20.13's code head is pushed, and push it only after 20.13 is green. It reworks `InteropPort` code from 20.3 (the `Ens.Config` argument types) and from 20.6 (the `Ensemble` include).
+- **20.13 unblocks 20.7, 20.8 and 20.10.** 20.7 is the frame component's first real-browser host, and it owns three follow-ups:
+  - It re-runs the frame browser spec against its real screens.
+  - On a document switch, it chooses between re-setting `src` and drawing a new frame. Re-setting adds a history entry, so Back moves the frame; a new frame skips the editor's unsaved-changes alert.
+  - It handles a frame that moves away from what its screen shows, unseen by OcuPilot: the logo and Back to standard UI navigate the frame, DTL and BPL push history entries, and the rule editor's Settings switches its namespace.
+- **The editing and test stories.** 20.16 follows 20.7 and builds on 20.21's agent source saves. 20.27 is ordered after 20.13 and consumes three things: 20.6's shared test helper (`IsTestWrite`, the test code family, `test-answer.ts`), the seventh exception, and the Data transformations list.
+- **Other links.** 20.9's trace reuses `interop-message` (inference). 20.8's diagram shows 20.3's items. 20.12 can run a guided disable followed by Update.
+- **20.25 and 20.26.** 20.25 consumes 20.3's items and 20.4's per-host tabs, and 20.26 consumes 20.5's Business partners screen and read. The orchestrator places both in the order.
+- **Epic 18 runs beside this epic.** Shared rosters take add-only edits, summed at the forward merge: the entity types, the screen mirror, `strings.ts`, the navigation tests and EXPERIENCE.md's rows. Anything else is asked first. Every new Epic 20 screen also needs a row in `Test/StageTwoTools`'s `Elsewhere` block.
+- **Into Epic 21.** Epic 21 reuses 20.12's diagnose-slow-query workflow. It owns interoperability credentials, purge, deployment, record maps, workflow and the analytics editors, so those stay out of this epic.

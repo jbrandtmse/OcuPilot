@@ -293,8 +293,9 @@ ClassMethod RecordAgentWrite(pProposalId As %String, pToolName As %String, pTarg
 /// <class>Security.System</class> and "is this event enabled" in <class>Security.Events</class>,
 /// both <code>%SYS</code>-only, and reading either from the ungated restraint route would need a
 /// third privileged routine application, which AD-8 and AD-9 do not carry. So the fact is written
-/// by the parties that can see it -- install, the confirm executor and a screen action whose tool
-/// moves the marking (AD-53) -- and read here. A read
+/// by the parties that can see it -- install, the confirm executor, a screen action whose tool
+/// moves the marking (AD-53) and the restraint read, which re-observes it with the reader's own
+/// privileges while it reads not-marked -- and read here. A read
 /// that fails answers the default, because the banner this feeds must never be shown on an
 /// unreadable store: its absence is never a claim that marking works.</p>
 ClassMethod WritesMarked() As %Boolean

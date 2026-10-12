@@ -32,6 +32,7 @@ const REGISTRY = join(REPO_ROOT, 'src', 'OcuPilot', 'Screen', 'Registry.cls');
 const ROSTER = join(REPO_ROOT, 'src', 'OcuPilot', 'Install', 'Roster.cls');
 
 const PROHIBITED = join(REPO_ROOT, 'src', 'OcuPilot', 'Kernel', 'Proposal', 'Prohibited.cls');
+const PCTACCESSERROR = join(REPO_ROOT, 'src', 'OcuPilot', 'Api', 'PctAccessError.cls');
 
 const STRINGS_SOURCE = join(REPO_ROOT, 'ui', 'src', 'app', 'core', 'strings.ts');
 
@@ -77,6 +78,21 @@ test('AD-53, AD-39: the serving-path refusal is one sentence on both surfaces', 
   );
   // And it names no caller: the same predicate refuses the agent and the screen alike (AD-53).
   assert.ok(!kernel[1].toLowerCase().includes('the agent'), `it names no caller: ${kernel[1]}`);
+});
+
+test('Story 18.10: the percent-class access system refusal is one sentence on both surfaces', () => {
+  // The Delete the editor disables and the envelope the port answers name the same rule, so their
+  // sentence is the same published text. The comparison lives here for the reason the serving-path
+  // pin above gives: neither file is readable from the other at run time.
+  //
+  // Mutation (Rule 19): change one word of `REASONSYSTEM` in `PctAccessError.cls` -> this goes red naming both.
+  const kernel = /Parameter REASONSYSTEM = "([^"]+)";/.exec(readFileSync(PCTACCESSERROR, 'utf8'));
+  assert.notEqual(kernel, null, 'PctAccessError.cls declares REASONSYSTEM');
+  assert.equal(
+    kernel[1],
+    stringValue('pctAccessRefusalSystem'),
+    "the kernel's reason and the client's copy are one published sentence"
+  );
 });
 
 test('AD-53: the client draws exactly the self-protection rules the instance declares', () => {
@@ -289,6 +305,22 @@ const KERNEL_REFUSALS = [
   // Story 18.23: Interactive key activation while the audit log, IRISSECURITY or IRISTEMP is encrypted,
   // which the form shows on the start-mode field when either caller is answered with it.
   ['STARTUPINTERACTIVE', 'encryptionStartupInteractiveRefusal'],
+  // Story 18.8: a change that leaves OcuPilot's own sign-in with no method, and turning O/S authentication
+  // off, which the authentication options form draws on the field before a click and answers either caller
+  // with.
+  ['OCUPILOTSIGNIN', 'authOptionsRefusalSignIn'],
+  ['OCUPILOTSTART', 'authOptionsRefusalStart'],
+  // Story 18.25: the superserver the web gateway connects through, whose Enabled and web connections the
+  // editor draws locked, and whose Delete either caller is answered with this sentence.
+  ['SERVINGSUPERSERVER', 'superserverRefusalServing'],
+  // Story 18.9: a SQL privilege grant or revoke on one of OcuPilot's own schemas, which the SQL privileges
+  // tab states in place when either caller is answered with it.
+  ['OCUPILOTSQLPRIVILEGE', 'sqlPrivilegeRefusalOcuPilot'],
+  // Story 20.15: one of OcuPilot's own screens, whose permissions either caller is refused changing.
+  ['OCUPILOTSCREEN', 'screenPermissionsRefusalOcuPilot'],
+  // Story 18.10: OcuPilot's own privileged routine applications, whose every change either caller is refused with this
+  // sentence.
+  ['OCUPILOTROUTINEAPP', 'routineAppRefusalOcuPilot'],
 ];
 
 test('DW-1598, AD-53: each kernel refusal is published verbatim in Fixed strings and is the sentence ReasonFor returns', () => {
@@ -330,6 +362,26 @@ test("Story 9.5: ocupilot-ssl answers OcuPilot's own provider configuration alon
   assert.equal(selfProtectionReason(OCUPILOT_SSL_RULE, OCUPILOT_SSL_CONFIGURATION), STRINGS.sslRefusalOcuPilot, 'its own configuration is refused');
   assert.equal(selfProtectionReason(OCUPILOT_SSL_RULE, OCUPILOT_SSL_CONFIGURATION.toLowerCase()), '', 'compared exactly, as the instance resolves a name');
   assert.equal(selfProtectionReason(OCUPILOT_SSL_RULE, 'ISC.FeatureTracker.SSL.Config'), '', 'and any other configuration is not');
+});
+
+test("Story 18.31: ocupilot-routine-application answers OcuPilot's own two routine applications alone, named as Base names them, in any case", async () => {
+  // Mutation (Rule 19): answer '' for `ocupilot-routine-application` -> the own-application legs go red; rename a
+  // name in `OCUPILOT_ROUTINE_APPLICATIONS` -> the Base.cls legs go red.
+  const { selfProtectionReason, OCUPILOT_ROUTINE_APPLICATION_RULE, OCUPILOT_ROUTINE_APPLICATIONS } = await import('../src/app/core/self-protection.ts');
+  const { STRINGS } = await import('../src/app/core/strings.ts');
+  const base = readFileSync(join(REPO_ROOT, 'src', 'OcuPilot', 'Kernel', 'State', 'Base.cls'), 'utf8');
+  const state = /Parameter APPLICATION As %String = "([^"]+)";/.exec(base);
+  const identity = /Parameter IDENTITYAPPLICATION As %String = "([^"]+)";/.exec(base);
+  assert.notEqual(state, null, 'Base.cls declares APPLICATION');
+  assert.notEqual(identity, null, 'Base.cls declares IDENTITYAPPLICATION');
+  assert.deepEqual([...OCUPILOT_ROUTINE_APPLICATIONS], [state[1], identity[1]], 'one pair of names, read by both sides');
+  for (const name of OCUPILOT_ROUTINE_APPLICATIONS) {
+    assert.equal(selfProtectionReason(OCUPILOT_ROUTINE_APPLICATION_RULE, name), STRINGS.routineAppRefusalOcuPilot, `${name} is refused`);
+    assert.equal(selfProtectionReason(OCUPILOT_ROUTINE_APPLICATION_RULE, name.toLowerCase()), STRINGS.routineAppRefusalOcuPilot, `and in lower case, as the instance resolves a name`);
+    assert.equal(selfProtectionReason(OCUPILOT_ROUTINE_APPLICATION_RULE, name.toUpperCase()), STRINGS.routineAppRefusalOcuPilot, `and in upper case`);
+  }
+  assert.equal(selfProtectionReason(OCUPILOT_ROUTINE_APPLICATION_RULE, 'OcuProbe1831A'), '', 'any other routine application is not');
+  assert.equal(selfProtectionReason(OCUPILOT_ROUTINE_APPLICATION_RULE, ''), '', 'and no key answers nothing');
 });
 
 test("Story 16.2: ocupilot-session answers a row under one of OcuPilot's own applications, in every spelling the instance resolves", async () => {
@@ -491,6 +543,17 @@ test('Story 16.12: the three owner refusals and the in-transaction refusal are e
     assert.ok(readFileSync(EXPERIENCE, 'utf8').includes(`"${server[1]}"`), `${parameter}'s sentence is published in EXPERIENCE.md's Fixed strings`);
     assert.ok(!server[1].toLowerCase().includes('the agent'), `${parameter} names no caller: ${server[1]}`);
   }
+});
+
+/** Story 23.4's port error class, which declares the ledger code of a write the port answered as started. */
+const PORT_ERROR = join(REPO_ROOT, 'src', 'OcuPilot', 'Api', 'PortError.cls');
+
+test('Story 23.4: the started write\'s sentence is one sentence on both surfaces, published in Fixed strings', () => {
+  // Mutation (Rule 19): change one word of REASONSTARTED in PortError.cls -> this goes red naming both.
+  const server = /Parameter REASONSTARTED = "([^"]+)";/.exec(readFileSync(PORT_ERROR, 'utf8'));
+  assert.notEqual(server, null, 'PortError.cls declares REASONSTARTED');
+  assert.equal(server[1], stringValue('auditDatabaseStillRunning'), 'REASONSTARTED and auditDatabaseStillRunning are one published sentence');
+  assert.ok(readFileSync(EXPERIENCE, 'utf8').includes(`"${server[1]}"`), "REASONSTARTED's sentence is published in EXPERIENCE.md's Fixed strings");
 });
 
 /** Story 18.15's enable tool, which declares the refusal of %SYS and %ALL. */
@@ -680,6 +743,8 @@ test('Story 18.21 (C5): ecp-ssl-pending and ecp-ssl-authorized answer the tools\
 
 /** Story 18.7's error class and the key file tools, which declare its published sentences. */
 const ENCRYPTION_ERROR = join(REPO_ROOT, 'src', 'OcuPilot', 'Api', 'EncryptionError.cls');
+const WEBAUTH_ERROR = join(REPO_ROOT, 'src', 'OcuPilot', 'Api', 'WebAuthError.cls');
+const SUPERSERVER_ERROR = join(REPO_ROOT, 'src', 'OcuPilot', 'Api', 'SuperserverError.cls');
 const ENCRYPTION_TOOL = (name) => join(REPO_ROOT, 'src', 'OcuPilot', 'Screen', 'Tool', `EncryptionKeyFile${name}.cls`);
 const ENCRYPTION_KEY_TOOL = (name) => join(REPO_ROOT, 'src', 'OcuPilot', 'Screen', 'Tool', `${name}.cls`);
 
@@ -728,6 +793,11 @@ const ENCRYPTION_SENTENCES = [
   [ENCRYPTION_ERROR, 'REASONSTARTUPKMIP', 'encryptionStartupKmipConsequence'],
   [ENCRYPTION_ERROR, 'REASONSTARTUPRESTART', 'encryptionStartupRestart'],
   [ENCRYPTION_ERROR, 'REASONSTARTUPJOURNAL', 'encryptionStartupJournalConsequence'],
+  // Story 18.8: the sign-out consequence, which the form states before Save and the card renders.
+  [WEBAUTH_ERROR, 'REASONSIGNOUT', 'authOptionsSignOutConsequence'],
+  // Story 18.25: the consequence of an SSL/TLS change to the superserver the web gateway connects through, which
+  // the form states before Save and the card renders.
+  [SUPERSERVER_ERROR, 'REASONSERVESOCUPILOT', 'superserverServesConsequence'],
 ];
 
 test("Story 18.23: the audit log's encryption change is one consequence sentence on both surfaces, published in Fixed strings", () => {

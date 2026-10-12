@@ -18,7 +18,7 @@ import { savedLine } from '../../core/read-back';
 import { STRINGS } from '../../core/strings';
 import { STATE_CONFLICT_CODE, type Violation } from '../../core/violations';
 import { Dialog } from '../../shell/dialog';
-import { PASSWORD_FIELD, ROLES_FIELD, type RoleOption, UserCreateForm } from './user-create-form.store';
+import { COPY_FROM_FIELD, PASSWORD_FIELD, ROLES_FIELD, type RoleOption, UserCreateForm } from './user-create-form.store';
 import { UserEditor } from './user-editor.store';
 
 /** The list this form is reached from, which Cancel and the leave confirmation return to. */
@@ -106,6 +106,27 @@ interface FieldView {
       </div>
 
       <div class="ocu-field">
+        <label class="ocu-field-label" [attr.for]="copyFromField.id">{{ STRINGS.userCopyFrom }}</label>
+        <div class="ocu-field-control">
+          <select
+            class="ocu-field-input"
+            [id]="copyFromField.id"
+            [attr.aria-invalid]="copyFromField.invalid"
+            [attr.aria-describedby]="copyFromDescribedBy"
+            (change)="onCopyFrom($event)"
+          >
+            <option value="" [selected]="copyFromValue === ''"></option>
+            @for (user of userOptions; track user) {
+              <option [value]="user" [selected]="user === copyFromValue">{{ user }}</option>
+            }
+          </select>
+        </div>
+        @if (copyFromField.invalid) {
+          <p class="ocu-form-error" [id]="copyFromField.id + '-reason'">{{ copyFromField.reason }}</p>
+        }
+      </div>
+
+      <div class="ocu-field">
         <label class="ocu-field-label" [attr.for]="fullNameField.id">{{ STRINGS.userColumnFullName }}</label>
         <div class="ocu-field-control">
           <input
@@ -158,86 +179,102 @@ interface FieldView {
         }
       </div>
 
-      <div class="ocu-field">
-        <label class="ocu-field-label" [attr.for]="expiryField.id">{{ STRINGS.userFormExpiry }}</label>
-        <div class="ocu-field-control">
-          <input
-            class="ocu-field-input"
-            type="date"
-            [id]="expiryField.id"
-            [value]="value('ExpirationDate')"
-            [attr.aria-invalid]="expiryField.invalid"
-            [attr.aria-describedby]="expiryField.describedBy"
-            (input)="onText('ExpirationDate', $event)"
-            (blur)="onBlur('ExpirationDate')"
-          />
-        </div>
-        @if (expiryField.invalid) {
-          <p class="ocu-form-error" [id]="expiryField.id + '-reason'">{{ expiryField.reason }}</p>
-        }
-      </div>
-
-      <div class="ocu-field">
-        <label class="ocu-field-label" [attr.for]="namespaceField.id">{{ STRINGS.userFormNamespace }}</label>
-        <div class="ocu-field-control">
-          <input
-            class="ocu-field-input"
-            type="text"
-            [id]="namespaceField.id"
-            [value]="value('NameSpace')"
-            [attr.maxlength]="maxLength('NameSpace')"
-            [attr.aria-invalid]="namespaceField.invalid"
-            [attr.aria-describedby]="namespaceField.describedBy"
-            (input)="onText('NameSpace', $event)"
-            (blur)="onBlur('NameSpace')"
-          />
-        </div>
-        @if (namespaceField.invalid) {
-          <p class="ocu-form-error" [id]="namespaceField.id + '-reason'">{{ namespaceField.reason }}</p>
-        }
-      </div>
-
-      <div class="ocu-field">
-        <label class="ocu-field-label" [attr.for]="routineField.id">{{ STRINGS.userFormRoutine }}</label>
-        <div class="ocu-field-control">
-          <input
-            class="ocu-field-input"
-            type="text"
-            [id]="routineField.id"
-            [value]="value('Routine')"
-            [attr.maxlength]="maxLength('Routine')"
-            [attr.aria-invalid]="routineField.invalid"
-            [attr.aria-describedby]="routineField.describedBy"
-            (input)="onText('Routine', $event)"
-            (blur)="onBlur('Routine')"
-          />
-        </div>
-        @if (routineField.invalid) {
-          <p class="ocu-form-error" [id]="routineField.id + '-reason'">{{ routineField.reason }}</p>
-        }
-      </div>
-
-      <fieldset class="ocu-field ocu-form-authe" [attr.id]="rolesField.id" tabindex="-1">
-        <legend class="ocu-field-label">{{ STRINGS.userColumnRoles }}</legend>
-        @for (role of roleOptions; track role.name) {
-          <label class="ocu-field-checkbox">
+      @if (!copying) {
+        <div class="ocu-field">
+          <label class="ocu-field-label" [attr.for]="expiryField.id">{{ STRINGS.userFormExpiry }}</label>
+          <div class="ocu-field-control">
             <input
-              type="checkbox"
-              [id]="roleId(role.name)"
-              [checked]="roleChecked(role.name)"
-              [attr.aria-describedby]="role.privileged && privilegedChecked ? rolesEffectId : null"
-              (change)="onRole(role.name, $event)"
+              class="ocu-field-input"
+              type="date"
+              [id]="expiryField.id"
+              [value]="value('ExpirationDate')"
+              [attr.aria-invalid]="expiryField.invalid"
+              [attr.aria-describedby]="expiryField.describedBy"
+              (input)="onText('ExpirationDate', $event)"
+              (blur)="onBlur('ExpirationDate')"
             />
-            <span>{{ role.name }}</span>
-          </label>
-        }
-        @if (privilegedChecked) {
-          <p class="ocu-field-caption" [id]="rolesEffectId">{{ STRINGS.privilegedGrantEffect }}</p>
-        }
-        @if (rolesField.invalid) {
-          <p class="ocu-form-error" [id]="rolesField.id + '-reason'">{{ rolesField.reason }}</p>
-        }
-      </fieldset>
+          </div>
+          @if (expiryField.invalid) {
+            <p class="ocu-form-error" [id]="expiryField.id + '-reason'">{{ expiryField.reason }}</p>
+          }
+        </div>
+
+        <div class="ocu-field">
+          <label class="ocu-field-label" [attr.for]="namespaceField.id">{{ STRINGS.userFormNamespace }}</label>
+          <div class="ocu-field-control">
+            <input
+              class="ocu-field-input"
+              type="text"
+              [id]="namespaceField.id"
+              [value]="value('NameSpace')"
+              [attr.maxlength]="maxLength('NameSpace')"
+              [attr.aria-invalid]="namespaceField.invalid"
+              [attr.aria-describedby]="namespaceField.describedBy"
+              (input)="onText('NameSpace', $event)"
+              (blur)="onBlur('NameSpace')"
+            />
+          </div>
+          @if (namespaceField.invalid) {
+            <p class="ocu-form-error" [id]="namespaceField.id + '-reason'">{{ namespaceField.reason }}</p>
+          }
+        </div>
+
+        <div class="ocu-field">
+          <label class="ocu-field-label" [attr.for]="routineField.id">{{ STRINGS.userFormRoutine }}</label>
+          <div class="ocu-field-control">
+            <input
+              class="ocu-field-input"
+              type="text"
+              [id]="routineField.id"
+              [value]="value('Routine')"
+              [attr.maxlength]="maxLength('Routine')"
+              [attr.aria-invalid]="routineField.invalid"
+              [attr.aria-describedby]="routineField.describedBy"
+              (input)="onText('Routine', $event)"
+              (blur)="onBlur('Routine')"
+            />
+          </div>
+          @if (routineField.invalid) {
+            <p class="ocu-form-error" [id]="routineField.id + '-reason'">{{ routineField.reason }}</p>
+          }
+        </div>
+
+        <fieldset class="ocu-field ocu-form-authe" [attr.id]="rolesField.id" tabindex="-1">
+          <legend class="ocu-field-label">{{ STRINGS.userColumnRoles }}</legend>
+          @for (role of roleOptions; track role.name) {
+            <label class="ocu-field-checkbox">
+              <input
+                type="checkbox"
+                [id]="roleId(role.name)"
+                [checked]="roleChecked(role.name)"
+                [attr.aria-describedby]="role.privileged && privilegedChecked ? rolesEffectId : null"
+                (change)="onRole(role.name, $event)"
+              />
+              <span>{{ role.name }}</span>
+            </label>
+          }
+          @if (privilegedChecked) {
+            <p class="ocu-field-caption" [id]="rolesEffectId">{{ STRINGS.privilegedGrantEffect }}</p>
+          }
+          @if (rolesField.invalid) {
+            <p class="ocu-form-error" [id]="rolesField.id + '-reason'">{{ rolesField.reason }}</p>
+          }
+        </fieldset>
+      } @else {
+        <fieldset class="ocu-field ocu-form-authe">
+          <legend class="ocu-field-label">{{ STRINGS.userColumnRoles }}</legend>
+          @for (role of copiedRoles; track role) {
+            <span class="ocu-form-role-name">{{ role }}</span>
+          }
+          <p class="ocu-field-label">{{ STRINGS.userCopyEscalationRoles }}</p>
+          @for (role of copiedEscalationRoles; track role) {
+            <span class="ocu-form-role-name">{{ role }}</span>
+          }
+          @if (copiedPrivileged) {
+            <p class="ocu-field-caption" [id]="copyEffectId">{{ STRINGS.userCopyPrivilegedEffect }}</p>
+          }
+        </fieldset>
+      }
     </div>
 
     <div class="ocu-form-bar">
@@ -455,7 +492,56 @@ export class UserCreateFormPage {
     return this.fieldView(ROLES_FIELD);
   }
 
+  protected get copying(): boolean {
+    this.generation();
+    return this.store.copyFrom() !== '';
+  }
+
+  protected get copyFromValue(): string {
+    this.generation();
+    return this.store.copyFrom();
+  }
+
+  protected get userOptions(): readonly string[] {
+    this.generation();
+    return this.store.users();
+  }
+
+  protected get copiedRoles(): readonly string[] {
+    this.generation();
+    return this.store.source()?.roles ?? [];
+  }
+
+  protected get copiedEscalationRoles(): readonly string[] {
+    this.generation();
+    return this.store.source()?.escalationRoles ?? [];
+  }
+
+  protected get copiedPrivileged(): boolean {
+    this.generation();
+    return this.store.source()?.privileged === true;
+  }
+
+  protected get copyEffectId(): string {
+    return `${this.controlId(COPY_FROM_FIELD)}-effect`;
+  }
+
+  protected get copyFromField(): FieldView {
+    return this.fieldView(COPY_FROM_FIELD);
+  }
+
+  /** The select's description: its refusal, and the consequence line while a privileged source is chosen. */
+  protected get copyFromDescribedBy(): string | null {
+    const described = [this.copyFromField.describedBy, this.copiedPrivileged ? this.copyEffectId : null].filter((id): id is string => id !== null);
+    return described.length === 0 ? null : described.join(' ');
+  }
+
   // --- intents ---------------------------------------------------------------------------------
+
+  protected onCopyFrom(event: Event): void {
+    const target = event.target;
+    if (target instanceof HTMLSelectElement) void this.store.setCopyFrom(target.value);
+  }
 
   protected onText(field: string, event: Event): void {
     const target = event.target;

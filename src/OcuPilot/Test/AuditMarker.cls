@@ -302,6 +302,7 @@ Method TestAConfirmedWriteIsMarked()
 
     Do $$$AssertEquals(..WriteRow(tTurnKey, .tRow), 1, "one write-kind ledger row on the proposal's turn key")
     Do $$$AssertEquals($Get(tRow("Status")), "ok", "finalized ok")
+    Do $$$AssertEquals($Get(tRow("Code")), "", "a finished write carries no code")
     Do $$$AssertEquals($Get(tRow("Target")), ..Reference(), "against the canonical reference")
     Do $$$AssertEquals($Get(tRow("PairsSense")), $ClassMethod(..#LEDGER, "SenseChecked"), "recording a requirement the confirm checked")
     Do $$$AssertEquals($Get(tRow("AuditMarked")), $Parameter(..#STORE, "MARKEDYES"), "and that the marker landed")

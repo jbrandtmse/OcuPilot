@@ -447,6 +447,101 @@ ClassMethod Sweep(pTags As %List) As %String
     Quit tLeft
 }
 
+/// <p>The high-water mark of the one extent that holds every conversation, entry, turn, step and
+/// ledger row (<code>^OcuPilot.Kernel.State.BaseD</code>): a row created after this call has a
+/// larger id. <method>SweepSince</method> takes it back.</p>
+ClassMethod StateMark() As %Integer
+{
+    Quit +$Get(^OcuPilot.Kernel.State.BaseD)
+}
+
+/// <p>Remove the conversations, turns and ledger rows created after <var>pMark</var>
+/// (<method>StateMark</method>), those of <var>pUser</var> alone or of every user when
+/// <var>pUser</var> is <code>""</code>, and answer what was left, <code>""</code> when nothing
+/// was. Each such user's running turns are asked to abandon first, and each is given up to ten
+/// seconds for its job to end. A turn goes with its steps, navigation, proposals and ledger rows, a
+/// conversation with its entries, and the ledger rows no turn owned by their own key.</p>
+ClassMethod SweepSince(pMark As %Integer, pUser As %String = "") As %String
+{
+    Set tLeft = ""
+    Set tUserClause = $Select(pUser = "": "", 1: " AND %EXACT(UserName) = ?")
+    Kill tUsers
+    Set tRS = ..RowsSince("SELECT DISTINCT UserName FROM OcuPilot_Kernel_State.Turn WHERE ID > ?" _ tUserClause, pMark, pUser)
+    If tRS.%SQLCODE < 0 Quit " turns (SQLCODE=" _ tRS.%SQLCODE _ ")"
+    While tRS.%Next() {
+        Set tUsers(tRS.%GetData(1)) = ""
+    }
+    Set tUser = ""
+    For {
+        Set tUser = $Order(tUsers(tUser))
+        If tUser = "" Quit
+        Do ##class(OcuPilot.Kernel.State.Turn).GuardedAbandonForUser(tUser, .tCount)
+    }
+    Kill tTurns
+    Set tRS = ..RowsSince("SELECT TurnKey FROM OcuPilot_Kernel_State.Turn WHERE ID > ?" _ tUserClause _ " ORDER BY ID", pMark, pUser)
+    If tRS.%SQLCODE < 0 Quit " turns (SQLCODE=" _ tRS.%SQLCODE _ ")"
+    While tRS.%Next() {
+        Set tTurns($Increment(tTurns)) = tRS.%GetData(1)
+    }
+    For tI = 1:1:$Get(tTurns) {
+        Set tPid = ##class(OcuPilot.Test.TurnFixture).Field(tTurns(tI), "JobId")
+        If tPid = "" Continue
+        Set tDeadline = $ZHorolog + 10
+        While $Data(^$JOB(tPid)) && '##class(OcuPilot.Kernel.State.Turn).IsTerminal(##class(OcuPilot.Test.TurnFixture).Field(tTurns(tI), "State")) && ($ZHorolog < tDeadline) {
+            Hang 0.25
+        }
+        If $Data(^$JOB(tPid)) && '##class(OcuPilot.Kernel.State.Turn).IsTerminal(##class(OcuPilot.Test.TurnFixture).Field(tTurns(tI), "State")) Set tLeft = tLeft _ " job " _ tPid
+    }
+    For tI = 1:1:$Get(tTurns) {
+        If $$$ISERR(##class(OcuPilot.Kernel.State.Ledger).GuardedDeleteForTurn(tTurns(tI))) Set tLeft = tLeft _ " ledger of " _ tTurns(tI)
+        If $$$ISERR(##class(OcuPilot.Kernel.State.Turn).GuardedDelete(tTurns(tI))) Set tLeft = tLeft _ " turn " _ tTurns(tI)
+    }
+    Kill tConvos
+    Set tRS = ..RowsSince("SELECT ConvKey FROM OcuPilot_Kernel_State.Convo WHERE ID > ?" _ tUserClause _ " ORDER BY ID", pMark, pUser)
+    If tRS.%SQLCODE < 0 Quit tLeft _ " conversations (SQLCODE=" _ tRS.%SQLCODE _ ")"
+    While tRS.%Next() {
+        Set tConvos($Increment(tConvos)) = tRS.%GetData(1)
+    }
+    For tI = 1:1:$Get(tConvos) {
+        If $$$ISERR(##class(OcuPilot.Kernel.State.Convo).GuardedDelete(tConvos(tI))) Set tLeft = tLeft _ " conversation " _ tConvos(tI)
+    }
+    Kill tOwners
+    Set tRS = ..RowsSince("SELECT DISTINCT TurnKey FROM OcuPilot_Kernel_State.Ledger WHERE ID > ?" _ tUserClause, pMark, pUser)
+    If tRS.%SQLCODE < 0 Quit tLeft _ " ledger (SQLCODE=" _ tRS.%SQLCODE _ ")"
+    While tRS.%Next() {
+        If tRS.%GetData(1) '= "" Set tOwners(tRS.%GetData(1)) = ""
+    }
+    Set tOwner = ""
+    For {
+        Set tOwner = $Order(tOwners(tOwner))
+        If tOwner = "" Quit
+        If $$$ISERR(##class(OcuPilot.Kernel.State.Ledger).GuardedDeleteForTurn(tOwner)) Set tLeft = tLeft _ " ledger of " _ tOwner
+    }
+    For tTable = "Turn", "Convo", "Ledger" {
+        Set tRS = ..RowsSince("SELECT COUNT(*) FROM OcuPilot_Kernel_State." _ tTable _ " WHERE ID > ?" _ tUserClause, pMark, pUser)
+        If (tRS.%SQLCODE < 0) || 'tRS.%Next() {
+            Set tLeft = tLeft _ " " _ tTable _ " rows unread"
+        } ElseIf +tRS.%GetData(1) {
+            Set tLeft = tLeft _ " " _ tTable _ " rows (" _ tRS.%GetData(1) _ ")"
+        }
+    }
+    Quit tLeft
+}
+
+/// <p>Run <var>pSql</var>, whose first parameter marker is the mark and whose second, present only
+/// when <var>pUser</var> is not <code>""</code>, is the user.</p>
+ClassMethod RowsSince(pSql As %String, pMark As %Integer, pUser As %String) As %SQL.StatementResult [ Private ]
+{
+    Kill tArgs
+    Set tArgs = 1
+    Set tArgs(1) = pMark
+    If pUser '= "" {
+        Set tArgs = 2
+        Set tArgs(2) = pUser
+    }
+    Quit ##class(%SQL.Statement).%ExecDirect(, pSql, tArgs...)
+}
+
 /// <p>Remove every conversation of <parameter>USERA</parameter> and <parameter>USERB</parameter>
 /// with its entries (Story 4.5), and answer <code>" a conversation lock"</code> when any job still
 /// held one of their rows' locks, else <code>""</code>. The lock is read on the

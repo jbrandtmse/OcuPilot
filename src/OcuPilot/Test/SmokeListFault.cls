@@ -77,8 +77,28 @@ ClassMethod DisarmErrors()
     Kill ^||OcuPilotSmokeErrors
 }
 
+/// <p>Arm the navigation map's answer for this process: <var>pStatus</var> and <var>pBody</var>.
+/// Separate from <method>Arm</method> because the navigation map is a shell read, not a screen read.</p>
+ClassMethod ArmNavigation(pStatus As %Integer, pBody As %String = "")
+{
+    Kill ^||OcuPilotSmokeNavigation
+    Set ^||OcuPilotSmokeNavigation("status") = pStatus
+    Set ^||OcuPilotSmokeNavigation("body") = pBody
+}
+
+/// <p>Remove the armed navigation answer.</p>
+ClassMethod DisarmNavigation()
+{
+    Kill ^||OcuPilotSmokeNavigation
+}
+
 ClassMethod Request(pMethod As %String, pPath As %String, pAuthorization As %String, pBody As %String, Output pStatus As %Integer, Output pText As %String) As %Status [ Private ]
 {
+    If $Data(^||OcuPilotSmokeNavigation("status")) && ($Piece(pPath, "/", *) = "navigation") {
+        Set pStatus = ^||OcuPilotSmokeNavigation("status")
+        Set pText = ^||OcuPilotSmokeNavigation("body")
+        Quit $$$OK
+    }
     If pPath [ "/screens/" {
         Set ^||OcuPilotSmokePath($Increment(^||OcuPilotSmokePath)) = pPath
     }

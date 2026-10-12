@@ -123,6 +123,16 @@ Parameter VENDORSECRETS = "Create OAuth2 Server Definition=InitialAccessToken:re
 /// <code>&lt;source&gt;/&lt;type&gt;/&lt;name&gt;</code>.</p>
 Parameter VENDORSECRETSOURCE = "%System/%Security/OAuth2";
 
+/// <p>The secrets IRIS writes in plain text into its own system change rows, declared in
+/// <parameter>VENDORSECRETS</parameter>'s grammar under <parameter>VENDORSYSTEMSOURCE</parameter> (AD-35 as
+/// amended 2026-10-07, Story 18.8). Measured on <code>ocupilot-ci</code>: an SMTP password write
+/// (<code>Security.WebAuth</code> <code>CHANGESMTPPWD</code>) puts the new password in clear on the
+/// <code>New value</code> line under <code>SMTP Password modified:</code> of a "Modify System" row.</p>
+Parameter VENDORSYSTEMSECRETS = "Modify System=SMTP Password";
+
+/// <p>The vendor event every <parameter>VENDORSYSTEMSECRETS</parameter> entry is a row of.</p>
+Parameter VENDORSYSTEMSOURCE = "%System/%Security/SystemChange";
+
 /// <p>What a masked value reads, the vendor's own mask.</p>
 Parameter MASK = "*****";
 
@@ -139,8 +149,8 @@ Parameter VENDORSETTINGSECRETS = "Create Resource Server=Authenticator;Modify Re
 /// <p>The vendor event every <parameter>VENDORSETTINGSECRETS</parameter> entry is a row of.</p>
 Parameter VENDORSETTINGSOURCE = "%System/%Security/OAuth2ResourceServerChange";
 
-/// <p>Mask, in place, the declared secrets (<parameter>VENDORSECRETS</parameter> and
-/// <parameter>VENDORSETTINGSECRETS</parameter>) in the
+/// <p>Mask, in place, the declared secrets (<parameter>VENDORSECRETS</parameter>,
+/// <parameter>VENDORSYSTEMSECRETS</parameter> and <parameter>VENDORSETTINGSECRETS</parameter>) in the
 /// <code>EventData</code> of every row of <var>pRows</var>, an audit record read's rows.</p>
 /// <p><b>Caller contract:</b> <class>OcuPilot.Screen.Read</class> calls it on every
 /// <parameter>RECORDENDPOINT</parameter> answer before it projects a row, so the Logs audit screen and
@@ -161,17 +171,18 @@ ClassMethod MaskVendorSecrets(pRows As %DynamicArray)
     }
 }
 
-/// <p>The keys <parameter>VENDORSECRETS</parameter> declares for <var>pRow</var>'s event, as a
-/// <class>%List</class>, or <code>""</code>. The longest declared event its <code>Description</code>
-/// begins with, as whole words, wins.</p>
+/// <p>The keys <parameter>VENDORSECRETS</parameter>, or <parameter>VENDORSYSTEMSECRETS</parameter> for a
+/// system change row, declares for <var>pRow</var>'s event, as a <class>%List</class>, or <code>""</code>.
+/// The longest declared event its <code>Description</code> begins with, as whole words, wins.</p>
 ClassMethod SecretKeys(pRow As %DynamicObject) As %List
 {
     Set tSource = pRow.%Get("EventSource") _ "/" _ pRow.%Get("EventType") _ "/" _ pRow.%Get("Event")
-    If tSource '= ..#VENDORSECRETSOURCE Quit ""
+    Set tDeclared = $Select(tSource = ..#VENDORSECRETSOURCE: ..#VENDORSECRETS, tSource = ..#VENDORSYSTEMSOURCE: ..#VENDORSYSTEMSECRETS, 1: "")
+    If tDeclared = "" Quit ""
     Set tDescription = pRow.%Get("Description")
     Set (tKeys, tMatched) = ""
-    For tI = 1:1:$Length(..#VENDORSECRETS, ";") {
-        Set tEntry = $Piece(..#VENDORSECRETS, ";", tI)
+    For tI = 1:1:$Length(tDeclared, ";") {
+        Set tEntry = $Piece(tDeclared, ";", tI)
         Set tEvent = $Piece(tEntry, "=", 1)
         If (tDescription '= tEvent) && ($Extract(tDescription, 1, $Length(tEvent) + 1) '= (tEvent _ " ")) Continue
         If $Length(tEvent) <= $Length(tMatched) Continue

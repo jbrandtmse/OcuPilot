@@ -470,6 +470,7 @@ test('a compare declaration is emitted onto its rows, and every malformed one is
     [{ Nothing: 'words' }, /compare path Nothing is not a top-level row/],
     [{ Description: 'unordered' }, /compare path Description is a literal and cannot be unordered/],
     [{ Resources: 'members' }, /compare path Resources is a array and cannot be members/],
+    [{ GrantedRoles: 'caller' }, /compare path GrantedRoles is a array and cannot be caller/],
   ];
   for (const [compare, pattern] of refusals) {
     const refused = generateFrom({ lists, entries: entry(compare) });
@@ -497,6 +498,7 @@ test('a compare declaration is emitted onto its rows, and every malformed one is
   assert.deepEqual(declared, {
     'permissions.users.update': { Roles: 'unordered' },
     'permissions.users.create': { Roles: 'unordered' },
+    'permissions.users.copy': { Roles: 'unordered' },
     'permissions.roles.create': roles,
     'permissions.roles.update': roles,
     'permissions.resources.create': { PublicPermission: 'letters' },
@@ -513,7 +515,7 @@ test('a compare declaration is emitted onto its rows, and every malformed one is
     'security.oauthserver.update': members,
     'security.oauthserverclients.create': members,
     'security.oauthserverclients.update': members,
-    'tasks.schedule.create': { Settings: 'written' },
+    'tasks.schedule.create': { Settings: 'written', RunAsUser: 'caller' },
     'tasks.schedule.update': { Settings: 'written' },
     // Story 16.14: the vendor stores the attributes to retrieve sorted, with duplicates dropped.
     'security.ldap.create': { LDAPAttributes: 'unordered' },

@@ -302,7 +302,10 @@ export class LocatorBar {
     const segments: LocatorSegment[] = [];
     // Suppressed when it would only repeat the screen's own name -- Home is both an area and
     // its own screen, and a locator that read "Home > Home" would be saying it twice.
-    if (areaLabel !== '' && areaLabel !== screenLabel) {
+    // Nor drawn for an area the rail no longer offers: a category that does not apply in this
+    // namespace (AD-44) is named nowhere.
+    const offered = this.navigation.areas().some((candidate) => candidate.key === screen.area);
+    if (areaLabel !== '' && areaLabel !== screenLabel && offered) {
       // The area's own verdict, the same one the rail refuses on (DW-143). Not the first built
       // screen's: the rail gates the area, and a locator that consulted a different verdict
       // from the rail item pointing at the same place would disagree with it on screen.
@@ -458,7 +461,8 @@ export class LocatorBar {
   }
 
   /**
-   * The instance's own sentence for a refused preference write, `''` for none (DW-1326).
+   * The instance's own sentence for a refused preference write, `''` for none (DW-1326): this bar's
+   * own pin, then the agent picker's choice, then a write nobody is watching. Home announces its own.
    *
    * Assertive rather than polite, because it says the pin the user asked for did not happen
    * (EXPERIENCE.md "Status messages (WCAG 4.1.3)"); the text is the server's (AD-39) and this
@@ -467,7 +471,9 @@ export class LocatorBar {
    */
   protected get favoriteRefusal(): string {
     this.generation();
-    return this.preferences.fault();
+    return (
+      this.preferences.fault('favorite') || this.preferences.fault('agent-pick') || this.preferences.fault('background')
+    );
   }
 
   /**
@@ -505,10 +511,10 @@ export class LocatorBar {
     // Both regions cleared first, so a second toggle has a change to announce rather than
     // re-writing a sentence already standing, which a live region does not read out again.
     this.announcement.set('');
-    this.preferences.clearFault();
+    this.preferences.clearFault('favorite');
     const pending = pinned
-      ? this.preferences.remove(FAVORITE_KIND, route)
-      : this.preferences.add(FAVORITE_KIND, route);
+      ? this.preferences.remove(FAVORITE_KIND, route, 'favorite')
+      : this.preferences.add(FAVORITE_KIND, route, 'favorite');
     void pending.then(() => {
       if (this.preferences.isFavorite(route) === pinned) return;
       this.announcement.set(pinned ? STRINGS.favoritesRemoved : STRINGS.favoritesAdded);

@@ -125,6 +125,14 @@ Parameter ASYNCLOCATION = "async-result?id=";
 /// 18.7, read on this build). It is synchronous: the endpoint defines no <code>ShouldRunAsync</code>.</p>
 Parameter TYPESUFFIXES = "GET,LIST,INFO,CERTINFO,UPCOMING,HISTORY,VOLUMELIST,OWNERLIST,ACTIVITY,DATAELEMENTLIST";
 
+/// <p>The privileged routine endpoint, whose calls <method>PrivilegedRoutineGuard</method> checks against the
+/// target application's type.</p>
+Parameter PRIVROUTINEENDPOINT = "Security.PrivilegedRoutine";
+
+/// <p>The web application endpoint, whose <code>PUT</code> and <code>DELETE</code> calls
+/// <method>PrivilegedRoutineGuard</method> refuses when they name a privileged routine application.</p>
+Parameter WEBAPPENDPOINT = "WebApp.App";
+
 /// <p>The <b>mutating</b> <code>&lt;endpoint&gt;/&lt;type&gt;</code> pairs <method>Invoke</method>
 /// accepts, each type resolved through that endpoint's own <code>TYPE&lt;suffix&gt;</code>
 /// parameter exactly as <parameter>TYPESUFFIXES</parameter> is. Listed apart from the reads
@@ -169,8 +177,14 @@ Parameter TYPESUFFIXES = "GET,LIST,INFO,CERTINFO,UPCOMING,HISTORY,VOLUMELIST,OWN
 /// <code>NeedsRequestBody()</code> is <code>..IsTypePut()</code> so the type reads no body, and its
 /// <code>ValidateQueryParams</code> requires the <code>name</code> query parameter -- so it is
 /// listed in <parameter>BODYLESSTYPES</parameter> under its own endpoint too. The
-/// <code>:159-163</code> note that <code>DELETE</code> is deliberately absent is scoped to
+/// <code>Process/DELETE</code> note below, that <code>DELETE</code> is deliberately absent, is scoped to
 /// <code>Process</code>, whose delete is its terminate.</p>
+/// <p>The two <code>WebApp.PctClassAccess</code> pairs are issued through
+/// <class>OcuPilot.Port.PctAccessPort</class>, which splits an entry's id into the <code>name</code>,
+/// <code>allowType</code> and <code>class</code> query parameters. <code>PUT</code> reads a body carrying
+/// <code>AllowAccess</code> and answered 201 for a new entry; <code>DELETE</code> reads no body (it is in
+/// <parameter>BODYLESSTYPES</parameter>) and answered 200. Both raise the vendor's
+/// <code>ApplicationChange</code> audit event. Read on this build.</p>
 /// <p><code>RESUME</code> is <code>Task.CRUD</code>'s bodyless resume and <code>Process</code>'s
 /// own (AD-51, Stories 5.11 and 5.12), and <code>SUSPEND</code> is <code>Process</code>'s
 /// suspend. Each vendor <code>NeedsRequestBody()</code> excludes them, each
@@ -452,7 +466,30 @@ Parameter TYPESUFFIXES = "GET,LIST,INFO,CERTINFO,UPCOMING,HISTORY,VOLUMELIST,OWN
 /// <code>file</code> query; the two <code>DELETE</code>s read no body and take <code>admin</code> or
 /// <code>key</code>. <code>File/ACTIVATE</code>, <code>Key/DEACTIVATE</code> and <code>Settings/PUT</code>
 /// are admitted for Stories 18.22 and 18.23, which declare their tools; no shipped tool issues them.</p>
-Parameter MUTATINGTYPES = "WebApp.App/PUT,Security.User/PUT,Security.Audit.Enabled/PUT,Task.CRUD/RESUME,Process/SUSPEND,Process/RESUME,Security.User/POST,Security.Role/PUT,Security.Role/DELETE,Security.Resource/PUT,Security.Resource/DELETE,Security.X509Credential/POST,Security.X509Credential/PUT,Security.X509Credential/DELETE,Wallet.Secret/PUT,Device.Standard/PUT,Device.Standard/DELETE,WebApp.App/DELETE,Security.OAuth2.Client.ClientConfiguration/DELETE,Security.OAuth2.ServerClients/DELETE,Security.User/DELETE,Security.User/CHANGEPWD,Task.CRUD/RUN,Task.CRUD/SUSPEND,Task.CRUD/DELETE,Process/TERMINATE,Security.Audit.Event/PUT,Security.Audit.Event/DELETE,Security.Audit.Event/CLEARCOUNT,Security.SSLConfig/PUT,Security.SSLConfig/DELETE,Wallet.Secret/DELETE,Task.CRUD/POST,Task.CRUD/PUT,Security.Service/PUT,Security.LDAP/PUT,Security.OAuth2.Server/REVOKE,Security.Audit.Record/COPY,Security.Audit.Record/PURGE,Security.OAuth2.Client.ServerDefinition/POST,Security.OAuth2.Client.ServerDefinition/PUT,Security.OAuth2.Client.ServerDefinition/DELETE,Security.OAuth2.Client.ServerDefinition/TOKEN,Security.OAuth2.Client.ServerDefinition/REFRESHJWKS,Security.OAuth2.Client.ClientConfiguration/PUT,Security.OAuth2.Client.ClientConfiguration/CHANGESECRET,Security.OAuth2.Client.ClientConfiguration/ROTATEKEYS,Security.OAuth2.Client.ClientConfiguration/REGISTERCLIENT,Security.OAuth2.ResourceServer/PUT,Security.OAuth2.ResourceServer/CHANGESECRET,Security.OAuth2.ResourceServer/DELETE,Security.OAuth2.ResourceServer/ADDMAPPING,Security.OAuth2.ResourceServer/REMOVEMAPPING,Security.OAuth2.ResourceServerMapping/PUT,Security.OAuth2.ResourceServerMapping/DELETE,Security.OAuth2.Server/PUT,Security.OAuth2.Server/DELETE,Security.OAuth2.Server/CHANGEPWD,Security.OAuth2.Server/ROTATEKEYS,Security.OAuth2.ServerClients/POST,Security.OAuth2.ServerClients/PUT,Security.OAuth2.ServerClients/SECRET,Security.OAuth2.ServerClients/REFRESHJWKS,Namespace.Namespace/PUT,Namespace.Namespace/DELETE,WebSession/DELETE,AsyncResult/CANCEL,AsyncResult/PAUSE,AsyncResult/RESUME,BackgroundTask/CANCEL,BackgroundTask/PAUSE,BackgroundTask/RESUME,Namespace.GlobalMappings/PUT,Namespace.GlobalMappings/DELETE,Namespace.RoutineMappings/PUT,Namespace.RoutineMappings/DELETE,Namespace.PackageMappings/PUT,Namespace.PackageMappings/DELETE,Namespace.Namespace/MAPPINGS,Process/BROADCAST,Database.SysCRUD/POST,Database.SysCRUD/PUT,Database.SysCRUD/DELETE,Database.ConfigCRUD/PUT,Database.ConfigCRUD/DELETE,Database.Actions/MOUNT,Database.Actions/DISMOUNT,Database.Actions/TRUNCATE,Database.Actions/COMPACT,Database.Actions/DEFRAGMENT,Database.Actions/EXPANDVOL,Database.Actions/MODIFYSIZE,Database.Actions/INTEGRITYCHECK,TaskTransfer/EXPORT,TaskTransfer/IMPORT,LanguageServer/START,LanguageServer/STOP,LanguageServer/PUT,LanguageServer/DELETE,Task.Manager/SUSPEND,Task.Manager/RESUME,Task.Manager/RUN,Lock/REMOVE,Lock/REMOVEOWNER,Lock/DELETE,Security.LDAP/CHANGEPWD,Security.LDAP/DELETE,Namespace.Namespace/INTEROP,Journal.Settings/SWITCHFILE,Journal.Settings/SWITCHDIR,Journal.File/INTEGRITYCHECK,Journal.Settings/PUT,License.Key/PUT,License.Server/PUT,License.Server/DELETE,ECP.DataServer/PUT,ECP.DataServer/DELETE,ECP.DataServer/SERVERACTION,ECP.Settings/PUT,ECP.AppServerSSLConnection/AUTHORIZE,ECP.AppServerSSLConnection/REJECT,ECP.AppServerSSLConnection/DELETE,Security.Encryption.File/POST,Security.Encryption.File/ACTIVATE,Security.Encryption.Key/DEACTIVATE,Security.Encryption.AdminInFile/POST,Security.Encryption.AdminInFile/DELETE,Security.Encryption.KeyInFile/POST,Security.Encryption.KeyInFile/DELETE,Security.Encryption.Settings/PUT";
+/// <p>The three <code>Security.MFT</code> pairs are Story 18.26's, issued through
+/// <class>OcuPilot.Port.MftPort</class>. Read on this build: <code>PUT</code> is an upsert that keeps a key its
+/// body omits and answers 201 on a create, which requires all five fields; <code>DELETE</code> reads no body and
+/// deletes the connection's OAuth 2.0 client configuration with it unless another connection names it;
+/// <code>REVOKE</code> reads no body and takes
+/// the connection as its <code>connection</code> query. All three need <code>%Admin_Secure</code>.</p>
+/// <p>The two <code>Security.SQLPrivilege.Standard</code> pairs are Story 18.9's, issued through
+/// <class>OcuPilot.Port.SqlPrivilegePort</class>. Both read no body: <code>GRANT</code> takes
+/// <code>namespace</code>, <code>grantee</code>, <code>object</code>, <code>action</code>, <code>type</code>
+/// and an optional <code>withGrant</code>, and <code>REVOKE</code> the same with <code>cascade</code> and
+/// <code>asGrantor</code>. Both need <code>%Admin_Secure</code>.</p>
+/// <p>The four <code>Security.SQLPrivilege.Column</code> and <code>Security.SQLPrivilege.Admin</code> pairs are
+/// Story 18.28's, issued through the same port. They read no body either: a column <code>GRANT</code> takes the
+/// standard query and a <code>column</code>, its <code>REVOKE</code> an <code>asGrantor</code>, and an admin
+/// <code>GRANT</code> or <code>REVOKE</code> a <code>privilege</code> in place of the object, type and action.</p>
+/// <p>The two <code>DocDB</code> pairs are Story 18.30's, issued through <class>OcuPilot.Port.DocDbAppPort</class>.
+/// <code>PUT</code> is an upsert that keeps a key its body omits and stores the name exactly as sent; <code>DELETE</code>
+/// reads no body. Both address a record by the <code>name</code> and <code>namespace</code> queries and need
+/// <code>%Admin_Secure</code>.</p>
+/// <p>The two <code>Security.PrivilegedRoutine</code> pairs are Story 18.31's. <code>PUT</code> is an upsert that
+/// empties the routines when its body omits them; <code>DELETE</code> reads no body. Both address an application by the
+/// <code>name</code> query and need <code>%Admin_Secure</code>, and <method>PrivilegedRoutineGuard</method> checks the
+/// application's type before either reaches the vendor.</p>
+Parameter MUTATINGTYPES = "WebApp.App/PUT,WebApp.PctClassAccess/PUT,WebApp.PctClassAccess/DELETE,Security.User/PUT,Security.Audit.Enabled/PUT,Task.CRUD/RESUME,Process/SUSPEND,Process/RESUME,Security.User/POST,Security.Role/PUT,Security.Role/DELETE,Security.Resource/PUT,Security.Resource/DELETE,Security.X509Credential/POST,Security.X509Credential/PUT,Security.X509Credential/DELETE,Wallet.Secret/PUT,Device.Standard/PUT,Device.Standard/DELETE,WebApp.App/DELETE,Security.OAuth2.Client.ClientConfiguration/DELETE,Security.OAuth2.ServerClients/DELETE,Security.User/DELETE,Security.User/CHANGEPWD,Security.User/COPY,Task.CRUD/RUN,Task.CRUD/SUSPEND,Task.CRUD/DELETE,Process/TERMINATE,Security.Audit.Event/PUT,Security.Audit.Event/DELETE,Security.Audit.Event/CLEARCOUNT,Security.SSLConfig/PUT,Security.SSLConfig/DELETE,Wallet.Secret/DELETE,Task.CRUD/POST,Task.CRUD/PUT,Security.Service/PUT,Security.LDAP/PUT,Security.OAuth2.Server/REVOKE,Security.Audit.Record/COPY,Security.Audit.Record/PURGE,Security.OAuth2.Client.ServerDefinition/POST,Security.OAuth2.Client.ServerDefinition/PUT,Security.OAuth2.Client.ServerDefinition/DELETE,Security.OAuth2.Client.ServerDefinition/TOKEN,Security.OAuth2.Client.ServerDefinition/REFRESHJWKS,Security.OAuth2.Client.ClientConfiguration/PUT,Security.OAuth2.Client.ClientConfiguration/CHANGESECRET,Security.OAuth2.Client.ClientConfiguration/ROTATEKEYS,Security.OAuth2.Client.ClientConfiguration/REGISTERCLIENT,Security.OAuth2.ResourceServer/PUT,Security.OAuth2.ResourceServer/CHANGESECRET,Security.OAuth2.ResourceServer/DELETE,Security.OAuth2.ResourceServer/ADDMAPPING,Security.OAuth2.ResourceServer/REMOVEMAPPING,Security.OAuth2.ResourceServerMapping/PUT,Security.OAuth2.ResourceServerMapping/DELETE,Security.OAuth2.Server/PUT,Security.OAuth2.Server/DELETE,Security.OAuth2.Server/CHANGEPWD,Security.OAuth2.Server/ROTATEKEYS,Security.OAuth2.ServerClients/POST,Security.OAuth2.ServerClients/PUT,Security.OAuth2.ServerClients/SECRET,Security.OAuth2.ServerClients/REFRESHJWKS,Namespace.Namespace/PUT,Namespace.Namespace/DELETE,WebSession/DELETE,AsyncResult/CANCEL,AsyncResult/PAUSE,AsyncResult/RESUME,BackgroundTask/CANCEL,BackgroundTask/PAUSE,BackgroundTask/RESUME,Namespace.GlobalMappings/PUT,Namespace.GlobalMappings/DELETE,Namespace.RoutineMappings/PUT,Namespace.RoutineMappings/DELETE,Namespace.PackageMappings/PUT,Namespace.PackageMappings/DELETE,Namespace.Namespace/MAPPINGS,Process/BROADCAST,Database.SysCRUD/POST,Database.SysCRUD/PUT,Database.SysCRUD/DELETE,Database.ConfigCRUD/PUT,Database.ConfigCRUD/DELETE,Database.Actions/MOUNT,Database.Actions/DISMOUNT,Database.Actions/TRUNCATE,Database.Actions/COMPACT,Database.Actions/DEFRAGMENT,Database.Actions/EXPANDVOL,Database.Actions/MODIFYSIZE,Database.Actions/INTEGRITYCHECK,TaskTransfer/EXPORT,TaskTransfer/IMPORT,LanguageServer/START,LanguageServer/STOP,LanguageServer/PUT,LanguageServer/DELETE,Task.Manager/SUSPEND,Task.Manager/RESUME,Task.Manager/RUN,Lock/REMOVE,Lock/REMOVEOWNER,Lock/DELETE,Security.LDAP/CHANGEPWD,Security.LDAP/DELETE,Namespace.Namespace/INTEROP,Journal.Settings/SWITCHFILE,Journal.Settings/SWITCHDIR,Journal.File/INTEGRITYCHECK,Journal.Settings/PUT,License.Key/PUT,License.Server/PUT,License.Server/DELETE,ECP.DataServer/PUT,ECP.DataServer/DELETE,ECP.DataServer/SERVERACTION,ECP.Settings/PUT,ECP.AppServerSSLConnection/AUTHORIZE,ECP.AppServerSSLConnection/REJECT,ECP.AppServerSSLConnection/DELETE,Security.Encryption.File/POST,Security.Encryption.File/ACTIVATE,Security.Encryption.Key/DEACTIVATE,Security.Encryption.AdminInFile/POST,Security.Encryption.AdminInFile/DELETE,Security.Encryption.KeyInFile/POST,Security.Encryption.KeyInFile/DELETE,Security.Encryption.Settings/PUT,Security.WebAuth/PUT,Security.WebAuth/CHANGESMTPPWD,Security.Superserver/PUT,Security.Superserver/DELETE,Security.MFT/PUT,Security.MFT/DELETE,Security.MFT/REVOKE,Security.SQLPrivilege.Standard/GRANT,Security.SQLPrivilege.Standard/REVOKE,Security.SQLPrivilege.Column/GRANT,Security.SQLPrivilege.Column/REVOKE,Security.SQLPrivilege.Admin/GRANT,Security.SQLPrivilege.Admin/REVOKE,DocDB/PUT,DocDB/DELETE,Security.PrivilegedRoutine/PUT,Security.PrivilegedRoutine/DELETE";
 
 /// <p>The <parameter>MUTATINGTYPES</parameter> entries the vendor declares need no request body,
 /// so <method>Invoke</method>'s object-body refusal does not apply to them (AD-51). Comma-separated
@@ -468,7 +505,7 @@ Parameter MUTATINGTYPES = "WebApp.App/PUT,Security.User/PUT,Security.Audit.Enabl
 /// about the endpoint that declares it: a suffix-only exemption would carry one endpoint's
 /// <code>NeedsRequestBody()</code> answer onto another endpoint's type of the same name, which is
 /// the silent success this refusal exists to prevent.</p>
-Parameter BODYLESSTYPES = "Task.CRUD/RESUME,Process/SUSPEND,Process/RESUME,Security.Role/DELETE,Security.Resource/DELETE,Security.X509Credential/DELETE,Device.Standard/DELETE,WebApp.App/DELETE,Security.OAuth2.Client.ClientConfiguration/DELETE,Security.OAuth2.ServerClients/DELETE,Security.User/DELETE,Task.CRUD/DELETE,Process/TERMINATE,Security.Audit.Event/DELETE,Security.SSLConfig/DELETE,Wallet.Secret/DELETE,Security.OAuth2.Server/REVOKE,Security.OAuth2.Client.ServerDefinition/DELETE,Security.OAuth2.Client.ClientConfiguration/ROTATEKEYS,Security.OAuth2.Client.ClientConfiguration/REGISTERCLIENT,Security.OAuth2.ResourceServer/DELETE,Security.OAuth2.ResourceServer/ADDMAPPING,Security.OAuth2.ResourceServer/REMOVEMAPPING,Security.OAuth2.ResourceServerMapping/DELETE,Security.OAuth2.Server/DELETE,Security.OAuth2.Server/ROTATEKEYS,Security.OAuth2.ServerClients/REFRESHJWKS,Namespace.Namespace/DELETE,WebSession/DELETE,AsyncResult/CANCEL,AsyncResult/PAUSE,AsyncResult/RESUME,BackgroundTask/CANCEL,BackgroundTask/PAUSE,BackgroundTask/RESUME,Namespace.GlobalMappings/DELETE,Namespace.RoutineMappings/DELETE,Namespace.PackageMappings/DELETE,Database.SysCRUD/DELETE,Database.ConfigCRUD/DELETE,Database.Actions/DISMOUNT,Database.Actions/DEFRAGMENT,LanguageServer/START,LanguageServer/STOP,LanguageServer/DELETE,Task.Manager/SUSPEND,Task.Manager/RESUME,Task.Manager/RUN,Lock/DELETE,Security.LDAP/DELETE,Namespace.Namespace/INTEROP,Journal.Settings/SWITCHFILE,Journal.Settings/SWITCHDIR,License.Server/DELETE,ECP.DataServer/DELETE,ECP.AppServerSSLConnection/AUTHORIZE,ECP.AppServerSSLConnection/REJECT,ECP.AppServerSSLConnection/DELETE,Security.Encryption.AdminInFile/DELETE,Security.Encryption.KeyInFile/DELETE";
+Parameter BODYLESSTYPES = "WebApp.PctClassAccess/DELETE,Task.CRUD/RESUME,Process/SUSPEND,Process/RESUME,Security.Role/DELETE,Security.Resource/DELETE,Security.X509Credential/DELETE,Device.Standard/DELETE,WebApp.App/DELETE,Security.OAuth2.Client.ClientConfiguration/DELETE,Security.OAuth2.ServerClients/DELETE,Security.User/DELETE,Task.CRUD/DELETE,Process/TERMINATE,Security.Audit.Event/DELETE,Security.SSLConfig/DELETE,Wallet.Secret/DELETE,Security.OAuth2.Server/REVOKE,Security.OAuth2.Client.ServerDefinition/DELETE,Security.OAuth2.Client.ClientConfiguration/ROTATEKEYS,Security.OAuth2.Client.ClientConfiguration/REGISTERCLIENT,Security.OAuth2.ResourceServer/DELETE,Security.OAuth2.ResourceServer/ADDMAPPING,Security.OAuth2.ResourceServer/REMOVEMAPPING,Security.OAuth2.ResourceServerMapping/DELETE,Security.OAuth2.Server/DELETE,Security.OAuth2.Server/ROTATEKEYS,Security.OAuth2.ServerClients/REFRESHJWKS,Namespace.Namespace/DELETE,WebSession/DELETE,AsyncResult/CANCEL,AsyncResult/PAUSE,AsyncResult/RESUME,BackgroundTask/CANCEL,BackgroundTask/PAUSE,BackgroundTask/RESUME,Namespace.GlobalMappings/DELETE,Namespace.RoutineMappings/DELETE,Namespace.PackageMappings/DELETE,Database.SysCRUD/DELETE,Database.ConfigCRUD/DELETE,Database.Actions/DISMOUNT,Database.Actions/DEFRAGMENT,LanguageServer/START,LanguageServer/STOP,LanguageServer/DELETE,Task.Manager/SUSPEND,Task.Manager/RESUME,Task.Manager/RUN,Lock/DELETE,Security.LDAP/DELETE,Namespace.Namespace/INTEROP,Journal.Settings/SWITCHFILE,Journal.Settings/SWITCHDIR,License.Server/DELETE,ECP.DataServer/DELETE,ECP.AppServerSSLConnection/AUTHORIZE,ECP.AppServerSSLConnection/REJECT,ECP.AppServerSSLConnection/DELETE,Security.Encryption.AdminInFile/DELETE,Security.Encryption.KeyInFile/DELETE,Security.Superserver/DELETE,Security.MFT/DELETE,Security.MFT/REVOKE,Security.SQLPrivilege.Standard/GRANT,Security.SQLPrivilege.Standard/REVOKE,Security.SQLPrivilege.Column/GRANT,Security.SQLPrivilege.Column/REVOKE,Security.SQLPrivilege.Admin/GRANT,Security.SQLPrivilege.Admin/REVOKE,DocDB/DELETE,Security.PrivilegedRoutine/DELETE";
 
 /// <p>The <parameter>MUTATINGTYPES</parameter> deletes whose vendor answer does not say whether the
 /// object went, as comma-separated <code>&lt;endpoint&gt;/&lt;type&gt;</code> entries. After a 2xx
@@ -631,6 +668,35 @@ ClassMethod NamesKeyFile(pEndpoint As %String, ByRef pQuery, pBody As %DynamicAb
         If (tUpper = "DBENCSTARTKEYFILE") && ($IsObject(tValue) || (tValue '= "")) Set tNamed = 1 Quit
     }
     Quit tNamed
+}
+
+/// <p>The body members of a <code>Wallet.Secret</code> <code>PUT</code> the vendor reads as a server
+/// file name, comma-separated (AD-21, Story 18.24).</p>
+Parameter WALLETPATHFIELDS = "CertificateFile,PublicKeyFile,PrivateKeyFile";
+
+/// <p>The first member of <var>pBody</var> a <code>Wallet.Secret</code> <code>PUT</code> names that
+/// <parameter>WALLETPATHFIELDS</parameter> lists, compared as the vendor spells it, or <code>""</code>
+/// for any other call. Wallet key material reaches the vendor as content, never as a path: the vendor
+/// reads the named server file.</p>
+ClassMethod WalletPathField(pEndpoint As %String, pType As %String, pBody As %DynamicAbstractObject = "") As %String
+{
+    If (pEndpoint '= "Wallet.Secret") || (pType '= "PUT") Quit ""
+    If '$IsObject(pBody) || 'pBody.%IsA("%Library.DynamicObject") Quit ""
+    Set tFound = ""
+    Set tIterator = pBody.%GetIterator()
+    While tIterator.%GetNext(.tKey, .tValue) {
+        If $ListFind($ListFromString(..#WALLETPATHFIELDS), tKey) Set tFound = tKey Quit
+    }
+    Quit tFound
+}
+
+/// <p>The 400 <code>PORT.FIELD.UNEXPECTED</code> that refuses the wallet body member
+/// <var>pField</var>, which names a server file, on its own field; no vendor call is made.</p>
+ClassMethod RefuseWalletPath(pField As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set tDetail = {"violations": []}
+    Do tDetail.%Get("violations").%Push({"field": (pField), "code": (##class(OcuPilot.Api.Error).#PORTFIELDUNEXPECTED), "reason": (##class(OcuPilot.Api.Error).#REASONPORTFIELDUNEXPECTED)})
+    Quit ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTFIELDUNEXPECTED, ##class(OcuPilot.Api.Error).#REASONPORTFIELDUNEXPECTED, .pHttpStatus, .pFault, tDetail)
 }
 
 /// <p>The <parameter>MUTATINGTYPES</parameter> writes whose vendor answer does not say whether the
@@ -946,7 +1012,23 @@ Parameter QUERYPAIRS = "Process/LIST=%Admin_Manage:USE|%DB_IRISSYS:WRITE";
 /// through that bare parameter on the endpoint's class, without widening
 /// <parameter>TYPESUFFIXES</parameter>; every other suffix still resolves through the
 /// <code>TYPE</code>-prefixed parameter.</p>
-Parameter BARETYPES = "Monitor/SYSTEMUSAGE,Monitor/SYSTEMUSAGESHM,Monitor/DASHBOARDMAIN,Monitor/LICENSEUSAGE";
+Parameter BARETYPES = "Monitor/SYSTEMUSAGE,Monitor/SYSTEMUSAGESHM,Monitor/DASHBOARDMAIN,Monitor/LICENSEUSAGE,Monitor/DASHBOARDGLOBALS,Monitor/DASHBOARDECP,Monitor/DASHBOARDRESOURCES";
+
+/// <p>The composed read types this port answers, as comma-separated
+/// <code>&lt;endpoint&gt;/&lt;composed type&gt;=&lt;bare type&gt;</code> entries (AD-36, Story 18.36).
+/// <method>Invoke</method> issues the bare type, which <parameter>BARETYPES</parameter> must list for
+/// the endpoint, and answers one object holding the one row array a screen reads over
+/// (<code>source.rows</code>), so the read grammar needs no member of its own:</p>
+/// <ul>
+/// <li><code>Monitor/RESOURCEROWS</code>: <code>DASHBOARDRESOURCES</code>' array, answered as
+/// <code>{"Resources": [...]}</code>.</li>
+/// <li><code>Monitor/BUSYPROCESSES</code>: <code>DASHBOARDMAIN</code>'s
+/// <code>SystemUsage.BusyProcesses</code> without the rows whose <code>Process</code> is empty, which
+/// the vendor pads the list with, answered as <code>{"BusyProcesses": [...]}</code> in the vendor's order.</li>
+/// </ul>
+/// <p>A vendor answer of any other shape is a 500 <code>INTERNAL</code> fault, logged once, and no
+/// rows.</p>
+Parameter COMPOSEDREADS = "Monitor/RESOURCEROWS=DASHBOARDRESOURCES,Monitor/BUSYPROCESSES=DASHBOARDMAIN";
 
 /// <p>The body-template method names, in the order <method>TemplateMethod</method> resolves them
 /// (AD-3): the first one an endpoint class defines itself is its template.</p>
@@ -1147,6 +1229,8 @@ ClassMethod VerifyInstance(Output pVersion As %Integer, Output pDetail As %Strin
 /// the vendor is not called (AD-27, AD-51).</p>
 /// <p><b>A <parameter>SPLITQUERIES</parameter> key is split before the query is seeded</b>, and a
 /// malformed one is 404 <code>PORT.NOTFOUND</code> with no vendor call.</p>
+/// <p><b>A <parameter>COMPOSEDREADS</parameter> type is issued as its bare type</b> and answers its row
+/// array in an object (<method>ComposedAnswer</method>).</p>
 /// <p>Must not be called from an escalated frame (AD-9). The caller's namespace,
 /// <code>%request</code>, <code>%response</code> and <code>%session</code> are unchanged on
 /// return.</p>
@@ -1172,6 +1256,12 @@ ClassMethod InvokeLocated(pEndpoint As %String, pType As %String, ByRef pQuery, 
             Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PATHNAME, ##class(OcuPilot.Api.Error).#REASONPATHNAME, .pHttpStatus, .pFault)
             Quit
         }
+        ; AD-21's ninth case (Story 18.24): wallet key material is content, never a path.
+        Set tPathField = ..WalletPathField(pEndpoint, pType, pBody)
+        If tPathField '= "" {
+            Set tSC = ..RefuseWalletPath(tPathField, .pHttpStatus, .pFault)
+            Quit
+        }
         Set tVerifySC = ..VerifyInstance(.tVersion, .tDetail)
         If $$$ISERR(tVerifySC) || (tVersion '= ..#APIVERSION) || (tDetail '= "") {
             If (tVersion '= 0) && (tVersion '= ..#APIVERSION) {
@@ -1186,6 +1276,34 @@ ClassMethod InvokeLocated(pEndpoint As %String, pType As %String, ByRef pQuery, 
                 Do ..LogFault("admin API unverified", $$$ERROR($$$GeneralError, tDetail), pFault.code)
             }
             Quit
+        }
+
+        ; Story 18.10 (AD-10 as amended): a privileged routine call names an application of the routine type, so a
+        ; web application named there is refused before the vendor is reached, which writes any type.
+        If pEndpoint = ..#PRIVROUTINEENDPOINT {
+            Set tSC = ..PrivilegedRoutineGuard(pType, $Get(pQuery("name")), .pHttpStatus, .pFault)
+            If $$$ISERR(tSC) Quit
+            ; Story 18.10 (DW-2239): every call but a read that names one of OcuPilot's own routine applications is refused
+            ; 403, before the vendor and unlogged, by the predicate the prohibited set owns.
+            If ##class(OcuPilot.Kernel.Proposal.Prohibited).RoutineEndpointRefused(pType, $Get(pQuery("name")), .tRoutineCode) {
+                Set tSC = ..Refuse(403, ##class(OcuPilot.Api.Error).#FORBIDDEN, tRoutineCode, ##class(OcuPilot.Kernel.Proposal.Prohibited).ReasonFor(tRoutineCode), .pHttpStatus, .pFault)
+                Quit
+            }
+        }
+
+        ; Story 18.31 (DW-2252): a web application write naming a privileged routine application is refused before the
+        ; vendor, which answers a PUT 500 and deletes the application on a DELETE.
+        If (pEndpoint = ..#WEBAPPENDPOINT) && ((pType = "PUT") || (pType = "DELETE")) {
+            Set tSC = ..PrivilegedRoutineGuard(pType, $Get(pQuery("name")), .pHttpStatus, .pFault, 1)
+            If $$$ISERR(tSC) Quit
+        }
+
+        ; Story 18.36 (AD-36): a composed read type is issued as the bare type it names; its answer is shaped below.
+        Set tComposed = ""
+        Set tBareType = ..PairValue(..#COMPOSEDREADS, pEndpoint _ "/" _ pType)
+        If tBareType '= "" {
+            Set tComposed = pType
+            Set pType = tBareType
         }
 
         Set tClass = ..EndpointClass(pEndpoint)
@@ -1216,6 +1334,14 @@ ClassMethod InvokeLocated(pEndpoint As %String, pType As %String, ByRef pQuery, 
             If $$$ISERR(tSC) Quit
         }
 
+        ; AD-2 (Story 18.9): a SQL privilege call -- the list included -- is refused for an undefined
+        ; namespace, a missing grantee, a missing READ pair on the namespace's databases, or a list or
+        ; wildcard, before the vendor is reached. The guard works on the copy.
+        If ..IsSqlPrivilegeEndpoint(pEndpoint) {
+            Set tSC = ..SqlPrivilegeGuard(pEndpoint, .tQuery, .pHttpStatus, .pFault)
+            If $$$ISERR(tSC) Quit
+        }
+
         ; CONSTANTBODIES: a vendor type whose body is a fixed wire fact takes it here, so no caller
         ; above the port composes it. A caller body for such a pair is a caller bug, refused before
         ; the vendor is reached rather than merged or replaced.
@@ -1241,6 +1367,16 @@ ClassMethod InvokeLocated(pEndpoint As %String, pType As %String, ByRef pQuery, 
             Set tSC = ..Refuse(500, ##class(OcuPilot.Api.Error).#SERVERERROR, ##class(OcuPilot.Api.Error).#INTERNAL, ##class(OcuPilot.Kernel.Fault).#DEFAULTREASON, .pHttpStatus, .pFault)
             Do ..LogFault(pEndpoint _ " " _ pType _ " was given a body that is not an object, which the vendor reads as carrying no properties", $$$ERROR($$$GeneralError, "a mutating call's body must be a %DynamicAbstractObject, never its JSON text"), pFault.code)
             Quit
+        }
+
+        ; AD-35 (Story 18.29): an administrator's password is checked against the instance's policy
+        ; before the vendor is called. The refusal is unlogged and carries no password.
+        If ..IsPasswordType(pEndpoint, pType) && $IsObject(pBody) && (pBody.%GetTypeOf("Password") = "string") {
+            ; The account a POST creates is named in the body; a CHANGEPWD names it in the query.
+            Set tPasswordUser = $Get(pQuery("name"))
+            If (pType = "POST") && (pBody.%GetTypeOf("Name") = "string") Set tPasswordUser = pBody.%Get("Name")
+            Set tSC = ..PasswordGuard(tPasswordUser, pBody.%Get("Password"), .pHttpStatus, .pFault)
+            If $$$ISERR(tSC) Quit
         }
 
         ; RENAMEDTYPES: the vendor's own spelling of a body key, applied to a copy so the caller's
@@ -1312,6 +1448,11 @@ ClassMethod InvokeLocated(pEndpoint As %String, pType As %String, ByRef pQuery, 
                 Set tSC = ..VerifyApplied(pEndpoint, .pQuery, pBody, .pHttpStatus, .pFault)
                 If $$$ISERR(tSC) Quit
             }
+            If tComposed '= "" {
+                Set tSC = ..ComposedAnswer(pEndpoint, tComposed, $Get(tAnswer), .tShaped, .pHttpStatus, .pFault)
+                If $$$ISERR(tSC) Quit
+                Set tAnswer = tShaped
+            }
             Set pResult = tAnswer
             Set pHttpStatus = tHttp
             Set pLocation = $Get(tLocation)
@@ -1337,6 +1478,16 @@ ClassMethod InvokeLocated(pEndpoint As %String, pType As %String, ByRef pQuery, 
             Do ..LogFault(pEndpoint _ " " _ pType _ " failed with HTTP 500", ..LoggedStatus(tSeqSC, pBody), pFault.code)
             Quit
         }
+        ; SQLCODEFAULTS (Story 18.9): a SQL privilege refusal the vendor answers 500 with its SQLCODE
+        ; is the product's own refusal; the vendor's text is logged, never sent.
+        If $$$ISERR(tSeqSC) && (tHttp = 500) {
+            Set tCodeHttp = ..SqlCodeFault(pEndpoint, tSeqSC, .tCodeFault)
+            If tCodeHttp {
+                Set tSC = ..Refuse(tCodeHttp, $Select(tCodeHttp = 403: ##class(OcuPilot.Api.Error).#FORBIDDEN, tCodeHttp = 409: ##class(OcuPilot.Api.Error).#CONFLICT, 1: ##class(OcuPilot.Api.Error).#NOTFOUND), tCodeFault, ##class(OcuPilot.Api.SqlPrivilegeError).ReasonFor(tCodeFault), .pHttpStatus, .pFault)
+                Do ..LogFault(pEndpoint _ " " _ pType _ " failed with HTTP 500", ..LoggedStatus(tSeqSC, pBody), pFault.code)
+                Quit
+            }
+        }
         ; AD-2: a read the vendor answers 404 has its answer, an absence, and is not logged.
         Set tSC = ..Fail(pEndpoint, tHttp, tSeqSC, .pHttpStatus, .pFault, ..WrapperKey(pEndpoint, pType), pBody, '..IsMutating(pEndpoint, pType), pType)
     } Catch ex {
@@ -1347,6 +1498,47 @@ ClassMethod InvokeLocated(pEndpoint As %String, pType As %String, ByRef pQuery, 
         Set tSC = $$$ERROR($$$GeneralError, pFault.code _ ": " _ pFault.reason)
     }
     Quit tSC
+}
+
+/// <p>The answer of the composed read <var>pType</var> (<parameter>COMPOSEDREADS</parameter>) over the
+/// vendor's bare answer <var>pAnswer</var>, in <var>pShaped</var>: one object holding the one row array,
+/// every element an object. <code>BUSYPROCESSES</code> keeps the vendor's order and drops each row whose
+/// <code>Process</code> is empty. An answer of any other shape is a 500 <code>INTERNAL</code> fault,
+/// logged once, with <var>pShaped</var> empty.</p>
+ClassMethod ComposedAnswer(pEndpoint As %String, pType As %String, pAnswer, Output pShaped, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pShaped = ""
+    Set tMember = $Case(pType, "RESOURCEROWS": "Resources", "BUSYPROCESSES": "BusyProcesses", : "")
+    Set tRows = ""
+    If pType = "RESOURCEROWS" {
+        Set tRows = pAnswer
+    } ElseIf pType = "BUSYPROCESSES" {
+        Set tUsage = $Select($IsObject(pAnswer) && pAnswer.%IsA("%Library.DynamicObject") && (pAnswer.%GetTypeOf("SystemUsage") = "object"): pAnswer.%Get("SystemUsage"), 1: "")
+        If $IsObject(tUsage) && (tUsage.%GetTypeOf("BusyProcesses") = "array") Set tRows = tUsage.%Get("BusyProcesses")
+    }
+    Set tShape = $IsObject(tRows) && tRows.%IsA("%Library.DynamicArray")
+    If tShape {
+        Set tIterator = tRows.%GetIterator()
+        While tIterator.%GetNext(.tIndex, .tRow, .tRowType) {
+            If tRowType '= "object" Set tShape = 0 Quit
+        }
+    }
+    If 'tShape {
+        Set tSC = ..Refuse(500, ##class(OcuPilot.Api.Error).#SERVERERROR, ##class(OcuPilot.Api.Error).#INTERNAL, ##class(OcuPilot.Kernel.Fault).#DEFAULTREASON, .pHttpStatus, .pFault)
+        Do ..LogFault(pEndpoint _ " " _ pType _ " was given a vendor answer without " _ tMember _ " as an array of objects", $$$ERROR($$$GeneralError, "the composed read's vendor answer has another shape"), pFault.code)
+        Quit tSC
+    }
+    If pType = "BUSYPROCESSES" {
+        Set tKept = []
+        Set tIterator = tRows.%GetIterator()
+        While tIterator.%GetNext(.tIndex, .tRow) {
+            If tRow.%Get("Process") '= "" Do tKept.%Push(tRow)
+        }
+        Set tRows = tKept
+    }
+    Set pShaped = {}
+    Do pShaped.%Set(tMember, tRows)
+    Quit $$$OK
 }
 
 /// <p>The fully qualified endpoint class for a package-relative name, or <code>""</code> when
@@ -1862,6 +2054,35 @@ ClassMethod IsTypeKept(pEndpoint As %String, pSuffix As %String) As %Boolean
     Quit ''$ListFind($ListFromString(..#TYPEKEPTTYPES), pEndpoint _ "/" _ pSuffix)
 }
 
+/// <p>The privileged routine endpoint's refusal for a named application that is not of the routine type
+/// (AD-10 as amended, Story 18.10): <code>GET</code> answers 404 and <code>PUT</code> or <code>DELETE</code> 409
+/// <parameter>OcuPilot.Api.RoutineAppError.TYPE</parameter>, with no vendor call and no log line. An
+/// absent name passes, so the vendor answers its own 404 for a create.</p>
+/// <p>With <var>pWebApp</var> 1 the call is a <code>WebApp.App</code> <code>PUT</code> or <code>DELETE</code> and the
+/// refusal is the reverse (Story 18.31, DW-2252): an application of the routine type answers 409
+/// <parameter>OcuPilot.Api.RoutineAppError.WEBAPP</parameter>, and every other name passes.</p>
+/// <p><b>Caller contract:</b> <var>pName</var> is the query's <code>name</code>; an empty name passes.</p>
+ClassMethod PrivilegedRoutineGuard(pType As %String, pName As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, pWebApp As %Boolean = 0) As %Status [ Private ]
+{
+    Set pHttpStatus = 0
+    Set pFault = ""
+    If pWebApp {
+        If '$ListFind($ListFromString("PUT,DELETE"), pType) || (pName = "") Quit $$$OK
+        Set tSC = ..KeptType(pName, .tKept)
+        If $$$ISERR(tSC) Quit tSC
+        If (tKept = "") || '((+tKept \ 4) # 2) Quit $$$OK
+        Quit ..Refuse(409, ##class(OcuPilot.Api.Error).#CONFLICT, ##class(OcuPilot.Api.RoutineAppError).#WEBAPP, ##class(OcuPilot.Api.RoutineAppError).#REASONWEBAPP, .pHttpStatus, .pFault)
+    }
+    If '$ListFind($ListFromString("GET,PUT,DELETE"), pType) || (pName = "") Quit $$$OK
+    Set tSC = ..KeptType(pName, .tKept)
+    If $$$ISERR(tSC) Quit tSC
+    ; Application type bit 4 is the privileged routine type; a type without it is a different application.
+    Set tIsRoutineApp = (+tKept \ 4) # 2
+    If (tKept = "") || tIsRoutineApp Quit $$$OK
+    If pType = "GET" Quit ..Refuse(404, ##class(OcuPilot.Api.Error).#NOTFOUND, ##class(OcuPilot.Api.RoutineAppError).#TYPE, ##class(OcuPilot.Api.RoutineAppError).#REASONTYPE, .pHttpStatus, .pFault)
+    Quit ..Refuse(409, ##class(OcuPilot.Api.Error).#CONFLICT, ##class(OcuPilot.Api.RoutineAppError).#TYPE, ##class(OcuPilot.Api.RoutineAppError).#REASONTYPE, .pHttpStatus, .pFault)
+}
+
 /// <p>The <code>Type</code> the web application <var>pName</var> holds now, read from
 /// <class>Security.Applications</class> in <code>%SYS</code> (AD-16), in <var>pType</var>; <code>""</code>
 /// for an application the instance does not hold (a create), for an empty name, and for a caller
@@ -2079,7 +2300,8 @@ ClassMethod IsContentCompleted(pEndpoint As %String, pSuffix As %String) As %Boo
 
 /// <p>Whether <var>pText</var> is exactly one PEM block of kind <var>pKind</var> -- <code>cert</code>
 /// for a <code>CERTIFICATE</code> block, <code>key</code> for a <code>PRIVATE KEY</code>,
-/// <code>RSA PRIVATE KEY</code> or <code>ENCRYPTED PRIVATE KEY</code> block -- of at most
+/// <code>RSA PRIVATE KEY</code> or <code>ENCRYPTED PRIVATE KEY</code> block, <code>public</code> for a
+/// <code>PUBLIC KEY</code> or <code>RSA PUBLIC KEY</code> block -- of at most
 /// <parameter>PEMMAXLENGTH</parameter> characters. On success <var>pCanonical</var> is the block
 /// rewritten with line feeds only and its base64 body wrapped at 64 columns, which is the shape the
 /// vendor's key check reads; on refusal it is <code>""</code>.</p>
@@ -2095,7 +2317,7 @@ ClassMethod PemBlock(pText As %String, pKind As %String, Output pCanonical As %S
         Set tText = $ZStrip($Translate(pText, $Char(13), ""), "<>WC")
         If (tText = "") || ($Length(tText) > ..#PEMMAXLENGTH) Quit
         If ($Length(tText, "-----BEGIN ") '= 2) || ($Length(tText, "-----END ") '= 2) Quit
-        Set tLabels = $Select(pKind = "cert": $ListBuild("CERTIFICATE"), pKind = "key": $ListBuild("PRIVATE KEY", "RSA PRIVATE KEY", "ENCRYPTED PRIVATE KEY"), 1: "")
+        Set tLabels = $Select(pKind = "cert": $ListBuild("CERTIFICATE"), pKind = "key": $ListBuild("PRIVATE KEY", "RSA PRIVATE KEY", "ENCRYPTED PRIVATE KEY"), pKind = "public": $ListBuild("PUBLIC KEY", "RSA PUBLIC KEY"), 1: "")
         Set tBegin = ""
         Set tEnd = ""
         For tI = 1:1:$ListLength(tLabels) {
@@ -2780,6 +3002,189 @@ ClassMethod JournalRecordRules(pEndpoint As %String, pType As %String, ByRef pQu
     Quit $$$OK
 }
 
+/// <p>The endpoints whose every call -- the list included -- <method>SqlPrivilegeGuard</method> judges before the
+/// vendor is reached (AD-2, Story 18.9), comma-separated.</p>
+Parameter SQLPRIVILEGETYPES = "Security.SQLPrivilege.Standard,Security.SQLPrivilege.Column,Security.SQLPrivilege.Admin";
+
+/// <p>The vendor refusals a SQL privilege call answers 500 with an SQLCODE, as comma-separated
+/// <code>&lt;endpoint&gt;|&lt;SQLCODE&gt;=&lt;http&gt;/&lt;code&gt;</code> entries (Story 18.9). The SQLCODE is the
+/// first parameter of status 5540 and the second of status 5035. Measured on <code>ocupilot-ci</code>, 2026-10-08:
+/// -30 (a table or view), -428 (a procedure), -187 (an ML configuration) and -473 (a schema) are absent objects,
+/// -118 is an unknown user or role, -112 (and -99 for the admin family) is the grantor rule, and -126 is a revoke
+/// sent with <code>cascade</code> 0 of a privilege the grantee has granted on to others.</p>
+Parameter SQLCODEFAULTS = "Security.SQLPrivilege.Standard|-112=403/SQLPRIV.GRANTOR,Security.SQLPrivilege.Standard|-99=403/SQLPRIV.GRANTOR,Security.SQLPrivilege.Standard|-30=404/SQLPRIV.NOOBJECT,Security.SQLPrivilege.Standard|-187=404/SQLPRIV.NOOBJECT,Security.SQLPrivilege.Standard|-428=404/SQLPRIV.NOOBJECT,Security.SQLPrivilege.Standard|-473=404/SQLPRIV.NOOBJECT,Security.SQLPrivilege.Standard|-118=404/SQLPRIV.NOGRANTEE,Security.SQLPrivilege.Standard|-126=409/SQLPRIV.DEPENDENT,Security.SQLPrivilege.Admin|-99=403/SQLPRIV.GRANTOR";
+
+/// <p>The vendor status code that carries the SQLCODE as its first parameter, the one that carries it as its
+/// second, and the admin family's grantor refusal (Story 18.28), which carries it as its second.</p>
+Parameter SQLCODESTATUSFIRST = 5540;
+
+Parameter SQLCODESTATUSSECOND = 5035;
+
+Parameter SQLCODESTATUSADMIN = 516;
+
+/// <p>Whether <var>pEndpoint</var> is one of <parameter>SQLPRIVILEGETYPES</parameter>.</p>
+ClassMethod IsSqlPrivilegeEndpoint(pEndpoint As %String) As %Boolean
+{
+    Quit ''$ListFind($ListFromString(..#SQLPRIVILEGETYPES), pEndpoint)
+}
+
+/// <p>Whether the instance defines the namespace <var>pNamespace</var>: a plain name, not an implied one, that
+/// the instance lists.</p>
+ClassMethod NamespaceDefined(pNamespace As %String) As %Boolean
+{
+    If '$Match(pNamespace, "^%?[A-Za-z][A-Za-z0-9_-]*$") Quit 0
+    Quit ''##class(%SYS.Namespace).Exists($ZConvert(pNamespace, "U"))
+}
+
+/// <p>The names of the databases this instance configures, in <var>pNames</var> as a <class>%List</class> sorted without
+/// regard to case, read on every call from <code>Config.Databases</code>' <code>List</code> query in <code>%SYS</code>
+/// by explicit save and restore (AD-16) and never kept between calls. On a failed read <var>pNames</var> is empty and
+/// the status says why.</p>
+ClassMethod DatabaseNames(Output pNames As %List) As %Status
+{
+    Set pNames = ""
+    Set tSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = "%SYS"
+        Kill tSorted
+        Set tRS = ##class(%ResultSet).%New("Config.Databases:List")
+        Set tSC = tRS.Execute("*")
+        While $$$ISOK(tSC) && tRS.Next(.tSC) {
+            Set tName = tRS.Get("Name")
+            If tName '= "" Set tSorted($ZConvert(tName, "U"), tName) = ""
+        }
+        Set $NAMESPACE = tOrigNS
+        If $$$ISERR(tSC) Quit
+        Set tUpper = ""
+        For {
+            Set tUpper = $Order(tSorted(tUpper))
+            If tUpper = "" Quit
+            Set tName = ""
+            For {
+                Set tName = $Order(tSorted(tUpper, tName))
+                If tName = "" Quit
+                Set pNames = pNames _ $ListBuild(tName)
+            }
+        }
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tSC = ex.AsStatus()
+    }
+    If $$$ISERR(tSC) Set pNames = ""
+    Quit tSC
+}
+
+/// <p>Whether <var>pName</var> is, exactly as written, one of the names <method>DatabaseNames</method> reads. A read that
+/// fails answers 0.</p>
+ClassMethod DatabaseDefined(pName As %String) As %Boolean
+{
+    If pName = "" Quit 0
+    If $$$ISERR(..DatabaseNames(.tNames)) Quit 0
+    Quit ''$ListFind(tNames, pName)
+}
+
+/// <p>The resources guarding <var>pNamespace</var>'s routines and globals databases, in <var>pResources</var> as a
+/// <class>%List</class> without repeats; <var>pResolved</var> 0 when either reports none.</p>
+ClassMethod NamespaceResources(pNamespace As %String, Output pResources As %List, Output pResolved As %Boolean)
+{
+    Set pResources = ""
+    Set pResolved = 0
+    Try {
+        Kill tInfo
+        Do ##class(OcuPilot.Kernel.Shell.Namespaces).NamespaceInfo($ZConvert(pNamespace, "U"), .tInfo, 1)
+        Set tRoutine = $Get(tInfo("RoutineDB", "Resource"))
+        Set tGlobal = $Get(tInfo("GlobalDB", "Resource"))
+        If (tRoutine = "") || (tGlobal = "") Quit
+        Set pResources = $ListBuild(tRoutine)
+        If tGlobal '= tRoutine Set pResources = pResources _ $ListBuild(tGlobal)
+        Set pResolved = 1
+    } Catch {
+        Set pResources = ""
+        Set pResolved = 0
+    }
+}
+
+/// <p>The first pair <var>pNamespace</var>'s databases name that the caller does not hold at <code>READ</code>,
+/// as <code>resource:READ</code>; <code>""</code> when the caller holds them all. A namespace whose databases
+/// report no resource names <code>?</code>, so it is refused rather than admitted.</p>
+ClassMethod NamespaceReadRefused(pNamespace As %String) As %String
+{
+    Do ..NamespaceResources(pNamespace, .tResources, .tResolved)
+    If 'tResolved Quit "?"
+    For tI = 1:1:$ListLength(tResources) {
+        Set tPair = $List(tResources, tI) _ ":READ"
+        If '..HoldsPair(tPair) Quit
+        Set tPair = ""
+    }
+    Quit $Get(tPair)
+}
+
+/// <p>The refusals <parameter>SQLPRIVILEGETYPES</parameter> admit nothing past (AD-2, Story 18.9), on the query
+/// copy <var>pQuery</var>, in order and before any vendor call: a missing or undefined <code>namespace</code> is
+/// 404 <code>SQLPRIV.NAMESPACE</code>; a missing <code>grantee</code> is 400 <code>SQLPRIV.GRANTEE</code>; a
+/// namespace whose routines or globals database the caller cannot read is 403 naming the pair as
+/// <code>detail.failedPair</code>; a <code>*</code> or a comma in <code>grantee</code>, <code>object</code> or
+/// <code>action</code>, <code>column</code> or <code>privilege</code> is 400 <code>SQLPRIV.LIST</code>, because the
+/// vendor expands lists and wildcards; and a column call whose <code>object</code> is not two name parts is 400
+/// <code>SQLPRIV.OBJECT</code>, because the vendor answers one part with an invalid object reference. None echoes
+/// the value.</p>
+ClassMethod SqlPrivilegeGuard(pEndpoint As %String, ByRef pQuery, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pHttpStatus = 0
+    Set pFault = ""
+    Set tNamespace = $Get(pQuery("namespace"))
+    If '..NamespaceDefined(tNamespace) Quit ..Refuse(404, ##class(OcuPilot.Api.Error).#NOTFOUND, ##class(OcuPilot.Api.SqlPrivilegeError).#NAMESPACE, ##class(OcuPilot.Api.SqlPrivilegeError).#REASONNAMESPACE, .pHttpStatus, .pFault)
+    If $Get(pQuery("grantee")) = "" Quit ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.SqlPrivilegeError).#GRANTEE, ##class(OcuPilot.Api.SqlPrivilegeError).#REASONGRANTEE, .pHttpStatus, .pFault)
+    Set tFailedPair = ..NamespaceReadRefused(tNamespace)
+    If tFailedPair '= "" {
+        Do ##class(OcuPilot.Kernel.Fault).Outcome(403, $$$OK, .tMapped, .tVendorText)
+        Set tDetail = {}
+        Do tDetail.%Set("failedPair", tFailedPair, "string")
+        Quit ..Refuse(403, tMapped.error, tMapped.code, tMapped.reason, .pHttpStatus, .pFault, tDetail)
+    }
+    Set tList = 0
+    For tKey = "grantee", "object", "action", "column", "privilege" {
+        Set tValue = $Get(pQuery(tKey))
+        If (tValue [ "*") || (tValue [ ",") Set tList = 1
+    }
+    If tList Quit ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.SqlPrivilegeError).#LIST, ##class(OcuPilot.Api.SqlPrivilegeError).#REASONLIST, .pHttpStatus, .pFault)
+    If (pEndpoint = "Security.SQLPrivilege.Column") && '##class(OcuPilot.Port.SqlPrivilegePort).ObjectValid("TABLE", $Get(pQuery("object"))) Quit ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.SqlPrivilegeError).#OBJECT, ##class(OcuPilot.Api.SqlPrivilegeError).#REASONOBJECT, .pHttpStatus, .pFault)
+    Quit $$$OK
+}
+
+/// <p>The HTTP status <parameter>SQLCODEFAULTS</parameter> gives the SQLCODE the vendor status
+/// <var>pVendorSC</var> carries for <var>pEndpoint</var>, with its code in <var>pCode</var>; <code>0</code> for a
+/// status outside the table.</p>
+ClassMethod SqlCodeFault(pEndpoint As %String, pVendorSC As %Status, Output pCode As %String) As %Integer
+{
+    Set pCode = ""
+    Set tHttp = 0
+    Try {
+        If $$$ISOK(pVendorSC) || '..IsSqlPrivilegeEndpoint(pEndpoint) Quit
+        Do $System.Status.DecomposeStatus(pVendorSC, .tErrors, "-d")
+        For tI = 1:1:+$Get(tErrors) {
+            Set tStatusCode = $Get(tErrors(tI, "code"))
+            Set tSqlCode = ""
+            If tStatusCode = ..#SQLCODESTATUSFIRST Set tSqlCode = $Get(tErrors(tI, "param", 1))
+            If (tStatusCode = ..#SQLCODESTATUSSECOND) || (tStatusCode = ..#SQLCODESTATUSADMIN) Set tSqlCode = $Get(tErrors(tI, "param", 2))
+            If tSqlCode = "" Continue
+            For tJ = 1:1:$Length(..#SQLCODEFAULTS, ",") {
+                Set tEntry = $Piece(..#SQLCODEFAULTS, ",", tJ)
+                If $Piece(tEntry, "=", 1) '= (pEndpoint _ "|" _ tSqlCode) Continue
+                Set tHttp = +$Piece($Piece(tEntry, "=", 2), "/", 1)
+                Set pCode = $Piece($Piece(tEntry, "=", 2), "/", 2)
+                Quit
+            }
+            If tHttp Quit
+        }
+    } Catch {
+        Set tHttp = 0
+        Set pCode = ""
+    }
+    Quit tHttp
+}
+
 /// <p>The HTTP method the request stub carries for <var>pEndpoint</var>'s request type
 /// <var>pSuffix</var>: the suffix itself for a <parameter>MUTATINGTYPES</parameter> pair,
 /// <code>GET</code> for everything else.</p>
@@ -3035,7 +3440,8 @@ ClassMethod Sequence(pName As %String, pEndpoint As %RegisteredObject, pBody As 
 /// row to <method>ForgetTask</method>, which leaves a row the caller cannot delete for
 /// <method>SweepOwnTasks</method>. No terminal state
 /// within the bound is <code>PORT.TIMEOUT</code>, and the row is left to the worker that still
-/// owns it.</p>
+/// owns it. The bound is logged unless the pair is a <parameter>QUEUEDWRITES</parameter> one, whose
+/// caller answers it started (AD-26).</p>
 /// <p>For a <parameter>CONSOLEDTYPES</parameter> pair (<var>pEndpoint</var>'s request type
 /// <var>pType</var>) the answer is <method>Consoled</method>'s.</p>
 ClassMethod AwaitTask(pEndpoint As %String, pGuid As %String, Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, pType As %String = "") As %Status [ Private ]
@@ -3075,7 +3481,8 @@ ClassMethod AwaitTask(pEndpoint As %String, pGuid As %String, Output pResult, Ou
         }
         If ($ZHorolog - tStart) >= tBound {
             Set tSC = ..Refuse(503, ##class(OcuPilot.Api.Error).#UNAVAILABLE, ##class(OcuPilot.Api.Error).#PORTTIMEOUT, "The instance did not finish that operation in time", .pHttpStatus, .pFault)
-            Do ..LogFault(pEndpoint _ " task " _ pGuid _ " left " _ tAnswer.State _ " at the bound", tSC, pFault.code)
+            ; A QUEUEDWRITES pair past the bound has started: its caller answers that, so nothing is logged.
+            If '..IsQueuedWrite(pEndpoint, pType) Do ..LogFault(pEndpoint _ " task " _ pGuid _ " left " _ tAnswer.State _ " at the bound", tSC, pFault.code)
             Quit
         }
         Hang ..#POLLINTERVAL
@@ -3263,7 +3670,13 @@ ClassMethod Denied(pEndpoint As %String, pFailedPair As %String, pVendorSC As %S
 /// password is refused 5001 at 500, the code of the vendor's internal faults too, so
 /// <class>OcuPilot.Port.EncryptionPort</class> answers it 422 on <code>AdminPassword</code> only when the
 /// write carried credentials.</p>
-Parameter PROPERTYFAULTS = "Device.Standard:644:OpenParameters=DEVICE.OPENPARAMETERS.SHAPE,Security.SSLConfig:726:@CipherList=SSL.CIPHERLIST.EXPANDSEMPTY,Security.SSLConfig:746:@Ciphersuites=SSL.CIPHERSUITES.UNKNOWN,Security.SSLConfig:732:@PrivateKeyPassword=SSL.PRIVATEKEYPASSWORD.WRONG,Task.CRUD:7402:@RunAsUser=TASK.RUNASUSER.REFUSED,Task.CRUD:7405:@RunAsUser=TASK.RUNASUSER.REFUSED,Task.CRUD:7406:@RunAsUser=TASK.RUNASUSER.REFUSED,Task.CRUD:7404:@DailyIncrement=TASK.DAILYINCREMENT.REFUSED,Task.CRUD:7408:@DailyEndTime=TASK.DAILYENDTIME.REFUSED,Task.CRUD:7409:@EndDate=TASK.ENDDATE.REFUSED,Task.CRUD:7410:@TimePeriodDay=TASK.TIMEPERIODDAY.REFUSED,Task.CRUD:7426:@TimePeriodDay=TASK.TIMEPERIODDAY.REFUSED,Task.CRUD:7428:@TimePeriodDay=TASK.TIMEPERIODDAY.REFUSED,Task.CRUD:7411:@OutputFilename=TASK.OUTPUTFILENAME.REFUSED,Task.CRUD:7412:@OutputFilename=TASK.OUTPUTFILENAME.REFUSED,Task.CRUD:7413:@TaskClass=TASK.TASKCLASS.REFUSED,Task.CRUD:7414:@TaskClass=TASK.TASKCLASS.REFUSED,Task.CRUD:7433:@TaskClass=TASK.TASKCLASS.REFUSED,Task.CRUD:7434:@TaskClass=TASK.TASKCLASS.REFUSED,Task.CRUD:7427:@TimePeriodEvery=TASK.TIMEPERIODEVERY.REFUSED,Task.CRUD:7429:@TimePeriodEvery=TASK.TIMEPERIODEVERY.REFUSED,Task.CRUD:7430:@DailyFrequencyTime=TASK.DAILYFREQUENCYTIME.REFUSED,Task.CRUD:7431:@RunAfterGUID=TASK.RUNAFTERGUID.REFUSED,Task.CRUD:7432:@StartDate=TASK.STARTDATE.REFUSED,Security.OAuth2.ServerClients:8863:@Metadata.grant_types=OAUTH.CLIENTGRANTTYPES.UNSUPPORTED,Security.OAuth2.ServerClients:8886:@ClientCredentials=OAUTH.SERVERCLIENTCREDENTIALS.ABSENT,Security.OAuth2.ServerClients:8864:@=OAUTH.SERVERCLIENTCONFIG.ABSENT,Namespace.Namespace:457:@Name=NAMESPACE.NAME.SHAPE,Namespace.Namespace:7201:@Name=NAMESPACE.NAME.SHAPE,Namespace.GlobalMappings:5854:@Name=MAPPING.NAME.SHAPE,Namespace.GlobalMappings:448:@Name=MAPPING.NAME.SHAPE,Namespace.RoutineMappings:5854:@Name=MAPPING.NAME.SHAPE,Namespace.RoutineMappings:448:@Name=MAPPING.NAME.SHAPE,Namespace.PackageMappings:5854:@Name=MAPPING.NAME.SHAPE,Namespace.PackageMappings:448:@Name=MAPPING.NAME.SHAPE,Namespace.GlobalMappings:655:@Name=MAPPING.NAME.SHAPE,Namespace.GlobalMappings:217:@Name=MAPPING.NAME.SHAPE,Namespace.RoutineMappings:5028:@Name=MAPPING.NAME.SHAPE,Namespace.PackageMappings:5084:@Name=MAPPING.NAME.SHAPE,Namespace.GlobalMappings:451:@Name=MAPPING.NAME.SUBSCRIPTS,Database.SysCRUD:896:@ResourceName=DATABASE.RESOURCE.SHAPE,Database.SysCRUD:60:@path=DATABASE.DIRECTORY.INUSE,Database.SysCRUD:78:@path=DATABASE.DIRECTORY.INUSE,Database.SysCRUD:575:@volumePath=DATABASE.DIRECTORY.INUSE,Database.SysCRUD:576:@volumePath=DATABASE.DIRECTORY.INUSE,ECP.DataServer:1454:@SSLConfig=ECP.DATASERVER.SSLCLIENT,ECP.DataServer:456:@=ECP.SERVER.LIMIT,Security.Encryption.KeyInFile:1219:@AdminPassword=ENCRYPTION.KEYFILE.CREDENTIALS,Security.Encryption.KeyInFile:1204:@AdminName=ENCRYPTION.KEYFILE.CREDENTIALS,Security.Encryption.AdminInFile:5001:@OldAdminPassword=ENCRYPTION.KEYFILE.CREDENTIALS,Security.Encryption.KeyInFile:5022:@path=ENCRYPTION.KEYFILE.UNREADABLE,Security.Encryption.File:1219:@AdminPassword=ENCRYPTION.KEYFILE.CREDENTIALS,Security.Encryption.Key:1208:@=ENCRYPTION.KEY.INUSE,Security.Encryption.Key:1215:@=ENCRYPTION.KEY.INUSE,Security.Encryption.Key:1214:@=ENCRYPTION.KEY.ROLE,Security.Encryption.Settings:1217:@=ENCRYPTION.STARTUP.REQUIRED,Security.Encryption.Settings:1212:@=ENCRYPTION.STARTUP.REQUIRED,Security.Encryption.Settings:1213:@=ENCRYPTION.STARTUP.REQUIRED,Security.Encryption.Settings:5001:@AdminPassword=ENCRYPTION.KEYFILE.CREDENTIALS";
+/// <p>The <code>Security.Superserver</code> entry (Story 18.25): a <code>PUT</code> that would start a listener on a
+/// port another process holds is refused 5001 at 500 with nothing stored (measured on
+/// <code>ocupilot-ci</code>: port 2188, and a wildcard 1986 over a <code>127.0.0.1</code> 1986). 5001 is the
+/// code of the vendor's internal faults too, so <class>OcuPilot.Port.SuperserverPort</class> answers it 409 only
+/// for a write that starts a listener, a create or <code>Enabled</code> turned on, and leaves any other 5001
+/// as it is.</p>
+Parameter PROPERTYFAULTS = "Device.Standard:644:OpenParameters=DEVICE.OPENPARAMETERS.SHAPE,Security.SSLConfig:726:@CipherList=SSL.CIPHERLIST.EXPANDSEMPTY,Security.SSLConfig:746:@Ciphersuites=SSL.CIPHERSUITES.UNKNOWN,Security.SSLConfig:732:@PrivateKeyPassword=SSL.PRIVATEKEYPASSWORD.WRONG,Task.CRUD:7402:@RunAsUser=TASK.RUNASUSER.REFUSED,Task.CRUD:7405:@RunAsUser=TASK.RUNASUSER.REFUSED,Task.CRUD:7406:@RunAsUser=TASK.RUNASUSER.REFUSED,Task.CRUD:7404:@DailyIncrement=TASK.DAILYINCREMENT.REFUSED,Task.CRUD:7408:@DailyEndTime=TASK.DAILYENDTIME.REFUSED,Task.CRUD:7409:@EndDate=TASK.ENDDATE.REFUSED,Task.CRUD:7410:@TimePeriodDay=TASK.TIMEPERIODDAY.REFUSED,Task.CRUD:7426:@TimePeriodDay=TASK.TIMEPERIODDAY.REFUSED,Task.CRUD:7428:@TimePeriodDay=TASK.TIMEPERIODDAY.REFUSED,Task.CRUD:7411:@OutputFilename=TASK.OUTPUTFILENAME.REFUSED,Task.CRUD:7412:@OutputFilename=TASK.OUTPUTFILENAME.REFUSED,Task.CRUD:7413:@TaskClass=TASK.TASKCLASS.REFUSED,Task.CRUD:7414:@TaskClass=TASK.TASKCLASS.REFUSED,Task.CRUD:7433:@TaskClass=TASK.TASKCLASS.REFUSED,Task.CRUD:7434:@TaskClass=TASK.TASKCLASS.REFUSED,Task.CRUD:7427:@TimePeriodEvery=TASK.TIMEPERIODEVERY.REFUSED,Task.CRUD:7429:@TimePeriodEvery=TASK.TIMEPERIODEVERY.REFUSED,Task.CRUD:7430:@DailyFrequencyTime=TASK.DAILYFREQUENCYTIME.REFUSED,Task.CRUD:7431:@RunAfterGUID=TASK.RUNAFTERGUID.REFUSED,Task.CRUD:7432:@StartDate=TASK.STARTDATE.REFUSED,Security.OAuth2.ServerClients:8863:@Metadata.grant_types=OAUTH.CLIENTGRANTTYPES.UNSUPPORTED,Security.OAuth2.ServerClients:8886:@ClientCredentials=OAUTH.SERVERCLIENTCREDENTIALS.ABSENT,Security.OAuth2.ServerClients:8864:@=OAUTH.SERVERCLIENTCONFIG.ABSENT,Namespace.Namespace:457:@Name=NAMESPACE.NAME.SHAPE,Namespace.Namespace:7201:@Name=NAMESPACE.NAME.SHAPE,Namespace.GlobalMappings:5854:@Name=MAPPING.NAME.SHAPE,Namespace.GlobalMappings:448:@Name=MAPPING.NAME.SHAPE,Namespace.RoutineMappings:5854:@Name=MAPPING.NAME.SHAPE,Namespace.RoutineMappings:448:@Name=MAPPING.NAME.SHAPE,Namespace.PackageMappings:5854:@Name=MAPPING.NAME.SHAPE,Namespace.PackageMappings:448:@Name=MAPPING.NAME.SHAPE,Namespace.GlobalMappings:655:@Name=MAPPING.NAME.SHAPE,Namespace.GlobalMappings:217:@Name=MAPPING.NAME.SHAPE,Namespace.RoutineMappings:5028:@Name=MAPPING.NAME.SHAPE,Namespace.PackageMappings:5084:@Name=MAPPING.NAME.SHAPE,Namespace.GlobalMappings:451:@Name=MAPPING.NAME.SUBSCRIPTS,Database.SysCRUD:896:@ResourceName=DATABASE.RESOURCE.SHAPE,Database.SysCRUD:60:@path=DATABASE.DIRECTORY.INUSE,Database.SysCRUD:78:@path=DATABASE.DIRECTORY.INUSE,Database.SysCRUD:575:@volumePath=DATABASE.DIRECTORY.INUSE,Database.SysCRUD:576:@volumePath=DATABASE.DIRECTORY.INUSE,ECP.DataServer:1454:@SSLConfig=ECP.DATASERVER.SSLCLIENT,ECP.DataServer:456:@=ECP.SERVER.LIMIT,Security.Encryption.KeyInFile:1219:@AdminPassword=ENCRYPTION.KEYFILE.CREDENTIALS,Security.Encryption.KeyInFile:1204:@AdminName=ENCRYPTION.KEYFILE.CREDENTIALS,Security.Encryption.AdminInFile:5001:@OldAdminPassword=ENCRYPTION.KEYFILE.CREDENTIALS,Security.Encryption.KeyInFile:5022:@path=ENCRYPTION.KEYFILE.UNREADABLE,Security.Encryption.File:1219:@AdminPassword=ENCRYPTION.KEYFILE.CREDENTIALS,Security.Encryption.Key:1208:@=ENCRYPTION.KEY.INUSE,Security.Encryption.Key:1215:@=ENCRYPTION.KEY.INUSE,Security.Encryption.Key:1214:@=ENCRYPTION.KEY.ROLE,Security.Encryption.Settings:1217:@=ENCRYPTION.STARTUP.REQUIRED,Security.Encryption.Settings:1212:@=ENCRYPTION.STARTUP.REQUIRED,Security.Encryption.Settings:1213:@=ENCRYPTION.STARTUP.REQUIRED,Security.Encryption.Settings:5001:@AdminPassword=ENCRYPTION.KEYFILE.CREDENTIALS,Security.Superserver:5001:@Port=SUPERSERVER.PORT.INUSE";
 
 /// <p>Append to <var>pRows</var> one <code>{field, code, reason}</code> row per error in
 /// <var>pVendorSC</var> that <parameter>PROPERTYFAULTS</parameter> names for <var>pEndpoint</var>. The
@@ -3658,6 +4071,38 @@ ClassMethod Scalar(pObject, pKey As %String) As %String
     Set tType = pObject.%GetTypeOf(pKey)
     If (tType = "unassigned") || (tType = "object") || (tType = "array") || (tType = "null") Quit ""
     Quit pObject.%Get(pKey)
+}
+
+/// <p>Whether <var>pEndpoint</var>/<var>pType</var> sets an account's password: <code>Security.User</code>
+/// <code>POST</code> and <code>CHANGEPWD</code>, the two whose body carries <code>Password</code>.</p>
+ClassMethod IsPasswordType(pEndpoint As %String, pType As %String) As %Boolean
+{
+    Quit (pEndpoint = "Security.User") && $ListFind($ListBuild("POST", "CHANGEPWD"), pType)
+}
+
+/// <p>Refuse a password the instance's policy refuses (AD-35): 422 <code>USER.PASSWORD.POLICY</code> with
+/// the violation on <code>Password</code>, before any vendor call and unlogged. <var>pUser</var> is the
+/// account the password is for. The password appears in no reason, status or log line.</p>
+ClassMethod PasswordGuard(pUser As %String, pPassword As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set tReason = ""
+    If ##class(OcuPilot.Kernel.PasswordPolicy).Verdict(pPassword, pUser, .tReason) Quit $$$OK
+    Quit ..ViolationRefusal(##class(OcuPilot.Api.Error).#USERPASSWORDPOLICY, "Password", tReason, .pHttpStatus, .pFault)
+}
+
+/// <p>One 422 validation envelope naming <var>pField</var> with <var>pCode</var> and <var>pReason</var>, as
+/// that field's one violation (AD-39); nothing is logged.</p>
+ClassMethod ViolationRefusal(pCode As %String, pField As %String, pReason As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set tViolation = {}
+    Do tViolation.%Set("field", pField, "string")
+    Do tViolation.%Set("code", pCode, "string")
+    Do tViolation.%Set("reason", pReason, "string")
+    Set tViolations = []
+    Do tViolations.%Push(tViolation)
+    Set tDetail = {}
+    Do tDetail.%Set("violations", tViolations)
+    Quit ..Refuse(422, ##class(OcuPilot.Api.Error).#VALIDATIONFAILED, pCode, pReason, .pHttpStatus, .pFault, tDetail)
 }
 
 }

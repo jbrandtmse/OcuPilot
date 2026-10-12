@@ -75,7 +75,13 @@ test('both lists equal the spine Conventions Secrets row', () => {
   assert.ok(row !== undefined, `${SPINE_PATH}: no Secrets row`);
   sameMembers(CREDENTIAL_SUFFIXES, backticked(row, 'a name ending in', ', or a name that is exactly'));
   sameMembers(CREDENTIAL_EXACT_NAMES, backticked(row, ', or a name that is exactly', ', and the server'));
-  sameMembers(CREDENTIAL_EXCEPTIONS, backticked(row, 'The one exception:', ', the authorization server'));
+  sameMembers(
+    CREDENTIAL_EXCEPTIONS,
+    [
+      ...backticked(row, 'The one exception:', ', the authorization server'),
+      ...backticked(row, 'A second exception:', ', the system-wide'),
+    ]
+  );
 });
 
 // Story 16.1: the try-it console masks by name at runtime, from `core/secret-names.ts`, which the

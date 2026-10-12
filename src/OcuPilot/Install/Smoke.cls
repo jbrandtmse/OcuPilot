@@ -572,7 +572,9 @@ ClassMethod CheckSignOut(ByRef pChecks, pAccessToken As %String, pRefreshToken A
 }
 
 /// <p>The three shell reads every screen depends on, each with the minted access token: the
-/// instance identity, the namespace roster and the navigation map.</p>
+/// instance identity, the namespace roster and the navigation map. The navigation check also parses the
+/// map and fails unless its <code>interoperability</code> area carries <code>applies</code> equal to whether the namespace
+/// this run executes in reports interoperability (<method>NavigationProblem</method>, AD-44).</p>
 ClassMethod CheckApiReads(ByRef pChecks, pAccessToken As %String) [ Private ]
 {
     Set tBase = ..RosterPath("api")
@@ -601,8 +603,51 @@ ClassMethod CheckApiReads(ByRef pChecks, pAccessToken As %String) [ Private ]
             Do ..Note(.pChecks, tName, "fail", "GET " _ tBase _ "/" _ tName _ " answered 200 with a body that is not a JSON object")
             Continue
         }
+        If tName = "navigation" {
+            Set tProblem = ..NavigationProblem(tText)
+            If tProblem '= "" {
+                Do ..Note(.pChecks, tName, "fail", tProblem)
+                Continue
+            }
+        }
         Do ..Note(.pChecks, tName, "pass")
     }
+}
+
+/// <p>Why the navigation map <var>pText</var> disagrees with the namespace this run executes in, or
+/// <code>""</code> when it agrees: the area keyed <code>interoperability</code> must be present, and its
+/// <code>applies</code> must be a boolean equal to <code>%Library.EnsembleMgr.IsEnsembleNamespace</code> of
+/// <code>$NAMESPACE</code>, which is the namespace the served application runs in. A body that cannot be
+/// parsed is a problem, never a pass.</p>
+/// <p><b>Public, not <code>[ Private ]</code></b> -- the deviation <method>Note</method> carries, for the
+/// same reason: <class>OcuPilot.Test.Smoke</class> judges synthetic maps with it.</p>
+ClassMethod NavigationProblem(pText As %String) As %String
+{
+    Set tProblem = ""
+    Try {
+        Set tAreas = ##class(%DynamicAbstractObject).%FromJSON(pText).%Get("areas")
+        If '$IsObject(tAreas) || 'tAreas.%IsA("%Library.DynamicArray") {
+            Set tProblem = "the navigation map carries no areas array"
+            Quit
+        }
+        Set tFound = 0
+        Set tIterator = tAreas.%GetIterator()
+        While tIterator.%GetNext(.tIndex, .tArea) {
+            If '$IsObject(tArea) || (tArea.%Get("key") '= "interoperability") Continue
+            Set tFound = 1
+            Set tWant = ''##class(%Library.EnsembleMgr).IsEnsembleNamespace($NAMESPACE)
+            If tArea.%GetTypeOf("applies") '= "boolean" {
+                Set tProblem = "the navigation map's interoperability area carries no boolean applies"
+            } ElseIf ''tArea.%Get("applies") '= tWant {
+                Set tProblem = "the navigation map says interoperability applies=" _ ''tArea.%Get("applies") _ " in " _ $NAMESPACE _ ", which reports " _ tWant
+            }
+            Quit
+        }
+        If 'tFound Set tProblem = "the navigation map carries no interoperability area"
+    } Catch ex {
+        Set tProblem = "the navigation map could not be read: " _ ex.DisplayString()
+    }
+    Quit tProblem
 }
 
 /// <p>One live read for each built list screen (AD-45 asks for at least one per area), read with the

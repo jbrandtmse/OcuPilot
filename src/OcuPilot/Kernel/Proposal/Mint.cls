@@ -151,7 +151,7 @@ ClassMethod Mint(pDescriptor As %String, pToolName As %String, pUser As %String,
             Quit
         }
 
-        Set tSC = ##class(OcuPilot.Kernel.EntityRef).Key($ClassMethod(pDescriptor, "PrimaryEntityType"), ##class(OcuPilot.Kernel.EntityRef).ScopeFor($ClassMethod(pDescriptor, "Scope")), pIdValue, .tTargetRef)
+        Set tSC = ##class(OcuPilot.Kernel.Proposal.Operation).TargetRefOf(pDescriptor, pIdValue, .tTargetRef)
         If $$$ISERR(tSC) {
             Set tSC = ..Internal("the proposal's target reference could not be built: " _ $System.Status.GetErrorText(tSC), .pHttpStatus, .pFault)
             Quit
@@ -233,6 +233,13 @@ ClassMethod Mint(pDescriptor As %String, pToolName As %String, pUser As %String,
         ; state the action moves it out of is refused here, before anything is stored, rather than
         ; minting a proposal whose diff says nothing changes.
         If (pToolClass '= "") && 'tCreates {
+            ; Story 18.10: a target the prohibited set refuses before its precondition is read is a 403, not the 400 below.
+            If $ClassMethod(pToolClass, "RefusedBeforeState", pIdValue, .tEarlyCode) {
+                Set pHttpStatus = 403
+                Set pFault = ##class(OcuPilot.Kernel.Fault).Build(##class(OcuPilot.Api.Error).#FORBIDDEN, tEarlyCode, ##class(OcuPilot.Kernel.Proposal.Prohibited).ReasonFor(tEarlyCode))
+                Set tSC = $$$ERROR($$$GeneralError, tEarlyCode)
+                Quit
+            }
             Set tStateSC = $ClassMethod(pToolClass, "StateDiff", tFresh, .tStateRows, .tStateProblem)
             If $$$ISERR(tStateSC) {
                 Set tSC = ..Internal("the proposal's state diff could not be computed: " _ $System.Status.GetErrorText(tStateSC), .pHttpStatus, .pFault)
@@ -293,6 +300,8 @@ ClassMethod Mint(pDescriptor As %String, pToolName As %String, pUser As %String,
             }
         }
 
+        Set tTargetName = ..TargetNameOf(pToolClass, $Get(tFresh), pIdValue, pArgs)
+
         ; DW-1016: a field whose empty value means something else reads the tool's own word for it.
         Do ..ApplyEmptyKeys(pToolClass, tDiff)
 
@@ -305,6 +314,7 @@ ClassMethod Mint(pDescriptor As %String, pToolName As %String, pUser As %String,
         Set tValues("fingerprint") = tFingerprint
         Set tValues("arguments") = ..StoredArguments(pArgs)
         Set tValues("requiredPairs") = ..RecordedPairs(pToolName, tValues("arguments"))
+        Set tValues("targetName") = tTargetName
         Set tValues("payload") = tPayload.%ToJSON()
         Set tValues("diff") = tDiff.%ToJSON()
         Set tValues("unchangedCount") = tUnchanged
@@ -707,6 +717,22 @@ ClassMethod CreatesOf(pToolClass As %String) As %Boolean
         Set tCreates = 0
     }
     Quit tCreates
+}
+
+/// <p>The name <var>pToolClass</var>'s card titles the target by
+/// (<method>OcuPilot.Screen.Tool.Write.TargetName</method>), cut to the stored column's length, or
+/// <code>""</code>. The hook never refuses the mint: a fault or an answer that is not text reads as
+/// <code>""</code>, and the card falls back to the target's id.</p>
+ClassMethod TargetNameOf(pToolClass As %String, pFresh, pId As %String, pArgs) As %String
+{
+    Set tName = ""
+    Try {
+        If pToolClass '= "" Set tName = $ClassMethod(pToolClass, "TargetName", pFresh, pId, pArgs)
+        If $IsObject(tName) Set tName = ""
+    } Catch {
+        Set tName = ""
+    }
+    Quit $Extract(tName, 1, 256)
 }
 
 /// <p>Append to <var>pDiff</var> one <code>{field, before, after}</code> row, both sides empty, per

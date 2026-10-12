@@ -25,7 +25,9 @@
 /// self-protection rule: OcuPilot stores no wallet secret of its own. Its empty state invites the
 /// agent, and it does not refresh (AD-43).</p>
 /// <p><b><code>Secret</code> is its <code>secretArguments</code></b> (AD-3, AD-6): the value, supplied
-/// only at confirm and never read back by any read.</p>
+/// only at confirm and never read back by any read. So are an RSA or symmetric key's material members --
+/// <code>Certificate</code>, <code>PublicKey</code>, <code>PrivateKey</code>, <code>Password</code> and
+/// <code>Secret64</code> (Story 18.24) -- which the agent's tools never take and no read returns.</p>
 Class OcuPilot.Screen.Descriptor.WalletSecretList Extends OcuPilot.Screen.Descriptor.Base
 {
 
@@ -50,7 +52,7 @@ XData Declaration
   "primaryAction": {"id": "create", "selfProtection": ""},
   "rowActions": [{"id": "delete", "selfProtection": ""}],
   "context": {"fields": ["Name", "Type"], "secretFields": []},
-  "secretArguments": ["Secret"],
+  "secretArguments": ["Secret", "Certificate", "PublicKey", "PrivateKey", "Password", "Secret64"],
   "emptyStateKey": "walletSecretListEmpty",
   "commandAliases": [],
   "suggestedPrompts": [

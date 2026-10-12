@@ -341,6 +341,31 @@ test('AC1, AC2, AC4, AC5: every Users row action reaches the route and the row r
   }
 });
 
+// AC6 (Story 18.29). Mutation (Rule 19): drop the blur check from the dialog's field -> the reason
+// leg goes red, because nothing states the refusal before the Save.
+test('AC6: the set-password dialog states a refused password on blur, and sends nothing', async () => {
+  const { context, page, writes } = await signedInAtList();
+  try {
+    await selectOnly(page, PROBE);
+    await chooseFromMenu(page, STRINGS.userActionSetPassword);
+    await page.waitForSelector('[role="dialog"] input[autocomplete="new-password"]', { timeout: config.navigationTimeoutMs });
+    const before = writes.length;
+    await page.type('[role="dialog"] input[autocomplete="new-password"]', 'a');
+    await page.keyboard.press('Tab');
+    const sentence = "The password does not meet this instance's password policy.";
+    await page.waitForFunction(
+      (text) => document.querySelector('[role="dialog"]')?.innerText.includes(text) === true,
+      { timeout: config.navigationTimeoutMs },
+      sentence
+    );
+    await page.waitForNetworkIdle({ idleTime: 500, timeout: config.navigationTimeoutMs });
+    assert.equal(writes.length, before, 'the refused password is not sent');
+    await page.keyboard.press('Escape');
+  } finally {
+    await context.close();
+  }
+});
+
 test('AC3: a protected account lists disable and delete refused with its published sentence and sends nothing', async () => {
   // DW-1520 (Story 9.1): a service account's Set password is refused too, with the sign-in
   // sentence; _SYSTEM's is offered.

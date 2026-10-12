@@ -138,6 +138,12 @@ const ACTION_LABELS: Readonly<Record<string, string>> = {
   // Story 16.10: an external language server's Start and Stop, on External language servers.
   start: STRINGS.actionStart,
   stop: STRINGS.actionStop,
+  // Story 20.2: a production's Restart, Update and Recover, on Productions.
+  restart: STRINGS.actionRestart,
+  update: STRINGS.actionUpdate,
+  recover: STRINGS.actionRecover,
+  // Story 20.23: an abort, on Queue messages and an item's Queue tab.
+  abort: STRINGS.actionAbort,
 };
 
 /**
@@ -149,6 +155,26 @@ const ACTION_LABELS: Readonly<Record<string, string>> = {
  * elsewhere, which is the whole reason this map is keyed by descriptor.
  */
 const DESCRIPTOR_ACTION_LABELS: Readonly<Record<string, Readonly<Record<string, string>>>> = {
+  // Story 20.3: Production items' Add opens the dialog that adds one item, and its Remove deletes one.
+  'OcuPilot.Screen.Descriptor.InteropItemList': { add: STRINGS.interopItemAddTitle, remove: STRINGS.actionRemove },
+  // Story 20.23: Queues' Abort all aborts every message the queue's read enumerated; Jobs' and an item's Jobs tab's three actions act
+  // on the message a job keeps retrying and on the job itself.
+  'OcuPilot.Screen.Descriptor.InteropQueueList': { abort: STRINGS.interopQueuesAbortAllAction },
+  'OcuPilot.Screen.Descriptor.InteropJobList': { abort: STRINGS.interopJobsAbortAction, suspend: STRINGS.interopJobsSuspendAction, stop: STRINGS.interopJobsStopAction },
+  'OcuPilot.Screen.Descriptor.InteropItemJobTab': { abort: STRINGS.interopJobsAbortAction, suspend: STRINGS.interopJobsSuspendAction, stop: STRINGS.interopJobsStopAction },
+  // Story 20.6: an item's Test tab's Send test opens the dialog that builds and sends one test request.
+  'OcuPilot.Screen.Descriptor.InteropItemTestTab': { test: STRINGS.interopItemTestAction },
+  // Story 20.22: Item settings' Set value opens its dialog, and its Reset to default returns a setting to its default.
+  'OcuPilot.Screen.Descriptor.InteropItemSettingList': { set: STRINGS.interopItemSettingSetAction, reset: STRINGS.interopItemSettingResetAction },
+  // Story 20.5: Lookup tables' New table opens the dialog that creates a table with its first entry, its Delete removes a table and its Export
+  // writes the selected one;
+  // a table's entries' Add entry opens the dialog that adds one, its Set value opens the dialog that sets one, and its Remove deletes one.
+  'OcuPilot.Screen.Descriptor.InteropLookupTableList': { add: STRINGS.interopLookupTableAddAction, delete: STRINGS.actionDelete, export: STRINGS.taskExportAction },
+  'OcuPilot.Screen.Descriptor.InteropLookupEntryList': {
+    add: STRINGS.interopLookupEntryAddAction,
+    set: STRINGS.interopLookupEntrySetAction,
+    remove: STRINGS.actionRemove,
+  },
   // Story 8.5: the X.509 list's Create imports a credential rather than typing one in.
   'OcuPilot.Screen.Descriptor.X509CredentialList': { create: STRINGS.actionImport },
   'OcuPilot.Screen.Descriptor.AgentSwitches': {
@@ -161,7 +187,12 @@ const DESCRIPTOR_ACTION_LABELS: Readonly<Record<string, Readonly<Record<string, 
     'add-role': STRINGS.userActionAddRole,
     'remove-role': STRINGS.userActionRemoveRole,
     'revoke-tokens': STRINGS.userActionRevokeTokens,
+    // Story 18.9: the SQL privileges tab's two actions.
+    'grant-sql': STRINGS.sqlPrivilegeGrantAction,
+    'revoke-sql': STRINGS.sqlPrivilegeRevokeAction,
   },
+  // Story 18.9: the Roles list's two SQL privilege actions.
+  'OcuPilot.Screen.Descriptor.RoleList': { 'grant-sql': STRINGS.sqlPrivilegeGrantAction, 'revoke-sql': STRINGS.sqlPrivilegeRevokeAction },
   // Story 7.4: the Auditing configuration form's two actions, and the warning dialog's title;
   // Story 12.3: its audit database copy and purge.
   'OcuPilot.Screen.Descriptor.AuditingConfig': {
@@ -223,6 +254,13 @@ const DESCRIPTOR_ACTION_LABELS: Readonly<Record<string, Readonly<Record<string, 
   'OcuPilot.Screen.Descriptor.LicenseKey': { activate: STRINGS.licenseKeyActivateAction },
   // Story 18.20: ECP data servers' Change status, which opens its dialog.
   'OcuPilot.Screen.Descriptor.EcpDataServerList': { changestatus: STRINGS.ecpDataServerChangeStatus },
+  // Story 20.15: Screen permissions' Change permissions, which opens its dialog, and its Reset. The
+  // declared Remove is sent by that dialog and drawn nowhere.
+  'OcuPilot.Screen.Descriptor.AgentScreenPermissions': {
+    'add-pair': STRINGS.screenPermissionsChangeAction,
+    'remove-pair': STRINGS.actionRemove,
+    reset: STRINGS.screenPermissionsResetAction,
+  },
   // Story 18.21: the SSL/TLS authorizations tab's Authorize and Reject, each titling its warning dialog.
   'OcuPilot.Screen.Descriptor.EcpSslConnectionTab': { authorize: STRINGS.ecpSslAuthorize, reject: STRINGS.ecpSslReject },
   // Story 18.7: Encryption key files' Create key file, Add key and Remove, and its administrators'
@@ -242,6 +280,8 @@ const DESCRIPTOR_ACTION_LABELS: Readonly<Record<string, Readonly<Record<string, 
   'OcuPilot.Screen.Descriptor.DataElementEncryption': { activate: STRINGS.encryptionKeyActivateAction, deactivate: STRINGS.encryptionKeyDeactivateAction },
   // Story 19.17: Document databases' delete, which drops the database and titles its typed-name dialog.
   'OcuPilot.Screen.Descriptor.ExplorerDocDbList': { delete: STRINGS.explorerDocDbDropLabel },
+  // Story 18.26: managed file transfer connections' token revoke.
+  'OcuPilot.Screen.Descriptor.MftConnectionList': { 'revoke-token': STRINGS.mftConnectionRevokeAction },
 };
 
 export class ScreenActions {

@@ -22,19 +22,34 @@ Parameter NAMESPACEDELETE = "osmgmt.namespaces.delete";
 /// <p>The database delete, which the baseline also disables (Story 18.3).</p>
 Parameter DATABASEDELETE = "osmgmt.localdatabases.delete";
 
-/// <p>The agent's task import, which the baseline also disables (DW-1827).</p>
+/// <p>The agent's task import, which the baseline also disables.</p>
 Parameter TASKIMPORT = "tasks.schedule.import";
 
 /// <p>The enable of interoperability, which the baseline also disables (Story 18.15).</p>
 Parameter ENABLEINTEROP = "osmgmt.namespaces.enableinterop";
 
-/// <p>Story 19.2's two document deletes, Story 19.13's two document imports, Story 19.3's two
-/// saves, Story 19.6's SQL run, Story 19.8's data browser save and Story 19.17's document database
+/// <p>Story 19.2's two document deletes, Story 19.13's two document imports, Story 19.6's SQL run, Story 19.8's data browser save and Story 19.17's document database
 /// drop, which the baseline disables.</p>
-Parameter EXPLORERDISABLED = "explorer.classes.delete,explorer.routines.delete,explorer.classes.import,explorer.routines.import,explorer.classes.save,explorer.routines.save,explorer.sqlquery.run,explorer.sqldata.save,explorer.docdb.delete";
+Parameter EXPLORERDISABLED = "explorer.classes.delete,explorer.routines.delete,explorer.classes.import,explorer.routines.import,explorer.sqlquery.run,explorer.sqldata.save,explorer.docdb.delete";
 
 /// <p>The remote database delete, which the baseline also disables (Story 18.16).</p>
 Parameter REMOTEDATABASEDELETE = "osmgmt.remotedatabases.delete";
+
+/// <p>The superserver delete, which the baseline also disables (Story 18.25).</p>
+Parameter SUPERSERVERDELETE = "security.superservers.delete";
+
+/// <p>Story 20.3's destructive item remove, which ships disabled (AD-22).</p>
+Parameter INTEROPITEMREMOVE = "interop.items.remove";
+
+/// <p>Story 20.23's two queue aborts and its job abort, which ship disabled (AD-22).</p>
+Parameter INTEROPRUNTIMEDISABLED = "interop.queuemessages.abort,interop.queues.abort,interop.jobs.abort";
+
+/// <p>Story 20.5's lookup entry remove and lookup table delete, which ship disabled (AD-22).</p>
+Parameter INTEROPLOOKUPDISABLED = "interop.lookupentries.remove,interop.lookuptables.delete,interop.lookuptables.import";
+
+/// <p>The managed file transfer connection delete and token revoke, which the baseline also disables
+/// (Story 18.26).</p>
+Parameter MFTDISABLED = "security.mftconnections.delete,security.mftconnections.revoketoken";
 
 /// <p>The license key's activation and the license server delete, which the baseline also disables
 /// (Story 18.6).</p>
@@ -46,7 +61,22 @@ Parameter ECPDISABLED = "osmgmt.ecpdataservers.changestatus,osmgmt.ecpdataserver
 
 /// <p>Story 18.7's five key file writes, Story 18.22's four encryption key writes and Story 18.23's
 /// encryption startup settings' update, which the baseline disables.</p>
+/// <p>Story 18.24's two wallet key replaces, which the baseline disables.</p>
+Parameter WALLETKEYDISABLED = "security.secrets.replacersa,security.secrets.replacesymmetric";
+
 Parameter ENCRYPTIONDISABLED = "security.encryptionkeyfile.create,security.encryptionkeyfile.addkey,security.encryptionkeyfile.removekey,security.encryptionkeyfileadmins.addadministrator,security.encryptionkeyfileadmins.removeadministrator,security.databaseencryption.activate,security.databaseencryption.deactivate,security.dataelementencryption.activate,security.dataelementencryption.deactivate,security.encryptionstartup.update";
+
+/// <p>The percent class access delete, which the baseline also disables (Story 18.10).</p>
+Parameter PCTACCESSDELETE = "webapp.pctaccess.delete";
+
+/// <p>The Doc DB application delete, which the baseline also disables (Story 18.30).</p>
+Parameter DOCDBAPPDELETE = "webapp.docdbapps.delete";
+
+/// <p>The privileged routine application delete, which the baseline also disables (Story 18.31).</p>
+Parameter ROUTINEAPPDELETE = "webapp.routineapps.delete";
+
+/// <p>The REST service delete, which the baseline also disables (Story 18.32).</p>
+Parameter RESTAPIDELETE = "webapp.restapis.delete";
 
 /// <p>Story 18.4's eight disk operations, which the baseline disables.</p>
 Parameter DISKOPERATIONS = "osmgmt.databasedetails.compact,osmgmt.databasedetails.defragment,osmgmt.databasedetails.dismount,osmgmt.databasedetails.mount,osmgmt.databasedetails.truncate,osmgmt.databases.integrity,osmgmt.localdatabases.expand,osmgmt.localdatabases.grow";
@@ -131,15 +161,21 @@ Method TestTheDefaultEnablesEveryWriteButTheBaselineDisabled()
         Set tKey = $Order(tKeys(tKey))
         If tKey = "" Quit
         Set tCount = tCount + 1
-        Set tExpected = $Select((tKey = ..#PURGE) || (tKey = ..#NAMESPACEDELETE) || (tKey = ..#DATABASEDELETE) || (tKey = ..#TASKIMPORT) || (tKey = ..#ENABLEINTEROP) || $ListFind($ListFromString(..#DISKOPERATIONS), tKey) || $ListFind($ListFromString(..#EXPLORERDISABLED), tKey): "0|baseline", 1: "1|baseline")
+        Set tExpected = $Select((tKey = ..#PURGE) || (tKey = ..#NAMESPACEDELETE) || (tKey = ..#DATABASEDELETE) || (tKey = ..#TASKIMPORT) || (tKey = ..#ENABLEINTEROP) || (tKey = ..#PCTACCESSDELETE) || (tKey = ..#DOCDBAPPDELETE) || (tKey = ..#ROUTINEAPPDELETE) || (tKey = ..#RESTAPIDELETE) || $ListFind($ListFromString(..#DISKOPERATIONS), tKey) || $ListFind($ListFromString(..#EXPLORERDISABLED), tKey): "0|baseline", 1: "1|baseline")
         If tKey = ..#REMOTEDATABASEDELETE Set tExpected = "0|baseline"
+        If tKey = ..#SUPERSERVERDELETE Set tExpected = "0|baseline"
+        If tKey = ..#INTEROPITEMREMOVE Set tExpected = "0|baseline"
+        If $ListFind($ListFromString(..#INTEROPRUNTIMEDISABLED), tKey) Set tExpected = "0|baseline"
+        If $ListFind($ListFromString(..#INTEROPLOOKUPDISABLED), tKey) Set tExpected = "0|baseline"
+        If $ListFind($ListFromString(..#MFTDISABLED), tKey) Set tExpected = "0|baseline"
         If $ListFind($ListFromString(..#LICENSEDISABLED), tKey) Set tExpected = "0|baseline"
         If $ListFind($ListFromString(..#ECPDISABLED), tKey) Set tExpected = "0|baseline"
         If $ListFind($ListFromString(..#ENCRYPTIONDISABLED), tKey) Set tExpected = "0|baseline"
+        If $ListFind($ListFromString(..#WALLETKEYDISABLED), tKey) Set tExpected = "0|baseline"
         If ..Resolved(tKey) '= tExpected Set tWrong = tWrong _ $ListBuild(tKey _ "=" _ ..Resolved(tKey))
     }
     Do $$$AssertTrue(tCount > 0, "there are write keys to resolve (" _ tCount _ ")")
-    Do $$$AssertEquals($ListToString(tWrong, ", "), "", "each resolves enabled by the baseline, the purge, the namespace delete, the database delete, the task import, the eight disk operations, the enable of interoperability, the two document deletes, the two document imports, the license key's activation, the license server delete, the ECP data server status change and delete, the five key file writes, the four encryption key writes and the encryption startup settings' update disabled")
+    Do $$$AssertEquals($ListToString(tWrong, ", "), "", "each resolves enabled by the baseline, the purge, the namespace delete, the database delete, the task import, the eight disk operations, the enable of interoperability, the two document deletes, the two document imports, the percent class access delete, the license key's activation, the license server delete, the ECP data server status change and delete, the five key file writes, the four encryption key writes, the encryption startup settings' update, the two wallet key replaces, the interoperability item remove, the lookup entry remove, the lookup table delete and the lookup table import disabled")
     Do $$$AssertEquals(..Resolved(..#PURGE), "0|baseline", "the purge's source is the baseline")
 }
 

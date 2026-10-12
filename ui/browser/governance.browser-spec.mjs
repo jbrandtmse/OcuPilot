@@ -21,7 +21,8 @@ import puppeteer from 'puppeteer';
 import { LIVE_CONTAINER, READINESS_PATH, browserConfig, launchOptions } from '../browser.config.mjs';
 import { leaveFirstLoginGate } from './shell-entry.mjs';
 import { authHeader as sharedAuthHeader, saveAndSettle } from './panel-spec.mjs';
-import { resetGovernancePolicy, resetRememberedState } from './preferences-reset.mjs';
+import { governanceRowVersion, resetGovernancePolicy, resetRememberedState } from './preferences-reset.mjs';
+import { clearGovernancePolicy } from './turnprobe-spec.mjs';
 
 const uiRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 const { STRINGS } = await import(join(uiRoot, 'src', 'app', 'core', 'strings.ts'));
@@ -32,18 +33,24 @@ const GOVERNANCE_PATH = '/api/ocupilot/agent/governance';
 const TOOL = 'webapp.list.update';
 
 let browser = null;
+// Whether no policy was stored before this file ran: the resets below save a default row, which the end clears.
+let noStoredPolicy = false;
 
 before(async () => {
   assert.notEqual(config.container, LIVE_CONTAINER, 'this spec drives the throwaway, never the live container');
   const ready = await (await fetch(`${config.origin}${READINESS_PATH}`)).json();
   assert.equal(ready.state, 'installed', `the throwaway must be installed, not ${JSON.stringify(ready)}`);
+  noStoredPolicy = (await governanceRowVersion()) === 0;
   browser = await puppeteer.launch(launchOptions(config));
 });
 
 after(async () => {
-  if (browser === null) return;
-  await browser.close();
+  if (browser !== null) await browser.close();
   browser = null;
+  if (noStoredPolicy) {
+    clearGovernancePolicy(config.container);
+    assert.equal(await governanceRowVersion(), 0, 'no governance policy is stored, as before this file ran');
+  }
 });
 
 /** A fresh context signed in through the shell's own form, landed at `url`. */

@@ -225,6 +225,12 @@ Parameter SECRETBODY = "";
 /// them into this tool's own settable arguments over the fresh read.</p>
 Parameter SCREENVALUES = "";
 
+/// <p>The names among <parameter>SCREENVALUES</parameter> a screen action may leave out, in the same
+/// <code>&lt;action&gt;=&lt;name&gt;[:&lt;name&gt;...]</code> grammar, or <code>""</code>: none, so every
+/// declared value is required. A name listed here is still a declaration -- the route admits it only as a
+/// non-empty string -- but a request without it is not refused for lacking it (Story 18.28).</p>
+Parameter SCREENOPTIONAL = "";
+
 /// <p>This tool's own class, which <method>View</method> hands the mint so
 /// <method>ReadType</method>, <method>SendsBody</method> and <method>StateDiff</method> are read
 /// from the concrete tool rather than from this base (AD-51).</p>
@@ -367,6 +373,16 @@ ClassMethod MergeUpdate(pFresh As %DynamicObject, pArgs As %DynamicObject, pIdAr
 /// <p><code>""</code> here: every create before Story 9.7 names its target by the id the caller
 /// chose, so the target's own id is the created one.</p>
 ClassMethod CreatedId(pWritten) As %String
+{
+    Quit ""
+}
+
+/// <p>The name a proposal's card titles the target by, or <code>""</code>, recorded at the mint
+/// (<property>OcuPilot.Kernel.State.Propose.TargetName</property>). <var>pFresh</var> is the fresh
+/// read, <var>pId</var> the target's id and <var>pArgs</var> the tool's arguments. <code>""</code> here, so
+/// the card titles the target by its id. It never refuses the mint: an answer that is not text reads
+/// as <code>""</code>.</p>
+ClassMethod TargetName(pFresh, pId As %String, pArgs) As %String
 {
     Quit ""
 }
@@ -519,6 +535,17 @@ ClassMethod StateDiff(pFresh As %DynamicObject, Output pRows As %DynamicArray, O
     Quit $$$OK
 }
 
+/// <p>Whether this write's target is refused by the prohibited set before its state precondition is read, and the
+/// <code>PROHIBITED.*</code> code that refuses it. The screen's action route and the mint call it before
+/// <method>StateDiff</method>, so a refusal that must be a 403 is not answered as the precondition's 400.</p>
+/// <p><b>Caller contract:</b> <var>pIdValue</var> is the target's id argument as the caller holds it. Answers 0 with
+/// <var>pCode</var> <code>""</code> unless a tool overrides it; the default refuses nothing.</p>
+ClassMethod RefusedBeforeState(pIdValue As %String, Output pCode As %String) As %Boolean
+{
+    Set pCode = ""
+    Quit 0
+}
+
 /// <p>The class a minted proposal is built by. Overridable so a test can observe what a tool
 /// asked for; production never overrides it.</p>
 ClassMethod MintClass() As %String
@@ -552,6 +579,17 @@ ClassMethod SettableFields() As %List [ Abstract ]
 ClassMethod IdArgument() As %String
 {
     Quit "Name"
+}
+
+/// <p>The id a confirmed or drafted create sends for its target, as the caller typed it, read from the stored
+/// arguments <var>pArgs</var>: the <method>IdArgument</method> member. A tool whose composite id the canonical rule
+/// folds in a part the vendor stores as sent overrides it to join the parts as typed
+/// (<class>OcuPilot.Screen.Tool.DocDbAppCreate</class>). <code>""</code>, or a value that does not normalize to the
+/// target's id, names no typed spelling, and the canonical id is sent.</p>
+ClassMethod TypedId(pArgs As %DynamicObject) As %String
+{
+    If '$IsObject(pArgs) Quit ""
+    Quit pArgs.%Get(..IdArgument())
 }
 
 /// <p>The query parameter this endpoint's <code>GET</code> identifies a target by, which is the
@@ -659,6 +697,24 @@ ClassMethod ScreenActionValueNames(pActionId As %String) As %List
     If pActionId = "" Quit tNames
     For tI = 1:1:$Length(..#SCREENVALUES, ",") {
         Set tEntry = $ZStrip($Piece(..#SCREENVALUES, ",", tI), "<>W")
+        If $Piece(tEntry, "=", 1) '= pActionId Continue
+        Set tSpec = $Piece(tEntry, "=", 2, *)
+        For tJ = 1:1:$Length(tSpec, ":") {
+            Set tName = $ZStrip($Piece(tSpec, ":", tJ), "<>W")
+            If (tName '= "") && '$ListFind(tNames, tName) Set tNames = tNames _ $ListBuild(tName)
+        }
+    }
+    Quit tNames
+}
+
+/// <p>The value names <parameter>SCREENOPTIONAL</parameter> lists for screen action <var>pActionId</var>, as a
+/// <class>%List</class>; <code>""</code> when every declared value is required.</p>
+ClassMethod ScreenActionOptionalNames(pActionId As %String) As %List
+{
+    Set tNames = ""
+    If pActionId = "" Quit tNames
+    For tI = 1:1:$Length(..#SCREENOPTIONAL, ",") {
+        Set tEntry = $ZStrip($Piece(..#SCREENOPTIONAL, ",", tI), "<>W")
         If $Piece(tEntry, "=", 1) '= pActionId Continue
         Set tSpec = $Piece(tEntry, "=", 2, *)
         For tJ = 1:1:$Length(tSpec, ":") {
@@ -934,11 +990,67 @@ ClassMethod ReadBackFields() As %List
     Quit tNames
 }
 
+/// <p>The write tool whose read re-reads this create's target by the id the instance allocated, or
+/// <code>""</code> (AD-58). A create whose own read is a list row (<parameter>READROWKEY</parameter>)
+/// names its update tool here: the read-back then asks that tool's single-object read for the
+/// created id, so every sent key its field list names is compared rather than only the keys a list
+/// row carries. <code>""</code> here, so every other tool re-reads through its own read.</p>
+Parameter READBACKTOOL = "";
+
+/// <p><parameter>READBACKTOOL</parameter>, for the read-back, which resolves a tool by name and holds
+/// only its class.</p>
+ClassMethod ReadBackTool() As %String
+{
+    Quit ..#READBACKTOOL
+}
+
 /// <p>The <parameter>SECRETBODY</parameter> names whose explicitly supplied empty value is sent, as
 /// comma-separated names, so the vendor clears the stored secret (AD-56 (i) as amended by Story
 /// 16.14). <code>""</code> here, so an empty secret is not a secret supplied and is left out
 /// (<method>OcuPilot.Kernel.Proposal.Operation.SecretBody</method>). A tool declares a name only where
 /// its vendor type clears the secret on <code>""</code>, measured.</p>
 Parameter CLEARABLESECRETS = "";
+
+/// <p>The names among <parameter>SCREENVALUES</parameter> a screen action may send as an empty string, in the same
+/// <code>&lt;action&gt;=&lt;name&gt;[:&lt;name&gt;...]</code> grammar as <parameter>SCREENOPTIONAL</parameter>, or
+/// <code>""</code>: none, so every declared value is a non-empty string (AD-56 (ii) as amended by Story 20.22). A
+/// name listed here is still a declaration, and only this tool names it: a person clearing a setting is
+/// the one case an empty value is the request.</p>
+Parameter SCREENEMPTY = "";
+
+/// <p>The names <var>pSpec</var>, a <code>&lt;action&gt;=&lt;name&gt;[:&lt;name&gt;...]</code> list, holds for screen
+/// action <var>pActionId</var>, as a <class>%List</class>; <code>""</code> when it names none.</p>
+ClassMethod ScreenActionNamesIn(pSpec As %String, pActionId As %String) As %List
+{
+    Set tNames = ""
+    If pActionId = "" Quit tNames
+    For tI = 1:1:$Length(pSpec, ",") {
+        Set tEntry = $ZStrip($Piece(pSpec, ",", tI), "<>W")
+        If $Piece(tEntry, "=", 1) '= pActionId Continue
+        Set tList = $Piece(tEntry, "=", 2, *)
+        For tJ = 1:1:$Length(tList, ":") {
+            Set tName = $ZStrip($Piece(tList, ":", tJ), "<>W")
+            If (tName '= "") && '$ListFind(tNames, tName) Set tNames = tNames _ $ListBuild(tName)
+        }
+    }
+    Quit tNames
+}
+
+/// <p>The value names <parameter>SCREENEMPTY</parameter> lists for screen action <var>pActionId</var>, as a
+/// <class>%List</class>: the values <class>OcuPilot.Api.ScreenAction</class> admits as an empty string.</p>
+ClassMethod ScreenActionEmptyNames(pActionId As %String) As %List
+{
+    Quit ..ScreenActionNamesIn(..#SCREENEMPTY, pActionId)
+}
+
+/// <p>The argument names of the call <var>pInput</var>, beyond <method>SecretArguments</method>, whose values the
+/// ledger row and the step must redact for this call alone (AD-3 layer 1, AD-41, Story 20.22), as a
+/// <class>%List</class>. <code>""</code> here: a tool's secret arguments are the descriptor's declaration. A tool whose
+/// secrecy depends on the target a call names (an item setting whose name matches the credential pattern) answers it
+/// here; it reads nothing but <var>pInput</var> and never fails.</p>
+ClassMethod CallSecretNames(pInput As %DynamicAbstractObject) As %List
+{
+    Quit ""
+}
 
 }

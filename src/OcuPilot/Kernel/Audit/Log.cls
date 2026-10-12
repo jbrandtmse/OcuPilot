@@ -64,9 +64,10 @@ Parameter CREDENTIALEXACTNAMES = "key,credentialname";
 
 /// <p>The whole names the two lists above match that are not credentials, matched
 /// case-insensitively against the folded key: <code>returnrefreshtoken</code>, the authorization
-/// server's refresh-token policy (Conventions, Secrets; Story 12.7). Held equal to
+/// server's refresh-token policy (Conventions, Secrets; Story 12.7), and <code>authelogintoken</code>,
+/// the system-wide Allow creation of Login Cookies flag (Story 18.8). Held equal to
 /// <file>ui/tools/credential-pattern.mjs</file>'s <code>CREDENTIAL_EXCEPTIONS</code>.</p>
-Parameter CREDENTIALEXCEPTIONS = "returnrefreshtoken";
+Parameter CREDENTIALEXCEPTIONS = "returnrefreshtoken,authelogintoken";
 
 /// <p>Build the JSON log entry and write it to the IRIS console log. Never throws —
 /// a failure here is swallowed rather than raised to the caller.</p>

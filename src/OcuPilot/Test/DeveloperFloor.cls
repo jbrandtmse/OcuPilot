@@ -3,11 +3,13 @@
 /// screens, reads System Explorer in the install namespace and in <code>USER</code>, is refused an
 /// administrative screen naming its pair, opens Logs on the analytics log alone, and reads Home's
 /// system information with the dashboard members empty and nothing logged. A principal below the
-/// floor is refused naming both halves of it, and an administrator without <code>%All</code> is
+/// floor is refused naming each member of it, and an administrator without <code>%All</code> is
 /// still answered the dashboard. Two derived legs hold the rosters: every screen the
 /// map opens to the principal is a declared one whose classic page's compiled <code>RESOURCE</code>
-/// admits it, and the tools whose required pairs it holds are exactly the declared thirty-six,
-/// whose writes are the two exports, the SQL console's run and the data browser's save.</p>
+/// admits it, and the tools whose required pairs it holds are exactly the declared forty-seven,
+/// whose writes are the two exports, the SQL console's run, the data browser's save, Screen permissions' three,
+/// and the saves and creates, whose WRITE pair is an argument pair the developer lacks in the install namespace
+/// (Story 20.20, DW-2242).</p>
 /// <p>It needs <parameter>ARMINGVARIABLE</parameter> armed: <class>OcuPilot.Test.DeveloperFloorFixture</class>
 /// creates the three principals in <method>OnBeforeAllTests</method>, which reads their grants back
 /// through <class>OcuPilot.Kernel.Shell.Effective</class>, and removes them in
@@ -22,7 +24,7 @@ Parameter ARMINGVARIABLE = "OCUPILOT_ALLOW_PRINCIPALS";
 Parameter FIXTURE = "OcuPilot.Test.DeveloperFloorFixture";
 
 /// <p>The areas the navigation map opens to the developer principal.</p>
-Parameter AREAS = "home,logs,system-explorer,agent";
+Parameter AREAS = "home,logs,system-explorer,analytics,agent";
 
 /// <p>The package the screens below are declared in.</p>
 Parameter DESCRIPTORPACKAGE = "OcuPilot.Screen.Descriptor.";
@@ -30,18 +32,20 @@ Parameter DESCRIPTORPACKAGE = "OcuPilot.Screen.Descriptor.";
 /// <p>The screens the map opens to it: Home, the agent's own-data screens, System Explorer's four, its
 /// two editors (Story 19.3), its Search, Compare and Macros (Story 19.4) and its eighteen SQL catalog
 /// screens (Stories 19.5 and 19.14), SQL query (Story 19.6), Data browser (Story 19.7), Document
-/// databases (Story 19.17), whose DocDB pairs <code>%Developer</code> grants, and the analytics log
-/// (Story 19.12's audit).</p>
-Parameter SCREENS = "AgentGuardrails,AgentLedger,AgentTranscript,AgentTranscripts,ExplorerClassDocument,ExplorerClassEditor,ExplorerClassList,ExplorerCompare,ExplorerDocDbList,ExplorerMacro,ExplorerRoutineDocument,ExplorerRoutineEditor,ExplorerRoutineList,ExplorerSearch,ExplorerSqlCachedQueries,ExplorerSqlConstraints,ExplorerSqlData,ExplorerSqlFields,ExplorerSqlIndices,ExplorerSqlPartitionMappings,ExplorerSqlPartitions,ExplorerSqlProcedure,ExplorerSqlProcedureStatements,ExplorerSqlProcedures,ExplorerSqlQuery,ExplorerSqlSchemas,ExplorerSqlTable,ExplorerSqlTableStatements,ExplorerSqlTables,ExplorerSqlTriggers,ExplorerSqlView,ExplorerSqlViewFields,ExplorerSqlViewStatements,ExplorerSqlViews,Home,LogAnalyticsViewer";
+/// databases (Story 19.17), whose DocDB pairs <code>%Developer</code> grants, the analytics log
+/// (Story 19.12's audit) and Screen permissions with its three writes (Story 20.15), which admit
+/// <code>%Development:USE</code> or <code>%Admin_Secure:USE</code>.</p>
+Parameter SCREENS = "AgentGuardrails,AgentLedger,AgentScreenPermissions,AgentTranscript,AgentTranscripts,ExplorerClassDocument,ExplorerClassEditor,ExplorerClassList,ExplorerCompare,ExplorerDocDbList,ExplorerMacro,ExplorerRoutineDocument,ExplorerRoutineEditor,ExplorerRoutineList,ExplorerSearch,ExplorerSqlCachedQueries,ExplorerSqlConstraints,ExplorerSqlData,ExplorerSqlFields,ExplorerSqlIndices,ExplorerSqlPartitionMappings,ExplorerSqlPartitions,ExplorerSqlProcedure,ExplorerSqlProcedureStatements,ExplorerSqlProcedures,ExplorerSqlQuery,ExplorerSqlSchemas,ExplorerSqlTable,ExplorerSqlTableStatements,ExplorerSqlTables,ExplorerSqlTriggers,ExplorerSqlView,ExplorerSqlViewFields,ExplorerSqlViewStatements,ExplorerSqlViews,Home,LogAnalyticsViewer";
 
 /// <p>The tools whose required pairs it holds.</p>
-Parameter TOOLS = "agent.transcripts.read,explorer.class.read,explorer.classes.export,explorer.classes.read,explorer.docdb.read,explorer.macro.read,explorer.routine.read,explorer.routines.export,explorer.routines.read,explorer.search.read,explorer.sqlcachedqueries.read,explorer.sqlconstraints.read,explorer.sqldata.save,explorer.sqlfields.read,explorer.sqlindices.read,explorer.sqlpartitionmappings.read,explorer.sqlpartitions.read,explorer.sqlprocedure.read,explorer.sqlprocedures.read,explorer.sqlprocedurestatements.read,explorer.sqlquery.read,explorer.sqlquery.run,explorer.sqlschemas.read,explorer.sqltable.read,explorer.sqltables.read,explorer.sqltablestatements.read,explorer.sqltriggers.read,explorer.sqlview.read,explorer.sqlviewfields.read,explorer.sqlviews.read,explorer.sqlviewstatements.read,logs.analytics.read,shell.instance.read,shell.namespaces.read,shell.privileges.read,shell.screen.open";
+Parameter TOOLS = "agent.screenpermissions.addpair,agent.screenpermissions.read,agent.screenpermissions.removepair,agent.screenpermissions.reset,agent.transcripts.read,explorer.class.read,explorer.class.source,explorer.classes.create,explorer.classes.export,explorer.classes.read,explorer.classes.save,explorer.docdb.read,explorer.macro.read,explorer.routine.read,explorer.routine.source,explorer.routines.create,explorer.routines.export,explorer.routines.read,explorer.routines.save,explorer.search.read,explorer.sqlcachedqueries.read,explorer.sqlconstraints.read,explorer.sqldata.save,explorer.sqlfields.read,explorer.sqlindices.read,explorer.sqlpartitionmappings.read,explorer.sqlpartitions.read,explorer.sqlprocedure.read,explorer.sqlprocedures.read,explorer.sqlprocedurestatements.read,explorer.sqlquery.read,explorer.sqlquery.run,explorer.sqlschemas.read,explorer.sqltable.read,explorer.sqltables.read,explorer.sqltablestatements.read,explorer.sqltriggers.read,explorer.sqlview.read,explorer.sqlviewfields.read,explorer.sqlviews.read,explorer.sqlviewstatements.read,logs.analytics.read,shell.instance.read,shell.namespaces.read,shell.privileges.read,shell.screen.open,shell.tools.find";
 
-/// <p>The write tools among <parameter>TOOLS</parameter>: an export needs the read pairs alone, and
-/// every other System Explorer write also WRITE on the namespace's routines database, which the
-/// developer lacks in the install namespace, but SQL query's run and the data browser's save, which
-/// declare no pair beyond their screens' (Stories 19.6 and 19.8).</p>
-Parameter HELDWRITES = "explorer.classes.export,explorer.routines.export,explorer.sqlquery.run,explorer.sqldata.save";
+/// <p>The write tools among <parameter>TOOLS</parameter>: an export needs the read pairs alone; SQL
+/// query's run and the data browser's save declare no pair beyond their screens' (Stories 19.6 and 19.8);
+/// and a save's and a create's WRITE on the routines database is an argument pair, which the declared
+/// level does not read (Story 20.20, DW-2242). Every other System Explorer write declares that WRITE,
+/// which the developer lacks in the install namespace.</p>
+Parameter HELDWRITES = "agent.screenpermissions.addpair,agent.screenpermissions.removepair,agent.screenpermissions.reset,explorer.classes.create,explorer.classes.export,explorer.classes.save,explorer.routines.create,explorer.routines.export,explorer.routines.save,explorer.sqldata.save,explorer.sqlquery.run";
 
 /// <p>The second namespace System Explorer is read in, whose code database
 /// <code>%Developer</code> grants.</p>
@@ -126,10 +130,21 @@ Method OnAfterAllTests() As %Status
     Quit $$$OK
 }
 
-/// <p>Whether <var>pComposed</var> holds <var>pPermission</var> on <var>pResource</var>.</p>
+/// <p>Whether <var>pComposed</var> holds <var>pPermission</var> on <var>pResource</var>, or, for an either-of
+/// pair (<method>OcuPilot.Screen.Gate.Alternatives</method>), on any one of its resources.</p>
+/// <p>Mutation: make an either-of pair require all of its resources -> a held Screen permissions tool leaves
+/// the held set and the tools test goes red.</p>
 ClassMethod Held(pComposed As %DynamicObject, pResource As %String, pPermission As %String) As %Boolean
 {
-    Quit ''$ClassMethod(..#FIXTURE, "Holds", pComposed, pResource, pPermission)
+    Set tHeld = 0
+    Set tAlts = ##class(OcuPilot.Screen.Gate).Alternatives(pResource)
+    For tI = 1:1:$ListLength(tAlts) {
+        If $ClassMethod(..#FIXTURE, "Holds", pComposed, $List(tAlts, tI), pPermission) {
+            Set tHeld = 1
+            Quit
+        }
+    }
+    Quit tHeld
 }
 
 /// <p>One request as <var>pUser</var>; <var>pObject</var> is the parsed body, or <code>""</code>.</p>
@@ -340,18 +355,18 @@ Method TestLogsOpensOnTheAnalyticsLogAlone()
 }
 
 /// <p><b>Below the floor</b>: a principal holding only the code database's READ is refused 403
-/// <code>AUTH.NOADMIN</code>, and the reason names both halves of the floor. Every route is swept by
+/// <code>AUTH.NOADMIN</code>, and the reason names each member of the floor. Every route is swept by
 /// <class>OcuPilot.Test.ConfigGate</class>.</p>
-/// <p>Mutation: restore the router's former reason -> the <code>%Development</code> assertion goes
-/// red.</p>
-Method TestBelowTheFloorIsRefusedNamingBothHalves()
+/// <p>Mutation: restore the router's former reason -> the <code>%Development</code> and
+/// <code>%Ens_Portal</code> assertions go red.</p>
+Method TestBelowTheFloorIsRefusedNamingEachMember()
 {
     Do $$$AssertTrue(..PreparedSetupOk, "setup read back the principals' grants")
     Do ..Request("GET", "/instance", $Parameter(..#FIXTURE, "NEITHERUSER"), .tStatus, .tObject, .tText)
     Do $$$AssertEquals(tStatus, 403, "the identity call is refused: " _ $Extract(tText, 1, 200))
     Set tReason = $Select($IsObject(tObject): tObject.%Get("reason"), 1: "")
     Do $$$AssertEquals($Select($IsObject(tObject): tObject.%Get("code"), 1: ""), "AUTH.NOADMIN", "on the no-administrative-privilege code")
-    Do $$$AssertTrue((tReason [ "%Admin_") && (tReason [ "%Development"), "naming both halves of the floor: " _ tReason)
+    Do $$$AssertTrue((tReason [ "%Admin_") && (tReason [ "%Development") && (tReason [ "%Ens_Portal"), "naming each member of the floor: " _ tReason)
 }
 
 /// <p><b>Home's system information</b> answers the developer principal 200 with the five dashboard
@@ -458,7 +473,7 @@ Method TestEveryOpenScreenMatchesItsClassicPage()
 /// <parameter>HELDWRITES</parameter>.</p>
 /// <p>Mutation: give <class>OcuPilot.Screen.Descriptor.WebAppList</class> an empty pair set ->
 /// <code>webapp.list.read</code> joins the held set and this goes red.</p>
-Method TestTheToolsTheDeveloperHoldsAreTheDeclaredThirtyFive()
+Method TestTheToolsTheDeveloperHoldsAreTheDeclaredRoster()
 {
     Do $$$AssertTrue(..PreparedSetupOk, "setup read back the principals' grants")
     Set tSC = ##class(OcuPilot.Screen.Tool.Registry).ListTools(.tTools)
@@ -481,8 +496,8 @@ Method TestTheToolsTheDeveloperHoldsAreTheDeclaredThirtyFive()
         Set tHeld = tHeld _ $Select(tHeld = "": "", 1: ",") _ tTool.name
         If tTool.kind = "write" Set tHeldWrites = tHeldWrites _ $Select(tHeldWrites = "": "", 1: ",") _ tTool.name
     }
-    Do $$$AssertEquals(..Sorted(tHeld), ..Sorted(..#TOOLS), "the tools the developer holds are the declared thirty-six")
-    Do $$$AssertEquals(..Sorted(tHeldWrites), ..Sorted(..#HELDWRITES), "and the writes it holds are exactly the two exports, the SQL run and the data browser save")
+    Do $$$AssertEquals(..Sorted(tHeld), ..Sorted(..#TOOLS), "the tools the developer holds are the declared forty-seven")
+    Do $$$AssertEquals(..Sorted(tHeldWrites), ..Sorted(..#HELDWRITES), "and the writes it holds are exactly the two exports, the SQL run, the data browser save, Screen permissions' three writes and the saves and creates")
 }
 
 /// <p>Whether the class dictionary holds a compiled class named exactly <var>pClass</var>, Hidden

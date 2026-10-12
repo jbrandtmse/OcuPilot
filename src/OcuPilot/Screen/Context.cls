@@ -172,14 +172,18 @@ ClassMethod ProjectRow(pRow, pFieldList As %List, ByRef pDroppedFields As %List)
 /// <var>pDescriptor</var> carries is resolved against the descriptor its <code>parentScope</code>
 /// route names. A screen that declares no read, no action and no parent -- a form page -- answers
 /// <code>[]</code>. An unadvertised tool is never listed (AD-53).</p>
-/// <p>A tool list that cannot be built returns its error, with <var>pTools</var> empty.</p>
-ClassMethod ScreenTools(pDescriptor As %String, Output pTools As %DynamicArray) As %Status
+/// <p>A tool list that cannot be built returns its error, with <var>pTools</var> empty.
+/// <var>pList</var> is the tool list it read, for a caller that would otherwise build it again
+/// (<method>Unavailable</method>), and <code>""</code> on an error.</p>
+ClassMethod ScreenTools(pDescriptor As %String, Output pTools As %DynamicArray, Output pList As %DynamicArray) As %Status
 {
     Set tSC = $$$OK
     Set pTools = []
+    Set pList = ""
     Try {
         Set tSC = $ClassMethod(..ToolRegistryClass(), "ListTools", .tList)
         If $$$ISERR(tSC) Quit
+        Set pList = tList
         Set tRowActions = $ClassMethod(pDescriptor, "RowActionIds")
         Set tHasPrimary = ($ClassMethod(pDescriptor, "PrimaryActionId") '= "")
         Kill tRead, tWrite
@@ -237,7 +241,59 @@ ClassMethod ScreenTools(pDescriptor As %String, Output pTools As %DynamicArray) 
     } Catch ex {
         Set tSC = ex.AsStatus()
     }
-    If $$$ISERR(tSC) Set pTools = []
+    If $$$ISERR(tSC) {
+        Set pTools = []
+        Set pList = ""
+    }
+    Quit tSC
+}
+
+/// <p>The tools in <var>pTools</var> (wire names, as <method>ScreenTools</method> answers them) the
+/// calling process's user cannot use, as <var>pUnavailable</var>: an object mapping each such wire name
+/// to the first pair of the tool's declared requirement
+/// (<method>OcuPilot.Screen.Tool.Registry.RequiredPairs</method>) the user lacks. A tool whose
+/// requirement cannot be read, or that no longer resolves, maps to <code>""</code>, so a failure
+/// refuses rather than admits. A user who can use every tool gets <code>{}</code>. Argument pairs are
+/// left to dispatch.</p>
+/// <p>The tool list is read once for every name, never once per name: <var>pList</var> is the
+/// <method>OcuPilot.Screen.Tool.Registry.ListTools</method> answer the caller already holds
+/// (<method>ScreenTools</method>'s), and is built here when it is not given. A list that cannot be
+/// built resolves no tool.</p>
+ClassMethod Unavailable(pTools As %DynamicArray, Output pUnavailable As %DynamicObject, pList As %DynamicArray = "") As %Status
+{
+    Set tSC = $$$OK
+    Set pUnavailable = {}
+    Try {
+        Set tRegistry = ..ToolRegistryClass()
+        Set tList = pList
+        If '$IsObject(tList) {
+            Set tListSC = $ClassMethod(tRegistry, "ListTools", .tList)
+            If $$$ISERR(tListSC) Set tList = ""
+        }
+        Kill tByWire
+        If $IsObject(tList) {
+            Set tIterator = tList.%GetIterator()
+            While tIterator.%GetNext(.tIndex, .tEntry) {
+                If '##class(OcuPilot.Screen.Tool.Registry).IsAdvertised(tEntry) Continue
+                Set tName = $ClassMethod(tRegistry, "WireName", tEntry.%Get("name"))
+                If (tName '= "") && '$Data(tByWire(tName)) Set tByWire(tName) = tEntry
+            }
+        }
+        Set tIterator = pTools.%GetIterator()
+        While tIterator.%GetNext(.tIndex, .tWire) {
+            Set tFailedPair = ""
+            Set tUsable = 0
+            Set tTool = $Select(tWire = "": "", 1: $Get(tByWire(tWire)))
+            If $IsObject(tTool) {
+                Set tPairs = $ClassMethod(tRegistry, "RequiredPairs", tTool, .tResolved)
+                If tResolved Set tUsable = ##class(OcuPilot.Screen.Gate).EvaluatePairs(tPairs, .tFailedPair)
+            }
+            If 'tUsable Do pUnavailable.%Set(tWire, tFailedPair, "string")
+        }
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    If $$$ISERR(tSC) Set pUnavailable = {}
     Quit tSC
 }
 

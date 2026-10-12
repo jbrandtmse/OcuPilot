@@ -179,4 +179,10 @@ ClassMethod StateDiff(pFresh As %DynamicObject, Output pRows As %DynamicArray, O
     Quit tSC
 }
 
+/// <p>The task's own name from the fresh read, which the card titles the task by.</p>
+ClassMethod TargetName(pFresh, pId As %String, pArgs) As %String
+{
+    Quit ##class(OcuPilot.Area.Task.TaskRules).NameIn(pFresh)
+}
+
 }

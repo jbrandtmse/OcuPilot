@@ -37,7 +37,7 @@ slots:
     dev_web_port: 52774
     dev_super_port: 1973
     throwaway:
-      dir: /tmp/ocupilot-ci               # scripts/ci-throwaway.sh defaults
+      dir: /Users/jbrandt/.ocupilot-throwaways/ocupilot-ci   # ci-throwaway.sh's macOS default since Story 23.4 (DW-2034: macOS prunes /tmp, and a reboot clears it)
       project: ocupilot-ci
       container: ocupilot-ci
       web: 52776
@@ -50,7 +50,7 @@ slots:
     dev_web_port: 52775
     dev_super_port: 1974
     throwaway:
-      dir: /tmp/ocupilot-b-ci
+      dir: /Users/jbrandt/.ocupilot-throwaways/ocupilot-b-ci
       project: ocupilot-b-ci
       container: ocupilot-b-ci
       web: 52777
@@ -63,7 +63,7 @@ slots:
     dev_web_port: 52778
     dev_super_port: 1977
     throwaway:
-      dir: /tmp/ocupilot-c-ci
+      dir: /Users/jbrandt/.ocupilot-throwaways/ocupilot-c-ci
       project: ocupilot-c-ci
       container: ocupilot-c-ci
       web: 52779

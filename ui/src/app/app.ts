@@ -52,6 +52,15 @@ import { EncryptionKeyFileStore } from './areas/security/encryption-key-file.sto
 import { EncryptionKeyFileForm } from './areas/security/encryption-key-file-form.store';
 import { EncryptionKeysStore } from './areas/security/encryption-keys.store';
 import { EncryptionStartupForm } from './areas/security/encryption-startup.store';
+import { AuthOptionsForm } from './areas/security/auth-options.store';
+import { SuperserverActions } from './areas/security/superserver-actions';
+import { SuperserverForm } from './areas/security/superserver-form.store';
+import { MftConnectionActions } from './areas/security/mft-connection-actions';
+import { MftConnectionForm } from './areas/security/mft-connection-form.store';
+import { DocDbAppActions } from './areas/web-applications/docdb-app-actions';
+import { DocDbAppForm } from './areas/web-applications/docdb-app-form.store';
+import { RoutineAppActions } from './areas/web-applications/routine-app-actions';
+import { RoutineAppForm } from './areas/web-applications/routine-app-form.store';
 import { MappingActions } from './areas/os-management/mapping-actions';
 import { MappingForm } from './areas/os-management/mapping-form.store';
 import { OAuthActions } from './areas/security/oauth-actions';
@@ -76,6 +85,7 @@ import { FormDirty } from './core/form-dirty';
 import { InstanceService, isInstanceReady } from './core/instance';
 import { NavigationService, editorScreenFor, routeFromUrl, screenForRoute, withQuery } from './core/navigation';
 import { OverlayStack } from './core/overlay-stack';
+import { LongBlocks } from './core/long-blocks';
 import { PanelState } from './core/panel-layout';
 import { TurnStore } from './core/turn';
 import { RefreshService } from './core/refresh';
@@ -364,6 +374,20 @@ export class App {
   private readonly encryptionKeysStore = inject(EncryptionKeysStore);
   // Encryption startup settings' form store (Story 18.23).
   private readonly encryptionStartupForm = inject(EncryptionStartupForm);
+  // Authentication options' form store (Story 18.8).
+  private readonly authOptionsForm = inject(AuthOptionsForm);
+  // Superservers' declared Create (`areas/security/superserver-actions.ts`), with the form's store (Story 18.25).
+  private readonly superserverActions = inject(SuperserverActions);
+  private readonly superserverForm = inject(SuperserverForm);
+  // Managed file transfer's declared Create (`areas/security/mft-connection-actions.ts`), with the form's store (Story 18.26).
+  private readonly mftConnectionActions = inject(MftConnectionActions);
+  private readonly mftConnectionForm = inject(MftConnectionForm);
+  // Doc DB applications' declared Create (`areas/web-applications/docdb-app-actions.ts`), with the form's store (Story 18.30).
+  private readonly docDbAppActions = inject(DocDbAppActions);
+  private readonly docDbAppForm = inject(DocDbAppForm);
+  // Privileged routine applications' declared Create (`areas/web-applications/routine-app-actions.ts`), with the form's store (Story 18.31).
+  private readonly routineAppActions = inject(RoutineAppActions);
+  private readonly routineAppForm = inject(RoutineAppForm);
   // The three mapping lists' declared Create, the same way (`areas/os-management/mapping-actions.ts`).
   private readonly mappingActions = inject(MappingActions);
   private readonly mappingForm = inject(MappingForm);
@@ -385,6 +409,8 @@ export class App {
   private readonly recentsRecorder = inject(RecentsRecorder);
   private readonly overlays = inject(OverlayStack);
   private readonly panel = inject(PanelState);
+  /** The panel's opened long blocks (Story 20.17); optional, so a spec that is not about it provides none. */
+  private readonly longBlocks = inject(LongBlocks, { optional: true });
   private readonly turn = inject(TurnStore);
   private readonly host: ElementRef<HTMLElement> = inject(ElementRef);
 
@@ -699,6 +725,16 @@ export class App {
       this.encryptionKeysStore.reset();
       // The encryption startup form holds settings THIS principal was changing and has not saved.
       this.encryptionStartupForm.reset();
+      // The authentication options form holds options THIS principal was changing and has not saved.
+      this.authOptionsForm.reset();
+      // The superserver form holds a superserver THIS principal was creating or editing and has not saved.
+      this.superserverForm.reset();
+      // The connection form holds a managed file transfer connection THIS principal was creating or editing and has not saved.
+      this.mftConnectionForm.reset();
+      // The Doc DB application form holds a record THIS principal was creating or editing and has not saved.
+      this.docDbAppForm.reset();
+      // The routine application form holds an application THIS principal was creating or editing and has not saved.
+      this.routineAppForm.reset();
       // The mapping editor holds a mapping THIS principal was creating or editing and has not saved.
       this.mappingForm.reset();
       // The SSL/TLS form holds a private key password THIS principal typed and has not saved (AD-35).
@@ -715,6 +751,7 @@ export class App {
       // the width is one account's row on the instance, not the browser's), and so is the side
       // bar's open state, which is the same row family.
       this.panel.endSession();
+      this.longBlocks?.endSession();
       this.shell.endSession();
       // The theme is the same row family (Story 15.6): back to light before the next principal's
       // read, rather than rendering the departed principal's choice until it settles.

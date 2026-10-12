@@ -212,12 +212,13 @@ Method TestAChangedRoleGrantIsRefusedOnOcuPilotsOwnApplication()
 /// (<class>OcuPilot.Test.ErrorDelete</class>), <code>resource</code> in Story 8.4
 /// (<class>OcuPilot.Test.ResourceDelete</class>), <code>service</code> in Story 9.9
 /// (<class>OcuPilot.Test.ServiceUpdate</class>), <code>lock</code> in Story 16.12
-/// (<class>OcuPilot.Test.LockRemoveTools</class>).</p>
+/// (<class>OcuPilot.Test.LockRemoveTools</class>), <code>rest-service</code> in Story 18.32
+/// (<class>OcuPilot.Test.RestServiceWrite</class>).</p>
 /// <p>Mutation: answer <code>pProhibits = 0</code> in the uncovered arm of
 /// <method>OcuPilot.Kernel.Proposal.Prohibited.Prohibits</method> -- this goes red.</p>
 Method TestAnUncoveredEntityTypeIsRefusedWholesale()
 {
-    Set tUncovered = $ListBuild("rest-service")
+    Set tUncovered = $ListBuild("log-entry")
     For tI = 1:1:$ListLength(tUncovered) {
         Set tType = $List(tUncovered, tI)
         Set tSC = ..Ask(..Target(), ..Payload(), "Description", .tProhibits, .tCode, "probe-id", tType)
@@ -229,10 +230,10 @@ Method TestAnUncoveredEntityTypeIsRefusedWholesale()
     Do $$$AssertStatusOK(tSC, "an unparseable reference is answered, not raised")
     Do $$$AssertEquals(tProhibits, 1, "and refused")
     Do $$$AssertEquals(tCode, $Parameter(..#SHIPPEDSET, "UNCOVERED"), "as uncovered")
-    Do $$$AssertEquals($ListToString(##class(OcuPilot.Kernel.Proposal.Prohibited).CoveredTypes()), "web-application,user,auditing-configuration,task,process,application-error,role,resource,x509-credential,wallet-secret,device,oauth2-client-configuration,oauth2-server-client,audit-event,audit-user-event,ssl-configuration,service,ldap-configuration,oauth2-server-definition,oauth2-resource-server,oauth2-server,namespace,web-session,background-task,global-mapping,routine-mapping,package-mapping,database-configuration,database,language-server,lock,class,routine,journal-file,journal-settings,license-key,license-server,ecp-data-server,ecp-settings,ecp-ssl-connection,encryption-key-file,database-encryption-keys,data-element-encryption-keys,encryption-startup,docdb-database", "the set covers exactly forty-four entity types -- the service and the LDAP configuration since Story 9.9the set covers exactly forty-four entity types -- the service and the LDAP configuration since Story 9.9, the SSL/TLS configuration since Story 9.5, the two audit event types since Story 7.11, the create and import types since Epic 8, the server description since Story 12.4, the resource server since Story 12.6, the namespace since Story 18.2, the web session since Story 16.2, the background task since Story 16.5, the three mapping types since Story 18.14, the database configuration since Story 18.3, the language server since Story 16.10, the database since Story 18.4, the lock since Story 16.12, and the class and the routine since Story 19.2, the journal file since Story 18.5, the journal settings since Story 18.18, and the license key and the license server since Story 18.6, and the ECP data server since Story 18.20, and the ECP settings and the ECP SSL/TLS computer name since Story 18.21, and the encryption key file since Story 18.7, and the active database and data-element encryption keys since Story 18.22, and the encryption startup settings since Story 18.23, and the document database since Story 19.17")
+    Do $$$AssertEquals($ListToString(##class(OcuPilot.Kernel.Proposal.Prohibited).CoveredTypes()), "screen-permission,web-application,user,auditing-configuration,task,process,application-error,role,resource,x509-credential,wallet-secret,device,oauth2-client-configuration,oauth2-server-client,audit-event,audit-user-event,ssl-configuration,service,ldap-configuration,oauth2-server-definition,oauth2-resource-server,oauth2-server,namespace,web-session,background-task,global-mapping,routine-mapping,package-mapping,database-configuration,database,language-server,lock,class,routine,journal-file,journal-settings,license-key,license-server,ecp-data-server,ecp-settings,ecp-ssl-connection,encryption-key-file,database-encryption-keys,data-element-encryption-keys,encryption-startup,docdb-database,authentication-options,superserver,mft-connection,production,pct-class-access,docdb-application,routine-application,production-item,production-item-setting,interop-queue,interop-message,interop-job,rest-service,lookup-table,lookup-entry", "the set covers exactly sixty-one entity types -- the service and the LDAP configuration since Story 9.9, the SSL/TLS configuration since Story 9.5, the two audit event types since Story 7.11, the create and import types since Epic 8, the server description since Story 12.4, the resource server since Story 12.6, the namespace since Story 18.2, the web session since Story 16.2, the background task since Story 16.5, the three mapping types since Story 18.14, the database configuration since Story 18.3, the language server since Story 16.10, the database since Story 18.4, the lock since Story 16.12, and the class and the routine since Story 19.2, the journal file since Story 18.5, the journal settings since Story 18.18, and the license key and the license server since Story 18.6, and the ECP data server since Story 18.20, and the ECP settings and the ECP SSL/TLS computer name since Story 18.21, and the encryption key file since Story 18.7, and the active database and data-element encryption keys since Story 18.22, and the encryption startup settings since Story 18.23, and the document database since Story 19.17, and the authentication options since Story 18.8, and the superservers since Story 18.25, and the production since Story 20.2, and the screen permission since Story 20.15, and the percent-class access entry since Story 18.10, and the Doc DB application record since Story 18.30, and the privileged routine application since Story 18.31, and the production item since Story 20.3, and the production item setting since Story 20.22, and the REST service since Story 18.32, and the queue, the queued message and the job since Story 20.23, and the lookup table and the lookup table entry since Story 20.5")
 
     ; The refusal reaches a caller as a 403 with the set's own code, not as an error.
-    Set tKey = ..Seed(..Payload(), "Description", "probe-id", "rest-service")
+    Set tKey = ..Seed(..Payload(), "Description", "probe-id", "log-entry")
     If tKey = "" Quit
     Do ##class(OcuPilot.Test.ProposalFixture).Arm(..Target())
     Set tSC = ..Confirm(tKey, .tHttp, .tCode)
@@ -412,6 +413,12 @@ Method TestNoWriteToolAdmitsAnAlwaysProhibitedField()
         ; advertises nothing outside the set's reviewed few, so a vendor property added to the
         ; endpoint's template reaches no schema until the set has a predicate for it.
         Set tPermitted = $Select(tCreates: ##class(OcuPilot.Kernel.Proposal.Prohibited).PermittedCreateFields(tType), 1: ##class(OcuPilot.Kernel.Proposal.Prohibited).PermittedChangeFields(tType))
+        ; Story 18.24: a wallet key tool is judged by its key type's fields, and the descriptor's declared
+        ; secrets include every type's key material, which the set reviews through those lists too.
+        Set tKeyType = $Parameter(tClass, "SECRETTYPE")
+        If tKeyType '= "" Set tPermitted = ##class(OcuPilot.Kernel.Proposal.Prohibited).WalletKeyFields(tKeyType, tCreates)
+        Set tReviewed = tPermitted
+        If tType = "wallet-secret" Set tReviewed = tReviewed _ ##class(OcuPilot.Kernel.Proposal.Prohibited).PermittedCreateFields(tType) _ ##class(OcuPilot.Kernel.Proposal.Prohibited).PermittedChangeFields(tType) _ ##class(OcuPilot.Kernel.Proposal.Prohibited).WalletKeyFields("%Wallet.RSA", 1) _ ##class(OcuPilot.Kernel.Proposal.Prohibited).WalletKeyFields("%Wallet.SymmetricKey", 1)
         ; An action-style write sends no body (AD-51), so it admits no field by construction and
         ; the floor under it is that emptiness. A body-sending write still has to admit something
         ; -- a merge tool that admitted nothing would pass the loops below having checked nothing.
@@ -444,8 +451,9 @@ Method TestNoWriteToolAdmitsAnAlwaysProhibitedField()
             ; a key; Story 18.14's copy of mappings from its source namespace; Story 19.13's export
             ; from its file and its import from its file, its reviewed summary and its compile choice;
             ; Story 19.3's save from its text, its version and its compile choice; Story 19.6's SQL
-            ; run from its statement, its values and its Max rows.
-            If tComposed Do $$$AssertEquals($ListLength(tSettable), $Case(tEntry.%Get("name"), "security.oauthserverdescriptions.updatejwks": 0, "security.oauthresourceservers.addmapping": 2, "security.oauthresourceservers.removemapping": 2, "security.oauthserver.rotatekeys": 0, "security.oauthserverclients.updatejwks": 0, "tasks.schedule.export": 2, "tasks.schedule.import": 3, "explorer.classes.compile": 3, "explorer.routines.compile": 3, "explorer.classes.delete": 0, "explorer.routines.delete": 0, "explorer.classes.export": 2, "explorer.routines.export": 2, "explorer.classes.import": 6, "explorer.routines.import": 6, "explorer.classes.save": 3, "explorer.routines.save": 3, "explorer.sqlquery.run": 3, "explorer.sqldata.save": 4, : 1), tEntry.%Get("name") _ " sends no body and its port composes one from its arguments")
+            ; run from its statement, its values and its Max rows; Story 20.5's lookup table export from its file and its import from its file, its local
+            ; file and its reviewed digest, count and stamp. Story 20.6's host test send from its request class and its fields.
+            If tComposed Do $$$AssertEquals($ListLength(tSettable), $Case(tEntry.%Get("name"), "security.oauthserverdescriptions.updatejwks": 0, "security.oauthresourceservers.addmapping": 2, "security.oauthresourceservers.removemapping": 2, "security.oauthserver.rotatekeys": 0, "security.oauthserverclients.updatejwks": 0, "tasks.schedule.export": 2, "tasks.schedule.import": 4, "explorer.classes.compile": 3, "explorer.routines.compile": 3, "explorer.classes.delete": 0, "explorer.routines.delete": 0, "explorer.classes.export": 2, "explorer.routines.export": 2, "explorer.classes.import": 6, "explorer.routines.import": 6, "explorer.classes.save": 3, "explorer.routines.save": 3, "explorer.sqlquery.run": 3, "explorer.sqldata.save": 4, "permissions.users.grantsql": 6, "permissions.roles.grantsql": 6, "permissions.users.revokesql": 5, "permissions.roles.revokesql": 5, "interop.lookuptables.export": 2, "interop.lookuptables.import": 7, "interop.itemtest.send": 2, : 1), tEntry.%Get("name") _ " sends no body and its port composes one from its arguments")
             For tI = 1:1:$ListLength(tPermitted) {
                 ; A type whose identifying field is also a reviewed field (an OAuth 2.0 server
                 ; description can be renamed) names its target by that field; naming is not setting.
@@ -464,6 +472,7 @@ Method TestNoWriteToolAdmitsAnAlwaysProhibitedField()
             ; asked of the body-sending tools of this kind over the type together.
             For tI = 1:1:$ListLength(tPermitted) {
                 Set tField = $List(tPermitted, tI)
+                If (tKeyType '= "") && $ListFind(tSecrets, tField) Continue
                 Do $$$AssertTrue($Data(tUnion(tCreates, tType, tField)) > 0, tEntry.%Get("name") _ " or a sibling write of its kind advertises '" _ tField _ "', which the prohibited set has reviewed for " _ tType)
             }
         }
@@ -479,7 +488,7 @@ Method TestNoWriteToolAdmitsAnAlwaysProhibitedField()
         ; reads the settable list a secret is not on.
         For tI = 1:1:$ListLength(tSecrets) {
             Set tField = $List(tSecrets, tI)
-            Do $$$AssertTrue($ListFind(tPermitted, tField) > 0, tEntry.%Get("name") _ " declares '" _ tField _ "' secret, and the prohibited set has reviewed it for " _ tType)
+            Do $$$AssertTrue($ListFind(tReviewed, tField) > 0, tEntry.%Get("name") _ " declares '" _ tField _ "' secret, and the prohibited set has reviewed it for " _ tType)
         }
         ; An action-style write sends no merge body, so a supplied secret reaches the vendor only
         ; where its SECRETBODY names it, and each such name is a declared secret (AD-51, AD-56 (i)).
@@ -708,6 +717,40 @@ Method TestARoleChangeTouchesItsReviewedFourAndNothingElse()
     Do $$$AssertEquals(##class(OcuPilot.Kernel.Proposal.Prohibited).ReasonFor(tCode), ##class(OcuPilot.Kernel.Proposal.Prohibited).#UNCOVEREDFIELDREASON, "with the caller-neutral sentence")
 }
 
+/// <p>Story 20.22 (AD-10): a production item setting's change may touch exactly its <code>Value</code>; any other
+/// changed field is refused <code>PROHIBITED.UNCOVEREDFIELD</code> with the caller-neutral sentence.</p>
+/// <p>Mutation (Rule 19): drop the <code>production-item-setting</code> branch of
+/// <method>OcuPilot.Kernel.Proposal.Prohibited.Prohibits</method> -- the foreign-field leg goes red.</p>
+Method TestAProductionItemSettingChangeTouchesItsValueAndNothingElse()
+{
+    Set tFresh = "{""Value"":""before""}"
+    Set tSC = ##class(OcuPilot.Test.ProhibitedFixture).Ask(tFresh, "{""Value"":""after""}", ##class(OcuPilot.Test.ProhibitedFixture).Diff("Value"), "OcuPilotProbeSetting", "production-item-setting", .tProhibits, .tCode, "interop.itemsettings.set")
+    Do $$$AssertStatusOK(tSC, "the set answers a change of the value")
+    Do $$$AssertEquals(tProhibits _ " " _ tCode, "0 ", "the value of a setting may change")
+    Set tSC = ##class(OcuPilot.Test.ProhibitedFixture).Ask(tFresh, "{""Value"":""before"",""Foo"":""x""}", ##class(OcuPilot.Test.ProhibitedFixture).Diff("Foo"), "OcuPilotProbeSetting", "production-item-setting", .tProhibits, .tCode, "interop.itemsettings.set")
+    Do $$$AssertStatusOK(tSC, "the set answers a change of another field")
+    Do $$$AssertEquals(tCode, ##class(OcuPilot.Kernel.Proposal.Prohibited).#UNCOVEREDFIELD, "an unreviewed field is refused")
+    Do $$$AssertEquals(##class(OcuPilot.Kernel.Proposal.Prohibited).ReasonFor(tCode), ##class(OcuPilot.Kernel.Proposal.Prohibited).#UNCOVEREDFIELDREASON, "with the caller-neutral sentence")
+}
+
+/// <p>Story 20.15, AD-10, AD-64: a screen-permission change is judged by the screen's identifier alone. A
+/// screen in an area that declares no pair (Home, Switches, Screen permissions itself) is refused
+/// <code>PROHIBITED.OCUPILOTSCREEN</code> whichever tool and payload name it; an adjustable screen is not,
+/// and neither is an identifier no screen carries, which the port refuses by its own code.</p>
+/// <p>Mutation (Rule 19): drop the <code>screen-permission</code> branch of
+/// <method>OcuPilot.Kernel.Proposal.Prohibited.Prohibits</method> -- the type is refused uncovered or
+/// the own-screen legs are not reached, and this goes red.</p>
+Method TestAScreenPermissionOnOneOfOcuPilotsOwnScreensIsRefused()
+{
+    Set tCode = ##class(OcuPilot.Kernel.Proposal.Prohibited).#OCUPILOTSCREEN
+    For tCase = $ListBuild("shell.home", 1), $ListBuild("agent.switches", 1), $ListBuild("agent.screenpermissions", 1), $ListBuild("osmgmt.locks", 0), $ListBuild("no.such.screen", 0) {
+        Do ##class(OcuPilot.Kernel.EntityRef).Key("screen-permission", "instance", $List(tCase, 1), .tRef)
+        Set tSC = ##class(OcuPilot.Kernel.Proposal.Prohibited).Prohibits("agent.screenpermissions.addpair", tRef, "{}", "[]", .tProhibits, .tOut)
+        Do $$$AssertStatusOK(tSC, $List(tCase, 1) _ ": the question is answered")
+        Do $$$AssertEquals(''tProhibits _ "|" _ tOut, $List(tCase, 2) _ "|" _ $Select($List(tCase, 2): tCode, 1: ""), $List(tCase, 1) _ ": refused exactly when it is one of OcuPilot's own")
+    }
+}
+
 /// <p>AC2 and AC6: the set is the only class that spells a <code>PROHIBITED.</code> code or writes
 /// one of its sentences, every code is well formed, and the resolver the confirm handler asks
 /// first answers each of them.</p>
@@ -720,7 +763,7 @@ Method TestTheSetHasOneHomeAndOneSentencePerCode()
     Do $$$AssertEquals(##class(OcuPilot.Kernel.Proposal.Prohibited).RegistryClass(), "OcuPilot.Screen.Tool.Registry", "and resolves the tool through the shipped registry")
 
     Set tCodes = ##class(OcuPilot.Kernel.Proposal.Prohibited).Codes()
-    Do $$$AssertEquals($ListLength(tCodes), 28, "the set declares twenty-eight codes")
+    Do $$$AssertEquals($ListLength(tCodes), 34, "the set declares thirty-four codes -- the sign-in and start codes since Story 18.8, the serving superserver code since Story 18.25, the SQL privilege code since Story 18.9, the own-screen code since Story 20.15")
     For tI = 1:1:$ListLength(tCodes) {
         Set tCode = $List(tCodes, tI)
         Do $$$AssertTrue(##class(OcuPilot.Api.Error).IsValidCode(tCode), tCode _ " matches the machine-code pattern")

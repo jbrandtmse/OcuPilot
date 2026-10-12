@@ -3,7 +3,7 @@
 /// written.</p>
 /// <p><b>Who may see what.</b> Every caller that reaches here has already cleared
 /// <method>OcuPilot.Api.Router.OnPreDispatch</method>: authenticated, and holding USE on at least
-/// one <code>%Admin_*</code> resource or on <code>%Development</code>. On top of that,
+/// one <code>%Admin_*</code> resource, on <code>%Development</code> or on <code>%Ens_Portal</code>. On top of that,
 /// <b>reading one definition and every write</b> require OcuPilot's own administrative resource,
 /// checked server-side through <method>OcuPilot.Screen.Gate.HoldsPrivilege</method> at the moment
 /// of the call. The <b>list</b> does not: it answers the selection projection -- id, name,

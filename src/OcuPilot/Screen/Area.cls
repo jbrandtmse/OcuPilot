@@ -1,4 +1,4 @@
-/// <p>The closed area vocabulary: the nine rail entries, in the daily-use order
+/// <p>The closed area vocabulary: the eleven rail entries, in the daily-use order
 /// <file>EXPERIENCE.md</file> "**The rail, top to bottom (daily-use order):**" fixes, each with its rail position, its label key in the
 /// one string source, whether its rail item navigates, and its own privilege pair set
 /// (AD-8).</p>
@@ -33,9 +33,17 @@
 /// task through (AD-26), which the audit database viewer reaches.
 /// <code>%Admin_Secure:USE</code> is that screen's own endpoint gate. It is declared second, so a
 /// caller short of both is named the operate pair first, which is the pair every Logs screen needs
-/// but the two below. Story 16.8's interoperability event log and analytics log declare
-/// <code>%Ens_EventLog:USE</code> and <code>%DeepSee_Portal:USE</code> as their own pairs (AD-8),
-/// so neither is on this set.</p>
+/// but the two below. Story 16.8's interoperability event log declares
+/// <code>%Ens_EventLog:USE</code> and <code>%Ens_Portal:USE</code> (the classic page's
+/// <code>EnsPortal.Application.CheckPrivileges</code>), and its analytics log
+/// <code>%DeepSee_Portal:USE</code>, as their own pairs (AD-8), so none is on this set.</p>
+/// <p><b>Interoperability and Analytics apply only where the namespace reports the feature.</b>
+/// <code>appliesWhen</code> names the feature (<class>OcuPilot.Kernel.Shell.NamespaceFeatures</class>),
+/// and an area that does not apply is drawn nowhere; applicability is not a privilege gate.
+/// Interoperability names <code>%Ens_Portal:USE</code>, which the classic Interoperability menu
+/// checks; the read on the namespace's database depends on the namespace, so each screen and port
+/// resolves it at call time. Analytics names <code>%DeepSee_Portal:USE</code>, which the classic
+/// User Portal branch checks and a stock instance grants publicly.</p>
 /// <p><b>OS management names a third pair, <code>%Admin_Manage:USE</code></b> -- the only area pair
 /// an endpoint's own gate does not name and the port does not need either. Its first screen reads
 /// <code>SYS.Process:CONTROLPANEL</code>,
@@ -66,7 +74,7 @@ Class OcuPilot.Screen.Area Extends %RegisteredObject
 
 /// <p>The one declaration. Read by <class>OcuPilot.Screen.Registry</class> on the server and
 /// by <file>ui/tools/screen-mirror.mjs</file> off disk, so the rail the browser draws and the
-/// navigation map the instance computes come from the same nine lines.</p>
+/// navigation map the instance computes come from the same eleven lines.</p>
 XData Areas
 {
 {"areas":[
@@ -78,7 +86,9 @@ XData Areas
   {"key":"web-applications","railPosition":6,"labelKey":"navAreaWebApplications","navigates":false,"pinBottom":false,"privileges":[{"resource":"%Admin_Secure","permission":"USE"},{"resource":"%DB_IRISSYS","permission":"READ"}]},
   {"key":"security","railPosition":7,"labelKey":"navAreaSecurity","navigates":false,"pinBottom":false,"privileges":[{"resource":"%Admin_Secure","permission":"USE"},{"resource":"%DB_IRISSYS","permission":"READ"}]},
   {"key":"system-explorer","railPosition":8,"labelKey":"navAreaSystemExplorer","navigates":false,"pinBottom":false,"privileges":[{"resource":"%Development","permission":"USE"}]},
-  {"key":"agent","railPosition":9,"labelKey":"navAreaAgent","navigates":false,"pinBottom":true,"privileges":[]}
+  {"key":"interoperability","railPosition":9,"labelKey":"navAreaInteroperability","navigates":false,"pinBottom":false,"appliesWhen":"interoperability","privileges":[{"resource":"%Ens_Portal","permission":"USE"}]},
+  {"key":"analytics","railPosition":10,"labelKey":"navAreaAnalytics","navigates":false,"pinBottom":false,"appliesWhen":"analytics","privileges":[{"resource":"%DeepSee_Portal","permission":"USE"}]},
+  {"key":"agent","railPosition":11,"labelKey":"navAreaAgent","navigates":false,"pinBottom":true,"privileges":[]}
 ]}
 }
 

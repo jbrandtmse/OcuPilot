@@ -12,6 +12,7 @@ import {
 import {
   type ProposalPhase,
   type ProposalPrivilegeLine,
+  CONSEQUENCE_EXPLORERSAVECOMPILES,
   consequenceSentence,
   remoteListSentence,
   journalSentence,
@@ -25,8 +26,10 @@ import {
   formatRemovalResidue,
   offersRepropose,
   statusLineFor,
+  cardTitleName,
 } from '../core/proposal-view';
 import { impactLine } from '../core/impact';
+import { estimateLines, isLong } from '../core/long-blocks';
 import { type ReadBack, readBackLine } from '../core/read-back';
 import { STRINGS, stringFor } from '../core/strings';
 import {
@@ -37,6 +40,8 @@ import {
   formatUnchangedCaption,
 } from './example-proposal';
 import { CodeBlock } from './code-block';
+import { LongBlock } from './long-block';
+import { TextDiff, hunkCounts, hunkRowTexts } from './text-diff';
 
 /**
  * The entity type whose delete carries the residue sentence (AD-48, DW-1480).
@@ -109,7 +114,7 @@ export interface ProposalConfirmRequest {
 @Component({
   selector: 'app-proposal-card',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CodeBlock],
+  imports: [CodeBlock, LongBlock, TextDiff],
   template: `<article
     class="ocu-proposal-card"
     [class.ocu-proposal-card-destructive]="destructive"
@@ -133,37 +138,52 @@ export interface ProposalConfirmRequest {
       }
     </div>
 
+    @if (summaryVisible) {
+      <p class="ocu-proposal-card-summary">
+        <span class="ocu-proposal-card-summary-fields">{{ summaryFields }}</span>
+        @if (summaryOutcomeVisible) {
+          <span class="ocu-proposal-card-summary-outcome">{{ summaryOutcome }}</span>
+        }
+      </p>
+    }
+
     <div class="ocu-proposal-card-diff">
+      <app-long-block [key]="diffKey" [lines]="diffLines">
       @for (row of changedRows; track $index) {
-        @if (row.removed === true) {
-          <p class="ocu-diff-row ocu-diff-row-removed">
-            <span class="ocu-diff-field">{{ row.field }}</span>
-            <span class="ocu-diff-before">
-              <span class="ocu-diff-value">{{ shown(row.before, row.emptyKey) }}</span>
-            </span>
-            <span class="ocu-diff-arrow" aria-hidden="true">{{ arrowGlyph }}</span>
-            <span class="ocu-diff-after">
-              <span class="ocu-diff-value" aria-hidden="true">{{
-                STRINGS.proposalDiffRemovedValue
-              }}</span>
-              <span class="ocu-diff-direction">{{ STRINGS.proposalDiffRemoved }}</span>
-            </span>
-          </p>
+        @if (row.kind === 'lines') {
+          <app-text-diff [before]="row.before" [after]="row.after" [line]="row.line ?? 1" [label]="cardName" />
         } @else {
-          <p class="ocu-diff-row">
-            <span class="ocu-diff-field">{{ row.field }}</span>
-            <span class="ocu-diff-before">
-              <span class="ocu-diff-direction">{{ STRINGS.proposalDiffWas }}</span>
-              <span class="ocu-diff-value">{{ shown(row.before, row.emptyKey) }}</span>
-            </span>
-            <span class="ocu-diff-arrow" aria-hidden="true">{{ arrowGlyph }}</span>
-            <span class="ocu-diff-after">
-              <span class="ocu-diff-direction">{{ STRINGS.proposalDiffNow }}</span>
-              <span class="ocu-diff-value">{{ shown(row.after, row.emptyKey) }}</span>
-            </span>
-          </p>
+          @if (row.removed === true) {
+            <p class="ocu-diff-row ocu-diff-row-removed">
+              <span class="ocu-diff-field">{{ row.field }}</span>
+              <span class="ocu-diff-before">
+                <span class="ocu-diff-value">{{ shown(row.before, row.emptyKey) }}</span>
+              </span>
+              <span class="ocu-diff-arrow" aria-hidden="true">{{ arrowGlyph }}</span>
+              <span class="ocu-diff-after">
+                <span class="ocu-diff-value" aria-hidden="true">{{
+                  STRINGS.proposalDiffRemovedValue
+                }}</span>
+                <span class="ocu-diff-direction">{{ STRINGS.proposalDiffRemoved }}</span>
+              </span>
+            </p>
+          } @else {
+            <p class="ocu-diff-row">
+              <span class="ocu-diff-field">{{ row.field }}</span>
+              <span class="ocu-diff-before">
+                <span class="ocu-diff-direction">{{ STRINGS.proposalDiffWas }}</span>
+                <span class="ocu-diff-value">{{ shown(row.before, row.emptyKey) }}</span>
+              </span>
+              <span class="ocu-diff-arrow" aria-hidden="true">{{ arrowGlyph }}</span>
+              <span class="ocu-diff-after">
+                <span class="ocu-diff-direction">{{ STRINGS.proposalDiffNow }}</span>
+                <span class="ocu-diff-value">{{ shown(row.after, row.emptyKey) }}</span>
+              </span>
+            </p>
+          }
         }
       }
+      </app-long-block>
       @if (residueVisible) {
         <p class="ocu-proposal-card-residue">{{ residueCaption }}</p>
       }
@@ -210,18 +230,24 @@ export interface ProposalConfirmRequest {
 
     <div class="ocu-proposal-card-agent">
       <span class="ocu-proposal-card-agent-heading">{{ STRINGS.proposalRationaleHeading }}</span>
-      <span class="ocu-proposal-card-agent-text">{{ rationale }}</span>
+      <app-long-block [key]="rationaleKey" [lines]="rationaleLines">
+        <span class="ocu-proposal-card-agent-text">{{ rationale }}</span>
+      </app-long-block>
     </div>
     <div class="ocu-proposal-card-agent">
       <span class="ocu-proposal-card-agent-heading">{{ STRINGS.proposalExpectedImpactHeading }}</span>
-      <span class="ocu-proposal-card-agent-text">{{ expectedImpact }}</span>
+      <app-long-block [key]="impactKey" [lines]="impactLines">
+        <span class="ocu-proposal-card-agent-text">{{ expectedImpact }}</span>
+      </app-long-block>
     </div>
 
     @if (hasReverse) {
-      <p class="ocu-proposal-card-reverse">
-        <span class="ocu-proposal-card-reverse-label">{{ STRINGS.proposalReverseLabel }}</span>
-        <span>{{ reverse }}</span>
-      </p>
+      <app-long-block [key]="reverseKey" [lines]="reverseLines">
+        <p class="ocu-proposal-card-reverse">
+          <span class="ocu-proposal-card-reverse-label">{{ STRINGS.proposalReverseLabel }}</span>
+          <span>{{ reverse }}</span>
+        </p>
+      </app-long-block>
     }
 
     @if (secretsVisible) {
@@ -336,8 +362,20 @@ export interface ProposalConfirmRequest {
             @if (readBackText !== '') {
               <p class="ocu-proposal-card-read-back" data-slot="read-back">{{ readBackText }}</p>
             }
+            @if (savedNotCompiledVisible) {
+              <p
+                class="ocu-banner ocu-banner-warning ocu-proposal-card-warning"
+                role="status"
+                data-slot="saved-not-compiled"
+              >
+                <span class="ocu-banner-glyph" aria-hidden="true">{{ bannerGlyph }}</span>
+                <span class="ocu-banner-message">{{ STRINGS.explorerSaveNotCompiled }}</span>
+              </p>
+            }
             @if (outputVisible) {
-              <app-code-block class="ocu-proposal-card-output" data-slot="output" [steps]="outputSteps" />
+              <app-long-block [key]="outputKey" [lines]="outputLines">
+                <app-code-block class="ocu-proposal-card-output" data-slot="output" [steps]="outputSteps" />
+              </app-long-block>
             }
           }
         }
@@ -453,6 +491,24 @@ export class ProposalCard {
   readonly output = input<readonly string[]>([]);
 
   /**
+   * Whether the confirmed compile reported errors, off the confirm's own `output.errors`, or
+   * `null` where the answer carried none (Story 20.17). It feeds the summary line's second part.
+   */
+  readonly outputErrors = input<boolean | null>(null);
+
+  /**
+   * The key prefix of this card's long blocks (`p:<proposal id>`), or `''` for the example card:
+   * its blocks then keep their open state in the component only (Story 20.17).
+   */
+  readonly blockKey = input<string>('');
+
+  /**
+   * The estimated line count of the script the panel projects into the footer (Story 20.17), or
+   * `0` for none: a long one is a long block of this card's, so the summary line shows for it.
+   */
+  readonly draftLines = input<number>(0);
+
+  /**
    * Confirm was pressed: the proposal's id and the values typed into its masked fields (AD-6,
    * AD-35).
    *
@@ -566,7 +622,7 @@ export class ProposalCard {
 
   protected get title(): string {
     const view = this.view();
-    return formatProposalTitle(STRINGS.proposalCardTitle, view.entityType, view.name);
+    return formatProposalTitle(STRINGS.proposalCardTitle, view.entityType, cardTitleName(view));
   }
 
   protected get changedRows(): readonly ProposalDiffRow[] {
@@ -628,6 +684,123 @@ export class ProposalCard {
       STRINGS.proposalUnchangedFieldsDisclosure,
       this.view().unchangedCount
     );
+  }
+
+  protected get diffKey(): string {
+    return this.keyFor('diff');
+  }
+
+  protected get rationaleKey(): string {
+    return this.keyFor('rationale');
+  }
+
+  protected get impactKey(): string {
+    return this.keyFor('impact');
+  }
+
+  protected get reverseKey(): string {
+    return this.keyFor('reverse');
+  }
+
+  protected get outputKey(): string {
+    return this.keyFor('output');
+  }
+
+  private keyFor(part: string): string {
+    const prefix = this.blockKey();
+    return prefix === '' ? '' : `${prefix}:${part}`;
+  }
+
+  /**
+   * The changed rows' estimate, summed: a changed-lines row's drawn rows (`hunkRowTexts`), and every
+   * other row's `field before after`.
+   */
+  protected get diffLines(): number {
+    return this.changedRows.reduce(
+      (total, row) =>
+        total +
+        (row.kind === 'lines'
+          ? estimateLines(hunkRowTexts(row.before, row.after).join('\n'))
+          : estimateLines(`${row.field} ${row.before} ${row.after}`)),
+      0
+    );
+  }
+
+  protected get rationaleLines(): number {
+    return estimateLines(this.rationale);
+  }
+
+  protected get impactLines(): number {
+    return estimateLines(this.expectedImpact);
+  }
+
+  protected get reverseLines(): number {
+    return estimateLines(this.reverse);
+  }
+
+  protected get outputLines(): number {
+    return estimateLines(this.output().join('\n'));
+  }
+
+  /** Whether any block this card wraps is long, which is when the summary line shows. */
+  protected get summaryVisible(): boolean {
+    return (
+      isLong(this.diffLines) ||
+      isLong(this.rationaleLines) ||
+      isLong(this.impactLines) ||
+      (this.hasReverse && isLong(this.reverseLines)) ||
+      (this.outputVisible && isLong(this.outputLines)) ||
+      isLong(this.draftLines())
+    );
+  }
+
+  /** The card's name as the title shows it, which labels a changed-lines hunk's region. */
+  protected get cardName(): string {
+    return cardTitleName(this.view());
+  }
+
+  /** The card's changed-lines rows, which its summary line counts. */
+  private get linesRows(): readonly ProposalDiffRow[] {
+    return this.changedRows.filter((row) => row.kind === 'lines');
+  }
+
+  /**
+   * The summary line's text: the name and the lines removed and added when the card holds changed-lines rows,
+   * otherwise the name and how many fields change, `cardTitleName` alone when none do.
+   */
+  protected get summaryFields(): string {
+    const view = this.view();
+    const name = cardTitleName(view);
+    const lines = this.linesRows;
+    if (lines.length > 0) {
+      let removed = 0;
+      let added = 0;
+      for (const row of lines) {
+        const counts = hunkCounts(row.before, row.after);
+        removed += counts.removed;
+        added += counts.added;
+      }
+      // The name goes in last, so a name that holds a count token is not resolved a second time.
+      return STRINGS.proposalSummaryLines
+        .split('<removed>').join(String(removed))
+        .split('<added>').join(String(added))
+        .split('<name>').join(name);
+    }
+    const count = this.changedRows.length;
+    if (count === 0) return name;
+    const template = count === 1 ? STRINGS.proposalSummaryField : STRINGS.proposalSummaryFields;
+    return template.split('<n>').join(String(count)).split('<name>').join(name);
+  }
+
+  /** Whether a confirmed card's output reported whether the compile had errors. */
+  protected get summaryOutcomeVisible(): boolean {
+    return this.confirmed && this.outputErrors() !== null;
+  }
+
+  protected get summaryOutcome(): string {
+    return this.outputErrors() === true
+      ? STRINGS.proposalSummaryCompileErrors
+      : STRINGS.proposalSummaryCompiled;
   }
 
   protected get rationale(): string {
@@ -864,6 +1037,14 @@ export class ProposalCard {
 
   protected get confirmed(): boolean {
     return this.livePhase === 'confirmed';
+  }
+
+  /**
+   * Whether a confirmed agent save did not compile (Story 20.21): the save's own consequence, and the
+   * confirm's `output.errors`. The line sits under the status line, outside every long block.
+   */
+  protected get savedNotCompiledVisible(): boolean {
+    return this.confirmed && this.view().consequence === CONSEQUENCE_EXPLORERSAVECOMPILES && this.outputErrors() === true;
   }
 
   /** The fingerprint refusal, which draws its status line inside the warning banner. */

@@ -286,9 +286,10 @@ test('AC5, AC6, AC7: the confirmed disable raises the banner, and the re-enable 
   // marker lands and clears it, so the unaudited window is one write wide.
   //
   // Mutation (Rule 19): skip `RecordMarking` in `OcuPilot.Kernel.Proposal.Confirm.Transition` -> the
-  // banner never appears and the first half goes red; make the re-enable's marker drop too -> the
-  // banner never clears and the second half goes red. The ledger's own bracketing is
-  // `OcuPilot.Test.AuditingUpdate`'s, which pins the pair rather than either half.
+  // banner never appears and the first half goes red. The ledger's own bracketing is
+  // `OcuPilot.Test.AuditingUpdate`'s, which pins the pair rather than either half. The clear after
+  // the re-enable no longer depends on the re-enable's own marker, because the restraint read
+  // observes the flags itself; the test after this one pins that direction.
   const disable = await withLiveCard(false);
   try {
     assert.equal(await bannerShowing(disable.page), false, 'the banner is absent while the instance is audited');
@@ -362,6 +363,52 @@ test('AC5, AC6, AC7: the confirmed disable raises the banner, and the re-enable 
   } finally {
     await reenable.context.close();
     forgetTag(reenable.tag);
+    dropProposals();
+  }
+});
+
+test('an auditing re-enable made outside OcuPilot clears the banner on the next load', async () => {
+  // Mutation (Rule 19): remove the observe branch from `OcuPilot.Api.Switches.RestraintBody` -> the
+  // banner stays after the reload and this goes red.
+  const disable = await withLiveCard(false);
+  try {
+    await disable.page.click('.ocu-proposal-card-confirm');
+    await disable.page.waitForSelector('app-proposal-card .ocu-proposal-card-status', {
+      timeout: config.navigationTimeoutMs,
+    });
+    assert.equal(auditEnabled(), '0', 'the vendor PUT turned auditing off');
+    await disable.page.waitForFunction(
+      (sentence) =>
+        Array.from(document.querySelectorAll('[data-slot="not-marked"] .ocu-banner-message')).some(
+          (node) => (node.textContent ?? '').trim() === sentence
+        ),
+      { timeout: config.navigationTimeoutMs },
+      STRINGS.auditingOffBanner
+    );
+    // Back on through the instance's own security call, which records nothing in OcuPilot.
+    runIris([
+      `Set $NAMESPACE="%SYS"`,
+      `Kill props Set props("AuditEnabled")=1`,
+      `Set sc=##class(Security.System).Modify("SYSTEM",.props)`,
+      `Write "OCU-AUDOUT-START:"_$System.Status.IsOK(sc)_":OCU-AUDOUT-END",!`,
+    ]);
+    assert.equal(auditEnabled(), '1', 'auditing is back on, outside OcuPilot');
+    await disable.page.reload({ waitUntil: 'load', timeout: config.navigationTimeoutMs });
+    await disable.page.waitForFunction(
+      () => !document.querySelector('#ocu-panel-composer')?.hasAttribute('aria-disabled'),
+      { timeout: config.navigationTimeoutMs }
+    );
+    await disable.page.waitForFunction(
+      (sentence) =>
+        !Array.from(document.querySelectorAll('[data-slot="not-marked"] .ocu-banner-message')).some(
+          (node) => (node.textContent ?? '').trim() === sentence
+        ),
+      { timeout: config.navigationTimeoutMs },
+      STRINGS.auditingOffBanner
+    );
+  } finally {
+    await disable.context.close();
+    forgetTag(disable.tag);
     dropProposals();
   }
 });

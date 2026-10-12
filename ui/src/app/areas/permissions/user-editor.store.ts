@@ -35,6 +35,9 @@ export const ROLES_TAB = 'roles';
 
 export const EFFECTIVE_TAB = 'effective';
 
+/** The SQL privileges tab, last: it draws the account's SQL object privileges, read when it is selected. */
+export const SQL_PRIVILEGES_TAB = 'sql-privileges';
+
 /** The text settings of the General tab, as the server names them. */
 export const TEXT_FIELDS = [
   'FullName',

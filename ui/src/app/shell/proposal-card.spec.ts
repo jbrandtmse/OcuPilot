@@ -127,6 +127,15 @@ describe('the proposal card', () => {
     expect(title.textContent).not.toContain('<name>');
   });
 
+  it("titles a task by the name the instance read, and by its id where it read none (DW-1465)", () => {
+    const task: ProposalCardView = { ...EXAMPLE_PROPOSAL, entityType: 'Task', name: '42' };
+    const titleOf = (view: ProposalCardView): string | undefined =>
+      (mount(view).card.querySelector('.ocu-proposal-card-title') as HTMLElement).textContent?.trim();
+    expect(titleOf({ ...task, targetName: 'Nightly purge' })).toBe('Proposal \u00b7 Task Nightly purge');
+    expect(titleOf({ ...task, targetName: '' })).toBe('Proposal \u00b7 Task 42');
+    expect(titleOf(task)).toBe('Proposal \u00b7 Task 42');
+  });
+
   it('draws one diff row per changed field, with the direction words read and the arrow hidden', () => {
     const { card } = mount(EXAMPLE_PROPOSAL);
     const rows = Array.from(card.querySelectorAll('.ocu-diff-row')) as HTMLElement[];
@@ -260,7 +269,7 @@ describe('the proposal card', () => {
       }),
       { phase: 'live' }
     );
-    const rows = Array.from(card.querySelectorAll('.ocu-proposal-card-diff > .ocu-diff-row')) as HTMLElement[];
+    const rows = Array.from(card.querySelectorAll('.ocu-proposal-card-diff .ocu-long-block-region > .ocu-diff-row')) as HTMLElement[];
     expect(rows[0].querySelector('.ocu-diff-before .ocu-diff-value')?.textContent?.trim()).toBe(
       STRINGS.serviceAllowedUnrestricted
     );
@@ -825,6 +834,37 @@ describe('the proposal card', () => {
     expect(other.card.textContent).not.toContain(STRINGS.journalIntegrityConsequence.replace('<file>', file));
   });
 
+  it('Story 20.22, AC5: a setting set that is a location on the server states it, naming the value its diff row stores', () => {
+    // Mutation (Rule 19): drop the location branch from `journalSentence` -> the location leg goes red.
+    const path = '/tmp/ocupilot-probe-dir';
+    const location = mount(
+      liveView({ consequence: 'INTEROP.SETTING.LOCATION', name: 'ProbeDirectory', changed: [{ field: 'Value', before: '', after: path }], maskedFields: [] }),
+      { phase: 'live' }
+    );
+    const lines = location.card.querySelectorAll('[data-slot="consequence"]');
+    expect(lines.length).toBe(1);
+    expect(lines[0].textContent).toContain(STRINGS.interopSettingLocationConsequence.replace('<value>', path));
+    TestBed.resetTestingModule();
+
+    // An ordinary setting set states the pending-update sentence alone.
+    const ordinary = mount(
+      liveView({ consequence: 'INTEROP.ITEM.PENDING', name: 'InitSeconds', changed: [{ field: 'Value', before: '0', after: '7' }], maskedFields: [] }),
+      { phase: 'live' }
+    );
+    expect(ordinary.card.textContent).toContain(STRINGS.interopItemPendingConsequence);
+    expect(ordinary.card.textContent).not.toContain('a location on this server');
+    TestBed.resetTestingModule();
+
+    // A location cleared to nothing names no location: the pending-update sentence stands alone. Mutation (Rule 19): drop the
+    // empty-value guard from `journalSentence` -> this leg goes red.
+    const cleared = mount(
+      liveView({ consequence: 'INTEROP.SETTING.LOCATION', name: 'ProbeDirectory', changed: [{ field: 'Value', before: path, after: '' }], maskedFields: [] }),
+      { phase: 'live' }
+    );
+    expect(cleared.card.textContent).toContain(STRINGS.interopItemPendingConsequence);
+    expect(cleared.card.textContent).not.toContain('a location on this server');
+  });
+
   it('AD-10: a privileged grant is drawn destructive and names the privilege in one consequence line', () => {
     // The kernel marks the proposal destructive and carries the code; an unauthenticated
     // application that is also privileged carries one combined code, never two lines.
@@ -858,6 +898,69 @@ describe('the proposal card', () => {
     const lines = card.querySelectorAll('[data-slot="consequence"]');
     expect(lines.length).toBe(1);
     expect(lines[0].textContent).toContain(STRINGS.webAppRepointedEffect);
+  });
+
+  it('Story 20.2, 20.3: a production stop, restart, update or recover, and an item write or removal, states its own published sentence, not drawn destructive', () => {
+    // Mutation (Rule 19): drop the INTEROP.RECOVER code from `consequenceSentence` -> the recover leg goes red;
+    // drop the INTEROP.ITEM.PENDING and INTEROP.ITEM.REMOVE branches -> the two item legs go red.
+    for (const [code, sentence] of [
+      ['INTEROP.STOP', STRINGS.interopStopConsequence],
+      ['INTEROP.RESTART', STRINGS.interopRestartConsequence],
+      ['INTEROP.UPDATE', STRINGS.interopUpdateConsequence],
+      ['INTEROP.RECOVER', STRINGS.interopRecoverConsequence],
+      ['INTEROP.ITEM.PENDING', STRINGS.interopItemPendingConsequence],
+      ['INTEROP.ITEM.REMOVE', STRINGS.interopItemRemoveConsequence],
+    ] as const) {
+      const { card } = mount(liveView({ consequence: code, destructive: false, maskedFields: [] }), { phase: 'live' });
+      expect(card.classList.contains('ocu-proposal-card-destructive')).toBe(false);
+      const lines = card.querySelectorAll('[data-slot="consequence"]');
+      expect(lines.length).toBe(1);
+      expect(lines[0].textContent).toContain(sentence);
+      TestBed.resetTestingModule();
+    }
+  });
+
+  it('Story 20.23: each queue and job consequence code states its own published sentence, on a card drawn as the proposal\'s destructive flag says', () => {
+    // Mutation (Rule 19): drop one of the five INTEROP.MESSAGE / QUEUE / JOB codes from `consequenceSentence` -> its leg goes red.
+    for (const [code, destructive, sentence] of [
+      ['INTEROP.MESSAGE.ABORT', true, STRINGS.interopMessageAbortConsequence],
+      ['INTEROP.QUEUE.ABORT', true, STRINGS.interopQueueAbortConsequence],
+      ['INTEROP.JOB.ABORT', true, STRINGS.interopJobAbortConsequence],
+      ['INTEROP.JOB.SUSPEND', false, STRINGS.interopJobSuspendConsequence],
+      ['INTEROP.JOB.STOP', false, STRINGS.interopJobStopConsequence],
+    ] as const) {
+      const { card } = mount(liveView({ consequence: code, destructive, maskedFields: [] }), { phase: 'live' });
+      expect(card.classList.contains('ocu-proposal-card-destructive'), code).toBe(destructive);
+      const lines = card.querySelectorAll('[data-slot="consequence"]');
+      expect(lines.length, code).toBe(1);
+      expect(lines[0].textContent, code).toContain(sentence);
+      TestBed.resetTestingModule();
+    }
+  });
+
+  it('Story 20.5: a lookup table entry\'s removal, a lookup table\'s deletion and a lookup table\'s import each state their own published sentence, drawn destructive', () => {
+    // Mutation (Rule 19): drop one of the three INTEROP.LOOKUP codes from `consequenceSentence` -> its leg goes red.
+    for (const [code, sentence] of [
+      ['INTEROP.LOOKUP.REMOVE', STRINGS.interopLookupRemoveConsequence],
+      ['INTEROP.LOOKUP.DELETE', STRINGS.interopLookupDeleteConsequence],
+      ['INTEROP.LOOKUP.IMPORT', STRINGS.interopLookupImportConsequence],
+    ] as const) {
+      const { card } = mount(liveView({ consequence: code, destructive: true, maskedFields: [] }), { phase: 'live' });
+      expect(card.classList.contains('ocu-proposal-card-destructive'), code).toBe(true);
+      const lines = card.querySelectorAll('[data-slot="consequence"]');
+      expect(lines.length, code).toBe(1);
+      expect(lines[0].textContent, code).toContain(sentence);
+      TestBed.resetTestingModule();
+    }
+  });
+
+  // Mutation (Rule 19): drop the INTEROP.TEST.SENDS code from `consequenceSentence` -> this goes red.
+  it('Story 20.6: a host test states that it sends a real message, and is not drawn destructive', () => {
+    const { card } = mount(liveView({ consequence: 'INTEROP.TEST.SENDS', destructive: false, maskedFields: [] }), { phase: 'live' });
+    expect(card.classList.contains('ocu-proposal-card-destructive')).toBe(false);
+    const lines = card.querySelectorAll('[data-slot="consequence"]');
+    expect(lines.length).toBe(1);
+    expect(lines[0].textContent).toContain(STRINGS.interopTestSendsConsequence);
   });
 
   it('AD-10, Story 9.5: a change turning an SSL/TLS configuration\'s peer verification off is drawn destructive and states its effect', () => {
@@ -1218,5 +1321,181 @@ describe('the proposal card', () => {
     expect(ddl.card.querySelector('[data-slot="consequence"]')?.textContent).toContain(STRINGS.explorerSqlConfirmDdl);
     const other = mount(liveView(), { phase: 'live' });
     expect(other.card.querySelector('[data-slot="consequence"]')).toBeNull();
+  });
+});
+
+describe('the proposal card with a long block (Story 20.17)', () => {
+  const rows = (count: number): ProposalCardView['changed'] =>
+    Array.from({ length: count }, (_, index) => ({ field: `Field${index}`, before: 'old', after: 'new' }));
+
+  const summary = (card: HTMLElement): HTMLElement | null =>
+    card.querySelector('.ocu-proposal-card-summary');
+
+  const mountKeyed = (view: ProposalCardView, phase: ProposalPhase | null): Mounted => {
+    const mounted = mount(view, { phase });
+    mounted.fixture.componentRef.setInput('blockKey', 'p:p1');
+    mounted.fixture.detectChanges();
+    return mounted;
+  };
+
+  // mutation: render no summary paragraph -> this and the form legs go red.
+  it('a card of nine changed rows is clamped and shows the summary with its count', () => {
+    const { card } = mountKeyed(liveView({ name: 'Orders', changed: rows(9) }), 'live');
+
+    expect(summary(card)?.querySelector('.ocu-proposal-card-summary-fields')?.textContent?.trim()).toBe(
+      STRINGS.proposalSummaryFields.split('<name>').join('Orders').split('<n>').join('9')
+    );
+    const region = card.querySelector('.ocu-proposal-card-diff .ocu-long-block-region') as HTMLElement;
+    expect(region.querySelectorAll('.ocu-diff-row')).toHaveLength(9);
+    expect(region.closest('.ocu-long-block')?.classList.contains('ocu-long-block-collapsed')).toBe(true);
+  });
+
+  it('a card with one changed field and a long rationale reads the singular form', () => {
+    const { card } = mountKeyed(
+      liveView({ name: 'Orders', changed: rows(1), rationale: Array(9).fill('why').join('\n') }),
+      'live'
+    );
+
+    expect(summary(card)?.textContent?.trim()).toBe(STRINGS.proposalSummaryField.split('<name>').join('Orders'));
+  });
+
+  it('a card with no changed field shows its name alone', () => {
+    const { card } = mountKeyed(
+      liveView({ name: 'Orders', changed: [], rationale: Array(9).fill('why').join('\n') }),
+      'live'
+    );
+
+    expect(summary(card)?.textContent?.trim()).toBe('Orders');
+  });
+
+  it('a card with only short blocks shows no summary, and the example card has no control', () => {
+    const { card } = mountKeyed(liveView({ changed: rows(3) }), 'live');
+    expect(summary(card)).toBeNull();
+    expect(card.querySelector('.ocu-long-block-toggle')).toBeNull();
+
+    const example = mount(EXAMPLE_PROPOSAL).card;
+    expect(summary(example)).toBeNull();
+    expect(example.querySelector('.ocu-long-block-toggle')).toBeNull();
+    expect(example.querySelectorAll(FOCUSABLE)).toHaveLength(0);
+  });
+
+  // mutation: move Confirm inside the diff region -> the containment assertions go red.
+  it('Confirm, Cancel, the unchanged disclosure and the runs-as line sit outside every region, and Confirm confirms closed', () => {
+    const { fixture, card } = mountKeyed(
+      liveView({ changed: rows(12), unchanged: [{ field: 'Keep', value: 'x' }], unchangedCount: 1 }),
+      'live'
+    );
+    const confirmed: string[] = [];
+    fixture.componentInstance.confirm.subscribe((request) => confirmed.push(request.proposalId));
+
+    for (const selector of [
+      '.ocu-proposal-card-confirm',
+      '.ocu-proposal-card-cancel',
+      '.ocu-proposal-card-disclosure',
+      '.ocu-proposal-card-runs-as',
+      '.ocu-proposal-card-summary',
+      '.ocu-proposal-card-header',
+    ]) {
+      const node = card.querySelector(selector) as HTMLElement;
+      expect(node, selector).not.toBeNull();
+      expect(node.closest('.ocu-long-block-region'), selector).toBeNull();
+    }
+    expect(card.querySelector('.ocu-long-block-collapsed')).not.toBeNull();
+
+    (card.querySelector('.ocu-proposal-card-confirm') as HTMLButtonElement).click();
+    expect(confirmed).toEqual(['p1']);
+    expect(card.querySelector('.ocu-long-block-collapsed')).not.toBeNull();
+  });
+
+  // Mutation (Rule 19): move the secrets block inside the diff `app-long-block` -> the secrets leg goes red.
+  it('the secret fields, the consequence, the impact and privilege lines sit outside every region, and long agent text collapses in its own', () => {
+    const { card } = mountKeyed(
+      liveView({
+        changed: rows(12),
+        rationale: Array(9).fill('why').join('\n'),
+        expectedImpact: Array(9).fill('what').join('\n'),
+        reverse: Array(9).fill('how').join('\n'),
+        maskedFields: ['Password'],
+        consequence: 'WEBAPP.UNAUTHENTICATED',
+        destructive: true,
+        privilege: { text: 'Runs with %Admin_Secure:USE.', missing: false },
+        impact: { kind: 'resource-delete', refused: { code: 'PROHIBITED.PROBE', reason: 'The removal is refused.' }, parts: [] },
+      }),
+      'live'
+    );
+
+    for (const selector of [
+      '.ocu-proposal-card-secrets',
+      '[data-slot="consequence"]',
+      '[data-slot="impact"]',
+      '[data-slot="privilege"]',
+      '.ocu-proposal-card-runs-as',
+    ]) {
+      const nodes = Array.from(card.querySelectorAll(selector));
+      expect(nodes.length, selector).toBeGreaterThan(0);
+      for (const node of nodes) expect(node.closest('.ocu-long-block-region'), selector).toBeNull();
+    }
+    // Mutation (Rule 19): drop the wrapper around the rationale -> the first entry goes red.
+    const collapsed = (node: Element): boolean => node.closest('.ocu-long-block')?.classList.contains('ocu-long-block-collapsed') ?? false;
+    expect(Array.from(card.querySelectorAll('.ocu-proposal-card-agent-text')).map(collapsed)).toEqual([true, true]);
+    expect(collapsed(card.querySelector('.ocu-proposal-card-reverse') as HTMLElement)).toBe(true);
+  });
+
+  it('an opened diff stays open when the card is confirmed', () => {
+    const { fixture, card } = mountKeyed(liveView({ changed: rows(12) }), 'live');
+    (card.querySelector('.ocu-proposal-card-diff .ocu-long-block-toggle') as HTMLButtonElement).click();
+    fixture.detectChanges();
+
+    fixture.componentRef.setInput('phase', 'confirmed');
+    fixture.detectChanges();
+    expect(card.querySelector('.ocu-proposal-card-diff .ocu-long-block-toggle')?.getAttribute('aria-expanded')).toBe('true');
+  });
+
+  // Mutation (Rule 19): drop `isLong(this.draftLines())` from `summaryVisible` -> red.
+  it('a long projected script alone shows the summary line', () => {
+    const { fixture, card } = mountKeyed(liveView({ name: 'Orders', changed: rows(1) }), 'live');
+    expect(summary(card)).toBeNull();
+
+    fixture.componentRef.setInput('draftLines', 9);
+    fixture.detectChanges();
+    expect(summary(card)?.textContent?.trim()).toBe(STRINGS.proposalSummaryField.split('<name>').join('Orders'));
+  });
+
+  it('a target name carrying the count placeholder is shown as written', () => {
+    const { card } = mountKeyed(liveView({ name: 'Tag<n>', changed: rows(9) }), 'live');
+
+    expect(summary(card)?.querySelector('.ocu-proposal-card-summary-fields')?.textContent?.trim()).toBe(
+      STRINGS.proposalSummaryFields.split('<n>').join('9').split('<name>').join('Tag<n>')
+    );
+  });
+
+  // The proposal-card spec sets `outputErrors` directly; the panel's own reading of the confirm
+  // answer is pinned in `panel.spec.ts` (Story 20.17 AC5).
+  // Mutation (Rule 19): drop `summaryOutcomeVisible` from the summary -> red.
+  it('a confirmed card with a long output adds the compile outcome to its summary', () => {
+    const lines = Array.from({ length: 10 }, (_, index) => `line ${index}`);
+    const { fixture, card } = mountKeyed(liveView({ name: 'Orders', changed: rows(2) }), 'confirmed');
+    fixture.componentRef.setInput('output', lines);
+    fixture.componentRef.setInput('outputErrors', true);
+    fixture.detectChanges();
+
+    expect(summary(card)?.querySelector('.ocu-proposal-card-summary-outcome')?.textContent?.trim()).toBe(
+      STRINGS.proposalSummaryCompileErrors
+    );
+    const output = card.querySelector('[data-slot="output"]') as HTMLElement;
+    expect(output.closest('.ocu-long-block')?.classList.contains('ocu-long-block-collapsed')).toBe(true);
+    const status = card.querySelector('.ocu-proposal-card-status') as HTMLElement;
+    expect(status).not.toBeNull();
+    expect(status.closest('.ocu-long-block-region')).toBeNull();
+
+    fixture.componentRef.setInput('outputErrors', false);
+    fixture.detectChanges();
+    expect(summary(card)?.querySelector('.ocu-proposal-card-summary-outcome')?.textContent?.trim()).toBe(
+      STRINGS.proposalSummaryCompiled
+    );
+
+    fixture.componentRef.setInput('outputErrors', null);
+    fixture.detectChanges();
+    expect(summary(card)?.querySelector('.ocu-proposal-card-summary-outcome')).toBeNull();
   });
 });
