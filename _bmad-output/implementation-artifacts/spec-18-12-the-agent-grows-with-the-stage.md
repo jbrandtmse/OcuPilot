@@ -2,12 +2,12 @@
 title: 'Story 18.12: The agent grows with the stage'
 type: 'feature'
 created: '2026-10-11'
-status: 'draft'
+status: 'ready-for-dev'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-18-context.md'
-warnings: []
+warnings: ['oversized']
 deferred: []
 ---
 
@@ -37,98 +37,109 @@ deferred: []
 
 ## Code Map
 
-Paths are under `src/OcuPilot/` unless stated.
+Paths under `src/OcuPilot/` unless `ui/`, at `785cdd9d`.
 
-**Slice 1:**
-
-- **Listing.**
-  - `Screen/Tool/Registry.cls` `BuildListing` :204 claims one read tool per descriptor with a read (:259-268); `ProviderTools` :354.
-  - `Screen/Tool/Write.cls` takes `TOOLFIELDSCLASS` :41 (`ToolFields`); `SettableFields` :572 and `InputSchema` :830.
-  - The generated lists are in `Screen/Tool/FieldLists.cls`.
-- **Existing pins:**
-  - `Test/ReadTool.cls` :93 (356 tools) and :94.
-  - `Test/SurfaceCoverage.cls` `TestEveryWriteToolHasACoverageRowAndBack` :620.
-  - `Test/ToolEmit.cls` `TestEveryLiveToolRequiresItsScreensPairs` :158.
-  - `Test/DerivedFields`, and `ui/tools/field-lists.mjs --check`.
-- **DW-2321:**
-  - `Screen/Descriptor/RoutineAppList.cls` read :61-71 and `WebAppList.cls` read :91-97 carry neither list.
-  - The lists reach only the form read, `Area/WebApp/RoutineAppRules.FormRead` :122-149.
-  - `Screen/Tool/RoutineAppUpdate.cls` takes both lists whole (`InputSchema`, `SettableFields`).
-  - `WebAppUpdate.cls` takes `MatchRoles` whole (`MATCHROLESARGUMENT` :44).
-  - Vendor shapes: `MatchRoles` `[{MatchRole, TargetRoles[]}]` and `Routines` `[{RoutineOrClass, Db, Type}]`.
-- **DW-1756:**
-  - `Kernel/Shell/Guardrails.cls` `limits` :105-109; `Kernel/State/Switch.cls` `turnsPerHour` :126-141.
-  - Client: `ui/src/app/core/guardrails.ts` :52 and :136-140, and `guardrails.page.ts`.
-  - EXPERIENCE.md :583 holds the limits line. `Test/Guardrails`, `GuardrailsWire`.
-
-**Slice 2:**
-
-- **History.** `Kernel/Agent/Loop.cls`:
-  - history seeding :160-205 (`Kernel/State/Convo.cls` `HistoryMessages` :250, `HISTORYMAXLENGTH` 65,536);
-  - `Advertise` once per turn :212, and the whole array on every `Invoke` :235;
-  - `AnswerTools` :479 appends each reply's results, which share `TOOLRESULTMAXLENGTH` :463.
-- **Bounds.** `Kernel/Agent/Limits.cls` `MAXITERATIONS` 100, `MAXTOKENS` 500,000, `TOOLROWS` 200.
-- No `cache_control` appears in `Kernel/Provider/*`.
-
-**Slice 3:**
-
-- **Stored settings.** `Kernel/State/Egress.cls`:
-  - proxy server, port, `ProxyHttps`, `ProxyTunnel`, timeout, attempts and `SslConfiguration`;
-  - its header says no route renders it; `SetGuarded` is the one writer.
-- **Use at call time:**
-  - `Kernel/Provider/Base.cls` :489 (`SSLCheckServerIdentity` 1) and :502-509 apply them;
-  - `Port/ProviderPort.cls` :307-349 judges the proxy host and tunnels https;
-  - `SslConfigurationMissing` :641 checks existence only.
-- **Installer.** `Install/Installer.cls` :2940-2975 sets `OcuPilotProvider` (`Kernel/State/Base.cls` `SSLCONFIG` :95).
-- **Refusal.** `Kernel/Proposal/Prohibited.cls` `OCUPILOTSSL` :236.
-- **Sibling surface.** `Api/Switches.cls` and the routes at `Api/Router.cls` :79-80.
-
-**Slice 4:**
-
-- **Ladder.** `Kernel/Secret/Ladder.cls` `Resolve` :84, reached through `ProviderPort` `SECRETCLASS` :49 and `Kernel/Provider/Base.cls` :136.
-- **Rung vocabulary.** `Kernel/AgentRules.cls` `CREDTYPE*` :30-44, and `Kernel/State/Agent.cls` `CredType` (`MAXLEN` 8) :72.
-- **Client.** `ui/src/app/areas/agent/definition-form.page.ts` and `.store.ts`.
-- **Wallet port.** `Port/WalletPort.cls` lists secrets and never reads a value.
-- **Vendor source:**
-  - `irislib/%Wallet/KeyValue.cls` `GetSecretValue` :125-143 and `ApplyHTTP` :211-290;
-  - `Secret.cls` `AuditUsage` :394.
+- **Listing, dispatch.** `Screen/Tool/Registry.cls` `ListTools` :114 (20.24's cache), `BuildListing` :258-270 (one `.read` per read). `Api/ScreenAction.cls` `ToolFor` (~:588): the tool whose `DESCRIPTORCLASS` is the screen and `ScreenActionIds` hold the action.
+- **Fields (AD-3).** `Screen/Tool/Write.cls`: `FieldRows` :758, `AdmittedFields` :813, `SettableFields` :572, `PortClass` :307; generated `ToolFields.cls`. `Classification.cls` :58-62 (`MatchRoles`, `Routines` unnamed; the update authors them).
+- **Read (AD-36).** `Screen/Read.cls`: a parent-scoped `GET` over one member requires its criterion (:695), reads the vendor's 404 as no rows (:707); `RowsMember` :961. Arrays pass `Kernel/Agent/Bound.cls` :88 uncut.
+- **Models.** `DatabaseVolumeList.cls`, `JournalFileDatabaseList.cls`. `navigation.ts` `childListFor` :329 needs an id kind other than `none`; `data-table.ts` :656 tries the editor first, so the list's name cell still opens the form.
+- **Vendor** (read on `ocupilot`): the `Security.PrivilegedRoutine` `GET` (`PropsToJson`) always answers `MatchRoles` `[{MatchRole, TargetRoles[]}]` and `Routines` `[{RoutineOrClass, Db, Type}]`, `[]` when empty; another application type is 404 `PRIVROUTINE.TYPE` (`AdminPort`).
+- **Probes.** `Test/RoutineAppProbe.cls` (`Seed`, `WithLists`, `Mint`, `Entries`, `Targets`, `RemoveAll`; `OcuProbe1831`), `Test/RoutineAppGate.cls`.
+- **DW-1756.** `Kernel/Shell/Guardrails.cls` :105-109; `Kernel/State/Switch.cls` `Resolve` :118 (`turnsPerHour`, default 0), `SetGuarded` :165; `core/guardrails.ts` :52-56, :136-143; `guardrails.page.ts` :111-114.
+- **Out of scope**, anchors in this spec at `785cdd9d`: 18.39 (context budget); 18.40 (proxy, custom CA); 18.41 (wallet rung).
 
 ## Tasks & Acceptance
 
-Not planned. The plan halted at the size check (see Proposed Split). The re-plan of the narrowed 18.12 writes its tasks and criteria.
+**Task 0** (`ocupilot-ci`, after `LOAD-OK` and `STARTPATH-OK`): record S0.
 
-## Design Notes
+**Execution:**
 
-**Ledger.**
+1. `Screen/Descriptor/RoutineAppRoleList.cls` and `RoutineAppRoutineList.cls` (new, after `DatabaseVolumeList`).
+   - Common: `list`, built, `sideBarPosition` 0, no refresh, `RoutineAppList`'s pairs, `entityType` "", `instance`, `parentScope` `web-applications/routine-applications`, no actions, `classicPage` `%CSP.UI.Portal.Applications.PrivRoutine`. Source `{port: admin, endpoint: Security.PrivilegedRoutine, type: GET, rows}`. One criterion: `name`, text, `maxLength` 64, `labelKey` `tableColumnName`, `hint` "One privileged routine application, spelled as webapp.routineapps.read answers its Name.". Paging `cap`, `emptyNextKey` `tableReadOnlyEmptyNext`, and three prompts.
+   - Roles: route `.../roles`, `webapp.routineapproles`, rows `MatchRoles`, id `[MatchRole]`. Fields and context `MatchRole, TargetRoles`; sort and filter `MatchRole` (asc). Columns: `webAppFieldMatchRole` (`name`, `emptyKey` `routineAppRolesEveryCaller`), `userColumnRoles` (`identifier`); label `routineAppRolesLabel`, empty `routineAppRolesEmpty`.
+   - Routines: route `.../routines`, `webapp.routineapproutines`, rows `Routines`, id `[RoutineOrClass, Type, Db]`; fields, context and sort `RoutineOrClass, Db, Type` (default `RoutineOrClass` asc); filter `RoutineOrClass, Db`. Columns: `routineAppFieldRoutine` (`name`), `systemInfoDatabase`, `tableColumnType`; label `routineAppTabRoutines`, empty `routineAppRoutinesEmpty` (reused).
+2. `RoutineAppUpdate.cls` `DESCRIPTION` adds: "Read the current lists first with webapp.routineapproles.read and webapp.routineapproutines.read, and send each list whole with only your change."
+3. Strings, add-only.
+   - Under `/** EXPERIENCE.md:357 */`: `routineAppRolesLabel` 'Application and matching roles', `routineAppRolesEmpty` 'This application grants no roles.', `routineAppRolesEveryCaller` 'Every caller', `routineAppRolesPrompt1-3` and `routineAppRoutinesPrompt1-3` (what a list holds, an administrative grant or an entry's database, changing one entry).
+   - Under `:583`: `agentGuardrailsLimitsHeading` 'Limits', `agentGuardrailsTurnsLimit` 'Each user may start at most <n> agent turns an hour.' and `agentGuardrailsTurnsNone` 'Agent turns an hour are not limited.'
+   - EXPERIENCE.md in place, line count unchanged: :357 gains the ten (`[ADDED 2026-10-11 - Story 18.12]`); :583 replaces `"Screen context"` with `"Limits"` and gains the two. Run `node tools/screen-mirror.mjs`; stop past 3350 strings.
+4. `Kernel/Shell/Guardrails.cls` (DW-1756): `limits.turnsPerHour` from `Switch.Resolve` (0 is no limit); the header bullet says so.
+5. Client (DW-1756). `core/guardrails.ts`: `GuardrailsLimits.turnsPerHour` (`wholeNumber`, required by `narrowGuardrails`); `turnsLine`: `agentGuardrailsTurnsNone` at 0, else `agentGuardrailsTurnsLimit` with `<n>` grouped. `guardrails.page.ts`: the last section's heading becomes `agentGuardrailsLimitsHeading`; `.ocu-guardrails-turns` follows `.ocu-guardrails-limits`.
 
-- DW-2321 is addressed by slice 1 (Code Map).
-- DW-1756 is addressed by slice 1 (Code Map).
-- Declined DW-1084: already met. `Kernel/Agent/Prompt.cls` `BUILTIN` asks for row names in backticks (Story 4.7, `237d9de7`). Since Story 11.4's citation chips (`526fb8dc`), it also says the user can click the name and not to offer to select rows. The offer half was replaced by the chip, not left without a producer. The lead closes it at adjudication.
+**Tests** (classes under 500 lines):
 
-**Governing ADs:** AD-3, 5, 7, 10, 22, 24, 31, 32, 35, 36, 41, 42, 53 and 60.
+6. `Test/StageTwoTools.cls` (new; C1).
+   - **Roster.** XData `Roster`: one `<screen name kind [list] [reason]>` per screen Epic 18 commits added (`git log --diff-filter=A`). Kind `form` (with its `list`): DatabaseIntegrity (DatabaseList), EncryptionKeyFileForm (EncryptionKeyFile), and the `<X>Form`/`<X>List` pairs for DocDbApp, EcpDataServer, GlobalMapping, LicenseServer, LocalDatabase, MftConnection, Namespace, PackageMapping, RemoteDatabase, RoutineApp, RoutineMapping and Superserver.
+   - Kind `read-only`, each with a reason: AllowedDirectoryList, DatabaseIntegrityLog, EcpAppServerTab, JournalFileDatabaseList, JournalFileDetails, JournalRecordList, MetricsList, the three `Sql*PrivilegeList`, 18.36's four `Dashboard*` (once landed), and Task 1's two. Every other screen (24) is kind `writes`.
+   - `<tool>` rows: the 17 Epic 18 tools bound to earlier screens (`DatabaseDetails` 5, `DatabaseList` 1, `UserList` 3, `RoleList` 2, `WalletSecretList` 4, `RestApiList` 2).
+   - **Kinds test.** Each screen is built, registered and its row's kind: `form`, no read or bound write tool, its `list` reading and binding one; `read-only`, a read and no action or bound tool; `writes`, a read and a bound tool. A reading screen's `<toolIdentifier>.read` is listed and bound to it.
+   - **Actions test.** Each row action of a `writes` screen resolves by `ToolFor`'s rule to exactly one bound tool; the primary action does too, or resolves to a bound tool with `Creates()` 1. Every bound tool is advertised except AD-53's `osmgmt.licensekey.activate` and `security.secrets.replacesymmetric`.
+   - **Fields test.** For each bound tool and `<tool>` row: listed as a `write` of its own class; `AdmittedFields()` within `SettableFields()`; every other settable name but `IdArgument()` is a first path segment of its `ToolFields` entry, or `PortClass()` is not `AdminPort` (AD-51, AD-52). Failures name `tool:name`.
+   - The source survey found no gap; a gap the run names is the blocking condition, never a silent row.
+7. `Test/RoutineAppListsRead.cls` (new; DW-2321), through `RoutineAppProbe`.
+   - One test pins both shapes.
+   - With two entries in each list, `GET /screens/<screen>/read?name=` and the tool's view answer one row per entry, equal to the vendor `GET`'s arrays; an empty list or absent name answers no rows, a web application 404 `PRIVROUTINE.TYPE`, no `name` 400 `READ.CRITERION`.
+   - **Integration:** read `Routines` through the tool, `Mint` the update with those rows less one and `MatchRoles` as read, confirm: the diff changes `Routines` alone; `Entries` and `Targets` keep the rest.
+   - `RoutineAppGate` gains one method: without `%Admin_Secure:USE`, both reads are refused 403, naming it.
+8. DW-1756. `Test/Guardrails.cls`: `TestTheLimitsAreTheKernelsOwn` also asserts `turnsPerHour`; a new method sets 7, then 0, through `SetGuarded`, reads each back, then `SwitchFixture.Reset`. `GuardrailsWire` asserts the member; `guardrails.test.mjs` the narrowing and `turnsLine` at 0 and 1200; `guardrails.page.spec.ts` the headings and turns line; `guardrails.browser-spec.mjs` a leg that sets 7 (`setSwitches`), reads the line, restores in `finally`.
+9. `routine-applications.browser-spec.mjs`: a leg seeds a probe with lists (`iris`), opens both routes at `<route>/<encoded name>`, and after the table answers sees one row per entry (`Every caller` included) and a locator back to the list; then `removeProbes`.
+10. **Rule 30 sweep.** Add-only: `SurfaceCoverage` (two screens), `Descriptor` `ReadShapes`, `navigation.test.mjs` :258-270 (two routes). In place: `ReadTool` :93 (356 + 18.36's four + two) and :94; two `name:READ.CRITERION` tokens in `ToolRoundTrip` `REFUSEEMPTY`. Grep the test trees for Web applications rosters (`Navigation`, `Wire*`, floor rosters). Run, editing only if red: `ToolEmit`, `ToolDispatch`, `EndpointCoverage`, `RoutineAppRead`, `RoutineAppMembers`, `RoutineAppDescriptor`.
 
-**For the lead (Rule 20):**
+**Acceptance Criteria:**
 
-- **Tool roster (measured from source).**
-  - 356 tools are registered (`Test/ReadTool` :93). Three are unadvertised (AD-53).
-  - The 221 `DESCRIPTION` parameters in `Screen/Tool/` hold 94,069 characters of text, 426 on average.
-  - Each call's token weight is unmeasured. Slice 2's Task 0 measures it.
-- **The dev instance is stale.** `ocupilot` has compiled 89 of the branch's 176 descriptors and 118 of its 277 tool classes (one SQL read of `%Dictionary.CompiledClass`). No roster or listing measurement can be taken there.
-- **C1's wording** needs Rule 5's restate-to-measurable amendment (Proposed Split, item 1).
-- **Slice 3.** AD-32 gains: "an operator-named provider configuration must be a client with `VerifyPeer` on".
-- **Slice 4.** The wallet-use audit row is a candidate seventh AD-7 shape (inference).
-- **No vendor defect candidate was found.**
-- **Contention (Rule 11).** At plan time, Epic 20's diff against the feature branch is empty. Its uncommitted 20.5 tree touches none of `Loop.cls`, `Dispatch.cls`, `Screen/Tool/Registry.cls` or `Write.cls`, which the spawn prompt names. Each slice re-checks this at its own plan.
-
-## Verification
-
-Not planned. The re-plan writes it, with its `Shared surfaces:` line and the standing criterion.
-
-## Auto Run Result
-
-Status: blocked
-Blocking condition: The scope exceeds one implement pass and the 16 KB spec cap. It holds four story-sized criteria: Stage 2 tools from descriptors (C1), the context budget (C2), proxy and custom-CA configuration (C3) and the wallet credential rung (C4). It also holds DW-2321 and DW-1756, and DW-1084 is declined as already met. The proposed split is in ## Proposed Split. 18.12 keeps C1, DW-2321 and DW-1756, and three new stories (18.39 to 18.41) take C2, C3 and C4. Narrowing 18.12's criteria and adding stories is Rule 5's ask-first tier, the lead's or orchestrator's call.
+- **C1 (screens).** Given the Stage 2 roster, when `StageTwoTools` reads the registries, then each screen is its row's kind and each declared action resolves to exactly one write tool of its own descriptor.
+- **C1 (fields).** Given every Stage 2 write tool, when its settable names meet its generated field list, then each is admitted from it, authored on one of its paths, or a composing port's argument.
+- **DW-2321.** Given two entries in each list, when either read answers by route or tool, then it returns one row per entry, under the matrix's refusals.
+- **Integration.** Given the routines `webapp.routineapproutines.read` answered, when the agent sends `webapp.routineapps.update` with one entry removed, then the confirmed write removes that entry alone.
+- **DW-1756.** Given turns an hour of 7 on Switches, when Guardrails opens, then its Limits section reads `agentGuardrailsTurnsLimit` with 7, and `agentGuardrailsTurnsNone` at 0.
 
 ## Spec Change Log
 
 - 2026-10-11, lead: narrowed on the orchestrator's split ruling (feature 5b86e803, Rule 5): 18.12 keeps C1 (restated per AD-3), DW-2321 and DW-1756; C2 to C4 moved to Stories 18.39, 18.40 and 18.41 (their anchors stay in this Code Map, to be compressed to pointers at the re-plan). DW-1084 closed by-design. Intent narrowed, Proposed Split removed, status reset to draft for a re-plan in place.
+
+## Review Triage Log
+
+## Design Notes
+
+**Ledger.** DW-2321: Tasks 1, 2, 7, 9 (privileged routine applications, as the intent names). DW-1756: Tasks 3 to 5, 8. Declined DW-1084: closed `by-design` by the lead.
+
+**Governing ADs:** AD-3, 5 (one listing cache), 8, 22 (no key), 24, 36, 41, 44, 50, 51, 52, 53.
+
+**Rule 31.** Descriptors follow `DatabaseVolumeList`; tests extend `RoutineAppProbe`, `RoutineAppGate`. `StageTwoTools` is not `SurfaceCoverage` rows (contended, 742 lines). The editor's tabs keep 18.33's form read, whose one `GET` also feeds the pickers; both readers copy the same arrays.
+
+**Measured** (source, `785cdd9d`): 48 Epic 18 descriptors (24 write, 10 read-only, 14 forms), 83 Stage 2 write tools, no action or field gap.
+
+**Integration ACs:** the Integration line. **Consumes:** 18.31, 18.33, 18.5, 14.6, 16.22, 20.24. **Consumed-by:** 18.39, 18.42.
+
+**For the lead** (Rule 20):
+
+- **Gaps outside this scope.** (1) `FSAccess.Path`/`Purpose` writes have no surface (Allowed directories is read-only by 18.1); a write widens AD-21's sixth-case roots, the owner's call. (2) DW-2321's web-application half: `webapp.list.update` takes `MatchRoles` whole and no read answers it; re-own the residual. (3) Forms show scalar fields no read answers (superservers 14, local databases 10, user copy 12).
+- **Pre-authorization (Rule 11).** The in-place edits to `ReadTool` :93-94, `ToolRoundTrip` `REFUSEEMPTY` and any `Navigation` count are in Epic 20's files and need the orchestrator's pre-authorization at the spec gate (as 18.11).
+- No spine change required; no vendor defect candidate.
+
+## Verification
+
+**Shared surfaces:** read-tool registry (+2), `SurfaceCoverage`, `ReadShapes`, Web applications' routes and wire rosters, `REFUSEEMPTY`, the Guardrails answer and headings, structural walk routes, Fixed strings.
+
+**Standing criterion:** every test added or changed passes on a fresh environment, in either order.
+
+**Commands:**
+
+- `(loop)` `sh /Users/jbrandt/git/OcuPilot/.worktrees/.coordination/carry-2026-10-08/epic-18-d8/load-ocupilot-ci.sh` -- expected `LOAD-OK` and `STARTPATH-OK`.
+- `(loop)` `cd ui && node tools/ci-runner.mjs --container ocupilot-ci --class OcuPilot.Test.<C>`, one at a time, totals from `%UnitTest_Result`: Tasks 6 to 8's classes and every class Task 10 edits or runs.
+- `(loop)` `cd ui && npm run test:tools && npm run test:components`; `uv run scripts/check-objectscript.py`; `bash scripts/lint-docs.sh`.
+- `(loop)` With `OCUPILOT_BROWSER_ORIGIN=http://localhost:52776` and `OCUPILOT_BROWSER_CONTAINER=ocupilot-ci`: `cd ui && npm run build && docker cp dist/ocupilot-ui/browser/. ocupilot-ci:/durable/iris/csp/ocupilot/`, then `node --test --test-concurrency=1` `browser/guardrails.browser-spec.mjs` and `browser/routine-applications.browser-spec.mjs`, then `browser/a11y-structural-invariants.browser-spec.mjs` (391 s; fix a fresh key on the new routes). Bundle against 3487kB (DW-1166); stop and ask above 3800kB.
+- Full ObjectScript sweep: the runner's; browser suite: CI's.
+
+**Mutations (Rule 19),** recorded as `mutation:`, reverted byte-identical, descendants recompiled or bundle redeployed:
+
+- C1: `JournalFileDatabaseList` `built` false (kinds); `RoutineAppDelete` `SCREENACTIONS` "" (actions); `RoutineAppUpdate.SettableFields` plus `Bogus`, `LocalDatabaseCreate` on `AdminPort` (fields).
+- DW-2321: the roles read's `rows` `Routines`; its pairs without `%Admin_Secure:USE`. Integration: `SettableFields` without `Routines`.
+- DW-1756: `Guardrails.Read` without `turnsPerHour`; `turnsLine` constant; the page's turns line removed.
+
+**S0:** no `OcuProbe1831*` application or `OcuProbe1833Role*` role; switches as Task 0 recorded.
+
+## Auto Run Result
+
+Status: ready-for-dev
+Blocking condition: none

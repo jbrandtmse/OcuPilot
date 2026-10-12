@@ -11306,3 +11306,18 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: ARCHITECTURE-SPINE.md:775 headline; Read.Execute's route-criterion guard tests tBareRows or VOLUMELISTTYPE; TaskRunList (parent-scoped HISTORY) is not in ToolRoundTrip's REFUSEEMPTY
 - 2026-10-11T22:33:47Z status=open owner=18-11-monitoring-extras-and-the-live-log-tail by=cr note=the lead narrows the headline to the VOLUMELIST and bare-rows cases (Rule 20)
 - 2026-10-11T22:35:17Z status=resolved-by:18-11-monitoring-extras-and-the-live-log-tail by=adjudication note=AD-36 sentence narrowed to bare-rows and VOLUMELIST reads at origin
+
+### DW-2333: webapp.list.update takes a web application's MatchRoles whole, and no read tool answers that list, so the agent cannot send it with one entry changed
+- source: spec-18-12-the-agent-grows-with-the-stage.md | severity: med | fix-risk: low | footprint: in-epic
+- evidence: DW-2321's web-application half: 18.12's re-plan builds the privileged routine application reads only (orchestrator guidance scoped it so)
+- 2026-10-12T01:03:05Z status=routed owner=burndown by=spec_gate note=split from DW-2321; a detail read over the web application's MatchRoles, as 18.12 builds for routine applications
+
+### DW-2334: The admin API can write the directory allow-list (FSAccess.Path, FSAccess.Purpose) but OcuPilot offers no surface for it; Allowed directories stays read-only
+- source: spec-18-12-the-agent-grows-with-the-stage.md | severity: med | fix-risk: med | footprint: out-of-footprint
+- evidence: Story 18.1 scoped the allow-list read-only; a write widens the server-path roots AD-21 allows
+- 2026-10-12T01:03:05Z status=decision-pending owner=burndown by=spec_gate note=human=owner: whether OcuPilot may widen the allow-list (security posture)
+
+### DW-2335: Several Stage 2 editor forms show fields no read tool answers (superservers 14, local databases 10, user copy 12), so the agent cannot read what the person sees
+- source: spec-18-12-the-agent-grows-with-the-stage.md | severity: med | fix-risk: med | footprint: in-epic
+- evidence: 18.12's re-plan survey of descriptors against read tools; C1 checks write fields only
+- 2026-10-12T01:03:05Z status=routed owner=burndown by=spec_gate note=the Epic 18 burn-down decides: widen the reads or record why each field stays form-only
