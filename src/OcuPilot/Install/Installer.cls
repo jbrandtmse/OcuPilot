@@ -63,8 +63,8 @@
 /// <method>GuardInstallNamespace</method> (not a system or missing namespace),
 /// <method>GuardVersionFloor</method> (the roster's IRIS floor),
 /// <method>GuardPackageHome</method> (the <code>OcuPilot</code> package resolves from the
-/// namespace's own routine database, AD-9) and <method>GuardOneInstallNamespace</method> (no other
-/// namespace holds the mapping). <method>Uninstall</method> runs the first and the last, and the IPM
+/// namespace's own routine database, AD-9) and <method>GuardOneInstallNamespace</method> (the
+/// namespace holds the mapping, or no other does). <method>Uninstall</method> runs the first and the last, and the IPM
 /// manifest's guard <code>&lt;Invoke&gt;</code> (<method>GuardTarget</method>) runs all four before
 /// IPM touches a web application. A refusal changes nothing in either namespace and writes no
 /// version row.</p>
@@ -530,7 +530,7 @@ ClassMethod GuardVersionFloor(pWhat As %String) As %Status
             If $IsObject(tRequirements) Set tSpec = tRequirements.version
         }
         If '$Match(tSpec, "^>=[0-9]+(\.[0-9]+)*$") {
-            Set tSC = $$$ERROR($$$GeneralError, pWhat _ " refused: the roster's IRIS version floor could not be read (systemRequirements.version is '" _ tSpec _ "', not '>=' followed by a dotted version), so it cannot be enforced. Nothing was changed.")
+            Set tSC = $$$ERROR($$$GeneralError, pWhat _ " refused: the roster's IRIS version floor could not be read (" _ $Select($$$ISERR(tRosterSC): $System.Status.GetErrorText(tRosterSC), 1: "systemRequirements.version is '" _ tSpec _ "', not '>=' followed by a dotted version") _ "), so it cannot be enforced. Nothing was changed.")
             Quit
         }
         Set tFloor = $Extract(tSpec, 3, *)
@@ -572,14 +572,15 @@ ClassMethod GuardPackageHome(pWhat As %String, pInstallNs As %String) As %Status
     Quit tSC
 }
 
-/// <p>Refuse, naming the namespace and the remedy, when a namespace other than
-/// <var>pInstallNs</var> already holds the profile's global mapping (<code>pNames("mappingPattern")</code>
-/// onto <code>pNames("database")</code>): an instance has one install namespace, and installing or
-/// uninstalling from a second one would move or half-remove the first's. <code>%ALL</code> is not
-/// asked. The namespaces are listed in one <code>%SYS</code> window (AD-16) restored before the
-/// answer; a list that cannot be read is refused. Both <method>Install</method> and
-/// <method>Uninstall</method> call it after their lock and before they read anything. Changes
-/// nothing.</p>
+/// <p>Refuse, naming the namespace and the remedy, when <var>pInstallNs</var> does not hold the
+/// profile's global mapping (<code>pNames("mappingPattern")</code> onto <code>pNames("database")</code>)
+/// and another namespace does: an instance has one install namespace, and installing or uninstalling
+/// from a second one would move or half-remove the first's. A namespace that holds the mapping
+/// itself is an install namespace whatever another holds, so an instance an earlier release left
+/// with two can still be upgraded or uninstalled from either. <code>%ALL</code> is not asked. The
+/// namespaces are read in one <code>%SYS</code> window (AD-16) restored before the answer; a list
+/// that cannot be read is refused. Both <method>Install</method> and <method>Uninstall</method>
+/// call it after their lock and before they read anything. Changes nothing.</p>
 /// <p>Caller contract: <var>pNames</var> is <method>Names</method>' answer, resolved in the install
 /// namespace.</p>
 ClassMethod GuardOneInstallNamespace(pWhat As %String, ByRef pNames, pInstallNs As %String) As %Status
@@ -592,6 +593,10 @@ ClassMethod GuardOneInstallNamespace(pWhat As %String, ByRef pNames, pInstallNs 
     Try {
         Set tSC = ##class(OcuPilot.Kernel.Utils).SwitchNamespace("%SYS", .tOrigNS)
         If $$$ISERR(tSC) Quit
+        If ##class(Config.MapGlobals).Exists(pInstallNs, tPattern, .tOwn) && (tOwn.Database = tDatabase) {
+            Set tOwn = ""
+            Quit
+        }
         Set tRS = ##class(%ResultSet).%New("Config.Namespaces:List")
         Set tSC = tRS.Execute()
         If $$$ISERR(tSC) Quit
@@ -614,7 +619,7 @@ ClassMethod GuardOneInstallNamespace(pWhat As %String, ByRef pNames, pInstallNs 
         Quit $$$ERROR($$$GeneralError, pWhat _ " refused: could not establish whether another namespace already holds OcuPilot's '" _ tPattern _ "' mapping (" _ $System.Status.GetErrorText(tSC) _ "). Nothing was changed.")
     }
     If tHolder '= "" {
-        Quit $$$ERROR($$$GeneralError, pWhat _ " refused: OcuPilot is already installed in namespace '" _ tHolder _ "' (its '" _ tPattern _ "' mapping there targets database " _ tDatabase _ "), and an instance has one install namespace. Run it in '" _ tHolder _ "', or uninstall OcuPilot there first. Nothing was changed in either namespace.")
+        Quit $$$ERROR($$$GeneralError, pWhat _ " refused: OcuPilot is already installed in namespace '" _ tHolder _ "' (its '" _ tPattern _ "' mapping there targets database " _ tDatabase _ "), and an instance has one install namespace. Run it in '" _ tHolder _ "', or uninstall OcuPilot there first with ##class(OcuPilot.Install.Installer).Uninstall("""", 1), which removes that mapping. Nothing was changed in either namespace.")
     }
     Quit $$$OK
 }
@@ -840,9 +845,10 @@ ClassMethod LogWarn(pMessage As %String, pData As %DynamicObject = "")
 /// <p><b>AC13's namespace guard is the first act</b>, before any object is created and
 /// before any <code>%SYS</code> switch -- refuses immediately when called from anywhere
 /// but the resolved install namespace, closing the <code>reopen_if</code> Story 1.3 left
-/// on this exact gap. <b>AC6's downgrade refusal runs second</b>, for the identical
-/// reason: reading the stored schema version needs no escalation and must settle
-/// "changes nothing" before anything is touched.</p>
+/// on this exact gap. The target's own validity follows (<method>GuardVersionFloor</method>,
+/// <method>GuardPackageHome</method>, then <method>GuardOneInstallNamespace</method> under the
+/// lock), and <b>AC6's downgrade refusal</b> after it, for the identical reason: each needs no
+/// escalation and must settle "changes nothing" before anything is touched.</p>
 /// <p>The version row is written <b>last</b> (AD-38), after the <code>Try</code>/
 /// <code>Catch</code> below, because it must run from the install namespace -- guaranteed
 /// restored at every exit above -- and because a step's failure must still be recorded

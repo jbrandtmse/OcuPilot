@@ -22,11 +22,10 @@ Parameter RESOURCE = "%DB_OCUPROBE1813";
 /// <p>The database's directory name under the manager directory.</p>
 Parameter DIRECTORY = "ocuprobe1813";
 
-/// <p>The probe profile's global mapping, database and applications, as install names them.</p>
+/// <p>The probe profile's global mapping and database, as install names them.</p>
 Parameter PROBEMAPPING = "ProbeOcuPilotState*";
 
 Parameter PROBEDATABASE = "OCUPILOTPROBE";
-Parameter PROBEAPPS = "/probeocupilot,/api/probeocupilot,/api/probeocupilot/readiness";
 
 /// <p>The name of the stored definition the rung leg seeds.</p>
 Parameter DEFINITIONNAME = "OcuProbe1813Creds";
@@ -83,6 +82,11 @@ Method OnBeforeOneTest() As %Status
     ; removes it, the other refuses.
     Do ..ProbeRun(..#NAMESPACE, "Uninstall")
     Do ..ProbeRun(..PreparedHome, "Uninstall")
+    ; So is a seeded definition an aborted run left: its name is unique.
+    For tName = ..#DEFINITIONNAME, ..#OTHERDEFINITIONNAME {
+        Set tLeftId = ""
+        If $$$ISOK(##class(OcuPilot.Kernel.State.Agent).GuardedByName(tName, .tLeftId)) && (tLeftId '= "") Do ##class(OcuPilot.Kernel.State.Agent).GuardedDeleteId(tLeftId)
+    }
     Quit $$$OK
 }
 
@@ -104,59 +108,28 @@ Method OnAfterOneTest() As %Status
     Quit $$$OK
 }
 
-/// <p>Create the chosen namespace: its resource, its database in a directory of its own, and the
-/// namespace over that database and this class's routines database.</p>
+/// <p>Create the chosen namespace over a database of its own and this class's routines database.</p>
 Method BuildNamespace() As %Status
 {
-    Set tSC = $$$OK
-    Set tOrigNS = $NAMESPACE
-    Try {
-        Set tSC = ##class(OcuPilot.Kernel.Utils).SwitchNamespace("%SYS", .tOrigNS)
-        If $$$ISERR(tSC) Quit
-        Set tSC = ##class(Config.Namespaces).Get(..PreparedHome, .tHome)
-        If $$$ISERR(tSC) Quit
-        Set tDir = ##class(%File).NormalizeDirectory(..#DIRECTORY, $System.Util.ManagerDirectory())
-        Set tSC = ##class(Security.Resources).Create(..#RESOURCE, "OcuPilot.Test.InstallTarget probe database", "", 2)
-        If $$$ISERR(tSC) Quit
-        Do ##class(%File).CreateDirectoryChain(tDir)
-        Set tSC = ##class(SYS.Database).CreateDatabase(tDir, 1, 8192, 0, ..#RESOURCE)
-        If $$$ISERR(tSC) Quit
-        Set tDb("Directory") = tDir
-        Set tSC = ##class(Config.Databases).Create(..#DATABASE, .tDb)
-        If $$$ISERR(tSC) Quit
-        Set tNs("Globals") = ..#DATABASE
-        Set tNs("Routines") = tHome("Routines")
-        Set tSC = ##class(Config.Namespaces).Create(..#NAMESPACE, .tNs)
-    } Catch ex {
-        Set tSC = ex.AsStatus()
-    }
-    Set $NAMESPACE = tOrigNS
-    Quit tSC
+    Quit ##class(OcuPilot.Test.ProbeNamespace).Build(..#NAMESPACE, ..#DATABASE, ..#RESOURCE, ..#DIRECTORY, ..PreparedHome)
 }
 
-/// <p>Remove what <method>BuildNamespace</method> creates, whatever part of it exists, and answer
-/// what is still there (<code>""</code> when nothing is).</p>
+/// <p>Remove what <method>BuildNamespace</method> creates, and answer what is still there.</p>
 Method RemoveNamespace() As %String
 {
-    Set tLeft = ""
-    Set tOrigNS = $NAMESPACE
-    Try {
-        Set tSC = ##class(OcuPilot.Kernel.Utils).SwitchNamespace("%SYS", .tOrigNS)
-        Set tDir = ##class(%File).NormalizeDirectory(..#DIRECTORY, $System.Util.ManagerDirectory())
-        If ##class(Config.Namespaces).Exists(..#NAMESPACE) Do ##class(Config.Namespaces).Delete(..#NAMESPACE)
-        If ##class(Config.Databases).Exists(..#DATABASE) Do ##class(Config.Databases).Delete(..#DATABASE)
-        If ##class(%File).Exists(tDir _ "IRIS.DAT") Do ##class(SYS.Database).DeleteDatabase(tDir)
-        If ##class(Security.Resources).Exists(..#RESOURCE) Do ##class(Security.Resources).Delete(..#RESOURCE)
-        If ##class(%File).DirectoryExists(tDir) Do ##class(%File).RemoveDirectoryTree(tDir)
-        If ##class(Config.Namespaces).Exists(..#NAMESPACE) Set tLeft = tLeft _ " namespace"
-        If ##class(Config.Databases).Exists(..#DATABASE) Set tLeft = tLeft _ " database"
-        If ##class(Security.Resources).Exists(..#RESOURCE) Set tLeft = tLeft _ " resource"
-        If ##class(%File).DirectoryExists(tDir) Set tLeft = tLeft _ " directory"
-    } Catch ex {
-        Set tLeft = tLeft _ " (" _ ex.DisplayString() _ ")"
+    Quit ##class(OcuPilot.Test.ProbeNamespace).Remove(..#NAMESPACE, ..#DATABASE, ..#RESOURCE, ..#DIRECTORY, ..#PROBEMAPPING _ "," _ ##class(OcuPilot.Kernel.State.Base).#MAPPINGPATTERN)
+}
+
+/// <p>The probe profile's application paths, derived from the roster as install derives them.</p>
+ClassMethod ProbeApps() As %String
+{
+    Set tPaths = ""
+    If $$$ISERR(##class(OcuPilot.Install.Roster).Get(.tRoster)) Quit ""
+    Set tIt = tRoster.applications.%GetIterator()
+    While tIt.%GetNext(.tKey, .tApplication) {
+        Set tPaths = tPaths _ $Select(tPaths = "": "", 1: ",") _ ##class(OcuPilot.Install.Installer).ProbeApplicationPath(tApplication.path)
     }
-    Set $NAMESPACE = tOrigNS
-    Quit tLeft
+    Quit tPaths
 }
 
 /// <p>Revoke the SQL grant install makes in the chosen namespace; uninstall leaves it.</p>
@@ -168,6 +141,7 @@ Method RevokeGrant()
         Set tRole = ##class(OcuPilot.Kernel.State.Base).#DBRESOURCE
         Set tRS = ##class(%SQL.Statement).%ExecDirect(, "REVOKE SELECT,INSERT,UPDATE,DELETE ON SCHEMA OcuPilot_Kernel_State FROM " _ tRole)
     } Catch ex {
+        Set $NAMESPACE = tOrigNS
     }
     Set $NAMESPACE = tOrigNS
 }
@@ -186,6 +160,7 @@ Method ProbeRun(pNs As %String, pMethod As %String) As %Status
             Set tSC = ##class(OcuPilot.Test.InstallerProbe).Uninstall("probe", 1)
         }
     } Catch ex {
+        Set $NAMESPACE = tOrigNS
         Set tSC = ex.AsStatus()
     }
     Set $NAMESPACE = tOrigNS
@@ -201,6 +176,7 @@ Method MappingDatabase(pNs As %String, pPattern As %String) As %String
         Set tSC = ##class(OcuPilot.Kernel.Utils).SwitchNamespace("%SYS", .tOrigNS)
         If ##class(Config.MapGlobals).Exists(pNs, pPattern, .tMapping) Set tDatabase = tMapping.Database
     } Catch ex {
+        Set $NAMESPACE = tOrigNS
         Set tDatabase = "(unreadable)"
     }
     Set $NAMESPACE = tOrigNS
@@ -219,6 +195,7 @@ Method ApplicationNamespace(pPath As %String) As %String
             Set tNs = $Get(tProps("NameSpace"))
         }
     } Catch ex {
+        Set $NAMESPACE = tOrigNS
         Set tNs = "(unreadable)"
     }
     Set $NAMESPACE = tOrigNS
@@ -237,6 +214,7 @@ Method ProbeRows(pNs As %String, pTable As %String) As %Integer
         Set tRS = ##class(%SQL.Statement).%ExecDirect(, tSql)
         If tRS.%Next() Set tCount = tRS.%GetData(1)
     } Catch ex {
+        Set $NAMESPACE = tOrigNS
     }
     Set $NAMESPACE = tOrigNS
     Quit tCount
@@ -245,9 +223,14 @@ Method ProbeRows(pNs As %String, pTable As %String) As %Integer
 /// <p><method>OcuPilot.Install.Installer.StateFingerprint</method> of <var>pProfile</var> in <var>pNs</var>.</p>
 Method Fingerprint(pNs As %String, pProfile As %String = "probe") As %String
 {
+    Set tFingerprint = "(unreadable)"
     Set tOrigNS = $NAMESPACE
-    Set $NAMESPACE = pNs
-    Set tFingerprint = ##class(OcuPilot.Install.Installer).StateFingerprint(pProfile)
+    Try {
+        Set $NAMESPACE = pNs
+        Set tFingerprint = ##class(OcuPilot.Install.Installer).StateFingerprint(pProfile)
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+    }
     Set $NAMESPACE = tOrigNS
     Quit tFingerprint
 }
@@ -256,8 +239,10 @@ Method Fingerprint(pNs As %String, pProfile As %String = "probe") As %String
 Method AssertProbeAbsent(pNs As %String, pWhat As %String)
 {
     Do $$$AssertEquals(..MappingDatabase(pNs, ..#PROBEMAPPING), "", pWhat _ ": no probe mapping in " _ pNs)
-    For tI = 1:1:$Length(..#PROBEAPPS, ",") {
-        Set tPath = $Piece(..#PROBEAPPS, ",", tI)
+    Set tApps = ..ProbeApps()
+    Do $$$AssertTrue(tApps '= "", pWhat _ ": the roster derives the probe's applications")
+    For tI = 1:1:$Length(tApps, ",") {
+        Set tPath = $Piece(tApps, ",", tI)
         Do $$$AssertNotEquals(..ApplicationNamespace(tPath), pNs, pWhat _ ": " _ tPath _ " does not run in " _ pNs)
     }
 }
@@ -269,18 +254,21 @@ Method TestTheChosenNamespaceHoldsTheMappingAndTheApplications()
 {
     Set tT = ..#NAMESPACE
     Do ..AssertProbeAbsent(..PreparedHome, "before the install")
+    Set tStampsBefore = ..ProbeRows(tT, "Stamp")
+    Do $$$AssertTrue(tStampsBefore >= 0, "the chosen namespace's stamps read: " _ tStampsBefore)
     Do $$$AssertStatusOK(..ProbeRun(tT, "Install"), "install runs in the chosen namespace")
     Do $$$AssertEquals(..MappingDatabase(tT, ..#PROBEMAPPING), ..#PROBEDATABASE, "the chosen namespace maps the profile's globals onto the profile's database")
     Do $$$AssertEquals(..MappingDatabase(..PreparedHome, ..#PROBEMAPPING), "", "and the namespace production runs in maps none")
-    For tI = 1:1:$Length(..#PROBEAPPS, ",") {
-        Set tPath = $Piece(..#PROBEAPPS, ",", tI)
+    Set tApps = ..ProbeApps()
+    For tI = 1:1:$Length(tApps, ",") {
+        Set tPath = $Piece(tApps, ",", tI)
         Do $$$AssertEquals(..ApplicationNamespace(tPath), tT, tPath _ " runs in the chosen namespace")
     }
 
     Set tFingerprint = ..Fingerprint(tT)
     Set tStamps = ..ProbeRows(tT, "Stamp")
     Set tVersions = ..ProbeRows(tT, "Version")
-    Do $$$AssertEquals(tStamps, 1, "the first run recorded its stamp")
+    Do $$$AssertEquals(tStamps, tStampsBefore + 1, "the first run recorded its stamp")
     Do $$$AssertStatusOK(..ProbeRun(tT, "Install"), "a second run completes")
     Do $$$AssertEquals(..Fingerprint(tT), tFingerprint, "and leaves the state fingerprint unchanged")
     Do $$$AssertEquals(..ProbeRows(tT, "Stamp"), tStamps + 1, "the only new row is that run's stamp")
@@ -304,6 +292,7 @@ Method TestASecondNamespaceIsRefusedAndNothingChanges()
     Set tProductionFingerprint = ..Fingerprint(tHome, "")
     Set tStamps = ..ProbeRows(tT, "Stamp")
     Set tVersions = ..ProbeRows(tT, "Version")
+    Do $$$AssertTrue((tStamps >= 0) && (tVersions >= 0), "the chosen namespace's rows read: " _ tStamps _ ", " _ tVersions)
     Do ..AssertRefusal(..ProbeRun(tT, "Install"), "Install from a second namespace")
     Do ..AssertRefusal(..ProbeRun(tT, "Uninstall"), "Uninstall from a second namespace")
 
@@ -333,13 +322,35 @@ Method TestASecondNamespaceIsRefusedAndNothingChanges()
     Do $$$AssertEquals(..ProbeRows(tT, "Version"), tVersions, "and no version row")
 }
 
+/// <p><b>A namespace that holds the mapping itself is not refused for another holder</b>, as an
+/// earlier release could leave an instance: with the profile installed in the namespace production
+/// runs in and its pattern mapped onto its database in the chosen namespace too, the guard passes in
+/// each, so either can be upgraded or uninstalled.</p>
+Method TestANamespaceHoldingTheMappingItselfIsNotRefused()
+{
+    Set tT = ..#NAMESPACE
+    Do $$$AssertStatusOK(..ProbeRun(..PreparedHome, "Install"), "the profile is installed in the namespace production runs in")
+    Set tMapSC = ##class(OcuPilot.Test.ProbeNamespace).SetMapping(tT, ..#PROBEMAPPING, ..#PROBEDATABASE)
+    Set tOrigNS = $NAMESPACE
+    Set tNames("mappingPattern") = ..#PROBEMAPPING
+    Set tNames("database") = ..#PROBEDATABASE
+    Set $NAMESPACE = tT
+    Set tSecondSC = ##class(OcuPilot.Test.InstallerProbe).GuardOneInstallNamespace("Install", .tNames, tT)
+    Set $NAMESPACE = tOrigNS
+    Set tFirstSC = ##class(OcuPilot.Test.InstallerProbe).GuardOneInstallNamespace("Uninstall", .tNames, tOrigNS)
+    Do ##class(OcuPilot.Test.ProbeNamespace).SetMapping(tT, ..#PROBEMAPPING, "")
+    Do $$$AssertStatusOK(tMapSC, "the chosen namespace is given the profile's mapping too")
+    Do $$$AssertStatusOK(tSecondSC, "the guard passes in the chosen namespace, which holds it: " _ $System.Status.GetErrorText(tSecondSC))
+    Do $$$AssertStatusOK(tFirstSC, "and in the first, beside it: " _ $System.Status.GetErrorText(tFirstSC))
+}
+
 /// <p>Assert <var>pStatus</var> refuses, naming the namespace that holds the install and the remedy.</p>
 Method AssertRefusal(pStatus As %Status, pWhat As %String)
 {
     Do $$$AssertStatusNotOK(pStatus, pWhat _ " is refused")
     Set tText = $System.Status.GetErrorText(pStatus)
     Do $$$AssertTrue(tText [ ("'" _ ..PreparedHome _ "'"), pWhat _ " names " _ ..PreparedHome _ ": " _ tText)
-    Do $$$AssertTrue(tText [ "uninstall OcuPilot there first", pWhat _ " names the remedy")
+    Do $$$AssertTrue(tText [ "uninstall OcuPilot there first with ##class(OcuPilot.Install.Installer).Uninstall(", pWhat _ " names the remedy: " _ tText)
 }
 
 /// <p><b>The package must resolve from the namespace's own routine database (AD-9).</b> A foreign

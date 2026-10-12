@@ -292,16 +292,28 @@ Method TestInvokeDeclarationNamesTheOneInstallEntryPoint()
     Do $$$AssertEquals(tRoster.invoke.when, "After", "after it, so the FileCopy that runs at the phase's start has already placed the bundle")
 
     Do $$$AssertTrue(##class(%Dictionary.CompiledMethod).%ExistsId(tRoster.invoke.class _ "||" _ tRoster.invoke.method), "the class and method the manifest names are compiled on this instance")
+    Do $$$AssertEquals(..ReturnTypeOf(tRoster.invoke.class _ "||" _ tRoster.invoke.method), "%Library.Status", "and return a %Status, the one return type whose failure IPM reports")
+}
+
+/// <p>The compiled return type of method <var>pId</var> (<code>class||method</code>), or
+/// <code>(not compiled)</code>.</p>
+ClassMethod ReturnTypeOf(pId As %String) As %String
+{
+    Set tMethod = ##class(%Dictionary.CompiledMethod).%OpenId(pId)
+    If '$IsObject(tMethod) Quit "(not compiled)"
+    Quit tMethod.ReturnType
 }
 
 /// <p>The roster's <code>guard</code> declaration -- the manifest's first <code>&lt;Invoke&gt;</code>
 /// -- names the installer's pre-flight validation and runs it after <code>Compile</code>: IPM updates
 /// a module's web applications at the start of <code>Activate</code>, before any <code>Activate</code>
 /// invoke, so a refusal declared there would arrive after the live applications were re-pointed.
-/// The method must be compiled here and take no required argument, as the install invoke takes
-/// none.</p>
+/// The method must be compiled here, take no required argument, as the install invoke takes none,
+/// and return a <code>%Status</code>: IPM checks an invoke's answer only when the method's return
+/// type is <code>%Library.Status</code>, so any other type would discard the refusal.</p>
 /// <p>Mutation (Rule 19): change <code>guard.phase</code> to <code>Activate</code>, or
-/// <code>guard.method</code> to a method that does not exist -- red.</p>
+/// <code>guard.method</code> to a method that does not exist, or declare
+/// <method>OcuPilot.Install.Installer.GuardTarget</method> <code>As %Boolean</code> -- red.</p>
 Method TestGuardDeclarationRunsBeforeIpmUpdatesTheWebApplications()
 {
     Do $$$AssertStatusOK(##class(OcuPilot.Install.Roster).Get(.tRoster), "the roster reads")
@@ -313,6 +325,7 @@ Method TestGuardDeclarationRunsBeforeIpmUpdatesTheWebApplications()
     Do $$$AssertTrue(##class(%Dictionary.CompiledMethod).%ExistsId(tMethod), "the class and method the manifest names are compiled on this instance")
     Set tFormal = ##class(%Dictionary.CompiledMethod).%OpenId(tMethod)
     Do $$$AssertEquals($IsObject(tFormal) && (tFormal.FormalSpec = ""), 1, "and it takes no argument")
+    Do $$$AssertEquals(..ReturnTypeOf(tMethod), "%Library.Status", "and returns a %Status, so IPM stops the load on its refusal")
 }
 
 /// <p>The module's shipped identity: a name and a semantic version the manifest can carry, and

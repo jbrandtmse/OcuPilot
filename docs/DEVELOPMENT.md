@@ -592,8 +592,10 @@ Three things follow from that single entry point, and each is deliberate:
   guessing), the `OcuPilot` package resolves from a database other than the namespace's own routine
   database (AD-9), the IRIS is older than the roster's `systemRequirements.version` (the installer
   enforces it, since IPM's exporter drops `<SystemRequirements>`), or another namespace already holds
-  the profile's `OcuPilot*` globals mapping. That last refusal names the namespace, applies to
-  uninstall as well, and the installer changes nothing in either namespace. The manifest runs these
+  the profile's `OcuPilot*` globals mapping while this one does not. That last refusal names the
+  namespace, applies to uninstall as well, and the installer changes nothing in either namespace; a
+  namespace holding the mapping itself is never refused for another, so an instance an earlier
+  release left with two can be upgraded or uninstalled from either. The manifest runs these
   checks in a guard `<Invoke>` after `Compile`, because IPM updates a module's web applications at
   the start of `Activate` and would otherwise re-point the live ones before the install's own
   `<Invoke>` could refuse.
@@ -616,7 +618,7 @@ does need the bundle built first** (`cd ui && npm run build`), because the copy'
 | IPM | whichever namespace `zpm` runs in | run `zpm` from the namespace you want |
 | Container start | `HSCUSTOM` if it exists, else `USER` | `OCUPILOT_NAMESPACE` |
 | Either, on an instance with neither `HSCUSTOM` nor `USER` | none — install refuses, naming both | create one of them |
-| Either, on an instance where another namespace already holds the install | none — install, uninstall and the container start refuse, naming that namespace | run it there, or uninstall there first |
+| Either, on an instance where another namespace already holds the install | none — install, uninstall and the container start refuse, naming that namespace | run it there, or uninstall there first with `Installer.Uninstall("", 1)` |
 
 `OCUPILOT_NAMESPACE` is an optional environment variable on the container, the same shape as
 `OCUPILOT_DEMO`: nothing is required to run. Set it in `docker-compose.yml`'s `environment:`

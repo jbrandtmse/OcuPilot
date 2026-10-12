@@ -2855,6 +2855,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: SELECT COUNT(*) FROM OcuPilot_Kernel_State.Stamp WHERE Profile IS NULL on the live ocupilot container reads 3306, all production rows, on a container up four days with RestartCount 0; the growth is tests calling Install("") rather than real starts, which DW-396's arming now bounds, but nothing prunes the table and AD-9 protected state has no retention rule
 - 2026-09-16T12:04:52Z status=routed owner=burndown by=lead note=Found while verifying that Story 3.9's eleven armed classes installed nothing on live - the count is the byproduct, not the finding. Production growth is modest (one row per container start or upgrade), so this is a housekeeping question rather than a defect: decide whether Stamp keeps every run forever, and if not what prunes it and on whose authority, since AD-9 makes it OcuPilot's own protected state.
 - 2026-09-16T12:29:17Z status=routed owner=18-13-multi-namespace-install by=merge_gate note=re-owned off burndown at the Epic 3 close. Stamp is the per-install-run record, so the story that installs into more than one namespace is the one that has to say what the table keeps
+- 2026-10-12T19:56:43Z status=resolved-by:18-13-multi-namespace-install by=adjudication note=Stamp.GuardedSweep keeps each profile's newest 100 (KEEPRUNS) in the retention sweep; StampRetention pins it across two profiles and the NULL group
 
 ### DW-424: CredentialsRungAvailable's own Try/Catch answers 0 on a raise, so a credential store that FAILS is reported to Credential() as an absence and the definition is disabled
 - source: bmad-code-review Story 3.9 (blind-hunter) | severity: med | fix-risk: med | footprint: in-epic
@@ -5540,6 +5541,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-26T09:53:51Z status=routed owner=burndown by=spec_gate note=IPM drops SystemRequirements; fix is Installer.Install refusing below the roster's IRIS version floor
 - 2026-09-30T03:32:45Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down decision sheet 2026-09-29: into Story 23.3 (after the following release)
 - 2026-10-05T18:41:40Z status=routed owner=18-13-multi-namespace-install by=merge_gate note=owner-approved burn-down scope 2026-10-05: feature-sized, re-routed from the cleanup queue to the install and packaging story
+- 2026-10-12T19:56:43Z status=resolved-by:18-13-multi-namespace-install by=adjudication note=the installer half: Installer.GuardVersionFloor refuses an IRIS below the roster's systemRequirements floor (InstallTarget pins 2026.1 refused, 2026.2 and 2027.1 pass); IPM's exporter half is DW-2364, decision-pending under the owner's hold
 
 ### DW-1334: The package job fails in CI: the archive's bundle members are not under ui/dist/ocupilot-ui/browser/ on the Linux runner, so AC1's contents check and the Integration AC are red
 - source: spec-13-3-publish-the-package-to-the-community-registry.md / code-review | severity: high | fix-risk: med | footprint: in-story
@@ -11439,3 +11441,14 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-13-multi-namespace-install.md | severity: low | fix-risk: low | footprint: out-of-footprint
 - evidence: Story 13.3 on IPM 0.10.5 (scripts/ci-ipm-archive.sh): the exported manifest has no <SystemRequirements> though module.xml :28 declares Version >=2026.2; 18.13 enforces the floor in Installer.GuardVersionFloor
 - 2026-10-12T18:48:37Z status=decision-pending owner=burndown by=lead note=owner_hold: vendor tool-defect candidate, never reported upstream; DW-1333's installer half resolved in 18.13
+
+### DW-2365: A refused IPM install in a second namespace leaves IPM's own state there (the compiled package; a dev load's registered module), and a zpm uninstall run there may delete the live install's web applications and bundle (inference)
+- source: spec-18-13-multi-namespace-install.md | severity: med | fix-risk: med | footprint: in-epic
+- evidence: IPM 0.10.5 source (image zpm.xml): LoadNewModule commits a -dev module before its lifecycle; uninstall's WebApplication.DeleteWebApp deletes /ocupilot, /api/ocupilot, /api/ocupilot/readiness by name and FileCopy's Clean removes ${dataDir}csp/ocupilot/. Not run. Settle on ocupilot-ci: a refused zpm load or install from a second namespace, then zpm list and zpm uninstall there, then read /ocupilot.
+- 2026-10-12T19:53:37Z status=routed owner=18-43-uninstall-and-grants-on-a-shared-instance by=cr note=unverified MED: measure first; fix by an uninstall-phase guard invoke, or document the cleanup
+
+### DW-2366: AD-38 still says module.xml carries one <Invoke> running When=After, and epic-18-context.md still lists the IPM re-point as open at Task 0; the manifest now carries the guard invoke too
+- source: spec-18-13-multi-namespace-install.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: ARCHITECTURE-SPINE.md AD-38 second paragraph: 'module.xml carries one <Invoke> running When=After'; module.xml :56-57 now carries GuardTarget (Compile, After) and Install (Activate, After). epic-18-context.md :58 'Open at Task 0'.
+- 2026-10-12T19:54:32Z status=open owner=18-13-multi-namespace-install by=cr note=spine is Epic 20-contended (Rule 11): the lead corrects AD-38's sentence at its gate (Rule 20); the context regenerates
+- 2026-10-12T19:56:43Z status=resolved-by:18-13-multi-namespace-install by=adjudication note=AD-38 corrected at origin (two invokes: the install after Activate, the guard after Compile), epic-18-context.md :58 rewritten

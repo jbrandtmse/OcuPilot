@@ -1,8 +1,8 @@
 /// <p>The container start's namespace-resolution session, executed (Story 18.13, AD-17): the
 /// ObjectScript between <code>PRE_RAW=$(iris session</code> and its <code>EOF</code> in
 /// <file>scripts/container-start.sh</file>, run in <code>%SYS</code> against namespaces this class
-/// creates, answers <code>OK</code> for the install namespace, <code>OTHER</code> when another
-/// namespace already holds the <code>OcuPilot*</code> mapping onto <code>OCUPILOT</code>,
+/// creates, answers <code>OK</code> for the install namespace, <code>OTHER</code> when it does not
+/// hold the <code>OcuPilot*</code> mapping onto <code>OCUPILOT</code> and another namespace does,
 /// <code>SYSTEM</code> and <code>MISSING</code>, and marks only the first usable. The shell
 /// <code>case</code> that turns an outcome into an exit is run by
 /// <file>ui/tools/container-start-outcome.test.mjs</file>.</p>
@@ -32,8 +32,6 @@ Parameter DATABASE = "OCUPROBE1813S";
 Parameter RESOURCE = "%DB_OCUPROBE1813S";
 
 Parameter DIRECTORY = "ocuprobe1813s";
-
-Parameter PATTERN = "OcuPilot*";
 
 /// <p>The session's lines up to the one that decides whether the start can use the namespace,
 /// <code>$ListBuild</code> of the lines, read once by <method>OnBeforeAllTests</method>.</p>
@@ -109,11 +107,11 @@ Method ReadSession() As %Status
 
 /// <p>Run the session in <code>%SYS</code> with <var>pOverride</var> as the environment's
 /// <code>OCUPILOT_NAMESPACE</code> and answer <code>outcome|usable</code>.</p>
-Method Resolve(pOverride As %String) As %String [ PublicList = (tOverride, tHasHSCUSTOM, tHasUSER, tDefault, tNS, tExists, tRefusedList, tUpper, tIsSystem, tOther, tOtherRS, tOtherMap, tNsOutcome, tUsable) ]
+Method Resolve(pOverride As %String) As %String [ PublicList = (tOverride, tHasHSCUSTOM, tHasUSER, tDefault, tNS, tExists, tRefusedList, tUpper, tIsSystem, tSelfHolds, tSelfMap, tOther, tOtherRS, tOtherMap, tNsOutcome, tUsable) ]
 {
     ; The session's variables are public so the executed lines and this method share them;
     ; New restores the caller's on the way out.
-    New tOverride, tHasHSCUSTOM, tHasUSER, tDefault, tNS, tExists, tRefusedList, tUpper, tIsSystem, tOther, tOtherRS, tOtherMap, tNsOutcome, tUsable
+    New tOverride, tHasHSCUSTOM, tHasUSER, tDefault, tNS, tExists, tRefusedList, tUpper, tIsSystem, tSelfHolds, tSelfMap, tOther, tOtherRS, tOtherMap, tNsOutcome, tUsable
     Set tAnswer = "(session failed)"
     Set tOrigNS = $NAMESPACE
     Try {
@@ -125,88 +123,42 @@ Method Resolve(pOverride As %String) As %String [ PublicList = (tOverride, tHasH
         }
         Set tAnswer = $Get(tNsOutcome) _ "|" _ $Get(tUsable)
     } Catch ex {
+        Set $NAMESPACE = tOrigNS
         Set tAnswer = "(session failed: " _ ex.DisplayString() _ ")"
     }
     Set $NAMESPACE = tOrigNS
     Quit tAnswer
 }
 
-/// <p>Create the probe namespace: its resource, its database in a directory of its own under the
-/// manager directory, and the namespace over that database and the home namespace's routines.</p>
+/// <p>The production profile's globals pattern and database, as the state class declares them and
+/// the start hook spells them.</p>
+ClassMethod ProductionPattern() As %String
+{
+    Quit ##class(OcuPilot.Kernel.State.Base).#MAPPINGPATTERN
+}
+
+ClassMethod ProductionDatabase() As %String
+{
+    Quit ##class(OcuPilot.Kernel.State.Base).#DATABASENAME
+}
+
+/// <p>Create the probe namespace over a database of its own and the home namespace's routines.</p>
 Method BuildNamespace() As %Status
 {
-    Set tSC = $$$OK
-    Set tOrigNS = $NAMESPACE
-    Try {
-        Set tSC = ##class(OcuPilot.Kernel.Utils).SwitchNamespace("%SYS", .tOrigNS)
-        If $$$ISERR(tSC) Quit
-        Set tSC = ##class(Config.Namespaces).Get(..#HOME, .tHome)
-        If $$$ISERR(tSC) Quit
-        Set tDir = ##class(%File).NormalizeDirectory(..#DIRECTORY, $System.Util.ManagerDirectory())
-        Set tSC = ##class(Security.Resources).Create(..#RESOURCE, "OcuPilot.Test.ContainerStartNamespace probe database", "", 2)
-        If $$$ISERR(tSC) Quit
-        Do ##class(%File).CreateDirectoryChain(tDir)
-        Set tSC = ##class(SYS.Database).CreateDatabase(tDir, 1, 8192, 0, ..#RESOURCE)
-        If $$$ISERR(tSC) Quit
-        Set tDb("Directory") = tDir
-        Set tSC = ##class(Config.Databases).Create(..#DATABASE, .tDb)
-        If $$$ISERR(tSC) Quit
-        Set tNs("Globals") = ..#DATABASE
-        Set tNs("Routines") = tHome("Routines")
-        Set tSC = ##class(Config.Namespaces).Create(..#NAMESPACE, .tNs)
-    } Catch ex {
-        Set tSC = ex.AsStatus()
-    }
-    Set $NAMESPACE = tOrigNS
-    Quit tSC
+    Quit ##class(OcuPilot.Test.ProbeNamespace).Build(..#NAMESPACE, ..#DATABASE, ..#RESOURCE, ..#DIRECTORY, ..#HOME)
 }
 
-/// <p>Remove what <method>BuildNamespace</method> creates, whatever part of it exists, and answer
-/// what is still there (<code>""</code> when nothing is).</p>
+/// <p>Remove what <method>BuildNamespace</method> creates, and answer what is still there.</p>
 Method RemoveNamespace() As %String
 {
-    Set tLeft = ""
-    Set tOrigNS = $NAMESPACE
-    Try {
-        Set tSC = ##class(OcuPilot.Kernel.Utils).SwitchNamespace("%SYS", .tOrigNS)
-        Set tDir = ##class(%File).NormalizeDirectory(..#DIRECTORY, $System.Util.ManagerDirectory())
-        If ##class(Config.MapGlobals).Exists(..#NAMESPACE, ..#PATTERN) Do ##class(Config.MapGlobals).Delete(..#NAMESPACE, ..#PATTERN)
-        If ##class(Config.Namespaces).Exists(..#NAMESPACE) Do ##class(Config.Namespaces).Delete(..#NAMESPACE)
-        If ##class(Config.Databases).Exists(..#DATABASE) Do ##class(Config.Databases).Delete(..#DATABASE)
-        If ##class(%File).Exists(tDir _ "IRIS.DAT") Do ##class(SYS.Database).DeleteDatabase(tDir)
-        If ##class(Security.Resources).Exists(..#RESOURCE) Do ##class(Security.Resources).Delete(..#RESOURCE)
-        If ##class(%File).DirectoryExists(tDir) Do ##class(%File).RemoveDirectoryTree(tDir)
-        If ##class(Config.Namespaces).Exists(..#NAMESPACE) Set tLeft = tLeft _ " namespace"
-        If ##class(Config.Databases).Exists(..#DATABASE) Set tLeft = tLeft _ " database"
-        If ##class(Security.Resources).Exists(..#RESOURCE) Set tLeft = tLeft _ " resource"
-        If ##class(%File).DirectoryExists(tDir) Set tLeft = tLeft _ " directory"
-    } Catch ex {
-        Set tLeft = tLeft _ " (" _ ex.DisplayString() _ ")"
-    }
-    Set $NAMESPACE = tOrigNS
-    Quit tLeft
+    Quit ##class(OcuPilot.Test.ProbeNamespace).Remove(..#NAMESPACE, ..#DATABASE, ..#RESOURCE, ..#DIRECTORY, ..ProductionPattern())
 }
 
-/// <p>Map the <code>OcuPilot*</code> globals in the probe namespace onto the probe's own database
-/// (<var>pOn</var> 1), or remove that mapping (0).</p>
-Method SetProbeMapping(pOn As %Boolean) As %Status
+/// <p>Map the production pattern in the probe namespace onto <var>pDatabase</var> (the probe's own
+/// database by default), or remove that mapping when <var>pOn</var> is 0.</p>
+Method SetProbeMapping(pOn As %Boolean, pDatabase As %String = "") As %Status
 {
-    Set tSC = $$$OK
-    Set tOrigNS = $NAMESPACE
-    Try {
-        Set tSC = ##class(OcuPilot.Kernel.Utils).SwitchNamespace("%SYS", .tOrigNS)
-        If $$$ISERR(tSC) Quit
-        If pOn {
-            Set tProps("Database") = ..#DATABASE
-            If '##class(Config.MapGlobals).Exists(..#NAMESPACE, ..#PATTERN) Set tSC = ##class(Config.MapGlobals).Create(..#NAMESPACE, ..#PATTERN, .tProps)
-        } ElseIf ##class(Config.MapGlobals).Exists(..#NAMESPACE, ..#PATTERN) {
-            Set tSC = ##class(Config.MapGlobals).Delete(..#NAMESPACE, ..#PATTERN)
-        }
-    } Catch ex {
-        Set tSC = ex.AsStatus()
-    }
-    Set $NAMESPACE = tOrigNS
-    Quit tSC
+    Quit ##class(OcuPilot.Test.ProbeNamespace).SetMapping(..#NAMESPACE, ..ProductionPattern(), $Select('pOn: "", pDatabase = "": ..#DATABASE, 1: pDatabase))
 }
 
 /// <p>Assert the session answers <var>pExpected</var> (<code>outcome|usable</code>) for
@@ -244,6 +196,17 @@ Method TestAMappingOntoAnotherDatabaseDoesNotHoldTheInstall()
 {
     Do $$$AssertStatusOK(..SetProbeMapping(1), "the probe namespace is given a mapping onto its own database")
     Do ..AssertResolves(..#HOME, "OK:" _ ..#HOME _ "|1", "the install namespace resolves OK beside it")
+}
+
+/// <p><b>A namespace that holds the mapping itself is usable beside another holder.</b> With the
+/// probe namespace's own pattern mapped onto the profile's database too, as an earlier release could
+/// leave an instance, each of the two resolves as the install namespace rather than OTHER, so a
+/// start against either goes on to install, and the operator can uninstall from either.</p>
+Method TestANamespaceHoldingTheMappingItselfIsUsableBesideAnother()
+{
+    Do $$$AssertStatusOK(..SetProbeMapping(1, ..ProductionDatabase()), "the probe namespace is given the production mapping too")
+    Do ..AssertResolves(..#NAMESPACE, "OK:" _ ..#NAMESPACE _ "|1", "a second holder resolves as the install namespace")
+    Do ..AssertResolves(..#HOME, "OK:" _ ..#HOME _ "|1", "and so does the first, beside it")
 }
 
 /// <p><b>A system namespace and a missing one are refused, and neither is usable.</b></p>

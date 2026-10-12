@@ -369,11 +369,11 @@ namespace):
 zpm "install ocupilot"
 ```
 
-An instance has one OcuPilot install namespace. Once OcuPilot is installed in one, installing or
-uninstalling it from another namespace is refused, naming the first, and the installer changes
-nothing in either namespace; the container start refuses the same way before it compiles anything.
-The namespace must also keep OcuPilot's code in its own routine database, not behind a package
-mapping.
+An instance has one OcuPilot install namespace. Once OcuPilot is installed in one, the installer
+refuses to install or uninstall it from another namespace, naming the first, and changes nothing in
+either namespace; the container start refuses the same way before it compiles anything. To move
+OcuPilot, first remove it from the first namespace with the installer's own uninstall (below). The
+namespace must also keep OcuPilot's code in its own routine database, not behind a package mapping.
 
 If IPM answers that no repositories are configured, run `zpm "enable -community"` once, then
 install again.
@@ -410,7 +410,9 @@ OcuPilot is an administration tool, so it says plainly what it adds to an instan
   This is a deliberate change to the instance's security posture: an agent write that could not be
   audited would defeat the point.
 
-Uninstalling (`zpm "uninstall ocupilot"`) removes what the installer created.
+`zpm "uninstall ocupilot"` removes the web applications, the client files and the classes, and keeps
+OcuPilot's database and settings. To remove everything the installer created, run
+`##class(OcuPilot.Install.Installer).Uninstall("", 1)` in the install namespace first.
 
 ## A change, from question to audit record
 
