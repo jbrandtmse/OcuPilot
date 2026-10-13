@@ -1692,7 +1692,7 @@ export function readProblem(declaration) {
   if (source.port === SOURCE_MONITOR && !declaresSystemRead(declaration.privileges)) {
     return (
       "read.source.port 'monitor' requires the declared privileges to include %DB_IRISSYS:READ, " +
-      'because the port takes its collection in %SYS (AD-29)'
+      'because the port reads in %SYS (AD-29)'
     );
   }
   return null;

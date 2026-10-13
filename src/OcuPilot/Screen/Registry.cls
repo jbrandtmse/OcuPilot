@@ -1600,7 +1600,7 @@ ClassMethod ReadProblem(pDeclaration As %DynamicObject) As %String
             }
             If 'tHasSystemRead && (tPort = ##class(OcuPilot.Screen.Read).#SOURCEADMIN) Set tProblem = "read.source.port 'admin' requires the declared privileges to include %DB_IRISSYS:READ, because the port runs every endpoint in %SYS (AD-2, AD-8)"
             If 'tHasSystemRead && (tPort = ##class(OcuPilot.Screen.Read).#SOURCEPATH) Set tProblem = "read.source.port 'path' requires the declared privileges to include %DB_IRISSYS:READ, because the port reads the allow-list through the admin API in %SYS (AD-2, AD-8, AD-21)"
-            If 'tHasSystemRead && (tPort = ##class(OcuPilot.Screen.Read).#SOURCEMONITOR) Set tProblem = "read.source.port 'monitor' requires the declared privileges to include %DB_IRISSYS:READ, because the port takes its collection in %SYS (AD-29)"
+            If 'tHasSystemRead && (tPort = ##class(OcuPilot.Screen.Read).#SOURCEMONITOR) Set tProblem = "read.source.port 'monitor' requires the declared privileges to include %DB_IRISSYS:READ, because the port reads in %SYS (AD-29)"
         }
     } Catch ex {
         Set tProblem = "the read declaration could not be read: " _ ex.DisplayString()

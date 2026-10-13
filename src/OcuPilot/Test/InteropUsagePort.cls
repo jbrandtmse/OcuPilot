@@ -1,8 +1,8 @@
 /// <p>Pins the interoperability usage lists of <class>OcuPilot.Port.MonitorPort</class> (Story 18.37, AD-8,
 /// AD-16, AD-29): the <code>Interfaces</code>, <code>MessageVolume</code> and <code>DatabaseImpact</code>
-/// reads answer the classic Interoperability Usage page's class queries as typed rows, cut at the cap,
-/// read in <code>%SYS</code> with the caller's namespace restored, refused before any query when a pair
-/// is missing, and failed whole, logged once, when a query raises or errs.</p>
+/// reads answer the vendor class queries of the classes the classic Interoperability Usage page reads as
+/// typed rows, cut at the cap, read in <code>%SYS</code> with the caller's namespace restored, refused
+/// before any query when a pair is missing, and failed whole, logged once, when a query raises or errs.</p>
 /// <p>Runs through <class>OcuPilot.Test.MonitorPortFixture</class>, whose <method>UsageSource</method>
 /// answers the rows a test arms and whose gate a test can swap for
 /// <class>OcuPilot.Test.ScreenGate</class>. Two methods read the live queries as this account.
@@ -218,7 +218,8 @@ Method TestAQueryThatRaisesOrErrsFailsTheWholeRead()
 /// <p>The query runs in <code>%SYS</code> and the caller's namespace is back when the read returns.</p>
 /// <p>Mutation (Rule 19): drop the switch to <code>%SYS</code> from
 /// <method>OcuPilot.Port.MonitorPort.Usage</method> -- the namespace leg goes red; drop the restore after
-/// <method>OcuPilot.Port.MonitorPort.UsageSource</method> -- the restore leg goes red.</p>
+/// <method>OcuPilot.Port.MonitorPort.UsageSource</method> -- the method goes red, its next call left in
+/// <code>%SYS</code>.</p>
 Method TestTheQueryRunsInSysAndTheCallersNamespaceIsRestored()
 {
     Set tNamespace = $NAMESPACE
@@ -303,11 +304,14 @@ ClassMethod VendorRowCount(pEndpoint As %String) As %Integer
 }
 
 /// <p>The live read of each endpoint holds every row the vendor query answers when run directly over every
-/// date with every grouping on, so a narrower argument list or date window in the port fails here; and
-/// the real <method>OcuPilot.Port.MonitorPort.UsageSource</method> answers an error status for an
-/// endpoint it has no query for.</p>
+/// date with every grouping on, so a narrower argument list or date window in the port fails here for each
+/// list the instance holds rows of: the interfaces on every instance of this image, message volume once a
+/// production has run and database impact once a message purge has, since the vendor writes neither on its
+/// own; and the real <method>OcuPilot.Port.MonitorPort.UsageSource</method> answers an error status for
+/// an endpoint it has no query for.</p>
 /// <p>Mutation (Rule 19): narrow the interfaces call in <method>OcuPilot.Port.MonitorPort.UsageSource</method>
-/// to <code>1, 0, 0, 0</code> -- the interfaces leg goes red.</p>
+/// to <code>1, 0, 0, 0</code> -- the interfaces leg goes red; start the message volume call in 2099 on an
+/// instance holding message volume -- the message volume leg goes red.</p>
 Method TestTheLiveReadsHoldEveryRowTheVendorQueriesAnswer()
 {
     For tI = 1:1:$Length(..#ENDPOINTS, ",") {

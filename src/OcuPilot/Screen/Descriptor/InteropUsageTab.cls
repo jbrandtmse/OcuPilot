@@ -1,5 +1,5 @@
-/// <p>Interoperability usage's first tab, Interfaces: the instance's interoperability interfaces, one
-/// row per type, namespace and protocol the classic page counts, plus the totals rows, read through
+/// <p>Interoperability usage's first tab, Interfaces: the instance's interoperability interfaces counted per
+/// type, in total and per namespace, per protocol and per both, read through
 /// <class>OcuPilot.Port.MonitorPort</class> (<code>Interfaces</code>, AD-29, AD-36) and rendered by
 /// the <code>detail</code> page over the declared <code>table</code> (AD-5).</p>
 /// <p><b>It is the tab group's first member and its side-bar entry</b>, at position 22 of OS
@@ -10,7 +10,7 @@
 /// declares no action and does not refresh (AD-43). A totals row leaves its namespace and protocol
 /// empty, and the table reads those cells as "All".</p>
 /// <p><b>The pair set is the port's</b>: <code>%Admin_Operate:USE</code>, the classic page's own
-/// requirement, and <code>%DB_IRISSYS:READ</code>, since the port runs the page's queries in
+/// requirement, and <code>%DB_IRISSYS:READ</code>, since the port reads in
 /// <code>%SYS</code> (AD-8, AD-16, AD-29). The OS management area covers both.</p>
 /// <p><b>The classic page</b> is <code>%CSP.UI.Portal.InteroperabilityUsage</code> (AD-44), whose
 /// three views these three tabs replace; it declares no exemption. The classic page's date range is

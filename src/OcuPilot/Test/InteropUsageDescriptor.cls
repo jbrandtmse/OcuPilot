@@ -4,7 +4,7 @@
 /// each tab's declared read over armed rows, through <class>OcuPilot.Test.Read.ReadFixture</class>; and the
 /// three read tools over the live queries.</p>
 /// <p><b>What it needs from the environment:</b> the compiled registries. Live-safe: it creates nothing and
-/// writes only process-private globals; its live reads only run the classic page's queries.</p>
+/// writes only process-private globals; its live reads only run the vendor's usage queries.</p>
 Class OcuPilot.Test.InteropUsageDescriptor Extends %UnitTest.TestCase
 {
 
@@ -59,14 +59,14 @@ XData Cases
     {"name": "the database impact endpoint is sound", "check": "read", "source": {"port": "monitor", "endpoint": "DatabaseImpact", "type": "LIST"}, "expected": null},
     {"name": "and declares no criteria", "check": "criteria", "source": {"port": "monitor", "endpoint": "Interfaces", "type": "LIST"}, "expected": null},
     {"name": "the sensors endpoint a part names", "check": "read", "source": {"port": "monitor", "endpoint": "Sensors", "type": "LIST"}, "expected": "read.source.endpoint 'Sensors' is not one of the monitor port's endpoints ('Metrics', 'Interfaces', 'MessageVolume', 'DatabaseImpact') (AD-29)"},
-    {"name": "an endpoint named in another case", "check": "read", "source": {"port": "monitor", "endpoint": "interfaces", "type": "LIST"}, "expected": "read.source.endpoint 'interfaces' is not one of the monitor port's endpoints ('Metrics', 'Interfaces', 'MessageVolume', 'DatabaseImpact') (AD-29)"},
+    {"name": "an endpoint in another letter case", "check": "read", "source": {"port": "monitor", "endpoint": "interfaces", "type": "LIST"}, "expected": "read.source.endpoint 'interfaces' is not one of the monitor port's endpoints ('Metrics', 'Interfaces', 'MessageVolume', 'DatabaseImpact') (AD-29)"},
     {"name": "a single-object type", "check": "read", "source": {"port": "monitor", "endpoint": "Interfaces", "type": "GET"}, "expected": "read.source.type 'GET' is declared on a monitor source, which lists the instance's metrics and interoperability usage (AD-36)"},
     {"name": "a per-row detail call", "check": "read", "source": {"port": "monitor", "endpoint": "MessageVolume", "type": "LIST", "rowGet": {"key": "Namespace", "param": "name", "fields": ["Volume"], "derived": []}}, "expected": "read.source.rowGet is declared on a monitor source, which answers its list whole (AD-36)"},
     {"name": "a parent list", "check": "read", "source": {"port": "monitor", "endpoint": "DatabaseImpact", "type": "LIST", "forEach": {"endpoint": "DatabaseImpact", "key": "Database", "param": "name", "fields": []}}, "expected": "read.source.forEach is declared on a monitor source, which answers its list whole (AD-36)"},
     {"name": "a fixed query", "check": "read", "source": {"port": "monitor", "endpoint": "Interfaces", "type": "LIST", "query": {"prefix": "iris"}}, "expected": "read.source.query is declared on a monitor source, which answers its list whole (AD-36)"},
     {"name": "parts", "check": "read", "source": {"port": "monitor", "endpoint": "Interfaces", "type": "LIST", "parts": [{"type": "LIST", "as": "x"}]}, "expected": "read.source.parts is declared on a monitor source, which answers its list whole (AD-36)"},
     {"name": "server criteria", "check": "criteria", "source": {"port": "monitor", "endpoint": "Interfaces", "type": "LIST"}, "criteria": {"fields": [{"param": "pattern", "labelKey": "interopUsageColumnProtocol", "kind": "text", "maxLength": 64}]}, "expected": "read.criteria is declared on a 'monitor' source, and server criteria travel on the admin, mgmnt, atelier, timeline and encryption ports alone (AD-21)"},
-    {"name": "no read of the system database", "check": "read", "source": {"port": "monitor", "endpoint": "DatabaseImpact", "type": "LIST"}, "privileges": [{"resource": "%Admin_Operate", "permission": "USE"}], "expected": "read.source.port 'monitor' requires the declared privileges to include %DB_IRISSYS:READ, because the port takes its collection in %SYS (AD-29)"}
+    {"name": "no read of the system database", "check": "read", "source": {"port": "monitor", "endpoint": "DatabaseImpact", "type": "LIST"}, "privileges": [{"resource": "%Admin_Operate", "permission": "USE"}], "expected": "read.source.port 'monitor' requires the declared privileges to include %DB_IRISSYS:READ, because the port reads in %SYS (AD-29)"}
   ]
 }
 }

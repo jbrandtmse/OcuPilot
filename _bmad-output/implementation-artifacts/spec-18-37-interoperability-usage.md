@@ -95,6 +95,41 @@ Under `src/OcuPilot/` unless `ui/`, at `54af93be`.
 - **C4.** Given the browser, when a person opens Interoperability usage from OS management's side bar, then the strip shows its three tabs, each answering its read's rows or its empty state under the note.
 - **Integration.** Given `ocupilot-ci`, when the agent's three read tools run through dispatch with `{}`, then each conforms to its result schema within the row bound (`ToolRoundTrip`); the tabs consume the same reads (C4).
 
+### Review Findings
+
+Code review 2026-10-13 (four layers, full-opus). Severity, fix-risk, footprint and spec-status per Rule 15. After the patches, on `ocupilot-ci`: `InteropUsageGate` 707 (4), `InteropUsageDescriptor` 700 (6), `MetricsDescriptor` 701 (6), `InteropUsagePort` 708 (9); `test:tools` 1959 of 1959; `screen-mirror.mjs --check`, `check-objectscript` and `lint-docs` clean.
+
+- [x] [Review][Decision] `medium`, fix-risk med, in-story, spec-bound: the Interfaces tab shows the vendor's `Active` as Yes/No, but with no start date the vendor answers each grouping twice, `Active` 1 for the interfaces active now and 0 for every interface enabled at any time, active ones included, so "No 11" beside "Yes 4" reads as eleven inactive (measured on `ocupilot`; the classic page always passes a start date and so shows only the 0 rows) — resolved: ledgered DW-2384 `decision-pending owner=burndown`, because the fix changes Task 1's field and Task 3's column [src/OcuPilot/Port/MonitorPort.cls:579]
+- [x] [Review][Patch] `medium`, fix-risk low, in-story: `InteropUsageGate.Adjust` relied on the three screens holding no stored set, so a run interrupted between `Adjust` and its removal failed every later run (Rule 30) — `OnBeforeAllTests` now removes a set of `ADJUSTMENTS` an earlier run left [src/OcuPilot/Test/InteropUsageGate.cls:60]
+- [x] [Review][Patch] `medium`, fix-risk low, in-story: the live comparison's doc claimed a narrower window fails for every list, but where no production or message purge has run the message volume and database impact legs compare 0 with 0 — the doc now says which lists it pins where, and the message volume leg is shown red on an instance holding rows [src/OcuPilot/Test/InteropUsagePort.cls:306]
+- [x] [Review][Defer] `medium`, fix-risk high, in-story: no test reads `DatabaseImpact` over rows, and the message volume leg reads none on a fresh leg; the vendor refuses manual rows (#40101) and its writer `LogDatabaseSizes` leaves rows no test can remove [src/OcuPilot/Port/MonitorPort.cls:587] — deferred: ledgered DW-2385 `escalated owner=burndown`
+- [x] [Review][Patch] `low`, fix-risk low, in-story: the monitor arm's system-read refusal gave its reason as "the port takes its collection in %SYS", untrue of the three usage endpoints — "because the port reads in %SYS" in both registries and both corpora [src/OcuPilot/Screen/Registry.cls:1603]
+- [x] [Review][Patch] `low`, fix-risk low, in-story: three doc comments called the reads "the classic page's queries", and `InteropUsageTab` counted "per protocol the classic page counts" (the page runs neither `MetricsTotalPerNamespace` nor the per-protocol grouping) — reworded [src/OcuPilot/Screen/Descriptor/InteropUsageTab.cls:1]
+- [x] [Review][Patch] `low`, fix-risk low, in-story: the corpus case "an endpoint named in another case" reads as another test case — "an endpoint in another letter case" [src/OcuPilot/Test/InteropUsageDescriptor.cls:62]
+- [x] [Review][Patch] `low`, fix-risk low, in-story: `TestTheQueryRunsInSysAndTheCallersNamespaceIsRestored` named a "restore leg" red that no run had shown — observed and the doc corrected (the method goes red, its next call left in `%SYS`) [src/OcuPilot/Test/InteropUsagePort.cls:220]
+- [x] [Review][Defer] `low`, fix-risk low, in-story: the spine's 18.37 amendments still say Task 0 will measure (AD-7 :225, AD-8 :326) and that the reads are the classic page's own queries (AD-29 :707) [ARCHITECTURE-SPINE.md:707] — deferred: the spine is Epic 20-contended and the lead's (Rule 20); ledgered DW-2386 `open owner=18-37-interoperability-usage`
+- [x] [Review][Defer] `low`, fix-risk low, in-story (Rule 31): `InteropUsageGate.Wire` is the fifth near-copy of a gate's wire helper (`DashboardDrillDownGate` :102 differs only in `maxRows`); the spec's reason, "tests bound to their principals", is weak [src/OcuPilot/Test/InteropUsageGate.cls:189] — deferred: ledgered DW-2387 `wontfix-accepted`, reopen_if the helper's request signature or `failedPair` detail changes
+
+**Rejected** (17):
+
+- `low` The note's "all the usage data the instance still keeps" omits the vendor's monthly consolidated totals past `KeepActiveMonths` - the note is Task 4's verbatim string, and the classic page reads the same daily tables.
+- `low` "Data created (MB)" drops the vendor's "estimated" - it is the classic page's own column header, and Task 4's string.
+- `low` The tabs drop the page's per-day Date column, partial namespace filter and per-namespace impact - Design Notes' named limits.
+- `false` `EXPERIENCE.md`'s "on a totals row" misses subtotal rows - a per-namespace or per-protocol row is a total over the other dimension, so "All" reads true there too.
+- `low` Rows of an id-none list share one key (Type, Namespace) - DW-2328 already carries this story's occurrence.
+- `false` An empty `Active` would read No - every vendor row carries 1 or 0 (live query on `ocupilot`).
+- `low` The cap cuts in vendor order before the table sorts - AD-36's bounded read, with truncation reported.
+- `low` The queries scan all history with no timeout - the tables hold daily rows per namespace and direction and size snapshots per purge; Interfaces took 257.6 ms (Task 0); wontfix-theoretical until a read nears the gateway timeout.
+- `low` Filtering on "All" hides the totals rows - the shared table filters raw values; a fix belongs in the shared shell.
+- `low` The registries do not check `read.fields` per monitor endpoint - each tab's fields are pinned by `InteropUsageDescriptor` and the live field-set tests.
+- `low` The browser totals leg counts rendered rows under a virtual scroll - the throwaway answers about 23 interface rows, all rendered; reopen_if a throwaway's list outgrows the first screen.
+- `false` The gate's totals leg could lose the totals rows at `maxRows=100` - the vendor answers them first.
+- `low` C1's 401 clause has no `mutation:` line - the only mutation is the web application's authentication, an object this review did not create; `## Verification` records why, as 18.11's did.
+- `false` The totals-row assertions rely on interfaces no test created - HSSYS's eight Web API interfaces ship in the image (activated 2026-06-26, on `ocupilot-ci` created 2026-10-13), and the install's own web applications add more.
+- `low` The browser spec checks headers only on a tab with rows - an empty tab shows its empty state, and the labels are pinned by `InteropUsageDescriptor`.
+- `false` Interfaces never shows its empty state on a fresh instance - such an instance has recorded interfaces (above), shown as the classic page shows them, zero-count types included; the empty list is pinned by armed `[]`.
+- `false` QA's test is uncommitted - the lead commits it with the review's patches.
+
 ## Spec Change Log
 
 - 2026-10-12, lead, spec gate: ready; AD-29, AD-36, AD-8, AD-7 and AD-44 amended as proposed; the `/api/monitor/interop` candidate filed as DW-2370 (decision-pending, owner hold); DW-2328 occurrence added. Rule 11: Task 10's literal edits sent to the orchestrator as a union ask. Epic 20's 20.29 (lazy screens): no page wrapper here; a page added later becomes a loader line.
@@ -178,6 +213,9 @@ Under `src/OcuPilot/` unless `ui/`, at `54af93be`.
 - (QA) mutation: Totals row, `Usage` drops text cells that read `""` -> `InteropUsagePort` `TestEachListTypesItsFieldsAndKeepsATotalsRow` and `TestTheLiveQueriesAnswerExactlyTheirFields` red (run 695); reverted byte-identical, then 697 (9 of 9) green.
 - (QA) mutation: Vendor fault, `Fail` no longer logs -> `InteropUsagePort` `TestAQueryThatRaisesOrErrsFailsTheWholeRead` red (run 696, the "logged once" legs); reverted byte-identical, then 697 green.
 - (QA) Rule 3: `interop-usage.browser-spec.mjs` 4 of 4 on a bundle rebuilt and redeployed to `ocupilot-ci`; it opens each of the three tabs and compares its rows, or its empty state, with the read route under the note.
+- (CR) mutation: C2 live read, the message volume call in `UsageSource` started at 2099-01-01 on `ocupilot-ci`, which holds message volume -> `InteropUsagePort` `TestTheLiveReadsHoldEveryRowTheVendorQueriesAnswer` red on its MessageVolume leg alone (run 703); reverted byte-identical, then 708 (9 of 9) green.
+- (CR) mutation: C2 restore, the restore after `UsageSource` dropped, `MonitorPort` and its subclasses recompiled -> `TestTheQueryRunsInSysAndTheCallersNamespaceIsRestored` red when run alone (run 705: its next fixture call is left in `%SYS`); the class run stops after its first test (run 704); reverted byte-identical, then 708 green.
+- (CR) mutation: hermeticity, the removal of a leftover `ADJUSTMENTS` set taken out of `InteropUsageGate.OnBeforeAllTests`, with `%Admin_Operate:USE` planted on the three screens -> `TestThePortRefusesWhatALoweredScreenAdmits` red (run 706); restored -> 4 of 4 over the same planted set, which the class removed (run 699), and on S0 (run 707).
 
 **S0:** no `OcuProbe1837*` user or role, no scratch class.
 
