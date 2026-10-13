@@ -1,6 +1,6 @@
 /// <p>Pins the edges of Story 20.4's runtime reads that <class>OcuPilot.Test.InteropHostRead</class> does not reach
 /// (AD-7, AD-24, AD-62): a Troubled production still answers its rows and a dead job is answered <code>Dead</code> and left
-/// as it is; the Messages tab holds the headers an item sourced as well as those sent to it; a business process of pool
+/// as it is; the Messages tab holds the headers an item sourced as well as those sent to it, merged newest first and capped; a business process of pool
 /// size 0 reads only its own entries of the shared <code>Ens.Actor</code> queue; a row cap of one answers one row on every
 /// endpoint; a log is newest first and each row carries the keys and figures the vendor's own queries give; a host with
 /// no queue or job reads no row; a read that cannot take the production's runtime lock answers 503; and a header's and a
@@ -210,8 +210,8 @@ Method TestATroubledProductionStillAnswersItsRowsAndChangesNothing()
 }
 
 /// <p>AC1: the Messages tab of the service holds the three headers it sourced, newest first, though no header was sent
-/// to it: the statement's first subselect reads the headers an item is the source of.</p>
-/// <p>Mutation (Rule 19): make the first subselect of <parameter>OcuPilot.Port.InteropPort:MESSAGESQL</parameter> read
+/// to it: the statement's first branch reads the headers an item is the source of.</p>
+/// <p>Mutation (Rule 19): make the first branch of <parameter>OcuPilot.Port.InteropPort:MESSAGESQL</parameter> read
 /// <code>TargetConfigName</code> -- this goes red.</p>
 Method TestTheServicesMessagesAreThoseItSourced()
 {
@@ -227,6 +227,62 @@ Method TestTheServicesMessagesAreThoseItSourced()
         }
     }
     Do $$$AssertEquals($Piece(..Ordered(tRows, "ID"), ",", 1, 3), $Piece(..PreparedIds, ",", 3) _ "," _ $Piece(..PreparedIds, ",", 2) _ "," _ $Piece(..PreparedIds, ",", 1), "the newest three are the probe's, newest first")
+}
+
+/// <p>Store a message header from <var>pSource</var> to <var>pTarget</var>, queued nowhere, and answer its id; 0 when it
+/// could not be stored.</p>
+ClassMethod StoreHeader(pSource As %String, pTarget As %String) As %Integer
+{
+    Set tId = 0
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = ..#NAMESPACE
+        Set tHeader = ##class(Ens.MessageHeader).%New()
+        Set tHeader.SourceConfigName = pSource
+        Set tHeader.TargetConfigName = pTarget
+        Set tHeader.MessageBodyClassName = "Ens.Request"
+        Set tHeader.Type = 1
+        Set tHeader.Priority = 6
+        Set tHeader.TimeCreated = $ZDateTime($ZTimeStamp, 3, , 3)
+        Set tSC = tHeader.%Save()
+        If $$$ISOK(tSC) Set tId = tHeader.%Id()
+        Set tHeader = ""
+        Set $NAMESPACE = tOrigNS
+    } Catch {
+        Set $NAMESPACE = tOrigNS
+    }
+    Quit tId
+}
+
+/// <p>AC1: an item that is the source of some headers and the target of others reads them as one list, newest first: the
+/// ids of both sides interleaved, a header that names the item as both its source and its target once, and at most the
+/// cap's rows however many each side holds. The operation holds three target headers of the probe's; the five this test
+/// stores are newer, so they are the newest five of its Messages. They are removed afterwards.</p>
+/// <p>Mutation (Rule 19): <method>OcuPilot.Port.InteropPort.ListItemMessages</method> without its <code>tCount &lt; tTop</code>
+/// test, or walking the rows in the order the statement answered them, or keying them by a counter instead of the header
+/// id; or the source branch of <parameter>OcuPilot.Port.InteropPort:MESSAGESQL</parameter> without its
+/// <code>ORDER BY</code> -- each goes red.</p>
+Method TestAnItemWithHeadersOnBothSidesReadsThemMergedNewestFirstOnceEachAndCapped()
+{
+    Do $$$AssertStatusOK(..Arm(), "the probe runs with its operation hung on one message and two waiting")
+    Set tH1 = ..StoreHeader(..#OPNAME, ..#SVCNAME)
+    Set tH2 = ..StoreHeader(..#SVCNAME, ..#OPNAME)
+    Set tH3 = ..StoreHeader(..#OPNAME, ..#OPNAME)
+    Set tH4 = ..StoreHeader(..#OPNAME, ..#SVCNAME)
+    Set tH5 = ..StoreHeader(..#SVCNAME, ..#OPNAME)
+    Set ..PreparedEntries = tH1 _ "," _ tH2 _ "," _ tH3 _ "," _ tH4 _ "," _ tH5
+    Do $$$AssertTrue((tH1 > 0) && (tH2 > tH1) && (tH3 > tH2) && (tH4 > tH3) && (tH5 > tH4), "five headers are stored, each newer than the last: " _ ..PreparedEntries)
+    Set tNewest = tH5 _ "," _ tH4 _ "," _ tH3 _ "," _ tH2 _ "," _ tH1
+    Set tAll = ..Ordered(..RowsOf("ItemMessages", ..#OPNAME, , , .tHttp), "ID")
+    Do $$$AssertEquals(tHttp _ "|" _ $Piece(tAll, ",", 1, 5), "200|" _ tNewest, "the operation's five newest headers are the five stored, interleaved newest first")
+    Do $$$AssertEquals($Length("," _ tAll _ ",", "," _ tH3 _ ",") - 1, 1, "the header that is both its source and its target is listed once")
+    For tCap = 2, 4, 5 {
+        Set tRows = ..RowsOf("ItemMessages", ..#OPNAME, , tCap, .tHttp)
+        Do $$$AssertEquals(tHttp _ "|" _ ..Ordered(tRows, "ID"), "200|" _ $Piece(tNewest, ",", 1, tCap), "a cap of " _ tCap _ " answers the newest " _ tCap _ " of the two sides together")
+    }
+    Do ..RemoveEntries(..PreparedEntries)
+    Do $$$AssertEquals(..EntriesLeft(..PreparedEntries), 0, "the stored headers are removed")
+    Set ..PreparedEntries = ""
 }
 
 /// <p>AC3: a business process of pool size 0 reads only its own entries of the queue it shares with every other such

@@ -3118,10 +3118,13 @@ ClassMethod SqlRows(pNamespace As %String, pSql As %String, ByRef pFound, Output
 /// once.</p>
 Parameter LOGSQL = "SELECT TOP ? ID, TimeLogged, %EXTERNAL(Type), Text, Job, SessionId FROM Ens_Util.Log WHERE ConfigName = ? ORDER BY ID DESC";
 
-/// <p>The rows of the Messages tab's statement: the newest headers sourced by the item and the newest targeted at it,
-/// newest first, as the classic configuration page's Messages tab reads them (<code>EnsPortal.ProductionConfig</code>). The
-/// stamp is read as stored, as the Log statement's is.</p>
-Parameter MESSAGESQL = "SELECT TOP ? ID, TimeCreated, %EXTERNAL(Status), SourceConfigName, TargetConfigName, MessageBodyClassName, SessionId FROM Ens.MessageHeader WHERE ID IN (SELECT TOP ? ID FROM Ens.MessageHeader WHERE SourceConfigName = ? ORDER BY ID DESC UNION SELECT TOP ? ID FROM Ens.MessageHeader WHERE TargetConfigName = ? ORDER BY ID DESC) ORDER BY ID DESC";
+/// <p>The rows of the Messages tab's statement: the newest headers sourced by the item and the newest targeted at it, as
+/// the classic configuration page's Messages tab reads them (<code>EnsPortal.ProductionConfig</code>). They come in no
+/// order, and a header that is both comes twice (a <code>UNION</code> would fold the names to upper case);
+/// <method>ListItemMessages</method> merges, orders and caps them. The stamp is read as stored, as the Log statement's is.
+/// The statement nests no query that carries <code>TOP</code>: compiled cold, such a statement is refused SQLCODE -99 for a
+/// caller with no SQL privilege on the table even through <code>%ExecDirectNoPriv</code> (measured).</p>
+Parameter MESSAGESQL = "SELECT TOP ? ID, TimeCreated, %EXTERNAL(Status), SourceConfigName, TargetConfigName, MessageBodyClassName, SessionId FROM Ens.MessageHeader WHERE SourceConfigName = ? ORDER BY ID DESC UNION ALL SELECT TOP ? ID, TimeCreated, %EXTERNAL(Status), SourceConfigName, TargetConfigName, MessageBodyClassName, SessionId FROM Ens.MessageHeader WHERE TargetConfigName = ? ORDER BY ID DESC";
 
 /// <p>The most rows a statement of the Log or Messages tab asks for when the call gives no cap.</p>
 Parameter SQLMAX = 1000;
@@ -3163,11 +3166,18 @@ ClassMethod ListItemMessages(pNamespace As %String, pProduction As %String, pIte
 {
     Set pRows = ""
     Set tTop = $Select(pMax > 0: pMax, 1: ..#SQLMAX)
-    Set tSC = ..SqlRows(pNamespace, ..#MESSAGESQL, .tFound, .tCaught, tTop, tTop, pItem, tTop, pItem)
+    Set tSC = ..SqlRows(pNamespace, ..#MESSAGESQL, .tFound, .tCaught, tTop, pItem, tTop, pItem)
     If $IsObject(tCaught) Quit ..Mapped(tCaught, "the item's messages failed", .pHttpStatus, .pFault)
-    Set pRows = []
     For tI = 1:1:tFound {
-        Set tLine = tFound(tI)
+        Set tById(+$List(tFound(tI), 1)) = tFound(tI)
+    }
+    Set pRows = []
+    Set tCount = 0
+    Set tId = $Order(tById(""), -1)
+    While (tId '= "") && (tCount < tTop) {
+        Set tCount = tCount + 1
+        Set tLine = tById(tId)
+        Set tId = $Order(tById(tId), -1)
         Set tRow = {}
         Do tRow.%Set("Production", pProduction, "string")
         Do tRow.%Set("Item", pProduction _ "||" _ pItem, "string")
