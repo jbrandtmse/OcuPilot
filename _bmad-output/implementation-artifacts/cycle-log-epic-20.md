@@ -614,3 +614,11 @@
 2026-10-13T01:35:27Z	Story 20.29	stage_spawned	stage=implement spawn_at=2026-10-13T01:35:27Z model=sonnet agent_name=20-29-rework-1 cycle_iteration=2
 2026-10-13T02:55:38Z	Story 20.29	rework_held	stage=20-29-rework-1 returned_on_hold wip_commit=7f868a3c(local,unpushed) done=focus_fix(detail-page.ts),ready_fix(app.routes.ts_rememberedPage),outlet_aria-busy,9_browser_specs_green left=7+3_browser_specs,review_layers,finalize then=full_browser_suite_on_fresh_throwaway,push
 2026-10-13T02:55:38Z	Epic 20	hold	reason=account_switch(owner_quota_97pct) resume=prompts/e20-resume-2026-10-12-prompt.md 20.27=plan_returned_gate_pending throwaway=ocupilot-b-ci_up
+2026-10-13T03:09:06Z	Epic 20	lead_model_gate	model=claude-opus-5-5[1m] action=proceed runner=fresh(resume_2026-10-12)
+2026-10-13T03:09:06Z	Epic 20	runtime_gate	bmad=6.12.1 uv=0.12.9 ci=gh
+2026-10-13T03:09:06Z	Epic 20	launch_env	depth=4 watchdog=unset bash_max_ms=default
+2026-10-13T03:09:06Z	Epic 20	telemetry_gate	pending=0 action=none note=checkpoint_offers_pre_answered_decline(Rule_23)
+2026-10-13T03:09:06Z	Epic 20	slot_binding_verified	slot=b docker_port(ocupilot-slot-b,52773)=52775 profile=ocupilot-slot-b baseUrl=http://localhost:52775 bootstrap=node_modules_ok,irislib_ok throwaway=ocupilot-b-ci_healthy(held_from_previous_runner)
+2026-10-13T03:09:06Z	Epic 20	resume	from=hold(account_switch) head=77441c16 origin=9c4d8081 feature=065f75e5 unpushed=7f868a3c(20.29_rework1_WIP),77441c16 open_stage=20-29-rework-1(closed_by_rework_held;dead_with_previous_runner)
+2026-10-13T03:13:02Z	Story 20.29	runner_check	check=rework1_remaining_browser_files result=pass bundle=main-4FXQL74C.js(rebuilt_from_77441c16) files=auditing-screen_1,definitions_10,users-editor_8,interop-host-tabs_4,system-explorer-sql_4,license-usage_3,ecp-application-servers_2,ldap-editor_6,namespaces_5,oauth-client-editor_5
+2026-10-13T03:13:02Z	Story 20.29	stage_spawned	stage=implement spawn_at=2026-10-13T03:13:02Z model=sonnet agent_name=20-29-rework-1-review cycle_iteration=2 route=in-review(step-04_review_layers+finalize_over_9c4d8081..HEAD) note=continues_held_20-29-rework-1

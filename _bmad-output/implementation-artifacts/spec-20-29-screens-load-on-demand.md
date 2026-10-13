@@ -2,7 +2,7 @@
 title: 'Story 20.29: Screens load on demand'
 type: 'feature'
 created: '2026-10-12'
-status: 'in-progress'
+status: 'in-review'
 baseline_revision: '9c4d80812ddfde4414c723f89510c46030148c1f'
 baseline_commit: '21fe71330033007e50b891982d63d841d9ff75a0'
 review_loop_iteration: 1
@@ -605,7 +605,8 @@ chunk-DHotihUu2.js  | namespace-form-page                | 312 bytes |          
 - mutation: ready, the static `aria-busy` dropped from `ScreenOutlet`'s host, bundle rebuilt and redeployed -> `lazy-screens` in-app test red, three outlets recorded ready without a page; the `screen-outlet.spec.ts` test "reads busy from the moment the router creates it" red alone.
 - mutation: ready, `pageRendered` set in `onPageActivated` instead of after the next render -> "still reads busy when the page it routed renders for the first time" red alone.
 - mutation: ready, `this.page` dropped from `busyValue` -> "is not left busy by a screen that mounts no page" red alone; `this.pageRouted` dropped -> "is not left busy by a route that carries no page" red alone.
-- Runs on the final bundle: `npm run test:tools` 1954 of 1954; `npm run test:components` 239 files, 2984 tests; browser files as listed under item 3, all green (`a11y-structural-invariants` 13, the screen walk 337 s; `oauth` 6; `language-server-editor` 4; `lazy-screens` 3; `about-help-links` 6; `navigate` 6; `shell` 6; `rail` 2; `gate` 6).
+- Runs on the final bundle: `npm run test:tools` 1954 of 1954; `npm run test:components` 239 files, 2984 tests; browser, one file per call, green: `a11y-structural-invariants` 13 (the screen walk 337 s), `oauth` 6, `language-server-editor` 4, `lazy-screens` 3, `about-help-links` 6, `navigate` 6, `shell` 6, `rail` 2, `gate` 6.
+- The other item 3 files, one per call on `ocupilot-b-ci` with the bundle `main-4FXQL74C.js` rebuilt from `77441c16` and redeployed, green: `auditing-screen` 1, `definitions` 10, `users-editor` 8, `interop-host-tabs` 4, `system-explorer-sql` 4, `license-usage` 3, `ecp-application-servers` 2, `ldap-editor` 6, `namespaces` 5, `oauth-client-editor` 5.
 
 ## Auto Run Result
 
