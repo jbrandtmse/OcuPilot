@@ -11579,11 +11579,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-20-7-the-three-embedded-vendor-editors.md (spec gate) | severity: med | fix-risk: med | footprint: in-epic
 - evidence: Measured at 20.7's plan: removing the frame raises no beforeunload alert; setting src again raises it but adds history entries. The classic portal's full-page editor raises the browser alert on leave.
 - 2026-10-13T06:51:49Z status=decision-pending owner=burndown by=spec_gate note=product call: keep as planned (note + Refresh), or a later story adds a leave guard that blanks the frame to raise the editor's own alert (amends AD-63)
+- 2026-10-13T15:30:42Z status=by-design by=orchestrator note=ruling 2026-10-13: keep the note plus Refresh (AD-63); the note says plainly that leaving discards unsaved editor changes
 
 ### DW-2378: A pasted HL7 message is read through ImportFromString, which translates its already-decoded text again, so a character past Latin-1 reaches the transformation test and the host test as '?'
 - source: spec-20-27-transformations-tested.md (cr) | severity: med | fix-risk: low | footprint: in-epic
 - evidence: Measured on ocupilot-b-ci: EnsLib.HL7.Message.ImportFromString of a PID-5 holding U+0151 reads it as 63 ('?'); ImportFromLibraryStream of a %Stream.TmpCharacter keeps 337. The classic Test Transform dialog hands HL7 a stream for this reason (TestTransform.cls:373-386); AD-62 item 11 and the spec's Parse bullet name ImportFromString.
 - 2026-10-13T10:11:54Z status=decision-pending owner=burndown by=cr note=spec-bound: amend AD-62 item 11 (Rule 5) to hand HL7 a character stream, then change both tests' parse
+- 2026-10-13T15:30:42Z status=routed owner=burndown by=orchestrator note=ruling 2026-10-13: HL7 as a character stream in both tests (AD-62 item 11 amended); a test with a char past Latin-1 must round-trip
 
 ### DW-2379: The host Test dialog's result is not announced: its status line is inserted with its text and has no role=status, so a screen reader hears nothing when a test ends
 - source: spec-20-27-transformations-tested.md (cr) | severity: med | fix-risk: low | footprint: in-epic
@@ -11634,3 +11636,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-41-the-wallet-credential-rung.md | severity: low | fix-risk: low | footprint: out-of-footprint
 - evidence: Measured on ocupilot-ci at Story 18.41's plan (probe OcuProbe1841, removed); the rung never calls %OpenId on a wallet class
 - 2026-10-13T06:58:20Z status=decision-pending owner=burndown by=spec_gate note=owner_hold: vendor defect candidate, never reported upstream (Story 18.41)
+
+### DW-2388: Probe the vendor editors for a sanctioned dirty signal (a postMessage or an event the rule, BPL or DTL editor emits in normal mode) OcuPilot could read without reaching into the frame, to warn before leaving an embedded editor
+- source: orchestrator ruling on DW-2376 | severity: med | fix-risk: med | footprint: in-epic
+- evidence: DW-2376 ruled by-design: removing the frame raises no beforeunload alert; AD-63 forbids reading the frame's state; a vendor-emitted signal is the only sanctioned path (unmeasured).
+- 2026-10-13T15:30:42Z status=routed owner=burndown by=orchestrator note=burn-down probe; if a signal exists, a leave warning keyed to it

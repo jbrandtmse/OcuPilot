@@ -673,3 +673,7 @@
 2026-10-13T13:56:25Z	Story 20.27	ci_green_verified	run=38403380199 head=a6a6ea71 jobs=21/21
 2026-10-13T13:56:25Z	Story 20.16	story_created	spawn_at=(see_stage_spawned) model=opus agent_name=20-16-plan-1 path=_bmad-output/implementation-artifacts/spec-20-16-the-agent-edits-rule-dtl-and-bpl-content-behind-the-embedded.md build_status=ready-for-dev(gate_pending) epic_context=reused oversized=true q1=Ens_Code_WRITE(recommend_no)
 2026-10-13T13:56:47Z	Story 20.7	stage_spawned	stage=implement spawn_at=2026-10-13T13:56:47Z model=sonnet agent_name=20-7-implement-1 cycle_iteration=1 ci_prior=success_38403380199(20.27)
+2026-10-13T15:30:57Z	Epic 20	orchestrator_ruling	DW-2378=routed_burndown(HL7_char_stream;AD-62_item_11_amended) DW-2376=by-design(note_must_say_leaving_discards;new_DW-2388_probe_routed_burndown) 20.16_Q1=require_vendor_editor_save_pairs_in_addition(adjust_at_gate) merged=20.27(a6a6ea71)
+2026-10-13T15:30:57Z	Story 20.7	dev_complete	spawn_at=(see_stage_spawned) model=sonnet agent_name=20-7-implement-1 build_sha=3ba06631 baseline_revision=f288bcdc review_loop_iteration=0 followup_review_recommended=false deferred=0 diff=_29_files_changed,_2411_insertions(+),_80_deletions(-) chunk=9.75kB initial=1.91MB
+2026-10-13T15:30:57Z	Story 20.7	adr_verifications_complete	tool=none acs= result=none_required evidence= mutations=none model=claude-opus-5-5
+2026-10-13T15:30:57Z	Story 20.7	stage_spawned	stage=qa spawn_at=2026-10-13T15:30:57Z model=sonnet agent_name=20-7-qa-1 cycle_iteration=1
