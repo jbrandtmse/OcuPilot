@@ -2,9 +2,9 @@
 title: 'Story 18.38: The live log tail'
 type: 'feature'
 created: '2026-10-12'
-status: 'in-progress'
-baseline_revision: 'd70b927352498488bc64fa5dcfc19af35598b5fe'
-baseline_commit: 'd70b927352498488bc64fa5dcfc19af35598b5fe'
+status: 'done'
+baseline_revision: '02bd47fbf208b5ba701a9db5f475202318a9e509'
+baseline_commit: '02bd47fbf208b5ba701a9db5f475202318a9e509'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -180,7 +180,7 @@ Rejected:
 
 ### Rework 2 (orchestrator, 2026-10-13: DW-2395, routed from Epic 20)
 
-- [ ] [Review] DW-2395: `LogSourcePort.IntegrityReport` opens and then unconditionally closes the null device in the web process; the vendor's `CompileDTL` and `CompileBPL` routes `Use` that device without opening it, so after any integrity report a later DTL or BPL compile in the same CSP process fails `<NOTOPEN>` (Epic 20's 20.7 measured it in CI). Fix: record whether the null device was already open before `IntegrityReport` opens it, and close it only if `IntegrityReport` opened it, leaving the process's device state (open devices and the current device) as it found it, on every path including a raise. Pin it with a test: with the null device already open in the test's process, an integrity report, then a `Use` of the null device that does not open it first, succeeds; and with it not open beforehand, it is not left open. Write its `mutation:` line (the unconditional close restored goes red). Then run `ui/browser/interop-editors.browser-spec.mjs` once on a rebuilt and redeployed bundle (its NOTOPEN tolerance is still in the file; record whether the notice appeared).
+- [x] [Review] DW-2395: `LogSourcePort.IntegrityReport` opens and then unconditionally closes the null device in the web process; the vendor's `CompileDTL` and `CompileBPL` routes `Use` that device without opening it, so after any integrity report a later DTL or BPL compile in the same CSP process fails `<NOTOPEN>` (Epic 20's 20.7 measured it in CI). Fix: record whether the null device was already open before `IntegrityReport` opens it, and close it only if `IntegrityReport` opened it, leaving the process's device state (open devices and the current device) as it found it, on every path including a raise. Pin it with a test: with the null device already open in the test's process, an integrity report, then a `Use` of the null device that does not open it first, succeeds; and with it not open beforehand, it is not left open. Write its `mutation:` line (the unconditional close restored goes red). Then run `ui/browser/interop-editors.browser-spec.mjs` once on a rebuilt and redeployed bundle (its NOTOPEN tolerance is still in the file; record whether the notice appeared).
 
 ## Spec Change Log
 
@@ -244,6 +244,22 @@ Rejected:
   - `[low]` `[reject]` I7 the server's wait continues after the browser cancels - the matrix's amended "Client gone" row and the deferred dropped-client entry
   - `[low]` `[reject]` I8 a loop page read in flight is dropped by generation, not canceled - the item scopes the abort to the held tail
   - `[false]` `[reject]` I9 `send`, `requestJson` and `arm` bodies change, not only the type - every new branch runs only for a caller that passes a signal (`api.test.mjs` asserts a plain call carries none; `test:tools` 1,972 green)
+
+### 2026-10-13 - Review pass (rework 2, DW-2395)
+
+- verdicts: 11 findings - high 0, medium 2, low 5, false 4, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` (verification-gap) the raise path of `IntegrityReport`'s device restore has no test - the restore moved after the `Try`; both legs ran the no-raise path. Patched: a third leg breaks the check's output global (`Display` raises `<LIST>` inside the capture) and asserts the error status, the null device closed and the caller's device; its mutation line is written
+  - `[low]` `[patch]` (verification-gap) mutations for the "not left open", current-device and `DeviceIsOpen` claims unrecorded - ran and recorded four mutations (runs 641-644)
+  - `[low]` `[patch]` (verification-gap) the item's browser run is unrecorded while the box is ticked - recorded under Verification and Auto Run Result
+  - `[low]` `[reject]` (verification-gap) the browser spec tolerates the vendor-failure notice, so it cannot fail on DW-2395 - the item keeps the tolerance by design, the file is in Epic 20's diff, and the unit test is the guard; the notice is recorded instead
+  - `[false]` `[reject]` (verification-gap) the mnemonic binding a pre-opened device keeps is unpinned - the vendor's `Redirect` binds `Use ..Device::("^"_$ZNAME)` and turns `ReDirectIO(1)` on itself (`%CSP/Portal/SourceControl/IO.cls`), and the report leaves redirection off, so nothing reads the stale binding
+  - `[false]` `[reject]` (intent-alignment) the diff touches none of the tail surface - the pass is the Rework 2 item; the contract's Never list keeps `integrity` out of the tail's sources, which this diff does not change, and no matrix row is affected
+  - `[low]` `[reject]` (intent-alignment) the test runs in a `%UnitTest` process with the vendor's bare `Use`, not in a CSP process through the vendor compile - a compile after a report in one web process cannot be driven deterministically; the browser spec's record covers it
+  - `[medium]` `[patch]` (intent-alignment) no leg forces a raise - same root cause as the first row; patched by the same leg
+  - `[low]` `[patch]` (intent-alignment) the browser run is unrecorded - same root cause as the third row; recorded
+  - `[false]` `[reject]` (intent-alignment) the redirect and mnemonic state are outside "open devices and the current device" - same claim as the fifth row; refuted there
+  - `[false]` `[reject]` (intent-alignment) about 40 test fixtures open and close the null device the same way - they run in test processes and nothing there `Use`s the device afterwards; the one shipped call site is `IntegrityReport`
 
 ## Design Notes
 
@@ -329,20 +345,22 @@ every test added or changed passes on a fresh environment, in either order
 - (R1) mutation: `stopLive` without `liveAbort?.abort()`, bundle rebuilt and redeployed -> `messages-log.browser-spec.mjs` abandon leg red at "every tail asked by round 1 was canceled or answered"; with that wait and the cancel count removed and eight rounds run, red alone at "the page read went unanswered for 5000 ms" (the held connections stall the shell; both re-observed at the rework 1 re-review). Tails at one cursor are one GET and were measured not to use up the browser's connections (inference: one of several identical GETs reaches the network at a time), and a moved file releases a held tail, so the leg gives each tail a URL of its own through request interception; without that the unmutated and mutated bundles both read green (measured)
 - (R1) final tree on `ocupilot-ci`: `test:components` 3,068 in 244 files (`log-viewer.spec.ts` 78 after the review patch); `test:tools` 1,972; build initial total 1.91 MB (warning at 1,992 kB), largest lazy chunk `data-browser-page` 83.32 kB (cap 88 kB); browser `messages-log` 6/6 and `alerts-log` 7/7 on the rebuilt, redeployed bundle. The eight tails the abandon leg cancels leave eight server processes in their wait for up to the 50 s bound (the deferred dropped-client hold), and the leg writes nothing.
 - (CR R1) final tree on `ocupilot-ci` (`src` loaded, bundle rebuilt and redeployed): `log-viewer.spec.ts` 78, `test:components` 3,068 in 244 files, `test:tools` 1,972; browser `messages-log` 6/6, then `alerts-log` 7/7 while the abandon leg's 8 server waits were held (`%SYS.ProcessQuery` counted 8 in `LogSourcePort` before and after it, 0 three minutes later); `client-lint`, `browser-reset` and `lint-docs` clean. The leg's mutation comment was reworded after that run (comment only).
+- (R2) mutation: `IntegrityReport` closes the null device whether or not it opened it, tree recompiled on `ocupilot-ci` -> `DatabaseIntegrity` null-device test red alone, at "a null device the process had open is still open" (run 633: 10 of 11 green); no close of a device it opened -> the same test red at both "not left open" assertions (run 641); no `Use` of the caller's device -> its open-beforehand "current device" assertion red, and `TestTheOperateReaderReadsTheLogOverTheWire` (run 642); `DeviceIsOpen` always answering open -> its closed-beforehand status assertion red (run 643); the devices restored only after a successful capture -> its raising leg red alone (run 644); each reverted byte-identical
+- (R2) final tree on `ocupilot-ci` (`src` loaded, bundle rebuilt and redeployed): `DatabaseIntegrity` 11 (run 645), `LogSource` 22 (636), `LogSourceWire` 9 (637), `LogTail` 11 (638), `LogTailWire` 4 (639); `interop-editors.browser-spec.mjs` 18 of 18 once on the rebuilt bundle, the vendor-failure notice did not appear and `messages.log` gained no `NOTOPEN` line from it; `check-objectscript` and `lint-docs` 0 problems
 
 ## Auto Run Result
 
 Status: done
 Blocking condition: none
 
-**Change (rework 1, DW-2392).** An abandoned live tail is aborted: `core/api.ts` takes an optional `signal` on `ApiRequestInit` (an aborted call rejects with an `AbortError`, never status 0, a fault or a log line), and `log-viewer.store.ts` owns one `AbortController` per held tail and aborts it in `stopLive` (Live tail off, `reset`, `clearWindow`, `setSource`, and the page's `onDestroy` through `setLive(false)`). `core/api.ts` joins footprint_extensions (add-only).
+**Change (rework 2, DW-2395).** `LogSourcePort.IntegrityReport` opens the null device only when the process has not (`DeviceIsOpen`, a `Use` that raises `<NOTOPEN>` when closed), turns redirection off and returns to the caller's device on every path including a raise, and closes the device only if it opened it. `DatabaseIntegrity.TestTheReportLeavesTheNullDeviceAsItFoundIt` pins it in three legs: device closed, device open, and a raise inside the capture.
 
-**Files.** Client: `core/api.ts`, `areas/logs/log-viewer.store.ts`, `core/session.ts` (one comment). Tests: `log-viewer.spec.ts` (five legs), `tools/api.test.mjs` (three), `browser/messages-log.browser-spec.mjs` (one).
+**Files.** `Port/LogSourcePort.cls` (`IntegrityReport`, `DeviceIsOpen`); `Test/DatabaseIntegrity.cls` (the test, `UseWithoutOpening`, `OutputNodeOf`); this spec.
 
-**Review.** Two layers, 15 findings: 1 medium, 11 low, 3 false (rows under Review Triage Log). Patched: a settled-answer leg that pins the loop's generation check, which the abort-rejecting stub had left unpinned (its mutation line corrected), and a stale `session.ts` comment. Deferred: nothing new.
+**Review.** Two layers, 11 findings: 2 medium, 5 low, 4 false (rows under Review Triage Log). Patched: the raise-path leg (medium), four mutations recorded and the browser run recorded (low). Deferred: nothing new.
 
-**Follow-up review: not recommended** (no high patched; patched: medium 1, low 1).
+**Follow-up review: not recommended** (no high patched; patched: medium 1, low 2).
 
-**Verified** on the final tree: `test:components` 3,068 in 244 files; `test:tools` 1,972; build initial total 1.91 MB (warning at 1,992 kB), largest lazy chunk `data-browser-page` 83.32 kB (cap 88 kB); browser `messages-log` 6/6 and `alerts-log` 7/7 on the rebuilt, redeployed bundle on `ocupilot-ci`; `client-lint`, `browser-reset` and `lint-docs` clean. Mutations under Verification (R1).
+**Verified** on `ocupilot-ci`: `DatabaseIntegrity` 11 (run 645), `LogSource` 22, `LogSourceWire` 9, `LogTail` 11, `LogTailWire` 4; five mutations red (Verification (R2)); `interop-editors.browser-spec.mjs` 18 of 18 on the rebuilt, redeployed bundle with no vendor-failure notice; `check-objectscript` and `lint-docs` 0 problems; the throwaway holds no probe database, user, role or integrity task.
 
-**Residual risk.** The stall the ruling describes is narrower than assumed: tails asked at one cursor are one cached GET on one connection, and a moved file releases older-cursor tails, so the browser leg gives each tail its own URL through request interception to be falsifiable. The abort frees the browser's connection only; the server process still waits to the bound (the deferred dropped-client hold), so the leg's eight tails leave eight waits of up to 50 s.
+**Residual risk.** `DatabaseIntegrity` is 692 lines against the 500-line guide, and the raising leg relies on `Display^Integrity` raising on a non-list top node (a failed assertion names it if a build stops doing so). `Open tNull:::1` and the three test fixtures with the open-then-close pattern are unchanged.

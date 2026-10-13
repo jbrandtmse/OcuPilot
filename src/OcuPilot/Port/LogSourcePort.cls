@@ -3207,13 +3207,17 @@ ClassMethod IntegrityChecks(Output pRows As %DynamicArray) As %Status
 /// <code>Display^Integrity</code>'s own output over the check's output global, captured from the device.
 /// The check is opened in <code>%SYS</code> (AD-16); the report routine and its global are named there
 /// by extended reference, so the capture runs in the caller's namespace. Nothing is written but the
-/// stream. Overridable for a fixture; production never overrides it.</p>
+/// stream. The process's devices come back as found, a raise included: the null device is opened for the
+/// capture only when the process had not opened it, and closed only then, and the current device is the
+/// caller's. Overridable for a fixture; production never overrides it.</p>
 ClassMethod IntegrityReport(pId As %String, Output pStream As %Stream.TmpCharacter) As %Status
 {
     Set tSC = $$$OK
     Set pStream = ##class(%Stream.TmpCharacter).%New()
     Set tOrigNS = $NAMESPACE
-    Set tCapturing = 0
+    Set tInitIO = $IO
+    Set tNull = ##class(%Library.Device).GetNullDevice()
+    Set (tCapturing, tOpenedNull) = 0
     New %OcuPilotIntegrityStream, %OcuPilotIntegrityLine
     Try {
         Set $NAMESPACE = "%SYS"
@@ -3234,10 +3238,11 @@ ClassMethod IntegrityReport(pId As %String, Output pStream As %Stream.TmpCharact
         Set tExtended = "^|""%SYS""|" _ $Extract(tGlobal, 2, *)
         Set %OcuPilotIntegrityStream = pStream
         Set %OcuPilotIntegrityLine = ""
-        Set tInitIO = $IO
-        Set tNull = ##class(%Library.Device).GetNullDevice()
+        If '..DeviceIsOpen(tNull) {
+            Open tNull:::1
+            Set tOpenedNull = 1
+        }
         Set tCapturing = 1
-        Open tNull:::1
         Use tNull::("^" _ $ZNAME)
         Do ##class(%Library.Device).ReDirectIO(1)
         ; The report's own headings go to the stream directly; only Display's output is captured.
@@ -3253,20 +3258,31 @@ ClassMethod IntegrityReport(pId As %String, Output pStream As %Stream.TmpCharact
         Do ..IntegrityLine(..#INTEGRITYLISTING)
         Do Display^|"%SYS"|Integrity(tExtended, 0, 1)
         Do ..IntegrityLine("")
-        Do ##class(%Library.Device).ReDirectIO(0)
-        Use tInitIO
-        Close tNull
-        Set tCapturing = 0
     } Catch ex {
         Set $NAMESPACE = tOrigNS
-        If tCapturing {
-            Do ##class(%Library.Device).ReDirectIO(0)
-            Use tInitIO
-            Close tNull
-        }
         Set tSC = ex.AsStatus()
     }
+    If tCapturing {
+        Do ##class(%Library.Device).ReDirectIO(0)
+        Use tInitIO
+    }
+    If tOpenedNull Close tNull
     Quit tSC
+}
+
+/// <p>Whether this process has <var>pDevice</var> open, which a <code>Use</code> that raises
+/// <code>&lt;NOTOPEN&gt;</code> answers no. The current device is the same after the call.</p>
+ClassMethod DeviceIsOpen(pDevice As %String) As %Boolean [ Private ]
+{
+    Set tCurrent = $IO
+    Try {
+        Use pDevice
+        Set tOpen = 1
+    } Catch ex {
+        Set tOpen = 0
+    }
+    If tOpen Use tCurrent
+    Quit tOpen
 }
 
 /// <p>End the line <method>IntegrityReport</method>'s capture holds with <var>pText</var> appended, as
