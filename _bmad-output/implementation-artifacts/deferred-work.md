@@ -11673,6 +11673,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-38-the-live-log-tail.md | severity: med | fix-risk: med | footprint: out-of-footprint
 - evidence: runLive calls requestJson with no signal and ApiRequestInit (core/api.ts) offers none; each off/on, file change or leave abandons one held request; six on one HTTP/1.1 origin would stall the shell's other calls (inference: browser per-host limit, not measured)
 - 2026-10-13T19:09:29Z status=escalated owner=burndown by=cr note=decision sheet: an abort signal through ApiRequestInit (not read as status 0), or the store reusing its own pending tail
+- 2026-10-13T19:13:04Z status=routed owner=18-38-the-live-log-tail by=merge_gate note=orchestrator ruling B: an optional abort signal on core/api.ts; the store aborts on off, file change and leave; fixed in 18.38 rework 1
 
 ### DW-2393: The rows Live tail appends to the log viewer are never trimmed, so a viewer left on a busy log holds every line written since it opened
 - source: spec-18-38-the-live-log-tail.md | severity: low | fix-risk: med | footprint: in-story

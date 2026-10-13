@@ -2,7 +2,7 @@
 title: 'Story 18.38: The live log tail'
 type: 'feature'
 created: '2026-10-12'
-status: 'done'
+status: 'in-progress'
 baseline_revision: 'ad0fb51feefb1ce52a318fc5f8d7c2148eefb49c'
 baseline_commit: 'ad0fb51feefb1ce52a318fc5f8d7c2148eefb49c'
 review_loop_iteration: 0
@@ -148,6 +148,11 @@ Rejected:
   - The `LastLines` rename and `Resolve`'s new argument are not add-only. Verified: `LastLines` is private and both its in-class callers are updated; no subclass overrides `Tail`; the argument defaults to 1.
   - The spec says three holds where the code makes four.
 
+
+### Rework 1 (orchestrator ruling, 2026-10-13)
+
+- [ ] [Review] DW-2392 (ruling B): an abandoned live tail holds a browser connection until the bound, and six on one HTTP/1.1 origin stall the shell. Add an add-only optional `signal` to `core/api.ts` `ApiRequestInit`, passed through to `fetch`, and an aborted request read as an abort (never as status 0, a fault or a log line); the log-viewer store owns one `AbortController` per held tail and aborts it on Live tail off, on a file or source change (`reset`, `clearWindow`, `setSource`) and on leaving the screen (the page's `onDestroy`). Pin it: a component spec that the held request's signal is aborted on each of the three, and a browser spec in `ui/browser/messages-log.browser-spec.mjs` (or its own file) that turns Live tail on and abandons it more than 6 times in a row (off, or a file change), then asserts another shell call (a page read or `/instance`) completes within a few seconds; each with its `mutation:` line. `core/api.ts` joins footprint_extensions (add-only).
+
 ## Spec Change Log
 
 - 2026-10-13, lead, implement halt (Task 0 e), Rule 5 tier 1: the vendor does not fail a heartbeat after a client disconnects, so the matrix's "Client gone" row now reads that a dropped socket's wait runs to the bound (at most `BoundSeconds`, one CSP process, nothing logged), the bounded hold the Design Notes already name; the cursor is required whole (`EndpointCoverage`'s bare probe draws `LOG.OFFSET`). AD-12's carve-out names the two response properties Task 0 b measured. Resumed at review (`in-review`) over the uncommitted implementation.
@@ -155,6 +160,8 @@ Rejected:
 - 2026-10-13, lead spec gate: "For the lead" applied (AD-12's second carve-out and AD-43's live tail in the spine; EXPERIENCE.md :646, :848, :899 in place, line count unchanged, `test:tools` 1948/1948). `Descriptor.cls` :1076 and :1120 are the Rule 11 ask to the orchestrator.
 
 ## Review Triage Log
+
+- 2026-10-13, rework 1: DW-2392 decided (orchestrator, ruling B): abort an abandoned tail through an optional signal on `core/api.ts`.
 
 ### 2026-10-13 - Review pass
 
