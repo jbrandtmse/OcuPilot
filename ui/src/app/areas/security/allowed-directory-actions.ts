@@ -36,12 +36,14 @@ interface Verdict {
  *
  * **The instance decides; this service keeps its answer.** `load` clears the verdict, asks `GET /allowed-directories`, and
  * keeps the sentence of a disabled key or of a refused read as the reason every action is drawn off with -- the server's
- * own words (AD-39). An action drawn off runs nothing (`ScreenActions.run`), and the route asks the key again at the write,
- * so a verdict read a moment ago can only be stale in the person's favour. Only the newest `load` settles.
+ * own words (AD-39) -- closing any dialog that stands. An action drawn off runs nothing (`ScreenActions.run`). The verdict
+ * is read when the screen is entered and after each of its writes, and the route asks the key again at every write, so a
+ * key disabled since the read refuses the write on the list's banner. Only the newest `load` settles.
  *
  * **One dialog at a time, never over another's.** `open('add')` notes whether the list reads unrestricted, which words its
- * consequence; `open('change')` and `open('remove')` take the list store's selection, and a row the fallback rule refuses
- * puts its sentence on the store's refusal, as `ScreenActionHandler.startFor` does. `confirm` closes the dialog, sends
+ * consequence, and words it as restricting until the list has answered; `open('change')` and `open('remove')` take the
+ * list store's selection, and a row the fallback rule refuses puts its sentence on the store's refusal, as
+ * `ScreenActionHandler.startFor` does. `confirm` closes the dialog, sends
  * through `ScreenActionHandler.sendFor` -- whose answer becomes the one change event that re-reads the list (AD-14) -- and
  * then reads the verdict again.
  */
@@ -74,7 +76,8 @@ export class AllowedDirectoryActions {
   /**
    * Clear the verdict, read it, and tell the surfaces. A disabled key reads as the sentence the instance wrote, or the
    * published one for `ALLOWLIST.OFF` where the answer carried none; a refused read reads as its envelope's `reason`; a
-   * read that did not answer leaves the actions drawn on, because the route refuses what the instance refuses.
+   * read that did not answer leaves the actions drawn on, because the route refuses what the instance refuses. A verdict
+   * that holds the actions off closes a dialog opened while it was being read, so that dialog sends nothing.
    */
   async load(): Promise<void> {
     const ask = (this.asked += 1);
@@ -82,7 +85,9 @@ export class AllowedDirectoryActions {
     this.actions.changed();
     const result = await this.injector.get(ApiService).requestJson<Verdict>(ALLOWED_DIRECTORIES_PATH);
     if (ask !== this.asked) return;
-    this.reasonValue.set(reasonOf(result));
+    const reason = reasonOf(result);
+    this.reasonValue.set(reason);
+    if (reason !== '') this.waiting.set(null);
     this.actions.changed();
   }
 
@@ -96,7 +101,7 @@ export class AllowedDirectoryActions {
     if (screen === undefined) return;
     const store = this.stores.for(screen.descriptor, screen.refreshRates);
     if (action === 'add') {
-      this.waiting.set({ action, directory: '', unrestricted: store.data().some((row) => isFallback(row)) });
+      this.waiting.set({ action, directory: '', unrestricted: store.lastUpdate() === null || store.data().some((row) => isFallback(row)) });
       return;
     }
     const directory = store.selection()[0] ?? '';

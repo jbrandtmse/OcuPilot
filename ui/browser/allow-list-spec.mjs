@@ -4,8 +4,8 @@
  * the probe directories a spec makes and removes under the manager directory.
  *
  * Named `allow-list-spec.mjs` rather than `*.browser-spec.mjs`, so `npm run test:browser`'s fixed glob does not run it as a
- * suite of its own while `ui/tools/client-lint.mjs`'s `browser/` walk still lints it. Every call refuses a container that
- * is not a throwaway, because each one changes the allow-list or the file system.
+ * suite of its own while `ui/tools/client-lint.mjs`'s `browser/` walk still lints it. Every call that changes the
+ * allow-list or the file system refuses a container that is not a throwaway; `instanceValue` only reads.
  */
 
 import assert from 'node:assert/strict';

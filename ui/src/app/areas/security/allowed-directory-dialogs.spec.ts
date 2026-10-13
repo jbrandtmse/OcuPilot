@@ -11,6 +11,7 @@ import { SCREENS } from '../../core/screens.generated';
 import { STRINGS } from '../../core/strings';
 import { ALLOWED_DIRECTORIES_PATH, ALLOWED_DIRECTORY_LIST } from '../../shell/screen-action-handler';
 import { stubAccountPreferences } from '../../testing/account-preferences';
+import { ALLOWED_DIRECTORY_ACTIONS, AllowedDirectoryActions } from './allowed-directory-actions';
 import { AllowedDirectoryDialogs } from './allowed-directory-dialogs';
 
 /**
@@ -20,6 +21,9 @@ import { AllowedDirectoryDialogs } from './allowed-directory-dialogs';
  */
 
 const SCREEN = SCREENS.find((entry) => entry.descriptor === ALLOWED_DIRECTORY_LIST)!;
+
+/** The actions the descriptor declares, read from the mirror: the primary action, then the row actions. */
+const DECLARED = [SCREEN.primaryAction.id, ...SCREEN.rowActions.map((action) => action.id)].filter((id) => id !== '');
 
 const TARGET = { type: 'allowed-directory', scope: 'instance', id: '%GUIFileSelector' };
 
@@ -84,11 +88,13 @@ afterEach(() => {
 describe('the Allowed directories actions and dialogs', () => {
   it('registers Add, Change and Remove against the descriptor with the verdict as their reason, and unregisters them with the screen', async () => {
     // Mutation (Rule 19): drop the reason argument from the `register` calls -> the held-back legs go red; drop the
-    // unregistering from `onDestroy` -> the last leg goes red.
+    // unregistering from `onDestroy` -> the last leg goes red; drop `remove` from `ALLOWED_DIRECTORY_ACTIONS` -> the
+    // declared-set leg goes red.
+    expect([...ALLOWED_DIRECTORY_ACTIONS], 'every action the descriptor declares is registered').toEqual(DECLARED);
     const { fixture, actions, calls } = mount({ kind: 'ok', status: 200, body: { enabled: false, code: 'ALLOWLIST.OFF', reason: STRINGS.allowListRefusalOff } });
     await settle(fixture);
     expect(calls.map((call) => [call.method, call.path])).toEqual([['GET', ALLOWED_DIRECTORIES_PATH]]);
-    for (const id of ['add', 'change', 'remove']) {
+    for (const id of DECLARED) {
       expect(actions.has(ALLOWED_DIRECTORY_LIST, id), id).toBe(true);
       expect(actions.reason(ALLOWED_DIRECTORY_LIST, id), id).toBe(STRINGS.allowListRefusalOff);
       expect(actions.run(ALLOWED_DIRECTORY_LIST, id), id).toBe(false);
@@ -96,7 +102,20 @@ describe('the Allowed directories actions and dialogs', () => {
     expect(fixture.nativeElement.querySelector('[role="dialog"]'), 'a held-back action opens nothing').toBeNull();
 
     fixture.destroy();
-    for (const id of ['add', 'change', 'remove']) expect(actions.has(ALLOWED_DIRECTORY_LIST, id), id).toBe(false);
+    for (const id of DECLARED) expect(actions.has(ALLOWED_DIRECTORY_LIST, id), id).toBe(false);
+  });
+
+  it('closes the dialog that stands when the screen goes, so a return to the screen finds none', async () => {
+    // Mutation (Rule 19): drop `this.service.cancel()` from `onDestroy` -> the root service still holds the Add, red.
+    const { fixture, actions, store } = mount();
+    show(store, [{ Directory: MANAGER, Restricted: true }]);
+    await settle(fixture);
+    actions.run(ALLOWED_DIRECTORY_LIST, 'add');
+    await settle(fixture);
+    const service = TestBed.inject(AllowedDirectoryActions);
+    expect(service.pending()?.action).toBe('add');
+    fixture.destroy();
+    expect(service.pending()).toBeNull();
   });
 
   it('opens Add as a warning with a Directory text field and the plain consequence on a restricted list, and sends what was typed', async () => {

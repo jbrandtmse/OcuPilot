@@ -1608,8 +1608,9 @@ app-source-viewer-page {
   clip-path: none;
 }
 
-// Download CSV's description at the cap (Story 16.23), on keyboard focus. The control is a view
-// control and never takes `.ocu-command-bar-action`, so the rule above reveals it on hover only.
+// Download CSV's description at the cap (Story 16.23), and the primary action's held-back reason (Story 18.46), on
+// keyboard focus. Neither control takes `.ocu-command-bar-action`, so the rule above reveals them on hover only.
+.ocu-command-bar-primary:focus-visible + .ocu-command-bar-reason,
 .ocu-command-bar-download:focus-visible + .ocu-command-bar-reason {
   width: auto;
   height: auto;
@@ -1619,7 +1620,7 @@ app-source-viewer-page {
 }
 
 // The primary action held back by its registrant (Story 18.46): drawn as the Send control is when it is gated, `restrained`
-// and never faded, with the reason revealed on keyboard focus as a row action's is.
+// and never faded.
 .ocu-command-bar-primary[aria-disabled='true'],
 .ocu-data-table-empty-action[aria-disabled='true'] {
   background: var(--ocu-restrained-container);
@@ -1632,14 +1633,6 @@ app-source-viewer-page {
 .ocu-data-table-empty-action[aria-disabled='true']:hover,
 .ocu-data-table-empty-action[aria-disabled='true']:active {
   background: var(--ocu-restrained-container);
-}
-
-.ocu-command-bar-primary:focus-visible + .ocu-command-bar-reason {
-  width: auto;
-  height: auto;
-  padding: 5px 8px;
-  overflow: visible;
-  clip-path: none;
 }
 
 .ocu-command-bar-spacer {

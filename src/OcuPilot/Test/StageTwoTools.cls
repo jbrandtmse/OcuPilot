@@ -12,8 +12,8 @@
 /// <code>SCREENACTIONS</code> holds the id), to exactly one tool. The primary action does too, or resolves to the one
 /// bound tool that creates. Every bound tool is advertised but AD-53's three.</p>
 /// <p>A <code>writes</code> row that names a <code>route</code> is the exception (Story 18.46): its actions are sent to
-/// <code>POST /&lt;route&gt;</code>, not to the screen action route, so they resolve by that route to the one tool the screen
-/// binds, which is unadvertised and declares no <code>SCREENACTIONS</code>. The route exists in the router's URL map.</p>
+/// <code>POST /&lt;route&gt;</code>, which the router's URL map holds, not to the screen action route; the screen binds one
+/// tool, which is unadvertised and declares no <code>SCREENACTIONS</code>, so that route reaches none of its actions.</p>
 /// <p><b>Fields.</b> For every bound tool, and every <code>&lt;tool/&gt;</code> row (a tool Epic 18 bound to an earlier
 /// screen): the registry lists it as a write of its own class, every field its generated list admits is settable, and
 /// every other settable name but the id argument is the first path segment of its generated entry, or the tool's port is
@@ -524,8 +524,7 @@ ClassMethod Elsewhere(Output pNames) As %Status
 
 /// <p>The check a routed <code>writes</code> row gets (Story 18.46): <var>pRoute</var> is a <code>POST</code> route of the
 /// router, the screen binds exactly one write tool, which is unadvertised and declares no screen action, and the screen
-/// declares at least one action, every one of which that tool carries out through the route. Answers how many actions it
-/// checked.</p>
+/// declares at least one action, none of which the screen action route resolves. Answers how many actions it checked.</p>
 Method CheckRouted(ByRef pBound, ByRef pWrites, pClass As %String, pName As %String, pRoute As %String) As %Integer [ Private ]
 {
     Set tFound = 0
@@ -535,7 +534,7 @@ Method CheckRouted(ByRef pBound, ByRef pWrites, pClass As %String, pName As %Str
         If ($List(tRoute, 1) = ("/" _ pRoute)) && ($List(tRoute, 2) = "POST") Set tFound = 1
     }
     Do $$$AssertEquals(tFound, 1, pName _ ": POST /" _ pRoute _ " is a route of the router, which its actions are sent to")
-    Do $$$AssertEquals(..Count(.pBound, pClass), 1, pName _ " binds exactly one write tool, the one its route calls")
+    Do $$$AssertEquals(..Count(.pBound, pClass), 1, pName _ " binds exactly one write tool")
     Set tToolName = $Order(pBound(pClass, ""), 1, tToolClass)
     If tToolName = "" Quit 0
     Do $$$AssertEquals(''##class(OcuPilot.Screen.Tool.Registry).IsAdvertised(pWrites(tToolName)), 0, pName _ ":" _ tToolName _ " is unadvertised, so no provider list carries it")
@@ -543,7 +542,7 @@ Method CheckRouted(ByRef pBound, ByRef pWrites, pClass As %String, pName As %Str
     Set tIds = $ClassMethod(pClass, "RowActionIds")
     Set tPrimary = $ClassMethod(pClass, "PrimaryActionId")
     Set tActions = $ListLength(tIds) + (tPrimary '= "")
-    Do $$$AssertTrue(tActions > 0, pName _ " declares actions the route carries out")
+    Do $$$AssertTrue(tActions > 0, pName _ " declares actions, which are sent through POST /" _ pRoute)
     For tI = 1:1:$ListLength(tIds) {
         Do $$$AssertEquals(..Resolving(.pBound, pClass, $List(tIds, tI)), 0, pName _ ":" _ $List(tIds, tI) _ " resolves to no tool on the screen action route, because it is sent through POST /" _ pRoute)
     }

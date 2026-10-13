@@ -91,6 +91,41 @@ At `a3bb0acd`; client paths in `ui/src/app/`.
 - **C3** (AD-21). Given the unrestricted fallback row selected, when the screen draws its actions, then Change and Remove are drawn off with `ALLOWLIST.FALLBACK`'s sentence (tests 12, 13).
 - **C4** (18.42's C2b). Given a list a remove emptied, when the screen shows it, then its empty state says no file or directory field can choose a location on the server (test 13).
 
+### Review Findings
+
+Code review 2026-10-13 (`full-opus`, four layers): 33 layer rows, 25 entries: high 0, medium 5, low 18, false 2. Every patch was applied in this pass. Nothing was deferred and nothing went to the ledger.
+
+- [x] [Review][Patch] (med; fix-risk low, in-story) A dialog opened while the verdict was being read stayed open after an off verdict, and its confirm sent `POST /allowed-directories`. `load` now closes a standing dialog when the verdict holds the actions off [ui/src/app/areas/security/allowed-directory-actions.ts:90]
+- [x] [Review][Patch] (med; low) An Add opened before the list answered treated the list as restricted, so an unrestricted instance got the plain consequence. An unanswered list now gets `allowedDirectoryAddRestricts` [allowed-directory-actions.ts:104]
+- [x] [Review][Patch] (med; low; Rule 30) Two component specs looped over the action ids as a literal. `DECLARED` is now read from the mirror, and `ALLOWED_DIRECTORY_ACTIONS` is pinned equal to it [allowed-directory-dialogs.spec.ts:26, shell/screen-action-dialogs.spec.ts:22]
+- [x] [Review][Patch] (med; low; Rule 19) The bar showing a registrant's reason ahead of a selected fallback row's own sentence was pinned only by browser C2, whose `select()` wait does not prove the bar took the selection. A unit leg now covers it [ui/src/app/shell/command-bar.spec.ts:485]
+- [x] [Review][Patch] (med; low; Rule 31) The primary action's focus reveal duplicated Download CSV's identical rule. The two now share one selector list [ui/src/styles/_components.scss:1613]
+- [x] [Review][Patch] (low) That reveal had no stylesheet pin, unlike its siblings. Now pinned [ui/tools/design-tokens.test.mjs:720]
+- [x] [Review][Patch] (low) No test pinned `onDestroy`'s `cancel()`, which stops the root service keeping a dialog for the next visit. Now pinned [allowed-directory-dialogs.spec.ts:108]
+- [x] [Review][Patch] (low) EXPERIENCE.md :364 still said the screen's empty state is the picker's. Corrected in place; line count unchanged
+- [x] [Review][Patch] (low) `register`'s contract said "the surfaces" draw a registrant's reason, but a banner case's action and the screen-level controls do not read it. The contract now names the surfaces that do. The behavior is wontfix-theoretical: it becomes real once a registrant gives such an action a reason [ui/src/app/core/screen-actions.ts:312]
+- [x] [Review][Patch] (low) `CheckRouted` claimed to tie the route to the bound tool, which it does not check (18.42's route tests do). Its claims now state only what it checks [src/OcuPilot/Test/StageTwoTools.cls:15, :527]
+- [x] [Review][Patch] (low) The service said a verdict "can only be stale in the person's favour", which is wrong for a key enabled after the read. Sentence replaced [allowed-directory-actions.ts:38-41]
+- [x] [Review][Patch] (low) The bar's comment opened "Two reasons" and then appended a third. Rewritten as three [ui/src/app/shell/command-bar.ts:493]
+- [x] [Review][Patch] (low) The helper said every call refuses a non-throwaway, but `instanceValue` does not. Corrected [ui/browser/allow-list-spec.mjs:7]
+- [x] [Review][Patch] (low) `assert.notEqual(missing, probeA)` could never fail. Removed [ui/browser/allowed-directory-write.browser-spec.mjs:360]
+- [x] [Review][Patch] (low) `verdictAnswered` counted a verdict when its headers arrived. It now counts on `requestfinished`, when the whole answer has arrived [allowed-directory-write.browser-spec.mjs:103]
+- [x] [Review][Patch] (low) The `# classes:` line in `ci-throwaway.sh` was extended in place, against the add-only rule. The new class now has its own line [scripts/ci-throwaway.sh:279]
+
+Verified after the patches: `test:tools` 1958/1958; `test:components` 242 files, 3028 tests; `StageTwoTools` 4/4 (run 670); the two browser specs 7/7 on the rebuilt bundle, with the write spec green twice; `check-objectscript.py` and `lint-docs.sh` 0 problems. The throwaway ends at S0.
+
+Rejected:
+
+- false: "QA's third browser test is uncommitted." The lead commits the working tree after the smoke gate.
+- false: "The empty-state label and the primary action's `action-slot` wrapper reach every list." Task 5 intends this, the residual risks name it, and eight specs were re-run green.
+- low, wontfix-theoretical: The reason elements' ids are fixed. This is real only on a page with two tables whose primary actions both carry a registrant reason.
+- low, wontfix-theoretical: The write spec's `after` stops at a failing cleanup step. A failing `docker exec` means the throwaway is unreachable, and the next sign-in resets the policy.
+- low: `CheckRouted`'s per-action legs cannot fail apart from its `SCREENACTIONS` assertion. Already closed in the first review pass.
+- low: The write spec resets the policy instead of restoring an earlier one. Every sign-in resets it, and `after` returns the throwaway to S0.
+- low, by-design: The verdict is not re-read on Refresh or when the policy changes elsewhere. Task 8 settles this, and the route asks the key at every write.
+- low, by-design: The change event's id `%GUIFileSelector` marks no row. The matrix specifies "one change event for its target", which is 18.42's target.
+- low, by-design: `AllowedDirectoryScreen` repeats the action literals that the rosters pin. Task 11 has it pin the descriptor's actions.
+
 ## Spec Change Log
 
 - 2026-10-12, lead, spec gate: ready; AD-22 and AD-53 amended as proposed. Rule 11: the literal edits in `Test/Descriptor.cls`, `Test/SecurityLists.cls` and `Test/StageTwoTools.cls` sent to the orchestrator as a union ask. Epic 20's 20.29 (lazy screens) changes `screen-outlet.ts` and the routes: this story stays out of both, and a page it adds becomes a loader line at the forward merge.
@@ -177,6 +212,7 @@ every test added or changed passes on a fresh environment, in either order
 - mutation (QA, applied, observed red, reverted byte-identical by sha256): `reasonOf` answering `''` for a refused read -> `allowed-directory-actions.spec.ts`, the refused-read test; `confirm` sending the Remove with `{NewDirectory: value}` -> that spec's Remove body test and `allowed-directory-dialogs.spec.ts`' Remove test; `open` without the `this.waiting() !== null` guard -> "opens no dialog over another"; `unrestricted` always `false` -> the Add-noting test and the unrestricted Add consequence test; `load` not clearing the verdict -> "clears the verdict before it reads"; `open` without the blank-directory guard -> "opens Change and Remove on the selected row"; `confirm` not closing the dialog first -> the Add send test and the Add dialog test; the Change consequence's `<directory>` replaced by `''`, the Remove consequence swapped for Add's, the Remove dialog's `[target]` made the verb, `fieldLabelOf` swapped -> the matching `allowed-directory-dialogs.spec.ts` test (each); `ScreenActionHandler.send` putting `''` on the store after a refusal -> the refused-write test; its change event published with `id: ''` -> the Add send test's event assertion.
 - mutation (QA, bundle rebuilt and redeployed): `ScreenActionHandler.send` putting `''` on the store after a refusal -> `allowed-directory-write.browser-spec.mjs`, the new test's banner step; the clean bundle rebuilt and redeployed, both browser specs green (7 of 7), and each of the three write-spec tests green alone, in the reverse order.
 - mutation (QA, ObjectScript on `ocupilot-ci`): `AllowedDirectoryList` without its `remove` row action -> `AllowedDirectoryScreen.TestTheDescriptorDeclaresTheActionsAndTheContextListsNoWriteTool` (run 664), `Descriptor.TestTheAllowedDirectoriesListDeclaresThePathSource` (665) and `SecurityLists.TestEachListIsDeclaredAsTheSecurityAreaEntryItReplaces` (666); the file restored byte-identical, the throwaway reloaded with its mounted copy equal to the worktree, the three classes green again (667, 668, 669); the throwaway ends at S0.
+- mutation (code review; each applied, observed red, then reverted byte-identical by sha256): `load` leaving a standing dialog open on an off verdict -> `allowed-directory-actions.spec.ts`, "closes a dialog opened while the verdict was being read"; `open('add')` judging the list by its rows alone -> "notes an Add opened before the list has answered"; `onDestroy` without `cancel()` -> `allowed-directory-dialogs.spec.ts`, "closes the dialog that stands"; `remove` dropped from `ALLOWED_DIRECTORY_ACTIONS` -> that spec's declared-set leg; the bar's row action reading the row's self-protection sentence before the registrant's -> `command-bar.spec.ts`, "drawn ahead of the selected row's own"; the `.ocu-command-bar-primary:focus-visible` selector dropped -> `design-tokens.test.mjs`, its 18.46 test.
 
 Rule 11: Epic 20's working tree (2026-10-13) also edits `core/screen-actions.ts` (one label entry), `screen-action-handler.ts` (two list entries), `screens.generated.ts` and `strings.ts`; this story's hunks in those files do not overlap theirs (`register`, `run`, `reason` and `changed` in `ScreenActions`, which task 4 mandates, the `OWN_ROUTES` block and `send`), and `screens.generated.ts` is regenerated at the forward merge.
 

@@ -18,6 +18,12 @@ import { ScreenActionDialogs } from './screen-action-dialogs';
  * them.
  */
 
+/** The actions the Allowed directories descriptor declares, read from the mirror: the primary action, then the row actions. */
+const DECLARED = (() => {
+  const screen = SCREENS.find((entry) => entry.descriptor === ALLOWED_DIRECTORY_LIST)!;
+  return [screen.primaryAction.id, ...screen.rowActions.map((action) => action.id)].filter((id) => id !== '');
+})();
+
 const planted: HTMLElement[] = [];
 
 async function settle(fixture: ComponentFixture<unknown>): Promise<void> {
@@ -61,18 +67,18 @@ describe('the screen action dialogs, beside the handler\u2019s', () => {
   it('render the Allowed directories actions and dialogs for that descriptor, which register its three actions', () => {
     // Mutation (Rule 19): drop the `hasAllowedDirectories` branch from the template -> no action registers and this goes red.
     const { actions } = mount(ALLOWED_DIRECTORY_LIST);
-    for (const id of ['add', 'change', 'remove']) expect(actions.has(ALLOWED_DIRECTORY_LIST, id), id).toBe(true);
+    for (const id of DECLARED) expect(actions.has(ALLOWED_DIRECTORY_LIST, id), id).toBe(true);
   });
 
   it('render nothing of them for any other descriptor', () => {
     const { actions } = mount('OcuPilot.Screen.Descriptor.WebAppList');
-    for (const id of ['add', 'change', 'remove']) expect(actions.has(ALLOWED_DIRECTORY_LIST, id), id).toBe(false);
+    for (const id of DECLARED) expect(actions.has(ALLOWED_DIRECTORY_LIST, id), id).toBe(false);
   });
 
   it('unregister the actions when the screen goes', () => {
     const { fixture, actions } = mount(ALLOWED_DIRECTORY_LIST);
     fixture.destroy();
-    for (const id of ['add', 'change', 'remove']) expect(actions.has(ALLOWED_DIRECTORY_LIST, id), id).toBe(false);
+    for (const id of DECLARED) expect(actions.has(ALLOWED_DIRECTORY_LIST, id), id).toBe(false);
   });
 
   it('forward an Allowed directories dialog\u2019s confirming answer as acting, so the list page moves focus off the dialog first', async () => {

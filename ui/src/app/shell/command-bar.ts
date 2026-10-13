@@ -490,13 +490,12 @@ export class CommandBar {
       // it is not drawn at all -- the same test the primary action above already applies.
       .filter((action) => this.actions.has(screen.descriptor, action.id))
       .map((action) => {
-        // Two reasons, in this order: with nothing selected the action has no target, and with a
-        // self-protected row selected the instance would refuse it -- with this very sentence
-        // (AD-10, AD-53). Neither is enforcement: the route refuses it identically if it is
-        // pressed anyway. A multi-select action (Story 16.6) acts on the checked rows instead, so
-        // its reason is theirs: none checked, or more than it takes.
-        // A registrant's own reason (the Allowed directories verdict) outranks both, because it holds for
-        // every row and for none (AD-53).
+        // Three reasons, in this order: a registrant's own (the Allowed directories verdict, Story
+        // 18.46), which holds for every row and for none; with nothing selected the action has no
+        // target; and with a self-protected row selected the instance would refuse it -- with this
+        // very sentence (AD-10, AD-53). None is enforcement: the route refuses it identically if it
+        // is pressed anyway. A multi-select action (Story 16.6) acts on the checked rows instead, so
+        // its reason after a registrant's is theirs: none checked, or more than it takes.
         const registered = this.actions.reason(screen.descriptor, action.id);
         const reason = registered !== ''
           ? registered

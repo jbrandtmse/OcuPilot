@@ -309,8 +309,9 @@ export class ScreenActions {
    *
    * `reason`, where given, is the registrant's own sentence for why the action cannot be taken
    * now -- `''` while it can (AD-53). It is read at call time, so a registrant whose answer moves
-   * calls `changed()` and every surface re-draws; while it is non-empty the surfaces draw the
-   * action `aria-disabled` with the sentence as its reason, and `run` runs nothing.
+   * calls `changed()` and every surface re-draws; while it is non-empty the command bar, the
+   * table's row menu and empty state, and the command box draw a screen's primary or row action
+   * `aria-disabled` with the sentence as its reason, and `run` runs nothing.
    */
   register(descriptor: string, actionId: string, run: ScreenActionRun, reason?: () => string): () => void {
     let forDescriptor = this.handlers.get(descriptor);

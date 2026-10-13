@@ -4,7 +4,8 @@
  * nothing (C2); with the key enabled a person adds a directory to an unrestricted list, changes it, removes it, and removes the
  * last entry through the screen's dialogs and `POST /allowed-directories`, and the list re-reads each time (C1), the
  * unrestricted manager-directory row refuses Change and Remove with the fallback sentence (C3), and the emptied list's empty
- * state says no file or directory field can choose a location (C4).
+ * state says no file or directory field can choose a location (C4). On a restricted list an Add words the plain consequence and
+ * Cancel sends nothing, and an Add the route refuses puts the instance's sentence on the list's banner and changes nothing (C1).
  *
  * **It changes the instance's allow-list and governance policy**, so it runs on a throwaway only. It clears the purpose before
  * and after, makes and removes two probe directories under the manager directory, reads the key's setting before it runs and
@@ -29,7 +30,7 @@ import { ROW_SELECTOR, clickRowCentre, waitForRows } from './list-spec.mjs';
 import { authHeader, signedInAt } from './panel-spec.mjs';
 import { governanceRowVersion, resetGovernancePolicy, setGovernanceKey } from './preferences-reset.mjs';
 import { VIEWPORTS, assertThrowaway } from './structural-walk.mjs';
-import { clearGovernancePolicy } from './turnprobe-spec.mjs';
+import { clearGovernancePolicy, escapeOs } from './turnprobe-spec.mjs';
 
 const config = browserConfig();
 const STRINGS = loadStrings();
@@ -95,12 +96,12 @@ async function verdictNow() {
   return answer.json();
 }
 
-/** What a page asked of the allow-list route: the verdicts it was answered and the writes it sent. */
+/** What a page asked of the allow-list route: the verdicts whose answers it received whole, and the writes it sent. */
 function watching() {
   const log = { verdicts: [], posts: [] };
   const attach = (page) => {
-    page.on('response', (response) => {
-      if (response.request().method() === 'GET' && new URL(response.url()).pathname === STATE_PATH) log.verdicts.push(response.status());
+    page.on('requestfinished', (request) => {
+      if (request.method() === 'GET' && new URL(request.url()).pathname === STATE_PATH) log.verdicts.push(request.response()?.status() ?? 0);
     });
     page.on('request', (request) => {
       if (request.method() === 'POST' && new URL(request.url()).pathname === STATE_PATH) log.posts.push(request.postData());
@@ -348,6 +349,49 @@ test('C1, C3, C4: with the key enabled a person adds, changes and removes entrie
     assert.deepEqual(await routeRows(), [], 'and the instance reads no root');
     assert.equal(await page.$eval('.ocu-data-table-empty-action', (button) => button.textContent.trim()), STRINGS.allowedDirectoryAddAction, 'while Add stays offered in the empty state');
     assert.equal(log.posts.length, 4, 'four writes were sent in all');
+  } finally {
+    await context.close();
+  }
+});
+
+test('C1 on a restricted list: Add words the plain consequence and Cancel sends nothing, and a refused Add puts the instance\u2019s sentence on the banner and changes nothing', async () => {
+  // Mutation (Rule 19): make `ScreenActionHandler.send` put no sentence on the store after a refused answer, rebuild and redeploy
+  // -> the banner step goes red.
+  const missing = probeA.replace('ocuprobe1846a/', 'ocuprobe1846none/');
+  allowList(config, `SetUp(1, $ListBuild("${escapeOs(probeA)}"))`);
+  const { log, attach } = watching();
+  const { context, page } = await signedInAt(browser, config, LIST_URL, VIEWPORTS.wide, null, attach);
+  try {
+    await waitForRows(page, config.navigationTimeoutMs);
+    await verdictAnswered(page, log, 1);
+    await setGovernanceKey(KEY, 'enabled');
+    await reenter(page, log);
+    await rowsAre(page, [[probeA, STRINGS.tableStatusYes]], 'a restricted list shows its one stored entry');
+
+    await press(page, STRINGS.allowedDirectoryAddAction);
+    assert.deepEqual(await openDialog(page), {
+      title: STRINGS.allowedDirectoryAddAction,
+      consequence: STRINGS.allowedDirectoryAddConsequence,
+      field: STRINGS.lockColumnDirectory,
+    });
+    await page.click('.ocu-dialog-actions .ocu-button-secondary');
+    await dialogClosed(page);
+    await frames(page);
+    assert.deepEqual(log.posts, [], 'Cancel sent nothing');
+
+    // A directory that does not exist: the route refuses it, and the list's banner carries the instance's sentence.
+    const answered = log.verdicts.length;
+    await press(page, STRINGS.allowedDirectoryAddAction);
+    await openDialog(page);
+    await proceedWith(page, missing);
+    await page.waitForFunction(
+      (sentence) => [...document.querySelectorAll('p.ocu-list-page-banner[role="alert"] .ocu-banner-message')].some((message) => message.textContent.trim() === sentence),
+      { timeout: config.navigationTimeoutMs },
+      STRINGS.allowListRefusalNoDirectory
+    );
+    assert.deepEqual(log.posts.map((body) => JSON.parse(body)), [{ Action: 'add', Directory: missing }], 'one add was sent, and it is the refused one');
+    await verdictAnswered(page, log, answered + 1);
+    await rowsAre(page, [[probeA, STRINGS.tableStatusYes]], 'the refused add changed nothing: the list is as it was');
   } finally {
     await context.close();
   }

@@ -482,6 +482,33 @@ describe('the command bar', () => {
     expect(runs).toBe(1);
   });
 
+  it("Story 18.46: a registrant's reason is drawn ahead of the selected row's own self-protection sentence", () => {
+    // Mutation (Rule 19): read the row's `selfProtectionReason` before the registrant's in the bar's row actions -> the
+    // fallback row's sentence is drawn while the verdict stands, red.
+    const base = tableDeclaration();
+    const declared = tableDeclaration({
+      descriptor: 'OcuPilot.Screen.Descriptor.AllowedDirectoryList',
+      rowActions: [{ id: 'change', selfProtection: 'allowed-directory-fallback' }],
+      read: base.read === null ? null : { ...base.read, fields: [...base.read.fields, 'Restricted'] },
+    });
+    build(declared);
+    let sentence: string = STRINGS.allowListRefusalOff;
+    actions.register(declared.descriptor, 'change', () => {}, () => sentence);
+    const store = stores.for(declared.descriptor, declared.refreshRates);
+    store.applyTick([{ Name: 'alpha', NameSpace: 'USER', Count: 0, Enabled: true, Note: 'n', Restricted: false }], false, '', new Date());
+    store.setSelection(['alpha']);
+    fixture.detectChanges();
+    const described = (): string | undefined => {
+      const button: HTMLButtonElement = fixture.nativeElement.querySelector('.ocu-command-bar-action');
+      return fixture.nativeElement.querySelector(`#${button.getAttribute('aria-describedby')}`)?.textContent?.trim();
+    };
+    expect(described()).toBe(STRINGS.allowListRefusalOff);
+    sentence = '';
+    actions.changed();
+    fixture.detectChanges();
+    expect(described(), 'the row is one its own rule explains').toBe(STRINGS.allowListRefusalFallback);
+  });
+
   it("Story 9.3: a system-resource action reads the selected row's own AllowDelete", () => {
     // Mutation (Rule 19): drop `row` from the bar's `selfProtectionReason` call -> the not-deletable
     // row's button is drawn as an ordinary control, red.

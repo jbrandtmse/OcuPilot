@@ -142,6 +142,22 @@ describe('the Allowed directories verdict', () => {
     await older;
     expect(service.reason(), 'the newest answer stands').toBe('');
   });
+
+  it('closes a dialog opened while the verdict was being read once it holds the actions off, so that dialog sends nothing', async () => {
+    // Mutation (Rule 19): drop the dialog's closing from `load` -> the Add stays open and its confirm sends, red.
+    let release: (value: JsonResult<unknown>) => void = () => {};
+    const slow = new Promise<JsonResult<unknown>>((resolve) => (release = resolve));
+    const { service, store, calls } = mount([slow]);
+    show(store, RESTRICTED_ROWS);
+    const reading = service.load();
+    service.open('add');
+    expect(service.pending()?.action, 'drawn on while the verdict is out').toBe('add');
+    release({ kind: 'ok', status: 200, body: { enabled: false, code: 'ALLOWLIST.OFF', reason: STRINGS.allowListRefusalOff } });
+    await reading;
+    expect(service.pending()).toBeNull();
+    await service.confirm('/data/b/');
+    expect(calls.map((call) => call.method)).toEqual(['GET']);
+  });
 });
 
 describe('the Allowed directories dialogs', () => {
@@ -155,6 +171,13 @@ describe('the Allowed directories dialogs', () => {
     show(restricted.store, RESTRICTED_ROWS);
     restricted.service.open('add');
     expect(restricted.service.pending()).toEqual({ action: 'add', directory: '', unrestricted: false });
+  });
+
+  it('notes an Add opened before the list has answered as unrestricted, so it is worded as the add that restricts', () => {
+    // Mutation (Rule 19): judge the list by its rows alone in `open` -> an unanswered list reads restricted, red.
+    const { service } = mount();
+    service.open('add');
+    expect(service.pending()).toEqual({ action: 'add', directory: '', unrestricted: true });
   });
 
   it('opens Change and Remove on the selected row, and on none when nothing is selected', () => {
