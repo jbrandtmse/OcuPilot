@@ -11628,3 +11628,4 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: fresh_check 20.27 (runner) | severity: high | fix-risk: low | footprint: in-epic
 - evidence: Full sweep on a fresh ocupilot-b-ci: InteropHostGate 3/3 red (ItemMessages -99 'User OcuP204* is not privileged'); green alone once a privileged run cached the statement; red again after $SYSTEM.SQL.Purge() in USER.
 - 2026-10-13T11:53:55Z status=open owner=20-27-transformations-tested by=runner note=fix in 20.27 rework 1 ([Smoke] item); MESSAGESQL's IN (... UNION ...) subquery under %ExecDirectNoPriv
+- 2026-10-13T13:00:55Z status=resolved-by:20-27-transformations-tested by=adjudication note=07f23adb+re-review: MESSAGESQL top-level UNION ALL; InteropHostGate cold-cache test green after PurgeQueries; AD-29 amended

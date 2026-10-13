@@ -3080,8 +3080,10 @@ ClassMethod ItemQueueEntries(pNamespace As %String, pProduction As %String, pIte
 /// <p>Run the statement <var>pSql</var> in <var>pNamespace</var> with the values <var>pArgs</var> bound, through
 /// <code>%SQL.Statement:%ExecDirectNoPriv</code>: the vendor's grants on the interoperability tables are not kept per
 /// namespace (a holder of every read resource was answered SQLCODE -99), so the port's gate is the whole gate and runs
-/// first (AD-29). <var>pFound(n)</var> is the row as a <code>%List</code> of its columns. A fault is
-/// <var>pCaught</var>, with the namespace restored.</p>
+/// first (AD-29). <var>pSql</var> nests no query that carries <code>TOP</code>: compiled cold, such a statement is refused
+/// SQLCODE -99 to a caller with no SQL privilege on the table even through <code>%ExecDirectNoPriv</code> (measured).
+/// <var>pFound(n)</var> is the row as a <code>%List</code> of its columns. A fault is <var>pCaught</var>, with the namespace
+/// restored.</p>
 ClassMethod SqlRows(pNamespace As %String, pSql As %String, ByRef pFound, Output pCaught, pArgs...) As %Status [ Private ]
 {
     Kill pFound
@@ -3119,11 +3121,12 @@ ClassMethod SqlRows(pNamespace As %String, pSql As %String, ByRef pFound, Output
 Parameter LOGSQL = "SELECT TOP ? ID, TimeLogged, %EXTERNAL(Type), Text, Job, SessionId FROM Ens_Util.Log WHERE ConfigName = ? ORDER BY ID DESC";
 
 /// <p>The rows of the Messages tab's statement: the newest headers sourced by the item and the newest targeted at it, as
-/// the classic configuration page's Messages tab reads them (<code>EnsPortal.ProductionConfig</code>). They come in no
-/// order, and a header that is both comes twice (a <code>UNION</code> would fold the names to upper case);
-/// <method>ListItemMessages</method> merges, orders and caps them. The stamp is read as stored, as the Log statement's is.
-/// The statement nests no query that carries <code>TOP</code>: compiled cold, such a statement is refused SQLCODE -99 for a
-/// caller with no SQL privilege on the table even through <code>%ExecDirectNoPriv</code> (measured).</p>
+/// the classic configuration page's Messages tab reads them (<code>EnsPortal.ProductionConfig</code>), as two top-level
+/// branches because <method>SqlRows</method> takes no nested <code>TOP</code>. Each branch's <code>ORDER BY</code> orders
+/// that branch alone (measured), so its <code>TOP</code> takes its newest; the two together come in no order, and a header
+/// that is both comes twice (a <code>UNION</code> would fold the names to upper case); <method>ListItemMessages</method>
+/// merges, orders and caps them. Both branches read the same columns. The stamp is read as stored, as the Log
+/// statement's is.</p>
 Parameter MESSAGESQL = "SELECT TOP ? ID, TimeCreated, %EXTERNAL(Status), SourceConfigName, TargetConfigName, MessageBodyClassName, SessionId FROM Ens.MessageHeader WHERE SourceConfigName = ? ORDER BY ID DESC UNION ALL SELECT TOP ? ID, TimeCreated, %EXTERNAL(Status), SourceConfigName, TargetConfigName, MessageBodyClassName, SessionId FROM Ens.MessageHeader WHERE TargetConfigName = ? ORDER BY ID DESC";
 
 /// <p>The most rows a statement of the Log or Messages tab asks for when the call gives no cap.</p>

@@ -2,7 +2,8 @@
 /// against real principals (AD-8, AD-29, AD-44, AD-62, Story 20.4): a principal holding every pair the reads name but one
 /// is refused 403 naming that pair, before any vendor call, by every endpoint that requires it and admitted by every
 /// endpoint that does not; and a principal holding exactly one endpoint's pairs and READ on <code>USER</code>'s database
-/// reads its rows, the log and message reads included, though it holds no SQL privilege on the interoperability tables
+/// reads its rows, the log and message reads included, on their first read after the namespace's cached queries are
+/// dropped as well, though it holds no SQL privilege on the interoperability tables
 /// (its own <code>%ExecDirect</code> on them is refused, so the port's <code>%ExecDirectNoPriv</code> is what reads them
 /// after its gate).</p>
 /// <p>The port legs run in a child process (<method>Probe</method>) that logs in as the principal, so this process never
