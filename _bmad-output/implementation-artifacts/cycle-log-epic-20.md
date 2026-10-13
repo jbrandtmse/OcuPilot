@@ -638,3 +638,6 @@
 2026-10-13T06:00:37Z	Epic 20	stage_spawned	stage=epic-context spawn_at=2026-10-13T06:00:37Z model=opus agent_name=20-context-recompile reason=planning_artifact_newer(AD-5_20.29_rework,AD-62_item_11,AD-7,EXPERIENCE.md_20.27,feature_18.43)
 2026-10-13T06:05:27Z	Epic 20	epic_context_compiled	reason=planning_artifact_newer(AD-5_20.29_rework,AD-62_item_11,AD-7,EXPERIENCE.md_20.27,feature_18.43) model=opus lines=148
 2026-10-13T06:05:47Z	Story 20.7	stage_spawned	stage=plan spawn_at=2026-10-13T06:05:47Z model=opus agent_name=20-7-plan-1 cycle_iteration=1 inbox=DW-2347,DW-2350,DW-2351
+2026-10-13T06:50:22Z	Story 20.29	ci_resolved	story=20.29 run=38354153927 result=success head=31e2f7b0 resolved_at=next_implement(boundary)
+2026-10-13T06:50:22Z	Story 20.29	ci_green_verified	run=38354153927 head=31e2f7b0 jobs=21/21
+2026-10-13T06:50:22Z	Story 20.7	story_created	spawn_at=(see_stage_spawned) model=opus agent_name=20-7-plan-1 path=_bmad-output/implementation-artifacts/spec-20-7-the-three-embedded-vendor-editors.md build_status=ready-for-dev(gate_pending) epic_context=reused spec_kb=50(oversized)
