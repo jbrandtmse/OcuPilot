@@ -78,6 +78,9 @@ Parameter ROUTINEAPPDELETE = "webapp.routineapps.delete";
 /// <p>The REST service delete, which the baseline also disables (Story 18.32).</p>
 Parameter RESTAPIDELETE = "webapp.restapis.delete";
 
+/// <p>The allowed directories update, which the baseline also disables (Story 18.42).</p>
+Parameter ALLOWLISTUPDATE = "security.alloweddirectories.update";
+
 /// <p>Story 18.4's eight disk operations, which the baseline disables.</p>
 Parameter DISKOPERATIONS = "osmgmt.databasedetails.compact,osmgmt.databasedetails.defragment,osmgmt.databasedetails.dismount,osmgmt.databasedetails.mount,osmgmt.databasedetails.truncate,osmgmt.databases.integrity,osmgmt.localdatabases.expand,osmgmt.localdatabases.grow";
 
@@ -172,6 +175,7 @@ Method TestTheDefaultEnablesEveryWriteButTheBaselineDisabled()
         If $ListFind($ListFromString(..#ECPDISABLED), tKey) Set tExpected = "0|baseline"
         If $ListFind($ListFromString(..#ENCRYPTIONDISABLED), tKey) Set tExpected = "0|baseline"
         If $ListFind($ListFromString(..#WALLETKEYDISABLED), tKey) Set tExpected = "0|baseline"
+        If tKey = ..#ALLOWLISTUPDATE Set tExpected = "0|baseline"
         If ..Resolved(tKey) '= tExpected Set tWrong = tWrong _ $ListBuild(tKey _ "=" _ ..Resolved(tKey))
     }
     Do $$$AssertTrue(tCount > 0, "there are write keys to resolve (" _ tCount _ ")")

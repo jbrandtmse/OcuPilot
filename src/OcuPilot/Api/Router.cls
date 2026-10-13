@@ -264,6 +264,7 @@ XData UrlMap [ XMLNamespace = "http://www.intersystems.com/urlmap" ]
   <Route Url="/interop/items" Method="POST" Call="InteropItemCreate"/>
   <Route Url="/interop/lookup-entries" Method="POST" Call="InteropLookupEntryCreate"/>
   <Route Url="/rest-service" Method="POST" Call="RestServiceCreate"/>
+  <Route Url="/allowed-directories" Method="POST" Call="AllowedDirectorySave"/>
 </Routes>
 }
 
@@ -1984,6 +1985,13 @@ ClassMethod RoutineAppCreate() As %Status
 ClassMethod RestServiceCreate() As %Status
 {
     Quit ##class(OcuPilot.Area.WebApp.RestServiceSave).HandleCreate()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /allowed-directories</code> (Story 18.42): the Allowed directories
+/// screen's add, change and remove, resolved through the one tool only this route reaches (AD-55).</p>
+ClassMethod AllowedDirectorySave() As %Status
+{
+    Quit ##class(OcuPilot.Area.Security.AllowedDirectorySave).HandleSave()
 }
 
 }

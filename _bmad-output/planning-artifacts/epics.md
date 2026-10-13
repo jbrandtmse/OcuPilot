@@ -7855,6 +7855,7 @@ So that the person's write Story 18.42 adds is reachable where the list is shown
 - **Given** the key disabled (as shipped)
 - **When** the screen is shown
 - **Then** the actions are shown off with the reason, and nothing is written.
+- DW-2334: The allow-list's write has its server half (Story 18.42's route, tool and port); the screen's add, change and remove dialog is the surface still missing (ledger; routed by adjudication 2026-10-13)
 
 ## Epic 19: Stage 3 - System Explorer over the Atelier API
 
