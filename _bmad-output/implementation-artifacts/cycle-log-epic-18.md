@@ -1557,3 +1557,7 @@ TAB-separated: `<UTC>\t<Story <id> | Epic <N>>\t<stage>\t<metadata>`
 2026-10-13T20:36:29Z	Story 18.38	fresh_check_started	throwaway=ocupilot-ci rebuilt(down+up,healthy 20:32:51Z) load=LOAD-OK,STARTPATH-OK bundle=1.91MB_deployed browser=messages-log+alerts-log_13/13_together,reverse_7/7+6/6 offered=631 chunks=30
 2026-10-13T20:36:29Z	Story 18.38	stage_spawned	stage=full-sweep spawn_at=2026-10-13T20:36:29Z model=sonnet agent_name=18-38-sweep-1 prompt=carry-2026-10-10/epic-18-r/sweep-1838-prompt.md run_in_background=false
 2026-10-13T22:09:22Z	Story 18.38	full_sweep_complete	spawn_at=2026-10-13T20:36:29Z model=sonnet agent_name=18-38-sweep-1 classes=631 tests=4936 failed=0 chunks=30 leftovers=0 window=20:36:41Z-22:08:54Z note=pre-DW-2395_tree
+2026-10-13T22:11:06Z	Epic 18	integrate_forward	feature=514d35ba(20.7;DW-2395_filed) head=434c7992 conflicts=sprint-status_only dup_check=empty
+2026-10-13T22:11:06Z	Epic 18	orchestrator_rulings	DW-2395=re-owned_to_18.38(fix_before_push;close_null_device_only_if_opened;probe_test;interop-editors_spec_on_fresh_throwaway) 20.7=merged(forward-merge_before_18.38_head)
+2026-10-13T22:11:06Z	Story 18.38	rework_opened	cycle_iteration=3 iteration=2 trigger=routed_defect(orchestrator) items=DW-2395 scope_baseline=434c7992
+2026-10-13T22:11:06Z	Story 18.38	stage_spawned	stage=implement spawn_at=2026-10-13T22:11:06Z model=sonnet agent_name=18-38-live-log-tail-implement-4 cycle_iteration=3 prompt=carry-2026-10-10/epic-18-r/implement-1838-rw2-prompt.md run_in_background=false

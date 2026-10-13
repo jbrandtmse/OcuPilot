@@ -2,7 +2,7 @@
 title: 'Story 18.38: The live log tail'
 type: 'feature'
 created: '2026-10-12'
-status: 'done'
+status: 'in-progress'
 baseline_revision: 'd70b927352498488bc64fa5dcfc19af35598b5fe'
 baseline_commit: 'd70b927352498488bc64fa5dcfc19af35598b5fe'
 review_loop_iteration: 0
@@ -177,6 +177,11 @@ Rejected:
   - The leg's `until` copies a poll loop (Rule 2): its exported sibling is in `interop-editor-spec.mjs`, Epic 20's contended interop-editor helper, and importing it would tie this spec to that area; browser specs keep their own (`system-explorer-documatic` too).
   - `heldUntilAborted` (`api.test.mjs`) repeats `halfOpenFetch` (`refresh-connectivity.wire.test.mjs`): importing a test module re-registers its tests, and the copy is six lines.
 
+
+### Rework 2 (orchestrator, 2026-10-13: DW-2395, routed from Epic 20)
+
+- [ ] [Review] DW-2395: `LogSourcePort.IntegrityReport` opens and then unconditionally closes the null device in the web process; the vendor's `CompileDTL` and `CompileBPL` routes `Use` that device without opening it, so after any integrity report a later DTL or BPL compile in the same CSP process fails `<NOTOPEN>` (Epic 20's 20.7 measured it in CI). Fix: record whether the null device was already open before `IntegrityReport` opens it, and close it only if `IntegrityReport` opened it, leaving the process's device state (open devices and the current device) as it found it, on every path including a raise. Pin it with a test: with the null device already open in the test's process, an integrity report, then a `Use` of the null device that does not open it first, succeeds; and with it not open beforehand, it is not left open. Write its `mutation:` line (the unconditional close restored goes red). Then run `ui/browser/interop-editors.browser-spec.mjs` once on a rebuilt and redeployed bundle (its NOTOPEN tolerance is still in the file; record whether the notice appeared).
+
 ## Spec Change Log
 
 - 2026-10-13, lead, implement halt (Task 0 e), Rule 5 tier 1: the vendor does not fail a heartbeat after a client disconnects, so the matrix's "Client gone" row now reads that a dropped socket's wait runs to the bound (at most `BoundSeconds`, one CSP process, nothing logged), the bounded hold the Design Notes already name; the cursor is required whole (`EndpointCoverage`'s bare probe draws `LOG.OFFSET`). AD-12's carve-out names the two response properties Task 0 b measured. Resumed at review (`in-review`) over the uncommitted implementation.
@@ -184,6 +189,8 @@ Rejected:
 - 2026-10-13, lead spec gate: "For the lead" applied (AD-12's second carve-out and AD-43's live tail in the spine; EXPERIENCE.md :646, :848, :899 in place, line count unchanged, `test:tools` 1948/1948). `Descriptor.cls` :1076 and :1120 are the Rule 11 ask to the orchestrator.
 
 ## Review Triage Log
+
+- 2026-10-13, rework 2: DW-2395 re-owned to 18.38 by the orchestrator (LogSourcePort is this story's file): close the null device only if `IntegrityReport` opened it.
 
 - 2026-10-13, rework 1: DW-2392 decided (orchestrator, ruling B): abort an abandoned tail through an optional signal on `core/api.ts`.
 
