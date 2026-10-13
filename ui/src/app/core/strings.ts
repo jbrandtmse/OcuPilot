@@ -6115,6 +6115,34 @@ export const STRINGS = {
   metricsPrompt2: 'How busy is the instance right now: CPU, cache efficiency and global references?',
   /** EXPERIENCE.md:603 */
   metricsPrompt3: 'What do the Web Gateway metrics read?',
+  /** EXPERIENCE.md:603 */
+  interopUsageLabel: 'Interoperability usage',
+  /** EXPERIENCE.md:603 */
+  interopUsageInterfacesTab: 'Interfaces',
+  /** EXPERIENCE.md:603 */
+  interopUsageVolumeLabel: 'Message volume',
+  /** EXPERIENCE.md:603 */
+  interopUsageImpactLabel: 'Database impact',
+  /** EXPERIENCE.md:603 */
+  interopUsageColumnProtocol: 'Protocol',
+  /** EXPERIENCE.md:603 */
+  interopUsageColumnDataCreated: 'Data created (MB)',
+  /** EXPERIENCE.md:603 */
+  interopUsageAll: 'All',
+  /** EXPERIENCE.md:603 */
+  interopUsageInterfacesEmpty: 'The instance has recorded no interoperability interfaces.',
+  /** EXPERIENCE.md:603 */
+  interopUsageVolumeEmpty: 'The instance has recorded no message volume.',
+  /** EXPERIENCE.md:603 */
+  interopUsageImpactEmpty: 'The instance has recorded no database impact from message activity.',
+  /** EXPERIENCE.md:603 */
+  interopUsageNote: 'Counts cover all the usage data the instance still keeps, with no date range.',
+  /** EXPERIENCE.md:603 */
+  interopUsagePrompt1: 'How many interoperability interfaces are active, and in which namespaces?',
+  /** EXPERIENCE.md:603 */
+  interopUsagePrompt2: 'Which namespace has sent and received the most messages?',
+  /** EXPERIENCE.md:603 */
+  interopUsagePrompt3: 'Which database has grown the most from message activity?',
   /** EXPERIENCE.md:604 */
   agentPickerLabel: 'Agent definition: <name>',
   /** EXPERIENCE.md:604 */

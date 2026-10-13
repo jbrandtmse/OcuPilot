@@ -1080,20 +1080,20 @@ export function sqlActivityEndpoint() {
 /** The one request type a `sqlactivity` source declares. */
 export const SQLACTIVITY_READ_TYPE = 'LIST';
 
-/** Where `OcuPilot.Port.MonitorPort` declares the one endpoint a `monitor` read names. */
+/** Where `OcuPilot.Port.MonitorPort` declares the endpoints a `monitor` read names. */
 export const MONITOR_PORT_SOURCE = join(REPO_ROOT, 'src', 'OcuPilot', 'Port', 'MonitorPort.cls');
 
-let monitorEndpointCache;
+let monitorEndpointsCache;
 
 /**
- * The endpoint `OcuPilot.Port.MonitorPort`'s `ENDPOINT` parameter declares, read from its own class as
- * the background port's is, or `null` when the parameter is missing.
+ * The endpoints `OcuPilot.Port.MonitorPort`'s `ENDPOINTS` parameter declares, read from its own class as
+ * the interop port's are, or `null` when the parameter is missing.
  */
-export function monitorEndpoint() {
-  if (monitorEndpointCache === undefined) {
-    monitorEndpointCache = parseBackgroundEndpoint(readFileSync(MONITOR_PORT_SOURCE, 'utf8'));
+export function monitorEndpoints() {
+  if (monitorEndpointsCache === undefined) {
+    monitorEndpointsCache = parseInteropEndpoints(readFileSync(MONITOR_PORT_SOURCE, 'utf8'));
   }
-  return monitorEndpointCache;
+  return monitorEndpointsCache;
 }
 
 /** The one request type a `monitor` source declares. */
@@ -1419,22 +1419,22 @@ export function readProblem(declaration) {
       return `read.source.${declared} is declared on a sqlactivity source, which answers the running statements whole (AD-36)`;
     }
   }
-  // A monitor source lists the instance's Prometheus metrics through `OcuPilot.Port.MonitorPort`, which
-  // answers every sample of one collection whole behind its own gate (AD-29, AD-36, Story 18.11): the
-  // port's own endpoint, a LIST, and nothing the port would have to issue per row, per parent, under a
-  // fixed query or in parts.
+  // A monitor source lists the instance's Prometheus metrics or its interoperability usage through
+  // `OcuPilot.Port.MonitorPort`, which answers each endpoint whole behind its own gate (AD-29, AD-36,
+  // Stories 18.11 and 18.37): one of the port's endpoints, a LIST, and nothing the port would have to
+  // issue per row, per parent, under a fixed query or in parts.
   if (source.port === SOURCE_MONITOR) {
-    const endpoint = monitorEndpoint();
-    if (endpoint === null) return `${MONITOR_PORT_SOURCE} declares no 'Parameter ENDPOINT'`;
-    if (source.endpoint !== endpoint) {
-      return `read.source.endpoint '${source.endpoint}' is not the monitor port's endpoint ('${endpoint}') (AD-29)`;
+    const endpoints = monitorEndpoints();
+    if (endpoints === null) return `${MONITOR_PORT_SOURCE} declares no 'Parameter ENDPOINTS'`;
+    if (!endpoints.includes(source.endpoint)) {
+      return `read.source.endpoint '${source.endpoint}' is not one of the monitor port's endpoints ('${endpoints.join("', '")}') (AD-29)`;
     }
     if (source.type !== MONITOR_READ_TYPE) {
-      return `read.source.type '${source.type}' is declared on a monitor source, which lists the instance's Prometheus metrics (AD-36)`;
+      return `read.source.type '${source.type}' is declared on a monitor source, which lists the instance's metrics and interoperability usage (AD-36)`;
     }
     const declared = PATH_REFUSED_SOURCE_KEYS.find((key) => source[key] !== undefined && source[key] !== null);
     if (declared !== undefined) {
-      return `read.source.${declared} is declared on a monitor source, which answers the metrics whole (AD-36)`;
+      return `read.source.${declared} is declared on a monitor source, which answers its list whole (AD-36)`;
     }
   }
   // An interop source lists the namespace's productions or interoperability classes through

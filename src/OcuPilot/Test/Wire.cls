@@ -737,6 +737,16 @@ Method TestTheProcessesListIsDeniedToAPrincipalWithoutAdminManage()
     ; unlisted SSL/TLS authorizations tab sorts between the ECP data server editor and the global
     ; mapping editor, each denied on %Admin_Manage:USE; each is asserted here and taken out, so the
     ; roster below stays the one before it.
+    ; Story 18.37 lists Interoperability usage last, after Prometheus metrics, denied on %DB_IRISSYS:READ,
+    ; the second of its pairs, and its unlisted Database impact and Message volume tabs sort between the
+    ; global mappings list and the journal file databases, denied on the same pair; each is asserted here
+    ; and taken out, so the roster below stays the one before it.
+    Set tInteropUsage = ",{""route"":""os-management/interoperability-usage"",""labelKey"":""interopUsageLabel"",""sideBarPosition"":22,""allowed"":false,""failedPair"":""%DB_IRISSYS:READ""}]"
+    Do $$$AssertEquals($Extract(tScreens, *-$Length(tInteropUsage)+1, *), tInteropUsage, "Interoperability usage is listed last, after Prometheus metrics, denied on %DB_IRISSYS:READ")
+    Set tScreens = $Extract(tScreens, 1, *-$Length(tInteropUsage)) _ "]"
+    Set tInteropTabs = ",{""route"":""os-management/interoperability-usage/impact"",""labelKey"":""interopUsageImpactLabel"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%DB_IRISSYS:READ""},{""route"":""os-management/interoperability-usage/volume"",""labelKey"":""interopUsageVolumeLabel"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%DB_IRISSYS:READ""}"
+    Do $$$AssertTrue(($Find(tScreens, "os-management/namespaces/global-mappings/edit") < $Find(tScreens, tInteropTabs)) && ($Find(tScreens, tInteropTabs) < $Find(tScreens, "os-management/journals/databases")), "the unlisted Database impact and Message volume tabs sort between the global mappings list and the journal file databases, denied on %DB_IRISSYS:READ")
+    Set tScreens = $Replace(tScreens, tInteropTabs, "")
     ; Story 18.11 lists Prometheus metrics last, after SQL activity, denied on %DB_IRISSYS:READ, the
     ; second of its pairs; it is asserted here and taken off the end.
     Set tMetrics = ",{""route"":""os-management/metrics"",""labelKey"":""metricsLabel"",""sideBarPosition"":21,""allowed"":false,""failedPair"":""%DB_IRISSYS:READ""}]"

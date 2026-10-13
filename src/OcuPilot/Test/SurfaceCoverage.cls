@@ -223,6 +223,9 @@ XData Coverage
 <screen name="SqlAdminPrivilegeList" class="OcuPilot.Test.SqlPrivilegeDescriptor" method="TestTheColumnAndAdminScreensAreDeclared" corpus="one declaration test pins both Story 18.28 sub-resource screens in one loop"/>
 <screen name="SqlActivityList" class="OcuPilot.Test.SqlActivityDescriptor" method="TestTheDescriptorShape"/>
 <screen name="MetricsList" class="OcuPilot.Test.MetricsDescriptor" method="TestTheDescriptorShape"/>
+<screen name="InteropUsageTab" class="OcuPilot.Test.InteropUsageDescriptor" method="TestTheThreeTabsDeclareTheirReadsAndFormOneGroup" corpus="the three Interoperability usage tabs are asserted together in one loop"/>
+<screen name="InteropUsageVolumeTab" class="OcuPilot.Test.InteropUsageDescriptor" method="TestTheThreeTabsDeclareTheirReadsAndFormOneGroup" corpus="the three Interoperability usage tabs are asserted together in one loop"/>
+<screen name="InteropUsageImpactTab" class="OcuPilot.Test.InteropUsageDescriptor" method="TestTheThreeTabsDeclareTheirReadsAndFormOneGroup" corpus="the three Interoperability usage tabs are asserted together in one loop"/>
 <screen name="InteropProductionList" class="OcuPilot.Test.InteropDescriptor" method="TestTheFourDeclarationsRegister" corpus="one declaration test pins all four Story 20.2 Interoperability screens in one loop"/>
 <screen name="InteropProcessList" class="OcuPilot.Test.InteropDescriptor" method="TestTheFourDeclarationsRegister" corpus="one declaration test pins all four Story 20.2 Interoperability screens in one loop"/>
 <screen name="InteropTransformList" class="OcuPilot.Test.InteropDescriptor" method="TestTheFourDeclarationsRegister" corpus="one declaration test pins all four Story 20.2 Interoperability screens in one loop"/>

@@ -2,9 +2,10 @@
 title: 'Story 18.37: Interoperability usage'
 type: 'feature'
 created: '2026-10-12'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: '6ec2d9db4144ccd1fcfe8895e50a1ebe2463fc6e'
 review_loop_iteration: 0
-followup_review_recommended: false
+followup_review_recommended: true
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-18-context.md'
   - '{project-root}/_bmad-output/implementation-artifacts/spec-18-11-monitoring-extras-and-the-live-log-tail.md'
@@ -99,6 +100,23 @@ Under `src/OcuPilot/` unless `ui/`, at `54af93be`.
 
 ## Review Triage Log
 
+### 2026-10-13 - Review pass
+
+- verdicts: 12 findings - high 0, medium 2, low 8, false 2, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` Verification gap: the real `UsageSource` arms (arguments, date window, column reads) are replaced wholesale by the fixture, so the live tests assert no row floor - patched: `TestTheLiveReadsHoldEveryRowTheVendorQueriesAnswer` compares each live read with the vendor query run directly in `%SYS`, the signature test now pins the port's fields to the queries' `ROWSPEC` columns, and the real source's refusal of an unknown endpoint is asserted; mutations recorded (runs 686, 689).
+  - `[low]` `[patch]` `InteropUsageGate` doc comment says skipping the port's gate alone reddens both legs, against the recorded run 654; the NoOperate leg and the 401 clause have no mutation of their own - comment corrected to the recorded compound mutation; the port gate alone is pinned by `InteropUsagePort`, Rule 19 asks one mutation per AC, and 401 is the web application's authentication.
+  - `[low]` `[patch]` Browser spec comment names a mutation (Message volume tab given the Interfaces endpoint) that would not redden its count leg, because the route read follows the same descriptor - comment replaced by the recorded note-key mutation; the endpoint is pinned by `InteropUsageDescriptor`.
+  - `[low]` `[reject]` The Integration mutation (`Interfaces` out of `ENDPOINTS`) reddens `ToolRoundTrip` through the registry rather than through a result schema - the schema and row-bound clause is carried by `TestTheThreeReadToolsAnswerTheLiveRows`, whose own mutation (run 674) is recorded; a second `ToolRoundTrip` mutation would prove the same tool list again.
+  - `[low]` `[patch]` Intent alignment: the message volume tab reads `MetricsTotalPerNamespace` and the interfaces tab reads `InteropInterfaces` with every grouping on, where the classic page reads `MetricsPerType` and `MetricsPerNamespace` per day and `InteropInterfaces` per view - the choice is the spec's own (Task 1 table, Design Notes named limits: no date range, no per-day row), same vendor classes and `Fetch`; the doc comments that called them "the classic page's queries" are corrected.
+  - `[medium]` `[patch]` Intent alignment: the "Nothing recorded" row is exercised only by the live Database impact read happening to be empty, and no test arms an empty list - patched: `TestAnEmptyListIsAnsweredWholeNotAsAFault` and `TestAnEmptyListReadsAsNoRows` arm `[]`; mutation recorded (runs 687, 688). On a fresh instance Interfaces still answers the vendor's zero-count totals rows, so its empty state shows only when the vendor answers none.
+  - `[low]` `[patch]` Intent alignment: the wire test cannot tell the port's gate from the screen's own gate - same root cause as the gate-comment row; corrected there.
+  - `[low]` `[reject]` Intent alignment: the 401 clause lives in the web application's authentication - no code in the diff can change it, the spec's mutation line says so, and the test pins the deployment.
+  - `[low]` `[reject]` Intent alignment: the production `UsageSource` error legs (`%New`, `Execute`, `Next`) have no retained test - the unknown-endpoint leg is now asserted; the others return the vendor's status unchanged, the fixture's error mode exercises `Usage`'s handling of it, and a deterministic vendor fault cannot be provoked.
+  - `[false]` `[reject]` Intent alignment: `emptyKey` reads "All" for any empty namespace or protocol cell, not only totals rows - an empty protocol on a per-namespace row aggregates all protocols, so "All" is accurate, and Task 3 declares it per column.
+  - `[low]` `[reject]` Intent alignment: one list per tab, with the page's Date column and per-namespace impact views dropped - a named limit in the spec (a `monitor` read takes no criteria; the vendor's own documentation says per-namespace impact double-counts shared databases).
+  - `[false]` `[reject]` Intent alignment: `MonitorPort`'s header and the `MetricsDescriptor` sentence edits - the header's claim (the only product class that names `SYS.Monitor.SAM.Sensors`) still holds, since `UsageSource` names none, and the sentence union is the one the orchestrator pre-authorized.
+
 ## Design Notes
 
 **Measured on `ocupilot`** (read-only, 2026-10-12): `InteropInterfaces(NULL,NULL,NULL,NULL,NULL,1,1,1,0)` answered 16 rows, Inbound and Outbound totals among them, changing no activity row; a SQL `''` start raised `<ZDPT2>` (pass `""`); volume and impact were empty; `/api/monitor/interop/v1/current/interfaces` answered 200 anonymously.
@@ -132,9 +150,52 @@ Under `src/OcuPilot/` unless `ui/`, at `54af93be`.
 
 **Mutations (Rule 19)**, as `mutation:` lines: C1, `Invoke` skips `Gate` for them (the gate tests); C2, `Active` as text, no cut, no namespace restore (`InteropUsagePort`); C3, either registry's arm admitting any endpoint (the corpus, "Story 18.37"); C4, `InteropUsageTab` unlisted, rebuilt and redeployed (the browser spec); Integration, `Interfaces` out of `ENDPOINTS` (`ToolRoundTrip`).
 
+**Task 0 findings** (`ocupilot-ci`, 2026-10-13; S0 held before; no production runs, `GetProductionStatus` reads stopped in USER and HSCUSTOM; the classic queries' sources read from `%SYS`).
+
+- (a) As `_SYSTEM`: `Interfaces` Type, Namespace, Protocol, Count, Active, 23 rows (first four Inbound `""` `""` 0 1; Inbound 0 0; Outbound 0 1; Outbound 74 0), 257.6 ms; `MessageVolume` Namespace, Type, Volume, 2 rows (USER Inbound 80, USER Outbound 18), 35.4 ms; `DatabaseImpact` Database, DataCreated, 0 rows, 57.7 ms. With a namespace filter naming none, `InteropInterfaces` still answers six totals rows (Inbound, Outbound and Web API, Active 1 and 0, Count 0): the totals rows exist before any production runs.
+- (b) `$ZCRC` of every node of the seven populated `^IRIS.Metrics*` globals (InterfaceActD 606 nodes, InterfaceActI 140, InterfaceD 123, InterfaceI 138, InteropMsgs 1, InteropMsgsD 3, InteropMsgsI 2) and of the empty `InteropDBImpactD`, `InteropDBImpactI` and `Interop`, before and after each query: unchanged, and the populated set unchanged. No halt.
+- (c) `OcuProbe1837T0` (`%Admin_Operate:U,%DB_IRISSYS:R`): 23, 2 and 0 rows, as (a). `OcuProbe1837T0No` (`%Admin_Manage:U,%DB_IRISSYS:R`): `InteropInterfaces` SQLCODE -99 "User ... is not privileged for the operation", and `MetricsTotalPerNamespace` and `Impact` `<PROTECT>` on `^IRIS.Metrics.InteropMsgsI("ConstraintIndex",0)` and `^IRIS.Metrics.InteropDBImpactI("TimeStampIndex","1840-12-31")` (SQLCODE -400); no rows, `$ZCRC` unchanged. The vendor does not escalate unchecked, so no halt. The two principals, a scratch class and its copied file were removed.
+- (d) `NormalizePage` of `/csp/sys/op/%CSP.UI.Portal.InteroperabilityUsage.zen` (also with `%25`) answers `%CSP.UI.Portal.InteroperabilityUsage`; its `RESOURCE` is `%Admin_Operate`.
+
+**Sizes.** Initial total 1.91 MB (1,861.7 kB of the files `index.html` loads) against `maximumWarning` 1992 kB, no warning; the largest lazy chunk `data-browser-page` 83.32 kB against the 88 kB cap, unchanged. Fixed strings 3,326 to 3,340 of 3,400.
+
+**Runs** (`ocupilot-ci`, indexes from `%UnitTest_Result`): `InteropUsagePort` 690 (9), `InteropUsageDescriptor` 691 (6), `InteropUsageGate` 692 (3), `MonitorPort` 681, `MetricsDescriptor` 682, `MetricsGate` 683; sweep `ReadTool` 634, `SurfaceCoverage` 635, `StageTwoTools` 636, `Navigation` 637, `Descriptor` 638, `ToolEmit` 639, `ToolRoundTrip` 640, `ToolDispatch` 641, `Wire` 642, `WireAreaAnyScreen` 643, `PortGate` 644, `ClassicPageGate` 645, `WireSecurityRead` 646, `DeveloperFloor` 647, `InteropFloor` 648 to `InteropFloorTurn` 651, `ScreenRead` 652, `DashboardDrillDown` 653. Client: `test:tools` 1959 of 1959, `test:components` 3028 of 3028, `interop-usage.browser-spec.mjs` 4 of 4 on a rebuilt and redeployed bundle. `check-objectscript` 0 problems, `lint-docs` 0 issues.
+
+**Recorded mutations**, each applied on `ocupilot-ci` with the class recompiled (the bundle rebuilt and redeployed) and reverted byte-identical:
+
+- mutation: C1, `Invoke` skips `Gate` for the three usage endpoints -> `InteropUsagePort` `TestAMissingPairIsRefusedBeforeAnyQuery` red (run 655) and `InteropUsageDescriptor` `TestAFaultFailsTheReadAndAMissingPairRefusesIt` red (run 656), `InteropUsageGate` green (run 654) because the screen's own gate also refuses; with the three descriptors declaring `%Admin_Operate:USE` alone and the Registry's system-database arm relaxed for `monitor` as well -> `InteropUsageGate` `TestEachMissingPairIsRefusedByName` red on the NoSys leg of all three tools (run 657).
+- mutation: C2, `Active` answered as text -> `InteropUsagePort` `TestEachListTypesItsFieldsAndKeepsATotalsRow` and `TestTheLiveQueriesAnswerExactlyTheirFields` red (run 658), `InteropUsageDescriptor` `TestEachReadAnswersItsArmedRowsAndReportsTheCut` red (run 659); numbers answered as text -> the same two port tests red (run 677); the cut dropped from `Usage` -> `TestEachListIsCutAtTheCap` red (run 660); no switch to `%SYS` -> `TestTheQueryRunsInSysAndTheCallersNamespaceIsRestored` and the live test red (run 676); no restore after `UsageSource` -> `TestAMissingPairIsRefusedBeforeAnyQuery` red (run 662) and the descriptor read test red (run 663); no restore in the `Catch` -> `TestAQueryThatRaisesOrErrsFailsTheWholeRead` red (run 664) and the descriptor fault test red (run 665); the status test after `UsageSource` dropped -> the erring leg red (run 675); `Usage` answering no rows -> `InteropUsageGate` `TestTheExactPairsReadAllThree` red (run 666), the port (run 667) and descriptor (run 668) read tests red.
+- mutation: C2 (the live read holds every row the vendor query answers), the interfaces call in `UsageSource` narrowed to `1, 0, 0, 0` -> `InteropUsagePort` `TestTheLiveReadsHoldEveryRowTheVendorQueriesAnswer` red alone (run 686); a field renamed in `FIELDSDATABASEIMPACT` -> `TestTheVendorQueriesKeepTheirSignatures` and `TestEachListTypesItsFieldsAndKeepsATotalsRow` red (run 689).
+- mutation: Nothing recorded, `Usage` failing a source that answers no rows -> `InteropUsagePort` `TestAnEmptyListIsAnsweredWholeNotAsAFault` red (run 687) and `InteropUsageDescriptor` `TestAnEmptyListReadsAsNoRows` red (run 688); each reverted byte-identical, then 690 and 691 green.
+- mutation: C3, the Registry's monitor arm admitting any endpoint -> `InteropUsageDescriptor` `TestTheMonitorSourceAdmitsItsFourEndpointsAndRefusesTheRest` red (run 669) and `MetricsDescriptor` `TestTheMonitorSourceRefusals` red (run 670); the mirror's arm admitting any endpoint -> "Story 18.37" and "Story 18.11" in `screen-mirror.test.mjs` red.
+- mutation: C4, `InteropUsageTab` unlisted (`sideBarPosition` 0), mirror regenerated, bundle rebuilt and redeployed -> `interop-usage.browser-spec.mjs` side-bar test red alone ("Interoperability usage is the twenty-second"); `emptyKey` dropped from the Namespace and Protocol columns and the Message volume tab's note key changed, together -> the totals test and the note test red, the side-bar and DW-1337 tests green; each reverted, the mirror byte-identical, rebuilt and redeployed -> 4 of 4.
+- mutation: C4 (declarations), `PAIRS` without `%DB_IRISSYS:READ`, `refreshes` true on the Message volume tab and the Protocol `emptyKey` dropped -> `InteropUsageDescriptor` `TestTheThreeTabsDeclareTheirReadsAndFormOneGroup` red on the pairs, refresh and columns legs (run 673); `SOURCEMONITOR` out of `OcuPilot.Screen.Read.Execute`'s source list -> `InteropUsageDescriptor` read, fault and tool tests red (run 674).
+- mutation: Integration, `Interfaces` out of `ENDPOINTS` -> `ToolRoundTrip` both tests red (run 671: the registry refuses `InteropUsageTab`, so the tool list does not build) and `InteropUsageDescriptor` red (run 672).
+- C1's 401 clause (`InteropUsageGate` `TestARequestWithNoCredentialsIsRefused`) has no mutation: the web application's authentication answers it before any OcuPilot code runs (inference), so the test pins the deployment.
+
 **S0:** no `OcuProbe1837*` user or role, no scratch class.
 
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
+
+**Summary.** `MonitorPort` gains the endpoints `Interfaces`, `MessageVolume` and `DatabaseImpact`, answered by the vendor's interoperability usage class queries run in `%SYS` behind the port's gate, typed and cut at the cap (`Usage`, overridable `UsageSource`). Three `os-management/interoperability-usage` descriptor tabs and their three read tools, 14 strings, and both registries' `monitor` arm now admit the four endpoints. Task 0 found no halt: the principal without `%Admin_Operate` reads no row, so the vendor does not escalate unchecked; `^IRIS.Metrics*` is unchanged by the queries.
+
+**Files changed.**
+
+- Port and registries: `Port/MonitorPort.cls`, `Screen/Read.cls`, `Screen/Registry.cls`, `ui/tools/screen-mirror.mjs`, `ui/src/app/core/screens.generated.ts` (regenerated).
+- Screens and strings: `Screen/Descriptor/InteropUsageTab.cls`, `InteropUsageVolumeTab.cls`, `InteropUsageImpactTab.cls`; `ui/src/app/core/strings.ts`; `EXPERIENCE.md` (lines 164 and 603, line count unchanged).
+- New tests: `Test/InteropUsagePort.cls`, `InteropUsageDescriptor.cls`, `InteropUsageGate.cls`, `InteropUsageProbe.cls`, `ui/browser/interop-usage.browser-spec.mjs`.
+- Shared-surface edits (Rule 30 sweep): `Test/MonitorPortFixture`, `MetricsDescriptor`, `ReadTool`, `Navigation`, `Wire`, `WireAreaAnyScreen`, `WireSecurityRead`, `StageTwoTools`, `SurfaceCoverage`, `Descriptor`; `scripts/ci-throwaway.sh` (one arming line); `ui/tools/navigation.test.mjs`, `screen-mirror.test.mjs`, `side-bar-pins.test.mjs`; `ui/src/app/shell/area-verdict.spec.ts`.
+
+**Review.** Two layers (verification-gap, intent-alignment), 12 findings: patches applied 6 (medium 2, low 4), deferred 0, rejected 6 with the reasons in the triage log. The patches add tests only (a live read compared with the vendor query run directly, the port's fields pinned to the queries' columns, an armed empty list at the port and at the tab) and correct four comments and doc comments. Follow-up review recommended: true, because two medium findings were patched. The unreviewed risk is the new `TestTheLiveReadsHoldEveryRowTheVendorQueriesAnswer`, which reads live vendor data twice and holds only while no production writes between the reads (none runs on a throwaway).
+
+**Verification.** `ocupilot-ci` loaded `LOAD-OK` / `STARTPATH-OK`; final runs `InteropUsagePort` 690 (9 of 9), `InteropUsageDescriptor` 691 (6 of 6), `InteropUsageGate` 692 (3 of 3); the earlier sweep runs, the client tiers and the browser spec (4 of 4) are recorded under `## Verification`, with the nine mutations, each reverted byte-identical. After the patches, `npm run test:tools` passed 1959 of 1959, `check-objectscript` and `lint-docs` report 0 problems, and `screen-mirror.mjs --check` is up to date. Bundle: initial 1.91 MB (1,861.7 kB of the files `index.html` loads) against the 1992 kB warning; largest lazy chunk `data-browser-page` 83.32 kB against 88 kB. `ocupilot-ci` reads S0.
+
+**Residual risks.**
+
+- Two of the three tabs read vendor queries the classic page does not call itself (`MetricsTotalPerNamespace`, and `InteropInterfaces` with every grouping on), by the spec's design; a reader of the intent's "the classic page's class queries" may expect the page's per-day lists.
+- On an instance with no recorded activity the Interfaces tab shows the vendor's zero-count totals rows, not its empty state.
+- The Database impact tab's non-empty rendering is pinned by armed rows at the port and the tab, not by a live browser row.
+- Merge with Epic 20: `Test/ReadTool.cls` lines 93-94, `EXPERIENCE.md`, `strings.ts`, `ci-throwaway.sh`, `SurfaceCoverage` and `screens.generated.ts` (regenerate with `node tools/screen-mirror.mjs`) overlap its diff.

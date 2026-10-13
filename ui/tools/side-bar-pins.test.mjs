@@ -41,6 +41,7 @@ const SIDE_BAR_SPECS = [
   'encryption-key-file.browser-spec.mjs',
   'encryption-keys.browser-spec.mjs',
   'interop-productions.browser-spec.mjs',
+  'interop-usage.browser-spec.mjs',
   'journal-settings.browser-spec.mjs',
   'journals.browser-spec.mjs',
   'license-key.browser-spec.mjs',
