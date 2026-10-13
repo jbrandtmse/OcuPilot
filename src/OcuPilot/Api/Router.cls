@@ -265,6 +265,7 @@ XData UrlMap [ XMLNamespace = "http://www.intersystems.com/urlmap" ]
   <Route Url="/interop/lookup-entries" Method="POST" Call="InteropLookupEntryCreate"/>
   <Route Url="/rest-service" Method="POST" Call="RestServiceCreate"/>
   <Route Url="/allowed-directories" Method="POST" Call="AllowedDirectorySave"/>
+  <Route Url="/allowed-directories" Method="GET" Call="AllowedDirectoryState"/>
 </Routes>
 }
 
@@ -1992,6 +1993,13 @@ ClassMethod RestServiceCreate() As %Status
 ClassMethod AllowedDirectorySave() As %Status
 {
     Quit ##class(OcuPilot.Area.Security.AllowedDirectorySave).HandleSave()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /allowed-directories</code> (Story 18.46): the Allowed directories
+/// screen's verdict on the governance key its write asks, which it draws Add, Change and Remove off with.</p>
+ClassMethod AllowedDirectoryState() As %Status
+{
+    Quit ##class(OcuPilot.Area.Security.AllowedDirectorySave).HandleState()
 }
 
 }

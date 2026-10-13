@@ -1618,6 +1618,30 @@ app-source-viewer-page {
   clip-path: none;
 }
 
+// The primary action held back by its registrant (Story 18.46): drawn as the Send control is when it is gated, `restrained`
+// and never faded, with the reason revealed on keyboard focus as a row action's is.
+.ocu-command-bar-primary[aria-disabled='true'],
+.ocu-data-table-empty-action[aria-disabled='true'] {
+  background: var(--ocu-restrained-container);
+  color: var(--ocu-restrained);
+  cursor: default;
+}
+
+.ocu-command-bar-primary[aria-disabled='true']:hover,
+.ocu-command-bar-primary[aria-disabled='true']:active,
+.ocu-data-table-empty-action[aria-disabled='true']:hover,
+.ocu-data-table-empty-action[aria-disabled='true']:active {
+  background: var(--ocu-restrained-container);
+}
+
+.ocu-command-bar-primary:focus-visible + .ocu-command-bar-reason {
+  width: auto;
+  height: auto;
+  padding: 5px 8px;
+  overflow: visible;
+  clip-path: none;
+}
+
 .ocu-command-bar-spacer {
   flex: 1 1 auto;
 }
@@ -2590,6 +2614,15 @@ app-data-table {
 
 .ocu-data-table-empty-next {
   @include typo.ocu-type('body');
+
+  margin: 0;
+  color: var(--ocu-on-surface-variant);
+}
+
+// The reason an empty state's held-back action carries (Story 18.46): a sentence beside the button, not a tooltip, because
+// the empty state has the room and a sentence a person must read should not wait on a hover.
+.ocu-data-table-empty-reason {
+  @include typo.ocu-type('caption');
 
   margin: 0;
   color: var(--ocu-on-surface-variant);

@@ -6326,6 +6326,26 @@ export const STRINGS = {
   allowListRefusalNoDirectory: 'No directory of that name exists on the server.',
   /** EXPERIENCE.md:364 */
   allowListRefusalFallback: 'While the list is unrestricted its one entry is the manager directory, which cannot be changed or removed. Adding a directory restricts the list to that directory, the manager directory and any directory already stored in it.',
+  /** EXPERIENCE.md:364 */
+  allowedDirectoryAddAction: 'Add directory',
+  /** EXPERIENCE.md:364 */
+  allowedDirectoryChangeAction: 'Change directory',
+  /** EXPERIENCE.md:364 */
+  allowedDirectoryNewLabel: 'New directory',
+  /** EXPERIENCE.md:364 */
+  allowedDirectoryHint: 'An absolute directory on the server that already exists.',
+  /** EXPERIENCE.md:364 */
+  allowedDirectoryAddRestricts: 'File dialogs on this instance, the classic portal\'s included, can then reach only the manager directory and the directories listed here.',
+  /** EXPERIENCE.md:364 */
+  allowedDirectoryAddConsequence: 'File and directory fields can then choose locations under this directory.',
+  /** EXPERIENCE.md:364 */
+  allowedDirectoryChangeConsequence: 'File and directory fields then choose locations under the new directory instead of <directory>.',
+  /** EXPERIENCE.md:364 */
+  allowedDirectoryRemoveConsequence: 'File and directory fields can no longer choose locations under this directory; removing the last one leaves none.',
+  /** EXPERIENCE.md:364 */
+  allowedDirectoriesEmptyNone: 'The instance\'s allow-list names no directory, so no file or directory field can choose a location on the server.',
+  /** EXPERIENCE.md:364 */
+  allowedDirectoriesAgentHint: 'explain what the allowed directories control',
   /** EXPERIENCE.md:357 */
   docDbAppListLabel: 'Doc DB applications',
   /** EXPERIENCE.md:357 */

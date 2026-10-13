@@ -387,6 +387,33 @@ test("Story 18.31: ocupilot-routine-application answers OcuPilot's own two routi
   assert.equal(selfProtectionReason(OCUPILOT_ROUTINE_APPLICATION_RULE, ''), '', 'and no key answers nothing');
 });
 
+test("Story 18.46: allowed-directory-fallback answers the fallback sentence for a row reading Restricted false, and nothing for a restricted row or no row", async () => {
+  // Mutation (Rule 19): drop the `allowed-directory-fallback` branch from `selfProtectionReason` -> the false-row legs go red;
+  // answer the sentence for `Restricted` true as well -> the restricted legs go red.
+  const { selfProtectionReason, ALLOWED_DIRECTORY_FALLBACK_RULE } = await import('../src/app/core/self-protection.ts');
+  const { STRINGS } = await import('../src/app/core/strings.ts');
+  const registry = readFileSync(REGISTRY, 'utf8');
+  assert.ok(parseSelfProtectionRules(registry)?.includes('allowed-directory-fallback'), 'the instance declares the rule in SELFPROTECTIONRULES');
+  assert.equal(ALLOWED_DIRECTORY_FALLBACK_RULE, 'allowed-directory-fallback');
+  for (const unrestricted of [false, 'false', 0, '0']) {
+    assert.equal(
+      selfProtectionReason(ALLOWED_DIRECTORY_FALLBACK_RULE, '/iris/mgr/', '', { Directory: '/iris/mgr/', Restricted: unrestricted }),
+      STRINGS.allowListRefusalFallback,
+      `a row reading Restricted ${JSON.stringify(unrestricted)} is the fallback row`
+    );
+  }
+  for (const restricted of [true, 'true', 1, '1']) {
+    assert.equal(
+      selfProtectionReason(ALLOWED_DIRECTORY_FALLBACK_RULE, '/data/a/', '', { Directory: '/data/a/', Restricted: restricted }),
+      '',
+      `a row reading Restricted ${JSON.stringify(restricted)} is an entry the person can change`
+    );
+  }
+  assert.equal(selfProtectionReason(ALLOWED_DIRECTORY_FALLBACK_RULE, '/iris/mgr/'), '', 'with no row the instance alone refuses');
+  assert.equal(selfProtectionReason(ALLOWED_DIRECTORY_FALLBACK_RULE, '/iris/mgr/', '', { Directory: '/iris/mgr/' }), '', 'and a row that does not say is the instance\'s to refuse');
+  assert.equal(selfProtectionReason(ALLOWED_DIRECTORY_FALLBACK_RULE, '', '', { Restricted: false }), '', 'and no key answers nothing');
+});
+
 test("Story 16.2: ocupilot-session answers a row under one of OcuPilot's own applications, in every spelling the instance resolves", async () => {
   // Mutation (Rule 19): answer '' for `ocupilot-session` -> the four own-application legs go red;
   // compare the Application without normalizeEntityId -> the re-cased and slash-suffixed legs go red.

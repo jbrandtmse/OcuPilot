@@ -27,7 +27,9 @@ const WHOLE_NUMBER = /^[0-9]{1,9}$/;
  * checkbox, `data-slot="flag"`, unchecked when the dialog opens (a mount's read-only). A field is one
  * whole-number input with its hint, `data-slot="field"`: while it does not hold a whole number,
  * Proceed is `aria-disabled` and names the hint as its reason, and a click on it does nothing.
- * `confirmed` carries `{flag, value}`, each only where it is drawn.
+ * `fieldKind` `'text'` (Story 18.46) makes the field a text input for a value the instance judges, a
+ * server directory: it drops the numeric keyboard hint and releases Proceed while the field holds
+ * any non-blank text. `confirmed` carries `{flag, value}`, each only where it is drawn.
  *
  * Cancel is `dialog.ts`'s own dismissing action and takes initial focus where the surface holds no
  * field; the field, or the checkbox, takes it otherwise. Escape, Cancel and the scrim all emit
@@ -55,7 +57,7 @@ const WHOLE_NUMBER = /^[0-9]{1,9}$/;
             [id]="fieldId"
             class="ocu-field-input"
             type="text"
-            inputmode="numeric"
+            [attr.inputmode]="inputMode"
             autocomplete="off"
             spellcheck="false"
             [attr.aria-describedby]="hintDescribedBy"
@@ -106,6 +108,9 @@ export class WarningDialog {
   /** The field's published hint, which is also Proceed's reason while the field holds no whole number. */
   readonly fieldHint = input('');
 
+  /** What the field takes: a whole number, as every field before Story 18.46, or free text. */
+  readonly fieldKind = input<'number' | 'text'>('number');
+
   /** Emitted once, when Proceed is pressed and released, with the checkbox's state and the field's value. */
   readonly confirmed = output<WarningAnswer>();
 
@@ -128,8 +133,8 @@ export class WarningDialog {
   /** What the field holds. */
   protected readonly typed = signal('');
 
-  /** Whether the field, where drawn, holds a whole number. */
-  private readonly whole = computed(() => WHOLE_NUMBER.test(this.typed().trim()));
+  /** Whether the field, where drawn, holds what its kind takes: a whole number, or any non-blank text. */
+  private readonly whole = computed(() => (this.fieldKind() === 'text' ? this.typed().trim() !== '' : WHOLE_NUMBER.test(this.typed().trim())));
 
   protected get advisoryVisible(): boolean {
     return this.advisory() !== '';
@@ -147,11 +152,16 @@ export class WarningDialog {
     return this.fieldHint() !== '';
   }
 
+  /** The numeric keyboard hint of a whole-number field; a text field carries none. */
+  protected get inputMode(): string | null {
+    return this.fieldKind() === 'text' ? null : 'numeric';
+  }
+
   protected get hintDescribedBy(): string | null {
     return this.hintVisible ? this.hintId : null;
   }
 
-  /** Released unless a drawn field holds no whole number. */
+  /** Released unless a drawn field holds no whole number, or, for a text field, only blanks. */
   protected get proceedDisabled(): string | null {
     return this.fieldVisible && !this.whole() ? 'true' : null;
   }

@@ -2993,7 +2993,10 @@ ClassMethod FingerprintSubjectProblem(pToolClass As %String) As %String
 /// a <code>Name</code> of <code>OcuPilotState</code> or <code>OcuPilotIdentity</code> in any case, explained by the
 /// <code>routineAppRefusalOcuPilot</code> sentence and refused for every write by
 /// <parameter>OcuPilot.Kernel.Proposal.Prohibited.OCUPILOTROUTINEAPP</parameter>.</p>
-Parameter SELFPROTECTIONRULES = "serves-ocupilot,protected-account,service-account-sign-in,ocupilot-application-roles,system-role,system-resource,ocupilot-ssl,ocupilot-session,ecp-ssl-pending,ecp-ssl-authorized,system-pct-access,ocupilot-routine-application";
+/// <p><code>allowed-directory-fallback</code> is the allow-list's unrestricted fallback row (Story 18.46): a row whose
+/// <code>Restricted</code> reads false, explained by <class>OcuPilot.Api.AllowListError</class>'s <code>REASONFALLBACK</code>
+/// and refused for a change or a remove by the allow-list port.</p>
+Parameter SELFPROTECTIONRULES = "serves-ocupilot,protected-account,service-account-sign-in,ocupilot-application-roles,system-role,system-resource,ocupilot-ssl,ocupilot-session,ecp-ssl-pending,ecp-ssl-authorized,system-pct-access,ocupilot-routine-application,allowed-directory-fallback";
 
 /// <p>The fewest suggested prompts a declaration that declares any may carry (Story 11.3).</p>
 Parameter SUGGESTEDPROMPTSMIN As INTEGER = 3;

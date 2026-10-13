@@ -282,10 +282,22 @@ const DESCRIPTOR_ACTION_LABELS: Readonly<Record<string, Readonly<Record<string, 
   'OcuPilot.Screen.Descriptor.ExplorerDocDbList': { delete: STRINGS.explorerDocDbDropLabel },
   // Story 18.26: managed file transfer connections' token revoke.
   'OcuPilot.Screen.Descriptor.MftConnectionList': { 'revoke-token': STRINGS.mftConnectionRevokeAction },
+  // Story 18.46: the Allowed directories screen's three actions; Add and Change also title their warning dialogs.
+  'OcuPilot.Screen.Descriptor.AllowedDirectoryList': {
+    add: STRINGS.allowedDirectoryAddAction,
+    change: STRINGS.allowedDirectoryChangeAction,
+    remove: STRINGS.actionRemove,
+  },
 };
 
+/** What a registration holds: what runs it, and why it cannot be taken right now. */
+interface Registration {
+  readonly run: ScreenActionRun;
+  readonly reason?: () => string;
+}
+
 export class ScreenActions {
-  private readonly handlers = new Map<string, Map<string, { readonly run: ScreenActionRun }>>();
+  private readonly handlers = new Map<string, Map<string, Registration>>();
 
   private readonly listeners = new Set<() => void>();
 
@@ -294,14 +306,19 @@ export class ScreenActions {
    * return the function that removes it. The remover removes only the registration it made, so
    * a stale remover called after a re-registration leaves the newer one in place, even when both
    * registered the same function.
+   *
+   * `reason`, where given, is the registrant's own sentence for why the action cannot be taken
+   * now -- `''` while it can (AD-53). It is read at call time, so a registrant whose answer moves
+   * calls `changed()` and every surface re-draws; while it is non-empty the surfaces draw the
+   * action `aria-disabled` with the sentence as its reason, and `run` runs nothing.
    */
-  register(descriptor: string, actionId: string, run: ScreenActionRun): () => void {
+  register(descriptor: string, actionId: string, run: ScreenActionRun, reason?: () => string): () => void {
     let forDescriptor = this.handlers.get(descriptor);
     if (forDescriptor === undefined) {
       forDescriptor = new Map();
       this.handlers.set(descriptor, forDescriptor);
     }
-    const registration = { run };
+    const registration: Registration = reason === undefined ? { run } : { run, reason };
     forDescriptor.set(actionId, registration);
     this.notify();
 
@@ -320,11 +337,25 @@ export class ScreenActions {
     return this.handlers.get(descriptor)?.has(actionId) ?? false;
   }
 
-  /** Run the registered handler once, and report whether there was one. */
+  /**
+   * The registrant's sentence for why `actionId` on `descriptor` cannot be taken now, or `''` when
+   * it has none, is not registered, or the registrant registered no reason. The surfaces draw it
+   * ahead of any self-protection or selection reason (AD-53).
+   */
+  reason(descriptor: string, actionId: string): string {
+    if (actionId === '') return '';
+    return this.handlers.get(descriptor)?.get(actionId)?.reason?.() ?? '';
+  }
+
+  /**
+   * Run the registered handler once, and report whether there was one. A registration whose reason
+   * is non-empty runs nothing and answers `false`.
+   */
   run(descriptor: string, actionId: string): boolean {
     if (actionId === '') return false;
     const registration = this.handlers.get(descriptor)?.get(actionId);
     if (registration === undefined) return false;
+    if ((registration.reason?.() ?? '') !== '') return false;
     registration.run();
     return true;
   }
@@ -334,6 +365,11 @@ export class ScreenActions {
     return () => {
       this.listeners.delete(listener);
     };
+  }
+
+  /** Tell every listener that a registrant's reason moved, so the surfaces re-draw. */
+  changed(): void {
+    this.notify();
   }
 
   private notify(): void {

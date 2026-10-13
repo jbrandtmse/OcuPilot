@@ -275,7 +275,7 @@ services:
       # classes: FindingsWire, GuardrailsWire
       # classes: LogHubWire, PathPort, PathPortInstance, PathPortPrivilege
       # classes: PathPortServed
-      # classes: AllowListPort, AllowedDirectorySave
+      # classes: AllowListPort, AllowedDirectorySave, AllowedDirectoryScreen
       # classes: PermissionCheck, EffectiveUser
       # classes: LedgerSearchWire
       # classes: NamespaceWriteGate

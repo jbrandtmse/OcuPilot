@@ -2,9 +2,10 @@
 title: 'Story 18.46: Allowed directories: the screen''s add, change and remove'
 type: 'feature'
 created: '2026-10-12'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: '2d5a458a925aed1f8d711f94a60f9472d55ece37'
 review_loop_iteration: 0
-followup_review_recommended: false
+followup_review_recommended: true
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-18-context.md'
 warnings: ['oversized']
@@ -95,6 +96,30 @@ At `a3bb0acd`; client paths in `ui/src/app/`.
 
 ## Review Triage Log
 
+### 2026-10-13 — Review pass
+
+- verdicts: 19 findings — high 0, medium 4, low 12, false 3, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` The `acting` hand-off from `app-screen-action-dialogs` to the list page is pinned by no test — added a `screen-action-dialogs.spec.ts` test that confirms a Remove and expects one `acting`; the dropped binding reddens it.
+  - `[medium]` `[patch]` "Ahead of the row's own" is not exercised on the row menu or the command box (their rows had no reason of their own) — both tests now use a row the fallback or `serves-ocupilot` rule also explains, and the swapped order reddens each.
+  - `[medium]` `[patch]` Browser C2 read "opens nothing" with no wait, and its `log.posts` and list-as-it-was assertions could not fail — both removed, a two-frame wait added before each absence check (C2 and the fallback leg), and `ScreenActions.run` ignoring the reason now reddens the "opens nothing" step.
+  - `[low]` `[patch]` `confirm`'s blank-value guard was exercised for Add only — the blank Change is now confirmed and the Add-only guard reddens it.
+  - `[low]` `[reject]` `open()`'s `handler.pending()` guard is not exercised — the handler holds no dialog for this descriptor, so the leg is unreachable here; a test would need a fake handler state for no user-reachable case.
+  - `[low]` `[reject]` `HandleState`'s gate-error 500 branch has no test — `Gate.Decide` has no seam to fail, the sibling `HandleSave` branch is equally untested, and an everyday user cannot reach it.
+  - `[low]` `[patch]` `self-protection.test.mjs` asserted the rule's literal in `Registry.cls` text, which the new doc comment satisfies on its own — it now reads the parsed `SELFPROTECTIONRULES` value.
+  - `[low]` `[reject]` `CheckRouted`'s per-action `Resolving = 0` legs cannot fail apart from its one-tool and empty-`SCREENACTIONS` assertions — redundant, harmless, and the `SCREENACTIONS` mutation is caught by the latter.
+  - `[low]` `[patch]` `AllowedDirectoryScreen`'s verdict assertions sat inside `If $IsObject(tBody)` — each now asserts the body is an object first.
+  - `[low]` `[patch]` Several tests named a mutation that `## Verification` did not record — each was applied, observed red and reverted, and the lines are recorded above.
+  - `[low]` `[patch]` The write browser spec asserted the key reads `inherit` instead of establishing it — `before` now puts the policy back to the default after noting whether a policy was stored.
+  - `[low]` `[reject]` C1, C3 and C4 share one browser test, so an early failure hides the later results — the steps are one sequence on one list whose state each step makes for the next, as the matrix orders them.
+  - `[low]` `[reject]` The actions are drawn on until the first verdict lands and after a read that did not answer — spec-bound (task 8: `load()` clears the verdict before the read), and the write asks the key again, so a click in the window ends in the server's own refusal on the banner.
+  - `[false]` `[reject]` The "opens nothing" guard sits in `ScreenActions.run`, not in `open` — `open` is reachable only through the registered handler `run` gates, so no click reaches it while a reason stands (the browser C2 mutation shows it).
+  - `[low]` `[reject]` The browser pins the key-off state on the command bar alone — the row menu, command box and empty-state action are pinned in the component specs, each by a recorded mutation; the real-browser leg covers the screen as a person meets it.
+  - `[low]` `[reject]` The verdict is read again after the screen's own write, not on the change event — AD-22 has the write ask the key, and a policy change made elsewhere is read when the screen is next entered, as task 8 says.
+  - `[false]` `[reject]` The fallback sentence is chosen client-side from `Restricted` — the spec's rule reads the row ("a published sentence pinned to its code", AD-39) and the route refuses the row too.
+  - `[false]` `[reject]` The shell imports `areas/security/allowed-directory-dialogs` and holds an `OWN_ROUTES` entry — tasks 7 and 9 name both, and `panel.ts` and `set-password-dialog.ts` already import from `areas/`.
+  - `[medium]` `[patch]` Lead-found: the C1 test read the typed-name button's `aria-disabled` immediately after typing and clicked Proceed and the destructive button without waiting for them to be released, which failed 1 run in about 15 — each now waits two frames or for the release, and 32 consecutive runs are green.
+
 ## Design Notes
 
 **Governing ADs:** AD-5, 8, 10, 13, 14, 19, 20, 21, 22, 39, 43, 53, 55, 58, 64.
@@ -118,16 +143,49 @@ At `a3bb0acd`; client paths in `ui/src/app/`.
 - `(loop)` `sh /Users/jbrandt/git/OcuPilot/.worktrees/.coordination/carry-2026-10-08/epic-18-d8/load-ocupilot-ci.sh` prints `LOAD-OK` and `STARTPATH-OK`.
 - `(loop)` `cd ui && node tools/ci-runner.mjs --container ocupilot-ci --class OcuPilot.Test.<C>`, one at a time, totals from `%UnitTest_Result`: tasks 11 and 14.
 - `(loop)` `cd ui && npm run test:tools && npm run test:components`.
-- `(loop)` With `OCUPILOT_BROWSER_ORIGIN=http://localhost:52776` and `OCUPILOT_BROWSER_CONTAINER=ocupilot-ci`: `cd ui && npm run build && docker cp dist/ocupilot-ui/browser/. ocupilot-ci:/durable/iris/csp/ocupilot/`, then `node --test --test-concurrency=1 browser/allowed-directory-write.browser-spec.mjs browser/allowed-directories.browser-spec.mjs`. Bundle under 3527kB.
+- `(loop)` With `OCUPILOT_BROWSER_ORIGIN=http://localhost:52776` and `OCUPILOT_BROWSER_CONTAINER=ocupilot-ci`: `cd ui && npm run build && docker cp dist/ocupilot-ui/browser/. ocupilot-ci:/durable/iris/csp/ocupilot/`, then `node --test --test-concurrency=1 browser/allowed-directory-write.browser-spec.mjs browser/allowed-directories.browser-spec.mjs`. Initial bundle under `angular.json`'s 1992kB warning.
 - `uv run scripts/check-objectscript.py` and `bash scripts/lint-docs.sh`: 0 problems.
 
 **Shared surfaces:** the descriptor and its mirror; `%GUIFileSelector`; the key's setting; the self-protection vocabulary; `ScreenActions` and its surfaces; `WarningDialog`; the route rosters; the Fixed strings; the arming roster.
 
 every test added or changed passes on a fresh environment, in either order
 
-**Mutations (Rule 19):** tasks 11-14.
+**Measured (2026-10-13, `npm run build`):** initial total 1.90 MB (1,901,369 bytes, JS and CSS; `maximumWarning` 1992kB), as before the change: the dialog sits in the lazy `chunk-Cn2zXNXY.js` (25.35 kB), the shared `app-screen-action-dialogs` chunk the `list` page's `chunk-Dkwf2bAv.js` (5.63 kB) loads, so no initial file defines `app-allowed-directory-dialogs`; the largest lazy chunk is `data-browser-page` at 83.32 kB under `LAZYCHUNKMAX` 88 kB; `build-output.test.mjs` 16 of 16. Fixed strings: 3,326 literals (3,316 before this story, plus 10) of 3,400, the bound unchanged.
+
+**Runs** (`%UnitTest_Result`, `ocupilot-ci`): `AllowedDirectoryScreen` 4/4 (663, after the review pass's assertions), `Descriptor` 60/60 (642), `SecurityLists` 7/7 (643), `StageTwoTools` 4/4 (653), `EndpointCoverage` 2/2 (655), `AllowedDirectorySave` 9/9 (646), `PathPort` 17/17 (647), `DeveloperFloorRoutes` 1/1 (648), `InteropFloorRoutes` 1/1 (649), `SaveHoldCoverage` 2/2 (658, its handler's source changed). Client, final tree: `test:tools` 1957/1957, `test:components` 242 files and 3024 tests, `build-output.test.mjs` 16/16, `check-objectscript.py` and `lint-docs.sh` 0 problems; the two browser specs 6/6 (`allowed-directory-write` 2, `allowed-directories` 4), and 32 consecutive green runs of `allowed-directory-write` after its waits were added. The throwaway ends at S0: `FSAccess` purpose absent, policy row version 0, no probe directory.
+
+**Rule 30 sweep** (greps of `src/OcuPilot/Test`, `ui/tools`, `ui/src` specs, `ui/browser`): changed in place `Test/Descriptor.cls` (`add`; `change,remove`), `Test/SecurityLists.cls` (`"add", "change,remove"`), `Test/StageTwoTools.cls` (the row's `route="allowed-directories"` and `CheckRouted`), `Test/EndpointCoverage.cls` (the GET probe), `ui/browser/allowed-directories.browser-spec.mjs` (the emptied list's title, and the table's hidden Actions header the row actions add); unchanged and still pinning nothing of the old shape: `ui/tools/screen-mirror.test.mjs` and `navigation.test.mjs` (route and owner rosters), `server-path-picker` (`allowedDirectoriesEmpty` stays the picker's).
+
+**Mutations (Rule 19)**, each applied, observed red, reverted and proven byte-identical (client: sha256 of the file; ObjectScript: the throwaway's mounted copy, recompiled with its descendants, equal to the worktree file, the class green again):
+
+- mutation: `HandleState` skips `Gate.Decide` -> `AllowedDirectoryScreen.TestTheKeyShippedOffAnswersItsVerdictAndChangesNothing` and the switched-off leg of `TestTheKeyEnabledAnswersEnabledAndFollowsTheStoredPolicy` (run 650; green again 651).
+- mutation: `AllowedDirectoryUpdate` gains `SCREENACTIONS` `add` -> `StageTwoTools.TestEachDeclaredActionResolvesToExactlyOneWriteTool` (652; 653).
+- mutation: the GET probe row removed from `EndpointCoverage` -> `TestEveryRouteHasAProbeAndEveryProbeHasARoute` (654; 655).
+- mutation: `allowed-directory-fallback` dropped from `Registry.SELFPROTECTIONRULES` -> `AllowedDirectoryScreen.TestTheDescriptorDeclaresTheActionsAndTheContextListsNoWriteTool` (656; 657).
+- mutation: `ScreenActions.run` ignores the reason, or `reason` answers `''` -> `tools/screen-actions.test.mjs`, the 18.46 test.
+- mutation: the `allowed-directory-fallback` branch dropped from `selfProtectionReason`, or its sentence answered for a restricted row -> `tools/self-protection.test.mjs`, the 18.46 test.
+- mutation: `{NewDirectory: value}` sent as `{}` -> `allowed-directory-actions.spec.ts` (the Change body) and `allowed-directory-dialogs.spec.ts` (Change); the `ask !== this.asked` guard dropped -> the newest-read test; the verdict not read again after a send -> the Add and the refused-write legs; the fallback rule not asked in `open` -> the fallback-refusal leg.
+- mutation: the primary action's reason read, or the row actions' reason read, answered `''` in `command-bar.ts` -> `command-bar.spec.ts`, the 18.46 test (each); `data-table.ts`: the menu's reason read dropped, the empty-state label back to the bare id, the empty-state reason read dropped -> `data-table.spec.ts` (each of three legs); `command-box.ts`: the primary's reason read dropped, the row's dropped -> `command-box.spec.ts` (each).
+- mutation: a text field judged by the whole-number rule, or kept `inputmode="numeric"`, in `warning-dialog.ts` -> `warning-dialog.spec.ts` (each); `hasAllowedDirectories` answering `false` -> `screen-action-dialogs.spec.ts`; the `OWN_ROUTES` map emptied, or its body dropping `...values` -> `screen-action-handler.spec.ts`.
+- mutation: the `OWN_ROUTES` entry dropped, the bundle rebuilt and redeployed -> `allowed-directory-write.browser-spec.mjs`, the Add step (its rows wait, `rowsAre`); `AllowedDirectoryList` `emptyStateKey` back to `allowedDirectoriesEmpty` with the mirror regenerated, rebuilt and redeployed -> the same spec, the empty-state step; the clean bundle rebuilt and redeployed, both browser specs green.
+
+- mutation (review pass): `DataTable.menuItems` reading the registrant's reason after the row's own, or `command-box.ts` likewise -> `data-table.spec.ts` and `command-box.spec.ts`, the 18.46 ordering tests (each, on a row the screen's own rule also explains); the `(acting)` binding dropped on `app-allowed-directory-dialogs` -> `screen-action-dialogs.spec.ts`; `confirm` guarding only an Add against a blank value -> the blank-Change leg of `allowed-directory-actions.spec.ts`; `reasonOf` ignoring `enabled` -> the same spec (3 tests); `register` without its reason, `onDestroy` without the unregistering, the two Add consequences swapped -> `allowed-directory-dialogs.spec.ts` (1, 1, 2 tests); the `DESCRIPTOR_ACTION_LABELS` entry dropped -> `tools/screen-actions.test.mjs`; the fallback sentence answered for every row -> `tools/self-protection.test.mjs`.
+- mutation (review pass): `Admit` ignoring the pairs refusal -> `AllowedDirectoryScreen.TestACallerWithoutTheScreensPairIsRefusedByName` (run 660; green again 661); `AllowedDirectoryUpdate` advertised with `SCREENACTIONS` `change` -> `TestTheDescriptorDeclaresTheActionsAndTheContextListsNoWriteTool` (662; 663).
+- mutation (review pass, bundle rebuilt and redeployed each time): `register` without its reason -> `allowed-directory-write.browser-spec.mjs`, C2's aria-disabled step; `ScreenActions.run` ignoring the reason -> the same test's "opens nothing" step; the clean bundle redeployed, both browser specs green.
+
+Rule 11: Epic 20's working tree (2026-10-13) also edits `core/screen-actions.ts` (one label entry), `screen-action-handler.ts` (two list entries), `screens.generated.ts` and `strings.ts`; this story's hunks in those files do not overlap theirs (`register`, `run`, `reason` and `changed` in `ScreenActions`, which task 4 mandates, the `OWN_ROUTES` block and `send`), and `screens.generated.ts` is regenerated at the forward merge.
 
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
+
+**Summary.** The Allowed directories screen carries Add, Change and Remove. `GET /allowed-directories` (`AllowedDirectorySave.HandleState`, beside `HandleSave`, which shares its `Admit` step) answers the write key's verdict; a registrant's reason in `ScreenActions` draws the primary action, the row actions, the row menu, the empty state and the command box off with the server's sentence; `AllowedDirectoryActions` and `AllowedDirectoryDialogs` run the three dialogs through `ScreenActionHandler.sendFor`, whose `OWN_ROUTES` entry posts to 18.42's route; the fallback row refuses Change and Remove with `ALLOWLIST.FALLBACK`'s sentence; an emptied list's empty state says no file or directory field can choose a location.
+
+**Files.** New: `Test/AllowedDirectoryScreen.cls`, `areas/security/allowed-directory-actions.ts` and `allowed-directory-dialogs.ts` with their specs, `shell/screen-action-dialogs.spec.ts`, `browser/allowed-directory-write.browser-spec.mjs`, `browser/allow-list-spec.mjs`. Edited: `AllowedDirectorySave.cls`, `Router.cls`, `AllowedDirectoryList.cls`, `Registry.cls`, `screen-mirror.mjs` and the mirror, `ScreenActions`, `self-protection.ts`, `command-bar`, `data-table`, `command-box`, `warning-dialog`, `screen-action-dialogs`, `screen-action-handler`, `strings.ts`, `_components.scss`, EXPERIENCE.md :173 and :364 in place, `ci-throwaway.sh`, the Rule 30 sweep's rosters, `preferences-reset.mjs` (`setGovernanceKey`).
+
+**Review.** One pass, two layers: 19 findings, none high. Patched 4 medium and 5 low (all in tests; the product code needed none); no `defer`; 10 rejected, each on the reason in `## Review Triage Log`. `followup_review_recommended: true` because four mediums were patched; the unverified risk is the timing of `allowed-directory-write.browser-spec.mjs` on a CI shard leg, which ran 32 times in a row green locally after its waits were added and 1 in about 15 before.
+
+**Verification.** See `## Verification`: the runs, the measurements and every mutation.
+
+**Residual risks.** The primary action in the command bar is wrapped in the row actions' `action-slot` span (a descendant selector such as `.ocu-command-bar button.ocu-command-bar-primary` still matches; the other browser specs that click it were not re-run, Rule 29). A list's empty-state action is now labeled through `actionLabel`, so its text changes from the bare id (`create`) to the published word wherever a list has one. The dialog's code sits in the shared `app-screen-action-dialogs` lazy chunk (25.35 kB of the 88 kB cap), which every list page loads. The AD-22 and AD-53 amendments under `## Design Notes` are the lead's (Rule 20).

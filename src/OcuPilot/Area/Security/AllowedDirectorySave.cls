@@ -1,4 +1,4 @@
-/// <p>The Allowed directories screen's Save (AD-21's tenth case, AD-53, AD-55, Story 18.42): <code>POST /allowed-directories</code>
+/// <p>The Allowed directories screen's Save (AD-21's tenth case, AD-53, AD-55, Stories 18.42 and 18.46): <code>POST /allowed-directories</code>
 /// adds, changes or removes one entry of the instance's directory allow-list through
 /// <class>OcuPilot.Screen.Tool.AllowedDirectoryUpdate</class> and <class>OcuPilot.Port.AllowListPort</class>. It is the
 /// tool's one caller: the tool is never advertised, so the agent has no way to reach it, and
@@ -11,6 +11,9 @@
 /// key, 403 <code>ALLOWLIST.OFF</code>; the per-target hold (AD-34); the port's fresh read, whose refusal is passed through
 /// as it is; the prohibited set (AD-10); the write; and the read-back (AD-58). It answers 200
 /// <code>{action, target, readBack}</code>.</p>
+/// <p><code>GET /allowed-directories</code> answers that key's verdict for the screen, which draws Add, Change and Remove off
+/// with the key's sentence while it is disabled: the same pairs, then the same governance decision. It holds nothing and
+/// writes nothing.</p>
 /// <p>Seams a subclass may override: <method>PortClass</method>, <method>ProhibitedClassName</method>,
 /// <method>RegistryClass</method> and <method>CallerUsername</method>. Production overrides none.</p>
 Class OcuPilot.Area.Security.AllowedDirectorySave Extends %RegisteredObject
@@ -57,29 +60,7 @@ ClassMethod HandleSave() As %Status
     Set tHoldKey = ""
     Try {
         Set tToolClass = ..#TOOL
-        Set tId = $Parameter("OcuPilot.Port.PathPort", "PURPOSE")
-        Set tUser = ..CallerUsername()
-        Set tSC = $ClassMethod(..RegistryClass(), "Resolve", $Parameter(tToolClass, "TOOLNAME"), .tTool, 1)
-        If $$$ISERR(tSC) || '$IsObject($Get(tTool)) {
-            Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ##class(%Exception.StatusException).CreateFromStatus($$$ERROR($$$GeneralError, "the allowed directories tool is not registered")))
-            Quit
-        }
-        Set tTargetSC = ##class(OcuPilot.Kernel.Proposal.Operation).TargetRefOf($Parameter(tToolClass, "DESCRIPTORCLASS"), tId, .tTargetRef)
-        If $$$ISERR(tTargetSC) {
-            Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ##class(%Exception.StatusException).CreateFromStatus(tTargetSC))
-            Quit
-        }
-
-        ; AD-8: the screen's pairs answer first, naming the pair that failed, before the body is read.
-        Set tPairSC = ##class(OcuPilot.Kernel.Proposal.Operation).Gate(tTool, tTargetRef, "", "", "{}", tUser, "", "", .tPairs, .tRefused, .tGateHttp, .tGateCode, .tGateDetail)
-        If $$$ISERR(tPairSC) {
-            Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ##class(%Exception.StatusException).CreateFromStatus(tPairSC))
-            Quit
-        }
-        If tRefused {
-            Set tSC = ##class(OcuPilot.Api.Error).Render(tGateHttp, ##class(OcuPilot.Api.Error).#FORBIDDEN, ..ReasonFor(tGateCode), tGateCode, tGateDetail)
-            Quit
-        }
+        If '..Admit(.tSC, .tTool, .tTargetRef, .tId, .tUser) Quit
 
         If '..Body(.tBody) {
             Set tSC = ##class(OcuPilot.Api.Error).Render(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#REASONAGENTBADBODY, ##class(OcuPilot.Api.Error).#AGENTBADBODY)
@@ -169,6 +150,71 @@ ClassMethod HandleSave() As %Status
         Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ex)
     }
     Do ##class(OcuPilot.Kernel.Proposal.Operation).Release(tHoldKey)
+    Quit tSC
+}
+
+/// <p>Resolve the tool, the target and the caller, and ask the screen's pairs (AD-8): 1 when the request may go on. Otherwise
+/// <var>pSC</var> holds the status of the refusal it rendered, 403 naming the pair the caller lacks or 500 for a tool or a
+/// target that cannot be resolved. Shared by <method>HandleSave</method> and <method>HandleState</method>, so the two ask the
+/// same pairs of the same target.</p>
+ClassMethod Admit(Output pSC As %Status, Output pTool As %DynamicObject, Output pTargetRef As %String, Output pId As %String, Output pUser As %String) As %Boolean [ Private ]
+{
+    Set pSC = $$$OK
+    Set pTool = ""
+    Set pTargetRef = ""
+    Set pId = $Parameter("OcuPilot.Port.PathPort", "PURPOSE")
+    Set pUser = ..CallerUsername()
+    Set tToolClass = ..#TOOL
+    Set tResolveSC = $ClassMethod(..RegistryClass(), "Resolve", $Parameter(tToolClass, "TOOLNAME"), .pTool, 1)
+    If $$$ISERR(tResolveSC) || '$IsObject($Get(pTool)) {
+        Set pSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ##class(%Exception.StatusException).CreateFromStatus($$$ERROR($$$GeneralError, "the allowed directories tool is not registered")))
+        Quit 0
+    }
+    Set tTargetSC = ##class(OcuPilot.Kernel.Proposal.Operation).TargetRefOf($Parameter(tToolClass, "DESCRIPTORCLASS"), pId, .pTargetRef)
+    If $$$ISERR(tTargetSC) {
+        Set pSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ##class(%Exception.StatusException).CreateFromStatus(tTargetSC))
+        Quit 0
+    }
+    ; AD-8: the screen's pairs answer first, naming the pair that failed, before the body is read.
+    Set tPairSC = ##class(OcuPilot.Kernel.Proposal.Operation).Gate(pTool, pTargetRef, "", "", "{}", pUser, "", "", .tPairs, .tRefused, .tGateHttp, .tGateCode, .tGateDetail)
+    If $$$ISERR(tPairSC) {
+        Set pSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ##class(%Exception.StatusException).CreateFromStatus(tPairSC))
+        Quit 0
+    }
+    If tRefused {
+        Set pSC = ##class(OcuPilot.Api.Error).Render(tGateHttp, ##class(OcuPilot.Api.Error).#FORBIDDEN, ..ReasonFor(tGateCode), tGateCode, tGateDetail)
+        Quit 0
+    }
+    Quit 1
+}
+
+/// <p>Answer <code>GET /allowed-directories</code> (the header): 200 <code>{enabled: true}</code> while the tool's governance key
+/// is enabled, else 200 <code>{enabled: false, code: "ALLOWLIST.OFF", reason}</code> with
+/// <class>OcuPilot.Api.AllowListError</class>'s sentence. A refusal is its own envelope: 403
+/// <code>AUTH.NOPRIVILEGE</code> with <code>detail.failedPair</code>, or 500 <code>INTERNAL</code> for a gate that cannot answer.
+/// It reads the key and nothing else, takes no hold and writes nothing.</p>
+ClassMethod HandleState() As %Status
+{
+    Set tSC = $$$OK
+    Try {
+        If '..Admit(.tSC, .tTool, .tTargetRef, .tId, .tUser) Quit
+        Set tDecideSC = ##class(OcuPilot.Kernel.Governance.Gate).Decide($Parameter(..#TOOL, "TOOLNAME"), tTool.%Get("kind"), tUser, {}, .tDecision)
+        If $$$ISERR(tDecideSC) {
+            Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ##class(%Exception.StatusException).CreateFromStatus(tDecideSC))
+            Quit
+        }
+        Set tResult = {}
+        If tDecision("allowed") {
+            Do tResult.%Set("enabled", 1, "boolean")
+        } Else {
+            Do tResult.%Set("enabled", 0, "boolean")
+            Do tResult.%Set("code", ##class(OcuPilot.Api.AllowListError).#OFF, "string")
+            Do tResult.%Set("reason", ##class(OcuPilot.Api.AllowListError).ReasonFor(##class(OcuPilot.Api.AllowListError).#OFF), "string")
+        }
+        Set tSC = ##class(OcuPilot.Api.Response).JSON(tResult)
+    } Catch ex {
+        Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ex)
+    }
     Quit tSC
 }
 

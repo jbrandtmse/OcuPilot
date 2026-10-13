@@ -176,13 +176,20 @@ interface SortOption {
   template: `@if (hasContent) {
   <div class="ocu-command-bar">
     @if (hasPrimaryAction) {
-      <button
-        type="button"
-        class="ocu-button-primary ocu-command-bar-primary"
-        (click)="onPrimaryAction()"
-      >
-        {{ primaryActionLabel }}
-      </button>
+      <span class="ocu-command-bar-action-slot">
+        <button
+          type="button"
+          class="ocu-button-primary ocu-command-bar-primary"
+          [attr.aria-disabled]="primaryAriaDisabled"
+          [attr.aria-describedby]="primaryDescribedBy"
+          (click)="onPrimaryAction()"
+        >
+          {{ primaryActionLabel }}
+        </button>
+        @if (primaryReason) {
+          <span class="ocu-command-bar-reason" role="tooltip" [id]="primaryReasonId">{{ primaryReason }}</span>
+        }
+      </span>
     }
     @if (hasFilter) {
       <input
@@ -488,11 +495,16 @@ export class CommandBar {
         // (AD-10, AD-53). Neither is enforcement: the route refuses it identically if it is
         // pressed anyway. A multi-select action (Story 16.6) acts on the checked rows instead, so
         // its reason is theirs: none checked, or more than it takes.
-        const reason = isCheckedSetAction(screen, action.id)
-          ? checkedSetReason(screen, checked)
-          : selected === ''
-            ? STRINGS.privilegeSelectRowFirst
-            : selfProtectionReason(action.selfProtection, selected, this.signedIn(), row);
+        // A registrant's own reason (the Allowed directories verdict) outranks both, because it holds for
+        // every row and for none (AD-53).
+        const registered = this.actions.reason(screen.descriptor, action.id);
+        const reason = registered !== ''
+          ? registered
+          : isCheckedSetAction(screen, action.id)
+            ? checkedSetReason(screen, checked)
+            : selected === ''
+              ? STRINGS.privilegeSelectRowFirst
+              : selfProtectionReason(action.selfProtection, selected, this.signedIn(), row);
         return {
           id: action.id,
           // Resolved through the one label map, as the command box already does (Story 3.5), and
@@ -656,6 +668,30 @@ export class CommandBar {
 
   protected get rowActions(): readonly CommandAction[] {
     return this.resolved();
+  }
+
+  /**
+   * Why the primary action cannot be taken now, or `''`: its registrant's own reason (Story 18.46). It is drawn as a row
+   * action's is -- `aria-disabled`, the sentence as a tooltip and as the button's description -- and never as the
+   * `disabled` attribute.
+   */
+  protected get primaryReason(): string {
+    this.generation();
+    const screen = this.screen();
+    if (screen === null || screen.primaryAction.id === '') return '';
+    return this.actions.reason(screen.descriptor, screen.primaryAction.id);
+  }
+
+  protected get primaryReasonId(): string {
+    return 'ocu-command-bar-reason-primary';
+  }
+
+  protected get primaryAriaDisabled(): string | null {
+    return this.primaryReason === '' ? null : 'true';
+  }
+
+  protected get primaryDescribedBy(): string | null {
+    return this.primaryReason === '' ? null : this.primaryReasonId;
   }
 
   /**
@@ -1106,6 +1142,7 @@ export class CommandBar {
   protected onPrimaryAction(): void {
     const screen = this.screen();
     if (screen === null) return;
+    // `run` itself runs nothing while the registrant holds a reason, so a refused click only keeps its focus.
     this.actions.run(screen.descriptor, screen.primaryAction.id);
   }
 

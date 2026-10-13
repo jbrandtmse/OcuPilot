@@ -97,10 +97,12 @@ describe('the warning dialog', () => {
     [flagLabel]="flagLabel()"
     [fieldLabel]="fieldLabel()"
     [fieldHint]="fieldHint()"
+    [fieldKind]="fieldKind()"
     (confirmed)="answers.set([...answers(), $event])"
   />`,
 })
 class PartsHost {
+  readonly fieldKind = signal<'number' | 'text'>('number');
   readonly verb = STRINGS.databaseActionTruncate;
   readonly consequence = STRINGS.databaseTruncateConsequence;
   readonly advisory = signal('');
@@ -111,7 +113,7 @@ class PartsHost {
 }
 
 describe('the warning dialog, with its optional parts (Story 18.4)', () => {
-  function mount(parts: { advisory?: string; flagLabel?: string; fieldLabel?: string; fieldHint?: string }) {
+  function mount(parts: { advisory?: string; flagLabel?: string; fieldLabel?: string; fieldHint?: string; fieldKind?: 'number' | 'text' }) {
     TestBed.configureTestingModule({ providers: [{ provide: OverlayStack, useValue: new OverlayStack() }] });
     const fixture = TestBed.createComponent(PartsHost);
     const component = fixture.componentInstance;
@@ -119,6 +121,7 @@ describe('the warning dialog, with its optional parts (Story 18.4)', () => {
     component.flagLabel.set(parts.flagLabel ?? '');
     component.fieldLabel.set(parts.fieldLabel ?? '');
     component.fieldHint.set(parts.fieldHint ?? '');
+    component.fieldKind.set(parts.fieldKind ?? 'number');
     const host = fixture.nativeElement as HTMLElement;
     document.body.appendChild(host);
     fixture.detectChanges();
@@ -189,5 +192,35 @@ describe('the warning dialog, with its optional parts (Story 18.4)', () => {
     input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
     fixture.detectChanges();
     expect(component.answers()).toEqual([{ value: '60' }]);
+  });
+  it("Story 18.46: a text field takes no numeric keyboard hint, releases Proceed for any non-blank text, and answers it trimmed", () => {
+    // Mutation (Rule 19): judge a text field by the whole-number rule -> '/data/a/' keeps Proceed unavailable and its answer is
+    // never sent, red; keep `inputmode="numeric"` on a text field -> the attribute leg goes red.
+    const { host, component, fixture } = mount({ fieldLabel: STRINGS.allowedDirectoryNewLabel, fieldHint: STRINGS.allowedDirectoryHint, fieldKind: 'text' });
+    const input = host.querySelector('[data-slot="field"] input') as HTMLInputElement;
+    const hint = host.querySelector('[data-slot="field"] .ocu-field-caption') as HTMLElement;
+    expect(input.hasAttribute('inputmode')).toBe(false);
+    expect(hint.textContent?.trim()).toBe(STRINGS.allowedDirectoryHint);
+    for (const text of ['', '   ']) {
+      input.value = text;
+      input.dispatchEvent(new Event('input'));
+      fixture.detectChanges();
+      expect(proceedOf(host).getAttribute('aria-disabled')).toBe('true');
+      expect(proceedOf(host).getAttribute('aria-describedby')).toBe(hint.id);
+      proceedOf(host).click();
+    }
+    expect(component.answers()).toEqual([]);
+    input.value = '  /data/a/ ';
+    input.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    expect(proceedOf(host).getAttribute('aria-disabled')).toBeNull();
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
+    fixture.detectChanges();
+    expect(component.answers()).toEqual([{ value: '/data/a/' }]);
+  });
+
+  it('keeps the numeric hint on a whole-number field, the default', () => {
+    const { host } = mount({ fieldLabel: STRINGS.databaseTargetSizeLabel, fieldHint: STRINGS.databaseTargetSizeHint });
+    expect((host.querySelector('[data-slot="field"] input') as HTMLInputElement).getAttribute('inputmode')).toBe('numeric');
   });
 });

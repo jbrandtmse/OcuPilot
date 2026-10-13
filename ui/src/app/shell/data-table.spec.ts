@@ -711,6 +711,89 @@ describe('the data table', () => {
     expect(runs).toBe(1);
   });
 
+  it("Story 18.46: a registrant's reason draws a menu entry aria-disabled with that sentence inline, ahead of the row's own, and runs nothing", async () => {
+    // The Allowed directories screen registers Change with the instance's verdict on the write's key; the row menu draws it
+    // as the command bar does. The first row is also protected by its own rule, and the registrant's sentence outranks it.
+    //
+    // Mutation (Rule 19): drop the `this.actions.reason(...)` read from `DataTable.menuItems`, or order it after
+    // `selfProtectionReason(...)` -> the protected row's entry names its own sentence, red.
+    const declaration = tableDeclaration({ rowActions: [{ id: 'delete', selfProtection: 'serves-ocupilot' }] });
+    const listed = [
+      { Name: '/api/ocupilot', NameSpace: 'USER', Count: 0, Enabled: true, Note: 'n' },
+      { Name: '/csp/myapp', NameSpace: 'USER', Count: 1, Enabled: true, Note: 'n' },
+    ];
+    const wired = await wire(declaration, ok(listed), ['delete']);
+    let runs = 0;
+    let sentence: string = STRINGS.allowListRefusalOff;
+    wired.actions.register(declaration.descriptor, 'delete', () => (runs += 1), () => sentence);
+    await wired.refresh.readNow();
+    await settle(wired.fixture);
+
+    const entry = async (rowIndex: number): Promise<HTMLButtonElement> => {
+      (wired.host().querySelector(`[aria-rowindex="${rowIndex}"] .ocu-data-table-trigger`) as HTMLButtonElement).click();
+      await settle(wired.fixture);
+      return wired.host().querySelector('[role="menu"] [role="menuitem"]') as HTMLButtonElement;
+    };
+
+    for (const rowIndex of [2, 3]) {
+      const refused = await entry(rowIndex);
+      expect(refused.querySelector('.ocu-data-table-menu-reason')?.textContent?.trim(), `row ${rowIndex}`).toBe(STRINGS.allowListRefusalOff);
+      expect(refused.getAttribute('aria-label'), `row ${rowIndex}`).toBe(`${STRINGS.actionDelete} ${STRINGS.allowListRefusalOff}`);
+      expect(refused.getAttribute('aria-disabled'), `row ${rowIndex}`).toBe('true');
+      refused.click();
+      await settle(wired.fixture);
+    }
+    expect(runs).toBe(0);
+
+    sentence = '';
+    wired.actions.changed();
+    const own = await entry(2);
+    expect(own.querySelector('.ocu-data-table-menu-reason')?.textContent?.trim(), 'the row falls back to its own rule').toBe(STRINGS.webAppServesOcuPilotRefusal);
+    own.click();
+    await settle(wired.fixture);
+    expect(runs).toBe(0);
+    const offered = await entry(3);
+    expect(offered.hasAttribute('aria-disabled')).toBe(false);
+    offered.click();
+    await settle(wired.fixture);
+    expect(runs).toBe(1);
+  });
+
+  it("Story 18.46: the empty state's action is labeled through actionLabel, and a registrant's reason draws it aria-disabled with the sentence beside it", async () => {
+    // Mutation (Rule 19): make `primaryActionLabel` answer the bare id again -> the label leg goes red; drop the
+    // `this.actions.reason(...)` read from `DataTable.primaryReason` -> the held-back legs go red.
+    const declaration = tableDeclaration({
+      descriptor: 'OcuPilot.Screen.Descriptor.AllowedDirectoryList',
+      primaryAction: { id: 'add', selfProtection: '' },
+      table: { ...tableDeclaration().table!, emptyNextKey: '', emptyAgentKey: 'classicLinkCardTitle' },
+    });
+    const wired = await wire(declaration, ok([]));
+    let runs = 0;
+    let sentence: string = STRINGS.allowListRefusalOff;
+    wired.actions.register(declaration.descriptor, 'add', () => (runs += 1), () => sentence);
+    await wired.refresh.readNow();
+    await settle(wired.fixture);
+
+    const action = (): HTMLButtonElement => wired.host().querySelector('.ocu-data-table-empty-action') as HTMLButtonElement;
+    expect(action().textContent?.trim()).toBe(STRINGS.allowedDirectoryAddAction);
+    expect(action().getAttribute('aria-disabled')).toBe('true');
+    expect(action().hasAttribute('disabled')).toBe(false);
+    const reason = wired.host().querySelector(`#${action().getAttribute('aria-describedby')}`);
+    expect(reason?.textContent?.trim()).toBe(STRINGS.allowListRefusalOff);
+    action().click();
+    await settle(wired.fixture);
+    expect(runs).toBe(0);
+
+    sentence = '';
+    wired.actions.changed();
+    await settle(wired.fixture);
+    expect(action().hasAttribute('aria-disabled')).toBe(false);
+    expect(action().hasAttribute('aria-describedby')).toBe(false);
+    expect(wired.host().querySelector('.ocu-data-table-empty-reason')).toBeNull();
+    action().click();
+    expect(runs).toBe(1);
+  });
+
   it("Story 7.2: the signed-in account's protected-account entry carries its published sentence and runs nothing", async () => {
     // Mutation (Rule 19): drop `this.signedIn()` from `menuItems`' call -> the entry is offered, red.
     const declaration = tableDeclaration({ rowActions: [{ id: 'delete', selfProtection: 'protected-account' }] });

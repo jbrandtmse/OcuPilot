@@ -435,6 +435,53 @@ describe('the command bar', () => {
     expect(runs).toBe(1);
   });
 
+  it("Story 18.46: a registrant's reason draws the primary action and every row action aria-disabled with that sentence, and a click runs nothing", () => {
+    // The Allowed directories screen registers Add, Change and Remove with the instance's verdict on the write's key. The
+    // sentence outranks "Select a row first" and the row's own rule, holds for the primary action too, and clears when the
+    // registrant says so.
+    //
+    // Mutation (Rule 19): make the bar's `actions.reason(...)` read answer `''` for the primary action -> the primary
+    // button is drawn as an ordinary control and its click is not refused, red; do the same for the row actions -> the
+    // row legs go red.
+    const declared = tableDeclaration({
+      descriptor: 'OcuPilot.Screen.Descriptor.AllowedDirectoryList',
+      primaryAction: { id: 'add', selfProtection: '' },
+      rowActions: [{ id: 'change', selfProtection: 'allowed-directory-fallback' }],
+    });
+    build(declared);
+    let runs = 0;
+    let sentence: string = STRINGS.allowListRefusalOff;
+    actions.register(declared.descriptor, 'add', () => (runs += 1), () => sentence);
+    actions.register(declared.descriptor, 'change', () => (runs += 1), () => sentence);
+    fixture.detectChanges();
+
+    const primary = (): HTMLButtonElement => fixture.nativeElement.querySelector('.ocu-command-bar-primary');
+    const change = (): HTMLButtonElement => fixture.nativeElement.querySelector('.ocu-command-bar-action');
+    expect(primary().textContent?.trim()).toBe(STRINGS.allowedDirectoryAddAction);
+    expect(change().textContent?.trim()).toBe(STRINGS.allowedDirectoryChangeAction);
+    for (const button of [primary(), change()]) {
+      expect(button.getAttribute('aria-disabled')).toBe('true');
+      expect(button.hasAttribute('disabled')).toBe(false);
+      const reason = fixture.nativeElement.querySelector(`#${button.getAttribute('aria-describedby')}`);
+      expect(reason?.textContent?.trim()).toBe(STRINGS.allowListRefusalOff);
+      expect(reason?.getAttribute('role')).toBe('tooltip');
+    }
+    primary().click();
+    change().click();
+    fixture.detectChanges();
+    expect(runs).toBe(0);
+
+    sentence = '';
+    actions.changed();
+    fixture.detectChanges();
+    expect(primary().hasAttribute('aria-disabled')).toBe(false);
+    expect(primary().hasAttribute('aria-describedby')).toBe(false);
+    expect(change().getAttribute('aria-disabled')).toBe('true');
+    expect(fixture.nativeElement.querySelector(`#${change().getAttribute('aria-describedby')}`)?.textContent?.trim()).toBe(STRINGS.privilegeSelectRowFirst);
+    primary().click();
+    expect(runs).toBe(1);
+  });
+
   it("Story 9.3: a system-resource action reads the selected row's own AllowDelete", () => {
     // Mutation (Rule 19): drop `row` from the bar's `selfProtectionReason` call -> the not-deletable
     // row's button is drawn as an ordinary control, red.
