@@ -711,3 +711,4 @@
 2026-10-13T20:33:48Z	Story 20.9	stage_spawned	stage=plan spawn_at=2026-10-13T20:33:48Z model=opus agent_name=20-9-plan-1 cycle_iteration=1 inbox=none note=planned_while_20.7_CI_runs
 2026-10-13T21:11:34Z	Story 20.7	ci_red_classified	run=38463014073 class=flake(pending_rerun) test=turn.browser-spec.mjs:392(markup_literal_text) ledger=DW-2397 action=rerun_failed_jobs(attempt_2)
 2026-10-13T21:11:42Z	Story 20.9	story_created	spawn_at=(see_stage_spawned) model=opus agent_name=20-9-plan-1 path=_bmad-output/implementation-artifacts/spec-20-9-messages-search-view-resend-and-trace.md build_status=ready-for-dev(gate_pending:Q1_split_ruling) epic_context=reused warnings=oversized,multiple-goals q1=split_3(A_search+view,B_trace,C_resend) q2=saved_searches_none
+2026-10-13T21:12:10Z	Story 20.10	stage_spawned	stage=plan spawn_at=2026-10-13T21:12:10Z model=opus agent_name=20-10-plan-1 cycle_iteration=1 inbox=none note=planned_while_20.7_CI_rerun
