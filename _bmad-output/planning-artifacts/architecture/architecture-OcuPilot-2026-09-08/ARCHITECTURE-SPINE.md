@@ -488,7 +488,7 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
 - **Named case 2026-10-11 (Story 20.5).** Lookup-table writes, which the vendor does not audit, record OcuPilot's own `ConfigChange` from either caller [AMENDED 2026-10-11, Story 20.5 spec gate, Rule 20].
 - **Named case 2026-10-12 (Story 20.6).** Host and transformation tests, which the vendor does not audit, record OcuPilot's own `ConfigChange` from either caller [AMENDED 2026-10-12, Story 20.6 spec gate, Rule 20].
 
-  **An allow-list write records OcuPilot's own `SecurityChange`** [AMENDED 2026-10-12, Story 18.42 spec gate, Rule 20], roots before and after, since the vendor's `FSAccess` endpoints write no audit event (inference until Story 18.42's Task 0 measures it; a vendor candidate, never reported).
+  **An allow-list write records OcuPilot's own `SecurityChange`** [AMENDED 2026-10-12, Story 18.42 spec gate, Rule 20], roots before and after, since the vendor's `FSAccess` endpoints write no audit event (measured by Story 18.42's Task 0 on a throwaway with auditing on; DW-2371, a vendor candidate under the owner's hold, never reported).
 
 ### AD-16 — Namespace is switched by explicit save and restore
 
