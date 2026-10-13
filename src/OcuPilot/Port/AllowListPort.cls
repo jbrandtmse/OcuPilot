@@ -14,7 +14,8 @@
 /// A change the matrix refuses is refused here, so the route's read, the write and its read-back all read one verdict.</p>
 /// <p><b><code>PUT</code></b> reads again, applies the same matrix and runs its sequence, one vendor write after
 /// another, stopping at the first that fails. It records <code>SecurityChange</code> with the roots before and after
-/// when every step ran, or when a partial run moved the roots, and answers the state it left. The matrix, over a
+/// when every step ran, or when a partial run moved the roots or the stored paths. It answers the state it left, or the
+/// fault of the step that failed, the steps before it kept. The matrix, over a
 /// directory that is absolute, at most <parameter>OcuPilot.Api.AllowListError.DIRECTORYMAX</parameter> characters once
 /// normalized and free of control characters, compared as <code>%File.NormalizeDirectory</code> spells it:</p>
 /// <ul>
@@ -22,7 +23,8 @@
 /// such directory; else <code>Path</code> <code>PUT</code>.</li>
 /// <li><b>add, unrestricted</b> (the purpose absent or its flag off): refused <code>NODIRECTORY</code>; else the
 /// manager directory is stored unless it is, the directory is stored unless it is, and <code>Purpose</code>
-/// <code>PUT {Restricted: true}</code> last, so a step that fails leaves the roots as they were.</li>
+/// <code>PUT {Restricted: true}</code> last, so a step that fails leaves the roots as they were. A path the list
+/// already stores becomes a root with them, as the vendor's own restriction keeps it.</li>
 /// <li><b>change</b>: the old directory must be listed (<code>NOTLISTED</code>), the new one as for an add; <code>PUT</code>
 /// the new, then <code>DELETE</code> the old.</li>
 /// <li><b>remove</b>: the directory must be listed (<code>NOTLISTED</code>); <code>DELETE</code>. Removing the last entry
@@ -73,6 +75,10 @@ Parameter VERBADDED = "added";
 Parameter VERBCHANGED = "changed";
 
 Parameter VERBREMOVED = "removed";
+
+/// <p>The script's note on an add (<method>Snippet</method>): the calls the write adds on a list that is not
+/// restricted yet, which a script cannot know to make.</p>
+Parameter UNRESTRICTEDNOTE = "On a list that is not restricted yet, the add first stores the manager directory with an FSAccess.Path PUT and ends with an FSAccess.Purpose PUT that sets Restricted to true.";
 
 /// <p>The log subsystem a raw fault is written under.</p>
 Parameter LOGSUBSYSTEM = "allowlistport";
@@ -160,7 +166,7 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
             Set tAfterPaths = tPaths
             Set tAfterRoots = $Select($$$ISOK(tSC): tResult, 1: tRoots)
         }
-        If tAllRan || (tAfterRoots '= tRoots) Do ..Audit(tAction, tPurpose, tRoots, tAfterRoots)
+        If tAllRan || (tAfterRoots '= tRoots) || (tAfterPaths '= tPaths) Do ..Audit(tAction, tPurpose, tRoots, tAfterRoots)
         If $$$ISERR(tSC) Quit
         Set pResult = ..Row(tPurpose, tAfterRestricted, tAfterPaths, tAfterRoots, tAction, tDirectory, tNew, tAfterRoots)
         Set pHttpStatus = 200
@@ -390,14 +396,15 @@ ClassMethod Ordered(pList As %List) As %List
 
 /// <p>The normalized spelling of <var>pDirectory</var> (<code>%File.NormalizeDirectory</code>, trailing separator
 /// included), or <code>""</code> when it is empty, longer than <parameter>OcuPilot.Api.AllowListError.DIRECTORYMAX</parameter>
-/// characters, holds a control character, is not absolute, or normalizes to nothing or to something longer than
-/// the bound. A string test; nothing here reaches the filesystem.</p>
+/// characters, holds a control character, is not absolute on the server's platform (a leading <code>/</code> on
+/// UNIX; a drive or a <code>\\</code> share on Windows), or normalizes to nothing or to something longer than the
+/// bound. A string test; nothing here reaches the filesystem.</p>
 ClassMethod Normalized(pDirectory As %String) As %String
 {
     Set tMax = ##class(OcuPilot.Api.AllowListError).#DIRECTORYMAX
     If (pDirectory = "") || ($Length(pDirectory) > tMax) Quit ""
     If $ZStrip(pDirectory, "*C") '= pDirectory Quit ""
-    If '$Match(pDirectory, "^(/|[A-Za-z]:[\\/]|\\\\).*") Quit ""
+    If '$Match(pDirectory, $Select($System.Version.GetOS() = "Windows": "^([A-Za-z]:[\\/]|\\\\).*", 1: "^/.*")) Quit ""
     Set tNormal = ##class(%File).NormalizeDirectory(pDirectory)
     If $Length(tNormal) > tMax Quit ""
     Quit tNormal
@@ -460,10 +467,11 @@ ClassMethod SnippetForm(pEndpoint As %String, pType As %String) As %String
 }
 
 /// <p><method>Invoke</method>'s <code>PUT</code> as a script (AD-59): the vendor calls of the change in the query, in the
-/// order they run over a restricted list, each through the admin port's script. A script reads no state, so the two
-/// calls an unrestricted add also makes (the manager directory's, and the restriction) are not rendered. An action or a
-/// directory the port would refuse renders one <code>comment</code> step carrying the refusal's sentence and no call. Every
-/// other pair is the admin port's script.</p>
+/// order they run over a restricted list, each through the admin port's script. A script reads no state, so an add
+/// ends with a <code>comment</code> step, <parameter>UNRESTRICTEDNOTE</parameter>, naming the two calls the write also
+/// makes on a list that is not restricted yet. An action or a directory the port would refuse renders one
+/// <code>comment</code> step carrying the refusal's sentence and no call. Every other pair is the admin port's
+/// script.</p>
 ClassMethod Snippet(pEndpoint As %String, pType As %String, ByRef pQuery, pBody As %DynamicAbstractObject = "", pContext As %DynamicObject = "") As %DynamicArray
 {
     If (pEndpoint '= ..#ENDPOINT) || (pType '= "PUT") Quit ##super(pEndpoint, pType, .pQuery, pBody, pContext)
@@ -486,6 +494,7 @@ ClassMethod Snippet(pEndpoint As %String, pType As %String, ByRef pQuery, pBody 
         Set tQuery(..#ROOTPATHKEY) = tDirectoryNormal
         Do ..Append(tSteps, ##super("FSAccess.Path", "DELETE", .tQuery, "", pContext))
     }
+    If tAction = "add" Do tSteps.%Push(..Step("comment", ..#UNRESTRICTEDNOTE))
     Quit tSteps
 }
 

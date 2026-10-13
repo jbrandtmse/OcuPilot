@@ -90,8 +90,9 @@ Method TestTheSharedOperationGateRefusesItWhenTheToolIsReachable()
 /// <p>The shipped tool is declared unadvertised and so appears nowhere the agent is offered tools: not the provider list, not
 /// the wire lookup, not the screen's context, not the discovery tool's result -- while the screen's read tool appears in
 /// each that should carry it.</p>
-/// <p>Mutation (Rule 19): <code>ADVERTISED</code> 1 on <class>OcuPilot.Screen.Tool.AllowedDirectoryUpdate</class> -- every
-/// leg goes red.</p>
+/// <p>Mutation (Rule 19): <code>ADVERTISED</code> 1 on <class>OcuPilot.Screen.Tool.AllowedDirectoryUpdate</class> -- the
+/// provider, wire, name and discovery legs go red. The context leg holds whatever <code>ADVERTISED</code> says, because the
+/// descriptor declares no action for the context to bind the tool to.</p>
 Method TestTheShippedToolIsInNoListTheAgentSees()
 {
     Do $$$AssertEquals($ClassMethod("OcuPilot.Screen.Tool.AllowedDirectoryUpdate", "Advertised"), 0, "it declares itself unadvertised")

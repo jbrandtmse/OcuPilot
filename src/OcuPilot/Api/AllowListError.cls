@@ -40,7 +40,7 @@ Parameter REASONNODIRECTORY = "No directory of that name exists on the server.";
 /// is the list's one entry. Nothing is sent.</p>
 Parameter FALLBACK = "ALLOWLIST.FALLBACK";
 
-Parameter REASONFALLBACK = "While the list is unrestricted its one entry is the manager directory, which cannot be changed or removed. Adding a directory restricts the list to that directory and the manager directory.";
+Parameter REASONFALLBACK = "While the list is unrestricted its one entry is the manager directory, which cannot be changed or removed. Adding a directory restricts the list to that directory, the manager directory and any directory already stored in it.";
 
 /// <p>The longest directory the list stores, in characters of its normalized spelling, trailing separator included.</p>
 Parameter DIRECTORYMAX = 1024;

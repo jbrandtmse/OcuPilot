@@ -110,6 +110,37 @@ Under `src/OcuPilot/`, `5890fe4d`.
 - **C3.** Given any tool the agent can reach that writes the allow-list, when it reaches Confirm or the route, then it is refused `PROHIBITED.ALLOWLISTAGENT`.
 - **Integration.** Given a directory a person added, when `PathPort.Resolve` (every server-path consumer's resolver) is asked for a file under it, then it resolves; after the remove, it answers `PATH.ROOT`.
 
+### Review Findings
+
+Code review 2026-10-12 (full-opus; blind, edge-case, verification-gap, acceptance layers): 30 rows, 23 entries -- 7 patched, 3 deferred, 13 rejected. Rule 31 check: the per-class `Joined`, `ArrayOf` and `Body` helpers follow a 20-file convention, and `HandleSave` composes the shared `Operation` kernel with the spec's stated reason for not extending `ScreenAction`.
+
+- [x] [Review][Patch] (med, fix-risk low, in-story) An unrestricted add makes every path the purpose already stores a root, while `REASONFALLBACK` said the list becomes "that directory and the manager directory" (the vendor's `DisablePurpose` keeps stored paths) -- sentence corrected in its three copies; a test leg pins the read's `Result` and the roots [src/OcuPilot/Api/AllowListError.cls:43]
+- [x] [Review][Patch] (low, fix-risk low, in-story) A partial run that stored paths without moving the roots recorded no `SecurityChange` -- the audit condition also reads the stored paths; leg added [src/OcuPilot/Port/AllowListPort.cls:169]
+- [x] [Review][Patch] (low, fix-risk low, in-story) `Normalized` admitted `C:\x` and `\\srv\share` on UNIX, where `NormalizeDirectory` maps them under the namespace directory and to `/srv/share/` (measured) -- the absolute pattern is the platform's; legs added [src/OcuPilot/Port/AllowListPort.cls:407]
+- [x] [Review][Patch] (low, fix-risk low, in-story) `Snippet` did not mirror the unrestricted add's two calls (AD-59) -- an add ends with a `comment` step, `UNRESTRICTEDNOTE`, as `MftPort`'s `DELETENOTE` does; leg added [src/OcuPilot/Port/AllowListPort.cls:497]
+- [x] [Review][Patch] (low, fix-risk low, in-story) The port header said `PUT` "answers the state it left" on every exit -- it states the failed step's fault [src/OcuPilot/Port/AllowListPort.cls:17]
+- [x] [Review][Patch] (low, fix-risk low, in-story) `AllowListAgent`'s mutation note claimed the context leg goes red under `ADVERTISED` 1; the descriptor declares no action, so it cannot [src/OcuPilot/Test/AllowListAgent.cls:93]
+- [x] [Review][Patch] (low, fix-risk low, in-story) `Governance.Gate` said it is never asked for a person's screen write, and `allowed-directory` named only a root keyed by its path -- both corrected at their origin [src/OcuPilot/Kernel/Governance/Gate.cls:5]
+- [x] [Review][Defer] (med) `Prohibited.Codes()`'s count asserted as `35` in five descriptor classes outside `Test/Prohibited`'s roster pin [src/OcuPilot/Test/AuditingUpdate.cls:505] -- deferred: occurrence on DW-2202 (routed, owner 23-5)
+- [x] [Review][Defer] (low) A directory between about 470 and 1,024 characters passes `ALLOWLIST.PATH`, but a three-subscript reference of this shape fails `<SUBSCRIPT>` at 480 [src/OcuPilot/Api/AllowListError.cls:46] -- deferred: DW-2374, IRIS defect candidate, decision-pending, owner hold
+- [x] [Review][Defer] (low) AD-8's list of today's unadvertised tools omits this story's tool (spine :230; AD-53 :1161 names it) -- deferred: DW-2375, wontfix-accepted; the spine is the lead's and in Epic 20's diff
+
+Rejected:
+
+- false: an unrestricted add's audit row misstates the roots -- `PathPort.Roots` is the manager directory alone while unrestricted, so `[mgr] -> [mgr, dir]` is exact and `[]` means allows nothing.
+- false: the read-back always answers `nothingSent` -- AD-58: an action-style write "sends no value and says so", as `ScreenAccessAction`.
+- false: adding the manager directory while unrestricted should be `LISTED` -- the matrix's unrestricted add has no `LISTED`; it restricts, as `REASONFALLBACK` says.
+- false: an unregistered tool name passes `AgentReachable` -- no caller reaches `Prohibits` with a name the registry does not resolve; a failed resolve answers 1.
+- low: `REASONPATH` at exactly 1,024 without a trailing separator -- unlikely; the bound is AD-21's, normalized.
+- low: a non-object fresh read answers 404 `ROUTE.NOTFOUND` -- `ScreenAction`:636's shape; the port's `GET` never answers one.
+- low: an after-write read that fails leaves the answer's flag stale -- no caller reads the `PUT` answer; it needs a failed read moments after a good one.
+- low: more than 1,000 stored paths are judged on a truncated list -- wontfix-theoretical; real when a list reaches 1,000 directories.
+- low: a body that fails at read or decode answers 400 -- the `Body` shape of 30 Save routes.
+- low: a body string past the longest string answers 500 -- a 3.6 MB directory; nothing is written.
+- low: a `PUT` with a body ignores it -- `Apply` sends none for `SENDSBODY` 0.
+- low: an `FSAccess` write under another entity type would pass `ALLOWLISTAGENT` -- wontfix-theoretical; no tool but this port's reaches an `FSAccess` write (grep); real when one does.
+- low: an `Event.Record` error status is not logged -- as `ScreenAccessPort`:395; emission never fails a write (AD-15).
+
 ## Spec Change Log
 
 - 2026-10-12, lead, spec gate: (1) the roots question takes reading A as this plan built it -- no write drops a root the person did not name, the unrestricted fallback row cannot be changed or removed, a remove may empty the list; `epics.md` 18.42's AC and AD-21's DW-2334 sentence are restated to match. (2) Split for size (Rule 5): this story keeps Task 0, tasks 1-6, task 10's refusal sentences, tests 11-13 and the sweep's ObjectScript rosters, with C1 at the route, C2, C3 and Integration; Story 18.46 takes the screen (tasks 7-9, the rest of task 10, tests 14-15, the client greps, C1 on the screen). Re-plan in place to this story's part.
@@ -203,6 +234,11 @@ every test added or changed passes on a fresh environment, in either order
   - mutation: a change's `NewDirectory` `LISTED` check dropped from `Plan`, so a change onto a listed directory would delete it -> `AllowListPort.TestEveryRefusalIsExactAndSendsNoWrite` (case 7) (746).
 - (QA) Integration, the remove half, mutation: `Execute` sends no `DELETE` -> `AllowedDirectorySave.TestAnAddFromAnUnrestrictedListReachesTheScreenAndTheResolver` (the `PATH.ROOT` leg), `TestAnAddAChangeAndARemoveAreWrittenAndReadBack`, `TestAnEmptiedListAllowsNothing`, and `AllowListPort.TestAChangeStoresTheNewThenDeletesTheOld`, `TestRemovingTheLastEntryLeavesAListThatAllowsNothing` (744, 745).
 - (QA) C1, the shipped default, mutation: `Baseline`'s `security.alloweddirectories.update` `true` -> `AllowedDirectorySave.TestTheKeyShippedOffRefusesAndChangesNothing` and `GovernanceBaseline.TestThePurgeIsTheOneDisabledLine` (747, 748).
+- (CR) Each applied to `ocupilot-ci`'s mounted copy only, recompiled with `AllowListPortFixture`, observed red, the mount restored byte-identical, reloaded and green (755):
+  - mutation: the unrestricted add's result built without the stored paths in `Plan` -> `AllowListPort.TestAnAddToAnUnrestrictedListKeepsTheManagerDirectoryAndRestrictsLast`, its stored-path leg (753).
+  - mutation: the stored-paths clause dropped from `Invoke`'s audit condition -> `TestAFailedStepStopsBeforeTheRestrictionAndLeavesTheRoots`, its second leg (753).
+  - mutation: `Normalized` back to the platform-blind pattern -> `TestNormalizedAdmitsOnlyAbsoluteBoundedCleanDirectories`, its three UNIX legs (753).
+  - mutation: `Snippet`'s add note dropped -> `TestTheScriptFormRendersTheVendorCallsOfTheChange` (754).
 - (QA) Rule 3: `AllowedDirectorySave` posts `POST /allowed-directories` over `%Net.HttpRequest` (`Http.MakeRequest`, `AbsoluteRequest`), asserts the status, the body and the real list read back through `PathPort.Roots`, and the refusals leave it unchanged; no test file was added or changed in this pass.
 
 

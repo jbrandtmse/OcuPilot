@@ -31,6 +31,8 @@
 /// Governance policy screen administers and its audit row targets.</p>
 /// <p><code>allowed-directory</code> is one root of the instance's directory allow-list, keyed by
 /// the path exactly as the instance answers it; it needs no spelling rule of its own.</p>
+/// <p>A write of the list targets the whole list, keyed by its purpose, <code>%GUIFileSelector</code>
+/// (AD-13).</p>
 /// <p><code>namespace</code> is one of the instance's namespaces, keyed by its name, which the
 /// instance resolves without case (Story 18.2).</p>
 /// <p><code>web-session</code> is one CSP session the instance holds, keyed by its session id as

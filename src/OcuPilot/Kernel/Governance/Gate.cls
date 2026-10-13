@@ -2,7 +2,7 @@
 /// asks it for every tool call, after the caller's identity is checked and before any restraint read,
 /// privilege check, port or tool; <class>OcuPilot.Kernel.Proposal.Confirm</class> asks it again at
 /// the write, inside the transition and before the claim (AD-40). It is never asked for a person's
-/// own screen write or for a copy-out draft.</p>
+/// own screen write, but <code>POST /allowed-directories</code>'s, or for a copy-out draft.</p>
 /// <p>The decision is <class>OcuPilot.Kernel.Governance.Policy</class>'s cascade over the tool's
 /// key, read from the stored policy on every call. A denial answers
 /// <parameter>OcuPilot.Api.Error.GOVERNANCEDISABLED</parameter>, which the dispatcher renders as the

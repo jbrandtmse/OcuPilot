@@ -6325,7 +6325,7 @@ export const STRINGS = {
   /** EXPERIENCE.md:364 */
   allowListRefusalNoDirectory: 'No directory of that name exists on the server.',
   /** EXPERIENCE.md:364 */
-  allowListRefusalFallback: 'While the list is unrestricted its one entry is the manager directory, which cannot be changed or removed. Adding a directory restricts the list to that directory and the manager directory.',
+  allowListRefusalFallback: 'While the list is unrestricted its one entry is the manager directory, which cannot be changed or removed. Adding a directory restricts the list to that directory, the manager directory and any directory already stored in it.',
   /** EXPERIENCE.md:357 */
   docDbAppListLabel: 'Doc DB applications',
   /** EXPERIENCE.md:357 */

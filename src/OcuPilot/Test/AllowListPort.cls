@@ -180,7 +180,8 @@ Method TestAnAddToARestrictedListSendsOnePutAndRecordsTheRoots()
 }
 
 /// <p>An add to an unrestricted list stores the manager directory first (unless it is stored), then the directory, and
-/// restricts last, so the roots keep the manager directory and gain the new one.</p>
+/// restricts last, so the roots keep the manager directory and gain the new one. A path the purpose already stores
+/// becomes a root with them, and the read's <code>Result</code> names it before the write.</p>
 /// <p>Mutation (Rule 19): drop the manager directory's <code>put</code> step from
 /// <method>OcuPilot.Port.AllowListPort.Plan</method> -- the keep-root leg goes red.</p>
 Method TestAnAddToAnUnrestrictedListKeepsTheManagerDirectoryAndRestrictsLast()
@@ -198,9 +199,20 @@ Method TestAnAddToAnUnrestrictedListKeepsTheManagerDirectoryAndRestrictsLast()
     Set tSC = ..Call("PUT", "add", ..Dir("b"), "", .tHttp, .tRow, .tFault)
     Do $$$AssertStatusOK(tSC, "the second add is accepted")
     Do $$$AssertEquals(..WriteLog(), "FSAccess.Path/PUT " _ $Replace(..Dir("b"), ..Manager(), "<mgr>") _ "; FSAccess.Purpose/PUT", "the stored manager directory is not stored again")
+
+    ; A path the purpose stores while unrestricted becomes a root with them, and the read names it before the write.
+    Do $$$AssertStatusOK($ClassMethod(..#FIXTURE, "SetUp", 0, $ListBuild(..Dir("c"))), "the purpose stores a probe directory, unrestricted")
+    Set tSC = ..Call("GET", "add", ..Dir("a"), "", .tHttp, .tRow, .tFault)
+    Do $$$AssertEquals($Select($IsObject($Get(tRow)): ..Joined(tRow.Result), 1: ""), ..Sorted($ListBuild(..Manager(), ..Dir("a"), ..Dir("c"))), "the read's result names the stored directory beside the manager directory and the new one")
+    Set tSC = ..Call("PUT", "add", ..Dir("a"), "", .tHttp, .tRow, .tFault)
+    Do $$$AssertStatusOK(tSC, "the third add is accepted")
+    Do $$$AssertEquals($ListToString(..RootsNow(), "|"), ..Sorted($ListBuild(..Manager(), ..Dir("a"), ..Dir("c"))), "and the roots are those three")
 }
 
-/// <p>A step that fails stops the sequence before the restriction, the roots stay as they were and no row is recorded.</p>
+/// <p>A step that fails stops the sequence before the restriction and the roots stay as they were: a first step that fails
+/// stores nothing and records no row, and a restriction that fails after the puts records the paths they stored.</p>
+/// <p>Mutation (Rule 19): drop the stored-paths clause from <method>OcuPilot.Port.AllowListPort.Invoke</method>'s audit
+/// condition -- the second leg's row count goes red.</p>
 Method TestAFailedStepStopsBeforeTheRestrictionAndLeavesTheRoots()
 {
     Do $$$AssertStatusOK($ClassMethod(..#FIXTURE, "Clear"), "the purpose is absent")
@@ -214,6 +226,16 @@ Method TestAFailedStepStopsBeforeTheRestrictionAndLeavesTheRoots()
     Do $$$AssertEquals($ListToString(..RootsNow(), "|"), ..Manager(), "the roots are the manager directory alone, unrestricted")
     Do $$$AssertEquals(..AuditRow(tSince, "added", .tRows), "", "and no row is recorded")
     Do $$$AssertEquals(tRows, 0, "none at all: " _ tRows)
+
+    Do $$$AssertStatusOK($ClassMethod(..#FIXTURE, "Clear"), "the purpose is absent again")
+    Do $ClassMethod(..#FIXTURE, "Script", "FSAccess.Purpose", "PUT", 500)
+    Set tSince = ##class(OcuPilot.Test.AuditEvent).Now()
+    Set tSC = ..Call("PUT", "add", ..Dir("a"), "", .tHttp, .tRow, .tFault)
+    Do $$$AssertStatusNotOK(tSC, "a restriction the vendor refuses fails the add")
+    Do $ClassMethod(..#FIXTURE, "Reset")
+    Do $$$AssertEquals($ListToString(..RootsNow(), "|"), ..Manager(), "the roots are still the manager directory alone")
+    Do ..AuditRow(tSince, "added", .tRows)
+    Do $$$AssertEquals(tRows, 1, "and one row records the paths the puts stored: " _ tRows)
 }
 
 /// <p>A change stores the new directory, then deletes the old; a delete that fails after the put leaves both and still
@@ -360,6 +382,9 @@ Method TestNormalizedAdmitsOnlyAbsoluteBoundedCleanDirectories()
     Do $$$AssertEquals($ClassMethod(tPort, "Normalized", tEdge), tEdge, "and one of exactly 1,024 characters is admitted")
     Set tNormalOver = "/" _ $Translate($Justify("", 1023), " ", "a")
     Do $$$AssertEquals($ClassMethod(tPort, "Normalized", tNormalOver), "", "and one of 1,024 whose normalized spelling adds the separator is not")
+    If $System.Version.GetOS() '= "Windows" {
+        For tForeign = "C:/ocuprobe1842x/", "C:\ocuprobe1842x\", "\\srv\share\" Do $$$AssertEquals($ClassMethod(tPort, "Normalized", tForeign), "", "'" _ tForeign _ "' is not absolute on UNIX and is refused")
+    }
 }
 
 /// <p>The script form (AD-59): the write renders the vendor calls of the change as <code>rest</code> steps, a change that
@@ -379,6 +404,13 @@ Method TestTheScriptFormRendersTheVendorCallsOfTheChange()
         Do $$$AssertTrue((tSteps.%Get(0).text [ "-X PUT") && (tSteps.%Get(0).text [ "fs-access-purpose/path") && (tSteps.%Get(0).text [ "ocuprobe1842c"), "the new directory's PUT first")
         Do $$$AssertTrue((tSteps.%Get(1).text [ "-X DELETE") && (tSteps.%Get(1).text [ "ocuprobe1842a"), "then the old one's DELETE")
     }
+    Set tQuery("Action") = "add"
+    Kill tQuery("NewDirectory")
+    Set tSteps = $ClassMethod(tPort, "Snippet", "AllowList", "PUT", .tQuery, "", {"origin": "http://localhost", "user": "u"})
+    Set tNote = $Select(tSteps.%Size() > 1: tSteps.%Get(1).kind _ "|" _ tSteps.%Get(1).text, 1: "")
+    Do $$$AssertEquals(tSteps.%Size() _ "|" _ tNote, "2|comment|" _ $Parameter(tPort, "UNRESTRICTEDNOTE"), "an add is its PUT, then the note naming the calls a list not yet restricted also takes")
+    Set tQuery("Action") = "change"
+    Set tQuery("NewDirectory") = ..Dir("c")
     Set tQuery("Directory") = "relative"
     Set tSteps = $ClassMethod(tPort, "Snippet", "AllowList", "PUT", .tQuery, "", {"origin": "http://localhost", "user": "u"})
     Do $$$AssertEquals(tSteps.%Size() _ "|" _ tSteps.%Get(0).kind _ "|" _ tSteps.%Get(0).text, "1|comment|" _ ##class(OcuPilot.Api.AllowListError).#REASONPATH, "a refused change renders one comment carrying its sentence and no call")
