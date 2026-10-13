@@ -608,3 +608,5 @@
 2026-10-13T00:57:38Z	Epic 20	stage_spawned	stage=epic-context spawn_at=2026-10-13T00:57:38Z model=opus agent_name=20-context-recompile reason=planning_artifact_newer(AD-5_20.29,feature_18.13)
 2026-10-13T01:01:39Z	Epic 20	epic_context_compiled	reason=planning_artifact_newer(AD-5_20.29,feature_18.13) model=opus lines=152
 2026-10-13T01:01:39Z	Story 20.27	stage_spawned	stage=plan spawn_at=2026-10-13T01:01:39Z model=opus agent_name=20-27-plan-1 cycle_iteration=1 inbox=none
+2026-10-13T01:34:25Z	Story 20.27	story_created	spawn_at=(see_stage_spawned) model=opus agent_name=20-27-plan-1 path=_bmad-output/implementation-artifacts/spec-20-27-transformations-tested.md build_status=ready-for-dev(gate_pending:20.29_red_first) epic_context=reused
+2026-10-13T01:34:25Z	Story 20.29	ci_red	run=38329739528 head=f92b0dcf causes=browser_3/5_oauth.browser-spec.mjs:289_focus_lost_to_BODY_on_a_lazily_loaded_page(a11y_regression);browser_5/5_language-server-editor_form_bar_not_rendered_when_spec_acted(screen_ready_before_lazy_page) instance_shards=green verdict=story_red(orchestrator)
