@@ -2,13 +2,28 @@
 title: 'Story 18.38: The live log tail'
 type: 'feature'
 created: '2026-10-12'
-status: 'ready-for-dev'
+status: 'in-review'
+baseline_revision: 'ad0fb51feefb1ce52a318fc5f8d7c2148eefb49c'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-18-context.md'
 warnings: ['oversized']
-deferred: []
+deferred:
+  - summary: >-
+      A client that disconnects while a tail is held leaves its CSP process in the wait until the bound (50 s); nothing ends it earlier.
+    evidence: |-
+      Measured on ocupilot-ci (Task 0 e): a client dropped at 12 s left its process in Tail (HANG) until about 50 s; the beats at 20, 30 and 40 s returned OK, because Response.Flush answers $$$OK and the gateway keeps draining. Only the gateway's own 504 interrupts the process (<EXTERNAL INTERRUPT>, answered unlogged). Turning Live tail off, or a person leaving, therefore holds up to one process per tail still in flight for up to the bound.
+    location: >-
+      OcuPilot.Port.LogSourcePort.Tail; OcuPilot.Api.Response.Heartbeat
+    severity: low
+  - summary: >-
+      No automated test sees a beat arrive on time: Heartbeat's flush properties are pinned in process, and the delivery itself was measured by hand.
+    evidence: |-
+      The wire tests read a whole body, so they cannot tell a beat at 10 s from one released with the envelope; Task 0 b timed it with a raw socket and curl -sN --compressed on ocupilot-ci (beats at 10.1, 20.2, 30.3 and 40.4 s, envelope at 50.5 s).
+    location: >-
+      OcuPilot.Test.Envelope.TestAHeartbeatSetsTheStreamingPropertiesBeforeItsFirstFlushOnly
+    severity: low
 ---
 
 <intent-contract>
@@ -40,7 +55,7 @@ deferred: []
 | Partial line | bytes, no newline | `changed: true`; the next tail, at the new size, waits | -- |
 | Rotation | `MoveConsoleLog` mid-wait | `changed: true`; the page answers `restarted` | an absent instant is waited out |
 | Refused | non-tail source; no pair; bad cursor; `file` | 404 `LOG.SOURCE`; 403; 400 `LOG.OFFSET`; 400 `LOG.FILE` | no heartbeat; a gate refusal touches no file |
-| Client gone | a heartbeat write fails | the wait ends | nothing logged |
+| Client gone | a heartbeat write fails, or the gateway interrupts | the wait ends; a dropped socket's wait runs to the bound [AMENDED 2026-10-13 - see the Spec Change Log] | nothing logged |
 
 </intent-contract>
 
@@ -63,7 +78,7 @@ Under `src/OcuPilot/` at `093b3f34`.
 1. `Port/LogSourcePort.cls` (add-only; header corrected in place):
    - `TAILSOURCES = "messages,alerts"`, `TAILCHECKSECONDS` 1, `TAILBEATSECONDS` 10, `TailSources()`, and the seams `TailBoundSeconds()` (`SqlPort.BoundSeconds`' line), `TailCheckSeconds()`, `TailBeatSeconds()`.
    - `TailState(pPath, .pSize, .pIdentity) As %Boolean`, through `OpenStream` and `Identity`.
-   - `Tail(pSource, pIdentity, pSize, pFile, pBeatClass, .pResult, .pHttpStatus, .pFault)`: the Boundaries' refusals in order (cursor: `identity` `^[A-Za-z0-9_=-]{1,64}$`, `size` digits, both or neither), `Resolve`, then the matrix's loop, calling `$ClassMethod(pBeatClass, "Heartbeat")` per beat. A throw before the first beat is `Fail`; after it, logged and answered `changed`. A failed heartbeat ends the wait, unlogged.
+   - `Tail(pSource, pIdentity, pSize, pFile, pBeatClass, .pResult, .pHttpStatus, .pFault)`: the Boundaries' refusals in order (cursor: `identity` `^[A-Za-z0-9_=-]{1,64}$`, `size` digits, both required [AMENDED 2026-10-13 - see the Spec Change Log]), `Resolve`, then the matrix's loop, calling `$ClassMethod(pBeatClass, "Heartbeat")` per beat. A throw before the first beat is `Fail`; after it, logged and answered `changed`. A failed heartbeat ends the wait, unlogged.
 2. `Api/Response.cls`: `Heartbeat()` sets JSON `ContentType`, writes `$Char(10)`, `%response.Flush()`.
 3. `Api/LogPage.cls`: `HandleTail(pSource)` passes `identity`, `size`, `file` to `Tail(..., "OcuPilot.Api.Response", ...)`, through `Answer`.
 4. `Api/Router.cls`: `GET /logs/alerts/tail` above :152 and `/logs/messages/tail` above :154; thin `LogAlertsTail` and `LogMessagesTail` beside `LogAlerts` :1129 and `LogMessages` :974.
@@ -93,6 +108,8 @@ Under `src/OcuPilot/` at `093b3f34`.
 - **Integration.** Given the log viewer, the route's one consumer, when a marker is written under Live tail, then its row appears (task 13).
 
 ## Spec Change Log
+
+- 2026-10-13, lead, implement halt (Task 0 e), Rule 5 tier 1: the vendor does not fail a heartbeat after a client disconnects, so the matrix's "Client gone" row now reads that a dropped socket's wait runs to the bound (at most `BoundSeconds`, one CSP process, nothing logged), the bounded hold the Design Notes already name; the cursor is required whole (`EndpointCoverage`'s bare probe draws `LOG.OFFSET`). AD-12's carve-out names the two response properties Task 0 b measured. Resumed at review (`in-review`) over the uncommitted implementation.
 
 - 2026-10-13, lead spec gate: "For the lead" applied (AD-12's second carve-out and AD-43's live tail in the spine; EXPERIENCE.md :646, :848, :899 in place, line count unchanged, `test:tools` 1948/1948). `Descriptor.cls` :1076 and :1120 are the Rule 11 ask to the orchestrator.
 
@@ -125,6 +142,14 @@ Under `src/OcuPilot/` at `093b3f34`.
   - :848: replace `Load newer only` with `Load newer; Live tail on alerts.log and messages.log`.
   - :899, the whole line: `- **Tail, live where the source opts in.** Log viewers load bounded pages and offer "Load newer"; on alerts.log's and messages.log's current file, "Live tail" also holds a long poll that brings newer lines as the instance writes them (Story 18.38); every other log, an older rotated file included, streams nothing.`
 - No vendor defect candidate.
+- **Task 0 findings** (`ocupilot-ci`, 2026-10-13, through Apache and the CSP gateway on 52776; measured, not recalled):
+  - **(a)** A hold to the 50 s bound answers 200 with a beat every 10 s and one envelope. With `TailBoundSeconds` mutated to 75 s it answered 200 at 75.6 s, so a beat restarts the gateway's 60 s timer; with the beat mutated to 1,000 s it answered 504 `text/html` with no body at 60.07 s, and the gateway interrupted the process at that instant (`<EXTERNAL INTERRUPT>` inside `Tail`).
+  - **(b)** As first written, only the first beat arrived on time; for a client sending `Accept-Encoding: gzip`, every browser, nothing arrived until the envelope (`Content-Length` 39). `Heartbeat` therefore sets `%response.GzipOutput = 0` and `%response.AllowOutputFlush = 1` before its first write, neither settable after it. Then `curl -sN --compressed` shows a beat at 10.1, 20.2, 30.3 and 40.4 s and the envelope at 50.5 s.
+  - **(c)** Across `MoveConsoleLog` a 2 ms sampler never saw an absent instant: `%File.Exists` and `TailState` stayed true; size 1,845,227 -> 325 and the identity changed at the call (2 ms), and the held tail answered `changed: true` 0.49 s later. A rotated `messages.old_20261013_1` remains on `ocupilot-ci`.
+  - **(d)** One `TailState` costs 0.29 ms (1,000 calls, 0.29 s; the same on 1.8 MB and 2.3 KB).
+  - **(e)** A heartbeat does not fail after a disconnect: `Response.Flush` answers OK. A client dropped at 12 s left its process in `Tail` until about 50 s, the beats at 20, 30 and 40 s returning OK, nothing logged. The matrix's "Client gone" row holds for a failing heartbeat and for the gateway's interrupt (both end the wait unlogged; the interrupt was logged as an error until `Tail` named it), not for a dropped socket: that costs one process to the bound, the Named consequence at its edge (deferred, low).
+  - **(f)** Three concurrent tails by `_SYSTEM` (one gzip-accepting, one with no cursor) held 50 s with beats on time beside a page read (7.7 ms), a sign-in (6.3 ms) and `/instance` (5.1 ms); `LUConsumed` read 2 before, during and after; no `messages.log` line.
+  - **Amendments recommended, not applied:** AD-12's carve-out names the two response properties ("`Response.Heartbeat` turns compression off and output flushing on, before its first write"); the matrix's "Client gone" row reads "a heartbeat write fails, or the gateway interrupts | the wait ends; a dropped socket's wait runs to the bound | nothing logged". The cursor is required (both `identity` and `size`; neither is `LOG.OFFSET`), so `EndpointCoverage`'s bare probe is refused at once rather than held.
 
 ## Verification
 
@@ -132,7 +157,7 @@ Under `src/OcuPilot/` at `093b3f34`.
 
 - `(loop)` `sh /Users/jbrandt/git/OcuPilot/.worktrees/.coordination/carry-2026-10-08/epic-18-d8/load-ocupilot-ci.sh`: `LOAD-OK`, `STARTPATH-OK`.
 - `(loop)` `cd ui && node tools/ci-runner.mjs --container ocupilot-ci --class OcuPilot.Test.<C>`, one at a time, totals in `%UnitTest_Result`: tasks 9-11 and task 14's classes.
-- `(loop)` `cd ui && npm run test:tools && npm run test:components && npm run build`, the bundle under the 3527kB warning.
+- `(loop)` `cd ui && npm run test:tools && npm run test:components && npm run build`, the bundle under the 1,992 kB warning.
 - `(loop)` `docker cp dist/ocupilot-ui/browser/. ocupilot-ci:/durable/iris/csp/ocupilot/`; then, with `OCUPILOT_BROWSER_ORIGIN=http://localhost:52776` and `OCUPILOT_BROWSER_CONTAINER=ocupilot-ci`, `node --test --test-concurrency=1 browser/<spec>.browser-spec.mjs` for tasks 13 and 14.
 - `(loop)` `uv run scripts/check-objectscript.py`, `bash scripts/lint-docs.sh`: 0 problems. The full ObjectScript sweep is the runner's; the full browser suite is CI's.
 
@@ -140,9 +165,27 @@ Under `src/OcuPilot/` at `093b3f34`.
 
 every test added or changed passes on a fresh environment, in either order
 
-**Mutations** (planned; recorded as `mutation: <change> -> <test red>` once observed): AC1, `Tail` ignores `size` -> `LogTail`'s moved and mid-wait legs; no `loadNewer` on `changed` -> the Live spec test and task 13; no beat call -> the still leg. AC2, `canLive` without the current-file test -> the rotated-file leg; `TAILSOURCES` plus `systemmonitor` -> the roster pin. AC3, the gate after `Resolve` -> the access count; the cursor check after the first beat -> the beat count. AC4, `setLive(false)` keeps the generation -> the off leg.
+**Results** (ocupilot-ci, final code, totals confirmed in `%UnitTest_Result`): `LogTail` 11 (run 665), `LogTailWire` 4 (666), `LogSourceDenial` 8 (667), `EndpointCoverage` 2 (668), `Descriptor` 60 (669), `DeveloperFloorRoutes` 1 (670), `InteropFloorRoutes` 1 (671), `LogSource` 22 (672), `LogSourceWire` 9 (673), `ReadTool` 28 (674), `SurfaceCoverage` 4 (675), `Envelope` 17 (676). `test:tools` 1,969/1,969; `test:components` 3,063 in 244 files; `check-objectscript` and `lint-docs` 0 problems. Browser on the rebuilt bundle: `messages-log` 5/5, `alerts-log` 7/7, `messages-log-files` 5/5, `secondary-logs` 7/7, and `screen-height` 15/15 for the wrapped Load newer row. Build: initial total 1.91 MB (warning at 1,992 kB), largest lazy chunk `data-browser-page` 83.32 kB (cap 88 kB). Fixed strings: 3,356 -> 3,357 literals under the unchanged bound 3,400; 43 remain, so the next story that adds literals raises it.
+
+**Mutations** (observed, each reverted; ObjectScript on `ocupilot-ci`'s mounted copy with the class and its three descendants recompiled, client rebuilt and redeployed before the browser read it):
+
+- mutation: `Tail` drops the size term from its moved comparison -> `LogTail` moved, mid-wait, partial-line and gate-served legs (4 red); `LogTailWire` cursor-a-byte-behind (50.35 s, not 2 s)
+- mutation: `Tail` never calls its heartbeat -> `LogTail` still-file (0 beats), absent-file, client-gone and fault-after-first-beat legs (4 red)
+- mutation: a file access before the gate in `Tail` -> `LogTail` gate-refusal and the refusal rows' access count (red)
+- mutation: the cursor check removed from `Tail` (nothing before the first beat refuses) -> `LogTail` refusal rows, status, code and access count (red)
+- mutation: a failed or thrown heartbeat ignored -> `LogTail` client-gone (red); the external-interrupt branch removed -> the same test, status and nothing-logged (red)
+- mutation: `TAILSOURCES` plus `systemmonitor` -> `LogTail` roster and refusal row (red) and `Descriptor` secondary-log loop (red); `TAILSOURCES` minus `alerts` -> `Descriptor` alert leg (red)
+- mutation: the gate skipped in `Tail` -> `LogSourceDenial` both-tails leg (red, 403 expected)
+- mutation: `AllowOutputFlush` line deleted from `Heartbeat` -> `Envelope` heartbeat leg at "output flushing on" (red); `GzipOutput` line deleted -> the same leg at "compression off" (red)
+- mutation: the `/logs/alerts/tail` probe deleted -> `EndpointCoverage` (196 probes, 197 routes, red); the `/logs/messages/tail` route deleted -> `LogTailWire` 4 of 4 red
+- mutation: `canLive` without the current-file test -> `log-viewer.spec.ts` AC6 loop, rotated-file and file-change legs (3 red)
+- mutation: `stopLive` keeps the live generation -> the four AC4 legs: off, page in flight, file change, leaving (4 red)
+- mutation: no `loadNewer` on `changed` -> the Live chain, truncated-pages, in-flight-page and refused-page legs (4 red); `messages-log.browser-spec.mjs` Live tail test (red: no line within 10 s)
+- mutation: page `onDestroy` without `setLive(false)` -> the leaving leg (red); `clearWindow` without `stopLive` -> the file-change and sign-out legs (2 red)
 
 ## Auto Run Result
 
-Status: ready-for-dev
-Blocking condition: none
+Status: blocked
+Blocking condition: intent gap (Task 0 e, a gate in the stage ruling): a heartbeat does not fail after a client disconnects, so a dropped client's process stays in `Tail` until the 50 s bound. Recommended amendment: reword the matrix's "Client gone" row to "a heartbeat write fails, or the gateway interrupts | the wait ends; a dropped socket's wait runs to the bound | nothing logged", accepting the bounded hold as the Named consequence (deferred, low); AD-12's carve-out also names `GzipOutput = 0` and `AllowOutputFlush = 1` (Task 0 b); the cursor is required whole, both `identity` and `size`, since neither must draw `LOG.OFFSET` for `EndpointCoverage`'s bare probe.
+
+Pass state: tasks 1-14 are implemented and uncommitted in the worktree at `baseline_revision`; results and mutations are under `## Verification`. The review layers and finalize did not run; resume at step 04 once the row is amended.
