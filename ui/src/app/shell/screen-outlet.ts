@@ -64,6 +64,14 @@ export const ARCHETYPE_PAGES: ArchetypePages = {
 };
 
 /**
+ * The pages that serve a descriptor's bare route and its id route alike. Both maps name the one
+ * loader, so the two routes share what `rememberedPage` has loaded, and a create's hand-off to its
+ * own id route commits before the next render.
+ */
+const SERVICE_EDITOR_PAGE: PageLoader = () => import('../areas/permissions/service-editor.page').then((m) => m.ServiceEditorPage);
+const LDAP_EDITOR_PAGE: PageLoader = () => import('../areas/security/ldap-editor.page').then((m) => m.LdapEditorPage);
+
+/**
  * Pages keyed by the descriptor that declares them, resolved **before** the archetype map
  * (DW-369).
  *
@@ -116,9 +124,9 @@ export const DESCRIPTOR_PAGES: Readonly<Record<string, PageLoader>> = {
   'OcuPilot.Screen.Descriptor.SslForm': () => import('../areas/security/ssl-form.page').then((m) => m.SslFormPage),
   'OcuPilot.Screen.Descriptor.TaskForm': () => import('../areas/tasks/task-wizard.page').then((m) => m.TaskWizardPage),
   // Story 16.13: the service editor serves its bare route and its id route.
-  'OcuPilot.Screen.Descriptor.ServiceForm': () => import('../areas/permissions/service-editor.page').then((m) => m.ServiceEditorPage),
+  'OcuPilot.Screen.Descriptor.ServiceForm': SERVICE_EDITOR_PAGE,
   // Story 16.14: the LDAP and Kerberos editor creates at its bare route and edits at its id route.
-  'OcuPilot.Screen.Descriptor.LdapConfigForm': () => import('../areas/security/ldap-editor.page').then((m) => m.LdapEditorPage),
+  'OcuPilot.Screen.Descriptor.LdapConfigForm': LDAP_EDITOR_PAGE,
   'OcuPilot.Screen.Descriptor.AuditUserEventList': () => import('../areas/security/audit-user-event-list.page').then((m) => m.AuditUserEventListPage),
   'OcuPilot.Screen.Descriptor.AgentGovernance': () => import('../areas/agent/governance.page').then((m) => m.GovernancePage),
   'OcuPilot.Screen.Descriptor.LogHub': () => import('../areas/logs/log-hub.page').then((m) => m.LogHubPage),
@@ -229,8 +237,8 @@ export const DESCRIPTOR_EDIT_PAGES: Readonly<Record<string, PageLoader>> = {
   'OcuPilot.Screen.Descriptor.TaskForm': () => import('../areas/tasks/task-editor.page').then((m) => m.TaskEditorPage),
   // Story 16.13's service editor serves its bare route (one sentence back to the list) and its id
   // route from the one page, and Story 16.14's LDAP editor its create and its edit.
-  'OcuPilot.Screen.Descriptor.ServiceForm': () => import('../areas/permissions/service-editor.page').then((m) => m.ServiceEditorPage),
-  'OcuPilot.Screen.Descriptor.LdapConfigForm': () => import('../areas/security/ldap-editor.page').then((m) => m.LdapEditorPage),
+  'OcuPilot.Screen.Descriptor.ServiceForm': SERVICE_EDITOR_PAGE,
+  'OcuPilot.Screen.Descriptor.LdapConfigForm': LDAP_EDITOR_PAGE,
   // Story 18.3: the local database form's id route is the properties editor beside the wizard.
   'OcuPilot.Screen.Descriptor.LocalDatabaseForm': () => import('../areas/os-management/database-editor.page').then((m) => m.DatabaseEditorPage),
 };

@@ -1,4 +1,4 @@
-import { Component, afterNextRender, inject, reflectComponentType, type Type } from '@angular/core';
+import { Component, ElementRef, afterNextRender, inject, reflectComponentType, type Type } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { Router, provideRouter, type Route } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
@@ -356,8 +356,8 @@ describe('the routed screen outlet', () => {
 });
 
 /**
- * A page that records whether the outlet still reads busy at the page's own first render, which is
- * the order the shell promises: the outlet reports itself ready only after the page it routed has
+ * A page that records its outlet host's `aria-busy` at the page's own first render, which is the
+ * order the shell promises: the outlet reports itself ready only after the page it routed has
  * rendered.
  */
 @Component({ selector: 'app-probe-page', template: '<p class="probe"></p>' })
@@ -365,9 +365,10 @@ class ProbePage {
   static busyAtFirstRender: string | null | undefined;
 
   constructor() {
-    const outlet = inject(ScreenOutlet) as unknown as { readonly busyValue: string | null };
+    const host = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
     afterNextRender(() => {
-      ProbePage.busyAtFirstRender = outlet.busyValue;
+      const outlet = host.closest('app-screen-outlet');
+      ProbePage.busyAtFirstRender = outlet === null ? 'no outlet' : outlet.getAttribute('aria-busy');
     });
   }
 }

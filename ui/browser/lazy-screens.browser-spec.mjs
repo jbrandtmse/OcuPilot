@@ -10,8 +10,9 @@
  *   the outlet. Each chunk answers 200, `application/javascript`, with the immutable cache header
  *   the installed handler gives a hashed file.
  * - **A return visit fetches nothing.** The route keeps the component it loaded.
- * - **The outlet is never ready without its page.** The router creates the outlet before it renders,
- *   and the page after it; from creation until the page is in it the outlet reads `aria-busy="true"`.
+ * - **An outlet that routes a page is never ready without it.** The router creates the outlet before
+ *   it renders, and the page after it; from creation until the page is in it the outlet reads
+ *   `aria-busy="true"`. A held or refused outlet mounts no page and is not busy; this flow opens neither.
  * - **A full page load at a screen's own URL brings its code too.** A list screen's URL and an id
  *   route's URL (whose edit page is not the screen's base page) each fetch a chunk outside the
  *   initial set that defines the page they render once the person has signed in.

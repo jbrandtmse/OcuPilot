@@ -91,6 +91,27 @@ describe('the route table', () => {
     expect(wildcard.loadComponent).toBeUndefined();
   });
 
+  // A create hands off to its own id route. Where both routes render one page, they load it through
+  // one loader, so `rememberedPage` answers the hand-off at once.
+  //
+  // Mutation (Rule 19): give `DESCRIPTOR_EDIT_PAGES`' LdapConfigForm entry a loader of its own (the
+  // same `import()` written out again) -> this goes red naming LdapConfigForm.
+  it("an id route that renders its bare route's page shares the bare route's loader", async () => {
+    const routeFor = (path: string) => routes.find((route) => route.path === path);
+    let shared = 0;
+    for (const screen of builtScreens()) {
+      if (screen.route === '' || !hasIdRoute(screen)) continue;
+      const edit = resolveArchetypePage(DESCRIPTOR_EDIT_PAGES, screen.descriptor);
+      const base = resolveScreenPage(DESCRIPTOR_PAGES, ARCHETYPE_PAGES, screen.descriptor, screen.archetype);
+      if (edit === null || base === null || (await edit()) !== (await (base as PageLoader)())) continue;
+      shared += 1;
+      expect(routeFor(`${screen.route}/:id`)?.children?.[0].loadComponent, `${screen.descriptor}: its id route's page loader`).toBe(
+        routeFor(screen.route)?.children?.[0].loadComponent
+      );
+    }
+    expect(shared, 'the service and LDAP editors each serve both routes').toBeGreaterThanOrEqual(2);
+  });
+
   it('no declared route is swallowed by an earlier one, so every screen keeps its own guard', () => {
     // Angular takes the first route whose segments match, a `:id` matching any one segment. Story
     // 18.14 puts the mapping lists at `os-management/namespaces/<kind>-mappings`, the shape

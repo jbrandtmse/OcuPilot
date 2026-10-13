@@ -224,14 +224,18 @@ function pathEnds(page, suffix) {
  * Answer the editor's form read `EDIT_READ_HOLD_MS` late until the returned function is called. The
  * edit page draws no form bar before that read lands, so for that long after the route commits a
  * person, or a spec, that acts at once finds no bar: the create form's hand-off to its editor must
- * not leave anything on screen that reads as the editor being ready.
+ * not leave anything on screen that reads as the editor being ready. The returned function fails
+ * when no read was held, since the test then cannot see that hand-off.
  */
 async function holdEditRead(page) {
   await page.setRequestInterception(true);
+  let held = 0;
   const hold = (request) => {
     const url = new URL(request.url());
     if (request.method() === 'GET' && url.pathname === FORM_READ_PATH && url.searchParams.has('name')) {
-      setTimeout(() => request.continue(), EDIT_READ_HOLD_MS);
+      held += 1;
+      // A held read whose page has closed cannot be continued, and that is not this test's failure.
+      setTimeout(() => request.continue().catch(() => {}), EDIT_READ_HOLD_MS);
     } else {
       request.continue();
     }
@@ -240,6 +244,7 @@ async function holdEditRead(page) {
   return async () => {
     page.off('request', hold);
     await page.setRequestInterception(false);
+    assert.ok(held > 0, `the editor's form read (${FORM_READ_PATH}?name=) was held`);
   };
 }
 

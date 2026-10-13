@@ -11551,3 +11551,14 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: ARCHITECTURE-SPINE.md AD-38 second paragraph: 'module.xml carries one <Invoke> running When=After'; module.xml :56-57 now carries GuardTarget (Compile, After) and Install (Activate, After). epic-18-context.md :58 'Open at Task 0'.
 - 2026-10-12T19:54:32Z status=open owner=18-13-multi-namespace-install by=cr note=spine is Epic 20-contended (Rule 11): the lead corrects AD-38's sentence at its gate (Rule 20); the context regenerates
 - 2026-10-12T19:56:43Z status=resolved-by:18-13-multi-namespace-install by=adjudication note=AD-38 corrected at origin (two invokes: the install after Activate, the guard after Compile), epic-18-context.md :58 rewritten
+
+### DW-2372: A create form's first hand-off to an editor in another page module shows the form's Saved status while that editor's page code loads (Story 20.29)
+- source: spec-20-29-screens-load-on-demand.md (cr, CI rework 1) | severity: med | fix-risk: med | footprint: out-of-footprint
+- evidence: The user, role and web-app create forms hand off to DESCRIPTOR_EDIT_PAGES editors in other modules; on the first hand-off the router fetches that chunk while the create page renders its role=status Saved, which saveAndSettle reads as done (the language-server CI red's shape). No current spec acts on the editor before its content shows (inference).
+- 2026-10-13T04:15:56Z status=escalated owner=burndown by=cr note=decide: the hand-off warms the editor's loader before it navigates, or the spec's Remains bullet stands
+
+### DW-2373: AD-5's on-demand-pages bullet says each child's loadComponent is the loader ScreenOutlet's maps name; since the 20.29 CI rework it is rememberedPage(that loader)
+- source: spec-20-29-screens-load-on-demand.md (cr, CI rework 1) | severity: low | fix-risk: low | footprint: in-story
+- evidence: app.routes.ts withPage sets loadComponent: rememberedPage(loader), and the shipped-route specs compare against rememberedPage(base). AD-5's last bullet in ARCHITECTURE-SPINE.md still reads 'whose loadComponent is the loader ScreenOutlet's maps name for it'. The bullet's substance holds.
+- 2026-10-13T04:15:56Z status=open owner=20-29-screens-load-on-demand by=cr note=lead: Rule 20 light-path wording of AD-5 (through rememberedPage, which answers a loaded page at once)
+- 2026-10-13T04:18:51Z status=resolved-by:20-29-screens-load-on-demand by=adjudication note=AD-5 bullet amended 2026-10-13 (rememberedPage, one loader per page); memlog decision appended

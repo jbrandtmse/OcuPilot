@@ -214,6 +214,27 @@ Direction for this pass (lead; orchestrator ruling: the cause is fixed in the pr
 - **Not page code:** the locator bar's heading focus (the agent's navigation) and `app.ts` `focusOnFrameArrival` land on shell elements; the side bar keeps its own focus, and a row's name cell and the command box hand focus to no page, as EXPERIENCE.md names only the tab strip and the agent heading; there is no router scroll restoration, and a screen's scroll offset is applied by the data table's own render.
 - **Specs run for them**, one file per call on `ocupilot-b-ci` with the final bundle: `oauth`, `language-server-editor`, `lazy-screens`, `about-help-links`, `navigate`, `shell`, `rail`, `gate`, `a11y-structural-invariants`, `auditing-screen`, `definitions`, `users-editor`, `interop-host-tabs`, `system-explorer-sql`, `license-usage`, `ecp-application-servers`, and the five that read `[aria-busy="true"]` across the document: `processes`, `tasks`, `system-usage`, `dashboard-drill-downs`, `agent-ledger`.
 
+### Review Findings (CI rework 1 re-review)
+
+Code review, 2026-10-12, four layers on the parent tier (`review_tier: full-opus`): 32 rows, 10 entries after grouping (high 0, medium 2, low 8), 13 rows rejected. The three `[CI]` items are closed in the product, and no spec change only adds a wait.
+
+- [x] [Review][Patch] The LDAP and service editors loaded one page through two loader functions, one per map, so `rememberedPage` did not answer the LDAP create's hand-off to its id route at once: the language-server red's shape (medium). Each now has one loader both maps name, pinned in `app.routes.spec.ts` [ui/src/app/shell/screen-outlet.ts:71]
+- [x] [Review][Patch] The focus `mutation:` line claimed an `oauth` red that needs both fixes reverted, and two lines said "red alone" where the release test also reddens (low each). Re-observed and corrected under `## Verification`.
+- [x] [Review][Patch] The outlet's probe page read the internal `busyValue`, not the host attribute readers see (low) [ui/src/app/shell/screen-outlet.spec.ts:370]
+- [x] [Review][Patch] `holdEditRead` could hold nothing and still pass, and its delayed `continue()` had no catch (low each) [ui/browser/language-server-editor.browser-spec.mjs:230]
+- [x] [Review][Patch] The two refused-focus tests could pass with no second tab in the next strip (low) [ui/src/app/shell/detail-page.spec.ts:111]
+- [x] [Review][Patch] The `lazy-screens` header said no outlet reads ready without its page; a held or refused one does by design (low) [ui/browser/lazy-screens.browser-spec.mjs:13]
+- [x] [Review][Defer] A create form's first hand-off to an editor in another module shows its Saved status while that editor's code loads (medium). DW-2372, `escalated owner=burndown`: a product call.
+- [x] [Review][Defer] AD-5's bullet names the maps' loader as each child's `loadComponent`, which is now `rememberedPage(loader)` (low; the Rule's substance holds). DW-2373, `open` on this story for the lead's Rule 20 wording.
+
+**Rejected (13):**
+
+- Spec-text fixes (seven rows): the residual-risks line, the item 3 lists' omissions, a triage tag, the direction block's paths, the EXPERIENCE.md paraphrase, and the removed residual list. The product facts behind them hold: the grid-focus hand-offs share a loader, and the locator heading is shell.
+- Enter's double activation (low, two rows): it is Material's own, and its one harm, the lost focus, is fixed. On the bundle with `rememberedPage` unwrapped, `oauth` drives the real Enter green.
+- A stale request on a tab that renders no strip (false): every tab target renders `DetailPage`.
+- A held outlet reading ready (false): a hold may wait on a person, as the outlet's contract says.
+- A page constructor that throws, leaving the outlet busy (low, theoretical): no shipped page throws in its constructor.
+
 ## Spec Change Log
 
 ## Review Triage Log
@@ -614,11 +635,11 @@ chunk-DHotihUu2.js  | namespace-form-page                | 312 bytes |          
 
 - mutation: ready, `rememberedPage` returns its loader unwrapped, bundle rebuilt and redeployed -> `language-server-editor` test 1 red at the Cancel click ("No element found", 2 of 2 with the form read held 300 ms); `app.routes.spec.ts` "is answered at once once it has loaded, and the loader is not asked again" and "lets the router commit the next navigation to it before the next task" red together.
 
-- mutation: focus, `DetailPage.open` returned to the single module-level route string cleared by any `false` answer, bundle rebuilt and redeployed -> `oauth.browser-spec.mjs` test 1 red with the CI message (`'BODY'` against `'security/oauth/clients'`); the component test "a tab opened twice before the router answers" red alone.
+- mutation: focus, `forget` clears any request, whoever made it -> the component test "a tab opened twice before the router answers" red alone. On a rebuilt and redeployed bundle `oauth` stays 6 of 6 under it, because `rememberedPage` answers the detail loader at once and Enter's first navigation commits before the button's own click. With both fixes reverted (that mutation, and `withPage` handing `loadComponent` the raw loader), rebuilt and redeployed -> `oauth` test 1 red with the CI message (`'BODY'` against `'security/oauth/clients'`); with the raw loader alone -> `oauth` 6 of 6, so the focus fix holds Enter's double navigation in a browser, and `language-server-editor` test 1 red with the CI message (re-observed in review).
 - mutation: focus, `forget` dropped from the `false` branch -> "a tab whose navigation the router refuses leaves no focus request" red alone.
 - mutation: ready, the static `aria-busy` dropped from `ScreenOutlet`'s host, bundle rebuilt and redeployed -> `lazy-screens` in-app test red, three outlets recorded ready without a page; the `screen-outlet.spec.ts` test "reads busy from the moment the router creates it" red alone.
-- mutation: ready, `pageRendered` set in `onPageActivated` instead of after the next render -> "still reads busy when the page it routed renders for the first time" red alone.
-- mutation: ready, `this.page` dropped from `busyValue` -> "is not left busy by a screen that mounts no page" red alone; `this.pageRouted` dropped -> "is not left busy by a route that carries no page" red alone.
+- mutation: ready, `pageRendered` set in `onPageActivated` instead of after the next render -> "still reads busy when the page it routed renders for the first time" and "reads busy from the moment a held page is released, ..." red.
+- mutation: ready, `this.page` dropped from `busyValue` -> "is not left busy by a screen that mounts no page" and "reads busy from the moment a held page is released, ..." red; `this.pageRouted` dropped -> "is not left busy by a route that carries no page" red alone.
 - Runs on the final bundle: `npm run test:tools` 1954 of 1954; `npm run test:components` 239 files, 2989 tests, after the review patches below; browser, one file per call, green: `a11y-structural-invariants` 13 (the screen walk 337 s), `oauth` 6, `language-server-editor` 4, `lazy-screens` 3, `about-help-links` 6, `navigate` 6, `shell` 6, `rail` 2, `gate` 6.
 - The other item 3 files, one per call on `ocupilot-b-ci` with the bundle `main-4FXQL74C.js` rebuilt from `77441c16` and redeployed, green: `auditing-screen` 1, `definitions` 10, `users-editor` 8, `interop-host-tabs` 4, `system-explorer-sql` 4, `license-usage` 3, `ecp-application-servers` 2, `ldap-editor` 6, `namespaces` 5, `oauth-client-editor` 5.
 - The specs that read `[aria-busy="true"]` across the document, one per call on the same bundle, green: `processes` 8, `tasks` 18, `system-usage` 3, `dashboard-drill-downs` 5, `agent-ledger` 2.
@@ -626,6 +647,10 @@ chunk-DHotihUu2.js  | namespace-form-page                | 312 bytes |          
 - mutation: ready (review pass), `rememberedPage` returns `loader` itself -> `app.routes.spec.ts` "is answered at once once it has loaded, and the loader is not asked again", "asks a loader that rejected again on the next navigation" and "lets the router commit the next navigation to it before the next task" red; with its per-loader lookup dropped -> the two shipped-route tests and "is answered at once once it has loaded" red.
 - mutation: ready (review pass), `this.pageRendered.set(false)` dropped from `ScreenOutlet.onPageActivated` -> `screen-outlet.spec.ts` "reads busy from the moment a held page is released, and again each time its page is created anew" red alone.
 - mutation: focus (review pass), the rejection handler of `DetailPage.open` made a no-op -> `detail-page.spec.ts` "a tab whose page cannot load leaves no focus request for the next page to take" red alone; the `false` branch made a no-op -> the refused-navigation twin red alone.
+- Re-review (2026-10-12): the outlet's probe page records the host's `aria-busy` attribute, and every `screen-outlet.spec.ts` and `detail-page.spec.ts` mutation above was re-observed on it with the tree byte-identical after.
+- mutation: ready (re-review), `DESCRIPTOR_EDIT_PAGES`' LdapConfigForm given a loader of its own again -> `app.routes.spec.ts` "an id route that renders its bare route's page shares the bare route's loader" red alone, naming LdapConfigForm.
+- mutation: ready (re-review), `holdEditRead` pointed at a path the editor never reads -> `language-server-editor` test 1 red at release ("the editor's form read ... was held").
+- Re-review runs on the final bundle `main-HWTCU35R.js`, rebuilt and redeployed to `ocupilot-b-ci`: `npm run test:tools` 1954 of 1954; `npm run test:components` 239 files, 2990 tests; browser, one file per call, green: `ldap-editor` 6, `language-server-editor` 4, `lazy-screens` 3, `service-editor` 5, `oauth` 6.
 
 ## Auto Run Result
 

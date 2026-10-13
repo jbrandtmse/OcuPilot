@@ -108,6 +108,7 @@ async function stripBuiltAfterAnswer(table: Route[]): Promise<ComponentFixture<D
   document.body.appendChild(next.nativeElement);
   planted.push(next.nativeElement);
   await settle(next);
+  expect(tabs(next)[1]?.getAttribute('data-route'), 'the next strip lists the tab that was opened').toBe(target.getAttribute('data-route'));
   return next;
 }
 
