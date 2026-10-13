@@ -669,3 +669,6 @@
 2026-10-13T13:15:07Z	Epic 20	stage_spawned	stage=epic-context spawn_at=2026-10-13T13:15:07Z model=opus agent_name=20-context-recompile reason=planning_artifact_newer(20.7_gate:AD-63,AD-62_item_13,AD-44,epics.md_20.7;20.27:AD-62_item_11,AD-29,EXPERIENCE.md;feature_18.42,18.46)
 2026-10-13T13:20:32Z	Epic 20	epic_context_compiled	reason=planning_artifact_newer(20.7_gate,20.27,feature_18.42_18.46) model=opus lines=141
 2026-10-13T13:20:32Z	Story 20.16	stage_spawned	stage=plan spawn_at=2026-10-13T13:20:32Z model=opus agent_name=20-16-plan-1 cycle_iteration=1 inbox=none note=planned_while_20.27_CI_runs;20.7_gated_not_yet_implemented
+2026-10-13T13:56:25Z	Story 20.27	ci_resolved	story=20.27 run=38403380199 result=success head=a6a6ea71 resolved_at=next_implement(boundary)
+2026-10-13T13:56:25Z	Story 20.27	ci_green_verified	run=38403380199 head=a6a6ea71 jobs=21/21
+2026-10-13T13:56:25Z	Story 20.16	story_created	spawn_at=(see_stage_spawned) model=opus agent_name=20-16-plan-1 path=_bmad-output/implementation-artifacts/spec-20-16-the-agent-edits-rule-dtl-and-bpl-content-behind-the-embedded.md build_status=ready-for-dev(gate_pending) epic_context=reused oversized=true q1=Ens_Code_WRITE(recommend_no)
