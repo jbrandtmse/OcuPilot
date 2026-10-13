@@ -1,7 +1,8 @@
 /// <p>Interoperability usage's first tab, Interfaces: the instance's interoperability interfaces counted per
 /// type, in total and per namespace, per protocol and per both, read through
 /// <class>OcuPilot.Port.MonitorPort</class> (<code>Interfaces</code>, AD-29, AD-36) and rendered by
-/// the <code>detail</code> page over the declared <code>table</code> (AD-5).</p>
+/// the <code>detail</code> page over the declared <code>table</code> (AD-5). A row is one grouping:
+/// <code>Count</code> is every interface enabled at any time and <code>ActiveNow</code> those active now.</p>
 /// <p><b>It is the tab group's first member and its side-bar entry</b>, at position 22 of OS
 /// management; Message volume and Database impact are unlisted routes under it, one descriptor each,
 /// over the monitor port's other two usage endpoints.</p>
@@ -38,7 +39,7 @@ XData Declaration
   "id": {"kind": "none", "parts": []},
   "primaryAction": {"id": "", "selfProtection": ""},
   "rowActions": [],
-  "context": {"fields": ["Type", "Namespace", "Protocol", "Active", "Count"], "secretFields": []},
+  "context": {"fields": ["Type", "Namespace", "Protocol", "ActiveNow", "Count"], "secretFields": []},
   "emptyStateKey": "interopUsageInterfacesEmpty",
   "commandAliases": ["interoperability usage", "interop usage"],
   "suggestedPrompts": [
@@ -50,9 +51,9 @@ XData Declaration
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {
     "source": {"port": "monitor", "endpoint": "Interfaces", "type": "LIST"},
-    "fields": ["Type", "Namespace", "Protocol", "Active", "Count"],
+    "fields": ["Type", "Namespace", "Protocol", "ActiveNow", "Count"],
     "filter": ["Type", "Namespace", "Protocol"],
-    "sort": {"fields": ["Type", "Namespace", "Protocol", "Active", "Count"], "default": "Type", "direction": "asc"},
+    "sort": {"fields": ["Type", "Namespace", "Protocol", "ActiveNow", "Count"], "default": "Type", "direction": "asc"},
     "paging": "cap",
     "note": {"key": "interopUsageNote", "text": "Counts cover all the usage data the instance still keeps, with no date range."}
   },
@@ -61,7 +62,7 @@ XData Declaration
       {"field": "Type", "labelKey": "tableColumnType", "kind": "name"},
       {"field": "Namespace", "labelKey": "headerNamespaceLabel", "kind": "identifier", "emptyKey": "interopUsageAll"},
       {"field": "Protocol", "labelKey": "interopUsageColumnProtocol", "kind": "text", "emptyKey": "interopUsageAll"},
-      {"field": "Active", "labelKey": "interopColumnActive", "kind": "status"},
+      {"field": "ActiveNow", "labelKey": "interopUsageColumnActiveNow", "kind": "number"},
       {"field": "Count", "labelKey": "interopColumnCount", "kind": "number"}
     ],
     "emptyNextKey": "tableReadOnlyEmptyNext",

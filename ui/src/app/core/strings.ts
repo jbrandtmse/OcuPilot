@@ -6126,6 +6126,8 @@ export const STRINGS = {
   /** EXPERIENCE.md:603 */
   interopUsageColumnProtocol: 'Protocol',
   /** EXPERIENCE.md:603 */
+  interopUsageColumnActiveNow: 'Active now',
+  /** EXPERIENCE.md:603 */
   interopUsageColumnDataCreated: 'Data created (MB)',
   /** EXPERIENCE.md:603 */
   interopUsageAll: 'All',

@@ -89,7 +89,7 @@ Method TestTheExactPairsReadAllThree()
         Set tTool = $Piece(..#TOOLS, ",", tI)
         Do $$$AssertEquals(..Wire(tTool, "OcuProbe1837Exact", .tAnswer), "200 ", tTool _ ": the principal holding exactly the two pairs reads")
         If '$IsObject(tAnswer) || (tAnswer.%GetTypeOf("rows") '= "array") Continue
-        Do $$$AssertEquals(tAnswer.fields.%ToJSON(), $Piece("[""Type"",""Namespace"",""Protocol"",""Active"",""Count""]|[""Namespace"",""Type"",""Volume""]|[""Database"",""DataCreated""]", "|", tI), tTool _ ": rows of the screen's fields")
+        Do $$$AssertEquals(tAnswer.fields.%ToJSON(), $Piece("[""Type"",""Namespace"",""Protocol"",""ActiveNow"",""Count""]|[""Namespace"",""Type"",""Volume""]|[""Database"",""DataCreated""]", "|", tI), tTool _ ": rows of the screen's fields")
         If tI '= 1 Continue
         Set tTotals = 0
         Set tIterator = tAnswer.rows.%GetIterator()

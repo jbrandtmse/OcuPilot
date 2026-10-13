@@ -36,7 +36,7 @@ const INTERFACES = {
   tool: 'osmgmt.interopusage',
   label: STRINGS.interopUsageInterfacesTab,
   empty: STRINGS.interopUsageInterfacesEmpty,
-  headers: [STRINGS.tableColumnType, STRINGS.headerNamespaceLabel, STRINGS.interopUsageColumnProtocol, STRINGS.interopColumnActive, STRINGS.interopColumnCount],
+  headers: [STRINGS.tableColumnType, STRINGS.headerNamespaceLabel, STRINGS.interopUsageColumnProtocol, STRINGS.interopUsageColumnActiveNow, STRINGS.interopColumnCount],
 };
 const VOLUME = {
   route: 'os-management/interoperability-usage/volume',

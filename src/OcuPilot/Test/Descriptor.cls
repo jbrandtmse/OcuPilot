@@ -190,7 +190,7 @@ XData ReadShapes
 <screen name="ExplorerDocDbList" filter="Name,Class,DocumentType,Resource" sort="Name,Class,DocumentType,Resource" kinds="Name:name,Class:identifier,DocumentType:identifier,Resource:identifier"/>
 <screen name="SqlActivityList" filter="ProcessID,UserName,Namespace,RunType,Statement,Routine" sort="ProcessID,UserName,Namespace,RunType,Elapsed,Started" kinds="ProcessID:name,UserName:text,Namespace:text,RunType:text,Elapsed:number,Statement:identifier,Routine:identifier,Started:text"/>
 <screen name="MetricsList" filter="Metric,Labels,Help" sort="Metric,Value" kinds="Metric:name,Labels:identifier,Value:number,Help:text"/>
-<screen name="InteropUsageTab" filter="Type,Namespace,Protocol" sort="Type,Namespace,Protocol,Active,Count" kinds="Type:name,Namespace:identifier,Protocol:text,Active:status,Count:number"/>
+<screen name="InteropUsageTab" filter="Type,Namespace,Protocol" sort="Type,Namespace,Protocol,ActiveNow,Count" kinds="Type:name,Namespace:identifier,Protocol:text,ActiveNow:number,Count:number"/>
 <screen name="InteropUsageVolumeTab" filter="Namespace,Type" sort="Namespace,Type,Volume" kinds="Namespace:name,Type:text,Volume:number"/>
 <screen name="InteropUsageImpactTab" filter="Database" sort="Database,DataCreated" kinds="Database:name,DataCreated:number"/>
 <screen name="InteropProductionList" filter="Name,Status" sort="Name,Status,LastStartTime,LastStopTime" kinds="Name:name,Status:status,LastStartTime:text,LastStopTime:text"/>

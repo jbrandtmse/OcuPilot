@@ -85,8 +85,14 @@ Parameter QUERYMESSAGEVOLUME = "%SYS.Monitor.Interop.Messages.Utils:MetricsTotal
 Parameter QUERYDATABASEIMPACT = "%SYS.Monitor.Interop.DatabaseImpact.Utils:Impact";
 
 /// <p>The fields of an interfaces row, as <code>name:kind</code> in the order the row answers
-/// them: <code>text</code>, <code>boolean</code> or <code>number</code>.</p>
-Parameter FIELDSINTERFACES = "Type:text,Namespace:text,Protocol:text,Active:boolean,Count:number";
+/// them: <code>text</code> or <code>number</code>. A row is one grouping: <code>Count</code> is
+/// every interface enabled at any time and <code>ActiveNow</code> those active now.</p>
+Parameter FIELDSINTERFACES = "Type:text,Namespace:text,Protocol:text,ActiveNow:number,Count:number";
+
+/// <p>The columns <parameter>QUERYINTERFACES</parameter> answers that the port reads. Each grouping
+/// comes back as two rows, <code>Active</code> <code>1</code> counting the interfaces active now and
+/// <code>Active</code> <code>0</code> every interface enabled at any time, active ones included.</p>
+Parameter COLUMNSINTERFACES = "Type,Namespace,Protocol,Active,Count";
 
 /// <p>The fields of a message volume row, in the grammar of <parameter>FIELDSINTERFACES</parameter>.</p>
 Parameter FIELDSMESSAGEVOLUME = "Namespace:text,Type:text,Volume:number";
@@ -500,11 +506,13 @@ ClassMethod LabelsEnd(pLine As %String, pOpen As %Integer) As %Integer [ Private
 /// of at most <var>pMax</var> objects carrying the fields <parameter>FIELDSINTERFACES</parameter>,
 /// <parameter>FIELDSMESSAGEVOLUME</parameter> or <parameter>FIELDSDATABASEIMPACT</parameter> name,
 /// typed as they declare: <code>number</code> is a JSON number when the value is a valid number,
-/// <code>boolean</code> is <code>true</code> for <code>1</code>, and <code>text</code> is kept as
-/// answered, <code>""</code> included (a totals row leaves its namespace and protocol empty).</p>
-/// <p><method>UsageSource</method> runs in <code>%SYS</code>, as the signed-in user; the caller's
-/// namespace is restored before anything else, on the error path too. A query that raises or answers
-/// an error status is 500 <code>INTERNAL</code>, logged once, with <var>pRows</var> empty.</p>
+/// and <code>text</code> is kept as answered, <code>""</code> included (a totals row leaves its
+/// namespace and protocol empty).</p>
+/// <p>The interfaces rows are <method>Groupings</method>' rows: the query answers each grouping twice,
+/// so its answer is read whole and the cut counts groupings. <method>UsageSource</method> runs in
+/// <code>%SYS</code>, as the signed-in user; the caller's namespace is restored before anything else, on
+/// the error path too. A query that raises or answers an error status is 500 <code>INTERNAL</code>,
+/// logged once, with <var>pRows</var> empty.</p>
 ClassMethod Usage(pEndpoint As %String, pMax As %Integer, Output pRows As %DynamicArray, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
 {
     Set tSC = $$$OK
@@ -514,12 +522,13 @@ ClassMethod Usage(pEndpoint As %String, pMax As %Integer, Output pRows As %Dynam
     Set tOrigNS = $NAMESPACE
     Try {
         Set $NAMESPACE = "%SYS"
-        Set tUsageSC = ..UsageSource(pEndpoint, pMax, .tRaw)
+        Set tUsageSC = ..UsageSource(pEndpoint, $Select(pEndpoint = ..#ENDPOINTINTERFACES: 0, 1: pMax), .tRaw)
         Set $NAMESPACE = tOrigNS
         If $$$ISERR(tUsageSC) {
             Set tSC = ..Fail("the interoperability usage could not be read", tUsageSC, .pHttpStatus, .pFault)
             Quit
         }
+        If pEndpoint = ..#ENDPOINTINTERFACES Set tRaw = ..Groupings(tRaw)
         Set tFields = ..UsageFields(pEndpoint)
         Set tRows = []
         Set tIterator = tRaw.%GetIterator()
@@ -530,9 +539,7 @@ ClassMethod Usage(pEndpoint As %String, pMax As %Integer, Output pRows As %Dynam
                 Set tName = $Piece($Piece(tFields, ",", tI), ":", 1)
                 Set tKind = $Piece($Piece(tFields, ",", tI), ":", 2)
                 Set tValue = tRawRow.%Get(tName)
-                If tKind = "boolean" {
-                    Do tRow.%Set(tName, $Select(tValue = 1: 1, 1: 0), "boolean")
-                } ElseIf (tKind = "number") && $IsValidNum(tValue) {
+                If (tKind = "number") && $IsValidNum(tValue) {
                     Do tRow.%Set(tName, +tValue, "number")
                 } Else {
                     Do tRow.%Set(tName, tValue, "string")
@@ -560,12 +567,66 @@ ClassMethod UsageFields(pEndpoint As %String) As %String [ Private ]
     Quit ""
 }
 
+/// <p>The columns of the vendor query behind <var>pEndpoint</var> that the port reads, separated by
+/// commas: <parameter>COLUMNSINTERFACES</parameter> for the interfaces, the names of
+/// <method>UsageFields</method> for the other two; <code>""</code> for any other endpoint.</p>
+ClassMethod UsageColumns(pEndpoint As %String) As %String [ Private ]
+{
+    If pEndpoint = ..#ENDPOINTINTERFACES Quit ..#COLUMNSINTERFACES
+    Set tFields = ..UsageFields(pEndpoint)
+    Set tColumns = ""
+    For tI = 1:1:$Length(tFields, ",") {
+        Set tColumns = tColumns _ $Select(tColumns = "": "", 1: ",") _ $Piece($Piece(tFields, ",", tI), ":", 1)
+    }
+    Quit tColumns
+}
+
+/// <p>The interfaces rows <var>pRaw</var> holds, one object per vendor row carrying
+/// <parameter>COLUMNSINTERFACES</parameter>, merged into a <class>%DynamicArray</class> with one object per
+/// grouping (<code>Type</code>, <code>Namespace</code>, <code>Protocol</code>), in the order its first row
+/// appears. <code>Count</code> is the <code>Active</code> <code>0</code> row's and <code>ActiveNow</code>
+/// the <code>Active</code> <code>1</code> row's; a grouping the query answers one of leaves the other
+/// <code>0</code>, and a row whose <code>Active</code> is not <code>1</code> counts as the
+/// <code>Active</code> <code>0</code> row.</p>
+ClassMethod Groupings(pRaw As %DynamicArray) As %DynamicArray [ Private ]
+{
+    Set tGroups = 0
+    Set tIterator = pRaw.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tRawRow) {
+        Set tKey = $ListBuild(tRawRow.%Get("Type"), tRawRow.%Get("Namespace"), tRawRow.%Get("Protocol"))
+        If '$Data(tSeen(tKey)) {
+            Set tGroups = tGroups + 1
+            Set tSeen(tKey) = 1
+            Set tKeys(tGroups) = tKey
+            Set tActiveNow(tKey) = 0
+            Set tCount(tKey) = 0
+        }
+        If tRawRow.%Get("Active") = 1 {
+            Set tActiveNow(tKey) = tRawRow.%Get("Count")
+        } Else {
+            Set tCount(tKey) = tRawRow.%Get("Count")
+        }
+    }
+    Set tRows = []
+    For tI = 1:1:tGroups {
+        Set tKey = tKeys(tI)
+        Set tRow = {}
+        Do tRow.%Set("Type", $List(tKey, 1))
+        Do tRow.%Set("Namespace", $List(tKey, 2))
+        Do tRow.%Set("Protocol", $List(tKey, 3))
+        Do tRow.%Set("ActiveNow", tActiveNow(tKey))
+        Do tRow.%Set("Count", tCount(tKey))
+        Do tRows.%Push(tRow)
+    }
+    Quit tRows
+}
+
 /// <p>Run the vendor class query behind <var>pEndpoint</var> and answer up to <var>pMax</var> of its
-/// rows as <var>pRows</var>: a <class>%DynamicArray</class> of objects holding each field of
-/// <method>UsageFields</method> as the query answered it, a string. The queries run over every date the
-/// instance keeps: the interfaces with their totals, per namespace and per protocol (the classic
-/// page's own query, with every grouping on); the message totals per namespace and direction; and the
-/// data created per database (the classic page's own query).</p>
+/// rows as <var>pRows</var> (every row when <var>pMax</var> is below one): a <class>%DynamicArray</class>
+/// of objects holding each column of <method>UsageColumns</method> as the query answered it, a string.
+/// The queries run over every date the instance keeps: the interfaces with their totals, per namespace
+/// and per protocol (the classic page's own query, with every grouping on); the message totals per
+/// namespace and direction; and the data created per database (the classic page's own query).</p>
 /// <p><b>Caller contract: <code>$NAMESPACE</code> is already <code>%SYS</code></b> --
 /// <method>Usage</method> switches and restores around this call. Raises whatever the query
 /// raises; an error status when the query cannot be run or fails while it is read. Overridable so a
@@ -589,12 +650,12 @@ ClassMethod UsageSource(pEndpoint As %String, pMax As %Integer, Output pRows As 
         Quit $$$ERROR($$$GeneralError, "the monitor port reads no usage list " _ pEndpoint)
     }
     If $$$ISERR(tSC) Quit tSC
-    Set tFields = ..UsageFields(pEndpoint)
+    Set tColumns = ..UsageColumns(pEndpoint)
     Set tCount = 0
-    While (tCount < pMax) && tRS.Next(.tSC) {
+    While ((pMax < 1) || (tCount < pMax)) && tRS.Next(.tSC) {
         Set tRow = {}
-        For tI = 1:1:$Length(tFields, ",") {
-            Set tName = $Piece($Piece(tFields, ",", tI), ":", 1)
+        For tI = 1:1:$Length(tColumns, ",") {
+            Set tName = $Piece(tColumns, ",", tI)
             Do tRow.%Set(tName, tRS.Get(tName), "string")
         }
         Do pRows.%Push(tRow)

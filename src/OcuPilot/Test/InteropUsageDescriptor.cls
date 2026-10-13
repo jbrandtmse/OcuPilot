@@ -21,7 +21,7 @@ Parameter GROUP = "os-management/interoperability-usage";
 /// <p>The three tabs, in position order, as
 /// <code>descriptor:route:endpoint:tool:emptyKey:tabLabelKey:sideBarPosition:fields</code>, the fields
 /// separated by <code>/</code>.</p>
-Parameter TABS = "InteropUsageTab:os-management/interoperability-usage:Interfaces:osmgmt.interopusage:interopUsageInterfacesEmpty:interopUsageInterfacesTab:22:Type/Namespace/Protocol/Active/Count,InteropUsageVolumeTab:os-management/interoperability-usage/volume:MessageVolume:osmgmt.interopvolume:interopUsageVolumeEmpty:interopUsageVolumeLabel:0:Namespace/Type/Volume,InteropUsageImpactTab:os-management/interoperability-usage/impact:DatabaseImpact:osmgmt.interopimpact:interopUsageImpactEmpty:interopUsageImpactLabel:0:Database/DataCreated";
+Parameter TABS = "InteropUsageTab:os-management/interoperability-usage:Interfaces:osmgmt.interopusage:interopUsageInterfacesEmpty:interopUsageInterfacesTab:22:Type/Namespace/Protocol/ActiveNow/Count,InteropUsageVolumeTab:os-management/interoperability-usage/volume:MessageVolume:osmgmt.interopvolume:interopUsageVolumeEmpty:interopUsageVolumeLabel:0:Namespace/Type/Volume,InteropUsageImpactTab:os-management/interoperability-usage/impact:DatabaseImpact:osmgmt.interopimpact:interopUsageImpactEmpty:interopUsageImpactLabel:0:Database/DataCreated";
 
 /// <p>The corpus both engines run: each case replaces the declaration's <code>read.source</code>, sets
 /// <code>read.criteria</code> or <code>privileges</code> when it carries one, and names the sentence the
@@ -181,7 +181,7 @@ Method TestTheThreeTabsDeclareTheirReadsAndFormOneGroup()
 
     Set tSC = $ClassMethod(..#PACKAGE _ ..Tab(1, 1), "DeclarationJson", .tFirst)
     Do $$$AssertEquals(tFirst.read.filter.%ToJSON() _ "|" _ tFirst.read.sort.default _ "|" _ tFirst.read.sort.direction, "[""Type"",""Namespace"",""Protocol""]|Type|asc", "Interfaces filters on its three names and sorts by type")
-    Do $$$AssertEquals(tFirst.table.columns.%ToJSON(), "[{""field"":""Type"",""labelKey"":""tableColumnType"",""kind"":""name""},{""field"":""Namespace"",""labelKey"":""headerNamespaceLabel"",""kind"":""identifier"",""emptyKey"":""interopUsageAll""},{""field"":""Protocol"",""labelKey"":""interopUsageColumnProtocol"",""kind"":""text"",""emptyKey"":""interopUsageAll""},{""field"":""Active"",""labelKey"":""interopColumnActive"",""kind"":""status""},{""field"":""Count"",""labelKey"":""interopColumnCount"",""kind"":""number""}]", "its columns, the namespace and protocol cells reading All when empty")
+    Do $$$AssertEquals(tFirst.table.columns.%ToJSON(), "[{""field"":""Type"",""labelKey"":""tableColumnType"",""kind"":""name""},{""field"":""Namespace"",""labelKey"":""headerNamespaceLabel"",""kind"":""identifier"",""emptyKey"":""interopUsageAll""},{""field"":""Protocol"",""labelKey"":""interopUsageColumnProtocol"",""kind"":""text"",""emptyKey"":""interopUsageAll""},{""field"":""ActiveNow"",""labelKey"":""interopUsageColumnActiveNow"",""kind"":""number""},{""field"":""Count"",""labelKey"":""interopColumnCount"",""kind"":""number""}]", "its columns, the namespace and protocol cells reading All when empty")
     Set tSC = $ClassMethod(..#PACKAGE _ ..Tab(2, 1), "DeclarationJson", .tVolume)
     Do $$$AssertEquals(tVolume.read.filter.%ToJSON() _ "|" _ tVolume.read.sort.default _ "|" _ tVolume.read.sort.direction, "[""Namespace"",""Type""]|Volume|desc", "Message volume filters on namespace and type and sorts by volume, largest first")
     Do $$$AssertEquals(tVolume.table.columns.%ToJSON(), "[{""field"":""Namespace"",""labelKey"":""headerNamespaceLabel"",""kind"":""name""},{""field"":""Type"",""labelKey"":""tableColumnType"",""kind"":""text""},{""field"":""Volume"",""labelKey"":""interopItemTabMessages"",""kind"":""number""}]", "its columns")
@@ -191,16 +191,19 @@ Method TestTheThreeTabsDeclareTheirReadsAndFormOneGroup()
 }
 
 /// <p>Each tab's declared read, issued as <class>OcuPilot.Screen.Read</class> issues it over armed rows,
-/// answers one row per armed row as the tab's fields, typed, with a totals row's empty cells kept; a cap of
-/// one over two rows answers one and reports the cut; one query runs, in <code>%SYS</code>.</p>
+/// answers one row per armed row as the tab's fields, typed, with a totals row's empty cells kept (the
+/// interfaces are armed as the vendor answers them, each grouping twice, and answer one row per grouping); a
+/// cap of one over two rows answers one and reports the cut; one query runs, in <code>%SYS</code>.</p>
 /// <p>Mutation (Rule 19): drop <code>SOURCEMONITOR</code> from the source list in
-/// <method>OcuPilot.Screen.Read.Execute</method> -- every leg goes red with the internal fault.</p>
+/// <method>OcuPilot.Screen.Read.Execute</method> -- every leg goes red with the internal fault; take
+/// <code>Count</code> from the <code>Active</code> 1 row in <method>OcuPilot.Port.MonitorPort.Groupings</method>
+/// -- the interfaces leg goes red.</p>
 Method TestEachReadAnswersItsArmedRowsAndReportsTheCut()
 {
-    Do ##class(OcuPilot.Test.MonitorPortFixture).SetUsageRows("Interfaces", "[{""Type"":""Inbound"",""Namespace"":"""",""Protocol"":"""",""Active"":""1"",""Count"":""4""},{""Type"":""Web API"",""Namespace"":""USER"",""Protocol"":""REST/SOAP"",""Active"":""0"",""Count"":""9""}]")
+    Do ##class(OcuPilot.Test.MonitorPortFixture).SetUsageRows("Interfaces", "[{""Type"":""Inbound"",""Namespace"":"""",""Protocol"":"""",""Active"":""1"",""Count"":""4""},{""Type"":""Inbound"",""Namespace"":"""",""Protocol"":"""",""Active"":""0"",""Count"":""11""},{""Type"":""Web API"",""Namespace"":""USER"",""Protocol"":""REST/SOAP"",""Active"":""1"",""Count"":""2""},{""Type"":""Web API"",""Namespace"":""USER"",""Protocol"":""REST/SOAP"",""Active"":""0"",""Count"":""9""}]")
     Do ##class(OcuPilot.Test.MonitorPortFixture).SetUsageRows("MessageVolume", "[{""Namespace"":""USER"",""Type"":""Inbound"",""Volume"":""80""},{""Namespace"":""USER"",""Type"":""Outbound"",""Volume"":""18""}]")
     Do ##class(OcuPilot.Test.MonitorPortFixture).SetUsageRows("DatabaseImpact", "[{""Database"":""USER"",""DataCreated"":""7""},{""Database"":""HSCUSTOM"",""DataCreated"":""3""}]")
-    Set tExpected = $ListBuild("[{""Type"":""Inbound"",""Namespace"":"""",""Protocol"":"""",""Active"":true,""Count"":4},{""Type"":""Web API"",""Namespace"":""USER"",""Protocol"":""REST/SOAP"",""Active"":false,""Count"":9}]", "[{""Namespace"":""USER"",""Type"":""Inbound"",""Volume"":80},{""Namespace"":""USER"",""Type"":""Outbound"",""Volume"":18}]", "[{""Database"":""USER"",""DataCreated"":7},{""Database"":""HSCUSTOM"",""DataCreated"":3}]")
+    Set tExpected = $ListBuild("[{""Type"":""Inbound"",""Namespace"":"""",""Protocol"":"""",""ActiveNow"":4,""Count"":11},{""Type"":""Web API"",""Namespace"":""USER"",""Protocol"":""REST/SOAP"",""ActiveNow"":2,""Count"":9}]", "[{""Namespace"":""USER"",""Type"":""Inbound"",""Volume"":80},{""Namespace"":""USER"",""Type"":""Outbound"",""Volume"":18}]", "[{""Database"":""USER"",""DataCreated"":7},{""Database"":""HSCUSTOM"",""DataCreated"":3}]")
     For tI = 1:1:3 {
         Set tClass = ..#PACKAGE _ ..Tab(tI, 1)
         Set tWhere = ..Tab(tI, 1) _ ": "

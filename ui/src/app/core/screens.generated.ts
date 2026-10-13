@@ -15071,7 +15071,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
         "Type",
         "Namespace",
         "Protocol",
-        "Active",
+        "ActiveNow",
         "Count"
       ],
       "secretFields": []
@@ -15112,7 +15112,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
         "Type",
         "Namespace",
         "Protocol",
-        "Active",
+        "ActiveNow",
         "Count"
       ],
       "filter": [
@@ -15125,7 +15125,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
           "Type",
           "Namespace",
           "Protocol",
-          "Active",
+          "ActiveNow",
           "Count"
         ],
         "default": "Type",
@@ -15157,9 +15157,9 @@ export const SCREENS: readonly ScreenDeclaration[] = [
           "emptyKey": "interopUsageAll"
         },
         {
-          "field": "Active",
-          "labelKey": "interopColumnActive",
-          "kind": "status"
+          "field": "ActiveNow",
+          "labelKey": "interopUsageColumnActiveNow",
+          "kind": "number"
         },
         {
           "field": "Count",
