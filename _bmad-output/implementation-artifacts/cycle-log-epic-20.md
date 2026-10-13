@@ -667,3 +667,5 @@
 2026-10-13T13:14:50Z	Story 20.27	committed	sha=a6a6ea71 submodules= ci=pending run=38403380199 amendments=spine_AD-62_item_11(transformation_half,pasted_XML),AD-7(20.27_limits),AD-29(no_nested_TOP);EXPERIENCE.md:173,:918 footprint_extensions=src/OcuPilot/Test/InteropHostGate.cls,src/OcuPilot/Test/InteropHostEdges.cls(DW-2383,20.4_classes)
 2026-10-13T13:14:50Z	Story 20.27	story_cycle	plan_to_commit_min=n/a(plan_before_hold) implement_passes=2 reviews=2 rework=1(smoke) first_ci=pending models=plan:opus,implement:sonnet,qa:sonnet,cr:opus
 2026-10-13T13:15:07Z	Epic 20	stage_spawned	stage=epic-context spawn_at=2026-10-13T13:15:07Z model=opus agent_name=20-context-recompile reason=planning_artifact_newer(20.7_gate:AD-63,AD-62_item_13,AD-44,epics.md_20.7;20.27:AD-62_item_11,AD-29,EXPERIENCE.md;feature_18.42,18.46)
+2026-10-13T13:20:32Z	Epic 20	epic_context_compiled	reason=planning_artifact_newer(20.7_gate,20.27,feature_18.42_18.46) model=opus lines=141
+2026-10-13T13:20:32Z	Story 20.16	stage_spawned	stage=plan spawn_at=2026-10-13T13:20:32Z model=opus agent_name=20-16-plan-1 cycle_iteration=1 inbox=none note=planned_while_20.27_CI_runs;20.7_gated_not_yet_implemented
