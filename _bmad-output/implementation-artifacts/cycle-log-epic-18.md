@@ -1502,3 +1502,5 @@ TAB-separated: `<UTC>\t<Story <id> | Epic <N>>\t<stage>\t<metadata>`
 2026-10-13T10:59:37Z	Story 18.46	fresh_check	env=recipe tests=2_browser_specs(7)+full_sweep(623_classes) result=pass order=forward,reverse
 2026-10-13T10:59:37Z	Story 18.46	committed	sha=5bb63036(code=0220d1e4+ab3f8891;merges_feature_4776fd19,76d3b57f) submodules= ci=pending run=38387100765 head_confirmed_by=headSha pushed=code_head_alone amendments=EXPERIENCE.md:364(in_place) footprint_extensions=ui/tools/design-tokens.test.mjs,Test/Descriptor.cls,Test/SecurityLists.cls,Test/StageTwoTools.cls(rule11_unions)
 2026-10-13T10:59:37Z	Story 18.46	story_cycle	plan_to_commit_min=900 implement_passes=1 reviews=1 rework=0 first_ci=pending models=plan:opus,implement:sonnet,qa:sonnet,cr:opus
+2026-10-13T11:31:43Z	Story 18.46	ci_resolved	story=18.46 run=38387100765 result=success head=5bb63036 resolved_at=next_implement jobs=21/21
+2026-10-13T11:31:43Z	Story 18.46	ci_green_verified	run=38387100765 head=5bb63036(headSha_matched)
