@@ -6,12 +6,11 @@
 /// this profile's own provenance and version bookkeeping.</p>
 /// <p>Every assertion runs against the disposable <code>"probe"</code> profile, whose object
 /// names are derived here from the same declarations the installer reads rather than
-/// transcribed. Three literals are not derived and are named at their declarations: the global
+/// transcribed. Two literals are not derived and are named at their declarations: the global
 /// mapping pattern (<parameter>PROBEMAPPING</parameter>), which
 /// <method>OcuPilot.Install.Installer.Names</method> makes a wholesale distinct literal that
-/// production's own does not yield; the fixture task class
-/// (<parameter>TASKCLASS</parameter>); and the shell roster key
-/// (<parameter>SHELLKEY</parameter>).
+/// production's own does not yield; and the fixture task class
+/// (<parameter>TASKCLASS</parameter>).
 /// It also runs OcuPilot's <b>production</b> install -- the probe's protected database is
 /// created through production's own privileged routine application -- so it runs on a
 /// throwaway container only (<file>scripts/ci-throwaway.sh</file>) and refuses wherever
@@ -37,13 +36,6 @@ Parameter TASKCLASS As %String = "OcuPilot.Install.DemoTask";
 /// <p>The suffix on this class's own disposable task name, kept distinct from the demo
 /// fixture's own so a run never removes a fixture another profile owns.</p>
 Parameter TASKNAME As %String = "Residue purge";
-
-/// <p>The roster key of the shell application, whose bundle directory
-/// <method>ShellDirectory</method> derives. The key itself is named here rather than read
-/// from the roster's <code>bundle.destinationApplication</code>;
-/// <class>OcuPilot.Test.Manifest</class> pins the roster's keys, so a key that moved fails
-/// there rather than silently here.</p>
-Parameter SHELLKEY As %String = "shell";
 
 /// <p>Refuse to run at all unless this instance is armed for a production install.</p>
 Method OnBeforeAllTests() As %Status
@@ -398,25 +390,12 @@ Method TestUninstallRemovesTheShellDirectoryAndItsOwnProvenanceBookkeeping()
     Do $$$AssertEquals(tLeft, "", "and every object the residue sweep covers is gone as well; left=" _ tLeft)
 }
 
-/// <p>The probe profile's shell-application bundle directory, computed the same way
-/// <method>OcuPilot.Install.Installer.EnsureShellFiles</method> resolves it -- from the
-/// roster's <parameter>SHELLKEY</parameter> application path through
-/// <method>OcuPilot.Api.StaticHandler.RootDirectory</method> -- rather than transcribed.
+/// <p>The probe profile's shell-application bundle directory, as
+/// <method>OcuPilot.Test.ProbeApps.ShellDirectory</method> derives it from the roster.
 /// <code>""</code> when the roster declares no such application.</p>
 Method ShellDirectory() As %String
 {
-    Set tDir = ""
-    Try {
-        Set tSC = ##class(OcuPilot.Install.Roster).Application(..#SHELLKEY, .tApp)
-        If $$$ISERR(tSC) Quit
-        If '$IsObject(tApp) Quit
-        Set tPath = ##class(OcuPilot.Install.Installer).ProbeApplicationPath(tApp.path)
-        If tPath = "" Quit
-        Set tDir = ##class(OcuPilot.Api.StaticHandler).RootDirectory(tPath)
-    } Catch ex {
-        Set tDir = ""
-    }
-    Quit tDir
+    Quit ##class(OcuPilot.Test.ProbeApps).ShellDirectory()
 }
 
 /// <p>How many <class>OcuPilot.Kernel.State.WebApp</class> provenance rows the
