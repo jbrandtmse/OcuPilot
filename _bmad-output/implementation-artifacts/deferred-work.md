@@ -11396,6 +11396,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-12T01:03:05Z status=decision-pending owner=burndown by=spec_gate note=human=owner: whether OcuPilot may widen the allow-list (security posture)
 - 2026-10-12T04:19:01Z status=routed owner=18-42-allowed-directories-a-person-s-write by=lead note=owner 2026-10-11: I agree with your recommendation regarding allowed folders (person writes, key off; agent never)
 - 2026-10-13T04:30:02Z status=routed owner=18-46-allowed-directories-the-screen-s-add-change-and-remove by=adjudication note=server half delivered by 18.42 (route, tool, AllowListPort, kernel refusal; 4840b762); residual: the screen's dialog (18.46)
+- 2026-10-13T09:23:42Z status=resolved-by:18-46-allowed-directories-the-screen-s-add-change-and-remove by=adjudication note=screen half delivered: Add/Change/Remove dialogs over POST /allowed-directories, GET verdict, key-off and fallback refusals (0220d1e4 + review); server half 18.42
 
 ### DW-2335: Several Stage 2 editor forms show fields no read tool answers (superservers 14, local databases 10, user copy 12), so the agent cannot read what the person sees
 - source: spec-18-12-the-agent-grows-with-the-stage.md | severity: med | fix-risk: med | footprint: in-epic
