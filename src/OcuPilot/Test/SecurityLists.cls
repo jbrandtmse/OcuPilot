@@ -59,7 +59,7 @@ ClassMethod Screens() As %List
     Set tScreens = tScreens _ $ListBuild($ListBuild("OcuPilot.Screen.Descriptor.WalletCollectionList", "security/wallet", "security.wallet", 4, "wallet-collection", "", "[""Name"",""EditResource"",""UseResource""]", tWallet, "", ""))
     Set tScreens = tScreens _ $ListBuild($ListBuild("OcuPilot.Screen.Descriptor.WalletSecretList", "security/wallet/secrets", "security.secrets", 0, "wallet-secret", "", "[""Name"",""Type""]", tWallet, "security/wallet", "&collection=" _ ..#DEMOCOLLECTION, "create", "delete"))
     Set tFileSystem = "[{""resource"":""%Admin_FileSystemAccess"",""permission"":""USE""},{""resource"":""%DB_IRISSYS"",""permission"":""READ""}]"
-    Set tScreens = tScreens _ $ListBuild($ListBuild("OcuPilot.Screen.Descriptor.AllowedDirectoryList", "security/allowed-directories", "security.alloweddirectories", 7, "allowed-directory", "", "[""Directory"",""Restricted""]", tFileSystem, "", ""))
+    Set tScreens = tScreens _ $ListBuild($ListBuild("OcuPilot.Screen.Descriptor.AllowedDirectoryList", "security/allowed-directories", "security.alloweddirectories", 7, "allowed-directory", "", "[""Directory"",""Restricted""]", tFileSystem, "", "", "add", "change,remove"))
     Quit tScreens
 }
 

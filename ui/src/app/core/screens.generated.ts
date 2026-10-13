@@ -1682,10 +1682,19 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "parts": []
     },
     "primaryAction": {
-      "id": "",
+      "id": "add",
       "selfProtection": ""
     },
-    "rowActions": [],
+    "rowActions": [
+      {
+        "id": "change",
+        "selfProtection": "allowed-directory-fallback"
+      },
+      {
+        "id": "remove",
+        "selfProtection": "allowed-directory-fallback"
+      }
+    ],
     "context": {
       "fields": [
         "Directory",
@@ -1693,7 +1702,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       ],
       "secretFields": []
     },
-    "emptyStateKey": "allowedDirectoriesEmpty",
+    "emptyStateKey": "allowedDirectoriesEmptyNone",
     "commandAliases": [
       "allow-list",
       "file access"
@@ -1756,8 +1765,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
           "kind": "status"
         }
       ],
-      "emptyNextKey": "tableReadOnlyEmptyNext",
-      "emptyAgentKey": ""
+      "emptyNextKey": "",
+      "emptyAgentKey": "allowedDirectoriesAgentHint"
     },
     "toolIdentifier": "security.alloweddirectories",
     "refreshDefault": 0,

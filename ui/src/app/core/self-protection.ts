@@ -105,6 +105,13 @@ const ROUTINE_APPLICATION = 'routine-application';
 export const OCUPILOT_ROUTINE_APPLICATIONS: readonly string[] = ['OcuPilotState', 'OcuPilotIdentity'];
 
 /**
+ * The rule that explains the allow-list's unrestricted fallback row (Story 18.46): while the list is unrestricted its one
+ * entry is the manager directory, which the allow-list port refuses to change or remove (`ALLOWLIST.FALLBACK`). The row
+ * reads `Restricted` false; with no row the instance alone refuses.
+ */
+export const ALLOWED_DIRECTORY_FALLBACK_RULE = 'allowed-directory-fallback';
+
+/**
  * The ECP SSL/TLS authorization rules (Story 18.21): Authorize and Reject need a row whose `Status`
  * reads `Pending`, and Delete one whose `Status` reads `Authorized`. Each tool refuses any other row
  * with the rule's sentence, on both callers, because the vendor answers OK for any name; with no row
@@ -155,6 +162,8 @@ export const SERVICE_ACCOUNTS: readonly string[] = ['CSPSystem', '_Ensemble', 'i
  * than the signed-in one. `ocupilot-application-roles` answers for the applications
  * `serves-ocupilot` does, with the privilege-grant sentence.
  *
+ * `allowed-directory-fallback` reads the row's `Restricted` and answers the fallback sentence for a row reading false, `''` otherwise
+ * and with no row.
  * `ocupilot-ssl` answers for OcuPilot's own provider SSL/TLS configuration, compared exactly.
  * `ocupilot-routine-application` answers for OcuPilot's own two privileged routine applications, compared as the
  * instance resolves a routine application's name, in any case.
@@ -189,6 +198,11 @@ export function selfProtectionReason(
     if (row === null) return '';
     const system = row['System'];
     return system === true || system === 'true' || system === 1 || system === '1' ? STRINGS.pctAccessRefusalSystem : '';
+  }
+  if (rule === ALLOWED_DIRECTORY_FALLBACK_RULE) {
+    if (row === null) return '';
+    const restricted = row['Restricted'];
+    return restricted === false || restricted === 'false' || restricted === 0 || restricted === '0' ? STRINGS.allowListRefusalFallback : '';
   }
   if (rule === OCUPILOT_ROUTINE_APPLICATION_RULE) {
     const canonical = normalizeEntityId(ROUTINE_APPLICATION, rowKey);

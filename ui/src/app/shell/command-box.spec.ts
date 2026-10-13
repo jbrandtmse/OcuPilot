@@ -504,6 +504,52 @@ describe('the command box', () => {
     expect(entry?.hasAttribute('disabled')).toBe(false);
   });
 
+  it("Story 18.46: a registrant's reason lists the primary action and a row action gated with that sentence, ahead of the row's own, and choosing either runs nothing", () => {
+    // The Allowed directories screen registers Add and Change with the instance's verdict on the write's key. The box lists
+    // them as the command bar draws them: the sentence inline, the entry `aria-disabled`, a choice a no-op. The selected row is
+    // the unrestricted fallback row, which the screen's own rule explains too, and the registrant's sentence outranks it.
+    //
+    // Mutation (Rule 19): drop the `this.actions.reason(...)` read from the primary action's entry -> Add is offered and its
+    // choice runs the handler, red; from the row action's entry, or order it after `selfProtectionReason(...)` -> Change names
+    // the fallback sentence, red.
+    const allowed = screenForRoute('security/allowed-directories') as ScreenDeclaration;
+    const descriptor = allowed.descriptor;
+    navigation.current = allowed;
+    let runs = 0;
+    let sentence: string = STRINGS.allowListRefusalOff;
+    const actions = TestBed.inject(ScreenActions);
+    actions.register(descriptor, 'add', () => (runs += 1), () => sentence);
+    actions.register(descriptor, 'change', () => (runs += 1), () => sentence);
+    const store = TestBed.inject(ScreenStores).for(descriptor, allowed.refreshRates);
+    store.applyTick([{ Directory: '/iris/mgr/', Restricted: false }], false, '', new Date());
+    store.setSelection(['/iris/mgr/']);
+    chord();
+
+    const entry = (label: string): HTMLElement | undefined =>
+      Array.from(fixture.nativeElement.querySelectorAll('.ocu-command-box-group-actions [role="option"]')).find(
+        (option) => (option as HTMLElement).querySelector('.ocu-command-box-option-label')?.textContent?.trim() === label
+      ) as HTMLElement | undefined;
+    for (const label of [STRINGS.allowedDirectoryAddAction, STRINGS.allowedDirectoryChangeAction]) {
+      expect(entry(label), label).toBeDefined();
+      expect(entry(label)?.textContent, label).toContain(STRINGS.allowListRefusalOff);
+      expect(entry(label)?.textContent, label).not.toContain(STRINGS.allowListRefusalFallback);
+      expect(entry(label)?.getAttribute('aria-disabled'), label).toBe('true');
+      expect(entry(label)?.hasAttribute('disabled'), label).toBe(false);
+    }
+    entry(STRINGS.allowedDirectoryAddAction)?.click();
+    entry(STRINGS.allowedDirectoryChangeAction)?.click();
+    fixture.detectChanges();
+    expect(runs).toBe(0);
+
+    sentence = '';
+    actions.changed();
+    fixture.detectChanges();
+    expect(entry(STRINGS.allowedDirectoryChangeAction)?.textContent, 'with the registrant silent the row falls back to its own rule').toContain(
+      STRINGS.allowListRefusalFallback
+    );
+    expect(entry(STRINGS.allowedDirectoryAddAction)?.hasAttribute('aria-disabled')).toBe(false);
+  });
+
   it("Story 7.2: with the signed-in account selected, the box lists its protected-account action with the published sentence", () => {
     // Mutation (Rule 19): drop `this.signedIn()` from `actionCandidates`' call -> no reason, red.
     navigation.current = screen('permissions/users', 'navAreaPermissions', 'permissions', {

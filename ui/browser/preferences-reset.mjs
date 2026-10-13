@@ -144,6 +144,31 @@ export async function resetGovernancePolicy() {
   assert.equal(answer.status, 200, `the governance policy was put back to the default: ${await answer.text()}`);
 }
 
+/**
+ * Store one governance key's setting (`enabled`, `disabled` or `inherit`), leaving every other key as the read answered
+ * it, saved at the version the read answered and asserting both answers (Story 18.46). A sign-in puts the policy back to
+ * the default, so a spec calls this after it signs in.
+ */
+export async function setGovernanceKey(key, setting) {
+  assert.notEqual(config.container, LIVE_CONTAINER, 'this helper writes the instance\'s governance policy, so it never runs against the live container');
+  const read = await fetch(`${config.origin}${GOVERNANCE_PATH}`, { headers: { Authorization: authHeader() } });
+  const text = await read.text();
+  assert.equal(read.status, 200, `the governance policy reads: ${text}`);
+  const policy = JSON.parse(text);
+  const rows = Array.isArray(policy.keys) ? policy.keys : [];
+  assert.ok(rows.some((row) => row.key === key), `the policy lists the key ${key}`);
+  const settings = {};
+  for (const row of rows) settings[row.key] = row.setting;
+  settings[key] = setting;
+  const rowVersion = typeof policy.rowVersion === 'number' ? policy.rowVersion : 0;
+  const answer = await fetch(`${config.origin}${GOVERNANCE_PATH}`, {
+    method: 'PUT',
+    headers: { Authorization: authHeader(), 'Content-Type': 'application/json' },
+    body: JSON.stringify({ preset: policy.preset ?? '', settings, rowVersion }),
+  });
+  assert.equal(answer.status, 200, `the key ${key} was stored as ${setting}: ${await answer.text()}`);
+}
+
 /** Turn the signing-in account's own read-only choice off (Story 14.5), asserting the answer. */
 export async function resetReadOnlyForYou() {
   assert.notEqual(config.container, LIVE_CONTAINER, 'this helper writes the account\'s read-only choice, so it never runs against the live container');

@@ -1125,7 +1125,7 @@ Method TestTheConsoleLogViewerDeclaresTheLogSourceTailAndItsOnePair()
 
 /// <p>Story 18.1 -- the Allowed directories list declares the <code>path</code> source's one key, a
 /// <code>LIST</code>, the port's own two pairs in its order with the first declared its own, the
-/// <code>allowed-directory</code> type at instance scope, no classic page and no action, and takes the
+/// <code>allowed-directory</code> type at instance scope, no classic page and, since Story 18.46, Add, Change and Remove, and takes the
 /// Security and secrets area's seventh side-bar position (AD-8, AD-21, AD-36, AD-44). The registry
 /// refuses the declaration once it carries a detail call, per-parent list, fixed query or parts, an
 /// endpoint the port does not serve, a request type other than <code>LIST</code>, or no
@@ -1155,8 +1155,8 @@ Method TestTheAllowedDirectoriesListDeclaresThePathSource()
     Do $$$AssertEquals($ClassMethod(tClass, "Scope"), "instance", "at instance scope (AD-13)")
     Do $$$AssertEquals($ClassMethod(tClass, "IdKind"), "single", "keyed by its directory")
     Do $$$AssertEquals($ClassMethod(tClass, "ClassicPage"), "", "no classic page exists (AD-44)")
-    Do $$$AssertEquals($ClassMethod(tClass, "PrimaryActionId"), "", "no primary action")
-    Do $$$AssertEquals($ListLength($ClassMethod(tClass, "RowActionIds")), 0, "and no row action")
+    Do $$$AssertEquals($ClassMethod(tClass, "PrimaryActionId"), "add", "Add is the primary action (Story 18.46)")
+    Do $$$AssertEquals($ListToString($ClassMethod(tClass, "RowActionIds")), "change,remove", "and Change and Remove are its row actions")
     Do $$$AssertEquals(''$ClassMethod(tClass, "Refreshes"), 0, "it does not refresh (AD-43)")
     Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).DescriptorForRoute("security/allowed-directories"), tClass, "the route resolves to it")
     Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).DescriptorForTool("security.alloweddirectories"), tClass, "and so does its tool identifier")

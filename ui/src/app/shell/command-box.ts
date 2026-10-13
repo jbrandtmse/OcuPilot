@@ -532,7 +532,8 @@ export class CommandBox {
       if (this.actions.has(screen.descriptor, id)) declared.push({ id, rowScoped: false });
     }
     if (this.actions.has(screen.descriptor, screen.primaryAction.id)) {
-      declared.push({ id: screen.primaryAction.id, rowScoped: false });
+      // A registrant's own reason (Story 18.46) lists the primary action held back, with the sentence inline.
+      declared.push({ id: screen.primaryAction.id, rowScoped: false, reason: this.actions.reason(screen.descriptor, screen.primaryAction.id) });
     }
     // The row a self-protection rule is judged against is the one the screen has selected, read
     // from the same store the command bar reads (AD-53). With nothing selected the reason stays
@@ -557,12 +558,15 @@ export class CommandBox {
         declared.push({
           id: action.id,
           rowScoped: true,
-          // A multi-select action (Story 16.6) acts on the checked rows, with the bar's own reasons.
-          reason: isCheckedSetAction(screen, action.id)
-            ? checkedSetReason(screen, checked)
-            : selected === ''
-              ? STRINGS.privilegeSelectRowFirst
-              : selfProtectionReason(action.selfProtection, selected, this.signedIn(), row),
+          // A multi-select action (Story 16.6) acts on the checked rows, with the bar's own reasons. A registrant's own
+          // reason (Story 18.46) outranks them, as the bar orders them.
+          reason:
+            this.actions.reason(screen.descriptor, action.id) ||
+            (isCheckedSetAction(screen, action.id)
+              ? checkedSetReason(screen, checked)
+              : selected === ''
+                ? STRINGS.privilegeSelectRowFirst
+                : selfProtectionReason(action.selfProtection, selected, this.signedIn(), row)),
         });
       }
     }

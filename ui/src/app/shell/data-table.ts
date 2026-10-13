@@ -240,9 +240,18 @@ interface CellTooltip {
           <p class="ocu-data-table-empty-title">{{ emptyTitle }}</p>
           <p class="ocu-data-table-empty-next">{{ emptyNext }}</p>
           @if (hasPrimaryAction) {
-            <button type="button" class="ocu-button-primary ocu-data-table-empty-action" (click)="onPrimaryAction()">
+            <button
+              type="button"
+              class="ocu-button-primary ocu-data-table-empty-action"
+              [attr.aria-disabled]="primaryAriaDisabled"
+              [attr.aria-describedby]="primaryDescribedBy"
+              (click)="onPrimaryAction()"
+            >
               {{ primaryActionLabel }}
             </button>
+            @if (primaryReason) {
+              <p class="ocu-data-table-empty-reason" [id]="primaryReasonId">{{ primaryReason }}</p>
+            }
           }
         </section>
       }
@@ -855,7 +864,25 @@ export class DataTable implements OnInit {
   }
 
   protected get primaryActionLabel(): string {
-    return this.screen().primaryAction.id;
+    const screen = this.screen();
+    return actionLabel(screen.descriptor, screen.primaryAction.id);
+  }
+
+  /** Why the empty state's primary action cannot be taken now: its registrant's own reason, or `''` (Story 18.46). */
+  protected get primaryReason(): string {
+    this.generation();
+    const screen = this.screen();
+    return this.actions.reason(screen.descriptor, screen.primaryAction.id);
+  }
+
+  protected readonly primaryReasonId = 'ocu-data-table-empty-reason';
+
+  protected get primaryAriaDisabled(): string | null {
+    return this.primaryReason === '' ? null : 'true';
+  }
+
+  protected get primaryDescribedBy(): string | null {
+    return this.primaryReason === '' ? null : this.primaryReasonId;
   }
 
   /** The classic row link's accessible description, naming the classic editor it opens. */
@@ -904,7 +931,9 @@ export class DataTable implements OnInit {
       .filter((action) => action.id !== screen.primaryAction.id)
       .filter((action) => this.actions.has(screen.descriptor, action.id))
       .map((action) => {
-        const reason = selfProtectionReason(action.selfProtection, selected, this.signedIn(), row);
+        // A registrant's own reason outranks the row's (AD-53), as the command bar orders them.
+        const registered = this.actions.reason(screen.descriptor, action.id);
+        const reason = registered !== '' ? registered : selfProtectionReason(action.selfProtection, selected, this.signedIn(), row);
         const label = actionLabel(screen.descriptor, action.id);
         return {
           id: action.id,

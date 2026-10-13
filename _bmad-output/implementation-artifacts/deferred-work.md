@@ -11397,6 +11397,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-12T01:03:05Z status=decision-pending owner=burndown by=spec_gate note=human=owner: whether OcuPilot may widen the allow-list (security posture)
 - 2026-10-12T04:19:01Z status=routed owner=18-42-allowed-directories-a-person-s-write by=lead note=owner 2026-10-11: I agree with your recommendation regarding allowed folders (person writes, key off; agent never)
 - 2026-10-13T04:30:02Z status=routed owner=18-46-allowed-directories-the-screen-s-add-change-and-remove by=adjudication note=server half delivered by 18.42 (route, tool, AllowListPort, kernel refusal; 4840b762); residual: the screen's dialog (18.46)
+- 2026-10-13T09:23:42Z status=resolved-by:18-46-allowed-directories-the-screen-s-add-change-and-remove by=adjudication note=screen half delivered: Add/Change/Remove dialogs over POST /allowed-directories, GET verdict, key-off and fallback refusals (0220d1e4 + review); server half 18.42
 
 ### DW-2335: Several Stage 2 editor forms show fields no read tool answers (superservers 14, local databases 10, user copy 12), so the agent cannot read what the person sees
 - source: spec-18-12-the-agent-grows-with-the-stage.md | severity: med | fix-risk: med | footprint: in-epic
@@ -11629,3 +11630,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Full sweep on a fresh ocupilot-b-ci: InteropHostGate 3/3 red (ItemMessages -99 'User OcuP204* is not privileged'); green alone once a privileged run cached the statement; red again after $SYSTEM.SQL.Purge() in USER.
 - 2026-10-13T11:53:55Z status=open owner=20-27-transformations-tested by=runner note=fix in 20.27 rework 1 ([Smoke] item); MESSAGESQL's IN (... UNION ...) subquery under %ExecDirectNoPriv
 - 2026-10-13T13:00:55Z status=resolved-by:20-27-transformations-tested by=adjudication note=07f23adb+re-review: MESSAGESQL top-level UNION ALL; InteropHostGate cold-cache test green after PurgeQueries; AD-29 amended
+### DW-2377: IRIS defect candidate: a wallet collection use-resource holder's %Wallet.KeyValue.%OpenId fails #939 and writes Protect audit rows, while GetSecretValue reads the same secret
+- source: spec-18-41-the-wallet-credential-rung.md | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: Measured on ocupilot-ci at Story 18.41's plan (probe OcuProbe1841, removed); the rung never calls %OpenId on a wallet class
+- 2026-10-13T06:58:20Z status=decision-pending owner=burndown by=spec_gate note=owner_hold: vendor defect candidate, never reported upstream (Story 18.41)

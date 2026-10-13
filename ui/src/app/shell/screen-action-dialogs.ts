@@ -1,11 +1,12 @@
 import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, input, output } from '@angular/core';
 
+import { AllowedDirectoryDialogs } from '../areas/security/allowed-directory-dialogs';
 import { screenForDescriptor } from '../core/navigation';
 import { BroadcastDialog } from './broadcast-dialog';
 import { type PendingCheck, PermissionCheck } from './permission-check';
 import { PermissionCheckDialog } from './permission-check-dialog';
 import { RoleDialog } from './role-dialog';
-import { type PendingConfirm, ScreenActionHandler } from './screen-action-handler';
+import { ALLOWED_DIRECTORY_LIST, type PendingConfirm, ScreenActionHandler } from './screen-action-handler';
 import { SetPasswordDialog } from './set-password-dialog';
 import { TypedNameDialog } from './typed-name-dialog';
 import { WarningDialog, type WarningAnswer } from './warning-dialog';
@@ -20,13 +21,16 @@ import { WarningDialog, type WarningAnswer } from './warning-dialog';
  * renders here too, while `PermissionCheck` holds one open for `descriptor`, and is closed when the
  * page that renders it goes.
  *
+ * The Allowed directories list's own actions and dialogs (Story 18.46) render here too, for that descriptor alone: its
+ * sends go to the allow-list route, so `ScreenActionHandler` holds none of them pending.
+ *
  * `acting` is emitted just before a dialog's confirming answer reaches the handler, so the page can
  * move focus off the dialog first (a list page's grid).
  */
 @Component({
   selector: 'app-screen-action-dialogs',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [BroadcastDialog, PermissionCheckDialog, RoleDialog, SetPasswordDialog, TypedNameDialog, WarningDialog],
+  imports: [AllowedDirectoryDialogs, BroadcastDialog, PermissionCheckDialog, RoleDialog, SetPasswordDialog, TypedNameDialog, WarningDialog],
   template: `@if (pendingTypedName; as pending) {
       <app-typed-name-dialog
         [verb]="pending.verb"
@@ -83,6 +87,9 @@ import { WarningDialog, type WarningAnswer } from './warning-dialog';
     }
     @if (pendingCheck; as check) {
       <app-permission-check-dialog [kind]="check.kind" [name]="check.name" (closed)="onCheckClosed()" />
+    }
+    @if (hasAllowedDirectories) {
+      <app-allowed-directory-dialogs (acting)="acting.emit()" />
     }`,
 })
 export class ScreenActionDialogs {
@@ -121,6 +128,11 @@ export class ScreenActionDialogs {
 
   protected get pendingWarning(): PendingConfirm | null {
     return this.pendingOf('warning');
+  }
+
+  /** Whether this is the Allowed directories list, whose own dialogs render beside the handler's (Story 18.46). */
+  protected get hasAllowedDirectories(): boolean {
+    return this.descriptor() === ALLOWED_DIRECTORY_LIST;
   }
 
   protected get pendingBroadcast(): PendingConfirm | null {

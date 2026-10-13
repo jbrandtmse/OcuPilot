@@ -820,6 +820,32 @@ const WARNING_ROWS: Readonly<
   [AUDIT_USER_EVENT_LIST]: { disable: { field: 'EventName', equals: AGENT_WRITE_EVENT, consequence: STRINGS.proposalAuditWarning } },
 };
 
+/** The Allowed directories list (Story 18.46), whose three actions are sent by `areas/security/allowed-directory-actions.ts`. */
+export const ALLOWED_DIRECTORY_LIST = 'OcuPilot.Screen.Descriptor.AllowedDirectoryList';
+
+/** The path of a person's own allow-list write (Story 18.42): the descriptor's actions go here, not to a screen action route. */
+export const ALLOWED_DIRECTORIES_PATH = '/api/ocupilot/allowed-directories';
+
+/** A descriptor whose actions are sent to a route of their own, and the body that route takes. */
+interface OwnRoute {
+  readonly path: string;
+  readonly body: (actionId: string, target: string, values: ActionValues | undefined) => Readonly<Record<string, unknown>>;
+}
+
+/**
+ * The descriptors whose actions are sent to a route of their own rather than `POST /screens/:screen/action`, keyed by
+ * descriptor (AD-53). Their tool is never advertised and declares no `SCREENACTIONS`, so the screen action route would
+ * answer 404; the answer is handled as a screen action's is -- `{action, target, readBack}` becomes one change event.
+ * Such a descriptor stays off `SCREEN_ACTION_DESCRIPTORS`, because its page registers and runs its own actions.
+ */
+const OWN_ROUTES: Readonly<Record<string, OwnRoute>> = {
+  // Story 18.42's route reads `Action`, `Directory` and `NewDirectory`; the value an action carries is its `NewDirectory`.
+  [ALLOWED_DIRECTORY_LIST]: {
+    path: ALLOWED_DIRECTORIES_PATH,
+    body: (actionId, target, values) => ({ Action: actionId, Directory: target, ...values }),
+  },
+};
+
 /** What the screen-action route answers (AD-14): the verb, and the triple the write was made against. */
 interface ScreenActionAnswer {
   readonly action?: string;
@@ -1374,7 +1400,7 @@ export class ScreenActionHandler {
   /**
    * The one request, and what its answer publishes; `true` when the instance applied it. `values`
    * travels only where the action's tool declares values, and is sent as given (AD-56). It is sent
-   * to the action route of the screen `ACTION_ADDRESS` names, or the descriptor's own; a refusal is
+   * to the action route of the screen `ACTION_ADDRESS` names, or the descriptor's own, or to its `OWN_ROUTES` path with that route's body; a refusal is
    * put on the descriptor's own store, which is the page the person acted on. `scope`, where given,
    * is the namespace the request carries whatever the shell is scoped to when it is sent.
    */
@@ -1397,14 +1423,15 @@ export class ScreenActionHandler {
     store.setRefusal('');
     const since = new Date();
     this.progressSignal.set({ descriptor, actionId, target, state: 'running', since });
+    const own = Object.hasOwn(OWN_ROUTES, descriptor) ? OWN_ROUTES[descriptor] : undefined;
     const request: { action: string; id: string; values?: ActionValues } = { action: actionId, id: target };
     if (values !== undefined) request.values = values;
     const result = await this.injector.get(ApiService).requestJson<ScreenActionAnswer>(
-      `${SCREEN_READ_PATH_PREFIX}${encodeURIComponent(addressed.toolIdentifier)}${SCREEN_ACTION_PATH_SUFFIX}`,
+      own?.path ?? `${SCREEN_READ_PATH_PREFIX}${encodeURIComponent(addressed.toolIdentifier)}${SCREEN_ACTION_PATH_SUFFIX}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(request),
+        body: JSON.stringify(own === undefined ? request : own.body(actionId, target, values)),
         ...(scope === undefined ? {} : { scope }),
       }
     );
