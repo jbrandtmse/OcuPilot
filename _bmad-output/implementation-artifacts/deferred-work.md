@@ -11603,6 +11603,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: On ocupilot, InteropInterfaces with no start answers each grouping twice (HSCUSTOM Web API: Active 1 = 4, Active 0 = 11); SYS_Monitor_Interop.Interface holds 11 such interfaces, 4 with an open activity; with a start date, as the classic page always passes, only Active 0 rows answer
 - 2026-10-13T13:17:14Z status=decision-pending owner=burndown by=cr note=spec Task 1/3 declare Active boolean; recommend the lead amends: per grouping, all-time Count plus a numeric ActiveNow
 - 2026-10-13T13:23:03Z status=routed owner=18-37-interoperability-usage by=merge_gate note=orchestrator ruling B: one row per grouping, all-time Count plus numeric ActiveNow; fixed in 18.37 rework 1 before its push
+- 2026-10-13T14:23:07Z status=resolved-by:18-37-interoperability-usage by=adjudication note=one row per grouping, all-time Count plus numeric ActiveNow (29fd56c2 + re-review); pinned by TestAGroupingTheVendorAnswersTwiceReadsAsOneRow
 
 ### DW-2385: On an instance where no production and no message purge has run, the MessageVolume and DatabaseImpact live legs compare 0 with 0, and no test has read DatabaseImpact over rows
 - source: spec-18-37-interoperability-usage.md | severity: med | fix-risk: high | footprint: in-story
