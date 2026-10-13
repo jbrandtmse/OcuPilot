@@ -100,6 +100,10 @@ const SENTENCES = [
   ['REASONTESTVALUE', 'interopTestRefusalValue'],
   ['REASONTESTREQUEST', 'interopTestRefusalRequest'],
   ['REASONTESTSENDS', 'interopTestSendsConsequence'],
+  ['REASONTRANSFORMSOURCEFORMAT', 'interopTransformRefusalSourceFormat'],
+  ['REASONTRANSFORMTARGETFORMAT', 'interopTransformRefusalTargetFormat'],
+  ['REASONTRANSFORMCONTENT', 'interopTransformRefusalContent'],
+  ['REASONTRANSFORMRUNS', 'interopTransformRunsConsequence'],
 ];
 
 /** The value `key` holds in `strings.ts`, which may sit on the line after its key. */
@@ -148,6 +152,15 @@ test("Story 20.23: the number the abort-all sentence states is the port's ABORTM
   const stated = `up to the first ${Number(match[1]).toLocaleString('en-US')},`;
   assert.ok(stringValue('interopQueueAbortConsequence').includes(stated), `interopQueueAbortConsequence states "${stated}"`);
   assert.ok(serverSentence('REASONQUEUEABORT').includes(stated), `REASONQUEUEABORT states "${stated}"`);
+});
+
+test("Story 20.27: the number the transformation test's content sentence states is the Atelier port's MAXIMPORTCHARACTERS", () => {
+  // Mutation (Rule 19): change MAXIMPORTCHARACTERS in AtelierPort.cls to 4000000 -> this goes red.
+  const match = /Parameter MAXIMPORTCHARACTERS(?: As \w+)? = (\d+);/.exec(readFileSync(ATELIER_PORT, 'utf8'));
+  assert.notEqual(match, null, 'AtelierPort.cls declares MAXIMPORTCHARACTERS');
+  const stated = `at most ${Number(match[1]).toLocaleString('en-US')} characters`;
+  assert.ok(serverSentence('REASONTRANSFORMCONTENT').includes(stated), `REASONTRANSFORMCONTENT states "${stated}"`);
+  assert.ok(stringValue('interopTransformRefusalContent').includes(stated), `interopTransformRefusalContent states "${stated}"`);
 });
 
 test("Story 20.5: the number the too-large sentence states is the Atelier port's MAXIMPORTCHARACTERS", () => {

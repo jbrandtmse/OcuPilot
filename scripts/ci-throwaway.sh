@@ -482,6 +482,10 @@ services:
       # the running one, leaves a waiting test's answer node, audits a failed test, follows the agent's session into the item's
       # Messages tab, and dispatches calls whose fields name a credential through the agent's tool loop.
       # classes: InteropHostTestEdges
+      # The data transformation test classes compile and run probe data transformations in USER, with no probe production (Story 20.27):
+      # the test class runs them from both callers and reads what each run leaves behind, the refusals class meets every outcome and
+      # refusal, and the gate class signs in as probe principals each missing one pair the list, the read or the test requires.
+      # classes: InteropTransformTest, InteropTransformTestGate, InteropTransformTestRefusals
       # classes: ExplorerSourceTurn
       # classes: ExplorerSaveTurn
       # classes: ExplorerCreateTurn

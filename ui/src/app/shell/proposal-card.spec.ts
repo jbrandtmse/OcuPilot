@@ -10,6 +10,8 @@ import {
   formatRemovalResidue,
 } from '../core/proposal-view';
 import { STRINGS } from '../core/strings';
+import { testOutcomeLines, transformOutcomeLines } from '../core/test-answer';
+import { outputErrorsOf } from '../core/turn';
 import { EXAMPLE_PROPOSAL, type ProposalCardView } from './example-proposal';
 import { ProposalCard } from './proposal-card';
 
@@ -963,6 +965,15 @@ describe('the proposal card', () => {
     expect(lines[0].textContent).toContain(STRINGS.interopTestSendsConsequence);
   });
 
+  // Mutation (Rule 19): drop the INTEROP.TRANSFORM.RUNS code from `consequenceSentence` -> this goes red.
+  it('Story 20.27: a data transformation test states that its code runs here as the person, and is not drawn destructive', () => {
+    const { card } = mount(liveView({ consequence: 'INTEROP.TRANSFORM.RUNS', destructive: false, maskedFields: [] }), { phase: 'live' });
+    expect(card.classList.contains('ocu-proposal-card-destructive')).toBe(false);
+    const lines = card.querySelectorAll('[data-slot="consequence"]');
+    expect(lines.length).toBe(1);
+    expect(lines[0].textContent).toContain(STRINGS.interopTransformRunsConsequence);
+  });
+
   it('AD-10, Story 9.5: a change turning an SSL/TLS configuration\'s peer verification off is drawn destructive and states its effect', () => {
     // Mutation (Rule 19): drop the NOPEERCHECK code from `consequenceSentence` -> this goes red.
     const { card } = mount(liveView({ consequence: 'SSL.NOPEERCHECK', destructive: true, maskedFields: [] }), { phase: 'live' });
@@ -1497,5 +1508,60 @@ describe('the proposal card with a long block (Story 20.17)', () => {
     fixture.componentRef.setInput('outputErrors', null);
     fixture.detectChanges();
     expect(summary(card)?.querySelector('.ocu-proposal-card-summary-outcome')).toBeNull();
+  });
+
+  // A host or data transformation test's answer also carries `lines` and `errors`, which is not a compile's outcome. The card is handed
+  // what `outputErrorsOf` reads from the confirm's own answer; the panel itself passes `null` for every tool but an explorer one.
+  // Mutation (Rule 19): make `outputErrorsOf` read a test answer's `errors` as a compile's again -> the outcome span appears and this goes red.
+  it('Story 20.27: a confirmed test card with a long output shows its summary line and no compile outcome', () => {
+    const transform = {
+      status: 'transform',
+      sourceClass: 'Ens.StringRequest',
+      targetClass: 'Ens.StringResponse',
+      lines: Array.from({ length: 10 }, (_, index) => `error line ${index}`),
+      console: [],
+      errors: true,
+    };
+    const hostTest = { status: 'error', sessionId: '41', responseClass: '', lines: Array.from({ length: 10 }, (_, index) => `error line ${index}`), errors: true };
+    for (const [name, answer, shown] of [
+      ['a data transformation test', transform, transformOutcomeLines(transform)],
+      ['a host test', hostTest, testOutcomeLines(hostTest)],
+    ] as const) {
+      const { fixture, card } = mountKeyed(liveView({ name: 'Orders', changed: rows(2) }), 'confirmed');
+      fixture.componentRef.setInput('output', shown);
+      fixture.componentRef.setInput('outputErrors', outputErrorsOf(answer));
+      fixture.detectChanges();
+
+      expect(summary(card), name).not.toBeNull();
+      expect(summary(card)?.querySelector('.ocu-proposal-card-summary-outcome'), name).toBeNull();
+      expect((card.querySelector('[data-slot="output"]') as HTMLElement).closest('.ocu-long-block')?.classList.contains('ocu-long-block-collapsed'), name).toBe(true);
+      TestBed.resetTestingModule();
+    }
+  });
+
+  // The instance holds a test's lines to one million characters and ends the last in the cut marker (`InteropPort.TESTCUT`). The card is
+  // handed that answer and draws every line of it, so what the person reads is what the instance sent, to the marker, and as text.
+  // Mutation (Rule 19): cut the output step's text at 100,000 characters in `outputSteps` of `proposal-card.ts` -> the length and marker legs go red.
+  it('Story 20.27: a confirmed transformation test card draws an answer at the output bound whole, its cut marker last, as one collapsed text block', () => {
+    const cut = ' ... [cut]';
+    const lines = Array.from({ length: 10_000 }, (_, index) => `<row n="${String(index).padStart(92, '0')}"/>`);
+    lines.push(`last${cut}`);
+    const answer = { status: 'done', sourceClass: 'Ens.StringRequest', targetClass: 'Ens.StringResponse', lines, console: ['probe-device-line'], errors: false };
+    const text = [STRINGS.interopTransformDone, ...lines, STRINGS.interopTransformConsole, 'probe-device-line'].join('\n');
+    expect(text.length).toBeGreaterThan(990_000);
+
+    const { fixture, card } = mountKeyed(liveView({ name: 'Orders', changed: rows(2) }), 'confirmed');
+    fixture.componentRef.setInput('output', transformOutcomeLines(answer));
+    fixture.componentRef.setInput('outputErrors', outputErrorsOf(answer));
+    fixture.detectChanges();
+
+    const blocks = card.querySelectorAll('[data-slot="output"] pre');
+    expect(blocks.length).toBe(1);
+    const drawn = blocks[0].textContent ?? '';
+    expect(drawn.length).toBe(text.length);
+    expect(drawn.endsWith(`last${cut}\n${STRINGS.interopTransformConsole}\nprobe-device-line`)).toBe(true);
+    expect(blocks[0].querySelector('row')).toBeNull();
+    expect((card.querySelector('[data-slot="output"]') as HTMLElement).closest('.ocu-long-block')?.classList.contains('ocu-long-block-collapsed')).toBe(true);
+    expect(summary(card)).not.toBeNull();
   });
 });

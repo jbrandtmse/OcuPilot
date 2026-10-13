@@ -384,6 +384,8 @@ export const CONSEQUENCE_INTEROPLOOKUPDELETE = 'INTEROP.LOOKUP.DELETE';
 export const CONSEQUENCE_INTEROPLOOKUPIMPORT = 'INTEROP.LOOKUP.IMPORT';
 /** Story 20.6: a host test, which sends a real message through the running production. */
 export const CONSEQUENCE_INTEROPTESTSENDS = 'INTEROP.TEST.SENDS';
+/** Story 20.27: a data transformation test, which runs the transformation's code on this instance as the person. */
+export const CONSEQUENCE_INTEROPTRANSFORMRUNS = 'INTEROP.TRANSFORM.RUNS';
 /** Story 20.22: a set of a setting that is a location on the server (AD-21's ninth case). */
 export const CONSEQUENCE_INTEROPSETTINGLOCATION = 'INTEROP.SETTING.LOCATION';
 /** The field a setting set's diff names the value under. */
@@ -535,6 +537,8 @@ export function consequenceSentence(code: string | undefined): string {
   if (code === CONSEQUENCE_INTEROPLOOKUPIMPORT) return STRINGS.interopLookupImportConsequence;
   // Story 20.6: a host test's sentence, the one its own dialog shows.
   if (code === CONSEQUENCE_INTEROPTESTSENDS) return STRINGS.interopTestSendsConsequence;
+  // Story 20.27: a data transformation test's sentence, the one its own dialog shows.
+  if (code === CONSEQUENCE_INTEROPTRANSFORMRUNS) return STRINGS.interopTransformRunsConsequence;
   return '';
 }
 

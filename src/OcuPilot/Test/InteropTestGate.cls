@@ -352,9 +352,11 @@ ClassMethod Probe(pParent As %Integer, pUsername As %String, pNamespace As %Stri
     Do $System.Event.Signal(pParent, tOut.%ToJSON())
 }
 
-/// <p>Create each of <parameter>PRINCIPALS</parameter> with a role of its own holding its pairs and READ on the install namespace's
-/// code database, then read the decisive grants back.</p>
-Method EnsurePrincipals() As %Status
+/// <p>Create each of <var>pPrincipals</var> (<code>&lt;user&gt;:&lt;the pairs it holds beyond the code database's READ&gt;</code>, separated by
+/// <code>;</code>) with <var>pPassword</var> and a role of its own holding its pairs and READ on the install namespace's code database.
+/// <var>pOwner</var> is the class that deletes them afterwards, named in their comment. Shared with
+/// <class>OcuPilot.Test.InteropTransformTestGate</class>.</p>
+ClassMethod CreatePrincipals(pPrincipals As %String, pPassword As %String, pOwner As %String) As %Status
 {
     Set tSC = $$$OK
     Set tOrigNS = $NAMESPACE
@@ -365,18 +367,30 @@ Method EnsurePrincipals() As %Status
             Quit
         }
         Set $NAMESPACE = "%SYS"
-        For tI = 1:1:$Length(..#PRINCIPALS, ";") {
-            Set tEntry = $Piece(..#PRINCIPALS, ";", tI)
+        For tI = 1:1:$Length(pPrincipals, ";") {
+            Set tEntry = $Piece(pPrincipals, ";", tI)
             Set tUser = $Piece(tEntry, ":", 1)
             Set tRole = tUser _ "Role"
             If ##class(Security.Users).Exists(tUser) Do ##class(Security.Users).Delete(tUser)
             If ##class(Security.Roles).Exists(tRole) Do ##class(Security.Roles).Delete(tRole)
-            Set tSC = ##class(Security.Roles).Create(tRole, "OcuPilot test: the item test endpoint's gate (throwaway)", tHome _ ":R," _ $Piece(tEntry, ":", 2, *), "")
+            Set tSC = ##class(Security.Roles).Create(tRole, "OcuPilot test: a gate principal's role (throwaway)", tHome _ ":R," _ $Piece(tEntry, ":", 2, *), "")
             If $$$ISERR(tSC) Quit
-            Set tSC = ##class(Security.Users).Create(tUser, tRole, ..PreparedPassword, "OcuPilot item test gate principal (throwaway)", "", "", "", 0, 1, "Created by OcuPilot.Test.InteropTestGate; deleted in OnAfterAllTests")
+            Set tSC = ##class(Security.Users).Create(tUser, tRole, pPassword, "OcuPilot gate principal (throwaway)", "", "", "", 0, 1, "Created by " _ pOwner _ "; deleted in OnAfterAllTests")
             If $$$ISERR(tSC) Quit
         }
         Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>Create each of <parameter>PRINCIPALS</parameter> (<method>CreatePrincipals</method>), then read the decisive grants back.</p>
+Method EnsurePrincipals() As %Status
+{
+    Set tSC = ..CreatePrincipals(..#PRINCIPALS, ..PreparedPassword, "OcuPilot.Test.InteropTestGate")
+    Try {
         If $$$ISERR(tSC) Quit
         For tCase = $ListBuild("OcuP206Exact", "%Ens_TestingService", "USE", 1), $ListBuild("OcuP206Exact", "%DB_USER", "WRITE", 1), $ListBuild("OcuP206NoPortal", "%Ens_Portal", "USE", 0), $ListBuild("OcuP206NoTesting", "%Ens_TestingService", "USE", 0), $ListBuild("OcuP206NoRead", "%DB_USER", "READ", 0), $ListBuild("OcuP206NoWrite", "%DB_USER", "READ", 1), $ListBuild("OcuP206NoWrite", "%DB_USER", "WRITE", 0) {
             If $SYSTEM.Security.CheckUserPermission($List(tCase, 1), $List(tCase, 2), $List(tCase, 3)) '= $List(tCase, 4) {
@@ -385,7 +399,6 @@ Method EnsurePrincipals() As %Status
             }
         }
     } Catch ex {
-        Set $NAMESPACE = tOrigNS
         Set tSC = ex.AsStatus()
     }
     Quit tSC

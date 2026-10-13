@@ -349,7 +349,7 @@ development_status:
   20-4-per-host-tabs-the-monitor-queues-and-jobs: done
   20-5-lookup-tables-and-business-partners: done
   20-6-testing-hosts-and-transformations: done
-  20-7-the-three-embedded-vendor-editors: backlog
+  20-7-the-three-embedded-vendor-editors: in-progress
   20-8-the-schema-viewers-and-the-production-configuration-diagram: backlog
   20-9-messages-search-view-resend-and-trace: backlog
   20-10-source-control-hooks: backlog
@@ -369,7 +369,7 @@ development_status:
   20-24-agent-tool-calls-stop-re-listing-the-tool-registry: done
   20-25-item-runtime-and-configuration-actions: backlog
   20-26-business-partners-saved-and-removed: backlog
-  20-27-transformations-tested: ready-for-dev
+  20-27-transformations-tested: done
   20-28-ocupilot-compiles-in-a-namespace-without-interoperability: done
   20-29-screens-load-on-demand: done
   epic-20-retrospective: optional

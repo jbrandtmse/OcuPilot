@@ -414,6 +414,7 @@ XData Coverage
 <tool name="interop.lookuptables.export" class="OcuPilot.Test.InteropLookupTransfer" method="TestTheAgentsExportConfirmsOverHttp"/>
 <tool name="interop.lookuptables.import" class="OcuPilot.Test.InteropLookupTransfer" method="TestTheAgentsImportConfirmsOverHttp"/>
 <tool name="interop.itemtest.send" class="OcuPilot.Test.InteropHostTest" method="TestTheAgentsSendConfirmsOverHttp"/>
+<tool name="interop.transforms.test" class="OcuPilot.Test.InteropTransformTest" method="TestTheAgentsRunConfirmsOverHttp"/>
 <tool name="osmgmt.remotedatabases.create" class="OcuPilot.Test.RemoteDatabaseDescriptor" method="TestTheToolsDeclareTheirFieldsKindsAndPairs" corpus="the three remote database tools are asserted together in one loop"/>
 <tool name="osmgmt.remotedatabases.update" class="OcuPilot.Test.RemoteDatabaseDescriptor" method="TestTheToolsDeclareTheirFieldsKindsAndPairs" corpus="the three remote database tools are asserted together in one loop"/>
 <tool name="osmgmt.remotedatabases.delete" class="OcuPilot.Test.RemoteDatabaseDescriptor" method="TestTheToolsDeclareTheirFieldsKindsAndPairs" corpus="the three remote database tools are asserted together in one loop"/>
