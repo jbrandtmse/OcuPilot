@@ -11623,3 +11623,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: ARCHITECTURE-SPINE.md :230 (AD-8) lists License key's activation, the data browser's save and the symmetric key replace; :1161 (AD-53) adds the allow-list update; the spine is lead-owned (Rule 20) and in Epic 20's diff, so a review cannot edit it in place
 - 2026-10-13T04:27:29Z status=wontfix-accepted owner=18-42-allowed-directories-a-person-s-write by=cr note=reopen_if=the lead's next AD-8 or AD-53 touch, or a reader cites AD-8's today-list as the whole unadvertised set
 - 2026-10-13T04:29:39Z status=resolved-by:18-42-allowed-directories-a-person-s-write by=adjudication note=AD-8 today-list now names the allowed directories update (spine amendment, Story 18.42 code review)
+
+### DW-2383: An item's Messages read answers INTERNAL (SQLCODE -99) to a principal without SQL privilege when no cached query for its statement exists yet, so the first such reader after a fresh start or a purge sees an error
+- source: fresh_check 20.27 (runner) | severity: high | fix-risk: low | footprint: in-epic
+- evidence: Full sweep on a fresh ocupilot-b-ci: InteropHostGate 3/3 red (ItemMessages -99 'User OcuP204* is not privileged'); green alone once a privileged run cached the statement; red again after $SYSTEM.SQL.Purge() in USER.
+- 2026-10-13T11:53:55Z status=open owner=20-27-transformations-tested by=runner note=fix in 20.27 rework 1 ([Smoke] item); MESSAGESQL's IN (... UNION ...) subquery under %ExecDirectNoPriv

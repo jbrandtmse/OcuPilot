@@ -2,7 +2,7 @@
 title: 'Story 20.27: Transformations tested'
 type: 'feature'
 created: '2026-10-12'
-status: 'done'
+status: 'in-progress'
 baseline_revision: '663eff71f6d0f39290463136332c58560703d22a'
 baseline_commit: '663eff71f6d0f39290463136332c58560703d22a'
 review_loop_iteration: 0
@@ -419,6 +419,10 @@ Rejected:
 - Rejected LOW: a transformation returning its stored source as target makes a second `%Delete` fail and log a line. This is unlikely, and the fix adds a guard.
 - Rejected as theoretical: an unbalanced `TSTART` in a transformation's own code.
 - Rejected: two spec-text findings. The Auto Run Result's stale risk line, and the Parse bullet that does not name the stricter XML rule, are the lead's to amend.
+
+### Fresh check red (2026-10-13) - rework iteration 1
+
+- [ ] [Smoke] **DW-2383: the item Messages read fails for a principal without SQL privilege on a cold cached query.** On a freshly built `ocupilot-b-ci` the full sweep (625 classes) had one red class, `InteropHostGate` (3 of 3; Story 20.4's): every `ItemMessages` leg answered `INTERNAL`, logged as `ERROR #5540: SQLCODE: -99 Message: User OcuP204Ex7 is not privileged for the operation` (`interopport`, "the item's messages failed"). Alone, after other classes had run the read as a privileged user, it was green; after `$SYSTEM.SQL.Purge()` in `USER` it was red again (reproduced). The Log read (`LOGSQL`, one table) is not affected; `MESSAGESQL`'s `IN (... UNION ...)` subquery under `%ExecDirectNoPriv` is the suspect (inference). Fix it in the product (`InteropPort`), so the first read after a start or a purge, by a principal holding only the endpoint's pairs, answers its rows; keep the rows, order and cap the Messages tab shows today. Check every other `%ExecDirectNoPriv` statement in `InteropPort` for the same shape and fix any that share it. Pin it with a test that removes the statement's cached query (or purges `USER`'s) before an unprivileged read, red on the old statement. `InteropHostGate`, `InteropHostRead` and the classes that read item messages must stay green.
 
 ## Spec Change Log
 
