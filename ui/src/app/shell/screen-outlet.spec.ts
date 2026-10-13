@@ -415,6 +415,39 @@ describe('the routed screen outlet while its page arrives', () => {
     expect(ProbePage.busyAtFirstRender).toBe('true');
   });
 
+  it('reads busy from the moment a held page is released, and again each time its page is created anew', async () => {
+    // Mutation (Rule 19): drop `this.pageRendered.set(false)` from `onPageActivated` -> the outlet
+    // whose page is created again reads ready before that page has rendered, and the page records
+    // `null`.
+    navigation.answer = false;
+    const harness = await RouterTestingHarness.create('/?ns=HSCUSTOM');
+    const host = harness.fixture.nativeElement.querySelector('app-screen-outlet') as HTMLElement;
+    expect(host.hasAttribute('aria-busy'), 'a held outlet has no page to wait for').toBe(false);
+
+    const release = async (): Promise<void> => {
+      ProbePage.busyAtFirstRender = undefined;
+      navigation.answer = true;
+      navigation.notify();
+      harness.detectChanges();
+      await harness.fixture.whenStable();
+    };
+    await release();
+    expect(host.querySelector('app-probe-page')).not.toBeNull();
+    expect(ProbePage.busyAtFirstRender, 'the page released from the hold').toBe('true');
+    expect(host.hasAttribute('aria-busy')).toBe(false);
+
+    navigation.answer = false;
+    navigation.notify();
+    harness.detectChanges();
+    expect(host.querySelector('app-probe-page')).toBeNull();
+    expect(host.hasAttribute('aria-busy')).toBe(false);
+
+    await release();
+    expect(host.querySelector('app-probe-page')).not.toBeNull();
+    expect(ProbePage.busyAtFirstRender, 'the page created again').toBe('true');
+    expect(host.hasAttribute('aria-busy')).toBe(false);
+  });
+
   it('is not left busy by a screen that mounts no page', async () => {
     // Mutation (Rule 19): read `busyValue` without `this.page` -> a denied screen stays busy.
     navigation.verdicts.set('', { allowed: false, failedPair: '%Admin_Manage:USE' });

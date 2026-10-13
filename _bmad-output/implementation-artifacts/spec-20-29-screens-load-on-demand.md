@@ -2,7 +2,7 @@
 title: 'Story 20.29: Screens load on demand'
 type: 'feature'
 created: '2026-10-12'
-status: 'in-review'
+status: 'done'
 baseline_revision: '9c4d80812ddfde4414c723f89510c46030148c1f'
 baseline_commit: '21fe71330033007e50b891982d63d841d9ff75a0'
 review_loop_iteration: 1
@@ -212,7 +212,7 @@ Direction for this pass (lead; orchestrator ruling: the cause is fixed in the pr
 - **Holds, read at construction:** a page is built after `NavigationEnd`, not during it, and all 38 pages with a `NavigationEnd` handler take the current route in their constructors: 29 set `followed` from the URL, eight set `readFor`, call `follow()` or `readIfMoved()` or build their source from it, and `auditing-config.page.ts` reads `currentNavigation() ?? lastSuccessfulNavigation()` for the navigation state. `ScreenArrivals` and the gate's `arriveFromGate()` are set before the move or the hold.
 - **Holds, answers used with the store, not the page:** `home.page.ts` `fixAndRequest`, `citation-navigator.ts` and `agent-navigator.ts` compare the target store's `lastUpdate()` or announce, and touch no page element.
 - **Not page code:** the locator bar's heading focus (the agent's navigation) and `app.ts` `focusOnFrameArrival` land on shell elements; the side bar keeps its own focus, and a row's name cell and the command box hand focus to no page, as EXPERIENCE.md names only the tab strip and the agent heading; there is no router scroll restoration, and a screen's scroll offset is applied by the data table's own render.
-- **Specs run for them**, one file per call on `ocupilot-b-ci` with the final bundle: `oauth`, `language-server-editor`, `lazy-screens`, `about-help-links`, `navigate`, `shell`, `rail`, `gate`, `a11y-structural-invariants`, `auditing-screen`, `definitions`, `users-editor`, `interop-host-tabs`, `system-explorer-sql`, `license-usage`, `ecp-application-servers`.
+- **Specs run for them**, one file per call on `ocupilot-b-ci` with the final bundle: `oauth`, `language-server-editor`, `lazy-screens`, `about-help-links`, `navigate`, `shell`, `rail`, `gate`, `a11y-structural-invariants`, `auditing-screen`, `definitions`, `users-editor`, `interop-host-tabs`, `system-explorer-sql`, `license-usage`, `ecp-application-servers`, and the five that read `[aria-busy="true"]` across the document: `processes`, `tasks`, `system-usage`, `dashboard-drill-downs`, `agent-ledger`.
 
 ## Spec Change Log
 
@@ -243,6 +243,20 @@ Direction for this pass (lead; orchestrator ruling: the cause is fixed in the pr
   - `[false]` `[reject]` AUDITING_FOCUS_ENABLE's move, the `readInstance()` refactor, the walk hardening and the awaited loaders are outside the contract's list - each is a numbered Task in this spec.
   - `[false]` `[reject]` the initial total is recorded, not asserted - the DW-371 test measures the emitted initial set against `maximumWarning`.
 
+### 2026-10-12 - Review pass (CI rework 1)
+
+- verdicts: 10 findings - high 0, medium 1, low 6, false 3, maybe-false 0
+- findings:
+  - `[low]` `[patch]` `rememberedPage` retrying a loader that rejected had no test - `app.routes.spec.ts` "asks a loader that rejected again on the next navigation"; mutation recorded.
+  - `[low]` `[patch]` the busy flag after a second activation of the page outlet had no test (`onPageActivated`'s reset) - `screen-outlet.spec.ts` releases a held outlet, holds it and releases it again; mutation recorded.
+  - `[low]` `[patch]` `DetailPage.open`'s rejection path had no test (only the `false` answer was driven) - `detail-page.spec.ts` drives a navigation whose page cannot load, sharing one helper with the refused-navigation test; mutation recorded.
+  - `[medium]` `[patch]` the "answered at once" test called the real language server loader and relied on no earlier test in the worker having resolved it (the component runner does not isolate files) - replaced by a test over its own loader; the by-construction id-route identity check was dropped because both routes share one `children` array, and the shipped-route tests pin the real table.
+  - `[low]` `[reject]` the spec's component-test totals disagreed (2986 against 2984) - the fix edits the run record; the paragraph is rewritten with this pass's counts.
+  - `[false]` `[reject]` the specs reading `[aria-busy="true"]` across the document are not in the item 3 list and may break on the outlet's new attribute - `processes`, `tasks`, `system-usage`, `dashboard-drill-downs` and `agent-ledger` ran green on the deployed bundle, and the list now names them.
+  - `[false]` `[reject]` the diff implements the behavior-equivalence reading, and the I/O matrix has no row for focus, ready state or `aria-busy` - the matrix rows are about the network and the failure path, and these are regressions lazy loading caused, ruled in scope by the orchestrator.
+  - `[false]` `[reject]` the route child's `loadComponent` is `rememberedPage(loader)`, so route-to-map identity is checked one hop removed - the wrapper is keyed per loader, and dropping the lookup or wrapping per route reddens the two shipped-route tests.
+  - `[low]` `[patch]` the failure row is not exercised through the wrapper (intent-alignment's view of the first row above) - closed by that patch.
+  - `[low]` `[patch]` the held-to-released transition of the outlet is not exercised (intent-alignment's view of the second row above) - closed by that patch.
 
 ## Design Notes
 
@@ -596,44 +610,32 @@ chunk-DHotihUu2.js  | namespace-form-page                | 312 bytes |          
   - `screen-outlet.spec.ts` and `app.routes.spec.ts`: 34 of 34.
   - On the clean bundle: `lazy-screens` 3 of 3, and `about-help-links` 6 of 6 with the stamp test skipped.
 
-**CI rework 1 (2026-10-12), work in progress (hold).** Clean bundle `main-4FXQL74C.js` is on `ocupilot-b-ci`; the initial total stays under 1992kB. Green on it so far: `npm run test:tools` 1954, `npm run test:components` 2986, and the browser files `oauth` 6, `language-server-editor` 4, `lazy-screens` 3, `about-help-links` 6, `navigate` 6, `shell` 6, `rail` 2, `gate` 6, `a11y-structural-invariants` 13. Not yet run: `auditing-screen`, `definitions`, `users-editor`, `interop-host-tabs`, `system-explorer-sql`, `license-usage`, `ecp-application-servers`, and the create-then-edit specs (`ldap-editor`, `namespaces`, `oauth-client-editor`). The review step (step 4) has not run. Each mutation below was applied, observed red and reverted, the tree confirmed byte-identical; the client ones on a rebuilt and redeployed bundle, and the clean bundle rebuilt and redeployed after.
+**CI rework 1 (2026-10-12).** Clean bundle `main-4FXQL74C.js` is on `ocupilot-b-ci`; the initial total stays under 1992kB. Each mutation below was applied, observed red and reverted, with the tree confirmed byte-identical: the browser ones on a rebuilt and redeployed bundle (the clean bundle rebuilt and redeployed after), the review-pass ones, which are component tests, by a diff checksum.
 
-- mutation: ready, `rememberedPage` returns its loader unwrapped, bundle rebuilt and redeployed -> `language-server-editor` test 1 red at the Cancel click ("No element found", 2 of 2 with the form read held 300 ms); `app.routes.spec.ts` "is answered at once, to every route that shares its loader" and "lets the router commit the next navigation to it before the next task" red together.
+- mutation: ready, `rememberedPage` returns its loader unwrapped, bundle rebuilt and redeployed -> `language-server-editor` test 1 red at the Cancel click ("No element found", 2 of 2 with the form read held 300 ms); `app.routes.spec.ts` "is answered at once once it has loaded, and the loader is not asked again" and "lets the router commit the next navigation to it before the next task" red together.
 
 - mutation: focus, `DetailPage.open` returned to the single module-level route string cleared by any `false` answer, bundle rebuilt and redeployed -> `oauth.browser-spec.mjs` test 1 red with the CI message (`'BODY'` against `'security/oauth/clients'`); the component test "a tab opened twice before the router answers" red alone.
 - mutation: focus, `forget` dropped from the `false` branch -> "a tab whose navigation the router refuses leaves no focus request" red alone.
 - mutation: ready, the static `aria-busy` dropped from `ScreenOutlet`'s host, bundle rebuilt and redeployed -> `lazy-screens` in-app test red, three outlets recorded ready without a page; the `screen-outlet.spec.ts` test "reads busy from the moment the router creates it" red alone.
 - mutation: ready, `pageRendered` set in `onPageActivated` instead of after the next render -> "still reads busy when the page it routed renders for the first time" red alone.
 - mutation: ready, `this.page` dropped from `busyValue` -> "is not left busy by a screen that mounts no page" red alone; `this.pageRouted` dropped -> "is not left busy by a route that carries no page" red alone.
-- Runs on the final bundle: `npm run test:tools` 1954 of 1954; `npm run test:components` 239 files, 2984 tests; browser, one file per call, green: `a11y-structural-invariants` 13 (the screen walk 337 s), `oauth` 6, `language-server-editor` 4, `lazy-screens` 3, `about-help-links` 6, `navigate` 6, `shell` 6, `rail` 2, `gate` 6.
+- Runs on the final bundle: `npm run test:tools` 1954 of 1954; `npm run test:components` 239 files, 2989 tests, after the review patches below; browser, one file per call, green: `a11y-structural-invariants` 13 (the screen walk 337 s), `oauth` 6, `language-server-editor` 4, `lazy-screens` 3, `about-help-links` 6, `navigate` 6, `shell` 6, `rail` 2, `gate` 6.
 - The other item 3 files, one per call on `ocupilot-b-ci` with the bundle `main-4FXQL74C.js` rebuilt from `77441c16` and redeployed, green: `auditing-screen` 1, `definitions` 10, `users-editor` 8, `interop-host-tabs` 4, `system-explorer-sql` 4, `license-usage` 3, `ecp-application-servers` 2, `ldap-editor` 6, `namespaces` 5, `oauth-client-editor` 5.
+- The specs that read `[aria-busy="true"]` across the document, one per call on the same bundle, green: `processes` 8, `tasks` 18, `system-usage` 3, `dashboard-drill-downs` 5, `agent-ledger` 2.
+- mutation: ready (review pass), `rememberedPage` keeps the first call's promise, rejected or not -> `app.routes.spec.ts` "asks a loader that rejected again on the next navigation" red alone.
+- mutation: ready (review pass), `rememberedPage` returns `loader` itself -> `app.routes.spec.ts` "is answered at once once it has loaded, and the loader is not asked again", "asks a loader that rejected again on the next navigation" and "lets the router commit the next navigation to it before the next task" red; with its per-loader lookup dropped -> the two shipped-route tests and "is answered at once once it has loaded" red.
+- mutation: ready (review pass), `this.pageRendered.set(false)` dropped from `ScreenOutlet.onPageActivated` -> `screen-outlet.spec.ts` "reads busy from the moment a held page is released, and again each time its page is created anew" red alone.
+- mutation: focus (review pass), the rejection handler of `DetailPage.open` made a no-op -> `detail-page.spec.ts` "a tab whose page cannot load leaves no focus request for the next page to take" red alone; the `false` branch made a no-op -> the refused-navigation twin red alone.
 
 ## Auto Run Result
 
 Status: done
 Blocking condition: none
 
-**Summary.** Every screen's page now loads on demand. `ScreenOutlet`'s three maps hold loaders, each screen route and `:id` route has one `''` child whose `loadComponent` is the loader the maps name (the edit page first on an `:id` route), and the outlet renders `<router-outlet />` under the same mount decision. A signed-in tab whose navigation fails re-reads `/instance` through the new `InstanceService.recheckBuild()`, so the existing stale-bundle notice explains it.
+**Rework 1 (CI red on f92b0dcf).** Focus on a lazily loaded page: `DetailPage.open` now owns its focus request, so a superseded navigation's `false` answer no longer clears the request the later one made. Shell ready: `rememberedPage` answers an already resolved loader's class at once, and `ScreenOutlet`'s host reads `aria-busy="true"` from creation until its routed page has rendered once. Files: `ui/src/app/shell/detail-page.ts`, `ui/src/app/app.routes.ts`, `ui/src/app/shell/screen-outlet.ts`, their specs, and `ui/browser/language-server-editor.browser-spec.mjs` and `lazy-screens.browser-spec.mjs`.
 
-**Measured.** Initial 3,405,631 bytes in 2 files before; 1,896,272 bytes in 20 files after. Lazy: 127 chunks, 1,662,065 bytes, largest 83,326 (`chunk-CEWNV5ZR.js`, the data browser page). `maximumWarning` 1992kB, `LAZYCHUNKMAX` 88 kB, `maximumError` 4000kB. The full chunk table is under `## Verification`.
+**Review.** Two layers ran (verification-gap, intent-alignment): 10 findings, none high. Patched 4 entries, all in specs: the order-dependent "answered at once" test (medium), and missing tests for a rejecting loader, the outlet's busy flag on a second activation, and the tab strip's rejection path (low each). Rejected 4, deferred none. Follow-up review recommended: false (patched: high 0, medium 1, low 3).
 
-**Files changed.**
+**Verification.** `npm run test:tools` 1954 of 1954; `npm run test:components` 239 files, 2989 tests; `client-lint` clean. Browser, one file per call on `ocupilot-b-ci` with the unchanged bundle `main-4FXQL74C.js`: `processes` 8, `tasks` 18, `system-usage` 3, `dashboard-drill-downs` 5, `agent-ledger` 2, on top of the files under `## Verification`. Every mutation for this pass is recorded there.
 
-- `ui/src/app/shell/screen-outlet.ts`: loaders in place of 89 page imports; the page slot is a router outlet.
-- `ui/src/app/app.routes.ts`: the page child on every screen route.
-- `ui/src/app/core/instance.ts`, `ui/src/app/shell/stale-bundle-notice.ts`: `recheckBuild()` and its `NavigationError` cue.
-- `ui/src/app/areas/security/auditing-config.store.ts`, `auditing-config.page.ts`, `shell/panel.ts`: `AUDITING_FOCUS_ENABLE` moved to the store so the panel imports no page.
-- `ui/angular.json`, `ui/tools/angular-json.test.mjs`: `maximumWarning` re-based to 1992kB.
-- `ui/tools/build-output.test.mjs`: initial and lazy sets, the lazy ceiling, page placement, chrome placement.
-- `ui/tools/session.test.mjs`, `stale-bundle-notice.spec.ts`, `screen-outlet.spec.ts`, `app.routes.spec.ts`, four map-comparing specs: the matching tests.
-- `ui/browser/lazy-screens.browser-spec.mjs` (new), `about-help-links.browser-spec.mjs`, `structural-walk.mjs`: the browser evidence.
-
-**Review.** Two layers ran (verification-gap, intent-alignment; the project turns the other two off): 20 findings, none high. Patched: 2 medium entries (the page-placement blind spot, now found through the page modules on disk, with the loader-pattern finding grouped into it; the unfalsifiable unknown-URL test) and 4 lows (a tautological assertion, a coverage assertion true by construction, two missing mutation lines). Deferred: 1 low (`_components.scss` comments). Rejected: 12, each with its reason in the triage log. Follow-up review recommended: false; the patches are test-only and each was exercised by a demonstrated mutation.
-
-**Verification.** `npm run build -- --verbose` green with the seven-checker prebuild chain. `npm run test:tools` 1947 of 1947 and `npm run test:components` 239 files, 2978 tests, after the review patches. Browser, one file per call on `ocupilot-b-ci`: `lazy-screens` 1, `about-help-links` 6 (stamp test skipped as specified), `shell` 6, `rail` 2, `gate` 6, `switches` 4, `users` 4, `screen-height` 15, `navigate` 6, `a11y-structural-invariants` 13. The throwaway serves the clean bundle `main-N6R2BVZN.js`. Mutations are under `## Verification`.
-
-**Residual risks.**
-
-- A failed navigation also rejects `navigateByUrl` unhandled, as the router does by default, so a stale tab logs a console error beside the notice.
-- The area stores and actions `app.ts` constructs (427,221 bytes) stay in the initial bundle (DW-2367).
-- The page-placement gate treats every `*.page.ts` as a routed page; a future non-routed component in such a file would redden it, and the failure message says which selector.
+Residual risks: none new in this pass.

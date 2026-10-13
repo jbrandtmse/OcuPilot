@@ -1,6 +1,6 @@
 import { Component } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { Router, provideRouter } from '@angular/router';
+import { Router, provideRouter, type Route } from '@angular/router';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { NavigationService, screenForUrl, type Verdict } from '../core/navigation';
@@ -86,6 +86,30 @@ async function build(url: string, navigation = new StubNavigation()): Promise<Co
 
 const tabs = (fixture: ComponentFixture<DetailPage>): HTMLButtonElement[] =>
   Array.from((fixture.nativeElement as HTMLElement).querySelectorAll('.ocu-detail-tab'));
+
+/**
+ * Opens the second tab of the OAuth strip against a route table that answers that navigation with
+ * `table` (a refusal or a failure), then builds the strip of the next page with focus on the body.
+ */
+async function stripBuiltAfterAnswer(table: Route[]): Promise<ComponentFixture<DetailPage>> {
+  const leaving = await build('/security/oauth?ns=HSCUSTOM');
+  const router = TestBed.inject(Router);
+  router.resetConfig(table);
+  const target = tabs(leaving)[1];
+  target.focus();
+  target.click();
+  await settle(leaving);
+  expect(router.url, 'the router stayed where it was').toBe('/security/oauth?ns=HSCUSTOM');
+  leaving.destroy();
+  (leaving.nativeElement as HTMLElement).remove();
+  (document.activeElement as HTMLElement | null)?.blur();
+
+  const next = TestBed.createComponent(DetailPage);
+  document.body.appendChild(next.nativeElement);
+  planted.push(next.nativeElement);
+  await settle(next);
+  return next;
+}
 
 describe('the detail page', () => {
   afterEach(() => {
@@ -183,22 +207,14 @@ describe('the detail page', () => {
   it('AC1: a tab whose navigation the router refuses leaves no focus request for the next page to take', async () => {
     // Mutation (Rule 19): drop `forget` from the `false` branch of `DetailPage.open` -> the request
     // outlives the refused navigation and the next strip built takes focus it was never owed.
-    const leaving = await build('/security/oauth?ns=HSCUSTOM');
-    const router = TestBed.inject(Router);
-    router.resetConfig([{ path: '**', canActivate: [() => false], children: [] }]);
-    const target = tabs(leaving)[1];
-    target.focus();
-    target.click();
-    await settle(leaving);
-    expect(router.url).toBe('/security/oauth?ns=HSCUSTOM');
-    leaving.destroy();
-    (leaving.nativeElement as HTMLElement).remove();
-    (document.activeElement as HTMLElement | null)?.blur();
+    const next = await stripBuiltAfterAnswer([{ path: '**', canActivate: [() => false], children: [] }]);
+    expect(document.activeElement).not.toBe(tabs(next)[1]);
+  });
 
-    const next = TestBed.createComponent(DetailPage);
-    document.body.appendChild(next.nativeElement);
-    planted.push(next.nativeElement);
-    await settle(next);
+  it('AC1: a tab whose page cannot load leaves no focus request for the next page to take', async () => {
+    // Mutation (Rule 19): drop `forget` from the rejection handler of `DetailPage.open` -> the
+    // request outlives the failed navigation and the next strip built takes focus it was never owed.
+    const next = await stripBuiltAfterAnswer([{ path: '**', loadComponent: () => Promise.reject(new Error('the page chunk cannot load')) }]);
     expect(document.activeElement).not.toBe(tabs(next)[1]);
   });
 

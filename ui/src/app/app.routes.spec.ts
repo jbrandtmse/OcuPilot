@@ -213,31 +213,44 @@ describe('the route table', () => {
  * pass before the router swapped them (`rememberedPage`).
  */
 describe('a page whose loader has resolved', () => {
-  const pageOf = (path: string) => routes.find((route) => route.path === path)?.children?.[0].loadComponent;
+  // Mutation (Rule 19): return `loader` itself from `rememberedPage` -> a return to the page
+  // answers a promise again and this goes red.
+  it('is answered at once once it has loaded, and the loader is not asked again', async () => {
+    class ProbePage {}
+    let loads = 0;
+    const loader: PageLoader = () => {
+      loads += 1;
+      return Promise.resolve(ProbePage);
+    };
+    const remembered = rememberedPage(loader);
+    expect(rememberedPage(loader), 'one function per loader').toBe(remembered);
 
-  // The language server editor serves its create route and its id route with one loader.
-  //
-  // Mutation (Rule 19): return `loader` itself from `rememberedPage` -> the id route answers a
-  // promise and this goes red.
-  it('is answered at once, to every route that shares its loader', async () => {
-    const descriptor = 'OcuPilot.Screen.Descriptor.LanguageServerForm';
-    const screen = builtScreens().find((candidate) => candidate.descriptor === descriptor);
-    expect(screen, 'the language server editor is a built screen').toBeDefined();
-    expect(hasIdRoute(screen as ScreenDeclaration)).toBe(true);
-    expect(resolveArchetypePage(DESCRIPTOR_EDIT_PAGES, descriptor), 'its id route has no page of its own').toBeNull();
-
-    const create = pageOf((screen as ScreenDeclaration).route);
-    const edit = pageOf(`${(screen as ScreenDeclaration).route}/:id`);
-    const first = create?.();
+    const first = remembered();
     expect(first, 'the first navigation waits for the code').toBeInstanceOf(Promise);
-    const page = await first;
-    expect(typeof page).toBe('function');
-    expect(edit?.(), 'the id route has the page already').toBe(page);
-    expect(create?.(), 'and so does a return to the create route').toBe(page);
+    expect(await first).toBe(ProbePage);
+    expect(remembered(), 'a return has the page already').toBe(ProbePage);
+    expect(loads).toBe(1);
   });
 
-  // Mutation (Rule 19): as above -> the second navigation waits for the loader's own task, the
-  // timer queued before it fires first, and this goes red.
+  // Mutation (Rule 19): keep the first call's promise, rejected or not -> the next navigation
+  // answers the same rejection and this goes red.
+  it('asks a loader that rejected again on the next navigation', async () => {
+    class ProbePage {}
+    let loads = 0;
+    const flaky: PageLoader = () => {
+      loads += 1;
+      return loads === 1 ? Promise.reject(new Error('the page chunk cannot load')) : Promise.resolve(ProbePage);
+    };
+    const remembered = rememberedPage(flaky);
+
+    await expect(remembered()).rejects.toThrow('the page chunk cannot load');
+    expect(await remembered()).toBe(ProbePage);
+    expect(remembered(), 'and remembers it once it has loaded').toBe(ProbePage);
+    expect(loads).toBe(2);
+  });
+
+  // Mutation (Rule 19): return `loader` itself from `rememberedPage` -> the second navigation waits
+  // for the loader's own task, the timer queued before it fires first, and this goes red.
   it('lets the router commit the next navigation to it before the next task', async () => {
     @Component({ selector: 'app-probe-page', template: '' })
     class ProbePage {}
