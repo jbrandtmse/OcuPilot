@@ -11678,8 +11678,10 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: CI log: ISCLOG apimgmnt <NOTOPEN>CompileDTL+30^%Api.InteropEditors.v3.impl.1; hidden source: use ##class(%Library.Device).GetNullDevice() with no open; green locally where the worker had it open (inference).
 - 2026-10-13T19:17:30Z status=decision-pending owner=burndown by=runner note=owner hold 2026-10-05: IRIS defect candidate, not reported; 20.7 AC2 accepts the vendor's own error notice
 - 2026-10-13T20:02:45Z occurrence=20-7-the-three-embedded-vendor-editors note=trigger corrected: a fresh CSP process holds the null device; OcuPilot's LogSourcePort.IntegrityReport closes it (DW-2395); the vendor's use-without-open is real
+- 2026-10-13T20:18:27Z occurrence=20-7-the-three-embedded-vendor-editors by=cr note=same use-without-open in v4.impl CompileBPL:1917 (v5-v7 ##super) and v7 Import/ExportLookupTable(s)
 
 ### DW-2395: LogSourcePort.IntegrityReport closes the null device unconditionally, even when its web process already held it, so a later vendor DTL Compile in that process fails with <NOTOPEN>CompileDTL and the editor shows ERROR #6220 Internal Server Error
 - source: spec-20-7-the-three-embedded-vendor-editors.md (harvest, CI rework 1) | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: ocupilot-b-ci: after database-operations.browser-spec.mjs two of seven web processes had no /dev/null (a fresh one has it); open, reopen, close then use raises <NOTOPEN>; LogSourcePort.cls:3043 Open tNull:::1 ... Close tNull on both paths. Only closer not isolated (inference).
 - 2026-10-13T20:02:45Z status=escalated owner=burndown by=harvest note=contended: Epic 18 is changing LogSourcePort.cls; for the orchestrator to route; when fixed, drop the NOTOPEN tolerance in interop-editors.browser-spec.mjs compileNotice
+- 2026-10-13T20:18:27Z occurrence=20-7-the-three-embedded-vendor-editors by=cr note=BPL editor Compile fails the same way; AC2 legs pass over it; the fix adds a device-state test too

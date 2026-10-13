@@ -362,10 +362,10 @@ const snackbarWith = (frame, text) => snackbarWhere(frame, (label) => label.incl
 
 /** How many lines of the instance's log record the vendor's DTL compile route failing on a null device its web process has closed. */
 function nullDeviceFailures() {
-  const read = spawnSync('docker', ['exec', config.container, 'grep', '-c', '-F', NULL_DEVICE_FAILURE, INSTANCE_LOG], { encoding: 'utf8' });
-  // `grep -c` answers no match with a count of 0 and status 1.
-  assert.ok(read.status === 0 || read.status === 1, `the instance log reads: ${read.stderr}`);
-  return Number(read.stdout.trim());
+  const read = spawnSync('docker', ['exec', config.container, 'grep', '-c', '-F', NULL_DEVICE_FAILURE, INSTANCE_LOG], { encoding: 'utf8', timeout: 60000 });
+  // `grep -c` prints a count whether or not it matched; a failed `docker exec` prints none, so it is never read as 0.
+  assert.match(read.stdout ?? '', /^\d+\n?$/, `the instance log reads: ${read.error?.message ?? read.stderr}`);
+  return Number(read.stdout);
 }
 
 /**
@@ -465,6 +465,8 @@ test('AC1: each editor screen passes the structural and contrast checks at 1280 
 // Mutation (Rule 19): the editor posts a message to the shell after Compile -> the no-message clause goes red, in either outcome.
 // Mutation (Rule 19): `NULL_DEVICE_FAILURE` names a line the log never holds -> with every web process's null device closed, the log
 // clause goes red.
+// Mutation (Rule 19): `compileNotice` sends the expected notice down the vendor branch -> with the log already holding matching lines,
+// the log clause goes red; it goes green only when the count is compared with 0 rather than with the count before the click.
 test('AC2: the DTL editor\'s saved and compiled notices appear in the frame and send no message, the list\'s Modified is the definition\'s TimeChanged, and a class that does not compile is reported in the editor\'s own notice', async (t) => {
   const document = TRANSFORM.name.slice(0, -'.cls'.length);
   const { context, page, messages } = await shellAt(`/ocupilot/${TRANSFORM.listRoute}?ns=${NAMESPACE}`);
