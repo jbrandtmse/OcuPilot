@@ -10620,6 +10620,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-09T11:53:18Z occurrence=18-10-web-application-extras-and-spec-based-rest-services
 - 2026-10-10T16:26:03Z occurrence=18-30-doc-db-applications
 - 2026-10-12T02:40:03Z occurrence=18-36-dashboard-drill-downs
+- 2026-10-13T04:27:20Z occurrence=18-42-allowed-directories-a-person-s-write
 
 ### DW-2204: IRIS defect candidate: the admin API's Security.SQLPrivilege.Column LIST and REVOKE match the object's case exactly while GRANT accepts any case, so a revoke in another case answers 200 and removes nothing
 - source: spec-18-28-sql-column-and-admin-privileges.md | severity: low | fix-risk: high | footprint: out-of-footprint
@@ -11394,6 +11395,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Story 18.1 scoped the allow-list read-only; a write widens the server-path roots AD-21 allows
 - 2026-10-12T01:03:05Z status=decision-pending owner=burndown by=spec_gate note=human=owner: whether OcuPilot may widen the allow-list (security posture)
 - 2026-10-12T04:19:01Z status=routed owner=18-42-allowed-directories-a-person-s-write by=lead note=owner 2026-10-11: I agree with your recommendation regarding allowed folders (person writes, key off; agent never)
+- 2026-10-13T04:30:02Z status=routed owner=18-46-allowed-directories-the-screen-s-add-change-and-remove by=adjudication note=server half delivered by 18.42 (route, tool, AllowListPort, kernel refusal; 4840b762); residual: the screen's dialog (18.46)
 
 ### DW-2335: Several Stage 2 editor forms show fields no read tool answers (superservers 14, local databases 10, user copy 12), so the agent cannot read what the person sees
 - source: spec-18-12-the-agent-grows-with-the-stage.md | severity: med | fix-risk: med | footprint: in-epic
@@ -11554,3 +11556,14 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-42-allowed-directories-a-person-s-write.md | severity: low | fix-risk: low | footprint: out-of-footprint
 - evidence: Task 0 on ocupilot-ci with auditing on: the four FSAccess endpoint calls left no audit row; the classic calls wrote two. OcuPilot's own SecurityChange row is the only record (AD-15)
 - 2026-10-13T03:48:03Z status=decision-pending owner=burndown by=harvest note=owner_hold: vendor defect candidate, never reported upstream (Story 18.42, AD-15)
+
+### DW-2374: IRIS defect candidate: %SYS.FileSystemAccess declares RootPath MAXLEN 1024 but a path past about 470 characters cannot be stored on its IdKey global, so AllowListPort admits a directory the vendor refuses 500 rather than ALLOWLIST.PATH
+- source: spec-18-42-allowed-directories-a-person-s-write.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: ^||SECURITY("FileSystemAccessD","%GUIFileSelector",p) set on ocupilot (process-private, no config) raised <SUBSCRIPT> at 480 characters and not at 460 (inference for the vendor's own ^SECURITY reference); RootPath is MAXLEN 1024 (irissys/%SYS/FileSystemAccess.cls:12); the spec and AD-21 pin the 1,024 bound
+- 2026-10-13T04:27:25Z status=decision-pending owner=burndown by=cr note=owner_hold; never reported upstream; lowering DIRECTORYMAX changes AD-21's amended bound and REASONPATH
+
+### DW-2375: AD-8's parenthetical list of today's unadvertised tools names three and leaves out security.alloweddirectories.update, which AD-53 names as the fourth
+- source: spec-18-42-allowed-directories-a-person-s-write.md | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: ARCHITECTURE-SPINE.md :230 (AD-8) lists License key's activation, the data browser's save and the symmetric key replace; :1161 (AD-53) adds the allow-list update; the spine is lead-owned (Rule 20) and in Epic 20's diff, so a review cannot edit it in place
+- 2026-10-13T04:27:29Z status=wontfix-accepted owner=18-42-allowed-directories-a-person-s-write by=cr note=reopen_if=the lead's next AD-8 or AD-53 touch, or a reader cites AD-8's today-list as the whole unadvertised set
+- 2026-10-13T04:29:39Z status=resolved-by:18-42-allowed-directories-a-person-s-write by=adjudication note=AD-8 today-list now names the allowed directories update (spine amendment, Story 18.42 code review)
