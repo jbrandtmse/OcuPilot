@@ -1,3 +1,6 @@
+import { Component, type Type } from '@angular/core';
+import { TestBed } from '@angular/core/testing';
+import { Router, provideRouter } from '@angular/router';
 import { describe, expect, it } from 'vitest';
 
 import { DIALOG_EDITORS, builtScreens, hasIdRoute } from './core/navigation';
@@ -6,11 +9,12 @@ import {
   ARCHETYPE_PAGES,
   DESCRIPTOR_EDIT_PAGES,
   DESCRIPTOR_PAGES,
+  type PageLoader,
   ScreenOutlet,
   resolveArchetypePage,
   resolveScreenPage,
 } from './shell/screen-outlet';
-import { buildRoutes, leaveFormGuard, routes } from './app.routes';
+import { buildRoutes, leaveFormGuard, rememberedPage, routes } from './app.routes';
 
 /**
  * The route table is derived from the descriptor mirror, not typed out (AD-5). Adding a screen
@@ -71,13 +75,15 @@ describe('the route table', () => {
       const [own, ...extra] = routeFor(screen.route);
       expect(extra, `${screen.descriptor}: one route at ${screen.route}`).toEqual([]);
       expect(own?.children?.map((child) => child.path), `${screen.descriptor}: its one child`).toEqual(['']);
-      expect(own?.children?.[0].loadComponent, `${screen.descriptor}: its page loader`).toBe(base);
+      expect(own?.children?.[0].loadComponent, `${screen.descriptor}: its page loader`).toBe(rememberedPage(base as PageLoader));
 
       if (screen.route === '' || !hasIdRoute(screen)) continue;
       const edit = resolveArchetypePage(DESCRIPTOR_EDIT_PAGES, screen.descriptor);
       const [withId] = routeFor(`${screen.route}/:id`);
       expect(withId?.children?.map((child) => child.path), `${screen.descriptor}: its id route's one child`).toEqual(['']);
-      expect(withId?.children?.[0].loadComponent, `${screen.descriptor}: its id route's page loader`).toBe(edit ?? base);
+      expect(withId?.children?.[0].loadComponent, `${screen.descriptor}: its id route's page loader`).toBe(
+        rememberedPage((edit ?? base) as PageLoader)
+      );
     }
     const wildcard = routes[routes.length - 1];
     expect(wildcard.path).toBe('**');
@@ -161,10 +167,10 @@ describe('the route table', () => {
     ]);
     const route = (path: string) => built.find((candidate) => candidate.path === path);
 
-    expect(route('')?.children?.[0].loadComponent).toBe(ARCHETYPE_PAGES.home);
-    expect(route('permissions/users/edit')?.children?.[0].loadComponent).toBe(DESCRIPTOR_PAGES[form]);
-    expect(route('permissions/users/edit/:id')?.children?.[0].loadComponent).toBe(DESCRIPTOR_EDIT_PAGES[form]);
-    expect(route('permissions/users/edit/:id')?.children?.[0].loadComponent).not.toBe(DESCRIPTOR_PAGES[form]);
+    expect(route('')?.children?.[0].loadComponent).toBe(rememberedPage(ARCHETYPE_PAGES.home));
+    expect(route('permissions/users/edit')?.children?.[0].loadComponent).toBe(rememberedPage(DESCRIPTOR_PAGES[form]));
+    expect(route('permissions/users/edit/:id')?.children?.[0].loadComponent).toBe(rememberedPage(DESCRIPTOR_EDIT_PAGES[form]));
+    expect(route('permissions/users/edit/:id')?.children?.[0].loadComponent).not.toBe(rememberedPage(DESCRIPTOR_PAGES[form]));
     expect(route('permissions/nothing'), 'a screen with no page still has its route').toBeDefined();
     expect(route('permissions/nothing')?.children).toBeUndefined();
     expect(route('permissions/nothing/:id'), 'and its id route').toBeDefined();
@@ -198,5 +204,69 @@ describe('the route table', () => {
     const shipped = (path: string) => routes.find((route) => route.path === path)?.canDeactivate ?? [];
     expect(shipped('permissions/resources')).toEqual([leaveFormGuard]);
     expect(shipped('permissions/resources/:id')).toEqual([leaveFormGuard]);
+  });
+});
+
+/**
+ * What a navigation to an already loaded page costs. `import()` settles a task after its module is
+ * cached, so a route that asked it again would leave the page it replaces one more change-detection
+ * pass before the router swapped them (`rememberedPage`).
+ */
+describe('a page whose loader has resolved', () => {
+  const pageOf = (path: string) => routes.find((route) => route.path === path)?.children?.[0].loadComponent;
+
+  // The language server editor serves its create route and its id route with one loader.
+  //
+  // Mutation (Rule 19): return `loader` itself from `rememberedPage` -> the id route answers a
+  // promise and this goes red.
+  it('is answered at once, to every route that shares its loader', async () => {
+    const descriptor = 'OcuPilot.Screen.Descriptor.LanguageServerForm';
+    const screen = builtScreens().find((candidate) => candidate.descriptor === descriptor);
+    expect(screen, 'the language server editor is a built screen').toBeDefined();
+    expect(hasIdRoute(screen as ScreenDeclaration)).toBe(true);
+    expect(resolveArchetypePage(DESCRIPTOR_EDIT_PAGES, descriptor), 'its id route has no page of its own').toBeNull();
+
+    const create = pageOf((screen as ScreenDeclaration).route);
+    const edit = pageOf(`${(screen as ScreenDeclaration).route}/:id`);
+    const first = create?.();
+    expect(first, 'the first navigation waits for the code').toBeInstanceOf(Promise);
+    const page = await first;
+    expect(typeof page).toBe('function');
+    expect(edit?.(), 'the id route has the page already').toBe(page);
+    expect(create?.(), 'and so does a return to the create route').toBe(page);
+  });
+
+  // Mutation (Rule 19): as above -> the second navigation waits for the loader's own task, the
+  // timer queued before it fires first, and this goes red.
+  it('lets the router commit the next navigation to it before the next task', async () => {
+    @Component({ selector: 'app-probe-page', template: '' })
+    class ProbePage {}
+    let loads = 0;
+    const slow: PageLoader = () =>
+      new Promise<Type<unknown>>((resolve) => {
+        loads += 1;
+        setTimeout(() => resolve(ProbePage), 0);
+      });
+    const loadComponent = rememberedPage(slow);
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({
+      providers: [
+        provideRouter([
+          { path: 'a', component: ProbePage, children: [{ path: '', loadComponent }] },
+          { path: 'b', component: ProbePage, children: [{ path: '', loadComponent }] },
+        ]),
+      ],
+    });
+    const router = TestBed.inject(Router);
+
+    await router.navigateByUrl('/a');
+    expect(loads).toBe(1);
+    let taskRan = false;
+    setTimeout(() => {
+      taskRan = true;
+    }, 0);
+    expect(await router.navigateByUrl('/b')).toBe(true);
+    expect(taskRan, 'no task ran before the navigation committed').toBe(false);
+    expect(loads, 'and the loader was not asked again').toBe(1);
   });
 });

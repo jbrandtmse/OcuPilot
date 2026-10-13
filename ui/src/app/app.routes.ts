@@ -1,4 +1,4 @@
-import { inject } from '@angular/core';
+import { type Type, inject } from '@angular/core';
 import { type CanDeactivateFn, type Route, Routes } from '@angular/router';
 
 import { FormDirty } from './core/form-dirty';
@@ -34,6 +34,9 @@ export const leaveFormGuard: CanDeactivateFn<unknown> = () => inject(FormDirty).
 /** The archetype whose routes carry the guard. */
 const GUARDED_ARCHETYPE = 'form-page';
 
+/** What `rememberedPage` answered for each loader. Declared ahead of `routes`, which asks for them as the module loads. */
+const REMEMBERED = new WeakMap<PageLoader, () => Type<unknown> | Promise<Type<unknown>>>();
+
 /**
  * The route table, built from the descriptor mirror (AD-5). Adding a screen means adding a
  * descriptor and regenerating `core/screens.generated.ts`; it never means editing this file.
@@ -55,9 +58,9 @@ const GUARDED_ARCHETYPE = 'form-page';
  *
  * **Every screen route has one child, `''`, whose `loadComponent` fetches the screen's page** --
  * the loader `ScreenOutlet`'s maps name for the descriptor, the edit page first on an `:id` route
- * (AD-5). The page's code downloads on the first navigation to it and never with the shell.
- * `ScreenOutlet` still decides whether the page mounts, so a refused screen may have downloaded a
- * page it never shows. A route with no loader, the wildcard, has no child.
+ * (AD-5), through `rememberedPage`. The page's code downloads on the first navigation to it and
+ * never with the shell. `ScreenOutlet` still decides whether the page mounts, so a refused screen
+ * may have downloaded a page it never shows. A route with no loader, the wildcard, has no child.
  *
  * Home's declared route is the empty string, which is the application root: it is reached from
  * the rail's Home item, the logo lockup and straight after sign-in, all three of which mean
@@ -107,7 +110,25 @@ export function buildRoutes(screens: readonly ScreenDeclaration[]): Routes {
   return built;
 }
 
+/**
+ * `loader`, answering its page's class at once once it has resolved. `import()` settles a task
+ * after its module is cached, so a navigation that waited on it again would let the page it
+ * replaces render once more before the router swaps the two: a create form would show its saved
+ * confirmation while the form bar of the page replacing it did not yet exist. A loader that rejects
+ * is called again by the next navigation. The same loader always yields the same function, so
+ * routes that share a loader share what it has loaded.
+ */
+export function rememberedPage(loader: PageLoader): () => Type<unknown> | Promise<Type<unknown>> {
+  const known = REMEMBERED.get(loader);
+  if (known !== undefined) return known;
+  let page: Type<unknown> | undefined;
+  const remembered = (): Type<unknown> | Promise<Type<unknown>> =>
+    page ?? loader().then((loaded) => (page = loaded));
+  REMEMBERED.set(loader, remembered);
+  return remembered;
+}
+
 /** The `children` that load a page, or nothing for a screen no loader names. */
 function withPage(loader: PageLoader | null): Pick<Route, 'children'> {
-  return loader === null ? {} : { children: [{ path: '', loadComponent: loader }] };
+  return loader === null ? {} : { children: [{ path: '', loadComponent: rememberedPage(loader) }] };
 }

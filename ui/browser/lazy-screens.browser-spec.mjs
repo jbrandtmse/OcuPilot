@@ -10,6 +10,8 @@
  *   the outlet. Each chunk answers 200, `application/javascript`, with the immutable cache header
  *   the installed handler gives a hashed file.
  * - **A return visit fetches nothing.** The route keeps the component it loaded.
+ * - **The outlet is never ready without its page.** The router creates the outlet before it renders,
+ *   and the page after it; from creation until the page is in it the outlet reads `aria-busy="true"`.
  * - **A full page load at a screen's own URL brings its code too.** A list screen's URL and an id
  *   route's URL (whose edit page is not the screen's base page) each fetch a chunk outside the
  *   initial set that defines the page they render once the person has signed in.
@@ -195,13 +197,23 @@ async function lazyChunksOf(chunks) {
 
 // AC3. Mutation (Rule 19): import the Users list's page statically from eager code (`ListPage` in
 // `shell/panel.ts`, used) and rebuild and redeploy -> the click fetches only a re-export stub, no
-// chunk it fetched defines the page, and the page-definition assertion goes red.
+// chunk it fetched defines the page, and the page-definition assertion goes red. Mutation (Rule 19):
+// drop the static `aria-busy` from `ScreenOutlet`'s host metadata and rebuild and redeploy -> the
+// outlet the router has created and not yet rendered reads ready, and the busy assertion goes red.
 test('AC3: opening an unvisited screen fetches its page chunk once, with no policy violation, and a return visit fetches none', async () => {
   const { context, page } = await signedInAt(browser, config, HOME_URL);
   try {
     await page.waitForSelector('.ocu-screen-outlet', { timeout: config.navigationTimeoutMs });
     const chunks = watchChunks(page);
     const faults = await watchFaults(page);
+    await page.evaluate(() => {
+      window.__ocuReadyWithoutPage = [];
+      new MutationObserver(() => {
+        for (const host of document.querySelectorAll('app-screen-outlet')) {
+          if (host.getAttribute('aria-busy') !== 'true' && host.querySelector('router-outlet + *') === null) window.__ocuReadyWithoutPage.push(location.pathname);
+        }
+      }).observe(document.body, { subtree: true, childList: true, attributes: true });
+    });
 
     await openFromSideBar(page, config, PERMISSIONS_RAIL, STRINGS.userListLabel);
     await waitForPage(page, USERS_ROUTE);
@@ -218,6 +230,11 @@ test('AC3: opening an unvisited screen fetches its page chunk once, with no poli
     await openFromSideBar(page, config, PERMISSIONS_RAIL, STRINGS.userListLabel);
     await waitForPage(page, USERS_ROUTE);
     assert.equal(chunks.length, homeFetched, 'a return visit to the same screen fetches no chunk');
+    assert.deepEqual(
+      await page.evaluate(() => window.__ocuReadyWithoutPage),
+      [],
+      'no outlet the router created read ready before its page was in it'
+    );
 
     assert.deepEqual(await faults.violations(), [], 'no content-security-policy violation fired during the navigation');
     assert.deepEqual(faults.consoleErrors, [], 'and nothing was logged as a console error from the shell');

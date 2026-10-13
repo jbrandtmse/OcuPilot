@@ -1,10 +1,10 @@
-import { reflectComponentType, type Type } from '@angular/core';
+import { Component, afterNextRender, inject, reflectComponentType, type Type } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { provideRouter, type Route } from '@angular/router';
+import { Router, provideRouter, type Route } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 import { beforeEach, describe, expect, it } from 'vitest';
 
-import { routes } from '../app.routes';
+import { rememberedPage, routes } from '../app.routes';
 import { encodeEntityId } from '../core/entity-id';
 import { InstanceService } from '../core/instance';
 import { NavigationService, type Verdict } from '../core/navigation';
@@ -228,7 +228,7 @@ describe('the routed screen outlet', () => {
     expect(declared).toHaveLength(1);
     expect(declared[0].component).toBe(ScreenOutlet);
     expect(declared[0].children).toHaveLength(1);
-    expect(declared[0].children?.[0].loadComponent).toBe(ARCHETYPE_PAGES.home);
+    expect(declared[0].children?.[0].loadComponent).toBe(rememberedPage(ARCHETYPE_PAGES.home));
   });
 
   it('before the navigation map has answered, a screen mounts no page, so it issues no read the map may refuse', async () => {
@@ -352,6 +352,86 @@ describe('the routed screen outlet', () => {
       '.ocu-screen-outlet'
     ) as HTMLElement;
     expect(outlet.dataset['id']).toBe('');
+  });
+});
+
+/**
+ * A page that records whether the outlet still reads busy at the page's own first render, which is
+ * the order the shell promises: the outlet reports itself ready only after the page it routed has
+ * rendered.
+ */
+@Component({ selector: 'app-probe-page', template: '<p class="probe"></p>' })
+class ProbePage {
+  static busyAtFirstRender: string | null | undefined;
+
+  constructor() {
+    const outlet = inject(ScreenOutlet) as unknown as { readonly busyValue: string | null };
+    afterNextRender(() => {
+      ProbePage.busyAtFirstRender = outlet.busyValue;
+    });
+  }
+}
+
+describe('the routed screen outlet while its page arrives', () => {
+  let navigation: StubNavigation;
+
+  beforeEach(() => {
+    TestBed.resetTestingModule();
+    ProbePage.busyAtFirstRender = undefined;
+    navigation = new StubNavigation();
+    TestBed.configureTestingModule({
+      providers: [
+        provideRouter([
+          { path: '', pathMatch: 'full', component: ScreenOutlet, children: [{ path: '', loadComponent: async () => ProbePage }] },
+          { path: 'os-management/databases', component: ScreenOutlet },
+        ]),
+        { provide: NavigationService, useValue: navigation as unknown as NavigationService },
+        { provide: ShellState, useValue: new ShellState({ account: stubAccountPreferences() }) },
+      ],
+    });
+  });
+
+  it('reads busy from the moment the router creates it until its page has rendered', async () => {
+    // Mutation (Rule 19): drop the static `aria-busy` from the host metadata -> the outlet the router
+    // has created and not yet rendered reads ready, and the first assertion goes red.
+    const harness = await RouterTestingHarness.create();
+    await TestBed.inject(Router).navigateByUrl('/?ns=HSCUSTOM');
+    const host = harness.fixture.nativeElement.querySelector('app-screen-outlet') as HTMLElement;
+    expect(host.getAttribute('aria-busy')).toBe('true');
+    expect(host.querySelector('app-probe-page')).toBeNull();
+
+    harness.detectChanges();
+    await harness.fixture.whenStable();
+    expect(host.querySelector('app-probe-page')).not.toBeNull();
+    expect(host.hasAttribute('aria-busy')).toBe(false);
+  });
+
+  it('still reads busy when the page it routed renders for the first time', async () => {
+    // Mutation (Rule 19): set `pageRendered` in `onPageActivated` instead of after the next render ->
+    // the outlet reads ready before the page has rendered, and the page records `null`.
+    const harness = await RouterTestingHarness.create('/?ns=HSCUSTOM');
+    await harness.fixture.whenStable();
+    expect(harness.fixture.nativeElement.querySelector('app-probe-page')).not.toBeNull();
+    expect(ProbePage.busyAtFirstRender).toBe('true');
+  });
+
+  it('is not left busy by a screen that mounts no page', async () => {
+    // Mutation (Rule 19): read `busyValue` without `this.page` -> a denied screen stays busy.
+    navigation.verdicts.set('', { allowed: false, failedPair: '%Admin_Manage:USE' });
+    const harness = await RouterTestingHarness.create('/?ns=HSCUSTOM');
+    await harness.fixture.whenStable();
+    const host = harness.fixture.nativeElement.querySelector('app-screen-outlet') as HTMLElement;
+    expect(host.querySelector('app-screen-denied')).not.toBeNull();
+    expect(host.querySelector('app-probe-page')).toBeNull();
+    expect(host.hasAttribute('aria-busy')).toBe(false);
+  });
+
+  it('is not left busy by a route that carries no page', async () => {
+    // Mutation (Rule 19): drop `pageRouted` from `busyValue` -> a route with no child stays busy.
+    const harness = await RouterTestingHarness.create('/os-management/databases');
+    await harness.fixture.whenStable();
+    const host = harness.fixture.nativeElement.querySelector('app-screen-outlet') as HTMLElement;
+    expect(host.hasAttribute('aria-busy')).toBe(false);
   });
 });
 

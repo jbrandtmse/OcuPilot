@@ -2,7 +2,9 @@ import {
   ChangeDetectionStrategy,
   Component,
   DestroyRef,
+  Injector,
   type Type,
+  afterNextRender,
   computed,
   inject,
   signal,
@@ -20,7 +22,8 @@ import { ScreenDenied } from './screen-denied';
 /**
  * Fetches one page's code and answers its component. Every page is a lazily loaded chunk: no
  * module of the initial bundle imports a page module statically, and `app.routes.ts` hands each
- * screen route's child `loadComponent` the loader these maps name for it (AD-5).
+ * screen route's child `loadComponent` the loader these maps name for it, through `rememberedPage`
+ * (AD-5).
  */
 export type PageLoader = () => Promise<Type<unknown>>;
 
@@ -292,6 +295,13 @@ export function resolveScreenPage<T>(
  * a browser check can read what the client resolved from a pasted or reloaded URL without
  * reaching into component internals.
  *
+ * **The host reads `aria-busy="true"` from the moment the router creates it until its routed page
+ * has rendered once**, or until the first pass decides no page mounts. The router activates this
+ * component before its template exists and the page after it, so the outlet is on screen, empty,
+ * for the turn between; a reader that waits on `[aria-busy="true"]` (the structural walk's
+ * `settle`, assistive technology) holds through that turn. The attribute is static on the host so
+ * that it is there at creation, before any binding has run.
+ *
  * **The not-found sentence is the command box's own**, "No screen or action matches." -- the
  * Fixed strings table has no not-found row, and this is the table's own sentence for "what you
  * named is not a screen or an action", resolved to a URL rather than to a query. A not-found
@@ -303,6 +313,7 @@ export function resolveScreenPage<T>(
 @Component({
   selector: 'app-screen-outlet',
   changeDetection: ChangeDetectionStrategy.OnPush,
+  host: { 'aria-busy': 'true', '[attr.aria-busy]': 'busyValue' },
   imports: [RouterOutlet, ScreenDenied],
   template: `<div
     class="ocu-screen-outlet"
@@ -321,7 +332,7 @@ export function resolveScreenPage<T>(
       <app-screen-denied [title]="title()" [failedPair]="failedPair()" />
     }
     @if (page) {
-      <router-outlet />
+      <router-outlet (activate)="onPageActivated()" />
     }
   </div>`,
 })
@@ -329,6 +340,7 @@ export class ScreenOutlet {
   private readonly route = inject(ActivatedRoute);
   private readonly navigation = inject(NavigationService);
   private readonly shell = inject(ShellState);
+  private readonly injector = inject(Injector);
 
   protected readonly STRINGS = STRINGS;
 
@@ -347,6 +359,12 @@ export class ScreenOutlet {
 
   /** The same mirror for the shell's own state, which is where the screen hold lives. */
   private readonly shellGeneration = signal(0);
+
+  /** Whether the page the router outlet last activated has rendered. */
+  private readonly pageRendered = signal(false);
+
+  /** Whether this route has a page to activate: a route table entry with no child never does. */
+  private readonly pageRouted = (this.route.routeConfig?.children?.length ?? 0) > 0;
 
   private readonly screen = computed(() =>
     screenForUrl('/' + this.segments().map((segment) => segment.path).join('/'))
@@ -399,6 +417,20 @@ export class ScreenOutlet {
 
   protected get notFound(): boolean {
     return this.screen() === null;
+  }
+
+  /** `'true'` while a page that should mount has not rendered yet, else `null`, which drops the attribute. */
+  protected get busyValue(): 'true' | null {
+    return this.pageRouted && this.page && !this.pageRendered() ? 'true' : null;
+  }
+
+  /**
+   * The router outlet created the page. The flag follows the render after this one, so a page's own
+   * first render still finds this outlet busy.
+   */
+  protected onPageActivated(): void {
+    if (this.pageRendered()) this.pageRendered.set(false);
+    afterNextRender(() => this.pageRendered.set(true), { injector: this.injector });
   }
 
   protected get denied(): boolean {

@@ -156,6 +156,52 @@ describe('the detail page', () => {
     expect(tabs(arriving)[1].getAttribute('aria-selected')).toBe('true');
   });
 
+  it('AC1: a tab opened twice before the router answers still takes focus on the page that replaces the strip', async () => {
+    // Enter reaches the click handler twice, the strip's key handling and then the button's own
+    // activation, and the router resolves the first navigation `false` once the second supersedes
+    // it. Mutation (Rule 19): clear `focusOnArrival` on any `false` answer, whoever made the request
+    // -> the first answer clears the second open's request and focus stays on the body.
+    const leaving = await build('/security/oauth?ns=HSCUSTOM');
+    const router = TestBed.inject(Router);
+    const target = tabs(leaving)[1];
+    target.focus();
+    target.click();
+    target.click();
+    await settle(leaving);
+    expect(router.url).toBe('/security/oauth/clients?ns=HSCUSTOM');
+    leaving.destroy();
+    (leaving.nativeElement as HTMLElement).remove();
+    (document.activeElement as HTMLElement | null)?.blur();
+
+    const arriving = TestBed.createComponent(DetailPage);
+    document.body.appendChild(arriving.nativeElement);
+    planted.push(arriving.nativeElement);
+    await settle(arriving);
+    expect(document.activeElement).toBe(tabs(arriving)[1]);
+  });
+
+  it('AC1: a tab whose navigation the router refuses leaves no focus request for the next page to take', async () => {
+    // Mutation (Rule 19): drop `forget` from the `false` branch of `DetailPage.open` -> the request
+    // outlives the refused navigation and the next strip built takes focus it was never owed.
+    const leaving = await build('/security/oauth?ns=HSCUSTOM');
+    const router = TestBed.inject(Router);
+    router.resetConfig([{ path: '**', canActivate: [() => false], children: [] }]);
+    const target = tabs(leaving)[1];
+    target.focus();
+    target.click();
+    await settle(leaving);
+    expect(router.url).toBe('/security/oauth?ns=HSCUSTOM');
+    leaving.destroy();
+    (leaving.nativeElement as HTMLElement).remove();
+    (document.activeElement as HTMLElement | null)?.blur();
+
+    const next = TestBed.createComponent(DetailPage);
+    document.body.appendChild(next.nativeElement);
+    planted.push(next.nativeElement);
+    await settle(next);
+    expect(document.activeElement).not.toBe(tabs(next)[1]);
+  });
+
   it('AC5: a gated tab stays listed and focusable, names its pair, and opens nothing', async () => {
     // Mutation (Rule 19): drop the `tab.gated` refusal from `DetailPage.open` and the `[disabled]`
     // binding -> the click navigates and the url assertion goes red.
