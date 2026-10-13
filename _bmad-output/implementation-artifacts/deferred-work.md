@@ -11658,3 +11658,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-37-interoperability-usage.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: InteropUsageGate.Wire and DashboardDrillDownGate.cls :102 differ only in maxRows; Story 18.11's review closed the second copy with reopen_if a third gate copied it
 - 2026-10-13T13:17:14Z status=wontfix-accepted owner=18-37-interoperability-usage by=cr note=reopen_if=Test.Http.AbsoluteRequest's signature or the failedPair detail changes; one Http helper then serves all five
+
+### DW-2390: A client that disconnects while a live tail is held leaves its CSP process in the wait until the bound (50 s), because the vendor does not fail a heartbeat after the disconnect
+- source: spec-18-38-the-live-log-tail.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Task 0 (e) on ocupilot-ci: a client dropped at 12 s left its process in Tail until about 50 s; beats returned OK; no license unit consumed (Task 0 f)
+- 2026-10-13T18:14:44Z status=by-design owner=18-38-the-live-log-tail by=harvest note=spec-bound: the matrix's Client gone row and AD-12 accept the bounded hold (lead, Rule 5 tier 1, 2026-10-13)
+
+### DW-2391: No automated test sees a live-tail heartbeat arrive on time: the flush properties are pinned in process and the wire tests count beats in a whole body
+- source: spec-18-38-the-live-log-tail.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Task 0 (b) timed delivery by hand (curl -sN --compressed on ocupilot-ci: beats at 10.1, 20.2, 30.3, 40.4 s); LogTailWire counts newlines per held interval
+- 2026-10-13T18:14:44Z status=wontfix-accepted owner=18-38-the-live-log-tail by=harvest note=reopen_if=a browser shows Live tail silent while messages.log grows, or the gateway's buffering changes on an upgrade
