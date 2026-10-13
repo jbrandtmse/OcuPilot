@@ -1531,3 +1531,6 @@ TAB-separated: `<UTC>\t<Story <id> | Epic <N>>\t<stage>\t<metadata>`
 2026-10-13T16:00:32Z	Story 18.37	fresh_check	env=recipe tests=interop-usage(4)+full_sweep(629_classes) result=pass order=forward,reverse(single_spec)
 2026-10-13T16:00:32Z	Story 18.37	committed	sha=3bdc55de(code=fc4a63b3+007f3c13+29fd56c2+981154ce;merges_feature_04851c6b,cfdeae95) submodules= ci=pending run=38426875501 head_confirmed_by=headSha pushed=code_head_alone amendments=spec_Tasks_1,3,6(DW-2384);EXPERIENCE.md:603 footprint_extensions=Screen/Registry.cls:1603,ui/tools/screen-mirror.mjs:1695(ratified)
 2026-10-13T16:00:32Z	Story 18.37	story_cycle	plan_to_commit_min=927 implement_passes=2 reviews=2 rework=1(DW-2384_orchestrator) first_ci=pending models=plan:opus,implement:sonnet,qa:sonnet,cr:opus
+2026-10-13T16:31:30Z	Story 18.37	ci_resolved	story=18.37 run=38426875501 result=success head=3bdc55de resolved_at=next_implement jobs=21/21
+2026-10-13T16:31:30Z	Story 18.37	ci_green_verified	run=38426875501 head=3bdc55de(headSha_matched)
+2026-10-13T16:31:30Z	Story 18.38	stage_spawned	stage=implement spawn_at=2026-10-13T16:31:30Z model=sonnet agent_name=18-38-live-log-tail-implement-1 cycle_iteration=1 ci_gate=18.37_run_38426875501_success prompt=carry-2026-10-10/epic-18-r/implement-1838-prompt.md run_in_background=false
