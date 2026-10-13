@@ -1426,3 +1426,6 @@ TAB-separated: `<UTC>\t<Story <id> | Epic <N>>\t<stage>\t<metadata>`
 2026-10-13T00:33:23Z	Story 18.43	fresh_check_started	throwaway=ocupilot-ci rebuilt(down+up,healthy 00:32:53Z;IPM_cleared) load=LOAD-OK,STARTPATH-OK offered=619 chunks=51
 2026-10-13T00:33:23Z	Story 18.43	stage_spawned	stage=full-sweep spawn_at=2026-10-13T00:33:23Z model=sonnet agent_name=18-43-sweep-1 prompt=carry-2026-10-10/epic-18-r/sweep-1843-prompt.md run_in_background=false
 2026-10-13T00:33:23Z	Story 18.37	stage_spawned	stage=plan spawn_at=2026-10-13T00:33:23Z model=opus agent_name=18-37-interop-usage-plan-1 cycle_iteration=1 prompt=carry-2026-10-10/epic-18-r/plan-1837-prompt.md run_in_background=false throwaway=untouched(sweep_running)
+2026-10-13T02:13:55Z	Story 18.43	full_sweep_complete	spawn_at=2026-10-13T00:33:23Z model=sonnet agent_name=18-43-sweep-1 classes=619 tests=4840 failed=1(Prohibited.TestTheSetHasOneHomeAndOneSentencePerCode:Installer_spelled_PROHIBITED.OCUPILOTSQLPRIVILEGE,run_387) chunks=51 window=00:33:33Z-02:04:55Z
+2026-10-13T02:13:55Z	Story 18.43	sweep_red_fixed	by=lead fix=Installer_warn_and_doc_name_the_remedy_without_the_code;GrantReadBack_asserts_REVOKE_and_classic_portal runs=Prohibited+GrantReadBack_24/24
+2026-10-13T02:13:55Z	Story 18.43	fresh_check_complete	reverse=14_classes_136_tests_0_failed browser=sql-activity_8/8 smoke=PASSED test:tools=1947

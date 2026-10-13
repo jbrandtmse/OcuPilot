@@ -202,7 +202,7 @@ Method TestAWidenedGrantIsNamedAndKept()
         Do $$$AssertTrue((tUpper [ $ZConvert(tGrantee _ " %ALTER,DELETE,INSERT,SELECT,UPDATE on schema " _ tSchema, "U")), "it names the role, every privilege and the schema")
         Do $$$AssertTrue((tUpper [ $ZConvert(tGrantee _ " SELECT on column " _ tTable _ "." _ tColumn, "U")), "and the role's one column")
         Do $$$AssertTrue((tUpper [ $ZConvert("_PUBLIC SELECT on table " _ tTable, "U")), "and _PUBLIC, its privilege and the table")
-        Do $$$AssertTrue((tWarns [ "REVOKE") && (tWarns [ "PROHIBITED.OCUPILOTSQLPRIVILEGE"), "and the remedy")
+        Do $$$AssertTrue((tWarns [ "REVOKE") && (tWarns [ "classic portal"), "and the remedy")
         Do $$$AssertTrue('(tWarns [ tEscalation), "and never the escalation role")
 
         Do $$$AssertTrue(##class(OcuPilot.Install.Installer).SqlPrivilegeHeld(tEscalation, tTable, $NAMESPACE), "the escalation role still holds its grant")

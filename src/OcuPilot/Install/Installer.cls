@@ -3780,7 +3780,7 @@ ClassMethod EnsureSqlPrivileges(pInstallNs As %String, ByRef pReports) As %Statu
 /// that grantee read or change OcuPilot's own tables through SQL, which AD-9 keeps to the escalation
 /// role. Install keeps every one: a refusal would leave OcuPilot stopped over someone else's grant,
 /// and a revoke would undo a grant OcuPilot did not make (AD-37, AD-38). OcuPilot's own tools refuse
-/// to revoke it too (<code>PROHIBITED.OCUPILOTSQLPRIVILEGE</code>), so the warn names the remedy: a
+/// to revoke it too, so the warn names the remedy: a
 /// SQL <code>REVOKE</code> or the classic portal. Reports nothing when no such grant exists.</p>
 /// <p>Reads <code>Security.SQLPrivileges:List</code> in one <code>%SYS</code> window (AD-16). The
 /// catalog lists a grant on the schema (<code>5,&lt;SCHEMA&gt;</code>), on a table
@@ -3879,7 +3879,7 @@ ClassMethod ReportWidenedGrants(pInstallNs As %String, ByRef pTables, ByRef pRep
         }
     }
     If tText = "" Quit $$$OK
-    Do ..Report(.pReports, "warn", "Grants on OcuPilot's protected schema are held by a grantee other than its escalation role: " _ tText _ ". Install keeps them and never revokes a grant it did not make. Revoke each with SQL (REVOKE) or the classic portal; OcuPilot's own tools refuse it (PROHIBITED.OCUPILOTSQLPRIVILEGE).", {"grants": (tList)})
+    Do ..Report(.pReports, "warn", "Grants on OcuPilot's protected schema are held by a grantee other than its escalation role: " _ tText _ ". Install keeps them and never revokes a grant it did not make. Revoke each with SQL (REVOKE) or the classic portal; OcuPilot's own tools refuse it.", {"grants": (tList)})
     Quit $$$OK
 }
 
