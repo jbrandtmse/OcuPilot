@@ -7106,6 +7106,40 @@ export const STRINGS = {
   interopDtlEditorTitle: 'DTL editor',
   /** EXPERIENCE.md:604 */
   interopBplEditorTitle: 'BPL editor',
+  /** EXPERIENCE.md:604 */
+  interopTransformsEmptyAgent: 'Ask the agent why no data transformation is listed here.',
+  /** EXPERIENCE.md:604 */
+  interopTransformTestTitle: 'Test <transform>',
+  /** EXPERIENCE.md:604 */
+  interopTransformInputLabel: 'Input',
+  /** EXPERIENCE.md:604 */
+  interopTransformInputHint:
+    'Paste the source message: an HL7, X12 or other EDI document\'s text, or XML for the transformation\'s source class.',
+  /** EXPERIENCE.md:604 */
+  interopTransformSourceClass: 'Source class',
+  /** EXPERIENCE.md:604 */
+  interopTransformTargetClass: 'Target class',
+  /** EXPERIENCE.md:604 */
+  interopTransformConsole: 'Console',
+  /** EXPERIENCE.md:604 */
+  interopTransformDone: 'The transformation ran, and its target is below.',
+  /** EXPERIENCE.md:604 */
+  interopTransformInputFailed: 'The input did not parse as the source class.',
+  /** EXPERIENCE.md:604 */
+  interopTransformFailed: 'The transformation failed.',
+  /** EXPERIENCE.md:604 */
+  interopTransformOutputFailed: 'The transformation ran, but its target could not be shown as text.',
+  /** EXPERIENCE.md:604 */
+  interopTransformRefusalSourceFormat:
+    'OcuPilot reads a pasted source only as an HL7 or other EDI document\'s text, or as XML. This transformation\'s source is neither, so test it in the classic portal.',
+  /** EXPERIENCE.md:604 */
+  interopTransformRefusalTargetFormat:
+    'OcuPilot shows a target only as an EDI document\'s text or as XML. This transformation\'s target is neither, so test it in the classic portal.',
+  /** EXPERIENCE.md:604 */
+  interopTransformRefusalContent: 'Paste the source message, at most 3,000,000 characters.',
+  /** EXPERIENCE.md:604 */
+  interopTransformRunsConsequence:
+    'The transformation\'s code runs on this instance as you, on the input shown. Whatever it writes or sends, it writes or sends.',
 } as const;
 
 /**

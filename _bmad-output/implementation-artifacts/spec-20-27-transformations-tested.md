@@ -2,7 +2,9 @@
 title: 'Story 20.27: Transformations tested'
 type: 'feature'
 created: '2026-10-12'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: 'd6e22f3324ff0bdb86fa6da8e552bd28b56bb0c0'
+baseline_commit: 'd6e22f3324ff0bdb86fa6da8e552bd28b56bb0c0'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -244,16 +246,16 @@ All paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-20`. The line n
 
 **Execution:**
 
-- [ ] **Task 0**, on `ocupilot-b-ci` only through `docker exec`. Remove what you create, then record each result as a `Task 0:` line under Verification.
+- [x] **Task 0**, on `ocupilot-b-ci` only through `docker exec`. Remove what you create, then record each result as a `Task 0:` line under Verification.
   - (a) Through the screen route, the `write` leg's answer is a JSON envelope whose `console` holds the line.
   - (b) An `EnsLib.EDI.XML.Document` source parses through its `ImportFromString`, and an EDI XML target renders through `OutputToLibraryStream(stream, "wt")`. Use a throwaway DTL in `OcuProbeDtl`, then delete it.
   - (c) The X12 interchange the fixture uses parses, and its source and target `%Delete` leave the `EnsLib_EDI_X12.Document` count at its count before.
-- [ ] `src/OcuPilot/Api/InteropError.cls` (extend). Add `TransformCodes()` and `TransformPreconditionCodes()`, join them into `Codes()` and `ReasonFor`, and add the consequence to `ConsequenceCodes()`. The sentences:
+- [x] `src/OcuPilot/Api/InteropError.cls` (extend). Add `TransformCodes()` and `TransformPreconditionCodes()`, join them into `Codes()` and `ReasonFor`, and add the consequence to `ConsequenceCodes()`. The sentences:
   - `INTEROP.TRANSFORM.SOURCEFORMAT`: "OcuPilot reads a pasted source only as an HL7 or other EDI document's text, or as XML. This transformation's source is neither, so test it in the classic portal."
   - `INTEROP.TRANSFORM.TARGETFORMAT`: "OcuPilot shows a target only as an EDI document's text or as XML. This transformation's target is neither, so test it in the classic portal."
   - `INTEROP.TRANSFORM.CONTENT` (violation): "Paste the source message, at most 3,000,000 characters."
   - Consequence `INTEROP.TRANSFORM.RUNS`: "The transformation's code runs on this instance as you, on the input shown. Whatever it writes or sends, it writes or sends."
-- [ ] `src/OcuPilot/Port/InteropPort.cls` (extend), per Boundaries:
+- [x] `src/OcuPilot/Port/InteropPort.cls` (extend), per Boundaries:
   - **Types and pair.**
     - `TYPETRANSFORM` `TRANSFORM` (read, composed) and `TYPETRANSFORMTEST` `TRANSFORMTEST` (write).
     - `DTLTESTPAIR` `%Ens_DTLTest:USE`, appended in `Pairs` for both types.
@@ -267,7 +269,7 @@ All paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-20`. The line n
   - **Capture lines.** `EndTestCapture` gains an optional `Output` `%DynamicArray` of the captured lines. Its text answer is unchanged for `PerformTest`.
   - **Snippet.** `SnippetForm` and `Snippet` route `Transforms/TRANSFORMTEST` to a new `TransformSnippet`. It writes the namespace switch, the parse with `Literal(content)`, the target for `existing`, the `Transform` call and the render, each value a literal (AD-59).
   - **Header.** The header's write list gains the transformation test.
-- [ ] `src/OcuPilot/Screen/Tool/InteropTransformTest.cls` (new), `interop.transforms.test`, extends `InteropAction`.
+- [x] `src/OcuPilot/Screen/Tool/InteropTransformTest.cls` (new), `interop.transforms.test`, extends `InteropAction`.
   - **Declarations:**
     - `DESCRIPTORCLASS` `InteropTransformList`, `READTYPE` `TRANSFORM`, `WRITETYPE` `TRANSFORMTEST`.
     - `SCREENACTIONS` `test`, `SCREENVALUES` `test=content`.
@@ -283,12 +285,12 @@ All paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-20`. The line n
     - `PortQuery` adds `CONTENTKEY`. `MergeUpdate` follows the sibling. `SettableFields` is `content`.
   - **`StateDiff`.** The rows are `Transform` (Name), `Source` and `Target` (class, then doc type in parentheses when set), and `Input`, which is `ExplorerSaveMint.Hunk("", content)` with the field renamed and CR line ends normalized.
   - **`WriteOutput`.** It answers `{status, sourceClass, targetClass, lines, console, errors}` and never `outcome`.
-- [ ] `src/OcuPilot/Screen/Descriptor/InteropTransformList.cls` (in place, Epic 20's own):
+- [x] `src/OcuPilot/Screen/Descriptor/InteropTransformList.cls` (in place, Epic 20's own):
   - `rowActions` `[{"id":"test","selfProtection":""}]`.
   - `emptyNextKey` `""` and `emptyAgentKey` `interopTransformsEmptyAgent`.
   - Reword the doc comment at 7-9. The prompts, read and pairs are unchanged.
-- [ ] `src/OcuPilot/Kernel/Governance/Baseline.cls` (append): `"interop.transforms.test": true`.
-- [ ] `src/OcuPilot/Test/InteropTransformFixture.cls` (new, not a `TestCase`). It creates in `USER`, with `InteropTestFixture.Create`'s idiom, the package `OcuProbeDtl` and nothing named `OcuPilot…` except `OcuPilotProbe.OwnDtl`:
+- [x] `src/OcuPilot/Kernel/Governance/Baseline.cls` (append): `"interop.transforms.test": true`.
+- [x] `src/OcuPilot/Test/InteropTransformFixture.cls` (new, not a `TestCase`). It creates in `USER`, with `InteropTestFixture.Create`'s idiom, the package `OcuProbeDtl` and nothing named `OcuPilot…` except `OcuPilotProbe.OwnDtl`:
   - `Xml`: `Ens.StringRequest` to `Ens.StringResponse`, `out:<value>`, with a `<code>` that increments `^OcuProbeDtlRuns`. Per value:
     - `fail` sets `tSC` to an error (the DTL's status variable, measured);
     - `write` writes `probe-device-line`;
@@ -305,7 +307,7 @@ All paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-20`. The line n
     - `Runs()`.
     - `Counts()`: the `Ens.StringRequest`, `Ens.StringResponse`, `EnsLib_HL7.Message` and `EnsLib_EDI_X12.Document` extents.
     - The sample texts (XML, an ADT_A01, an X12 interchange).
-- [ ] Tests (new, armed, each under about 500 lines, one class per run):
+- [x] Tests (new, armed, each under about 500 lines, one class per run):
   - **`src/OcuPilot/Test/InteropTransformTest.cls`** (AC1-AC3, AC6, AC7). For each leg, the person's screen route and the agent's mint and confirm over HTTP (`InteropItemControl`):
     - the XML, HL7, X12 and `existing` runs, with lines, classes and `Runs()` +1 per action;
     - the minted proposal's rows (with `Input`) and consequence code;
@@ -325,9 +327,9 @@ All paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-20`. The line n
     - Without `%Ens_DTLTest` it still lists.
     - It reuses `InteropItemGate`'s `FailedPair`, `LegText` and `FaultText`. Its `Probe` and `EnsurePrincipals` follow `InteropTestGate`'s (Design Notes › Rule 31).
   - **`src/OcuPilot/Test/InteropTestDescriptor.cls`** (extend): the tool's declarations, `Pairs`, `Serves`, `COMPOSEDTYPES`, the key `true`, the codes resolving, `TransformSnippet` keeping a quote and a CR inside literals, and `WriteOutput` never answering `outcome`.
-- [ ] Roster sweep (Rule 30): every row of the roster table, plus anything a search of `src/OcuPilot/Test`, `ui/tools`, `ui/browser` and the `ui/src` specs finds asserting the transforms list's no-action shape. Each changed file joins the `(loop)` set.
-- [ ] `scripts/ci-throwaway.sh`: a `# classes:` line in the interop block after 479 naming the three new armed classes.
-- [ ] Client (every path below is under `ui/src/app/` unless it starts with `ui/`):
+- [x] Roster sweep (Rule 30): every row of the roster table, plus anything a search of `src/OcuPilot/Test`, `ui/tools`, `ui/browser` and the `ui/src` specs finds asserting the transforms list's no-action shape. Each changed file joins the `(loop)` set.
+- [x] `scripts/ci-throwaway.sh`: a `# classes:` line in the interop block after 479 naming the three new armed classes.
+- [x] Client (every path below is under `ui/src/app/` unless it starts with `ui/`):
   - **`core/test-answer.ts`** (extend):
     - `transformAnswerOf`, which reads only a status of the four with a string `sourceClass` and arrays `lines` and `console`;
     - `transformStatusLine`;
@@ -353,12 +355,12 @@ All paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-20`. The line n
     - `ui/tools/test-answer.test.mjs`, `ui/tools/turn.test.mjs`, and `ui/tools/interop.test.mjs` (`SENTENCES` + 4).
     - `areas/interoperability/interop-transform-list.page.spec.ts` and `areas/interoperability/interop-transform-test-dialog.spec.ts`: the page registers `test`, opens on the selection, sends `content`, ignores a stale answer, and draws the answer and a refusal; the dialog's lines are text.
     - `shell/proposal-card.spec.ts`: the RUNS sentence, and a confirmed test card whose summary line shows no compile outcome.
-- [ ] `ui/browser/interop-transform-test.browser-spec.mjs` (new; `before`/`after` create and remove the fixture through `runIris`). After `waitForMapAnswered`:
+- [x] `ui/browser/interop-transform-test.browser-spec.mjs` (new; `before`/`after` create and remove the fixture through `runIris`). After `waitForMapAnswered`:
   1. Data transformations (`?ns=USER`) lists `OcuProbeDtl.Xml.cls`. Its row's Test opens the dialog.
   2. Pasted XML runs and shows the done sentence and `out:x`. The `fail` value shows the failure sentence and `probe-fail`.
   3. Pasting `<b>x</b>` shows the input sentence with the text literal, and no `b` element is made.
   4. With the dialog open and answered, the DW-1337 walk (the local `structural` helper) finds no entry beyond the baseline.
-- [ ] `EXPERIENCE.md` (no line inserted above :604):
+- [x] `EXPERIENCE.md` (no line inserted above :604):
   - :159 gains "; a Data transformations row's Test runs the transformation once on a pasted message (Story 20.27)".
   - :604 gains a Story 20.27 clause naming every new literal.
   - The :173 dialog entry is the spec gate's (Design Notes › For the spec gate).
@@ -387,11 +389,109 @@ All paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-20`. The line n
 - **AC8 (gates):** Given a principal missing one declared pair, or holding READ only on the globals database, when it reads or runs, then it is refused naming that pair before any vendor call. A principal holding exactly the pairs runs the test.
 - **AC9 (the screen):** Given Data transformations in `USER`, when a person selects the probe row and runs Test, then the dialog shows the result, and the screen and dialog pass the DW-1337 walk in both themes.
 
+### Review Findings
+
+Code review 2026-10-13 (four layers, full-opus; 34 rows, 20 entries). Each entry: severity, fix-risk, disposition.
+
+- [x] [Review][Patch] HIGH, AD-21: pasted XML named a file the parser opened. An EDI XML message's `<!DOCTYPE … SYSTEM "file:…">` was read, and an entity it declared inlined a server file into the shown target (measured); the XML reader opened DTD and `xsi:noNamespaceSchemaLocation` files. Story 20.6's send had the same path. Fix-risk low. Fixed: `PastedXmlHere` (refuses a document type, reads from the first `<`), `%XML.SAX.NullEntityResolver` for the XML reader, used by `ParseSourceHere` and `BuildTestRequestHere` [src/OcuPilot/Port/InteropPort.cls]
+- [x] [Review][Patch] HIGH, AD-59: `TransformSnippet` did not mirror the run (EDI XML text as pasted, no `%Delete`, unset `process`/`context`). Fix-risk low. Fixed, with `TestSnippet`'s EDI XML twin [src/OcuPilot/Port/InteropPort.cls]
+- [x] [Review][Patch] MED: `$ZStrip(…,"<W")` kept a leading CR/LF and the XML reader got the unstripped text, so XML pasted after a line end, or a declaration after one, was refused. Fix-risk low. Fixed in `PastedXmlHere` [src/OcuPilot/Port/InteropPort.cls]
+- [x] [Review][Patch] MED: `AddTestLines` split with an indexed `$Piece` per line, which is quadratic (160,000 lines took 16.4 s, QA). Fix-risk low. Fixed with a linear `$Find` walk [src/OcuPilot/Port/InteropPort.cls]
+- [x] [Review][Patch] MED, Rule 19: the refusal legs' `Runs()` checks could not fail, because only the XML probe counted runs. Fix-risk low. Every probe transformation now counts [src/OcuPilot/Test/InteropTransformFixture.cls]
+- [x] [Review][Patch] MED, Rule 19: two audit counts relied on an earlier test's row falling outside the time window. Fix-risk low. Both are now before/after deltas [src/OcuPilot/Test/InteropTransformTest.cls, InteropTransformTestRefusals.cls]
+- [x] [Review][Patch] MED: the run's end was not announced (WCAG 4.1.3). Fix-risk low. The dialog keeps a mounted `role="status"` region. Story 20.6's dialog has the same gap: DW-2379, routed to burndown [ui/src/app/areas/interoperability/interop-transform-test-dialog.ts]
+- [x] [Review][Defer] MED: HL7 `ImportFromString` translates already-decoded text again, so U+0151 reads `?` (measured). The classic dialog hands HL7 a stream. Spec-bound, because AD-62 item 11 names `ImportFromString`: DW-2378, decision-pending, owner burndown
+- [x] [Review][Patch] LOW: `Transform` called without `aux`, which the classic dialog passes empty. Fixed [src/OcuPilot/Port/InteropPort.cls]
+- [x] [Review][Patch] LOW: the shared `TESTOUTPUTMAX` bound across lines and console was untested. Added `TestTheConsoleSharesTheOutputBoundWithTheTarget` and the `noisy` value [src/OcuPilot/Test/InteropTransformTestRefusals.cls]
+- [x] [Review][Patch] LOW: the Task's agent legs for HL7 and X12 were missing. Added [src/OcuPilot/Test/InteropTransformTest.cls]
+- [x] [Review][Patch] LOW: four small fixes. `ReadTool`'s count message is corrected. The vacuous summary assertion is dropped from `panel.spec.ts`. The gate test's wrong mutation claim is corrected and the mutation was run. `InteropTestDescriptor`'s failed setup now removes its fixtures [src/OcuPilot/Test/ReadTool.cls, ui/src/app/shell/panel.spec.ts, src/OcuPilot/Test/InteropTransformTestGate.cls, src/OcuPilot/Test/InteropTestDescriptor.cls]
+- [x] [Review][Patch] LOW: the port header said every object that gained an `%Id()` is deleted, but the run deletes the source and target. The header is corrected. AD-62 item 11 carries the same claim, which is the lead's to correct (Rule 20) [src/OcuPilot/Port/InteropPort.cls]
+- [x] [Review][Defer] LOW, Rule 2: `InteropTransformMint` is a third copy of the ArgumentProblem-first preamble: DW-2380, wontfix-accepted
+- [x] [Review][Defer] LOW, Rule 2: the gate class copies `ExpectedFor`, `ProbeAs` and the removal loop: DW-2381, wontfix-accepted
+- [x] [Review][Defer] LOW: 20.6's send guard is pinned only through its script form: DW-2382, wontfix-accepted
+- [x] [Review][Defer] LOW: a near-bound message whose JSON escaping passes the string limit answers 500 on the screen route: DW-1949, occurrence
+
+Rejected:
+
+- By design: the test publishes `updated`. The spec's AC1 test list names the change event, as 20.6 does.
+- By design: no time bound. AD-7 names the transformation's own code as unbounded.
+- By design: `turn.ts` keeps two import lines from `test-answer.ts`, because its edits are add-only (Contended files).
+- Rejected LOW: a transformation returning its stored source as target makes a second `%Delete` fail and log a line. This is unlikely, and the fix adds a guard.
+- Rejected as theoretical: an unbalanced `TSTART` in a transformation's own code.
+- Rejected: two spec-text findings. The Auto Run Result's stale risk line, and the Parse bullet that does not name the stricter XML rule, are the lead's to amend.
+
+### Fresh check red (2026-10-13) - rework iteration 1
+
+- [x] [Smoke] **DW-2383: the item Messages read fails for a principal without SQL privilege on a cold cached query.** On a freshly built `ocupilot-b-ci` the full sweep (625 classes) had one red class, `InteropHostGate` (3 of 3; Story 20.4's): every `ItemMessages` leg answered `INTERNAL`, logged as `ERROR #5540: SQLCODE: -99 Message: User OcuP204Ex7 is not privileged for the operation` (`interopport`, "the item's messages failed"). Alone, after other classes had run the read as a privileged user, it was green; after `$SYSTEM.SQL.Purge()` in `USER` it was red again (reproduced). The Log read (`LOGSQL`, one table) is not affected; `MESSAGESQL`'s `IN (... UNION ...)` subquery under `%ExecDirectNoPriv` is the suspect (inference). Fix it in the product (`InteropPort`), so the first read after a start or a purge, by a principal holding only the endpoint's pairs, answers its rows; keep the rows, order and cap the Messages tab shows today. Check every other `%ExecDirectNoPriv` statement in `InteropPort` for the same shape and fix any that share it. Pin it with a test that removes the statement's cached query (or purges `USER`'s) before an unprivileged read, red on the old statement. `InteropHostGate`, `InteropHostRead` and the classes that read item messages must stay green.
+  - Cause (measured as an unprivileged principal after a purge): `MESSAGESQL`'s `IN (SELECT TOP ? ID ...)` subquery. A subquery or derived table carrying `TOP` is refused -99 even through `%ExecDirectNoPriv`, while `IN (SELECT ID ...)`, `EXISTS`, `OR`, a top-level `UNION` and `LOGSQL` compile; a cached query for the same text and `TOP` value hides it, and the mechanism is an inference. `MESSAGESQL` is now a top-level `UNION ALL` of the two `TOP` branches (a `UNION` folds the names to upper case) and `ListItemMessages` merges, orders and caps by ID, reading the same rows as the old statement for 18 item and cap combinations; `LOGSQL` is the port's only other statement. Pinned by `InteropHostGate.TestAStatementDroppedFromTheCacheIsReadByAPrincipalWithNoSqlPrivilege`, which purges `USER`'s cached queries itself, and the merge by `InteropHostEdges.TestAnItemWithHeadersOnBothSidesReadsThemMergedNewestFirstOnceEachAndCapped`.
+
+### Review Findings (rework 1 re-review)
+
+Code review 2026-10-13 of `d6e22f33..HEAD` (four layers, full-opus; 17 rows, 13 entries, none high). DW-2383 holds: `InteropHostGate` is green after `PurgeQueries` in `USER` (run 674), and no product `%ExecDirectNoPriv` statement nests a query (InteropPort, LogSourcePort, TaskTransferPort).
+
+- [x] [Review][Patch] MED, Rule 19: the first branch's columns were unpinned once the column list was split in two (its `Status`, `TimeCreated` and `BodyClass` were read only from target-side rows). The service's rows are compared field for field with the operation's, and the zone leg reads the header through both tabs [src/OcuPilot/Test/InteropHostEdges.cls:218, :616]
+- [x] [Review][Patch] MED, Rule 2: `StoreHeader` copied `QueueEntry`. `QueueEntry` now calls `StoreHeader` with a queue [src/OcuPilot/Test/InteropHostEdges.cls:241, :337]
+- [x] [Review][Patch] LOW, Rule 19: the merge test claimed a mutation (walking the statement order) that was never run. The clause is dropped; the recorded counter-key mutation covers that order [src/OcuPilot/Test/InteropHostEdges.cls:273]
+- [x] [Review][Patch] LOW: the nested-`TOP` limit was stated on `MESSAGESQL` only. It now sits on `SqlRows`, which every statement passes. Rule 20 draft for the lead: AD-29's `%ExecDirectNoPriv` paragraph gains "a statement read this way nests no query that carries `TOP`" [src/OcuPilot/Port/InteropPort.cls:3080]
+- [x] [Review][Patch] LOW: "they come in no order" read as if each branch's `ORDER BY` were optional. Measured on `ocupilot-b-ci`: without it the target branch's `TOP 2` takes ids 1 and 5, not 506 and 497, and a trailing `ORDER BY` does not reorder the union. The comment says so [src/OcuPilot/Port/InteropPort.cls:3123]
+- [x] [Review][Patch] LOW: stale test docs (`PreparedEntries`, the Edges header wrap, the Gate header's pins) [src/OcuPilot/Test/InteropHostEdges.cls:3, :64; src/OcuPilot/Test/InteropHostGate.cls:5]
+
+Rejected:
+
+- LOW: the Auto Run Result lost the first pass. Fixing it edits this spec, and a rework's result covers that pass only (Rule 14). `ci-timings.json` is refreshed at the merge gate (Rule 29).
+- LOW: the Design Notes and Code Map premise about the 20.6 card, and the spec repeating the cause. Both are spec edits, outside the rework's range.
+- False: `DropCachedQueries` purges all of `USER`. The item allows that, and no statement depends on a warm cache.
+- LOW, wontfix-theoretical: up to twice the cap held twice (`tFound`, `tById`). It becomes real only for an item with hundreds of thousands of headers read at that cap.
+- LOW: a probe that answers `{error}` raises `<INVALID OREF>` after its error assertion is already red. The sibling test uses the same read.
+- False: another process could warm the cache between the purge and the child's read. One class runs at a time, and every earlier leg of the Messages principal is refused 403.
+- The size of `InteropHostEdges` (669 lines against about 500) predates the rework.
+
 ## Spec Change Log
 
 - 2026-10-13, spec gate (runner): the Design Notes' Rule 20 drafts are written: AD-62 item 11's transformation half, AD-7's three Story 20.27 named limits, and the EXPERIENCE.md :173 dialog entry.
+- 2026-10-13, code review (runner): the Parse bullet's XML rule is stricter than planned (AD-21, review HIGH): pasted XML is read from its first `<`, a declared document type is refused, and no entity or schema is resolved (`InteropPort.PastedXmlHere`, shared with Story 20.6's send). AD-62 item 11 records it; the run deletes the source and target it stored. EXPERIENCE.md's polite `role="status"` list names both test results.
 
 ## Review Triage Log
+
+### 2026-10-13 -- Review pass
+
+- verdicts: 22 findings -- high 0, medium 3, low 10, false 9, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` Verification gap: the output bound and the cut marker are untested for the transformation test -- probing showed a target past the bound was cut silently, because line ends are not in the line total `AddTestLines` keeps, so the `MAX + 1` read never tripped it. `RenderTargetHere` now appends `TESTCUT` when the stream is not at its end; `TestATargetPastTheBoundIsCutAndMarked` added, mutation recorded.
+  - `[low]` `[reject]` The failed-delete path (logged without content, answer unchanged) has no test -- it needs a persistent probe target whose `%Delete` fails and an extent cleanup, past the 15-line bar; the log call passes a fixed message and the vendor's status, and the delete status never reaches the answer. `reopen_if`: a probe target's delete is seen to fail on an instance.
+  - `[medium]` `[patch]` The four Record Map bases and the refusal order are unpinned (only `Batch` was) -- probe record classes for `Base`, `ComplexBase` and `ComplexParent` (with the XML adaptor, as a generated record has), a stream on both sides, and `TestAFormatIsRefusedBeforeTheMessageIsJudged` added; mutations recorded.
+  - `[medium]` `[patch]` A listed but never compiled class answering 404 is untested (the matrix's "not compiled") -- `OcuProbeDtl.Uncompiled` is stored and left uncompiled; both callers' rows added; mutation recorded.
+  - `[low]` `[patch]` The new 501 arms (`InvokeTransformTest`, and `InvokeItemTest`'s narrowed guard) are untested -- two port-direct legs added in `TestAnUnlistedReadIsAbsentAndAForeignActionKeyIsNotImplemented`; mutations recorded.
+  - `[low]` `[patch]` `ConfirmProblem` and `ScreenActionDelta` have no direct test -- `InteropTestDescriptor.TestTheTransformToolsConfirmAndScreenHooksJudgeTheMessage` added; mutations recorded.
+  - `[low]` `[reject]` The EDIFACT terminator branch of `SeparatorsHere` is unpinned -- it mirrors the classic dialog's lines 527-532 and needs an EDIFACT probe document; no `HSCUSTOM` transformation was found to need it. `reopen_if`: an EDIFACT target's raw view loses its terminators.
+  - `[low]` `[patch]` Unrecorded mutations -- the `save` leg and the READ-only clause of AC8 each named a mutation never observed; both were run and recorded. The AC3 key, AC5 prohibited and not-listed legs and AC6 absence legs sit under ACs that already have recorded mutations, and Rule 19 asks one per AC.
+  - `[low]` `[patch]` `Counts()` equality could compare two unreadable extents -- `TestTheExtentsTheLegsCompareAreReadable` asserts all four read a count; mutation recorded.
+  - `[low]` `[patch]` The card-summary pin sits on `outputErrorsOf`, which the panel does not feed to a non-explorer card (`ui/src/app/shell/panel.ts:1161` passes `null`), and the spec's comment said it does -- the comment is corrected. The Design Notes' premise that the 20.6 card read "Compiled" is the origin, and fixing it means editing the spec, which this pass does not do.
+  - `[low]` `[patch]` The browser spec's mutation comment names `PerformTransformTest` for calling `Transform` twice -- it is called in `RunTransformHere`; comment corrected.
+  - `[false]` `[reject]` `outputErrorsOf` changes the 20.6 host-test card behavior and drops two old assertions -- the change is specified (Tasks, Client, `turn.ts`), and `panel.ts:1161` already nulls `outputErrors` for every non-explorer tool, so no shipped card changes.
+  - `[false]` `[reject]` Descriptor `emptyNextKey` and `emptyAgentKey` changed beyond the intent -- listed under Tasks; `screen-mirror.mjs:3087-3104` requires a write-capable table to have `emptyNextKey ''` and its own `emptyAgentKey`.
+  - `[false]` `[reject]` New `InteropTransformMint` class beyond the spec -- the intent refuses the agent's `content` as `TOOL.ARGUMENTS` before the mint, and `Mint.cls` reads the port first, which answers 422; the subclass runs `ArgumentProblem` first and defers to `##super`.
+  - `[false]` `[reject]` `EndTestCapture` widened and `InvokeItemTest`'s guard narrowed -- the first is listed under Tasks; the second is needed because `IsTestWrite` now covers `TRANSFORMTEST`, and now has its 501 leg.
+  - `[false]` `[reject]` `InteropTestGate` refactored to a shared `CreatePrincipals` -- the Design Notes prefer it, and `InteropTestGate` runs green.
+  - `[false]` `[reject]` In-place edits to shared lines (`COMPOSEDTYPES`, `IsTestWrite`, `OWNPAIRS`, Baseline's last key, count pins) -- each is listed under Tasks, and none is a file Epic 18 changes beyond the add-only pins.
+  - `[false]` `[reject]` The agent's not-listed refusal reads 400 `TOOL.ARGUMENTS`, not 404 -- `Mint.cls` maps an absent target to its refusal for every tool, and nothing parses or runs.
+  - `[low]` `[patch]` The no-action-key 404 has no test -- the first leg of `TestAnUnlistedReadIsAbsentAndAForeignActionKeyIsNotImplemented`; mutation recorded.
+  - `[low]` `[reject]` Intent clauses with no behavioral assertion (the EDI XML and plain-document renders, XML with leading blanks, an existing document target, `IsMutable` 0, audit rows for non-`done` statuses, no screen-context leak) -- each is a few lines that mirror the vendor's reader or the classic dialog; the cut marker, failed delete and extents parts are the rows above. `reopen_if`: one of these branches is found wrong on an instance.
+  - `[false]` `[reject]` The agent's `OcuPilot`-named refusal comes at the confirm, not the mint -- the matrix names the existing `class` arm, which the Code Map places at `ScreenAction.cls:370` and `Confirm.cls:299`.
+  - `[false]` `[reject]` Sub-readings (refusals only with the action key, an audit row for every answered request, metadata calls before the format judgement) -- each matches the Tasks wording; no divergence.
+
+### 2026-10-13 -- Review pass (rework 1)
+
+- verdicts: 8 findings -- high 0, medium 2, low 4, false 2, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` The merge in `ListItemMessages` (interleave, one row for a header that is both source and target, cap after the merge) is pinned by no test, because no probe item has headers on both sides -- `InteropHostEdges.TestAnItemWithHeadersOnBothSidesReadsThemMergedNewestFirstOnceEachAndCapped` stores five headers and reads caps 2, 4, 5 and the whole list; three mutations recorded.
+  - `[medium]` `[patch]` A capped Messages read is never checked to return the newest rows -- the same test asserts the exact ids for each cap; dropping the source branch's `ORDER BY` reddens the cap-of-2 leg.
+  - `[low]` `[patch]` No green run of the item-message classes on the fixed statement is recorded -- the Auto Run Result records `InteropHostGate` (cold, after a purge), `InteropHostRead` and `InteropHostEdges` on the final tree and the rest from the implement pass.
+  - `[low]` `[reject]` The Log leg of the new gate test has no mutation of its own -- Rule 19 asks one per AC and the Messages leg holds it; `LOGSQL` reads one table and compiles cold (measured).
+  - `[low]` `[patch]` The new gate test does not assert the principal holds no SQL privilege -- one assertion on `headerSql` and `logSql` added to its loop.
+  - `[low]` `[reject]` `DropCachedQueries` asserts only a status -- `PurgeQueries` answers nothing else, and the recorded mutation run going red shows the purge is effective.
+  - `[false]` `[reject]` Containment note: the reviewer listed one directory of the main checkout's `irislib` export -- a listing only, no read or write, and no finding about the diff.
+  - `[false]` `[reject]` The diff changes the Items endpoint's Messages read, not the Transforms surface the contract describes -- the dispatch scopes this pass to the open item, and no Boundary or Never line is touched.
 
 ## Design Notes
 
@@ -557,16 +657,62 @@ Checked and not engaged: AD-36 (no new declared read), AD-26, AD-27, AD-54, AD-5
 | AC9 | The page does not register `test` | the page spec, and the browser spec's step 1 |
 | card | `outputErrorsOf` reads a test answer again | the proposal-card summary spec |
 
+**Recorded (implement pass).**
+
+- Task 0 (a): the screen route's `write` leg answers 200 as one JSON envelope, `console` `["probe-device-line"]` and the indented target in `lines`; held by `InteropTransformTestRefusals.TestEachOutcomeIsAnswered200WithItsStatus`.
+- Task 0 (b): an `EnsLib.EDI.XML.Document` source parsed through `ImportFromString` (status OK, an object), a `create='copy'` DTL ran on it, and `OutputToLibraryStream(stream, "wt")` wrote `<root>` with `<a>1</a>` and `<b>two</b>` indented on their own lines; nothing was stored. The probe DTL is deleted.
+- Task 0 (c): the fixture's X12 interchange parsed and its copy transformed; `EnsLib_EDI_X12.Document` read 6 before, 12 with source and target alive, and 6 after `%Delete(%Oid())` of each.
+- mutation: AC1, a second `Transform` call in `RunTransformHere` -- `InteropTransformTest` reddens its run-count legs (person, agent) and the existing and X12 legs; the rendered text blanked -- the person, agent, HL7 and X12 legs redden.
+- mutation: AC1, `AuditRuntime` dropped from `PerformTransformTest` -- the person's and the agent's audit legs redden.
+- mutation: AC2, `RenderTargetHere` without the classic separators -- the X12 leg reddens; the HL7 leg stays green, because HL7's default output is carriage-return separated and the line split reads it as lines.
+- mutation: AC2, cleanup deleting the target only -- the X12 extent leg reddens.
+- mutation: AC3, `StateDiff` without the `Input` row -- the card leg and `InteropTestDescriptor.TestTheTransformAnswerNeverCarriesAnOutcome` redden; `CONSEQUENCECODE` cleared -- the consequence leg reddens; the card spec's RUNS mapping dropped -- the RUNS test reddens.
+- mutation: AC4, the single `Catch` of `RunTransformHere` rethrowing -- the `Raw` leg answers 500 and the log leg reddens.
+- mutation: AC4, the capture ended before `RunTransformHere` -- the `write` leg's console reddens.
+- mutation: AC4, `LogFault` handed the error text -- `TestNothingTheRunWroteReachesTheLog` reddens.
+- mutation: AC5, the Record Map check removed from `FormatKindHere` -- the `Batch` leg reddens for both callers.
+- mutation: AC5, the content check removed from `ReadTransform` (the whole, then the upper bound alone) -- the empty and over-bound legs redden.
+- mutation: AC6, `WriteOutput` adding `outcome` -- `InteropTestDescriptor.TestTheTransformAnswerNeverCarriesAnOutcome` reddens; `Confirm` recording the output as the read-back -- the stored-text leg of `TestTheAgentsRunConfirmsOverHttp` reddens.
+- mutation: AC6, the dialog drawing its lines through `innerHTML` -- the dialog spec reddens (a `b` element is made) and the browser spec's AC6 test reddens (the text `<b>x</b>` reads `x`).
+- mutation: AC7, `TransformFactsHere` running `Transform` -- `TestAReadRunsNothingAndStoresNothing` and the run-count legs redden.
+- mutation: AC8, `DTLTESTPAIR` not appended in `Pairs` -- the missing-dialog principal's `TRANSFORM` and `TRANSFORMTEST` port legs redden; the route legs stay green, because the tool's own pairs refuse first.
+- mutation: AC9, the page not registering `test` -- 8 of the page spec's 9 tests redden and all four browser tests redden (the row menu never offers Test).
+- mutation: card, `outputErrorsOf` reading a test answer again -- `proposal-card.spec.ts`'s summary test, `test-answer.test.mjs` and `turn.test.mjs` redden; `transformAnswerOf` accepting a non-array `lines` -- `test-answer.test.mjs` reddens.
+- Task 0 and the mutations ran on `ocupilot-b-ci`; every mutated file was restored byte-identical and reloaded or rebuilt and redeployed before the next.
+- Sizes: the new lazy chunk `interop-transform-list-page` is 8,018 bytes (`LAZYCHUNKMAX` 88,000); the initial total is 1,899,692 bytes in 20 files (`maximumWarning` 1992kB); the string table holds 3,326 literals against the bound of 3,400.
+- mutation: AC2, `RunTransformHere` deleting nothing -- `InteropTransformTestRefusals.TestAStoredTargetIsDeletedBeforeTheAnswer` reddens.
+- mutation: AC4, `RenderTargetHere` without the cut marker for a stream it did not read to the end -- `TestATargetPastTheBoundIsCutAndMarked` reddens.
+- mutation: AC5, `ComplexBase` dropped from `RECORDMAPBASES` -- the `RmComplexBase` leg reddens for both callers; `content` judged before the formats -- `TestAFormatIsRefusedBeforeTheMessageIsJudged` reddens; the target judged before the source -- the `StreamBoth` legs redden; `'tFacts("compiled")` dropped from the absence check -- the `Uncompiled` legs redden; the absence check made to apply only with an action -- the no-action 404 leg of `TestAnUnlistedReadIsAbsentAndAForeignActionKeyIsNotImplemented` reddens; the 501 arm of `InvokeTransformTest` removed, and `InvokeItemTest`'s guard compared with `IsTestWrite` again -- its two 501 legs redden.
+- mutation: AC5, `ConfirmProblem` answering no problem and `ScreenActionDelta` carrying a number -- `InteropTestDescriptor.TestTheTransformToolsConfirmAndScreenHooksJudgeTheMessage` reddens; an extent of `Counts` that does not exist -- `InteropTransformTest.TestTheExtentsTheLegsCompareAreReadable` reddens.
+- mutation: AC8, `Admit` asking READ instead of WRITE on the globals database for a write -- `InteropTransformTestGate.TestEachMissingPairIsRefusedByNameThroughThePort` reddens for the `NoRead` and `NoWrite` principals.
+- Review pass: the three Record Map bases, a stream on both sides and a stored but uncompiled class are probe transformations of the fixture, and the output past `TESTOUTPUTMAX` now ends in `TESTCUT` however many line ends the read held. Each mutation was reverted byte-identical and the tree reloaded before the next.
+- (QA) tests added to existing files, no new file: `InteropTransformTestRefusals` (`TestAnOversizedTargetIsCutAndMarkedInTheAgentsConfirm`, `TestEveryStatusOfARunIsAudited`, `TestAnEdiXmlSourceNeverOpensThePastedTextAsAFile`), `InteropTransformTest` (`TestAnEdiXmlDocumentIsParsedAsADocumentAndShownAsIndentedXml`, and an EDI XML case in `TestAReadRunsNothingAndStoresNothing`), `InteropTransformFixture` (the `big` value of `OcuProbeDtl.Xml`, and `OcuProbeDtl.EdiXml`), `ui/tools/turn.test.mjs` and `ui/src/app/shell/proposal-card.spec.ts` (an answer at the output bound reaches the outcome and the card whole).
+- (QA) defect closed in `InteropPort.ParseSourceHere`: `EnsLib.EDI.XML.Document` opens text with no `<` in its first four characters as a file name, so a pasted server path as the source of an EDI XML transformation was read and its body shown (AD-21). XML text, an EDI XML document's included, is now refused `input` unless its first non-blank character is `<`, and the document is handed the text from there.
+- mutation: (QA) AC4, `WriteOutput` handing the answer its first thousand lines -- `TestAnOversizedTargetIsCutAndMarkedInTheAgentsConfirm` reddens, and `TestATargetPastTheBoundIsCutAndMarked` (one line) stays green.
+- mutation: (QA) AC6, `transformOutcomeLines` keeping the first thousand lines -- the `turn.test.mjs` output-bound test and the card spec's output-bound test redden; the card's `outputSteps` cut at 100,000 characters -- the card spec's test reddens alone.
+- mutation: (QA) AC4, `AuditRuntime` only when the status is `done` -- `TestEveryStatusOfARunIsAudited` reddens for all four statuses.
+- mutation: (QA) AC5, the XML check dropped for a virtual document in `ParseSourceHere` -- `TestAnEdiXmlSourceNeverOpensThePastedTextAsAFile` reddens (the file's body is in the answer) and the blanks legs of `TestAnEdiXmlDocumentIsParsedAsADocumentAndShownAsIndentedXml` redden.
+- mutation: (QA) AC2, `FormatKindHere` judging an XML adaptor before a virtual document -- the EDI XML case of `TestAReadRunsNothingAndStoresNothing` and the EDI XML run test redden; `RenderTargetHere` without `"wt"` for EDI XML -- the EDI XML run test reddens.
+- (QA) after: the four story classes (35 tests, `InteropTestDescriptor` 13, `InteropTransformTest` 7, `InteropTransformTestRefusals` 12, `InteropTransformTestGate` 3), `turn.test.mjs` and `test-answer.test.mjs` (100) and the card spec (76) are green, and the story's browser spec passes 4 of 4; each mutated file was restored byte-identical and reloaded before the next.
+- mutation: (CR) AD-21. The document type check dropped from `PastedXmlHere` reddens `TestAnEdiXmlSourceNeverOpensThePastedTextAsAFile`: the EDI XML leg shows the file's body. The entity resolver dropped from `ParseSourceHere` makes its schema leg `done`, which reddens it.
+- mutation: (CR) AC2. `PastedXmlHere` stripping blanks alone reddens the line-end legs of `TestAnEdiXmlDocumentIsParsedAsADocumentAndShownAsIndentedXml` and the XML declaration leg.
+- mutation: (CR) AD-59. `TransformSnippet` and `TestSnippet` handing on the message as pasted redden the EDI XML and refusal legs of both `InteropTestDescriptor` script tests.
+- mutation: (CR) AC4. Resetting the count before the console in `PerformTransformTest` reddens `TestTheConsoleSharesTheOutputBoundWithTheTarget`.
+- mutation: (CR) AC5. The `TARGETFORMAT` refusal dropped from `ReadTransform` reddens the `ToStream` legs, including "no refusal ran a transformation", now that every probe counts its runs.
+- mutation: (CR) AC8. Naming `%Ens_TestingService` as the tool's `WRITERESOURCE` reddens the screen-route and tool-pair rows of `InteropTransformTestGate`.
+- mutation: (CR) a11y. The dialog's status region without `role` reddens "announces the end of a run".
+- (CR) after: on `ocupilot-b-ci` the following are green: `InteropTestDescriptor` (13), `InteropTransformTest` (7), `InteropTransformTestRefusals` (13), `InteropTransformTestGate` (3), `InteropHostTest` (12), `InteropHostTestRefusals` (7), `InteropHostTestEdges` (5), `InteropTestGate` (5), `ReadTool` (28) and `CompileWithoutInterop` (7). `test:tools` (1,964) and `test:components` (3,013) are green, and the story's browser spec passes 4 of 4 on the rebuilt bundle. Each mutation was reverted byte-identical and the tree reloaded.
+- mutation: (rework 1) DW-2383. `MESSAGESQL` put back to `WHERE ID IN (SELECT TOP ? ID ... UNION SELECT TOP ? ID ...)` with its old call arguments, the port and its descendants recompiled and `InteropHostRead` run first to warm the statement: `TestAStatementDroppedFromTheCacheIsReadByAPrincipalWithNoSqlPrivilege` reddens (the Messages principal answers 500 and no rows, the Log principal stays green) and so do the two tests after it, which find the cache purged, while the class's first test stays green. Reverted byte-identical (file hash and `git diff --stat` unchanged) and recompiled.
+- mutation: (rework 1, review) `InteropHostEdges.TestAnItemWithHeadersOnBothSidesReadsThemMergedNewestFirstOnceEachAndCapped`. `ListItemMessages` without its `tCount < tTop` test reddens the cap legs (2, 4, 5); keying the rows by a counter instead of the header id reddens it and `TestTheServicesMessagesAreThoseItSourced`; the source branch of `MESSAGESQL` without its `ORDER BY` reddens the cap-of-2 leg. Each was reverted byte-identical (file hash unchanged) and the port and `InteropGateSeam` reloaded.
+- mutation: (rework 1, re-review) `MESSAGESQL`'s first branch. With `TargetConfigName` in its `WHERE`, `TestTheServicesMessagesAreThoseItSourced` goes red, and so do the merge and stamp tests (run 668). With `Status` read without `%EXTERNAL`, `TestTheServicesMessagesAreThoseItSourced` alone goes red (run 669). With `%EXTERNAL(TimeCreated)`, `TestTheStampsAreConvertedOnceToTheZoneOfTheReader` alone goes red, on its new source-tab leg (run 670). Before this pass's patch, no test went red for either of the last two. Each was reverted byte-identical (file hash, `git status` and `git diff --stat` unchanged) and the tree reloaded. Green afterwards: `InteropHostEdges` 9 (run 671), `InteropHostGate` 4 cold after `PurgeQueries` (run 674), `InteropHostRead` 7 (run 675).
+
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
 
-**Plan summary.** Story 20.6's Part B is the starting charter. It was re-measured on `ocupilot-b-ci` in `USER`: probe DTLs, a Record Map, and an X12 and an HL7 run, all removed and verified gone. Four findings change the charter:
+**This pass (rework 1, DW-2383).** `MESSAGESQL` nested a `TOP` subquery, which a principal with no SQL privilege is refused (-99) on a cold cached query even through `%ExecDirectNoPriv`. It is now a top-level `UNION ALL` of the two `TOP` branches, and `InteropPort.ListItemMessages` merges the rows by header id, newest first, capped. `LOGSQL` is the port's only other statement and compiles cold. `InteropHostGate` gains a test that purges `USER`'s cached queries before each unprivileged read; `InteropHostEdges` gains one that reads an item with headers on both sides.
 
-- Record Map and batch classes are `%XML.Adaptor`, so they are tested first.
-- Segments and EDI XML are documents.
-- An X12 parse saves rows, which the test deletes, leaving a named residue.
-- 529 of `HSCUSTOM`'s 646 transformations need an `existing` target, created with `%New()`.
+**Review.** Two layers ran; 8 findings, none high. Patched: 2 medium and 2 low (the merge and cap test, the newest-rows check, the privilege premise, the run record). Rejected: 2 low and 2 false, each with its reason in the Triage Log. Nothing deferred. Follow-up review recommended: false.
 
-Rosters and the client were mapped against `892c89d0`. The spec carries no owner question. The spine and EXPERIENCE.md drafts are under Design Notes › For the spec gate. The spec passes `markdownlint-cli2` and `check-prose.py`.
+**Verification.** On `ocupilot-b-ci`, final tree: `InteropHostGate` 4 green run cold after a purge of `USER`'s cached queries, `InteropHostEdges` 9 green, `InteropHostRead` 7 green; from the implement pass, before the test-only patch and with the port unchanged since: `InteropHostTest` 12, `InteropHostTestEdges` 5, `InteropRuntimeDescriptor` 14, `InteropHostDescriptor` 8, `InteropTransformTest` 7, `InteropTestDescriptor` 13, `InteropTransformTestRefusals` 13, `InteropTransformTestGate` 3. `check-objectscript.py` and `lint-docs.sh` are clean. Four mutations (one in the implement pass, three in review) were each observed red and reverted byte-identical. The full sweep and Rule 30's fresh check are the lead's.

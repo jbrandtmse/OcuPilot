@@ -133,7 +133,7 @@ Method TestTheInteropSourceRefusals()
 
 /// <p>The four descriptors declare what the spec names: the interoperability area, their route,
 /// side-bar position, classic page, pairs (the menu's and the page's own), entity type, scope, three
-/// prompts, the interop source on the right endpoint, and no action but the Productions' five.</p>
+/// prompts, the interop source on the right endpoint, and no action but the Productions' five and the transformations' Test.</p>
 /// <p>Mutation (Rule 19): drop <code>Status</code> from <code>InteropProductionList</code>'s read fields
 /// -- the Productions leg goes red.</p>
 Method TestTheFourDeclarationsRegister()
@@ -160,6 +160,9 @@ Method TestTheFourDeclarationsRegister()
         If $Piece(tRow, "|", 1) = "InteropProductionList" {
             Do $$$AssertEquals(tDeclaration.entityType _ "|" _ tActions _ "|" _ tDeclaration.read.fields.%ToJSON(), "production|start,stop,restart,update,recover|[""Name"",""Status"",""LastStartTime"",""LastStopTime""]", "Productions: the production entity, its five row actions and its four fields")
             Do $$$AssertEquals(tDeclaration.suggestedPrompts.%Get(0).groupKey, "promptGroupTroubleshooting", "Productions: prompts in the Troubleshooting group")
+        } ElseIf $Piece(tRow, "|", 1) = "InteropTransformList" {
+            Do $$$AssertEquals(tDeclaration.entityType _ "|" _ tActions _ "|" _ tDeclaration.table.emptyNextKey _ "|" _ tDeclaration.table.emptyAgentKey, "class|test||interopTransformsEmptyAgent", "Transforms: class rows, the one Test action (Story 20.27) and its own empty state")
+            Do $$$AssertEquals(tDeclaration.suggestedPrompts.%Get(0).groupKey, "promptGroupGettingStarted", tClass _ ": prompts in the Getting started group")
         } Else {
             Do $$$AssertEquals(tDeclaration.entityType _ "|" _ tActions _ "|" _ tDeclaration.table.emptyNextKey, "class||tableReadOnlyEmptyNext", tClass _ ": class rows, no action and the read-only empty state")
             Do $$$AssertEquals(tDeclaration.suggestedPrompts.%Get(0).groupKey, "promptGroupGettingStarted", tClass _ ": prompts in the Getting started group")
@@ -392,7 +395,7 @@ Method TestAnUnknownProductionAndAnUnservedOperation()
 Method TestEveryInteropErrorCodeResolvesToItsSentence()
 {
     Set tError = ..#ERROR
-    Set tCodes = $ListFromString("NAMESPACE,RUNNING,OTHER,TROUBLED,NOTRUNNING,UPTODATE,NOTTROUBLED,BUSY,STATE,STOP,RESTART,UPDATE,RECOVER,SUSPENDED,PARTSTOPPED,ITEMENABLED,ITEMDISABLED,ITEMDEFAULTSETTING,ITEMPOOLZERO,ITEMTAKEN,ITEMAMBIGUOUS,ITEMCLASS,ITEMNAME,ITEMVALUE,ITEMENABLEDREMOVE,ITEMSOURCECONTROL,ITEMPENDING,ITEMREMOVE,SETTINGSECRET,SETTINGSUPPLIED,SETTINGSAME,SETTINGDEFAULTED,SETTINGCORE,SETTINGVALUE,SETTINGLOCATION,SETTINGDESCENT,QUEUEEMPTY,QUEUECHANGED,JOBDEAD,JOBNOTRETRYING,JOBNOTSTOPPED,MESSAGEABORT,QUEUEABORT,JOBABORT,JOBSUSPEND,JOBSTOP,LOOKUPTAKEN,LOOKUPTABLECASE,LOOKUPSAME,LOOKUPSECRET,LOOKUPSOURCECONTROL,LOOKUPLOCKED,LOOKUPTABLENAME,LOOKUPKEY,LOOKUPVALUE,LOOKUPREMOVE,LOOKUPDELETE,LOOKUPIMPORTSHAPE,LOOKUPIMPORTCHANGED,LOOKUPTOOLARGE,LOOKUPEXPORTNAME,LOOKUPIMPORT,TESTDISABLED,TESTTARGETTYPE,TESTTARGETDISABLED,TESTREQUESTTYPE,TESTSECRET,TESTFIELD,TESTVALUE,TESTREQUEST,TESTSENDS")
+    Set tCodes = $ListFromString("NAMESPACE,RUNNING,OTHER,TROUBLED,NOTRUNNING,UPTODATE,NOTTROUBLED,BUSY,STATE,STOP,RESTART,UPDATE,RECOVER,SUSPENDED,PARTSTOPPED,ITEMENABLED,ITEMDISABLED,ITEMDEFAULTSETTING,ITEMPOOLZERO,ITEMTAKEN,ITEMAMBIGUOUS,ITEMCLASS,ITEMNAME,ITEMVALUE,ITEMENABLEDREMOVE,ITEMSOURCECONTROL,ITEMPENDING,ITEMREMOVE,SETTINGSECRET,SETTINGSUPPLIED,SETTINGSAME,SETTINGDEFAULTED,SETTINGCORE,SETTINGVALUE,SETTINGLOCATION,SETTINGDESCENT,QUEUEEMPTY,QUEUECHANGED,JOBDEAD,JOBNOTRETRYING,JOBNOTSTOPPED,MESSAGEABORT,QUEUEABORT,JOBABORT,JOBSUSPEND,JOBSTOP,LOOKUPTAKEN,LOOKUPTABLECASE,LOOKUPSAME,LOOKUPSECRET,LOOKUPSOURCECONTROL,LOOKUPLOCKED,LOOKUPTABLENAME,LOOKUPKEY,LOOKUPVALUE,LOOKUPREMOVE,LOOKUPDELETE,LOOKUPIMPORTSHAPE,LOOKUPIMPORTCHANGED,LOOKUPTOOLARGE,LOOKUPEXPORTNAME,LOOKUPIMPORT,TESTDISABLED,TESTTARGETTYPE,TESTTARGETDISABLED,TESTREQUESTTYPE,TESTSECRET,TESTFIELD,TESTVALUE,TESTREQUEST,TESTSENDS,TRANSFORMSOURCEFORMAT,TRANSFORMTARGETFORMAT,TRANSFORMCONTENT,TRANSFORMRUNS")
     For tI = 1:1:$ListLength(tCodes) {
         Set tName = $List(tCodes, tI)
         Set tCode = $Parameter(tError, tName)

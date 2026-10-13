@@ -1684,6 +1684,85 @@ test("a confirm's console lines reach its outcome and the proposal the card rend
   assert.equal(Object.hasOwn(event, 'output'), false, 'the change carries no console line');
 });
 
+test("a confirmed data transformation test's output reaches its outcome and the card as text, and no compile outcome (Story 20.27)", async () => {
+  // AD-39's seventh exception: the status sentence, the target's lines and the console are the confirm's own `output`, rendered on
+  // the card; the change event carries none, and `errors` is the test's own, never a compile's.
+  //
+  // Mutation (Rule 19): drop the transformation branch from `outputLinesOf` -> the lines legs go red; make `outputErrorsOf` read the
+  // answer's `errors` again -> the outcome leg goes red.
+  const bus = recordingBus();
+  const answer = {
+    status: 'transform',
+    sourceClass: 'Ens.StringRequest',
+    targetClass: 'Ens.StringResponse',
+    lines: ['probe-fail <b>x</b>'],
+    console: ['probe-device-line'],
+    errors: true,
+  };
+  const api = fakeApi({
+    [conversationReadPath('c1')]: [
+      ok({ turns: [{ seq: 1, message: 'do it', state: 'completed', proposals: [wireProposal()] }] }),
+    ],
+    [proposalConfirmPath('p1')]: [
+      ok({ proposalId: 'p1', state: 'confirmed', closedReason: '', confirmedAt: '2026-10-13T10:01:02Z', action: 'updated', output: answer }),
+    ],
+  });
+  const turn = new TurnStore({
+    api,
+    storage: memoryStorage({ [CONVERSATION_STORAGE_KEY]: 'c1' }),
+    navigationType: reloadedTab(),
+    now: () => NOW_MS,
+    bus,
+  });
+  await turn.restore();
+  const outcome = await turn.confirmProposal('p1');
+  const lines = [STRINGS.interopTransformFailed, 'probe-fail <b>x</b>', STRINGS.interopTransformConsole, 'probe-device-line'];
+  assert.deepEqual(outcome.output, lines, 'the outcome carries the sentence, the error text and the console');
+  assert.deepEqual(turn.entries()[0].proposals[0].output, lines, 'and so does the proposal the card renders');
+  assert.equal(outcome.outputErrors, null, 'a failed transformation is no compile error');
+  assert.equal(Object.hasOwn(turn.entries()[0].proposals[0], 'outputErrors'), false, 'and the card is handed no compile outcome');
+  const event = bus.events.find((candidate) => candidate.kind === 'changed');
+  assert.ok(event, 'the confirm publishes a change');
+  assert.equal(JSON.stringify(event).includes('probe-device-line'), false, 'the change carries no console line');
+  assert.equal(JSON.stringify(event).includes('probe-fail'), false, 'and no error line');
+});
+
+test("a confirmed data transformation test's answer at the instance's output bound reaches the card whole, its cut marker last (Story 20.27)", async () => {
+  // The instance holds a test's lines to one million characters and ends the last in the cut marker (`InteropPort.TESTCUT`); the card
+  // is handed every line of that answer, so what the person reads is what the instance sent, to the marker.
+  //
+  // Mutation (Rule 19): keep only the first thousand `lines` of the answer in `transformOutcomeLines` -> the length and last-line legs go red.
+  const cut = ' ... [cut]';
+  const lines = Array.from({ length: 10_000 }, (_, index) => `line-${String(index).padStart(94, '0')}`);
+  lines.push(`line-last${cut}`);
+  const answer = { status: 'done', sourceClass: 'Ens.StringRequest', targetClass: 'Ens.StringResponse', lines, console: ['probe-device-line'], errors: false };
+  const expected = [STRINGS.interopTransformDone, ...lines, STRINGS.interopTransformConsole, 'probe-device-line'];
+  assert.ok(expected.join('\n').length > 990_000, 'the answer is about a million characters');
+  const api = fakeApi({
+    [conversationReadPath('c1')]: [
+      ok({ turns: [{ seq: 1, message: 'do it', state: 'completed', proposals: [wireProposal()] }] }),
+    ],
+    [proposalConfirmPath('p1')]: [
+      ok({ proposalId: 'p1', state: 'confirmed', closedReason: '', confirmedAt: '2026-10-13T10:01:02Z', action: 'updated', output: answer }),
+    ],
+  });
+  const turn = new TurnStore({
+    api,
+    storage: memoryStorage({ [CONVERSATION_STORAGE_KEY]: 'c1' }),
+    navigationType: reloadedTab(),
+    now: () => NOW_MS,
+    bus: recordingBus(),
+  });
+  await turn.restore();
+  const outcome = await turn.confirmProposal('p1');
+  const held = turn.entries()[0].proposals[0].output ?? [];
+  for (const [name, shown] of [['the outcome', outcome.output ?? []], ['the proposal the card renders', held]]) {
+    assert.equal(shown.length, expected.length, `${name} carries every line`);
+    assert.ok(shown.every((line, index) => line === expected[index]), `${name} carries each line as the instance sent it`);
+    assert.equal(shown[shown.length - 3], `line-last${cut}`, `${name} ends the target in the cut marker, before the console`);
+  }
+});
+
 test("a confirm's outcome carries the instance's own action and createdId, which the panel's change sentence reads (Story 10.6)", async () => {
   // The panel names the change from the outcome, so the outcome must carry what the change event
   // carries: the action through the same closed-set reading, and the createdId verbatim.

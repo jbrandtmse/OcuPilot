@@ -9242,6 +9242,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Api.ScreenAction.Run serializes the payload with %ToJSON() before the port's length check; Story 19.13's import shares the limit
 - 2026-10-02T18:45:35Z status=routed owner=burndown by=harvest note=Epic 19 burn-down: check the length before serialization, or map the <MAXSTRING> to the port's too-large code
 - 2026-10-02T19:20:03Z status=wontfix-accepted owner=19-3-the-source-editor-with-etag-conflict-detection by=cr note=reopen_if=a Save of pasted text over 3,400,000 characters is reported answering 500; a LOW, which burndown never owns
+- 2026-10-13T10:11:55Z occurrence=20-27-transformations-tested
 
 ### DW-1952: AD-61 rule 6 does not name PutDoc's error under a 2xx answer as 422 EXPLORER.SAVE.REFUSED, which Story 19.3's I/O matrix specifies and AtelierPort.Outcome ships
 - source: spec-19-3-the-source-editor-with-etag-conflict-detection.md | severity: med | fix-risk: low | footprint: out-of-footprint
@@ -11566,12 +11567,43 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-20-29-screens-load-on-demand.md (cr, CI rework 1) | severity: med | fix-risk: med | footprint: out-of-footprint
 - evidence: The user, role and web-app create forms hand off to DESCRIPTOR_EDIT_PAGES editors in other modules; on the first hand-off the router fetches that chunk while the create page renders its role=status Saved, which saveAndSettle reads as done (the language-server CI red's shape). No current spec acts on the editor before its content shows (inference).
 - 2026-10-13T04:15:56Z status=escalated owner=burndown by=cr note=decide: the hand-off warms the editor's loader before it navigates, or the spec's Remains bullet stands
+- 2026-10-13T06:52:56Z status=routed owner=burndown by=orchestrator note=ruling 2026-10-13: warm the editor's loader before the create-form hand-off navigates; Saved only after the editor opened; test holds the chunk
 
 ### DW-2373: AD-5's on-demand-pages bullet says each child's loadComponent is the loader ScreenOutlet's maps name; since the 20.29 CI rework it is rememberedPage(that loader)
 - source: spec-20-29-screens-load-on-demand.md (cr, CI rework 1) | severity: low | fix-risk: low | footprint: in-story
 - evidence: app.routes.ts withPage sets loadComponent: rememberedPage(loader), and the shipped-route specs compare against rememberedPage(base). AD-5's last bullet in ARCHITECTURE-SPINE.md still reads 'whose loadComponent is the loader ScreenOutlet's maps name for it'. The bullet's substance holds.
 - 2026-10-13T04:15:56Z status=open owner=20-29-screens-load-on-demand by=cr note=lead: Rule 20 light-path wording of AD-5 (through rememberedPage, which answers a loaded page at once)
 - 2026-10-13T04:18:51Z status=resolved-by:20-29-screens-load-on-demand by=adjudication note=AD-5 bullet amended 2026-10-13 (rememberedPage, one loader per page); memlog decision appended
+
+### DW-2376: Leaving an embedded vendor editor's screen inside OcuPilot drops the editor's unsaved changes without its own alert (Story 20.7 design; the screen's note asks the person to save first)
+- source: spec-20-7-the-three-embedded-vendor-editors.md (spec gate) | severity: med | fix-risk: med | footprint: in-epic
+- evidence: Measured at 20.7's plan: removing the frame raises no beforeunload alert; setting src again raises it but adds history entries. The classic portal's full-page editor raises the browser alert on leave.
+- 2026-10-13T06:51:49Z status=decision-pending owner=burndown by=spec_gate note=product call: keep as planned (note + Refresh), or a later story adds a leave guard that blanks the frame to raise the editor's own alert (amends AD-63)
+
+### DW-2378: A pasted HL7 message is read through ImportFromString, which translates its already-decoded text again, so a character past Latin-1 reaches the transformation test and the host test as '?'
+- source: spec-20-27-transformations-tested.md (cr) | severity: med | fix-risk: low | footprint: in-epic
+- evidence: Measured on ocupilot-b-ci: EnsLib.HL7.Message.ImportFromString of a PID-5 holding U+0151 reads it as 63 ('?'); ImportFromLibraryStream of a %Stream.TmpCharacter keeps 337. The classic Test Transform dialog hands HL7 a stream for this reason (TestTransform.cls:373-386); AD-62 item 11 and the spec's Parse bullet name ImportFromString.
+- 2026-10-13T10:11:54Z status=decision-pending owner=burndown by=cr note=spec-bound: amend AD-62 item 11 (Rule 5) to hand HL7 a character stream, then change both tests' parse
+
+### DW-2379: The host Test dialog's result is not announced: its status line is inserted with its text and has no role=status, so a screen reader hears nothing when a test ends
+- source: spec-20-27-transformations-tested.md (cr) | severity: med | fix-risk: low | footprint: in-epic
+- evidence: Story 20.27's review gave interop-transform-test-dialog.ts a mounted role=status region; interop-item-test-dialog.ts (Story 20.6) still draws its status only inside the result block. EXPERIENCE.md's WCAG 4.1.3 list names the Test connection result as role=status.
+- 2026-10-13T10:11:55Z status=routed owner=burndown by=cr note=20.6 is done: give the host dialog the same mounted status region; list both test results in EXPERIENCE.md's role=status set
+
+### DW-2380: InteropTransformMint is a third copy of the run-ArgumentProblem-before-the-fresh-read preamble (ExplorerImportMint, RestServiceCreateMint), where one Mint option would serve all three
+- source: spec-20-27-transformations-tested.md (cr) | severity: low | fix-risk: med | footprint: out-of-footprint
+- evidence: InteropTransformMint.cls:15-17 against ExplorerImportMint.cls:25-30 and RestServiceCreateMint.cls:26-34; the base Mint runs ArgumentProblem only after the fresh read (Kernel/Proposal/Mint.cls:218-230), a kernel file outside Epic 20.
+- 2026-10-13T10:11:55Z status=wontfix-accepted owner=20-27-transformations-tested by=cr note=reopen_if=a fourth Mint subclass adds the same ArgumentProblem-first preamble
+
+### DW-2381: InteropTransformTestGate copies InteropTestGate's ExpectedFor, ProbeAs and principal-removal loop beside the shared CreatePrincipals
+- source: spec-20-27-transformations-tested.md (cr) | severity: low | fix-risk: low | footprint: in-epic
+- evidence: InteropTransformTestGate.cls ExpectedFor, ProbeAs and OnAfterAllTests against InteropTestGate.cls:82-101, :122-130, :272-296; ProbeAs is copied across 17 gate classes, the project's convention, and a shared form is past a fix-pack item.
+- 2026-10-13T10:11:55Z status=wontfix-accepted owner=20-27-transformations-tested by=cr note=reopen_if=the two classes' ExpectedFor, ProbeAs or principal removal are found to behave differently
+
+### DW-2382: Story 20.6's send reads an EDI XML request through PastedXmlHere (AD-21), pinned only through its script form, because no probe production item accepts an EDI XML document
+- source: spec-20-27-transformations-tested.md (cr) | severity: low | fix-risk: low | footprint: in-epic
+- evidence: InteropPort.BuildTestRequestHere gained the PastedXmlHere refusal in Story 20.27's review; InteropTestDescriptor pins TestSnippet's twin and the transformation tests pin the helper, but a mutation dropping the send's call reddens nothing.
+- 2026-10-13T10:11:55Z status=wontfix-accepted owner=20-27-transformations-tested by=cr note=reopen_if=a probe production gains an item that accepts EnsLib.EDI.XML.Document
 ### DW-2370: /api/monitor/interop adds %All with no caller check, so with sign-in required on /api/monitor it serves every signed-in user (and answers anonymously on the default instance)
 - source: spec-18-37-interoperability-usage.md | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: measured on ocupilot 2026-10-12: GET /api/monitor/interop/v1/current/interfaces and /current/volume with no credentials answered 200; its code adds %All with no caller check (inference from source)
@@ -11593,6 +11625,11 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-13T04:27:29Z status=wontfix-accepted owner=18-42-allowed-directories-a-person-s-write by=cr note=reopen_if=the lead's next AD-8 or AD-53 touch, or a reader cites AD-8's today-list as the whole unadvertised set
 - 2026-10-13T04:29:39Z status=resolved-by:18-42-allowed-directories-a-person-s-write by=adjudication note=AD-8 today-list now names the allowed directories update (spine amendment, Story 18.42 code review)
 
+### DW-2383: An item's Messages read answers INTERNAL (SQLCODE -99) to a principal without SQL privilege when no cached query for its statement exists yet, so the first such reader after a fresh start or a purge sees an error
+- source: fresh_check 20.27 (runner) | severity: high | fix-risk: low | footprint: in-epic
+- evidence: Full sweep on a fresh ocupilot-b-ci: InteropHostGate 3/3 red (ItemMessages -99 'User OcuP204* is not privileged'); green alone once a privileged run cached the statement; red again after $SYSTEM.SQL.Purge() in USER.
+- 2026-10-13T11:53:55Z status=open owner=20-27-transformations-tested by=runner note=fix in 20.27 rework 1 ([Smoke] item); MESSAGESQL's IN (... UNION ...) subquery under %ExecDirectNoPriv
+- 2026-10-13T13:00:55Z status=resolved-by:20-27-transformations-tested by=adjudication note=07f23adb+re-review: MESSAGESQL top-level UNION ALL; InteropHostGate cold-cache test green after PurgeQueries; AD-29 amended
 ### DW-2377: IRIS defect candidate: a wallet collection use-resource holder's %Wallet.KeyValue.%OpenId fails #939 and writes Protect audit rows, while GetSecretValue reads the same secret
 - source: spec-18-41-the-wallet-credential-rung.md | severity: low | fix-risk: low | footprint: out-of-footprint
 - evidence: Measured on ocupilot-ci at Story 18.41's plan (probe OcuProbe1841, removed); the rung never calls %OpenId on a wallet class

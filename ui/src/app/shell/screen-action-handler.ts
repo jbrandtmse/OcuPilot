@@ -143,6 +143,8 @@ export const SCREEN_ACTION_DESCRIPTORS: readonly string[] = [
   'OcuPilot.Screen.Descriptor.InteropItemJobTab',
   // Story 20.6: an item's Test tab, whose Send test its own page's dialog sends.
   'OcuPilot.Screen.Descriptor.InteropItemTestTab',
+  // Story 20.27: Data transformations, whose Test its own page's dialog sends.
+  'OcuPilot.Screen.Descriptor.InteropTransformList',
 ];
 
 /**
@@ -420,6 +422,8 @@ const UNDRAWN_ACTIONS: Readonly<Record<string, readonly string[]>> = {
   'OcuPilot.Screen.Descriptor.InteropLookupEntryList': ['set'],
   // An item's Test tab's page registers Send test itself, whose dialog sends the request class and its fields (Story 20.6).
   'OcuPilot.Screen.Descriptor.InteropItemTestTab': ['test'],
+  // Data transformations' page registers Test itself, whose dialog sends the pasted message (Story 20.27).
+  'OcuPilot.Screen.Descriptor.InteropTransformList': ['test'],
 };
 
 /**

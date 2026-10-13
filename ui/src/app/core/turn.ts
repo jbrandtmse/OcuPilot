@@ -43,6 +43,7 @@ import { PRODUCTION_STATE_MOVED } from './proposal-view.ts';
 import { readBackOf, type ReadBack } from './read-back.ts';
 import { sqlOutcomeLines } from './sql-answer.ts';
 import { testAnswerOf, testOutcomeLines } from './test-answer.ts';
+import { transformAnswerOf, transformOutcomeLines } from './test-answer.ts';
 import type { ScreenContextPayload } from './screen-context';
 import type { NavigationKind, TokenStorage } from './token-store';
 import { type DraftOutcome, requestDraft } from './draft.ts';
@@ -501,6 +502,8 @@ export function outputLinesOf(output: unknown): readonly string[] {
   if (output === null || typeof output !== 'object') return [];
   if (typeof (output as Record<string, unknown>)['outcome'] === 'string') return sqlOutcomeLines(output);
   if (testAnswerOf(output) !== null) return testOutcomeLines(output);
+  // Story 20.27: a confirmed data transformation test answers its own status, classes, lines and console (AD-39's seventh exception).
+  if (transformAnswerOf(output) !== null) return transformOutcomeLines(output);
   const lines = (output as Record<string, unknown>)['lines'];
   return Array.isArray(lines) ? lines.filter((line): line is string => typeof line === 'string') : [];
 }
@@ -511,6 +514,8 @@ export function outputLinesOf(output: unknown): readonly string[] {
  */
 export function outputErrorsOf(output: unknown): boolean | null {
   if (output === null || typeof output !== 'object') return null;
+  // A host or data transformation test's `errors` is its own failure, never a compile's.
+  if (testAnswerOf(output) !== null || transformAnswerOf(output) !== null) return null;
   const record = output as Record<string, unknown>;
   return Array.isArray(record['lines']) && typeof record['errors'] === 'boolean' ? record['errors'] : null;
 }
