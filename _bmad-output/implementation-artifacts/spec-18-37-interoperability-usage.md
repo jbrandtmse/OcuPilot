@@ -63,7 +63,7 @@ Under `src/OcuPilot/` unless `ui/`, at `54af93be`.
 
    | Endpoint | Class query | Arguments | Fields |
    |---|---|---|---|
-   | `Interfaces` | `SYS.Monitor.Interop.Interface.Utils:InteropInterfaces` | `"","","","","",1,1,1,0` | `Type`, `Namespace`, `Protocol` text; `Active` boolean; `Count` number |
+   | `Interfaces` | `SYS.Monitor.Interop.Interface.Utils:InteropInterfaces` | `"","","","","",1,1,1,0` | `Type`, `Namespace`, `Protocol` text; one row per grouping: `Count` number (the `Active` 0 row's, all time), `ActiveNow` number (the `Active` 1 row's, 0 when absent) [AMENDED 2026-10-13 - see the Spec Change Log] |
    | `MessageVolume` | `%SYS.Monitor.Interop.Messages.Utils:MetricsTotalPerNamespace` | `"","",""` | `Namespace`, `Type` text; `Volume` number |
    | `DatabaseImpact` | `%SYS.Monitor.Interop.DatabaseImpact.Utils:Impact` | `$ZDATETIME(0,3)`, `$ZDATETIME(2980013,3)`, `""` | `Database` text; `DataCreated` number |
 
@@ -72,7 +72,7 @@ Under `src/OcuPilot/` unless `ui/`, at `54af93be`.
 
    | Class (route under `os-management/`, tool) | Label; tab position; side bar | Endpoint | Columns (field kind labelKey) | Filter; default sort | Empty state |
    |---|---|---|---|---|---|
-   | `InteropUsageTab` (`interoperability-usage`, `osmgmt.interopusage`) | `interopUsageLabel`, tab `interopUsageInterfacesTab`; 1; 22 | `Interfaces` | Type name `tableColumnType`; Namespace identifier `headerNamespaceLabel`; Protocol text `interopUsageColumnProtocol`; Active status `interopColumnActive`; Count number `interopColumnCount`; Namespace and Protocol `emptyKey` `interopUsageAll` | Type, Namespace, Protocol; Type asc | `interopUsageInterfacesEmpty` |
+   | `InteropUsageTab` (`interoperability-usage`, `osmgmt.interopusage`) | `interopUsageLabel`, tab `interopUsageInterfacesTab`; 1; 22 | `Interfaces` | Type name `tableColumnType`; Namespace identifier `headerNamespaceLabel`; Protocol text `interopUsageColumnProtocol`; Active now number `interopUsageColumnActiveNow` [AMENDED 2026-10-13 - see the Spec Change Log]; Count number `interopColumnCount`; Namespace and Protocol `emptyKey` `interopUsageAll` | Type, Namespace, Protocol; Type asc | `interopUsageInterfacesEmpty` |
    | `InteropUsageVolumeTab` (`interoperability-usage/volume`, `osmgmt.interopvolume`) | `interopUsageVolumeLabel`; 2; 0 | `MessageVolume` | Namespace name `headerNamespaceLabel`; Type text `tableColumnType`; Volume number `interopItemTabMessages` | Namespace, Type; Volume desc | `interopUsageVolumeEmpty` |
    | `InteropUsageImpactTab` (`interoperability-usage/impact`, `osmgmt.interopimpact`) | `interopUsageImpactLabel`; 3; 0 | `DatabaseImpact` | Database name `systemInfoDatabase`; DataCreated number `interopUsageColumnDataCreated` | Database; DataCreated desc | `interopUsageImpactEmpty` |
 
@@ -81,7 +81,7 @@ Under `src/OcuPilot/` unless `ui/`, at `54af93be`.
 **Tests** (under 500 lines each; probes `OcuProbe1837*`):
 
 5. `Test/MonitorPortFixture.cls`, add-only: `SetUsageRows(pEndpoint, pJson)`, `SetUsageRaise`, `UsageCalls()`, `UsageNamespace()`, a `UsageSource` override; `Clear` forgets them.
-6. `Test/InteropUsagePort.cls` (new), through the fixture: typing (`"1"` to `true`, `"12"` to `12`, a totals `""` kept); the cut; a bad `maxRows` 400 and the gate 403 (`ScreenGate`), `UsageCalls` 0; a raise 500, `LogCalls` 1; `UsageNamespace` `%SYS`, the caller's restored. Live: each endpoint 200, exactly its fields per row; the queries' `FormalSpec` and `ROWSPEC` pinned (`%Dictionary.CompiledQuery`, `%SYS`).
+6. `Test/InteropUsagePort.cls` (new), through the fixture: typing (`"12"` to `12`, a totals `""` kept; each grouping's two vendor rows merged into `Count` and `ActiveNow` [AMENDED 2026-10-13 - see the Spec Change Log]); the cut; a bad `maxRows` 400 and the gate 403 (`ScreenGate`), `UsageCalls` 0; a raise 500, `LogCalls` 1; `UsageNamespace` `%SYS`, the caller's restored. Live: each endpoint 200, exactly its fields per row; the queries' `FormalSpec` and `ROWSPEC` pinned (`%Dictionary.CompiledQuery`, `%SYS`).
 7. `Test/InteropUsageDescriptor.cls` (new, as `MetricsDescriptor`): the declarations (the two `emptyKey`s included) and tab group; a `Cases` corpus (four endpoints sound; `Sensors`, type `GET`, a `rowGet` refused); each read through `ReadFixture` over armed rows; the three read tools.
 8. `Test/InteropUsageGate.cls` (new, as `DashboardDrillDownGate`), `Test/InteropUsageProbe.cls` (extends `MetricsProbe`, prefix `OcuProbe1837`): on each tool, `Exact` (`%Admin_Operate:U,%DB_IRISSYS:R`) 200, `NoOperate` (`%Admin_Manage:U,%DB_IRISSYS:R`) 403 `%Admin_Operate:USE`, `NoSys` (`%Admin_Operate:U`) 403 `%DB_IRISSYS:READ`, anonymous 401. `scripts/ci-throwaway.sh` after :427, add-only: `# classes: InteropUsageGate`.
 9. Client: `ui/tools/screen-mirror.test.mjs`, add-only "Story 18.37" over the new corpus, as :2954; new `ui/browser/interop-usage.browser-spec.mjs` (as `license-usage`'s): open the side-bar entry; the strip shows three tabs; each, once answered (no `[aria-busy="true"]`), shows the note and its read's row count then, or its empty state; an Interfaces totals row's Namespace reads "All".
@@ -136,7 +136,29 @@ Code review 2026-10-13 (four layers, full-opus). Severity, fix-risk, footprint a
 - `false` Interfaces never shows its empty state on a fresh instance - such an instance has recorded interfaces (above), shown as the classic page shows them, zero-count types included; the empty list is pinned by armed `[]`.
 - `false` QA's test is uncommitted - the lead commits it with the review's patches.
 
+### Review Findings (rework 1 re-review)
+
+Code review 2026-10-13 of `7726bd42..HEAD` (four layers, full-opus). After the patches, on `ocupilot-ci`: `InteropUsagePort` 41 (11), `InteropUsageDescriptor` 42 (6), `MonitorPort` 43 (14); `check-objectscript` clean. Checklist: DW-2384 holds in code and tests, and the spec's Tasks 1, 3 and 6 still describe `Active` (rejected below, the lead's); DW-2385 holds, and the real source's column names are now pinned too.
+
+- [x] [Review][Patch] `medium`, fix-risk low, in-story: no test read the live `Active` column - with the interfaces line dropped from `UsageColumns` every Active now read 0 and every test stayed green, and the grouping count no longer noticed a source that lost the `Active` 1 rows - the signature test now checks the columns `UsageColumns` answers against `ROWSPEC`, and the live test compares each grouping's `ActiveNow` and `Count` with the vendor's own `Active` 1 and `Active` 0 counts, with a floor that some grouping is active now (run 39) [src/OcuPilot/Test/InteropUsagePort.cls:383]
+- [x] [Review][Patch] `medium`, fix-risk low, in-story: the column names the real source asks for message volume and database impact were pinned only where the instance holds those rows, and DW-2385's test reaches `Usage`'s projection, not `UsageSource` - covered by the signature test's column check (run 40); that test's doc now says it pins `Usage` over armed rows [src/OcuPilot/Test/InteropUsagePort.cls:449]
+- [x] [Review][Patch] `low`, fix-risk low, in-story: `TestAGroupingTheVendorAnswersTwiceReadsAsOneRow` pinned `Count` 0 beside `ActiveNow` 2 for a lone `Active` 1 row, a shape neither instance answers and the vendor's counts exclude - that row removed, the lone `Active` 0 row still pinned, the cap leg re-shown red (run 40) [src/OcuPilot/Test/InteropUsagePort.cls:141]
+- [x] [Review][Patch] `low`, fix-risk low, in-story: four stale wordings - the descriptor read test's "one typed row per armed row", the live count message, the impact test's "zero leg", and `COLUMNSINTERFACES` without its no-start-date condition [src/OcuPilot/Test/InteropUsageDescriptor.cls:217]
+
+**Rejected** (8):
+
+- `low` The live cap and grouping-count legs compare two back-to-back live reads, counts included - Rule 30 allows a comparison with the store's own read at that moment, the vendor changes a count only when an interface is enabled or disabled (inference), and comparing keys alone would lose the cap leg's mutation; reopen_if a leg reddens with counts that differ between its two reads.
+- `low` The interfaces query is read whole in process - AD-36 bounds what reaches the browser and the model, which `Usage` cuts after the merge; the vendor answers at most two rows per type, namespace and protocol (16 here), and a bounded read would rely on the two rows being adjacent (inference).
+- `low` The spec's Tasks 1, 3 and 6 still read `Active` boolean, the Active status column and `"1"` to `true`, with no Spec Change Log entry - the fix edits the spec under review; the Rule 5 amendment record is the lead's, and the Rework 1 subsection states the ruling.
+- `low` "Count" beside "Active now" is not explained on screen, and the shared note reads oddly beside a current count - Task 4's strings and the ruling's labels; the note bounds the counts to the data the instance keeps.
+- `false` Two vendor rows sharing type, namespace, protocol and `Active` would overwrite each other - neither instance answers one, and the vendor's own `%SYS.Ensemble.SetSAMSensorsForInteropInterfaces` (:783-812) keys one sensor per those four values.
+- `low` An empty vendor `Count` would read as text - `ROWSPEC` types it `%Integer`, both instances answer a number on every row, and it is the typing rule every number field had before the rework.
+- `low` The spec's residual risk "the armed rows alone pin the pair" is untrue of the production read - a spec edit; the live grouping-count leg now pins the pair.
+- `low` DW-2384 and DW-2385 carry no closing trailer - not a code finding; the lead adjudicates both.
+
 ## Spec Change Log
+
+- 2026-10-13, lead, rework 1 (Rule 5 tier 1, orchestrator ruling B on DW-2384): Tasks 1, 3 and 6 read `Active` as a boolean column; the vendor answers each grouping twice with no start date, so the read answers one row per grouping with the all-time `Count` and a numeric `ActiveNow`, and the tab shows an "Active now" number column. Intent unchanged (the classic page's usage, read accurately).
 
 - 2026-10-12, lead, spec gate: ready; AD-29, AD-36, AD-8, AD-7 and AD-44 amended as proposed; the `/api/monitor/interop` candidate filed as DW-2370 (decision-pending, owner hold); DW-2328 occurrence added. Rule 11: Task 10's literal edits sent to the orchestrator as a union ask. Epic 20's 20.29 (lazy screens): no page wrapper here; a page added later becomes a loader line.
 
@@ -244,6 +266,8 @@ Code review 2026-10-13 (four layers, full-opus). Severity, fix-risk, footprint a
 - (Rework 1) mutation: DW-2384 (the tab), `InteropUsageTab` declaring `Active` for `ActiveNow` in its context, read and sort -> `InteropUsageGate` `TestTheExactPairsReadAllThree` red (run 15) and `InteropUsageDescriptor` three tests red (run 16); the `ActiveNow` column's kind `status` for `number` -> `Descriptor` `TestEveryShippedReadShapeMatchesTheCommittedTable` red (run 20) and `InteropUsageDescriptor` `TestTheThreeTabsDeclareTheirReadsAndFormOneGroup` red (run 21); the column's label key the old `interopColumnActive`, mirror regenerated, bundle rebuilt and redeployed -> `interop-usage.browser-spec.mjs` headers leg red ("Interfaces: the declared headers", "Active" for "Active now"); each reverted byte-identical, the mirror identical, rebuilt and redeployed -> 4 of 4 green, and `InteropUsageDescriptor` 26 (6 of 6), `InteropUsageGate` 27 (4 of 4) and `Descriptor` 30 (60 of 60) green.
 - (Rework 1) mutation: DW-2385, a zero typed as text in `Usage` -> `InteropUsagePort` `TestDatabaseImpactMapsTheVendorRowsByColumnName` red (run 13), with the three tests that read a zero; the renamed `FIELDSDATABASEIMPACT` field above reddens it too (run 31); reverted byte-identical. `TestEachListTypesItsFieldsAndKeepsATotalsRow` types one non-zero impact row; the new test arms three rows over `MonitorPortFixture`, one with a zero, one with its columns reversed and one with a column the port does not name, and seeds no vendor row.
 - (Rework 1) `ToolRoundTrip` 28 (2) and `MetricsDescriptor` 29 (6) green on the final tree.
+- (CR rework 1) mutation: DW-2384 (the column read), the interfaces line dropped from `UsageColumns`, so `UsageSource` asks for `ActiveNow` and no `Active` -> `InteropUsagePort` `TestTheVendorQueriesKeepTheirSignatures` (Interfaces columns leg) and `TestTheLiveReadsHoldEveryRowTheVendorQueriesAnswer` (grouping counts leg) red, the other nine green (run 39); reverted byte-identical.
+- (CR rework 1) mutation: DW-2385 (the column read), the `name:kind` split dropped from `UsageColumns`, applied with the vendor rows cut at the cap before `Usage` merges them (the two redden disjoint tests) -> `TestTheVendorQueriesKeepTheirSignatures` red on its MessageVolume and DatabaseImpact legs, and `TestAGroupingTheVendorAnswersTwiceReadsAsOneRow` (cap leg, over its seven armed rows), `TestEachListIsCutAtTheCap` and the live cap leg red (run 40); reverted byte-identical, then `InteropUsagePort` 41 (11 of 11), `InteropUsageDescriptor` 42 (6 of 6) and `MonitorPort` 43 (14 of 14) green, `ocupilot-ci` at S0.
 
 **S0:** no `OcuProbe1837*` user or role, no scratch class.
 

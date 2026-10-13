@@ -76,6 +76,13 @@ ClassMethod UsageNamespace() As %String
     Quit $Get(^||OcuPilotMonitorPortFixture("usageNamespace"))
 }
 
+/// <p>The columns <method>UsageSource</method> asks the vendor query behind <var>pEndpoint</var> for, as the
+/// port's <method>UsageColumns</method> answers them.</p>
+ClassMethod Columns(pEndpoint As %String) As %String
+{
+    Quit ..UsageColumns(pEndpoint)
+}
+
 /// <p>Forget every override and count.</p>
 ClassMethod Clear()
 {

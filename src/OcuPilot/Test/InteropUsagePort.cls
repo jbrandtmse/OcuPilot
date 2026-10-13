@@ -131,8 +131,8 @@ Method TestEachListTypesItsFieldsAndKeepsATotalsRow()
 /// now and <code>Active</code> 0 every interface enabled at any time, the active ones included. A grouping
 /// answered 4 and 11 reads as one row, <code>ActiveNow</code> 4 and <code>Count</code> 11, whichever row comes
 /// first; groupings that differ in type, namespace or protocol stay apart, in the order their first row came
-/// in; a grouping answered one row reads <code>0</code> for the other; and the cut counts groupings, not vendor
-/// rows.</p>
+/// in; a grouping answered only its <code>Active</code> 0 row reads <code>ActiveNow</code> <code>0</code>; and
+/// the cut counts groupings, not vendor rows.</p>
 /// <p>Mutation (Rule 19): take <code>Count</code> from the <code>Active</code> 1 row and <code>ActiveNow</code>
 /// from the <code>Active</code> 0 row in <method>OcuPilot.Port.MonitorPort.Groupings</method> -- the merged
 /// rows go red; drop <code>Protocol</code> from the grouping key there -- the two web API groupings of one
@@ -141,11 +141,11 @@ Method TestEachListTypesItsFieldsAndKeepsATotalsRow()
 Method TestAGroupingTheVendorAnswersTwiceReadsAsOneRow()
 {
     Set tRaw = []
-    For tRow = $ListBuild("Inbound", "", "", 1, 4), $ListBuild("Inbound", "", "", 0, 11), $ListBuild("Web API", "USER", "REST/SOAP", 0, 9), $ListBuild("Outbound", "", "", 1, 2), $ListBuild("Outbound", "USER", "", 0, 5), $ListBuild("Outbound", "USER", "", 1, 3), $ListBuild("Web API", "USER", "", 1, 1), $ListBuild("Web API", "USER", "", 0, 6) {
+    For tRow = $ListBuild("Inbound", "", "", 1, 4), $ListBuild("Inbound", "", "", 0, 11), $ListBuild("Web API", "USER", "REST/SOAP", 0, 9), $ListBuild("Outbound", "USER", "", 0, 5), $ListBuild("Outbound", "USER", "", 1, 3), $ListBuild("Web API", "USER", "", 1, 1), $ListBuild("Web API", "USER", "", 0, 6) {
         Do tRaw.%Push({"Type": ($List(tRow, 1)), "Namespace": ($List(tRow, 2)), "Protocol": ($List(tRow, 3)), "Active": ($List(tRow, 4) _ ""), "Count": ($List(tRow, 5) _ "")})
     }
     Do ##class(OcuPilot.Test.MonitorPortFixture).SetUsageRows("Interfaces", tRaw.%ToJSON())
-    Set tExpected = $ListBuild("{""Type"":""Inbound"",""Namespace"":"""",""Protocol"":"""",""ActiveNow"":4,""Count"":11}", "{""Type"":""Web API"",""Namespace"":""USER"",""Protocol"":""REST/SOAP"",""ActiveNow"":0,""Count"":9}", "{""Type"":""Outbound"",""Namespace"":"""",""Protocol"":"""",""ActiveNow"":2,""Count"":0}", "{""Type"":""Outbound"",""Namespace"":""USER"",""Protocol"":"""",""ActiveNow"":3,""Count"":5}", "{""Type"":""Web API"",""Namespace"":""USER"",""Protocol"":"""",""ActiveNow"":1,""Count"":6}")
+    Set tExpected = $ListBuild("{""Type"":""Inbound"",""Namespace"":"""",""Protocol"":"""",""ActiveNow"":4,""Count"":11}", "{""Type"":""Web API"",""Namespace"":""USER"",""Protocol"":""REST/SOAP"",""ActiveNow"":0,""Count"":9}", "{""Type"":""Outbound"",""Namespace"":""USER"",""Protocol"":"""",""ActiveNow"":3,""Count"":5}", "{""Type"":""Web API"",""Namespace"":""USER"",""Protocol"":"""",""ActiveNow"":1,""Count"":6}")
     Set tSC = ..ReadList("Interfaces", "", .tRows, .tHttp, .tFault)
     Do $$$AssertStatusOK(tSC, "the read succeeds")
     Do $$$AssertEquals(tHttp, 200, "with 200")
@@ -153,17 +153,18 @@ Method TestAGroupingTheVendorAnswersTwiceReadsAsOneRow()
     For tI = 1:1:$ListLength(tExpected) {
         Set tJson = tJson _ $Select(tI = 1: "", 1: ",") _ $List(tExpected, tI)
     }
-    Do $$$AssertEquals($Select($IsObject(tRows): tRows.%ToJSON(), 1: "absent"), "[" _ tJson _ "]", "eight vendor rows read as five groupings, each with the count enabled at any time and the count active now")
+    Do $$$AssertEquals($Select($IsObject(tRows): tRows.%ToJSON(), 1: "absent"), "[" _ tJson _ "]", "seven vendor rows read as four groupings, each with the count enabled at any time and the count active now")
     Set tSC = ..ReadList("Interfaces", 3, .tCut, .tHttp, .tFault)
     Do $$$AssertEquals($Select($IsObject(tCut): tCut.%Size(), 1: "absent"), 3, "a cap of three reads three groupings, not three vendor rows")
     Do $$$AssertEquals($Select($IsObject(tCut): tCut.%Get(2).%ToJSON(), 1: "absent"), $List(tExpected, 3), "the third being the third grouping")
 }
 
-/// <p>The database impact list maps the vendor's rows by column name: the port's two fields in the port's
-/// order whatever order the columns came in, a zero kept as the number <code>0</code>, a count beyond 32 bits
-/// kept as a number, a database name kept as answered, and a column the port does not name left out.</p>
-/// <p>Mutation (Rule 19): type a zero as text in <method>OcuPilot.Port.MonitorPort.Usage</method> -- the zero
-/// leg goes red.</p>
+/// <p>Over armed rows, <method>OcuPilot.Port.MonitorPort.Usage</method> maps each database impact row by
+/// column name: the port's two fields in the port's order whatever order the columns came in, a zero kept as
+/// the number <code>0</code>, a count beyond 32 bits kept as a number, a database name kept as answered, and a
+/// column the port does not name left out.</p>
+/// <p>Mutation (Rule 19): type a zero as text in <method>OcuPilot.Port.MonitorPort.Usage</method> -- the
+/// assertion goes red.</p>
 Method TestDatabaseImpactMapsTheVendorRowsByColumnName()
 {
     Do ##class(OcuPilot.Test.MonitorPortFixture).SetUsageRows("DatabaseImpact", "[{""Database"":""USER"",""DataCreated"":""0""},{""DataCreated"":""123456789012"",""Database"":""HSCUSTOM""},{""Database"":""IRISTEMP"",""DataCreated"":""3"",""Surplus"":""x""}]")
@@ -317,9 +318,13 @@ Method TestTheLiveQueriesAnswerExactlyTheirFields()
 
 /// <p>The rows the vendor query behind <var>pEndpoint</var> answers when run directly in <code>%SYS</code>
 /// over every date with every grouping on, the caller's namespace restored; -1 when it cannot be run. The
-/// interfaces query answers each grouping twice, so for it the count is its groupings.</p>
-ClassMethod VendorRowCount(pEndpoint As %String) As %Integer
+/// interfaces query answers each grouping twice, so for it the count is its groupings, and
+/// <var>pCounts</var> holds each grouping's two counts as
+/// <code>pCounts($ListBuild(type, namespace, protocol)) = "activeNow/count"</code>, the <code>Active</code>
+/// 1 row's and the <code>Active</code> 0 row's.</p>
+ClassMethod VendorRowCount(pEndpoint As %String, Output pCounts) As %Integer
 {
+    Kill pCounts
     Set tNamespace = $NAMESPACE
     Set tCount = -1
     Try {
@@ -342,10 +347,11 @@ ClassMethod VendorRowCount(pEndpoint As %String) As %Integer
                     Continue
                 }
                 Set tKey = $ListBuild(tRS.Get("Type"), tRS.Get("Namespace"), tRS.Get("Protocol"))
-                If '$Data(tSeen(tKey)) {
-                    Set tSeen(tKey) = 1
+                If '$Data(pCounts(tKey)) {
+                    Set pCounts(tKey) = "0/0"
                     Set tCount = tCount + 1
                 }
+                Set $Piece(pCounts(tKey), "/", $Select(tRS.Get("Active") = 1: 1, 1: 2)) = +tRS.Get("Count")
             }
             If $$$ISERR(tSC) Set tCount = -1
             Do tRS.Close()
@@ -362,26 +368,41 @@ ClassMethod VendorRowCount(pEndpoint As %String) As %Integer
 /// date with every grouping on (for the interfaces, every grouping the query answers), so a narrower argument
 /// list or date window in the port fails here for each list the instance holds rows of: the interfaces on
 /// every instance of this image, message volume once a production has run and database impact once a message
-/// purge has, since the vendor writes neither on its own. A cap of two over the interfaces reads the first two
-/// groupings whole, because the query is read whole and the cut counts groupings. The real
-/// <method>OcuPilot.Port.MonitorPort.UsageSource</method> answers an error status for an endpoint it has no
-/// query for.</p>
+/// purge has, since the vendor writes neither on its own. Each interfaces grouping reads the counts the
+/// vendor query answers for it, <code>ActiveNow</code> its <code>Active</code> 1 row's and <code>Count</code>
+/// its <code>Active</code> 0 row's, and some grouping has interfaces active now. A cap of two over the
+/// interfaces reads the first two groupings whole, because the query is read whole and the cut counts
+/// groupings. The real <method>OcuPilot.Port.MonitorPort.UsageSource</method> answers an error status for an
+/// endpoint it has no query for.</p>
 /// <p>Mutation (Rule 19): narrow the interfaces call in <method>OcuPilot.Port.MonitorPort.UsageSource</method>
 /// to <code>1, 0, 0, 0</code> -- the interfaces leg goes red; start the message volume call in 2099 on an
-/// instance holding message volume -- the message volume leg goes red; hand the cap to the source for the
-/// interfaces in <method>OcuPilot.Port.MonitorPort.Usage</method> -- the cap leg goes red.</p>
+/// instance holding message volume -- the message volume leg goes red; drop the interfaces line from
+/// <method>OcuPilot.Port.MonitorPort.UsageColumns</method>, so no <code>Active</code> column is read -- the
+/// grouping counts leg goes red; hand the cap to the source for the interfaces in
+/// <method>OcuPilot.Port.MonitorPort.Usage</method> -- the cap leg goes red.</p>
 Method TestTheLiveReadsHoldEveryRowTheVendorQueriesAnswer()
 {
     For tI = 1:1:$Length(..#ENDPOINTS, ",") {
         Set tEndpoint = $Piece(..#ENDPOINTS, ",", tI)
-        Set tVendor = ..VendorRowCount(tEndpoint)
+        Set tVendor = ..VendorRowCount(tEndpoint, .tCounts)
         Do $$$AssertTrue(tVendor >= 0, tEndpoint _ ": the vendor query runs directly")
         Kill tQuery
         Set tQuery("maxRows") = 1000
         Set tSC = ##class(OcuPilot.Port.MonitorPort).Invoke(tEndpoint, ##class(OcuPilot.Port.MonitorPort).#TYPELIST, .tQuery, "", .tRows, .tHttp, .tFault)
         Do $$$AssertStatusOK(tSC, tEndpoint _ ": the live read succeeds")
         If (tVendor < 0) || (tVendor >= 1000) || '$IsObject($Get(tRows)) Continue
-        Do $$$AssertEquals(tRows.%Size(), tVendor, tEndpoint _ ": the port answers every row the vendor query holds")
+        Do $$$AssertEquals(tRows.%Size(), tVendor, tEndpoint _ ": the port answers every row the vendor query holds" _ $Select(tEndpoint = "Interfaces": ", one per grouping", 1: ""))
+        If tEndpoint '= "Interfaces" Continue
+        Set tMatched = 0
+        Set tActive = 0
+        Set tIterator = tRows.%GetIterator()
+        While tIterator.%GetNext(.tIndex, .tRow) {
+            Set tVendorCounts = $Get(tCounts($ListBuild(tRow.Type, tRow.Namespace, tRow.Protocol)))
+            If tVendorCounts = (tRow.ActiveNow _ "/" _ tRow.Count) Set tMatched = tMatched + 1
+            If +$Piece(tVendorCounts, "/", 1) > 0 Set tActive = tActive + 1
+        }
+        Do $$$AssertEquals(tMatched, tRows.%Size(), "Interfaces: each grouping reads the vendor's Active 1 count as ActiveNow and its Active 0 count as Count")
+        Do $$$AssertTrue(tActive > 0, "Interfaces: some grouping has interfaces active now, as every instance of this image has")
     }
     Kill tQuery
     Set tQuery("maxRows") = 1000
@@ -418,15 +439,17 @@ Method TestAnEmptyListIsAnsweredWholeNotAsAFault()
 }
 
 /// <p>The vendor queries keep the signatures the port calls them by: <code>FormalSpec</code> and
-/// <code>ROWSPEC</code> as the instance compiles them in <code>%SYS</code>, and the fields the port reads
-/// are exactly the columns <code>ROWSPEC</code> names, so a vendor release that reorders a parameter or
-/// renames a column fails here and not as a wrong table.</p>
+/// <code>ROWSPEC</code> as the instance compiles them in <code>%SYS</code>, and the columns the port asks the
+/// result set for (<method>OcuPilot.Port.MonitorPort.UsageColumns</method>) are exactly the columns
+/// <code>ROWSPEC</code> names, so a vendor release that reorders a parameter or renames a column fails here
+/// and not as a wrong table.</p>
 /// <p>Mutation (Rule 19): rename a field in <parameter>OcuPilot.Port.MonitorPort.FIELDSDATABASEIMPACT</parameter>
-/// -- the columns leg goes red.</p>
+/// -- the columns leg goes red; drop the interfaces line from <method>OcuPilot.Port.MonitorPort.UsageColumns</method>,
+/// or its <code>name:kind</code> split -- the columns leg goes red.</p>
 Method TestTheVendorQueriesKeepTheirSignatures()
 {
     Set tNamespace = $NAMESPACE
-    Set tCases = $ListBuild($ListBuild("SYS.Monitor.Interop.Interface.Utils||InteropInterfaces", "pStart:%TimeStamp="""",pEnd:%TimeStamp="""",pNamespace:%String="""",pProtocol:%String="""",pType:%String="""",pIncludeTotals:%Boolean=1,pIncludePerNamespace:%Boolean=1,pIncludePerProtocol:%Boolean=1,pNSpaceContains:%Boolean=0", "Type:%String,Namespace:%String,Protocol:%String,Count:%Integer,Active:%Boolean", "COLUMNSINTERFACES"), $ListBuild("%SYS.Monitor.Interop.Messages.Utils||MetricsTotalPerNamespace", "pStartDate:%TimeStamp="""",pEndDate:%TimeStamp="""",pNamespace:%String=""""", "Namespace:%String,Type:%String,Volume:%BigInt", "FIELDSMESSAGEVOLUME"), $ListBuild("%SYS.Monitor.Interop.DatabaseImpact.Utils||Impact", "pStartDate:%TimeStamp,pEndDate:%TimeStamp,pDatabase:%String=""""", "Database:%String,DataCreated:%Integer", "FIELDSDATABASEIMPACT"))
+    Set tCases = $ListBuild($ListBuild("SYS.Monitor.Interop.Interface.Utils||InteropInterfaces", "pStart:%TimeStamp="""",pEnd:%TimeStamp="""",pNamespace:%String="""",pProtocol:%String="""",pType:%String="""",pIncludeTotals:%Boolean=1,pIncludePerNamespace:%Boolean=1,pIncludePerProtocol:%Boolean=1,pNSpaceContains:%Boolean=0", "Type:%String,Namespace:%String,Protocol:%String,Count:%Integer,Active:%Boolean", "Interfaces"), $ListBuild("%SYS.Monitor.Interop.Messages.Utils||MetricsTotalPerNamespace", "pStartDate:%TimeStamp="""",pEndDate:%TimeStamp="""",pNamespace:%String=""""", "Namespace:%String,Type:%String,Volume:%BigInt", "MessageVolume"), $ListBuild("%SYS.Monitor.Interop.DatabaseImpact.Utils||Impact", "pStartDate:%TimeStamp,pEndDate:%TimeStamp,pDatabase:%String=""""", "Database:%String,DataCreated:%Integer", "DatabaseImpact"))
     Set tPtr = 0
     While $ListNext(tCases, tPtr, tCase) {
         Set tActual = ""
@@ -444,16 +467,16 @@ Method TestTheVendorQueriesKeepTheirSignatures()
         }
         Do $$$AssertEquals(tActual, $List(tCase, 2), $List(tCase, 1) _ ": its parameters")
         Do $$$AssertEquals(tRowSpec, $List(tCase, 3), $List(tCase, 1) _ ": its columns")
-        Set tPortFields = $Parameter(..#PORT, $List(tCase, 4))
+        Set tPortColumns = ##class(OcuPilot.Test.MonitorPortFixture).Columns($List(tCase, 4))
         Set tSpecNames = ","
         For tJ = 1:1:$Length(tRowSpec, ",") {
             Set tSpecNames = tSpecNames _ $Piece($Piece(tRowSpec, ",", tJ), ":", 1) _ ","
         }
         Set tMatched = 0
-        For tJ = 1:1:$Length(tPortFields, ",") {
-            If $Find(tSpecNames, "," _ $Piece($Piece(tPortFields, ",", tJ), ":", 1) _ ",") Set tMatched = tMatched + 1
+        For tJ = 1:1:$Length(tPortColumns, ",") {
+            If $Find(tSpecNames, "," _ $Piece(tPortColumns, ",", tJ) _ ",") Set tMatched = tMatched + 1
         }
-        Do $$$AssertEquals(tMatched _ "/" _ $Length(tPortFields, ","), $Length(tRowSpec, ",") _ "/" _ $Length(tRowSpec, ","), $List(tCase, 4) _ ": the port reads exactly the columns the query answers")
+        Do $$$AssertEquals(tMatched _ "/" _ $Length(tPortColumns, ","), $Length(tRowSpec, ",") _ "/" _ $Length(tRowSpec, ","), $List(tCase, 4) _ ": the port asks for exactly the columns the query answers (" _ tPortColumns _ ")")
     }
 }
 

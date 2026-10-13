@@ -89,8 +89,9 @@ Parameter QUERYDATABASEIMPACT = "%SYS.Monitor.Interop.DatabaseImpact.Utils:Impac
 /// every interface enabled at any time and <code>ActiveNow</code> those active now.</p>
 Parameter FIELDSINTERFACES = "Type:text,Namespace:text,Protocol:text,ActiveNow:number,Count:number";
 
-/// <p>The columns <parameter>QUERYINTERFACES</parameter> answers that the port reads. Each grouping
-/// comes back as two rows, <code>Active</code> <code>1</code> counting the interfaces active now and
+/// <p>The columns <parameter>QUERYINTERFACES</parameter> answers that the port reads. Called with no start
+/// date, as <method>UsageSource</method> calls it, the query answers each grouping as two rows,
+/// <code>Active</code> <code>1</code> counting the interfaces active now and
 /// <code>Active</code> <code>0</code> every interface enabled at any time, active ones included.</p>
 Parameter COLUMNSINTERFACES = "Type,Namespace,Protocol,Active,Count";
 

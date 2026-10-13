@@ -214,7 +214,7 @@ Method TestEachReadAnswersItsArmedRowsAndReportsTheCut()
         Do $$$AssertEquals(tHttp, 200, tWhere _ "with 200")
         If '$IsObject($Get(tAnswer)) Continue
         Do $$$AssertEquals(tAnswer.fields.%ToJSON(), "[""" _ $Replace($Translate(..Tab(tI, 8), "/", ","), ",", """,""") _ """]", tWhere _ "the declared fields")
-        Do $$$AssertEquals(tAnswer.rows.%ToJSON() _ "|" _ tAnswer.truncated, $List(tExpected, tI) _ "|0", tWhere _ "one typed row per armed row, not truncated")
+        Do $$$AssertEquals(tAnswer.rows.%ToJSON() _ "|" _ tAnswer.truncated, $List(tExpected, tI) _ "|0", tWhere _ "one typed row per armed row (per grouping for the interfaces), not truncated")
         Do $$$AssertEquals(##class(OcuPilot.Test.MonitorPortFixture).UsageCalls() - tBefore _ " " _ ##class(OcuPilot.Test.MonitorPortFixture).UsageNamespace(), "1 %SYS", tWhere _ "from one query taken in %SYS")
 
         Set tSC = ##class(OcuPilot.Test.Read.ReadFixture).Execute(tClass, 1, .tCut, .tHttp, .tFault)
