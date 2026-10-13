@@ -14,6 +14,12 @@ ClassMethod Arm(pName As %String = "")
     Set ^||OcuPilotAllowListAgentSet = $ListBuild(pName)
 }
 
+/// <p>Raise from the resolve, as a registry that faults does, until <method>Disarm</method>.</p>
+ClassMethod ArmRaise()
+{
+    Set ^||OcuPilotAllowListAgentSet = $ListBuild("", 1)
+}
+
 ClassMethod Disarm()
 {
     Kill ^||OcuPilotAllowListAgentSet
@@ -31,6 +37,7 @@ ClassMethod Resolve(pName As %String, Output pTool As %DynamicObject, pUnadverti
 {
     Set pTool = ""
     Set tArmed = $List(^||OcuPilotAllowListAgentSet, 1)
+    If $ListGet(^||OcuPilotAllowListAgentSet, 2) Throw ##class(%Exception.StatusException).CreateFromStatus($$$ERROR($$$GeneralError, "OcuPilot.Test.AllowListAgentSet: the tool registry raised"))
     If tArmed = "" Quit $$$ERROR($$$GeneralError, "OcuPilot.Test.AllowListAgentSet: the tool registry cannot be read")
     If pName = tArmed Set pTool = {"name": (pName), "advertised": true}
     Quit $$$OK

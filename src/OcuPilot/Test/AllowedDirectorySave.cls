@@ -1,9 +1,9 @@
 /// <p>Story 18.42's route (AD-21's tenth case, AD-22, AD-34, AD-53, AD-55): <code>POST /allowed-directories</code> over the wire,
 /// as the suite's own account and as a principal short of the screen's pair -- the pair refusal that comes before the
-/// governance key, the key shipped off refusing <code>ALLOWLIST.OFF</code> with nothing changed, an add then a remove
+/// governance key, the key shipped off refusing <code>ALLOWLIST.OFF</code> with nothing changed, an add, a change and a remove
 /// written to the real <code>FSAccess</code> list and read back, the screen's action route reaching no tool, a body that is
-/// not the three strings, a held target answered busy, and what a server-path consumer resolves after an add from an
-/// unrestricted list and after a remove has emptied it.</p>
+/// not the three strings, a held target answered busy, a tool the agent can reach refused by the kernel on the route, and
+/// what a server-path consumer resolves after an add from an unrestricted list and after a remove has emptied it.</p>
 /// <p>Each method records the allow-list and the governance policy before it runs and restores both exactly afterwards,
 /// failure included, and creates and removes its probe directories under the manager directory. Changing the instance's
 /// allow-list and policy is why <method>OnBeforeAllTests</method> refuses unless <parameter>ARMINGVARIABLE</parameter> arms
@@ -32,6 +32,11 @@ Parameter PURPOSEID = "%GUIFileSelector";
 Parameter FIXTURE = "OcuPilot.Test.PathPortFixture";
 
 Parameter PATHPORT = "OcuPilot.Port.PathPort";
+
+/// <p>The route run in this process with the prohibited set whose registry a test arms, and that set.</p>
+Parameter ROUTE = "OcuPilot.Test.AllowedDirectorySaveFixture";
+
+Parameter SET = "OcuPilot.Test.AllowListAgentSet";
 
 /// <p>The principal that clears the API's floor and holds the screen's database pair but not
 /// <code>%Admin_FileSystemAccess:USE</code>, and its role.</p>
@@ -98,6 +103,7 @@ Method OnAfterAllTests() As %Status
 
 Method OnBeforeOneTest() As %Status
 {
+    Do $ClassMethod(..#SET, "Disarm")
     Do $ClassMethod(..#FIXTURE, "Reset")
     Set tSC = $ClassMethod(..#FIXTURE, "Snapshot", .tExists, .tRestricted, .tPaths)
     If $$$ISERR(tSC) Quit tSC
@@ -108,12 +114,13 @@ Method OnBeforeOneTest() As %Status
     Set tSC = ##class(OcuPilot.Test.GovernanceFixture).Snapshot(.tRows)
     If $$$ISERR(tSC) Quit tSC
     Set ..SavedPolicy = ..PolicyJson(.tRows)
-    For tSuffix = "a", "b" Do ##class(%File).CreateDirectoryChain(..Dir(tSuffix))
+    For tSuffix = "a", "b", "c" Do ##class(%File).CreateDirectoryChain(..Dir(tSuffix))
     Quit $$$OK
 }
 
 Method OnAfterOneTest() As %Status
 {
+    Do $ClassMethod(..#SET, "Disarm")
     Do $ClassMethod(..#FIXTURE, "Reset")
     Set tSC = $$$OK
     If ..SavedOk {
@@ -122,7 +129,7 @@ Method OnAfterOneTest() As %Status
         Do ..PolicyRows(..SavedPolicy, .tRows)
         Do $$$AssertStatusOK(##class(OcuPilot.Test.GovernanceFixture).Restore(.tRows), "the governance policy is put back")
     }
-    For tSuffix = "a", "b" Do ##class(%File).RemoveDirectory(..Dir(tSuffix))
+    For tSuffix = "a", "b", "c" Do ##class(%File).RemoveDirectory(..Dir(tSuffix))
     Quit tSC
 }
 
@@ -194,7 +201,7 @@ ClassMethod CodeOf(pBody) As %String
 
 /// <p>The key shipped off refuses <code>ALLOWLIST.OFF</code> with its published sentence, before the list is read, and the
 /// list is exactly as it was.</p>
-/// <p>Mutation (Rule 19): remove the <code>Gate.Decide</code> call from
+/// <p>Mutation (Rule 19): ignore the <code>Gate.Decide</code> verdict in
 /// <method>OcuPilot.Area.Security.AllowedDirectorySave.HandleSave</method> -- the add is written and this goes red.</p>
 Method TestTheKeyShippedOffRefusesAndChangesNothing()
 {
@@ -208,6 +215,9 @@ Method TestTheKeyShippedOffRefusesAndChangesNothing()
     Do $$$AssertTrue($ZConvert($Get(tHeaders("CONTENT-TYPE")), "L") [ "application/json", "the refusal is served as JSON")
     Set tSC = ..Post(..Change("remove", ..Dir("a")), .tStatus2, .tBody2)
     Do $$$AssertEquals(tStatus2 _ "|" _ ..CodeOf(tBody2) _ "|" _ ..RootsNow(), "403|ALLOWLIST.OFF|" _ ..Dir("a"), "and so is a remove, which removes nothing")
+    Set tSC = ..Post(..Change("add", "relative/dir"), .tStatus3, .tBody3)
+    Set tSC = ..Post(..Change("add", ..Dir("a")), .tStatus4, .tBody4)
+    Do $$$AssertEquals(tStatus3 _ "|" _ ..CodeOf(tBody3) _ " " _ tStatus4 _ "|" _ ..CodeOf(tBody4), "403|ALLOWLIST.OFF 403|ALLOWLIST.OFF", "and a change the port would refuse for its path or for being listed is refused as switched off first")
 }
 
 /// <p>The stored policy rows <var>pRows</var> as one JSON object.</p>
@@ -240,13 +250,13 @@ ClassMethod Sorted(pList As %List) As %String
     Quit $ListToString(##class(OcuPilot.Port.AllowListPort).Ordered(pList), "|")
 }
 
-/// <p>With the key on, an add and then a remove are written to the real list and read back: the answer is the
+/// <p>With the key on, an add, a change and a remove are written to the real list and read back: the answer is the
 /// <code>updated</code> action on the <code>allowed-directory</code> target with the read-back saying nothing was sent, the
-/// real roots hold the directory at once and lose it at once, a second add of the same directory is refused
+/// real roots hold each change at once, a second add of the same directory is refused
 /// <code>ALLOWLIST.LISTED</code>, and a remove of one the list does not hold is refused <code>ALLOWLIST.NOTLISTED</code>.</p>
 /// <p>Mutation (Rule 19): drop the <code>Apply</code> call from
 /// <method>OcuPilot.Area.Security.AllowedDirectorySave.HandleSave</method> -- the roots never change and this goes red.</p>
-Method TestAnAddThenARemoveIsWrittenAndReadBack()
+Method TestAnAddAChangeAndARemoveAreWrittenAndReadBack()
 {
     Do ..EnableKey()
     Do $$$AssertStatusOK($ClassMethod(..#FIXTURE, "SetUp", 1, $ListBuild(..Dir("a"))), "the list is restricted to one probe directory")
@@ -259,18 +269,26 @@ Method TestAnAddThenARemoveIsWrittenAndReadBack()
     Do $$$AssertEquals(..RootsNow(), ..Sorted($ListBuild(..Dir("a"), ..Dir("b"))), "the real roots hold both at once")
     Set tSC = ..Post(..Change("add", ..Dir("b")), .tStatus, .tBody)
     Do $$$AssertEquals(tStatus _ "|" _ ..CodeOf(tBody), "409|ALLOWLIST.LISTED", "a second add of it is refused as listed, the port's refusal passed through")
-    Set tSC = ..Post(..Change("remove", ..Dir("b")), .tStatus, .tBody)
+    Set tSC = ..Post(..Change("change", ..Dir("b"), ..Dir("c")), .tStatus, .tBody)
+    Do $$$AssertEquals(tStatus, 200, "the change is accepted: " _ $Select($IsObject(tBody): tBody.%ToJSON(), 1: tBody))
+    Do $$$AssertEquals(..RootsNow(), ..Sorted($ListBuild(..Dir("a"), ..Dir("c"))), "and the real roots hold the new directory and not the old")
+    Set tSC = ..Post(..Change("remove", ..Dir("c")), .tStatus, .tBody)
     Do $$$AssertEquals(tStatus, 200, "the remove is accepted: " _ $Select($IsObject(tBody): tBody.%ToJSON(), 1: tBody))
     Do $$$AssertEquals(..RootsNow(), ..Dir("a"), "and the real roots lose it at once")
     Set tSC = ..Post(..Change("remove", ..Dir("b")), .tStatus, .tBody)
     Do $$$AssertEquals(tStatus _ "|" _ ..CodeOf(tBody) _ "|" _ ..RootsNow(), "409|ALLOWLIST.NOTLISTED|" _ ..Dir("a"), "a remove of one it does not hold is refused as not listed, changing nothing")
+    Set tSC = ..Post(..Change("add", "relative/dir"), .tStatus, .tBody)
+    Do $$$AssertEquals(tStatus _ "|" _ ..CodeOf(tBody), "400|ALLOWLIST.PATH", "a relative directory is refused as a bad path, the port's refusal passed through")
+    Set tSC = ..Post(..Change("add", ..Manager() _ "ocuprobe1842smissing/"), .tStatus, .tBody)
+    Do $$$AssertEquals(tStatus _ "|" _ ..CodeOf(tBody) _ "|" _ ..RootsNow(), "422|ALLOWLIST.NODIRECTORY|" _ ..Dir("a"), "and a directory the server does not have is refused 422, changing nothing")
 }
 
 /// <p>A caller short of the screen's <code>%Admin_FileSystemAccess:USE</code> is refused 403 naming that pair, and the pair
 /// answers before the governance key: the key is off, and the refusal is still the pair's, not
 /// <code>ALLOWLIST.OFF</code>.</p>
-/// <p>Mutation (Rule 19): ask the governance key before the pairs in
-/// <method>OcuPilot.Area.Security.AllowedDirectorySave.HandleSave</method> -- this goes red on the code.</p>
+/// <p>Mutation (Rule 19): ignore the pairs gate's refusal in
+/// <method>OcuPilot.Area.Security.AllowedDirectorySave.HandleSave</method> -- the key's refusal answers instead and this
+/// goes red on the code.</p>
 Method TestACallerWithoutTheScreensPairIsRefusedByNameBeforeTheKey()
 {
     Do $$$AssertTrue(..PreparedSetupOk, "setup read back the principal's pairs")
@@ -285,12 +303,14 @@ Method TestACallerWithoutTheScreensPairIsRefusedByNameBeforeTheKey()
 }
 
 /// <p>The screen's own action route reaches no tool for the allow-list, with the key on: <code>add</code> is 404, as an action
-/// the descriptor never declared, and the list is as it was.</p>
+/// the descriptor never declared, and the list is as it was; and the tool itself carries out no screen action, so a row
+/// action a descriptor later declares still reaches nothing.</p>
 /// <p>Mutation (Rule 19): give <method>OcuPilot.Screen.Tool.AllowedDirectoryUpdate</method> a
-/// <code>SCREENACTIONS</code> of <code>add</code> -- the route then answers and this goes red.</p>
+/// <code>SCREENACTIONS</code> of <code>add</code> -- the tool leg goes red.</p>
 Method TestTheScreensActionRouteReachesNoTool()
 {
     Do ..EnableKey()
+    Do $$$AssertEquals($ListLength($ClassMethod(..#TOOL, "ScreenActionIds")), 0, "the tool carries out no screen action")
     Do $$$AssertStatusOK($ClassMethod(..#FIXTURE, "SetUp", 1, $ListBuild(..Dir("a"))), "the list is restricted to one probe directory")
     Set tBody = {"action": "add", "id": "%GUIFileSelector", "values": {"Action": "add", "Directory": (..Dir("b"))}}
     Set tSC = ##class(OcuPilot.Test.Http).MakeRequest("POST", ..#ACTIONPATH, .tStatus, .tAnswer, tBody.%ToJSON(), "application/json")
@@ -320,6 +340,8 @@ Method TestAnAddFromAnUnrestrictedListReachesTheScreenAndTheResolver()
 {
     Do ..EnableKey()
     Do $$$AssertStatusOK($ClassMethod(..#FIXTURE, "Clear"), "the purpose is absent")
+    Set tSC = ..Post(..Change("remove", ..Manager()), .tStatus, .tBody)
+    Do $$$AssertEquals(tStatus _ "|" _ ..CodeOf(tBody), "409|ALLOWLIST.FALLBACK", "the unrestricted list's one row, the manager directory, cannot be removed")
     Set tSC = ..Post(..Change("add", ..Dir("a")), .tStatus, .tBody)
     Do $$$AssertEquals(tStatus, 200, "the add is accepted: " _ $Select($IsObject(tBody): tBody.%ToJSON(), 1: tBody))
     Set tExpected = ""
@@ -366,6 +388,29 @@ Method TestABodyThatIsNotTheThreeStringsIsRefused()
         Do $$$AssertEquals(tStatus _ "|" _ ..CodeOf(tBody) _ "|" _ tField, "400|" _ $List(tCase, 2) _ "|" _ $List(tCase, 3), "case " _ tI)
     }
     Do $$$AssertEquals(..RootsNow(), ..Dir("a"), "and the list is as it was")
+}
+
+/// <p>The route asks the prohibited set after its fresh read: when the set's registry lists the allow-list tool as one the
+/// agent can reach, the add is refused 403 <code>PROHIBITED.ALLOWLISTAGENT</code> and nothing is written; with the shipped
+/// registry, which leaves the tool out, the same add goes through (C3).</p>
+/// <p>Mutation (Rule 19): hand the second <code>Operation.Gate</code> call in
+/// <method>OcuPilot.Area.Security.AllowedDirectorySave.HandleSave</method> an empty prohibited class -- the refusal leg goes
+/// red.</p>
+Method TestARouteWhoseToolTheAgentCanReachIsRefusedByTheKernel()
+{
+    Do ..EnableKey()
+    Do $$$AssertStatusOK($ClassMethod(..#FIXTURE, "SetUp", 1, $ListBuild(..Dir("a"))), "the list is restricted to one probe directory")
+    Set tBody = {"Action": "add", "Directory": (..Dir("b"))}
+    Do $ClassMethod(..#SET, "Arm", $Parameter(..#TOOL, "TOOLNAME"))
+    Set tSC = $ClassMethod(..#ROUTE, "Handle", tBody, .tAnswer, .tStatus)
+    Do $ClassMethod(..#SET, "Disarm")
+    Do $$$AssertStatusOK(tSC, "the route runs")
+    Set tAnswer = $Select(tAnswer '= "": ##class(%DynamicObject).%FromJSON(tAnswer), 1: "")
+    Do $$$AssertEquals(tStatus _ "|" _ ..CodeOf(tAnswer), "403|PROHIBITED.ALLOWLISTAGENT", "a tool the agent can reach is refused by the kernel")
+    Do $$$AssertEquals(..RootsNow(), ..Dir("a"), "and nothing was written")
+    Set tSC = $ClassMethod(..#ROUTE, "Handle", tBody, .tAnswer2, .tStatus2)
+    Do $$$AssertEquals(tStatus2, 200, "while the shipped registry, which leaves the tool out, lets the same add through")
+    Do $$$AssertEquals(..RootsNow(), ..Sorted($ListBuild(..Dir("a"), ..Dir("b"))), "and the real roots hold both")
 }
 
 /// <p>Another write holding the allow-list target keeps the route waiting for the hold, and it is then refused 409

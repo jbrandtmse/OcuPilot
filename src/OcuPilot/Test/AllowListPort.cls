@@ -170,7 +170,7 @@ Method TestAnAddToARestrictedListSendsOnePutAndRecordsTheRoots()
     Do $$$AssertEquals(tHttp, 200, "at 200")
     Do $$$AssertEquals(..WriteLog(), "FSAccess.Path/PUT " _ $Replace(..Dir("b"), ..Manager(), "<mgr>"), "exactly one write: the directory's Path PUT")
     Do $$$AssertEquals($ListToString(..RootsNow(), "|"), ..Sorted($ListBuild(..Dir("a"), ..Dir("b"))), "the real roots hold both at once")
-    Do $$$AssertEquals(tRow.Roots.%ToJSON(), tRow.Result.%ToJSON(), "and the answer's roots are the roots it left")
+    Do $$$AssertEquals(..Joined(tRow.Roots), $ListToString(..RootsNow(), "|"), "and the answer's roots are the roots it left")
     Set tAudit = ..AuditRow(tSince, "added", .tRows)
     Do $$$AssertEquals(tRows, 1, "one SecurityChange row records the add: " _ tRows)
     If tRows = 1 {
@@ -221,8 +221,15 @@ Method TestAFailedStepStopsBeforeTheRestrictionAndLeavesTheRoots()
 Method TestAChangeStoresTheNewThenDeletesTheOld()
 {
     Do $$$AssertStatusOK($ClassMethod(..#FIXTURE, "SetUp", 1, $ListBuild(..Dir("a"), ..Dir("b"))), "the list holds two probe directories")
+    Set tFirstSince = ##class(OcuPilot.Test.AuditEvent).Now()
     Set tSC = ..Call("PUT", "change", ..Dir("a"), ..Dir("c"), .tHttp, .tRow, .tFault)
     Do $$$AssertStatusOK(tSC, "the change is accepted")
+    Set tFirstAudit = ..AuditRow(tFirstSince, "changed", .tFirstRows)
+    Do $$$AssertEquals(tFirstRows, 1, "one SecurityChange row records the change: " _ tFirstRows)
+    If tFirstRows = 1 {
+        Do $$$AssertEquals(..Joined(tFirstAudit.changes.roots.old), ..Sorted($ListBuild(..Dir("a"), ..Dir("b"))), "naming the roots before")
+        Do $$$AssertEquals(..Joined(tFirstAudit.changes.roots.new), ..Sorted($ListBuild(..Dir("b"), ..Dir("c"))), "and the roots after")
+    }
     Do $$$AssertEquals(..WriteLog(), "FSAccess.Path/PUT " _ $Replace(..Dir("c"), ..Manager(), "<mgr>") _ "; FSAccess.Path/DELETE " _ $Replace(..Dir("a"), ..Manager(), "<mgr>"), "the new directory's PUT, then the old one's DELETE")
     Do $$$AssertEquals($ListToString(..RootsNow(), "|"), ..Sorted($ListBuild(..Dir("b"), ..Dir("c"))), "the roots hold the new directory and not the old")
 
@@ -246,8 +253,15 @@ Method TestAChangeStoresTheNewThenDeletesTheOld()
 Method TestRemovingTheLastEntryLeavesAListThatAllowsNothing()
 {
     Do $$$AssertStatusOK($ClassMethod(..#FIXTURE, "SetUp", 1, $ListBuild(..Dir("a"), ..Dir("b"))), "the list holds two probe directories")
+    Set tSince = ##class(OcuPilot.Test.AuditEvent).Now()
     Set tSC = ..Call("PUT", "remove", ..Dir("a"), "", .tHttp, .tRow, .tFault)
     Do $$$AssertStatusOK(tSC, "the first remove is accepted")
+    Set tAudit = ..AuditRow(tSince, "removed", .tRows)
+    Do $$$AssertEquals(tRows, 1, "one SecurityChange row records the remove: " _ tRows)
+    If tRows = 1 {
+        Do $$$AssertEquals(..Joined(tAudit.changes.roots.old), ..Sorted($ListBuild(..Dir("a"), ..Dir("b"))), "naming the roots before")
+        Do $$$AssertEquals(..Joined(tAudit.changes.roots.new), ..Dir("b"), "and the roots after")
+    }
     Do $$$AssertEquals($ListToString(..RootsNow(), "|"), ..Dir("b"), "one root remains")
     Set tSC = ..Call("PUT", "remove", ..Dir("b"), "", .tHttp, .tRow, .tFault)
     Do $$$AssertStatusOK(tSC, "the last remove is accepted")
@@ -308,10 +322,10 @@ Method TestEveryRefusalIsExactAndSendsNoWrite()
 }
 
 /// <p>The gate is <class>OcuPilot.Port.PathPort</class>'s and answers before any call: a caller short of a pair is refused
-/// <code>PORT.ACCESSDENIED</code> naming it, on the read and on the write, with no <code>FSAccess</code> call made; and a
-/// purpose other than the list's is refused before any call too.</p>
-/// <p>Mutation (Rule 19): remove the <code>Gate</code> call from <method>OcuPilot.Port.AllowListPort.Invoke</method> -- the
-/// gate leg goes red.</p>
+/// <code>PORT.ACCESSDENIED</code> naming it, on the read and on the write, even for a change that is not valid, with no
+/// <code>FSAccess</code> call made; and a purpose other than the list's is refused before any call too.</p>
+/// <p>Mutation (Rule 19): skip the <code>Gate</code> call in <method>OcuPilot.Port.AllowListPort.Invoke</method> -- the
+/// invalid change is refused <code>TOOL.ARGUMENTS</code> instead and the gate leg goes red.</p>
 Method TestTheGateAndAnotherPurposeRefuseBeforeAnyCall()
 {
     Set tPair = $Piece($Parameter(..#PATHPORT, "PAIRS"), ",", 1)
@@ -319,6 +333,8 @@ Method TestTheGateAndAnotherPurposeRefuseBeforeAnyCall()
     For tType = "GET", "PUT" {
         Set tSC = ..Call(tType, "add", ..Dir("a"), "", .tHttp, .tRow, .tFault)
         Do $$$AssertEquals(tHttp _ "|" _ tFault.code _ "|" _ tFault.detail.failedPair, "403|PORT.ACCESSDENIED|" _ tPair, tType _ ": refused naming the pair")
+        Set tSC = ..Call(tType, "bogus", ..Dir("a"), "", .tHttp, .tRow, .tFault)
+        Do $$$AssertEquals(tHttp _ "|" _ tFault.code, "403|PORT.ACCESSDENIED", tType _ ": the gate answers before the change is even checked")
     }
     Do $$$AssertEquals($ClassMethod(..#FIXTURE, "Calls"), 0, "with no call made")
     Do $ClassMethod(..#FIXTURE, "Reset")
@@ -340,6 +356,8 @@ Method TestNormalizedAdmitsOnlyAbsoluteBoundedCleanDirectories()
     }
     Set tFits = "/" _ $Translate($Justify("", 1021), " ", "a") _ "/"
     Do $$$AssertEquals($ClassMethod(tPort, "Normalized", tFits), tFits, "a directory of 1,023 characters is admitted")
+    Set tEdge = "/" _ $Translate($Justify("", 1022), " ", "a") _ "/"
+    Do $$$AssertEquals($ClassMethod(tPort, "Normalized", tEdge), tEdge, "and one of exactly 1,024 characters is admitted")
     Set tNormalOver = "/" _ $Translate($Justify("", 1023), " ", "a")
     Do $$$AssertEquals($ClassMethod(tPort, "Normalized", tNormalOver), "", "and one of 1,024 whose normalized spelling adds the separator is not")
 }

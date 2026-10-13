@@ -464,7 +464,7 @@ XData Coverage
 <member name="state-protection" class="OcuPilot.Test.State" method="TestDeniedUserCannotReachAnyStateClass"/>
 <member name="audit-round-trip-record" class="OcuPilot.Test.AuditRecord" method="TestACreateRecordsTheFieldsItCreatedAtTheirDefaults"/>
 <member name="audit-round-trip-verbs" class="OcuPilot.Test.AuditVerbs" method="TestADeleteIsRecordedWithWhatBecameOfItsCredentialEntry"/>
-<tool name="security.alloweddirectories.update" class="OcuPilot.Test.AllowedDirectorySave" method="TestAnAddThenARemoveIsWrittenAndReadBack"/>
+<tool name="security.alloweddirectories.update" class="OcuPilot.Test.AllowedDirectorySave" method="TestAnAddAChangeAndARemoveAreWrittenAndReadBack"/>
 </coverage>
 }
 

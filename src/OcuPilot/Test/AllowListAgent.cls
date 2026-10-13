@@ -3,7 +3,8 @@
 /// whose registry lists a tool as advertised refuses <code>PROHIBITED.ALLOWLISTAGENT</code> for the target, as does one whose
 /// registry cannot be read; the shipped tool passes, and appears in no provider list, no wire lookup, no screen context and
 /// no <code>shell.tools.find</code> result.</p>
-/// <p>Live-safe and unarmed: it reads the registry, the descriptor and the set, and writes nothing.</p>
+/// <p>Live-safe and unarmed: it reads the registry, the descriptor and the set, and writes nothing. Needs a process holding
+/// the screen's privilege pairs (<code>%All</code>), since the shared gate asks them before the prohibited set.</p>
 Class OcuPilot.Test.AllowListAgent Extends %UnitTest.TestCase
 {
 
@@ -46,9 +47,10 @@ ClassMethod Ask(pTool As %String) As %String
 }
 
 /// <p>A tool the registry lists as advertised that writes the allow-list is refused, a registry that cannot be read is
-/// refused as reachable, and the shipped tool, which the registry leaves out unless asked, passes.</p>
-/// <p>Mutation (Rule 19): make <method>OcuPilot.Kernel.Proposal.Prohibited.AgentReachable</method> answer 0 -- both refusals
-/// go red.</p>
+/// refused as reachable, so is one that raises, and the shipped tool, which the registry leaves out unless asked,
+/// passes.</p>
+/// <p>Mutation (Rule 19): make <method>OcuPilot.Kernel.Proposal.Prohibited.AgentReachable</method> answer 0 -- the refusals
+/// go red; make its <code>Catch</code> answer 0 -- the raising leg goes red.</p>
 Method TestAToolTheAgentCanReachCannotWriteTheAllowList()
 {
     Set tCode = $Parameter("OcuPilot.Kernel.Proposal.Prohibited", "ALLOWLISTAGENT")
@@ -58,6 +60,8 @@ Method TestAToolTheAgentCanReachCannotWriteTheAllowList()
     Do $ClassMethod(..#SET, "Arm", "")
     Do $$$AssertEquals(..Ask("probe.allowlist.write"), "1 " _ tCode, "a registry that cannot be read refuses it too")
     Do $$$AssertEquals(..Ask(..#TOOLNAME), "1 " _ tCode, "and refuses the shipped tool, since a question it cannot answer is not passed")
+    Do $ClassMethod(..#SET, "ArmRaise")
+    Do $$$AssertEquals(..Ask(..#TOOLNAME), "1 " _ tCode, "and a registry that raises refuses it likewise")
     Do $ClassMethod(..#SET, "Disarm")
     Do $$$AssertEquals(..Ask(..#TOOLNAME), "0 ", "the shipped registry leaves the shipped tool out, so it passes")
     Do $$$AssertEquals(..Ask("webapp.list.update"), "1 " _ tCode, "and an advertised tool the shipped registry lists is refused for the allow-list target")
@@ -65,8 +69,8 @@ Method TestAToolTheAgentCanReachCannotWriteTheAllowList()
 
 /// <p>The gate both the confirm and the route call refuses the shipped tool's write when the registry lists that tool as
 /// advertised, with 403 and the kernel's code, and passes it when the shipped registry answers (C3).</p>
-/// <p>Mutation (Rule 19): remove the <code>TYPEALLOWEDDIRECTORY</code> clause from
-/// <method>OcuPilot.Kernel.Proposal.Prohibited.Prohibits</method> -- the refusal leg goes red.</p>
+/// <p>Mutation (Rule 19): make <method>OcuPilot.Kernel.Proposal.Prohibited.AgentReachable</method> answer 0 -- the refusal
+/// leg goes red.</p>
 Method TestTheSharedOperationGateRefusesItWhenTheToolIsReachable()
 {
     Set tSC = $ClassMethod(..#REGISTRY, "Resolve", ..#TOOLNAME, .tTool, 1)

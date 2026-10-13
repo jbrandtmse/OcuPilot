@@ -2,14 +2,21 @@
 title: 'Story 18.42: Allowed directories: a person''s write'
 type: 'feature'
 created: '2026-10-12'
-status: 'in-progress'
+status: 'done'
 baseline_revision: '42d8d784d567f658a2c3c39980036c7f863aa379'
 review_loop_iteration: 0
-followup_review_recommended: false
+followup_review_recommended: true
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-18-context.md'
 warnings: ['oversized']
-deferred: []
+deferred:
+  - summary: >-
+      No audit event records an FSAccess write (Path PUT and DELETE, Purpose PUT), where the classic AllowDirectory and RemoveDirectory audit RESTRICTDIRECTORIES.
+    evidence: |-
+      Vendor candidate; owner hold: decision-pending, never reported upstream. Task 0 on ocupilot-ci with auditing on: the four endpoint calls left no audit row; the classic calls, with %System/%Security/RestrictDirectories enabled, wrote two. OcuPilot's own SecurityChange row is the only record of an allow-list write (AD-15).
+    location: >-
+      irissys/%SYS/FileSystemAccess.cls
+    severity: low
 ---
 
 <intent-contract>
@@ -110,6 +117,34 @@ Under `src/OcuPilot/`, `5890fe4d`.
 
 ## Review Triage Log
 
+### 2026-10-12 -- Review pass
+
+- verdicts: 23 findings -- high 0, medium 4, low 18, false 1, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` The route's prohibited-set gate (C3 "on the route") is pinned only through `Operation.Gate` called directly -- new `AllowedDirectorySaveFixture` runs `HandleSave` in process over the armed set; `TestARouteWhoseToolTheAgentCanReachIsRefusedByTheKernel`; mutation red (715).
+  - `[medium]` `[patch]` "Key off, before any read" is indistinguishable from "after the read" -- the key-off test posts a relative and a listed directory, expecting `ALLOWLIST.OFF`; the key-after-read mutation is red (716).
+  - `[medium]` `[patch]` The `removed` and `changed` `SecurityChange` rows and their roots are never asserted -- both asserted in `AllowListPort`; verb mutations red (709, 710).
+  - `[low]` `[patch]` `Normalized`'s 1,024 bound has no edge assertion -- a directory of exactly 1,024 characters is admitted; `>=` mutation red (711).
+  - `[low]` `[patch]` `AgentReachable`'s raising-registry path is untested (the reviewer proposed defer; a 10-line two-way door) -- `AllowListAgentSet.ArmRaise` and a leg; `Catch` mutation red (714).
+  - `[medium]` `[patch]` `AllowListPort` asserted `Roots` equal to `Result`, built from one variable -- now compares the answer's roots to the real roots.
+  - `[low]` `[reject]` Two legs of `TestTheScreensActionRouteReachesNoTool` pass with or without `SCREENACTIONS` -- true and stated in the test; its `ScreenActionIds` leg discriminates (698).
+  - `[low]` `[patch]` Pinning tests with no recorded mutation (failed step, change order, `Normalized`, the roster rows, the Fixed-strings test, `ADVERTISED`, C2b on the port) -- each mutation demonstrated and written to `## Verification` (711-713, 717-719, 696, 730).
+  - `[low]` `[reject]` Tests with no mutation line that pin no AC (script form, code vocabulary, body-shape refusals, the kernel code's sentence) -- Rule 19 scopes to the AC's pinning test; a mutation per helper test is not worth the quota.
+  - `[low]` `[patch]` `AllowListAgent`'s gate test needs the screen's pairs and its header did not say so -- stated.
+  - `[low]` `[reject]` `TestEveryRefusalIsExactAndSendsNoWrite` assumes `ocuprobe1842missing/` is absent -- a name only this story uses, which no test creates.
+  - `[low]` `[patch]` `## Auto Run Result` read `ready-for-dev` -- written at finalize.
+  - `[low]` `[patch]` Intent audit: the 400, 422 and fallback refusals are asserted at the port, not on the wire -- wire legs added for `PATH`, `NODIRECTORY` and `FALLBACK`.
+  - `[low]` `[reject]` Intent audit: no test drives the Confirm endpoint for the allow-list target -- no shipped tool the agent can reach mints it; the shared gate and the route are pinned.
+  - `[low]` `[reject]` Intent audit: "never listed, dispatched or found" is tested at the registry, not a live provider call -- the registry builds what the provider receives.
+  - `[low]` `[reject]` Intent audit: the audit row is asserted at the port, not on the route -- the route calls the port; the drop mutation is red (697).
+  - `[low]` `[reject]` Intent audit: an effect-based fence (a generic admin tool naming `FSAccess` pairs) is not addressed -- no shipped tool names those pairs but `AllowListPort`; a later generic console owns its own gate (inference).
+  - `[low]` `[reject]` Intent audit: `strings.ts` and the parity test are client files -- Task 7 and the Fixed strings rule require them; no dialog was built.
+  - `[low]` `[reject]` Intent audit: `StageTwoTools` flips the screen's row to `writes` -- Task 11's literal change.
+  - `[low]` `[reject]` Intent audit: the route takes no server-side confirmation -- by design; the dialog is Story 18.46.
+  - `[low]` `[reject]` Intent audit: the `deferred` entry's evidence carries the words `decision-pending` -- the stage prompt prescribes that note for the vendor candidate.
+  - `[false]` `[reject]` Intent audit: Task 0's date reads 2026-10-13 against a 2026-10-12 `created` -- the throwaway's clock is UTC; both are the same evening.
+  - `[low]` `[reject]` Intent audit: the two armed classes refuse to run unarmed -- stated in their headers and listed in `ci-throwaway.sh`'s roster; no defect.
+
 ## Design Notes
 
 **Governing ADs:** AD-8, 10, 13, 14, 15, 21, 22, 29, 34, 36, 39, 51, 52, 53, 55, 56, 58 and 59. **Story 18.46** takes the screen, its client half, EXPERIENCE.md :173 and C1 on the screen.
@@ -147,9 +182,31 @@ Under `src/OcuPilot/`, `5890fe4d`.
 
 every test added or changed passes on a fresh environment, in either order
 
-**Mutations (Rule 19):** tasks 8-10.
+**Mutations (Rule 19)**, each applied to the throwaway's mounted copy only (client wording: to the file, restored byte-identical), recompiled with its descendants, observed red, reverted, and green again (runs 720-729, 731-733):
+
+- mutation: the unrestricted add without its manager-directory `put` step in `AllowListPort.Plan` -> `AllowListPort.TestAnAddToAnUnrestrictedListKeepsTheManagerDirectoryAndRestrictsLast` (run 683).
+- mutation: `Event.Record` dropped from `AllowListPort.Audit` -> `AllowListPort.TestAnAddToARestrictedListSendsOnePutAndRecordsTheRoots` (697); a remove recorded as `added` -> `TestRemovingTheLastEntryLeavesAListThatAllowsNothing` (709); a change recorded as `added` -> `TestAChangeStoresTheNewThenDeletesTheOld` (710).
+- mutation: the restricted add's `LISTED` check dropped from `Plan` -> `AllowListPort.TestEveryRefusalIsExactAndSendsNoWrite` (699); `AllowListPort.Invoke` skips `PathPort.Gate` -> `TestTheGateAndAnotherPurposeRefuseBeforeAnyCall` (702); `Execute` does not stop at a failed step -> `TestAFailedStepStopsBeforeTheRestrictionAndLeavesTheRoots` (712); a change deletes the old entry before it stores the new -> `TestAChangeStoresTheNewThenDeletesTheOld` (713); `Normalized` refuses 1,024 characters (`>=`) -> `TestNormalizedAdmitsOnlyAbsoluteBoundedCleanDirectories` (711).
+- C1, mutation: `Gate.Decide`'s verdict ignored in `HandleSave` -> `AllowedDirectorySave.TestTheKeyShippedOffRefusesAndChangesNothing` (686); the key asked after the port's read -> the same test, its path and listed legs (716); `Apply` dropped -> `TestAnAddAChangeAndARemoveAreWrittenAndReadBack` (705); `HoldTool` dropped -> `TestAHeldTargetIsAnsweredBusyAndNothingIsWritten` (693); the pairs refusal ignored -> `TestACallerWithoutTheScreensPairIsRefusedByNameBeforeTheKey` (694).
+- C2 and Integration, mutation: the unrestricted add's `Purpose` `PUT` step dropped from `Plan` -> `AllowedDirectorySave.TestAnAddFromAnUnrestrictedListReachesTheScreenAndTheResolver` (684).
+- C2b, mutation: `Purpose` `PUT {Restricted: false}` sent after a `DELETE` in `Execute` -> `AllowedDirectorySave.TestAnEmptiedListAllowsNothing` (685) and `AllowListPort.TestRemovingTheLastEntryLeavesAListThatAllowsNothing` (730).
+- C3, mutation: `Prohibited.AgentReachable` answers 0 -> `AllowListAgent.TestAToolTheAgentCanReachCannotWriteTheAllowList` and `TestTheSharedOperationGateRefusesItWhenTheToolIsReachable` (687); its `Catch` answers 0 -> the first of them (714); the route's second `Operation.Gate` handed no prohibited class -> `AllowedDirectorySave.TestARouteWhoseToolTheAgentCanReachIsRefusedByTheKernel` (715).
+- Unadvertised, mutation: `AllowedDirectoryUpdate.ADVERTISED` 1 -> `AllowListAgent.TestTheShippedToolIsInNoListTheAgentSees` and the two above (696); `SCREENACTIONS` `add` -> `AllowedDirectorySave.TestTheScreensActionRouteReachesNoTool`, its tool leg (698; the descriptor declares no row action, so the route's 404 alone cannot tell).
+- Rosters, mutation: the `SurfaceCoverage` row removed -> `TestEveryWriteToolHasACoverageRowAndBack` (717); the `EndpointCoverage` probe removed -> `TestEveryRouteHasAProbeAndEveryProbeHasARoute` (718); the `PortGate` row removed -> `TestEveryPortDeclaresANamedGate` (719).
+- Fixed strings, mutation: a word added to `REASONLISTED`, or to `ALLOWLISTAGENTREASON`, -> `ui/tools/self-protection.test.mjs`, the story's test and the kernel-refusal test.
+
 
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
+
+**Summary.** The server half of a person's allow-list write: `POST /allowed-directories` (pairs, body shape, key `security.alloweddirectories.update` shipped `false` -> 403 `ALLOWLIST.OFF`, the target hold, the port's fresh read, the prohibited set, the write, the read-back), the unadvertised `AllowedDirectoryUpdate` tool, `AllowListPort` over `FSAccess.Path` and `Purpose` (reading A for the roots; an emptied list allows nothing), the kernel refusal `PROHIBITED.ALLOWLISTAGENT` for any tool the agent can reach, the six `ALLOWLIST.*` codes and seven fixed sentences. This pass (resume from WIP `d9244e95`) re-verified the sweep on `ocupilot-ci`, demonstrated the mutations, ran both review layers and patched their findings.
+
+**Files.** New: `Api/AllowListError.cls`, `Area/Security/AllowedDirectorySave.cls`, `Port/AllowListPort.cls`, `Screen/Tool/AllowedDirectoryUpdate.cls`; tests `AllowListPort`, `AllowListPortFixture`, `AllowedDirectorySave`, `AllowedDirectorySaveFixture`, `AllowListAgent`, `AllowListAgentSet`. Edited: `Api/Error.cls` (two dispatch arms), `Api/Router.cls` (route), `Kernel/Governance/Baseline.cls`, `Kernel/Proposal/Prohibited.cls` (type, code, clause, `AgentReachable`), `Port/AdminPort.cls` (mutating and bodyless types), the shared roster tests and literal pins of task 11, `strings.ts`, `self-protection.test.mjs`, EXPERIENCE.md :364, `ci-throwaway.sh`.
+
+**Review.** 23 findings: 4 medium and 6 low patched (gate at the route, key order, audit rows, tautology, bound, raising registry, wire refusals, mutation lines, header); 1 vendor candidate in `deferred:`; 13 rejected with reasons in the log. Follow-up review recommended `true`: four medium patches were made, and the new route fixture and the wire, audit and key-order legs are verified by their own mutations only.
+
+**Verification.** `ocupilot-ci` loaded (LOAD-OK, STARTPATH-OK); every class of the Rule 30 sweep and the story's three classes green (final runs 720-729, 731-733); `npm run test:tools` 1948/1948; `npm run build` clean; `check-objectscript.py` 2016 files, 0 problems; `lint-docs.sh` 0; 27 mutations demonstrated and reverted byte-identical (`## Verification`). Task 0: an emptied list allows nothing; no `FSAccess` write is audited (vendor candidate, never reported). The throwaway ends at S0.
+
+**Residual risks.** The vendor audit gap is OcuPilot's own `SecurityChange` row only. A generic admin console (Story 16.1) must gate `FSAccess` writes itself (inference).
