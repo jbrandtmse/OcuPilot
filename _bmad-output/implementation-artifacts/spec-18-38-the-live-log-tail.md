@@ -1,0 +1,148 @@
+---
+title: 'Story 18.38: The live log tail'
+type: 'feature'
+created: '2026-10-12'
+status: 'ready-for-dev'
+review_loop_iteration: 0
+followup_review_recommended: false
+context:
+  - '{project-root}/_bmad-output/implementation-artifacts/epic-18-context.md'
+warnings: ['oversized']
+deferred: []
+---
+
+<intent-contract>
+
+## Intent
+
+**Problem:** Log viewers read bounded pages; newer lines arrive only on a Load newer press (EXPERIENCE.md :899, "live tail is P2"), so nobody can watch `messages.log` or `alerts.log` as they are written.
+
+**Approach:** `messages` and `alerts` opt in at their port. `GET /logs/<source>/tail` takes the page's `identity` and `size`, holds until the file moves or the gateway-derived bound passes, with heartbeat newlines before its one envelope, and answers `{source, changed}`. The viewer's Live tail toggle chains these polls and reads each change through the page route. Every other source keeps bounded pages.
+
+## Boundaries & Constraints
+
+**Always:**
+
+- Refuse in `Page`'s order, before any wait or heartbeat (the matrix's codes); after the first heartbeat, answer only `{source, changed}`.
+- Wait at most `TestCall.BoundSeconds` (50 s: gateway 60 s, read on `ocupilot`), re-checking each second. An absent or unreadable file is no change before the bound and `changed: true` at it, so the page read reports it.
+- Only `Api/Response` writes heartbeats (AD-12); the port never writes to the device.
+- The client chains awaits: no timer, `EventSource` or `WebSocket` (`ui/tools/refresh.test.mjs` :1191-1217).
+
+**Never:** another source, a rotated file, the hub, integrity or Activity; a descriptor key, tool or governance key (AD-22); a new `Api/Error.cls` parameter (989 of 1,000), so three `LOG.*` codes are reused with their own sentences; a spawn, an escalation, or a log line for a client that has gone; a file in Epic 20's diff.
+
+## I/O & Edge-Case Matrix
+
+| Scenario | Input / State | Expected | Error handling |
+|---|---|---|---|
+| Moved | `size` or `identity` differs | `changed: true` at once, no heartbeat | -- |
+| Moves mid-wait | a line written | `changed: true` within about 1 s | -- |
+| Still | nothing written | held to the bound, a newline every 10 s, `changed: false` | -- |
+| Partial line | bytes, no newline | `changed: true`; the next tail, at the new size, waits | -- |
+| Rotation | `MoveConsoleLog` mid-wait | `changed: true`; the page answers `restarted` | an absent instant is waited out |
+| Refused | non-tail source; no pair; bad cursor; `file` | 404 `LOG.SOURCE`; 403; 400 `LOG.OFFSET`; 400 `LOG.FILE` | no heartbeat; a gate refusal touches no file |
+| Client gone | a heartbeat write fails | the wait ends | nothing logged |
+
+</intent-contract>
+
+## Code Map
+
+Under `src/OcuPilot/` at `093b3f34`.
+
+- `Port/LogSourcePort.cls`: header :1-77; `Page` :709-842, the order to copy; helpers `Resolve` :2916, `OpenStream` :666, `Identity` :3429, `FileRefusal` :3254, `DeniedRefusal` :2511, `Gate` :2904, `Refuse` :3580, `Fail` :3590.
+- `Api/LogPage.cls` `Handle` :33, `Answer` :87; `Api/Response.cls`, the sole writer (:2-5).
+- `Kernel/Provider/TestCall.cls` `BoundSeconds` :88, `GatewaySeconds` :61; the sibling seam `Port/SqlPort.cls` `BoundSeconds` :321; the bounded-wait precedent `Port/AdminPort.cls` `AwaitTask` :3488.
+- `irislib/%CSP/Response.cls` `Flush` :420: once sent, status and headers are fixed.
+- `ui/src/app/areas/logs/log-viewer.store.ts`: `LogViewerSource` :12 (`tailPath` is the page route), `reset` :289, `loadNewer` :458, `read` :467 (cursor :536-541; `generation` drops a late answer). `core/api.ts` `requestJson` :328: no client timeout; the body is `JSON.parse`d.
+
+## Tasks & Acceptance
+
+**Task 0** (on `ocupilot-ci` after the runner's sweep; findings under "For the lead"; one defeating a criterion halts `intent gap` with the amendment). Through the built route: (a) a hold to the bound answers 200, and past the gateway timeout (`TailBoundSeconds` mutated on the mounted copy, then restored) what and when; (b) whether heartbeats reach `curl -sN` on 52776 on time or with the envelope, gzip included; (c) what the route and `%File.Exists` see across `Config.Startup.MoveConsoleLog`; (d) one `TailState` check's cost; (e) whether a heartbeat fails after a disconnect, ending the process; (f) three concurrent tails by one principal beside a page read and a sign-in, and any license line.
+
+**Execution:**
+
+1. `Port/LogSourcePort.cls` (add-only; header corrected in place):
+   - `TAILSOURCES = "messages,alerts"`, `TAILCHECKSECONDS` 1, `TAILBEATSECONDS` 10, `TailSources()`, and the seams `TailBoundSeconds()` (`SqlPort.BoundSeconds`' line), `TailCheckSeconds()`, `TailBeatSeconds()`.
+   - `TailState(pPath, .pSize, .pIdentity) As %Boolean`, through `OpenStream` and `Identity`.
+   - `Tail(pSource, pIdentity, pSize, pFile, pBeatClass, .pResult, .pHttpStatus, .pFault)`: the Boundaries' refusals in order (cursor: `identity` `^[A-Za-z0-9_=-]{1,64}$`, `size` digits, both or neither), `Resolve`, then the matrix's loop, calling `$ClassMethod(pBeatClass, "Heartbeat")` per beat. A throw before the first beat is `Fail`; after it, logged and answered `changed`. A failed heartbeat ends the wait, unlogged.
+2. `Api/Response.cls`: `Heartbeat()` sets JSON `ContentType`, writes `$Char(10)`, `%response.Flush()`.
+3. `Api/LogPage.cls`: `HandleTail(pSource)` passes `identity`, `size`, `file` to `Tail(..., "OcuPilot.Api.Response", ...)`, through `Answer`.
+4. `Api/Router.cls`: `GET /logs/alerts/tail` above :152 and `/logs/messages/tail` above :154; thin `LogAlertsTail` and `LogMessagesTail` beside `LogAlerts` :1129 and `LogMessages` :974.
+5. "Nothing streams" in `Screen/Descriptor/LogMessageViewer.cls` :17-19, `LogAlertViewer.cls` :19-21, `log-viewer.page.ts` :121 and the store's :215 becomes, in place: no auto-refresh (AD-43); newer lines come on Load newer or the live tail its source opts into.
+6. `log-viewer.store.ts`: `livePath` (`/api/ocupilot/logs/<source>/tail`) on the two sources (:42, :47). `canLive()`: the path, the current file, a cursor, not windowed; `live()` reports the loop. `setLive(on)` tails with `identity` and `size`, runs `loadNewer` on `changed` until a page is not `truncated`, and stops on off, a fault (shown as a read fault is), or a new live generation, which `reset`, `clearWindow` (:298) and `setSource` (:323) also start.
+7. `log-viewer.page.ts`: a "Live tail" toggle (button-secondary, `aria-pressed`) beside Load newer (:313) while `canLive() || live()`; off on a file change and in `onDestroy` (:421).
+8. `strings.ts`: `logViewerLiveTail: 'Live tail'` under `/** EXPERIENCE.md:379 */`. EXPERIENCE.md :379 in place, line count unchanged: ` · "Live tail"` after `"Load newer"`, and `, the live tail's toggle (Story 18.38)` after "its tail control (`:402`)". Literals 3,316 + 1 (3,341 after 18.46 and 18.37); if the recount here exceeds 3,350, raise `strings.test.mjs`'s bound to 3,800 under its protocol and comment pattern.
+
+**Tests:**
+
+9. `Test/LogTail.cls` (new): `LogSourceFixture` over a scratch file (bound 3 s, beat 1 s, check 0.2 s), its own writer job stopped in `OnAfterOneTest`. Every matrix row through `Tail` with a beat-counting class; a refusal makes no beat, a gate refusal no file access; `TailSources()` is exactly `messages,alerts`.
+10. `Test/LogTailWire.cls` (new; `Http.AbsoluteRequest` :207, `pTimeout` the bound + 15): refusals answer within 2 s; a cursor a byte behind `messages.log` answers `changed: true` within 2 s; its current cursor answers within the bound + 5 s: 200, zero or more newlines, one `{source, changed}` envelope, no `}{`.
+11. `Test/LogSourceDenial.cls` (add-only, armed by `OCUPILOT_ALLOW_PRINCIPALS`): a principal without `%Admin_Operate:USE` is refused 403 on both routes within 2 s.
+12. `log-viewer.spec.ts`: :279 becomes "with Live tail off, nothing streams", looping over a rotated file, the six secondary logs, integrity and Activity (no toggle, request or timer). New: the toggle on the two current files only; Live tails with the cursor, appends the page on `changed` and tails again on `false`; off, a file change and destroy drop an in-flight answer and request nothing more; a 403 stops Live and shows the fault; `vi.getTimerCount()` stays 0.
+13. `ui/browser/messages-log.browser-spec.mjs`: press Live tail, write a marker (its writer, :91-125); the row appears within 10 s, no Load newer; turn Live tail off.
+14. Rule 30 sweep, one class per run:
+    - `EndpointCoverage` (add-only): two GET probes with `expect="code=LOG.OFFSET"`.
+    - `Descriptor` :1076 and :1120 read "no auto-refresh (AD-43); its source opts into the live tail" and assert the endpoint is in `TailSources()`; the loop at :1190 asserts each secondary source is not.
+    - Unchanged, run: `DeveloperFloorRoutes`, `InteropFloorRoutes`, `LogSource`, `LogSourceWire`, `ReadTool`, `SurfaceCoverage`; browser `alerts-log`, `messages-log-files`, `secondary-logs`; `npm run test:tools`.
+
+**Acceptance Criteria:**
+
+- **AC1 (epics.md).** Given messages.log or alerts.log on its current file, when a person turns Live tail on and the instance writes a line, then the line appears without Load newer, carried by `GET /logs/<source>/tail`, held up to the bound with a heartbeat before its one envelope.
+- **AC2.** Given any other log, a rotated file, or Live tail off, when the screen stays open, then no toggle is drawn or nothing is requested.
+- **AC3.** Given a refused tail, when it is asked, then it is refused before any wait or heartbeat, with the matrix's status and code.
+- **AC4.** Given Live tail on, when the person turns it off, chooses another file or leaves, then nothing more is requested and an in-flight answer is dropped.
+- **Integration.** Given the log viewer, the route's one consumer, when a marker is written under Live tail, then its row appears (task 13).
+
+## Spec Change Log
+
+- 2026-10-13, lead spec gate: "For the lead" applied (AD-12's second carve-out and AD-43's live tail in the spine; EXPERIENCE.md :646, :848, :899 in place, line count unchanged, `test:tools` 1948/1948). `Descriptor.cls` :1076 and :1120 are the Rule 11 ask to the orchestrator.
+
+## Review Triage Log
+
+## Design Notes
+
+**Governing ADs:** AD-5, 8, 12, 16, 19, 21, 22, 29, 30, 31, 36, 39, 43. **Consumes:** 6.13 and 6.14 (`Page`, the viewer), 16.20 (the file choice), 10.5 (`TestCall`). **Consumed-by:** no story beyond the two viewers. **Ledger:** none.
+
+**Who opts in.** Only `messages` and `alerts` append under one offset-and-identity cursor; the secondary logs are merged vendor windows, integrity a report, Activity a vendor read; a rotated file never grows. The route enforces `TAILSOURCES`; `livePath` names routes as `tailPath` does, so AD-5 is unchanged.
+
+**A wake signal, not lines.** A flushed response cannot change its status, so the tail only says the file moved; the page route keeps `Page`'s window, restart and refusals. The cursor is `size`, not `offset`: `ReadWindow` leaves a partial last line unread, so an offset test would wake forever.
+
+**The agent keeps bounded pages:** a tool runs in a turn step that must stay short and re-check stop, kill switch and lease (AD-30, AD-31), and `logs.messages.read` and `logs.alerts.read` answer the newest window (AD-36). No new tool, so `ReadTool` :93-94, `ToolEmit`, `SurfaceCoverage`, `StageTwoTools` and `Navigation` keep their literals.
+
+**Siblings (Rule 31):** `Tail` reuses `Page`'s helpers; the bound seam repeats `SqlPort.BoundSeconds`' line, as each port's seam does; the wait follows `AdminPort.AwaitTask`; the store reuses `loadNewer`.
+
+**Named consequences:** an open Live tail holds a CSP process up to the bound (Task 0 e, f); the gate is checked per call, so a pair withdrawn mid-wait is refused at the next tail.
+
+**Rule 11:** Epic 20's diff (2026-10-12) touches none of these files; `Descriptor.cls`'s two reworded messages are the one in-place edit to a shared add-only file, the lead's ask.
+
+**For the lead** (Rule 20; tag `[AMENDED 2026-10-12, Story 18.38 spec gate, Rule 20]`):
+
+- **AD-12**, after the static-handler carve-out:
+  > **A second carve-out: the live log tail's heartbeat.** While `GET /logs/<source>/tail` waits, `Response.Heartbeat` writes one newline and flushes, at most every `LogSourcePort.TAILBEATSECONDS`, before the route's one envelope; JSON reads leading whitespace as nothing, and `Response` and `Error` stay the only writers. A flushed response cannot change its status, so every refusal precedes the first heartbeat; after it, a fault is logged and answered as a change, which the viewer's next page read reports.
+- **AD-43**, at its end:
+  > **The live log tail is not auto-refresh.** A log source opts in at its port (`LogSourcePort.TAILSOURCES`: `messages`, `alerts`), and its viewer offers Live tail on the current file only: one chained long poll, never a timer. `GET /logs/<source>/tail` takes the page's `identity` and `size`, is held until the file moves or `TestCall.BoundSeconds` passes, re-checking each second (no vendor event signals a log write), with AD-12's heartbeat, and answers `{source, changed}`; the viewer then reads its next bounded page (AD-36). It is no declared read or tool, joins no Auto-refresh roster, and pauses for no proposal, since nothing writes a log line. Every other source, a rotated file included, streams nothing.
+- **EXPERIENCE.md**, in place, line count unchanged (no citation quotes these lines):
+  - :646: replace `Bounded paging and the non-live tail: Screen Synchronization and Live Data.` with `Bounded paging, and the live tail alerts.log and messages.log opt into: Screen Synchronization and Live Data.`, and after `"Load newer" (button-secondary) at the tail;` insert ` on alerts.log's and messages.log's current file, a "Live tail" toggle (button-secondary, aria-pressed) beside it (Story 18.38);`.
+  - :848: replace `Load newer only` with `Load newer; Live tail on alerts.log and messages.log`.
+  - :899, the whole line: `- **Tail, live where the source opts in.** Log viewers load bounded pages and offer "Load newer"; on alerts.log's and messages.log's current file, "Live tail" also holds a long poll that brings newer lines as the instance writes them (Story 18.38); every other log, an older rotated file included, streams nothing.`
+- No vendor defect candidate.
+
+## Verification
+
+**Commands** (one run per call, `timeout: 600000`):
+
+- `(loop)` `sh /Users/jbrandt/git/OcuPilot/.worktrees/.coordination/carry-2026-10-08/epic-18-d8/load-ocupilot-ci.sh`: `LOAD-OK`, `STARTPATH-OK`.
+- `(loop)` `cd ui && node tools/ci-runner.mjs --container ocupilot-ci --class OcuPilot.Test.<C>`, one at a time, totals in `%UnitTest_Result`: tasks 9-11 and task 14's classes.
+- `(loop)` `cd ui && npm run test:tools && npm run test:components && npm run build`, the bundle under the 3527kB warning.
+- `(loop)` `docker cp dist/ocupilot-ui/browser/. ocupilot-ci:/durable/iris/csp/ocupilot/`; then, with `OCUPILOT_BROWSER_ORIGIN=http://localhost:52776` and `OCUPILOT_BROWSER_CONTAINER=ocupilot-ci`, `node --test --test-concurrency=1 browser/<spec>.browser-spec.mjs` for tasks 13 and 14.
+- `(loop)` `uv run scripts/check-objectscript.py`, `bash scripts/lint-docs.sh`: 0 problems. The full ObjectScript sweep is the runner's; the full browser suite is CI's.
+
+**Shared surfaces:** the routes, probes and route sweeps; the Fixed strings and `strings.ts`; EXPERIENCE.md :379, :646, :848, :899; `Descriptor.cls`'s log-viewer pins. Request-sequence pins hold with Live tail off by default (`log-viewer.spec.ts` :270-277, :432-448, :691-696; `alerts-log.browser-spec.mjs` :264-299).
+
+every test added or changed passes on a fresh environment, in either order
+
+**Mutations** (planned; recorded as `mutation: <change> -> <test red>` once observed): AC1, `Tail` ignores `size` -> `LogTail`'s moved and mid-wait legs; no `loadNewer` on `changed` -> the Live spec test and task 13; no beat call -> the still leg. AC2, `canLive` without the current-file test -> the rotated-file leg; `TAILSOURCES` plus `systemmonitor` -> the roster pin. AC3, the gate after `Resolve` -> the access count; the cursor check after the first beat -> the beat count. AC4, `setLive(false)` keeps the generation -> the off leg.
+
+## Auto Run Result
+
+Status: ready-for-dev
+Blocking condition: none

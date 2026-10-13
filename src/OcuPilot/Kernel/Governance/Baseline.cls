@@ -90,6 +90,7 @@ XData Keys [ MimeType = application/json ]
   "permissions.users.revokesql": true,
   "permissions.users.revoketokens": true,
   "permissions.users.update": true,
+  "security.alloweddirectories.update": false,
   "security.auditing.copy": true,
   "security.auditing.purge": false,
   "security.auditing.update": true,

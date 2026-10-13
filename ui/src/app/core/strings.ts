@@ -6312,6 +6312,20 @@ export const STRINGS = {
   mftDeleteConsequence: 'The connection is removed. Its OAuth 2.0 client configuration is deleted with it unless another connection names it, and so is that client\'s server description when no other client uses it.',
   /** EXPERIENCE.md:364 */
   mftRevokeConsequence: 'The connection\'s access token is removed and the file service is asked to revoke it. The connection cannot transfer files until it is authorized again on the classic Managed File Transfer Connections page.',
+  /** EXPERIENCE.md:364 */
+  allowListRefusalAgent: 'The allowed directories fence every server path OcuPilot reads or writes, so they are changed on the Allowed directories screen alone.',
+  /** EXPERIENCE.md:364 */
+  allowListRefusalOff: 'Changing the allowed directories is switched off on this instance. An administrator can switch it on in Governance policy.',
+  /** EXPERIENCE.md:364 */
+  allowListRefusalPath: 'A directory is an absolute path of at most 1,024 characters with no control character.',
+  /** EXPERIENCE.md:364 */
+  allowListRefusalListed: 'That directory is already allowed.',
+  /** EXPERIENCE.md:364 */
+  allowListRefusalNotListed: 'That directory is not one of the allowed directories.',
+  /** EXPERIENCE.md:364 */
+  allowListRefusalNoDirectory: 'No directory of that name exists on the server.',
+  /** EXPERIENCE.md:364 */
+  allowListRefusalFallback: 'While the list is unrestricted its one entry is the manager directory, which cannot be changed or removed. Adding a directory restricts the list to that directory, the manager directory and any directory already stored in it.',
   /** EXPERIENCE.md:357 */
   docDbAppListLabel: 'Doc DB applications',
   /** EXPERIENCE.md:357 */

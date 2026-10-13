@@ -321,6 +321,9 @@ const KERNEL_REFUSALS = [
   // Story 18.10: OcuPilot's own privileged routine applications, whose every change either caller is refused with this
   // sentence.
   ['OCUPILOTROUTINEAPP', 'routineAppRefusalOcuPilot'],
+  // Story 18.42: a write of the directory allow-list through a tool the agent can reach, which either caller is answered
+  // with at Confirm and on the route.
+  ['ALLOWLISTAGENT', 'allowListRefusalAgent'],
 ];
 
 test('DW-1598, AD-53: each kernel refusal is published verbatim in Fixed strings and is the sentence ReasonFor returns', () => {
@@ -848,5 +851,40 @@ test('Story 19.17: each DocDB refusal is one sentence on both surfaces, publishe
     assert.equal(server[1], stringValue(key), `${parameter} and ${key} are one published sentence`);
     assert.ok(readFileSync(EXPERIENCE, 'utf8').includes(`"${server[1]}"`), `${parameter}'s sentence is published in EXPERIENCE.md's Fixed strings`);
     assert.ok(!server[1].toLowerCase().includes('agent'), `${parameter} names no caller: ${server[1]}`);
+  }
+});
+
+/** Story 18.42's error class, which declares the allow-list write's published refusals. */
+const ALLOWLIST_ERROR = join(REPO_ROOT, 'src', 'OcuPilot', 'Api', 'AllowListError.cls');
+
+/** Story 18.42's published sentences: `[parameter, code parameter, strings.ts key]`. */
+const ALLOWLIST_SENTENCES = [
+  ['REASONOFF', 'OFF', 'allowListRefusalOff'],
+  ['REASONPATH', 'PATH', 'allowListRefusalPath'],
+  ['REASONLISTED', 'LISTED', 'allowListRefusalListed'],
+  ['REASONNOTLISTED', 'NOTLISTED', 'allowListRefusalNotListed'],
+  ['REASONNODIRECTORY', 'NODIRECTORY', 'allowListRefusalNoDirectory'],
+  ['REASONFALLBACK', 'FALLBACK', 'allowListRefusalFallback'],
+];
+
+test('Story 18.42: each allow-list refusal is one sentence on both surfaces, published in Fixed strings, for the six codes the class declares', () => {
+  // Mutation (Rule 19): change one word of REASONLISTED in AllowListError.cls, or add a seventh code to its Codes() -> this goes red.
+  const source = readFileSync(ALLOWLIST_ERROR, 'utf8');
+  const experience = readFileSync(EXPERIENCE, 'utf8');
+  const declared = /ClassMethod Codes\(\) As %List\s*\{\s*Quit \$ListBuild\(([^)]*)\)/.exec(source);
+  assert.notEqual(declared, null, 'AllowListError.cls declares Codes()');
+  assert.deepEqual(
+    declared[1].split(',').map((member) => member.trim()).sort(),
+    ALLOWLIST_SENTENCES.map(([, code]) => `..#${code}`).sort(),
+    'the six codes Codes() lists are the six sentences this test pins'
+  );
+  for (const [parameter, code, key] of ALLOWLIST_SENTENCES) {
+    const sentence = new RegExp(`Parameter ${parameter} = "([^"]+)";`).exec(source);
+    assert.notEqual(sentence, null, `AllowListError.cls declares ${parameter}`);
+    const wire = new RegExp(`Parameter ${code} = "(ALLOWLIST\\.[A-Z]+)";`).exec(source);
+    assert.notEqual(wire, null, `AllowListError.cls declares ${code} as an ALLOWLIST code`);
+    assert.equal(sentence[1], stringValue(key), `${parameter} and ${key} are one published sentence`);
+    assert.ok(experience.includes(`"${sentence[1]}"`), `${parameter}'s sentence is published in EXPERIENCE.md's Fixed strings`);
+    assert.ok(!sentence[1].toLowerCase().includes('agent'), `${parameter} names no caller: ${sentence[1]}`);
   }
 });
