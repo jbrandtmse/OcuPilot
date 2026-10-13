@@ -3207,9 +3207,10 @@ ClassMethod IntegrityChecks(Output pRows As %DynamicArray) As %Status
 /// <code>Display^Integrity</code>'s own output over the check's output global, captured from the device.
 /// The check is opened in <code>%SYS</code> (AD-16); the report routine and its global are named there
 /// by extended reference, so the capture runs in the caller's namespace. Nothing is written but the
-/// stream. The process's devices come back as found, a raise included: the null device is opened for the
-/// capture only when the process had not opened it, and closed only then, and the current device is the
-/// caller's. Overridable for a fixture; production never overrides it.</p>
+/// stream. On every path, a raise included, the null device is left open or closed as the process had it
+/// (the capture opens it only when the process had not, and closes it only then) and the current device
+/// is the caller's; once the capture has begun, the null device's redirection is left off. Overridable
+/// for a fixture; production never overrides it.</p>
 ClassMethod IntegrityReport(pId As %String, Output pStream As %Stream.TmpCharacter) As %Status
 {
     Set tSC = $$$OK
@@ -3242,8 +3243,8 @@ ClassMethod IntegrityReport(pId As %String, Output pStream As %Stream.TmpCharact
             Open tNull:::1
             Set tOpenedNull = 1
         }
-        Set tCapturing = 1
         Use tNull::("^" _ $ZNAME)
+        Set tCapturing = 1
         Do ##class(%Library.Device).ReDirectIO(1)
         ; The report's own headings go to the stream directly; only Display's output is captured.
         If tErrors = 0 {
@@ -3271,7 +3272,8 @@ ClassMethod IntegrityReport(pId As %String, Output pStream As %Stream.TmpCharact
 }
 
 /// <p>Whether this process has <var>pDevice</var> open, which a <code>Use</code> that raises
-/// <code>&lt;NOTOPEN&gt;</code> answers no. The current device is the same after the call.</p>
+/// <code>&lt;NOTOPEN&gt;</code> answers no; any other raise is the caller's. The current device is the
+/// same after the call.</p>
 ClassMethod DeviceIsOpen(pDevice As %String) As %Boolean [ Private ]
 {
     Set tCurrent = $IO
@@ -3279,6 +3281,7 @@ ClassMethod DeviceIsOpen(pDevice As %String) As %Boolean [ Private ]
         Use pDevice
         Set tOpen = 1
     } Catch ex {
+        If ex.Name '= "<NOTOPEN>" Throw ex
         Set tOpen = 0
     }
     If tOpen Use tCurrent
