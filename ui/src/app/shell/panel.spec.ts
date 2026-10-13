@@ -3,7 +3,7 @@ import { Router, provideRouter } from '@angular/router';
 import { describe, expect, it, vi } from 'vitest';
 
 import { AccountPreferences, SHELL_AGENT_DEFINITION, SHELL_KIND } from '../core/account-preferences';
-import { AUDITING_FOCUS_ENABLE } from '../areas/security/auditing-config.page';
+import { AUDITING_FOCUS_ENABLE } from '../areas/security/auditing-config.store';
 import { AGENT_CONTEXT_PATH, AgentContext, NO_CONTEXT_INFO, type AgentContextInfo } from '../core/agent-context';
 import { AgentStatus, type Restraint, formatKillSwitch } from '../core/agent-status';
 import { proposalDraftPath } from '../core/draft';

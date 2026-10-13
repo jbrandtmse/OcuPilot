@@ -369,9 +369,9 @@ development_status:
   20-24-agent-tool-calls-stop-re-listing-the-tool-registry: done
   20-25-item-runtime-and-configuration-actions: backlog
   20-26-business-partners-saved-and-removed: backlog
-  20-27-transformations-tested: backlog
+  20-27-transformations-tested: ready-for-dev
   20-28-ocupilot-compiles-in-a-namespace-without-interoperability: done
-  20-29-screens-load-on-demand: backlog
+  20-29-screens-load-on-demand: done
   epic-20-retrospective: optional
 
   epic-21: backlog

@@ -18,11 +18,18 @@ interface DetailTab {
   readonly describedBy: string | null;
 }
 
+/** One `open`'s claim on the focus the page it navigates to will take. */
+interface ArrivalRequest {
+  readonly route: string;
+}
+
 /**
- * The route of the tab `open` last navigated to, until the page that route renders has read it. Each
- * tab is its own route, so opening one replaces this page, and the tab that held focus with it.
+ * The tab `open` last navigated to, until the page that route renders has read it. Each tab is its
+ * own route, so opening one replaces this page, and the tab that held focus with it. A request is an
+ * object so that a navigation can forget only its own: one a later `open` supersedes resolves
+ * `false` after the later request was made, and must leave that request standing.
  */
-let focusOnArrival: string | null = null;
+let focusOnArrival: ArrivalRequest | null = null;
 
 /**
  * The page every `detail` archetype renders (AD-5): the current screen's declared read through
@@ -122,12 +129,12 @@ export class DetailPage {
     });
     const host = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
     afterNextRender(() => {
-      const route = focusOnArrival;
+      const request = focusOnArrival;
       focusOnArrival = null;
       const active = document.activeElement;
-      if (route === null || (active !== null && active !== document.body && active.isConnected)) return;
+      if (request === null || (active !== null && active !== document.body && active.isConnected)) return;
       const tabs = Array.from(host.querySelectorAll<HTMLElement>('.ocu-detail-tab'));
-      tabs.find((tab) => tab.getAttribute('data-route') === route)?.focus();
+      tabs.find((tab) => tab.getAttribute('data-route') === request.route)?.focus();
     });
   }
 
@@ -149,14 +156,16 @@ export class DetailPage {
   /** Open a tab. A gated tab does nothing, and the current tab is already open. */
   protected open(tab: DetailTab): void {
     if (tab.gated || tab.active) return;
-    focusOnArrival = tab.route;
+    const request: ArrivalRequest = { route: tab.route };
+    focusOnArrival = request;
+    const forget = (): void => {
+      if (focusOnArrival === request) focusOnArrival = null;
+    };
     void this.router.navigateByUrl(withQuery(this.targetRoute(tab.route), this.router.url)).then(
       (opened) => {
-        if (!opened) focusOnArrival = null;
+        if (!opened) forget();
       },
-      () => {
-        focusOnArrival = null;
-      }
+      forget
     );
   }
 

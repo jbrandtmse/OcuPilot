@@ -325,7 +325,8 @@ describe('the class and routine editors', () => {
 
   it("renders the routine editor too, reading through the routine viewer's read and saving through the Routines list", async () => {
     for (const editor of [CLASS_EDITOR, ROUTINE_EDITOR]) {
-      expect(resolveScreenPage(DESCRIPTOR_PAGES, ARCHETYPE_PAGES, editor.descriptor, editor.archetype)).toBe(SourceEditorPage);
+      const loader = resolveScreenPage(DESCRIPTOR_PAGES, ARCHETYPE_PAGES, editor.descriptor, editor.archetype);
+      expect(await loader?.()).toBe(SourceEditorPage);
     }
     const mounted = await mount(ROUTINE_EDITOR, 'Demo.Probe.mac');
     expect(mounted.reads[0]?.path).toBe('/api/ocupilot/screens/explorer.routine/read?maxRows=1&name=Demo.Probe.mac&form=udl');

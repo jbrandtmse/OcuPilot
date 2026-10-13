@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
+import { NavigationError, Router } from '@angular/router';
 
 import { isStale } from '../core/build-identity';
 import { InstanceService } from '../core/instance';
@@ -17,6 +18,12 @@ import { STRINGS } from '../core/strings';
  * nothing. The comparison runs on every `/instance` settle, which is the read the shell already
  * makes at sign-in and on every connectivity recovery -- so no timer is armed for this.
  *
+ * **A screen whose code cannot load is the one other cue.** A tab from before a reinstall asks
+ * for page chunks the instance no longer serves, and the failed navigation (a router
+ * `NavigationError`) leaves the person on the screen they were on. The notice then re-reads which
+ * bundle the instance has installed, so the explanation appears instead of a click that does
+ * nothing.
+ *
  * Every control-flow condition is a paren-free member reference, for the reason `sign-in.ts`
  * records: `ui/tools/client-lint.mjs`'s blanker matches `@if` plus one parenthesised group.
  */
@@ -34,6 +41,7 @@ import { STRINGS } from '../core/strings';
 })
 export class StaleBundleNotice {
   private readonly instance = inject(InstanceService);
+  private readonly router = inject(Router);
 
   protected readonly STRINGS = STRINGS;
 
@@ -45,6 +53,11 @@ export class StaleBundleNotice {
       this.serverIdentity.set(this.instance.buildIdentity())
     );
     inject(DestroyRef).onDestroy(stop);
+
+    const failed = this.router.events.subscribe((event) => {
+      if (event instanceof NavigationError) void this.instance.recheckBuild();
+    });
+    inject(DestroyRef).onDestroy(() => failed.unsubscribe());
   }
 
   protected get stale(): boolean {

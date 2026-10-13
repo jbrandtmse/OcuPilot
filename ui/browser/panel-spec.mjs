@@ -57,9 +57,11 @@ export async function definitions(config) {
 
 /**
  * A fresh context signed in through the shell's own form, standing on `url` with the frame and the
- * panel laid out. `mediaFeatures`, when supplied, is emulated before the first navigation.
+ * panel laid out. `mediaFeatures`, when supplied, is emulated before the first navigation, and
+ * `prepare`, when supplied, runs against the page before it, which is where a spec attaches what
+ * must watch the document from its first request.
  */
-export async function signedInAt(browser, config, url, viewport = config.viewport, mediaFeatures = null) {
+export async function signedInAt(browser, config, url, viewport = config.viewport, mediaFeatures = null, prepare = null) {
   // Story 15.5 (AD-50): the remembered screen and shell state lives on the instance now, keyed by
   // the one account every spec signs in as, so a fresh `BrowserContext` is no longer a fresh slate
   // on its own. The reset belongs HERE rather than in each caller: this helper exists because five
@@ -71,6 +73,7 @@ export async function signedInAt(browser, config, url, viewport = config.viewpor
   page.setDefaultNavigationTimeout(config.navigationTimeoutMs);
   await page.setViewport(viewport);
   if (mediaFeatures !== null) await page.emulateMediaFeatures(mediaFeatures);
+  if (prepare !== null) await prepare(page);
   await page.goto(`${config.origin}${url}`, { waitUntil: 'networkidle2' });
   await page.waitForSelector('#ocu-signin-user', { visible: true, timeout: config.navigationTimeoutMs });
   await page.type('#ocu-signin-user', config.username);
@@ -80,6 +83,21 @@ export async function signedInAt(browser, config, url, viewport = config.viewpor
   await leaveFirstLoginGate(page, config.navigationTimeoutMs, url);
   await page.waitForSelector('app-panel [role="separator"]', { timeout: config.navigationTimeoutMs });
   return { context, page };
+}
+
+/** Click the rail item `railItem`, then the side-bar entry named `label` it reveals, with a real pointer. */
+export async function openFromSideBar(page, config, railItem, label) {
+  await page.click(railItem);
+  await page.waitForFunction(
+    (wanted) => [...document.querySelectorAll('.ocu-side-bar-item .ocu-side-bar-label')].some((node) => node.textContent.trim() === wanted),
+    { timeout: config.navigationTimeoutMs },
+    label
+  );
+  const index = await page.evaluate(
+    (wanted) => [...document.querySelectorAll('.ocu-side-bar-item')].findIndex((node) => node.querySelector('.ocu-side-bar-label').textContent.trim() === wanted),
+    label
+  );
+  await page.click(`.ocu-side-bar-item:nth-of-type(${index + 1})`);
 }
 
 /**

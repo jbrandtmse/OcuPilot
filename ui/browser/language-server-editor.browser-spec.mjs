@@ -49,6 +49,9 @@ const ACTIVITY_ROUTE = 'os-management/language-servers/activity';
 const LIST_URL = `/ocupilot/${LIST_ROUTE}?ns=HSCUSTOM`;
 const CREATE_URL = `/ocupilot/${FORM_ROUTE}?ns=HSCUSTOM`;
 const SAVE_PATH = '/api/ocupilot/language-server';
+const FORM_READ_PATH = `${SAVE_PATH}/form`;
+/** How long `holdEditRead` keeps the editor's form read from answering. */
+const EDIT_READ_HOLD_MS = 300;
 const ACTION_PATH = '/api/ocupilot/screens/osmgmt.languageservers/action';
 const ID = 'ocu-language-server';
 
@@ -217,6 +220,34 @@ function pathEnds(page, suffix) {
   return page.waitForFunction((wanted) => new URL(window.location.href).pathname.endsWith(wanted), { timeout: config.navigationTimeoutMs }, suffix);
 }
 
+/**
+ * Answer the editor's form read `EDIT_READ_HOLD_MS` late until the returned function is called. The
+ * edit page draws no form bar before that read lands, so for that long after the route commits a
+ * person, or a spec, that acts at once finds no bar: the create form's hand-off to its editor must
+ * not leave anything on screen that reads as the editor being ready. The returned function fails
+ * when no read was held, since the test then cannot see that hand-off.
+ */
+async function holdEditRead(page) {
+  await page.setRequestInterception(true);
+  let held = 0;
+  const hold = (request) => {
+    const url = new URL(request.url());
+    if (request.method() === 'GET' && url.pathname === FORM_READ_PATH && url.searchParams.has('name')) {
+      held += 1;
+      // A held read whose page has closed cannot be continued, and that is not this test's failure.
+      setTimeout(() => request.continue().catch(() => {}), EDIT_READ_HOLD_MS);
+    } else {
+      request.continue();
+    }
+  };
+  page.on('request', hold);
+  return async () => {
+    page.off('request', hold);
+    await page.setRequestInterception(false);
+    assert.ok(held > 0, `the editor's form read (${FORM_READ_PATH}?name=) was held`);
+  };
+}
+
 /** Narrow the list to `name` and wait for its one row. */
 async function filterTo(page, name) {
   await waitForRows(page, config.navigationTimeoutMs);
@@ -262,7 +293,9 @@ after(async () => {
 });
 
 // AC1, AC2, AC4, AC9. Mutation (Rule 19): drop the Activity link from the editor's template, rebuild
-// and redeploy -> the link wait goes red.
+// and redeploy -> the link wait goes red. Make `rememberedPage` in `app.routes.ts` return its loader
+// unwrapped, rebuild and redeploy -> the Cancel click goes red with "No element found", because the
+// create form then shows its saved confirmation before the route commits to an editor still reading.
 test('AC1, AC2, AC4: Create saves a Java probe with its type default, the name opens its editor, a Port change sends one field, the Activity log is linked, and Delete removes it', async () => {
   const { context, page } = await signedInAt(browser, config, LIST_URL, VIEWPORTS.wide);
   const loads = [];
@@ -289,6 +322,7 @@ test('AC1, AC2, AC4: Create saves a Java probe with its type default, the name o
     assert.equal(await page.$eval(`#${ID}-Resource`, (node) => node.getAttribute('placeholder')), '%Gateway_Object', 'an empty resource shows the type default');
     await page.type(`#${ID}-Custom-JVMArgs`, JVM_ARGS);
     await page.type(`#${ID}-Port`, String(CREATED_PORT));
+    const releaseEditRead = await holdEditRead(page);
     await saveAndSettle(page, config);
     await pathEnds(page, `/${FORM_ROUTE}/${CREATED}`);
     const posted = saves.filter((save) => save.method === 'POST').map((save) => JSON.parse(save.body));
@@ -298,6 +332,7 @@ test('AC1, AC2, AC4: Create saves a Java probe with its type default, the name o
     // The list, reached by the form's own Cancel rather than a load, re-reads and shows the row; its
     // name opens the editor.
     await page.click('.ocu-form-bar-actions .ocu-button-text');
+    await releaseEditRead();
     await pathEnds(page, `/${LIST_ROUTE}`);
     await filterTo(page, CREATED);
     const listed = await page.evaluate(
