@@ -610,3 +610,5 @@
 2026-10-13T01:01:39Z	Story 20.27	stage_spawned	stage=plan spawn_at=2026-10-13T01:01:39Z model=opus agent_name=20-27-plan-1 cycle_iteration=1 inbox=none
 2026-10-13T01:34:25Z	Story 20.27	story_created	spawn_at=(see_stage_spawned) model=opus agent_name=20-27-plan-1 path=_bmad-output/implementation-artifacts/spec-20-27-transformations-tested.md build_status=ready-for-dev(gate_pending:20.29_red_first) epic_context=reused
 2026-10-13T01:34:25Z	Story 20.29	ci_red	run=38329739528 head=f92b0dcf causes=browser_3/5_oauth.browser-spec.mjs:289_focus_lost_to_BODY_on_a_lazily_loaded_page(a11y_regression);browser_5/5_language-server-editor_form_bar_not_rendered_when_spec_acted(screen_ready_before_lazy_page) instance_shards=green verdict=story_red(orchestrator)
+2026-10-13T01:35:27Z	Story 20.29	rework_opened	iteration=1 reason=ci_red(run_38329739528) items=3([CI]_focus_after_lazy_render,[CI]_screen-ready_waits_for_page,[CI]_other_sync_assumptions)
+2026-10-13T01:35:27Z	Story 20.29	stage_spawned	stage=implement spawn_at=2026-10-13T01:35:27Z model=sonnet agent_name=20-29-rework-1 cycle_iteration=2

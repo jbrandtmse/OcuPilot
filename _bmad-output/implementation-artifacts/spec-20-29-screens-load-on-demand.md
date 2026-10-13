@@ -2,10 +2,10 @@
 title: 'Story 20.29: Screens load on demand'
 type: 'feature'
 created: '2026-10-12'
-status: 'done'
+status: 'in-progress'
 baseline_revision: '21fe71330033007e50b891982d63d841d9ff75a0'
 baseline_commit: '21fe71330033007e50b891982d63d841d9ff75a0'
-review_loop_iteration: 0
+review_loop_iteration: 1
 followup_review_recommended: false
 context:
   - '{project-root}/_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md'
@@ -187,6 +187,14 @@ Code review, 2026-10-12, four layers on the parent tier (`review_tier: full-opus
 - **The triage row on the console clause misstates the record** (false): it records only the policy clause as demonstrated.
 - **The AC4 browser test does not pin the `index.html` answer** (reject): the client's contract is any answer that is not a module, and pinning the handler's answer would bind a client test to the server behavior Q1 left as it is.
 - **The Code Map places the notice inside `@if (frameShown)`, and Task 0's result is not recorded** (reject): both fixes edit the spec. Today's Task 0 re-run is empty: no Epic 18 commit beyond the merge base touches a file in this diff. The notice's re-read is inert while signed out, through `settled`.
+
+### CI red on f92b0dcf (run 38329739528) - rework iteration 1
+
+Both failures are product behavior that lazy loading changed, ruled a story red by the orchestrator: fix the cause in the product, never by adding waits to specs.
+
+- [ ] [CI] **Focus is lost on a lazily loaded page.** `oauth.browser-spec.mjs:289` (browser shard 3/5), AC1: after Right then Enter opens a tab, "the tab it opened holds focus on the page that replaced the strip" read `'BODY'`, expected `'security/oauth/clients'`. The focus hand-off runs before the chunk's component exists. Restore it after the lazy component renders, for every path that hands focus to a page (tab strips, side bar, row targets, the agent's navigation), as EXPERIENCE.md's focus rules require; pin it with a test that goes red on the old ordering.
+- [ ] [CI] **The shell reads ready before the loaded page.** `language-server-editor.browser-spec.mjs` test 1 (browser shard 5/5), AC1/AC2/AC4: "No element found for selector: `.ocu-form-bar-actions .ocu-button-text`". Make the shell's screen-ready state wait for the loaded page (the form bar renders inside it), so specs and people see the same thing; pin it.
+- [ ] [CI] **Find every other place that assumed a page exists synchronously** after a navigation (focus, scroll restore, first-field focus, the screen-ready or settled signals the browser helpers and the structural walk read), and fix each in the product. Record the list in this section.
 
 ## Spec Change Log
 
