@@ -71,6 +71,9 @@ export const ARCHETYPE_PAGES: ArchetypePages = {
 const SERVICE_EDITOR_PAGE: PageLoader = () => import('../areas/permissions/service-editor.page').then((m) => m.ServiceEditorPage);
 const LDAP_EDITOR_PAGE: PageLoader = () => import('../areas/security/ldap-editor.page').then((m) => m.LdapEditorPage);
 
+/** Story 20.7: the one page the rule, BPL and DTL editor screens share, each descriptor naming this loader. */
+const INTEROP_EDITOR_PAGE: PageLoader = () => import('../areas/interoperability/interop-editor.page').then((m) => m.InteropEditorPage);
+
 /**
  * Pages keyed by the descriptor that declares them, resolved **before** the archetype map
  * (DW-369).
@@ -220,6 +223,10 @@ export const DESCRIPTOR_PAGES: Readonly<Record<string, PageLoader>> = {
   'OcuPilot.Screen.Descriptor.InteropLookupEntryList': () => import('../areas/interoperability/interop-lookup-entry-list.page').then((m) => m.InteropLookupEntryListPage),
   // Story 20.27: Data transformations, the list with its Test dialog.
   'OcuPilot.Screen.Descriptor.InteropTransformList': () => import('../areas/interoperability/interop-transform-list.page').then((m) => m.InteropTransformListPage),
+  // Story 20.7: the rule, BPL and DTL editor screens, the vendor's editor in a frame at <list>/document/<class>.cls.
+  'OcuPilot.Screen.Descriptor.InteropRuleEditor': INTEROP_EDITOR_PAGE,
+  'OcuPilot.Screen.Descriptor.InteropProcessEditor': INTEROP_EDITOR_PAGE,
+  'OcuPilot.Screen.Descriptor.InteropTransformEditor': INTEROP_EDITOR_PAGE,
 };
 
 /**

@@ -88,6 +88,10 @@ const SOURCE_VIEWER_ARCHETYPE = 'viewer (source)';
 const SOURCE_VIEWER_IDS = {
   'system-explorer/classes/document': 'OcuPilot.Port.AtelierPort.cls',
   'system-explorer/routines/document': 'HS.HC.Info.mac',
+  // Story 20.7: a process written in BPL and a transformation written in DTL, both vendor classes every interoperability
+  // namespace holds, which the list answers with `Coded` false and the editor opens (measured 200).
+  'interoperability/processes/document': 'EnsLib.Background.Process.ExportMessageSearch.cls',
+  'interoperability/transforms/document': 'Ens.Util.DTL.Audit.MessageView.cls',
 };
 
 /**
@@ -119,6 +123,9 @@ export const SKIP = {
   // Story 20.5: a table's entries are reached from a Lookup tables name cell and need that table's name as their id, which the
   // walk does not create; interop-lookup-tables.browser-spec.mjs walks them on the probe table it creates.
   'interoperability/lookup-tables/entries': 'the entries route needs a lookup table to open, and the walk creates none',
+  // Story 20.7: HSCUSTOM holds no business rule, so the walk has no rule to open; interop-editors.browser-spec.mjs walks it on the
+  // probe rule it creates.
+  'interoperability/rules/document': 'HSCUSTOM holds no business rule, so the walk has no rule to open',
 };
 
 /** The limits class the seeded entry is capped by, as the turn's own append is. */

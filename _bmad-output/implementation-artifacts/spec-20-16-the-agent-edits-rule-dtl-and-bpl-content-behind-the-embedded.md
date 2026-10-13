@@ -38,7 +38,7 @@ deferred: []
   - `CONSEQUENCE` is `INTEROP.EDITOR.RELOADS`.
   - `MATCHRULE` names the three editor reads in place of `explorer.class.source` and `explorer.routine.source`.
   - `AgentProblem` asks `##super` first, then `InteropPort.IsCodeOfKind(namespace, name, <kind base>)`. The mint asks it, and Confirm asks it again.
-- **Pairs.** Each of the six tools requires the editor screen's effective pairs (`Screen.Gate.RequiredPairs`, AD-64) plus `%Development:USE`, which `AtelierPort` checks (AD-61 rule 1). The save keeps the routines-database WRITE as its argument pair (DW-2242). Dispatch therefore refuses a missing `%Development:USE` by name before any mint. `CLASSICPAGES` stays `""`, because the screen's own `classicPage` is the editor (`Write.cls` :115-124: "not redeclared").
+- **Pairs.** Each of the six tools requires the editor screen's effective pairs (`Screen.Gate.RequiredPairs`, AD-64) plus `%Development:USE`, which `AtelierPort` checks (AD-61 rule 1). The save keeps the routines-database WRITE as its argument pair (DW-2242). Each of the three saves also requires `%Ens_Code:WRITE`, the vendor editor's own write resource [AMENDED 2026-10-13, orchestrator ruling at the spec gate: the editor path is never looser than the classic editor's; Task 0 confirms the resource from the vendor source]. A pair set cannot express the vendor's OR list, so a holder of only `%Ens_DTL`, `%Ens_BPL` or `%Ens_Rules*` WRITE is refused, and `%EnsRole_Administrator` (`%Ens_Code:READ` only) is refused the saves, as the vendor editor is read-only for it. Dispatch therefore refuses a missing `%Development:USE` or, for a save, `%Ens_Code:WRITE` by name before any mint. `CLASSICPAGES` stays `""`, because the screen's own `classicPage` is the editor (`Write.cls` :115-124: "not redeclared").
 - **Kind check.** `IsCodeOfKind` answers 1 only when `%Dictionary.ClassDefinition:SubclassOf(<base>)`, run while switched to the namespace (AD-16), lists the class and the class is not the base itself. That is the same test `ListClasses` and 20.7's `Coded` apply, so the save admits exactly the classes its editor opens.
   - A namespace without interoperability refuses.
   - So does a dictionary that cannot be read: a failed switch or a failed query sets `pRead` 0.
@@ -81,6 +81,7 @@ Server rows run in process as the suite account. Probes `OcuProbe2016.Rule`, `.P
 | No interoperability | `IsCodeOfKind` with a namespace that does not report interoperability, or an unknown namespace | 0, with `pRead` 0 | The save refuses: it cannot read the kind |
 | Context | Screen context for route `interoperability/transforms/document/OcuProbe2016.Transform.cls`, namespace `USER` | `tools` = `["interop_transformeditor_source", "interop_transformeditor_save"]`. The explorer viewer, editor and list contexts are unchanged | - |
 | Missing pair | A principal with the editor pairs and `%DB_USER:RW` but no `%Development:USE` | 403 `AUTH.NOPRIVILEGE`, `detail.failedPair` `%Development:USE`, before any mint | No row |
+| Missing vendor write (a save) | A principal with the editor pairs, `%Development:USE` and `%DB_USER:RW`, holding `%Ens_Code:READ` only | 403 `AUTH.NOPRIVILEGE`, `detail.failedPair` `%Ens_Code:WRITE`, before any mint | No row |
 | Reload (client) | A `changed` event `{type: class, scope: <page ns>, id: <route id>}` on the open editor | `refresh()`: `revision` + 1, a new frame element | A different id, namespace or type does nothing |
 
 </intent-contract>
@@ -189,6 +190,7 @@ All paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-20`. Lines were
 - Read its three descriptors, `interop-editor.store.ts`, `interop-editor.page.ts`, `interop-editor-frame.ts` and their tests. Anchor this story's page and store edits to them.
 - Confirm that the descriptors' `entityType` is `class`, their `scope` is `namespace`, they declare no action, and their `toolIdentifier`s are as in Boundaries.
 - Re-read `InteropPort.cls`'s tail once 18.37 has merged, if it has.
+- Read the vendor editors' write check (the hidden `Utils.GetPrivileges` the plan measured, and the API's save and compile routes) and confirm that `%Ens_Code:WRITE` is the resource that admits a save and is held by `%EnsRole_Developer`. If the vendor requires something stricter for a kind, add that too; never declare less (orchestrator ruling 2026-10-13). Record the reading in one line under Design Notes.
 
 **Part 1, server:**
 
@@ -211,7 +213,7 @@ All paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-20`. Lines were
   - `SCREENACTIONS ""`, `SCREENVALUES ""`, `SCREENLISTED 1`, `CONSEQUENCE "INTEROP.EDITOR.RELOADS"`.
   - `KINDBASE` and `KINDNOUN` set per subclass. `READWITH` names the subclass's read. `MATCHRULE` is rewritten to name the three editor reads.
   - A `WARN` parameter holding the warning sentence (Design Notes).
-  - `PrivilegePairs`: `##super`, plus `%Development:USE` once.
+  - `PrivilegePairs`: `##super`, plus `%Development:USE` and `%Ens_Code:WRITE` once each (the reads keep `%Development:USE` only).
   - `AgentProblem(pNamespace, pName, pCreate)`: `##super`, then the kind check. `pRead` 0 gives "whether '<name>' is <noun> could not be read, so the agent does not save it". A class not of the kind gives "'<name>' is not <noun> in namespace <ns>, so this editor's save does not change it; explorer.classes.save changes other classes".
 - [ ] **New concrete saves** `InteropRuleEditorSave.cls`, `InteropProcessEditorSave.cls` and `InteropTransformEditorSave.cls`. Each sets `TOOLNAME`, `DESCRIPTORCLASS` (20.7's descriptor), `KINDBASE`, `KINDNOUN`, `READWITH` and `DESCRIPTION`. The description gives, in order:
   1. what it proposes and that the user confirms;
@@ -233,7 +235,7 @@ All paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-20`. Lines were
 - [ ] **New `src/OcuPilot/Test/InteropEditorTools.cls`**:
   - Each tool's name, kind, `Advertised` 1 and binding.
   - The three keys resolve `true`.
-  - Each tool's required pairs equal the screen's plus `%Development:USE` (the save adds the routines WRITE as an argument pair).
+  - Each read's required pairs equal the screen's plus `%Development:USE`; each save's equal the screen's plus `%Development:USE` and `%Ens_Code:WRITE` (the save adds the routines WRITE as an argument pair). Update `ToolEmit`'s branch, `InteropFloor`'s and `DeveloperFloor`'s rosters, and any other roster that lists the saves' pairs, to the added pair.
   - Each description holds the `WARN` sentence.
   - `ScreenTools` of each editor is exactly its read and its save, while `ExplorerClassList`'s, `ExplorerClassDocument`'s and `ExplorerClassEditor`'s are unchanged.
   - `IsCodeOfKind` holds for the matrix's kinds, with `pRead` 0 for `%SYS` and an unknown namespace.
@@ -241,11 +243,12 @@ All paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-20`. Lines were
 - [ ] **New `src/OcuPilot/Test/InteropEditorSaveRules.cls`**: the matrix's Wrong kind, Coded, Mapped, Own code, `%`, `%SYS` and Confirm rule rows. Each asserts that no proposal row is added and, where marked, that nothing is read.
 - [ ] **New `src/OcuPilot/Test/InteropEditorSaveGate.cls`** (armed `OCUPILOT_ALLOW_PRINCIPALS`): probe principals, each missing one pair, signed in as `InteropTransformTestGate` does:
   - without `%Development:USE`: `failedPair` `%Development:USE`, before any mint;
+  - holding `%Ens_Code:READ` but not WRITE: `failedPair` `%Ens_Code:WRITE`, before any mint;
   - without `%Ens_Code:READ`: refused naming the editor screen (20.18);
   - without `%DB_USER:WRITE`: the argument pair.
   - No row in any case.
 - [ ] **New `src/OcuPilot/Test/InteropEditorSaveTurn.cls`** (armed as `ExplorerSaveTurn` is). This is the Integration AC.
-  - The `TurnWireFixture` principal holds `%Development:U`, `%DB_USER:RW`, `%Ens_Portal:U` and `%Ens_Code:R`.
+  - The `TurnWireFixture` principal holds `%Development:U`, `%DB_USER:RW`, `%Ens_Portal:U` and `%Ens_Code:RW`.
   - The turn posts screen context for `interoperability/transforms/document/OcuProbe2016.Transform.cls` in `USER`.
   - The scripted model calls `interop_transformeditor_source`, then `interop_transformeditor_save` with an `Old` copied from the read.
   - Assert:
@@ -334,11 +337,13 @@ All paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-20`. Lines were
   - **When** its proposal is confirmed over HTTP.
   - **Then** the class holds the new text, the starting tools carried both editor tools, and no provider request carries a compile line (`InteropEditorSaveTurn`).
 - **AC8 (pairs refused by name).**
-  - **Given** a principal missing `%Development:USE`, `%Ens_Code:READ` or the routines-database WRITE.
+  - **Given** a principal missing `%Development:USE`, `%Ens_Code:READ`, `%Ens_Code:WRITE` (a save) or the routines-database WRITE.
   - **When** it calls the save.
   - **Then** dispatch refuses by name before any mint, naming the editor screen for the screen pair, and writes no row.
 
 ## Spec Change Log
+
+- 2026-10-13, spec gate (runner): the orchestrator ruled Q1 the other way (B): the three saves also require `%Ens_Code:WRITE`, the vendor editor's write resource, confirmed from the vendor source at Task 0. The Pairs bullet, the matrix, Task 0, the save's `PrivilegePairs`, the tools and gate tests, the turn principal, AC8, the named limits and the mutation table carry it. The Rule 20 drafts are written into the spine with it.
 
 ## Review Triage Log
 
@@ -415,7 +420,7 @@ All paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-20`. Lines were
 
 | Q | Options | Recommended |
 |---|---|---|
-| Q1: should the editor saves also require `%Ens_Code:WRITE`, the vendor editor's write resource? | **A** No. The save's reach is the class save's (`%Development:USE`, routines-database WRITE) plus the editor screen's pairs. The same person reaches the same class through `explorer.classes.save` anyway, and the convention declares extra pairs only where a run measured the port needing them. **B** Yes, as a single pair (narrower than the vendor's OR list). It refuses `%EnsRole_Administrator`, which the vendor editor makes read-only, and a holder of only `%Ens_DTL`, `%Ens_BPL` or `%Ens_Rules` | A |
+| Q1: should the editor saves also require `%Ens_Code:WRITE`, the vendor editor's write resource? | **A** No. The save's reach is the class save's (`%Development:USE`, routines-database WRITE) plus the editor screen's pairs. The same person reaches the same class through `explorer.classes.save` anyway, and the convention declares extra pairs only where a run measured the port needing them. **B** Yes, as a single pair (narrower than the vendor's OR list). It refuses `%EnsRole_Administrator`, which the vendor editor makes read-only, and a holder of only `%Ens_DTL`, `%Ens_BPL` or `%Ens_Rules` | A (plan). **Ruled B by the orchestrator, 2026-10-13**: the editor path is never looser than the classic editor's; stricter is the orchestrator's call, looser would be the owner's. |
 
 **Spine and UX drafts (Rule 20; the lead writes them at the gate):**
 
@@ -455,6 +460,7 @@ All paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-20`. Lines were
 **Named limits:**
 
 - OcuPilot cannot see whether the editor holds unsaved changes; the warnings say so.
+- The saves require `%Ens_Code:WRITE`, one pair where the vendor admits an OR list, so a holder of only `%Ens_DTL`, `%Ens_BPL` or `%Ens_Rules*` WRITE, whom the classic editor admits, is refused (stricter, by the orchestrator's ruling).
 - A change confirmed while the editor is dirty drops those changes when the frame is redrawn, without the editor's alert (20.7's measurement).
 - Only the open tab's editor reloads. Another tab's editor, and System Explorer's source editor, are not refreshed. An OcuPilot save from them is refused as a conflict. So is a DTL or BPL vendor save, which answers 409 on a newer `TimeChanged` (read in the hidden v3 and v4 source). The rule save's check runs the other way, so a stale rule editor in another tab can overwrite (inference).
 - A save that does not compile leaves the class's running code broken until it is fixed (measured, DTL); the card says it did not compile.
@@ -530,6 +536,7 @@ All paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-20`. Lines were
 | AC6 | `ConsoleCountsErrors` answers 0 | `AtelierPortSave` console leg; `InteropEditorSave` BPL leg |
 | AC6 | `savedNotCompiledVisible` keeps its single code | `proposal-card-code-states.spec.ts`; the browser breaking leg |
 | AC8 | `InteropEditorSave.PrivilegePairs` drops `%Development:USE` | `InteropEditorSaveGate` first leg (the refusal moves to the port); `ToolEmit` branch |
+| AC8 | `InteropEditorSave.PrivilegePairs` drops `%Ens_Code:WRITE` | `InteropEditorSaveGate`'s vendor-write leg; `InteropEditorTools`' pairs leg |
 
 ## Auto Run Result
 

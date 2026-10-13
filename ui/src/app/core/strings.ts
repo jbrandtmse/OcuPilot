@@ -7170,6 +7170,37 @@ export const STRINGS = {
   /** EXPERIENCE.md:604 */
   interopTransformRunsConsequence:
     'The transformation\'s code runs on this instance as you, on the input shown. Whatever it writes or sends, it writes or sends.',
+  /** EXPERIENCE.md:604 */
+  interopRuleEditorEmpty: 'This business rule no longer exists.',
+  /** EXPERIENCE.md:604 */
+  interopBplEditorEmpty: 'This business process no longer exists.',
+  /** EXPERIENCE.md:604 */
+  interopDtlEditorEmpty: 'This data transformation no longer exists.',
+  /** EXPERIENCE.md:604 */
+  interopBplEditorCoded: 'This business process is written as a class, not in BPL, so the BPL editor cannot open it.',
+  /** EXPERIENCE.md:604 */
+  interopDtlEditorCoded: 'This data transformation is written as a class, not in DTL, so the DTL editor cannot open it.',
+  /** EXPERIENCE.md:604 */
+  interopEditorNote:
+    'Leaving this screen, or choosing Refresh to open the document again, discards any change not saved in the editor.',
+  /** EXPERIENCE.md:604 */
+  interopRuleEditorPrompt1: 'Summarize what this business rule decides.',
+  /** EXPERIENCE.md:604 */
+  interopRuleEditorPrompt2: 'Which targets does this rule send messages to?',
+  /** EXPERIENCE.md:604 */
+  interopRuleEditorPrompt3: 'Which conditions does this rule test, in order?',
+  /** EXPERIENCE.md:604 */
+  interopBplEditorPrompt1: 'Summarize what this business process does.',
+  /** EXPERIENCE.md:604 */
+  interopBplEditorPrompt2: 'Which business operations does this process call?',
+  /** EXPERIENCE.md:604 */
+  interopBplEditorPrompt3: 'Where does this process handle errors?',
+  /** EXPERIENCE.md:604 */
+  interopDtlEditorPrompt1: 'Summarize what this data transformation maps.',
+  /** EXPERIENCE.md:604 */
+  interopDtlEditorPrompt2: 'Which target fields does this transformation set, and from what?',
+  /** EXPERIENCE.md:604 */
+  interopDtlEditorPrompt3: 'How do I test this transformation?',
 } as const;
 
 /**

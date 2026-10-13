@@ -10,8 +10,9 @@ import { InteropEditorFrame } from './interop-editor-frame';
  * `app-interop-editor-frame` over a `ScopeService` double (Story 20.13, AC4): one frame whose `src`
  * is the builder's answer and whose name is the editor's own string, carrying no `sandbox`, `allow`,
  * `srcdoc` or `credentialless` and no attribute beyond its class, marker, title and source; drawn only
- * while its namespace is the one on screen and the builder answers; set again when the namespace or
- * the document moves, and written once per distinct address so nothing else reloads the editor; touching no tab storage; and adding
+ * while its namespace is the one on screen and the builder answers; a different element, never a new
+ * address on the drawn one, when the editor, namespace, document or revision moves (Story 20.7, DW-2350),
+ * and the address written once per element so nothing else reloads the editor; touching no tab storage; and adding
  * no listener to the frame or for a message. jsdom loads no frame, so only the element is
  * pinned here; `browser/interop-editor-frame.browser-spec.mjs` loads the real editors.
  */
@@ -83,6 +84,13 @@ async function mount(inputs: Inputs, scopeNamespace = 'HSCUSTOM') {
       fixture.componentRef.setInput(name, value);
       await settle(fixture);
     },
+    /** Move the scope and the `namespace` input together, so the component renders once, at the new namespace. */
+    moveTo: async (next: string) => {
+      current = next;
+      for (const listener of [...listeners]) listener();
+      fixture.componentRef.setInput('namespace', next);
+      await settle(fixture);
+    },
   };
 }
 
@@ -146,20 +154,69 @@ describe('app-interop-editor-frame', () => {
     expect((frame() as HTMLIFrameElement).getAttribute('src')).toBe(interopEditorSource('dtl-editor', 'HSCUSTOM', 'Demo.Probe.Thing'));
   });
 
-  it('Story 20.13 AC4: a document or an editor change sets the address again on the frame it already drew', async () => {
+  it('Story 20.7 AC4 (DW-2350): an editor or document change draws a different element with the new address, and detaches the old one, whose address is left as drawn', async () => {
+    // Mutation (Rule 19): the template's `@for` tracks a constant key, so the element is kept -> red.
     const { frame, set } = await mount({ editor: 'bpl-editor', namespace: 'HSCUSTOM', document: 'Demo.One' });
     const first = frame() as HTMLIFrameElement;
     expect(first.getAttribute('src')).toBe(interopEditorSource('bpl-editor', 'HSCUSTOM', 'Demo.One'));
     await set('document', 'Demo.Two');
-    expect(frame(), 'the same element').toBe(first);
-    expect(first.getAttribute('src')).toBe(interopEditorSource('bpl-editor', 'HSCUSTOM', 'Demo.Two'));
+    const second = frame() as HTMLIFrameElement;
+    expect(second, 'a new element').not.toBe(first);
+    expect(first.isConnected, 'and the old one is detached').toBe(false);
+    expect(first.getAttribute('src'), 'with the address it was drawn with').toBe(interopEditorSource('bpl-editor', 'HSCUSTOM', 'Demo.One'));
+    expect(second.getAttribute('src')).toBe(interopEditorSource('bpl-editor', 'HSCUSTOM', 'Demo.Two'));
     await set('document', '');
-    expect(first.getAttribute('src')).toBe(interopEditorSource('bpl-editor', 'HSCUSTOM'));
+    const third = frame() as HTMLIFrameElement;
+    expect(third).not.toBe(second);
+    expect(third.getAttribute('src')).toBe(interopEditorSource('bpl-editor', 'HSCUSTOM'));
     await set('editor', 'rule-editor');
-    expect(first.getAttribute('src')).toBe(interopEditorSource('rule-editor', 'HSCUSTOM'));
-    expect(first.getAttribute('title')).toBe(TITLES['rule-editor']);
+    const fourth = frame() as HTMLIFrameElement;
+    expect(fourth).not.toBe(third);
+    expect(third.isConnected).toBe(false);
+    expect(fourth.getAttribute('src')).toBe(interopEditorSource('rule-editor', 'HSCUSTOM'));
+    expect(fourth.getAttribute('title')).toBe(TITLES['rule-editor']);
     await set('document', 'a b');
     expect(frame(), 'a document outside its shape withdraws the frame').toBeNull();
+    expect(fourth.isConnected).toBe(false);
+  });
+
+  it('Story 20.7 AC4 (DW-2350): a namespace change draws a different element at the new namespace\'s address, and detaches the old one, whose address is left as drawn', async () => {
+    // Mutation (Rule 19): the template's `@for` tracks a constant key, so the element is kept -> red.
+    const { frame, frames, moveTo } = await mount({ editor: 'dtl-editor', namespace: 'HSCUSTOM', document: 'Demo.Probe.Thing' });
+    const first = frame() as HTMLIFrameElement;
+    // The scope and the input move in one render, so the frame is never withdrawn in between and only the key can replace it.
+    await moveTo('USER');
+    expect(frames().length, 'one frame').toBe(1);
+    const second = frame() as HTMLIFrameElement;
+    expect(second, 'a new element').not.toBe(first);
+    expect(first.isConnected, 'and the old one is detached').toBe(false);
+    expect(first.getAttribute('src'), 'with the address it was drawn with').toBe(interopEditorSource('dtl-editor', 'HSCUSTOM', 'Demo.Probe.Thing'));
+    expect(second.getAttribute('src')).toBe(interopEditorSource('dtl-editor', 'USER', 'Demo.Probe.Thing'));
+  });
+
+  it('Story 20.7 AC4 (DW-2351): a revision change draws a new element at the same address, and writes each address once', async () => {
+    // Mutation (Rule 19): the template's `@for` tracks the address alone, so the element is kept -> red.
+    const writes: string[] = [];
+    const original = Element.prototype.setAttribute;
+    const spy = vi.spyOn(Element.prototype, 'setAttribute').mockImplementation(function (this: Element, name: string, value: string) {
+      if (this instanceof HTMLIFrameElement && name === 'src') writes.push(value);
+      return original.call(this, name, value);
+    });
+    try {
+      const { fixture, frame } = await mount({ editor: 'dtl-editor', namespace: 'HSCUSTOM', document: 'Demo.One' });
+      const first = frame() as HTMLIFrameElement;
+      const address = interopEditorSource('dtl-editor', 'HSCUSTOM', 'Demo.One') as string;
+      expect(first.getAttribute('src')).toBe(address);
+      fixture.componentRef.setInput('revision', 1);
+      await settle(fixture);
+      const second = frame() as HTMLIFrameElement;
+      expect(second, 'a new revision draws a new element').not.toBe(first);
+      expect(first.isConnected).toBe(false);
+      expect(second.getAttribute('src'), 'at the same address').toBe(address);
+      expect(writes, 'each element has its address written once').toEqual([address, address]);
+    } finally {
+      spy.mockRestore();
+    }
   });
 
   it('Story 20.13 AC4: writes the address once per distinct address, so nothing that leaves it as it was reloads the editor', async () => {

@@ -11447,6 +11447,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-20-13-the-sign-in-hand-off-to-the-embedded-vendor-editors.md | severity: low | fix-risk: low | footprint: in-epic
 - evidence: interop-editor-frame.spec.ts runs in jsdom (no layout); the browser spec mounts a harness iframe from interopEditorSource, not the component (interop-editor-frame.ts:52)
 - 2026-10-12T12:33:20Z status=routed owner=20-7-the-three-embedded-vendor-editors by=lead note=harvested from 20.13 implement deferred; 20.7's browser spec re-runs interop-editor-spec.mjs against its real screens
+- 2026-10-13T16:15:44Z status=resolved-by:20-7-the-three-embedded-vendor-editors by=adjudication note=interop-editors.browser-spec.mjs re-runs 20.13's legs on the real screens incl. the host-filling check (AC1/AC5)
 
 ### DW-2348: A Cross-Origin-Opener-Policy header could stop an editor-opened tab inheriting a copy of the tab's storage, token pair included; measure it as a hardening candidate
 - source: spec-20-13-the-sign-in-hand-off-to-the-embedded-vendor-editors.md | severity: med | fix-risk: high | footprint: in-epic
@@ -11463,11 +11464,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-20-13-the-sign-in-hand-off-to-the-embedded-vendor-editors.md | severity: med | fix-risk: med | footprint: in-epic
 - evidence: Measured on ocupilot-b-ci (pinned Chrome): a click-initiated src re-set on a loaded iframe took history.length 2 to 3 and Back reloaded the old page in the frame; a new iframe stayed at 2. All three bundles alert on beforeunload, which removing a frame never fires
 - 2026-10-12T13:24:17Z status=routed owner=20-7-the-three-embedded-vendor-editors by=cr note=20.7 chooses per its document switch: same frame (history entry) or new frame (no alert); scope move and sign-out too
+- 2026-10-13T16:15:45Z status=resolved-by:20-7-the-three-embedded-vendor-editors by=adjudication note=frame draws a new iframe per source/revision, never re-sets src; AC4 asserts no unsaved alert and no added history
 
 ### DW-2351: A framed vendor editor can move away from what its screen shows, unseen by OcuPilot (AD-63 limit 3): its logo and Back to standard UI navigate the frame, DTL and BPL push history entries, and the rule editor's Settings switches its namespace
 - source: spec-20-13-the-sign-in-hand-off-to-the-embedded-vendor-editors.md | severity: med | fix-risk: med | footprint: in-epic
 - evidence: rule-editor main.*.js onSubmitSettingsForm calls dataService.setNamespace; 20.13's Design Notes measured the self-navigation and the DTL/BPL history entries and hand them to 20.7 only in that spec
 - 2026-10-12T13:24:18Z status=routed owner=20-7-the-three-embedded-vendor-editors by=cr note=20.7's screens decide what shows when the editor leaves its source or namespace; nothing in 20.7's block names it yet
+- 2026-10-13T16:15:45Z status=resolved-by:20-7-the-three-embedded-vendor-editors by=adjudication note=Refresh reopens the screen's document (AC4), the note warns, wandering is AD-63 named consequence
 
 ### DW-2352: The class reference re-sets src on the frame it already drew when the class changes, which likely pushes a joint history entry, so Back would move that frame rather than the viewer (inference)
 - source: spec-20-13-the-sign-in-hand-off-to-the-embedded-vendor-editors.md | severity: med | fix-risk: med | footprint: out-of-footprint
@@ -11579,11 +11582,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-20-7-the-three-embedded-vendor-editors.md (spec gate) | severity: med | fix-risk: med | footprint: in-epic
 - evidence: Measured at 20.7's plan: removing the frame raises no beforeunload alert; setting src again raises it but adds history entries. The classic portal's full-page editor raises the browser alert on leave.
 - 2026-10-13T06:51:49Z status=decision-pending owner=burndown by=spec_gate note=product call: keep as planned (note + Refresh), or a later story adds a leave guard that blanks the frame to raise the editor's own alert (amends AD-63)
+- 2026-10-13T15:30:42Z status=by-design by=orchestrator note=ruling 2026-10-13: keep the note plus Refresh (AD-63); the note says plainly that leaving discards unsaved editor changes
 
 ### DW-2378: A pasted HL7 message is read through ImportFromString, which translates its already-decoded text again, so a character past Latin-1 reaches the transformation test and the host test as '?'
 - source: spec-20-27-transformations-tested.md (cr) | severity: med | fix-risk: low | footprint: in-epic
 - evidence: Measured on ocupilot-b-ci: EnsLib.HL7.Message.ImportFromString of a PID-5 holding U+0151 reads it as 63 ('?'); ImportFromLibraryStream of a %Stream.TmpCharacter keeps 337. The classic Test Transform dialog hands HL7 a stream for this reason (TestTransform.cls:373-386); AD-62 item 11 and the spec's Parse bullet name ImportFromString.
 - 2026-10-13T10:11:54Z status=decision-pending owner=burndown by=cr note=spec-bound: amend AD-62 item 11 (Rule 5) to hand HL7 a character stream, then change both tests' parse
+- 2026-10-13T15:30:42Z status=routed owner=burndown by=orchestrator note=ruling 2026-10-13: HL7 as a character stream in both tests (AD-62 item 11 amended); a test with a char past Latin-1 must round-trip
 
 ### DW-2379: The host Test dialog's result is not announced: its status line is inserted with its text and has no role=status, so a screen reader hears nothing when a test ends
 - source: spec-20-27-transformations-tested.md (cr) | severity: med | fix-risk: low | footprint: in-epic
@@ -11635,6 +11640,15 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Measured on ocupilot-ci at Story 18.41's plan (probe OcuProbe1841, removed); the rung never calls %OpenId on a wallet class
 - 2026-10-13T06:58:20Z status=decision-pending owner=burndown by=spec_gate note=owner_hold: vendor defect candidate, never reported upstream (Story 18.41)
 
+### DW-2388: Probe the vendor editors for a sanctioned dirty signal (a postMessage or an event the rule, BPL or DTL editor emits in normal mode) OcuPilot could read without reaching into the frame, to warn before leaving an embedded editor
+- source: orchestrator ruling on DW-2376 | severity: med | fix-risk: med | footprint: in-epic
+- evidence: DW-2376 ruled by-design: removing the frame raises no beforeunload alert; AD-63 forbids reading the frame's state; a vendor-emitted signal is the only sanctioned path (unmeasured).
+- 2026-10-13T15:30:42Z status=routed owner=burndown by=orchestrator note=burn-down probe; if a signal exists, a leave warning keyed to it
+
+### DW-2389: An interop editor screen whose class name has a letter outside vendor-frame.ts CLASS_NAME (a non-ASCII letter) answers open but draws no frame, so the note and Refresh sit over an empty body with no sentence
+- source: spec-20-7-the-three-embedded-vendor-editors.md (cr) | severity: low | fix-risk: med | footprint: in-story
+- evidence: Measured on ocupilot-b-ci: $ZNAME("Demo.<e-acute>tude.Thing",4) and %Dictionary.Classname.IsValid answer 1, while CLASS_NAME is ASCII-only, so interopEditorSource answers null; widening it touches AD-21's shape check and an unmeasured vendor path.
+- 2026-10-13T16:12:40Z status=wontfix-accepted owner=20-7-the-three-embedded-vendor-editors by=cr note=reopen_if=a Rules, Processes or Transforms read returns a Name outside CLASS_NAME on a real instance
 ### DW-2384: The Interfaces tab shows the vendor's Active flag as Yes/No, but its false rows count every interface enabled at any time, active ones included, so 'No 11' beside 'Yes 4' reads as 11 inactive
 - source: spec-18-37-interoperability-usage.md | severity: med | fix-risk: med | footprint: in-story
 - evidence: On ocupilot, InteropInterfaces with no start answers each grouping twice (HSCUSTOM Web API: Active 1 = 4, Active 0 = 11); SYS_Monitor_Interop.Interface holds 11 such interfaces, 4 with an open activity; with a start date, as the classic page always passes, only Active 0 rows answer
@@ -11658,3 +11672,26 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-37-interoperability-usage.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: InteropUsageGate.Wire and DashboardDrillDownGate.cls :102 differ only in maxRows; Story 18.11's review closed the second copy with reopen_if a third gate copied it
 - 2026-10-13T13:17:14Z status=wontfix-accepted owner=18-37-interoperability-usage by=cr note=reopen_if=Test.Http.AbsoluteRequest's signature or the failedPair detail changes; one Http helper then serves all five
+
+### DW-2394: Vendor: the DTL editor's compile route answers 500 Internal Server Error in a CSP process that never opened the null device, because %Api.InteropEditors.v3.impl CompileDTL uses it without opening it (<NOTOPEN>CompileDTL+30)
+- source: CI run 38446203705 browser 5/5 (Story 20.7 AC2) | severity: med | fix-risk: high | footprint: out-of-footprint
+- evidence: CI log: ISCLOG apimgmnt <NOTOPEN>CompileDTL+30^%Api.InteropEditors.v3.impl.1; hidden source: use ##class(%Library.Device).GetNullDevice() with no open; green locally where the worker had it open (inference).
+- 2026-10-13T19:17:30Z status=decision-pending owner=burndown by=runner note=owner hold 2026-10-05: IRIS defect candidate, not reported; 20.7 AC2 accepts the vendor's own error notice
+- 2026-10-13T20:02:45Z occurrence=20-7-the-three-embedded-vendor-editors note=trigger corrected: a fresh CSP process holds the null device; OcuPilot's LogSourcePort.IntegrityReport closes it (DW-2395); the vendor's use-without-open is real
+- 2026-10-13T20:18:27Z occurrence=20-7-the-three-embedded-vendor-editors by=cr note=same use-without-open in v4.impl CompileBPL:1917 (v5-v7 ##super) and v7 Import/ExportLookupTable(s)
+
+### DW-2395: LogSourcePort.IntegrityReport closes the null device unconditionally, even when its web process already held it, so a later vendor DTL Compile in that process fails with <NOTOPEN>CompileDTL and the editor shows ERROR #6220 Internal Server Error
+- source: spec-20-7-the-three-embedded-vendor-editors.md (harvest, CI rework 1) | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: ocupilot-b-ci: after database-operations.browser-spec.mjs two of seven web processes had no /dev/null (a fresh one has it); open, reopen, close then use raises <NOTOPEN>; LogSourcePort.cls:3043 Open tNull:::1 ... Close tNull on both paths. Only closer not isolated (inference).
+- 2026-10-13T20:02:45Z status=escalated owner=burndown by=harvest note=contended: Epic 18 is changing LogSourcePort.cls; for the orchestrator to route; when fixed, drop the NOTOPEN tolerance in interop-editors.browser-spec.mjs compileNotice
+- 2026-10-13T20:18:27Z occurrence=20-7-the-three-embedded-vendor-editors by=cr note=BPL editor Compile fails the same way; AC2 legs pass over it; the fix adds a device-state test too
+
+### DW-2396: Vendor: the schema viewer app (/ui/interop) reads its document parameter &ST and then clears it with its own first address write, so it always opens on ASC X12, the classic pages' own link included
+- source: spec-20-8 plan (measured) | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: Measured at Story 20.8's plan on ocupilot-b-ci: ten address forms, framed and top level, all landed on ASC X12; the bundle reads &ST, then overwrites it (plan-208 probes).
+- 2026-10-13T20:29:17Z status=decision-pending owner=burndown by=spec_gate note=owner hold 2026-10-05: IRIS defect candidate, not reported; 20.8 AC2 is a tripwire that reddens if the vendor fixes it
+
+### DW-2397: CI flake: turn.browser-spec.mjs 'Markup in a reply renders as literal text' read '<img ' against the whole '<img src="http://203.0.113.9/x">' (the reply read before its text finished arriving)
+- source: CI run 38463014073 attempt 1, browser shard 3/5 (head 49436efa) | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: turn.browser-spec.mjs:392 assertion 'the markup renders as literal text' got '<img '; the head differs from green-on-shard-3 481b3adc only in interop-editors.browser-spec.mjs; rerun pending.
+- 2026-10-13T21:11:34Z status=routed owner=burndown by=runner note=rerun once (attempt 2); if green it is a flake: the spec must wait for the reply's settled state before reading its text

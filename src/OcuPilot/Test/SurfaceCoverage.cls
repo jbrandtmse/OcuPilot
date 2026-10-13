@@ -245,6 +245,9 @@ XData Coverage
 <screen name="InteropLookupTableList" class="OcuPilot.Test.InteropLookupDescriptor" method="TestTheThreeDeclarationsRegister" corpus="one declaration test pins all three Story 20.5 screens in one loop"/>
 <screen name="InteropLookupEntryList" class="OcuPilot.Test.InteropLookupDescriptor" method="TestTheThreeDeclarationsRegister" corpus="one declaration test pins all three Story 20.5 screens in one loop"/>
 <screen name="InteropBusinessPartnerList" class="OcuPilot.Test.InteropLookupDescriptor" method="TestTheThreeDeclarationsRegister" corpus="one declaration test pins all three Story 20.5 screens in one loop"/>
+<screen name="InteropRuleEditor" class="OcuPilot.Test.InteropEditorDescriptor" method="TestTheThreeEditorScreensRegister" corpus="one declaration test pins all three Story 20.7 editor screens in one loop"/>
+<screen name="InteropProcessEditor" class="OcuPilot.Test.InteropEditorDescriptor" method="TestTheThreeEditorScreensRegister" corpus="one declaration test pins all three Story 20.7 editor screens in one loop"/>
+<screen name="InteropTransformEditor" class="OcuPilot.Test.InteropEditorDescriptor" method="TestTheThreeEditorScreensRegister" corpus="one declaration test pins all three Story 20.7 editor screens in one loop"/>
 <tool name="permissions.users.create" class="OcuPilot.Test.UserCreate" method="TestTheSchemaCarriesNoSecretAndThePermittedSetIsTheSets"/>
 <tool name="permissions.users.copy" class="OcuPilot.Test.UserCopy" method="TestTheCopyToolPinsItsInputSchemaAndSnippetForm"/>
 <tool name="permissions.roles.create" class="OcuPilot.Test.RoleCreate" method="TestTheSchemaCarriesNoEscalationOnlyAndThePermittedSetIsTheSets"/>

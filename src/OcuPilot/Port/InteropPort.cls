@@ -1050,9 +1050,12 @@ ClassMethod ListProductions(pNamespace As %String, pMax As %Integer, Output pRow
 /// them when it is above zero: the subclasses of <code>Ens.BusinessProcess</code> less
 /// <code>Ens.BusinessProcessBPL</code>, of <code>Ens.DataTransform</code> less
 /// <code>Ens.DataTransformDTL</code>, and of <code>Ens.Rule.Definition</code>, through
-/// <code>%Dictionary.ClassDefinition:SubclassOf</code>, which writes nothing. A row is
-/// <code>{Name, Modified}</code>: the document name <code>&lt;class&gt;.cls</code> and the class's
-/// <code>TimeChanged</code> as local <code>YYYY-MM-DD HH:MM:SS</code>.</p>
+/// <code>%Dictionary.ClassDefinition:SubclassOf</code>, which writes nothing. A Rules row is
+/// <code>{Name, Modified}</code>, and a Processes or Transforms row is <code>{Name, Modified, Coded}</code>: the document name
+/// <code>&lt;class&gt;.cls</code>, the class's <code>TimeChanged</code> as local <code>YYYY-MM-DD HH:MM:SS</code>, and a
+/// boolean that is true when the class is not a subclass of the excluded class (<code>Ens.BusinessProcessBPL</code> or
+/// <code>Ens.DataTransformDTL</code>) in the dictionary, compiled or not, which is the classic lists' <code>IsBPL</code> and
+/// <code>IsDTL</code> answered the other way (AD-62 item 13).</p>
 ClassMethod ListClasses(pNamespace As %String, pEndpoint As %String, pMax As %Integer, Output pRows As %DynamicArray, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
 {
     Set pRows = ""
@@ -1060,13 +1063,26 @@ ClassMethod ListClasses(pNamespace As %String, pEndpoint As %String, pMax As %In
     Set tStatusSC = $$$OK
     Set tSuper = $Case(pEndpoint, ..#ENDPOINTPROCESSES: "Ens.BusinessProcess", ..#ENDPOINTTRANSFORMS: "Ens.DataTransform", : "Ens.Rule.Definition")
     Set tExcluded = $Case(pEndpoint, ..#ENDPOINTPROCESSES: "Ens.BusinessProcessBPL", ..#ENDPOINTTRANSFORMS: "Ens.DataTransformDTL", : "")
-    Kill tFound
+    Kill tFound, tDeclarative
     Set tFound = 0
     Set tOrigNS = $NAMESPACE
     Try {
         Set $NAMESPACE = pNamespace
-        Set tResultSet = ##class(%ResultSet).%New("%Dictionary.ClassDefinition:SubclassOf")
-        Set tStatusSC = tResultSet.Execute(tSuper)
+        If tExcluded '= "" {
+            Set tResultSet = ##class(%ResultSet).%New("%Dictionary.ClassDefinition:SubclassOf")
+            Set tStatusSC = tResultSet.Execute(tExcluded)
+            If $$$ISOK(tStatusSC) {
+                While tResultSet.Next() {
+                    Set tName = tResultSet.GetData(1)
+                    If tName '= "" Set tDeclarative(tName) = ""
+                }
+                Do tResultSet.Close()
+            }
+        }
+        If $$$ISOK(tStatusSC) {
+            Set tResultSet = ##class(%ResultSet).%New("%Dictionary.ClassDefinition:SubclassOf")
+            Set tStatusSC = tResultSet.Execute(tSuper)
+        }
         If $$$ISOK(tStatusSC) {
             While tResultSet.Next() {
                 If (pMax > 0) && (tFound >= pMax) Quit
@@ -1079,7 +1095,7 @@ ClassMethod ListClasses(pNamespace As %String, pEndpoint As %String, pMax As %In
                 }
                 Set tDefinition = ""
                 Set tFound = tFound + 1
-                Set tFound(tFound) = $ListBuild(tName, tModified)
+                Set tFound(tFound) = $ListBuild(tName, tModified, '$Data(tDeclarative(tName)))
             }
             Do tResultSet.Close()
         }
@@ -1096,6 +1112,7 @@ ClassMethod ListClasses(pNamespace As %String, pEndpoint As %String, pMax As %In
         Set tRow = {}
         Do tRow.%Set("Name", $List(tFound(tI), 1) _ ".cls", "string")
         Do tRow.%Set("Modified", $List(tFound(tI), 2) _ "", "string")
+        If tExcluded '= "" Do tRow.%Set("Coded", $List(tFound(tI), 3), "boolean")
         Do pRows.%Push(tRow)
     }
     Set pHttpStatus = 200

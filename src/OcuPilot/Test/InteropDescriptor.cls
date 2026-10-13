@@ -246,8 +246,12 @@ Method TestTheRefusalMatrix()
 /// four fields, and the code lists answer at least one row each for processes and transformations, with
 /// every <code>Name</code> a document name ending <code>.cls</code>, the vendor's base classes absent,
 /// and the cap reported by the row count. Business rules may be empty.</p>
+/// <p>Story 20.7: every Processes and Transforms row carries a boolean <code>Coded</code>, true for the two vendor classes
+/// written as code and false for two vendor classes written in BPL or DTL (<parameter>CODEDROWS</parameter>), and no
+/// Rules row carries one.</p>
 /// <p>Mutation (Rule 19): make <code>ListClasses</code> read <code>Ens.Rule.Definition</code> for every
-/// endpoint -- the process and transformation legs go red.</p>
+/// endpoint -- the process and transformation legs go red. Make it answer <code>Coded</code> false for every row -- the two
+/// true rows go red.</p>
 Method TestTheCodeListsReadThroughThePort()
 {
     Kill tQuery
@@ -263,12 +267,28 @@ Method TestTheCodeListsReadThroughThePort()
         Do $$$AssertTrue((tEndpoint = "Rules") || (tCount >= 1), tEndpoint _ " lists at least one class in HSCUSTOM: " _ tCount)
         Set tBad = 0
         Set tBase = 0
+        Set tUntyped = 0
+        Kill tCoded
         Set tIterator = tResult.%GetIterator()
         While tIterator.%GetNext(.tIndex, .tRow) {
             If $Extract(tRow.Name, *-3, *) '= ".cls" Set tBad = tBad + 1
             If (tRow.Name = "Ens.BusinessProcessBPL.cls") || (tRow.Name = "Ens.DataTransformDTL.cls") Set tBase = tBase + 1
+            If tEndpoint = "Rules" {
+                If tRow.%IsDefined("Coded") Set tUntyped = tUntyped + 1
+            } Else {
+                If tRow.%GetTypeOf("Coded") '= "boolean" Set tUntyped = tUntyped + 1
+                Set tCoded(tRow.Name) = tRow.Coded
+            }
         }
         Do $$$AssertEquals(tBad _ "|" _ tBase, "0|0", tEndpoint _ ": every name is a document name and the base classes are absent")
+        Do $$$AssertEquals(tUntyped, 0, tEndpoint _ $Select(tEndpoint = "Rules": ": no row carries Coded", 1: ": every row carries a boolean Coded"))
+        For tI = 1:1:$Length(..#CODEDROWS, ";") {
+            Set tCase = $Piece(..#CODEDROWS, ";", tI)
+            If $Piece(tCase, "|", 1) '= tEndpoint Continue
+            Set tName = $Piece(tCase, "|", 2)
+            Do $$$AssertTrue($Data(tCoded(tName)) > 0, tEndpoint _ " lists " _ tName)
+            If $Data(tCoded(tName)) Do $$$AssertEquals(tCoded(tName), +$Piece(tCase, "|", 3), tEndpoint _ ": " _ tName _ " reads Coded " _ $Piece(tCase, "|", 3))
+        }
     }
     Set tQuery("maxRows") = 1
     Set tSC = $ClassMethod(..#PORT, "Invoke", "Transforms", "LIST", .tQuery, "", .tResult, .tHttp, .tFault)
@@ -283,11 +303,18 @@ Method TestTheCodeListsReadThroughThePort()
     }
 }
 
+/// <p>The vendor classes <method>TestTheCodeListsReadThroughThePort</method> checks <code>Coded</code> on,
+/// <code>&lt;endpoint&gt;|&lt;document name&gt;|&lt;Coded&gt;</code>: the routing engine and the ITK transformation are written as
+/// code, and the background export process and the message-view transformation are written in BPL and DTL.</p>
+Parameter CODEDROWS = "Processes|EnsLib.HL7.MsgRouter.RoutingEngine.cls|1;Processes|EnsLib.Background.Process.ExportMessageSearch.cls|0;Transforms|EnsLib.ITK.AdapterKit.Transform.PHDEToXMLDETransform.cls|1;Transforms|Ens.Util.DTL.Audit.MessageView.cls|0";
+
 /// <p>AC1: the Rules list names a business rule class by its document name and the Processes list does not,
 /// in <code>USER</code>, where <parameter>PROBE</parameter> compiled a bare <code>Ens.Rule.Definition</code>
 /// subclass.</p>
+/// <p>The probe rule's row carries no <code>Coded</code>, which only Processes and Transforms rows answer (Story 20.7).</p>
 /// <p>Mutation (Rule 19): make <method>OcuPilot.Port.InteropPort.ListClasses</method> read the Processes
-/// family for the Rules endpoint -- the Rules leg goes red.</p>
+/// family for the Rules endpoint -- the Rules leg goes red. Make it answer <code>Coded</code> on a Rules row -- the
+/// probe rule's <code>Coded</code> clause goes red.</p>
 Method TestTheRulesListNamesTheProbeRuleAndProcessesDoesNot()
 {
     Set tDocument = $ClassMethod(..#PROBE, "RuleDocument")
@@ -299,13 +326,20 @@ Method TestTheRulesListNamesTheProbeRuleAndProcessesDoesNot()
         Set tSC = $ClassMethod(..#PORT, "Invoke", $List(tCase, 1), "LIST", .tQuery, "", .tResult, .tHttp, .tFault)
         Do $$$AssertEquals(+$Get(tHttp), 200, $List(tCase, 1) _ " answers 200 in USER")
         Set tSeen = 0
+        Set tCodedAnswered = 0
         If $IsObject($Get(tResult)) {
             Set tIterator = tResult.%GetIterator()
             While tIterator.%GetNext(.tIndex, .tRow) {
-                If tRow.Name = tDocument Set tSeen = 1
+                If tRow.Name = tDocument {
+                    Set tSeen = 1
+                    If tRow.%IsDefined("Coded") Set tCodedAnswered = 1
+                }
             }
         }
         Do $$$AssertEquals(tSeen, $List(tCase, 2), $List(tCase, 1) _ $Select($List(tCase, 2): " lists ", 1: " does not list ") _ tDocument)
+        If $List(tCase, 1) = "Rules" {
+            Do $$$AssertEquals(tCodedAnswered, 0, "the probe rule's row carries no Coded")
+        }
     }
 }
 
