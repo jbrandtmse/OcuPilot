@@ -104,6 +104,41 @@ Remove what (a)-(d) created; confirm S0.
 - **A3 (path 3).** Given a roster matching role that no surviving application carries, when uninstall runs, then the role is removed. Given one that an application left on the instance carries, then the role stays and is named.
 - **A4 (DW-2172).** Given a grant on OcuPilot's schemas held by another role or `_PUBLIC`, when install reads its grants back, then it succeeds, logs one warn naming each such grantee, object and privilege, and keeps the grant.
 
+### Review Findings
+
+Code review 2026-10-12 (`full-opus`; blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor): 38 rows, 10 entries patched (2 medium, 8 low), 0 deferred, 0 decision-needed, 17 rejected.
+
+- [x] [Review][Patch] (medium, fix-risk low) Nothing pinned row 8 or Task 2's "none when no row remains": deleting `If tText = "" Quit $$$OK` stayed green, and the doc's escalation-filter mutation claim was stale -- `TestACheckThatFindsNoOtherGranteeWarnsNothing` added, the before-leg asserts the escalation role is never named [src/OcuPilot/Test/GrantReadBack.cls:186, :225]
+- [x] [Review][Patch] (medium, fix-risk med, Rule 2) `RolesInUse` copied `AssertNoForeignOcuPilotRole`'s application and `MatchRoles` read with no stated reason -- both now consume `ApplicationMatchRoles`; `RolesInUse`'s doc no longer claims an `Exists` failure is reported [src/OcuPilot/Install/Installer.cls:3089, :3122]
+- [x] [Review][Patch] (low) `%ALTER`, `REFERENCES`, `EXECUTE` and `USE` reached the warn as bare letters -- mapped; the schema grant in the test now includes `%ALTER` [src/OcuPilot/Install/Installer.cls:3875; src/OcuPilot/Test/GrantReadBack.cls:202]
+- [x] [Review][Patch] (low) The roles-read refusal was absent from the header and DEVELOPMENT.md and named no remedy -- one clause each, and a remedy in the message [src/OcuPilot/Install/Installer.cls:4215, :4379; docs/DEVELOPMENT.md:349]
+- [x] [Review][Patch] (low) DEVELOPMENT.md's grant sentence left out columns and the unreadable-catalog warn, and its last clause was garbled -- rewritten [docs/DEVELOPMENT.md:219]
+- [x] [Review][Patch] (low) The kept-directory warn gave a reason the code never checks ("still served from it") -- now "an application still sits at the shell's path" [src/OcuPilot/Install/Installer.cls:4620]
+- [x] [Review][Patch] (low) The provenance-refusal test's mutation note said every assertion goes red; under an empty record the applications and directory stay -- corrected [src/OcuPilot/Test/UninstallGuard.cls:243]
+- [x] [Review][Patch] (low) `TestAnAccountThatCannotEnterSysGetsOneWarnNamingTheSwitch` asserted a namespace restore that cannot fail (the switch throws before `$NAMESPACE` changes) -- assertion and the child's field removed [src/OcuPilot/Test/GrantReadBack.cls]
+- [x] [Review][Patch] (low) The kept-directory test's last assertion passed through `ProbeApps.Remove`, not through uninstall -- it now removes the kept application and asserts a later uninstall removes the directory [src/OcuPilot/Test/Provenance.cls:323]
+- [x] [Review][Patch] (low) "Nothing running" never checked that its interception fired, so a moved read path would read the instance and still pass when it is quiet -- the leg counts and asserts its answered reads [ui/browser/sql-activity.browser-spec.mjs:337]
+
+**Rejected:**
+
+- (low, by-design) The provenance refusal's remedy (`Install` with no profile) may not repair an unreadable record, since `Install` reads the version row first (inference) -- Task 1 names this remedy; reopens only by spec amendment.
+- (low, wontfix-accepted) README names a refused `zpm load`, not `zpm "install ocupilot"` -- DW-2365's documentation (owner hold); reopen_if=a refused `zpm "install ocupilot"` in a second namespace shows `ocupilot` in that namespace's `zpm list`.
+- (low, by-design) The IPM cleanup leaves the compiled package and shows `NameDelete` as a bare expression -- DW-2365's scope (owner hold).
+- (low, wontfix-theoretical) `RolesInUse`/`ApplicationMatchRoles` skip an application `Exists` cannot read, and neither catalog loop checks `Next`'s status -- real if `Exists` or a fetch fails for a listed application while `List` and `Get` succeed.
+- (low, by-design) `Grantable` is not reported -- the spec asks for grantee, object and privilege.
+- (low, by-design) Holders of the escalation role itself are not reported -- AD-38's amendment scopes the check to other grantees; who holds `%DB_OCUPILOT` is AD-9's.
+- (low, wontfix-theoretical) A procedure grant (type 9) in OcuPilot's schema is not reported -- the schema holds no views and only the generated `*_Extent` procedures, which read the database AD-9 guards; real if a procedure there returns data its grantee could not otherwise read.
+- (false) A quoted `SqlQualifiedNameQ` would miss the catalog -- every name in the State package is unquoted (acceptance-auditor probe).
+- (low, wontfix-theoretical) A `Uninstall("probe")` after a production uninstall is refused -- the probe profile is test-only and no test uninstalls production.
+- (low, wontfix-theoretical) `MatchRoles` changed between the roles read and the role loop -- concurrent administration during an uninstall.
+- (low) One application naming a role twice in different case is listed twice in the warn -- cosmetic, unlikely.
+- (low, wontfix-theoretical) `ProbeApps.RemoveShellDirectory` reports OK when its `Exists` check throws -- real if `Security.Applications.Exists` raises in `%SYS`.
+- (low, wontfix-theoretical) `RunAsLimited` leaves its child running after a 60 s timeout -- the project-wide JOB-and-wait pattern; real if a child outlives the wait.
+- (low, wontfix-theoretical) "Probe stopped" needs every row rendered -- a throwaway runs a handful of statements; real if more run than the grid renders.
+- (low, by-design) DW-2240's browser-spec edit is outside the code boundary -- the orchestrator pulled DW-2240 into this story.
+- (low) Two role tests key on `%Operator`, `%Manager` and `%Developer`, which they did not create -- built-in roles on every instance; the tests create and remove the applications that carry them.
+- (low) Stale spec lines (Residual, an earlier reject) and the spec's size -- their fix edits the spec under review.
+
 ## Spec Change Log
 
 - 2026-10-12, lead, spec gate: DW-219's three semantics (keep the directory and a carried role, refuse on an unreadable record, path 3 pinned) and DW-2172's warn-only detection accepted; Task 0 (b) struck (it changes a grant the probe did not create); AD-37 and AD-38 amended as proposed. Story 18.13 lands first, so the implement stage re-anchors the Code Map by method name.
@@ -191,6 +226,7 @@ Remove what (a)-(d) created; confirm S0.
 - (QA, DW-2240) Reproduced on `ocupilot-ci` with a second SQL probe job running: the old "Nothing running" leg timed out at 30 s; the rewritten spec (8 tests: "Probe stopped" asserts the probe's row and statement are gone, "Nothing running" answers the screen's read with no statement in the browser and asserts the empty-state sentence) passed 8 of 8 in the same state.
 - (QA, DW-2240) Bundle rebuilt and redeployed; `node --test --test-concurrency=1 browser/sql-activity.browser-spec.mjs` with `OCUPILOT_BROWSER_ORIGIN=http://localhost:52776` and `OCUPILOT_BROWSER_CONTAINER=ocupilot-ci`: run 1 8 of 8, run 2 8 of 8, run 3 8 of 8, run 4 8 of 8 straight after `system-explorer-sql-query.browser-spec.mjs` (3 of 3).
 - mutation: (QA, DW-2240) the `Stop` call in "Probe stopped" replaced by a read-only call -> that leg red (the probe's row is still listed); the descriptor's `emptyStateKey` set to `sqlActivityLabel`, mirror regenerated, bundle rebuilt and redeployed -> "Nothing running" red; both reverted `cmp`-identical, bundle rebuilt and redeployed clean.
+- mutation: (CR) A4 -- `If tText = "" Quit $$$OK` deleted from `ReportWidenedGrants` -> `GrantReadBack.TestACheckThatFindsNoOtherGranteeWarnsNothing` red (729); the escalation-role filter dropped -> both escalation-role assertions of `TestAWidenedGrantIsNamedAndKept` red (730). A3 -- `ApplicationMatchRoles` storing an empty `MatchRoles` -> `WebApp.TestTheInstallTimeAssertionRefusesAnOcuPilotRoleOnAnotherApplication` red (737) and `UninstallGuard.TestRolesInUseNamesARoleInEveryFormAnApplicationCarriesIt` red (738). DW-2240 -- `READ_PATH` pointed elsewhere -> "Nothing running" red on its answered-read assertion. Each reverted `cmp`-identical and reloaded; final-tree runs on `ocupilot-ci`: GrantReadBack 739 (9), UninstallGuard 740 (7), WebApp 741 (26), Provenance 732 (9), Installer 734 (27), UninstallResidue 735 (4), UninstallSurvival 736 (2); bundle rebuilt and redeployed, `sql-activity` 8 of 8.
 
 **S0:** no `OcuProbe1843Grantee` role, no `/csp/ocuprobe1843` application, no probe grant in the catalog, and no probe profile object or bundle directory.
 

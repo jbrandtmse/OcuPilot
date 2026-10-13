@@ -320,9 +320,11 @@ test('Probe stopped: the screen lists neither the probe nor its statement, whate
 test('Nothing running: a read that answers no statement shows the screen\'s empty state sentence and no row', async () => {
   const { context, page } = await signedInAt(browser, config, PAGE_URL, VIEWPORTS.wide);
   try {
+    let answered = 0;
     await page.setRequestInterception(true);
     page.on('request', (request) => {
       if (new URL(request.url()).pathname === READ_PATH) {
+        answered += 1;
         void request.respond({ status: 200, contentType: 'application/json', body: JSON.stringify({ rows: [], truncated: false }) });
         return;
       }
@@ -332,6 +334,7 @@ test('Nothing running: a read that answers no statement shows the screen\'s empt
     await page.waitForSelector('.ocu-data-table-empty-title', { visible: true, timeout: config.navigationTimeoutMs });
     assert.equal(await page.$eval('.ocu-data-table-empty-title', (node) => node.textContent.trim()), STRINGS.sqlActivityEmpty, 'the empty state says no statement is running');
     assert.equal((await describeRows(page)).length, 0, 'and no row is drawn');
+    assert.ok(answered > 0, `the screen's read went to ${READ_PATH} and this test answered it, not the instance`);
   } finally {
     await context.close();
   }

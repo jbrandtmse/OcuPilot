@@ -239,8 +239,9 @@ Method TestUninstallContinuesWhenTheInventoryIsGone()
 /// <method>OcuPilot.Test.UninstallFault.ReadApplicationProvenance</method> override; the profile's
 /// own application is left alone, so the read genuinely fails against an application that exists.</p>
 /// <p>Mutation (Rule 19): restore the warn-and-continue read in
-/// <method>OcuPilot.Install.Installer.Uninstall</method> -- the call completes and the database,
-/// applications and directory are gone, so every assertion below goes red.</p>
+/// <method>OcuPilot.Install.Installer.Uninstall</method> -- the call completes and the database and
+/// mapping are gone, so the refusal and database assertions go red (with an empty record the
+/// applications and directory are left in place either way).</p>
 Method TestUninstallRefusesWhenTheProvenanceRecordCannotBeRead()
 {
     Set tApps = ##class(OcuPilot.Test.ProbeApps).Existing()

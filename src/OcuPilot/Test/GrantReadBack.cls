@@ -161,7 +161,8 @@ Method TestAGrantThatDidNotTakeFailsTheInstall()
 /// <p>Mutations (Rule 19): drop the <code>ReportWidenedGrants</code> call from
 /// <method>OcuPilot.Install.Installer.EnsureSqlPrivileges</method> -- the warn assertions go red.
 /// Drop the escalation-role filter from <method>OcuPilot.Install.Installer.ReportWidenedGrants</method>
-/// -- the install with only the escalation role's grant warns, and its assertion goes red. Delete the
+/// -- the install with only the escalation role's grant names that role, and both escalation-role
+/// assertions go red. Delete the
 /// column arm of the object classification, or relabel a privilege letter -- the column assertion or
 /// the privilege-list assertion goes red.</p>
 Method TestAWidenedGrantIsNamedAndKept()
@@ -182,10 +183,11 @@ Method TestAWidenedGrantIsNamedAndKept()
         Do $$$AssertStatusOK(##class(OcuPilot.Test.InstallerProbe).Install("probe"), "a probe install with only the escalation role's grant succeeds")
         Set tBefore = ##class(OcuPilot.Test.InstallerProbe).CapturedAll("warn")
         Do $$$AssertTrue('(tBefore [ tGrantee) && '(tBefore [ ("_PUBLIC SELECT on table " _ tTable)), "and names neither of the grants this test is about to make: " _ tBefore)
+        Do $$$AssertTrue('(tBefore [ tEscalation), "nor the escalation role, whose grant is the only one install made: " _ tBefore)
 
         Do $$$AssertStatusOK(..ProbeRole("create"), "the probe grantee role is created")
-        Set tR1 = ##class(%SQL.Statement).%ExecDirect(, "GRANT SELECT,INSERT,UPDATE,DELETE ON SCHEMA " _ tSchema _ " TO " _ tGrantee)
-        Do $$$AssertEquals(tR1.%SQLCODE, 0, "the role is granted four privileges on the schema: " _ tR1.%Message)
+        Set tR1 = ##class(%SQL.Statement).%ExecDirect(, "GRANT %ALTER,SELECT,INSERT,UPDATE,DELETE ON SCHEMA " _ tSchema _ " TO " _ tGrantee)
+        Do $$$AssertEquals(tR1.%SQLCODE, 0, "the role is granted five privileges on the schema: " _ tR1.%Message)
         Set tR3 = ##class(%SQL.Statement).%ExecDirect(, "GRANT SELECT (" _ tColumn _ ") ON " _ tTable _ " TO " _ tGrantee)
         Do $$$AssertEquals(tR3.%SQLCODE, 0, "and SELECT on one column of a table: " _ tR3.%Message)
         Set tR2 = ##class(%SQL.Statement).%ExecDirect(, "GRANT SELECT ON " _ tTable _ " TO _PUBLIC")
@@ -197,7 +199,7 @@ Method TestAWidenedGrantIsNamedAndKept()
         Do $$$AssertStatusOK(tSC, "install succeeds beside the two grants: " _ $System.Status.GetErrorText(tSC))
         Do $$$AssertEquals($Length(tWarns, ..#WIDENEDWARN) - 1, 1, "one warn reports the widened grants: " _ tWarns)
         Set tUpper = $ZConvert(tWarns, "U")
-        Do $$$AssertTrue((tUpper [ $ZConvert(tGrantee _ " DELETE,INSERT,SELECT,UPDATE on schema " _ tSchema, "U")), "it names the role, every privilege and the schema")
+        Do $$$AssertTrue((tUpper [ $ZConvert(tGrantee _ " %ALTER,DELETE,INSERT,SELECT,UPDATE on schema " _ tSchema, "U")), "it names the role, every privilege and the schema")
         Do $$$AssertTrue((tUpper [ $ZConvert(tGrantee _ " SELECT on column " _ tTable _ "." _ tColumn, "U")), "and the role's one column")
         Do $$$AssertTrue((tUpper [ $ZConvert("_PUBLIC SELECT on table " _ tTable, "U")), "and _PUBLIC, its privilege and the table")
         Do $$$AssertTrue((tWarns [ "REVOKE") && (tWarns [ "PROHIBITED.OCUPILOTSQLPRIVILEGE"), "and the remedy")
@@ -212,6 +214,28 @@ Method TestAWidenedGrantIsNamedAndKept()
     }
     Do ..DropProbeGrants()
     Do $$$AssertEquals($SYSTEM.SQL.Security.CheckPrivilege("_PUBLIC", 1, tTable, "s", $NAMESPACE), 0, "clean-up revoked the _PUBLIC grant")
+}
+
+/// <p>A check that finds no grant on OcuPilot's objects to any grantee but the escalation role warns
+/// nothing at all. It reads the real catalog for a schema and table no grant names, so what else the
+/// instance grants does not matter.</p>
+/// <p>Mutation (Rule 19): delete <code>If tText = "" Quit $$$OK</code> from
+/// <method>OcuPilot.Install.Installer.ReportWidenedGrants</method> -- an empty widened-grant warn is
+/// logged and this goes red.</p>
+Method TestACheckThatFindsNoOtherGranteeWarnsNothing()
+{
+    Set tNone("OcuProbe1843None", "OcuProbe1843None.Nothing") = ""
+    Try {
+        Do ##class(OcuPilot.Test.InstallerProbe).Clear()
+        Set tSC = ##class(OcuPilot.Test.InstallerProbe).DriveReportWidenedGrants($NAMESPACE, .tNone)
+        Set tWarns = ##class(OcuPilot.Test.InstallerProbe).CapturedAll("warn")
+        Do ##class(OcuPilot.Test.InstallerProbe).Clear()
+        Do $$$AssertStatusOK(tSC, "the check answers OK: " _ $System.Status.GetErrorText(tSC))
+        Do $$$AssertEquals(tWarns, "", "and warns nothing when no grant names the schema or its table")
+    } Catch ex {
+        Do ##class(OcuPilot.Test.InstallerProbe).Clear()
+        Throw ex
+    }
 }
 
 /// <p>A SQL privilege catalog that cannot be read turns the widened-grant check into one warn and
@@ -281,7 +305,7 @@ Method TestOnlyAGrantOnOcuPilotsSchemaInTheInstallNamespaceIsReported()
 }
 
 /// <p>An account that cannot enter <code>%SYS</code> turns the check into one warn naming the refused
-/// switch, restores its namespace and answers OK.</p>
+/// switch and answers OK.</p>
 /// <p>Mutation (Rule 19): drop the failure branch after the namespace switch in
 /// <method>OcuPilot.Install.Installer.ReportWidenedGrants</method> -- the warn stops naming it.</p>
 Method TestAnAccountThatCannotEnterSysGetsOneWarnNamingTheSwitch()
@@ -296,7 +320,6 @@ Method TestAnAccountThatCannotEnterSysGetsOneWarnNamingTheSwitch()
     Set tWarns = tOut.%Get("warns")
     Do $$$AssertEquals($Length(tWarns, ..#UNREADABLEWARN) - 1, 1, "one warn says the catalog could not be read: " _ tWarns)
     Do $$$AssertTrue(tWarns [ "PROTECT", "and names the switch the account was refused: " _ tWarns)
-    Do $$$AssertEquals(tOut.%Get("namespace"), $NAMESPACE, "and the namespace is restored")
 }
 
 /// <p>Run <var>pStatement</var> in namespace <var>pNamespace</var>, restore the namespace, and answer
@@ -374,7 +397,7 @@ ClassMethod RunAsLimited(pSchema As %String, pTable As %String) As %DynamicObjec
 
 /// <p>The child: log in as <var>pUser</var>, run <method>OcuPilot.Test.InstallerProbe.DriveReportWidenedGrants</method>
 /// for <var>pInstallNs</var> over table <var>pTable</var> of schema <var>pSchema</var> and signal
-/// <code>{error, username, status, warns, namespace}</code> to process <var>pParent</var>.</p>
+/// <code>{error, username, status, warns}</code> to process <var>pParent</var>.</p>
 /// <p><b>Caller contract:</b> <code>JOB</code>ed by <method>RunAsLimited</method> and by nothing else;
 /// <code>$System.Security.Login</code> switches this process's own user context.</p>
 ClassMethod Limited(pParent As %Integer, pUser As %String, pInstallNs As %String, pSchema As %String, pTable As %String)
@@ -390,7 +413,6 @@ ClassMethod Limited(pParent As %Integer, pUser As %String, pInstallNs As %String
         Set tSC = ##class(OcuPilot.Test.InstallerProbe).DriveReportWidenedGrants(pInstallNs, .tTables)
         Do tOut.%Set("status", $Select($$$ISOK(tSC): "OK", 1: $System.Status.GetErrorText(tSC)), "string")
         Do tOut.%Set("warns", ##class(OcuPilot.Test.InstallerProbe).CapturedAllWithData("warn"), "string")
-        Do tOut.%Set("namespace", $Namespace, "string")
     } Catch ex {
         Do tOut.%Set("error", ex.DisplayString())
     }
@@ -449,7 +471,7 @@ Method DropProbeGrants()
             Set tSchema = $Order(tTables(""))
             Set tTable = $Order(tTables(tSchema, ""))
             Set tColumn = ..ProbeColumn(tTable)
-            Do ##class(%SQL.Statement).%ExecDirect(, "REVOKE SELECT,INSERT,UPDATE,DELETE ON SCHEMA " _ tSchema _ " FROM " _ ..#GRANTEE)
+            Do ##class(%SQL.Statement).%ExecDirect(, "REVOKE %ALTER,SELECT,INSERT,UPDATE,DELETE ON SCHEMA " _ tSchema _ " FROM " _ ..#GRANTEE)
             If tColumn '= "" Do ##class(%SQL.Statement).%ExecDirect(, "REVOKE SELECT (" _ tColumn _ ") ON " _ tTable _ " FROM " _ ..#GRANTEE)
             Do ##class(%SQL.Statement).%ExecDirect(, "REVOKE SELECT ON " _ tTable _ " FROM _PUBLIC")
             Do ..SqlIn("%SYS", "REVOKE SELECT ON SCHEMA " _ tSchema _ " FROM " _ ..#GRANTEE)

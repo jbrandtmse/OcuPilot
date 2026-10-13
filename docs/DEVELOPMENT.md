@@ -216,8 +216,10 @@ installing account needs `GRANT` on that schema: install fails loudly rather tha
 wedged. `Uninstall` issues no matching
 revoke — the grantee is the protected database's own role, which uninstall removes. Install also
 reads the instance's SQL privilege catalog and warns, once, naming every other grantee (a role, a
-user or `_PUBLIC`) that holds a grant on OcuPilot's schema or tables; it never refuses or revokes
-one, and OcuPilot's own tools refuse to either, so revoke it with SQL `REVOKE` or the classic portal.
+user or `_PUBLIC`) that holds a grant on OcuPilot's schema, tables or columns, or warns that it
+could not check when the catalog cannot be read. It never refuses install over such a grant or
+revokes it, and OcuPilot's own tools refuse to revoke it, so revoke it with SQL `REVOKE` or the
+classic portal.
 
 Install does not wait for the demo task fixture (`OcuPilotDemo nightly purge`). It schedules the
 task and asks the Task Manager for one run, and the Task Manager runs it at its next once-a-minute
@@ -344,7 +346,8 @@ record says install created, and reports anything else it finds at those paths r
 deleting it. It also keeps the shell's bundle directory while an application sits at the shell's
 path and a matching role while a surviving application's `MatchRoles` names it, naming each in a
 warn, and it refuses, removing nothing, when it cannot read the record while the profile's routine
-application exists (run `Install` with no profile, then `Uninstall` again).
+application exists (run `Install` with no profile, then `Uninstall` again) or cannot read the roles
+the web applications carry.
 
 **Two things an API caller needs.** Read on that same database, or the framework's own
 `%CSP.REST.AccessCheck` refuses the request before any OcuPilot code runs and answers a bare `403`

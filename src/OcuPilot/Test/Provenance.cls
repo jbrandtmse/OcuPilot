@@ -289,9 +289,8 @@ Method TestThePreviewListsTheRolesTheConfirmedRunDeletes()
 /// <p>The shell's bundle directory is what the shell application serves from, so uninstall keeps
 /// it, names it in the left-in-place warn and leaves it out of the preview while an application
 /// sits at the shell's path that uninstall keeps; while the application is recorded, the preview
-/// lists the directory and the confirmed run removes it. Removing the kept application by hand
-/// leaves the directory for the next uninstall or for
-/// <method>OcuPilot.Test.ProbeApps.Remove</method>.</p>
+/// lists the directory and the confirmed run removes it. Once the kept application is removed by
+/// hand, the next uninstall removes the directory.</p>
 /// <p>Mutation (Rule 19): make the directory removal in
 /// <method>OcuPilot.Install.Installer.Uninstall</method> unconditional -> the kept-directory
 /// assertions go red; make the preview list the directory always -> its preview leg goes red.</p>
@@ -320,8 +319,9 @@ Method TestUninstallKeepsTheBundleDirectoryOfAKeptShellApplication()
     Do $$$AssertTrue(tWarns [ ("the shell bundle directory " _ tDir _ " in place"), "the left-in-place warn names the directory")
     Do $$$AssertTrue(tWarns [ "delete the directory by hand", "and the remedy")
 
-    Do $$$AssertStatusOK(..CleanProbe(), "clean-up removes the application")
-    Do $$$AssertTrue('##class(%File).DirectoryExists(tDir), "and the directory with it")
+    Do $$$AssertStatusOK(..DeleteApplication(..#PROBESHELL), "the kept shell application is removed by hand")
+    Do $$$AssertStatusOK(##class(OcuPilot.Install.Installer).Uninstall("probe", 1), "a later uninstall succeeds")
+    Do $$$AssertTrue('##class(%File).DirectoryExists(tDir), "and removes the directory once no application sits at the shell's path")
 }
 
 /// <p>A roster matching role stays while a web application outside OcuPilot's roster carries it

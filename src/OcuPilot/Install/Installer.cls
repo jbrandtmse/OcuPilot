@@ -3019,30 +3019,23 @@ ClassMethod AssertNoForeignOcuPilotRole(ByRef pNames, ByRef pReports) As %Status
             Set tOwned = tOwned + 1
         }
 
-        Set tScanned = 0
-        Set tRS = ##class(%ResultSet).%New("Security.Applications:List")
-        Set tSC = tRS.Execute("*", "", "")
+        ; The count is of applications actually read: the "saw nothing" guard below is about
+        ; applications this method inspected, and counting a row it skipped would let an
+        ; unreadable population pass as a clean one.
+        Set tSC = ..ApplicationMatchRoles(.tMatchRoles)
         If $$$ISERR(tSC) Quit
-        While tRS.Next() {
-            Set tAppName = tRS.Get("Name")
-            If tAppName = "" Continue
-            If '##class(Security.Applications).Exists(tAppName, .tObj, .tExistSC) Continue
-            Set tGetSC = ##class(Security.Applications).Get(tAppName, .tProps)
-            If $$$ISERR(tGetSC) {
-                Set tSC = tGetSC
-                Quit
-            }
-            ; Counted after the read, not before it: the "saw nothing" guard below is about
-            ; applications this method actually inspected, and counting a row it skipped would
-            ; let an unreadable population pass as a clean one.
-            Set tScanned = tScanned + 1
-            Set tRoles = ..RoleNamesIn($Get(tProps("MatchRoles")))
+        Set tScanned = tMatchRoles
+        Set tAppName = ""
+        For {
+            Set tAppName = $Order(tMatchRoles(tAppName))
+            If tAppName = "" Quit
+            Set tRoles = ..RoleNamesIn(tMatchRoles(tAppName))
             For tJ = 1:1:$ListLength(tRoles) {
                 Set tFound = $List(tRoles, tJ)
                 If '$Data(tOwner(tFound)) Continue
                 If tOwner(tFound) = tAppName Continue
                 If tOwner(tFound) = "" {
-                    Set tSC = $$$ERROR($$$GeneralError, "Install asserted that OcuPilot's administrative role '" _ tFound _ "' is an application role of nothing, and the web application '" _ tAppName _ "' carries it in MatchRoles ('" _ $Get(tProps("MatchRoles")) _ "')")
+                    Set tSC = $$$ERROR($$$GeneralError, "Install asserted that OcuPilot's administrative role '" _ tFound _ "' is an application role of nothing, and the web application '" _ tAppName _ "' carries it in MatchRoles ('" _ tMatchRoles(tAppName) _ "')")
                     Quit
                 }
                 Set tSC = $$$ERROR($$$GeneralError, "Install asserted that no application outside OcuPilot's own carries an OcuPilot role, and the web application '" _ tAppName _ "' carries '" _ tFound _ "', which belongs to '" _ tOwner(tFound) _ "'")
@@ -3050,8 +3043,6 @@ ClassMethod AssertNoForeignOcuPilotRole(ByRef pNames, ByRef pReports) As %Status
             }
             If $$$ISERR(tSC) Quit
         }
-        Do tRS.Close()
-        Set tRS = ""
         If $$$ISERR(tSC) Quit
         If tScanned = 0 {
             Set tSC = $$$ERROR($$$GeneralError, "Install asserted OcuPilot's roles against every application the instance defines and read none; a population query that saw nothing is not a clean result")
@@ -3086,38 +3077,66 @@ ClassMethod RoleNamesIn(pMatchRoles As %String) As %List [ Private ]
     Quit tNames
 }
 
-/// <p>The roles every web application on the instance carries, except the applications named in
-/// <var>pExcept</var> (<code>pExcept(&lt;path&gt;)</code>): <var>pRoles</var>(&lt;role name,
-/// upper-cased&gt;) is the comma-separated applications whose <code>MatchRoles</code> mention it,
-/// in <method>RoleNamesIn</method>'s reading. <method>Uninstall</method> keeps a role this names,
-/// because deleting a role strips it from every application that matches it.</p>
-/// <p>Reads <code>MatchRoles</code> as <code>Security.Applications.Get</code> answers it, one
-/// application at a time: the <code>Detail</code> query splits the same property across two
-/// columns and leaves an unconditional entry (<code>:Role</code>) in <code>AddedRoles</code>.
-/// Answers the failing status when an application cannot be read, so "could not tell" is never
-/// read as "no application carries it".</p>
+/// <p>The <code>MatchRoles</code> of every web application on the instance, as
+/// <code>Security.Applications.Get</code> answers it: <var>pMatchRoles</var>(&lt;path&gt;), and
+/// <var>pMatchRoles</var> itself the number of applications read. <code>Get</code> holds an
+/// unconditional entry (<code>:Role</code>) in <code>MatchRoles</code>, where the
+/// <code>Detail</code> query moves it to <code>AddedRoles</code>. An application
+/// <code>Exists</code> no longer finds is skipped; a <code>Get</code> that fails answers its
+/// status. The one population read <method>AssertNoForeignOcuPilotRole</method> and
+/// <method>RolesInUse</method> share.</p>
 /// <p><b>Caller contract:</b> <code>$NAMESPACE</code> must already be <code>%SYS</code>.</p>
-ClassMethod RolesInUse(ByRef pExcept, Output pRoles) As %Status [ Private ]
+ClassMethod ApplicationMatchRoles(Output pMatchRoles) As %Status [ Private ]
 {
     Set tSC = $$$OK
-    Kill pRoles
+    Kill pMatchRoles
+    Set pMatchRoles = 0
     Try {
         Set tRS = ##class(%ResultSet).%New("Security.Applications:List")
         Set tSC = tRS.Execute("*", "", "")
         If $$$ISERR(tSC) Quit
         While tRS.Next() {
             Set tApp = tRS.Get("Name")
-            If (tApp = "") || $Data(pExcept(tApp)) Continue
+            If tApp = "" Continue
             If '##class(Security.Applications).Exists(tApp, .tObj, .tExistSC) Continue
             Set tSC = ##class(Security.Applications).Get(tApp, .tProps)
             If $$$ISERR(tSC) Quit
-            Set tRoles = ..RoleNamesIn($Get(tProps("MatchRoles")))
+            Set pMatchRoles(tApp) = $Get(tProps("MatchRoles"))
+            Set pMatchRoles = pMatchRoles + 1
+        }
+        Do tRS.Close()
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>The roles every web application on the instance carries, except the applications named in
+/// <var>pExcept</var> (<code>pExcept(&lt;path&gt;)</code>): <var>pRoles</var>(&lt;role name,
+/// upper-cased&gt;) is the comma-separated applications whose <code>MatchRoles</code> mention it,
+/// in <method>RoleNamesIn</method>'s reading of <method>ApplicationMatchRoles</method>' answer.
+/// <method>Uninstall</method> keeps a role this names, because deleting a role strips it from
+/// every application that matches it. Answers <method>ApplicationMatchRoles</method>' failing
+/// status, so "could not tell" is never read as "no application carries it".</p>
+/// <p><b>Caller contract:</b> <code>$NAMESPACE</code> must already be <code>%SYS</code>.</p>
+ClassMethod RolesInUse(ByRef pExcept, Output pRoles) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Kill pRoles
+    Try {
+        Set tSC = ..ApplicationMatchRoles(.tMatchRoles)
+        If $$$ISERR(tSC) Quit
+        Set tApp = ""
+        For {
+            Set tApp = $Order(tMatchRoles(tApp))
+            If tApp = "" Quit
+            If $Data(pExcept(tApp)) Continue
+            Set tRoles = ..RoleNamesIn(tMatchRoles(tApp))
             For tI = 1:1:$ListLength(tRoles) {
                 Set tKey = $ZConvert($List(tRoles, tI), "U")
                 Set pRoles(tKey) = $Get(pRoles(tKey)) _ $Select($Data(pRoles(tKey)): ", ", 1: "") _ tApp
             }
         }
-        Do tRS.Close()
     } Catch ex {
         Set tSC = ex.AsStatus()
     }
@@ -3853,7 +3872,7 @@ ClassMethod ReportWidenedGrants(pInstallNs As %String, ByRef pTables, ByRef pRep
             For {
                 Set tLetter = $Order(tGrants(tGrantee, tObject, tLetter))
                 If tLetter = "" Quit
-                Set tPrivileges = tPrivileges _ $Select(tPrivileges = "": "", 1: ",") _ $Case(tLetter, "s": "SELECT", "i": "INSERT", "u": "UPDATE", "d": "DELETE", : tLetter)
+                Set tPrivileges = tPrivileges _ $Select(tPrivileges = "": "", 1: ",") _ $Case(tLetter, "a": "%ALTER", "i": "INSERT", "u": "UPDATE", "d": "DELETE", "s": "SELECT", "r": "REFERENCES", "e": "EXECUTE", "l": "USE", : tLetter)
             }
             Set tText = tText _ $Select(tText = "": "", 1: "; ") _ tGrantee _ " " _ tPrivileges _ " on " _ tObject
             Do tList.%Push({"grantee": (tGrantee), "object": (tObject), "privileges": (tPrivileges)})
@@ -4193,7 +4212,8 @@ ClassMethod AnyObjectExists(ByRef pNames, pInstallNs As %String) As %Boolean [ P
 /// <code>MatchRoles</code> names it, because deleting a role strips it from every
 /// application that matches it. Each object kept is named in a warn with its remedy. When
 /// the provenance record cannot be read while the profile's privileged routine application
-/// exists, the method removes nothing and returns an error.</p>
+/// exists, or the roles the web applications carry cannot be read, the method removes nothing
+/// and returns an error.</p>
 /// <p><b>It stops before the database while any of this profile's fixture inventory rows
 /// remains (DW-65, the owner's decision, rework iteration 6).</b> Only this profile's rows
 /// are read: a production uninstall does not look at rows another profile left in the same
@@ -4356,7 +4376,7 @@ ClassMethod Uninstall(pProfile As %String = "", pConfirmDataLoss As %Boolean = 0
         If $$$ISERR(tInUseSC) {
             Set $NAMESPACE = tOrigNS
             Do ..LogWarn("Uninstall refused: the web applications' roles could not be read, so nothing was removed", {"profile": (pProfile), "error": ($System.Status.GetErrorText(tInUseSC))})
-            Set tSC = $$$ERROR($$$GeneralError, "Uninstall('" _ pProfile _ "') refused: the web applications' matching roles could not be read (" _ $System.Status.GetErrorText(tInUseSC) _ "), so a role another application still carries cannot be told from one nothing carries. Nothing was removed.")
+            Set tSC = $$$ERROR($$$GeneralError, "Uninstall('" _ pProfile _ "') refused: the web applications' matching roles could not be read (" _ $System.Status.GetErrorText(tInUseSC) _ "), so a role another application still carries cannot be told from one nothing carries. Nothing was removed. Correct what the error names and run Uninstall again.")
             Quit
         }
 
@@ -4597,7 +4617,7 @@ ClassMethod Uninstall(pProfile As %String = "", pConfirmDataLoss As %Boolean = 0
             Set tLeftData.applications = tAdopted
         }
         If tShellDirKept {
-            Set tLeftText = tLeftText _ $Select(tLeftText = "": "", 1: ". ") _ "Uninstall left the shell bundle directory " _ tNames("shellDirectory") _ " in place, because the application at the shell's path is still served from it; delete the directory by hand once that application is gone"
+            Set tLeftText = tLeftText _ $Select(tLeftText = "": "", 1: ". ") _ "Uninstall left the shell bundle directory " _ tNames("shellDirectory") _ " in place, because an application still sits at the shell's path; delete the directory by hand once that application is gone"
             Set tLeftData.directory = tNames("shellDirectory")
         }
         If $Data(tKeptRoles) {
