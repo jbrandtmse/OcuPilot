@@ -389,6 +389,8 @@ All paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-20`. The line n
 
 ## Spec Change Log
 
+- 2026-10-13, spec gate (runner): the Design Notes' Rule 20 drafts are written: AD-62 item 11's transformation half, AD-7's three Story 20.27 named limits, and the EXPERIENCE.md :173 dialog entry.
+
 ## Review Triage Log
 
 ## Design Notes
