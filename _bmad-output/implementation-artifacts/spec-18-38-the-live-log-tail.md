@@ -218,6 +218,11 @@ every test added or changed passes on a fresh environment, in either order
 - mutation: `stopLive` keeps the live generation -> the four AC4 legs: off, page in flight, file change, leaving (4 red)
 - mutation: no `loadNewer` on `changed` -> the Live chain, truncated-pages, in-flight-page and refused-page legs (4 red); `messages-log.browser-spec.mjs` Live tail test (red: no line within 10 s)
 - mutation: page `onDestroy` without `setLive(false)` -> the leaving leg (red); `clearWindow` without `stopLive` -> the file-change and sign-out legs (2 red)
+- (QA) mutation: `Tail` moves on growth only (`tNowSize > tBaseSize`) -> `LogTail` moved-file identity leg and rotation test (2 red, run 691)
+- (QA) mutation: `Tail`'s `LOG.FILE` refusal disabled -> `LogTail` refusal rows with a file name (run 692) and `LogTailWire` refusal rows with a file name (run 693), one test red each
+- (QA) mutation: `EnsureAlertLine` skipped on an instance whose `alerts.log` is absent (moved aside on `ocupilot-ci`, restored after) -> `LogTailWire` alerts leg at "alerts: the page supplies a cursor" (run 689); the unmutated tree green on the same instance (run 690), the file it created removed again
+- (QA) mutation: `livePath` added to the `systemmonitor` source -> survived (equivalent: `canLive` already excludes every windowed source, so no source is offered the tail by `livePath` alone)
+- (QA) files: `src/OcuPilot/Test/LogTailWire.cls` changed (`EnsureAlertLine`, `OnAfterAllTests`, `AwaitQuiet`, four holds); no test file created. Final tree: `LogTailWire` 4 (run 694); browser `messages-log` 5/5 and `alerts-log` 7/7 on the rebuilt, redeployed bundle.
 
 ## Auto Run Result
 
