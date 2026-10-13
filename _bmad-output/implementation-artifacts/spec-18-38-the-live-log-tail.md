@@ -2,11 +2,11 @@
 title: 'Story 18.38: The live log tail'
 type: 'feature'
 created: '2026-10-12'
-status: 'in-progress'
-baseline_revision: 'ad0fb51feefb1ce52a318fc5f8d7c2148eefb49c'
+status: 'done'
+baseline_revision: 'd70b927352498488bc64fa5dcfc19af35598b5fe'
 baseline_commit: 'ad0fb51feefb1ce52a318fc5f8d7c2148eefb49c'
 review_loop_iteration: 0
-followup_review_recommended: true
+followup_review_recommended: false
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-18-context.md'
 warnings: ['oversized']
@@ -151,7 +151,7 @@ Rejected:
 
 ### Rework 1 (orchestrator ruling, 2026-10-13)
 
-- [ ] [Review] DW-2392 (ruling B): an abandoned live tail holds a browser connection until the bound, and six on one HTTP/1.1 origin stall the shell. Add an add-only optional `signal` to `core/api.ts` `ApiRequestInit`, passed through to `fetch`, and an aborted request read as an abort (never as status 0, a fault or a log line); the log-viewer store owns one `AbortController` per held tail and aborts it on Live tail off, on a file or source change (`reset`, `clearWindow`, `setSource`) and on leaving the screen (the page's `onDestroy`). Pin it: a component spec that the held request's signal is aborted on each of the three, and a browser spec in `ui/browser/messages-log.browser-spec.mjs` (or its own file) that turns Live tail on and abandons it more than 6 times in a row (off, or a file change), then asserts another shell call (a page read or `/instance`) completes within a few seconds; each with its `mutation:` line. `core/api.ts` joins footprint_extensions (add-only).
+- [x] [Review] DW-2392 (ruling B): an abandoned live tail holds a browser connection until the bound, and six on one HTTP/1.1 origin stall the shell. Add an add-only optional `signal` to `core/api.ts` `ApiRequestInit`, passed through to `fetch`, and an aborted request read as an abort (never as status 0, a fault or a log line); the log-viewer store owns one `AbortController` per held tail and aborts it on Live tail off, on a file or source change (`reset`, `clearWindow`, `setSource`) and on leaving the screen (the page's `onDestroy`). Pin it: a component spec that the held request's signal is aborted on each of the three, and a browser spec in `ui/browser/messages-log.browser-spec.mjs` (or its own file) that turns Live tail on and abandons it more than 6 times in a row (off, or a file change), then asserts another shell call (a page read or `/instance`) completes within a few seconds; each with its `mutation:` line. `core/api.ts` joins footprint_extensions (add-only).
 
 ## Spec Change Log
 
@@ -193,6 +193,26 @@ Rejected:
   - `[low]` `[reject]` I11 the component spec runs against `StubApi` - the browser spec runs the real client
   - `[false]` `[reject]` I12 `EXPERIENCE.md` and `strings.ts` are also in Epic 20's diff - the stage ruling lists both as shared add-only files; the hunks do not overlap
   - `[false]` `[reject]` I13 the intent's `:899` quote is gone from the tree - the spec gate amended that line
+
+### 2026-10-13 - Review pass (rework 1)
+
+- verdicts: 15 findings - high 0, medium 1, low 11, false 3, maybe-false 0
+- findings (G = verification-gap layer, I = intent-alignment layer):
+  - `[medium]` `[patch]` G1 the abort-rejecting stub left the AC4 late-answer legs inert and the loop's generation check after the tail await unpinned (the dropped guard read 77 of 77 green; the recorded 4-red mutation measured 1) - a settled-answer leg added (answer released, then Live tail off in the same turn) and the mutation line corrected: guard dropped -> that leg alone red, `stopLive` keeping the generation -> it and the page-read leg red
+  - `[low]` `[reject]` G2 the abandon leg assumes `messages.log` stays still while eight tails are held - two non-spec writes in about 43 minutes against about 2.5 s of hold, and the fix adds a quiet-wait branch
+  - `[low]` `[reject]` G3 a 250 ms wait stands for "the request reached the wire" - it cannot cause a false red, since the mutated bundle still holds its connection
+  - `[low]` `[reject]` G4 the leg leaves eight server waits on the shared throwaway - the accepted dropped-client hold (deferred entry), and no spec asserts a process count
+  - `[low]` `[patch]` G5 `session.ts` said the signal is given only when the caller set a timeout - wording corrected in place
+  - `[low]` `[reject]` G6 the first leg's fault and path assertions are not load-bearing for the abort - they pin the leg's own claim (an abort is no fault and asks for nothing more) against a different mutation
+  - `[false]` `[reject]` I1 the browser leg rewrites each tail's URL, and tails at one cursor share one connection - the leg is falsifiable (the mutated bundle reddens it alone at the page read), so the rewrite makes it discriminate rather than vacuous
+  - `[low]` `[reject]` I2 tails are abandoned before the first heartbeat flushes headers, so the body-streaming state is pinned only in `api.test.mjs` - an abort frees the connection in either state, and a browser check would hold each tail 10 s or more
+  - `[false]` `[reject]` I3 only the off path runs in the browser - the item names "off, or a file change"; the file, source and reset paths are component legs
+  - `[low]` `[reject]` I4 the component spec runs `StubApi`, not the real `ApiService` - `api.test.mjs` pins the real service and the browser leg joins the two on the real bundle
+  - `[low]` `[reject]` I5 `requestJson` rejects on abort where its neighbours answer outcomes, and "never a log line" has no pinned surface - the ruling asks for an abort read as an abort, the store catches it, `api.test.mjs` asserts no fault, and client code writes no log line
+  - `[low]` `[reject]` I6 with a timeout and a signal both set, the caller-abort listener is removed once headers arrive - no caller sets both (the tail sets no timeout) and the timeout has never covered the body
+  - `[low]` `[reject]` I7 the server's wait continues after the browser cancels - the matrix's amended "Client gone" row and the deferred dropped-client entry
+  - `[low]` `[reject]` I8 a loop page read in flight is dropped by generation, not canceled - the item scopes the abort to the held tail
+  - `[false]` `[reject]` I9 `send`, `requestJson` and `arm` bodies change, not only the type - every new branch runs only for a caller that passes a signal (`api.test.mjs` asserts a plain call carries none; `test:tools` 1,972 green)
 
 ## Design Notes
 
@@ -262,7 +282,7 @@ every test added or changed passes on a fresh environment, in either order
 - mutation: `Tail` answers changed true as soon as the file is absent -> `LogTail` absent-file test (4 red, run 683); the gap writer started after the bound -> its "a look did find the file absent" assertion alone (run 684)
 - mutation: the `/logs/alerts/tail` probe deleted -> `EndpointCoverage` (196 probes, 197 routes, red); the `/logs/messages/tail` route deleted -> `LogTailWire` 4 of 4 red
 - mutation: `canLive` without the current-file test -> `log-viewer.spec.ts` AC6 loop, rotated-file and file-change legs (3 red)
-- mutation: `stopLive` keeps the live generation -> the four AC4 legs: off, page in flight, file change, leaving (4 red)
+- mutation: `stopLive` keeps the live generation -> `log-viewer.spec.ts` AC4 settled-answer and page-read-in-flight legs (2 red); the loop without its generation return after the tail await -> the settled-answer leg alone (1 red)
 - mutation: no `loadNewer` on `changed` -> the Live chain, truncated-pages, in-flight-page and refused-page legs (4 red); `messages-log.browser-spec.mjs` Live tail test (red: no line within 10 s)
 - mutation: page `onDestroy` without `setLive(false)` -> the leaving leg (red); `clearWindow` without `stopLive` -> the file-change and sign-out legs (2 red)
 - (QA) mutation: `Tail` moves on growth only (`tNowSize > tBaseSize`) -> `LogTail` moved-file identity leg and rotation test (2 red, run 691)
@@ -273,20 +293,24 @@ every test added or changed passes on a fresh environment, in either order
 - (CR) mutation: the live loop tails at `offset - 1` instead of the page's `size` -> `log-viewer.spec.ts` live-chain test at the second and third tails' size (1 red)
 - (CR) mutation: the live loop's `continue` for `changed: false` removed -> the same test at its page-read assertion (1 red)
 - (CR) final tree on `ocupilot-ci`: `LogTailWire` 4 (run 695, with `alerts.log` empty, so the line was written and removed again; run 697 as found); `LogTail` 11 (run 696); `log-viewer.spec.ts` 73; `test:tools` 1,969; `check-objectscript` 0 problems; browser `messages-log` 5/5 on the rebuilt, redeployed bundle.
+- (R1) mutation: `stopLive` without `liveAbort?.abort()` -> the four DW-2392 legs of `log-viewer.spec.ts` (4 red); `clearWindow` without `stopLive` -> the file leg and the two AC4 legs (3 red); the page's `onDestroy` without `setLive(false)` -> the leaving leg and the AC4 leaving leg (2 red); `{ signal: held.signal }` dropped from the loop's request -> all four (4 red)
+- (R1) mutation: `requestJson` answering an abort as status 0 -> the three DW-2392 legs of `api.test.mjs` (3 red); `send` without its already-aborted check, or without the `response.text()` rethrow -> the second leg alone (1 red each); `arm` ignoring the caller's signal when a timeout is set -> the third leg ("still pending", 1 red)
+- (R1) mutation: `stopLive` without `liveAbort?.abort()`, bundle rebuilt and redeployed -> `messages-log.browser-spec.mjs` abandon leg red at "all 8 abandoned tails were canceled"; with the canceled-tail assertions removed it is red alone at "the page read went unanswered for 5000 ms" (the held connections stall the shell). Tails at one cursor are one GET, which the browser's cache serves over a single connection, and a moved file releases a held tail, so the leg gives each tail a URL of its own through request interception; without that the unmutated and mutated bundles both read green (measured)
+- (R1) final tree on `ocupilot-ci`: `test:components` 3,068 in 244 files (`log-viewer.spec.ts` 78 after the review patch); `test:tools` 1,972; build initial total 1.91 MB (warning at 1,992 kB), largest lazy chunk `data-browser-page` 83.32 kB (cap 88 kB); browser `messages-log` 6/6 and `alerts-log` 7/7 on the rebuilt, redeployed bundle. The eight tails the abandon leg cancels leave eight server processes in their wait for up to the 50 s bound (the deferred dropped-client hold), and the leg writes nothing.
 
 ## Auto Run Result
 
 Status: done
 Blocking condition: none
 
-**Change.** `messages` and `alerts` opt into a live tail (`LogSourcePort.TAILSOURCES`, `Tail`, `TailState` and the three timing seams); `GET /logs/<source>/tail` is held up to the gateway-derived bound with a heartbeat newline each 10 s (`Api/Response.Heartbeat`: JSON type, compression off, flushing on, then newline and flush) before one `{source, changed}` envelope; the log viewer's Live tail toggle chains the polls (no timer) and reads each change through the page route. The agent gets no tool. Task 0's measurements are under Design Notes; the lead's answer (a dropped socket waits out the bound; the cursor is required whole; AD-12 names the two flush properties) is in the Spec Change Log.
+**Change (rework 1, DW-2392).** An abandoned live tail is aborted: `core/api.ts` takes an optional `signal` on `ApiRequestInit` (an aborted call rejects with an `AbortError`, never status 0, a fault or a log line), and `log-viewer.store.ts` owns one `AbortController` per held tail and aborts it in `stopLive` (Live tail off, `reset`, `clearWindow`, `setSource`, and the page's `onDestroy` through `setLive(false)`). `core/api.ts` joins footprint_extensions (add-only).
 
-**Files.** Port: `Port/LogSourcePort.cls` (tail seams, `Tail`, `TailState`). API: `Api/Response.cls` (`Heartbeat`), `Api/LogPage.cls` (`HandleTail`), `Api/Router.cls` (two routes, two thin targets). Descriptors: `LogMessageViewer.cls`, `LogAlertViewer.cls` (the no-auto-refresh sentence). Client: `log-viewer.store.ts` (`livePath`, `canLive`, `setLive`, the chained loop), `log-viewer.page.ts` (toggle), `strings.ts` (+1), `_components.scss` (toggle row). Tests: `Test/LogTail.cls`, `LogTailWire.cls`, `ResponseProbe.cls` (new), `LogSourceFixture.cls`, `LogSourceDenial.cls`, `Envelope.cls`, `EndpointCoverage.cls`, `Descriptor.cls`, `log-viewer.spec.ts`, `messages-log.browser-spec.mjs`. Planning: `EXPERIENCE.md` :379 in place.
+**Files.** Client: `core/api.ts`, `areas/logs/log-viewer.store.ts`, `core/session.ts` (one comment). Tests: `log-viewer.spec.ts` (five legs), `tools/api.test.mjs` (three), `browser/messages-log.browser-spec.mjs` (one).
 
-**Review.** Two layers, 26 findings: 3 medium, 19 low, 4 false (rows under Review Triage Log). Patched: the held-cursor wire test now binds the heartbeat newlines and the bound's floor; the cursor-behind wire test covers the alerts route; the absent-file leg asserts an absent look; `Tail` has its own `LOG.FILE` sentence; five mutation lines recorded. Rejected: the remaining lows (reasons in the log) and four false claims. Deferred: the two first-pass entries stand (the dropped-client hold is now the accepted consequence); nothing new.
+**Review.** Two layers, 15 findings: 1 medium, 11 low, 3 false (rows under Review Triage Log). Patched: a settled-answer leg that pins the loop's generation check, which the abort-rejecting stub had left unpinned (its mutation line corrected), and a stale `session.ts` comment. Deferred: nothing new.
 
-**Follow-up review: recommended** (two medium entries patched). Unverified until CI: the new wire assertions assume `messages.log` stays still for one beat interval in one of three holds, and the alerts leg assumes an `alerts.log` on a fresh shard throwaway (a fresh one carries a few lines).
+**Follow-up review: not recommended** (no high patched; patched: medium 1, low 1).
 
-**Verified** on `ocupilot-ci` (results and mutations under Verification): `LogTail` 11, `LogTailWire` 4, `LogSource` 22 after the patches; every other class and the client tiers are from the implement pass over unchanged code; `check-objectscript` 0 problems. The throwaway holds no probe leftovers; the rotated log Task 0 made was removed.
+**Verified** on the final tree: `test:components` 3,068 in 244 files; `test:tools` 1,972; build initial total 1.91 MB (warning at 1,992 kB), largest lazy chunk `data-browser-page` 83.32 kB (cap 88 kB); browser `messages-log` 6/6 and `alerts-log` 7/7 on the rebuilt, redeployed bundle on `ocupilot-ci`; `client-lint`, `browser-reset` and `lint-docs` clean. Mutations under Verification (R1).
 
-**Residual risk.** A dropped client holds one CSP process to the bound (deferred, accepted); no automated test sees a beat arrive on time (deferred).
+**Residual risk.** The stall the ruling describes is narrower than assumed: tails asked at one cursor are one cached GET on one connection, and a moved file releases older-cursor tails, so the browser leg gives each tail its own URL through request interception to be falsifiable. The abort frees the browser's connection only; the server process still waits to the bound (the deferred dropped-client hold), so the leg's eight tails leave eight waits of up to 50 s.

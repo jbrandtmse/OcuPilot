@@ -108,7 +108,7 @@ export interface HttpRequestInit {
   body?: string;
   credentials?: 'omit' | 'same-origin' | 'include';
   /**
-   * The abort signal `fetch` is given, when the caller set a timeout (DW-167). Declared here
+   * The abort signal `fetch` is given, when the caller set a timeout (DW-167) or its own signal. Declared here
    * rather than in `ApiService` because this is the shape every `FetchLike` implements --
    * `src/main.ts`'s injected bare `fetch` reads it as its own `RequestInit.signal`, and a test
    * seam reads it to prove a request that never answers is the one that got aborted.

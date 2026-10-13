@@ -92,6 +92,17 @@ export interface ApiRequestInit {
    * chain moving.
    */
   timeoutMs?: number;
+  /**
+   * The caller's own abort signal, passed to `fetch` with the timeout's (joined when both are set).
+   * It exists for a request the caller may abandon while it is held, such as the live log tail.
+   *
+   * **An abort is the caller's doing, so it is never a fault.** An aborted call rejects with an
+   * `AbortError`, from `request()` and from `requestJson()` alike: `requestJson` neither answers it
+   * as `status: 0` nor tells `onFault`, so connectivity never reads an abandoned request as a lost
+   * connection. A call made with an already-aborted signal never reaches the network. A caller that
+   * passes no signal never sees any of this.
+   */
+  signal?: AbortSignal;
 }
 
 /**
@@ -119,6 +130,11 @@ export type JsonResult<T> =
        */
       readonly detail: Record<string, unknown> | null;
     };
+
+/** What an aborted call rejects with: the name `fetch` itself rejects under, so one check serves both. */
+function abortError(): Error {
+  return new DOMException('The request was aborted.', 'AbortError');
+}
 
 /** A body that is not JSON is `null`, not a throw: the caller still has the status. */
 function parseBody(text: string): unknown {
@@ -308,10 +324,16 @@ export class ApiService {
    * abort the retry the moment the first attempt's timer fired.
    */
   private async send(path: string, init: ApiRequestInit): Promise<HttpResponseLike> {
-    const armed = this.arm(init.timeoutMs ?? 0);
+    const outer = init.signal;
+    if (outer?.aborted === true) throw abortError();
+    const armed = this.arm(init.timeoutMs ?? 0, outer);
     if (armed === null) return this.http(path, this.buildInit(init));
     try {
       return await this.http(path, this.buildInit(init, armed.signal));
+    } catch (error) {
+      // Read off `init`, not `outer`: the check above narrowed `outer`, and the call has run since.
+      if (init.signal?.aborted === true) throw abortError();
+      throw error;
     } finally {
       armed.cancel();
     }
@@ -342,7 +364,9 @@ export class ApiService {
     let response: HttpResponseLike;
     try {
       response = await this.request(path, init);
-    } catch {
+    } catch (error) {
+      // An abort the caller asked for is neither a transport fault nor news for `onFault`.
+      if (init.signal?.aborted === true) throw error;
       return this.report({ kind: 'error', status: 0, code: null, reason: null, detail: null }, path);
     }
 
@@ -350,6 +374,8 @@ export class ApiService {
     try {
       text = await response.text();
     } catch {
+      // Aborted while the body streamed in (a held call's heartbeats flush its headers early).
+      if (init.signal?.aborted === true) throw abortError();
       text = '';
     }
     const parsed = parseBody(text);
@@ -427,29 +453,35 @@ export class ApiService {
   }
 
   /**
-   * A controller that aborts after `timeoutMs`, and the function that cancels its timer.
+   * The signal one trip to the network carries, and the function that cancels what was armed for it.
    *
-   * `null` when this call asked for no timeout, which is the default: a read a user is waiting
-   * on is better slow than cancelled. The timer is cleared on every exit -- including the
-   * retry path, which builds a second one -- because an armed timer on a settled request is a
-   * pending task the tab keeps alive and, in a test, a handle `node --test` waits on.
+   * With a timeout, a controller that aborts after `timeoutMs` or when the caller's `outer` signal
+   * aborts, whichever comes first; with `outer` alone, that signal as it is. `null` when this call
+   * asked for neither, which is the default: a read a user is waiting on is better slow than
+   * cancelled. The timer and the listener are cleared on every exit -- including the retry path,
+   * which builds a second one -- because an armed timer on a settled request is a pending task the
+   * tab keeps alive and, in a test, a handle `node --test` waits on.
    *
    * `AbortController` is assumed present: it is in every browser this project supports
-   * (NFR-11) and in the Node versions `engines` pins. Where it somehow is not, this answers
-   * `null` and the call behaves exactly as it did before the timeout existed, rather than
+   * (NFR-11) and in the Node versions `engines` pins. Where it somehow is not, a timeout is
+   * dropped and the call behaves exactly as it did before the timeout existed, rather than
    * throwing at the one layer every read in the product passes through.
    */
-  private arm(timeoutMs: number): { signal: AbortSignal; cancel: () => void } | null {
-    if (timeoutMs <= 0) return null;
-    if (typeof AbortController === 'undefined') return null;
+  private arm(timeoutMs: number, outer: AbortSignal | undefined): { signal: AbortSignal; cancel: () => void } | null {
+    if (timeoutMs <= 0 || typeof AbortController === 'undefined') {
+      return outer === undefined ? null : { signal: outer, cancel: () => undefined };
+    }
     const controller = new AbortController();
-    const timer = setTimeout(() => {
+    const abort = (): void => {
       controller.abort();
-    }, timeoutMs);
+    };
+    const timer = setTimeout(abort, timeoutMs);
+    outer?.addEventListener('abort', abort, { once: true });
     return {
       signal: controller.signal,
       cancel: () => {
         clearTimeout(timer);
+        outer?.removeEventListener('abort', abort);
       },
     };
   }

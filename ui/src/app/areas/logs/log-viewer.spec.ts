@@ -15,7 +15,7 @@ import { stubAccountPreferences } from '../../testing/account-preferences';
 import { explainContext, narrowedEntry, stubExplainEntry, type ExplainEntryState } from '../../testing/explain-entry';
 import { fileOptionText } from './log-line';
 import { LogViewerPage } from './log-viewer.page';
-import { LogViewerStore } from './log-viewer.store';
+import { LogViewerStore, MESSAGES_SOURCE } from './log-viewer.store';
 
 /** The screens this page renders, resolved from the mirror as the shell's outlet resolves it. */
 const ALERTS_SCREEN = SCREENS.find((screen) => screen.route === 'logs/alerts')!;
@@ -78,6 +78,9 @@ class StubApi {
   /** The live tail's requests, in order (Story 18.38). */
   readonly liveAsked: string[] = [];
 
+  /** The abort signal each live tail request carried, in order. */
+  readonly liveSignals: Array<AbortSignal | undefined> = [];
+
   private liveScript: unknown[] = [];
 
   private liveHeld: Array<(body: unknown) => void> = [];
@@ -130,7 +133,7 @@ class StubApi {
     this.tailRefusal = { status, code, detail };
   }
 
-  async requestJson<T>(path: string): Promise<JsonResult<T>> {
+  async requestJson<T>(path: string, init: { signal?: AbortSignal } = {}): Promise<JsonResult<T>> {
     this.paths.push(path);
     if (path === FILES_PATH) {
       if (this.filesRefused) return { kind: 'error', status: 403, code: 'AUTH.NOPRIVILEGE', reason: null, detail: null };
@@ -138,13 +141,18 @@ class StubApi {
     }
     if (path.includes('/tail?')) {
       this.liveAsked.push(path);
+      this.liveSignals.push(init.signal);
       if (this.liveRefusal !== null) {
         return { kind: 'error', status: this.liveRefusal.status, code: this.liveRefusal.code, reason: null, detail: this.liveRefusal.detail };
       }
       const scripted = this.liveScript.shift();
       if (scripted !== undefined) return { kind: 'ok', status: 200, body: scripted as T };
-      return new Promise<JsonResult<T>>((resolve) => {
+      return new Promise<JsonResult<T>>((resolve, reject) => {
         this.liveHeld.push((body) => resolve({ kind: 'ok', status: 200, body: body as T }));
+        // As the API service answers a held call whose caller aborts it: a rejection, never a result.
+        init.signal?.addEventListener('abort', () => {
+          reject(new DOMException('The request was aborted.', 'AbortError'));
+        });
       });
     }
     if (this.pageHold) {
@@ -917,7 +925,6 @@ describe('LogViewerPage', () => {
     expect(rows(fixture).map((cells) => cells[3])).toEqual(expect.arrayContaining(['first of two', 'second of two']));
   });
 
-  // Mutation (Rule 19): `setLive(false)` keeps the live generation -> the held tail's late answer reads a page and this goes red.
   it('Story 18.38 AC4: turning Live tail off drops the held answer and requests nothing more', async () => {
     const { fixture, store } = await mount();
     toggle(fixture)!.click();
@@ -935,6 +942,23 @@ describe('LogViewerPage', () => {
 
     expect(api.paths.length).toBe(before);
     expect(rows(fixture)).toHaveLength(2);
+  });
+
+  // Mutation (Rule 19): the loop without its `generation !== this.liveGeneration` return after the tail await, or `stopLive` keeping the live generation -> this goes red at the page read.
+  it('Story 18.38 AC4: a tail answered before Live tail is turned off is dropped, and requests nothing more', async () => {
+    const { fixture, store } = await mount();
+    toggle(fixture)!.click();
+    await settleChain(fixture);
+    expect(api.liveAsked).toHaveLength(1);
+    const before = api.paths.length;
+
+    // The answer settles first and the abort lands after it, so only the loop's own generation check can drop it.
+    api.releaseLive({ source: 'alerts', changed: true });
+    toggle(fixture)!.click();
+    await settleChain(fixture);
+
+    expect(store.live()).toBe(false);
+    expect(api.paths.length).toBe(before);
   });
 
   it('Story 18.38 AC4: turning Live tail off drops a page read in flight, and the rows stay as they were', async () => {
@@ -1054,6 +1078,104 @@ describe('LogViewerPage', () => {
     expect(store.live()).toBe(false);
     expect(store.fault()?.kind).toBe('server-fault');
     expect(api.liveAsked).toHaveLength(1);
+  });
+
+  // --- DW-2392: an abandoned live tail is aborted, so its connection is released ---------------
+
+  /**
+   * Turn Live tail on and return the abort signal its held tail request carries, still unaborted.
+   * The held answer is dropped by generation as well, so each leg below also pins that an abort is
+   * not read as a fault and asks for nothing more.
+   */
+  async function holdTail(
+    screen = ALERTS_SCREEN,
+    address = ''
+  ): Promise<{ fixture: ComponentFixture<LogViewerPage>; store: LogViewerStore; signal: AbortSignal }> {
+    const mounted = await mount(screen, address);
+    toggle(mounted.fixture)!.click();
+    await settleChain(mounted.fixture);
+    expect(api.liveSignals).toHaveLength(1);
+    const signal = api.liveSignals[0];
+    expect(signal, 'the held tail carries an abort signal').toBeDefined();
+    expect(signal!.aborted, 'and it is not aborted while the tail is wanted').toBe(false);
+    return { ...mounted, signal: signal! };
+  }
+
+  // Mutation (Rule 19): `stopLive` without `this.liveAbort?.abort()` -> all four DW-2392 legs go red at the aborted signal (observed).
+  it('DW-2392: turning Live tail off aborts the held tail request, and nothing reads it as a fault', async () => {
+    const { fixture, store, signal } = await holdTail();
+    const before = api.paths.length;
+
+    toggle(fixture)!.click();
+    await settleChain(fixture);
+
+    expect(signal.aborted).toBe(true);
+    expect(store.live()).toBe(false);
+    expect(store.fault()).toBeNull();
+    expect(api.paths.length).toBe(before);
+  });
+
+  // Mutation (Rule 19): `clearWindow` without `stopLive` -> the file leg goes red at 'another file' (observed), with the two earlier AC4 legs.
+  it('DW-2392: choosing another file, another source and a sign-out reset each abort the held tail request', async () => {
+    const file = await holdTail(MESSAGES_SCREEN, ADDRESS);
+    choose(file.fixture, OLDER);
+    await settleNavigation(file.fixture);
+    expect(file.signal.aborted, 'another file').toBe(true);
+    expect(file.store.fault()).toBeNull();
+
+    TestBed.inject(LogViewerStore).reset();
+    TestBed.resetTestingModule();
+    api = new StubApi();
+    api.tail(tailPage(FILE_LINES));
+    const source = await holdTail();
+    source.store.setSource(MESSAGES_SOURCE);
+    await settleChain(source.fixture);
+    expect(source.signal.aborted, 'another source').toBe(true);
+    expect(source.store.fault()).toBeNull();
+
+    TestBed.inject(LogViewerStore).reset();
+    TestBed.resetTestingModule();
+    api = new StubApi();
+    api.tail(tailPage(FILE_LINES));
+    const reset = await holdTail();
+    reset.store.reset();
+    await settleChain(reset.fixture);
+    expect(reset.signal.aborted, 'a sign-out reset').toBe(true);
+    expect(reset.store.fault()).toBeNull();
+  });
+
+  // Mutation (Rule 19): the page's `onDestroy` without `setLive(false)` -> this leg goes red at the aborted signal (observed), with the AC4 leaving leg.
+  it('DW-2392: leaving the screen aborts the held tail request', async () => {
+    const { fixture, store, signal } = await holdTail();
+    const before = api.paths.length;
+
+    fixture.destroy();
+    await settle();
+
+    expect(signal.aborted).toBe(true);
+    expect(store.fault()).toBeNull();
+    expect(api.paths.length).toBe(before);
+  });
+
+  // Mutation (Rule 19): drop `{ signal: held.signal }` from the live loop's request -> the signal-defined assertion goes red in all four DW-2392 legs (observed).
+  it('DW-2392: a tail answered unchanged is left alone, and the next tail the loop holds has a signal of its own', async () => {
+    const { fixture, store } = await mount();
+    api.live({ source: 'alerts', changed: false });
+
+    toggle(fixture)!.click();
+    await settleChain(fixture);
+
+    expect(api.liveAsked).toHaveLength(2);
+    const [answered, held] = api.liveSignals;
+    expect(held, 'the tail the loop holds carries a signal').toBeDefined();
+    expect(held).not.toBe(answered);
+
+    toggle(fixture)!.click();
+    await settleChain(fixture);
+
+    expect(held!.aborted).toBe(true);
+    expect(answered!.aborted, 'the answered tail was already done with').toBe(false);
+    expect(store.live()).toBe(false);
   });
 });
 

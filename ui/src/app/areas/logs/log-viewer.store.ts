@@ -302,6 +302,9 @@ export class LogViewerStore {
   /** Whether the live loop has a page read in flight, which turning Live tail off drops. */
   private liveReading = false;
 
+  /** The controller of the tail request the loop holds, aborted whenever the loop stops. */
+  private liveAbort: AbortController | null = null;
+
   private readonly listeners = new Set<() => void>();
 
   subscribe(listener: () => void): () => void {
@@ -495,10 +498,16 @@ export class LogViewerStore {
     void this.runLive(this.liveGeneration);
   }
 
-  /** End the live loop: a new generation, the flag down, and the loop's page read, if any, dropped. */
+  /**
+   * End the live loop: a new generation, the flag down, the held tail request aborted so its browser
+   * connection is released rather than held to the server's bound, and the loop's page read, if any,
+   * dropped.
+   */
   private stopLive(): void {
     this.liveGeneration += 1;
     this.liveValue = false;
+    this.liveAbort?.abort();
+    this.liveAbort = null;
     if (this.liveReading) {
       this.liveReading = false;
       this.generation += 1;
@@ -517,7 +526,12 @@ export class LogViewerStore {
     try {
       while (generation === this.liveGeneration) {
         const query = 'identity=' + encodeURIComponent(this.identityValue) + '&size=' + String(this.sizeValue);
-        const result = await this.injector.get(ApiService).requestJson<unknown>(path + '?' + query, { scope: null });
+        const held = new AbortController();
+        this.liveAbort = held;
+        const result = await this.injector
+          .get(ApiService)
+          .requestJson<unknown>(path + '?' + query, { scope: null, signal: held.signal });
+        if (this.liveAbort === held) this.liveAbort = null;
         if (generation !== this.liveGeneration) return;
         if (result.kind !== 'ok') {
           this.recordFault(result, path);

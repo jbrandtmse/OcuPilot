@@ -532,3 +532,82 @@ test('Story 18.38: Live tail brings a line the instance writes onto the screen w
     await context.close();
   }
 });
+
+/**
+ * More than the six connections a browser opens to one HTTP/1.1 origin: a tail that kept its
+ * connection after it was abandoned would leave the shell no room for the next request.
+ */
+const ABANDONED_TAILS = 8;
+
+/** How long a shell call may take once the tails are abandoned. A page read answers in milliseconds. */
+const SHELL_ANSWER_MS = 5000;
+
+/** Poll `predicate` from here until it holds, and name what was awaited when it never does. */
+async function until(predicate, what, timeoutMs = config.navigationTimeoutMs) {
+  const deadline = Date.now() + timeoutMs;
+  while (!predicate()) {
+    if (Date.now() > deadline) throw new Error(`timed out after ${timeoutMs} ms waiting until ${what}`);
+    await new Promise((resolve) => setTimeout(resolve, 50));
+  }
+}
+
+// Mutation (Rule 19): `stopLive` without `this.liveAbort?.abort()`, bundle rebuilt and redeployed -> the
+// cancelled-tail assertion goes red; with it removed, the page-read assertion goes red alone (observed).
+test('Story 18.38: Live tail turned on and off more than six times in a row cancels each held tail and leaves the shell answering', async () => {
+  const { context, page } = await signedInAtViewer();
+  try {
+    await waitNamed(page, () => document.querySelector('[data-ocu-log="live"]') !== null, 'Live tail was offered once the first window answered');
+
+    // Tails with one cursor are the same GET, and the browser's cache lets identical GETs share a
+    // single connection, which would hide a held one. Each tail is given a URL of its own here, as
+    // tails asked at different cursors have, so every held tail needs a connection of its own.
+    const isTail = (request) => new URL(request.url()).pathname.endsWith('/logs/messages/tail');
+    const tails = [];
+    const cancelled = [];
+    await page.setRequestInterception(true);
+    page.on('request', (request) => {
+      if (!isTail(request)) {
+        void request.continue();
+        return;
+      }
+      tails.push(request.url());
+      void request.continue({ url: `${request.url()}&asked=${tails.length}` });
+    });
+    page.on('requestfailed', (request) => {
+      if (isTail(request)) cancelled.push(request.failure()?.errorText ?? '');
+    });
+
+    for (let abandoned = 1; abandoned <= ABANDONED_TAILS; abandoned += 1) {
+      await page.click('[data-ocu-log="live"]');
+      await waitNamed(page, () => document.querySelector('[data-ocu-log="live"]')?.getAttribute('aria-pressed') === 'true', `the toggle read pressed for tail ${abandoned}`);
+      await until(() => tails.length === abandoned, `tail ${abandoned} was requested`);
+      // Let the request reach the wire, so it holds a connection rather than waiting for one.
+      await new Promise((resolve) => setTimeout(resolve, 250));
+      await page.click('[data-ocu-log="live"]');
+      await waitNamed(page, () => document.querySelector('[data-ocu-log="live"]')?.getAttribute('aria-pressed') === 'false', `the toggle read off after tail ${abandoned}`);
+    }
+
+    // Each abandoned tail was cancelled in the browser, not left to run to the server's bound.
+    await until(() => cancelled.length === ABANDONED_TAILS, `all ${ABANDONED_TAILS} abandoned tails were canceled`, SHELL_ANSWER_MS);
+    assert.deepEqual(cancelled, Array(ABANDONED_TAILS).fill('net::ERR_ABORTED'), 'every abandoned tail ended as an abort');
+    assert.equal(tails.length, ABANDONED_TAILS, 'and no tail was requested once Live tail was off');
+
+    // Another shell call completes at once: no connection is held by a tail nobody is waiting for.
+    await page.waitForSelector('[data-ocu-log="load-newer"]', { timeout: config.navigationTimeoutMs });
+    const answered = page.waitForResponse(
+      (response) => {
+        const url = new URL(response.url());
+        return url.pathname.endsWith('/logs/messages') && url.search.includes('offset=');
+      },
+      { timeout: SHELL_ANSWER_MS }
+    );
+    await page.click('[data-ocu-log="load-newer"]');
+    try {
+      await answered;
+    } catch (cause) {
+      throw new Error(`the page read went unanswered for ${SHELL_ANSWER_MS} ms after ${ABANDONED_TAILS} abandoned tails, so a held connection was not released`, { cause });
+    }
+  } finally {
+    await context.close();
+  }
+});

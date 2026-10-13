@@ -589,6 +589,101 @@ test('requestJson reports a transport fault as an outcome, never as a rejection'
   assert.equal(harness.session.state(), 'signed-in', 'a dropped call is not a sign-out');
 });
 
+// --- DW-2392: a caller's own abort signal -----------------------------------------------------
+
+/** A fetch that holds every call and rejects it the way the browser does when its signal aborts. */
+function heldUntilAborted() {
+  return (path, init) =>
+    new Promise((resolve, reject) => {
+      init.signal?.addEventListener('abort', () => reject(new DOMException('The operation was aborted.', 'AbortError')));
+    });
+}
+
+test('DW-2392: a caller\'s signal reaches the wire, and aborting it rejects the call without a fault', async () => {
+  // The log viewer's live tail holds a request for up to a minute and abandons it when the person
+  // turns Live tail off. An abort is that caller's doing, so it is a rejection the caller reads,
+  // never `status: 0` (which connectivity would arm a backoff on) and never an `onFault` report.
+  //
+  // Mutation (Rule 19): make `requestJson`'s catch answer an aborted call as status 0 (drop the
+  // `init.signal?.aborted` rethrow) -> the rejection assertion goes red (observed: all three legs).
+  const harness = signedIn(heldUntilAborted());
+  await harness.ready();
+  const controller = new AbortController();
+
+  const pending = harness.api.requestJson('/api/ocupilot/logs/messages/tail?size=1', { signal: controller.signal });
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.ok(harness.calls[0].init.signal, 'the caller\'s signal (joined with none) reached fetch');
+  assert.equal(harness.calls[0].init.signal.aborted, false, 'and is not aborted while the caller wants the answer');
+
+  controller.abort();
+
+  await assert.rejects(pending, { name: 'AbortError' });
+  assert.equal(harness.calls[0].init.signal.aborted, true, 'the request itself was cancelled');
+  assert.deepEqual(harness.faults, [], 'an abandoned request is told to nobody');
+  assert.equal(harness.session.state(), 'signed-in', 'and is not a sign-out');
+});
+
+test('DW-2392: an already-aborted signal never reaches the network, and an abort while the body streams still rejects', async () => {
+  // Mutation (Rule 19): drop the `aborted` check in `send` -> the first leg resolves instead of rejecting;
+  // drop the `aborted` rethrow around `response.text()` -> the second leg resolves with an ok answer whose
+  // body is null (each observed red here alone).
+  const harness = signedIn(() => response(200, '{}'));
+  await harness.ready();
+  const gone = new AbortController();
+  gone.abort();
+
+  await assert.rejects(harness.api.requestJson('/api/ocupilot/info', { signal: gone.signal }), { name: 'AbortError' });
+  await assert.rejects(harness.api.request('/api/ocupilot/info', { signal: gone.signal }), { name: 'AbortError' });
+  assert.equal(harness.calls.length, 0, 'no call was issued for a request nobody wants');
+  assert.deepEqual(harness.faults, []);
+
+  const streaming = new AbortController();
+  const body = signedIn((path, init) => ({
+    status: 200,
+    text: () =>
+      new Promise((resolve, reject) => {
+        init.signal.addEventListener('abort', () => reject(new DOMException('The operation was aborted.', 'AbortError')));
+      }),
+  }));
+  await body.ready();
+  const pending = body.api.requestJson('/api/ocupilot/info', { signal: streaming.signal });
+  await new Promise((resolve) => setImmediate(resolve));
+  streaming.abort();
+  await assert.rejects(pending, { name: 'AbortError' });
+  assert.deepEqual(body.faults, [], 'an abort mid-body is no ok answer and no fault');
+});
+
+test('DW-2392: a call with a timeout and a signal is cancelled by whichever comes first, and a call with neither is untouched', async () => {
+  // Mutation (Rule 19): `arm` ignores `outer` when a timeout is set -> the abort leg reads 'still pending'
+  // (observed), because only the timeout would cancel it.
+  const harness = signedIn(heldUntilAborted());
+  await harness.ready();
+
+  const controller = new AbortController();
+  const aborted = harness.api.requestJson('/api/ocupilot/info', { signal: controller.signal, timeoutMs: 60000 });
+  await new Promise((resolve) => setImmediate(resolve));
+  controller.abort();
+  const outcome = await Promise.race([
+    aborted.then(
+      () => 'answered',
+      (error) => error.name
+    ),
+    new Promise((resolve) => setTimeout(() => resolve('still pending'), 250)),
+  ]);
+  assert.equal(outcome, 'AbortError', 'the caller\'s abort cancelled the request at once, not at its timeout');
+  assert.equal(harness.calls[0].init.signal.aborted, true);
+
+  const timedOut = await harness.api.requestJson('/api/ocupilot/info', { signal: new AbortController().signal, timeoutMs: 20 });
+  assert.equal(timedOut.kind, 'error');
+  assert.equal(timedOut.status, 0, 'the timeout still reads as a transport fault, as it did before the signal existed');
+  assert.equal(harness.faults.length, 1, 'and is reported once');
+
+  const plain = signedIn(() => response(200, '{}'));
+  await plain.ready();
+  await plain.api.request('/api/ocupilot/info');
+  assert.equal(plain.calls[0].init.signal, undefined, 'a call that asked for neither carries no signal');
+});
+
 // --- Story 1.13: every JSON call reports what it came back as -------------------------------
 
 test('onFault fires once per requestJson call, for a success as well as a failure', async () => {
