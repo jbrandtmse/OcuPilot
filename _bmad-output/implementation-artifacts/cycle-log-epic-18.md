@@ -1423,3 +1423,6 @@ TAB-separated: `<UTC>\t<Story <id> | Epic <N>>\t<stage>\t<metadata>`
 2026-10-13T00:30:59Z	Story 18.43	cr_complete	spawn_at=2026-10-12T23:53:22Z model=opus agent_name=18-43-shared-instance-cr-1 resolved=10(2_med:no-warn_pin,shared_ApplicationMatchRoles;8_low) deferred=0 dismissed=17 high=0 med=2 low=8 rows=38 unresolved_high_med=0 review_tier=full-opus layers=4 mutations=runs_729-738+browser
 2026-10-13T00:30:59Z	Story 18.43	ledger_adjudicated	owned=3 resolved=3(DW-219,DW-2172,DW-2240) decision_pending=DW-2365(owner_hold) model=claude-opus-5-5
 2026-10-13T00:30:59Z	Epic 18	spine_updated	ad=AD-37(roles-read_refusal) reason=rule20(18.43_code_review) by=runner lint=ok(pre-existing_low) memlog=appended
+2026-10-13T00:33:23Z	Story 18.43	fresh_check_started	throwaway=ocupilot-ci rebuilt(down+up,healthy 00:32:53Z;IPM_cleared) load=LOAD-OK,STARTPATH-OK offered=619 chunks=51
+2026-10-13T00:33:23Z	Story 18.43	stage_spawned	stage=full-sweep spawn_at=2026-10-13T00:33:23Z model=sonnet agent_name=18-43-sweep-1 prompt=carry-2026-10-10/epic-18-r/sweep-1843-prompt.md run_in_background=false
+2026-10-13T00:33:23Z	Story 18.37	stage_spawned	stage=plan spawn_at=2026-10-13T00:33:23Z model=opus agent_name=18-37-interop-usage-plan-1 cycle_iteration=1 prompt=carry-2026-10-10/epic-18-r/plan-1837-prompt.md run_in_background=false throwaway=untouched(sweep_running)
