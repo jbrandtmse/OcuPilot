@@ -53,6 +53,7 @@ import {
   tabProblem,
   timelineMemberProblem,
   READ_SOURCE_PORTS,
+  monitorEndpoints,
 } from './screen-mirror.mjs';
 import { loadStrings } from './strings.mjs';
 import { CREDENTIAL_RE } from './field-lists.mjs';
@@ -204,6 +205,10 @@ test('every read note\'s text is the string its key names, and the three SQL sta
       'OcuPilot.Screen.Descriptor.ExplorerSqlProcedureStatements',
       'OcuPilot.Screen.Descriptor.ExplorerSqlTableStatements',
       'OcuPilot.Screen.Descriptor.ExplorerSqlViewStatements',
+      // Story 18.37: Interoperability usage's three tabs state that the counts have no date range.
+      'OcuPilot.Screen.Descriptor.InteropUsageImpactTab',
+      'OcuPilot.Screen.Descriptor.InteropUsageTab',
+      'OcuPilot.Screen.Descriptor.InteropUsageVolumeTab',
       // Story 18.11: Prometheus metrics states that each read shortens an external scraper's intervals.
       'OcuPilot.Screen.Descriptor.MetricsList',
       // Story 23.4: the Services list states what an empty Allowed IP addresses list means.
@@ -211,7 +216,7 @@ test('every read note\'s text is the string its key names, and the three SQL sta
       // Story 19.10: SQL activity states whose statement text it shows.
       'OcuPilot.Screen.Descriptor.SqlActivityList',
     ],
-    'the three SQL statements reads, the ECP Connections tab, Services, SQL activity and Prometheus metrics declare a note'
+    'the three SQL statements reads, the ECP Connections tab, Services, SQL activity, Prometheus metrics and the three Interoperability usage tabs declare a note'
   );
   for (const screen of noted) {
     const { key, text } = screen.declaration.read.note;
@@ -885,6 +890,8 @@ test('tabProblem and tabGroupProblem return every sentence OcuPilot.Test.TabCorp
     ['system-explorer/sql-views/document', 'system-explorer/sql-views/document', 1, 0],
     // Story 20.4: a production item's six tabs, a parent-scoped group whose head is unlisted.
     ['interoperability/productions/items/document', 'interoperability/productions/items/document', 1, 0],
+    // Story 18.37: Interoperability usage's three tabs, a listed group whose head is its first tab.
+    ['os-management/interoperability-usage', 'os-management/interoperability-usage', 1, 22],
     ['os-management/license-usage', 'os-management/license-usage', 1, 8],
     ['security/oauth', 'security/oauth', 1, 5],
     ['os-management/ecp-application-servers/ssl', 'os-management/ecp-application-servers', 2, 0],
@@ -892,11 +899,13 @@ test('tabProblem and tabGroupProblem return every sentence OcuPilot.Test.TabCorp
     ['system-explorer/sql-procedures/statements', 'system-explorer/sql-procedures/document', 2, 0],
     ['system-explorer/sql-views/fields', 'system-explorer/sql-views/document', 2, 0],
     ['interoperability/productions/items/settings', 'interoperability/productions/items/document', 2, 0],
+    ['os-management/interoperability-usage/volume', 'os-management/interoperability-usage', 2, 0],
     ['os-management/license-usage/processes', 'os-management/license-usage', 2, 0],
     ['security/oauth/clients', 'security/oauth', 2, 0],
     ['system-explorer/sql-tables/indices', 'system-explorer/sql-tables/document', 3, 0],
     ['system-explorer/sql-views/statements', 'system-explorer/sql-views/document', 3, 0],
     ['interoperability/productions/items/queue', 'interoperability/productions/items/document', 3, 0],
+    ['os-management/interoperability-usage/impact', 'os-management/interoperability-usage', 3, 0],
     ['os-management/license-usage/users', 'os-management/license-usage', 3, 0],
     ['security/oauth/resource-servers', 'security/oauth', 3, 0],
     ['system-explorer/sql-tables/partitions', 'system-explorer/sql-tables/document', 4, 0],
@@ -2976,6 +2985,53 @@ test('Story 18.11: Prometheus metrics reads through the monitor port, the fourte
   assert.equal(screen.declaration.ownPrivileges, undefined, 'it declares no own pair');
   assert.equal(screen.declaration.refreshes, false, 'it never refreshes');
   assert.equal(screen.declaration.sideBarPosition, 21, 'OS management lists it at position 21');
+});
+
+// Story 18.37: the monitor source names one of four endpoints, the metrics and the three Interoperability usage
+// lists, with no criteria, per-row call, parent list, query, parts or rows, under the port's two pairs. Every
+// case in `OcuPilot.Test.InteropUsageDescriptor`'s corpus gets its exact sentence, or none, here as the
+// instance's registry gives it there.
+// Mutation (Rule 19): let the monitor arm of `readProblem` admit any endpoint -> the endpoint cases go red.
+test('Story 18.37: the monitor source admits its four endpoints and refuses another endpoint, type and key, and the corpus agrees', () => {
+  assert.deepEqual(monitorEndpoints(), ['Metrics', 'Interfaces', 'MessageVolume', 'DatabaseImpact'], 'the port declares its four endpoints');
+  const corpus = testCorpus(['Test', 'InteropUsageDescriptor.cls'], 'Cases');
+  let refusals = 0;
+  let sound = 0;
+  for (const testCase of corpus.cases) {
+    const declaration = structuredClone(corpus.declaration);
+    declaration.read.source = structuredClone(testCase.source);
+    if (testCase.criteria !== undefined) declaration.read.criteria = structuredClone(testCase.criteria);
+    if (testCase.privileges !== undefined) declaration.privileges = structuredClone(testCase.privileges);
+    const problem = testCase.check === 'criteria' ? criteriaProblem(declaration) : readProblem(declaration);
+    assert.equal(problem, testCase.expected, testCase.name);
+    if (testCase.expected !== null) refusals += 1;
+    else if (testCase.check === 'read') sound += 1;
+  }
+  assert.equal(sound, 4, 'the four endpoints are sound');
+  assert.ok(refusals >= 8, `the corpus refuses its shapes (${refusals})`);
+  const { screens } = readSources();
+  const expected = [
+    ['InteropUsageTab', 'Interfaces', 22, 1],
+    ['InteropUsageVolumeTab', 'MessageVolume', 0, 2],
+    ['InteropUsageImpactTab', 'DatabaseImpact', 0, 3],
+  ];
+  for (const [name, endpoint, position, tabPosition] of expected) {
+    const screen = screens.find((candidate) => candidate.className === `OcuPilot.Screen.Descriptor.${name}`);
+    assert.ok(screen !== undefined, `${name} is declared`);
+    assert.deepEqual(screen.declaration.read.source, { port: 'monitor', endpoint, type: 'LIST' }, `${name} reads the monitor port's ${endpoint}`);
+    assert.equal(readProblem(screen.declaration), null, `${name}'s read passes`);
+    assert.equal(screen.declaration.ownPrivileges, undefined, `${name} declares no own pair`);
+    assert.equal(screen.declaration.refreshes, false, `${name} never refreshes`);
+    assert.equal(screen.declaration.sideBarPosition, position, `${name}'s side-bar position`);
+    assert.deepEqual(screen.declaration.tab, { group: 'os-management/interoperability-usage', position: tabPosition, labelKey: screen.declaration.tab.labelKey }, `${name} is tab ${tabPosition} of one group`);
+    assert.equal(screen.declaration.classicPage, '%CSP.UI.Portal.InteroperabilityUsage', `${name} replaces the classic page`);
+  }
+  const first = screens.find((candidate) => candidate.className === 'OcuPilot.Screen.Descriptor.InteropUsageTab');
+  assert.deepEqual(
+    first.declaration.table.columns.filter((column) => column.emptyKey !== undefined).map((column) => [column.field, column.emptyKey]),
+    [['Namespace', 'interopUsageAll'], ['Protocol', 'interopUsageAll']],
+    'a totals row reads All in its namespace and protocol cells'
+  );
 });
 
 // Story 20.2: the four Interoperability lists read through the interop port, the twelfth read source,

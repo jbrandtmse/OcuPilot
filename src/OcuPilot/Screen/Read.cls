@@ -36,8 +36,9 @@
 /// <code>encryption</code> through <method>EncryptionPortClass</method>; <code>docdb</code> through
 /// <method>DocDbPortClass</method>; <code>sqlactivity</code>, the instance's running SQL
 /// statements, through <method>SqlActivityPortClass</method>; <code>monitor</code>, the instance's
-/// Prometheus metrics, through <method>MonitorPortClass</method>; and <code>interop</code>, the
-/// namespace's productions and interoperability classes, through <method>InteropPortClass</method>
+/// Prometheus metrics and interoperability usage, through <method>MonitorPortClass</method>; and
+/// <code>interop</code>, the namespace's productions and interoperability classes, through
+/// <method>InteropPortClass</method>
 /// (AD-62). <code>port: "state"</code> is
 /// OcuPilot's own protected state (AD-9), resolved against a kernel store's guarded list through
 /// <method>StateRows</method>. The second changes where the rows come from and nothing else: the
@@ -292,9 +293,9 @@ ClassMethod SqlActivityPortClass() As %String
     Quit "OcuPilot.Port.SqlActivityPort"
 }
 
-/// <p>The <code>read.source.port</code> value naming the instance's Prometheus metrics, read through
-/// <method>MonitorPortClass</method> behind that port's own gate, with no namespace and no criteria
-/// (AD-29, AD-36, Story 18.11).</p>
+/// <p>The <code>read.source.port</code> value naming the instance's Prometheus metrics or its
+/// interoperability usage, read through <method>MonitorPortClass</method> behind that port's own gate,
+/// with no namespace and no criteria (AD-29, AD-36).</p>
 Parameter SOURCEMONITOR = "monitor";
 
 /// <p>The <code>read.source.port</code> value naming the namespace's productions and its business
@@ -595,8 +596,8 @@ ClassMethod Execute(pDescriptor As %String, pMaxRows As %String = "", Output pRe
                 Quit
             }
         } ElseIf tSource.%Get("port") = ..#SOURCEMONITOR {
-            ; The instance's Prometheus metrics (Story 18.11): no namespace and no criteria, so the cap
-            ; is the whole ask; the port's gate runs before any collection is taken.
+            ; The instance's Prometheus metrics or interoperability usage: no namespace and no criteria,
+            ; so the cap is the whole ask; the port's gate runs before any vendor call.
             Kill tQuery
             Set tQuery("maxRows") = tMax + 1
             Set tPortSC = $ClassMethod(..MonitorPortClass(), "Invoke", tSource.%Get("endpoint"), ..#READTYPE, .tQuery, "", .tAnswer, .pHttpStatus, .pFault)

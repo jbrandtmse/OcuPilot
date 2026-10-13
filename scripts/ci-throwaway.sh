@@ -427,6 +427,9 @@ services:
       # The Dashboard drill-downs' gate class signs in as probe principals each missing one pair the four screens
       # require, and reads the four as them and as a principal holding both (Story 18.36).
       # classes: DashboardDrillDownGate
+      # The Interoperability usage gate class signs in as probe principals each missing one pair the three tabs
+      # require, and reads the three as them and as a principal holding both (Story 18.37).
+      # classes: InteropUsageGate
       # The interoperability control class compiles and runs a probe production in USER and starts,
       # stops, restarts, updates and recovers it; its descriptor class compiles the probe classes in USER;
       # its gate class signs in as probe principals each

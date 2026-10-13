@@ -174,6 +174,10 @@ test('a side bar lists only built screens, in side-bar order', () => {
       // editor's Mappings line, among the unlisted screens in descriptor class-name order.
       'os-management/namespaces/global-mappings/edit',
       'os-management/namespaces/global-mappings',
+      // Story 18.37: Interoperability usage's unlisted Database impact and Message volume tabs, by
+      // descriptor class name.
+      'os-management/interoperability-usage/impact',
+      'os-management/interoperability-usage/volume',
       // Story 18.5: the unlisted Journal file databases and Journal file details, reached from
       // Journals, by descriptor class name.
       'os-management/journals/databases',
@@ -235,6 +239,8 @@ test('a side bar lists only built screens, in side-bar order', () => {
       'os-management/sql-activity',
       // Story 18.11: Prometheus metrics, the twenty-first.
       'os-management/metrics',
+      // Story 18.37: Interoperability usage, the twenty-second.
+      'os-management/interoperability-usage',
       'tasks/schedule/details',
       // Story 9.7: the unlisted New Task wizard, reached from the Task schedule's Create.
       'tasks/schedule/edit',
@@ -454,6 +460,8 @@ test('OS management lists Processes, Locks, System usage, Databases, Integrity l
       'os-management/sql-activity',
       // Story 18.11: the twenty-first.
       'os-management/metrics',
+      // Story 18.37: the twenty-second.
+      'os-management/interoperability-usage',
     ]
   );
   // Story 18.18: Journal settings follows Journals, a listed form page of its own.
@@ -517,6 +525,18 @@ test('OS management lists Processes, Locks, System usage, Databases, Integrity l
   assert.equal(metrics.sideBarPosition, 21);
   assert.equal(metrics.rowTarget, null);
   assert.equal(metrics.refreshes, false);
+  // Story 18.37: Interoperability usage is the twenty-second entry, the first of three tabs: Database impact
+  // and Message volume are unlisted routes under it, and none refreshes.
+  const interopUsage = screenForRoute('os-management/interoperability-usage');
+  assert.equal(stringFor(interopUsage.labelKey), STRINGS.interopUsageLabel);
+  assert.equal(interopUsage.sideBarPosition, 22);
+  assert.equal(interopUsage.refreshes, false);
+  assert.deepEqual(
+    ['os-management/interoperability-usage', 'os-management/interoperability-usage/volume', 'os-management/interoperability-usage/impact'].map((route) => isListedScreen(screenForRoute(route))),
+    [true, false, false],
+    'only the first tab takes a side-bar position'
+  );
+  assert.equal(tabGroupFor(screenForRoute('os-management/interoperability-usage/impact'))?.route, 'os-management/interoperability-usage');
 });
 
 // Story 3.5. `sideBarPosition` 0 is the sentinel for routable-but-unlisted: the route table reads

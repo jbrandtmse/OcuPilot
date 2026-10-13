@@ -11649,3 +11649,26 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-20-7-the-three-embedded-vendor-editors.md (cr) | severity: low | fix-risk: med | footprint: in-story
 - evidence: Measured on ocupilot-b-ci: $ZNAME("Demo.<e-acute>tude.Thing",4) and %Dictionary.Classname.IsValid answer 1, while CLASS_NAME is ASCII-only, so interopEditorSource answers null; widening it touches AD-21's shape check and an unmeasured vendor path.
 - 2026-10-13T16:12:40Z status=wontfix-accepted owner=20-7-the-three-embedded-vendor-editors by=cr note=reopen_if=a Rules, Processes or Transforms read returns a Name outside CLASS_NAME on a real instance
+### DW-2384: The Interfaces tab shows the vendor's Active flag as Yes/No, but its false rows count every interface enabled at any time, active ones included, so 'No 11' beside 'Yes 4' reads as 11 inactive
+- source: spec-18-37-interoperability-usage.md | severity: med | fix-risk: med | footprint: in-story
+- evidence: On ocupilot, InteropInterfaces with no start answers each grouping twice (HSCUSTOM Web API: Active 1 = 4, Active 0 = 11); SYS_Monitor_Interop.Interface holds 11 such interfaces, 4 with an open activity; with a start date, as the classic page always passes, only Active 0 rows answer
+- 2026-10-13T13:17:14Z status=decision-pending owner=burndown by=cr note=spec Task 1/3 declare Active boolean; recommend the lead amends: per grouping, all-time Count plus a numeric ActiveNow
+- 2026-10-13T13:23:03Z status=routed owner=18-37-interoperability-usage by=merge_gate note=orchestrator ruling B: one row per grouping, all-time Count plus numeric ActiveNow; fixed in 18.37 rework 1 before its push
+- 2026-10-13T14:23:07Z status=resolved-by:18-37-interoperability-usage by=adjudication note=one row per grouping, all-time Count plus numeric ActiveNow (29fd56c2 + re-review); pinned by TestAGroupingTheVendorAnswersTwiceReadsAsOneRow
+
+### DW-2385: On an instance where no production and no message purge has run, the MessageVolume and DatabaseImpact live legs compare 0 with 0, and no test has read DatabaseImpact over rows
+- source: spec-18-37-interoperability-usage.md | severity: med | fix-risk: high | footprint: in-story
+- evidence: InteropUsagePort's live legs read 0 DatabaseImpact rows on ocupilot-ci and fresh CI legs; a manual %SYS.Monitor.Interop.DatabaseImpact or Messages %Save answers ERROR #40101 (ocupilot-ci, 2026-10-13); the vendor writer LogDatabaseSizes leaves rows its %OnDelete refuses to non-vendor callers (inference)
+- 2026-10-13T13:17:14Z status=escalated owner=burndown by=cr note=options: a throwaway-only LogDatabaseSizes seed under OCUPILOT_ALLOW_ERROR_SEED (rows outlive the test), or accept
+- 2026-10-13T13:23:03Z status=wontfix-accepted by=merge_gate note=orchestrator 2026-10-13; reopen_if=the vendor offers a deletable or test-scoped DatabaseImpact row, or a defect is reported in that read
+
+### DW-2386: The spine's Story 18.37 amendments still say what Task 0 settled otherwise: AD-7 :225 and AD-8 :326 that Task 0 will measure, and AD-29 :707 that the reads are the classic page's own class queries
+- source: spec-18-37-interoperability-usage.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Task 0 (b) and (c) measured no ^IRIS.Metrics* write and the NoOperate refusals (-99, <PROTECT>); MessageVolume runs MetricsTotalPerNamespace and Interfaces every grouping, which the classic page does not run (spec Task 1)
+- 2026-10-13T13:17:14Z status=open owner=18-37-interoperability-usage by=cr note=spine is Epic 20-contended (Rule 11): the lead corrects the three sentences at origin at its gate (Rule 20)
+- 2026-10-13T13:20:20Z status=resolved-by:18-37-interoperability-usage by=adjudication note=AD-7, AD-8 and AD-29 sentences replaced at origin with Task 0's measured facts and the queries run
+
+### DW-2387: InteropUsageGate.Wire is the fifth near-copy of a gate class's wire helper (DocDbAppGate, MetricsGate, DashboardDrillDownGate, RestServiceGate), each differing only in its path or verb
+- source: spec-18-37-interoperability-usage.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: InteropUsageGate.Wire and DashboardDrillDownGate.cls :102 differ only in maxRows; Story 18.11's review closed the second copy with reopen_if a third gate copied it
+- 2026-10-13T13:17:14Z status=wontfix-accepted owner=18-37-interoperability-usage by=cr note=reopen_if=Test.Http.AbsoluteRequest's signature or the failedPair detail changes; one Http helper then serves all five

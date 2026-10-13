@@ -15155,6 +15155,406 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "entityLabelKey": ""
   },
   {
+    "descriptor": "OcuPilot.Screen.Descriptor.InteropUsageImpactTab",
+    "route": "os-management/interoperability-usage/impact",
+    "area": "os-management",
+    "labelKey": "interopUsageImpactLabel",
+    "sideBarPosition": 0,
+    "archetype": "detail",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Operate",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "none",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "Database",
+        "DataCreated"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "interopUsageImpactEmpty",
+    "commandAliases": [],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupCapacity",
+        "textKey": "interopUsagePrompt1"
+      },
+      {
+        "groupKey": "promptGroupCapacity",
+        "textKey": "interopUsagePrompt2"
+      },
+      {
+        "groupKey": "promptGroupCapacity",
+        "textKey": "interopUsagePrompt3"
+      }
+    ],
+    "classicPage": "%CSP.UI.Portal.InteroperabilityUsage",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "monitor",
+        "endpoint": "DatabaseImpact",
+        "type": "LIST"
+      },
+      "fields": [
+        "Database",
+        "DataCreated"
+      ],
+      "filter": [
+        "Database"
+      ],
+      "sort": {
+        "fields": [
+          "Database",
+          "DataCreated"
+        ],
+        "default": "DataCreated",
+        "direction": "desc"
+      },
+      "paging": "cap",
+      "note": {
+        "key": "interopUsageNote",
+        "text": "Counts cover all the usage data the instance still keeps, with no date range."
+      }
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Database",
+          "labelKey": "systemInfoDatabase",
+          "kind": "name"
+        },
+        {
+          "field": "DataCreated",
+          "labelKey": "interopUsageColumnDataCreated",
+          "kind": "number"
+        }
+      ],
+      "emptyNextKey": "tableReadOnlyEmptyNext",
+      "emptyAgentKey": ""
+    },
+    "tab": {
+      "group": "os-management/interoperability-usage",
+      "position": 3,
+      "labelKey": "interopUsageImpactLabel"
+    },
+    "toolIdentifier": "osmgmt.interopimpact",
+    "refreshDefault": 0,
+    "banner": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.InteropUsageTab",
+    "route": "os-management/interoperability-usage",
+    "area": "os-management",
+    "labelKey": "interopUsageLabel",
+    "sideBarPosition": 22,
+    "archetype": "detail",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Operate",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "none",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "Type",
+        "Namespace",
+        "Protocol",
+        "ActiveNow",
+        "Count"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "interopUsageInterfacesEmpty",
+    "commandAliases": [
+      "interoperability usage",
+      "interop usage"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupCapacity",
+        "textKey": "interopUsagePrompt1"
+      },
+      {
+        "groupKey": "promptGroupCapacity",
+        "textKey": "interopUsagePrompt2"
+      },
+      {
+        "groupKey": "promptGroupCapacity",
+        "textKey": "interopUsagePrompt3"
+      }
+    ],
+    "classicPage": "%CSP.UI.Portal.InteroperabilityUsage",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "monitor",
+        "endpoint": "Interfaces",
+        "type": "LIST"
+      },
+      "fields": [
+        "Type",
+        "Namespace",
+        "Protocol",
+        "ActiveNow",
+        "Count"
+      ],
+      "filter": [
+        "Type",
+        "Namespace",
+        "Protocol"
+      ],
+      "sort": {
+        "fields": [
+          "Type",
+          "Namespace",
+          "Protocol",
+          "ActiveNow",
+          "Count"
+        ],
+        "default": "Type",
+        "direction": "asc"
+      },
+      "paging": "cap",
+      "note": {
+        "key": "interopUsageNote",
+        "text": "Counts cover all the usage data the instance still keeps, with no date range."
+      }
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Type",
+          "labelKey": "tableColumnType",
+          "kind": "name"
+        },
+        {
+          "field": "Namespace",
+          "labelKey": "headerNamespaceLabel",
+          "kind": "identifier",
+          "emptyKey": "interopUsageAll"
+        },
+        {
+          "field": "Protocol",
+          "labelKey": "interopUsageColumnProtocol",
+          "kind": "text",
+          "emptyKey": "interopUsageAll"
+        },
+        {
+          "field": "ActiveNow",
+          "labelKey": "interopUsageColumnActiveNow",
+          "kind": "number"
+        },
+        {
+          "field": "Count",
+          "labelKey": "interopColumnCount",
+          "kind": "number"
+        }
+      ],
+      "emptyNextKey": "tableReadOnlyEmptyNext",
+      "emptyAgentKey": ""
+    },
+    "tab": {
+      "group": "os-management/interoperability-usage",
+      "position": 1,
+      "labelKey": "interopUsageInterfacesTab"
+    },
+    "toolIdentifier": "osmgmt.interopusage",
+    "refreshDefault": 0,
+    "banner": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.InteropUsageVolumeTab",
+    "route": "os-management/interoperability-usage/volume",
+    "area": "os-management",
+    "labelKey": "interopUsageVolumeLabel",
+    "sideBarPosition": 0,
+    "archetype": "detail",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Operate",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "none",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "Namespace",
+        "Type",
+        "Volume"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "interopUsageVolumeEmpty",
+    "commandAliases": [],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupCapacity",
+        "textKey": "interopUsagePrompt1"
+      },
+      {
+        "groupKey": "promptGroupCapacity",
+        "textKey": "interopUsagePrompt2"
+      },
+      {
+        "groupKey": "promptGroupCapacity",
+        "textKey": "interopUsagePrompt3"
+      }
+    ],
+    "classicPage": "%CSP.UI.Portal.InteroperabilityUsage",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "monitor",
+        "endpoint": "MessageVolume",
+        "type": "LIST"
+      },
+      "fields": [
+        "Namespace",
+        "Type",
+        "Volume"
+      ],
+      "filter": [
+        "Namespace",
+        "Type"
+      ],
+      "sort": {
+        "fields": [
+          "Namespace",
+          "Type",
+          "Volume"
+        ],
+        "default": "Volume",
+        "direction": "desc"
+      },
+      "paging": "cap",
+      "note": {
+        "key": "interopUsageNote",
+        "text": "Counts cover all the usage data the instance still keeps, with no date range."
+      }
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Namespace",
+          "labelKey": "headerNamespaceLabel",
+          "kind": "name"
+        },
+        {
+          "field": "Type",
+          "labelKey": "tableColumnType",
+          "kind": "text"
+        },
+        {
+          "field": "Volume",
+          "labelKey": "interopItemTabMessages",
+          "kind": "number"
+        }
+      ],
+      "emptyNextKey": "tableReadOnlyEmptyNext",
+      "emptyAgentKey": ""
+    },
+    "tab": {
+      "group": "os-management/interoperability-usage",
+      "position": 2,
+      "labelKey": "interopUsageVolumeLabel"
+    },
+    "toolIdentifier": "osmgmt.interopvolume",
+    "refreshDefault": 0,
+    "banner": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
     "descriptor": "OcuPilot.Screen.Descriptor.JournalFileDatabaseList",
     "route": "os-management/journals/databases",
     "area": "os-management",

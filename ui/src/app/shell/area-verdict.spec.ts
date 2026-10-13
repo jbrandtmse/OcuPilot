@@ -190,6 +190,8 @@ describe('an area opens when any screen it lists is allowed (AD-8, DW-1768)', ()
       open,
       // Story 18.11: Prometheus metrics, the twenty-first, open on the same two pairs.
       open,
+      // Story 18.37: Interoperability usage, the twenty-second, open on the same two pairs.
+      open,
     ]);
   });
 });
