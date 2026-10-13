@@ -11549,3 +11549,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-37-interoperability-usage.md | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: measured on ocupilot 2026-10-12: GET /api/monitor/interop/v1/current/interfaces and /current/volume with no credentials answered 200; its code adds %All with no caller check (inference from source)
 - 2026-10-13T02:15:56Z status=decision-pending owner=burndown by=lead note=owner_hold: vendor defect candidate, never reported upstream; OcuPilot never calls it (Story 18.37, AD-29)
+
+### DW-2371: No audit event records an FSAccess write (Path PUT and DELETE, Purpose PUT), where the classic AllowDirectory and RemoveDirectory audit RESTRICTDIRECTORIES
+- source: spec-18-42-allowed-directories-a-person-s-write.md | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: Task 0 on ocupilot-ci with auditing on: the four FSAccess endpoint calls left no audit row; the classic calls wrote two. OcuPilot's own SecurityChange row is the only record (AD-15)
+- 2026-10-13T03:48:03Z status=decision-pending owner=burndown by=harvest note=owner_hold: vendor defect candidate, never reported upstream (Story 18.42, AD-15)
