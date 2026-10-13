@@ -1,4 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { NavigationEnd, NavigationError, Router } from '@angular/router';
+import { Subject } from 'rxjs';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { InstanceService } from '../core/instance';
@@ -18,14 +20,28 @@ import { StaleBundleNotice } from './stale-bundle-notice';
  * `<script src="main-*.js">` in the real `document` to name "the bundle this tab loaded", the
  * same shape `about.test.mjs`'s `scriptSource()` fixture exercises without a document at all.
  *
+ * A screen whose code cannot load surfaces as a router `NavigationError`, and the notice answers it
+ * by asking the instance service to re-read the installed bundle (Story 20.29).
+ *
  * Mutations (Rule 19), each applied to `stale-bundle-notice.ts`, observed red here alone, and
- * reverted: make the `stale` getter return `false` unconditionally -> the two "renders" tests and
- * "reacts to a later instance update" go red (3 of 5); make `chooseReload()` a no-op -> "asks the
- * document to fetch itself again" goes red (1 of 5).
+ * reverted: make the `stale` getter return `false` unconditionally -> every test that expects the
+ * prompt goes red (4 of 8); make `chooseReload()` a no-op -> "asks the document to fetch itself
+ * again" goes red (1 of 8); remove the `NavigationError` subscription -> the two navigation-failure
+ * tests go red (2 of 8); remove the `onDestroy` unsubscribe -> "stops listening to the router when it
+ * is destroyed" goes red (1 of 8).
  */
 class StubInstance {
   private identity = '';
   private readonly listeners = new Set<() => void>();
+  rechecks = 0;
+  /** The identity a re-check will find the instance naming, or `null` when it finds no change. */
+  recheckFinds: string | null = null;
+
+  recheckBuild(): Promise<void> {
+    this.rechecks += 1;
+    if (this.recheckFinds !== null) this.publish(this.recheckFinds);
+    return Promise.resolve();
+  }
 
   buildIdentity(): string {
     return this.identity;
@@ -46,6 +62,7 @@ class StubInstance {
 describe('the stale-bundle notice', () => {
   let fixture: ComponentFixture<StaleBundleNotice>;
   let instance: StubInstance;
+  let routerEvents: Subject<unknown>;
   const planted: HTMLElement[] = [];
   const plantedScripts: HTMLElement[] = [];
 
@@ -62,8 +79,12 @@ describe('the stale-bundle notice', () => {
 
   function mount(): void {
     instance = new StubInstance();
+    routerEvents = new Subject<unknown>();
     TestBed.configureTestingModule({
-      providers: [{ provide: InstanceService, useValue: instance as unknown as InstanceService }],
+      providers: [
+        { provide: InstanceService, useValue: instance as unknown as InstanceService },
+        { provide: Router, useValue: { events: routerEvents } },
+      ],
     });
     fixture = TestBed.createComponent(StaleBundleNotice);
     document.body.appendChild(fixture.nativeElement);
@@ -141,5 +162,38 @@ describe('the stale-bundle notice', () => {
     } finally {
       Object.defineProperty(window, 'location', { configurable: true, value: originalLocation });
     }
+  });
+
+  it('re-checks the installed bundle when a navigation fails, and for no other router event', () => {
+    loadBundle('main-AAAA1111.js');
+    mount();
+    routerEvents.next(new NavigationEnd(1, '/ocupilot/a', '/ocupilot/a'));
+    expect(instance.rechecks).toBe(0);
+
+    routerEvents.next(new NavigationError(2, '/ocupilot/b', new Error('Failed to fetch dynamically imported module')));
+    expect(instance.rechecks).toBe(1);
+  });
+
+  it('shows the prompt when the re-check finds another bundle installed, and leaves it off when it finds the same one', () => {
+    loadBundle('main-AAAA1111.js');
+    mount();
+    instance.recheckFinds = 'main-AAAA1111.js';
+    routerEvents.next(new NavigationError(1, '/ocupilot/b', new Error('chunk')));
+    fixture.detectChanges();
+    expect(instance.rechecks).toBe(1);
+    expect(notice()).toBeNull();
+
+    instance.recheckFinds = 'main-BBBB2222.js';
+    routerEvents.next(new NavigationError(2, '/ocupilot/b', new Error('chunk')));
+    fixture.detectChanges();
+    expect(notice()).not.toBeNull();
+  });
+
+  it('stops listening to the router when it is destroyed', () => {
+    loadBundle('main-AAAA1111.js');
+    mount();
+    fixture.destroy();
+    routerEvents.next(new NavigationError(1, '/ocupilot/b', new Error('chunk')));
+    expect(instance.rechecks).toBe(0);
   });
 });

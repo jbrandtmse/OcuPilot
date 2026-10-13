@@ -196,7 +196,8 @@ function backgroundStatus(host: HTMLElement): string {
 
 describe('SQL query', () => {
   it("is the console's own page, and the empty console invites a statement with Run unavailable", async () => {
-    expect(resolveScreenPage(DESCRIPTOR_PAGES, ARCHETYPE_PAGES, SCREEN.descriptor, SCREEN.archetype)).toBe(SqlQueryPage);
+    const loader = resolveScreenPage(DESCRIPTOR_PAGES, ARCHETYPE_PAGES, SCREEN.descriptor, SCREEN.archetype);
+    expect(await loader?.()).toBe(SqlQueryPage);
     const { host } = await mount();
     expect(status(host)).toBe(STRINGS.explorerSqlEmpty);
     const area = el<HTMLTextAreaElement>(host, 'statement');

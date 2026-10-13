@@ -537,6 +537,7 @@ test('the harness build configuration has its own entry, document, tsconfig and 
 // on top of Stories 18.31 to 18.33's editors), under the 4000kB hard stop (DW-1166).
 // Story 20.5's forward merge of Story 18.34 re-based it to 3527kB, 5% above the merged tree's measured 3,358,630 bytes
 // (both stories' client code together), under the 4000kB hard stop (DW-1166, the orchestrator's re-measure rule).
+// Story 20.29 re-based it to 1992kB, 5% above a measured 1,896,272-byte initial total (every screen's page now loads on demand), under the 4000kB hard stop (DW-1166).
 //
 // Mutations (Rule 19):
 // - loosen `maximumWarning` to a much larger, unmeasured figure (e.g. "3MB") -> the
@@ -549,7 +550,7 @@ test('DW-371: exactly one initial budget, maximumWarning under maximumError, and
   assert.equal(budgets.length, 1, 'expected exactly one budget entry');
   const [budget] = budgets;
   assert.equal(budget.type, 'initial');
-  assert.equal(budget.maximumWarning, '3527kB', 'Story 20.5 with Story 18.34: 5% above the merged tree\'s measured 3,358,630 bytes, under the 4000kB hard stop; a change to this figure must be a reviewed diff, not a silent edit');
+  assert.equal(budget.maximumWarning, '1992kB', 'Story 20.29: 5% above the measured 1,896,272-byte initial total (the shell, with every page lazy), under the 4000kB hard stop; a change to this figure must be a reviewed diff, not a silent edit');
   assert.equal(budget.maximumError, '4000kB');
 
   // Both budgets are written in the units `@angular/build` prints, where a kB is 1000 bytes and

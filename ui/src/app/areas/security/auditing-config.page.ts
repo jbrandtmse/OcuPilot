@@ -32,6 +32,7 @@ import {
   AUDITING_CONFIG_DESCRIPTOR,
   AUDITING_ENABLE_ACTION,
   AUDITING_EVENT_LIST_ROUTES,
+  AUDITING_FOCUS_ENABLE,
   AUDIT_SYSTEM_EVENT_LIST_DESCRIPTOR,
   auditingControl,
   auditingEnabled,
@@ -39,11 +40,7 @@ import {
   type AuditingControl,
 } from './auditing-config.store';
 
-/**
- * The router-state key that asks this page to focus its "Turn auditing on" button on arrival. The
- * panel's auditing-off banner navigates with it (Story 7.4, epics 5.x).
- */
-export const AUDITING_FOCUS_ENABLE = 'ocupilotAuditingFocusEnable';
+export { AUDITING_FOCUS_ENABLE };
 
 /** A screen this page reads, the store its rows land in, and whether its read has answered or failed. */
 interface ReadView {

@@ -2,7 +2,7 @@
  * About, per-screen help, the links panel and DW-3's stale-bundle prompt, in a real browser
  * against the throwaway instance (Story 15.3).
  *
- * **What only this tier can settle.** Four things:
+ * **What only this tier can settle.** Five things:
  *
  * - **The Integration AC (Rule 1).** The stale-bundle comparison has one artifact on both sides --
  *   the hashed `main-*.js` the installer recorded and the one the running document loaded -- and
@@ -20,10 +20,15 @@
  *   `classicPage`, rather than from a stub that was told the answer.
  * - **The links panel's three destinations as the instance answers them**, including the
  *   documentation address the degraded (no local DocBook) branch produces on this image.
+ * - **A screen whose code cannot load (Story 20.29, AC4).** A tab from before a reinstall asks for
+ *   a page chunk the instance no longer holds, and only a real browser refuses the instance's answer
+ *   as a module, so only here can the failed navigation be seen to leave the URL and the screen in
+ *   place while the stale-bundle notice explains it.
  *
- * Reads only. It signs in, opens a dialog and reads attributes; it writes nothing to the instance
- * and needs no teardown, so it is safe to run in any order beside the others. It still refuses the
- * live container, the way every spec here does.
+ * Reads only. It signs in, opens a dialog, reads attributes and asks for one screen whose code
+ * cannot load; it writes nothing to the instance beyond the reset every context makes and needs no
+ * teardown, so it is safe to run in any order beside the others. It still refuses the live
+ * container, the way every spec here does.
  *
  * Run: `npm run build`, then bring the throwaway up so the installer records the bundle it
  * deployed (`scripts/ci-throwaway.sh up ...` copies `ui/dist`), then
@@ -38,8 +43,9 @@ import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import puppeteer from 'puppeteer';
 
-import { LIVE_CONTAINER, READINESS_PATH, browserConfig, launchOptions } from '../browser.config.mjs';
+import { LIVE_CONTAINER, READINESS_PATH, SHELL_PATH, browserConfig, launchOptions } from '../browser.config.mjs';
 import { loadStrings } from '../tools/strings.mjs';
+import { openFromSideBar } from './panel-spec.mjs';
 import { leaveFirstLoginGate } from './shell-entry.mjs';
 import { resetRememberedState } from './preferences-reset.mjs';
 
@@ -111,11 +117,30 @@ async function signedInAt(url, prepare = null) {
  * Interception rather than a write to the version row: the row is the instance's record of what
  * it installed, and a spec that rewrote it would be changing shared state to observe a client
  * comparison. What the client compares is the body it is served, and this serves it.
+ *
+ * With a `control` object the replacement waits for it: until `control.armed` is set the answer
+ * names the document's own `main-*.js`, so nothing reads as stale, and once armed it names
+ * `identity` and every `chunk-*.js` request is made to a name the instance no longer holds, as a
+ * tab from before a reinstall does. The page gets the instance's own answer for that name, which the
+ * static handler gives as the shell document (the browser refuses it as a module); each answer's
+ * status and content type are recorded in `control.chunkAnswers`.
  */
-function rewriteBuildIdentity(identity) {
+function rewriteBuildIdentity(identity, control = null) {
   return async (page) => {
     await page.setRequestInterception(true);
     page.on('request', (request) => {
+      const url = new URL(request.url());
+      if (control?.armed === true && url.pathname.startsWith(SHELL_PATH) && /\/chunk-[^/]+\.js$/.test(url.pathname)) {
+        void (async () => {
+          const renamed = new URL(url);
+          renamed.pathname = url.pathname.replace(/\/chunk-[^/]+\.js$/, '/chunk-RENAMEDBYREINSTALL.js');
+          const answer = await fetch(renamed);
+          const contentType = answer.headers.get('content-type') ?? '';
+          control.chunkAnswers.push({ status: answer.status, contentType });
+          await request.respond({ status: answer.status, contentType, body: Buffer.from(await answer.arrayBuffer()) });
+        })();
+        return;
+      }
       if (!request.url().includes(INSTANCE_PATH)) {
         void request.continue();
         return;
@@ -125,7 +150,7 @@ function rewriteBuildIdentity(identity) {
           headers: { Authorization: request.headers().authorization ?? authHeader() },
         });
         const body = await response.json();
-        body.buildIdentity = identity;
+        body.buildIdentity = control === null || control.armed === true ? identity : await documentBundle(page);
         await request.respond({
           status: response.status,
           contentType: 'application/json',
@@ -404,6 +429,45 @@ test('Integration AC (DW-3): an instance that reports no build identity raises n
     await new Promise((resolve) => setTimeout(resolve, 1000));
     const absent = await page.evaluate(() => document.querySelector('.ocu-stale-bundle') === null);
     assert.equal(absent, true, 'an empty identity is nothing to compare, so no prompt');
+  } finally {
+    if (session !== null) await session.context.close();
+  }
+});
+
+// AC4 (Story 20.29). Mutation (Rule 19): remove the `NavigationError` subscription from
+// `shell/stale-bundle-notice.ts`, rebuild and redeploy -> the notice never appears and this goes red.
+test('AC4 (Story 20.29): a screen whose code cannot load leaves the URL and the screen where they were, and the stale-bundle notice explains it', async () => {
+  let session = null;
+  try {
+    const control = { armed: false, chunkAnswers: [] };
+    session = await signedInAt(HOME_URL, rewriteBuildIdentity('main-NOTTHISONE.js', control));
+    const { page } = session;
+    await page.waitForSelector('.ocu-screen-outlet router-outlet + *', { timeout: config.navigationTimeoutMs });
+    assert.equal(await page.evaluate(() => document.querySelector('.ocu-stale-bundle') === null), true, 'no notice stands before the click');
+    const standing = await page.evaluate(() => ({
+      path: window.location.pathname + window.location.search,
+      screen: document.querySelector('.ocu-screen-outlet').dataset.screen,
+      page: document.querySelector('.ocu-screen-outlet router-outlet + *').localName,
+    }));
+
+    // From here every page chunk is requested under a name the instance no longer holds, and the instance names another bundle.
+    control.armed = true;
+    await openFromSideBar(page, config, '#ocu-rail-item-permissions', STRINGS.userListLabel);
+
+    await page.waitForSelector('.ocu-stale-bundle', { timeout: config.navigationTimeoutMs });
+    assert.ok(control.chunkAnswers.length > 0, 'the click asked for a page chunk the instance no longer holds');
+    for (const answer of control.chunkAnswers) {
+      assert.doesNotMatch(answer.contentType, /javascript/, `and the instance did not answer it with code (HTTP ${answer.status})`);
+    }
+    const notice = await page.evaluate(() => document.querySelector('.ocu-stale-bundle .ocu-stale-bundle-text').textContent.trim());
+    assert.equal(notice, STRINGS.staleBundleNotice, 'the existing stale-bundle sentence explains the click that did nothing');
+
+    const after = await page.evaluate(() => ({
+      path: window.location.pathname + window.location.search,
+      screen: document.querySelector('.ocu-screen-outlet').dataset.screen,
+      page: document.querySelector('.ocu-screen-outlet router-outlet + *')?.localName ?? null,
+    }));
+    assert.deepEqual(after, standing, 'the URL and the screen stay where they were');
   } finally {
     if (session !== null) await session.context.close();
   }

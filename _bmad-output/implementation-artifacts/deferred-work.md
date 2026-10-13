@@ -11527,6 +11527,20 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Sanitize.cls IsToolReferences (exactly type and tool_name, wire-name pattern) and MessageAdapter.cls ReferencedNames (any tool_name) walk the same shape; every array ResultText sees has passed the stricter gate.
 - 2026-10-12T15:19:30Z status=wontfix-accepted owner=18-45-the-agent-s-tool-roster-scoped-per-turn by=cr note=reopen_if=a content Sanitize passes unchanged renders as JSON, not the Found sentence, in OpenAI's tool message
 
+### DW-2367: The area stores and actions app.ts constructs before the first render (427,221 bytes) stay in the initial bundle after Story 20.29 moves every page to a lazy chunk
+- source: spec-20-29-screens-load-on-demand.md | severity: med | fix-risk: med | footprint: in-epic
+- evidence: 20.29 plan prototype on ocupilot-b-ci: initial 1,895,548 B after the change, of which 427,221 B are area stores and actions that register declared Creates before the first change-detection pass
+- 2026-10-12T21:15:28Z status=routed owner=burndown by=lead note=orchestrator 2026-10-12 Q2: no story chartered; the 44 percent smaller initial bundle is the owner's win
+
+### DW-2368: Two comments in ui/src/styles/_components.scss still say ngComponentOutlet renders the page host inside div.ocu-screen-outlet; the router outlet does since Story 20.29
+- source: spec-20-29-screens-load-on-demand.md | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: grep -n ngComponentOutlet ui/src/styles/_components.scss answers :724 and :6053; the file is one Epic 18 edits, and 20.29's Rule 11 authorization covers no edit there
+- 2026-10-12T22:20:03Z status=wontfix-accepted owner=20-29-screens-load-on-demand by=lead note=reopen_if=a story edits either selector's rule block in _components.scss; that story corrects the comment in the same edit
+
+### DW-2369: AgentNavigator reports a screen whose page code cannot load as a refusal for unsaved changes, since Story 20.29 made a failed page-chunk load reject navigateByUrl
+- source: spec-20-29-screens-load-on-demand.md | severity: med | fix-risk: med | footprint: in-epic
+- evidence: ui/src/app/shell/agent-navigator.ts:106 turns every navigateByUrl rejection into false (.catch(() => false)) and settles refused with NAV_REFUSED_UNSAVED_CODE; a lazy page chunk that cannot load (a stale tab after a reinstall) now rejects, so the agent tells the person a form is dirty when none is.
+- 2026-10-12T23:01:04Z status=routed owner=burndown by=cr note=needs a load-failure outcome in Api/Turn.cls's closed vocabulary plus the client branch; the stale-bundle notice still shows
 ### DW-2364: IPM's exporter drops <SystemRequirements> from the archive's module.xml, so the archive carries no IRIS version floor (DW-1333's IPM half; a tool-defect candidate)
 - source: spec-18-13-multi-namespace-install.md | severity: low | fix-risk: low | footprint: out-of-footprint
 - evidence: Story 13.3 on IPM 0.10.5 (scripts/ci-ipm-archive.sh): the exported manifest has no <SystemRequirements> though module.xml :28 declares Version >=2026.2; 18.13 enforces the floor in Installer.GuardVersionFloor
@@ -11543,3 +11557,14 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: ARCHITECTURE-SPINE.md AD-38 second paragraph: 'module.xml carries one <Invoke> running When=After'; module.xml :56-57 now carries GuardTarget (Compile, After) and Install (Activate, After). epic-18-context.md :58 'Open at Task 0'.
 - 2026-10-12T19:54:32Z status=open owner=18-13-multi-namespace-install by=cr note=spine is Epic 20-contended (Rule 11): the lead corrects AD-38's sentence at its gate (Rule 20); the context regenerates
 - 2026-10-12T19:56:43Z status=resolved-by:18-13-multi-namespace-install by=adjudication note=AD-38 corrected at origin (two invokes: the install after Activate, the guard after Compile), epic-18-context.md :58 rewritten
+
+### DW-2372: A create form's first hand-off to an editor in another page module shows the form's Saved status while that editor's page code loads (Story 20.29)
+- source: spec-20-29-screens-load-on-demand.md (cr, CI rework 1) | severity: med | fix-risk: med | footprint: out-of-footprint
+- evidence: The user, role and web-app create forms hand off to DESCRIPTOR_EDIT_PAGES editors in other modules; on the first hand-off the router fetches that chunk while the create page renders its role=status Saved, which saveAndSettle reads as done (the language-server CI red's shape). No current spec acts on the editor before its content shows (inference).
+- 2026-10-13T04:15:56Z status=escalated owner=burndown by=cr note=decide: the hand-off warms the editor's loader before it navigates, or the spec's Remains bullet stands
+
+### DW-2373: AD-5's on-demand-pages bullet says each child's loadComponent is the loader ScreenOutlet's maps name; since the 20.29 CI rework it is rememberedPage(that loader)
+- source: spec-20-29-screens-load-on-demand.md (cr, CI rework 1) | severity: low | fix-risk: low | footprint: in-story
+- evidence: app.routes.ts withPage sets loadComponent: rememberedPage(loader), and the shipped-route specs compare against rememberedPage(base). AD-5's last bullet in ARCHITECTURE-SPINE.md still reads 'whose loadComponent is the loader ScreenOutlet's maps name for it'. The bullet's substance holds.
+- 2026-10-13T04:15:56Z status=open owner=20-29-screens-load-on-demand by=cr note=lead: Rule 20 light-path wording of AD-5 (through rememberedPage, which answers a loaded page at once)
+- 2026-10-13T04:18:51Z status=resolved-by:20-29-screens-load-on-demand by=adjudication note=AD-5 bullet amended 2026-10-13 (rememberedPage, one loader per page); memlog decision appended

@@ -1,6 +1,6 @@
 import { Component } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { Router, provideRouter } from '@angular/router';
+import { Router, provideRouter, type Route } from '@angular/router';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { NavigationService, screenForUrl, type Verdict } from '../core/navigation';
@@ -87,6 +87,31 @@ async function build(url: string, navigation = new StubNavigation()): Promise<Co
 const tabs = (fixture: ComponentFixture<DetailPage>): HTMLButtonElement[] =>
   Array.from((fixture.nativeElement as HTMLElement).querySelectorAll('.ocu-detail-tab'));
 
+/**
+ * Opens the second tab of the OAuth strip against a route table that answers that navigation with
+ * `table` (a refusal or a failure), then builds the strip of the next page with focus on the body.
+ */
+async function stripBuiltAfterAnswer(table: Route[]): Promise<ComponentFixture<DetailPage>> {
+  const leaving = await build('/security/oauth?ns=HSCUSTOM');
+  const router = TestBed.inject(Router);
+  router.resetConfig(table);
+  const target = tabs(leaving)[1];
+  target.focus();
+  target.click();
+  await settle(leaving);
+  expect(router.url, 'the router stayed where it was').toBe('/security/oauth?ns=HSCUSTOM');
+  leaving.destroy();
+  (leaving.nativeElement as HTMLElement).remove();
+  (document.activeElement as HTMLElement | null)?.blur();
+
+  const next = TestBed.createComponent(DetailPage);
+  document.body.appendChild(next.nativeElement);
+  planted.push(next.nativeElement);
+  await settle(next);
+  expect(tabs(next)[1]?.getAttribute('data-route'), 'the next strip lists the tab that was opened').toBe(target.getAttribute('data-route'));
+  return next;
+}
+
 describe('the detail page', () => {
   afterEach(() => {
     for (const element of planted.splice(0)) element.remove();
@@ -154,6 +179,44 @@ describe('the detail page', () => {
     await settle(arriving);
     expect(document.activeElement).toBe(tabs(arriving)[1]);
     expect(tabs(arriving)[1].getAttribute('aria-selected')).toBe('true');
+  });
+
+  it('AC1: a tab opened twice before the router answers still takes focus on the page that replaces the strip', async () => {
+    // Enter reaches the click handler twice, the strip's key handling and then the button's own
+    // activation, and the router resolves the first navigation `false` once the second supersedes
+    // it. Mutation (Rule 19): clear `focusOnArrival` on any `false` answer, whoever made the request
+    // -> the first answer clears the second open's request and focus stays on the body.
+    const leaving = await build('/security/oauth?ns=HSCUSTOM');
+    const router = TestBed.inject(Router);
+    const target = tabs(leaving)[1];
+    target.focus();
+    target.click();
+    target.click();
+    await settle(leaving);
+    expect(router.url).toBe('/security/oauth/clients?ns=HSCUSTOM');
+    leaving.destroy();
+    (leaving.nativeElement as HTMLElement).remove();
+    (document.activeElement as HTMLElement | null)?.blur();
+
+    const arriving = TestBed.createComponent(DetailPage);
+    document.body.appendChild(arriving.nativeElement);
+    planted.push(arriving.nativeElement);
+    await settle(arriving);
+    expect(document.activeElement).toBe(tabs(arriving)[1]);
+  });
+
+  it('AC1: a tab whose navigation the router refuses leaves no focus request for the next page to take', async () => {
+    // Mutation (Rule 19): drop `forget` from the `false` branch of `DetailPage.open` -> the request
+    // outlives the refused navigation and the next strip built takes focus it was never owed.
+    const next = await stripBuiltAfterAnswer([{ path: '**', canActivate: [() => false], children: [] }]);
+    expect(document.activeElement).not.toBe(tabs(next)[1]);
+  });
+
+  it('AC1: a tab whose page cannot load leaves no focus request for the next page to take', async () => {
+    // Mutation (Rule 19): drop `forget` from the rejection handler of `DetailPage.open` -> the
+    // request outlives the failed navigation and the next strip built takes focus it was never owed.
+    const next = await stripBuiltAfterAnswer([{ path: '**', loadComponent: () => Promise.reject(new Error('the page chunk cannot load')) }]);
+    expect(document.activeElement).not.toBe(tabs(next)[1]);
   });
 
   it('AC5: a gated tab stays listed and focusable, names its pair, and opens nothing', async () => {

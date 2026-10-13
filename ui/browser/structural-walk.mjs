@@ -158,7 +158,7 @@ export function removeConversation(config, key) {
 /** How long a screen may take to settle before the walk records it as unsettled. */
 const SETTLE_TIMEOUT_MS = 20000;
 
-/** A screen is settled once no `/api/ocupilot` request has been in flight for this long. */
+/** A screen is settled once no `/api/ocupilot` request or shell script has been in flight for this long. */
 const QUIET_MS = 500;
 
 /**
@@ -597,11 +597,31 @@ export async function detectScreen(page, { route, checks, viewport, theme, minim
 
 // --- Driving the shell ------------------------------------------------------------------------
 
-/** Count `/api/ocupilot` requests in flight on `page`, and when the count last moved. */
+/**
+ * Whether `request` fetches one of the shell's own script files: a `.js` under `/ocupilot/` on the
+ * page's origin. A screen's page code arrives this way when the person first opens it.
+ */
+function isShellScript(page, request) {
+  let url;
+  try {
+    url = new URL(request.url());
+  } catch {
+    return false;
+  }
+  if (!url.pathname.startsWith('/ocupilot/') || !url.pathname.endsWith('.js')) return false;
+  const here = page.url();
+  return !/^https?:/.test(here) || url.origin === new URL(here).origin;
+}
+
+/**
+ * Count `/api/ocupilot` requests, and the shell's own `.js` requests, in flight on `page`, and when
+ * the count last moved. The scripts are counted so a screen is never judged settled before its code
+ * has arrived.
+ */
 function trackRequests(page) {
   const state = { inflight: new Set(), last: Date.now() };
   page.on('request', (request) => {
-    if (!request.url().includes('/api/ocupilot')) return;
+    if (!request.url().includes('/api/ocupilot') && !isShellScript(page, request)) return;
     state.inflight.add(request);
     state.last = Date.now();
   });
@@ -614,7 +634,7 @@ function trackRequests(page) {
 }
 
 /**
- * Wait until the screen is settled: no `/api/ocupilot` request in flight for `QUIET_MS`, no
+ * Wait until the screen is settled: no `/api/ocupilot` request or shell script in flight for `QUIET_MS`, no
  * `[aria-busy="true"]` left, and the fonts loaded. Answers false when it never settles.
  */
 async function settle(page, requests) {
