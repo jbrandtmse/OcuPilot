@@ -222,6 +222,15 @@ export const CONSEQUENCE_EXPLORERIMPORTREPLACES = 'EXPLORER.IMPORT.REPLACES';
 /** Story 20.21: an agent's class or routine save, which compiles the saved text on Confirm, as the user. */
 export const CONSEQUENCE_EXPLORERSAVECOMPILES = 'EXPLORER.SAVE.COMPILES';
 
+/**
+ * Story 20.16: an agent's save of the class text behind a rule, BPL or DTL editor, which compiles it on Confirm and
+ * opens the document again in the editor, dropping any change not saved there.
+ */
+export const CONSEQUENCE_INTEROPEDITORRELOADS = 'INTEROP.EDITOR.RELOADS';
+
+/** The consequences of a save whose Confirm compiles the saved text, whose outcome the card reports (Stories 20.21 and 20.16). */
+export const CODESAVECONSEQUENCES: ReadonlySet<string> = new Set([CONSEQUENCE_EXPLORERSAVECOMPILES, CONSEQUENCE_INTEROPEDITORRELOADS]);
+
 /** Story 18.32: an agent's REST service create, which compiles the service's three classes on Confirm. */
 export const CONSEQUENCE_RESTSERVICECREATE = 'RESTSERVICE.CREATE.COMPILES';
 
@@ -465,6 +474,8 @@ export function consequenceSentence(code: string | undefined): string {
   if (code === CONSEQUENCE_EXPLORERIMPORTREPLACES) return STRINGS.explorerImportReplaces;
   // Story 20.21: an agent's class or routine save states that Confirm compiles the saved text, published once.
   if (code === CONSEQUENCE_EXPLORERSAVECOMPILES) return STRINGS.explorerSaveCompilesOnConfirm;
+  // Story 20.16: an agent's editor save states that Confirm compiles the text and the editor opens the document again, published once.
+  if (code === CONSEQUENCE_INTEROPEDITORRELOADS) return STRINGS.interopEditorSaveOnConfirm;
   // Story 18.32: an agent's REST service create states that Confirm compiles the service's classes, published once.
   if (code === CONSEQUENCE_RESTSERVICECREATE) return STRINGS.restServiceCreateEffect;
   // Story 19.11: an agent-proposed SQL statement's own confirmation sentences, published once; the DML

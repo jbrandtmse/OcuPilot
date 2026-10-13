@@ -45,6 +45,7 @@ import { PanelState } from '../core/panel-layout';
 import {
   type ProposalCardView,
   type ProposalPhase,
+  CONSEQUENCE_INTEROPEDITORRELOADS,
   countdownPhase,
   countdownRemaining,
   isTerminalPhase,
@@ -1156,9 +1157,13 @@ export class Panel {
       confirmedAt: clockOf(proposal.confirmedAt),
       readBack: proposal.readBack ?? null,
       output: proposal.output ?? [],
-      // Only a System Explorer document write's answer is a compile (EXPERIENCE.md proposal-card
-      // summary line): a journal integrity check also answers `{lines, errors}` and compiles nothing.
-      outputErrors: proposal.tool.startsWith('explorer.') ? (proposal.outputErrors ?? null) : null,
+      // Only a document write's answer is a compile (EXPERIENCE.md proposal-card summary line): a System
+      // Explorer write, or an editor save (Story 20.16, which names the editor reload). A journal integrity
+      // check also answers `{lines, errors}` and compiles nothing.
+      outputErrors:
+        proposal.tool.startsWith('explorer.') || proposal.consequence === CONSEQUENCE_INTEROPEDITORRELOADS
+          ? (proposal.outputErrors ?? null)
+          : null,
       blockKey: `p:${proposal.proposalId}`,
     };
   }

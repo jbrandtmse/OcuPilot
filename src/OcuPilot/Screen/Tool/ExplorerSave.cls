@@ -56,6 +56,10 @@ Parameter CHANGEMAXLENGTH As INTEGER = 30000;
 /// <p>The rule a match refusal states, shared by every refusal of an <code>Old</code> text (DW-2228).</p>
 Parameter MATCHRULE = "Each Old is matched exactly, character for character, against the text this instance stores. The copy explorer.class.source and explorer.routine.source send can differ from it: control and invisible characters are removed, a key-shaped value reads [redacted], and the data delimiter's name is changed. Choose an Old that avoids those places.";
 
+/// <p>The read tool or tools the <code>Edits</code> description tells the model to read the document with,
+/// spelled as the sentence takes them.</p>
+Parameter READWITH = "explorer.class.source or explorer.routine.source";
+
 /// <p>The endpoint that reads one document of the tool's kind, as the agent's mint reads its stored text.
 /// Abstract: each list names its own.</p>
 ClassMethod DocumentEndpoint() As %String [ Abstract ]
@@ -120,7 +124,7 @@ ClassMethod InputSchema(pDescriptor As %String = "") As %DynamicObject
     Set tMax = ##class(OcuPilot.Screen.Tool.ExplorerSaveMint).#MAXEDITS
     Set tEdits = {"type": "array", "minItems": 1}
     Do tEdits.%Set("maxItems", tMax, "number")
-    Do tEdits.%Set("description", "One to " _ tMax _ " exact replacements, applied in order to the document's stored text. Each is an object with exactly Old and New. Read the document first with explorer.class.source or explorer.routine.source, and copy each Old from that read.")
+    Do tEdits.%Set("description", "One to " _ tMax _ " exact replacements, applied in order to the document's stored text. Each is an object with exactly Old and New. Read the document first with " _ ..#READWITH _ ", and copy each Old from that read.")
     Do tEdits.%Set("items", {"type": "object", "description": "One replacement: Old, the text to replace, which must occur exactly once in the stored text at the point its edit applies, and New, the text that replaces it. Send exactly these two members."})
     Do tProperties.%Set("Edits", tEdits)
     Do tSchema.%Get("required").%Push("Edits")

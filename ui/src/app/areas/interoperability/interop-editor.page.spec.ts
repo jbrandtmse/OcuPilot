@@ -3,6 +3,7 @@ import { Router, provideRouter } from '@angular/router';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { ApiService, type ApiRequestInit, type JsonResult } from '../../core/api';
+import { ChangeBus } from '../../core/change-bus';
 import { encodeEntityId } from '../../core/entity-id';
 import { NavigationService, formatRequires, type Verdict } from '../../core/navigation';
 import { ScopeService } from '../../core/scope';
@@ -76,6 +77,8 @@ interface Mounted {
   readonly router: Router;
   readonly reads: { path: string; scope: string | null | undefined }[];
   readonly verdictsAsked: string[];
+  /** The bus the page hears confirmed changes on. */
+  readonly bus: ChangeBus;
   /** What the next read answers. */
   answer: Answer;
   /** What the list's verdict is. */
@@ -95,6 +98,7 @@ async function mount(kind: Kind, name: string, first: Answer): Promise<Mounted> 
     verdict: ALLOWED,
   };
   const scope = { namespace: 'HSCUSTOM', listeners: new Set<() => void>() };
+  const bus = new ChangeBus();
   const api = {
     requestJson: async <T,>(path: string, init: ApiRequestInit = {}): Promise<JsonResult<T>> => {
       mounted.reads.push({ path, scope: init.scope });
@@ -104,6 +108,7 @@ async function mount(kind: Kind, name: string, first: Answer): Promise<Mounted> 
   TestBed.configureTestingModule({
     providers: [
       provideRouter([{ path: '**', children: [] }]),
+      { provide: ChangeBus, useValue: bus },
       { provide: ApiService, useValue: api as unknown as ApiService },
       {
         provide: NavigationService,
@@ -138,7 +143,7 @@ async function mount(kind: Kind, name: string, first: Answer): Promise<Mounted> 
     scope.namespace = namespace;
     for (const listener of [...scope.listeners]) listener();
   };
-  return Object.assign(mounted, { fixture, host: fixture.nativeElement as HTMLElement, router, switchNamespace }) as Mounted;
+  return Object.assign(mounted, { fixture, host: fixture.nativeElement as HTMLElement, router, switchNamespace, bus }) as Mounted;
 }
 
 const frameHosts = (host: HTMLElement) => Array.from(host.querySelectorAll('app-interop-editor-frame'));
@@ -188,6 +193,7 @@ describe('the embedded editor screens', () => {
     TestBed.configureTestingModule({
       providers: [
         provideRouter([{ path: '**', children: [] }]),
+        { provide: ChangeBus, useValue: new ChangeBus() },
         { provide: ApiService, useValue: api as unknown as ApiService },
         { provide: NavigationService, useValue: { screenForUrl: () => screen, screenVerdict: () => ALLOWED } as unknown as NavigationService },
         {
@@ -358,6 +364,50 @@ describe('the embedded editor screens', () => {
     expect(frames(host)[0].getAttribute('src')).toBe(interopEditorSource('dtl-editor', 'HSCUSTOM', 'Demo.Thing'));
   });
 
+  it('the bar says the agent reads only what is saved, beside the note and before any request, and only while the editor is open', async () => {
+    // Mutation (Rule 19): the page omits the agent line -> red.
+    for (const kind of KINDS) {
+      const opened = await mount(kind, 'Demo.Thing.cls', rows({ Name: 'Demo.Thing.cls', Coded: false }));
+      const line = block(opened.host, 'agent');
+      expect(line?.textContent?.trim(), `${kind.editor}: the agent line`).toBe(STRINGS.interopEditorAgentNote);
+      expect(line?.previousElementSibling, 'it follows the note').toBe(block(opened.host, 'note'));
+      expect(line?.parentElement?.classList.contains('ocu-interop-editor-bar'), 'in the bar').toBe(true);
+      const gone = await mount(kind, 'Demo.Absent.cls', rows({ Name: 'Demo.Thing.cls', Coded: false }));
+      expect(block(gone.host, 'agent'), `${kind.editor}: no editor, no agent line`).toBeNull();
+    }
+  });
+
+  it('a confirmed change to the document opens it again in a new frame at the same address; another id, namespace or type does nothing', async () => {
+    // Mutation (Rule 19): the page does not subscribe to the bus -> the matching event draws no new frame and this goes red.
+    const kind = KINDS[2];
+    const mounted = await mount(kind, 'Demo.Thing.cls', rows({ Name: 'Demo.Thing.cls', Coded: false }));
+    const { host, bus } = mounted;
+    const first = frames(host)[0];
+    expect(mounted.reads.length).toBe(1);
+    const publish = (over: Partial<{ type: string; scope: string; id: string; kind: 'changed' | 'proposal-open' }> = {}) =>
+      bus.publish({ kind: 'changed', type: 'class', scope: 'HSCUSTOM', id: 'Demo.Thing.cls', action: 'updated', proposalId: 'p1', ...over });
+    for (const miss of [{ id: 'Demo.Other.cls' }, { scope: 'USER' }, { type: 'routine', id: 'Demo.Thing.mac' }]) {
+      expect(publish(miss), JSON.stringify(miss)).toBe(true);
+      await settle(mounted.fixture);
+      expect(mounted.reads.length, `${JSON.stringify(miss)} reads nothing`).toBe(1);
+      expect(frames(host)[0], 'and keeps the frame').toBe(first);
+    }
+    expect(bus.publish({ kind: 'proposal-open', type: 'class', scope: 'HSCUSTOM', id: 'Demo.Thing.cls', proposalId: 'p2' })).toBe(true);
+    await settle(mounted.fixture);
+    expect(mounted.reads.length, 'a proposal opening is not a change').toBe(1);
+
+    expect(publish({ id: 'Demo.Other.cls,Demo.Thing.cls' })).toBe(true);
+    await settle(mounted.fixture);
+    expect(mounted.reads.length, 'the document is read again').toBe(2);
+    const second = frames(host)[0];
+    expect(frames(host).length).toBe(1);
+    expect(second).not.toBe(first);
+    expect(first.isConnected, 'the old frame is detached').toBe(false);
+    expect(second.getAttribute('src')).toBe(first.getAttribute('src'));
+    expect(second.getAttribute('src')).toBe(interopEditorSource('dtl-editor', 'HSCUSTOM', 'Demo.Thing'));
+    expect(block(host, 'agent')?.textContent?.trim()).toBe(STRINGS.interopEditorAgentNote);
+  });
+
   it('reads nothing before the scope has a namespace, shows the skeleton meanwhile, and reads in the namespace the scope arrives with', async () => {
     // Mutation (Rule 19): the page reads at once, without waiting for the scope -> a read is sent with no namespace and this goes red.
     TestBed.resetTestingModule();
@@ -374,6 +424,7 @@ describe('the embedded editor screens', () => {
     TestBed.configureTestingModule({
       providers: [
         provideRouter([{ path: '**', children: [] }]),
+        { provide: ChangeBus, useValue: new ChangeBus() },
         { provide: ApiService, useValue: api as unknown as ApiService },
         { provide: NavigationService, useValue: { screenForUrl: () => screen, screenVerdict: () => ALLOWED } as unknown as NavigationService },
         {
@@ -424,6 +475,7 @@ async function mountDenied(kind: Kind): Promise<Mounted> {
   TestBed.configureTestingModule({
     providers: [
       provideRouter([{ path: '**', children: [] }]),
+      { provide: ChangeBus, useValue: new ChangeBus() },
       { provide: ApiService, useValue: api as unknown as ApiService },
       {
         provide: NavigationService,

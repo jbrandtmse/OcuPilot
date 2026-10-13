@@ -166,6 +166,12 @@ Parameter CREATES As BOOLEAN = 0;
 /// the field twice.</p>
 Parameter SCREENACTIONS = "";
 
+/// <p>Whether this agent-only write is listed in its bound screen's context although no screen action carries
+/// it (AD-24, Story 20.16): <code>0</code> here, so a write is listed only through a declared row action or a
+/// primary action it creates for. A tool that declares <code>1</code> is also bound to its screen through
+/// <parameter>DESCRIPTORCLASS</parameter> and advertised.</p>
+Parameter SCREENLISTED As BOOLEAN = 0;
+
 /// <p>Whether this tool's fresh read is composed from the values the write itself carries, which
 /// <method>PortQuery</method> turns into the port's query (AD-51, Story 19.11). <code>0</code> here:
 /// the read identifies the target alone. A tool that declares <code>1</code> has the mint pass its

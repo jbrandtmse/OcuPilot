@@ -2,7 +2,8 @@
 title: 'Story 20.16: The agent edits rule, DTL and BPL content behind the embedded editors'
 type: 'feature'
 created: '2026-10-13'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: '645b1478c828928296c44f2c4920884fb54142c8'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -347,6 +348,32 @@ All paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-20`. Lines were
 
 ## Review Triage Log
 
+### 2026-10-13 — Review pass
+
+- verdicts: 21 findings — high 0, medium 0, low 13, false 8, maybe-false 0
+- findings:
+  - `[low]` `[patch]` Console-only compile failure is not driven through the save path, a test comment claims a mutation that does not redden it, and a planned row names it — patched: canned `AtelierPortSave` save leg added (red alone under `Outcome` without the console), the comment and planned rows corrected, `SaveSet` and consequence mutations recorded.
+  - `[low]` `[reject]` The page's `ChangeBus` subscription is not tested to be released on destroy — `task-editor.page.ts` has the same shape with no such test, a leak needs the one `stopChanges()` line removed, and the fix adds a test plus a client mutation run beyond a direct correction.
+  - `[low]` `[patch]` `IsCodeOfKind`'s base-class guard cannot be falsified on this build and a planned mutation row names a leg that cannot redden — the guard stays (the intent contract's Kind check requires it); the planned row now names the mutation that reddens (answers 1 for every readable name).
+  - `[low]` `[patch]` `Refused(..., "")` asserts `tProblem [ ""`, which is always true — patched: the reason assertion runs only when a text is given; the code and no-proposal assertions still pin the row.
+  - `[false]` `[reject]` The three base-class legs cannot fail — they assert `0|1` and go red under `IsCodeOfKind` answering 1 for every readable name (recorded).
+  - `[false]` `[reject]` The turn test's "no provider request carries a compile line" leg has no mutation — AC7 has its recorded mutation (`ScreenTools` ignoring `SCREENLISTED`) and the leg inspects a real second-turn request, so it can fail.
+  - `[low]` `[patch]` Several pinning tests carry no recorded mutation, and test comments name mutations that were never run — patched: the confirm half's mutation (`CONSEQUENCE`) is run and recorded; the unobserved mutation sentences are removed from the comments of the new test classes; every AC keeps at least one recorded mutation.
+  - `[false]` `[reject]` AC4's "no typed name" has no pin — `ConfirmIn` confirms with an empty typed name and asserts `destructive` 1, so a typed-name requirement would refuse the confirm.
+  - `[low]` `[reject]` The no-interoperability test takes the first non-`%SYS` namespace that does not report interoperability — its header states the need, it fails loudly if none exists, and the throwaway image has one.
+  - `[low]` `[reject]` `InteropEditorProbe.ForgetLedger` reads `ProposalFixture`'s private global — both classes are tests in one package; a drift leaves ledger rows behind, which the assertions on the probe turns would not mask.
+  - `[low]` `[reject]` The spine's AD-61 rule 6 sentence and the Boundaries sentence say a failing BPL answers 200 with no status error, while the port compiles in process — the sentence is a measurement of the Atelier route over HTTP and the clause does what the contract states; the code comments now say so, and reading the spine wording is the runner's call (Auto Run Result).
+  - `[false]` `[reject]` The Task bullet and the Code Map disagree about `InteropFloor` and `DeveloperFloor` — the bullet says "any other roster that lists the saves' pairs", none does, and both classes pass unchanged.
+  - `[low]` `[reject]` (intent layer) The compile verdict's measured surface (HTTP) differs from the port's route (in process) — same root as the AD-61 row above.
+  - `[low]` `[reject]` (intent layer) The reload is exercised end to end for the transformation editor only — AC3 names the DTL editor, the page and store are shared by all three screens, and two more browser legs cost about 25 s each for no new branch.
+  - `[false]` `[reject]` (intent layer) The warning is pinned as text, not as model behavior — the contract guarantees the bar line and the card sentence; the model's own warning is the recorded live check.
+  - `[low]` `[reject]` (intent layer) Confirm's kind check is tested by calling `ConfirmProblem` — the matrix row names that call; no flow changes a class's kind between mint and Confirm.
+  - `[low]` `[reject]` (intent layer) The failed-switch and failed-query branches of `IsCodeOfKind` are not reached — they fail closed by contract and cannot be driven on a healthy instance without faking the dictionary.
+  - `[false]` `[reject]` (intent layer) The Context row's input is a route and the unit test calls `ScreenTools(descriptor)` — the turn test posts the route and entity and asserts both tools in the starting set, so the route chain is exercised.
+  - `[false]` `[reject]` (intent layer) Server rows run in process while the person's path is HTTP — `InteropEditorSaveTurn` and the browser spec confirm over HTTP.
+  - `[false]` `[reject]` (intent layer) The owner's "in the background" has no mechanism — the contract's flow is read, propose, person confirms, page reloads.
+  - `[low]` `[patch]` (intent layer) The base-class exclusion is observably redundant — same root as the `IsCodeOfKind` guard row above; same route and fix.
+
 ## Design Notes
 
 **Governing ADs:**
@@ -384,6 +411,8 @@ All paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-20`. Lines were
 | Vendor privileges (hidden `Utils.GetPrivileges`) | Write: `%Ens_Code` or `%Ens_DTL`/`%Ens_BPL`/`%Ens_Rules*` WRITE, and `RoutinePermissionCheck("WRITE")`. No `%Development` check; the web app grants it through `%EnsRole_InteropEditorsAPI` |
 | Stock roles | `%EnsRole_Developer`: `%Development:U` through `%Developer`, and `%Ens_Code:RW`. `%EnsRole_Administrator`: `%Ens_Code:R` only. `%Developer`: no `%Ens_*` |
 | Sizes | The largest vendor DTL is 80,995 characters. Every rule, BPL and DTL in HSCUSTOM is mapped (642 HSLIB, 7 ENSLIB, no rule), so the agent saves only a namespace's own documents |
+
+**Task 0 reading (vendor source, `ocupilot-b-ci`).** Hidden `Utils.GetPrivileges` admits a write on `%Ens_Code:WRITE` or the kind's own resource (`%Ens_DTL`, `%Ens_BPL` or `%Ens_Rules`, with the business and routing rule resources beneath it), and `PutDTL`, like the other saves, adds `IsReadOnly` (the routines database's write and source control). `%Ens_Code:WRITE` is the one resource all three kinds accept, with nothing stricter for any kind; `%EnsRole_Developer` reaches it through `%EnsRole_WebDeveloper` (`%Ens_Code:RW`), and `%EnsRole_Administrator` holds `%Ens_Code:R` alone.
 
 **Decisions:**
 
@@ -517,6 +546,7 @@ All paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-20`. Lines were
   - On a probe DTL's editor screen in `USER`, ask: "Make this transformation add -live to the end of the value it sets."
   - Record whether the reply tells the person to save the editor before or with its first read, which tools it calls, and whether its proposal mints. Do not confirm it.
   - Remove the provider and the probe afterwards, and record the observation under this section.
+  - Observed (2026-10-13, `ocupilot-b-ci`, `claude-haiku-5-5`, one turn, three model calls, 20,846 input and 1,134 output tokens): the first reply, before its read, told the person it works from the saved version, that unsaved changes are not visible to it and that confirming reopens the document and drops them, and asked to save the editor first; it then called `interop.transformeditor.source` and `interop.transformeditor.save` and minted one proposal (`-live` appended through `source.StringValue_"-live"`), which was not confirmed. The closing reply said the proposal awaits confirmation and repeated no warning. Provider, credential, principal, turn rows and probe were removed afterwards.
 - **Lead-owned (the runner's, not the implement stage's):** the full ObjectScript sweep, `cd ui && npm test`, `bash scripts/smoke.sh --container ocupilot-b-ci --user _SYSTEM --password SYS`, and Rule 30's fresh check.
 - **Left to CI:** the full browser suite.
 
@@ -532,13 +562,41 @@ All paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-20`. Lines were
 | AC3 | `shows()` compares the id case-folded with the namespace ignored, or always answers false | `interop-editor-store.test.mjs`; the browser reload leg (the old handle stays connected) |
 | AC4 | `Baseline` `interop.transformeditor.save` is `false` | `InteropEditorTools` keys leg |
 | AC5 | `InteropEditorSave.AgentProblem` skips the kind check | `InteropEditorSaveRules` wrong-kind, coded and Confirm-rule legs |
-| AC5 | `IsCodeOfKind` stops excluding the base class | `InteropEditorTools` predicate leg (the base `Ens.DataTransformDTL` reads 1) |
-| AC6 | `ConsoleCountsErrors` answers 0 | `AtelierPortSave` console leg; `InteropEditorSave` BPL leg |
+| AC5 | `IsCodeOfKind` answers 1 for every readable name | `InteropEditorTools` predicate leg; `InteropEditorSaveRules` wrong-kind legs |
+| AC6 | `ConsoleCountsErrors` answers 0, or `Outcome` leaves the console out | `AtelierPortSave` console legs; `AtelierPortWrite` console leg |
+| AC6 | `SaveSet` reports its compile's errors as false | `InteropEditorSave` not-compiled leg |
 | AC6 | `savedNotCompiledVisible` keeps its single code | `proposal-card-code-states.spec.ts`; the browser breaking leg |
 | AC8 | `InteropEditorSave.PrivilegePairs` drops `%Development:USE` | `InteropEditorSaveGate` first leg (the refusal moves to the port); `ToolEmit` branch |
 | AC8 | `InteropEditorSave.PrivilegePairs` drops `%Ens_Code:WRITE` | `InteropEditorSaveGate`'s vendor-write leg; `InteropEditorTools`' pairs leg |
 
+Observed at implement (each reverted to a byte-identical tree and recompiled or rebuilt before the next):
+
+- mutation: `interop-editor.page.ts` omits the agent line -> `interop-editor.page.spec.ts` bar test and reload test; browser `agent-editor-save` bar leg (bundle rebuilt and redeployed).
+- mutation: `InteropEditorSave.WARN` loses "tell the person you work from what is saved" -> `InteropEditorTools` `TestEveryDescriptionCarriesTheWarning` alone.
+- mutation: `Context.ScreenTools` ignores `SCREENLISTED` -> `InteropEditorTools` `TestEachEditorsContextListsExactlyItsReadAndSave` and `InteropEditorSaveTurn` starting-tools leg.
+- mutation: `InteropEditorSave` sets `FINGERPRINTSUBJECT` without `Modified`, and `PRECONDITIONFIELD` `Absent` (the registration guard refuses a subject without the precondition field, so the subject alone fails every mint with `TOOL.UNAVAILABLE` and reddens all three tests) -> `InteropEditorSave` `TestAnOutsideRewriteAfterTheMintIsRefusedAsAChangedTarget` alone.
+- mutation: `consequenceSentence` drops the new branch -> `proposal-view.test.mjs` consequence row; browser `agent-editor-save` card leg.
+- mutation: `shows()` compares ids case-folded with the namespace ignored -> `interop-editor-store.test.mjs` `shows` row; `shows()` answers false -> the same row, the page spec's reload test, and the browser reload and breaking legs (the old frame stays attached).
+- mutation: `Baseline` `interop.transformeditor.save` `false` -> `InteropEditorTools` `TestTheThreeSaveKeysShipEnabled`.
+- mutation: `InteropEditorSave.AgentProblem` quits after `##super` -> `InteropEditorSaveRules` wrong-kind, coded, Confirm-rule and no-interoperability legs.
+- mutation: `IsCodeOfKind` stops excluding the base class -> no test went red: `%Dictionary.ClassDefinition:SubclassOf` lists no base class on this build (`Ens.DataTransformDTL` lists 2 subclasses in `USER`, `Ens.BusinessProcessBPL` 5, `Ens.Rule.Definition` 0, none its own base), so the exclusion is defensive and the base legs pin its answer 0. `IsCodeOfKind` answering 1 for every readable name -> `InteropEditorTools` predicate leg and three `InteropEditorSaveRules` legs.
+- mutation: `ConsoleCountsErrors` answers 0 -> `AtelierPortSave` `TestTheCompileVerdictReadsTheConsole` and `AtelierPortWrite` `TestACompileWhoseConsoleReportsErrorsIsFailedWhateverTheStatusSays`; `Outcome` without the console clause -> the `AtelierPortWrite` leg and `AtelierPortSave` `TestASaveWhoseCompileConsoleReportsErrorsReportsThem` (the save path), each alone. The `InteropEditorSave` BPL leg stays green under both: the in-process compile of a BPL whose generated class fails carries #5475 in `status.errors` on this build, though the HTTP route answers `[]` (measured with the same edit), so the console clause is pinned by the canned envelopes in `AtelierPortWrite` and `AtelierPortSave`.
+- mutation: `AtelierPort.SaveSet` reports its compile's errors as false -> `InteropEditorSave` `TestAnEditThatDoesNotCompileIsSavedAndSaysSo` alone.
+- mutation: `InteropEditorSave.CONSEQUENCE` answers `EXPLORER.SAVE.COMPILES` -> `InteropEditorSave` `TestEachEditorSaveIsMintedAndConfirmed` alone (the family recompiled).
+- mutation: `savedNotCompiledVisible` keeps its single code -> `proposal-card-code-states.spec.ts` editor test; browser breaking leg.
+- mutation: `panel.ts` passes `outputErrors` for `explorer.` tools alone -> `panel.spec.ts` Story 20.16 test.
+- mutation: `InteropEditorSave.PrivilegePairs` drops `%Development:USE` -> `InteropEditorSaveGate` dispatcher-made leg of the principal without it (the port refuses inside the mint, so the answer text alone would not tell), `ToolEmit` and `InteropEditorTools` pairs legs.
+- mutation: `InteropEditorSave.PrivilegePairs` drops `%Ens_Code:WRITE` -> `InteropEditorSaveGate` (the principal with `%Ens_Code:READ` only is minted a proposal) and `InteropEditorTools` pairs leg.
+
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
+
+**Changed.** The rule, BPL and DTL editor screens each gain an agent read and an agent-only save (six tools on the abstract `InteropEditorSource` and `InteropEditorSave`, which extend 20.19's and 20.21's class tools). The saves require the screen's pairs, `%Development:USE` and `%Ens_Code:WRITE` (confirmed from the vendor source at Task 0; the orchestrator's ruling), and admit only a class of the editor's kind through `InteropPort.IsCodeOfKind`, at the mint and at Confirm. `Write.SCREENLISTED` and `Context.ScreenTools` list an agent-only write in its bound screen's context; `ExplorerSave.READWITH` names the editor read; `AtelierPort.Outcome` also counts a console line `Detected <n> errors during compilation` as a failed compile; three Baseline keys ship `true`. Client: the `INTEROP.EDITOR.RELOADS` consequence and the shared code-save set, the widened `outputErrors` gate, two strings, the store's `shows` and the page's `ChangeBus` subscription and agent bar line. EXPERIENCE.md has the four appends; `ci-throwaway.sh` arms the gate and turn classes. New tests: `InteropEditorTools`, `InteropEditorSave`, `InteropEditorSaveRules`, `InteropEditorSaveGate`, `InteropEditorSaveTurn`, the `InteropEditorProbe` helper, canned compile-verdict legs in `AtelierPortSave` and `AtelierPortWrite`, and `agent-editor-save.browser-spec.mjs`. `ReadTool` is now 385 tools (379 before); the count is summed with Epic 18's at the forward merge.
+
+**Review.** Two layers (verification-gap, intent-alignment), 21 findings: 0 high, 0 medium, 13 low (5 patched, 8 rejected), 8 false; nothing deferred, no follow-up review recommended. Patched: a canned `SaveSet` leg for a console-only compile failure; false mutation claims in test comments and two stale planned rows corrected; a vacuous empty-text assertion in `Refused`; the unobserved mutation sentences removed from the new test classes' comments. Mutations are recorded in `## Verification`; the `IsCodeOfKind` base-class guard is required by the contract and cannot redden on this build, so its row names the mutation that does.
+
+**Verification.** On `ocupilot-b-ci`, every `(loop)` class was green after the last change (counts read from the runner and the instance): the five new classes and the two compile-verdict classes, the roster, floor and explorer classes, and the turn and descriptor classes. `check-objectscript` and `lint-docs` report 0; `npm run test:tools` 1985 of 1985; `npm run test:components` 3069 of 3069 in 245 files; `npm run build` green through the prebuild chain. Browser specs, one file per call after the bundle was redeployed: `agent-editor-save` 4 of 4, `interop-editors` 18 of 18, `agent-code-save` 7 of 7. The live check on `claude-haiku-5-5` is recorded under Verification (it warned before its first read, then read and minted one proposal, unconfirmed). Measured: the `interop-editor-page` chunk is 10.17 kB (limit 88 kB) and the initial total 1.92 MB (warning 1992 kB).
+
+**Residual risks.** The spine's AD-61 rule 6 sentence and the Boundaries sentence describe the Atelier route over HTTP, where a failing BPL answers 200 with no status error; the port compiles in process, where the implement stage measured #5475 in `status.errors` for the same edit (not re-measured at review). The console clause is therefore a fallback on this build, pinned by canned envelopes; the runner may reword the spine sentence. `InteropEditorSource.WARN` repeats `InteropEditorSave.WARN` literally because, as the implement stage reported (not re-checked), a parameter expression cannot read another class's parameter while both compile in one load; `InteropEditorTools` pins them equal (Rule 31 copy). The full ObjectScript sweep, `npm test`, smoke and the fresh check are the runner's.

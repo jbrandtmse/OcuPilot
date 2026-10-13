@@ -102,4 +102,18 @@ describe('ProposalCard for an agent code save, corners', () => {
     expect(card.querySelector('[data-slot="saved-not-compiled"]')).toBeNull();
     expect(card.querySelector('[data-slot="consequence"]')?.textContent).toContain(STRINGS.explorerSaveCompilesOnConfirm);
   });
+
+  // Story 20.16. Mutation (Rule 19): `savedNotCompiledVisible` keeps its single code -> the banner test goes red.
+  it('says an editor save did not compile, as a save does, and states the editor reload as its consequence', () => {
+    const editor = (phase: ProposalPhase, outputErrors: boolean | null) =>
+      mount(phase, view([row('a\n', 'b\n', 1)], { consequence: 'INTEROP.EDITOR.RELOADS', name: 'OcuProbe2016.Transform.cls' }), outputErrors);
+    const banner = editor('confirmed', true).querySelector('[data-slot="saved-not-compiled"]');
+    expect(banner?.textContent).toContain(STRINGS.explorerSaveNotCompiled);
+    expect(editor('confirmed', false).querySelector('[data-slot="saved-not-compiled"]')).toBeNull();
+    expect(editor('confirmed', null).querySelector('[data-slot="saved-not-compiled"]')).toBeNull();
+    expect(editor('live', true).querySelector('[data-slot="saved-not-compiled"]')).toBeNull();
+    expect(editor('live', null).querySelector('[data-slot="consequence"]')?.textContent).toContain(STRINGS.interopEditorSaveOnConfirm);
+    const other = mount('confirmed', view([row('a\n', 'b\n', 1)], { consequence: 'EXPLORER.EXPORT.REPLACES' }), true);
+    expect(other.querySelector('[data-slot="saved-not-compiled"]'), 'another consequence says nothing of a compile').toBeNull();
+  });
 });
