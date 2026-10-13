@@ -108,6 +108,46 @@ Under `src/OcuPilot/` at `093b3f34`.
 - **AC4.** Given Live tail on, when the person turns it off, chooses another file or leaves, then nothing more is requested and an in-flight answer is dropped.
 - **Integration.** Given the log viewer, the route's one consumer, when a marker is written under Live tail, then its row appears (task 13).
 
+### Review Findings
+
+Code review 2026-10-13 (full-opus: blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor): 41 rows, 17 entries (5 medium, 12 low), 15 rejected. The applied low patches are mechanical, fix-risk low, in-story. Rule 3: met (`messages-log.browser-spec.mjs`, `LogTailWire`). Rule 6: the named ADs hold.
+
+- [x] [Review][Patch] Medium: `LogTailWire` wrote the instance's `alerts.log` without the log-family arming its siblings carry [src/OcuPilot/Test/LogTailWire.cls:126]. Fix-risk low (test only, one roster line). `EnsureAlertLine` now writes only where `OCUPILOT_ALLOW_LOG_ROTATION` reads 1 and errors otherwise, and `# classes: LogTailWire` joins `scripts/ci-throwaway.sh`'s roster (add-only).
+- [x] [Review][Patch] Medium: no client test told the page's `size` from `offset - 1` as the tail cursor, which the Design Notes require [ui/src/app/areas/logs/log-viewer.spec.ts:878]. Fix-risk low. The second page now ends on a partial line (size 512); a mutation is recorded.
+- [x] [Review][Patch] Medium (Rule 19): the browser spec's live-tail lines carried the seed marker, so a re-run on one throwaway could count them as seeded and skip the re-seed [ui/browser/messages-log.browser-spec.mjs:505]. Fix-risk low. They now carry `OcuPilotMessagesLive`.
+- [x] [Review][Patch] Medium (Rule 2): `EnsureAlertLine`'s write copied `LogTail.Append` with no stated reason [src/OcuPilot/Test/LogTailWire.cls:137, src/OcuPilot/Test/LogTail.cls:135]. Fix-risk low. It calls `LogSource.WriteFile`, as its siblings do.
+- [x] [Review][Patch] Low: an `alerts.log` found empty kept the test's line [src/OcuPilot/Test/LogTailWire.cls:82]. `OnAfterAllTests` now empties it again.
+- [x] [Review][Patch] Low: the held-cursor test expected five newlines for an answer at 52 to 55 s, inside its own slack, where the port writes at most four [src/OcuPilot/Test/LogTailWire.cls:266]. Capped at `(BOUND - 1) \ BEAT`.
+- [x] [Review][Patch] Low: four mutation notes named a red their mutation does not produce (`LogTail` refusal and gate tests, `LogTailWire` refusal test, the live-chain component test). Each now names the observed or recorded red. Running the gate after `Resolve` survives, because `Resolve(..., 0)` touches no file.
+- [x] [Review][Patch] Low: `ArmTailThrow`'s doc was off by one against its code [src/OcuPilot/Test/LogSourceFixture.cls:269].
+- [x] [Review][Patch] Low: `Heartbeat`'s doc said a beat that cannot be written means the client has gone, but the vendor's `Flush` answers OK after a disconnect; and `Response`'s header did not name `Heartbeat` [src/OcuPilot/Api/Response.cls:2].
+- [x] [Review][Patch] Low: `Tail`'s `LOG.OFFSET` sentence told a caller with a malformed cursor to "supply both" [src/OcuPilot/Port/LogSourcePort.cls:935].
+- [x] [Review][Patch] Low: the method name `TestACursorABytebehindAnswersChangedAtOnce` is now `...AByteBehind...` [src/OcuPilot/Test/LogTailWire.cls:197].
+- [x] [Review][Patch] Low: `LogTail`'s header omitted `%Admin_Operate:USE`, which every leg the real gate checks needs [src/OcuPilot/Test/LogTail.cls:10]. `LogTailWire`'s header now names the 60 s gateway timeout.
+- [x] [Review][Patch] Low: a test header said "echoes nothing the caller sent", but no assertion checks it; the claim is removed [src/OcuPilot/Test/LogTail.cls:322].
+- [x] [Review][Patch] Low: Task 8's strings bound raise was not applied at 3,357 literals [ui/tools/strings.test.mjs:613]. The bound is now 3,800 under the protocol comment; the count was re-measured.
+- [x] [Review][Defer] Medium: turning Live tail off, choosing another file or leaving does not cancel the held request [ui/src/app/areas/logs/log-viewer.store.ts:520]. Deferred as DW-2392, escalated: the fix needs an abort signal in `core/api.ts`, outside this story (fix-risk medium).
+- [x] [Review][Defer] Low: the rows Live tail appends are never trimmed [ui/src/app/areas/logs/log-viewer.store.ts:669]. Deferred as DW-2393, wontfix-accepted with a `reopen_if`.
+
+Rejected:
+
+- By design: the hold follows `TestCall.BoundSeconds` with no cap of its own (AD-12, AD-43). A log with no file yet offers no Live tail (Task 6: `canLive` needs a cursor).
+- Low:
+  - `TailState`'s catch-all reads an interrupt during a look as absent. The window is about 0.3 ms per second, and the outcome is the accepted bounded hold.
+  - A held tail has no client timeout. `api.ts` waits by design, and the client cannot know the bound.
+  - Turning Live tail on over a truncated window reads the backlog at the next write.
+  - A stale fault stays after a re-enabled tail; the next page read clears it.
+  - A person's Load newer is dropped when Live tail goes off inside a page read.
+  - There is no per-user cap on held tails (Task 0 f).
+  - `EnsureAlertLine` can race between its check and its write.
+  - `StartWriter` does not check `$Test`, as `BackgroundTasksLive` does not.
+  - The bound's floor goes unchecked when the instance writes during the accepted hold (run 682 was red).
+  - The page and store say "Nothing ticks" in place of the spec's sentence; the contract is the same.
+- False: `tStart` comes after `TailState`. Each beat restarts the gateway's timer, and the work before it is sub-millisecond.
+- The fix would edit the spec:
+  - The `LastLines` rename and `Resolve`'s new argument are not add-only. Verified: `LastLines` is private and both its in-class callers are updated; no subclass overrides `Tail`; the argument defaults to 1.
+  - The spec says three holds where the code makes four.
+
 ## Spec Change Log
 
 - 2026-10-13, lead, implement halt (Task 0 e), Rule 5 tier 1: the vendor does not fail a heartbeat after a client disconnects, so the matrix's "Client gone" row now reads that a dropped socket's wait runs to the bound (at most `BoundSeconds`, one CSP process, nothing logged), the bounded hold the Design Notes already name; the cursor is required whole (`EndpointCoverage`'s bare probe draws `LOG.OFFSET`). AD-12's carve-out names the two response properties Task 0 b measured. Resumed at review (`in-review`) over the uncommitted implementation.
@@ -223,6 +263,9 @@ every test added or changed passes on a fresh environment, in either order
 - (QA) mutation: `EnsureAlertLine` skipped on an instance whose `alerts.log` is absent (moved aside on `ocupilot-ci`, restored after) -> `LogTailWire` alerts leg at "alerts: the page supplies a cursor" (run 689); the unmutated tree green on the same instance (run 690), the file it created removed again
 - (QA) mutation: `livePath` added to the `systemmonitor` source -> survived (equivalent: `canLive` already excludes every windowed source, so no source is offered the tail by `livePath` alone)
 - (QA) files: `src/OcuPilot/Test/LogTailWire.cls` changed (`EnsureAlertLine`, `OnAfterAllTests`, `AwaitQuiet`, four holds); no test file created. Final tree: `LogTailWire` 4 (run 694); browser `messages-log` 5/5 and `alerts-log` 7/7 on the rebuilt, redeployed bundle.
+- (CR) mutation: the live loop tails at `offset - 1` instead of the page's `size` -> `log-viewer.spec.ts` live-chain test at the second and third tails' size (1 red)
+- (CR) mutation: the live loop's `continue` for `changed: false` removed -> the same test at its page-read assertion (1 red)
+- (CR) final tree on `ocupilot-ci`: `LogTailWire` 4 (run 695, with `alerts.log` empty, so the line was written and removed again; run 697 as found); `LogTail` 11 (run 696); `log-viewer.spec.ts` 73; `test:tools` 1,969; `check-objectscript` 0 problems; browser `messages-log` 5/5 on the rebuilt, redeployed bundle.
 
 ## Auto Run Result
 

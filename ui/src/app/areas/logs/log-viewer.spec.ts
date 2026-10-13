@@ -867,21 +867,23 @@ describe('LogViewerPage', () => {
   });
 
   // Mutation (Rule 19): drop `loadNewer` from the live loop's `changed` branch -> the appended-row and
-  // page-read assertions go red; drop the `continue` for `changed: false` -> the third tail is never asked.
+  // page-read assertions go red; drop the `continue` for `changed: false` -> the unchanged answer reads a
+  // page and the page-read assertion goes red; tail at `offset - 1` instead of the page's `size` -> the
+  // second and third tails' size goes red, because the second page ends on a partial line.
   it('Story 18.38 AC1: Live tail tails with the page cursor, appends the page when the file changed and tails again when it did not', async () => {
     vi.useFakeTimers();
     try {
       const { fixture, store } = await mount();
       api.live({ source: 'alerts', changed: true }, { source: 'alerts', changed: false });
-      api.tail(tailPage(['09/18/26-07:40:00:000 (1) 1 a line the instance wrote'], 500, 'first-line'));
+      api.tail(tailPage(['09/18/26-07:40:00:000 (1) 1 a line the instance wrote'], 500, 'first-line', { size: 512 }));
 
       toggle(fixture)!.click();
       await settleChain(fixture);
 
       expect(api.liveAsked).toEqual([
         `${LIVE_PATH}?identity=first-line&size=399`,
-        `${LIVE_PATH}?identity=first-line&size=499`,
-        `${LIVE_PATH}?identity=first-line&size=499`,
+        `${LIVE_PATH}?identity=first-line&size=512`,
+        `${LIVE_PATH}?identity=first-line&size=512`,
       ]);
       expect(pageReads()).toEqual([`${TAIL_PATH}?offset=400&identity=first-line`]);
       expect(rows(fixture).some((cells) => cells[3].includes('a line the instance wrote'))).toBe(true);

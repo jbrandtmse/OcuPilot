@@ -229,6 +229,7 @@ services:
       # trusting a doc comment to keep it off a development instance.
       # classes: LogOlderFilesWire, LogSecondarySeed, LogSecondaryWire, LogSourceRotation
       # classes: LogHubWire
+      # classes: LogTailWire
       OCUPILOT_ALLOW_LOG_ROTATION: "1"
       # Every class that creates or deletes IRIS principals, or the OAuth 2.0 configuration
       # objects handled the same way, or the instance's file-system access allow-list. Same

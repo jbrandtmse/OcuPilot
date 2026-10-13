@@ -2,7 +2,8 @@
 /// <p>This class and <class>OcuPilot.Api.Error</class> are the <b>only</b> classes in the
 /// tree permitted to <code>Write</code> to the response device. Handlers never
 /// <code>Write</code> directly — success goes through <method>JSON</method> /
-/// <method>JSONStatus</method>; failure through <class>OcuPilot.Api.Error</class>.</p>
+/// <method>JSONStatus</method>, a held live tail's heartbeat through <method>Heartbeat</method>; failure
+/// through <class>OcuPilot.Api.Error</class>.</p>
 Class OcuPilot.Api.Response Extends %RegisteredObject
 {
 
@@ -30,8 +31,9 @@ ClassMethod JSON(pData) As %Status
 /// flush to the gateway. The first heartbeat also turns the gateway's compression off and its output
 /// flushing on; without both the gateway holds every beat until the envelope for a client that accepts
 /// gzip, which every browser does. Those and the status are fixed from the first flush on, so a caller
-/// refuses before its first heartbeat and answers only its envelope after. Answers the flush's status;
-/// a heartbeat that cannot be written means the client has gone.</p>
+/// refuses before its first heartbeat and answers only its envelope after. Answers the flush's status,
+/// which the vendor answers OK even after the client has disconnected, so a dropped client is not seen
+/// here.</p>
 ClassMethod Heartbeat() As %Status
 {
     If '%response.InProgress {

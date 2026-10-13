@@ -51,6 +51,9 @@ const SEED_WINDOW_LINES = 200;
 /** A marker no other console-log entry carries, so the seeded entries are findable by search. */
 const MARKER = 'OcuPilotMessagesSpec';
 
+/** The Live tail test's own marker, which the seed count below never counts as a seeded entry. */
+const LIVE_MARKER = 'OcuPilotMessagesLive';
+
 /** The event name the seeded entries carry, which is the file's bracketed category. */
 const EVENT = 'OcuPilot.MessagesSpec';
 
@@ -499,7 +502,7 @@ test('Story 18.38: Live tail brings a line the instance writes onto the screen w
     await page.click('[data-ocu-log="live"]');
     await waitNamed(page, () => document.querySelector('[data-ocu-log="live"]')?.getAttribute('aria-pressed') === 'true', 'the toggle read pressed');
 
-    const marker = `${MARKER} live ${Date.now()}`;
+    const marker = `${LIVE_MARKER} live ${Date.now()}`;
     writeConsoleLine(marker, 0);
     await waitNamed(
       page,
@@ -518,7 +521,7 @@ test('Story 18.38: Live tail brings a line the instance writes onto the screen w
     await waitNamed(page, () => document.querySelector('[data-ocu-log="live"]')?.getAttribute('aria-pressed') === 'false', 'the toggle read off');
     const tailsAtOff = tails.length;
     const pagesAtOff = pages.length;
-    const later = `${MARKER} after off ${Date.now()}`;
+    const later = `${LIVE_MARKER} after off ${Date.now()}`;
     writeConsoleLine(later, 0);
     await new Promise((resolve) => setTimeout(resolve, 4000));
     assert.equal(tails.length, tailsAtOff, 'no further tail is requested once Live tail is off');

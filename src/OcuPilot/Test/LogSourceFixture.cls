@@ -263,9 +263,9 @@ ClassMethod SetTail(pBound As %Numeric, pCheck As %Numeric, pBeat As %Numeric)
     Set ^||OcuPilotLogFixture("tailBeat") = pBeat
 }
 
-/// <p>Make <method>TailState</method> throw an exception named <var>pName</var> on its
-/// <var>pAfterLooks</var>-th look at the file and every one after it. <code>0</code> throws on the
-/// first.</p>
+/// <p>Make <method>TailState</method> throw an exception named <var>pName</var> once it has looked at the
+/// file <var>pAfterLooks</var> times, and on every look after: <code>0</code> throws on the first look,
+/// <code>1</code> on the second.</p>
 ClassMethod ArmTailThrow(pName As %String, pAfterLooks As %Integer = 0)
 {
     Set ^||OcuPilotLogFixture("tailThrow") = pName

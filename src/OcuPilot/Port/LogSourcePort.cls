@@ -932,7 +932,7 @@ ClassMethod Tail(pSource As %String = "", pIdentity As %String = "", pSize As %S
         }
 
         If '$Match(pIdentity, "^[A-Za-z0-9_=-]{1,64}$") || '$Match(pSize, "^[0-9]{1,18}$") {
-            Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#LOGOFFSET, "identity and size are a page's cursor and travel together; supply both", .pHttpStatus, .pFault)
+            Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#LOGOFFSET, "identity and size are a page's cursor; supply both, each as a page answered it", .pHttpStatus, .pFault)
             Quit
         }
         If pFile '= "" {

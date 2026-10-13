@@ -7,8 +7,9 @@
 /// can be armed to fail or throw as a gone client does. A writer job of its own appends to, replaces or
 /// briefly removes the scratch file while a tail waits, and is stopped in <method>OnAfterOneTest</method>.
 /// The instance's own console log is never written, rotated or removed here.</p>
-/// <p>Needs a writable manager directory and nothing else; the longest test holds one tail to the
-/// bound.</p>
+/// <p>Needs a writable manager directory and a running principal holding <code>%Admin_Operate:USE</code>,
+/// which the port's own gate checks on every call this class does not arm a stand-in gate for; the longest
+/// test holds one tail to the bound.</p>
 Class OcuPilot.Test.LogTail Extends %UnitTest.TestCase
 {
 
@@ -319,9 +320,9 @@ Method TestAnAbsentFileIsWaitedOutAndReportedAtTheBound()
 }
 
 /// <p>Refused: every refusal comes before any wait, heartbeat or file access, with the matrix's status and
-/// code, and echoes nothing the caller sent.</p>
-/// <p>Mutation (Rule 19): move the cursor check after the first heartbeat in <code>Tail</code> -&gt; the
-/// cursor rows hold to the bound and the beat-count and elapsed-time assertions go red.</p>
+/// code.</p>
+/// <p>Mutation (Rule 19): remove the cursor check from <code>Tail</code> -&gt; the cursor rows are answered
+/// as a moved file, and the status, code and file-access assertions go red.</p>
 Method TestARefusalComesBeforeAnyWaitHeartbeatOrFileAccess()
 {
     Set tLong = $Translate($Justify("", 65), " ", "a")
@@ -342,8 +343,8 @@ Method TestARefusalComesBeforeAnyWaitHeartbeatOrFileAccess()
 
 /// <p>A caller that lacks the pair, or a source whose requirement is empty, is refused 403 before the file
 /// is touched or the tail waits; the same call holding the pair is served.</p>
-/// <p>Mutation (Rule 19): run the gate after <code>Resolve</code> in <code>Tail</code> -&gt; the file-access
-/// count goes red.</p>
+/// <p>Mutation (Rule 19): look at the file before the gate in <code>Tail</code> -&gt; the file-access count
+/// goes red.</p>
 Method TestAGateRefusalTouchesNoFile()
 {
     Do ..Cursor(.tIdentity, .tSize)

@@ -6,10 +6,15 @@
 /// <file>alerts.log</file> answers <code>changed</code> true at once, naming its own source. The
 /// <file>messages.log</file> cursor as it stands is held, and the answer arrives within the bound as one
 /// heartbeat newline for each full beat interval held and one <code>{source, changed}</code> envelope.</p>
-/// <p><b>Read-only against the instance's real logs</b>; nothing here writes, rotates or removes them. The
-/// longest test holds one request for the bound, which is <parameter>BOUND</parameter> seconds. Needs the
-/// API application installed, the test principal's password, that principal holding
-/// <code>%Admin_Operate:USE</code>, and a <file>messages.log</file> and an <file>alerts.log</file>.</p>
+/// <p>Nothing here rotates a log or removes one that was already there. A fresh instance may not have
+/// written <file>alerts.log</file> yet; when it has not, or the file is empty,
+/// <method>EnsureAlertLine</method> gives it one informational line, only where
+/// <parameter>ARMINGVARIABLE</parameter> reads 1, and <method>OnAfterAllTests</method> puts the file back as
+/// it found it unless the instance has written to it since. The longest test holds one request for the
+/// bound, which is <parameter>BOUND</parameter> seconds, and waits for <file>messages.log</file> to be quiet
+/// first (<method>AwaitQuiet</method>). Needs the API application installed, the test principal's password,
+/// that principal holding <code>%Admin_Operate:USE</code>, a <file>messages.log</file>, the gateway's default
+/// 60-second response timeout, and a manager directory the instance can write.</p>
 Class OcuPilot.Test.LogTailWire Extends %UnitTest.TestCase
 {
 
@@ -39,6 +44,50 @@ Parameter SLACK As INTEGER = 5;
 /// <p>How long a client waits for any answer: <parameter>BOUND</parameter> plus 15 seconds.</p>
 Parameter CLIENTTIMEOUT As INTEGER = 65;
 
+/// <p>How many one-second looks at <file>messages.log</file> must find its cursor unchanged before a hold
+/// begins.</p>
+Parameter QUIETSECONDS As INTEGER = 3;
+
+/// <p>The most seconds <method>AwaitQuiet</method> waits for that quiet; a log still moving then is held
+/// anyway.</p>
+Parameter QUIETCAP As INTEGER = 20;
+
+/// <p>How many holds <method>HoldCurrent</method> makes before it reports the last one.</p>
+Parameter HOLDTRIES As INTEGER = 4;
+
+/// <p>The environment variable that lets <method>EnsureAlertLine</method> write the instance's
+/// <file>alerts.log</file>, and the one value that arms it: <code>1</code>. Only
+/// <file>scripts/ci-throwaway.sh</file> sets it; it is the variable the classes that write the instance's own
+/// log files read.</p>
+Parameter ARMINGVARIABLE = "OCUPILOT_ALLOW_LOG_ROTATION";
+
+/// <p>The size of the <file>alerts.log</file> this class wrote its line into, or <code>""</code> when it
+/// wrote none.</p>
+Property PreparedAlertSize As %String;
+
+/// <p>Whether this class created that <file>alerts.log</file>, rather than finding it empty.</p>
+Property PreparedAlertCreated As %Boolean;
+
+Method %OnNew(initvalue As %String = "") As %Status
+{
+    Set tSC = ##super(initvalue)
+    If $$$ISERR(tSC) Quit tSC
+    Set ..PreparedAlertSize = ""
+    Set ..PreparedAlertCreated = 0
+    Quit $$$OK
+}
+
+/// <p>Put back the <file>alerts.log</file> this class wrote its line into -- removed when this class
+/// created it, emptied when it was empty -- unless the instance has written to it since.</p>
+Method OnAfterAllTests() As %Status
+{
+    Set tPath = ..AlertsPath()
+    If (..PreparedAlertSize = "") || '##class(%File).Exists(tPath) || (##class(%File).GetFileSize(tPath) '= ..PreparedAlertSize) Quit $$$OK
+    If '..PreparedAlertCreated Quit ##class(OcuPilot.Test.LogSource).WriteFile(tPath, "")
+    If '##class(%File).Delete(tPath) Quit $$$ERROR($$$GeneralError, "OcuPilot.Test.LogTailWire could not remove the alerts.log it created: " _ tPath)
+    Quit $$$OK
+}
+
 /// <p>Request <var>pPath</var> as the configured test principal, timing the call in <var>pElapsed</var>
 /// seconds.</p>
 Method Fetch(pPath As %String, Output pStatus As %Integer, Output pBody As %String, Output pHeaders, Output pElapsed As %Numeric) As %Status
@@ -63,11 +112,57 @@ Method CursorQuery(pBehind As %Integer = 0, pPage As %String = "") As %String
     Quit "identity=" _ $ZConvert(tPage.identity, "O", "URL") _ "&size=" _ (tPage.size - pBehind)
 }
 
+/// <p>The instance's <file>alerts.log</file>.</p>
+ClassMethod AlertsPath() As %String
+{
+    Quit ##class(%File).NormalizeFilename("alerts.log", $System.Util.ManagerDirectory())
+}
+
+/// <p>Give the alert log a cursor to tail. A file with content is left alone. An absent or empty one gets
+/// one informational line in the file's own head grammar
+/// (<code>MM/DD/YY-HH:MM:SS:mmm (pid) severity [Category] text</code>), only where
+/// <parameter>ARMINGVARIABLE</parameter> reads 1; elsewhere nothing is written and an error says so. What it
+/// wrote is remembered for <method>OnAfterAllTests</method>.</p>
+Method EnsureAlertLine() As %Status
+{
+    Set tPath = ..AlertsPath()
+    If ##class(%File).Exists(tPath) && (##class(%File).GetFileSize(tPath) > 0) Quit $$$OK
+    If $System.Util.GetEnviron(..#ARMINGVARIABLE) '= 1 {
+        Quit $$$ERROR($$$GeneralError, "OcuPilot.Test.LogTailWire writes a line into this instance's alerts.log only on a throwaway container. " _ ..#ARMINGVARIABLE _ " does not read 1 here, so nothing was written. Bring one up with scripts/ci-throwaway.sh, which sets it.")
+    }
+    Set tCreated = '##class(%File).Exists(tPath)
+    Set tDate = $ZDate(+$Horolog, 1)
+    Set tStamp = $Extract(tDate, 1, 6) _ $Extract(tDate, 9, 10) _ "-" _ $ZTime($Piece($Horolog, ",", 2), 1) _ ":000"
+    Set tLine = tStamp _ " (" _ $Job _ ") 0 [OcuPilot.LogTailWire] OcuPilot.Test.LogTailWire gives the alert log a line to tail" _ $Char(10)
+    Set tSC = ##class(OcuPilot.Test.LogSource).WriteFile(tPath, tLine)
+    If $$$ISERR(tSC) Quit tSC
+    Set ..PreparedAlertCreated = tCreated
+    Set ..PreparedAlertSize = ##class(%File).GetFileSize(tPath)
+    Quit $$$OK
+}
+
+/// <p>Wait until the console log's cursor has been found unchanged on <parameter>QUIETSECONDS</parameter>
+/// looks one second apart, or <parameter>QUIETCAP</parameter> seconds have passed. The instance writes
+/// <file>messages.log</file> in bursts (an install, an earlier test's leftovers), and a hold begun inside
+/// one is ended early by it.</p>
+Method AwaitQuiet()
+{
+    Set tLast = ""
+    Set tStable = 0
+    Set tDeadline = $ZHorolog + ..#QUIETCAP
+    While ($ZHorolog < tDeadline) && (tStable < ..#QUIETSECONDS) {
+        Set tNow = ..CursorQuery(0)
+        Set tStable = $Select((tNow '= "") && (tNow = tLast): tStable + 1, 1: 0)
+        Set tLast = tNow
+        Hang 1
+    }
+}
+
 /// <p>A refused tail is answered at once with one envelope, the matrix's status and code, on both routes:
 /// no cursor, a half cursor, a malformed one, and a file name.</p>
-/// <p>Mutation (Rule 19): refuse the cursor after the first heartbeat in
-/// <method>OcuPilot.Port.LogSourcePort.Tail</method> -&gt; a refusal holds for seconds and the elapsed-time
-/// assertion goes red.</p>
+/// <p>Mutation (Rule 19): disable the <code>LOG.FILE</code> refusal in
+/// <method>OcuPilot.Port.LogSourcePort.Tail</method> -&gt; the rows naming a file are not refused and the
+/// status assertion goes red.</p>
 Method TestARefusalAnswersAtOnceOnBothRoutes()
 {
     Set tRows = $ListBuild("|400|LOG.OFFSET", "identity=abc|400|LOG.OFFSET", "size=12|400|LOG.OFFSET", "identity=a%20b&size=1|400|LOG.OFFSET", "identity=abc&size=12x|400|LOG.OFFSET", "identity=abc&size=1&file=messages.log|400|LOG.FILE", "identity=abc&size=1&file=messages.old_20261013|400|LOG.FILE")
@@ -92,13 +187,16 @@ Method TestARefusalAnswersAtOnceOnBothRoutes()
 
 /// <p>A cursor one byte behind <file>messages.log</file>, or behind <file>alerts.log</file>, is already
 /// moved on its own route: the answer is <code>changed</code> true within two seconds, naming that route's
-/// source, one envelope and no heartbeat.</p>
+/// source, one envelope and no heartbeat. The alert log is given its line first
+/// (<method>EnsureAlertLine</method>).</p>
 /// <p>Mutation (Rule 19): <method>OcuPilot.Port.LogSourcePort.Tail</method> ignores <var>size</var> -&gt; the
 /// tail is held to the bound and the elapsed-time and answer assertions go red; bind
 /// <method>OcuPilot.Api.Router.LogAlertsTail</method> to the console log -&gt; the alerts leg names
-/// <code>messages</code> and goes red.</p>
-Method TestACursorABytebehindAnswersChangedAtOnce()
+/// <code>messages</code> and goes red; skip <method>EnsureAlertLine</method>, on an instance whose
+/// <file>alerts.log</file> is absent -&gt; the alerts leg finds no cursor and goes red.</p>
+Method TestACursorAByteBehindAnswersChangedAtOnce()
 {
+    Do $$$AssertStatusOK(..EnsureAlertLine(), "the alert log has a line to tail")
     Set tRows = $ListBuild(..#MESSAGESTAIL _ "|" _ ..#MESSAGESPAGE _ "|messages", ..#ALERTSTAIL _ "|" _ ..#ALERTSPAGE _ "|alerts")
     For tI = 1:1:$ListLength(tRows) {
         Set tRow = $List(tRows, tI)
@@ -120,15 +218,16 @@ Method TestACursorABytebehindAnswersChangedAtOnce()
     }
 }
 
-/// <p>Hold the console log's current cursor on its tail route, taking a fresh cursor and holding again, up
-/// to three times, while the answer comes before one beat interval has passed: the instance itself writes
-/// to <file>messages.log</file> now and then, which ends a hold early. <var>pHaveCursor</var> is 0 when the
-/// page supplies no cursor.</p>
+/// <p>Hold the console log's current cursor on its tail route, after <method>AwaitQuiet</method>, taking a
+/// fresh cursor and holding again, up to <parameter>HOLDTRIES</parameter> times, while the answer comes before
+/// one beat interval has passed: the instance itself writes to <file>messages.log</file> now and then, which
+/// ends a hold early. <var>pHaveCursor</var> is 0 when the page supplies no cursor.</p>
 Method HoldCurrent(Output pHaveCursor As %Boolean, Output pStatus As %Integer, Output pBody As %String, Output pHeaders, Output pElapsed As %Numeric) As %Status
 {
     Set tSC = $$$OK
     Set pHaveCursor = 0
-    For tTry = 1:1:3 {
+    For tTry = 1:1:..#HOLDTRIES {
+        Do ..AwaitQuiet()
         Set tQuery = ..CursorQuery(0)
         If tQuery = "" Quit
         Set pHaveCursor = 1
@@ -165,6 +264,8 @@ Method TestTheCurrentCursorIsHeldAndAnsweredWithOneEnvelope()
     Do $$$AssertEquals($ZStrip(tEnvelope, "<>", $Char(10)), tEnvelope, "and nothing comes after it")
     Set tLeading = $Length(tBody) - $Length(tEnvelope)
     Set tExpected = (tElapsed - 2) \ ..#BEAT
+    ; No beat is written at or past the bound, so a hold answered late still carries at most this many.
+    If tExpected > ((..#BOUND - 1) \ ..#BEAT) Set tExpected = (..#BOUND - 1) \ ..#BEAT
     Do $$$AssertTrue(tLeading >= tExpected, "a newline for each full beat interval held (" _ tExpected _ " after " _ tElapsed _ " s): " _ tLeading)
     Set tAnswer = ##class(%DynamicObject).%FromJSON(tBody)
     If 'tAnswer.changed Do $$$AssertTrue(tElapsed >= (..#BOUND - 1), "an unchanged tail was held to the bound: " _ tElapsed)
