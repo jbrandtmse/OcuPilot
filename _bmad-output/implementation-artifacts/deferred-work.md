@@ -11668,3 +11668,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-38-the-live-log-tail.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: Task 0 (b) timed delivery by hand (curl -sN --compressed on ocupilot-ci: beats at 10.1, 20.2, 30.3, 40.4 s); LogTailWire counts newlines per held interval
 - 2026-10-13T18:14:44Z status=wontfix-accepted owner=18-38-the-live-log-tail by=harvest note=reopen_if=a browser shows Live tail silent while messages.log grows, or the gateway's buffering changes on an upgrade
+
+### DW-2392: Turning Live tail off, choosing another file or leaving drops the held tail's answer but never cancels the request, so it keeps a browser connection open until the file moves or the bound
+- source: spec-18-38-the-live-log-tail.md | severity: med | fix-risk: med | footprint: out-of-footprint
+- evidence: runLive calls requestJson with no signal and ApiRequestInit (core/api.ts) offers none; each off/on, file change or leave abandons one held request; six on one HTTP/1.1 origin would stall the shell's other calls (inference: browser per-host limit, not measured)
+- 2026-10-13T19:09:29Z status=escalated owner=burndown by=cr note=decision sheet: an abort signal through ApiRequestInit (not read as status 0), or the store reusing its own pending tail
+
+### DW-2393: The rows Live tail appends to the log viewer are never trimmed, so a viewer left on a busy log holds every line written since it opened
+- source: spec-18-38-the-live-log-tail.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: Each changed answer runs loadNewer, which appends the page ([...fileEntries, ...window]) and the template renders every row; Load newer did the same per click; a cap needs a choice of what search and Raw keep
+- 2026-10-13T19:09:33Z status=wontfix-accepted owner=18-38-the-live-log-tail by=cr note=reopen_if=a viewer with Live tail on holds over 20,000 rows, or a person reports the tab slowing while it runs
