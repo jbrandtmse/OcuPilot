@@ -720,3 +720,4 @@
 2026-10-13T21:54:05Z	Epic 20	deps_hash_rerecorded	reason=story_chartered(20.30,20.31)+rule5_amendment(20.9) hash=696af41348c0
 2026-10-13T21:54:05Z	Story 20.9	spine_updated	ad=AD-62(item_15),AD-8,AD-44,AD-5 reason=clarification(plan_draft) by=runner story=20-9 lint=ok(preexisting_low_line206)
 2026-10-13T21:54:05Z	Story 20.9	spec_validated	service_introducing=true(message_reads,DetailPage_body) integration_ac=present adr_constrained_acs=AD-62,AD-8,AD-44,AD-5,AD-29,AD-47,AD-15 decision_dependency=none sections_created=none owned_ledger=none addressed=0 declined=0 mutates_shared_runtime=true(throwaway_named) amendments=epics.md:20.9(Rule5_split),20.30,20.31(chartered) q2=DW-2398(wontfix-accepted) tools=1983/1983 model=claude-opus-5-5
+2026-10-13T21:54:16Z	Story 20.16	stage_spawned	stage=implement spawn_at=2026-10-13T21:54:16Z model=sonnet agent_name=20-16-implement-1 cycle_iteration=1 ci_prior=success_38463014073(20.7_attempt2)
