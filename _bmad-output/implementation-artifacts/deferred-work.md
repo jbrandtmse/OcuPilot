@@ -11695,3 +11695,4 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: CI run 38463014073 attempt 1, browser shard 3/5 (head 49436efa) | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: turn.browser-spec.mjs:392 assertion 'the markup renders as literal text' got '<img '; the head differs from green-on-shard-3 481b3adc only in interop-editors.browser-spec.mjs; rerun pending.
 - 2026-10-13T21:11:34Z status=routed owner=burndown by=runner note=rerun once (attempt 2); if green it is a flake: the spec must wait for the reply's settled state before reading its text
+- 2026-10-13T21:52:09Z occurrence=20-7-the-three-embedded-vendor-editors note=attempt 2 of run 38463014073 green unchanged: a flake (orchestrator noted)
