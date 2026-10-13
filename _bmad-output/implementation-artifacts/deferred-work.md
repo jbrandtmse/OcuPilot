@@ -11567,3 +11567,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: ARCHITECTURE-SPINE.md :230 (AD-8) lists License key's activation, the data browser's save and the symmetric key replace; :1161 (AD-53) adds the allow-list update; the spine is lead-owned (Rule 20) and in Epic 20's diff, so a review cannot edit it in place
 - 2026-10-13T04:27:29Z status=wontfix-accepted owner=18-42-allowed-directories-a-person-s-write by=cr note=reopen_if=the lead's next AD-8 or AD-53 touch, or a reader cites AD-8's today-list as the whole unadvertised set
 - 2026-10-13T04:29:39Z status=resolved-by:18-42-allowed-directories-a-person-s-write by=adjudication note=AD-8 today-list now names the allowed directories update (spine amendment, Story 18.42 code review)
+
+### DW-2377: IRIS defect candidate: a wallet collection use-resource holder's %Wallet.KeyValue.%OpenId fails #939 and writes Protect audit rows, while GetSecretValue reads the same secret
+- source: spec-18-41-the-wallet-credential-rung.md | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: Measured on ocupilot-ci at Story 18.41's plan (probe OcuProbe1841, removed); the rung never calls %OpenId on a wallet class
+- 2026-10-13T06:58:20Z status=decision-pending owner=burndown by=spec_gate note=owner_hold: vendor defect candidate, never reported upstream (Story 18.41)
