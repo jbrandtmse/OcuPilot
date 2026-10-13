@@ -2,7 +2,7 @@
 title: 'Story 20.7: The three embedded vendor editors'
 type: 'feature'
 created: '2026-10-12'
-status: 'done'
+status: 'in-progress'
 baseline_revision: 'f288bcdc2d17e37d282052fcc6f293b1c84924b0'
 baseline_commit: 'f288bcdc2d17e37d282052fcc6f293b1c84924b0'
 review_loop_iteration: 0
@@ -378,6 +378,10 @@ Rejected:
 - LOW, rejected: a request under `/ui/interop/` that fails leaves the AC1 wait timing out rather than naming the path. It is a diagnostic only, and the fix adds a listener to 20.13's helper.
 - Theoretical: the namespace offered may see the probe through shared code. On the image, `HSLIB`, `HSSYS` and `USER` each have their own routines database. It becomes real only if another interoperability namespace maps `HSCUSTOM`'s code.
 - Theoretical: a loaded scope with an empty namespace reads unscoped. `source-editor.page.ts` has the same guard, and it needs a namespaces answer whose `scope` is empty.
+
+### CI red on 481b3adc (run 38446203705) - rework iteration 1
+
+- [ ] [CI] **AC2's compile-failure leg** (`interop-editors.browser-spec.mjs` test 3, browser shard 5/5) waited 30 s for the notice "error occurred while compiling" and read `["ERROR #6220: Internal Server Error"]`. The instance log: `<NOTOPEN>CompileDTL+30^%Api.InteropEditors.v3.impl.1` - the vendor's compile route `use`s the null device without opening it, so it fails in a CSP process that has not opened that device before (DW-2394, a vendor defect candidate under the owner's hold). Locally the leg was green, because the worker that served it had the device open (inference). Reproduce it on `ocupilot-b-ci` (a compile served by a CSP process that has not opened the null device), then make the leg hermetic without priming process state through OcuPilot: it still pins that the failure is reported in the editor's own notice inside the frame and that no message reaches OcuPilot, and it accepts the vendor's own error notice when its compile route fails this way. Add the vendor behavior to the Named limits. Fix nothing in the vendor's code and never reach into the frame (AD-63).
 
 ## Spec Change Log
 

@@ -11672,3 +11672,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-37-interoperability-usage.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: InteropUsageGate.Wire and DashboardDrillDownGate.cls :102 differ only in maxRows; Story 18.11's review closed the second copy with reopen_if a third gate copied it
 - 2026-10-13T13:17:14Z status=wontfix-accepted owner=18-37-interoperability-usage by=cr note=reopen_if=Test.Http.AbsoluteRequest's signature or the failedPair detail changes; one Http helper then serves all five
+
+### DW-2394: Vendor: the DTL editor's compile route answers 500 Internal Server Error in a CSP process that never opened the null device, because %Api.InteropEditors.v3.impl CompileDTL uses it without opening it (<NOTOPEN>CompileDTL+30)
+- source: CI run 38446203705 browser 5/5 (Story 20.7 AC2) | severity: med | fix-risk: high | footprint: out-of-footprint
+- evidence: CI log: ISCLOG apimgmnt <NOTOPEN>CompileDTL+30^%Api.InteropEditors.v3.impl.1; hidden source: use ##class(%Library.Device).GetNullDevice() with no open; green locally where the worker had it open (inference).
+- 2026-10-13T19:17:30Z status=decision-pending owner=burndown by=runner note=owner hold 2026-10-05: IRIS defect candidate, not reported; 20.7 AC2 accepts the vendor's own error notice

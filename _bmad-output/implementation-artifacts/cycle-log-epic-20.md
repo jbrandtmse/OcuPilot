@@ -692,3 +692,8 @@
 2026-10-13T18:23:00Z	Epic 20	stage_spawned	stage=epic-context spawn_at=2026-10-13T18:23:00Z model=opus agent_name=20-context-recompile-3 reason=planning_artifact_newer(20.16_gate_spine,20.7_review_spine,EXPERIENCE.md,feature_18.37)
 2026-10-13T18:28:51Z	Epic 20	epic_context_compiled	reason=planning_artifact_newer(20.16_gate,20.7_review,feature_18.37) model=opus lines=151
 2026-10-13T18:28:51Z	Story 20.8	stage_spawned	stage=plan spawn_at=2026-10-13T18:28:51Z model=opus agent_name=20-8-plan-1 cycle_iteration=1 inbox=none note=planned_while_20.7_CI_runs
+2026-10-13T19:17:30Z	Story 20.7	ci_resolved	story=20.7 run=38446203705 result=failure head=481b3adc resolved_at=next_implement
+2026-10-13T19:17:30Z	Story 20.7	ci_red_classified	run=38446203705 class=story test=interop-editors.browser-spec.mjs:AC2(compile_failure_leg) cause=DW-2394(vendor_NOTOPEN_CompileDTL_in_fresh_CSP_process)
+2026-10-13T19:17:30Z	Story 20.7	rework_opened	cycle_iteration=2 iteration=1 trigger=ci items=[CI]AC2_compile_failure_leg_hermetic,DW-2394 scope_baseline=pending
+2026-10-13T19:17:30Z	Story 20.8	story_created	spawn_at=(see_stage_spawned) model=opus agent_name=20-8-plan-1 path=_bmad-output/implementation-artifacts/spec-20-8-the-schema-viewers-and-the-production-configuration-diagram.md build_status=ready-for-dev(gate_pending) epic_context=reused warnings=oversized,multiple-goals
+2026-10-13T19:17:30Z	Story 20.7	stage_spawned	stage=implement spawn_at=2026-10-13T19:17:30Z model=sonnet agent_name=20-7-rework-1 cycle_iteration=2
