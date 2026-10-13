@@ -1727,6 +1727,42 @@ test("a confirmed data transformation test's output reaches its outcome and the 
   assert.equal(JSON.stringify(event).includes('probe-fail'), false, 'and no error line');
 });
 
+test("a confirmed data transformation test's answer at the instance's output bound reaches the card whole, its cut marker last (Story 20.27)", async () => {
+  // The instance holds a test's lines to one million characters and ends the last in the cut marker (`InteropPort.TESTCUT`); the card
+  // is handed every line of that answer, so what the person reads is what the instance sent, to the marker.
+  //
+  // Mutation (Rule 19): keep only the first thousand `lines` of the answer in `transformOutcomeLines` -> the length and last-line legs go red.
+  const cut = ' ... [cut]';
+  const lines = Array.from({ length: 10_000 }, (_, index) => `line-${String(index).padStart(94, '0')}`);
+  lines.push(`line-last${cut}`);
+  const answer = { status: 'done', sourceClass: 'Ens.StringRequest', targetClass: 'Ens.StringResponse', lines, console: ['probe-device-line'], errors: false };
+  const expected = [STRINGS.interopTransformDone, ...lines, STRINGS.interopTransformConsole, 'probe-device-line'];
+  assert.ok(expected.join('\n').length > 990_000, 'the answer is about a million characters');
+  const api = fakeApi({
+    [conversationReadPath('c1')]: [
+      ok({ turns: [{ seq: 1, message: 'do it', state: 'completed', proposals: [wireProposal()] }] }),
+    ],
+    [proposalConfirmPath('p1')]: [
+      ok({ proposalId: 'p1', state: 'confirmed', closedReason: '', confirmedAt: '2026-10-13T10:01:02Z', action: 'updated', output: answer }),
+    ],
+  });
+  const turn = new TurnStore({
+    api,
+    storage: memoryStorage({ [CONVERSATION_STORAGE_KEY]: 'c1' }),
+    navigationType: reloadedTab(),
+    now: () => NOW_MS,
+    bus: recordingBus(),
+  });
+  await turn.restore();
+  const outcome = await turn.confirmProposal('p1');
+  const held = turn.entries()[0].proposals[0].output ?? [];
+  for (const [name, shown] of [['the outcome', outcome.output ?? []], ['the proposal the card renders', held]]) {
+    assert.equal(shown.length, expected.length, `${name} carries every line`);
+    assert.ok(shown.every((line, index) => line === expected[index]), `${name} carries each line as the instance sent it`);
+    assert.equal(shown[shown.length - 3], `line-last${cut}`, `${name} ends the target in the cut marker, before the console`);
+  }
+});
+
 test("a confirm's outcome carries the instance's own action and createdId, which the panel's change sentence reads (Story 10.6)", async () => {
   // The panel names the change from the outcome, so the outcome must carry what the change event
   // carries: the action through the same closed-set reading, and the createdId verbatim.

@@ -28,7 +28,9 @@ function stepsOf(lines: readonly string[]): readonly { readonly kind: string; re
  *
  * **The result stays in the dialog.** After a run the source and target class, the status sentence (in the error style when the run
  * did not end `done`), the target's or the error's lines and, when the transformation wrote anything, the console label and what it
- * wrote, beneath the field. Every line is drawn as text, never as markup (AD-11, AD-47), and a further run replaces them.
+ * wrote, beneath the field. Every line is drawn as text, never as markup (AD-11, AD-47), and a further run replaces them. The
+ * status sentence is also written into a polite `role="status"` region the dialog keeps mounted, so a screen reader announces the
+ * run's end (WCAG 4.1.3).
  */
 @Component({
   selector: 'app-interop-transform-test-dialog',
@@ -36,6 +38,7 @@ function stepsOf(lines: readonly string[]): readonly { readonly kind: string; re
   imports: [Dialog, CodeBlock],
   template: `<app-dialog [heading]="heading()" [closeLabel]="STRINGS.actionCancel" (closed)="onClosed()">
     <p class="ocu-banner" data-interop-transform-consequence>{{ STRINGS.interopTransformRunsConsequence }}</p>
+    <p class="ocu-visually-hidden" role="status" data-interop-transform-announce>{{ statusLine }}</p>
     @if (hasRefusal) {
       <p class="ocu-banner ocu-banner-warning" role="alert" data-interop-transform-reason>{{ refusal() }}</p>
     }

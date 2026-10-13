@@ -4,7 +4,9 @@
 /// the device each answer 200 with their status, and nothing they wrote reaches the log; a transformation that saves its target leaves
 /// its extent as it was; and each refusal -- a Record Map batch or a stream for source or target, a class that is not listed, an empty
 /// or too long message, OcuPilot's own name, a namespace that runs no interoperability -- is answered by its code from the person's
-/// Test and from the agent's call, before any parse or <code>Transform</code>, leaving the run count and every extent as they were.</p>
+/// Test and from the agent's call, before any parse or <code>Transform</code>, leaving the run count and every extent as they were;
+/// pasted text never names a file the instance opens; and a target past the output bound is cut and marked, for the person's Test and
+/// for the agent's confirmed call alike, sharing the bound with what the transformation writes to the device.</p>
 /// <p><b>What it needs from the environment:</b> OcuPilot installed in <code>HSCUSTOM</code> and serving over HTTP as
 /// <class>OcuPilot.Test.Http</class>'s account, an interoperability-enabled <code>USER</code> namespace, and
 /// <parameter>ARMINGVARIABLE</parameter> reading <code>1</code>, because it <b>compiles and runs transformations in
@@ -109,6 +111,35 @@ Method TestAStoredTargetIsDeletedBeforeTheAnswer()
     Set tShape = ..Run($Parameter(..#FIXTURE, "XML"), $ClassMethod(..#FIXTURE, "Message", "save"), .tText)
     Do $$$AssertEquals(tText _ " " _ $Piece(tShape, "|", 1, 2), "200  done|0", "the run is done")
     Do $$$AssertEquals($ClassMethod(..#FIXTURE, "Counts"), tCounts, "and the response it saved is gone")
+}
+
+/// <p>AC4: a run that ends in any status is audited, as one that is done is: input that does not parse, a status the transformation
+/// sets, a fault it does not trap and a transformation that leaves no target each leave one audit row of OcuPilot's own naming the
+/// transformation and the status, with the classes and neither the message nor the error text nor a line.</p>
+/// <p>Mutation (Rule 19): audit only a <code>done</code> run in <method>OcuPilot.Port.InteropPort.PerformTransformTest</method> -- every
+/// leg goes red.</p>
+Method TestEveryStatusOfARunIsAudited()
+{
+    Set tSince = ##class(OcuPilot.Test.AuditEvent).Now()
+    Set tXml = $Parameter(..#FIXTURE, "XML")
+    Set tRaw = $Parameter(..#FIXTURE, "RAW")
+    Set tCases = $ListBuild($ListBuild(tXml, "hello", "input"), $ListBuild(tXml, $ClassMethod(..#FIXTURE, "Message", "fail"), "transform"), $ListBuild(tRaw, $ClassMethod(..#FIXTURE, "Message", "x"), "transform"), $ListBuild(tXml, $ClassMethod(..#FIXTURE, "Message", "none"), "output"))
+    For tI = 1:1:$ListLength(tCases) {
+        Set tCase = $List(tCases, tI)
+        Set tBefore(tI) = ##class(OcuPilot.Test.AuditEvent).RowsCarrying(tSince, "ConfigChange", """id"":""" _ $List(tCase, 1) _ ".cls""", .tData, """status"":""" _ $List(tCase, 3) _ """")
+    }
+    For tI = 1:1:$ListLength(tCases) {
+        Set tCase = $List(tCases, tI)
+        Set tShape = ..Run($List(tCase, 1), $List(tCase, 2), .tText)
+        Do $$$AssertEquals($Piece(tShape, "|", 1), $List(tCase, 3), $List(tCase, 1) _ ": the run ends " _ $List(tCase, 3))
+    }
+    For tI = 1:1:$ListLength(tCases) {
+        Set tCase = $List(tCases, tI)
+        Set tRows = ##class(OcuPilot.Test.AuditEvent).RowsCarrying(tSince, "ConfigChange", """id"":""" _ $List(tCase, 1) _ ".cls""", .tData, """status"":""" _ $List(tCase, 3) _ """")
+        Do $$$AssertEquals(tRows - tBefore(tI), 1, $List(tCase, 1) _ " " _ $List(tCase, 3) _ ": one audit row records the test")
+        Do $$$AssertTrue((tData [ """verb"":""test""") && (tData [ """sourceClass"":""Ens.StringRequest""") && (tData [ """targetClass"":""Ens.StringResponse"""), "naming the test and the classes: " _ tData)
+        Do $$$AssertTrue((tData '[ "hello") && (tData '[ "probe-fail") && (tData '[ "DIVIDE") && (tData '[ "No object created") && (tData '[ """lines"""), "and neither the message nor the error text nor a line: " _ tData)
+    }
 }
 
 /// <p>The pairs the port's gate evaluates, held through the test gate for the probe namespace.</p>
@@ -231,6 +262,62 @@ Method TestAMessagePastTheBoundAndAPlainNamespaceAreRefusedByThePort()
     Do $$$AssertEquals($ClassMethod(..#FIXTURE, "Runs") - tRuns, 0, "neither ran a transformation")
 }
 
+/// <p>AC5: pasted text never names a file the instance opens (AD-21). The vendor class of an EDI XML document opens text with no
+/// <code>&lt;</code> among its first characters as a file, so for a transformation whose source is one a server path, with blanks
+/// before it or none, is refused as <code>input</code> -- <code>Not XML Format</code>; a message that declares a document type, which
+/// names a file holding an entity that reads a second one, is refused as <code>input</code> for an EDI XML and an XML source alike; and
+/// an XML message naming a schema file is not validated against it. The body of the file is nowhere in an answer, and nothing runs.
+/// The test writes the files and removes them.</p>
+/// <p>Mutation (Rule 19): drop the XML check for a virtual document from <method>OcuPilot.Port.InteropPort.ParseSourceHere</method> -- the
+/// file's body is parsed, shown, and this goes red; drop the document type check from
+/// <method>OcuPilot.Port.InteropPort.PastedXmlHere</method> -- the EDI XML document type leg shows the body and goes red; drop the
+/// entity resolver from <method>OcuPilot.Port.InteropPort.ParseSourceHere</method> -- the schema leg is validated, done, and goes
+/// red.</p>
+Method TestAnEdiXmlSourceNeverOpensThePastedTextAsAFile()
+{
+    Set tRuns = $ClassMethod(..#FIXTURE, "Runs")
+    Set tMarker = "ocu-file-body-marker"
+    Set tFile = ##class(%File).TempFilename("xml")
+    Set tDtd = ##class(%File).TempFilename("dtd")
+    Set tXsd = ##class(%File).TempFilename("xsd")
+    Try {
+        Set tSC = ..ProbeFile(tFile, "<root><a>" _ tMarker _ "</a></root>")
+        If $$$ISOK(tSC) Set tSC = ..ProbeFile(tDtd, "<!ENTITY f SYSTEM ""file://" _ tFile _ """>")
+        If $$$ISOK(tSC) Set tSC = ..ProbeFile(tXsd, "<?xml version=""1.0""?><xs:schema xmlns:xs=""http://www.w3.org/2001/XMLSchema""><xs:element name=""StringRequest""/></xs:schema>")
+        Do $$$AssertStatusOK(tSC, "the probe files are written")
+        For tBlanks = "", "  " {
+            Set tShape = ..Run($Parameter(..#FIXTURE, "EDIXML"), tBlanks _ tFile, .tText)
+            Do $$$AssertEquals(tText _ " " _ tShape, "200  input|1|[]|[""ERROR #5001: Not XML Format""]", "a path with " _ $Length(tBlanks) _ " blanks before it is refused as text that is not XML")
+            Do $$$AssertTrue(tShape '[ tMarker, "and the file it names is not shown: " _ tShape)
+        }
+        Set tDoctype = "<!DOCTYPE root SYSTEM ""file://" _ tDtd _ """>"
+        For tCase = $ListBuild("EDIXML", tDoctype _ "<root><a>&f;</a></root>"), $ListBuild("XML", $Replace(tDoctype, "root", "StringRequest") _ "<StringRequest><StringValue>&f;</StringValue></StringRequest>") {
+            Set tShape = ..Run($Parameter(..#FIXTURE, $List(tCase, 1)), $List(tCase, 2), .tText)
+            Do $$$AssertTrue((tText = "200 ") && ($Piece(tShape, "|", 1, 3) = "input|1|[]") && (tShape [ "(<!DOCTYPE>)"), $List(tCase, 1) _ ": a message that declares a document type is refused as input: " _ tShape)
+            Do $$$AssertTrue(tShape '[ tMarker, $List(tCase, 1) _ ": and the file its entity names is not shown")
+        }
+        Set tShape = ..Run($Parameter(..#FIXTURE, "XML"), "<StringRequest xmlns:xsi=""http://www.w3.org/2001/XMLSchema-instance"" xsi:noNamespaceSchemaLocation=""file://" _ tXsd _ """><StringValue>x</StringValue></StringRequest>", .tText)
+        Do $$$AssertEquals(tText _ " " _ $Piece(tShape, "|", 1, 2), "200  input|1", "an XML message naming a schema file is not validated against it: " _ tShape)
+    } Catch ex {
+        Do $$$AssertTrue(0, "the probe raised: " _ ex.DisplayString())
+    }
+    For tPath = tFile, tDtd, tXsd {
+        Do ##class(%File).Delete(tPath)
+        Do $$$AssertTrue('##class(%File).Exists(tPath), "the probe file is removed: " _ tPath)
+    }
+    Do $$$AssertEquals($ClassMethod(..#FIXTURE, "Runs") - tRuns, 0, "no transformation ran")
+}
+
+/// <p>Write <var>pText</var> to the file <var>pFile</var>, the status of the write.</p>
+ClassMethod ProbeFile(pFile As %String, pText As %String) As %Status
+{
+    Set tStream = ##class(%Stream.FileCharacter).%New()
+    Set tSC = tStream.LinkToFile(pFile)
+    If $$$ISOK(tSC) Set tSC = tStream.Write(pText)
+    If $$$ISOK(tSC) Set tSC = tStream.%Save()
+    Quit tSC
+}
+
 /// <p>AC5: a refused format or an absent class is answered before the message is judged, so an empty message does not hide it, and
 /// when both sides are refused the source is the one named.</p>
 /// <p>Mutation (Rule 19): judge <code>content</code> before the formats in <method>OcuPilot.Port.InteropPort.ReadTransform</method>, or
@@ -269,6 +356,68 @@ Method TestATargetPastTheBoundIsCutAndMarked()
     Do $$$AssertEquals(tOutput.status, "done", "it is done")
     Do $$$AssertEquals($Extract(tLast, $Length(tLast) - $Length(tCut) + 1, $Length(tLast)), tCut, "its last line ends in the cut marker")
     Do $$$AssertEquals(tTotal, tMax + $Length(tCut), "and the lines hold the bound and the marker and no more")
+}
+
+/// <p>AC4: the target and what the transformation wrote to the device share the one bound: a run whose target is three short lines
+/// and which writes more than the bound to the device answers its target whole and its console cut and marked, the two together
+/// holding the bound and the marker's length and no more.</p>
+/// <p>Mutation (Rule 19): start the console's count again from zero in
+/// <method>OcuPilot.Port.InteropPort.PerformTransformTest</method> -- the total goes red.</p>
+Method TestTheConsoleSharesTheOutputBoundWithTheTarget()
+{
+    Set tMax = $Parameter("OcuPilot.Port.InteropPort", "TESTOUTPUTMAX")
+    Set tCut = $Parameter("OcuPilot.Port.InteropPort", "TESTCUT")
+    Set tText = $ClassMethod(..#BASE, "Act", $Parameter(..#FIXTURE, "XML") _ ".cls", $ClassMethod(..#FIXTURE, "Message", "noisy"), .tAnswer)
+    Do $$$AssertEquals(tText, "200 ", "the run is answered 200")
+    If '$IsObject(tAnswer) || '$IsObject(tAnswer.%Get("output")) Quit
+    Set tOutput = tAnswer.output
+    Set tTotal = 0
+    For tI = 0:1:tOutput.lines.%Size() - 1 Set tTotal = tTotal + $Length(tOutput.lines.%Get(tI))
+    For tI = 0:1:tOutput.console.%Size() - 1 Set tTotal = tTotal + $Length(tOutput.console.%Get(tI))
+    Set tLast = tOutput.console.%Get(tOutput.console.%Size() - 1)
+    Do $$$AssertEquals(tOutput.status _ "|" _ tOutput.lines.%Get(1), "done|  <StringValue>out:noisy</StringValue>", "it is done and its target is whole")
+    Do $$$AssertEquals($Extract(tLast, $Length(tLast) - $Length(tCut) + 1, $Length(tLast)), tCut, "the console's last line ends in the cut marker")
+    Do $$$AssertEquals(tTotal, tMax + $Length(tCut), "and the target and the console hold the bound and the marker together")
+}
+
+/// <p>AC4, AC6: the agent's confirm holds what it answers to the same bound, with the target many lines long rather than one: a
+/// message of a few characters whose transformation makes 1.2 million characters in 12,000 lines is confirmed over HTTP as one
+/// envelope of more than the bound, <code>done</code>, whose lines are cut at the bound and end in the marker, and the stored proposal
+/// and turn hold none of them.</p>
+/// <p>Mutation (Rule 19): hand the answer only its first thousand lines in
+/// <method>OcuPilot.Screen.Tool.InteropTransformTest.WriteOutput</method> -- the line count and the marker go red, and
+/// <method>TestATargetPastTheBoundIsCutAndMarked</method>, whose target is one line, stays green.</p>
+Method TestAnOversizedTargetIsCutAndMarkedInTheAgentsConfirm()
+{
+    Set tMax = $Parameter("OcuPilot.Port.InteropPort", "TESTOUTPUTMAX")
+    Set tCut = $Parameter("OcuPilot.Port.InteropPort", "TESTCUT")
+    Set tRuns = $ClassMethod(..#FIXTURE, "Runs")
+    Set tCounts = $ClassMethod(..#FIXTURE, "Counts")
+    Set tSC = $ClassMethod(..#CONTROL, "MintAs", ..#TOOL, $ClassMethod(..#BASE, "ArgsFor", $Parameter(..#FIXTURE, "XML") _ ".cls", $ClassMethod(..#FIXTURE, "Message", "big")), ##class(OcuPilot.Test.Http).GetTestUsername(), .tProposal, .tHttp, .tFault, .tTurn)
+    Do $$$AssertStatusOK(tSC, "the call mints: " _ $Select($IsObject($Get(tFault)): tFault.%ToJSON(), 1: ""))
+    If '$IsObject($Get(tProposal)) Quit
+    Set tId = tProposal.proposalId
+    Set tSC = $ClassMethod(..#CONTROL, "ConfirmHttp", tId, .tStatus, .tRaw, .tAnswer)
+    Do $$$AssertEquals(tStatus, 200, "the confirm answers 200: " _ $Extract($Get(tRaw), 1, 300))
+    If '$IsObject($Get(tAnswer)) || '$IsObject(tAnswer.%Get("output")) Quit
+    Do $$$AssertTrue($Length(tRaw) > tMax, "the envelope is longer than the bound: " _ $Length(tRaw))
+    Do $$$AssertTrue($Length(tRaw, "}{") = 1, "and is one envelope")
+    Set tOutput = tAnswer.output
+    Set tLines = tOutput.lines
+    Set tTotal = 0
+    For tI = 0:1:tLines.%Size() - 1 Set tTotal = tTotal + $Length(tLines.%Get(tI))
+    For tI = 0:1:tOutput.console.%Size() - 1 Set tTotal = tTotal + $Length(tOutput.console.%Get(tI))
+    Set tLast = tLines.%Get(tLines.%Size() - 1)
+    Do $$$AssertEquals(tOutput.status _ "|" _ tOutput.errors, "done|0", "it is done")
+    Do $$$AssertEquals(tLines.%Get(0) _ "|" _ tLines.%Get(2), "<StringResponse>|line-" _ $Translate($Justify(2, 94), " ", "0"), "its first lines are the target's own")
+    Do $$$AssertTrue((tLines.%Size() > 9000) && (tLines.%Size() < 11000), "and it keeps its many lines up to the bound: " _ tLines.%Size())
+    Do $$$AssertEquals($Extract(tLast, $Length(tLast) - $Length(tCut) + 1, $Length(tLast)), tCut, "the last line ends in the cut marker")
+    Do $$$AssertTrue((tTotal <= (tMax + $Length(tCut))) && (tTotal > (tMax * 0.8)), "and the lines hold the bound at most, line ends apart: " _ tTotal)
+    Do $$$AssertEquals($ClassMethod(..#FIXTURE, "Runs") - tRuns, 1, "the confirm ran the transformation once")
+    Do $$$AssertEquals($ClassMethod(..#FIXTURE, "Counts"), tCounts, "and stored nothing")
+    Set tStored = $ClassMethod("OcuPilot.Test.InteropHostTest", "StoredText", tId, tTurn)
+    Do $$$AssertTrue((tStored [ "<StringValue>big</StringValue>") && (tStored '[ "line-000"), "the stored proposal and turn hold the input and none of the target")
+    Do ##class(OcuPilot.Kernel.State.Ledger).GuardedDeleteForTurn(tTurn)
 }
 
 /// <p>A read of a transformation the list does not report is 404 <code>PORT.NOTFOUND</code> with or without the test's action, and an

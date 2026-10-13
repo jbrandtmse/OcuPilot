@@ -40,8 +40,10 @@ Method OnBeforeAllTests() As %Status
     Set tSC = $ClassMethod(..#PROBE, "Create")
     If $$$ISERR(tSC) Quit tSC
     Set tSC = $ClassMethod(..#FIXTURE, "Create")
-    If $$$ISERR(tSC) Quit tSC
-    Quit $ClassMethod(..#TRANSFORMFIXTURE, "Create")
+    If $$$ISOK(tSC) Set tSC = $ClassMethod(..#TRANSFORMFIXTURE, "Create")
+    ; %UnitTest skips OnAfterAllTests when this method fails, so a failed setup removes what it made here.
+    If $$$ISERR(tSC) Set tSC = $$$ADDSC(tSC, ..OnAfterAllTests())
+    Quit tSC
 }
 
 /// <p>Remove the probe and the fixtures' classes and what they left.</p>
@@ -185,9 +187,10 @@ Method TestEveryTestCodeResolves()
 /// <p>The script form (AD-59): an <code>objectscript</code> step that switches to the namespace, builds the request from the fields
 /// it is given, validates and saves it, and calls the testing service by the item's name; every name and value is a string literal,
 /// a quote doubled and a control character spelled as <code>$Char</code>, so nothing the query carries runs as code, and no line opens
-/// a block it does not close. A document class is its text imported.</p>
+/// a block it does not close. A document class is its text imported, an EDI XML document's from its first <code>&lt;</code>.</p>
 /// <p>Mutation (Rule 19): drop the <code>Literal</code> from the value in <method>OcuPilot.Port.InteropPort.TestSnippet</method> --
-/// the quote leg goes red; convert every value through <code>DisplayToLogical</code> -- the <code>ErrorStatus</code> leg goes red.</p>
+/// the quote leg goes red; convert every value through <code>DisplayToLogical</code> -- the <code>ErrorStatus</code> leg goes red; hand
+/// an EDI XML document's text on as sent -- the EDI XML legs go red.</p>
 Method TestTheScriptKeepsEveryValueInsideItsLiteral()
 {
     Kill tQuery
@@ -215,6 +218,12 @@ Method TestTheScriptKeepsEveryValueInsideItsLiteral()
     Set tQuery("fields") = {"content": ("MSH|^~\&|A" _ $Char(13) _ "PID|1")}.%ToJSON()
     Set tText = $ClassMethod(..#PORT, "Snippet", "ItemTest", "SENDTEST", .tQuery).%Get(0).text
     Do $$$AssertTrue((tText [ "ImportFromString") && (tText [ """_$Char(13)_""") && (tText '[ "%ValidateObject"), "a document is its text imported, a carriage return spelled as $Char")
+    Set tQuery("requestClass") = "EnsLib.EDI.XML.Document"
+    For tCase = $ListBuild(" " _ $Char(13, 10) _ "<root/>", "ImportFromString"", ""<root/>"", .tSC)"), $ListBuild("/etc/hostname", "tSC = $System.Status.Error(5001, ""Not XML Format"")") {
+        Set tQuery("fields") = {"content": ($List(tCase, 1))}.%ToJSON()
+        Set tText = $ClassMethod(..#PORT, "Snippet", "ItemTest", "SENDTEST", .tQuery).%Get(0).text
+        Do $$$AssertTrue(tText [ $List(tCase, 2), "an EDI XML document's text is imported from its first <, and text that is not XML is refused, as the send does (AD-21): " _ tText)
+    }
     Kill tQuery
     Set tQuery("namespace") = "USER"
     Do $$$AssertEquals($ClassMethod(..#PORT, "Snippet", "ItemTest", "TESTTARGET", .tQuery).%Size(), 0, "a read has no script")
@@ -407,11 +416,13 @@ Method TestEveryTransformCodeResolves()
 }
 
 /// <p>The transformation test's script form (AD-59): an <code>objectscript</code> step that switches to the namespace, parses the
-/// message as the source class the way the test does, creates the target for <code>existing</code>, calls <code>Transform</code> by
-/// name and renders the target the way the test does; every name and the message are string literals, a quote doubled and a control
-/// character spelled as <code>$Char</code>, and no line opens a block it does not close.</p>
+/// message as the source class the way the test does (XML from its first <code>&lt;</code>, text the test refuses refused), creates the
+/// target for <code>existing</code>, calls <code>Transform</code> by name with empty <code>process</code>, <code>context</code> and
+/// <code>aux</code>, renders the target and deletes a stored source or target the way the test does; every name and the message are
+/// string literals, a quote doubled and a control character spelled as <code>$Char</code>, and no line opens a block it does not
+/// close.</p>
 /// <p>Mutation (Rule 19): drop the <code>Literal</code> from the message in <method>OcuPilot.Port.InteropPort.TransformSnippet</method>
-/// -- the quote leg goes red.</p>
+/// -- the quote leg goes red; hand the script the message as pasted -- the EDI XML and refusal legs go red.</p>
 Method TestTheTransformScriptKeepsTheMessageInsideItsLiteral()
 {
     Set tFixture = ..#TRANSFORMFIXTURE
@@ -430,11 +441,22 @@ Method TestTheTransformScriptKeepsTheMessageInsideItsLiteral()
     }
     Do $$$AssertEquals(tOpens, 0, "no line opens a block it does not close")
     Set tQuery("id") = $Parameter(tFixture, "EXISTING") _ ".cls"
+    Set tQuery("content") = $Char(13, 10) _ "<StringRequest/>"
     Set tText = $ClassMethod(..#PORT, "Snippet", "Transforms", "TRANSFORMTEST", .tQuery).%Get(0).text
-    Do $$$AssertTrue((tText [ "ObjectFromString(.tSource") && (tText [ """%New"")") && (tText [ "%XML.Writer") && (tText '[ "ImportFromString"), "an XML source is read by the XML reader, an existing target is created, and an XML target is written by the XML writer")
+    Do $$$AssertTrue((tText [ "ObjectFromString(.tSource, ""<StringRequest/>"", ""Ens.StringRequest"", ##class(%XML.SAX.NullEntityResolver).%New())") && (tText [ """%New"")") && (tText [ "%XML.Writer") && (tText '[ "ImportFromString"), "an XML source is read from its first < by the XML reader with no entity resolution, an existing target is created, and an XML target is written by the XML writer: " _ tText)
     Set tQuery("id") = $Parameter(tFixture, "X12") _ ".cls"
     Set tText = $ClassMethod(..#PORT, "Snippet", "Transforms", "TRANSFORMTEST", .tQuery).%Get(0).text
     Do $$$AssertTrue((tText [ "SegmentTerminator") && (tText '[ "%XML.Writer"), "an X12 target is written with its segment terminator")
+    Do $$$AssertTrue((tText [ "Set process = """", context = """"") && (tText [ ", .tTarget, """")") && (tText [ """%Delete""") && (tText [ "tObject.%Oid()"), "it empties process, context and aux and deletes a source or target that was stored, as the test does")
+    Set tQuery("id") = $Parameter(tFixture, "EDIXML") _ ".cls"
+    Set tQuery("content") = " " _ $Char(13, 10, 9) _ "<root/>"
+    Set tText = $ClassMethod(..#PORT, "Snippet", "Transforms", "TRANSFORMTEST", .tQuery).%Get(0).text
+    Do $$$AssertTrue(tText [ "ImportFromString"", ""<root/>"", .tSC)", "an EDI XML message is handed on from its first <, as the test hands it: " _ tText)
+    For tContent = "/etc/hostname", "<!DOCTYPE root SYSTEM ""file:///etc/hostname""><root/>" {
+        Set tQuery("content") = tContent
+        Set tText = $ClassMethod(..#PORT, "Snippet", "Transforms", "TRANSFORMTEST", .tQuery).%Get(0).text
+        Do $$$AssertTrue((tText [ "tSC = $System.Status.Error(5001, ") && (tText '[ "ImportFromString"), "text the test refuses is refused in the script and never imported: " _ tText)
+    }
     Kill tQuery
     Set tQuery("namespace") = "USER"
     Set tQuery("id") = "OcuProbeDtl.Missing.cls"

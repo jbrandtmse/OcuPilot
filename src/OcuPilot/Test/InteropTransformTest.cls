@@ -106,13 +106,14 @@ Method TestThePersonsRunShowsTheTargetAsXml()
     Set tRuns = $ClassMethod(..#FIXTURE, "Runs")
     Set tCounts = $ClassMethod(..#FIXTURE, "Counts")
     Set tSince = ##class(OcuPilot.Test.AuditEvent).Now()
+    Set tAudited = ##class(OcuPilot.Test.AuditEvent).RowsCarrying(tSince, "ConfigChange", """verb"":""test""", .tData, """id"":""" _ tName _ """")
     Set tText = ..Act(tName, $ClassMethod(..#FIXTURE, "Message", "x"), .tAnswer)
     Do $$$AssertEquals(tText, "200 ", "the person's Test answers 200: " _ $Select($IsObject(tAnswer): tAnswer.%ToJSON(), 1: ""))
     Do $$$AssertEquals(..Shape(tAnswer), "done|Ens.StringRequest|Ens.StringResponse|0|[]|" _ ..#XMLLINES, "the run is done and shows the target as indented XML")
     Do $$$AssertEquals($ClassMethod(..#FIXTURE, "Runs") - tRuns, 1, "the transformation ran once")
     Do $$$AssertEquals($Select($IsObject(tAnswer): tAnswer.action _ "|" _ tAnswer.target.type _ "|" _ tAnswer.target.scope _ "|" _ tAnswer.target.id, 1: ""), "updated|class|USER|" _ tName, "publishing the change event for the class")
     Do $$$AssertEquals($ClassMethod(..#FIXTURE, "Counts"), tCounts, "and the run stored nothing")
-    Do $$$AssertEquals(##class(OcuPilot.Test.AuditEvent).RowsCarrying(tSince, "ConfigChange", """verb"":""test""", .tData, """id"":""" _ tName _ """"), 1, "one audit row of OcuPilot's own records the test")
+    Do $$$AssertEquals(##class(OcuPilot.Test.AuditEvent).RowsCarrying(tSince, "ConfigChange", """verb"":""test""", .tData, """id"":""" _ tName _ """") - tAudited, 1, "one audit row of OcuPilot's own records the test")
     Do $$$AssertTrue((tData [ """sourceClass"":""Ens.StringRequest""") && (tData [ """status"":""done""") && (tData '[ "out:") && (tData '[ "StringValue") && (tData '[ """lines"""), "which carries the classes and the status and no message and no line: " _ tData)
 }
 
@@ -132,6 +133,7 @@ Method TestTheAgentsRunConfirmsOverHttp()
     Set tRuns = $ClassMethod(..#FIXTURE, "Runs")
     Set tCounts = $ClassMethod(..#FIXTURE, "Counts")
     Set tSince = ##class(OcuPilot.Test.AuditEvent).Now()
+    Set tAudited = ##class(OcuPilot.Test.AuditEvent).RowsCarrying(tSince, "ConfigChange", """verb"":""test""", .tData, """id"":""" _ tName _ """")
     Set tSC = $ClassMethod(..#CONTROL, "MintAs", ..#TOOL, ..ArgsFor(tName, tMessage), ##class(OcuPilot.Test.Http).GetTestUsername(), .tProposal, .tMintHttp, .tFault, .tTurn)
     Do $$$AssertStatusOK(tSC, "the call mints: " _ $Select($IsObject($Get(tFault)): tFault.%ToJSON(), 1: ""))
     If '$IsObject($Get(tProposal)) Quit
@@ -163,13 +165,14 @@ Method TestTheAgentsRunConfirmsOverHttp()
     Do $$$AssertTrue((tLedger '= "") && (tLedger '[ "out:") && (tLedger '[ "<StringResponse>"), "the ledger row carries no output: " _ tLedger)
     Set tStored = $ClassMethod(..#HOST, "StoredText", tId, tTurn)
     Do $$$AssertTrue((tStored [ "<StringValue>x</StringValue>") && (tStored '[ "out:") && (tStored '[ "<StringResponse>"), "the confirmed proposal and the turn's steps, read back, hold the input and no output")
-    Do $$$AssertEquals(##class(OcuPilot.Test.AuditEvent).RowsCarrying(tSince, "ConfigChange", """verb"":""test""", .tData, """id"":""" _ tName _ """"), 1, "one audit row records the test")
+    Do $$$AssertEquals(##class(OcuPilot.Test.AuditEvent).RowsCarrying(tSince, "ConfigChange", """verb"":""test""", .tData, """id"":""" _ tName _ """") - tAudited, 1, "one audit row records the test")
     Do $$$AssertTrue((tData '[ "out:") && (tData '[ "StringValue") && (tData '[ """lines"""), "which carries no input and no output: " _ tData)
     Do ##class(OcuPilot.Kernel.State.Ledger).GuardedDeleteForTurn(tTurn)
 }
 
 /// <p>AC2: an HL7 ADT_A01 and an X12 interchange are shown as the raw text of the target, one segment to a line, as the classic raw
-/// view writes it, and the HL7 and X12 extents hold their counts from before.</p>
+/// view writes it, from the person's Test and from the agent's confirmed call, and the HL7 and X12 extents hold their counts from
+/// before.</p>
 /// <p>Mutation (Rule 19): write the segmented target without the classic separators in
 /// <method>OcuPilot.Port.InteropPort.RenderTargetHere</method> -- the line counts go red; delete only the target in
 /// <method>OcuPilot.Port.InteropPort.RunTransformHere</method> -- the X12 extent goes red.</p>
@@ -186,6 +189,17 @@ Method TestDocumentsAreShownAsRawTextOneSegmentToALine()
     Set tOutput = $Select($IsObject(tAnswer): tAnswer.%Get("output"), 1: "")
     Do $$$AssertEquals($Select($IsObject(tOutput): tOutput.status _ "|" _ tOutput.lines.%Size() _ "|" _ $Extract(tOutput.lines.%Get(0), 1, 7) _ "|" _ tOutput.lines.%Get(6), 1: ""), "done|7|ISA*00*|IEA*1*000000001~", "the X12 target is its seven segments")
     Do $$$AssertEquals($ClassMethod(..#FIXTURE, "Counts"), tCounts, "and the interchange the parse saved, and the copy, are deleted before the answer")
+    For tCase = $ListBuild("HL7", "", "done|4|MSH|^~\&|PROBEAPP|"), $ListBuild("X12", "", "done|7|ISA*00*") {
+        Set tMessage = $Select($List(tCase, 1) = "HL7": $ClassMethod(..#FIXTURE, "Hl7Text"), 1: $Parameter(..#FIXTURE, "X12TEXT"))
+        Set tSC = $ClassMethod(..#CONTROL, "MintAs", ..#TOOL, ..ArgsFor($Parameter(..#FIXTURE, $List(tCase, 1)) _ ".cls", tMessage), ##class(OcuPilot.Test.Http).GetTestUsername(), .tProposal, .tMintHttp, .tFault, .tTurn)
+        Do $$$AssertStatusOK(tSC, $List(tCase, 1) _ ": the agent's call mints")
+        If '$IsObject($Get(tProposal)) Continue
+        Set tSC = $ClassMethod(..#CONTROL, "ConfirmHttp", tProposal.proposalId, .tStatus, .tRaw, .tConfirm)
+        Set tOutput = $Select($IsObject($Get(tConfirm)): tConfirm.%Get("output"), 1: "")
+        Do $$$AssertEquals(tStatus _ " " _ $Select($IsObject(tOutput): $Extract(tOutput.status _ "|" _ tOutput.lines.%Size() _ "|" _ tOutput.lines.%Get(0), 1, $Length($List(tCase, 3))), 1: ""), "200 " _ $List(tCase, 3), $List(tCase, 1) _ ": the agent's confirmed test answers the person's lines: " _ $Extract($Get(tRaw), 1, 300))
+        Do ##class(OcuPilot.Kernel.State.Ledger).GuardedDeleteForTurn(tTurn)
+    }
+    Do $$$AssertEquals($ClassMethod(..#FIXTURE, "Counts"), tCounts, "and the confirmed tests stored nothing either")
 }
 
 /// <p>AC1: a transformation that creates <code>existing</code> gets a target from <code>%New()</code> with no argument: the classic
@@ -200,6 +214,33 @@ Method TestAnExistingTargetStartsFromNewWithNoArgument()
     Do $$$AssertEquals(..Shape(tAnswer), "done|Ens.StringRequest|Ens.StringResponse|0|[]|[""<StringResponse>"",""  <StringValue>existing:x</StringValue>"",""</StringResponse>""]", "the target holds what the transformation wrote and nothing before it")
 }
 
+/// <p>AC2: an EDI XML document is a virtual document: a pasted <code>&lt;root&gt;</code>, with blanks or line ends before it or none
+/// (the vendor opens text with no <code>&lt;</code> in its first four characters as a file), is parsed by its own <code>ImportFromString</code> and the target is shown as indented XML, one element to a line, with nothing stored; and an XML
+/// message after a line end, with its declaration, is read from its first <code>&lt;</code>.</p>
+/// <p>Mutation (Rule 19): render an EDI XML target without the <code>"wt"</code> option in
+/// <method>OcuPilot.Port.InteropPort.RenderTargetHere</method> -- the lines go red; hand the vendor the pasted text with its leading
+/// blanks in <method>OcuPilot.Port.InteropPort.ParseSourceHere</method> -- the blanks leg goes red; strip blanks alone, not line ends, in
+/// <method>OcuPilot.Port.InteropPort.PastedXmlHere</method> -- the line-end legs go red.</p>
+Method TestAnEdiXmlDocumentIsParsedAsADocumentAndShownAsIndentedXml()
+{
+    Set tName = $Parameter(..#FIXTURE, "EDIXML") _ ".cls"
+    Set tText = $Parameter(..#FIXTURE, "EDIXMLTEXT")
+    Set tCounts = $ClassMethod(..#FIXTURE, "Counts")
+    For tBlanks = "", "      ", $Char(9, 9, 9, 9, 9), $Char(13, 10), $Char(10, 32, 9) {
+        Set tCode = ..Act(tName, tBlanks _ tText, .tAnswer)
+        Do $$$AssertEquals(tCode, "200 ", "the Test answers 200: " _ $Select($IsObject(tAnswer): tAnswer.%ToJSON(), 1: ""))
+        Set tOutput = $Select($IsObject(tAnswer): tAnswer.%Get("output"), 1: "")
+        If '$IsObject(tOutput) Continue
+        Set tLines = tOutput.lines
+        Do $$$AssertEquals(tOutput.status _ "|" _ tOutput.sourceClass _ "|" _ tOutput.targetClass _ "|" _ tOutput.errors _ "|" _ tOutput.console.%Size() _ "|" _ tLines.%Size(), "done|EnsLib.EDI.XML.Document|EnsLib.EDI.XML.Document|0|0|4", "blanks " _ $Length(tBlanks) _ ": the run is done with four lines")
+        Do $$$AssertEquals(tLines.%Get(0) _ "|" _ $ZStrip(tLines.%Get(1), "<W") _ "|" _ $ZStrip(tLines.%Get(2), "<W") _ "|" _ tLines.%Get(3), "<root>|<a>1</a>|<b>two</b>|</root>", "blanks " _ $Length(tBlanks) _ ": the target is the document's elements, one to a line")
+        Do $$$AssertTrue(($Length(tLines.%Get(1)) > $Length($ZStrip(tLines.%Get(1), "<W"))) && ($Length(tLines.%Get(2)) > $Length($ZStrip(tLines.%Get(2), "<W"))), "blanks " _ $Length(tBlanks) _ ": the children are indented")
+    }
+    Set tCode = ..Act($Parameter(..#FIXTURE, "XML") _ ".cls", $Char(13, 10) _ "<?xml version=""1.0""?>" _ $ClassMethod(..#FIXTURE, "Message", "x"), .tAnswer)
+    Do $$$AssertEquals(tCode _ " " _ ..Shape(tAnswer), "200  done|Ens.StringRequest|Ens.StringResponse|0|[]|" _ ..#XMLLINES, "an XML message after a line end, with its declaration, is read from its first <")
+    Do $$$AssertEquals($ClassMethod(..#FIXTURE, "Counts"), tCounts, "and the runs stored nothing")
+}
+
 /// <p>The extents the legs compare before and after a run each read a real count, so an equal pair is not two unreadable ones.</p>
 /// <p>Mutation (Rule 19): name an extent that does not exist in <method>OcuPilot.Test.InteropTransformFixture.Counts</method> -- this
 /// goes red.</p>
@@ -212,12 +253,13 @@ Method TestTheExtentsTheLegsCompareAreReadable()
 /// <p>AC7: the <code>TRANSFORM</code> read, with and without the test's action, answers the transformation's classes, kinds and the
 /// message as given, and runs no <code>Transform</code> and stores nothing, whatever the transformation.</p>
 /// <p>Mutation (Rule 19): call <code>Transform</code> in <method>OcuPilot.Port.InteropPort.ReadTransform</method> -- the run count goes
-/// red.</p>
+/// red; judge an XML adaptor class before a virtual document in <method>OcuPilot.Port.InteropPort.FormatKindHere</method> -- the EDI XML
+/// case, which is both, goes red.</p>
 Method TestAReadRunsNothingAndStoresNothing()
 {
     Set tRuns = $ClassMethod(..#FIXTURE, "Runs")
     Set tCounts = $ClassMethod(..#FIXTURE, "Counts")
-    Set tCases = $ListBuild($ListBuild("XML", "Ens.StringRequest||xml|Ens.StringResponse||xml|new"), $ListBuild("HL7", "EnsLib.HL7.Message|2.5:ADT_A01|document|EnsLib.HL7.Message|2.5:ADT_A01|document|copy"), $ListBuild("X12", "EnsLib.EDI.X12.Document||document|EnsLib.EDI.X12.Document||document|copy"), $ListBuild("EXISTING", "Ens.StringRequest||xml|Ens.StringResponse||xml|existing"))
+    Set tCases = $ListBuild($ListBuild("XML", "Ens.StringRequest||xml|Ens.StringResponse||xml|new"), $ListBuild("HL7", "EnsLib.HL7.Message|2.5:ADT_A01|document|EnsLib.HL7.Message|2.5:ADT_A01|document|copy"), $ListBuild("X12", "EnsLib.EDI.X12.Document||document|EnsLib.EDI.X12.Document||document|copy"), $ListBuild("EXISTING", "Ens.StringRequest||xml|Ens.StringResponse||xml|existing"), $ListBuild("EDIXML", "EnsLib.EDI.XML.Document||document|EnsLib.EDI.XML.Document||document|copy"))
     For tI = 1:1:$ListLength(tCases) {
         Set tClass = $Parameter(..#FIXTURE, $List($List(tCases, tI), 1))
         For tAction = "", "TRANSFORMTEST" {

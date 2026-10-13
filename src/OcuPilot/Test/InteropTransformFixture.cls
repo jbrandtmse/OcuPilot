@@ -1,12 +1,14 @@
 /// <p>The probe data transformations of Story 20.27's transformation test, created in <code>USER</code> on a throwaway container: a
 /// transformation of each shape the test meets (<parameter>XML</parameter> to <parameter>HL7</parameter> and <parameter>X12</parameter>,
-/// an existing target, a Record Map batch, stream classes, a fault that escapes <code>Transform</code>) and one named like OcuPilot's
+/// an EDI XML copy (<parameter>EDIXML</parameter>), an existing target, a Record Map batch, stream classes, a fault that escapes <code>Transform</code>) and one named like OcuPilot's
 /// own code (<parameter>OWN</parameter>) for the prohibited leg. Everything is created in the packages
 /// <parameter>PACKAGE</parameter> and <parameter>OWNPACKAGE</parameter> and removed by <method>Remove</method>, with the run counter
 /// <parameter>COUNTER</parameter>.</p>
-/// <p><b>The XML transformation counts its runs</b> in <parameter>COUNTER</parameter> and does what its input says:
-/// <code>fail</code> answers an error status, <code>write</code> writes a line to the device, <code>save</code> saves its target and
-/// <code>none</code> leaves no target. Any other value answers <code>out:&lt;value&gt;</code>.</p>
+/// <p><b>Every transformation counts its runs</b> in <parameter>COUNTER</parameter>. The XML transformation does what its input says:
+/// <code>fail</code> answers an error status, <code>write</code> writes a line to the device, <code>noisy</code> writes 1,000,100
+/// characters to it, past the output bound, <code>save</code> saves its target and
+/// <code>none</code> leaves no target and <code>big</code> makes the target 12,000 lines of 99 characters, 1.2 million characters in
+/// all, past the output bound. Any other value answers <code>out:&lt;value&gt;</code>.</p>
 /// <p><b>Not a <class>%UnitTest.TestCase</class></b>: it holds no assertions and runs no tests. Each method switches to
 /// <parameter>NAMESPACE</parameter> by explicit save and restore and calls only vendor classes while switched.</p>
 Class OcuPilot.Test.InteropTransformFixture Extends %RegisteredObject
@@ -25,6 +27,9 @@ Parameter EXISTING = "OcuProbeDtl.Existing";
 Parameter HL7 = "OcuProbeDtl.Hl7";
 
 Parameter X12 = "OcuProbeDtl.X12";
+
+/// <p>A copy of an EDI XML document, which is a virtual document and an XML adaptor class both.</p>
+Parameter EDIXML = "OcuProbeDtl.EdiXml";
 
 Parameter RAW = "OcuProbeDtl.Raw";
 
@@ -57,7 +62,7 @@ Parameter UNCOMPILED = "OcuProbeDtl.Uncompiled";
 /// <p>The transformation named like OcuPilot's own code, which the prohibited set refuses.</p>
 Parameter OWN = "OcuPilotProbe.OwnDtl";
 
-/// <p>The global, in <parameter>NAMESPACE</parameter>, that counts the XML transformation's runs.</p>
+/// <p>The global, in <parameter>NAMESPACE</parameter>, that counts the probe transformations' runs.</p>
 Parameter COUNTER = "^OcuProbeDtlRuns";
 
 /// <p>The line the XML transformation writes to the device for <code>write</code>.</p>
@@ -66,10 +71,12 @@ Parameter DEVICELINE = "probe-device-line";
 /// <p>The text of an XML message the XML transformation parses, and of an HL7 ADT_A01 and an X12 interchange.</p>
 Parameter XMLTEXT = "<StringRequest><StringValue>x</StringValue></StringRequest>";
 
+Parameter EDIXMLTEXT = "<root><a>1</a><b>two</b></root>";
+
 Parameter X12TEXT = "ISA*00*          *00*          *ZZ*SENDER         *ZZ*RECEIVER       *210101*1200*^*00501*000000001*0*P*:~GS*HC*SENDER*RECEIVER*20210101*1200*1*X*005010X222A1~ST*837*0001*005010X222A1~BHT*0019*00*0123*20210101*1200*CH~SE*3*0001~GE*1*1~IEA*1*000000001~";
 
 /// <p>The names of the classes this fixture creates, comma-separated.</p>
-Parameter CLASSES = "OcuProbeDtl.Xml,OcuProbeDtl.Existing,OcuProbeDtl.Hl7,OcuProbeDtl.X12,OcuProbeDtl.Raw,OcuProbeDtl.Batch,OcuProbeDtl.FromStream,OcuProbeDtl.ToStream,OcuProbeDtl.StreamBoth,OcuProbeDtl.RecBase,OcuProbeDtl.RecComplexBase,OcuProbeDtl.RecComplexParent,OcuProbeDtl.RmBase,OcuProbeDtl.RmComplexBase,OcuProbeDtl.RmComplexParent,OcuProbeDtl.Uncompiled,OcuPilotProbe.OwnDtl";
+Parameter CLASSES = "OcuProbeDtl.Xml,OcuProbeDtl.Existing,OcuProbeDtl.Hl7,OcuProbeDtl.X12,OcuProbeDtl.EdiXml,OcuProbeDtl.Raw,OcuProbeDtl.Batch,OcuProbeDtl.FromStream,OcuProbeDtl.ToStream,OcuProbeDtl.StreamBoth,OcuProbeDtl.RecBase,OcuProbeDtl.RecComplexBase,OcuProbeDtl.RecComplexParent,OcuProbeDtl.RmBase,OcuProbeDtl.RmComplexBase,OcuProbeDtl.RmComplexParent,OcuProbeDtl.Uncompiled,OcuPilotProbe.OwnDtl";
 
 /// <p>An XML message for the XML transformation whose value is <var>pValue</var>.</p>
 ClassMethod Message(pValue As %String) As %String
@@ -89,32 +96,44 @@ ClassMethod ClassText(pName As %String) As %String [ Private ]
 {
     Set tNL = $Char(13, 10)
     Set tHead = "Parameter IGNOREMISSINGSOURCE = 1;" _ tNL _ "Parameter REPORTERRORS = 1;" _ tNL _ "XData DTL [ XMLNamespace = ""http://www.intersystems.com/dtl"" ]" _ tNL _ "{" _ tNL
+    Set tCount = "<code><![CDATA[ Set " _ ..#COUNTER _ " = $Get(" _ ..#COUNTER _ ") + 1]]></code>" _ tNL
     If (pName = ..#XML) || (pName = ..#OWN) {
         Quit "Class " _ pName _ " Extends Ens.DataTransformDTL" _ tNL _ "{" _ tNL _ tHead _
             "<transform sourceClass='Ens.StringRequest' targetClass='Ens.StringResponse' create='new' language='objectscript'>" _ tNL _
             "<assign value='""out:""_source.StringValue' property='target.StringValue' action='set' />" _ tNL _
-            "<code><![CDATA[ Set " _ ..#COUNTER _ " = $Get(" _ ..#COUNTER _ ") + 1]]></code>" _ tNL _
+            tCount _
             "<code><![CDATA[ If source.StringValue = ""fail"" Set tSC = $$$ERROR($$$GeneralError, ""probe-fail"")]]></code>" _ tNL _
             "<code><![CDATA[ If source.StringValue = ""write"" W """ _ ..#DEVICELINE _ """]]></code>" _ tNL _
             "<code><![CDATA[ If source.StringValue = ""save"" Set tSC = target.%Save()]]></code>" _ tNL _
             "<code><![CDATA[ If source.StringValue = ""none"" Set target = """"]]></code>" _ tNL _
+            "<code><![CDATA[ If source.StringValue = ""noisy"" W $Translate($Justify("""", 1000100), "" "", ""n"")]]></code>" _ tNL _
+            "<code><![CDATA[ If source.StringValue = ""big"" { Set tBigText = """" For tBigN = 1:1:12000 { Set tBigText = tBigText _ ""line-"" _ $Translate($Justify(tBigN, 94), "" "", ""0"") _ $Char(10) } Set target.StringValue = tBigText }]]></code>" _ tNL _
             "</transform>" _ tNL _ "}" _ tNL _ "}" _ tNL
     }
     If pName = ..#EXISTING {
         Quit "Class " _ pName _ " Extends Ens.DataTransformDTL" _ tNL _ "{" _ tNL _ tHead _
             "<transform sourceClass='Ens.StringRequest' targetClass='Ens.StringResponse' create='existing' language='objectscript'>" _ tNL _
+            tCount _
             "<assign value='target.StringValue_""existing:""_source.StringValue' property='target.StringValue' action='set' />" _ tNL _
             "</transform>" _ tNL _ "}" _ tNL _ "}" _ tNL
     }
     If pName = ..#HL7 {
         Quit "Class " _ pName _ " Extends Ens.DataTransformDTL" _ tNL _ "{" _ tNL _ tHead _
             "<transform sourceClass='EnsLib.HL7.Message' targetClass='EnsLib.HL7.Message' sourceDocType='2.5:ADT_A01' targetDocType='2.5:ADT_A01' create='copy' language='objectscript'>" _ tNL _
+            tCount _
             "<assign value='""PROBEAPP""' property='target.{MSH:SendingApplication}' action='set' />" _ tNL _
             "</transform>" _ tNL _ "}" _ tNL _ "}" _ tNL
     }
     If pName = ..#X12 {
         Quit "Class " _ pName _ " Extends Ens.DataTransformDTL" _ tNL _ "{" _ tNL _ tHead _
             "<transform sourceClass='EnsLib.EDI.X12.Document' targetClass='EnsLib.EDI.X12.Document' create='copy' language='objectscript'>" _ tNL _
+            tCount _
+            "</transform>" _ tNL _ "}" _ tNL _ "}" _ tNL
+    }
+    If pName = ..#EDIXML {
+        Quit "Class " _ pName _ " Extends Ens.DataTransformDTL" _ tNL _ "{" _ tNL _ tHead _
+            "<transform sourceClass='EnsLib.EDI.XML.Document' targetClass='EnsLib.EDI.XML.Document' create='copy' language='objectscript'>" _ tNL _
+            tCount _
             "</transform>" _ tNL _ "}" _ tNL _ "}" _ tNL
     }
     If pName = ..#RAW Quit ..CodeText(pName, "Ens.StringRequest", "Ens.StringResponse", " Set tZero = 0" _ tNL _ " Quit 1 / tZero")
@@ -137,7 +156,8 @@ ClassMethod CodeText(pName As %String, pSource As %String, pTarget As %String, p
 {
     Set tNL = $Char(13, 10)
     Quit "Class " _ pName _ " Extends Ens.DataTransform" _ tNL _ "{" _ tNL _
-        "ClassMethod Transform(source As " _ pSource _ ", ByRef target As " _ pTarget _ ") As %Status" _ tNL _ "{" _ tNL _ pBody _ tNL _ "}" _ tNL _ "}" _ tNL
+        "ClassMethod Transform(source As " _ pSource _ ", ByRef target As " _ pTarget _ ") As %Status" _ tNL _ "{" _ tNL _
+        " Set " _ ..#COUNTER _ " = $Get(" _ ..#COUNTER _ ") + 1" _ tNL _ pBody _ tNL _ "}" _ tNL _ "}" _ tNL
 }
 
 /// <p>The text of a record class of the Record Map base <var>pBase</var>: a plain class that extends it and the XML adaptor, as a
@@ -214,7 +234,7 @@ ClassMethod Remove() As %Status
     Quit tSC
 }
 
-/// <p>How many times the XML transformation has run since the fixture was created, in <parameter>NAMESPACE</parameter>.</p>
+/// <p>How many times the probe transformations have run since the fixture was created, in <parameter>NAMESPACE</parameter>.</p>
 ClassMethod Runs() As %Integer
 {
     Set tOrigNS = $NAMESPACE

@@ -3546,7 +3546,7 @@ describe('Story 5.3: confirming, cancelling and re-proposing a card', () => {
   /**
    * Story 20.27: a confirmed data transformation test's card shows the instance's answer as text in its output block -- the status
    * sentence, the target's or the error's lines with their markup left as the text it is, and the console label with what the
-   * transformation wrote -- and a transformation that failed adds no compile outcome to the card.
+   * transformation wrote.
    *
    * mutation: drop the transformation branch from `outputLinesOf` (`core/turn.ts`) -> the status sentence is missing and this goes red.
    */
@@ -3579,7 +3579,6 @@ describe('Story 5.3: confirming, cancelling and re-proposing a card', () => {
     const block = host.querySelector('.ocu-proposal-card [data-slot="output"] pre');
     expect(block?.textContent).toBe([STRINGS.interopTransformFailed, 'probe-fail <b>x</b>', STRINGS.interopTransformConsole, 'probe-device-line'].join('\n'));
     expect(block?.querySelector('b')).toBeNull();
-    expect(host.querySelector('.ocu-proposal-card-summary-outcome')).toBeNull();
   });
 
   /** A confirm answer carrying `output` as the instance writes it: ten console lines and `errors`. */

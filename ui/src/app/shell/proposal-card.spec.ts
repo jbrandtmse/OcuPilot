@@ -1538,4 +1538,30 @@ describe('the proposal card with a long block (Story 20.17)', () => {
       TestBed.resetTestingModule();
     }
   });
+
+  // The instance holds a test's lines to one million characters and ends the last in the cut marker (`InteropPort.TESTCUT`). The card is
+  // handed that answer and draws every line of it, so what the person reads is what the instance sent, to the marker, and as text.
+  // Mutation (Rule 19): cut the output step's text at 100,000 characters in `outputSteps` of `proposal-card.ts` -> the length and marker legs go red.
+  it('Story 20.27: a confirmed transformation test card draws an answer at the output bound whole, its cut marker last, as one collapsed text block', () => {
+    const cut = ' ... [cut]';
+    const lines = Array.from({ length: 10_000 }, (_, index) => `<row n="${String(index).padStart(92, '0')}"/>`);
+    lines.push(`last${cut}`);
+    const answer = { status: 'done', sourceClass: 'Ens.StringRequest', targetClass: 'Ens.StringResponse', lines, console: ['probe-device-line'], errors: false };
+    const text = [STRINGS.interopTransformDone, ...lines, STRINGS.interopTransformConsole, 'probe-device-line'].join('\n');
+    expect(text.length).toBeGreaterThan(990_000);
+
+    const { fixture, card } = mountKeyed(liveView({ name: 'Orders', changed: rows(2) }), 'confirmed');
+    fixture.componentRef.setInput('output', transformOutcomeLines(answer));
+    fixture.componentRef.setInput('outputErrors', outputErrorsOf(answer));
+    fixture.detectChanges();
+
+    const blocks = card.querySelectorAll('[data-slot="output"] pre');
+    expect(blocks.length).toBe(1);
+    const drawn = blocks[0].textContent ?? '';
+    expect(drawn.length).toBe(text.length);
+    expect(drawn.endsWith(`last${cut}\n${STRINGS.interopTransformConsole}\nprobe-device-line`)).toBe(true);
+    expect(blocks[0].querySelector('row')).toBeNull();
+    expect((card.querySelector('[data-slot="output"]') as HTMLElement).closest('.ocu-long-block')?.classList.contains('ocu-long-block-collapsed')).toBe(true);
+    expect(summary(card)).not.toBeNull();
+  });
 });

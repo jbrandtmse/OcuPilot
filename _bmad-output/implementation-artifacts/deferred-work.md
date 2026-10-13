@@ -9242,6 +9242,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Api.ScreenAction.Run serializes the payload with %ToJSON() before the port's length check; Story 19.13's import shares the limit
 - 2026-10-02T18:45:35Z status=routed owner=burndown by=harvest note=Epic 19 burn-down: check the length before serialization, or map the <MAXSTRING> to the port's too-large code
 - 2026-10-02T19:20:03Z status=wontfix-accepted owner=19-3-the-source-editor-with-etag-conflict-detection by=cr note=reopen_if=a Save of pasted text over 3,400,000 characters is reported answering 500; a LOW, which burndown never owns
+- 2026-10-13T10:11:55Z occurrence=20-27-transformations-tested
 
 ### DW-1952: AD-61 rule 6 does not name PutDoc's error under a 2xx answer as 422 EXPLORER.SAVE.REFUSED, which Story 19.3's I/O matrix specifies and AtelierPort.Outcome ships
 - source: spec-19-3-the-source-editor-with-etag-conflict-detection.md | severity: med | fix-risk: low | footprint: out-of-footprint
@@ -11574,3 +11575,28 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-20-7-the-three-embedded-vendor-editors.md (spec gate) | severity: med | fix-risk: med | footprint: in-epic
 - evidence: Measured at 20.7's plan: removing the frame raises no beforeunload alert; setting src again raises it but adds history entries. The classic portal's full-page editor raises the browser alert on leave.
 - 2026-10-13T06:51:49Z status=decision-pending owner=burndown by=spec_gate note=product call: keep as planned (note + Refresh), or a later story adds a leave guard that blanks the frame to raise the editor's own alert (amends AD-63)
+
+### DW-2378: A pasted HL7 message is read through ImportFromString, which translates its already-decoded text again, so a character past Latin-1 reaches the transformation test and the host test as '?'
+- source: spec-20-27-transformations-tested.md (cr) | severity: med | fix-risk: low | footprint: in-epic
+- evidence: Measured on ocupilot-b-ci: EnsLib.HL7.Message.ImportFromString of a PID-5 holding U+0151 reads it as 63 ('?'); ImportFromLibraryStream of a %Stream.TmpCharacter keeps 337. The classic Test Transform dialog hands HL7 a stream for this reason (TestTransform.cls:373-386); AD-62 item 11 and the spec's Parse bullet name ImportFromString.
+- 2026-10-13T10:11:54Z status=decision-pending owner=burndown by=cr note=spec-bound: amend AD-62 item 11 (Rule 5) to hand HL7 a character stream, then change both tests' parse
+
+### DW-2379: The host Test dialog's result is not announced: its status line is inserted with its text and has no role=status, so a screen reader hears nothing when a test ends
+- source: spec-20-27-transformations-tested.md (cr) | severity: med | fix-risk: low | footprint: in-epic
+- evidence: Story 20.27's review gave interop-transform-test-dialog.ts a mounted role=status region; interop-item-test-dialog.ts (Story 20.6) still draws its status only inside the result block. EXPERIENCE.md's WCAG 4.1.3 list names the Test connection result as role=status.
+- 2026-10-13T10:11:55Z status=routed owner=burndown by=cr note=20.6 is done: give the host dialog the same mounted status region; list both test results in EXPERIENCE.md's role=status set
+
+### DW-2380: InteropTransformMint is a third copy of the run-ArgumentProblem-before-the-fresh-read preamble (ExplorerImportMint, RestServiceCreateMint), where one Mint option would serve all three
+- source: spec-20-27-transformations-tested.md (cr) | severity: low | fix-risk: med | footprint: out-of-footprint
+- evidence: InteropTransformMint.cls:15-17 against ExplorerImportMint.cls:25-30 and RestServiceCreateMint.cls:26-34; the base Mint runs ArgumentProblem only after the fresh read (Kernel/Proposal/Mint.cls:218-230), a kernel file outside Epic 20.
+- 2026-10-13T10:11:55Z status=wontfix-accepted owner=20-27-transformations-tested by=cr note=reopen_if=a fourth Mint subclass adds the same ArgumentProblem-first preamble
+
+### DW-2381: InteropTransformTestGate copies InteropTestGate's ExpectedFor, ProbeAs and principal-removal loop beside the shared CreatePrincipals
+- source: spec-20-27-transformations-tested.md (cr) | severity: low | fix-risk: low | footprint: in-epic
+- evidence: InteropTransformTestGate.cls ExpectedFor, ProbeAs and OnAfterAllTests against InteropTestGate.cls:82-101, :122-130, :272-296; ProbeAs is copied across 17 gate classes, the project's convention, and a shared form is past a fix-pack item.
+- 2026-10-13T10:11:55Z status=wontfix-accepted owner=20-27-transformations-tested by=cr note=reopen_if=the two classes' ExpectedFor, ProbeAs or principal removal are found to behave differently
+
+### DW-2382: Story 20.6's send reads an EDI XML request through PastedXmlHere (AD-21), pinned only through its script form, because no probe production item accepts an EDI XML document
+- source: spec-20-27-transformations-tested.md (cr) | severity: low | fix-risk: low | footprint: in-epic
+- evidence: InteropPort.BuildTestRequestHere gained the PastedXmlHere refusal in Story 20.27's review; InteropTestDescriptor pins TestSnippet's twin and the transformation tests pin the helper, but a mutation dropping the send's call reddens nothing.
+- 2026-10-13T10:11:55Z status=wontfix-accepted owner=20-27-transformations-tested by=cr note=reopen_if=a probe production gains an item that accepts EnsLib.EDI.XML.Document

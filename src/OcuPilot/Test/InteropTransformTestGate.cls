@@ -176,8 +176,9 @@ Method TestEachMissingPairIsRefusedByNameOnTheTool()
 /// the list's read and the Test action; a principal without READ on the namespace's database is refused at the namespace entry before
 /// any pair of the route; the principal without the dialog's resource still reads the list; and the exact principal reads the list and
 /// its Test runs the transformation.</p>
-/// <p>Mutation (Rule 19): drop <code>%Ens_DTLTest:USE</code> from <method>OcuPilot.Port.InteropPort.Pairs</method> -- the missing-dialog
-/// row goes red.</p>
+/// <p>Mutation (Rule 19): name <code>%Ens_TestingService</code> as <class>OcuPilot.Screen.Tool.InteropTransformTest</class>'s
+/// <parameter>WRITERESOURCE</parameter> -- the missing-dialog row and the exact principal's run go red. Dropping the dialog's pair from
+/// <method>OcuPilot.Port.InteropPort.Pairs</method> alone leaves these rows green, because the tool's own pairs refuse first.</p>
 Method TestEachMissingPairIsRefusedByNameOnTheScreenRoutes()
 {
     Set tRuns = $ClassMethod(..#FIXTURE, "Runs")

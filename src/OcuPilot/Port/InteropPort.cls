@@ -62,9 +62,10 @@
 /// <code>TRANSFORMTEST</code>) runs a listed <code>Ens.DataTransform</code> subclass once, in this process, on a pasted message. The
 /// source and target classes are judged before any vendor call (<method>FormatKindHere</method>): a virtual document or an XML
 /// class is admitted, a Record Map class and anything else is refused. The message is parsed with a virtual document's
-/// <code>ImportFromString</code> or the XML reader, never the vendor's hidden serialized reader; the vendor calls run inside the
-/// output capture; the target is shown as text; and every object that gained an <code>%Id()</code> is deleted in the same request. The
-/// output, error and console lines reach the screen and the proposal card only (AD-39's seventh exception).</p>
+/// <code>ImportFromString</code> or the XML reader, never the vendor's hidden serialized reader, and pasted XML is read only from its
+/// first <code>&lt;</code> and with no document type, so no pasted text names a file the parser opens (AD-21); the vendor calls run
+/// inside the output capture; the target is shown as text; and a source or target that gained an <code>%Id()</code> is deleted in the
+/// same request. The output, error and console lines reach the screen and the proposal card only (AD-39's seventh exception).</p>
 /// <p>Seams a test subclass overrides: <method>GateClass</method>, <method>LogFault</method>,
 /// <method>StopSeconds</method>, <method>RoutineResource</method>, <method>SourceControlled</method>,
 /// <method>VendorAbortItem</method>, <method>VendorJob</method>, <method>LockTable</method>, <method>VendorSendTest</method>
@@ -5301,7 +5302,8 @@ ClassMethod ParentGiven(pPath As %String, ByRef pInput) As %Boolean [ Private ]
 
 /// <p>Build the request the plan <var>pPlan</var> (<method>ReadTestTarget</method>) describes, as an instance of
 /// <var>pRequestClass</var>, in <var>pRequest</var>, and save it as the classic dialog does: a virtual document is
-/// <code>ImportFromString</code> of its text, any other class a new instance with each field set, along its path, to its logical
+/// <code>ImportFromString</code> of its text (an EDI XML document's as <method>PastedXmlHere</method> hands it on, and refused as it
+/// refuses it, AD-21), any other class a new instance with each field set, along its path, to its logical
 /// value, then <code>%ValidateObject</code>; either is then <code>%Save</code>d when it is persistent. A request the vendor cannot
 /// build or save is the error status, and <var>pField</var> the field to name it on. Called while the production's namespace is
 /// switched, and only with a class <method>IsRequestClassHere</method> has accepted.</p>
@@ -5312,8 +5314,13 @@ ClassMethod BuildTestRequestHere(pRequestClass As %String, ByRef pPlan, Output p
     Set tSC = $$$OK
     If pPlan("kind") = "document" {
         Set pField = ..#DOCUMENTFIELD
+        Set tText = pPlan("content")
+        If $ClassMethod(pRequestClass, "%Extends", ..#XMLDOCUMENT) {
+            Set tReason = ..PastedXmlHere(pPlan("content"), .tText)
+            If tReason '= "" Quit $$$ERROR($$$GeneralError, tReason)
+        }
         Set tImport = $$$OK
-        Set tObject = $ClassMethod(pRequestClass, "ImportFromString", pPlan("content"), .tImport)
+        Set tObject = $ClassMethod(pRequestClass, "ImportFromString", tText, .tImport)
         If $$$ISERR(tImport) Quit tImport
         If '$IsObject(tObject) Quit $$$ERROR($$$GeneralError, "the text did not give a " _ pRequestClass)
     } Else {
@@ -5466,11 +5473,12 @@ ClassMethod EndTestCapture(pCookie As %String, Output pLines As %DynamicArray) A
 ClassMethod AddTestLines(pText As %String, pLines As %DynamicArray, ByRef pChars As %Integer, ByRef pCut As %Boolean) [ Private ]
 {
     Set tText = $Translate($Replace(pText, $Char(13, 10), $Char(10)), $Char(13), $Char(10))
-    Set tCount = $Length(tText, $Char(10))
-    For tI = 1:1:tCount {
-        If pCut Quit
-        Set tLine = $Piece(tText, $Char(10), tI)
-        If (tI = tCount) && (tLine = "") Quit
+    Set tLength = $Length(tText)
+    Set tStart = 1
+    While 'pCut && (tStart <= tLength) {
+        Set tEnd = $Find(tText, $Char(10), tStart)
+        Set tLine = $Extract(tText, tStart, $Select(tEnd: tEnd - 2, 1: tLength))
+        Set tStart = $Select(tEnd: tEnd, 1: tLength + 1)
         If (pChars + $Length(tLine)) > ..#TESTOUTPUTMAX {
             Set tLine = $Extract(tLine, 1, ..#TESTOUTPUTMAX - pChars) _ ..#TESTCUT
             Set pCut = 1
@@ -5651,7 +5659,7 @@ ClassMethod FormatKindHere(pClass As %String) As %String [ Private ]
 /// <parameter>TRANSFORMBASE</parameter> other than <parameter>TRANSFORMDTL</parameter>, as <method>ListClasses</method> lists it),
 /// <code>compiled</code> and, for a class that is both, <code>sourceClass</code>, <code>sourceDocType</code>,
 /// <code>sourceKind</code>, <code>targetClass</code>, <code>targetDocType</code>, <code>targetKind</code>, <code>create</code>,
-/// <code>targetXml</code> and <code>targetSegmented</code>. It instantiates nothing and calls no <code>Transform</code>. Called
+/// <code>sourceXml</code>, <code>targetXml</code> and <code>targetSegmented</code>. It instantiates nothing and calls no <code>Transform</code>. Called
 /// while the production's namespace is switched.</p>
 ClassMethod TransformFactsHere(pClass As %String, Output pFacts) [ Private ]
 {
@@ -5679,6 +5687,7 @@ ClassMethod TransformFactsHere(pClass As %String, Output pFacts) [ Private ]
     Set pFacts("targetDocType") = $ClassMethod(pClass, "GetTargetDocType")
     Set pFacts("sourceKind") = ..FormatKindHere(pFacts("sourceClass"))
     Set pFacts("targetKind") = ..FormatKindHere(pFacts("targetClass"))
+    Set pFacts("sourceXml") = (pFacts("sourceKind") = "document") && ''$ClassMethod(pFacts("sourceClass"), "%Extends", ..#XMLDOCUMENT)
     Set pFacts("targetXml") = (pFacts("targetKind") = "document") && ''$ClassMethod(pFacts("targetClass"), "%Extends", ..#XMLDOCUMENT)
     Set pFacts("targetSegmented") = (pFacts("targetKind") = "document") && ''$ClassMethod(pFacts("targetClass"), "%Extends", ..#SEGMENTEDDOCUMENT)
 }
@@ -5737,14 +5746,23 @@ ClassMethod ReadTransform(pNamespace As %String, pName As %String, pAction As %S
 /// <p>The text of <var>pContent</var> parsed as <var>pClass</var>, an object in <var>pObject</var> and the vendor's status in
 /// <var>pStatus</var>: for <code>document</code> its <code>ImportFromString</code>, whose result is made immutable
 /// (<code>IsMutable</code> 0) as the vendor's serialized reader makes it; for <code>xml</code> the XML reader's
-/// <code>ObjectFromString</code>, tried only when the first character that is not blank is <code>&lt;</code>. Called while the
-/// production's namespace is switched.</p>
+/// <code>ObjectFromString</code> with <class>%XML.SAX.NullEntityResolver</class>, so a schema the text names is not opened. XML text,
+/// an EDI XML document's included, is read as <method>PastedXmlHere</method> hands it on, and refused as it refuses it (AD-21).
+/// Called while the production's namespace is switched.</p>
 ClassMethod ParseSourceHere(pClass As %String, pKind As %String, pContent As %String, Output pObject, Output pStatus As %Status) [ Private ]
 {
     Set pObject = ""
     Set pStatus = $$$OK
+    Set tText = pContent
+    If (pKind = "xml") || ((pKind = "document") && $ClassMethod(pClass, "%Extends", ..#XMLDOCUMENT)) {
+        Set tReason = ..PastedXmlHere(pContent, .tText)
+        If tReason '= "" {
+            Set pStatus = $$$ERROR($$$GeneralError, tReason)
+            Quit
+        }
+    }
     If pKind = "document" {
-        Set pObject = $ClassMethod(pClass, "ImportFromString", pContent, .pStatus)
+        Set pObject = $ClassMethod(pClass, "ImportFromString", tText, .pStatus)
         If $IsObject(pObject) {
             Try {
                 Set pObject.IsMutable = 0
@@ -5753,11 +5771,20 @@ ClassMethod ParseSourceHere(pClass As %String, pKind As %String, pContent As %St
         }
         Quit
     }
-    If $Extract($ZStrip(pContent, "<W")) '= "<" {
-        Set pStatus = $$$ERROR($$$GeneralError, "Not XML Format")
-        Quit
-    }
-    Set pStatus = ##class(Ens.Util.XML.Reader).ObjectFromString(.pObject, pContent, pClass)
+    Set pStatus = ##class(Ens.Util.XML.Reader).ObjectFromString(.pObject, tText, pClass, ##class(%XML.SAX.NullEntityResolver).%New())
+}
+
+/// <p>Pasted XML text <var>pContent</var> as a parser is handed it, in <var>pText</var>: the text from its first character that is not
+/// a blank, a line end, another control character or a byte order mark. The answer is <code>""</code>, or the reason the text is not
+/// read: its first such character is not <code>&lt;</code>, because an EDI XML document opens text with no <code>&lt;</code> among its
+/// first characters as a file name; or it declares a document type, which names a file or URL the parser opens and can declare an
+/// entity that reads one (AD-21). Pure.</p>
+ClassMethod PastedXmlHere(pContent As %String, Output pText As %String) As %String [ Private ]
+{
+    Set pText = $ZStrip(pContent, "<WC", $Char(65279))
+    If $Extract(pText) '= "<" Quit "Not XML Format"
+    If $ZConvert(pText, "U") [ "<!DOCTYPE" Quit "A pasted message is not read with a document type declaration (<!DOCTYPE>)"
+    Quit ""
 }
 
 /// <p>The separators the raw view of the segmented document <var>pTarget</var> is written with, as the classic Test Transform dialog
@@ -5812,7 +5839,7 @@ ClassMethod RenderTargetHere(pTarget As %RegisteredObject, Output pText As %Stri
 
 /// <p>Run the data transformation <var>pClass</var> once on the pasted message <var>pContent</var> (Story 20.27): parse it as
 /// <var>pSourceClass</var> (<method>ParseSourceHere</method>), create the target for <code>existing</code> with <code>%New()</code>
-/// and no argument, call <code>Transform</code> with empty <code>process</code> and <code>context</code>, render the target
+/// and no argument, call <code>Transform</code> with empty <code>process</code>, <code>context</code> and <code>aux</code>, render the target
 /// (<method>RenderTargetHere</method>), then delete every source or target that gained an <code>%Id()</code>, whatever happened.
 /// <var>pOutcome</var><code>("status")</code> is <code>done</code>, <code>input</code> (the parse answered an error or no
 /// object), <code>transform</code> (an error status or a fault) or <code>output</code> (no target, a render error or a target that is
@@ -5849,7 +5876,7 @@ ClassMethod RunTransformHere(pClass As %String, pSourceClass As %String, pSource
                 Quit
             }
         }
-        Set tTransform = $ClassMethod(pClass, "Transform", tSource, .tTarget)
+        Set tTransform = $ClassMethod(pClass, "Transform", tSource, .tTarget, "")
         If $NAMESPACE '= tHere Set $NAMESPACE = tHere
         If $$$ISERR(tTransform) {
             Set pOutcome("status") = "transform"
@@ -5970,7 +5997,8 @@ ClassMethod PerformTransformTest(pNamespace As %String, pName As %String, ByRef 
 /// path to the logical value its class's <code>&lt;Property&gt;DisplayToLogical</code> makes of the typed one (the typed one where the
 /// class has no such method, as the send takes it), a serial object
 /// created where the path passes one, the request validated and saved, and the call of <code>EnsLib.Testing.Service</code>. A
-/// virtual document is <code>ImportFromString</code> of its text. The class's fields are read in the namespace
+/// virtual document is <code>ImportFromString</code> of its text, an EDI XML document's as <method>PastedXmlHere</method> hands it on
+/// or the status the send answers for text it refuses. The class's fields are read in the namespace
 /// <parameter>NAMESPACEKEY</parameter> names, and a class they cannot be read for gives the lines without a field. Every
 /// name and value is a string literal, so nothing the query carries runs as code, and every line closes any block it opens.</p>
 ClassMethod TestSnippet(pId As %String, ByRef pQuery) As %String [ Private ]
@@ -5981,6 +6009,7 @@ ClassMethod TestSnippet(pId As %String, ByRef pQuery) As %String [ Private ]
     Set tClassLiteral = ..Literal(tClass)
     If '..ParseTestFields($Get(pQuery(..#FIELDSKEY)), .tInput, .tBad) Kill tInput
     Set tMeta = 0
+    Set tXmlDocument = 0
     Kill tConvert
     Set tOrigNS = $NAMESPACE
     Try {
@@ -5989,6 +6018,7 @@ ClassMethod TestSnippet(pId As %String, ByRef pQuery) As %String [ Private ]
         For tI = 1:1:tMeta {
             Set tConvert(tI) = ##class(%Dictionary.CompiledMethod).%ExistsId($List(tMeta(tI), 8) _ "||" _ $List(tMeta(tI), 3) _ "DisplayToLogical")
         }
+        If $Get(tMeta(1)) '= "" && ($List(tMeta(1), 1) = "document") Set tXmlDocument = ''$ClassMethod(tClass, "%Extends", ..#XMLDOCUMENT)
         Set $NAMESPACE = tOrigNS
     } Catch {
         Set $NAMESPACE = tOrigNS
@@ -5997,8 +6027,15 @@ ClassMethod TestSnippet(pId As %String, ByRef pQuery) As %String [ Private ]
     }
     Set tText = ""
     If $Get(tMeta(1)) '= "" && ($List(tMeta(1), 1) = "document") {
-        Set tText = tNL _ " Set tRequest = $ClassMethod(" _ tClassLiteral _ ", ""ImportFromString"", " _ ..Literal($Get(tInput(..#DOCUMENTFIELD))) _ ", .tSC)"
-        Set tText = tText _ tNL _ " If $System.Status.IsOK(tSC) Set tSC = tRequest.%Save()"
+        Set tDocument = $Get(tInput(..#DOCUMENTFIELD))
+        Set tReason = ""
+        If tXmlDocument Set tReason = ..PastedXmlHere(tDocument, .tDocument)
+        If tReason '= "" {
+            Set tText = tNL _ " Set tRequest = """", tSC = $System.Status.Error(5001, " _ ..Literal(tReason) _ ")"
+        } Else {
+            Set tText = tNL _ " Set tRequest = $ClassMethod(" _ tClassLiteral _ ", ""ImportFromString"", " _ ..Literal(tDocument) _ ", .tSC)"
+            Set tText = tText _ tNL _ " If $System.Status.IsOK(tSC) Set tSC = tRequest.%Save()"
+        }
     } Else {
         Set tText = tNL _ " Set tRequest = $ClassMethod(" _ tClassLiteral _ ", ""%New"")"
         Kill tVariable
@@ -6030,10 +6067,13 @@ ClassMethod TestSnippet(pId As %String, ByRef pQuery) As %String [ Private ]
 
 /// <p>The lines <method>Snippet</method> adds for the data transformation test of <var>pName</var> (Story 20.27), from the pasted
 /// message <var>pQuery</var> carries under <parameter>CONTENTKEY</parameter>: the message parsed as the transformation's source class
-/// (a virtual document's <code>ImportFromString</code>, made immutable, or the XML reader), the target created for
-/// <code>existing</code>, the <code>Transform</code> call and the render the test uses. The classes are read in the namespace
-/// <parameter>NAMESPACEKEY</parameter> names, and a transformation they cannot be read for gives the call alone. Every name and the
-/// message are string literals, so nothing the query carries runs as code, and every line closes any block it opens.</p>
+/// as the test parses it (<method>ParseSourceHere</method>: XML text as <method>PastedXmlHere</method> hands it on, or the status the
+/// test answers for text it refuses; a virtual document's <code>ImportFromString</code>, made immutable, or the XML reader with no
+/// entity resolution), the target created for <code>existing</code>, the <code>Transform</code> call with empty <code>process</code>,
+/// <code>context</code> and <code>aux</code>, the render the test uses, and the deletion of a source or target that gained an
+/// <code>%Id()</code>. The classes are read in the namespace <parameter>NAMESPACEKEY</parameter> names, and a transformation they cannot
+/// be read for gives the call alone. Every name and the message are string literals, so nothing the query carries runs as code, and
+/// every line closes any block it opens.</p>
 ClassMethod TransformSnippet(pName As %String, ByRef pQuery) As %String [ Private ]
 {
     Set tNL = $Char(10)
@@ -6048,18 +6088,24 @@ ClassMethod TransformSnippet(pName As %String, ByRef pQuery) As %String [ Privat
         Set $NAMESPACE = tOrigNS
         Kill tFacts
     }
-    Set tCall = " Set tSC = $ClassMethod(" _ ..Literal(tClass) _ ", ""Transform"", tSource, .tTarget)"
+    Set tCall = " Set tSC = $ClassMethod(" _ ..Literal(tClass) _ ", ""Transform"", tSource, .tTarget, """")"
     If '$Get(tFacts("compiled")) Quit tNL _ tCall
-    Set tContent = ..Literal($Get(pQuery(..#CONTENTKEY)))
+    Set tMessage = $Get(pQuery(..#CONTENTKEY))
+    Set tReason = ""
+    If (tFacts("sourceKind") = "xml") || tFacts("sourceXml") Set tReason = ..PastedXmlHere(tMessage, .tMessage)
+    Set tContent = ..Literal(tMessage)
     Set tSourceClass = ..Literal(tFacts("sourceClass"))
-    If tFacts("sourceKind") = "document" {
+    If tReason '= "" {
+        Set tText = tNL _ " Set tSource = """", tSC = $System.Status.Error(5001, " _ ..Literal(tReason) _ ")"
+    } ElseIf tFacts("sourceKind") = "document" {
         Set tText = tNL _ " Set tSource = $ClassMethod(" _ tSourceClass _ ", ""ImportFromString"", " _ tContent _ ", .tSC)"
         Set tText = tText _ tNL _ " If $IsObject(tSource) Set tSource.IsMutable = 0"
     } Else {
-        Set tText = tNL _ " Set tSC = ##class(Ens.Util.XML.Reader).ObjectFromString(.tSource, " _ tContent _ ", " _ tSourceClass _ ")"
+        Set tText = tNL _ " Set tSC = ##class(Ens.Util.XML.Reader).ObjectFromString(.tSource, " _ tContent _ ", " _ tSourceClass _ ", ##class(%XML.SAX.NullEntityResolver).%New())"
     }
     If tFacts("create") = "existing" Set tText = tText _ tNL _ " Set tTarget = $ClassMethod(" _ ..Literal(tFacts("targetClass")) _ ", ""%New"")"
-    Set tText = tText _ tNL _ " If $System.Status.IsOK(tSC) && $IsObject($Get(tSource)) Set tSC = $ClassMethod(" _ ..Literal(tClass) _ ", ""Transform"", tSource, .tTarget)"
+    Set tText = tText _ tNL _ " Set process = """", context = """""
+    Set tText = tText _ tNL _ " If $System.Status.IsOK(tSC) && $IsObject($Get(tSource)) Set tSC = $ClassMethod(" _ ..Literal(tClass) _ ", ""Transform"", tSource, .tTarget, """")"
     Set tText = tText _ tNL _ " Set tStream = ##class(%Stream.TmpCharacter).%New()"
     Set tText = tText _ tNL _ " Set tRender = $System.Status.IsOK(tSC) && $IsObject($Get(tTarget))"
     If tFacts("targetKind") = "document" {
@@ -6082,6 +6128,9 @@ ClassMethod TransformSnippet(pName As %String, ByRef pQuery) As %String [ Privat
         Set tText = tText _ tNL _ " If tRender Set tSC = tWriter.OutputToStream(tStream)"
         Set tText = tText _ tNL _ " If tRender && $System.Status.IsOK(tSC) Set tSC = tWriter.RootObject(tTarget)"
     }
+    Set tText = tText _ tNL _ " Set tStored = """" For tObject = $Get(tSource), $Get(tTarget) { If $IsObject(tObject) && tObject.%Extends(""%Library.Persistent"") && (tObject.%Id() '= """") { Set tStored = tStored _ $ListBuild($ListBuild(tObject.%ClassName(1), tObject.%Oid())) } }"
+    Set tText = tText _ tNL _ " Kill tObject, tSource, tTarget"
+    Set tText = tText _ tNL _ " For tI = 1:1:$ListLength(tStored) { Do $ClassMethod($List($List(tStored, tI), 1), ""%Delete"", $List($List(tStored, tI), 2)) }"
     Quit tText
 }
 

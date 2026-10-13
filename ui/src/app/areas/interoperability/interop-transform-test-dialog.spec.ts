@@ -120,6 +120,21 @@ describe('the Test transformation dialog (Story 20.27)', () => {
     expect(input().getAttribute('aria-invalid')).toBeNull();
   });
 
+  /**
+   * The end of a run is announced: a polite status region, mounted before any run and empty then, takes the status sentence.
+   *
+   * mutation: render the status region inside the result block, or drop its `role` -> this goes red.
+   */
+  it('announces the end of a run through a status region it keeps mounted', () => {
+    const region = host.querySelector('[data-interop-transform-announce]') as HTMLElement;
+    expect(region?.getAttribute('role')).toBe('status');
+    expect(region.textContent?.trim()).toBe('');
+    fixture.componentInstance.answer.set(answerOf({ status: 'input', errors: true, lines: [] }));
+    fixture.detectChanges();
+    expect(host.querySelector('[data-interop-transform-announce]')).toBe(region);
+    expect(region.textContent?.trim()).toBe(STRINGS.interopTransformInputFailed);
+  });
+
   it('shows a run that ended done: both classes, the done sentence, and the target\'s lines as one text block', () => {
     fixture.componentInstance.answer.set(answerOf());
     fixture.detectChanges();

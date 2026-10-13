@@ -389,9 +389,41 @@ All paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-20`. The line n
 - **AC8 (gates):** Given a principal missing one declared pair, or holding READ only on the globals database, when it reads or runs, then it is refused naming that pair before any vendor call. A principal holding exactly the pairs runs the test.
 - **AC9 (the screen):** Given Data transformations in `USER`, when a person selects the probe row and runs Test, then the dialog shows the result, and the screen and dialog pass the DW-1337 walk in both themes.
 
+### Review Findings
+
+Code review 2026-10-13 (four layers, full-opus; 34 rows, 20 entries). Each entry: severity, fix-risk, disposition.
+
+- [x] [Review][Patch] HIGH, AD-21: pasted XML named a file the parser opened. An EDI XML message's `<!DOCTYPE … SYSTEM "file:…">` was read, and an entity it declared inlined a server file into the shown target (measured); the XML reader opened DTD and `xsi:noNamespaceSchemaLocation` files. Story 20.6's send had the same path. Fix-risk low. Fixed: `PastedXmlHere` (refuses a document type, reads from the first `<`), `%XML.SAX.NullEntityResolver` for the XML reader, used by `ParseSourceHere` and `BuildTestRequestHere` [src/OcuPilot/Port/InteropPort.cls]
+- [x] [Review][Patch] HIGH, AD-59: `TransformSnippet` did not mirror the run (EDI XML text as pasted, no `%Delete`, unset `process`/`context`). Fix-risk low. Fixed, with `TestSnippet`'s EDI XML twin [src/OcuPilot/Port/InteropPort.cls]
+- [x] [Review][Patch] MED: `$ZStrip(…,"<W")` kept a leading CR/LF and the XML reader got the unstripped text, so XML pasted after a line end, or a declaration after one, was refused. Fix-risk low. Fixed in `PastedXmlHere` [src/OcuPilot/Port/InteropPort.cls]
+- [x] [Review][Patch] MED: `AddTestLines` split with an indexed `$Piece` per line, which is quadratic (160,000 lines took 16.4 s, QA). Fix-risk low. Fixed with a linear `$Find` walk [src/OcuPilot/Port/InteropPort.cls]
+- [x] [Review][Patch] MED, Rule 19: the refusal legs' `Runs()` checks could not fail, because only the XML probe counted runs. Fix-risk low. Every probe transformation now counts [src/OcuPilot/Test/InteropTransformFixture.cls]
+- [x] [Review][Patch] MED, Rule 19: two audit counts relied on an earlier test's row falling outside the time window. Fix-risk low. Both are now before/after deltas [src/OcuPilot/Test/InteropTransformTest.cls, InteropTransformTestRefusals.cls]
+- [x] [Review][Patch] MED: the run's end was not announced (WCAG 4.1.3). Fix-risk low. The dialog keeps a mounted `role="status"` region. Story 20.6's dialog has the same gap: DW-2379, routed to burndown [ui/src/app/areas/interoperability/interop-transform-test-dialog.ts]
+- [x] [Review][Defer] MED: HL7 `ImportFromString` translates already-decoded text again, so U+0151 reads `?` (measured). The classic dialog hands HL7 a stream. Spec-bound, because AD-62 item 11 names `ImportFromString`: DW-2378, decision-pending, owner burndown
+- [x] [Review][Patch] LOW: `Transform` called without `aux`, which the classic dialog passes empty. Fixed [src/OcuPilot/Port/InteropPort.cls]
+- [x] [Review][Patch] LOW: the shared `TESTOUTPUTMAX` bound across lines and console was untested. Added `TestTheConsoleSharesTheOutputBoundWithTheTarget` and the `noisy` value [src/OcuPilot/Test/InteropTransformTestRefusals.cls]
+- [x] [Review][Patch] LOW: the Task's agent legs for HL7 and X12 were missing. Added [src/OcuPilot/Test/InteropTransformTest.cls]
+- [x] [Review][Patch] LOW: four small fixes. `ReadTool`'s count message is corrected. The vacuous summary assertion is dropped from `panel.spec.ts`. The gate test's wrong mutation claim is corrected and the mutation was run. `InteropTestDescriptor`'s failed setup now removes its fixtures [src/OcuPilot/Test/ReadTool.cls, ui/src/app/shell/panel.spec.ts, src/OcuPilot/Test/InteropTransformTestGate.cls, src/OcuPilot/Test/InteropTestDescriptor.cls]
+- [x] [Review][Patch] LOW: the port header said every object that gained an `%Id()` is deleted, but the run deletes the source and target. The header is corrected. AD-62 item 11 carries the same claim, which is the lead's to correct (Rule 20) [src/OcuPilot/Port/InteropPort.cls]
+- [x] [Review][Defer] LOW, Rule 2: `InteropTransformMint` is a third copy of the ArgumentProblem-first preamble: DW-2380, wontfix-accepted
+- [x] [Review][Defer] LOW, Rule 2: the gate class copies `ExpectedFor`, `ProbeAs` and the removal loop: DW-2381, wontfix-accepted
+- [x] [Review][Defer] LOW: 20.6's send guard is pinned only through its script form: DW-2382, wontfix-accepted
+- [x] [Review][Defer] LOW: a near-bound message whose JSON escaping passes the string limit answers 500 on the screen route: DW-1949, occurrence
+
+Rejected:
+
+- By design: the test publishes `updated`. The spec's AC1 test list names the change event, as 20.6 does.
+- By design: no time bound. AD-7 names the transformation's own code as unbounded.
+- By design: `turn.ts` keeps two import lines from `test-answer.ts`, because its edits are add-only (Contended files).
+- Rejected LOW: a transformation returning its stored source as target makes a second `%Delete` fail and log a line. This is unlikely, and the fix adds a guard.
+- Rejected as theoretical: an unbalanced `TSTART` in a transformation's own code.
+- Rejected: two spec-text findings. The Auto Run Result's stale risk line, and the Parse bullet that does not name the stricter XML rule, are the lead's to amend.
+
 ## Spec Change Log
 
 - 2026-10-13, spec gate (runner): the Design Notes' Rule 20 drafts are written: AD-62 item 11's transformation half, AD-7's three Story 20.27 named limits, and the EXPERIENCE.md :173 dialog entry.
+- 2026-10-13, code review (runner): the Parse bullet's XML rule is stricter than planned (AD-21, review HIGH): pasted XML is read from its first `<`, a declared document type is refused, and no entity or schema is resolved (`InteropPort.PastedXmlHere`, shared with Story 20.6's send). AD-62 item 11 records it; the run deletes the source and target it stored. EXPERIENCE.md's polite `role="status"` list names both test results.
 
 ## Review Triage Log
 
@@ -615,6 +647,22 @@ Checked and not engaged: AD-36 (no new declared read), AD-26, AD-27, AD-54, AD-5
 - mutation: AC5, `ConfirmProblem` answering no problem and `ScreenActionDelta` carrying a number -- `InteropTestDescriptor.TestTheTransformToolsConfirmAndScreenHooksJudgeTheMessage` reddens; an extent of `Counts` that does not exist -- `InteropTransformTest.TestTheExtentsTheLegsCompareAreReadable` reddens.
 - mutation: AC8, `Admit` asking READ instead of WRITE on the globals database for a write -- `InteropTransformTestGate.TestEachMissingPairIsRefusedByNameThroughThePort` reddens for the `NoRead` and `NoWrite` principals.
 - Review pass: the three Record Map bases, a stream on both sides and a stored but uncompiled class are probe transformations of the fixture, and the output past `TESTOUTPUTMAX` now ends in `TESTCUT` however many line ends the read held. Each mutation was reverted byte-identical and the tree reloaded before the next.
+- (QA) tests added to existing files, no new file: `InteropTransformTestRefusals` (`TestAnOversizedTargetIsCutAndMarkedInTheAgentsConfirm`, `TestEveryStatusOfARunIsAudited`, `TestAnEdiXmlSourceNeverOpensThePastedTextAsAFile`), `InteropTransformTest` (`TestAnEdiXmlDocumentIsParsedAsADocumentAndShownAsIndentedXml`, and an EDI XML case in `TestAReadRunsNothingAndStoresNothing`), `InteropTransformFixture` (the `big` value of `OcuProbeDtl.Xml`, and `OcuProbeDtl.EdiXml`), `ui/tools/turn.test.mjs` and `ui/src/app/shell/proposal-card.spec.ts` (an answer at the output bound reaches the outcome and the card whole).
+- (QA) defect closed in `InteropPort.ParseSourceHere`: `EnsLib.EDI.XML.Document` opens text with no `<` in its first four characters as a file name, so a pasted server path as the source of an EDI XML transformation was read and its body shown (AD-21). XML text, an EDI XML document's included, is now refused `input` unless its first non-blank character is `<`, and the document is handed the text from there.
+- mutation: (QA) AC4, `WriteOutput` handing the answer its first thousand lines -- `TestAnOversizedTargetIsCutAndMarkedInTheAgentsConfirm` reddens, and `TestATargetPastTheBoundIsCutAndMarked` (one line) stays green.
+- mutation: (QA) AC6, `transformOutcomeLines` keeping the first thousand lines -- the `turn.test.mjs` output-bound test and the card spec's output-bound test redden; the card's `outputSteps` cut at 100,000 characters -- the card spec's test reddens alone.
+- mutation: (QA) AC4, `AuditRuntime` only when the status is `done` -- `TestEveryStatusOfARunIsAudited` reddens for all four statuses.
+- mutation: (QA) AC5, the XML check dropped for a virtual document in `ParseSourceHere` -- `TestAnEdiXmlSourceNeverOpensThePastedTextAsAFile` reddens (the file's body is in the answer) and the blanks legs of `TestAnEdiXmlDocumentIsParsedAsADocumentAndShownAsIndentedXml` redden.
+- mutation: (QA) AC2, `FormatKindHere` judging an XML adaptor before a virtual document -- the EDI XML case of `TestAReadRunsNothingAndStoresNothing` and the EDI XML run test redden; `RenderTargetHere` without `"wt"` for EDI XML -- the EDI XML run test reddens.
+- (QA) after: the four story classes (35 tests, `InteropTestDescriptor` 13, `InteropTransformTest` 7, `InteropTransformTestRefusals` 12, `InteropTransformTestGate` 3), `turn.test.mjs` and `test-answer.test.mjs` (100) and the card spec (76) are green, and the story's browser spec passes 4 of 4; each mutated file was restored byte-identical and reloaded before the next.
+- mutation: (CR) AD-21. The document type check dropped from `PastedXmlHere` reddens `TestAnEdiXmlSourceNeverOpensThePastedTextAsAFile`: the EDI XML leg shows the file's body. The entity resolver dropped from `ParseSourceHere` makes its schema leg `done`, which reddens it.
+- mutation: (CR) AC2. `PastedXmlHere` stripping blanks alone reddens the line-end legs of `TestAnEdiXmlDocumentIsParsedAsADocumentAndShownAsIndentedXml` and the XML declaration leg.
+- mutation: (CR) AD-59. `TransformSnippet` and `TestSnippet` handing on the message as pasted redden the EDI XML and refusal legs of both `InteropTestDescriptor` script tests.
+- mutation: (CR) AC4. Resetting the count before the console in `PerformTransformTest` reddens `TestTheConsoleSharesTheOutputBoundWithTheTarget`.
+- mutation: (CR) AC5. The `TARGETFORMAT` refusal dropped from `ReadTransform` reddens the `ToStream` legs, including "no refusal ran a transformation", now that every probe counts its runs.
+- mutation: (CR) AC8. Naming `%Ens_TestingService` as the tool's `WRITERESOURCE` reddens the screen-route and tool-pair rows of `InteropTransformTestGate`.
+- mutation: (CR) a11y. The dialog's status region without `role` reddens "announces the end of a run".
+- (CR) after: on `ocupilot-b-ci` the following are green: `InteropTestDescriptor` (13), `InteropTransformTest` (7), `InteropTransformTestRefusals` (13), `InteropTransformTestGate` (3), `InteropHostTest` (12), `InteropHostTestRefusals` (7), `InteropHostTestEdges` (5), `InteropTestGate` (5), `ReadTool` (28) and `CompileWithoutInterop` (7). `test:tools` (1,964) and `test:components` (3,013) are green, and the story's browser spec passes 4 of 4 on the rebuilt bundle. Each mutation was reverted byte-identical and the tree reloaded.
 
 ## Auto Run Result
 
