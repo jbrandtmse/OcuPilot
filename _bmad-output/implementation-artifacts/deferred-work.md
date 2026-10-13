@@ -11568,3 +11568,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: app.routes.ts withPage sets loadComponent: rememberedPage(loader), and the shipped-route specs compare against rememberedPage(base). AD-5's last bullet in ARCHITECTURE-SPINE.md still reads 'whose loadComponent is the loader ScreenOutlet's maps name for it'. The bullet's substance holds.
 - 2026-10-13T04:15:56Z status=open owner=20-29-screens-load-on-demand by=cr note=lead: Rule 20 light-path wording of AD-5 (through rememberedPage, which answers a loaded page at once)
 - 2026-10-13T04:18:51Z status=resolved-by:20-29-screens-load-on-demand by=adjudication note=AD-5 bullet amended 2026-10-13 (rememberedPage, one loader per page); memlog decision appended
+
+### DW-2376: Leaving an embedded vendor editor's screen inside OcuPilot drops the editor's unsaved changes without its own alert (Story 20.7 design; the screen's note asks the person to save first)
+- source: spec-20-7-the-three-embedded-vendor-editors.md (spec gate) | severity: med | fix-risk: med | footprint: in-epic
+- evidence: Measured at 20.7's plan: removing the frame raises no beforeunload alert; setting src again raises it but adds history entries. The classic portal's full-page editor raises the browser alert on leave.
+- 2026-10-13T06:51:49Z status=decision-pending owner=burndown by=spec_gate note=product call: keep as planned (note + Refresh), or a later story adds a leave guard that blanks the frame to raise the editor's own alert (amends AD-63)

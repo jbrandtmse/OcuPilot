@@ -8313,9 +8313,9 @@ So that the editors InterSystems already built are reused rather than rebuilt.
 - **When** it opens
 - **Then** it loads **in place from the instance**, signed in through the hand-off, and is never copied or redistributed.
 
-- **Given** the editors' own messages - saved, compiled, invalid
-- **When** they are exchanged
-- **Then** the contract is established against a live editor, because it was never exercised.
+- **Given** a rule, BPL or DTL editor on its OcuPilot screen, in normal mode
+- **When** the person saves, compiles, or compiles a class that does not compile
+- **Then** the editor reports it in its own notice inside the frame, no message reaches OcuPilot's shell or the frame, and OcuPilot shows the result only through its own reads (the list's Modified after its next fetch); and a class OcuPilot's read does not answer, or a process or transformation written as a class, opens no editor and shows the screen's own sentence. [AMENDED 2026-10-13 - see the story change log]
 - DW-2347: The interoperability editor frame component first runs in a real browser here; re-run interop-editor-spec.mjs against the real screens (ledger; routed by lead 2026-10-12)
 - DW-2350: Changing an embedded editor's document re-sets src on the drawn frame, which pushes a joint history entry so Back moves the frame and not the screen; a new frame instead skips the editor's unsaved-changes alert; choose per the document switch (ledger; routed by cr 2026-10-12)
 - DW-2351: A framed vendor editor can move away from what its screen shows, unseen by OcuPilot: its logo and Back to standard UI navigate the frame, DTL and BPL push history entries, and the rule editor's Settings switches its namespace (ledger; routed by cr 2026-10-12)
