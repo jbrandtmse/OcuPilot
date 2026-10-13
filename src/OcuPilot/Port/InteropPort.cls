@@ -1,8 +1,8 @@
-/// <p>The port to the instance's interoperability runtime (AD-62, AD-29, AD-52, Stories 20.2, 20.3, 20.5, 20.6 and 20.23): <b>the
+/// <p>The port to the instance's interoperability runtime (AD-62, AD-29, AD-52, Stories 20.2, 20.3, 20.5, 20.6, 20.23 and 20.27): <b>the
 /// only product class that starts, stops, restarts, updates or recovers a production, enables, disables,
 /// adds or removes one of its items, aborts a queued message, a queue's messages or a job's retried message,
 /// suspends that message or stops a job, adds, changes or removes a lookup table's entry, deletes, imports or exports a lookup
-/// table, or sends a test request to an item</b>, and the only one that reads the interoperability configuration for
+/// table, sends a test request to an item, or runs a data transformation on a pasted message</b>, and the only one that reads the interoperability configuration for
 /// a declared read (source kind <code>interop</code>); Story 20.4 adds the nine runtime reads (<parameter>ENDPOINTS</parameter>
 /// from <code>Monitor</code> on), which write nothing. It calls the documented classes the classic pages call --
 /// <code>Ens.Director</code>, <code>Ens.Queue</code>, <code>Ens.Job</code>, <code>Ens.Config.Production:ProductionStatus</code> and
@@ -58,6 +58,13 @@
 /// Every vendor call that can write to the device runs inside the output capture, so the answer stays JSON, and what a test
 /// answered reaches the screen and the proposal card only (AD-39's seventh exception). The vendor audits no test, so the port
 /// records OcuPilot's own row (<method>AuditRuntime</method>).</p>
+/// <p><b>The data transformation test</b> (Story 20.27, the <code>Transforms</code> endpoint's <code>TRANSFORM</code> and
+/// <code>TRANSFORMTEST</code>) runs a listed <code>Ens.DataTransform</code> subclass once, in this process, on a pasted message. The
+/// source and target classes are judged before any vendor call (<method>FormatKindHere</method>): a virtual document or an XML
+/// class is admitted, a Record Map class and anything else is refused. The message is parsed with a virtual document's
+/// <code>ImportFromString</code> or the XML reader, never the vendor's hidden serialized reader; the vendor calls run inside the
+/// output capture; the target is shown as text; and every object that gained an <code>%Id()</code> is deleted in the same request. The
+/// output, error and console lines reach the screen and the proposal card only (AD-39's seventh exception).</p>
 /// <p>Seams a test subclass overrides: <method>GateClass</method>, <method>LogFault</method>,
 /// <method>StopSeconds</method>, <method>RoutineResource</method>, <method>SourceControlled</method>,
 /// <method>VendorAbortItem</method>, <method>VendorJob</method>, <method>LockTable</method>, <method>VendorSendTest</method>
@@ -168,8 +175,9 @@ Parameter TESTPAIRS = "%Ens_Portal:USE,%Ens_TestingService:USE";
 
 /// <p>The endpoint and type pairs that send no body and take their arguments through the query (AD-51 as amended by Story 12.3): the
 /// lookup table export and import (Story 20.5), whose files and reviewed counts the port reads from its query, and the host test's
-/// send (Story 20.6), whose request class and field values it reads from its query.</p>
-Parameter COMPOSEDTYPES = "LookupTables/EXPORT,LookupTables/IMPORT,ItemTest/SENDTEST";
+/// send (Story 20.6), whose request class and field values it reads from its query, and the data transformation test (Story 20.27),
+/// whose pasted message it reads from its query.</p>
+Parameter COMPOSEDTYPES = "LookupTables/EXPORT,LookupTables/IMPORT,ItemTest/SENDTEST,Transforms/TRANSFORMTEST";
 
 /// <p>The pair each item tab adds to the Productions endpoint's pairs (the classic configuration page's
 /// <code>initSecurity</code>): the queue, the event log, the message headers and the jobs.</p>
@@ -347,6 +355,39 @@ Parameter TYPETESTTARGET = "TESTTARGET";
 /// <p>Send one test request to the item, asynchronously, and answer what it answered within <method>TestWait</method> seconds.</p>
 Parameter TYPESENDTEST = "SENDTEST";
 
+/// <p>One data transformation, composed (Story 20.27): <code>{Namespace, Name, SourceClass, SourceDocType, SourceKind, TargetClass,
+/// TargetDocType, TargetKind, Create, content}</code>, the transformation test tool's fresh read. A kind is <code>document</code>,
+/// <code>xml</code>, <code>recordmap</code> or <code>other</code>, and <code>content</code> is the pasted message the query carries. The
+/// id is the transformation's document name (<code>&lt;class&gt;.cls</code>). With <parameter>ACTIONKEY</parameter> in the query it
+/// refuses what the test would be refused (<method>ReadTransform</method>).</p>
+Parameter TYPETRANSFORM = "TRANSFORM";
+
+/// <p>Run the transformation once on the pasted message and answer the target as text.</p>
+Parameter TYPETRANSFORMTEST = "TRANSFORMTEST";
+
+/// <p>The pair the transformation read and test add to the Transforms endpoint's pairs: the classic Test Transform dialog's resource
+/// (Story 20.27). The vendor's <code>Transform</code> checks no privilege, so this, the endpoint's pairs and WRITE on the
+/// namespace's globals database are the whole gate.</p>
+Parameter DTLTESTPAIR = "%Ens_DTLTest:USE";
+
+/// <p>The classes the test judges a transformation's source and target by (<method>FormatKindHere</method>): the Record Map records and
+/// batches it refuses, EDI XML, segmented documents and the XML adaptor.</p>
+Parameter RECORDMAPBASES = "EnsLib.RecordMap.Base,EnsLib.RecordMap.Batch,EnsLib.RecordMap.ComplexBase,EnsLib.RecordMap.ComplexParent";
+
+Parameter XMLDOCUMENT = "EnsLib.EDI.XML.Document";
+
+Parameter SEGMENTEDDOCUMENT = "EnsLib.EDI.Segmented";
+
+Parameter XMLADAPTOR = "%XML.Adaptor";
+
+/// <p>The class a transformation is listed under and the one listing excludes (<method>ListClasses</method>), and the extension its
+/// document name ends with.</p>
+Parameter TRANSFORMBASE = "Ens.DataTransform";
+
+Parameter TRANSFORMDTL = "Ens.DataTransformDTL";
+
+Parameter CLASSEXTENSION = ".cls";
+
 /// <p>The query keys carrying the request class a test is sent as and its field values, as JSON object text.</p>
 Parameter REQUESTCLASSKEY = "requestClass";
 
@@ -386,6 +427,9 @@ Parameter TESTCODEPREFIX = "INTEROP.TEST.";
 
 /// <p>The entity type and verb the audit row of a test names (<method>AuditRuntime</method>, Story 20.6).</p>
 Parameter ENTITYITEM = "production-item";
+
+/// <p>The entity type the audit row of a data transformation test names (Story 20.27).</p>
+Parameter ENTITYCLASS = "class";
 
 Parameter VERBTEST = "test";
 
@@ -612,6 +656,8 @@ Parameter REASONIMPORTFILENAME = "A local file's name is 1 to 255 characters and
 
 Parameter REASONTESTFIELDS = "Name the request's fields as a JSON object of text values, at most 200 of them.";
 
+Parameter REASONTRANSFORMID = "Name the data transformation.";
+
 /// <p>The class the pair sets are evaluated through. Overridable so a fixture can drive a denial in
 /// process; production never overrides it.</p>
 ClassMethod GateClass() As %String
@@ -659,11 +705,11 @@ ClassMethod IsRuntimeWrite(pType As %String) As %Boolean
     Quit (pType = ..#TYPEABORTQUEUE) || (pType = ..#TYPEABORTMESSAGE) || (pType = ..#TYPEABORTJOB) || (pType = ..#TYPESUSPENDJOB) || (pType = ..#TYPESTOPJOB)
 }
 
-/// <p>Whether <var>pType</var> is the host test's send (Story 20.6): an action-style write over a port-composed read, needing WRITE on
-/// the namespace's globals database and no routines database.</p>
+/// <p>Whether <var>pType</var> is the host test's send (Story 20.6) or the data transformation test (Story 20.27): an action-style
+/// write over a port-composed read, needing WRITE on the namespace's globals database and no routines database.</p>
 ClassMethod IsTestWrite(pType As %String) As %Boolean
 {
-    Quit pType = ..#TYPESENDTEST
+    Quit (pType = ..#TYPESENDTEST) || (pType = ..#TYPETRANSFORMTEST)
 }
 
 /// <p>Whether <var>pType</var> is any write this port carries, whichever family declares it.</p>
@@ -727,13 +773,15 @@ ClassMethod Pairs(pEndpoint As %String, pType As %String = "") As %List
     If (pType = ..#TYPEABORTJOB) || (pType = ..#TYPESTOPJOB) Set tSpec = tSpec _ "," _ ..#JOBWRITEPAIR
     If pType = ..#TYPESUSPENDJOB Set tSpec = tSpec _ "," _ ..#SUSPENDPAIR
     If ..IsLookupWrite(pType) Set tSpec = tSpec _ "," _ ..#LOOKUPWRITEPAIR
+    If (pEndpoint = ..#ENDPOINTTRANSFORMS) && ((pType = ..#TYPETRANSFORM) || (pType = ..#TYPETRANSFORMTEST)) Set tSpec = tSpec _ "," _ ..#DTLTESTPAIR
     Quit ##class(OcuPilot.Screen.Gate).ParsePairSpec(tSpec)
 }
 
 /// <p>Whether endpoint <var>pEndpoint</var> serves request type <var>pType</var>: <code>LIST</code> on every endpoint; and,
 /// beyond it, Productions the production reads and writes, Items and Settings theirs, and Queues (<code>QUEUE</code>,
-/// <code>ABORTQUEUE</code>), QueueItems (<code>ENTRY</code>, <code>ABORTMESSAGE</code>) and Jobs (<code>JOB</code>,
-/// <code>ABORTJOB</code>, <code>SUSPENDJOB</code>, <code>STOPJOB</code>).</p>
+/// <code>ABORTQUEUE</code>), QueueItems (<code>ENTRY</code>, <code>ABORTMESSAGE</code>), Jobs (<code>JOB</code>,
+/// <code>ABORTJOB</code>, <code>SUSPENDJOB</code>, <code>STOPJOB</code>) and Transforms (<code>TRANSFORM</code>,
+/// <code>TRANSFORMTEST</code>).</p>
 ClassMethod Serves(pEndpoint As %String, pType As %String) As %Boolean
 {
     If '$ListFind(..Endpoints(), pEndpoint) Quit 0
@@ -746,6 +794,7 @@ ClassMethod Serves(pEndpoint As %String, pType As %String) As %Boolean
     If pEndpoint = ..#ENDPOINTLOOKUPTABLES Quit (pType = ..#TYPELOOKUPTABLE) || (pType = ..#TYPEDELETETABLE) || (pType = ..#TYPEIMPORTTABLE) || (pType = ..#TYPEIMPORT) || (pType = ..#TYPEEXPORT)
     If pEndpoint = ..#ENDPOINTLOOKUPENTRIES Quit (pType = ..#TYPELOOKUPENTRY) || (pType = ..#TYPEADDENTRY) || (pType = ..#TYPESETENTRY) || (pType = ..#TYPEREMOVEENTRY)
     If pEndpoint = ..#ENDPOINTITEMTEST Quit (pType = ..#TYPETESTTARGET) || (pType = ..#TYPESENDTEST)
+    If pEndpoint = ..#ENDPOINTTRANSFORMS Quit (pType = ..#TYPETRANSFORM) || (pType = ..#TYPETRANSFORMTEST)
     If pEndpoint '= ..#ENDPOINTPRODUCTIONS Quit 0
     Quit (pType = ..#TYPESTATE) || ..IsWrite(pType)
 }
@@ -858,6 +907,10 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
         }
         If pEndpoint = ..#ENDPOINTITEMTEST {
             Set tSC = ..InvokeItemTest(tNamespace, pType, .pQuery, .pResult, .pHttpStatus, .pFault)
+            Quit
+        }
+        If (pEndpoint = ..#ENDPOINTTRANSFORMS) && (pType '= ..#TYPELIST) {
+            Set tSC = ..InvokeTransformTest(tNamespace, pType, .pQuery, .pResult, .pHttpStatus, .pFault)
             Quit
         }
         If $ListFind(..RuntimeEndpoints(), pEndpoint) {
@@ -3486,11 +3539,11 @@ ClassMethod PerformJobAction(pNamespace As %String, pType As %String, pPid As %S
     Quit $$$OK
 }
 
-/// <p>Record OcuPilot's own <code>ConfigChange</code> row for one queue, job or lookup write, a lookup export or a host test, that read OK
-/// (AD-15, Stories 20.23, 20.5 and 20.6), from whichever caller made it: the vendor records none. <var>pVerb</var> is one of the
+/// <p>Record OcuPilot's own <code>ConfigChange</code> row for one queue, job or lookup write, a lookup export, a host test or a data
+/// transformation test, that read OK (AD-15, Stories 20.23, 20.5, 20.6 and 20.27), from whichever caller made it: the vendor records none. <var>pVerb</var> is one of the
 /// <code>VERB</code> parameters, <var>pType</var> the entity type of the target and <var>pId</var> its id; <var>pEffects</var>
-/// names the namespace and, as the action has them, the queue, the table, the counts or the host, and never a message's content
-/// or an entry's value. It never fails the write.
+/// names the namespace and, as the action has them, the queue, the table, the counts, the host or the classes and status of a
+/// transformation run, and never a message's content or an entry's value. It never fails the write.
 /// Called after the namespace is restored. A seam a test reads through the audit database.</p>
 ClassMethod AuditRuntime(pVerb As %String, pType As %String, pId As %String, pEffects As %DynamicObject)
 {
@@ -3511,6 +3564,7 @@ ClassMethod SnippetForm(pEndpoint As %String, pType As %String) As %String
     If ..IsRuntimeWrite(pType) && ..Serves(pEndpoint, pType) Quit "objectscript"
     If (..IsLookupWrite(pType) || (pType = ..#TYPEEXPORT)) && ..Serves(pEndpoint, pType) Quit "objectscript"
     If (pEndpoint = ..#ENDPOINTITEMTEST) && ..IsTestWrite(pType) Quit "objectscript"
+    If (pEndpoint = ..#ENDPOINTTRANSFORMS) && (pType = ..#TYPETRANSFORMTEST) Quit "objectscript"
     If pEndpoint '= ..#ENDPOINTPRODUCTIONS Quit ""
     If ..IsWrite(pType) Quit "objectscript"
     Quit ""
@@ -3536,6 +3590,8 @@ ClassMethod Snippet(pEndpoint As %String, pType As %String, ByRef pQuery, pBody 
         Set tText = tText _ ..SettingSnippet(pType, $Get(pQuery(..#IDKEY)), pBody)
     } ElseIf pEndpoint = ..#ENDPOINTITEMTEST {
         Set tText = tText _ ..TestSnippet($Get(pQuery(..#IDKEY)), .pQuery)
+    } ElseIf pEndpoint = ..#ENDPOINTTRANSFORMS {
+        Set tText = tText _ ..TransformSnippet($Get(pQuery(..#IDKEY)), .pQuery)
     } ElseIf ..IsRuntimeWrite(pType) {
         Set tText = tText _ ..RuntimeSnippet(pType, $Get(pQuery(..#IDKEY)), pContext)
     } ElseIf (pType = ..#TYPEIMPORT) || (pType = ..#TYPEEXPORT) {
@@ -4697,7 +4753,7 @@ ClassMethod InvokeItemTest(pNamespace As %String, pType As %String, ByRef pQuery
             Quit
         }
         Set tAction = $Select(..IsTestWrite(pType): pType, 1: $Get(pQuery(..#ACTIONKEY)))
-        If (tAction '= "") && '..IsTestWrite(tAction) {
+        If (tAction '= "") && (tAction '= ..#TYPESENDTEST) {
             Set tSC = ..Refuse(501, ##class(OcuPilot.Api.Error).#NOTIMPLEMENTED, ##class(OcuPilot.Api.Error).#PORTNOTIMPLEMENTED, ..#REASONNOTIMPLEMENTED, .pHttpStatus, .pFault)
             Quit
         }
@@ -5378,14 +5434,18 @@ ClassMethod CollectResponseHere(pSpec As %String, ByRef pAnswer) [ Private ]
 }
 
 /// <p>End the output capture <var>pCookie</var> opened for a test and answer what the vendor wrote to the device, as one text
-/// at most <parameter>TESTOUTPUTMAX</parameter> characters long. Nothing it wrote reaches the answer: the caller logs it.</p>
-ClassMethod EndTestCapture(pCookie As %String) As %String [ Private ]
+/// at most <parameter>TESTOUTPUTMAX</parameter> characters long. <var>pLines</var> is the captured lines themselves, a
+/// <class>%DynamicArray</class>, for a caller that shows them (Story 20.27). A host test's answer carries none of what it wrote: its
+/// caller logs it.</p>
+ClassMethod EndTestCapture(pCookie As %String, Output pLines As %DynamicArray) As %String [ Private ]
 {
     Set tText = ""
+    Set pLines = []
     Try {
         Kill tLines
         Set tEndSC = $$EndCapture^%SYS.Capture(pCookie, .tLines)
         If $IsObject($Get(tLines)) {
+            Set pLines = tLines
             Set tIterator = tLines.%GetIterator()
             While tIterator.%GetNext(.tIndex, .tLine) {
                 If ($Length(tText) + $Length(tLine)) >= ..#TESTOUTPUTMAX Quit
@@ -5394,6 +5454,7 @@ ClassMethod EndTestCapture(pCookie As %String) As %String [ Private ]
         }
     } Catch {
         Set tText = ""
+        Set pLines = []
     }
     Quit tText
 }
@@ -5523,6 +5584,387 @@ ClassMethod PerformTest(pNamespace As %String, pProduction As %String, pItem As 
     Quit $$$OK
 }
 
+/// <p>Serve the Transforms endpoint's typed calls (Story 20.27) after <method>Invoke</method>'s gate: <code>TRANSFORM</code>, the
+/// composed fresh read of a data transformation, and <code>TRANSFORMTEST</code>, its test. The transformation is named under
+/// <parameter>IDKEY</parameter> by its document name (<code>&lt;class&gt;.cls</code>, as the list reports it) and the pasted source
+/// message travels under <parameter>CONTENTKEY</parameter>. A name that is missing is 400; one that no listed, compiled
+/// transformation has is 404 <code>PORT.NOTFOUND</code>.</p>
+ClassMethod InvokeTransformTest(pNamespace As %String, pType As %String, ByRef pQuery, Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Set pResult = ""
+    Try {
+        Set tName = $Get(pQuery(..#IDKEY))
+        If tName = "" {
+            Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONTRANSFORMID, .pHttpStatus, .pFault)
+            Quit
+        }
+        Set tAction = $Select(pType = ..#TYPETRANSFORMTEST: pType, 1: $Get(pQuery(..#ACTIONKEY)))
+        If (tAction '= "") && (tAction '= ..#TYPETRANSFORMTEST) {
+            Set tSC = ..Refuse(501, ##class(OcuPilot.Api.Error).#NOTIMPLEMENTED, ##class(OcuPilot.Api.Error).#PORTNOTIMPLEMENTED, ..#REASONNOTIMPLEMENTED, .pHttpStatus, .pFault)
+            Quit
+        }
+        If pType = ..#TYPETRANSFORMTEST {
+            Set tSC = ..PerformTransformTest(pNamespace, tName, .pQuery, .pResult, .pHttpStatus, .pFault)
+            Quit
+        }
+        Set tSC = ..ReadTransform(pNamespace, tName, tAction, $Get(pQuery(..#CONTENTKEY)), .pResult, .pHttpStatus, .pFault)
+    } Catch ex {
+        Set pResult = ""
+        Set tSC = ..Fail("the data transformation call failed inside the port", ex.AsStatus(), .pHttpStatus, .pFault)
+    }
+    Quit tSC
+}
+
+/// <p>The class a Transforms row named <var>pName</var> stands for: the name without its <parameter>CLASSEXTENSION</parameter>, or
+/// <code>""</code> when <var>pName</var> is not a class document name. Pure.</p>
+ClassMethod TransformClassOf(pName As %String) As %String [ Private ]
+{
+    Set tLength = $Length(pName)
+    Set tExtension = $Length(..#CLASSEXTENSION)
+    If (tLength <= tExtension) || ($Extract(pName, tLength - tExtension + 1, tLength) '= ..#CLASSEXTENSION) Quit ""
+    Set tClass = $Extract(pName, 1, tLength - tExtension)
+    If '$Match(tClass, "^%?[A-Za-z][A-Za-z0-9]*(\.[A-Za-z][A-Za-z0-9]*)*$") Quit ""
+    Quit tClass
+}
+
+/// <p>The format of the class <var>pClass</var> as the data transformation test reads it, judged in this order: <code>recordmap</code>
+/// for a Record Map record or batch class (<parameter>RECORDMAPBASES</parameter>, even though most are
+/// <parameter>XMLADAPTOR</parameter>), <code>document</code> for a virtual document (<parameter>DOCUMENTBASE</parameter>, segments and
+/// EDI XML included), <code>xml</code> for an <parameter>XMLADAPTOR</parameter> class, and <code>other</code> for anything else,
+/// a class the namespace does not hold among it. Called while the production's namespace is switched.</p>
+ClassMethod FormatKindHere(pClass As %String) As %String [ Private ]
+{
+    If '$Match(pClass, "^%?[A-Za-z][A-Za-z0-9]*(\.[A-Za-z][A-Za-z0-9]*)*$") Quit "other"
+    If '##class(%Dictionary.CompiledClass).%ExistsId(pClass) Quit "other"
+    Set tRecordMap = 0
+    For tI = 1:1:$Length(..#RECORDMAPBASES, ",") {
+        If $ClassMethod(pClass, "%Extends", $Piece(..#RECORDMAPBASES, ",", tI)) Set tRecordMap = 1
+    }
+    If tRecordMap Quit "recordmap"
+    If $ClassMethod(pClass, "%Extends", ..#DOCUMENTBASE) Quit "document"
+    If $ClassMethod(pClass, "%Extends", ..#XMLADAPTOR) Quit "xml"
+    Quit "other"
+}
+
+/// <p>The facts of the data transformation class <var>pClass</var> in <var>pFacts</var>: <code>listed</code> (a subclass of
+/// <parameter>TRANSFORMBASE</parameter> other than <parameter>TRANSFORMDTL</parameter>, as <method>ListClasses</method> lists it),
+/// <code>compiled</code> and, for a class that is both, <code>sourceClass</code>, <code>sourceDocType</code>,
+/// <code>sourceKind</code>, <code>targetClass</code>, <code>targetDocType</code>, <code>targetKind</code>, <code>create</code>,
+/// <code>targetXml</code> and <code>targetSegmented</code>. It instantiates nothing and calls no <code>Transform</code>. Called
+/// while the production's namespace is switched.</p>
+ClassMethod TransformFactsHere(pClass As %String, Output pFacts) [ Private ]
+{
+    Kill pFacts
+    Set pFacts("listed") = 0
+    Set pFacts("compiled") = 0
+    Set tResult = ##class(%ResultSet).%New("%Dictionary.ClassDefinition:SubclassOf")
+    Set tStatus = tResult.Execute(..#TRANSFORMBASE)
+    If $$$ISERR(tStatus) Throw ##class(%Exception.StatusException).CreateFromStatus(tStatus)
+    While tResult.Next() {
+        If (tResult.GetData(1) = pClass) && (pClass '= ..#TRANSFORMDTL) {
+            Set pFacts("listed") = 1
+            Quit
+        }
+    }
+    Do tResult.Close()
+    Set tResult = ""
+    If 'pFacts("listed") Quit
+    If '##class(%Dictionary.CompiledClass).%ExistsId(pClass) Quit
+    Set pFacts("compiled") = 1
+    Set pFacts("sourceClass") = $ClassMethod(pClass, "GetSourceType")
+    Set pFacts("targetClass") = $ClassMethod(pClass, "GetTargetType", .tCreate)
+    Set pFacts("create") = $Get(tCreate)
+    Set pFacts("sourceDocType") = $ClassMethod(pClass, "GetSourceDocType")
+    Set pFacts("targetDocType") = $ClassMethod(pClass, "GetTargetDocType")
+    Set pFacts("sourceKind") = ..FormatKindHere(pFacts("sourceClass"))
+    Set pFacts("targetKind") = ..FormatKindHere(pFacts("targetClass"))
+    Set pFacts("targetXml") = (pFacts("targetKind") = "document") && ''$ClassMethod(pFacts("targetClass"), "%Extends", ..#XMLDOCUMENT)
+    Set pFacts("targetSegmented") = (pFacts("targetKind") = "document") && ''$ClassMethod(pFacts("targetClass"), "%Extends", ..#SEGMENTEDDOCUMENT)
+}
+
+/// <p>The data transformation <var>pName</var> (<code>&lt;class&gt;.cls</code>), read for the test (Story 20.27) in
+/// <var>pRow</var>: <code>{Namespace, Name, SourceClass, SourceDocType, SourceKind, TargetClass, TargetDocType, TargetKind, Create,
+/// content}</code>, the kinds being <code>document</code>, <code>xml</code>, <code>recordmap</code> or <code>other</code>
+/// (<method>FormatKindHere</method>) and <code>content</code> the pasted message <var>pContent</var> as given. It writes nothing and
+/// calls no <code>Transform</code>. A name that is not a listed transformation compiled in the namespace is 404.</p>
+/// <p>With <var>pAction</var> (the test) it then refuses, in this order and before anything is parsed or run: 409
+/// <code>INTEROP.TRANSFORM.SOURCEFORMAT</code> and <code>TARGETFORMAT</code> for a class that is neither a virtual document nor
+/// <parameter>XMLADAPTOR</parameter>, and 422 <code>INTEROP.TRANSFORM.CONTENT</code> on <code>content</code> for a message that is
+/// empty or past <parameter>OcuPilot.Port.AtelierPort.MAXIMPORTCHARACTERS</parameter> characters.</p>
+ClassMethod ReadTransform(pNamespace As %String, pName As %String, pAction As %String, pContent As %String, Output pRow As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pRow = ""
+    Set tClass = ..TransformClassOf(pName)
+    If tClass = "" Quit ..Absent(.pHttpStatus, .pFault)
+    Set tCaught = ""
+    Kill tFacts
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Do ..TransformFactsHere(tClass, .tFacts)
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tCaught = ex
+    }
+    If $IsObject(tCaught) Quit ..Mapped(tCaught, "the data transformation could not be read", .pHttpStatus, .pFault)
+    If 'tFacts("listed") || 'tFacts("compiled") Quit ..Absent(.pHttpStatus, .pFault)
+    If pAction '= "" {
+        If '$ListFind($ListBuild("document", "xml"), tFacts("sourceKind")) Quit ..Conflict(##class(OcuPilot.Api.InteropError).#TRANSFORMSOURCEFORMAT, .pHttpStatus, .pFault)
+        If '$ListFind($ListBuild("document", "xml"), tFacts("targetKind")) Quit ..Conflict(##class(OcuPilot.Api.InteropError).#TRANSFORMTARGETFORMAT, .pHttpStatus, .pFault)
+        If ($Length(pContent) < 1) || ($Length(pContent) > ##class(OcuPilot.Port.AtelierPort).#MAXIMPORTCHARACTERS) {
+            Set tViolations = 1
+            Set tViolations(1) = $ListBuild(..#CONTENTKEY, ##class(OcuPilot.Api.InteropError).#TRANSFORMCONTENT)
+            Quit ..Violations(.tViolations, .pHttpStatus, .pFault)
+        }
+    }
+    Set pRow = {}
+    Do pRow.%Set("Namespace", pNamespace, "string")
+    Do pRow.%Set("Name", pName, "string")
+    Do pRow.%Set("SourceClass", tFacts("sourceClass"), "string")
+    Do pRow.%Set("SourceDocType", tFacts("sourceDocType"), "string")
+    Do pRow.%Set("SourceKind", tFacts("sourceKind"), "string")
+    Do pRow.%Set("TargetClass", tFacts("targetClass"), "string")
+    Do pRow.%Set("TargetDocType", tFacts("targetDocType"), "string")
+    Do pRow.%Set("TargetKind", tFacts("targetKind"), "string")
+    Do pRow.%Set("Create", $Select(tFacts("create") = "": "new", 1: tFacts("create")), "string")
+    Do pRow.%Set("content", pContent, "string")
+    Set pHttpStatus = 200
+    Quit $$$OK
+}
+
+/// <p>The text of <var>pContent</var> parsed as <var>pClass</var>, an object in <var>pObject</var> and the vendor's status in
+/// <var>pStatus</var>: for <code>document</code> its <code>ImportFromString</code>, whose result is made immutable
+/// (<code>IsMutable</code> 0) as the vendor's serialized reader makes it; for <code>xml</code> the XML reader's
+/// <code>ObjectFromString</code>, tried only when the first character that is not blank is <code>&lt;</code>. Called while the
+/// production's namespace is switched.</p>
+ClassMethod ParseSourceHere(pClass As %String, pKind As %String, pContent As %String, Output pObject, Output pStatus As %Status) [ Private ]
+{
+    Set pObject = ""
+    Set pStatus = $$$OK
+    If pKind = "document" {
+        Set pObject = $ClassMethod(pClass, "ImportFromString", pContent, .pStatus)
+        If $IsObject(pObject) {
+            Try {
+                Set pObject.IsMutable = 0
+            } Catch {
+            }
+        }
+        Quit
+    }
+    If $Extract($ZStrip(pContent, "<W")) '= "<" {
+        Set pStatus = $$$ERROR($$$GeneralError, "Not XML Format")
+        Quit
+    }
+    Set pStatus = ##class(Ens.Util.XML.Reader).ObjectFromString(.pObject, pContent, pClass)
+}
+
+/// <p>The separators the raw view of the segmented document <var>pTarget</var> is written with, as the classic Test Transform dialog
+/// builds them: the document's own, completed from its first segment's, with the segment terminator of an X12 or EDIFACT document,
+/// and each segment followed by a carriage return and line feed. Called while the production's namespace is switched.</p>
+ClassMethod SeparatorsHere(pTarget As %RegisteredObject) As %String [ Private ]
+{
+    Set tSegment = pTarget.GetSegmentAt(1)
+    Set tSeparators = $Select($IsObject(tSegment): tSegment.Separators, 1: "")
+    Set tOwn = pTarget.Separators
+    If $Extract(tOwn, 1, $Length(tSeparators)) '= $Extract(tSeparators, 1, $Length(tOwn)) {
+        Set tSeparators = $Extract(tOwn, 1, $Length(tSeparators)) _ $Extract(tSeparators, 1 + $Length(tOwn), *)
+    }
+    If pTarget.%Extends("EnsLib.EDI.X12.Document") || pTarget.%Extends("EnsLib.EDI.EDIFACT.Document") Set tSeparators = tSeparators _ pTarget.SegmentTerminator
+    If $Char(10) '= $Extract(tSeparators, *) Set tSeparators = tSeparators _ $Char(10)
+    If $Char(13) '= $Extract(tSeparators, *-1) Set tSeparators = $Extract(tSeparators, 1, *-1) _ $Char(13, 10)
+    Quit tSeparators
+}
+
+/// <p>The text of the target <var>pTarget</var> in <var>pText</var>, at most <parameter>TESTOUTPUTMAX</parameter> + 1 characters of
+/// it, followed by <parameter>TESTCUT</parameter> when the stream held more (the line total <method>AddTestLines</method> keeps does
+/// not count line ends, so it cannot see that cut), and the vendor's status: EDI XML as indented XML, any other segmented document as the classic raw view
+/// (<method>SeparatorsHere</method>), any other document as its library stream, and an <parameter>XMLADAPTOR</parameter> object
+/// through <code>%XML.Writer</code> indented. An object that is neither is an error status. Called while the production's
+/// namespace is switched.</p>
+ClassMethod RenderTargetHere(pTarget As %RegisteredObject, Output pText As %String) As %Status [ Private ]
+{
+    Set pText = ""
+    Set tStream = ##class(%Stream.TmpCharacter).%New()
+    If pTarget.%Extends(..#DOCUMENTBASE) {
+        If pTarget.%Extends(..#XMLDOCUMENT) {
+            Set tSC = pTarget.OutputToLibraryStream(tStream, "wt")
+        } ElseIf pTarget.%Extends(..#SEGMENTEDDOCUMENT) {
+            Set tSC = pTarget.OutputToLibraryStream(tStream, ..SeparatorsHere(pTarget))
+        } Else {
+            Set tSC = pTarget.OutputToLibraryStream(tStream)
+        }
+    } ElseIf pTarget.%Extends(..#XMLADAPTOR) {
+        Set tWriter = ##class(%XML.Writer).%New()
+        Set tWriter.Indent = 1
+        Set tSC = tWriter.OutputToStream(tStream)
+        If $$$ISOK(tSC) Set tSC = tWriter.RootObject(pTarget)
+    } Else {
+        Quit $$$ERROR($$$GeneralError, "Object doesn't support EDI or XML output")
+    }
+    If $$$ISERR(tSC) Quit tSC
+    Do tStream.Rewind()
+    Set pText = tStream.Read(..#TESTOUTPUTMAX + 1)
+    If 'tStream.AtEnd Set pText = pText _ ..#TESTCUT
+    Quit $$$OK
+}
+
+/// <p>Run the data transformation <var>pClass</var> once on the pasted message <var>pContent</var> (Story 20.27): parse it as
+/// <var>pSourceClass</var> (<method>ParseSourceHere</method>), create the target for <code>existing</code> with <code>%New()</code>
+/// and no argument, call <code>Transform</code> with empty <code>process</code> and <code>context</code>, render the target
+/// (<method>RenderTargetHere</method>), then delete every source or target that gained an <code>%Id()</code>, whatever happened.
+/// <var>pOutcome</var><code>("status")</code> is <code>done</code>, <code>input</code> (the parse answered an error or no
+/// object), <code>transform</code> (an error status or a fault) or <code>output</code> (no target, a render error or a target that is
+/// neither kind), <var>pOutcome</var><code>("text")</code> the target's text or the status's error text, and
+/// <var>pOutcome</var><code>("deleteFailed")</code> and <code>("deleteStatus")</code> a delete the vendor refused. Called while the
+/// production's namespace is switched and inside the output capture; it calls no <code>OcuPilot.*</code> class and the namespace is
+/// the one it began in when it returns.</p>
+ClassMethod RunTransformHere(pClass As %String, pSourceClass As %String, pSourceKind As %String, pTargetCreate As %String, pTargetClass As %String, pContent As %String, Output pOutcome) [ Private, PublicList = (process, context) ]
+{
+    Kill pOutcome
+    Set pOutcome("status") = "done"
+    Set pOutcome("text") = ""
+    Set pOutcome("deleteFailed") = 0
+    Set tSource = ""
+    Set tTarget = ""
+    Set tHere = $NAMESPACE
+    Set tStage = "input"
+    New process, context
+    Set process = ""
+    Set context = ""
+    Try {
+        Do ..ParseSourceHere(pSourceClass, pSourceKind, pContent, .tSource, .tParse)
+        If $$$ISERR(tParse) || '$IsObject(tSource) {
+            Set pOutcome("status") = "input"
+            Set pOutcome("text") = $Select($$$ISERR(tParse): $System.Status.GetErrorText(tParse), 1: "")
+            Quit
+        }
+        Set tStage = "transform"
+        If pTargetCreate = "existing" {
+            Set tTarget = $ClassMethod(pTargetClass, "%New")
+            If '$IsObject(tTarget) {
+                Set pOutcome("status") = "transform"
+                Set pOutcome("text") = "No existing target object"
+                Quit
+            }
+        }
+        Set tTransform = $ClassMethod(pClass, "Transform", tSource, .tTarget)
+        If $NAMESPACE '= tHere Set $NAMESPACE = tHere
+        If $$$ISERR(tTransform) {
+            Set pOutcome("status") = "transform"
+            Set pOutcome("text") = $System.Status.GetErrorText(tTransform)
+            Quit
+        }
+        Set tStage = "output"
+        If '$IsObject(tTarget) {
+            Set pOutcome("status") = "output"
+            Set pOutcome("text") = "No object created"
+            Quit
+        }
+        Set tRender = ..RenderTargetHere(tTarget, .tText)
+        If $$$ISERR(tRender) {
+            Set pOutcome("status") = "output"
+            Set pOutcome("text") = $System.Status.GetErrorText(tRender)
+            Quit
+        }
+        Set pOutcome("text") = tText
+    } Catch ex {
+        Set pOutcome("status") = tStage
+        Set pOutcome("text") = $System.Status.GetErrorText(ex.AsStatus())
+    }
+    If $NAMESPACE '= tHere Set $NAMESPACE = tHere
+    Kill tStored
+    Set tStored = 0
+    For tObject = tSource, tTarget {
+        If '$IsObject(tObject) Continue
+        If 'tObject.%Extends("%Library.Persistent") Continue
+        If tObject.%Id() = "" Continue
+        Set tStored($Increment(tStored)) = $ListBuild(tObject.%ClassName(1), tObject.%Oid())
+    }
+    Set tObject = ""
+    Set tSource = ""
+    Set tTarget = ""
+    For tI = 1:1:tStored {
+        Try {
+            Set tDelete = $ClassMethod($List(tStored(tI), 1), "%Delete", $List(tStored(tI), 2))
+        } Catch ex {
+            Set tDelete = ex.AsStatus()
+        }
+        If $$$ISERR(tDelete) {
+            Set pOutcome("deleteFailed") = 1
+            Set pOutcome("deleteStatus") = tDelete
+        }
+    }
+}
+
+/// <p>Run the data transformation <var>pName</var> once on the pasted message <var>pQuery</var> carries under
+/// <parameter>CONTENTKEY</parameter> (Story 20.27). The composed read (<method>ReadTransform</method>) refuses first, with the test's
+/// action, so nothing is parsed or run that would be refused; then, inside the output capture and the production's namespace,
+/// <method>RunTransformHere</method> parses, runs, renders and cleans up; then the namespace is restored and the answer composed.</p>
+/// <p>The answer is <code>{status, sourceClass, targetClass, lines, console, errors}</code>: <code>status</code> is
+/// <code>done</code>, <code>input</code>, <code>transform</code> or <code>output</code>, <code>errors</code> is true for the last three,
+/// <code>lines</code> holds the target's text or the status's error text, and <code>console</code> what the vendor calls wrote to the
+/// device. Both go through <method>AddTestLines</method> sharing one <parameter>TESTOUTPUTMAX</parameter> total. A stored object the
+/// vendor refuses to delete is logged without any content and does not change the answer. OcuPilot's own audit row records the run,
+/// never the message, a line or the console (<method>AuditRuntime</method>).</p>
+ClassMethod PerformTransformTest(pNamespace As %String, pName As %String, ByRef pQuery, Output pResult As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pResult = ""
+    Set tContent = $Get(pQuery(..#CONTENTKEY))
+    Set tSC = ..ReadTransform(pNamespace, pName, ..#TYPETRANSFORMTEST, tContent, .tRow, .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) Quit tSC
+    Set tClass = ..TransformClassOf(pName)
+    Set tSourceClass = tRow.%Get("SourceClass")
+    Set tTargetClass = tRow.%Get("TargetClass")
+    Set tCreate = tRow.%Get("Create")
+    Set tSourceKind = tRow.%Get("SourceKind")
+    Set tRow = ""
+    Set tCaught = ""
+    Kill tOutcome
+    Set tOrigNS = $NAMESPACE
+    Set tCaptureSC = $$BeginCapture^%SYS.Capture(.tCookie)
+    If $$$ISERR(tCaptureSC) Quit ..Fail("the transformation test could not capture the vendor's output", tCaptureSC, .pHttpStatus, .pFault)
+    Try {
+        Set $NAMESPACE = pNamespace
+        Do ..RunTransformHere(tClass, tSourceClass, tSourceKind, tCreate, tTargetClass, tContent, .tOutcome)
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        If $NAMESPACE '= tOrigNS Set $NAMESPACE = tOrigNS
+        Set tCaught = ex
+    }
+    Do ..EndTestCapture(tCookie, .tCaptured)
+    If $IsObject(tCaught) Quit ..Mapped(tCaught, "the transformation could not be tested", .pHttpStatus, .pFault)
+    If $Get(tOutcome("deleteFailed")) Do ..LogFault("a stored object the transformation test made could not be deleted", tOutcome("deleteStatus"))
+    Set tStatus = tOutcome("status")
+    Set tLines = []
+    Set tConsole = []
+    Set tChars = 0
+    Set tCut = 0
+    Do ..AddTestLines(tOutcome("text"), tLines, .tChars, .tCut)
+    If $IsObject($Get(tCaptured)) {
+        Set tIterator = tCaptured.%GetIterator()
+        While tIterator.%GetNext(.tIndex, .tLine) {
+            Do ..AddTestLines(tLine, tConsole, .tChars, .tCut)
+        }
+    }
+    Set pResult = {}
+    Do pResult.%Set("status", tStatus, "string")
+    Do pResult.%Set("sourceClass", tSourceClass, "string")
+    Do pResult.%Set("targetClass", tTargetClass, "string")
+    Do pResult.%Set("lines", tLines)
+    Do pResult.%Set("console", tConsole)
+    Do pResult.%Set("errors", (tStatus '= "done"), "boolean")
+    Set tEffects = {}
+    Do tEffects.%Set("namespace", pNamespace, "string")
+    Do tEffects.%Set("sourceClass", tSourceClass, "string")
+    Do tEffects.%Set("targetClass", tTargetClass, "string")
+    Do tEffects.%Set("status", tStatus, "string")
+    Do ..AuditRuntime(..#VERBTEST, ..#ENTITYCLASS, pName, tEffects)
+    Set pHttpStatus = 200
+    Quit $$$OK
+}
+
 /// <p>The lines <method>Snippet</method> adds for the host test of the item the composite id <var>pId</var> names (Story 20.6),
 /// from the request class and the field values <var>pQuery</var> carries: the request created and each given field set along its
 /// path to the logical value its class's <code>&lt;Property&gt;DisplayToLogical</code> makes of the typed one (the typed one where the
@@ -5584,6 +6026,63 @@ ClassMethod TestSnippet(pId As %String, ByRef pQuery) As %String [ Private ]
         Set tText = tText _ tNL _ " If $System.Status.IsOK(tSC) Set tSC = tRequest.%Save()"
     }
     Quit tText _ tNL _ " If $System.Status.IsOK(tSC) Set tSC = ##class(" _ ..#TESTSERVICE _ ").SendTestRequest(" _ ..Literal($ListGet(tParts, 2)) _ ", tRequest, , .tSession)"
+}
+
+/// <p>The lines <method>Snippet</method> adds for the data transformation test of <var>pName</var> (Story 20.27), from the pasted
+/// message <var>pQuery</var> carries under <parameter>CONTENTKEY</parameter>: the message parsed as the transformation's source class
+/// (a virtual document's <code>ImportFromString</code>, made immutable, or the XML reader), the target created for
+/// <code>existing</code>, the <code>Transform</code> call and the render the test uses. The classes are read in the namespace
+/// <parameter>NAMESPACEKEY</parameter> names, and a transformation they cannot be read for gives the call alone. Every name and the
+/// message are string literals, so nothing the query carries runs as code, and every line closes any block it opens.</p>
+ClassMethod TransformSnippet(pName As %String, ByRef pQuery) As %String [ Private ]
+{
+    Set tNL = $Char(10)
+    Set tClass = ..TransformClassOf(pName)
+    Kill tFacts
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = $Get(pQuery(..#NAMESPACEKEY))
+        Do ..TransformFactsHere(tClass, .tFacts)
+        Set $NAMESPACE = tOrigNS
+    } Catch {
+        Set $NAMESPACE = tOrigNS
+        Kill tFacts
+    }
+    Set tCall = " Set tSC = $ClassMethod(" _ ..Literal(tClass) _ ", ""Transform"", tSource, .tTarget)"
+    If '$Get(tFacts("compiled")) Quit tNL _ tCall
+    Set tContent = ..Literal($Get(pQuery(..#CONTENTKEY)))
+    Set tSourceClass = ..Literal(tFacts("sourceClass"))
+    If tFacts("sourceKind") = "document" {
+        Set tText = tNL _ " Set tSource = $ClassMethod(" _ tSourceClass _ ", ""ImportFromString"", " _ tContent _ ", .tSC)"
+        Set tText = tText _ tNL _ " If $IsObject(tSource) Set tSource.IsMutable = 0"
+    } Else {
+        Set tText = tNL _ " Set tSC = ##class(Ens.Util.XML.Reader).ObjectFromString(.tSource, " _ tContent _ ", " _ tSourceClass _ ")"
+    }
+    If tFacts("create") = "existing" Set tText = tText _ tNL _ " Set tTarget = $ClassMethod(" _ ..Literal(tFacts("targetClass")) _ ", ""%New"")"
+    Set tText = tText _ tNL _ " If $System.Status.IsOK(tSC) && $IsObject($Get(tSource)) Set tSC = $ClassMethod(" _ ..Literal(tClass) _ ", ""Transform"", tSource, .tTarget)"
+    Set tText = tText _ tNL _ " Set tStream = ##class(%Stream.TmpCharacter).%New()"
+    Set tText = tText _ tNL _ " Set tRender = $System.Status.IsOK(tSC) && $IsObject($Get(tTarget))"
+    If tFacts("targetKind") = "document" {
+        If tFacts("targetXml") {
+            Set tText = tText _ tNL _ " If tRender Set tSC = tTarget.OutputToLibraryStream(tStream, ""wt"")"
+        } ElseIf tFacts("targetSegmented") {
+            Set tText = tText _ tNL _ " If tRender Set tSegment = tTarget.GetSegmentAt(1)"
+            Set tText = tText _ tNL _ " If tRender Set tSeparators = $Select($IsObject(tSegment): tSegment.Separators, 1: """")"
+            Set tText = tText _ tNL _ " If tRender && ($Extract(tTarget.Separators, 1, $Length(tSeparators)) '= $Extract(tSeparators, 1, $Length(tTarget.Separators))) Set tSeparators = $Extract(tTarget.Separators, 1, $Length(tSeparators)) _ $Extract(tSeparators, 1 + $Length(tTarget.Separators), *)"
+            Set tText = tText _ tNL _ " If tRender && (tTarget.%Extends(""EnsLib.EDI.X12.Document"") || tTarget.%Extends(""EnsLib.EDI.EDIFACT.Document"")) Set tSeparators = tSeparators _ tTarget.SegmentTerminator"
+            Set tText = tText _ tNL _ " If tRender && ($Char(10) '= $Extract(tSeparators, *)) Set tSeparators = tSeparators _ $Char(10)"
+            Set tText = tText _ tNL _ " If tRender && ($Char(13) '= $Extract(tSeparators, *-1)) Set tSeparators = $Extract(tSeparators, 1, *-1) _ $Char(13, 10)"
+            Set tText = tText _ tNL _ " If tRender Set tSC = tTarget.OutputToLibraryStream(tStream, tSeparators)"
+        } Else {
+            Set tText = tText _ tNL _ " If tRender Set tSC = tTarget.OutputToLibraryStream(tStream)"
+        }
+    } Else {
+        Set tText = tText _ tNL _ " If tRender Set tWriter = ##class(%XML.Writer).%New()"
+        Set tText = tText _ tNL _ " If tRender Set tWriter.Indent = 1"
+        Set tText = tText _ tNL _ " If tRender Set tSC = tWriter.OutputToStream(tStream)"
+        Set tText = tText _ tNL _ " If tRender && $System.Status.IsOK(tSC) Set tSC = tWriter.RootObject(tTarget)"
+    }
+    Quit tText
 }
 
 /// <p><var>pValue</var> as an ObjectScript string literal, a control character spelled as a

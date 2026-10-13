@@ -1,4 +1,4 @@
-/// <p>The interoperability codes and sentences (AD-29, AD-39, AD-62, Stories 20.2, 20.5 and 20.6): every
+/// <p>The interoperability codes and sentences (AD-29, AD-39, AD-62, Stories 20.2, 20.5, 20.6 and 20.27): every
 /// <code>INTEROP.*</code> code <class>OcuPilot.Port.InteropPort</class> answers with, the four
 /// consequence codes the production tools' proposals carry, and the sentence each carries. Each sentence
 /// is published once in EXPERIENCE.md's Fixed strings and pinned equal to its
@@ -369,17 +369,39 @@ Parameter TESTSENDS = "INTEROP.TEST.SENDS";
 
 Parameter REASONTESTSENDS = "A test sends a real message through the running production. The target runs it, and anything it sends on, to another host or outside this instance, is sent too. The test's messages stay in the message store.";
 
+/// <p>The data transformation test's refusals (Story 20.27). The first two refuse a transformation whose source or target class
+/// OcuPilot cannot read or show as text, each 409 on the <parameter>OcuPilot.Api.Error.CONFLICT</parameter> slug, before anything is
+/// parsed or run. <parameter>TRANSFORMCONTENT</parameter> is the 422 violation of the pasted source message, empty or past
+/// <parameter>OcuPilot.Port.AtelierPort.MAXIMPORTCHARACTERS</parameter>. <code>INTEROP.NAMESPACE</code> is the namespace refusal,
+/// reused.</p>
+Parameter TRANSFORMSOURCEFORMAT = "INTEROP.TRANSFORM.SOURCEFORMAT";
+
+Parameter REASONTRANSFORMSOURCEFORMAT = "OcuPilot reads a pasted source only as an HL7 or other EDI document's text, or as XML. This transformation's source is neither, so test it in the classic portal.";
+
+Parameter TRANSFORMTARGETFORMAT = "INTEROP.TRANSFORM.TARGETFORMAT";
+
+Parameter REASONTRANSFORMTARGETFORMAT = "OcuPilot shows a target only as an EDI document's text or as XML. This transformation's target is neither, so test it in the classic portal.";
+
+Parameter TRANSFORMCONTENT = "INTEROP.TRANSFORM.CONTENT";
+
+Parameter REASONTRANSFORMCONTENT = "Paste the source message, at most 3,000,000 characters.";
+
+/// <p>The consequence code the data transformation test's proposal carries. The client maps it to its published sentence.</p>
+Parameter TRANSFORMRUNS = "INTEROP.TRANSFORM.RUNS";
+
+Parameter REASONTRANSFORMRUNS = "The transformation's code runs on this instance as you, on the input shown. Whatever it writes or sends, it writes or sends.";
+
 /// <p>The refusals the port answers with, as a <class>%List</class>: every code that is not a
 /// consequence.</p>
 ClassMethod Codes() As %List
 {
-    Quit $ListBuild(..#NAMESPACE, ..#RUNNING, ..#OTHER, ..#TROUBLED, ..#NOTRUNNING, ..#UPTODATE, ..#NOTTROUBLED, ..#BUSY, ..#STATE, ..#SUSPENDED, ..#PARTSTOPPED) _ ..ItemCodes() _ ..SettingCodes() _ ..RuntimeCodes() _ ..LookupCodes() _ ..TestCodes()
+    Quit $ListBuild(..#NAMESPACE, ..#RUNNING, ..#OTHER, ..#TROUBLED, ..#NOTRUNNING, ..#UPTODATE, ..#NOTTROUBLED, ..#BUSY, ..#STATE, ..#SUSPENDED, ..#PARTSTOPPED) _ ..ItemCodes() _ ..SettingCodes() _ ..RuntimeCodes() _ ..LookupCodes() _ ..TestCodes() _ ..TransformCodes()
 }
 
 /// <p>The consequence codes, as a <class>%List</class>.</p>
 ClassMethod ConsequenceCodes() As %List
 {
-    Quit $ListBuild(..#STOP, ..#RESTART, ..#UPDATE, ..#RECOVER, ..#ITEMPENDING, ..#ITEMREMOVE, ..#SETTINGLOCATION, ..#MESSAGEABORT, ..#QUEUEABORT, ..#JOBABORT, ..#JOBSUSPEND, ..#JOBSTOP, ..#LOOKUPREMOVE, ..#LOOKUPDELETE, ..#LOOKUPIMPORT, ..#TESTSENDS)
+    Quit $ListBuild(..#STOP, ..#RESTART, ..#UPDATE, ..#RECOVER, ..#ITEMPENDING, ..#ITEMREMOVE, ..#SETTINGLOCATION, ..#MESSAGEABORT, ..#QUEUEABORT, ..#JOBABORT, ..#JOBSUSPEND, ..#JOBSTOP, ..#LOOKUPREMOVE, ..#LOOKUPDELETE, ..#LOOKUPIMPORT, ..#TESTSENDS, ..#TRANSFORMRUNS)
 }
 
 /// <p>The item codes, as a <class>%List</class>: the refusals an item read or write answers with.</p>
@@ -449,6 +471,21 @@ ClassMethod TestCodes() As %List
 ClassMethod TestPreconditionCodes() As %List
 {
     Quit $ListBuild(..#NOTRUNNING, ..#TESTDISABLED, ..#TESTTARGETTYPE, ..#TESTTARGETDISABLED, ..#TESTREQUESTTYPE, ..#TESTSECRET)
+}
+
+/// <p>The data transformation test's codes (Story 20.27), as a <class>%List</class>: the two format refusals and the violation of the
+/// pasted source message. The consequence code is <method>ConsequenceCodes</method>'s.</p>
+ClassMethod TransformCodes() As %List
+{
+    Quit $ListBuild(..#TRANSFORMSOURCEFORMAT, ..#TRANSFORMTARGETFORMAT, ..#TRANSFORMCONTENT)
+}
+
+/// <p>The refusals the data transformation tool's fresh read answers when the transformation cannot be tested, as a
+/// <class>%List</class>: the source format, then the target format. The content violation is the pasted message's and is not
+/// among them.</p>
+ClassMethod TransformPreconditionCodes() As %List
+{
+    Quit $ListBuild(..#TRANSFORMSOURCEFORMAT, ..#TRANSFORMTARGETFORMAT)
 }
 
 /// <p>The codes a production tool's fresh read refuses with when the action's precondition does not
@@ -534,6 +571,10 @@ ClassMethod ReasonFor(pCode As %String) As %String
     If pCode = ..#TESTVALUE Quit ..#REASONTESTVALUE
     If pCode = ..#TESTREQUEST Quit ..#REASONTESTREQUEST
     If pCode = ..#TESTSENDS Quit ..#REASONTESTSENDS
+    If pCode = ..#TRANSFORMSOURCEFORMAT Quit ..#REASONTRANSFORMSOURCEFORMAT
+    If pCode = ..#TRANSFORMTARGETFORMAT Quit ..#REASONTRANSFORMTARGETFORMAT
+    If pCode = ..#TRANSFORMCONTENT Quit ..#REASONTRANSFORMCONTENT
+    If pCode = ..#TRANSFORMRUNS Quit ..#REASONTRANSFORMRUNS
     Quit ""
 }
 

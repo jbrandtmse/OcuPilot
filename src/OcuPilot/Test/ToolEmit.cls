@@ -223,13 +223,14 @@ Method TestEveryLiveToolRequiresItsScreensPairs()
                 Set tWritePair = $ListBuild(tResource, "WRITE")
                 If '$ListFind(tExpected, tWritePair) Set tExpected = tExpected _ $ListBuild(tWritePair)
             }
-        } ElseIf tTool.class = "OcuPilot.Screen.Tool.InteropItemTestSend" {
+        } ElseIf (tTool.class = "OcuPilot.Screen.Tool.InteropItemTestSend") || (tTool.class = "OcuPilot.Screen.Tool.InteropTransformTest") {
             ; Story 20.6: the host test's send declares %Ens_TestingService:USE and WRITE on the globals database of the request's
             ; namespace, here this one's, after its screen's pairs, each once; it writes no code, so no routines database (AD-8, AD-62).
+            ; Story 20.27: the data transformation test declares %Ens_DTLTest:USE the same way, which its classic page's custom resource repeats.
             Set tExpected = ##class(OcuPilot.Screen.Gate).RequiredPairs($Parameter(tTool.class, "DESCRIPTORCLASS"), .tExpectedResolved)
             Do $$$AssertTrue($ListLength(tExpected) > 0, tTool.name _ ": its screen declares pairs")
             Do $$$AssertTrue(##class(OcuPilot.Kernel.Shell.Namespaces).GlobalDatabase($Namespace, .tGlobalResource, .tReadOnly), tTool.name _ ": this namespace's globals database resolves")
-            For tWritePair = $ListBuild("%Ens_TestingService", "USE"), $ListBuild(tGlobalResource, "WRITE") {
+            For tWritePair = $ListBuild($Parameter(tTool.class, "WRITERESOURCE"), $Parameter(tTool.class, "WRITEPERMISSION")), $ListBuild(tGlobalResource, "WRITE") {
                 If '$ListFind(tExpected, tWritePair) Set tExpected = tExpected _ $ListBuild(tWritePair)
             }
         } ElseIf $ClassMethod(tTool.class, "%Extends", "OcuPilot.Screen.Tool.InteropItemAction") {

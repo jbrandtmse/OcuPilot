@@ -218,6 +218,8 @@ export const DESCRIPTOR_PAGES: Readonly<Record<string, PageLoader>> = {
   // Story 20.5: Lookup tables, the list with its New table dialog, and a table's entries with their Add entry and Set value dialogs.
   'OcuPilot.Screen.Descriptor.InteropLookupTableList': () => import('../areas/interoperability/interop-lookup-table-list.page').then((m) => m.InteropLookupTableListPage),
   'OcuPilot.Screen.Descriptor.InteropLookupEntryList': () => import('../areas/interoperability/interop-lookup-entry-list.page').then((m) => m.InteropLookupEntryListPage),
+  // Story 20.27: Data transformations, the list with its Test dialog.
+  'OcuPilot.Screen.Descriptor.InteropTransformList': () => import('../areas/interoperability/interop-transform-list.page').then((m) => m.InteropTransformListPage),
 };
 
 /**
