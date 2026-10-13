@@ -672,3 +672,4 @@
 2026-10-13T13:56:25Z	Story 20.27	ci_resolved	story=20.27 run=38403380199 result=success head=a6a6ea71 resolved_at=next_implement(boundary)
 2026-10-13T13:56:25Z	Story 20.27	ci_green_verified	run=38403380199 head=a6a6ea71 jobs=21/21
 2026-10-13T13:56:25Z	Story 20.16	story_created	spawn_at=(see_stage_spawned) model=opus agent_name=20-16-plan-1 path=_bmad-output/implementation-artifacts/spec-20-16-the-agent-edits-rule-dtl-and-bpl-content-behind-the-embedded.md build_status=ready-for-dev(gate_pending) epic_context=reused oversized=true q1=Ens_Code_WRITE(recommend_no)
+2026-10-13T13:56:47Z	Story 20.7	stage_spawned	stage=implement spawn_at=2026-10-13T13:56:47Z model=sonnet agent_name=20-7-implement-1 cycle_iteration=1 ci_prior=success_38403380199(20.27)
