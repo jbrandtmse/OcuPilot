@@ -5,8 +5,8 @@
 /// side-bar entry 4 and lives in <code>interoperability</code>, so it is offered only in a namespace that
 /// runs interoperability (AD-44).</p>
 /// <p><b>Its id is the class's document name</b> (<code>&lt;class&gt;.cls</code>, AD-13), and its scope is
-/// <code>namespace</code>. It declares no action: editing a business rule stays on the classic
-/// page.</p>
+/// <code>namespace</code>. Its name cell opens the class in its editor screen (Story 20.7), and it declares no
+/// action.</p>
 /// <p><b>Its pairs</b> are the classic menu's <code>%Ens_Portal:USE</code> and, as its own,
 /// <code>%Ens_Code:READ</code>, which every shipped role that reaches the page holds; the classic page's
 /// own resource is an OR list a pair set cannot express (AD-8, Story 20.2). The port adds READ on the

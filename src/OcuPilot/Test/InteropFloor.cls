@@ -55,11 +55,11 @@ Parameter OPERATORSCREENS = "InteropBusinessPartnerList,InteropItemJobTab,Intero
 /// <p>See <parameter>OPERATORSCREENS</parameter>.</p>
 Parameter OPERATORTOOLS = "interop.businesspartners.read,interop.itemjobs.read,interop.itemlog.read,interop.itemmessages.read,interop.itemqueue.read,interop.items.read,interop.itemsettings.read,interop.itemstatus.read,interop.jobs.read,interop.lookupentries.read,interop.lookuptables.read,interop.productions.read,interop.queuemessages.read,interop.queues.read,logs.eventlog.read";
 
-/// <p>What the Administrator role adds beside the Operator's: the three code lists, each through its
-/// own <code>%Ens_Code:READ</code>, and an item's Test tab (Story 20.6) through the <code>%Ens_TestingService:USE</code> the
+/// <p>What the Administrator role adds beside the Operator's: the three code lists and the rule, BPL and DTL editor
+/// screens (Story 20.7), each through its own <code>%Ens_Code:READ</code>, and an item's Test tab (Story 20.6) through the <code>%Ens_TestingService:USE</code> the
 /// role holds (measured at that story's plan: <code>%EnsRole_Administrator</code> holds <code>%Ens_TestingService:U</code>, the
 /// Operator and Monitor roles do not).</p>
-Parameter ADMINISTRATORSCREENS = "InteropItemTestTab,InteropProcessList,InteropRuleList,InteropTransformList";
+Parameter ADMINISTRATORSCREENS = "InteropItemTestTab,InteropProcessEditor,InteropProcessList,InteropRuleEditor,InteropRuleList,InteropTransformEditor,InteropTransformList";
 
 /// <p>See <parameter>ADMINISTRATORSCREENS</parameter>.</p>
 Parameter ADMINISTRATORTOOLS = "interop.itemtest.read,interop.processes.read,interop.rules.read,interop.transforms.read";

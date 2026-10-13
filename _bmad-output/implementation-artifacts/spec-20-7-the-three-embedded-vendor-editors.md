@@ -2,7 +2,8 @@
 title: 'Story 20.7: The three embedded vendor editors'
 type: 'feature'
 created: '2026-10-12'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: 'f288bcdc2d17e37d282052fcc6f293b1c84924b0'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -194,14 +195,14 @@ All paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-20`. Line numbe
 
 **Execution:**
 
-- [ ] **Task 0 (re-anchor, no code).** After 20.27 has merged into this branch, re-read `ListClasses`, `InteropTransformList.cls`, `screen-outlet.ts`'s interop rows and EXPERIENCE.md :159 and :604, and anchor this story's edits to what is there. Everything else this plan depends on was measured at the plan (Design Notes › Measured).
-- [ ] `src/OcuPilot/Port/InteropPort.cls` `ListClasses`, extended in place:
+- [x] **Task 0 (re-anchor, no code).** After 20.27 has merged into this branch, re-read `ListClasses`, `InteropTransformList.cls`, `screen-outlet.ts`'s interop rows and EXPERIENCE.md :159 and :604, and anchor this story's edits to what is there. Everything else this plan depends on was measured at the plan (Design Notes › Measured).
+- [x] `src/OcuPilot/Port/InteropPort.cls` `ListClasses`, extended in place:
   - While switched, collect into a local set the names `SubclassOf` answers for `Ens.BusinessProcessBPL` (Processes) or `Ens.DataTransformDTL` (Transforms).
   - Answer each row with `Coded` as a boolean, true when the name is not in that set.
   - Rules rows are unchanged.
   - Update the doc comment's row shape. No `Ens.*` type enters a signature (AD-62 item 12).
-- [ ] `InteropProcessList.cls` and `InteropTransformList.cls`: add `"Coded"` to `read.fields` after `Modified`. Context, table, sort and filter are unchanged. In all three list descriptors' doc comments, replace the "declares no action: editing … stays on the classic page" sentence with: the name cell opens the class in its editor screen (Story 20.7), and actions stay off the list (except 20.27's Test).
-- [ ] New `src/OcuPilot/Screen/Descriptor/InteropRuleEditor.cls`, `InteropProcessEditor.cls` and `InteropTransformEditor.cls`, shaped like `ExplorerClassEditor.cls`, with a doc comment naming AD-63, AD-5 and AD-44.
+- [x] `InteropProcessList.cls` and `InteropTransformList.cls`: add `"Coded"` to `read.fields` after `Modified`. Context, table, sort and filter are unchanged. In all three list descriptors' doc comments, replace the "declares no action: editing … stays on the classic page" sentence with: the name cell opens the class in its editor screen (Story 20.7), and actions stay off the list (except 20.27's Test).
+- [x] New `src/OcuPilot/Screen/Descriptor/InteropRuleEditor.cls`, `InteropProcessEditor.cls` and `InteropTransformEditor.cls`, shaped like `ExplorerClassEditor.cls`, with a doc comment naming AD-63, AD-5 and AD-44.
 
   | Key | Rule editor | Process editor | Transform editor |
   |---|---|---|---|
@@ -218,33 +219,33 @@ All paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-20`. Line numbe
   - No read, table, actions or `commandAliases`.
   - `context` `{fields: [], secretFields: []}`.
   - Three `promptGroupGettingStarted` prompts (`interop<Rule|Bpl|Dtl>EditorPrompt1..3`).
-- [ ] `src/OcuPilot/Test/InteropEditorDescriptor.cls` (new, about 150 lines, unarmed, read-only):
+- [x] `src/OcuPilot/Test/InteropEditorDescriptor.cls` (new, about 150 lines, unarmed, read-only):
   - `TestTheThreeEditorScreensRegister`: each declaration carries the table's values. `Registry.Validate` passes. Its classic page equals `%SYS.Portal.Resources.NormalizePage("<page>.zen")`, read in `%SYS` by explicit save and restore.
   - `TestEachClassicEditorSharesTheScreensPair`: the classic page's compiled `RESOURCE` names `%Ens_Code:READ`.
-- [ ] `src/OcuPilot/Test/InteropDescriptor.cls` `TestTheCodeListsReadThroughThePort` (extend):
+- [x] `src/OcuPilot/Test/InteropDescriptor.cls` `TestTheCodeListsReadThroughThePort` (extend):
   - Every Processes and Transforms row carries a boolean `Coded`.
   - `EnsLib.HL7.MsgRouter.RoutingEngine.cls` and `EnsLib.ITK.AdapterKit.Transform.PHDEToXMLDETransform.cls` read true.
   - `EnsLib.Background.Process.ExportMessageSearch.cls` and `Ens.Util.DTL.Audit.MessageView.cls` read false.
   - Rules rows carry no `Coded`.
-- [ ] Rosters, each row named from the instance:
+- [x] Rosters, each row named from the instance:
   - `Test/StageTwoTools.cls` `Elsewhere`: three rows, sorted.
   - `Test/SurfaceCoverage.cls`: three `<screen>` rows naming `InteropEditorDescriptor`'s `TestTheThreeEditorScreensRegister` with `corpus="one declaration test pins all three Story 20.7 editor screens in one loop"`.
   - `Test/Navigation.cls`:536-537: 19 becomes 22. In the order list, the process editor goes after `lookup-tables/entries`, and the rule and transform editors after `queues/messages`.
   - `Test/InteropFloor.cls` `ADMINISTRATORSCREENS`: the three, sorted.
-- [ ] `ui/src/app/core/strings.ts` (add-only): the fifteen literals in Design Notes › Strings. Then regenerate `ui/src/app/core/screens.generated.ts` with `cd ui && node tools/screen-mirror.mjs`.
-- [ ] `_bmad-output/planning-artifacts/ux-designs/ux-OcuPilot-2026-09-08/EXPERIENCE.md`:
+- [x] `ui/src/app/core/strings.ts` (add-only): the fifteen literals in Design Notes › Strings. Then regenerate `ui/src/app/core/screens.generated.ts` with `cd ui && node tools/screen-mirror.mjs`.
+- [x] `_bmad-output/planning-artifacts/ux-designs/ux-OcuPilot-2026-09-08/EXPERIENCE.md`:
   - :604, appended with no new line: the fifteen literals with a Story 20.7 clause.
   - :159, after the Interoperability sentence: "A Business rules, Business processes or Data transformations name cell opens the class in InterSystems' rule, BPL or DTL editor, in place (Story 20.7)."
   - Then run `cd ui && npm run test:tools`.
-- [ ] `ui/src/app/areas/interoperability/interop-editor-frame.ts` (DW-2350):
+- [x] `ui/src/app/areas/interoperability/interop-editor-frame.ts` (DW-2350):
   - Add `revision = input(0)`.
   - Draw the frame inside `@for` over a one-element list keyed by `revision` and source. A change of either then removes the element and creates a new one, and `syncSource` sets `src` once on it.
   - Replace the doc comment's last sentence: the component never navigates a drawn frame; a new source or revision is a new frame.
-- [ ] `interop-editor-frame.spec.ts`:
+- [x] `interop-editor-frame.spec.ts`:
   - Rewrite :149 as: a document, namespace or editor change draws a different element carrying the new `src`, and the old one is detached.
   - Add: a `revision` change draws a new element at the same `src`.
   - The other tests stay.
-- [ ] `ui/src/app/areas/interoperability/interop-editor.store.ts` (new, framework-free, AD-19). `InteropEditorState` holds `phase` (`loading | open | gone | coded | refused | fault`), `document`, `namespace`, `revision` and `failedPair`.
+- [x] `ui/src/app/areas/interoperability/interop-editor.store.ts` (new, framework-free, AD-19). `InteropEditorState` holds `phase` (`loading | open | gone | coded | refused | fault`), `document`, `namespace`, `revision` and `failedPair`.
   - **`open(id, namespace)`** checks the list's verdict first. A denied verdict is `refused` with its pair, and nothing is sent.
   - Otherwise it reads `screenReadPath(list, EDITOR_READ_ROWS = 1000)` with that `scope`, finds the row whose `Name` equals `id` exactly, and answers one of:
     - `gone` when no row matches, or the id lacks `.cls`;
@@ -253,7 +254,7 @@ All paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-20`. Line numbe
   - A 403 is `refused` naming `detail.failedPair`. Any other failure is `fault`.
   - A generation counter drops a late answer.
   - **`refresh()`** reads again for the same id and namespace.
-- [ ] `ui/src/app/areas/interoperability/interop-editor.page.ts` (new, `app-interop-editor-page`, `OnPush`):
+- [x] `ui/src/app/areas/interoperability/interop-editor.page.ts` (new, `app-interop-editor-page`, `OnPush`):
   - **Wiring.**
     - It maps its descriptor to its editor.
     - It finds its screen with `screenForUrl`, its list with `listForDocumentScreen` and its id with `ownIdSegment`.
@@ -267,22 +268,22 @@ All paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-20`. Line numbe
     - `fault`: `connectivityRequestRefused` with Retry.
   - Each block carries a `data-ocu-editor` attribute (`note`, `refresh`, `gone`, `coded`, `refused` or `fault`).
   - It never draws an `<iframe>` itself.
-- [ ] `ui/src/app/shell/screen-outlet.ts`: an `INTEROP_EDITOR_PAGE` loader constant, then three `DESCRIPTOR_PAGES` entries naming it, after the interop rows.
-- [ ] `ui/tools/interop-editor-store.test.mjs` (new, sibling of `database-details-store.test.mjs`): the matrix's open, coded, gone, refused (verdict and 403), fault, stale-answer, refresh and namespace rows, against a stubbed `requestJson`.
-- [ ] `ui/src/app/areas/interoperability/interop-editor.page.spec.ts` (new):
+- [x] `ui/src/app/shell/screen-outlet.ts`: an `INTEROP_EDITOR_PAGE` loader constant, then three `DESCRIPTOR_PAGES` entries naming it, after the interop rows.
+- [x] `ui/tools/interop-editor-store.test.mjs` (new, sibling of `database-details-store.test.mjs`): the matrix's open, coded, gone, refused (verdict and 403), fault, stale-answer, refresh and namespace rows, against a stubbed `requestJson`.
+- [x] `ui/src/app/areas/interoperability/interop-editor.page.spec.ts` (new):
   - Each phase draws its block.
   - `open` draws one `app-interop-editor-frame` with the editor, namespace, `document` without `.cls`, and revision.
   - Refresh bumps the revision.
   - An id change opens the new document.
-- [ ] `ui/tools/navigation.test.mjs`:
+- [x] `ui/tools/navigation.test.mjs`:
   - The roster gains the three routes, in Navigation.cls's order.
   - A pairing test after :775 asserts `documentScreenFor` of each list is its editor screen, and `listForDocumentScreen` is the inverse.
-- [ ] `ui/tools/screen-mirror.test.mjs`:2448-2496: add the three to the `ownPrivileges` owners, sorted.
-- [ ] `ui/browser/structural-walk.mjs`:
+- [x] `ui/tools/screen-mirror.test.mjs`:2448-2496: add the three to the `ownPrivileges` owners, sorted.
+- [x] `ui/browser/structural-walk.mjs`:
   - `SOURCE_VIEWER_IDS` gains `interoperability/processes/document: 'EnsLib.Background.Process.ExportMessageSearch.cls'` and `interoperability/transforms/document: 'Ens.Util.DTL.Audit.MessageView.cls'`. Both are core classes in every interop namespace, measured 200 in their editors.
   - `SKIP` gains `interoperability/rules/document`: "HSCUSTOM holds no business rule, so the walk has no rule to open; interop-editors.browser-spec.mjs walks it on the probe rule it creates".
   - Any fresh baseline entry is fixed or appended, as the file says.
-- [ ] `ui/browser/interop-editors.browser-spec.mjs` (new). `before` refuses `LIVE_CONTAINER` and requires readiness `installed`.
+- [x] `ui/browser/interop-editors.browser-spec.mjs` (new). `before` refuses `LIVE_CONTAINER` and requires readiness `installed`.
   - **Fixtures.** Through `runIris` in HSCUSTOM, `before` creates `OcuPilotProbe.EditorScreen.Rule` (a routing rule), `.Process` (BPL) and `.Transform` (DTL), each compiled, plus `.Broken`, a DTL loaded without compiling whose `<code>` does not compile. It records `^EnsPortal.Settings(<user>,"LastDTL")` and `"LastBP"`.
   - **`after`** deletes the package and restores both nodes. Each test signs in its own context.
   - **Tests**, each carrying its leg's mutation comment (Verification › Planned pinning mutations):
@@ -292,10 +293,10 @@ All paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-20`. Line numbe
     4. **AC3**: gone and coded.
     5. **AC4**: the editor moves away, Refresh draws it again, and an in-screen switch draws a new frame.
     6. **AC5**: sign-out.
-- [ ] **DW-2347:** the browser spec's tests 1, 2 and 6 (AC1, AC5).
-- [ ] **DW-2350:** the frame task, its spec, AC4, and Design Notes › DW-2350.
-- [ ] **DW-2351:** Refresh, the note, AC4, and Design Notes › DW-2351.
-- [ ] **Roster sweep (Rule 30).** Search `src/OcuPilot/Test`, `ui/tools`, `ui/browser` and the `ui/src` specs for any assertion about the interop screen count or order, the code lists' read fields, or `interop-editor-frame`'s set-again behavior. Each changed file joins the `(loop)` set.
+- [x] **DW-2347:** the browser spec's tests 1, 2 and 6 (AC1, AC5).
+- [x] **DW-2350:** the frame task, its spec, AC4, and Design Notes › DW-2350.
+- [x] **DW-2351:** Refresh, the note, AC4, and Design Notes › DW-2351.
+- [x] **Roster sweep (Rule 30).** Search `src/OcuPilot/Test`, `ui/tools`, `ui/browser` and the `ui/src` specs for any assertion about the interop screen count or order, the code lists' read fields, or `interop-editor-frame`'s set-again behavior. Each changed file joins the `(loop)` set.
 
 **Acceptance Criteria:**
 
@@ -348,6 +349,24 @@ All paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-20`. Line numbe
 - 2026-10-13, spec gate (runner): Rule 5 amendment applied to `epics.md` Story 20.7's second criterion (apply-and-report; the owner's 2026-10-07 decision moved it here). Original: "Given the editors' own messages - saved, compiled, invalid, When they are exchanged, Then the contract is established against a live editor, because it was never exercised." Amended: the Design Notes' proposed wording, verbatim. The Rule 20 drafts are written: AD-63's named consequence, AD-62 item 13 (`Coded`), AD-44's Story 20.7 `CLASSICPAGES`, and the EXPERIENCE.md :856 state-matrix exception. DW-2376 (decision-pending) asks the owner whether a later story adds a leave guard; this spec does not depend on the answer.
 
 ## Review Triage Log
+
+### 2026-10-13 -- Review pass
+
+- verdicts: 13 findings -- high 0, medium 1, low 7, false 5, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` Rules rows carry no `Coded` is asserted only inside the HSCUSTOM Rules loop, which reads no row -- the guard removed left `TestTheCodeListsReadThroughThePort` green. Fixed: `TestTheRulesListNamesTheProbeRuleAndProcessesDoesNot` asserts the USER probe rule's row has no `Coded`; the mutation reddens it alone.
+  - `[low]` `[patch]` AC1's structural test, locator clause and origin clause had no recorded mutation. Fixed: the structural and locator mutations were applied and seen red, and their lines recorded; the origin clause has no isolating mutation (a note says why).
+  - `[low]` `[reject]` AC2's "no message" clause was not the clause that reddened under its mutation -- AC2 reddens under it (Rule 19 asks one mutation per AC), the detector is 20.13's helper that AC1's `assertSignedInSilently` also runs, and no user sees the difference.
+  - `[low]` `[patch]` The AC1 loop asserted `200` on every `/ui/interop/` entry before all were answered. Fixed: it waits until each entry has a status.
+  - `[low]` `[reject]` The store test's title names "beyond the cap" though no capped read is sent -- the store cannot tell a capped read from an absent id, and the spec names that limit.
+  - `[low]` `[patch]` The frame spec's "restating the revision keeps the element" step set a signal input to its own value and could not fail. Fixed: the step is deleted and the title says what the test pins.
+  - `[false]` `[reject]` The Auto Run Result section still read ready-for-dev -- it is written at Finalize.
+  - `[false]` `[reject]` No vitest spec renders the lists' name cells -- the pairing test pins `documentScreenFor` and the browser AC1 clicks each real name cell and asserts the route.
+  - `[false]` `[reject]` `Coded` in `read.fields` also reaches the agent read tools -- the plan's task adds it, and `ReadTool` (28), `Descriptor` and `ToolNavigate` run green.
+  - `[low]` `[reject]` The page spec stubs `screenForUrl`, so its guard against another screen's `NavigationEnd` is not exercised -- the guard only skips a route change, and no failure from it is shown.
+  - `[false]` `[reject]` The scope-not-yet-loaded path is untested -- `ScopeService.namespace()` is `''` until loaded, so `onScopeChange` fires on arrival (`scope.ts:431`), as it does for `source-editor.page.ts:149`.
+  - `[false]` `[reject]` The browser spec was not shown to have run -- it ran 17 of 17 against the redeployed bundle, and three client mutations reddened it.
+  - `[low]` `[reject]` Refused, Fault and Namespace move are pinned only by the store, page and frame tiers -- the matrix rows hold there, the plan gave the browser tier AC1 to AC5, and no failure is shown.
 
 ## Design Notes
 
@@ -567,7 +586,34 @@ It does not touch `Test/Navigation.cls`, `Test/InteropFloor.cls`, `screens.gener
 | AC6 | One `Elsewhere` row is removed | `StageTwoTools` `TestTheRosterAndElsewhereAreEveryRegisteredScreen`, alone |
 | AC6 | `%Ens_Code:READ` is dropped from one editor | `InteropEditorDescriptor`, and `InteropFloor`'s Administrator roster |
 
+**Recorded mutations (implement pass).**
+
+- mutation: AC1, the store answering `open` with the id and its `.cls` kept -- the store test (3 rows), the page spec (4 tests), and the browser spec's AC1 (all three editors), AC2 and AC4 redden.
+- mutation: AC1 (DW-2347), the frame component's `:host` without `height: 100%` -- the browser AC1 box clause reddens for all three editors (the host is 150 px tall in a 739 px outlet).
+- mutation: AC2, `ListClasses` reading `Modified` from `%Dictionary.CompiledClass` -- the browser AC2 Modified clause reddens.
+- mutation: AC2, the address built with the editor's mode flag appended -- the browser AC2 reddens (the editor shows its sign-in form), and `vendor-frame.test.mjs` reddens (5 rows).
+- mutation: AC3, the store answering `open` for a row the read does not return -- the three gone legs of the browser AC3, the store test (3 rows) and the page spec (3 tests) redden.
+- mutation: AC3, `ListClasses` answering `Coded` false for every row -- `InteropDescriptor.TestTheCodeListsReadThroughThePort` and the two coded legs of the browser AC3 redden.
+- mutation: AC4, the frame component's `@for` tracking a constant key -- the frame spec's three redraw tests and the page spec's Refresh and id-change tests redden, and the browser AC4 Refresh leg reddens (the old element stays connected).
+- mutation: AC4, the store without its generation check -- the store test's stale-answer and reset rows redden.
+- mutation: AC5, `Session.signOut()` posting `/logout` with `credentials: 'omit'` -- the browser AC5 reddens (the editor's login, access token and refresh token are not refused).
+- mutation: AC6, `InteropTransformEditor` routed at `interoperability/transforms/editor` -- `InteropEditorDescriptor.TestTheThreeEditorScreensRegister` reddens, and with the mirror regenerated `navigation.test.mjs`'s pairing test and ordered roster redden.
+- mutation: AC6, the `InteropRuleEditor` `Elsewhere` row removed -- `StageTwoTools.TestTheRosterAndElsewhereAreEveryRegisteredScreen` reddens alone (1 of 4).
+- mutation: AC6, `%Ens_Code:READ` dropped from `InteropTransformEditor` (privileges and own pair) -- both `InteropEditorDescriptor` tests and `InteropFloor`'s `TestEachPrincipalSignsInAndOpensExactlyItsRoster` and `TestEveryOpenScreenMatchesItsClassicPage` redden.
+- mutation: AC1 (`Coded` on Rules rows), `ListClasses` answering `Coded` on every row, Rules included -- `InteropDescriptor.TestTheRulesListNamesTheProbeRuleAndProcessesDoesNot` reddens alone (HSCUSTOM holds no rule, so its Rules loop reads no row).
+- mutation: AC1 (DW-1337), a pale color on the page's note -- the browser structural test reddens for all three editors.
+- mutation: AC1 (locator), `locator-bar.ts` without the `listForDocumentScreen` route -- the browser AC1 locator clause reddens (it waits 30 s for the list's route).
+- note: AC1's origin clause has no isolating code mutation: a frame on another origin is refused by the content-security policy, and the silent sign-in clause fails first.
+
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
+
+**What changed.** The Business rules, Business processes and Data transformations name cells now open InterSystems' rule, BPL or DTL editor in place, at `<list>/document/<class>.cls`. Three unlisted `viewer (source)` screens share one page, `interop-editor.page.ts`, and one framework-free store. The store issues the owning list's declared read and draws `app-interop-editor-frame` only for a row it answers (not marked `Coded` for a process or transformation). `ListClasses` answers a boolean `Coded` on Processes and Transforms rows. `interop-editor-frame` takes a `revision` input and draws a new `<iframe>` for a new source or revision, so OcuPilot never navigates a drawn frame (DW-2350). Refresh draws the document again (DW-2351). The first real-browser run of the frame is the new `interop-editors.browser-spec.mjs` (DW-2347). The 15 strings, EXPERIENCE.md :159 and :604, the `StageTwoTools`, `SurfaceCoverage`, `Navigation` and `InteropFloor` rosters, the mirror, the client rosters and the structural walk carry the three screens, all by additions.
+
+**Review.** Two layers ran (verification-gap, intent-alignment); blind-hunter and edge-case-hunter have no instruction in this project and were skipped. 13 findings: 1 medium and 3 low patched, 5 false and 4 low rejected with reasons in the Review Triage Log; nothing deferred. No follow-up pass is recommended (patched: 0 high, 1 medium, 3 low; each patch was re-run green, and the Rules patch and the structural and locator mutations were seen red).
+
+**Verification** on `ocupilot-b-ci`, after the last patch: the six-class loop (43 tests) and the second loop (`Descriptor`, `CompileWithoutInterop`, `InteropFloorOwnPairs`, `ToolNavigate`, `ScreenAccessWire`, 98 tests), `ReadTool` (28) green; `npm run test:tools` 1979 and `npm run test:components` 3063 green; the build's prebuild chain clean; `check-objectscript.py` and `lint-docs.sh` clean; browser specs `interop-editors` 17 of 17, `interop-editor-frame` 8 and `interop-productions` 5 green, and `a11y-structural-invariants` (188 screens declared, 174 walked, 14 skipped, no baseline entry) green before the patches, which touch none of its inputs. Measured: the `interop-editor-page` lazy chunk is 9.75 kB raw (3.09 kB transfer), under 88 kB; the initial total is 1.91 MB against `maximumWarning` 1992kB. The full ObjectScript sweep, `npm test`, the smoke and Rule 30's fresh check are the runner's.
+
+**Residual risks.** A Refresh read that faults replaces the frame with the fault strip, so any unsaved change in it is lost. A class beyond the read's 1,000 rows reads as gone, as the list shows it. Both are named limits.

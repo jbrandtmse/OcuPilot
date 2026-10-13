@@ -182,11 +182,14 @@ XData Elsewhere
 <screen name="InteropLookupEntryList"/>
 <screen name="InteropLookupTableList"/>
 <screen name="InteropMonitorList"/>
+<screen name="InteropProcessEditor"/>
 <screen name="InteropProcessList"/>
 <screen name="InteropProductionList"/>
 <screen name="InteropQueueList"/>
 <screen name="InteropQueueMessageList"/>
+<screen name="InteropRuleEditor"/>
 <screen name="InteropRuleList"/>
+<screen name="InteropTransformEditor"/>
 <screen name="InteropTransformList"/>
 <screen name="LanguageServerActivity"/>
 <screen name="LanguageServerForm"/>
