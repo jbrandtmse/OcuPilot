@@ -66,14 +66,20 @@
 /// API's own integrity task makes, into a temporary stream (<method>IntegrityReport</method>); a check
 /// still running answers no lines and <code>running</code> true. The admin API keeps a check's report
 /// only in its one-read task result, so this is the one reader of a past check.</p>
+/// <p><b>Two sources tail live</b> (Story 18.38): <parameter>TAILSOURCES</parameter> names the current files
+/// of <code>messages</code> and <code>alerts</code>, and <method>Tail</method> holds a request until one
+/// moves, with a heartbeat the caller's class writes, so a viewer reads newer lines as the instance
+/// writes them. Every other source, a rotated file included, is read in bounded pages only.</p>
 /// <p>Seams a test subclass overrides (<class>OcuPilot.Test.LogSourceFixture</class>,
 /// <class>OcuPilot.Test.ErrorLogFixture</class>): <method>Sources</method>,
 /// <method>PairsFor</method>, <method>FileFor</method>, <method>ManagerDirectory</method>,
 /// <method>MaxBytesCap</method>, <method>GateClass</method>, <method>FileExists</method>,
 /// <method>OpenStream</method>, <method>DirectoryEntries</method>,
 /// <method>ErrorLevels</method>, <method>QueryClass</method>,
-/// <method>DetailQuery</method>, <method>NamespaceResolver</method>, <method>OpenQuery</method>
-/// and <method>RecordsClass</method>. Production overrides none of them.</p>
+/// <method>DetailQuery</method>, <method>NamespaceResolver</method>, <method>OpenQuery</method>,
+/// <method>RecordsClass</method>, <method>TailSources</method>, <method>TailBoundSeconds</method>,
+/// <method>TailCheckSeconds</method> and <method>TailBeatSeconds</method>. Production overrides none of
+/// them.</p>
 Class OcuPilot.Port.LogSourcePort Extends %RegisteredObject
 {
 
@@ -447,6 +453,18 @@ Parameter GATECLASS = "OcuPilot.Screen.Gate";
 /// <p>The subsystem name a raw status is logged under.</p>
 Parameter LOGSUBSYSTEM = "logsourceport";
 
+/// <p>The sources that opt into the live tail (Story 18.38): the two files that append under one
+/// offset-and-identity cursor. <method>TailSources</method> answers this list and
+/// <method>Tail</method> serves no other key.</p>
+Parameter TAILSOURCES = "messages,alerts";
+
+/// <p>Seconds between two looks at the tailed file (<method>TailCheckSeconds</method>).</p>
+Parameter TAILCHECKSECONDS = 1;
+
+/// <p>Seconds between two heartbeats while a tail waits (<method>TailBeatSeconds</method>), well inside
+/// the gateway's response timeout.</p>
+Parameter TAILBEATSECONDS = 10;
+
 /// <p>The source keys this port serves. Overridable so a fixture can drive an unknown key and a
 /// second source without waiting for one to ship; production never overrides it.</p>
 ClassMethod Sources() As %List
@@ -814,6 +832,183 @@ ClassMethod Page(pSource As %String = "", pOffset As %String = "", pMaxBytes As 
     Quit tSC
 }
 
+/// <p>The source keys that opt into the live tail, as <parameter>TAILSOURCES</parameter> lists them.
+/// Overridable so a fixture can drive a second source; production never overrides it.</p>
+ClassMethod TailSources() As %List
+{
+    Quit $ListFromString(..#TAILSOURCES)
+}
+
+/// <p>The longest a tail is held, in seconds: <method>OcuPilot.Kernel.Provider.TestCall.BoundSeconds</method>
+/// of the gateway's timeout, read at each call. Overridable so a fixture can hold a tail for seconds
+/// rather than most of a minute; production never overrides it.</p>
+ClassMethod TailBoundSeconds() As %Integer
+{
+    Quit ##class(OcuPilot.Kernel.Provider.TestCall).BoundSeconds(##class(OcuPilot.Kernel.Provider.TestCall).GatewaySeconds())
+}
+
+/// <p>Seconds a waiting tail sleeps between two looks at the file. Overridable for a fixture;
+/// production never overrides it.</p>
+ClassMethod TailCheckSeconds() As %Numeric
+{
+    Quit ..#TAILCHECKSECONDS
+}
+
+/// <p>Seconds between two heartbeats. Overridable for a fixture; production never overrides it.</p>
+ClassMethod TailBeatSeconds() As %Numeric
+{
+    Quit ..#TAILBEATSECONDS
+}
+
+/// <p>Whether the file at <var>pPath</var> is present and readable, with its size in
+/// <var>pSize</var> and its identity token in <var>pIdentity</var> (<method>Identity</method>'s).
+/// An absent or unreadable file answers 0 with size 0 and no identity.</p>
+ClassMethod TailState(pPath As %String, Output pSize As %Integer, Output pIdentity As %String) As %Boolean
+{
+    Set pSize = 0
+    Set pIdentity = ""
+    Set tPresent = 0
+    Try {
+        If '..FileExists(pPath) Quit
+        Set tOpenSC = ..OpenStream(pPath, .tStream)
+        If $$$ISERR(tOpenSC) || '$IsObject(tStream) Quit
+        Set tIdentitySC = ..Identity(tStream, .tSize, .tIdentity)
+        If $$$ISERR(tIdentitySC) Quit
+        Set pSize = tSize
+        Set pIdentity = tIdentity
+        Set tPresent = 1
+    } Catch ex {
+        Set pSize = 0
+        Set pIdentity = ""
+        Set tPresent = 0
+    }
+    Quit tPresent
+}
+
+/// <p>Hold until source <var>pSource</var>'s current file moves, and answer
+/// <code>{source, changed}</code> (Story 18.38). The caller then reads the change through
+/// <method>Page</method>: this says only that the file moved, never what it holds.</p>
+/// <p><var>pIdentity</var> and <var>pSize</var> are a page's <code>identity</code> and
+/// <code>size</code>, both required: the cursor is the baseline. The file has moved when its size or
+/// its identity differs from it, and the answer is then <code>changed</code> true at once. Otherwise
+/// the call re-checks every <method>TailCheckSeconds</method> up to <method>TailBoundSeconds</method>
+/// and answers <code>changed</code> false at the bound. An absent or unreadable file is no change
+/// before the bound and <code>changed</code> true at it, so the page read reports what is wrong.</p>
+/// <p>The refusals come in <method>Page</method>'s order and all precede the first wait or heartbeat:
+/// 404 <code>LOG.SOURCE</code> for a key outside <method>TailSources</method>, 403 for a pair set the
+/// caller does not hold (no file is touched), 400 <code>LOG.OFFSET</code> for a missing, half or
+/// malformed cursor, 400 <code>LOG.FILE</code> for any <var>pFile</var>: only a source's current file is
+/// tailed.</p>
+/// <p>Every <method>TailBeatSeconds</method> of waiting the call runs <var>pBeatClass</var>'s
+/// <code>Heartbeat</code> class method, which answers a <class>%Status</class> and is the only code that
+/// writes to the response device (AD-12); an empty <var>pBeatClass</var> beats nothing. A heartbeat
+/// that fails or throws, and an external interrupt from the gateway, mean the client has gone: the wait
+/// ends and nothing is logged. A disconnected client does not fail a heartbeat, so its wait runs to
+/// <method>TailBoundSeconds</method>. A response that has flushed cannot change its status, so a fault
+/// after the first heartbeat is logged and answered as <code>changed</code> true. Must not be called
+/// from an escalated frame (AD-9).</p>
+ClassMethod Tail(pSource As %String = "", pIdentity As %String = "", pSize As %String = "", pFile As %String = "", pBeatClass As %String = "", Output pResult As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status
+{
+    Set tSC = $$$OK
+    Set pResult = ""
+    Set pHttpStatus = 0
+    Set pFault = ""
+    Set tBeats = 0
+    Try {
+        If '$ListFind(..Sources(), pSource) || '$ListFind(..TailSources(), pSource) {
+            Set tSC = ..Refuse(404, ##class(OcuPilot.Api.Error).#NOTFOUND, ##class(OcuPilot.Api.Error).#LOGSOURCE, "OcuPilot does not tail a log source by that name", .pHttpStatus, .pFault)
+            Quit
+        }
+
+        Set tPairs = ..PairsFor(pSource)
+        If '$ListValid(tPairs) || ($ListLength(tPairs) = 0) {
+            Set tSC = ..DeniedRefusal("", .pHttpStatus, .pFault)
+            Quit
+        }
+        Set tFailedPair = ""
+        If '..Gate(tPairs, .tFailedPair) {
+            Set tSC = ..DeniedRefusal(tFailedPair, .pHttpStatus, .pFault)
+            Quit
+        }
+
+        If '$Match(pIdentity, "^[A-Za-z0-9_=-]{1,64}$") || '$Match(pSize, "^[0-9]{1,18}$") {
+            Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#LOGOFFSET, "identity and size are a page's cursor and travel together; supply both", .pHttpStatus, .pFault)
+            Quit
+        }
+        If pFile '= "" {
+            Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#LOGFILE, "A live tail follows a log's current file and takes no file name", .pHttpStatus, .pFault)
+            Quit
+        }
+
+        Set tSC = ..Resolve(pSource, .tPath, .pHttpStatus, .pFault, "", 0)
+        If $$$ISERR(tSC) Quit
+
+        Set tPresent = ..TailState(tPath, .tNowSize, .tNowIdentity)
+        Set tBaseSize = +pSize
+        Set tBaseIdentity = pIdentity
+        Set tBound = ..TailBoundSeconds()
+        Set tBeatEvery = ..TailBeatSeconds()
+        Set tCheckEvery = ..TailCheckSeconds()
+        Set tStart = $ZHorolog
+        Set tLastBeat = tStart
+        Set tChanged = 0
+        For {
+            If tPresent && ((tNowSize '= tBaseSize) || (tNowIdentity '= tBaseIdentity)) {
+                Set tChanged = 1
+                Quit
+            }
+            Set tNow = $ZHorolog
+            If (tNow - tStart) >= tBound {
+                Set tChanged = 'tPresent
+                Quit
+            }
+            If (pBeatClass '= "") && ((tNow - tLastBeat) >= tBeatEvery) {
+                Set tLastBeat = tNow
+                Set tBeatSC = $$$OK
+                Try {
+                    Set tBeatSC = $ClassMethod(pBeatClass, "Heartbeat")
+                } Catch beatEx {
+                    Set tBeatSC = beatEx.AsStatus()
+                }
+                Set tBeats = tBeats + 1
+                If $$$ISERR(tBeatSC) {
+                    Set tChanged = 0
+                    Quit
+                }
+            }
+            Hang tCheckEvery
+            Set tPresent = ..TailState(tPath, .tNowSize, .tNowIdentity)
+        }
+
+        Set pResult = {}
+        Do pResult.%Set("source", pSource)
+        Do pResult.%Set("changed", ''tChanged, "boolean")
+        Set pHttpStatus = 200
+    } Catch ex {
+        If ex.Name = "<EXTERNAL INTERRUPT>" {
+            ; The gateway gave up on this request and interrupted its process: the client has gone.
+            Set pResult = {}
+            Do pResult.%Set("source", pSource)
+            Do pResult.%Set("changed", 0, "boolean")
+            Set pHttpStatus = 200
+            Set pFault = ""
+            Set tSC = $$$OK
+        } ElseIf tBeats = 0 {
+            Set pResult = ""
+            Set tSC = ..Fail(pSource _ " tail failed inside the port", ex.AsStatus(), .pHttpStatus, .pFault)
+        } Else {
+            Do ..LogFault(pSource _ " tail failed after its first heartbeat", ex.AsStatus())
+            Set pResult = {}
+            Do pResult.%Set("source", pSource)
+            Do pResult.%Set("changed", 1, "boolean")
+            Set pHttpStatus = 200
+            Set pFault = ""
+            Set tSC = $$$OK
+        }
+    }
+    Quit tSC
+}
+
 /// <p>The same bounded tail <method>Page</method> serves, projected into the rows a declared read
 /// names (AD-36): at most <var>pMaxRows</var> objects carrying <code>time</code>,
 /// <code>severity</code> and <code>text</code>, <b>newest first</b>.</p>
@@ -1075,7 +1270,7 @@ ClassMethod InstanceEntries(pRecords As %String, pSource As %String, pWant As %I
     If pSource = ..#TASKERRORSKEY Quit $ClassMethod(pRecords, "TaskErrors", pWant, .pEntries, .pMore)
     Set tPath = ##class(%File).NormalizeFilename(..#SYSTEMMONITORFILE, ..ManagerDirectory())
     If '..FileExists(tPath) Quit $$$OK
-    Set tSC = ..Tail(tPath, .tLines, .tFromStart)
+    Set tSC = ..LastLines(tPath, .tLines, .tFromStart)
     If $$$ISERR(tSC) Quit tSC
     If 'tFromStart Set pMore = 1
     Quit $ClassMethod(pRecords, "SystemMonitor", tLines, pWant, .pEntries)
@@ -1099,7 +1294,7 @@ ClassMethod NamespaceEntries(pRecords As %String, pSource As %String, pNamespace
     Set tPath = ##class(%File).NormalizeFilename($Replace(..#ANALYTICSFORM, "<NS>", pNamespace), ..ManagerDirectory())
     Set pApplies = ..FileExists(tPath)
     If 'pApplies Quit $$$OK
-    Set tSC = ..Tail(tPath, .tLines, .tFromStart)
+    Set tSC = ..LastLines(tPath, .tLines, .tFromStart)
     If $$$ISERR(tSC) Quit tSC
     If 'tFromStart Set pMore = 1
     Quit $ClassMethod(pRecords, "Analytics", pNamespace, tLines, pWant, .pEntries)
@@ -1108,7 +1303,7 @@ ClassMethod NamespaceEntries(pRecords As %String, pSource As %String, pNamespace
 /// <p>The whole lines of the last <parameter>DEFAULTMAXBYTES</parameter> of <var>pPath</var>, oldest
 /// first, through <method>OpenStream</method> and <method>ReadWindow</method>.
 /// <var>pFromStart</var> is 1 when the window began at the file's first byte.</p>
-ClassMethod Tail(pPath As %String, Output pLines As %DynamicArray, Output pFromStart As %Boolean) As %Status [ Private ]
+ClassMethod LastLines(pPath As %String, Output pLines As %DynamicArray, Output pFromStart As %Boolean) As %Status [ Private ]
 {
     Set pLines = []
     Set pFromStart = 1
@@ -2912,8 +3107,10 @@ ClassMethod Gate(pPairs As %List, Output pFailedPair As %String) As %Boolean [ P
 /// replaces <method>FileFor</method>'s name and must resolve directly in that same directory.</p>
 /// <p>Refuses <code>LOG.SOURCE</code> for a key with no file, <code>LOG.FILE</code> for a named file
 /// that does not resolve directly in the manager directory, and <code>LOG.ABSENT</code> when the
-/// resolved file is not there; no refusal echoes the path (AD-21, AD-47).</p>
-ClassMethod Resolve(pSource As %String, Output pPath As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, pFile As %String = "") As %Status [ Private ]
+/// resolved file is not there; no refusal echoes the path (AD-21, AD-47). <var>pRequirePresent</var>
+/// 0 skips the presence test and never refuses <code>LOG.ABSENT</code>: <method>Tail</method> waits an
+/// absent file out.</p>
+ClassMethod Resolve(pSource As %String, Output pPath As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, pFile As %String = "", pRequirePresent As %Boolean = 1) As %Status [ Private ]
 {
     Set tSC = $$$OK
     Set pPath = ""
@@ -2926,7 +3123,7 @@ ClassMethod Resolve(pSource As %String, Output pPath As %String, Output pHttpSta
         If (pFile '= "") && '..DirectlyIn(pPath, tDirectory, pFile) {
             Set pPath = ""
             Set tSC = ..FileRefusal(.pHttpStatus, .pFault)
-        } ElseIf '..FileExists(pPath) {
+        } ElseIf pRequirePresent && '..FileExists(pPath) {
             Set pPath = ""
             Set tSC = ..Refuse(404, ##class(OcuPilot.Api.Error).#NOTFOUND, ##class(OcuPilot.Api.Error).#LOGABSENT, "That log file is not present on this instance", .pHttpStatus, .pFault)
         }

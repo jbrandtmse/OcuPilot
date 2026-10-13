@@ -37,6 +37,12 @@ Parameter MESSAGESREADPATH = "/api/ocupilot/screens/logs.messages/read";
 /// <p>The console log's list of older files (Story 16.20).</p>
 Parameter FILESPATH = "/api/ocupilot/logs/messages/files";
 
+/// <p>The console log's live tail (Story 18.38).</p>
+Parameter MESSAGESTAILPATH = "/api/ocupilot/logs/messages/tail";
+
+/// <p>The alert log's live tail (Story 18.38).</p>
+Parameter ALERTSTAILPATH = "/api/ocupilot/logs/alerts/tail";
+
 /// <p>A rotated file's name no instance writes and no test creates, so a request that passes the
 /// gate answers <code>LOG.ABSENT</code> -- which is itself evidence the gate admitted it.</p>
 Parameter NEVERWRITTEN = "messages.old_20000102";
@@ -456,6 +462,38 @@ Method TestAHolderOfTheEventLogResourceWithoutThePortalIsRefused()
         Set tFault = ##class(%DynamicObject).%FromJSON(tBody)
         Do $$$AssertEquals($Select($IsObject(tFault.detail): tFault.detail.failedPair, 1: ""), "%Ens_Portal:USE", tPath _ ": naming it")
     }
+}
+
+/// <p>Story 18.38 AC3 -- both live tails meet their sources' one pair: a principal without
+/// <code>%Admin_Operate:USE</code> is refused 403 naming it within two seconds, before any wait, and a
+/// principal holding that pair alone is served the console log's tail.</p>
+/// <p>The cursor sent is shaped right and matches no file, so a request that passed the gate would be
+/// answered <code>changed</code> true on the console log, and held to the bound on an alert log that
+/// is not there; the refused legs are red on the status either way.</p>
+/// <p>Mutation (Rule 19): <method>OcuPilot.Port.LogSourcePort.Tail</method> skips its gate -&gt; both
+/// refused legs answer 200 and go red.</p>
+Method TestAPrincipalWithoutAdminOperateIsRefusedOnBothTails()
+{
+    For tPath = ..#MESSAGESTAILPATH, ..#ALERTSTAILPATH {
+        Set tStart = $ZHorolog
+        Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("GET", tPath _ "?identity=abc&size=1", ..#SECUREUSER, ..PreparedPassword, .tStatus, .tBody, .tHeaders, "", "", .tNone, 10)
+        Set tElapsed = $ZHorolog - tStart
+        Do $$$AssertStatusOK(tSC, tPath _ ": the refused request completes")
+        Do $$$AssertEquals(tStatus, 403, tPath _ ": refused to a principal without %Admin_Operate:USE")
+        Do $$$AssertTrue($Get(tHeaders("CONTENT-TYPE")) [ "application/json", tPath _ ": as application/json")
+        Do $$$AssertEquals((tBody [ "}{"), 0, tPath _ ": exactly one envelope")
+        Do $$$AssertTrue(tElapsed < 2, tPath _ ": within two seconds: " _ tElapsed)
+        Set tFault = ##class(%DynamicObject).%FromJSON(tBody)
+        Do $$$AssertEquals(tFault.code, "AUTH.NOPRIVILEGE", tPath _ ": on the screen-privilege code")
+        Do $$$AssertEquals($Select($IsObject(tFault.detail): tFault.detail.failedPair, 1: ""), "%Admin_Operate:USE", tPath _ ": naming the pair that failed")
+    }
+
+    Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("GET", ..#MESSAGESTAILPATH _ "?identity=abc&size=1", ..#OPERATEUSER, ..PreparedPassword, .tStatus, .tBody, .tHeaders, "", "", .tNone, 10)
+    Do $$$AssertStatusOK(tSC, "the served request completes")
+    Do $$$AssertEquals(tStatus, 200, "%Admin_Operate:USE alone is served the console log's tail")
+    If tStatus '= 200 Quit
+    Set tAnswer = ##class(%DynamicObject).%FromJSON(tBody)
+    Do $$$AssertEquals(tAnswer.changed, 1, "which answers the change a cursor that matches no file asks about")
 }
 
 }

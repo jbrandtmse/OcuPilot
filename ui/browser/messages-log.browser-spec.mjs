@@ -77,6 +77,21 @@ const SEEDED = [
 
 let browser = null;
 
+/**
+ * Put one entry in the instance's `messages.log` through its own writer, `WriteToConsoleLog`, in its
+ * own argument order (Message, Flag, Severity, Event). Flag 0: the entry belongs in the file, not on
+ * the operator console.
+ */
+function writeConsoleLine(text, severity) {
+  const command = `##class(%SYS.System).WriteToConsoleLog("${text}",0,${severity},"${EVENT}")`;
+  const written = spawnSync(
+    'docker',
+    ['exec', config.container, 'iris', 'session', 'iris', '-U', 'HSCUSTOM', command],
+    { encoding: 'utf8', timeout: 120000 }
+  );
+  assert.equal(written.status, 0, `severity ${severity} was written:\n${written.stdout ?? ''}${written.stderr ?? ''}`);
+}
+
 before(async () => {
   assert.notEqual(config.container, LIVE_CONTAINER, 'this spec drives the throwaway, never the live container');
   const ready = await (await fetch(`${config.origin}${READINESS_PATH}`)).json();
@@ -100,22 +115,7 @@ before(async () => {
     { encoding: 'utf8', timeout: 60000 }
   );
   if (Number((already.stdout ?? '0').trim()) < SEEDED.length) {
-    for (const entry of SEEDED) {
-      // The instance's own writer, in its own argument order (Message, Flag, Severity, Event).
-      // Flag 0: the entry belongs in the file, not on the operator console.
-      const command =
-        `##class(%SYS.System).WriteToConsoleLog("${entry.text}",0,${entry.severity},"${EVENT}")`;
-      const written = spawnSync(
-        'docker',
-        ['exec', config.container, 'iris', 'session', 'iris', '-U', 'HSCUSTOM', command],
-        { encoding: 'utf8', timeout: 120000 }
-      );
-      assert.equal(
-        written.status,
-        0,
-        `severity ${entry.severity} was written:\n${written.stdout ?? ''}${written.stderr ?? ''}`
-      );
-    }
+    for (const entry of SEEDED) writeConsoleLine(entry.text, entry.severity);
     const seeded = spawnSync(
       'docker',
       [
@@ -324,9 +324,9 @@ test('AC5: a severity chip filters the rows, and Clear filter restores them and 
  * waited for and what the page showed instead -- Puppeteer's own message names neither, and a
  * failure line nobody can quote is a second run's work (DW-1119).
  */
-async function waitNamed(page, predicate, what, args = []) {
+async function waitNamed(page, predicate, what, args = [], timeoutMs = config.navigationTimeoutMs) {
   try {
-    await page.waitForFunction(predicate, { timeout: config.navigationTimeoutMs }, ...args);
+    await page.waitForFunction(predicate, { timeout: timeoutMs }, ...args);
   } catch (cause) {
     // The dump is itself a page read, and a page closed or torn down under the wait cannot answer
     // it -- unguarded, that read throws and replaces the named failure with a bare protocol error,
@@ -472,6 +472,59 @@ test('AC8: the fault banner opens messages.log and brings the Logs side bar with
       STRINGS.messagesLogListLabel,
       'with messages.log as the entry it marks current'
     );
+  } finally {
+    await context.close();
+  }
+});
+
+test('Story 18.38: Live tail brings a line the instance writes onto the screen without Load newer, and off drops the tail', async () => {
+  const { context, page } = await signedInAtViewer();
+  try {
+    // The first window has answered: its rows are on screen, and Live tail is offered on the current file.
+    await waitNamed(page, () => document.querySelector('[data-ocu-log="live"]') !== null, 'Live tail was offered once the first window answered');
+    const label = await page.$eval('[data-ocu-log="live"]', (node) => node.textContent.trim());
+    assert.equal(label, STRINGS.logViewerLiveTail, 'the toggle carries the published word');
+    assert.equal(await page.$eval('[data-ocu-log="live"]', (node) => node.getAttribute('aria-pressed')), 'false', 'and is off until pressed');
+
+    const tails = [];
+    const pages = [];
+    page.on('request', (request) => {
+      const url = new URL(request.url());
+      if (url.pathname.endsWith('/logs/messages/tail')) tails.push(url.search);
+      else if (url.pathname.endsWith('/logs/messages') && url.search.includes('offset=')) pages.push(url.search);
+    });
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+    assert.equal(tails.length, 0, 'nothing is tailed while Live tail is off');
+
+    await page.click('[data-ocu-log="live"]');
+    await waitNamed(page, () => document.querySelector('[data-ocu-log="live"]')?.getAttribute('aria-pressed') === 'true', 'the toggle read pressed');
+
+    const marker = `${MARKER} live ${Date.now()}`;
+    writeConsoleLine(marker, 0);
+    await waitNamed(
+      page,
+      (text) => [...document.querySelectorAll('.ocu-log-rows .ocu-log-cell-text')].some((node) => node.textContent.includes(text)),
+      'the written line appeared without Load newer',
+      [marker],
+      10000
+    );
+    assert.ok(tails.length >= 1, `the line came through the tail route: ${tails.length} tail requests`);
+    assert.match(tails[0], /identity=.+&size=\d+/, `carrying the page's cursor: ${tails[0]}`);
+    assert.ok(pages.length >= 1, 'and a page read from the held offset');
+
+    // Off: the tail held in flight is dropped, so a line written now never reaches the screen and
+    // nothing more is requested.
+    await page.click('[data-ocu-log="live"]');
+    await waitNamed(page, () => document.querySelector('[data-ocu-log="live"]')?.getAttribute('aria-pressed') === 'false', 'the toggle read off');
+    const tailsAtOff = tails.length;
+    const pagesAtOff = pages.length;
+    const later = `${MARKER} after off ${Date.now()}`;
+    writeConsoleLine(later, 0);
+    await new Promise((resolve) => setTimeout(resolve, 4000));
+    assert.equal(tails.length, tailsAtOff, 'no further tail is requested once Live tail is off');
+    assert.equal(pages.length, pagesAtOff, 'and no page is read for the dropped answer');
+    const shown = await page.$$eval('.ocu-log-rows .ocu-log-cell-text', (nodes, text) => nodes.some((node) => node.textContent.includes(text)), later);
+    assert.equal(shown, false, 'so the line written after it stays off the screen until Load newer');
   } finally {
     await context.close();
   }

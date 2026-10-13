@@ -1303,6 +1303,8 @@ export const STRINGS = {
   /** EXPERIENCE.md:379 */
   logViewerLoadNewer: 'Load newer',
   /** EXPERIENCE.md:379 */
+  logViewerLiveTail: 'Live tail',
+  /** EXPERIENCE.md:379 */
   logViewerJumpTop: 'Jump to top',
   /** EXPERIENCE.md:379 */
   logViewerJumpBottom: 'Jump to bottom',

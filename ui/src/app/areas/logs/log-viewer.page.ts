@@ -118,8 +118,11 @@ const SOURCES: Readonly<Record<string, LogViewerSource>> = {
  *
  * Each log screen adds one `SOURCES` route rather than a page of its own.
  *
- * **Nothing streams and nothing ticks** (AD-43). The store issues one read when the screen opens
- * and one per explicit Load newer; there is no interval, no `EventSource` and no `WebSocket`.
+ * **Nothing ticks** (AD-43). The store issues one read when the screen opens and one per explicit
+ * Load newer; there is no interval, no `EventSource` and no `WebSocket`. Where the source opts into
+ * the live tail (alerts.log and messages.log, current file only, Story 18.38), a Live tail toggle
+ * beside Load newer chains long polls that bring newer lines as the instance writes them; it is off
+ * until pressed, and off again when the file choice changes or the page is left.
  *
  * **Every severity carries its word** (`EXPERIENCE.md` Accessibility Floor, `DESIGN.md` severity
  * pairs): the chip is a word on a colour pair, never a colour alone, and a level the vendor's scale
@@ -310,10 +313,25 @@ const SOURCES: Readonly<Record<string, LogViewerSource>> = {
       </div>
     }
 
-    @if (showLoadNewer) {
-      <button type="button" class="ocu-button-text ocu-log-load-newer" data-ocu-log="load-newer" (click)="onLoadNewer()">
-        {{ STRINGS.logViewerLoadNewer }}
-      </button>
+    @if (showTailBar) {
+      <div class="ocu-log-tail-bar" data-ocu-log="tail-bar">
+        @if (showLoadNewer) {
+          <button type="button" class="ocu-button-text ocu-log-load-newer" data-ocu-log="load-newer" (click)="onLoadNewer()">
+            {{ STRINGS.logViewerLoadNewer }}
+          </button>
+        }
+        @if (showLive) {
+          <button
+            type="button"
+            class="ocu-button-secondary ocu-log-live"
+            data-ocu-log="live"
+            [attr.aria-pressed]="live"
+            (click)="onLive()"
+          >
+            {{ STRINGS.logViewerLiveTail }}
+          </button>
+        }
+      </div>
     }
   </section>`,
 })
@@ -420,6 +438,7 @@ export class LogViewerPage {
     });
     inject(DestroyRef).onDestroy(() => {
       this.destroyed = true;
+      this.store.setLive(false);
       stop();
       stopExplain?.();
       stopRefreshAction?.();
@@ -686,6 +705,27 @@ export class LogViewerPage {
   protected get showLoadNewer(): boolean {
     this.generation();
     return this.store.canLoadNewer();
+  }
+
+  /** Whether the Live tail toggle is drawn: the source and window can tail, or the tail is on. */
+  protected get showLive(): boolean {
+    this.generation();
+    return this.store.canLive() || this.store.live();
+  }
+
+  /** Whether Live tail is on, which the toggle's `aria-pressed` says. */
+  protected get live(): boolean {
+    this.generation();
+    return this.store.live();
+  }
+
+  /** Whether the row under the window holds a control: Load newer, Live tail, or both. */
+  protected get showTailBar(): boolean {
+    return this.showLoadNewer || this.showLive;
+  }
+
+  protected onLive(): void {
+    this.store.setLive(!this.store.live());
   }
 
   protected onSearch(event: Event): void {

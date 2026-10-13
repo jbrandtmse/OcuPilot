@@ -115,6 +115,10 @@ XData Probes
 <probe class="Api.Router" method="GET" url="/logs/alerts" path="/api/ocupilot/logs/alerts" disposition="envelope"/>
 <probe class="Api.Router" method="GET" url="/logs/messages" path="/api/ocupilot/logs/messages" disposition="envelope"/>
 <probe class="Api.Router" method="GET" url="/logs/messages/files" path="/api/ocupilot/logs/messages/files" disposition="envelope"/>
+<!-- The two live tails carry no query string here, so each draws the 400 LOG.OFFSET that a tail with no
+     cursor is refused with, at once, rather than a request held to the bound. -->
+<probe class="Api.Router" method="GET" url="/logs/alerts/tail" path="/api/ocupilot/logs/alerts/tail" disposition="envelope" expect="code=LOG.OFFSET"/>
+<probe class="Api.Router" method="GET" url="/logs/messages/tail" path="/api/ocupilot/logs/messages/tail" disposition="envelope" expect="code=LOG.OFFSET"/>
 <probe class="Api.Router" method="GET" url="/logs/integrity" path="/api/ocupilot/logs/integrity" disposition="envelope"/>
 <probe class="Api.Router" method="GET" url="/logs/integrity/files" path="/api/ocupilot/logs/integrity/files" disposition="envelope"/>
 <probe class="Api.Router" method="GET" url="/logs/systemmonitor" path="/api/ocupilot/logs/systemmonitor" disposition="envelope"/>

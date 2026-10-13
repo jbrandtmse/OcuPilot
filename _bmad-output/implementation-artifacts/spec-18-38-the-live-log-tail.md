@@ -2,10 +2,10 @@
 title: 'Story 18.38: The live log tail'
 type: 'feature'
 created: '2026-10-12'
-status: 'in-review'
+status: 'done'
 baseline_revision: 'ad0fb51feefb1ce52a318fc5f8d7c2148eefb49c'
 review_loop_iteration: 0
-followup_review_recommended: false
+followup_review_recommended: true
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-18-context.md'
 warnings: ['oversized']
@@ -115,6 +115,37 @@ Under `src/OcuPilot/` at `093b3f34`.
 
 ## Review Triage Log
 
+### 2026-10-13 - Review pass
+
+- verdicts: 26 findings - high 0, medium 3, low 19, false 4, maybe-false 0
+- findings (G = verification-gap layer, I = intent-alignment layer):
+  - `[medium]` `[patch]` G1 heartbeat newline and its `HandleTail` wiring verified nowhere: `Envelope` never reads the device and `LogTailWire` accepted zero newlines - `LogTailWire` held-cursor test now holds past a beat interval (up to three tries, since the instance writes `messages.log` now and then) and asserts a newline per full beat and a hold to the bound when unchanged
+  - `[medium]` `[patch]` G2 the alerts tail route's source binding verified nowhere: every 200 assertion ran on messages - the cursor-behind test now loops both routes and asserts `source`
+  - `[low]` `[patch]` G3 the shipped bound had only an upper limit on the wire - the held-to-the-bound assertion in the same test
+  - `[low]` `[patch]` G4 the absent-file gap leg could pass on a writer that never ran - the fixture counts absent looks, the leg asserts at least one
+  - `[low]` `[reject]` G5a no mutation line for the identity term - Rule 19 asks one demonstrated mutation per AC; AC1 has several
+  - `[low]` `[patch]` G5b no mutation for the bound or the second-envelope and space-heartbeat claims - the unobserved claim left the test header; the bound mutation is recorded
+  - `[low]` `[patch]` G5c no mutation for the heartbeat write or the beat class - two mutations recorded (runs 680, 681)
+  - `[low]` `[patch]` G5d no mutation for the alerts binding - recorded (run 685)
+  - `[low]` `[reject]` G5e no mutation for the `livePath` term of `canLive` - per-AC discipline met by the current-file term
+  - `[low]` `[reject]` G5f no mutation for the `LOG.FILE` branch - per-AC discipline met by the cursor, gate and roster mutations
+  - `[low]` `[reject]` G6 writer-job tests carry about 1.3 s of start margin - generous for a job start, and a fix adds a readiness signal to every writer test
+  - `[false]` `[reject]` G7 the absent-file answer is not tied to the alerts route - the matrix row is the port's, tested by the absent-file test; the alerts route runs the same `Tail`
+  - `[low]` `[reject]` G8 gate-before-malformed-cursor precedence untested - no matrix row states it, and a reorder leaks only the cursor grammar
+  - `[medium]` `[patch]` I1 the heartbeat bytes are checked at the port with a fake class and on the wire only as "zero or more" - the G1 fix
+  - `[low]` `[patch]` I2 the envelope written after a flushed heartbeat is covered by no guaranteed-heartbeat test - the G1 test parses the whole body after four newlines (run 678)
+  - `[low]` `[reject]` I3 the 1 s check interval default is referenced by no test - a slow default would show in the browser spec's 10 s window
+  - `[low]` `[reject]` I4 rotation tested on a scratch file, never `MoveConsoleLog` - measured in Task 0 (c); rotating the instance log in a test breaks hermeticity
+  - `[low]` `[reject]` I5 a dropped socket is driven by no test - the accepted consequence of the Rule 5 amendment; the deferred entry stands
+  - `[false]` `[reject]` I6 the 404 `LOG.SOURCE` row is reachable only at the port - the Router maps the two tail sources only; the port test pins the row
+  - `[low]` `[patch]` I7 alerts held and changed paths unexercised on the wire - the G2 fix exercises the changed-at-once path; the held path is the same `Tail`
+  - `[low]` `[reject]` I8 opt-in is declared at the port, the Router and the client - AD-5; the descriptor tests tie the viewers to `TailSources()`
+  - `[low]` `[patch]` I9 `LOG.FILE` reused the page's rotated-file sentence - `Tail` now has its own
+  - `[low]` `[reject]` I10 `Page`'s order is mirrored, not shared or compared - the matrix's codes are pinned row by row
+  - `[low]` `[reject]` I11 the component spec runs against `StubApi` - the browser spec runs the real client
+  - `[false]` `[reject]` I12 `EXPERIENCE.md` and `strings.ts` are also in Epic 20's diff - the stage ruling lists both as shared add-only files; the hunks do not overlap
+  - `[false]` `[reject]` I13 the intent's `:899` quote is gone from the tree - the spec gate amended that line
+
 ## Design Notes
 
 **Governing ADs:** AD-5, 8, 12, 16, 19, 21, 22, 29, 30, 31, 36, 39, 43. **Consumes:** 6.13 and 6.14 (`Page`, the viewer), 16.20 (the file choice), 10.5 (`TestCall`). **Consumed-by:** no story beyond the two viewers. **Ledger:** none.
@@ -165,9 +196,9 @@ Under `src/OcuPilot/` at `093b3f34`.
 
 every test added or changed passes on a fresh environment, in either order
 
-**Results** (ocupilot-ci, final code, totals confirmed in `%UnitTest_Result`): `LogTail` 11 (run 665), `LogTailWire` 4 (666), `LogSourceDenial` 8 (667), `EndpointCoverage` 2 (668), `Descriptor` 60 (669), `DeveloperFloorRoutes` 1 (670), `InteropFloorRoutes` 1 (671), `LogSource` 22 (672), `LogSourceWire` 9 (673), `ReadTool` 28 (674), `SurfaceCoverage` 4 (675), `Envelope` 17 (676). `test:tools` 1,969/1,969; `test:components` 3,063 in 244 files; `check-objectscript` and `lint-docs` 0 problems. Browser on the rebuilt bundle: `messages-log` 5/5, `alerts-log` 7/7, `messages-log-files` 5/5, `secondary-logs` 7/7, and `screen-height` 15/15 for the wrapped Load newer row. Build: initial total 1.91 MB (warning at 1,992 kB), largest lazy chunk `data-browser-page` 83.32 kB (cap 88 kB). Fixed strings: 3,356 -> 3,357 literals under the unchanged bound 3,400; 43 remain, so the next story that adds literals raises it.
+**Results** (ocupilot-ci, final code, totals confirmed in `%UnitTest_Result`): `LogTail` 11 (run 688), `LogTailWire` 4 (687), `LogSource` 22 (686), `LogSourceDenial` 8 (667), `EndpointCoverage` 2 (668), `Descriptor` 60 (669), `DeveloperFloorRoutes` 1 (670), `InteropFloorRoutes` 1 (671), `LogSourceWire` 9 (673), `ReadTool` 28 (674), `SurfaceCoverage` 4 (675), `Envelope` 17 (676). `test:tools` 1,969/1,969; `test:components` 3,063 in 244 files; `check-objectscript` 0 problems and `lint-docs` 0 problems. Browser on the rebuilt bundle: `messages-log` 5/5, `alerts-log` 7/7, `messages-log-files` 5/5, `secondary-logs` 7/7, and `screen-height` 15/15 for the wrapped Load newer row. Build: initial total 1.91 MB (warning at 1,992 kB), largest lazy chunk `data-browser-page` 83.32 kB (cap 88 kB). Fixed strings: 3,356 -> 3,357 literals under the unchanged bound 3,400; 43 remain, so the next story that adds literals raises it. The review pass changed ObjectScript only (`LogSourcePort.Tail`'s `LOG.FILE` sentence, `LogSourceFixture`, `LogTail`, `LogTailWire`); the classes above it ran before it stand.
 
-**Mutations** (observed, each reverted; ObjectScript on `ocupilot-ci`'s mounted copy with the class and its three descendants recompiled, client rebuilt and redeployed before the browser read it):
+**Mutations** (observed, each reverted; ObjectScript on `ocupilot-ci`'s mounted copy with the class and its descendants recompiled, client rebuilt and redeployed before the browser read it):
 
 - mutation: `Tail` drops the size term from its moved comparison -> `LogTail` moved, mid-wait, partial-line and gate-served legs (4 red); `LogTailWire` cursor-a-byte-behind (50.35 s, not 2 s)
 - mutation: `Tail` never calls its heartbeat -> `LogTail` still-file (0 beats), absent-file, client-gone and fault-after-first-beat legs (4 red)
@@ -177,6 +208,10 @@ every test added or changed passes on a fresh environment, in either order
 - mutation: `TAILSOURCES` plus `systemmonitor` -> `LogTail` roster and refusal row (red) and `Descriptor` secondary-log loop (red); `TAILSOURCES` minus `alerts` -> `Descriptor` alert leg (red)
 - mutation: the gate skipped in `Tail` -> `LogSourceDenial` both-tails leg (red, 403 expected)
 - mutation: `AllowOutputFlush` line deleted from `Heartbeat` -> `Envelope` heartbeat leg at "output flushing on" (red); `GzipOutput` line deleted -> the same leg at "compression off" (red)
+- mutation: `Write $Char(10)` deleted from `Heartbeat` -> `LogTailWire` held-cursor test at "a newline for each full beat interval held (4 after 50.3 s): 0" (run 680); `HandleTail` passing no beat class -> the same assertion (run 681)
+- mutation: `TailBoundSeconds` answers 15 -> `LogTailWire` held-cursor test at "an unchanged tail was held to the bound: 15.1" (run 682)
+- mutation: `LogAlertsTail` bound to the console log's key -> `LogTailWire` cursor-a-byte-behind test at "alerts: naming the source the route bound" (run 685)
+- mutation: `Tail` answers changed true as soon as the file is absent -> `LogTail` absent-file test (4 red, run 683); the gap writer started after the bound -> its "a look did find the file absent" assertion alone (run 684)
 - mutation: the `/logs/alerts/tail` probe deleted -> `EndpointCoverage` (196 probes, 197 routes, red); the `/logs/messages/tail` route deleted -> `LogTailWire` 4 of 4 red
 - mutation: `canLive` without the current-file test -> `log-viewer.spec.ts` AC6 loop, rotated-file and file-change legs (3 red)
 - mutation: `stopLive` keeps the live generation -> the four AC4 legs: off, page in flight, file change, leaving (4 red)
@@ -185,7 +220,17 @@ every test added or changed passes on a fresh environment, in either order
 
 ## Auto Run Result
 
-Status: blocked
-Blocking condition: intent gap (Task 0 e, a gate in the stage ruling): a heartbeat does not fail after a client disconnects, so a dropped client's process stays in `Tail` until the 50 s bound. Recommended amendment: reword the matrix's "Client gone" row to "a heartbeat write fails, or the gateway interrupts | the wait ends; a dropped socket's wait runs to the bound | nothing logged", accepting the bounded hold as the Named consequence (deferred, low); AD-12's carve-out also names `GzipOutput = 0` and `AllowOutputFlush = 1` (Task 0 b); the cursor is required whole, both `identity` and `size`, since neither must draw `LOG.OFFSET` for `EndpointCoverage`'s bare probe.
+Status: done
+Blocking condition: none
 
-Pass state: tasks 1-14 are implemented and uncommitted in the worktree at `baseline_revision`; results and mutations are under `## Verification`. The review layers and finalize did not run; resume at step 04 once the row is amended.
+**Change.** `messages` and `alerts` opt into a live tail (`LogSourcePort.TAILSOURCES`, `Tail`, `TailState` and the three timing seams); `GET /logs/<source>/tail` is held up to the gateway-derived bound with a heartbeat newline each 10 s (`Api/Response.Heartbeat`: JSON type, compression off, flushing on, then newline and flush) before one `{source, changed}` envelope; the log viewer's Live tail toggle chains the polls (no timer) and reads each change through the page route. The agent gets no tool. Task 0's measurements are under Design Notes; the lead's answer (a dropped socket waits out the bound; the cursor is required whole; AD-12 names the two flush properties) is in the Spec Change Log.
+
+**Files.** Port: `Port/LogSourcePort.cls` (tail seams, `Tail`, `TailState`). API: `Api/Response.cls` (`Heartbeat`), `Api/LogPage.cls` (`HandleTail`), `Api/Router.cls` (two routes, two thin targets). Descriptors: `LogMessageViewer.cls`, `LogAlertViewer.cls` (the no-auto-refresh sentence). Client: `log-viewer.store.ts` (`livePath`, `canLive`, `setLive`, the chained loop), `log-viewer.page.ts` (toggle), `strings.ts` (+1), `_components.scss` (toggle row). Tests: `Test/LogTail.cls`, `LogTailWire.cls`, `ResponseProbe.cls` (new), `LogSourceFixture.cls`, `LogSourceDenial.cls`, `Envelope.cls`, `EndpointCoverage.cls`, `Descriptor.cls`, `log-viewer.spec.ts`, `messages-log.browser-spec.mjs`. Planning: `EXPERIENCE.md` :379 in place.
+
+**Review.** Two layers, 26 findings: 3 medium, 19 low, 4 false (rows under Review Triage Log). Patched: the held-cursor wire test now binds the heartbeat newlines and the bound's floor; the cursor-behind wire test covers the alerts route; the absent-file leg asserts an absent look; `Tail` has its own `LOG.FILE` sentence; five mutation lines recorded. Rejected: the remaining lows (reasons in the log) and four false claims. Deferred: the two first-pass entries stand (the dropped-client hold is now the accepted consequence); nothing new.
+
+**Follow-up review: recommended** (two medium entries patched). Unverified until CI: the new wire assertions assume `messages.log` stays still for one beat interval in one of three holds, and the alerts leg assumes an `alerts.log` on a fresh shard throwaway (a fresh one carries a few lines).
+
+**Verified** on `ocupilot-ci` (results and mutations under Verification): `LogTail` 11, `LogTailWire` 4, `LogSource` 22 after the patches; every other class and the client tiers are from the implement pass over unchanged code; `check-objectscript` 0 problems. The throwaway holds no probe leftovers; the rotated log Task 0 made was removed.
+
+**Residual risk.** A dropped client holds one CSP process to the bound (deferred, accepted); no automated test sees a beat arrive on time (deferred).

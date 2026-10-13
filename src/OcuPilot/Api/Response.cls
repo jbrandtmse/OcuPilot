@@ -25,6 +25,24 @@ ClassMethod JSON(pData) As %Status
     Quit $$$OK
 }
 
+/// <p>Write one heartbeat of a held JSON response (AD-12's second carve-out) and flush it: the JSON
+/// content type, one newline, which JSON reads as nothing before the route's one envelope, and a
+/// flush to the gateway. The first heartbeat also turns the gateway's compression off and its output
+/// flushing on; without both the gateway holds every beat until the envelope for a client that accepts
+/// gzip, which every browser does. Those and the status are fixed from the first flush on, so a caller
+/// refuses before its first heartbeat and answers only its envelope after. Answers the flush's status;
+/// a heartbeat that cannot be written means the client has gone.</p>
+ClassMethod Heartbeat() As %Status
+{
+    If '%response.InProgress {
+        Set %response.ContentType = "application/json"
+        Set %response.GzipOutput = 0
+        Set %response.AllowOutputFlush = 1
+    }
+    Write $Char(10)
+    Quit %response.Flush()
+}
+
 /// <p>Write a JSON response with a specific HTTP status code.</p>
 ClassMethod JSONStatus(pStatus As %Integer, pData) As %Status
 {

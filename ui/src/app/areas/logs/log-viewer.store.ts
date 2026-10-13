@@ -1,6 +1,6 @@
 import { Injectable, Injector, inject } from '@angular/core';
 
-import { ApiService } from '../../core/api';
+import { ApiService, type JsonResult } from '../../core/api';
 import { classifyFault, type Fault } from '../../core/fault';
 import { parseFileLines, type LogFileEntry, type LogLine } from './log-line';
 
@@ -36,11 +36,18 @@ export interface LogViewerSource {
    * newer reads that window again, and the rows as answered are what the screen publishes.
    */
   readonly kind?: 'read';
+  /**
+   * The route that holds a request until the source's current file moves (Story 18.38), present
+   * only on a source whose port opts into the live tail. It answers `{source, changed}`; the page
+   * route then reads the change. A source without it offers no Live tail and requests no tail.
+   */
+  readonly livePath?: string;
 }
 
 /** The alerts.log screen's route. */
 export const ALERTS_SOURCE: LogViewerSource = {
   tailPath: '/api/ocupilot/logs/alerts',
+  livePath: '/api/ocupilot/logs/alerts/tail',
 };
 
 /** The messages.log screen's route, bound to the `messages` source key by `Api/Router.cls`. */
@@ -48,6 +55,7 @@ export const MESSAGES_SOURCE: LogViewerSource = {
   tailPath: '/api/ocupilot/logs/messages',
   filesPath: '/api/ocupilot/logs/messages/files',
   ownFile: 'messages.log',
+  livePath: '/api/ocupilot/logs/messages/tail',
 };
 
 /** The six secondary logs (Story 16.8), each bound to its own source key by `Api/Router.cls`. */
@@ -100,6 +108,13 @@ function numberAt(body: unknown, key: string): number {
 function flagAt(body: unknown, key: string): boolean {
   if (body === null || typeof body !== 'object') return false;
   return (body as Record<string, unknown>)[key] === true;
+}
+
+/** A tail answer's `changed`, or `null` when the body is not the `{source, changed}` envelope. */
+function changedOf(body: unknown): boolean | null {
+  if (body === null || typeof body !== 'object') return null;
+  const value = (body as Record<string, unknown>)['changed'];
+  return typeof value === 'boolean' ? value : null;
 }
 
 /**
@@ -212,9 +227,11 @@ function reportLinesOf(lines: readonly string[], time: string): readonly LogLine
 /**
  * The log viewer's own state: the entries on screen and the tail cursor they were read under.
  *
- * **Nothing here streams, and nothing here ticks** (AD-43). There is no interval, no `EventSource`
- * and no `WebSocket`; the only reads are the one this store issues when a screen opens and the one
- * an explicit Load newer issues. A screen left open issues nothing at all.
+ * **Nothing here ticks** (AD-43). There is no interval, no `EventSource` and no `WebSocket`; the
+ * reads are the one this store issues when a screen opens, the one an explicit Load newer issues,
+ * and, on a source that opts in and only while Live tail is on (Story 18.38), one chained long poll
+ * and the page read each `changed` answer asks for. A screen left open with Live tail off issues
+ * nothing at all.
  *
  * **Root-provided**, like the application error log's drill, so the cursor and the rows survive a
  * navigation. What it holds is which lines this principal was reading, so `app.ts`'s sign-out
@@ -276,6 +293,15 @@ export class LogViewerStore {
   /** Bumped per issued read, so a late answer to a screen the user has left is dropped. */
   private generation = 0;
 
+  /** Whether Live tail is on: the chained long poll below is running. */
+  private liveValue = false;
+
+  /** Bumped whenever Live tail starts or must stop; a loop that holds an older number ends. */
+  private liveGeneration = 0;
+
+  /** Whether the live loop has a page read in flight, which turning Live tail off drops. */
+  private liveReading = false;
+
   private readonly listeners = new Set<() => void>();
 
   subscribe(listener: () => void): () => void {
@@ -296,6 +322,7 @@ export class LogViewerStore {
 
   /** Drop the window and its cursor, keeping the source's file list. */
   private clearWindow(): void {
+    this.stopLive();
     this.goneValue = false;
     this.fileEntries = [];
     this.answeredRows = [];
@@ -435,6 +462,108 @@ export class LogViewerStore {
     return this.cursorValue;
   }
 
+  /**
+   * Whether Live tail can be turned on: the source opts in, the window is its current file rather than
+   * a rotated one, and a page has left a cursor to hold the tail against.
+   */
+  canLive(): boolean {
+    return this.sourceValue.livePath !== undefined && this.fileValue === '' && this.cursorValue && !this.windowed();
+  }
+
+  /** Whether Live tail is on. */
+  live(): boolean {
+    return this.liveValue;
+  }
+
+  /**
+   * Turn Live tail on or off. On, the loop holds a tail request against the window's `identity` and
+   * `size`, reads the change through the page route when the file moves, and holds the next tail;
+   * it runs on awaits alone. Off, and on any new live generation -- a file change, another source, a
+   * reset -- it stops, drops the answer in flight and requests nothing more.
+   */
+  setLive(on: boolean): void {
+    if (!on) {
+      if (this.liveValue) {
+        this.stopLive();
+        this.notify();
+      }
+      return;
+    }
+    if (this.liveValue || !this.canLive()) return;
+    this.liveValue = true;
+    this.notify();
+    void this.runLive(this.liveGeneration);
+  }
+
+  /** End the live loop: a new generation, the flag down, and the loop's page read, if any, dropped. */
+  private stopLive(): void {
+    this.liveGeneration += 1;
+    this.liveValue = false;
+    if (this.liveReading) {
+      this.liveReading = false;
+      this.generation += 1;
+      this.loadingValue = false;
+    }
+  }
+
+  /**
+   * The live loop for `generation`. Each pass asks whether the file has moved past the window's size
+   * and identity; a moved file is read through `loadNewer` until a page is not `truncated`. A refused
+   * tail, or a page that faults or finds no file, ends the loop and leaves its fault on screen.
+   */
+  private async runLive(generation: number): Promise<void> {
+    const path = this.sourceValue.livePath;
+    if (path === undefined) return;
+    try {
+      while (generation === this.liveGeneration) {
+        const query = 'identity=' + encodeURIComponent(this.identityValue) + '&size=' + String(this.sizeValue);
+        const result = await this.injector.get(ApiService).requestJson<unknown>(path + '?' + query, { scope: null });
+        if (generation !== this.liveGeneration) return;
+        if (result.kind !== 'ok') {
+          this.recordFault(result, path);
+          this.stopLive();
+          this.notify();
+          return;
+        }
+        const changed = changedOf(result.body);
+        if (changed === null) {
+          // An answer that is not the envelope would repeat at once, forever: it ends the loop instead.
+          this.faultValue = { kind: 'server-fault', status: result.status, code: null, path };
+          this.failedPairValue = '';
+          this.stopLive();
+          this.notify();
+          return;
+        }
+        if (!changed) continue;
+        do {
+          this.liveReading = true;
+          await this.loadNewer();
+          if (generation !== this.liveGeneration) return;
+          this.liveReading = false;
+          if (this.faultValue !== null || !this.cursorValue) {
+            this.stopLive();
+            this.notify();
+            return;
+          }
+        } while (this.truncatedValue);
+      }
+    } catch {
+      if (generation === this.liveGeneration) {
+        this.stopLive();
+        this.notify();
+      }
+    }
+  }
+
+  /** The fault a refused or failed answer leaves on screen, and the pair it names, if any. */
+  private recordFault(result: JsonResult<unknown>, path: string): void {
+    this.faultValue = classifyFault(result, path);
+    if (result.kind === 'error') {
+      const pair = result.detail === null ? undefined : result.detail['failedPair'];
+      this.failedPairValue = typeof pair === 'string' ? pair : '';
+    }
+  }
+
   /** Whether the source reads its newest window whole: the secondary logs' entries and a declared read. */
   private windowed(): boolean {
     return this.sourceValue.entries === true || this.sourceValue.kind === 'read';
@@ -497,11 +626,7 @@ export class LogViewerStore {
         this.notify();
         return;
       }
-      this.faultValue = classifyFault(result, path);
-      if (result.kind === 'error') {
-        const pair = result.detail === null ? undefined : result.detail['failedPair'];
-        this.failedPairValue = typeof pair === 'string' ? pair : '';
-      }
+      this.recordFault(result, path);
       this.notify();
       return;
     }

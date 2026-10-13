@@ -1076,7 +1076,8 @@ Method TestTheAlertLogViewerDeclaresTheLogSourceTailAndItsOnePair()
     Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).DescriptorForTool("logs.alerts"), tClass, "and so does its tool identifier")
     Do $$$AssertEquals($ClassMethod(tClass, "SideBarPosition"), 1, "it is the Logs area's first side-bar entry")
 
-    Do $$$AssertEquals(''$ClassMethod(tClass, "Refreshes"), 0, "nothing streams: it never auto-refreshes (AD-43)")
+    Do $$$AssertEquals(''$ClassMethod(tClass, "Refreshes"), 0, "no auto-refresh (AD-43); its source opts into the live tail")
+    Do $$$AssertTrue($ListFind(##class(OcuPilot.Port.LogSourcePort).TailSources(), tDeclaration.read.source.endpoint) > 0, "and its endpoint is in the port's live tail roster")
     Do $$$AssertEquals($ListLength($ClassMethod(tClass, "RefreshRates")), 0, "and declares no rate")
     Do $$$AssertEquals($ListLength($ClassMethod(tClass, "RowActionIds")), 0, "no row action (AD-44)")
     Do $$$AssertEquals($ClassMethod(tClass, "PrimaryActionId"), "", "and no primary action")
@@ -1120,7 +1121,8 @@ Method TestTheConsoleLogViewerDeclaresTheLogSourceTailAndItsOnePair()
     Do $$$AssertEquals($ClassMethod(tClass, "SideBarPosition"), 2, "it is the Logs area's second side-bar entry")
     Do $$$AssertTrue($ListFind($ClassMethod(tClass, "CommandAliases"), "messages.log") > 0, "and it publishes the messages.log alias the fault banner resolves its destination from: " _ $ListToString($ClassMethod(tClass, "CommandAliases"), ","))
 
-    Do $$$AssertEquals(''$ClassMethod(tClass, "Refreshes"), 0, "nothing streams: it never auto-refreshes (AD-43)")
+    Do $$$AssertEquals(''$ClassMethod(tClass, "Refreshes"), 0, "no auto-refresh (AD-43); its source opts into the live tail")
+    Do $$$AssertTrue($ListFind(##class(OcuPilot.Port.LogSourcePort).TailSources(), tDeclaration.read.source.endpoint) > 0, "and its endpoint is in the port's live tail roster")
     Do $$$AssertEquals($ListLength($ClassMethod(tClass, "RefreshRates")), 0, "and declares no rate")
     Do $$$AssertEquals($ListLength($ClassMethod(tClass, "RowActionIds")), 0, "no row action (AD-44)")
     Do $$$AssertEquals($ClassMethod(tClass, "PrimaryActionId"), "", "and no primary action")
@@ -1219,6 +1221,7 @@ Method TestTheSixSecondaryLogViewersDeclareTheirSourceAndPair()
         Do $$$AssertEquals(tDeclaration.id.%ToJSON(), "{""kind"":""none"",""parts"":[]}", tClass _ ": a log entry has no id (AD-13)")
         Do $$$AssertEquals(tDeclaration.suggestedPrompts.%Size(), 3, tClass _ ": three suggested prompts")
         Do $$$AssertEquals(''$ClassMethod(tClass, "Refreshes") _ "|" _ $ListLength($ClassMethod(tClass, "RowActionIds")) _ "|" _ $ClassMethod(tClass, "PrimaryActionId"), "0|0|", tClass _ ": no refresh and no action")
+        Do $$$AssertEquals($ListFind(##class(OcuPilot.Port.LogSourcePort).TailSources(), tKey), 0, tClass _ ": and its source does not opt into the live tail")
     }
 }
 

@@ -16,9 +16,10 @@
 /// so the area's declaration is untouched. <code>%Admin_Secure:USE</code> is deliberately
 /// <b>not</b> declared: this screen reads no security endpoint, and the area's set is a union
 /// rather than a per-screen requirement (DW-278).</p>
-/// <p><b>Nothing streams</b> (AD-43). <code>refreshes</code> is false and
+/// <p><b>No auto-refresh</b> (AD-43). <code>refreshes</code> is false and
 /// <code>refreshRates</code> empty: <file>EXPERIENCE.md</file>'s Auto-refresh controls roster does
-/// not name this screen, and rows arrive only on an explicit Load newer.</p>
+/// not name this screen. Newer lines arrive on an explicit Load newer, or on the live tail this
+/// screen's source opts into (<parameter>OcuPilot.Port.LogSourcePort.TAILSOURCES</parameter>).</p>
 /// <p><b>Its id is <code>none</code></b>: a log line is not an entity the instance can be asked for
 /// again, so the screen has no detail route and the viewer opens no row (AD-13). <b>No primary or
 /// row action</b>, and as a <code>log-viewer</code> archetype, which

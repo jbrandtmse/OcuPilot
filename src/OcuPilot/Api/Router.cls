@@ -149,8 +149,10 @@ XData UrlMap [ XMLNamespace = "http://www.intersystems.com/urlmap" ]
   <Route Url="/logs/errors/dates" Method="GET" Call="LogErrorDates"/>
   <Route Url="/logs/errors/list" Method="GET" Call="LogErrorList"/>
   <Route Url="/logs/errors/detail" Method="GET" Call="LogErrorDetail"/>
+  <Route Url="/logs/alerts/tail" Method="GET" Call="LogAlertsTail"/>
   <Route Url="/logs/alerts" Method="GET" Call="LogAlerts"/>
   <Route Url="/logs/messages/files" Method="GET" Call="LogMessageFiles"/>
+  <Route Url="/logs/messages/tail" Method="GET" Call="LogMessagesTail"/>
   <Route Url="/logs/messages" Method="GET" Call="LogMessages"/>
   <Route Url="/logs/integrity/files" Method="GET" Call="LogIntegrityFiles"/>
   <Route Url="/logs/integrity" Method="GET" Call="LogIntegrity"/>
@@ -977,6 +979,14 @@ ClassMethod LogMessages() As %Status
     Quit ##class(OcuPilot.Api.LogPage).Handle(##class(OcuPilot.Port.LogSourcePort).#MESSAGESKEY)
 }
 
+/// <p>Thin <code>Call=</code> target for <code>GET /logs/messages/tail</code>: the live tail of the
+/// console log, through <method>OcuPilot.Api.LogPage.HandleTail</method> with the source key bound
+/// here as <method>LogMessages</method> binds it (Story 18.38).</p>
+ClassMethod LogMessagesTail() As %Status
+{
+    Quit ##class(OcuPilot.Api.LogPage).HandleTail(##class(OcuPilot.Port.LogSourcePort).#MESSAGESKEY)
+}
+
 /// <p>Thin <code>Call=</code> target for <code>GET /logs/messages/files</code>: the console log
 /// and its rotated files, through <method>OcuPilot.Api.LogPage.HandleFiles</method>, with the
 /// source key bound here as <method>LogMessages</method> binds it.</p>
@@ -1130,6 +1140,13 @@ ClassMethod TranscriptRead(pId As %String) As %Status
 ClassMethod LogAlerts() As %Status
 {
     Quit ##class(OcuPilot.Api.LogPage).Handle(##class(OcuPilot.Port.LogSourcePort).#ALERTSKEY)
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /logs/alerts/tail</code> -- see
+/// <method>LogMessagesTail</method>. The alerts.log viewer's live tail (Story 18.38).</p>
+ClassMethod LogAlertsTail() As %Status
+{
+    Quit ##class(OcuPilot.Api.LogPage).HandleTail(##class(OcuPilot.Port.LogSourcePort).#ALERTSKEY)
 }
 
 /// <p>Thin <code>Call=</code> target for <code>GET /instance</code>: delegates to
