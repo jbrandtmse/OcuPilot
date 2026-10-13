@@ -11707,6 +11707,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-13T20:02:45Z status=escalated owner=burndown by=harvest note=contended: Epic 18 is changing LogSourcePort.cls; for the orchestrator to route; when fixed, drop the NOTOPEN tolerance in interop-editors.browser-spec.mjs compileNotice
 - 2026-10-13T20:18:27Z occurrence=20-7-the-three-embedded-vendor-editors by=cr note=BPL editor Compile fails the same way; AC2 legs pass over it; the fix adds a device-state test too
 - 2026-10-13T22:10:41Z status=routed owner=18-38-the-live-log-tail by=lead note=orchestrator: LogSourcePort is 18.38's file; close the null device only if opened
+- 2026-10-13T23:15:35Z status=resolved-by:18-38-the-live-log-tail by=adjudication note=IntegrityReport opens and closes the null device only if the process had not; caller's device restored on every path (5ab4af82 + re-review); pinned by DatabaseIntegrity; Epic 20 may drop its NOTOPEN tolerance
 
 ### DW-2396: Vendor: the schema viewer app (/ui/interop) reads its document parameter &ST and then clears it with its own first address write, so it always opens on ASC X12, the classic pages' own link included
 - source: spec-20-8 plan (measured) | severity: low | fix-risk: low | footprint: out-of-footprint
@@ -11717,3 +11718,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: CI run 38463014073 attempt 1, browser shard 3/5 (head 49436efa) | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: turn.browser-spec.mjs:392 assertion 'the markup renders as literal text' got '<img '; the head differs from green-on-shard-3 481b3adc only in interop-editors.browser-spec.mjs; rerun pending.
 - 2026-10-13T21:11:34Z status=routed owner=burndown by=runner note=rerun once (attempt 2); if green it is a flake: the spec must wait for the reply's settled state before reading its text
+
+### DW-2399: Test/DatabaseIntegrity.cls is 713 lines against the testing rule's guide of about 500; Story 18.38's null-device test grew it from 605
+- source: spec-18-38-the-live-log-tail.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: wc -l: 605 at 02bd47fb, 692 at 5ab4af82, 713 after the rework 2 review's patches. A split adds a class to scripts/ci-throwaway.sh's arming roster (Epic 20's file) and ci-timings.json, more than a two-way door.
+- 2026-10-13T23:13:33Z status=wontfix-accepted owner=18-38-the-live-log-tail by=cr note=reopen_if=wc -l src/OcuPilot/Test/DatabaseIntegrity.cls exceeds 800, or a story adds a test method to it
