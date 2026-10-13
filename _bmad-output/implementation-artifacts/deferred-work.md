@@ -1477,6 +1477,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-13T15:54:21Z status=escalated owner=burndown by=cr note=each has two defensible semantics (keep vs remove, refuse vs continue); DW-94's own HIGH came from guessing one
 - 2026-09-13T21:00:47Z status=routed owner=18-13-multi-namespace-install by=merge_gate note=owner-delegated decision: resolve Uninstall's three half-state paths on an instance OcuPilot does not wholly own. 18-13 is the story where OcuPilot shares an instance with other installs
 - 2026-10-12T08:41:33Z status=routed owner=18-43-uninstall-and-grants-on-a-shared-instance by=lead note=re-owned at Story 18.13's spec gate: split for size (Rule 5); paths 1 and 2 open, path 3 looks closed (inference), from source at fe132688
+- 2026-10-13T00:30:49Z status=resolved-by:18-43-uninstall-and-grants-on-a-shared-instance by=adjudication note=path 1 keeps and reports the shell bundle directory while an application sits at the shell's path; path 2 refuses, removing nothing, on an unreadable provenance record (and on an unreadable roles read); path 3 keeps a roster role another application carries (MatchRoles or AddedRoles); pinned in UninstallGuard, Provenance, GrantReadBack
 
 ### DW-220: The DW-94 acceptance criterion and its I-O matrix row state a contract the installer deliberately does not have
 - source: spec-1-17-the-smoke-script-the-readiness-endpoint-and-ci.md (cr) | severity: med | fix-risk: low | footprint: in-epic
@@ -10457,6 +10458,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-08T00:50:05Z status=routed owner=18-13-multi-namespace-install by=spec_gate note=orchestrator: detection half to 18.13, beside install's schema-grant read-back (AD-38)
 - 2026-10-09T02:27:03Z occurrence=18-29-role-members-admin-option-user-copy-from-and-password-valida note=a user copy (Security.Users.Copy) reproduces a source's SQL grant on OcuPilot's schemas made outside OcuPilot; by-design under AD-8's 18.29 amendment
 - 2026-10-12T08:41:33Z status=routed owner=18-43-uninstall-and-grants-on-a-shared-instance by=lead note=re-owned at Story 18.13's spec gate: split for size (Rule 5); the grantee source is that story's Task 0 measurement
+- 2026-10-13T00:30:49Z status=resolved-by:18-43-uninstall-and-grants-on-a-shared-instance by=adjudication note=install warns once naming every grant on OcuPilot's schema, tables and columns to a grantee other than the escalation role, read from Security.SQLPrivileges in the install namespace; never refuses or revokes; an unreadable catalog is one warn; GrantReadBack pins it
 
 ### DW-2173: IRIS defect candidate: the admin API's Security.SQLPrivilege.Column grant the SQL layer refuses answers 200 and stores nothing
 - source: spec-18-9-sql-privileges-and-the-permission-extras.md (split) | severity: med | fix-risk: high | footprint: out-of-footprint
@@ -10830,6 +10832,9 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: run 37877773715 browser shard 2/3: ui/browser/sql-activity.browser-spec.mjs:287 Waiting failed 30000ms at :295; same code green locally 7/7 on ocupilot-ci; 18.29 touches no SQL activity file
 - 2026-10-09T04:37:13Z status=routed owner=23-5-the-range-end-cleanup-part-5 by=harvest note=assert on the probe's own row's absence, or filter the table to the probe's marker, rather than on the empty-state sentence
 - 2026-10-12T18:47:18Z occurrence=run 38284973172 attempt 1 head 857dd298 browser shard 4/5: sql-activity.browser-spec.mjs test 7 (Nothing running) waiting for the empty state; green on attempt 2
+- 2026-10-12T23:11:51Z occurrence=run 38313080796 attempt 1 head 0ffa1c7b browser shard 3/5: sql-activity.browser-spec.mjs test 7 (Nothing running), 30 s wait exceeded; third CI hit (18.29 run 37877773715, 18.45 run 38284973172, 18.13 run 38313080796)
+- 2026-10-12T23:11:51Z status=routed owner=18-43-uninstall-and-grants-on-a-shared-instance by=lead note=pulled forward from 23.5 into 18.43, test-only, on the orchestrator's ruling after its third CI hit (runs 37877773715, 38284973172, 38313080796): assert the probe's own row is gone, or filter to the probe's marker, rather than wait for an instance running no SQL; prove it 3 runs and once right after a spec that runs SQL
+- 2026-10-13T00:30:50Z status=resolved-by:18-43-uninstall-and-grants-on-a-shared-instance by=adjudication note=sql-activity's 'Probe stopped' leg asserts the probe's own row and statement are gone whatever else runs, and 'Nothing running' answers the read by interception (asserted to fire); 4 runs 8/8 incl. one right after system-explorer-sql-query, and 8/8 with a second SQL job running
 
 ### DW-2246: explorer.class.read refuses a large class's view as TOOL.RESULTTOOLARGE: OcuPilot.Port.AdminPort.cls (247,939 bytes after 18.10) now answers over the 65,536-character tool-result cap, so the agent cannot read a large class's view at all
 - source: cycle-log-epic-18.md (18.10 runner sweep) | severity: med | fix-risk: med | footprint: out-of-footprint
@@ -11531,6 +11536,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-13-multi-namespace-install.md | severity: med | fix-risk: med | footprint: in-epic
 - evidence: IPM 0.10.5 source (image zpm.xml): LoadNewModule commits a -dev module before its lifecycle; uninstall's WebApplication.DeleteWebApp deletes /ocupilot, /api/ocupilot, /api/ocupilot/readiness by name and FileCopy's Clean removes ${dataDir}csp/ocupilot/. Not run. Settle on ocupilot-ci: a refused zpm load or install from a second namespace, then zpm list and zpm uninstall there, then read /ocupilot.
 - 2026-10-12T19:53:37Z status=routed owner=18-43-uninstall-and-grants-on-a-shared-instance by=cr note=unverified MED: measure first; fix by an uninstall-phase guard invoke, or document the cleanup
+- 2026-10-12T23:11:51Z status=decision-pending owner=burndown by=lead note=owner_hold: measured real at Story 18.43's Task 0 (IPM 0.10.5): a refused zpm load leaves the module registered in the second namespace, and zpm uninstall there deleted the live /ocupilot, /api/ocupilot, /api/ocupilot/readiness and csp/ocupilot/; IPM removes web applications before any Invoke runs, so OcuPilot cannot guard it; remedy documented in README and DEVELOPMENT (NameDelete in that namespace); an IPM tool-defect candidate, never reported upstream
 
 ### DW-2366: AD-38 still says module.xml carries one <Invoke> running When=After, and epic-18-context.md still lists the IPM re-point as open at Task 0; the manifest now carries the guard invoke too
 - source: spec-18-13-multi-namespace-install.md | severity: low | fix-risk: low | footprint: in-epic
