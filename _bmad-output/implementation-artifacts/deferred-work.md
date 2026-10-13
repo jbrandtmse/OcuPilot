@@ -11690,3 +11690,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-20-8 plan (measured) | severity: low | fix-risk: low | footprint: out-of-footprint
 - evidence: Measured at Story 20.8's plan on ocupilot-b-ci: ten address forms, framed and top level, all landed on ASC X12; the bundle reads &ST, then overwrites it (plan-208 probes).
 - 2026-10-13T20:29:17Z status=decision-pending owner=burndown by=spec_gate note=owner hold 2026-10-05: IRIS defect candidate, not reported; 20.8 AC2 is a tripwire that reddens if the vendor fixes it
+
+### DW-2397: CI flake: turn.browser-spec.mjs 'Markup in a reply renders as literal text' read '<img ' against the whole '<img src="http://203.0.113.9/x">' (the reply read before its text finished arriving)
+- source: CI run 38463014073 attempt 1, browser shard 3/5 (head 49436efa) | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: turn.browser-spec.mjs:392 assertion 'the markup renders as literal text' got '<img '; the head differs from green-on-shard-3 481b3adc only in interop-editors.browser-spec.mjs; rerun pending.
+- 2026-10-13T21:11:34Z status=routed owner=burndown by=runner note=rerun once (attempt 2); if green it is a flake: the spec must wait for the reply's settled state before reading its text
