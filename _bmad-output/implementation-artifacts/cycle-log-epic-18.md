@@ -1456,3 +1456,8 @@ TAB-separated: `<UTC>\t<Story <id> | Epic <N>>\t<stage>\t<metadata>`
 2026-10-13T04:31:57Z	Epic 18	spine_updated	ad=AD-8(today_unadvertised_list_names_allowed_directories_update;DW-2375) reason=rule20(18.42_code_review) by=runner lint=ok(pre-existing_low) memlog=appended
 2026-10-13T04:31:57Z	Story 18.42	ledger_adjudicated	owned=2 resolved=1(DW-2375,AD-8_amended) reowned=1(DW-2334->18-46_screen_half;epics_bullet_added) terminal=0 model=claude-opus-5-5
 2026-10-13T04:31:57Z	Epic 18	ledger_routed_planned	story=18-46-allowed-directories-the-screen-s-add-change-and-remove entries=1(DW-2334) excess=0 by=adjudication
+2026-10-13T04:37:57Z	Story 18.42	report_error	fault=lead field=cr_complete.spawn_at reported=2026-10-13T04:00:30Z actual=2026-10-13T03:59:02Z impact=telemetry_only
+2026-10-13T04:37:57Z	Epic 18	epic_context_compiled	reason=planning_artifact_newer(spine_AD-8,AD-15;epics_DW-2334_bullet;18.46,18.37_gates) model=opus bytes=12173
+2026-10-13T04:37:57Z	Story 18.42	fresh_check_started	throwaway=ocupilot-ci rebuilt(down+up,healthy 04:32:29Z) load=LOAD-OK,STARTPATH-OK offered=622 chunks=28
+2026-10-13T04:37:57Z	Story 18.42	stage_spawned	stage=full-sweep spawn_at=2026-10-13T04:37:57Z model=sonnet agent_name=18-42-sweep-1 prompt=carry-2026-10-10/epic-18-r/sweep-1842-prompt.md run_in_background=false
+2026-10-13T04:37:57Z	Story 18.38	stage_spawned	stage=plan spawn_at=2026-10-13T04:37:57Z model=opus agent_name=18-38-live-log-tail-plan-1 cycle_iteration=1 prompt=carry-2026-10-10/epic-18-r/plan-1838-prompt.md run_in_background=false throwaway=untouched(sweep_running)

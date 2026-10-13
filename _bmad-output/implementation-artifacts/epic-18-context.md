@@ -4,122 +4,110 @@
 
 ## Goal
 
-An operator reaches System Administration and System Operation parity on the experimental `/api/admin` v2 service, and on `/api/mgmnt` and `/api/monitor` where those back a row, so no such task needs the classic portal. Each screen comes from one descriptor and brings a read tool, plus confirmed single-write tools where it writes. The agent has grown with the stage: every Stage 2 tool is declared from its descriptor (18.12), each turn is assembled within a result budget with prompt caching and a billed-weight token bound (18.39), and each call carries only the shell area's tools, the screen's tools and what the discovery tool `shell.tools.find` finds (18.45). What remains: OcuPilot installs into a namespace the operator chooses (one per instance), uninstalls cleanly on a shared instance, lets a person (never the agent) edit the directory allow-list, adds interoperability usage and a live log tail, and gives the provider call proxy, custom-CA and wallet-key configuration. This is the first versioned IPM release after the contest. Done: 18.1 to 18.12, 18.14 to 18.34, 18.36, 18.39 and 18.45 (18.27 closed unbuilt, 18.35 retired). Run order: 18.13, 18.43, 18.42, 18.37, 18.38, 18.40, 18.41, the Epic 18 burn-down, then the epic close.
+Bring OcuPilot to System Administration and System Operation parity on the experimental, hidden `/api/admin` v2 service, plus `/api/mgmnt` and `/api/monitor` where they back a screen. That covers namespaces and mappings, databases and disk operations, journals, licensing and ECP, encryption, superservers and authentication options, MFT, SQL privileges, web-application extras and monitoring. Each screen comes with a read tool and a confirmed single-write tool, so the agent keeps pace with the portal. The stage also prepares OcuPilot for real, shared instances: install into a chosen namespace, a clean uninstall, and a directory allow-list only a person can edit. It keeps the doubled tool roster affordable with per-turn budgets and scoped tool sets, and extends provider configuration with proxy and custom-CA settings and a wallet-held key. It is the first versioned IPM release after the contest.
 
 ## Stories
 
-- Stories 18.1 to 18.12, 18.14 to 18.34 and 18.36: the Stage 2 screens and the agent's growth (done)
-- Story 18.13: Multi-namespace install (ready for dev)
+- Story 18.1: The directory allow-list
+- Story 18.2: Namespaces and their mappings
+- Story 18.3: Databases - configuration, creation, properties and volumes
+- Story 18.4: The deferred disk operations
+- Story 18.5: Journals
+- Story 18.6: Licensing and ECP
+- Story 18.7: Encryption
+- Story 18.8: Superservers, authentication options and managed file transfer
+- Story 18.9: SQL object privileges
+- Story 18.10: Web application extras and spec-based REST services
+- Story 18.11: Monitoring extras and the live log tail
+- Story 18.12: The agent grows with the stage
+- Story 18.13: Multi-namespace install
+- Story 18.14: Namespace mappings and copy-mappings
+- Story 18.15: Enable interoperability on a namespace
+- Story 18.16: Remote databases
+- Story 18.17: Namespace and database follow-ups
+- Story 18.18: Journal settings
+- Story 18.19: Journal record browser
+- Story 18.20: ECP data servers
+- Story 18.21: ECP settings and application servers
+- Story 18.22: Database and data-element encryption keys
+- Story 18.23: Encryption startup settings
+- Story 18.24: RSA and symmetric-key wallet secrets
+- Story 18.25: Superservers
+- Story 18.26: Managed file transfer connections
+- Story 18.27: The operator's read-only LDAP view (closed unbuilt)
+- Story 18.28: SQL column and admin privileges
+- Story 18.29: Role members' admin option, user Copy from and password validation
+- Story 18.30: Doc DB applications
+- Story 18.31: Privileged routine applications
+- Story 18.32: Spec-based REST services
+- Story 18.33: Privileged routine application roles and routines
+- Story 18.34: The person's REST service create
+- Story 18.36: Dashboard drill-downs
 - Story 18.37: Interoperability usage
 - Story 18.38: The live log tail
-- Story 18.39: The agent's context budget (done)
+- Story 18.39: The agent's context budget
 - Story 18.40: Proxy and custom CA configuration
 - Story 18.41: The wallet credential rung
 - Story 18.42: Allowed directories: a person's write
-- Story 18.43: Uninstall and grants on a shared instance (ready for dev)
-- Story 18.45: The agent's tool roster scoped per turn (done)
-- The Epic 18 burn-down (chartered at the burn-down gate; not in the epics file)
+- Story 18.43: Uninstall and grants on a shared instance
+- Story 18.45: The agent's tool roster scoped per turn
+- Story 18.46: Allowed directories: the screen's add, change and remove
 
 ## Requirements & Constraints
 
-- **One contract (FR-80).** Each screen is one descriptor over one port; its read tool and its write tools' field lists derive from that descriptor. Every agent write is a server-minted proposal, an instance-computed diff, an explicit confirmation and an agent marker. Every read is bounded and reports truncation. Every gate checks the caller's own privileges at call time. A story's acceptance is that contract plus each row's backing route; anything finer is authored at its spec gate.
-- **Governance (AD-22).** Every destructive or disruptive key ships `false`; a story that adds a write key adds its `Kernel/Governance/Baseline.cls` entry in the same change. Governance is asked at dispatch and at Confirm, never for a person's own screen write (AD-53, AD-55). A denied call returns a structured result and the tool stays reachable.
-- **Observe first.** Measure each route's payload, effects, privileges and audit events on the slot's throwaway (`ocupilot-ci`) before a form or tool exists, as a least-privileged principal, never from the specification. Never build on a `decision-pending` ledger entry; never report a vendor-defect candidate upstream (the owner holds them). Install runs only on a throwaway; recreating `ocupilot` is the owner's call. A live provider key is read from `.env.local` at the point of use, on `ocupilot-ci`, never printed or committed; every live Anthropic check uses `claude-haiku-5-5` (owner, 2026-10-12).
-- **Budgets.**
-  - Bundle: 3,388,876 B initial at 18.12 (18.39 and 18.45 changed no client code), against the 3527kB warning and 4000kB error budget. A story that crosses the warning re-bases it to 5% above the merged total (DW-1166); stop and ask above 3800kB.
-  - Fixed strings: 3,306 literals in EXPERIENCE.md's table (after Epic 20's forward merges), against the 3,400 drift tripwire, raised only once the count comes within 50 of it.
-  - `Api/Error.cls` holds 989 of a class's 1,000 parameters; new codes go in a sibling `*Error.cls` with prefix arms in `Error`'s reason mappers.
-  - Tools: 374 read tools after 18.45 (`shell.tools.find` added), pinned by `Test/ReadTool` and token-unioned at each forward merge.
-  - A spec stays under 16 KB, or the story halts with a proposed split.
-- **Ledger, by owner.** Address each item, or decline it with a reason.
-  - **18.13:** DW-423 (keep each profile's newest 100 `Stamp` rows in the retention sweep) and DW-1333 (the installer enforces the IRIS floor IPM's exporter drops). DW-1788 stays wontfix-theoretical under one install namespace per instance.
-  - **18.43:** DW-219 (uninstall's three half-state paths) and DW-2172 (install warns on a widened schema grant).
-  - **18.42:** DW-2334, decided by the owner on 2026-10-11.
-  - **18.37, 18.38, 18.40, 18.41:** none routed.
-  - **The burn-down fixes** DW-2311, DW-2320, DW-2322, DW-2328, DW-2329, DW-2333, DW-2335 and DW-2340 and audits DW-2327. Its gate also holds DW-1896, DW-1966, DW-1979, DW-1981, DW-2007, DW-2085, DW-2086, DW-2087, DW-2100 (high), DW-2126, DW-2149, DW-2167 and DW-2299 (after Epic 20 merges), plus the CI flakes DW-2111 and DW-2123. DW-2160 was pulled forward into 18.45's sweep.
+- **One contract, no feature spec.** A story is accepted against the staged-delivery contract plus its own backing route. Anything finer is authored when the story is picked up, never invented ahead.
+- **One way to build a screen.** Each screen has one descriptor and reaches outside systems through one port. Its read tool and its write tools' field lists derive from that descriptor, with no hand-written dispatch or field list. Every write is a server-minted proposal with an instance-computed diff, an explicit confirmation and an agent audit marker.
+- **Reads.** Every read is bounded and reports truncation. A screen's list and its read tool resolve through one declared read.
+- **Gates.** Every gate is the caller's own `(resource, permission)` pairs, checked at call time. There is no service account. The vendor's `ResourcesOR()` is only a lower bound, so take privileges from the instance, not the specification.
+- **Governance.** Every destructive or disruptive action ships with its governance key disabled: delete, dismount, truncate, encryption changes, the allow-list write. A new write key joins the checked-in baseline in the same change.
+- **Secrets.** Key material and secrets are write-only and returned by no read. They are redacted from the ledger and every log line, and never placed in an exception, status or trap.
+- **Paths.** No endpoint takes a caller path. Every server-path field resolves through the allow-list (`PathPort`), whose self-protection refusals cover the manager directory, the served directory, instance, database and journal files, and an existing `IRIS.DAT`. A database create always names its own directory.
+- **Measure first.** The admin API's specification and IRIS disagree in places. Observe payloads, privileges and effects on a throwaway (Task 0) before building a form. "Checked" means seen on an instance; "reported" means another source's word only.
+- **Owner calls.** A choice that changes a product promise, trust scope or secret exposure goes to the owner at the spec gate, before anything is built.
 
 ## Technical Decisions
 
-**Every story**
+- **`AdminPort`** is the only code that names `%Api.Admin.*`. It runs the vendor endpoint objects in process, in `%SYS` by explicit save and restore, at ApiVersion 2 with stub CSP state and `IsRunningAsync` 0. It reads the outcome from both `tSC` and `%response.Status`; a non-2xx answer is a failure. A read answered 404, and a correct field refusal listed in `UNLOGGEDREFUSALS`, are not logged, so they do not raise the instance alert state. Port guards refuse before the vendor call: SQL-privilege wildcards and lists, a password the policy refuses, and a privileged-routine or web-app call whose target is the wrong type.
+- **Vendor-class fallback.** Where the admin API cannot carry a call, a dedicated port repeats the endpoint's gate and calls the vendor class in `%SYS`. Each such case is named in the architecture (user copy, background tasks, the encryption reads, for example).
+- **Async.** The port picks the path per request type. One poller per task reads the finished result exactly once and deletes the row; a second read logs #7846 and turns the instance state to Warning. A read that hits the bound fails with `PORT.TIMEOUT`; a queued write that hits it answers "started". A queued write is refused unless it is named in `QUEUEDWRITES` or `SELFQUEUEDTYPES` and its body carries no secret. No slice writes polling logic.
+- **Writes.** OcuPilot reads fresh, applies the diff and sends the complete property set. Per-endpoint exceptions are recorded in the architecture: journal settings, ECP's nested settings, encryption settings, web authentication, superservers, MFT, and the privileged-routine PUT, which replaces `MatchRoles` and empties an omitted `Routines`. There are three write kinds: merge; action-style (no body, a declared request type and fingerprint subject); and create (fingerprints the target's absence, which covers upserts). A write tool declares its port. A screen's Save and the agent's proposal are two callers of one tool. Save mints no proposal but inherits the prohibited set and the write's validation, and read-only and the kill switch never gate it. Every confirmed write reads its target back and returns a verdict.
+- **Field lists and secrets.** Write field lists are generated at build time from the endpoint's body template and checked in, and the CI inventory fixture pins them. Each field is classified `ordinary`, `secret` or `opaque`; an unclassified field defaults to secret.
+- **Prohibited set.** It lives once, in the kernel, and is evaluated against the resolved target inside the atomic confirm transition, from either caller. Stage 2 added these protections:
+  - OcuPilot's install namespace, its mappings (matched by pattern overlap) and its databases, plus the seven system databases
+  - keys in use
+  - a start that cannot finish
+  - OcuPilot's own sign-in, the O/S authentication its start hook signs in with, and the serving superserver
+  - OcuPilot's SQL schemas and its privileged routine applications
+  - any agent write to the allow-list
 
-- **Containment (AD-2, AD-27).** Only `AdminPort` names `%Api.Admin.*` and reads the outcome from both `tSC` and `%response.Status`. A read answered 404 is an absence and is not logged; any other failure outside the unlogged list is logged and raises the instance's alert state, so refuse a predictable vendor refusal before the call. A queued write still running at the bound answers as started (AD-26).
-- **Gates (AD-8, AD-29).** No service account; the only OcuPilot elevation is AD-9's, never in effect while tool, port or provider code runs. Each port carries its own gate, evaluated before any vendor call. `ResourcesOR()` is a lower bound: read the backing class's own check, then run as a real least-privileged principal. A write tool declares a pair beyond its screen's set only when measured, refused by name before any port call.
-- **The turn never mutates the instance (AD-7).** Exactly six vendor-internal write shapes are permitted; a new one needs a spine amendment at its spec gate. Never call the alerts read, which advances `LastAlertSent`.
-- **Read contract (AD-24, AD-36).** 200 rows by default (an operator sets 1 to 1,000), 65,536 characters in total cut by whole rows, 1,000 characters a field; the payload reports `rowsSent`, `rowsAvailable` and truncation. A turn's tool results carry at most 262,144 characters together.
-- **Writes.** A merge reads fresh and sends the complete body (AD-4); a create fingerprints the target's absence (AD-54); an action its declared preconditions (AD-51). The screen and the agent are two callers of one tool (AD-53, AD-55) under the per-target hold (AD-34), with a read-back (AD-58), a change event (AD-14) and a script form (AD-59). An unadvertised tool is reachable by its screen alone, and the discovery tool never finds it (AD-53).
-- **The tool set (AD-5, AD-8, AD-24).** The listing is built from compile-time declarations, kept per process, and revalidated by compile signature; a value read at run time never enters it. A call carries the shell area's tools and the screen context's `tools`; every other advertised tool is reached through `shell.tools.find` (Anthropic: the whole set with `defer_loading`; other families: the starting set plus each found tool).
-- **Self-protection (AD-10).** Predicates over the effect, refused whatever the caller and evaluated inside the confirm's atomic transition; a rule only a screen enforces is not a prohibition. Each lives once in `Kernel/Proposal/Prohibited.cls`, its refusal sentence published once in Fixed strings and pinned equal to the kernel's reason. A privileged grant (`%All` or `%Admin_*`) is permitted at the destructive treatment.
-- **Text and amendments.** Vendor text is logged, never sent (AD-39); model-bound text passes AD-60's sanitizer. New pairs, predicates, source kinds, vendor-write shapes and carve-outs are amended into the spine at the spec gate (Rule 20). Rule 31: name the sibling a new class extends, or say why a copy is better.
-
-**18.13, multi-namespace install (ready for dev)**
-
-- **One install namespace per instance (AD-17).** It is the namespace holding the profile's `OcuPilot*` globals mapping. Install validates the target each path names: it refuses `%SYS` and system namespaces, a missing namespace, an IRIS below the roster's floor, a namespace whose `OcuPilot` package resolves from another database (AD-9), and any namespace but the one already holding the mapping. Uninstall and the container start refuse a second namespace the same way; a refusal changes nothing in either namespace.
-- **Code and data (AD-9, AD-21).** Code lives in the install namespace's own routine database; only OcuPilot's globals sit behind its protected resource. A definition whose `creds` rung the namespace cannot reach is reported, never refused.
-- **Closed by Story 18.13.** IPM re-points the live applications at the start of `Activate`, so a guard invoke after `Compile` (`Installer.GuardTarget`) refuses a second namespace before IPM touches an application.
-
-**18.43, uninstall and grants on a shared instance (ready for dev)**
-
-- **Uninstall (AD-37, DW-219).** It removes only what OcuPilot created and still owns: it keeps, and reports, the shell bundle directory while an application sits at the shell's path and a roster matching role while a surviving application carries it, and refuses, removing nothing, when its provenance record is unreadable while the profile's routine application exists.
-- **Widened grant (AD-38, DW-2172).** Install warns naming every grant on OcuPilot's schemas to a grantee other than the escalation role, read from `Security.SQLPrivileges`; it never refuses or revokes one.
-
-**18.42, allowed directories: a person's write**
-
-- **AD-21 as amended (owner, DW-2334).** A person adds, changes and removes `FSAccess` entries (`Path`, `Purpose`) on the Allowed directories screen as a confirmed write whose governance key ships disabled, and the roots OcuPilot needs to run cannot be dropped.
-- **The agent never writes the list.** The kernel refuses any agent write, narrowing included, in the AD-10 and AD-21 self-protection family; leaving the tool unadvertised (AD-53) is not enough. A reason found at the gate for letting the agent narrow it is the owner's question.
-- **The fence it moves (AD-21's sixth case).** `Port/PathPort` alone computes the roots, at call time and never cached: when the instance restricts `%GUIFileSelector`, that purpose's paths (`FSAccess.Purpose` `GET`, `FSAccess.Path` `LIST`); otherwise `<ManagerDirectory>` alone. A write tool resolves again at its write, so a root dropped after a mint refuses that confirm. The screen declares `%Admin_FileSystemAccess:USE` as its own pair beside Security's set (AD-8).
-- **Gate question.** AD-22 never asks governance for a person's screen write, so the disabled key alone cannot hold that write (inference); the gate settles what the key governs.
-
-**18.37, interoperability usage**
-
-- **The catalog row's source fails AD-8.** It names the deprecated `/api/monitor/interop/v1` (`%Api.InteropMetrics.v1`), which checks nothing and reaches `[Internal]` setters that escalate with `$$$AddAllRoleTemporaryInTry`; AD-8 accepts a vendor running as itself only after the vendor has checked the caller.
-- **The preferred source.** The classic page (`%CSP.UI.Portal.InteroperabilityUsage`, `RESOURCE` `%Admin_Operate`) queries `SYS.Monitor.Interop.Interface.Utils:InteropInterfaces`. The gate prefers the source that keeps AD-8 as written; relaxing AD-8 is the owner's call. Whether the sensor setters write state (a new AD-7 shape) is a gate question; the port declares its own gate (AD-29), consistent with AD-62's one-port model (inference).
-
-**18.38, the live tail**
-
-- **Sources and route.** `messages.log` and `alerts.log`, the only sources with `LogSourcePort`'s offset-and-identity cursor, opt in through a descriptor key (an AD-5 addition) and keep their classic pages' resources. No vendor event signals a log write, so an OcuPilot route long-polls within `Kernel.Provider.TestCall.BoundSeconds`, re-checking the file's size and identity; rotation restarts the tail cleanly (AD-21). No endpoint accepts a path.
-- **Amendments at its gate.** Heartbeat bytes need a second AD-12 device-write carve-out and an AD-43 amendment; whether concurrent tails need a per-user bound, as turns have (AD-41), is a gate question (inference: each poll holds a server process up to the bound). Log text reaching the model passes AD-60.
-
-**18.40, proxy and custom CA**
-
-- **What ships.** The installer creates `OcuPilotProvider` with server-identity checking on (AD-32). `Kernel/State/Egress.cls` stores the proxy settings and SSL configuration name, `SetGuarded` is its one writer, and no route renders it. `ProviderPort` judges the proxy host and CONNECT-tunnels https; a marked-local endpoint bypasses the proxy (AD-42). `Api/Switches.cls` is the sibling settings surface.
-- **Custom CA.** A separately named SSL/TLS configuration, because AD-10 refuses a `CAFile` change on OcuPilot's own; AD-32 is amended at the gate, and how far a custom CA is trusted is the owner's call. Test connection exercises the same path as a turn.
-
-**18.41, the wallet rung**
-
-- **The ladder.** `Kernel.Secret.Ladder` ships the `env` and `creds` rungs; a wallet rung joins them on the wallet wiring the secrets screens use. AD-42, AD-35 and AD-7 are amended at the gate. The rung's name fits `CredType` (at most 8 characters).
-- **Key handling (AD-35, AD-42).** The ladder never returns a value into a status or an error; the key is fetched at the point of use, cleared before return, never interpolated. A test asserts a forced provider failure leaves no credential in the error log. `Port/WalletPort.cls` never reads a value today, so reading one is new behavior: read `%Wallet.KeyValue` `GetSecretValue` and `ApplyHTTP` first. The vendor's per-use audit write (`%Wallet.Secret` `AuditUsage`) is a candidate seventh AD-7 shape (inference until Task 0). Any choice that exposes a secret or adds a vendor audit write is the owner's.
-
-**The burn-down**
-
-- **DW-2311.** In `MgmntPort.Resolved`, walk each listed application's `UrlMap` `Forward` targets and read `GetWebRESTApps` over every namespace, so a forwarded or cross-namespace service counts as deployed.
-- **DW-2320 and DW-2322.** In `GrantsPrivilegeByEffect` (`Prohibited.cls`), key held and wanted `MatchRoles` targets by matching role and target; clearing a privileged routine application's `Resource`, or enabling it, while it grants a privileged role takes the privileged-grant treatment.
-- **DW-2328.** Rows of an id-kind-none list share one key when the name column repeats (MetricsList, `RoutineAppRoleList`'s Every caller row); give them a row-unique key or declare composite ids.
-- **DW-2329.** `MonitorPort.Samples` handles a label value ending in a single or doubled backslash, and skips and counts one unreadable line rather than failing the table.
-- **DW-2333.** A detail read over a web application's `MatchRoles`, on 18.12's routine-application detail-read pattern, so `webapp.list.update` can send the list with one entry changed.
-- **DW-2335.** Editor forms show fields no read tool answers (superservers 14, local databases 10, user copy 12): widen the reads, or record why each stays form-only.
-- **DW-2340.** The Dashboard's drill-down links (`dashboard.page.ts` `linksFor`) gate on the screen verdict with `aria-disabled` and the Requires reason, as the side bar and Home do.
-- **DW-2327.** Audit the two-argument `%GetNext` sites over caller-controlled JSON (500 on an oversized value, where the three-argument form answers 422 or 400); fix them, or charter a sweep if there are many.
+  A `%All` or `%Admin_*` grant is permitted, at the destructive confirmation, naming the privilege.
+- **Tools per turn.** The tool listing is built from compile-time declarations only and cached per process, keyed by compile signature. A turn's scoped tool set is chosen after the listing, never inside it: the shell area's tools, the discovery tool `shell.tools.find`, and the screen context's tools. History is append-only, and a turn's tool results share a cap of 262,144 characters.
+- **Monitoring.** `MonitorPort` reads in process behind `%Admin_Operate:USE` and `%DB_IRISSYS:READ`, so the monitor API's anonymous reachability never becomes OcuPilot's. A metrics read rewrites the vendor's sensor baseline, so that screen never auto-refreshes. Interoperability usage runs the classic page's class queries as the signed-in user and never calls the deprecated `/api/monitor/interop`.
+- **Vendor writes during reads.** A vendor-internal write a read triggers is tolerated only under the named exceptions; a new one goes to the lead.
+- **Install.** One idempotent `Installer` class has two entry points, with one install namespace per instance. OcuPilot's globals map into its protected database, and its code stays in the install namespace's routines database. Uninstall removes only what OcuPilot created and still owns.
+- **Provider.** The provider call uses a named SSL configuration created at install, with server-identity checking on. Proxy settings are configuration, and a custom CA is a separately named SSL configuration. Provider egress is an allow-list. The credential is fetched at the point of use and never logged.
 
 ## UX & Interaction Patterns
 
-- **Screens.** Every built screen registers the screen contract with at least three suggested prompts (11.3). The side bar lists only built screens.
-- **Strings.** New strings go in EXPERIENCE.md's Fixed strings, edited in place with the line count unchanged, one `strings.ts` key per value. Run `cd ui && npm run test:tools` after editing EXPERIENCE.md or epics.md.
-- **Gated controls.** A gated control stays focusable with `aria-disabled="true"`, never `disabled`, and names its reason (EXPERIENCE.md's Mechanism, :216).
-- **A person's write.** It is reviewed by the screen's own confirm dialog, with the typed-name field on a destructive one, never by a proposal (AD-53); a new dialog joins EXPERIENCE.md's list of the only dialogs that exist (:173).
-- **Allowed directories (18.42).** The screen's and the server-path picker's strings sit in EXPERIENCE.md :364.
-- **Auto-refresh (AD-43).** One shared framework, paused while a proposal is live; a screen joins only by declaring it and appearing in EXPERIENCE.md's roster of thirteen (:896). Every default is off except Home's.
-- **Log viewers (18.38).** Viewers load bounded pages with "Load newer", and nothing streams ("Tail, not live", :899). 18.38 amends that line in place at its gate and re-scopes the "nothing streams" pins in `log-viewer.spec.ts` and `Test/Descriptor.cls` to the sources that do not opt in.
-- **Provider settings (18.40, 18.41).** The proxy and SSL settings have no screen today; the credential rung is chosen on the agent definition form.
+- A person's destructive action uses a typed-name dialog that names the target, with its consequence stated above the field. An agent proposal gets the destructive card treatment, without a typed name.
+- A consequence sentence appears both at the form field and on the proposal card. Confirmations always name the target.
+- A delete wizard lists dependents (namespaces, databases, web applications) before removing anything.
+- An action whose governance key is off is drawn off, with the refusal's sentence as the reason.
+- Async operations show progress from the port's single poller, which stops at the end. Auto-refresh comes only from the shared framework and pauses while a proposal is live.
+- Every screen keeps working with the agent disabled.
+- A new screen registers the full screen contract: route, side-bar position, archetype, pairs, entity key, context serializer, actions, empty state, fixed strings, aliases, and at least three suggested prompts. Adding a side-bar entry updates the browser specs that pin that area's list.
 
 ## Cross-Story Dependencies
 
-- **Run order:** 18.13, 18.43 (re-anchored on 18.13's `Installer.cls`), 18.42, 18.37, 18.38, 18.40, 18.41, the burn-down, then the epic close.
-- **Roster pins.** `Test/StageTwoTools.cls` holds Epic 18's screens and every other screen equal to the registry both ways; a new screen or Epic 18 write tool needs its row. `AllowedDirectoryList` is a `read-only` row whose reason says the list is a person's write; 18.42 turns it to `writes`, and an unadvertised tool joins the test's `UNADVERTISED` list. `ReadTool`, `DeveloperFloor`, `InteropFloor` and `InteropFloorOwnPairs` count tools.
-- **18.40 and 18.41** rebase on 18.39's and 18.45's `Kernel/Provider/Anthropic.cls` (deferral and cache marker) and both edit `Port/ProviderPort.cls` and `Kernel/Provider/Base.cls`, so 18.41 rebases on 18.40.
-- **18.42** adds one guard clause in `Prohibited.cls`, a governance baseline entry and a StageTwoTools row change. **18.37** runs after 18.42, and **18.38** after 18.37.
-- **The burn-down** fixes DW-2311 against 18.32's `MgmntPort`, DW-2320 and DW-2322 against 18.33's classifier, and DW-2333 on 18.12's detail-read pattern.
-- **Epic 20** runs on slot B (20.13 in implement) and is changing `Screen/Tool/Write.cls`, `Api/ScreenAction.cls`, `Kernel/Agent/Dispatch.cls`, `Kernel/Agent/Loop.cls`, `Screen/Tool/Registry.cls`, `Screen/Tool/MappingMint.cls` and `scripts/ci-throwaway.sh`.
-  - A non-add-only edit to a file Epic 20 is changing stops and is reported; `Prohibited.cls` takes one added clause at a time, sent to the orchestrator as a Rule 11 ask.
-  - Shared add-only files are unioned at merges: `Kernel/EntityType.cls`, the test rosters, `Screen/Registry.cls`, `Screen/Read.cls`, `Screen/Tool/Classification.cls`, `ToolFields`, `FieldLists`, the governance baseline, `Api/Router.cls` routes, `strings.ts`, EXPERIENCE.md, `angular.json` and the spine. `screens.generated.ts` is regenerated, never hand-edited.
-  - Count-pinning rosters are token-merged at each forward merge and re-run fresh; an `angular.json` collision re-measures the merged bundle.
-- **The epic close.** No story covers the WQM categories row (SA-05) or the row that enables the mirror service (SA-22); the close assigns or declines each. At Epic 18's merge, DW-2170 reopens if `Wire.cls`'s doc comments still describe a two-member API floor.
+- **Open at this compile:** 18.37 and 18.46 (ready for dev), and 18.38, 18.40 and 18.41 (backlog). The rest are done.
+- **18.46** builds on 18.42's route, port, governance key and kernel refusal.
+- **18.38** needs three tier-1 amendments at its spec gate: a heartbeat carve-out in the error envelope, the live-data framework, and the UX that defers the live tail. The "nothing streams" pins are re-scoped to sources that do not opt in.
+- **18.37** prefers a source that checks the caller; relaxing that check is the owner's call. Its Task 0 measures any vendor metric-state write.
+- **18.40** amends the outbound-TLS decision; the CA trust scope is the owner's call.
+- **18.41** amends the egress, secrets and turn-job decisions. The vendor's per-use audit write is labeled (inference) until Task 0 measures it.
+- **Other epics:**
+  - 18.32 reused Story 20.21's namespace-routines-database check.
+  - 18.45 sits after Story 20.24's per-process listing.
+  - 18.30 leaves Story 19.17's Doc DB create and drop unchanged.
+  - 18.3 and 18.4 extend Epic 16's `BackgroundTaskPort`.
+  - Routed ledger items not taken by a story go to the Epic 18 burn-down.
