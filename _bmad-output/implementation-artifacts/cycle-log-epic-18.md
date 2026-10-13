@@ -1437,3 +1437,11 @@ TAB-separated: `<UTC>\t<Story <id> | Epic <N>>\t<stage>\t<metadata>`
 2026-10-13T02:58:49Z	Story 18.42	stage_held	spawn_at=2026-10-13T02:16:42Z model=sonnet agent_name=18-42-allowed-dirs-implement-1 wip=d9244e95(WIP_hold,local) reached=implement_step_03_verify task0=C2b_emptied_list_allows_nothing;FSAccess_writes_no_audit_event(vendor_candidate);FSAccess.Path_PUT/DELETE_join_BODYLESSTYPES left=rerun_3_new_classes,rest_of_sweep,mutations_tasks_8-10,test:tools+build,lint,matrix_audit,review_layers,deferred_vendor_candidate,finalize note=handoff_subagent_committed_the_WIP_itself_on_the_hold_instruction
 2026-10-13T02:58:49Z	Epic 18	orchestrator_rulings	18.37_rule11=pre-authorized(Task_10_literals) 18.37_gate=approved(Task_0_c_owner_question_if_unchecked;go_on_to_18.38_while_it_waits) DW-2365,DW-2370=to_Planner(owner_hold) 18.43=merged(feature_c131d8c9)
 2026-10-13T02:58:49Z	Epic 18	HOLD	reason=account_switch(owner_at_97pct_weekly_quota) throwaway=ocupilot-ci_up(S0) resume_prompt=prompts/e18-resume-2026-10-12-prompt.md
+2026-10-13T03:09:25Z	Epic 18	runner_resumed	from=HOLD(account_switch) prompt=prompts/e18-resume-2026-10-12-prompt.md local=4d62af31 origin=42d8d784 feature=065f75e5(bookkeeping_only_beyond_branch) throwaway=ocupilot-ci_healthy
+2026-10-13T03:09:25Z	Epic 18	lead_model_gate	model=claude-opus-5-5 action=proceed
+2026-10-13T03:09:25Z	Epic 18	runtime_gate	bmad=6.12.1 uv=0.12.9 ci=gh
+2026-10-13T03:09:25Z	Epic 18	launch_env	depth=4 watchdog=unset_in_shell bash_max_ms=default
+2026-10-13T03:09:25Z	Epic 18	telemetry_gate	pending=0 action=none(rule23_pre_answered_decline)
+2026-10-13T03:09:25Z	Epic 18	slot_verified	profile=ocupilot-slot-a baseUrl=http://localhost:52774 docker_port(ocupilot,52773)=52774 bootstrap=node_modules_ok,irislib_ok
+2026-10-13T03:09:25Z	Story 18.43	ci_resolved	story=18.43 run=38335993873 result=success head=0c7bcdca resolved_at=resume
+2026-10-13T03:09:25Z	Story 18.42	stage_spawned	stage=implement spawn_at=2026-10-13T03:09:25Z model=sonnet agent_name=18-42-allowed-dirs-implement-2 cycle_iteration=1 resume_of=18-42-allowed-dirs-implement-1(held_at_WIP_d9244e95) baseline_revision=42d8d784(kept) ci_gate=18.43_run_38335993873_success prompt=carry-2026-10-10/epic-18-r/implement-1842-resume-prompt.md run_in_background=false
