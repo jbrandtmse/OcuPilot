@@ -83,7 +83,7 @@ export function tabSnapshot(page) {
  * Record every request to `/ui/interop/` and `/api/interop-editors/` that `page` or a frame in it
  * makes, and every http(s) request a frame in it makes to anywhere else on the instance, so the
  * clauses about what a request carries cover all that an editor sends and not only its own two
- * applications: its method, path, query, post body (`null` when it has none), Authorization header
+ * applications: its origin, method, path, query, post body (`null` when it has none), Authorization header
  * (`''` when it has none) and status (`null` until answered). The returned list grows as requests
  * arrive.
  */
@@ -97,6 +97,7 @@ export function watchEditorTraffic(page) {
     const fromFrame = frame !== null && frame !== page.mainFrame() && /^https?:$/.test(url.protocol);
     if (!owned && !fromFrame) return;
     const entry = {
+      origin: url.origin,
       method: request.method(),
       path: url.pathname,
       query: url.search,

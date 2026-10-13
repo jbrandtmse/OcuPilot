@@ -44,6 +44,7 @@ const {
   DIALOG_EDITORS,
   editorScreenFor,
   isListedScreen,
+  listForDocumentScreen,
   listedScreensForArea,
   ownIdSegment,
   parentCriteria,
@@ -381,7 +382,11 @@ test('a side bar lists only built screens, in side-bar order', () => {
       'interoperability/productions/items/test',
       // Story 20.5: a lookup table's entries, unlisted and reached from a Lookup tables name cell, among the unlisted ones.
       'interoperability/lookup-tables/entries',
+      // Story 20.7: the BPL editor, unlisted, among the unlisted ones; the rule and DTL editors follow Queue messages.
+      'interoperability/processes/document',
       'interoperability/queues/messages',
+      'interoperability/rules/document',
+      'interoperability/transforms/document',
       // Story 20.2: Interoperability's four lists, in the classic List menu's order.
       'interoperability/productions',
       'interoperability/processes',
@@ -816,6 +821,35 @@ test('Story 20.4: the Status tab is what an item row opens, from Production item
     'interoperability/monitor',
     'and one that names none opens the earlier listed list of the type, the Production monitor'
   );
+});
+
+// Story 20.7: a Business rules, Business processes or Data transformations name cell opens the class in its editor
+// screen. The pairing is the `<list route>/document` convention (`documentScreenFor`), so the lists declare no row target
+// and the locator links the editor back to its list (`listForDocumentScreen`).
+//
+// Mutation (Rule 19): move one editor's route off `/document` -> that list's pairing, inverse and URL legs go red.
+test('Story 20.7: each code list pairs with its editor screen, an unlisted built id-keyed viewer, and the editor pairs back', () => {
+  const pairs = [
+    ['interoperability/rules', 'interoperability/rules/document', 'OcuPilot.Screen.Descriptor.InteropRuleEditor'],
+    ['interoperability/processes', 'interoperability/processes/document', 'OcuPilot.Screen.Descriptor.InteropProcessEditor'],
+    ['interoperability/transforms', 'interoperability/transforms/document', 'OcuPilot.Screen.Descriptor.InteropTransformEditor'],
+  ];
+  for (const [listRoute, editorRoute, descriptor] of pairs) {
+    const list = screenForRoute(listRoute);
+    assert.ok(list, `${listRoute} is declared`);
+    assert.ok(list.rowTarget == null, `${listRoute} declares no row target, so its name cell takes the document pairing`);
+    const editor = documentScreenFor(list);
+    assert.equal(editor?.route, editorRoute, `${listRoute}: the name cell opens ${editorRoute}`);
+    assert.equal(editor?.descriptor, descriptor);
+    assert.equal(editor?.archetype, 'viewer (source)');
+    assert.equal(editor?.built, true, 'built');
+    assert.equal(isListedScreen(editor), false, 'and unlisted');
+    assert.equal(hasIdRoute(editor), true, 'keyed by an id');
+    assert.equal(listForDocumentScreen(editor)?.route, listRoute, 'and the locator links it back to its list');
+    const url = `/${editorRoute}/${encodeEntityId('Demo.Probe.Thing.cls')}?ns=HSCUSTOM`;
+    assert.equal(screenForUrl(url)?.route, editorRoute, 'a document URL resolves to the editor');
+    assert.equal(ownIdSegment(editor, url), 'Demo.Probe.Thing.cls', 'and its own id is the class\'s document name');
+  }
 });
 
 // Story 6.6, DW-1020: a sub-resource screen's route id names an entity of its parent's own

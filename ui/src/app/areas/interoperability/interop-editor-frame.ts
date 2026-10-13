@@ -42,8 +42,9 @@ import { INTEROP_EDITORS, interopEditorSource, type InteropEditor } from '../../
  * serves on this origin can (AD-47). A tab the editor opens without `noopener` starts with a copy
  * of that storage, which sign-out revokes. The editor's own Logout ends the browser-level login and
  * OcuPilot's pair with it, so the session-ended card shows at OcuPilot's next request, and until
- * then the editor may show its own sign-in form, which OcuPilot never fills or reads. A source set
- * again after the editor navigated its own frame is the consumer's to arrange.
+ * then the editor may show its own sign-in form, which OcuPilot never fills or reads. The component
+ * never navigates a drawn frame: a new source or a new `revision` is a new frame, so the old editor
+ * is removed with whatever it held and its unsaved-changes alert does not show.
  *
  * Every control-flow condition is a paren-free member reference, for the reason `sign-in.ts`
  * records.
@@ -64,7 +65,7 @@ import { INTEROP_EDITORS, interopEditorSource, type InteropEditor } from '../../
       border: 0;
     }
   `,
-  template: `@if (drawn) {
+  template: `@for (slot of slots; track slot.key) {
     <iframe
       #editorFrame
       class="ocu-interop-editor-frame"
@@ -86,6 +87,9 @@ export class InteropEditorFrame {
   /** The document the editor opens, from the consumer's read; `''` opens the editor empty. */
   readonly document = input<string>('');
 
+  /** A new value draws a new frame at the same address; the consumer bumps it to open the document again. */
+  readonly revision = input<number>(0);
+
   /** The scope's namespace, mirrored from the framework-free service (AD-19). */
   private readonly scopeNamespace = signal(this.scope.namespace());
 
@@ -98,21 +102,25 @@ export class InteropEditorFrame {
     return interopEditorSource(this.editor(), namespace, this.document());
   });
 
-  /** The frame this component last set `src` on, and the address it set. */
-  private frameElement: HTMLIFrameElement | null = null;
+  /** The one frame to draw, keyed by revision and address so that either changing replaces the element. */
+  private readonly slotList = computed(() => {
+    const source = this.source();
+    return source === null ? [] : [{ key: `${this.revision()}|${source}` }];
+  });
 
-  private frameSource: string | null = null;
+  /** The frames this component has set `src` on: a drawn frame's address is never set again. */
+  private readonly addressed = new WeakSet<HTMLIFrameElement>();
 
   constructor() {
     const stopScope = this.scope.subscribe(() => this.scopeNamespace.set(this.scope.namespace()));
     inject(DestroyRef).onDestroy(stopScope);
-    // `src` is set once the frame is drawn: once per frame and address.
+    // `src` is set once on each frame drawn.
     afterRenderEffect(() => this.syncSource(this.frame()?.nativeElement ?? null, this.source()));
   }
 
-  /** Whether there is an address to load. */
-  protected get drawn(): boolean {
-    return this.source() !== null;
+  /** The frame to draw: one while there is an address to load, none otherwise. */
+  protected get slots(): readonly { readonly key: string }[] {
+    return this.slotList();
   }
 
   /** The frame's accessible name: the editor's own title. */
@@ -120,16 +128,10 @@ export class InteropEditorFrame {
     return STRINGS[INTEROP_EDITORS[this.editor()].titleKey];
   }
 
-  /** Set `source` on `frame` when either is new to this component; forget both once the frame is gone. */
+  /** Set `source` on `frame` once, when the frame is new to this component. */
   private syncSource(frame: HTMLIFrameElement | null, source: string | null): void {
-    if (frame === null || source === null) {
-      this.frameElement = null;
-      this.frameSource = null;
-      return;
-    }
-    if (frame === this.frameElement && source === this.frameSource) return;
-    this.frameElement = frame;
-    this.frameSource = source;
+    if (frame === null || source === null || this.addressed.has(frame)) return;
+    this.addressed.add(frame);
     this.renderer.setAttribute(frame, 'src', source);
   }
 }
