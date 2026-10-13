@@ -948,7 +948,35 @@ The Interoperability category appears for namespaces that support it: production
 
 **Implementation notes:** Row groups: SH-23, SH-25; CP-37, CP-38; IO-02 to IO-29; AN-02 to AN-10. SH-23's sign-in hand-off gates every embed and is the stage's real risk: the `postMessage` contract has **no origin check**, the safer pre-written-`sessionStorage` alternative is untested, and AD-47 already forbids weakening the origin to make either work. The vendor bundles are never copied - they load in place from the instance. Four rows ship read-only first because their action halves need custom endpoints: queue and job actions, business-partner save and remove, and the message-contents renderer.
 
-### Epic 21: Stage 5 - custom-REST parity from the MCP suite's handlers
+#### Story 20.30: The session trace
+
+[AMENDED 2026-10-13, orchestrator ruling Q1 A at Story 20.9's spec gate, Rule 5] Split from Story 20.9, carrying its trace criterion verbatim. Its charter, as measured at 20.9's plan, is in that spec's Design Notes › Split (Part B): OcuPilot's own SVG sequence diagram, with Mermaid text as the generated alternative. After Story 20.9, before Story 20.31.
+
+As an interoperability operator,
+I want to see what happened in a message's session,
+So that I can follow a message through the production.
+
+**Acceptance Criteria:**
+
+- **Given** a session
+- **When** its trace is opened
+- **Then** it renders as a visual trace, with a generated sequence diagram as the alternative.
+
+### Story 20.31: Message resend and edit-and-resend
+
+[AMENDED 2026-10-13, orchestrator ruling Q1 A at Story 20.9's spec gate, Rule 5] Split from Story 20.9, carrying its resend criterion verbatim. Its charter, as measured at 20.9's plan, is in that spec's Design Notes › Split (Part C): the proposal is the dry run, Confirm executes, and one action resends at most 100 messages. Its key posture is settled at its own spec gate (a destructive key defaults to disabled under the baseline rule; edit-and-resend is at least as guarded as resend). After Story 20.30, before Story 20.10; Story 20.12 needs it.
+
+As an interoperability operator,
+I want to resend a message, or edit one and resend it,
+So that a failed exchange can be retried here.
+
+**Acceptance Criteria:**
+
+- **Given** resend and edit-and-resend
+- **When** they run
+- **Then** they use a **dry-run then confirm** double gate with a bounded cap on how many messages one action may resend.
+
+## Epic 21: Stage 5 - custom-REST parity from the MCP suite's handlers
 
 Every remaining classic portal leaf with a backing class but no route becomes reachable: backup and mirroring, startup and memory tables, NLS locales, SQL settings, globals and the whole SQL tuning track, interoperability credentials, purge, deployment, record maps, workflow, the analytics editors, and a developer-tools set. The agent gains the 28 harvested inspection tools and undo by snapshot and revert.
 
@@ -8339,6 +8367,8 @@ So that understanding an unfamiliar production is visual.
 
 ### Story 20.9: Messages - search, view, resend and trace
 
+[AMENDED 2026-10-13, orchestrator ruling Q1 A at this story's spec gate, Rule 5] Split for size: this story keeps message search and the viewer's Header and Contents tabs over OcuPilot's own read-only renderer (its first and fourth criteria). Its trace criterion moved to Story 20.30 and its resend criterion to Story 20.31, each verbatim; order 20.9, 20.30, 20.31, then 20.10. Saved searches are not offered: each vendor store belongs to its own search engine (a named limit).
+
 As an interoperability operator,
 I want to find a message and follow what happened to it,
 So that incident investigation is possible here.
@@ -8348,14 +8378,6 @@ So that incident investigation is possible here.
 - **Given** message search and the viewer
 - **When** they run
 - **Then** they read through the port, with saved searches where the API offers them.
-
-- **Given** resend and edit-and-resend
-- **When** they run
-- **Then** they use a **dry-run then confirm** double gate with a bounded cap on how many messages one action may resend.
-
-- **Given** a session
-- **When** its trace is opened
-- **Then** it renders as a visual trace, with a generated sequence diagram as the alternative.
 
 - **Given** message contents
 - **When** they render

@@ -11696,3 +11696,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: turn.browser-spec.mjs:392 assertion 'the markup renders as literal text' got '<img '; the head differs from green-on-shard-3 481b3adc only in interop-editors.browser-spec.mjs; rerun pending.
 - 2026-10-13T21:11:34Z status=routed owner=burndown by=runner note=rerun once (attempt 2); if green it is a flake: the spec must wait for the reply's settled state before reading its text
 - 2026-10-13T21:52:09Z occurrence=20-7-the-three-embedded-vendor-editors note=attempt 2 of run 38463014073 green unchanged: a flake (orchestrator noted)
+
+### DW-2398: Saved message searches are not offered: each vendor store (the classic namespace-shared one and the per-user Ens.Message.SavedSearch) belongs to its own search engine, which OcuPilot's header search cannot run
+- source: spec-20-9 gate (orchestrator ruling Q2) | severity: low | fix-risk: med | footprint: in-epic
+- evidence: Measured at Story 20.9's plan: the per-user store's searches run through Ens.Message.Search on a work queue and store a row per run; OcuPilot's search is bound SQL over message headers.
+- 2026-10-13T21:53:29Z status=wontfix-accepted owner=20-9-messages-search-view-resend-and-trace by=spec_gate note=reopen_if=the vendor exposes an engine-neutral saved-search store (a criteria list readable without Ens.Message.Search)
