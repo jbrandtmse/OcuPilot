@@ -2,16 +2,23 @@
 title: 'Story 20.7: The three embedded vendor editors'
 type: 'feature'
 created: '2026-10-12'
-status: 'in-progress'
-baseline_revision: 'f288bcdc2d17e37d282052fcc6f293b1c84924b0'
-baseline_commit: 'f288bcdc2d17e37d282052fcc6f293b1c84924b0'
+status: 'done'
+baseline_revision: '6bd1f0ded73a9d7db4bca8ad173dc2f03090e36e'
+baseline_commit: '6bd1f0ded73a9d7db4bca8ad173dc2f03090e36e'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
   - '{project-root}/_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md'
   - '{project-root}/_bmad-output/planning-artifacts/ux-designs/ux-OcuPilot-2026-09-08/EXPERIENCE.md'
 warnings: [oversized]
-deferred: []
+deferred:
+  - summary: >-
+      LogSourcePort.IntegrityReport closes the null device unconditionally, including when its web process already held it open, so a later request in that process cannot run code that uses the device; the vendor's DTL Compile then fails with <NOTOPEN>CompileDTL and the editor shows "ERROR #6220: Internal Server Error".
+    evidence: |-
+      Observed on ocupilot-b-ci at review: after database-operations.browser-spec.mjs ran, two of seven web processes had no /dev/null open (a fresh one has it), and a terminal process that opens, reopens, closes and then uses the device raises <NOTOPEN>. The method opens it with `Open tNull:::1` and closes it with `Close tNull` on both paths. That it is the only closer is not isolated (inference). DW-2394 names the trigger as vendor-only; the closing is OcuPilot's. A fix closes the device only when the method opened it.
+    location: >-
+      src/OcuPilot/Port/LogSourcePort.cls:3043
+    severity: medium
 ---
 
 <intent-contract>
@@ -381,7 +388,8 @@ Rejected:
 
 ### CI red on 481b3adc (run 38446203705) - rework iteration 1
 
-- [ ] [CI] **AC2's compile-failure leg** (`interop-editors.browser-spec.mjs` test 3, browser shard 5/5) waited 30 s for the notice "error occurred while compiling" and read `["ERROR #6220: Internal Server Error"]`. The instance log: `<NOTOPEN>CompileDTL+30^%Api.InteropEditors.v3.impl.1` - the vendor's compile route `use`s the null device without opening it, so it fails in a CSP process that has not opened that device before (DW-2394, a vendor defect candidate under the owner's hold). Locally the leg was green, because the worker that served it had the device open (inference). Reproduce it on `ocupilot-b-ci` (a compile served by a CSP process that has not opened the null device), then make the leg hermetic without priming process state through OcuPilot: it still pins that the failure is reported in the editor's own notice inside the frame and that no message reaches OcuPilot, and it accepts the vendor's own error notice when its compile route fails this way. Add the vendor behavior to the Named limits. Fix nothing in the vendor's code and never reach into the frame (AD-63).
+- [x] [CI] **AC2's compile-failure leg** (`interop-editors.browser-spec.mjs` test 3, browser shard 5/5) waited 30 s for the notice "error occurred while compiling" and read `["ERROR #6220: Internal Server Error"]`. The instance log: `<NOTOPEN>CompileDTL+30^%Api.InteropEditors.v3.impl.1` - the vendor's compile route `use`s the null device without opening it, so it fails in a CSP process that has not opened that device before (DW-2394, a vendor defect candidate under the owner's hold). Locally the leg was green, because the worker that served it had the device open (inference). Reproduce it on `ocupilot-b-ci` (a compile served by a CSP process that has not opened the null device), then make the leg hermetic without priming process state through OcuPilot: it still pins that the failure is reported in the editor's own notice inside the frame and that no message reaches OcuPilot, and it accepts the vendor's own error notice when its compile route fails this way. Add the vendor behavior to the Named limits. Fix nothing in the vendor's code and never reach into the frame (AD-63).
+  - Cause: the vendor's compile route uses the null device without opening it, so it fails in a web process that has closed that device, not in one that has not opened it (a fresh web process has it open). `LogSourcePort.IntegrityReport` opens and then closes it in the process that serves an integrity report (inference: that sequence leaves the device closed in a terminal process, and web processes lacked it after `database-operations.browser-spec.mjs` ran).
 
 ## Spec Change Log
 
@@ -408,6 +416,20 @@ Rejected:
   - `[false]` `[reject]` The scope-not-yet-loaded path is untested -- `ScopeService.namespace()` is `''` until loaded, so `onScopeChange` fires on arrival (`scope.ts:431`), as it does for `source-editor.page.ts:149`.
   - `[false]` `[reject]` The browser spec was not shown to have run -- it ran 17 of 17 against the redeployed bundle, and three client mutations reddened it.
   - `[low]` `[reject]` Refused, Fault and Namespace move are pinned only by the store, page and frame tiers -- the matrix rows hold there, the plan gave the browser tier AC1 to AC5, and no failure is shown.
+
+### 2026-10-13 -- Review pass (CI rework 1)
+
+- verdicts: 9 findings -- high 0, medium 1, low 6, false 2, maybe-false 0
+- findings:
+  - `[low]` `[reject]` Vendor-failure branches pass AC2's compile legs without observing either compile notice -- the `[CI]` item prescribes accepting the vendor's notice, the notices are drawn by the vendor's page with no OcuPilot code in their path, and the log clause keeps an unexplained 500, a missing notice and any message red.
+  - `[low]` `[reject]` DW-2394's ledger heading still says "never opened" -- the ledger is the lead's to write (Rule 15); the cause is reported in this pass's result and the deferred entry.
+  - `[low]` `[reject]` The `[CI]` item keeps its original sentence beside the cause line -- the fix edits the item the lead wrote, and the lead limited this pass to a ticked item and one cause line.
+  - `[low]` `[reject]` AC2's Then text is unamended -- it sits in the read-only intent contract; the Named limits carry the exception.
+  - `[medium]` `[defer]` The failing state comes from `LogSourcePort.IntegrityReport` (auditor's reading R4, unverified there) -- observed at review on `ocupilot-b-ci` (two web processes without the device after the database-operations spec; open, reopen, close, use raises `<NOTOPEN>`); pre-existing and outside this story, so deferred with the evidence.
+  - `[low]` `[reject]` The log count growing is not tied to the click -- one spec file runs at a time per throwaway and only this test compiles a DTL; theoretical.
+  - `[false]` `[reject]` The Modified clause is not exercised when the compile fails -- the definition's `TimeChanged` still moves with the save and a compiled class's time is older, so the compiled-time mutation still differs from `definitionModified`.
+  - `[low]` `[reject]` "Carries the compiler's text" is read as the phrase only -- both the old and the new leg assert the phrase; unchanged by this pass.
+  - `[false]` `[reject]` The mutation line was not checked -- the review re-ran the spec four times (18 of 18 each; two compile legs took the vendor branch in one run) and applied the notice-wait mutation (red after 30 s, reverted byte-identical).
 
 ## Design Notes
 
@@ -572,6 +594,7 @@ It does not touch `Test/Navigation.cls`, `Test/InteropFloor.cls`, `screens.gener
 - The editor can move away unseen. For DTL and BPL, Back moves the frame first.
 - The editor's notices exist only inside the frame. OcuPilot neither relays nor records them.
 - A coded row's name cell opens a screen that explains, rather than no link.
+- The vendor's DTL compile route fails with the editor's generic server-error notice in a web process that has closed the null device it uses without opening (DW-2394). OcuPilot neither works around it nor reaches into the frame, and the browser spec takes that notice only when the instance's log records the failure.
 
 ## Verification
 
@@ -668,16 +691,19 @@ It does not touch `Test/Navigation.cls`, `Test/InteropFloor.cls`, `screens.gener
 - mutation: (CR) AC4 namespace clause, the frame component's `@for` tracking a constant key -- the frame spec's rewritten namespace-change test reddens (it moves the scope and the input in one render).
 - mutation: (CR) AC4 no-alert clause, the dirty editor's frame given its `src` again in place before the route change (the design DW-2350 rejected, applied in the browser spec) -- the browser AC4 reddens with `beforeunload` recorded.
 - mutation: (CR) store `reset`, its listeners kept -- the store test's reset row reddens alone.
+- mutation: (CI) AC2 compile legs, on `ocupilot-b-ci` with every web process's null device closed (a probe class closing it per process) -- the earlier leg reddens (`<NOTOPEN>CompileDTL`, no compiled notice) and the new one passes with the vendor's notice taken; `NULL_DEVICE_FAILURE` naming a line the log never holds reddens the log clause, `compileNotice` not choosing Compile reddens its notice wait, and the editor posting a message after Compile reddens the no-message clause; each reverted byte-identical (`git status --short` and `git diff --stat` unchanged).
 
 ## Auto Run Result
 
 Status: done
 Blocking condition: none
 
-**What changed.** The Business rules, Business processes and Data transformations name cells now open InterSystems' rule, BPL or DTL editor in place, at `<list>/document/<class>.cls`. Three unlisted `viewer (source)` screens share one page, `interop-editor.page.ts`, and one framework-free store. The store issues the owning list's declared read and draws `app-interop-editor-frame` only for a row it answers (not marked `Coded` for a process or transformation). `ListClasses` answers a boolean `Coded` on Processes and Transforms rows. `interop-editor-frame` takes a `revision` input and draws a new `<iframe>` for a new source or revision, so OcuPilot never navigates a drawn frame (DW-2350). Refresh draws the document again (DW-2351). The first real-browser run of the frame is the new `interop-editors.browser-spec.mjs` (DW-2347). The 15 strings, EXPERIENCE.md :159 and :604, the `StageTwoTools`, `SurfaceCoverage`, `Navigation` and `InteropFloor` rosters, the mirror, the client rosters and the structural walk carry the three screens, all by additions.
+**What changed.** AC2's two compile legs in `ui/browser/interop-editors.browser-spec.mjs` no longer depend on which web process serves the compile. `compileNotice` clicks Compile and takes the editor's own notice, or the editor's generic "Internal Server Error" notice, and takes the generic one only when the instance's log gains a `<NOTOPEN>CompileDTL` line after the click (read through `docker exec`; nothing is read from, posted to or primed in the frame or the process). The no-message assertions run in both outcomes, and a run that took the vendor notice says so with `t.diagnostic`. No product code changed. The spec gained the ticked item, a cause line, a Named limits bullet and one `mutation:` line.
 
-**Review.** Two layers ran (verification-gap, intent-alignment); blind-hunter and edge-case-hunter have no instruction in this project and were skipped. 13 findings: 1 medium and 3 low patched, 5 false and 4 low rejected with reasons in the Review Triage Log; nothing deferred. No follow-up pass is recommended (patched: 0 high, 1 medium, 3 low; each patch was re-run green, and the Rules patch and the structural and locator mutations were seen red).
+**Cause.** The item's premise was off: a fresh web process has the null device open. The failing processes had closed it, and `LogSourcePort.IntegrityReport` opens it and closes it unconditionally. After `database-operations.browser-spec.mjs`, two of seven web processes had no null device, and a terminal process that opens, reopens and closes it raises `<NOTOPEN>` on use. DW-2394 is therefore triggered by OcuPilot, not by the vendor alone, and its ledger heading needs rewording. The product defect is deferred in the frontmatter (medium, out of this story's footprint).
 
-**Verification** on `ocupilot-b-ci`, after the last patch: the six-class loop (43 tests) and the second loop (`Descriptor`, `CompileWithoutInterop`, `InteropFloorOwnPairs`, `ToolNavigate`, `ScreenAccessWire`, 98 tests), `ReadTool` (28) green; `npm run test:tools` 1979 and `npm run test:components` 3063 green; the build's prebuild chain clean; `check-objectscript.py` and `lint-docs.sh` clean; browser specs `interop-editors` 17 of 17, `interop-editor-frame` 8 and `interop-productions` 5 green, and `a11y-structural-invariants` (188 screens declared, 174 walked, 14 skipped, no baseline entry) green before the patches, which touch none of its inputs. Measured: the `interop-editor-page` lazy chunk is 9.75 kB raw (3.09 kB transfer), under 88 kB; the initial total is 1.91 MB against `maximumWarning` 1992kB. The full ObjectScript sweep, `npm test`, the smoke and Rule 30's fresh check are the runner's.
+**Review.** Two layers ran (verification-gap, intent-alignment). 9 findings: 1 medium deferred, 6 low rejected and 2 false, with reasons in the Review Triage Log. Nothing was patched, so no follow-up pass is recommended (patched: 0 high, 0 medium, 0 low).
 
-**Residual risks.** A Refresh read that faults replaces the frame with the fault strip, so any unsaved change in it is lost. A class beyond the read's 1,000 rows reads as gone, as the list shows it. Both are named limits.
+**Verification** on `ocupilot-b-ci`: `interop-editors.browser-spec.mjs` 18 of 18 on every run: four at review (one on fresh web processes, three on a pool where two lacked the device, the first taking the vendor branch twice) and the implementer's runs with the device closed in every web process and with fresh ones. The implementer saw the original leg red with the device closed and ran three mutations red and reverted. At review the notice-wait mutation reddened after 30 s and was reverted byte-identical. `npm run test:tools` 1983 green; `client-lint`, `browser-reset` and `lint-docs.sh` clean. The rest of the story, its Matrix Test Audit and the full suites were not re-run in this pass.
+
+**Residual risks.** In a run where the compile is served by a process without the device, the compiler's own text is not pinned (the vendor route fails first); a run on a process with it open pins it.

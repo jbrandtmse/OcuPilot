@@ -10,7 +10,10 @@
  *   instance's origin, the frame fills its host and the host ends at the outlet's bottom edge, the locator links to the list, and the
  *   DW-1337 checks find nothing beyond the baseline at 1280 light, 720 light and 1280 dark.
  * - AC2: the DTL editor's saved and compiled notices, and the compile error of `.Broken`, appear inside the frame and no message
- *   reaches the shell or the frame; the list's Modified is the class definition's `TimeChanged`.
+ *   reaches the shell or the frame; the list's Modified is the class definition's `TimeChanged`. The vendor's compile route uses the
+ *   null device without opening it, so in a web process that has closed that device it fails with the editor's generic server-error
+ *   notice whatever the class holds; a Compile leg takes that notice for its outcome only when the instance log records the failure
+ *   for its click.
  * - AC3: a class the list does not answer, and a process or transformation written as a class, draw their sentences and no frame and
  *   no editor request.
  * - AC4: the editor moving itself (its Back to standard UI) is left alone, Refresh draws a new frame, and a route change in the screen
@@ -29,6 +32,7 @@
  * `OCUPILOT_BROWSER_ORIGIN=<origin> OCUPILOT_BROWSER_CONTAINER=<container> node --test --test-concurrency=1 browser/interop-editors.browser-spec.mjs`.
  */
 
+import { spawnSync } from 'node:child_process';
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { dirname, join } from 'node:path';
@@ -69,6 +73,11 @@ const NOTE = '[data-ocu-editor="note"]';
 /** A Data transformations row of the vendor's own, which opens in the DTL editor. */
 const VENDOR_DTL = 'Ens.Util.DTL.Audit.MessageView.cls';
 const REDUCED_MOTION = [{ name: 'prefers-reduced-motion', value: 'reduce' }];
+/** The editor's notice when its compile route fails inside the vendor's code, which names neither the class nor the compiler's text. */
+const VENDOR_FAILURE_NOTICE = /Internal Server Error/;
+/** What the instance's log records when the vendor's DTL compile route uses a null device that its web process has closed. */
+const NULL_DEVICE_FAILURE = '<NOTOPEN>CompileDTL';
+const INSTANCE_LOG = '/durable/iris/mgr/messages.log';
 
 /** The three screens: each list, the editor it opens, and the probe class and title it is tested with. */
 const KINDS = [
@@ -338,14 +347,45 @@ function boxes(page) {
   });
 }
 
-/** Wait until the editor's snackbar reads a sentence containing `text`, and answer the sentence. */
-async function snackbarWith(frame, text) {
+/** Wait until the editor's snackbar reads a sentence `accept` takes, and answer the sentence. */
+async function snackbarWhere(frame, accept, what) {
   return until(
     () => frame.evaluate(() => Array.from(document.querySelectorAll('.mdc-snackbar__label')).map((node) => node.innerText.trim())),
-    (labels) => labels.some((label) => label.includes(text)),
-    `the editor's notice contains ${JSON.stringify(text)}`,
+    (labels) => labels.some(accept),
+    what,
     config.navigationTimeoutMs
-  ).then((labels) => labels.find((label) => label.includes(text)));
+  ).then((labels) => labels.find(accept));
+}
+
+/** Wait until the editor's snackbar reads a sentence containing `text`, and answer the sentence. */
+const snackbarWith = (frame, text) => snackbarWhere(frame, (label) => label.includes(text), `the editor's notice contains ${JSON.stringify(text)}`);
+
+/** How many lines of the instance's log record the vendor's DTL compile route failing on a null device its web process has closed. */
+function nullDeviceFailures() {
+  const read = spawnSync('docker', ['exec', config.container, 'grep', '-c', '-F', NULL_DEVICE_FAILURE, INSTANCE_LOG], { encoding: 'utf8' });
+  // `grep -c` answers no match with a count of 0 and status 1.
+  assert.ok(read.status === 0 || read.status === 1, `the instance log reads: ${read.stderr}`);
+  return Number(read.stdout.trim());
+}
+
+/**
+ * Choose Compile in the DTL editor and answer the editor's own notice, and whether it is the vendor's failure notice.
+ *
+ * The vendor's compile route uses the null device without opening it, so in a web process that has closed that device it fails
+ * whatever the class holds, and the editor shows its generic server-error notice. That notice is taken for the outcome only when the
+ * instance's log records the failure after this click. A notice that is neither `expected` nor that one is never taken.
+ */
+async function compileNotice(frame, expected) {
+  const failures = nullDeviceFailures();
+  await frame.click('#top-banner-button-4-secondary');
+  const notice = await snackbarWhere(
+    frame,
+    (label) => label.includes(expected) || VENDOR_FAILURE_NOTICE.test(label),
+    `the editor reports the compile in its own notice (${JSON.stringify(expected)}, or the vendor's failure notice)`
+  );
+  if (notice.includes(expected)) return { notice, vendorFailure: false };
+  await until(nullDeviceFailures, (count) => count > failures, `the instance's log records ${NULL_DEVICE_FAILURE} for the notice ${JSON.stringify(notice)}`, config.navigationTimeoutMs);
+  return { notice, vendorFailure: true };
 }
 
 // Mutation (Rule 19): the page passes `document` with its `.cls` kept (bundle rebuilt and redeployed) -> the editor's document read answers
@@ -420,7 +460,12 @@ test('AC1: each editor screen passes the structural and contrast checks at 1280 
 // Mutation (Rule 19): `interopEditorSource` appends the editor's mode flag (bundle rebuilt and redeployed) -> the editor posts the message
 // that flag selects and the sign-in the notices need never happens, so the message and notice clauses go red, and so does
 // `vendor-frame.test.mjs`.
-test('AC2: the DTL editor\'s saved and compiled notices appear in the frame and send no message, the list\'s Modified is the definition\'s TimeChanged, and a class that does not compile shows the compiler\'s text', async () => {
+// Mutation (Rule 19): `compileNotice` does not choose Compile (no notice appears) -> its wait for the editor's notice goes red, whichever
+// web process serves the compile.
+// Mutation (Rule 19): the editor posts a message to the shell after Compile -> the no-message clause goes red, in either outcome.
+// Mutation (Rule 19): `NULL_DEVICE_FAILURE` names a line the log never holds -> with every web process's null device closed, the log
+// clause goes red.
+test('AC2: the DTL editor\'s saved and compiled notices appear in the frame and send no message, the list\'s Modified is the definition\'s TimeChanged, and a class that does not compile is reported in the editor\'s own notice', async (t) => {
   const document = TRANSFORM.name.slice(0, -'.cls'.length);
   const { context, page, messages } = await shellAt(`/ocupilot/${TRANSFORM.listRoute}?ns=${NAMESPACE}`);
   try {
@@ -438,8 +483,9 @@ test('AC2: the DTL editor\'s saved and compiled notices appear in the frame and 
     assert.equal(await snackbarWith(frame, `${document} saved.`), `${document} saved.`, 'the editor says the class is saved');
     // The compile is at least a second after the save, so the compiled class's time and the definition's cannot be equal at the list's resolution.
     await new Promise((resolve) => setTimeout(resolve, 1100));
-    await frame.click('#top-banner-button-4-secondary');
-    assert.equal(await snackbarWith(frame, 'compiled successfully'), `${document} compiled successfully`, 'and then that it compiled');
+    const compiled = await compileNotice(frame, 'compiled successfully');
+    if (compiled.vendorFailure) t.diagnostic(`the vendor's compile route failed in the web process that served it; the editor's notice is ${JSON.stringify(compiled.notice)}`);
+    else assert.equal(compiled.notice, `${document} compiled successfully`, 'and then that it compiled');
     assert.deepEqual(await messages.seen(), [], 'no message reached the shell or the frame');
 
     await openList(page, TRANSFORM.listRoute);
@@ -455,8 +501,8 @@ test('AC2: the DTL editor\'s saved and compiled notices appear in the frame and 
     await answered(broken.page);
     const frame = await editorShows(broken.page, BROKEN.slice(0, -'.cls'.length));
     await frame.waitForSelector('#top-banner-button-4-secondary', { timeout: config.navigationTimeoutMs });
-    await frame.click('#top-banner-button-4-secondary');
-    await snackbarWith(frame, 'error occurred while compiling');
+    const failed = await compileNotice(frame, 'error occurred while compiling');
+    if (failed.vendorFailure) t.diagnostic(`the vendor's compile route failed in the web process that served it; the editor's notice is ${JSON.stringify(failed.notice)}`);
     assert.deepEqual(await broken.messages.seen(), [], 'a class that does not compile sends no message either');
   } finally {
     await broken.context.close();
