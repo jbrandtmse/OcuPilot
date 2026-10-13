@@ -221,6 +221,8 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
   **The agent's SQL read runs in the turn job, and runs only what the instance types as a query** [AMENDED 2026-10-05, Story 19.11 spec gate, Rule 20]. `explorer.sqlquery.read` refuses every other kind before anything runs (`EXPLORER.SQL.CHANGES`), so by OcuPilot's classification it never mutates. A function or procedure the query calls runs as the user and can change state (measured by Story 19.11's Task 0: a query calling a function set a global, run through `SqlPort.Run` in `query` mode as the session user), which the classification does not see (AD-21's named limit, DW-2003). The Prometheus metrics table (Story 18.11) takes one collection per read and so rewrites the same sensor baseline: it never auto-refreshes, and its note says each read shortens an external scraper's per-second intervals [AMENDED 2026-10-11, Story 18.11 spec gate, Rule 20].
   **Story 20.27's named limits** [AMENDED 2026-10-12, Story 20.6 spec gate, Rule 20]: the transformation test's HL7 parse writes the vendor's per-process `^EnsHL7.Segment` node, as the classic dialog's parse does, and a transformation's own code has no cap beyond the gateway's timeout.
 
+  **The fifth shape gains the vendor's `%SYS` statements** [AMENDED 2026-10-12, Story 18.37 spec gate, Rule 20]: the interoperability usage reads run the classic page's class queries, which may write vendor metric state (inference; Story 18.37's Task 0 measures it, and a write is a candidate seventh exception for the lead).
+
 ### AD-8 — Privilege is the process's, checked at call time, never cached
 
 - **Binds:** FR-4, FR-18, FR-19; every screen and every tool
@@ -317,6 +319,8 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
   **Story 20.23's queue and job tools declare the vendor's own checks** [AMENDED 2026-10-11, Story 20.23 spec gate, Rule 20], read in `Ens.Queue` and `Ens.Job`: `%Ens_Queues:WRITE` for the two queue aborts, `%Ens_Jobs:WRITE` for a job's abort and stop, `%Ens_MessageSuspend:USE` for its suspend, and WRITE on the namespace's globals database.
   **Story 20.5's lookup and partner pairs** [AMENDED 2026-10-11, Story 20.5 spec gate, Rule 20]: `%EnsRole_Operator` opens Lookup tables, a table's entries and Business partners (`%Ens_LookupTables:READ`, `%Ens_ProductionConfig:READ`, read from the instance); the lookup writes need `%Ens_LookupTables:WRITE` and WRITE on the namespace's globals database. The export declares `%Admin_FileSystemAccess:USE` beside the read pair [AMENDED 2026-10-11, Story 20.5 review (DW-2336), Rule 20], stricter than the classic page's `%Ens_ViewFileSystem:USE`, because its file carries every value, those under credential-named keys included; the import declares `%Ens_LookupTables:WRITE` plus the path port's pairs for a server file, and the classic Import dialog's OR-listed `%Ens_ViewFileSystem:USE` holder is a named narrower audience (AD-62 (7)'s named-limit family).
   **Story 20.6's test pairs** [AMENDED 2026-10-12, Story 20.6 spec gate, Rule 20]: `%EnsRole_Administrator` and `%EnsRole_WebDeveloper` hold both test resources (`%Ens_TestingService:USE`, `%Ens_DTLTest:USE`); both tests also need WRITE on the globals database, and the transformation test (Story 20.27) `%Ens_Code:READ`, each a named narrower audience than the classic dialog's.
+
+  **The interoperability usage queries' temporary `%DB_IRISMETRICS`** [AMENDED 2026-10-12, Story 18.37 spec gate, Rule 20] is the vendor's own model, granted only after the vendor checks the caller's `%Admin_Operate:USE`, as `%SYS.Ensemble`'s production control is; OcuPilot adds no elevation (Story 18.37; the `InteropInterfaces` query's check is measured at its Task 0).
 
 ### AD-9 — OcuPilot's own state is protected by a privileged routine application
 
@@ -693,6 +697,8 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
 
   **`SqlActivityPort` reads the instance's running SQL statements in the caller's process** (Story 19.10) [AMENDED 2026-10-05, Story 19.10 spec gate, Rule 20]. `INFORMATION_SCHEMA.CURRENT_STATEMENTS` answered another user's statement running in another namespace to a principal holding only READ on its own namespace's database (measured on `ocupilot-a2-ci`), so the port first requires `%Admin_Operate:USE`, the classic page's resource, and `%DB_IRISSYS:READ`, without which the classic page lists nothing (measured). It reads one fixed statement, leaves out its own process's statement and never selects `Parameters`, which held a bound value in clear (measured; AD-35). It reads a statement's text through the vendor's `GetSQLStatement` only when the caller holds READ on the statement's namespace's routines and globals databases, because without it the call answers `<PROTECT>` and writes a `%System/%Security/Protect` audit row (measured). The vendor withholds another user's text without `%Development:USE` (#921, measured), as the classic page does. FR-80's catalog row (OS-23) names `action/query`; the screen reads through `SqlActivityPort` instead, because `AtelierPort`'s gate (AD-61's rule 1) adds `%Development:USE` and the namespace's READ pairs, which would refuse the classic page's own audience. `MonitorPort`'s third way in is the Prometheus metrics table's `Metrics`/`LIST` read (Story 18.11), behind the same gate (`%Admin_Operate:USE` and `%DB_IRISSYS:READ`), with no own pair [AMENDED 2026-10-11, Story 18.11 spec gate, Rule 20].
 
+  **`MonitorPort`'s fourth way in** [AMENDED 2026-10-12, Story 18.37 spec gate, Rule 20]: the classic Interoperability Usage page's own class queries, run through `%ResultSet` in `%SYS` as the signed-in user, behind the same pairs (`%Admin_Operate:USE`, `%DB_IRISSYS:READ`); the deprecated `/api/monitor/interop` is never called.
+
 ### AD-30 — Read-only and the kill switch are evaluated at the point of effect, and a turn re-reads them
 
 - **Binds:** FR-19, FR-20; the turn job, every write tool, the confirm path
@@ -796,6 +802,8 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
 
   **`AdminPort` answers two composed read types** (Story 18.36) [AMENDED 2026-10-11, Story 18.36 spec gate, Rule 20]: `Monitor` `RESOURCEROWS`, `{"Resources": <DASHBOARDRESOURCES' array>}`, and `BUSYPROCESSES`, `{"BusyProcesses": <DASHBOARDMAIN's SystemUsage.BusyProcesses less rows whose Process is empty, in order>}`, each read over that one member (`source.rows`); an answer of another shape fails the read closed, logged once. The read grammar is unchanged.
   **An item's Test tab** [AMENDED 2026-10-12, Story 20.6 spec gate, Rule 20]: a parent-scoped `interop` list (`item`) of the request classes the host accepts, as the classic dialog's `GetMessageList` lists them (AD-62 item 11's named limit), and their fields and subclasses, read from the class dictionary; a credential-named field, top-level or inside an embedded object, reads `Secret` true [AMENDED 2026-10-12, Story 20.6 review (DW-2346), Rule 20].
+
+  **A `monitor` read names one of `MonitorPort`'s `ENDPOINTS`** [AMENDED 2026-10-12, Story 18.37 spec gate, Rule 20] (the metrics table, and the three interoperability usage tables of Story 18.37); it takes no criteria.
 
 ### AD-37 — OcuPilot's own state has a declared lifecycle against the objects it references
 
@@ -957,6 +965,8 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
 
   **Story 18.36's `classicPage` keys** [AMENDED 2026-10-11, Story 18.36 spec gate, Rule 20]: the global and routine, ECP and system resource statistics screens declare `%cspapp.op.utilsysstatisticsglobal`, `%cspapp.op.utilsysstatisticsecp` and `%cspapp.op.utilsysstatisticsresource`, and the most active processes screen `%cspapp.op.utildashboard` (Task 0 checks each through `%SYS.Portal.Resources.NormalizePage`).
   **Story 20.6's `CLASSICPAGES`** [AMENDED 2026-10-12, Story 20.6 spec gate, Rule 20]: the Test tab declares `EnsPortal.TestingService`, and the tools `EnsPortal.Dialog.TestingService` and `EnsPortal.Dialog.TestTransform`.
+
+  **The interoperability usage tabs map to the classic Interoperability Usage page** [AMENDED 2026-10-12, Story 18.37 spec gate, Rule 20] (Story 18.37), one tab group in OS management.
 
 ### AD-45 — There is one smoke path, and it is also the health check
 

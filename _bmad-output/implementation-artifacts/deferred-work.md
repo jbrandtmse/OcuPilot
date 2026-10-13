@@ -11370,6 +11370,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-11T22:33:47Z status=routed owner=burndown by=cr note=fix the shell (a row-unique key for id kind none) or declare MetricsList's id composite [Metric, Labels]
 - 2026-10-12T06:54:07Z occurrence=18-12-the-agent-grows-with-the-stage
 - 2026-10-12T06:54:07Z status=routed owner=burndown by=cr note=also an empty key: RoutineAppRoleList's Every caller row keys '' (MatchRole empty), so ArrowDown sticks on it
+- 2026-10-13T02:15:56Z occurrence=18-37-interoperability-usage (two interoperability usage tabs repeat their name column)
 
 ### DW-2329: MonitorPort.Samples would fail the whole metrics table on an instance whose label value ends in an unescaped backslash (a Windows dir); unverified
 - source: spec-18-11-monitoring-extras-and-the-live-log-tail.md | severity: med | fix-risk: low | footprint: in-story
@@ -11543,3 +11544,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: ARCHITECTURE-SPINE.md AD-38 second paragraph: 'module.xml carries one <Invoke> running When=After'; module.xml :56-57 now carries GuardTarget (Compile, After) and Install (Activate, After). epic-18-context.md :58 'Open at Task 0'.
 - 2026-10-12T19:54:32Z status=open owner=18-13-multi-namespace-install by=cr note=spine is Epic 20-contended (Rule 11): the lead corrects AD-38's sentence at its gate (Rule 20); the context regenerates
 - 2026-10-12T19:56:43Z status=resolved-by:18-13-multi-namespace-install by=adjudication note=AD-38 corrected at origin (two invokes: the install after Activate, the guard after Compile), epic-18-context.md :58 rewritten
+
+### DW-2370: /api/monitor/interop adds %All with no caller check, so with sign-in required on /api/monitor it serves every signed-in user (and answers anonymously on the default instance)
+- source: spec-18-37-interoperability-usage.md | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: measured on ocupilot 2026-10-12: GET /api/monitor/interop/v1/current/interfaces and /current/volume with no credentials answered 200; its code adds %All with no caller check (inference from source)
+- 2026-10-13T02:15:56Z status=decision-pending owner=burndown by=lead note=owner_hold: vendor defect candidate, never reported upstream; OcuPilot never calls it (Story 18.37, AD-29)
