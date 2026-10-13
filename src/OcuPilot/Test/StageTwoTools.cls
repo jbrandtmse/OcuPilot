@@ -10,7 +10,7 @@
 /// <p><b>Actions.</b> Each row action of a <code>writes</code> screen resolves, by the rule
 /// <class>OcuPilot.Api.ScreenAction</class> applies (a write tool whose <code>DESCRIPTORCLASS</code> is the screen and whose
 /// <code>SCREENACTIONS</code> holds the id), to exactly one tool. The primary action does too, or resolves to the one
-/// bound tool that creates. Every bound tool is advertised but AD-53's two.</p>
+/// bound tool that creates. Every bound tool is advertised but AD-53's three.</p>
 /// <p><b>Fields.</b> For every bound tool, and every <code>&lt;tool/&gt;</code> row (a tool Epic 18 bound to an earlier
 /// screen): the registry lists it as a write of its own class, every field its generated list admits is settable, and
 /// every other settable name but the id argument is the first path segment of its generated entry, or the tool's port is
@@ -22,8 +22,8 @@ Class OcuPilot.Test.StageTwoTools Extends %UnitTest.TestCase
 /// <p>The package every screen descriptor sits in; roster rows name a descriptor without it.</p>
 Parameter DESCRIPTORPACKAGE = "OcuPilot.Screen.Descriptor.";
 
-/// <p>The two write tools AD-53 keeps off the agent's list.</p>
-Parameter UNADVERTISED = "osmgmt.licensekey.activate,security.secrets.replacesymmetric";
+/// <p>The three write tools AD-53 keeps off the agent's list.</p>
+Parameter UNADVERTISED = "osmgmt.licensekey.activate,security.secrets.replacesymmetric,security.alloweddirectories.update";
 
 Parameter ADMINPORT = "OcuPilot.Port.AdminPort";
 
@@ -35,6 +35,7 @@ Parameter FIELDSCLASS = "OcuPilot.Screen.Tool.ToolFields";
 XData Roster
 {
 <roster>
+<screen name="AllowedDirectoryList" kind="writes"/>
 <screen name="AuthOptions" kind="writes"/>
 <screen name="DataElementEncryption" kind="writes"/>
 <screen name="DatabaseEncryption" kind="writes"/>
@@ -73,7 +74,6 @@ XData Roster
 <screen name="RoutineAppForm" kind="form" list="RoutineAppList"/>
 <screen name="RoutineMappingForm" kind="form" list="RoutineMappingList"/>
 <screen name="SuperserverForm" kind="form" list="SuperserverList"/>
-<screen name="AllowedDirectoryList" kind="read-only" reason="the allow-list is a person's write, never the agent's"/>
 <screen name="DatabaseIntegrityLog" kind="read-only" reason="the output of an integrity check, which the instance writes"/>
 <screen name="EcpAppServerTab" kind="read-only" reason="the connection state of the ECP application servers"/>
 <screen name="JournalFileDatabaseList" kind="read-only" reason="the databases one journal file holds records for"/>
@@ -298,7 +298,7 @@ Method TestEachScreenIsItsRowsKind()
 }
 
 /// <p>Each row action of a <code>writes</code> screen resolves to exactly one write tool of its own descriptor, its
-/// primary action to one or to the one tool that creates, and every bound tool is advertised but AD-53's two.</p>
+/// primary action to one or to the one tool that creates, and every bound tool is advertised but AD-53's three.</p>
 /// <p>Mutation (Rule 19): empty <parameter>OcuPilot.Screen.Tool.RoutineAppDelete.SCREENACTIONS</parameter> -- the
 /// application list's <code>delete</code> resolves to no tool and goes red.</p>
 Method TestEachDeclaredActionResolvesToExactlyOneWriteTool()

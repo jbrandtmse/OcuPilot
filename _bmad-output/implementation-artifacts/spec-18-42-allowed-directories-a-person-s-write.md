@@ -2,7 +2,8 @@
 title: 'Story 18.42: Allowed directories: a person''s write'
 type: 'feature'
 created: '2026-10-12'
-status: 'ready-for-dev'
+status: 'in-progress'
+baseline_revision: '42d8d784d567f658a2c3c39980036c7f863aa379'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -124,7 +125,11 @@ Under `src/OcuPilot/`, `5890fe4d`.
 - **AD-15**, a named case: An allow-list write, which the vendor does not audit (inference until Task 0), records OcuPilot's own `SecurityChange`, roots before and after.
 - **AD-53**, its list: …and `security.alloweddirectories.update` (Story 18.42: never the agent's, AD-21; key disabled; one caller, `POST /allowed-directories`, so no `SCREENACTIONS`; its `SecurityChange` row leaves no named gap).
 - **AD-51**, a case: `AllowListPort` composes `AllowList` `PUT` from `Action`, `Directory` and `NewDirectory` as `FSAccess.Path` `PUT`/`DELETE` and `FSAccess.Purpose` `PUT` over a fresh `PathPort.Roots` read, read through a port-composed `AllowList` `GET`.
-- **Vendor candidate, never reported:** no audit event records an `FSAccess` write (inference), where the classic `AllowDirectory` audits `RESTRICTDIRECTORIES`; Task 0 measures it.
+- **Vendor candidate, never reported:** no audit event records an `FSAccess` write, where the classic `AllowDirectory` audits `RESTRICTDIRECTORIES` (measured, below).
+- **Task 0 (measured on `ocupilot-ci`, 2026-10-13, as `%All` and as a principal holding `%DB_HSCUSTOM:R`, `%Admin_FileSystemAccess:USE` and `%DB_IRISSYS:READ`; both answered alike):**
+  - **An emptied list allows nothing.** Restricted with no path: `FSAccess.Path` `LIST` answers 200 `[]`, `PathPort.Roots` no row, `%CSP.Portal.Utils.IsDirectoryAllowed` 0 for every directory, and `PathPort.Resolve` `PATH.ROOT` even under the manager directory -- not the fallback, not everything.
+  - **No `FSAccess` write emits an audit event.** With auditing on, `Path` `PUT` and `DELETE` and `Purpose` `PUT` left no row; the classic `AllowDirectory` and `RemoveDirectory` audit `%System/%Security/RestrictDirectories`, disabled by default, and with it enabled they wrote two rows where the four endpoint calls wrote none. OcuPilot's `SecurityChange` is the only record (AD-15).
+  - **Answers:** `Path` `PUT` 201 new, 200 repeated, normalized (trailing separator, `..`), and it creates an absent purpose unrestricted; a missing or relative directory is 500 `INTERNAL`, logged at severity 2 (the alert state read 0 after 5 s); `DELETE` of an unheld path is 404 and logged; reads of an absent purpose are 404; `Purpose` `PUT` 201 on an absent purpose and 200 otherwise. `Path` `PUT` and `DELETE` read no body, so both join `BODYLESSTYPES`; without it `AdminPort` refuses the call 500 before the vendor.
 
 **Rule 11.** Of these files Epic 20's diff and `status -s` (2026-10-12) touch only `strings.ts`, EXPERIENCE.md and `ci-throwaway.sh` (uncommitted). Every edit outside new files is add-only, `Prohibited.cls` included (**its clause keyed on advertised tools is the orchestrator ask**), except task 11's literal changes, unioned at forward merges as 18.45's were.
 
