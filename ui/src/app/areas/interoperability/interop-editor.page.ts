@@ -47,8 +47,9 @@ function kindFor(descriptor: string): EditorKind | null {
  * answer. The page never draws an `<iframe>` itself: the frame component does (AD-63).
  *
  * **OcuPilot never navigates a drawn frame.** A new document, a namespace move and Refresh each draw a
- * new frame, so the editor's own unsaved-changes alert does not show, and the note asks the person to
- * save first. Refresh also opens the document again after the editor has moved away by itself.
+ * new frame, so the editor's own unsaved-changes alert does not show, and the note says that leaving the
+ * screen or choosing Refresh discards any change not saved in the editor. Refresh also opens the
+ * document again after the editor has moved away by itself.
  *
  * Every control-flow condition is a paren-free member reference, for the reason `sign-in.ts`
  * records.

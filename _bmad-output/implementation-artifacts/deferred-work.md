@@ -11447,6 +11447,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-20-13-the-sign-in-hand-off-to-the-embedded-vendor-editors.md | severity: low | fix-risk: low | footprint: in-epic
 - evidence: interop-editor-frame.spec.ts runs in jsdom (no layout); the browser spec mounts a harness iframe from interopEditorSource, not the component (interop-editor-frame.ts:52)
 - 2026-10-12T12:33:20Z status=routed owner=20-7-the-three-embedded-vendor-editors by=lead note=harvested from 20.13 implement deferred; 20.7's browser spec re-runs interop-editor-spec.mjs against its real screens
+- 2026-10-13T16:15:44Z status=resolved-by:20-7-the-three-embedded-vendor-editors by=adjudication note=interop-editors.browser-spec.mjs re-runs 20.13's legs on the real screens incl. the host-filling check (AC1/AC5)
 
 ### DW-2348: A Cross-Origin-Opener-Policy header could stop an editor-opened tab inheriting a copy of the tab's storage, token pair included; measure it as a hardening candidate
 - source: spec-20-13-the-sign-in-hand-off-to-the-embedded-vendor-editors.md | severity: med | fix-risk: high | footprint: in-epic
@@ -11463,11 +11464,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-20-13-the-sign-in-hand-off-to-the-embedded-vendor-editors.md | severity: med | fix-risk: med | footprint: in-epic
 - evidence: Measured on ocupilot-b-ci (pinned Chrome): a click-initiated src re-set on a loaded iframe took history.length 2 to 3 and Back reloaded the old page in the frame; a new iframe stayed at 2. All three bundles alert on beforeunload, which removing a frame never fires
 - 2026-10-12T13:24:17Z status=routed owner=20-7-the-three-embedded-vendor-editors by=cr note=20.7 chooses per its document switch: same frame (history entry) or new frame (no alert); scope move and sign-out too
+- 2026-10-13T16:15:45Z status=resolved-by:20-7-the-three-embedded-vendor-editors by=adjudication note=frame draws a new iframe per source/revision, never re-sets src; AC4 asserts no unsaved alert and no added history
 
 ### DW-2351: A framed vendor editor can move away from what its screen shows, unseen by OcuPilot (AD-63 limit 3): its logo and Back to standard UI navigate the frame, DTL and BPL push history entries, and the rule editor's Settings switches its namespace
 - source: spec-20-13-the-sign-in-hand-off-to-the-embedded-vendor-editors.md | severity: med | fix-risk: med | footprint: in-epic
 - evidence: rule-editor main.*.js onSubmitSettingsForm calls dataService.setNamespace; 20.13's Design Notes measured the self-navigation and the DTL/BPL history entries and hand them to 20.7 only in that spec
 - 2026-10-12T13:24:18Z status=routed owner=20-7-the-three-embedded-vendor-editors by=cr note=20.7's screens decide what shows when the editor leaves its source or namespace; nothing in 20.7's block names it yet
+- 2026-10-13T16:15:45Z status=resolved-by:20-7-the-three-embedded-vendor-editors by=adjudication note=Refresh reopens the screen's document (AC4), the note warns, wandering is AD-63 named consequence
 
 ### DW-2352: The class reference re-sets src on the frame it already drew when the class changes, which likely pushes a joint history entry, so Back would move that frame rather than the viewer (inference)
 - source: spec-20-13-the-sign-in-hand-off-to-the-embedded-vendor-editors.md | severity: med | fix-risk: med | footprint: out-of-footprint
@@ -11641,3 +11644,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: orchestrator ruling on DW-2376 | severity: med | fix-risk: med | footprint: in-epic
 - evidence: DW-2376 ruled by-design: removing the frame raises no beforeunload alert; AD-63 forbids reading the frame's state; a vendor-emitted signal is the only sanctioned path (unmeasured).
 - 2026-10-13T15:30:42Z status=routed owner=burndown by=orchestrator note=burn-down probe; if a signal exists, a leave warning keyed to it
+
+### DW-2389: An interop editor screen whose class name has a letter outside vendor-frame.ts CLASS_NAME (a non-ASCII letter) answers open but draws no frame, so the note and Refresh sit over an empty body with no sentence
+- source: spec-20-7-the-three-embedded-vendor-editors.md (cr) | severity: low | fix-risk: med | footprint: in-story
+- evidence: Measured on ocupilot-b-ci: $ZNAME("Demo.<e-acute>tude.Thing",4) and %Dictionary.Classname.IsValid answer 1, while CLASS_NAME is ASCII-only, so interopEditorSource answers null; widening it touches AD-21's shape check and an unmeasured vendor path.
+- 2026-10-13T16:12:40Z status=wontfix-accepted owner=20-7-the-three-embedded-vendor-editors by=cr note=reopen_if=a Rules, Processes or Transforms read returns a Name outside CLASS_NAME on a real instance

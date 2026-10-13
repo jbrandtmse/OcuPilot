@@ -1050,13 +1050,12 @@ ClassMethod ListProductions(pNamespace As %String, pMax As %Integer, Output pRow
 /// them when it is above zero: the subclasses of <code>Ens.BusinessProcess</code> less
 /// <code>Ens.BusinessProcessBPL</code>, of <code>Ens.DataTransform</code> less
 /// <code>Ens.DataTransformDTL</code>, and of <code>Ens.Rule.Definition</code>, through
-/// <code>%Dictionary.ClassDefinition:SubclassOf</code>, which writes nothing. A row is
-/// <code>{Name, Modified}</code>: the document name <code>&lt;class&gt;.cls</code> and the class's
-/// <code>TimeChanged</code> as local <code>YYYY-MM-DD HH:MM:SS</code>.</p>
-/// <p>A Processes or Transforms row also carries <code>Coded</code>, a boolean: true when the class is not a subclass of
-/// the excluded class (<code>Ens.BusinessProcessBPL</code> or <code>Ens.DataTransformDTL</code>) in the dictionary, compiled or
-/// not, which is the classic lists' <code>IsBPL</code> and <code>IsDTL</code> answered the other way (AD-62 item 13). A Rules
-/// row carries no <code>Coded</code>.</p>
+/// <code>%Dictionary.ClassDefinition:SubclassOf</code>, which writes nothing. A Rules row is
+/// <code>{Name, Modified}</code>, and a Processes or Transforms row is <code>{Name, Modified, Coded}</code>: the document name
+/// <code>&lt;class&gt;.cls</code>, the class's <code>TimeChanged</code> as local <code>YYYY-MM-DD HH:MM:SS</code>, and a
+/// boolean that is true when the class is not a subclass of the excluded class (<code>Ens.BusinessProcessBPL</code> or
+/// <code>Ens.DataTransformDTL</code>) in the dictionary, compiled or not, which is the classic lists' <code>IsBPL</code> and
+/// <code>IsDTL</code> answered the other way (AD-62 item 13).</p>
 ClassMethod ListClasses(pNamespace As %String, pEndpoint As %String, pMax As %Integer, Output pRows As %DynamicArray, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
 {
     Set pRows = ""

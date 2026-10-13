@@ -164,9 +164,10 @@ export class InteropEditorState {
       const rows = result.body !== null && typeof result.body === 'object' ? result.body.rows : undefined;
       if (Array.isArray(rows)) {
         const row = rows.find((candidate) => rowNamed(candidate, id)) as Record<string, unknown> | undefined;
+        const name = row === undefined ? '' : String(row['Name']);
         if (row === undefined) this.settle('gone');
         else if (row['Coded'] === true) this.settle('coded');
-        else this.settle('open', '', id.slice(0, id.length - DOCUMENT_EXTENSION.length));
+        else this.settle('open', '', name.slice(0, name.length - DOCUMENT_EXTENSION.length));
         return;
       }
     } else if (result.kind === 'error' && result.status === 403) {

@@ -14,12 +14,16 @@
  * - AC3: a class the list does not answer, and a process or transformation written as a class, draw their sentences and no frame and
  *   no editor request.
  * - AC4: the editor moving itself (its Back to standard UI) is left alone, Refresh draws a new frame, and a route change in the screen
- *   draws a new frame at the new document; the old frame element is detached each time.
+ *   draws a new frame at the new document, with no unsaved-changes alert from an editor holding a change; the old frame element is
+ *   detached each time.
+ * - Namespace move: the header's switch takes the frame away, a namespace that does not hold the class draws the screen's sentence
+ *   and requests nothing, and moving back draws a new frame (the real scope service, which the component specs stub).
  * - AC5: Sign out ends the editor's sign-in on the real screen.
  *
  * **It creates classes in `HSCUSTOM` and records and restores two of the editors' own settings nodes**
  * (`^EnsPortal.Settings(<user>, "LastDTL")` and `"LastBP"`), so it runs on a throwaway only. Each test signs in in its own context, waits
- * for the screen's answered signal before it counts, clicks or types, and the `after` hook removes the classes and restores the nodes.
+ * for the screen's answered signal before it counts, clicks or types, and the `after` hook restores the nodes and removes the classes.
+ * The namespace move also needs a second interoperability namespace the switch offers, which the image ships (`USER`, `HSLIB`, `HSSYS`).
  *
  * Run: `npm run build`, `docker cp dist/ocupilot-ui/browser/. <throwaway>:/durable/iris/csp/ocupilot/`, then
  * `OCUPILOT_BROWSER_ORIGIN=<origin> OCUPILOT_BROWSER_CONTAINER=<container> node --test --test-concurrency=1 browser/interop-editors.browser-spec.mjs`.
@@ -46,7 +50,7 @@ import {
   watchPolicyViolations,
 } from './interop-editor-spec.mjs';
 import { FILTER_SELECTOR, ROW_SELECTOR, clickRowCentre, waitForRows } from './list-spec.mjs';
-import { waitForMapAnswered } from './namespace-features.mjs';
+import { readNamespaceFeatures, waitForMapAnswered } from './namespace-features.mjs';
 import { signedInAt } from './panel-spec.mjs';
 import { INVARIANTS, VIEWPORTS, assertThrowaway, collapse, compare, componentMinimums, detectScreen, readBaseline } from './structural-walk.mjs';
 import { escapeOs, markerValue, runIris } from './turnprobe-spec.mjs';
@@ -62,7 +66,7 @@ const NAMESPACE = 'HSCUSTOM';
 const PACKAGE = 'OcuPilotProbe.EditorScreen';
 const FRAME = 'app-interop-editor-frame iframe';
 const NOTE = '[data-ocu-editor="note"]';
-/** The class a Data transformations row of the vendor's own opens in the DTL editor, and a process written in BPL. */
+/** A Data transformations row of the vendor's own, which opens in the DTL editor. */
 const VENDOR_DTL = 'Ens.Util.DTL.Audit.MessageView.cls';
 const REDUCED_MOTION = [{ name: 'prefers-reduced-motion', value: 'reduce' }];
 
@@ -191,17 +195,19 @@ after(async () => {
   } finally {
     browser = null;
     if (created && /-ci$/.test(config.container)) {
-      const gone = probe('EDGONE', `$System.Status.IsOK($System.OBJ.DeletePackage("${PACKAGE}","-d"))`);
-      assert.equal(gone.value, '1', `the probe classes are removed: ${gone.output}`);
-      const left = probe('EDLEFT', `##class(%Dictionary.ClassDefinition).%ExistsId("${PACKAGE}.Transform")+##class(%Dictionary.ClassDefinition).%ExistsId("${PACKAGE}.Broken")`);
-      assert.equal(left.value, '0', `no probe class is left: ${left.output}`);
+      // The nodes are restored first, so a failed removal below still leaves them as they were.
       if (heldSettings !== null) {
         for (const name of SETTINGS) {
           const held = heldSettings[name];
           runIris(config.container, [held.present ? `Set ${settingsNode(name)}="${escapeOs(held.value)}"` : `Kill ${settingsNode(name)}`]);
         }
-        assert.deepEqual(readSettings(), heldSettings, "the editors' settings nodes are as they were");
       }
+      const gone = probe('EDGONE', `$System.Status.IsOK($System.OBJ.DeletePackage("${PACKAGE}","-d"))`);
+      const exists = Object.keys(SOURCE).map((name) => `##class(%Dictionary.ClassDefinition).%ExistsId("${PACKAGE}.${name}")`);
+      const left = probe('EDLEFT', exists.join('+'));
+      if (heldSettings !== null) assert.deepEqual(readSettings(), heldSettings, "the editors' settings nodes are as they were");
+      assert.equal(gone.value, '1', `the probe classes are removed: ${gone.output}`);
+      assert.equal(left.value, '0', `no probe class is left: ${left.output}`);
     }
   }
 });
@@ -410,7 +416,7 @@ test('AC1: each editor screen passes the structural and contrast checks at 1280 
 });
 
 // Mutation (Rule 19): `ListClasses` reads `Modified` from the compiled class rather than the definition -> the Modified leg goes red (the
-// save leaves the compiled class's time as it was).
+// list then reads the compile's time, which the wait below keeps at least a second after the save's).
 // Mutation (Rule 19): `interopEditorSource` appends the editor's mode flag (bundle rebuilt and redeployed) -> the editor posts the message
 // that flag selects and the sign-in the notices need never happens, so the message and notice clauses go red, and so does
 // `vendor-frame.test.mjs`.
@@ -494,6 +500,8 @@ test('AC3: a class the list does not answer, and a process or transformation wri
 // Mutation (Rule 19): the component's `@for` tracks a constant key (it keeps the element) (bundle rebuilt and redeployed) ->
 // `interop-editor-frame.spec.ts`'s redraw tests go red, and here the old element stays connected and shows the standard page after Refresh.
 // Mutation (Rule 19): the store drops its generation check -> the store test's stale-answer row goes red.
+// Mutation (Rule 19): the dirty editor's frame has its `src` set again in place before the route change (the design DW-2350 rejected)
+// -> the editor raises its unsaved-changes alert and the no-alert clause goes red.
 test('AC4: OcuPilot never navigates a drawn frame: the editor moving itself is left alone, Refresh draws a new frame, and a route change draws one at the new document', async () => {
   const document = TRANSFORM.name.slice(0, -'.cls'.length);
   const { context, page } = await shellAt(screenUrl(TRANSFORM.listRoute, TRANSFORM.name));
@@ -520,6 +528,17 @@ test('AC4: OcuPilot never navigates a drawn frame: the editor moving itself is l
     const reopened = await editorShows(page, document);
     assert.ok(reopened.url().includes('/ui/interop/dtl-editor/'), 'and it shows the DTL editor again');
 
+    // The editor holds a change it has not saved, so a navigation of its frame would raise its unsaved-changes alert.
+    await reopened.waitForSelector('#transform-settings-iconbutton', { timeout: config.navigationTimeoutMs });
+    await reopened.click('#transform-settings-iconbutton');
+    await reopened.waitForSelector('#transform-settings-description-textarea', { visible: true, timeout: config.navigationTimeoutMs });
+    await reopened.type('#transform-settings-description-textarea', 'not saved');
+    await reopened.waitForFunction(() => document.querySelector('#top-banner-button-2-secondary')?.disabled === false, { timeout: config.navigationTimeoutMs });
+    const alerts = [];
+    page.on('dialog', (dialog) => {
+      alerts.push(dialog.type());
+      void dialog.dismiss();
+    });
     await page.evaluate((target) => {
       history.pushState({}, '', target);
       window.dispatchEvent(new PopStateEvent('popstate', { state: {} }));
@@ -529,6 +548,65 @@ test('AC4: OcuPilot never navigates a drawn frame: the editor moving itself is l
     const third = await page.waitForSelector(FRAME, { timeout: config.navigationTimeoutMs });
     assert.equal(await third.evaluate((node) => node.getAttribute('src')), interopEditorSource('dtl-editor', NAMESPACE, VENDOR_DTL.slice(0, -'.cls'.length)), 'a new element with the new document\'s source');
     await editorShows(page, VENDOR_DTL.slice(0, -'.cls'.length));
+    assert.deepEqual(alerts, [], 'the editor holding a change is removed with no unsaved-changes alert');
+  } finally {
+    await context.close();
+  }
+});
+
+/** An interoperability namespace other than `NAMESPACE` that the header's switch offers, read from the instance and the switch. */
+async function otherNamespace(page) {
+  const reported = readNamespaceFeatures(config.container);
+  await page.click('.ocu-namespace-switch-trigger');
+  await page.waitForSelector('.ocu-namespace-switch-option', { timeout: config.navigationTimeoutMs });
+  const offered = await page.$$eval('.ocu-namespace-switch-option', (nodes) => nodes.map((node) => node.textContent.trim()));
+  await page.keyboard.press('Escape');
+  await page.waitForFunction(() => document.querySelector('.ocu-namespace-switch-list') === null, { timeout: config.navigationTimeoutMs });
+  const other = offered.find((name) => name !== NAMESPACE && reported[name]?.interoperability === true);
+  assert.ok(other !== undefined, `the switch offers an interoperability namespace besides ${NAMESPACE}: ${JSON.stringify(offered)}`);
+  return other;
+}
+
+/** Choose `namespace` in the header's switch and wait for the route to carry it. */
+async function switchTo(page, namespace) {
+  await page.click('.ocu-namespace-switch-trigger');
+  await page.waitForSelector('.ocu-namespace-switch-option', { timeout: config.navigationTimeoutMs });
+  const chose = await page.evaluate((wanted) => {
+    const option = [...document.querySelectorAll('.ocu-namespace-switch-option')].find((node) => node.textContent.trim() === wanted);
+    option?.click();
+    return option !== undefined;
+  }, namespace);
+  assert.equal(chose, true, `the namespace switch offers ${namespace}`);
+  await page.waitForFunction((wanted) => new URL(window.location.href).searchParams.get('ns') === wanted, { timeout: config.navigationTimeoutMs }, namespace);
+}
+
+// Mutation (Rule 19): the page ignores a move of the scope (bundle rebuilt and redeployed) -> the move leaves neither the sentence nor a new
+// frame, and the gone clause waits out its timeout and goes red.
+test('Namespace move: the header\'s switch takes the frame away, a namespace without the class draws its sentence and requests nothing, and moving back draws a new frame', async () => {
+  const document = TRANSFORM.name.slice(0, -'.cls'.length);
+  const { context, page, traffic } = await shellAt(screenUrl(TRANSFORM.listRoute, TRANSFORM.name));
+  try {
+    await answered(page);
+    const first = await page.waitForSelector(FRAME, { timeout: config.navigationTimeoutMs });
+    await editorShows(page, document);
+    const other = await otherNamespace(page);
+
+    await switchTo(page, other);
+    await until(() => first.evaluate((node) => node.isConnected), (connected) => connected === false, 'the editor of the old namespace is gone', config.navigationTimeoutMs);
+    // Counted from the old editor's removal, so nothing it requested before it went is read as the new namespace's.
+    const mark = traffic.length;
+    await page.waitForSelector('[data-ocu-editor="gone"]', { timeout: config.navigationTimeoutMs });
+    assert.equal(await page.$eval('[data-ocu-editor="gone"]', (node) => node.textContent.trim()), TRANSFORM.empty, `${other} does not hold the class, so the screen says so`);
+    assert.deepEqual(await page.$$('iframe'), [], 'and no frame is drawn');
+    assert.equal(await page.$(NOTE), null, 'nor the note about the editor');
+    assert.deepEqual(traffic.slice(mark), [], 'and nothing is requested under /ui/interop/ or /api/interop-editors/');
+    assert.equal(decodedPath(page), `/ocupilot/${TRANSFORM.listRoute}/document/${TRANSFORM.name}`, 'the screen\'s route still names the class');
+
+    await switchTo(page, NAMESPACE);
+    const second = await page.waitForSelector(FRAME, { timeout: config.navigationTimeoutMs });
+    assert.equal(await second.evaluate((node) => node.getAttribute('src')), interopEditorSource('dtl-editor', NAMESPACE, document), 'a new element at the builder\'s address for the namespace moved back to');
+    assert.equal(await first.evaluate((node) => node.isConnected), false, 'which is not the element drawn before');
+    await editorShows(page, document);
   } finally {
     await context.close();
   }

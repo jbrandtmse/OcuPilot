@@ -7152,7 +7152,7 @@ export const STRINGS = {
   interopDtlEditorCoded: 'This data transformation is written as a class, not in DTL, so the DTL editor cannot open it.',
   /** EXPERIENCE.md:604 */
   interopEditorNote:
-    'OcuPilot does not see inside this editor: save your changes there before you leave this page, and choose Refresh to open the document again.',
+    'Leaving this screen, or choosing Refresh to open the document again, discards any change not saved in the editor.',
   /** EXPERIENCE.md:604 */
   interopRuleEditorPrompt1: 'Summarize what this business rule decides.',
   /** EXPERIENCE.md:604 */

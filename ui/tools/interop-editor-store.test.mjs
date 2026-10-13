@@ -5,7 +5,8 @@ import { dirname, join } from 'node:path';
 
 // Pins the embedded editor screens' own state (`areas/interoperability/interop-editor.store.ts`,
 // Story 20.7): which phase the owning list's one read puts a document in, what it sends and in which
-// namespace, what a denied verdict sends, and that a late answer is dropped. The page that draws
+// namespace, what a denied verdict sends, what a refresh that does not open the document leaves, how a
+// class past the rows the read returns reads, and that a late answer is dropped. The page that draws
 // each phase is held by `interop-editor.page.spec.ts`, the frame by `interop-editor-frame.spec.ts`.
 //
 // Mutations (Rule 19):
@@ -216,12 +217,80 @@ test('refresh reads the same document in the same namespace again, and an answer
   assert.equal(state.revision(), 2);
 });
 
+test('a refresh that does not open the document takes the drawn frame away, whatever the answer, and the next refresh that opens it is a new revision', async () => {
+  // Mutation (Rule 19): a refresh swallows an answer that does not open the document and leaves the screen open -> every row goes red.
+  const row = { Name: 'Demo.Thing.cls', Coded: false };
+  const cases = [
+    ['a fault', refusal(500), 'fault', ''],
+    ['a refusal that names its pair', refusal(403, { failedPair: '%Ens_Code:READ' }), 'refused', '%Ens_Code:READ'],
+    ['a list without the document', ok([]), 'gone', ''],
+    ['the document now written as a class', ok([{ ...row, Coded: true }]), 'coded', ''],
+  ];
+  for (const [label, answer, phase, pair] of cases) {
+    const api = apiAnswering(ok([row]), answer, ok([row]));
+    const state = stateFor(LISTS.transforms, api);
+    await state.open(row.Name, 'HSCUSTOM');
+    assert.equal(state.phase(), 'open', label);
+    assert.equal(state.revision(), 1);
+    await state.refresh();
+    assert.equal(state.phase(), phase, `${label}: the screen says so`);
+    assert.equal(state.document(), '', `${label}: no document, so no frame is drawn at the old address`);
+    assert.equal(state.failedPair(), pair, label);
+    assert.equal(state.revision(), 1, `${label}: no new frame`);
+    assert.equal(state.busy(), false);
+    await state.refresh();
+    assert.equal(state.phase(), 'open', `${label}: the next refresh opens it`);
+    assert.equal(state.document(), 'Demo.Thing');
+    assert.equal(state.revision(), 2, `${label}: as a new frame`);
+    assert.equal(api.calls.length, 3, `${label}: one request per read`);
+  }
+});
+
+test('a refresh whose verdict has turned denied sends nothing and is refused with its pair', async () => {
+  // Mutation (Rule 19): the verdict is checked only on the first read -> this goes red (a request is sent).
+  const row = { Name: 'Demo.Thing.cls', Coded: false };
+  const api = apiAnswering(ok([row]), ok([row]));
+  let verdict = ALLOWED;
+  const state = stateFor(LISTS.processes, api, () => verdict);
+  await state.open(row.Name, 'HSCUSTOM');
+  assert.equal(state.phase(), 'open');
+  verdict = { allowed: false, failedPair: '%Ens_Code:READ' };
+  await state.refresh();
+  assert.equal(state.phase(), 'refused');
+  assert.equal(state.failedPair(), '%Ens_Code:READ');
+  assert.equal(state.document(), '');
+  assert.equal(api.calls.length, 1, 'only the first read was sent');
+});
+
+test('a class past the rows the read returns is gone, not a fault, however the read reports it; the last row it does return still opens', async () => {
+  // Mutation (Rule 19): an answer marked truncated that lacks the row is a fault -> the first row goes red.
+  // Mutation (Rule 19): the store looks only at the first 999 rows -> the second row goes red.
+  const rows = Array.from({ length: EDITOR_READ_ROWS }, (_, index) => ({ Name: `Demo.Row${String(index).padStart(4, '0')}.cls`, Coded: false }));
+  const capped = { kind: 'ok', status: 200, body: { rows, truncated: true } };
+  const beyond = apiAnswering(capped);
+  const absent = stateFor(LISTS.transforms, beyond);
+  await absent.open('Demo.Row9999.cls', 'HSCUSTOM');
+  assert.equal(absent.phase(), 'gone', 'a class the capped read does not carry reads as gone');
+  assert.equal(absent.document(), '');
+  assert.equal(absent.revision(), 0, 'and no frame is drawn');
+  assert.equal(beyond.calls.length, 1, 'with no second read to look further');
+
+  const last = stateFor(LISTS.transforms, apiAnswering(capped));
+  await last.open(rows[EDITOR_READ_ROWS - 1].Name, 'HSCUSTOM');
+  assert.equal(last.phase(), 'open', 'the last row the read returns opens');
+  assert.equal(last.document(), 'Demo.Row0999');
+});
+
 test('subscribers hear every change, and reset drops an answer still in flight and every listener', async () => {
   const api = apiHeld();
   const state = stateFor(LISTS.rules, api);
   let heard = 0;
   const stop = state.subscribe(() => {
     heard += 1;
+  });
+  let kept = 0;
+  state.subscribe(() => {
+    kept += 1;
   });
   const opening = state.open('Demo.Thing.cls', 'HSCUSTOM');
   assert.ok(heard >= 1, 'the open is announced');
@@ -232,8 +301,14 @@ test('subscribers hear every change, and reset drops an answer still in flight a
   stop();
   const refreshing = state.refresh();
   state.reset();
+  const keptAtReset = kept;
   api.releases[1](ok([]));
   await refreshing;
   assert.equal(state.phase(), 'open', 'an answer after reset is dropped');
   assert.equal(heard, settled, 'and a stopped listener hears nothing');
+  // Mutation (Rule 19): `reset` keeps its listeners -> the still-subscribed listener hears the next open, and this goes red.
+  const reopening = state.open('Demo.Thing.cls', 'HSCUSTOM');
+  api.releases[2](ok([{ Name: 'Demo.Thing.cls' }]));
+  await reopening;
+  assert.equal(kept, keptAtReset, 'and a listener never stopped hears nothing once reset has dropped it');
 });

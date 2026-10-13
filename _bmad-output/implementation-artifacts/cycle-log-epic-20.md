@@ -677,3 +677,8 @@
 2026-10-13T15:30:57Z	Story 20.7	dev_complete	spawn_at=(see_stage_spawned) model=sonnet agent_name=20-7-implement-1 build_sha=3ba06631 baseline_revision=f288bcdc review_loop_iteration=0 followup_review_recommended=false deferred=0 diff=_29_files_changed,_2411_insertions(+),_80_deletions(-) chunk=9.75kB initial=1.91MB
 2026-10-13T15:30:57Z	Story 20.7	adr_verifications_complete	tool=none acs= result=none_required evidence= mutations=none model=claude-opus-5-5
 2026-10-13T15:30:57Z	Story 20.7	stage_spawned	stage=qa spawn_at=2026-10-13T15:30:57Z model=sonnet agent_name=20-7-qa-1 cycle_iteration=1
+2026-10-13T15:48:09Z	Story 20.7	qa_complete	spawn_at=(see_stage_spawned) model=sonnet agent_name=20-7-qa-1 tests=interop-editor-store.test.mjs(+3),interop-editor.page.spec.ts(+2),interop-editors.browser-spec.mjs(+1) tests_added=6 mutations_demonstrated=18 first_run_failures=0 clarifications=0 closing_sections_present=true issues=refresh_fault_not_in_named_limits,non-ascii_class_name_empty_body
+2026-10-13T15:48:09Z	Story 20.7	stage_spawned	stage=code-review spawn_at=2026-10-13T15:48:09Z model=opus agent_name=20-7-code-review-1 cycle_iteration=1
+2026-10-13T16:15:45Z	Story 20.7	cr_complete	spawn_at=(see_stage_spawned) model=opus agent_name=20-7-code-review-1 resolved=13 fixed_at_source=13 wontfix_accepted=1(DW-2389) dismissed=6 high=0 med=2 low=12 rows=23 unresolved_high_med=0 review_tier=full-opus status=done ruling_applied=DW-2376_note_text
+2026-10-13T16:15:45Z	Story 20.7	spine_updated	ad=AD-63(note_meaning),AD-62(item_7_RulesDeveloper) reason=decision_sheet(DW-2376)+cr_finding by=runner story=20-7 lint=ok(preexisting_low_line206)
+2026-10-13T16:15:45Z	Story 20.7	ledger_adjudicated	owned=3 resolved=3(DW-2347,DW-2350,DW-2351) reowned=0 terminal=0

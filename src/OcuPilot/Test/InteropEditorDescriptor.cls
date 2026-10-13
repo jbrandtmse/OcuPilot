@@ -55,7 +55,9 @@ Method TestTheThreeEditorScreensRegister()
 
 /// <p>Each classic editor page compiles a <code>RESOURCE</code> that holds a member the screen declares as its own pair:
 /// <code>%Ens_Code:READ</code>, read as the classic portal reads a member (<code>resource[:permission]</code>, <code>USE</code>
-/// when no permission is given), so the screen opens for exactly the roles that open the classic editor (AD-8, AD-44).</p>
+/// when no permission is given), so every role that holds the screen's pair also opens the classic editor. The classic page
+/// also admits a role through another member of its list, which the screen refuses: <code>%EnsRole_RulesDeveloper</code>
+/// opens the classic rule editor through <code>%Ens_Rules:READ</code> (AD-8, AD-44).</p>
 /// <p>Mutation (Rule 19): declare <code>%Ens_Code:USE</code> as one editor's own pair -- this goes red naming the page.</p>
 Method TestEachClassicEditorSharesTheScreensPair()
 {

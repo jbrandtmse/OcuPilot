@@ -8,8 +8,9 @@
 /// <code>namespace</code>. Its name cell opens the class in its editor screen (Story 20.7), and it declares no
 /// action.</p>
 /// <p><b>Its pairs</b> are the classic menu's <code>%Ens_Portal:USE</code> and, as its own,
-/// <code>%Ens_Code:READ</code>, which every shipped role that reaches the page holds; the classic page's
-/// own resource is an OR list a pair set cannot express (AD-8, Story 20.2). The port adds READ on the
+/// <code>%Ens_Code:READ</code>; the classic page's own resource is an OR list a pair set cannot express, so
+/// <code>%EnsRole_RulesDeveloper</code>, which reaches the classic page through <code>%Ens_Rules:READ</code>, is refused here
+/// (AD-8, Story 20.2). The port adds READ on the
 /// namespace's globals database at the call. It does not refresh (AD-43).</p>
 Class OcuPilot.Screen.Descriptor.InteropRuleList Extends OcuPilot.Screen.Descriptor.Base
 {

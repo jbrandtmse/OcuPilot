@@ -84,6 +84,13 @@ async function mount(inputs: Inputs, scopeNamespace = 'HSCUSTOM') {
       fixture.componentRef.setInput(name, value);
       await settle(fixture);
     },
+    /** Move the scope and the `namespace` input together, so the component renders once, at the new namespace. */
+    moveTo: async (next: string) => {
+      current = next;
+      for (const listener of [...listeners]) listener();
+      fixture.componentRef.setInput('namespace', next);
+      await settle(fixture);
+    },
   };
 }
 
@@ -173,16 +180,17 @@ describe('app-interop-editor-frame', () => {
     expect(fourth.isConnected).toBe(false);
   });
 
-  it('Story 20.7 AC4 (DW-2350): a namespace move withdraws the frame at once, and the new namespace draws a new element', async () => {
+  it('Story 20.7 AC4 (DW-2350): a namespace change draws a different element at the new namespace\'s address, and detaches the old one, whose address is left as drawn', async () => {
     // Mutation (Rule 19): the template's `@for` tracks a constant key, so the element is kept -> red.
-    const { frame, frames, scopeTo, set } = await mount({ editor: 'dtl-editor', namespace: 'HSCUSTOM', document: 'Demo.Probe.Thing' });
+    const { frame, frames, moveTo } = await mount({ editor: 'dtl-editor', namespace: 'HSCUSTOM', document: 'Demo.Probe.Thing' });
     const first = frame() as HTMLIFrameElement;
-    await scopeTo('USER');
-    expect(frames(), 'the scope moved on, so nothing of the old namespace stays').toEqual([]);
-    expect(first.isConnected).toBe(false);
-    await set('namespace', 'USER');
+    // The scope and the input move in one render, so the frame is never withdrawn in between and only the key can replace it.
+    await moveTo('USER');
+    expect(frames().length, 'one frame').toBe(1);
     const second = frame() as HTMLIFrameElement;
-    expect(second).not.toBe(first);
+    expect(second, 'a new element').not.toBe(first);
+    expect(first.isConnected, 'and the old one is detached').toBe(false);
+    expect(first.getAttribute('src'), 'with the address it was drawn with').toBe(interopEditorSource('dtl-editor', 'HSCUSTOM', 'Demo.Probe.Thing'));
     expect(second.getAttribute('src')).toBe(interopEditorSource('dtl-editor', 'USER', 'Demo.Probe.Thing'));
   });
 

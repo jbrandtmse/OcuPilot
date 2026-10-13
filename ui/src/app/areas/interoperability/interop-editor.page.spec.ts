@@ -322,6 +322,92 @@ describe('the embedded editor screens', () => {
     expect(frames(host).length).toBe(1);
     expect(frames(host)[0].getAttribute('src')).toBe(interopEditorSource('dtl-editor', 'HSCUSTOM', 'Demo.Thing'));
   });
+
+  it('a Refresh keeps the drawn frame, busy, until its read answers; a read that faults then takes the frame away and Retry draws a new one', async () => {
+    // Mutation (Rule 19): the store swallows a Refresh answer that does not open the document and leaves the screen open -> red.
+    const kind = KINDS[2];
+    const mounted = await mount(kind, 'Demo.Thing.cls', rows({ Name: 'Demo.Thing.cls', Coded: false }));
+    const { host } = mounted;
+    const first = frames(host)[0];
+    let release: (answer: Answer) => void = () => undefined;
+    mounted.answer = new Promise<Answer>((resolve) => (release = resolve)) as unknown as Answer;
+    (block(host, 'refresh') as HTMLButtonElement).click();
+    await settle(mounted.fixture);
+    expect(mounted.reads.length).toBe(2);
+    expect(host.querySelector('section')?.getAttribute('aria-busy'), 'a Refresh in flight is busy').toBe('true');
+    expect(first.isConnected, 'and the editor is still on screen while it is read').toBe(true);
+    expect(frames(host)).toEqual([first]);
+
+    release({ kind: 'error', status: 500, code: null, reason: null, detail: null });
+    await settle(mounted.fixture);
+    expect(host.querySelector('section')?.getAttribute('aria-busy')).toBe('false');
+    expect(first.isConnected, 'the faulting read took the editor away').toBe(false);
+    expect(frames(host)).toEqual([]);
+    expect(frameHosts(host)).toEqual([]);
+    expect(block(host, 'note')).toBeNull();
+    expect(block(host, 'refresh')).toBeNull();
+    expect(block(host, 'fault')?.textContent).toContain(STRINGS.connectivityRequestRefused);
+
+    mounted.answer = rows({ Name: 'Demo.Thing.cls', Coded: false });
+    (block(host, 'fault')?.querySelector('button') as HTMLButtonElement).click();
+    await settle(mounted.fixture);
+    expect(mounted.reads.length).toBe(3);
+    expect(block(host, 'fault')).toBeNull();
+    expect(frames(host).length).toBe(1);
+    expect(frames(host)[0]).not.toBe(first);
+    expect(frames(host)[0].getAttribute('src')).toBe(interopEditorSource('dtl-editor', 'HSCUSTOM', 'Demo.Thing'));
+  });
+
+  it('reads nothing before the scope has a namespace, shows the skeleton meanwhile, and reads in the namespace the scope arrives with', async () => {
+    // Mutation (Rule 19): the page reads at once, without waiting for the scope -> a read is sent with no namespace and this goes red.
+    TestBed.resetTestingModule();
+    const kind = KINDS[1];
+    const screen = screenFor(kind.descriptor);
+    const reads: { path: string; scope: string | null | undefined }[] = [];
+    const api = {
+      requestJson: async (path: string, init: ApiRequestInit = {}) => {
+        reads.push({ path, scope: init.scope });
+        return rows({ Name: 'Demo.Thing.cls', Coded: false });
+      },
+    };
+    const scope = { loaded: false, namespace: '', listeners: new Set<() => void>() };
+    TestBed.configureTestingModule({
+      providers: [
+        provideRouter([{ path: '**', children: [] }]),
+        { provide: ApiService, useValue: api as unknown as ApiService },
+        { provide: NavigationService, useValue: { screenForUrl: () => screen, screenVerdict: () => ALLOWED } as unknown as NavigationService },
+        {
+          provide: ScopeService,
+          useValue: {
+            loaded: () => scope.loaded,
+            namespace: () => scope.namespace,
+            subscribe: (listener: () => void) => {
+              scope.listeners.add(listener);
+              return () => scope.listeners.delete(listener);
+            },
+          } as unknown as ScopeService,
+        },
+      ],
+    });
+    await TestBed.inject(Router).navigateByUrl(`/${screen.route}/${encodeEntityId('Demo.Thing.cls')}`);
+    const fixture = TestBed.createComponent(InteropEditorPage);
+    document.body.appendChild(fixture.nativeElement);
+    planted.push(fixture.nativeElement);
+    await settle(fixture);
+    const host = fixture.nativeElement as HTMLElement;
+    expect(reads, 'nothing is read before the scope has resolved').toEqual([]);
+    expect(host.querySelector('section')?.getAttribute('aria-busy')).toBe('true');
+    expect(block(host, 'loading')).not.toBeNull();
+    expect(frames(host)).toEqual([]);
+
+    scope.loaded = true;
+    scope.namespace = 'USER';
+    for (const listener of [...scope.listeners]) listener();
+    await settle(fixture);
+    expect(reads.map((read) => read.scope)).toEqual(['USER']);
+    expect(frames(host).length).toBe(1);
+    expect(frames(host)[0].getAttribute('src')).toBe(interopEditorSource('bpl-editor', 'USER', 'Demo.Thing'));
+  });
 });
 
 /** A page whose list's verdict is denied before it opens. */
