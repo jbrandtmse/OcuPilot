@@ -2,7 +2,7 @@
 title: 'Story 18.37: Interoperability usage'
 type: 'feature'
 created: '2026-10-12'
-status: 'done'
+status: 'in-progress'
 baseline_revision: '6ec2d9db4144ccd1fcfe8895e50a1ebe2463fc6e'
 baseline_commit: '6ec2d9db4144ccd1fcfe8895e50a1ebe2463fc6e'
 review_loop_iteration: 0
@@ -110,6 +110,12 @@ Code review 2026-10-13 (four layers, full-opus). Severity, fix-risk, footprint a
 - [x] [Review][Defer] `low`, fix-risk low, in-story: the spine's 18.37 amendments still say Task 0 will measure (AD-7 :225, AD-8 :326) and that the reads are the classic page's own queries (AD-29 :707) [ARCHITECTURE-SPINE.md:707] — deferred: the spine is Epic 20-contended and the lead's (Rule 20); ledgered DW-2386 `open owner=18-37-interoperability-usage`
 - [x] [Review][Defer] `low`, fix-risk low, in-story (Rule 31): `InteropUsageGate.Wire` is the fifth near-copy of a gate's wire helper (`DashboardDrillDownGate` :102 differs only in `maxRows`); the spec's reason, "tests bound to their principals", is weak [src/OcuPilot/Test/InteropUsageGate.cls:189] — deferred: ledgered DW-2387 `wontfix-accepted`, reopen_if the helper's request signature or `failedPair` detail changes
 
+
+### Rework 1 (orchestrator ruling, 2026-10-13)
+
+- [ ] [Review] DW-2384, tier-1 amendment of Tasks 1 and 3 (ruling B): with no start date the vendor answers each `InteropInterfaces` grouping twice, `Active` 1 (active now) and `Active` 0 (every interface ever enabled, active ones included). `MonitorPort`'s `Interfaces` read answers ONE row per grouping (`Type`, `Namespace`, `Protocol`) with the all-time `Count` (the `Active` 0 row's) and a numeric `ActiveNow` (the `Active` 1 row's, 0 when absent), totals rows included; `InteropUsageTab` replaces the Active status column with an "Active now" number column (a new Fixed string, EXPERIENCE.md :603 in place, line count unchanged). Pin it with a test over the double-answer shape seen on `ocupilot` (a grouping answered `Active` 1 Count 4 and `Active` 0 Count 11 reads one row, Count 11, ActiveNow 4), with its `mutation:` line; update every test and the browser spec that read the old `Active` field.
+- [ ] [Review] DW-2385 (accepted gap): if no test already pins `DatabaseImpact`'s field mapping over a stubbed result set of the vendor's row shape (`MonitorPortFixture`'s armed rows), add one with its `mutation:` line; seed no vendor rows.
+
 **Rejected** (17):
 
 - `low` The note's "all the usage data the instance still keeps" omits the vendor's monthly consolidated totals past `KeepActiveMonths` - the note is Task 4's verbatim string, and the classic page reads the same daily tables.
@@ -135,6 +141,8 @@ Code review 2026-10-13 (four layers, full-opus). Severity, fix-risk, footprint a
 - 2026-10-12, lead, spec gate: ready; AD-29, AD-36, AD-8, AD-7 and AD-44 amended as proposed; the `/api/monitor/interop` candidate filed as DW-2370 (decision-pending, owner hold); DW-2328 occurrence added. Rule 11: Task 10's literal edits sent to the orchestrator as a union ask. Epic 20's 20.29 (lazy screens): no page wrapper here; a page added later becomes a loader line.
 
 ## Review Triage Log
+
+- 2026-10-13, rework 1: DW-2384 decided (orchestrator, ruling B) as a tier-1 amendment of Tasks 1 and 3: one row per grouping, all-time Count plus numeric ActiveNow; DW-2385 accepted as a gap, its mapping pinned over stubbed rows.
 
 ### 2026-10-13 - Review pass
 
