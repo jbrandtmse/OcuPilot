@@ -394,6 +394,8 @@ All paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-20`. Line numbe
 
 ## Spec Change Log
 
+- 2026-10-13, spec gate (runner): the Design Notes' Rule 20 drafts are written (AD-63 item 1 and its named consequence, AD-44's screens that replace several classic pages, AD-64 item 2, EXPERIENCE.md :856). The `&ST` behavior is DW-2396, a vendor candidate under the owner's hold (not reported). The `multiple-goals` warning is accepted: both screens share the frame, page and store and are about one story's size. Story 20.16 implements before this story, so Task 0 re-anchors on it.
+
 ## Review Triage Log
 
 ## Design Notes

@@ -11685,3 +11685,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: ocupilot-b-ci: after database-operations.browser-spec.mjs two of seven web processes had no /dev/null (a fresh one has it); open, reopen, close then use raises <NOTOPEN>; LogSourcePort.cls:3043 Open tNull:::1 ... Close tNull on both paths. Only closer not isolated (inference).
 - 2026-10-13T20:02:45Z status=escalated owner=burndown by=harvest note=contended: Epic 18 is changing LogSourcePort.cls; for the orchestrator to route; when fixed, drop the NOTOPEN tolerance in interop-editors.browser-spec.mjs compileNotice
 - 2026-10-13T20:18:27Z occurrence=20-7-the-three-embedded-vendor-editors by=cr note=BPL editor Compile fails the same way; AC2 legs pass over it; the fix adds a device-state test too
+
+### DW-2396: Vendor: the schema viewer app (/ui/interop) reads its document parameter &ST and then clears it with its own first address write, so it always opens on ASC X12, the classic pages' own link included
+- source: spec-20-8 plan (measured) | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: Measured at Story 20.8's plan on ocupilot-b-ci: ten address forms, framed and top level, all landed on ASC X12; the bundle reads &ST, then overwrites it (plan-208 probes).
+- 2026-10-13T20:29:17Z status=decision-pending owner=burndown by=spec_gate note=owner hold 2026-10-05: IRIS defect candidate, not reported; 20.8 AC2 is a tripwire that reddens if the vendor fixes it
