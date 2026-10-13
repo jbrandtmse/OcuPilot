@@ -37,8 +37,9 @@ export interface ApiOptions {
    */
   readonly onForbidden?: () => void;
   /**
-   * Called once for **every** JSON call, with what that call came back as (`core/fault.ts`) or
-   * `null` when it succeeded -- the same told-not-asked shape `onForbidden` has, and the channel
+   * Called once for **every** JSON call that comes back, with what it came back as (`core/fault.ts`)
+   * or `null` when it succeeded; a call its caller aborted (`ApiRequestInit.signal`) comes back as
+   * nothing and is not told -- the same told-not-asked shape `onForbidden` has, and the channel
    * `ConnectivityService` publishes its verdict from. The result is still returned to the caller
    * unchanged either way.
    *
@@ -93,14 +94,17 @@ export interface ApiRequestInit {
    */
   timeoutMs?: number;
   /**
-   * The caller's own abort signal, passed to `fetch` with the timeout's (joined when both are set).
+   * The caller's own abort signal, passed to `fetch` with the timeout's. When both are set they are
+   * joined only until the response's headers arrive, which is all the timeout covers, so an abort
+   * while such a call's body streams in goes unseen; a signal alone covers the body too.
    * It exists for a request the caller may abandon while it is held, such as the live log tail.
    *
    * **An abort is the caller's doing, so it is never a fault.** An aborted call rejects with an
    * `AbortError`, from `request()` and from `requestJson()` alike: `requestJson` neither answers it
    * as `status: 0` nor tells `onFault`, so connectivity never reads an abandoned request as a lost
-   * connection. A call made with an already-aborted signal never reaches the network. A caller that
-   * passes no signal never sees any of this.
+   * connection. A call made with an already-aborted signal sends no request of its own, though a
+   * pair whose access token has expired is still renewed first. A caller that passes no signal
+   * never sees any of this.
    */
   signal?: AbortSignal;
 }

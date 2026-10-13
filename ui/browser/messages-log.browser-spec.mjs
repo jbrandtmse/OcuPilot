@@ -551,19 +551,22 @@ async function until(predicate, what, timeoutMs = config.navigationTimeoutMs) {
   }
 }
 
-// Mutation (Rule 19): `stopLive` without `this.liveAbort?.abort()`, bundle rebuilt and redeployed -> the
-// cancelled-tail assertion goes red; with it removed, the page-read assertion goes red alone (observed).
+// Mutation (Rule 19): `stopLive` without `this.liveAbort?.abort()`, bundle rebuilt and redeployed -> red at
+// round 1's canceled-or-answered wait; with that wait and the cancel count removed and eight rounds run,
+// the page-read assertion goes red alone (observed).
 test('Story 18.38: Live tail turned on and off more than six times in a row cancels each held tail and leaves the shell answering', async () => {
   const { context, page } = await signedInAtViewer();
   try {
     await waitNamed(page, () => document.querySelector('[data-ocu-log="live"]') !== null, 'Live tail was offered once the first window answered');
 
-    // Tails with one cursor are the same GET, and the browser's cache lets identical GETs share a
-    // single connection, which would hide a held one. Each tail is given a URL of its own here, as
-    // tails asked at different cursors have, so every held tail needs a connection of its own.
+    // Tails with one cursor are the same GET, and identical tails were measured not to use up the
+    // browser's connections (inference: it lets one of several identical GETs reach the network at a
+    // time), which would hide a held one. Each tail is given a URL of its own here, as tails asked at
+    // different cursors have, so every held tail needs a connection of its own.
     const isTail = (request) => new URL(request.url()).pathname.endsWith('/logs/messages/tail');
     const tails = [];
     const cancelled = [];
+    const finished = [];
     await page.setRequestInterception(true);
     page.on('request', (request) => {
       if (!isTail(request)) {
@@ -576,21 +579,27 @@ test('Story 18.38: Live tail turned on and off more than six times in a row canc
     page.on('requestfailed', (request) => {
       if (isTail(request)) cancelled.push(request.failure()?.errorText ?? '');
     });
+    page.on('requestfinished', (request) => {
+      if (isTail(request)) finished.push(request.url());
+    });
 
-    for (let abandoned = 1; abandoned <= ABANDONED_TAILS; abandoned += 1) {
+    // A tail the server answers because the instance wrote to messages.log meanwhile is not abandoned:
+    // the viewer reads the change and holds the next one. Rounds therefore repeat until eight tails
+    // have been abandoned, and each round waits until every tail asked so far has ended.
+    for (let round = 1; cancelled.length < ABANDONED_TAILS; round += 1) {
+      assert.ok(round <= ABANDONED_TAILS * 2, `${ABANDONED_TAILS} tails abandoned within ${ABANDONED_TAILS * 2} rounds: ${cancelled.length}`);
+      const asked = tails.length;
       await page.click('[data-ocu-log="live"]');
-      await waitNamed(page, () => document.querySelector('[data-ocu-log="live"]')?.getAttribute('aria-pressed') === 'true', `the toggle read pressed for tail ${abandoned}`);
-      await until(() => tails.length === abandoned, `tail ${abandoned} was requested`);
+      await waitNamed(page, () => document.querySelector('[data-ocu-log="live"]')?.getAttribute('aria-pressed') === 'true', `the toggle read pressed in round ${round}`);
+      await until(() => tails.length > asked, `a tail was requested in round ${round}`);
       // Let the request reach the wire, so it holds a connection rather than waiting for one.
       await new Promise((resolve) => setTimeout(resolve, 250));
       await page.click('[data-ocu-log="live"]');
-      await waitNamed(page, () => document.querySelector('[data-ocu-log="live"]')?.getAttribute('aria-pressed') === 'false', `the toggle read off after tail ${abandoned}`);
+      await waitNamed(page, () => document.querySelector('[data-ocu-log="live"]')?.getAttribute('aria-pressed') === 'false', `the toggle read off in round ${round}`);
+      // Each abandoned tail is cancelled in the browser, not left to run to the server's bound.
+      await until(() => cancelled.length + finished.length === tails.length, `every tail asked by round ${round} was canceled or answered`, SHELL_ANSWER_MS);
     }
-
-    // Each abandoned tail was cancelled in the browser, not left to run to the server's bound.
-    await until(() => cancelled.length === ABANDONED_TAILS, `all ${ABANDONED_TAILS} abandoned tails were canceled`, SHELL_ANSWER_MS);
     assert.deepEqual(cancelled, Array(ABANDONED_TAILS).fill('net::ERR_ABORTED'), 'every abandoned tail ended as an abort');
-    assert.equal(tails.length, ABANDONED_TAILS, 'and no tail was requested once Live tail was off');
 
     // Another shell call completes at once: no connection is held by a tail nobody is waiting for.
     await page.waitForSelector('[data-ocu-log="load-newer"]', { timeout: config.navigationTimeoutMs });
@@ -607,6 +616,7 @@ test('Story 18.38: Live tail turned on and off more than six times in a row canc
     } catch (cause) {
       throw new Error(`the page read went unanswered for ${SHELL_ANSWER_MS} ms after ${ABANDONED_TAILS} abandoned tails, so a held connection was not released`, { cause });
     }
+    assert.equal(tails.length, cancelled.length + finished.length, 'and no tail was requested once Live tail was off');
   } finally {
     await context.close();
   }

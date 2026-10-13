@@ -925,7 +925,7 @@ describe('LogViewerPage', () => {
     expect(rows(fixture).map((cells) => cells[3])).toEqual(expect.arrayContaining(['first of two', 'second of two']));
   });
 
-  it('Story 18.38 AC4: turning Live tail off drops the held answer and requests nothing more', async () => {
+  it('Story 18.38 AC4: turning Live tail off draws it off and requests nothing more', async () => {
     const { fixture, store } = await mount();
     toggle(fixture)!.click();
     await settleChain(fixture);
@@ -937,7 +937,6 @@ describe('LogViewerPage', () => {
     expect(store.live()).toBe(false);
     expect(toggle(fixture)?.getAttribute('aria-pressed')).toBe('false');
 
-    api.releaseLive({ source: 'alerts', changed: true });
     await settleChain(fixture);
 
     expect(api.paths.length).toBe(before);
@@ -980,7 +979,7 @@ describe('LogViewerPage', () => {
     expect(api.liveAsked).toHaveLength(1);
   });
 
-  it('Story 18.38 AC4: choosing another file turns Live tail off and the held answer asks for nothing', async () => {
+  it('Story 18.38 AC4: choosing another file turns Live tail off and asks for nothing more', async () => {
     const { fixture, store } = await mount(MESSAGES_SCREEN, ADDRESS);
     toggle(fixture)!.click();
     await settleChain(fixture);
@@ -992,37 +991,38 @@ describe('LogViewerPage', () => {
     expect(toggle(fixture)).toBeNull();
     const before = api.paths.length;
 
-    api.releaseLive({ source: 'messages', changed: true });
     await settleChain(fixture);
 
     expect(api.paths.length).toBe(before);
     expect(api.liveAsked).toHaveLength(1);
   });
 
-  it('Story 18.38 AC4: leaving the screen turns Live tail off and the held answer asks for nothing', async () => {
+  it('Story 18.38 AC4: leaving the screen turns Live tail off and a tail answered just before asks for nothing', async () => {
     const { fixture, store } = await mount();
     toggle(fixture)!.click();
     await settleChain(fixture);
     expect(store.live()).toBe(true);
     const before = api.paths.length;
 
+    // Answered first, so the abort that leaving sends lands too late and the loop's own check must drop it.
+    api.releaseLive({ source: 'alerts', changed: true });
     fixture.destroy();
     expect(store.live()).toBe(false);
-    api.releaseLive({ source: 'alerts', changed: true });
     await settle();
 
     expect(api.paths.length).toBe(before);
   });
 
-  it('Story 18.38 AC4: a sign-out reset turns Live tail off', async () => {
+  it('Story 18.38 AC4: a sign-out reset turns Live tail off, and a tail answered just before asks for nothing', async () => {
     const { fixture, store } = await mount();
     toggle(fixture)!.click();
     await settleChain(fixture);
     const before = api.paths.length;
 
+    // Answered first, so the reset's abort lands too late; the loop must still ask for nothing.
+    api.releaseLive({ source: 'alerts', changed: true });
     store.reset();
     expect(store.live()).toBe(false);
-    api.releaseLive({ source: 'alerts', changed: true });
     await settleChain(fixture);
 
     expect(api.paths.length).toBe(before);
