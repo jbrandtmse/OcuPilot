@@ -11953,3 +11953,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-20-9-messages-search-view-resend-and-trace.md | severity: low | fix-risk: med | footprint: in-story
 - evidence: Ens.Util.Auditing.AuditViewMessage answers an error only when the header id and the body are both missing (Auditing.cls:21), which ContentsText never passes, and $System.Security.Audit drops a disabled or unregistered event with no status, so no input reaches the catch or a failing status.
 - 2026-10-14T20:29:43Z status=wontfix-theoretical owner=20-9-messages-search-view-resend-and-trace by=cr note=reopen_if=AuditViewMessage gains an error path on a supported build, or a Contents read is found with no ViewContents row
+
+### DW-2438: StreamText's TESTOUTPUTMAX + 1 read and its TESTCUT marker are pinned by no test now that the Contents read cuts on its own
+- source: spec-20-9-messages-search-view-resend-and-trace.md code review (rework 1 re-review) | severity: low | fix-risk: med | footprint: in-epic
+- evidence: The Contents cap tests read through the new ReadMessageContents cut, which hides StreamText's bound and marker (dropping either leaves them green); InteropTransformTest has no output over 1,000,000 characters, so Story 20.27's AddTestLines dependence on that read is unpinned.
+- 2026-10-14T21:00:33Z status=wontfix-accepted owner=20-9-messages-search-view-resend-and-trace by=cr note=reopen_if=StreamText or RenderTargetHere changes, or a transformation output over 1,000,000 characters loses its cut mark

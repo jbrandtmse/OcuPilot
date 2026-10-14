@@ -104,13 +104,13 @@ ClassMethod Lines(pId As %String, Output pHttp As %Integer, Output pFault, pMax 
 
 /// <p>Store a character stream of <var>pLines</var> lines of 999 <code>x</code> and a line feed (1,000 characters each), then
 /// <var>pTail</var>, and answer it. The caller deletes it.</p>
-ClassMethod CapStream(pLines As %Integer, pTail As %String = "") As %Stream.GlobalCharacter
+Method CapStream(pLines As %Integer, pTail As %String = "") As %Stream.GlobalCharacter
 {
     Set tStream = ##class(%Stream.GlobalCharacter).%New()
     Set tLine = $Translate($Justify("", 999), " ", "x") _ $Char(10)
     For tI = 1:1:pLines Do tStream.Write(tLine)
     If pTail '= "" Do tStream.Write(pTail)
-    Do tStream.%Save()
+    Do $$$AssertStatusOK(tStream.%Save(), "the long stream is stored")
     Quit tStream
 }
 
@@ -250,9 +250,9 @@ Method TestAMessageWithNothingToShowReadsAsNoRowsAndRecordsNoView()
     }
 }
 
-/// <p>AC3: the text is cut at its overall cap of 1,000,000 characters and the last line ends the cut; a lower line cap answers its
-/// lines and the read route says it truncated.</p>
-/// <p>Mutation (Rule 19): <method>OcuPilot.Port.InteropPort.ReadMessageContents</method> without its <parameter>TESTOUTPUTMAX</parameter> cut -- row 1,001 reads <code>x ... [cut]</code> and the overall leg goes red.</p>
+/// <p>AC3: the text is cut at its overall cap of 1,000,000 characters and the last line ends the cut, also when the cap falls inside a
+/// line; a lower line cap answers its lines and the read route says it truncated.</p>
+/// <p>Mutation (Rule 19): <method>OcuPilot.Port.InteropPort.ReadMessageContents</method> without its <parameter>TESTOUTPUTMAX</parameter> cut -- row 1,001 reads <code>x ... [cut]</code> and the overall leg goes red; its cut moved back to the last line end -- the inside-a-line leg goes red.</p>
 Method TestTheTextIsCutAtItsOverallCapAndTheLinesAtTheRowCap()
 {
     Set tStream = ..CapStream(1200)
@@ -268,6 +268,12 @@ Method TestTheTextIsCutAtItsOverallCapAndTheLinesAtTheRowCap()
         Do $$$AssertEquals($Length(tRows.%Get(0).Text), 999, "the lines before it are whole")
     }
     Do $ClassMethod("%Stream.GlobalCharacter", "%DeleteId", tStream.%Id())
+    Set tInside = ..CapStream(999, $Translate($Justify("", 2000), " ", "y"))
+    Set tInsideRows = ..Lines(..HeaderFor("%Stream.GlobalCharacter", tInside.%Id()), .tInsideHttp, , 5000)
+    Do $$$AssertEquals(tInsideHttp, 200, "a stream the cap cuts inside a line answers")
+    Do $$$AssertTrue($IsObject(tInsideRows), "with rows")
+    If $IsObject(tInsideRows) Do $$$AssertEquals(tInsideRows.%Size() _ "|" _ tInsideRows.%Get(999).Text, "1000|" _ $Translate($Justify("", 1000), " ", "y") _ ..#CUT, "the line the cap falls in keeps its part up to the cap, and the cut ends it")
+    Do $ClassMethod("%Stream.GlobalCharacter", "%DeleteId", tInside.%Id())
     Set tXml = $List(..PreparedIds, 2)
     Set tCriteria("message") = tXml
     Set tSC = ##class(OcuPilot.Screen.Read).Execute("OcuPilot.Screen.Descriptor.InteropMessageContentsTab", 2, .tAnswer, .tRouteHttp, .tFault, .tCriteria)

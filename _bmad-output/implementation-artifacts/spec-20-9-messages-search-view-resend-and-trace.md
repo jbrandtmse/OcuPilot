@@ -450,6 +450,24 @@ Rejected:
 - `InteropMessageRead.cls` runs past the 500-line guide -- low.
 - The Auto Run Result's counts and the frontmatter `status` are stale -- the fix edits the spec under review.
 
+Code review 2026-10-14 (rework 1 re-review of `a772580f..d8eadbb7`; layers `full-opus`). The open High is fixed as specified: the cut sits in `ReadMessageContents` before the normalisation, and `StreamText` is unchanged.
+
+- [x] [Review][Patch] The cut-removal `mutation:` line named the cap test alone; the boundary test's one-over leg reddens too [_bmad-output/implementation-artifacts/spec-20-9-messages-search-view-resend-and-trace.md:782]
+- [x] [Review][Patch] No test cut the text inside a line (both fixtures end a line at the cap), so a cut moved back to the last line end shipped green [src/OcuPilot/Test/InteropMessageContents.cls:256]
+- [x] [Review][Patch] `CapStream` dropped its `%Save()` status [src/OcuPilot/Test/InteropMessageContents.cls:107]
+
+Rejected:
+
+- `StreamText`'s `TESTOUTPUTMAX` + 1 read and its marker are pinned by no test now -- low: they serve Story 20.27's transformation test, whose class has no output over the cap; DW-2438, `wontfix-accepted` with its `reopen_if`.
+- A body of exactly 1,000,000 characters and a final line end shows the cut on its last line -- low, that one length; trimming the end before the cut adds branches.
+- A supplementary character split at the cap leaves a lone surrogate -- low, theoretical; every cut in the port shares it.
+- A line of 3,991 to 3,999 characters at the cap is cut again by the line cap (` ...  ... [cut]`) -- low, cosmetic, that window only.
+- The boundary test errors rather than fails on an empty answer (`%Get(-1)`) -- low; an error is still red.
+- Many cut 4,000-character lines total about 1,002,000 characters -- false: the clause counts the body's text, which stays within 1,000,000.
+- A body outlives a test that errors before its last lines -- false: `RemoveAll` in `OnAfterOneTest` deletes each marker header's body, `%Stream.GlobalCharacter` included.
+- The cap test's doc says "the last line ends the cut" -- false: row 1,001 is the cut, and it ends the text.
+- Spec prose: Code Map :138 ("caps at `TESTOUTPUTMAX`"), the rework triage's `AddTestLines` and "megabyte HL7 fixture" reasons, the residual risks without Rule 30's fresh check, and the Auto Run Result's "alone" -- the fix edits the spec under review (oversized); the corrected `mutation:` lines supersede "alone", and the fresh check stays the runner's.
+
 ## Spec Change Log
 
 - 2026-10-13, spec gate (runner): the orchestrator ruled Q1 A (Parts B and C are Stories 20.30 and 20.31, chartered in `epics.md` with their criteria verbatim; order 20.9, 20.30, 20.31, then 20.10) and Q2 A (no saved searches, a named limit; DW-2398 with its reopen_if). `epics.md` Story 20.9 is amended under Rule 5. The Rule 20 drafts are written (AD-62 item 15, AD-8, AD-44, AD-5).
@@ -496,6 +514,14 @@ Rejected:
   - `[low]` `[reject]` An XML or HL7 body over the cap has no test of its own -- every kind reaches the one line through `tText`, the stream leg reddens when the line goes, and a megabyte HL7 fixture exercises the same line.
   - `[low]` `[reject]` A cut between a CR and its LF leaves the CR, which the normalisation turns into a line end before the marker -- cosmetic, and only for a CRLF body cut exactly there.
   - `[low]` `[reject]` `carried` No test touches the sanitizer clause for the Contents rows -- no new model-bound path; the existing context pipeline has its own tests.
+
+### 2026-10-14 -- Code review (rework 1 re-review)
+
+- verdicts: 19 findings from four `full-opus` layers -- high 0, medium 0, low 13, false 6; 3 patches (7 findings), 12 rejected (lines under Review Findings)
+- the open High is fixed as specified (the cut in `ReadMessageContents` before the normalisation, `StreamText` unchanged); no layer found a HIGH, so the story closes
+- patched: the cut-removal `mutation:` line (both tests redden, run 75); an inside-a-line leg in the cap test (moved-back cut reddens it alone, run 76); `CapStream` asserts its save
+- DW-2438 (`wontfix-accepted`): with `StreamText`'s marker removed, `InteropMessageContents` (run 77) and `InteropTransformTest` (run 78) stay green; with its read at 2,000,000, `InteropMessageContents` does (run 79)
+- mutations ran on the throwaway's copy only, restored by `rsync --checksum` (dry run empty); `InteropMessageContents` 8 (run 80) and `InteropTransformTest` 7 (run 81) green after
 
 ## Design Notes
 
@@ -753,9 +779,10 @@ Every header but Other has source `<marker>Src` and target `<marker>Op`.
 - mutation: no CRLF or CR normalization in `ReadMessageContents` -> `TestACharacterStreamIsItsTextSplitOnAnyLineEnd` and the XML line legs
 - mutation: `ContentsText` reads a binary stream as text -> `TestABodyThatIsNotTextIsRefusedAfterItsViewIsAudited`
 - mutation: `ContentsText` audits before it opens the body -> `TestAMessageWithNothingToShowReadsAsNoRowsAndRecordsNoView`
-- mutation: `ReadMessageContents` without its `TESTOUTPUTMAX` cut -> `TestTheTextIsCutAtItsOverallCapAndTheLinesAtTheRowCap` (row 1,001 reads `x ... [cut]`)
+- mutation: `ReadMessageContents` without its `TESTOUTPUTMAX` cut -> `TestTheTextIsCutAtItsOverallCapAndTheLinesAtTheRowCap` (row 1,001 reads `x ... [cut]`, and the inside-a-line leg) and `TestATextAtTheCapIsWholeAndOneCharacterOverIsCut` (one-over leg)
 - mutation: `ReadMessageContents`' length test `>=` instead of `>` -> `TestATextAtTheCapIsWholeAndOneCharacterOverIsCut` (exact-cap leg), alone
 - mutation: `ReadMessageContents`' length test `> TESTOUTPUTMAX + 1` instead of `> TESTOUTPUTMAX` -> `TestATextAtTheCapIsWholeAndOneCharacterOverIsCut` (one-over leg), alone
+- mutation: `ReadMessageContents`' cut moved back to the last line end at or before the cap -> `TestTheTextIsCutAtItsOverallCapAndTheLinesAtTheRowCap` (inside-a-line leg), alone
 - mutation: `AuditViewHere` without its alarm test -> `TestAnAlarmBodyIsReadAndItsViewIsNotAudited`
 - mutation: `rowTarget` removed from `InteropQueueMessageList` -> `InteropMessageDescriptor.TestTheQueueMessagesListLinksToTheMessage`; its field changed in `screens.generated.ts` -> `navigation.test.mjs`'s Story 20.9 test; `rowTarget` null in the bundle -> the queue spec's AC4 test
 - mutation: the Contents pair dropped from `Pairs` alone -> `InteropMessageDescriptor.TestThePortDeclaresEachScreensPairs`; dropped from `Pairs` and the Contents descriptor -> `InteropFloor` (four tests, the Operator-refused Contents leg among them) and `InteropMessageDescriptor`
