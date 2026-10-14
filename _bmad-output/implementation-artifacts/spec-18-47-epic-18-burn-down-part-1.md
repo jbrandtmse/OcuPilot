@@ -106,6 +106,45 @@ At `45c6bbc0`; paths under `src/OcuPilot/` or `ui/src/app/`.
 
 - **DW-2400 TLS floor, orchestrator condition (2026-10-14)** [AMENDED 2026-10-14 - see the Spec Change Log]: Task 0 measures `OcuPilotProvider`'s `TLSMinVersion` on `ocupilot-ci` as today's installer creates it (and as an older release's installer did, if the code shows a different create) and the vendor default for a new configuration on 2026.2, recorded under For the lead. The installer's ensure and repair of `OcuPilotProvider` set `TLSMinVersion` to 16 or more at every start, as they repair `VerifyPeer`, so an upgraded instance with a lower stored floor is repaired at start, never refused. An egress-named configuration below 16 (operator-owned, never repaired) is refused with a code whose sentence names what to raise in the classic portal. A test pins the start repair: lower the floor, run the ensure, read 16 or higher (`mutation:` line).
 
+### Review Findings
+
+Code review 2026-10-14 (full-opus; blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor; 47 rows, 15 entries, 17 rejected). Tags: severity; fix-risk; footprint.
+
+- [x] [Review][Patch] `MgmntPort.Forwards` read only `Forward="X"`, so a router written `Forward='X'` or `Forward = "X"` (valid XML) forwarded nowhere and a deployed service was deleted, short of AD-53's "every UrlMap Forward chain" (high, Rule 6; low: one regex; in-story) [src/OcuPilot/Port/MgmntPort.cls:598]
+- [x] [Review][Patch] Another namespace's 403 answered "refused to enter this namespace", naming the wrong one; now `REASONNAMESPACEOTHER` names it (med; low; in-story) [src/OcuPilot/Port/MgmntPort.cls:522]
+- [x] [Review][Patch] The new class and six touched classes' `OnAfterAllTests` deleted the policy or egress row on an unarmed instance, since `%UnitTest` runs it after a refused `OnBeforeAllTests`; each now returns first there, as `ProviderSslCallTime` does; the other 48 classes are DW-2426 (med; low; in-story) [src/OcuPilot/Test/WebAppRolesRead.cls:68]
+- [x] [Review][Patch] `WebAppRolesRead`'s `RouteRows`, `ToolRows` and `Canonical` copied `RoutineAppListsRead`'s public helpers with no stated reason (Rule 2); it calls them now (med; low; in-story) [src/OcuPilot/Test/WebAppRolesRead.cls:91]
+- [x] [Review][Patch] The data table's own row menu, the fourth entity-key reader, had no repeated-key test; two cases added (med; low; in-story) [ui/src/app/shell/data-table.spec.ts:908]
+- [x] [Review][Patch] A gated Dashboard drill-down was an `<a>` with no `href` and no role, so `aria-disabled` was not exposed; `role="link"` (low; low; in-story) [ui/src/app/areas/os-management/dashboard.page.ts:126]
+- [x] [Review][Patch] Gating after a late navigation answer was untested; the stub's subscriber now fires and a leg pins it (low; low; in-story) [ui/src/app/areas/os-management/dashboard.page.spec.ts:543]
+- [x] [Review][Patch] `EgressSslProbe.Ensure` left a client's floor to the vendor default the call-time check now reads; it sets 16 (low; low; in-epic) [src/OcuPilot/Test/EgressSslProbe.cls:39]
+- [x] [Review][Patch] `MonitorPort`'s class header still said an unreadable sample fails the read (spine :818 left: :825 governs) (low; low; in-story) [src/OcuPilot/Test/MonitorPort.cls:5]
+- [x] [Review][Patch] `Wire`'s message said twelve screens over a thirteen-entry roster (low; low; in-story) [src/OcuPilot/Test/Wire.cls:534]
+- [x] [Review][Patch] EXPERIENCE.md :357 did not name the web application roles list among the `routineAppRoles*` uses, nor :403 the routine form's Enabled and Resource captions; edited in place, 1044 lines (low; low; in-epic) [EXPERIENCE.md:357]
+- [x] [Review][Defer] Switches saves a configuration below TLS 1.2 that every call then refuses: `SwitchRules.EnabledVerifyingClient` lacks the floor (med; low; in-epic) [src/OcuPilot/Kernel/SwitchRules.cls:156] — deferred: needs an EGRESS code this story's contract forbids; DW-2424 routed burndown
+- [x] [Review][Defer] Reach widening covers only a routine application's cleared Resource or enabling; a public Resource and a web application's enabling mint ordinary (med; med; in-epic) [src/OcuPilot/Kernel/Proposal/Prohibited.cls:4636] — deferred: AD-10 policy call beyond DW-2322's ruling, Epic 20-contended file; DW-2425 decision-pending
+- [x] [Review][Defer] Encryption key-file refusals #5022, #1219, #1204 stay logged (DW-2007's 18.7 occurrence) (med; low; in-epic) [src/OcuPilot/Port/AdminPort.cls:641] — deferred: each needs a Task 0 measurement; DW-2427 routed 18-48
+- [x] [Review][Defer] The command bar and box resolve a repeated key's first row, and an ordinal follows position across a re-sort (low; low; in-epic) [ui/src/app/shell/command-bar.ts:478] — deferred: latent as DW-2419 (occurrence appended)
+
+Rejected:
+
+- `ReachesDispatch` visited-before-depth misses a target only past a 9-hop chain: wontfix-theoretical.
+- A same-named `.disp` in another namespace refuses a delete: by-design, Task 4 judges by dispatch class name, failing closed.
+- An unreadable namespace refuses every delete and the delete's read: settled (DW-2311 fails closed).
+- A `Forwards` read failure answers 500, not 403: low; fails closed, and the vendor's `GetWebRESTApps` entered that namespace first (inference).
+- `#5809` stays unlogged when the re-read still finds the connection: low; that order is not observed, and the gate scoped `#5809` unlogged.
+- A valueless line with an escaped quote re-read literally yields a row: low; the vendor exposition emits no valueless line.
+- `CipherList` restored by exact match: by-design (Task 7); a normalising build is theoretical on the pinned 2026.2.
+- `CipherList` not judged at call time, NULL ciphers included: settled.
+- The arms refuse a raised floor, and "restores at every start" for a kept higher floor: by-design (ruling and Rule 11 strings).
+- Moving a target from `''` to one MatchRole is a grant: by-design (AD-10 amendment).
+- The routine form's caption shows while a granted role is privileged: by-design (Task 2); EXPERIENCE.md :403 patched above.
+- `WebAppUpdate`'s added sentence, and `WebAppRoleList` reusing the `routineAppRoles*` keys: by-design (Task 3 verbatim).
+- The DW-2328 browser leg reads the route a second time: low; it compares the live table with that read and fails loudly.
+- `MgmntImplFixture.Answer` with an empty namespace: false; no caller passes one.
+- The spec still calls DW-2418 deferred: the fix edits the spec under review; for the lead's adjudication.
+- `ToolRoundTrip.REFUSEEMPTY` conflicts with 20.16 at the merge: not a defect; Rule 22 union.
+
 ## Spec Change Log
 
 - 2026-10-14, lead: the orchestrator approved the Rule 11 asks and added a condition on DW-2400's TLS floor (the item above `## Spec Change Log`): the installer raises `OcuPilotProvider`'s floor at every start; a named configuration below it is refused with a remedy.
@@ -207,6 +246,11 @@ At `45c6bbc0`; paths under `src/OcuPilot/` or `ui/src/app/`.
 - mutation (QA): `WebAppWeakening` with the per-test record delete removed, the class-level delete leaves no record (run 804); with both removed the record survives the class (run 805).
 - mutation (QA): DW-2340 the gated early return dropped from `onDrillDown` -> `dashboard.page.spec.ts` "Story 18.47, DW-2340" red (the URL moves to the refused screen).
 - (QA) Rule 3, rebuilt and redeployed bundle on `ocupilot-ci`: `prometheus-metrics` 5, `ssl-editor` 7, `dashboard-drill-downs` 5, `data-table` 9, `routine-applications` 4 pass; after the edits `ProviderSslCallTime` 3, `WebAppWeakening` 7, `TurnProviderFault` 6 green (runs 802, 806, 807).
+
+- mutation (code review): DW-2311 `Forwards` matching only `Forward="` -> `RestServiceWrite.TestAServiceReachedThroughForwardRoutesIsRefused` (run 809); another namespace's 403 answered with `REASONNAMESPACE` -> `MgmntPort.TestADeploymentInAnotherNamespaceRefusesTheDelete` (run 810); green on the restored tree (runs 811, 812).
+- mutation (code review): DW-2328 `entityKeyOf` dropped from `menuItems`' self-protection call -> `data-table.spec.ts` "judges the row's entity key"; the menu's row resolved as the first of its key -> "reads that row, not the first of its key".
+- mutation (code review): DW-2340 the page's navigation subscription a no-op -> `dashboard.page.spec.ts` "gated then, without a reload"; `[attr.role]` dropped -> the DW-2340 gated-link case.
+- (code review) Unarmed cleanup: probe on `ocupilot-ci`, two seeded policy rows; `WebAppRolesRead.OnAfterAllTests` in a session with `OCUPILOT_ALLOW_PRINCIPALS=0` kept both, with `1` and no snapshot deleted both; policy restored to none. Reruns green: `WebAppRolesRead` 2, `RoutineAppGrant` 5, `RestServiceGate` 3, `MftConnectionWrite` 9, `EcpDataServerWrite` 11, `ProviderSslNamed` 5, `ProviderSslCallers` 5, `ProviderSslCallTime` 3, `EgressSettingsWire` 6 (runs 813-821); `test:tools` 1990, `test:components` 245 files and 3109 tests, build clean (1.92 MB), `dashboard-drill-downs` 5 on the redeployed bundle.
 
 **Changed behavior pinned in passing:** a REST service delete now reads every namespace the caller can enter, so `RestServiceGate` gives its holder read on each namespace's databases before the delete and asserts the 403 without it; a monitor sample neither reading accepts is skipped, so `MonitorPort` and `MetricsDescriptor` assert 200 with one log line; `ReadTool` counts 380 tools and 61 descriptors with criteria.
 

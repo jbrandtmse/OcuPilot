@@ -9,7 +9,8 @@
 /// for callers who cannot read <class>Security.SSLConfigs</class> is <class>OcuPilot.Test.ProviderSslCallers</class>'s.</p>
 /// <p><b>What it needs from the environment:</b> <parameter>ARMINGVARIABLE</parameter> reading <code>1</code>, because it
 /// creates and deletes an SSL/TLS configuration and briefly changes OcuPilot's own, which every leg restores to the
-/// installer's values in <method>OnAfterOneTest</method> whatever the leg did.</p>
+/// installer's values in <method>OnAfterOneTest</method> whatever the leg did, and the class restores again in
+/// <method>OnAfterAllTests</method>.</p>
 Class OcuPilot.Test.ProviderSslCallTime Extends %UnitTest.TestCase
 {
 
@@ -30,6 +31,17 @@ Method OnBeforeAllTests() As %Status
         Quit $$$ERROR($$$GeneralError, "OcuPilot.Test.ProviderSslCallTime creates and deletes an SSL/TLS configuration and briefly changes OcuPilot's own on this instance and runs on a throwaway container only. " _ ..#ARMINGVARIABLE _ " does not read 1 here, so nothing was created. Bring one up with scripts/ci-throwaway.sh, which sets it.")
     }
     Quit $$$OK
+}
+
+/// <p>Restore OcuPilot's own provider configuration, remove the egress row and the probe once more when the class ends,
+/// whatever a leg left, on an armed instance only.</p>
+Method OnAfterAllTests() As %Status
+{
+    If $System.Util.GetEnviron(..#ARMINGVARIABLE) '= 1 Quit $$$OK
+    Do ..RestoreOwn()
+    Do $ClassMethod(..#PORT, "Reset")
+    Do ##class(OcuPilot.Kernel.State.Egress).DeleteGuarded()
+    Quit ##class(OcuPilot.Test.EgressSslProbe).Remove(..#PROBE)
 }
 
 Method OnBeforeOneTest() As %Status
@@ -139,15 +151,18 @@ Method TestAnAbsentConfigurationIsRefusedAsAbsent()
 }
 
 /// <p>A turn's poll shows <code>PROVIDER.TLS</code>'s one sentence (<method>OcuPilot.Api.Error.ReasonForTurnError</method>),
-/// which names every cause, an unreadable configuration included, and where the configuration and its remedy are named.
+/// which names every cause, an unreadable configuration and a protocol floor below TLS 1.2 included, and where the
+/// configuration and its remedy are named.
 /// OcuPilot's own provider configuration, absent, takes the restart remedy and not the Switches one.</p>
 /// <p>Mutation (Rule 19): drop "or could not be read" from <code>PROVIDER.TLS</code>'s sentence in
-/// <method>OcuPilot.Kernel.Provider.Base.ReasonFor</method> -- the turn leg goes red; answer <code>REMEDYTLSABSENT</code>
+/// <method>OcuPilot.Kernel.Provider.Base.ReasonFor</method> -- the turn leg goes red, as does dropping "allows a protocol
+/// older than TLS 1.2" from it, which the floor assertion alone fails; answer <code>REMEDYTLSABSENT</code>
 /// for OcuPilot's own name in <method>OcuPilot.Kernel.Provider.Base.TlsReason</method> -- the own-absent leg goes red.</p>
 Method TestATurnNamesEveryCauseAndAnAbsentOwnConfigurationTheRestart()
 {
     Set tTurn = ##class(OcuPilot.Api.Error).ReasonForTurnError(##class(OcuPilot.Api.Error).#PROVIDERTLS)
     Do $$$AssertTrue((tTurn [ "could not be read") && (tTurn [ "Test connection"), "a turn's sentence names the unreadable cause and where the remedy is named: " _ tTurn)
+    Do $$$AssertTrue(tTurn [ "allows a protocol older than TLS 1.2", "and the floor below TLS 1.2: " _ tTurn)
     Set tOwn = ##class(OcuPilot.Kernel.State.Base).#SSLCONFIG
     Set tAbsent = ##class(OcuPilot.Kernel.Provider.Base).TlsReason(##class(OcuPilot.Port.ProviderPort).#TLSABSENT, tOwn, tOwn)
     Do $$$AssertTrue((tAbsent [ tOwn) && (tAbsent [ "Restart the instance") && '(tAbsent [ "Switches"), "OcuPilot's own, absent, names the restart and not Switches: " _ tAbsent)

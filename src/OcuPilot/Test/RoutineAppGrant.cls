@@ -61,8 +61,10 @@ Method OnAfterOneTest() As %Status
     Quit $$$OK
 }
 
+/// <p>On an instance the class is not armed for, <method>OnBeforeAllTests</method> created nothing, so nothing is removed.</p>
 Method OnAfterAllTests() As %Status
 {
+    If $System.Util.GetEnviron(..#ARMINGVARIABLE) '= 1 Quit $$$OK
     Merge tRows = ..PreparedPolicy
     Set tSC = ##class(OcuPilot.Test.GovernanceFixture).Restore(.tRows)
     Quit $$$ADDSC(tSC, $ClassMethod(..#PROBE, "RemoveAll"))

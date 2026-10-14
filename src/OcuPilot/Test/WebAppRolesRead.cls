@@ -64,8 +64,10 @@ Method OnAfterOneTest() As %Status
     Quit $$$OK
 }
 
+/// <p>On an instance the class is not armed for, <method>OnBeforeAllTests</method> created nothing, so nothing is removed.</p>
 Method OnAfterAllTests() As %Status
 {
+    If $System.Util.GetEnviron(..#ARMINGVARIABLE) '= 1 Quit $$$OK
     Kill ^||OcuPilotDatabaseWritePort
     Merge tRows = ..PreparedPolicy
     Set tSC = ##class(OcuPilot.Test.GovernanceFixture).Restore(.tRows)
@@ -86,25 +88,25 @@ Method TestTheRolesListAnswersOneRowPerEntryByRouteAndTool()
     If '$IsObject(tVendor) Quit
     Set tEntries = tVendor.%Get("MatchRoles")
     Do $$$AssertEquals(tEntries.%Size(), 2, "the vendor holds two entries")
-    Set tRouteRows = ..RouteRows(..#APP)
+    Set tRouteRows = ##class(OcuPilot.Test.RoutineAppListsRead).RouteRows(..#ROLES, ..#APP)
     Do $$$AssertEquals(tRouteRows.%Size(), 2, "the route answers one row per entry")
-    Do $$$AssertEquals(..Canonical(tRouteRows), ..Canonical(tEntries), "the route's rows are the vendor's array")
-    Set tToolRows = ..ToolRows({"name": (..#APP)}, .tHttp, .tCode)
+    Do $$$AssertEquals(##class(OcuPilot.Test.RoutineAppListsRead).Canonical(tRouteRows), ##class(OcuPilot.Test.RoutineAppListsRead).Canonical(tEntries), "the route's rows are the vendor's array")
+    Set tToolRows = ##class(OcuPilot.Test.RoutineAppListsRead).ToolRows(..#ROLES, {"name": (..#APP)}, .tHttp, .tCode)
     Do $$$AssertEquals(tToolRows.%Size(), 2, "the tool answers one row per entry")
-    Do $$$AssertEquals(..Canonical(tToolRows), ..Canonical(tEntries), "the tool's rows are the vendor's array")
+    Do $$$AssertEquals(##class(OcuPilot.Test.RoutineAppListsRead).Canonical(tToolRows), ##class(OcuPilot.Test.RoutineAppListsRead).Canonical(tEntries), "the tool's rows are the vendor's array")
     Set tIterator = tToolRows.%GetIterator()
     While tIterator.%GetNext(.tIndex, .tRow) {
         Do $$$AssertEquals(##class(OcuPilot.Test.EncryptionStartupDescriptor).Keys(tRow), "MatchRole,TargetRoles", "row " _ tIndex _ " carries the list's fields and nothing else")
     }
-    Set tRouteEmpty = ..RouteRows(..#EMPTYAPP, .tStatus, .tCode)
-    Set tToolEmpty = ..ToolRows({"name": (..#EMPTYAPP)}, .tHttp, .tCode)
+    Set tRouteEmpty = ##class(OcuPilot.Test.RoutineAppListsRead).RouteRows(..#ROLES, ..#EMPTYAPP, .tStatus, .tCode)
+    Set tToolEmpty = ##class(OcuPilot.Test.RoutineAppListsRead).ToolRows(..#ROLES, {"name": (..#EMPTYAPP)}, .tHttp, .tCode)
     Do $$$AssertEquals(tStatus _ " " _ tHttp _ " " _ tRouteEmpty.%Size() _ " " _ tToolEmpty.%Size(), "200 200 0 0", "an empty list is answered, with no rows, by the route and the tool")
-    Set tRouteAbsent = ..RouteRows(..#ABSENTAPP, .tStatus, .tCode)
-    Set tToolAbsent = ..ToolRows({"name": (..#ABSENTAPP)}, .tHttp, .tCode)
+    Set tRouteAbsent = ##class(OcuPilot.Test.RoutineAppListsRead).RouteRows(..#ROLES, ..#ABSENTAPP, .tStatus, .tCode)
+    Set tToolAbsent = ##class(OcuPilot.Test.RoutineAppListsRead).ToolRows(..#ROLES, {"name": (..#ABSENTAPP)}, .tHttp, .tCode)
     Do $$$AssertEquals(tStatus _ " " _ tHttp _ " " _ tRouteAbsent.%Size() _ " " _ tToolAbsent.%Size(), "200 200 0 0", "an application the instance does not hold is answered, with no rows, by the route and the tool")
-    Do ..RouteRows("", .tStatus, .tCode)
+    Do ##class(OcuPilot.Test.RoutineAppListsRead).RouteRows(..#ROLES, "", .tStatus, .tCode)
     Do $$$AssertEquals(tStatus _ " " _ tCode, "400 " _ ##class(OcuPilot.Api.Error).#READCRITERION, "no name is refused by the route")
-    Do ..ToolRows({}, .tHttp, .tCode)
+    Do ##class(OcuPilot.Test.RoutineAppListsRead).ToolRows(..#ROLES, {}, .tHttp, .tCode)
     Do $$$AssertEquals(tHttp _ " " _ tCode, "400 " _ ##class(OcuPilot.Api.Error).#READCRITERION, "and by the tool")
 }
 
@@ -116,7 +118,7 @@ Method TestTheRolesListAnswersOneRowPerEntryByRouteAndTool()
 Method TestAnAgentSendsTheRolesItReadLessOneEntry()
 {
     Do $$$AssertStatusOK(..Seed(..#APP, ..Roles()), "a probe web application holding two entries")
-    Set tRoleRows = ..ToolRows({"name": (..#APP)})
+    Set tRoleRows = ##class(OcuPilot.Test.RoutineAppListsRead).ToolRows(..#ROLES, {"name": (..#APP)})
     Do $$$AssertEquals(tRoleRows.%Size(), 2, "the tool answers both entries")
     If tRoleRows.%Size() '= 2 Quit
     Set tKept = ""
@@ -146,7 +148,7 @@ Method TestAnAgentSendsTheRolesItReadLessOneEntry()
     Set tAfter = ..Stored(..#APP)
     Do $$$AssertTrue($IsObject(tAfter), "the instance still holds the application")
     If '$IsObject(tAfter) Quit
-    Do $$$AssertEquals(..Canonical(tAfter.%Get("MatchRoles")), tKept.%ToJSON(), "and only the entry that was sent: " _ tRemoved.%Get("MatchRole") _ " is gone")
+    Do $$$AssertEquals(##class(OcuPilot.Test.RoutineAppListsRead).Canonical(tAfter.%Get("MatchRoles")), tKept.%ToJSON(), "and only the entry that was sent: " _ tRemoved.%Get("MatchRole") _ " is gone")
 }
 
 /// <p>The roles of a probe application: the application roles and one matching role's. The roles are ones every instance
@@ -178,51 +180,6 @@ ClassMethod Stored(pName As %String) As %DynamicObject
     Set tSC = $ClassMethod(..#PORT, "Invoke", "WebApp.App", "GET", .tQuery, "", .tRead, .tHttp, .tFault)
     If $$$ISERR(tSC) || '$IsObject($Get(tRead)) Quit ""
     Quit tRead
-}
-
-/// <p>The rows <code>GET /screens/webapp.webapproles/read?name=</code> answers for <var>pName</var>, or an empty array.
-/// <var>pStatus</var> and <var>pCode</var> are the answer's status and envelope code.</p>
-ClassMethod RouteRows(pName As %String, Output pStatus As %Integer, Output pCode As %String) As %DynamicArray
-{
-    Set pCode = ""
-    Set tSC = ##class(OcuPilot.Test.Http).MakeRequest("GET", "/screens/" _ ..#ROLES _ "/read?name=" _ $ZConvert(pName, "O", "URL"), .pStatus, .tBody)
-    If $$$ISERR(tSC) || '$IsObject(tBody) Quit []
-    Set pCode = tBody.%Get("code")
-    If pStatus '= 200 Quit []
-    Quit tBody.%Get("rows")
-}
-
-/// <p>The rows the read tool's view answers for <var>pArgs</var>, or an empty array. <var>pHttp</var> and <var>pCode</var>
-/// are the view's status and fault code.</p>
-ClassMethod ToolRows(pArgs As %DynamicObject, Output pHttp As %Integer, Output pCode As %String) As %DynamicArray
-{
-    Set pCode = ""
-    Set pHttp = 0
-    Set tSC = ##class(OcuPilot.Screen.Tool.Registry).Resolve(..#ROLES _ ".read", .tTool)
-    If $$$ISERR(tSC) || '$IsObject(tTool) Quit []
-    Set tSC = ##class(OcuPilot.Screen.Tool.Registry).InvokeTool(tTool, pArgs, 100, .tResult, .pHttp, .tFault)
-    If $IsObject($Get(tFault)) Set pCode = tFault.%Get("code")
-    If $$$ISERR(tSC) || '$IsObject($Get(tResult)) Quit []
-    Quit tResult.%Get("rows")
-}
-
-/// <p>The entries of <var>pRows</var> as their JSON texts, sorted and joined by a newline, so two arrays holding the same
-/// entries compare equal whatever their order.</p>
-ClassMethod Canonical(pRows As %DynamicArray) As %String
-{
-    Kill tSorted
-    Set tIterator = pRows.%GetIterator()
-    While tIterator.%GetNext(.tIndex, .tRow) {
-        Set tSorted(tRow.%ToJSON()) = ""
-    }
-    Set tOut = ""
-    Set tKey = ""
-    For {
-        Set tKey = $Order(tSorted(tKey))
-        If tKey = "" Quit
-        Set tOut = tOut _ $Select(tOut = "": "", 1: $Char(10)) _ tKey
-    }
-    Quit tOut
 }
 
 }

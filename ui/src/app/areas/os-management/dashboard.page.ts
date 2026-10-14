@@ -100,9 +100,10 @@ const TASKS_STORE_SUFFIX = '#tasks';
  * **A group may offer drill-downs** (Story 18.36): under its heading, one `ocu-details-link` per target the
  * store declares for it whose screen is built, at that screen's route in this namespace. A modified click is left
  * to the browser, as Journal file details' View records link leaves it. **A target the caller is refused is listed
- * and gated** (Story 18.47, EXPERIENCE.md Privilege Gating), as the side bar draws one: no `href`, `tabindex="0"`,
- * `aria-disabled="true"` and the "Requires <pair>" reason inline, which the link is described by; a click goes
- * nowhere. The verdict is the side bar's (`openableEntry` over `screenVerdict`).
+ * and gated** (Story 18.47, EXPERIENCE.md Privilege Gating), as the side bar draws one: no `href`, so `role="link"`
+ * keeps it a link whose `aria-disabled="true"` is announced, `tabindex="0"`, and the "Requires <pair>" reason inline,
+ * which the link is described by; a click goes nowhere. The verdict is the side bar's (`openableEntry` over
+ * `screenVerdict`), read again whenever the navigation map answers.
  *
  * Every control-flow condition is a paren-free member reference, for the reason `sign-in.ts`
  * records.
@@ -122,6 +123,7 @@ const TASKS_STORE_SUFFIX = '#tasks';
                 class="ocu-details-link"
                 [class.ocu-details-link-gated]="link.gated"
                 [attr.href]="link.gated ? null : link.href"
+                [attr.role]="link.gated ? 'link' : null"
                 [attr.tabindex]="link.gated ? '0' : null"
                 [attr.aria-disabled]="link.gated ? 'true' : null"
                 [attr.aria-describedby]="link.gated ? link.reasonId : null"

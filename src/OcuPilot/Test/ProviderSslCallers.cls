@@ -78,8 +78,10 @@ Method OnBeforeAllTests() As %Status
 /// <p>Remove the egress row, the probe configuration, the users and the role, and return a failing status if any survives.
 /// A test whose <method>OnBeforeOneTest</method> failed after creating the probe is not followed by its
 /// <method>OnAfterOneTest</method>, so the probe and the row are removed here as well.</p>
+/// <p>On an instance the class is not armed for, <method>OnBeforeAllTests</method> created nothing, so nothing is removed.</p>
 Method OnAfterAllTests() As %Status
 {
+    If ($System.Util.GetEnviron(..#ARMINGVARIABLE) '= 1) || ($System.Util.GetEnviron(..#SSLARMINGVARIABLE) '= 1) Quit $$$OK
     Set tOrigNS = $NAMESPACE
     Set tLeft = ""
     Try {

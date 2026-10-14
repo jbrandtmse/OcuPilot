@@ -2,7 +2,8 @@
 /// from the unlabeled Prometheus lines alone, a missing or non-numeric metric fails the whole read
 /// with nothing partial, and the pair set refuses before any sensor call. The metrics list
 /// (Story 18.11) answers every sample of one collection as <code>{Metric, Labels, Value, Help}</code>
-/// rows, cut at the cap, and a sample it cannot read fails the whole read.</p>
+/// rows, cut at the cap, and a sample it cannot read in either backslash reading is skipped and counted while the
+/// rest are answered (Story 18.47).</p>
 /// <p>Runs through <class>OcuPilot.Test.MonitorPortFixture</class>, whose <method>Source</method>
 /// answers the text a test supplies and whose gate a test can swap for
 /// <class>OcuPilot.Test.ScreenGate</class>, since <code>%UnitTest</code> runs as an account the real

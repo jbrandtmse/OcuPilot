@@ -536,10 +536,11 @@ Method TestTheServiceReadsAreExactAndRefuseADeployedService()
 /// letter case (Story 18.47, AD-53): the call's namespace is read first and then each other namespace the roster names,
 /// an implicit one (<code>^</code>) skipped; a deployment found in another namespace refuses the delete and a service read
 /// 409 <code>RESTSERVICE.DEPLOYED</code> without a delete being sent; a namespace the vendor refuses to enter (its 403)
-/// refuses the question 403 <code>PORT.ACCESSDENIED</code>, logged, and sends no delete; and a roster of namespaces that
-/// list no such application deletes.</p>
+/// refuses the question 403 <code>PORT.ACCESSDENIED</code> with a sentence naming that namespace, logged, and sends no
+/// delete; and a roster of namespaces that list no such application deletes.</p>
 /// <p>Mutation (Rule 19): read <code>pNamespace</code> alone in <method>OcuPilot.Port.MgmntPort.DeployedAnywhere</method>
-/// -- the other-namespace and refused-namespace legs go red.</p>
+/// -- the other-namespace and refused-namespace legs go red; answer another namespace's 403 with
+/// <parameter>OcuPilot.Port.MgmntPort.REASONNAMESPACE</parameter> -- the refused-namespace leg goes red.</p>
 Method TestADeploymentInAnotherNamespaceRefusesTheDelete()
 {
     Set tOrphan = "[{""name"":""/api/elsewhere"",""dispatchClass"":""ORPHAN.V2.DISP"",""namespace"":""OTHERNS"",""enabled"":true}]"
@@ -569,7 +570,7 @@ Method TestADeploymentInAnotherNamespaceRefusesTheDelete()
     Do ##class(OcuPilot.Test.MgmntImplFixture).Arm("DeleteApplication", "200 OK", "{""msg"":""deleted""}")
     Do ##class(OcuPilot.Test.MgmntImplFixture).ArmIn("OTHERNS", "GetWebRESTApps", "403 Forbidden", "", "write")
     Set tSC = ..Service("DELETE", "USER", "Orphan.v2", "", .tResult, .tHttp, .tFault)
-    Do $$$AssertEquals(..FaultText(tHttp, tFault), "403 PORT.ACCESSDENIED " _ ##class(OcuPilot.Port.MgmntPort).#REASONNAMESPACE, "a namespace the vendor refuses to enter refuses the delete")
+    Do $$$AssertEquals(..FaultText(tHttp, tFault), "403 PORT.ACCESSDENIED " _ $Replace(##class(OcuPilot.Port.MgmntPort).#REASONNAMESPACEOTHER, "<namespace>", "OTHERNS"), "a namespace the vendor refuses to enter refuses the delete, named")
     Do $$$AssertTrue(##class(OcuPilot.Test.MgmntImplFixture).CallText() '[ "DeleteApplication", "and no delete was sent: " _ ##class(OcuPilot.Test.MgmntImplFixture).CallText())
     Do $$$AssertTrue(##class(OcuPilot.Test.LogProbe).Captured("message") [ ##class(OcuPilot.Test.MgmntImplFixture).#VENDORTEXT, "and the vendor's text reaches the log")
     Set tSC = ..Service("SERVICE", "USER", "Orphan.v2", "", .tResult, .tHttp, .tFault)

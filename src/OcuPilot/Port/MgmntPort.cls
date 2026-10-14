@@ -112,6 +112,10 @@ Parameter REASONBUILD = "The management API could not build this document.";
 /// <p>The reason the vendor's refused namespace switch (its 403) is refused with.</p>
 Parameter REASONNAMESPACE = "The management API refused to enter this namespace for this account.";
 
+/// <p>The same refusal for another namespace a REST service delete reads (<method>DeployedAnywhere</method>), naming it
+/// in place of <code>&lt;namespace&gt;</code>.</p>
+Parameter REASONNAMESPACEOTHER = "A REST service is deleted only after every namespace's web applications are read, and the management API refused to enter <namespace> for this account.";
+
 /// <p>The endpoint reading and writing one spec-based service (Story 18.32).</p>
 Parameter ENDPOINTSERVICE = "Service";
 
@@ -496,7 +500,8 @@ ClassMethod Namespaces(Output pList As %List) As %Status
 /// <parameter>FORWARDDEPTH</parameter> hops (<method>ReachesDispatch</method>). The web applications of
 /// <var>pNamespace</var> are read first, then each other namespace in the instance's order; an implicit namespace
 /// (<parameter>OcuPilot.Kernel.Shell.Namespaces.IMPLICITPREFIX</parameter>) is skipped. A namespace the vendor refuses
-/// to enter for the caller refuses the whole question, so a service is never called undeployed on a partial read.</p>
+/// to enter for the caller refuses the whole question, so a service is never called undeployed on a partial read; when
+/// it is not <var>pNamespace</var>, the refusal names it (<parameter>REASONNAMESPACEOTHER</parameter>).</p>
 ClassMethod DeployedAnywhere(pNamespace As %String, pName As %String, Output pDeployed As %Boolean, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
 {
     Set pDeployed = 0
@@ -514,6 +519,9 @@ ClassMethod DeployedAnywhere(pNamespace As %String, pName As %String, Output pDe
     For tN = 1:1:$ListLength(tOrder) {
         Set tNamespace = $List(tOrder, tN)
         Set tSC = ..Call("GetWebRESTApps", tNamespace, "", .tWeb, .pHttpStatus, .pFault)
+        If $$$ISERR(tSC) && (tN > 1) && (+$Get(pHttpStatus) = 403) {
+            Set tSC = ..Refuse(403, ##class(OcuPilot.Api.Error).#FORBIDDEN, ##class(OcuPilot.Api.Error).#PORTACCESSDENIED, $Replace(..#REASONNAMESPACEOTHER, "<namespace>", tNamespace), .pHttpStatus, .pFault)
+        }
         If $$$ISERR(tSC) Quit
         Set tIterator = tWeb.%GetIterator()
         While tIterator.%GetNext(.tIndex, .tApp) {
@@ -564,8 +572,9 @@ ClassMethod ReachesDispatch(pNamespace As %String, pClass As %String, pDispatch 
 
 /// <p>The classes the compiled <code>UrlMap</code> of <var>pClass</var>, read in <var>pNamespace</var> (AD-16),
 /// forwards to, in <var>pTargets</var> as a <class>%List</class>: the <code>Forward</code> attribute of each
-/// <code>Map</code> element, as written. A class with no <code>UrlMap</code>, and one the namespace does not hold,
-/// forward nowhere. The compiled map includes the one a class inherits.</p>
+/// <code>Map</code> element, as written, in either XML quote and with or without space around its <code>=</code>. A
+/// class with no <code>UrlMap</code>, and one the namespace does not hold, forward nowhere. The compiled map includes
+/// the one a class inherits.</p>
 ClassMethod Forwards(pNamespace As %String, pClass As %String, Output pTargets As %List) As %Status [ Private ]
 {
     Set pTargets = ""
@@ -586,8 +595,8 @@ ClassMethod Forwards(pNamespace As %String, pClass As %String, Output pTargets A
         Set tStart = 1
         While $Locate(tMap, "<Map\s[^>]*>", tStart, tEnd, tElement) {
             Set tStart = tEnd
-            If '$Locate(tElement, "Forward=""[^""]*""", 1, , tAttribute) Continue
-            Set tTarget = $Piece(tAttribute, """", 2)
+            If '$Locate(tElement, "\sForward\s*=\s*(""[^""]*""|'[^']*')", 1, , tAttribute) Continue
+            Set tTarget = $Extract($ZStrip($Piece(tAttribute, "=", 2, *), "<W"), 2, *-1)
             If tTarget '= "" Set pTargets = pTargets _ $ListBuild(tTarget)
         }
     } Catch ex {

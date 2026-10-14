@@ -171,9 +171,10 @@ ClassMethod Deploy(pNamespace As %String, pName As %String, pPath As %String) As
 }
 
 /// <p>Save and compile the probe class <var>pClass</var> in <var>pNamespace</var>: a <class>%CSP.REST</class> router
-/// whose <code>UrlMap</code> forwards <code>/v1</code> to the class <var>pForward</var>. A name that does not begin with
-/// <parameter>PREFIX</parameter>, in any case, is refused.</p>
-ClassMethod SeedRouter(pNamespace As %String, pClass As %String, pForward As %String) As %Status
+/// whose <code>UrlMap</code> forwards <code>/v1</code> to the class <var>pForward</var>, written
+/// <code>Forward="..."</code>, or <code>Forward = '...'</code> when <var>pSpaced</var> is 1. A name that does not begin
+/// with <parameter>PREFIX</parameter>, in any case, is refused.</p>
+ClassMethod SeedRouter(pNamespace As %String, pClass As %String, pForward As %String, pSpaced As %Boolean = 0) As %Status
 {
     If '..IsProbe(pClass) Quit $$$ERROR($$$GeneralError, "only a class beginning " _ ..#PREFIX _ " is written")
     Set tSC = $$$OK
@@ -185,7 +186,8 @@ ClassMethod SeedRouter(pNamespace As %String, pClass As %String, pForward As %St
         Set tXData = ##class(%Dictionary.XDataDefinition).%New()
         Set tXData.Name = "UrlMap"
         Set tXData.XMLNamespace = "http://www.intersystems.com/urlmap"
-        Do tXData.Data.Write("<Routes><Map Prefix=""/v1"" Forward=""" _ pForward _ """/></Routes>")
+        Set tForward = $Select(pSpaced: "Forward = '" _ pForward _ "'", 1: "Forward=""" _ pForward _ """")
+        Do tXData.Data.Write("<Routes><Map Prefix=""/v1"" " _ tForward _ "/></Routes>")
         Do tDefinition.XDatas.Insert(tXData)
         Set tSC = tDefinition.%Save()
         If $$$ISOK(tSC) Set tSC = $System.OBJ.Compile(pClass, "-d")

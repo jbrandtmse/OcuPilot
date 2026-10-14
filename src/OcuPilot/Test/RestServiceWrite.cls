@@ -247,20 +247,22 @@ Method TestADeployedServiceAndAWebApplicationPathAreRefused()
 }
 
 /// <p>DW-2311 (AD-53): a service no web application dispatches to directly is still deployed when a router's
-/// <code>UrlMap</code> forwards to it -- through one router, through a router that forwards to that router, and from a web
-/// application of another namespace dispatching to its dispatch class -- and its Delete is 409
+/// <code>UrlMap</code> forwards to it -- through one router, through a router that forwards to that router with its
+/// <code>Forward</code> attribute single-quoted and spaced, and from a web application of another namespace dispatching
+/// to its dispatch class -- and its Delete is 409
 /// <code>RESTSERVICE.DEPLOYED</code> on the screen and at the agent's mint with nothing deleted. A pair of routers that
 /// forward to each other ends the walk, and a service they do not reach deletes.</p>
 /// <p>Mutation (Rule 19): drop the <method>OcuPilot.Port.MgmntPort.ReachesDispatch</method> call from
 /// <method>OcuPilot.Port.MgmntPort.DeployedAnywhere</method> -- the router legs delete the service and go red; read
-/// <code>pNamespace</code> alone -- the other-namespace leg goes red.</p>
+/// <code>pNamespace</code> alone -- the other-namespace leg goes red; match only <code>Forward="</code> in
+/// <method>OcuPilot.Port.MgmntPort.Forwards</method> -- the two-router leg deletes and goes red.</p>
 Method TestAServiceReachedThroughForwardRoutesIsRefused()
 {
     Set tDeployed = ##class(OcuPilot.Api.RestServiceError).#DEPLOYED
     Do $$$AssertStatusOK($ClassMethod(..#PROBE, "Seed", ..#NAMESPACE, "OcuProbe1832C"), "a probe service is built")
     Do $$$AssertStatusOK($ClassMethod(..#PROBE, "Seed", ..#NAMESPACE, "OcuProbe1832D"), "and a second one, nothing reaches")
     Do $$$AssertStatusOK($ClassMethod(..#PROBE, "SeedRouter", ..#NAMESPACE, "OcuProbe1832R.A", "OcuProbe1832C.disp"), "a router forwards to the first")
-    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "SeedRouter", ..#NAMESPACE, "OcuProbe1832R.B", "OcuProbe1832R.A"), "a second router forwards to the first router")
+    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "SeedRouter", ..#NAMESPACE, "OcuProbe1832R.B", "OcuProbe1832R.A", 1), "a second router forwards to the first router, its attribute single-quoted and spaced")
     Do $$$AssertStatusOK($ClassMethod(..#PROBE, "DeployClass", ..#NAMESPACE, "OcuProbe1832R.B", ..#APPLICATION), "and a web application dispatches to the second")
     Do ..Act("delete", "OcuProbe1832C", .tStatus, .tBody)
     Do $$$AssertEquals(tStatus _ " " _ $Select($IsObject(tBody): tBody.code, 1: ""), "409 " _ tDeployed, "the Delete is refused through two routers")

@@ -74,6 +74,7 @@ Method OnAfterOneTest() As %Status
 
 Method OnAfterAllTests() As %Status
 {
+    Do ##class(OcuPilot.Kernel.State.WebApp).DeleteByPath(..#OWNAPP)
     Set tSC = ##class(OcuPilot.Test.WebAppSave).RemoveApp(..#PROBEAPP, ..#PROBEMARKER)
     Set tOwnSC = ##class(OcuPilot.Test.WebAppSave).RemoveApp(..#OWNAPP, ..#PROBEMARKER)
     Set tCaseSC = ##class(OcuPilot.Test.WebAppSave).RemoveApp(..#CASESTORED, ..#PROBEMARKER)

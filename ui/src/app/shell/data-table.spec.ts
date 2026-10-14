@@ -905,6 +905,48 @@ describe('the data table', () => {
     expect(new Set(walked).size).toBe(6);
   });
 
+  it("Story 18.47, DW-2328: a menu opened on a repeated row judges the row's entity key", async () => {
+    // Mutation (Rule 19): drop `entityKeyOf` from `menuItems`' self-protection call -> the second row's key carries its
+    // ordinal, the signed-in account is not recognised and the entry is offered, red.
+    const declaration = tableDeclaration({ rowActions: [{ id: 'delete', selfProtection: 'protected-account' }] });
+    const dana = { Name: 'dana', NameSpace: 'USER', Count: 0, Enabled: true, Note: 'n' };
+    const wired = await wire(declaration, ok([dana, { ...dana, Count: 1 }]), ['delete']);
+    wired.actions.register(declaration.descriptor, 'delete', () => undefined);
+    await wired.refresh.readNow();
+    await settle(wired.fixture);
+    (wired.host().querySelector('[aria-rowindex="3"] .ocu-data-table-trigger') as HTMLButtonElement).click();
+    await settle(wired.fixture);
+    const entry = wired.host().querySelector('[role="menu"] [role="menuitem"]') as HTMLButtonElement;
+    expect(entry.querySelector('.ocu-data-table-menu-reason')?.textContent?.trim()).toBe(STRINGS.userRefusalCurrentUser);
+    expect(entry.getAttribute('aria-disabled')).toBe('true');
+  });
+
+  it('Story 18.47, DW-2328: a menu opened on a repeated row reads that row, not the first of its key', async () => {
+    // Mutation (Rule 19): resolve `menuItems`' row as the first row of the selection's entity key -> the second row's
+    // entry reads the first row's AllowDelete and is refused, red.
+    const base = tableDeclaration();
+    const declaration = tableDeclaration({
+      rowActions: [{ id: 'delete', selfProtection: 'system-resource' }],
+      read: base.read === null ? null : { ...base.read, fields: [...base.read.fields, 'AllowDelete'] },
+    });
+    const listed = [
+      { Name: 'alpha', NameSpace: 'USER', Count: 0, Enabled: true, Note: 'n', AllowDelete: false },
+      { Name: 'alpha', NameSpace: 'USER', Count: 1, Enabled: true, Note: 'n', AllowDelete: true },
+    ];
+    const wired = await wire(declaration, ok(listed), ['delete']);
+    wired.actions.register(declaration.descriptor, 'delete', () => undefined);
+    await wired.refresh.readNow();
+    await settle(wired.fixture);
+    (wired.host().querySelector('[aria-rowindex="3"] .ocu-data-table-trigger') as HTMLButtonElement).click();
+    await settle(wired.fixture);
+    const offered = wired.host().querySelector('[role="menu"] [role="menuitem"]') as HTMLButtonElement;
+    expect(offered.hasAttribute('aria-disabled')).toBe(false);
+    (wired.host().querySelector('[aria-rowindex="2"] .ocu-data-table-trigger') as HTMLButtonElement).click();
+    await settle(wired.fixture);
+    const refused = wired.host().querySelector('[role="menu"] [role="menuitem"]') as HTMLButtonElement;
+    expect(refused.querySelector('.ocu-data-table-menu-reason')?.textContent?.trim()).toBe(STRINGS.resourceRefusalSystem);
+  });
+
   it('Story 5.7: a marked row is announced once, politely, naming the row and what happened', async () => {
     // Mutation (Rule 19): announce on every `sync()` rather than once per newly marked key ->
     // the "announced once" assertion goes red, because a silent tick would rewrite the slot and a

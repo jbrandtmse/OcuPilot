@@ -78,8 +78,8 @@ Parameter REASONPROXYEGRESS = "The proxy this instance's provider calls go throu
 
 /// <p>The reason a <code>PROVIDER.TLS</code> refusal carries when the configuration a call would be made through is
 /// absent, to which the caller appends the configuration's name. <method>ReasonFor</method> answers the code's one
-/// sentence for a turn, which covers this cause, <parameter>REASONTLSUNVERIFIED</parameter>'s and
-/// <parameter>REASONTLSUNAVAILABLE</parameter>'s.</p>
+/// sentence for a turn, which covers this cause, <parameter>REASONTLSUNVERIFIED</parameter>'s,
+/// <parameter>REASONTLSWEAK</parameter>'s and <parameter>REASONTLSUNAVAILABLE</parameter>'s.</p>
 Parameter REASONTLSABSENT = "The TLS configuration this instance's provider calls are made through is not present";
 
 /// <p>The remedy appended to <parameter>REASONTLSABSENT</parameter> for a configuration the egress row names, and the one
@@ -800,7 +800,7 @@ ClassMethod ReasonFor(pCode As %String) As %String
     If pCode = ##class(OcuPilot.Api.Error).#PROVIDERREFUSED Quit "The provider refused the request"
     If pCode = ##class(OcuPilot.Api.Error).#PROVIDERUNAVAILABLE Quit "The provider did not serve this request on any attempt"
     If pCode = ##class(OcuPilot.Api.Error).#PROVIDERTIMEOUT Quit "The provider did not answer within the time this instance allows"
-    If pCode = ##class(OcuPilot.Api.Error).#PROVIDERTLS Quit "The TLS configuration this instance's provider calls are made through is not present, is no longer an enabled client that requires the server's certificate, or could not be read, so no request was sent. Test connection names the configuration and the remedy"
+    If pCode = ##class(OcuPilot.Api.Error).#PROVIDERTLS Quit "The TLS configuration this instance's provider calls are made through is not present, is no longer an enabled client that requires the server's certificate, allows a protocol older than TLS 1.2, or could not be read, so no request was sent. Test connection names the configuration and the remedy"
     If pCode = ##class(OcuPilot.Api.Error).#PROVIDERTESTTIMEOUT Quit ..#REASONTESTTIMEOUT
     If pCode = ##class(OcuPilot.Api.Error).#PROVIDERTESTTIMEOUTLOCAL Quit ..#REASONTESTTIMEOUTLOCAL
     If pCode = ##class(OcuPilot.Api.Error).#PROVIDERDECLINED Quit "The model declined to answer this request"

@@ -150,6 +150,7 @@ async function mount(options: MountOptions = {}) {
     schedule: (run) => scheduled.push(run),
   });
   const verdict = options.tasksVerdict ?? UNGATED;
+  const navigationListeners: Array<() => void> = [];
   TestBed.configureTestingModule({
     providers: [
       provideRouter([{ path: '**', children: [] }]),
@@ -158,7 +159,10 @@ async function mount(options: MountOptions = {}) {
         useValue: {
           screenForUrl: () => declaration,
           screenVerdict: (route: string) => options.verdicts?.[route] ?? (route === 'tasks/upcoming' ? verdict : UNGATED),
-          subscribe: () => () => {},
+          subscribe: (listener: () => void) => {
+            navigationListeners.push(listener);
+            return () => {};
+          },
         } as unknown as NavigationService,
       },
       { provide: ApiService, useValue: api as unknown as ApiService },
@@ -215,6 +219,11 @@ async function mount(options: MountOptions = {}) {
     stores,
     actions: TestBed.inject(ScreenActions) as RecordingActions,
     host: fixture.nativeElement as HTMLElement,
+    /** Tell every navigation subscriber the map answered, as the service does when it lands. */
+    fireNavigation: async () => {
+      for (const listener of navigationListeners) listener();
+      await settle(fixture);
+    },
   };
 }
 
@@ -509,6 +518,7 @@ describe('DashboardPage', () => {
     const gated = host.querySelector(`[data-drill-down="${refused}"]`) as HTMLAnchorElement;
     expect(gated).not.toBeNull();
     expect(gated.hasAttribute('href')).toBe(false);
+    expect(gated.getAttribute('role')).toBe('link');
     expect(gated.getAttribute('tabindex')).toBe('0');
     expect(gated.getAttribute('aria-disabled')).toBe('true');
     const reason = gated.querySelector('.ocu-details-link-reason') as HTMLElement;
@@ -526,7 +536,23 @@ describe('DashboardPage', () => {
     expect(live.getAttribute('href')).toContain('/os-management/global-statistics');
     expect(live.hasAttribute('aria-disabled')).toBe(false);
     expect(live.hasAttribute('tabindex')).toBe(false);
+    expect(live.hasAttribute('role')).toBe(false);
     expect(live.querySelector('.ocu-details-link-reason')).toBeNull();
+  });
+
+  it('Story 18.47, DW-2340: a drill-down refused once the navigation map answers is gated then, without a reload', async () => {
+    // Mutation (Rule 19): make the page's navigation subscription a no-op -> the link stays live after the answer, red.
+    const refused = 'os-management/ecp-statistics';
+    const verdicts: Record<string, Verdict> = {};
+    const { host, fireNavigation } = await mount({ verdicts });
+    const link = (): HTMLAnchorElement => host.querySelector(`[data-drill-down="${refused}"]`) as HTMLAnchorElement;
+    expect(link().getAttribute('href')).toContain(`/${refused}`);
+    expect(link().hasAttribute('aria-disabled')).toBe(false);
+    verdicts[refused] = { allowed: false, failedPair: '%Admin_Operate:USE' };
+    await fireNavigation();
+    expect(link().hasAttribute('href')).toBe(false);
+    expect(link().getAttribute('aria-disabled')).toBe('true');
+    expect(link().querySelector('.ocu-details-link-reason')?.textContent?.trim()).toBe('Requires %Admin_Operate:USE');
   });
 
   it('draws no link for a drill-down whose screen is not built', async () => {

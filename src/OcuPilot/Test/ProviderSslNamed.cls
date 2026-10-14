@@ -49,8 +49,10 @@ Method OnBeforeAllTests() As %Status
     Quit tSC
 }
 
+/// <p>On an instance the class is not armed for, <method>OnBeforeAllTests</method> created nothing, so nothing is removed.</p>
 Method OnAfterAllTests() As %Status
 {
+    If $System.Util.GetEnviron(..#ARMINGVARIABLE) '= 1 Quit $$$OK
     Do ##class(OcuPilot.Kernel.State.Egress).DeleteGuarded()
     Set tSC = ##class(OcuPilot.Test.EgressSslProbe).Remove(..#PROBE)
     Set tOther = ##class(OcuPilot.Test.EgressSslProbe).Remove(..#OTHER)
