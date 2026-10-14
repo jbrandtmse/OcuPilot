@@ -7902,6 +7902,7 @@ So that the stage closes with its own debt paid. [AMENDED 2026-10-14, Epic 18 bu
 - DW-1981: Journal records' offset and value inputs carry no maxlength, so an over-long entry is refused only by the server (ledger; chartered by the burn-down gate 2026-10-14)
 - DW-1896: The LDAP editor cannot remove a configuration's last retrieved attribute through the admin API (its Security.LDAP PUT ignores LDAPAttributes []); an AD-27 named case writ (ledger; chartered by the burn-down gate 2026-10-14)
 - DW-2335: Several Stage 2 editor forms show fields no read tool answers (superservers 14, local databases 10, user copy 12), so the agent cannot read what the person sees (ledger; chartered by the burn-down gate 2026-10-14)
+- DW-2427: The encryption key-file field refusals #5022, #1219 and #1204 are still logged at severity 2, so a mistyped key-file entry raises the instance alert state (ledger; routed by cr 2026-10-14)
 
 ## Epic 19: Stage 3 - System Explorer over the Atelier API
 
